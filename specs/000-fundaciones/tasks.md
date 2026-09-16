@@ -34,7 +34,7 @@
   `prettier.config.mjs`. Verificar `pnpm lint` y `pnpm typecheck` en `0` sobre el árbol vacío.
   Archivos: `packages/config/**`, `eslint.config.mjs`, `prettier.config.mjs`.
 
-- [ ] **T-03** [P] `packages/contracts`: contratos de salud y error — CA: CA-21, CA-22, CA-33 (contrato), CA-16 (forma de error) — Depende: T-02 — ~2 h
+- [x] **T-03** [P] `packages/contracts`: contratos de salud y error — CA: CA-21, CA-22, CA-33 (contrato), CA-16 (forma de error) — Depende: T-02 — ~2 h
   Prueba primero `packages/contracts/src/health.spec.ts` (`healthReadyResponseSchema` acepta `checks` parcial:
   `{ redis: 'up' }` y los tres; rechaza `status: 'x'`) y `error.spec.ts` (`errorResponseSchema` exige `code`,
   `message`, `correlationId`). Luego `src/health.ts` (`HealthCheckName`, `HealthCheckStatus`, `HealthLiveResponse`,
@@ -479,3 +479,5 @@ T-24 y T-25 pueden pasar al PR-3, y T-42/T-43 pueden hacerse en la primera seman
   en formato *eslintrc* y exigiría `@eslint/eslintrc` (FlatCompat) más `eslint-plugin-import` v2 duplicando
   `import-x`. Mismas reglas, sin puente de compatibilidad. `eslint-import-resolver-typescript` (ya previsto en el plan
   §6.4 para T-28) se instala desde ahora porque `import-x` lo necesita para resolver `.ts`.
+- **T-03**: `@nimbo/contracts` expone `types` → `src/index.ts` (typecheck sin compilar) y `default` → `dist/index.js`
+  (runtime). El script `prepare` compila `dist/` en cada `pnpm install`, así CA-1 no exige un paso manual de build.

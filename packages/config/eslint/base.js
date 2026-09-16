@@ -47,7 +47,14 @@ export default tseslint.config(
     files: ['**/*.{ts,tsx}'],
     settings: {
       'import-x/extensions': ['.ts', '.tsx', '.js', '.jsx'],
-      'import-x/resolver-next': [createTypeScriptImportResolver({ alwaysTryTypes: true })],
+      'import-x/resolver-next': [
+        createTypeScriptImportResolver({
+          alwaysTryTypes: true,
+          noWarnOnMultipleProjects: true,
+          // Relativos a la raíz del repositorio (`pnpm lint` se ejecuta allí).
+          project: ['apps/*/tsconfig.json', 'packages/*/tsconfig.json', 'scripts/tsconfig.json'],
+        }),
+      ],
     },
     rules: {
       // TypeScript ya verifica los nombres exportados.
