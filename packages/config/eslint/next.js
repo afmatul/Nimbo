@@ -16,5 +16,7 @@ export default tseslint.config(...base, {
     ...nextPlugin.configs.recommended.rules,
     ...nextPlugin.configs['core-web-vitals'].rules,
     ...reactHooks.configs.recommended.rules,
+    // App Router sin `pages/`: la regla buscaría un directorio que no existe.
+    '@next/next/no-html-link-for-pages': 'off',
   },
 });
