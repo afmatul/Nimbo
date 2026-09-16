@@ -24,7 +24,7 @@
   lo usan `test:e2e` y `seed`), `e2e/README.md`, `load/README.md`.
   Archivos: los listados.
 
-- [ ] **T-02** `packages/config`: tsconfig, ESLint flat base, Prettier, Jest base — CA: CA-9 — Depende: T-01 — ~3 h
+- [x] **T-02** `packages/config`: tsconfig, ESLint flat base, Prettier, Jest base — CA: CA-9 — Depende: T-01 — ~3 h
   `packages/config/package.json` (`@nimbo/config`), `tsconfig.base.json` (`strict`, `noUncheckedIndexedAccess`,
   `exactOptionalPropertyTypes`, ES2022), `tsconfig.nest.json`, `tsconfig.next.json`, `tsconfig.lib.json`,
   `prettier.config.js`, `eslint/base.js` (`@typescript-eslint` strict-type-checked, `eslint-plugin-import-x`,
@@ -471,6 +471,11 @@ T-24 y T-25 pueden pasar al PR-3, y T-42/T-43 pueden hacerse en la primera seman
   `pnpm -r run test`): `pnpm -r` no incluye el paquete raíz, y sin el primer tramo la prueba de CA-4
   (`scripts/repo-structure.spec.ts`) nunca correría. `env:check` apunta al marcador hasta que T-23 cree
   `scripts/check-env-example.ts` (evita un script roto en `main` tras el PR-1).
-- **T-01**: en la máquina de desarrollo hay Node 24 (nvm-windows sin 22 instalado); `pnpm install` se ejecutó con
-  `--engine-strict=false` solo en local. El repositorio conserva `engine-strict=true` y `engines.node: 22.x`; CI y las
-  imágenes usan Node 22.
+- **T-01**: la máquina de desarrollo tenía Node 24 por defecto; con `engine-strict=true` pnpm rechaza todo. Se
+  instaló Node 22 con nvm-windows (`nvm install 22`) y se usó por `PATH` sin cambiar la versión global. Es exactamente
+  lo que `.nvmrc` pide; el README (T-10) lo documenta.
+- **T-02**: `eslint/next.js` usa `@next/eslint-plugin-next` (reglas `recommended` + `core-web-vitals`) y
+  `eslint-plugin-react-hooks` directamente en flat config, en lugar del paquete `eslint-config-next`, que en 15.x sigue
+  en formato *eslintrc* y exigiría `@eslint/eslintrc` (FlatCompat) más `eslint-plugin-import` v2 duplicando
+  `import-x`. Mismas reglas, sin puente de compatibilidad. `eslint-import-resolver-typescript` (ya previsto en el plan
+  §6.4 para T-28) se instala desde ahora porque `import-x` lo necesita para resolver `.ts`.

@@ -28,12 +28,19 @@ describe('CA-4: estructura y comandos raíz', () => {
     expect(existsSync(join(ROOT, relativePath))).toBe(true);
   });
 
-  it.each(['dev', 'lint', 'typecheck', 'test', 'test:int', 'test:isolation', 'test:e2e', 'seed', 'env:check'])(
-    'el `package.json` raíz expone el script `%s`',
-    (script) => {
-      expect(readRootPackageJson().scripts).toHaveProperty(script);
-    },
-  );
+  it.each([
+    'dev',
+    'lint',
+    'typecheck',
+    'test',
+    'test:int',
+    'test:isolation',
+    'test:e2e',
+    'seed',
+    'env:check',
+  ])('el `package.json` raíz expone el script `%s`', (script) => {
+    expect(readRootPackageJson().scripts).toHaveProperty(script);
+  });
 
   it('fija pnpm 10 y Node 22 en el `package.json` raíz', () => {
     const pkg = readRootPackageJson();
