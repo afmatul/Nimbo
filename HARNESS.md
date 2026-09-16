@@ -6,7 +6,7 @@ y siete subagentes especializados.
 ## Instalación
 
 1. Copien todo el contenido en la raíz del repositorio (respetando las carpetas ocultas `.claude/` y `.github/`).
-2. Ajusten en `CLAUDE.md` la sección «Comandos del repositorio» cuando exista el `package.json`.
+2. La sección «Comandos del repositorio» de `CLAUDE.md` ya refleja el `package.json` raíz (spec 000, PR-1); actualícenla si cambian los scripts.
 
 ## Estructura
 

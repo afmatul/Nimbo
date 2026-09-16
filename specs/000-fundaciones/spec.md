@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Planificada |
+| Estado | En implementación |
 | Dueño | Adrián (1) |
 | Fase | 1 |
 | Requisitos | RNF-10, RNF-12, RNF-15, RNF-16, RNF-17, RNF-19; RNF-18 (parcial: solo health checks) |
