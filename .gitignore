@@ -24,3 +24,6 @@ Thumbs.db
 *.log
 npm-debug.log*
 pnpm-debug.log*
+
+# caché de SWC (Next.js en Windows)
+.swc/
