@@ -54,7 +54,7 @@
   `src/shared/index.ts` (exporta `HealthModule`), `src/shared/README.md`.
   Archivos: `apps/api/**` (excepto `src/modules/**`).
 
-- [ ] **T-05** [P] Carpetas de los 12 módulos con `index.ts` vacío y `README.md` mínimo — CA: CA-4, CA-5 (precondición del lint) — Depende: T-02 — ~1 h
+- [x] **T-05** [P] Carpetas de los 12 módulos con `index.ts` vacío y `README.md` mínimo — CA: CA-4, CA-5 (precondición del lint) — Depende: T-02 — ~1 h
   Para cada uno de `identity`, `storage`, `access`, `sharing`, `billing`, `editing`, `intelligence`, `optimizer`,
   `backoffice`, `audit`, `realtime`, `notifications`: `apps/api/src/modules/<m>/index.ts` (`export {};`) y
   `apps/api/src/modules/<m>/README.md` (dueño según `specs/README.md`, diagrama de origen, capas
