@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+</head>
+<body>
+<x-dc>
+<helmet><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"><style>html{background:#E7EDF5}body{margin:0;background:#E7EDF5;font-family:Inter,system-ui,sans-serif;font-feature-settings:"tnum" 1}a{color:#6B8DD6;text-decoration:none}a:hover{color:#4A6FA5}</style></helmet>
+
+<div style="padding:32px;display:flex;flex-direction:column;gap:16px">
+<div data-screen-label="03 Espacio" style="display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;align-items:baseline;gap:10px"><span style="font:600 10.5px 'JetBrains Mono',monospace;background:rgba(0,0,0,.08);color:#1E2D40;padding:3px 7px;border-radius:5px">03</span><span style="font:600 13px Inter,sans-serif;color:#1E2D40">Resumen de espacio</span><span style="font:400 11.5px Inter,sans-serif;color:#546983">tablero del PDF con la entrada al optimizador y la actividad reciente</span></div>
+
+<div style="width:1440px;height:900px;background:#F4F7FB;border:1px solid #DDE6F0;border-radius:14px;overflow:hidden;display:flex;box-shadow:0 2px 8px rgba(13,20,24,.08)">
+
+<div style="width:236px;flex:none;background:#FAFCFF;border-right:1px solid #DDE6F0;display:flex;flex-direction:column">
+<div style="height:64px;flex:none;display:flex;align-items:center;gap:10px;padding:0 18px;border-bottom:1px solid #EDF2F9">
+<span style="width:26px;height:26px;border-radius:8px;background:#6B8DD6;display:flex;align-items:center;justify-content:center;font:700 13px Inter,sans-serif;color:#FFFFFF">N</span>
+<span style="font:700 16px Inter,sans-serif;color:#1E2D40;letter-spacing:.02em">NIMBO</span>
+<span style="margin-left:auto;font:500 9px 'JetBrains Mono',monospace;color:#3D5F8F;background:#E8EEFA;padding:3px 6px;border-radius:4px">EQUIPO</span>
+<span style="width:26px;height:26px;flex:none;margin-left:2px;border-radius:7px;display:flex;align-items:center;justify-content:center;color:#546983" style-hover="background:#EDF2F9;color:#3D5F8F" title="Ocultar barra lateral"><svg viewBox="0 0 16 16" width="15" height="15" style="fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round"><rect x="2" y="3" width="12" height="10" rx="2"></rect><path d="M6.4 3v10M11.4 6.4 9.8 8l1.6 1.6"></path></svg></span>
+</div>
+
+<div style="padding:6px 12px;display:flex;flex-direction:column;gap:2px">
+<div style="display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:9px;font:400 12.5px Inter,sans-serif;color:#3A5068" style-hover="background:#F4F7FB"><svg viewBox="0 0 16 16" width="16" height="16" style="flex:none;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round"><path d="M2 4.4c0-.66.54-1.2 1.2-1.2h2.5l1.4 1.6h5.7c.66 0 1.2.54 1.2 1.2v5.8c0 .66-.54 1.2-1.2 1.2H3.2c-.66 0-1.2-.54-1.2-1.2z"></path></svg>Mis archivos</div>
+<div style="display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:9px;font:400 12.5px Inter,sans-serif;color:#3A5068" style-hover="background:#F4F7FB"><svg viewBox="0 0 16 16" width="16" height="16" style="flex:none;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round"><circle cx="11.9" cy="3.7" r="1.8"></circle><circle cx="11.9" cy="12.3" r="1.8"></circle><circle cx="4.1" cy="8" r="1.8"></circle><path d="M5.7 7.1 10.3 4.6M5.7 8.9l4.6 2.5"></path></svg>Compartidos conmigo</div>
+<div style="display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:9px;font:400 12.5px Inter,sans-serif;color:#3A5068" style-hover="background:#F4F7FB"><svg viewBox="0 0 16 16" width="16" height="16" style="flex:none;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round"><circle cx="8" cy="8" r="6"></circle><path d="M8 4.7V8l2.3 1.5"></path></svg>Recientes</div>
+<div style="display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:9px;font:400 12.5px Inter,sans-serif;color:#3A5068" style-hover="background:#F4F7FB"><svg viewBox="0 0 16 16" width="16" height="16" style="flex:none;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round"><path d="m8 2.5 1.72 3.5 3.86.56-2.79 2.72.66 3.84L8 11.31 4.55 13.12l.66-3.84L2.42 6.56l3.86-.56z"></path></svg>Favoritos</div>
+<div style="display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:9px;font:400 12.5px Inter,sans-serif;color:#3A5068" style-hover="background:#F4F7FB"><svg viewBox="0 0 16 16" width="16" height="16" style="flex:none;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round"><path d="M2.9 4.4h10.2M6.4 4.4V3.3c0-.44.36-.8.8-.8h1.6c.44 0 .8.36.8.8v1.1M4.6 4.4l.55 8c.03.44.4.78.85.78h4c.45 0 .82-.34.85-.78l.55-8"></path></svg>Papelera<span style="margin-left:auto;font:400 10px 'JetBrains Mono',monospace;color:#546983">14</span></div>
+<div style="height:1px;background:#DDE6F0;margin:10px 4px"></div>
+<div style="display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:9px;font:400 12.5px Inter,sans-serif;color:#3A5068" style-hover="background:#F4F7FB"><svg viewBox="0 0 16 16" width="16" height="16" style="flex:none;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round"><path d="M5.9 2.4 6.9 5.1l2.7 1-2.7 1-1 2.7-1-2.7-2.7-1 2.7-1zM11.7 8.5l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6z"></path></svg>Optimizador<span style="margin-left:auto;font:500 9px 'JetBrains Mono',monospace;color:#3A5068;background:#EDF2F9;padding:2px 5px;border-radius:3px">42 GB</span></div>
+<div style="display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:9px;background:#E8EEFA;font:600 12.5px Inter,sans-serif;color:#3D5F8F"><svg viewBox="0 0 16 16" width="16" height="16" style="flex:none;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round"><rect x="2" y="3.7" width="12" height="8.6" rx="1.7"></rect><path d="M2 6.9h12M4.7 9.9h2.2"></path></svg>Plan y facturación</div>
+</div>
+
+<div style="padding:10px 12px 0;flex:1;min-height:0">
+<div style="font:600 9.5px Inter,sans-serif;color:#546983;letter-spacing:.08em;text-transform:uppercase;padding:8px 11px 6px">Carpetas</div>
+<div style="display:flex;flex-direction:column;gap:1px">
+<div style="display:flex;align-items:center;gap:6px;padding:6px 11px;border-radius:8px;font:500 12px Inter,sans-serif;color:#1E2D40" style-hover="background:#F4F7FB"><svg viewBox="0 0 16 16" width="10" height="10" style="flex:none;fill:none;stroke:#546983;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="m3.5 6 4.5 4.5L12.5 6"></path></svg><svg viewBox="0 0 16 16" width="14" height="14" style="flex:none;fill:none;stroke:#546983;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round"><path d="M2 4.4c0-.66.54-1.2 1.2-1.2h2.5l1.4 1.6h5.7c.66 0 1.2.54 1.2 1.2v5.8c0 .66-.54 1.2-1.2 1.2H3.2c-.66 0-1.2-.54-1.2-1.2z"></path></svg><span style="margin-left:1px">Proyecto Alpha</span><span style="margin-left:auto;font:400 9.5px 'JetBrains Mono',monospace;color:#546983">4</span></div>
+<div style="display:flex;align-items:center;gap:7px;padding:6px 11px 6px 26px;border-radius:8px;font:400 12px Inter,sans-serif;color:#3A5068" style-hover="background:#F4F7FB"><svg viewBox="0 0 16 16" width="14" height="14" style="flex:none;fill:none;stroke:#7C90A8;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round"><path d="M2 4.4c0-.66.54-1.2 1.2-1.2h2.5l1.4 1.6h5.7c.66 0 1.2.54 1.2 1.2v5.8c0 .66-.54 1.2-1.2 1.2H3.2c-.66 0-1.2-.54-1.2-1.2z"></path></svg><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Fase 0 · Requisitos</span><span style="margin-left:auto;font:400 9.5px 'JetBrains Mono',monospace;color:#546983">22</span></div>
+<div style="display:flex;align-items:center;gap:7px;padding:6px 11px 6px 26px;border-radius:8px;background:#E8EEFA;font:500 12px Inter,sans-serif;color:#3D5F8F" style-hover="background:#E8EEFA"><svg viewBox="0 0 16 16" width="14" height="14" style="flex:none;fill:none;stroke:#3D5F8F;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round"><path d="M2 4.4c0-.66.54-1.2 1.2-1.2h2.5l1.4 1.6h5.7c.66 0 1.2.54 1.2 1.2v5.8c0 .66-.54 1.2-1.2 1.2H3.2c-.66 0-1.2-.54-1.2-1.2z"></path></svg><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Fase 3 · RAG</span><span style="margin-left:auto;font:400 9.5px 'JetBrains Mono',monospace;color:#546983">34</span></div>
+<div style="display:flex;align-items:center;gap:7px;padding:6px 11px 6px 26px;border-radius:8px;font:400 12px Inter,sans-serif;color:#3A5068" style-hover="background:#F4F7FB"><svg viewBox="0 0 16 16" width="14" height="14" style="flex:none;fill:none;stroke:#7C90A8;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round"><path d="M2 4.4c0-.66.54-1.2 1.2-1.2h2.5l1.4 1.6h5.7c.66 0 1.2.54 1.2 1.2v5.8c0 .66-.54 1.2-1.2 1.2H3.2c-.66 0-1.2-.54-1.2-1.2z"></path></svg><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Documentación</span><span style="margin-left:auto;font:400 9.5px 'JetBrains Mono',monospace;color:#546983">61</span></div>
+<div style="display:flex;align-items:center;gap:6px;padding:6px 11px;border-radius:8px;font:500 12px Inter,sans-serif;color:#1E2D40" style-hover="background:#F4F7FB"><svg viewBox="0 0 16 16" width="10" height="10" style="flex:none;fill:none;stroke:#546983;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="m6 3.5 4.5 4.5L6 12.5"></path></svg><svg viewBox="0 0 16 16" width="14" height="14" style="flex:none;fill:none;stroke:#546983;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round"><path d="M2 4.4c0-.66.54-1.2 1.2-1.2h2.5l1.4 1.6h5.7c.66 0 1.2.54 1.2 1.2v5.8c0 .66-.54 1.2-1.2 1.2H3.2c-.66 0-1.2-.54-1.2-1.2z"></path></svg><span style="margin-left:1px">Documentos Legales</span><span style="margin-left:auto;font:400 9.5px 'JetBrains Mono',monospace;color:#546983">126</span></div>
+<div style="display:flex;align-items:center;gap:6px;padding:6px 11px;border-radius:8px;font:500 12px Inter,sans-serif;color:#1E2D40" style-hover="background:#F4F7FB"><svg viewBox="0 0 16 16" width="10" height="10" style="flex:none;fill:none;stroke:#546983;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="m6 3.5 4.5 4.5L6 12.5"></path></svg><svg viewBox="0 0 16 16" width="14" height="14" style="flex:none;fill:none;stroke:#546983;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round"><path d="M2 4.4c0-.66.54-1.2 1.2-1.2h2.5l1.4 1.6h5.7c.66 0 1.2.54 1.2 1.2v5.8c0 .66-.54 1.2-1.2 1.2H3.2c-.66 0-1.2-.54-1.2-1.2z"></path></svg><span style="margin-left:1px">Finanzas</span><span style="margin-left:auto;font:400 9.5px 'JetBrains Mono',monospace;color:#546983">64</span></div>
+<div style="display:flex;align-items:center;gap:7px;padding:8px 11px;margin-top:4px;border-radius:8px;font:500 11.5px Inter,sans-serif;color:#546983" style-hover="background:#F4F7FB;color:#3D5F8F"><svg viewBox="0 0 16 16" width="14" height="14" style="flex:none;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round"><path d="M8 3.6v8.8M3.6 8h8.8"></path></svg>Nueva carpeta</div>
+</div>
+</div>
+
+<div style="flex:none;margin:12px;padding:13px 14px;border:1px solid #DDE6F0;border-radius:12px;background:#F8FBFF">
+<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><span style="font:500 11px Inter,sans-serif;color:#3A5068">Almacenamiento</span><span style="font:600 11px 'JetBrains Mono',monospace;color:#8A6224">87%</span></div>
+<div style="height:6px;border-radius:3px;background:#E4ECF5;overflow:hidden"><div style="width:87%;height:100%;background:#D4A96A"></div></div>
+<div style="margin-top:8px;font:400 10px 'JetBrains Mono',monospace;color:#546983">304 GB de 350 GB</div>
+</div>
+</div>
+
+<div style="flex:1;min-width:0;display:flex;flex-direction:column">
+<div style="height:64px;flex:none;display:flex;align-items:center;gap:16px;padding:0 28px;border-bottom:1px solid #DDE6F0;background:#FAFCFF">
+<span style="font:600 15px Inter,sans-serif;color:#1E2D40">Plan y espacio</span>
+<span style="font:400 11.5px Inter,sans-serif;color:#546983">Ciclo actual: 1 – 30 sep</span>
+<span style="margin-left:auto;display:flex;align-items:center;gap:8px;height:36px;padding:0 15px;border-radius:20px;background:#6B8DD6;font:600 12px Inter,sans-serif;color:#FFFFFF"><span style="width:7px;height:7px;border-radius:50%;background:#BFE4EE"></span>Agente Nimbo</span>
+</div>
+
+<div style="flex:1;min-height:0;padding:24px 28px;display:grid;grid-template-columns:1fr 320px;gap:20px">
+
+<div style="min-width:0;display:flex;flex-direction:column;gap:18px">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+<div style="background:#FAFCFF;border:1px solid #DDE6F0;border-radius:16px;padding:20px;display:flex;align-items:center;gap:20px;box-shadow:0 1px 3px rgba(74,111,165,.08)">
+<div style="width:104px;height:104px;flex:none;border-radius:50%;background:conic-gradient(#6B8DD6 0 87%,#E4ECF5 87% 100%);display:flex;align-items:center;justify-content:center">
+<div style="width:76px;height:76px;border-radius:50%;background:#FAFCFF;display:flex;flex-direction:column;align-items:center;justify-content:center">
+<span style="font:700 21px Inter,sans-serif;color:#1E2D40;letter-spacing:-.02em">87%</span>
+<span style="font:600 8px Inter,sans-serif;color:#546983;letter-spacing:.1em">USADO</span>
+</div>
+</div>
+<div style="min-width:0">
+<div style="font:700 15px Inter,sans-serif;color:#1E2D40">Resumen de espacio</div>
+<p style="margin:6px 0 0;font:400 12px/1.6 Inter,sans-serif;color:#3A5068;text-wrap:pretty">Estás utilizando <strong style="color:#1E2D40">304 GB</strong> de tu plan total de <strong style="color:#1E2D40">350 GB</strong>.</p>
+<div style="margin-top:12px;display:flex;gap:7px">
+<span style="font:500 10.5px 'JetBrains Mono',monospace;color:#1E2D40;background:#EDF2F9;border:1px solid #DDE6F0;padding:4px 9px;border-radius:6px">304 GB usados</span>
+<span style="font:500 10.5px 'JetBrains Mono',monospace;color:#8A6224;background:#FBF4E8;border:1px solid #EDDCC0;padding:4px 9px;border-radius:6px">46 GB libres</span>
+</div>
+</div>
+</div>
+
+<div style="background:#2C3A52;border-radius:16px;padding:20px;display:flex;flex-direction:column">
+<div style="display:flex;align-items:center;gap:10px">
+<span style="font:700 15px Inter,sans-serif;color:#FFFFFF">Plan Equipo</span>
+<span style="margin-left:auto;font:600 9px 'JetBrains Mono',monospace;color:#2C3A52;background:#7EC8D8;padding:3px 8px;border-radius:5px;letter-spacing:.06em">ACTIVO</span>
+</div>
+<p style="margin:9px 0 0;font:400 11.5px/1.6 Inter,sans-serif;color:#D8E4F0;text-wrap:pretty">350 GB, 2 GB por archivo, 2,000 consultas mensuales al agente y 60 versiones por documento.</p>
+<div style="margin-top:12px;display:flex;gap:16px">
+<div><div style="font:400 9px 'JetBrains Mono',monospace;color:#8FA6C2">CONSULTAS</div><div style="margin-top:3px;font:600 13px 'JetBrains Mono',monospace;color:#7EC8D8">142 / 2,000</div></div>
+<div><div style="font:400 9px 'JetBrains Mono',monospace;color:#8FA6C2">RENUEVA</div><div style="margin-top:3px;font:600 13px 'JetBrains Mono',monospace;color:#D8E4F0">1 oct</div></div>
+</div>
+<span style="margin-top:auto;display:flex;align-items:center;justify-content:center;height:38px;border-radius:10px;background:#6B8DD6;font:600 12.5px Inter,sans-serif;color:#FFFFFF" style-hover="background:#4A6FA5">Ampliar a 1 TB · Q210/mes</span>
+</div>
+</div>
+
+<div>
+<div style="font:700 14px Inter,sans-serif;color:#1E2D40;margin-bottom:12px">Distribución por Categorías</div>
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+<div style="background:#FAFCFF;border:1px solid #DDE6F0;border-radius:14px;padding:15px;box-shadow:0 1px 3px rgba(74,111,165,.08)">
+<div style="display:flex;align-items:center;gap:10px">
+<span style="width:26px;height:26px;flex:none;border-radius:7px;background:#EDF2F9;display:flex;align-items:center;justify-content:center;font:600 7.5px 'JetBrains Mono',monospace;color:#546983">PDF</span>
+<span style="margin-left:auto;font:400 10.5px 'JetBrains Mono',monospace;color:#546983">340 archivos</span>
+</div>
+<div style="margin-top:13px;font:500 12.5px Inter,sans-serif;color:#1E2D40">Documentos PDF</div>
+<div style="margin-top:3px;font:600 15px 'JetBrains Mono',monospace;color:#1E2D40">162.4 GB</div>
+<div style="margin-top:10px;height:5px;border-radius:3px;background:#E4ECF5;overflow:hidden"><div style="width:53%;height:100%;background:#6B8DD6"></div></div>
+</div>
+<div style="background:#FAFCFF;border:1px solid #DDE6F0;border-radius:14px;padding:15px;box-shadow:0 1px 3px rgba(74,111,165,.08)">
+<div style="display:flex;align-items:center;gap:10px">
+<span style="width:26px;height:26px;flex:none;border-radius:7px;background:#EDF2F9;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:2px;padding:7px;box-sizing:border-box"><span style="background:#546983;border-radius:1px"></span><span style="background:#A9BCD0;border-radius:1px"></span><span style="background:#A9BCD0;border-radius:1px"></span><span style="background:#546983;border-radius:1px"></span></span>
+<span style="margin-left:auto;font:400 10.5px 'JetBrains Mono',monospace;color:#546983">124 archivos</span>
+</div>
+<div style="margin-top:13px;font:500 12.5px Inter,sans-serif;color:#1E2D40">Hojas de cálculo</div>
+<div style="margin-top:3px;font:600 15px 'JetBrains Mono',monospace;color:#1E2D40">75.1 GB</div>
+<div style="margin-top:10px;height:5px;border-radius:3px;background:#E4ECF5;overflow:hidden"><div style="width:25%;height:100%;background:#8CA8E0"></div></div>
+</div>
+<div style="background:#FAFCFF;border:1px solid #DDE6F0;border-radius:14px;padding:15px;box-shadow:0 1px 3px rgba(74,111,165,.08)">
+<div style="display:flex;align-items:center;gap:10px">
+<span style="width:26px;height:26px;flex:none;border-radius:7px;background:#EDF2F9;display:flex;align-items:flex-end;padding:6px;box-sizing:border-box"><span style="width:7px;height:7px;border-radius:50%;background:#546983"></span></span>
+<span style="margin-left:auto;font:400 10.5px 'JetBrains Mono',monospace;color:#546983">1,204 archivos</span>
+</div>
+<div style="margin-top:13px;font:500 12.5px Inter,sans-serif;color:#1E2D40">Imágenes y recursos</div>
+<div style="margin-top:3px;font:600 15px 'JetBrains Mono',monospace;color:#1E2D40">66.5 GB</div>
+<div style="margin-top:10px;height:5px;border-radius:3px;background:#E4ECF5;overflow:hidden"><div style="width:22%;height:100%;background:#A8BEE6"></div></div>
+</div>
+</div>
+</div>
+
+<div style="flex:1;min-height:0;display:flex;flex-direction:column">
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+<span style="font:700 14px Inter,sans-serif;color:#1E2D40">Archivos más grandes</span>
+<a href="#01" style="margin-left:auto;font:500 11px Inter,sans-serif">Abrir optimizador</a>
+</div>
+<div style="flex:1;min-height:0;background:#FAFCFF;border:1px solid #DDE6F0;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 1px 3px rgba(74,111,165,.08)">
+<div style="display:grid;grid-template-columns:1fr 92px 96px 118px;gap:12px;align-items:center;padding:10px 16px;border-bottom:1px solid #DDE6F0;background:#F8FBFF;font:600 10px Inter,sans-serif;color:#546983;letter-spacing:.06em;text-transform:uppercase"><span>Archivo</span><span>Tamaño</span><span>Modificado</span><span>Optimizable</span></div>
+<div style="display:grid;grid-template-columns:1fr 92px 96px 118px;gap:12px;align-items:center;padding:11px 16px;border-bottom:1px solid #E8EFF7;font:400 12.5px Inter,sans-serif;color:#1E2D40">
+<span style="display:flex;align-items:center;gap:10px;min-width:0"><span style="width:22px;height:22px;flex:none;border-radius:5px;background:#EDF2F9;display:flex;align-items:center;justify-content:center"><span style="width:9px;height:9px;border-radius:2px;background:#546983"></span></span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Presentacion_Final_Video.mp4</span></span>
+<span style="font:400 11px 'JetBrains Mono',monospace;color:#3A5068">42 GB</span><span style="font:400 11.5px Inter,sans-serif;color:#546983">hace 3 días</span>
+<span style="font:600 11px 'JetBrains Mono',monospace;color:#2F6F56">−61%</span>
+</div>
+<div style="display:grid;grid-template-columns:1fr 92px 96px 118px;gap:12px;align-items:center;padding:11px 16px;border-bottom:1px solid #E8EFF7;font:400 12.5px Inter,sans-serif;color:#1E2D40">
+<span style="display:flex;align-items:center;gap:10px;min-width:0"><span style="width:22px;height:22px;flex:none;border-radius:5px;background:#EDF2F9;display:flex;align-items:center;justify-content:center"><span style="width:10px;height:10px;border:1.5px solid #546983;border-radius:2px"></span></span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Capturas_usabilidad (94 archivos)</span></span>
+<span style="font:400 11px 'JetBrains Mono',monospace;color:#3A5068">18 GB</span><span style="font:400 11.5px Inter,sans-serif;color:#546983">hace 1 semana</span>
+<span style="font:600 11px 'JetBrains Mono',monospace;color:#2F6F56">−56%</span>
+</div>
+<div style="display:grid;grid-template-columns:1fr 92px 96px 118px;gap:12px;align-items:center;padding:11px 16px;border-bottom:1px solid #E8EFF7;font:400 12.5px Inter,sans-serif;color:#1E2D40">
+<span style="display:flex;align-items:center;gap:10px;min-width:0"><span style="width:22px;height:22px;flex:none;border-radius:5px;background:#EDF2F9;display:flex;align-items:center;justify-content:center;font:600 6.5px 'JetBrains Mono',monospace;color:#546983">PDF</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Anexos_escaneados_Fase0.pdf</span></span>
+<span style="font:400 11px 'JetBrains Mono',monospace;color:#3A5068">8.5 GB</span><span style="font:400 11.5px Inter,sans-serif;color:#546983">hace 2 semanas</span>
+<span style="font:600 11px 'JetBrains Mono',monospace;color:#2F6F56">−66%</span>
+</div>
+<div style="display:grid;grid-template-columns:1fr 92px 96px 118px;gap:12px;align-items:center;padding:11px 16px;border-bottom:1px solid #E8EFF7;font:400 12.5px Inter,sans-serif;color:#1E2D40">
+<span style="display:flex;align-items:center;gap:10px;min-width:0"><span style="width:22px;height:22px;flex:none;border-radius:5px;background:#EDF2F9;display:flex;align-items:center;justify-content:center"><span style="width:10px;height:10px;border-radius:2px;border:1.5px dashed #546983"></span></span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Backup_Recursos_Historicos.zip</span></span>
+<span style="font:400 11px 'JetBrains Mono',monospace;color:#3A5068">7.2 GB</span><span style="font:400 11.5px Inter,sans-serif;color:#546983">ayer</span>
+<span style="font:400 11px 'JetBrains Mono',monospace;color:#546983">—</span>
+</div>
+<div style="display:grid;grid-template-columns:1fr 92px 96px 118px;gap:12px;align-items:center;padding:11px 16px;font:400 12.5px Inter,sans-serif;color:#1E2D40">
+<span style="display:flex;align-items:center;gap:10px;min-width:0"><span style="width:22px;height:22px;flex:none;border-radius:5px;background:#EDF2F9;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:1.5px;padding:5px;box-sizing:border-box"><span style="background:#546983;border-radius:1px"></span><span style="background:#A9BCD0;border-radius:1px"></span><span style="background:#A9BCD0;border-radius:1px"></span><span style="background:#546983;border-radius:1px"></span></span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Consolidado_Auditoria_Q2.xlsx</span></span>
+<span style="font:400 11px 'JetBrains Mono',monospace;color:#3A5068">5.2 GB</span><span style="font:400 11.5px Inter,sans-serif;color:#546983">hace 1 mes</span>
+<span style="font:400 11px 'JetBrains Mono',monospace;color:#546983">−20%</span>
+</div>
+</div>
+</div>
+</div>
+
+<div style="min-width:0;display:flex;flex-direction:column;gap:18px">
+<div style="background:#FAFCFF;border:1px solid #DDE6F0;border-radius:16px;padding:18px;box-shadow:0 1px 3px rgba(74,111,165,.08)">
+<div style="display:flex;align-items:center;gap:9px">
+<span style="width:22px;height:22px;border-radius:6px;background:#EDF2F9;display:flex;align-items:center;justify-content:center"><span style="width:10px;height:11px;border-radius:1px 1px 3px 3px;border:1.5px solid #546983"></span></span>
+<span style="font:600 13px Inter,sans-serif;color:#1E2D40">Papelera de reciclaje</span>
+</div>
+<div style="margin-top:13px;font:700 22px Inter,sans-serif;color:#1E2D40;letter-spacing:-.02em">3.4 GB acumulados</div>
+<p style="margin:6px 0 0;font:400 11px/1.55 Inter,sans-serif;color:#546983;text-wrap:pretty">Los archivos se eliminan automáticamente tras 60 días. 14 elementos en cola.</p>
+<span style="margin-top:13px;display:flex;align-items:center;justify-content:center;height:34px;border-radius:10px;border:1px solid #DDE6F0;font:500 12px Inter,sans-serif;color:#3A5068" style-hover="background:#F4F7FB">Vaciar papelera</span>
+</div>
+
+<div style="flex:1;min-height:0;display:flex;flex-direction:column">
+<div style="font:700 14px Inter,sans-serif;color:#1E2D40;margin-bottom:12px">Actividad reciente</div>
+<div style="flex:1;min-height:0;background:#FAFCFF;border:1px solid #DDE6F0;border-radius:16px;padding:18px;box-shadow:0 1px 3px rgba(74,111,165,.08)">
+<div style="display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;gap:12px">
+<span style="width:9px;height:9px;flex:none;margin-top:4px;border-radius:50%;background:#6B8DD6;box-shadow:0 0 0 3px #E8EEFA"></span>
+<div style="min-width:0"><div style="font:400 9.5px 'JetBrains Mono',monospace;color:#546983">HOY · 11:20</div><div style="margin-top:3px;font:500 12px Inter,sans-serif;color:#1E2D40">Laura B. subió 4 imágenes</div><div style="margin-top:2px;font:400 11px Inter,sans-serif;color:#3A5068">En carpeta /Recursos</div></div>
+</div>
+<div style="display:flex;gap:12px">
+<span style="width:9px;height:9px;flex:none;margin-top:4px;border-radius:50%;background:#A8BEE6;box-shadow:0 0 0 3px #EDF2F9"></span>
+<div style="min-width:0"><div style="font:400 9.5px 'JetBrains Mono',monospace;color:#546983">AYER · 16:45</div><div style="margin-top:3px;font:500 12px Inter,sans-serif;color:#1E2D40">Eliminación automática</div><div style="margin-top:2px;font:400 11px Inter,sans-serif;color:#3A5068">1.2 GB purgados de la papelera</div></div>
+</div>
+<div style="display:flex;gap:12px">
+<span style="width:9px;height:9px;flex:none;margin-top:4px;border-radius:50%;background:#6DB99A;box-shadow:0 0 0 3px #E9F4EF"></span>
+<div style="min-width:0"><div style="font:400 9.5px 'JetBrains Mono',monospace;color:#546983">12 SEP · 09:30</div><div style="margin-top:3px;font:500 12px Inter,sans-serif;color:#1E2D40">Optimización completada</div><div style="margin-top:2px;font:400 11px Inter,sans-serif;color:#3A5068">3.1 GB recuperados en 3 archivos</div></div>
+</div>
+<div style="display:flex;gap:12px">
+<span style="width:9px;height:9px;flex:none;margin-top:4px;border-radius:50%;background:#A8BEE6;box-shadow:0 0 0 3px #EDF2F9"></span>
+<div style="min-width:0"><div style="font:400 9.5px 'JetBrains Mono',monospace;color:#546983">10 SEP · 06:15</div><div style="margin-top:3px;font:500 12px Inter,sans-serif;color:#1E2D40">Ramón K. modificó Presupuesto Q3</div><div style="margin-top:2px;font:400 11px Inter,sans-serif;color:#3A5068">Reemplazado por v2 (+45 MB)</div></div>
+</div>
+<div style="display:flex;gap:12px">
+<span style="width:9px;height:9px;flex:none;margin-top:4px;border-radius:50%;background:#D4A96A;box-shadow:0 0 0 3px #FBF4E8"></span>
+<div style="min-width:0"><div style="font:400 9.5px 'JetBrains Mono',monospace;color:#546983">8 SEP · 12:00</div><div style="margin-top:3px;font:500 12px Inter,sans-serif;color:#1E2D40">Cuota superó el 85%</div><div style="margin-top:2px;font:400 11px Inter,sans-serif;color:#3A5068">Aviso enviado a los administradores</div></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</x-dc>
+</body>
+</html>

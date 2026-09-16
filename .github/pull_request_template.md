@@ -1,0 +1,44 @@
+## Spec
+- Spec: `specs/NNN-slug/` — Estado: En revisión
+- Requisitos: RF-xx, RNF-xx
+- Tareas incluidas: T-xx … T-yy
+
+## Qué cambia
+<!-- 2–5 líneas: comportamiento nuevo desde el punto de vista del usuario u operador -->
+
+## Cómo probarlo en staging
+1.
+2.
+
+## Evidencia
+- [ ] `verification.md` ✅ (CA cubiertos: n/m)
+- [ ] `security.md` ✅ o no aplica porque: …
+- [ ] `ui-review.md` ✅ o no aplica porque: …
+- [ ] `review.md` ✅ sin bloqueantes
+- [ ] CI verde: lint · typecheck · unit · int · isolation · migraciones
+- [ ] Cobertura de lógica de negocio ≥ 60 %
+
+## Cambios de datos y contratos
+- [ ] Migraciones con `down` probado (`run → revert → run`)
+- [ ] OpenAPI / `packages/contracts` actualizados
+- [ ] `.env.example` actualizado
+- [ ] ADR creado/actualizado: …
+
+## Operación
+- [ ] Bitácoras con `correlationId` y sin datos sensibles
+- [ ] Métricas nuevas: …
+- [ ] Degradación controlada si depende de indexación, optimizador u ONLYOFFICE
+
+## Documentación
+- [ ] Spec actualizada (registro de cambios si hubo desviaciones)
+- [ ] Manual técnico / de usuario afectado actualizado
+
+## Interfaz
+- Mockup: `docs/design/mockups/<modulo>/<pantalla>/`
+- [ ] Todos los estados de la spec §9 implementados
+- [ ] Solo tokens de `ui-guidelines.md` (sin hex ni valores arbitrarios)
+- [ ] axe sin violaciones serias a 360 y 1440 px
+
+<!-- Capturas de la implementación (360 px y 1440 px) junto a las del mockup -->
+
+> Aprobación requerida de un integrante distinto del autor (RNF-19).

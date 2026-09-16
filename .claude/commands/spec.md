@@ -1,0 +1,15 @@
+---
+description: Crea o actualiza la spec (qué y por qué) de una funcionalidad de Nimbo
+argument-hint: <descripción de la necesidad> | <NNN> <cambio a aplicar>
+---
+
+Necesidad o cambio: $ARGUMENTS
+
+1. Delega en el subagente `planner` en **Modo 1 — Especificar**.
+   - Si el argumento empieza con un número de spec existente, actualiza esa spec y registra el cambio en «Registro de cambios».
+   - Si no, crea la siguiente spec libre en `specs/`.
+2. Si el planner concluye que la necesidad no rastrea a ningún RF/RNF o está en «Fuera de alcance», no crees la spec: explícalo al usuario.
+3. Muestra al usuario:
+   - ruta de la spec y requisitos cubiertos;
+   - las preguntas `[ABIERTA]`, bloqueantes primero, numeradas para que pueda responderlas en un solo mensaje.
+4. Recuérdale que la spec pasa a `Aclarada` solo cuando un integrante lo confirme, y que el siguiente paso es `/plan NNN`.
