@@ -73,7 +73,7 @@
   + `apps/worker` delgado) y anotarlo en «Notas del developer» y en plan §9.
   Archivos: `apps/worker/**`, `apps/api/tsconfig.json`.
 
-- [ ] **T-07** [P] `apps/web` mínimo: página de estado — CA: CA-33, CA-29, CA-18 (web) — Depende: T-03 — ~3 h
+- [x] **T-07** [P] `apps/web` mínimo: página de estado — CA: CA-33, CA-29, CA-18 (web) — Depende: T-03 — ~3 h
   Prueba primero `apps/web/src/app/page.spec.tsx` (con `fetch` simulado: `200` → «API: disponible»; error/`503` →
   «API: no disponible. Revisa el estado de los servicios.»; contiene «Nimbo» y `APP_ENV`) y
   `apps/web/src/env.spec.ts` (falta `API_INTERNAL_URL` → issues formateadas sin valores). Luego `apps/web/package.json`
@@ -501,3 +501,12 @@ T-24 y T-25 pueden pasar al PR-3, y T-42/T-43 pueden hacerse en la primera seman
   lint de T-28 no necesita `eslint-import-resolver-typescript` para el worker (sigue instalado para resolver `.ts`).
   Verificado: `pnpm --filter api build && node dist/worker.main.js` → `GET /health/live` `200`;
   `node apps/worker/dist/healthcheck.js` sale `0` con el proceso arriba y `1` sin él. Registrado también en plan §9 R-3.
+- **T-07**: `page.spec.tsx` renderiza el Server Component con `react-dom/server` (`renderToStaticMarkup(await
+  StatusPage())`) en entorno `node`, sin `jsdom` ni Testing Library: menos dependencias y prueba exactamente lo que
+  el servidor emite. Jest de `web` usa `next/jest` (SWC) porque el tsconfig de Next (`module: ESNext`, `jsx:
+  preserve`) no encaja con ts-jest. `HealthReadyResponse` pasa a `z.infer` del esquema (equivalente a
+  `Partial<Record<…>>`): con `exactOptionalPropertyTypes` una interfaz aparte no era asignable desde `.partial()`.
+  `next-env.d.ts` es generado y va en `.gitignore` (recomendación de Next 15). `next build` compila y genera las
+  páginas, pero el paso final de `output: 'standalone'` falla en Windows sin privilegio de symlink (EPERM al copiar
+  `node_modules` de pnpm); en Linux/Docker no ocurre y T-36 lo verifica. `next dev` sin `API_INTERNAL_URL` escribe
+  la línea `config.invalid` y se detiene (CA-18).

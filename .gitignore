@@ -8,6 +8,7 @@ node_modules/
 dist/
 dist-worker/
 .next/
+next-env.d.ts
 out/
 coverage/
 *.tsbuildinfo

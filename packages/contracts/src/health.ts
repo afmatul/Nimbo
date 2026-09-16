@@ -28,7 +28,5 @@ export const healthReadyResponseSchema = z
   })
   .strict();
 
-export interface HealthReadyResponse {
-  readonly status: 'ok' | 'error';
-  readonly checks: Partial<Record<HealthCheckName, HealthCheckStatus>>;
-}
+/** Equivale a `{ status: 'ok' | 'error'; checks: Partial<Record<HealthCheckName, HealthCheckStatus>> }`. */
+export type HealthReadyResponse = z.infer<typeof healthReadyResponseSchema>;

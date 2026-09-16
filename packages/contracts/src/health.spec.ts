@@ -1,4 +1,8 @@
-import { healthLiveResponseSchema, healthReadyResponseSchema } from './health';
+import {
+  healthLiveResponseSchema,
+  healthReadyResponseSchema,
+  type HealthReadyResponse,
+} from './health';
 
 describe('healthReadyResponseSchema', () => {
   it('CA-21: acepta la respuesta de `api` con los tres indicadores en `up`', () => {
@@ -38,6 +42,22 @@ describe('healthReadyResponseSchema', () => {
     expect(
       healthReadyResponseSchema.safeParse({ status: 'ok', checks: { redis: 'degraded' } }).success,
     ).toBe(false);
+  });
+});
+
+describe('HealthReadyResponse (tipo)', () => {
+  it('CA-21/CA-23: un solo tipo sirve para `api` (tres indicadores) y `worker` (solo `redis`)', () => {
+    const apiResponse = {
+      status: 'ok',
+      checks: { postgres: 'up', redis: 'up', minio: 'up' },
+    } satisfies HealthReadyResponse;
+    const workerResponse = {
+      status: 'error',
+      checks: { redis: 'down' },
+    } satisfies HealthReadyResponse;
+
+    expect(healthReadyResponseSchema.parse(apiResponse)).toEqual(apiResponse);
+    expect(healthReadyResponseSchema.parse(workerResponse)).toEqual(workerResponse);
   });
 });
 
