@@ -106,7 +106,7 @@
   con el perfil → `true`.
   Archivos: `compose.yml`, `compose.override.yml`, `infra/traefik/traefik.local.yml`, `infra/minio/init.sh`.
 
-- [ ] **T-10** `README.md` raíz (arranque desde cero) y CLAUDE.md «Comandos del repositorio» — CA: CA-1, CA-4 — Depende: T-09 — ~2 h
+- [x] **T-10** `README.md` raíz (arranque desde cero) y CLAUDE.md «Comandos del repositorio» — CA: CA-1, CA-4 — Depende: T-09 — ~2 h
   README: requisitos (Git, Docker Compose v2, Node 22 vía `.nvmrc`, pnpm por corepack), los cinco comandos exactos de
   CA-1 en orden, URLs resultantes (`http://localhost`, `http://localhost/api/v1/health/ready`, Mailpit `:8025`,
   Traefik `:8080`), perfil `onlyoffice`, puertos 3000/3001/3002, enlaces a `docs/operations/*`. CLAUDE.md: quitar la
@@ -518,3 +518,8 @@ T-24 y T-25 pueden pasar al PR-3, y T-42/T-43 pueden hacerse en la primera seman
   `--profile onlyoffice` aparece `onlyoffice`; `WORKER_PORT` no figura en ningún `ports:`. **Pendiente**: `docker
   compose up -d` y `http://localhost/docs/healthcheck` → `true` no se pudieron ejecutar porque Docker Desktop no
   estaba corriendo en la máquina; queda para `verification.md` (CA-1/CA-2) al cerrar el PR-1.
+- **T-10**: `README.md` y `CLAUDE.md` actualizados. El cronometraje de CA-1 en máquina limpia **no se hizo** (Docker
+  apagado y `migration:run` llega en T-15); `verification.md` lo crea `tester` con la plantilla y registra el tiempo
+  al cerrar PR-1/PR-2 (T-26 lo repite). Solo se han creado dos paquetes menores no listados en el plan §6:
+  `eslint-plugin-react-hooks` (reglas de hooks que `next/core-web-vitals` traía) y `eslint-import-resolver-typescript`
+  (ya previsto en ADR-0008/plan §6.4). Sin dependencias significativas fuera de ADR-0015.
