@@ -94,7 +94,7 @@
   vacíos; comentario por variable en español. Sin `NEXT_PUBLIC_*`.
   Archivos: `.env.example`.
 
-- [ ] **T-09** `compose.yml` base + `compose.override.yml` local + Traefik local + MinIO init — CA: CA-1, CA-2, CA-3 — Depende: T-08 — ~4 h
+- [x] **T-09** `compose.yml` base + `compose.override.yml` local + Traefik local + MinIO init — CA: CA-1, CA-2, CA-3 — Depende: T-08 — ~4 h
   `compose.yml` (postgres `pgvector/pgvector:pg17`, redis, minio + `minio-init`, traefik v3, api, worker, web,
   onlyoffice bajo `profiles: [onlyoffice]`; healthchecks, `depends_on: service_healthy`, `mem_limit`, volúmenes
   nombrados; `WORKER_PORT` nunca en `ports:`), `compose.override.yml` (puertos publicados 5432/6379/9000/9001/8025/1025/8080,
@@ -510,3 +510,11 @@ T-24 y T-25 pueden pasar al PR-3, y T-42/T-43 pueden hacerse en la primera seman
   páginas, pero el paso final de `output: 'standalone'` falla en Windows sin privilegio de symlink (EPERM al copiar
   `node_modules` de pnpm); en Linux/Docker no ocurre y T-36 lo verifica. `next dev` sin `API_INTERNAL_URL` escribe
   la línea `config.invalid` y se detiene (CA-18).
+- **T-09**: Traefik no puede enrutar hacia procesos del host solo con etiquetas Docker, así que las rutas `/` →
+  `host.docker.internal:3002` y `/api` → `host.docker.internal:3000` viven en un archivo de proveedor `file`,
+  `infra/traefik/local-routes.yml` (montado solo por el override), con prioridad baja para que los enrutadores por
+  etiquetas del perfil `apps` ganen si se activa. `/docs` (ONLYOFFICE) y `/s3` (MinIO) van por etiquetas. Verificado
+  con `docker compose config --services`: sin perfil = `minio minio-init postgres redis traefik mailpit`; con
+  `--profile onlyoffice` aparece `onlyoffice`; `WORKER_PORT` no figura en ningún `ports:`. **Pendiente**: `docker
+  compose up -d` y `http://localhost/docs/healthcheck` → `true` no se pudieron ejecutar porque Docker Desktop no
+  estaba corriendo en la máquina; queda para `verification.md` (CA-1/CA-2) al cerrar el PR-1.

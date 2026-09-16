@@ -1,0 +1,24 @@
+# Rutas dinámicas locales: `/` → web (host:3002) y `/api` → api (host:3000) mientras corren con `pnpm dev`.
+# Prioridad baja a propósito: si se activa el perfil `apps`, los enrutadores por etiquetas de los contenedores
+# (prioridad = longitud de la regla) ganan sin tocar este archivo.
+http:
+  routers:
+    web-host:
+      rule: PathPrefix(`/`)
+      entryPoints: [web]
+      service: web-host
+      priority: 1
+    api-host:
+      rule: PathPrefix(`/api`)
+      entryPoints: [web]
+      service: api-host
+      priority: 2
+  services:
+    web-host:
+      loadBalancer:
+        servers:
+          - url: http://host.docker.internal:3002
+    api-host:
+      loadBalancer:
+        servers:
+          - url: http://host.docker.internal:3000

@@ -1,0 +1,21 @@
+# Traefik v3 — configuración estática local (sin TLS). Staging usa `traefik.staging.yml` (T-38).
+entryPoints:
+  web:
+    address: ':80'
+
+providers:
+  # Contenedores con `traefik.enable=true` (MinIO, ONLYOFFICE y, con el perfil `apps`, las apps).
+  docker:
+    exposedByDefault: false
+  # Rutas hacia las apps que corren en el host con `pnpm dev` (`local-routes.yml`, R-4 del plan 000).
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+
+# Panel en http://localhost:8080 (solo local; `insecure` nunca en staging).
+api:
+  dashboard: true
+  insecure: true
+
+log:
+  level: INFO
