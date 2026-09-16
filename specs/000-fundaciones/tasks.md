@@ -85,7 +85,7 @@
   si llega), `src/lib/api-health.ts` (tipado con `HealthReadyResponse`), `public/` vacío.
   Archivos: `apps/web/**`.
 
-- [ ] **T-08** `.env.example` completo — CA: CA-19 (archivo), CA-1 — Depende: T-04, T-06, T-07 — ~1 h
+- [x] **T-08** `.env.example` completo — CA: CA-19 (archivo), CA-1 — Depende: T-04, T-06, T-07 — ~1 h
   Todas las variables del plan §6.2 y §6.5: `NODE_ENV`, `APP_ENV`, `APP_VERSION`, `PORT`, `WORKER_PORT`, `LOG_LEVEL`,
   `DATABASE_URL`, `REDIS_URL`, `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET`, `MINIO_REGION`,
   `API_INTERNAL_URL`, `POSTGRES_USER/PASSWORD/DB`, `MINIO_ROOT_USER/PASSWORD`, `IMAGE_TAG`, `DOMAIN`, `WEB_HOST`,
