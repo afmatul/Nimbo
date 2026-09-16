@@ -19,7 +19,16 @@ const withRoot = (config) => ({
 const scoped = (configs, files) => configs.map((config) => ({ ...withRoot(config), files }));
 
 export default tseslint.config(
-  { ignores: ['docs/**', '**/dist/**', '**/.next/**', '**/coverage/**', 'pnpm-lock.yaml'] },
+  {
+    ignores: [
+      'docs/**',
+      '**/dist/**',
+      '**/dist-worker/**',
+      '**/.next/**',
+      '**/coverage/**',
+      'pnpm-lock.yaml',
+    ],
+  },
   ...base.map(withRoot),
   ...scoped(nest, ['apps/api/**/*.ts', 'apps/worker/**/*.ts']),
   ...scoped(next, ['apps/web/**/*.{ts,tsx}']),

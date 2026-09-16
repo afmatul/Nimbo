@@ -6,6 +6,7 @@
 # Dependencias y salidas de compilación
 node_modules/
 dist/
+dist-worker/
 .next/
 out/
 coverage/

@@ -8,6 +8,7 @@ import tseslint from 'typescript-eslint';
 
 export const GENERATED_IGNORES = [
   '**/dist/**',
+  '**/dist-worker/**',
   '**/.next/**',
   '**/coverage/**',
   '**/node_modules/**',

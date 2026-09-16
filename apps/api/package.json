@@ -5,6 +5,7 @@
   "description": "Nimbo API (NestJS): módulos de la lógica del sistema",
   "scripts": {
     "dev": "nest start --watch",
+    "dev:worker": "nest start --watch --path tsconfig.worker.json --entryFile worker.main",
     "build": "nest build",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "jest",

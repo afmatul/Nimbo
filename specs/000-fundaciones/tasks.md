@@ -62,7 +62,7 @@
   lo construyen). Ningún `*.module.ts` todavía (lo crea la primera spec de cada módulo). Precisión al plan §9b/§12.
   Archivos: `apps/api/src/modules/*/index.ts`, `apps/api/src/modules/*/README.md`.
 
-- [ ] **T-06** `apps/worker` mínimo y verificación del alias `@nimbo/api/*` — CA: CA-4, CA-23 (esqueleto) — Depende: T-04 — ~3 h
+- [x] **T-06** `apps/worker` mínimo y verificación del alias `@nimbo/api/*` — CA: CA-4, CA-23 (esqueleto) — Depende: T-04 — ~3 h
   `apps/worker/package.json` (nombre `worker`, `dependencies: { api: workspace:* }`, scripts `dev` (`tsx watch
   src/main.ts`), `build` (`tsc -b && tsc-alias`), `typecheck`, `test`), `tsconfig.json` (`paths` `@nimbo/api/*` →
   `../api/src/*`, `references: [../api]`; `apps/api/tsconfig.json` pasa a `composite: true`), `jest.config.cjs`
@@ -483,3 +483,21 @@ T-24 y T-25 pueden pasar al PR-3, y T-42/T-43 pueden hacerse en la primera seman
   (runtime). El script `prepare` compila `dist/` en cada `pnpm install`, así CA-1 no exige un paso manual de build.
 - **T-04**: las configuraciones de Jest de `api` son `jest.int.config.cjs` / `jest.isolation.config.cjs` (no `.ts`):
   Jest 29 carga configs `.ts` solo con `ts-node`, una dependencia extra que nada más necesita. T-17/T-24 las rellenan.
+- **T-06 · Decisión R-3: alternativa aprobada (`worker.main.ts` en `apps/api` + `apps/worker` delgado).** Se probó
+  primero la ruta canónica (`paths` `@nimbo/api/*` → `../api/src/*`, `references: [../api]`, `api` `composite`,
+  `tsc -b && tsc-alias`) y falló en dos puntos sin remedio limpio: (1) `tsc --noEmit -p tsconfig.json` del worker
+  exige que `apps/api/dist/**/*.d.ts` exista (TS6305), así que `pnpm typecheck` dependería de un build previo;
+  (2) `tsc-alias` no reescribe rutas que apuntan fuera de `rootDir`, el `require("@nimbo/api/shared")` queda intacto y
+  `node dist/main.js` falla con «Cannot find module». Las variantes que lo arreglan (`rootDir: ..` compilando `api`
+  dos veces, `paths` a `../api/dist/*`, hoisting de dependencias) son trucos y además obligan a duplicar en
+  `apps/worker/package.json` cada dependencia de runtime de `api`. Resultado: `apps/api/src/worker.main.ts` y
+  `apps/api/src/worker.module.ts` (raíces de composición; T-28 las agrega al elemento `composition` del lint junto a
+  `main.ts`/`app.module.ts`); `nest build` emite `dist/main.js` y `dist/worker.main.js` de una vez; `apps/worker`
+  conserva `package.json` (`dependencies: { api: workspace:* }`), `src/healthcheck.ts` (compilado a
+  `dist/healthcheck.js`) y, en T-35, su `Dockerfile` con `CMD node apps/api/dist/worker.main.js`. Desarrollo:
+  `pnpm --filter worker dev` delega en `api` `dev:worker` = `nest start --watch --path tsconfig.worker.json
+  --entryFile worker.main` (salida en `apps/api/dist-worker/` para no pisar el watcher de `api`). No se usa `tsx`
+  para Nest: esbuild no emite `design:paramtypes`, y la inyección por tipo dejaría de funcionar. Sin alias, el
+  lint de T-28 no necesita `eslint-import-resolver-typescript` para el worker (sigue instalado para resolver `.ts`).
+  Verificado: `pnpm --filter api build && node dist/worker.main.js` → `GET /health/live` `200`;
+  `node apps/worker/dist/healthcheck.js` sale `0` con el proceso arriba y `1` sin él. Registrado también en plan §9 R-3.

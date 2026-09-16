@@ -9,6 +9,7 @@ load
 infra
 **/node_modules
 **/dist
+**/dist-worker
 **/.next
 **/coverage
 **/*.tsbuildinfo

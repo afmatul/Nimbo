@@ -9,6 +9,7 @@ HARNESS.md
 # Generados
 node_modules/
 dist/
+dist-worker/
 .next/
 coverage/
 pnpm-lock.yaml
