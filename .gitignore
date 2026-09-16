@@ -1,0 +1,24 @@
+# Entorno local (nunca se versiona; ver .env.example)
+.env
+.env.*
+!.env.example
+
+# Dependencias y salidas de compilación
+node_modules/
+dist/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+
+# Sistema y editores
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Registros
+*.log
+npm-debug.log*
+pnpm-debug.log*

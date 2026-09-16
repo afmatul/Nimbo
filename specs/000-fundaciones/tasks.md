@@ -12,7 +12,7 @@
 
 ## Bloque 1 — PR-1 «esqueleto»: workspace, contratos, apps mínimas, compose local (plan §9b paso 1)
 
-- [ ] **T-01** Prueba de estructura + workspace raíz — CA: CA-4 — Depende: — — ~3 h
+- [x] **T-01** Prueba de estructura + workspace raíz — CA: CA-4 — Depende: — — ~3 h
   Escribir primero `scripts/repo-structure.spec.ts` (Jest raíz: existen `apps/api`, `apps/web`, `apps/worker`,
   `packages/contracts`, `packages/config`, `infra/`, `pnpm-workspace.yaml`, `.nvmrc`, `.env.example`; `package.json`
   raíz expone `dev`, `lint`, `typecheck`, `test`, `test:int`, `test:isolation`, `test:e2e`, `seed`, `env:check`;
@@ -464,5 +464,13 @@ T-24 y T-25 pueden pasar al PR-3, y T-42/T-43 pueden hacerse en la primera seman
 (RNF-20 exige el ensayo de rollback una vez en esta spec, no en una fecha concreta).
 
 ## Notas del developer
-<Hallazgos, desviaciones reportadas (con enlace al registro de cambios de la spec). Anotar aquí la decisión tomada en
-T-06 sobre R-3 (alias `@nimbo/api/*` o `worker.main.ts` en `apps/api`).>
+
+- **T-01** (2026-09-16): se agregó `.gitattributes` con `* text=auto eol=lf` (no estaba en la lista de archivos): el
+  equipo mezcla Windows y otros SO y el commit inicial mostró avisos CRLF. Precisión, no desviación.
+- **T-01**: el script raíz `test` es `jest --config jest.config.cjs && pnpm -r run test` (el plan §6.1 dice
+  `pnpm -r run test`): `pnpm -r` no incluye el paquete raíz, y sin el primer tramo la prueba de CA-4
+  (`scripts/repo-structure.spec.ts`) nunca correría. `env:check` apunta al marcador hasta que T-23 cree
+  `scripts/check-env-example.ts` (evita un script roto en `main` tras el PR-1).
+- **T-01**: en la máquina de desarrollo hay Node 24 (nvm-windows sin 22 instalado); `pnpm install` se ejecutó con
+  `--engine-strict=false` solo en local. El repositorio conserva `engine-strict=true` y `engines.node: 22.x`; CI y las
+  imágenes usan Node 22.
