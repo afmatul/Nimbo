@@ -43,7 +43,7 @@
   `tsconfig.json`, `jest.config.cjs`.
   Archivos: `packages/contracts/**`.
 
-- [ ] **T-04** [P] `apps/api` mínimo con `HealthController.live` — CA: CA-20 (parcial), CA-9 — Depende: T-02 — ~3 h
+- [x] **T-04** [P] `apps/api` mínimo con `HealthController.live` — CA: CA-20 (parcial), CA-9 — Depende: T-02 — ~3 h
   Prueba primero `apps/api/src/shared/presentation/health.controller.spec.ts` (`live()` devuelve `{ status: 'ok' }`
   sin dependencias). Luego `apps/api/package.json` (nombre `api`, NestJS 11, TypeORM 0.3, scripts `dev`
   (`nest start --watch`), `build`, `typecheck`, `test`, `test:int`, `test:isolation` — los tres últimos como
@@ -481,3 +481,5 @@ T-24 y T-25 pueden pasar al PR-3, y T-42/T-43 pueden hacerse en la primera seman
   §6.4 para T-28) se instala desde ahora porque `import-x` lo necesita para resolver `.ts`.
 - **T-03**: `@nimbo/contracts` expone `types` → `src/index.ts` (typecheck sin compilar) y `default` → `dist/index.js`
   (runtime). El script `prepare` compila `dist/` en cada `pnpm install`, así CA-1 no exige un paso manual de build.
+- **T-04**: las configuraciones de Jest de `api` son `jest.int.config.cjs` / `jest.isolation.config.cjs` (no `.ts`):
+  Jest 29 carga configs `.ts` solo con `ts-node`, una dependencia extra que nada más necesita. T-17/T-24 las rellenan.

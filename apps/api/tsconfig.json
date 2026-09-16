@@ -1,0 +1,9 @@
+{
+  "extends": "@nimbo/config/tsconfig.nest.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist",
+    "baseUrl": "."
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts", "jest.config.cjs"]
+}
