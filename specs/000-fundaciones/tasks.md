@@ -310,14 +310,15 @@
   onlyoffice` sí), `typecheck`, `unit` (`pnpm test -- --coverage`, artefacto), `int` (`pnpm test:int`, Testcontainers),
   `isolation` (`pnpm test:isolation`), `migrations` (`services.postgres: pgvector/pgvector:pg17`;
   `migration:run` → `psql` afirma `pg_extension` y `count(*) FROM migracion = 1` → `migration:revert` → afirma
-  ausencia y 0 → `migration:run` → afirma). `concurrency`, `timeout-minutes: 15`, caché pnpm, `on: pull_request` y
-  `push: main`. Medir duración total (< 15 min) y registrar en `verification.md`.
+  ausencia y 0 → `migration:run` → afirma). `concurrency` con `cancel-in-progress: true` por rama, `timeout-minutes: 15`,
+  caché pnpm, `on: pull_request` y `push: main` **únicamente** (sin `push` de ramas: cuota de 3 000 min/mes de GitHub Pro,
+  spec §12). Medir duración total (< 15 min) y registrar en `verification.md`.
   Archivos: `.github/workflows/ci.yml`, `.github/pull_request_template.md`.
 
 - [ ] **T-32** **(humana)** gitleaks sobre el historial completo y `security.md` — CA: CA-27 — Depende: T-31 — ~1 h
-  Ejecutar `gitleaks detect --source . --log-opts=--all` en local antes de hacer público el repositorio; adjuntar
-  salida en `specs/000-fundaciones/security.md` (plantilla del `security-auditor`). Si hay hallazgos: rotar el
-  secreto y reescribir historial solo si el repositorio aún es privado. Hacer público el repositorio después.
+  Ejecutar `gitleaks detect --source . --log-opts=--all` en local al activar el CI (el repositorio es privado, D-2);
+  adjuntar salida en `specs/000-fundaciones/security.md` (plantilla del `security-auditor`). Si hay hallazgos: rotar el
+  secreto y reescribir el historial (posible mientras siga privado). Repetir si el repositorio se hace público algún día.
   Archivos: `specs/000-fundaciones/security.md`.
 
 - [ ] **T-33** **(humana)** Protección de `main` en GitHub — CA: CA-26, CA-24 — Depende: T-31 — ~1 h
@@ -356,7 +357,9 @@
   Matriz `api|worker|web`; `docker/metadata-action` (`ghcr.io/afmatul/nimbo-<app>`, `sha-<short>` y `latest` solo en
   `main`); `build-push-action` con `push` solo fuera de `pull_request`, `build-args: APP_VERSION=sha-<short>`, caché
   `gha`; pasos de verificación: `docker run --rm <img> id -u` ≠ 0 y `grep NEXT_PUBLIC_` en `web`. Permisos
-  `packages: write`. Verificar en ghcr.io las seis etiquetas tras el merge y registrar en `verification.md`.
+  `packages: write`. Paso final de retención con `actions/delete-package-versions` (conservar `latest` y las últimas 5
+  versiones por app; cuota de 2 GB de Packages en repo privado, spec §12). Verificar en ghcr.io las seis etiquetas tras
+  el merge y registrar en `verification.md`.
   Archivos: `.github/workflows/build-publish.yml`.
 
 ## Bloque 6 — PR-5 «staging»: compose de staging, Traefik TLS, deploy transaccional, rollback (plan §9b paso 6)

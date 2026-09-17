@@ -684,6 +684,7 @@ Cobertura: umbral 60 % en `apps/api/src/shared/**` (`jest/base.cjs`).
 | R-8 | Redacción profunda con `hooks.logMethod` degrada el rendimiento del logger | Baja | Bajo | `redactDeep` solo recorre objetos planos ≤ 16 niveles, ignora `Buffer`/`Error`; microbenchmark en la prueba unitaria (< 50 µs por línea típica) |
 | R-9 | Dominio `nimbo.me` tarda en propagarse | Media | Medio | Mientras tanto `*.<ip>.sslip.io` con la misma configuración (solo cambian `*_HOST`) |
 | R-10 | Crédito del Student Pack | Baja en Fase 1 | Medio | Registro mensual en `verification.md`; un Droplet hasta Fase 4 |
+| R-13 | Cuota de GitHub Pro en repo privado (3 000 min Actions, 2 GB Packages) | Media | Medio | `concurrency` + `cancel-in-progress`; CI solo en `pull_request` y `push: main`; retención de imágenes (T-37); si se agota, hacer público el repo sin cambios de código |
 | R-11 | `shared` crece como cajón de sastre después de 000 (§11.5) | Media | Medio | Regla: `shared` solo aloja lo que usan ≥ 3 módulos o lo que el proceso necesita antes de que exista un módulo; el `reviewer` lo verifica en cada PR que toque `apps/api/src/shared` |
 | R-12 | `apps/worker/src` acumula lógica propia en lugar de componer módulos de `api` (§11.5) | Baja | Medio | Solo `main.ts`, `worker.module.ts`, `healthcheck.ts`; cualquier otro archivo se rechaza en revisión |
 
@@ -912,3 +913,4 @@ en spec §15 la precisión de rutas de salud del worker (sin prefijo `/api/v1`).
 | 2026-09-15 | Cambios 1–10 de §11.3 aplicados a §1, §3, §3b, §4, §5, §6.1–§6.7, §8, §9 (+§9a, R-11, R-12), §9b y §10; observaciones menores (a) puerto 3002 de `web`, (b) `env.ts` de `web` aborta con `config.invalid`. §11 intacta | Incorporar la aprobación | planner |
 | 2026-09-16 | R-3 resuelto por la alternativa (`worker.main.ts` en `apps/api`); fila añadida en §9 | Evidencia de T-06: alias falla en `typecheck` y en runtime sin trucos | developer |
 | 2026-09-16 | Precisión en §9b PR-1: el esqueleto crea las carpetas de los 12 módulos con `index.ts` vacío y `README.md` mínimo (tarea T-05 de `tasks.md`). No cambia diseño ni alcance | Evitar conflictos de archivos entre dueños al arrancar 000b/001/006a | planner |
+| 2026-09-16 | D-2 pasa a repositorio **privado** (GitHub Pro); R-13 nuevo; T-31 restringe disparadores y T-37 agrega retención de imágenes | Decisión de Adrián | Adrián |

@@ -56,7 +56,7 @@ Estas decisiones son entrada de la spec, no preguntas. Cambiarlas requiere ADR o
 | # | Decisión |
 |---|---|
 | D-1 | **Versiones**: Node 22 LTS (`.nvmrc`), pnpm 10 (`packageManager` en `package.json`), TypeScript 5, NestJS 11, TypeORM 0.3, Next.js 15 (App Router), Tailwind v4, Jest 29, Playwright estable. Versiones exactas fijadas en cada `package.json` (sin rangos flotantes). |
-| D-2 | **Repositorio público** en cuenta personal de GitHub. Protección de `main`: PR obligatorio; 6 status checks requeridos (`lint`, `typecheck`, `unit`, `int`, `isolation`, `migrations`); 1 aprobación de un integrante distinto del autor; *dismiss stale reviews*; sin *force push*; historial lineal (squash). |
+| D-2 | **Repositorio privado** en la cuenta personal de Adrián, que tiene **GitHub Pro** por el Student Developer Pack (Pro habilita protección de ramas y rulesets en repos privados). Límites de Pro a vigilar: 3 000 min/mes de Actions y 2 GB de GitHub Packages (ver riesgos). Protección de `main`: PR obligatorio; 6 status checks requeridos (`lint`, `typecheck`, `unit`, `int`, `isolation`, `migrations`); 1 aprobación de un integrante distinto del autor; *dismiss stale reviews*; sin *force push*; historial lineal (squash). |
 | D-3 | **Registry**: `ghcr.io/afmatul/nimbo-api`, `nimbo-worker`, `nimbo-web`. Las tres apps se despliegan en el mismo servidor con Docker Compose. No se usa Vercel ni Render. |
 | D-4 | **Hospedaje**: DigitalOcean con crédito del GitHub Student Developer Pack. Un Droplet de **staging** (2 vCPU / 4 GB, Ubuntu LTS, Docker) desde Fase 1. ONLYOFFICE en staging solo bajo demanda (perfil de compose). **Producción** (4 vCPU / 8 GB, Droplet separado, RNF-15) se crea en Fase 4; queda fuera de 000 salvo dejar compose y job de deploy parametrizados por ambiente. |
 | D-5 | **Dominio**: `.me` gratuito de Namecheap (Student Pack). DNS apunta al Droplet; Traefik emite TLS con Let's Encrypt (HTTP-01). Subdominios de staging: `staging.<dominio>` (web), `api.staging.<dominio>` (api), `docs.staging.<dominio>` (ONLYOFFICE, solo cuando el perfil está activo), `s3.staging.<dominio>` (MinIO, solo para URLs firmadas vía Traefik). |
@@ -64,7 +64,7 @@ Estas decisiones son entrada de la spec, no preguntas. Cambiarlas requiere ADR o
 | D-7 | **Objetos**: MinIO en local y staging (mismo compose), con versionado de bucket activado. |
 | D-8 | **Ambientes**: `local` / `test` (CI) / `staging` / `production`; `NODE_ENV` ∈ {`development`, `test`, `production`} y una variable propia `APP_ENV` ∈ {`local`, `test`, `staging`, `production`}. `.env.example` obligatorio y validado al arranque con esquema (zod o class-validator; lo fija el plan). |
 | D-9 | `ThrottlerModule` lo introduce la spec 002, no esta. |
-| D-10 | **gitleaks** como paso del job `lint` en CI y sobre el historial completo antes de hacer público el repositorio. Requiere un **ADR menor** (dependencia significativa de CI). |
+| D-10 | **gitleaks** como paso del job `lint` en CI y una pasada sobre el historial completo al activar el CI (y de nuevo si algún día el repositorio se hace público). Requiere un **ADR menor** (dependencia significativa de CI). |
 | D-11 | Postgres en contenedor en staging con volumen persistente. El respaldo diario (RNF-21) se define en la spec 022. |
 | D-12 | La herramienta de lint de fronteras la decide `architect` en el plan (ADR-0008). Es dependencia del plan, no pregunta bloqueante de la spec. |
 | D-13 | Mapeo `DomainError → HTTP`: `code` estable por error y `status` por clase de error; el detalle lo fija el plan. |
@@ -271,7 +271,7 @@ Estas decisiones son entrada de la spec, no preguntas. Cambiarlas requiere ADR o
 
 - **CA-27** (HU-6, D-10) — secretos en el historial
   - **Dado** el historial completo del repositorio,
-  - **Cuando** se ejecuta gitleaks sobre todo el historial **antes** de hacer público el repositorio,
+  - **Cuando** se ejecuta gitleaks sobre todo el historial al activar el CI (T-32),
   - **Entonces** no reporta hallazgos; el resultado se adjunta en `security.md`. Un commit posterior que agregue una
     cadena con forma de secreto (p. ej. una clave privada de prueba) hace fallar el job `lint`.
 
@@ -395,7 +395,8 @@ No hay reglas de negocio de producto en esta spec. Reglas técnicas transversale
 | 4 GB de RAM con ONLYOFFICE encendido (≈ 4 GB solo él) | Staging inestable o OOM | Perfil apagado por defecto; límites de memoria en compose; encender solo para demos de 016 |
 | Tiempo de Adrián: 000 bloquea a las otras tres personas | Retraso de toda la Fase 1 | Orden de entrega: contratos + compose + esqueleto + CI (semana 1) antes que deploy/rollback (semana 2); PRs pequeños que desbloqueen a cada dueño |
 | Límites de tasa de Let's Encrypt al iterar la configuración | Certificados bloqueados una semana | Usar el servidor de *staging* de Let's Encrypt hasta que Traefik esté estable |
-| Tiempo de CI con Testcontainers en runners públicos | PRs lentos | Caché de pnpm y de capas Docker; imágenes pequeñas (`pgvector/pgvector`, `redis:alpine`, `minio/minio`) |
+| Cuota de GitHub Pro en repo privado: 3 000 min/mes de Actions y 2 GB de Packages | CI bloqueado a fin de mes; `build-publish` falla por cuota | `concurrency` que cancela runs obsoletos; `int`/`isolation`/`migrations` solo en `pull_request` y `push: main`, no en cada push de rama; retención de imágenes en ghcr.io (conservar `latest` + últimas 5 por app); revisar el consumo en cada cierre de fase; si se agota, hacer público el repo (un clic, sin cambios de código) |
+| Tiempo de CI con Testcontainers en runners de GitHub | PRs lentos | Caché de pnpm y de capas Docker; imágenes pequeñas (`pgvector/pgvector`, `redis:alpine`, `minio/minio`) |
 
 ## 13. Dependencias y documentos a actualizar
 
@@ -425,3 +426,4 @@ No hay reglas de negocio de producto en esta spec. Reglas técnicas transversale
 | 2026-09-15 | Precisión editorial: §2, CA-30 y CA-31 usan la ruta completa `/api/v1/health/ready` (igual que CA-1, CA-20–22) y la versión se reporta en la cabecera `x-nimbo-version`. Sin cambio de comportamiento. `plan.md` creado (Propuesto) | Coherencia spec ↔ plan | — (pendiente de `architect`) |
 | 2026-09-15 | Precisión (CA-23): la salud del `worker` se sirve por HTTP en el puerto interno `WORKER_PORT` (nunca publicado) en `/health/live` y `/health/ready` **sin** prefijo `/api/v1`, porque no es API pública. `plan.md` aprobado con cambios por `architect` e incorporados | Observación (c) de la aprobación de arquitectura | architect (plan §11) |
 | 2026-09-16 | Plan `Aprobado` (§11.0) y `tasks.md` generado (44 tareas, 6 bloques, matriz CA→tarea completa). Estado → Planificada | Compuerta: architect + Adrián | Adrián |
+| 2026-09-16 | D-2: el repositorio será **privado** (GitHub Pro del Student Pack cubre la protección de `main`). D-10/CA-27: gitleaks histórico al activar el CI en vez de «antes de publicar». Riesgo nuevo: cuota de Actions/Packages con mitigaciones | Decisión de Adrián | Adrián |
