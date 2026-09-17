@@ -352,7 +352,7 @@ No hay reglas de negocio de producto en esta spec. Reglas técnicas transversale
 - **¿Toca contenido de archivos?** No. No hay tablas de negocio ni buckets con datos de usuarios; solo la extensión `vector` y el bucket vacío con versionado.
 - **¿Qué acciones van a auditoría (RF-07)?** Ninguna: no hay cuentas ni actores reales. `audit` llega en 004.
 - **¿Qué operaciones requieren límite de tasa?** Ninguna en esta spec (`ThrottlerModule` en 002). Los endpoints de salud son baratos y no consultan datos de cuentas; si en 022 se detecta abuso, se limita ahí.
-- **Secretos**: viven únicamente en `.env` local (en `.gitignore`) y en GitHub Secrets/Environments. `.env.example` solo contiene valores de desarrollo no sensibles o vacíos. gitleaks corre sobre todo el historial **antes** de hacer público el repositorio (CA-27) y en cada PR.
+- **Secretos**: viven únicamente en `.env` local (en `.gitignore`) y en GitHub Secrets/Environments. `.env.example` solo contiene valores de desarrollo no sensibles o vacíos. gitleaks corre sobre todo el historial al activar el CI (CA-27, T-32) y en cada PR; el repositorio es privado (D-2).
 - **Contenedores**: los tres procesos corren sin root (CA-28); imágenes multietapa sin herramientas de compilación en la etapa final.
 - **Red en staging**: Postgres, Redis y MinIO solo en la red interna de compose; nada publica puertos salvo Traefik (CA-32). MinIO solo vía Traefik cuando 005 necesite URLs firmadas; la consola de MinIO nunca se expone.
 - **Cabeceras en Traefik**: HSTS, `nosniff`, `X-Frame-Options`/`frame-ancestors`, `Referrer-Policy`; redirección 80→443 (CA-32). Las cabeceras específicas del origen aislado de archivos (RNF-07) las define 005.
