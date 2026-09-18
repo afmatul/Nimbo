@@ -11,6 +11,7 @@
 2.
 
 ## Evidencia
+- [ ] **PR parcial** de spec transversal (plan §9b, `workflow.md` §4.8): bloque(s) … de N; la evidencia de abajo se entrega en el último PR
 - [ ] `verification.md` ✅ (CA cubiertos: n/m)
 - [ ] `security.md` ✅ o no aplica porque: …
 - [ ] `ui-review.md` ✅ o no aplica porque: …
