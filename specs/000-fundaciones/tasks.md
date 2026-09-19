@@ -208,7 +208,7 @@
   Type<IHealthIndicator>[] })` provee `I_HEALTH_INDICATORS` y `HealthService`, declara `HealthController`).
   Archivos: `apps/api/src/shared/application/health/**`, `apps/api/src/shared/health.module.ts`, `apps/api/src/shared/index.ts`.
 
-- [ ] **T-20** Indicadores Postgres/Redis/MinIO + `HealthController.ready` + prueba de API de salud — CA: CA-20, CA-21, CA-22 — Depende: T-17, T-19 — ~4 h
+- [x] **T-20** Indicadores Postgres/Redis/MinIO + `HealthController.ready` + prueba de API de salud — CA: CA-20, CA-21, CA-22 — Depende: T-17, T-19 — ~4 h
   Prueba primero `apps/api/test/int/shared/health.int-spec.ts` (arranca con los tres contenedores: `ready` → `200`
   con cuerpo exacto `{ status: 'ok', checks: { postgres: 'up', redis: 'up', minio: 'up' } }` en < 2 s (CA-21);
   detener Redis → `503` `{ status: 'error', checks: { …redis: 'down'… } }` en < 3 s y el cuerpo no contiene
