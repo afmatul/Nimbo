@@ -21,6 +21,8 @@ export interface TestAppOptions {
   readonly controllers?: readonly Type<unknown>[];
   /** Variables que sustituyen a las del arnés (p. ej. contenedores propios de la suite). */
   readonly env?: Readonly<Record<string, string>>;
+  /** Prefijo global; `api` usa `api/v1` (por defecto) y el `worker` ninguno. */
+  readonly prefix?: string;
 }
 
 export interface TestApp {
@@ -55,7 +57,7 @@ export const createTestApp = async (options: TestAppOptions = {}): Promise<TestA
   const version = new VersionHeaderMiddleware(TEST_VERSION);
   app.use(correlation.use.bind(correlation));
   app.use(version.use.bind(version));
-  app.setGlobalPrefix('api/v1');
+  app.setGlobalPrefix(options.prefix ?? 'api/v1');
   app.useGlobalFilters(new DomainExceptionFilter(logger));
   await app.init();
 

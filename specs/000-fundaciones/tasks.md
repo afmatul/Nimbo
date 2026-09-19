@@ -230,7 +230,7 @@
   `app.module.ts` registra la cola `ping` y `PingQueue`.
   Archivos: `apps/api/src/shared/infrastructure/queue/**`, `apps/api/src/app.module.ts`, `apps/api/test/int/shared/ping-queue.int-spec.ts`, `apps/api/src/shared/index.ts` (exporta `enqueueWithCorrelation`, `PingProcessor`; no `PingQueue`).
 
-- [ ] **T-22** `apps/worker` definitivo: composición, `loadEnv`, salud interna y `worker.started` — CA: CA-23, CA-18 (worker), CA-1, CA-14 — Depende: T-20, T-21, T-06 — ~3 h
+- [x] **T-22** `apps/worker` definitivo: composición, `loadEnv`, salud interna y `worker.started` — CA: CA-23, CA-18 (worker), CA-1, CA-14 — Depende: T-20, T-21, T-06 — ~3 h
   Pruebas primero `apps/worker/jest.int.config.ts` + `apps/worker/test/int/worker-health.int-spec.ts` (con Redis
   arriba `GET /health/ready` en `WORKER_PORT` → `200 { status: 'ok', checks: { redis: 'up' } }`; detener Redis →
   `503` `{ …redis: 'down' }`; `healthcheck.ts` sale `1`) y `apps/worker/test/int/bootstrap.int-spec.ts` (sin
