@@ -241,7 +241,7 @@
   `/health/ready`. Verificar que `apps/worker/src` solo tiene esos tres archivos.
   Archivos: `apps/worker/src/**`, `apps/worker/jest.int.config.ts`, `apps/worker/test/int/**`, `apps/worker/package.json`.
 
-- [ ] **T-23** [P] `scripts/check-env-example.ts` + script `env:check` — CA: CA-19 — Depende: T-13, T-08 — ~2 h
+- [x] **T-23** [P] `scripts/check-env-example.ts` + script `env:check` — CA: CA-19 — Depende: T-13, T-08 — ~2 h
   Prueba primero `scripts/check-env-example.spec.ts` (variable del esquema ausente en `.env.example` → falla y la
   nombra; clave de `SECRET_KEYS` con prefijo `NEXT_PUBLIC_` → falla; archivo completo → `0`). Luego el script (lee
   `apiEnvSchema`, `workerEnvSchema` y el esquema de `apps/web/src/env.ts`; compara con las claves de `.env.example`).
