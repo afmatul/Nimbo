@@ -254,7 +254,7 @@
   script `test:isolation`.
   Archivos: `apps/api/jest.isolation.config.ts`, `apps/api/test/isolation/placeholder.iso-spec.ts`, `apps/api/package.json`.
 
-- [ ] **T-25** [P] `docs/operations/ambientes.md` — CA: CA-3, CA-18, CA-29 — Depende: T-09, T-13 — ~2 h
+- [x] **T-25** [P] `docs/operations/ambientes.md` — CA: CA-3, CA-18, CA-29 — Depende: T-09, T-13 — ~2 h
   `APP_ENV`/`NODE_ENV` por ambiente, tabla de variables (quién la usa: api/worker/web/compose; secreta o no), tabla
   de diferencias `compose.yml` / `compose.override.yml` / `compose.staging.yml` limitada a lo que CA-3 permite,
   requisito de arranque (Postgres y Redis alcanzables; `retryAttempts: 10`, `retryDelay: 3000`; `depends_on:
