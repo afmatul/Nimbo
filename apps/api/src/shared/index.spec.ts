@@ -65,7 +65,11 @@ describe('shared/index.ts (CA-17)', () => {
     expect(now).toBeLessThanOrEqual(Date.now());
   });
 
-  it.todo('CA-15: exporta `REDACTED_FIELDS` y `redactDeep` (T-12)');
+  it('CA-15: exporta `REDACTED_FIELDS` y `redactDeep` (T-12)', () => {
+    expectExportsOf('T-12');
+    expect(shared.REDACTED_FIELDS.has('password')).toBe(true);
+    expect(shared.redactDeep({ token: 'x' })).toEqual({ token: '[REDACTED]' });
+  });
   it.todo('CA-18: exporta `apiEnvSchema`, `workerEnvSchema`, `loadEnv` y `formatEnvIssues` (T-13)');
   it.todo(
     'CA-13: exporta `CorrelationContext`, `CorrelationIdMiddleware` y `VersionHeaderMiddleware` (T-14)',

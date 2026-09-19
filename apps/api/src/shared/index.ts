@@ -15,3 +15,5 @@ export type { IClock } from './domain/i-clock.port';
 export { Role } from './domain/role.enum';
 export { HealthModule } from './health.module';
 export { SystemClock } from './infrastructure/clock/system.clock';
+export { redactDeep } from './infrastructure/logging/redact-deep';
+export { REDACTED_FIELDS } from './infrastructure/logging/redacted-fields';

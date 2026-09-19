@@ -127,7 +127,7 @@
   llegan en T-13…T-22 (usar `it.todo` por bloque y activarlas en cada tarea).
   Archivos: `apps/api/src/shared/domain/**`, `apps/api/src/shared/infrastructure/clock/system.clock.ts`, `apps/api/src/shared/index.ts`, `apps/api/src/shared/index.spec.ts`.
 
-- [ ] **T-12** [P] Logger Pino con redacción profunda — CA: CA-15, CA-13 (campo `correlationId` por `mixin`) — Depende: T-11 — ~3 h
+- [x] **T-12** [P] Logger Pino con redacción profunda — CA: CA-15, CA-13 (campo `correlationId` por `mixin`) — Depende: T-11 — ~3 h
   Prueba primero `apps/api/src/shared/infrastructure/logging/redact-deep.spec.ts` (objeto anidado con los 13 campos +
   `headers.authorization`, arreglos, ciclos, profundidad 17 → truncado; valores → `[REDACTED]`; resto intacto;
   insensible a mayúsculas; microbenchmark < 50 µs) y `logger.options.spec.ts` (línea escrita a destino en memoria
