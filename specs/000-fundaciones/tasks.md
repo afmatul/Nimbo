@@ -261,7 +261,7 @@
   service_healthy`), semántica de `live` vs `ready`, salud del worker en `WORKER_PORT` sin publicar.
   Archivos: `docs/operations/ambientes.md`.
 
-- [ ] **T-26** Cierre del PR-2: `pnpm lint && pnpm typecheck && pnpm test && pnpm test:int` en verde, CA-1 cronometrado de nuevo — CA: CA-1, CA-9 — Depende: T-11…T-25 — ~1 h
+- [x] **T-26** Cierre del PR-2: `pnpm lint && pnpm typecheck && pnpm test && pnpm test:int` en verde, CA-1 cronometrado de nuevo — CA: CA-1, CA-9 — Depende: T-11…T-25 — ~1 h
   Repetir el arranque desde cero con `pnpm dev` (api, worker, web) y comprobar `worker.started` con `correlationId`,
   `http://localhost/api/v1/health/ready` = `200`, página de estado «API: disponible». Registrar tiempo y salidas en
   `verification.md`. Actualizar `specs/README.md` a `En implementación` si aún no se hizo.
@@ -526,3 +526,53 @@ T-24 y T-25 pueden pasar al PR-3, y T-42/T-43 pueden hacerse en la primera seman
   al cerrar PR-1/PR-2 (T-26 lo repite). Solo se han creado dos paquetes menores no listados en el plan §6:
   `eslint-plugin-react-hooks` (reglas de hooks que `next/core-web-vitals` traía) y `eslint-import-resolver-typescript`
   (ya previsto en ADR-0008/plan §6.4). Sin dependencias significativas fuera de ADR-0015.
+
+- **T-11**: `DomainError` lleva además `abstract readonly status: number` fijado por cada clase base intermedia
+  (spec D-13, plan §1); las cinco bases (`InvalidInputError`…) son abstractas y `code` queda abstracto para que cada
+  módulo defina su error tipado con prefijo (RN-1). `FixedClock` expone `now()`, `advance(ms)` y `set(date)`.
+- **T-12**: `CorrelationContext` es un objeto congelado (`Object.freeze({ run, get })`) y no una clase estática porque
+  `no-extraneous-class` (strict) la rechaza. `customProps` de pino-http solo marca `event: 'http.request'`: el
+  `correlationId` lo aporta el `mixin` (evita la clave duplicada). `serializers.req` quita `query` y la cadena de
+  consulta de `url` (plan §7: sin query; en 011 llevará claves de enlace). `SECRET_KEYS` vive en
+  `config/secret-keys.ts` y `env.schema.ts` lo reexporta.
+- **T-13**: sin defaults que el plan no nombra (`NODE_ENV`, `APP_ENV`, `LOG_LEVEL` obligatorias). `workerEnvSchema` =
+  esquema común sin `MINIO_*` ni `PORT`, pero con `DATABASE_URL` (el worker importa `SharedModule` → TypeORM).
+  Cadena vacía → «no puede estar vacía» (distinto de ausente). Orden de issues = orden del esquema.
+- **T-14**: middlewares como clases con `use(req, res, next)` sin decoradores de Nest; `main.ts` los registra con
+  `app.use(m.use.bind(m))` antes de que nestjs-pino monte `pino-http`, así `genReqId` ya ve el contexto.
+- **T-15**: el glob de migraciones es `migrations/[0-9]*.{ts,js}` (no `*`) para que `data-source.cli.ts`, que vive en la
+  misma carpeta, no se cargue como migración. `requireEnv()` de la CLI valida solo `DATABASE_URL`
+  (`apiEnvSchema.pick`): el job `migrations` de CI no necesita el resto. `migration-generate.mjs` ejecuta la CLI de
+  TypeORM bajo `tsx` (`typeorm-ts-node-commonjs` exigiría `ts-node`). La prueba «importar `shared` no lee
+  `process.env`» excluye `NODE_ENV`/`NO_COLOR`, que leen librerías de terceros al cargarse.
+- **T-16 · `ENV` en `SharedModule` sin parámetros**: `api` y `worker` tienen contratos distintos (`MINIO_*`) y el plan
+  quitó `forRoot`. `EnvModule` provee `ENV` de forma perezosa con `resolveSharedEnv()`: el contrato de `api` si el
+  entorno lo satisface, si no el del `worker` (`SharedEnv = Env | WorkerEnv`; `hasMinioConfig()` para narrowing en
+  `MinioHealthIndicator`). Cuando 019/021 den MinIO al worker ambos contratos convergen. `main.ts` de cada proceso
+  sigue validando el suyo antes de arrancar (CA-18). Logger/TypeORM/BullMQ usan `forRootAsync` inyectando `ENV`
+  (CA-10: importar `shared` no lee el entorno). `@nestjs/typeorm` y `@nestjs/bullmq` se fijan en la línea 11.x
+  (la 12.x es ESM puro y Jest/CommonJS no la carga). `ioredis` explícito (5.11.1) para el indicador de Redis.
+  El arranque de `api` y `worker` corre dentro de `CorrelationContext.run({ correlationId: randomUUID() })` para que
+  `api.started`/`worker.started` también lleven `correlationId` (RNF-17, T-26).
+- **T-17**: destino de bitácoras capturable: `createLoggerModule()` inyecta `LOG_STREAM` **opcional**; el arnés lo
+  provee con un módulo global (`log-sink.ts`) y en producción no existe (pino → stdout). Las suites que **detienen**
+  contenedores (`health`, `worker-health`) arrancan los suyos con `startTestInfra()`; el resto usa los del
+  `globalSetup`. `maxWorkers: 1` en `int`. Hallazgo F-2 (`emitDecoratorMetadata` en `eslint/nest.js`).
+- **T-18**: cualquier `BadRequestException` (400) se traduce a `VALIDATION_FAILED` (002 registra `ValidationPipe`);
+  el resto de `HttpException` → `HTTP_<STATUS>` con mensaje genérico en español. `@types/express` (dev) para tipar `Response`.
+- **T-19**: `HealthService` recibe `PinoLogger` bajo la interfaz mínima `HealthLogger` (doble en unitarias).
+- **T-20**: `RedisHealthIndicator` abre una conexión efímera por sonda (sin reintentos ni cola fuera de línea):
+  una caída responde `down` al instante y la recuperación no depende de reconexiones en segundo plano. El límite
+  del SDK de S3 se pasa como `requestHandler: { connectionTimeout, requestTimeout }` (sin paquete extra).
+- **T-21**: `PingProcessor` extiende `WorkerHost` de `@nestjs/bullmq`; `process()` envuelve todo en
+  `CorrelationContext.run`. `queue.enqueued` lo escribe `PingQueue` (no la función pura).
+- **T-22**: por R-3 las pruebas del worker viven en `apps/api/test/int/worker/` (mismo arnés) y no en
+  `apps/worker/test/int/`; `apps/worker/src` sigue con solo `healthcheck.ts`. `worker-health.int-spec.ts` lanza
+  `healthcheck.ts` con `spawn` asíncrono (un `spawnSync` bloquearía el servidor del propio proceso) y cierra a la
+  fuerza el `Worker` de BullMQ en `afterAll` porque con Redis caído reintenta para siempre.
+- **T-23**: `check-env-example.ts` importa los esquemas por ruta interna (`env.schema.ts`, zod puro) y no el índice
+  de `shared`, que arrastra Nest y decoradores fuera del tsconfig de `apps/api`; es un script raíz, no un módulo.
+  `tsx` pasa a devDependencies raíz para `env:check`.
+- **T-24**: `test:int` y `test:isolation` pierden `--passWithNoTests`.
+- **T-26**: CA-1 desde cero en 42 s (imágenes en caché); evidencia en `verification.md`. Hallazgo F-1: Docker Hub
+  ya no sirve `minio/minio`/`minio/mc`; `compose.yml` y el arnés usan `quay.io/minio/*`.

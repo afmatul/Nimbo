@@ -98,5 +98,7 @@ describe('shared/index.ts (CA-17)', () => {
     expectExportsOf('T-21');
     expect(exportedKeys()).not.toContain('PingQueue');
   });
-  it.todo('CA-17: exporta exactamente la lista del plan §6.2 al cerrar el bloque 2 (T-26)');
+  it('CA-17: exporta exactamente la lista del plan §6.2 al cerrar el bloque 2 (T-26)', () => {
+    expect(exportedKeys()).toEqual([...ALL_RUNTIME_EXPORTS].sort());
+  });
 });

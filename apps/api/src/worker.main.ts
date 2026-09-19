@@ -1,7 +1,9 @@
+import { randomUUID } from 'node:crypto';
+
 import { NestFactory } from '@nestjs/core';
 import { Logger } from 'nestjs-pino';
 
-import { loadEnv, workerEnvSchema } from './shared';
+import { CorrelationContext, loadEnv, workerEnvSchema } from './shared';
 import { WORKER_QUEUES, WorkerModule } from './worker.module';
 
 /**
@@ -29,4 +31,5 @@ async function bootstrap(): Promise<void> {
   });
 }
 
-void bootstrap();
+// El arranque también lleva `correlationId` (RNF-17): las líneas previas a la primera petición son rastreables.
+void CorrelationContext.run({ correlationId: randomUUID() }, bootstrap);
