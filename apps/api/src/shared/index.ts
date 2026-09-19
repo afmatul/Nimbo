@@ -27,6 +27,8 @@ export { MinioHealthIndicator } from './infrastructure/health/minio.health-indic
 export { PostgresHealthIndicator } from './infrastructure/health/postgres.health-indicator';
 export { RedisHealthIndicator } from './infrastructure/health/redis.health-indicator';
 export { buildDataSourceOptions } from './infrastructure/persistence/data-source';
+export { enqueueWithCorrelation } from './infrastructure/queue/enqueue-with-correlation';
+export { PingProcessor } from './infrastructure/queue/ping.processor';
 export { REDACTED_FIELDS } from './infrastructure/logging/redacted-fields';
 export { DomainExceptionFilter } from './presentation/domain-exception.filter';
 export { VersionHeaderMiddleware } from './presentation/version-header.middleware';

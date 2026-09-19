@@ -219,7 +219,7 @@
   (`@HttpCode` 200/503 según `status`), `app.module.ts` con `HealthModule.forRoot({ indicators: [los tres] })`.
   Archivos: `apps/api/src/shared/infrastructure/health/**`, `apps/api/src/shared/presentation/health.controller.ts`, `apps/api/src/app.module.ts`, `apps/api/test/int/shared/health.int-spec.ts`, `apps/api/src/shared/index.ts`.
 
-- [ ] **T-21** Cola `ping`: `enqueueWithCorrelation`, `PingQueue`, `PingProcessor` y prueba de propagación — CA: CA-14 — Depende: T-14, T-17 — ~3 h
+- [x] **T-21** Cola `ping`: `enqueueWithCorrelation`, `PingQueue`, `PingProcessor` y prueba de propagación — CA: CA-14 — Depende: T-14, T-17 — ~3 h
   Pruebas primero `apps/api/src/shared/infrastructure/queue/enqueue-with-correlation.spec.ts` (toma el
   `correlationId` del contexto; sin contexto genera UUID; no sobrescribe el resto de `data`) y
   `apps/api/test/int/shared/ping-queue.int-spec.ts` (Redis real: encola dentro de `CorrelationContext.run({ correlationId: 'X' })`;

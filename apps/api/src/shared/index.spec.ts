@@ -94,6 +94,9 @@ describe('shared/index.ts (CA-17)', () => {
   it('CA-21: exporta `PostgresHealthIndicator`, `RedisHealthIndicator` y `MinioHealthIndicator` (T-20)', () => {
     expectExportsOf('T-20');
   });
-  it.todo('CA-14: exporta `enqueueWithCorrelation` y `PingProcessor`; no `PingQueue` (T-21)');
+  it('CA-14: exporta `enqueueWithCorrelation` y `PingProcessor`; no `PingQueue` (T-21)', () => {
+    expectExportsOf('T-21');
+    expect(exportedKeys()).not.toContain('PingQueue');
+  });
   it.todo('CA-17: exporta exactamente la lista del plan §6.2 al cerrar el bloque 2 (T-26)');
 });
