@@ -78,7 +78,9 @@ describe('shared/index.ts (CA-17)', () => {
     expectExportsOf('T-14');
     expect(shared.CorrelationContext.get()).toBeUndefined();
   });
-  it.todo('CA-10: exporta `buildDataSourceOptions` (T-15)');
+  it('CA-10: exporta `buildDataSourceOptions` (T-15)', () => {
+    expectExportsOf('T-15');
+  });
   it.todo('CA-18: exporta `SharedModule` (T-16)');
   it.todo('CA-16: exporta `DomainExceptionFilter` (T-18)');
   it.todo('CA-21: exporta `HealthModule` (T-19)');

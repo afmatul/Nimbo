@@ -152,7 +152,7 @@
   `presentation/version-header.middleware.spec.ts` (`x-nimbo-version` = `APP_VERSION`). Luego los tres archivos.
   Archivos: `apps/api/src/shared/infrastructure/correlation/**`, `apps/api/src/shared/presentation/version-header.middleware.ts`, `apps/api/src/shared/index.ts`.
 
-- [ ] **T-15** TypeORM: `buildDataSourceOptions`, `data-source.cli.ts`, migración inicial, `migrate.ts`, scripts — CA: CA-10, CA-11, CA-12 — Depende: T-13 — ~3 h
+- [x] **T-15** TypeORM: `buildDataSourceOptions`, `data-source.cli.ts`, migración inicial, `migrate.ts`, scripts — CA: CA-10, CA-11, CA-12 — Depende: T-13 — ~3 h
   Prueba primero `apps/api/src/shared/infrastructure/persistence/data-source.spec.ts` (CA-10: con
   `TYPEORM_SYNCHRONIZE=true` y `NODE_ENV=development`, `synchronize === false`; `migrationsTableName === 'migracion'`;
   importar `shared/index.ts` no lee `process.env` ni construye `DataSource` — espiar `process.env` con un Proxy).

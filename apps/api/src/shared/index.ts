@@ -22,5 +22,6 @@ export { CorrelationContext } from './infrastructure/correlation/correlation-con
 export { CorrelationIdMiddleware } from './infrastructure/correlation/correlation-id.middleware';
 export { loadEnv } from './infrastructure/config/load-env';
 export { redactDeep } from './infrastructure/logging/redact-deep';
+export { buildDataSourceOptions } from './infrastructure/persistence/data-source';
 export { REDACTED_FIELDS } from './infrastructure/logging/redacted-fields';
 export { VersionHeaderMiddleware } from './presentation/version-header.middleware';
