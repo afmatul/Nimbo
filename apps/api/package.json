@@ -9,8 +9,8 @@
     "build": "nest build",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "jest",
-    "test:int": "jest -c jest.int.config.cjs --passWithNoTests",
-    "test:isolation": "jest -c jest.isolation.config.cjs --passWithNoTests",
+    "test:int": "jest -c jest.int.config.cjs",
+    "test:isolation": "jest -c jest.isolation.config.cjs",
     "migration:generate": "node scripts/migration-generate.mjs",
     "migration:run": "tsx src/scripts/migrate.ts run",
     "migration:revert": "tsx src/scripts/migrate.ts revert"

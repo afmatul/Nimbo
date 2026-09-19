@@ -247,7 +247,7 @@
   `apiEnvSchema`, `workerEnvSchema` y el esquema de `apps/web/src/env.ts`; compara con las claves de `.env.example`).
   Archivos: `scripts/check-env-example.ts`, `scripts/check-env-example.spec.ts`, `package.json` raíz.
 
-- [ ] **T-24** [P] Suite `isolation` marcador — CA: CA-25 (marcador forzable), CA-24 — Depende: T-17 — ~1 h
+- [x] **T-24** [P] Suite `isolation` marcador — CA: CA-25 (marcador forzable), CA-24 — Depende: T-17 — ~1 h
   `apps/api/jest.isolation.config.ts` (`testMatch: test/isolation/**/*.iso-spec.ts`, mismo `globalSetup`),
   `apps/api/test/isolation/placeholder.iso-spec.ts` (`it('CA-25: la suite de aislamiento puede forzarse a fallar', …)`
   que falla si `ISOLATION_FORCE_FAIL=1`; comentario: «000 no tiene datos de cliente; 003 agrega las pruebas reales»),
