@@ -1,5 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
-import type { PinoLogger } from 'nestjs-pino';
+import { PinoLogger } from 'nestjs-pino';
 import request from 'supertest';
 
 import { HealthModule } from '../../../src/shared';

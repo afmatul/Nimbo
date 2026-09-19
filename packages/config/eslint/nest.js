@@ -6,6 +6,14 @@ import base from './base.js';
 
 export default tseslint.config(...base, {
   files: ['**/*.ts'],
+  languageOptions: {
+    parserOptions: {
+      // Nest inyecta por el tipo del parámetro (`design:paramtypes`): con esto `consistent-type-imports`
+      // no convierte a `import type` las clases que se usan en constructores decorados.
+      emitDecoratorMetadata: true,
+      experimentalDecorators: true,
+    },
+  },
   rules: {
     // Nest inyecta por constructor: las clases vacías de módulos/decoradores son normales.
     '@typescript-eslint/no-extraneous-class': ['error', { allowWithDecorator: true }],
