@@ -1,0 +1,78 @@
+# Override local (se carga solo con `docker compose up -d`). Diferencias permitidas por CA-3:
+# puertos publicados, Mailpit, Traefik sin TLS enrutando a las apps que corren en el host con `pnpm dev` (R-4)
+# y `build` para las apps bajo el perfil `apps` (opcional; CA-1 no lo usa).
+services:
+  postgres:
+    ports:
+      - '5432:5432'
+
+  redis:
+    ports:
+      - '6379:6379'
+
+  minio:
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    labels:
+      traefik.enable: 'true'
+      traefik.http.routers.minio.rule: PathPrefix(`/s3`)
+      traefik.http.routers.minio.entrypoints: web
+      traefik.http.routers.minio.middlewares: minio-strip
+      traefik.http.middlewares.minio-strip.stripprefix.prefixes: /s3
+      traefik.http.services.minio.loadbalancer.server.port: '9000'
+
+  traefik:
+    ports:
+      - '8080:8080'
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    volumes:
+      - ./infra/traefik/traefik.local.yml:/etc/traefik/traefik.yml:ro
+      - ./infra/traefik/local-routes.yml:/etc/traefik/dynamic/local-routes.yml:ro
+
+  # Correo de desarrollo: UI en http://localhost:8025, SMTP en 1025 (solo local; spec 000 §14).
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - '8025:8025'
+      - '1025:1025'
+    mem_limit: 128m
+    restart: unless-stopped
+
+  api:
+    profiles: [apps]
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    labels:
+      traefik.enable: 'true'
+      traefik.http.routers.api.rule: PathPrefix(`/api`)
+      traefik.http.routers.api.entrypoints: web
+      traefik.http.services.api.loadbalancer.server.port: '3000'
+
+  worker:
+    profiles: [apps]
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+
+  web:
+    profiles: [apps]
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    labels:
+      traefik.enable: 'true'
+      traefik.http.routers.web.rule: PathPrefix(`/`)
+      traefik.http.routers.web.entrypoints: web
+      traefik.http.services.web.loadbalancer.server.port: '3002'
+
+  onlyoffice:
+    labels:
+      traefik.enable: 'true'
+      traefik.http.routers.onlyoffice.rule: PathPrefix(`/docs`)
+      traefik.http.routers.onlyoffice.entrypoints: web
+      traefik.http.routers.onlyoffice.middlewares: onlyoffice-strip
+      traefik.http.middlewares.onlyoffice-strip.stripprefix.prefixes: /docs
+      traefik.http.services.onlyoffice.loadbalancer.server.port: '80'

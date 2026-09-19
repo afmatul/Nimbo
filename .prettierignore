@@ -1,0 +1,16 @@
+# Documentación y harness: no se formatean con Prettier (fuera del workspace, CA-4)
+docs/
+specs/
+.claude/
+CLAUDE.md
+HARNESS.md
+.github/pull_request_template.md
+
+# Generados
+node_modules/
+dist/
+dist-worker/
+.next/
+coverage/
+pnpm-lock.yaml
+*.tsbuildinfo

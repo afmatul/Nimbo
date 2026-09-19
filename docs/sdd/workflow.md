@@ -66,6 +66,11 @@ Humano abre PR → otro integrante aprueba → merge → staging
    callback de ONLYOFFICE en nuestra versión?»). El resultado va a `plan.md` o a un ADR; el código del spike se descarta.
 6. **Specs transversales** (fundaciones, observabilidad) siguen el mismo flujo.
 7. **Bugs**: si el comportamiento contradice la spec → `fix/` con prueba que reproduce; si la spec no lo cubría → se agrega el criterio primero.
+8. **PRs parciales**: por defecto una spec = un PR, abierto tras `/verify` y `/review`. Una spec **transversal** cuyo
+   plan lo justifique (p. ej. 000, §9b) puede integrarse en varios PRs para desbloquear a otros dueños. Reglas:
+   cada PR parcial cubre bloques completos de `tasks.md`, pasa lint/typecheck/unit (y CI cuando exista), lo aprueba
+   otro integrante, y marca en la plantilla «PR parcial»; `verification.md`, `security.md`, `ui-review.md` y
+   `review.md` se producen una sola vez, al cerrar el último bloque, y la spec pasa a `Hecha` solo entonces.
 
 ## 5. Trabajo en paralelo de 4 personas
 

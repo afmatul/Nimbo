@@ -1,0 +1,19 @@
+# Contexto de build = raíz del repositorio (plan 000 §6.5). Solo entra lo que las imágenes necesitan.
+.git
+.github
+.claude
+docs
+specs
+e2e
+load
+infra
+**/node_modules
+**/dist
+**/dist-worker
+**/.next
+**/coverage
+**/*.tsbuildinfo
+.env
+.env.*
+*.md
+compose*.yml

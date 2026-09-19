@@ -72,22 +72,25 @@ Monorepo pnpm · **Frontend** Next.js + TypeScript + Tailwind v4 + shadcn/ui, si
 
 ## Comandos del repositorio
 
-> **Aún no existe `package.json` raíz**: lo crea la spec 000 (fundaciones). Hasta entonces ningún agente ejecuta
-> estos comandos; si un flujo los requiere, se reporta «bloqueado por 000» en vez de fallar o improvisar scripts.
-> Ajusten esta sección cuando el `package.json` exista; los agentes la usan tal cual.
+> Node 22 (`.nvmrc`, `engine-strict`) y pnpm 10 por corepack. Los agentes usan estos comandos tal cual.
+> Compose local sin perfiles levanta `postgres`, `redis`, `minio`, `minio-init`, `traefik` y `mailpit`;
+> ONLYOFFICE solo con `--profile onlyoffice`; las apps corren en el host con `pnpm dev` (perfil `apps` opcional).
 
 ```bash
 pnpm install
-docker compose up -d                        # Postgres, Redis, MinIO, ONLYOFFICE, Traefik
-pnpm dev                                    # web + api + worker
+cp .env.example .env
+docker compose up -d                        # Postgres, Redis, MinIO, Traefik, Mailpit
+docker compose --profile onlyoffice up -d   # + ONLYOFFICE Docs (solo para edición, spec 016)
+pnpm dev                                    # web (3002) + api (3000) + worker (3001, salud interna)
 pnpm lint && pnpm typecheck                 # verificaciones estáticas
 pnpm test                                   # unitarias
 pnpm test:int                               # API + integración (Testcontainers)
 pnpm test:isolation                         # aislamiento (bloqueante)
-pnpm test:e2e                               # Playwright
-pnpm --filter api migration:generate -- <Nombre>
+pnpm test:e2e                               # Playwright (marcador hasta 000b/023)
+pnpm env:check                              # .env.example vs. esquemas de configuración (CA-19)
+pnpm --filter api migration:generate -- <nombre>
 pnpm --filter api migration:run | migration:revert
-pnpm seed                                   # corpus sintético
+pnpm seed                                   # corpus sintético (marcador hasta 005/019)
 ```
 
 ## Prohibiciones duras (cualquier agente)

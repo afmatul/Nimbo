@@ -12,7 +12,7 @@
 
 ## Bloque 1 — PR-1 «esqueleto»: workspace, contratos, apps mínimas, compose local (plan §9b paso 1)
 
-- [ ] **T-01** Prueba de estructura + workspace raíz — CA: CA-4 — Depende: — — ~3 h
+- [x] **T-01** Prueba de estructura + workspace raíz — CA: CA-4 — Depende: — — ~3 h
   Escribir primero `scripts/repo-structure.spec.ts` (Jest raíz: existen `apps/api`, `apps/web`, `apps/worker`,
   `packages/contracts`, `packages/config`, `infra/`, `pnpm-workspace.yaml`, `.nvmrc`, `.env.example`; `package.json`
   raíz expone `dev`, `lint`, `typecheck`, `test`, `test:int`, `test:isolation`, `test:e2e`, `seed`, `env:check`;
@@ -24,7 +24,7 @@
   lo usan `test:e2e` y `seed`), `e2e/README.md`, `load/README.md`.
   Archivos: los listados.
 
-- [ ] **T-02** `packages/config`: tsconfig, ESLint flat base, Prettier, Jest base — CA: CA-9 — Depende: T-01 — ~3 h
+- [x] **T-02** `packages/config`: tsconfig, ESLint flat base, Prettier, Jest base — CA: CA-9 — Depende: T-01 — ~3 h
   `packages/config/package.json` (`@nimbo/config`), `tsconfig.base.json` (`strict`, `noUncheckedIndexedAccess`,
   `exactOptionalPropertyTypes`, ES2022), `tsconfig.nest.json`, `tsconfig.next.json`, `tsconfig.lib.json`,
   `prettier.config.js`, `eslint/base.js` (`@typescript-eslint` strict-type-checked, `eslint-plugin-import-x`,
@@ -34,7 +34,7 @@
   `prettier.config.mjs`. Verificar `pnpm lint` y `pnpm typecheck` en `0` sobre el árbol vacío.
   Archivos: `packages/config/**`, `eslint.config.mjs`, `prettier.config.mjs`.
 
-- [ ] **T-03** [P] `packages/contracts`: contratos de salud y error — CA: CA-21, CA-22, CA-33 (contrato), CA-16 (forma de error) — Depende: T-02 — ~2 h
+- [x] **T-03** [P] `packages/contracts`: contratos de salud y error — CA: CA-21, CA-22, CA-33 (contrato), CA-16 (forma de error) — Depende: T-02 — ~2 h
   Prueba primero `packages/contracts/src/health.spec.ts` (`healthReadyResponseSchema` acepta `checks` parcial:
   `{ redis: 'up' }` y los tres; rechaza `status: 'x'`) y `error.spec.ts` (`errorResponseSchema` exige `code`,
   `message`, `correlationId`). Luego `src/health.ts` (`HealthCheckName`, `HealthCheckStatus`, `HealthLiveResponse`,
@@ -43,7 +43,7 @@
   `tsconfig.json`, `jest.config.cjs`.
   Archivos: `packages/contracts/**`.
 
-- [ ] **T-04** [P] `apps/api` mínimo con `HealthController.live` — CA: CA-20 (parcial), CA-9 — Depende: T-02 — ~3 h
+- [x] **T-04** [P] `apps/api` mínimo con `HealthController.live` — CA: CA-20 (parcial), CA-9 — Depende: T-02 — ~3 h
   Prueba primero `apps/api/src/shared/presentation/health.controller.spec.ts` (`live()` devuelve `{ status: 'ok' }`
   sin dependencias). Luego `apps/api/package.json` (nombre `api`, NestJS 11, TypeORM 0.3, scripts `dev`
   (`nest start --watch`), `build`, `typecheck`, `test`, `test:int`, `test:isolation` — los tres últimos como
@@ -54,7 +54,7 @@
   `src/shared/index.ts` (exporta `HealthModule`), `src/shared/README.md`.
   Archivos: `apps/api/**` (excepto `src/modules/**`).
 
-- [ ] **T-05** [P] Carpetas de los 12 módulos con `index.ts` vacío y `README.md` mínimo — CA: CA-4, CA-5 (precondición del lint) — Depende: T-02 — ~1 h
+- [x] **T-05** [P] Carpetas de los 12 módulos con `index.ts` vacío y `README.md` mínimo — CA: CA-4, CA-5 (precondición del lint) — Depende: T-02 — ~1 h
   Para cada uno de `identity`, `storage`, `access`, `sharing`, `billing`, `editing`, `intelligence`, `optimizer`,
   `backoffice`, `audit`, `realtime`, `notifications`: `apps/api/src/modules/<m>/index.ts` (`export {};`) y
   `apps/api/src/modules/<m>/README.md` (dueño según `specs/README.md`, diagrama de origen, capas
@@ -62,7 +62,7 @@
   lo construyen). Ningún `*.module.ts` todavía (lo crea la primera spec de cada módulo). Precisión al plan §9b/§12.
   Archivos: `apps/api/src/modules/*/index.ts`, `apps/api/src/modules/*/README.md`.
 
-- [ ] **T-06** `apps/worker` mínimo y verificación del alias `@nimbo/api/*` — CA: CA-4, CA-23 (esqueleto) — Depende: T-04 — ~3 h
+- [x] **T-06** `apps/worker` mínimo y verificación del alias `@nimbo/api/*` — CA: CA-4, CA-23 (esqueleto) — Depende: T-04 — ~3 h
   `apps/worker/package.json` (nombre `worker`, `dependencies: { api: workspace:* }`, scripts `dev` (`tsx watch
   src/main.ts`), `build` (`tsc -b && tsc-alias`), `typecheck`, `test`), `tsconfig.json` (`paths` `@nimbo/api/*` →
   `../api/src/*`, `references: [../api]`; `apps/api/tsconfig.json` pasa a `composite: true`), `jest.config.cjs`
@@ -73,7 +73,7 @@
   + `apps/worker` delgado) y anotarlo en «Notas del developer» y en plan §9.
   Archivos: `apps/worker/**`, `apps/api/tsconfig.json`.
 
-- [ ] **T-07** [P] `apps/web` mínimo: página de estado — CA: CA-33, CA-29, CA-18 (web) — Depende: T-03 — ~3 h
+- [x] **T-07** [P] `apps/web` mínimo: página de estado — CA: CA-33, CA-29, CA-18 (web) — Depende: T-03 — ~3 h
   Prueba primero `apps/web/src/app/page.spec.tsx` (con `fetch` simulado: `200` → «API: disponible»; error/`503` →
   «API: no disponible. Revisa el estado de los servicios.»; contiene «Nimbo» y `APP_ENV`) y
   `apps/web/src/env.spec.ts` (falta `API_INTERNAL_URL` → issues formateadas sin valores). Luego `apps/web/package.json`
@@ -85,7 +85,7 @@
   si llega), `src/lib/api-health.ts` (tipado con `HealthReadyResponse`), `public/` vacío.
   Archivos: `apps/web/**`.
 
-- [ ] **T-08** `.env.example` completo — CA: CA-19 (archivo), CA-1 — Depende: T-04, T-06, T-07 — ~1 h
+- [x] **T-08** `.env.example` completo — CA: CA-19 (archivo), CA-1 — Depende: T-04, T-06, T-07 — ~1 h
   Todas las variables del plan §6.2 y §6.5: `NODE_ENV`, `APP_ENV`, `APP_VERSION`, `PORT`, `WORKER_PORT`, `LOG_LEVEL`,
   `DATABASE_URL`, `REDIS_URL`, `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET`, `MINIO_REGION`,
   `API_INTERNAL_URL`, `POSTGRES_USER/PASSWORD/DB`, `MINIO_ROOT_USER/PASSWORD`, `IMAGE_TAG`, `DOMAIN`, `WEB_HOST`,
@@ -94,7 +94,7 @@
   vacíos; comentario por variable en español. Sin `NEXT_PUBLIC_*`.
   Archivos: `.env.example`.
 
-- [ ] **T-09** `compose.yml` base + `compose.override.yml` local + Traefik local + MinIO init — CA: CA-1, CA-2, CA-3 — Depende: T-08 — ~4 h
+- [x] **T-09** `compose.yml` base + `compose.override.yml` local + Traefik local + MinIO init — CA: CA-1, CA-2, CA-3 — Depende: T-08 — ~4 h
   `compose.yml` (postgres `pgvector/pgvector:pg17`, redis, minio + `minio-init`, traefik v3, api, worker, web,
   onlyoffice bajo `profiles: [onlyoffice]`; healthchecks, `depends_on: service_healthy`, `mem_limit`, volúmenes
   nombrados; `WORKER_PORT` nunca en `ports:`), `compose.override.yml` (puertos publicados 5432/6379/9000/9001/8025/1025/8080,
@@ -106,7 +106,7 @@
   con el perfil → `true`.
   Archivos: `compose.yml`, `compose.override.yml`, `infra/traefik/traefik.local.yml`, `infra/minio/init.sh`.
 
-- [ ] **T-10** `README.md` raíz (arranque desde cero) y CLAUDE.md «Comandos del repositorio» — CA: CA-1, CA-4 — Depende: T-09 — ~2 h
+- [x] **T-10** `README.md` raíz (arranque desde cero) y CLAUDE.md «Comandos del repositorio» — CA: CA-1, CA-4 — Depende: T-09 — ~2 h
   README: requisitos (Git, Docker Compose v2, Node 22 vía `.nvmrc`, pnpm por corepack), los cinco comandos exactos de
   CA-1 en orden, URLs resultantes (`http://localhost`, `http://localhost/api/v1/health/ready`, Mailpit `:8025`,
   Traefik `:8080`), perfil `onlyoffice`, puertos 3000/3001/3002, enlaces a `docs/operations/*`. CLAUDE.md: quitar la
@@ -310,14 +310,15 @@
   onlyoffice` sí), `typecheck`, `unit` (`pnpm test -- --coverage`, artefacto), `int` (`pnpm test:int`, Testcontainers),
   `isolation` (`pnpm test:isolation`), `migrations` (`services.postgres: pgvector/pgvector:pg17`;
   `migration:run` → `psql` afirma `pg_extension` y `count(*) FROM migracion = 1` → `migration:revert` → afirma
-  ausencia y 0 → `migration:run` → afirma). `concurrency`, `timeout-minutes: 15`, caché pnpm, `on: pull_request` y
-  `push: main`. Medir duración total (< 15 min) y registrar en `verification.md`.
+  ausencia y 0 → `migration:run` → afirma). `concurrency` con `cancel-in-progress: true` por rama, `timeout-minutes: 15`,
+  caché pnpm, `on: pull_request` y `push: main` **únicamente** (sin `push` de ramas: cuota de 3 000 min/mes de GitHub Pro,
+  spec §12). Medir duración total (< 15 min) y registrar en `verification.md`.
   Archivos: `.github/workflows/ci.yml`, `.github/pull_request_template.md`.
 
 - [ ] **T-32** **(humana)** gitleaks sobre el historial completo y `security.md` — CA: CA-27 — Depende: T-31 — ~1 h
-  Ejecutar `gitleaks detect --source . --log-opts=--all` en local antes de hacer público el repositorio; adjuntar
-  salida en `specs/000-fundaciones/security.md` (plantilla del `security-auditor`). Si hay hallazgos: rotar el
-  secreto y reescribir historial solo si el repositorio aún es privado. Hacer público el repositorio después.
+  Ejecutar `gitleaks detect --source . --log-opts=--all` en local al activar el CI (el repositorio es privado, D-2);
+  adjuntar salida en `specs/000-fundaciones/security.md` (plantilla del `security-auditor`). Si hay hallazgos: rotar el
+  secreto y reescribir el historial (posible mientras siga privado). Repetir si el repositorio se hace público algún día.
   Archivos: `specs/000-fundaciones/security.md`.
 
 - [ ] **T-33** **(humana)** Protección de `main` en GitHub — CA: CA-26, CA-24 — Depende: T-31 — ~1 h
@@ -356,7 +357,9 @@
   Matriz `api|worker|web`; `docker/metadata-action` (`ghcr.io/afmatul/nimbo-<app>`, `sha-<short>` y `latest` solo en
   `main`); `build-push-action` con `push` solo fuera de `pull_request`, `build-args: APP_VERSION=sha-<short>`, caché
   `gha`; pasos de verificación: `docker run --rm <img> id -u` ≠ 0 y `grep NEXT_PUBLIC_` en `web`. Permisos
-  `packages: write`. Verificar en ghcr.io las seis etiquetas tras el merge y registrar en `verification.md`.
+  `packages: write`. Paso final de retención con `actions/delete-package-versions` (conservar `latest` y las últimas 5
+  versiones por app; cuota de 2 GB de Packages en repo privado, spec §12). Verificar en ghcr.io las seis etiquetas tras
+  el merge y registrar en `verification.md`.
   Archivos: `.github/workflows/build-publish.yml`.
 
 ## Bloque 6 — PR-5 «staging»: compose de staging, Traefik TLS, deploy transaccional, rollback (plan §9b paso 6)
@@ -464,5 +467,62 @@ T-24 y T-25 pueden pasar al PR-3, y T-42/T-43 pueden hacerse en la primera seman
 (RNF-20 exige el ensayo de rollback una vez en esta spec, no en una fecha concreta).
 
 ## Notas del developer
-<Hallazgos, desviaciones reportadas (con enlace al registro de cambios de la spec). Anotar aquí la decisión tomada en
-T-06 sobre R-3 (alias `@nimbo/api/*` o `worker.main.ts` en `apps/api`).>
+
+- **T-01** (2026-09-16): se agregó `.gitattributes` con `* text=auto eol=lf` (no estaba en la lista de archivos): el
+  equipo mezcla Windows y otros SO y el commit inicial mostró avisos CRLF. Precisión, no desviación.
+- **T-01**: el script raíz `test` es `jest --config jest.config.cjs && pnpm -r run test` (el plan §6.1 dice
+  `pnpm -r run test`): `pnpm -r` no incluye el paquete raíz, y sin el primer tramo la prueba de CA-4
+  (`scripts/repo-structure.spec.ts`) nunca correría. `env:check` apunta al marcador hasta que T-23 cree
+  `scripts/check-env-example.ts` (evita un script roto en `main` tras el PR-1).
+- **T-01**: la máquina de desarrollo tenía Node 24 por defecto; con `engine-strict=true` pnpm rechaza todo. Se
+  instaló Node 22 con nvm-windows (`nvm install 22`) y se usó por `PATH` sin cambiar la versión global. Es exactamente
+  lo que `.nvmrc` pide; el README (T-10) lo documenta.
+- **T-02**: `eslint/next.js` usa `@next/eslint-plugin-next` (reglas `recommended` + `core-web-vitals`) y
+  `eslint-plugin-react-hooks` directamente en flat config, en lugar del paquete `eslint-config-next`, que en 15.x sigue
+  en formato *eslintrc* y exigiría `@eslint/eslintrc` (FlatCompat) más `eslint-plugin-import` v2 duplicando
+  `import-x`. Mismas reglas, sin puente de compatibilidad. `eslint-import-resolver-typescript` (ya previsto en el plan
+  §6.4 para T-28) se instala desde ahora porque `import-x` lo necesita para resolver `.ts`.
+- **T-03**: `@nimbo/contracts` expone `types` → `src/index.ts` (typecheck sin compilar) y `default` → `dist/index.js`
+  (runtime). El script `prepare` compila `dist/` en cada `pnpm install`, así CA-1 no exige un paso manual de build.
+- **T-04**: las configuraciones de Jest de `api` son `jest.int.config.cjs` / `jest.isolation.config.cjs` (no `.ts`):
+  Jest 29 carga configs `.ts` solo con `ts-node`, una dependencia extra que nada más necesita. T-17/T-24 las rellenan.
+- **T-06 · Decisión R-3: alternativa aprobada (`worker.main.ts` en `apps/api` + `apps/worker` delgado).** Se probó
+  primero la ruta canónica (`paths` `@nimbo/api/*` → `../api/src/*`, `references: [../api]`, `api` `composite`,
+  `tsc -b && tsc-alias`) y falló en dos puntos sin remedio limpio: (1) `tsc --noEmit -p tsconfig.json` del worker
+  exige que `apps/api/dist/**/*.d.ts` exista (TS6305), así que `pnpm typecheck` dependería de un build previo;
+  (2) `tsc-alias` no reescribe rutas que apuntan fuera de `rootDir`, el `require("@nimbo/api/shared")` queda intacto y
+  `node dist/main.js` falla con «Cannot find module». Las variantes que lo arreglan (`rootDir: ..` compilando `api`
+  dos veces, `paths` a `../api/dist/*`, hoisting de dependencias) son trucos y además obligan a duplicar en
+  `apps/worker/package.json` cada dependencia de runtime de `api`. Resultado: `apps/api/src/worker.main.ts` y
+  `apps/api/src/worker.module.ts` (raíces de composición; T-28 las agrega al elemento `composition` del lint junto a
+  `main.ts`/`app.module.ts`); `nest build` emite `dist/main.js` y `dist/worker.main.js` de una vez; `apps/worker`
+  conserva `package.json` (`dependencies: { api: workspace:* }`), `src/healthcheck.ts` (compilado a
+  `dist/healthcheck.js`) y, en T-35, su `Dockerfile` con `CMD node apps/api/dist/worker.main.js`. Desarrollo:
+  `pnpm --filter worker dev` delega en `api` `dev:worker` = `nest start --watch --path tsconfig.worker.json
+  --entryFile worker.main` (salida en `apps/api/dist-worker/` para no pisar el watcher de `api`). No se usa `tsx`
+  para Nest: esbuild no emite `design:paramtypes`, y la inyección por tipo dejaría de funcionar. Sin alias, el
+  lint de T-28 no necesita `eslint-import-resolver-typescript` para el worker (sigue instalado para resolver `.ts`).
+  Verificado: `pnpm --filter api build && node dist/worker.main.js` → `GET /health/live` `200`;
+  `node apps/worker/dist/healthcheck.js` sale `0` con el proceso arriba y `1` sin él. Registrado también en plan §9 R-3.
+- **T-07**: `page.spec.tsx` renderiza el Server Component con `react-dom/server` (`renderToStaticMarkup(await
+  StatusPage())`) en entorno `node`, sin `jsdom` ni Testing Library: menos dependencias y prueba exactamente lo que
+  el servidor emite. Jest de `web` usa `next/jest` (SWC) porque el tsconfig de Next (`module: ESNext`, `jsx:
+  preserve`) no encaja con ts-jest. `HealthReadyResponse` pasa a `z.infer` del esquema (equivalente a
+  `Partial<Record<…>>`): con `exactOptionalPropertyTypes` una interfaz aparte no era asignable desde `.partial()`.
+  `next-env.d.ts` es generado y va en `.gitignore` (recomendación de Next 15). `next build` compila y genera las
+  páginas, pero el paso final de `output: 'standalone'` falla en Windows sin privilegio de symlink (EPERM al copiar
+  `node_modules` de pnpm); en Linux/Docker no ocurre y T-36 lo verifica. `next dev` sin `API_INTERNAL_URL` escribe
+  la línea `config.invalid` y se detiene (CA-18).
+- **T-09**: Traefik no puede enrutar hacia procesos del host solo con etiquetas Docker, así que las rutas `/` →
+  `host.docker.internal:3002` y `/api` → `host.docker.internal:3000` viven en un archivo de proveedor `file`,
+  `infra/traefik/local-routes.yml` (montado solo por el override), con prioridad baja para que los enrutadores por
+  etiquetas del perfil `apps` ganen si se activa. `/docs` (ONLYOFFICE) y `/s3` (MinIO) van por etiquetas. Verificado
+  con `docker compose config --services`: sin perfil = `minio minio-init postgres redis traefik mailpit`; con
+  `--profile onlyoffice` aparece `onlyoffice`; `WORKER_PORT` no figura en ningún `ports:`. **Pendiente**: `docker
+  compose up -d` y `http://localhost/docs/healthcheck` → `true` no se pudieron ejecutar porque Docker Desktop no
+  estaba corriendo en la máquina; queda para `verification.md` (CA-1/CA-2) al cerrar el PR-1.
+- **T-10**: `README.md` y `CLAUDE.md` actualizados. El cronometraje de CA-1 en máquina limpia **no se hizo** (Docker
+  apagado y `migration:run` llega en T-15); `verification.md` lo crea `tester` con la plantilla y registra el tiempo
+  al cerrar PR-1/PR-2 (T-26 lo repite). Solo se han creado dos paquetes menores no listados en el plan §6:
+  `eslint-plugin-react-hooks` (reglas de hooks que `next/core-web-vitals` traía) y `eslint-import-resolver-typescript`
+  (ya previsto en ADR-0008/plan §6.4). Sin dependencias significativas fuera de ADR-0015.
