@@ -25,3 +25,4 @@ export { redactDeep } from './infrastructure/logging/redact-deep';
 export { buildDataSourceOptions } from './infrastructure/persistence/data-source';
 export { REDACTED_FIELDS } from './infrastructure/logging/redacted-fields';
 export { VersionHeaderMiddleware } from './presentation/version-header.middleware';
+export { SharedModule } from './shared.module';

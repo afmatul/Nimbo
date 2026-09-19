@@ -58,8 +58,12 @@ describe('buildDataSourceOptions', () => {
     const shared = jest.requireActual<Record<string, unknown>>('../../index');
 
     expect(shared).toHaveProperty('buildDataSourceOptions');
-    // Librerías de terceros leen banderas propias (p. ej. `NO_COLOR`); lo prohibido es leer configuración de Nimbo.
-    const configurationReads = reads.filter((key) => key in apiEnvSchema.shape);
+    // Librerías de terceros leen variables convencionales de Node (`NODE_ENV`, `NO_COLOR`) al cargarse;
+    // lo prohibido es que `shared` lea la configuración de Nimbo antes del arranque.
+    const NODE_CONVENTIONAL = new Set(['NODE_ENV']);
+    const configurationReads = reads.filter(
+      (key) => key in apiEnvSchema.shape && !NODE_CONVENTIONAL.has(key),
+    );
     expect(configurationReads).toEqual([]);
     expect(dataSourceConstructor).not.toHaveBeenCalled();
     expect(DataSource).toBeDefined();

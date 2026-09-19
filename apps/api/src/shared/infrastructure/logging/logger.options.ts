@@ -54,11 +54,12 @@ export const buildLoggerModuleParams = (input: LoggerOptionsInput): Params => ({
   pinoHttp: {
     ...buildPinoOptions(input),
     genReqId: (): string => CorrelationContext.get()?.correlationId ?? randomUUID(),
-    customProps: (): Record<string, unknown> => ({ event: 'http.request', ...correlationFields() }),
+    // El `correlationId` ya lo pone el `mixin` en todas las líneas, incluida esta.
+    customProps: (): Record<string, unknown> => ({ event: 'http.request' }),
     serializers: {
       // `http.request` va sin cuerpo ni cadena de consulta (plan §7): la URL puede llevar claves de enlace.
-      req: (req: IncomingMessage): ReturnType<typeof stdSerializers.req> => {
-        const serialized = stdSerializers.req(req);
+      req: (req: IncomingMessage): Omit<ReturnType<typeof stdSerializers.req>, 'query'> => {
+        const { query: _query, ...serialized } = stdSerializers.req(req);
         return { ...serialized, url: stripQuery(serialized.url) };
       },
     },

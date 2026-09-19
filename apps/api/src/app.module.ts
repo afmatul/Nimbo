@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
 
-import { HealthModule } from './shared';
+import { HealthModule, SharedModule } from './shared';
 
-/** Raíz de composición de `api`. T-16 agrega `SharedModule`; T-20 registra los indicadores de salud. */
+/** Raíz de composición de `api`. T-20 registra los indicadores de salud; T-21 la cola `ping`. */
 @Module({
-  imports: [HealthModule],
+  imports: [SharedModule, HealthModule],
 })
 export class AppModule {}

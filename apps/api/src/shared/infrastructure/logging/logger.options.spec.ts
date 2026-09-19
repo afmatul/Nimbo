@@ -118,7 +118,13 @@ describe('buildLoggerModuleParams', () => {
     return params.pinoHttp as unknown as PinoHttpUnderTest;
   };
   const fakeReq = (url: string): IncomingMessage =>
-    ({ method: 'GET', url, headers: {}, socket: {} }) as unknown as IncomingMessage;
+    ({
+      method: 'GET',
+      url,
+      headers: {},
+      socket: {},
+      query: { token: 'abc' },
+    }) as unknown as IncomingMessage;
 
   it('CA-13: `genReqId` usa el `correlationId` ya fijado por el middleware', () => {
     const { genReqId } = pinoHttpOf('info');
@@ -136,14 +142,10 @@ describe('buildLoggerModuleParams', () => {
     expect(genReqId(fakeReq('/api/v1/health/live'), {})).toMatch(UUID_V4);
   });
 
-  it('CA-13: `customProps` marca la línea `http.request` con el `correlationId`', () => {
+  it('CA-13: `customProps` marca la línea como `http.request` (el `correlationId` lo aporta el `mixin`)', () => {
     const { customProps } = pinoHttpOf('info');
 
-    const props = CorrelationContext.run({ correlationId: 'corr-8' }, () =>
-      customProps(fakeReq('/api/v1/health/live'), {}),
-    );
-
-    expect(props).toEqual({ event: 'http.request', correlationId: 'corr-8' });
+    expect(customProps(fakeReq('/api/v1/health/live'), {})).toEqual({ event: 'http.request' });
   });
 
   it('CA-15: la línea `http.request` no incluye la cadena de consulta de la URL', () => {
@@ -155,5 +157,6 @@ describe('buildLoggerModuleParams', () => {
 
     expect(serialized.url).toBe('/api/v1/files');
     expect(serialized.method).toBe('GET');
+    expect(serialized).not.toHaveProperty('query');
   });
 });

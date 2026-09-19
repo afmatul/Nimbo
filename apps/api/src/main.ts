@@ -1,14 +1,40 @@
 import { NestFactory } from '@nestjs/core';
+import { Logger } from 'nestjs-pino';
 
 import { AppModule } from './app.module';
+import { apiEnvSchema, CorrelationIdMiddleware, loadEnv, VersionHeaderMiddleware } from './shared';
 
-const DEFAULT_PORT = 3000;
+const API_PREFIX = 'api/v1';
 
-/** Bootstrap provisional (T-04). T-16 lo reemplaza por `loadEnv` + logger + middlewares + filtro. */
+/**
+ * Arranque de `api` (plan 000 §6.2): validar entorno → si falla, `config.invalid` en stderr y salir con `1`
+ * (el logger aún no existe) → app con logger Pino → middlewares de correlación y versión → prefijo → escuchar.
+ */
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
-  app.setGlobalPrefix('api/v1');
-  await app.listen(process.env['PORT'] ?? DEFAULT_PORT);
+  const config = loadEnv(apiEnvSchema);
+  if (!config.ok) {
+    process.stderr.write(`${JSON.stringify({ event: 'config.invalid', issues: config.issues })}\n`);
+    process.exit(1);
+  }
+  const env = config.env;
+
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const logger = app.get(Logger);
+  app.useLogger(logger);
+
+  const correlation = new CorrelationIdMiddleware();
+  const version = new VersionHeaderMiddleware(env.APP_VERSION);
+  app.use(correlation.use.bind(correlation));
+  app.use(version.use.bind(version));
+  app.setGlobalPrefix(API_PREFIX);
+
+  await app.listen(env.PORT);
+  logger.log({
+    event: 'api.started',
+    port: env.PORT,
+    appEnv: env.APP_ENV,
+    version: env.APP_VERSION,
+  });
 }
 
 void bootstrap();

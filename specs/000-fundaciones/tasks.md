@@ -165,7 +165,7 @@
   `run` → extensión presente y 1 fila en `migracion`; `revert` → ausente y 0 filas; `run` de nuevo.
   Archivos: `apps/api/src/shared/infrastructure/persistence/**`, `apps/api/src/migrations/**`, `apps/api/src/scripts/migrate.ts`, `apps/api/scripts/migration-generate.mjs`, `apps/api/package.json`, `apps/api/src/shared/index.ts`.
 
-- [ ] **T-16** `SharedModule` y `main.ts` definitivo de `api` (bootstrap con `loadEnv`, logger, middlewares) — CA: CA-18, CA-13, CA-1 (`api.started`) — Depende: T-12, T-13, T-14, T-15 — ~3 h
+- [x] **T-16** `SharedModule` y `main.ts` definitivo de `api` (bootstrap con `loadEnv`, logger, middlewares) — CA: CA-18, CA-13, CA-1 (`api.started`) — Depende: T-12, T-13, T-14, T-15 — ~3 h
   Prueba primero `apps/api/test/int/shared/bootstrap.int-spec.ts` (lanza `node dist/main.js` o `tsx src/main.ts` como
   subproceso con `.env` sin `DATABASE_URL`: código ≠ 0, exactamente una línea `config.invalid` en stderr con las
   issues, ningún puerto abierto; requiere el arnés de T-17, así que se escribe aquí y se activa en T-17). Luego
