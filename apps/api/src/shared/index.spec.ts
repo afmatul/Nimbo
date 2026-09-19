@@ -74,9 +74,10 @@ describe('shared/index.ts (CA-17)', () => {
     expectExportsOf('T-13');
     expect(shared.loadEnv(shared.workerEnvSchema, {})).toMatchObject({ ok: false });
   });
-  it.todo(
-    'CA-13: exporta `CorrelationContext`, `CorrelationIdMiddleware` y `VersionHeaderMiddleware` (T-14)',
-  );
+  it('CA-13: exporta `CorrelationContext`, `CorrelationIdMiddleware` y `VersionHeaderMiddleware` (T-14)', () => {
+    expectExportsOf('T-14');
+    expect(shared.CorrelationContext.get()).toBeUndefined();
+  });
   it.todo('CA-10: exporta `buildDataSourceOptions` (T-15)');
   it.todo('CA-18: exporta `SharedModule` (T-16)');
   it.todo('CA-16: exporta `DomainExceptionFilter` (T-18)');

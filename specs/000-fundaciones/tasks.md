@@ -144,7 +144,7 @@
   `workerEnvSchema`, `SECRET_KEYS`, tipo `Env`), `load-env.ts`, `env-report.ts` (`formatEnvIssues`).
   Archivos: `apps/api/src/shared/infrastructure/config/**`, `apps/api/src/shared/index.ts`.
 
-- [ ] **T-14** `CorrelationContext`, `CorrelationIdMiddleware`, `VersionHeaderMiddleware` — CA: CA-13, CA-31 (cabecera de versión) — Depende: T-12 — ~2 h
+- [x] **T-14** `CorrelationContext`, `CorrelationIdMiddleware`, `VersionHeaderMiddleware` — CA: CA-13, CA-31 (cabecera de versión) — Depende: T-12 — ~2 h
   Pruebas primero `apps/api/src/shared/infrastructure/correlation/correlation-context.spec.ts`
   (`isValidCorrelationId`: acepta `^[\x21-\x7E]{1,128}$`, rechaza vacío, 129 caracteres, espacios, no-ASCII;
   `run()`/`get()` aíslan contextos concurrentes), `correlation-id.middleware.spec.ts` (sin cabecera → UUID v4 en
