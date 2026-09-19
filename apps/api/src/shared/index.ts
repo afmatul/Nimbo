@@ -17,7 +17,10 @@ export type { IHealthIndicator } from './application/health/i-health-indicator.p
 export { HealthModule } from './health.module';
 export { SystemClock } from './infrastructure/clock/system.clock';
 export { apiEnvSchema, workerEnvSchema } from './infrastructure/config/env.schema';
-export type { Env } from './infrastructure/config/env.schema';
+export type { Env, SharedEnvBase } from './infrastructure/config/env.schema';
+export { ENV, EnvModule } from './infrastructure/config/env.module';
+export { MINIO_CONFIG, MinioConfigModule } from './infrastructure/config/minio-config.module';
+export type { MinioConfig } from './infrastructure/config/minio-config.module';
 export { formatEnvIssues } from './infrastructure/config/env-report';
 export { CorrelationContext } from './infrastructure/correlation/correlation-context';
 export { CorrelationIdMiddleware } from './infrastructure/correlation/correlation-id.middleware';

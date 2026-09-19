@@ -317,7 +317,9 @@ apps/api/src/
 `DomainExceptionFilter`, `CorrelationContext`, `CorrelationIdMiddleware`, `VersionHeaderMiddleware`,
 `enqueueWithCorrelation`, `REDACTED_FIELDS`, `redactDeep`, `SharedModule`, `HealthModule`, `IHealthIndicator`,
 `PostgresHealthIndicator`, `RedisHealthIndicator`, `MinioHealthIndicator`, `buildDataSourceOptions`, `Env`,
-`apiEnvSchema`, `workerEnvSchema`, `loadEnv`, `formatEnvIssues`, `PingProcessor`.
+`SharedEnvBase`, `apiEnvSchema`, `workerEnvSchema`, `loadEnv`, `formatEnvIssues`, `ENV`, `EnvModule`, `MINIO_CONFIG`,
+`MinioConfigModule`, `MinioConfig`, `PingProcessor` (refactor de T-16, §12 2026-09-19: las raíces de composición
+necesitan `EnvModule.forRoot(env)` y `MinioConfigModule.forRoot(env)`).
 **No** exporta `PingQueue` ni `HealthService` (ningún módulo los usa; la prueba de CA-14 importa `PingQueue` por ruta
 interna, permitido para pruebas del propio módulo) ni `AppDataSource`. Nada de `infrastructure/**` se importa por ruta
 interna desde otro módulo ni desde `apps/worker` (CA-5; lint de §6.4 sobre ambas apps).
@@ -326,8 +328,8 @@ Raíces de composición (sin `SharedModule.forRoot`; cada raíz compone lo que n
 
 | Raíz | Importa |
 |---|---|
-| `apps/api/src/app.module.ts` | `SharedModule`, `HealthModule.forRoot({ indicators: [PostgresHealthIndicator, RedisHealthIndicator, MinioHealthIndicator] })`, `BullModule.registerQueue({ name: 'ping' })` + `PingQueue` |
-| `apps/worker/src/worker.module.ts` | `SharedModule`, `HealthModule.forRoot({ indicators: [RedisHealthIndicator] })`, `PingProcessor` |
+| `apps/api/src/app.module.ts` (`AppModule.forRoot(env)`) | `EnvModule.forRoot(env)`, `MinioConfigModule.forRoot(env)`, `SharedModule`, `HealthModule.forRoot({ indicators: [PostgresHealthIndicator, RedisHealthIndicator, MinioHealthIndicator] })`, `BullModule.registerQueue({ name: 'ping' })` + `PingQueue` |
+| `apps/api/src/worker.module.ts` (`WorkerModule.forRoot(env)`) | `EnvModule.forRoot(env)`, `SharedModule`, `HealthModule.forRoot({ indicators: [RedisHealthIndicator] })`, `PingProcessor` |
 
 Decisiones puntuales:
 
@@ -914,3 +916,4 @@ en spec §15 la precisión de rutas de salud del worker (sin prefijo `/api/v1`).
 | 2026-09-16 | R-3 resuelto por la alternativa (`worker.main.ts` en `apps/api`); fila añadida en §9 | Evidencia de T-06: alias falla en `typecheck` y en runtime sin trucos | developer |
 | 2026-09-16 | Precisión en §9b PR-1: el esqueleto crea las carpetas de los 12 módulos con `index.ts` vacío y `README.md` mínimo (tarea T-05 de `tasks.md`). No cambia diseño ni alcance | Evitar conflictos de archivos entre dueños al arrancar 000b/001/006a | planner |
 | 2026-09-16 | D-2 pasa a repositorio **privado** (GitHub Pro); R-13 nuevo; T-31 restringe disparadores y T-37 agrega retención de imágenes | Decisión de Adrián | Adrián |
+| 2026-09-19 | Refactor de T-16: se elimina `resolveSharedEnv` (adivinaba el proceso probando dos esquemas y revalidaba lo que `main.ts`/`worker.main.ts` ya validaron); `env.schema.ts` expone el esquema base `SharedEnvBase`; `EnvModule.forRoot(env)` (`@Global`, `useValue`) recibe el entorno de la raíz de composición; token nuevo `MINIO_CONFIG` (`MinioConfigModule.forRoot`) con las cinco variables de MinIO y `MinioHealthIndicator` sin comprobación en tiempo de ejecución; `AppModule.forRoot(env)` y `WorkerModule.forRoot(env)`. §6.2 actualizada (lista de exportaciones y tabla de raíces). **`SharedModule` sigue sin parámetros** (§11.3 cambio 3) | OCP (un proceso nuevo no obliga a tocar `shared`), DIP (`shared` depende del contrato mínimo `SharedEnvBase`, no de la unión de entornos), ISP (el indicador de MinIO recibe solo lo que usa) y DRY (una sola validación por proceso) | Adrián (arquitecto) + developer |

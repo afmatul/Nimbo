@@ -4,8 +4,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import type { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import type { QueueOptions } from 'bullmq';
 
-import { ENV, EnvModule } from './infrastructure/config/env.module';
-import type { SharedEnv } from './infrastructure/config/resolve-shared-env';
+import { ENV } from './infrastructure/config/env.module';
+import type { SharedEnvBase } from './infrastructure/config/env.schema';
 import { createLoggerModule } from './infrastructure/logging/logger.module';
 import { buildDataSourceOptions } from './infrastructure/persistence/data-source';
 import { buildBullConnection } from './infrastructure/queue/bull.config';
@@ -15,17 +15,16 @@ const DB_RETRY_ATTEMPTS = 10;
 const DB_RETRY_DELAY_MS = 3000;
 
 /**
- * Módulo transversal sin parámetros: entorno validado, logger Pino, TypeORM (`autoLoadEntities`) y la
- * conexión BullMQ. Cada raíz de composición (`AppModule`, `WorkerModule`) lo importa y añade lo suyo.
+ * Módulo transversal sin parámetros: logger Pino, TypeORM (`autoLoadEntities`) y la conexión BullMQ,
+ * configurados con el `ENV` (`SharedEnvBase`) que `EnvModule.forRoot` publica. Cada raíz de composición
+ * (`AppModule`, `WorkerModule`) importa `EnvModule.forRoot(env)`, este módulo y añade lo suyo.
  */
 @Module({
   imports: [
-    EnvModule,
     createLoggerModule(),
     TypeOrmModule.forRootAsync({
-      imports: [EnvModule],
       inject: [ENV],
-      useFactory: (env: SharedEnv): TypeOrmModuleOptions => ({
+      useFactory: (env: SharedEnvBase): TypeOrmModuleOptions => ({
         ...buildDataSourceOptions(env),
         autoLoadEntities: true,
         retryAttempts: DB_RETRY_ATTEMPTS,
@@ -33,13 +32,11 @@ const DB_RETRY_DELAY_MS = 3000;
       }),
     }),
     BullModule.forRootAsync({
-      imports: [EnvModule],
       inject: [ENV],
-      useFactory: (env: SharedEnv): QueueOptions => ({
+      useFactory: (env: SharedEnvBase): QueueOptions => ({
         connection: buildBullConnection(env.REDIS_URL),
       }),
     }),
   ],
-  exports: [EnvModule],
 })
 export class SharedModule {}

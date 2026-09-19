@@ -4,7 +4,6 @@ import type { DynamicModule, Type } from '@nestjs/common';
 import { HealthService } from './application/health/health.service';
 import { I_HEALTH_INDICATORS } from './application/health/i-health-indicator.port';
 import type { IHealthIndicator } from './application/health/i-health-indicator.port';
-import { EnvModule } from './infrastructure/config/env.module';
 import { HealthController } from './presentation/health.controller';
 
 export interface HealthModuleOptions {
@@ -19,7 +18,6 @@ export class HealthModule {
     const indicators = [...options.indicators];
     return {
       module: HealthModule,
-      imports: [EnvModule],
       controllers: [HealthController],
       providers: [
         ...indicators,

@@ -1,18 +1,25 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
+import type { DynamicModule } from '@nestjs/common';
 
-import { resolveSharedEnv } from './resolve-shared-env';
+import type { SharedEnvBase } from './env.schema';
 
-/** Token del entorno validado (`SharedEnv`). Interno de `shared`; los módulos de negocio reciben su config por puertos. */
+/** Token del entorno validado (`SharedEnvBase`). Los módulos de negocio reciben su configuración por puertos. */
 export const ENV = Symbol('ENV');
 
 /**
- * Provee `ENV` de forma perezosa (en el arranque, no al importar): CA-10 exige que importar `shared`
- * no lea el entorno. Lo importan los `forRootAsync` de logger, TypeORM y BullMQ dentro de `SharedModule`.
+ * Publica bajo `ENV` el entorno que la raíz de composición ya validó con su propio esquema
+ * (`apiEnvSchema` o `workerEnvSchema`): un solo punto de validación por proceso y ninguna lectura de
+ * `process.env` al importar `shared` (CA-10). Global porque `SharedModule` no recibe parámetros
+ * (plan 000 §11.3 cambio 3) y sus piezas internas lo inyectan desde módulos dinámicos.
  */
-@Module({
-  providers: [
-    { provide: ENV, useFactory: (): ReturnType<typeof resolveSharedEnv> => resolveSharedEnv() },
-  ],
-  exports: [ENV],
-})
-export class EnvModule {}
+@Global()
+@Module({})
+export class EnvModule {
+  static forRoot(env: SharedEnvBase): DynamicModule {
+    return {
+      module: EnvModule,
+      providers: [{ provide: ENV, useValue: env }],
+      exports: [ENV],
+    };
+  }
+}

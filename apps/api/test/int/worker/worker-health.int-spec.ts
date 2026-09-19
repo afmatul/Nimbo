@@ -8,7 +8,7 @@ import { PingProcessor } from '../../../src/shared';
 import { WorkerModule } from '../../../src/worker.module';
 import { startTestInfra } from '../setup/containers';
 import type { TestInfra } from '../setup/containers';
-import { createTestApp } from '../setup/test-app';
+import { buildTestEnv, createTestApp } from '../setup/test-app';
 import type { TestApp } from '../setup/test-app';
 
 const REPO_ROOT = resolve(__dirname, '../../../../..');
@@ -36,7 +36,12 @@ describe('salud del worker (CA-23)', () => {
 
   beforeAll(async () => {
     infra = await startTestInfra();
-    testApp = await createTestApp({ env: infra.env(), modules: [WorkerModule], prefix: '' });
+    const env = buildTestEnv(infra.env());
+    testApp = await createTestApp({
+      env: infra.env(),
+      modules: [WorkerModule.forRoot(env)],
+      prefix: '',
+    });
     await testApp.app.listen(0);
     port = (testApp.app.getHttpServer().address() as AddressInfo).port;
   }, 180_000);

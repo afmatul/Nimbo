@@ -3,14 +3,16 @@ import { Test } from '@nestjs/testing';
 import { Logger } from 'nestjs-pino';
 
 import {
+  apiEnvSchema,
   CorrelationIdMiddleware,
   DomainExceptionFilter,
+  EnvModule,
+  loadEnv,
+  MinioConfigModule,
   SharedModule,
   VersionHeaderMiddleware,
 } from '../../../src/shared';
-import { ENV } from '../../../src/shared/infrastructure/config/env.module';
-import { resolveSharedEnv } from '../../../src/shared/infrastructure/config/resolve-shared-env';
-import type { SharedEnv } from '../../../src/shared/infrastructure/config/resolve-shared-env';
+import type { Env } from '../../../src/shared';
 
 import { createLogSinkModule, LogSink } from './log-sink';
 
@@ -27,7 +29,7 @@ export interface TestAppOptions {
 
 export interface TestApp {
   readonly app: INestApplication;
-  readonly env: SharedEnv;
+  readonly env: Env;
   readonly logs: LogSink;
   close(): Promise<void>;
 }
@@ -35,20 +37,35 @@ export interface TestApp {
 export const TEST_VERSION = 'test';
 
 /**
+ * El arnés valida una sola vez, como `main.ts`: el contrato de `api` cubre también lo que usa el worker.
+ * Es público para las suites que componen una raíz con `forRoot(env)` (p. ej. `WorkerModule`).
+ */
+export const buildTestEnv = (overrides: Readonly<Record<string, string>> = {}): Env => {
+  const result = loadEnv(apiEnvSchema, { ...process.env, ...overrides });
+  if (!result.ok) {
+    throw new Error(`Entorno de pruebas inválido: ${result.issues.join('; ')}`);
+  }
+  return result.env;
+};
+
+/**
  * App de integración equivalente a `main.ts` (mismos middlewares y prefijo) con el logger capturado en memoria.
  * No escucha en un puerto: `supertest` habla con `app.getHttpServer()`.
  */
 export const createTestApp = async (options: TestAppOptions = {}): Promise<TestApp> => {
-  const env = resolveSharedEnv({ ...process.env, ...options.env });
+  const env = buildTestEnv(options.env);
   const logs = new LogSink();
 
   const moduleRef = await Test.createTestingModule({
-    imports: [createLogSinkModule(logs), SharedModule, ...(options.modules ?? [])],
+    imports: [
+      createLogSinkModule(logs),
+      EnvModule.forRoot(env),
+      MinioConfigModule.forRoot(env),
+      SharedModule,
+      ...(options.modules ?? []),
+    ],
     controllers: [...(options.controllers ?? [])],
-  })
-    .overrideProvider(ENV)
-    .useValue(env)
-    .compile();
+  }).compile();
 
   const app = moduleRef.createNestApplication({ bufferLogs: true });
   const logger = app.get(Logger);

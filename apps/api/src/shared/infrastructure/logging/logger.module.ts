@@ -3,8 +3,8 @@ import { LoggerModule } from 'nestjs-pino';
 import type { Params } from 'nestjs-pino';
 import type { DestinationStream } from 'pino';
 
-import { ENV, EnvModule } from '../config/env.module';
-import type { SharedEnv } from '../config/resolve-shared-env';
+import { ENV } from '../config/env.module';
+import type { SharedEnvBase } from '../config/env.schema';
 
 import { buildLoggerModuleParams } from './logger.options';
 
@@ -14,11 +14,10 @@ import { buildLoggerModuleParams } from './logger.options';
  */
 export const LOG_STREAM = Symbol('LOG_STREAM');
 
-/** `LoggerModule.forRootAsync` de nestjs-pino con el `LOG_LEVEL` validado; lo importa `SharedModule`. */
+/** `LoggerModule.forRootAsync` de nestjs-pino con el `LOG_LEVEL` del `ENV` global; lo importa `SharedModule`. */
 export const createLoggerModule = (): DynamicModule =>
   LoggerModule.forRootAsync({
-    imports: [EnvModule],
     inject: [ENV, { token: LOG_STREAM, optional: true }],
-    useFactory: (env: SharedEnv, stream?: DestinationStream): Params =>
+    useFactory: (env: SharedEnvBase, stream?: DestinationStream): Params =>
       buildLoggerModuleParams({ level: env.LOG_LEVEL, stream }),
   });

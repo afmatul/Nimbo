@@ -32,22 +32,28 @@ const port = (defaultValue: number): z.ZodDefault<z.ZodNumber> =>
 const url = (): z.ZodString => z.string().url({ message: URL_MESSAGE });
 const nonEmpty = (): z.ZodString => z.string().min(1, EMPTY_MESSAGE);
 
-/** Variables comunes a `api` y `worker` (plan 000 §6.2). */
-const processEnvSchema = z.object({
+/** Contrato común a todo proceso Nimbo (plan 000 §6.2): lo único de lo que depende `SharedModule`. */
+const sharedEnvBaseSchema = z.object({
   NODE_ENV: oneOf(['development', 'test', 'production']),
   APP_ENV: oneOf(['local', 'test', 'staging', 'production']),
   APP_VERSION: nonEmpty().default(DEFAULT_APP_VERSION),
-  WORKER_PORT: port(DEFAULT_WORKER_PORT),
   LOG_LEVEL: oneOf(['trace', 'debug', 'info', 'warn', 'error', 'fatal']),
   DATABASE_URL: url(),
   REDIS_URL: url(),
 });
 
-/** `worker`: `SharedModule` (Postgres, Redis) y su puerto de salud; sin `MINIO_*` ni `PORT`. */
-export const workerEnvSchema = processEnvSchema;
+/** Lo que `SharedModule` y sus piezas internas necesitan; cada proceso provee un superconjunto. */
+export type SharedEnvBase = z.infer<typeof sharedEnvBaseSchema>;
+
+/** Ambos procesos comparten el mismo `.env` (CA-19), así que ambos validan el puerto interno de salud. */
+const workerPortShape = { WORKER_PORT: port(DEFAULT_WORKER_PORT) };
+
+/** `worker`: el contrato común y su puerto de salud; sin `MINIO_*` ni `PORT`. */
+export const workerEnvSchema = sharedEnvBaseSchema.extend(workerPortShape);
 
 /** `api`: además el puerto HTTP público y el acceso a MinIO. `satisfies` garantiza que toda `SecretKey` esté en el esquema. */
-export const apiEnvSchema = processEnvSchema.extend({
+export const apiEnvSchema = sharedEnvBaseSchema.extend({
+  ...workerPortShape,
   PORT: port(DEFAULT_API_PORT),
   MINIO_ENDPOINT: url(),
   MINIO_ACCESS_KEY: nonEmpty(),

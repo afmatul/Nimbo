@@ -3,25 +3,19 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { HealthCheckName, HealthCheckStatus } from '@nimbo/contracts';
 
 import type { IHealthIndicator } from '../../application/health/i-health-indicator.port';
-import { ENV } from '../config/env.module';
-import { hasMinioConfig } from '../config/resolve-shared-env';
-import type { SharedEnv } from '../config/resolve-shared-env';
+import { MINIO_CONFIG } from '../config/minio-config.module';
+import type { MinioConfig } from '../config/minio-config.module';
 
 const REQUEST_TIMEOUT_MS = 1000;
 
-/** `HeadBucket(MINIO_BUCKET)` con el SDK de S3 (`forcePathStyle` para MinIO). Solo lo registra `api`. */
+/** `HeadBucket(MINIO_BUCKET)` con el SDK de S3 (`forcePathStyle` para MinIO). Solo `api` provee `MINIO_CONFIG`. */
 @Injectable()
 export class MinioHealthIndicator implements IHealthIndicator {
   readonly name: HealthCheckName = 'minio';
   private readonly client: S3Client;
   private readonly bucket: string;
 
-  constructor(@Inject(ENV) env: SharedEnv) {
-    if (!hasMinioConfig(env)) {
-      throw new Error(
-        'MinioHealthIndicator requiere `MINIO_*`: regístralo solo en procesos con ese contrato.',
-      );
-    }
+  constructor(@Inject(MINIO_CONFIG) env: MinioConfig) {
     this.bucket = env.MINIO_BUCKET;
     this.client = new S3Client({
       endpoint: env.MINIO_ENDPOINT,

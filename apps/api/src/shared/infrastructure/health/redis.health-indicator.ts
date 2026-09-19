@@ -4,7 +4,7 @@ import { Redis } from 'ioredis';
 
 import type { IHealthIndicator } from '../../application/health/i-health-indicator.port';
 import { ENV } from '../config/env.module';
-import type { SharedEnv } from '../config/resolve-shared-env';
+import type { SharedEnvBase } from '../config/env.schema';
 
 const CONNECT_TIMEOUT_MS = 1000;
 
@@ -16,7 +16,7 @@ const CONNECT_TIMEOUT_MS = 1000;
 export class RedisHealthIndicator implements IHealthIndicator {
   readonly name: HealthCheckName = 'redis';
 
-  constructor(@Inject(ENV) private readonly env: SharedEnv) {}
+  constructor(@Inject(ENV) private readonly env: SharedEnvBase) {}
 
   async check(): Promise<HealthCheckStatus> {
     const client = new Redis(this.env.REDIS_URL, {

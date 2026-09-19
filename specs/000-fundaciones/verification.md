@@ -23,7 +23,7 @@
 | CA-15 | `apps/api/src/shared/infrastructure/logging/redact-deep.spec.ts` (11), `logger.options.spec.ts` (9) | unit | ✅ |
 | CA-16 | `apps/api/test/int/shared/domain-exception-filter.int-spec.ts` (9) + `errors/domain-error.spec.ts` | int + unit | ✅ |
 | CA-17 | `apps/api/src/shared/index.spec.ts` (13, lista exacta del plan §6.2 activa) | unit | ✅ |
-| CA-18 | `load-env.spec.ts` (12), `resolve-shared-env.spec.ts` (3); `test/int/shared/bootstrap.int-spec.ts`, `test/int/worker/bootstrap.int-spec.ts`; `apps/web/src/env.spec.ts` | unit + int | ✅ |
+| CA-18 | `load-env.spec.ts` (12), `env.module.spec.ts` (3), `minio-config.module.spec.ts` (1); `test/int/shared/bootstrap.int-spec.ts`, `test/int/worker/bootstrap.int-spec.ts`; `apps/web/src/env.spec.ts` | unit + int | ✅ |
 | CA-19 | `scripts/check-env-example.spec.ts` (4) + `pnpm env:check` | unit + ci-check | ✅ local (paso de CI en PR-3) |
 | CA-20 | `apps/api/test/int/shared/health.int-spec.ts › live con las tres dependencias detenidas` | int | ✅ (404 ms de prueba, respuesta < 100 ms) |
 | CA-21 | `health.int-spec.ts › 200 exacto en < 2 s` | int | ✅ (71 ms) |

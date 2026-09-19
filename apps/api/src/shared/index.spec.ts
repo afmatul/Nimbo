@@ -26,7 +26,16 @@ const RUNTIME_EXPORTS_BY_TASK = {
     'ConflictError',
   ],
   'T-12': ['REDACTED_FIELDS', 'redactDeep'],
-  'T-13': ['apiEnvSchema', 'workerEnvSchema', 'loadEnv', 'formatEnvIssues'],
+  'T-13': [
+    'apiEnvSchema',
+    'workerEnvSchema',
+    'loadEnv',
+    'formatEnvIssues',
+    'ENV',
+    'EnvModule',
+    'MINIO_CONFIG',
+    'MinioConfigModule',
+  ],
   'T-14': ['CorrelationContext', 'CorrelationIdMiddleware', 'VersionHeaderMiddleware'],
   'T-15': ['buildDataSourceOptions'],
   'T-16': ['SharedModule'],
@@ -70,9 +79,11 @@ describe('shared/index.ts (CA-17)', () => {
     expect(shared.REDACTED_FIELDS.has('password')).toBe(true);
     expect(shared.redactDeep({ token: 'x' })).toEqual({ token: '[REDACTED]' });
   });
-  it('CA-18: exporta `apiEnvSchema`, `workerEnvSchema`, `loadEnv` y `formatEnvIssues` (T-13)', () => {
+  it('CA-18: exporta los esquemas, `loadEnv`, `formatEnvIssues` y los módulos de configuración (T-13)', () => {
     expectExportsOf('T-13');
     expect(shared.loadEnv(shared.workerEnvSchema, {})).toMatchObject({ ok: false });
+    expect(typeof shared.EnvModule.forRoot).toBe('function');
+    expect(typeof shared.MinioConfigModule.forRoot).toBe('function');
   });
   it('CA-13: exporta `CorrelationContext`, `CorrelationIdMiddleware` y `VersionHeaderMiddleware` (T-14)', () => {
     expectExportsOf('T-14');

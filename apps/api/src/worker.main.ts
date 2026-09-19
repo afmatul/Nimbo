@@ -18,7 +18,7 @@ async function bootstrap(): Promise<void> {
   }
   const env = config.env;
 
-  const app = await NestFactory.create(WorkerModule, { bufferLogs: true });
+  const app = await NestFactory.create(WorkerModule.forRoot(env), { bufferLogs: true });
   const logger = app.get(Logger);
   app.useLogger(logger);
 

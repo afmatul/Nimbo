@@ -468,6 +468,23 @@ T-24 y T-25 pueden pasar al PR-3, y T-42/T-43 pueden hacerse en la primera seman
 
 ## Notas del developer
 
+- **T-16** (2026-09-19, refactor aprobado por Adrián): se elimina `shared/infrastructure/config/resolve-shared-env.ts`
+  (`resolveSharedEnv`, `hasMinioConfig`, `SharedEnv`, `WorkerEnv`). Adivinaba el proceso probando `apiEnvSchema` y, si
+  fallaba, `workerEnvSchema`, revalidando lo que `main.ts`/`worker.main.ts` ya habían validado (DRY) y obligando a tocar
+  `shared` ante cada proceso nuevo (OCP). Ahora `env.schema.ts` expone el esquema base y su tipo `SharedEnvBase`
+  (`NODE_ENV`, `APP_ENV`, `APP_VERSION`, `LOG_LEVEL`, `DATABASE_URL`, `REDIS_URL`), del que se componen `apiEnvSchema` y
+  `workerEnvSchema` sin cambiar variables ni mensajes; `EnvModule.forRoot(env)` es `@Global` y provee `ENV` con
+  `useValue` (CA-10 sigue cubierto: importar `shared` no lee el entorno, ahora también en `env.module.spec.ts`);
+  `AppModule.forRoot(env)` y `WorkerModule.forRoot(env)` son las únicas piezas que conocen el esquema de su proceso.
+  `MinioHealthIndicator` inyecta el token nuevo `MINIO_CONFIG` (solo `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`,
+  `MINIO_SECRET_KEY`, `MINIO_BUCKET`, `MINIO_REGION`; ISP) y pierde el `if (!hasMinioConfig(env)) throw`; lo provee
+  `MinioConfigModule.forRoot(env)` desde la raíz de composición de `api`, `@Global` porque `HealthModule.forRoot`
+  instancia los indicadores en su propio módulo. `SharedModule` sigue **sin parámetros** (plan §11.3 cambio 3) y sus
+  consumidores internos (logger, TypeORM, BullMQ, `RedisHealthIndicator`) dependen de `SharedEnvBase`. `shared/index.ts`
+  exporta además `EnvModule`, `ENV`, `MinioConfigModule`, `MINIO_CONFIG`, `SharedEnvBase` y `MinioConfig`;
+  `index.spec.ts` (lista exacta del plan §6.2) y el arnés `test/int/setup/test-app.ts` se actualizaron. Plan §6.2 y §12
+  registran el cambio.
+
 - **T-01** (2026-09-16): se agregó `.gitattributes` con `* text=auto eol=lf` (no estaba en la lista de archivos): el
   equipo mezcla Windows y otros SO y el commit inicial mostró avisos CRLF. Precisión, no desviación.
 - **T-01**: el script raíz `test` es `jest --config jest.config.cjs && pnpm -r run test` (el plan §6.1 dice
@@ -545,7 +562,8 @@ T-24 y T-25 pueden pasar al PR-3, y T-42/T-43 pueden hacerse en la primera seman
   (`apiEnvSchema.pick`): el job `migrations` de CI no necesita el resto. `migration-generate.mjs` ejecuta la CLI de
   TypeORM bajo `tsx` (`typeorm-ts-node-commonjs` exigiría `ts-node`). La prueba «importar `shared` no lee
   `process.env`» excluye `NODE_ENV`/`NO_COLOR`, que leen librerías de terceros al cargarse.
-- **T-16 · `ENV` en `SharedModule` sin parámetros**: `api` y `worker` tienen contratos distintos (`MINIO_*`) y el plan
+- **T-16 · `ENV` en `SharedModule` sin parámetros** (mecanismo original, *superado* por la nota del 2026-09-19 al
+  inicio de esta sección; se conserva como historia): `api` y `worker` tienen contratos distintos (`MINIO_*`) y el plan
   quitó `forRoot`. `EnvModule` provee `ENV` de forma perezosa con `resolveSharedEnv()`: el contrato de `api` si el
   entorno lo satisface, si no el del `worker` (`SharedEnv = Env | WorkerEnv`; `hasMinioConfig()` para narrowing en
   `MinioHealthIndicator`). Cuando 019/021 den MinIO al worker ambos contratos convergen. `main.ts` de cada proceso
