@@ -136,7 +136,7 @@
   `hooks.logMethod`, `redact.paths` de cabeceras, `genReqId`/`customProps`), `logger.module.ts` (`nestjs-pino`).
   Archivos: `apps/api/src/shared/infrastructure/logging/**`, `apps/api/src/shared/index.ts`.
 
-- [ ] **T-13** [P] Validación de entorno con zod (`loadEnv` puro) — CA: CA-18, CA-19 (esquema) — Depende: T-11 — ~3 h
+- [x] **T-13** [P] Validación de entorno con zod (`loadEnv` puro) — CA: CA-18, CA-19 (esquema) — Depende: T-11 — ~3 h
   Prueba primero `apps/api/src/shared/infrastructure/config/load-env.spec.ts` (falta `DATABASE_URL` → `{ ok: false,
   issues: ['`DATABASE_URL` es obligatoria'] }`; `PORT=abc` → «`PORT` debe ser un entero entre 1 y 65535»; varios
   errores → todos en una lista; `ok: true` devuelve `env` tipado con defaults; el texto de issues nunca contiene el

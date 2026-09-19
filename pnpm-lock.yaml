@@ -68,6 +68,9 @@ importers:
       typeorm:
         specifier: 0.3.31
         version: 0.3.31
+      zod:
+        specifier: 3.25.76
+        version: 3.25.76
     devDependencies:
       '@nestjs/cli':
         specifier: 11.0.24
