@@ -84,7 +84,9 @@ describe('shared/index.ts (CA-17)', () => {
   it('CA-18: exporta `SharedModule` (T-16)', () => {
     expectExportsOf('T-16');
   });
-  it.todo('CA-16: exporta `DomainExceptionFilter` (T-18)');
+  it('CA-16: exporta `DomainExceptionFilter` (T-18)', () => {
+    expectExportsOf('T-18');
+  });
   it.todo('CA-21: exporta `HealthModule` (T-19)');
   it.todo(
     'CA-21: exporta `PostgresHealthIndicator`, `RedisHealthIndicator` y `MinioHealthIndicator` (T-20)',

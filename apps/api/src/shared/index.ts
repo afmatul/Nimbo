@@ -24,5 +24,6 @@ export { loadEnv } from './infrastructure/config/load-env';
 export { redactDeep } from './infrastructure/logging/redact-deep';
 export { buildDataSourceOptions } from './infrastructure/persistence/data-source';
 export { REDACTED_FIELDS } from './infrastructure/logging/redacted-fields';
+export { DomainExceptionFilter } from './presentation/domain-exception.filter';
 export { VersionHeaderMiddleware } from './presentation/version-header.middleware';
 export { SharedModule } from './shared.module';

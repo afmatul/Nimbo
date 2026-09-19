@@ -4,6 +4,7 @@ import { Logger } from 'nestjs-pino';
 
 import {
   CorrelationIdMiddleware,
+  DomainExceptionFilter,
   SharedModule,
   VersionHeaderMiddleware,
 } from '../../../src/shared';
@@ -48,12 +49,14 @@ export const createTestApp = async (options: TestAppOptions = {}): Promise<TestA
     .compile();
 
   const app = moduleRef.createNestApplication({ bufferLogs: true });
-  app.useLogger(app.get(Logger));
+  const logger = app.get(Logger);
+  app.useLogger(logger);
   const correlation = new CorrelationIdMiddleware();
   const version = new VersionHeaderMiddleware(TEST_VERSION);
   app.use(correlation.use.bind(correlation));
   app.use(version.use.bind(version));
   app.setGlobalPrefix('api/v1');
+  app.useGlobalFilters(new DomainExceptionFilter(logger));
   await app.init();
 
   return {

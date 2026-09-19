@@ -188,7 +188,7 @@
   `bootstrap.int-spec.ts` de T-16. Script `test:int` en `apps/api/package.json`.
   Archivos: `apps/api/jest.int.config.ts`, `apps/api/test/int/setup/**`, `apps/api/test/int/shared/correlation-id.int-spec.ts`, `apps/api/package.json`.
 
-- [ ] **T-18** `DomainExceptionFilter` con prueba de API — CA: CA-16 — Depende: T-17 — ~3 h
+- [x] **T-18** `DomainExceptionFilter` con prueba de API — CA: CA-16 — Depende: T-17 — ~3 h
   Prueba primero `apps/api/test/int/shared/domain-exception-filter.int-spec.ts` (controlador de prueba definido en
   el spec lanza `SharedExampleNotFoundError extends NotFoundError` con `code = 'SHARED_EXAMPLE_NOT_FOUND'` → `404`,
   cuerpo exacto `{ code, message en español con acción, correlationId de la petición }`, sin `stack`/nombre de

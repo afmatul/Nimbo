@@ -2,13 +2,19 @@ import { NestFactory } from '@nestjs/core';
 import { Logger } from 'nestjs-pino';
 
 import { AppModule } from './app.module';
-import { apiEnvSchema, CorrelationIdMiddleware, loadEnv, VersionHeaderMiddleware } from './shared';
+import {
+  apiEnvSchema,
+  CorrelationIdMiddleware,
+  DomainExceptionFilter,
+  loadEnv,
+  VersionHeaderMiddleware,
+} from './shared';
 
 const API_PREFIX = 'api/v1';
 
 /**
  * Arranque de `api` (plan 000 §6.2): validar entorno → si falla, `config.invalid` en stderr y salir con `1`
- * (el logger aún no existe) → app con logger Pino → middlewares de correlación y versión → prefijo → escuchar.
+ * (el logger aún no existe) → app con logger Pino → middlewares de correlación y versión → prefijo → filtro → escuchar.
  */
 async function bootstrap(): Promise<void> {
   const config = loadEnv(apiEnvSchema);
@@ -27,6 +33,7 @@ async function bootstrap(): Promise<void> {
   app.use(correlation.use.bind(correlation));
   app.use(version.use.bind(version));
   app.setGlobalPrefix(API_PREFIX);
+  app.useGlobalFilters(new DomainExceptionFilter(logger));
 
   await app.listen(env.PORT);
   logger.log({
