@@ -116,7 +116,7 @@
 
 ## Bloque 2 — PR-2 «shared»: dominio, infraestructura, salud, cola `ping`, migraciones (plan §9b paso 2)
 
-- [ ] **T-11** `shared/domain`: `Actor`, `Role`, `IClock`, `FixedClock`, `DomainError` y subclases — CA: CA-17 — Depende: T-04 — ~2 h
+- [x] **T-11** `shared/domain`: `Actor`, `Role`, `IClock`, `FixedClock`, `DomainError` y subclases — CA: CA-17 — Depende: T-04 — ~2 h
   Pruebas primero: `apps/api/src/shared/domain/fixed.clock.spec.ts` (`now()` devuelve la fecha fijada, `advance()`),
   `errors/domain-error.spec.ts` (cada subclase expone `code` y `message`; `instanceof DomainError`),
   `apps/api/src/shared/index.spec.ts` (CA-17: exporta exactamente la lista de plan §6.2; `keyof Actor` =
