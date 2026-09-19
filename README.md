@@ -77,6 +77,30 @@ docs/           SDD (constitución, arquitectura, modelo de diseño), diseño y 
 specs/          backlog y specs (spec.md, plan.md, tasks.md, verification.md)
 ```
 
+## Onboarding del equipo
+
+Lectura del día 1 (~1 h), en este orden: `CLAUDE.md` → `HARNESS.md` → `docs/adr/0009` (cómo trabajamos) →
+`docs/sdd/workflow.md` → `docs/sdd/constitution.md` → `specs/README.md` → este README.
+Antes de la primera `/spec`: `docs/sdd/product-context.md` (roles, planes, RF/RNF, fuera de alcance),
+`docs/sdd/architecture.md` §3–§4, el `README.md` de tu módulo en `apps/api/src/modules/<modulo>/` y
+`specs/000-fundaciones/spec.md` como ejemplo. El resto (`design-model.md`, `design-findings.md`, `conventions.md`,
+`ui-guidelines.md`) se lee cuando la tarea lo pide.
+
+Dónde vive tu trabajo: `specs/NNN-slug/` (spec, plan, tareas, evidencia) y `apps/api/src/modules/<tu-modulo>/`.
+`apps/api/src/shared/` se consume, no se modifica. `docs/design/mockups/` es referencia; nunca se importa.
+
+Flujo por funcionalidad, siempre con Claude Code desde la raíz del repo:
+
+```
+/spec <necesidad>   → responder preguntas, marcar Aclarada
+/plan NNN           → confirmar el plan
+/tasks NNN
+/implement NNN      → repetir hasta terminar (requiere la spec 000 integrada)
+/verify NNN → /review NNN → PR → aprobación de otro integrante → squash merge
+```
+
+El primer trabajo de cada integrante está en `specs/README.md` («Arranque de Fase 1»).
+
 ## Operación
 
 La documentación operativa se escribe en la spec 000: `docs/operations/ambientes.md` (variables y diferencias

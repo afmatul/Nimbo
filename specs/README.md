@@ -57,6 +57,22 @@ Antes de planificar las specs de Fase 1, el equipo decide en una reunión los ha
 
 «Pendiente» = aún sin spec creada. Al crearla con `/spec`, el estado pasa a `Borrador`.
 
+## Arranque de Fase 1 (semana del 18/09)
+
+Escribir specs, mockups y planes solo toca `specs/` y `docs/`: se puede hacer **hoy**, sin esperar a 000.
+`/implement` de cualquier spec requiere el PR-2 de 000 (`shared`) integrado en `main`.
+
+| Integrante | Hoy (specs y mockups) | En cuanto 000 PR-2 esté en `main` | Después |
+|---|---|---|---|
+| Adrián | Terminar 000 (bloques 2–6); redactar ADR-0010 con `/adr`; `/spec 003` roles-y-acceso; convocar la compuerta T-27 (aceptar ADR y DF) | `/implement 003` | 004 auditoría |
+| Juan Marcos | `/spec 001` registro-y-verificacion y `/spec 006a` catalogo-y-limites; `/mockup identity/registro 001` e `identity/verificar-correo 001`; luego `/plan` de ambas | `/implement 006a` (es pequeña y la necesitan Abel y 007) y luego 001 | `/spec 002` sesiones y dispositivos |
+| Abel | `/spec 005` carga-y-descarga; `/mockup storage/carga 005` (el explorador ya tiene mockup); `/spec 006` carpetas-y-papelera | `/implement 005` (necesita además 003 y 006a: coordinar con Adrián y Juan Marcos) | 006, 007 |
+| Fátima | `/spec 000b` sistema-de-diseno; `/mockup shared/layout 000b`; revisar `docs/sdd/ui-guidelines.md` y DF-41–48 | `/implement 000b` (solo necesita el PR-1, no `shared`) | `/spec 015` tiempo-real |
+
+Reglas de convivencia: PRs pequeños y rebase frecuente sobre `main`; los únicos archivos compartidos que se tocan
+son `specs/README.md` (tu fila), `apps/api/src/app.module.ts` (registrar tu módulo), `packages/contracts/src/`
+(un archivo por módulo), `.env.example` y las migraciones (archivos con timestamp). Nadie revisa su propio PR.
+
 ## Hitos del curso
 
 | Entrega         | Fecha                   | Specs que deben estar `Hecha`                            |
