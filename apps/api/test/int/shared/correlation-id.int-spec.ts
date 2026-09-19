@@ -25,7 +25,7 @@ describe('x-correlation-id (CA-13)', () => {
 
   beforeAll(async () => {
     testApp = await createTestApp({
-      modules: [HealthModule],
+      modules: [HealthModule.forRoot({ indicators: [] })],
       controllers: [CorrelationProbeController],
     });
   });

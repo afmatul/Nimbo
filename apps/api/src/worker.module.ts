@@ -7,6 +7,6 @@ import { HealthModule } from './shared';
  * no aloja lógica propia. T-22 agrega `SharedModule`, `HealthModule.forRoot({ indicators: [Redis] })` y `PingProcessor`.
  */
 @Module({
-  imports: [HealthModule],
+  imports: [HealthModule.forRoot({ indicators: [] })],
 })
 export class WorkerModule {}

@@ -199,7 +199,7 @@
   bitácoras `http.domain_error`/`http.unhandled_error`) y registro en `main.ts` con `useGlobalFilters`.
   Archivos: `apps/api/src/shared/presentation/domain-exception.filter.ts`, `apps/api/src/main.ts`, `apps/api/test/int/shared/domain-exception-filter.int-spec.ts`, `apps/api/src/shared/index.ts`.
 
-- [ ] **T-19** `HealthService` + `IHealthIndicator` (application) y `HealthModule.forRoot` — CA: CA-21, CA-22 (lógica) — Depende: T-11 — ~2 h
+- [x] **T-19** `HealthService` + `IHealthIndicator` (application) y `HealthModule.forRoot` — CA: CA-21, CA-22 (lógica) — Depende: T-11 — ~2 h
   Prueba primero `apps/api/src/shared/application/health/health.service.spec.ts` (indicadores falsos: todos `up` →
   `{ status: 'ok', checks }`; uno rechaza → `down` y `status: 'error'`; uno tarda > 1500 ms → `down` sin esperar más
   de ~1600 ms, con `FixedClock`/temporizadores falsos; el resultado nunca contiene el mensaje del error; `checks`

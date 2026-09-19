@@ -13,6 +13,7 @@ export { FixedClock } from './domain/fixed.clock';
 export { I_CLOCK } from './domain/i-clock.port';
 export type { IClock } from './domain/i-clock.port';
 export { Role } from './domain/role.enum';
+export type { IHealthIndicator } from './application/health/i-health-indicator.port';
 export { HealthModule } from './health.module';
 export { SystemClock } from './infrastructure/clock/system.clock';
 export { apiEnvSchema, workerEnvSchema } from './infrastructure/config/env.schema';
