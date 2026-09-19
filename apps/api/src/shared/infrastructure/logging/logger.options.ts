@@ -3,7 +3,8 @@ import type { IncomingMessage } from 'node:http';
 
 import type { Params } from 'nestjs-pino';
 import { stdSerializers } from 'pino';
-import type { LoggerOptions } from 'pino';
+import type { DestinationStream, LoggerOptions } from 'pino';
+import type { Options as PinoHttpOptions } from 'pino-http';
 
 import { CorrelationContext } from '../correlation/correlation-context';
 
@@ -11,6 +12,8 @@ import { redactDeep, REDACTED_VALUE } from './redact-deep';
 
 export interface LoggerOptionsInput {
   readonly level: string;
+  /** Solo pruebas: destino en memoria. Sin él, pino escribe en stdout. */
+  readonly stream?: DestinationStream | undefined;
 }
 
 /** Cabeceras que pino-http enlaza en `req`/`res`; el `hook` no las ve, así que van por `redact.paths`. */
@@ -50,18 +53,21 @@ export const buildPinoOptions = (input: LoggerOptionsInput): LoggerOptions => ({
 });
 
 /** Parámetros de `LoggerModule.forRoot` (nestjs-pino): pino + pino-http con `correlationId` (CA-13). */
-export const buildLoggerModuleParams = (input: LoggerOptionsInput): Params => ({
-  pinoHttp: {
-    ...buildPinoOptions(input),
-    genReqId: (): string => CorrelationContext.get()?.correlationId ?? randomUUID(),
-    // El `correlationId` ya lo pone el `mixin` en todas las líneas, incluida esta.
-    customProps: (): Record<string, unknown> => ({ event: 'http.request' }),
-    serializers: {
-      // `http.request` va sin cuerpo ni cadena de consulta (plan §7): la URL puede llevar claves de enlace.
-      req: (req: IncomingMessage): Omit<ReturnType<typeof stdSerializers.req>, 'query'> => {
-        const { query: _query, ...serialized } = stdSerializers.req(req);
-        return { ...serialized, url: stripQuery(serialized.url) };
-      },
+export const buildLoggerModuleParams = (input: LoggerOptionsInput): Params => {
+  const options = buildPinoHttpOptions(input);
+  return { pinoHttp: input.stream === undefined ? options : [options, input.stream] };
+};
+
+const buildPinoHttpOptions = (input: LoggerOptionsInput): PinoHttpOptions => ({
+  ...buildPinoOptions(input),
+  genReqId: (): string => CorrelationContext.get()?.correlationId ?? randomUUID(),
+  // El `correlationId` ya lo pone el `mixin` en todas las líneas, incluida esta.
+  customProps: (): Record<string, unknown> => ({ event: 'http.request' }),
+  serializers: {
+    // `http.request` va sin cuerpo ni cadena de consulta (plan §7): la URL puede llevar claves de enlace.
+    req: (req: IncomingMessage): Omit<ReturnType<typeof stdSerializers.req>, 'query'> => {
+      const { query: _query, ...serialized } = stdSerializers.req(req);
+      return { ...serialized, url: stripQuery(serialized.url) };
     },
   },
 });

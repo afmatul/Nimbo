@@ -177,7 +177,7 @@
   bitácora `api.started { port, appEnv, version }`).
   Archivos: `apps/api/src/shared/shared.module.ts`, `apps/api/src/app.module.ts`, `apps/api/src/main.ts`, `apps/api/test/int/shared/bootstrap.int-spec.ts`, `apps/api/src/shared/index.ts`.
 
-- [ ] **T-17** Arnés de integración (Testcontainers) + prueba de `correlationId` HTTP — CA: CA-13, CA-24 (`int` real) — Depende: T-16 — ~4 h
+- [x] **T-17** Arnés de integración (Testcontainers) + prueba de `correlationId` HTTP — CA: CA-13, CA-24 (`int` real) — Depende: T-16 — ~4 h
   `apps/api/jest.int.config.ts` (`testMatch: test/int/**/*.int-spec.ts`, `globalSetup/globalTeardown`),
   `apps/api/test/int/setup/global-setup.ts` (arranca `@testcontainers/postgresql` con `pgvector/pgvector:pg17`,
   `@testcontainers/redis`, `GenericContainer('minio/minio')`; exporta `DATABASE_URL`/`REDIS_URL`/`MINIO_*` y guarda
