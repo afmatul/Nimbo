@@ -12,7 +12,7 @@
 - [x] **T-04** [P] Configuración de tipografías `Inter` y `JetBrains Mono` con `next/font/google`, `lang="es"` y variables CSS en `apps/web/src/app/layout.tsx` con prueba unitaria — CA: CA-3 — Archivos: `apps/web/src/app/layout.tsx`, `apps/web/src/app/layout.spec.tsx`
 
 ## Bloque 2 — Componentes atómicos base
-- [ ] **T-05** [P] Prueba y componente `Button` (`apps/web/src/components/ui/button.tsx`) con variantes (`default`, `destructive`, `outline`, `secondary`, `ghost`, `link`), tamaños, estados hover/focus/disabled y estado `loading` accesible — CA: CA-4 — Archivos: `apps/web/src/components/ui/button.tsx`, `apps/web/src/components/ui/button.spec.tsx`
+- [x] **T-05** [P] Prueba y componente `Button` (`apps/web/src/components/ui/button.tsx`) con variantes (`default`, `destructive`, `outline`, `secondary`, `ghost`, `link`), tamaños, estados hover/focus/disabled y estado `loading` accesible — CA: CA-4 — Archivos: `apps/web/src/components/ui/button.tsx`, `apps/web/src/components/ui/button.spec.tsx`
 - [ ] **T-06** [P] Prueba y componente `Input` (`apps/web/src/components/ui/input.tsx`) con borde accesible `#7F93AA` (DF-45), foco con anillo y soporte para estados de error accesible (`aria-invalid`) — CA: CA-4 — Archivos: `apps/web/src/components/ui/input.tsx`, `apps/web/src/components/ui/input.spec.tsx`
 - [ ] **T-07** [P] Prueba y componentes `Card` (`card.tsx`) y `Badge` (`badge.tsx`) con variantes, sombras suaves y bordes de Cielo Sereno — CA: CA-4 — Archivos: `apps/web/src/components/ui/card.tsx`, `apps/web/src/components/ui/card.spec.tsx`, `apps/web/src/components/ui/badge.tsx`, `apps/web/src/components/ui/badge.spec.tsx`
 
