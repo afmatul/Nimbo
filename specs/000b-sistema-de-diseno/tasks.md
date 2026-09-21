@@ -14,7 +14,7 @@
 ## Bloque 2 — Componentes atómicos base
 - [x] **T-05** [P] Prueba y componente `Button` (`apps/web/src/components/ui/button.tsx`) con variantes (`default`, `destructive`, `outline`, `secondary`, `ghost`, `link`), tamaños, estados hover/focus/disabled y estado `loading` accesible — CA: CA-4 — Archivos: `apps/web/src/components/ui/button.tsx`, `apps/web/src/components/ui/button.spec.tsx`
 - [x] **T-06** [P] Prueba y componente `Input` (`apps/web/src/components/ui/input.tsx`) con borde accesible `#7F93AA` (DF-45), foco con anillo y soporte para estados de error accesible (`aria-invalid`) — CA: CA-4 — Archivos: `apps/web/src/components/ui/input.tsx`, `apps/web/src/components/ui/input.spec.tsx`
-- [ ] **T-07** [P] Prueba y componentes `Card` (`card.tsx`) y `Badge` (`badge.tsx`) con variantes, sombras suaves y bordes de Cielo Sereno — CA: CA-4 — Archivos: `apps/web/src/components/ui/card.tsx`, `apps/web/src/components/ui/card.spec.tsx`, `apps/web/src/components/ui/badge.tsx`, `apps/web/src/components/ui/badge.spec.tsx`
+- [x] **T-07** [P] Prueba y componentes `Card` (`card.tsx`) y `Badge` (`badge.tsx`) con variantes, sombras suaves y bordes de Cielo Sereno — CA: CA-4 — Archivos: `apps/web/src/components/ui/card.tsx`, `apps/web/src/components/ui/card.spec.tsx`, `apps/web/src/components/ui/badge.tsx`, `apps/web/src/components/ui/badge.spec.tsx`
 
 ## Bloque 3 — Componentes de dominio Nimbo
 - [ ] **T-08** [P] Prueba y componente `FileTypeChip` (`apps/web/src/components/nimbo/file-type-chip.tsx`) para extensiones (`.docx`, `.xlsx`, `.pptx`, `.pdf`, imagen, otro) con texto oscuro contrastado y fondo al 12% (DF-44) — CA: CA-4 — Archivos: `apps/web/src/components/nimbo/file-type-chip.tsx`, `apps/web/src/components/nimbo/file-type-chip.spec.tsx`
