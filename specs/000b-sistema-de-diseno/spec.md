@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Borrador |
+| Estado | Aclarada |
 | Dueño | Fátima (4) |
 | Fase | 1 |
 | Requisitos | RNF-13, RNF-14 |
@@ -109,7 +109,7 @@ Establecer la infraestructura visual completa en `apps/web` (Next.js + Tailwind 
 - Fuera de alcance el modo oscuro global en esta fase (Cielo Sereno define tema claro para la app y tema oscuro encapsulado exclusivamente para el panel del Agente IA).
 
 ## 11. Preguntas
-- [ABIERTA] ¿Confirmamos la instalación de `clsx`, `tailwind-merge`, `class-variance-authority` y `lucide-react` para la base de componentes accesibles tipo shadcn en `apps/web`? — bloquea: no.
+- [RESUELTA] ¿Confirmamos la instalación de `clsx`, `tailwind-merge`, `class-variance-authority` y `lucide-react` para la base de componentes accesibles tipo shadcn en `apps/web`? → Confirmado y aprobado por la dueña. (2026-09-20, Fátima)
 - [RESUELTA] ¿Qué tonos se usarán para resolver el contraste en botones primarios y links? → Se adoptan `#4A6FA5` (primario) y `#3B5A8A` (hover) según DF-41 y `ui-guidelines.md` §2. (2026-09-20, Fátima)
 - [RESUELTA] ¿Se mantendrán los colores decorativos originales? → Sí, `#6B8DD6`, `#6DB99A`, etc., se reservan para íconos grandes, barras de progreso e ilustraciones donde no hay texto superpuesto. (2026-09-20, Fátima)
 
@@ -117,3 +117,4 @@ Establecer la infraestructura visual completa en `apps/web` (Next.js + Tailwind 
 | Fecha | Cambio | Motivo | Aprobó |
 |---|---|---|---|
 | 2026-09-20 | Creación del borrador de la spec | Inicio de implementación de la base de diseño para la Fase 1 | Fátima |
+| 2026-09-20 | Spec pasa a Aclarada tras confirmar DF-41 a DF-45 y dependencias de UI | Compuerta humana superada | Fátima |
