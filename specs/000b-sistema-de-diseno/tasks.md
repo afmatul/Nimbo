@@ -19,7 +19,7 @@
 ## Bloque 3 — Componentes de dominio Nimbo
 - [x] **T-08** [P] Prueba y componente `FileTypeChip` (`apps/web/src/components/nimbo/file-type-chip.tsx`) para extensiones (`.docx`, `.xlsx`, `.pptx`, `.pdf`, imagen, otro) con texto oscuro contrastado y fondo al 12% (DF-44) — CA: CA-4 — Archivos: `apps/web/src/components/nimbo/file-type-chip.tsx`, `apps/web/src/components/nimbo/file-type-chip.spec.tsx`
 - [x] **T-09** [P] Prueba y componente `CitationChip` (`apps/web/src/components/nimbo/citation-chip.tsx`) para citas del agente en superficie oscura (`#2C3A52`) con soporte de teclado y foco visible — CA: CA-4 — Archivos: `apps/web/src/components/nimbo/citation-chip.tsx`, `apps/web/src/components/nimbo/citation-chip.spec.tsx`
-- [ ] **T-10** [P] Prueba y componente `StateView` (`apps/web/src/components/nimbo/state-view.tsx`) para estados vacío (`empty`), cargando (`loading`) y error (`error`) con mensaje y acción correctiva obligatoria (RNF-14) — CA: CA-4 — Archivos: `apps/web/src/components/nimbo/state-view.tsx`, `apps/web/src/components/nimbo/state-view.spec.tsx`
+- [x] **T-10** [P] Prueba y componente `StateView` (`apps/web/src/components/nimbo/state-view.tsx`) para estados vacío (`empty`), cargando (`loading`) y error (`error`) con mensaje y acción correctiva obligatoria (RNF-14) — CA: CA-4 — Archivos: `apps/web/src/components/nimbo/state-view.tsx`, `apps/web/src/components/nimbo/state-view.spec.tsx`
 
 ## Bloque 4 — Layout, accesibilidad integral y verificación
 - [ ] **T-11** Layout base `AppLayout` (`apps/web/src/components/nimbo/app-layout.tsx`) responsivo desde 360 px con navegación colapsable y sin desbordamiento horizontal — CA: CA-5 — Archivos: `apps/web/src/components/nimbo/app-layout.tsx`, `apps/web/src/components/nimbo/app-layout.spec.tsx`
