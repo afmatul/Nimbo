@@ -9,7 +9,7 @@
 
 ## Bloque 1 — Tokens y tipografías (pruebas primero)
 - [x] **T-03** [P] Prueba matemática de contraste WCAG AA (`globals.spec.ts`) y definición centralizada de tokens en `apps/web/src/app/globals.css` (Cielo Sereno con ajustes DF-41 a DF-45 y `prefers-reduced-motion`) — CA: CA-1, CA-2, CA-6 — Archivos: `apps/web/src/app/globals.css`, `apps/web/src/app/globals.spec.ts`
-- [ ] **T-04** [P] Configuración de tipografías `Inter` y `JetBrains Mono` con `next/font/google`, `lang="es"` y variables CSS en `apps/web/src/app/layout.tsx` con prueba unitaria — CA: CA-3 — Archivos: `apps/web/src/app/layout.tsx`, `apps/web/src/app/layout.spec.tsx`
+- [x] **T-04** [P] Configuración de tipografías `Inter` y `JetBrains Mono` con `next/font/google`, `lang="es"` y variables CSS en `apps/web/src/app/layout.tsx` con prueba unitaria — CA: CA-3 — Archivos: `apps/web/src/app/layout.tsx`, `apps/web/src/app/layout.spec.tsx`
 
 ## Bloque 2 — Componentes atómicos base
 - [ ] **T-05** [P] Prueba y componente `Button` (`apps/web/src/components/ui/button.tsx`) con variantes (`default`, `destructive`, `outline`, `secondary`, `ghost`, `link`), tamaños, estados hover/focus/disabled y estado `loading` accesible — CA: CA-4 — Archivos: `apps/web/src/components/ui/button.tsx`, `apps/web/src/components/ui/button.spec.tsx`
