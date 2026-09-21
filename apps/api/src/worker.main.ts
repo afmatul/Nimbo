@@ -3,14 +3,15 @@ import { randomUUID } from 'node:crypto';
 import { NestFactory } from '@nestjs/core';
 import { Logger } from 'nestjs-pino';
 
-import { CorrelationContext, loadEnv, workerEnvSchema } from './shared';
+import { CorrelationContext, loadDotenvFile, loadEnv, workerEnvSchema } from './shared';
 import { WORKER_QUEUES, WorkerModule } from './worker.module';
 
 /**
- * Arranque del `worker` (plan 000 §6.3): validar entorno → `config.invalid` + exit 1 si falla → Nest con Pino →
+ * Arranque del `worker` (plan 000 §6.3): cargar el `.env` de la raíz si existe → validar entorno → `config.invalid` + exit 1 si falla → Nest con Pino →
  * escuchar en `WORKER_PORT` (nunca publicado, sin prefijo `/api/v1`: su salud no es API pública, CA-23).
  */
 async function bootstrap(): Promise<void> {
+  loadDotenvFile();
   const config = loadEnv(workerEnvSchema);
   if (!config.ok) {
     process.stderr.write(`${JSON.stringify({ event: 'config.invalid', issues: config.issues })}\n`);

@@ -5,13 +5,18 @@ import { resolve } from 'node:path';
 const API_ROOT = resolve(__dirname, '../../..');
 const TEST_PORT = 3999;
 
-/** Entorno mínimo sin `DATABASE_URL`; nada del entorno del arnés se hereda (allí sí está definida). */
-const envWithoutDatabase = (): NodeJS.ProcessEnv => ({
+/**
+ * Entorno mínimo con `DATABASE_URL` inválida; nada del entorno del arnés se hereda. El valor va explícito
+ * porque el proceso carga el `.env` de la raíz y allí la variable existe: lo del entorno siempre gana, así
+ * que así se fuerza la configuración inválida sin depender de que falte un archivo.
+ */
+const envWithInvalidDatabase = (): NodeJS.ProcessEnv => ({
   PATH: process.env.PATH,
   NODE_ENV: 'test',
   APP_ENV: 'test',
   LOG_LEVEL: 'info',
   PORT: String(TEST_PORT),
+  DATABASE_URL: 'no-es-url',
   REDIS_URL: 'redis://localhost:6379',
   MINIO_ENDPOINT: 'http://localhost:9000',
   MINIO_ACCESS_KEY: 'nimbo',
@@ -31,10 +36,10 @@ const portIsClosed = (port: number): Promise<boolean> =>
   });
 
 describe('bootstrap de api (CA-18)', () => {
-  it('CA-18: sin `DATABASE_URL` el proceso no arranca: exit ≠ 0, una línea `config.invalid`, ningún puerto abierto', async () => {
+  it('CA-18: con `DATABASE_URL` inválida el proceso no arranca: exit ≠ 0, una línea `config.invalid`, ningún puerto abierto', async () => {
     const result = spawnSync(process.execPath, [require.resolve('tsx/cli'), 'src/main.ts'], {
       cwd: API_ROOT,
-      env: envWithoutDatabase(),
+      env: envWithInvalidDatabase(),
       encoding: 'utf8',
       timeout: 60_000,
     });
@@ -44,7 +49,7 @@ describe('bootstrap de api (CA-18)', () => {
     expect(stderrLines).toHaveLength(1);
     expect(JSON.parse(stderrLines[0] ?? '')).toEqual({
       event: 'config.invalid',
-      issues: ['`DATABASE_URL` es obligatoria'],
+      issues: ['`DATABASE_URL` debe ser una URL válida'],
     });
     expect(result.stdout.trim()).toBe('');
     await expect(portIsClosed(TEST_PORT)).resolves.toBe(true);

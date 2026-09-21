@@ -24,6 +24,7 @@ export type { MinioConfig } from './infrastructure/config/minio-config.module';
 export { formatEnvIssues } from './infrastructure/config/env-report';
 export { CorrelationContext } from './infrastructure/correlation/correlation-context';
 export { CorrelationIdMiddleware } from './infrastructure/correlation/correlation-id.middleware';
+export { loadDotenvFile } from './infrastructure/config/load-dotenv-file';
 export { loadEnv } from './infrastructure/config/load-env';
 export { redactDeep } from './infrastructure/logging/redact-deep';
 export { MinioHealthIndicator } from './infrastructure/health/minio.health-indicator';

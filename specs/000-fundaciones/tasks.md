@@ -468,6 +468,29 @@ T-24 y T-25 pueden pasar al PR-3, y T-42/T-43 pueden hacerse en la primera seman
 
 ## Notas del developer
 
+- **Defecto de CA-1 — carga del `.env` (2026-09-21, rama `fix/000-carga-de-env`).** El README manda
+  `cp .env.example .env` y luego `pnpm --filter api migration:run` / `pnpm dev`, pero **nada leía el archivo**: ni
+  `dotenv` ni `--env-file` en ningún script. `api`, `worker` y las migraciones salían con `config.invalid`
+  («`NODE_ENV` es obligatoria», …) y solo `web` arrancaba, porque Next.js carga `.env` por su cuenta (de ahí la página
+  «API: no disponible»). Arreglo: `shared/infrastructure/config/load-dotenv-file.ts` con `loadDotenvFile(path?)` y
+  `repoDotenvPath(from?)`, encima de `process.loadEnvFile` (integrado en Node 22: sin dependencias nuevas ni ADR). La
+  raíz del repositorio se busca hacia arriba por `pnpm-workspace.yaml`, así que vale igual desde `src/` (tsx,
+  `nest start`) y desde `dist/`; sin archivo no hace nada ni lanza (en staging y en los contenedores las variables
+  llegan del entorno). Es una **función**, nunca un efecto de importar: CA-10 sigue intacto. Se llama en `main.ts`,
+  `worker.main.ts` y `migrations/data-source.cli.ts`; en `migrate.ts` **no**, porque su `import` de `data-source.cli`
+  se evalúa antes y la llamada llegaría tarde: ese archivo es el punto de entrada real de `migration:run` y de la CLI
+  de TypeORM. `process.loadEnvFile` **no pisa** lo que ya está en `process.env`, así que el entorno siempre gana.
+  Por qué las pruebas no lo vieron: todas inyectaban el entorno a mano (el arnés `test/int/setup/test-app.ts`,
+  `loadEnv(schema, source)` en unitarias y los subprocesos de `bootstrap.int-spec.ts` con `env:` explícito); ninguna
+  arrancaba el sistema como lo indica el README. Se agrega `test/int/shared/dotenv-bootstrap.int-spec.ts`: levanta
+  `src/main.ts` en un proceso con entorno limpio (solo `PATH` y `PORT`) y exige `health/live` 200 sin `config.invalid`;
+  allí mismo viven las dos pruebas de efecto del helper (carga y precedencia), porque el ambiente de Jest expone una
+  copia de `process.env` y no ve lo que escribe la función nativa. Las dos pruebas de CA-18 (`api` y `worker`) ahora
+  fuerzan un valor **inválido** (`DATABASE_URL`/`REDIS_URL` = `no-es-url`) en vez de omitir la variable: con el `.env`
+  cargado, omitirla ya no produce configuración inválida, y los asertos (exit ≠ 0, una sola línea `config.invalid`,
+  sin stdout, puerto cerrado) se mantienen. Verificado de punta a punta con entorno limpio: `migration:run` corre y
+  `nest start` responde `health/live` y `health/ready` 200 (`postgres`, `redis` y `minio` `up`).
+
 - **T-16** (2026-09-19, refactor aprobado por Adrián): se elimina `shared/infrastructure/config/resolve-shared-env.ts`
   (`resolveSharedEnv`, `hasMinioConfig`, `SharedEnv`, `WorkerEnv`). Adivinaba el proceso probando `apiEnvSchema` y, si
   fallaba, `workerEnvSchema`, revalidando lo que `main.ts`/`worker.main.ts` ya habían validado (DRY) y obligando a tocar

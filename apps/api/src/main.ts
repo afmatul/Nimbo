@@ -9,6 +9,7 @@ import {
   CorrelationContext,
   CorrelationIdMiddleware,
   DomainExceptionFilter,
+  loadDotenvFile,
   loadEnv,
   VersionHeaderMiddleware,
 } from './shared';
@@ -16,10 +17,11 @@ import {
 const API_PREFIX = 'api/v1';
 
 /**
- * Arranque de `api` (plan 000 §6.2): validar entorno → si falla, `config.invalid` en stderr y salir con `1`
+ * Arranque de `api` (plan 000 §6.2): cargar el `.env` de la raíz si existe → validar entorno → si falla, `config.invalid` en stderr y salir con `1`
  * (el logger aún no existe) → app con logger Pino → middlewares de correlación y versión → prefijo → filtro → escuchar.
  */
 async function bootstrap(): Promise<void> {
+  loadDotenvFile();
   const config = loadEnv(apiEnvSchema);
   if (!config.ok) {
     process.stderr.write(`${JSON.stringify({ event: 'config.invalid', issues: config.issues })}\n`);

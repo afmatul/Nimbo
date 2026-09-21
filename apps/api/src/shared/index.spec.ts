@@ -30,6 +30,7 @@ const RUNTIME_EXPORTS_BY_TASK = {
     'apiEnvSchema',
     'workerEnvSchema',
     'loadEnv',
+    'loadDotenvFile',
     'formatEnvIssues',
     'ENV',
     'EnvModule',
