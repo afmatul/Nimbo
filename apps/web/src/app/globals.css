@@ -1,60 +1,60 @@
 /* apps/web/src/app/globals.css */
-@import "tailwindcss";
+@import 'tailwindcss';
 
 :root {
   /* Superficies */
-  --background: #F4F7FB;          /* color-bg */
-  --card: #FAFCFF;                /* color-card */
-  --popover: #FAFCFF;
-  --border: #DDE6F0;              /* bordes decorativos de card y separadores */
-  --input: #7F93AA;               /* borde de controles (AA no-texto) */
+  --background: #f4f7fb; /* color-bg */
+  --card: #fafcff; /* color-card */
+  --popover: #fafcff;
+  --border: #dde6f0; /* bordes decorativos de card y separadores */
+  --input: #7f93aa; /* borde de controles (AA no-texto) */
 
   /* Texto */
-  --foreground: #1E2D40;          /* text-primary */
-  --card-foreground: #1E2D40;
-  --popover-foreground: #1E2D40;
-  --secondary-foreground: #3A5068;/* text-secondary */
-  --muted-foreground: #5E7389;    /* text-muted ajustado */
+  --foreground: #1e2d40; /* text-primary */
+  --card-foreground: #1e2d40;
+  --popover-foreground: #1e2d40;
+  --secondary-foreground: #3a5068; /* text-secondary */
+  --muted-foreground: #5e7389; /* text-muted ajustado */
 
   /* Marca */
-  --primary: #4A6FA5;             /* relleno CTA ajustado */
-  --primary-hover: #3B5A8A;
-  --primary-foreground: #FFFFFF;
-  --brand: #6B8DD6;               /* azul pizarra decorativo */
-  --secondary: #DDE6F0;
-  --muted: #EEF3F9;
-  --accent: #DDE6F0;              /* fondo hover/seleccionado */
-  --accent-foreground: #1E2D40;
-  --ring: #4A6FA5;
-  --live: #7EC8D8;                /* cian brumoso: tiempo real */
+  --primary: #4a6fa5; /* relleno CTA ajustado */
+  --primary-hover: #3b5a8a;
+  --primary-foreground: #ffffff;
+  --brand: #6b8dd6; /* azul pizarra decorativo */
+  --secondary: #dde6f0;
+  --muted: #eef3f9;
+  --accent: #dde6f0; /* fondo hover/seleccionado */
+  --accent-foreground: #1e2d40;
+  --ring: #4a6fa5;
+  --live: #7ec8d8; /* cian brumoso: tiempo real */
 
   /* Semánticos: relleno decorativo / texto */
-  --success: #6DB99A;
-  --success-foreground: #3A7560;
-  --warning: #D4A96A;
-  --warning-foreground: #8A6424;
-  --destructive: #A34F4F;
-  --destructive-soft: #C97B7B;
+  --success: #6db99a;
+  --success-foreground: #3a7560;
+  --warning: #d4a96a;
+  --warning-foreground: #8a6424;
+  --destructive: #a34f4f;
+  --destructive-soft: #c97b7b;
 
   /* Agente */
-  --agent-bg: #2C3A52;
-  --agent-text: #D8E4F0;
-  --agent-accent: #7EC8D8;
-  --agent-tag: #3A4E6A;
+  --agent-bg: #2c3a52;
+  --agent-text: #d8e4f0;
+  --agent-accent: #7ec8d8;
+  --agent-tag: #3a4e6a;
 
   /* Tipos de archivo (texto AA; fondo = color base al 12 %) */
-  --file-docx: #3F62A8;
-  --file-docx-bg: #6B8DD620;
-  --file-xlsx: #3A7560;
-  --file-xlsx-bg: #6DB99A20;
-  --file-pptx: #8A6424;
-  --file-pptx-bg: #D4A96A20;
-  --file-pdf:  #A34F4F;
-  --file-pdf-bg:  #C97B7B20;
-  --file-img:  #276B7A;
-  --file-img-bg:  #7EC8D820;
-  --file-other:#53677D;
-  --file-other-bg:#7A90A820;
+  --file-docx: #3f62a8;
+  --file-docx-bg: #6b8dd620;
+  --file-xlsx: #3a7560;
+  --file-xlsx-bg: #6db99a20;
+  --file-pptx: #8a6424;
+  --file-pptx-bg: #d4a96a20;
+  --file-pdf: #a34f4f;
+  --file-pdf-bg: #c97b7b20;
+  --file-img: #276b7a;
+  --file-img-bg: #7ec8d820;
+  --file-other: #53677d;
+  --file-other-bg: #7a90a820;
 }
 
 @theme inline {
@@ -99,11 +99,13 @@
 
   --shadow-card: 0 1px 3px rgba(74, 111, 165, 0.08), 0 1px 2px rgba(74, 111, 165, 0.04);
   --shadow-modal: 0 8px 24px rgba(44, 58, 82, 0.18);
-  --shadow-button: 0 1px 2px rgba(107, 141, 214, 0.20);
+  --shadow-button: 0 1px 2px rgba(107, 141, 214, 0.2);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;

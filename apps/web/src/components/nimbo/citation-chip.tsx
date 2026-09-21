@@ -1,5 +1,5 @@
-import * as React from 'react';
 import { Bookmark, HelpCircle } from 'lucide-react';
+import * as React from 'react';
 
 import { cn } from '../../lib/utils';
 
@@ -26,7 +26,7 @@ export function CitationChip({
       type="button"
       className={cn(
         'inline-flex items-center gap-1.5 rounded-sm bg-agent-tag px-2.5 py-1 text-xs font-medium text-agent-text transition-all hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-agent-accent focus-visible:ring-offset-1 focus-visible:ring-offset-agent-bg',
-        className
+        className,
       )}
       aria-label={`Cita de ${filename}${location ? ` en ${location}` : ''}${!isCertain ? ' (ubicación estimada)' : ''}`}
       {...props}

@@ -1,4 +1,3 @@
-import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import { StateView } from './state-view';
@@ -11,7 +10,7 @@ describe('StateView component (CA-4, RNF-14)', () => {
         title="Sin archivos"
         description="Esta carpeta aún no tiene documentos."
         action={{ label: 'Subir archivo', onClick: () => {} }}
-      />
+      />,
     );
 
     expect(markup).toContain('Sin archivos');
@@ -22,7 +21,7 @@ describe('StateView component (CA-4, RNF-14)', () => {
 
   it('renderiza estado de carga (loading) con aria-live y spinner', () => {
     const markup = renderToStaticMarkup(
-      <StateView type="loading" title="Cargando tus archivos..." />
+      <StateView type="loading" title="Cargando tus archivos..." />,
     );
 
     expect(markup).toContain('Cargando tus archivos...');
@@ -38,7 +37,7 @@ describe('StateView component (CA-4, RNF-14)', () => {
         title="Error al sincronizar"
         description="No fue posible conectar con el servidor. Revisa tu conexión."
         action={{ label: 'Reintentar', onClick: () => {} }}
-      />
+      />,
     );
 
     expect(markup).toContain('Error al sincronizar');

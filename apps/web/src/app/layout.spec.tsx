@@ -1,4 +1,3 @@
-import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import RootLayout from './layout';
@@ -8,7 +7,7 @@ describe('RootLayout (CA-3)', () => {
     const markup = renderToStaticMarkup(
       <RootLayout>
         <div data-testid="child">Contenido de prueba</div>
-      </RootLayout>
+      </RootLayout>,
     );
 
     expect(markup).toContain('lang="es"');

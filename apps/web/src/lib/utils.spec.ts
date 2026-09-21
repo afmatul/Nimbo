@@ -13,13 +13,13 @@ describe('cn utility', () => {
     const isHidden = false;
     const isVisible = true;
     expect(cn('block', isHidden && 'hidden', isVisible && 'opacity-100', undefined, null)).toBe(
-      'block opacity-100'
+      'block opacity-100',
     );
   });
 
   it('acepta arrays y objetos como argumentos', () => {
     expect(cn(['text-sm', 'font-bold'], { 'bg-primary': true, 'text-white': false })).toBe(
-      'text-sm font-bold bg-primary'
+      'text-sm font-bold bg-primary',
     );
   });
 });

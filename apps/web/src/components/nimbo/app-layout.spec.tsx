@@ -1,4 +1,3 @@
-import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import { AppLayout } from './app-layout';
@@ -8,7 +7,7 @@ describe('AppLayout component (CA-5)', () => {
     const markup = renderToStaticMarkup(
       <AppLayout>
         <div data-testid="pagina">Panel de control</div>
-      </AppLayout>
+      </AppLayout>,
     );
 
     expect(markup).toContain('Nimbo');
@@ -22,7 +21,7 @@ describe('AppLayout component (CA-5)', () => {
     const markup = renderToStaticMarkup(
       <AppLayout>
         <div>Contenido</div>
-      </AppLayout>
+      </AppLayout>,
     );
 
     expect(markup).toContain('overflow-x-hidden');
@@ -33,7 +32,7 @@ describe('AppLayout component (CA-5)', () => {
     const markup = renderToStaticMarkup(
       <AppLayout>
         <div>Contenido</div>
-      </AppLayout>
+      </AppLayout>,
     );
 
     expect(markup).toContain('aria-label="Abrir menú de navegación"');

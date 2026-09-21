@@ -1,4 +1,3 @@
-import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from './card';
@@ -17,7 +16,7 @@ describe('Card component (CA-4)', () => {
         <CardFooter>
           <span>Pie de tarjeta</span>
         </CardFooter>
-      </Card>
+      </Card>,
     );
 
     expect(markup).toContain('bg-card');

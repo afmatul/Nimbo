@@ -1,5 +1,5 @@
-import * as React from 'react';
 import { AlertCircle, FolderOpen, Loader2 } from 'lucide-react';
+import * as React from 'react';
 
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
@@ -42,7 +42,7 @@ export function StateView({
       className={cn(
         'flex flex-col items-center justify-center rounded-lg border border-dashed border-border p-8 text-center bg-card shadow-sm min-h-[220px]',
         isError && 'border-destructive/40 bg-destructive/5',
-        className
+        className,
       )}
       role={isError ? 'alert' : isLoading ? 'status' : undefined}
       aria-live={isLoading ? 'polite' : undefined}
@@ -63,16 +63,14 @@ export function StateView({
       <h3
         className={cn(
           'text-base font-semibold text-foreground tracking-tight',
-          isError && 'text-destructive'
+          isError && 'text-destructive',
         )}
       >
         {title}
       </h3>
 
       {description && (
-        <p className="mt-1.5 max-w-sm text-sm text-muted-foreground">
-          {description}
-        </p>
+        <p className="mt-1.5 max-w-sm text-sm text-muted-foreground">{description}</p>
       )}
 
       {action && (

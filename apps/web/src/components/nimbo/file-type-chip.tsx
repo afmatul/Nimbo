@@ -1,5 +1,12 @@
+import {
+  FileText,
+  FileSpreadsheet,
+  Presentation,
+  FileCode,
+  Image as ImageIcon,
+  File,
+} from 'lucide-react';
 import * as React from 'react';
-import { FileText, FileSpreadsheet, Presentation, FileCode, Image as ImageIcon, File } from 'lucide-react';
 
 import { cn } from '../../lib/utils';
 
@@ -102,7 +109,11 @@ export function FileTypeChip({
 }: FileTypeChipProps): React.JSX.Element {
   const determinedType: FileType =
     fileType ??
-    (extension ? getFileTypeFromExtension(extension) : filename ? getFileTypeFromExtension(filename) : 'other');
+    (extension
+      ? getFileTypeFromExtension(extension)
+      : filename
+        ? getFileTypeFromExtension(filename)
+        : 'other');
 
   const config = FILE_TYPE_MAP[determinedType];
   const Icon = config.icon;
@@ -111,7 +122,7 @@ export function FileTypeChip({
     <span
       className={cn(
         'inline-flex items-center gap-1.5 rounded-sm px-2 py-0.5 text-xs font-semibold font-mono tracking-wider transition-colors',
-        className
+        className,
       )}
       style={{
         color: config.textColorVar,

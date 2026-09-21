@@ -1,20 +1,20 @@
 /**
  * @jest-environment node
  */
-import React from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
+import { run as runAxe } from 'axe-core';
 import { JSDOM } from 'jsdom';
-import axe from 'axe-core';
+import type { ReactElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/card';
-import { Badge } from './ui/badge';
-import { FileTypeChip } from './nimbo/file-type-chip';
 import { CitationChip } from './nimbo/citation-chip';
+import { FileTypeChip } from './nimbo/file-type-chip';
 import { StateView } from './nimbo/state-view';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/card';
+import { Input } from './ui/input';
 
-async function checkA11y(jsx: React.ReactElement): Promise<void> {
+async function checkA11y(jsx: ReactElement): Promise<void> {
   const html = `<!DOCTYPE html><html lang="es"><head><title>A11y Test</title></head><body><main>${renderToStaticMarkup(jsx)}</main></body></html>`;
   const dom = new JSDOM(html, { pretendToBeVisual: true });
 
@@ -26,10 +26,11 @@ async function checkA11y(jsx: React.ReactElement): Promise<void> {
   globalAny['HTMLElement'] = dom.window.HTMLElement;
 
   if (dom.window.HTMLCanvasElement) {
-    dom.window.HTMLCanvasElement.prototype.getContext = (() => null) as unknown as typeof HTMLCanvasElement.prototype.getContext;
+    dom.window.HTMLCanvasElement.prototype.getContext = (() =>
+      null) as unknown as typeof HTMLCanvasElement.prototype.getContext;
   }
 
-  const results = await axe.run(dom.window.document.body);
+  const results = await runAxe(dom.window.document.body);
   expect(results.violations).toEqual([]);
 }
 
@@ -41,7 +42,7 @@ describe('Auditoría automatizada de accesibilidad WCAG AA (CA-7)', () => {
         <Button variant="destructive">Eliminar documento</Button>
         <Button variant="outline">Cancelar</Button>
         <Button loading>Procesando</Button>
-      </div>
+      </div>,
     );
   });
 
@@ -50,7 +51,7 @@ describe('Auditoría automatizada de accesibilidad WCAG AA (CA-7)', () => {
       <form>
         <label htmlFor="correo">Correo electrónico</label>
         <Input id="correo" type="email" placeholder="ejemplo@correo.com" />
-      </form>
+      </form>,
     );
   });
 
@@ -65,7 +66,7 @@ describe('Auditoría automatizada de accesibilidad WCAG AA (CA-7)', () => {
           <Badge variant="success">Activo</Badge>
           <Badge variant="warning">80% utilizado</Badge>
         </CardContent>
-      </Card>
+      </Card>,
     );
   });
 
@@ -75,7 +76,7 @@ describe('Auditoría automatizada de accesibilidad WCAG AA (CA-7)', () => {
         <FileTypeChip extension="docx" />
         <FileTypeChip extension="pdf" />
         <CitationChip filename="especificacion.docx" location="pág. 3" />
-      </div>
+      </div>,
     );
   });
 
@@ -95,7 +96,7 @@ describe('Auditoría automatizada de accesibilidad WCAG AA (CA-7)', () => {
           description="Ocurrió un error inesperado al consultar la lista"
           action={{ label: 'Reintentar' }}
         />
-      </div>
+      </div>,
     );
   });
 });

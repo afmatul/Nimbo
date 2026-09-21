@@ -1,7 +1,7 @@
 'use client';
 
-import * as React from 'react';
 import { Cloud, Menu, X, Folder, Share2, Trash2, CreditCard, Sparkles } from 'lucide-react';
+import * as React from 'react';
 
 import { cn } from '../../lib/utils';
 
@@ -76,7 +76,7 @@ export function AppLayout({ children, userEmail }: AppLayoutProps): React.JSX.El
                     'flex min-h-[44px] items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                     item.active
                       ? 'bg-accent text-primary font-semibold border-l-[3px] border-l-primary'
-                      : 'text-secondary-foreground hover:bg-accent/60 hover:text-foreground'
+                      : 'text-secondary-foreground hover:bg-accent/60 hover:text-foreground',
                   )}
                 >
                   <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -124,7 +124,7 @@ export function AppLayout({ children, userEmail }: AppLayoutProps): React.JSX.El
                         'flex min-h-[44px] items-center gap-3 rounded-md px-3 py-2.5 text-base font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                         item.active
                           ? 'bg-accent text-primary font-semibold'
-                          : 'text-secondary-foreground hover:bg-accent/60 hover:text-foreground'
+                          : 'text-secondary-foreground hover:bg-accent/60 hover:text-foreground',
                       )}
                     >
                       <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
