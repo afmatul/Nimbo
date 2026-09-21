@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | En implementación |
+| Estado | En revisión |
 | Dueño | Fátima (4) |
 | Fase | 1 |
 | Requisitos | RNF-13, RNF-14 |
@@ -118,3 +118,5 @@ Establecer la infraestructura visual completa en `apps/web` (Next.js + Tailwind 
 |---|---|---|---|
 | 2026-09-20 | Creación del borrador de la spec | Inicio de implementación de la base de diseño para la Fase 1 | Fátima |
 | 2026-09-20 | Spec pasa a Aclarada tras confirmar DF-41 a DF-45 y dependencias de UI | Compuerta humana superada | Fátima |
+| 2026-09-20 | Finalización de tareas T-01 a T-13 y paso a En verificación | Tareas implementadas y suites en verde | Fátima |
+| 2026-09-20 | Emisión de verification.md, ui-review.md y review.md; paso a En revisión | Verificación completa y revisión favorable | Fátima |
