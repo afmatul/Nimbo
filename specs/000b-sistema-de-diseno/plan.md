@@ -1,6 +1,6 @@
 # Plan 000b — Sistema de Diseño Cielo Sereno y Fundaciones de UI
 
-> Spec: `./spec.md` · Estado del plan: Propuesto
+> Spec: `./spec.md` · Estado del plan: Aprobado
 
 ## 1. Resumen técnico
 Esta spec establece la infraestructura de interfaz de usuario en `apps/web` para todo el proyecto Nimbo. Se integra Tailwind CSS v4 y shadcn/ui utilizando como única fuente de verdad `apps/web/src/app/globals.css`, configurando los tokens de la paleta **Cielo Sereno** con los ajustes de contraste AA aprobados en la spec (DF-41 a DF-45). Se configuran las fuentes tipográficas `Inter` y `JetBrains Mono` mediante `next/font/google` en `apps/web/src/app/layout.tsx`. Se implementa una suite de componentes atómicos base (`Button`, `Input`, `Card`, `Badge`) y componentes de dominio de Nimbo (`FileTypeChip`, `CitationChip`, `StateView`), un layout base responsivo desde 360 px con menú accesible, y pruebas automatizadas de renderizado y accesibilidad con `jest-axe`.

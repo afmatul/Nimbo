@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Aclarada |
+| Estado | Planificada |
 | Dueño | Fátima (4) |
 | Fase | 1 |
 | Requisitos | RNF-13, RNF-14 |
