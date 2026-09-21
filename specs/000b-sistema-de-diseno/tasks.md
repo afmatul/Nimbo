@@ -5,7 +5,7 @@
 
 ## Bloque 0 — Preparación y utilidades
 - [x] **T-01** Instalar dependencias en `apps/web` (`tailwindcss`, `@tailwindcss/postcss`, `clsx`, `tailwind-merge`, `class-variance-authority`, `lucide-react`, `jest-axe`, `@types/jest-axe`) y configurar `postcss.config.mjs` — CA: n/a — Archivos: `apps/web/package.json`, `apps/web/postcss.config.mjs`
-- [ ] **T-02** Helper `cn(...)` en `apps/web/src/lib/utils.ts` con prueba unitaria — CA: n/a — Archivos: `apps/web/src/lib/utils.ts`, `apps/web/src/lib/utils.spec.ts`
+- [x] **T-02** Helper `cn(...)` en `apps/web/src/lib/utils.ts` con prueba unitaria — CA: n/a — Archivos: `apps/web/src/lib/utils.ts`, `apps/web/src/lib/utils.spec.ts`
 
 ## Bloque 1 — Tokens y tipografías (pruebas primero)
 - [ ] **T-03** [P] Prueba matemática de contraste WCAG AA (`globals.spec.ts`) y definición centralizada de tokens en `apps/web/src/app/globals.css` (Cielo Sereno con ajustes DF-41 a DF-45 y `prefers-reduced-motion`) — CA: CA-1, CA-2, CA-6 — Archivos: `apps/web/src/app/globals.css`, `apps/web/src/app/globals.spec.ts`
