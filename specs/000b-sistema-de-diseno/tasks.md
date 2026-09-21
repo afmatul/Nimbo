@@ -4,7 +4,7 @@
 > Leyenda: `[P]` paralelizable con otras `[P]` del mismo bloque · Cada tarea ≈ 1–2 h y un commit.
 
 ## Bloque 0 — Preparación y utilidades
-- [ ] **T-01** Instalar dependencias en `apps/web` (`tailwindcss`, `@tailwindcss/postcss`, `clsx`, `tailwind-merge`, `class-variance-authority`, `lucide-react`, `jest-axe`, `@types/jest-axe`) y configurar `postcss.config.mjs` — CA: n/a — Archivos: `apps/web/package.json`, `apps/web/postcss.config.mjs`
+- [x] **T-01** Instalar dependencias en `apps/web` (`tailwindcss`, `@tailwindcss/postcss`, `clsx`, `tailwind-merge`, `class-variance-authority`, `lucide-react`, `jest-axe`, `@types/jest-axe`) y configurar `postcss.config.mjs` — CA: n/a — Archivos: `apps/web/package.json`, `apps/web/postcss.config.mjs`
 - [ ] **T-02** Helper `cn(...)` en `apps/web/src/lib/utils.ts` con prueba unitaria — CA: n/a — Archivos: `apps/web/src/lib/utils.ts`, `apps/web/src/lib/utils.spec.ts`
 
 ## Bloque 1 — Tokens y tipografías (pruebas primero)
