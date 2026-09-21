@@ -22,7 +22,7 @@
 - [x] **T-10** [P] Prueba y componente `StateView` (`apps/web/src/components/nimbo/state-view.tsx`) para estados vacío (`empty`), cargando (`loading`) y error (`error`) con mensaje y acción correctiva obligatoria (RNF-14) — CA: CA-4 — Archivos: `apps/web/src/components/nimbo/state-view.tsx`, `apps/web/src/components/nimbo/state-view.spec.tsx`
 
 ## Bloque 4 — Layout, accesibilidad integral y verificación
-- [ ] **T-11** Layout base `AppLayout` (`apps/web/src/components/nimbo/app-layout.tsx`) responsivo desde 360 px con navegación colapsable y sin desbordamiento horizontal — CA: CA-5 — Archivos: `apps/web/src/components/nimbo/app-layout.tsx`, `apps/web/src/components/nimbo/app-layout.spec.tsx`
+- [x] **T-11** Layout base `AppLayout` (`apps/web/src/components/nimbo/app-layout.tsx`) responsivo desde 360 px con navegación colapsable y sin desbordamiento horizontal — CA: CA-5 — Archivos: `apps/web/src/components/nimbo/app-layout.tsx`, `apps/web/src/components/nimbo/app-layout.spec.tsx`
 - [ ] **T-12** Suite de auditoría de accesibilidad automatizada con `jest-axe` evaluando 0 violaciones WCAG AA en toda la biblioteca de componentes — CA: CA-7 — Archivos: `apps/web/src/components/a11y.spec.tsx`
 - [ ] **T-13** Integrar galería de demostración de componentes en la página principal `apps/web/src/app/page.tsx`, pasando suite de linter (`pnpm lint`), tipos (`pnpm typecheck`) y pruebas unitarias (`pnpm test`) — CA: CA-1..CA-7 — Archivos: `apps/web/src/app/page.tsx`, `apps/web/src/app/page.spec.tsx`
 
