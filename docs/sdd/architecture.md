@@ -17,7 +17,7 @@ Justificación (ADR-0001): 4 personas y 10 semanas no justifican microservicios;
 separar uno como servicio el día que haga falta.
 
 **Hospedaje y dominio** (spec 000, D-3 a D-6): DigitalOcean con crédito del GitHub Student Pack. Un Droplet de
-**staging** (2 vCPU / 4 GB, Ubuntu LTS + Docker Compose) desde la Fase 1 y un Droplet de **producción** separado
+**staging** (2 vCPU / 4 GB, Ubuntu LTS + Docker Compose) desde el inicio de la Fase 2 (`workflow.md` §7.2) y un Droplet de **producción** separado
 (4 vCPU / 8 GB) en la Fase 4. Dominio `nimbo.me`; en staging Traefik enruta por host con TLS de Let's Encrypt:
 `staging.nimbo.me` (web), `api.staging.nimbo.me` (api), `docs.staging.nimbo.me` (ONLYOFFICE, solo con el perfil
 activo) y `s3.staging.nimbo.me` (MinIO, habilitado cuando 005 lo necesite). Imágenes en `ghcr.io/afmatul/nimbo-{api,worker,web}`;

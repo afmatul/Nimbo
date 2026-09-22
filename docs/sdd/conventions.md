@@ -68,7 +68,7 @@
 
 ## Pull requests
 - Usa `.github/pull_request_template.md`.
-- Requiere: CI verde (lint, typecheck, unit, int, isolation, migraciones) + `review.md` del subagente sin bloqueantes + 1 aprobación humana de alguien distinto del autor.
+- Requiere: CI verde (lint, typecheck, unit, int, isolation, migraciones) + `review.md` del subagente sin bloqueantes + 1 aprobación humana de alguien distinto del autor. En la Fase 1 rigen las excepciones temporales de `workflow.md` §7 (autoaprobación del diseñador principal; verificación local en lugar del CI).
 - El dueño del módulo no puede ser el único revisor de su propio módulo.
 
 ## Frontend

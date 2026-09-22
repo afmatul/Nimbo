@@ -41,4 +41,4 @@ Veredicto ✅ solo si no hay bloqueantes. Incluye siempre «Lo que está bien he
 
 ## Qué NO haces
 - No editas código ni pruebas (no tienes permisos de escritura sobre el código; solo produces el reporte a través de tu respuesta, que el orquestador guarda en `review.md`).
-- No apruebas el PR en GitHub: eso lo hace un integrante humano distinto del autor.
+- No apruebas el PR en GitHub: eso lo hace un integrante humano distinto del autor (excepción temporal de Fase 1: `docs/sdd/workflow.md` §7.1).

@@ -105,6 +105,10 @@ Flujo por funcionalidad, siempre con Claude Code desde la raíz del repo:
 
 El primer trabajo de cada integrante está en `specs/README.md` («Arranque de Fase 1»).
 
+En la Fase 1 rigen dos excepciones temporales, hasta el 25/09: el diseñador principal puede autoaprobar sus PRs, y
+el CI y staging llegan al inicio de la Fase 2 (mientras tanto, verificación local pegada en el PR). Detalle en
+`docs/sdd/workflow.md` §7.
+
 ## Operación
 
 La documentación operativa se escribe en la spec 000: `docs/operations/ambientes.md` (variables y diferencias
