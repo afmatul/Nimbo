@@ -617,3 +617,19 @@ T-24 y T-25 pueden pasar al PR-3, y T-42/T-43 pueden hacerse en la primera seman
 - **T-24**: `test:int` y `test:isolation` pierden `--passWithNoTests`.
 - **T-26**: CA-1 desde cero en 42 s (imágenes en caché); evidencia en `verification.md`. Hallazgo F-1: Docker Hub
   ya no sirve `minio/minio`/`minio/mc`; `compose.yml` y el arnés usan `quay.io/minio/*`.
+
+### Correcciones de revisión del PR-2 (2026-09-22)
+
+Una revisión independiente sobre `main..fix/000-carga-de-env` (veredicto **Aprobar**, sin bloqueantes) señaló
+diez puntos; se verificaron todos contra el código y se aplicaron los seis accionables. Detalle y razones en
+`verification.md` §«Correcciones de revisión» y en el registro del plan §12. Lo que hay que recordar más adelante:
+
+- **T-28 (lint de fronteras)**: configurarlo sobre `apps/*/src/**` y **dejar `test/**` fuera**. El arnés de
+  integración importa `LOG_STREAM` por ruta interna (`test/int/setup/log-sink.ts`); es una costura del logger
+  útil solo para capturar bitácoras en memoria y no debe ampliar la API pública que CA-17 congela.
+- **T-28** debe cubrir también `worker.main.ts` y `worker.module.ts` como raíces de composición.
+- **Redacción por nombre de campo**: `REDACTED_FIELDS` no alcanza a una URL incrustada en el texto de un
+  mensaje o un `stack`. La mitigación es no registrar al pie de la letra los errores de conexión; si alguna spec
+  futura necesita registrarlos, hay que sanearlos antes.
+- **Etiquetas de imagen**: al tocar la spec 016 conviene revisar si `onlyoffice/documentserver:9.3.1` sigue
+  siendo la línea adecuada. `axllent/mailpit` en `compose.override.yml` sigue sin etiqueta (solo local).

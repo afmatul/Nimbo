@@ -2,8 +2,7 @@ import { BullModule, getQueueToken } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import type { Queue } from 'bullmq';
 
-import { CorrelationContext, PingProcessor } from '../../../src/shared';
-import { PING_QUEUE, PingQueue } from '../../../src/shared/infrastructure/queue/ping.queue';
+import { CorrelationContext, PING_QUEUE, PingProcessor, PingQueue } from '../../../src/shared';
 import type { LogLine } from '../setup/log-sink';
 import { createTestApp } from '../setup/test-app';
 import type { TestApp } from '../setup/test-app';

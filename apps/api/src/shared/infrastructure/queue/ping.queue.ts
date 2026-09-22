@@ -10,7 +10,10 @@ export const PING_QUEUE = 'ping';
 
 export type PingJobData = { readonly sentAt: string } & CorrelatedJobData;
 
-/** Productor de la cola de prueba `ping` (solo `api`). Interno de `shared`: no se reexporta. */
+/**
+ * Productor de la cola de prueba `ping` (solo `api`). Se reexporta desde `shared/index.ts`:
+ * las raíces de composición registran la cola, así que el productor es API pública del módulo.
+ */
 @Injectable()
 export class PingQueue {
   constructor(

@@ -3,7 +3,13 @@ import { randomUUID } from 'node:crypto';
 import { NestFactory } from '@nestjs/core';
 import { Logger } from 'nestjs-pino';
 
-import { CorrelationContext, loadDotenvFile, loadEnv, workerEnvSchema } from './shared';
+import {
+  CorrelationContext,
+  CorrelationIdMiddleware,
+  loadDotenvFile,
+  loadEnv,
+  workerEnvSchema,
+} from './shared';
 import { WORKER_QUEUES, WorkerModule } from './worker.module';
 
 /**
@@ -22,6 +28,13 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(WorkerModule.forRoot(env), { bufferLogs: true });
   const logger = app.get(Logger);
   app.useLogger(logger);
+
+  // Su salud interna también abre contexto de correlación (RNF-17): sin esto, una petición a
+  // `/health/ready` del worker quedaría sin `correlationId` en la bitácora.
+  // `VersionHeaderMiddleware` no se instala: `x-nimbo-version` es contrato de la API pública y
+  // la salud del worker explícitamente no lo es (CA-23).
+  const correlation = new CorrelationIdMiddleware();
+  app.use(correlation.use.bind(correlation));
 
   await app.listen(env.WORKER_PORT);
   logger.log({

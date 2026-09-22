@@ -9,7 +9,7 @@ import type { StartedTestContainer } from 'testcontainers';
 /** Mismas imágenes que `compose.yml` (plan 000 §6.5). */
 export const POSTGRES_IMAGE = 'pgvector/pgvector:pg17';
 export const REDIS_IMAGE = 'redis:7-alpine';
-export const MINIO_IMAGE = 'quay.io/minio/minio';
+export const MINIO_IMAGE = 'quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z';
 
 const MINIO_PORT = 9000;
 const MINIO_USER = 'nimbo';

@@ -43,7 +43,7 @@ const RUNTIME_EXPORTS_BY_TASK = {
   'T-18': ['DomainExceptionFilter'],
   'T-19': ['HealthModule'],
   'T-20': ['PostgresHealthIndicator', 'RedisHealthIndicator', 'MinioHealthIndicator'],
-  'T-21': ['enqueueWithCorrelation', 'PingProcessor'],
+  'T-21': ['enqueueWithCorrelation', 'PING_QUEUE', 'PingProcessor', 'PingQueue'],
 } as const;
 
 const ALL_RUNTIME_EXPORTS: readonly string[] = Object.values(RUNTIME_EXPORTS_BY_TASK).flat();
@@ -106,9 +106,11 @@ describe('shared/index.ts (CA-17)', () => {
   it('CA-21: exporta `PostgresHealthIndicator`, `RedisHealthIndicator` y `MinioHealthIndicator` (T-20)', () => {
     expectExportsOf('T-20');
   });
-  it('CA-14: exporta `enqueueWithCorrelation` y `PingProcessor`; no `PingQueue` (T-21)', () => {
+  it('CA-14: exporta la cola `ping` completa: productor, consumidor y nombre (T-21)', () => {
     expectExportsOf('T-21');
-    expect(exportedKeys()).not.toContain('PingQueue');
+    // Las dos raíces de composición registran la cola, así que el productor es API pública
+    // del módulo y no un interno: importarlo por ruta rompería la frontera que vigila T-28.
+    expect(shared.PING_QUEUE).toBe('ping');
   });
   it('CA-17: exporta exactamente la lista del plan §6.2 al cerrar el bloque 2 (T-26)', () => {
     expect(exportedKeys()).toEqual([...ALL_RUNTIME_EXPORTS].sort());

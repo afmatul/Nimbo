@@ -33,6 +33,8 @@ export { RedisHealthIndicator } from './infrastructure/health/redis.health-indic
 export { buildDataSourceOptions } from './infrastructure/persistence/data-source';
 export { enqueueWithCorrelation } from './infrastructure/queue/enqueue-with-correlation';
 export { PingProcessor } from './infrastructure/queue/ping.processor';
+export { PING_QUEUE, PingQueue } from './infrastructure/queue/ping.queue';
+export type { PingJobData } from './infrastructure/queue/ping.queue';
 export { REDACTED_FIELDS } from './infrastructure/logging/redacted-fields';
 export { DomainExceptionFilter } from './presentation/domain-exception.filter';
 export { VersionHeaderMiddleware } from './presentation/version-header.middleware';

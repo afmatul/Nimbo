@@ -5,12 +5,12 @@ import type { DynamicModule } from '@nestjs/common';
 import {
   EnvModule,
   HealthModule,
+  PING_QUEUE,
   PingProcessor,
   RedisHealthIndicator,
   SharedModule,
 } from './shared';
 import type { SharedEnvBase } from './shared';
-import { PING_QUEUE } from './shared/infrastructure/queue/ping.queue';
 
 /** Colas que este proceso consume; `worker.started` las lista (plan 000 §7). */
 export const WORKER_QUEUES = [PING_QUEUE] as const;

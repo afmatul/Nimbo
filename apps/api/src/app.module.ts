@@ -7,12 +7,13 @@ import {
   HealthModule,
   MinioConfigModule,
   MinioHealthIndicator,
+  PING_QUEUE,
+  PingQueue,
   PostgresHealthIndicator,
   RedisHealthIndicator,
   SharedModule,
 } from './shared';
 import type { Env } from './shared';
-import { PING_QUEUE, PingQueue } from './shared/infrastructure/queue/ping.queue';
 
 /**
  * Raíz de composición de `api` (plan 000 §6.2): publica el entorno que `main.ts` ya validó con

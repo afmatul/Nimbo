@@ -26,10 +26,17 @@ export class RedisHealthIndicator implements IHealthIndicator {
       enableOfflineQueue: false,
       retryStrategy: () => null,
     });
+    // Sin oyente de `error`, ioredis no lanza el evento: hace `console.error(..., error.stack)`,
+    // que esquiva Pino y volcaría `REDIS_URL` con su credencial (prohibición dura de bitácoras).
+    client.on('error', () => undefined);
     try {
       await client.connect();
       const reply = await client.ping();
       return reply === 'PONG' ? 'up' : 'down';
+    } catch {
+      // `HealthService` ya traducía el rechazo a `down`; traducirlo aquí evita además que el
+      // error —que incluye la URL— llegue a cualquier registro de arriba.
+      return 'down';
     } finally {
       client.disconnect();
     }

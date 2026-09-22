@@ -47,6 +47,14 @@ describe('REDACTED_FIELDS', () => {
     expect(REDACTED_FIELDS.has('minio_secret_key')).toBe(true);
     expect(REDACTED_FIELDS.has('minio_access_key')).toBe(true);
   });
+
+  it('CA-15: incluye las URLs de conexión, que llevan credencial embebida', () => {
+    expect(REDACTED_FIELDS.has('database_url')).toBe(true);
+    expect(REDACTED_FIELDS.has('redis_url')).toBe(true);
+    expect(redactDeep({ DATABASE_URL: 'postgres://nimbo:nimbo@localhost:5432/nimbo' })).toEqual({
+      DATABASE_URL: '[REDACTED]',
+    });
+  });
 });
 
 describe('redactDeep', () => {
