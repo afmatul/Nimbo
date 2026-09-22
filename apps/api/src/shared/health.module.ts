@@ -1,9 +1,33 @@
 import { Module } from '@nestjs/common';
+import type { DynamicModule, Type } from '@nestjs/common';
 
+import { HealthService } from './application/health/health.service';
+import { I_HEALTH_INDICATORS } from './application/health/i-health-indicator.port';
+import type { IHealthIndicator } from './application/health/i-health-indicator.port';
 import { HealthController } from './presentation/health.controller';
 
-/** Versión mínima (solo `live`). T-19 agrega `forRoot({ indicators })` con `HealthService`. */
-@Module({
-  controllers: [HealthController],
-})
-export class HealthModule {}
+export interface HealthModuleOptions {
+  /** La raíz de composición elige: `api` los tres indicadores, `worker` solo Redis (plan 000 §6.2). */
+  readonly indicators: readonly Type<IHealthIndicator>[];
+}
+
+/** Salud del proceso (T1): `live` sin dependencias, `ready` agregando los indicadores registrados. */
+@Module({})
+export class HealthModule {
+  static forRoot(options: HealthModuleOptions): DynamicModule {
+    const indicators = [...options.indicators];
+    return {
+      module: HealthModule,
+      controllers: [HealthController],
+      providers: [
+        ...indicators,
+        {
+          provide: I_HEALTH_INDICATORS,
+          useFactory: (...instances: IHealthIndicator[]): IHealthIndicator[] => instances,
+          inject: indicators,
+        },
+        HealthService,
+      ],
+    };
+  }
+}
