@@ -7,6 +7,7 @@
 <!-- 2–5 líneas: comportamiento nuevo desde el punto de vista del usuario u operador -->
 
 ## Cómo probarlo en staging
+<!-- Fase 1: sin staging; pasos en local (`docker compose up -d` + `pnpm dev`), `workflow.md` §7.2 -->
 1.
 2.
 
@@ -18,6 +19,7 @@
 - [ ] `ui-review.md` o no aplica porque: …
 - [ ] `review.md` sin bloqueantes
 - [ ] CI verde: lint · typecheck · unit · int · isolation · migraciones
+  <!-- Fase 1: sin CI; pegar el resumen de lint, typecheck, test y test:int corridos en local (`workflow.md` §7.2) -->
 - [ ] Cobertura de lógica de negocio ≥ 60 %
 
 ## Cambios de datos y contratos
@@ -47,4 +49,8 @@
 
 <!-- Capturas de la implementación (360 px y 1440 px) junto a las del mockup -->
 
-> Aprobación requerida de un integrante distinto del autor (RNF-19).
+## Aprobación
+<!-- no mostrar en el PR lo que no aplica -->
+- [ ] **Autoaprobado** (excepción de Fase 1, `workflow.md` §7.1): solo PRs del diseñador principal, hasta el 25/09/2026
+
+> Aprobación requerida de un integrante distinto del autor (RNF-19). Única excepción: `workflow.md` §7.1.
