@@ -26,6 +26,10 @@
 - [x] **T-12** Suite de auditoría de accesibilidad automatizada con `jest-axe` evaluando 0 violaciones WCAG AA en toda la biblioteca de componentes — CA: CA-7 — Archivos: `apps/web/src/components/a11y.spec.tsx`
 - [x] **T-13** Integrar galería de demostración de componentes en la página principal `apps/web/src/app/page.tsx`, pasando suite de linter (`pnpm lint`), tipos (`pnpm typecheck`) y pruebas unitarias (`pnpm test`) — CA: CA-1..CA-7 — Archivos: `apps/web/src/app/page.tsx`, `apps/web/src/app/page.spec.tsx`
 
+## Correcciones de la revisión 2026-09-22
+- [ ] **T-FIX-1** Quitar de `CitationChip` la paleta `amber` y los tamaños arbitrarios (`text-[11px]`, `text-[10px]`, `py-0.2`). El aviso de ubicación incierta usa tokens de `globals.css` y `text-xs`. — CA: CA-4, RN-2 — Depende: T-09
+- [ ] **T-FIX-2** Hacer el drawer de `AppLayout` utilizable con teclado: foco al abrir, Escape, nombre accesible e inert en el fondo. Cubrir el menú abierto en axe. — CA: CA-5, CA-7 — Depende: T-11
+
 ## Notas del developer
-- Se resuelven formalmente los hallazgos DF-41 a DF-48.
+- Los tokens de `globals.css` aplican la propuesta de DF-41 a DF-45. El registro en `design-findings.md` sigue en Abierto hasta acuerdo del equipo; no marcarlos Resuelto desde esta spec.
 - No se introducen dependencias fuera de las autorizadas en la spec aclarada.
