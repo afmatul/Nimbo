@@ -24,6 +24,10 @@ pnpm --filter api migration:run      # migraciones de la API (llega con el PR-2 
 pnpm dev                             # api (3000), worker (3001, salud interna) y web (3002)
 ```
 
+`api`, `worker` y las migraciones leen ese `.env` de la raíz al arrancar (`process.loadEnvFile`, integrado en
+Node 22). Las variables que ya estén en el entorno **ganan** sobre el archivo, así que en staging y en los
+contenedores el `.env` es opcional: allí la configuración llega del entorno.
+
 Resultado esperado (menos de 10 minutos sin contar descargas de imágenes):
 
 | URL                                    | Qué es                                             |

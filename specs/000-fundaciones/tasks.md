@@ -116,7 +116,7 @@
 
 ## Bloque 2 — PR-2 «shared»: dominio, infraestructura, salud, cola `ping`, migraciones (plan §9b paso 2)
 
-- [ ] **T-11** `shared/domain`: `Actor`, `Role`, `IClock`, `FixedClock`, `DomainError` y subclases — CA: CA-17 — Depende: T-04 — ~2 h
+- [x] **T-11** `shared/domain`: `Actor`, `Role`, `IClock`, `FixedClock`, `DomainError` y subclases — CA: CA-17 — Depende: T-04 — ~2 h
   Pruebas primero: `apps/api/src/shared/domain/fixed.clock.spec.ts` (`now()` devuelve la fecha fijada, `advance()`),
   `errors/domain-error.spec.ts` (cada subclase expone `code` y `message`; `instanceof DomainError`),
   `apps/api/src/shared/index.spec.ts` (CA-17: exporta exactamente la lista de plan §6.2; `keyof Actor` =
@@ -127,7 +127,7 @@
   llegan en T-13…T-22 (usar `it.todo` por bloque y activarlas en cada tarea).
   Archivos: `apps/api/src/shared/domain/**`, `apps/api/src/shared/infrastructure/clock/system.clock.ts`, `apps/api/src/shared/index.ts`, `apps/api/src/shared/index.spec.ts`.
 
-- [ ] **T-12** [P] Logger Pino con redacción profunda — CA: CA-15, CA-13 (campo `correlationId` por `mixin`) — Depende: T-11 — ~3 h
+- [x] **T-12** [P] Logger Pino con redacción profunda — CA: CA-15, CA-13 (campo `correlationId` por `mixin`) — Depende: T-11 — ~3 h
   Prueba primero `apps/api/src/shared/infrastructure/logging/redact-deep.spec.ts` (objeto anidado con los 13 campos +
   `headers.authorization`, arreglos, ciclos, profundidad 17 → truncado; valores → `[REDACTED]`; resto intacto;
   insensible a mayúsculas; microbenchmark < 50 µs) y `logger.options.spec.ts` (línea escrita a destino en memoria
@@ -136,7 +136,7 @@
   `hooks.logMethod`, `redact.paths` de cabeceras, `genReqId`/`customProps`), `logger.module.ts` (`nestjs-pino`).
   Archivos: `apps/api/src/shared/infrastructure/logging/**`, `apps/api/src/shared/index.ts`.
 
-- [ ] **T-13** [P] Validación de entorno con zod (`loadEnv` puro) — CA: CA-18, CA-19 (esquema) — Depende: T-11 — ~3 h
+- [x] **T-13** [P] Validación de entorno con zod (`loadEnv` puro) — CA: CA-18, CA-19 (esquema) — Depende: T-11 — ~3 h
   Prueba primero `apps/api/src/shared/infrastructure/config/load-env.spec.ts` (falta `DATABASE_URL` → `{ ok: false,
   issues: ['`DATABASE_URL` es obligatoria'] }`; `PORT=abc` → «`PORT` debe ser un entero entre 1 y 65535»; varios
   errores → todos en una lista; `ok: true` devuelve `env` tipado con defaults; el texto de issues nunca contiene el
@@ -144,7 +144,7 @@
   `workerEnvSchema`, `SECRET_KEYS`, tipo `Env`), `load-env.ts`, `env-report.ts` (`formatEnvIssues`).
   Archivos: `apps/api/src/shared/infrastructure/config/**`, `apps/api/src/shared/index.ts`.
 
-- [ ] **T-14** `CorrelationContext`, `CorrelationIdMiddleware`, `VersionHeaderMiddleware` — CA: CA-13, CA-31 (cabecera de versión) — Depende: T-12 — ~2 h
+- [x] **T-14** `CorrelationContext`, `CorrelationIdMiddleware`, `VersionHeaderMiddleware` — CA: CA-13, CA-31 (cabecera de versión) — Depende: T-12 — ~2 h
   Pruebas primero `apps/api/src/shared/infrastructure/correlation/correlation-context.spec.ts`
   (`isValidCorrelationId`: acepta `^[\x21-\x7E]{1,128}$`, rechaza vacío, 129 caracteres, espacios, no-ASCII;
   `run()`/`get()` aíslan contextos concurrentes), `correlation-id.middleware.spec.ts` (sin cabecera → UUID v4 en
@@ -152,7 +152,7 @@
   `presentation/version-header.middleware.spec.ts` (`x-nimbo-version` = `APP_VERSION`). Luego los tres archivos.
   Archivos: `apps/api/src/shared/infrastructure/correlation/**`, `apps/api/src/shared/presentation/version-header.middleware.ts`, `apps/api/src/shared/index.ts`.
 
-- [ ] **T-15** TypeORM: `buildDataSourceOptions`, `data-source.cli.ts`, migración inicial, `migrate.ts`, scripts — CA: CA-10, CA-11, CA-12 — Depende: T-13 — ~3 h
+- [x] **T-15** TypeORM: `buildDataSourceOptions`, `data-source.cli.ts`, migración inicial, `migrate.ts`, scripts — CA: CA-10, CA-11, CA-12 — Depende: T-13 — ~3 h
   Prueba primero `apps/api/src/shared/infrastructure/persistence/data-source.spec.ts` (CA-10: con
   `TYPEORM_SYNCHRONIZE=true` y `NODE_ENV=development`, `synchronize === false`; `migrationsTableName === 'migracion'`;
   importar `shared/index.ts` no lee `process.env` ni construye `DataSource` — espiar `process.env` con un Proxy).
@@ -165,7 +165,7 @@
   `run` → extensión presente y 1 fila en `migracion`; `revert` → ausente y 0 filas; `run` de nuevo.
   Archivos: `apps/api/src/shared/infrastructure/persistence/**`, `apps/api/src/migrations/**`, `apps/api/src/scripts/migrate.ts`, `apps/api/scripts/migration-generate.mjs`, `apps/api/package.json`, `apps/api/src/shared/index.ts`.
 
-- [ ] **T-16** `SharedModule` y `main.ts` definitivo de `api` (bootstrap con `loadEnv`, logger, middlewares) — CA: CA-18, CA-13, CA-1 (`api.started`) — Depende: T-12, T-13, T-14, T-15 — ~3 h
+- [x] **T-16** `SharedModule` y `main.ts` definitivo de `api` (bootstrap con `loadEnv`, logger, middlewares) — CA: CA-18, CA-13, CA-1 (`api.started`) — Depende: T-12, T-13, T-14, T-15 — ~3 h
   Prueba primero `apps/api/test/int/shared/bootstrap.int-spec.ts` (lanza `node dist/main.js` o `tsx src/main.ts` como
   subproceso con `.env` sin `DATABASE_URL`: código ≠ 0, exactamente una línea `config.invalid` en stderr con las
   issues, ningún puerto abierto; requiere el arnés de T-17, así que se escribe aquí y se activa en T-17). Luego
@@ -177,7 +177,7 @@
   bitácora `api.started { port, appEnv, version }`).
   Archivos: `apps/api/src/shared/shared.module.ts`, `apps/api/src/app.module.ts`, `apps/api/src/main.ts`, `apps/api/test/int/shared/bootstrap.int-spec.ts`, `apps/api/src/shared/index.ts`.
 
-- [ ] **T-17** Arnés de integración (Testcontainers) + prueba de `correlationId` HTTP — CA: CA-13, CA-24 (`int` real) — Depende: T-16 — ~4 h
+- [x] **T-17** Arnés de integración (Testcontainers) + prueba de `correlationId` HTTP — CA: CA-13, CA-24 (`int` real) — Depende: T-16 — ~4 h
   `apps/api/jest.int.config.ts` (`testMatch: test/int/**/*.int-spec.ts`, `globalSetup/globalTeardown`),
   `apps/api/test/int/setup/global-setup.ts` (arranca `@testcontainers/postgresql` con `pgvector/pgvector:pg17`,
   `@testcontainers/redis`, `GenericContainer('minio/minio')`; exporta `DATABASE_URL`/`REDIS_URL`/`MINIO_*` y guarda
@@ -188,7 +188,7 @@
   `bootstrap.int-spec.ts` de T-16. Script `test:int` en `apps/api/package.json`.
   Archivos: `apps/api/jest.int.config.ts`, `apps/api/test/int/setup/**`, `apps/api/test/int/shared/correlation-id.int-spec.ts`, `apps/api/package.json`.
 
-- [ ] **T-18** `DomainExceptionFilter` con prueba de API — CA: CA-16 — Depende: T-17 — ~3 h
+- [x] **T-18** `DomainExceptionFilter` con prueba de API — CA: CA-16 — Depende: T-17 — ~3 h
   Prueba primero `apps/api/test/int/shared/domain-exception-filter.int-spec.ts` (controlador de prueba definido en
   el spec lanza `SharedExampleNotFoundError extends NotFoundError` con `code = 'SHARED_EXAMPLE_NOT_FOUND'` → `404`,
   cuerpo exacto `{ code, message en español con acción, correlationId de la petición }`, sin `stack`/nombre de
@@ -199,7 +199,7 @@
   bitácoras `http.domain_error`/`http.unhandled_error`) y registro en `main.ts` con `useGlobalFilters`.
   Archivos: `apps/api/src/shared/presentation/domain-exception.filter.ts`, `apps/api/src/main.ts`, `apps/api/test/int/shared/domain-exception-filter.int-spec.ts`, `apps/api/src/shared/index.ts`.
 
-- [ ] **T-19** `HealthService` + `IHealthIndicator` (application) y `HealthModule.forRoot` — CA: CA-21, CA-22 (lógica) — Depende: T-11 — ~2 h
+- [x] **T-19** `HealthService` + `IHealthIndicator` (application) y `HealthModule.forRoot` — CA: CA-21, CA-22 (lógica) — Depende: T-11 — ~2 h
   Prueba primero `apps/api/src/shared/application/health/health.service.spec.ts` (indicadores falsos: todos `up` →
   `{ status: 'ok', checks }`; uno rechaza → `down` y `status: 'error'`; uno tarda > 1500 ms → `down` sin esperar más
   de ~1600 ms, con `FixedClock`/temporizadores falsos; el resultado nunca contiene el mensaje del error; `checks`
@@ -208,7 +208,7 @@
   Type<IHealthIndicator>[] })` provee `I_HEALTH_INDICATORS` y `HealthService`, declara `HealthController`).
   Archivos: `apps/api/src/shared/application/health/**`, `apps/api/src/shared/health.module.ts`, `apps/api/src/shared/index.ts`.
 
-- [ ] **T-20** Indicadores Postgres/Redis/MinIO + `HealthController.ready` + prueba de API de salud — CA: CA-20, CA-21, CA-22 — Depende: T-17, T-19 — ~4 h
+- [x] **T-20** Indicadores Postgres/Redis/MinIO + `HealthController.ready` + prueba de API de salud — CA: CA-20, CA-21, CA-22 — Depende: T-17, T-19 — ~4 h
   Prueba primero `apps/api/test/int/shared/health.int-spec.ts` (arranca con los tres contenedores: `ready` → `200`
   con cuerpo exacto `{ status: 'ok', checks: { postgres: 'up', redis: 'up', minio: 'up' } }` en < 2 s (CA-21);
   detener Redis → `503` `{ status: 'error', checks: { …redis: 'down'… } }` en < 3 s y el cuerpo no contiene
@@ -219,7 +219,7 @@
   (`@HttpCode` 200/503 según `status`), `app.module.ts` con `HealthModule.forRoot({ indicators: [los tres] })`.
   Archivos: `apps/api/src/shared/infrastructure/health/**`, `apps/api/src/shared/presentation/health.controller.ts`, `apps/api/src/app.module.ts`, `apps/api/test/int/shared/health.int-spec.ts`, `apps/api/src/shared/index.ts`.
 
-- [ ] **T-21** Cola `ping`: `enqueueWithCorrelation`, `PingQueue`, `PingProcessor` y prueba de propagación — CA: CA-14 — Depende: T-14, T-17 — ~3 h
+- [x] **T-21** Cola `ping`: `enqueueWithCorrelation`, `PingQueue`, `PingProcessor` y prueba de propagación — CA: CA-14 — Depende: T-14, T-17 — ~3 h
   Pruebas primero `apps/api/src/shared/infrastructure/queue/enqueue-with-correlation.spec.ts` (toma el
   `correlationId` del contexto; sin contexto genera UUID; no sobrescribe el resto de `data`) y
   `apps/api/test/int/shared/ping-queue.int-spec.ts` (Redis real: encola dentro de `CorrelationContext.run({ correlationId: 'X' })`;
@@ -230,7 +230,7 @@
   `app.module.ts` registra la cola `ping` y `PingQueue`.
   Archivos: `apps/api/src/shared/infrastructure/queue/**`, `apps/api/src/app.module.ts`, `apps/api/test/int/shared/ping-queue.int-spec.ts`, `apps/api/src/shared/index.ts` (exporta `enqueueWithCorrelation`, `PingProcessor`; no `PingQueue`).
 
-- [ ] **T-22** `apps/worker` definitivo: composición, `loadEnv`, salud interna y `worker.started` — CA: CA-23, CA-18 (worker), CA-1, CA-14 — Depende: T-20, T-21, T-06 — ~3 h
+- [x] **T-22** `apps/worker` definitivo: composición, `loadEnv`, salud interna y `worker.started` — CA: CA-23, CA-18 (worker), CA-1, CA-14 — Depende: T-20, T-21, T-06 — ~3 h
   Pruebas primero `apps/worker/jest.int.config.ts` + `apps/worker/test/int/worker-health.int-spec.ts` (con Redis
   arriba `GET /health/ready` en `WORKER_PORT` → `200 { status: 'ok', checks: { redis: 'up' } }`; detener Redis →
   `503` `{ …redis: 'down' }`; `healthcheck.ts` sale `1`) y `apps/worker/test/int/bootstrap.int-spec.ts` (sin
@@ -241,27 +241,27 @@
   `/health/ready`. Verificar que `apps/worker/src` solo tiene esos tres archivos.
   Archivos: `apps/worker/src/**`, `apps/worker/jest.int.config.ts`, `apps/worker/test/int/**`, `apps/worker/package.json`.
 
-- [ ] **T-23** [P] `scripts/check-env-example.ts` + script `env:check` — CA: CA-19 — Depende: T-13, T-08 — ~2 h
+- [x] **T-23** [P] `scripts/check-env-example.ts` + script `env:check` — CA: CA-19 — Depende: T-13, T-08 — ~2 h
   Prueba primero `scripts/check-env-example.spec.ts` (variable del esquema ausente en `.env.example` → falla y la
   nombra; clave de `SECRET_KEYS` con prefijo `NEXT_PUBLIC_` → falla; archivo completo → `0`). Luego el script (lee
   `apiEnvSchema`, `workerEnvSchema` y el esquema de `apps/web/src/env.ts`; compara con las claves de `.env.example`).
   Archivos: `scripts/check-env-example.ts`, `scripts/check-env-example.spec.ts`, `package.json` raíz.
 
-- [ ] **T-24** [P] Suite `isolation` marcador — CA: CA-25 (marcador forzable), CA-24 — Depende: T-17 — ~1 h
+- [x] **T-24** [P] Suite `isolation` marcador — CA: CA-25 (marcador forzable), CA-24 — Depende: T-17 — ~1 h
   `apps/api/jest.isolation.config.ts` (`testMatch: test/isolation/**/*.iso-spec.ts`, mismo `globalSetup`),
   `apps/api/test/isolation/placeholder.iso-spec.ts` (`it('CA-25: la suite de aislamiento puede forzarse a fallar', …)`
   que falla si `ISOLATION_FORCE_FAIL=1`; comentario: «000 no tiene datos de cliente; 003 agrega las pruebas reales»),
   script `test:isolation`.
   Archivos: `apps/api/jest.isolation.config.ts`, `apps/api/test/isolation/placeholder.iso-spec.ts`, `apps/api/package.json`.
 
-- [ ] **T-25** [P] `docs/operations/ambientes.md` — CA: CA-3, CA-18, CA-29 — Depende: T-09, T-13 — ~2 h
+- [x] **T-25** [P] `docs/operations/ambientes.md` — CA: CA-3, CA-18, CA-29 — Depende: T-09, T-13 — ~2 h
   `APP_ENV`/`NODE_ENV` por ambiente, tabla de variables (quién la usa: api/worker/web/compose; secreta o no), tabla
   de diferencias `compose.yml` / `compose.override.yml` / `compose.staging.yml` limitada a lo que CA-3 permite,
   requisito de arranque (Postgres y Redis alcanzables; `retryAttempts: 10`, `retryDelay: 3000`; `depends_on:
   service_healthy`), semántica de `live` vs `ready`, salud del worker en `WORKER_PORT` sin publicar.
   Archivos: `docs/operations/ambientes.md`.
 
-- [ ] **T-26** Cierre del PR-2: `pnpm lint && pnpm typecheck && pnpm test && pnpm test:int` en verde, CA-1 cronometrado de nuevo — CA: CA-1, CA-9 — Depende: T-11…T-25 — ~1 h
+- [x] **T-26** Cierre del PR-2: `pnpm lint && pnpm typecheck && pnpm test && pnpm test:int` en verde, CA-1 cronometrado de nuevo — CA: CA-1, CA-9 — Depende: T-11…T-25 — ~1 h
   Repetir el arranque desde cero con `pnpm dev` (api, worker, web) y comprobar `worker.started` con `correlationId`,
   `http://localhost/api/v1/health/ready` = `200`, página de estado «API: disponible». Registrar tiempo y salidas en
   `verification.md`. Actualizar `specs/README.md` a `En implementación` si aún no se hizo.
@@ -468,6 +468,46 @@ T-24 y T-25 pueden pasar al PR-3, y T-42/T-43 pueden hacerse en la primera seman
 
 ## Notas del developer
 
+- **Defecto de CA-1 — carga del `.env` (2026-09-21, rama `fix/000-carga-de-env`).** El README manda
+  `cp .env.example .env` y luego `pnpm --filter api migration:run` / `pnpm dev`, pero **nada leía el archivo**: ni
+  `dotenv` ni `--env-file` en ningún script. `api`, `worker` y las migraciones salían con `config.invalid`
+  («`NODE_ENV` es obligatoria», …) y solo `web` arrancaba, porque Next.js carga `.env` por su cuenta (de ahí la página
+  «API: no disponible»). Arreglo: `shared/infrastructure/config/load-dotenv-file.ts` con `loadDotenvFile(path?)` y
+  `repoDotenvPath(from?)`, encima de `process.loadEnvFile` (integrado en Node 22: sin dependencias nuevas ni ADR). La
+  raíz del repositorio se busca hacia arriba por `pnpm-workspace.yaml`, así que vale igual desde `src/` (tsx,
+  `nest start`) y desde `dist/`; sin archivo no hace nada ni lanza (en staging y en los contenedores las variables
+  llegan del entorno). Es una **función**, nunca un efecto de importar: CA-10 sigue intacto. Se llama en `main.ts`,
+  `worker.main.ts` y `migrations/data-source.cli.ts`; en `migrate.ts` **no**, porque su `import` de `data-source.cli`
+  se evalúa antes y la llamada llegaría tarde: ese archivo es el punto de entrada real de `migration:run` y de la CLI
+  de TypeORM. `process.loadEnvFile` **no pisa** lo que ya está en `process.env`, así que el entorno siempre gana.
+  Por qué las pruebas no lo vieron: todas inyectaban el entorno a mano (el arnés `test/int/setup/test-app.ts`,
+  `loadEnv(schema, source)` en unitarias y los subprocesos de `bootstrap.int-spec.ts` con `env:` explícito); ninguna
+  arrancaba el sistema como lo indica el README. Se agrega `test/int/shared/dotenv-bootstrap.int-spec.ts`: levanta
+  `src/main.ts` en un proceso con entorno limpio (solo `PATH` y `PORT`) y exige `health/live` 200 sin `config.invalid`;
+  allí mismo viven las dos pruebas de efecto del helper (carga y precedencia), porque el ambiente de Jest expone una
+  copia de `process.env` y no ve lo que escribe la función nativa. Las dos pruebas de CA-18 (`api` y `worker`) ahora
+  fuerzan un valor **inválido** (`DATABASE_URL`/`REDIS_URL` = `no-es-url`) en vez de omitir la variable: con el `.env`
+  cargado, omitirla ya no produce configuración inválida, y los asertos (exit ≠ 0, una sola línea `config.invalid`,
+  sin stdout, puerto cerrado) se mantienen. Verificado de punta a punta con entorno limpio: `migration:run` corre y
+  `nest start` responde `health/live` y `health/ready` 200 (`postgres`, `redis` y `minio` `up`).
+
+- **T-16** (2026-09-19, refactor aprobado por Adrián): se elimina `shared/infrastructure/config/resolve-shared-env.ts`
+  (`resolveSharedEnv`, `hasMinioConfig`, `SharedEnv`, `WorkerEnv`). Adivinaba el proceso probando `apiEnvSchema` y, si
+  fallaba, `workerEnvSchema`, revalidando lo que `main.ts`/`worker.main.ts` ya habían validado (DRY) y obligando a tocar
+  `shared` ante cada proceso nuevo (OCP). Ahora `env.schema.ts` expone el esquema base y su tipo `SharedEnvBase`
+  (`NODE_ENV`, `APP_ENV`, `APP_VERSION`, `LOG_LEVEL`, `DATABASE_URL`, `REDIS_URL`), del que se componen `apiEnvSchema` y
+  `workerEnvSchema` sin cambiar variables ni mensajes; `EnvModule.forRoot(env)` es `@Global` y provee `ENV` con
+  `useValue` (CA-10 sigue cubierto: importar `shared` no lee el entorno, ahora también en `env.module.spec.ts`);
+  `AppModule.forRoot(env)` y `WorkerModule.forRoot(env)` son las únicas piezas que conocen el esquema de su proceso.
+  `MinioHealthIndicator` inyecta el token nuevo `MINIO_CONFIG` (solo `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`,
+  `MINIO_SECRET_KEY`, `MINIO_BUCKET`, `MINIO_REGION`; ISP) y pierde el `if (!hasMinioConfig(env)) throw`; lo provee
+  `MinioConfigModule.forRoot(env)` desde la raíz de composición de `api`, `@Global` porque `HealthModule.forRoot`
+  instancia los indicadores en su propio módulo. `SharedModule` sigue **sin parámetros** (plan §11.3 cambio 3) y sus
+  consumidores internos (logger, TypeORM, BullMQ, `RedisHealthIndicator`) dependen de `SharedEnvBase`. `shared/index.ts`
+  exporta además `EnvModule`, `ENV`, `MinioConfigModule`, `MINIO_CONFIG`, `SharedEnvBase` y `MinioConfig`;
+  `index.spec.ts` (lista exacta del plan §6.2) y el arnés `test/int/setup/test-app.ts` se actualizaron. Plan §6.2 y §12
+  registran el cambio.
+
 - **T-01** (2026-09-16): se agregó `.gitattributes` con `* text=auto eol=lf` (no estaba en la lista de archivos): el
   equipo mezcla Windows y otros SO y el commit inicial mostró avisos CRLF. Precisión, no desviación.
 - **T-01**: el script raíz `test` es `jest --config jest.config.cjs && pnpm -r run test` (el plan §6.1 dice
@@ -526,3 +566,70 @@ T-24 y T-25 pueden pasar al PR-3, y T-42/T-43 pueden hacerse en la primera seman
   al cerrar PR-1/PR-2 (T-26 lo repite). Solo se han creado dos paquetes menores no listados en el plan §6:
   `eslint-plugin-react-hooks` (reglas de hooks que `next/core-web-vitals` traía) y `eslint-import-resolver-typescript`
   (ya previsto en ADR-0008/plan §6.4). Sin dependencias significativas fuera de ADR-0015.
+
+- **T-11**: `DomainError` lleva además `abstract readonly status: number` fijado por cada clase base intermedia
+  (spec D-13, plan §1); las cinco bases (`InvalidInputError`…) son abstractas y `code` queda abstracto para que cada
+  módulo defina su error tipado con prefijo (RN-1). `FixedClock` expone `now()`, `advance(ms)` y `set(date)`.
+- **T-12**: `CorrelationContext` es un objeto congelado (`Object.freeze({ run, get })`) y no una clase estática porque
+  `no-extraneous-class` (strict) la rechaza. `customProps` de pino-http solo marca `event: 'http.request'`: el
+  `correlationId` lo aporta el `mixin` (evita la clave duplicada). `serializers.req` quita `query` y la cadena de
+  consulta de `url` (plan §7: sin query; en 011 llevará claves de enlace). `SECRET_KEYS` vive en
+  `config/secret-keys.ts` y `env.schema.ts` lo reexporta.
+- **T-13**: sin defaults que el plan no nombra (`NODE_ENV`, `APP_ENV`, `LOG_LEVEL` obligatorias). `workerEnvSchema` =
+  esquema común sin `MINIO_*` ni `PORT`, pero con `DATABASE_URL` (el worker importa `SharedModule` → TypeORM).
+  Cadena vacía → «no puede estar vacía» (distinto de ausente). Orden de issues = orden del esquema.
+- **T-14**: middlewares como clases con `use(req, res, next)` sin decoradores de Nest; `main.ts` los registra con
+  `app.use(m.use.bind(m))` antes de que nestjs-pino monte `pino-http`, así `genReqId` ya ve el contexto.
+- **T-15**: el glob de migraciones es `migrations/[0-9]*.{ts,js}` (no `*`) para que `data-source.cli.ts`, que vive en la
+  misma carpeta, no se cargue como migración. `requireEnv()` de la CLI valida solo `DATABASE_URL`
+  (`apiEnvSchema.pick`): el job `migrations` de CI no necesita el resto. `migration-generate.mjs` ejecuta la CLI de
+  TypeORM bajo `tsx` (`typeorm-ts-node-commonjs` exigiría `ts-node`). La prueba «importar `shared` no lee
+  `process.env`» excluye `NODE_ENV`/`NO_COLOR`, que leen librerías de terceros al cargarse.
+- **T-16 · `ENV` en `SharedModule` sin parámetros** (mecanismo original, *superado* por la nota del 2026-09-19 al
+  inicio de esta sección; se conserva como historia): `api` y `worker` tienen contratos distintos (`MINIO_*`) y el plan
+  quitó `forRoot`. `EnvModule` provee `ENV` de forma perezosa con `resolveSharedEnv()`: el contrato de `api` si el
+  entorno lo satisface, si no el del `worker` (`SharedEnv = Env | WorkerEnv`; `hasMinioConfig()` para narrowing en
+  `MinioHealthIndicator`). Cuando 019/021 den MinIO al worker ambos contratos convergen. `main.ts` de cada proceso
+  sigue validando el suyo antes de arrancar (CA-18). Logger/TypeORM/BullMQ usan `forRootAsync` inyectando `ENV`
+  (CA-10: importar `shared` no lee el entorno). `@nestjs/typeorm` y `@nestjs/bullmq` se fijan en la línea 11.x
+  (la 12.x es ESM puro y Jest/CommonJS no la carga). `ioredis` explícito (5.11.1) para el indicador de Redis.
+  El arranque de `api` y `worker` corre dentro de `CorrelationContext.run({ correlationId: randomUUID() })` para que
+  `api.started`/`worker.started` también lleven `correlationId` (RNF-17, T-26).
+- **T-17**: destino de bitácoras capturable: `createLoggerModule()` inyecta `LOG_STREAM` **opcional**; el arnés lo
+  provee con un módulo global (`log-sink.ts`) y en producción no existe (pino → stdout). Las suites que **detienen**
+  contenedores (`health`, `worker-health`) arrancan los suyos con `startTestInfra()`; el resto usa los del
+  `globalSetup`. `maxWorkers: 1` en `int`. Hallazgo F-2 (`emitDecoratorMetadata` en `eslint/nest.js`).
+- **T-18**: cualquier `BadRequestException` (400) se traduce a `VALIDATION_FAILED` (002 registra `ValidationPipe`);
+  el resto de `HttpException` → `HTTP_<STATUS>` con mensaje genérico en español. `@types/express` (dev) para tipar `Response`.
+- **T-19**: `HealthService` recibe `PinoLogger` bajo la interfaz mínima `HealthLogger` (doble en unitarias).
+- **T-20**: `RedisHealthIndicator` abre una conexión efímera por sonda (sin reintentos ni cola fuera de línea):
+  una caída responde `down` al instante y la recuperación no depende de reconexiones en segundo plano. El límite
+  del SDK de S3 se pasa como `requestHandler: { connectionTimeout, requestTimeout }` (sin paquete extra).
+- **T-21**: `PingProcessor` extiende `WorkerHost` de `@nestjs/bullmq`; `process()` envuelve todo en
+  `CorrelationContext.run`. `queue.enqueued` lo escribe `PingQueue` (no la función pura).
+- **T-22**: por R-3 las pruebas del worker viven en `apps/api/test/int/worker/` (mismo arnés) y no en
+  `apps/worker/test/int/`; `apps/worker/src` sigue con solo `healthcheck.ts`. `worker-health.int-spec.ts` lanza
+  `healthcheck.ts` con `spawn` asíncrono (un `spawnSync` bloquearía el servidor del propio proceso) y cierra a la
+  fuerza el `Worker` de BullMQ en `afterAll` porque con Redis caído reintenta para siempre.
+- **T-23**: `check-env-example.ts` importa los esquemas por ruta interna (`env.schema.ts`, zod puro) y no el índice
+  de `shared`, que arrastra Nest y decoradores fuera del tsconfig de `apps/api`; es un script raíz, no un módulo.
+  `tsx` pasa a devDependencies raíz para `env:check`.
+- **T-24**: `test:int` y `test:isolation` pierden `--passWithNoTests`.
+- **T-26**: CA-1 desde cero en 42 s (imágenes en caché); evidencia en `verification.md`. Hallazgo F-1: Docker Hub
+  ya no sirve `minio/minio`/`minio/mc`; `compose.yml` y el arnés usan `quay.io/minio/*`.
+
+### Correcciones de revisión del PR-2 (2026-09-22)
+
+Una revisión independiente sobre `main..fix/000-carga-de-env` (veredicto **Aprobar**, sin bloqueantes) señaló
+diez puntos; se verificaron todos contra el código y se aplicaron los seis accionables. Detalle y razones en
+`verification.md` §«Correcciones de revisión» y en el registro del plan §12. Lo que hay que recordar más adelante:
+
+- **T-28 (lint de fronteras)**: configurarlo sobre `apps/*/src/**` y **dejar `test/**` fuera**. El arnés de
+  integración importa `LOG_STREAM` por ruta interna (`test/int/setup/log-sink.ts`); es una costura del logger
+  útil solo para capturar bitácoras en memoria y no debe ampliar la API pública que CA-17 congela.
+- **T-28** debe cubrir también `worker.main.ts` y `worker.module.ts` como raíces de composición.
+- **Redacción por nombre de campo**: `REDACTED_FIELDS` no alcanza a una URL incrustada en el texto de un
+  mensaje o un `stack`. La mitigación es no registrar al pie de la letra los errores de conexión; si alguna spec
+  futura necesita registrarlos, hay que sanearlos antes.
+- **Etiquetas de imagen**: al tocar la spec 016 conviene revisar si `onlyoffice/documentserver:9.3.1` sigue
+  siendo la línea adecuada. `axllent/mailpit` en `compose.override.yml` sigue sin etiqueta (solo local).
