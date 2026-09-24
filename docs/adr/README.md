@@ -19,7 +19,7 @@ Son la base para defender la arquitectura en la exposición final (enunciado §6
 | 0011 | Modelo de nodos: dos tablas con `CHECK` o tabla única (DF-40) | Pendiente |
 | 0012 | Versiones por composición con `origen` (DF-17, 18) | Pendiente |
 | 0013 | Política del original en el optimizador (DF-21) | Pendiente |
-| 0014 | Tokens de Cielo Sereno ajustados a AA y mapeados a shadcn; axe en E2E (DF-41–48) | Pendiente |
+| 0014 | [Tokens de Cielo Sereno ajustados a AA y mapeados a shadcn; axe en E2E](0014-tokens-cielo-sereno-shadcn-axe.md) (DF-41–48) | Propuesto |
 | 0015 | [Dependencias de fundaciones: gitleaks, zod, nestjs-pino, Testcontainers](0015-dependencias-de-fundaciones.md) (menor) | Propuesto |
 
 Estados: `Pendiente` (sin redactar) · `Propuesto` (redactado, falta acuerdo del equipo) · `Aceptado` · `Reemplazado por`.
