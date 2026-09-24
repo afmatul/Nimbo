@@ -6,6 +6,7 @@ import { JSDOM } from 'jsdom';
 import type { ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
+import { AppLayout } from './nimbo/app-layout';
 import { CitationChip } from './nimbo/citation-chip';
 import { FileTypeChip } from './nimbo/file-type-chip';
 import { StateView } from './nimbo/state-view';
@@ -97,6 +98,14 @@ describe('Auditoría automatizada de accesibilidad WCAG AA (CA-7)', () => {
           action={{ label: 'Reintentar' }}
         />
       </div>,
+    );
+  });
+
+  it('AppLayout con menú móvil abierto no presenta violaciones de accesibilidad', async () => {
+    await checkA11y(
+      <AppLayout initialMobileMenuOpen={true}>
+        <div>Contenido de prueba</div>
+      </AppLayout>,
     );
   });
 });

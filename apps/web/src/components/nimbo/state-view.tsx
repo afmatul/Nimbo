@@ -12,13 +12,23 @@ export interface StateAction {
   readonly variant?: 'default' | 'destructive' | 'outline' | 'secondary';
 }
 
-export interface StateViewProps extends React.HTMLAttributes<HTMLDivElement> {
-  readonly type: StateViewType;
+interface BaseStateViewProps extends React.HTMLAttributes<HTMLDivElement> {
   readonly title: string;
   readonly description?: string;
-  readonly action?: StateAction;
   readonly icon?: React.ComponentType<{ className?: string }>;
 }
+
+export interface ErrorStateViewProps extends BaseStateViewProps {
+  readonly type: 'error';
+  readonly action: StateAction;
+}
+
+export interface NonErrorStateViewProps extends BaseStateViewProps {
+  readonly type: 'empty' | 'loading';
+  readonly action?: StateAction;
+}
+
+export type StateViewProps = ErrorStateViewProps | NonErrorStateViewProps;
 
 /**
  * Componente transversal para estados de pantalla (vacío, carga y error).
@@ -40,7 +50,7 @@ export function StateView({
   return (
     <div
       className={cn(
-        'flex flex-col items-center justify-center rounded-lg border border-dashed border-border p-8 text-center bg-card shadow-sm min-h-[220px]',
+        'flex flex-col items-center justify-center rounded-lg border border-dashed border-border p-8 text-center bg-card shadow-sm min-h-56',
         isError && 'border-destructive/40 bg-destructive/5',
         className,
       )}

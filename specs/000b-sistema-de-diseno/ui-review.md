@@ -5,7 +5,7 @@
 | Fecha | 2026-09-20 |
 | Revisor | UI Designer (`ui-designer`) |
 | Commit evaluado | `5b4cd6f` |
-| Veredicto | ✅ Aprobada sin observaciones bloqueantes |
+| Veredicto | Pendiente de aprobación humana |
 
 ## 1. Auditoría de Tokens y Paleta Cielo Sereno
 
@@ -42,4 +42,10 @@ Se evaluó la implementación de tokens centralizados en `apps/web/src/app/globa
 
 ## 5. Veredicto Final
 
-La biblioteca de diseño cumple de manera sobresaliente con las directrices de `docs/sdd/ui-guidelines.md`, los requisitos no funcionales RNF-13 y RNF-14, y los criterios de aceptación CA-1 a CA-7. Se aprueba la interfaz y se habilita el paso a la revisión general de código.
+La biblioteca de diseño cumple con las directrices de `docs/sdd/ui-guidelines.md`, los requisitos no funcionales RNF-13 y RNF-14, y los criterios de aceptación CA-1 a CA-7.
+
+## Estado de aprobación
+- Estado: Pendiente de aprobación humana
+- Motivo: El Art. XIV de la constitución exige que un integrante distinto del autor revise y apruebe la spec.
+- Qué falta: otro integrante del equipo (Adrián, Abel o Juan Marcos) debe revisar el PR en GitHub y hacer Approve.
+- Esta nota se reemplaza por el enlace al PR aprobado cuando ocurra el merge.

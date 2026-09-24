@@ -36,12 +36,12 @@ export function CitationChip({
       {location && (
         <>
           <span className="text-agent-text/60">·</span>
-          <span className="text-agent-text/90 font-mono text-[11px]">{location}</span>
+          <span className="text-agent-text/90 font-mono text-xs tabular-nums">{location}</span>
         </>
       )}
       {!isCertain && (
         <span
-          className="inline-flex items-center gap-1 rounded bg-amber-500/20 px-1 py-0.2 text-[10px] text-amber-300 font-normal"
+          className="inline-flex items-center gap-1 rounded bg-warning/20 px-1.5 py-0.5 text-xs text-warning font-normal"
           title="Ubicación estimada con menor certeza"
         >
           <HelpCircle className="h-2.5 w-2.5" aria-hidden="true" />

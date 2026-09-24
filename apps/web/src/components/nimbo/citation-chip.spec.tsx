@@ -10,6 +10,7 @@ describe('CitationChip component (CA-4)', () => {
 
     expect(markup).toContain('contrato.docx');
     expect(markup).toContain('pág. 4');
+    expect(markup).toContain('tabular-nums');
     expect(markup).toContain('bg-agent-tag');
     expect(markup).toContain('text-agent-text');
   });

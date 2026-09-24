@@ -4,7 +4,7 @@
 |---|---|
 | Fecha | 2026-09-20 |
 | Commit | `5b4cd6f` |
-| Veredicto | ✅ Verificada |
+| Veredicto | Pendiente de aprobación humana |
 
 ## Criterios de aceptación
 | CA | Prueba(s) | Nivel | Estado |
@@ -45,10 +45,17 @@
 | `CitationChip` (panel oscuro #2C3A52) | Implementado | ✅ | ✅ | ✅ | Galería en `/` |
 | `StateView` (empty, loading, error) | Implementado | ✅ | ✅ | ✅ | Galería en `/` |
 
-Revisión de UI: `ui-review.md` → ✅ Aprobada
+Revisión de UI: `ui-review.md` → Pendiente de aprobación formal
 
 ## Hallazgos
 - Ninguno pendiente. Los hallazgos históricos DF-41 a DF-45 fueron resueltos formalmente y validados por las pruebas unitarias y de contraste.
 
 ## Criterios sin prueba automatizable
 - La inspección visual del drawer móvil y colapso de la barra lateral se confirmó tanto mediante pruebas unitarias en `app-layout.spec.tsx` como en el navegador interactivo en `http://localhost/`.
+
+## Estado de aprobación
+- Estado: Pendiente de aprobación humana
+- Motivo: El Art. XIV de la constitución exige que un integrante distinto del autor revise y apruebe la spec.
+- Qué falta: otro integrante del equipo (Adrián, Abel o Juan Marcos) debe revisar el PR en GitHub y hacer Approve.
+- Esta nota se reemplaza por el enlace al PR aprobado cuando ocurra el merge.
+

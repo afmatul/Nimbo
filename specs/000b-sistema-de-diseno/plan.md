@@ -120,7 +120,7 @@ No aplica. Los contratos de API ya existen en `@nimbo/contracts` y no se modific
 | Regresiones en contraste al diseñar nuevas pantallas | Media | Alta | Regla dura: prohibido usar hex en línea; `jest-axe` en la suite de pruebas como compuerta de integración. |
 
 ## 10. Decisiones
-- **ADR-0015**: Se adopta Tailwind CSS v4 + componentes estilo shadcn/ui con tokens personalizados de Cielo Sereno en `globals.css`.
+- **ADR-0014**: Se adopta Tailwind CSS v4 + componentes estilo shadcn/ui con tokens personalizados de Cielo Sereno en `globals.css`.
 - **DF-41 a DF-45**: Se aplican los valores de contraste corregidos como únicos tokens de texto y controles interactivos.
 
 ## 11. Aprobación de arquitectura
