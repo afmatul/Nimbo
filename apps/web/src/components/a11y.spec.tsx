@@ -1,7 +1,7 @@
 /**
  * @jest-environment node
  */
-import { run as runAxe } from 'axe-core';
+import { axe, toHaveNoViolations } from 'jest-axe';
 import { JSDOM } from 'jsdom';
 import type { ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -14,6 +14,8 @@ import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/card';
 import { Input } from './ui/input';
+
+expect.extend(toHaveNoViolations);
 
 async function checkA11y(jsx: ReactElement): Promise<void> {
   const html = `<!DOCTYPE html><html lang="es"><head><title>A11y Test</title></head><body><main>${renderToStaticMarkup(jsx)}</main></body></html>`;
@@ -31,8 +33,8 @@ async function checkA11y(jsx: ReactElement): Promise<void> {
       null) as unknown as typeof HTMLCanvasElement.prototype.getContext;
   }
 
-  const results = await runAxe(dom.window.document.body);
-  expect(results.violations).toEqual([]);
+  const results = await axe(dom.window.document.body);
+  expect(results).toHaveNoViolations();
 }
 
 describe('Auditoría automatizada de accesibilidad WCAG AA (CA-7)', () => {

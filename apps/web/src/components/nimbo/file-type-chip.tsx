@@ -2,7 +2,7 @@ import {
   FileText,
   FileSpreadsheet,
   Presentation,
-  FileCode,
+  FileType,
   Image as ImageIcon,
   File,
 } from 'lucide-react';
@@ -42,7 +42,7 @@ const FILE_TYPE_MAP: Record<FileType, FileTypeConfig> = {
     label: 'PDF',
     textColorVar: 'var(--file-pdf)',
     bgColorVar: 'var(--file-pdf-bg)',
-    icon: FileCode,
+    icon: FileType,
   },
   img: {
     label: 'IMG',

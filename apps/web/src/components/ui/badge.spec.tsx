@@ -20,6 +20,6 @@ describe('Badge component (CA-4)', () => {
 
     const destructiveMarkup = renderToStaticMarkup(<Badge variant="destructive">Error</Badge>);
     expect(destructiveMarkup).toContain('bg-destructive');
-    expect(destructiveMarkup).toContain('text-white');
+    expect(destructiveMarkup).toContain('text-primary-foreground');
   });
 });
