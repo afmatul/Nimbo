@@ -148,7 +148,7 @@ export function AppLayout({
             aria-labelledby="mobile-menu-title"
           >
             <div
-              /* TODO: token de velo/overlay pendiente en design system */
+              /* TODO: token de velo/overlay pendiente (#6) */
               className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity"
               onClick={handleCloseMenu}
               aria-hidden="true"
