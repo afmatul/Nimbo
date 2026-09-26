@@ -1,4 +1,5 @@
 import { JSDOM } from 'jsdom';
+import { Folder } from 'lucide-react';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -167,5 +168,19 @@ describe('AppLayout component (CA-5)', () => {
     await act(async () => {
       root.unmount();
     });
+  });
+
+  it('permite personalizar los ítems de navegación mediante la prop navItems (S-1)', () => {
+    const customItems = [
+      { label: 'Archivos Propios', icon: Folder, href: '/custom-archivos', active: true },
+    ];
+    const markup = renderToStaticMarkup(
+      <AppLayout navItems={customItems}>
+        <div>Contenido</div>
+      </AppLayout>,
+    );
+
+    expect(markup).toContain('Archivos Propios');
+    expect(markup).toContain('/custom-archivos');
   });
 });

@@ -53,7 +53,7 @@ Establecer la infraestructura visual completa en `apps/web` (Next.js + Tailwind 
     - `Input`: campo de texto con borde `#7F93AA`, foco visible y estados de error con mensaje accesible.
     - `Card`: contenedor con fondo `#FAFCFF`, borde `#DDE6F0` y padding responsivo.
     - `Badge`: chips de estado y chips de tipo de archivo (`.docx`, `.xlsx`, `.pptx`, `.pdf`, imagen, otro) con texto oscuro contrastado y fondo al 12% (`DF-44`).
-    - `AgentQuoteChip`: chip de cita documental del agente IA con estilo para el panel oscuro (`#2C3A52`, texto claro y cita).
+    - `CitationChip`: chip de cita documental del agente IA con estilo para el panel oscuro (`#2C3A52`, texto claro y cita).
     - `StateView`: componente reutilizable para estados `empty` (vacío), `loading` (carga con indicador accesible), y `error` (con mensaje claro y botón de acción correctiva, RNF-14).
   - **Entonces** cada componente cuenta con sus pruebas unitarias/de renderizado y no utiliza valores hexadecimales en línea.
 
@@ -102,6 +102,7 @@ Establecer la infraestructura visual completa en `apps/web` (Next.js + Tailwind 
   - Estado vacío: «No hay elementos disponibles para mostrar»
 - Diferencias aceptadas respecto al mockup:
   - Se sustituyen los tonos de texto y botones que no cumplían AA por los tonos corregidos de DF-41 a DF-45 (`#4A6FA5` para botones primarios en vez de `#6B8DD6`, etc.).
+  - En la barra lateral (`AppLayout`), el borde de la fila activa utiliza `border-l-primary` (`#4A6FA5`) en lugar de `border-l-brand` (`#6B8DD6`, `ui-guidelines.md §5`) para asegurar un contraste óptimo y consistente con el texto primario activo.
 
 ## 10. Fuera de alcance
 - No incluye lógica de negocio ni llamadas a la API de backend (eso corresponde a cada spec funcional: 001, 005, etc.).

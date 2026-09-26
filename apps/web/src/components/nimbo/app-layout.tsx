@@ -1,14 +1,31 @@
 'use client';
 
+import type { LucideIcon } from 'lucide-react';
 import { Cloud, Menu, X, Folder, Share2, Trash2, CreditCard, Sparkles } from 'lucide-react';
 import * as React from 'react';
 
 import { cn } from '../../lib/utils';
 
+export interface NavItem {
+  readonly label: string;
+  readonly href: string;
+  readonly icon: LucideIcon;
+  readonly active?: boolean;
+}
+
+export const DEFAULT_NAV_ITEMS: readonly NavItem[] = [
+  { label: 'Mis Archivos', icon: Folder, href: '#archivos', active: true },
+  { label: 'Compartidos', icon: Share2, href: '#compartidos' },
+  { label: 'Papelera', icon: Trash2, href: '#papelera' },
+  { label: 'Planes y Cuota', icon: CreditCard, href: '#planes' },
+  { label: 'Agente Nimbo', icon: Sparkles, href: '#agente' },
+];
+
 export interface AppLayoutProps {
   readonly children: React.ReactNode;
   readonly userEmail?: string;
   readonly initialMobileMenuOpen?: boolean;
+  readonly navItems?: readonly NavItem[];
 }
 
 /**
@@ -20,6 +37,7 @@ export function AppLayout({
   children,
   userEmail,
   initialMobileMenuOpen = false,
+  navItems = DEFAULT_NAV_ITEMS,
 }: AppLayoutProps): React.JSX.Element {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(initialMobileMenuOpen);
   const menuButtonRef = React.useRef<HTMLButtonElement>(null);
@@ -50,14 +68,6 @@ export function AppLayout({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [mobileMenuOpen]);
-
-  const navItems = [
-    { label: 'Mis Archivos', icon: Folder, href: '#archivos', active: true },
-    { label: 'Compartidos', icon: Share2, href: '#compartidos' },
-    { label: 'Papelera', icon: Trash2, href: '#papelera' },
-    { label: 'Planes y Cuota', icon: CreditCard, href: '#planes' },
-    { label: 'Agente Nimbo', icon: Sparkles, href: '#agente' },
-  ];
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-background text-foreground overflow-x-hidden">
@@ -115,6 +125,7 @@ export function AppLayout({
                   href={item.href}
                   className={cn(
                     'flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    // S-2: Se usa border-l-primary en vez de border-l-brand (ui-guidelines.md §5) para maximizar el contraste y la distinción accesible del ítem activo
                     item.active
                       ? 'bg-accent text-primary font-semibold border-l-[3px] border-l-primary'
                       : 'text-secondary-foreground hover:bg-accent/60 hover:text-foreground',
@@ -137,6 +148,7 @@ export function AppLayout({
             aria-labelledby="mobile-menu-title"
           >
             <div
+              /* TODO: token de velo/overlay pendiente (#6) */
               className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity"
               onClick={handleCloseMenu}
               aria-hidden="true"

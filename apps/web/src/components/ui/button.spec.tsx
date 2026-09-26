@@ -14,7 +14,7 @@ describe('Button component (CA-4)', () => {
   it('renderiza la variante destructiva con el token accesible de peligro', () => {
     const markup = renderToStaticMarkup(<Button variant="destructive">Eliminar</Button>);
     expect(markup).toContain('bg-destructive');
-    expect(markup).toContain('text-white');
+    expect(markup).toContain('text-primary-foreground');
     expect(markup).toContain('Eliminar');
   });
 
