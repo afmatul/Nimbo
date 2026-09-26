@@ -99,6 +99,7 @@ El tipo real se valida por contenido (magic bytes), no por extensión (RF-14).
 ## 5. Módulos funcionales
 
 - **Cuentas y accesos**: registro con enlace firmado y vigencia; recuperación con token de un uso que invalida sesiones; Argon2id; access token corto + refresh rotativo por dispositivo; sesiones revocables; aviso por dispositivo no reconocido.
+  - El registro exige aceptar los Términos y la Política de privacidad, y guarda la fecha y la versión aceptadas (spec 001, D-14).
 - **Archivos y carpetas**: carga simple y por partes reanudable con progreso real; descarga por URL firmada; árbol jerárquico; papelera; versionado; cuota aplicada **antes** de subir con mensaje explicativo; medidor con desglose por tipo.
 - **Compartición**: por usuario (lector/editor) y enlaces públicos con expiración, contraseña opcional y revocación; vista de accesos vigentes.
 - **Suscripciones y pagos**: catálogo, comparador, contratación simulada, historial, facturas descargables, aviso de vencimiento, renovación automática y manual.
