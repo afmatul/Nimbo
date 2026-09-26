@@ -229,37 +229,38 @@ identificador.
 
 > Estado del mockup: `Pendiente` · `Borrador` · `Aprobado`. Rutas relativas a `docs/design/`.
 > Actualicen la columna «Mockup» con lo que ya existe; el `ui-designer` la mantiene al día.
-> Los mockups `Borrador` provienen de Claude Design (`.dc.html`) y solo cubren los estados entre paréntesis;
+> Los mockups `Borrador` son HTML autocontenidos (`.html`; la vista general sigue en `.dc.html`) y solo cubren los estados entre paréntesis;
 > el resto de estados mínimos se agregan con `/mockup` antes de aclarar la spec. Cada carpeta tiene un `README.md`.
 
 | Pantalla | Módulo | Spec | Mockup | Capturas | Estados mínimos | Mockup |
 |---|---|---|---|---|---|---|
-| Registro | identity | 001 | `mockups/identity/registro/` | `capturas/identity/registro/` | default, error, exito | Pendiente |
-| Verificar correo | identity | 001 | `mockups/identity/verificar-correo/` | `capturas/identity/verificar-correo/` | exito, enlace-expirado | Pendiente |
-| Inicio de sesión | identity | 002 | `mockups/identity/inicio-sesion/` | `capturas/identity/inicio-sesion/` | default, error, bloqueado | Pendiente |
+| Registro | identity | 001 | `mockups/identity/registro/` | `capturas/identity/registro/` | default, error, exito | Borrador (default, exito) |
+| Correos de registro (verificación y aviso de intento) | identity | 001 | `mockups/identity/correos/` | `capturas/identity/correos/` | registro | Borrador (registro) |
+| Verificar correo | identity | 001 | `mockups/identity/verificar-correo/` | `capturas/identity/verificar-correo/` | exito, enlace-expirado | Borrador (verificando, exito) |
+| Inicio de sesión | identity | 002 | `mockups/identity/inicio-sesion/` | `capturas/identity/inicio-sesion/` | default, error, bloqueado | Borrador (default) |
 | Recuperar / restablecer contraseña | identity | 002 | `mockups/identity/recuperar-contrasena/` | … | default, exito, token-invalido | Pendiente |
 | Sesiones y dispositivos | identity | 002 | `mockups/identity/sesiones/` | … | default, dispositivo-nuevo | Pendiente |
 | Layout de la app (navegación, cuota lateral) | shared | 000b | `mockups/shared/layout/` | … | default, solo-lectura | Pendiente |
 | Explorador de archivos | storage | 005–007 | `mockups/storage/explorador/` | `capturas/storage/explorador/` | default, vacio, cargando, arrastre, seleccion | Borrador (cuadricula, lista) |
 | Resumen de espacio (cuota, consultas, renovación) | storage | 007 | `mockups/storage/resumen-espacio/` | `capturas/storage/resumen-espacio/` | default | Borrador (default) |
 | Vista general (lienzo con todas las pantallas) | shared | 000b | `mockups/shared/vista-general/` | `capturas/shared/vista-general/` | default | Borrador (referencia) |
-| Carga en progreso | storage | 005 | `mockups/storage/carga/` | … | progreso, reanudar, rechazo-cuota, tipo-invalido | Pendiente |
+| Carga en progreso | storage | 005 | `mockups/storage/carga/` | `capturas/storage/carga/` | progreso, reanudar, rechazo-cuota, tipo-invalido | Borrador (progreso) |
 | Papelera | storage | 006 | `mockups/storage/papelera/` | `capturas/storage/papelera/` | default, vacio | Borrador (default) |
-| Ficha de archivo (detalles, versiones, estado de indexación) | storage | 014, 019 | `mockups/storage/ficha-archivo/` | … | default, no-indexable | Pendiente |
+| Ficha de archivo (detalles, versiones, estado de indexación) | storage | 014, 019 | `mockups/storage/ficha-archivo/` | `capturas/storage/ficha-archivo/` | default, no-indexable | Borrador (default, con historial) |
 | Vista previa | storage | 017 | `mockups/storage/vista-previa/` | … | pdf, imagen, no-disponible | Pendiente |
 | Búsqueda | storage | 018 | `mockups/storage/busqueda/` | `capturas/storage/busqueda/` | resultados, sin-resultados | Borrador (resultados) |
 | Compartir y accesos | sharing | 012 | `mockups/sharing/compartir/` | `capturas/sharing/compartir/` | default, lista-accesos | Borrador (default) |
-| Enlace público (creación y página pública) | sharing | 013 | `mockups/sharing/enlace-publico/` | … | con-contrasena, expirado, revocado | Pendiente |
-| Planes y comparador | billing | 008 | `mockups/billing/planes/` | `capturas/billing/planes/` | default, plan-actual | Borrador (default) |
-| Pago simulado | billing | 009 | `mockups/billing/pago/` | … | default, rechazado, exito | Pendiente |
+| Enlace público (creación y página pública) | sharing | 013 | `mockups/sharing/enlace-publico/` | `capturas/sharing/enlace-publico/` | con-contrasena, expirado, revocado | Borrador (con-contrasena) |
+| Planes y comparador | billing | 008 | `mockups/billing/planes/` | `capturas/billing/planes/` | default, plan-actual | Borrador (plan-actual) |
+| Pago simulado | billing | 009 | `mockups/billing/pago/` | `capturas/billing/pago/` | default, rechazado, exito | Borrador (default) |
 | Historial de pagos y facturas | billing | 009 | `mockups/billing/suscripcion/` (misma pantalla) | `capturas/billing/suscripcion/` | default, vacio | Borrador (cubierto por suscripcion) |
 | Mi suscripción (renovación, cambio de plan) | billing | 010 | `mockups/billing/suscripcion/` | `capturas/billing/suscripcion/` | vigente, por-vencer, vencida, cambio-programado | Borrador (vigente) |
 | Editor .docx con presencia | editing | 016 | `mockups/editing/editor/` | `capturas/editing/editor/` | editando, limite-editores, guardado-fallido, solo-lectura | Borrador (editando) |
-| Historial de versiones con autoría | editing | 014, 016 | `mockups/editing/historial/` | … | default, restaurando | Pendiente |
+| Historial de versiones con autoría | editing | 014, 016 | `mockups/storage/ficha-archivo/` (misma pantalla) | `capturas/storage/ficha-archivo/` | default, restaurando | Borrador (cubierto por ficha-archivo) |
 | Panel del agente | intelligence | 020 | `mockups/intelligence/panel-agente/` | `capturas/intelligence/panel-agente/` | vacio, respondiendo, con-citas, cita-incierta, limite-alcanzado | Borrador (con-citas) |
 | Optimizador | optimizer | 021 | `mockups/optimizer/optimizador/` | `capturas/optimizer/optimizador/` | estimacion, no-conviene, procesando, completado | Borrador (estimacion) |
 | Mi bitácora de auditoría | backoffice | 004 | `mockups/backoffice/mi-auditoria/` | … | default, vacio | Pendiente |
-| Admin: cuentas y catálogo | backoffice | 011 | `mockups/backoffice/admin/` | … | default | Pendiente |
+| Admin: cuentas y catálogo | backoffice | 011 | `mockups/backoffice/admin/` | `capturas/backoffice/admin/` | default | Borrador (default, vista de cuentas) |
 | Soporte: metadatos y operaciones | backoffice | 011 | `mockups/backoffice/soporte/` | … | default (sin contenido de archivos) | Pendiente |
 | Operador: estado y colas | backoffice | 022 | `mockups/backoffice/operacion/` | … | sano, con-fallos | Pendiente |
 

@@ -1,14 +1,17 @@
 # Mockup: Editor .docx
 
 - **Spec**: 016
-- **Origen**: exportado desde Claude Design (`.dc.html`, Cielo Sereno, 1440 × 900). Es referencia visual; `apps/web` no lo importa.
-- **Estados incluidos**: editando
-- **Capturas**: `docs/design/capturas/editing/editor/` (360 y 1440 px)
+- **Hoja de la entrega**: 06b (anexo, no se firma)
+- **Origen**: HTML empaquetado y autocontenido (`.html`, Cielo Sereno, lienzo de ≈ 1490 px con el rótulo de la hoja). Es referencia visual; `apps/web` no lo importa.
+- **Estados incluidos**:
+  - editando (`editor--editando.html`)
+- **Capturas**: `docs/design/capturas/editing/editor/` (`editor--<estado>--<360|1440>.png`)
 
 ## Decisiones de UX
-- Barra de herramientas superior, presencia de coeditores y versión actual.
-- Incluye atribución por párrafo y sugerencia del agente: **fuera de alcance** (product-context §9); se ignoran al implementar.
+- Barra de herramientas superior, versión actual y panel lateral de revisión.
 
 ## Pendiente
-- Estados que faltan respecto al inventario de `docs/sdd/ui-guidelines.md` §7 (vacío, cargando, error, etc.).
-- Versión móvil real a 360 px: el mockup está diseñado a 1440 px y se recorta en móvil.
+- Incluye atribución por párrafo, firma y sugerencias del agente: **fuera de alcance** (product-context §9); se ignoran al implementar.
+- Estados del inventario: limite-editores, guardado-fallido y solo-lectura.
+- Botón principal `#6B8DD6` con texto blanco (3.28:1) no cumple AA (DF-41); la implementación usa el token corregido.
+- Versión móvil real a 360 px: el mockup está diseñado para escritorio y la captura a 360 px muestra el mismo lienzo.
