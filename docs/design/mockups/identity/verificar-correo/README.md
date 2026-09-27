@@ -10,7 +10,7 @@
   - enlace-expirado (`verificar-correo--enlace-expirado.html`)
   - enlace-invalido (`verificar-correo--enlace-invalido.html`)
   - ya-verificado, sin sesión, con «Iniciar sesión» (`verificar-correo--ya-verificado.html`)
-  - plan-de-pago-elegido: plan Equipo con pago pendiente (`verificar-correo--plan-de-pago-elegido.html`, D-24)
+  - plan-de-pago-elegido: la cuenta queda en Personal y el aviso remite a «Plan y facturación» para activar Equipo (`verificar-correo--plan-de-pago-elegido.html`, D-24)
 - **Capturas**: `docs/design/capturas/identity/verificar-correo/` (`verificar-correo--<estado>--<360|1440>.png`)
 
 ## Decisiones de UX
@@ -18,6 +18,5 @@
 - Al verificar, el dispositivo queda con sesión y la pantalla ofrece «Ir a Mis archivos» (D-20).
 
 ## Pendiente
-- plan-de-pago-elegido muestra el comportamiento final con 009 («Pago pendiente», «Completar pago»). En Fase 1, mientras 009 no existe, D-24 pide decir que el plan se activa desde «Plan y facturación» cuando esté disponible.
 - Botón principal `#6B8DD6` con texto blanco (3.28:1) no cumple AA (DF-41); la implementación usa el token corregido.
 - Versión móvil real a 360 px: el mockup está diseñado para escritorio y la captura a 360 px muestra el mismo lienzo.

@@ -9,10 +9,8 @@
 
 ## Decisiones de UX
 - Plantillas de 600 px de ancho con encabezado De / Para / Asunto.
-- El correo de verificación trae el botón y el enlace en texto para copiarlo.
+- El correo de verificación trae el botón y el enlace en texto para copiarlo, y advierte que quien abra el enlace entrará a la cuenta (D-20). Dominio de ejemplo: `nimbo.me` (D-12).
 - El aviso de intento de registro no crea otra cuenta, ofrece iniciar sesión o restablecer la contraseña y se envía como máximo una vez cada 24 h (D-17).
 
 ## Pendiente
-- Texto de advertencia: dice «Cualquier persona con este enlace puede verificar tu cuenta»; con D-20 el enlace abre sesión, así que la spec pide «quien lo abra entrará a tu cuenta».
-- Dominio de ejemplo `nimbo.app`; el dominio del proyecto es `nimbo.me` (D-12).
 - Los correos de la spec 002 (restablecer contraseña, dispositivo nuevo) irán en esta misma carpeta como otras variantes.

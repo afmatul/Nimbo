@@ -488,13 +488,13 @@ reescribieron después de revisar los mockups (2026-09-22) o al volver al enlace
 - **Ajustes ya hechos** (hojas del 2026-09-26): el registro pide 12 caracteres y dice «enlace»; «Revisa tu correo» no
   muestra sesión ni casillas de código y ofrece «Reenviar enlace» con cuenta regresiva y «Cambiar correo»; existen la
   página del enlace (verificando) y las dos plantillas de correo.
-- **Ajustes obligatorios pendientes** (se producen con `/mockup`; la spec manda):
-  1. `verificar-correo--plan-de-pago-elegido.html` muestra el comportamiento final con 009 («Pago pendiente»,
-     «Completar pago»). En Fase 1 la pantalla dice que el plan se activa desde «Plan y facturación» cuando esté
-     disponible (D-24); la implementación sigue la spec.
-  2. Correo de verificación: la advertencia dice «Cualquier persona con este enlace puede verificar tu cuenta»; por D-20
-     debe decir que quien lo abra entrará a la cuenta (ver mensajes clave). El dominio de ejemplo `nimbo.app` pasa a
-     `nimbo.me` (D-12).
+- **Ajustes del 2026-09-26** (ya no quedan ajustes obligatorios pendientes):
+  1. `verificar-correo--plan-de-pago-elegido.html` sigue D-24: la tarjeta muestra el plan Personal, el aviso dice que
+     el plan elegido se activa desde «Plan y facturación» cuando esté disponible y la única acción es «Ir a Mis
+     archivos» (sin «Pago pendiente» ni «Completar pago»).
+  2. Correo de verificación: dice «Abre el enlace para verificar tu correo y entrar a Nimbo», que el enlace vence en 24 h
+     y solo funciona una vez, y advierte «No reenvíes este correo: quien abra el enlace entrará a tu cuenta» (D-20,
+     RN-9). El dominio de ejemplo es `nimbo.me` (D-12).
 - **Se conservan** del mockup:
   - el selector de plan (D-4), con nombres y precios leídos de la API; los valores escritos en el mockup (`Q0.00`,
     `Q450`…) son solo de referencia;
@@ -548,7 +548,7 @@ reescribieron después de revisar los mockups (2026-09-22) o al volver al enlace
 
 | Riesgo | Impacto | Mitigación |
 |---|---|---|
-| **Plazo**: el Avance 1 (25/09/2026) exige 001 `Hecha`; quedan los ajustes de mockups de §11 y la dependencia con 006a | Entrega del 30 % incompleta | Producir con `/mockup` solo los ajustes y estados pendientes; backend y contratos pueden planificarse en paralelo |
+| **Plazo**: el Avance 1 (30/09/2026) exige 001 `Hecha`; quedan los ajustes de mockups de §11 y la dependencia con 006a | Entrega del 30 % incompleta | Producir con `/mockup` solo los ajustes y estados pendientes; backend y contratos pueden planificarse en paralelo |
 | **El enlace es una credencial** (D-20): un correo reenviado, un buzón comprometido o un filtro de correo que abre enlaces obtiene sesión durante 24 h | Acceso a la cuenta recién creada por quien tenga el enlace; o el usuario ve «ya verificado» porque un filtro lo consumió antes y tiene que iniciar sesión | Un solo uso con consumo atómico, hash e invalidación al reemplazarse (D-19, CA-29); advertencia en el correo (RN-9); sesión visible y revocable con aviso por dispositivo no reconocido (002, RF-04). Si en pruebas con Gmail/Outlook se observa consumo automático del enlace, se propone al dueño un clic de confirmación en la página (cambio de spec) |
 | **La interfaz depende de 006a** para listar planes y precios por API. El backlog describe 006a como tabla `plan` + `IPlanLimitsProvider`; el listado público de planes se parece más a 008 (catálogo y comparador, Fase 2) | Pantalla de registro sin planes, o 006a con más alcance | Agregar a 006a una lectura pública mínima de planes activos (nombre, precio, límites principales), o aceptar el estado catalogo-no-disponible (CA-22) hasta que exista. Lo decide el dueño de 006a con el `architect` en el plan |
 | La elección de plan se pierde si el enlace se abre en otro dispositivo (D-24) | El visitante que eligió un plan de pago no ve el recordatorio | Aceptado en Fase 1; 009 lo retoma |
@@ -635,3 +635,4 @@ ajustes y estados de mockups de §11 (Art. XIII.1; compuerta de `Aclarada`, `wor
 | 2026-09-26 | §11: mockups nuevos de las hojas 01, 02, 02b, 02c y 02d (registro, «Revisa tu correo», página del enlace en estado verificando, correo verificado y las dos plantillas de correo) con sus capturas. Los ajustes 1–3 y 6 quedan hechos; quedan pendientes los estados que faltan, Términos y Privacidad, y el texto de advertencia del correo | Entrega de las hojas de mockups | Adrián |
 | 2026-09-26 | §11: mockups y capturas de los estados que faltaban (registro: enviando, error-campos, error-servidor, catalogo-no-disponible, limite-reenvio y pedir-enlace; página del enlace: enlace-expirado, enlace-invalido y ya-verificado; pantalla final: plan-de-pago-elegido). Quedan pendientes Términos y Privacidad y dos textos | Estados de 001 | Adrián |
 | 2026-09-26 | §11: mockups de Términos y Política de privacidad (borrador de textos; el texto final lo cierra el plan según D-22) | Respuestas del dueño sobre privacidad | Adrián |
+| 2026-09-26 | §11: se hacen los dos ajustes obligatorios que quedaban (plan de pago elegido según D-24; advertencia y dominio del correo de verificación según D-20 y D-12), con sus capturas. §13: el Avance 1 es el 30/09/2026 | Ajustes pendientes de §11 y cambio de fecha de la Fase 1 | Adrián |
