@@ -9,7 +9,7 @@
 | Depende de | **002** (token de acceso y el puerto que lo verifica, D-14 de 002); 001 (`usuario.rol`, D-1 de 001); 000 (bloques 1 y 2: `Actor`, `DomainError`, `DataSource`). **Hacia adelante** (D-1): la consulta de `accessibleNodes` y las políticas RLS se completan con 005 (propiedad) y 012 (comparticiones) |
 | Módulo | T1 `shared` (guards, decoradores, `Actor`) + M3a `access` (`PermissionResolver`, políticas, `accessibleNodes`) |
 | DF | DF-01 aceptado como regla (D-9) · DF-32 decidido por D-1 · DF-02 por ADR-0010 · **DF-50** nuevo (ubicación de `RolesGuard`, D-2). Falta que el `architect` actualice `design-findings.md` y los diagramas |
-| ADR | ADR-0005 (autorización en la consulta + RLS) y ADR-0010 deben estar `Aceptado` antes del plan |
+| ADR | ADR-0005 (autorización en la consulta + RLS) y ADR-0010, ambos `Aceptado` (2026-09-26) |
 | Última actualización | 2026-09-26 |
 
 ## 1. Contexto y problema
@@ -58,7 +58,7 @@ que 005 y 012 los usen, y una suite de aislamiento que falla si una cuenta alcan
 | R-4 | `Actor` = `{ id, role, canReadContent }` en `shared`. | Spec 000, `architecture.md` §6 |
 | R-5 | La autorización se resuelve dentro de la consulta de datos; los repositorios de datos de cliente solo exponen `findAccessible(actor, …)`. | RNF-05, Art. IX, `architecture.md` §6 |
 | R-6 | `accessibleNodes(actor)` es la **única** implementación de «qué puede ver este actor»: la usan listados, búsqueda, descargas, vista previa, edición y el agente. | DF-32, `architecture.md` §6 |
-| R-7 | RLS como segunda barrera en `archivo`, `version_archivo` y `fragmento`, con `SET LOCAL app.actor_id` por transacción. | `architecture.md` §6 |
+| R-7 | RLS como segunda barrera en `archivo`, `version_archivo` y `fragmento`, con el actor fijado por transacción: `set_config('app.actor_id', $1, true)` y `app.actor_role` dentro de `withActor()` (ADR-0005). | `architecture.md` §6 |
 | R-8 | `access` lee `archivo`, `carpeta` y `comparticion` con SQL de solo lectura (excepción documentada a «cada módulo es dueño de sus tablas»). | `architecture.md` §3, ADR-0010 |
 | R-9 | Toda acción de un rol interno sobre una cuenta ajena queda en la auditoría visible para el cliente (RF-07). | Propuesta §7.4; specs 004 y 011 |
 
@@ -74,7 +74,7 @@ Todas las tomó Adrián el 2026-09-26. La numeración D-n sigue a la pregunta P-
 | D-4 | **El «Limitado» de Soporte** al restaurar la papelera de un cliente: solo **restaurar**, nunca ver ni descargar; siempre con un **motivo escrito**, y siempre en la auditoría visible para el cliente (RF-07). Se implementa en 011; aquí se fija la regla y se actualiza la nota ¹ de `product-context.md` §2. | P-4 |
 | D-5 | **Mismo formulario de inicio de sesión para todos los roles** (002). Después, la web redirige según el rol: el Cliente a Mis archivos; las cuentas internas a su área, que hasta 011 es una página de marcador con su nombre, su rol y «Cerrar sesión». Esa redirección es solo experiencia de usuario: la barrera es que las rutas de cliente exigen `CLIENT` en el servidor. | P-5 |
 | D-6 | **Respuestas.** Recurso de otra cuenta o inexistente: **404**, idéntico en los dos casos (mismo `status` y cuerpo, con el `code` del módulo, p. ej. `STORAGE_NODE_NOT_FOUND`). Rol insuficiente: **403** `SHARED_FORBIDDEN`. Sin token, o con un token vencido o inválido: **401** `SHARED_UNAUTHENTICATED`; la web intenta una renovación (002) antes de mandar a iniciar sesión. | P-6 |
-| D-7 | **RLS desde la Fase 1** en `archivo` y `version_archivo`, desde las migraciones que las crean (005), con `FORCE ROW LEVEL SECURITY`. La API se conecta con un **rol de base de datos que no es dueño** de las tablas; las migraciones corren con el rol dueño. Esta spec entrega los dos roles en compose y staging, sus variables de entorno y el ayudante que fija `app.actor_id` y `app.actor_role` con `SET LOCAL` en cada transacción. Qué filas y columnas ven los roles internos (solo metadatos, sin `clave_objeto`) se define con ADR-0005 en el plan de 005. `fragmento` entra con 019. | P-7 |
+| D-7 | **RLS desde la Fase 1** en `archivo` y `version_archivo`, desde las migraciones que las crean (005), con `FORCE ROW LEVEL SECURITY`. La API se conecta con un **rol de base de datos que no es dueño** de las tablas; las migraciones corren con el rol dueño. Esta spec entrega los dos roles en compose y staging, sus variables de entorno y el ayudante `withActor()`, que fija `app.actor_id` y `app.actor_role` en cada transacción con `set_config(…, true)` y parámetros (equivale a `SET LOCAL` sin concatenar valores; ADR-0005). Los roles internos solo ven metadatos de `archivo` y no reciben ninguna fila de `version_archivo`, donde está `clave_objeto` (ADR-0005); las columnas visibles las acota `INodeMetadataReader`, no RLS. Las políticas se escriben en las migraciones de 005. `fragmento` entra con 019. | P-7 |
 | D-8 | **Sin mockups nuevos.** Los estados «sin permiso» (403) y «no encontrado» (404) de la web se construyen con los componentes de 000b; es la decisión explícita que pide `Aclarada`. | P-8 |
 | D-9 | Todo método de servicio que actúa sobre datos de un usuario recibe `actor: Actor` como primer parámetro (**DF-01 aceptado como regla**; el `architect` actualiza las firmas de los diagramas). `canReadContent` es `true` solo para `CLIENT`. | — (restricciones R-4, R-5) |
 | D-10 | **Toda ruta se declara.** Cada ruta de la API lleva `@Public()` o `@Roles(...)`. Una prueba recorre todas las rutas registradas y falla si alguna no declara ninguna de las dos, aunque la negación por defecto ya la proteja. | — (derivada de D-2) |
@@ -153,7 +153,8 @@ No hay parámetros numéricos propios. La vida del token de acceso (15 min) es d
 - **CA-12** (D-7) — el actor por transacción
   - **Dado** dos transacciones seguidas sobre la **misma** conexión del pool, con actores distintos,
   - **Cuando** cada una consulta `current_setting('app.actor_id')`,
-  - **Entonces** cada una ve el suyo, y fuera de una transacción no queda ningún valor.
+  - **Entonces** cada una ve el suyo, y fuera de una transacción `current_setting('app.actor_id', true)` vuelve vacío
+    (`''` o `NULL`; las políticas usan `nullif(…, '')` y sin actor no devuelven filas).
 - **CA-13** (D-7) — la API no es dueña de las tablas
   - **Dado** los roles de base de datos de compose,
   - **Cuando** se revisa quién es dueño de las tablas y con qué rol se conecta la API,
@@ -242,7 +243,7 @@ No hay parámetros numéricos propios. La vida del token de acceso (15 min) es d
 |---|---|---|
 | **Dependencia hacia adelante**: `accessibleNodes` y RLS necesitan las tablas de 005, y 005 necesita esta spec | 005 no puede autorizar descargas; o 003 se retrasa esperando tablas | D-1: 003 entrega contratos y guards; la consulta y RLS se escriben en el PR de 005 por el dueño de `access`. Coordinar el plan de 005 con Abel |
 | **Demo de roles en la Fase 1 sin cuentas internas** (D-3) | En el Avance 1 no se puede iniciar sesión como Administrador | Se demuestra con la suite de roles y aislamiento (CA-5, CA-6, CA-15); la administración llega con 011 |
-| RLS con pool de conexiones: un `SET` sin `LOCAL` o fuera de transacción se filtraría a otra petición | Fuga entre cuentas | Solo `SET LOCAL` dentro de una transacción (CA-12); prueba con la misma conexión |
+| RLS con pool de conexiones: un `SET` sin `LOCAL` o fuera de transacción se filtraría a otra petición | Fuga entre cuentas | Solo `set_config(…, true)` dentro de la transacción de `withActor()` (CA-12), con un lint que lo prohíbe fuera de él; prueba con la misma conexión |
 | TypeORM y RLS: toda consulta de datos de cliente debe ir dentro de la transacción con actor | Consultas que no ven filas, o que las ven todas si alguien usa el rol dueño | Ayudante único de transacción; CA-13 y CA-14; revisión del `security-auditor` |
 | El rol del token dura hasta 15 min tras una suspensión | Acceso breve de una cuenta recién suspendida | Aceptado en D-10 de 002; los roles no cambian (R-2) |
 | Mover `RolesGuard` a `shared` contradice el diagrama de M8 | Diagramas y código se contradicen | DF-50 y actualización de `architecture.md` y del diagrama en el PR del plan |
@@ -253,7 +254,7 @@ No hay parámetros numéricos propios. La vida del token de acceso (15 min) es d
   en M8 obliga a todos los módulos a depender de `backoffice`; se mueve a `shared`» (D-2). El `architect` actualiza en
   el PR del plan `design-findings.md`, `Diagramas_de_Clases.pdf` (M8, T1, firmas con `actor`) y `design-model.md`.
 - **ADR**: **ADR-0005** (autorización en la consulta + RLS: rol de aplicación no dueño, `FORCE ROW LEVEL SECURITY`,
-  `SET LOCAL` por transacción) y **ADR-0010** deben estar `Aceptado` antes del plan.
+  `set_config(…, true)` por transacción dentro de `withActor()`) y **ADR-0010**, ambos `Aceptado` el 2026-09-26.
 - **Specs relacionadas**:
   - **002**: implementa el puerto de verificación que usa `JwtAuthGuard` (D-14 de 002).
   - **005**: su plan incluye la consulta de propiedad de `accessibleNodes`, las políticas RLS de `archivo` y
@@ -290,3 +291,4 @@ Ninguna.
 |---|---|---|---|
 | 2026-09-26 | Creación en `Borrador` con las decisiones D-1 a D-11 (respuestas a P-1–P-8), sin preguntas abiertas. Puede pasar a `Aclarada` cuando el dueño lo confirme; el plan espera a ADR-0005 y ADR-0010 | Spec de Fase 1; el dueño respondió las preguntas antes de redactar | Adrián |
 | 2026-09-26 | **Aclarada.** Sin preguntas abiertas y sin pantallas nuevas (§11). El plan espera ADR-0005 y ADR-0010 | Compuerta del dueño | Adrián |
+| 2026-09-26 | Alineada con ADR-0005 y ADR-0010, ya aceptados: `set_config(…, true)` dentro de `withActor()` en lugar de `SET LOCAL` (R-7, D-7, §13, §14); los roles internos no reciben filas de `version_archivo` (D-7); CA-12 admite el valor vacío fuera de la transacción. El plan ya no espera ADR | Aceptación de ADR-0005 y ADR-0010 (pendientes PD-14 y PD-12) | Adrián |
