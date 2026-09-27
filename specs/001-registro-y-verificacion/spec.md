@@ -34,7 +34,7 @@ enlace se pueden recuperar desde la base de datos ni desde las bitácoras.
 - **Cliente no verificado**: tiene una cuenta creada pero todavía no confirma su correo.
 - **Sistema** (trabajo de correo en el `worker`): envía los correos y reintenta si el servidor de correo falla.
 - **Administrador / Soporte / Operador**: **no participan** en este flujo. El registro solo crea cuentas de Cliente;
-  las cuentas internas se crean por otra vía (003/011). Si una persona con cuenta interna intenta registrarse con el
+  las cuentas internas se crean por otra vía (011, según la 003 D-3). Si una persona con cuenta interna intenta registrarse con el
   mismo correo, recibe la misma respuesta neutra que cualquier correo existente (CA-2) y su cuenta interna no cambia.
   Ningún rol interno puede ver el enlace ni la contraseña, porque ambos se guardan solo como hash (CA-17, CA-19).
 
@@ -68,7 +68,7 @@ Vienen de la constitución, los diagramas o specs anteriores. Cambiarlas requier
 | R-7 | Errores al cliente con la forma `{ code, message, correlationId }`, `code` con prefijo de módulo y mensaje en español con acción correctiva. | Spec 000 RN-1, `conventions.md` |
 | R-8 | Identificadores `uuid`; fechas `timestamptz`; migración con `down` funcional. | `design-model.md` §5, RNF-10 |
 | R-9 | La cola `mail` reintenta **5** veces y es idempotente. | `architecture.md` §8 |
-| R-10 | `ThrottlerModule` lo introduce la spec 002 (spec 000, D-9). D-15 adelanta su uso para el límite por IP, sujeto a confirmación del `architect`. | Spec 000 D-9 |
+| R-10 | `ThrottlerModule` lo introduce **esta spec**, que lo usa primero para el límite por IP (D-15), y la 002 lo reutiliza. El ADR menor de `@nestjs/throttler` se redacta en el plan. | Spec 000 D-9, 002 D-11 |
 | R-11 | Todo en español, usable desde 360 px, contraste AA; tokens de Cielo Sereno, sin colores a mano. Límites y precios de planes vienen de la API, nunca escritos en el frontend. | RNF-13, Art. XIII, `ui-guidelines.md` §4 y §6 |
 
 ### 5.2 Decisiones del dueño
@@ -81,7 +81,7 @@ reescribieron después de revisar los mockups (2026-09-22) o al volver al enlace
 |---|---|---|---|
 | D-1 | El rol se guarda en la columna `usuario.rol` con `CHECK` sobre `CLIENT`, `ADMIN`, `SUPPORT` y `OPERATOR`. **Se elimina la tabla `rol`** del E-R. **Resuelve DF-13**. | P-1 | 2026-09-22 · Adrián |
 | D-2 | Se quita `ClientUser.subscriptionId`. La única relación entre cuenta y suscripción es `suscripcion.usuario_id` y la suscripción vigente se consulta en `billing`. **Resuelve DF-35**. | P-2 | 2026-09-22 · Adrián |
-| D-3 | Parte `usuario` de DF-33: (a) `correo_verificado boolean not null default false`; (b) `codigo_empleado` se agrega en la migración de la spec que crea cuentas internas (003/011), aunque el E-R lo muestra desde ya; (c) `usuario.estado` solo toma `activa`/`suspendida`, y la verificación vive únicamente en `correo_verificado`. **Resuelve la parte `usuario` de DF-33**; el resto de DF-33 (almacenamiento) sigue abierto para 005–007. | P-3 | 2026-09-22 · Adrián |
+| D-3 | Parte `usuario` de DF-33: (a) `correo_verificado boolean not null default false`; (b) `codigo_empleado` se agrega en la migración de la spec que crea cuentas internas (011, según la 003 D-3), aunque el E-R lo muestra desde ya; (c) `usuario.estado` solo toma `activa`/`suspendida`, y la verificación vive únicamente en `correo_verificado`. **Resuelve la parte `usuario` de DF-33**; el resto de DF-33 (almacenamiento) sigue abierto para 005–007. | P-3 | 2026-09-22 · Adrián |
 | D-4 | **(revisada)** El registro **muestra los planes del catálogo y el visitante elige uno**. Los planes y sus precios se leen por API del catálogo de **006a**, nunca escritos en la pantalla. Sin importar lo que elija, la cuenta **siempre nace en el plan gratuito (Personal)**: al verificar, `identity` publica un evento de cuenta de cliente verificada que solo lleva el `id`, y `billing` (006a) lo consume y crea la suscripción Personal. El registro nunca asigna un plan de pago. Si el visitante eligió un plan de pago, al terminar la verificación se le lleva a contratarlo (**009**, Fase 2); en Fase 1 aplica D-24. **Dependencias: 006a consume el evento y expone el catálogo.** | P-4 | 2026-09-22 · Adrián |
 | D-5 | El registro pide nombre completo (1 a 100 caracteres), correo, contraseña y la aceptación de D-14. | P-5 | 2026-09-22 · Adrián |
 | D-6 | Política de contraseña: **mínimo 12 y máximo 128 caracteres, al menos una mayúscula, un número y un símbolo**, con requisitos en vivo en el formulario. Se rechazan las contraseñas comunes (lista local) y las iguales al correo o a su parte local. «Mayúscula» incluye letras acentuadas (`Á`); «símbolo» es cualquier carácter que no sea letra ni dígito, sin contar el espacio. La misma política aplica al restablecer en 002. | P-6 | 2026-09-22 · Adrián (confirmada completa 2026-09-23) |
@@ -93,7 +93,7 @@ reescribieron después de revisar los mockups (2026-09-22) o al volver al enlace
 | D-12 | Staging envía correo real por **SMTP de Resend** (el protocolo SMTP, **no** su SDK), con el dominio `nimbo.me` verificado (SPF y DKIM). La decisión queda fijada ahora, pero la configuración se hace **al montar staging (inicio de Fase 2)**. **Nota:** verificar la cuota vigente del plan gratuito de Resend al configurarlo; esta spec no afirma sus límites. En local sigue Mailpit (R-5). | P-12 | 2026-09-22 · Adrián |
 | D-13 | **(revisada)** Las pantallas tienen mockup (`/mockup`). Existen `registro.html` (default), `registro--exito.html` («Revisa tu correo»; hoy con casillas de código que se quitan, §11) y `verificar-correo--exito.html` («Correo verificado»), con capturas a 360 y 1440 px. Los demás estados, las dos páginas estáticas y las plantillas de correo se producen con `/mockup` (§11). | P-13 | 2026-09-23 · Adrián |
 | D-14 | **(revisada)** El formulario tiene una **casilla obligatoria** «Acepto los [Términos] y la [Política de privacidad]», con un enlace a cada una de dos **páginas estáticas**. El servidor guarda la **fecha y la versión** aceptadas. Queda rastro en `product-context.md` §5. | P-14 | 2026-09-22 · Adrián |
-| D-15 | El límite **por correo** usa el puerto `IRateLimiter` → `RedisRateLimiter`. El límite **por IP** usa el `ThrottlerModule`, que se adelanta desde 002. Lo confirma el `architect` en el plan; si lo aprueba, la D-9 de la spec 000 se actualiza en el mismo PR. | P-15 | 2026-09-22 · Adrián |
+| D-15 | El límite **por correo** usa el puerto `IRateLimiter` → `RedisRateLimiter`, que declara e implementa `shared` (`identity` no puede depender de `sharing`, ADR-0010). El límite **por IP** usa el `ThrottlerModule`, que entra con esta spec (002 D-11, 000 D-9). | P-15 | 2026-09-22 · Adrián (límite por IP confirmado con 002 D-11, 2026-09-26) |
 | D-16 | El correo se normaliza recortando espacios y pasándolo a minúsculas, y la unicidad se comprueba sobre el valor normalizado. No hay reglas por proveedor: los puntos y la `+etiqueta` se respetan. | P-16 | 2026-09-22 · Adrián |
 | D-17 | Cuando alguien intenta registrar un correo ya verificado (o de una cuenta interna), su dueño recibe un aviso de intento de registro. El aviso se limita por **número de intentos de registro sobre ese correo**: `MAX_AVISOS_INTENTO_24H = 1` (confirmado) para que no sirva para inundar el buzón. | P-17 | 2026-09-22 · Adrián |
 | D-18 | El correo **no** aparece en las bitácoras: la cuenta se identifica solo por su `id`, y `email` y `correo` se agregan a `REDACTED_FIELDS` de `shared`. | P-18 | 2026-09-22 · Adrián |
@@ -526,7 +526,7 @@ reescribieron después de revisar los mockups (2026-09-22) o al volver al enlace
 - Inicio de sesión, credenciales, refresh, sesiones, dispositivos, recuperación de contraseña: **002**. Las reglas
   RN-6 y RN-11 se fijan aquí y se implementan y prueban allá (CA-16, CA-26, CA-29).
 - Roles internos, `RolesGuard`, construir el `Actor` desde el JWT, creación de cuentas internas y la columna
-  `codigo_empleado` (D-3): **003/011**.
+  `codigo_empleado` (D-3): **011** (003 D-3).
 - Auditoría: **004**. Suspender/reactivar cuentas y ver su estado desde el backoffice: **011**.
 - Tabla `plan`, `IPlanLimitsProvider`, la API de catálogo y la creación de la suscripción Personal al consumir el
   evento: **006a** (D-4). Contratar un plan de pago y retomar la elección hecha en el registro: **009**; cambiar de
@@ -557,7 +557,6 @@ reescribieron después de revisar los mockups (2026-09-22) o al volver al enlace
 | Staging se monta al inicio de Fase 2: CA-20 y el correo real no se demuestran en el Avance 1 | Demo del registro solo en local | Demostrar con Mailpit en Fase 1; CA-20 queda como verificación pendiente hasta montar staging |
 | Argon2id consume memoria por hash: con 25 usuarios concurrentes (RNF-02) y 4 GB en staging | Latencia o falta de memoria | El plan mide los parámetros en staging; RN-3 fija el piso, no el techo |
 | Librería nativa de Argon2 en imágenes Docker (compilación, `musl` en alpine) | Build roto en CI o en el Droplet | El plan elige la librería con binarios precompilados para la imagen base y lo registra en ADR |
-| D-15 depende de que el `architect` apruebe adelantar el `ThrottlerModule` (000 D-9) | Dos mecanismos o retraso del límite por IP | Confirmación en el plan; si no se aprueba, el límite por IP usa también `IRateLimiter` |
 | 006a debe consumir el evento de D-4 | Cuentas verificadas sin plan hasta que 006a esté hecha | Anotar la dependencia en 006a; su prueba verifica la segunda parte de CA-8 |
 | 002 aún no existe: CA-16, CA-26, CA-29 y «Ir a Mis archivos» dependen de ella | Demo de 001 sin sesión al verificar | Ruta reservada a iniciar sesión; CA-16, CA-26 y CA-29 se cierran con 002 |
 
@@ -574,14 +573,14 @@ reescribieron después de revisar los mockups (2026-09-22) o al volver al enlace
   librería de Argon2id. ADR-0010 (módulo `notifications` como implementador de `IMailer`) debe estar `Aceptado` antes del plan.
 - **Specs relacionadas**:
   - 002: RN-6/CA-16 y RN-11/CA-26/CA-29 (sesión al verificar, visible y revocable); comparte `IPasswordHasher`,
-    `IUserRepository`, `token_cuenta` para la recuperación, la política D-6 al restablecer y el adelanto del
-    `ThrottlerModule` (D-15).
+    `IUserRepository`, `token_cuenta` para la recuperación, la política D-6 al restablecer y el
+    `ThrottlerModule`, que entra con esta spec (D-15, 002 D-11).
   - **006a**: consume el evento de cuenta verificada y crea siempre la suscripción Personal (D-4); expone por API el
     catálogo público de planes que muestra el registro (riesgo en §13).
   - 009: lleva a contratar el plan de pago elegido (D-4) y retoma la elección, que en Fase 1 no se guarda (D-24).
   - 010: cambio de plan.
   - 000b: interfaz.
-  - 000: D-9 se actualiza si el `architect` aprueba D-15.
+  - 000: D-9 ya dice que el `ThrottlerModule` entra con esta spec.
 - **Documentos**:
   - `product-context.md` §5: línea de rastro de D-14, ya agregada. RF-01 no cambia: la verificación es por enlace.
   - `ui-guidelines.md` §7: estados nuevos y estado de los mockups; lo hace el `ui-designer`.
@@ -637,3 +636,5 @@ ajustes y estados de mockups de §11 (Art. XIII.1; compuerta de `Aclarada`, `wor
 | 2026-09-26 | §11: mockups de Términos y Política de privacidad (borrador de textos; el texto final lo cierra el plan según D-22) | Respuestas del dueño sobre privacidad | Adrián |
 | 2026-09-26 | §11: se hacen los dos ajustes obligatorios que quedaban (plan de pago elegido según D-24; advertencia y dominio del correo de verificación según D-20 y D-12), con sus capturas. §13: el Avance 1 es el 30/09/2026 | Ajustes pendientes de §11 y cambio de fecha de la Fase 1 | Adrián |
 | 2026-09-26 | **Aclarada.** No quedan preguntas abiertas ni ajustes obligatorios, y cada pantalla de §11 tiene mockup. El plan espera ADR-0010 (`notifications` implementa `IMailer`) | Compuerta del dueño | Adrián |
+| 2026-09-26 | D-3 y §14: `codigo_empleado` llega con la 011, que es la única que crea cuentas internas (003 D-3); el backlog pasa a «lista para `/plan`» porque ADR-0010 ya está aceptado | Coherencia con la spec 003 y ADR-0010 | Adrián |
+| 2026-09-27 | R-10, D-15, §13 y §14: el `ThrottlerModule` entra con esta spec sin condición, como ya decidió la 002 D-11; se quita el riesgo de que el `architect` no lo apruebe. El ADR menor de `@nestjs/throttler` va en el plan (PD-32). D-15: `IRateLimiter` vive en `shared`, no en `sharing` (PD-30). Sin cambio de criterios | Coherencia con 002 D-11, 000 D-9 y ADR-0010 | Adrián |
