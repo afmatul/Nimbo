@@ -8,6 +8,7 @@
   Cielo Sereno con los tonos AA de `ui-guidelines.md` §2–§3; solo carga Inter 400/500/600/700 de Google Fonts, sin
   JetBrains Mono: las cifras, los metadatos, el distintivo de plan, la cuota y el `correlationId` usan Inter con
   `font-variant-numeric: tabular-nums`). Tiene versión móvil real a 360 px. Es referencia visual; `apps/web` no lo importa.
+  Se genera con `../../_generadores/seguridad/generar.js` (ver [`_generadores/README.md`](../../_generadores/README.md)); no se edita a mano.
 - **Estados incluidos**:
   - default: este dispositivo y otras tres sesiones (`seguridad.html`)
   - cargando: esqueleto de la lista con «Cargando tus sesiones…» (`seguridad--cargando.html`)
@@ -109,8 +110,9 @@
 ## Pendiente
 - Velo del diálogo: el mockup usa `agent-bg` al 45 %. `apps/web` todavía no tiene un token de velo (TODO #6 en
   `app-layout.tsx`); el plan de 002 o del layout debe definirlo.
-- El menú de la cuenta (avatar → Seguridad, Plan y facturación, Cerrar sesión) pertenece al layout compartido
-  (`mockups/shared/layout/`, pendiente).
+- El menú de la cuenta (avatar → Seguridad, Plan y facturación, Cerrar sesión) pertenece al layout compartido:
+  [`mockups/shared/layout/`](../../shared/layout/README.md), estados `menu-cuenta-abierto` y
+  `confirmar-cerrar-sesion` (Borrador). Allí «Cerrar sesión» reutiliza el diálogo de `confirmar-cierre-actual`.
 - La implementación reconstruye la pantalla con `components/ui` (`Button`, `Card`, `Input`, `Badge`) y
   `components/nimbo` (`StatusBadge`, `ErrorState`, `ConfirmDestructiveDialog`); no se crea un componente nuevo.
 - Las fechas y el navegador · sistema vienen de la API (CA-11); los del mockup son de ejemplo.
