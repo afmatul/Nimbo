@@ -1,7 +1,7 @@
 # Mockup: Correos de registro
 
 - **Spec**: 001
-- **Hoja de la entrega**: 02d
+- **Propuesta presentada**: No presentada (diseño interno).
 - **Origen**: HTML empaquetado y autocontenido (`.html`, Cielo Sereno, lienzo de ≈ 1490 px con el rótulo de la hoja). Es referencia visual; `apps/web` no lo importa.
 - **Estados incluidos**:
   - registro: correo con el enlace de verificación y aviso de intento de registro (`correos--registro.html`)

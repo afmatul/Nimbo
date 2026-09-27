@@ -1,7 +1,7 @@
 # Mockup: Resumen de espacio
 
 - **Spec**: 007
-- **Hoja de la entrega**: 08c (opcional)
+- **Propuesta presentada**: No presentada (diseño interno).
 - **Origen**: HTML empaquetado y autocontenido (`.html`, Cielo Sereno, lienzo de ≈ 1490 px con el rótulo de la hoja). Es referencia visual; `apps/web` no lo importa.
 - **Estados incluidos**:
   - default (`resumen-espacio.html`)

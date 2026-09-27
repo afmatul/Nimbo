@@ -1,7 +1,7 @@
 # Mockup: Panel del agente
 
 - **Spec**: 020
-- **Hoja de la entrega**: 08b (anexo, no se firma)
+- **Propuesta presentada**: No presentada (diseño interno).
 - **Origen**: HTML empaquetado y autocontenido (`.html`, Cielo Sereno, lienzo de ≈ 1490 px con el rótulo de la hoja). Es referencia visual; `apps/web` no lo importa.
 - **Estados incluidos**:
   - con-citas (`panel-agente--con-citas.html`)

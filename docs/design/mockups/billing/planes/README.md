@@ -1,7 +1,8 @@
 # Mockup: Planes y comparador
 
 - **Spec**: 008
-- **Hoja de la entrega**: 11
+- **Propuesta presentada**: p. 16.
+- **Cambios respecto de la propuesta**: ninguno.
 - **Origen**: HTML empaquetado y autocontenido (`.html`, Cielo Sereno, lienzo de ≈ 1490 px con el rótulo de la hoja). Es referencia visual; `apps/web` no lo importa.
 - **Estados incluidos**:
   - plan-actual (`planes--plan-actual.html`): el plan Equipo queda marcado

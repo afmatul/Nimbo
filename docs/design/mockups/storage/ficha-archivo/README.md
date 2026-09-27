@@ -1,7 +1,7 @@
 # Mockup: Ficha de archivo con historial de versiones
 
 - **Spec**: 014, 019
-- **Hoja de la entrega**: 06
+- **Propuesta presentada**: No presentada (diseño interno).
 - **Origen**: HTML empaquetado y autocontenido (`.html`, Cielo Sereno, lienzo de ≈ 1490 px con el rótulo de la hoja). Es referencia visual; `apps/web` no lo importa.
 - **Estados incluidos**:
   - default (`ficha-archivo.html`): detalles, autoría e historial de versiones

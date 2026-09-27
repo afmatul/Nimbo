@@ -24,8 +24,10 @@ docs/design/
   - Ejemplo: `capturas/storage/explorador/explorador--vacio--360.png`.
 - **Formato de mockup**: HTML autocontenido y empaquetado (`<pantalla>[--<estado>].html`; sin sufijo es el estado `default`).
   Se abre directo en el navegador. La vista general conserva el formato anterior de Claude Design (`.dc.html`).
-- **Hojas de la entrega**: cada mockup lleva un rótulo con su número de hoja (01–14, más anexos `b`/`c`/`d`); el `README.md`
-  de la carpeta indica la hoja.
+- **Propuesta presentada**: el PDF «Mockups nimbo final» (16 pantallas, p. 03–18) es la referencia firmada con la que se
+  compara la implementación. El `README.md` de cada carpeta dice si la pantalla se presentó y en qué página, y registra
+  los **cambios respecto de la propuesta**. Las pantallas no presentadas son diseño interno. El rótulo impreso dentro de
+  cada mockup (01, 02b…) es una numeración interna, no la página del PDF.
 - **Capturas**: se regeneran con Playwright a 360 y 1440 px (`fullPage`) para cada mockup; el `ui-designer` lo hace en `/mockup`.
 - Cada carpeta de mockup tiene un `README.md` corto: qué spec cubre, estados incluidos y decisiones de UX.
 - El inventario de pantallas, con su spec y su mockup, está en `docs/sdd/ui-guidelines.md` §7.

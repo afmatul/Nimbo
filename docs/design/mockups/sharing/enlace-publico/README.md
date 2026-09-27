@@ -1,7 +1,8 @@
 # Mockup: Enlace público
 
 - **Spec**: 013
-- **Hoja de la entrega**: 10
+- **Propuesta presentada**: p. 15.
+- **Cambios respecto de la propuesta**: ninguno en el mockup; al implementar, el botón principal usa el token corregido (DF-41) en lugar de `#6B8DD6`.
 - **Origen**: HTML empaquetado y autocontenido (`.html`, Cielo Sereno, lienzo de ≈ 1490 px con el rótulo de la hoja). Es referencia visual; `apps/web` no lo importa.
 - **Estados incluidos**:
   - con-contrasena (`enlace-publico--con-contrasena.html`): visitante sin cuenta

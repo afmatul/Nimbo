@@ -1,7 +1,7 @@
 # Mockup: Pago simulado
 
 - **Spec**: 009
-- **Hoja de la entrega**: 12
+- **Propuesta presentada**: No presentada (diseño interno).
 - **Origen**: HTML empaquetado y autocontenido (`.html`, Cielo Sereno, lienzo de ≈ 1490 px con el rótulo de la hoja). Es referencia visual; `apps/web` no lo importa.
 - **Estados incluidos**:
   - default (`pago.html`)

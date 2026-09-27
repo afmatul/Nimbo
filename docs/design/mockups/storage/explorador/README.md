@@ -1,11 +1,12 @@
 # Mockup: Explorador de archivos
 
 - **Spec**: 005–007
-- **Hoja de la entrega**: 04 y 04b
+- **Propuesta presentada**: p. 08 (cuadricula) y p. 09 (lista).
+- **Cambios respecto de la propuesta**: ninguno en el mockup; al implementar, el botón principal usa el token corregido (DF-41) en lugar de `#6B8DD6`.
 - **Origen**: HTML empaquetado y autocontenido (`.html`, Cielo Sereno, lienzo de ≈ 1490 px con el rótulo de la hoja). Es referencia visual; `apps/web` no lo importa.
 - **Estados incluidos**:
-  - cuadricula (`explorador--cuadricula.html`, hoja 04)
-  - lista con 2 elementos seleccionados (`explorador--lista.html`, hoja 04b)
+  - cuadricula (`explorador--cuadricula.html`, propuesta p. 08)
+  - lista con 2 elementos seleccionados (`explorador--lista.html`, propuesta p. 09)
 - **Capturas**: `docs/design/capturas/storage/explorador/` (`explorador--<estado>--<360|1440>.png`)
 
 ## Decisiones de UX

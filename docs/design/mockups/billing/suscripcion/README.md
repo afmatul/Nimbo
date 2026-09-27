@@ -1,7 +1,8 @@
 # Mockup: Plan y facturación
 
 - **Spec**: 009–010
-- **Hoja de la entrega**: 13
+- **Propuesta presentada**: p. 17.
+- **Cambios respecto de la propuesta**: ninguno.
 - **Origen**: HTML empaquetado y autocontenido (`.html`, Cielo Sereno, lienzo de ≈ 1490 px con el rótulo de la hoja). Es referencia visual; `apps/web` no lo importa.
 - **Estados incluidos**:
   - vigente (`suscripcion--vigente.html`)
