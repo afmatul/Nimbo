@@ -57,30 +57,39 @@ Antes de planificar las specs de Fase 1, el equipo decide en una reunión los ha
 
 «Pendiente» = aún sin spec creada. Al crearla con `/spec`, el estado pasa a `Borrador`.
 
-## Arranque de Fase 1 (semana del 18/09)
+## Próximos pasos por integrante (actualizado el 26/09/2026)
 
-Escribir specs, mockups y planes solo toca `specs/` y `docs/`: se puede hacer **hoy**, sin esperar a 000.
-`/implement` de cualquier spec requiere el PR-2 de 000 (`shared`) integrado en `main`: ya lo está (#4).
+Escribir specs, mockups y planes solo toca `specs/` y `docs/`: no espera a nadie. `/implement` de una spec necesita
+los bloques 1 y 2 de 000 en `main` (ya lo están: #1 y #4) y las specs de su columna «Depende de» integradas. Los
+bloques 3–6 de 000 (CI, imágenes, staging) no bloquean a nadie.
 
-| Integrante | Hoy (specs y mockups) | En cuanto 000 PR-2 esté en `main` | Después |
-|---|---|---|---|
-| Adrián | 000: bloque 2 integrado, bloques 3–6 desde el 30/09 (`docs/sdd/workflow.md` §7.2); redactar ADR-0010 con `/adr`; `/spec 003` roles-y-acceso; convocar la compuerta T-27 (aceptar ADR y DF) | `/implement 003` | 004 auditoría |
-| Juan Marcos | `/spec 001` registro-y-verificacion y `/spec 006a` catalogo-y-limites; `/mockup identity/registro 001` e `identity/verificar-correo 001`; luego `/plan` de ambas | `/implement 006a` (es pequeña y la necesitan Abel y 007) y luego 001 | `/spec 002` sesiones y dispositivos |
-| Abel | `/spec 005` carga-y-descarga; `/mockup storage/carga 005` (el explorador ya tiene mockup); `/spec 006` carpetas-y-papelera | `/implement 005` (necesita además 003 y 006a: coordinar con Adrián y Juan Marcos) | 006, 007 |
-| Fátima | `/spec 000b` sistema-de-diseno; `/mockup shared/layout 000b`; revisar `docs/sdd/ui-guidelines.md` y DF-41–48 | `/implement 000b` (solo necesita el PR-1, no `shared`) | `/spec 015` tiempo-real |
+| Integrante  | Ahora                                                                                                                                                                                        | Después                                                   |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| Adrián      | 000: bloques 3–6 desde el 30/09, empezando por el CI y la compuerta T-27 (`docs/sdd/workflow.md` §7.2); 001: `/plan 001` y `/implement 001`; ADR-0010 con `/adr`; `/spec 003` roles-y-acceso | `/implement 003` (depende de 002); 004 auditoría          |
+| Juan Marcos | `/spec 006a` catalogo-y-limites, `/plan` e `/implement` (la usan 001, 005 y 007); `/spec 002` sesiones-y-dispositivos                                                                        | `/implement 002` (depende de 001)                         |
+| Abel        | `/spec 005` carga-y-descarga y `/spec 006` carpetas-y-papelera (los mockups del explorador y de la carga ya existen); sus `/plan`                                                            | `/implement 005` (depende de 003 y 006a); luego 006 y 007 |
+| Fátima      | 000b ya está integrada (#2 y #5): pasarla a `Hecha`; `/spec 015` tiempo-real y su `/plan`                                                                                                    | `/implement 015` (depende de 002)                         |
 
-Reglas de convivencia: PRs pequeños y rebase frecuente sobre `main`; los únicos archivos compartidos que se tocan
-son `specs/README.md` (tu fila), `apps/api/src/app.module.ts` (registrar tu módulo), `packages/contracts/src/`
-(un archivo por módulo), `.env.example` y las migraciones (archivos con timestamp). Nadie revisa su propio PR,
-salvo el diseñador principal (`docs/sdd/workflow.md` §7.1).
+Reglas de convivencia: PRs pequeños y rebase frecuente sobre `main`. Los únicos archivos compartidos que se tocan
+son:
+
+- `specs/README.md` (tu fila);
+- `apps/api/src/app.module.ts` (registrar tu módulo);
+- `packages/contracts/src/` (un archivo por módulo);
+- `.env.example` y las migraciones (archivos con timestamp);
+- `apps/web/src/app/globals.css`, `apps/web/src/app/layout.tsx` y `apps/web/src/components/nimbo/` (tokens, layout
+  y componentes base de 000b);
+- `docs/sdd/ui-guidelines.md` §7 (tu fila del inventario; `/mockup` la actualiza).
+
+Nadie revisa su propio PR, salvo el diseñador principal (`docs/sdd/workflow.md` §7.1).
 
 ## Hitos del curso
 
-| Entrega         | Fecha                   | Specs que deben estar `Hecha`                            |
-| --------------- | ----------------------- | -------------------------------------------------------- |
+| Entrega         | Fecha                   | Specs que deben estar `Hecha`                                                       |
+| --------------- | ----------------------- | ----------------------------------------------------------------------------------- |
 | Avance 1 (30 %) | 30/09/2026              | 000 (bloques 1–2), 000b, 001–007, 006a — demostración en local (`workflow.md` §7.2) |
-| Avance 2 (50 %) | 14/10/2026 (estimada)   | 008–018                                                  |
-| Avance 3 (80 %) | por reprogramar         | 019–023                                                  |
-| Final           | 1.ª semana de noviembre | 024 + diagramas y capturas actualizados + ensayo de demo |
+| Avance 2 (50 %) | 14/10/2026 (estimada)   | 008–018                                                                             |
+| Avance 3 (80 %) | por reprogramar         | 019–023                                                                             |
+| Final           | 1.ª semana de noviembre | 024 + diagramas y capturas actualizados + ensayo de demo                            |
 
 Mockups: el inventario de pantallas y su estado está en `docs/sdd/ui-guidelines.md` §7. Toda spec con UI necesita su mockup antes de pasar a `Aclarada`.

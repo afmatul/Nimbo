@@ -90,20 +90,26 @@ Antes de la primera `/spec`: `docs/sdd/product-context.md` (roles, planes, RF/RN
 `specs/000-fundaciones/spec.md` como ejemplo. El resto (`design-model.md`, `design-findings.md`, `conventions.md`,
 `ui-guidelines.md`) se lee cuando la tarea lo pide.
 
-Dónde vive tu trabajo: `specs/NNN-slug/` (spec, plan, tareas, evidencia) y `apps/api/src/modules/<tu-modulo>/`.
-`apps/api/src/shared/` se consume, no se modifica. `docs/design/mockups/` es referencia; nunca se importa.
+Dónde vive tu trabajo: `specs/NNN-slug/` (spec, plan, tareas, evidencia), `apps/api/src/modules/<tu-modulo>/`
+(backend) y `apps/web/src/features/<tu-modulo>/` (frontend: cada dueño construye también sus pantallas).
+`apps/api/src/shared/` es de la spec 000 y su dueño es Adrián: los demás módulos lo consumen desde
+`shared/index.ts`, y algo nuevo entra ahí cuando lo necesitan al menos tres módulos (regla de tres, constitución
+Art. VI.2), con un PR que revisa su dueño. `docs/design/mockups/` es referencia; nunca se importa.
 
 Flujo por funcionalidad, siempre con Claude Code desde la raíz del repo:
 
 ```
-/spec <necesidad>   → responder preguntas, marcar Aclarada
+/spec <necesidad>   → responder preguntas
+/mockup <modulo>/<pantalla> NNN → si la spec tiene interfaz: mockup y capturas de cada pantalla
+                    → marcar Aclarada (una spec con interfaz no pasa sin mockup)
 /plan NNN           → confirmar el plan
 /tasks NNN
-/implement NNN      → repetir hasta terminar (requiere la spec 000 integrada)
-/verify NNN → /review NNN → PR → aprobación de otro integrante → squash merge
+/implement NNN      → repetir hasta terminar (requiere los bloques 1–2 de 000, ya en main, y las
+                      specs de su columna «Depende de» en specs/README.md)
+/verify NNN → /review NNN → PR → aprobación de otro integrante (salvo §7.1) → squash merge
 ```
 
-El primer trabajo de cada integrante está en `specs/README.md` («Arranque de Fase 1»).
+Lo siguiente de cada integrante está en `specs/README.md` («Próximos pasos por integrante»).
 
 Rigen dos excepciones: el diseñador principal puede autoaprobar sus PRs durante todo el proyecto, y el CI y staging
 se implementan desde el 30/09/2026 (mientras tanto, verificación local pegada en el PR). Detalle en
