@@ -42,7 +42,7 @@
 | T4 | (transversal) | `notifications` | Juan Marcos | implementa `IMailer` e `INotifier` |
 
 M3 se divide en `access` y `sharing`, y `audit`/`realtime`/`notifications` salen como transversales, para evitar
-ciclos de dependencia (ver DF-02, DF-03, DF-30, DF-34). Hasta que el equipo lo acepte en un ADR, trátenlo como propuesta.
+ciclos de dependencia (ver DF-02, DF-03, DF-30, DF-34). Decidido en ADR-0010 (aceptado el 26/09/2026); falta redibujar los diagramas.
 
 ## 3. Clases por módulo
 
@@ -84,7 +84,7 @@ ciclos de dependencia (ver DF-02, DF-03, DF-30, DF-34). Hasta que el equipo lo a
 
 ### M5 `editing`
 - Controlador: `EditorController` (open, callback, versions, restore).
-- Servicios: `EditSessionService`, `SaveCallbackHandler`, `VersionHistoryService`; gateway `PresenceGateway`.
+- Servicios: `EditSessionService`, `SaveCallbackHandler`, `VersionHistoryService`. Sin gateway propio: el diagrama tiene `PresenceGateway`, pero la presencia se publica por el gateway único de T3 `realtime`, y `editing` autoriza la unión a la sala del documento consultando `access` (DF-30, ADR-0010).
 - Puertos → implementaciones: `IDocumentEditor` → `OnlyOfficeEditor`; `IIdempotencyStore` → `RedisIdempotencyStore`; `ISessionRepository` (renombrar, DF-19); `IVersionRepository`; `IIndexQueue` → `intelligence`.
 - Dominio: `EditSession` (composición 1..* `Participant`); `DocumentVersion` (hoy hereda de `FileVersion`, ver DF-18).
 - Tablas: `sesion_edicion`, `participacion` (N:M `participa`).
@@ -121,6 +121,9 @@ ciclos de dependencia (ver DF-02, DF-03, DF-30, DF-34). Hasta que el equipo lo a
 ### T2 `audit`
 - `AuditService` (record, listForUser), `AuditEntry` (actorId, actorRole, targetUserId, action, resourceId, occurredAt, `isVisibleTo`). Implementa `IAuditLogger`.
 - Tabla: `evento_auditoria`.
+
+### T3 `realtime`
+- Único gateway Socket.IO: handshake autenticado con el puerto token→`Actor` de `shared` (sin depender de `identity`), salas por usuario y por documento. Declara el puerto de publicación (nombre en el plan 015) que usan `storage`, `editing`, `intelligence` y `notifications`. No conoce permisos (ADR-0010).
 
 ## 4. Mapeo clase ↔ tabla (E-R)
 
