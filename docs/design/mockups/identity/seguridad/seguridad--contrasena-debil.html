@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Seguridad · Nimbo — contraseña nueva débil (IDENTITY_WEAK_PASSWORD)</title>
+<!-- Mockup de referencia (spec 002, §11: pantalla «Seguridad»). Estado: contrasena-debil. -->
+<!-- Colores: valores de ui-guidelines.md §3 (tonos AA de ADR-0014). La implementación usa tokens y components/ui. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Valores de ui-guidelines.md §3 (tonos AA de ADR-0014). La implementación usa las utilidades de Tailwind, nunca hex. */
+    --sheet: #E7EDF5;          /* fondo de la hoja de mockups (no es un token de la app) */
+    --background: #F4F7FB;
+    --card: #FAFCFF;
+    --border: #DDE6F0;
+    --input: #7F93AA;
+    --foreground: #1E2D40;
+    --secondary-foreground: #3A5068;
+    --muted-foreground: #5E7389;
+    --primary: #4A6FA5;
+    --primary-hover: #3B5A8A;
+    --primary-foreground: #FFFFFF;
+    --brand: #6B8DD6;
+    --muted: #EEF3F9;
+    --accent: #DDE6F0;
+    --ring: #4A6FA5;
+    --success: #6DB99A;
+    --success-foreground: #3A7560;
+    --destructive: #A34F4F;
+    --destructive-soft: #C97B7B;
+    --overlay: rgba(44, 58, 82, .45); /* velo de diálogo: agent-bg al 45 %; token pendiente (#6 de app-layout) */
+    --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px; --radius-xl: 18px;
+    --shadow-card: 0 1px 3px rgba(74,111,165,.08), 0 1px 2px rgba(74,111,165,.04);
+    --shadow-modal: 0 8px 24px rgba(44,58,82,.18);
+    --shadow-button: 0 1px 2px rgba(107,141,214,.20);
+    /* Mezclas al 12 % sobre card (fondo de alertas y distintivos) */
+    --success-soft: color-mix(in srgb, var(--success) 12%, var(--card));
+    --destructive-tint: color-mix(in srgb, var(--destructive-soft) 12%, var(--card));
+    --brand-soft: color-mix(in srgb, var(--brand) 12%, var(--card));
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--sheet); color: var(--foreground);
+    font-family: Inter, system-ui, sans-serif; font-size: 14px; line-height: 1.5;
+  }
+  a { color: var(--primary); text-decoration: underline; text-underline-offset: 2px; }
+  a:hover { color: var(--primary-hover); }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+  .ico { flex: none; }
+
+  /* Rótulo de la hoja */
+  .sheet-label {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px;
+    padding: 40px 48px 12px; font-size: 12px; line-height: 1.5; color: var(--secondary-foreground);
+  }
+  .sheet-label .chip { background: var(--border); border-radius: var(--radius-sm); padding: 1px 7px; font-weight: 600; font-size: 11px; }
+  .sheet-label strong { color: var(--foreground); font-size: 13px; font-weight: 600; }
+  .sheet-label .file { font-weight: 500; font-variant-numeric: tabular-nums; color: var(--primary-hover); }
+
+  /* Lienzo y marco de la aplicación (propuesta p. 08 y p. 17) */
+  .canvas {
+    position: relative; margin: 0 48px 48px; background: var(--background); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card); overflow: hidden;
+  }
+  .app { display: grid; grid-template-columns: 236px minmax(0, 1fr); min-height: 860px; }
+  .sidebar { display: flex; flex-direction: column; gap: 14px; background: var(--card); border-right: 1px solid var(--border); padding: 18px 12px 16px; }
+  .brand-row { display: flex; align-items: center; gap: 10px; padding: 4px 8px 10px; border-bottom: 1px solid var(--border); }
+  .logo { display: inline-flex; align-items: center; gap: 10px; color: var(--foreground); text-decoration: none; font-weight: 700; font-size: 17px; letter-spacing: .02em; min-height: 36px; }
+  .logo-mark { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; background: var(--primary); color: var(--primary-foreground); font-size: 15px; font-weight: 700; box-shadow: var(--shadow-button); }
+  .plan-chip { font-size: 10px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: .04em; color: var(--secondary-foreground); background: var(--muted); border-radius: var(--radius-sm); padding: 2px 6px; }
+  .nav { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  .nav a { display: flex; align-items: center; gap: 12px; min-height: 36px; padding: 6px 12px; border-radius: var(--radius-md); color: var(--secondary-foreground); text-decoration: none; font-size: 13.5px; font-weight: 500; }
+  .nav a:hover { background: var(--muted); color: var(--foreground); }
+  .nav .meta { margin-left: auto; font-size: 11px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  .nav-sep { height: 1px; background: var(--border); margin: 2px 8px; }
+  .nav-title { margin: 6px 12px 0; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted-foreground); }
+  .quota { margin-top: auto; border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 12px 14px; background: var(--card); }
+  .quota-head { display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 600; }
+  .quota-bar { height: 6px; border-radius: 999px; background: var(--muted); margin: 8px 0 6px; overflow: hidden; }
+  .quota-bar span { display: block; height: 100%; width: 21%; background: var(--success); border-radius: 999px; }
+  .quota-meta { font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--muted-foreground); }
+
+  .main { min-width: 0; display: flex; flex-direction: column; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 64px; padding: 10px 28px; background: var(--card); border-bottom: 1px solid var(--border); }
+  .topbar .menu-btn, .topbar .logo-mobile { display: none; }
+  .crumbs ol { display: flex; align-items: center; gap: 10px; list-style: none; margin: 0; padding: 0; font-size: 14px; }
+  .crumbs li + li::before { content: "/"; color: var(--muted-foreground); margin-right: 10px; }
+  .crumbs a { color: var(--secondary-foreground); text-decoration: none; }
+  .crumbs a:hover { color: var(--foreground); text-decoration: underline; }
+  .crumbs [aria-current] { font-weight: 600; color: var(--foreground); }
+  .account-btn { display: inline-flex; align-items: center; gap: 10px; min-height: 40px; padding: 4px 6px 4px 12px; border: 0; border-radius: 999px; background: transparent; color: var(--secondary-foreground); font: inherit; font-size: 13px; cursor: pointer; }
+  .account-btn:hover { background: var(--muted); }
+  .avatar { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 999px; background: var(--card); color: var(--foreground); font-size: 11px; font-weight: 700; box-shadow: 0 0 0 2px var(--brand); }
+
+  .content { padding: 28px 28px 40px; }
+  .page-head h1 { margin: 0; font-size: 26px; line-height: 1.25; font-weight: 700; letter-spacing: -.01em; }
+  .page-head p { margin: 6px 0 0; color: var(--secondary-foreground); font-size: 14.5px; }
+  .grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 20px; margin-top: 22px; align-items: start; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: 22px 24px 24px; }
+  .card-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "title action" "desc desc"; align-items: center; gap: 4px 16px; }
+  .card-head h2 { grid-area: title; }
+  .card-head .card-desc { grid-area: desc; }
+  .card-head .btn { grid-area: action; }
+  .card-head h2 { margin: 0; font-size: 17px; line-height: 1.35; font-weight: 700; display: flex; align-items: baseline; gap: 8px; }
+  .card-head .count { font-size: 12.5px; font-weight: 500; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  .card-desc { margin: 0; color: var(--secondary-foreground); font-size: 13.5px; max-width: 64ch; }
+  .card-note { display: flex; gap: 8px; margin: 10px 0 0; font-size: 13px; color: var(--secondary-foreground); }
+  .card-note .ico { margin-top: 2px; color: var(--primary); }
+
+  /* Botones (components/ui/button) */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 8px 16px; border-radius: var(--radius-md); font: inherit; font-weight: 600; font-size: 13.5px; line-height: 1.2; cursor: pointer; text-decoration: none; white-space: nowrap; }
+  .btn-sm { min-height: 36px; padding: 6px 12px; font-size: 13px; }
+  .btn-outline { color: var(--secondary-foreground); background: var(--card); border: 1px solid var(--input); }
+  .btn-outline:hover { background: var(--muted); color: var(--foreground); }
+  .btn-primary { color: var(--primary-foreground); background: var(--primary); border: 1px solid var(--primary); box-shadow: var(--shadow-button); }
+  .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+  .btn-destructive { color: var(--primary-foreground); background: var(--destructive); border: 1px solid var(--destructive); }
+  .btn[disabled] { opacity: .45; pointer-events: none; }
+  .btn-busy { opacity: 1 !important; }
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin, .skeleton-line { animation: none !important; } }
+
+  /* Alertas (patrón de 000b: ícono + texto, nunca solo color) */
+  .alert { display: flex; gap: 10px; margin: 16px 0 0; padding: 12px 14px; border-radius: var(--radius-md); font-size: 13.5px; line-height: 1.5; border: 1px solid; }
+  .alert .ico { margin-top: 1px; }
+  .alert p { margin: 0; }
+  .alert strong { font-weight: 600; }
+  .alert-success { background: var(--success-soft); border-color: color-mix(in srgb, var(--success) 45%, var(--card)); color: var(--foreground); }
+  .alert-success .ico, .alert-success strong { color: var(--success-foreground); }
+  .alert-error { background: var(--destructive-tint); border-color: color-mix(in srgb, var(--destructive-soft) 55%, var(--card)); color: var(--foreground); }
+  .alert-error .ico, .alert-error strong { color: var(--destructive); }
+  .alert a { font-weight: 600; }
+
+  /* Lista de sesiones */
+  .sessions { list-style: none; margin: 16px 0 0; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+  .session { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: center; gap: 4px 14px; padding: 14px 16px; background: var(--card); }
+  .session + .session { border-top: 1px solid var(--border); }
+  .session.is-current { background: var(--background); }
+  .device { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: var(--radius-md); background: var(--brand-soft); color: var(--primary-hover); }
+  .session-name { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-weight: 600; font-size: 14.5px; }
+  .session-meta { margin: 2px 0 0; font-size: 13px; line-height: 1.45; color: var(--muted-foreground); }
+  .session-meta span { display: block; }
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px 2px 6px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 600; line-height: 1.5; }
+  .badge-current { background: var(--brand-soft); color: var(--primary-hover); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand) 35%, var(--card)); }
+
+  /* Cargando y error de la lista */
+  .skeleton { margin: 16px 0 0; border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+  .skeleton-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) 110px; gap: 14px; align-items: center; padding: 16px; }
+  .skeleton-row + .skeleton-row { border-top: 1px solid var(--border); }
+  .skeleton-line { display: block; height: 12px; border-radius: 999px; background: var(--muted); animation: pulse 1.4s ease-in-out infinite; }
+  .skeleton-line.box { height: 40px; border-radius: var(--radius-md); }
+  .skeleton-line.btn-line { height: 36px; border-radius: var(--radius-md); }
+  .skeleton-line.w60 { width: 60%; } .skeleton-line.w40 { width: 40%; margin-top: 8px; height: 10px; }
+  @keyframes pulse { 50% { opacity: .55; } }
+  .loading-text { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; font-size: 13px; color: var(--secondary-foreground); }
+  .state-error { margin: 16px 0 0; padding: 28px 20px; border: 1px dashed color-mix(in srgb, var(--destructive-soft) 60%, var(--card)); border-radius: var(--radius-lg); background: var(--destructive-tint); text-align: center; }
+  .state-error > .ico { color: var(--destructive); }
+  .state-error h3 { margin: 10px 0 4px; font-size: 15px; color: var(--destructive); }
+  .state-error p { margin: 0 auto 16px; max-width: 46ch; color: var(--foreground); font-size: 13.5px; }
+  code { font-family: inherit; font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .empty-note { display: flex; gap: 10px; align-items: flex-start; margin: 12px 0 0; padding: 12px 14px; border-radius: var(--radius-md); background: var(--muted); color: var(--secondary-foreground); font-size: 13.5px; }
+  .empty-note .ico { color: var(--primary); margin-top: 1px; }
+
+  /* Formulario de contraseña */
+  form { margin: 0; }
+  .field { margin-top: 16px; }
+  .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .control { position: relative; }
+  .control input { width: 100%; min-height: 44px; padding: 10px 48px 10px 14px; border: 1px solid var(--input); border-radius: var(--radius-md); background: var(--card); color: var(--foreground); font: inherit; font-size: 15px; letter-spacing: .08em; }
+  .control input::placeholder { letter-spacing: 0; color: var(--muted-foreground); }
+  .control input:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+  .control input[aria-invalid="true"] { border-color: var(--destructive); box-shadow: 0 0 0 1px var(--destructive); }
+  .control input[readonly] { background: var(--muted); color: var(--secondary-foreground); }
+  .reveal { position: absolute; top: 4px; right: 4px; display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--secondary-foreground); cursor: pointer; }
+  .reveal:hover { background: var(--muted); color: var(--foreground); }
+  .field-error { display: flex; gap: 6px; align-items: flex-start; margin: 6px 0 0; font-size: 13px; color: var(--destructive); }
+  .field-error .ico { margin-top: 2px; }
+  .field-help { margin: 4px 0 0; font-size: 13px; }
+  .field-help a, .crumbs a { display: inline-flex; align-items: center; min-height: 24px; }
+  .reqs { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 16px; font-size: 13px; }
+  .reqs li { display: flex; align-items: center; gap: 6px; color: var(--secondary-foreground); }
+  .reqs .is-ok .ico { color: var(--success-foreground); }
+  .reqs .is-fail { color: var(--destructive); }
+  .reqs .is-pending .ico { color: var(--muted-foreground); }
+  .form-foot { margin-top: 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+
+  /* Diálogo de confirmación (ConfirmDestructiveDialog) */
+  .overlay { position: absolute; inset: 0; background: var(--overlay); z-index: 10; }
+  .dialog { position: absolute; z-index: 11; top: 150px; left: 50%; transform: translateX(-50%); width: min(460px, calc(100% - 32px)); background: var(--card); border-radius: var(--radius-xl); box-shadow: var(--shadow-modal); padding: 24px; }
+  .dialog h2 { margin: 0; font-size: 18px; line-height: 1.35; font-weight: 700; }
+  .dialog p { margin: 8px 0 0; color: var(--secondary-foreground); font-size: 14px; }
+  .dialog-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+
+  /* Tableta: la barra lateral se oculta (AppLayout: menú en cajón) y las tarjetas se apilan */
+  @media (max-width: 1180px) { .grid { grid-template-columns: minmax(0, 1fr); max-width: 720px; } }
+  @media (max-width: 900px) {
+    .app { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+    .sidebar { display: none; }
+    .topbar { padding: 10px 12px; }
+    .topbar .menu-btn { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--foreground); cursor: pointer; }
+    .topbar .logo-mobile { display: inline-flex; }
+    .crumbs { display: none; }
+    .topbar-left { display: flex; align-items: center; gap: 4px; }
+    .account-btn .account-name { display: none; }
+    .account-btn { padding: 4px; min-width: 44px; min-height: 44px; justify-content: center; }
+  }
+  @media (max-width: 600px) {
+    .sheet-label { padding: 16px 12px 10px; }
+    .canvas { margin: 0 8px 16px; border-radius: var(--radius-md); }
+    .content { padding: 18px 12px 28px; }
+    .page-head h1 { font-size: 23px; }
+    .grid { gap: 16px; margin-top: 16px; }
+    .card { padding: 18px 14px 18px; }
+    .card-head { grid-template-columns: minmax(0, 1fr); grid-template-areas: "title" "desc" "action"; }
+    .card-head .btn { width: 100%; margin-top: 10px; }
+    .session { grid-template-columns: 40px minmax(0, 1fr); align-items: start; padding: 14px 12px; }
+    .session .btn { grid-column: 2; justify-self: start; margin-top: 8px; }
+    .skeleton-row { grid-template-columns: 40px minmax(0, 1fr); }
+    .skeleton-row .btn-line { display: none; }
+    .reqs { grid-template-columns: minmax(0, 1fr); }
+    .form-foot .btn { width: 100%; }
+    .dialog { top: 96px; padding: 20px 16px 16px; }
+    .dialog-actions { flex-direction: column-reverse; }
+    .dialog-actions .btn { width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<aside class="sheet-label" aria-label="Rótulo del mockup"><span class="chip">D-7</span> <strong>Seguridad</strong> <span class="file">seguridad--contrasena-debil.html</span> <span>en la aplicación · con sesión · estado: contraseña nueva débil (IDENTITY_WEAK_PASSWORD)</span></aside>
+
+<div class="canvas">
+  <div class="app">
+    
+    <aside class="sidebar" aria-label="Barra lateral">
+      <div class="brand-row">
+        <a class="logo" href="#" aria-label="Nimbo, Mis archivos"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>
+        <span class="plan-chip">PERSONAL</span>
+      </div>
+      <nav aria-label="Navegación principal">
+        <ul class="nav">
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span>Mis archivos</span></a></li>
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4"/><path d="m15.4 6.5-6.8 4"/></svg><span>Compartidos conmigo</span></a></li>
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><span>Recientes</span></a></li>
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8-6.2-3.2-6.2 3.2L7 14.2 2 9.3l6.9-1Z"/></svg><span>Favoritos</span></a></li>
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg><span>Papelera</span><span class="meta">3</span></a></li>
+        </ul>
+        <div class="nav-sep" role="presentation"></div>
+        <ul class="nav">
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m12 3-1.9 5.8L4 10.7l6.1 1.9 1.9 5.9 1.9-5.9 6.1-1.9-6.1-1.9Z"/><path d="M5 3v4"/><path d="M3 5h4"/></svg><span>Optimizador</span></a></li>
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/></svg><span>Plan y facturación</span></a></li>
+        </ul>
+        <p class="nav-title">Carpetas</p>
+        <ul class="nav">
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span>Tesis</span><span class="meta">18</span></a></li>
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span>Trabajo</span><span class="meta">42</span></a></li>
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span>Personales</span><span class="meta">9</span></a></li>
+        </ul>
+      </nav>
+      <div class="quota">
+        <div class="quota-head"><span>Almacenamiento</span><span>21 %</span></div>
+        <div class="quota-bar" role="progressbar" aria-label="Almacenamiento usado" aria-valuemin="0" aria-valuemax="100" aria-valuenow="21" aria-valuetext="3.2 GB de 15 GB (21 %)"><span></span></div>
+        <div class="quota-meta">3.2 GB de 15 GB</div>
+      </div>
+    </aside>
+    <div class="main">
+      
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="menu-btn" type="button" aria-label="Abrir menú de navegación" aria-expanded="false"><svg class="ico " width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg></button>
+          <a class="logo logo-mobile" href="#" aria-label="Nimbo, Mis archivos"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>
+          <nav class="crumbs" aria-label="Ruta">
+            <ol><li><a href="#">Cuenta</a></li><li><span aria-current="page">Seguridad</span></li></ol>
+          </nav>
+        </div>
+        <button class="account-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Menú de la cuenta de Lucía Barrios">
+          <span class="account-name">Lucía Barrios</span><span class="avatar" aria-hidden="true">LB</span>
+        </button>
+      </header>
+      <main class="content" id="contenido">
+        <div class="page-head">
+          <h1>Seguridad</h1>
+          <p>Revisa dónde está abierta tu cuenta y cambia tu contraseña.</p>
+        </div>
+        <div class="grid">
+          
+      <section class="card" aria-labelledby="t-sesiones">
+        <div class="card-head">
+          <h2 id="t-sesiones">Sesiones activas <span class="count">4 abiertas</span></h2>
+          <p class="card-desc">Estos son los navegadores y dispositivos con tu cuenta abierta. Si no reconoces alguno, cierra esa sesión y cambia tu contraseña.</p>
+          <button class="btn btn-outline" type="button">Cerrar las demás sesiones</button>
+        </div>
+        
+        <ul class="sessions" aria-label="Sesiones abiertas">
+          <li class="session is-current">
+            <span class="device"><svg class="ico " width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg></span>
+            <div>
+              <p class="session-name"><span>Chrome · Windows</span><span class="badge badge-current"><svg class="ico " width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5"/></svg>Este dispositivo</span></p>
+              <p class="session-meta"><span>Activa ahora</span><span>Iniciada el 24 sep 2026</span></p>
+            </div>
+            <button class="btn btn-outline btn-sm" type="button">Cerrar sesión<span class="sr-only"> en este dispositivo</span></button>
+          </li>
+          <li class="session">
+            <span class="device"><svg class="ico " width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/></svg></span>
+            <div>
+              <p class="session-name"><span>Safari · iOS</span></p>
+              <p class="session-meta"><span>Última actividad: hace 2 horas</span><span>Iniciada el 21 sep 2026</span></p>
+            </div>
+            <button class="btn btn-outline btn-sm" type="button">Cerrar sesión<span class="sr-only"> en Safari · iOS</span></button>
+          </li>
+          <li class="session">
+            <span class="device"><svg class="ico " width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 16V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9m16 0H4m16 0 1.28 2.55a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45L4 16"/></svg></span>
+            <div>
+              <p class="session-name"><span>Firefox · Ubuntu</span></p>
+              <p class="session-meta"><span>Última actividad: hace 3 días</span><span>Iniciada el 14 sep 2026</span></p>
+            </div>
+            <button class="btn btn-outline btn-sm" type="button">Cerrar sesión<span class="sr-only"> en Firefox · Ubuntu</span></button>
+          </li>
+          <li class="session">
+            <span class="device"><svg class="ico " width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg></span>
+            <div>
+              <p class="session-name"><span>Edge · Windows</span></p>
+              <p class="session-meta"><span>Última actividad: hace 6 días</span><span>Iniciada el 2 sep 2026</span></p>
+            </div>
+            <button class="btn btn-outline btn-sm" type="button">Cerrar sesión<span class="sr-only"> en Edge · Windows</span></button>
+          </li>
+        </ul>
+        
+      </section>
+          
+      <section class="card" aria-labelledby="t-contrasena">
+        <div class="card-head">
+          <h2 id="t-contrasena">Cambiar contraseña</h2>
+          <p class="card-desc">Al cambiarla cerraremos tus otras sesiones. Esta seguirá abierta.</p>
+        </div>
+        
+        <form novalidate>
+          
+          <div class="field">
+            <label for="actual">Contraseña actual</label>
+            <div class="control">
+              <input id="actual" name="actual" type="password" autocomplete="current-password" value="Lucia-Alpha-2025" aria-describedby="actual-ayuda">
+              <button class="reveal" type="button" aria-label="Mostrar contraseña" aria-pressed="false"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            </div>
+            <p class="field-help" id="actual-ayuda"><a href="#">¿No la recuerdas? Restablece tu contraseña</a></p>
+          </div>
+          
+          <div class="field">
+            <label for="nueva">Contraseña nueva</label>
+            <div class="control">
+              <input id="nueva" name="nueva" type="password" autocomplete="new-password" value="Alpha2026" aria-describedby="req-nueva nueva-error" aria-invalid="true">
+              <button class="reveal" type="button" aria-label="Mostrar contraseña" aria-pressed="false"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            </div>
+            <p class="field-error" id="nueva-error" role="alert"><svg class="ico " width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg><span>La contraseña no cumple todos los requisitos.</span></p><ul class="reqs" id="req-nueva" aria-label="Requisitos de la contraseña nueva"><li class="is-fail"><svg class="ico " width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg><span>12 caracteres o más</span><span class="sr-only"> (falta)</span></li><li class="is-ok"><svg class="ico " width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5"/></svg><span>Una mayúscula</span><span class="sr-only"> (cumplido)</span></li><li class="is-ok"><svg class="ico " width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5"/></svg><span>Un número</span><span class="sr-only"> (cumplido)</span></li><li class="is-fail"><svg class="ico " width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg><span>Un símbolo</span><span class="sr-only"> (falta)</span></li></ul>
+          </div>
+          
+          <div class="field">
+            <label for="confirmacion">Confirma la contraseña nueva</label>
+            <div class="control">
+              <input id="confirmacion" name="confirmacion" type="password" autocomplete="new-password" value="Alpha2026">
+              <button class="reveal" type="button" aria-label="Mostrar contraseña" aria-pressed="false"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            </div>
+            
+          </div>
+          <div class="form-foot">
+            <button class="btn btn-primary" type="submit">Cambiar contraseña</button>
+          </div>
+        </form>
+      </section>
+        </div>
+      </main>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
