@@ -64,7 +64,7 @@ Clases en inglés; tablas y columnas en español como el E-R.
 
 ## Stack (resumen)
 
-Monorepo pnpm · **Frontend** Next.js + TypeScript + Tailwind v4 + shadcn/ui, sistema de diseño **Cielo Sereno** (Inter, JetBrains Mono) · **Backend** NestJS + TypeORM ·
+Monorepo pnpm · **Frontend** Next.js + TypeScript + Tailwind v4 + shadcn/ui, sistema de diseño **Cielo Sereno** (Inter) · **Backend** NestJS + TypeORM ·
 **Worker** NestJS + BullMQ · **Datos** PostgreSQL + pgvector · **Objetos** MinIO (S3) · **Cola/caché** Redis ·
 **Tiempo real** Socket.IO · **Edición** ONLYOFFICE Docs (solo `.docx`) · **LLM** gemini-3.5-flash + gemini-embedding
 (detrás de puertos propios) · **Auth** Passport JWT + Argon2id · **Pagos** simulación propia ·
