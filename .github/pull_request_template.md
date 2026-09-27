@@ -51,6 +51,6 @@
 
 ## Aprobación
 <!-- no mostrar en el PR lo que no aplica -->
-- [ ] **Autoaprobado** (excepción de Fase 1, `workflow.md` §7.1): solo PRs del diseñador principal, hasta el 25/09/2026
+- [ ] **Autoaprobado** (`workflow.md` §7.1): solo PRs del diseñador principal
 
 > Aprobación requerida de un integrante distinto del autor (RNF-19). Única excepción: `workflow.md` §7.1.

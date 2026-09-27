@@ -119,5 +119,6 @@ Una tarea/spec está terminada cuando:
 - [ ] Está desplegada en staging y se puede demostrar.
 - [ ] La documentación afectada (spec, API, manuales, ADR) se actualizó en el mismo PR.
 
-> En la Fase 1, «todas las suites de CI», «aprobada por un integrante distinto del autor» y «desplegada en
-> staging» se aplican con las excepciones temporales de `workflow.md` §7, que caducan el 25/09/2026.
+> «Aprobada por un integrante distinto del autor» admite una única excepción, permanente: los PRs del diseñador
+> principal (`workflow.md` §7.1). «Todas las suites de CI» y «desplegada en staging» se sustituyen por la
+> verificación y la demostración en local hasta que el CI y staging existan, desde el 30/09/2026 (`workflow.md` §7.2).

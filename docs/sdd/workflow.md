@@ -78,7 +78,7 @@ Humano abre PR → otro integrante aprueba → merge → staging      (Fase 1: e
 - Tareas marcadas `[P]` en distintas specs pueden avanzar a la vez si no tocan los mismos archivos.
 - Los mockups se hacen **antes** de planificar la spec que los usa (`/mockup`), y quien diseña una pantalla no tiene que ser quien la implementa.
 - Los contratos (`packages/contracts`) y migraciones se integran primero y en PRs pequeños para desbloquear a los demás.
-- Quien revisa un PR no es su autor ni el dueño exclusivo del módulo (regla Crystal Clear + RNF-19). Única excepción, temporal: §7.1.
+- Quien revisa un PR no es su autor ni el dueño exclusivo del módulo (regla Crystal Clear + RNF-19). Única excepción: los PRs del diseñador principal (§7.1).
 - Coordinación asíncrona: el estado vive en `specs/README.md` y en el tablero del repo; no en la memoria de nadie.
 
 ## 6. Cierre de fase
@@ -91,37 +91,44 @@ En la reunión de revisión:
 5. `/design-check` para confirmar que los diagramas de `docs/design/diagramas/` coinciden con el código; redibujar los que cambiaron.
 6. Actualizar la tabla de estado en `CLAUDE.md`.
 
-## 7. Excepciones temporales de la Fase 1
+## 7. Excepciones al flujo
 
-Vigentes del 22/09/2026 hasta el inicio de la Fase 2 (25/09/2026), por decisión del diseñador principal ante el
-calendario de la Fase 1. Son las **únicas** excepciones a este documento, a `conventions.md` y al Art. XIV de la
-constitución; cada regla que contradicen remite aquí. Caducan solas el 25/09: no hay nada que revertir.
+Decididas por el diseñador principal. Son las **únicas** excepciones a este documento, a `conventions.md` y al
+Art. XIV de la constitución; cada regla que contradicen remite aquí.
 
-### 7.1 Autoaprobación de PRs del diseñador principal
+### 7.1 Autoaprobación de PRs del diseñador principal (todo el proyecto)
 
-Adrián puede integrar sus propios PRs sin la aprobación de otro integrante. Todo lo demás se mantiene:
+Vigente desde el 22/09/2026 y durante todo el proyecto. Adrián puede integrar sus propios PRs sin la aprobación de
+otro integrante. Todo lo demás se mantiene:
 
 - Los PRs de cualquier otro autor siguen necesitando la aprobación de alguien distinto del autor.
 - El PR marca la casilla «Autoaprobado» de la plantilla.
-- Antes del merge, el autor corre en local `pnpm lint`, `pnpm typecheck`, `pnpm test` y `pnpm test:int` (más
-  `pnpm test:isolation` si la spec toca datos de cliente) y pega el resumen en el PR, en lugar del CI (§7.2).
+- Antes del merge, el PR pasa la verificación automática: el CI en cuanto exista (§7.2); mientras tanto, el autor
+  corre en local `pnpm lint`, `pnpm typecheck`, `pnpm test` y `pnpm test:int` (más `pnpm test:isolation` si la
+  spec toca datos de cliente) y pega el resumen en el PR.
 - `/review NNN` sin bloqueantes sigue siendo obligatorio para cerrar una spec; en un PR parcial (§4.8) llega con el
   último bloque, como siempre.
 - GitHub no deja al autor pulsar «Approve»: la autoaprobación es un comentario propio en el PR («Autoaprobado,
-  excepción de Fase 1, `workflow.md` §7.1») seguido del merge. La protección de `main` que exige una aprobación
-  ajena llega con el CI (spec 000, T-33) y cierra la excepción.
+  `workflow.md` §7.1») seguido del merge. La protección de `main` (spec 000, T-33) lo permite con dos rulesets: uno
+  con los checks, sin excepciones para nadie, y otro con la aprobación ajena, que tiene a Adrián como única excepción.
 
-RNF-19 no se incumple: pide CI verde y aprobación ajena para llegar a **producción**, que no existe hasta la Fase 4.
+**Cambio respecto de la propuesta**: RNF-19 pide la aprobación de un integrante distinto del autor para que un cambio
+llegue a producción. En los PRs del diseñador principal esa aprobación se sustituye por la verificación automática,
+`/review` sin bloqueantes y el comentario de autoaprobación. Los PRs del resto del equipo cumplen RNF-19 sin cambios.
 
-### 7.2 CI, imágenes y staging pasan al inicio de la Fase 2
+### 7.2 CI, imágenes y staging desde el 30/09/2026
 
-Los bloques 4 (CI), 5 (imágenes en ghcr.io) y 6 (staging) de la spec 000 se implementan en la primera semana de la
-Fase 2. Las imágenes van con ellos porque las publica el CI y solo las consume staging. Mientras tanto:
+La entrega de la Fase 1 se movió al **miércoles 30/09/2026**. Los bloques 4 (CI), 5 (imágenes en ghcr.io) y 6
+(staging) de la spec 000 se implementan **a partir de esa fecha**, empezando por el CI. Las imágenes van con ellos
+porque las publica el CI y solo las consume staging. Mientras tanto:
 
 - **«CI verde»** se sustituye por las verificaciones locales de §7.1, con su resumen pegado en el PR.
 - **`Hecha`** significa integrada en `main` y demostrable en local (`docker compose up -d` + `pnpm dev`). La
-  entrega del 25/09 se demuestra en local. Cuando exista staging, las specs `Hecha` de la Fase 1 se despliegan y
+  entrega del 30/09 se demuestra en local. Cuando exista staging, las specs `Hecha` de la Fase 1 se despliegan y
   se demuestran ahí sin reabrirlas.
 - La spec 000 sigue `En implementación` hasta cerrar el bloque 6. Los bloques 1 y 2 ya están en `main` y bastan
   para implementar las demás specs.
 - La compuerta T-27 (aceptar ADR y DF) solo condiciona el merge del PR de CI, así que se mueve con él.
+
+Esta excepción caduca sola, por partes: el CI reemplaza a la verificación local en cuanto el bloque 4 está en `main`,
+y staging a la demostración local en cuanto lo está el bloque 6.
