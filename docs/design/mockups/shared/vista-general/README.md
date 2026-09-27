@@ -10,5 +10,6 @@
 - El texto de metadatos usa `#546983` porque `#7A90A8` no pasaba AA (3.06:1); ver DF de Cielo Sereno.
 
 ## Pendiente
+- Es anterior a las hojas 01–14: el logo, la tipografía de cifras y algunas pantallas cambiaron. Si difieren, mandan los mockups de cada carpeta.
 - Estados que faltan respecto al inventario de `docs/sdd/ui-guidelines.md` §7 (vacío, cargando, error, etc.).
 - Versión móvil real a 360 px: el mockup está diseñado a 1440 px y se recorta en móvil.
