@@ -22,7 +22,7 @@ Adrián y 006a (`billing`) la lleva Fátima; el resto de esos módulos sigue con
 ## Paso previo: decidir los hallazgos del diseño
 
 Antes de planificar las specs de Fase 1, el equipo decide en una reunión los hallazgos que las bloquean
-(`docs/sdd/design-findings.md`, columna «Resolver antes de»). ADR-0010 ya está `Aceptado` (26/09/2026); el `architect` redacta los ADR 0011–0013.
+(`docs/sdd/design-findings.md`, columna «Resolver antes de»). ADR-0010 ya está `Aceptado` (26/09/2026); el `architect` redacta los ADR 0011–0013. Lo que quedó fuera de las specs (diagramas por redibujar, documentos por corregir, decisiones abiertas) se controla en `docs/sdd/pendientes.md`, con su columna «Resolver antes de».
 
 ## Backlog
 
@@ -33,7 +33,7 @@ Antes de planificar las specs de Fase 1, el equipo decide en una reunión los ha
 | 001  | registro-y-verificacion                                                                                                    | M1                  | RF-01, RNF-04             | 13, 33, 35                 | 1    | Adrián | 000, 006a     | Pendiente |
 | 002  | autenticacion-sesiones-y-dispositivos                                                                                      | M1                  | RF-02, 03, 04, RNF-07     | 11, 15                     | 1    | Adrián | 001           | Pendiente |
 | 003  | roles-y-acceso (`RolesGuard`, `Actor`, `PermissionResolver`, `accessibleNodes`, RLS)                                       | M8 + M3a            | RF-05, RNF-05             | 01, 02, 32                 | 1    | Adrián | 002           | Pendiente |
-| 004  | auditoria                                                                                                                  | transversal (M8)    | RF-07                     | 03, 12, 15                 | 1    | Adrián | 003           | Pendiente |
+| 004  | auditoria                                                                                                                  | T2 `audit`          | RF-07                     | 03, 12, 15                 | 1    | Adrián | 003           | Pendiente |
 | 005  | carga-y-descarga                                                                                                           | M2                  | RF-08, 09, 14, RNF-06, 07 | 06, 16, 33                 | 1    | Abel | 003, 006a     | Pendiente |
 | 006  | carpetas-y-papelera                                                                                                        | M2                  | RF-10, 11                 | 15, 40                     | 1    | Abel | 005           | Pendiente |
 | 006a | catalogo-y-limites (tabla `plan`, `PlanLimits`, `IPlanLimitsProvider`)                                                     | M4                  | RF-19 (parcial)           | 23, 24, 27                 | 1    | Fátima | 000           | Pendiente |

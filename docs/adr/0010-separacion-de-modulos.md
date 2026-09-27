@@ -61,7 +61,7 @@ Opción 1. Se reemplaza M3 por dos módulos y se agregan tres transversales (`de
 | Módulo | Responsabilidad | Puede depender de | Expone en `index.ts` |
 |---|---|---|---|
 | `access` (M3a) | Solo lectura: `PermissionResolver` (`levelFor`, `can`, `inheritedGrants`), `IAccessPolicy` (Owner/Editor/Viewer, Strategy), `accessibleNodes(actor)` (DF-32) | `shared` | `PermissionResolver`, `accessibleNodes`, `AccessLevel`, `Action` |
-| `sharing` (M3b) | Escritura: `SharingService`, `PublicLinkService`, `IRateLimiter`; tablas `comparticion`, `enlace_publico`, `intento_acceso` | `shared`, `access`, `storage`, `audit` | Solo su módulo Nest (nadie lo consume) |
+| `sharing` (M3b) | Escritura: `SharingService`, `PublicLinkService` (usa `IRateLimiter` de `shared`); tablas `comparticion`, `enlace_publico`, `intento_acceso` | `shared`, `access`, `storage`, `audit` | Solo su módulo Nest (nadie lo consume) |
 | `audit` (T2) | `AuditService`, `AuditEntry`; tabla `evento_auditoria` | `shared` | `IAuditLogger` y consulta para M8 |
 | `realtime` (T3) | Único servidor Socket.IO: handshake autenticado, salas por usuario y por documento | `shared` | Puerto de publicación (nombre en el plan 015) |
 | `notifications` (T4) | `IMailer`, `INotifier` (segregados por consumidor), tabla `notificacion`, cola `mail` | `shared`, `realtime` | `IMailer`, `INotifier` |
@@ -79,7 +79,8 @@ Aristas nuevas o que cambian:
 - **Los transversales declaran sus propios puertos.** Si los declarara el consumidor, como sugiere la columna
   «dueño → implementador» de `architecture.md` §5 para `IMailer` e `INotifier`, el transversal tendría que importarlo.
 - `realtime` **no depende de `identity`**. Valida el token del handshake con la misma abstracción token→`Actor` que el
-  guard HTTP global (la define 002 sin que `realtime` importe `identity`). Las salas de documento las autoriza el
+  guard HTTP global: el puerto lo declara `shared`, lo implementa `identity` y `AppModule` enlaza la implementación
+  (002 D-14, 003 D-2), así que `realtime` no importa `identity`. Las salas de documento las autoriza el
   módulo dueño: `editing` consulta `access` y después une el socket. `realtime` no conoce permisos.
 - `audit` guarda identificadores (`actorId`, `targetUserId`, `resourceId`), no nombres. Así no necesita repos de M1,
   M2 ni M4, y cumple la prohibición de nombres de archivo en bitácoras. M8 consume `audit`, no lo contiene.

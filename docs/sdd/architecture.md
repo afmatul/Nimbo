@@ -94,7 +94,7 @@ No hay paquete `domain` aparte salvo que un ADR lo justifique.
 
 | Módulo | Diagrama | Responsabilidad | Puede depender de |
 |---|---|---|---|
-| `shared` | T1 (DF-49) | `Actor`, `IClock`, `DomainError` + `DomainExceptionFilter`, logger Pino con redacción, `correlationId`, validación de entorno, `DataSource`, salud (`HealthModule`, `IHealthIndicator`, indicadores Postgres/Redis/MinIO), paginación. Con 003: guards globales (`JwtAuthGuard`, `RolesGuard`, `@Public`, `@Roles`), el puerto token→`Actor` que implementa `identity` (002 D-14, 003 D-2) y `withActor` (ADR-0005) | — |
+| `shared` | T1 (DF-49) | `Actor`, `IClock`, `DomainError` + `DomainExceptionFilter`, logger Pino con redacción, `correlationId`, validación de entorno, `DataSource`, salud (`HealthModule`, `IHealthIndicator`, indicadores Postgres/Redis/MinIO), paginación. Con 001: `IRateLimiter` → `RedisRateLimiter`. Con 003: guards globales (`JwtAuthGuard`, `RolesGuard`, `@Public`, `@Roles`), el puerto token→`Actor` que implementa `identity` (002 D-14, 003 D-2) y `withActor` (ADR-0005) | — |
 | `audit` | T2 (extraído de M8, DF-03) | `AuditService`, `AuditEntry`; declara e implementa `IAuditLogger` (ADR-0010) | shared |
 | `notifications` | T4 (DF-34) | Correo y notificaciones; declara e implementa `IMailer` e `INotifier` (ADR-0010) | shared, realtime |
 | `realtime` | T3 (generalizado desde M5, DF-30) | Único gateway Socket.IO, salas por usuario y documento; valida el token del handshake con el puerto token→`Actor` de `shared`; declara su puerto de publicación (ADR-0010) | shared |
@@ -156,7 +156,7 @@ modules/storage/
 | `IFileTypeDetector` | `MagicBytesDetector` | storage |
 | `IPlanLimitsProvider` | fachada de billing | storage/editing → billing |
 | `IAccessPolicy` | `OwnerPolicy`, `EditorPolicy`, `ViewerPolicy` | access |
-| `IRateLimiter` | `RedisRateLimiter` | sharing (reutilizable en identity) |
+| `IRateLimiter` | `RedisRateLimiter` | shared (lo declara y lo implementa; lo consumen identity desde 001 y sharing desde 012; `identity → sharing` no está permitido, ADR-0010) |
 | `IAuditLogger` | `AuditService` | audit (lo declara y lo implementa; lo consumen los módulos que auditan, ADR-0010) |
 | `IPaymentGateway` | `SimulatedPaymentGateway` | billing |
 | `IInvoiceGenerator` | `PdfInvoiceGenerator` | billing |

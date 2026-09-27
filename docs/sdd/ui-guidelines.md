@@ -229,8 +229,10 @@ identificador.
 
 > Estado del mockup: `Pendiente` · `Borrador` · `Aprobado`. Rutas relativas a `docs/design/`.
 > Actualicen la columna «Mockup» con lo que ya existe; el `ui-designer` la mantiene al día.
-> Los mockups `Borrador` provienen de Claude Design (`.dc.html`) y solo cubren los estados entre paréntesis;
-> el resto de estados mínimos se agregan con `/mockup` antes de aclarar la spec. Cada carpeta tiene un `README.md`.
+> Los mockups `Borrador` provienen de Claude Design (`.dc.html`) o están escritos a mano en HTML autocontenido
+> (`.html`), como `mockups/identity/seguridad/`, `mockups/identity/terminos/` y `mockups/identity/privacidad/`. Solo
+> cubren los estados entre paréntesis; el resto de estados mínimos se agregan con `/mockup` antes de aclarar la spec.
+> Cada carpeta tiene un `README.md`.
 
 | Pantalla | Módulo | Spec | Mockup | Capturas | Estados mínimos | Mockup |
 |---|---|---|---|---|---|---|
