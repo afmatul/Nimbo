@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Borrador |
+| Estado | Aclarada (2026-09-26, Adrián) |
 | Dueño | Adrián (1) |
 | Fase | 1 |
 | Requisitos | RF-05, RNF-05 (principales); aplican también RNF-13, RNF-17 |
@@ -289,3 +289,4 @@ Ninguna.
 | Fecha | Cambio | Motivo | Aprobó |
 |---|---|---|---|
 | 2026-09-26 | Creación en `Borrador` con las decisiones D-1 a D-11 (respuestas a P-1–P-8), sin preguntas abiertas. Puede pasar a `Aclarada` cuando el dueño lo confirme; el plan espera a ADR-0005 y ADR-0010 | Spec de Fase 1; el dueño respondió las preguntas antes de redactar | Adrián |
+| 2026-09-26 | **Aclarada.** Sin preguntas abiertas y sin pantallas nuevas (§11). El plan espera ADR-0005 y ADR-0010 | Compuerta del dueño | Adrián |
