@@ -8,7 +8,7 @@
 <!-- Colores: tonos corregidos AA de ui-guidelines.md §2 (primary #4A6FA5, muted #5E7389). La implementación usa tokens. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
     --sheet: #E7EDF5;          /* fondo de la hoja de mockups */
@@ -46,7 +46,7 @@
   }
   .sheet-label .chip { background: var(--border); border-radius: var(--radius-sm); padding: 1px 7px; font-weight: 600; font-size: 11px; }
   .sheet-label strong { color: var(--foreground); font-size: 13px; font-weight: 600; }
-  .sheet-label .file { font-family: "JetBrains Mono", ui-monospace, monospace; color: var(--primary-hover); }
+  .sheet-label .file { font-weight: 500; font-variant-numeric: tabular-nums; color: var(--primary-hover); }
 
   /* Lienzo */
   .canvas {
@@ -95,7 +95,7 @@
     box-shadow: var(--shadow-card); padding: 44px 48px 40px;
   }
   .prose { max-width: 37rem; }
-  .doc h1 { margin: 0; font-size: 28px; line-height: 1.25; font-weight: 800; letter-spacing: -.01em; }
+  .doc h1 { margin: 0; font-size: 28px; line-height: 1.25; font-weight: 700; letter-spacing: -.01em; }
   .version { margin: 8px 0 0; font-size: 13px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
   .lead { margin: 20px 0 0; font-size: 16px; color: var(--secondary-foreground); }
   .notice {
@@ -116,7 +116,7 @@
   .doc li::marker { color: var(--brand); }
   .doc strong { color: var(--foreground); font-weight: 600; }
   .ui-label { font-weight: 600; color: var(--foreground); white-space: nowrap; }
-  .doc code { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 13px; color: var(--foreground);
+  .doc code { font-family: inherit; font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--foreground);
               background: var(--muted); border-radius: var(--radius-sm); padding: 1px 5px; }
 
   .site-footer {

@@ -2,7 +2,7 @@
 
 - **Spec**: 001 (D-14, D-22, CA-23, RN-12)
 - **Propuesta presentada**: No presentada (diseño interno).
-- **Origen**: HTML autocontenido escrito a mano (`.html`, Cielo Sereno con los tonos corregidos AA de `ui-guidelines.md` §2; solo carga Inter y JetBrains Mono de Google Fonts). A diferencia de los otros mockups de identity, tiene versión móvil real a 360 px. Es referencia visual; `apps/web` no lo importa.
+- **Origen**: HTML autocontenido escrito a mano (`.html`, Cielo Sereno con los tonos corregidos AA de `ui-guidelines.md` §2; solo carga Inter 400/500/600/700 de Google Fonts, sin JetBrains Mono: las cifras, el nombre del archivo en el rótulo y `.docx` usan Inter con `font-variant-numeric: tabular-nums`). A diferencia de los otros mockups de identity, tiene versión móvil real a 360 px. Es referencia visual; `apps/web` no lo importa.
 - **Estados incluidos**:
   - default: página pública sin sesión, versión 1.0 (`terminos.html`)
 - **Capturas**: `docs/design/capturas/identity/terminos/` (`terminos--default--<360|1440>.png`)

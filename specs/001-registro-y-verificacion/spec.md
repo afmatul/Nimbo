@@ -2,14 +2,14 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Borrador |
+| Estado | Aclarada (2026-09-26, Adrián) |
 | Dueño | Adrián (1) |
 | Fase | 1 |
 | Requisitos | RF-01, RNF-04 (principales); aplican también RNF-07 (parcial: límite de tasa del registro y del reenvío), RNF-13, RNF-14, RNF-17 |
 | Depende de | 000 (bloques 1 y 2 en `main`); 000b para la interfaz con Cielo Sereno; **006a** (consume el evento de cuenta verificada, D-4, y expone por API el catálogo de planes que muestra el registro); 002 para las pruebas de CA-16, CA-26 y CA-29 (ver §13) |
 | Módulo | M1 `identity` (+ `notifications` como implementador de `IMailer`) |
 | DF | DF-13 decidido por D-1 · DF-35 decidido por D-2 · DF-33 (solo `usuario`) decidido por D-3. Falta que `architect` actualice `design-findings.md` y los diagramas |
-| Última actualización | 2026-09-23 |
+| Última actualización | 2026-09-26 |
 
 ## 1. Contexto y problema
 
@@ -636,3 +636,4 @@ ajustes y estados de mockups de §11 (Art. XIII.1; compuerta de `Aclarada`, `wor
 | 2026-09-26 | §11: mockups y capturas de los estados que faltaban (registro: enviando, error-campos, error-servidor, catalogo-no-disponible, limite-reenvio y pedir-enlace; página del enlace: enlace-expirado, enlace-invalido y ya-verificado; pantalla final: plan-de-pago-elegido). Quedan pendientes Términos y Privacidad y dos textos | Estados de 001 | Adrián |
 | 2026-09-26 | §11: mockups de Términos y Política de privacidad (borrador de textos; el texto final lo cierra el plan según D-22) | Respuestas del dueño sobre privacidad | Adrián |
 | 2026-09-26 | §11: se hacen los dos ajustes obligatorios que quedaban (plan de pago elegido según D-24; advertencia y dominio del correo de verificación según D-20 y D-12), con sus capturas. §13: el Avance 1 es el 30/09/2026 | Ajustes pendientes de §11 y cambio de fecha de la Fase 1 | Adrián |
+| 2026-09-26 | **Aclarada.** No quedan preguntas abiertas ni ajustes obligatorios, y cada pantalla de §11 tiene mockup. El plan espera ADR-0010 (`notifications` implementa `IMailer`) | Compuerta del dueño | Adrián |
