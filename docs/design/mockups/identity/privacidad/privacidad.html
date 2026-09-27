@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Política de privacidad · Nimbo</title>
+<!-- Mockup de referencia (spec 001, D-14, D-22). Borrador de textos: el texto final lo cierra el plan. -->
+<!-- Colores: tonos corregidos AA de ui-guidelines.md §2 (primary #4A6FA5, muted #5E7389). La implementación usa tokens. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sheet: #E7EDF5;          /* fondo de la hoja de mockups */
+    --background: #F4F7FB;
+    --card: #FAFCFF;
+    --border: #DDE6F0;
+    --input: #7F93AA;
+    --foreground: #1E2D40;
+    --secondary-foreground: #3A5068;
+    --muted-foreground: #5E7389;
+    --primary: #4A6FA5;
+    --primary-hover: #3B5A8A;
+    --primary-foreground: #FFFFFF;
+    --brand: #6B8DD6;
+    --muted: #EEF3F9;
+    --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px; --radius-xl: 18px;
+    --shadow-card: 0 1px 3px rgba(74,111,165,.08), 0 1px 2px rgba(74,111,165,.04);
+    --shadow-button: 0 1px 2px rgba(107,141,214,.20);
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+  body {
+    margin: 0; background: var(--sheet); color: var(--foreground);
+    font-family: Inter, system-ui, sans-serif; font-size: 15px; line-height: 1.7;
+  }
+  a { color: var(--primary); text-decoration: underline; text-underline-offset: 2px; }
+  a:hover { color: var(--primary-hover); }
+  a:focus-visible, .btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 4px; }
+
+  /* Rótulo de la hoja */
+  .sheet-label {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px;
+    padding: 40px 48px 12px; font-size: 12px; line-height: 1.5; color: var(--secondary-foreground);
+  }
+  .sheet-label .chip { background: var(--border); border-radius: var(--radius-sm); padding: 1px 7px; font-weight: 600; font-size: 11px; }
+  .sheet-label strong { color: var(--foreground); font-size: 13px; font-weight: 600; }
+  .sheet-label .file { font-family: "JetBrains Mono", ui-monospace, monospace; color: var(--primary-hover); }
+
+  /* Lienzo */
+  .canvas {
+    margin: 0 48px 48px; background: var(--background); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card); overflow: hidden;
+  }
+  .site-header {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px;
+    padding: 14px 32px; background: var(--card); border-bottom: 1px solid var(--border);
+  }
+  .logo { display: inline-flex; align-items: center; gap: 10px; color: var(--foreground); text-decoration: none;
+          font-weight: 700; font-size: 16px; letter-spacing: .02em; min-height: 36px; }
+  .header-actions { display: flex; align-items: center; gap: 8px; }
+  .header-link { color: var(--primary); font-weight: 600; font-size: 13px; text-decoration: none; padding: 8px 12px; border-radius: var(--radius-md); }
+  .header-link:hover { background: var(--muted); }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; min-height: 36px;
+    padding: 8px 14px; border-radius: var(--radius-md); font-weight: 600; font-size: 13px; line-height: 1.2; text-decoration: none;
+  }
+  .btn-outline { color: var(--secondary-foreground); background: var(--card); border: 1px solid var(--border); }
+  .btn-outline:hover { background: var(--muted); color: var(--foreground); }
+  .btn-primary { color: var(--primary-foreground); background: var(--primary); border: 1px solid var(--primary); box-shadow: var(--shadow-button); }
+  .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); color: var(--primary-foreground); }
+
+  /* Contenido */
+  .layout {
+    display: grid; grid-template-columns: 232px minmax(0, 704px); gap: 40px;
+    justify-content: center; padding: 48px 32px 56px;
+  }
+  .toc {
+    position: sticky; top: 24px; align-self: start;
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card); padding: 18px 16px;
+  }
+  .toc h2 { margin: 0 0 8px; padding: 0 8px; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted-foreground); }
+  .toc ol { list-style: none; margin: 0; padding: 0; }
+  .toc a {
+    display: flex; gap: 8px; min-height: 32px; align-items: center; padding: 4px 8px; border-radius: var(--radius-sm);
+    color: var(--secondary-foreground); text-decoration: none; font-size: 13px; line-height: 1.35;
+  }
+  .toc a:hover { background: var(--muted); color: var(--foreground); }
+  .toc .n { color: var(--primary); font-weight: 600; min-width: 1.4em; font-variant-numeric: tabular-nums; }
+
+  .doc {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card); padding: 44px 48px 40px;
+  }
+  .prose { max-width: 37rem; }
+  .doc h1 { margin: 0; font-size: 28px; line-height: 1.25; font-weight: 800; letter-spacing: -.01em; }
+  .version { margin: 8px 0 0; font-size: 13px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  .lead { margin: 20px 0 0; font-size: 16px; color: var(--secondary-foreground); }
+  .notice {
+    display: flex; gap: 12px; margin: 24px 0 8px; padding: 14px 16px;
+    background: var(--muted); border-left: 3px solid var(--brand); border-radius: var(--radius-md);
+    color: var(--foreground); font-size: 14px; line-height: 1.6;
+  }
+  .notice svg { flex: none; margin-top: 2px; }
+  .doc .notice p { margin: 0; }
+  .doc section { padding-top: 32px; scroll-margin-top: 16px; }
+  .doc section + section { border-top: 1px solid var(--border); margin-top: 32px; }
+  .doc h2 { margin: 0 0 10px; font-size: 20px; line-height: 1.35; font-weight: 700; color: var(--foreground); }
+  .doc h2 .n { color: var(--primary); margin-right: 6px; font-variant-numeric: tabular-nums; }
+  .doc p, .doc li { color: var(--secondary-foreground); }
+  .doc p { margin: 0 0 12px; }
+  .doc ul { margin: 0 0 12px; padding-left: 1.25em; }
+  .doc li { margin: 0 0 6px; padding-left: 2px; }
+  .doc li::marker { color: var(--brand); }
+  .doc strong { color: var(--foreground); font-weight: 600; }
+  .ui-label { font-weight: 600; color: var(--foreground); white-space: nowrap; }
+  .doc code { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 13px; color: var(--foreground);
+              background: var(--muted); border-radius: var(--radius-sm); padding: 1px 5px; }
+
+  .site-footer {
+    border-top: 1px solid var(--border); background: var(--card); padding: 24px 32px 28px;
+  }
+  .footer-inner { max-width: 976px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 24px; }
+  .footer-links { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; font-size: 14px; }
+  .footer-links a:not(.btn) { font-weight: 600; display: inline-flex; align-items: center; min-height: 32px; }
+  .footer-meta { flex-basis: 100%; margin: 0; font-size: 13px; color: var(--muted-foreground); }
+
+  /* Índice plegable (móvil y tableta) */
+  .toc-inline { display: none; margin: 20px 0 0; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--background); }
+  .toc-inline summary {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; padding: 8px 14px;
+    cursor: pointer; list-style: none; font-weight: 600; font-size: 14px; color: var(--foreground); border-radius: var(--radius-md);
+  }
+  .toc-inline summary::-webkit-details-marker { display: none; }
+  .toc-inline summary:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  .toc-inline summary .count { font-weight: 400; color: var(--muted-foreground); }
+  .toc-inline summary svg { flex: none; }
+  @media (prefers-reduced-motion: no-preference) { .toc-inline summary svg { transition: transform .15s; } }
+  .toc-inline[open] summary svg { transform: rotate(180deg); }
+  .toc-inline ol { list-style: none; margin: 0; padding: 0 6px 8px; }
+  .doc .toc-inline li { margin: 0; padding: 0; }
+  .toc-inline a {
+    display: flex; gap: 8px; min-height: 36px; align-items: center; padding: 4px 8px; border-radius: var(--radius-sm);
+    color: var(--secondary-foreground); text-decoration: none; font-size: 14px; line-height: 1.35;
+  }
+  .toc-inline a:hover { background: var(--muted); color: var(--foreground); }
+  .toc-inline .n { color: var(--primary); font-weight: 600; min-width: 1.6em; font-variant-numeric: tabular-nums; }
+  @media (max-width: 1023px) {
+    .toc { display: none; }
+    .toc-inline { display: block; }
+  }
+
+  /* Tableta y móvil: el índice se pliega y el lienzo se adapta */
+  @media (max-width: 1023px) {
+    .layout { grid-template-columns: minmax(0, 704px); gap: 20px; padding: 32px 24px 40px; }
+    .toc { position: static; }
+  }
+  @media (max-width: 600px) {
+    .sheet-label { padding: 16px 12px 10px; }
+    .canvas { margin: 0 8px 16px; border-radius: var(--radius-md); }
+    .site-header { padding: 10px 12px; }
+    .logo { font-size: 15px; gap: 8px; }
+    .header-link { padding: 8px; }
+    .btn { padding: 8px 12px; }
+    .layout { padding: 16px 12px 24px; gap: 16px; }
+    .toc { padding: 14px 10px; }
+    .doc { padding: 24px 18px 20px; border-radius: var(--radius-md); }
+    .doc h1 { font-size: 24px; }
+    .lead { font-size: 15px; }
+    .doc h2 { font-size: 18px; }
+    .doc section { padding-top: 24px; }
+    .doc section + section { margin-top: 24px; }
+    .site-footer { padding: 20px 16px 24px; }
+    .footer-links { flex-direction: column; align-items: flex-start; }
+  }
+
+  /* Propios de la Política de privacidad */
+  .essentials {
+    margin: 16px 0 0; padding: 16px 18px; background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+  }
+  .essentials h2 { font-size: 15px; margin: 0 0 8px; }
+  .essentials ul { list-style: none; padding: 0; margin: 0; }
+  .essentials li { display: flex; gap: 10px; margin: 0 0 6px; color: var(--foreground); font-size: 14px; line-height: 1.55; }
+  .essentials li:last-child { margin-bottom: 0; }
+  .essentials svg { flex: none; margin-top: 3px; }
+  .doc h3 { margin: 18px 0 6px; font-size: 15px; font-weight: 600; color: var(--foreground); }
+  .doc .providers { list-style: none; padding: 0; margin: 4px 0 14px; display: grid; gap: 10px; }
+  .doc .providers li { margin: 0; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--background); }
+  .providers .name { display: block; font-weight: 600; color: var(--foreground); }
+  .providers .role { display: block; font-size: 13px; color: var(--muted-foreground); line-height: 1.5; }
+  .providers .data { display: block; margin-top: 4px; font-size: 14px; line-height: 1.55; }
+  .table-wrap { margin: 4px 0 14px; border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; line-height: 1.45; font-variant-numeric: tabular-nums; }
+  caption { text-align: left; padding: 10px 14px; font-size: 13px; color: var(--muted-foreground); background: var(--card); border-bottom: 1px solid var(--border); }
+  th, td { padding: 9px 14px; text-align: left; border-bottom: 1px solid var(--border); color: var(--secondary-foreground); }
+  thead th { background: var(--muted); color: var(--foreground); font-weight: 600; font-size: 13px; }
+  tbody th { color: var(--foreground); font-weight: 600; }
+  tbody tr:last-child th, tbody tr:last-child td { border-bottom: 0; }
+  @media (max-width: 600px) {
+    th, td { padding: 8px 10px; }
+    caption { padding: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<aside class="sheet-label" aria-label="Rótulo del mockup"><span class="chip">D-14</span> <strong>Política de privacidad</strong> <span class="file">privacidad.html</span> <span>página estática · sin sesión · estado: default</span></aside>
+
+<div class="canvas">
+  <header class="site-header">
+    <a class="logo" href="#" aria-label="Nimbo, inicio">
+      <svg width="28" height="20" viewBox="0 0 28 20" aria-hidden="true" focusable="false">
+        <path d="M7.5 19.5h14.2a5.8 5.8 0 0 0 .9-11.5A7.6 7.6 0 0 0 8.1 6.4 6.6 6.6 0 0 0 7.5 19.5Z" fill="#6B8DD6"/>
+        <path d="M14 7.2l1.15 3.35 3.35 1.15-3.35 1.15L14 16.2l-1.15-3.35-3.35-1.15 3.35-1.15Z" fill="#FFFFFF"/>
+      </svg>
+      <span>NIMBO</span>
+    </a>
+    <nav class="header-actions" aria-label="Cuenta">
+      <a class="header-link" href="../inicio-sesion/inicio-sesion.html">Iniciar sesión</a>
+      <a class="btn btn-outline" href="../registro/registro.html">Crear cuenta</a>
+    </nav>
+  </header>
+
+  <div class="layout">
+    <nav class="toc" aria-labelledby="toc-title">
+      <h2 id="toc-title">En esta página</h2>
+      <ol>
+        <li><a href="#responsable"><span class="n">1.</span><span>Quién es responsable</span></a></li>
+        <li><a href="#datos"><span class="n">2.</span><span>Qué datos se guardan</span></a></li>
+        <li><a href="#para-que"><span class="n">3.</span><span>Para qué se usan</span></a></li>
+        <li><a href="#proveedores"><span class="n">4.</span><span>Con quién se comparten</span></a></li>
+        <li><a href="#equipo"><span class="n">5.</span><span>Qué ve el equipo interno</span></a></li>
+        <li><a href="#seguridad"><span class="n">6.</span><span>Cómo se protegen</span></a></li>
+        <li><a href="#retencion"><span class="n">7.</span><span>Cuánto tiempo se guardan</span></a></li>
+        <li><a href="#cookies"><span class="n">8.</span><span>Cookies</span></a></li>
+        <li><a href="#eliminar"><span class="n">9.</span><span>Eliminar tu cuenta y tus datos</span></a></li>
+        <li><a href="#edad"><span class="n">10.</span><span>Edad mínima</span></a></li>
+        <li><a href="#cambios"><span class="n">11.</span><span>Cambios a esta Política</span></a></li>
+      </ol>
+    </nav>
+
+    <main class="doc" id="contenido">
+      <div class="prose">
+        <h1>Política de privacidad</h1>
+        <p class="version">Versión 1.0 · vigente desde el {fecha de publicación}</p>
+        <p class="lead">Esta Política explica qué datos tuyos guarda Nimbo, para qué los usa, con quién los comparte y cómo puedes pedir que se borren.</p>
+
+        <div class="notice" role="note">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A6FA5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 7.5h.01"/></svg>
+          <p><strong>Nimbo es un proyecto académico</strong> del curso Ingeniería de Software I de la Universidad Rafael Landívar (2026). No es un servicio comercial ni un contrato de servicio, y no afirma cumplir ninguna ley ni tener ninguna certificación.</p>
+        </div>
+
+        <div class="essentials" role="region" aria-labelledby="h-esencial">
+          <h2 id="h-esencial">Lo esencial</h2>
+          <ul>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3A7560" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>Tus datos no se venden ni se usan para publicidad.</span></li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3A7560" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>Nadie del equipo interno ve el contenido de tus archivos.</span></li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3A7560" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>Los pagos son simulados: no se cobra dinero real.</span></li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3A7560" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>Todos los datos se borran a finales de noviembre de 2026.</span></li>
+          </ul>
+        </div>
+
+        <details class="toc-inline">
+          <summary><span>En esta página <span class="count">· 11 secciones</span></span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3A5068" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 9l6 6 6-6"/></svg></summary>
+          <nav aria-label="Índice">
+          <ol>
+            <li><a href="#responsable"><span class="n">1.</span><span>Quién es responsable</span></a></li>
+            <li><a href="#datos"><span class="n">2.</span><span>Qué datos se guardan</span></a></li>
+            <li><a href="#para-que"><span class="n">3.</span><span>Para qué se usan</span></a></li>
+            <li><a href="#proveedores"><span class="n">4.</span><span>Con quién se comparten</span></a></li>
+            <li><a href="#equipo"><span class="n">5.</span><span>Qué ve el equipo interno</span></a></li>
+            <li><a href="#seguridad"><span class="n">6.</span><span>Cómo se protegen</span></a></li>
+            <li><a href="#retencion"><span class="n">7.</span><span>Cuánto tiempo se guardan</span></a></li>
+            <li><a href="#cookies"><span class="n">8.</span><span>Cookies</span></a></li>
+            <li><a href="#eliminar"><span class="n">9.</span><span>Eliminar tu cuenta y tus datos</span></a></li>
+            <li><a href="#edad"><span class="n">10.</span><span>Edad mínima</span></a></li>
+            <li><a href="#cambios"><span class="n">11.</span><span>Cambios a esta Política</span></a></li>
+          </ol>
+          </nav>
+        </details>
+
+        <section id="responsable" aria-labelledby="h-responsable">
+          <h2 id="h-responsable"><span class="n">1.</span>Quién es responsable</h2>
+          <p>El responsable de tus datos en Nimbo es <strong>Adrián Matul</strong>. Escríbele a <a href="mailto:amatultab@gmail.com">amatultab@gmail.com</a> si tienes dudas, si quieres ejercer tus derechos sobre tus datos o si quieres pedir que se borren.</p>
+        </section>
+
+        <section id="datos" aria-labelledby="h-datos">
+          <h2 id="h-datos"><span class="n">2.</span>Qué datos se guardan</h2>
+          <h3>Al registrarte</h3>
+          <ul>
+            <li>Tu nombre completo y tu correo.</li>
+            <li>Tu contraseña, <strong>solo como hash con Argon2id</strong>. Nunca se guarda en claro.</li>
+            <li>La fecha y la versión de los Términos y de esta Política que aceptaste.</li>
+          </ul>
+          <h3>Mientras usas Nimbo</h3>
+          <ul>
+            <li>Los archivos y carpetas que subes, y sus metadatos (nombre, tamaño, fechas).</li>
+            <li>Las versiones de tus archivos y quién participó en cada una.</li>
+            <li>Con quién compartes y los enlaces públicos que creas.</li>
+            <li>Las preguntas que le haces al agente.</li>
+            <li>Tus datos de facturación simulada: NIT y nombre.</li>
+          </ul>
+          <h3>Para proteger el servicio</h3>
+          <ul>
+            <li>La dirección IP que usas, de forma temporal, para limitar abusos.</li>
+            <li>Bitácoras técnicas y de auditoría. <strong>Nunca contienen el contenido de tus archivos, tus contraseñas ni tus tokens.</strong></li>
+          </ul>
+        </section>
+
+        <section id="para-que" aria-labelledby="h-para-que">
+          <h2 id="h-para-que"><span class="n">3.</span>Para qué se usan</h2>
+          <ul>
+            <li>Para prestarte el servicio.</li>
+            <li>Para verificar tu correo.</li>
+            <li>Para proteger tu cuenta: limitar los intentos y avisarte si alguien intenta registrarse con tu correo.</li>
+            <li>Para mostrarte cuánto de tu cuota usas.</li>
+            <li>Para operar el sistema y corregir errores.</li>
+          </ul>
+        </section>
+
+        <section id="proveedores" aria-labelledby="h-proveedores">
+          <h2 id="h-proveedores"><span class="n">4.</span>Con quién se comparten</h2>
+          <p>Nimbo usa estos proveedores, que tratan datos para que el servicio funcione:</p>
+          <ul class="providers">
+            <li>
+              <span class="name">DigitalOcean</span>
+              <span class="role">Alojamiento de servidores y almacenamiento</span>
+              <span class="data">Guarda los datos y archivos de Nimbo.</span>
+            </li>
+            <li>
+              <span class="name">Resend</span>
+              <span class="role">Envío de correos</span>
+              <span class="data">Recibe tu correo y el mensaje que Nimbo te envía, por ejemplo el enlace de verificación.</span>
+            </li>
+            <li>
+              <span class="name">Google Gemini</span>
+              <span class="role">Inteligencia documental</span>
+              <span class="data">Recibe fragmentos del contenido de tus archivos para indexarlos y para responder las preguntas que le haces al agente.</span>
+            </li>
+          </ul>
+          <p><strong>Tus datos no se venden ni se usan para publicidad.</strong></p>
+        </section>
+
+        <section id="equipo" aria-labelledby="h-equipo">
+          <h2 id="h-equipo"><span class="n">5.</span>Qué ve el equipo interno</h2>
+          <p>Las personas de Administración, Soporte y Operación <strong>nunca acceden al contenido de tus archivos ni a sus vistas previas.</strong></p>
+          <p>Soporte puede ver metadatos, como el nombre o el tamaño de un archivo, para ayudarte. Cada consulta de Soporte queda registrada y tú puedes verla.</p>
+        </section>
+
+        <section id="seguridad" aria-labelledby="h-seguridad">
+          <h2 id="h-seguridad"><span class="n">6.</span>Cómo se protegen</h2>
+          <ul>
+            <li>La comunicación con Nimbo va cifrada (TLS).</li>
+            <li>Las contraseñas se guardan solo como hash con Argon2id.</li>
+            <li>Cada cuenta está aislada: otras cuentas no ven tus archivos si no los compartes con ellas.</li>
+          </ul>
+        </section>
+
+        <section id="retencion" aria-labelledby="h-retencion">
+          <h2 id="h-retencion"><span class="n">7.</span>Cuánto tiempo se guardan</h2>
+          <p>Lo que envías a la papelera y las versiones anteriores de tus archivos se guardan según tu plan:</p>
+          <div class="table-wrap">
+            <table>
+              <caption>Retención de papelera y versiones por plan</caption>
+              <thead>
+                <tr><th scope="col">Plan</th><th scope="col">Papelera</th><th scope="col">Versiones por archivo</th></tr>
+              </thead>
+              <tbody>
+                <tr><th scope="row">Personal</th><td>7 días</td><td>3</td></tr>
+                <tr><th scope="row">Pro</th><td>30 días</td><td>30</td></tr>
+                <tr><th scope="row">Equipo</th><td>60 días</td><td>60</td></tr>
+                <tr><th scope="row">Institucional</th><td>90 días</td><td>100</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>Todo lo demás se guarda hasta que elimines tu cuenta o hasta el borrado de finales de noviembre de 2026, lo que ocurra primero.</p>
+        </section>
+
+        <section id="cookies" aria-labelledby="h-cookies">
+          <h2 id="h-cookies"><span class="n">8.</span>Cookies</h2>
+          <p>Nimbo usa solo las cookies necesarias para mantener tu sesión abierta. No hay cookies de publicidad ni de análisis de terceros.</p>
+        </section>
+
+        <section id="eliminar" aria-labelledby="h-eliminar">
+          <h2 id="h-eliminar"><span class="n">9.</span>Eliminar tu cuenta y tus datos</h2>
+          <p>Puedes pedir que se elimine tu cuenta cuando quieras. Escribe a <a href="mailto:amatultab@gmail.com">amatultab@gmail.com</a> desde el correo con el que te registraste.</p>
+          <p>Cuando termine el proyecto, <strong>todos los datos (cuentas, archivos y bitácoras) se borrarán a finales de noviembre de 2026.</strong></p>
+        </section>
+
+        <section id="edad" aria-labelledby="h-edad">
+          <h2 id="h-edad"><span class="n">10.</span>Edad mínima</h2>
+          <p>Nimbo es solo para personas de <strong>18 años o más</strong>.</p>
+        </section>
+
+        <section id="cambios" aria-labelledby="h-cambios">
+          <h2 id="h-cambios"><span class="n">11.</span>Cambios a esta Política</h2>
+          <p>Si esta Política cambia, se publica una versión nueva con su número y su fecha en esta misma página.</p>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-links">
+        <a href="../terminos/terminos.html">Leer los Términos de uso</a>
+        <a href="mailto:amatultab@gmail.com">Escribir a amatultab@gmail.com</a>
+      </div>
+      <a class="btn btn-primary" href="../registro/registro.html">Volver al registro</a>
+      <p class="footer-meta">Nimbo · proyecto académico · Ingeniería de Software I, Universidad Rafael Landívar, 2026</p>
+    </div>
+  </footer>
+</div>
+
+</body>
+</html>

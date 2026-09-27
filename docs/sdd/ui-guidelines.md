@@ -234,9 +234,11 @@ identificador.
 
 | Pantalla | Módulo | Spec | Mockup | Capturas | Estados mínimos | Mockup |
 |---|---|---|---|---|---|---|
-| Registro | identity | 001 | `mockups/identity/registro/` | `capturas/identity/registro/` | default, error, exito | Borrador (default, exito) |
+| Registro | identity | 001 | `mockups/identity/registro/` | `capturas/identity/registro/` | default, error, exito | Borrador (default, enviando, error-campos, error-servidor, catalogo-no-disponible, exito, limite-reenvio, pedir-enlace) |
 | Correos de registro (verificación y aviso de intento) | identity | 001 | `mockups/identity/correos/` | `capturas/identity/correos/` | registro | Borrador (registro) |
-| Verificar correo | identity | 001 | `mockups/identity/verificar-correo/` | `capturas/identity/verificar-correo/` | exito, enlace-expirado | Borrador (verificando, exito) |
+| Términos (página estática) | identity | 001 | `mockups/identity/terminos/` | `capturas/identity/terminos/` | default | Borrador (default) |
+| Política de privacidad (página estática) | identity | 001 | `mockups/identity/privacidad/` | `capturas/identity/privacidad/` | default | Borrador (default) |
+| Verificar correo | identity | 001 | `mockups/identity/verificar-correo/` | `capturas/identity/verificar-correo/` | exito, enlace-expirado | Borrador (verificando, enlace-expirado, enlace-invalido, ya-verificado, exito, plan-de-pago-elegido) |
 | Inicio de sesión | identity | 002 | `mockups/identity/inicio-sesion/` | `capturas/identity/inicio-sesion/` | default, error, bloqueado | Borrador (default) |
 | Recuperar / restablecer contraseña | identity | 002 | `mockups/identity/recuperar-contrasena/` | … | default, exito, token-invalido | Pendiente |
 | Sesiones y dispositivos | identity | 002 | `mockups/identity/sesiones/` | … | default, dispositivo-nuevo | Pendiente |
