@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Propuesto |
+| Estado | Aceptado (2026-09-26, Adrián) |
 | Fecha | 2026-09-15 |
 | Decisores | Adrián (architect), equipo Nimbo |
 | Specs relacionadas | 000 (D-8, D-10, CA-13 a CA-15, CA-18, CA-19, CA-24, CA-27) |

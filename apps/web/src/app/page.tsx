@@ -44,7 +44,7 @@ export default async function StatusPage(): Promise<ReactNode> {
                 {isAvailable ? API_AVAILABLE_TEXT : API_UNAVAILABLE_TEXT}
               </Badge>
               {health.version !== undefined && (
-                <Badge variant="secondary" className="font-mono">
+                <Badge variant="secondary" className="tabular-nums">
                   Versión de la API: {health.version}
                 </Badge>
               )}

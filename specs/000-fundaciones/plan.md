@@ -343,7 +343,7 @@ Decisiones puntuales:
 - **Esquema** (`env.schema.ts`): `NODE_ENV` ∈ {development, test, production}; `APP_ENV` ∈ {local, test, staging,
   production}; `APP_VERSION` (default `dev`); `PORT` (default 3000); `WORKER_PORT` (default 3001); `LOG_LEVEL`;
   `DATABASE_URL` (url); `REDIS_URL` (url); `MINIO_ENDPOINT` (url), `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY` (secretos),
-  `MINIO_BUCKET` (default `nimbo`), `MINIO_REGION` (default `us-east-1`). Sin `CORS_ORIGIN` (lo agrega 002 con el
+  `MINIO_BUCKET` (default `nimbo`), `MINIO_REGION` (default `us-east-1`). Sin `CORS_ORIGIN` (lo agrega 001 con el
   `ThrottlerModule`; en 000 el navegador no llama a la API). `web`: `APP_ENV`, `API_INTERNAL_URL` (server-side),
   `PORT` (default **3002**, para no chocar con `api` en 3000). Variables marcadas `secret: true` en un mapa
   `SECRET_KEYS` que `env-report.ts` nunca imprime (CA-18) y que también alimenta `REDACTED_FIELDS`.
@@ -850,7 +850,7 @@ de módulos) y se anota en §9 del plan y en `verification.md` cuál de las dos 
 3. **`SharedModule` sin parámetros**: quitar `forRoot({ role })`. `SharedModule` registra config, logger, TypeORM
    (`autoLoadEntities: true`) y la conexión BullMQ; `AppModule` importa `HealthModule.forRoot({ indicators: [Postgres, Redis, Minio] })`
    y `PingQueue`; `WorkerModule` importa `HealthModule.forRoot({ indicators: [Redis] })` y `PingProcessor`.
-4. **Recortes YAGNI**: eliminar el comando `pnpm --filter api ping`, la variable `CORS_ORIGIN` (la agrega 002 con el
+4. **Recortes YAGNI**: eliminar el comando `pnpm --filter api ping`, la variable `CORS_ORIGIN` (la agrega 001 con el
    `ThrottlerModule`) y `CODEOWNERS`. `shared/index.ts` **no** exporta `PingQueue` ni `HealthService` (ningún módulo
    los usa; la prueba de CA-14 importa `PingQueue` por ruta interna, permitido para pruebas del propio módulo) y **sí**
    exporta `PostgresHealthIndicator`, `RedisHealthIndicator`, `MinioHealthIndicator` (el worker los necesita; hoy

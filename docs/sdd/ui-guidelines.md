@@ -145,7 +145,6 @@ Nimbo se agregan aparte (DF-47).
   --color-agent-tag: var(--agent-tag);
 
   --font-sans: var(--font-inter), system-ui, sans-serif;
-  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
 
   --radius-sm: 6px;    /* badges, chips */
   --radius-md: 10px;   /* inputs, botones */
@@ -162,8 +161,8 @@ Nimbo se agregan aparte (DF-47).
 }
 ```
 
-- Las fuentes se cargan con `next/font/google` (`Inter`, `JetBrains_Mono`) en `app/layout.tsx`, exponiendo `--font-inter` y `--font-jetbrains-mono`.
-- Cifras de almacenamiento, precios y fechas en tablas: clase `tabular-nums`.
+- **Inter es la única familia** (400, 500, 600 y 700), como en las hojas recientes. Se carga con `next/font/google` (`Inter`) en `app/layout.tsx`, que expone `--font-inter`. JetBrains Mono ya no se usa (Adrián, 2026-09-26): reemplaza la fila «Código / rutas» de `design-cielo-sereno.md` §tipografía, y las hojas `.dc.html` anteriores que la muestran son históricas. No se usa la clase `font-mono`.
+- Cifras, tamaños, precios, fechas, ubicaciones de citas y metadatos que antes iban en mono: Inter con la clase `tabular-nums`.
 - Después de `npx shadcn add`, revisar el radio de cada componente: en Cielo Sereno las cards son `rounded-lg` (14 px) y los modales `rounded-xl` (18 px).
 - No hay modo oscuro en el alcance (YAGNI). El panel del agente es una superficie oscura puntual, no un tema.
 
@@ -229,8 +228,10 @@ identificador.
 
 > Estado del mockup: `Pendiente` · `Borrador` · `Aprobado`. Rutas relativas a `docs/design/`.
 > Actualicen la columna «Mockup» con lo que ya existe; el `ui-designer` la mantiene al día.
-> Los mockups `Borrador` son HTML autocontenidos (`.html`; la vista general sigue en `.dc.html`) y solo cubren los estados entre paréntesis;
-> el resto de estados mínimos se agregan con `/mockup` antes de aclarar la spec. Cada carpeta tiene un `README.md`.
+> Los mockups `Borrador` provienen de Claude Design (`.dc.html`) o están escritos a mano en HTML autocontenido
+> (`.html`), como `mockups/identity/seguridad/`, `mockups/identity/terminos/` y `mockups/identity/privacidad/`. Solo
+> cubren los estados entre paréntesis; el resto de estados mínimos se agregan con `/mockup` antes de aclarar la spec.
+> Cada carpeta tiene un `README.md`.
 
 | Pantalla | Módulo | Spec | Mockup | Capturas | Estados mínimos | Mockup |
 |---|---|---|---|---|---|---|
@@ -239,10 +240,10 @@ identificador.
 | Términos (página estática) | identity | 001 | `mockups/identity/terminos/` | `capturas/identity/terminos/` | default | Borrador (default) |
 | Política de privacidad (página estática) | identity | 001 | `mockups/identity/privacidad/` | `capturas/identity/privacidad/` | default | Borrador (default) |
 | Verificar correo | identity | 001 | `mockups/identity/verificar-correo/` | `capturas/identity/verificar-correo/` | exito, enlace-expirado | Borrador (verificando, enlace-expirado, enlace-invalido, ya-verificado, exito, plan-de-pago-elegido) |
-| Inicio de sesión | identity | 002 | `mockups/identity/inicio-sesion/` | `capturas/identity/inicio-sesion/` | default, error, bloqueado | Borrador (default) |
-| Recuperar / restablecer contraseña | identity | 002 | `mockups/identity/recuperar-contrasena/` | … | default, exito, token-invalido | Pendiente |
-| Sesiones y dispositivos | identity | 002 | `mockups/identity/sesiones/` | … | default, dispositivo-nuevo | Pendiente |
-| Layout de la app (navegación, cuota lateral) | shared | 000b | `mockups/shared/layout/` | … | default, solo-lectura | Pendiente |
+| Inicio de sesión | identity | 002 | `mockups/identity/inicio-sesion/` | `capturas/identity/inicio-sesion/` | default, error, enviando, bloqueado, no-verificado, suspendida | Borrador (default; los demás estados por decisión explícita, spec 002 §11) |
+| Recuperar / restablecer contraseña | identity | 002 | — (reutiliza pedir-enlace, exito, enlace-expirado, enlace-invalido y ya-verificado de 001) | — | pedir, correo-enviado, contrasena-nueva, enlace-expirado, enlace-invalido, exito | Decisión explícita (spec 002 §11) |
+| Seguridad (sesiones y contraseña) | identity | 002 | `mockups/identity/seguridad/` | `capturas/identity/seguridad/` | default, cargando, error-sesiones, sin-otras-sesiones, confirmar-cierre, confirmar-cierre-actual, sesion-cerrada, cerrar-demas, cerrar-demas-exito, contrasena-enviando, contrasena-no-coincide, contrasena-incorrecta, contrasena-debil, contrasena-bloqueada, contrasena-cambiada | Aprobado (2026-09-26) |
+| Layout de la app (navegación, cuota lateral, menú de la cuenta) | shared | 000b | `mockups/shared/layout/` | `capturas/shared/layout/` | default, menu-cuenta-abierto, confirmar-cerrar-sesion, solo-lectura, movil-cajon-abierto (solo 360) | Borrador |
 | Explorador de archivos | storage | 005–007 | `mockups/storage/explorador/` | `capturas/storage/explorador/` | default, vacio, cargando, arrastre, seleccion | Borrador (cuadricula, lista) |
 | Resumen de espacio (cuota, consultas, renovación) | storage | 007 | `mockups/storage/resumen-espacio/` | `capturas/storage/resumen-espacio/` | default | Borrador (default) |
 | Vista general (lienzo con todas las pantallas) | shared | 000b | `mockups/shared/vista-general/` | `capturas/shared/vista-general/` | default | Borrador (referencia) |
