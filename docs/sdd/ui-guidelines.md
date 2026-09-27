@@ -236,9 +236,9 @@ identificador.
 |---|---|---|---|---|---|---|
 | Registro | identity | 001 | `mockups/identity/registro/` | `capturas/identity/registro/` | default, error, exito | Pendiente |
 | Verificar correo | identity | 001 | `mockups/identity/verificar-correo/` | `capturas/identity/verificar-correo/` | exito, enlace-expirado | Pendiente |
-| Inicio de sesión | identity | 002 | `mockups/identity/inicio-sesion/` | `capturas/identity/inicio-sesion/` | default, error, bloqueado | Pendiente |
-| Recuperar / restablecer contraseña | identity | 002 | `mockups/identity/recuperar-contrasena/` | … | default, exito, token-invalido | Pendiente |
-| Sesiones y dispositivos | identity | 002 | `mockups/identity/sesiones/` | … | default, dispositivo-nuevo | Pendiente |
+| Inicio de sesión | identity | 002 | `mockups/identity/inicio-sesion/` | `capturas/identity/inicio-sesion/` | default, error, enviando, bloqueado, no-verificado, suspendida | Borrador (default; los demás estados por decisión explícita, spec 002 §11) |
+| Recuperar / restablecer contraseña | identity | 002 | — (reutiliza pedir-enlace, exito, enlace-expirado, enlace-invalido y ya-verificado de 001) | — | pedir, correo-enviado, contrasena-nueva, enlace-expirado, enlace-invalido, exito | Decisión explícita (spec 002 §11) |
+| Seguridad (sesiones y contraseña) | identity | 002 | `mockups/identity/seguridad/` | `capturas/identity/seguridad/` | default, sin-otras-sesiones, confirmar-cierre, cerrar-demas, cambiar-contrasena | Pendiente |
 | Layout de la app (navegación, cuota lateral) | shared | 000b | `mockups/shared/layout/` | … | default, solo-lectura | Pendiente |
 | Explorador de archivos | storage | 005–007 | `mockups/storage/explorador/` | `capturas/storage/explorador/` | default, vacio, cargando, arrastre, seleccion | Borrador (cuadricula, lista) |
 | Resumen de espacio (cuota, consultas, renovación) | storage | 007 | `mockups/storage/resumen-espacio/` | `capturas/storage/resumen-espacio/` | default | Borrador (default) |
