@@ -118,3 +118,7 @@ Una tarea/spec está terminada cuando:
 - [ ] Si tiene UI: coincide con su mockup, pasa axe a 360 y 1440 px y `ui-review.md` está en verde.
 - [ ] Está desplegada en staging y se puede demostrar.
 - [ ] La documentación afectada (spec, API, manuales, ADR) se actualizó en el mismo PR.
+
+> «Aprobada por un integrante distinto del autor» admite una única excepción, permanente: los PRs del diseñador
+> principal (`workflow.md` §7.1). «Todas las suites de CI» y «desplegada en staging» se sustituyen por la
+> verificación y la demostración en local hasta que el CI y staging existan, desde el 30/09/2026 (`workflow.md` §7.2).

@@ -81,6 +81,40 @@ docs/           SDD (constitución, arquitectura, modelo de diseño), diseño y 
 specs/          backlog y specs (spec.md, plan.md, tasks.md, verification.md)
 ```
 
+## Onboarding del equipo
+
+Lectura del día 1 (~1 h), en este orden: `CLAUDE.md` → `HARNESS.md` → `docs/adr/0009` (cómo trabajamos) →
+`docs/sdd/workflow.md` → `docs/sdd/constitution.md` → `specs/README.md` → este README.
+Antes de la primera `/spec`: `docs/sdd/product-context.md` (roles, planes, RF/RNF, fuera de alcance),
+`docs/sdd/architecture.md` §3–§4, el `README.md` de tu módulo en `apps/api/src/modules/<modulo>/` y
+`specs/000-fundaciones/spec.md` como ejemplo. El resto (`design-model.md`, `design-findings.md`, `conventions.md`,
+`ui-guidelines.md`) se lee cuando la tarea lo pide.
+
+Dónde vive tu trabajo: `specs/NNN-slug/` (spec, plan, tareas, evidencia), `apps/api/src/modules/<tu-modulo>/`
+(backend) y `apps/web/src/features/<tu-modulo>/` (frontend: cada dueño construye también sus pantallas).
+`apps/api/src/shared/` es de la spec 000 y su dueño es Adrián: los demás módulos lo consumen desde
+`shared/index.ts`, y algo nuevo entra ahí cuando lo necesitan al menos tres módulos (regla de tres, constitución
+Art. VI.2), con un PR que revisa su dueño. `docs/design/mockups/` es referencia; nunca se importa.
+
+Flujo por funcionalidad, siempre con Claude Code desde la raíz del repo:
+
+```
+/spec <necesidad>   → responder preguntas
+/mockup <modulo>/<pantalla> NNN → si la spec tiene interfaz: mockup y capturas de cada pantalla
+                    → marcar Aclarada (una spec con interfaz no pasa sin mockup)
+/plan NNN           → confirmar el plan
+/tasks NNN
+/implement NNN      → repetir hasta terminar (requiere los bloques 1–2 de 000, ya en main, y las
+                      specs de su columna «Depende de» en specs/README.md)
+/verify NNN → /review NNN → PR → aprobación de otro integrante (salvo §7.1) → squash merge
+```
+
+Lo siguiente de cada integrante está en `specs/README.md` («Próximos pasos por integrante»).
+
+Rigen dos excepciones: el diseñador principal puede autoaprobar sus PRs durante todo el proyecto, y el CI y staging
+se implementan desde el 30/09/2026 (mientras tanto, verificación local pegada en el PR). Detalle en
+`docs/sdd/workflow.md` §7.
+
 ## Operación
 
 La documentación operativa se escribe en la spec 000: `docs/operations/ambientes.md` (variables y diferencias

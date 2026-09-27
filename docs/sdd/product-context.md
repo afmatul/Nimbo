@@ -173,9 +173,14 @@ El tipo real se valida por contenido (magic bytes), no por extensión (RF-14).
 | RNF-16 | Datos sintéticos fuera de producción, generados por script | Revisión de seed |
 | RNF-17 | `correlationId` en toda bitácora; sin contenido, contraseñas ni tokens | Rastreo punta a punta |
 | RNF-18 | Health checks, métricas, tableros y alertas | Demo + alerta de prueba |
-| RNF-19 | Nada llega a producción sin CI verde y aprobación de otro integrante | Historial de PRs |
+| RNF-19 | Nada llega a producción sin CI verde y aprobación de otro integrante (ver nota) | Historial de PRs |
 | RNF-20 | Rollback < 10 min redesplegando imagen previa | Ensayo documentado |
 | RNF-21 | Respaldo diario de BD, versionado de objetos, restauración probada por fase | Registro de prueba |
+
+**Nota sobre RNF-19 (cambio respecto de la propuesta, `workflow.md` §7).** En los PRs del diseñador principal, la
+aprobación de otro integrante se sustituye por la verificación automática, `/review` sin bloqueantes y un comentario de
+autoaprobación (§7.1). Hasta que el CI esté en `main` (desde el 30/09/2026), «CI verde» se sustituye por las
+verificaciones locales con su resumen en el PR (§7.2). Los PRs del resto del equipo cumplen RNF-19 sin cambios.
 
 ### Alertas definidas
 5xx > 2 % por 5 min · p95 > 300 ms por 10 min · > 50 trabajos pendientes o un trabajo reintentado 3 veces ·

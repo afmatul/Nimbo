@@ -54,7 +54,8 @@ specs/README.md                   backlog, dueños e hitos
    0b. Reunión corta para decidir los hallazgos de `design-findings.md` que bloquean la Fase 1 (columna «Resolver antes de»: 000–007).
 1. `/adr monolito modular con worker separado` y el resto de ADRs iniciales en paralelo con la spec 000.
 2. `/spec 000 fundaciones` — sin monorepo, CI y ambientes nadie más puede integrar.
-3. En cuanto 000 tenga contratos y compose listos: Juan Marcos arranca 001–002 y 006a, Abel arranca 005, Adrián arranca 003 y Fátima arranca 000b.
+3. ✅ Los bloques 1 y 2 de 000 (contratos y compose) ya están en `main`. El reparto vigente de specs está en
+   `specs/README.md` («Próximos pasos por integrante»).
 4. `/status` al abrir y cerrar cada reunión de fase.
 
 ## Por qué estos siete agentes
