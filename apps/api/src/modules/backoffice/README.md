@@ -2,9 +2,9 @@
 
 - **Dueño**: Adrián (`specs/README.md`).
 - **Diagrama de origen**: M8 en `docs/sdd/design-model.md` §3 y `docs/design/diagramas/`.
-- **Responsabilidad**: Administración, soporte, métricas, colas, `RolesGuard`. La salud pasó a `shared` (DF-49).
+- **Responsabilidad**: Administración, soporte, métricas y colas. La salud (DF-49) y `RolesGuard` con los guards globales (DF-50, spec 003 D-2) pasaron a `shared`.
 - **Puede depender de**: shared, audit, identity, billing, storage (fachadas, DF-04) (`docs/sdd/architecture.md` §3; el lint de fronteras lo hace cumplir).
-- **Specs que lo construyen**: 003 (`RolesGuard`), 011, 022.
+- **Specs que lo construyen**: 011, 022.
 
 ## Capas (`docs/sdd/architecture.md` §4)
 

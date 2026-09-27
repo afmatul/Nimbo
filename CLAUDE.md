@@ -19,6 +19,7 @@ Lo que la diferencia de una nube común:
 | Cómo está construido                      | `docs/sdd/architecture.md`                |
 | Clases, puertos, tablas y su mapeo        | `docs/sdd/design-model.md`                |
 | Problemas conocidos del diseño (DF-xx)    | `docs/sdd/design-findings.md`             |
+| Pendientes transversales (diagramas, docs, decisiones) | `docs/sdd/pendientes.md`     |
 | Diagramas originales (PDF, entregables)   | `docs/design/diagramas/`                  |
 | Sistema de diseño Cielo Sereno (original) | `docs/design/design-system/design-cielo-sereno.md` |
 | Cómo aplicar el diseño en la UI           | `docs/sdd/ui-guidelines.md`               |

@@ -109,6 +109,10 @@ Agregar en `src/index.css` dentro de `@theme`:
 
 > **Nota:** Usar `font-feature-settings: "tnum" 1` en cifras de almacenamiento (MB, GB) para alineación tabular.
 
+> **Nota (26/09/2026):** la fila «Código / rutas · JetBrains Mono» queda reemplazada. Por decisión del diseñador
+> principal (Adrián), Inter es la única familia; las cifras y los metadatos usan `tabular-nums`. La regla vigente está
+> en `docs/sdd/ui-guidelines.md` §3.
+
 ---
 
 ## Sombras

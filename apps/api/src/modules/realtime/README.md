@@ -2,8 +2,8 @@
 
 - **Dueño**: Fátima (`specs/README.md`).
 - **Diagrama de origen**: T3 en `docs/sdd/design-model.md` §3 y `docs/design/diagramas/`.
-- **Responsabilidad**: Gateway Socket.IO, salas por usuario y documento.
-- **Puede depender de**: shared, identity (validar token) (`docs/sdd/architecture.md` §3; el lint de fronteras lo hace cumplir).
+- **Responsabilidad**: Único gateway Socket.IO, salas por usuario y documento. Valida el token del handshake con el puerto token→`Actor` que define `shared` (lo implementa `identity`, sin que `realtime` lo importe) y declara su puerto de publicación (ADR-0010).
+- **Puede depender de**: shared (`docs/sdd/architecture.md` §3; el lint de fronteras lo hace cumplir).
 - **Specs que lo construyen**: 015.
 
 ## Capas (`docs/sdd/architecture.md` §4)
