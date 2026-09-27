@@ -106,16 +106,19 @@ pnpm seed                                   # corpus sintético (marcador hasta 
 - Tamaños en bytes siempre `bigint`; tokens y claves siempre como hash.
 - En la UI no hay colores escritos a mano: solo tokens de `ui-guidelines.md`. Contraste AA por encima de cualquier mockup.
 - `apps/web` nunca importa de `docs/design/mockups/`; los mockups son referencia.
-- Nadie aprueba su propio trabajo: el revisor humano de un PR es distinto del autor.
+- Nadie aprueba su propio trabajo: el revisor humano de un PR es distinto del autor. Única excepción: los PRs del diseñador principal (`docs/sdd/workflow.md` §7.1).
 
 ## Estado del proyecto
 
 | Fase | Semanas        | Entrega         | Contenido principal                                                   |
 |------|----------------|-----------------|-----------------------------------------------------------------------|
 | 0    | 28/08 – 10/09  | 11/09 requisitos| Requisitos, casos de uso, UML, E-R, mockups                           |
-| 1    | 11/09 – 24/09  | 25/09 (30 %)    | Auth, roles, CI/CD, ambientes, bitácoras, almacenamiento, cuotas      |
-| 2    | 25/09 – 08/10  | 09/10 (50 %)    | Planes y pagos, compartición, versionado, tiempo real, edición .docx, búsqueda |
+| 1    | 11/09 – 29/09  | 30/09 (30 %)    | Auth, roles, bitácoras, almacenamiento, cuotas (CI/CD y staging desde el 30/09: `workflow.md` §7.2) |
+| 2    | 01/10 – 13/10* | 14/10* (50 %)   | CI/CD y staging (desde el 30/09), planes y pagos, compartición, versionado, tiempo real, edición .docx, búsqueda |
 | 3    | 09/10 – 22/10  | 23/10 (80 %)    | Indexación, agente con citas, optimizador, métricas, carga y aislamiento |
 | 4    | 23/10 – 06/11  | Exposición final| Pulido, accesibilidad, manuales, E2E, ensayo de demo                  |
+
+\* La entrega de la Fase 1 se movió al 30/09/2026. Las fechas de la Fase 2 son estimadas (dos semanas desde esa
+entrega) y las de las Fases 3 y 4 se reprograman cuando el curso las confirme.
 
 Cada fase reserva el **20 %** para refactorizar y probar. Actualiza esta tabla y `specs/README.md` al cerrar cada fase.

@@ -1,0 +1,114 @@
+/* apps/web/src/app/globals.css */
+@import 'tailwindcss';
+
+:root {
+  /* Superficies */
+  --background: #f4f7fb; /* color-bg */
+  --card: #fafcff; /* color-card */
+  --popover: #fafcff;
+  --border: #dde6f0; /* bordes decorativos de card y separadores */
+  --input: #7f93aa; /* borde de controles (AA no-texto) */
+
+  /* Texto */
+  --foreground: #1e2d40; /* text-primary */
+  --card-foreground: #1e2d40;
+  --popover-foreground: #1e2d40;
+  --secondary-foreground: #3a5068; /* text-secondary */
+  --muted-foreground: #5e7389; /* text-muted ajustado */
+
+  /* Marca */
+  --primary: #4a6fa5; /* relleno CTA ajustado */
+  --primary-hover: #3b5a8a;
+  --primary-foreground: #ffffff;
+  --brand: #6b8dd6; /* azul pizarra decorativo */
+  --secondary: #dde6f0;
+  --muted: #eef3f9;
+  --accent: #dde6f0; /* fondo hover/seleccionado */
+  --accent-foreground: #1e2d40;
+  --ring: #4a6fa5;
+  --live: #7ec8d8; /* cian brumoso: tiempo real */
+
+  /* Semánticos: relleno decorativo / texto */
+  --success: #6db99a;
+  --success-foreground: #3a7560;
+  --warning: #d4a96a;
+  --warning-foreground: #8a6424;
+  --destructive: #a34f4f;
+  --destructive-soft: #c97b7b;
+
+  /* Agente */
+  --agent-bg: #2c3a52;
+  --agent-text: #d8e4f0;
+  --agent-accent: #7ec8d8;
+  --agent-tag: #3a4e6a;
+
+  /* Tipos de archivo (texto AA; fondo = color base al 12 %) */
+  --file-docx: #3f62a8;
+  --file-docx-bg: #6b8dd620;
+  --file-xlsx: #3a7560;
+  --file-xlsx-bg: #6db99a20;
+  --file-pptx: #8a6424;
+  --file-pptx-bg: #d4a96a20;
+  --file-pdf: #a34f4f;
+  --file-pdf-bg: #c97b7b20;
+  --file-img: #276b7a;
+  --file-img-bg: #7ec8d820;
+  --file-other: #53677d;
+  --file-other-bg: #7a90a820;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-brand: var(--brand);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-live: var(--live);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-soft: var(--destructive-soft);
+  --color-agent-bg: var(--agent-bg);
+  --color-agent-text: var(--agent-text);
+  --color-agent-accent: var(--agent-accent);
+  --color-agent-tag: var(--agent-tag);
+
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+
+  --shadow-card: 0 1px 3px rgba(74, 111, 165, 0.08), 0 1px 2px rgba(74, 111, 165, 0.04);
+  --shadow-modal: 0 8px 24px rgba(44, 58, 82, 0.18);
+  --shadow-button: 0 1px 2px rgba(107, 141, 214, 0.2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
