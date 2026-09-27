@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Propuesto |
+| Estado | Aceptado (2026-09-26, Adrián) |
 | Fecha | 2026-09-15 |
 | Decisores | equipo Nimbo (4 integrantes) |
 | Specs relacionadas | 000 (materializa CI, protección de `main`, plantillas y flujo de PR); todas |
