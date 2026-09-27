@@ -21,6 +21,7 @@ Son la base para defender la arquitectura en la exposición final (enunciado §6
 | 0013 | Política del original en el optimizador (DF-21) | Pendiente |
 | 0014 | [Tokens de Cielo Sereno ajustados a AA y mapeados a shadcn; axe en E2E](0014-tokens-cielo-sereno-shadcn-axe.md) (DF-41–48) | Aceptado |
 | 0015 | [Dependencias de fundaciones: gitleaks, zod, nestjs-pino, Testcontainers](0015-dependencias-de-fundaciones.md) (menor) | Aceptado |
+| 0016 | [Representación de dinero en centavos y almacenamiento en bytes](0016-dinero-en-centavos-y-almacenamiento-en-bytes.md) (DF-23, DF-24) | Propuesto |
 | 0017 | [Dependencias de autenticación: `argon2`, `@nestjs/throttler` y `@nestjs/jwt` con Passport](0017-dependencias-de-autenticacion.md) (menor; cierra PD-32) | Aceptado |
 | 0018 | [Correo transaccional con nodemailer por SMTP y la cola `mail`](0018-correo-con-nodemailer-y-cola-mail.md) (menor) | Aceptado |
 | 0019 | [Eventos de dominio en proceso con `@nestjs/event-emitter`; el contrato lo exporta el productor](0019-eventos-de-dominio-en-proceso.md) (arista `billing → identity`) | Aceptado |
