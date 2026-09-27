@@ -101,7 +101,7 @@ export function AppLayout({
 
         <div className="flex items-center gap-3">
           {userEmail && (
-            <span className="hidden text-xs text-muted-foreground sm:inline-block font-mono">
+            <span className="hidden text-xs text-muted-foreground sm:inline-block">
               {userEmail}
             </span>
           )}

@@ -7,13 +7,13 @@
 | Fase | 1 |
 | Requisitos | RNF-13, RNF-14 |
 | Depende de | 000 |
-| Última actualización | 2026-09-20 |
+| Última actualización | 2026-09-26 |
 
 ## 1. Contexto y problema
 Nimbo requiere una identidad visual coherente y accesible desde el inicio de la Fase 1 para que todos los módulos (`identity`, `storage`, `sharing`, `billing`, `backoffice`, etc.) compartan componentes de interfaz consistentes, tipografías y reglas de accesibilidad sin duplicar esfuerzos ni inventar estilos arbitrarios. La propuesta de diseño original «Cielo Sereno» (`docs/design/design-system/design-cielo-sereno.md`) presentaba problemas críticos de contraste (hallazgos DF-41 a DF-45) que impiden cumplir WCAG 2.1 AA (RNF-13) si no se ajustan los tonos de texto, bordes de controles e interactivos.
 
 ## 2. Objetivo
-Establecer la infraestructura visual completa en `apps/web` (Next.js + Tailwind v4 + shadcn/ui): tokens de color Cielo Sereno con contraste AA verificado, tipografías (`Inter` y `JetBrains Mono`), layout base responsivo (desde 360 px), componentes atómicos y de dominio base (`components/nimbo/`), y validación automatizada de accesibilidad (axe).
+Establecer la infraestructura visual completa en `apps/web` (Next.js + Tailwind v4 + shadcn/ui): tokens de color Cielo Sereno con contraste AA verificado, tipografía (`Inter` como única familia), layout base responsivo (desde 360 px), componentes atómicos y de dominio base (`components/nimbo/`), y validación automatizada de accesibilidad (axe).
 
 ## 3. Actores
 - **Cliente**: Usuario final que interactúa con la plataforma desde cualquier dispositivo (móvil o escritorio).
@@ -44,7 +44,7 @@ Establecer la infraestructura visual completa en `apps/web` (Next.js + Tailwind 
 - **CA-3** (HU-1, RNF-13) — Tipografía tipada e integrada
   - **Dado** el layout raíz de Next.js (`layout.tsx`),
   - **Cuando** se cargan las fuentes de la aplicación,
-  - **Entonces** la tipografía principal es `Inter` (sans) y la tipografía para metadatos/código/cifras es `JetBrains Mono` (mono), cargadas mediante `next/font` de forma optimizada y con cifras tabulares (`tabular-nums` / `tnum`).
+  - **Entonces** `Inter` es la única familia, cargada mediante `next/font` de forma optimizada; los metadatos, códigos y cifras usan `Inter` con cifras tabulares (`tabular-nums` / `tnum`) y no se carga ninguna fuente monoespaciada.
 
 - **CA-4** (HU-1, HU-3, RNF-13) — Componentes base (`components/nimbo` y shadcn)
   - **Dado** el directorio `apps/web/src/components/`,
@@ -122,3 +122,4 @@ Establecer la infraestructura visual completa en `apps/web` (Next.js + Tailwind 
 | 2026-09-20 | Finalización de tareas T-01 a T-13 y paso a En verificación | Tareas implementadas y suites en verde | Fátima |
 | 2026-09-20 | Emisión de verification.md, ui-review.md y review.md; paso a En revisión | Verificación completa y revisión favorable | Fátima |
 | 2026-09-21 | Revisión aprobada por la dueña (Fátima); lista para integración vía PR | Compuerta humana superada | Fátima |
+| 2026-09-26 | CA-3 y §2: JetBrains Mono deja de usarse; Inter es la única familia y los metadatos y cifras usan `tabular-nums`, como en las hojas recientes. Cambio aplicado en `apps/web` en `fix/000b-solo-inter` | Decisión de diseño del diseñador principal | Adrián |

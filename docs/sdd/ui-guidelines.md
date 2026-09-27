@@ -145,7 +145,6 @@ Nimbo se agregan aparte (DF-47).
   --color-agent-tag: var(--agent-tag);
 
   --font-sans: var(--font-inter), system-ui, sans-serif;
-  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
 
   --radius-sm: 6px;    /* badges, chips */
   --radius-md: 10px;   /* inputs, botones */
@@ -162,8 +161,8 @@ Nimbo se agregan aparte (DF-47).
 }
 ```
 
-- Las fuentes se cargan con `next/font/google` (`Inter`, `JetBrains_Mono`) en `app/layout.tsx`, exponiendo `--font-inter` y `--font-jetbrains-mono`.
-- Cifras de almacenamiento, precios y fechas en tablas: clase `tabular-nums`.
+- **Inter es la única familia** (400, 500, 600 y 700), como en las hojas recientes. Se carga con `next/font/google` (`Inter`) en `app/layout.tsx`, que expone `--font-inter`. JetBrains Mono ya no se usa (Adrián, 2026-09-26): reemplaza la fila «Código / rutas» de `design-cielo-sereno.md` §tipografía, y las hojas `.dc.html` anteriores que la muestran son históricas. No se usa la clase `font-mono`.
+- Cifras, tamaños, precios, fechas, ubicaciones de citas y metadatos que antes iban en mono: Inter con la clase `tabular-nums`.
 - Después de `npx shadcn add`, revisar el radio de cada componente: en Cielo Sereno las cards son `rounded-lg` (14 px) y los modales `rounded-xl` (18 px).
 - No hay modo oscuro en el alcance (YAGNI). El panel del agente es una superficie oscura puntual, no un tema.
 
