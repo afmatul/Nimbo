@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Propuesto |
+| Estado | Aceptado (2026-09-26, Adrián) |
 | Fecha | 2026-09-22 |
 | Decisores | Fátima (diseño y frontend), Adrián (architect), equipo Nimbo |
 | Specs relacionadas | 000b (DF-41 a DF-48, CA-1 a CA-7, RNF-13, RNF-14) |

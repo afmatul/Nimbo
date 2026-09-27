@@ -94,25 +94,29 @@ No hay paquete `domain` aparte salvo que un ADR lo justifique.
 
 | Módulo | Diagrama | Responsabilidad | Puede depender de |
 |---|---|---|---|
-| `shared` | T1 (DF-49) | `Actor`, `IClock`, `DomainError` + `DomainExceptionFilter`, logger Pino con redacción, `correlationId`, validación de entorno, `DataSource`, salud (`HealthModule`, `IHealthIndicator`, indicadores Postgres/Redis/MinIO), paginación | — |
-| `audit` | M8 (extraído) | `AuditService`, `AuditEntry`; implementa `IAuditLogger` | shared |
-| `notifications` | — | Correo y notificaciones; implementa `IMailer` e `INotifier` | shared, realtime |
-| `realtime` | M5 (generalizado) | Gateway Socket.IO, salas por usuario y documento | shared, identity (validar token) |
+| `shared` | T1 (DF-49) | `Actor`, `IClock`, `DomainError` + `DomainExceptionFilter`, logger Pino con redacción, `correlationId`, validación de entorno, `DataSource`, salud (`HealthModule`, `IHealthIndicator`, indicadores Postgres/Redis/MinIO), paginación. Con 001: `IRateLimiter` → `RedisRateLimiter`. Con 003: guards globales (`JwtAuthGuard`, `RolesGuard`, `@Public`, `@Roles`), el puerto token→`Actor` que implementa `identity` (002 D-14, 003 D-2) y `withActor` (ADR-0005) | — |
+| `audit` | T2 (extraído de M8, DF-03) | `AuditService`, `AuditEntry`; declara e implementa `IAuditLogger` (ADR-0010) | shared |
+| `notifications` | T4 (DF-34) | Correo y notificaciones; declara e implementa `IMailer` e `INotifier` (ADR-0010) | shared, realtime |
+| `realtime` | T3 (generalizado desde M5, DF-30) | Único gateway Socket.IO, salas por usuario y documento; valida el token del handshake con el puerto token→`Actor` de `shared`; declara su puerto de publicación (ADR-0010) | shared |
 | `identity` | M1 | Registro, verificación, login, refresh, sesiones, dispositivos | shared, notifications, audit |
 | `billing` | M4 | Planes, suscripciones, pagos, facturas, renovación; implementa `IPlanLimitsProvider` e `IAgentQuota` | shared, notifications, audit, storage (solo `IObjectStorage` para facturas) |
-| `access` | M3 (lectura) | `PermissionResolver`, políticas, `accessibleNodes(actor)` | shared |
+| `access` | M3a (lectura) | Solo lectura: `PermissionResolver`, políticas, `accessibleNodes(actor)` | shared |
 | `storage` | M2 | Nodos, cargas, descargas, papelera, versiones, cuota, búsqueda por metadatos, vista previa | shared, access, billing (`IPlanLimitsProvider`), audit, realtime |
-| `sharing` | M3 (escritura) | Comparticiones, enlaces públicos, límite de intentos | shared, access, storage, audit |
+| `sharing` | M3b (escritura) | Comparticiones, enlaces públicos, límite de intentos | shared, access, storage, audit |
 | `editing` | M5 | Sesiones de edición, presencia, callback, autoría e historial | shared, storage, access, billing, realtime, audit |
 | `intelligence` | M6 | Indexación, recuperación híbrida, agente con citas; implementa `IIndexQueue` | shared, storage, access, billing (`IAgentQuota`), realtime |
 | `optimizer` | M7 | Estimación y optimización de PDF e imágenes | shared, storage, access |
-| `backoffice` | M8 | Administración, soporte, métricas, colas, `RolesGuard` (la salud pasó a `shared`, DF-49) | shared, audit, identity, billing, storage (fachadas, DF-04) |
+| `backoffice` | M8 | Administración, soporte, métricas, colas (la salud y `RolesGuard` pasaron a `shared`: DF-49, 003 D-2) | shared, audit, identity, billing, storage (fachadas, DF-04) |
 
 **Reglas**
 1. El grafo es un DAG. Si dos módulos se necesitan mutuamente, uno define un puerto y el otro lo implementa **sin importar al primero**, o se usa un evento de dominio.
 2. Los eventos cruzan fronteras sin acoplar: `FileUploaded`, `FileVersionCreated`, `FileTrashed`, `SubscriptionExpired`, `EditSessionClosed`.
 3. `access` lee tablas de `storage` y `sharing` por SQL de solo lectura. Es la **única** excepción documentada a «cada módulo es dueño de sus tablas», porque la autorización debe resolverse dentro de la consulta (DF-02, ADR-0010).
 4. Otro módulo solo importa desde `modules/<x>/index.ts`: fachadas, puertos que ese módulo implementa, eventos y tipos públicos. Se hace cumplir con lint (ADR-0008).
+5. Los transversales (`audit`, `realtime`, `notifications`) declaran sus propios puertos y nunca dependen de un módulo de negocio; entre ellos solo existe `notifications → realtime` (ADR-0010).
+
+**Pendiente**: la tabla aún contiene el ciclo `storage ↔ billing` (`IPlanLimitsProvider` / `IObjectStorage` para facturas) y
+§5 no coincide con ella en `IPlanLimitsProvider`, `IAgentQuota` e `IIndexQueue`. Se decide en **DF-51** antes del plan de 006a.
 
 ## 4. Capas dentro de un módulo
 
@@ -146,16 +150,18 @@ modules/storage/
 |---|---|---|
 | `IPasswordHasher` | `Argon2idHasher` | identity (también lo usa sharing, DF-10) |
 | `ITokenService` | `JwtTokenService` | identity |
-| `IMailer` | `SmtpMailer` (Mailpit en local) | identity → notifications |
+| Puerto token→`Actor` (nombre en el plan 003) | verificador de `identity` (002 D-14) | shared → identity (lo usan `JwtAuthGuard` y el handshake de `realtime`, sin importar `identity`) |
+| `IMailer` | `SmtpMailer` (Mailpit en local) | notifications (lo declara y lo implementa; lo consume identity, ADR-0010) |
 | `IObjectStorage` | `MinioStorageAdapter` | storage |
 | `IFileTypeDetector` | `MagicBytesDetector` | storage |
 | `IPlanLimitsProvider` | fachada de billing | storage/editing → billing |
 | `IAccessPolicy` | `OwnerPolicy`, `EditorPolicy`, `ViewerPolicy` | access |
-| `IRateLimiter` | `RedisRateLimiter` | sharing (reutilizable en identity) |
-| `IAuditLogger` | `AuditService` | audit |
+| `IRateLimiter` | `RedisRateLimiter` | shared (lo declara y lo implementa; lo consumen identity desde 001 y sharing desde 012; `identity → sharing` no está permitido, ADR-0010) |
+| `IAuditLogger` | `AuditService` | audit (lo declara y lo implementa; lo consumen los módulos que auditan, ADR-0010) |
 | `IPaymentGateway` | `SimulatedPaymentGateway` | billing |
 | `IInvoiceGenerator` | `PdfInvoiceGenerator` | billing |
-| `INotifier` | notifications | billing → notifications |
+| `INotifier` | notifications | notifications (lo declara y lo implementa; lo consume billing, ADR-0010) |
+| Puerto de publicación de `realtime` (nombre en el plan 015) | gateway Socket.IO de `realtime` | realtime (lo declara y lo implementa; lo consumen storage, editing, intelligence y notifications, ADR-0010) |
 | `IClock` | `SystemClock` / `FixedClock` | shared |
 | `IDocumentEditor` | `OnlyOfficeEditor` | editing |
 | `IIdempotencyStore` | `RedisIdempotencyStore` | editing |
@@ -185,14 +191,19 @@ export interface Actor {
 }
 ```
 
-1. `JwtAuthGuard` construye el `Actor`; `RolesGuard` (M8) valida el rol requerido por `@Roles()`.
+1. Guards globales en `shared`, no en M8 (spec 003 D-2, DF-50), que niegan por defecto: `JwtAuthGuard` verifica el token con el puerto token→`Actor` de `shared` (lo implementa `identity`, 002 D-14) y construye el `Actor`; `RolesGuard` valida el rol requerido por `@Roles()`; solo las rutas con `@Public()` se atienden sin sesión.
 2. Los servicios reciben `actor` y los repositorios de datos de cliente solo exponen `findAccessible(actor, …)`.
 3. `access.accessibleNodes(actor)` es el CTE único que une propiedad, comparticiones y herencia por `carpeta.ruta`. Lo usan listados, búsqueda, descargas, vista previa, edición y el agente (DF-32).
 4. `PermissionResolver.can(actor, nodeId, action)` sirve para validar una acción sobre un recurso puntual, usando las políticas Strategy.
 5. Roles internos: `SupportService` usa `INodeMetadataReader`, que por construcción no devuelve `clave_objeto`, URLs ni texto.
-6. **Segunda barrera**: RLS en `archivo`, `version_archivo`, `fragmento`, con `SET LOCAL app.actor_id` por transacción.
+6. **Segunda barrera** (ADR-0005): RLS con `ENABLE` y `FORCE ROW LEVEL SECURITY` en `archivo` y `version_archivo` (desde las migraciones de 005) y en `fragmento` (019).
+   - **Roles de BD**: `api` y `worker` se conectan por `DATABASE_URL` como `nimbo_app` (`LOGIN`, `NOSUPERUSER`, `NOBYPASSRLS`, no dueño de las tablas). El rol dueño solo lo usan las migraciones, por `DATABASE_MIGRATION_URL`, que leen `migrations/data-source.cli.ts` y `scripts/migrate.ts` y que queda fuera del esquema de entorno de `api` y `worker`.
+   - **Actor por transacción**: `withActor(actor, trabajo)` (`shared/infrastructure/persistence`) abre `DataSource.transaction` y su primera sentencia es `SELECT set_config('app.actor_id', $1, true), set_config('app.actor_role', $2, true)` (equivale a `SET LOCAL`, con parámetros enlazados). Publica el `EntityManager` en `AsyncLocalStorage`; los repositorios de datos de cliente fallan si no existe. Solo `withActor` escribe esas variables (regla de lint).
+   - **Políticas cerradas**: sin actor no hay filas. `CLIENT` ve las suyas (y las compartidas desde 012); `OPERATOR`, ninguna; `ADMIN` y `SUPPORT` solo leen metadatos de `archivo` y **no reciben filas de `version_archivo`** (contiene `clave_objeto`). El detalle se fija en el plan de 005.
+   - **Worker**: mismo `nimbo_app`, sin `BYPASSRLS`; un trabajo sobre un archivo actúa como el dueño de su payload. Los trabajos de mantenimiento sin actor (purga de la papelera): **DF-52**, plan de 005.
+   - **Pendiente**: hoy (000) `api`, `worker` y migraciones comparten una `DATABASE_URL` con el superusuario de `compose.yml`. Los dos roles en compose (script de inicio de Postgres) y staging (GitHub Environments), `DATABASE_MIGRATION_URL` en `.env.example` y en `pnpm env:check`, `withActor` y la regla de lint los entrega el plan de la spec 003 (D-7); las políticas, el plan de 005.
 7. **Agente**: `HybridRetriever` filtra `fragmento.archivo_id IN (accessibleNodes)` antes del `ORDER BY embedding <=> $q LIMIT topK` (DF-14).
-8. Suite `test/isolation`: cuentas con contenido casi idéntico; cualquier fuga rompe CI.
+8. Suite `test/isolation`: cuentas con contenido casi idéntico; cualquier fuga rompe CI. Corre con los dos roles de BD reales, nunca como superusuario (ADR-0005).
 
 ## 7. Flujos críticos (con clases de los diagramas)
 
@@ -205,11 +216,11 @@ export interface Actor {
 
 ### 7.2 Edición y guardado (RF-25, 26, 28, DF-05, DF-20)
 1. `EditorController.open` → `EditSessionService.open(actor, fileId)` → `assertCanEdit` (access) y `assertEditorLimit` (`IPlanLimitsProvider.maxEditors`) → `IDocumentEditor.buildConfig` (JWT firmado).
-2. `PresenceGateway` (vía `realtime`) difunde quién está conectado; `Participant` registra entrada y salida.
+2. `editing` autoriza la sala del documento consultando `access` y une el socket; la presencia se difunde por el gateway único de `realtime` (DF-30, ADR-0010); `Participant` registra entrada y salida.
 3. ONLYOFFICE llama `EditorController.callback` con `status`: 1 editando · 2 listo para guardar · 3 error · 4 cerrado sin cambios · 6 guardado forzado · 7 error de guardado forzado.
 4. `SaveCallbackHandler`: `verifyCallback` (JWT) → encola `editing-save` → responde `{"error":0}`.
 5. Processor «Actualizado de Versiones»: candado en `IIdempotencyStore` → descarga la URL (validada contra el host de ONLYOFFICE) a un objeto temporal → `verifyIntegrity` → transacción: `version_archivo(origen=edicion, sesion_edicion_id UNIQUE)` + puntero de versión actual + retención → `EditSession.close()` → `FileVersionCreated`.
-6. Si falla: `EditSession.markFailed`, la versión anterior queda intacta y `PresenceGateway.emitSaveStatus` avisa al usuario.
+6. Si falla: `EditSession.markFailed`, la versión anterior queda intacta y `editing` avisa al usuario por `realtime`.
 
 ### 7.3 Indexación (RF-30, RNF-03)
 `FileVersionCreated` → `IIndexQueue` → `IndexingService.indexFile` → `ExtractorRegistry.forMime` → `ITextExtractor.extract` → `Segment[]` con procedencia →
@@ -243,7 +254,7 @@ el original sigue restaurable durante la retención definida en DF-21.
 | `optimization` | `OptimizationService` | 2 | por `optimizacion.id` |
 | `RenewalScheduler` (`@Cron`) | — | alerta en fallo | por suscripción + periodo |
 | `mail` | notifications | 5 | por `notificacion.id` |
-| `trash-purge` (`@Cron`) | — | 3 | naturalmente idempotente |
+| `trash-purge` (`@Cron`) | — | 3 | naturalmente idempotente; cómo opera bajo RLS sin actor: DF-52 |
 
 ## 9. Frontend
 

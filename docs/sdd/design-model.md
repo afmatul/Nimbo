@@ -36,23 +36,30 @@
 | M6 | Inteligencia Documental | `intelligence` | Fátima | 15 (contenido), 30–34 |
 | M7 | Optimizador de Almacenamiento | `optimizer` | Abel | 35, 36 |
 | M8 | Administración, Soporte y Operación | `backoffice` | Adrián | 06, 37 |
-| T1 | (transversal; recibe la salud de M8, DF-49) | `shared` | Adrián | `Actor`, `IClock`, errores, logger, `correlationId`, entorno, salud |
+| T1 | (transversal; recibe de M8 la salud, DF-49, y `RolesGuard`, DF-50) | `shared` | Adrián | `Actor`, `IClock`, errores, logger, `correlationId`, entorno, salud, guards globales (003) |
 | T2 | (transversal, extraído de M8) | `audit` | Adrián | 07 |
 | T3 | (transversal) | `realtime` | Fátima | 08 (progreso), 26, 32 (streaming) |
-| T4 | (transversal) | `notifications` | Juan Marcos | implementa `IMailer` e `INotifier` |
+| T4 | (transversal) | `notifications` | Juan Marcos | declara e implementa `IMailer` e `INotifier` |
 
 M3 se divide en `access` y `sharing`, y `audit`/`realtime`/`notifications` salen como transversales, para evitar
-ciclos de dependencia (ver DF-02, DF-03, DF-30, DF-34). Hasta que el equipo lo acepte en un ADR, trátenlo como propuesta.
+ciclos de dependencia (ver DF-02, DF-03, DF-30, DF-34). Decidido en ADR-0010 (aceptado el 26/09/2026); falta redibujar los diagramas.
 
 ## 3. Clases por módulo
 
+Todo método de servicio que actúa sobre datos de un usuario recibe `actor: Actor` como primer parámetro (DF-01,
+spec 003 D-9). Los diagramas de clases todavía no lo muestran en las firmas.
+
+«Puertos que consume» lista los puertos que un módulo de negocio importa desde el `index.ts` del transversal que los
+declara y los implementa. El módulo de negocio no los declara (ADR-0010, `architecture.md` §3, regla 5).
+
 ### M1 `identity`
-- Controlador: `AuthController` (register, verifyEmail, login, refresh, forgotPassword, resetPassword). Falta: `SessionsController` (listar/revocar, RF-04) → DF-15.
+- Controladores: `AuthController` (register, verifyEmail, login, refresh, forgotPassword, resetPassword); `SessionsController` (listar y revocar sesiones, RF-04; DF-15 parcial, spec 002 D-8).
 - Servicios: `AuthService`, `SessionService`.
-- Puertos → implementaciones: `IPasswordHasher` → `Argon2idHasher`; `ITokenService` → `JwtTokenService`; `IUserRepository`, `ISessionRepository` → TypeORM; `IMailer` → `notifications`.
-- Dominio: `User` (abstracta) ← `ClientUser`, `InternalUser`; `Session`; `VerificationToken`; `Role` = `CLIENT | ADMIN | SUPPORT | OPERATOR`.
+- Puertos → implementaciones: `IPasswordHasher` → `Argon2idHasher`; `ITokenService` → `JwtTokenService`; `IUserRepository`, `ISessionRepository` → TypeORM. Implementa hacia fuera el puerto token→`Actor` que declara T1 `shared` (002 D-14).
+- Puertos que consume: `IMailer` (lo declara e implementa T4 `notifications`); `IRateLimiter` (T1 `shared`, límite por correo de 001 D-15).
+- Dominio: `User` (abstracta) ← `ClientUser` (sin `subscriptionId`: la relación vive solo en `suscripcion.usuario_id`, DF-35), `InternalUser`; `Session`; `Device` (DF-11, spec 002 D-4); `VerificationToken`; `Role` = `CLIENT | ADMIN | SUPPORT | OPERATOR` (vive en `shared`).
 - Patrones: Herencia de tabla única para `User`; Strategy implícita en hasher/tokens.
-- Tablas: `usuario`, `dispositivo`, `sesion`, `token_cuenta` (+ `rol` según DF-13).
+- Tablas: `usuario` (`rol` con `CHECK`, sin tabla `rol`: DF-13; `correo_verificado`: DF-33 parcial), `dispositivo`, `sesion`, `token_cuenta`.
 
 ### M2 `storage`
 - Controlador: `FilesController` (list, download, initUpload, uploadPart, completeUpload, move, trash). Faltan carpetas, renombrar, restaurar, versiones, cuota, búsqueda, vista previa → DF-15.
@@ -62,7 +69,7 @@ ciclos de dependencia (ver DF-02, DF-03, DF-30, DF-34). Hasta que el equipo lo a
 - Tablas: `carpeta`, `archivo`, `version_archivo`, `carga`.
 
 ### M3a `access`
-- Servicio: `PermissionResolver` (levelFor, can, inheritedGrants) + constructor de consulta de nodos accesibles (DF-32).
+- Servicio: `PermissionResolver` (levelFor, can, inheritedGrants) + `accessibleNodes(actor)`, constructor de la consulta de nodos accesibles (DF-32, spec 003 D-1: 003 entrega la firma; la consulta se completa con 005 y 012).
 - Puertos → implementaciones: `IAccessPolicy` → `OwnerPolicy`, `EditorPolicy`, `ViewerPolicy` (**Strategy**); `IGrantRepository`.
 - Dominio: `AccessLevel` = `OWNER | EDITOR | VIEWER`; `Action`.
 - Tablas que lee: `archivo`, `carpeta`, `comparticion` (modelo de lectura).
@@ -70,21 +77,23 @@ ciclos de dependencia (ver DF-02, DF-03, DF-30, DF-34). Hasta que el equipo lo a
 ### M3b `sharing`
 - Controlador: `SharingController` (share, listAccess, revokeGrant, createLink, openLink).
 - Servicios: `SharingService`, `PublicLinkService`.
-- Puertos → implementaciones: `IRateLimiter` → `RedisRateLimiter`; `IAuditLogger` → `audit`; `ISecretCipher` (ver DF-10).
+- Puertos → implementaciones: `ISecretCipher` (ver DF-10).
+- Puertos que consume: `IAuditLogger` (lo declara e implementa T2 `audit`); `IRateLimiter` (T1 `shared`).
 - Dominio: `AccessGrant` (abstracta) ← `UserShare`, `PublicLink`; `AccessList` (value object).
 - Tablas: `comparticion`, `enlace_publico`, `intento_acceso`.
 
 ### M4 `billing`
 - Controlador: `SubscriptionController` (listPlans, comparePlans, subscribe, renew, changePlan, history, invoice).
 - Servicios: `PlanCatalogService`, `SubscriptionService`, `PaymentService`; job `RenewalScheduler` (`@Cron`, usa `IClock`).
-- Puertos → implementaciones: `IPaymentGateway` → `SimulatedPaymentGateway` (failureRate, latencyMs); `IInvoiceGenerator` → `PdfInvoiceGenerator`; `INotifier` → `notifications`; repos.
+- Puertos → implementaciones: `IPaymentGateway` → `SimulatedPaymentGateway` (failureRate, latencyMs); `IInvoiceGenerator` → `PdfInvoiceGenerator`; repos.
+- Puertos que consume: `INotifier` (lo declara e implementa T4 `notifications`).
 - Dominio: `Plan` con `PlanLimits` (value object); `Subscription` (pendingPlanId, isReadOnly, scheduleChange, applyPendingChange); `Payment`; `Invoice`; `Money`.
 - Implementa hacia fuera: `IPlanLimitsProvider` (M2, M5), `IAgentQuota` (M6) → DF-27.
 - Tablas: `plan`, `suscripcion`, `transaccion`, `factura`.
 
 ### M5 `editing`
 - Controlador: `EditorController` (open, callback, versions, restore).
-- Servicios: `EditSessionService`, `SaveCallbackHandler`, `VersionHistoryService`; gateway `PresenceGateway`.
+- Servicios: `EditSessionService`, `SaveCallbackHandler`, `VersionHistoryService`. Sin gateway propio: el diagrama tiene `PresenceGateway`, pero la presencia se publica por el gateway único de T3 `realtime`, y `editing` autoriza la unión a la sala del documento consultando `access` (DF-30, ADR-0010).
 - Puertos → implementaciones: `IDocumentEditor` → `OnlyOfficeEditor`; `IIdempotencyStore` → `RedisIdempotencyStore`; `ISessionRepository` (renombrar, DF-19); `IVersionRepository`; `IIndexQueue` → `intelligence`.
 - Dominio: `EditSession` (composición 1..* `Participant`); `DocumentVersion` (hoy hereda de `FileVersion`, ver DF-18).
 - Tablas: `sesion_edicion`, `participacion` (N:M `participa`).
@@ -104,14 +113,16 @@ ciclos de dependencia (ver DF-02, DF-03, DF-30, DF-34). Hasta que el equipo lo a
 
 ### M8 `backoffice`
 - Controladores: `BackofficeController` (listAccounts, suspend, adjustQuota, fileMetadata, retryJob, dashboard). `HealthController` se movió a T1 `shared` (DF-49).
-- Servicios: `AdminService`, `SupportService` ← `InternalActionService` (abstracta: `recordAction`, `assertInternal` — **Template Method**), `MetricsService`, `JobMonitorService`; guard `RolesGuard` (`CanActivate`).
+- Servicios: `AdminService`, `SupportService` ← `InternalActionService` (abstracta: `recordAction`, `assertInternal` — **Template Method**), `MetricsService`, `JobMonitorService`. Sin guards: el diagrama tiene `RolesGuard`, pero se movió a T1 `shared` con los guards globales (DF-50, spec 003 D-2); los controladores de M8 declaran `@Roles(...)`.
 - Puertos → implementaciones: `IQueueInspector` → `BullMqInspector`; `INodeMetadataReader` → `storage`. `IHealthIndicator` y sus indicadores se movieron a T1 (DF-49); `OnlyOfficeHealthIndicator` (DF-29) lo aporta `editing` y se registra en la raíz de composición.
 - Tipos: `Actor` (actor que ejecuta; vive en `shared`).
 
-### T1 `shared` (spec 000)
-- Controlador: `HealthController` (live, ready) — sin autenticación; nunca expone topología.
+### T1 `shared` (spec 000; guards con 003)
+- Controlador: `HealthController` (live, ready) — `@Public()`, sin autenticación; nunca expone topología.
+- Guards globales (spec 003 D-2, DF-50): `JwtAuthGuard` y `RolesGuard` (`CanActivate`), registrados para toda la API y que **niegan por defecto**. `JwtAuthGuard` verifica el token con el puerto token→`Actor` que declara `shared` y que implementa `identity` (002 D-14; nombre en el plan 003) y construye el `Actor`; `RolesGuard` comprueba `@Roles(...)`. Decoradores `@Public()` y `@Roles(...)`: toda ruta declara uno de los dos (003 D-10). El handshake de T3 `realtime` usa el mismo puerto.
+- Persistencia con actor: `withActor()` fija `app.actor_id` y `app.actor_role` por transacción para RLS (ADR-0005, 003 D-7).
 - Servicio: `HealthService` (`ready()`: ejecuta los `IHealthIndicator` en paralelo con tiempo límite; agrega `up`/`down`).
-- Puertos → implementaciones: `IHealthIndicator` → `PostgresHealthIndicator`, `RedisHealthIndicator`, `MinioHealthIndicator` (DF-29 parcial); `IClock` → `SystemClock` (infraestructura), `FixedClock` (dominio, para pruebas).
+- Puertos → implementaciones: `IHealthIndicator` → `PostgresHealthIndicator`, `RedisHealthIndicator`, `MinioHealthIndicator` (DF-29 parcial); `IClock` → `SystemClock` (infraestructura), `FixedClock` (dominio, para pruebas); con 001, `IRateLimiter` → `RedisRateLimiter` (lo consumen M1 y M3b; PD-30).
 - Dominio: `Actor` (`id`, `role`, `canReadContent`), `Role` = `CLIENT | ADMIN | SUPPORT | OPERATOR`, `DomainError` (abstracta) ← `InvalidInputError` (422), `UnauthorizedError` (401), `ForbiddenError` (403), `NotFoundError` (404), `ConflictError` (409).
 - Presentación: `DomainExceptionFilter` (único traductor `DomainError` → HTTP), `CorrelationIdMiddleware`, `VersionHeaderMiddleware`.
 - Infraestructura: `CorrelationContext` (`AsyncLocalStorage`), logger Pino con `REDACTED_FIELDS`/`redactDeep`, `loadEnv` (zod), `buildDataSourceOptions`, `enqueueWithCorrelation`, cola de prueba `ping` (`PingProcessor`).
@@ -122,6 +133,16 @@ ciclos de dependencia (ver DF-02, DF-03, DF-30, DF-34). Hasta que el equipo lo a
 - `AuditService` (record, listForUser), `AuditEntry` (actorId, actorRole, targetUserId, action, resourceId, occurredAt, `isVisibleTo`). Implementa `IAuditLogger`.
 - Tabla: `evento_auditoria`.
 
+### T3 `realtime`
+- Único gateway Socket.IO: handshake autenticado con el puerto token→`Actor` de `shared` (sin depender de `identity`), salas por usuario y por documento. Declara el puerto de publicación (nombre en el plan 015) que usan `storage`, `editing`, `intelligence` y `notifications`. No conoce permisos (ADR-0010).
+
+### T4 `notifications`
+- Responsabilidad: correo transaccional y notificaciones al usuario (DF-34, ADR-0010). No conoce las reglas de negocio de quien lo usa: recibe qué enviar y a quién. Dueño de la tabla `notificacion` y de la cola `mail` del `worker`.
+- Puertos que declara y exporta en su `index.ts`, segregados por consumidor (ISP): `IMailer` (lo consume `identity`: verificación, recuperación y avisos de cuenta) e `INotifier` (lo consume `billing`). Los declara el transversal, no el consumidor, para que `notifications` nunca importe un módulo de negocio (`architecture.md` §3, regla 5).
+- Implementaciones: `IMailer` → `SmtpMailer` (nodemailer; encola en `mail` y el `worker` envía, spec 001 D-11). El destino SMTP es Mailpit en local y SMTP de Resend en staging (001 D-12). `INotifier` → implementación de `notifications`; nombre y canales en el plan de la spec de `billing` que la use primero.
+- Depende de: `shared` y `realtime` (para publicar en la sala del usuario). Es la única arista entre transversales (ADR-0010).
+- Tabla: `notificacion`.
+
 ## 4. Mapeo clase ↔ tabla (E-R)
 
 Regla: **clases e identificadores en inglés (diagrama de clases); tablas y columnas en español `snake_case` (diagrama E-R)**.
@@ -129,9 +150,9 @@ El mapeo vive solo en las entidades TypeORM (`@Entity('archivo')`, `@Column({ na
 
 | Clase | Tabla | Notas |
 |---|---|---|
-| `User`, `ClientUser`, `InternalUser` | `usuario` | Tabla única; `rol` discrimina |
+| `User`, `ClientUser`, `InternalUser` | `usuario` | Tabla única; `rol` discrimina (columna con `CHECK`, sin tabla `rol`: DF-13) |
 | `Session` | `sesion` | Depende de `dispositivo` |
-| (dispositivo) | `dispositivo` | Sin clase en el diagrama; agregar `Device` (DF-11) |
+| `Device` | `dispositivo` | Clase nueva (DF-11, spec 002 D-4); `huella_hash` guarda el hash del identificador aleatorio de la cookie. Falta en el diagrama |
 | `VerificationToken` | `token_cuenta` | `tipo` = verificación / recuperación |
 | `Folder` | `carpeta` | `ruta` como camino materializado |
 | `File` | `archivo` | |

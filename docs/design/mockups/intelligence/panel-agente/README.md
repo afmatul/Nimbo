@@ -1,13 +1,17 @@
 # Mockup: Panel del agente
 
 - **Spec**: 020
-- **Origen**: exportado desde Claude Design (`.dc.html`, Cielo Sereno, 1440 × 900). Es referencia visual; `apps/web` no lo importa.
-- **Estados incluidos**: con-citas
-- **Capturas**: `docs/design/capturas/intelligence/panel-agente/` (360 y 1440 px)
+- **Propuesta presentada**: No presentada (diseño interno).
+- **Origen**: HTML empaquetado y autocontenido (`.html`, Cielo Sereno, lienzo de ≈ 1490 px con el rótulo de la hoja). Es referencia visual; `apps/web` no lo importa.
+- **Estados incluidos**:
+  - con-citas (`panel-agente--con-citas.html`)
+- **Capturas**: `docs/design/capturas/intelligence/panel-agente/` (`panel-agente--<estado>--<360|1440>.png`)
 
 ## Decisiones de UX
-- Respuesta con citas a archivo y ubicación; contador de consultas del ciclo.
+- Panel lateral persistente de 420 px; la cita abre el fragmento exacto a la izquierda.
 
 ## Pendiente
-- Estados que faltan respecto al inventario de `docs/sdd/ui-guidelines.md` §7 (vacío, cargando, error, etc.).
-- Versión móvil real a 360 px: el mockup está diseñado a 1440 px y se recorta en móvil.
+- El documento de ejemplo dice que el plan Equipo permite 2 GB por archivo; el catálogo dice 1 GB.
+- Estados del inventario: vacio, respondiendo, cita-incierta y limite-alcanzado.
+- Botón principal `#6B8DD6` con texto blanco (3.28:1) no cumple AA (DF-41); la implementación usa el token corregido.
+- Versión móvil real a 360 px: el mockup está diseñado para escritorio y la captura a 360 px muestra el mismo lienzo.

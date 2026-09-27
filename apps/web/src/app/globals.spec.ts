@@ -48,8 +48,9 @@ describe('Tokens de Cielo Sereno y Contraste WCAG 2.1 AA (DF-41 a DF-45, CA-1, C
   function getCssVar(name: string): string {
     const content = fs.readFileSync(globalsCssPath, 'utf8');
     const match = content.match(new RegExp(`${name}:\\s*([^;]+);`));
-    if (!match) throw new Error(`Variable ${name} no encontrada en globals.css`);
-    return match[1].trim();
+    const value = match?.[1];
+    if (value === undefined) throw new Error(`Variable ${name} no encontrada en globals.css`);
+    return value.trim();
   }
 
   it('CA-1: el archivo globals.css existe y define los tokens centrales', () => {

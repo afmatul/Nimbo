@@ -19,6 +19,7 @@ Lo que la diferencia de una nube común:
 | Cómo está construido                      | `docs/sdd/architecture.md`                |
 | Clases, puertos, tablas y su mapeo        | `docs/sdd/design-model.md`                |
 | Problemas conocidos del diseño (DF-xx)    | `docs/sdd/design-findings.md`             |
+| Pendientes transversales (diagramas, docs, decisiones) | `docs/sdd/pendientes.md`     |
 | Diagramas originales (PDF, entregables)   | `docs/design/diagramas/`                  |
 | Sistema de diseño Cielo Sereno (original) | `docs/design/design-system/design-cielo-sereno.md` |
 | Cómo aplicar el diseño en la UI           | `docs/sdd/ui-guidelines.md`               |
@@ -63,7 +64,7 @@ Clases en inglés; tablas y columnas en español como el E-R.
 
 ## Stack (resumen)
 
-Monorepo pnpm · **Frontend** Next.js + TypeScript + Tailwind v4 + shadcn/ui, sistema de diseño **Cielo Sereno** (Inter, JetBrains Mono) · **Backend** NestJS + TypeORM ·
+Monorepo pnpm · **Frontend** Next.js + TypeScript + Tailwind v4 + shadcn/ui, sistema de diseño **Cielo Sereno** (Inter) · **Backend** NestJS + TypeORM ·
 **Worker** NestJS + BullMQ · **Datos** PostgreSQL + pgvector · **Objetos** MinIO (S3) · **Cola/caché** Redis ·
 **Tiempo real** Socket.IO · **Edición** ONLYOFFICE Docs (solo `.docx`) · **LLM** gemini-3.5-flash + gemini-embedding
 (detrás de puertos propios) · **Auth** Passport JWT + Argon2id · **Pagos** simulación propia ·

@@ -90,7 +90,6 @@
   --color-agent-tag: var(--agent-tag);
 
   --font-sans: var(--font-inter), system-ui, sans-serif;
-  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
 
   --radius-sm: 6px;
   --radius-md: 10px;

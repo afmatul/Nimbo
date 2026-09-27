@@ -36,7 +36,7 @@ export function CitationChip({
       {location && (
         <>
           <span className="text-agent-text/60">·</span>
-          <span className="text-agent-text/90 font-mono text-xs tabular-nums">{location}</span>
+          <span className="text-agent-text/90 text-xs tabular-nums">{location}</span>
         </>
       )}
       {!isCertain && (
