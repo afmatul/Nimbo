@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Borrador |
+| Estado | Aclarada (2026-09-26, Adrián) |
 | Dueño | Adrián (1) |
 | Fase | 1 |
 | Requisitos | RF-02, RF-03, RF-04 (principales); aplican también RNF-04, RNF-05 (cada quien solo ve y revoca sus sesiones), RNF-07 (límite de tasa del inicio de sesión y de la recuperación), RNF-13, RNF-14, RNF-17 |
@@ -82,14 +82,16 @@ Todas las tomó Adrián el 2026-09-26. La numeración D-n sigue a la pregunta P-
 | D-4 | **Dispositivo.** Cada navegador recibe un identificador aleatorio (≥ 128 bits) en una cookie `httpOnly` de 1 año, que se guarda como hash en `dispositivo.huella_hash`, junto con `agente_usuario`, `ultima_ip` y `ultimo_acceso` (**resuelve DF-11**; se agrega la clase `Device` a M1). Un dispositivo es **nuevo** si esa cuenta nunca lo ha visto. El dispositivo donde se verificó el correo (D-20 de 001) queda como conocido, sin aviso. Si la persona borra sus cookies, su navegador cuenta como nuevo. | P-4 |
 | D-5 | **Fuerza bruta.** **5** intentos fallidos para un mismo correo normalizado en **15 min** bloquean el inicio de sesión de ese correo durante **15 min**. Se cuentan exista o no la cuenta, para no permitir enumeración. Restablecer la contraseña quita el bloqueo. Además, **20** intentos por IP cada 15 min con el `ThrottlerModule`. | P-5 |
 | D-6 | **Recuperación.** Enlace con token opaco (≥ 128 bits), guardado como hash en `token_cuenta` con tipo recuperación, de **un solo uso** con consumo atómico y válido **1 hora**. Pedir otro invalida los anteriores. La respuesta es neutra. Al restablecer: la contraseña cambia (política D-6 de 001), se cierran **todas** las sesiones (RF-02), se quita el bloqueo de D-5, se envía «Tu contraseña cambió» y **no** se inicia sesión: la persona entra con su contraseña nueva. Límites por correo iguales a D-8 de 001 (60 s entre solicitudes y 5 por hora). | P-6 |
-| D-7 | **Cambiar la contraseña estando dentro** entra en esta spec, en «Seguridad». Pide la contraseña actual y la nueva (política D-6 de 001). Al cambiarla se cierran las **demás** sesiones, la actual sigue abierta y se envía «Tu contraseña cambió». **5** contraseñas actuales incorrectas en 15 min bloquean la operación durante 15 min sin cerrar la sesión. | P-7 |
-| D-8 | **Revocación.** Cada sesión se cierra **individualmente** desde la lista (la actual equivale a cerrar sesión), y además existe «Cerrar las demás sesiones». Lo atiende `SessionsController` (**resuelve la parte de sesiones de DF-15**). | P-8 |
+| D-7 | **Cambiar la contraseña estando dentro** entra en esta spec, en «Seguridad». Pide la contraseña actual, la nueva (política D-6 de 001) y su confirmación, que se valida en el cliente antes de enviar. Al cambiarla se cierran las **demás** sesiones, la actual sigue abierta y se envía «Tu contraseña cambió». Tras **5** contraseñas actuales incorrectas en 15 min, el cambio queda bloqueado 15 min sin cerrar la sesión: los intentos siguientes responden `IDENTITY_PASSWORD_CHANGE_LOCKED` con los minutos que faltan, como `IDENTITY_LOGIN_LOCKED` en el inicio de sesión (CA-5). | P-7 |
+| D-8 | **Revocación.** Cada sesión se cierra **individualmente** desde la lista (la actual equivale a cerrar sesión y, desde la lista, pide confirmación), y además existe «Cerrar las demás sesiones». Lo atiende `SessionsController` (**resuelve la parte de sesiones de DF-15**). | P-8 |
 | D-9 | **Lista de sesiones.** Muestra navegador y sistema (leídos del agente de usuario), inicio, última actividad y la marca «Este dispositivo», primero la actual y después por última actividad. **No** muestra IP ni ubicación. | P-9 |
 | D-10 | **Cuenta suspendida** (`usuario.estado`, D-3 de 001). Con la contraseña correcta se responde `IDENTITY_ACCOUNT_SUSPENDED`; con la incorrecta, la respuesta genérica. La renovación de una cuenta suspendida falla y revoca la sesión. Quien suspende (011) revoca además todas sus sesiones; un token de acceso ya emitido dura como máximo 15 min. | P-10 |
 | D-11 | **`ThrottlerModule`** entra con la **001**, que lo usa primero (D-15 de 001), y esta spec lo reutiliza. La D-9 de la spec 000 se actualiza en el plan de 001. | P-11 |
 | D-12 | **Pantallas.** Solo «Seguridad» necesita mockup nuevo. Inicio de sesión ya existe (propuesta p. 07) y sus estados, la recuperación y los correos reutilizan patrones de 001 como decisión explícita (§11). | P-12 |
 | D-13 | **Contenido del token de acceso**: solo `sub` (id de la cuenta), `rol`, `sid` (id de la sesión), `iat` y `exp`. Sin correo ni nombre. Se firma con una clave del backend que vive en variables de entorno. | — (derivada de D-1 y R-9) |
-| D-14 | `identity` implementa el **puerto de verificación del token de acceso** que define `shared` (003 D-2) y lo expone desde `modules/identity/index.ts` para que lo use el handshake de `realtime` (015). | — (derivada de R-9) |
+| D-14 | `identity` implementa el **puerto de verificación del token de acceso** que declara `shared` (003 D-2). La raíz de composición (`AppModule`) enlaza esa implementación al puerto; el guard global de 003 y el handshake de `realtime` (015) dependen solo del puerto de `shared`, nunca de `identity` (ADR-0010). | — (derivada de R-9) |
+| D-15 | **Recuperación de una cuenta no verificada.** La respuesta es la misma neutra de siempre, pero en lugar del enlace de recuperación se envía un **enlace de verificación nuevo** de 001 (con sus límites y su vigencia de 24 h). La persona verifica, entra (D-20 de 001) y, si quiere, cambia la contraseña en «Seguridad». | P-13 |
+| D-16 | **Decisiones de UX de «Seguridad»** aprobadas (2026-09-26): se llega desde el menú de la cuenta (sin entrada en la barra lateral); sin medidor de fuerza (se reutilizan los requisitos en vivo del registro); los botones que abren una confirmación son `outline` y solo el de confirmar es `destructive`; fechas relativas para la última actividad y absolutas para el inicio, en hora de Guatemala. Detalle en el README del mockup (§11). | Revisión del mockup |
 
 ## 6. Parámetros
 
@@ -98,7 +100,7 @@ Todas las tomó Adrián el 2026-09-26. La numeración D-n sigue a la pregunta P-
 | Vida del token de acceso | Validez desde su emisión | 15 min | D-2 |
 | Inactividad máxima de la sesión | Tiempo sin renovar tras el cual la sesión vence | 7 días | D-2 |
 | Vida máxima de la sesión | Desde el inicio de sesión, aunque se renueve | 30 días | D-2 |
-| Gracia de rotación | Tiempo tras una rotación en que el token anterior se rechaza sin revocar | 10 s (propuesto, P-14) | D-3 |
+| Gracia de rotación | Tiempo tras una rotación en que el token anterior se rechaza sin revocar | 10 s | D-3 |
 | Fallos de inicio de sesión | Por correo normalizado, en 15 min, antes del bloqueo | 5 | D-5 |
 | Bloqueo de inicio de sesión | Duración del bloqueo de un correo | 15 min | D-5 |
 | Intentos por IP | Solicitudes de inicio de sesión por IP en 15 min | 20 | D-5 |
@@ -191,7 +193,8 @@ Todas las tomó Adrián el 2026-09-26. La numeración D-n sigue a la pregunta P-
 - **CA-14** (HU-7) — cerrar sesión
   - **Dado** un cliente con sesión,
   - **Cuando** cierra sesión,
-  - **Entonces** su sesión queda revocada, la cookie de refresco se borra y la de dispositivo se conserva.
+  - **Entonces** su sesión queda revocada, la cookie de refresco se borra y la de dispositivo se conserva;
+  - **Y** si la cierra desde la lista de «Seguridad», antes se pide confirmación (D-8).
 - **CA-15** (R-5; **cierra CA-26 y CA-29 de 001**) — sesión al verificar
   - **Dado** un enlace de verificación válido de 001,
   - **Cuando** se abre,
@@ -218,7 +221,7 @@ Todas las tomó Adrián el 2026-09-26. La numeración D-n sigue a la pregunta P-
   - **Dado** un correo de una cuenta verificada, uno de una cuenta no verificada, uno de una cuenta interna y uno sin cuenta,
   - **Cuando** se pide la recuperación para cada uno,
   - **Entonces** las cuatro respuestas son neutras; en Mailpit solo aparece el enlace de 1 hora para la cuenta
-    verificada y la interna (la no verificada sigue P-13);
+    verificada y la interna (la no verificada recibe un enlace de verificación nuevo de 001, D-15);
   - **Y** los límites por correo (60 s y 5 por hora) se aplican exista o no la cuenta, con `IDENTITY_TOO_MANY_REQUESTS`.
 - **CA-19** (HU-2, RF-02, D-6) — restablecer
   - **Dado** un enlace de recuperación válido y un cliente con sesiones abiertas en dos navegadores,
@@ -247,7 +250,8 @@ Todas las tomó Adrián el 2026-09-26. La numeración D-n sigue a la pregunta P-
   - **Dado** un cliente con sesión,
   - **Cuando** envía una contraseña actual incorrecta,
   - **Entonces** se responde `IDENTITY_WRONG_PASSWORD` y nada cambia;
-  - **Y** al quinto fallo en 15 min la operación responde `IDENTITY_TOO_MANY_REQUESTS` durante 15 min, sin cerrar la sesión.
+  - **Y** tras 5 fallos en 15 min, el siguiente intento, incluso con la contraseña actual correcta, responde
+    `IDENTITY_PASSWORD_CHANGE_LOCKED` con los minutos que faltan; pasados 15 min vuelve a permitirse y la sesión nunca se cierra.
 
 ### Privacidad, bitácoras y frontera con 003 y 015 (HU-8)
 
@@ -347,7 +351,7 @@ Todas las tomó Adrián el 2026-09-26. La numeración D-n sigue a la pregunta P-
 | Restablecer contraseña: contraseña nueva | **Decisión explícita**: campo de contraseña con requisitos en vivo del registro (`registro.html`) | default, error-campos, enviando | — |
 | Restablecer contraseña: enlace vencido o inválido | **Decisión explícita**: como `verificar-correo--enlace-expirado.html` y `--enlace-invalido.html` | enlace-expirado, enlace-invalido | — |
 | Restablecer contraseña: listo | **Decisión explícita**: como `verificar-correo--ya-verificado.html`, con «Iniciar sesión» y sin sesión | exito | — |
-| **Seguridad** (sesiones y contraseña) | `mockups/identity/seguridad/` — **único mockup nuevo requerido**; dentro del marco de la aplicación (se llega desde el menú de la cuenta) | default (este dispositivo y otros), sin-otras-sesiones, confirmar-cierre, cerrar-demas (confirmación y resultado), cambiar-contrasena (formulario, error, bloqueo y éxito) | Pendiente |
+| **Seguridad** (sesiones y contraseña) | [`mockups/identity/seguridad/seguridad.html`](../../docs/design/mockups/identity/seguridad/seguridad.html) y sus estados ([README](../../docs/design/mockups/identity/seguridad/README.md), capturas en `capturas/identity/seguridad/`) — **único mockup nuevo requerido**; dentro del marco de la aplicación (se llega desde el menú de la cuenta) | default (este dispositivo y otros), cargando, error-sesiones, sin-otras-sesiones, confirmar-cierre, confirmar-cierre-actual, sesion-cerrada, cerrar-demas (confirmación) y cerrar-demas-exito (resultado), cambiar contraseña: default (formulario), contrasena-enviando, contrasena-incorrecta, contrasena-debil y contrasena-no-coincide (error), contrasena-bloqueada (bloqueo) y contrasena-cambiada (éxito) | Aprobado (2026-09-26) |
 | Correos: recuperación, dispositivo nuevo, contraseña cambiada, sesión cerrada por seguridad | **Decisión explícita**: misma plantilla de 600 px de `mockups/identity/correos/correos--registro.html`, con los textos de abajo | — | — |
 
 - Mensajes clave (español, tuteo, con acción correctiva):
@@ -363,9 +367,17 @@ Todas las tomó Adrián el 2026-09-26. La numeración D-n sigue a la pregunta P-
   - Enlace de recuperación inválido: «Este enlace no es válido. Usa el enlace del correo más reciente o pide uno nuevo.»
   - Restablecida: «Listo. Cambiamos tu contraseña y cerramos todas tus sesiones. Inicia sesión con la nueva.»
   - Contraseña actual incorrecta: «La contraseña actual no es correcta.»
+  - Contraseña nueva débil: «La contraseña no cumple todos los requisitos.» (con los requisitos que faltan marcados)
+  - Confirmación distinta: «Las contraseñas no coinciden. Escribe la misma en los dos campos.»
+  - Cambio bloqueado: «Hiciste demasiados intentos con una contraseña incorrecta. Espera {N} minutos o restablece tu contraseña.»
   - Contraseña cambiada (pantalla): «Cambiamos tu contraseña y cerramos tus otras sesiones.»
   - Cerrar una sesión: «¿Cerrar la sesión en {navegador} · {sistema}? Ese dispositivo tendrá que iniciar sesión de nuevo.»
-  - Cerrar las demás: «Cerramos {n} sesiones. Solo queda abierta la de este dispositivo.»
+  - Cerrar la sesión actual: «¿Cerrar la sesión en este dispositivo?» / «Tendrás que iniciar sesión de nuevo para volver a entrar.» / «Cerrar sesión»
+  - Sesión cerrada: «Cerramos la sesión en {navegador} · {sistema}.»
+  - Confirmar «Cerrar las demás»: «¿Cerrar las demás sesiones?» / «Cerraremos {n} sesiones. Esos dispositivos tendrán que iniciar sesión de nuevo; la de este dispositivo seguirá abierta.» / «Cerrar {n} sesiones» (con n = 1: «Cerraremos 1 sesión. Ese dispositivo tendrá que iniciar sesión de nuevo; la de este dispositivo seguirá abierta.» / «Cerrar 1 sesión»)
+  - Sin otras sesiones: «No tienes otras sesiones abiertas. Si inicias sesión en otro navegador o dispositivo, aparecerá aquí.»
+  - Lista sin cargar: «No pudimos cargar tus sesiones.» más el mensaje genérico de 000 y «Reintentar»
+  - Cerrar las demás: «Cerramos {n} sesiones. Solo queda abierta la de este dispositivo.» (con n = 1: «Cerramos 1 sesión. …»)
   - Correo de recuperación: «Abre este enlace para elegir una contraseña nueva: {enlace}. Vence en 1 hora y solo
     funciona una vez. Al cambiarla cerraremos todas tus sesiones. Si no lo pediste, ignora este mensaje: tu contraseña
     no cambia.»
@@ -395,7 +407,7 @@ Todas las tomó Adrián el 2026-09-26. La numeración D-n sigue a la pregunta P-
 |---|---|---|
 | El token de acceso de una sesión revocada o de una cuenta suspendida sigue sirviendo hasta 15 min | Acceso breve después de cerrar una sesión robada | Vida corta (D-2); el refresco se corta al momento (CA-12). Si hiciera falta, una lista de `sid` revocados en Redis con TTL de 15 min, fuera de alcance |
 | El bloqueo por correo (D-5) permite a un tercero bloquear a la víctima 15 min | Molestia para el dueño | Restablecer la contraseña quita el bloqueo (CA-5); el límite por IP frena al atacante |
-| Dos pestañas renuevan a la vez y la segunda parece reúso | Sesiones cerradas sin motivo | Gracia de rotación (RN-4) y renovación desde una sola pestaña en la web; la cifra de 10 s se confirma en P-14 |
+| Dos pestañas renuevan a la vez y la segunda parece reúso | Sesiones cerradas sin motivo | Gracia de rotación (RN-4) y renovación desde una sola pestaña en la web; 10 s confirmados (P-14) |
 | Cookies entre `web` y `api` en sitios distintos | La cookie de refresco no llega | Mismo sitio en local y en staging (§10); el plan fija dominios y rutas |
 | Leer navegador y sistema del agente de usuario puede pedir una librería | Dependencia nueva | ADR menor en el plan si se agrega; si no, un analizador mínimo propio con pruebas |
 | **Plazo**: 002 depende de 001 sin atajos y el Avance 1 es el 30/09/2026 | Entrega del 30 % incompleta | Planificar 002 en paralelo con la implementación de 001; «Seguridad» es el único mockup pendiente |
@@ -426,11 +438,7 @@ Todas las tomó Adrián el 2026-09-26. La numeración D-n sigue a la pregunta P-
 
 ### Abiertas
 
-- [ABIERTA] **P-13** Recuperación pedida para una cuenta **no verificada**. (A, recomendada) Respuesta neutra y se
-  envía un enlace de **verificación** nuevo de 001, dentro de sus límites; la persona verifica y después recupera.
-  (B) Se envía el enlace de recuperación y, al restablecer, el correo queda verificado (abrir el enlace también prueba
-  que el buzón es suyo) y se publica el evento de cuenta verificada de 001. — bloquea: no
-- [ABIERTA] **P-14** ¿Confirmas **10 s** de gracia de rotación (D-3, RN-4)? — bloquea: no
+Ninguna.
 
 ### Resueltas
 
@@ -446,9 +454,14 @@ Todas las tomó Adrián el 2026-09-26. La numeración D-n sigue a la pregunta P-
 - [RESUELTA] P-10 → D-10: A, suspendida solo con la contraseña correcta; el refresco falla (2026-09-26, Adrián)
 - [RESUELTA] P-11 → D-11: A, el `ThrottlerModule` entra con 001 (2026-09-26, Adrián)
 - [RESUELTA] P-12 → D-12: lista de pantallas; mockup solo donde hace falta («Seguridad») (2026-09-26, Adrián)
+- [RESUELTA] P-13 → D-15: A, se envía un enlace de verificación nuevo en lugar del de recuperación (2026-09-26, Adrián)
+- [RESUELTA] P-14 → D-3: A, 10 s de gracia de rotación (2026-09-26, Adrián)
 
 ## 16. Registro de cambios
 
 | Fecha | Cambio | Motivo | Aprobó |
 |---|---|---|---|
 | 2026-09-26 | Creación en `Borrador` con las decisiones D-1 a D-14 (respuestas a P-1–P-12) y dos preguntas abiertas no bloqueantes (P-13, P-14). Falta el mockup de «Seguridad» para pasar a `Aclarada` | Spec de Fase 1; el dueño respondió las preguntas antes de redactar | Adrián |
+| 2026-09-26 | P-13 → D-15 (recuperación de cuenta no verificada: enlace de verificación nuevo) y P-14 → 10 s confirmados; CA-18, §6 y §13 al día. §11: mockup de «Seguridad» en `mockups/identity/seguridad/` (13 estados, capturas a 360 y 1440) y singular de «Cerramos {n} sesiones». Sin preguntas abiertas; sigue en `Borrador` hasta que el dueño apruebe las decisiones de UX del mockup | Respuestas del dueño y mockup de «Seguridad» | Adrián |
+| 2026-09-26 | **Aclarada.** El dueño aprueba las decisiones de UX del mockup de «Seguridad» (D-16) con un cambio: cerrar la sesión actual desde la lista pide confirmación (D-8, CA-14, estado `confirmar-cierre-actual`). D-7 incluye la confirmación de la contraseña nueva (estado `contrasena-no-coincide`). El bloqueo del cambio de contraseña tiene código propio, `IDENTITY_PASSWORD_CHANGE_LOCKED`, con los minutos que faltan, y cae en el intento siguiente al quinto fallo, igual que CA-5 (D-7, CA-23). §11 fija los textos aprobados | Revisión del mockup por el dueño | Adrián |
+| 2026-09-26 | D-14 alineada con ADR-0010 (aceptado): `realtime` y el guard usan el puerto de `shared` y la raíz de composición enlaza la implementación de `identity` | Aceptación de ADR-0010 | Adrián |
