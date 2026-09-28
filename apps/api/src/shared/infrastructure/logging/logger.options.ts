@@ -73,6 +73,9 @@ const buildPinoHttpOptions = (input: LoggerOptionsInput): PinoHttpOptions => ({
   customSuccessObject: withRequest,
   customErrorObject: (req, res, _error, loggable): object => withRequest(req, res, loggable),
   genReqId: (): string => CorrelationContext.get()?.correlationId ?? randomUUID(),
+  // Las líneas escritas durante la petición (p. ej. `auth.forbidden`) llevan solo `reqId`, no `req` con cabeceras y URL
+  // que el cliente controla (003 CA-16). La línea `http.request` conserva `req` serializado abajo.
+  quietReqLogger: true,
   // El `correlationId` ya lo pone el `mixin` en todas las líneas, incluida esta.
   customProps: (): Record<string, unknown> => ({ event: 'http.request' }),
   serializers: {

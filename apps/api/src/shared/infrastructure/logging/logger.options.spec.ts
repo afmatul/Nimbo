@@ -116,6 +116,7 @@ describe('buildLoggerModuleParams', () => {
     genReqId: (req: IncomingMessage, res: unknown) => string;
     customProps: (req: IncomingMessage, res: unknown) => Record<string, unknown>;
     serializers: { req: (req: Record<string, unknown>) => Record<string, unknown> };
+    quietReqLogger?: boolean;
   }
   const pinoHttpOf = (level: string): PinoHttpUnderTest => {
     const params = buildLoggerModuleParams({ level });
@@ -130,6 +131,10 @@ describe('buildLoggerModuleParams', () => {
       socket: {},
       query: { token: 'abc' },
     }) as unknown as IncomingMessage;
+
+  it('003 CA-16: las bitácoras dentro de una petición no llevan `req` (cabeceras ni URL), solo el id de la petición', () => {
+    expect(pinoHttpOf('info').quietReqLogger).toBe(true);
+  });
 
   it('CA-13: `genReqId` usa el `correlationId` ya fijado por el middleware', () => {
     const { genReqId } = pinoHttpOf('info');
