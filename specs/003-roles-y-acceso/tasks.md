@@ -168,7 +168,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   000 (`health`, `worker-health`, `bootstrap`, `correlation-id`…) siguen en verde con los guards activos.
   Archivos: `apps/api/test/int/setup/test-app.ts`, `apps/api/test/int/setup/test-app.int-spec.ts`.
 
-- [ ] **T-14** Suite de contrato, tramo HTTP — CA: CA-2 — Depende: T-13 — ~1 h
+- [x] **T-14** Suite de contrato, tramo HTTP — CA: CA-2 — Depende: T-13 — ~1 h
   Prueba primero: agregar a `access-token-verifier.contract.ts` el **tramo HTTP** (los mismos tokens del tramo puerto
   contra `GET /__probe/actor` con los guards globales: válido → 200 con el mismo `Actor`; vencido, alterado, otra clave,
   `alg: none`, `HS512`, *claims* rotos → 401 `SHARED_UNAUTHENTICATED`, y el `reason` de la bitácora coincide con el del
