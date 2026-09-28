@@ -32,6 +32,7 @@ describe('StatusPage', () => {
   beforeEach(() => {
     process.env['APP_ENV'] = 'test';
     process.env['API_INTERNAL_URL'] = 'http://api.test:3000';
+    process.env['API_PUBLIC_URL'] = 'http://localhost/api/v1';
   });
 
   it('CA-33: con `ready` en 200 muestra «Nimbo», el ambiente y «API: disponible»', async () => {
