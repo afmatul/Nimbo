@@ -96,7 +96,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   `identity/index.ts` y la reexportación en `src/index.ts`.
   Archivos: `packages/contracts/src/identity/{schemas,index}.ts`, `packages/contracts/src/identity/schemas.spec.ts`, `packages/contracts/src/index.ts`.
 
-- [ ] **T-06** [P] Migraciones `usuario` y `token_cuenta` + migraciones en el arnés — CA: CA-1, CA-3, CA-17, RN-4 — Depende: — — ~2 h
+- [x] **T-06** [P] Migraciones `usuario` y `token_cuenta` + migraciones en el arnés — CA: CA-1, CA-3, CA-17, RN-4 — Depende: — — ~2 h
   Hoy el arnés de integración **no** ejecuta migraciones: agregar primero `apps/api/test/int/setup/migrate.ts`
   (ejecuta las migraciones sobre el Postgres de Testcontainers en `global-setup.ts`, que usan también `int` e
   `isolation`). Prueba primero `apps/api/test/int/identity/schema.int-spec.ts`: rechaza un `rol` fuera de los cuatro,
@@ -680,4 +680,14 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   que desde T-05 reexporta `identity`. Hoy se cumple por construcción: `zod-validation.pipe.ts` importa únicamente
   `toFieldIssues` y recibe el esquema y la fábrica por parámetro. La regla queda para cuando llegue el lint de
   fronteras (candidata: `no-restricted-imports` con `importNames` de `identity` en `apps/api/src/shared/**`).
+- **Docker no disponible durante PR-1 (aviso de Adrián, 2026-09-28)**: no se ejecutó `pnpm test:int` ni
+  `migration:run → revert → run`. Las pruebas de integración se escribieron y pasan `lint` y `typecheck`, pero su
+  rojo y su verde **quedan sin comprobar**; hay que correrlas antes de fusionar el PR-1. Pendientes por tarea:
+  T-06 (`test/int/identity/schema.int-spec.ts`, migraciones en el arnés y la evidencia manual `run → revert ×2 → run`),
+  T-08, T-13, T-14, T-17 y T-18 (ver cada una), y las suites existentes afectadas por T-10
+  (`test/int/{shared,worker}/bootstrap.int-spec.ts`).
+- **T-06, migraciones en el arnés**: `test/int/setup/migrate.ts` no inicializa un `DataSource` dentro de Jest: lanza
+  `tsx src/scripts/migrate.ts run` (el mismo camino que `pnpm --filter api migration:run`), porque TypeORM carga las
+  migraciones `.ts` por glob y el transformador de Jest no está activo durante `globalSetup` asíncrono. Las
+  migraciones se escribieron a mano con el SQL de plan §4 (no hay entidades aún para `migration:generate`).
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
