@@ -480,7 +480,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   la siguiente funciona como CA-13.
   Archivos: `apps/api/test/int/identity/{resend-verification,rate-limits}.int-spec.ts`.
 
-- [ ] **T-50** [P] Secretos y bitácoras — CA: CA-17, CA-18, CA-19 — Depende: T-45, T-25 — ~2 h
+- [x] **T-50** [P] Secretos y bitácoras — CA: CA-17, CA-18, CA-19 — Depende: T-45, T-25 — ~2 h
   `token-secrecy.int-spec.ts` (CA-17: token sacado de Mailpit; no aparece en ninguna columna de texto de `usuario` ni
   `token_cuenta` ni en el `LogSink`; `token_hash ≠ token`; dos registros → tokens distintos). `password-hash.int-spec.ts`
   (CA-19: PHC con `m=19456,t=2,p=1`, sales distintas, `verify` correcto, ninguna respuesta con hash).
@@ -879,4 +879,5 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
 - **T-47**: `register-validation.int-spec.ts` **no se ejecutó** (sin Docker): compila y pasa `lint`/`typecheck`; su rojo y su verde quedan sin comprobar. Expectativas confirmadas con una prueba desechable (`configureHttpApp` real). Al comparar errores se ignoran `x-correlation-id`, `date`, `etag` y el `correlationId` del cuerpo. **Hallazgo**: el mensaje de `PASSWORD_COMMON` dentro de `IDENTITY_WEAK_PASSWORD` repite «Elige otra» (T-31).
 - **T-48**: `verify-email.int-spec.ts` y `verify-email-concurrency.int-spec.ts` **no se ejecutó** (sin Docker): compila y pasa `lint`/`typecheck`; su rojo y su verde quedan sin comprobar. La concurrencia levanta la app en `127.0.0.1:0` para que las dos peticiones corran en paralelo; el evento se captura con un oyente sobre `EventEmitter2`.
 - **T-49**: `resend-verification.int-spec.ts` y `rate-limits.int-spec.ts` **no se ejecutó** (sin Docker): compila y pasa `lint`/`typecheck`; su rojo y su verde quedan sin comprobar. El almacén en memoria de `@nestjs/throttler` mide con `Date.now()`, no con `IClock`: del límite por IP solo se prueba el rechazo del 11.º y que otra IP sigue; «al cumplirse el tiempo» se prueba con los límites por correo.
+- **T-50**: `token-secrecy`, `password-hash` e `identity-logs` **no se ejecutó** (sin Docker): compila y pasa `lint`/`typecheck`; su rojo y su verde quedan sin comprobar. CA-17 busca el token en `row_to_json(fila)::text`. **Posible defecto para la revisión**: sin `quietReqLogger`, nestjs-pino podría adjuntar `req` (con `x-forwarded-for`) a `identity.rate_limited`, contra plan §7 «sin IP».
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
