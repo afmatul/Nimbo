@@ -54,6 +54,17 @@ describe('identityValidationError (plan §5, ADR-0020)', () => {
     expect(error.message).toContain(IDENTITY_FIELD_MESSAGES.PASSWORD_MISSING_UPPERCASE);
   });
 
+  it('CA-5: si solo falla `PASSWORD_COMMON`, el mensaje compuesto pide cambiarla una sola vez', () => {
+    const issues = issuesOf({ ...VALID_REGISTRATION, password: 'G00dPa$$w0rd' });
+
+    const error = identityValidationError(issues);
+
+    expect(reasonsOf(error.fields)).toEqual(['password:PASSWORD_COMMON']);
+    expect(error.message).toBe(
+      'Tu contraseña no cumple estos requisitos: Esta contraseña es muy común y fácil de adivinar. Elige otra que los cumpla.',
+    );
+  });
+
   it('CA-6: con más de un campo inválido es `IDENTITY_INVALID_INPUT` con todos, incluidas las reglas de la contraseña', () => {
     const issues = issuesOf({
       ...VALID_REGISTRATION,

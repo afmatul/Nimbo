@@ -87,7 +87,7 @@ describe('IDENTITY_FIELD_MESSAGES', () => {
       'TERMS_NOT_ACCEPTED',
       'Para crear tu cuenta, acepta los Términos y la Política de privacidad.',
     ],
-    ['PASSWORD_COMMON', 'Esta contraseña es muy común y fácil de adivinar. Elige otra.'],
+    ['PASSWORD_COMMON', 'Esta contraseña es muy común y fácil de adivinar.'],
     ['PASSWORD_EQUALS_EMAIL', 'Tu contraseña no puede ser tu correo.'],
     ['PASSWORD_TOO_SHORT', '12 caracteres o más'],
     ['PASSWORD_MISSING_UPPERCASE', 'Una mayúscula'],
