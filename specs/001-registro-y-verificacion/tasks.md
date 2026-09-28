@@ -430,7 +430,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   archivo. Nota: 002-PR-2 agrega `login-ip` a la tabla y los `@SkipThrottle` cruzados; no se renombra nada.
   Archivos: `apps/api/package.json`, `apps/api/src/modules/identity/presentation/identity-ip-throttler.guard.ts` y su `*.spec.ts`.
 
-- [ ] **T-45** `AuthController`, `IdentityModule` y `AppModule` — CA: CA-1 (camino feliz), CA-8 (camino feliz) — Depende: T-21, T-36…T-44 — ~2 h
+- [x] **T-45** `AuthController`, `IdentityModule` y `AppModule` — CA: CA-1 (camino feliz), CA-8 (camino feliz) — Depende: T-21, T-36…T-44 — ~2 h
   Prueba primero `apps/api/test/int/identity/register.int-spec.ts` con solo el camino feliz de CA-1 (`202 { status:
   'accepted' }`, `Cache-Control: no-store`, sin `Set-Cookie`, fila de `usuario`, token vigente, correo en Mailpit) y
   `verify-email.int-spec.ts` con el de CA-8 (`200 { status: 'verified' }`). Luego `presentation/auth.controller.ts`
@@ -857,4 +857,21 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   un error de programación. `REGISTER_IP_THROTTLER = 'register-ip'` se exporta del archivo del guard para T-45. La
   prueba levanta una app Nest en memoria con `supertest` (sin contenedores) y se comprobó que falla con
   `setHeaders: true`.
+- **T-45, sin Docker**: `test/int/identity/{register,verify-email}.int-spec.ts` (caminos felices de CA-1 y CA-8)
+  compilan y pasan `lint`, pero **no se ejecutaron**: su rojo y su verde quedan sin comprobar. Comparten
+  `test/int/identity/identity-test-app.ts` (archivo adicional: la composición de `identity` de `AppModule` más
+  `NotificationsWorkerModule` en la misma app para que el correo llegue a Mailpit, el cuerpo válido y la lectura del
+  token del correo), que reutilizarán T-46 a T-52. Prueba unitaria adicional, **ejecutada**:
+  `presentation/auth.controller.spec.ts` (app Nest en memoria con el servicio sustituido: `202`/`200`, mapeo
+  `VERIFIED`/`ALREADY_VERIFIED`, `Cache-Control: no-store`, sin `Set-Cookie`, la fábrica de T-43 en el pipe y el
+  guard solo en `register`); se escribió antes que el controlador, pero su rojo no se corrió aparte. Se comprobó
+  además, con una prueba desechable sin BD ni Redis, que `IdentityModule.forRoot` resuelve todas sus dependencias.
+  Decisiones: (a) `identity/index.ts` exporta además `IDENTITY_THROTTLERS` (la lista de *throttlers* vive junto al
+  guard y su tabla de ámbitos; `AppModule` la registra con `ThrottlerModule.forRoot` sin repetir el nombre
+  `register-ip`, y 002-PR-2 solo le agrega `login-ip`); `index.spec.ts` fija `['CLIENT_ACCOUNT_VERIFIED',
+  'IDENTITY_THROTTLERS', 'IdentityModule']`; (b) `IdentityModule` importa `NotificationsModule` (necesita `I_MAILER`,
+  que no es global); `AppModule` también lo lista, como pide plan §6.8; (c) `Cache-Control: no-store` se fija con
+  `@Header` en cada ruta: cubre las respuestas correctas (las de CA-1 y CA-8); las de error (`422`/`429`) las escribe
+  `DomainExceptionFilter` sin esa cabecera, que no guarda nada sensible y no se almacena por defecto. Si la revisión
+  lo quiere en toda respuesta, basta un *middleware* de `IdentityModule` para `AuthController`.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>

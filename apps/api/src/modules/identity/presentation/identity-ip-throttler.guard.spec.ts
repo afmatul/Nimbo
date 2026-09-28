@@ -2,13 +2,18 @@ import { Catch, Controller, HttpCode, Post, UseGuards } from '@nestjs/common';
 import type { ArgumentsHost, ExceptionFilter, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { REGISTRATIONS_PER_IP_PER_HOUR } from '@nimbo/contracts';
 import type { Response } from 'express';
 import { PinoLogger } from 'nestjs-pino';
 import request from 'supertest';
 
 import { IdentityTooManyRequestsError } from '../domain/errors';
 
-import { IdentityIpThrottlerGuard, REGISTER_IP_THROTTLER } from './identity-ip-throttler.guard';
+import {
+  IDENTITY_THROTTLERS,
+  IdentityIpThrottlerGuard,
+  REGISTER_IP_THROTTLER,
+} from './identity-ip-throttler.guard';
 
 const LIMIT = 2;
 const TTL_MS = 3_600_000;
@@ -112,5 +117,11 @@ describe('IdentityIpThrottlerGuard (ADR-0017, plan §6.5)', () => {
       retryAfterSeconds: (filter.caught[0] as IdentityTooManyRequestsError).retryAfterSeconds,
     });
     expect(JSON.stringify(payload)).not.toMatch(/127\.0\.0\.1|::1|::ffff/);
+  });
+
+  it('CA-15: `IDENTITY_THROTTLERS` define `register-ip` con `REGISTRATIONS_PER_IP_PER_HOUR` por hora', () => {
+    expect(IDENTITY_THROTTLERS).toEqual([
+      { name: REGISTER_IP_THROTTLER, ttl: TTL_MS, limit: REGISTRATIONS_PER_IP_PER_HOUR },
+    ]);
   });
 });

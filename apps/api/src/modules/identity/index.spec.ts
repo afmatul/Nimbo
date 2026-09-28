@@ -2,8 +2,12 @@ import * as identity from './index';
 import type { ClientAccountVerifiedEvent } from './index';
 
 describe('API pública de `identity`', () => {
-  it('CA-8: exporta solo el nombre del evento de cuenta verificada (plan §5; `IdentityModule` llega en T-45)', () => {
-    expect(Object.keys(identity).sort()).toEqual(['CLIENT_ACCOUNT_VERIFIED']);
+  it('CA-8: exporta el módulo, los *throttlers* para `AppModule` y el nombre del evento de cuenta verificada (plan §5)', () => {
+    expect(Object.keys(identity).sort()).toEqual([
+      'CLIENT_ACCOUNT_VERIFIED',
+      'IDENTITY_THROTTLERS',
+      'IdentityModule',
+    ]);
     expect(identity.CLIENT_ACCOUNT_VERIFIED).toBe('identity.client-account-verified');
   });
 
