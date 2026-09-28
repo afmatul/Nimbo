@@ -7,7 +7,6 @@ import { createActor } from '../../domain/actor';
 import { UnauthenticatedError } from '../../domain/errors';
 import { Role } from '../../domain/role.enum';
 
-
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { Public } from './public.decorator';
 import { RequestPrincipal } from './request-principal';

@@ -133,7 +133,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   cabecera. Luego la implementación.
   Archivos: `apps/api/src/shared/presentation/auth/jwt-auth.guard.ts`, `apps/api/src/shared/presentation/auth/jwt-auth.guard.spec.ts`.
 
-- [ ] **T-10** [P] `RolesGuard` y bitácora `auth.forbidden` — CA: CA-5, CA-6, CA-16, DT-2 — Depende: T-04, T-07 — ~1 h
+- [x] **T-10** [P] `RolesGuard` y bitácora `auth.forbidden` — CA: CA-5, CA-6, CA-16, DT-2 — Depende: T-04, T-07 — ~1 h
   Prueba primero `apps/api/src/shared/presentation/auth/roles.guard.spec.ts`: ruta pública → `true`; sin `@Roles` →
   `undeclared_route` → `InsufficientRoleError`; rol no listado → `role_not_allowed`; `@Roles` de método sobrescribe al
   de clase; sin `Actor` → `UnauthenticatedError`; los rechazos registran `auth.forbidden` (`warn`) con `route`,
