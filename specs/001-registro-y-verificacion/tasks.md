@@ -170,7 +170,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   encima).
   Archivos: `apps/api/src/shared/application/persistence/i-transaction-runner.port.ts`, `apps/api/src/shared/infrastructure/persistence/{transaction-context,typeorm-transaction-runner}.ts`, `apps/api/test/int/shared/transaction-runner.int-spec.ts`.
 
-- [ ] **T-15** `ZodValidationPipe` (ADR-0020) — CA: CA-6, CA-7 — Depende: T-01, T-07 — ~1 h
+- [x] **T-15** `ZodValidationPipe` (ADR-0020) — CA: CA-6, CA-7 — Depende: T-01, T-07 — ~1 h
   Prueba primero `apps/api/src/shared/presentation/zod-validation.pipe.spec.ts` (esquema y fábrica de prueba): cuerpo
   válido → valor parseado; inválido → lanza lo que devuelve la fábrica con los `FieldIssue[]` de `toFieldIssues`;
   cuerpo `undefined` o `{}` (llega así con `text/plain`) → la fábrica recibe los `REQUIRED`. `shared` no importa nada de
@@ -675,4 +675,9 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   `string[]`. Fuera de la lista de archivos se ajustaron los entornos explícitos de
   `test/int/{shared,worker}/bootstrap.int-spec.ts`, `test/int/setup/global-setup.ts` y
   `minio-config.module.spec.ts` para las variables nuevas obligatorias.
+- **T-15, «`shared` no importa `contracts/identity`» (sin regla de lint)**: el lint de fronteras
+  (`boundaries.js`, anunciado en `packages/config/eslint/nest.js`) aún no existe, y `contracts` solo expone su raíz,
+  que desde T-05 reexporta `identity`. Hoy se cumple por construcción: `zod-validation.pipe.ts` importa únicamente
+  `toFieldIssues` y recibe el esquema y la fábrica por parámetro. La regla queda para cuando llegue el lint de
+  fronteras (candidata: `no-restricted-imports` con `importNames` de `identity` en `apps/api/src/shared/**`).
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
