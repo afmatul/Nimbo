@@ -1,36 +1,31 @@
 import { AccessLevel } from '../access-level.enum';
 import { Action } from '../action.enum';
+import { accessPoliciesMap, policyFor } from './access-policies';
 
-import { ACCESS_POLICIES, policyFor } from './access-policies';
+const EXPECTED: Readonly<Record<Action, Readonly<Record<AccessLevel, boolean>>>> = {
+  [Action.VIEW]: { OWNER: true, EDITOR: true, VIEWER: true },
+  [Action.PREVIEW]: { OWNER: true, EDITOR: true, VIEWER: true },
+  [Action.DOWNLOAD]: { OWNER: true, EDITOR: true, VIEWER: true },
+  [Action.QUERY_AGENT]: { OWNER: true, EDITOR: true, VIEWER: true },
+  [Action.EDIT]: { OWNER: true, EDITOR: true, VIEWER: false },
+  [Action.CREATE_VERSION]: { OWNER: true, EDITOR: true, VIEWER: false },
+  [Action.SHARE]: { OWNER: true, EDITOR: false, VIEWER: false },
+  [Action.CREATE_PUBLIC_LINK]: { OWNER: true, EDITOR: false, VIEWER: false },
+  [Action.VIEW_ACCESS_LIST]: { OWNER: true, EDITOR: false, VIEWER: false },
+  [Action.MOVE]: { OWNER: true, EDITOR: false, VIEWER: false },
+  [Action.DELETE]: { OWNER: true, EDITOR: false, VIEWER: false },
+};
 
-// Tabla de plan §6.5: [acción, Owner, Editor, Viewer].
-const TABLE: ReadonlyArray<readonly [Action, boolean, boolean, boolean]> = [
-  [Action.VIEW, true, true, true],
-  [Action.PREVIEW, true, true, true],
-  [Action.DOWNLOAD, true, true, true],
-  [Action.QUERY_AGENT, true, true, true],
-  [Action.EDIT, true, true, false],
-  [Action.CREATE_VERSION, true, true, false],
-  [Action.SHARE, true, false, false],
-  [Action.CREATE_PUBLIC_LINK, true, false, false],
-  [Action.VIEW_ACCESS_LIST, true, false, false],
-  [Action.MOVE, true, false, false],
-  [Action.DELETE, true, false, false],
-];
-
-describe('políticas de acceso (CA-8)', () => {
-  it('CA-8: la tabla cubre exactamente las once acciones', () => {
-    expect(TABLE.map(([action]) => action).sort()).toEqual(Object.values(Action).sort());
-    expect(Object.values(Action)).toHaveLength(11);
+describe('políticas de acceso', () => {
+  it('cubre los tres niveles y las once acciones', () => {
+    for (const action of Object.values(Action)) {
+      for (const level of Object.values(AccessLevel)) {
+        expect(policyFor(level).allows(action)).toBe(EXPECTED[action][level]);
+      }
+    }
   });
 
-  it.each(TABLE)('CA-8: %s → Owner %s, Editor %s, Viewer %s', (action, owner, editor, viewer) => {
-    expect(policyFor(AccessLevel.OWNER).allows(action)).toBe(owner);
-    expect(policyFor(AccessLevel.EDITOR).allows(action)).toBe(editor);
-    expect(policyFor(AccessLevel.VIEWER).allows(action)).toBe(viewer);
-  });
-
-  it('CA-8: una acción desconocida queda negada para Editor y Viewer y permitida para Owner', () => {
+  it('niega un Action desconocido a Editor y Viewer, y se lo permite al Owner', () => {
     const unknown = 'RENAME' as Action;
 
     expect(policyFor(AccessLevel.OWNER).allows(unknown)).toBe(true);
@@ -38,14 +33,12 @@ describe('políticas de acceso (CA-8)', () => {
     expect(policyFor(AccessLevel.VIEWER).allows(unknown)).toBe(false);
   });
 
-  it('CA-8: policyFor devuelve la política de cada nivel', () => {
-    for (const level of Object.values(AccessLevel)) {
-      expect(policyFor(level).level).toBe(level);
-    }
-  });
+  it('congela el mapa y resuelve cada nivel', () => {
+    const map = accessPoliciesMap();
 
-  it('CA-8: el mapa de políticas está congelado y cubre los tres niveles', () => {
-    expect(Object.isFrozen(ACCESS_POLICIES)).toBe(true);
-    expect(Object.keys(ACCESS_POLICIES).sort()).toEqual(Object.values(AccessLevel).sort());
+    expect(Object.isFrozen(map)).toBe(true);
+    expect(policyFor(AccessLevel.OWNER).level).toBe(AccessLevel.OWNER);
+    expect(policyFor(AccessLevel.EDITOR).level).toBe(AccessLevel.EDITOR);
+    expect(policyFor(AccessLevel.VIEWER).level).toBe(AccessLevel.VIEWER);
   });
 });

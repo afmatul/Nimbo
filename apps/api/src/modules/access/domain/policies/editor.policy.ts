@@ -3,8 +3,7 @@ import { Action } from '../action.enum';
 
 import type { IAccessPolicy } from './i-access-policy';
 
-// Cerrado por defecto: lo que no está aquí queda negado.
-const EDITOR_ALLOWED: ReadonlySet<Action> = new Set([
+const ALLOWED: ReadonlySet<Action> = new Set([
   Action.VIEW,
   Action.PREVIEW,
   Action.DOWNLOAD,
@@ -13,10 +12,10 @@ const EDITOR_ALLOWED: ReadonlySet<Action> = new Set([
   Action.CREATE_VERSION,
 ]);
 
-export class EditorPolicy implements IAccessPolicy {
-  readonly level = AccessLevel.EDITOR;
-
+/** Lo que no está en el conjunto queda negado, también un valor nuevo de `Action` (DT-10). */
+export const editorPolicy: IAccessPolicy = Object.freeze({
+  level: AccessLevel.EDITOR,
   allows(action: Action): boolean {
-    return EDITOR_ALLOWED.has(action);
-  }
-}
+    return ALLOWED.has(action);
+  },
+});

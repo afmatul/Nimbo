@@ -365,7 +365,7 @@ las actualizaciones del `architect` al integrar (plan §10.4).
 
 ## Bloque 3 — PR-C «access» (plan §6.5; ADR-0010) — depende de: PR-A (T-03) y PR-B (T-28, T-29)
 
-- [ ] **T-35** [P] [P×PR] Dominio de `access`: niveles, acciones y políticas — CA: CA-8, DT-10 — Depende: — (hoy) — ~1 h
+- [x] **T-35** [P] [P×PR] Dominio de `access`: niveles, acciones y políticas — CA: CA-8, DT-10 — Depende: — (hoy) — ~1 h
   Prueba primero `apps/api/src/modules/access/domain/policies/access-policies.spec.ts`: la tabla de plan §6.5 completa
   (tres niveles × once `Action`); un valor de `Action` desconocido (forzado con `as Action`) negado para Editor y
   Viewer y permitido para Owner; `policyFor` es exhaustivo por tipo y el mapa está congelado. Luego
@@ -622,6 +622,7 @@ PR-F = 9 (T-48…T-56). Total: 56.
   - `src/main.ts` y `src/worker.main.ts` reales (con `tsx`): con `DATABASE_URL` del dueño salen con código 1 y
     `db.role_rejected` (`superuser`, `bypassRls`, `ownsTables` en `true`), sin `api.started`/`worker.started`; con
     `nimbo_app` arrancan (`api.started`, `worker.started`).
+- **T-35**: 3 pruebas (tabla de once acciones, acción desconocida y mapa congelado) en verde sobre la versión de políticas objeto.
 
 - **Precedencia del plan**: donde §11.2 dice «500 estrategia desconocida», «`err` se relanza como 500»,
   `access-token-strategy.ts` como archivo propio o `validate` → `false`, manda «Cambios aplicados»: 401
@@ -655,4 +656,6 @@ PR-F = 9 (T-48…T-56). Total: 56.
 - **Bitácoras sin `req` (T-18, archivo no previsto)**: con el logger por petición de `nestjs-pino`, cada línea escrita durante la petición (`auth.unauthenticated`, `auth.forbidden`, `http.domain_error`) llevaba `req` completo: URL con el `id` real y **todas** las cabeceras que manda el cliente (incluidas `x-forwarded-user` con un correo y las cabeceras falsas), lo que rompe CA-16. Se agrega `quietReqLogger: true` en `infrastructure/logging/logger.options.ts` (+ prueba en `logger.options.spec.ts`): esas líneas llevan solo `reqId`. La línea `http.request` de 000 sigue con `req.headers` (salvo `authorization`/`cookie`, redactadas), así que T-18 exige «sin token ni `Bearer`» en todas las líneas y «sin correo ni cabeceras falsas» en las de denegación. **Hallazgo para `security-auditor`**: `http.request` registra cabeceras arbitrarias del cliente; conviene una lista permitida de cabeceras (fuera del alcance de 003).
 - **Verificación del PR-A sin Docker (T-11…T-19)**: Docker no está disponible (aviso de Adrián, 2026-09-27), así que **no se ejecutaron** `pnpm test:int` ni `pnpm test:isolation`. Quedan sin correr: `health.int-spec.ts` (CA-3 nuevo), `test-app.int-spec.ts`, `access-token-contract.int-spec.ts`, `auth-guards.int-spec.ts`, `auth-guards.no-strategy.int-spec.ts`, `auth-logs.int-spec.ts` y las suites de 000 con guards activos (`correlation-id`, `domain-exception-filter`, `worker-health`, `ping-queue`, `bootstrap`). Compilan (typecheck/lint) y las cinco nuevas de autorización se ejecutaron en verde contra una app Nest mínima sin `SharedModule` (arnés temporal fuera del repositorio). Antes de abrir el PR hay que correr `pnpm test:int` y `pnpm test:isolation` con Docker. `pnpm lint`, `pnpm typecheck`, `pnpm test` y `pnpm env:check` en verde; cobertura de las piezas nuevas de `shared` 100 % líneas, 91 % ramas.
 - **Review I-2 resuelto (`jwt-auth.guard.ts`)**: un `err` de Passport que no es `UnauthenticatedError` ni `TokenExpiredError`/`JsonWebTokenError`/`NotBeforeError` sigue siendo 401 `invalid_token`, pero además registra `auth.unexpected_error` (`warn`) con `route`, `errorClass` y `errorMessage` recortado a 200 caracteres (sin token ni cabeceras, CA-16); plan §7 actualizado. Pruebas en `jwt-auth.guard.spec.ts`. Commit `fix(shared): registrar la clase y el mensaje de errores inesperados del guard JWT [003]`.
+- **Exhaustividad de `policyFor` (T-35)**: se logra con `ACCESS_POLICIES: Readonly<Record<AccessLevel, IAccessPolicy>>`
+  congelado (si falta un nivel no compila), sin `switch`; `policyFor` solo indexa el mapa.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>

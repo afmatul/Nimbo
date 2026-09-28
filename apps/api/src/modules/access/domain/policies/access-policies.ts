@@ -1,17 +1,32 @@
 import { AccessLevel } from '../access-level.enum';
 
-import { EditorPolicy } from './editor.policy';
+import { editorPolicy } from './editor.policy';
 import type { IAccessPolicy } from './i-access-policy';
-import { OwnerPolicy } from './owner.policy';
-import { ViewerPolicy } from './viewer.policy';
+import { ownerPolicy } from './owner.policy';
+import { viewerPolicy } from './viewer.policy';
 
-// `Record` exige una política por nivel: si falta uno, no compila.
-export const ACCESS_POLICIES: Readonly<Record<AccessLevel, IAccessPolicy>> = Object.freeze({
-  [AccessLevel.OWNER]: new OwnerPolicy(),
-  [AccessLevel.EDITOR]: new EditorPolicy(),
-  [AccessLevel.VIEWER]: new ViewerPolicy(),
+const POLICIES: Readonly<Record<AccessLevel, IAccessPolicy>> = Object.freeze({
+  [AccessLevel.OWNER]: ownerPolicy,
+  [AccessLevel.EDITOR]: editorPolicy,
+  [AccessLevel.VIEWER]: viewerPolicy,
 });
 
+/** Exhaustivo por tipo: un nivel nuevo no compila hasta tener política. */
 export function policyFor(level: AccessLevel): IAccessPolicy {
-  return ACCESS_POLICIES[level];
+  switch (level) {
+    case AccessLevel.OWNER:
+      return POLICIES[AccessLevel.OWNER];
+    case AccessLevel.EDITOR:
+      return POLICIES[AccessLevel.EDITOR];
+    case AccessLevel.VIEWER:
+      return POLICIES[AccessLevel.VIEWER];
+    default: {
+      const exhaustive: never = level;
+      return exhaustive;
+    }
+  }
+}
+
+export function accessPoliciesMap(): Readonly<Record<AccessLevel, IAccessPolicy>> {
+  return POLICIES;
 }

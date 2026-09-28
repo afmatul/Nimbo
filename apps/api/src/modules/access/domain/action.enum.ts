@@ -1,4 +1,3 @@
-/** Acciones sobre un nodo que decide `PermissionResolver` (plan 003 §6.5). */
 export enum Action {
   VIEW = 'VIEW',
   PREVIEW = 'PREVIEW',
