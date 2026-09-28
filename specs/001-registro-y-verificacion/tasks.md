@@ -598,7 +598,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   `app/(public)/registro/pedir-enlace/page.spec.tsx`. Luego `RequestLinkForm` y la página.
   Archivos: `apps/web/src/features/identity/components/request-link-form.tsx`, `apps/web/src/app/(public)/registro/pedir-enlace/page.tsx` y sus `*.spec.tsx`.
 
-- [ ] **T-66** Página de verificación — CA: CA-8, CA-9, CA-10, CA-11, CA-23, CA-28 — Depende: T-57, T-58, T-60 — ~2 h
+- [x] **T-66** Página de verificación — CA: CA-8, CA-9, CA-10, CA-11, CA-23, CA-28 — Depende: T-57, T-58, T-60 — ~2 h
   Prueba primero `verify-email-view.spec.tsx` y `hooks/use-verify-email.spec.ts`: lee `#token`, lo borra con
   `history.replaceState` antes del `POST`; **un solo** `POST` dentro de `<StrictMode>`; estados **verificando**,
   **exito** («¡Listo! Tu correo está verificado.» e «Iniciar sesión» mientras no exista 002), **plan-de-pago-elegido**
@@ -670,6 +670,7 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
 - **T-63**: «Revisa tu correo» muestra el correo y las 24 horas, sin casillas de código. «Reenviar enlace» espera 60 s; un 429 usa `Retry-After`.
 - **T-64**: el catálogo se lee en `GET {API_INTERNAL_URL}/plans` (ruta provisional hasta el contrato de 006a). Un 404, un error o más de 2 s muestra catalogo-no-disponible y el formulario sigue. `revalidate` es 60. El plan de pago se guarda al enviar; «Cambiar correo» conserva nombre y plan.
 - **T-65**: pedir enlace valida con `resendVerificationRequestSchema`. El éxito muestra el mismo panel para cualquier correo. El prellenado usa `sessionStorage` (`nimbo.registro.correo`), nunca la URL.
+- **T-66**: el fragmento se borra con `replaceState` antes del `POST`, y StrictMode no lo repite. `page.tsx` queda en el servidor para pasar `API_PUBLIC_URL` sin `NEXT_PUBLIC_*`; el Client Component es `VerifyEmailView`. Sin 002, el éxito ofrece «Iniciar sesión».
 
 - **Catálogo de 006a (T-64)**: el plan fija qué necesita 001 (lectura pública de planes activos con `id`, nombre, precio
   en centavos y marca de gratuito, PD-40) pero no la ruta ni el esquema, que son de 006a. `plan-catalog.ts` aísla esa
