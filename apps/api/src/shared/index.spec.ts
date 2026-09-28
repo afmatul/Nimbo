@@ -59,6 +59,7 @@ const RUNTIME_EXPORTS_BY_TASK = {
   ],
   '001 T-17': ['configureHttpApp'],
   '003 T-03': ['createActor', 'ALL_ROLES'],
+  '003 T-05': ['ACCESS_TOKEN_STRATEGY', 'I_ACCESS_TOKEN_VERIFIER'],
 } as const;
 
 const ALL_RUNTIME_EXPORTS: readonly string[] = Object.values(RUNTIME_EXPORTS_BY_TASK).flat();
@@ -140,6 +141,11 @@ describe('shared/index.ts (CA-17)', () => {
   it('CA-4: exporta `createActor` y `ALL_ROLES` (003 T-03)', () => {
     expectExportsOf('003 T-03');
     expect(shared.createActor('id', shared.Role.CLIENT).canReadContent).toBe(true);
+  });
+  it('CA-2: exporta el puerto `IAccessTokenVerifier` y el nombre de la estrategia (003 T-05)', () => {
+    expectExportsOf('003 T-05');
+    expect(shared.ACCESS_TOKEN_STRATEGY).toBe('jwt');
+    expect(typeof shared.I_ACCESS_TOKEN_VERIFIER).toBe('symbol');
   });
   it('CA-17: exporta exactamente la lista del plan §6.2 al cerrar el bloque 2 (T-26)', () => {
     expect(exportedKeys()).toEqual([...ALL_RUNTIME_EXPORTS].sort());

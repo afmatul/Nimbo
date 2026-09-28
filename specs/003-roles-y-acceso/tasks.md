@@ -86,7 +86,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   desde `presentation`. Luego las clases y `errors/index.ts`.
   Archivos: `apps/api/src/shared/domain/errors/{unauthenticated,insufficient-role}.error.ts`, `apps/api/src/shared/domain/errors/{index.ts,auth-errors.spec.ts}`, `apps/api/src/shared/presentation/auth/roles-contract.spec.ts`.
 
-- [ ] **T-05** Puerto `IAccessTokenVerifier` y `ACCESS_TOKEN_STRATEGY` — CA: CA-2 — Depende: T-03 — ~0,5 h
+- [x] **T-05** Puerto `IAccessTokenVerifier` y `ACCESS_TOKEN_STRATEGY` — CA: CA-2 — Depende: T-03 — ~0,5 h
   Prueba primero en `apps/api/src/shared/index.spec.ts`: `shared` exporta `ACCESS_TOKEN_STRATEGY === 'jwt'` e
   `I_ACCESS_TOKEN_VERIFIER` (símbolo). Luego `i-access-token-verifier.port.ts` con `ACCESS_TOKEN_STRATEGY`,
   `I_ACCESS_TOKEN_VERIFIER`, `AccessTokenClaims`, `AccessTokenVerification` e `IAccessTokenVerifier` tal como plan §5

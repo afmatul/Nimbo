@@ -16,6 +16,15 @@ export { FixedClock } from './domain/fixed.clock';
 export { I_CLOCK } from './domain/i-clock.port';
 export type { IClock } from './domain/i-clock.port';
 export { ALL_ROLES, Role } from './domain/role.enum';
+export {
+  ACCESS_TOKEN_STRATEGY,
+  I_ACCESS_TOKEN_VERIFIER,
+} from './application/auth/i-access-token-verifier.port';
+export type {
+  AccessTokenClaims,
+  AccessTokenVerification,
+  IAccessTokenVerifier,
+} from './application/auth/i-access-token-verifier.port';
 export type { IHealthIndicator } from './application/health/i-health-indicator.port';
 export { I_TRANSACTION_RUNNER } from './application/persistence/i-transaction-runner.port';
 export type { ITransactionRunner } from './application/persistence/i-transaction-runner.port';
