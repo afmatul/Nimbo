@@ -495,7 +495,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   `correlationId` de la petición y `recipientId` = id de la cuenta; después se puede pedir otro enlace (CA-13).
   Archivos: `apps/api/test/int/notifications/mail-degradation.int-spec.ts`.
 
-- [ ] **T-52** Aislamiento: anti-enumeración — CA: CA-14, CA-15, CA-5, CA-6 — Depende: T-45 — ~2 h
+- [x] **T-52** Aislamiento: anti-enumeración — CA: CA-14, CA-15, CA-5, CA-6 — Depende: T-45 — ~2 h
   `apps/api/test/isolation/identity-enumeration.iso-spec.ts` (corre en `pnpm test:isolation`): para los cuatro tipos de
   correo (inexistente, no verificado, verificado, interno) la misma secuencia de peticiones de registro y de reenvío
   produce la misma secuencia de `status` (`202`/`429`), cuerpos idénticos y **las mismas cabeceras** salvo
@@ -881,4 +881,5 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
 - **T-49**: `resend-verification.int-spec.ts` y `rate-limits.int-spec.ts` **no se ejecutó** (sin Docker): compila y pasa `lint`/`typecheck`; su rojo y su verde quedan sin comprobar. El almacén en memoria de `@nestjs/throttler` mide con `Date.now()`, no con `IClock`: del límite por IP solo se prueba el rechazo del 11.º y que otra IP sigue; «al cumplirse el tiempo» se prueba con los límites por correo.
 - **T-50**: `token-secrecy`, `password-hash` e `identity-logs` **no se ejecutó** (sin Docker): compila y pasa `lint`/`typecheck`; su rojo y su verde quedan sin comprobar. CA-17 busca el token en `row_to_json(fila)::text`. **Posible defecto para la revisión**: sin `quietReqLogger`, nestjs-pino podría adjuntar `req` (con `x-forwarded-for`) a `identity.rate_limited`, contra plan §7 «sin IP».
 - **T-51**: variante de registro en `mail-degradation.int-spec.ts` **no se ejecutó** (sin Docker): compila y pasa `lint`/`typecheck`; su rojo y su verde quedan sin comprobar. Compone la app localmente porque `createIdentityTestApp` no acepta `env`; pruebas dependientes del orden.
+- **T-52**: `identity-enumeration.iso-spec.ts` (incluida en `test:isolation`) **no se ejecutó** (sin Docker): compila y pasa `lint`/`typecheck`; su rojo y su verde quedan sin comprobar. Mismo `x-correlation-id` en las peticiones equivalentes para comparar cuerpos y cabeceras byte a byte (solo se excluye `date`).
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
