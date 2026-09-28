@@ -58,7 +58,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   clave con `UNKNOWN_FIELD`). Luego `error.ts` y `validation.ts`; `index.ts` los exporta. Sin nada de `identity` en la raíz.
   Archivos: `packages/contracts/src/{error,validation,index}.ts`, `packages/contracts/src/{error,validation}.spec.ts`.
 
-- [ ] **T-02** [P] `contracts/identity`: parámetros, documentos legales y códigos de error — CA: CA-1 (versión), CA-15 (mensaje), CA-23 — Depende: — — ~1 h
+- [x] **T-02** [P] `contracts/identity`: parámetros, documentos legales y códigos de error — CA: CA-1 (versión), CA-15 (mensaje), CA-23 — Depende: — — ~1 h
   Prueba primero `packages/contracts/src/identity/constants.spec.ts`: los valores de §6 de la spec
   (`VERIFICATION_LINK_TTL_HOURS = 24`, `EMAIL_REQUEST_COOLDOWN_SECONDS = 60`, `EMAIL_REQUESTS_PER_HOUR = 5`,
   `REGISTRATIONS_PER_IP_PER_HOUR = 10`, `MAX_AVISOS_INTENTO_24H = 1`, `FULL_NAME_MAX_LENGTH = 100`,
