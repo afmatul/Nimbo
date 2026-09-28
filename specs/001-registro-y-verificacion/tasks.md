@@ -327,7 +327,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   prueban a través de T-34 a T-40.
   Archivos: `apps/api/src/modules/identity/application/ports/*.ts`, `apps/api/src/modules/identity/application/identity-config.ts`.
 
-- [ ] **T-33** [P] Plantillas de correo — CA: CA-1, CA-2 — Depende: — — ~1,5 h
+- [x] **T-33** [P] Plantillas de correo — CA: CA-1, CA-2 — Depende: — — ~1,5 h
   Prueba primero `application/mail/verification-mail.template.spec.ts` (asunto «Verifica tu correo para entrar a
   Nimbo»; texto y HTML con el enlace `http://localhost/verificar-correo#token=…`, «24 horas», «solo funciona una vez»,
   «No reenvíes este correo: quien abra el enlace entrará a tu cuenta», qué hacer si no pediste el registro; no contiene
@@ -774,4 +774,13 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   con 1 («en 1 minuto») y como mínimo 1, porque la espera típica es de 60 s; (c) `IdentityWeakPasswordError` une los
   mensajes de los requisitos con «; » y quita su punto final. El dominio importa de `shared/domain/errors` y no de
   `shared/index.ts` (que arrastra Nest). `index.spec.ts` fija `['CLIENT_ACCOUNT_VERIFIED']`; T-45 agrega `IdentityModule`.
+- **T-33, plantillas contra el mockup (para el `ui-designer`)**: se siguió la spec y la tarea donde el mockup
+  difiere: asunto «Verifica tu correo para entrar a Nimbo» (el mockup dice «Confirma tu correo en Nimbo»; se conserva
+  «Confirma tu correo» como título); enlace con `#token=` (el mockup usa `?token=`, contrario a RN-8); el aviso de
+  intento **no** repite el correo (la tarea pide no incluir el correo del solicitante, que es el mismo). Sin saludo por
+  nombre en ninguno de los dos: en el de verificación el nombre lo escribe quien pide el registro, que puede no ser el
+  dueño del buzón (texto controlado por un tercero). El botón usa `#4A6FA5` (azul profundo) y no `#6B8DD6`, porque el
+  blanco sobre el azul pizarra no llega a AA. Piezas comunes en `application/mail/{mail-layout,escape-html}.ts`.
+  Las plantillas reciben las URL ya armadas; la ruta de recuperación (`/recuperar-contrasena`) la fija T-35 y **debe
+  confirmarla 002** (su plan aún no existe).
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
