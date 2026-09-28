@@ -50,7 +50,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
 
 ## Bloque 1 — PR-1 «contratos, migraciones y shared» (plan §6.12; ADR-0020)
 
-- [ ] **T-01** [P] Contratos raíz: `fields` en `ErrorResponse` y `toFieldIssues` genérica — CA: CA-5, CA-6 (forma del error) — Depende: — — ~1,5 h
+- [x] **T-01** [P] Contratos raíz: `fields` en `ErrorResponse` y `toFieldIssues` genérica — CA: CA-5, CA-6 (forma del error) — Depende: — — ~1,5 h
   Prueba primero: `packages/contracts/src/error.spec.ts` (un error sin `fields` sigue idéntico al de 000 CA-16; con
   `fields: [{ field, reason, message }]` es válido; `reason` exige `SCREAMING_SNAKE`; el objeto sigue `.strict()`) y
   `validation.spec.ts` (un `ZodError` con `params.reason` produce ese `reason`; sin él, `REQUIRED` para ausente e

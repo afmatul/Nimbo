@@ -10,5 +10,6 @@ export type {
   HealthLiveResponse,
   HealthReadyResponse,
 } from './health';
-export { errorResponseSchema } from './error';
-export type { ErrorResponse } from './error';
+export { errorResponseSchema, fieldIssueSchema } from './error';
+export type { ErrorResponse, FieldIssueResponse } from './error';
+export { INVALID_REASON, REQUIRED_REASON, UNKNOWN_FIELD_REASON, toFieldIssues } from './validation';
