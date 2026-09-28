@@ -7,6 +7,7 @@ import {
   ForbiddenError,
   InvalidInputError,
   NotFoundError,
+  Public,
   TooManyRequestsError,
   UnauthorizedError,
 } from '../../../src/shared';
@@ -41,7 +42,8 @@ const RETRY_AFTER_SECONDS = 90;
 
 const NOT_FOUND_MESSAGE = 'No existe el recurso solicitado. Verifica el identificador.';
 
-/** Controlador de prueba (spec CA-16): cada ruta lanza un tipo de error. */
+/** Controlador de prueba (spec CA-16): cada ruta lanza un tipo de error. Público: no prueba autorización. */
+@Public()
 @Controller('errors-probe')
 class ErrorsProbeController {
   @Get('not-found')

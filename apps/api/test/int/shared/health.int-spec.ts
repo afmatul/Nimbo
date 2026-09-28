@@ -1,7 +1,6 @@
 import request from 'supertest';
 
 import {
-  AuthGuardsModule,
   HealthModule,
   MinioHealthIndicator,
   PostgresHealthIndicator,
@@ -42,7 +41,6 @@ describe('GET /api/v1/health (CA-20, CA-21, CA-22)', () => {
     testApp = await createTestApp({
       env: infra.env(),
       modules: [
-        AuthGuardsModule,
         HealthModule.forRoot({
           indicators: [PostgresHealthIndicator, RedisHealthIndicator, MinioHealthIndicator],
         }),
