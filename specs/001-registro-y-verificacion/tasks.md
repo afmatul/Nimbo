@@ -239,7 +239,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   `worker`; modos `none`/`starttls`/`implicit`).
   Archivos: `apps/api/package.json`, `apps/api/src/modules/notifications/infrastructure/smtp-transport.ts`, `apps/api/test/int/setup/{containers,mailpit}.ts`, `apps/api/test/int/notifications/smtp-transport.int-spec.ts`.
 
-- [ ] **T-23** `MailProcessor` (idempotencia y bitácoras) — CA: CA-18, CA-21 — Depende: T-20, T-22 — ~2 h
+- [x] **T-23** `MailProcessor` (idempotencia y bitácoras) — CA: CA-18, CA-21 — Depende: T-20, T-22 — ~2 h
   Prueba primero `apps/api/src/modules/notifications/infrastructure/mail.processor.spec.ts` (transporte y Redis falsos):
   corre dentro de `CorrelationContext.run` con el `correlationId` del trabajo y `jobId`; sin marca `mail:sent:<jobId>`
   envía y escribe la marca con `SET NX EX 604800`; con marca no envía y registra `mail.duplicate_skipped`; si el
