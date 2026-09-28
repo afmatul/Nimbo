@@ -563,7 +563,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   `api.spec.ts` (`register`, `resendVerification`, `verifyEmail` validan la respuesta con los esquemas de contratos).
   Archivos: `apps/web/src/features/identity/{api,chosen-plan-storage}.ts`, `apps/web/src/features/identity/hooks/use-countdown.ts` y sus `*.spec.ts`.
 
-- [ ] **T-61** [P] `PasswordRequirements` y `PlanPicker` — CA: CA-22, CA-5 (en vivo) — Depende: T-04, T-56 — ~2 h
+- [x] **T-61** [P] `PasswordRequirements` y `PlanPicker` — CA: CA-22, CA-5 (en vivo) — Depende: T-04, T-56 — ~2 h
   Prueba primero `password-requirements.spec.tsx` (cada regla con ícono **y** texto «Cumple»/«Falta», `aria-live=
   "polite"`, usa `evaluatePassword`) y `plan-picker.spec.tsx` (nombres y precios del catálogo recibido por *props*, sin
   valores en el código; preselecciona el plan marcado como gratuito; `unavailable` → «No pudimos cargar los planes; tu
@@ -665,6 +665,7 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
 - **T-57**: el cliente interpreta `ErrorResponse` y `Retry-After`; un cuerpo inválido usa el genérico de 000 §10.
 - **T-59**: Términos y Privacidad usan `LEGAL_DOCUMENTS`. Los apartados 7 y 8 de la Política cierran con un solo punto.
 - **T-60**: el plan elegido vive en `localStorage` (`nimbo.registro.plan`) y se borra al leerlo.
+- **T-61**: los requisitos usan `evaluatePassword`; el selector no tiene precios escritos en el código.
 
 - **Catálogo de 006a (T-64)**: el plan fija qué necesita 001 (lectura pública de planes activos con `id`, nombre, precio
   en centavos y marca de gratuito, PD-40) pero no la ruta ni el esquema, que son de 006a. `plan-catalog.ts` aísla esa
