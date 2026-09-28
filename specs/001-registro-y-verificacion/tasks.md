@@ -249,7 +249,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   Luego `mail.processor.ts`.
   Archivos: `apps/api/src/modules/notifications/infrastructure/mail.processor.ts`, `apps/api/src/modules/notifications/infrastructure/mail.processor.spec.ts`.
 
-- [ ] **T-24** `NotificationsWorkerModule` y `WorkerModule` con la cola `mail` — CA: CA-21 — Depende: T-23 — ~1 h
+- [x] **T-24** `NotificationsWorkerModule` y `WorkerModule` con la cola `mail` — CA: CA-21 — Depende: T-23 — ~1 h
   Prueba primero: ampliar `apps/api/test/int/worker/bootstrap.int-spec.ts` (`worker.started` lista `['ping', 'mail']`;
   sin `SMTP_HOST` o con `SMTP_TLS=none` y `APP_ENV=staging` → `config.invalid` y salida ≠ 0) y
   `worker-health.int-spec.ts` (la salud sigue solo con Redis: un SMTP caído no la afecta). Luego
