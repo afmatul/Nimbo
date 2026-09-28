@@ -196,7 +196,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   `main.ts` con `NestFactory.create(..., { bodyParser: false })`.
   Archivos: `apps/api/src/shared/presentation/configure-http-app.ts`, `apps/api/src/main.ts`, `apps/api/src/shared/index.ts`, `apps/api/test/int/shared/configure-http-app.int-spec.ts`.
 
-- [ ] **T-18** Arnés de integración: `configureHttpApp`, sustitución de proveedores y entorno `api + worker` — CA: CA-1, CA-9 (reloj), CA-18, CA-21 (precondición) — Depende: T-17 — ~1,5 h
+- [x] **T-18** Arnés de integración: `configureHttpApp`, sustitución de proveedores y entorno `api + worker` — CA: CA-1, CA-9 (reloj), CA-18, CA-21 (precondición) — Depende: T-17 — ~1,5 h
   `createTestApp` usa `configureHttpApp` (con `bodyParser: false`) en lugar de repetir middlewares; nueva opción
   `overrides` (`[{ provide, useValue }]`, p. ej. `I_CLOCK → FixedClock`); opción `withWorkerEnv` que valida
   `apiEnvSchema.merge(workerEnvSchema)` para componer módulos del `worker` en la misma app y capturar sus bitácoras en
@@ -706,4 +706,12 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   de `body-parser` (cuerpo > 16 KB, codificación no admitida) no son `HttpException` y `DomainExceptionFilter` los
   respondía como `500`; `configureHttpApp` instala tras el analizador un traductor que los convierte en
   `HttpException` con su estado (`413` → `HTTP_413`; `400` → `VALIDATION_FAILED`, P-1).
+- **T-18, entorno `api + worker` (desviación menor)**: en lugar de `apiEnvObjectSchema.merge(workerEnvObjectSchema)`
+  con las reglas copiadas, `buildTestEnv(overrides, { withWorkerEnv: true })` valida la misma fuente con
+  `apiEnvSchema` y con `workerEnvSchema` y une ambos resultados (`ApiWorkerEnv`). Así cada proceso conserva sus
+  reglas `superRefine` sin exportar `refineApiEnv`/`refineWorkerEnv` desde `env.schema.ts` y sin tocar código de
+  producción. El arnés fija `APP_VERSION = TEST_VERSION` antes de los `overrides` (la cabecera `x-nimbo-version` sale
+  ahora de `configureHttpApp`) y conserva la opción `prefix` sobrescribiendo el prefijo tras `configureHttpApp`
+  (la usa `worker-health.int-spec.ts` con `''`). **Sin ejecutar** por falta de Docker: todas las suites del arnés
+  (`test/int/{shared,worker,identity}`, salvo `configure-http-app`) son la prueba de esta tarea.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
