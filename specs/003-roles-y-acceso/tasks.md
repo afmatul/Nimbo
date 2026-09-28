@@ -176,7 +176,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   `TestJwtStrategy` y `passport-jwt` real. Es la **única** suite de contrato; 002-PR-2 la reutiliza (002 CA-26).
   Archivos: `apps/api/test/support/access-token-verifier.contract.ts`, `apps/api/test/int/shared/access-token-contract.int-spec.ts`.
 
-- [ ] **T-15** CA-1 y CA-4 por HTTP — CA: CA-1, CA-4 — Depende: T-13 — ~1 h
+- [x] **T-15** CA-1 y CA-4 por HTTP — CA: CA-1, CA-4 — Depende: T-13 — ~1 h
   Prueba primero `apps/api/test/int/shared/auth-guards.int-spec.ts`: `/__probe/undeclared` y `/__probe/client` sin token
   → 401 con cuerpo validado por `errorResponseSchema` y espía del controlador sin llamadas; `/__probe/actor` con un token
   de cada rol devuelve `{ id, role, canReadContent }` (`true` solo para `CLIENT`); un middleware de prueba que escribe
