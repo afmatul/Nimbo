@@ -72,7 +72,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   Prueba primero `packages/contracts/src/identity/common-passwords.spec.ts`: el archivo pesa < 50 KB; toda entrada está
   en minúsculas, tiene de 12 a 128 puntos de código, un número y un símbolo; sin duplicados; contiene al menos una
   entrada conocida del top de SecLists que cumple el filtro (el developer la elige al generar y la fija en la prueba).
-  Luego `packages/contracts/scripts/build-common-passwords.mjs` (descarga o lee el top 100 000 de SecLists, filtra según
+  Luego `packages/contracts/scripts/build-common-passwords.mjs` (descarga o lee el top 1 000 000 de SecLists, filtra según
   plan §6.2, escribe `common-passwords.ts` con encabezado de licencia MIT y atribución) y el archivo generado.
   Archivos: `packages/contracts/scripts/build-common-passwords.mjs`, `packages/contracts/src/identity/common-passwords.ts`, `packages/contracts/src/identity/common-passwords.spec.ts`, `packages/contracts/package.json` (script `build:common-passwords`).
 
@@ -662,8 +662,10 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
 - **T-03, tamaño de la lista común (hallazgo, sin desviación)**: con el filtro de plan §6.2 (12 a 128 puntos de
   código, número y símbolo), el top 100 000 de SecLists (`xato-net-10-million-passwords-100000.txt`, revisión
   `c205c36`) deja **solo 5 entradas**; el top 1 000 000 deja 1602 (~34 KB, dentro de la meta de 50 KB). Se implementó
-  lo que dice el plan (top 100 000). Propuesta para el planner: cambiar la fuente al top 1 000 000 en plan §6.2
-  (basta cambiar `SOURCE_PATH` en el script y regenerar). La prueba fija la entrada conocida `g00dpa$$w0rd`.
+  lo que dice el plan (top 100 000). La prueba fija la entrada conocida `g00dpa$$w0rd`. **Resuelto (review I-1)**:
+  la fuente pasó al top 1 000 000 (`xato-net-10-million-passwords-1000000.txt`, misma revisión); la lista quedó en
+  1602 entradas y 34 208 bytes, con una prueba que exige al menos 1000 entradas y casos de CA-5 con contraseñas
+  comunes reales (`Password@123`, `Abcd!efg!123`, `Gaga_123_Gaga`); plan §6.2 actualizado.
 - **T-10, forma y reglas del entorno (desviación menor)**: las reglas entre variables (`https` en `WEB_PUBLIC_URL`,
   `SMTP_TLS≠none` en staging/producción, `SMTP_USER` si hay `SMTP_PASSWORD`) exigen `superRefine`, que convierte el
   esquema en `ZodEffects` sin `.shape`, `.pick` ni `.merge`. Por eso `env.schema.ts` exporta además la **forma**

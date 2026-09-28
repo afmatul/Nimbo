@@ -1,4 +1,4 @@
-// Genera `src/identity/common-passwords.ts` desde el top 100 000 de SecLists (plan 001 §6.2).
+// Genera `src/identity/common-passwords.ts` desde el top 1 000 000 de SecLists (plan 001 §6.2).
 // Uso: `pnpm --filter @nimbo/contracts build:common-passwords [ruta-local.txt]`.
 // Sin ruta, descarga la lista de la revisión fijada en SOURCE_URL.
 import { readFile, writeFile } from 'node:fs/promises';
@@ -6,7 +6,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const SECLISTS_REVISION = 'c205c36a445bff37f8e58a9ec829105cd4975c58';
-const SOURCE_PATH = 'Passwords/Common-Credentials/xato-net-10-million-passwords-100000.txt';
+const SOURCE_PATH = 'Passwords/Common-Credentials/xato-net-10-million-passwords-1000000.txt';
 const SOURCE_URL = `https://raw.githubusercontent.com/danielmiessler/SecLists/${SECLISTS_REVISION}/${SOURCE_PATH}`;
 const OUTPUT = join(dirname(fileURLToPath(import.meta.url)), '../src/identity/common-passwords.ts');
 

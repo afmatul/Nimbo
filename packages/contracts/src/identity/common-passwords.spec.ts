@@ -5,7 +5,9 @@ import { COMMON_PASSWORDS } from './common-passwords';
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from './parameters';
 
 const MAX_FILE_BYTES = 50 * 1024;
-/** Entrada del top 100 000 de SecLists que cumple el filtro de plan §6.2 (fijada al generar la lista). */
+/** Piso de entradas: el top 1 000 000 filtrado deja ~1600; menos indica una fuente equivocada (review 001 I-1). */
+const MIN_ENTRIES = 1000;
+/** Entrada del top 1 000 000 de SecLists que cumple el filtro de plan §6.2 (fijada al generar la lista). */
 const KNOWN_ENTRY = 'g00dpa$$w0rd';
 
 describe('COMMON_PASSWORDS', () => {
@@ -25,6 +27,10 @@ describe('COMMON_PASSWORDS', () => {
       expect(entry).toMatch(/\p{Nd}/u);
       expect(entry).toMatch(/[^\p{L}\p{N}\s]/u);
     }
+  });
+
+  it('CA-5: tiene al menos 1000 entradas (la regla «común» rechaza algo real)', () => {
+    expect(COMMON_PASSWORDS.length).toBeGreaterThanOrEqual(MIN_ENTRIES);
   });
 
   it('CA-5: no tiene duplicados', () => {

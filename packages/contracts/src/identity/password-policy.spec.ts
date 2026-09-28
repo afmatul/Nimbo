@@ -63,6 +63,13 @@ describe('evaluatePassword (D-6)', () => {
     expect(failuresOf('G00dPa$$w0rd')).toEqual(['PASSWORD_COMMON']);
   });
 
+  it.each(['Password@123', 'Abcd!efg!123', 'Gaga_123_Gaga'])(
+    'CA-5: «%s» cumple las demás reglas pero es común (top 1 000 000 de SecLists)',
+    (password) => {
+      expect(failuresOf(password)).toEqual(['PASSWORD_COMMON']);
+    },
+  );
+
   it('CA-5: igual al correo normalizado falla', () => {
     expect(failuresOf('Ana.Lopez-2026@nimbo.me', '  ANA.LOPEZ-2026@Nimbo.me ')).toEqual([
       'PASSWORD_EQUALS_EMAIL',
