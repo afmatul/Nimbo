@@ -665,7 +665,7 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   lo que dice el plan (top 100 000). La prueba fija la entrada conocida `g00dpa$$w0rd`. **Resuelto (review I-1)**:
   la fuente pasó al top 1 000 000 (`xato-net-10-million-passwords-1000000.txt`, misma revisión); la lista quedó en
   1602 entradas y 34 208 bytes, con una prueba que exige al menos 1000 entradas y casos de CA-5 con contraseñas
-  comunes reales (`Password@123`, `Abcd!efg!123`, `Gaga_123_Gaga`); plan §6.2 actualizado.
+  comunes reales (`Password@123`, `Abcd!efg!123`, `Gaga_123_Gaga`); plan §6.2 actualizado (commit `0bacf81`).
 - **T-10, forma y reglas del entorno (desviación menor)**: las reglas entre variables (`https` en `WEB_PUBLIC_URL`,
   `SMTP_TLS≠none` en staging/producción, `SMTP_USER` si hay `SMTP_PASSWORD`) exigen `superRefine`, que convierte el
   esquema en `ZodEffects` sin `.shape`, `.pick` ni `.merge`. Por eso `env.schema.ts` exporta además la **forma**
@@ -682,6 +682,10 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   que desde T-05 reexporta `identity`. Hoy se cumple por construcción: `zod-validation.pipe.ts` importa únicamente
   `toFieldIssues` y recibe el esquema y la fábrica por parámetro. La regla queda para cuando llegue el lint de
   fronteras (candidata: `no-restricted-imports` con `importNames` de `identity` en `apps/api/src/shared/**`).
+  **Resuelto (review I-2)**: `packages/config/eslint/shared-boundaries.js` (cableado en `eslint.config.mjs`) aplica
+  `no-restricted-imports` a `apps/api/src/shared/**`: de la raíz de `@nimbo/contracts` solo admite la lista cerrada
+  de nombres genéricos (salud, errores, validación) y prohíbe `@nimbo/contracts/*` y rutas a `packages/contracts`.
+  Prueba: `scripts/shared-contracts-boundary.spec.ts` (ESLint real por `--stdin`). Commit `chore(config): regla de lint que impide a shared importar contratos de módulos [001]`.
 - **Docker no disponible durante PR-1 (aviso de Adrián, 2026-09-28)**: no se ejecutó `pnpm test:int` ni
   `migration:run → revert → run`. Las pruebas de integración se escribieron y pasan `lint` y `typecheck`, pero su
   rojo y su verde **quedan sin comprobar**; hay que correrlas antes de fusionar el PR-1. Pendientes por tarea:
