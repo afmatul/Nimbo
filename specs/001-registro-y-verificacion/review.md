@@ -1,45 +1,64 @@
-# Revisión — 001 PR-1 «contratos, migraciones y shared» (T-01 a T-19)
+# Revisión 001 — Registro de cuenta de cliente y verificación de correo
 
-| Campo | Valor |
-|---|---|
-| Rama | `feat/001-contratos-migraciones-shared` |
-| Base del diff | `spec/001-registro-y-verificacion` |
-| Revisor | `reviewer` (2026-09-27) |
-| Veredicto | ✅ con reservas: sin bloqueantes de código; el merge queda bloqueado por proceso hasta ejecutar las pruebas de integración |
+> Modo SDD lite: un solo `review.md` por spec. Cada PR parcial agrega su sección; la verificación, la seguridad y la UI
+> completas se cierran con el PR-4.
 
-## Bloqueantes
+## PR-3 — backend de identity
 
-- **[B-1] Pruebas de integración sin ejecutar (proceso, no código).** T-06, T-08, T-13, T-14, T-17 (salvo
-  `configure-http-app.int-spec.ts`) y T-18 no se han corrido contra Postgres y Redis reales porque Docker no está
-  disponible (`tasks.md`, «Notas del developer»). RNF-10 y `workflow.md` §7.2 piden `pnpm test:int` y el job
-  `migrations` en verde antes de fusionar. Corrección: con Docker, `pnpm test:int` y `migration:run → revert ×2 → run`,
-  con la evidencia en el PR.
+Revisor: `reviewer` (Sonnet), 2026-09-28. Tareas T-28 a T-53 y la corrección `no-store` de T-45.
 
-## Importantes
+**Veredicto inicial: Bloqueante** (hallazgo 1). Las pruebas de integración y aislamiento están escritas y compilan, pero
+**no se ejecutaron** (sin Docker); T-54 sigue abierta.
 
-1. **[I-1] Lista de contraseñas comunes casi vacía** (`packages/contracts/src/identity/common-passwords.ts:9-15`).
-   Filtrar el top 100 000 de SecLists por la política (12–128 caracteres, número y símbolo) deja 5 entradas, así que
-   la regla «contraseña común» de D-6/CA-5 casi no rechaza nada. El developer ya propone la fuente top 1 000 000
-   (~1602 entradas, ~34 KB). Resolver antes del cierre de la fase.
-2. **[I-2] Falta la regla de lint que impide que `shared` importe `contracts/identity`** (ADR-0020). Hoy se cumple por
-   construcción en `zod-validation.pipe.ts`, sin regla automática; PR-3 y PR-4 seguirán tocando `shared`.
+### Bloqueantes
 
-## Sugerencias
+1. **IP y cabeceras en las bitácoras de `identity`.** `shared/infrastructure/logging/logger.options.ts` no fija
+   `quietReqLogger`; `pino-http` crea `req.log = logger.child({ req })` y `nestjs-pino` usa ese logger para todo lo que
+   se registra durante la petición. `identity.rate_limited` y los eventos de `RegistrationService` heredan `req` con
+   `x-forwarded-for`, `host`, `user-agent` y `remoteAddress`. Viola plan §7 («sin IP ni correo») y la prohibición dura
+   sobre bitácoras. `identity-logs.int-spec.ts` no lo detectaría.
+   **Corrección**: `quietReqLogger: true` y `quietResLogger: true` en `pino-http` (el `req`/`res` queda solo en la línea
+   `http.request`) y una prueba que falle si una línea de negocio lleva `req`, `headers` o `remoteAddress`.
 
-- `too-many-requests.error.ts:4` es abstracta; verificar en PR-3 que `IdentityTooManyRequestsError` la extienda.
-- Abrir un pendiente por la prueba de rendimiento intermitente `redact-deep.spec.ts` (umbral en µs bajo carga).
+### Importantes
 
-## Lo que está bien
+2. **`identity/index.ts` exporta `IDENTITY_THROTTLERS`**, fuera de lo que fija plan §3b/§6.1. Defendible (DRY, pasa por
+   la frontera de `index.ts`); anotarlo en el plan.
+3. **`400 VALIDATION_FAILED` de JSON mal formado sin `Cache-Control: no-store`**: el analizador global corre antes del
+   middleware de módulo. Riesgo bajo; cerrar fijando la cabecera antes del analizador.
+4. **`PASSWORD_COMMON` repite «Elige otra»** (`packages/contracts/src/identity/error-codes.ts`): el mensaje compuesto
+   de `IDENTITY_WEAK_PASSWORD` termina en «… Elige otra. Elige otra que los cumpla.». Quitar «Elige otra.» del campo.
 
-- Migraciones `crear-usuario` y `crear-token-cuenta` iguales al plan §4 y al E-R: `down` completo, `CHECK` de rol,
-  estado, correo normalizado, nombre y aceptación; índice único de correo; índice parcial `uq_token_cuenta_vigente`;
-  hash `char(64)` con `CHECK` hex.
-- `RedisRateLimiter` y el script Lua: indexación de `ARGV` correcta, atómico, ventana deslizante con *sorted set*, los
-  rechazos no cuentan y falla cerrado.
-- `ITransactionRunner` y `TransactionContext` sobre `AsyncLocalStorage`: `runWith` es el punto que 003 necesita para
-  `withActor`.
-- `ZodValidationPipe` y `DomainExceptionFilter`: nunca exponen `stack` ni el mensaje crudo; los errores de
-  body-parser salen con texto propio en español, sin filtrar `error.type`.
-- `env.schema.ts`: la desviación de `*ObjectSchema` junto a los esquemas con `superRefine` está justificada;
-  `SECRET_KEYS` comprobado con `satisfies`.
-- `REDACTED_FIELDS` cubre D-18. Archivos y funciones pequeños, sin `console.log`, alcance ceñido al Bloque 1.
+### Sugerencias
+
+5. **`@nestjs/event-emitter` fijado en 3.1.0** (la serie 12 es solo ESM y `api` compila a CJS): dejar la restricción
+   escrita en ADR-0019 o en el README de `identity`.
+
+### Verificación (CA → prueba → estado)
+
+| CA | Prueba | Estado |
+|---|---|---|
+| CA-1 a CA-4 | `register.int-spec.ts` | sin ejecutar |
+| CA-5, CA-6, CA-7 | `register-validation.int-spec.ts` | sin ejecutar |
+| CA-8 a CA-11 | `verify-email.int-spec.ts` | sin ejecutar |
+| CA-12 | `verification-token-repository.int-spec.ts` | sin ejecutar |
+| CA-13, CA-14 | `resend-verification.int-spec.ts` | sin ejecutar |
+| CA-15 | `rate-limits.int-spec.ts` · `identity-ip-throttler.guard.spec.ts` | int sin ejecutar · unitaria en verde |
+| CA-17 | `token-secrecy.int-spec.ts` | sin ejecutar |
+| CA-18 | `identity-logs.int-spec.ts` | sin ejecutar; no cubría la fuga de IP (hallazgo 1) |
+| CA-19 | `password-hash.int-spec.ts` · `argon2id.hasher.spec.ts` | int sin ejecutar · unitaria en verde |
+| CA-21 | `mail-degradation.int-spec.ts` | sin ejecutar |
+| CA-29 | `verify-email-concurrency.int-spec.ts` · `user-repository.int-spec.ts` | sin ejecutar |
+| Anti-enumeración | `test/isolation/identity-enumeration.iso-spec.ts` | sin ejecutar |
+
+### Lo que está bien
+
+- Dominio inmutable, sin `contracts` ni infraestructura; transiciones encapsuladas (Art. IV/V, ADR-0008).
+- Respuesta neutra de punta a punta: Argon2id siempre, límite por correo antes del repositorio, sin `X-RateLimit-*`.
+- `insertIfAbsent` con `ON CONFLICT DO NOTHING` y relectura en la misma transacción.
+- Evento después del commit, sin propagar fallos de oyentes (ADR-0019).
+- Desviaciones bien documentadas en «Notas del developer».
+
+### Correcciones
+
+<!-- Se completa al aplicar las correcciones. -->
