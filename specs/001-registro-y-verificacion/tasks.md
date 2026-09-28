@@ -570,7 +570,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   cuenta empezará en Personal.»; teclado; jest-axe).
   Archivos: `apps/web/src/features/identity/components/{password-requirements,plan-picker}.tsx` y sus `*.spec.tsx`.
 
-- [ ] **T-62** `RegisterForm` — CA: CA-22, CA-6, CA-7 — Depende: T-05, T-57, T-60, T-61 — ~2 h
+- [x] **T-62** `RegisterForm` — CA: CA-22, CA-6, CA-7 — Depende: T-05, T-57, T-60, T-61 — ~2 h
   Prueba primero `register-form.spec.tsx` (Testing Library + user-event): valida con `zodResolver(registerRequestSchema)`;
   errores por campo con `aria-invalid` y foco al primero; errores de la API por `fields[].field` y resumen con foco para
   los generales; estados **enviando** (botón deshabilitado con indicador, sin doble envío) y **error-servidor** (con
@@ -666,6 +666,7 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
 - **T-59**: Términos y Privacidad usan `LEGAL_DOCUMENTS`. Los apartados 7 y 8 de la Política cierran con un solo punto.
 - **T-60**: el plan elegido vive en `localStorage` (`nimbo.registro.plan`) y se borra al leerlo.
 - **T-61**: los requisitos usan `evaluatePassword`; el selector no tiene precios escritos en el código.
+- **T-62**: el plan elegido no viaja en el `POST`. La casilla lleva dos enlaces, a Términos y a Privacidad.
 
 - **Catálogo de 006a (T-64)**: el plan fija qué necesita 001 (lectura pública de planes activos con `id`, nombre, precio
   en centavos y marca de gratuito, PD-40) pero no la ruta ni el esquema, que son de 006a. `plan-catalog.ts` aísla esa

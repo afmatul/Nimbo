@@ -1,9 +1,10 @@
 import * as React from 'react';
+import type { ReactNode } from 'react';
 
 import { cn } from '../../lib/utils';
 
 export interface CheckboxProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> {
-  readonly label: string;
+  readonly label: ReactNode;
   readonly error?: boolean;
   readonly errorMessage?: string;
 }
