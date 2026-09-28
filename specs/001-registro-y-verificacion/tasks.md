@@ -128,7 +128,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   archivo la regla «nunca se registra `job.data` ni un `MailMessage` completo».
   Archivos: `apps/api/src/shared/infrastructure/logging/redacted-fields.ts`, `apps/api/src/shared/infrastructure/logging/redacted-fields.spec.ts`.
 
-- [ ] **T-10** Variables de entorno de 001 y secretos por proceso — CA: CA-20 (esquema), CA-18 — Depende: T-09 — ~2 h
+- [x] **T-10** Variables de entorno de 001 y secretos por proceso — CA: CA-20 (esquema), CA-18 — Depende: T-09 — ~2 h
   Prueba primero: nuevo `apps/api/src/shared/infrastructure/config/env.schema.spec.ts` (cada clave de `SECRET_KEYS`
   está en `apiEnvSchema` **o** en `workerEnvSchema`, y falla si se agrega un secreto a ninguno; `SMTP_PASSWORD` solo en
   `workerEnvSchema`) y casos nuevos en `load-env.spec.ts` (`WEB_PUBLIC_URL` y `CORS_ORIGIN` en `api`; `WEB_PUBLIC_URL`
@@ -664,4 +664,15 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   `c205c36`) deja **solo 5 entradas**; el top 1 000 000 deja 1602 (~34 KB, dentro de la meta de 50 KB). Se implementó
   lo que dice el plan (top 100 000). Propuesta para el planner: cambiar la fuente al top 1 000 000 en plan §6.2
   (basta cambiar `SOURCE_PATH` en el script y regenerar). La prueba fija la entrada conocida `g00dpa$$w0rd`.
+- **T-10, forma y reglas del entorno (desviación menor)**: las reglas entre variables (`https` en `WEB_PUBLIC_URL`,
+  `SMTP_TLS≠none` en staging/producción, `SMTP_USER` si hay `SMTP_PASSWORD`) exigen `superRefine`, que convierte el
+  esquema en `ZodEffects` sin `.shape`, `.pick` ni `.merge`. Por eso `env.schema.ts` exporta además la **forma**
+  (`apiEnvObjectSchema`, `workerEnvObjectSchema`, `ZodObject`) y `apiEnvSchema`/`workerEnvSchema` son la forma más
+  sus reglas. `data-source.cli.ts` (`pick`), `check-env-example.ts` y `data-source.spec.ts` (`shape`) usan la forma;
+  T-18 compone `apiEnvObjectSchema.merge(workerEnvObjectSchema)` con ambas reglas en lugar de
+  `apiEnvSchema.merge(workerEnvSchema)`. La comprobación de secretos por proceso es `SECRET_KEYS satisfies
+  readonly (claves de api | claves de worker)[]` en `env.schema.ts`. `CORS_ORIGIN` se entrega ya separado en
+  `string[]`. Fuera de la lista de archivos se ajustaron los entornos explícitos de
+  `test/int/{shared,worker}/bootstrap.int-spec.ts`, `test/int/setup/global-setup.ts` y
+  `minio-config.module.spec.ts` para las variables nuevas obligatorias.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>

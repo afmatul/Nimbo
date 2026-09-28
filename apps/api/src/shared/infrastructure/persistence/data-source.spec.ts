@@ -1,6 +1,6 @@
 import { DataSource } from 'typeorm';
 
-import { apiEnvSchema } from '../config/env.schema';
+import { apiEnvObjectSchema, workerEnvObjectSchema } from '../config/env.schema';
 
 import { buildDataSourceOptions } from './data-source';
 
@@ -62,7 +62,9 @@ describe('buildDataSourceOptions', () => {
     // lo prohibido es que `shared` lea la configuración de Nimbo antes del arranque.
     const NODE_CONVENTIONAL = new Set(['NODE_ENV']);
     const configurationReads = reads.filter(
-      (key) => key in apiEnvSchema.shape && !NODE_CONVENTIONAL.has(key),
+      (key) =>
+        (key in apiEnvObjectSchema.shape || key in workerEnvObjectSchema.shape) &&
+        !NODE_CONVENTIONAL.has(key),
     );
     expect(configurationReads).toEqual([]);
     expect(dataSourceConstructor).not.toHaveBeenCalled();

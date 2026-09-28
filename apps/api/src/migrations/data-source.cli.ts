@@ -1,10 +1,12 @@
 import { DataSource } from 'typeorm';
 
-import { apiEnvSchema, buildDataSourceOptions, loadDotenvFile, loadEnv } from '../shared';
+import { buildDataSourceOptions, loadDotenvFile, loadEnv } from '../shared';
+// Solo la forma (zod puro): `apiEnvSchema` agrega reglas entre variables y no admite `pick`.
+import { apiEnvObjectSchema } from '../shared/infrastructure/config/env.schema';
 
 /** Lanza si el entorno es inválido: la CLI y `migrate.ts` no deben arrancar a medias (CA-18). */
 const requireEnv = (): { DATABASE_URL: string } => {
-  const result = loadEnv(apiEnvSchema.pick({ DATABASE_URL: true }));
+  const result = loadEnv(apiEnvObjectSchema.pick({ DATABASE_URL: true }));
   if (!result.ok) {
     throw new Error(`Configuración inválida: ${result.issues.join('; ')}`);
   }

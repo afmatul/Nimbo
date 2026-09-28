@@ -18,6 +18,8 @@ export default async function globalSetup(): Promise<void> {
     APP_ENV: 'test',
     APP_VERSION: 'test',
     LOG_LEVEL: 'info',
+    WEB_PUBLIC_URL: 'http://localhost',
+    CORS_ORIGIN: 'http://localhost',
     ...infra.env(),
   });
 }

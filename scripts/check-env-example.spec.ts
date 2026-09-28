@@ -89,4 +89,17 @@ describe('checkEnvExample (CA-19)', () => {
 
     expect(result).toEqual({ ok: true, problems: [] });
   });
+
+  it('CA-19: `NEXT_PUBLIC_SMTP_PASSWORD` expone el secreto SMTP del worker (001 plan §6.10)', () => {
+    const real = collectSchemaKeys();
+    const exampleKeys = new Set([
+      ...parseEnvExample(readFileSync(join(ROOT, '.env.example'), 'utf8')),
+      'NEXT_PUBLIC_SMTP_PASSWORD',
+    ]);
+
+    expect(checkEnvExample({ exampleKeys, ...real })).toEqual({
+      ok: false,
+      problems: ['`NEXT_PUBLIC_SMTP_PASSWORD` expone un secreto al navegador (CA-19, CA-29)'],
+    });
+  });
 });

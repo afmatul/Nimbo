@@ -15,6 +15,10 @@ const envWithInvalidRedis = (): NodeJS.ProcessEnv => ({
   WORKER_PORT: '3998',
   DATABASE_URL: 'postgres://nimbo:nimbo@localhost:5432/nimbo',
   REDIS_URL: 'no-es-url',
+  SMTP_HOST: 'localhost',
+  SMTP_PORT: '1025',
+  SMTP_TLS: 'none',
+  MAIL_FROM: 'Nimbo <no-responder@nimbo.me>',
 });
 
 describe('bootstrap del worker (CA-18)', () => {
