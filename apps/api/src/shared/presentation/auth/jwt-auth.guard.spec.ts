@@ -2,11 +2,15 @@ import type { ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { Logger } from 'nestjs-pino';
 
+import type { AccessTokenClaims } from '../../application/auth/i-access-token-verifier.port';
+import { createActor } from '../../domain/actor';
 import { UnauthenticatedError } from '../../domain/errors';
 import { Role } from '../../domain/role.enum';
 
+
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { Public } from './public.decorator';
+import { RequestPrincipal } from './request-principal';
 import { Roles } from './roles.decorator';
 
 const ROUTE_PATH = '/api/v1/__probe/actor/:id';
@@ -145,13 +149,119 @@ describe('JwtAuthGuard.canActivate', () => {
     const handleRequest = jest.spyOn(guard, 'handleRequest');
     const ctx = contextFor(requestWith(`Bearer ${WELL_FORMED_TOKEN}`));
 
-    await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(Error);
+    await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(UnauthenticatedError);
     expect(handleRequest).toHaveBeenCalledWith(unknownStrategy, false, undefined, ctx);
   });
 
   it('CA-1: sin estrategia registrada en Passport, una ruta protegida nunca pasa', async () => {
     await expect(
       newGuard().canActivate(contextFor(requestWith(`Bearer ${WELL_FORMED_TOKEN}`))),
-    ).rejects.toBeInstanceOf(Error);
+    ).rejects.toBeInstanceOf(UnauthenticatedError);
+  });
+});
+
+describe('JwtAuthGuard.handleRequest', () => {
+  const CLAIMS: AccessTokenClaims = {
+    userId: '7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f',
+    role: Role.SUPPORT,
+    sessionId: '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d',
+  };
+  const tokenExpired = Object.assign(new Error('jwt expired'), { name: 'TokenExpiredError' });
+  const signatureInvalid = Object.assign(new Error('invalid signature'), {
+    name: 'JsonWebTokenError',
+  });
+
+  const setup = (): { guard: JwtAuthGuard; logger: Logger; request: FakeRequest } => {
+    const logger = fakeLogger();
+    return {
+      guard: new JwtAuthGuard(new Reflector(), logger),
+      logger,
+      request: requestWith(`Bearer ${WELL_FORMED_TOKEN}`),
+    };
+  };
+
+  it('CA-2: con *claims* válidos arma el `Actor` con `createActor` y lo guarda en `RequestPrincipal`', () => {
+    const { guard, request } = setup();
+
+    expect(guard.handleRequest(null, CLAIMS, undefined, contextFor(request))).toBe(CLAIMS);
+    expect(RequestPrincipal.get(request)).toEqual({
+      actor: createActor(CLAIMS.userId, CLAIMS.role),
+      sessionId: CLAIMS.sessionId,
+    });
+  });
+
+  it.each([
+    ['`info` es `TokenExpiredError`', null, false, tokenExpired],
+    ['la estrategia informa `reason: "expired"`', null, false, { reason: 'expired' }],
+  ])('CA-2: %s → 401 `expired_token`', (_case, err, user, info) => {
+    const { guard, logger, request } = setup();
+
+    expect(() => guard.handleRequest(err, user, info, contextFor(request))).toThrow(
+      UnauthenticatedError,
+    );
+    expect(logger.log).toHaveBeenCalledWith({
+      event: 'auth.unauthenticated',
+      route: `GET ${ROUTE_PATH}`,
+      reason: 'expired_token',
+    });
+    expect(RequestPrincipal.get(request)).toBeUndefined();
+  });
+
+  it.each([
+    ['firma inválida en `info`', null, false, signatureInvalid],
+    ['la estrategia informa `reason: "invalid"`', null, false, { reason: 'invalid' }],
+    ['`user === false` sin `info`', null, false, undefined],
+    ['`err` no nulo', new Error('fallo inesperado'), false, undefined],
+    [
+      'estrategia desconocida',
+      new Error('Unknown authentication strategy "jwt"'),
+      false,
+      undefined,
+    ],
+    ['`user` que no es un `AccessTokenClaims`', null, { userId: 'x', role: 'ROOT' }, undefined],
+  ])('CA-2: %s → 401 `invalid_token` (nunca 500)', (_case, err, user, info) => {
+    const { guard, logger, request } = setup();
+
+    expect(() => guard.handleRequest(err, user, info, contextFor(request))).toThrow(
+      UnauthenticatedError,
+    );
+    expect(logger.log).toHaveBeenCalledWith({
+      event: 'auth.unauthenticated',
+      route: `GET ${ROUTE_PATH}`,
+      reason: 'invalid_token',
+    });
+  });
+
+  it.each([
+    ['missing_token', []],
+    ['malformed_authorization', ['Basic dXNlcjpwYXNz']],
+  ])(
+    'CA-16: el rechazo por cabecera registra `%s` con el patrón de la ruta y sin la cabecera',
+    async (reason, values: readonly string[]) => {
+      const logger = fakeLogger();
+      const guard = new JwtAuthGuard(new Reflector(), logger);
+
+      await expect(guard.canActivate(contextFor(requestWith(...values)))).rejects.toBeInstanceOf(
+        UnauthenticatedError,
+      );
+      expect(logger.log).toHaveBeenCalledTimes(1);
+      expect(logger.log).toHaveBeenCalledWith({
+        event: 'auth.unauthenticated',
+        route: `GET ${ROUTE_PATH}`,
+        reason,
+      });
+    },
+  );
+
+  it('CA-16: un rechazo dentro de Passport se registra una sola vez', async () => {
+    const { guard, logger, request } = setup();
+    const ctx = contextFor(request);
+    jest
+      .spyOn(Object.getPrototypeOf(JwtAuthGuard.prototype) as JwtAuthGuard, 'canActivate')
+      .mockImplementation(() => guard.handleRequest(null, false, signatureInvalid, ctx));
+
+    await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(UnauthenticatedError);
+    expect(logger.log).toHaveBeenCalledTimes(1);
+    jest.restoreAllMocks();
   });
 });

@@ -124,7 +124,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   false, undefined, ctx)`.
   Archivos: `apps/api/src/shared/presentation/auth/jwt-auth.guard.ts`, `apps/api/src/shared/presentation/auth/jwt-auth.guard.spec.ts`.
 
-- [ ] **T-09** `JwtAuthGuard.handleRequest` y bitácora `auth.unauthenticated` — CA: CA-2, CA-16 — Depende: T-08 — ~1 h
+- [x] **T-09** `JwtAuthGuard.handleRequest` y bitácora `auth.unauthenticated` — CA: CA-2, CA-16 — Depende: T-08 — ~1 h
   Prueba primero (segunda parte de `jwt-auth.guard.spec.ts`): `user` con `AccessTokenClaims` → `createActor` +
   `RequestPrincipal.set({ actor, sessionId })` y devuelve `user`; `info.name === 'TokenExpiredError'` o
   `info.reason === 'expired'` → `expired_token`; otro `info`, `user === false`, `err` no nulo o «Unknown authentication
