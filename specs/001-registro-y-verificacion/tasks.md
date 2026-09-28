@@ -523,7 +523,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
 > `ui-guidelines.md`, objetivos de 44 px (ADR-0014), textos exactos de spec §11. Cada prueba de componente incluye
 > jest-axe sin violaciones `serious` ni `critical` y recorrido con teclado.
 
-- [ ] **T-55** Entorno y dependencias de `web` — CA: CA-20 (esquema), CA-22 — Depende: — — ~1 h
+- [x] **T-55** Entorno y dependencias de `web` — CA: CA-20 (esquema), CA-22 — Depende: — — ~1 h
   Prueba primero en `apps/web/src/env.spec.ts`: `API_PUBLIC_URL` obligatoria; `http://` con `APP_ENV=staging` falla.
   Luego `env.ts`, `.env.example` (`API_PUBLIC_URL=http://localhost/api/v1`) y dependencias `react-hook-form`,
   `@hookform/resolvers`, `@testing-library/react`, `@testing-library/user-event` (versiones fijas). `pnpm env:check`.
@@ -660,6 +660,7 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   `InternalUser.rehydrate` (este rechaza `CLIENT`) para los mappers de T-39; `VerifiedAccountReplacementError` e
   `InvalidTokenTransitionError` son `Error` internos, no `DomainError` (nunca llegan al cliente). Se corrigió el
   formato de Prettier de dos pruebas (fallaba `pnpm lint`) y se antepuso `CA-n:` a los nombres de prueba (Art. II).
+- **T-55**: `API_PUBLIC_URL` obligatoria y `https` en staging y producción. Dependencias fijas: `react-hook-form@7.62.0`, `@hookform/resolvers@5.2.2`, `@testing-library/react@16.3.0`, `@testing-library/user-event@14.6.1`. `pnpm env:check` en verde.
 - **T-56 y T-58**: 21 suites de `web` en verde, incluido jest-axe. El área de 44 px es la etiqueta del checkbox y de cada radio.
 
 - **Catálogo de 006a (T-64)**: el plan fija qué necesita 001 (lectura pública de planes activos con `id`, nombre, precio
