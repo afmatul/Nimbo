@@ -462,7 +462,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   Bearer …` igual; ninguna fila con otro rol, verificada o con otra versión).
   Archivos: `apps/api/test/int/identity/register-validation.int-spec.ts`.
 
-- [ ] **T-48** [P] Verificación: CA-8 a CA-11 y concurrencia — CA: CA-8, CA-9, CA-10, CA-11, CA-29 (a–d, parte del token) — Depende: T-45 — ~2 h
+- [x] **T-48** [P] Verificación: CA-8 a CA-11 y concurrencia — CA: CA-8, CA-9, CA-10, CA-11, CA-29 (a–d, parte del token) — Depende: T-45 — ~2 h
   `verify-email.int-spec.ts`: CA-8 (`correo_verificado`, `usado_en`, los demás tokens invalidados, **un** evento
   `{ userId }` capturado por un oyente de prueba, sin correo ni nombre); CA-9 (`FixedClock` + 24 h + 1 s →
   `LINK_EXPIRED`, sin evento); CA-10 (repetir N veces → `already-verified`, sin evento nuevo; enlace viejo de una cuenta
@@ -877,4 +877,5 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
 - **Revisión de T-45, `no-store` en toda respuesta (decisión de Adrián: seguir plan §5)**: `presentation/no-store.middleware.ts` y `IdentityModule.configure` lo aplican a `AuthController`; se quitaron los `@Header`. Cubre 202/200, 422 del pipe, 429 del guard y 500. **Límite aceptado**: el `400 VALIDATION_FAILED` de un JSON mal formado no lleva la cabecera porque el analizador global de `configureHttpApp` corre antes que los middlewares de módulo; es genérico (solo `correlationId`), se deja así y lo valora la revisión.
 - **T-46**: `register.int-spec.ts` **no se ejecutó** (sin Docker): compila y pasa `lint`/`typecheck`; su rojo y su verde quedan sin comprobar. Correos encolados por `mail.enqueued` con el `correlationId`; la concurrencia de CA-3 usa una segunda app con `I_RATE_LIMITER` que siempre permite (el límite de 60 s serializaba las peticiones). «Ninguna suscripción» de CA-1 queda para 006a.
 - **T-47**: `register-validation.int-spec.ts` **no se ejecutó** (sin Docker): compila y pasa `lint`/`typecheck`; su rojo y su verde quedan sin comprobar. Expectativas confirmadas con una prueba desechable (`configureHttpApp` real). Al comparar errores se ignoran `x-correlation-id`, `date`, `etag` y el `correlationId` del cuerpo. **Hallazgo**: el mensaje de `PASSWORD_COMMON` dentro de `IDENTITY_WEAK_PASSWORD` repite «Elige otra» (T-31).
+- **T-48**: `verify-email.int-spec.ts` y `verify-email-concurrency.int-spec.ts` **no se ejecutó** (sin Docker): compila y pasa `lint`/`typecheck`; su rojo y su verde quedan sin comprobar. La concurrencia levanta la app en `127.0.0.1:0` para que las dos peticiones corran en paralelo; el evento se captura con un oyente sobre `EventEmitter2`.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
