@@ -77,7 +77,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   (ajustar `index.spec.ts` si enumera exportaciones).
   Archivos: `apps/api/src/shared/domain/{actor,role.enum}.ts`, `apps/api/src/shared/domain/actor.spec.ts`, `apps/api/src/shared/index.ts`.
 
-- [ ] **T-04** Errores `UnauthenticatedError` e `InsufficientRoleError` + contrato de roles — CA: CA-1, CA-5, CA-6 — Depende: T-02, T-03 — ~1 h
+- [x] **T-04** Errores `UnauthenticatedError` e `InsufficientRoleError` + contrato de roles — CA: CA-1, CA-5, CA-6 — Depende: T-02, T-03 — ~1 h
   Prueba primero: `apps/api/src/shared/domain/errors/auth-errors.spec.ts` (`UnauthenticatedError extends
   UnauthorizedError`, `code = 'SHARED_UNAUTHENTICATED'`, 401; `InsufficientRoleError extends ForbiddenError`,
   `code = 'SHARED_FORBIDDEN'`, 403; mensajes exactos de plan §5) y
