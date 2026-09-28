@@ -121,7 +121,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   único traductor).
   Archivos: `apps/api/src/shared/presentation/domain-exception.filter.ts`, `apps/api/test/int/shared/domain-exception-filter.int-spec.ts`.
 
-- [ ] **T-09** [P] `REDACTED_FIELDS` con los campos de 001 — CA: CA-18 — Depende: — — ~1 h
+- [x] **T-09** [P] `REDACTED_FIELDS` con los campos de 001 — CA: CA-18 — Depende: — — ~1 h
   Prueba primero `apps/api/src/shared/infrastructure/logging/redacted-fields.spec.ts` (nuevo): `email`, `correo`,
   `fullName`, `to`, `html` y `text` salen `[REDACTED]` en cualquier nivel y sin distinguir mayúsculas; `nombre` sigue;
   `SMTP_PASSWORD` sale redactada vía `SECRET_KEYS` (se activa con T-10). Luego `redacted-fields.ts`. Documentar en el
