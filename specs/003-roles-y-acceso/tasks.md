@@ -148,7 +148,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   `app.module.ts` y `@Public()` en `HealthController`. El `worker` **no** importa `AuthGuardsModule`.
   Archivos: `apps/api/src/shared/presentation/auth/auth-guards.module.ts`, `apps/api/src/app.module.ts`, `apps/api/src/shared/presentation/health.controller.ts`, `apps/api/src/shared/presentation/health.controller.spec.ts`, `apps/api/test/int/shared/health.int-spec.ts`, `apps/api/src/shared/index.ts`.
 
-- [ ] **T-12** `TestJwtStrategy` y controlador sonda — CA: CA-1, CA-2, CA-4, CA-5, CA-6 — Depende: T-06, T-11 — ~1 h
+- [x] **T-12** `TestJwtStrategy` y controlador sonda — CA: CA-1, CA-2, CA-4, CA-5, CA-6 — Depende: T-06, T-11 — ~1 h
   Prueba primero `apps/api/test/support/test-jwt-strategy.spec.ts`: `validate(req)` con token válido devuelve los
   `claims` del verificador; con vencido devuelve `[false, { reason: 'expired' }]`; con inválido, `[false, { reason:
   'invalid' }]`; nunca lanza. Luego `TestJwtStrategy extends PassportStrategy(Strategy, ACCESS_TOKEN_STRATEGY)`
@@ -572,4 +572,5 @@ PR-F = 9 (T-48…T-56). Total: 56.
   `test/support/*.spec.ts` corra en `pnpm test`, `apps/api/jest.config.cjs` agrega ese patrón a `testMatch`.
 - **`ALL_ROLES` como tupla (T-07)**: el plan §5 lo tipa `readonly Role[]`, pero `@Roles` exige `readonly [Role, ...Role[]]` y el *spread* de un arreglo no la cumple. Se tipa `readonly [Role, ...Role[]]` (mismos valores, congelado; `actor.spec.ts` comprueba que coincide con `Object.values(Role)`). `RequestPrincipal` agrega `require(ctx)`, que usan los dos decoradores de parámetro.
 - **Patrón de ruta en las bitácoras (T-08)**: `presentation/auth/route-pattern.ts` (archivo no listado) arma `route` con `método + baseUrl + req.route.path` para `auth.unauthenticated` y `auth.forbidden`; lo comparten los dos guards. Las dos cabeceras `authorization` se detectan en `rawHeaders`, porque Node descarta los duplicados de `authorization` en `headers`.
+- **Sondas (T-12)**: además de las rutas de plan §5, `GET /__probe/session` (`@Roles(...ALL_ROLES)`, devuelve `{ sessionId }` de `@CurrentSessionId()`) para la parte de `sessionId` de CA-4 (T-15), y `ProbeCalls` (registro de manejadores ejecutados) para afirmar que un 401/403 no corre el controlador: un `jest.spyOn` sobre el controlador no sirve porque Nest captura el método al iniciar. `ProbeModule` provee su propio `FixedClock` bajo `I_CLOCK` (`PROBE_CLOCK_START`). Sin Docker, la cadena guard → Passport → estrategia → filtro se comprobó con una app Nest mínima sin `SharedModule` (prueba temporal no incluida): 200/401/403 y bitácoras con el patrón de ruta como se esperaba.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
