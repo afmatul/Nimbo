@@ -556,7 +556,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   8 de la Política) y las dos páginas estáticas.
   Archivos: `apps/web/src/features/identity/components/{legal-document,terms-v1,privacy-v1}.tsx`, `apps/web/src/app/(public)/{terminos,privacidad}/page.tsx` y sus `*.spec.tsx`.
 
-- [ ] **T-60** [P] `api.ts`, `chosen-plan-storage` y `use-countdown` — CA: CA-13, CA-15, CA-28 — Depende: T-05, T-57 — ~1,5 h
+- [x] **T-60** [P] `api.ts`, `chosen-plan-storage` y `use-countdown` — CA: CA-13, CA-15, CA-28 — Depende: T-05, T-57 — ~1,5 h
   Prueba primero `features/identity/chosen-plan-storage.spec.ts` (guarda `{ planId, planName, savedAt }` en
   `nimbo.registro.plan`, sin correo ni nombre; se lee solo si `savedAt` < 24 h; se borra al leer; sin `localStorage` →
   `null`), `hooks/use-countdown.spec.ts` (60 s por defecto; con un `429` usa `Retry-After`; temporizadores falsos) y
@@ -664,6 +664,7 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
 - **T-56 y T-58**: 21 suites de `web` en verde, incluido jest-axe. El área de 44 px es la etiqueta del checkbox y de cada radio.
 - **T-57**: el cliente interpreta `ErrorResponse` y `Retry-After`; un cuerpo inválido usa el genérico de 000 §10.
 - **T-59**: Términos y Privacidad usan `LEGAL_DOCUMENTS`. Los apartados 7 y 8 de la Política cierran con un solo punto.
+- **T-60**: el plan elegido vive en `localStorage` (`nimbo.registro.plan`) y se borra al leerlo.
 
 - **Catálogo de 006a (T-64)**: el plan fija qué necesita 001 (lectura pública de planes activos con `id`, nombre, precio
   en centavos y marca de gratuito, PD-40) pero no la ruta ni el esquema, que son de 006a. `plan-catalog.ts` aísla esa
