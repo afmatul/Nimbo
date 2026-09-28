@@ -1,11 +1,11 @@
 import { EmailAddress } from './email-address.vo';
 
 describe('EmailAddress', () => {
-  it('recorta espacios y pasa el correo a minúsculas', () => {
+  it('CA-3: recorta espacios y pasa el correo a minúsculas', () => {
     expect(EmailAddress.of('  Ana@Ejemplo.COM ').toString()).toBe('ana@ejemplo.com');
   });
 
-  it('trata como distintos un punto y un signo más en la parte local', () => {
+  it('CA-3: trata como distintos un punto y un signo más en la parte local', () => {
     const dotted = EmailAddress.of('ana.b@ejemplo.com');
     const plus = EmailAddress.of('ana+nimbo@ejemplo.com');
 

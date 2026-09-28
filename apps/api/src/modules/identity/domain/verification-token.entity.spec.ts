@@ -27,18 +27,18 @@ describe('VerificationToken', () => {
     ).toThrow(TypeError);
   });
 
-  it('está invalidado si tiene fecha de invalidación, aunque también esté usado o vencido', () => {
+  it('CA-11: está invalidado si tiene fecha de invalidación, aunque también esté usado o vencido', () => {
     const token = issue().invalidate(createdAt);
     const afterExpiry = new Date(expiresAt.getTime() + 1000);
     expect(token.stateAt(afterExpiry)).toBe('invalidated');
   });
 
-  it('está usado si tiene fecha de uso y no fue invalidado', () => {
+  it('CA-11: está usado si tiene fecha de uso y no fue invalidado', () => {
     const token = issue().consume(createdAt);
     expect(token.stateAt(createdAt)).toBe('used');
   });
 
-  it('vence justo en el límite y sigue vigente un segundo antes', () => {
+  it('CA-9: vence justo en el límite y sigue vigente un segundo antes', () => {
     const token = issue();
     const oneSecondBefore = new Date(expiresAt.getTime() - 1000);
 
@@ -48,7 +48,7 @@ describe('VerificationToken', () => {
     expect(token.isValid(expiresAt)).toBe(false);
   });
 
-  it('consume e invalida en instancias nuevas y fallan si el token ya no es válido', () => {
+  it('CA-8: consume e invalida en instancias nuevas y fallan si el token ya no es válido', () => {
     const original = issue();
     const consumed = original.consume(createdAt);
     const invalidated = original.invalidate(createdAt);

@@ -23,7 +23,7 @@ const register = (): ClientUser =>
   });
 
 describe('ClientUser', () => {
-  it('nace como cliente activo, sin el correo verificado y con la aceptación recibida', () => {
+  it('CA-1, CA-7: nace como cliente activo, sin el correo verificado y con la aceptación recibida', () => {
     const user = register();
 
     expect(user.role).toBe(Role.CLIENT);
@@ -33,7 +33,7 @@ describe('ClientUser', () => {
     expect(user.acceptance.privacyVersion).toBe('1.0');
   });
 
-  it('reemplaza el registro pendiente en una instancia nueva y deja la original intacta', () => {
+  it('CA-4: reemplaza el registro pendiente en una instancia nueva y deja la original intacta', () => {
     const original = register();
     const nextHash = PasswordHash.fromPhc('$argon2id$nuevo');
     const nextAcceptance = LegalAcceptance.of({
@@ -58,7 +58,7 @@ describe('ClientUser', () => {
     expect(original.acceptance.termsVersion).toBe('1.0');
   });
 
-  it('no reemplaza una cuenta ya verificada', () => {
+  it('CA-4: no reemplaza una cuenta ya verificada', () => {
     const verified = register().verifyEmail();
     expect(() =>
       verified.replacePendingRegistration({
@@ -69,7 +69,7 @@ describe('ClientUser', () => {
     ).toThrow(VerifiedAccountReplacementError);
   });
 
-  it('verifica el correo en otra instancia', () => {
+  it('CA-8: verifica el correo en otra instancia', () => {
     const original = register();
     const verified = original.verifyEmail();
 

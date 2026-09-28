@@ -15,14 +15,17 @@ describe('InternalUser', () => {
     emailVerified: true,
   };
 
-  it.each([Role.ADMIN, Role.SUPPORT, Role.OPERATOR])('rehidrata una cuenta de solo lectura con rol %s', (role) => {
-    const user = InternalUser.rehydrate({ ...props, role });
+  it.each([Role.ADMIN, Role.SUPPORT, Role.OPERATOR])(
+    'rehidrata una cuenta de solo lectura con rol %s',
+    (role) => {
+      const user = InternalUser.rehydrate({ ...props, role });
 
-    expect(user.role).toBe(role);
-    expect(user.emailVerified).toBe(true);
-    expect('verifyEmail' in user).toBe(false);
-    expect('replacePendingRegistration' in user).toBe(false);
-  });
+      expect(user.role).toBe(role);
+      expect(user.emailVerified).toBe(true);
+      expect('verifyEmail' in user).toBe(false);
+      expect('replacePendingRegistration' in user).toBe(false);
+    },
+  );
 
   it('rechaza el rol de cliente', () => {
     expect(() => InternalUser.rehydrate({ ...props, role: Role.CLIENT })).toThrow(TypeError);

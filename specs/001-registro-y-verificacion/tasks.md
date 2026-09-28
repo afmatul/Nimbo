@@ -654,6 +654,12 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
 ## Notas del developer
 
 - **T-28, T-29 y T-30**: 30 pruebas del dominio en verde. `OpaqueToken.toString()` devuelve el valor; `PasswordHash` sigue redactado. Los errores de transición viven en el archivo de la entidad. Jest se corrió directo con Node 24 porque `pnpm` exige Node 22.
+  **Revisión (2026-09-28, commit de Cursor `0a6e379`)**: coinciden con plan §6.1–§6.2 (nombres, inmutabilidad,
+  `issue` con vencimiento ya calculado, dominio sin `contracts`). Diferencias sin impacto: `OpaqueToken.matchesHash`
+  es estático (`matchesHash(valor, hashGuardado)`) y además hay `hash()` de instancia; `ClientUser.rehydrate` e
+  `InternalUser.rehydrate` (este rechaza `CLIENT`) para los mappers de T-39; `VerifiedAccountReplacementError` e
+  `InvalidTokenTransitionError` son `Error` internos, no `DomainError` (nunca llegan al cliente). Se corrigió el
+  formato de Prettier de dos pruebas (fallaba `pnpm lint`) y se antepuso `CA-n:` a los nombres de prueba (Art. II).
 
 - **Catálogo de 006a (T-64)**: el plan fija qué necesita 001 (lectura pública de planes activos con `id`, nombre, precio
   en centavos y marca de gratuito, PD-40) pero no la ruta ni el esquema, que son de 006a. `plan-catalog.ts` aísla esa
