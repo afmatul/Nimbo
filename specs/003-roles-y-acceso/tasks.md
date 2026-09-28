@@ -225,7 +225,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   (`.gitattributes` si hace falta).
   Archivos: `infra/postgres/init/10-nimbo-app.sh`, `apps/api/test/int/shared/app-role-script.int-spec.ts`, `.gitattributes` (si aplica).
 
-- [ ] **T-21** [P×PR] Compose, `.env.example` y `pnpm db:app-role` — CA: CA-13 — Depende: T-20 — ~0,5 h
+- [x] **T-21** [P×PR] Compose, `.env.example` y `pnpm db:app-role` — CA: CA-13 — Depende: T-20 — ~0,5 h
   `compose.yml`: en `postgres`, `NIMBO_APP_DB_PASSWORD: ${NIMBO_APP_DB_PASSWORD}` y el volumen
   `./infra/postgres/init/10-nimbo-app.sh:/docker-entrypoint-initdb.d/10-nimbo-app.sh:ro`. `.env.example`:
   `NIMBO_APP_DB_PASSWORD=nimbo_app` («debe coincidir con `DATABASE_URL`») y el comentario nuevo de `POSTGRES_USER`
@@ -235,7 +235,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   cambia aquí (lo hace T-24, con los permisos).
   Archivos: `compose.yml`, `.env.example`, `package.json`.
 
-- [ ] **T-22** [P] [P×PR] Lint `rls.js` (PD-26) — CA: CA-12 — Depende: — (hoy) — ~1 h
+- [x] **T-22** [P] [P×PR] Lint `rls.js` (PD-26) — CA: CA-12 — Depende: — (hoy) — ~1 h
   Prueba primero `packages/config/eslint/rls.spec.ts` (con la API `ESLint` y `overrideConfig`): un *fixture* con
   `query('SELECT set_config($1, $2, true)')` y otro con `` `SET LOCAL app.actor_id = …` `` o `SET app.` fuera de
   `**/shared/infrastructure/persistence/typeorm-transaction-runner.ts` fallan con un mensaje que nombra `withActor`; el
@@ -544,6 +544,8 @@ Tareas por PR: PR-A = 19 (T-01…T-19) · PR-B = 15 (T-20…T-34) · PR-C = 6 (T
 PR-F = 9 (T-48…T-56). Total: 56.
 
 ## Notas del developer
+
+- **T-22**: 7 pruebas de `rls.js` en verde. **T-21**: compose, `.env.example` y `db:app-role` quedan como el plan; la comprobación manual del volumen no se hizo porque Docker Desktop no está en marcha. **T-20** sigue abierta por lo mismo: el script y su prueba de integración están, pero no se ejecutaron.
 
 - **Precedencia del plan**: donde §11.2 dice «500 estrategia desconocida», «`err` se relanza como 500»,
   `access-token-strategy.ts` como archivo propio o `validate` → `false`, manda «Cambios aplicados»: 401

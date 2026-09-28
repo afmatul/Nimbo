@@ -15,7 +15,8 @@
     "test:isolation": "pnpm --filter api run test:isolation",
     "test:e2e": "node scripts/placeholder.mjs \"sin pruebas E2E aún (000b/023)\"",
     "seed": "node scripts/placeholder.mjs \"seed pendiente (005/019)\"",
-    "env:check": "tsx scripts/check-env-example.ts"
+    "env:check": "tsx scripts/check-env-example.ts",
+    "db:app-role": "docker compose exec -T postgres sh /docker-entrypoint-initdb.d/10-nimbo-app.sh"
   },
   "devDependencies": {
     "@nimbo/config": "workspace:*",
