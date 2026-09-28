@@ -141,7 +141,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   siga en verde en este PR.
   Archivos: `apps/api/src/shared/infrastructure/config/{secret-keys,env.schema}.ts`, `apps/api/src/shared/infrastructure/config/{env.schema,load-env}.spec.ts`, `scripts/check-env-example.spec.ts`, `.env.example`.
 
-- [ ] **T-11** [P] `enqueueWithCorrelation` acepta `JobsOptions` — CA: CA-21 (idempotencia por `jobId`) — Depende: — — ~0,5 h
+- [x] **T-11** [P] `enqueueWithCorrelation` acepta `JobsOptions` — CA: CA-21 (idempotencia por `jobId`) — Depende: — — ~0,5 h
   Prueba primero en `enqueue-with-correlation.spec.ts`: pasa `opts` (p. ej. `jobId`) a `queue.add` sin tocar `data`;
   sin `opts` se comporta como antes (`PingQueue` no cambia).
   Archivos: `apps/api/src/shared/infrastructure/queue/enqueue-with-correlation.ts`, `apps/api/src/shared/infrastructure/queue/enqueue-with-correlation.spec.ts`.
