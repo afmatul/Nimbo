@@ -108,7 +108,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   compose local (evidencia en «Notas del developer»).
   Archivos: `apps/api/src/migrations/20260928100000-crear-usuario.ts`, `apps/api/src/migrations/20260928100100-crear-token-cuenta.ts`, `apps/api/test/int/setup/{migrate,global-setup}.ts`, `apps/api/test/int/identity/schema.int-spec.ts`.
 
-- [ ] **T-07** [P] `shared/domain`: `FieldIssue`, `DomainError.fields`, `TooManyRequestsError` — CA: CA-5, CA-6, CA-15 — Depende: — — ~1 h
+- [x] **T-07** [P] `shared/domain`: `FieldIssue`, `DomainError.fields`, `TooManyRequestsError` — CA: CA-5, CA-6, CA-15 — Depende: — — ~1 h
   Prueba primero en `apps/api/src/shared/domain/errors/domain-error.spec.ts`: `fields` es opcional y de solo lectura;
   `TooManyRequestsError` expone `status = 429`, `retryAfterSeconds` y es `instanceof DomainError`. Luego
   `field-issue.ts`, `too-many-requests.error.ts`, cambio en `domain-error.ts` y `errors/index.ts`.
