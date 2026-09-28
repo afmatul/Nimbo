@@ -390,7 +390,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   `typeorm-user.repository.ts` (`INSERT … ON CONFLICT (correo) DO NOTHING RETURNING id`).
   Archivos: `apps/api/src/modules/identity/infrastructure/persistence/{usuario.orm-entity,user.mapper,typeorm-user.repository}.ts`, `apps/api/test/int/identity/user-repository.int-spec.ts`.
 
-- [ ] **T-40** [P] `TypeormVerificationTokenRepository` — CA: CA-10, CA-11, CA-12 (parcial), CA-29 (d) — Depende: T-06, T-14, T-30, T-32 — ~1,5 h
+- [x] **T-40** [P] `TypeormVerificationTokenRepository` — CA: CA-10, CA-11, CA-12 (parcial), CA-29 (d) — Depende: T-06, T-14, T-30, T-32 — ~1,5 h
   Prueba primero `apps/api/test/int/identity/verification-token-repository.int-spec.ts`: `findByHash(hash,
   'verificacion')` no encuentra un token `recuperacion` con el mismo hash (CA-12); `invalidateActive` marca
   `invalidado_en` solo en los vigentes de ese tipo; `consume` concurrente sobre el mismo id → exactamente un `true`;
@@ -815,4 +815,17 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   genera `ON CONFLICT DO NOTHING` sin columna y ocultaría un choque de `id`; `update` escribe solo nombre, hash,
   aceptación y `correo_verificado`; `creado_en` no se mapea (queda con su `DEFAULT`); el mapper lanza `TypeError` si
   una fila `CLIENT` no tiene aceptación (el `CHECK` lo impide).
+- **T-40, `invalidateActive` cierra también los vencidos (hallazgo)**: `uq_token_cuenta_vigente` es parcial sobre
+  `usado_en IS NULL AND invalidado_en IS NULL` y no mira `expira_en`. Si «vigentes» excluyera los vencidos, un
+  reenvío o un segundo registro después de las 24 h chocaría con el índice (`23505`) al insertar el enlace nuevo.
+  Por eso el `UPDATE` marca todo token sin usar ni invalidar de la cuenta y el tipo; se actualizó el comentario del
+  puerto y el doble en memoria (`InMemoryVerificationTokenRepository`) hace lo mismo (con `rehydrate`, porque
+  `invalidate(now)` del dominio rechaza un vencido). Efecto visible: un enlace vencido que ya fue reemplazado responde
+  «no válido» (CA-11 a) en lugar de «venció» (CA-9), que es lo que describe CA-11 para un enlace reemplazado.
+  `consume` es un `update` condicional (`usado_en IS NULL AND invalidado_en IS NULL AND expira_en > now`) y
+  devuelve `affected === 1`.
+- **T-40, sin Docker**: `test/int/identity/verification-token-repository.int-spec.ts` (7 casos: ida y vuelta,
+  CA-12 por tipo, `invalidateActive` selectivo y con vencidos, `consume` concurrente con exactamente un `true`,
+  `consume` de vencido e invalidado) compila y pasa `lint`, pero **no se ejecutó**. Prueba unitaria adicional,
+  **ejecutada**: `infrastructure/persistence/verification-token.mapper.spec.ts`.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>

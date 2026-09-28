@@ -7,7 +7,10 @@ import type {
 export interface IVerificationTokenRepository {
   /** Un token de otro tipo no se encuentra (CA-12). */
   findByHash(tokenHash: string, type: VerificationTokenType): Promise<VerificationToken | null>;
-  /** Marca como invalidados los tokens vigentes de la cuenta y el tipo (D-10, CA-4). */
+  /**
+   * Marca como invalidados los tokens sin usar ni invalidar de la cuenta y el tipo, también los vencidos, para que
+   * quepa el enlace nuevo en `uq_token_cuenta_vigente` (D-10, CA-4).
+   */
   invalidateActive(userId: string, type: VerificationTokenType, now: Date): Promise<void>;
   insert(token: VerificationToken): Promise<void>;
   /** Consumo atómico: `false` si el token ya no estaba vigente al actualizarlo (CA-29 d). */
