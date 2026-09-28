@@ -114,7 +114,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   del módulo, `set`/`get`) y los cuatro decoradores con `IS_PUBLIC` y `ROLES_KEY`.
   Archivos: `apps/api/src/shared/presentation/auth/{request-principal,public.decorator,roles.decorator,current-actor.decorator,current-session-id.decorator}.ts`, `apps/api/src/shared/presentation/auth/decorators.spec.ts`.
 
-- [ ] **T-08** `JwtAuthGuard.canActivate`: ruta pública y cabecera estricta — CA: CA-1 — Depende: T-01, T-04, T-05, T-07 — ~1 h
+- [x] **T-08** `JwtAuthGuard.canActivate`: ruta pública y cabecera estricta — CA: CA-1 — Depende: T-01, T-04, T-05, T-07 — ~1 h
   Prueba primero `apps/api/src/shared/presentation/auth/jwt-auth.guard.spec.ts` (primera parte): ruta `@Public()` →
   `true` **sin** llamar a `super.canActivate` ni leer la cabecera (también con un token inválido); sin cabecera →
   `missing_token`; `Basic …`, `Bearer` vacío, dos cabeceras `authorization`, espacios de más → `malformed_authorization`;
@@ -571,4 +571,5 @@ PR-F = 9 (T-48…T-56). Total: 56.
   clock })` que se evalúa dentro de cada prueba, para que 002 pueda construir su sujeto en un `beforeAll`. Para que
   `test/support/*.spec.ts` corra en `pnpm test`, `apps/api/jest.config.cjs` agrega ese patrón a `testMatch`.
 - **`ALL_ROLES` como tupla (T-07)**: el plan §5 lo tipa `readonly Role[]`, pero `@Roles` exige `readonly [Role, ...Role[]]` y el *spread* de un arreglo no la cumple. Se tipa `readonly [Role, ...Role[]]` (mismos valores, congelado; `actor.spec.ts` comprueba que coincide con `Object.values(Role)`). `RequestPrincipal` agrega `require(ctx)`, que usan los dos decoradores de parámetro.
+- **Patrón de ruta en las bitácoras (T-08)**: `presentation/auth/route-pattern.ts` (archivo no listado) arma `route` con `método + baseUrl + req.route.path` para `auth.unauthenticated` y `auth.forbidden`; lo comparten los dos guards. Las dos cabeceras `authorization` se detectan en `rawHeaders`, porque Node descarta los duplicados de `authorization` en `headers`.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
