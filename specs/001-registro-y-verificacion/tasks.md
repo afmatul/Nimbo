@@ -398,7 +398,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   `verification-token.mapper.ts`, `typeorm-verification-token.repository.ts`.
   Archivos: `apps/api/src/modules/identity/infrastructure/persistence/{token-cuenta.orm-entity,verification-token.mapper,typeorm-verification-token.repository}.ts`, `apps/api/test/int/identity/verification-token-repository.int-spec.ts`.
 
-- [ ] **T-41** [P] [P×PR] `Argon2idHasher` (ADR-0017) — CA: CA-19 — Depende: T-29, T-32 — ~1,5 h
+- [x] **T-41** [P] [P×PR] `Argon2idHasher` (ADR-0017) — CA: CA-19 — Depende: T-29, T-32 — ~1,5 h
   Agregar `argon2` a `apps/api` (y a `onlyBuiltDependencies` si pnpm 10 bloquea su script). Prueba primero
   `infrastructure/argon2id.hasher.spec.ts` (contrato de `IPasswordHasher`): PHC `$argon2id$v=19$m=19456,t=2,p=1$…`;
   misma contraseña → hashes distintos; `verify` correcto `true`, incorrecto `false`; parámetros como constantes con
@@ -828,4 +828,16 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   CA-12 por tipo, `invalidateActive` selectivo y con vencidos, `consume` concurrente con exactamente un `true`,
   `consume` de vencido e invalidado) compila y pasa `lint`, pero **no se ejecutó**. Prueba unitaria adicional,
   **ejecutada**: `infrastructure/persistence/verification-token.mapper.spec.ts`.
+- **T-41, `argon2` `0.45.1`** (versión exacta, ADR-0017). pnpm 10 avisa «Ignored build scripts: argon2»; como
+  decide el ADR, **no** se agregó a `onlyBuiltDependencies`: el paquete trae binarios precompilados y se comprobó que
+  carga y hashea en Windows x64 con Node 22 sin compilar. **Sin comprobar** por falta de Docker: la carga en
+  `node:22-alpine` (`docker run --rm -v … node:22-alpine node -e "require('argon2')"`, riesgo de plan §9); el paquete
+  incluye `prebuilds/linux-x64/argon2.musl.node` y `linux-arm64/argon2.armv8.musl.node`, así que se espera que cargue,
+  pero hay que correr ese comando antes de fusionar el PR-3 (si falla, ADR-0017 prevé `@node-rs/argon2`).
+  **Hallazgo sobre CA-19**: la librería escribe los parámetros en orden `m=19456,p=1,t=2` (serializa con
+  `@phc/format`), no `m=…,t=…,p=…` como dice el texto de CA-19 y de la tarea. Es un PHC válido con los mismos
+  parámetros y `verify` no depende del orden, así que la prueba compara los parámetros como mapa y no la cadena
+  literal. Propuesta para la spec: leer CA-19 como «PHC de Argon2id con `m`, `t` y `p` ≥ RN-3», sin fijar el orden.
+  `verify` con un hash que no es PHC lanza (no devuelve `false`): un hash corrupto es un error de datos, no una
+  contraseña incorrecta, y ningún CA pide lo contrario.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
