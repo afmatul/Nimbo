@@ -230,7 +230,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   SmtpMailer`) e `index.ts` (solo lo público de plan §6.6).
   Archivos: `apps/api/src/modules/notifications/infrastructure/smtp-mailer.ts`, `apps/api/src/modules/notifications/notifications.module.ts`, `apps/api/src/modules/notifications/index.ts`, `apps/api/test/int/notifications/smtp-mailer.int-spec.ts`.
 
-- [ ] **T-22** `SmtpTransport` y Mailpit en el arnés — CA: CA-1 (correo en Mailpit), CA-21 — Depende: T-10 — ~2 h
+- [x] **T-22** `SmtpTransport` y Mailpit en el arnés — CA: CA-1 (correo en Mailpit), CA-21 — Depende: T-10 — ~2 h
   Agregar `nodemailer` y `@types/nodemailer` a `apps/api`. Mailpit en `containers.ts` (`axllent/mailpit` con versión
   fijada; exporta `SMTP_HOST`/`SMTP_PORT` y la URL de la API) y ayudante `test/int/setup/mailpit.ts` (`listMessages`,
   `getMessage`, `deleteAll`, `waitForMessages(n)`). Prueba primero `apps/api/test/int/notifications/smtp-transport.int-spec.ts`:
