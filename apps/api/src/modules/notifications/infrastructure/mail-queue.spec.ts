@@ -1,4 +1,4 @@
-import { MAIL_JOB_NAME, MAIL_JOB_OPTIONS, MAIL_QUEUE } from './mail-queue';
+import { MAIL_JOB_NAME, MAIL_JOB_OPTIONS, MAIL_JOB_OPTIONS_TOKEN, MAIL_QUEUE } from './mail-queue';
 
 describe('cola `mail`', () => {
   it('CA-21: la cola se llama `mail` y el trabajo `send`', () => {
@@ -18,5 +18,9 @@ describe('cola `mail`', () => {
 
   it('CA-21: las opciones son inmutables', () => {
     expect(Object.isFrozen(MAIL_JOB_OPTIONS)).toBe(true);
+  });
+
+  it('CA-21: las opciones se inyectan con su propio token para que las pruebas acorten el retroceso', () => {
+    expect(typeof MAIL_JOB_OPTIONS_TOKEN).toBe('symbol');
   });
 });

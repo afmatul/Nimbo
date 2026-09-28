@@ -1,4 +1,4 @@
-import type { Queue } from 'bullmq';
+import type { JobsOptions, Queue } from 'bullmq';
 import type { PinoLogger } from 'nestjs-pino';
 
 import { CorrelationContext } from '../../../shared';
@@ -19,12 +19,14 @@ const message: MailMessage = {
   recipientId: 'user-1',
 };
 
-const setup = (): { mailer: SmtpMailer; add: jest.Mock; info: jest.Mock } => {
+const setup = (
+  jobOptions: Readonly<JobsOptions> = MAIL_JOB_OPTIONS,
+): { mailer: SmtpMailer; add: jest.Mock; info: jest.Mock } => {
   const add = jest.fn().mockResolvedValue({ id: KEY });
   const info = jest.fn();
   const queue = { name: 'mail', add } as unknown as Queue;
   const logger = { info } as unknown as PinoLogger;
-  return { mailer: new SmtpMailer(queue, logger), add, info };
+  return { mailer: new SmtpMailer(queue, jobOptions, logger), add, info };
 };
 
 describe('SmtpMailer', () => {
@@ -38,6 +40,15 @@ describe('SmtpMailer', () => {
       { ...message, correlationId: 'corr-1' },
       { ...MAIL_JOB_OPTIONS, jobId: KEY },
     );
+  });
+
+  it('CA-21: usa las opciones inyectadas (las pruebas acortan el retroceso) y conserva `jobId = idempotencyKey`', async () => {
+    const short = { ...MAIL_JOB_OPTIONS, backoff: { type: 'exponential', delay: 10 } };
+    const { mailer, add } = setup(short);
+
+    await mailer.send(message);
+
+    expect(add.mock.calls[0]?.[2]).toEqual({ ...short, jobId: KEY });
   });
 
   it('CA-21: una clave con `:` lanza sin encolar ni registrar', async () => {

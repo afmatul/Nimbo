@@ -258,7 +258,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   `modules/notifications/index.ts`) y `worker.main.ts` si hace falta.
   Archivos: `apps/api/src/modules/notifications/notifications-worker.module.ts`, `apps/api/src/modules/notifications/index.ts`, `apps/api/src/worker.module.ts`, `apps/api/src/worker.main.ts`, `apps/api/test/int/worker/{bootstrap,worker-health}.int-spec.ts`.
 
-- [ ] **T-25** Contrato de `IMailer` de punta a punta y degradación del SMTP — CA: CA-21, CA-18 — Depende: T-18, T-21, T-24 — ~2 h
+- [x] **T-25** Contrato de `IMailer` de punta a punta y degradación del SMTP — CA: CA-21, CA-18 — Depende: T-18, T-21, T-24 — ~2 h
   Pruebas (arnés con `withWorkerEnv`, `NotificationsModule` + `NotificationsWorkerModule` en la misma app, `delay`
   corto inyectado en `MAIL_JOB_OPTIONS`):
   - `apps/api/test/int/notifications/mailer-contract.int-spec.ts` (Liskov): `IMailer.send` → un correo en Mailpit con

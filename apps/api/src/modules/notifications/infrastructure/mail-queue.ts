@@ -24,6 +24,12 @@ export const MAIL_JOB_OPTIONS: Readonly<JobsOptions> = Object.freeze({
 });
 
 /**
+ * Token con el que `NotificationsModule` inyecta `MAIL_JOB_OPTIONS` en `SmtpMailer`: las pruebas de integración lo
+ * sustituyen por un retroceso corto para recorrer los reintentos en segundos (001 plan §6.6).
+ */
+export const MAIL_JOB_OPTIONS_TOKEN = Symbol('MAIL_JOB_OPTIONS');
+
+/**
  * Datos del trabajo: el mensaje y el `correlationId` de la petición que lo encoló (CA-18). Llevan el correo y el
  * enlace: **nunca** se registran (plan §6.7).
  */

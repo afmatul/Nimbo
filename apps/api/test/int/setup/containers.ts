@@ -76,13 +76,17 @@ export const startMailpit = async (options: MailpitOptions = {}): Promise<Starte
     .withWaitStrategy(Wait.forListeningPorts())
     .start();
 
+/** URL de la API de un Mailpit (`/api/v1/...`). */
+export const mailpitApiUrl = (mailpit: StartedTestContainer): string =>
+  `http://${mailpit.getHost()}:${String(mailpit.getMappedPort(MAILPIT_API_PORT))}`;
+
 /** Variables del `worker` que apuntan a un Mailpit, más la URL de su API para `mailpit.ts`. */
 export const mailpitEnv = (mailpit: StartedTestContainer): Record<string, string> => ({
   SMTP_HOST: mailpit.getHost(),
   SMTP_PORT: String(mailpit.getMappedPort(MAILPIT_SMTP_PORT)),
   SMTP_TLS: 'none',
   MAIL_FROM: TEST_MAIL_FROM,
-  [MAILPIT_API_URL_VAR]: `http://${mailpit.getHost()}:${String(mailpit.getMappedPort(MAILPIT_API_PORT))}`,
+  [MAILPIT_API_URL_VAR]: mailpitApiUrl(mailpit),
 });
 
 /** Arranca Postgres, Redis, MinIO y Mailpit en paralelo y deja el bucket de pruebas creado. */
