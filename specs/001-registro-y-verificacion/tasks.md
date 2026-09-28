@@ -443,7 +443,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
 
 ### 3e. Pruebas de integración por criterio
 
-- [ ] **T-46** Registro: CA-1 completo, CA-2, CA-3 y CA-4 — CA: CA-1, CA-2, CA-3, CA-4 — Depende: T-45 — ~2 h
+- [x] **T-46** Registro: CA-1 completo, CA-2, CA-3 y CA-4 — CA: CA-1, CA-2, CA-3, CA-4 — Depende: T-45 — ~2 h
   En `register.int-spec.ts`: CA-1 (rol, correo normalizado, `correo_verificado = false`, `estado = activa`, versión y
   fecha de aceptación de `LEGAL_DOCUMENTS` con `FixedClock`, `expira_en = +24 h`, un solo correo con el enlace
   `http://localhost/verificar-correo#token=`, sin contraseña); CA-2 (cuenta verificada y cuenta interna insertadas a
@@ -875,4 +875,5 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   `DomainExceptionFilter` sin esa cabecera, que no guarda nada sensible y no se almacena por defecto. Si la revisión
   lo quiere en toda respuesta, basta un *middleware* de `IdentityModule` para `AuthController`.
 - **Revisión de T-45, `no-store` en toda respuesta (decisión de Adrián: seguir plan §5)**: `presentation/no-store.middleware.ts` y `IdentityModule.configure` lo aplican a `AuthController`; se quitaron los `@Header`. Cubre 202/200, 422 del pipe, 429 del guard y 500. **Límite aceptado**: el `400 VALIDATION_FAILED` de un JSON mal formado no lleva la cabecera porque el analizador global de `configureHttpApp` corre antes que los middlewares de módulo; es genérico (solo `correlationId`), se deja así y lo valora la revisión.
+- **T-46**: `register.int-spec.ts` **no se ejecutó** (sin Docker): compila y pasa `lint`/`typecheck`; su rojo y su verde quedan sin comprobar. Correos encolados por `mail.enqueued` con el `correlationId`; la concurrencia de CA-3 usa una segunda app con `I_RATE_LIMITER` que siempre permite (el límite de 60 s serializaba las peticiones). «Ninguna suscripción» de CA-1 queda para 006a.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
