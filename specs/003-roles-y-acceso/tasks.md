@@ -57,7 +57,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
 
 ## Bloque 1 — PR-A «autorización en shared» (plan §6.1, §6.2, §6.6; ADR-0017 c.2) — depende de: `main` (000)
 
-- [ ] **T-01** Dependencias de Passport con versión exacta — CA: n/a — Depende: — — ~0,5 h
+- [x] **T-01** Dependencias de Passport con versión exacta — CA: n/a — Depende: — — ~0,5 h
   `pnpm --filter api add -E @nestjs/passport passport passport-jwt @nestjs/jwt` y `-D -E @types/passport-jwt`.
   Comprobar `pnpm typecheck` y `pnpm test` sin cambios. En la descripción del PR (y del de 001 PR-1): posible conflicto
   en `pnpm-lock.yaml`; lo resuelve quien integre segundo, combinando `package.json` y regenerando con `pnpm install`,
@@ -564,4 +564,7 @@ PR-F = 9 (T-48…T-56). Total: 56.
 - **Archivos de prueba que el plan no nombra**: `app-role-script.int-spec.ts` (T-20), `test-app.int-spec.ts` (T-13),
   `access-token-contract.int-spec.ts` (T-14), `isolation-world.iso-spec.ts` (T-41), `index.spec.ts` de `access` (T-39)
   y `roles-contract.spec.ts` en `shared/presentation/auth` (T-04, porque el dominio no importa `contracts`).
+- **Versiones de Passport (T-01)**: `@nestjs/jwt@12` y `@nestjs/passport@12` son solo ESM (`"type": "module"`) y
+  el `api` compila a CommonJS y prueba con `ts-jest`; se fijan las últimas de la línea 11 (la de `@nestjs/common` 11):
+  `@nestjs/jwt@11.0.2`, `@nestjs/passport@11.0.5`, `passport@0.7.0`, `passport-jwt@4.0.1`, `@types/passport-jwt@4.0.1`.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
