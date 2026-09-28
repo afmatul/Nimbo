@@ -1,4 +1,5 @@
 import { BadRequestException, Controller, Get, NotFoundException } from '@nestjs/common';
+import { errorResponseSchema } from '@nimbo/contracts';
 import request from 'supertest';
 
 import {
@@ -8,6 +9,7 @@ import {
   NotFoundError,
   UnauthorizedError,
 } from '../../../src/shared';
+import { TooManyRequestsError } from '../../../src/shared/domain/errors';
 import { createTestApp } from '../setup/test-app';
 import type { TestApp } from '../setup/test-app';
 
@@ -26,6 +28,16 @@ class SharedExampleUnauthorizedError extends UnauthorizedError {
 class SharedExampleForbiddenError extends ForbiddenError {
   readonly code = 'SHARED_EXAMPLE_FORBIDDEN';
 }
+
+class SharedExampleTooManyRequestsError extends TooManyRequestsError {
+  readonly code = 'SHARED_EXAMPLE_TOO_MANY_REQUESTS';
+}
+
+const FIELDS = [
+  { field: 'email', reason: 'INVALID_EMAIL', message: 'Escribe un correo válido.' },
+  { field: 'rol', reason: 'UNKNOWN_FIELD', message: 'Quita este campo.' },
+];
+const RETRY_AFTER_SECONDS = 90;
 
 const NOT_FOUND_MESSAGE = 'No existe el recurso solicitado. Verifica el identificador.';
 
@@ -56,6 +68,19 @@ class ErrorsProbeController {
   forbidden(): never {
     throw new SharedExampleForbiddenError(
       'No tienes permiso sobre este recurso. Pide acceso al dueño.',
+    );
+  }
+
+  @Get('invalid-input-fields')
+  invalidInputWithFields(): never {
+    throw new SharedExampleInvalidInputError('Revisa los campos marcados.', FIELDS);
+  }
+
+  @Get('too-many-requests')
+  tooManyRequests(): never {
+    throw new SharedExampleTooManyRequestsError(
+      'Ya lo intentaste hace poco. Inténtalo de nuevo en 2 minutos.',
+      RETRY_AFTER_SECONDS,
     );
   }
 
@@ -169,5 +194,34 @@ describe('DomainExceptionFilter (CA-16)', () => {
       message: expect.any(String),
       correlationId: expect.any(String),
     });
+  });
+
+  it('001 CA-6: un `InvalidInputError` con `fields` → 422 con `fields` en el cuerpo', async () => {
+    const response = await get('invalid-input-fields').set('x-correlation-id', 'corr-fields');
+
+    expect(response.status).toBe(422);
+    expect(response.body).toEqual({
+      code: 'SHARED_EXAMPLE_INVALID_INPUT',
+      message: 'Revisa los campos marcados.',
+      correlationId: 'corr-fields',
+      fields: FIELDS,
+    });
+    expect(errorResponseSchema.safeParse(response.body).success).toBe(true);
+  });
+
+  it('001 CA-6: sin `fields` el cuerpo es idéntico al de 000 (sin la clave `fields`)', async () => {
+    const response = await get('invalid-input');
+
+    expect(Object.keys(response.body).sort()).toEqual(['code', 'correlationId', 'message']);
+    expect(errorResponseSchema.safeParse(response.body).success).toBe(true);
+  });
+
+  it('001 CA-15: `TooManyRequestsError(90)` → 429 con `Retry-After: 90`', async () => {
+    const response = await get('too-many-requests');
+
+    expect(response.status).toBe(429);
+    expect(response.headers['retry-after']).toBe(String(RETRY_AFTER_SECONDS));
+    expect(response.body).toMatchObject({ code: 'SHARED_EXAMPLE_TOO_MANY_REQUESTS' });
+    expect(errorResponseSchema.safeParse(response.body).success).toBe(true);
   });
 });

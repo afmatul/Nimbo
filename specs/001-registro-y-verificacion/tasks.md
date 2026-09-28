@@ -114,7 +114,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   `field-issue.ts`, `too-many-requests.error.ts`, cambio en `domain-error.ts` y `errors/index.ts`.
   Archivos: `apps/api/src/shared/domain/errors/{field-issue,too-many-requests.error,domain-error,index}.ts`, `apps/api/src/shared/domain/errors/domain-error.spec.ts`.
 
-- [ ] **T-08** `DomainExceptionFilter` con `fields` y `Retry-After` — CA: CA-5, CA-6, CA-15 — Depende: T-07 — ~1,5 h
+- [x] **T-08** `DomainExceptionFilter` con `fields` y `Retry-After` — CA: CA-5, CA-6, CA-15 — Depende: T-07 — ~1,5 h
   Prueba primero: ampliar `apps/api/test/int/shared/domain-exception-filter.int-spec.ts` (un `InvalidInputError` con
   `fields` → `422` con `fields` en el cuerpo; sin `fields` → cuerpo idéntico al de 000; `TooManyRequestsError(90)` →
   `429` con `Retry-After: 90`; el cuerpo sigue validando con `errorResponseSchema`). Luego el filtro (sigue siendo el
@@ -690,4 +690,8 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   `tsx src/scripts/migrate.ts run` (el mismo camino que `pnpm --filter api migration:run`), porque TypeORM carga las
   migraciones `.ts` por glob y el transformador de Jest no está activo durante `globalSetup` asíncrono. Las
   migraciones se escribieron a mano con el SQL de plan §4 (no hay entidades aún para `migration:generate`).
+- **T-08, prueba unitaria adicional**: sin Docker, además de ampliar `domain-exception-filter.int-spec.ts` se agregó
+  `src/shared/presentation/domain-exception.filter.spec.ts` (respuesta falsa) para comprobar de verdad el rojo y el
+  verde de `fields` y `Retry-After`. La suite de integración importa `TooManyRequestsError` desde
+  `src/shared/domain/errors` hasta que T-16 lo exporte en `shared/index.ts`.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
