@@ -453,7 +453,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   enlace nuevo; antes de 60 s → `429` y la cuenta no cambia).
   Archivos: `apps/api/test/int/identity/register.int-spec.ts`.
 
-- [ ] **T-47** [P] Validación del registro — CA: CA-5, CA-6, CA-7 — Depende: T-45 — ~1,5 h
+- [x] **T-47** [P] Validación del registro — CA: CA-5, CA-6, CA-7 — Depende: T-45 — ~1,5 h
   `apps/api/test/int/identity/register-validation.int-spec.ts`: CA-5 (una petición por regla →
   `IDENTITY_WEAK_PASSWORD` con cada regla en `fields`; con correo existente la respuesta es idéntica, salvo
   `x-correlation-id`); CA-6 (cada campo inválido, casilla sin marcar con su mensaje, campo ausente, varios a la vez →
@@ -876,4 +876,5 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   lo quiere en toda respuesta, basta un *middleware* de `IdentityModule` para `AuthController`.
 - **Revisión de T-45, `no-store` en toda respuesta (decisión de Adrián: seguir plan §5)**: `presentation/no-store.middleware.ts` y `IdentityModule.configure` lo aplican a `AuthController`; se quitaron los `@Header`. Cubre 202/200, 422 del pipe, 429 del guard y 500. **Límite aceptado**: el `400 VALIDATION_FAILED` de un JSON mal formado no lleva la cabecera porque el analizador global de `configureHttpApp` corre antes que los middlewares de módulo; es genérico (solo `correlationId`), se deja así y lo valora la revisión.
 - **T-46**: `register.int-spec.ts` **no se ejecutó** (sin Docker): compila y pasa `lint`/`typecheck`; su rojo y su verde quedan sin comprobar. Correos encolados por `mail.enqueued` con el `correlationId`; la concurrencia de CA-3 usa una segunda app con `I_RATE_LIMITER` que siempre permite (el límite de 60 s serializaba las peticiones). «Ninguna suscripción» de CA-1 queda para 006a.
+- **T-47**: `register-validation.int-spec.ts` **no se ejecutó** (sin Docker): compila y pasa `lint`/`typecheck`; su rojo y su verde quedan sin comprobar. Expectativas confirmadas con una prueba desechable (`configureHttpApp` real). Al comparar errores se ignoran `x-correlation-id`, `date`, `etag` y el `correlationId` del cuerpo. **Hallazgo**: el mensaje de `PASSWORD_COMMON` dentro de `IDENTITY_WEAK_PASSWORD` repite «Elige otra» (T-31).
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
