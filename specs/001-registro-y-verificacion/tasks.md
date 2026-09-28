@@ -212,7 +212,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
 
 ## Bloque 2 — PR-2 «notifications y worker» (plan §6.6, §6.8; ADR-0018)
 
-- [ ] **T-20** [P] [P×PR] Puerto `IMailer`, `MailMessage` y opciones de la cola `mail` — CA: CA-21 — Depende: — — ~1 h
+- [x] **T-20** [P] [P×PR] Puerto `IMailer`, `MailMessage` y opciones de la cola `mail` — CA: CA-21 — Depende: — — ~1 h
   Prueba primero `apps/api/src/modules/notifications/application/ports/idempotency-key.spec.ts` (acepta
   `identity.verification.<uuid>` e `identity.attempt-notice.<uuid>`; rechaza `:`, espacios, vacío y caracteres fuera de
   `[A-Za-z0-9._-]`) y `infrastructure/mail-queue.spec.ts` (`attempts: 6`, `backoff` exponencial de 5000 ms,
