@@ -1,5 +1,5 @@
 import * as shared from './index';
-import type { Actor, IClock } from './index';
+import type { Actor, FieldIssue, IClock, IRateLimiter, ITransactionRunner } from './index';
 
 /** Igualdad estricta de tipos (patrón de `type-challenges`); un fallo aquí lo detecta `pnpm typecheck`. */
 type Equal<X, Y> =
@@ -10,6 +10,11 @@ type _ActorHasExactlyTheDeclaredKeys = Expect<Equal<keyof Actor, 'id' | 'role' |
 type _ActorRoleIsRole = Expect<Equal<Actor['role'], shared.Role>>;
 type _ActorFlagsContentAccess = Expect<Equal<Actor['canReadContent'], boolean>>;
 type _ClockExposesOnlyNow = Expect<Equal<keyof IClock, 'now'>>;
+type _FieldIssueHasExactlyTheDeclaredKeys = Expect<
+  Equal<keyof FieldIssue, 'field' | 'reason' | 'message'>
+>;
+type _RateLimiterExposesOnlyConsume = Expect<Equal<keyof IRateLimiter, 'consume'>>;
+type _TransactionRunnerExposesOnlyRun = Expect<Equal<keyof ITransactionRunner, 'run'>>;
 
 /** Valores en tiempo de ejecución que `shared/index.ts` exporta al cerrar 000 (plan §6.2), por tarea. */
 const RUNTIME_EXPORTS_BY_TASK = {
@@ -44,6 +49,14 @@ const RUNTIME_EXPORTS_BY_TASK = {
   'T-19': ['HealthModule'],
   'T-20': ['PostgresHealthIndicator', 'RedisHealthIndicator', 'MinioHealthIndicator'],
   'T-21': ['enqueueWithCorrelation', 'PING_QUEUE', 'PingProcessor', 'PingQueue'],
+  '001 T-16': [
+    'TooManyRequestsError',
+    'I_RATE_LIMITER',
+    'I_TRANSACTION_RUNNER',
+    'TransactionContext',
+    'ZodValidationPipe',
+    'REDIS_CLIENT',
+  ],
 } as const;
 
 const ALL_RUNTIME_EXPORTS: readonly string[] = Object.values(RUNTIME_EXPORTS_BY_TASK).flat();
@@ -111,6 +124,12 @@ describe('shared/index.ts (CA-17)', () => {
     // Las dos raíces de composición registran la cola, así que el productor es API pública
     // del módulo y no un interno: importarlo por ruta rompería la frontera que vigila T-28.
     expect(shared.PING_QUEUE).toBe('ping');
+  });
+  it('001 CA-5/CA-15: exporta los errores, puertos y piezas nuevas de 001 (plan §6.7, T-16)', () => {
+    expectExportsOf('001 T-16');
+    expect(typeof shared.I_RATE_LIMITER).toBe('symbol');
+    expect(typeof shared.I_TRANSACTION_RUNNER).toBe('symbol');
+    expect(typeof shared.REDIS_CLIENT).toBe('symbol');
   });
   it('CA-17: exporta exactamente la lista del plan §6.2 al cerrar el bloque 2 (T-26)', () => {
     expect(exportedKeys()).toEqual([...ALL_RUNTIME_EXPORTS].sort());

@@ -7,9 +7,9 @@ import {
   ForbiddenError,
   InvalidInputError,
   NotFoundError,
+  TooManyRequestsError,
   UnauthorizedError,
 } from '../../../src/shared';
-import { TooManyRequestsError } from '../../../src/shared/domain/errors';
 import { createTestApp } from '../setup/test-app';
 import type { TestApp } from '../setup/test-app';
 

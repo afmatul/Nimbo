@@ -177,7 +177,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   `contracts/identity` (se comprueba con el lint).
   Archivos: `apps/api/src/shared/presentation/zod-validation.pipe.ts`, `apps/api/src/shared/presentation/zod-validation.pipe.spec.ts`.
 
-- [ ] **T-16** `SharedModule` global y exportaciones de `shared` — CA: CA-1 (reloj), CA-15 — Depende: T-12, T-13, T-14, T-15 — ~1 h
+- [x] **T-16** `SharedModule` global y exportaciones de `shared` — CA: CA-1 (reloj), CA-15 — Depende: T-12, T-13, T-14, T-15 — ~1 h
   Prueba primero: `apps/api/src/shared/index.spec.ts` (000 CA-17) con la lista nueva de exportaciones
   (`FieldIssue`, `TooManyRequestsError`, `IRateLimiter`, `I_RATE_LIMITER`, `ITransactionRunner`,
   `I_TRANSACTION_RUNNER`, `TransactionContext`, `ZodValidationPipe`, `configureHttpApp` —activada en T-17—,
@@ -692,8 +692,7 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   migraciones se escribieron a mano con el SQL de plan §4 (no hay entidades aún para `migration:generate`).
 - **T-08, prueba unitaria adicional**: sin Docker, además de ampliar `domain-exception-filter.int-spec.ts` se agregó
   `src/shared/presentation/domain-exception.filter.spec.ts` (respuesta falsa) para comprobar de verdad el rojo y el
-  verde de `fields` y `Retry-After`. La suite de integración importa `TooManyRequestsError` desde
-  `src/shared/domain/errors` hasta que T-16 lo exporte en `shared/index.ts`.
+  verde de `fields` y `Retry-After`. La suite de integración importa `TooManyRequestsError` desde `src/shared` (exportado en T-16).
 - **T-13, prueba unitaria adicional**: `redis-rate-limiter.spec.ts` (Redis falso) comprueba las claves, los
   argumentos del script, el redondeo hacia arriba y la propagación de errores; la semántica del Lua (atomicidad,
   ventanas, `PTTL`) solo la cubre `redis-rate-limiter.int-spec.ts`, **sin ejecutar** por falta de Docker.
