@@ -345,7 +345,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   identity.verification` y `recipientId`; dos emisiones → valores distintos.
   Archivos: `apps/api/src/modules/identity/application/verification-link-issuer.ts`, `apps/api/src/modules/identity/application/verification-link-issuer.spec.ts`.
 
-- [ ] **T-35** [P] `RegistrationAttemptNotifier` — CA: CA-2 — Depende: T-32, T-33, T-12 — ~1 h
+- [x] **T-35** [P] `RegistrationAttemptNotifier` — CA: CA-2 — Depende: T-32, T-33, T-12 — ~1 h
   Prueba primero `application/registration-attempt-notifier.spec.ts` (`IRateLimiter` falso): permitido → devuelve el
   aviso con `idempotencyKey = identity.attempt-notice.<uuid>` y registra `identity.registration.attempt_notice_sent`
   (`userId`); rechazado → no devuelve mensaje y registra `…_suppressed`; la clave es
@@ -787,4 +787,7 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   quita la barra final de `WEB_PUBLIC_URL`) y dobles de prueba reutilizables en `application/testing/`
   (`InMemoryVerificationTokenRepository`, `aClientUser()`), que T-35 a T-38 reutilizan. El id del token lo genera la
   aplicación con `randomUUID()` (lo necesita la `idempotencyKey` antes del `INSERT`).
+- **T-35, archivo adicional**: `application/identity-logger.ts` (interfaz mínima `info`/`warn` que los servicios de
+  `identity` reciben con `@Inject(PinoLogger)`, igual que `HealthLogger` en `shared`), para usar un doble en las
+  pruebas. `WEB_PATHS.passwordRecovery = '/recuperar-contrasena'` (ya en `web-links.ts`) sigue pendiente de confirmar en 002.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
