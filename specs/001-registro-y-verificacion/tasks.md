@@ -542,7 +542,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   `reason`, reexporta `IDENTITY_FIELD_MESSAGES`, código desconocido → genérico de 000 §10).
   Archivos: `apps/web/src/lib/{api-client,error-catalog}.ts` y sus `*.spec.ts`.
 
-- [ ] **T-58** [P] [P×PR] `PublicHeader`, grupo `(public)` y marcador de inicio de sesión — CA: CA-8, CA-10, CA-22 (cabecera sin sesión) — Depende: — — ~1 h
+- [x] **T-58** [P] [P×PR] `PublicHeader`, grupo `(public)` y marcador de inicio de sesión — CA: CA-8, CA-10, CA-22 (cabecera sin sesión) — Depende: — — ~1 h
   Prueba primero `components/nimbo/public-header.spec.tsx` (logo, «Iniciar sesión» → `/iniciar-sesion`, sin datos de
   sesión, jest-axe) y `app/(public)/iniciar-sesion/page.spec.tsx` («Inicio de sesión disponible pronto»). Luego
   `public-header.tsx`, `app/(public)/layout.tsx` y el marcador. **Coordinar con 002**, que reemplaza este marcador.
@@ -660,6 +660,7 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   `InternalUser.rehydrate` (este rechaza `CLIENT`) para los mappers de T-39; `VerifiedAccountReplacementError` e
   `InvalidTokenTransitionError` son `Error` internos, no `DomainError` (nunca llegan al cliente). Se corrigió el
   formato de Prettier de dos pruebas (fallaba `pnpm lint`) y se antepuso `CA-n:` a los nombres de prueba (Art. II).
+- **T-56 y T-58**: 21 suites de `web` en verde, incluido jest-axe. El área de 44 px es la etiqueta del checkbox y de cada radio.
 
 - **Catálogo de 006a (T-64)**: el plan fija qué necesita 001 (lectura pública de planes activos con `id`, nombre, precio
   en centavos y marca de gratuito, PD-40) pero no la ruta ni el esquema, que son de 006a. `plan-catalog.ts` aísla esa
