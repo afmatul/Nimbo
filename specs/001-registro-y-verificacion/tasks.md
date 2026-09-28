@@ -740,8 +740,8 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   DefinitelyTyped cubren la API usada), con versión exacta. Mailpit fijado en `axllent/mailpit:v1.31.3` en
   Testcontainers y en `compose.override.yml` (antes sin versión). La URL de la API de Mailpit viaja en
   `TEST_MAILPIT_API_URL`, variable solo de pruebas (no es de ningún esquema). `SmtpTransport` fija tiempos de espera
-  (conexión y saludo 10 s, socket 20 s) por debajo del bloqueo de 30 s de BullMQ: con los de nodemailer (hasta
-  10 min) un SMTP colgado dejaría el trabajo estancado y otro intento podría entregar dos veces. Prueba unitaria
+  (conexión y saludo 10 s, socket 20 s): con los de nodemailer (hasta 10 min), evita que un SMTP colgado bloquee
+  indefinidamente el intento actual (review-pr2 I-3). Prueba unitaria
   adicional `smtp-transport.spec.ts` con un servidor SMTP falso (`node:net`) que anuncia STARTTLS: cubre `MAIL_FROM`,
   `Message-ID`, los modos `none`/`starttls` y el puerto cerrado con `code`, **ejecutada**.
 - **T-23, decisiones del procesador**: `mail.retry_scheduled` solo se registra si quedan intentos (el último fallo
@@ -759,7 +759,7 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   `NotificationsModule` + `NotificationsWorkerModule` resuelven sus dependencias en Nest.
 - **T-25, retroceso inyectable**: `NotificationsModule` provee `MAIL_JOB_OPTIONS` bajo `MAIL_JOB_OPTIONS_TOKEN` y
   `SmtpMailer` lo inyecta; las pruebas lo sustituyen con la opción `overrides` del arnés (retroceso exponencial de
-  500 ms). Ayudante nuevo `test/int/setup/wait-for-log.ts`. La prueba de contrato agrega el caso «dos `send` con la
+  2 s; era de 500 ms y dejaba una ventana ajustada al Mailpit tardío, review-pr2 I-1). Ayudante nuevo `test/int/setup/wait-for-log.ts`. La prueba de contrato agrega el caso «dos `send` con la
   misma clave entregan un solo correo» (capa 2 de idempotencia de punta a punta).
 - **T-26**: `docker compose --profile apps config` **no se ejecutó** (Docker no disponible); `compose.override.yml`
   se validó parseándolo con `yaml` (el `worker` recibe `SMTP_HOST: mailpit` y `SMTP_PORT: '1025'`).

@@ -21,9 +21,12 @@ import { createTestApp } from '../setup/test-app';
 import type { TestApp } from '../setup/test-app';
 import { waitForLog } from '../setup/wait-for-log';
 
-/** Retroceso corto: 0,5, 1, 2, 4 y 8 s (~15 s para agotar los 6 intentos en lugar de ~2,5 min). */
-const SHORT_BACKOFF_MS = 500;
-const EXHAUSTION_WAIT_MS = 60_000;
+/**
+ * Retroceso corto: 2, 4, 8, 16 y 32 s (~62 s para agotar los 6 intentos en lugar de ~2,5 min). Deja al Mailpit
+ * tardío unos 60 s para arrancar después del primer reintento (review-pr2 I-1).
+ */
+const SHORT_BACKOFF_MS = 2_000;
+const EXHAUSTION_WAIT_MS = 100_000;
 const PINO_ERROR_LEVEL = 50;
 const MAIL_ATTEMPTS = MAIL_JOB_OPTIONS.attempts ?? 1;
 
