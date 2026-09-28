@@ -381,7 +381,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
 
 ### 3c. Infraestructura
 
-- [ ] **T-39** Entidades ORM, mappers y `TypeormUserRepository` — CA: CA-3, CA-19 (sin hash en respuestas) — Depende: T-06, T-14, T-29, T-32 — ~2 h
+- [x] **T-39** Entidades ORM, mappers y `TypeormUserRepository` — CA: CA-3, CA-19 (sin hash en respuestas) — Depende: T-06, T-14, T-29, T-32 — ~2 h
   Prueba primero `apps/api/test/int/identity/user-repository.int-spec.ts`: el mapper devuelve `ClientUser` o
   `InternalUser` según `rol`; `findByEmailForUpdate` bloquea (una segunda transacción espera); **dos `insertIfAbsent`
   concurrentes** en transacciones distintas → una fila, uno devuelve `false` y su `findByEmailForUpdate` en la misma
@@ -803,4 +803,16 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   el token apunta a una cuenta que no existe o no es de cliente (no debería ocurrir), se trata como inválido con
   `userId`; (d) un `consume = false` registra `rejected` con `reason = already_verified`, igual que la cuenta ya
   verificada.
+- **T-39, sin Docker**: `test/int/identity/user-repository.int-spec.ts` (8 casos: mapeo por rol, `FOR UPDATE` que
+  hace esperar a otra transacción, dos `insertIfAbsent` concurrentes con relectura del perdedor, `update`, uso del
+  `EntityManager` de la transacción y CA-19) compila y pasa `lint`, pero **no se ejecutó**: su rojo y su verde quedan
+  sin comprobar. El orden entre transacciones lo fija una señal y no un `sleep`. Prueba unitaria adicional,
+  **ejecutada**: `infrastructure/persistence/user.mapper.spec.ts` (ida y vuelta del cliente, columnas, rol interno,
+  cliente sin aceptación, CA-19). Se comprobó además, con una prueba desechable sin BD, que el glob de entidades de
+  `buildDataSourceOptions` carga `usuario.orm-entity.ts` bajo Jest y que la búsqueda con bloqueo genera `… FOR
+  UPDATE`. Decisiones: propiedades de la entidad ORM en `camelCase` español con `name` de columna; `insertIfAbsent`
+  usa SQL parametrizado (`ON CONFLICT (correo) DO NOTHING RETURNING id`) porque el `orIgnore()` del query builder
+  genera `ON CONFLICT DO NOTHING` sin columna y ocultaría un choque de `id`; `update` escribe solo nombre, hash,
+  aceptación y `correo_verificado`; `creado_en` no se mapea (queda con su `DEFAULT`); el mapper lanza `TypeError` si
+  una fila `CLIENT` no tiene aceptación (el `CHECK` lo impide).
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
