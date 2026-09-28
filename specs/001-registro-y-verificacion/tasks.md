@@ -276,7 +276,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   idempotencia en tres capas, regla de bitácoras. Verificar `docker compose --profile apps config`.
   Archivos: `compose.override.yml`, `docs/operations/ambientes.md`, `apps/api/src/modules/notifications/README.md`.
 
-- [ ] **T-27** Cierre del PR-2 — CA: n/a — Depende: T-20…T-26 — ~0,5 h
+- [x] **T-27** Cierre del PR-2 — CA: n/a — Depende: T-20…T-26 — ~0,5 h
   `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:int`, `pnpm env:check` en verde; `pnpm dev` con el `worker`
   consumiendo `mail` y `worker.started` con `queues: ['ping', 'mail']`. Resumen en el PR («PR parcial»).
   Archivos: `specs/001-registro-y-verificacion/tasks.md` (casillas).
@@ -725,4 +725,39 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   disponible»). Hallazgo: `redact-deep.spec.ts` («no degrada el logger», un umbral de microsegundos) falló una vez con
   las tres suites de `pnpm test` en paralelo y pasó al repetirla; es anterior a 001 y sensible a la carga de la
   máquina (candidata a revisar en 000, sin cambios aquí).
+- **T-21/T-24, API pública de `notifications` (desviación menor)**: además de lo que lista plan §6.6, `index.ts`
+  exporta `assertIdempotencyKey` (T-34 la usa para comprobar la clave desde `identity`) y `MAIL_QUEUE` (lo necesita
+  `WORKER_QUEUES` en `worker.module.ts`). `index.spec.ts` fija la lista exacta.
+- **T-22, dependencias**: `nodemailer` `10.0.11` y `@types/nodemailer` `8.0.2` (nodemailer no trae tipos; los de
+  DefinitelyTyped cubren la API usada), con versión exacta. Mailpit fijado en `axllent/mailpit:v1.31.3` en
+  Testcontainers y en `compose.override.yml` (antes sin versión). La URL de la API de Mailpit viaja en
+  `TEST_MAILPIT_API_URL`, variable solo de pruebas (no es de ningún esquema). `SmtpTransport` fija tiempos de espera
+  (conexión y saludo 10 s, socket 20 s) por debajo del bloqueo de 30 s de BullMQ: con los de nodemailer (hasta
+  10 min) un SMTP colgado dejaría el trabajo estancado y otro intento podría entregar dos veces. Prueba unitaria
+  adicional `smtp-transport.spec.ts` con un servidor SMTP falso (`node:net`) que anuncia STARTTLS: cubre `MAIL_FROM`,
+  `Message-ID`, los modos `none`/`starttls` y el puerto cerrado con `code`, **ejecutada**.
+- **T-23, decisiones del procesador**: `mail.retry_scheduled` solo se registra si quedan intentos (el último fallo
+  solo produce `mail.failed`, desde `@OnWorkerEvent('failed')` cuando `attemptsMade ≥ attempts`); `mail.failed` lleva
+  también `responseCode`. Si Redis falla al escribir la marca después de un envío aceptado, el error se propaga y el
+  reintento puede duplicar el correo (lo atenúa el `Message-ID`); es el mismo riesgo que ADR-0018 acepta para una
+  caída entre envío y marca.
+- **T-24**: `WorkerModule.forRoot` recibe el entorno de `workerEnvSchema` (antes `SharedEnvBase`), porque
+  `SmtpTransport` lee `SMTP_*` del `ENV`. `worker-health.int-spec.ts` usa `withWorkerEnv` (T-18) y detiene el Mailpit
+  de la suite para comprobar que la salud no depende del SMTP. Los tres casos de configuración de
+  `worker/bootstrap.int-spec.ts` (`REDIS_URL`, sin `SMTP_HOST`, `SMTP_TLS=none` en staging) no necesitan contenedores
+  y se **ejecutaron** con `--globalSetup` vacío (pasan desde el principio: las reglas son del esquema de T-10; aquí
+  son regresión del arranque). El caso `worker.started` con `['ping', 'mail']` se cubrió además con
+  `src/worker.module.spec.ts` (rojo y verde comprobados). Se comprobó también, con una prueba desechable, que
+  `NotificationsModule` + `NotificationsWorkerModule` resuelven sus dependencias en Nest.
+- **T-25, retroceso inyectable**: `NotificationsModule` provee `MAIL_JOB_OPTIONS` bajo `MAIL_JOB_OPTIONS_TOKEN` y
+  `SmtpMailer` lo inyecta; las pruebas lo sustituyen con la opción `overrides` del arnés (retroceso exponencial de
+  500 ms). Ayudante nuevo `test/int/setup/wait-for-log.ts`. La prueba de contrato agrega el caso «dos `send` con la
+  misma clave entregan un solo correo» (capa 2 de idempotencia de punta a punta).
+- **T-26**: `docker compose --profile apps config` **no se ejecutó** (Docker no disponible); `compose.override.yml`
+  se validó parseándolo con `yaml` (el `worker` recibe `SMTP_HOST: mailpit` y `SMTP_PORT: '1025'`).
+- **PR-2 sin Docker (pendiente antes de fusionar)**: en verde `pnpm lint`, `pnpm typecheck`, `pnpm test` y
+  `pnpm env:check`. **Sin ejecutar**: `test/int/notifications/{smtp-mailer,smtp-transport,mailer-contract,
+  mail-degradation}.int-spec.ts`, el caso `worker.started` de `test/int/worker/bootstrap.int-spec.ts`,
+  `test/int/worker/worker-health.int-spec.ts` y `pnpm dev` con el `worker` consumiendo `mail` (T-27). Todas compilan
+  y pasan `lint`. El `redact-deep.spec.ts` inestable (nota de T-19) volvió a fallar una vez en T-22 y pasó al repetir.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
