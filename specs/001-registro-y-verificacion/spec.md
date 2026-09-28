@@ -2,14 +2,14 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Aclarada (2026-09-26, Adrián) |
+| Estado | Planificada (2026-09-27, Adrián) |
 | Dueño | Adrián (1) |
 | Fase | 1 |
 | Requisitos | RF-01, RNF-04 (principales); aplican también RNF-07 (parcial: límite de tasa del registro y del reenvío), RNF-13, RNF-14, RNF-17 |
 | Depende de | 000 (bloques 1 y 2 en `main`); 000b para la interfaz con Cielo Sereno; **006a** (consume el evento de cuenta verificada, D-4, y expone por API el catálogo de planes que muestra el registro); 002 para las pruebas de CA-16, CA-26 y CA-29 (ver §13) |
 | Módulo | M1 `identity` (+ `notifications` como implementador de `IMailer`) |
-| DF | DF-13 decidido por D-1 · DF-35 decidido por D-2 · DF-33 (solo `usuario`) decidido por D-3. Falta que `architect` actualice `design-findings.md` y los diagramas |
-| Última actualización | 2026-09-26 |
+| DF | DF-13 decidido por D-1 · DF-35 decidido por D-2 · DF-33 (solo `usuario`) decidido por D-3. Los tres ya están `Aceptado` en `design-findings.md` (PD-09, 2026-09-27); falta redibujar el E-R y las clases M1 (PD-06) |
+| Última actualización | 2026-09-27 |
 
 ## 1. Contexto y problema
 
@@ -182,7 +182,9 @@ reescribieron después de revisar los mockups (2026-09-22) o al volver al enlace
 
 - **CA-6** (HU-1, RF-01, D-14) — datos inválidos
   - **Dado** un registro con correo mal formado, nombre vacío o de más de 100 caracteres, la casilla de términos **sin**
-    marcar, un campo obligatorio ausente, o un cuerpo que no es JSON,
+    marcar, un campo obligatorio ausente, o un cuerpo que no es JSON (un
+    `Content-Type` que no es JSON; un cuerpo JSON **mal formado** lo rechaza antes el analizador con el
+    `400 VALIDATION_FAILED` genérico de la spec 000),
   - **Cuando** se envía,
   - **Entonces** se responde `IDENTITY_INVALID_INPUT` indicando **cada** campo inválido y el motivo en español (para la
     casilla: «Para crear tu cuenta, acepta los Términos y la Política de privacidad.»), sin crear cuenta ni token ni
@@ -564,7 +566,7 @@ reescribieron después de revisar los mockups (2026-09-22) o al volver al enlace
 
 - **DF decididos por esta spec**: DF-13 (D-1), DF-35 (D-2) y la parte `usuario` de DF-33 (D-3). El `architect`
   actualiza en el mismo PR del plan:
-  - estado en `design-findings.md`;
+  - estado en `design-findings.md` (hecho: los tres están `Aceptado` desde el 2026-09-27, PD-09);
   - `Diagramas_ER.pdf` (usuarios): sin tabla `rol`; `usuario.rol`, `correo_verificado`, `codigo_empleado` y aceptación
     de términos con fecha y versión;
   - `Diagramas_de_Clases.pdf` (M1): sin `subscriptionId`;
@@ -638,3 +640,5 @@ ajustes y estados de mockups de §11 (Art. XIII.1; compuerta de `Aclarada`, `wor
 | 2026-09-26 | **Aclarada.** No quedan preguntas abiertas ni ajustes obligatorios, y cada pantalla de §11 tiene mockup. El plan espera ADR-0010 (`notifications` implementa `IMailer`) | Compuerta del dueño | Adrián |
 | 2026-09-26 | D-3 y §14: `codigo_empleado` llega con la 011, que es la única que crea cuentas internas (003 D-3); el backlog pasa a «lista para `/plan`» porque ADR-0010 ya está aceptado | Coherencia con la spec 003 y ADR-0010 | Adrián |
 | 2026-09-27 | R-10, D-15, §13 y §14: el `ThrottlerModule` entra con esta spec sin condición, como ya decidió la 002 D-11; se quita el riesgo de que el `architect` no lo apruebe. El ADR menor de `@nestjs/throttler` va en el plan (PD-32). D-15: `IRateLimiter` vive en `shared`, no en `sharing` (PD-30). Sin cambio de criterios | Coherencia con 002 D-11, 000 D-9 y ADR-0010 | Adrián |
+| 2026-09-27 | Encabezado (fila DF) y §14: DF-13, DF-35 y la parte `usuario` de DF-33 ya están `Aceptado` en `design-findings.md` (PD-09); solo queda redibujar el E-R y las clases M1 (PD-06). Se crea `plan.md` (Propuesto). Sin cambio de criterios | Estado real de `design-findings.md` al planificar | — (planner; pendiente de Adrián) |
+| 2026-09-27 | CA-6 precisa que un JSON mal formado responde el `400 VALIDATION_FAILED` de 000 (P-1 del plan). Sin cambio de alcance | Plan 001, P-1 | Adrián |
