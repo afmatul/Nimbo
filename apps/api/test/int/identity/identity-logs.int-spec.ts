@@ -79,6 +79,7 @@ describe('bitácoras de identity (CA-18)', () => {
     '$argon2',
   ]);
   const ipEmails: string[] = [];
+  const usedIps = new Set<string>();
   let userId = '';
   let registrationCorrelationId = '';
   let lines: LogLine[] = [];
@@ -88,8 +89,10 @@ describe('bitácoras de identity (CA-18)', () => {
     path: string,
     body: object,
     ip = `198.51.100.${String((nextIp += 1))}`,
-  ): Promise<Response> =>
-    request(testApp.app.getHttpServer()).post(path).set('X-Forwarded-For', ip).send(body);
+  ): Promise<Response> => {
+    usedIps.add(ip);
+    return request(testApp.app.getHttpServer()).post(path).set('X-Forwarded-For', ip).send(body);
+  };
 
   const register = (
     fullName: string,
@@ -257,5 +260,19 @@ describe('bitácoras de identity (CA-18)', () => {
       (line) => line.event === 'identity.verification.rejected' && line.userId === undefined,
     );
     expect(unknownTokenRejection).toHaveLength(1);
+  });
+
+  it('CA-18: ninguna línea `identity.*` lleva `req`, `remoteAddress` ni la IP de `X-Forwarded-For`', () => {
+    const identityLines = lines.filter((line) => String(line.event).startsWith('identity.'));
+
+    expect(identityLines.length).toBeGreaterThan(0);
+    for (const line of identityLines) {
+      expect(line).not.toHaveProperty('req');
+      const serialized = JSON.stringify(line);
+      expect(serialized).not.toContain('remoteAddress');
+      for (const ip of usedIps) {
+        expect(serialized).not.toContain(ip);
+      }
+    }
   });
 });
