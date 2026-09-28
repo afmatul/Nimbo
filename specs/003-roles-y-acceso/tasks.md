@@ -140,7 +140,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   `actorId`, `role`, `reason` y `requiredRoles`. Luego la implementación.
   Archivos: `apps/api/src/shared/presentation/auth/roles.guard.ts`, `apps/api/src/shared/presentation/auth/roles.guard.spec.ts`.
 
-- [ ] **T-11** `AuthGuardsModule` estático, `AppModule` y `@Public()` en salud — CA: CA-1, CA-3 — Depende: T-09, T-10 — ~0,5 h
+- [x] **T-11** `AuthGuardsModule` estático, `AppModule` y `@Public()` en salud — CA: CA-1, CA-3 — Depende: T-09, T-10 — ~0,5 h
   Prueba primero en `apps/api/src/shared/presentation/health.controller.spec.ts`: `HealthController` tiene `IS_PUBLIC`
   a nivel de clase; y en `apps/api/test/int/shared/health.int-spec.ts`, con los guards activos, `GET /health/live` y
   `/health/ready` responden 200 sin token y también con un `Bearer basura`. Luego `auth-guards.module.ts` (sin

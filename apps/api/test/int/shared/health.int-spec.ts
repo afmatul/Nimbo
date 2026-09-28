@@ -1,6 +1,7 @@
 import request from 'supertest';
 
 import {
+  AuthGuardsModule,
   HealthModule,
   MinioHealthIndicator,
   PostgresHealthIndicator,
@@ -41,6 +42,7 @@ describe('GET /api/v1/health (CA-20, CA-21, CA-22)', () => {
     testApp = await createTestApp({
       env: infra.env(),
       modules: [
+        AuthGuardsModule,
         HealthModule.forRoot({
           indicators: [PostgresHealthIndicator, RedisHealthIndicator, MinioHealthIndicator],
         }),
@@ -57,6 +59,17 @@ describe('GET /api/v1/health (CA-20, CA-21, CA-22)', () => {
     return { app: testApp, containers: infra };
   };
   const server = (): Parameters<typeof request>[0] => ready().app.app.getHttpServer();
+
+  it.each(['/api/v1/health/live', '/api/v1/health/ready'])(
+    'CA-3: con los guards globales activos, %s responde 200 sin token y con un `Bearer` basura',
+    async (path) => {
+      const withoutToken = await request(server()).get(path);
+      const withGarbage = await request(server()).get(path).set('Authorization', 'Bearer basura');
+
+      expect(withoutToken.status).toBe(200);
+      expect(withGarbage.status).toBe(200);
+    },
+  );
 
   it('CA-21: con Postgres, Redis y MinIO arriba → 200 con cuerpo exacto en menos de 2 s', async () => {
     const { result, ms } = await elapsed(() => request(server()).get('/api/v1/health/ready'));

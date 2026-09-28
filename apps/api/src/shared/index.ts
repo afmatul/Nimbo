@@ -9,6 +9,8 @@ export {
   InvalidInputError,
   NotFoundError,
   TooManyRequestsError,
+  InsufficientRoleError,
+  UnauthenticatedError,
   UnauthorizedError,
 } from './domain/errors';
 export type { FieldIssue } from './domain/errors';
@@ -60,6 +62,11 @@ export type { PingJobData } from './infrastructure/queue/ping.queue';
 export { REDACTED_FIELDS } from './infrastructure/logging/redacted-fields';
 export { configureHttpApp } from './presentation/configure-http-app';
 export type { HttpAppEnv } from './presentation/configure-http-app';
+export { AuthGuardsModule } from './presentation/auth/auth-guards.module';
+export { CurrentActor } from './presentation/auth/current-actor.decorator';
+export { CurrentSessionId } from './presentation/auth/current-session-id.decorator';
+export { IS_PUBLIC, Public } from './presentation/auth/public.decorator';
+export { Roles, ROLES_KEY } from './presentation/auth/roles.decorator';
 export { DomainExceptionFilter } from './presentation/domain-exception.filter';
 export { VersionHeaderMiddleware } from './presentation/version-header.middleware';
 export { ZodValidationPipe } from './presentation/zod-validation.pipe';
