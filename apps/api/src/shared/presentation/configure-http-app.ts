@@ -22,6 +22,13 @@ const CORS_METHODS = ['GET', 'POST'];
 const CORS_ALLOWED_HEADERS = ['content-type', CORRELATION_ID_HEADER];
 const CORS_EXPOSED_HEADERS = [CORRELATION_ID_HEADER, 'retry-after'];
 
+/**
+ * Rutas cuyas respuestas nunca se guardan en caché (plan 001 §5): las de `auth`. Se fija aquí, antes del analizador,
+ * para cubrir también su `400` de JSON mal formado; `identity` la vuelve a fijar en su controlador. En minúsculas:
+ * el enrutador de Express no distingue mayúsculas.
+ */
+const NO_STORE_PATH_PREFIX = `/${API_PREFIX}/auth/`;
+
 /** Lo único del entorno que la configuración HTTP necesita. */
 export type HttpAppEnv = Pick<Env, 'APP_VERSION' | 'CORS_ORIGIN'>;
 
@@ -53,17 +60,25 @@ const translateBodyParserError = (
   next(error);
 };
 
+const noStoreForAuth = (request: Request, response: Response, next: NextFunction): void => {
+  if (request.path.toLowerCase().startsWith(NO_STORE_PATH_PREFIX)) {
+    response.setHeader('Cache-Control', 'no-store');
+  }
+  next();
+};
+
 /**
  * Configuración HTTP común de `main.ts` y del arnés de integración (plan 001 §6.7). La app debe crearse con
  * `bodyParser: false`: aquí se instala **solo** el analizador JSON, así un cuerpo `text/plain` o de formulario llega
- * vacío (001 CA-6). El orden importa: correlación y versión antes del analizador, para que sus errores también
- * lleven `x-correlation-id`. `credentials` de CORS lo activa 002 cuando existan cookies.
+ * vacío (001 CA-6). El orden importa: correlación, versión y `no-store` de `auth` antes del analizador, para que sus
+ * errores también lleven `x-correlation-id` y `Cache-Control`. `credentials` de CORS lo activa 002 cuando existan cookies.
  */
 export const configureHttpApp = (app: NestExpressApplication, env: HttpAppEnv): void => {
   const correlation = new CorrelationIdMiddleware();
   const version = new VersionHeaderMiddleware(env.APP_VERSION);
   app.use(correlation.use.bind(correlation));
   app.use(version.use.bind(version));
+  app.use(noStoreForAuth);
   app.set('trust proxy', TRUSTED_PROXY_HOPS);
   app.enableCors({
     origin: env.CORS_ORIGIN,
