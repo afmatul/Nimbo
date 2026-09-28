@@ -186,7 +186,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   proveedores en `shared.module.ts`.
   Archivos: `apps/api/src/shared/shared.module.ts`, `apps/api/src/shared/index.ts`, `apps/api/src/shared/index.spec.ts`, `apps/api/src/shared/shared.module.spec.ts`.
 
-- [ ] **T-17** `configureHttpApp` y `main.ts` — CA: CA-6 (solo JSON), CA-15 (IP real, `Retry-After` expuesta) — Depende: T-08, T-10, T-16 — ~2 h
+- [x] **T-17** `configureHttpApp` y `main.ts` — CA: CA-6 (solo JSON), CA-15 (IP real, `Retry-After` expuesta) — Depende: T-08, T-10, T-16 — ~2 h
   Prueba primero `apps/api/test/int/shared/configure-http-app.int-spec.ts` (controlador de prueba que devuelve el
   cuerpo recibido y `req.ip`): `text/plain` y `application/x-www-form-urlencoded` → cuerpo vacío; JSON de más de 16 KB →
   `413`; JSON mal formado → `400 VALIDATION_FAILED` (P-1); `X-Forwarded-For: 203.0.113.7` → `req.ip` = esa IP; CORS
@@ -684,7 +684,7 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   `migration:run → revert → run`. Las pruebas de integración se escribieron y pasan `lint` y `typecheck`, pero su
   rojo y su verde **quedan sin comprobar**; hay que correrlas antes de fusionar el PR-1. Pendientes por tarea:
   T-06 (`test/int/identity/schema.int-spec.ts`, migraciones en el arnés y la evidencia manual `run → revert ×2 → run`),
-  T-08, T-13, T-14, T-17 y T-18 (ver cada una), y las suites existentes afectadas por T-10
+  T-08, T-13, T-14 y T-18 (ver cada una), y las suites existentes afectadas por T-10
   (`test/int/{shared,worker}/bootstrap.int-spec.ts`).
 - **T-06, migraciones en el arnés**: `test/int/setup/migrate.ts` no inicializa un `DataSource` dentro de Jest: lanza
   `tsx src/scripts/migrate.ts run` (el mismo camino que `pnpm --filter api migration:run`), porque TypeORM carga las
@@ -700,4 +700,10 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   de `run`, tras `await`, concurrencia, resultado y error); confirmar y revertir contra Postgres solo lo cubre
   `transaction-runner.int-spec.ts`, **sin ejecutar**. `TransactionContext` es un proveedor con `manager()` y
   `runWith(manager, work)`; la ALS es privada del archivo y 003 la reutiliza vía `runWith`.
+- **T-17, ejecutada sin Docker**: `configure-http-app.int-spec.ts` no importa `SharedModule` (solo `EnvModule`, el
+  logger y el controlador de eco), así que no necesita contenedores. Se comprobó el rojo y el verde con
+  `jest -c jest.int.config.cjs --globalSetup <archivo vacío> test/int/shared/configure-http-app`. Hallazgo: los errores
+  de `body-parser` (cuerpo > 16 KB, codificación no admitida) no son `HttpException` y `DomainExceptionFilter` los
+  respondía como `500`; `configureHttpApp` instala tras el analizador un traductor que los convierte en
+  `HttpException` con su estado (`413` → `HTTP_413`; `400` → `VALIDATION_FAILED`, P-1).
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>

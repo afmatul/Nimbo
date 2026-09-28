@@ -57,6 +57,7 @@ const RUNTIME_EXPORTS_BY_TASK = {
     'ZodValidationPipe',
     'REDIS_CLIENT',
   ],
+  '001 T-17': ['configureHttpApp'],
 } as const;
 
 const ALL_RUNTIME_EXPORTS: readonly string[] = Object.values(RUNTIME_EXPORTS_BY_TASK).flat();
@@ -130,6 +131,10 @@ describe('shared/index.ts (CA-17)', () => {
     expect(typeof shared.I_RATE_LIMITER).toBe('symbol');
     expect(typeof shared.I_TRANSACTION_RUNNER).toBe('symbol');
     expect(typeof shared.REDIS_CLIENT).toBe('symbol');
+  });
+  it('001 CA-6/CA-15: exporta `configureHttpApp`, la configuración HTTP común de `main.ts` y el arnés (T-17)', () => {
+    expectExportsOf('001 T-17');
+    expect(typeof shared.configureHttpApp).toBe('function');
   });
   it('CA-17: exporta exactamente la lista del plan §6.2 al cerrar el bloque 2 (T-26)', () => {
     expect(exportedKeys()).toEqual([...ALL_RUNTIME_EXPORTS].sort());
