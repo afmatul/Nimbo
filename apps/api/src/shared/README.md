@@ -13,10 +13,41 @@ logger Pino con `REDACTED_FIELDS`/`redactDeep`, `CorrelationContext` + middlewar
 `buildDataSourceOptions`, `HealthModule` (`HealthService`, `IHealthIndicator`, indicadores Postgres/Redis/MinIO),
 cola `ping` (`enqueueWithCorrelation`, `PingProcessor`).
 
-## Con la spec 001 (PD-30)
+## Con la spec 001 (PD-30, plan 001 §6.7, DF-54)
 
-Entra el puerto `IRateLimiter` con su implementación `RedisRateLimiter`. Lo consumen `identity` (límite por correo,
-001 D-15) y, desde la 012, `sharing`. Vive aquí porque `identity` no puede depender de `sharing` (ADR-0010).
+| Pieza                                                               | Dónde                                                     | Para qué                                                                                                                                                                                                                                                                                                                                                    |
+| ------------------------------------------------------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `IRateLimiter` → `RedisRateLimiter` (`I_RATE_LIMITER`)              | `application/rate-limit/`, `infrastructure/rate-limit/`   | Ventana deslizante con un script Lua atómico; `now` sale de `IClock`. Si Redis falla, lanza (falla cerrado). Lo usan `identity` (límite por correo, 001 D-15) y, desde la 012, `sharing`; vive aquí porque `identity` no puede depender de `sharing` (ADR-0010)                                                                                             |
+| `REDIS_CLIENT`                                                      | `infrastructure/redis/`                                   | Cliente ioredis compartido, con oyente de `error` (nunca imprime la URL); se cierra al apagar                                                                                                                                                                                                                                                               |
+| `TooManyRequestsError`                                              | `domain/errors/`                                          | `429` con `retryAfterSeconds`; el filtro agrega `Retry-After`                                                                                                                                                                                                                                                                                               |
+| `FieldIssue`, `DomainError.fields`                                  | `domain/errors/`                                          | Errores de entrada por campo, estructuralmente iguales a `ErrorResponse.fields` (el dominio no importa `contracts`)                                                                                                                                                                                                                                         |
+| `DomainExceptionFilter`                                             | `presentation/`                                           | Sigue siendo el único traductor a HTTP: agrega `fields` y `Retry-After`                                                                                                                                                                                                                                                                                     |
+| `ZodValidationPipe`                                                 | `presentation/`                                           | Ver la regla de abajo                                                                                                                                                                                                                                                                                                                                       |
+| `ITransactionRunner` (`I_TRANSACTION_RUNNER`), `TransactionContext` | `application/persistence/`, `infrastructure/persistence/` | `run(work)` abre la transacción y publica el `EntityManager` en `AsyncLocalStorage`; los repositorios lo leen con `TransactionContext.manager()`                                                                                                                                                                                                            |
+| `configureHttpApp(app, env)`                                        | `presentation/`                                           | La comparten `main.ts` y el arnés de integración: correlación, versión, `trust proxy = 1`, CORS (`CORS_ORIGIN`, `GET`/`POST`, expone `x-correlation-id` y `retry-after`), **solo** JSON de hasta 16 KB (la app se crea con `bodyParser: false`), prefijo `api/v1` y filtro. Los errores del analizador conservan su estado (`413`, `400 VALIDATION_FAILED`) |
+| `I_CLOCK` → `SystemClock`                                           | `shared.module.ts`                                        | `SharedModule` es `@Global()`; las pruebas lo sustituyen con `FixedClock` (opción `overrides` del arnés)                                                                                                                                                                                                                                                    |
+| `REDACTED_FIELDS`                                                   | `infrastructure/logging/`                                 | + `email`, `correo`, `fullName`, `to`, `html`, `text`                                                                                                                                                                                                                                                                                                       |
+| `enqueueWithCorrelation(queue, name, data, opts?)`                  | `infrastructure/queue/`                                   | Acepta `JobsOptions` (p. ej. `jobId`)                                                                                                                                                                                                                                                                                                                       |
+
+### Regla de `ZodValidationPipe` (ADR-0020)
+
+`new ZodValidationPipe(schema, factory)`: valida el cuerpo con el esquema de `@nimbo/contracts`, convierte los
+_issues_ con la `toFieldIssues` genérica de la raíz de `contracts` y lanza el error que devuelve la **fábrica del
+módulo** (`(issues: FieldIssue[]) => DomainError`), para que el `code` lleve el prefijo del módulo
+(`IDENTITY_INVALID_INPUT`). `shared` no importa nada de `contracts/identity` ni de ningún módulo: el esquema y la
+fábrica llegan por parámetro. Un cuerpo `text/plain` o de formulario llega vacío y produce los `REQUIRED`.
+
+### `TransactionContext`, base de `withActor` (003, ADR-0005)
+
+`withActor()` de la 003 se construye **encima** de `TransactionContext` con `runWith(manager, work)`: misma
+`AsyncLocalStorage` más `set_config` del actor dentro de la transacción. No se crea una segunda ALS ni otro
+ejecutor de transacciones.
+
+### Regla de bitácoras de correo
+
+Nunca se registra `job.data` ni un `MailMessage` completo. Las bitácoras de correo solo llevan `tag`, `recipientId`,
+`jobId`, `attemptsMade` y códigos de error; `to`, `html` y `text` están además en `REDACTED_FIELDS` como defensa en
+profundidad (el destinatario es un correo y el cuerpo lleva el enlace de verificación).
 
 ## Con la spec 003 (DF-50, 003 D-2)
 
@@ -30,9 +61,9 @@ sigue sin importar módulos. También entra `withActor()` (ADR-0005).
 ```
 shared/
 ├─ domain/          # sin Nest, TypeORM ni zod
-├─ application/     # HealthService, puertos (IHealthIndicator)
-├─ infrastructure/  # config, logging, correlation, persistence, queue, health, clock
-├─ presentation/    # HealthController, DomainExceptionFilter, VersionHeaderMiddleware
+├─ application/     # HealthService, puertos (IHealthIndicator, IRateLimiter, ITransactionRunner)
+├─ infrastructure/  # config, logging, correlation, persistence, queue, health, clock, redis, rate-limit
+├─ presentation/    # HealthController, DomainExceptionFilter, VersionHeaderMiddleware, ZodValidationPipe, configureHttpApp
 ├─ shared.module.ts  health.module.ts
 └─ index.ts         # única API pública
 ```

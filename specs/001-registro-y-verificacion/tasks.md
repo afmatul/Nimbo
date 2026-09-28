@@ -203,7 +203,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   el mismo `LogSink`. Las suites existentes de `test/int/shared` y `test/int/worker` siguen en verde (son su prueba).
   Archivos: `apps/api/test/int/setup/test-app.ts`.
 
-- [ ] **T-19** README de `shared` y cierre del PR-1 — CA: n/a — Depende: T-01…T-18 — ~1 h
+- [x] **T-19** README de `shared` y cierre del PR-1 — CA: n/a — Depende: T-01…T-18 — ~1 h
   `apps/api/src/shared/README.md`: piezas nuevas (tabla de plan §6.7), regla de `ZodValidationPipe` con fábrica por
   módulo, `TransactionContext` como base de `withActor` (003) y la regla de bitácoras de correo. `pnpm lint`,
   `pnpm typecheck`, `pnpm test`, `pnpm test:int`, `pnpm env:check` en verde; `migration:run → revert → run` en local.
@@ -714,4 +714,9 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   ahora de `configureHttpApp`) y conserva la opción `prefix` sobrescribiendo el prefijo tras `configureHttpApp`
   (la usa `worker-health.int-spec.ts` con `''`). **Sin ejecutar** por falta de Docker: todas las suites del arnés
   (`test/int/{shared,worker,identity}`, salvo `configure-http-app`) son la prueba de esta tarea.
+- **T-19, cierre del PR-1 sin Docker**: en verde `pnpm lint`, `pnpm typecheck`, `pnpm test` y `pnpm env:check`.
+  **Pendiente antes de fusionar**: `pnpm test:int` completo y `migration:run → revert → run` (ver la nota «Docker no
+  disponible»). Hallazgo: `redact-deep.spec.ts` («no degrada el logger», un umbral de microsegundos) falló una vez con
+  las tres suites de `pnpm test` en paralelo y pasó al repetirla; es anterior a 001 y sensible a la carga de la
+  máquina (candidata a revisar en 000, sin cambios aquí).
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
