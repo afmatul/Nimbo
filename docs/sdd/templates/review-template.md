@@ -3,11 +3,49 @@
 | Campo | Valor |
 |---|---|
 | Fecha | AAAA-MM-DD |
-| Rango revisado | `<base>..<head>` |
+| Commit / rango revisado | `<sha>` · `<base>..<head>` |
 | Veredicto | ✅ Aprobar | 🔁 Cambios requeridos |
 
-## Resumen
-<2–4 líneas: qué hace el cambio y la impresión general.>
+## Verificación
+> Lo escribe `tester`. Un CA sin prueba verde bloquea el veredicto.
+
+| CA | Prueba(s) | Nivel | Estado |
+|---|---|---|---|
+| CA-1 | `apps/api/test/int/storage/upload.int-spec.ts › CA-1: …` | int | ✅ |
+
+| RNF | Evidencia | Estado |
+|---|---|---|
+
+| Suite | Resultado | Cobertura |
+|---|---|---|
+| lint / typecheck | | — |
+| unit | | |
+| int | | — |
+| isolation | | — |
+| e2e (si aplica) | | — |
+
+Hallazgos de verificación: **[F-1]** <descripción, pasos para reproducir, CA afectado>.
+Criterios sin prueba automatizable: <justificación y verificación manual>.
+
+## Seguridad
+> Lo escribe `security-auditor`, solo si la spec toca auth, datos de cliente, enlaces o bitácoras. Si no aplica, márcalo.
+
+- Aplica: <sí/no — motivo si no>
+- Pruebas ISO agregadas: …
+- Hallazgos: **[SEC-n]** severidad (crítica/alta/media/baja) · `archivo:línea` · riesgo · corrección sugerida
+- Checklist del Art. IX: …
+
+## UI
+> Lo escribe `ui-designer`, solo si la spec tiene interfaz (sección 9 de la spec). Si no aplica, márcalo.
+
+- Aplica: <sí/no>
+- Pantallas revisadas (mockup / captura comparada): …
+
+| Pantalla | Estado | 360 px | 1440 px | axe | Captura |
+|---|---|---|---|---|---|
+| | | ✅ | ✅ | ✅ | `e2e/__screenshots__/…` |
+
+Hallazgos: **[UI-n]** severidad · `archivo:línea` o captura · problema · corrección sugerida.
 
 ## Bloqueantes
 - **[B-1]** `ruta/archivo.ts:NN` — <problema> — Viola: <artículo/CA/RNF> — Sugerencia: <cómo arreglarlo>
