@@ -535,7 +535,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   jest-axe). Luego los componentes al estilo shadcn sin Radix ni tokens nuevos.
   Archivos: `apps/web/src/components/ui/{label,checkbox,radio-group,alert}.tsx` y sus `*.spec.tsx`.
 
-- [ ] **T-57** [P] Cliente HTTP y catálogo de errores — CA: CA-15, CA-22 — Depende: T-01, T-02, T-55 — ~1,5 h
+- [x] **T-57** [P] Cliente HTTP y catálogo de errores — CA: CA-15, CA-22 — Depende: T-01, T-02, T-55 — ~1,5 h
   Prueba primero `lib/api-client.spec.ts` (`fetch` simulado: envía `x-correlation-id`; `2xx` → cuerpo; error → valida
   `ErrorResponse`, expone `code`, `fields`, `correlationId` y `retryAfterSeconds` de `Retry-After`; red caída o cuerpo
   no válido → error genérico con `correlationId` si existe) y `lib/error-catalog.spec.ts` (mensaje por `code` y por
@@ -662,6 +662,7 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   formato de Prettier de dos pruebas (fallaba `pnpm lint`) y se antepuso `CA-n:` a los nombres de prueba (Art. II).
 - **T-55**: `API_PUBLIC_URL` obligatoria y `https` en staging y producción. Dependencias fijas: `react-hook-form@7.62.0`, `@hookform/resolvers@5.2.2`, `@testing-library/react@16.3.0`, `@testing-library/user-event@14.6.1`. `pnpm env:check` en verde.
 - **T-56 y T-58**: 21 suites de `web` en verde, incluido jest-axe. El área de 44 px es la etiqueta del checkbox y de cada radio.
+- **T-57**: el cliente interpreta `ErrorResponse` y `Retry-After`; un cuerpo inválido usa el genérico de 000 §10.
 
 - **Catálogo de 006a (T-64)**: el plan fija qué necesita 001 (lectura pública de planes activos con `id`, nombre, precio
   en centavos y marca de gratuito, PD-40) pero no la ruta ni el esquema, que son de 006a. `plan-catalog.ts` aísla esa
