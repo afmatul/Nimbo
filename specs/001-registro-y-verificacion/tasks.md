@@ -285,14 +285,14 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
 
 ### 3a. Dominio (pruebas primero; puede empezar ya, [P×PR])
 
-- [ ] **T-28** [P] [P×PR] `EmailAddress` y `OpaqueToken` — CA: CA-3, CA-11 (b), CA-17 — Depende: — — ~1,5 h
+- [x] **T-28** [P] [P×PR] `EmailAddress` y `OpaqueToken` — CA: CA-3, CA-11 (b), CA-17 — Depende: — — ~1,5 h
   Prueba primero `domain/email-address.vo.spec.ts` (`  Ana@Ejemplo.COM ` → `ana@ejemplo.com`; `ana.b@…` y
   `ana+nimbo@…` distintos; `localPart()`) y `domain/opaque-token.vo.spec.ts` (`generate()` da 43 caracteres base64url
   sin relleno; 1 000 valores distintos; `hashOf` = SHA-256 hex de 64; `isWellFormed` rechaza vacío, 42 y 44
   caracteres, `+`, `/`, `=` y espacios; `matchesHash` compara con `timingSafeEqual`). Luego los dos objetos de valor.
   Archivos: `apps/api/src/modules/identity/domain/{email-address.vo,opaque-token.vo}.ts` y sus `*.spec.ts`.
 
-- [ ] **T-29** [P] [P×PR] `User`, `ClientUser`, `InternalUser` y objetos de valor de cuenta — CA: CA-1, CA-4, CA-7 — Depende: — — ~2 h
+- [x] **T-29** [P] [P×PR] `User`, `ClientUser`, `InternalUser` y objetos de valor de cuenta — CA: CA-1, CA-4, CA-7 — Depende: — — ~2 h
   Prueba primero `domain/client-user.entity.spec.ts`: `register` nace con `role = CLIENT`, `emailVerified = false`,
   `status = ACTIVE` y la `LegalAcceptance` recibida (no hay forma de pasar rol, estado ni verificación);
   `replacePendingRegistration` devuelve una instancia **nueva** con nombre, hash y aceptación reemplazados y deja la
@@ -302,7 +302,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   `legal-acceptance.vo.ts`, `account-status.enum.ts`.
   Archivos: `apps/api/src/modules/identity/domain/{user.entity,client-user.entity,internal-user.entity,password-hash.vo,legal-acceptance.vo,account-status.enum}.ts` y sus `*.spec.ts`.
 
-- [ ] **T-30** [P] [P×PR] `VerificationToken` — CA: CA-8, CA-9, CA-10, CA-11 (a) — Depende: — — ~1,5 h
+- [x] **T-30** [P] [P×PR] `VerificationToken` — CA: CA-8, CA-9, CA-10, CA-11 (a) — Depende: — — ~1,5 h
   Prueba primero `domain/verification-token.entity.spec.ts`: `issue` exige `expiresAt > createdAt` (recibe el
   vencimiento ya calculado, no importa `contracts`); `stateAt(now)` → `invalidated` si hay `invalidatedAt`, `used` si
   hay `usedAt`, `expired` si `now >= expiresAt` (justo en el límite y 1 s antes), `valid` en otro caso; `isValid`;
@@ -652,6 +652,8 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
 Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T-28…T-54) · PR-4 = 14 (T-55…T-68).
 
 ## Notas del developer
+
+- **T-28, T-29 y T-30**: 30 pruebas del dominio en verde. `OpaqueToken.toString()` devuelve el valor; `PasswordHash` sigue redactado. Los errores de transición viven en el archivo de la entidad. Jest se corrió directo con Node 24 porque `pnpm` exige Node 22.
 
 - **Catálogo de 006a (T-64)**: el plan fija qué necesita 001 (lectura pública de planes activos con `id`, nombre, precio
   en centavos y marca de gratuito, PD-40) pero no la ruta ni el esquema, que son de 006a. `plan-catalog.ts` aísla esa
