@@ -64,7 +64,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   nunca a mano (plan §9).
   Archivos: `apps/api/package.json`, `pnpm-lock.yaml`.
 
-- [ ] **T-02** [P] `contracts/shared`: roles y códigos de error — CA: CA-1, CA-5, CA-17 (tipos) — Depende: — — ~0,5 h
+- [x] **T-02** [P] `contracts/shared`: roles y códigos de error — CA: CA-1, CA-5, CA-17 (tipos) — Depende: — — ~0,5 h
   Prueba primero `packages/contracts/src/shared/roles.spec.ts`: `ROLES` es exactamente `CLIENT`, `ADMIN`, `SUPPORT`,
   `OPERATOR`; `roleSchema` acepta los cuatro y rechaza `client`, `''` y `ROOT`; `RoleName` es la unión;
   `SHARED_ERROR_CODES` contiene `SHARED_UNAUTHENTICATED` y `SHARED_FORBIDDEN`. Luego los archivos y la reexportación.
