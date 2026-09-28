@@ -319,7 +319,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
 
 ### 3b. Aplicación
 
-- [ ] **T-32** [P] Puertos de `identity` e `IDENTITY_CONFIG` — CA: n/a (contratos internos) — Depende: T-29, T-30 — ~0,5 h
+- [x] **T-32** [P] Puertos de `identity` e `IDENTITY_CONFIG` — CA: n/a (contratos internos) — Depende: T-29, T-30 — ~0,5 h
   `application/ports/i-user-repository.port.ts` (`findByEmail`, `findByEmailForUpdate`, `findByIdForUpdate`,
   `insertIfAbsent(user): Promise<boolean>`, `update`), `i-verification-token-repository.port.ts` (`findByHash(hash,
   type)`, `invalidateActive`, `insert`, `consume(id, now): Promise<boolean>`), `i-password-hasher.port.ts`,
