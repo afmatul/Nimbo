@@ -146,7 +146,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   sin `opts` se comporta como antes (`PingQueue` no cambia).
   Archivos: `apps/api/src/shared/infrastructure/queue/enqueue-with-correlation.ts`, `apps/api/src/shared/infrastructure/queue/enqueue-with-correlation.spec.ts`.
 
-- [ ] **T-12** [P] `REDIS_CLIENT` y puerto `IRateLimiter` — CA: CA-15 — Depende: — — ~1 h
+- [x] **T-12** [P] `REDIS_CLIENT` y puerto `IRateLimiter` — CA: CA-15 — Depende: — — ~1 h
   Prueba primero `apps/api/src/shared/infrastructure/redis/redis-client.provider.spec.ts`: registra un oyente de
   `error` que no escribe la URL (mismo cuidado que `RedisHealthIndicator`) y cierra la conexión en
   `onApplicationShutdown`. Luego `redis-client.provider.ts` y `application/rate-limit/i-rate-limiter.port.ts`
