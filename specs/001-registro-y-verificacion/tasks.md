@@ -268,7 +268,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
     `mail.failed` con `correlationId` y `recipientId`. (T-51 agrega la variante con el registro).
   Archivos: `apps/api/test/int/notifications/{mailer-contract,mail-degradation}.int-spec.ts`, `apps/api/src/modules/notifications/infrastructure/mail-queue.ts` (si hace falta el `delay` inyectable).
 
-- [ ] **T-26** [P] Operación y documentación de `notifications` — CA: CA-1 (Mailpit en local) — Depende: T-10 — ~1 h
+- [x] **T-26** [P] Operación y documentación de `notifications` — CA: CA-1 (Mailpit en local) — Depende: T-10 — ~1 h
   `compose.override.yml`: el `worker` del perfil `apps` recibe `SMTP_HOST: mailpit` y `SMTP_PORT: '1025'`.
   `docs/operations/ambientes.md`: Mailpit en local (`:8025`), variables `SMTP_*`/`MAIL_FROM`/`WEB_PUBLIC_URL`/
   `CORS_ORIGIN` por proceso, secretos por proceso (`SMTP_PASSWORD` solo en el `worker`), Resend como paso al montar

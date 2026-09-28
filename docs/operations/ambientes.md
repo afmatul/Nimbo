@@ -37,6 +37,14 @@ Secreto = nunca en el repositorio, vacío en `.env.example` de staging, redactad
 | `MINIO_SECRET_KEY` | ✓ | | | | ✓ | — | |
 | `MINIO_BUCKET` | ✓ | | | ✓ | | `nimbo` | Creado con versionado por `infra/minio/init.sh` |
 | `MINIO_REGION` | ✓ | | | | | `us-east-1` | Nominal, lo exige el SDK |
+| `WEB_PUBLIC_URL` | ✓ | | | | | — | Base de los enlaces de los correos (`/verificar-correo#token=…`); `https` obligatorio en staging y producción (001 CA-20) |
+| `CORS_ORIGIN` | ✓ | | | | | — | Orígenes permitidos, separados por comas (local: `http://localhost,http://localhost:3002`) |
+| `SMTP_HOST` | | ✓ | | | | — | Local: `localhost` (Mailpit); perfil `apps`: `mailpit`; staging: `smtp.resend.com` |
+| `SMTP_PORT` | | ✓ | | | | — | Mailpit `1025`; Resend `465` |
+| `SMTP_TLS` | | ✓ | | | | — | `none` | `starttls` | `implicit`; `none` prohibido en staging y producción |
+| `SMTP_USER` | | ✓ | | | | — | Opcional; obligatoria si hay `SMTP_PASSWORD` (Resend: `resend`) |
+| `SMTP_PASSWORD` | | ✓ | | | ✓ | — | **Solo** el worker la declara y la recibe; el `api` no tiene credenciales de correo (ADR-0018) |
+| `MAIL_FROM` | | ✓ | | | | — | `Nimbo <no-responder@nimbo.me>` |
 | `API_INTERNAL_URL` | | | ✓ | | | — | `web` llama a la API solo desde el servidor (sin `NEXT_PUBLIC_`) |
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | | | | ✓ | contraseña | — | Deben coincidir con `DATABASE_URL` |
 | `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` | | | | ✓ | contraseña | — | En local coinciden con `MINIO_ACCESS_KEY`/`MINIO_SECRET_KEY` |
@@ -64,7 +72,22 @@ limitan a lo que CA-3 permite:
 
 Imágenes (idénticas en compose y en Testcontainers): `pgvector/pgvector:pg17`, `redis:7-alpine`,
 `quay.io/minio/minio` + `quay.io/minio/mc` (Docker Hub dejó de servir `minio/minio`), `traefik:v3`,
+`axllent/mailpit:v1.31.3` (compose local y Testcontainers),
 `onlyoffice/documentserver` (perfil `onlyoffice`, apagado por defecto).
+
+## 3b. Correo (spec 001, ADR-0018)
+
+- **Local**: Mailpit recibe todo el correo. Bandeja web en <http://localhost:8025>; SMTP en `localhost:1025`, sin TLS
+  (`SMTP_TLS=none`). Con el perfil `apps`, `compose.override.yml` le pasa al `worker` `SMTP_HOST=mailpit` y
+  `SMTP_PORT=1025`, porque dentro de la red de compose Mailpit no está en `localhost`.
+- **Por proceso**: el `api` solo encola en la cola `mail` y valida `WEB_PUBLIC_URL` y `CORS_ORIGIN`; el `worker`
+  entrega por SMTP y valida `SMTP_*` y `MAIL_FROM`. `SMTP_PASSWORD` es secreta, se declara solo en el esquema del
+  `worker`, se redacta en las bitácoras de ambos procesos y nunca se le entrega al `api`.
+- **Staging (al montarlo, D-12)**: SMTP de Resend por protocolo, no por su SDK: `SMTP_HOST=smtp.resend.com`,
+  `SMTP_PORT=465`, `SMTP_TLS=implicit`, `SMTP_USER=resend` y la clave de API de Resend como `SMTP_PASSWORD`, con SPF y
+  DKIM de `nimbo.me` verificados. La clave vive solo en GitHub Environments y en el `.env` del Droplet.
+- **Degradación**: un SMTP caído no afecta la salud del `worker` ni las respuestas del `api`; la cola reintenta 5 veces
+  (~2,5 min) y al agotar registra `mail.failed` (ver `apps/api/src/modules/notifications/README.md`).
 
 ## 4. Arranque y salud
 
@@ -103,6 +126,8 @@ que consulta `http://127.0.0.1:${WORKER_PORT}/health/ready` y sale con `1` si no
 JSON por línea (Pino). Toda línea lleva `correlationId` (de la cabecera `x-correlation-id` o generado) y, en el
 worker, `jobId`. Campos redactados en cualquier nivel (`[REDACTED]`): `password`, `passwordHash`, `token`,
 `accessToken`, `refreshToken`, `authorization`, `cookie`, `secret`, `apiKey`, `fileName`, `nombre`, `content`,
-`prompt` y las claves de `SECRET_KEYS`. Eventos de 000: `api.started`, `worker.started`, `config.invalid`,
+`prompt`, los de 001 (`email`, `correo`, `fullName`, `to`, `html`, `text`) y las claves de `SECRET_KEYS`. Eventos de 000: `api.started`, `worker.started`, `config.invalid`,
 `http.request`, `http.domain_error`, `http.unhandled_error`, `health.ready`, `queue.enqueued`, `job.started`,
-`job.completed`, `migration.run`, `migration.revert`.
+`job.completed`, `migration.run`, `migration.revert`. Eventos de correo (001): `mail.enqueued`, `mail.sent`,
+`mail.retry_scheduled`, `mail.failed` y `mail.duplicate_skipped`, solo con `tag`, `recipientId`, `jobId`,
+`attemptsMade` y códigos de error; nunca el destinatario, el asunto, el cuerpo ni el mensaje del error.
