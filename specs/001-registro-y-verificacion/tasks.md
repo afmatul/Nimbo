@@ -309,7 +309,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   `consume` e `invalidate` devuelven instancias nuevas y fallan si el token no es válido.
   Archivos: `apps/api/src/modules/identity/domain/verification-token.entity.ts`, `apps/api/src/modules/identity/domain/verification-token.entity.spec.ts`.
 
-- [ ] **T-31** Errores de `identity`, contrato del evento e `index.ts` — CA: CA-5, CA-6, CA-8, CA-9, CA-11, CA-15 — Depende: T-07 — ~1 h
+- [x] **T-31** Errores de `identity`, contrato del evento e `index.ts` — CA: CA-5, CA-6, CA-8, CA-9, CA-11, CA-15 — Depende: T-07 — ~1 h
   Prueba primero `domain/errors/identity-errors.spec.ts` (cada clase con su `code`, su `status` por herencia —422 o
   429— y el mensaje de plan §5; `IdentityTooManyRequestsError` lleva `retryAfterSeconds` y el mensaje con «N minutos»
   redondeado hacia arriba) y `apps/api/src/modules/identity/index.spec.ts` (exporta exactamente `IdentityModule` —activado
@@ -768,4 +768,10 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   mail-degradation}.int-spec.ts`, el caso `worker.started` de `test/int/worker/bootstrap.int-spec.ts`,
   `test/int/worker/worker-health.int-spec.ts` y `pnpm dev` con el `worker` consumiendo `mail` (T-27). Todas compilan
   y pasan `lint`. El `redact-deep.spec.ts` inestable (nota de T-19) volvió a fallar una vez en T-22 y pasó al repetir.
+- **T-31, errores de `identity`**: los `code` son literales en `domain/errors` (el dominio no importa `contracts`,
+  ADR-0008 regla 3); su igualdad con `IDENTITY_ERROR_CODES` la prueba T-43. Decisiones: (a) `IdentityTooManyRequestsError`
+  recibe además `scope: 'email' | 'ip'` (plan §6.5, lo usan T-36 y el guard de T-44); (b) «N minutos» usa singular
+  con 1 («en 1 minuto») y como mínimo 1, porque la espera típica es de 60 s; (c) `IdentityWeakPasswordError` une los
+  mensajes de los requisitos con «; » y quita su punto final. El dominio importa de `shared/domain/errors` y no de
+  `shared/index.ts` (que arrastra Nest). `index.spec.ts` fija `['CLIENT_ACCOUNT_VERIFIED']`; T-45 agrega `IdentityModule`.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
