@@ -94,7 +94,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   el vencimiento con `IClock`».
   Archivos: `apps/api/src/shared/application/auth/i-access-token-verifier.port.ts`, `apps/api/src/shared/index.ts`, `apps/api/src/shared/index.spec.ts`.
 
-- [ ] **T-06** Suite de contrato (tramo puerto) + `TestAccessTokens` + `TestAccessTokenVerifier` — CA: CA-2 — Depende: T-01, T-05 — ~1 h
+- [x] **T-06** Suite de contrato (tramo puerto) + `TestAccessTokens` + `TestAccessTokenVerifier` — CA: CA-2 — Depende: T-01, T-05 — ~1 h
   Prueba primero `apps/api/test/support/access-token-verifier.contract.ts`: función
   `describeAccessTokenVerifierContract({ verifier, tokens, clock })` con el **tramo puerto**: válido → `valid: true`
   con `userId`, `role` y `sessionId`; vencido según `FixedClock` → `{ valid: false, reason: 'expired' }`; alterado en
@@ -567,4 +567,7 @@ PR-F = 9 (T-48…T-56). Total: 56.
 - **Versiones de Passport (T-01)**: `@nestjs/jwt@12` y `@nestjs/passport@12` son solo ESM (`"type": "module"`) y
   el `api` compila a CommonJS y prueba con `ts-jest`; se fijan las últimas de la línea 11 (la de `@nestjs/common` 11):
   `@nestjs/jwt@11.0.2`, `@nestjs/passport@11.0.5`, `passport@0.7.0`, `passport-jwt@4.0.1`, `@types/passport-jwt@4.0.1`.
+- **Suite de contrato (T-06)**: `describeAccessTokenVerifierContract` recibe una función `() => ({ verifier, tokens,
+  clock })` que se evalúa dentro de cada prueba, para que 002 pueda construir su sujeto en un `beforeAll`. Para que
+  `test/support/*.spec.ts` corra en `pnpm test`, `apps/api/jest.config.cjs` agrega ese patrón a `testMatch`.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
