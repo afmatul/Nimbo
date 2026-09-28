@@ -151,14 +151,14 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   uuid inválido, secreto de 42/44 caracteres o con `+/=`); `parse(v).sessionId` y `secretHash` coinciden con `issue`.
   Archivos: `apps/api/src/modules/identity/domain/refresh-token.vo.ts`, `apps/api/src/modules/identity/domain/refresh-token.vo.spec.ts`.
 
-- [ ] **T-12** [P] [P×PR] `Session`: `open` y `stateAt` — CA: CA-1, CA-8, CA-10 — Depende: — — ~1 h
+- [x] **T-12** [P] [P×PR] `Session`: `open` y `stateAt` — CA: CA-1, CA-8, CA-10 — Depende: — — ~1 h
   Prueba primero `apps/api/src/modules/identity/domain/session.entity.spec.ts`: `open({ id, userId, deviceId,
   secretHash, now, maxLifetime })` → `creadaEn = ultimoUso = now`, `expiraEn = now + maxLifetime`, sin anterior ni
   `rotadoEn`; `stateAt(now, idle)`: `revoked` si `revocadaEn`; `expired` en `expiraEn` exacto, en `ultimoUso + idle`
   exacto y 1 s después; `active` 1 s antes de cada límite. Inmutable (Art. VII.7).
   Archivos: `apps/api/src/modules/identity/domain/session.entity.ts`, `apps/api/src/modules/identity/domain/session.entity.spec.ts`.
 
-- [ ] **T-13** [P×PR] `Session`: `matchSecret`, `rotate`, `revoke`, `refreshCookieMaxAge` — CA: CA-7, CA-8, CA-9 — Depende: T-12 (mismo archivo) — ~1 h
+- [x] **T-13** [P×PR] `Session`: `matchSecret`, `rotate`, `revoke`, `refreshCookieMaxAge` — CA: CA-7, CA-8, CA-9 — Depende: T-12 (mismo archivo) — ~1 h
   Prueba primero (mismo archivo): `matchSecret(hash, now, grace)` → `current`; `previousWithinGrace` a los 0 s y a los
   10 s de `rotadoEn`; `reuse` a los 10 s + 1 ms, con un hash anterior al anterior y con uno falsificado; compara con
   `timingSafeEqual` (espía). `rotate(newHash, now)` devuelve una instancia nueva con anterior = vigente,
@@ -166,13 +166,13 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   `refreshCookieMaxAge(now, idle) = min(idle, expiraEn − now)` en el día 1 y en el día 29,5.
   Archivos: `apps/api/src/modules/identity/domain/session.entity.ts`, `apps/api/src/modules/identity/domain/session.entity.spec.ts`.
 
-- [ ] **T-14** [P] [P×PR] `Device` — CA: CA-16, CA-17 — Depende: — — ~0,5 h
+- [x] **T-14** [P] [P×PR] `Device` — CA: CA-16, CA-17 — Depende: — — ~0,5 h
   Prueba primero `apps/api/src/modules/identity/domain/device.entity.spec.ts`: `register` trunca `userAgent` a 512
   caracteres (y acepta vacío); guarda solo `secretHash`; `seen({ userAgent, ip, now })` devuelve una instancia nueva con
   `ultimoAcceso`, `agenteUsuario` y `ultimaIp` actualizados.
   Archivos: `apps/api/src/modules/identity/domain/device.entity.ts`, `apps/api/src/modules/identity/domain/device.entity.spec.ts`.
 
-- [ ] **T-15** [P] [P×PR] `UserAgentSummary.parse` — CA: CA-11, CA-16 — Depende: — — ~1 h
+- [x] **T-15** [P] [P×PR] `UserAgentSummary.parse` — CA: CA-11, CA-16 — Depende: — — ~1 h
   Prueba primero `apps/api/src/modules/identity/domain/user-agent-summary.vo.spec.ts` con una muestra de cadenas reales
   (fijadas en la prueba): Edge/Windows, Chrome/macOS, Safari/iOS (móvil), Safari/iPadOS (tableta), Chrome/Android
   (móvil), Samsung Internet, Opera, Firefox/Linux, Chrome/ChromeOS; Edge **antes** que Chrome y Chrome antes que Safari;
@@ -188,7 +188,7 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   `code` coinciden con `IDENTITY_ERROR_CODES` (la prueba sí importa `contracts`). Luego `domain/errors/*.ts`.
   Archivos: `apps/api/src/modules/identity/domain/errors/**`.
 
-- [ ] **T-17** [P×PR] Puertos de `identity` (incluido `IAttemptLockout`) y `ClientContext` — CA: n/a (contratos internos) — Depende: T-12, T-14 — ~0,5 h
+- [x] **T-17** [P×PR] Puertos de `identity` (incluido `IAttemptLockout`) y `ClientContext` — CA: n/a (contratos internos) — Depende: T-12, T-14 — ~0,5 h
   `i-session-repository.port.ts` (`insert`, `findByIdForUpdate`, `update`, `listActive(userId, now, idleCutoff, limit)`,
   `revokeIfActive(id, userId, now): Promise<boolean>`, `revokeAllExcept(userId, exceptId | null, now): Promise<number>`),
   `i-device-repository.port.ts` (`upsertSeen(device): Promise<{ deviceId; isNew }>`), `i-token-service.port.ts`
@@ -812,6 +812,8 @@ Tareas por PR: PR-1 = 10 (T-01…T-10) · PR-2 = 47 (T-11…T-57) · PR-3 = 12 (
 PR-5a = 15 (T-81…T-95) · PR-5b = 10 (T-96…T-105). Total 105.
 
 ## Notas del developer
+
+- **T-12 a T-15 y T-17**: pruebas del dominio en verde. El espía de `timingSafeEqual` usa `jest.mock` porque la exportación de Node no admite `spyOn`. T-11 y T-16 no forman parte de esta rama.
 
 - **T-55 depende de 003-PR-D**, no solo de 003-PR-A: `isolation-world.ts` nace en 003-PR-D (plan 003 §6.7 y §6.12),
   mientras que el plan 002 pone «tokens reales en el arnés de aislamiento» en 002-PR-2, que solo espera a 003-PR-A. Si
