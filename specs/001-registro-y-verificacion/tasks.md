@@ -406,7 +406,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   node -e "require('argon2')"`) y anotarlo en «Notas del developer» (riesgo de plan §9).
   Archivos: `apps/api/package.json`, `pnpm-workspace.yaml` o `package.json` raíz (si hace falta), `apps/api/src/modules/identity/infrastructure/argon2id.hasher.ts`, `apps/api/src/modules/identity/infrastructure/argon2id.hasher.spec.ts`.
 
-- [ ] **T-42** [P] `EventEmitterAccountEventsPublisher` (ADR-0019) — CA: CA-8 — Depende: T-31, T-32 — ~1 h
+- [x] **T-42** [P] `EventEmitterAccountEventsPublisher` (ADR-0019) — CA: CA-8 — Depende: T-31, T-32 — ~1 h
   Agregar `@nestjs/event-emitter`. Prueba primero `infrastructure/event-emitter-account-events.publisher.spec.ts`:
   emite `CLIENT_ACCOUNT_VERIFIED` con `{ userId }` y registra `identity.account_verified.published`; un oyente que lanza
   de forma síncrona → sin excepción y `identity.account_verified.publish_failed` en `warn` solo con `userId`.
@@ -840,4 +840,8 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   literal. Propuesta para la spec: leer CA-19 como «PHC de Argon2id con `m`, `t` y `p` ≥ RN-3», sin fijar el orden.
   `verify` con un hash que no es PHC lanza (no devuelve `false`): un hash corrupto es un error de datos, no una
   contraseña incorrecta, y ningún CA pide lo contrario.
+- **T-42, `@nestjs/event-emitter` `3.1.0`** (versión exacta, ADR-0019), no la `12.0.1` más reciente: la serie 12 se
+  publica solo como ESM (`"type": "module"`) y `api` compila a CommonJS y corre sus pruebas con `ts-jest` en CJS; la
+  `3.1.0` es CJS y declara `@nestjs/common`/`core` `^11`. El publicador inyecta `EventEmitter2` (reexportado por el
+  paquete) y no registra el error del oyente (puede traer datos ajenos), solo `userId`.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
