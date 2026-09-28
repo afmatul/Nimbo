@@ -529,7 +529,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   `@hookform/resolvers`, `@testing-library/react`, `@testing-library/user-event` (versiones fijas). `pnpm env:check`.
   Archivos: `apps/web/src/env.ts`, `apps/web/src/env.spec.ts`, `apps/web/package.json`, `.env.example`.
 
-- [ ] **T-56** [P] [P×PR] Primitivas `label`, `checkbox`, `radio-group` y `alert` (controles nativos, DT-8) — CA: CA-22 — Depende: — — ~2 h
+- [x] **T-56** [P] [P×PR] Primitivas `label`, `checkbox`, `radio-group` y `alert` (controles nativos, DT-8) — CA: CA-22 — Depende: — — ~2 h
   Prueba primero `*.spec.tsx` de cada una (asociación `label`/control, `aria-invalid`, `aria-describedby`, foco
   visible, teclado —flechas en el grupo de radios nativo—, `alert` con `role="alert"` o `status` según variante,
   jest-axe). Luego los componentes al estilo shadcn sin Radix ni tokens nuevos.
