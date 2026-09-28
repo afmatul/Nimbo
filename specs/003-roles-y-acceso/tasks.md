@@ -70,7 +70,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   `SHARED_ERROR_CODES` contiene `SHARED_UNAUTHENTICATED` y `SHARED_FORBIDDEN`. Luego los archivos y la reexportación.
   Archivos: `packages/contracts/src/shared/{roles,error-codes,index}.ts`, `packages/contracts/src/shared/roles.spec.ts`, `packages/contracts/src/index.ts`.
 
-- [ ] **T-03** [P] `createActor` y `ALL_ROLES` — CA: CA-4, CA-9 — Depende: — — ~0,5 h
+- [x] **T-03** [P] `createActor` y `ALL_ROLES` — CA: CA-4, CA-9 — Depende: — — ~0,5 h
   Prueba primero `apps/api/src/shared/domain/actor.spec.ts`: `canReadContent` es `true` solo para `CLIENT` (tabla con los
   cuatro roles); el objeto está congelado (`Object.isFrozen`); `ALL_ROLES` = `Object.values(Role)` y es de solo
   lectura. Luego `createActor` en `actor.ts` y `ALL_ROLES` en `role.enum.ts`; exportar desde `shared/index.ts`

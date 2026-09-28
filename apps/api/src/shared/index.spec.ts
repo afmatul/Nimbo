@@ -58,6 +58,7 @@ const RUNTIME_EXPORTS_BY_TASK = {
     'REDIS_CLIENT',
   ],
   '001 T-17': ['configureHttpApp'],
+  '003 T-03': ['createActor', 'ALL_ROLES'],
 } as const;
 
 const ALL_RUNTIME_EXPORTS: readonly string[] = Object.values(RUNTIME_EXPORTS_BY_TASK).flat();
@@ -135,6 +136,10 @@ describe('shared/index.ts (CA-17)', () => {
   it('001 CA-6/CA-15: exporta `configureHttpApp`, la configuración HTTP común de `main.ts` y el arnés (T-17)', () => {
     expectExportsOf('001 T-17');
     expect(typeof shared.configureHttpApp).toBe('function');
+  });
+  it('CA-4: exporta `createActor` y `ALL_ROLES` (003 T-03)', () => {
+    expectExportsOf('003 T-03');
+    expect(shared.createActor('id', shared.Role.CLIENT).canReadContent).toBe(true);
   });
   it('CA-17: exporta exactamente la lista del plan §6.2 al cerrar el bloque 2 (T-26)', () => {
     expect(exportedKeys()).toEqual([...ALL_RUNTIME_EXPORTS].sort());
