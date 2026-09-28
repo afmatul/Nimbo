@@ -352,7 +352,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   `identity:attempt-notice:<userId>` con la regla `{ limit: MAX_AVISOS_INTENTO_24H, windowSeconds: 86400 }`.
   Archivos: `apps/api/src/modules/identity/application/registration-attempt-notifier.ts`, `apps/api/src/modules/identity/application/registration-attempt-notifier.spec.ts`.
 
-- [ ] **T-36** `RegistrationService.register` — CA: CA-1, CA-2, CA-3, CA-4, CA-7, CA-15, CA-18 — Depende: T-34, T-35, T-14 — ~2 h
+- [x] **T-36** `RegistrationService.register` — CA: CA-1, CA-2, CA-3, CA-4, CA-7, CA-15, CA-18 — Depende: T-34, T-35, T-14 — ~2 h
   Prueba primero `application/registration.service.spec.ts` (dobles de todos los puertos, `FixedClock`,
   `ITransactionRunner` falso): el límite por correo (`identity:email-request:<sha256>`, reglas 60 s y 5/h) se consulta
   **antes** que el repositorio y, si rechaza, lanza `IdentityTooManyRequestsError` y registra `identity.rate_limited`
@@ -790,4 +790,10 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
 - **T-35, archivo adicional**: `application/identity-logger.ts` (interfaz mínima `info`/`warn` que los servicios de
   `identity` reciben con `@Inject(PinoLogger)`, igual que `HealthLogger` en `shared`), para usar un doble en las
   pruebas. `WEB_PATHS.passwordRecovery = '/recuperar-contrasena'` (ya en `web-links.ts`) sigue pendiente de confirmar en 002.
+- **T-36, decisiones**: (a) el servicio recorta el nombre (`fullName.trim()`): el esquema acepta espacios alrededor y
+  el `CHECK` de la BD mide `btrim(nombre)`, así que se guarda sin ellos; (b) cada transacción devuelve un resultado
+  (`log` + correo) y la bitácora `identity.registration.accepted`/`existing_account` y el envío ocurren **después**
+  del commit (`attempt_notice_sent`/`_suppressed` los registra el notificador dentro de la transacción); (c) si tras
+  el reintento la cuenta sigue sin aparecer, lanza un `Error` interno (500), caso que no debería ocurrir. Archivo
+  adicional: `application/testing/in-memory-user.repository.ts` (correo único como `uq_usuario_correo`).
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
