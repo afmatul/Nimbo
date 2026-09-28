@@ -421,7 +421,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   `domain/errors` coinciden con `IDENTITY_ERROR_CODES` de `contracts` (una sola fuente, Art. VI).
   Archivos: `apps/api/src/modules/identity/presentation/identity-validation.ts`, `apps/api/src/modules/identity/presentation/identity-validation.spec.ts`.
 
-- [ ] **T-44** [P] `IdentityIpThrottlerGuard` (ADR-0017, DT-8 del plan 002) — CA: CA-15 — Depende: T-31 — ~1,5 h
+- [x] **T-44** [P] `IdentityIpThrottlerGuard` (ADR-0017, DT-8 del plan 002) — CA: CA-15 — Depende: T-31 — ~1,5 h
   Agregar `@nestjs/throttler`. Prueba primero `presentation/identity-ip-throttler.guard.spec.ts`: al superar el límite
   de `register-ip` lanza `IdentityTooManyRequestsError` con el ámbito que da la tabla *throttler* → ámbito
   (`{ 'register-ip': 'ip' }`) y el `Retry-After` del detalle del *throttler*, y registra `identity.rate_limited`
@@ -848,4 +848,13 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   `IDENTITY_WEAK_PASSWORD`», pero CA-6 pide `IDENTITY_INVALID_INPUT` para «un campo obligatorio ausente». La fábrica
   elige `IDENTITY_WEAK_PASSWORD` solo si **todos** los *issues* son de `password` **y** su `reason` es una regla
   `PASSWORD_*` de `FIELD_ISSUE_REASONS`; una contraseña ausente (`password:REQUIRED`) es `IDENTITY_INVALID_INPUT`.
+- **T-44, `@nestjs/throttler` `6.7.1`** (versión exacta, ADR-0017; CJS, `@nestjs/common` `^11`). La librería no
+  pasa el nombre del *throttler* a `throwThrottlingException`, así que el guard sobrescribe `handleRequest` para
+  anotar qué *throttler* evalúa cada petición (un `WeakMap` por `ExecutionContext`, sin tocar la petición) y para
+  forzar `setHeaders: false` en cada *throttler*: así ninguna configuración de `ThrottlerModule` puede volver a
+  activar `X-RateLimit-*` ni `Retry-After-<throttler>`. `Retry-After` sale de `timeToBlockExpire` (segundos) y lo
+  escribe `DomainExceptionFilter`. Un *throttler* sin fila en la tabla de ámbitos lanza un `Error` interno (500): es
+  un error de programación. `REGISTER_IP_THROTTLER = 'register-ip'` se exporta del archivo del guard para T-45. La
+  prueba levanta una app Nest en memoria con `supertest` (sin contenedores) y se comprobó que falla con
+  `setHeaders: true`.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
