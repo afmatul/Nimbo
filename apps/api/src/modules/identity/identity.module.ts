@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import type { DynamicModule } from '@nestjs/common';
+import type { DynamicModule, MiddlewareConsumer, NestModule } from '@nestjs/common';
 
 import type { Env } from '../../shared';
 import { NotificationsModule } from '../notifications';
@@ -18,14 +18,16 @@ import { EventEmitterAccountEventsPublisher } from './infrastructure/event-emitt
 import { TypeormUserRepository } from './infrastructure/persistence/typeorm-user.repository';
 import { TypeormVerificationTokenRepository } from './infrastructure/persistence/typeorm-verification-token.repository';
 import { AuthController } from './presentation/auth.controller';
+import { NoStoreMiddleware } from './presentation/no-store.middleware';
 
 /**
  * Módulo `identity` (plan §6.1, §6.8): registro y verificación del correo. `forRoot(env)` publica `IDENTITY_CONFIG`
  * con `WEB_PUBLIC_URL` y une cada puerto con su adaptador. Requiere en la raíz `EventEmitterModule.forRoot()` y
  * `ThrottlerModule.forRoot` con `IDENTITY_THROTTLERS`; `shared` aporta reloj, límites y transacciones (global).
+ * Todas las respuestas de `AuthController`, también las de error, llevan `Cache-Control: no-store` (plan §5).
  */
 @Module({})
-export class IdentityModule {
+export class IdentityModule implements NestModule {
   static forRoot(env: Pick<Env, 'WEB_PUBLIC_URL'>): DynamicModule {
     const config: IdentityConfig = { webPublicUrl: env.WEB_PUBLIC_URL };
     return {
@@ -43,5 +45,9 @@ export class IdentityModule {
         RegistrationService,
       ],
     };
+  }
+
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(NoStoreMiddleware).forRoutes(AuthController);
   }
 }

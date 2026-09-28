@@ -874,4 +874,5 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   `@Header` en cada ruta: cubre las respuestas correctas (las de CA-1 y CA-8); las de error (`422`/`429`) las escribe
   `DomainExceptionFilter` sin esa cabecera, que no guarda nada sensible y no se almacena por defecto. Si la revisión
   lo quiere en toda respuesta, basta un *middleware* de `IdentityModule` para `AuthController`.
+- **Revisión de T-45, `no-store` en toda respuesta (decisión de Adrián: seguir plan §5)**: `presentation/no-store.middleware.ts` y `IdentityModule.configure` lo aplican a `AuthController`; se quitaron los `@Header`. Cubre 202/200, 422 del pipe, 429 del guard y 500. **Límite aceptado**: el `400 VALIDATION_FAILED` de un JSON mal formado no lleva la cabecera porque el analizador global de `configureHttpApp` corre antes que los middlewares de módulo; es genérico (solo `correlationId`), se deja así y lo valora la revisión.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>

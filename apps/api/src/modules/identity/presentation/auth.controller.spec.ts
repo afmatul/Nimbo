@@ -1,4 +1,5 @@
-import type { INestApplication } from '@nestjs/common';
+import { Module } from '@nestjs/common';
+import type { INestApplication, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { ThrottlerModule } from '@nestjs/throttler';
 import type { Logger } from 'nestjs-pino';
@@ -8,6 +9,7 @@ import request from 'supertest';
 import { DomainExceptionFilter } from '../../../shared';
 import { RegistrationService } from '../application/registration.service';
 import type { VerifyEmailResult } from '../application/registration.service';
+import { IdentityModule } from '../identity.module';
 
 import { AuthController } from './auth.controller';
 import { IDENTITY_THROTTLERS } from './identity-ip-throttler.guard';
@@ -23,7 +25,8 @@ const TOKEN = 'a'.repeat(43);
 
 /**
  * `AuthController` con el servicio sustituido (plan §6.5): rutas, validación con la fábrica de `identity`, mapeo del
- * resultado al contrato y `Cache-Control: no-store`. De punta a punta lo cubren `test/int/identity/*.int-spec.ts`.
+ * resultado al contrato y `Cache-Control: no-store` en toda respuesta (el *middleware* que instala
+ * `IdentityModule.configure`). De punta a punta lo cubren `test/int/identity/*.int-spec.ts`.
  */
 describe('AuthController', () => {
   let app: INestApplication;
@@ -33,17 +36,27 @@ describe('AuthController', () => {
     verifyEmail: jest.fn<Promise<VerifyEmailResult>, unknown[]>(),
   };
 
+  /** El controlador con los *middlewares* de `IdentityModule`, sin sus adaptadores de infraestructura. */
+  @Module({
+    imports: [ThrottlerModule.forRoot({ throttlers: [...IDENTITY_THROTTLERS] })],
+    controllers: [AuthController],
+    providers: [
+      { provide: RegistrationService, useValue: service },
+      { provide: PinoLogger, useValue: { info: jest.fn(), warn: jest.fn() } },
+    ],
+  })
+  class AuthControllerTestModule implements NestModule {
+    configure(consumer: MiddlewareConsumer): void {
+      new IdentityModule().configure(consumer);
+    }
+  }
+
   beforeEach(async () => {
     jest.resetAllMocks();
     service.register.mockResolvedValue(undefined);
     service.resendVerification.mockResolvedValue(undefined);
     const moduleRef = await Test.createTestingModule({
-      imports: [ThrottlerModule.forRoot({ throttlers: [...IDENTITY_THROTTLERS] })],
-      controllers: [AuthController],
-      providers: [
-        { provide: RegistrationService, useValue: service },
-        { provide: PinoLogger, useValue: { info: jest.fn(), warn: jest.fn() } },
-      ],
+      imports: [AuthControllerTestModule],
     }).compile();
     app = moduleRef.createNestApplication({ logger: false });
     app.useGlobalFilters(
@@ -78,6 +91,7 @@ describe('AuthController', () => {
 
     expect(response.status).toBe(422);
     expect(response.body).toMatchObject({ code: 'IDENTITY_WEAK_PASSWORD' });
+    expect(response.headers['cache-control']).toBe('no-store');
     expect(service.register).not.toHaveBeenCalled();
   });
 
@@ -130,6 +144,7 @@ describe('AuthController', () => {
 
     expect(blocked.status).toBe(429);
     expect(blocked.body).toMatchObject({ code: 'IDENTITY_TOO_MANY_REQUESTS' });
+    expect(blocked.headers['cache-control']).toBe('no-store');
     expect(resend.status).toBe(202);
   });
 });

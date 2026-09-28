@@ -1,4 +1,4 @@
-import { Body, Controller, Header, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
 import {
   registerRequestSchema,
   resendVerificationRequestSchema,
@@ -18,15 +18,14 @@ import { RegistrationService } from '../application/registration.service';
 import { IdentityIpThrottlerGuard } from './identity-ip-throttler.guard';
 import { identityValidationError } from './identity-validation';
 
-const CACHE_CONTROL = 'Cache-Control';
-const NO_STORE = 'no-store';
 /** Respuesta neutra de registro y reenvío: la misma exista o no la cuenta (spec §7). */
 const ACCEPTED: AcceptedResponse = { status: 'accepted' };
 
 /**
  * Rutas públicas de registro y verificación (plan §5, §6.5). Solo validan, delegan en `RegistrationService` y
  * mapean el resultado al contrato; sin reglas de negocio. No construyen `Actor`: una cabecera `Authorization` se
- * ignora (CA-7). 003 las marcará `@Public()`.
+ * ignora (CA-7). `Cache-Control: no-store` lo pone `NoStoreMiddleware` desde `IdentityModule`. 003 las marcará
+ * `@Public()`.
  */
 @Controller('auth')
 export class AuthController {
@@ -34,7 +33,6 @@ export class AuthController {
 
   @Post('register')
   @HttpCode(HttpStatus.ACCEPTED)
-  @Header(CACHE_CONTROL, NO_STORE)
   @UseGuards(IdentityIpThrottlerGuard)
   async register(
     @Body(new ZodValidationPipe(registerRequestSchema, identityValidationError))
@@ -47,7 +45,6 @@ export class AuthController {
 
   @Post('resend-verification')
   @HttpCode(HttpStatus.ACCEPTED)
-  @Header(CACHE_CONTROL, NO_STORE)
   async resendVerification(
     @Body(new ZodValidationPipe(resendVerificationRequestSchema, identityValidationError))
     body: ResendVerificationRequest,
@@ -58,7 +55,6 @@ export class AuthController {
 
   @Post('verify-email')
   @HttpCode(HttpStatus.OK)
-  @Header(CACHE_CONTROL, NO_STORE)
   async verifyEmail(
     @Body(new ZodValidationPipe(verifyEmailRequestSchema, identityValidationError))
     body: VerifyEmailRequest,
