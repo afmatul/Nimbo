@@ -489,7 +489,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   `correlationId`; el del trabajo de correo es el de la petición; eventos de plan §7 presentes con solo `userId`).
   Archivos: `apps/api/test/int/identity/{token-secrecy,password-hash,identity-logs}.int-spec.ts`.
 
-- [ ] **T-51** [P] Degradación del correo en el registro — CA: CA-21 — Depende: T-45, T-25 — ~1 h
+- [x] **T-51** [P] Degradación del correo en el registro — CA: CA-21 — Depende: T-45, T-25 — ~1 h
   Ampliar `mail-degradation.int-spec.ts` con la variante de registro: con el SMTP caído la respuesta es la de CA-1 y la
   cuenta queda creada; al volver Mailpit llega **un** correo; con los intentos agotados `mail.failed` lleva el
   `correlationId` de la petición y `recipientId` = id de la cuenta; después se puede pedir otro enlace (CA-13).
@@ -880,4 +880,5 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
 - **T-48**: `verify-email.int-spec.ts` y `verify-email-concurrency.int-spec.ts` **no se ejecutó** (sin Docker): compila y pasa `lint`/`typecheck`; su rojo y su verde quedan sin comprobar. La concurrencia levanta la app en `127.0.0.1:0` para que las dos peticiones corran en paralelo; el evento se captura con un oyente sobre `EventEmitter2`.
 - **T-49**: `resend-verification.int-spec.ts` y `rate-limits.int-spec.ts` **no se ejecutó** (sin Docker): compila y pasa `lint`/`typecheck`; su rojo y su verde quedan sin comprobar. El almacén en memoria de `@nestjs/throttler` mide con `Date.now()`, no con `IClock`: del límite por IP solo se prueba el rechazo del 11.º y que otra IP sigue; «al cumplirse el tiempo» se prueba con los límites por correo.
 - **T-50**: `token-secrecy`, `password-hash` e `identity-logs` **no se ejecutó** (sin Docker): compila y pasa `lint`/`typecheck`; su rojo y su verde quedan sin comprobar. CA-17 busca el token en `row_to_json(fila)::text`. **Posible defecto para la revisión**: sin `quietReqLogger`, nestjs-pino podría adjuntar `req` (con `x-forwarded-for`) a `identity.rate_limited`, contra plan §7 «sin IP».
+- **T-51**: variante de registro en `mail-degradation.int-spec.ts` **no se ejecutó** (sin Docker): compila y pasa `lint`/`typecheck`; su rojo y su verde quedan sin comprobar. Compone la app localmente porque `createIdentityTestApp` no acepta `env`; pruebas dependientes del orden.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
