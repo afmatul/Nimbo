@@ -105,7 +105,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   ['HS256']`, `ignoreExpiration` y vencimiento con el reloj de la prueba).
   Archivos: `apps/api/test/support/{access-token-verifier.contract,test-access-tokens,test-access-token-verifier}.ts`, `apps/api/test/support/test-access-token-verifier.spec.ts`.
 
-- [ ] **T-07** [P] `RequestPrincipal` y decoradores — CA: CA-4 — Depende: T-03 — ~1 h
+- [x] **T-07** [P] `RequestPrincipal` y decoradores — CA: CA-4 — Depende: T-03 — ~1 h
   Prueba primero `apps/api/src/shared/presentation/auth/decorators.spec.ts`: `@Public()` y `@Roles()` escriben sus
   metadatos en clase y método (el método manda al leer con `getAllAndOverride`); `@Roles()` sin argumentos no compila
   (`// @ts-expect-error`); `@CurrentActor()` devuelve lo que guardó `RequestPrincipal.set` y lanza
@@ -570,4 +570,5 @@ PR-F = 9 (T-48…T-56). Total: 56.
 - **Suite de contrato (T-06)**: `describeAccessTokenVerifierContract` recibe una función `() => ({ verifier, tokens,
   clock })` que se evalúa dentro de cada prueba, para que 002 pueda construir su sujeto en un `beforeAll`. Para que
   `test/support/*.spec.ts` corra en `pnpm test`, `apps/api/jest.config.cjs` agrega ese patrón a `testMatch`.
+- **`ALL_ROLES` como tupla (T-07)**: el plan §5 lo tipa `readonly Role[]`, pero `@Roles` exige `readonly [Role, ...Role[]]` y el *spread* de un arreglo no la cumple. Se tipa `readonly [Role, ...Role[]]` (mismos valores, congelado; `actor.spec.ts` comprueba que coincide con `Object.values(Role)`). `RequestPrincipal` agrega `require(ctx)`, que usan los dos decoradores de parámetro.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
