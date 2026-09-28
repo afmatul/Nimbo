@@ -184,7 +184,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   `sessionId` de `@CurrentSessionId()` (cambio 5). Sin código de producción nuevo salvo correcciones.
   Archivos: `apps/api/test/int/shared/auth-guards.int-spec.ts`.
 
-- [ ] **T-16** CA-5 y CA-6 por HTTP (sondas) — CA: CA-5, CA-6 — Depende: T-15 — ~0,5 h
+- [x] **T-16** CA-5 y CA-6 por HTTP (sondas) — CA: CA-5, CA-6 — Depende: T-15 — ~0,5 h
   Prueba en `auth-guards.int-spec.ts`: matriz `/__probe/client`, `/__probe/admin`, `/__probe/support`,
   `/__probe/operator`, `/__probe/admin-or-support` × cuatro roles (200 solo los listados; los demás 403
   `SHARED_FORBIDDEN`), y `/__probe/undeclared` con token válido → 403 (DT-2). La matriz de aislamiento con cuentas del

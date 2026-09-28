@@ -95,6 +95,48 @@ describe('Guards globales por HTTP (003 CA-1, CA-4, CA-5, CA-6)', () => {
     );
   });
 
+  describe('CA-5 y CA-6: rutas por rol', () => {
+    const ROLE_MATRIX: readonly (readonly [string, readonly Role[]])[] = [
+      ['client', [Role.CLIENT]],
+      ['admin', [Role.ADMIN]],
+      ['support', [Role.SUPPORT]],
+      ['operator', [Role.OPERATOR]],
+      ['admin-or-support', [Role.ADMIN, Role.SUPPORT]],
+    ];
+    const OK = 200;
+    const FORBIDDEN = 403;
+    const CASES = ROLE_MATRIX.flatMap(([handler, allowed]) =>
+      ALL_ROLES.map((role) => [handler, role, allowed.includes(role) ? OK : FORBIDDEN] as const),
+    );
+    const EXPECTED_BODY = {
+      [OK]: { ok: true },
+      [FORBIDDEN]: expect.objectContaining({ code: 'SHARED_FORBIDDEN' }) as unknown,
+    };
+
+    it.each(CASES)('CA-5/CA-6: `/__probe/%s` con %s → %i', async (handler, role, status) => {
+      const response = await request(server())
+        .get(`/api/v1/__probe/${handler}`)
+        .set('Authorization', bearer(role));
+
+      expect(response.status).toBe(status);
+      expect(response.body).toEqual(EXPECTED_BODY[status]);
+      expect(calls().count(handler)).toBe(status === OK ? 1 : 0);
+    });
+
+    it.each(ALL_ROLES)(
+      'DT-2: `/__probe/undeclared` con un token válido de %s → 403 `SHARED_FORBIDDEN`',
+      async (role) => {
+        const response = await request(server())
+          .get('/api/v1/__probe/undeclared')
+          .set('Authorization', bearer(role));
+
+        expect(response.status).toBe(403);
+        expect(response.body).toMatchObject({ code: 'SHARED_FORBIDDEN' });
+        expect(calls().count('undeclared')).toBe(0);
+      },
+    );
+  });
+
   describe('CA-4: el `Actor` sale del token', () => {
     it.each(ALL_ROLES)(
       'CA-4: con un token de %s llega `{ id, role, canReadContent }`',
