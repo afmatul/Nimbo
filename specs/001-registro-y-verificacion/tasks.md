@@ -414,7 +414,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
 
 ### 3d. Presentación y composición
 
-- [ ] **T-43** [P] Fábrica de errores de validación de `identity` — CA: CA-5, CA-6, CA-7 — Depende: T-05, T-15, T-31 — ~1 h
+- [x] **T-43** [P] Fábrica de errores de validación de `identity` — CA: CA-5, CA-6, CA-7 — Depende: T-05, T-15, T-31 — ~1 h
   Prueba primero `presentation/identity-validation.spec.ts`: si todos los *issues* son de `password` →
   `IdentityWeakPasswordError` con todas las reglas; si hay más de un campo → `IdentityInvalidInputError` con todos,
   incluidas las reglas de contraseña; `UNKNOWN_FIELD` → `IdentityInvalidInputError`; y los `code` de las clases de
@@ -844,4 +844,8 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   publica solo como ESM (`"type": "module"`) y `api` compila a CommonJS y corre sus pruebas con `ts-jest` en CJS; la
   `3.1.0` es CJS y declara `@nestjs/common`/`core` `^11`. El publicador inyecta `EventEmitter2` (reexportado por el
   paquete) y no registra el error del oyente (puede traer datos ajenos), solo `userId`.
+- **T-43, contraseña ausente (precisión, sin desviación)**: la tarea dice «si todos los *issues* son de `password` →
+  `IDENTITY_WEAK_PASSWORD`», pero CA-6 pide `IDENTITY_INVALID_INPUT` para «un campo obligatorio ausente». La fábrica
+  elige `IDENTITY_WEAK_PASSWORD` solo si **todos** los *issues* son de `password` **y** su `reason` es una regla
+  `PASSWORD_*` de `FIELD_ISSUE_REASONS`; una contraseña ausente (`password:REQUIRED`) es `IDENTITY_INVALID_INPUT`.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
