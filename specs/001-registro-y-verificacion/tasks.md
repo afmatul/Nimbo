@@ -153,7 +153,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   (`IRateLimiter`, `RateLimitRule`, `RateLimitDecision`, `I_RATE_LIMITER`).
   Archivos: `apps/api/src/shared/infrastructure/redis/redis-client.provider.ts`, `apps/api/src/shared/infrastructure/redis/redis-client.provider.spec.ts`, `apps/api/src/shared/application/rate-limit/i-rate-limiter.port.ts`.
 
-- [ ] **T-13** `RedisRateLimiter` (Lua atómico, ventana deslizante) + prueba de contrato — CA: CA-15 — Depende: T-12 — ~2 h
+- [x] **T-13** `RedisRateLimiter` (Lua atómico, ventana deslizante) + prueba de contrato — CA: CA-15 — Depende: T-12 — ~2 h
   Prueba primero `apps/api/test/int/shared/redis-rate-limiter.int-spec.ts` (Redis real, `FixedClock`): regla 1/60 s →
   el segundo `consume` se rechaza con `retryAfterSeconds = 60` y al avanzar 60 s se permite; 5/3600 s → la sexta se
   rechaza con el `retryAfter` de la más vieja; varias reglas: si una rechaza, **ninguna** cuenta la solicitud; las
@@ -694,4 +694,7 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   `src/shared/presentation/domain-exception.filter.spec.ts` (respuesta falsa) para comprobar de verdad el rojo y el
   verde de `fields` y `Retry-After`. La suite de integración importa `TooManyRequestsError` desde
   `src/shared/domain/errors` hasta que T-16 lo exporte en `shared/index.ts`.
+- **T-13, prueba unitaria adicional**: `redis-rate-limiter.spec.ts` (Redis falso) comprueba las claves, los
+  argumentos del script, el redondeo hacia arriba y la propagación de errores; la semántica del Lua (atomicidad,
+  ventanas, `PTTL`) solo la cubre `redis-rate-limiter.int-spec.ts`, **sin ejecutar** por falta de Docker.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
