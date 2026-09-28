@@ -11,12 +11,21 @@ import { FixedClock } from '../../../shared/domain/fixed.clock';
 import { Role } from '../../../shared/domain/role.enum';
 import type { MailMessage } from '../../notifications';
 import { AccountStatus } from '../domain/account-status.enum';
+import type { ClientAccountVerifiedEvent } from '../domain/client-account-verified.event';
 import { ClientUser } from '../domain/client-user.entity';
 import { EmailAddress } from '../domain/email-address.vo';
-import { IdentityTooManyRequestsError } from '../domain/errors';
+import {
+  IdentityTooManyRequestsError,
+  VerificationLinkExpiredError,
+  VerificationLinkInvalidError,
+} from '../domain/errors';
 import { InternalUser } from '../domain/internal-user.entity';
+import { OpaqueToken } from '../domain/opaque-token.vo';
 import { PasswordHash } from '../domain/password-hash.vo';
+import { VerificationToken } from '../domain/verification-token.entity';
+import type { VerificationTokenType } from '../domain/verification-token.entity';
 
+import type { IAccountEventsPublisher } from './ports/i-account-events-publisher.port';
 import type { IPasswordHasher } from './ports/i-password-hasher.port';
 import { RegistrationAttemptNotifier } from './registration-attempt-notifier';
 import { RegistrationService } from './registration.service';
@@ -80,14 +89,21 @@ const setup = () => {
       return Promise.resolve();
     }),
   };
+  const events: jest.Mocked<IAccountEventsPublisher> = {
+    clientAccountVerified: jest.fn((_event: ClientAccountVerifiedEvent) => {
+      timeline.push('event');
+    }),
+  };
   const logger = { info: jest.fn(), warn: jest.fn() };
   const transactions = new FakeTransactionRunner(timeline);
   const linkIssuer = new VerificationLinkIssuer(tokens, clock, config);
   const attemptNotifier = new RegistrationAttemptNotifier(rateLimiter, clock, config, logger);
   const service = new RegistrationService(
     users,
+    tokens,
     hasher,
     mailer,
+    events,
     rateLimiter,
     transactions,
     clock,
@@ -103,6 +119,7 @@ const setup = () => {
     decisions,
     rateLimiter,
     mailer,
+    events,
     sent,
     logger,
     transactions,
@@ -499,5 +516,209 @@ describe('RegistrationService.resendVerification', () => {
     for (const secret of [EMAIL, 'nadie@ejemplo.com', 'token=']) {
       expect(logs).not.toContain(secret);
     }
+  });
+});
+
+const MS_PER_HOUR = 3_600_000;
+const TOKEN_TTL_MS = 24 * MS_PER_HOUR;
+let tokenSequence = 0;
+
+type TokenState = 'valid' | 'used' | 'expired' | 'invalidated';
+
+const TOKEN_TRANSITIONS: Record<TokenState, (token: VerificationToken) => VerificationToken> = {
+  valid: (token) => token,
+  expired: (token) => token,
+  used: (token) => token.consume(NOW),
+  invalidated: (token) => token.invalidate(NOW),
+};
+
+/** Guarda un token en el estado pedido (visto en `NOW`) y devuelve su valor en claro, como lo trae el enlace. */
+const seedToken = async (
+  tokens: InMemoryVerificationTokenRepository,
+  userId: string,
+  state: TokenState = 'valid',
+  type: VerificationTokenType = 'verificacion',
+): Promise<string> => {
+  tokenSequence += 1;
+  const value = OpaqueToken.generate().value;
+  const ageMs = state === 'expired' ? 2 * TOKEN_TTL_MS : MS_PER_HOUR;
+  const createdAt = new Date(NOW.getTime() - ageMs);
+  const issued = VerificationToken.issue({
+    id: `00000000-0000-4000-8000-${String(tokenSequence).padStart(12, '0')}`,
+    userId,
+    type,
+    tokenHash: OpaqueToken.hashOf(value),
+    createdAt,
+    expiresAt: new Date(createdAt.getTime() + TOKEN_TTL_MS),
+  });
+  await tokens.insert(TOKEN_TRANSITIONS[state](issued));
+  return value;
+};
+
+const REJECTED = 'identity.verification.rejected';
+
+describe('RegistrationService.verifyEmail', () => {
+  it('CA-8: con un enlace válido verifica la cuenta, consume el token, invalida los demás y devuelve `VERIFIED`', async () => {
+    const { service, users, tokens, logger } = setup();
+    const pending = aClientUser().build();
+    users.seed(pending);
+    const value = await seedToken(tokens, pending.id);
+    await seedToken(tokens, pending.id);
+
+    const result = await service.verifyEmail(value);
+
+    expect(result).toEqual({ outcome: 'VERIFIED', userId: pending.id });
+    expect((await users.findByIdForUpdate(pending.id))?.emailVerified).toBe(true);
+    expect(tokens.all().filter((token) => token.isValid(NOW))).toHaveLength(0);
+    expect(tokens.all().filter((token) => token.usedAt !== null)).toHaveLength(1);
+    expect(logger.info).toHaveBeenCalledWith({
+      event: 'identity.verification.succeeded',
+      userId: pending.id,
+    });
+  });
+
+  it('CA-8: publica el evento una sola vez, después del commit y solo con `VERIFIED`', async () => {
+    const { service, users, tokens, events, timeline } = setup();
+    const pending = aClientUser().build();
+    users.seed(pending);
+    const value = await seedToken(tokens, pending.id);
+
+    await service.verifyEmail(value);
+    const second = await service.verifyEmail(value);
+
+    expect(second).toEqual({ outcome: 'ALREADY_VERIFIED' });
+    expect(events.clientAccountVerified).toHaveBeenCalledTimes(1);
+    expect(events.clientAccountVerified).toHaveBeenCalledWith({ userId: pending.id });
+    expect(timeline).toEqual(['commit', 'event', 'commit']);
+  });
+
+  it('CA-8: no publica el evento si la transacción falla al confirmar', async () => {
+    const { service, users, tokens, events, transactions } = setup();
+    const pending = aClientUser().build();
+    users.seed(pending);
+    const value = await seedToken(tokens, pending.id);
+    transactions.failOnCommit = true;
+
+    await expect(service.verifyEmail(value)).rejects.toThrow('falla al confirmar');
+
+    expect(events.clientAccountVerified).not.toHaveBeenCalled();
+  });
+
+  it('CA-11: un token mal formado es inválido sin consultar la base', async () => {
+    const { service, tokens, transactions, logger } = setup();
+    const findByHash = jest.spyOn(tokens, 'findByHash');
+
+    await expect(service.verifyEmail('no-es-un-token')).rejects.toBeInstanceOf(
+      VerificationLinkInvalidError,
+    );
+
+    expect(findByHash).not.toHaveBeenCalled();
+    expect(transactions.runs).toBe(0);
+    expect(logger.info).toHaveBeenCalledWith({ event: REJECTED, reason: 'invalid' });
+  });
+
+  it('CA-11: un token bien formado que no existe es inválido y la bitácora no lleva `userId`', async () => {
+    const { service, logger } = setup();
+
+    await expect(service.verifyEmail(OpaqueToken.generate().value)).rejects.toBeInstanceOf(
+      VerificationLinkInvalidError,
+    );
+
+    expect(logger.info).toHaveBeenCalledWith({ event: REJECTED, reason: 'invalid' });
+  });
+
+  it('CA-12: un token de recuperación no sirve como enlace de verificación', async () => {
+    const { service, users, tokens, events } = setup();
+    const pending = aClientUser().build();
+    users.seed(pending);
+    const value = await seedToken(tokens, pending.id, 'valid', 'recuperacion');
+
+    await expect(service.verifyEmail(value)).rejects.toBeInstanceOf(VerificationLinkInvalidError);
+
+    expect((await users.findByIdForUpdate(pending.id))?.emailVerified).toBe(false);
+    expect(events.clientAccountVerified).not.toHaveBeenCalled();
+  });
+
+  it.each<[TokenState]>([['used'], ['invalidated']])(
+    'CA-11: un token %s de una cuenta sin verificar es inválido',
+    async (state) => {
+      const { service, users, tokens, logger } = setup();
+      const pending = aClientUser().build();
+      users.seed(pending);
+      const value = await seedToken(tokens, pending.id, state);
+
+      await expect(service.verifyEmail(value)).rejects.toBeInstanceOf(VerificationLinkInvalidError);
+
+      expect((await users.findByIdForUpdate(pending.id))?.emailVerified).toBe(false);
+      expect(logger.info).toHaveBeenCalledWith({
+        event: REJECTED,
+        reason: 'invalid',
+        userId: pending.id,
+      });
+    },
+  );
+
+  it('CA-9: un token vencido de una cuenta sin verificar lanza `VerificationLinkExpiredError`', async () => {
+    const { service, users, tokens, logger } = setup();
+    const pending = aClientUser().build();
+    users.seed(pending);
+    const value = await seedToken(tokens, pending.id, 'expired');
+
+    await expect(service.verifyEmail(value)).rejects.toBeInstanceOf(VerificationLinkExpiredError);
+
+    expect((await users.findByIdForUpdate(pending.id))?.emailVerified).toBe(false);
+    expect(logger.info).toHaveBeenCalledWith({
+      event: REJECTED,
+      reason: 'expired',
+      userId: pending.id,
+    });
+  });
+
+  it.each<[TokenState]>([['valid'], ['used'], ['invalidated'], ['expired']])(
+    'CA-10: con la cuenta ya verificada, un enlace %s devuelve `ALREADY_VERIFIED` sin evento',
+    async (state) => {
+      const { service, users, tokens, events, logger } = setup();
+      const verified = aClientUser().verified().build();
+      users.seed(verified);
+      const value = await seedToken(tokens, verified.id, state);
+
+      const result = await service.verifyEmail(value);
+
+      expect(result).toEqual({ outcome: 'ALREADY_VERIFIED' });
+      expect(events.clientAccountVerified).not.toHaveBeenCalled();
+      expect(logger.info).toHaveBeenCalledWith({
+        event: REJECTED,
+        reason: 'already_verified',
+        userId: verified.id,
+      });
+    },
+  );
+
+  it('CA-29: si otra apertura consumió el token primero, devuelve `ALREADY_VERIFIED` sin tocar la cuenta', async () => {
+    const { service, users, tokens, events } = setup();
+    const pending = aClientUser().build();
+    users.seed(pending);
+    const value = await seedToken(tokens, pending.id);
+    jest.spyOn(tokens, 'consume').mockResolvedValue(false);
+
+    const result = await service.verifyEmail(value);
+
+    expect(result).toEqual({ outcome: 'ALREADY_VERIFIED' });
+    expect((await users.findByIdForUpdate(pending.id))?.emailVerified).toBe(false);
+    expect(events.clientAccountVerified).not.toHaveBeenCalled();
+  });
+
+  it('CA-18: las bitácoras de la verificación no llevan el token ni su hash', async () => {
+    const { service, users, tokens, logger } = setup();
+    const pending = aClientUser().build();
+    users.seed(pending);
+    const value = await seedToken(tokens, pending.id);
+
+    await service.verifyEmail(value);
+    await service.verifyEmail(value);
+
+    const logs = JSON.stringify(loggedEvents(logger));
+    expect(logs).not.toContain(value);
+    expect(logs).not.toContain(OpaqueToken.hashOf(value));
   });
 });

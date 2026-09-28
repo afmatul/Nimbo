@@ -14,16 +14,26 @@ import { I_MAILER } from '../../notifications';
 import type { IMailer, MailMessage } from '../../notifications';
 import { ClientUser } from '../domain/client-user.entity';
 import { EmailAddress } from '../domain/email-address.vo';
-import { IdentityTooManyRequestsError } from '../domain/errors';
+import {
+  IdentityTooManyRequestsError,
+  VerificationLinkExpiredError,
+  VerificationLinkInvalidError,
+} from '../domain/errors';
 import { LegalAcceptance } from '../domain/legal-acceptance.vo';
+import { OpaqueToken } from '../domain/opaque-token.vo';
 import type { PasswordHash } from '../domain/password-hash.vo';
 import type { User } from '../domain/user.entity';
+import type { VerificationToken } from '../domain/verification-token.entity';
 
 import type { IdentityLogger } from './identity-logger';
+import { I_ACCOUNT_EVENTS_PUBLISHER } from './ports/i-account-events-publisher.port';
+import type { IAccountEventsPublisher } from './ports/i-account-events-publisher.port';
 import { I_PASSWORD_HASHER } from './ports/i-password-hasher.port';
 import type { IPasswordHasher } from './ports/i-password-hasher.port';
 import { I_USER_REPOSITORY } from './ports/i-user-repository.port';
 import type { IUserRepository } from './ports/i-user-repository.port';
+import { I_VERIFICATION_TOKEN_REPOSITORY } from './ports/i-verification-token-repository.port';
+import type { IVerificationTokenRepository } from './ports/i-verification-token-repository.port';
 import { RegistrationAttemptNotifier } from './registration-attempt-notifier';
 import { VerificationLinkIssuer } from './verification-link-issuer';
 
@@ -33,6 +43,7 @@ const EMAIL_REQUEST_RULES: readonly RateLimitRule[] = [
   { limit: 1, windowSeconds: EMAIL_REQUEST_COOLDOWN_SECONDS },
   { limit: EMAIL_REQUESTS_PER_HOUR, windowSeconds: SECONDS_PER_HOUR },
 ];
+const VERIFICATION_REJECTED = 'identity.verification.rejected';
 /** Transacciones de alta: la original y un reintento si el alta chocó y la cuenta no aparece (plan §6.3). */
 const MAX_REGISTRATION_RUNS = 2;
 
@@ -54,6 +65,17 @@ interface Registration {
   readonly passwordHash: PasswordHash;
 }
 
+/** Resultado de abrir un enlace de verificación; `VERIFIED` ocurre una sola vez por cuenta (CA-8, CA-29 d). */
+export type VerifyEmailResult =
+  | { readonly outcome: 'VERIFIED'; readonly userId: string }
+  | { readonly outcome: 'ALREADY_VERIFIED' };
+
+/** Lo que decide la transacción de verificación; bitácora, error y evento van después del commit. */
+type VerificationDecision =
+  | { readonly kind: 'verified'; readonly userId: string }
+  | { readonly kind: 'already_verified'; readonly userId: string }
+  | { readonly kind: 'rejected'; readonly reason: 'invalid' | 'expired'; readonly userId: string };
+
 /** Lo que deja una transacción: la bitácora y el correo a enviar, ambos después del commit. */
 interface Outcome {
   readonly log: Record<string, unknown>;
@@ -62,15 +84,17 @@ interface Outcome {
 
 /**
  * Registro de cuentas de cliente y verificación del correo (plan §6.3, design-model M1). Sin `actor`: las tres
- * operaciones son públicas. Los correos se envían solo después del commit, así nunca sale un enlace de una
- * transacción revertida.
+ * operaciones son públicas. Los correos y el evento de cuenta verificada salen solo después del commit, así nunca
+ * sale un enlace ni un evento de una transacción revertida.
  */
 @Injectable()
 export class RegistrationService {
   constructor(
     @Inject(I_USER_REPOSITORY) private readonly users: IUserRepository,
+    @Inject(I_VERIFICATION_TOKEN_REPOSITORY) private readonly tokens: IVerificationTokenRepository,
     @Inject(I_PASSWORD_HASHER) private readonly hasher: IPasswordHasher,
     @Inject(I_MAILER) private readonly mailer: IMailer,
+    @Inject(I_ACCOUNT_EVENTS_PUBLISHER) private readonly events: IAccountEventsPublisher,
     @Inject(I_RATE_LIMITER) private readonly rateLimiter: IRateLimiter,
     @Inject(I_TRANSACTION_RUNNER) private readonly transactions: ITransactionRunner,
     @Inject(I_CLOCK) private readonly clock: IClock,
@@ -110,6 +134,73 @@ export class RegistrationService {
       log: { event: 'identity.verification.resend_requested', userId: user.id },
       mail: await this.linkIssuer.issue(user),
     };
+  }
+
+  /**
+   * CA-8 a CA-12, CA-29 d: la fila bloqueada de la cuenta serializa las aperturas simultáneas, así que solo una llega
+   * a `VERIFIED` y el evento se publica una vez, después del commit.
+   */
+  async verifyEmail(tokenValue: string): Promise<VerifyEmailResult> {
+    const token = await this.findVerificationToken(tokenValue);
+    if (token === null) {
+      // Sin `userId`: el token no existía (plan §7).
+      this.logger.info({ event: VERIFICATION_REJECTED, reason: 'invalid' });
+      throw new VerificationLinkInvalidError();
+    }
+    const decision = await this.transactions.run(() => this.verifyInTransaction(token));
+    return this.completeVerification(decision);
+  }
+
+  /** `null` si el valor está mal formado (sin consultar, CA-11 b), no existe o es de otro tipo (CA-12). */
+  private async findVerificationToken(tokenValue: string): Promise<VerificationToken | null> {
+    if (!OpaqueToken.isWellFormed(tokenValue)) {
+      return null;
+    }
+    const token = await this.tokens.findByHash(OpaqueToken.hashOf(tokenValue), 'verificacion');
+    return token !== null && OpaqueToken.matchesHash(tokenValue, token.tokenHash) ? token : null;
+  }
+
+  private async verifyInTransaction(token: VerificationToken): Promise<VerificationDecision> {
+    const user = await this.users.findByIdForUpdate(token.userId);
+    if (!(user instanceof ClientUser)) {
+      return { kind: 'rejected', reason: 'invalid', userId: token.userId };
+    }
+    if (user.emailVerified) {
+      return { kind: 'already_verified', userId: user.id };
+    }
+    const now = this.clock.now();
+    const state = token.stateAt(now);
+    if (state !== 'valid') {
+      return {
+        kind: 'rejected',
+        reason: state === 'expired' ? 'expired' : 'invalid',
+        userId: user.id,
+      };
+    }
+    if (!(await this.tokens.consume(token.id, now))) {
+      return { kind: 'already_verified', userId: user.id };
+    }
+    await this.users.update(user.verifyEmail());
+    await this.tokens.invalidateActive(user.id, 'verificacion', now);
+    return { kind: 'verified', userId: user.id };
+  }
+
+  /** Después del commit: bitácora y, según la decisión, el evento o el error público. */
+  private completeVerification(decision: VerificationDecision): VerifyEmailResult {
+    const { userId } = decision;
+    if (decision.kind === 'verified') {
+      this.logger.info({ event: 'identity.verification.succeeded', userId });
+      this.events.clientAccountVerified({ userId });
+      return { outcome: 'VERIFIED', userId };
+    }
+    if (decision.kind === 'already_verified') {
+      this.logger.info({ event: VERIFICATION_REJECTED, reason: 'already_verified', userId });
+      return { outcome: 'ALREADY_VERIFIED' };
+    }
+    this.logger.info({ event: VERIFICATION_REJECTED, reason: decision.reason, userId });
+    throw decision.reason === 'expired'
+      ? new VerificationLinkExpiredError()
+      : new VerificationLinkInvalidError();
   }
 
   /** El límite va antes de cualquier consulta, así la secuencia 202/429 no delata la cuenta (D-8, CA-15). */

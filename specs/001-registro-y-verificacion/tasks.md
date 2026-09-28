@@ -370,7 +370,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   interno → no emite nada y registra `resend_ignored` sin `userId`; correo después del commit.
   Archivos: `apps/api/src/modules/identity/application/registration.service.ts`, `apps/api/src/modules/identity/application/registration.service.spec.ts`.
 
-- [ ] **T-38** `RegistrationService.verifyEmail` — CA: CA-8, CA-9, CA-10, CA-11, CA-12, CA-29 (d) — Depende: T-36 — ~2 h
+- [x] **T-38** `RegistrationService.verifyEmail` — CA: CA-8, CA-9, CA-10, CA-11, CA-12, CA-29 (d) — Depende: T-36 — ~2 h
   Prueba primero (mismo archivo): token mal formado → `VerificationLinkInvalidError` sin consultar; hash inexistente o
   de tipo `recuperacion` → inválido; cuenta ya verificada → `ALREADY_VERIFIED` (incluido un enlace viejo); estado
   `invalidated`/`used` → inválido; `expired` → `VerificationLinkExpiredError`; `valid` y `consume = true` →
@@ -796,4 +796,11 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   del commit (`attempt_notice_sent`/`_suppressed` los registra el notificador dentro de la transacción); (c) si tras
   el reintento la cuenta sigue sin aparecer, lanza un `Error` interno (500), caso que no debería ocurrir. Archivo
   adicional: `application/testing/in-memory-user.repository.ts` (correo único como `uq_usuario_correo`).
+- **T-38, decisiones**: (a) `RegistrationService` recibe además `IVerificationTokenRepository` e
+  `IAccountEventsPublisher` (constructor: `users, tokens, hasher, mailer, events, …`); `VerifyEmailResult` se exporta
+  desde `registration.service.ts` para T-45; (b) la transacción devuelve una decisión y la bitácora, el error público
+  y el evento ocurren **después** del commit (en un rechazo no se escribe nada, así que confirmar es inocuo); (c) si
+  el token apunta a una cuenta que no existe o no es de cliente (no debería ocurrir), se trata como inválido con
+  `userId`; (d) un `consume = false` registra `rejected` con `reason = already_verified`, igual que la cuenta ya
+  verificada.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
