@@ -337,7 +337,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   visual: `docs/design/mockups/identity/correos/correos--registro.html` (la valida el `ui-designer`).
   Archivos: `apps/api/src/modules/identity/application/mail/*.ts`.
 
-- [ ] **T-34** `VerificationLinkIssuer` — CA: CA-1, CA-4, CA-13, CA-17 — Depende: T-28, T-30, T-32, T-33, T-20 — ~1,5 h
+- [x] **T-34** `VerificationLinkIssuer` — CA: CA-1, CA-4, CA-13, CA-17 — Depende: T-28, T-30, T-32, T-33, T-20 — ~1,5 h
   Prueba primero `application/verification-link-issuer.spec.ts` (repositorio en memoria, `FixedClock`): invalida los
   vigentes antes de insertar; `expiresAt = now + 24 h` con `VERIFICATION_LINK_TTL_HOURS`; guarda solo el hash; el
   `MailMessage` devuelto tiene `to` = correo de la cuenta, el enlace `{webPublicUrl}/verificar-correo#token=<valor>`,
@@ -783,4 +783,8 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   blanco sobre el azul pizarra no llega a AA. Piezas comunes en `application/mail/{mail-layout,escape-html}.ts`.
   Las plantillas reciben las URL ya armadas; la ruta de recuperación (`/recuperar-contrasena`) la fija T-35 y **debe
   confirmarla 002** (su plan aún no existe).
+- **T-34, archivos adicionales**: `application/web-links.ts` (rutas de `web` que usan los correos y `webUrl`, que
+  quita la barra final de `WEB_PUBLIC_URL`) y dobles de prueba reutilizables en `application/testing/`
+  (`InMemoryVerificationTokenRepository`, `aClientUser()`), que T-35 a T-38 reutilizan. El id del token lo genera la
+  aplicación con `randomUUID()` (lo necesita la `idempotencyKey` antes del `INSERT`).
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
