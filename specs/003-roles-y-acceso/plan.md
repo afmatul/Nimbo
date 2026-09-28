@@ -619,6 +619,7 @@ correo, nombre ni URL con consulta (CA-16):
 |---|---|---|---|
 | `auth.unauthenticated` | info | `route` (`GET /api/v1/…/:id`, el **patrón**, no la URL), `reason: 'missing_token' \| 'malformed_authorization' \| 'invalid_token' \| 'expired_token'` | 401 |
 | `auth.forbidden` | warn | `route`, `actorId`, `role`, `reason: 'role_not_allowed' \| 'undeclared_route'`, `requiredRoles` | 403 |
+| `auth.unexpected_error` | warn | `route`, `errorClass` y, si es un `Error`, `errorMessage` (recortado a 200 caracteres); nunca token ni cabeceras | 401 `invalid_token` por un `err` de Passport que no es `UnauthenticatedError` ni `TokenExpiredError`/`JsonWebTokenError`/`NotBeforeError` (review 003 I-2): separa un bug de la estrategia de un token inválido; `auth.unauthenticated` se registra igual |
 | `db.role_rejected` | fatal | `superuser`, `bypassRls`, `ownsTables` | arranque con un rol inválido |
 
 - `info` para 401 porque los tokens vencidos son rutina (cada 15 min). `warn` para 403 porque indica un rol probando

@@ -7,7 +7,7 @@ import { createActor } from '../../domain/actor';
 import { UnauthenticatedError } from '../../domain/errors';
 import { Role } from '../../domain/role.enum';
 
-import { JwtAuthGuard } from './jwt-auth.guard';
+import { JwtAuthGuard, UNEXPECTED_ERROR_MESSAGE_MAX } from './jwt-auth.guard';
 import { Public } from './public.decorator';
 import { RequestPrincipal } from './request-principal';
 import { Roles } from './roles.decorator';
@@ -229,6 +229,68 @@ describe('JwtAuthGuard.handleRequest', () => {
       route: `GET ${ROUTE_PATH}`,
       reason: 'invalid_token',
     });
+  });
+
+  it('CA-16: un `err` inesperado registra `auth.unexpected_error` con su clase y mensaje, sin la cabecera', () => {
+    const { guard, logger, request } = setup();
+    const bug = new TypeError("Cannot read properties of undefined (reading 'sub')");
+
+    expect(() => guard.handleRequest(bug, false, undefined, contextFor(request))).toThrow(
+      UnauthenticatedError,
+    );
+    expect(logger.warn).toHaveBeenCalledTimes(1);
+    expect(logger.warn).toHaveBeenCalledWith({
+      event: 'auth.unexpected_error',
+      route: `GET ${ROUTE_PATH}`,
+      errorClass: 'TypeError',
+      errorMessage: "Cannot read properties of undefined (reading 'sub')",
+    });
+    expect(JSON.stringify(jest.mocked(logger.warn).mock.calls)).not.toContain(WELL_FORMED_TOKEN);
+    expect(logger.log).toHaveBeenCalledWith({
+      event: 'auth.unauthenticated',
+      route: `GET ${ROUTE_PATH}`,
+      reason: 'invalid_token',
+    });
+  });
+
+  it('CA-16: el mensaje de un `err` inesperado se recorta a 200 caracteres', () => {
+    const { guard, logger, request } = setup();
+
+    expect(() =>
+      guard.handleRequest(new Error('x'.repeat(1000)), false, undefined, contextFor(request)),
+    ).toThrow(UnauthenticatedError);
+    const [[entry]] = jest.mocked(logger.warn).mock.calls as [[{ errorMessage: string }]];
+    expect(entry.errorMessage).toHaveLength(UNEXPECTED_ERROR_MESSAGE_MAX);
+  });
+
+  it('CA-16: un valor no `Error` en `err` registra su tipo y ningún mensaje', () => {
+    const { guard, logger, request } = setup();
+
+    expect(() => guard.handleRequest('falló', false, undefined, contextFor(request))).toThrow(
+      UnauthenticatedError,
+    );
+    expect(logger.warn).toHaveBeenCalledWith({
+      event: 'auth.unexpected_error',
+      route: `GET ${ROUTE_PATH}`,
+      errorClass: 'string',
+    });
+  });
+
+  it.each([
+    ['`UnauthenticatedError`', new UnauthenticatedError()],
+    ['`TokenExpiredError` de `jsonwebtoken`', tokenExpired],
+    ['`JsonWebTokenError` de `jsonwebtoken`', signatureInvalid],
+    [
+      '`NotBeforeError` de `jsonwebtoken`',
+      Object.assign(new Error('jwt not active'), { name: 'NotBeforeError' }),
+    ],
+  ])('CA-16: un `err` esperado (%s) no registra `auth.unexpected_error`', (_case, err) => {
+    const { guard, logger, request } = setup();
+
+    expect(() => guard.handleRequest(err, false, undefined, contextFor(request))).toThrow(
+      UnauthenticatedError,
+    );
+    expect(logger.warn).not.toHaveBeenCalled();
   });
 
   it.each([

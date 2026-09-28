@@ -61,6 +61,28 @@ const isExpired = (info: unknown): boolean => {
   return name === 'TokenExpiredError' || reason === 'expired';
 };
 
+/** Errores que el flujo de autenticación produce a propósito: token vencido, inválido o aún no activo. */
+const EXPECTED_ERROR_NAMES: readonly string[] = [
+  'TokenExpiredError',
+  'JsonWebTokenError',
+  'NotBeforeError',
+];
+/** Tope del mensaje registrado de un error inesperado: basta para diagnosticar y limita lo que pueda arrastrar. */
+export const UNEXPECTED_ERROR_MESSAGE_MAX = 200;
+
+const isExpectedError = (err: unknown): boolean =>
+  err instanceof UnauthenticatedError ||
+  (err instanceof Error && EXPECTED_ERROR_NAMES.includes(err.name));
+
+/** Clase y mensaje recortado de un error inesperado; de un valor que no es `Error`, solo su tipo (CA-16). */
+const describeUnexpected = (err: unknown): { errorClass: string; errorMessage?: string } =>
+  err instanceof Error
+    ? {
+        errorClass: err.constructor.name,
+        errorMessage: err.message.slice(0, UNEXPECTED_ERROR_MESSAGE_MAX),
+      }
+    : { errorClass: typeof err };
+
 /**
  * Guard global de autenticación (003 D-2, §6.2). Extiende el de Passport con la estrategia `ACCESS_TOKEN_STRATEGY`
  * (la registra `identity`): `@Public()` pasa sin mirar la cabecera; si no, exige una sola cabecera `Bearer` bien
@@ -90,7 +112,8 @@ export class JwtAuthGuard extends AuthGuard(ACCESS_TOKEN_STRATEGY) {
 
   /**
    * Único punto que traduce el resultado de Passport (003 §6.2): *claims* → `Actor` en `RequestPrincipal` (nadie lee
-   * `req.user`); cualquier otro resultado, incluidos `err` y la estrategia no registrada, es 401 y nunca 500.
+   * `req.user`); cualquier otro resultado, incluidos `err` y la estrategia no registrada, es 401 y nunca 500. Un `err`
+   * que no es un rechazo esperado se registra además como `auth.unexpected_error` para separar bugs de tokens malos.
    */
   override handleRequest<TUser = AccessTokenClaims>(
     err: unknown,
@@ -100,6 +123,7 @@ export class JwtAuthGuard extends AuthGuard(ACCESS_TOKEN_STRATEGY) {
   ): TUser {
     const request = ctx.switchToHttp().getRequest<Request>();
     const failed = err !== null && err !== undefined;
+    if (failed && !isExpectedError(err)) this.logUnexpected(request, err);
     if (!failed && isAccessTokenClaims(user)) {
       const actor = createActor(user.userId, user.role);
       RequestPrincipal.set(request, { actor, sessionId: user.sessionId });
@@ -115,6 +139,14 @@ export class JwtAuthGuard extends AuthGuard(ACCESS_TOKEN_STRATEGY) {
         ctx.getClass(),
       ]) === true
     );
+  }
+
+  private logUnexpected(request: Request, err: unknown): void {
+    this.logger.warn({
+      event: 'auth.unexpected_error',
+      route: routePatternOf(request),
+      ...describeUnexpected(err),
+    });
   }
 
   private reject(request: Request, reason: UnauthenticatedReason): never {
