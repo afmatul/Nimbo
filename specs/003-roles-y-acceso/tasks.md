@@ -191,7 +191,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   mundo es T-42.
   Archivos: `apps/api/test/int/shared/auth-guards.int-spec.ts`.
 
-- [ ] **T-17** [P] Sin estrategia registrada → 401 — CA: CA-1, CA-2 — Depende: T-11 — ~0,5 h
+- [x] **T-17** [P] Sin estrategia registrada → 401 — CA: CA-1, CA-2 — Depende: T-11 — ~0,5 h
   Prueba primero `apps/api/test/int/shared/auth-guards.no-strategy.int-spec.ts` (archivo propio: el registro de
   Passport es por proceso): una app con `AuthGuardsModule` y un controlador de prueba, **sin** estrategia `'jwt'`; ruta
   no pública con cualquier `Bearer` → 401 `SHARED_UNAUTHENTICATED` y bitácora `reason: 'invalid_token'`; ruta pública
