@@ -471,7 +471,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   simultáneos → un `verified`, un `already-verified` y un solo evento; (a)–(c) sin efectos repetidos.
   Archivos: `apps/api/test/int/identity/{verify-email,verify-email-concurrency}.int-spec.ts`.
 
-- [ ] **T-49** [P] Reenvío y límites — CA: CA-13, CA-14, CA-15 — Depende: T-45 — ~2 h
+- [x] **T-49** [P] Reenvío y límites — CA: CA-13, CA-14, CA-15 — Depende: T-45 — ~2 h
   `resend-verification.int-spec.ts`: CA-13 (enlace nuevo con 24 h desde ahora; los anteriores dan `LINK_INVALID`);
   CA-14 (inexistente, verificada, interna → `202` idéntico y ningún correo de verificación).
   `rate-limits.int-spec.ts`: 60 s entre solicitudes (registro y reenvío cuentan juntos), 5 por hora avanzando
@@ -878,4 +878,5 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
 - **T-46**: `register.int-spec.ts` **no se ejecutó** (sin Docker): compila y pasa `lint`/`typecheck`; su rojo y su verde quedan sin comprobar. Correos encolados por `mail.enqueued` con el `correlationId`; la concurrencia de CA-3 usa una segunda app con `I_RATE_LIMITER` que siempre permite (el límite de 60 s serializaba las peticiones). «Ninguna suscripción» de CA-1 queda para 006a.
 - **T-47**: `register-validation.int-spec.ts` **no se ejecutó** (sin Docker): compila y pasa `lint`/`typecheck`; su rojo y su verde quedan sin comprobar. Expectativas confirmadas con una prueba desechable (`configureHttpApp` real). Al comparar errores se ignoran `x-correlation-id`, `date`, `etag` y el `correlationId` del cuerpo. **Hallazgo**: el mensaje de `PASSWORD_COMMON` dentro de `IDENTITY_WEAK_PASSWORD` repite «Elige otra» (T-31).
 - **T-48**: `verify-email.int-spec.ts` y `verify-email-concurrency.int-spec.ts` **no se ejecutó** (sin Docker): compila y pasa `lint`/`typecheck`; su rojo y su verde quedan sin comprobar. La concurrencia levanta la app en `127.0.0.1:0` para que las dos peticiones corran en paralelo; el evento se captura con un oyente sobre `EventEmitter2`.
+- **T-49**: `resend-verification.int-spec.ts` y `rate-limits.int-spec.ts` **no se ejecutó** (sin Docker): compila y pasa `lint`/`typecheck`; su rojo y su verde quedan sin comprobar. El almacén en memoria de `@nestjs/throttler` mide con `Date.now()`, no con `IClock`: del límite por IP solo se prueba el rechazo del 11.º y que otra IP sigue; «al cumplirse el tiempo» se prueba con los límites por correo.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
