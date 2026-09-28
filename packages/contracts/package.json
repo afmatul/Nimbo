@@ -19,7 +19,8 @@
     "build": "tsc -p tsconfig.build.json",
     "prepare": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "jest"
+    "test": "jest",
+    "build:common-passwords": "node scripts/build-common-passwords.mjs"
   },
   "dependencies": {
     "zod": "3.25.76"

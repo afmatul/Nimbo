@@ -68,7 +68,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   contraseña común, igual al correo, requisitos). Luego los archivos.
   Archivos: `packages/contracts/src/identity/{parameters,legal,error-codes}.ts`, `packages/contracts/src/identity/constants.spec.ts`.
 
-- [ ] **T-03** Lista local de contraseñas comunes — CA: CA-5 (regla «común») — Depende: T-02 — ~2 h
+- [x] **T-03** Lista local de contraseñas comunes — CA: CA-5 (regla «común») — Depende: T-02 — ~2 h
   Prueba primero `packages/contracts/src/identity/common-passwords.spec.ts`: el archivo pesa < 50 KB; toda entrada está
   en minúsculas, tiene de 12 a 128 puntos de código, un número y un símbolo; sin duplicados; contiene al menos una
   entrada conocida del top de SecLists que cumple el filtro (el developer la elige al generar y la fija en la prueba).
@@ -659,4 +659,9 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   proponga el plan de 006a y cualquier fallo cae en **catalogo-no-disponible** (CA-22).
 - **Marcador `iniciar-sesion` (T-58)**: 002 se implementa el mismo día; si su página llega antes, T-58 solo agrega
   `PublicHeader` y enlaza a la ruta real.
+- **T-03, tamaño de la lista común (hallazgo, sin desviación)**: con el filtro de plan §6.2 (12 a 128 puntos de
+  código, número y símbolo), el top 100 000 de SecLists (`xato-net-10-million-passwords-100000.txt`, revisión
+  `c205c36`) deja **solo 5 entradas**; el top 1 000 000 deja 1602 (~34 KB, dentro de la meta de 50 KB). Se implementó
+  lo que dice el plan (top 100 000). Propuesta para el planner: cambiar la fuente al top 1 000 000 en plan §6.2
+  (basta cambiar `SOURCE_PATH` en el script y regenerar). La prueba fija la entrada conocida `g00dpa$$w0rd`.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
