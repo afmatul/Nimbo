@@ -221,7 +221,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   (`MAIL_QUEUE = 'mail'`, `MAIL_JOB_OPTIONS`, `MailJobData`).
   Archivos: `apps/api/src/modules/notifications/application/ports/{i-mailer.port,idempotency-key.spec}.ts`, `apps/api/src/modules/notifications/infrastructure/{mail-queue,mail-queue.spec}.ts`.
 
-- [ ] **T-21** `SmtpMailer` y `NotificationsModule` — CA: CA-18, CA-21 — Depende: T-11, T-20, T-09 — ~1,5 h
+- [x] **T-21** `SmtpMailer` y `NotificationsModule` — CA: CA-18, CA-21 — Depende: T-11, T-20, T-09 — ~1,5 h
   Prueba primero `apps/api/test/int/notifications/smtp-mailer.int-spec.ts` (Redis real): `send` con una clave real
   `identity.verification.<uuid>` crea un trabajo `send` con ese `jobId`, `data.correlationId` de la petición y las
   opciones de `MAIL_JOB_OPTIONS`; enviar dos veces la misma clave deja un solo trabajo; una clave con `:` lanza sin
