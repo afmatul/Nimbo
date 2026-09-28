@@ -22,7 +22,11 @@ export interface RegisterFormProps {
   readonly defaultFullName?: string;
   readonly defaultEmail?: string;
   readonly defaultPlanId?: string;
-  readonly onSuccess: (email: string) => void;
+  readonly onSuccess: (result: {
+    readonly fullName: string;
+    readonly email: string;
+    readonly planId: string | undefined;
+  }) => void;
 }
 
 /** El plan elegido es estado local: no viaja en el `POST` (D-24, CA-7). */
@@ -62,7 +66,7 @@ export function RegisterForm({
         password: values.password,
         acceptTerms: true,
       });
-      onSuccess(values.email);
+      onSuccess({ fullName: values.fullName, email: values.email, planId });
     } catch (caught) {
       const error = caught instanceof ApiClientError ? caught : null;
       setServerError(

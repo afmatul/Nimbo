@@ -583,7 +583,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   reinicia; `429` → estado **limite-reenvio** con el mensaje y la cuenta de `Retry-After`).
   Archivos: `apps/web/src/features/identity/components/{check-email-panel,resend-link-button}.tsx` y sus `*.spec.tsx`.
 
-- [ ] **T-64** Página `/registro` con catálogo — CA: CA-22, CA-27, CA-28 — Depende: T-58, T-62, T-63 — ~2 h
+- [x] **T-64** Página `/registro` con catálogo — CA: CA-22, CA-27, CA-28 — Depende: T-58, T-62, T-63 — ~2 h
   Prueba primero `app/(public)/registro/page.spec.tsx` (`fetch` simulado: catálogo → planes; `404`, error o más de 2 s
   → **catalogo-no-disponible** y el formulario sigue; pasa `API_PUBLIC_URL` como *prop*) y
   `features/identity/components/register-flow.spec.tsx` (éxito → «Revisa tu correo»; con plan de pago guarda
@@ -668,6 +668,7 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
 - **T-61**: los requisitos usan `evaluatePassword`; el selector no tiene precios escritos en el código.
 - **T-62**: el plan elegido no viaja en el `POST`. La casilla lleva dos enlaces, a Términos y a Privacidad.
 - **T-63**: «Revisa tu correo» muestra el correo y las 24 horas, sin casillas de código. «Reenviar enlace» espera 60 s; un 429 usa `Retry-After`.
+- **T-64**: el catálogo se lee en `GET {API_INTERNAL_URL}/plans` (ruta provisional hasta el contrato de 006a). Un 404, un error o más de 2 s muestra catalogo-no-disponible y el formulario sigue. `revalidate` es 60. El plan de pago se guarda al enviar; «Cambiar correo» conserva nombre y plan.
 
 - **Catálogo de 006a (T-64)**: el plan fija qué necesita 001 (lectura pública de planes activos con `id`, nombre, precio
   en centavos y marca de gratuito, PD-40) pero no la ruta ni el esquema, que son de 006a. `plan-catalog.ts` aísla esa
