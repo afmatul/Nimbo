@@ -504,7 +504,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   ese rol (ADR-0005).
   Archivos: `apps/api/test/isolation/identity-enumeration.iso-spec.ts`.
 
-- [ ] **T-53** [P] README de `identity` — CA: n/a — Depende: T-45 — ~0,5 h
+- [x] **T-53** [P] README de `identity` — CA: n/a — Depende: T-45 — ~0,5 h
   `apps/api/src/modules/identity/README.md`: capas y clases (plan §6.1), puertos y su regla de Art. V, evento
   `CLIENT_ACCOUNT_VERIFIED` (única importación permitida a `billing`, ADR-0019), piezas que reutilizan 002 y 003 (plan
   §6.11), pendiente de `@Public()` con 003 y de `@SkipThrottle` cuando 002 agregue `login-ip`.
@@ -882,4 +882,5 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
 - **T-50**: `token-secrecy`, `password-hash` e `identity-logs` **no se ejecutó** (sin Docker): compila y pasa `lint`/`typecheck`; su rojo y su verde quedan sin comprobar. CA-17 busca el token en `row_to_json(fila)::text`. **Posible defecto para la revisión**: sin `quietReqLogger`, nestjs-pino podría adjuntar `req` (con `x-forwarded-for`) a `identity.rate_limited`, contra plan §7 «sin IP».
 - **T-51**: variante de registro en `mail-degradation.int-spec.ts` **no se ejecutó** (sin Docker): compila y pasa `lint`/`typecheck`; su rojo y su verde quedan sin comprobar. Compone la app localmente porque `createIdentityTestApp` no acepta `env`; pruebas dependientes del orden.
 - **T-52**: `identity-enumeration.iso-spec.ts` (incluida en `test:isolation`) **no se ejecutó** (sin Docker): compila y pasa `lint`/`typecheck`; su rojo y su verde quedan sin comprobar. Mismo `x-correlation-id` en las peticiones equivalentes para comparar cuerpos y cabeceras byte a byte (solo se excluye `date`).
+- **Pendiente tras el trabajo en paralelo**: subir a `identity-test-app.ts` los ayudantes duplicados (`uniqueEmail`, `nextClientIp`, `waitForMessagesTo`, `neutralView`) y aceptar `env` en `createIdentityTestApp`.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
