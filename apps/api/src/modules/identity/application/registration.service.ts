@@ -43,6 +43,11 @@ export interface RegisterCommand {
   readonly password: string;
 }
 
+/** Reenvío ya validado por `resendVerificationRequestSchema`. */
+export interface ResendVerificationCommand {
+  readonly email: string;
+}
+
 interface Registration {
   readonly fullName: string;
   readonly email: EmailAddress;
@@ -85,6 +90,26 @@ export class RegistrationService {
     };
     const outcome = await this.runRegistration(registration);
     await this.complete(outcome);
+  }
+
+  /** CA-13, CA-14: solo un cliente sin verificar recibe enlace; el resto, la misma respuesta sin efecto. */
+  async resendVerification(command: ResendVerificationCommand): Promise<void> {
+    const email = EmailAddress.of(command.email);
+    await this.enforceEmailRequestLimit(email);
+    const outcome = await this.transactions.run(() => this.resendInTransaction(email));
+    await this.complete(outcome);
+  }
+
+  private async resendInTransaction(email: EmailAddress): Promise<Outcome> {
+    const user = await this.users.findByEmailForUpdate(email);
+    if (!(user instanceof ClientUser) || user.emailVerified) {
+      // Sin `userId`: el correo puede no existir y la bitácora no debe distinguir los casos (CA-14).
+      return { log: { event: 'identity.verification.resend_ignored' }, mail: null };
+    }
+    return {
+      log: { event: 'identity.verification.resend_requested', userId: user.id },
+      mail: await this.linkIssuer.issue(user),
+    };
   }
 
   /** El límite va antes de cualquier consulta, así la secuencia 202/429 no delata la cuenta (D-8, CA-15). */

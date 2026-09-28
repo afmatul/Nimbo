@@ -364,7 +364,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   **después** del commit y nunca si la transacción falla. Cada rama en un método privado (≤ 30 líneas).
   Archivos: `apps/api/src/modules/identity/application/registration.service.ts`, `apps/api/src/modules/identity/application/registration.service.spec.ts`.
 
-- [ ] **T-37** `RegistrationService.resendVerification` — CA: CA-13, CA-14, CA-15 — Depende: T-36 — ~1 h
+- [x] **T-37** `RegistrationService.resendVerification` — CA: CA-13, CA-14, CA-15 — Depende: T-36 — ~1 h
   Prueba primero (mismo archivo, `describe` propio): usa **la misma** clave de límite que el registro; cliente no
   verificado → emite enlace y registra `identity.verification.resend_requested`; correo inexistente, verificado o
   interno → no emite nada y registra `resend_ignored` sin `userId`; correo después del commit.

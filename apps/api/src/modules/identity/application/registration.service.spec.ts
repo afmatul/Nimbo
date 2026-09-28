@@ -395,3 +395,109 @@ describe('RegistrationService.register', () => {
     expect(sent).toHaveLength(2);
   });
 });
+
+describe('RegistrationService.resendVerification', () => {
+  it('CA-15: usa la misma clave y las mismas reglas de límite que el registro', async () => {
+    const { service, rateLimiter } = setup();
+
+    await service.register(registerCommand());
+    await service.resendVerification({ email: ' Ana@Ejemplo.com ' });
+
+    expect(rateLimiter.consume.mock.calls[0]).toEqual(rateLimiter.consume.mock.calls[1]);
+    expect(rateLimiter.consume.mock.calls[1]?.[0]).toBe(emailRequestKey(EMAIL));
+  });
+
+  it('CA-15: si el límite rechaza, lanza el 429 de `identity` y no emite enlace', async () => {
+    const { service, users, decisions, tokens, mailer, logger } = setup();
+    users.seed(aClientUser().withEmail(EMAIL).build());
+    decisions.set(emailRequestKey(EMAIL), { allowed: false, retryAfterSeconds: 30 });
+
+    await expect(service.resendVerification({ email: EMAIL })).rejects.toMatchObject({
+      code: 'IDENTITY_TOO_MANY_REQUESTS',
+      retryAfterSeconds: 30,
+    });
+    expect(logger.warn).toHaveBeenCalledWith({
+      event: 'identity.rate_limited',
+      scope: 'email',
+      retryAfterSeconds: 30,
+    });
+    expect(tokens.all()).toHaveLength(0);
+    expect(mailer.send).not.toHaveBeenCalled();
+  });
+
+  it('CA-13: a un cliente no verificado le emite un enlace nuevo e invalida los anteriores', async () => {
+    const { service, users, tokens, sent, logger } = setup();
+    const pending = aClientUser().withEmail(EMAIL).build();
+    users.seed(pending);
+
+    await service.resendVerification({ email: EMAIL });
+    await service.resendVerification({ email: EMAIL });
+
+    expect(tokens.all()).toHaveLength(2);
+    expect(tokens.all().filter((token) => token.isValid(NOW))).toHaveLength(1);
+    expect(sent.map((message) => message.subject)).toEqual([
+      SUBJECT_VERIFICATION,
+      SUBJECT_VERIFICATION,
+    ]);
+    expect(sent[1]?.recipientId).toBe(pending.id);
+    expect(logger.info).toHaveBeenCalledWith({
+      event: 'identity.verification.resend_requested',
+      userId: pending.id,
+    });
+  });
+
+  it('CA-13: el correo se envía después del commit y nunca si la transacción falla', async () => {
+    const { service, users, timeline, transactions, mailer } = setup();
+    users.seed(aClientUser().withEmail(EMAIL).build());
+
+    await service.resendVerification({ email: EMAIL });
+    transactions.failOnCommit = true;
+    await expect(service.resendVerification({ email: EMAIL })).rejects.toThrow(
+      'falla al confirmar',
+    );
+
+    expect(timeline).toEqual(['commit', 'mail:identity.verification']);
+    expect(mailer.send).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['inexistente', (_users: InMemoryUserRepository): void => undefined],
+    [
+      'verificado',
+      (users: InMemoryUserRepository): void => {
+        users.seed(aClientUser().withEmail(EMAIL).verified().build());
+      },
+    ],
+    [
+      'de una cuenta interna',
+      (users: InMemoryUserRepository): void => {
+        users.seed(anInternalUser());
+      },
+    ],
+  ])(
+    'CA-14: con un correo %s no emite nada y registra `resend_ignored` sin id',
+    async (_case, arrange) => {
+      const { service, users, tokens, mailer, logger } = setup();
+      arrange(users);
+
+      await service.resendVerification({ email: EMAIL });
+
+      expect(tokens.all()).toHaveLength(0);
+      expect(mailer.send).not.toHaveBeenCalled();
+      expect(logger.info).toHaveBeenCalledWith({ event: 'identity.verification.resend_ignored' });
+    },
+  );
+
+  it('CA-18: las bitácoras del reenvío no llevan el correo ni el enlace', async () => {
+    const { service, users, logger } = setup();
+    users.seed(aClientUser().withEmail(EMAIL).build());
+
+    await service.resendVerification({ email: EMAIL });
+    await service.resendVerification({ email: 'nadie@ejemplo.com' });
+
+    const logs = JSON.stringify(loggedEvents(logger));
+    for (const secret of [EMAIL, 'nadie@ejemplo.com', 'token=']) {
+      expect(logs).not.toContain(secret);
+    }
+  });
+});
