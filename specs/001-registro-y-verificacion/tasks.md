@@ -577,7 +577,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   `correlationId`); el plan elegido **no** se envía; casilla con dos enlaces separados; jest-axe.
   Archivos: `apps/web/src/features/identity/components/register-form.tsx`, `apps/web/src/features/identity/components/register-form.spec.tsx`.
 
-- [ ] **T-63** [P] `CheckEmailPanel` y `ResendLinkButton` — CA: CA-13, CA-15, CA-22, CA-27 — Depende: T-60 — ~1,5 h
+- [x] **T-63** [P] `CheckEmailPanel` y `ResendLinkButton` — CA: CA-13, CA-15, CA-22, CA-27 — Depende: T-60 — ~1,5 h
   Prueba primero `check-email-panel.spec.tsx` (correo escrito, «24 horas», «Cambiar correo», sin casillas de código,
   cabecera sin sesión) y `resend-link-button.spec.tsx` (deshabilitado 60 s con cuenta regresiva anunciada; al pulsar
   reinicia; `429` → estado **limite-reenvio** con el mensaje y la cuenta de `Retry-After`).
@@ -667,6 +667,7 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
 - **T-60**: el plan elegido vive en `localStorage` (`nimbo.registro.plan`) y se borra al leerlo.
 - **T-61**: los requisitos usan `evaluatePassword`; el selector no tiene precios escritos en el código.
 - **T-62**: el plan elegido no viaja en el `POST`. La casilla lleva dos enlaces, a Términos y a Privacidad.
+- **T-63**: «Revisa tu correo» muestra el correo y las 24 horas, sin casillas de código. «Reenviar enlace» espera 60 s; un 429 usa `Retry-After`.
 
 - **Catálogo de 006a (T-64)**: el plan fija qué necesita 001 (lectura pública de planes activos con `id`, nombre, precio
   en centavos y marca de gratuito, PD-40) pero no la ruta ni el esquema, que son de 006a. `plan-catalog.ts` aísla esa
