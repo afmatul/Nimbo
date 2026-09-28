@@ -161,7 +161,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   (`PTTL` ≤ ventana); Redis caído → lanza. Luego `infrastructure/rate-limit/redis-rate-limiter.ts` y su script Lua.
   Archivos: `apps/api/src/shared/infrastructure/rate-limit/{redis-rate-limiter.ts,sliding-window.lua.ts}`, `apps/api/test/int/shared/redis-rate-limiter.int-spec.ts`.
 
-- [ ] **T-14** [P] `ITransactionRunner` y `TransactionContext` — CA: CA-3, CA-29 (base) — Depende: — — ~1,5 h
+- [x] **T-14** [P] `ITransactionRunner` y `TransactionContext` — CA: CA-3, CA-29 (base) — Depende: — — ~1,5 h
   Prueba primero `apps/api/test/int/shared/transaction-runner.int-spec.ts` (Postgres real): `run` confirma; si el
   trabajo lanza, revierte y relanza; dentro de `run`, `TransactionContext.manager()` devuelve el `EntityManager` de la
   transacción (también tras un `await`); fuera, el del `DataSource`; dos `run` concurrentes no comparten contexto.
@@ -697,4 +697,8 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
 - **T-13, prueba unitaria adicional**: `redis-rate-limiter.spec.ts` (Redis falso) comprueba las claves, los
   argumentos del script, el redondeo hacia arriba y la propagación de errores; la semántica del Lua (atomicidad,
   ventanas, `PTTL`) solo la cubre `redis-rate-limiter.int-spec.ts`, **sin ejecutar** por falta de Docker.
+- **T-14, prueba unitaria adicional**: `transaction-context.spec.ts` (`DataSource` falso) cubre la ALS (fuera/dentro
+  de `run`, tras `await`, concurrencia, resultado y error); confirmar y revertir contra Postgres solo lo cubre
+  `transaction-runner.int-spec.ts`, **sin ejecutar**. `TransactionContext` es un proveedor con `manager()` y
+  `runWith(manager, work)`; la ALS es privada del archivo y 003 la reutiliza vía `runWith`.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
