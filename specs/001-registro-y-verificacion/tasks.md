@@ -84,7 +84,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   regla, si cumple y su `reason`. Función pura, sin zod.
   Archivos: `packages/contracts/src/identity/password-policy.ts`, `packages/contracts/src/identity/password-policy.spec.ts`.
 
-- [ ] **T-05** Esquemas de `identity` — CA: CA-5, CA-6, CA-7, CA-11 (b), CA-22 — Depende: T-01, T-04 — ~2 h
+- [x] **T-05** Esquemas de `identity` — CA: CA-5, CA-6, CA-7, CA-11 (b), CA-22 — Depende: T-01, T-04 — ~2 h
   Prueba primero `packages/contracts/src/identity/schemas.spec.ts`: `registerRequestSchema` estricto (nombre vacío,
   solo espacios o de 101 → `REQUIRED`/`TOO_LONG`; correo mal formado → `INVALID_EMAIL`; `acceptTerms` falso o ausente
   → `TERMS_NOT_ACCEPTED` con el mensaje de spec §11; cada regla de contraseña como un *issue* propio con su `reason`;

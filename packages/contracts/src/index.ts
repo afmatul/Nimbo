@@ -13,3 +13,4 @@ export type {
 export { errorResponseSchema, fieldIssueSchema } from './error';
 export type { ErrorResponse, FieldIssueResponse } from './error';
 export { INVALID_REASON, REQUIRED_REASON, UNKNOWN_FIELD_REASON, toFieldIssues } from './validation';
+export * from './identity';
