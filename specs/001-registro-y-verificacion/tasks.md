@@ -76,7 +76,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   plan §6.2, escribe `common-passwords.ts` con encabezado de licencia MIT y atribución) y el archivo generado.
   Archivos: `packages/contracts/scripts/build-common-passwords.mjs`, `packages/contracts/src/identity/common-passwords.ts`, `packages/contracts/src/identity/common-passwords.spec.ts`, `packages/contracts/package.json` (script `build:common-passwords`).
 
-- [ ] **T-04** `evaluatePassword` (política D-6) — CA: CA-5, CA-22 (reglas en vivo) — Depende: T-02, T-03 — ~1,5 h
+- [x] **T-04** `evaluatePassword` (política D-6) — CA: CA-5, CA-22 (reglas en vivo) — Depende: T-02, T-03 — ~1,5 h
   Prueba primero `packages/contracts/src/identity/password-policy.spec.ts`: una prueba por regla (11 y 129 puntos de
   código, sin mayúscula, sin número, sin símbolo, común sin distinguir mayúsculas —«Password123!»-tipo—, igual al
   correo normalizado, igual a su parte local); `Nimbo-Seguro-2026` y `Ñandú-Azul-2026` pasan; un espacio como único
