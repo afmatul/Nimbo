@@ -592,7 +592,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   006a detrás de una función, ver «Notas») y `RegisterFlow`.
   Archivos: `apps/web/src/app/(public)/registro/page.tsx`, `apps/web/src/features/identity/{plan-catalog.ts,components/register-flow.tsx}` y sus `*.spec.ts(x)`.
 
-- [ ] **T-65** [P] Pedir enlace — CA: CA-13, CA-14, CA-15 — Depende: T-57, T-60, T-63 — ~1,5 h
+- [x] **T-65** [P] Pedir enlace — CA: CA-13, CA-14, CA-15 — Depende: T-57, T-60, T-63 — ~1,5 h
   Prueba primero `request-link-form.spec.tsx` (valida con `resendVerificationRequestSchema`; éxito → mismo panel neutro
   para cualquier correo; `429` → **limite-reenvio**; prellenado desde `sessionStorage` si existe, nunca desde la URL) y
   `app/(public)/registro/pedir-enlace/page.spec.tsx`. Luego `RequestLinkForm` y la página.
@@ -669,6 +669,7 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
 - **T-62**: el plan elegido no viaja en el `POST`. La casilla lleva dos enlaces, a Términos y a Privacidad.
 - **T-63**: «Revisa tu correo» muestra el correo y las 24 horas, sin casillas de código. «Reenviar enlace» espera 60 s; un 429 usa `Retry-After`.
 - **T-64**: el catálogo se lee en `GET {API_INTERNAL_URL}/plans` (ruta provisional hasta el contrato de 006a). Un 404, un error o más de 2 s muestra catalogo-no-disponible y el formulario sigue. `revalidate` es 60. El plan de pago se guarda al enviar; «Cambiar correo» conserva nombre y plan.
+- **T-65**: pedir enlace valida con `resendVerificationRequestSchema`. El éxito muestra el mismo panel para cualquier correo. El prellenado usa `sessionStorage` (`nimbo.registro.correo`), nunca la URL.
 
 - **Catálogo de 006a (T-64)**: el plan fija qué necesita 001 (lectura pública de planes activos con `id`, nombre, precio
   en centavos y marca de gratuito, PD-40) pero no la ruta ni el esquema, que son de 006a. `plan-catalog.ts` aísla esa
