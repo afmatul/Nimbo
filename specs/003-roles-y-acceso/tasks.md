@@ -277,7 +277,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   el rol sin privilegios. `run → revert → run` en local (evidencia en «Notas del developer»).
   Archivos: `apps/api/src/migrations/20260928110000-conceder-permisos-nimbo-app.ts`, `apps/api/test/int/shared/migrations-nimbo-app.int-spec.ts`, `apps/api/test/int/setup/containers.ts`.
 
-- [ ] **T-27** Migración `crear-funciones-de-actor` — CA: CA-12 — Depende: T-26 — ~0,5 h
+- [x] **T-27** Migración `crear-funciones-de-actor` — CA: CA-12 — Depende: T-26 — ~0,5 h
   Prueba primero en `migrations-nimbo-app.int-spec.ts`: como `nimbo_app`, sin fijar nada, `nimbo_actor_id()` y
   `nimbo_actor_role()` son `NULL`; tras `set_config('app.actor_id', <uuid>, true)` en una transacción devuelven el
   valor y el tipo es `uuid`; con `''` devuelven `NULL`; `down` las elimina. Luego

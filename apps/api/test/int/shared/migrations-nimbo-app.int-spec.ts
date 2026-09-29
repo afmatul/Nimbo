@@ -2,6 +2,7 @@ import { DataSource } from 'typeorm';
 import type { QueryRunner } from 'typeorm';
 
 import { ConcederPermisosNimboApp20260928110000 } from '../../../src/migrations/20260928110000-conceder-permisos-nimbo-app';
+import { CrearFuncionesDeActor20260928110100 } from '../../../src/migrations/20260928110100-crear-funciones-de-actor';
 import { buildDataSourceOptions } from '../../../src/shared';
 
 const APP_ROLE = 'nimbo_app';
@@ -74,5 +75,100 @@ describe('migración conceder-permisos-nimbo-app (CA-13)', () => {
     await expect(tablePrivilege('usuario', 'SELECT')).resolves.toBe(true);
     await expect(tablePrivilege('usuario', 'DELETE')).resolves.toBe(false);
     await expect(tablePrivilege('migracion', 'SELECT')).resolves.toBe(false);
+  });
+});
+
+/** Lectura del actor en SQL (plan §4 (c), DT-6): «actor sin fijar = NULL», base de las políticas de 005, 012 y 019. */
+describe('migración crear-funciones-de-actor (CA-12)', () => {
+  const ACTOR_ID = '6f1c2b1e-5d4a-4c3b-9a8f-7e6d5c4b3a21';
+  let app: DataSource;
+
+  const readActor = async (
+    queryRunner: QueryRunner,
+  ): Promise<{ id: string | null; role: string | null; tipo: string }> => {
+    const [row] = (await queryRunner.query(
+      'SELECT nimbo_actor_id() AS id, nimbo_actor_role() AS role, pg_typeof(nimbo_actor_id())::text AS tipo',
+    )) as { id: string | null; role: string | null; tipo: string }[];
+    if (row === undefined) throw new Error('La consulta del actor no devolvió filas');
+    return row;
+  };
+
+  const inAppTransaction = async <T>(
+    work: (queryRunner: QueryRunner) => Promise<T>,
+  ): Promise<T> => {
+    const queryRunner = app.createQueryRunner();
+    await queryRunner.startTransaction();
+    try {
+      return await work(queryRunner);
+    } finally {
+      await queryRunner.rollbackTransaction();
+      await queryRunner.release();
+    }
+  };
+
+  /**
+   * Fija el actor como lo hará `withActor` (T-29), pero a mano: esta prueba verifica las funciones SQL por sí
+   * solas, sin depender del runner. Es la única excepción a `rls.js` fuera de `typeorm-transaction-runner.ts`.
+   */
+  const setActor = (queryRunner: QueryRunner, id: string, role: string): Promise<unknown> =>
+    queryRunner.query(
+      // eslint-disable-next-line no-restricted-syntax -- prueba de las funciones SQL sin el runner (ver arriba)
+      'SELECT set_config($1, $2, true), set_config($3, $4, true)',
+      ['app.actor_id', id, 'app.actor_role', role],
+    );
+
+  beforeAll(async () => {
+    app = await new DataSource(
+      buildDataSourceOptions({ DATABASE_URL: process.env['DATABASE_URL'] ?? '' }),
+    ).initialize();
+  });
+
+  afterAll(async () => {
+    await app.destroy();
+  });
+
+  it('CA-12: como nimbo_app y sin fijar nada, `nimbo_actor_id()` y `nimbo_actor_role()` son NULL', async () => {
+    const actor = await inAppTransaction(readActor);
+
+    expect(actor).toEqual({ id: null, role: null, tipo: 'uuid' });
+  });
+
+  it('CA-12: tras fijar el actor local a la transacción devuelven el actor, y el id es `uuid`', async () => {
+    const actor = await inAppTransaction(async (queryRunner) => {
+      await setActor(queryRunner, ACTOR_ID, 'CLIENT');
+      return readActor(queryRunner);
+    });
+
+    expect(actor).toEqual({ id: ACTOR_ID, role: 'CLIENT', tipo: 'uuid' });
+  });
+
+  it('CA-12: con valores vacíos devuelven NULL (no fallan al convertir a `uuid`)', async () => {
+    const actor = await inAppTransaction(async (queryRunner) => {
+      await setActor(queryRunner, '', '');
+      return readActor(queryRunner);
+    });
+
+    expect(actor).toEqual({ id: null, role: null, tipo: 'uuid' });
+  });
+
+  it('CA-12: el `down` elimina las dos funciones', async () => {
+    const migration = new CrearFuncionesDeActor20260928110100();
+    const owner = await new DataSource(
+      buildDataSourceOptions({ DATABASE_URL: process.env['DATABASE_MIGRATION_URL'] ?? '' }),
+    ).initialize();
+    const queryRunner = owner.createQueryRunner();
+    await queryRunner.startTransaction();
+    try {
+      await migration.down(queryRunner);
+
+      const [row] = (await queryRunner.query(
+        "SELECT to_regprocedure('nimbo_actor_id()') AS id, to_regprocedure('nimbo_actor_role()') AS role",
+      )) as { id: string | null; role: string | null }[];
+      expect(row).toEqual({ id: null, role: null });
+    } finally {
+      await queryRunner.rollbackTransaction();
+      await queryRunner.release();
+      await owner.destroy();
+    }
   });
 });
