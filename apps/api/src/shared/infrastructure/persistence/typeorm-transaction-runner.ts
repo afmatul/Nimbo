@@ -14,6 +14,6 @@ export class TypeOrmTransactionRunner implements ITransactionRunner {
   ) {}
 
   run<T>(work: () => Promise<T>): Promise<T> {
-    return this.dataSource.transaction((manager) => this.context.runWith(manager, work));
+    return this.dataSource.transaction((manager) => this.context.runWith({ manager }, work));
   }
 }

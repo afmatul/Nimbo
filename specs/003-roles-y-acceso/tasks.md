@@ -284,7 +284,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   `20260928110100-crear-funciones-de-actor.ts` con el SQL de plan §4 (c).
   Archivos: `apps/api/src/migrations/20260928110100-crear-funciones-de-actor.ts`, `apps/api/test/int/shared/migrations-nimbo-app.int-spec.ts`.
 
-- [ ] **T-28** `TransactionContext` con ámbito de actor — CA: CA-12 — Depende: 001 PR-1 (T-14) — ~1 h
+- [x] **T-28** `TransactionContext` con ámbito de actor — CA: CA-12 — Depende: 001 PR-1 (T-14) — ~1 h
   Prueba primero en el `*.spec.ts` de `TransactionContext` (de 001 T-14): el contexto guarda `{ manager, actor? }`;
   `requireActorScope(actor)` sin contexto o con contexto sin actor lanza `ActorScopeMissingError`; con otro `id` u otro
   rol lanza `ActorScopeConflictError`; con el mismo actor devuelve el `EntityManager`. Los dos errores son `Error`
@@ -557,6 +557,10 @@ PR-F = 9 (T-48…T-56). Total: 56.
   55432) porque el compose local del equipo aún no tiene `nimbo_app`: `run` aplicó las cuatro migraciones, `revert`
   deshizo `ConcederPermisosNimboApp20260928110000` y `run` la volvió a aplicar. `\dp`: `usuario` y `token_cuenta` con
   `nimbo_app=arw/nimbo` (sin `d`), `migracion` sin `nimbo_app`. Repetir en el compose local en T-34.
+- **T-27**: la prueba de las funciones fija `app.actor_id` con `set_config` a mano (aún no existe `withActor`, y así
+  prueba el SQL sin el runner). Es la única excepción a `rls.js` fuera del runner: un `eslint-disable-next-line
+  no-restricted-syntax` con su motivo en `migrations-nimbo-app.int-spec.ts`. `run → revert → revert → run` en el
+  Postgres desechable: sin error, y `pg_proc` muestra `nimbo_actor_id` y `nimbo_actor_role`.
 - **`dotenv-bootstrap.int-spec.ts` (001) depende del Postgres del compose local**: arranca la API con el `.env` de la
   raíz. Desde T-24 ese `.env` (copia de `.env.example`) usa `nimbo_app`, que no existe en un volumen ya inicializado,
   así que la suite falla hasta que el integrante corre `pnpm db:app-role` y `migration:run` (el aviso de T-34).
