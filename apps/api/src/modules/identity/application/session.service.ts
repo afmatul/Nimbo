@@ -17,7 +17,6 @@ import { Device } from '../domain/device.entity';
 import { RefreshInvalidError, SessionExpiredError, SessionRevokedError } from '../domain/errors';
 import { OpaqueToken } from '../domain/opaque-token.vo';
 import { RefreshToken } from '../domain/refresh-token.vo';
-import type { ParsedRefreshToken } from '../domain/refresh-token.vo';
 import { Session } from '../domain/session.entity';
 import { UserAgentSummary } from '../domain/user-agent-summary.vo';
 import type { User } from '../domain/user.entity';
@@ -189,10 +188,7 @@ export class SessionService {
     }
   }
 
-  private async logoutInTransaction(
-    parsed: ParsedRefreshToken,
-    now: Date,
-  ): Promise<Session | null> {
+  private async logoutInTransaction(parsed: RefreshToken, now: Date): Promise<Session | null> {
     const session = await this.sessions.findByIdForUpdate(parsed.sessionId);
     if (session === null || session.revocadaEn !== null) {
       return null;
@@ -203,10 +199,7 @@ export class SessionService {
     return this.revoke(session, now);
   }
 
-  private async refreshInTransaction(
-    parsed: ParsedRefreshToken,
-    now: Date,
-  ): Promise<RefreshDecision> {
+  private async refreshInTransaction(parsed: RefreshToken, now: Date): Promise<RefreshDecision> {
     const session = await this.sessions.findByIdForUpdate(parsed.sessionId);
     if (session === null) {
       return { kind: 'rejected', reason: 'unknown' };
