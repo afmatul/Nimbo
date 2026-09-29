@@ -244,7 +244,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   inclusión desde `nest.js`.
   Archivos: `packages/config/eslint/{rls,nest}.js`, `packages/config/eslint/rls.spec.ts`, `packages/config/jest.config.js` (si falta).
 
-- [ ] **T-23** `migrationEnvSchema` y uso en migraciones — CA: CA-13 — Depende: 001 PR-1 — ~1 h
+- [x] **T-23** `migrationEnvSchema` y uso en migraciones — CA: CA-13 — Depende: 001 PR-1 — ~1 h
   Prueba primero en `apps/api/src/shared/infrastructure/config/load-env.spec.ts` (o `env.schema.spec.ts`):
   `migrationEnvSchema` exige `DATABASE_MIGRATION_URL` (URL) y **no** cae a `DATABASE_URL` si falta (`config.invalid`);
   no forma parte de `apiEnvSchema` ni de `workerEnvSchema`. Luego el esquema en `env.schema.ts`, `data-source.cli.ts`

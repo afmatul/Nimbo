@@ -9,14 +9,16 @@ const MIGRATION_TIMEOUT_MS = 120_000;
  * `pnpm --filter api migration:run` (`tsx src/scripts/migrate.ts run`, una transacción por migración). Un proceso
  * aparte porque TypeORM carga las migraciones `.ts` por glob, y eso requiere `tsx`, no el transformador de Jest.
  * Lo usan `int` e `isolation` desde `global-setup.ts`; si una migración falla, la corrida no arranca.
+ * Migra como el dueño de las tablas: `DATABASE_MIGRATION_URL` (003 plan §6.8). Se pasa siempre explícita para que
+ * el `.env` de la raíz (que `data-source.cli.ts` carga sin pisar el entorno) nunca apunte al Postgres local.
  */
-export function runMigrations(databaseUrl: string): void {
+export function runMigrations(migrationUrl: string): void {
   const result = spawnSync(
     process.execPath,
     [require.resolve('tsx/cli'), 'src/scripts/migrate.ts', 'run'],
     {
       cwd: API_ROOT,
-      env: { PATH: process.env.PATH, DATABASE_URL: databaseUrl },
+      env: { PATH: process.env.PATH, DATABASE_MIGRATION_URL: migrationUrl },
       encoding: 'utf8',
       timeout: MIGRATION_TIMEOUT_MS,
     },

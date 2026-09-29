@@ -1,12 +1,15 @@
 import { DataSource } from 'typeorm';
 
 import { buildDataSourceOptions, loadDotenvFile, loadEnv } from '../shared';
-// Solo la forma (zod puro): `apiEnvSchema` agrega reglas entre variables y no admite `pick`.
-import { apiEnvObjectSchema } from '../shared/infrastructure/config/env.schema';
+import { migrationEnvSchema } from '../shared/infrastructure/config/env.schema';
+import type { MigrationEnv } from '../shared/infrastructure/config/env.schema';
 
-/** Lanza si el entorno es inválido: la CLI y `migrate.ts` no deben arrancar a medias (CA-18). */
-const requireEnv = (): { DATABASE_URL: string } => {
-  const result = loadEnv(apiEnvObjectSchema.pick({ DATABASE_URL: true }));
+/**
+ * Lanza si el entorno es inválido: la CLI y `migrate.ts` no deben arrancar a medias (CA-18). Las migraciones
+ * corren como el dueño de las tablas (`DATABASE_MIGRATION_URL`), nunca como `nimbo_app` (003 CA-13, ADR-0005).
+ */
+const requireEnv = (): MigrationEnv => {
+  const result = loadEnv(migrationEnvSchema);
   if (!result.ok) {
     throw new Error(`Configuración inválida: ${result.issues.join('; ')}`);
   }
@@ -20,4 +23,6 @@ const requireEnv = (): { DATABASE_URL: string } => {
  * hacerlo en `migrate.ts` llegaría tarde, porque su `import` de este módulo se evalúa antes.
  */
 loadDotenvFile();
-export const AppDataSource = new DataSource(buildDataSourceOptions(requireEnv()));
+export const AppDataSource = new DataSource(
+  buildDataSourceOptions({ DATABASE_URL: requireEnv().DATABASE_MIGRATION_URL }),
+);
