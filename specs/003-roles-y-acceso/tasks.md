@@ -388,7 +388,7 @@ las actualizaciones del `architect` al integrar (plan §10.4).
   Luego la función.
   Archivos: `apps/api/src/modules/access/infrastructure/sql/accessible-nodes.{ts,spec.ts}`.
 
-- [ ] **T-38** `SqlAccessLevelReader` contra Postgres — CA: CA-10 (parcial), CA-9 — Depende: T-29, T-36, T-37 — ~1 h
+- [x] **T-38** `SqlAccessLevelReader` contra Postgres — CA: CA-10 (parcial), CA-9 — Depende: T-29, T-36, T-37 — ~1 h
   Prueba primero `apps/api/test/int/access/sql-access-level-reader.int-spec.ts` (como `nimbo_app`): dentro de
   `withActor` la consulta `SELECT nivel FROM (<fragmento>) accesibles WHERE nodo_id = :access_node_id` con precedencia
   `OWNER > EDITOR > VIEWER` y `LIMIT 1` **se ejecuta** y devuelve `null`; fuera de `withActor` lanza
@@ -623,6 +623,12 @@ PR-F = 9 (T-48…T-56). Total: 56.
     `db.role_rejected` (`superuser`, `bypassRls`, `ownsTables` en `true`), sin `api.started`/`worker.started`; con
     `nimbo_app` arrancan (`api.started`, `worker.started`).
 - **T-35**: 3 pruebas (tabla de once acciones, acción desconocida y mapa congelado) en verde sobre la versión de políticas objeto.
+- **T-38**: la consulta vive en `readAccessLevel(manager, fragment, nodeId)` (exportada del mismo archivo, no desde
+  `index.ts`) para probar la precedencia en Postgres con un fragmento `VALUES` de varias filas: en 003
+  `accessibleNodes` no devuelve filas. Los parámetros con nombre del fragmento pasan a posicionales con
+  `driver.escapeQueryWithParameters`. Además de §6.5, la consulta filtra `nivel IN (OWNER, EDITOR, VIEWER)`: un nivel
+  desconocido da `null` (cerrado por defecto) y el resultado siempre es un `AccessLevel`. `TransactionContext` se
+  inyecta con `@Inject` explícito (motivo de T-31). 5 casos en verde con Docker.
 
 - **Precedencia del plan**: donde §11.2 dice «500 estrategia desconocida», «`err` se relanza como 500»,
   `access-token-strategy.ts` como archivo propio o `validate` → `false`, manda «Cambios aplicados»: 401
