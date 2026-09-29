@@ -67,11 +67,14 @@ describe('UserAgentSummary.parse', () => {
     expect(UserAgentSummary.parse(ua)).toEqual({ browser, os, deviceKind });
   });
 
-  it.each(['', 'curl/8.0'])('trata %j como navegador y sistema desconocidos de escritorio', (ua) => {
-    expect(UserAgentSummary.parse(ua)).toEqual({
-      browser: 'Navegador desconocido',
-      os: 'Sistema desconocido',
-      deviceKind: 'desktop',
-    });
-  });
+  it.each(['', 'curl/8.0'])(
+    'trata %j como navegador y sistema desconocidos de escritorio',
+    (ua) => {
+      expect(UserAgentSummary.parse(ua)).toEqual({
+        browser: 'Navegador desconocido',
+        os: 'Sistema desconocido',
+        deviceKind: 'desktop',
+      });
+    },
+  );
 });

@@ -28,8 +28,11 @@ const SYSTEMS: readonly { readonly name: string; readonly pattern: RegExp }[] = 
   { name: 'Linux', pattern: /Linux/ },
 ];
 
-const detect = (ua: string, rows: readonly { readonly name: string; readonly pattern: RegExp }[], fallback: string): string =>
-  rows.find((row) => row.pattern.test(ua))?.name ?? fallback;
+const detect = (
+  ua: string,
+  rows: readonly { readonly name: string; readonly pattern: RegExp }[],
+  fallback: string,
+): string => rows.find((row) => row.pattern.test(ua))?.name ?? fallback;
 
 const deviceKindOf = (ua: string): DeviceKind => {
   if (/iPad|Tablet/i.test(ua)) {

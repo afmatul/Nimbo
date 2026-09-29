@@ -56,7 +56,10 @@ describe('RefreshToken', () => {
     ['vacío', ''],
     ['sin punto', `${SESSION_ID}${SECRET}`],
     ['con dos puntos', `${SESSION_ID}.${SECRET}.${SECRET}`],
-    ['con un punto extra dentro del secreto', `${SESSION_ID}.${SECRET.slice(0, 20)}.${SECRET.slice(21)}`],
+    [
+      'con un punto extra dentro del secreto',
+      `${SESSION_ID}.${SECRET.slice(0, 20)}.${SECRET.slice(21)}`,
+    ],
     ['con un uuid inválido', `9d8c7b6a-5f4e-4d3c-8b2a-1f0e9d8c7b6.${SECRET}`],
     ['con un uuid que no es uuid', `no-es-un-uuid.${SECRET}`],
     ['con uuid vacío', `.${SECRET}`],

@@ -3,7 +3,7 @@ import * as crypto from 'node:crypto';
 import { Session } from './session.entity';
 
 jest.mock('node:crypto', () => {
-  const actual = jest.requireActual<typeof import('node:crypto')>('node:crypto');
+  const actual = jest.requireActual<typeof crypto>('node:crypto');
   return {
     ...actual,
     timingSafeEqual: jest.fn((left: NodeJS.ArrayBufferView, right: NodeJS.ArrayBufferView) =>
@@ -92,7 +92,9 @@ describe('Session.matchSecret, rotate, revoke y refreshCookieMaxAge', () => {
 
     expect(session.matchSecret('d'.repeat(64), now, grace)).toBe('current');
     expect(session.matchSecret(HASH, now, grace)).toBe('previousWithinGrace');
-    expect(session.matchSecret(HASH, new Date(now.getTime() + grace), grace)).toBe('previousWithinGrace');
+    expect(session.matchSecret(HASH, new Date(now.getTime() + grace), grace)).toBe(
+      'previousWithinGrace',
+    );
     expect(session.matchSecret(HASH, new Date(now.getTime() + grace + 1), grace)).toBe('reuse');
     expect(older.matchSecret(HASH, now, grace)).toBe('reuse');
     expect(session.matchSecret(FORGED, now, grace)).toBe('reuse');
@@ -127,6 +129,8 @@ describe('Session.matchSecret, rotate, revoke y refreshCookieMaxAge', () => {
     const idle = 7 * DAY_MS;
 
     expect(session.refreshCookieMaxAge(new Date(now.getTime() + DAY_MS), idle)).toBe(idle);
-    expect(session.refreshCookieMaxAge(new Date(now.getTime() + 29.5 * DAY_MS), idle)).toBe(0.5 * DAY_MS);
+    expect(session.refreshCookieMaxAge(new Date(now.getTime() + 29.5 * DAY_MS), idle)).toBe(
+      0.5 * DAY_MS,
+    );
   });
 });
