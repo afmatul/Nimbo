@@ -13,11 +13,8 @@
 
 ## Evidencia
 <!-- no mostrar en la evidencia lo que no aplica -->
-- [ ] **PR parcial** de spec transversal (plan §9b, `workflow.md` §4.8): bloque(s) … de N; la evidencia de abajo se entrega en el último PR
-- [ ] `verification.md` (CA cubiertos: n/m)
-- [ ] `security.md` o no aplica porque: …
-- [ ] `ui-review.md` o no aplica porque: …
-- [ ] `review.md` sin bloqueantes
+- [ ] **PR parcial** (`workflow.md` §4.8): bloque(s) … de N; `review.md` se entrega en el último PR
+- [ ] `review.md` sin bloqueantes — Verificación (CA cubiertos: n/m) · Seguridad (o no aplica) · UI (o no aplica)
 - [ ] CI verde: lint · typecheck · unit · int · isolation · migraciones
   <!-- Fase 1: sin CI; pegar el resumen de lint, typecheck, test y test:int corridos en local (`workflow.md` §7.2) -->
 - [ ] Cobertura de lógica de negocio ≥ 60 %
