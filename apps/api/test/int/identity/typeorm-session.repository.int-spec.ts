@@ -29,8 +29,8 @@ const signal = (): { fire: () => void; fired: Promise<void> } => {
   return { fire, fired };
 };
 
-/** `TypeOrmSessionRepository` sobre Postgres real (plan §4 y §6.4; CA-7, CA-9). */
-describe('TypeOrmSessionRepository (CA-7, CA-9)', () => {
+/** `TypeOrmSessionRepository` sobre Postgres real (plan §4 y §6.4; CA-7, CA-9, CA-11 a CA-13, CA-19, CA-22). */
+describe('TypeOrmSessionRepository (CA-7, CA-9, CA-11, CA-12, CA-13, CA-19, CA-22)', () => {
   let dataSource: DataSource;
   let runner: TypeOrmTransactionRunner;
   let repository: TypeOrmSessionRepository;
@@ -55,9 +55,8 @@ describe('TypeOrmSessionRepository (CA-7, CA-9)', () => {
     return rows[0]?.id ?? '';
   };
 
-  const openSession = async (openedAt: Date = daysAgo(1)): Promise<Session> => {
-    const userId = await insertClient();
-    return Session.open({
+  const openSessionFor = async (userId: string, openedAt: Date = daysAgo(1)): Promise<Session> =>
+    Session.open({
       id: randomUUID(),
       userId,
       deviceId: await insertDevice(userId),
@@ -65,6 +64,22 @@ describe('TypeOrmSessionRepository (CA-7, CA-9)', () => {
       now: openedAt,
       maxLifetime: MAX_LIFETIME_MS,
     });
+
+  const openSession = async (openedAt?: Date): Promise<Session> =>
+    openSessionFor(await insertClient(), openedAt);
+
+  const insertAll = (sessions: readonly Session[]): Promise<void> =>
+    runner.run(async () => {
+      for (const session of sessions) {
+        await repository.insert(session);
+      }
+    });
+
+  const revokedAt = async (id: string): Promise<Date | null> => {
+    const rows = (await dataSource.query('SELECT revocada_en FROM sesion WHERE id = $1', [id])) as {
+      revocada_en: Date | null;
+    }[];
+    return rows[0]?.revocada_en ?? null;
   };
 
   beforeAll(async () => {
@@ -135,6 +150,107 @@ describe('TypeOrmSessionRepository (CA-7, CA-9)', () => {
 
       expect(order).toEqual(['primera rota', 'segunda lee']);
       expect(seenBySecond?.refreshAnteriorHash).toBe(session.refreshHash);
+    });
+  });
+
+  describe('listActive, revokeIfActive y revokeAllExcept (T-23)', () => {
+    const IDLE_CUTOFF = daysAgo(7);
+    const LIST_LIMIT = 50;
+    const USER_AGENT = 'Mozilla/5.0 Firefox/130.0';
+
+    it('CA-11: `listActive` trae solo las vigentes de la cuenta, por último uso descendente', async () => {
+      const userId = await insertClient();
+      const recent = await openSessionFor(userId);
+      const rotated = (await openSessionFor(userId, daysAgo(3))).rotate(
+        OpaqueToken.generate().hash(),
+        daysAgo(0.5),
+      );
+      const revoked = (await openSessionFor(userId)).revoke(daysAgo(0.1));
+      const pastLifetime = (await openSessionFor(userId, daysAgo(31))).rotate(
+        OpaqueToken.generate().hash(),
+        daysAgo(2),
+      );
+      const idle = await openSessionFor(userId, daysAgo(8));
+      const idleExactly = await openSessionFor(userId, IDLE_CUTOFF);
+      const othersSession = await openSession();
+      await insertAll([recent, rotated, revoked, pastLifetime, idle, idleExactly, othersSession]);
+
+      const records = await repository.listActive(userId, NOW, IDLE_CUTOFF, LIST_LIMIT);
+
+      expect(records).toEqual([
+        { session: rotated, agenteUsuario: USER_AGENT },
+        { session: recent, agenteUsuario: USER_AGENT },
+      ]);
+    });
+
+    it('CA-11: `listActive` respeta el límite y no trae la huella ni la IP del dispositivo', async () => {
+      const userId = await insertClient();
+      const older = await openSessionFor(userId, daysAgo(2));
+      const newer = await openSessionFor(userId, daysAgo(1));
+      await insertAll([older, newer]);
+
+      const records = await repository.listActive(userId, NOW, IDLE_CUTOFF, 1);
+
+      expect(records).toEqual([{ session: newer, agenteUsuario: USER_AGENT }]);
+      expect(Object.keys(records[0] ?? {}).sort()).toEqual(['agenteUsuario', 'session']);
+    });
+
+    it('CA-12: `revokeIfActive` revoca la sesión vigente del dueño', async () => {
+      const session = await openSession();
+      await insertAll([session]);
+
+      await expect(repository.revokeIfActive(session.id, session.userId, NOW)).resolves.toBe(true);
+      await expect(revokedAt(session.id)).resolves.toEqual(NOW);
+    });
+
+    it('CA-12: `revokeIfActive` con el `userId` de otra cuenta devuelve `false` sin cambios', async () => {
+      const session = await openSession();
+      const stranger = await insertClient();
+      await insertAll([session]);
+
+      await expect(repository.revokeIfActive(session.id, stranger, NOW)).resolves.toBe(false);
+      await expect(revokedAt(session.id)).resolves.toBeNull();
+    });
+
+    it('CA-12: `revokeIfActive` de una ya revocada devuelve `false` y conserva la primera fecha', async () => {
+      const firstRevocation = daysAgo(0.5);
+      const session = (await openSession()).revoke(firstRevocation);
+      await insertAll([session]);
+
+      await expect(repository.revokeIfActive(session.id, session.userId, NOW)).resolves.toBe(false);
+      await expect(revokedAt(session.id)).resolves.toEqual(firstRevocation);
+    });
+
+    it('CA-13: `revokeAllExcept(u, actual)` revoca las demás de la cuenta y devuelve cuántas', async () => {
+      const userId = await insertClient();
+      const current = await openSessionFor(userId);
+      const second = await openSessionFor(userId);
+      const third = await openSessionFor(userId);
+      const alreadyRevoked = (await openSessionFor(userId)).revoke(daysAgo(0.5));
+      const othersSession = await openSession();
+      await insertAll([current, second, third, alreadyRevoked, othersSession]);
+
+      await expect(repository.revokeAllExcept(userId, current.id, NOW)).resolves.toBe(2);
+
+      await expect(revokedAt(current.id)).resolves.toBeNull();
+      await expect(revokedAt(second.id)).resolves.toEqual(NOW);
+      await expect(revokedAt(third.id)).resolves.toEqual(NOW);
+      await expect(revokedAt(alreadyRevoked.id)).resolves.toEqual(daysAgo(0.5));
+      await expect(revokedAt(othersSession.id)).resolves.toBeNull();
+    });
+
+    it('CA-19: `revokeAllExcept(u, null)` revoca todas las de la cuenta y no toca otras cuentas', async () => {
+      const userId = await insertClient();
+      const first = await openSessionFor(userId);
+      const second = await openSessionFor(userId);
+      const othersSession = await openSession();
+      await insertAll([first, second, othersSession]);
+
+      await expect(repository.revokeAllExcept(userId, null, NOW)).resolves.toBe(2);
+
+      await expect(revokedAt(first.id)).resolves.toEqual(NOW);
+      await expect(revokedAt(second.id)).resolves.toEqual(NOW);
+      await expect(revokedAt(othersSession.id)).resolves.toBeNull();
     });
   });
 });
