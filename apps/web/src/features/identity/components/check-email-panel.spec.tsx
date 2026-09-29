@@ -32,6 +32,17 @@ describe('CheckEmailPanel', () => {
     expect(onChangeEmail).toHaveBeenCalledTimes(1);
   });
 
+  it('va en una tarjeta con ícono y el paso Verificación en curso', () => {
+    render(<CheckEmailPanel email="ana@ejemplo.com" onChangeEmail={jest.fn()} />);
+
+    const steps = screen.getByRole('list', { name: 'Pasos del registro' });
+    expect(steps.querySelector('[aria-current="step"]')?.textContent).toContain('Verificación');
+    expect(
+      screen.getByRole('heading', { name: 'Revisa tu correo' }).closest('.shadow-card'),
+    ).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Cambiar correo' }).className).toContain('underline');
+  });
+
   it('no tiene violaciones graves de accesibilidad', async () => {
     const view = render(<CheckEmailPanel email="ana@ejemplo.com" onChangeEmail={jest.fn()} />);
     const results = await axe(view.container);

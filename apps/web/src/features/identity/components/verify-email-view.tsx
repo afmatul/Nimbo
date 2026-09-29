@@ -1,110 +1,132 @@
 'use client';
 
 import { IDENTITY_ERROR_CODES } from '@nimbo/contracts';
-import type { JSX, ReactNode } from 'react';
+import { AlertCircle, Check, Clock, Info, Loader2 } from 'lucide-react';
+import type { JSX } from 'react';
 
+import { IdentityCard } from '../../../components/nimbo/identity-card';
+import { buttonVariants } from '../../../components/ui/button';
 import { messageForCode } from '../../../lib/error-catalog';
-import { useVerifyEmail, type VerifyEmailViewState } from '../hooks/use-verify-email';
+import { cn } from '../../../lib/utils';
+import { useVerifyEmail } from '../hooks/use-verify-email';
 
+const TITLE_ID = 'verificar-correo';
 const LOGIN_HREF = '/iniciar-sesion';
 const REQUEST_HREF = '/registro/pedir-enlace';
+const ACTION_CLASS = cn(buttonVariants(), 'w-full');
 
 function planMessage(planName: string): string {
   return `Tu cuenta empieza en el plan Personal. Podrás activar ${planName} desde Plan y facturación cuando esté disponible.`;
 }
 
-function Shell({
-  state,
-  children,
-}: {
-  readonly state: VerifyEmailViewState['status'] | 'plan-de-pago-elegido';
-  readonly children: ReactNode;
-}): JSX.Element {
+/** Tarjeta secundaria con el plan con el que nace la cuenta y, si se eligió uno de pago, el aviso de CA-28. */
+function PlanCard({ planName }: { readonly planName: string | null }): JSX.Element {
   return (
-    <section
-      aria-labelledby="verificar-correo"
-      data-state={state}
-      className="mx-auto w-full max-w-lg space-y-4 px-4 py-10"
+    <div
+      data-plan-card
+      className="space-y-3 rounded-lg border border-border bg-muted p-4 text-left"
     >
-      {children}
-    </section>
+      <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+        <span aria-hidden="true" className="h-2 w-2 rounded-full bg-primary" />
+        Plan Personal
+      </p>
+      {planName === null ? null : (
+        <p className="flex items-start gap-2 rounded-md bg-accent px-3 py-2 text-sm text-foreground">
+          <Info aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+          <span>{planMessage(planName)}</span>
+        </p>
+      )}
+    </div>
   );
 }
 
-/** Estados de la página de verificación. El botón de éxito lleva a iniciar sesión mientras no exista 002. */
+/**
+ * Estados de la página de verificación. El botón de éxito dice «Iniciar sesión» y lleva a esa ruta mientras
+ * no exista 002 (spec §11, registro de cambios del 2026-09-28).
+ */
 export function VerifyEmailView({ apiPublicUrl }: { readonly apiPublicUrl: string }): JSX.Element {
   const state = useVerifyEmail(apiPublicUrl);
 
   if (state.status === 'verificando') {
     return (
-      <Shell state="verificando">
-        <h1 id="verificar-correo" className="text-2xl font-semibold text-foreground">
-          Verificando tu correo
-        </h1>
-        <p role="status" className="text-sm text-muted-foreground">
-          Verificando…
-        </p>
-      </Shell>
+      <IdentityCard
+        data-state="verificando"
+        titleId={TITLE_ID}
+        title="Verificando tu correo"
+        icon={Loader2}
+        iconClassName="motion-safe:animate-spin"
+        tone="info"
+        step={2}
+        description={
+          <p role="status" className="text-sm text-secondary-foreground">
+            Verificando…
+          </p>
+        }
+      />
     );
   }
 
   if (state.status === 'exito') {
     return (
-      <Shell state={state.planName === null ? 'exito' : 'plan-de-pago-elegido'}>
-        <h1 id="verificar-correo" className="text-2xl font-semibold text-foreground">
-          ¡Listo! Tu correo está verificado.
-        </h1>
-        {state.planName !== null ? (
-          <p className="text-sm text-foreground">{planMessage(state.planName)}</p>
-        ) : null}
-        <a
-          href={LOGIN_HREF}
-          className="inline-flex h-11 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-button"
-        >
+      <IdentityCard
+        data-state={state.planName === null ? 'exito' : 'plan-de-pago-elegido'}
+        titleId={TITLE_ID}
+        title="¡Listo! Tu correo está verificado."
+        icon={Check}
+        tone="success"
+        step={3}
+      >
+        <PlanCard planName={state.planName} />
+        <a href={LOGIN_HREF} className={ACTION_CLASS}>
           Iniciar sesión
         </a>
-      </Shell>
+      </IdentityCard>
     );
   }
 
   if (state.status === 'ya-verificado') {
     return (
-      <Shell state="ya-verificado">
-        <h1 id="verificar-correo" className="text-2xl font-semibold text-foreground">
-          Correo verificado
-        </h1>
-        <p role="status" className="text-sm text-foreground">
-          Tu correo ya está verificado. Inicia sesión.
-        </p>
-        <a
-          href={LOGIN_HREF}
-          className="inline-flex h-11 items-center text-sm font-medium text-primary"
-        >
+      <IdentityCard
+        data-state="ya-verificado"
+        titleId={TITLE_ID}
+        title="Correo verificado"
+        icon={Check}
+        tone="success"
+        description={
+          <p role="status" className="text-sm text-secondary-foreground">
+            Tu correo ya está verificado. Inicia sesión.
+          </p>
+        }
+      >
+        <a href={LOGIN_HREF} className={ACTION_CLASS}>
           Iniciar sesión
         </a>
-      </Shell>
+      </IdentityCard>
     );
   }
 
   const expired = state.status === 'enlace-expirado';
   return (
-    <Shell state={state.status}>
-      <h1 id="verificar-correo" className="text-2xl font-semibold text-foreground">
-        {expired ? 'Enlace vencido' : 'Enlace no válido'}
-      </h1>
-      <p role="alert" className="text-sm text-destructive">
-        {messageForCode(
-          expired
-            ? IDENTITY_ERROR_CODES.VERIFICATION_LINK_EXPIRED
-            : IDENTITY_ERROR_CODES.VERIFICATION_LINK_INVALID,
-        )}
-      </p>
-      <a
-        href={REQUEST_HREF}
-        className="inline-flex h-11 items-center text-sm font-medium text-primary"
-      >
+    <IdentityCard
+      data-state={state.status}
+      titleId={TITLE_ID}
+      title={expired ? 'Enlace vencido' : 'Enlace no válido'}
+      icon={expired ? Clock : AlertCircle}
+      tone={expired ? 'warning' : 'danger'}
+      step={2}
+      description={
+        <p role="alert" className="text-sm text-secondary-foreground">
+          {messageForCode(
+            expired
+              ? IDENTITY_ERROR_CODES.VERIFICATION_LINK_EXPIRED
+              : IDENTITY_ERROR_CODES.VERIFICATION_LINK_INVALID,
+          )}
+        </p>
+      }
+    >
+      <a href={REQUEST_HREF} className={ACTION_CLASS}>
         Pedir un enlace nuevo
       </a>
-    </Shell>
+    </IdentityCard>
   );
 }

@@ -3,14 +3,14 @@
 import { EMAIL_REQUEST_COOLDOWN_SECONDS, IDENTITY_ERROR_CODES } from '@nimbo/contracts';
 import { useState, type JSX } from 'react';
 
-import { Alert } from '../../../components/ui/alert';
 import { Button } from '../../../components/ui/button';
 import { toApiClientError, type ApiClientError } from '../../../lib/api-error';
 import { messageForCode } from '../../../lib/error-catalog';
 import { resendVerification } from '../api';
 import { useCountdown } from '../hooks/use-countdown';
 
-import { ServerErrorAlert } from './server-error-alert';
+import { LimitAlert } from './limit-alert';
+import { SEND_LINK_ERROR_TITLE, ServerErrorAlert } from './server-error-alert';
 
 interface Round {
   readonly id: number;
@@ -44,10 +44,16 @@ function CooldownControl({
 
   return (
     <div className="space-y-2">
-      <p aria-live="polite" className="text-sm text-muted-foreground">
+      <p aria-live="polite" className="text-center text-sm text-muted-foreground">
         {announcement(remaining)}
       </p>
-      <Button type="button" variant="outline" disabled={remaining > 0 || sending} onClick={send}>
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full"
+        disabled={remaining > 0 || sending}
+        onClick={send}
+      >
         Reenviar enlace
       </Button>
     </div>
@@ -99,8 +105,10 @@ export function ResendLinkButton({
 
   return (
     <div className="space-y-3" data-state={round.limited ? 'limite-reenvio' : undefined}>
-      {limitMessage !== null ? <Alert>{limitMessage}</Alert> : null}
-      {serverError !== null ? <ServerErrorAlert error={serverError} /> : null}
+      {limitMessage !== null ? <LimitAlert message={limitMessage} /> : null}
+      {serverError !== null ? (
+        <ServerErrorAlert title={SEND_LINK_ERROR_TITLE} error={serverError} />
+      ) : null}
       <CooldownControl key={round.id} seconds={round.seconds} onResend={onResend} />
     </div>
   );

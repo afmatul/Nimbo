@@ -7,10 +7,12 @@ import {
   resendVerificationRequestSchema,
   type ResendVerificationRequest,
 } from '@nimbo/contracts';
+import { Mail } from 'lucide-react';
 import { useEffect, useState, type JSX } from 'react';
 import { useForm } from 'react-hook-form';
 
-import { Alert } from '../../../components/ui/alert';
+import { IdentityCard } from '../../../components/nimbo/identity-card';
+import { TextLink } from '../../../components/nimbo/text-link';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
@@ -20,8 +22,11 @@ import { resendVerification } from '../api';
 import { useCountdown } from '../hooks/use-countdown';
 
 import { CheckEmailPanel } from './check-email-panel';
+import { LimitAlert } from './limit-alert';
 import { ResendLinkButton } from './resend-link-button';
-import { ServerErrorAlert } from './server-error-alert';
+import { SEND_LINK_ERROR_TITLE, ServerErrorAlert } from './server-error-alert';
+
+const LOGIN_HREF = '/iniciar-sesion';
 
 /** 002 prellena el correo aquí. No se lee de la URL: no debe quedar en bitácoras de Next ni de Traefik. */
 export const REQUEST_LINK_EMAIL_KEY = 'nimbo.registro.correo';
@@ -40,7 +45,7 @@ function LimitNotice({
   const remaining = useCountdown(seconds);
   return (
     <div data-state="limite-reenvio" className="space-y-2">
-      <Alert>{message}</Alert>
+      <LimitAlert message={message} />
       <p aria-live="polite" className="text-sm text-muted-foreground">
         {remaining > 0
           ? `Podrás pedirlo de nuevo en ${String(remaining)} segundos.`
@@ -111,13 +116,19 @@ export function RequestLinkForm({ apiPublicUrl }: { readonly apiPublicUrl: strin
   });
 
   return (
-    <section
-      aria-labelledby="pedir-enlace"
-      className="mx-auto w-full max-w-lg space-y-4 px-4 py-10"
+    <IdentityCard
+      titleId="pedir-enlace"
+      title="Pedir un enlace nuevo"
+      icon={Mail}
+      tone="info"
+      step={2}
+      description={
+        <p className="text-sm text-secondary-foreground">
+          Escribe el correo con el que creaste tu cuenta y te enviaremos otro enlace de
+          verificación.
+        </p>
+      }
     >
-      <h1 id="pedir-enlace" className="text-2xl font-semibold text-foreground">
-        Pedir un enlace nuevo
-      </h1>
       <form className="space-y-4" onSubmit={(event) => void onSubmit(event)} noValidate>
         <div className="space-y-1.5">
           <Label htmlFor="email">Correo</Label>
@@ -133,11 +144,16 @@ export function RequestLinkForm({ apiPublicUrl }: { readonly apiPublicUrl: strin
         {limit !== null ? (
           <LimitNotice key={limit.id} message={limit.message} seconds={limit.seconds} />
         ) : null}
-        {serverError !== null ? <ServerErrorAlert error={serverError} /> : null}
-        <Button type="submit" loading={submitting}>
+        {serverError !== null ? (
+          <ServerErrorAlert title={SEND_LINK_ERROR_TITLE} error={serverError} />
+        ) : null}
+        <Button type="submit" className="w-full" loading={submitting}>
           Pedir enlace
         </Button>
       </form>
-    </section>
+      <p className="border-t border-border pt-4 text-center text-sm text-muted-foreground">
+        ¿Ya verificaste tu correo? <TextLink href={LOGIN_HREF}>Iniciar sesión</TextLink>
+      </p>
+    </IdentityCard>
   );
 }

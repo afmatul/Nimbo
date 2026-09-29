@@ -55,6 +55,43 @@ describe('VerifyEmailView', () => {
     expect(screen.queryByText(/Tu cuenta empieza en el plan Personal/)).toBeNull();
   });
 
+  it('el éxito va en una tarjeta con ícono, los tres pasos completos y el plan Personal', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ status: 'verified' }));
+    window.history.replaceState(null, '', '/verificar-correo#token=tarjeta');
+    render(<VerifyEmailView apiPublicUrl="http://localhost/api/v1" />);
+
+    const heading = await screen.findByRole('heading', {
+      name: '¡Listo! Tu correo está verificado.',
+    });
+    const card = heading.closest('.shadow-card');
+    expect(card).toBeTruthy();
+    expect(card?.querySelector('svg[aria-hidden="true"]')).toBeTruthy();
+    expect(card?.textContent).toContain('Plan Personal');
+    const steps = screen.getByRole('list', { name: 'Pasos del registro' });
+    expect(steps.querySelectorAll('.sr-only')).toHaveLength(3);
+    expect(steps.querySelector('[aria-current="step"]')?.textContent).toContain('Listo');
+  });
+
+  it('con un plan de pago, el aviso de CA-28 va dentro de la tarjeta del plan', async () => {
+    saveChosenPlan(window.localStorage, { planId: 'eq', planName: 'Equipo' }, new Date());
+    fetchMock.mockResolvedValue(jsonResponse({ status: 'verified' }));
+    window.history.replaceState(null, '', '/verificar-correo#token=plan-tarjeta');
+    render(<VerifyEmailView apiPublicUrl="http://localhost/api/v1" />);
+
+    const notice = await screen.findByText(/Podrás activar Equipo desde Plan y facturación/);
+    expect(notice.closest('[data-plan-card]')?.textContent).toContain('Plan Personal');
+  });
+
+  it('ya verificado va en tarjeta, sin pasos del registro', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ status: 'already-verified' }));
+    window.history.replaceState(null, '', '/verificar-correo#token=ya');
+    render(<VerifyEmailView apiPublicUrl="http://localhost/api/v1" />);
+
+    const heading = await screen.findByRole('heading', { name: 'Correo verificado' });
+    expect(heading.closest('.shadow-card')).toBeTruthy();
+    expect(screen.queryByRole('list', { name: 'Pasos del registro' })).toBeNull();
+  });
+
   it('con un plan vigente muestra el mensaje de CA-28', async () => {
     saveChosenPlan(window.localStorage, { planId: 'pro', planName: 'Profesional' }, new Date());
     fetchMock.mockResolvedValue(jsonResponse({ status: 'verified' }));
@@ -89,6 +126,11 @@ describe('VerifyEmailView', () => {
       '/registro/pedir-enlace',
     );
     expect(document.querySelector(`[data-state="${state}"]`)).toBeTruthy();
+    const steps = screen.getByRole('list', { name: 'Pasos del registro' });
+    expect(steps.querySelector('[aria-current="step"]')?.textContent).toContain('Verificación');
+    expect(screen.getByRole('link', { name: 'Pedir un enlace nuevo' }).className).toContain(
+      'bg-primary',
+    );
   });
 
   it('CA-9: un 422 IDENTITY_VERIFICATION_LINK_EXPIRED muestra enlace-expirado', async () => {

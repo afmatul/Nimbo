@@ -18,11 +18,19 @@ describe('Alert', () => {
     expect(markup).toContain('border-border');
   });
 
+  it('anuncia una advertencia con role status y tokens de advertencia', () => {
+    const markup = renderToStaticMarkup(<Alert variant="warning">Espera un momento.</Alert>);
+    expect(markup).toContain('role="status"');
+    expect(markup).toContain('text-warning-foreground');
+    expect(markup).toContain('border-warning');
+  });
+
   it('no tiene violaciones de accesibilidad', async () => {
     await expectNoA11yViolations(
       <div>
         <Alert variant="error">No pudimos guardar.</Alert>
         <Alert>Revisa tu correo.</Alert>
+        <Alert variant="warning">Espera un momento.</Alert>
       </div>,
     );
   });

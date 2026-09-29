@@ -2,6 +2,7 @@
 
 import { useState, type JSX } from 'react';
 
+import { SignupSteps } from '../../../components/nimbo/signup-steps';
 import { saveChosenPlan } from '../chosen-plan-storage';
 
 import { CheckEmailPanel } from './check-email-panel';
@@ -41,11 +42,17 @@ export function RegisterFlow({
   return (
     <section
       aria-labelledby="crear-cuenta"
-      className="mx-auto w-full max-w-lg space-y-4 px-4 py-10"
+      className="mx-auto w-full max-w-lg space-y-6 px-4 py-10"
     >
-      <h1 id="crear-cuenta" className="text-2xl font-semibold text-foreground">
-        Crea tu cuenta
-      </h1>
+      <SignupSteps current={1} />
+      <div className="space-y-1">
+        <h1 id="crear-cuenta" className="text-2xl font-semibold text-foreground">
+          Crea tu cuenta
+        </h1>
+        <p className="text-sm text-secondary-foreground">
+          Te enviaremos un enlace para confirmar tu correo.
+        </p>
+      </div>
       <RegisterForm
         apiPublicUrl={apiPublicUrl}
         plans={plans}

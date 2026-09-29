@@ -36,6 +36,13 @@ describe('RegisterFlow', () => {
     window.localStorage.clear();
   });
 
+  it('el formulario muestra los pasos del registro con Cuenta en curso', () => {
+    render(<RegisterFlow apiPublicUrl="http://localhost/api/v1" plans={PLANS} />);
+
+    const steps = screen.getByRole('list', { name: 'Pasos del registro' });
+    expect(steps.querySelector('[aria-current="step"]')?.textContent).toContain('Cuenta');
+  });
+
   it('al crear la cuenta muestra Revisa tu correo', async () => {
     const user = userEvent.setup();
     fetchMock.mockResolvedValue(jsonResponse({ status: 'accepted' }, 202));

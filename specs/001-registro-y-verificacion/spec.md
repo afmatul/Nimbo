@@ -501,7 +501,8 @@ reescribieron después de revisar los mockups (2026-09-22) o al volver al enlace
   - el selector de plan (D-4), con nombres y precios leídos de la API; los valores escritos en el mockup (`Q0.00`,
     `Q450`…) son solo de referencia;
   - la casilla de aceptación, que ya tiene dos enlaces separados, «Términos» y «Política de privacidad» (D-14);
-  - el botón «Ir a Mis archivos» de la pantalla final (D-20);
+  - el botón «Ir a Mis archivos» de la pantalla final (D-20); mientras 002 no exista, el botón dice «Iniciar sesión»
+    y lleva a la ruta reservada (decisión de Adrián del 2026-09-28, T-66);
   - «Cambiar correo» en «Revisa tu correo» (CA-27).
 - Nota: los mockups usan colores escritos a mano (`#546983`, `#DDE6F0`…). Es aceptable en un mockup de referencia; la
   implementación usa solo tokens (R-11).
@@ -520,7 +521,7 @@ reescribieron después de revisar los mockups (2026-09-22) o al volver al enlace
   - Enlace expirado: «Este enlace venció. Pide uno nuevo y ábrelo en las próximas 24 horas.»
   - Enlace inválido: «Este enlace no es válido. Usa el enlace del correo más reciente o pide uno nuevo.»
   - Ya verificado: «Tu correo ya está verificado. Inicia sesión.»
-  - Éxito: «¡Listo! Tu correo está verificado.» con «Ir a Mis archivos».
+  - Éxito: «¡Listo! Tu correo está verificado.» con «Ir a Mis archivos» (con 002; hasta entonces, «Iniciar sesión»).
   - Plan de pago elegido (mismo navegador): «Tu cuenta empieza en el plan Personal. Podrás activar {plan elegido} desde Plan y facturación cuando esté disponible.»
   - Límite: «Ya te enviamos un enlace hace poco. Revisa tu bandeja y la carpeta de spam, o inténtalo de nuevo en N minutos.»
   - Error inesperado: el genérico de 000 §10 con el `correlationId`.
@@ -647,3 +648,4 @@ ajustes y estados de mockups de §11 (Art. XIII.1; compuerta de `Aclarada`, `wor
 | 2026-09-27 | CA-6 precisa que un JSON mal formado responde el `400 VALIDATION_FAILED` de 000 (P-1 del plan). Sin cambio de alcance | Plan 001, P-1 | Adrián |
 | 2026-09-28 | §11: el mensaje «Contraseña común» pierde «Elige otra.», que se repetía dentro de `IDENTITY_WEAK_PASSWORD` («… Elige otra. Elige otra que los cumpla.»). Sin cambio de criterios | Revisión del PR-3, hallazgo 4 | — (developer; pendiente de Adrián en el PR) |
 | 2026-09-28 | §11: rótulos positivos de la lista de requisitos para contraseña común y correo cuando la regla se cumple («No es una contraseña común», «Es distinta de tu correo»); los mensajes de error no cambian. Sin cambio de criterios | Revisión visual T-67, UI-B2 | — (developer; pendiente de Adrián en el PR) |
+| 2026-09-28 | §11: mientras 002 no exista, el botón de la pantalla «Correo verificado» dice «Iniciar sesión» (no «Ir a Mis archivos») y lleva a la ruta reservada; con 002 vuelve a «Ir a Mis archivos» (D-20). Sin cambio de criterios | Revisión visual T-67, UI-B3; el texto de T-66 | Adrián |

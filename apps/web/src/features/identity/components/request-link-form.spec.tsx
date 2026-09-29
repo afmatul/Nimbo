@@ -30,6 +30,19 @@ describe('RequestLinkForm', () => {
     window.history.replaceState(null, '', '/registro/pedir-enlace');
   });
 
+  it('va en una tarjeta con el paso Verificación en curso y ofrece iniciar sesión', () => {
+    render(<RequestLinkForm apiPublicUrl="http://localhost/api/v1" />);
+
+    const steps = screen.getByRole('list', { name: 'Pasos del registro' });
+    expect(steps.querySelector('[aria-current="step"]')?.textContent).toContain('Verificación');
+    expect(
+      screen.getByRole('heading', { name: 'Pedir un enlace nuevo' }).closest('.shadow-card'),
+    ).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Iniciar sesión' }).getAttribute('href')).toBe(
+      '/iniciar-sesion',
+    );
+  });
+
   it('valida el correo con el esquema de reenvío y no llama a la API', async () => {
     const user = userEvent.setup();
     render(<RequestLinkForm apiPublicUrl="http://localhost/api/v1" />);
