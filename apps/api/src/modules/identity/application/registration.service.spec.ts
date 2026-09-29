@@ -61,6 +61,11 @@ class FakeTransactionRunner implements ITransactionRunner {
     this.timeline.push('commit');
     return result;
   }
+
+  /** `usuario` y `token_cuenta` no son datos de cliente: el registro nunca abre una transacción con actor. */
+  withActor<T>(): Promise<T> {
+    return Promise.reject(new Error('RegistrationService no usa withActor'));
+  }
 }
 
 const fakeHasher = (): jest.Mocked<IPasswordHasher> => ({
