@@ -44,3 +44,26 @@ describe('REDACTED_FIELDS (001 CA-18)', () => {
     expect(redactDeep(line)).toEqual(line);
   });
 });
+
+describe('REDACTED_FIELDS (002 CA-25)', () => {
+  it('CA-25: `currentPassword` y `newPassword` anidados salen `[REDACTED]`', () => {
+    const redacted = redactDeep({
+      body: { currentPassword: 'Actual-2026!', newPassword: 'Nimbo-Nueva-2026' },
+      attempts: [{ newPassword: 'Nimbo-Nueva-2026' }],
+    });
+
+    expect(redacted).toEqual({
+      body: { currentPassword: REDACTED_VALUE, newPassword: REDACTED_VALUE },
+      attempts: [{ newPassword: REDACTED_VALUE }],
+    });
+  });
+
+  it.each(['authorization', 'cookie', 'token', 'accessToken', 'refreshToken'])(
+    'CA-25: `%s` sigue redactado',
+    (field) => {
+      expect(redactDeep({ headers: { [field]: 'valor' } })).toEqual({
+        headers: { [field]: REDACTED_VALUE },
+      });
+    },
+  );
+});
