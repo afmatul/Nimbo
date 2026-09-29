@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto';
 
 import { LEGAL_DOCUMENTS } from '@nimbo/contracts';
-import { DataSource } from 'typeorm';
+import type { DataSource } from 'typeorm';
 
-import { buildDataSourceOptions, FixedClock, Role } from '../../../src/shared';
+import { FixedClock, Role } from '../../../src/shared';
 import { createTestApp } from '../../int/setup/test-app';
 import type { TestApp, TestAppOptions } from '../../int/setup/test-app';
+import { connectAsOwner, requiredEnv } from '../../support/database-urls';
 import { PROBE_CLOCK_START } from '../../support/probe.module';
 import { TestAccessTokens } from '../../support/test-access-tokens';
 
@@ -69,12 +70,6 @@ export interface IsolationWorld {
   close(): Promise<void>;
 }
 
-const requiredEnv = (key: string): string => {
-  const value = process.env[key];
-  if (value === undefined) throw new Error(`El arnés no definió ${key}`);
-  return value;
-};
-
 const insertAccount = async (owner: DataSource, account: WorldAccount): Promise<void> => {
   const isClient = account.role === Role.CLIENT;
   await owner.query(
@@ -107,9 +102,7 @@ const nearlyIdenticalEmails = (): readonly [string, string] => {
  * `.withFiles(...)` al *builder*.
  */
 export const createIsolationWorld = async (): Promise<IsolationWorld> => {
-  const owner = await new DataSource(
-    buildDataSourceOptions({ DATABASE_URL: requiredEnv('DATABASE_MIGRATION_URL') }),
-  ).initialize();
+  const owner = await connectAsOwner();
   const [firstEmail, secondEmail] = nearlyIdenticalEmails();
   const clients = [
     aClient().withEmail(firstEmail).build(),

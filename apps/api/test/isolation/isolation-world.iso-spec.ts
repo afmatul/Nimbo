@@ -1,9 +1,10 @@
 import request from 'supertest';
 import { DataSource } from 'typeorm';
 
-import { buildDataSourceOptions, createActor, Role } from '../../src/shared';
+import { createActor, Role } from '../../src/shared';
 import { createTestApp } from '../int/setup/test-app';
 import type { TestApp } from '../int/setup/test-app';
+import { connectAsOwner, requiredEnv } from '../support/database-urls';
 
 import { aClient, anInternal, createIsolationWorld } from './setup/isolation-world';
 import type { IsolationWorld } from './setup/isolation-world';
@@ -17,12 +18,6 @@ interface StoredAccount {
   readonly creado_en: Date;
   readonly terminos_aceptados_en: Date | null;
 }
-
-const requiredEnv = (key: string): string => {
-  const value = process.env[key];
-  if (value === undefined) throw new Error(`El arnés no definió ${key}`);
-  return value;
-};
 
 /** Posiciones en las que dos cadenas de igual longitud difieren. */
 const differingPositions = (a: string, b: string): number =>
@@ -46,9 +41,7 @@ describe('mundo de aislamiento (CA-15)', () => {
   };
 
   beforeAll(async () => {
-    owner = await new DataSource(
-      buildDataSourceOptions({ DATABASE_URL: requiredEnv('DATABASE_MIGRATION_URL') }),
-    ).initialize();
+    owner = await connectAsOwner();
     world = await createIsolationWorld();
   });
 
