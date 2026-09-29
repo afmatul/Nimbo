@@ -49,21 +49,40 @@ Nunca se registra `job.data` ni un `MailMessage` completo. Las bitácoras de cor
 `jobId`, `attemptsMade` y códigos de error; `to`, `html` y `text` están además en `REDACTED_FIELDS` como defensa en
 profundidad (el destinatario es un correo y el cuerpo lleva el enlace de verificación).
 
-## Con la spec 003 (DF-50, 003 D-2)
+## Con la spec 003 (DF-50, 003 D-2, ADR-0017 c.2)
 
-Los guards globales viven aquí, no en `backoffice`: `JwtAuthGuard` y `RolesGuard` niegan por defecto, y solo las
-rutas con `@Public()` se atienden sin sesión. Toda ruta declara `@Public()` o `@Roles(...)`. `JwtAuthGuard` verifica
-el token con el puerto token→`Actor` que declara `shared` y que implementa `identity` (002 D-14), así que `shared`
-sigue sin importar módulos. También entra `withActor()` (ADR-0005).
+Los guards globales viven aquí, no en `backoffice`, y `shared` sigue sin importar módulos.
+
+- **Guards globales** (`AuthGuardsModule`, estático; lo importa `AppModule`, no el `worker`): primero
+  `JwtAuthGuard` y luego `RolesGuard`.
+  - `JwtAuthGuard` extiende `AuthGuard(ACCESS_TOKEN_STRATEGY)` de `@nestjs/passport`. `@Public()` pasa sin mirar la
+    cabecera; si no, exige **una** cabecera `Authorization: Bearer <token>` bien formada y llama a Passport.
+    `handleRequest` es el único punto que traduce el resultado: _claims_ → `Actor` (`createActor`); `expired_token` o
+    `invalid_token` → 401 `SHARED_UNAUTHENTICATED`, nunca 500. Sin estrategia registrada, toda ruta no pública → 401.
+  - `RolesGuard`: ruta sin `@Roles(...)` → 403 (`undeclared_route`, DT-2); rol no listado → 403 `SHARED_FORBIDDEN`.
+  - Bitácoras `auth.unauthenticated` (`info`) y `auth.forbidden` (`warn`) con la ruta como **patrón**, el motivo y, en
+    403, el actor; nunca el token ni la cabecera (CA-16).
+- **Toda ruta se declara con `@Public()` o `@Roles(...)`** (en clase o método; el de método manda). Las rutas de
+  «gestionar la propia sesión» usan `@Roles(...ALL_ROLES)`. La lista de rutas públicas es cerrada (003 CA-3).
+- **Decoradores de parámetro**: `@CurrentActor()` y `@CurrentSessionId()` leen solo `RequestPrincipal` (un `WeakMap`
+  que escribe `JwtAuthGuard`). Passport escribe `req.user`; **nadie lo lee** (D-11).
+- **Puerto token → _claims_**: `IAccessTokenVerifier` + `I_ACCESS_TOKEN_VERIFIER` y el nombre de la estrategia
+  `ACCESS_TOKEN_STRATEGY` (`application/auth/i-access-token-verifier.port.ts`). Lo implementa `identity` (002 D-14) y
+  su `JwtStrategy` (`passport-jwt`, `ignoreExpiration: true`) delega en él; el vencimiento lo decide solo el puerto con
+  `IClock`. La suite de contrato única está en `test/support/access-token-verifier.contract.ts` (tramos puerto y HTTP).
+- **Una sola estrategia por app de prueba**: `passport.use` es un registro por proceso y la última estrategia con el
+  mismo nombre gana. `createTestApp` monta siempre los guards y, con `accessTokenStrategy: 'test'` (por defecto), las
+  sondas con `TestJwtStrategy`; lanza si el árbol trae otra `ACCESS_TOKEN_STRATEGY` (usa `'identity'` desde 002).
+- Pendiente en 003 (PR-B): `withActor()` (ADR-0005).
 
 ## Capas
 
 ```
 shared/
 ├─ domain/          # sin Nest, TypeORM ni zod
-├─ application/     # HealthService, puertos (IHealthIndicator, IRateLimiter, ITransactionRunner)
+├─ application/     # HealthService, puertos (IHealthIndicator, IRateLimiter, ITransactionRunner, IAccessTokenVerifier)
 ├─ infrastructure/  # config, logging, correlation, persistence, queue, health, clock, redis, rate-limit
-├─ presentation/    # HealthController, DomainExceptionFilter, VersionHeaderMiddleware, ZodValidationPipe, configureHttpApp
+├─ presentation/    # HealthController, DomainExceptionFilter, VersionHeaderMiddleware, ZodValidationPipe, configureHttpApp, auth/ (guards y decoradores)
 ├─ shared.module.ts  health.module.ts
 └─ index.ts         # única API pública
 ```

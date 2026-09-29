@@ -13,7 +13,7 @@ import type {
   VerifyEmailResponse,
 } from '@nimbo/contracts';
 
-import { ZodValidationPipe } from '../../../shared';
+import { Public, ZodValidationPipe } from '../../../shared';
 import { RegistrationService } from '../application/registration.service';
 
 import {
@@ -29,9 +29,10 @@ const ACCEPTED: AcceptedResponse = { status: 'accepted' };
 /**
  * Rutas públicas de registro y verificación (plan §5, §6.5). Solo validan, delegan en `RegistrationService` y
  * mapean el resultado al contrato; sin reglas de negocio. No construyen `Actor`: una cabecera `Authorization` se
- * ignora (CA-7). `Cache-Control: no-store` lo pone `NoStoreMiddleware` desde `IdentityModule`. 003 las marcará
- * `@Public()`.
+ * ignora (CA-7). `Cache-Control: no-store` lo pone `NoStoreMiddleware` desde `IdentityModule`. `@Public()` las
+ * excluye de los guards globales de autenticación y roles de 003.
  */
+@Public()
 @Controller('auth')
 export class AuthController {
   constructor(private readonly registration: RegistrationService) {}

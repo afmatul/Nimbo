@@ -7,6 +7,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { IDENTITY_THROTTLERS, IdentityModule } from './modules/identity';
 import { NotificationsModule } from './modules/notifications';
 import {
+  AuthGuardsModule,
   EnvModule,
   HealthModule,
   MinioConfigModule,
@@ -21,8 +22,9 @@ import type { Env } from './shared';
 
 /**
  * Raíz de composición de `api` (plan 000 §6.2, plan 001 §6.8): publica el entorno que `main.ts` ya validó con
- * `apiEnvSchema`, `SharedModule`, la configuración de MinIO, la salud con los tres indicadores y la cola `ping`;
- * los eventos en proceso (ADR-0019), los *throttlers* en memoria (ADR-0017), `notifications` e `identity`.
+ * `apiEnvSchema`, `SharedModule`, los guards globales de autorización (003), la configuración de MinIO, la salud
+ * con los tres indicadores y la cola `ping`; los eventos en proceso (ADR-0019), los *throttlers* en memoria
+ * (ADR-0017), `notifications` e `identity`.
  */
 @Module({})
 export class AppModule {
@@ -33,6 +35,7 @@ export class AppModule {
         EnvModule.forRoot(env),
         MinioConfigModule.forRoot(env),
         SharedModule,
+        AuthGuardsModule,
         HealthModule.forRoot({
           indicators: [PostgresHealthIndicator, RedisHealthIndicator, MinioHealthIndicator],
         }),

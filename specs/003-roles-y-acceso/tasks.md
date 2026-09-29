@@ -57,27 +57,27 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
 
 ## Bloque 1 — PR-A «autorización en shared» (plan §6.1, §6.2, §6.6; ADR-0017 c.2) — depende de: `main` (000)
 
-- [ ] **T-01** Dependencias de Passport con versión exacta — CA: n/a — Depende: — — ~0,5 h
+- [x] **T-01** Dependencias de Passport con versión exacta — CA: n/a — Depende: — — ~0,5 h
   `pnpm --filter api add -E @nestjs/passport passport passport-jwt @nestjs/jwt` y `-D -E @types/passport-jwt`.
   Comprobar `pnpm typecheck` y `pnpm test` sin cambios. En la descripción del PR (y del de 001 PR-1): posible conflicto
   en `pnpm-lock.yaml`; lo resuelve quien integre segundo, combinando `package.json` y regenerando con `pnpm install`,
   nunca a mano (plan §9).
   Archivos: `apps/api/package.json`, `pnpm-lock.yaml`.
 
-- [ ] **T-02** [P] `contracts/shared`: roles y códigos de error — CA: CA-1, CA-5, CA-17 (tipos) — Depende: — — ~0,5 h
+- [x] **T-02** [P] `contracts/shared`: roles y códigos de error — CA: CA-1, CA-5, CA-17 (tipos) — Depende: — — ~0,5 h
   Prueba primero `packages/contracts/src/shared/roles.spec.ts`: `ROLES` es exactamente `CLIENT`, `ADMIN`, `SUPPORT`,
   `OPERATOR`; `roleSchema` acepta los cuatro y rechaza `client`, `''` y `ROOT`; `RoleName` es la unión;
   `SHARED_ERROR_CODES` contiene `SHARED_UNAUTHENTICATED` y `SHARED_FORBIDDEN`. Luego los archivos y la reexportación.
   Archivos: `packages/contracts/src/shared/{roles,error-codes,index}.ts`, `packages/contracts/src/shared/roles.spec.ts`, `packages/contracts/src/index.ts`.
 
-- [ ] **T-03** [P] `createActor` y `ALL_ROLES` — CA: CA-4, CA-9 — Depende: — — ~0,5 h
+- [x] **T-03** [P] `createActor` y `ALL_ROLES` — CA: CA-4, CA-9 — Depende: — — ~0,5 h
   Prueba primero `apps/api/src/shared/domain/actor.spec.ts`: `canReadContent` es `true` solo para `CLIENT` (tabla con los
   cuatro roles); el objeto está congelado (`Object.isFrozen`); `ALL_ROLES` = `Object.values(Role)` y es de solo
   lectura. Luego `createActor` en `actor.ts` y `ALL_ROLES` en `role.enum.ts`; exportar desde `shared/index.ts`
   (ajustar `index.spec.ts` si enumera exportaciones).
   Archivos: `apps/api/src/shared/domain/{actor,role.enum}.ts`, `apps/api/src/shared/domain/actor.spec.ts`, `apps/api/src/shared/index.ts`.
 
-- [ ] **T-04** Errores `UnauthenticatedError` e `InsufficientRoleError` + contrato de roles — CA: CA-1, CA-5, CA-6 — Depende: T-02, T-03 — ~1 h
+- [x] **T-04** Errores `UnauthenticatedError` e `InsufficientRoleError` + contrato de roles — CA: CA-1, CA-5, CA-6 — Depende: T-02, T-03 — ~1 h
   Prueba primero: `apps/api/src/shared/domain/errors/auth-errors.spec.ts` (`UnauthenticatedError extends
   UnauthorizedError`, `code = 'SHARED_UNAUTHENTICATED'`, 401; `InsufficientRoleError extends ForbiddenError`,
   `code = 'SHARED_FORBIDDEN'`, 403; mensajes exactos de plan §5) y
@@ -86,7 +86,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   desde `presentation`. Luego las clases y `errors/index.ts`.
   Archivos: `apps/api/src/shared/domain/errors/{unauthenticated,insufficient-role}.error.ts`, `apps/api/src/shared/domain/errors/{index.ts,auth-errors.spec.ts}`, `apps/api/src/shared/presentation/auth/roles-contract.spec.ts`.
 
-- [ ] **T-05** Puerto `IAccessTokenVerifier` y `ACCESS_TOKEN_STRATEGY` — CA: CA-2 — Depende: T-03 — ~0,5 h
+- [x] **T-05** Puerto `IAccessTokenVerifier` y `ACCESS_TOKEN_STRATEGY` — CA: CA-2 — Depende: T-03 — ~0,5 h
   Prueba primero en `apps/api/src/shared/index.spec.ts`: `shared` exporta `ACCESS_TOKEN_STRATEGY === 'jwt'` e
   `I_ACCESS_TOKEN_VERIFIER` (símbolo). Luego `i-access-token-verifier.port.ts` con `ACCESS_TOKEN_STRATEGY`,
   `I_ACCESS_TOKEN_VERIFIER`, `AccessTokenClaims`, `AccessTokenVerification` e `IAccessTokenVerifier` tal como plan §5
@@ -94,7 +94,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   el vencimiento con `IClock`».
   Archivos: `apps/api/src/shared/application/auth/i-access-token-verifier.port.ts`, `apps/api/src/shared/index.ts`, `apps/api/src/shared/index.spec.ts`.
 
-- [ ] **T-06** Suite de contrato (tramo puerto) + `TestAccessTokens` + `TestAccessTokenVerifier` — CA: CA-2 — Depende: T-01, T-05 — ~1 h
+- [x] **T-06** Suite de contrato (tramo puerto) + `TestAccessTokens` + `TestAccessTokenVerifier` — CA: CA-2 — Depende: T-01, T-05 — ~1 h
   Prueba primero `apps/api/test/support/access-token-verifier.contract.ts`: función
   `describeAccessTokenVerifierContract({ verifier, tokens, clock })` con el **tramo puerto**: válido → `valid: true`
   con `userId`, `role` y `sessionId`; vencido según `FixedClock` → `{ valid: false, reason: 'expired' }`; alterado en
@@ -105,7 +105,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   ['HS256']`, `ignoreExpiration` y vencimiento con el reloj de la prueba).
   Archivos: `apps/api/test/support/{access-token-verifier.contract,test-access-tokens,test-access-token-verifier}.ts`, `apps/api/test/support/test-access-token-verifier.spec.ts`.
 
-- [ ] **T-07** [P] `RequestPrincipal` y decoradores — CA: CA-4 — Depende: T-03 — ~1 h
+- [x] **T-07** [P] `RequestPrincipal` y decoradores — CA: CA-4 — Depende: T-03 — ~1 h
   Prueba primero `apps/api/src/shared/presentation/auth/decorators.spec.ts`: `@Public()` y `@Roles()` escriben sus
   metadatos en clase y método (el método manda al leer con `getAllAndOverride`); `@Roles()` sin argumentos no compila
   (`// @ts-expect-error`); `@CurrentActor()` devuelve lo que guardó `RequestPrincipal.set` y lanza
@@ -114,7 +114,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   del módulo, `set`/`get`) y los cuatro decoradores con `IS_PUBLIC` y `ROLES_KEY`.
   Archivos: `apps/api/src/shared/presentation/auth/{request-principal,public.decorator,roles.decorator,current-actor.decorator,current-session-id.decorator}.ts`, `apps/api/src/shared/presentation/auth/decorators.spec.ts`.
 
-- [ ] **T-08** `JwtAuthGuard.canActivate`: ruta pública y cabecera estricta — CA: CA-1 — Depende: T-01, T-04, T-05, T-07 — ~1 h
+- [x] **T-08** `JwtAuthGuard.canActivate`: ruta pública y cabecera estricta — CA: CA-1 — Depende: T-01, T-04, T-05, T-07 — ~1 h
   Prueba primero `apps/api/src/shared/presentation/auth/jwt-auth.guard.spec.ts` (primera parte): ruta `@Public()` →
   `true` **sin** llamar a `super.canActivate` ni leer la cabecera (también con un token inválido); sin cabecera →
   `missing_token`; `Basic …`, `Bearer` vacío, dos cabeceras `authorization`, espacios de más → `malformed_authorization`;
@@ -124,7 +124,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   false, undefined, ctx)`.
   Archivos: `apps/api/src/shared/presentation/auth/jwt-auth.guard.ts`, `apps/api/src/shared/presentation/auth/jwt-auth.guard.spec.ts`.
 
-- [ ] **T-09** `JwtAuthGuard.handleRequest` y bitácora `auth.unauthenticated` — CA: CA-2, CA-16 — Depende: T-08 — ~1 h
+- [x] **T-09** `JwtAuthGuard.handleRequest` y bitácora `auth.unauthenticated` — CA: CA-2, CA-16 — Depende: T-08 — ~1 h
   Prueba primero (segunda parte de `jwt-auth.guard.spec.ts`): `user` con `AccessTokenClaims` → `createActor` +
   `RequestPrincipal.set({ actor, sessionId })` y devuelve `user`; `info.name === 'TokenExpiredError'` o
   `info.reason === 'expired'` → `expired_token`; otro `info`, `user === false`, `err` no nulo o «Unknown authentication
@@ -133,14 +133,14 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   cabecera. Luego la implementación.
   Archivos: `apps/api/src/shared/presentation/auth/jwt-auth.guard.ts`, `apps/api/src/shared/presentation/auth/jwt-auth.guard.spec.ts`.
 
-- [ ] **T-10** [P] `RolesGuard` y bitácora `auth.forbidden` — CA: CA-5, CA-6, CA-16, DT-2 — Depende: T-04, T-07 — ~1 h
+- [x] **T-10** [P] `RolesGuard` y bitácora `auth.forbidden` — CA: CA-5, CA-6, CA-16, DT-2 — Depende: T-04, T-07 — ~1 h
   Prueba primero `apps/api/src/shared/presentation/auth/roles.guard.spec.ts`: ruta pública → `true`; sin `@Roles` →
   `undeclared_route` → `InsufficientRoleError`; rol no listado → `role_not_allowed`; `@Roles` de método sobrescribe al
   de clase; sin `Actor` → `UnauthenticatedError`; los rechazos registran `auth.forbidden` (`warn`) con `route`,
   `actorId`, `role`, `reason` y `requiredRoles`. Luego la implementación.
   Archivos: `apps/api/src/shared/presentation/auth/roles.guard.ts`, `apps/api/src/shared/presentation/auth/roles.guard.spec.ts`.
 
-- [ ] **T-11** `AuthGuardsModule` estático, `AppModule` y `@Public()` en salud — CA: CA-1, CA-3 — Depende: T-09, T-10 — ~0,5 h
+- [x] **T-11** `AuthGuardsModule` estático, `AppModule` y `@Public()` en salud — CA: CA-1, CA-3 — Depende: T-09, T-10 — ~0,5 h
   Prueba primero en `apps/api/src/shared/presentation/health.controller.spec.ts`: `HealthController` tiene `IS_PUBLIC`
   a nivel de clase; y en `apps/api/test/int/shared/health.int-spec.ts`, con los guards activos, `GET /health/live` y
   `/health/ready` responden 200 sin token y también con un `Bearer basura`. Luego `auth-guards.module.ts` (sin
@@ -148,7 +148,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   `app.module.ts` y `@Public()` en `HealthController`. El `worker` **no** importa `AuthGuardsModule`.
   Archivos: `apps/api/src/shared/presentation/auth/auth-guards.module.ts`, `apps/api/src/app.module.ts`, `apps/api/src/shared/presentation/health.controller.ts`, `apps/api/src/shared/presentation/health.controller.spec.ts`, `apps/api/test/int/shared/health.int-spec.ts`, `apps/api/src/shared/index.ts`.
 
-- [ ] **T-12** `TestJwtStrategy` y controlador sonda — CA: CA-1, CA-2, CA-4, CA-5, CA-6 — Depende: T-06, T-11 — ~1 h
+- [x] **T-12** `TestJwtStrategy` y controlador sonda — CA: CA-1, CA-2, CA-4, CA-5, CA-6 — Depende: T-06, T-11 — ~1 h
   Prueba primero `apps/api/test/support/test-jwt-strategy.spec.ts`: `validate(req)` con token válido devuelve los
   `claims` del verificador; con vencido devuelve `[false, { reason: 'expired' }]`; con inválido, `[false, { reason:
   'invalid' }]`; nunca lanza. Luego `TestJwtStrategy extends PassportStrategy(Strategy, ACCESS_TOKEN_STRATEGY)`
@@ -158,7 +158,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   `I_ACCESS_TOKEN_VERIFIER` → `TestAccessTokenVerifier`). Nunca en `src/`.
   Archivos: `apps/api/test/support/{test-jwt-strategy,probe.controller,probe.module}.ts`, `apps/api/test/support/test-jwt-strategy.spec.ts`.
 
-- [ ] **T-13** `createTestApp`: guards siempre y registro único de estrategia — CA: CA-1 (arnés) — Depende: T-12 — ~1 h
+- [x] **T-13** `createTestApp`: guards siempre y registro único de estrategia — CA: CA-1 (arnés) — Depende: T-12 — ~1 h
   Prueba primero `apps/api/test/int/setup/test-app.int-spec.ts`: sin opciones, una ruta sonda protegida responde 401
   sin token (los guards no se pueden apagar; **no** existe `guards: false`, cambio 7); `accessTokenStrategy: 'test'`
   (por defecto) monta `ProbeModule`; pedir `'test'` con un árbol que ya registra otra estrategia
@@ -168,7 +168,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   000 (`health`, `worker-health`, `bootstrap`, `correlation-id`…) siguen en verde con los guards activos.
   Archivos: `apps/api/test/int/setup/test-app.ts`, `apps/api/test/int/setup/test-app.int-spec.ts`.
 
-- [ ] **T-14** Suite de contrato, tramo HTTP — CA: CA-2 — Depende: T-13 — ~1 h
+- [x] **T-14** Suite de contrato, tramo HTTP — CA: CA-2 — Depende: T-13 — ~1 h
   Prueba primero: agregar a `access-token-verifier.contract.ts` el **tramo HTTP** (los mismos tokens del tramo puerto
   contra `GET /__probe/actor` con los guards globales: válido → 200 con el mismo `Actor`; vencido, alterado, otra clave,
   `alg: none`, `HS512`, *claims* rotos → 401 `SHARED_UNAUTHENTICATED`, y el `reason` de la bitácora coincide con el del
@@ -176,7 +176,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   `TestJwtStrategy` y `passport-jwt` real. Es la **única** suite de contrato; 002-PR-2 la reutiliza (002 CA-26).
   Archivos: `apps/api/test/support/access-token-verifier.contract.ts`, `apps/api/test/int/shared/access-token-contract.int-spec.ts`.
 
-- [ ] **T-15** CA-1 y CA-4 por HTTP — CA: CA-1, CA-4 — Depende: T-13 — ~1 h
+- [x] **T-15** CA-1 y CA-4 por HTTP — CA: CA-1, CA-4 — Depende: T-13 — ~1 h
   Prueba primero `apps/api/test/int/shared/auth-guards.int-spec.ts`: `/__probe/undeclared` y `/__probe/client` sin token
   → 401 con cuerpo validado por `errorResponseSchema` y espía del controlador sin llamadas; `/__probe/actor` con un token
   de cada rol devuelve `{ id, role, canReadContent }` (`true` solo para `CLIENT`); un middleware de prueba que escribe
@@ -184,21 +184,21 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   `sessionId` de `@CurrentSessionId()` (cambio 5). Sin código de producción nuevo salvo correcciones.
   Archivos: `apps/api/test/int/shared/auth-guards.int-spec.ts`.
 
-- [ ] **T-16** CA-5 y CA-6 por HTTP (sondas) — CA: CA-5, CA-6 — Depende: T-15 — ~0,5 h
+- [x] **T-16** CA-5 y CA-6 por HTTP (sondas) — CA: CA-5, CA-6 — Depende: T-15 — ~0,5 h
   Prueba en `auth-guards.int-spec.ts`: matriz `/__probe/client`, `/__probe/admin`, `/__probe/support`,
   `/__probe/operator`, `/__probe/admin-or-support` × cuatro roles (200 solo los listados; los demás 403
   `SHARED_FORBIDDEN`), y `/__probe/undeclared` con token válido → 403 (DT-2). La matriz de aislamiento con cuentas del
   mundo es T-42.
   Archivos: `apps/api/test/int/shared/auth-guards.int-spec.ts`.
 
-- [ ] **T-17** [P] Sin estrategia registrada → 401 — CA: CA-1, CA-2 — Depende: T-11 — ~0,5 h
+- [x] **T-17** [P] Sin estrategia registrada → 401 — CA: CA-1, CA-2 — Depende: T-11 — ~0,5 h
   Prueba primero `apps/api/test/int/shared/auth-guards.no-strategy.int-spec.ts` (archivo propio: el registro de
   Passport es por proceso): una app con `AuthGuardsModule` y un controlador de prueba, **sin** estrategia `'jwt'`; ruta
   no pública con cualquier `Bearer` → 401 `SHARED_UNAUTHENTICATED` y bitácora `reason: 'invalid_token'`; ruta pública
   → 200. Monta la app con `Test.createTestingModule` directo (no con `createTestApp`, que siempre registra la de prueba).
   Archivos: `apps/api/test/int/shared/auth-guards.no-strategy.int-spec.ts`.
 
-- [ ] **T-18** [P] Bitácoras de 401 y 403 sin datos sensibles — CA: CA-16 — Depende: T-13 — ~1 h
+- [x] **T-18** [P] Bitácoras de 401 y 403 sin datos sensibles — CA: CA-16 — Depende: T-13 — ~1 h
   Prueba primero `apps/api/test/int/shared/auth-logs.int-spec.ts` (con `LogSink`): 401 (`missing_token`,
   `malformed_authorization`, `invalid_token`, `expired_token`) y 403 (`role_not_allowed`, `undeclared_route`) con
   `correlationId`, `route` como patrón (una petición a `/__probe/actor/<uuid>?x=1` registra `…/:id` sin consulta),
@@ -206,7 +206,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   el valor de las cabeceras `x-user-id`/`x-actor-role`/`x-forwarded-user`. `http.domain_error` no repite el motivo.
   Archivos: `apps/api/test/int/shared/auth-logs.int-spec.ts`.
 
-- [ ] **T-19** README de `shared` y cierre del PR-A — CA: n/a — Depende: T-01…T-18 — ~1 h
+- [x] **T-19** README de `shared` y cierre del PR-A — CA: n/a — Depende: T-01…T-18 — ~1 h
   `apps/api/src/shared/README.md`: guards globales, «toda ruta se declara con `@Public()` o `@Roles(...)`» (con
   `@Roles(...ALL_ROLES)` para la sesión propia), decoradores, `IAccessTokenVerifier` + `ACCESS_TOKEN_STRATEGY` y la
   regla de una sola estrategia por app de prueba. `pnpm lint`, `pnpm typecheck`, `pnpm test` (cobertura ≥ 60 % en las
@@ -564,4 +564,17 @@ PR-F = 9 (T-48…T-56). Total: 56.
 - **Archivos de prueba que el plan no nombra**: `app-role-script.int-spec.ts` (T-20), `test-app.int-spec.ts` (T-13),
   `access-token-contract.int-spec.ts` (T-14), `isolation-world.iso-spec.ts` (T-41), `index.spec.ts` de `access` (T-39)
   y `roles-contract.spec.ts` en `shared/presentation/auth` (T-04, porque el dominio no importa `contracts`).
+- **Versiones de Passport (T-01)**: `@nestjs/jwt@12` y `@nestjs/passport@12` son solo ESM (`"type": "module"`) y
+  el `api` compila a CommonJS y prueba con `ts-jest`; se fijan las últimas de la línea 11 (la de `@nestjs/common` 11):
+  `@nestjs/jwt@11.0.2`, `@nestjs/passport@11.0.5`, `passport@0.7.0`, `passport-jwt@4.0.1`, `@types/passport-jwt@4.0.1`.
+- **Suite de contrato (T-06)**: `describeAccessTokenVerifierContract` recibe una función `() => ({ verifier, tokens,
+  clock })` que se evalúa dentro de cada prueba, para que 002 pueda construir su sujeto en un `beforeAll`. Para que
+  `test/support/*.spec.ts` corra en `pnpm test`, `apps/api/jest.config.cjs` agrega ese patrón a `testMatch`.
+- **`ALL_ROLES` como tupla (T-07)**: el plan §5 lo tipa `readonly Role[]`, pero `@Roles` exige `readonly [Role, ...Role[]]` y el *spread* de un arreglo no la cumple. Se tipa `readonly [Role, ...Role[]]` (mismos valores, congelado; `actor.spec.ts` comprueba que coincide con `Object.values(Role)`). `RequestPrincipal` agrega `require(ctx)`, que usan los dos decoradores de parámetro.
+- **Patrón de ruta en las bitácoras (T-08)**: `presentation/auth/route-pattern.ts` (archivo no listado) arma `route` con `método + baseUrl + req.route.path` para `auth.unauthenticated` y `auth.forbidden`; lo comparten los dos guards. Las dos cabeceras `authorization` se detectan en `rawHeaders`, porque Node descarta los duplicados de `authorization` en `headers`.
+- **Sondas (T-12)**: además de las rutas de plan §5, `GET /__probe/session` (`@Roles(...ALL_ROLES)`, devuelve `{ sessionId }` de `@CurrentSessionId()`) para la parte de `sessionId` de CA-4 (T-15), y `ProbeCalls` (registro de manejadores ejecutados) para afirmar que un 401/403 no corre el controlador: un `jest.spyOn` sobre el controlador no sirve porque Nest captura el método al iniciar. `ProbeModule` provee su propio `FixedClock` bajo `I_CLOCK` (`PROBE_CLOCK_START`). Sin Docker, la cadena guard → Passport → estrategia → filtro se comprobó con una app Nest mínima sin `SharedModule` (prueba temporal no incluida): 200/401/403 y bitácoras con el patrón de ruta como se esperaba.
+- **Arnés con guards (T-13)**: la comprobación de mezcla cuenta, tras compilar, los *providers* que son estrategias de Passport (`authenticate` función) con `name === ACCESS_TOKEN_STRATEGY` (`passport-jwt` usa `jwt`); con `'test'` y más de una, cierra el módulo y lanza. No se importa `passport` directamente porque `api` no tiene `@types/passport`. Los controladores de prueba de 000 (`correlation-probe`, `errors-probe`) pasan a `@Public()` porque no prueban autorización. El conteo se comprobó con una prueba temporal sin Docker (1 con sondas, 2 con otra estrategia, 0 sin sondas).
+- **Bitácoras sin `req` (T-18, archivo no previsto)**: con el logger por petición de `nestjs-pino`, cada línea escrita durante la petición (`auth.unauthenticated`, `auth.forbidden`, `http.domain_error`) llevaba `req` completo: URL con el `id` real y **todas** las cabeceras que manda el cliente (incluidas `x-forwarded-user` con un correo y las cabeceras falsas), lo que rompe CA-16. Se agrega `quietReqLogger: true` en `infrastructure/logging/logger.options.ts` (+ prueba en `logger.options.spec.ts`): esas líneas llevan solo `reqId`. La línea `http.request` de 000 sigue con `req.headers` (salvo `authorization`/`cookie`, redactadas), así que T-18 exige «sin token ni `Bearer`» en todas las líneas y «sin correo ni cabeceras falsas» en las de denegación. **Hallazgo para `security-auditor`**: `http.request` registra cabeceras arbitrarias del cliente; conviene una lista permitida de cabeceras (fuera del alcance de 003).
+- **Verificación del PR-A sin Docker (T-11…T-19)**: Docker no está disponible (aviso de Adrián, 2026-09-27), así que **no se ejecutaron** `pnpm test:int` ni `pnpm test:isolation`. Quedan sin correr: `health.int-spec.ts` (CA-3 nuevo), `test-app.int-spec.ts`, `access-token-contract.int-spec.ts`, `auth-guards.int-spec.ts`, `auth-guards.no-strategy.int-spec.ts`, `auth-logs.int-spec.ts` y las suites de 000 con guards activos (`correlation-id`, `domain-exception-filter`, `worker-health`, `ping-queue`, `bootstrap`). Compilan (typecheck/lint) y las cinco nuevas de autorización se ejecutaron en verde contra una app Nest mínima sin `SharedModule` (arnés temporal fuera del repositorio). Antes de abrir el PR hay que correr `pnpm test:int` y `pnpm test:isolation` con Docker. `pnpm lint`, `pnpm typecheck`, `pnpm test` y `pnpm env:check` en verde; cobertura de las piezas nuevas de `shared` 100 % líneas, 91 % ramas.
+- **Review I-2 resuelto (`jwt-auth.guard.ts`)**: un `err` de Passport que no es `UnauthenticatedError` ni `TokenExpiredError`/`JsonWebTokenError`/`NotBeforeError` sigue siendo 401 `invalid_token`, pero además registra `auth.unexpected_error` (`warn`) con `route`, `errorClass` y `errorMessage` recortado a 200 caracteres (sin token ni cabeceras, CA-16); plan §7 actualizado. Pruebas en `jwt-auth.guard.spec.ts`. Commit `fix(shared): registrar la clase y el mensaje de errores inesperados del guard JWT [003]`.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>

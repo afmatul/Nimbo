@@ -101,13 +101,12 @@ perderse.
   - `IdentityIpThrottlerGuard`: 002-PR-2 agrega `login-ip` a `IDENTITY_THROTTLERS` y a la tabla de ámbitos.
   - `User.emailVerified` y `User.status` para `IDENTITY_EMAIL_NOT_VERIFIED` e `IDENTITY_ACCOUNT_SUSPENDED`.
   - `IRateLimiter` (`shared`) para sus límites por correo.
-- **003**: `AuthController` no construye `Actor` y una cabecera `Authorization` se ignora (CA-7). El verificador
-  token → `Actor` lo agrega 002 a `index.ts`.
+- **003**: `AuthController` es `@Public()` (fuera de los guards globales), no construye `Actor` y una cabecera
+  `Authorization` se ignora (CA-7). El verificador token → `Actor` lo agrega 002 a
+  `index.ts`.
 
 ## Pendientes
 
-- **`@Public()` con 003**: cuando 003 instale el guard global de autenticación, las tres rutas de `AuthController`
-  se marcan `@Public()`.
 - **`@SkipThrottle` con 002**: `register` ya omite `resend-ip` y `resend-verification` omite `register-ip`. Cuando
   002-PR-2 agregue el _throttler_ `login-ip`, `register` y `resend-verification` omiten también `login-ip`, y `login`
   omite `register-ip` y `resend-ip`, sin renombrar nada (002 D-5).

@@ -67,7 +67,7 @@ const withRequest = (req: IncomingMessage, _res: unknown, loggable: object): obj
 const buildPinoHttpOptions = (input: LoggerOptionsInput): PinoHttpOptions => ({
   ...buildPinoOptions(input),
   // `req` y `res` (cabeceras, IP) van solo en la línea `http.request`: los *loggers* de la petición que usan los
-  // servicios (vía `PinoLogger`) enlazan únicamente `reqId`, igual al `correlationId` (plan §7, CA-18).
+  // servicios (vía `PinoLogger`) enlazan únicamente `reqId`, igual al `correlationId` (plan §7, CA-18; 003 CA-16).
   quietReqLogger: true,
   quietResLogger: true,
   customSuccessObject: withRequest,
