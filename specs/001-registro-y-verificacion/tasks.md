@@ -608,14 +608,14 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   `use-verify-email.ts` y `app/(public)/verificar-correo/page.tsx` (Client Component).
   Archivos: `apps/web/src/features/identity/components/verify-email-view.tsx`, `apps/web/src/features/identity/hooks/use-verify-email.ts`, `apps/web/src/app/(public)/verificar-correo/page.tsx` y sus `*.spec.ts(x)`.
 
-- [ ] **T-67** **(humana)** Recorrido local completo y revisión visual — CA: CA-22, CA-23 — Depende: T-54, T-59…T-66 — ~1 h
+- [x] **T-67** **(humana)** Recorrido local completo y revisión visual — CA: CA-22, CA-23 — Depende: T-54, T-59…T-66 — ~1 h
   Con `docker compose up -d` y `pnpm dev`, por `http://localhost`: registro (con y sin catálogo) → Mailpit → enlace →
   **exito**; repetir el enlace → **ya-verificado**; enlace alterado → **enlace-invalido**; reenvío con cuenta
   regresiva; Términos y Privacidad. Anotar en la pestaña de red que el token no aparece en ninguna URL pedida al
   servidor. Pedir al `ui-designer` la revisión a 360 y 1440 px contra los mockups (produce `ui-review.md`).
   Archivos: ninguno (evidencia la recoge el `tester` en `verification.md`).
 
-- [ ] **T-68** Cierre del PR-4 y de la spec — CA: todos (trazabilidad) — Depende: T-55…T-67 — ~1 h
+- [x] **T-68** Cierre del PR-4 y de la spec — CA: todos (trazabilidad) — Depende: T-55…T-67 — ~1 h
   `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:int`, `pnpm test:isolation`, `pnpm env:check` en verde.
   `specs/README.md` → 001 `En verificación`; pedir `/verify 001` (`tester`: `verification.md`, con CA-16, CA-26 y la
   sesión de CA-29 enlazados a 002, CA-20 como pendiente de staging y la segunda parte de CA-8 a 006a),
@@ -920,4 +920,13 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   `200 {"status":"verified"}` y la segunda vez `already-verified`; en la BD `CLIENT` con `correo_verificado = true`;
   la bitácora de `pnpm dev` no contiene el correo ni el token.
 - **Pendiente tras el trabajo en paralelo**: subir a `identity-test-app.ts` los ayudantes duplicados (`uniqueEmail`, `nextClientIp`, `waitForMessagesTo`, `neutralView`) y aceptar `env` en `createIdentityTestApp`.
+- **T-67 (2026-09-28)**: recorrido local aprobado por Adrián. La revisión visual del `ui-designer` (22 capturas y
+  después 32 a 360 y 1440 px, axe sin violaciones AA) va en la sección «UI (T-67)» de `review.md` y no en un
+  `ui-review.md` aparte (modo lite); sus hallazgos se cerraron en `36be355`…`8db654a`.
+- **T-68 (2026-09-28)**: en modo lite no hay `verification.md` ni `security.md`: la verificación, la seguridad, la UI y
+  el código van en `review.md`, y `specs/README.md` pone 001 en `En revisión` (no `En verificación`). Correcciones de
+  la revisión: SEC-1 amplía D-8 con 10 reenvíos por IP y por hora (`e616d47`, registro de cambios de la spec,
+  aprobado por Adrián); SEC-2 da 24 h al correo de pedir-enlace (`c178ba6`); PR-4 I-1 (`e3fd715`); I-2, S-3 y SEC-3
+  como documentación y pendientes PD-48 y PD-49 (`4eee16b`). `PlanPicker` hereda de `RadioGroup` el rótulo en
+  `font-medium` y el `ring-offset-2` del foco, un cambio visual menor frente a las capturas de T-67.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>

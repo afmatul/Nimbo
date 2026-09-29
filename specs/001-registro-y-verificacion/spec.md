@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Planificada (2026-09-27, Adrián) |
+| Estado | En revisión (2026-09-28) |
 | Dueño | Adrián (1) |
 | Fase | 1 |
 | Requisitos | RF-01, RNF-04 (principales); aplican también RNF-07 (parcial: límite de tasa del registro y del reenvío), RNF-13, RNF-14, RNF-17 |
