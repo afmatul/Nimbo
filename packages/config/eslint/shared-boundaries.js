@@ -13,6 +13,8 @@ const ROOT_CONTRACT_NAMES = [
   'HealthReadyResponse',
   'INVALID_REASON',
   'REQUIRED_REASON',
+  'ROLES',
+  'SHARED_ERROR_CODES',
   'UNKNOWN_FIELD_REASON',
   'errorResponseSchema',
   'fieldIssueSchema',
