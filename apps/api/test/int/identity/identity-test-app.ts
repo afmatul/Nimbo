@@ -51,14 +51,17 @@ export const validRegistration = (email: string): RegisterRequest => ({
  * App de integración con la composición de `identity` de `AppModule` (plan §6.8): eventos en proceso, *throttlers*
  * de `identity`, `IdentityModule` y, en la misma app, el lado `worker` de `notifications` para que los correos
  * lleguen a Mailpit. La estrategia `ACCESS_TOKEN_STRATEGY` es la real de `identity` (002 T-39); `identityEnv`
- * cambia solo lo que lee `IdentityModule.forRoot` (p. ej. `APP_ENV` para `cookieSecure`). `close` espera a que la cola `mail` quede vacía: un correo encolado y no entregado (p. ej. los
+ * cambia solo lo que lee `IdentityModule.forRoot` (p. ej. `APP_ENV` para `cookieSecure`) y `modules` se suman a
+ * la composición. `close` espera a que la cola `mail` quede vacía: un correo encolado y no entregado (p. ej. los
  * avisos de los registros concurrentes de CA-3) lo entregaría el `worker` de la suite siguiente en el Mailpit
  * compartido, en medio de sus pruebas.
  */
 export const createIdentityTestApp = async (
-  options: Pick<TestAppOptions, 'overrides'> & { readonly identityEnv?: Partial<Env> } = {},
+  options: Pick<TestAppOptions, 'overrides' | 'modules'> & {
+    readonly identityEnv?: Partial<Env>;
+  } = {},
 ): Promise<TestApp> => {
-  const { identityEnv = {}, ...appOptions } = options;
+  const { identityEnv = {}, modules = [], overrides } = options;
   const testApp = await createTestApp({
     withWorkerEnv: true,
     accessTokenStrategy: 'identity',
@@ -67,8 +70,9 @@ export const createIdentityTestApp = async (
       ThrottlerModule.forRoot({ throttlers: [...IDENTITY_THROTTLERS] }),
       NotificationsWorkerModule,
       IdentityModule.forRoot({ ...buildTestEnv(), ...identityEnv }),
+      ...modules,
     ],
-    ...appOptions,
+    ...(overrides === undefined ? {} : { overrides }),
   });
   const mailQueue = testApp.app.get<Queue>(getQueueToken(MAIL_QUEUE));
   return {
