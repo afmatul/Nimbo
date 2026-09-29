@@ -55,6 +55,12 @@ describe('REDACTED_FIELDS', () => {
       DATABASE_URL: '[REDACTED]',
     });
   });
+
+  it('CA-16: redacta `DATABASE_MIGRATION_URL` como URL de conexión (lleva la contraseña del dueño)', () => {
+    expect(
+      redactDeep({ DATABASE_MIGRATION_URL: 'postgres://nimbo:nimbo@localhost:5432/nimbo' }),
+    ).toEqual({ DATABASE_MIGRATION_URL: '[REDACTED]' });
+  });
 });
 
 describe('redactDeep', () => {

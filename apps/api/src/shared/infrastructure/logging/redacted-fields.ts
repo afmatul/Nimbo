@@ -26,7 +26,7 @@ const SPEC_REDACTED_FIELDS = [
 const IDENTITY_REDACTED_FIELDS = ['email', 'correo', 'fullName', 'to', 'html', 'text'] as const;
 
 /** URLs de conexión: llevan usuario y contraseña embebidos (`postgres://usuario:clave@host/bd`). */
-const CONNECTION_URL_FIELDS = ['DATABASE_URL', 'REDIS_URL'] as const;
+const CONNECTION_URL_FIELDS = ['DATABASE_URL', 'DATABASE_MIGRATION_URL', 'REDIS_URL'] as const;
 
 /**
  * Única lista de nombres de campo que el logger redacta, en minúsculas porque la comparación

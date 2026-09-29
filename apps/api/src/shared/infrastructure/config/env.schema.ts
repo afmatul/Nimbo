@@ -149,3 +149,14 @@ export const workerEnvSchema = workerEnvObjectSchema.superRefine(refineWorkerEnv
 export const apiEnvSchema = apiEnvObjectSchema.superRefine(refineApiEnv);
 
 export type Env = z.infer<typeof apiEnvSchema>;
+
+/**
+ * Entorno de las migraciones (003 plan §6.8, ADR-0005): la URL del rol dueño de las tablas. Lo leen solo
+ * `data-source.cli.ts` y `scripts/migrate.ts`; no se une a `apiEnvSchema` ni a `workerEnvSchema`, y no cae a
+ * `DATABASE_URL` (que es `nimbo_app`) si falta.
+ */
+export const migrationEnvSchema = z.object({
+  DATABASE_MIGRATION_URL: url(),
+});
+
+export type MigrationEnv = z.infer<typeof migrationEnvSchema>;

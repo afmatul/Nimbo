@@ -6,6 +6,7 @@ import { DataSource } from 'typeorm';
 import type { ITransactionRunner } from './application/persistence/i-transaction-runner.port';
 import type { IRateLimiter } from './application/rate-limit/i-rate-limiter.port';
 import type { IClock } from './domain/i-clock.port';
+import { DatabaseRoleCheck } from './infrastructure/persistence/database-role.check';
 
 import {
   EnvModule,
@@ -59,6 +60,20 @@ describe('SharedModule global (001 plan §6.7)', () => {
     expect(typeof consumer.transactionRunner.run).toBe('function');
     expect(consumer.redis.status).toBe('wait');
     expect(consumer.transactionContext).toBeInstanceOf(TransactionContext);
+    await moduleRef.close();
+  });
+});
+
+describe('SharedModule y el rol de base de datos (003 plan §6.4)', () => {
+  it('CA-13: registra `DatabaseRoleCheck`, que corre al arrancar `api` y `worker`', async () => {
+    const moduleRef = await Test.createTestingModule({
+      imports: [EnvModule.forRoot(ENV_VALUE), SharedModule],
+    })
+      .overrideProvider(DataSource)
+      .useValue({ manager: {}, transaction: jest.fn(), destroy: jest.fn() })
+      .compile();
+
+    expect(moduleRef.get(DatabaseRoleCheck)).toBeInstanceOf(DatabaseRoleCheck);
     await moduleRef.close();
   });
 });

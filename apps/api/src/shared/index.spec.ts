@@ -14,7 +14,9 @@ type _FieldIssueHasExactlyTheDeclaredKeys = Expect<
   Equal<keyof FieldIssue, 'field' | 'reason' | 'message'>
 >;
 type _RateLimiterExposesOnlyConsume = Expect<Equal<keyof IRateLimiter, 'consume'>>;
-type _TransactionRunnerExposesOnlyRun = Expect<Equal<keyof ITransactionRunner, 'run'>>;
+type _TransactionRunnerExposesRunAndWithActor = Expect<
+  Equal<keyof ITransactionRunner, 'run' | 'withActor'>
+>;
 
 /** Valores en tiempo de ejecución que `shared/index.ts` exporta al cerrar 000 (plan §6.2), por tarea. */
 const RUNTIME_EXPORTS_BY_TASK = {

@@ -3,8 +3,9 @@
 import tseslint from 'typescript-eslint';
 
 import base from './base.js';
+import rls from './rls.js';
 
-export default tseslint.config(...base, {
+export default tseslint.config(...base, ...rls, {
   files: ['**/*.ts'],
   languageOptions: {
     parserOptions: {

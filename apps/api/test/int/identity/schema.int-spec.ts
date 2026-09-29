@@ -98,14 +98,18 @@ const violatedConstraint = async (work: Promise<unknown>): Promise<string | unde
   return undefined;
 };
 
-/** Restricciones de `usuario` y `token_cuenta` (plan 001 §4) sobre la BD migrada por el arnés. */
+/**
+ * Restricciones de `usuario` y `token_cuenta` (plan 001 §4) sobre la BD migrada por el arnés. Prueba el esquema, no
+ * los permisos de la app: se conecta como el dueño (`DATABASE_MIGRATION_URL`), que puede borrar un `usuario` para
+ * comprobar la cascada (`nimbo_app` no tiene `DELETE` en `usuario`, plan 003 §4 (b)).
+ */
 describe('esquema de identity (CA-1, CA-3, CA-17, RN-4)', () => {
   let dataSource: DataSource;
   let runner: QueryRunner;
 
   beforeAll(async () => {
     dataSource = new DataSource(
-      buildDataSourceOptions({ DATABASE_URL: process.env['DATABASE_URL'] ?? '' }),
+      buildDataSourceOptions({ DATABASE_URL: process.env['DATABASE_MIGRATION_URL'] ?? '' }),
     );
     await dataSource.initialize();
   });

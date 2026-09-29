@@ -90,6 +90,21 @@ describe('checkEnvExample (CA-19)', () => {
     expect(result).toEqual({ ok: true, problems: [] });
   });
 
+  it('CA-13: el grupo `migrations` exige `DATABASE_MIGRATION_URL` en `.env.example` (003 plan §6.10)', () => {
+    const real = collectSchemaKeys();
+    const exampleKeys = new Set(
+      [...parseEnvExample(readFileSync(join(ROOT, '.env.example'), 'utf8'))].filter(
+        (key) => key !== 'DATABASE_MIGRATION_URL',
+      ),
+    );
+
+    expect(real.schemas['migrations']).toEqual(['DATABASE_MIGRATION_URL']);
+    expect(checkEnvExample({ exampleKeys, ...real })).toEqual({
+      ok: false,
+      problems: ['`DATABASE_MIGRATION_URL` (migrations) falta en .env.example'],
+    });
+  });
+
   it('CA-19: `NEXT_PUBLIC_SMTP_PASSWORD` expone el secreto SMTP del worker (001 plan §6.10)', () => {
     const real = collectSchemaKeys();
     const exampleKeys = new Set([

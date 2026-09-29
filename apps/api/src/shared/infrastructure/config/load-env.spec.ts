@@ -1,4 +1,4 @@
-import { apiEnvSchema, SECRET_KEYS, workerEnvSchema } from './env.schema';
+import { apiEnvSchema, migrationEnvSchema, SECRET_KEYS, workerEnvSchema } from './env.schema';
 import { loadEnv } from './load-env';
 
 /** Mínimo válido para `api`: solo las variables sin valor por defecto. */
@@ -306,6 +306,47 @@ describe('loadEnv(apiEnvSchema): variables de 001 (plan §6.10)', () => {
     if (!result.ok) return;
     expect(result.env).not.toHaveProperty('SMTP_PASSWORD');
   });
+});
+
+describe('loadEnv(migrationEnvSchema) (003 plan §6.8)', () => {
+  const MIGRATION_URL = 'postgres://nimbo:nimbo@localhost:5432/nimbo';
+
+  it('CA-13: exige `DATABASE_MIGRATION_URL` y devuelve solo esa variable', () => {
+    const result = loadEnv(migrationEnvSchema, { DATABASE_MIGRATION_URL: MIGRATION_URL });
+
+    expect(result).toEqual({ ok: true, env: { DATABASE_MIGRATION_URL: MIGRATION_URL } });
+  });
+
+  it('CA-13: sin `DATABASE_MIGRATION_URL` falla aunque exista `DATABASE_URL` (no cae a la de la app)', () => {
+    const result = loadEnv(migrationEnvSchema, {
+      DATABASE_URL: 'postgres://nimbo_app:nimbo_app@localhost:5432/nimbo',
+    });
+
+    expect(result).toEqual({ ok: false, issues: ['`DATABASE_MIGRATION_URL` es obligatoria'] });
+  });
+
+  it('CA-13: `DATABASE_MIGRATION_URL` que no es URL → «debe ser una URL válida»', () => {
+    const result = loadEnv(migrationEnvSchema, { DATABASE_MIGRATION_URL: 'no-es-url' });
+
+    expect(result).toEqual({
+      ok: false,
+      issues: ['`DATABASE_MIGRATION_URL` debe ser una URL válida'],
+    });
+  });
+
+  it.each([
+    ['api', apiEnvSchema, VALID_API],
+    ['worker', workerEnvSchema, VALID_WORKER],
+  ] as const)(
+    'CA-13: el esquema de `%s` no declara `DATABASE_MIGRATION_URL` (la app no ve la URL del dueño)',
+    (_process, schema, valid) => {
+      const result = loadEnv(schema, { ...valid, DATABASE_MIGRATION_URL: MIGRATION_URL });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.env).not.toHaveProperty('DATABASE_MIGRATION_URL');
+    },
+  );
 });
 
 describe('SECRET_KEYS', () => {
