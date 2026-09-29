@@ -81,24 +81,27 @@ export const createIdentityTestApp = async (
 };
 
 /**
- * Espera un correo dirigido a `email`. No basta con «hay al menos un mensaje»: un correo de la prueba anterior que el
- * `worker` entrega después del `deleteAll` del `beforeEach` llenaría la bandeja antes que el de esta prueba.
+ * Espera un correo dirigido a `email` (y con ese asunto, si se da). No basta con «hay al menos un mensaje»: un correo
+ * de la prueba anterior que el `worker` entrega después del `deleteAll` del `beforeEach` llenaría la bandeja antes que
+ * el de esta prueba.
  */
-const waitForMessageTo = async (email: string): Promise<MailpitSummary> => {
+export const firstMessageTo = async (email: string, subject?: string): Promise<MailpitSummary> => {
   const deadline = Date.now() + MAIL_ARRIVAL_TIMEOUT_MS;
   for (;;) {
-    const summary = (await listMessages()).find((message) =>
-      message.To.some((recipient) => recipient.Address === email),
+    const summary = (await listMessages()).find(
+      (message) =>
+        message.To.some((recipient) => recipient.Address === email) &&
+        (subject === undefined || message.Subject === subject),
     );
     if (summary !== undefined) return summary;
-    if (Date.now() >= deadline) throw new Error('No llegó el correo de verificación.');
+    if (Date.now() >= deadline) throw new Error('No llegó el correo esperado.');
     await delay(MAIL_DRAIN_STEP_MS);
   }
 };
 
 /** Espera el correo de verificación dirigido a `email` y devuelve el token de su enlace. */
 export const verificationTokenSentTo = async (email: string): Promise<string> => {
-  const summary = await waitForMessageTo(email);
+  const summary = await firstMessageTo(email);
   const token = LINK_TOKEN.exec((await getMessage(summary.ID)).Text)?.[1];
   if (token === undefined) throw new Error('El correo no trae el enlace de verificación.');
   return token;
