@@ -31,6 +31,8 @@ export interface RegisterFormProps {
   }) => void;
 }
 
+const SERVER_ERROR_TITLE = 'No pudimos crear tu cuenta.';
+
 const FORM_FIELDS = ['fullName', 'email', 'password', 'acceptTerms'] as const;
 type FormField = (typeof FORM_FIELDS)[number];
 
@@ -110,6 +112,9 @@ export function RegisterForm({
 
   return (
     <form className="space-y-4" onSubmit={(event) => void handleSubmit(submit)(event)} noValidate>
+      {serverError ? (
+        <ServerErrorAlert ref={summaryRef} title={SERVER_ERROR_TITLE} error={serverError} />
+      ) : null}
       <PlanPicker plans={plans} unavailable={unavailable} value={planId} onChange={setPlanId} />
       <div className="space-y-1.5">
         <Label htmlFor="fullName">Nombre completo</Label>
@@ -156,7 +161,6 @@ export function RegisterForm({
         errorMessage={errors.acceptTerms?.message}
         {...register('acceptTerms')}
       />
-      {serverError ? <ServerErrorAlert ref={summaryRef} error={serverError} /> : null}
       <Button type="submit" loading={submitting}>
         {submitting ? 'Creando tu cuenta' : 'Crear cuenta'}
       </Button>
