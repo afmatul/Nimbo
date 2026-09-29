@@ -5,6 +5,7 @@ import { registerRequestSchema, type RegisterRequest } from '@nimbo/contracts';
 import { useEffect, useRef, useState, type JSX } from 'react';
 import { useForm, useWatch, type SubmitHandler } from 'react-hook-form';
 
+import { TextLink } from '../../../components/nimbo/text-link';
 import { Button } from '../../../components/ui/button';
 import { Checkbox } from '../../../components/ui/checkbox';
 import { Input } from '../../../components/ui/input';
@@ -147,8 +148,8 @@ export function RegisterForm({
       <Checkbox
         label={
           <>
-            Acepto los <a href="/terminos">Términos</a> y la{' '}
-            <a href="/privacidad">Política de privacidad</a>.
+            Acepto los <TextLink href="/terminos">Términos</TextLink> y la{' '}
+            <TextLink href="/privacidad">Política de privacidad</TextLink>.
           </>
         }
         error={errors.acceptTerms !== undefined}

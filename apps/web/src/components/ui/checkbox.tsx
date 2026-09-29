@@ -20,7 +20,7 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
       <div className="w-full space-y-1.5">
         <label
           htmlFor={inputId}
-          className="flex min-h-11 items-center gap-3 text-sm font-medium text-foreground"
+          className="flex min-h-11 items-start gap-3 py-3 text-sm font-medium text-foreground"
         >
           <input
             id={inputId}
@@ -36,7 +36,7 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
             )}
             {...props}
           />
-          {label}
+          <span>{label}</span>
         </label>
         {errorMessage === undefined ? null : (
           <p id={describedBy} className="text-xs font-medium text-destructive">

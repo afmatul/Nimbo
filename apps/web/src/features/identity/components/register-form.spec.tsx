@@ -37,6 +37,9 @@ describe('RegisterForm', () => {
     expect(screen.getByRole('link', { name: 'Política de privacidad' }).getAttribute('href')).toBe(
       '/privacidad',
     );
+    for (const name of ['Términos', 'Política de privacidad']) {
+      expect(screen.getByRole('link', { name }).className).toContain('underline');
+    }
 
     await user.type(screen.getByLabelText('Nombre completo'), 'Ana López');
     await user.type(screen.getByLabelText('Correo'), 'ana@ejemplo.com');
