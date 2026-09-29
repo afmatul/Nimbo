@@ -11,18 +11,27 @@ export interface RadioGroupProps {
   readonly name: string;
   readonly legend: string;
   readonly options: readonly RadioOption[];
-  readonly value?: string;
+  /** Opción marcada al inicio; después la selección la gestiona el navegador. */
+  readonly defaultValue?: string | undefined;
+  /** Variante controlada: la opción marcada la decide quien usa el grupo, que recibe cada cambio en `onValueChange`. */
+  readonly value?: string | undefined;
+  readonly onValueChange?: ((value: string) => void) | undefined;
   readonly error?: boolean;
   readonly errorMessage?: string;
   readonly className?: string;
 }
 
-/** Radios nativos con el mismo `name`: las flechas las resuelve el navegador, sin manejador propio. */
+/**
+ * Radios nativos con el mismo `name`: las flechas las resuelve el navegador, sin manejador propio. Sin `value` es no
+ * controlado (`defaultValue`); con `value`, controlado.
+ */
 export function RadioGroup({
   name,
   legend,
   options,
+  defaultValue,
   value,
+  onValueChange,
   error = false,
   errorMessage,
   className,
@@ -52,7 +61,12 @@ export function RadioGroup({
                 type="radio"
                 name={name}
                 value={option.value}
-                defaultChecked={value === option.value}
+                {...(value === undefined
+                  ? { defaultChecked: defaultValue === option.value }
+                  : {
+                      checked: value === option.value,
+                      onChange: () => onValueChange?.(option.value),
+                    })}
                 aria-invalid={isError ? 'true' : undefined}
                 aria-describedby={describedBy}
                 className="h-5 w-5 shrink-0 border border-input bg-card text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"

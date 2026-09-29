@@ -1,5 +1,7 @@
 import type { JSX } from 'react';
 
+import { RadioGroup } from '../../../components/ui/radio-group';
+
 export interface CatalogPlan {
   readonly id: string;
   readonly name: string;
@@ -32,31 +34,15 @@ export function PlanPicker({
   const selected = value ?? plans.find((plan) => plan.free)?.id;
 
   return (
-    <fieldset className="min-w-0 space-y-2 border-0 p-0">
-      <legend className="text-sm font-medium text-foreground">Plan</legend>
-      {plans.map((plan) => {
-        const inputId = `plan-${plan.id}`;
-        return (
-          <label
-            key={plan.id}
-            htmlFor={inputId}
-            className="flex min-h-11 items-center gap-3 text-sm"
-          >
-            <input
-              id={inputId}
-              type="radio"
-              name="plan"
-              value={plan.id}
-              checked={selected === plan.id}
-              onChange={() => onChange?.(plan.id)}
-              className="h-5 w-5 border border-input text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-            <span>
-              {plan.name} · {formatPrice(plan.priceCents)}
-            </span>
-          </label>
-        );
-      })}
-    </fieldset>
+    <RadioGroup
+      name="plan"
+      legend="Plan"
+      options={plans.map((plan) => ({
+        value: plan.id,
+        label: `${plan.name} · ${formatPrice(plan.priceCents)}`,
+      }))}
+      value={selected ?? ''}
+      onValueChange={onChange}
+    />
   );
 }
