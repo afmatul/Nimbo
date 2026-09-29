@@ -43,7 +43,8 @@ Revisa `apps/web` en el diff de la rama y las capturas de Playwright (`e2e/__scr
 - [ ] La UI no sugiere permisos que el servidor niega (p. ej. Soporte nunca ve un botón de vista previa).
 - [ ] Informe de axe sin violaciones `serious`/`critical`.
 
-Escribe `specs/NNN-slug/ui-review.md`:
+Escribe la sección «UI» de `specs/NNN-slug/review.md` (créalo desde `docs/sdd/templates/review-template.md` si no
+existe; no toques las demás secciones):
 ```
 Veredicto: ✅ | ❌
 Pantallas revisadas: … (mockup / captura comparada)

@@ -58,13 +58,24 @@
 - Diferencias aceptadas respecto al mockup: …
 - Sin interfaz: <marcar si la spec no tiene UI>
 
-## 10. Fuera de alcance
+## 10. Enfoque técnico
+> Solo lo esencial para aprobar la spec sin plan.md aparte. Si la spec es transversal, agrega un puerto
+> nuevo entre módulos, tecnología nueva o cambia la arquitectura, escribe `plan.md` (`/plan NNN`) y enlázalo aquí
+> en vez de llenar esta sección a fondo.
+
+- **Módulos afectados**: <módulo(s) del diagrama de clases y capa(s)>
+- **Tablas/columnas**: <nuevas o modificadas, con tipos de `design-model.md` §5>
+- **Contratos**: <endpoints, eventos o payloads de Socket.IO nuevos o cambiados>
+- **Riesgos**: <riesgo real y cómo se mitiga>
+- `plan.md`: <no aplica | ver `./plan.md`, aprobado por architect>
+
+## 11. Fuera de alcance
 - <Lo que alguien podría asumir que entra y no entra.>
 
-## 11. Preguntas
+## 12. Preguntas
 - [ABIERTA] <pregunta> — bloquea: sí/no
 - [RESUELTA] <pregunta> → <respuesta> (fecha, quién)
 
-## 12. Registro de cambios
+## 13. Registro de cambios
 | Fecha | Cambio | Motivo | Aprobó |
 |---|---|---|---|

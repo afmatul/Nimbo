@@ -87,7 +87,7 @@ decisiones; solo faltan los diagramas.
 | PD-14 | `SET LOCAL` pasa a `set_config(…, true)` dentro de `withActor()` en la spec 003; CA-12 admite el valor vacío | 2026-09-27 | `spec/003-roles-y-acceso` |
 | PD-15 | `ThrottlerModule` y `CORS_ORIGIN` entran con la 001 (spec y plan de 000) | 2026-09-27 | `chore/adr-fase-1` |
 | PD-16 | Nota de origen de los mockups en `ui-guidelines.md` §7 | 2026-09-27 | `chore/adr-fase-1` |
-| PD-17 | Nota en `design-cielo-sereno.md`: Inter como única familia | 2026-09-27 | `chore/adr-fase-1` (exacta al integrar `fix/000b-solo-inter`) |
+| PD-17 | Nota en `design-cielo-sereno.md`: Inter como única familia | 2026-09-27 | `chore/adr-fase-1` y `fix/000b-solo-inter` |
 | PD-23 | Error de `tsc` en `apps/web/src/app/globals.spec.ts`; `typecheck` del monorepo en verde | 2026-09-27 | `fix/000b-solo-inter` |
 | PD-30 | `IRateLimiter` pasa de `sharing` a `shared` (lo consumen `identity` desde 001 y `sharing` desde 012): `architecture.md` §3 y §5, `design-model.md` (M1, M3b, T1), ADR-0010, README de `shared` y 001 D-15 | 2026-09-27 | `chore/adr-fase-1` y `spec/001-registro-y-verificacion` |
 | PD-32 | `@nestjs/throttler` sin ADR: lo cubre ADR-0017 (Aceptado), junto con `argon2` y `@nestjs/jwt` | 2026-09-27 | `spec/001-registro-y-verificacion` |

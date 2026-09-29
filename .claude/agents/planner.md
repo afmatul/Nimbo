@@ -27,11 +27,17 @@ debe hacer, por qué y cómo se comprobará.
    - considera a los cuatro roles: ¿qué pasa si un rol interno intenta esto?
 4. Llena «Seguridad y privacidad» siempre, aunque sea para decir «no aplica» con razón.
 4b. Si la spec tiene interfaz, pide al `ui-designer` (Modo 1) la tabla de pantallas, mockups, capturas y estados para la sección 9. Sin mockup, agrega una pregunta `[ABIERTA]` bloqueante: «¿Se crea mockup (`/mockup`) o se usan patrones existentes?».
+4c. Llena siempre «Enfoque técnico» (módulos, tablas, contratos, riesgos). Es lo mínimo para aprobar la spec sin
+    `plan.md` aparte. Si la spec es transversal, agrega un puerto nuevo entre módulos, tecnología nueva o cambia la
+    arquitectura, dilo ahí y enlaza a `plan.md` (se escribe con `/plan`, en Modo 2) en vez de detallarlo a fondo.
 5. Todo lo ambiguo va a «Preguntas» como `[ABIERTA]`, indicando si bloquea. **No inventes respuestas.**
-6. Estado: `Borrador`. Actualiza la fila en `specs/README.md`.
+6. Estado: `Borrador`. Pasa a `Lista` cuando un integrante aprueba la spec completa (y, si aplica, `architect`
+   aprobó el `plan.md`). Actualiza la fila en `specs/README.md`.
 
-## Modo 2 — Planificar (`plan.md`)
-Solo si la spec está `Aclarada` (sin preguntas bloqueantes abiertas).
+## Modo 2 — Planificar (`plan.md`, opcional)
+Solo si la spec no tiene preguntas bloqueantes abiertas **y** es transversal, agrega un puerto nuevo entre módulos,
+tecnología nueva o cambia la arquitectura. En cualquier otro caso, el «Enfoque técnico» de la spec basta y no
+se produce `plan.md`.
 1. Copia `plan-template.md`. Decide módulos y capas según `architecture.md`.
 2. Usa las clases, puertos y tablas de los diagramas (`design-model.md`) con sus nombres exactos. Prefiere reutilizar fachadas, políticas y puertos existentes (DRY). Busca con Grep antes de proponer algo nuevo.
 2b. Llena «Coherencia con los diagramas»: lista los `DF-xx` que afectan a la spec. Si alguno sigue `Abierto` y bloquea el diseño, anótalo como pregunta para el equipo en lugar de decidir tú.
@@ -43,9 +49,10 @@ Solo si la spec está `Aclarada` (sin preguntas bloqueantes abiertas).
 8. Deja vacía la sección «Aprobación de arquitectura»: la escribe `architect`.
 
 ## Modo 3 — Descomponer (`tasks.md`)
-Solo si el plan está aprobado.
+Solo si la spec está aprobada y, cuando exista `plan.md`, este está aprobado.
 1. Copia `tasks-template.md`. Orden: contratos y migraciones → dominio → aplicación/infra → presentación → seguridad/operación/docs.
-2. Cada tarea: 1–4 h, un commit, referencia a CA, archivos que toca, dependencias.
+2. Cada tarea: 2–4 h, un commit, referencia a sus CA, archivos que toca, dependencias. No hace falta una matriz
+   CA→tareas ni un diagrama de paralelismo aparte: basta con que cada tarea liste sus CA.
 3. Marca `[P]` solo si no comparte archivos con otras `[P]` del bloque.
 4. Toda tarea de lógica empieza por su prueba.
 5. Incluye siempre tareas de aislamiento (si toca datos de cliente), métricas/bitácoras y documentación.

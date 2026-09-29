@@ -1,6 +1,8 @@
 # Plan NNN — <Título>
 
 > Spec: `./spec.md` · Estado del plan: Propuesto | Aprobado
+> Solo existe si la spec es transversal, agrega un puerto nuevo entre módulos, tecnología nueva o cambia la
+> arquitectura. Lo aprueba `architect`; sin esos casos, el «Enfoque técnico» de la spec basta.
 
 ## 1. Resumen técnico
 <Cómo se resuelve, en 5–10 líneas.>
