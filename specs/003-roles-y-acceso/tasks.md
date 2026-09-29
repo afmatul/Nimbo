@@ -447,7 +447,7 @@ contra Postgres el contrato de `levelFor` (parte de **CA-10**; el resto, con 005
   roles; CA-6, las cuatro rutas internas × cuatro roles.
   Archivos: `apps/api/test/isolation/roles-and-actor.iso-spec.ts`.
 
-- [ ] **T-43** [P] Roles internos sin contenido, contra la base — CA: CA-9 — Depende: T-41 — ~0,5 h
+- [x] **T-43** [P] Roles internos sin contenido, contra la base — CA: CA-9 — Depende: T-41 — ~0,5 h
   Prueba `apps/api/test/isolation/access-internal-roles.iso-spec.ts`: `PermissionResolver` real, dentro de `withActor`
   como cada rol interno del mundo, da `false` para las acciones de contenido y `null` en `levelFor`; `accessibleNodes`
   ejecutado como subconsulta da 0 filas para cada rol.
@@ -705,4 +705,9 @@ PR-F = 9 (T-48…T-56). Total: 56.
   misma matriz de `auth-guards.int-spec.ts` pero con las cuentas del mundo y como `nimbo_app`. La suplantación de
   CA-4 usa el `id` y el correo reales del **otro** cliente, y se agrega el caso de cada rol interno que envía el `id` y
   el rol de un cliente.
+- **T-43**: también prueba piezas ya hechas (T-36…T-39), sin fase roja propia. `PermissionResolver`, el runner y
+  `TransactionContext` salen de `world.appAs({ modules: [AccessModule] })`. Los «nodos» de la subconsulta son los `id`
+  de las cuentas del mundo en `usuario` (en 003 no hay `archivo`): la misma consulta sin el filtro devuelve las cinco
+  filas y con `accessibleNodes(actor)` ninguna, así el 0 no se debe a una tabla vacía. Las acciones son todas las de
+  `Action` (las once son de contenido).
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
