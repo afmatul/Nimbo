@@ -508,7 +508,9 @@ reescribieron después de revisar los mockups (2026-09-22) o al volver al enlace
 - Mensajes clave (español, tuteo, con acción correctiva):
   - Revisa tu correo: «Te enviamos un enlace a {correo} para verificar tu correo. Ábrelo en las próximas 24 horas. ¿No llegó? Revisa la carpeta de spam o pide otro enlace.»
   - Correo de verificación (cuerpo): «Abre este enlace para verificar tu correo y entrar a Nimbo: {enlace}. Vence en 24 horas y solo funciona una vez. No lo reenvíes: quien lo abra entrará a tu cuenta. Si no creaste una cuenta, ignora este mensaje.»
-  - Requisitos de contraseña: «12 caracteres o más» · «Una mayúscula» · «Un número» · «Un símbolo».
+  - Requisitos de contraseña: «12 caracteres o más» · «Una mayúscula» · «Un número» · «Un símbolo». Cuando se
+    cumplen, las reglas de contraseña común y de correo se rotulan en positivo: «No es una contraseña común» · «Es
+    distinta de tu correo»; cuando no, muestran los dos mensajes siguientes.
   - Contraseña común: «Esta contraseña es muy común y fácil de adivinar.» (el mensaje de `IDENTITY_WEAK_PASSWORD` ya
     cierra con «Elige otra que los cumpla.»)
   - Contraseña igual al correo: «Tu contraseña no puede ser tu correo.»
@@ -644,3 +646,4 @@ ajustes y estados de mockups de §11 (Art. XIII.1; compuerta de `Aclarada`, `wor
 | 2026-09-27 | Encabezado (fila DF) y §14: DF-13, DF-35 y la parte `usuario` de DF-33 ya están `Aceptado` en `design-findings.md` (PD-09); solo queda redibujar el E-R y las clases M1 (PD-06). Se crea `plan.md` (Propuesto). Sin cambio de criterios | Estado real de `design-findings.md` al planificar | — (planner; pendiente de Adrián) |
 | 2026-09-27 | CA-6 precisa que un JSON mal formado responde el `400 VALIDATION_FAILED` de 000 (P-1 del plan). Sin cambio de alcance | Plan 001, P-1 | Adrián |
 | 2026-09-28 | §11: el mensaje «Contraseña común» pierde «Elige otra.», que se repetía dentro de `IDENTITY_WEAK_PASSWORD` («… Elige otra. Elige otra que los cumpla.»). Sin cambio de criterios | Revisión del PR-3, hallazgo 4 | — (developer; pendiente de Adrián en el PR) |
+| 2026-09-28 | §11: rótulos positivos de la lista de requisitos para contraseña común y correo cuando la regla se cumple («No es una contraseña común», «Es distinta de tu correo»); los mensajes de error no cambian. Sin cambio de criterios | Revisión visual T-67, UI-B2 | — (developer; pendiente de Adrián en el PR) |
