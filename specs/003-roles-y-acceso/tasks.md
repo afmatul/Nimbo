@@ -404,10 +404,30 @@ las actualizaciones del `architect` al integrar (plan §10.4).
   §6.11). `pnpm lint` confirma la frontera `access → shared` (ADR-0008).
   Archivos: `apps/api/src/modules/access/{access.module,index}.ts`, `apps/api/src/modules/access/index.spec.ts`, `apps/api/src/modules/access/README.md`, `apps/api/src/app.module.ts`.
 
-- [ ] **T-40** Cierre del PR-C — CA: n/a — Depende: T-35…T-39 — ~0,5 h
+- [x] **T-40** Cierre del PR-C — CA: n/a — Depende: T-35…T-39 — ~0,5 h
   `pnpm lint`, `pnpm typecheck`, `pnpm test` (cobertura ≥ 60 % en `domain/` y `application/` de `access`, RNF-11),
   `pnpm test:int`, `pnpm test:isolation`. Resumen en el PR («PR parcial»).
   Archivos: `specs/003-roles-y-acceso/tasks.md` (casillas).
+
+### Resumen del PR-C (PR parcial de 003)
+
+PR parcial de 003 (plan §6.12): módulo `access` (M3a), T-35…T-40, sobre PR-A (integrado por *merge*) y PR-B. Cubre
+**CA-8** (tabla de tres niveles × once acciones, cerrada por defecto para Editor y Viewer) y **CA-9** (los roles
+internos reciben `false`/`null` sin consultar; `accessibleNodes` les da el conjunto vacío tipado), y deja probado
+contra Postgres el contrato de `levelFor` (parte de **CA-10**; el resto, con 005). Entrega `AccessLevel`, `Action`,
+`IAccessPolicy` y las tres políticas, `PermissionResolver`, `IAccessLevelReader` → `SqlAccessLevelReader` (solo con el
+`EntityManager` de `requireActorScope`), `accessibleNodes` + `AccessibleNodesFragment`, `AccessModule` en `AppModule`,
+`index.ts` y el README del módulo (qué agregan 005 y 012). Sin tablas ni migraciones.
+
+- **Archivo de 001 tocado**: `packages/config/eslint/shared-boundaries.js` se amplió en `b804897` para que `shared`
+  pueda importar de la raíz de `@nimbo/contracts` `ROLES`, `RoleName`, `SHARED_ERROR_CODES` y `SharedErrorCode`
+  (contratos de `contracts/shared`, T-02/T-04). Lo revisa quien integre 001.
+- **Decisión pendiente para el `architect`**: si `shared` debe exportar un `isUuid` (hoy `PermissionResolver` repite
+  el patrón UUID que ya valida `withActor`).
+- Pruebas (Docker): `pnpm lint`, `pnpm typecheck`, `pnpm test` y `pnpm test:isolation` en verde; `pnpm test:int`
+  159/160: falla solo `dotenv-bootstrap.int-spec.ts`, conocido (el compose local no tiene `nimbo_app`; aviso del
+  PR-B). Cobertura de `access`: `domain/` 100 % (`policies/` 92,9 % líneas, rama `never` del `switch` sin cubrir),
+  `application/` 100 %.
 
 ## Bloque 4 — PR-D «arnés de aislamiento y rutas» (plan §6.2, §6.7; CA-3, CA-7, CA-11, CA-15) — depende de: PR-A, PR-B, PR-C; T-45 de **001 PR-3**
 
@@ -665,8 +685,14 @@ PR-F = 9 (T-48…T-56). Total: 56.
 - **Sondas (T-12)**: además de las rutas de plan §5, `GET /__probe/session` (`@Roles(...ALL_ROLES)`, devuelve `{ sessionId }` de `@CurrentSessionId()`) para la parte de `sessionId` de CA-4 (T-15), y `ProbeCalls` (registro de manejadores ejecutados) para afirmar que un 401/403 no corre el controlador: un `jest.spyOn` sobre el controlador no sirve porque Nest captura el método al iniciar. `ProbeModule` provee su propio `FixedClock` bajo `I_CLOCK` (`PROBE_CLOCK_START`). Sin Docker, la cadena guard → Passport → estrategia → filtro se comprobó con una app Nest mínima sin `SharedModule` (prueba temporal no incluida): 200/401/403 y bitácoras con el patrón de ruta como se esperaba.
 - **Arnés con guards (T-13)**: la comprobación de mezcla cuenta, tras compilar, los *providers* que son estrategias de Passport (`authenticate` función) con `name === ACCESS_TOKEN_STRATEGY` (`passport-jwt` usa `jwt`); con `'test'` y más de una, cierra el módulo y lanza. No se importa `passport` directamente porque `api` no tiene `@types/passport`. Los controladores de prueba de 000 (`correlation-probe`, `errors-probe`) pasan a `@Public()` porque no prueban autorización. El conteo se comprobó con una prueba temporal sin Docker (1 con sondas, 2 con otra estrategia, 0 sin sondas).
 - **Bitácoras sin `req` (T-18, archivo no previsto)**: con el logger por petición de `nestjs-pino`, cada línea escrita durante la petición (`auth.unauthenticated`, `auth.forbidden`, `http.domain_error`) llevaba `req` completo: URL con el `id` real y **todas** las cabeceras que manda el cliente (incluidas `x-forwarded-user` con un correo y las cabeceras falsas), lo que rompe CA-16. Se agrega `quietReqLogger: true` en `infrastructure/logging/logger.options.ts` (+ prueba en `logger.options.spec.ts`): esas líneas llevan solo `reqId`. La línea `http.request` de 000 sigue con `req.headers` (salvo `authorization`/`cookie`, redactadas), así que T-18 exige «sin token ni `Bearer`» en todas las líneas y «sin correo ni cabeceras falsas» en las de denegación. **Hallazgo para `security-auditor`**: `http.request` registra cabeceras arbitrarias del cliente; conviene una lista permitida de cabeceras (fuera del alcance de 003).
-- **Verificación del PR-A sin Docker (T-11…T-19)**: Docker no está disponible (aviso de Adrián, 2026-09-27), así que **no se ejecutaron** `pnpm test:int` ni `pnpm test:isolation`. Quedan sin correr: `health.int-spec.ts` (CA-3 nuevo), `test-app.int-spec.ts`, `access-token-contract.int-spec.ts`, `auth-guards.int-spec.ts`, `auth-guards.no-strategy.int-spec.ts`, `auth-logs.int-spec.ts` y las suites de 000 con guards activos (`correlation-id`, `domain-exception-filter`, `worker-health`, `ping-queue`, `bootstrap`). Compilan (typecheck/lint) y las cinco nuevas de autorización se ejecutaron en verde contra una app Nest mínima sin `SharedModule` (arnés temporal fuera del repositorio). Antes de abrir el PR hay que correr `pnpm test:int` y `pnpm test:isolation` con Docker. `pnpm lint`, `pnpm typecheck`, `pnpm test` y `pnpm env:check` en verde; cobertura de las piezas nuevas de `shared` 100 % líneas, 91 % ramas.
+- **Verificación del PR-A sin Docker (T-11…T-19)** (histórica): Docker no está disponible (aviso de Adrián, 2026-09-27), así que **no se ejecutaron** `pnpm test:int` ni `pnpm test:isolation`. Quedan sin correr: `health.int-spec.ts` (CA-3 nuevo), `test-app.int-spec.ts`, `access-token-contract.int-spec.ts`, `auth-guards.int-spec.ts`, `auth-guards.no-strategy.int-spec.ts`, `auth-logs.int-spec.ts` y las suites de 000 con guards activos (`correlation-id`, `domain-exception-filter`, `worker-health`, `ping-queue`, `bootstrap`). Compilan (typecheck/lint) y las cinco nuevas de autorización se ejecutaron en verde contra una app Nest mínima sin `SharedModule` (arnés temporal fuera del repositorio). Antes de abrir el PR hay que correr `pnpm test:int` y `pnpm test:isolation` con Docker. `pnpm lint`, `pnpm typecheck`, `pnpm test` y `pnpm env:check` en verde; cobertura de las piezas nuevas de `shared` 100 % líneas, 91 % ramas.
+  **Resuelto en la rama del PR-C (T-40, 2026-09-28)**: con Docker, las suites de PR-A (`health`, `test-app`,
+  `access-token-contract`, `auth-guards`, `auth-guards.no-strategy`, `auth-logs`, `correlation-id`,
+  `domain-exception-filter`, `worker-health`, `ping-queue`, `bootstrap` de `api` y `worker`) corrieron en verde en
+  `pnpm test:int`, y `pnpm test:isolation` también.
 - **Review I-2 resuelto (`jwt-auth.guard.ts`)**: un `err` de Passport que no es `UnauthenticatedError` ni `TokenExpiredError`/`JsonWebTokenError`/`NotBeforeError` sigue siendo 401 `invalid_token`, pero además registra `auth.unexpected_error` (`warn`) con `route`, `errorClass` y `errorMessage` recortado a 200 caracteres (sin token ni cabeceras, CA-16); plan §7 actualizado. Pruebas en `jwt-auth.guard.spec.ts`. Commit `fix(shared): registrar la clase y el mensaje de errores inesperados del guard JWT [003]`.
-- **Exhaustividad de `policyFor` (T-35)**: se logra con `ACCESS_POLICIES: Readonly<Record<AccessLevel, IAccessPolicy>>`
-  congelado (si falta un nivel no compila), sin `switch`; `policyFor` solo indexa el mapa.
+- **Exhaustividad de `policyFor` (T-35)**: doble. El mapa `POLICIES: Readonly<Record<AccessLevel, IAccessPolicy>>`
+  congelado no compila si le falta un nivel, y `policyFor` usa un `switch` sobre `AccessLevel` con rama
+  `default` `never`, así que un nivel nuevo tampoco compila sin su `case`. `accessPoliciesMap()` expone el mapa para
+  la prueba de congelado.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
