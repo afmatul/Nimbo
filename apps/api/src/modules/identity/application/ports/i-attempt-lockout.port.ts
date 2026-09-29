@@ -1,4 +1,5 @@
-export type LockState = { readonly locked: false } | { readonly locked: true; readonly retryAfterSeconds: number };
+export type LockState =
+  { readonly locked: false } | { readonly locked: true; readonly retryAfterSeconds: number };
 
 export interface LockoutPolicy {
   readonly maxFailures: number;

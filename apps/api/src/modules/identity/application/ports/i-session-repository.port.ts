@@ -10,7 +10,12 @@ export interface ISessionRepository {
   insert(session: Session): Promise<void>;
   findByIdForUpdate(id: string): Promise<Session | null>;
   update(session: Session): Promise<void>;
-  listActive(userId: string, now: Date, idleCutoff: Date, limit: number): Promise<readonly ActiveSessionRecord[]>;
+  listActive(
+    userId: string,
+    now: Date,
+    idleCutoff: Date,
+    limit: number,
+  ): Promise<readonly ActiveSessionRecord[]>;
   revokeIfActive(id: string, userId: string, now: Date): Promise<boolean>;
   revokeAllExcept(userId: string, exceptId: string | null, now: Date): Promise<number>;
 }
