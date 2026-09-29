@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 
 import request from 'supertest';
 
+import { MailProcessor } from '../../../src/modules/notifications/infrastructure/mail.processor';
 import { PingProcessor } from '../../../src/shared';
 import { WorkerModule } from '../../../src/worker.module';
 import { startTestInfra } from '../setup/containers';
@@ -29,16 +30,17 @@ const runHealthcheck = (port: number): Promise<number | null> =>
   });
 
 /** El worker escucha en un puerto real para que `healthcheck.ts` lo consulte como en la imagen. */
-describe('salud del worker (CA-23)', () => {
+describe('salud del worker (CA-23, CA-21)', () => {
   let infra: TestInfra | undefined;
   let testApp: TestApp | undefined;
   let port = 0;
 
   beforeAll(async () => {
     infra = await startTestInfra();
-    const env = buildTestEnv(infra.env());
+    const env = buildTestEnv(infra.env(), { withWorkerEnv: true });
     testApp = await createTestApp({
       env: infra.env(),
+      withWorkerEnv: true,
       modules: [WorkerModule.forRoot(env)],
       prefix: '',
     });
@@ -49,6 +51,7 @@ describe('salud del worker (CA-23)', () => {
   afterAll(async () => {
     // Con Redis caído el `Worker` de BullMQ reintenta para siempre; se cierra a la fuerza antes de apagar la app.
     await testApp?.app.get(PingProcessor).worker.close(true);
+    await testApp?.app.get(MailProcessor).worker.close(true);
     await Promise.allSettled([testApp?.close(), infra?.stopAll()]);
   }, 60_000);
 
@@ -70,6 +73,16 @@ describe('salud del worker (CA-23)', () => {
 
     expect(response.status).toBe(404);
   });
+
+  it('CA-21: con el SMTP caído la salud sigue en 200 y solo depende de Redis', async () => {
+    await ready().containers.mailpit.stop();
+
+    const response = await request(ready().app.app.getHttpServer()).get('/health/ready');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ status: 'ok', checks: { redis: 'up' } });
+    await expect(runHealthcheck(port)).resolves.toBe(0);
+  }, 60_000);
 
   it('CA-23: con Redis detenido → 503 { …redis: "down" } y `healthcheck.ts` sale 1', async () => {
     await ready().containers.redis.stop();

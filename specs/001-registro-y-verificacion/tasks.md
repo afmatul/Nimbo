@@ -212,7 +212,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
 
 ## Bloque 2 — PR-2 «notifications y worker» (plan §6.6, §6.8; ADR-0018)
 
-- [ ] **T-20** [P] [P×PR] Puerto `IMailer`, `MailMessage` y opciones de la cola `mail` — CA: CA-21 — Depende: — — ~1 h
+- [x] **T-20** [P] [P×PR] Puerto `IMailer`, `MailMessage` y opciones de la cola `mail` — CA: CA-21 — Depende: — — ~1 h
   Prueba primero `apps/api/src/modules/notifications/application/ports/idempotency-key.spec.ts` (acepta
   `identity.verification.<uuid>` e `identity.attempt-notice.<uuid>`; rechaza `:`, espacios, vacío y caracteres fuera de
   `[A-Za-z0-9._-]`) y `infrastructure/mail-queue.spec.ts` (`attempts: 6`, `backoff` exponencial de 5000 ms,
@@ -221,7 +221,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   (`MAIL_QUEUE = 'mail'`, `MAIL_JOB_OPTIONS`, `MailJobData`).
   Archivos: `apps/api/src/modules/notifications/application/ports/{i-mailer.port,idempotency-key.spec}.ts`, `apps/api/src/modules/notifications/infrastructure/{mail-queue,mail-queue.spec}.ts`.
 
-- [ ] **T-21** `SmtpMailer` y `NotificationsModule` — CA: CA-18, CA-21 — Depende: T-11, T-20, T-09 — ~1,5 h
+- [x] **T-21** `SmtpMailer` y `NotificationsModule` — CA: CA-18, CA-21 — Depende: T-11, T-20, T-09 — ~1,5 h
   Prueba primero `apps/api/test/int/notifications/smtp-mailer.int-spec.ts` (Redis real): `send` con una clave real
   `identity.verification.<uuid>` crea un trabajo `send` con ese `jobId`, `data.correlationId` de la petición y las
   opciones de `MAIL_JOB_OPTIONS`; enviar dos veces la misma clave deja un solo trabajo; una clave con `:` lanza sin
@@ -230,7 +230,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   SmtpMailer`) e `index.ts` (solo lo público de plan §6.6).
   Archivos: `apps/api/src/modules/notifications/infrastructure/smtp-mailer.ts`, `apps/api/src/modules/notifications/notifications.module.ts`, `apps/api/src/modules/notifications/index.ts`, `apps/api/test/int/notifications/smtp-mailer.int-spec.ts`.
 
-- [ ] **T-22** `SmtpTransport` y Mailpit en el arnés — CA: CA-1 (correo en Mailpit), CA-21 — Depende: T-10 — ~2 h
+- [x] **T-22** `SmtpTransport` y Mailpit en el arnés — CA: CA-1 (correo en Mailpit), CA-21 — Depende: T-10 — ~2 h
   Agregar `nodemailer` y `@types/nodemailer` a `apps/api`. Mailpit en `containers.ts` (`axllent/mailpit` con versión
   fijada; exporta `SMTP_HOST`/`SMTP_PORT` y la URL de la API) y ayudante `test/int/setup/mailpit.ts` (`listMessages`,
   `getMessage`, `deleteAll`, `waitForMessages(n)`). Prueba primero `apps/api/test/int/notifications/smtp-transport.int-spec.ts`:
@@ -239,7 +239,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   `worker`; modos `none`/`starttls`/`implicit`).
   Archivos: `apps/api/package.json`, `apps/api/src/modules/notifications/infrastructure/smtp-transport.ts`, `apps/api/test/int/setup/{containers,mailpit}.ts`, `apps/api/test/int/notifications/smtp-transport.int-spec.ts`.
 
-- [ ] **T-23** `MailProcessor` (idempotencia y bitácoras) — CA: CA-18, CA-21 — Depende: T-20, T-22 — ~2 h
+- [x] **T-23** `MailProcessor` (idempotencia y bitácoras) — CA: CA-18, CA-21 — Depende: T-20, T-22 — ~2 h
   Prueba primero `apps/api/src/modules/notifications/infrastructure/mail.processor.spec.ts` (transporte y Redis falsos):
   corre dentro de `CorrelationContext.run` con el `correlationId` del trabajo y `jobId`; sin marca `mail:sent:<jobId>`
   envía y escribe la marca con `SET NX EX 604800`; con marca no envía y registra `mail.duplicate_skipped`; si el
@@ -249,7 +249,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   Luego `mail.processor.ts`.
   Archivos: `apps/api/src/modules/notifications/infrastructure/mail.processor.ts`, `apps/api/src/modules/notifications/infrastructure/mail.processor.spec.ts`.
 
-- [ ] **T-24** `NotificationsWorkerModule` y `WorkerModule` con la cola `mail` — CA: CA-21 — Depende: T-23 — ~1 h
+- [x] **T-24** `NotificationsWorkerModule` y `WorkerModule` con la cola `mail` — CA: CA-21 — Depende: T-23 — ~1 h
   Prueba primero: ampliar `apps/api/test/int/worker/bootstrap.int-spec.ts` (`worker.started` lista `['ping', 'mail']`;
   sin `SMTP_HOST` o con `SMTP_TLS=none` y `APP_ENV=staging` → `config.invalid` y salida ≠ 0) y
   `worker-health.int-spec.ts` (la salud sigue solo con Redis: un SMTP caído no la afecta). Luego
@@ -258,7 +258,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   `modules/notifications/index.ts`) y `worker.main.ts` si hace falta.
   Archivos: `apps/api/src/modules/notifications/notifications-worker.module.ts`, `apps/api/src/modules/notifications/index.ts`, `apps/api/src/worker.module.ts`, `apps/api/src/worker.main.ts`, `apps/api/test/int/worker/{bootstrap,worker-health}.int-spec.ts`.
 
-- [ ] **T-25** Contrato de `IMailer` de punta a punta y degradación del SMTP — CA: CA-21, CA-18 — Depende: T-18, T-21, T-24 — ~2 h
+- [x] **T-25** Contrato de `IMailer` de punta a punta y degradación del SMTP — CA: CA-21, CA-18 — Depende: T-18, T-21, T-24 — ~2 h
   Pruebas (arnés con `withWorkerEnv`, `NotificationsModule` + `NotificationsWorkerModule` en la misma app, `delay`
   corto inyectado en `MAIL_JOB_OPTIONS`):
   - `apps/api/test/int/notifications/mailer-contract.int-spec.ts` (Liskov): `IMailer.send` → un correo en Mailpit con
@@ -268,7 +268,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
     `mail.failed` con `correlationId` y `recipientId`. (T-51 agrega la variante con el registro).
   Archivos: `apps/api/test/int/notifications/{mailer-contract,mail-degradation}.int-spec.ts`, `apps/api/src/modules/notifications/infrastructure/mail-queue.ts` (si hace falta el `delay` inyectable).
 
-- [ ] **T-26** [P] Operación y documentación de `notifications` — CA: CA-1 (Mailpit en local) — Depende: T-10 — ~1 h
+- [x] **T-26** [P] Operación y documentación de `notifications` — CA: CA-1 (Mailpit en local) — Depende: T-10 — ~1 h
   `compose.override.yml`: el `worker` del perfil `apps` recibe `SMTP_HOST: mailpit` y `SMTP_PORT: '1025'`.
   `docs/operations/ambientes.md`: Mailpit en local (`:8025`), variables `SMTP_*`/`MAIL_FROM`/`WEB_PUBLIC_URL`/
   `CORS_ORIGIN` por proceso, secretos por proceso (`SMTP_PASSWORD` solo en el `worker`), Resend como paso al montar
@@ -276,7 +276,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   idempotencia en tres capas, regla de bitácoras. Verificar `docker compose --profile apps config`.
   Archivos: `compose.override.yml`, `docs/operations/ambientes.md`, `apps/api/src/modules/notifications/README.md`.
 
-- [ ] **T-27** Cierre del PR-2 — CA: n/a — Depende: T-20…T-26 — ~0,5 h
+- [x] **T-27** Cierre del PR-2 — CA: n/a — Depende: T-20…T-26 — ~0,5 h
   `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:int`, `pnpm env:check` en verde; `pnpm dev` con el `worker`
   consumiendo `mail` y `worker.started` con `queues: ['ping', 'mail']`. Resumen en el PR («PR parcial»).
   Archivos: `specs/001-registro-y-verificacion/tasks.md` (casillas).
@@ -725,4 +725,39 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   disponible»). Hallazgo: `redact-deep.spec.ts` («no degrada el logger», un umbral de microsegundos) falló una vez con
   las tres suites de `pnpm test` en paralelo y pasó al repetirla; es anterior a 001 y sensible a la carga de la
   máquina (candidata a revisar en 000, sin cambios aquí).
+- **T-21/T-24, API pública de `notifications` (desviación menor)**: además de lo que lista plan §6.6, `index.ts`
+  exporta `assertIdempotencyKey` (T-34 la usa para comprobar la clave desde `identity`) y `MAIL_QUEUE` (lo necesita
+  `WORKER_QUEUES` en `worker.module.ts`). `index.spec.ts` fija la lista exacta.
+- **T-22, dependencias**: `nodemailer` `10.0.11` y `@types/nodemailer` `8.0.2` (nodemailer no trae tipos; los de
+  DefinitelyTyped cubren la API usada), con versión exacta. Mailpit fijado en `axllent/mailpit:v1.31.3` en
+  Testcontainers y en `compose.override.yml` (antes sin versión). La URL de la API de Mailpit viaja en
+  `TEST_MAILPIT_API_URL`, variable solo de pruebas (no es de ningún esquema). `SmtpTransport` fija tiempos de espera
+  (conexión y saludo 10 s, socket 20 s) por debajo del bloqueo de 30 s de BullMQ: con los de nodemailer (hasta
+  10 min) un SMTP colgado dejaría el trabajo estancado y otro intento podría entregar dos veces. Prueba unitaria
+  adicional `smtp-transport.spec.ts` con un servidor SMTP falso (`node:net`) que anuncia STARTTLS: cubre `MAIL_FROM`,
+  `Message-ID`, los modos `none`/`starttls` y el puerto cerrado con `code`, **ejecutada**.
+- **T-23, decisiones del procesador**: `mail.retry_scheduled` solo se registra si quedan intentos (el último fallo
+  solo produce `mail.failed`, desde `@OnWorkerEvent('failed')` cuando `attemptsMade ≥ attempts`); `mail.failed` lleva
+  también `responseCode`. Si Redis falla al escribir la marca después de un envío aceptado, el error se propaga y el
+  reintento puede duplicar el correo (lo atenúa el `Message-ID`); es el mismo riesgo que ADR-0018 acepta para una
+  caída entre envío y marca.
+- **T-24**: `WorkerModule.forRoot` recibe el entorno de `workerEnvSchema` (antes `SharedEnvBase`), porque
+  `SmtpTransport` lee `SMTP_*` del `ENV`. `worker-health.int-spec.ts` usa `withWorkerEnv` (T-18) y detiene el Mailpit
+  de la suite para comprobar que la salud no depende del SMTP. Los tres casos de configuración de
+  `worker/bootstrap.int-spec.ts` (`REDIS_URL`, sin `SMTP_HOST`, `SMTP_TLS=none` en staging) no necesitan contenedores
+  y se **ejecutaron** con `--globalSetup` vacío (pasan desde el principio: las reglas son del esquema de T-10; aquí
+  son regresión del arranque). El caso `worker.started` con `['ping', 'mail']` se cubrió además con
+  `src/worker.module.spec.ts` (rojo y verde comprobados). Se comprobó también, con una prueba desechable, que
+  `NotificationsModule` + `NotificationsWorkerModule` resuelven sus dependencias en Nest.
+- **T-25, retroceso inyectable**: `NotificationsModule` provee `MAIL_JOB_OPTIONS` bajo `MAIL_JOB_OPTIONS_TOKEN` y
+  `SmtpMailer` lo inyecta; las pruebas lo sustituyen con la opción `overrides` del arnés (retroceso exponencial de
+  500 ms). Ayudante nuevo `test/int/setup/wait-for-log.ts`. La prueba de contrato agrega el caso «dos `send` con la
+  misma clave entregan un solo correo» (capa 2 de idempotencia de punta a punta).
+- **T-26**: `docker compose --profile apps config` **no se ejecutó** (Docker no disponible); `compose.override.yml`
+  se validó parseándolo con `yaml` (el `worker` recibe `SMTP_HOST: mailpit` y `SMTP_PORT: '1025'`).
+- **PR-2 sin Docker (pendiente antes de fusionar)**: en verde `pnpm lint`, `pnpm typecheck`, `pnpm test` y
+  `pnpm env:check`. **Sin ejecutar**: `test/int/notifications/{smtp-mailer,smtp-transport,mailer-contract,
+  mail-degradation}.int-spec.ts`, el caso `worker.started` de `test/int/worker/bootstrap.int-spec.ts`,
+  `test/int/worker/worker-health.int-spec.ts` y `pnpm dev` con el `worker` consumiendo `mail` (T-27). Todas compilan
+  y pasan `lint`. El `redact-deep.spec.ts` inestable (nota de T-19) volvió a fallar una vez en T-22 y pasó al repetir.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
