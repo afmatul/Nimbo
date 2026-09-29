@@ -171,7 +171,13 @@ export const createTestApp = async (options: TestAppOptions = {}): Promise<TestA
   if (options.prefix !== undefined) {
     app.setGlobalPrefix(options.prefix);
   }
-  await app.init();
+  try {
+    await app.init();
+  } catch (error: unknown) {
+    // Un arranque rechazado (p. ej. `DatabaseRoleCheck` con el dueño) no deja conexiones abiertas en la suite.
+    await app.close();
+    throw error;
+  }
 
   return {
     app,

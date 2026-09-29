@@ -431,7 +431,7 @@ contra Postgres el contrato de `levelFor` (parte de **CA-10**; el resto, con 005
 
 ## Bloque 4 — PR-D «arnés de aislamiento y rutas» (plan §6.2, §6.7; CA-3, CA-7, CA-11, CA-15) — depende de: PR-A, PR-B, PR-C; T-45 de **001 PR-3**
 
-- [ ] **T-41** Mundo de aislamiento — CA: CA-15, D-3 — Depende: T-13, T-26, T-39 — ~1 h
+- [x] **T-41** Mundo de aislamiento — CA: CA-15, D-3 — Depende: T-13, T-26, T-39 — ~1 h
   Prueba primero `apps/api/test/isolation/isolation-world.iso-spec.ts`: el mundo crea dos clientes casi idénticos
   (mismo nombre visible, correos que difieren en un carácter, mismo estado y fechas) y una cuenta por rol interno,
   insertados con el rol **dueño**; `tokenFor(cuenta)` da un token que `/__probe/actor` acepta con ese `id` y rol;
@@ -695,4 +695,10 @@ PR-F = 9 (T-48…T-56). Total: 56.
   congelado no compila si le falta un nivel, y `policyFor` usa un `switch` sobre `AccessLevel` con rama
   `default` `never`, así que un nivel nuevo tampoco compila sin su `case`. `accessPoliciesMap()` expone el mapa para
   la prueba de congelado.
+- **T-41**: `createIsolationWorld()` devuelve `clients`, `internals` (por rol interno), `tokenFor`, `appAs` y `close`
+  (borra las cuentas como el dueño). Los *builders* `aClient()`/`anInternal(role)` son funciones exportadas de
+  `isolation-world.ts` (con `named` y `withEmail`); los correos de los clientes llevan un UUID por mundo para no chocar
+  con `uq_usuario_correo` entre suites. `tokenFor` firma con `TestAccessTokens` sobre un `FixedClock` en
+  `PROBE_CLOCK_START` (la hora del `ProbeModule`). Archivo no previsto: `createTestApp` cierra la app si `init` falla
+  (con la URL del dueño `DatabaseRoleCheck` rechaza el arranque y, sin cerrar, la conexión quedaba abierta en la suite).
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
