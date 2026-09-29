@@ -1,3 +1,4 @@
+import { compileApi } from './compiled-api';
 import { startTestInfra } from './containers';
 import type { TestInfra } from './containers';
 import { runMigrations } from './migrate';
@@ -10,10 +11,11 @@ declare global {
 /**
  * Un solo juego de contenedores para toda la corrida de `int` (plan 000 §8). Las suites que necesitan
  * detener dependencias (salud) arrancan las suyas con `startTestInfra()` para no afectar al resto.
- * El esquema compartido se crea con las migraciones versionadas (plan 001 §8), nunca con `synchronize`.
+ * El esquema compartido se crea con las migraciones versionadas (plan 001 §8), nunca con `synchronize`. En paralelo
+ * se compila `api` para las suites que arrancan `api` o `worker` como proceso (`compiled-api.ts`).
  */
 export default async function globalSetup(): Promise<void> {
-  const infra = await startTestInfra();
+  const [infra] = await Promise.all([startTestInfra(), compileApi()]);
   globalThis.nimboTestInfra = infra;
   runMigrations(infra.postgres.getConnectionUri());
   Object.assign(process.env, {

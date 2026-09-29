@@ -10,6 +10,7 @@ HARNESS.md
 node_modules/
 dist/
 dist-worker/
+dist-int/
 .next/
 coverage/
 pnpm-lock.yaml
