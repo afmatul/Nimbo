@@ -3,6 +3,8 @@ import { createServer } from 'node:net';
 import type { AddressInfo } from 'node:net';
 import { resolve } from 'node:path';
 
+import { compiledEntry } from '../setup/compiled-api';
+
 const API_ROOT = resolve(__dirname, '../../..');
 const START_TIMEOUT_MS = 60_000;
 
@@ -50,13 +52,13 @@ const freePort = async (): Promise<number> => {
   return port;
 };
 
-/** Arranca el worker con el entorno del arnés (Redis real) y devuelve la línea `worker.started`. */
+/**
+ * Arranca el worker compilado con `tsc` (con `tsx` la inyección por tipo de Nest falla, `compiled-api.ts`) y el
+ * entorno del arnés (Redis real); devuelve la línea `worker.started`.
+ */
 const waitForWorkerStarted = (env: NodeJS.ProcessEnv): Promise<Record<string, unknown>> =>
   new Promise((resolvePromise, reject) => {
-    const child = spawn(process.execPath, [require.resolve('tsx/cli'), 'src/worker.main.ts'], {
-      cwd: API_ROOT,
-      env,
-    });
+    const child = spawn(process.execPath, [compiledEntry('worker.main')], { cwd: API_ROOT, env });
     let buffer = '';
     const timer = setTimeout(() => {
       child.kill();

@@ -285,14 +285,14 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
 
 ### 3a. Dominio (pruebas primero; puede empezar ya, [P×PR])
 
-- [ ] **T-28** [P] [P×PR] `EmailAddress` y `OpaqueToken` — CA: CA-3, CA-11 (b), CA-17 — Depende: — — ~1,5 h
+- [x] **T-28** [P] [P×PR] `EmailAddress` y `OpaqueToken` — CA: CA-3, CA-11 (b), CA-17 — Depende: — — ~1,5 h
   Prueba primero `domain/email-address.vo.spec.ts` (`  Ana@Ejemplo.COM ` → `ana@ejemplo.com`; `ana.b@…` y
   `ana+nimbo@…` distintos; `localPart()`) y `domain/opaque-token.vo.spec.ts` (`generate()` da 43 caracteres base64url
   sin relleno; 1 000 valores distintos; `hashOf` = SHA-256 hex de 64; `isWellFormed` rechaza vacío, 42 y 44
   caracteres, `+`, `/`, `=` y espacios; `matchesHash` compara con `timingSafeEqual`). Luego los dos objetos de valor.
   Archivos: `apps/api/src/modules/identity/domain/{email-address.vo,opaque-token.vo}.ts` y sus `*.spec.ts`.
 
-- [ ] **T-29** [P] [P×PR] `User`, `ClientUser`, `InternalUser` y objetos de valor de cuenta — CA: CA-1, CA-4, CA-7 — Depende: — — ~2 h
+- [x] **T-29** [P] [P×PR] `User`, `ClientUser`, `InternalUser` y objetos de valor de cuenta — CA: CA-1, CA-4, CA-7 — Depende: — — ~2 h
   Prueba primero `domain/client-user.entity.spec.ts`: `register` nace con `role = CLIENT`, `emailVerified = false`,
   `status = ACTIVE` y la `LegalAcceptance` recibida (no hay forma de pasar rol, estado ni verificación);
   `replacePendingRegistration` devuelve una instancia **nueva** con nombre, hash y aceptación reemplazados y deja la
@@ -302,14 +302,14 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   `legal-acceptance.vo.ts`, `account-status.enum.ts`.
   Archivos: `apps/api/src/modules/identity/domain/{user.entity,client-user.entity,internal-user.entity,password-hash.vo,legal-acceptance.vo,account-status.enum}.ts` y sus `*.spec.ts`.
 
-- [ ] **T-30** [P] [P×PR] `VerificationToken` — CA: CA-8, CA-9, CA-10, CA-11 (a) — Depende: — — ~1,5 h
+- [x] **T-30** [P] [P×PR] `VerificationToken` — CA: CA-8, CA-9, CA-10, CA-11 (a) — Depende: — — ~1,5 h
   Prueba primero `domain/verification-token.entity.spec.ts`: `issue` exige `expiresAt > createdAt` (recibe el
   vencimiento ya calculado, no importa `contracts`); `stateAt(now)` → `invalidated` si hay `invalidatedAt`, `used` si
   hay `usedAt`, `expired` si `now >= expiresAt` (justo en el límite y 1 s antes), `valid` en otro caso; `isValid`;
   `consume` e `invalidate` devuelven instancias nuevas y fallan si el token no es válido.
   Archivos: `apps/api/src/modules/identity/domain/verification-token.entity.ts`, `apps/api/src/modules/identity/domain/verification-token.entity.spec.ts`.
 
-- [ ] **T-31** Errores de `identity`, contrato del evento e `index.ts` — CA: CA-5, CA-6, CA-8, CA-9, CA-11, CA-15 — Depende: T-07 — ~1 h
+- [x] **T-31** Errores de `identity`, contrato del evento e `index.ts` — CA: CA-5, CA-6, CA-8, CA-9, CA-11, CA-15 — Depende: T-07 — ~1 h
   Prueba primero `domain/errors/identity-errors.spec.ts` (cada clase con su `code`, su `status` por herencia —422 o
   429— y el mensaje de plan §5; `IdentityTooManyRequestsError` lleva `retryAfterSeconds` y el mensaje con «N minutos»
   redondeado hacia arriba) y `apps/api/src/modules/identity/index.spec.ts` (exporta exactamente `IdentityModule` —activado
@@ -319,7 +319,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
 
 ### 3b. Aplicación
 
-- [ ] **T-32** [P] Puertos de `identity` e `IDENTITY_CONFIG` — CA: n/a (contratos internos) — Depende: T-29, T-30 — ~0,5 h
+- [x] **T-32** [P] Puertos de `identity` e `IDENTITY_CONFIG` — CA: n/a (contratos internos) — Depende: T-29, T-30 — ~0,5 h
   `application/ports/i-user-repository.port.ts` (`findByEmail`, `findByEmailForUpdate`, `findByIdForUpdate`,
   `insertIfAbsent(user): Promise<boolean>`, `update`), `i-verification-token-repository.port.ts` (`findByHash(hash,
   type)`, `invalidateActive`, `insert`, `consume(id, now): Promise<boolean>`), `i-password-hasher.port.ts`,
@@ -327,7 +327,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   prueban a través de T-34 a T-40.
   Archivos: `apps/api/src/modules/identity/application/ports/*.ts`, `apps/api/src/modules/identity/application/identity-config.ts`.
 
-- [ ] **T-33** [P] Plantillas de correo — CA: CA-1, CA-2 — Depende: — — ~1,5 h
+- [x] **T-33** [P] Plantillas de correo — CA: CA-1, CA-2 — Depende: — — ~1,5 h
   Prueba primero `application/mail/verification-mail.template.spec.ts` (asunto «Verifica tu correo para entrar a
   Nimbo»; texto y HTML con el enlace `http://localhost/verificar-correo#token=…`, «24 horas», «solo funciona una vez»,
   «No reenvíes este correo: quien abra el enlace entrará a tu cuenta», qué hacer si no pediste el registro; no contiene
@@ -337,7 +337,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   visual: `docs/design/mockups/identity/correos/correos--registro.html` (la valida el `ui-designer`).
   Archivos: `apps/api/src/modules/identity/application/mail/*.ts`.
 
-- [ ] **T-34** `VerificationLinkIssuer` — CA: CA-1, CA-4, CA-13, CA-17 — Depende: T-28, T-30, T-32, T-33, T-20 — ~1,5 h
+- [x] **T-34** `VerificationLinkIssuer` — CA: CA-1, CA-4, CA-13, CA-17 — Depende: T-28, T-30, T-32, T-33, T-20 — ~1,5 h
   Prueba primero `application/verification-link-issuer.spec.ts` (repositorio en memoria, `FixedClock`): invalida los
   vigentes antes de insertar; `expiresAt = now + 24 h` con `VERIFICATION_LINK_TTL_HOURS`; guarda solo el hash; el
   `MailMessage` devuelto tiene `to` = correo de la cuenta, el enlace `{webPublicUrl}/verificar-correo#token=<valor>`,
@@ -345,14 +345,14 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   identity.verification` y `recipientId`; dos emisiones → valores distintos.
   Archivos: `apps/api/src/modules/identity/application/verification-link-issuer.ts`, `apps/api/src/modules/identity/application/verification-link-issuer.spec.ts`.
 
-- [ ] **T-35** [P] `RegistrationAttemptNotifier` — CA: CA-2 — Depende: T-32, T-33, T-12 — ~1 h
+- [x] **T-35** [P] `RegistrationAttemptNotifier` — CA: CA-2 — Depende: T-32, T-33, T-12 — ~1 h
   Prueba primero `application/registration-attempt-notifier.spec.ts` (`IRateLimiter` falso): permitido → devuelve el
   aviso con `idempotencyKey = identity.attempt-notice.<uuid>` y registra `identity.registration.attempt_notice_sent`
   (`userId`); rechazado → no devuelve mensaje y registra `…_suppressed`; la clave es
   `identity:attempt-notice:<userId>` con la regla `{ limit: MAX_AVISOS_INTENTO_24H, windowSeconds: 86400 }`.
   Archivos: `apps/api/src/modules/identity/application/registration-attempt-notifier.ts`, `apps/api/src/modules/identity/application/registration-attempt-notifier.spec.ts`.
 
-- [ ] **T-36** `RegistrationService.register` — CA: CA-1, CA-2, CA-3, CA-4, CA-7, CA-15, CA-18 — Depende: T-34, T-35, T-14 — ~2 h
+- [x] **T-36** `RegistrationService.register` — CA: CA-1, CA-2, CA-3, CA-4, CA-7, CA-15, CA-18 — Depende: T-34, T-35, T-14 — ~2 h
   Prueba primero `application/registration.service.spec.ts` (dobles de todos los puertos, `FixedClock`,
   `ITransactionRunner` falso): el límite por correo (`identity:email-request:<sha256>`, reglas 60 s y 5/h) se consulta
   **antes** que el repositorio y, si rechaza, lanza `IdentityTooManyRequestsError` y registra `identity.rate_limited`
@@ -364,13 +364,13 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   **después** del commit y nunca si la transacción falla. Cada rama en un método privado (≤ 30 líneas).
   Archivos: `apps/api/src/modules/identity/application/registration.service.ts`, `apps/api/src/modules/identity/application/registration.service.spec.ts`.
 
-- [ ] **T-37** `RegistrationService.resendVerification` — CA: CA-13, CA-14, CA-15 — Depende: T-36 — ~1 h
+- [x] **T-37** `RegistrationService.resendVerification` — CA: CA-13, CA-14, CA-15 — Depende: T-36 — ~1 h
   Prueba primero (mismo archivo, `describe` propio): usa **la misma** clave de límite que el registro; cliente no
   verificado → emite enlace y registra `identity.verification.resend_requested`; correo inexistente, verificado o
   interno → no emite nada y registra `resend_ignored` sin `userId`; correo después del commit.
   Archivos: `apps/api/src/modules/identity/application/registration.service.ts`, `apps/api/src/modules/identity/application/registration.service.spec.ts`.
 
-- [ ] **T-38** `RegistrationService.verifyEmail` — CA: CA-8, CA-9, CA-10, CA-11, CA-12, CA-29 (d) — Depende: T-36 — ~2 h
+- [x] **T-38** `RegistrationService.verifyEmail` — CA: CA-8, CA-9, CA-10, CA-11, CA-12, CA-29 (d) — Depende: T-36 — ~2 h
   Prueba primero (mismo archivo): token mal formado → `VerificationLinkInvalidError` sin consultar; hash inexistente o
   de tipo `recuperacion` → inválido; cuenta ya verificada → `ALREADY_VERIFIED` (incluido un enlace viejo); estado
   `invalidated`/`used` → inválido; `expired` → `VerificationLinkExpiredError`; `valid` y `consume = true` →
@@ -381,7 +381,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
 
 ### 3c. Infraestructura
 
-- [ ] **T-39** Entidades ORM, mappers y `TypeormUserRepository` — CA: CA-3, CA-19 (sin hash en respuestas) — Depende: T-06, T-14, T-29, T-32 — ~2 h
+- [x] **T-39** Entidades ORM, mappers y `TypeormUserRepository` — CA: CA-3, CA-19 (sin hash en respuestas) — Depende: T-06, T-14, T-29, T-32 — ~2 h
   Prueba primero `apps/api/test/int/identity/user-repository.int-spec.ts`: el mapper devuelve `ClientUser` o
   `InternalUser` según `rol`; `findByEmailForUpdate` bloquea (una segunda transacción espera); **dos `insertIfAbsent`
   concurrentes** en transacciones distintas → una fila, uno devuelve `false` y su `findByEmailForUpdate` en la misma
@@ -390,7 +390,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   `typeorm-user.repository.ts` (`INSERT … ON CONFLICT (correo) DO NOTHING RETURNING id`).
   Archivos: `apps/api/src/modules/identity/infrastructure/persistence/{usuario.orm-entity,user.mapper,typeorm-user.repository}.ts`, `apps/api/test/int/identity/user-repository.int-spec.ts`.
 
-- [ ] **T-40** [P] `TypeormVerificationTokenRepository` — CA: CA-10, CA-11, CA-12 (parcial), CA-29 (d) — Depende: T-06, T-14, T-30, T-32 — ~1,5 h
+- [x] **T-40** [P] `TypeormVerificationTokenRepository` — CA: CA-10, CA-11, CA-12 (parcial), CA-29 (d) — Depende: T-06, T-14, T-30, T-32 — ~1,5 h
   Prueba primero `apps/api/test/int/identity/verification-token-repository.int-spec.ts`: `findByHash(hash,
   'verificacion')` no encuentra un token `recuperacion` con el mismo hash (CA-12); `invalidateActive` marca
   `invalidado_en` solo en los vigentes de ese tipo; `consume` concurrente sobre el mismo id → exactamente un `true`;
@@ -398,7 +398,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   `verification-token.mapper.ts`, `typeorm-verification-token.repository.ts`.
   Archivos: `apps/api/src/modules/identity/infrastructure/persistence/{token-cuenta.orm-entity,verification-token.mapper,typeorm-verification-token.repository}.ts`, `apps/api/test/int/identity/verification-token-repository.int-spec.ts`.
 
-- [ ] **T-41** [P] [P×PR] `Argon2idHasher` (ADR-0017) — CA: CA-19 — Depende: T-29, T-32 — ~1,5 h
+- [x] **T-41** [P] [P×PR] `Argon2idHasher` (ADR-0017) — CA: CA-19 — Depende: T-29, T-32 — ~1,5 h
   Agregar `argon2` a `apps/api` (y a `onlyBuiltDependencies` si pnpm 10 bloquea su script). Prueba primero
   `infrastructure/argon2id.hasher.spec.ts` (contrato de `IPasswordHasher`): PHC `$argon2id$v=19$m=19456,t=2,p=1$…`;
   misma contraseña → hashes distintos; `verify` correcto `true`, incorrecto `false`; parámetros como constantes con
@@ -406,7 +406,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   node -e "require('argon2')"`) y anotarlo en «Notas del developer» (riesgo de plan §9).
   Archivos: `apps/api/package.json`, `pnpm-workspace.yaml` o `package.json` raíz (si hace falta), `apps/api/src/modules/identity/infrastructure/argon2id.hasher.ts`, `apps/api/src/modules/identity/infrastructure/argon2id.hasher.spec.ts`.
 
-- [ ] **T-42** [P] `EventEmitterAccountEventsPublisher` (ADR-0019) — CA: CA-8 — Depende: T-31, T-32 — ~1 h
+- [x] **T-42** [P] `EventEmitterAccountEventsPublisher` (ADR-0019) — CA: CA-8 — Depende: T-31, T-32 — ~1 h
   Agregar `@nestjs/event-emitter`. Prueba primero `infrastructure/event-emitter-account-events.publisher.spec.ts`:
   emite `CLIENT_ACCOUNT_VERIFIED` con `{ userId }` y registra `identity.account_verified.published`; un oyente que lanza
   de forma síncrona → sin excepción y `identity.account_verified.publish_failed` en `warn` solo con `userId`.
@@ -414,14 +414,14 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
 
 ### 3d. Presentación y composición
 
-- [ ] **T-43** [P] Fábrica de errores de validación de `identity` — CA: CA-5, CA-6, CA-7 — Depende: T-05, T-15, T-31 — ~1 h
+- [x] **T-43** [P] Fábrica de errores de validación de `identity` — CA: CA-5, CA-6, CA-7 — Depende: T-05, T-15, T-31 — ~1 h
   Prueba primero `presentation/identity-validation.spec.ts`: si todos los *issues* son de `password` →
   `IdentityWeakPasswordError` con todas las reglas; si hay más de un campo → `IdentityInvalidInputError` con todos,
   incluidas las reglas de contraseña; `UNKNOWN_FIELD` → `IdentityInvalidInputError`; y los `code` de las clases de
   `domain/errors` coinciden con `IDENTITY_ERROR_CODES` de `contracts` (una sola fuente, Art. VI).
   Archivos: `apps/api/src/modules/identity/presentation/identity-validation.ts`, `apps/api/src/modules/identity/presentation/identity-validation.spec.ts`.
 
-- [ ] **T-44** [P] `IdentityIpThrottlerGuard` (ADR-0017, DT-8 del plan 002) — CA: CA-15 — Depende: T-31 — ~1,5 h
+- [x] **T-44** [P] `IdentityIpThrottlerGuard` (ADR-0017, DT-8 del plan 002) — CA: CA-15 — Depende: T-31 — ~1,5 h
   Agregar `@nestjs/throttler`. Prueba primero `presentation/identity-ip-throttler.guard.spec.ts`: al superar el límite
   de `register-ip` lanza `IdentityTooManyRequestsError` con el ámbito que da la tabla *throttler* → ámbito
   (`{ 'register-ip': 'ip' }`) y el `Retry-After` del detalle del *throttler*, y registra `identity.rate_limited`
@@ -430,7 +430,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   archivo. Nota: 002-PR-2 agrega `login-ip` a la tabla y los `@SkipThrottle` cruzados; no se renombra nada.
   Archivos: `apps/api/package.json`, `apps/api/src/modules/identity/presentation/identity-ip-throttler.guard.ts` y su `*.spec.ts`.
 
-- [ ] **T-45** `AuthController`, `IdentityModule` y `AppModule` — CA: CA-1 (camino feliz), CA-8 (camino feliz) — Depende: T-21, T-36…T-44 — ~2 h
+- [x] **T-45** `AuthController`, `IdentityModule` y `AppModule` — CA: CA-1 (camino feliz), CA-8 (camino feliz) — Depende: T-21, T-36…T-44 — ~2 h
   Prueba primero `apps/api/test/int/identity/register.int-spec.ts` con solo el camino feliz de CA-1 (`202 { status:
   'accepted' }`, `Cache-Control: no-store`, sin `Set-Cookie`, fila de `usuario`, token vigente, correo en Mailpit) y
   `verify-email.int-spec.ts` con el de CA-8 (`200 { status: 'verified' }`). Luego `presentation/auth.controller.ts`
@@ -443,7 +443,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
 
 ### 3e. Pruebas de integración por criterio
 
-- [ ] **T-46** Registro: CA-1 completo, CA-2, CA-3 y CA-4 — CA: CA-1, CA-2, CA-3, CA-4 — Depende: T-45 — ~2 h
+- [x] **T-46** Registro: CA-1 completo, CA-2, CA-3 y CA-4 — CA: CA-1, CA-2, CA-3, CA-4 — Depende: T-45 — ~2 h
   En `register.int-spec.ts`: CA-1 (rol, correo normalizado, `correo_verificado = false`, `estado = activa`, versión y
   fecha de aceptación de `LEGAL_DOCUMENTS` con `FixedClock`, `expira_en = +24 h`, un solo correo con el enlace
   `http://localhost/verificar-correo#token=`, sin contraseña); CA-2 (cuenta verificada y cuenta interna insertadas a
@@ -453,7 +453,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   enlace nuevo; antes de 60 s → `429` y la cuenta no cambia).
   Archivos: `apps/api/test/int/identity/register.int-spec.ts`.
 
-- [ ] **T-47** [P] Validación del registro — CA: CA-5, CA-6, CA-7 — Depende: T-45 — ~1,5 h
+- [x] **T-47** [P] Validación del registro — CA: CA-5, CA-6, CA-7 — Depende: T-45 — ~1,5 h
   `apps/api/test/int/identity/register-validation.int-spec.ts`: CA-5 (una petición por regla →
   `IDENTITY_WEAK_PASSWORD` con cada regla en `fields`; con correo existente la respuesta es idéntica, salvo
   `x-correlation-id`); CA-6 (cada campo inválido, casilla sin marcar con su mensaje, campo ausente, varios a la vez →
@@ -462,7 +462,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   Bearer …` igual; ninguna fila con otro rol, verificada o con otra versión).
   Archivos: `apps/api/test/int/identity/register-validation.int-spec.ts`.
 
-- [ ] **T-48** [P] Verificación: CA-8 a CA-11 y concurrencia — CA: CA-8, CA-9, CA-10, CA-11, CA-29 (a–d, parte del token) — Depende: T-45 — ~2 h
+- [x] **T-48** [P] Verificación: CA-8 a CA-11 y concurrencia — CA: CA-8, CA-9, CA-10, CA-11, CA-29 (a–d, parte del token) — Depende: T-45 — ~2 h
   `verify-email.int-spec.ts`: CA-8 (`correo_verificado`, `usado_en`, los demás tokens invalidados, **un** evento
   `{ userId }` capturado por un oyente de prueba, sin correo ni nombre); CA-9 (`FixedClock` + 24 h + 1 s →
   `LINK_EXPIRED`, sin evento); CA-10 (repetir N veces → `already-verified`, sin evento nuevo; enlace viejo de una cuenta
@@ -471,7 +471,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   simultáneos → un `verified`, un `already-verified` y un solo evento; (a)–(c) sin efectos repetidos.
   Archivos: `apps/api/test/int/identity/{verify-email,verify-email-concurrency}.int-spec.ts`.
 
-- [ ] **T-49** [P] Reenvío y límites — CA: CA-13, CA-14, CA-15 — Depende: T-45 — ~2 h
+- [x] **T-49** [P] Reenvío y límites — CA: CA-13, CA-14, CA-15 — Depende: T-45 — ~2 h
   `resend-verification.int-spec.ts`: CA-13 (enlace nuevo con 24 h desde ahora; los anteriores dan `LINK_INVALID`);
   CA-14 (inexistente, verificada, interna → `202` idéntico y ningún correo de verificación).
   `rate-limits.int-spec.ts`: 60 s entre solicitudes (registro y reenvío cuentan juntos), 5 por hora avanzando
@@ -480,7 +480,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   la siguiente funciona como CA-13.
   Archivos: `apps/api/test/int/identity/{resend-verification,rate-limits}.int-spec.ts`.
 
-- [ ] **T-50** [P] Secretos y bitácoras — CA: CA-17, CA-18, CA-19 — Depende: T-45, T-25 — ~2 h
+- [x] **T-50** [P] Secretos y bitácoras — CA: CA-17, CA-18, CA-19 — Depende: T-45, T-25 — ~2 h
   `token-secrecy.int-spec.ts` (CA-17: token sacado de Mailpit; no aparece en ninguna columna de texto de `usuario` ni
   `token_cuenta` ni en el `LogSink`; `token_hash ≠ token`; dos registros → tokens distintos). `password-hash.int-spec.ts`
   (CA-19: PHC con `m=19456,t=2,p=1`, sales distintas, `verify` correcto, ninguna respuesta con hash).
@@ -489,13 +489,13 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   `correlationId`; el del trabajo de correo es el de la petición; eventos de plan §7 presentes con solo `userId`).
   Archivos: `apps/api/test/int/identity/{token-secrecy,password-hash,identity-logs}.int-spec.ts`.
 
-- [ ] **T-51** [P] Degradación del correo en el registro — CA: CA-21 — Depende: T-45, T-25 — ~1 h
+- [x] **T-51** [P] Degradación del correo en el registro — CA: CA-21 — Depende: T-45, T-25 — ~1 h
   Ampliar `mail-degradation.int-spec.ts` con la variante de registro: con el SMTP caído la respuesta es la de CA-1 y la
   cuenta queda creada; al volver Mailpit llega **un** correo; con los intentos agotados `mail.failed` lleva el
   `correlationId` de la petición y `recipientId` = id de la cuenta; después se puede pedir otro enlace (CA-13).
   Archivos: `apps/api/test/int/notifications/mail-degradation.int-spec.ts`.
 
-- [ ] **T-52** Aislamiento: anti-enumeración — CA: CA-14, CA-15, CA-5, CA-6 — Depende: T-45 — ~2 h
+- [x] **T-52** Aislamiento: anti-enumeración — CA: CA-14, CA-15, CA-5, CA-6 — Depende: T-45 — ~2 h
   `apps/api/test/isolation/identity-enumeration.iso-spec.ts` (corre en `pnpm test:isolation`): para los cuatro tipos de
   correo (inexistente, no verificado, verificado, interno) la misma secuencia de peticiones de registro y de reenvío
   produce la misma secuencia de `status` (`202`/`429`), cuerpos idénticos y **las mismas cabeceras** salvo
@@ -504,13 +504,13 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   ese rol (ADR-0005).
   Archivos: `apps/api/test/isolation/identity-enumeration.iso-spec.ts`.
 
-- [ ] **T-53** [P] README de `identity` — CA: n/a — Depende: T-45 — ~0,5 h
+- [x] **T-53** [P] README de `identity` — CA: n/a — Depende: T-45 — ~0,5 h
   `apps/api/src/modules/identity/README.md`: capas y clases (plan §6.1), puertos y su regla de Art. V, evento
   `CLIENT_ACCOUNT_VERIFIED` (única importación permitida a `billing`, ADR-0019), piezas que reutilizan 002 y 003 (plan
   §6.11), pendiente de `@Public()` con 003 y de `@SkipThrottle` cuando 002 agregue `login-ip`.
   Archivos: `apps/api/src/modules/identity/README.md`.
 
-- [ ] **T-54** Cierre del PR-3 — CA: n/a — Depende: T-28…T-53 — ~1 h
+- [x] **T-54** Cierre del PR-3 — CA: n/a — Depende: T-28…T-53 — ~1 h
   `pnpm lint`, `pnpm typecheck`, `pnpm test` (cobertura ≥ 60 % en `domain/` y `application/` de `identity` y
   `notifications` y en las piezas nuevas de `shared`, RNF-11), `pnpm test:int`, `pnpm test:isolation`, `pnpm env:check`.
   Prueba de humo con `pnpm dev`: `curl` de registro → correo en Mailpit (`:8025`) → `curl` de `verify-email` con el
@@ -653,6 +653,14 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
 
 ## Notas del developer
 
+- **T-28, T-29 y T-30**: 30 pruebas del dominio en verde. `OpaqueToken.toString()` devuelve el valor; `PasswordHash` sigue redactado. Los errores de transición viven en el archivo de la entidad. Jest se corrió directo con Node 24 porque `pnpm` exige Node 22.
+  **Revisión (2026-09-28, commit de Cursor `0a6e379`)**: coinciden con plan §6.1–§6.2 (nombres, inmutabilidad,
+  `issue` con vencimiento ya calculado, dominio sin `contracts`). Diferencias sin impacto: `OpaqueToken.matchesHash`
+  es estático (`matchesHash(valor, hashGuardado)`) y además hay `hash()` de instancia; `ClientUser.rehydrate` e
+  `InternalUser.rehydrate` (este rechaza `CLIENT`) para los mappers de T-39; `VerifiedAccountReplacementError` e
+  `InvalidTokenTransitionError` son `Error` internos, no `DomainError` (nunca llegan al cliente). Se corrigió el
+  formato de Prettier de dos pruebas (fallaba `pnpm lint`) y se antepuso `CA-n:` a los nombres de prueba (Art. II).
+
 - **Catálogo de 006a (T-64)**: el plan fija qué necesita 001 (lectura pública de planes activos con `id`, nombre, precio
   en centavos y marca de gratuito, PD-40) pero no la ruta ni el esquema, que son de 006a. `plan-catalog.ts` aísla esa
   lectura; si el contrato de 006a no está en `packages/contracts` al llegar a T-64, se implementa con la ruta que
@@ -732,8 +740,8 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   DefinitelyTyped cubren la API usada), con versión exacta. Mailpit fijado en `axllent/mailpit:v1.31.3` en
   Testcontainers y en `compose.override.yml` (antes sin versión). La URL de la API de Mailpit viaja en
   `TEST_MAILPIT_API_URL`, variable solo de pruebas (no es de ningún esquema). `SmtpTransport` fija tiempos de espera
-  (conexión y saludo 10 s, socket 20 s) por debajo del bloqueo de 30 s de BullMQ: con los de nodemailer (hasta
-  10 min) un SMTP colgado dejaría el trabajo estancado y otro intento podría entregar dos veces. Prueba unitaria
+  (conexión y saludo 10 s, socket 20 s): con los de nodemailer (hasta 10 min), evita que un SMTP colgado bloquee
+  indefinidamente el intento actual (review-pr2 I-3). Prueba unitaria
   adicional `smtp-transport.spec.ts` con un servidor SMTP falso (`node:net`) que anuncia STARTTLS: cubre `MAIL_FROM`,
   `Message-ID`, los modos `none`/`starttls` y el puerto cerrado con `code`, **ejecutada**.
 - **T-23, decisiones del procesador**: `mail.retry_scheduled` solo se registra si quedan intentos (el último fallo
@@ -751,7 +759,7 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   `NotificationsModule` + `NotificationsWorkerModule` resuelven sus dependencias en Nest.
 - **T-25, retroceso inyectable**: `NotificationsModule` provee `MAIL_JOB_OPTIONS` bajo `MAIL_JOB_OPTIONS_TOKEN` y
   `SmtpMailer` lo inyecta; las pruebas lo sustituyen con la opción `overrides` del arnés (retroceso exponencial de
-  500 ms). Ayudante nuevo `test/int/setup/wait-for-log.ts`. La prueba de contrato agrega el caso «dos `send` con la
+  2 s; era de 500 ms y dejaba una ventana ajustada al Mailpit tardío, review-pr2 I-1). Ayudante nuevo `test/int/setup/wait-for-log.ts`. La prueba de contrato agrega el caso «dos `send` con la
   misma clave entregan un solo correo» (capa 2 de idempotencia de punta a punta).
 - **T-26**: `docker compose --profile apps config` **no se ejecutó** (Docker no disponible); `compose.override.yml`
   se validó parseándolo con `yaml` (el `worker` recibe `SMTP_HOST: mailpit` y `SMTP_PORT: '1025'`).
@@ -760,4 +768,145 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   mail-degradation}.int-spec.ts`, el caso `worker.started` de `test/int/worker/bootstrap.int-spec.ts`,
   `test/int/worker/worker-health.int-spec.ts` y `pnpm dev` con el `worker` consumiendo `mail` (T-27). Todas compilan
   y pasan `lint`. El `redact-deep.spec.ts` inestable (nota de T-19) volvió a fallar una vez en T-22 y pasó al repetir.
+- **T-31, errores de `identity`**: los `code` son literales en `domain/errors` (el dominio no importa `contracts`,
+  ADR-0008 regla 3); su igualdad con `IDENTITY_ERROR_CODES` la prueba T-43. Decisiones: (a) `IdentityTooManyRequestsError`
+  recibe además `scope: 'email' | 'ip'` (plan §6.5, lo usan T-36 y el guard de T-44); (b) «N minutos» usa singular
+  con 1 («en 1 minuto») y como mínimo 1, porque la espera típica es de 60 s; (c) `IdentityWeakPasswordError` une los
+  mensajes de los requisitos con «; » y quita su punto final. El dominio importa de `shared/domain/errors` y no de
+  `shared/index.ts` (que arrastra Nest). `index.spec.ts` fija `['CLIENT_ACCOUNT_VERIFIED']`; T-45 agrega `IdentityModule`.
+- **T-33, plantillas contra el mockup (para el `ui-designer`)**: se siguió la spec y la tarea donde el mockup
+  difiere: asunto «Verifica tu correo para entrar a Nimbo» (el mockup dice «Confirma tu correo en Nimbo»; se conserva
+  «Confirma tu correo» como título); enlace con `#token=` (el mockup usa `?token=`, contrario a RN-8); el aviso de
+  intento **no** repite el correo (la tarea pide no incluir el correo del solicitante, que es el mismo). Sin saludo por
+  nombre en ninguno de los dos: en el de verificación el nombre lo escribe quien pide el registro, que puede no ser el
+  dueño del buzón (texto controlado por un tercero). El botón usa `#4A6FA5` (azul profundo) y no `#6B8DD6`, porque el
+  blanco sobre el azul pizarra no llega a AA. Piezas comunes en `application/mail/{mail-layout,escape-html}.ts`.
+  Las plantillas reciben las URL ya armadas; la ruta de recuperación (`/recuperar-contrasena`) la fija T-35 y **debe
+  confirmarla 002** (su plan aún no existe).
+- **T-34, archivos adicionales**: `application/web-links.ts` (rutas de `web` que usan los correos y `webUrl`, que
+  quita la barra final de `WEB_PUBLIC_URL`) y dobles de prueba reutilizables en `application/testing/`
+  (`InMemoryVerificationTokenRepository`, `aClientUser()`), que T-35 a T-38 reutilizan. El id del token lo genera la
+  aplicación con `randomUUID()` (lo necesita la `idempotencyKey` antes del `INSERT`).
+- **T-35, archivo adicional**: `application/identity-logger.ts` (interfaz mínima `info`/`warn` que los servicios de
+  `identity` reciben con `@Inject(PinoLogger)`, igual que `HealthLogger` en `shared`), para usar un doble en las
+  pruebas. `WEB_PATHS.passwordRecovery = '/recuperar-contrasena'` (ya en `web-links.ts`) sigue pendiente de confirmar en 002.
+- **T-36, decisiones**: (a) el servicio recorta el nombre (`fullName.trim()`): el esquema acepta espacios alrededor y
+  el `CHECK` de la BD mide `btrim(nombre)`, así que se guarda sin ellos; (b) cada transacción devuelve un resultado
+  (`log` + correo) y la bitácora `identity.registration.accepted`/`existing_account` y el envío ocurren **después**
+  del commit (`attempt_notice_sent`/`_suppressed` los registra el notificador dentro de la transacción); (c) si tras
+  el reintento la cuenta sigue sin aparecer, lanza un `Error` interno (500), caso que no debería ocurrir. Archivo
+  adicional: `application/testing/in-memory-user.repository.ts` (correo único como `uq_usuario_correo`).
+- **T-38, decisiones**: (a) `RegistrationService` recibe además `IVerificationTokenRepository` e
+  `IAccountEventsPublisher` (constructor: `users, tokens, hasher, mailer, events, …`); `VerifyEmailResult` se exporta
+  desde `registration.service.ts` para T-45; (b) la transacción devuelve una decisión y la bitácora, el error público
+  y el evento ocurren **después** del commit (en un rechazo no se escribe nada, así que confirmar es inocuo); (c) si
+  el token apunta a una cuenta que no existe o no es de cliente (no debería ocurrir), se trata como inválido con
+  `userId`; (d) un `consume = false` registra `rejected` con `reason = already_verified`, igual que la cuenta ya
+  verificada.
+- **T-39, sin Docker**: `test/int/identity/user-repository.int-spec.ts` (8 casos: mapeo por rol, `FOR UPDATE` que
+  hace esperar a otra transacción, dos `insertIfAbsent` concurrentes con relectura del perdedor, `update`, uso del
+  `EntityManager` de la transacción y CA-19) compila y pasa `lint`, pero **no se ejecutó**: su rojo y su verde quedan
+  sin comprobar. El orden entre transacciones lo fija una señal y no un `sleep`. Prueba unitaria adicional,
+  **ejecutada**: `infrastructure/persistence/user.mapper.spec.ts` (ida y vuelta del cliente, columnas, rol interno,
+  cliente sin aceptación, CA-19). Se comprobó además, con una prueba desechable sin BD, que el glob de entidades de
+  `buildDataSourceOptions` carga `usuario.orm-entity.ts` bajo Jest y que la búsqueda con bloqueo genera `… FOR
+  UPDATE`. Decisiones: propiedades de la entidad ORM en `camelCase` español con `name` de columna; `insertIfAbsent`
+  usa SQL parametrizado (`ON CONFLICT (correo) DO NOTHING RETURNING id`) porque el `orIgnore()` del query builder
+  genera `ON CONFLICT DO NOTHING` sin columna y ocultaría un choque de `id`; `update` escribe solo nombre, hash,
+  aceptación y `correo_verificado`; `creado_en` no se mapea (queda con su `DEFAULT`); el mapper lanza `TypeError` si
+  una fila `CLIENT` no tiene aceptación (el `CHECK` lo impide).
+- **T-40, `invalidateActive` cierra también los vencidos (hallazgo)**: `uq_token_cuenta_vigente` es parcial sobre
+  `usado_en IS NULL AND invalidado_en IS NULL` y no mira `expira_en`. Si «vigentes» excluyera los vencidos, un
+  reenvío o un segundo registro después de las 24 h chocaría con el índice (`23505`) al insertar el enlace nuevo.
+  Por eso el `UPDATE` marca todo token sin usar ni invalidar de la cuenta y el tipo; se actualizó el comentario del
+  puerto y el doble en memoria (`InMemoryVerificationTokenRepository`) hace lo mismo (con `rehydrate`, porque
+  `invalidate(now)` del dominio rechaza un vencido). Efecto visible: un enlace vencido que ya fue reemplazado responde
+  «no válido» (CA-11 a) en lugar de «venció» (CA-9), que es lo que describe CA-11 para un enlace reemplazado.
+  `consume` es un `update` condicional (`usado_en IS NULL AND invalidado_en IS NULL AND expira_en > now`) y
+  devuelve `affected === 1`.
+- **T-40, sin Docker**: `test/int/identity/verification-token-repository.int-spec.ts` (7 casos: ida y vuelta,
+  CA-12 por tipo, `invalidateActive` selectivo y con vencidos, `consume` concurrente con exactamente un `true`,
+  `consume` de vencido e invalidado) compila y pasa `lint`, pero **no se ejecutó**. Prueba unitaria adicional,
+  **ejecutada**: `infrastructure/persistence/verification-token.mapper.spec.ts`.
+- **T-41, `argon2` `0.45.1`** (versión exacta, ADR-0017). pnpm 10 avisa «Ignored build scripts: argon2»; como
+  decide el ADR, **no** se agregó a `onlyBuiltDependencies`: el paquete trae binarios precompilados y se comprobó que
+  carga y hashea en Windows x64 con Node 22 sin compilar. **Sin comprobar** por falta de Docker: la carga en
+  `node:22-alpine` (`docker run --rm -v … node:22-alpine node -e "require('argon2')"`, riesgo de plan §9); el paquete
+  incluye `prebuilds/linux-x64/argon2.musl.node` y `linux-arm64/argon2.armv8.musl.node`, así que se espera que cargue,
+  pero hay que correr ese comando antes de fusionar el PR-3 (si falla, ADR-0017 prevé `@node-rs/argon2`).
+  **Hallazgo sobre CA-19**: la librería escribe los parámetros en orden `m=19456,p=1,t=2` (serializa con
+  `@phc/format`), no `m=…,t=…,p=…` como dice el texto de CA-19 y de la tarea. Es un PHC válido con los mismos
+  parámetros y `verify` no depende del orden, así que la prueba compara los parámetros como mapa y no la cadena
+  literal. Propuesta para la spec: leer CA-19 como «PHC de Argon2id con `m`, `t` y `p` ≥ RN-3», sin fijar el orden.
+  `verify` con un hash que no es PHC lanza (no devuelve `false`): un hash corrupto es un error de datos, no una
+  contraseña incorrecta, y ningún CA pide lo contrario.
+- **T-42, `@nestjs/event-emitter` `3.1.0`** (versión exacta, ADR-0019), no la `12.0.1` más reciente: la serie 12 se
+  publica solo como ESM (`"type": "module"`) y `api` compila a CommonJS y corre sus pruebas con `ts-jest` en CJS; la
+  `3.1.0` es CJS y declara `@nestjs/common`/`core` `^11`. El publicador inyecta `EventEmitter2` (reexportado por el
+  paquete) y no registra el error del oyente (puede traer datos ajenos), solo `userId`.
+- **T-43, contraseña ausente (precisión, sin desviación)**: la tarea dice «si todos los *issues* son de `password` →
+  `IDENTITY_WEAK_PASSWORD`», pero CA-6 pide `IDENTITY_INVALID_INPUT` para «un campo obligatorio ausente». La fábrica
+  elige `IDENTITY_WEAK_PASSWORD` solo si **todos** los *issues* son de `password` **y** su `reason` es una regla
+  `PASSWORD_*` de `FIELD_ISSUE_REASONS`; una contraseña ausente (`password:REQUIRED`) es `IDENTITY_INVALID_INPUT`.
+- **T-44, `@nestjs/throttler` `6.7.1`** (versión exacta, ADR-0017; CJS, `@nestjs/common` `^11`). La librería no
+  pasa el nombre del *throttler* a `throwThrottlingException`, así que el guard sobrescribe `handleRequest` para
+  anotar qué *throttler* evalúa cada petición (un `WeakMap` por `ExecutionContext`, sin tocar la petición) y para
+  forzar `setHeaders: false` en cada *throttler*: así ninguna configuración de `ThrottlerModule` puede volver a
+  activar `X-RateLimit-*` ni `Retry-After-<throttler>`. `Retry-After` sale de `timeToBlockExpire` (segundos) y lo
+  escribe `DomainExceptionFilter`. Un *throttler* sin fila en la tabla de ámbitos lanza un `Error` interno (500): es
+  un error de programación. `REGISTER_IP_THROTTLER = 'register-ip'` se exporta del archivo del guard para T-45. La
+  prueba levanta una app Nest en memoria con `supertest` (sin contenedores) y se comprobó que falla con
+  `setHeaders: true`.
+- **T-45, sin Docker**: `test/int/identity/{register,verify-email}.int-spec.ts` (caminos felices de CA-1 y CA-8)
+  compilan y pasan `lint`, pero **no se ejecutaron**: su rojo y su verde quedan sin comprobar. Comparten
+  `test/int/identity/identity-test-app.ts` (archivo adicional: la composición de `identity` de `AppModule` más
+  `NotificationsWorkerModule` en la misma app para que el correo llegue a Mailpit, el cuerpo válido y la lectura del
+  token del correo), que reutilizarán T-46 a T-52. Prueba unitaria adicional, **ejecutada**:
+  `presentation/auth.controller.spec.ts` (app Nest en memoria con el servicio sustituido: `202`/`200`, mapeo
+  `VERIFIED`/`ALREADY_VERIFIED`, `Cache-Control: no-store`, sin `Set-Cookie`, la fábrica de T-43 en el pipe y el
+  guard solo en `register`); se escribió antes que el controlador, pero su rojo no se corrió aparte. Se comprobó
+  además, con una prueba desechable sin BD ni Redis, que `IdentityModule.forRoot` resuelve todas sus dependencias.
+  Decisiones: (a) `identity/index.ts` exporta además `IDENTITY_THROTTLERS` (la lista de *throttlers* vive junto al
+  guard y su tabla de ámbitos; `AppModule` la registra con `ThrottlerModule.forRoot` sin repetir el nombre
+  `register-ip`, y 002-PR-2 solo le agrega `login-ip`); `index.spec.ts` fija `['CLIENT_ACCOUNT_VERIFIED',
+  'IDENTITY_THROTTLERS', 'IdentityModule']`; (b) `IdentityModule` importa `NotificationsModule` (necesita `I_MAILER`,
+  que no es global); `AppModule` también lo lista, como pide plan §6.8; (c) `Cache-Control: no-store` se fija con
+  `@Header` en cada ruta: cubre las respuestas correctas (las de CA-1 y CA-8); las de error (`422`/`429`) las escribe
+  `DomainExceptionFilter` sin esa cabecera, que no guarda nada sensible y no se almacena por defecto. Si la revisión
+  lo quiere en toda respuesta, basta un *middleware* de `IdentityModule` para `AuthController`.
+- **Revisión de T-45, `no-store` en toda respuesta (decisión de Adrián: seguir plan §5)**: `presentation/no-store.middleware.ts` y `IdentityModule.configure` lo aplican a `AuthController`; se quitaron los `@Header`. Cubre 202/200, 422 del pipe, 429 del guard y 500. **Límite aceptado**: el `400 VALIDATION_FAILED` de un JSON mal formado no lleva la cabecera porque el analizador global de `configureHttpApp` corre antes que los middlewares de módulo; es genérico (solo `correlationId`), se deja así y lo valora la revisión. **Resuelto (revisión PR-3, importante 3)**: `configureHttpApp` fija `no-store` en `/api/v1/auth/*` antes del analizador (`configure-http-app.spec.ts`); `NoStoreMiddleware` se conserva porque va ligado al controlador y no a una ruta escrita en `shared`.
+- **T-46**: `register.int-spec.ts` **no se ejecutó** (sin Docker): compila y pasa `lint`/`typecheck`; su rojo y su verde quedan sin comprobar. Correos encolados por `mail.enqueued` con el `correlationId`; la concurrencia de CA-3 usa una segunda app con `I_RATE_LIMITER` que siempre permite (el límite de 60 s serializaba las peticiones). «Ninguna suscripción» de CA-1 queda para 006a.
+- **T-47**: `register-validation.int-spec.ts` **no se ejecutó** (sin Docker): compila y pasa `lint`/`typecheck`; su rojo y su verde quedan sin comprobar. Expectativas confirmadas con una prueba desechable (`configureHttpApp` real). Al comparar errores se ignoran `x-correlation-id`, `date`, `etag` y el `correlationId` del cuerpo. **Hallazgo**: el mensaje de `PASSWORD_COMMON` dentro de `IDENTITY_WEAK_PASSWORD` repite «Elige otra» (T-31).
+- **T-48**: `verify-email.int-spec.ts` y `verify-email-concurrency.int-spec.ts` **no se ejecutó** (sin Docker): compila y pasa `lint`/`typecheck`; su rojo y su verde quedan sin comprobar. La concurrencia levanta la app en `127.0.0.1:0` para que las dos peticiones corran en paralelo; el evento se captura con un oyente sobre `EventEmitter2`.
+- **T-49**: `resend-verification.int-spec.ts` y `rate-limits.int-spec.ts` **no se ejecutó** (sin Docker): compila y pasa `lint`/`typecheck`; su rojo y su verde quedan sin comprobar. El almacén en memoria de `@nestjs/throttler` mide con `Date.now()`, no con `IClock`: del límite por IP solo se prueba el rechazo del 11.º y que otra IP sigue; «al cumplirse el tiempo» se prueba con los límites por correo.
+- **T-50**: `token-secrecy`, `password-hash` e `identity-logs` **no se ejecutó** (sin Docker): compila y pasa `lint`/`typecheck`; su rojo y su verde quedan sin comprobar. CA-17 busca el token en `row_to_json(fila)::text`. **Posible defecto para la revisión**: sin `quietReqLogger`, nestjs-pino podría adjuntar `req` (con `x-forwarded-for`) a `identity.rate_limited`, contra plan §7 «sin IP».
+- **T-51**: variante de registro en `mail-degradation.int-spec.ts` **no se ejecutó** (sin Docker): compila y pasa `lint`/`typecheck`; su rojo y su verde quedan sin comprobar. Compone la app localmente porque `createIdentityTestApp` no acepta `env`; pruebas dependientes del orden.
+- **T-52**: `identity-enumeration.iso-spec.ts` (incluida en `test:isolation`) **no se ejecutó** (sin Docker): compila y pasa `lint`/`typecheck`; su rojo y su verde quedan sin comprobar. Mismo `x-correlation-id` en las peticiones equivalentes para comparar cuerpos y cabeceras byte a byte (solo se excluye `date`).
+- **T-54, cierre del PR-3 con Docker (2026-09-28)**: se ejecutaron por primera vez todas las pruebas de integración y
+  aislamiento escritas sin Docker en PR-1, PR-2 y PR-3 (las notas «sin ejecutar» de T-06 a T-52 quedan resueltas).
+  Primera corrida: `test:int` 162/168. Las seis fallas eran de las pruebas, no del código de producción, y se
+  corrigieron sin tocar ningún CA: (a) `worker/bootstrap` y `dotenv-bootstrap` arrancaban Nest con `tsx`, que no
+  emite `design:paramtypes` (plan 000 §9 R-3); `globalSetup` compila `api` con `tsc` a `dist-int/` y las dos suites
+  arrancan esa salida (`test/int/setup/compiled-api.ts`, commit `cffbc63`); `dotenv-bootstrap` exige además el `.env`
+  de la raíz (`cp .env.example .env`, como dice el README); (b) nestjs-pino 5 arma un solo logger raíz por proceso y
+  la segunda app de `mail-degradation` escribía en el `LogSink` de la primera; `LOG_STREAM` es ahora un reenvío al
+  `LogSink` de la última app creada (`b28110e`). Los reintentos que esa suite dejaba pendientes llegaban luego al
+  Mailpit compartido y rompían CA-8 de `verify-email`. Al reordenarse las suites aparecieron dos intermitencias más:
+  (c) CA-29 de `transaction-runner` usaba un `sleep` de 20 ms y ahora sincroniza con barreras (`f4c32e3`); (d) los
+  registros concurrentes de CA-3 cerraban la app con avisos encolados que otra suite entregaba después;
+  `createIdentityTestApp().close()` espera a que la cola `mail` quede vacía (`15d83ee`). Resultado final: `pnpm
+  test:int` 28 suites y 169 pruebas en verde, `pnpm test:isolation` 5/5, `pnpm lint`, `pnpm typecheck`, `pnpm test`
+  y `pnpm env:check` en verde. Cobertura de `api` con `--coverage`: `identity/domain` 88,9 % de ramas,
+  `identity/application` 82,9 %, `notifications` ≥ 70,7 %, `shared/{domain,application}` 100 % (≥ 60 %, RNF-11).
+  El umbral por archivo de `base.cjs` marca cuatro archivos con ramas < 60 % por respaldos `??` inalcanzables
+  (`escape-html.ts`, `registration-attempt-mail.template.ts`) y dos ramas sin prueba (`PasswordHash.fromPhc('')`,
+  `EmailAddress.localPart` sin «@»); `pnpm test` no activa la cobertura. `migration:run → revert ×2 → run` contra el
+  Postgres de `docker compose` sin errores (pendiente de T-06/T-19). `argon2` `0.45.1` carga y hashea en
+  `node:22-alpine` (x64), pendiente de T-41. Prueba de humo con `docker compose up -d` y `pnpm dev`: `api.started` y
+  `worker.started` con `["ping","mail"]`; `POST /auth/register` → `202 {"status":"accepted"}` con `no-store`; el
+  correo «Verifica tu correo para entrar a Nimbo» llegó a Mailpit (`:8025`) con `Message-ID`
+  `identity.verification.<uuid>@nimbo.me` y el token de 43 caracteres en `#token=`; `POST /auth/verify-email` →
+  `200 {"status":"verified"}` y la segunda vez `already-verified`; en la BD `CLIENT` con `correo_verificado = true`;
+  la bitácora de `pnpm dev` no contiene el correo ni el token.
+- **Pendiente tras el trabajo en paralelo**: subir a `identity-test-app.ts` los ayudantes duplicados (`uniqueEmail`, `nextClientIp`, `waitForMessagesTo`, `neutralView`) y aceptar `env` en `createIdentityTestApp`.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>

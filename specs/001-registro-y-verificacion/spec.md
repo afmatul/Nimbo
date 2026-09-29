@@ -509,7 +509,8 @@ reescribieron después de revisar los mockups (2026-09-22) o al volver al enlace
   - Revisa tu correo: «Te enviamos un enlace a {correo} para verificar tu correo. Ábrelo en las próximas 24 horas. ¿No llegó? Revisa la carpeta de spam o pide otro enlace.»
   - Correo de verificación (cuerpo): «Abre este enlace para verificar tu correo y entrar a Nimbo: {enlace}. Vence en 24 horas y solo funciona una vez. No lo reenvíes: quien lo abra entrará a tu cuenta. Si no creaste una cuenta, ignora este mensaje.»
   - Requisitos de contraseña: «12 caracteres o más» · «Una mayúscula» · «Un número» · «Un símbolo».
-  - Contraseña común: «Esta contraseña es muy común y fácil de adivinar. Elige otra.»
+  - Contraseña común: «Esta contraseña es muy común y fácil de adivinar.» (el mensaje de `IDENTITY_WEAK_PASSWORD` ya
+    cierra con «Elige otra que los cumpla.»)
   - Contraseña igual al correo: «Tu contraseña no puede ser tu correo.»
   - Correo inválido: «Escribe un correo válido, por ejemplo nombre@dominio.com.»
   - Casilla: «Acepto los [Términos] y la [Política de privacidad].»
@@ -642,3 +643,4 @@ ajustes y estados de mockups de §11 (Art. XIII.1; compuerta de `Aclarada`, `wor
 | 2026-09-27 | R-10, D-15, §13 y §14: el `ThrottlerModule` entra con esta spec sin condición, como ya decidió la 002 D-11; se quita el riesgo de que el `architect` no lo apruebe. El ADR menor de `@nestjs/throttler` va en el plan (PD-32). D-15: `IRateLimiter` vive en `shared`, no en `sharing` (PD-30). Sin cambio de criterios | Coherencia con 002 D-11, 000 D-9 y ADR-0010 | Adrián |
 | 2026-09-27 | Encabezado (fila DF) y §14: DF-13, DF-35 y la parte `usuario` de DF-33 ya están `Aceptado` en `design-findings.md` (PD-09); solo queda redibujar el E-R y las clases M1 (PD-06). Se crea `plan.md` (Propuesto). Sin cambio de criterios | Estado real de `design-findings.md` al planificar | — (planner; pendiente de Adrián) |
 | 2026-09-27 | CA-6 precisa que un JSON mal formado responde el `400 VALIDATION_FAILED` de 000 (P-1 del plan). Sin cambio de alcance | Plan 001, P-1 | Adrián |
+| 2026-09-28 | §11: el mensaje «Contraseña común» pierde «Elige otra.», que se repetía dentro de `IDENTITY_WEAK_PASSWORD` («… Elige otra. Elige otra que los cumpla.»). Sin cambio de criterios | Revisión del PR-3, hallazgo 4 | — (developer; pendiente de Adrián en el PR) |

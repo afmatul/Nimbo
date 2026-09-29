@@ -44,6 +44,6 @@ export const IDENTITY_FIELD_MESSAGES: Readonly<Record<FieldIssueReason, string>>
   PASSWORD_MISSING_UPPERCASE: 'Una mayúscula',
   PASSWORD_MISSING_NUMBER: 'Un número',
   PASSWORD_MISSING_SYMBOL: 'Un símbolo',
-  PASSWORD_COMMON: 'Esta contraseña es muy común y fácil de adivinar. Elige otra.',
+  PASSWORD_COMMON: 'Esta contraseña es muy común y fácil de adivinar.',
   PASSWORD_EQUALS_EMAIL: 'Tu contraseña no puede ser tu correo.',
 };

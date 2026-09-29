@@ -1,3 +1,5 @@
 // API pública del módulo `identity`. Otros módulos importan solo desde aquí (Art. VIII.3, CA-5).
-// La primera spec del módulo (001) agrega `identity.module.ts` y sus exportaciones.
-export {};
+export { IdentityModule } from './identity.module';
+export { IDENTITY_THROTTLERS } from './presentation/identity-ip-throttler.guard';
+export { CLIENT_ACCOUNT_VERIFIED } from './domain/client-account-verified.event';
+export type { ClientAccountVerifiedEvent } from './domain/client-account-verified.event';

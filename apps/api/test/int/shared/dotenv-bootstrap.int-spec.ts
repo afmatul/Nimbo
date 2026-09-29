@@ -5,6 +5,8 @@ import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
+import { compiledEntry } from '../setup/compiled-api';
+
 const API_ROOT = resolve(__dirname, '../../..');
 const REPO_ROOT = resolve(API_ROOT, '../..');
 const DOTENV = resolve(REPO_ROOT, '.env');
@@ -42,7 +44,7 @@ interface StartedProcess {
 }
 
 const startApi = (): StartedProcess => {
-  const child = spawn(process.execPath, [require.resolve('tsx/cli'), 'src/main.ts'], {
+  const child = spawn(process.execPath, [compiledEntry('main')], {
     cwd: API_ROOT,
     env: cleanEnv(),
   });
@@ -65,9 +67,10 @@ const stopApi = async (started: StartedProcess): Promise<void> => {
 
 /**
  * El defecto que cubre esta suite: el README manda `cp .env.example .env` y arrancar, pero ningún punto de
- * entrada leía el archivo y todo moría con `config.invalid`. Se comprueba `health/live` y no `health/ready`
- * porque el proceso corre con `tsx` (esbuild no emite `design:paramtypes`, así que la inyección por
- * constructor de Nest no es representativa aquí); la salud completa ya la cubre `health.int-spec.ts`.
+ * entrada leía el archivo y todo moría con `config.invalid`. El proceso es el `api` compilado con `tsc`
+ * (`compiled-api.ts`; con `tsx` la inyección por tipo de Nest falla). Se comprueba `health/live` y no
+ * `health/ready` porque las dependencias del `.env` son las de `docker compose` y no las del arnés; la salud
+ * completa ya la cubre `health.int-spec.ts`.
  */
 describe('arranque según el README (CA-1)', () => {
   it('CA-1: con solo el `.env` de la raíz, `api` arranca y `health/live` responde 200 (sin `config.invalid`)', async () => {

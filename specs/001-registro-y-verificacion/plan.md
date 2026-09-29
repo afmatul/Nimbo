@@ -66,7 +66,7 @@ Hallazgos `DF-xx` que esta spec resuelve o de los que depende:
 
 | Módulo | Cambio | Capa(s) |
 |---|---|---|
-| `identity` (nuevo) | `ClientUser`, `InternalUser`, `User`, `VerificationToken`, objetos de valor y errores; `RegistrationService`, `VerificationLinkIssuer`, `RegistrationAttemptNotifier`, plantillas de correo; repositorios TypeORM, `Argon2idHasher`, `EventEmitterAccountEventsPublisher`; `AuthController`, `IdentityIpThrottlerGuard`; `identity.module.ts`; `index.ts` exporta `IdentityModule` y, como contratos de eventos, solo `CLIENT_ACCOUNT_VERIFIED` (constante con el nombre) y `ClientAccountVerifiedEvent` (tipo `{ readonly userId: string }`) | todas |
+| `identity` (nuevo) | `ClientUser`, `InternalUser`, `User`, `VerificationToken`, objetos de valor y errores; `RegistrationService`, `VerificationLinkIssuer`, `RegistrationAttemptNotifier`, plantillas de correo; repositorios TypeORM, `Argon2idHasher`, `EventEmitterAccountEventsPublisher`; `AuthController`, `IdentityIpThrottlerGuard`; `identity.module.ts`; `index.ts` exporta `IdentityModule`, `IDENTITY_THROTTLERS` (la configuración de `ThrottlerModule.forRoot`, solo para la composición: `AppModule` y los arneses de prueba; agregado en la implementación, revisión del PR-3) y, como contratos de eventos, solo `CLIENT_ACCOUNT_VERIFIED` (constante con el nombre) y `ClientAccountVerifiedEvent` (tipo `{ readonly userId: string }`) | todas |
 | `notifications` (nuevo) | `IMailer` + `MailMessage` (puerto), `SmtpMailer` (encola), `MailProcessor` y `SmtpTransport` (worker); `NotificationsModule` (api) y `NotificationsWorkerModule` (worker) | application, infrastructure |
 | `shared` | `IRateLimiter` → `RedisRateLimiter` (Lua atómico); `TooManyRequestsError`; `DomainError.fields` opcional y `Retry-After` en `DomainExceptionFilter`; `ITransactionRunner` + `TransactionContext`; `ZodValidationPipe`; `configureHttpApp`; `REDIS_CLIENT`; `I_CLOCK` provisto; `REDACTED_FIELDS` + `email`, `correo`, `fullName`, `to`, `html`, `text`; `enqueueWithCorrelation` acepta opciones del trabajo; esquemas de entorno | domain, application, infrastructure, presentation |
 | `packages/contracts` | raíz: `error.ts` con `fields` opcional y `validation.ts` (`toFieldIssues` genérica); carpeta `identity/` (esquemas, política de contraseña, lista de contraseñas comunes, parámetros, códigos de error y `reason`, mensajes de campo, versiones de Términos y Privacidad) | contratos |
@@ -296,7 +296,7 @@ apps/api/src/modules/identity/
 │  ├─ identity-ip-throttler.guard.ts      # ThrottlerGuard + tabla throttler → ámbito → IdentityTooManyRequestsError (D-15)
 │  └─ identity-validation.ts              # fábrica de errores para ZodValidationPipe (elige INVALID_INPUT o WEAK_PASSWORD)
 ├─ identity.module.ts
-└─ index.ts                               # IdentityModule; contratos de eventos: CLIENT_ACCOUNT_VERIFIED y ClientAccountVerifiedEvent (y en 002: el verificador token→Actor)
+└─ index.ts                               # IdentityModule; IDENTITY_THROTTLERS (composición); contratos de eventos: CLIENT_ACCOUNT_VERIFIED y ClientAccountVerifiedEvent (y en 002: el verificador token→Actor)
 ```
 
 Pruebas unitarias junto al código (`*.spec.ts`).
