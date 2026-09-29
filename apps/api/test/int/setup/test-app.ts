@@ -45,6 +45,11 @@ export interface TestAppOptions extends TestEnvOptions {
   readonly controllers?: readonly Type<unknown>[];
   /** Variables que sustituyen a las del arnés (p. ej. contenedores propios de la suite). */
   readonly env?: Readonly<Record<string, string>>;
+  /**
+   * Entorno ya validado con `buildTestEnv(...)`, para que la app use **el mismo** objeto que recibe una raíz con
+   * `forRoot(env)` (p. ej. `AppModule`). Si se da, `env` y `withWorkerEnv` no se usan.
+   */
+  readonly validatedEnv?: Env;
   /** Proveedores sustituidos en toda la app (`overrideProvider(...).useValue(...)`). */
   readonly overrides?: readonly ProviderOverride[];
   /** Sustituye el prefijo `api/v1` de `configureHttpApp`; el `worker` no usa ninguno (`''`). */
@@ -115,6 +120,13 @@ export function buildTestEnv(
     : apiEnv;
 }
 
+const envFor = (options: TestAppOptions): Env => {
+  const overrides = options.env ?? {};
+  return options.withWorkerEnv === true
+    ? buildTestEnv(overrides, { withWorkerEnv: true })
+    : buildTestEnv(overrides);
+};
+
 /**
  * App de integración equivalente a `main.ts`: sin analizadores por defecto y con `configureHttpApp` (correlación,
  * versión, `trust proxy`, CORS, solo JSON, prefijo y filtro), con el logger capturado en memoria. Los módulos del
@@ -128,11 +140,7 @@ export function buildTestEnv(
  * trae otra (p. ej. `IdentityModule` desde 002), `createTestApp` lanza; esas suites usan `'identity'`.
  */
 export const createTestApp = async (options: TestAppOptions = {}): Promise<TestApp> => {
-  const overrides = options.env ?? {};
-  const env: Env =
-    options.withWorkerEnv === true
-      ? buildTestEnv(overrides, { withWorkerEnv: true })
-      : buildTestEnv(overrides);
+  const env = options.validatedEnv ?? envFor(options);
   const logs = new LogSink();
   const usesTestStrategy = (options.accessTokenStrategy ?? 'test') === 'test';
 

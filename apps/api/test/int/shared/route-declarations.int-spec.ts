@@ -35,15 +35,17 @@ describe('declaración de rutas de la API completa (CA-3, CA-7)', () => {
   let routes: RouteDeclaration[];
 
   beforeAll(async () => {
+    const env = buildTestEnv();
     testApp = await createTestApp({
-      modules: [AppModule.forRoot(buildTestEnv())],
+      modules: [AppModule.forRoot(env)],
+      validatedEnv: env,
       accessTokenStrategy: 'identity',
     });
     routes = listRouteDeclarations(testApp.app, API_PREFIX);
   });
 
   afterAll(async () => {
-    await testApp.close();
+    await testApp?.close();
   });
 
   it('CA-7: toda ruta declara `@Public()` o `@Roles(...)`, y ninguna las dos', () => {
@@ -61,5 +63,15 @@ describe('declaración de rutas de la API completa (CA-3, CA-7)', () => {
     const response = await request(testApp.app.getHttpServer()).get('/api/v1/health/live');
 
     expect(response.status).toBe(200);
+  });
+
+  it.each(EXPECTED_PUBLIC_ROUTES)('CA-3: `%s` sin token no responde 401', async (route) => {
+    const [method, path] = route.split(' ') as [string, string];
+
+    const response = await request(testApp.app.getHttpServer())[
+      method.toLowerCase() as 'get' | 'post'
+    ](path);
+
+    expect(response.status).not.toBe(401);
   });
 });
