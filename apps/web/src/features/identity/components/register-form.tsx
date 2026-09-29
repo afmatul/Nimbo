@@ -2,8 +2,8 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { registerRequestSchema, type RegisterRequest } from '@nimbo/contracts';
-import { useRef, useState, type JSX } from 'react';
-import { useForm } from 'react-hook-form';
+import { useEffect, useRef, useState, type JSX } from 'react';
+import { useForm, useWatch, type SubmitHandler } from 'react-hook-form';
 
 import { Button } from '../../../components/ui/button';
 import { Checkbox } from '../../../components/ui/checkbox';
@@ -12,6 +12,7 @@ import { Label } from '../../../components/ui/label';
 import { ApiClientError } from '../../../lib/api-error';
 import { messageForCode } from '../../../lib/error-catalog';
 import { register as registerAccount } from '../api';
+
 import { PasswordRequirements } from './password-requirements';
 import { PlanPicker, type CatalogPlan } from './plan-picker';
 
@@ -21,12 +22,34 @@ export interface RegisterFormProps {
   readonly unavailable?: boolean;
   readonly defaultFullName?: string;
   readonly defaultEmail?: string;
-  readonly defaultPlanId?: string;
+  readonly defaultPlanId?: string | undefined;
   readonly onSuccess: (result: {
     readonly fullName: string;
     readonly email: string;
     readonly planId: string | undefined;
   }) => void;
+}
+
+const FORM_FIELDS = ['fullName', 'email', 'password', 'acceptTerms'] as const;
+type FormField = (typeof FORM_FIELDS)[number];
+
+function isFormField(field: string): field is FormField {
+  return (FORM_FIELDS as readonly string[]).includes(field);
+}
+
+/** Primer error de la API que corresponde a un campo del formulario; los demás van al resumen. */
+function formFieldOf(error: ApiClientError): { name: FormField; message: string } | null {
+  const issue = error.fields[0];
+  if (issue === undefined || !isFormField(issue.field)) return null;
+  return { name: issue.field, message: issue.message };
+}
+
+function unexpectedError(): ApiClientError {
+  return new ApiClientError({
+    code: 'INTERNAL_ERROR',
+    message: 'Ocurrió un error inesperado. Intenta de nuevo.',
+    correlationId: '',
+  });
 }
 
 /** El plan elegido es estado local: no viaja en el `POST` (D-24, CA-7). */
@@ -46,16 +69,25 @@ export function RegisterForm({
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     setError,
     setFocus,
     formState: { errors },
   } = useForm<RegisterRequest>({
     resolver: zodResolver(registerRequestSchema),
-    defaultValues: { fullName: defaultFullName, email: defaultEmail, password: '', acceptTerms: false as unknown as true },
+    defaultValues: {
+      fullName: defaultFullName,
+      email: defaultEmail,
+      password: '',
+      acceptTerms: false as unknown as true,
+    },
   });
 
-  const onSubmit = handleSubmit(async (values) => {
+  useEffect(() => {
+    if (serverError !== null && formFieldOf(serverError) === null) summaryRef.current?.focus();
+  }, [serverError]);
+
+  const submit: SubmitHandler<RegisterRequest> = async (values) => {
     if (submitting) return;
     setSubmitting(true);
     setServerError(null);
@@ -68,41 +100,45 @@ export function RegisterForm({
       });
       onSuccess({ fullName: values.fullName, email: values.email, planId });
     } catch (caught) {
-      const error = caught instanceof ApiClientError ? caught : null;
-      setServerError(
-        error ??
-          new ApiClientError({
-            code: 'INTERNAL_ERROR',
-            message: 'Ocurrió un error inesperado. Intenta de nuevo.',
-            correlationId: '',
-          }),
-      );
-      const firstField = error?.fields[0]?.field;
-      if (firstField === 'fullName' || firstField === 'email' || firstField === 'password' || firstField === 'acceptTerms') {
-        setError(firstField, { message: error?.fields[0]?.message });
-        setFocus(firstField);
-      } else {
-        summaryRef.current?.focus();
+      const error = caught instanceof ApiClientError ? caught : unexpectedError();
+      setServerError(error);
+      const field = formFieldOf(error);
+      if (field !== null) {
+        setError(field.name, { message: field.message });
+        setFocus(field.name);
       }
     } finally {
       setSubmitting(false);
     }
-  });
+  };
 
-  const password = watch('password') ?? '';
-  const email = watch('email') ?? '';
+  const password = useWatch({ control, name: 'password' }) ?? '';
+  const email = useWatch({ control, name: 'email' }) ?? '';
 
   return (
-    <form className="space-y-4" onSubmit={(event) => void onSubmit(event)} noValidate>
+    <form className="space-y-4" onSubmit={(event) => void handleSubmit(submit)(event)} noValidate>
       <PlanPicker plans={plans} unavailable={unavailable} value={planId} onChange={setPlanId} />
       <div className="space-y-1.5">
         <Label htmlFor="fullName">Nombre completo</Label>
-        <Input id="fullName" autoComplete="name" error={errors.fullName !== undefined} {...register('fullName')} />
-        {errors.fullName ? <p className="text-xs text-destructive">{errors.fullName.message}</p> : null}
+        <Input
+          id="fullName"
+          autoComplete="name"
+          error={errors.fullName !== undefined}
+          {...register('fullName')}
+        />
+        {errors.fullName ? (
+          <p className="text-xs text-destructive">{errors.fullName.message}</p>
+        ) : null}
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="email">Correo</Label>
-        <Input id="email" type="email" autoComplete="email" error={errors.email !== undefined} {...register('email')} />
+        <Input
+          id="email"
+          type="email"
+          autoComplete="email"
+          error={errors.email !== undefined}
+          {...register('email')}
+        />
         {errors.email ? <p className="text-xs text-destructive">{errors.email.message}</p> : null}
       </div>
       <div className="space-y-1.5">
@@ -119,7 +155,8 @@ export function RegisterForm({
       <Checkbox
         label={
           <>
-            Acepto los <a href="/terminos">Términos</a> y la <a href="/privacidad">Política de privacidad</a>.
+            Acepto los <a href="/terminos">Términos</a> y la{' '}
+            <a href="/privacidad">Política de privacidad</a>.
           </>
         }
         error={errors.acceptTerms !== undefined}
@@ -128,7 +165,12 @@ export function RegisterForm({
       />
       {serverError ? (
         <div ref={summaryRef} tabIndex={-1} role="alert" className="text-sm text-destructive">
-          <p>{messageForCode(serverError.code, { correlationId: serverError.correlationId, retryAfterSeconds: serverError.retryAfterSeconds })}</p>
+          <p>
+            {messageForCode(serverError.code, {
+              correlationId: serverError.correlationId,
+              retryAfterSeconds: serverError.retryAfterSeconds,
+            })}
+          </p>
           {serverError.correlationId !== '' ? <p>Código: {serverError.correlationId}</p> : null}
         </div>
       ) : null}

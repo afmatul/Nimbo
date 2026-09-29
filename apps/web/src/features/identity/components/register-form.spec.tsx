@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 
@@ -19,7 +19,7 @@ function jsonResponse(body: unknown, status: number): Response {
 }
 
 describe('RegisterForm', () => {
-  const fetchMock = jest.fn<typeof fetch>();
+  const fetchMock = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>();
 
   beforeEach(() => {
     fetchMock.mockReset();
@@ -30,15 +30,13 @@ describe('RegisterForm', () => {
     const user = userEvent.setup();
     fetchMock.mockResolvedValue(jsonResponse({ status: 'accepted' }, 202));
     render(
-      <RegisterForm
-        apiPublicUrl="http://localhost/api/v1"
-        plans={PLANS}
-        onSuccess={jest.fn()}
-      />,
+      <RegisterForm apiPublicUrl="http://localhost/api/v1" plans={PLANS} onSuccess={jest.fn()} />,
     );
 
     expect(screen.getByRole('link', { name: 'Términos' }).getAttribute('href')).toBe('/terminos');
-    expect(screen.getByRole('link', { name: 'Política de privacidad' }).getAttribute('href')).toBe('/privacidad');
+    expect(screen.getByRole('link', { name: 'Política de privacidad' }).getAttribute('href')).toBe(
+      '/privacidad',
+    );
 
     await user.type(screen.getByLabelText('Nombre completo'), 'Ana López');
     await user.type(screen.getByLabelText('Correo'), 'ana@ejemplo.com');
@@ -60,7 +58,9 @@ describe('RegisterForm', () => {
           resolveFetch = resolve;
         }),
     );
-    render(<RegisterForm apiPublicUrl="http://localhost/api/v1" plans={PLANS} onSuccess={jest.fn()} />);
+    render(
+      <RegisterForm apiPublicUrl="http://localhost/api/v1" plans={PLANS} onSuccess={jest.fn()} />,
+    );
 
     await user.type(screen.getByLabelText('Nombre completo'), 'Ana López');
     await user.type(screen.getByLabelText('Correo'), 'ana@ejemplo.com');
@@ -68,7 +68,9 @@ describe('RegisterForm', () => {
     await user.click(screen.getByRole('checkbox'));
     await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
 
-    expect((screen.getByRole('button', { name: 'Creando tu cuenta' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(
+      (screen.getByRole('button', { name: 'Creando tu cuenta' }) as HTMLButtonElement).disabled,
+    ).toBe(true);
     resolveFetch(
       jsonResponse(
         {
@@ -82,9 +84,36 @@ describe('RegisterForm', () => {
     expect((await screen.findByRole('alert')).textContent).toContain('corr-9');
   });
 
+  it('un error general del servidor mueve el foco al resumen', async () => {
+    const user = userEvent.setup();
+    fetchMock.mockResolvedValue(
+      jsonResponse({ code: 'INTERNAL_ERROR', message: 'Fallo', correlationId: 'corr-7' }, 500),
+    );
+    render(
+      <RegisterForm apiPublicUrl="http://localhost/api/v1" plans={PLANS} onSuccess={jest.fn()} />,
+    );
+
+    await user.type(screen.getByLabelText('Nombre completo'), 'Ana López');
+    await user.type(screen.getByLabelText('Correo'), 'ana@ejemplo.com');
+    await user.type(screen.getByLabelText('Contraseña'), 'UnaClaveSegura!1');
+    await user.click(screen.getByRole('checkbox'));
+    await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
+
+    const summary = await screen.findByRole('alert');
+    await waitFor(() => {
+      expect(document.activeElement).toBe(summary);
+    });
+  });
+
   it('no tiene violaciones graves de accesibilidad', async () => {
-    const view = render(<RegisterForm apiPublicUrl="http://localhost/api/v1" plans={PLANS} onSuccess={jest.fn()} />);
+    const view = render(
+      <RegisterForm apiPublicUrl="http://localhost/api/v1" plans={PLANS} onSuccess={jest.fn()} />,
+    );
     const results = await axe(view.container);
-    expect(results.violations.filter((violation) => violation.impact === 'serious' || violation.impact === 'critical')).toEqual([]);
+    expect(
+      results.violations.filter(
+        (violation) => violation.impact === 'serious' || violation.impact === 'critical',
+      ),
+    ).toEqual([]);
   });
 });
