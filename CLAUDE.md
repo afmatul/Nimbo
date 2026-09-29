@@ -37,23 +37,25 @@ No cargues todos los archivos siempre: lee el que la tarea necesita.
 **Sin spec aprobada no hay código.** La spec es la fuente de verdad. Si el código necesita
 comportarse distinto a lo que dice la spec, primero se corrige la spec y después el código.
 
-## Flujo de trabajo
+## Flujo de trabajo (SDD lite)
 
 ```
-/spec  →  /plan  →  /tasks  →  /implement  →  /verify  →  /review  →  PR + aprobación humana  →  merge
+/spec  →  /tasks  →  /implement  →  /review  →  PR + aprobación humana  →  merge
 ```
 
+`/plan` es opcional: solo para specs transversales, con puerto nuevo entre módulos, tecnología nueva o cambio de
+arquitectura (lo aprueba `architect`). `/verify` es opcional y queda absorbido en `/review`.
 Apoyo: `/status` (avance), `/adr` (decisiones), `/design-check` (coherencia código ↔ diagramas), `/mockup` (mockups y capturas).
 
 | Subagente          | Responsabilidad                                                     | Escribe en                          |
 |--------------------|---------------------------------------------------------------------|-------------------------------------|
-| `planner`          | Convierte una necesidad en `spec.md`, `plan.md` y `tasks.md`        | `specs/`                            |
-| `architect`        | Valida fronteras, dependencias y coherencia con diagramas; ADRs y DF-xx | `docs/adr/`, `docs/sdd/architecture.md`, sección de aprobación del plan |
+| `planner`          | Convierte una necesidad en `spec.md` (con «Enfoque técnico»), `plan.md` cuando aplica y `tasks.md` | `specs/` |
+| `architect`        | Valida fronteras, dependencias y coherencia con diagramas; ADRs y DF-xx; aprueba `plan.md` cuando existe | `docs/adr/`, `docs/sdd/architecture.md`, sección de aprobación del plan |
 | `developer`        | Implementa tareas en orden, con pruebas primero                     | `apps/`, `packages/`, migraciones   |
-| `tester`           | Traduce criterios de aceptación a pruebas y verifica la spec        | `**/test/**`, `**/*.spec.ts`, `e2e/`, `verification.md` |
-| `security-auditor` | Aislamiento entre cuentas, autorización, privacidad, secretos        | `test/isolation/`, `security.md`    |
-| `ui-designer`      | Mockups, capturas, sistema de diseño Cielo Sereno y auditoría de UI | `docs/design/mockups/`, `docs/design/capturas/`, `ui-guidelines.md`, `ui-review.md` |
-| `reviewer`         | Revisión de solo lectura contra spec, constitución y arquitectura    | `review.md`                         |
+| `tester`           | Traduce criterios de aceptación a pruebas y verifica la spec        | `**/test/**`, `**/*.spec.ts`, `e2e/`, sección «Verificación» de `review.md` |
+| `security-auditor` | Aislamiento entre cuentas, autorización, privacidad, secretos        | `test/isolation/`, sección «Seguridad» de `review.md` |
+| `ui-designer`      | Mockups, capturas, sistema de diseño Cielo Sereno y auditoría de UI | `docs/design/mockups/`, `docs/design/capturas/`, `ui-guidelines.md`, sección «UI» de `review.md` |
+| `reviewer`         | Cierra `review.md`: ensambla verificación/seguridad/UI y agrega bloqueantes, importantes y sugerencias | `review.md` |
 
 ## Módulos (según los diagramas de clases)
 

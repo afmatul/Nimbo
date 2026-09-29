@@ -1,7 +1,8 @@
 # Tareas NNN — <Título>
 
-> Spec: `./spec.md` · Plan: `./plan.md`
-> Leyenda: `[P]` paralelizable con otras `[P]` del mismo bloque · Cada tarea ≈ 1–4 h y un commit.
+> Spec: `./spec.md` · Plan: `./plan.md` (si existe)
+> Leyenda: `[P]` paralelizable con otras `[P]` del mismo bloque · Cada tarea ≈ 2–4 h y un commit, con sus CA.
+> No hace falta una matriz CA→tareas ni un diagrama de paralelismo aparte: basta con que cada tarea liste sus CA.
 
 ## Bloque 0 — Preparación
 - [ ] **T-01** Contratos en `packages/contracts` para … — CA: n/a — Archivos: `…`
