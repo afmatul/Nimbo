@@ -841,6 +841,12 @@ PR-5a = 15 (T-81…T-95) · PR-5b = 10 (T-96…T-105). Total 105.
   `fix(shared) … [003]`), así la misma fábrica sirve para el verificador real con la clave de pruebas. El tramo HTTP
   corre con la `JwtStrategy` real y la ruta sonda (sin `TestJwtStrategy`). Queda pendiente la parte de T-54 sobre
   apps que componen `AppModule`: hoy ninguna suite lo hace.
+- **PR-2 sobre `main` con 003-PR-A/B/C** (2026-09-29): historia lineal sobre PR-1 sin los commits de la copia de
+  003-PR-A (ya en `main`). `RefreshToken` queda como clase (`issue`/`parse`, `value`, `secretHash`); el commit que lo
+  traía como objeto con `ParsedRefreshToken` quedó vacío y no se conserva. Con 003-PR-B: `ITransactionRunner` gana
+  `withActor`, y `RecordingTransactionRunner` lo implementa rechazando (las sesiones usan `run`: `sesion` y
+  `dispositivo` no tienen RLS y sus repositorios filtran siempre por `usuario_id` en el `WHERE`). Los repositorios de
+  sesión y dispositivo pasan sus pruebas de integración conectados como `nimbo_app`.
 - **Pendientes de PR-2**: T-49…T-52, T-55 (depende de 003-PR-D), T-56 y T-57 (README ya actualizado con sesiones y
   cookies; faltan DF-56, DF-57 y PD-45 con el `architect`).
 - **T-55 depende de 003-PR-D**, no solo de 003-PR-A: `isolation-world.ts` nace en 003-PR-D (plan 003 §6.7 y §6.12),

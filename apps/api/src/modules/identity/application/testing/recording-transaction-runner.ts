@@ -12,4 +12,9 @@ export class RecordingTransactionRunner implements ITransactionRunner {
     this.timeline.push('commit');
     return result;
   }
+
+  /** `sesion` y `dispositivo` se filtran por `usuario_id` en el WHERE: las sesiones nunca abren una transacción con actor. */
+  withActor<T>(): Promise<T> {
+    return Promise.reject(new Error('SessionService no usa withActor'));
+  }
 }
