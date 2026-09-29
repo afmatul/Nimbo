@@ -1,4 +1,5 @@
 import {
+  EMAIL_REQUEST_COOLDOWN_SECONDS,
   IDENTITY_ERROR_CODES,
   IDENTITY_FIELD_MESSAGES,
   type FieldIssueReason,
@@ -8,7 +9,7 @@ import { genericErrorMessage } from './api-error';
 
 export { IDENTITY_FIELD_MESSAGES };
 
-const MINUTE_MS = 60;
+const SECONDS_PER_MINUTE = 60;
 
 const CODE_MESSAGES: Readonly<Record<string, string>> = {
   [IDENTITY_ERROR_CODES.INVALID_INPUT]: 'Revisa los campos marcados y corrígelos para continuar.',
@@ -38,7 +39,8 @@ export function messageForCode(
   } = {},
 ): string {
   if (code === IDENTITY_ERROR_CODES.TOO_MANY_REQUESTS) {
-    const minutes = Math.max(1, Math.ceil((options.retryAfterSeconds ?? MINUTE_MS) / MINUTE_MS));
+    const seconds = options.retryAfterSeconds ?? EMAIL_REQUEST_COOLDOWN_SECONDS;
+    const minutes = Math.max(1, Math.ceil(seconds / SECONDS_PER_MINUTE));
     return `Ya te enviamos un enlace hace poco. Revisa tu bandeja y la carpeta de spam, o inténtalo de nuevo en ${String(minutes)} minutos.`;
   }
   return CODE_MESSAGES[code] ?? genericErrorMessage(options.correlationId ?? '');

@@ -1,5 +1,6 @@
 'use client';
 
+import { IDENTITY_ERROR_CODES } from '@nimbo/contracts';
 import type { JSX, ReactNode } from 'react';
 
 import { messageForCode } from '../../../lib/error-catalog';
@@ -93,7 +94,9 @@ export function VerifyEmailView({ apiPublicUrl }: { readonly apiPublicUrl: strin
       </h1>
       <p role="alert" className="text-sm text-destructive">
         {messageForCode(
-          expired ? 'IDENTITY_VERIFICATION_LINK_EXPIRED' : 'IDENTITY_VERIFICATION_LINK_INVALID',
+          expired
+            ? IDENTITY_ERROR_CODES.VERIFICATION_LINK_EXPIRED
+            : IDENTITY_ERROR_CODES.VERIFICATION_LINK_INVALID,
         )}
       </p>
       <a

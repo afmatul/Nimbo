@@ -1,6 +1,7 @@
 /**
  * @jest-environment jsdom
  */
+import { EMAIL_REQUEST_COOLDOWN_SECONDS } from '@nimbo/contracts';
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
@@ -76,6 +77,26 @@ describe('RequestLinkForm', () => {
     expect(await screen.findByText(/2 minutos/)).toBeTruthy();
     expect(document.querySelector('[data-state="limite-reenvio"]')).toBeTruthy();
     expect(screen.queryByRole('heading', { name: 'Revisa tu correo' })).toBeNull();
+  });
+
+  it('un 429 sin Retry-After usa la espera de EMAIL_REQUEST_COOLDOWN_SECONDS', async () => {
+    const user = userEvent.setup();
+    fetchMock.mockResolvedValue(
+      jsonResponse(
+        { code: 'IDENTITY_TOO_MANY_REQUESTS', message: 'Límite', correlationId: 'corr-429' },
+        429,
+      ),
+    );
+    render(<RequestLinkForm apiPublicUrl="http://localhost/api/v1" />);
+
+    await user.type(screen.getByLabelText('Correo'), 'ana@ejemplo.com');
+    await user.click(screen.getByRole('button', { name: 'Pedir enlace' }));
+
+    expect(
+      await screen.findByText(
+        `Podrás pedirlo de nuevo en ${String(EMAIL_REQUEST_COOLDOWN_SECONDS)} segundos.`,
+      ),
+    ).toBeTruthy();
   });
 
   it('un 500 muestra error-servidor con el mensaje genérico y el correlationId', async () => {

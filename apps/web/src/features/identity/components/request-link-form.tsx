@@ -1,7 +1,12 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { resendVerificationRequestSchema, type ResendVerificationRequest } from '@nimbo/contracts';
+import {
+  EMAIL_REQUEST_COOLDOWN_SECONDS,
+  IDENTITY_ERROR_CODES,
+  resendVerificationRequestSchema,
+  type ResendVerificationRequest,
+} from '@nimbo/contracts';
 import { useEffect, useState, type JSX } from 'react';
 import { useForm } from 'react-hook-form';
 
@@ -87,11 +92,11 @@ export function RequestLinkForm({ apiPublicUrl }: { readonly apiPublicUrl: strin
       setSentEmail(values.email);
     } catch (caught) {
       const error = toApiClientError(caught);
-      if (error.code !== 'IDENTITY_TOO_MANY_REQUESTS') {
+      if (error.code !== IDENTITY_ERROR_CODES.TOO_MANY_REQUESTS) {
         setServerError(error);
         return;
       }
-      const seconds = error.retryAfterSeconds ?? 60;
+      const seconds = error.retryAfterSeconds ?? EMAIL_REQUEST_COOLDOWN_SECONDS;
       setLimit({
         id: (limit?.id ?? 0) + 1,
         message: messageForCode(error.code, {

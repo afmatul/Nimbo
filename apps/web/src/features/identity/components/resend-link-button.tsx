@@ -54,7 +54,7 @@ function CooldownControl({
   );
 }
 
-/** «Reenviar enlace»: 60 s al empezar; un 429 usa los segundos de `Retry-After`. */
+/** «Reenviar enlace»: `EMAIL_REQUEST_COOLDOWN_SECONDS` al empezar; un 429 usa los segundos de `Retry-After`. */
 export function ResendLinkButton({
   apiPublicUrl,
   email,

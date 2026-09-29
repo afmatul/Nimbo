@@ -2,7 +2,7 @@ import { EMAIL_REQUEST_COOLDOWN_SECONDS } from '@nimbo/contracts';
 import { useEffect, useState } from 'react';
 
 /**
- * Cuenta regresiva en segundos. Por defecto 60. Si el padre pasa los segundos de `Retry-After`,
+ * Cuenta regresiva en segundos. Por defecto `EMAIL_REQUEST_COOLDOWN_SECONDS`. Si el padre pasa los segundos de `Retry-After`,
  * el efecto vuelve a empezar.
  */
 export function useCountdown(seconds: number = EMAIL_REQUEST_COOLDOWN_SECONDS): number {
