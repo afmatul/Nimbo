@@ -35,6 +35,6 @@ Adoptar la opción 1.
 
 ## Consecuencias
 
-- Positivas: la tabla `plan`, `PlanLimits` y el almacenamiento comparten unidad. Cumple DF-06, DF-23 y DF-24.
+- Positivas: la tabla `plan`, `PlanLimits` y el almacenamiento comparten unidad. Adopta el criterio para DF-06, DF-23 y DF-24 (quedando como resoluciones parciales: DF-06 hasta que la spec 005 aplique `bigint` en `version_archivo`, y DF-23 hasta que la spec 009 decida el value object `Money`).
 - Negativas / deuda aceptada: la interfaz formatea `4500` a `Q45.00` y los bytes a GB o MB. `Money` queda para 009.
 - Cómo sabremos si fue un error: si la facturación necesita otra unidad, o si el backend vuelve a convertir entre GB y bytes en más de un lugar.

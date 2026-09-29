@@ -80,6 +80,7 @@ La tabla `plan` queda sembrada con los cuatro planes oficiales. Cualquier visita
   - **Dado** la semilla de CA-1,
   - **Cuando** un visitante sin sesión consulta el catálogo,
   - **Entonces** recibe los cuatro planes, cada uno con `id`, `slug`, `nombre`, `descripcion`, `precioCentavos` y los mismos límites que `PlanLimits`,
+  - **Y** los campos de tamaño en bytes (`storageBytes`, `maxFileSizeBytes`) se serializan en HTTP como cadena de texto numérico (`string`) para compatibilidad JSON sin desbordamiento de `bigint`,
   - **Y** por esta vía no se puede crear, editar ni borrar un plan.
   - La ruta es pública. La spec 003 la marca con `@Public()`.
 
