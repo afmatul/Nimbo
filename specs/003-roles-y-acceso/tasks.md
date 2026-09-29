@@ -373,7 +373,7 @@ las actualizaciones del `architect` al integrar (plan §10.4).
   Editor y Viewer) y `access-policies.ts`. Sin Nest ni TypeORM.
   Archivos: `apps/api/src/modules/access/domain/{access-level.enum,action.enum}.ts`, `apps/api/src/modules/access/domain/policies/{i-access-policy,owner.policy,editor.policy,viewer.policy,access-policies}.ts`, `apps/api/src/modules/access/domain/policies/access-policies.spec.ts`.
 
-- [ ] **T-36** `PermissionResolver` e `IAccessLevelReader` — CA: CA-9, CA-8 — Depende: T-03, T-35 — ~1 h
+- [x] **T-36** `PermissionResolver` e `IAccessLevelReader` — CA: CA-9, CA-8 — Depende: T-03, T-35 — ~1 h
   Prueba primero `apps/api/src/modules/access/application/permission-resolver.spec.ts`: los tres roles internos ×
   `VIEW`, `DOWNLOAD`, `PREVIEW`, `EDIT`, `QUERY_AGENT` → `can` es `false` y `levelFor` es `null`, y el lector falso
   **no** se llama; `nodeId` que no es UUID → `null` sin consultar; `CLIENT` con nivel `EDITOR` → `can(EDIT)` `true`,
