@@ -460,7 +460,7 @@ contra Postgres el contrato de `levelFor` (parte de **CA-10**; el resto, con 005
   `route-declarations.ts` con `DiscoveryService`, `MetadataScanner` y `Reflector`.
   Archivos: `apps/api/test/support/route-declarations.{ts,spec.ts}`.
 
-- [ ] **T-45** CA-3 y CA-7 sobre la API completa (+ `@Public()` pendientes de 001) — CA: CA-3, CA-7 — Depende: T-44, **001 PR-3** — ~1 h
+- [x] **T-45** CA-3 y CA-7 sobre la API completa (+ `@Public()` pendientes de 001) — CA: CA-3, CA-7 — Depende: T-44, **001 PR-3** — ~1 h
   Prueba primero `apps/api/test/int/shared/route-declarations.int-spec.ts` con `AppModule` completo: ninguna ruta sin
   declarar ni con las dos; las rutas `@Public()` son **exactamente** la lista explícita (salud `live`/`ready`,
   `auth/register`, `auth/verify-email`, `auth/resend-verification`; las de 002 y 006a se agregan con sus PR); `GET
@@ -654,6 +654,15 @@ PR-F = 9 (T-48…T-56). Total: 56.
   `createTestApp({ modules: [AccessModule] })` con el lector SQL real: cliente dentro de `withActor` → `null`/`false`;
   cliente fuera → `ActorScopeMissingError`; los tres roles internos → `false` aun sin `withActor` (no llegan al lector).
   `I_ACCESS_LEVEL_READER` no se exporta del módulo ni de `index.ts`: nadie fuera de `access` lo usa.
+
+- **T-44/T-45 (recorredor de rutas)**: `listRouteDeclarations(app, prefix)` crea `DiscoveryService` sobre el
+  `ModulesContainer` de la app (así `AppModule` no importa `DiscoveryModule`) y lee `IS_PUBLIC`/`ROLES_KEY` de
+  `shared` con `getAllAndOverride` (método y clase, el método manda), como los guards. El prefijo se pasa como
+  argumento porque Nest no lo expone desde la app. En `main` las cinco rutas reales ya estaban declaradas
+  (`HealthController` y `AuthController` con `@Public()` de clase, commit d5d2c98): T-45 no toca
+  `auth.controller.ts`. Contra el defecto: sin el `@Public()` de `AuthController`, CA-7 nombra sus tres rutas como
+  sin declarar y CA-3 no encuentra las tres públicas. La suite compone `AppModule.forRoot` dentro de `createTestApp`
+  con `accessTokenStrategy: 'identity'` (sin sondas).
 
 - **Precedencia del plan**: donde §11.2 dice «500 estrategia desconocida», «`err` se relanza como 500»,
   `access-token-strategy.ts` como archivo propio o `validate` → `false`, manda «Cambios aplicados»: 401

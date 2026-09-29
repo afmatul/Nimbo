@@ -33,7 +33,8 @@ const joinPath = (...segments: readonly string[]): string => {
   return `/${parts.join('/')}`;
 };
 
-const describeRoute = (route: RouteDeclaration): string => `${route.method} ${route.path}`;
+/** `MÉTODO /ruta`, como las nombran los informes de CA-3 y CA-7. */
+export const describeRoute = (route: RouteDeclaration): string => `${route.method} ${route.path}`;
 
 const declarationsOfHandler = (
   controller: Type<unknown>,
