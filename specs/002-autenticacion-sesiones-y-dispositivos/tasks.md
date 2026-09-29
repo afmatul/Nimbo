@@ -826,8 +826,12 @@ PR-5a = 15 (T-81…T-95) · PR-5b = 10 (T-96…T-105). Total 105.
   `login-ip`. Se conserva `'ip'` para el registro para no tocar 001.
 - **Marcador `/archivos` (T-87)**: el plan 002 dice «solo si 006 no la creó» y el plan 003 dice que la página es de
   005; T-87 solo crea el marcador si la ruta no existe, sea de quien sea.
-- **T-06 y los privilegios de `nimbo_app`**: dependen de que la migración de 003 (`20260928110000`) esté en la rama; si
-  no, el caso queda como `it.todo` y se activa al integrar 003.
+- **T-06 y los privilegios de `nimbo_app`** (2026-09-29, rebase sobre `main` con 003-PR-A/B/C): la migración de roles
+  de 003 (`20260928110000`) ya está en `main` y sus privilegios por defecto dan `SELECT/INSERT/UPDATE/DELETE` a
+  `nimbo_app` en `dispositivo` y `sesion` (002 no revoca nada: la app borra sesiones y dispositivos). El caso de T-06
+  dejó de ser `it.todo`, y `shapeOf` compara también esos permisos antes y después de `down`/`up`. Las pruebas de
+  esquema de 002 se conectan como el dueño (`DATABASE_MIGRATION_URL`), igual que `schema.int-spec.ts` de 003-PR-B:
+  borran un `usuario` para la cascada y revierten migraciones, y `nimbo_app` no tiene `DELETE` en `usuario` ni `CREATE`.
 - **PR-1 (T-01…T-10), desviaciones menores** (2026-09-29):
   - T-02: las pruebas de `IDENTITY_ERROR_CODES` y `FIELD_ISSUE_REASONS` pasan de `constants.spec.ts` a
     `error-codes.spec.ts`. La prueba de `api` `identity-validation.spec.ts` compara ahora un subconjunto
@@ -837,8 +841,8 @@ PR-5a = 15 (T-81…T-95) · PR-5b = 10 (T-96…T-105). Total 105.
   - T-03: `password` de `loginRequestSchema` y `currentPassword` de `changePasswordRequestSchema` vacíos dan
     `REQUIRED`. `newPassword` no aplica la política en el esquema: la aplica el servicio con el correo (así el error es
     `IDENTITY_WEAK_PASSWORD`, no `IDENTITY_INVALID_INPUT`).
-  - T-04: `role` se valida con `roleSchema` de `packages/contracts/src/shared/roles.ts`, copiado **idéntico** al de
-    003-PR-A para que la fusión no choque; no se exporta desde la raíz (lo hace 003-PR-A con `shared/index.ts`). Se
+  - T-04: `role` se valida con `roleSchema` de `packages/contracts/src/shared` (003-PR-A, ya en `main`: `ROLES`,
+    `roleSchema`, `RoleName`). La copia idéntica que traía PR-1 se quedó en una sola al rebasar sobre `main`. Se
     agregan `SESSION_LIST_MAX_ITEMS = 50` (DT-13) en `parameters.ts` y `DEVICE_KINDS`.
   - T-05/T-06: las filas de prueba de `usuario` salen a `test/int/identity/identity-rows.ts` (las usa también
     `schema.int-spec.ts`). `run → revert → run` se prueba con `up`/`down` de las clases dentro de una transacción y

@@ -12,6 +12,7 @@ const FINGERPRINT_B = 'b'.repeat(64);
 const REFRESH_A = 'c'.repeat(64);
 const REFRESH_B = 'd'.repeat(64);
 const LAST_USED_AT = '2026-09-29T10:00:00Z';
+const APP_ROLE = 'nimbo_app';
 const EXPIRES_AT = '2026-10-28T10:00:00Z';
 
 interface DeviceRow {
@@ -88,7 +89,29 @@ const aUserIn = async (runner: QueryRunner): Promise<string> => {
   return user.id;
 };
 
-/** Columnas, restricciones e índices de una tabla, para comparar el esquema antes y después de revertir. */
+interface TablePrivileges {
+  SELECT: boolean;
+  INSERT: boolean;
+  UPDATE: boolean;
+  DELETE: boolean;
+}
+
+/** Permisos de `nimbo_app` sobre una tabla (plan 003 §4 (b)). */
+const appPrivilegesOn = async (runner: QueryRunner, table: string): Promise<TablePrivileges> => {
+  const rows = (await runner.query(
+    `SELECT has_table_privilege($1, $2, 'SELECT') AS "SELECT",
+            has_table_privilege($1, $2, 'INSERT') AS "INSERT",
+            has_table_privilege($1, $2, 'UPDATE') AS "UPDATE",
+            has_table_privilege($1, $2, 'DELETE') AS "DELETE"`,
+    [APP_ROLE, table],
+  )) as TablePrivileges[];
+  return rows[0] as TablePrivileges;
+};
+
+/**
+ * Columnas, restricciones, índices y permisos de `nimbo_app` de una tabla, para comparar el esquema antes y después de
+ * revertir.
+ */
 const shapeOf = async (runner: QueryRunner, table: string): Promise<unknown> => ({
   columns: await runner.query(
     `SELECT column_name, data_type, is_nullable, column_default, character_maximum_length
@@ -104,6 +127,7 @@ const shapeOf = async (runner: QueryRunner, table: string): Promise<unknown> => 
     'SELECT indexname, indexdef FROM pg_indexes WHERE tablename = $1 ORDER BY indexname',
     [table],
   ),
+  appPrivileges: await appPrivilegesOn(runner, table),
 });
 
 /** Un usuario con un dispositivo, listos para colgarles sesiones. */
@@ -122,14 +146,19 @@ const tableExists = async (runner: QueryRunner, table: string): Promise<boolean>
   return rows[0]?.present ?? false;
 };
 
-/** Migraciones `dispositivo` y `sesion` de la spec 002 (plan §4) sobre la BD migrada por el arnés. */
+/**
+ * Migraciones `dispositivo` y `sesion` de la spec 002 (plan §4) sobre la BD migrada por el arnés. Prueba el esquema,
+ * no los permisos de la app: se conecta como el dueño (`DATABASE_MIGRATION_URL`), que puede borrar un `usuario` para
+ * comprobar la cascada y revertir las migraciones (`nimbo_app` no tiene `DELETE` en `usuario` ni `CREATE` en `public`,
+ * plan 003 §4 (b)).
+ */
 describe('migraciones de dispositivo y sesión (CA-16, CA-17, CA-24)', () => {
   let dataSource: DataSource;
   let runner: QueryRunner;
 
   beforeAll(async () => {
     dataSource = new DataSource(
-      buildDataSourceOptions({ DATABASE_URL: process.env['DATABASE_URL'] ?? '' }),
+      buildDataSourceOptions({ DATABASE_URL: process.env['DATABASE_MIGRATION_URL'] ?? '' }),
     );
     await dataSource.initialize();
   });
@@ -301,9 +330,17 @@ describe('migraciones de dispositivo y sesión (CA-16, CA-17, CA-24)', () => {
       expect(rows).toHaveLength(0);
     });
 
-    // Los privilegios por defecto de `nimbo_app` los crea la migración 20260928110000 de 003 (`feat/003-rol-bd`),
-    // que aún no está en `main`. Se activa al integrar 003 (tasks.md, notas del developer).
-    it.todo('CA-24: `nimbo_app` tiene SELECT, INSERT, UPDATE y DELETE en `dispositivo` y `sesion`');
+    it.each(['dispositivo', 'sesion'])(
+      'CA-24: `nimbo_app` tiene SELECT, INSERT, UPDATE y DELETE en `%s`',
+      async (table) => {
+        await expect(appPrivilegesOn(runner, table)).resolves.toEqual({
+          SELECT: true,
+          INSERT: true,
+          UPDATE: true,
+          DELETE: true,
+        });
+      },
+    );
   });
 
   it('CA-24: run → revert (LIFO) → run deja `dispositivo` y `sesion` igual', async () => {

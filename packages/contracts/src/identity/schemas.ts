@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { roleSchema } from '../shared/roles';
+import { roleSchema } from '../shared';
 
 import { IDENTITY_FIELD_MESSAGES, type FieldIssueReason } from './error-codes';
 import { FULL_NAME_MAX_LENGTH, SESSION_LIST_MAX_ITEMS } from './parameters';
