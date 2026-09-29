@@ -174,8 +174,9 @@ export const createTestApp = async (options: TestAppOptions = {}): Promise<TestA
   try {
     await app.init();
   } catch (error: unknown) {
-    // Un arranque rechazado (p. ej. `DatabaseRoleCheck` con el dueño) no deja conexiones abiertas en la suite.
-    await app.close();
+    // Un arranque rechazado (p. ej. `DatabaseRoleCheck` con el dueño) no deja conexiones abiertas en la suite; si el
+    // cierre también falla, se relanza el error original y no el del cierre.
+    await app.close().catch(() => undefined);
     throw error;
   }
 
