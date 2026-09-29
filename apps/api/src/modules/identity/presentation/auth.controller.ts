@@ -18,6 +18,7 @@ import { RegistrationService } from '../application/registration.service';
 
 import {
   IdentityIpThrottlerGuard,
+  LOGIN_IP_THROTTLER,
   REGISTER_IP_THROTTLER,
   RESEND_IP_THROTTLER,
 } from './identity-ip-throttler.guard';
@@ -40,7 +41,7 @@ export class AuthController {
   @Post('register')
   @HttpCode(HttpStatus.ACCEPTED)
   @UseGuards(IdentityIpThrottlerGuard)
-  @SkipThrottle({ [RESEND_IP_THROTTLER]: true })
+  @SkipThrottle({ [RESEND_IP_THROTTLER]: true, [LOGIN_IP_THROTTLER]: true })
   async register(
     @Body(new ZodValidationPipe(registerRequestSchema, identityValidationError))
     body: RegisterRequest,
@@ -53,7 +54,7 @@ export class AuthController {
   @Post('resend-verification')
   @HttpCode(HttpStatus.ACCEPTED)
   @UseGuards(IdentityIpThrottlerGuard)
-  @SkipThrottle({ [REGISTER_IP_THROTTLER]: true })
+  @SkipThrottle({ [REGISTER_IP_THROTTLER]: true, [LOGIN_IP_THROTTLER]: true })
   async resendVerification(
     @Body(new ZodValidationPipe(resendVerificationRequestSchema, identityValidationError))
     body: ResendVerificationRequest,

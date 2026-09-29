@@ -2,10 +2,22 @@ import { TooManyRequestsError } from '../../../../shared/domain/errors';
 
 import { minutesText } from './minutes-text';
 
-/** Qué límite se alcanzó (plan §7, `identity.rate_limited`): por correo (servicio) o por IP (guard). */
-export type IdentityRateLimitScope = 'email' | 'ip';
+/**
+ * Qué límite se alcanzó (plan §7, `identity.rate_limited`): por correo (servicio), por IP de registro o reenvío
+ * (`ip`) o por IP de inicio de sesión (`ip_login`, 002 DT-20).
+ */
+export type IdentityRateLimitScope = 'email' | 'ip' | 'ip_login';
 
-/** Límite de registro o reenvío alcanzado (CA-15). HTTP 429 con `Retry-After`. */
+const messageFor = (scope: IdentityRateLimitScope, retryAfterSeconds: number): string =>
+  scope === 'ip_login'
+    ? 'Hiciste demasiados intentos. Espera unos minutos y vuelve a intentarlo.'
+    : 'Ya te enviamos un enlace hace poco. Revisa tu bandeja y la carpeta de spam, o inténtalo de nuevo en ' +
+      `${minutesText(retryAfterSeconds)}.`;
+
+/**
+ * Límite de solicitudes alcanzado (001 CA-15, 002 CA-6). HTTP 429 con `Retry-After`. El texto depende del ámbito
+ * (DT-20): el mismo código sirve al registro, al reenvío y al inicio de sesión.
+ */
 export class IdentityTooManyRequestsError extends TooManyRequestsError {
   readonly code = 'IDENTITY_TOO_MANY_REQUESTS';
 
@@ -13,10 +25,6 @@ export class IdentityTooManyRequestsError extends TooManyRequestsError {
     retryAfterSeconds: number,
     readonly scope: IdentityRateLimitScope,
   ) {
-    super(
-      'Ya te enviamos un enlace hace poco. Revisa tu bandeja y la carpeta de spam, o inténtalo de nuevo en ' +
-        `${minutesText(retryAfterSeconds)}.`,
-      retryAfterSeconds,
-    );
+    super(messageFor(scope, retryAfterSeconds), retryAfterSeconds);
   }
 }
