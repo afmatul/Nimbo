@@ -1,16 +1,22 @@
 import { randomUUID } from 'node:crypto';
 
 import { Inject, Injectable } from '@nestjs/common';
-import { SESSION_IDLE_TIMEOUT_DAYS, SESSION_MAX_LIFETIME_DAYS } from '@nimbo/contracts';
+import {
+  REFRESH_ROTATION_GRACE_SECONDS,
+  SESSION_IDLE_TIMEOUT_DAYS,
+  SESSION_MAX_LIFETIME_DAYS,
+} from '@nimbo/contracts';
 import { PinoLogger } from 'nestjs-pino';
 
 import { I_CLOCK, I_TRANSACTION_RUNNER } from '../../../shared';
-import type { IClock, ITransactionRunner, Role } from '../../../shared';
+import type { DomainError, IClock, ITransactionRunner, Role } from '../../../shared';
 import { I_MAILER } from '../../notifications';
 import type { IMailer, MailMessage } from '../../notifications';
 import { Device } from '../domain/device.entity';
+import { RefreshInvalidError, SessionExpiredError, SessionRevokedError } from '../domain/errors';
 import { OpaqueToken } from '../domain/opaque-token.vo';
 import { RefreshToken } from '../domain/refresh-token.vo';
+import type { ParsedRefreshToken } from '../domain/refresh-token.vo';
 import { Session } from '../domain/session.entity';
 import { UserAgentSummary } from '../domain/user-agent-summary.vo';
 import type { User } from '../domain/user.entity';
@@ -33,6 +39,7 @@ import { WEB_PATHS, webUrl } from './web-links';
 const MS_PER_DAY = 86_400_000;
 const MAX_LIFETIME_MS = SESSION_MAX_LIFETIME_DAYS * MS_PER_DAY;
 const IDLE_TIMEOUT_MS = SESSION_IDLE_TIMEOUT_DAYS * MS_PER_DAY;
+const GRACE_MS = REFRESH_ROTATION_GRACE_SECONDS * 1000;
 const NEW_DEVICE_TAG = 'identity.new-device';
 
 /** Quién abre la sesión: el inicio de sesión avisa de un dispositivo nuevo; la verificación no (D-4). */
@@ -70,6 +77,28 @@ interface OpenDecision {
   readonly deviceId: string;
   readonly isNew: boolean;
 }
+
+/** Motivo de un rechazo de renovación (plan §7, `identity.session.refresh_rejected`). */
+type RefreshRejection = 'unknown' | 'grace' | 'expired' | 'revoked' | 'suspended';
+
+/** Lo que decide la transacción de renovación; el token, el correo y el error van después del commit. */
+type RefreshDecision = {
+  readonly kind: 'rejected';
+  readonly reason: RefreshRejection;
+  readonly sessionId?: string;
+};
+
+/** `grace` no revoca ni borra la cookie: en una carrera entre pestañas la del navegador ya es la nueva (CA-9). */
+const REFRESH_REJECTION_ERRORS: Readonly<
+  Record<RefreshRejection | 'malformed', () => DomainError>
+> = {
+  malformed: () => new RefreshInvalidError(),
+  unknown: () => new RefreshInvalidError(),
+  grace: () => new RefreshInvalidError(),
+  expired: () => new SessionExpiredError(),
+  revoked: () => new SessionRevokedError(),
+  suspended: () => new SessionRevokedError(),
+};
 
 const sessionUser = (user: User): SessionUser => ({
   id: user.id,
@@ -114,6 +143,58 @@ export class SessionService {
       newDevice: decision.isNew,
       ...(deviceSecret === undefined ? { deviceCookie: secret } : {}),
     };
+  }
+
+  /**
+   * CA-7 a CA-10: rota el token de refresco. `findByIdForUpdate` serializa dos renovaciones simultáneas; los rechazos
+   * que escriben (reúso, cuenta suspendida) se confirman antes de lanzar.
+   */
+  async refresh(rawToken: string, client: ClientContext): Promise<IssuedSession> {
+    const parsed = RefreshToken.parse(rawToken);
+    if (parsed === null) {
+      this.logRejection('malformed');
+      throw new RefreshInvalidError();
+    }
+    const now = this.clock.now();
+    const decision = await this.transactions.run(() => this.refreshInTransaction(parsed, now));
+    return this.completeRefresh(decision, client, now);
+  }
+
+  private async refreshInTransaction(
+    parsed: ParsedRefreshToken,
+    now: Date,
+  ): Promise<RefreshDecision> {
+    const session = await this.sessions.findByIdForUpdate(parsed.sessionId);
+    if (session === null) {
+      return { kind: 'rejected', reason: 'unknown' };
+    }
+    const state = session.stateAt(now, IDLE_TIMEOUT_MS);
+    if (state !== 'active') {
+      return { kind: 'rejected', reason: state, sessionId: session.id };
+    }
+    const match = session.matchSecret(parsed.secretHash, now, GRACE_MS);
+    if (match === 'previousWithinGrace') {
+      return { kind: 'rejected', reason: 'grace', sessionId: session.id };
+    }
+    throw new Error(`Renovación con el secreto ${match}: pendiente de T-32.`);
+  }
+
+  /** Después del commit: bitácora y token nuevo, o el error público del rechazo. */
+  private completeRefresh(
+    decision: RefreshDecision,
+    _client: ClientContext,
+    _now: Date,
+  ): Promise<IssuedSession> {
+    this.logRejection(decision.reason, decision.sessionId);
+    throw REFRESH_REJECTION_ERRORS[decision.reason]();
+  }
+
+  private logRejection(reason: RefreshRejection | 'malformed', sessionId?: string): void {
+    this.logger.info({
+      event: 'identity.session.refresh_rejected',
+      reason,
+      ...(sessionId === undefined ? {} : { sessionId }),
+    });
   }
 
   private wellFormedDeviceSecret(value: string | undefined): string | undefined {

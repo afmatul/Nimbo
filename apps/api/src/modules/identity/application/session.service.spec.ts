@@ -1,10 +1,17 @@
-import { ACCESS_TOKEN_TTL_SECONDS, SESSION_IDLE_TIMEOUT_DAYS } from '@nimbo/contracts';
+import {
+  ACCESS_TOKEN_TTL_SECONDS,
+  REFRESH_ROTATION_GRACE_SECONDS,
+  SESSION_IDLE_TIMEOUT_DAYS,
+  SESSION_MAX_LIFETIME_DAYS,
+} from '@nimbo/contracts';
 
 import { FixedClock } from '../../../shared/domain/fixed.clock';
 import { Role } from '../../../shared/domain/role.enum';
 import type { MailMessage } from '../../notifications';
+import { RefreshInvalidError, SessionExpiredError, SessionRevokedError } from '../domain/errors';
 import { OpaqueToken } from '../domain/opaque-token.vo';
 import { RefreshToken } from '../domain/refresh-token.vo';
+import type { Session } from '../domain/session.entity';
 
 import type { ClientContext } from './client-context';
 import type { IssueAccessTokenInput } from './ports/i-token-service.port';
@@ -18,6 +25,8 @@ import { RecordingTransactionRunner } from './testing/recording-transaction-runn
 const NOW = new Date('2026-09-30T15:00:00.000Z');
 const MS_PER_DAY = 86_400_000;
 const IDLE_MS = SESSION_IDLE_TIMEOUT_DAYS * MS_PER_DAY;
+const MAX_LIFETIME_MS = SESSION_MAX_LIFETIME_DAYS * MS_PER_DAY;
+const GRACE_MS = REFRESH_ROTATION_GRACE_SECONDS * 1000;
 const FIREFOX_LINUX = 'Mozilla/5.0 (X11; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0';
 const DEVICE_SECRET = 'AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCdE';
 
@@ -191,5 +200,127 @@ describe('SessionService.open (plan 002 §6.3)', () => {
     );
     expect(again.newDevice).toBe(false);
     expect(sent).toHaveLength(0);
+  });
+});
+
+const UNKNOWN_SESSION_ID = '9d2f1c7a-3b4e-4f5a-8b6c-7d8e9f0a1b2c';
+
+/** Abre una sesión real con el servicio y limpia las anotaciones para medir solo lo que sigue. */
+const openSession = async (ctx: Setup) => {
+  const opened = await ctx.service.open(
+    ctx.user,
+    client({ deviceSecret: DEVICE_SECRET }),
+    'verification',
+  );
+  ctx.timeline.length = 0;
+  ctx.sent.length = 0;
+  ctx.logger.info.mockClear();
+  ctx.logger.warn.mockClear();
+  ctx.tokens.issueAccessToken.mockClear();
+  return opened;
+};
+
+const stored = (ctx: Setup, sessionId: string): Session => {
+  const session = ctx.sessions.get(sessionId);
+  if (session === undefined) {
+    throw new Error('La sesión de la prueba no existe.');
+  }
+  return session;
+};
+
+/** Rota la sesión guardada como lo haría otra renovación y devuelve el token vigente. */
+const rotateStored = async (ctx: Setup, sessionId: string, at: Date): Promise<string> => {
+  const next = RefreshToken.issue(sessionId);
+  await ctx.sessions.update(stored(ctx, sessionId).rotate(next.secretHash, at));
+  return next.value;
+};
+
+const rejection = (reason: string, sessionId?: string) => ({
+  event: 'identity.session.refresh_rejected',
+  reason,
+  ...(sessionId === undefined ? {} : { sessionId }),
+});
+
+describe('SessionService.refresh: rechazos sin escritura (plan 002 §6.3)', () => {
+  it('CA-9: un token mal formado se rechaza sin consultar el repositorio', async () => {
+    const ctx = setup();
+
+    await expect(ctx.service.refresh('basura', client())).rejects.toBeInstanceOf(
+      RefreshInvalidError,
+    );
+
+    expect(ctx.sessions.findCalls).toBe(0);
+    expect(loggedEvents(ctx.logger)).toContainEqual(rejection('malformed'));
+  });
+
+  it('CA-9: un `sid` desconocido responde `REFRESH_INVALID`', async () => {
+    const ctx = setup();
+
+    await expect(
+      ctx.service.refresh(RefreshToken.issue(UNKNOWN_SESSION_ID).value, client()),
+    ).rejects.toBeInstanceOf(RefreshInvalidError);
+
+    expect(loggedEvents(ctx.logger)).toContainEqual(rejection('unknown'));
+  });
+
+  it('CA-10: una sesión revocada responde `SESSION_REVOKED` sin cambios', async () => {
+    const ctx = setup();
+    const opened = await openSession(ctx);
+    await ctx.sessions.update(stored(ctx, opened.sessionId).revoke(NOW));
+    const before = stored(ctx, opened.sessionId);
+
+    await expect(ctx.service.refresh(opened.refreshToken, client())).rejects.toBeInstanceOf(
+      SessionRevokedError,
+    );
+
+    expect(stored(ctx, opened.sessionId)).toBe(before);
+    expect(loggedEvents(ctx.logger)).toContainEqual(rejection('revoked', opened.sessionId));
+  });
+
+  it('CA-8: vencida por 7 días sin uso responde `SESSION_EXPIRED` sin cambios', async () => {
+    const ctx = setup();
+    const opened = await openSession(ctx);
+    const before = stored(ctx, opened.sessionId);
+    ctx.clock.advance(IDLE_MS);
+
+    await expect(ctx.service.refresh(opened.refreshToken, client())).rejects.toBeInstanceOf(
+      SessionExpiredError,
+    );
+
+    expect(stored(ctx, opened.sessionId)).toBe(before);
+    expect(loggedEvents(ctx.logger)).toContainEqual(rejection('expired', opened.sessionId));
+    expect(ctx.tokens.issueAccessToken).not.toHaveBeenCalled();
+  });
+
+  it('CA-8: vencida por los 30 días de vida aunque se haya usado el día anterior', async () => {
+    const ctx = setup();
+    const opened = await openSession(ctx);
+    const current = await rotateStored(
+      ctx,
+      opened.sessionId,
+      new Date(NOW.getTime() + MAX_LIFETIME_MS - MS_PER_DAY),
+    );
+    ctx.clock.set(new Date(NOW.getTime() + MAX_LIFETIME_MS));
+
+    await expect(ctx.service.refresh(current, client())).rejects.toBeInstanceOf(
+      SessionExpiredError,
+    );
+  });
+
+  it('CA-9: el token anterior dentro de la gracia responde `REFRESH_INVALID` sin revocar', async () => {
+    const ctx = setup();
+    const opened = await openSession(ctx);
+    await rotateStored(ctx, opened.sessionId, NOW);
+    const before = stored(ctx, opened.sessionId);
+    ctx.clock.advance(GRACE_MS);
+
+    await expect(ctx.service.refresh(opened.refreshToken, client())).rejects.toBeInstanceOf(
+      RefreshInvalidError,
+    );
+
+    expect(stored(ctx, opened.sessionId)).toBe(before);
+    expect(before.revocadaEn).toBeNull();
+    expect(ctx.sent).toHaveLength(0);
+    expect(loggedEvents(ctx.logger)).toContainEqual(rejection('grace', opened.sessionId));
   });
 });
