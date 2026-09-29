@@ -5,8 +5,13 @@ import { toFieldIssues } from '../validation';
 import { IDENTITY_FIELD_MESSAGES } from './error-codes';
 import {
   acceptedResponseSchema,
+  changePasswordRequestSchema,
+  forgotPasswordRequestSchema,
+  loginRequestSchema,
   registerRequestSchema,
   resendVerificationRequestSchema,
+  resetPasswordRequestSchema,
+  resetTokenRequestSchema,
   verifyEmailRequestSchema,
   verifyEmailResponseSchema,
 } from './schemas';
@@ -197,6 +202,128 @@ describe('verifyEmailRequestSchema', () => {
 
   it('CA-7: es estricto', () => {
     expect(reasonsOf(verifyEmailRequestSchema, { token: 'a', x: 1 })).toEqual(['x:UNKNOWN_FIELD']);
+  });
+});
+
+describe('loginRequestSchema', () => {
+  const VALID_LOGIN = { email: 'ana@nimbo.me', password: 'cualquier-cosa' };
+
+  it('CA-1: acepta `{ email, password }` sin aplicar la política de contraseña', () => {
+    expect(loginRequestSchema.parse(VALID_LOGIN)).toEqual(VALID_LOGIN);
+  });
+
+  it('CA-1: un correo mal formado es `INVALID_EMAIL`', () => {
+    expect(reasonsOf(loginRequestSchema, { ...VALID_LOGIN, email: 'ana' })).toEqual([
+      'email:INVALID_EMAIL',
+    ]);
+  });
+
+  it('CA-1: una contraseña vacía o ausente es `REQUIRED`', () => {
+    expect(reasonsOf(loginRequestSchema, { ...VALID_LOGIN, password: '' })).toEqual([
+      'password:REQUIRED',
+    ]);
+    expect(reasonsOf(loginRequestSchema, { email: VALID_LOGIN.email })).toEqual([
+      'password:REQUIRED',
+    ]);
+  });
+
+  it('CA-1: es estricto', () => {
+    expect(reasonsOf(loginRequestSchema, { ...VALID_LOGIN, rememberMe: true })).toEqual([
+      'rememberMe:UNKNOWN_FIELD',
+    ]);
+  });
+});
+
+describe('forgotPasswordRequestSchema', () => {
+  it('CA-18: acepta `{ email }`', () => {
+    expect(forgotPasswordRequestSchema.parse({ email: 'ana@nimbo.me' })).toEqual({
+      email: 'ana@nimbo.me',
+    });
+  });
+
+  it('CA-18: un correo mal formado es `INVALID_EMAIL`', () => {
+    expect(reasonsOf(forgotPasswordRequestSchema, { email: 'ana@' })).toEqual([
+      'email:INVALID_EMAIL',
+    ]);
+  });
+
+  it('CA-18: es estricto', () => {
+    expect(reasonsOf(forgotPasswordRequestSchema, { email: 'ana@nimbo.me', x: 1 })).toEqual([
+      'x:UNKNOWN_FIELD',
+    ]);
+  });
+});
+
+describe('resetTokenRequestSchema', () => {
+  it.each(['', 'mal-formado!'])(
+    'CA-20: acepta cualquier `token` de texto («%s»); el formato lo rechaza el servicio',
+    (token) => {
+      expect(resetTokenRequestSchema.parse({ token })).toEqual({ token });
+    },
+  );
+
+  it('CA-20: un `token` ausente es `REQUIRED` y el esquema es estricto', () => {
+    expect(reasonsOf(resetTokenRequestSchema, {})).toEqual(['token:REQUIRED']);
+    expect(reasonsOf(resetTokenRequestSchema, { token: 'a', x: 1 })).toEqual(['x:UNKNOWN_FIELD']);
+  });
+});
+
+describe('resetPasswordRequestSchema', () => {
+  const VALID_RESET = { token: 'token-opaco', password: 'Nimbo-Seguro-2026' };
+
+  it('CA-21: acepta `{ token, password }` con una contraseña que cumple D-6', () => {
+    expect(resetPasswordRequestSchema.parse(VALID_RESET)).toEqual(VALID_RESET);
+  });
+
+  it('CA-21: cada regla de D-6 incumplida es un issue propio de `password`', () => {
+    expect(reasonsOf(resetPasswordRequestSchema, { ...VALID_RESET, password: 'corta' })).toEqual([
+      'password:PASSWORD_TOO_SHORT',
+      'password:PASSWORD_MISSING_UPPERCASE',
+      'password:PASSWORD_MISSING_NUMBER',
+      'password:PASSWORD_MISSING_SYMBOL',
+    ]);
+  });
+
+  it('CA-21: no evalúa la regla del correo (la completa el servicio)', () => {
+    expect(
+      reasonsOf(resetPasswordRequestSchema, {
+        ...VALID_RESET,
+        password: 'Ana.Lopez-2026@nimbo.me',
+      }),
+    ).toEqual([]);
+  });
+
+  it('CA-20/CA-21: es estricto y exige los dos campos', () => {
+    expect(reasonsOf(resetPasswordRequestSchema, { ...VALID_RESET, email: 'a@b.co' })).toEqual([
+      'email:UNKNOWN_FIELD',
+    ]);
+    expect(reasonsOf(resetPasswordRequestSchema, {}).sort()).toEqual([
+      'password:REQUIRED',
+      'token:REQUIRED',
+    ]);
+  });
+});
+
+describe('changePasswordRequestSchema', () => {
+  const VALID_CHANGE = { currentPassword: 'Actual-2026!', newPassword: 'Nimbo-Nueva-2026' };
+
+  it('CA-22: acepta `{ currentPassword, newPassword }`', () => {
+    expect(changePasswordRequestSchema.parse(VALID_CHANGE)).toEqual(VALID_CHANGE);
+  });
+
+  it('CA-22: una contraseña actual vacía es `REQUIRED`', () => {
+    expect(
+      reasonsOf(changePasswordRequestSchema, { ...VALID_CHANGE, currentPassword: '' }),
+    ).toEqual(['currentPassword:REQUIRED']);
+  });
+
+  it('CA-22: no admite un campo de confirmación (D-7: solo existe en el cliente)', () => {
+    expect(
+      reasonsOf(changePasswordRequestSchema, {
+        ...VALID_CHANGE,
+        confirmPassword: VALID_CHANGE.newPassword,
+      }),
+    ).toEqual(['confirmPassword:UNKNOWN_FIELD']);
   });
 });
 

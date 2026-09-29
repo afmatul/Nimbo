@@ -52,8 +52,12 @@ const acceptTermsField = z.custom<true>().superRefine((value: unknown, ctx) => {
   if (value !== true) addIssue(ctx, 'TERMS_NOT_ACCEPTED');
 });
 
+function nonEmptyReasons(value: string): FieldIssueReason[] {
+  return value === '' ? ['REQUIRED'] : [];
+}
+
 /** Reglas de D-6 sobre la contraseña; «igual al correo» solo se evalúa si llegó un correo de texto. */
-function refinePassword(data: { password: unknown; email: unknown }, ctx: Refinement): void {
+function refinePassword(data: { password: unknown; email?: unknown }, ctx: Refinement): void {
   if (typeof data.password !== 'string') return;
   const email = typeof data.email === 'string' ? data.email.trim() : '';
   const hasEmail = email !== '';
@@ -89,6 +93,44 @@ export const verifyEmailRequestSchema = z
   .object({ token: textField() })
   .strict(UNKNOWN_FIELD_MESSAGE);
 
+/**
+ * `POST /auth/login` (002 plan §5). Sin la política de contraseña: una contraseña que no la cumple es solo
+ * incorrecta (CA-2).
+ */
+export const loginRequestSchema = z
+  .object({ email: textField(emailReasons), password: textField(nonEmptyReasons) })
+  .strict(UNKNOWN_FIELD_MESSAGE);
+
+/** `POST /auth/forgot-password` (CA-18). */
+export const forgotPasswordRequestSchema = z
+  .object({ email: textField(emailReasons) })
+  .strict(UNKNOWN_FIELD_MESSAGE);
+
+/**
+ * `POST /auth/reset-password/check`. Como en `verify-email`, un `token` mal formado lo rechaza el servicio con
+ * `IDENTITY_RESET_LINK_INVALID` (CA-20).
+ */
+export const resetTokenRequestSchema = z
+  .object({ token: textField() })
+  .strict(UNKNOWN_FIELD_MESSAGE);
+
+/**
+ * `POST /auth/reset-password`: política D-6 de 001 salvo «igual al correo», que completa el servicio porque la
+ * petición no trae el correo (CA-21).
+ */
+export const resetPasswordRequestSchema = z
+  .object({ token: textField(), password: textField() })
+  .strict(UNKNOWN_FIELD_MESSAGE)
+  .superRefine(refinePassword);
+
+/**
+ * `POST /auth/change-password`. La confirmación solo existe en el cliente (D-7) y la política de la contraseña nueva
+ * la aplica el servicio, que conoce el correo (CA-22).
+ */
+export const changePasswordRequestSchema = z
+  .object({ currentPassword: textField(nonEmptyReasons), newPassword: textField() })
+  .strict(UNKNOWN_FIELD_MESSAGE);
+
 /** Respuesta neutra de `register` y `resend-verification` (spec §7). */
 export const acceptedResponseSchema = z.object({ status: z.literal('accepted') }).strict();
 
@@ -102,6 +144,11 @@ export const verifyEmailResponseSchema = z
 export type RegisterRequest = z.infer<typeof registerRequestSchema>;
 export type ResendVerificationRequest = z.infer<typeof resendVerificationRequestSchema>;
 export type VerifyEmailRequest = z.infer<typeof verifyEmailRequestSchema>;
+export type LoginRequest = z.infer<typeof loginRequestSchema>;
+export type ForgotPasswordRequest = z.infer<typeof forgotPasswordRequestSchema>;
+export type ResetTokenRequest = z.infer<typeof resetTokenRequestSchema>;
+export type ResetPasswordRequest = z.infer<typeof resetPasswordRequestSchema>;
+export type ChangePasswordRequest = z.infer<typeof changePasswordRequestSchema>;
 export type AcceptedResponse = z.infer<typeof acceptedResponseSchema>;
 export type VerifyEmailResponse = z.infer<typeof verifyEmailResponseSchema>;
 export type VerifyEmailStatus = VerifyEmailResponse['status'];
