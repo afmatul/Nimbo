@@ -381,7 +381,7 @@ las actualizaciones del `architect` al integrar (plan §10.4).
   el servicio (`actor` primer parámetro, DF-01).
   Archivos: `apps/api/src/modules/access/application/{permission-resolver,i-access-level-reader.port}.ts`, `apps/api/src/modules/access/application/permission-resolver.spec.ts`.
 
-- [ ] **T-37** [P] `accessibleNodes` y `AccessibleNodesFragment` — CA: CA-9, CA-10 (forma) — Depende: T-03 — ~0,5 h
+- [x] **T-37** [P] `accessibleNodes` y `AccessibleNodesFragment` — CA: CA-9, CA-10 (forma) — Depende: T-03 — ~0,5 h
   Prueba primero `apps/api/src/modules/access/infrastructure/sql/accessible-nodes.spec.ts`: para los cuatro roles (en
   003 también `CLIENT`) devuelve el conjunto vacío tipado `SELECT NULL::uuid AS nodo_id, NULL::text AS tipo_nodo,
   NULL::text AS nivel WHERE false`; todas las claves de `parameters` empiezan por `access_`; función pura, sin DI.
