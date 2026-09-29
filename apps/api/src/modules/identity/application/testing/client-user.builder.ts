@@ -10,6 +10,7 @@ export class ClientUserBuilder {
   private email = 'ana@ejemplo.com';
   private isVerified = false;
   private isSuspended = false;
+  private passwordHashPhc = '$argon2id$v=19$m=19456,t=2,p=1$c2FsdA$aGFzaA';
 
   withId(id: string): this {
     this.id = id;
@@ -18,6 +19,11 @@ export class ClientUserBuilder {
 
   withEmail(email: string): this {
     this.email = email;
+    return this;
+  }
+
+  withPasswordHash(phc: string): this {
+    this.passwordHashPhc = phc;
     return this;
   }
 
@@ -52,7 +58,7 @@ export class ClientUserBuilder {
       id: this.id,
       fullName: 'Ana López',
       email: EmailAddress.of(this.email),
-      passwordHash: PasswordHash.fromPhc('$argon2id$v=19$m=19456,t=2,p=1$c2FsdA$aGFzaA'),
+      passwordHash: PasswordHash.fromPhc(this.passwordHashPhc),
       acceptance: LegalAcceptance.of({
         termsVersion: '1.0',
         privacyVersion: '1.0',
