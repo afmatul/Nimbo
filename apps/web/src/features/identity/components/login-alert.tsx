@@ -4,9 +4,11 @@ import type { JSX, ReactNode } from 'react';
 
 import { TextLink } from '../../../components/nimbo/text-link';
 import { Alert } from '../../../components/ui/alert';
+import { Button } from '../../../components/ui/button';
 import type { ApiClientError } from '../../../lib/api-error';
 import { messageForCode } from '../../../lib/error-catalog';
 
+import { LimitAlert } from './limit-alert';
 import { ServerErrorAlert } from './server-error-alert';
 
 export const RESET_PASSWORD_HREF = '/recuperar-contrasena';
@@ -31,22 +33,67 @@ function AlertContent({
   );
 }
 
-/** Rechazo del inicio de sesión (spec 002 §11): alerta de 000b encima del formulario, con su acción correctiva. */
-export function LoginAlert({ error }: { readonly error: ApiClientError }): JSX.Element {
+function ResetPasswordLink(): JSX.Element {
+  return <TextLink href={RESET_PASSWORD_HREF}>Restablecer contraseña</TextLink>;
+}
+
+/**
+ * Rechazo del inicio de sesión (spec 002 §11): alerta de 000b encima del botón, con su acción correctiva. «Pedir un
+ * enlace nuevo» la resuelve quien la muestra (`onRequestLink`).
+ */
+export function LoginAlert({
+  error,
+  onRequestLink,
+}: {
+  readonly error: ApiClientError;
+  readonly onRequestLink: () => void;
+}): JSX.Element {
   const message = messageForCode(error.code, {
     correlationId: error.correlationId,
     retryAfterSeconds: error.retryAfterSeconds,
     screen: 'login',
   });
 
-  if (error.code === IDENTITY_ERROR_CODES.INVALID_CREDENTIALS) {
-    return (
-      <Alert variant="error" data-state="error">
-        <AlertContent message={message}>
-          <TextLink href={RESET_PASSWORD_HREF}>Restablecer contraseña</TextLink>
-        </AlertContent>
-      </Alert>
-    );
+  switch (error.code) {
+    case IDENTITY_ERROR_CODES.INVALID_CREDENTIALS:
+      return (
+        <Alert variant="error" data-state="error">
+          <AlertContent message={message}>
+            <ResetPasswordLink />
+          </AlertContent>
+        </Alert>
+      );
+    case IDENTITY_ERROR_CODES.LOGIN_LOCKED:
+      return (
+        <Alert variant="warning" role="alert" data-state="bloqueado">
+          <AlertContent message={message}>
+            <ResetPasswordLink />
+          </AlertContent>
+        </Alert>
+      );
+    case IDENTITY_ERROR_CODES.TOO_MANY_REQUESTS:
+      return (
+        <div data-state="limite-ip">
+          <LimitAlert message={message} />
+        </div>
+      );
+    case IDENTITY_ERROR_CODES.EMAIL_NOT_VERIFIED:
+      return (
+        <Alert variant="warning" role="alert" data-state="no-verificado">
+          <AlertContent message={message}>
+            <Button type="button" variant="outline" onClick={onRequestLink}>
+              Pedir un enlace nuevo
+            </Button>
+          </AlertContent>
+        </Alert>
+      );
+    case IDENTITY_ERROR_CODES.ACCOUNT_SUSPENDED:
+      return (
+        <Alert variant="error" data-state="suspendida">
+          <AlertContent message={message} />
+        </Alert>
+      );
+    default:
+      return <ServerErrorAlert title={LOGIN_ERROR_TITLE} error={error} />;
   }
-  return <ServerErrorAlert title={LOGIN_ERROR_TITLE} error={error} />;
 }
