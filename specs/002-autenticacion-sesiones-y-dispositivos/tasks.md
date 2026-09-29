@@ -63,7 +63,7 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
 
 ## Bloque 1 — PR-1 «contratos, migraciones y shared» (plan §4, §5, §6.7, §6.10) · depende de 001-PR-1
 
-- [ ] **T-01** [P] Parámetros de §6 de la spec — CA: CA-1, CA-5, CA-6, CA-8, CA-9, CA-23 — Depende: 001 T-02 (001-PR-1) — ~0,5 h
+- [x] **T-01** [P] Parámetros de §6 de la spec — CA: CA-1, CA-5, CA-6, CA-8, CA-9, CA-23 — Depende: 001 T-02 (001-PR-1) — ~0,5 h
   Prueba primero: ampliar `packages/contracts/src/identity/constants.spec.ts` con `ACCESS_TOKEN_TTL_SECONDS = 900`,
   `SESSION_IDLE_TIMEOUT_DAYS = 7`, `SESSION_MAX_LIFETIME_DAYS = 30`, `REFRESH_ROTATION_GRACE_SECONDS = 10`,
   `LOGIN_MAX_FAILURES = 5`, `LOGIN_FAILURE_WINDOW_MINUTES = 15`, `LOGIN_LOCK_MINUTES = 15`, `LOGIN_ATTEMPTS_PER_IP = 20`,
@@ -73,7 +73,7 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   Luego `parameters.ts`.
   Archivos: `packages/contracts/src/identity/parameters.ts`, `packages/contracts/src/identity/constants.spec.ts`.
 
-- [ ] **T-02** [P] Códigos de error, `reason` `WRONG_PASSWORD` y `SUPPORT_CONTACT_EMAIL` — CA: CA-2…CA-6, CA-8…CA-10, CA-12, CA-20, CA-23 — Depende: 001 T-02 (001-PR-1) — ~0,5 h
+- [x] **T-02** [P] Códigos de error, `reason` `WRONG_PASSWORD` y `SUPPORT_CONTACT_EMAIL` — CA: CA-2…CA-6, CA-8…CA-10, CA-12, CA-20, CA-23 — Depende: 001 T-02 (001-PR-1) — ~0,5 h
   Prueba primero `packages/contracts/src/identity/error-codes.spec.ts`: `IDENTITY_ERROR_CODES` contiene los de 001 más
   `IDENTITY_INVALID_CREDENTIALS`, `IDENTITY_EMAIL_NOT_VERIFIED`, `IDENTITY_ACCOUNT_SUSPENDED`, `IDENTITY_LOGIN_LOCKED`,
   `IDENTITY_REFRESH_INVALID`, `IDENTITY_SESSION_EXPIRED`, `IDENTITY_SESSION_REVOKED`, `IDENTITY_SESSION_NOT_FOUND`,
@@ -82,7 +82,7 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   `SUPPORT_CONTACT_EMAIL` existe una sola vez en `legal.ts` (si 001 ya la exportó, solo se prueba). Luego los archivos.
   Archivos: `packages/contracts/src/identity/{error-codes,legal}.ts`, `packages/contracts/src/identity/error-codes.spec.ts`.
 
-- [ ] **T-03** Esquemas de petición — CA: CA-1, CA-18, CA-20, CA-21, CA-22 — Depende: T-01, 001 T-05 (001-PR-1) — ~1 h
+- [x] **T-03** Esquemas de petición — CA: CA-1, CA-18, CA-20, CA-21, CA-22 — Depende: T-01, 001 T-05 (001-PR-1) — ~1 h
   Prueba primero `packages/contracts/src/identity/schemas.spec.ts` (ampliado): `loginRequestSchema` y
   `forgotPasswordRequestSchema` estrictos (clave extra → `UNKNOWN_FIELD`; correo mal formado → `422` de 001);
   `resetTokenRequestSchema` `{ token }`; `resetPasswordRequestSchema` `{ token, password }` con la política D-6 de 001
@@ -90,7 +90,7 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   confirmación (D-7). Luego `schemas.ts`.
   Archivos: `packages/contracts/src/identity/schemas.ts`, `packages/contracts/src/identity/schemas.spec.ts`.
 
-- [ ] **T-04** Esquemas de respuesta — CA: CA-1, CA-11, CA-13, CA-15 — Depende: T-03 (mismo archivo) — ~1 h
+- [x] **T-04** Esquemas de respuesta — CA: CA-1, CA-11, CA-13, CA-15 — Depende: T-03 (mismo archivo) — ~1 h
   Prueba primero (mismo `schemas.spec.ts`): `sessionResponseSchema` `{ accessToken, accessTokenExpiresAt (ISO-8601 UTC),
   user: { id, fullName, email, role } }`; `sessionSummarySchema` `{ id, browser, os, deviceKind: 'desktop'|'mobile'|'tablet',
   startedAt, lastActiveAt, current }` estricto (rechaza `ip`, `userAgent`, `deviceId`); `sessionListResponseSchema`
@@ -99,14 +99,14 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   en verde). Luego `schemas.ts`.
   Archivos: `packages/contracts/src/identity/schemas.ts`, `packages/contracts/src/identity/schemas.spec.ts`.
 
-- [ ] **T-05** [P] Migración `crear-dispositivo` — CA: CA-16, CA-17, CA-24 — Depende: 001 T-06 (001-PR-1) — ~1 h
+- [x] **T-05** [P] Migración `crear-dispositivo` — CA: CA-16, CA-17, CA-24 — Depende: 001 T-06 (001-PR-1) — ~1 h
   Prueba primero `apps/api/test/int/identity/device-session-migrations.int-spec.ts`: `huella_hash` rechaza lo que no
   sea hex de 64; `UNIQUE (usuario_id, huella_hash)` (misma huella en dos cuentas sí se permite); `agente_usuario`
   por defecto `''`; `ultima_ip` es `inet`; borrar el `usuario` borra sus dispositivos; `run → revert → run` limpio.
   Luego `20260929100000-crear-dispositivo.ts` con el SQL de plan §4 (sin `nombre` ni `creado_en`).
   Archivos: `apps/api/src/migrations/20260929100000-crear-dispositivo.ts`, `apps/api/test/int/identity/device-session-migrations.int-spec.ts`.
 
-- [ ] **T-06** Migración `crear-sesion` — CA: CA-1, CA-7, CA-8, CA-24 — Depende: T-05 (misma prueba) — ~1 h
+- [x] **T-06** Migración `crear-sesion` — CA: CA-1, CA-7, CA-8, CA-24 — Depende: T-05 (misma prueba) — ~1 h
   Prueba primero (mismo archivo): la FK compuesta rechaza una sesión cuyo `usuario_id` no es el dueño del dispositivo;
   `ck_sesion_rotacion` exige `refresh_anterior_hash` y `rotado_en` juntos; `ck_sesion_vigencia`; hashes hex de 64;
   existen `idx_sesion_usuario_id_ultimo_uso` (parcial) e `idx_sesion_dispositivo_id_usuario_id`; borrar el dispositivo
@@ -114,19 +114,19 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   defecto de 003 ya están (si no, el caso queda `it.todo` con nota); `revert` deshace en LIFO. Luego la migración.
   Archivos: `apps/api/src/migrations/20260929100100-crear-sesion.ts`, `apps/api/test/int/identity/device-session-migrations.int-spec.ts`.
 
-- [ ] **T-07** [P] CORS con credenciales en `configureHttpApp` — CA: CA-1, CA-7, CA-28 — Depende: 001 T-17 (001-PR-1) — ~0,5 h
+- [x] **T-07** [P] CORS con credenciales en `configureHttpApp` — CA: CA-1, CA-7, CA-28 — Depende: 001 T-17 (001-PR-1) — ~0,5 h
   Prueba primero en la prueba existente de `configureHttpApp`: la respuesta *preflight* desde `CORS_ORIGIN` lleva
   `Access-Control-Allow-Credentials: true`, permite `authorization` y `DELETE`; un origen no listado no recibe
   cabeceras CORS; nunca `*` con credenciales. Luego `configure-http-app.ts`.
   Archivos: `apps/api/src/shared/presentation/configure-http-app.ts` y su prueba.
 
-- [ ] **T-08** [P] `REDACTED_FIELDS` + `currentPassword`, `newPassword` — CA: CA-25 — Depende: 001 T-09 (001-PR-1) — ~0,5 h
+- [x] **T-08** [P] `REDACTED_FIELDS` + `currentPassword`, `newPassword` — CA: CA-25 — Depende: 001 T-09 (001-PR-1) — ~0,5 h
   Prueba primero `apps/api/src/shared/infrastructure/logging/redacted-fields.spec.ts`: un objeto con `currentPassword` y
   `newPassword` anidados sale `[REDACTED]`; `authorization`, `cookie`, `token`, `accessToken`, `refreshToken` siguen
   redactados. Luego `redacted-fields.ts`.
   Archivos: `apps/api/src/shared/infrastructure/logging/redacted-fields.ts`, `apps/api/src/shared/infrastructure/logging/redacted-fields.spec.ts`.
 
-- [ ] **T-09** [P] `JWT_ACCESS_SECRET` (esquema, secreto, `.env.example`, `env:check`) — CA: CA-26 (clave), CA-25 — Depende: 001 T-10 (001-PR-1) — ~1 h
+- [x] **T-09** [P] `JWT_ACCESS_SECRET` (esquema, secreto, `.env.example`, `env:check`) — CA: CA-26 (clave), CA-25 — Depende: 001 T-10 (001-PR-1) — ~1 h
   Prueba primero `apps/api/src/shared/infrastructure/config/env.schema.spec.ts`: sin la variable falla al arrancar;
   menos de 32 caracteres falla; con `APP_ENV=staging` exige ≥ 43 y distinta del valor de `.env.example`; está en
   `SECRET_KEYS` y **solo** en `apiEnvSchema` (no en el del `worker`); y `scripts/check-env-example.spec.ts` suma el caso
@@ -134,7 +134,7 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   desarrollo marcado como tal).
   Archivos: `apps/api/src/shared/infrastructure/config/{env.schema,secret-keys}.ts`, `apps/api/src/shared/infrastructure/config/env.schema.spec.ts`, `scripts/check-env-example.spec.ts`, `.env.example`.
 
-- [ ] **T-10** Documentación y cierre del PR-1 — CA: n/a — Depende: T-01…T-09 — ~0,5 h
+- [x] **T-10** Documentación y cierre del PR-1 — CA: n/a — Depende: T-01…T-09 — ~0,5 h
   README de `shared` (CORS con credenciales y por qué nunca comodín; `JWT_ACCESS_SECRET` como secreto del `api`).
   `pnpm lint && pnpm typecheck && pnpm test && pnpm test:int && pnpm env:check` en verde. Descripción del PR con los
   archivos de 001 que amplía. `docs/operations/ambientes.md` (secreto en staging) queda **diferido** al montar staging.
@@ -828,4 +828,25 @@ PR-5a = 15 (T-81…T-95) · PR-5b = 10 (T-96…T-105). Total 105.
   005; T-87 solo crea el marcador si la ruta no existe, sea de quien sea.
 - **T-06 y los privilegios de `nimbo_app`**: dependen de que la migración de 003 (`20260928110000`) esté en la rama; si
   no, el caso queda como `it.todo` y se activa al integrar 003.
-- <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
+- **PR-1 (T-01…T-10), desviaciones menores** (2026-09-29):
+  - T-02: las pruebas de `IDENTITY_ERROR_CODES` y `FIELD_ISSUE_REASONS` pasan de `constants.spec.ts` a
+    `error-codes.spec.ts`. La prueba de `api` `identity-validation.spec.ts` compara ahora un subconjunto
+    (`toMatchObject`): las clases de los códigos nuevos llegan con T-16. `SUPPORT_CONTACT_EMAIL` =
+    `amatultab@gmail.com` (001 plan §6.13); `terms-v1.tsx` y `privacy-v1.tsx` siguen con el correo escrito: pasarlos a
+    la constante queda para la web (PR-5a).
+  - T-03: `password` de `loginRequestSchema` y `currentPassword` de `changePasswordRequestSchema` vacíos dan
+    `REQUIRED`. `newPassword` no aplica la política en el esquema: la aplica el servicio con el correo (así el error es
+    `IDENTITY_WEAK_PASSWORD`, no `IDENTITY_INVALID_INPUT`).
+  - T-04: `role` se valida con `roleSchema` de `packages/contracts/src/shared/roles.ts`, copiado **idéntico** al de
+    003-PR-A para que la fusión no choque; no se exporta desde la raíz (lo hace 003-PR-A con `shared/index.ts`). Se
+    agregan `SESSION_LIST_MAX_ITEMS = 50` (DT-13) en `parameters.ts` y `DEVICE_KINDS`.
+  - T-05/T-06: las filas de prueba de `usuario` salen a `test/int/identity/identity-rows.ts` (las usa también
+    `schema.int-spec.ts`). `run → revert → run` se prueba con `up`/`down` de las clases dentro de una transacción y
+    además se comprobó con el CLI (`migrate.ts run → revert → revert → run`) sobre un Postgres desechable.
+  - T-07: la prueba vive en `test/int/shared/configure-http-app.int-spec.ts`, donde ya estaban las de CORS de 001
+    (se actualizan «sin credenciales» y `GET,POST`). CORS se configura con un *delegate*: un origen no listado no
+    recibe **ninguna** cabecera CORS (con la lista estática, el paquete `cors` escribía igualmente
+    `Access-Control-Allow-Credentials`).
+  - T-09: el valor de desarrollo es `LOCAL_JWT_ACCESS_SECRET` en `env.schema.ts` y una prueba exige que coincida con
+    `.env.example`. Se agregó la variable a los entornos de prueba (`load-env.spec.ts`, `minio-config.module.spec.ts`,
+    `global-setup.ts`, `bootstrap.int-spec.ts`).
