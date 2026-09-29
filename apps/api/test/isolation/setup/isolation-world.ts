@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { LEGAL_DOCUMENTS } from '@nimbo/contracts';
-import type { DataSource } from 'typeorm';
+import type { DataSource, EntityManager } from 'typeorm';
 
 import { FixedClock, Role } from '../../../src/shared';
 import { createTestApp } from '../../int/setup/test-app';
@@ -70,7 +70,7 @@ export interface IsolationWorld {
   close(): Promise<void>;
 }
 
-const insertAccount = async (owner: DataSource, account: WorldAccount): Promise<void> => {
+const insertAccount = async (owner: EntityManager, account: WorldAccount): Promise<void> => {
   const isClient = account.role === Role.CLIENT;
   await owner.query(
     `INSERT INTO usuario (id, nombre, correo, hash_clave, rol, correo_verificado, version_terminos,
@@ -88,6 +88,23 @@ const insertAccount = async (owner: DataSource, account: WorldAccount): Promise<
       WORLD_CREATED_AT,
     ],
   );
+};
+
+/**
+ * Inserta todas las cuentas en una transacción: si una falla, no queda ninguna. En ese caso cierra la conexión del
+ * dueño y relanza el error original.
+ */
+const insertAll = async (owner: DataSource, accounts: readonly WorldAccount[]): Promise<void> => {
+  try {
+    await owner.transaction(async (manager) => {
+      for (const account of accounts) {
+        await insertAccount(manager, account);
+      }
+    });
+  } catch (error: unknown) {
+    await owner.destroy().catch(() => undefined);
+    throw error;
+  }
 };
 
 /** Correos de igual longitud que difieren en un solo carácter (`z`/`s`), únicos por mundo. */
@@ -114,9 +131,7 @@ export const createIsolationWorld = async (): Promise<IsolationWorld> => {
     [Role.OPERATOR]: anInternal(Role.OPERATOR).build(),
   };
   const accounts = [...clients, ...Object.values(internals)];
-  for (const account of accounts) {
-    await insertAccount(owner, account);
-  }
+  await insertAll(owner, accounts);
   const tokens = new TestAccessTokens(new FixedClock(PROBE_CLOCK_START));
 
   return {

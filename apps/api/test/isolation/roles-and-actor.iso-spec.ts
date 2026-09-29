@@ -47,8 +47,8 @@ describe('roles y Actor en la suite de aislamiento (CA-4, CA-5, CA-6)', () => {
   });
 
   afterAll(async () => {
-    await testApp.close();
-    await world.close();
+    await testApp?.close();
+    await world?.close();
   });
 
   describe('CA-4: el `Actor` sale del token y no de la petición', () => {

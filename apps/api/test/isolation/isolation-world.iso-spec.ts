@@ -46,8 +46,8 @@ describe('mundo de aislamiento (CA-15)', () => {
   });
 
   afterAll(async () => {
-    await world.close();
-    await owner.destroy();
+    await world?.close();
+    await owner?.destroy();
   });
 
   it('CA-15: los dos clientes son casi idénticos (mismo nombre, estado y fechas; correos a un carácter)', async () => {
@@ -92,7 +92,7 @@ describe('mundo de aislamiento (CA-15)', () => {
     });
 
     afterAll(async () => {
-      await testApp.close();
+      await testApp?.close();
     });
 
     it('CA-15: `appAs` se conecta como `nimbo_app`', async () => {

@@ -85,8 +85,8 @@ describe('roles de base de datos (CA-13)', () => {
   });
 
   afterAll(async () => {
-    await app.destroy();
-    await owner.destroy();
+    await app?.destroy();
+    await owner?.destroy();
   });
 
   it('CA-13: el arnés migra con `DATABASE_MIGRATION_URL`, que es el dueño de las tablas', async () => {

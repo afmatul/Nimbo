@@ -27,7 +27,7 @@ const CONTENT_ACTIONS = Object.values(Action);
  */
 describe('roles internos sin contenido, contra la base (CA-9)', () => {
   let world: IsolationWorld;
-  let testApp: TestApp | undefined;
+  let testApp: TestApp;
   let resolver: PermissionResolver;
   let runner: ITransactionRunner;
   let context: TransactionContext;
@@ -113,7 +113,7 @@ describe('roles internos sin contenido, contra la base (CA-9)', () => {
 describe('roles internos sin contenido aunque el lector diera OWNER (CA-9)', () => {
   const ownerForAnyone = { levelFor: jest.fn(async () => AccessLevel.OWNER) };
   let world: IsolationWorld;
-  let testApp: TestApp | undefined;
+  let testApp: TestApp;
   let resolver: PermissionResolver;
   let runner: ITransactionRunner;
 

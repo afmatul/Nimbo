@@ -40,7 +40,7 @@ describe('404 uniforme para recursos ajenos o inexistentes (CA-11)', () => {
   });
 
   afterAll(async () => {
-    await testApp.close();
+    await testApp?.close();
   });
 
   it('CA-11: el recurso de otra cuenta y un UUID inexistente dan el mismo 404, cabeceras y cuerpo', async () => {
