@@ -101,7 +101,7 @@ No hay paquete `domain` aparte salvo que un ADR lo justifique.
 | `identity` | M1 | Registro, verificación, login, refresh, sesiones, dispositivos. Publica `identity.client-account-verified` (001, ADR-0019) | shared, notifications, audit |
 | `billing` | M4 | Planes, suscripciones, pagos, facturas, renovación; implementa `IPlanLimitsProvider` e `IAgentQuota`; crea la suscripción Personal al consumir `identity.client-account-verified` | shared, notifications, audit, storage (solo `IObjectStorage` para facturas), identity (solo contratos de eventos de su `index.ts`; ADR-0019, Propuesto) |
 | `access` | M3a (lectura) | Solo lectura: `PermissionResolver`, políticas, `accessibleNodes(actor)` | shared |
-| `storage` | M2 | Nodos, cargas, descargas, papelera, versiones, cuota, búsqueda por metadatos, vista previa | shared, access, billing (`IPlanLimitsProvider`), audit, realtime |
+| `storage` | M2 | Nodos, cargas, descargas, papelera, versiones, cuota, búsqueda por metadatos, vista previa | shared, access, billing (`IPlanLimitsProvider`), audit, realtime (arista permitida por ADR-0010, sin uso en 005: el progreso de carga es local del cliente, DF-55; primer uso probable en 015) |
 | `sharing` | M3b (escritura) | Comparticiones, enlaces públicos, límite de intentos | shared, access, storage, audit |
 | `editing` | M5 | Sesiones de edición, presencia, callback, autoría e historial | shared, storage, access, billing, realtime, audit |
 | `intelligence` | M6 | Indexación, recuperación híbrida, agente con citas; implementa `IIndexQueue` | shared, storage, access, billing (`IAgentQuota`), realtime |
@@ -216,7 +216,7 @@ export interface Actor {
 ### 7.1 Carga por partes (RF-08, RF-12, RF-14)
 1. `FilesController.initUpload` → `UploadService.init` → `QuotaService.assertCanUpload(actor, size)` usando `IPlanLimitsProvider`.
 2. `IObjectStorage.createMultipart` → `UploadSession`. Se entregan URLs firmadas por parte (`presignUploadPart`, DF-16).
-3. El navegador sube a MinIO a través de Traefik (origen aislado) y reporta el progreso a `realtime`; para reanudar consulta `listParts`.
+3. El navegador sube a MinIO a través de Traefik (origen aislado); el progreso (porcentaje, bytes, velocidad, tiempo restante) lo mide el propio navegador sobre su carga y **no pasa por `realtime` ni por la API** (DF-55). Difundirlo a otras pestañas o dispositivos queda fuera de la 005 y, si se hace, llega con la 015. Para reanudar consulta `listParts`.
 4. `completeUpload` → `completeMultipart` → `IFileTypeDetector.detect` sobre la cabecera → transacción: `archivo` + `version_archivo(origen=carga)` + `usuario.espacio_usado` → evento `FileVersionCreated`.
 5. Si la validación falla: `deleteObject` y la carga queda `rechazada` con motivo.
 

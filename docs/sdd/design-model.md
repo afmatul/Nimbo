@@ -38,7 +38,7 @@
 | M8 | Administración, Soporte y Operación | `backoffice` | Adrián | 06, 37 |
 | T1 | (transversal; recibe de M8 la salud, DF-49, y `RolesGuard`, DF-50) | `shared` | Adrián | `Actor`, `IClock`, errores, logger, `correlationId`, entorno, salud, guards globales (003) |
 | T2 | (transversal, extraído de M8) | `audit` | Adrián | 07 |
-| T3 | (transversal) | `realtime` | Fátima | 08 (progreso), 26, 32 (streaming) |
+| T3 | (transversal) | `realtime` | Fátima | 26, 32 (streaming); 08 (progreso) solo si 015 lo difunde (DF-55: en 005 es local del cliente) |
 | T4 | (transversal) | `notifications` | Juan Marcos | declara e implementa `IMailer` e `INotifier` |
 
 M3 se divide en `access` y `sharing`, y `audit`/`realtime`/`notifications` salen como transversales, para evitar

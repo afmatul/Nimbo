@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Carga de archivos · Nimbo — cargas en pausa (por partes y simple) y una en curso; pausar, reanudar y cancelar por archivo</title>
+<!-- Mockup de referencia (spec 005: carga y descarga). Estado: pausa. -->
+<!-- Colores: valores de ui-guidelines.md §3 (tonos AA). La implementación usa tokens, components/ui y UploadProgress. -->
+<!-- Marco generado con _generadores/marco/marco.js; panel de carga como el de carga--progreso.html (propuesta p. 10). -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Valores de ui-guidelines.md §3 (tonos AA de ADR-0014). La implementación usa las utilidades de Tailwind, nunca hex. */
+    --sheet: #E7EDF5;          /* fondo de la hoja de mockups (no es un token de la app) */
+    --background: #F4F7FB;
+    --card: #FAFCFF;
+    --border: #DDE6F0;
+    --input: #7F93AA;
+    --foreground: #1E2D40;
+    --secondary-foreground: #3A5068;
+    --muted-foreground: #5E7389;
+    --primary: #4A6FA5;
+    --primary-hover: #3B5A8A;
+    --primary-foreground: #FFFFFF;
+    --brand: #6B8DD6;
+    --muted: #EEF3F9;
+    --accent: #DDE6F0;
+    --ring: #4A6FA5;
+    --success: #6DB99A;
+    --success-foreground: #3A7560;
+    --destructive: #A34F4F;
+    --destructive-soft: #C97B7B;
+    --overlay: rgba(44, 58, 82, .45); /* velo de diálogo: agent-bg al 45 %; token pendiente (#6 de app-layout) */
+    --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px; --radius-xl: 18px;
+    --shadow-card: 0 1px 3px rgba(74,111,165,.08), 0 1px 2px rgba(74,111,165,.04);
+    --shadow-modal: 0 8px 24px rgba(44,58,82,.18);
+    --shadow-button: 0 1px 2px rgba(107,141,214,.20);
+    /* Mezclas al 12 % sobre card (fondo de alertas y distintivos) */
+    --success-soft: color-mix(in srgb, var(--success) 12%, var(--card));
+    --destructive-tint: color-mix(in srgb, var(--destructive-soft) 12%, var(--card));
+    --brand-soft: color-mix(in srgb, var(--brand) 12%, var(--card));
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--sheet); color: var(--foreground);
+    font-family: Inter, system-ui, sans-serif; font-size: 14px; line-height: 1.5;
+  }
+  a { color: var(--primary); text-decoration: underline; text-underline-offset: 2px; }
+  a:hover { color: var(--primary-hover); }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+  .ico { flex: none; }
+
+  /* Rótulo de la hoja */
+  .sheet-label {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px;
+    padding: 40px 48px 12px; font-size: 12px; line-height: 1.5; color: var(--secondary-foreground);
+  }
+  .sheet-label .chip { background: var(--border); border-radius: var(--radius-sm); padding: 1px 7px; font-weight: 600; font-size: 11px; }
+  .sheet-label strong { color: var(--foreground); font-size: 13px; font-weight: 600; }
+  .sheet-label .file { font-weight: 500; font-variant-numeric: tabular-nums; color: var(--primary-hover); }
+
+  /* Lienzo y marco de la aplicación (propuesta p. 08 y p. 17) */
+  .canvas {
+    position: relative; margin: 0 48px 48px; background: var(--background); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card); overflow: hidden;
+  }
+  .app { display: grid; grid-template-columns: 236px minmax(0, 1fr); min-height: 860px; }
+  .sidebar { display: flex; flex-direction: column; gap: 14px; background: var(--card); border-right: 1px solid var(--border); padding: 18px 12px 16px; }
+  .brand-row { display: flex; align-items: center; gap: 10px; padding: 4px 8px 10px; border-bottom: 1px solid var(--border); }
+  .logo { display: inline-flex; align-items: center; gap: 10px; color: var(--foreground); text-decoration: none; font-weight: 700; font-size: 17px; letter-spacing: .02em; min-height: 36px; }
+  .logo-mark { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; background: var(--primary); color: var(--primary-foreground); font-size: 15px; font-weight: 700; box-shadow: var(--shadow-button); }
+  .plan-chip { font-size: 10px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: .04em; color: var(--secondary-foreground); background: var(--muted); border-radius: var(--radius-sm); padding: 2px 6px; }
+  .nav { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  .nav a { display: flex; align-items: center; gap: 12px; min-height: 36px; padding: 6px 12px; border-radius: var(--radius-md); color: var(--secondary-foreground); text-decoration: none; font-size: 13.5px; font-weight: 500; }
+  .nav a:hover { background: var(--muted); color: var(--foreground); }
+  .nav .meta { margin-left: auto; font-size: 11px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  .nav-sep { height: 1px; background: var(--border); margin: 2px 8px; }
+  .nav-title { margin: 6px 12px 0; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted-foreground); }
+  .quota { margin-top: auto; border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 12px 14px; background: var(--card); }
+  .quota-head { display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 600; }
+  .quota-bar { height: 6px; border-radius: 999px; background: var(--muted); margin: 8px 0 6px; overflow: hidden; }
+  .quota-bar span { display: block; height: 100%; width: 21%; background: var(--success); border-radius: 999px; }
+  .quota-meta { font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--muted-foreground); }
+
+  .main { min-width: 0; display: flex; flex-direction: column; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 64px; padding: 10px 28px; background: var(--card); border-bottom: 1px solid var(--border); }
+  .topbar .menu-btn, .topbar .logo-mobile { display: none; }
+  .crumbs ol { display: flex; align-items: center; gap: 10px; list-style: none; margin: 0; padding: 0; font-size: 14px; }
+  .crumbs li + li::before { content: "/"; color: var(--muted-foreground); margin-right: 10px; }
+  .crumbs a { color: var(--secondary-foreground); text-decoration: none; }
+  .crumbs a:hover { color: var(--foreground); text-decoration: underline; }
+  .crumbs [aria-current] { font-weight: 600; color: var(--foreground); }
+  .account-btn { display: inline-flex; align-items: center; gap: 10px; min-height: 40px; padding: 4px 6px 4px 12px; border: 0; border-radius: 999px; background: transparent; color: var(--secondary-foreground); font: inherit; font-size: 13px; cursor: pointer; }
+  .account-btn:hover { background: var(--muted); }
+  .avatar { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 999px; background: var(--card); color: var(--foreground); font-size: 11px; font-weight: 700; box-shadow: 0 0 0 2px var(--brand); }
+
+  .content { padding: 28px 28px 40px; }
+  .page-head h1 { margin: 0; font-size: 26px; line-height: 1.25; font-weight: 700; letter-spacing: -.01em; }
+  .page-head p { margin: 6px 0 0; color: var(--secondary-foreground); font-size: 14.5px; }
+  /* Botones (components/ui/button) */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 8px 16px; border-radius: var(--radius-md); font: inherit; font-weight: 600; font-size: 13.5px; line-height: 1.2; cursor: pointer; text-decoration: none; white-space: nowrap; }
+  .btn-sm { min-height: 36px; padding: 6px 12px; font-size: 13px; }
+  .btn-outline { color: var(--secondary-foreground); background: var(--card); border: 1px solid var(--input); }
+  .btn-outline:hover { background: var(--muted); color: var(--foreground); }
+  .btn-primary { color: var(--primary-foreground); background: var(--primary); border: 1px solid var(--primary); box-shadow: var(--shadow-button); }
+  .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+  .btn-destructive { color: var(--primary-foreground); background: var(--destructive); border: 1px solid var(--destructive); }
+  .btn[disabled] { opacity: .45; pointer-events: none; }
+  .btn-busy { opacity: 1 !important; }
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin, .skeleton-line { animation: none !important; } }
+  /* Diálogo de confirmación (ConfirmDestructiveDialog) */
+  .overlay { position: absolute; inset: 0; background: var(--overlay); z-index: 10; }
+  .dialog { position: absolute; z-index: 11; top: 150px; left: 50%; transform: translateX(-50%); width: min(460px, calc(100% - 32px)); background: var(--card); border-radius: var(--radius-xl); box-shadow: var(--shadow-modal); padding: 24px; }
+  .dialog h2 { margin: 0; font-size: 18px; line-height: 1.35; font-weight: 700; }
+  .dialog p { margin: 8px 0 0; color: var(--secondary-foreground); font-size: 14px; }
+  .dialog-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+  @media (max-width: 900px) {
+    .app { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+    .sidebar { display: none; }
+    .topbar { padding: 10px 12px; }
+    .topbar .menu-btn { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--foreground); cursor: pointer; }
+    .topbar .logo-mobile { display: inline-flex; }
+    .crumbs { display: none; }
+    .topbar-left { display: flex; align-items: center; gap: 4px; }
+    .account-btn .account-name { display: none; }
+    .account-btn { padding: 4px; min-width: 44px; min-height: 44px; justify-content: center; }
+  }
+  @media (max-width: 600px) {
+    .sheet-label { padding: 16px 12px 10px; }
+    .canvas { margin: 0 8px 16px; border-radius: var(--radius-md); }
+    .content { padding: 18px 12px 28px; }
+    .page-head h1 { font-size: 23px; }
+    .dialog { top: 96px; padding: 20px 16px 16px; }
+    .dialog-actions { flex-direction: column-reverse; }
+    .dialog-actions .btn { width: 100%; }
+  }
+
+  /* Extensiones del marco (shared/layout) */
+  :root {
+    --warning: #D4A96A;
+    --warning-foreground: #8A6424;
+    --warning-soft: color-mix(in srgb, var(--warning) 12%, var(--card));
+  }
+  [hidden] { display: none !important; }
+
+  /* Ítem activo: fondo accent, texto foreground en 600 y barra de 3 px (no solo color) */
+  .nav a[aria-current="page"] { background: var(--accent); color: var(--foreground); font-weight: 600; border-left: 3px solid var(--primary); padding-left: 9px; }
+  .nav a[aria-current="page"] .meta, .nav a:hover .meta { color: var(--secondary-foreground); } /* muted-foreground sobre muted da 4.39 */
+  @media (max-width: 900px) { .logo { min-height: 44px; } } /* CA-5 de 000b: 44 px en móvil */
+
+  /* Menú de la cuenta (DropdownMenu de shadcn) */
+  .topbar { position: relative; }
+  .account { position: relative; }
+  .account-btn[aria-expanded="true"] { background: var(--muted); color: var(--foreground); }
+  .account-pop { position: absolute; z-index: 20; top: calc(100% + 8px); right: 0; width: 272px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-modal); padding: 6px; }
+  .account-who { padding: 10px 12px 12px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
+  .account-who p { margin: 0; }
+  .account-who-name { font-weight: 600; font-size: 14px; }
+  .account-who-mail { font-size: 13px; color: var(--muted-foreground); overflow-wrap: anywhere; }
+  .account-menu { list-style: none; margin: 0; padding: 0; }
+  .account-menu [role="menuitem"] { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 40px; padding: 8px 12px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--foreground); font: inherit; font-size: 14px; font-weight: 500; text-align: left; text-decoration: none; cursor: pointer; }
+  .account-menu [role="menuitem"] .ico { color: var(--secondary-foreground); }
+  .account-menu [role="menuitem"]:hover, .account-menu [role="menuitem"]:focus { background: var(--muted); }
+  .account-menu [role="menuitem"]:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+  .account-sep { height: 1px; background: var(--border); margin: 6px 4px; }
+
+  /* Cajón móvil (AppLayout, por debajo de 900 px) */
+  .drawer-overlay { position: absolute; inset: 0; z-index: 10; background: var(--overlay); }
+  .drawer { position: absolute; z-index: 11; top: 0; bottom: 0; left: 0; width: min(320px, calc(100% - 40px)); display: flex; flex-direction: column; gap: 14px; overflow-y: auto; background: var(--card); box-shadow: var(--shadow-modal); padding: 12px 12px 16px; }
+  .drawer-head { display: flex; align-items: center; gap: 10px; padding: 0 0 10px 8px; border-bottom: 1px solid var(--border); }
+  .drawer-head .icon-btn { margin-left: auto; }
+  .drawer .nav a { min-height: 44px; font-size: 15px; }
+  .icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--foreground); cursor: pointer; }
+  .icon-btn:hover { background: var(--muted); }
+  @media (min-width: 901px) { .drawer, .drawer-overlay { display: none !important; } }
+
+  /* Aviso de solo lectura (ReadOnlyBanner, RF-23) */
+  .readonly { display: flex; align-items: center; gap: 12px 16px; margin: 0 0 22px; padding: 14px 16px; border: 1px solid color-mix(in srgb, var(--warning) 45%, var(--card)); border-radius: var(--radius-lg); background: var(--warning-soft); color: var(--foreground); }
+  .readonly > .ico { color: var(--warning-foreground); flex: none; }
+  .readonly-text { flex: 1; min-width: 0; margin: 0; font-size: 14px; line-height: 1.5; }
+  .readonly-text strong { display: block; color: var(--warning-foreground); font-weight: 600; }
+  .readonly .btn { flex: none; }
+
+  @media (max-width: 600px) {
+    .account { position: static; }
+    .account-pop { top: calc(100% - 2px); right: 8px; width: min(272px, calc(100% - 16px)); }
+    .account-menu [role="menuitem"] { min-height: 44px; }
+    .readonly { flex-wrap: wrap; align-items: flex-start; padding: 14px; }
+    .readonly .btn { width: 100%; }
+  }
+
+  /* Propio de storage/carga */
+  :root {
+    /* Tipos de archivo (ui-guidelines §3): texto AA; fondo = tono base al 12 % */
+    --file-docx: #3F62A8; --file-docx-bg: #6B8DD620;
+    --file-xlsx: #3A7560; --file-xlsx-bg: #6DB99A20;
+    --file-pptx: #8A6424; --file-pptx-bg: #D4A96A20;
+    --file-pdf: #A34F4F;  --file-pdf-bg: #C97B7B20;
+    --file-other: #53677D; --file-other-bg: #7A90A820;
+  }
+  .app { min-height: 900px; }
+  a.btn-primary, a.btn-primary:hover { color: var(--primary-foreground); }
+  a.btn-outline:hover { color: var(--foreground); }
+
+  /* Cuota en tramos de QuotaBar (§4): 70–89 % warning; 90–100 % destructive-soft */
+  .quota-warn .quota-bar span { background: var(--warning); }
+  .quota-full { border-color: color-mix(in srgb, var(--destructive-soft) 45%, var(--card)); }
+  .quota-full .quota-bar span { background: var(--destructive-soft); }
+  .quota-note { margin: 8px 0 0; font-size: 11.5px; line-height: 1.45; font-weight: 500; }
+  .quota-warn .quota-note { color: var(--warning-foreground); }
+  .quota-full .quota-note { color: var(--destructive); }
+
+  /* Encabezado de la página */
+  .page-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .page-head p { margin-top: 4px; }
+
+  /* Tabla de archivos (explorador, vista de lista) */
+  .files { margin-top: 20px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); overflow: hidden; }
+  .files table { width: 100%; border-collapse: collapse; }
+  .files th { padding: 11px 16px; text-align: left; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted-foreground); background: var(--background); border-bottom: 1px solid var(--border); }
+  .files td { padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 13.5px; color: var(--secondary-foreground); }
+  .files tr:last-child td { border-bottom: 0; }
+  .files .c-size, .files .c-date { width: 130px; font-variant-numeric: tabular-nums; }
+  .fname { display: flex; align-items: center; gap: 12px; min-width: 0; color: var(--foreground); font-weight: 500; }
+  .fname-text { min-width: 0; overflow-wrap: anywhere; }
+  .fmeta-m { display: none; }
+  .badge-new { margin-left: 8px; font-size: 10.5px; font-weight: 600; letter-spacing: .04em; color: var(--success-foreground); background: var(--success-soft); border: 1px solid color-mix(in srgb, var(--success) 40%, var(--card)); border-radius: var(--radius-sm); padding: 1px 6px; white-space: nowrap; }
+  .ftile { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; flex: none; border-radius: 8px; }
+  .ftile-docx { color: var(--file-docx); background: var(--file-docx-bg); }
+  .ftile-xlsx { color: var(--file-xlsx); background: var(--file-xlsx-bg); }
+  .ftile-pptx { color: var(--file-pptx); background: var(--file-pptx-bg); }
+  .ftile-pdf { color: var(--file-pdf); background: var(--file-pdf-bg); }
+  .ftile-other { color: var(--file-other); background: var(--file-other-bg); }
+
+  /* Panel de carga (UploadProgress) */
+  .up { position: absolute; z-index: 5; right: 28px; bottom: 28px; width: 440px; max-width: calc(100% - 56px); background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-modal); overflow: hidden; }
+  .up-head { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 16px; border-bottom: 1px solid var(--border); }
+  .up-titles { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; min-width: 0; }
+  .up-head h2 { margin: 0; font-size: 14px; font-weight: 600; }
+  .up-sub { font-size: 12px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  .up-head-actions { margin-left: auto; display: flex; gap: 2px; }
+  .ibtn { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; flex: none; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--secondary-foreground); cursor: pointer; }
+  .ibtn:hover { background: var(--muted); color: var(--foreground); }
+  .ibtn-outline { border: 1px solid var(--input); background: var(--card); }
+  .up-banner { display: flex; align-items: flex-start; gap: 10px; margin: 0; padding: 12px 16px; background: var(--warning-soft); border-bottom: 1px solid color-mix(in srgb, var(--warning) 45%, var(--card)); font-size: 13px; line-height: 1.45; color: var(--foreground); }
+  .up-banner .ico { color: var(--warning-foreground); margin-top: 1px; }
+  .up-banner strong { color: var(--warning-foreground); font-weight: 600; }
+  .up-list { list-style: none; margin: 0; padding: 0; max-height: 520px; overflow-y: auto; }
+  /* Rejilla: ícono | nombre y datos | acciones; debajo, barra, mensaje y nota alineados con el nombre */
+  .up-item { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; column-gap: 12px; row-gap: 9px; padding: 12px 12px 12px 16px; border-bottom: 1px solid var(--border); }
+  .up-item:last-child { border-bottom: 0; }
+  .up-item > .bar, .up-item > .up-msg, .up-item > .up-note { grid-column: 2 / -1; }
+  .up-info { min-width: 0; }
+  .up-name { margin: 0; font-size: 13.5px; font-weight: 500; color: var(--foreground); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .up-meta { margin: 1px 0 0; font-size: 12px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  .up-meta .st { font-weight: 600; }
+  .st-warn { color: var(--warning-foreground); }
+  .st-err { color: var(--destructive); }
+  .st-ok { color: var(--success-foreground); }
+  .up-actions { display: flex; align-items: center; gap: 6px; flex: none; }
+  .done { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 999px; color: var(--success-foreground); background: var(--success-soft); }
+  .bar { height: 6px; border-radius: 999px; background: var(--muted); overflow: hidden; }
+  .bar span { display: block; height: 100%; border-radius: 999px; background: var(--primary); }
+  .bar-warn span { background: var(--warning); }
+  .up-msg { margin: 0; display: flex; flex-direction: column; gap: 10px; padding: 10px 12px; border-radius: var(--radius-md); font-size: 13px; line-height: 1.45; }
+  .up-msg p { margin: 0; display: flex; align-items: flex-start; gap: 8px; }
+  .up-msg p .ico { margin-top: 1px; }
+  .up-msg-err { background: var(--destructive-tint); color: var(--foreground); }
+  .up-msg-err p .ico { color: var(--destructive); }
+  .up-msg-err strong { color: var(--destructive); font-weight: 600; }
+  .up-msg-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .up-note { margin: 0; font-size: 12.5px; color: var(--secondary-foreground); }
+
+  /* Diálogo de nombre repetido (Dialog de shadcn; no es destructivo) */
+  .dialog-note { margin-top: 10px !important; padding: 10px 12px; border-radius: var(--radius-md); background: var(--muted); color: var(--secondary-foreground) !important; font-size: 13px !important; overflow-wrap: anywhere; }
+  .dialog-note strong { color: var(--foreground); font-weight: 600; }
+  .dialog-check { display: flex; align-items: flex-start; gap: 10px; margin-top: 14px; }
+  .dialog-check input { width: 24px; height: 24px; margin: 0; flex: none; accent-color: var(--primary); cursor: pointer; }
+  .dialog-check label { display: inline-flex; align-items: center; min-height: 24px; font-size: 14px; font-weight: 600; color: var(--foreground); cursor: pointer; }
+  .dialog-check p { margin: 0 !important; font-size: 13px !important; color: var(--secondary-foreground) !important; }
+  .dialog .dialog-check + .dialog-actions { margin-top: 18px; }
+
+  @media (max-width: 900px) {
+    .up { right: 16px; bottom: 16px; }
+  }
+  @media (max-width: 600px) {
+    .app { min-height: 920px; }
+    .page-head h1 { font-size: 23px; }
+    .files { margin-top: 16px; }
+    .files thead { display: none; }
+    .files .c-size, .files .c-date { display: none; }
+    .files td { padding: 12px; }
+    .fmeta-m { display: block; margin-top: 1px; font-size: 12px; font-weight: 400; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+    /* En móvil el panel es una hoja al pie, a todo el ancho */
+    .up { left: 8px; right: 8px; bottom: 8px; width: auto; max-width: none; border-radius: var(--radius-lg) var(--radius-lg) var(--radius-md) var(--radius-md); }
+    .up-head { padding: 6px 6px 6px 14px; }
+    .up-item { padding: 12px 8px 12px 14px; }
+    .ibtn { width: 44px; height: 44px; }
+    .dialog-check label { min-height: 28px; }
+    .up-actions .btn { min-height: 44px; }
+    .up-msg-actions .btn { min-height: 44px; flex: 1; }
+    /* En móvil: nombre a todo el ancho; barra, mensaje y acciones debajo */
+    .up-item { align-items: start; }
+    .up-item > .bar, .up-item > .up-msg, .up-item > .up-note { grid-column: 1 / -1; }
+    .up-item > .up-actions:has(button) { grid-column: 1 / -1; grid-row: 3; justify-content: flex-end; }
+    .up-name { white-space: normal; overflow-wrap: anywhere; }
+  }
+</style>
+</head>
+<body>
+
+<aside class="sheet-label" aria-label="Rótulo del mockup"><span class="chip">005</span> <strong>Carga de archivos</strong> <span class="file">carga--pausa.html</span> <span>panel de carga sobre Mis archivos · plan Equipo · estado: cargas en pausa (por partes y simple) y una en curso; pausar, reanudar y cancelar por archivo</span></aside>
+
+<div class="canvas">
+  <div class="app">
+    
+    <aside class="sidebar" aria-label="Barra lateral">
+      <div class="brand-row">
+        <a class="logo" href="#" aria-label="Nimbo, Mis archivos"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>
+        <span class="plan-chip">EQUIPO</span>
+      </div>
+      <nav aria-label="Navegación principal">
+        <ul class="nav">
+          <li><a href="#" aria-current="page"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span>Mis archivos</span></a></li>
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4"/><path d="m15.4 6.5-6.8 4"/></svg><span>Compartidos conmigo</span></a></li>
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><span>Recientes</span></a></li>
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8-6.2-3.2-6.2 3.2L7 14.2 2 9.3l6.9-1Z"/></svg><span>Favoritos</span></a></li>
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg><span>Papelera</span><span class="meta">3</span></a></li>
+        </ul>
+        <div class="nav-sep" role="presentation"></div>
+        <ul class="nav">
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m12 3-1.9 5.8L4 10.7l6.1 1.9 1.9 5.9 1.9-5.9 6.1-1.9-6.1-1.9Z"/><path d="M5 3v4"/><path d="M3 5h4"/></svg><span>Optimizador</span></a></li>
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/></svg><span>Plan y facturación</span></a></li>
+        </ul>
+        <p class="nav-title">Carpetas</p>
+        <ul class="nav">
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span>Tesis</span><span class="meta">18</span></a></li>
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span>Trabajo</span><span class="meta">42</span></a></li>
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span>Personales</span><span class="meta">9</span></a></li>
+        </ul>
+      </nav>
+      <div class="quota quota-warn">
+        <div class="quota-head"><span>Almacenamiento</span><span>87 %</span></div>
+        <div class="quota-bar" role="progressbar" aria-label="Almacenamiento usado" aria-valuemin="0" aria-valuemax="100" aria-valuenow="87" aria-valuetext="304 GB de 350 GB (87 %)"><span style="width: 87%"></span></div>
+        <div class="quota-meta">304 GB de 350 GB</div>
+        <p class="quota-note">Tu cuota está al 87 %</p>
+      </div>
+    </aside>
+    <div class="main">
+      
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="menu-btn" type="button" aria-label="Abrir menú de navegación" aria-expanded="false"><svg class="ico " width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg></button>
+          <a class="logo logo-mobile" href="#" aria-label="Nimbo, Mis archivos"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>
+          <nav class="crumbs" aria-label="Ruta">
+            <ol><li><span aria-current="page">Mis archivos</span></li></ol>
+          </nav>
+        </div>
+        <button class="account-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Menú de la cuenta de Lucía Barrios">
+          <span class="account-name">Lucía Barrios</span><span class="avatar" aria-hidden="true">LB</span>
+        </button>
+      </header>
+      <main class="content" id="contenido">
+        <div class="page-head">
+          <h1>Mis archivos</h1>
+          <button class="btn btn-primary" type="button"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></svg><span>Subir archivos</span></button>
+        </div>
+        <div class="files">
+          <table>
+            <caption class="sr-only">Archivos en Mis archivos</caption>
+            <thead><tr><th scope="col">Nombre</th><th scope="col" class="c-size">Tamaño</th><th scope="col" class="c-date">Modificado</th></tr></thead>
+            <tbody>
+            <tr>
+              <td><div class="fname"><span class="ftile ftile-pdf"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span><div class="fname-text">Anexo_B_pgvector.pdf<span class="badge-new">NUEVO</span><span class="fmeta-m">3.4 MB · ahora</span></div></div></td>
+              <td class="c-size">3.4 MB</td>
+              <td class="c-date">ahora</td>
+            </tr>
+            <tr>
+              <td><div class="fname"><span class="ftile ftile-docx"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span><div class="fname-text">Propuesta_Nimbo_v3.docx<span class="fmeta-m">2.4 MB · hace 4 min</span></div></div></td>
+              <td class="c-size">2.4 MB</td>
+              <td class="c-date">hace 4 min</td>
+            </tr>
+            <tr>
+              <td><div class="fname"><span class="ftile ftile-xlsx"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h2"/><path d="M14 13h2"/><path d="M8 17h2"/><path d="M14 17h2"/></svg></span><div class="fname-text">Matriz_Requisitos_RF.xlsx<span class="fmeta-m">860 KB · hoy · 09:12</span></div></div></td>
+              <td class="c-size">860 KB</td>
+              <td class="c-date">hoy · 09:12</td>
+            </tr>
+            <tr>
+              <td><div class="fname"><span class="ftile ftile-pptx"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2 3h20"/><path d="M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3"/><path d="m7 21 5-5 5 5"/></svg></span><div class="fname-text">Demo_Fase3_avance.pptx<span class="fmeta-m">18.7 MB · hace 2 h</span></div></div></td>
+              <td class="c-size">18.7 MB</td>
+              <td class="c-date">hace 2 h</td>
+            </tr>
+            <tr>
+              <td><div class="fname"><span class="ftile ftile-pdf"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span><div class="fname-text">Modelo_ER_Nimbo.pdf<span class="fmeta-m">1.1 MB · ayer</span></div></div></td>
+              <td class="c-size">1.1 MB</td>
+              <td class="c-date">ayer</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      <section class="up" aria-labelledby="up-t">
+        <div class="up-head">
+          <div class="up-titles">
+            <h2 id="up-t">Subiendo 3 archivos</h2>
+            <span class="up-sub">2 en pausa · 54 %</span>
+          </div>
+          <div class="up-head-actions">
+            <button class="ibtn" type="button" aria-expanded="true" aria-controls="up-lista" aria-label="Contraer el panel de cargas"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg></button>
+          </div>
+        </div>
+        <p class="sr-only" aria-live="polite">Pausaste la carga de Informe_avance_sep.docx. Se reiniciará al reanudar.</p>
+        <ul class="up-list" id="up-lista">
+        <li class="up-item">
+          <span class="ftile ftile-other"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M3 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/><path d="M17 3v18"/><path d="M17 7.5h4"/><path d="M17 16.5h4"/></svg></span>
+          <div class="up-info">
+            <p class="up-name">Grabacion_sesion_13.mp4</p>
+            <p class="up-meta">354 MB de 862 MB · 8.4 MB/s · quedan 60 s</p>
+          </div>
+          <div class="up-actions"><button class="ibtn ibtn-outline" type="button" aria-label="Pausar la carga de Grabacion_sesion_13.mp4"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/></svg></button><button class="ibtn ibtn-outline" type="button" aria-label="Cancelar la carga de Grabacion_sesion_13.mp4"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+          <div class="bar" role="progressbar" aria-label="Progreso de Grabacion_sesion_13.mp4" aria-valuemin="0" aria-valuemax="100" aria-valuenow="41" aria-valuetext="41 %, 354 MB de 862 MB"><span style="width: 41%"></span></div>
+        </li>
+        <li class="up-item">
+          <span class="ftile ftile-other"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg></span>
+          <div class="up-info">
+            <p class="up-name">Respaldo_encuestas_2026.zip</p>
+            <p class="up-meta">461 MB de 640 MB · <span class="st st-warn">en pausa</span></p>
+          </div>
+          <div class="up-actions"><button class="btn btn-primary btn-sm" type="button" aria-label="Reanudar la carga de Respaldo_encuestas_2026.zip"><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 3 20 12 6 21Z"/></svg><span>Reanudar</span></button><button class="ibtn ibtn-outline" type="button" aria-label="Cancelar la carga de Respaldo_encuestas_2026.zip"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+          <div class="bar bar-warn" role="progressbar" aria-label="Progreso de Respaldo_encuestas_2026.zip" aria-valuemin="0" aria-valuemax="100" aria-valuenow="72" aria-valuetext="72 %, en pausa"><span style="width: 72%"></span></div>
+        </li>
+        <li class="up-item">
+          <span class="ftile ftile-docx"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span>
+          <div class="up-info">
+            <p class="up-name">Informe_avance_sep.docx</p>
+            <p class="up-meta">1.1 MB de 2.6 MB · <span class="st st-warn">en pausa</span></p>
+          </div>
+          <div class="up-actions"><button class="btn btn-primary btn-sm" type="button" aria-label="Reanudar la carga de Informe_avance_sep.docx"><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 3 20 12 6 21Z"/></svg><span>Reanudar</span></button><button class="ibtn ibtn-outline" type="button" aria-label="Cancelar la carga de Informe_avance_sep.docx"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+          <div class="bar bar-warn" role="progressbar" aria-label="Progreso de Informe_avance_sep.docx" aria-valuemin="0" aria-valuemax="100" aria-valuenow="42" aria-valuetext="42 %, en pausa; se reiniciará al reanudar"><span style="width: 42%"></span></div>
+          <p class="up-note">Se reiniciará al reanudar.</p>
+        </li>
+        <li class="up-item">
+          <span class="ftile ftile-pdf"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span>
+          <div class="up-info">
+            <p class="up-name">Plano_laboratorio.pdf</p>
+            <p class="up-meta">12 MB · <span class="st ">cancelada</span></p>
+          </div>
+          <div class="up-actions"></div>
+          <p class="up-note">Cancelaste esta carga. Liberamos el espacio que tenía reservado.</p>
+        </li>
+        <li class="up-item">
+          <span class="ftile ftile-pdf"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span>
+          <div class="up-info">
+            <p class="up-name">Anexo_B_pgvector.pdf</p>
+            <p class="up-meta">3.4 MB · <span class="st st-ok">subido</span></p>
+          </div>
+          <div class="up-actions"><span class="done" role="img" aria-label="Subido"><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5"/></svg></span></div>
+        </li>
+        </ul>
+      </section>
+      </main>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

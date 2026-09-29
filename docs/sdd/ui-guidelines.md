@@ -229,7 +229,7 @@ identificador.
 > Estado del mockup: `Pendiente` · `Borrador` · `Aprobado`. Rutas relativas a `docs/design/`.
 > Actualicen la columna «Mockup» con lo que ya existe; el `ui-designer` la mantiene al día.
 > Los mockups `Borrador` provienen de Claude Design (`.dc.html`) o están escritos a mano en HTML autocontenido
-> (`.html`), como `mockups/identity/seguridad/`, `mockups/identity/terminos/` y `mockups/identity/privacidad/`. Solo
+> (`.html`), como `mockups/identity/seguridad/`, `mockups/identity/terminos/`, `mockups/identity/privacidad/` y los estados nuevos de `mockups/storage/carga/`. Solo
 > cubren los estados entre paréntesis; el resto de estados mínimos se agregan con `/mockup` antes de aclarar la spec.
 > Cada carpeta tiene un `README.md`.
 
@@ -247,7 +247,7 @@ identificador.
 | Explorador de archivos | storage | 005–007 | `mockups/storage/explorador/` | `capturas/storage/explorador/` | default, vacio, cargando, arrastre, seleccion | Borrador (cuadricula, lista) |
 | Resumen de espacio (cuota, consultas, renovación) | storage | 007 | `mockups/storage/resumen-espacio/` | `capturas/storage/resumen-espacio/` | default | Borrador (default) |
 | Vista general (lienzo con todas las pantallas) | shared | 000b | `mockups/shared/vista-general/` | `capturas/shared/vista-general/` | default | Borrador (referencia) |
-| Carga en progreso | storage | 005 | `mockups/storage/carga/` | `capturas/storage/carga/` | progreso, reanudar, rechazo-cuota, tipo-invalido | Borrador (progreso) |
+| Carga en progreso | storage | 005 | `mockups/storage/carga/` | `capturas/storage/carga/` | progreso, pausa, sin-conexion, rechazo-tamano, rechazo-cuota, tipo-invalido, nombre-repetido, nombre-repetido-varios, confirmar-cancelar | Borrador (progreso, pausa, sin-conexion, rechazo-tamano, rechazo-cuota, tipo-invalido, nombre-repetido, nombre-repetido-varios, confirmar-cancelar) |
 | Papelera | storage | 006 | `mockups/storage/papelera/` | `capturas/storage/papelera/` | default, vacio | Borrador (default) |
 | Ficha de archivo (detalles, versiones, estado de indexación) | storage | 014, 019 | `mockups/storage/ficha-archivo/` | `capturas/storage/ficha-archivo/` | default, no-indexable | Borrador (default, con historial) |
 | Vista previa | storage | 017 | `mockups/storage/vista-previa/` | … | pdf, imagen, no-disponible | Pendiente |
