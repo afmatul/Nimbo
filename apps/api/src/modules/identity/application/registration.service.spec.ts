@@ -572,7 +572,8 @@ describe('RegistrationService.verifyEmail', () => {
 
     const result = await service.verifyEmail(value);
 
-    expect(result).toEqual({ outcome: 'VERIFIED', userId: pending.id });
+    expect(result).toMatchObject({ outcome: 'VERIFIED', userId: pending.id });
+    expect(result.outcome === 'VERIFIED' ? result.user.emailVerified : false).toBe(true);
     expect((await users.findByIdForUpdate(pending.id))?.emailVerified).toBe(true);
     expect(tokens.all().filter((token) => token.isValid(NOW))).toHaveLength(0);
     expect(tokens.all().filter((token) => token.usedAt !== null)).toHaveLength(1);

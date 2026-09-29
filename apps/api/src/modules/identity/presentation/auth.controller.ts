@@ -26,12 +26,15 @@ import type {
   VerifyEmailResponse,
 } from '@nimbo/contracts';
 import type { Request, Response } from 'express';
+import { PinoLogger } from 'nestjs-pino';
 
 import { Public, ZodValidationPipe } from '../../../shared';
 import { AuthService } from '../application/auth.service';
 import { IDENTITY_CONFIG } from '../application/identity-config';
 import type { IdentityConfig } from '../application/identity-config';
+import type { IdentityLogger } from '../application/identity-logger';
 import { RegistrationService } from '../application/registration.service';
+import type { VerifyEmailResult } from '../application/registration.service';
 import { SessionService } from '../application/session.service';
 import type { OpenedSession } from '../application/session.service';
 import { SessionExpiredError, SessionRevokedError } from '../domain/errors';
@@ -71,6 +74,7 @@ export class AuthController {
     private readonly auth: AuthService,
     private readonly sessions: SessionService,
     @Inject(IDENTITY_CONFIG) config: IdentityConfig,
+    @Inject(PinoLogger) private readonly logger: IdentityLogger,
   ) {
     this.cookies = new SessionCookies(config.cookieSecure);
   }
@@ -100,14 +104,23 @@ export class AuthController {
     return ACCEPTED;
   }
 
+  /** 002 CA-15: la apertura que verifica abre sesión; si eso falla, la verificación sigue confirmada. */
   @Post('verify-email')
   @HttpCode(HttpStatus.OK)
   async verifyEmail(
     @Body(new ZodValidationPipe(verifyEmailRequestSchema, identityValidationError))
     body: VerifyEmailRequest,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
   ): Promise<VerifyEmailResponse> {
     const result = await this.registration.verifyEmail(body.token);
-    return { status: result.outcome === 'VERIFIED' ? 'verified' : 'already-verified' };
+    if (result.outcome === 'ALREADY_VERIFIED') {
+      return { status: 'already-verified' };
+    }
+    const opened = await this.openAfterVerification(result, req);
+    return opened === null
+      ? { status: 'verified' }
+      : { status: 'verified', session: this.writeSession(res, opened) };
   }
 
   /** CA-1 a CA-6. `login-ip` cuenta todos los intentos y corre antes del pipe (CA-6). */
@@ -154,6 +167,18 @@ export class AuthController {
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response): Promise<void> {
     await this.sessions.logout(readCookie(req, REFRESH_COOKIE) ?? '');
     this.cookies.clearRefresh(res);
+  }
+
+  private async openAfterVerification(
+    result: Extract<VerifyEmailResult, { outcome: 'VERIFIED' }>,
+    req: Request,
+  ): Promise<OpenedSession | null> {
+    try {
+      return await this.sessions.open(result.user, readClientContext(req), 'verification');
+    } catch {
+      this.logger.warn({ event: 'identity.verification.session_failed', userId: result.userId });
+      return null;
+    }
   }
 
   private writeSession(res: Response, opened: OpenedSession): SessionResponse {
