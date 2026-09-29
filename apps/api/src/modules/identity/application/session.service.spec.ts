@@ -324,3 +324,96 @@ describe('SessionService.refresh: rechazos sin escritura (plan 002 §6.3)', () =
     expect(loggedEvents(ctx.logger)).toContainEqual(rejection('grace', opened.sessionId));
   });
 });
+
+describe('SessionService.refresh: rotación, reúso y cuenta suspendida (plan 002 §6.3)', () => {
+  it('CA-7: con el token vigente rota el secreto, actualiza el uso y emite credenciales nuevas', async () => {
+    const ctx = setup();
+    const opened = await openSession(ctx);
+    const before = stored(ctx, opened.sessionId);
+    ctx.clock.advance(MS_PER_DAY);
+
+    const refreshed = await ctx.service.refresh(opened.refreshToken, client());
+
+    const after = stored(ctx, opened.sessionId);
+    const parsed = RefreshToken.parse(refreshed.refreshToken);
+    expect(refreshed.sessionId).toBe(opened.sessionId);
+    expect(refreshed.refreshToken).not.toBe(opened.refreshToken);
+    expect(parsed?.sessionId).toBe(opened.sessionId);
+    expect(after.refreshHash).toBe(parsed?.secretHash);
+    expect(after.refreshAnteriorHash).toBe(before.refreshHash);
+    expect(after.ultimoUso).toEqual(ctx.clock.now());
+    expect(refreshed.refreshMaxAge).toBe(IDLE_MS);
+    expect(refreshed.user.id).toBe(ctx.user.id);
+    expect(refreshed.access.token).toBe(`access.${opened.sessionId}`);
+    expect(ctx.timeline).toEqual(['commit', 'access-token']);
+    expect(loggedEvents(ctx.logger)).toContainEqual({
+      event: 'identity.session.refreshed',
+      userId: ctx.user.id,
+      sessionId: opened.sessionId,
+    });
+  });
+
+  it('CA-8: la cookie nueva no dura más de lo que le queda a la sesión', async () => {
+    const ctx = setup();
+    const opened = await openSession(ctx);
+    ctx.clock.advance(MAX_LIFETIME_MS - MS_PER_DAY / 2);
+    const current = await rotateStored(ctx, opened.sessionId, ctx.clock.now());
+
+    const refreshed = await ctx.service.refresh(current, client());
+
+    expect(refreshed.refreshMaxAge).toBe(MS_PER_DAY / 2);
+  });
+
+  it('CA-9: el reúso de un token rotado revoca, confirma y después lanza, con aviso al dueño', async () => {
+    const ctx = setup();
+    const opened = await openSession(ctx);
+    await rotateStored(ctx, opened.sessionId, NOW);
+    ctx.clock.advance(GRACE_MS + 1);
+
+    await expect(ctx.service.refresh(opened.refreshToken, client())).rejects.toBeInstanceOf(
+      SessionRevokedError,
+    );
+
+    expect(stored(ctx, opened.sessionId).revocadaEn).toEqual(ctx.clock.now());
+    expect(ctx.timeline).toEqual(['commit', 'mail:identity.session-revoked']);
+    expect(ctx.sent[0]).toMatchObject({
+      to: ctx.user.email.value,
+      subject: 'Cerramos una sesión por seguridad',
+      idempotencyKey: `identity.session-revoked.${opened.sessionId}`,
+      tag: 'identity.session-revoked',
+      recipientId: ctx.user.id,
+    });
+    expect(ctx.sent[0]?.text).toContain('(Firefox · Linux)');
+    expect(ctx.logger.warn).toHaveBeenCalledWith({
+      event: 'identity.session.reuse_detected',
+      userId: ctx.user.id,
+      sessionId: opened.sessionId,
+    });
+    expect(ctx.tokens.issueAccessToken).not.toHaveBeenCalled();
+  });
+
+  it('CA-9: un secreto falsificado con un `sid` conocido también revoca la sesión', async () => {
+    const ctx = setup();
+    const opened = await openSession(ctx);
+    const forged = RefreshToken.issue(opened.sessionId).value;
+
+    await expect(ctx.service.refresh(forged, client())).rejects.toBeInstanceOf(SessionRevokedError);
+
+    expect(stored(ctx, opened.sessionId).revocadaEn).not.toBeNull();
+  });
+
+  it('CA-10: con la cuenta suspendida revoca, confirma y lanza `SESSION_REVOKED`', async () => {
+    const ctx = setup();
+    const opened = await openSession(ctx);
+    ctx.users.seed(aClientUser().verified().suspended().build());
+
+    await expect(ctx.service.refresh(opened.refreshToken, client())).rejects.toBeInstanceOf(
+      SessionRevokedError,
+    );
+
+    expect(stored(ctx, opened.sessionId).revocadaEn).toEqual(NOW);
+    expect(ctx.timeline).toEqual(['commit']);
+    expect(ctx.sent).toHaveLength(0);
+    expect(loggedEvents(ctx.logger)).toContainEqual(rejection('suspended', opened.sessionId));
+  });
+});

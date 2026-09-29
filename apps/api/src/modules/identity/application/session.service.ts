@@ -12,6 +12,7 @@ import { I_CLOCK, I_TRANSACTION_RUNNER } from '../../../shared';
 import type { DomainError, IClock, ITransactionRunner, Role } from '../../../shared';
 import { I_MAILER } from '../../notifications';
 import type { IMailer, MailMessage } from '../../notifications';
+import { AccountStatus } from '../domain/account-status.enum';
 import { Device } from '../domain/device.entity';
 import { RefreshInvalidError, SessionExpiredError, SessionRevokedError } from '../domain/errors';
 import { OpaqueToken } from '../domain/opaque-token.vo';
@@ -26,6 +27,7 @@ import { IDENTITY_CONFIG } from './identity-config';
 import type { IdentityConfig } from './identity-config';
 import type { IdentityLogger } from './identity-logger';
 import { newDeviceMail } from './mail/new-device-mail.template';
+import { sessionRevokedMail } from './mail/session-revoked-mail.template';
 import { I_DEVICE_REPOSITORY } from './ports/i-device-repository.port';
 import type { IDeviceRepository } from './ports/i-device-repository.port';
 import { I_SESSION_REPOSITORY } from './ports/i-session-repository.port';
@@ -41,6 +43,7 @@ const MAX_LIFETIME_MS = SESSION_MAX_LIFETIME_DAYS * MS_PER_DAY;
 const IDLE_TIMEOUT_MS = SESSION_IDLE_TIMEOUT_DAYS * MS_PER_DAY;
 const GRACE_MS = REFRESH_ROTATION_GRACE_SECONDS * 1000;
 const NEW_DEVICE_TAG = 'identity.new-device';
+const SESSION_REVOKED_TAG = 'identity.session-revoked';
 
 /** Quién abre la sesión: el inicio de sesión avisa de un dispositivo nuevo; la verificación no (D-4). */
 export type SessionOrigin = 'login' | 'verification';
@@ -82,11 +85,15 @@ interface OpenDecision {
 type RefreshRejection = 'unknown' | 'grace' | 'expired' | 'revoked' | 'suspended';
 
 /** Lo que decide la transacción de renovación; el token, el correo y el error van después del commit. */
-type RefreshDecision = {
-  readonly kind: 'rejected';
-  readonly reason: RefreshRejection;
-  readonly sessionId?: string;
-};
+type RefreshDecision =
+  | {
+      readonly kind: 'rotated';
+      readonly user: User;
+      readonly session: Session;
+      readonly refreshToken: string;
+    }
+  | { readonly kind: 'reuse'; readonly user: User | null; readonly session: Session }
+  | { readonly kind: 'rejected'; readonly reason: RefreshRejection; readonly sessionId?: string };
 
 /** `grace` no revoca ni borra la cookie: en una carrera entre pestañas la del navegador ya es la nueva (CA-9). */
 const REFRESH_REJECTION_ERRORS: Readonly<
@@ -176,17 +183,94 @@ export class SessionService {
     if (match === 'previousWithinGrace') {
       return { kind: 'rejected', reason: 'grace', sessionId: session.id };
     }
-    throw new Error(`Renovación con el secreto ${match}: pendiente de T-32.`);
+    const user = await this.users.findByIdForUpdate(session.userId);
+    if (match === 'reuse') {
+      // D-3: un token más viejo, el anterior fuera de la gracia o un secreto falsificado revocan la sesión.
+      return { kind: 'reuse', user, session: await this.revoke(session, now) };
+    }
+    return this.rotateOrRevoke(session, user, now);
+  }
+
+  /** CA-7, CA-10: la cuenta suspendida después de iniciar sesión pierde la sesión al renovar (D-10). */
+  private async rotateOrRevoke(
+    session: Session,
+    user: User | null,
+    now: Date,
+  ): Promise<RefreshDecision> {
+    if (user === null) {
+      return { kind: 'rejected', reason: 'unknown', sessionId: session.id };
+    }
+    if (user.status === AccountStatus.SUSPENDED) {
+      await this.revoke(session, now);
+      return { kind: 'rejected', reason: 'suspended', sessionId: session.id };
+    }
+    const next = RefreshToken.issue(session.id);
+    const rotated = session.rotate(next.secretHash, now);
+    await this.sessions.update(rotated);
+    return { kind: 'rotated', user, session: rotated, refreshToken: next.value };
+  }
+
+  private async revoke(session: Session, now: Date): Promise<Session> {
+    const revoked = session.revoke(now);
+    await this.sessions.update(revoked);
+    return revoked;
   }
 
   /** Después del commit: bitácora y token nuevo, o el error público del rechazo. */
-  private completeRefresh(
+  private async completeRefresh(
     decision: RefreshDecision,
-    _client: ClientContext,
-    _now: Date,
+    client: ClientContext,
+    now: Date,
   ): Promise<IssuedSession> {
+    if (decision.kind === 'rotated') {
+      const { user, session } = decision;
+      this.logger.info({
+        event: 'identity.session.refreshed',
+        userId: user.id,
+        sessionId: session.id,
+      });
+      return this.issue(user, session, decision.refreshToken, now);
+    }
+    if (decision.kind === 'reuse') {
+      await this.notifyReuse(decision.session, decision.user, client);
+      throw new SessionRevokedError();
+    }
     this.logRejection(decision.reason, decision.sessionId);
     throw REFRESH_REJECTION_ERRORS[decision.reason]();
+  }
+
+  /**
+   * CA-9: aviso al dueño. Nombra el navegador que presentó el token reusado: el puerto no expone el agente de usuario
+   * del dispositivo de la sesión (ver informe de T-32).
+   */
+  private async notifyReuse(
+    session: Session,
+    user: User | null,
+    client: ClientContext,
+  ): Promise<void> {
+    this.logger.warn({
+      event: 'identity.session.reuse_detected',
+      userId: session.userId,
+      sessionId: session.id,
+    });
+    if (user === null) {
+      return;
+    }
+    const { browser, os } = UserAgentSummary.parse(client.userAgent);
+    await this.mailer.send(
+      this.mailTo(
+        user,
+        `${SESSION_REVOKED_TAG}.${session.id}`,
+        SESSION_REVOKED_TAG,
+        sessionRevokedMail({
+          revokedAt: session.revocadaEn ?? this.clock.now(),
+          browser,
+          os,
+          securityUrl: webUrl(this.config, WEB_PATHS.security),
+          passwordRecoveryUrl: webUrl(this.config, WEB_PATHS.passwordRecovery),
+        }),
+      ),
+    );
   }
 
   private logRejection(reason: RefreshRejection | 'malformed', sessionId?: string): void {
