@@ -5,9 +5,9 @@ import { join } from 'node:path';
 
 // Solo los esquemas (zod puro): el índice de `shared` arrastra Nest y sus decoradores, innecesarios aquí.
 import {
-  apiEnvSchema,
+  apiEnvObjectSchema,
   SECRET_KEYS,
-  workerEnvSchema,
+  workerEnvObjectSchema,
 } from '../apps/api/src/shared/infrastructure/config/env.schema';
 import { webEnvSchema } from '../apps/web/src/env';
 
@@ -57,8 +57,8 @@ export const checkEnvExample = (input: CheckInput): CheckResult => {
 /** Las claves salen de los esquemas reales: una variable nueva sin `.env.example` rompe CI. */
 export const collectSchemaKeys = (): SchemaKeys => ({
   schemas: {
-    api: Object.keys(apiEnvSchema.shape),
-    worker: Object.keys(workerEnvSchema.shape),
+    api: Object.keys(apiEnvObjectSchema.shape),
+    worker: Object.keys(workerEnvObjectSchema.shape),
     web: Object.keys(webEnvSchema.shape),
   },
   secrets: [...SECRET_KEYS],

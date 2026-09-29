@@ -332,7 +332,8 @@ Pruebas unitarias junto al código (`*.spec.ts`).
   - Común: la contraseña en minúsculas está en la lista.
   - Igual al correo: la contraseña en minúsculas coincide con el correo normalizado o con su parte local.
 - **Lista de contraseñas comunes**: se genera con un script (`packages/contracts/scripts/build-common-passwords.mjs`)
-  desde el top 100 000 de SecLists (licencia MIT, atribución en el encabezado). Se guardan **solo** las entradas que
+  desde el top 1 000 000 de SecLists (`xato-net-10-million-passwords-1000000.txt`, licencia MIT, atribución en el
+  encabezado; el top 100 000 dejaba 5 entradas tras el filtro, review 001 I-1). Se guardan **solo** las entradas que
   pasarían las demás reglas sin la de mayúscula: 12 a 128 caracteres, con número y con símbolo. La comparación es
   insensible a mayúsculas, así que «password123!» también bloquea «Password123!». Con ese filtro la lista queda chica
   y se puede enviar al navegador, que aplica **las mismas reglas** que el `api` (CA-22). Meta: menos de 50 KB, que la

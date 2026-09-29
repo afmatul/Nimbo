@@ -39,4 +39,26 @@ describe('enqueueWithCorrelation', () => {
 
     expect(job).toEqual({ id: 'job-1' });
   });
+
+  it('CA-21: pasa `opts` (p. ej. `jobId`) a `queue.add` sin tocar `data`', async () => {
+    const { queue, add } = fakeQueue();
+
+    await CorrelationContext.run({ correlationId: 'corr-Z' }, () =>
+      enqueueWithCorrelation(queue, 'send', { tag: 't' }, { jobId: 'identity.verification.1' }),
+    );
+
+    expect(add).toHaveBeenCalledWith(
+      'send',
+      { tag: 't', correlationId: 'corr-Z' },
+      { jobId: 'identity.verification.1' },
+    );
+  });
+
+  it('CA-21: sin `opts` llama a `queue.add` con dos argumentos, como antes', async () => {
+    const { queue, add } = fakeQueue();
+
+    await enqueueWithCorrelation(queue, 'ping', {});
+
+    expect(add.mock.calls[0]).toHaveLength(2);
+  });
 });

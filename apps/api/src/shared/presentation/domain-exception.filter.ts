@@ -4,7 +4,8 @@ import type { ErrorResponse } from '@nimbo/contracts';
 import type { Response } from 'express';
 import type { Logger } from 'nestjs-pino';
 
-import { DomainError } from '../domain/errors';
+import { DomainError, TooManyRequestsError } from '../domain/errors';
+import type { FieldIssue } from '../domain/errors';
 import { CorrelationContext } from '../infrastructure/correlation/correlation-context';
 import { CORRELATION_ID_HEADER } from '../infrastructure/correlation/correlation-id.middleware';
 
@@ -15,10 +16,14 @@ const VALIDATION_FAILED_MESSAGE =
 const httpErrorMessage = (status: number): string =>
   `La petición no pudo procesarse (HTTP ${String(status)}). Verifica la ruta, el método y los datos enviados.`;
 
+const RETRY_AFTER_HEADER = 'Retry-After';
+
 interface Translated {
   readonly status: number;
   readonly code: string;
   readonly message: string;
+  readonly fields?: readonly FieldIssue[];
+  readonly retryAfterSeconds?: number;
 }
 
 const translateHttpException = (exception: HttpException): Translated => {
@@ -28,9 +33,18 @@ const translateHttpException = (exception: HttpException): Translated => {
     : { status, code: `HTTP_${String(status)}`, message: httpErrorMessage(status) };
 };
 
+const translateDomainError = (error: DomainError): Translated => ({
+  status: error.status,
+  code: error.code,
+  message: error.message,
+  ...(error.fields === undefined ? {} : { fields: error.fields }),
+  ...(error instanceof TooManyRequestsError ? { retryAfterSeconds: error.retryAfterSeconds } : {}),
+});
+
 /**
- * Único traductor de errores a HTTP (Art. VII.5, CA-16, RN-1). Cuerpo siempre `{ code, message, correlationId }`;
- * nunca `stack`, nombre de clase ni rutas. `DomainError` usa el `status` de su clase y el mensaje que la
+ * Único traductor de errores a HTTP (Art. VII.5, CA-16, RN-1). Cuerpo siempre `{ code, message, correlationId }`,
+ * más `fields` si el error de entrada los trae (001 CA-5, CA-6); nunca `stack`, nombre de clase ni rutas. Un
+ * `TooManyRequestsError` agrega `Retry-After` (001 CA-15). `DomainError` usa el `status` de su clase y el mensaje que la
  * subclase definió; `HttpException` conserva su estado; todo lo demás es `500 INTERNAL_ERROR` con detalle
  * solo en la bitácora `http.unhandled_error`.
  */
@@ -46,7 +60,11 @@ export class DomainExceptionFilter implements ExceptionFilter {
       code: translated.code,
       message: translated.message,
       correlationId,
+      ...(translated.fields === undefined ? {} : { fields: [...translated.fields] }),
     };
+    if (translated.retryAfterSeconds !== undefined) {
+      response.setHeader(RETRY_AFTER_HEADER, String(translated.retryAfterSeconds));
+    }
     response.status(translated.status).json(body);
   }
 
@@ -57,7 +75,7 @@ export class DomainExceptionFilter implements ExceptionFilter {
         code: exception.code,
         status: exception.status,
       });
-      return { status: exception.status, code: exception.code, message: exception.message };
+      return translateDomainError(exception);
     }
     if (exception instanceof HttpException) {
       return translateHttpException(exception);

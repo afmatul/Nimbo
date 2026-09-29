@@ -1,14 +1,22 @@
 import { BullModule } from '@nestjs/bullmq';
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import type { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import type { QueueOptions } from 'bullmq';
 
+import { I_TRANSACTION_RUNNER } from './application/persistence/i-transaction-runner.port';
+import { I_RATE_LIMITER } from './application/rate-limit/i-rate-limiter.port';
+import { I_CLOCK } from './domain/i-clock.port';
+import { SystemClock } from './infrastructure/clock/system.clock';
 import { ENV } from './infrastructure/config/env.module';
 import type { SharedEnvBase } from './infrastructure/config/env.schema';
 import { createLoggerModule } from './infrastructure/logging/logger.module';
 import { buildDataSourceOptions } from './infrastructure/persistence/data-source';
+import { TransactionContext } from './infrastructure/persistence/transaction-context';
+import { TypeOrmTransactionRunner } from './infrastructure/persistence/typeorm-transaction-runner';
 import { buildBullConnection } from './infrastructure/queue/bull.config';
+import { RedisRateLimiter } from './infrastructure/rate-limit/redis-rate-limiter';
+import { REDIS_CLIENT, redisClientProviders } from './infrastructure/redis/redis-client.provider';
 
 /** Postgres y Redis deben responder para que el proceso termine de arrancar (plan 000 §6.2, cambio 9). */
 const DB_RETRY_ATTEMPTS = 10;
@@ -18,7 +26,10 @@ const DB_RETRY_DELAY_MS = 3000;
  * Módulo transversal sin parámetros: logger Pino, TypeORM (`autoLoadEntities`) y la conexión BullMQ,
  * configurados con el `ENV` (`SharedEnvBase`) que `EnvModule.forRoot` publica. Cada raíz de composición
  * (`AppModule`, `WorkerModule`) importa `EnvModule.forRoot(env)`, este módulo y añade lo suyo.
+ * Global (001 plan §6.7): los módulos de negocio inyectan `I_CLOCK`, `REDIS_CLIENT`, `I_RATE_LIMITER`,
+ * `I_TRANSACTION_RUNNER` y `TransactionContext` sin importarlo; las pruebas sustituyen `I_CLOCK` con `FixedClock`.
  */
+@Global()
 @Module({
   imports: [
     createLoggerModule(),
@@ -38,5 +49,13 @@ const DB_RETRY_DELAY_MS = 3000;
       }),
     }),
   ],
+  providers: [
+    { provide: I_CLOCK, useClass: SystemClock },
+    ...redisClientProviders,
+    { provide: I_RATE_LIMITER, useClass: RedisRateLimiter },
+    TransactionContext,
+    { provide: I_TRANSACTION_RUNNER, useClass: TypeOrmTransactionRunner },
+  ],
+  exports: [I_CLOCK, REDIS_CLIENT, I_RATE_LIMITER, I_TRANSACTION_RUNNER, TransactionContext],
 })
 export class SharedModule {}

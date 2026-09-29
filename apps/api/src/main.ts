@@ -1,24 +1,22 @@
 import { randomUUID } from 'node:crypto';
 
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Logger } from 'nestjs-pino';
 
 import { AppModule } from './app.module';
 import {
   apiEnvSchema,
+  configureHttpApp,
   CorrelationContext,
-  CorrelationIdMiddleware,
-  DomainExceptionFilter,
   loadDotenvFile,
   loadEnv,
-  VersionHeaderMiddleware,
 } from './shared';
 
-const API_PREFIX = 'api/v1';
-
 /**
- * Arranque de `api` (plan 000 §6.2): cargar el `.env` de la raíz si existe → validar entorno → si falla, `config.invalid` en stderr y salir con `1`
- * (el logger aún no existe) → app con logger Pino → middlewares de correlación y versión → prefijo → filtro → escuchar.
+ * Arranque de `api` (plan 000 §6.2, plan 001 §6.8): cargar el `.env` de la raíz si existe → validar entorno → si falla,
+ * `config.invalid` en stderr y salir con `1` (el logger aún no existe) → app con logger Pino y sin analizadores por
+ * defecto → `configureHttpApp` (correlación, versión, `trust proxy`, CORS, solo JSON, prefijo y filtro) → escuchar.
  */
 async function bootstrap(): Promise<void> {
   loadDotenvFile();
@@ -29,16 +27,13 @@ async function bootstrap(): Promise<void> {
   }
   const env = config.env;
 
-  const app = await NestFactory.create(AppModule.forRoot(env), { bufferLogs: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule.forRoot(env), {
+    bufferLogs: true,
+    bodyParser: false,
+  });
   const logger = app.get(Logger);
   app.useLogger(logger);
-
-  const correlation = new CorrelationIdMiddleware();
-  const version = new VersionHeaderMiddleware(env.APP_VERSION);
-  app.use(correlation.use.bind(correlation));
-  app.use(version.use.bind(version));
-  app.setGlobalPrefix(API_PREFIX);
-  app.useGlobalFilters(new DomainExceptionFilter(logger));
+  configureHttpApp(app, env);
 
   await app.listen(env.PORT);
   logger.log({

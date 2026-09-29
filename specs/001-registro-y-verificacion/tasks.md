@@ -50,7 +50,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
 
 ## Bloque 1 — PR-1 «contratos, migraciones y shared» (plan §6.12; ADR-0020)
 
-- [ ] **T-01** [P] Contratos raíz: `fields` en `ErrorResponse` y `toFieldIssues` genérica — CA: CA-5, CA-6 (forma del error) — Depende: — — ~1,5 h
+- [x] **T-01** [P] Contratos raíz: `fields` en `ErrorResponse` y `toFieldIssues` genérica — CA: CA-5, CA-6 (forma del error) — Depende: — — ~1,5 h
   Prueba primero: `packages/contracts/src/error.spec.ts` (un error sin `fields` sigue idéntico al de 000 CA-16; con
   `fields: [{ field, reason, message }]` es válido; `reason` exige `SCREAMING_SNAKE`; el objeto sigue `.strict()`) y
   `validation.spec.ts` (un `ZodError` con `params.reason` produce ese `reason`; sin él, `REQUIRED` para ausente e
@@ -58,7 +58,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   clave con `UNKNOWN_FIELD`). Luego `error.ts` y `validation.ts`; `index.ts` los exporta. Sin nada de `identity` en la raíz.
   Archivos: `packages/contracts/src/{error,validation,index}.ts`, `packages/contracts/src/{error,validation}.spec.ts`.
 
-- [ ] **T-02** [P] `contracts/identity`: parámetros, documentos legales y códigos de error — CA: CA-1 (versión), CA-15 (mensaje), CA-23 — Depende: — — ~1 h
+- [x] **T-02** [P] `contracts/identity`: parámetros, documentos legales y códigos de error — CA: CA-1 (versión), CA-15 (mensaje), CA-23 — Depende: — — ~1 h
   Prueba primero `packages/contracts/src/identity/constants.spec.ts`: los valores de §6 de la spec
   (`VERIFICATION_LINK_TTL_HOURS = 24`, `EMAIL_REQUEST_COOLDOWN_SECONDS = 60`, `EMAIL_REQUESTS_PER_HOUR = 5`,
   `REGISTRATIONS_PER_IP_PER_HOUR = 10`, `MAX_AVISOS_INTENTO_24H = 1`, `FULL_NAME_MAX_LENGTH = 100`,
@@ -68,15 +68,15 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   contraseña común, igual al correo, requisitos). Luego los archivos.
   Archivos: `packages/contracts/src/identity/{parameters,legal,error-codes}.ts`, `packages/contracts/src/identity/constants.spec.ts`.
 
-- [ ] **T-03** Lista local de contraseñas comunes — CA: CA-5 (regla «común») — Depende: T-02 — ~2 h
+- [x] **T-03** Lista local de contraseñas comunes — CA: CA-5 (regla «común») — Depende: T-02 — ~2 h
   Prueba primero `packages/contracts/src/identity/common-passwords.spec.ts`: el archivo pesa < 50 KB; toda entrada está
   en minúsculas, tiene de 12 a 128 puntos de código, un número y un símbolo; sin duplicados; contiene al menos una
   entrada conocida del top de SecLists que cumple el filtro (el developer la elige al generar y la fija en la prueba).
-  Luego `packages/contracts/scripts/build-common-passwords.mjs` (descarga o lee el top 100 000 de SecLists, filtra según
+  Luego `packages/contracts/scripts/build-common-passwords.mjs` (descarga o lee el top 1 000 000 de SecLists, filtra según
   plan §6.2, escribe `common-passwords.ts` con encabezado de licencia MIT y atribución) y el archivo generado.
   Archivos: `packages/contracts/scripts/build-common-passwords.mjs`, `packages/contracts/src/identity/common-passwords.ts`, `packages/contracts/src/identity/common-passwords.spec.ts`, `packages/contracts/package.json` (script `build:common-passwords`).
 
-- [ ] **T-04** `evaluatePassword` (política D-6) — CA: CA-5, CA-22 (reglas en vivo) — Depende: T-02, T-03 — ~1,5 h
+- [x] **T-04** `evaluatePassword` (política D-6) — CA: CA-5, CA-22 (reglas en vivo) — Depende: T-02, T-03 — ~1,5 h
   Prueba primero `packages/contracts/src/identity/password-policy.spec.ts`: una prueba por regla (11 y 129 puntos de
   código, sin mayúscula, sin número, sin símbolo, común sin distinguir mayúsculas —«Password123!»-tipo—, igual al
   correo normalizado, igual a su parte local); `Nimbo-Seguro-2026` y `Ñandú-Azul-2026` pasan; un espacio como único
@@ -84,7 +84,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   regla, si cumple y su `reason`. Función pura, sin zod.
   Archivos: `packages/contracts/src/identity/password-policy.ts`, `packages/contracts/src/identity/password-policy.spec.ts`.
 
-- [ ] **T-05** Esquemas de `identity` — CA: CA-5, CA-6, CA-7, CA-11 (b), CA-22 — Depende: T-01, T-04 — ~2 h
+- [x] **T-05** Esquemas de `identity` — CA: CA-5, CA-6, CA-7, CA-11 (b), CA-22 — Depende: T-01, T-04 — ~2 h
   Prueba primero `packages/contracts/src/identity/schemas.spec.ts`: `registerRequestSchema` estricto (nombre vacío,
   solo espacios o de 101 → `REQUIRED`/`TOO_LONG`; correo mal formado → `INVALID_EMAIL`; `acceptTerms` falso o ausente
   → `TERMS_NOT_ACCEPTED` con el mensaje de spec §11; cada regla de contraseña como un *issue* propio con su `reason`;
@@ -96,7 +96,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   `identity/index.ts` y la reexportación en `src/index.ts`.
   Archivos: `packages/contracts/src/identity/{schemas,index}.ts`, `packages/contracts/src/identity/schemas.spec.ts`, `packages/contracts/src/index.ts`.
 
-- [ ] **T-06** [P] Migraciones `usuario` y `token_cuenta` + migraciones en el arnés — CA: CA-1, CA-3, CA-17, RN-4 — Depende: — — ~2 h
+- [x] **T-06** [P] Migraciones `usuario` y `token_cuenta` + migraciones en el arnés — CA: CA-1, CA-3, CA-17, RN-4 — Depende: — — ~2 h
   Hoy el arnés de integración **no** ejecuta migraciones: agregar primero `apps/api/test/int/setup/migrate.ts`
   (ejecuta las migraciones sobre el Postgres de Testcontainers en `global-setup.ts`, que usan también `int` e
   `isolation`). Prueba primero `apps/api/test/int/identity/schema.int-spec.ts`: rechaza un `rol` fuera de los cuatro,
@@ -108,27 +108,27 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   compose local (evidencia en «Notas del developer»).
   Archivos: `apps/api/src/migrations/20260928100000-crear-usuario.ts`, `apps/api/src/migrations/20260928100100-crear-token-cuenta.ts`, `apps/api/test/int/setup/{migrate,global-setup}.ts`, `apps/api/test/int/identity/schema.int-spec.ts`.
 
-- [ ] **T-07** [P] `shared/domain`: `FieldIssue`, `DomainError.fields`, `TooManyRequestsError` — CA: CA-5, CA-6, CA-15 — Depende: — — ~1 h
+- [x] **T-07** [P] `shared/domain`: `FieldIssue`, `DomainError.fields`, `TooManyRequestsError` — CA: CA-5, CA-6, CA-15 — Depende: — — ~1 h
   Prueba primero en `apps/api/src/shared/domain/errors/domain-error.spec.ts`: `fields` es opcional y de solo lectura;
   `TooManyRequestsError` expone `status = 429`, `retryAfterSeconds` y es `instanceof DomainError`. Luego
   `field-issue.ts`, `too-many-requests.error.ts`, cambio en `domain-error.ts` y `errors/index.ts`.
   Archivos: `apps/api/src/shared/domain/errors/{field-issue,too-many-requests.error,domain-error,index}.ts`, `apps/api/src/shared/domain/errors/domain-error.spec.ts`.
 
-- [ ] **T-08** `DomainExceptionFilter` con `fields` y `Retry-After` — CA: CA-5, CA-6, CA-15 — Depende: T-07 — ~1,5 h
+- [x] **T-08** `DomainExceptionFilter` con `fields` y `Retry-After` — CA: CA-5, CA-6, CA-15 — Depende: T-07 — ~1,5 h
   Prueba primero: ampliar `apps/api/test/int/shared/domain-exception-filter.int-spec.ts` (un `InvalidInputError` con
   `fields` → `422` con `fields` en el cuerpo; sin `fields` → cuerpo idéntico al de 000; `TooManyRequestsError(90)` →
   `429` con `Retry-After: 90`; el cuerpo sigue validando con `errorResponseSchema`). Luego el filtro (sigue siendo el
   único traductor).
   Archivos: `apps/api/src/shared/presentation/domain-exception.filter.ts`, `apps/api/test/int/shared/domain-exception-filter.int-spec.ts`.
 
-- [ ] **T-09** [P] `REDACTED_FIELDS` con los campos de 001 — CA: CA-18 — Depende: — — ~1 h
+- [x] **T-09** [P] `REDACTED_FIELDS` con los campos de 001 — CA: CA-18 — Depende: — — ~1 h
   Prueba primero `apps/api/src/shared/infrastructure/logging/redacted-fields.spec.ts` (nuevo): `email`, `correo`,
   `fullName`, `to`, `html` y `text` salen `[REDACTED]` en cualquier nivel y sin distinguir mayúsculas; `nombre` sigue;
   `SMTP_PASSWORD` sale redactada vía `SECRET_KEYS` (se activa con T-10). Luego `redacted-fields.ts`. Documentar en el
   archivo la regla «nunca se registra `job.data` ni un `MailMessage` completo».
   Archivos: `apps/api/src/shared/infrastructure/logging/redacted-fields.ts`, `apps/api/src/shared/infrastructure/logging/redacted-fields.spec.ts`.
 
-- [ ] **T-10** Variables de entorno de 001 y secretos por proceso — CA: CA-20 (esquema), CA-18 — Depende: T-09 — ~2 h
+- [x] **T-10** Variables de entorno de 001 y secretos por proceso — CA: CA-20 (esquema), CA-18 — Depende: T-09 — ~2 h
   Prueba primero: nuevo `apps/api/src/shared/infrastructure/config/env.schema.spec.ts` (cada clave de `SECRET_KEYS`
   está en `apiEnvSchema` **o** en `workerEnvSchema`, y falla si se agrega un secreto a ninguno; `SMTP_PASSWORD` solo en
   `workerEnvSchema`) y casos nuevos en `load-env.spec.ts` (`WEB_PUBLIC_URL` y `CORS_ORIGIN` en `api`; `WEB_PUBLIC_URL`
@@ -141,19 +141,19 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   siga en verde en este PR.
   Archivos: `apps/api/src/shared/infrastructure/config/{secret-keys,env.schema}.ts`, `apps/api/src/shared/infrastructure/config/{env.schema,load-env}.spec.ts`, `scripts/check-env-example.spec.ts`, `.env.example`.
 
-- [ ] **T-11** [P] `enqueueWithCorrelation` acepta `JobsOptions` — CA: CA-21 (idempotencia por `jobId`) — Depende: — — ~0,5 h
+- [x] **T-11** [P] `enqueueWithCorrelation` acepta `JobsOptions` — CA: CA-21 (idempotencia por `jobId`) — Depende: — — ~0,5 h
   Prueba primero en `enqueue-with-correlation.spec.ts`: pasa `opts` (p. ej. `jobId`) a `queue.add` sin tocar `data`;
   sin `opts` se comporta como antes (`PingQueue` no cambia).
   Archivos: `apps/api/src/shared/infrastructure/queue/enqueue-with-correlation.ts`, `apps/api/src/shared/infrastructure/queue/enqueue-with-correlation.spec.ts`.
 
-- [ ] **T-12** [P] `REDIS_CLIENT` y puerto `IRateLimiter` — CA: CA-15 — Depende: — — ~1 h
+- [x] **T-12** [P] `REDIS_CLIENT` y puerto `IRateLimiter` — CA: CA-15 — Depende: — — ~1 h
   Prueba primero `apps/api/src/shared/infrastructure/redis/redis-client.provider.spec.ts`: registra un oyente de
   `error` que no escribe la URL (mismo cuidado que `RedisHealthIndicator`) y cierra la conexión en
   `onApplicationShutdown`. Luego `redis-client.provider.ts` y `application/rate-limit/i-rate-limiter.port.ts`
   (`IRateLimiter`, `RateLimitRule`, `RateLimitDecision`, `I_RATE_LIMITER`).
   Archivos: `apps/api/src/shared/infrastructure/redis/redis-client.provider.ts`, `apps/api/src/shared/infrastructure/redis/redis-client.provider.spec.ts`, `apps/api/src/shared/application/rate-limit/i-rate-limiter.port.ts`.
 
-- [ ] **T-13** `RedisRateLimiter` (Lua atómico, ventana deslizante) + prueba de contrato — CA: CA-15 — Depende: T-12 — ~2 h
+- [x] **T-13** `RedisRateLimiter` (Lua atómico, ventana deslizante) + prueba de contrato — CA: CA-15 — Depende: T-12 — ~2 h
   Prueba primero `apps/api/test/int/shared/redis-rate-limiter.int-spec.ts` (Redis real, `FixedClock`): regla 1/60 s →
   el segundo `consume` se rechaza con `retryAfterSeconds = 60` y al avanzar 60 s se permite; 5/3600 s → la sexta se
   rechaza con el `retryAfter` de la más vieja; varias reglas: si una rechaza, **ninguna** cuenta la solicitud; las
@@ -161,7 +161,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   (`PTTL` ≤ ventana); Redis caído → lanza. Luego `infrastructure/rate-limit/redis-rate-limiter.ts` y su script Lua.
   Archivos: `apps/api/src/shared/infrastructure/rate-limit/{redis-rate-limiter.ts,sliding-window.lua.ts}`, `apps/api/test/int/shared/redis-rate-limiter.int-spec.ts`.
 
-- [ ] **T-14** [P] `ITransactionRunner` y `TransactionContext` — CA: CA-3, CA-29 (base) — Depende: — — ~1,5 h
+- [x] **T-14** [P] `ITransactionRunner` y `TransactionContext` — CA: CA-3, CA-29 (base) — Depende: — — ~1,5 h
   Prueba primero `apps/api/test/int/shared/transaction-runner.int-spec.ts` (Postgres real): `run` confirma; si el
   trabajo lanza, revierte y relanza; dentro de `run`, `TransactionContext.manager()` devuelve el `EntityManager` de la
   transacción (también tras un `await`); fuera, el del `DataSource`; dos `run` concurrentes no comparten contexto.
@@ -170,14 +170,14 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   encima).
   Archivos: `apps/api/src/shared/application/persistence/i-transaction-runner.port.ts`, `apps/api/src/shared/infrastructure/persistence/{transaction-context,typeorm-transaction-runner}.ts`, `apps/api/test/int/shared/transaction-runner.int-spec.ts`.
 
-- [ ] **T-15** `ZodValidationPipe` (ADR-0020) — CA: CA-6, CA-7 — Depende: T-01, T-07 — ~1 h
+- [x] **T-15** `ZodValidationPipe` (ADR-0020) — CA: CA-6, CA-7 — Depende: T-01, T-07 — ~1 h
   Prueba primero `apps/api/src/shared/presentation/zod-validation.pipe.spec.ts` (esquema y fábrica de prueba): cuerpo
   válido → valor parseado; inválido → lanza lo que devuelve la fábrica con los `FieldIssue[]` de `toFieldIssues`;
   cuerpo `undefined` o `{}` (llega así con `text/plain`) → la fábrica recibe los `REQUIRED`. `shared` no importa nada de
   `contracts/identity` (se comprueba con el lint).
   Archivos: `apps/api/src/shared/presentation/zod-validation.pipe.ts`, `apps/api/src/shared/presentation/zod-validation.pipe.spec.ts`.
 
-- [ ] **T-16** `SharedModule` global y exportaciones de `shared` — CA: CA-1 (reloj), CA-15 — Depende: T-12, T-13, T-14, T-15 — ~1 h
+- [x] **T-16** `SharedModule` global y exportaciones de `shared` — CA: CA-1 (reloj), CA-15 — Depende: T-12, T-13, T-14, T-15 — ~1 h
   Prueba primero: `apps/api/src/shared/index.spec.ts` (000 CA-17) con la lista nueva de exportaciones
   (`FieldIssue`, `TooManyRequestsError`, `IRateLimiter`, `I_RATE_LIMITER`, `ITransactionRunner`,
   `I_TRANSACTION_RUNNER`, `TransactionContext`, `ZodValidationPipe`, `configureHttpApp` —activada en T-17—,
@@ -186,7 +186,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   proveedores en `shared.module.ts`.
   Archivos: `apps/api/src/shared/shared.module.ts`, `apps/api/src/shared/index.ts`, `apps/api/src/shared/index.spec.ts`, `apps/api/src/shared/shared.module.spec.ts`.
 
-- [ ] **T-17** `configureHttpApp` y `main.ts` — CA: CA-6 (solo JSON), CA-15 (IP real, `Retry-After` expuesta) — Depende: T-08, T-10, T-16 — ~2 h
+- [x] **T-17** `configureHttpApp` y `main.ts` — CA: CA-6 (solo JSON), CA-15 (IP real, `Retry-After` expuesta) — Depende: T-08, T-10, T-16 — ~2 h
   Prueba primero `apps/api/test/int/shared/configure-http-app.int-spec.ts` (controlador de prueba que devuelve el
   cuerpo recibido y `req.ip`): `text/plain` y `application/x-www-form-urlencoded` → cuerpo vacío; JSON de más de 16 KB →
   `413`; JSON mal formado → `400 VALIDATION_FAILED` (P-1); `X-Forwarded-For: 203.0.113.7` → `req.ip` = esa IP; CORS
@@ -196,14 +196,14 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   `main.ts` con `NestFactory.create(..., { bodyParser: false })`.
   Archivos: `apps/api/src/shared/presentation/configure-http-app.ts`, `apps/api/src/main.ts`, `apps/api/src/shared/index.ts`, `apps/api/test/int/shared/configure-http-app.int-spec.ts`.
 
-- [ ] **T-18** Arnés de integración: `configureHttpApp`, sustitución de proveedores y entorno `api + worker` — CA: CA-1, CA-9 (reloj), CA-18, CA-21 (precondición) — Depende: T-17 — ~1,5 h
+- [x] **T-18** Arnés de integración: `configureHttpApp`, sustitución de proveedores y entorno `api + worker` — CA: CA-1, CA-9 (reloj), CA-18, CA-21 (precondición) — Depende: T-17 — ~1,5 h
   `createTestApp` usa `configureHttpApp` (con `bodyParser: false`) en lugar de repetir middlewares; nueva opción
   `overrides` (`[{ provide, useValue }]`, p. ej. `I_CLOCK → FixedClock`); opción `withWorkerEnv` que valida
   `apiEnvSchema.merge(workerEnvSchema)` para componer módulos del `worker` en la misma app y capturar sus bitácoras en
   el mismo `LogSink`. Las suites existentes de `test/int/shared` y `test/int/worker` siguen en verde (son su prueba).
   Archivos: `apps/api/test/int/setup/test-app.ts`.
 
-- [ ] **T-19** README de `shared` y cierre del PR-1 — CA: n/a — Depende: T-01…T-18 — ~1 h
+- [x] **T-19** README de `shared` y cierre del PR-1 — CA: n/a — Depende: T-01…T-18 — ~1 h
   `apps/api/src/shared/README.md`: piezas nuevas (tabla de plan §6.7), regla de `ZodValidationPipe` con fábrica por
   módulo, `TransactionContext` como base de `withActor` (003) y la regla de bitácoras de correo. `pnpm lint`,
   `pnpm typecheck`, `pnpm test`, `pnpm test:int`, `pnpm env:check` en verde; `migration:run → revert → run` en local.
@@ -659,4 +659,70 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   proponga el plan de 006a y cualquier fallo cae en **catalogo-no-disponible** (CA-22).
 - **Marcador `iniciar-sesion` (T-58)**: 002 se implementa el mismo día; si su página llega antes, T-58 solo agrega
   `PublicHeader` y enlaza a la ruta real.
+- **T-03, tamaño de la lista común (hallazgo, sin desviación)**: con el filtro de plan §6.2 (12 a 128 puntos de
+  código, número y símbolo), el top 100 000 de SecLists (`xato-net-10-million-passwords-100000.txt`, revisión
+  `c205c36`) deja **solo 5 entradas**; el top 1 000 000 deja 1602 (~34 KB, dentro de la meta de 50 KB). Se implementó
+  lo que dice el plan (top 100 000). La prueba fija la entrada conocida `g00dpa$$w0rd`. **Resuelto (review I-1)**:
+  la fuente pasó al top 1 000 000 (`xato-net-10-million-passwords-1000000.txt`, misma revisión); la lista quedó en
+  1602 entradas y 34 208 bytes, con una prueba que exige al menos 1000 entradas y casos de CA-5 con contraseñas
+  comunes reales (`Password@123`, `Abcd!efg!123`, `Gaga_123_Gaga`); plan §6.2 actualizado (commit `0bacf81`).
+- **T-10, forma y reglas del entorno (desviación menor)**: las reglas entre variables (`https` en `WEB_PUBLIC_URL`,
+  `SMTP_TLS≠none` en staging/producción, `SMTP_USER` si hay `SMTP_PASSWORD`) exigen `superRefine`, que convierte el
+  esquema en `ZodEffects` sin `.shape`, `.pick` ni `.merge`. Por eso `env.schema.ts` exporta además la **forma**
+  (`apiEnvObjectSchema`, `workerEnvObjectSchema`, `ZodObject`) y `apiEnvSchema`/`workerEnvSchema` son la forma más
+  sus reglas. `data-source.cli.ts` (`pick`), `check-env-example.ts` y `data-source.spec.ts` (`shape`) usan la forma;
+  T-18 compone `apiEnvObjectSchema.merge(workerEnvObjectSchema)` con ambas reglas en lugar de
+  `apiEnvSchema.merge(workerEnvSchema)`. La comprobación de secretos por proceso es `SECRET_KEYS satisfies
+  readonly (claves de api | claves de worker)[]` en `env.schema.ts`. `CORS_ORIGIN` se entrega ya separado en
+  `string[]`. Fuera de la lista de archivos se ajustaron los entornos explícitos de
+  `test/int/{shared,worker}/bootstrap.int-spec.ts`, `test/int/setup/global-setup.ts` y
+  `minio-config.module.spec.ts` para las variables nuevas obligatorias.
+- **T-15, «`shared` no importa `contracts/identity`» (sin regla de lint)**: el lint de fronteras
+  (`boundaries.js`, anunciado en `packages/config/eslint/nest.js`) aún no existe, y `contracts` solo expone su raíz,
+  que desde T-05 reexporta `identity`. Hoy se cumple por construcción: `zod-validation.pipe.ts` importa únicamente
+  `toFieldIssues` y recibe el esquema y la fábrica por parámetro. La regla queda para cuando llegue el lint de
+  fronteras (candidata: `no-restricted-imports` con `importNames` de `identity` en `apps/api/src/shared/**`).
+  **Resuelto (review I-2)**: `packages/config/eslint/shared-boundaries.js` (cableado en `eslint.config.mjs`) aplica
+  `no-restricted-imports` a `apps/api/src/shared/**`: de la raíz de `@nimbo/contracts` solo admite la lista cerrada
+  de nombres genéricos (salud, errores, validación) y prohíbe `@nimbo/contracts/*` y rutas a `packages/contracts`.
+  Prueba: `scripts/shared-contracts-boundary.spec.ts` (ESLint real por `--stdin`). Commit `chore(config): regla de lint que impide a shared importar contratos de módulos [001]`.
+- **Docker no disponible durante PR-1 (aviso de Adrián, 2026-09-28)**: no se ejecutó `pnpm test:int` ni
+  `migration:run → revert → run`. Las pruebas de integración se escribieron y pasan `lint` y `typecheck`, pero su
+  rojo y su verde **quedan sin comprobar**; hay que correrlas antes de fusionar el PR-1. Pendientes por tarea:
+  T-06 (`test/int/identity/schema.int-spec.ts`, migraciones en el arnés y la evidencia manual `run → revert ×2 → run`),
+  T-08, T-13, T-14 y T-18 (ver cada una), y las suites existentes afectadas por T-10
+  (`test/int/{shared,worker}/bootstrap.int-spec.ts`).
+- **T-06, migraciones en el arnés**: `test/int/setup/migrate.ts` no inicializa un `DataSource` dentro de Jest: lanza
+  `tsx src/scripts/migrate.ts run` (el mismo camino que `pnpm --filter api migration:run`), porque TypeORM carga las
+  migraciones `.ts` por glob y el transformador de Jest no está activo durante `globalSetup` asíncrono. Las
+  migraciones se escribieron a mano con el SQL de plan §4 (no hay entidades aún para `migration:generate`).
+- **T-08, prueba unitaria adicional**: sin Docker, además de ampliar `domain-exception-filter.int-spec.ts` se agregó
+  `src/shared/presentation/domain-exception.filter.spec.ts` (respuesta falsa) para comprobar de verdad el rojo y el
+  verde de `fields` y `Retry-After`. La suite de integración importa `TooManyRequestsError` desde `src/shared` (exportado en T-16).
+- **T-13, prueba unitaria adicional**: `redis-rate-limiter.spec.ts` (Redis falso) comprueba las claves, los
+  argumentos del script, el redondeo hacia arriba y la propagación de errores; la semántica del Lua (atomicidad,
+  ventanas, `PTTL`) solo la cubre `redis-rate-limiter.int-spec.ts`, **sin ejecutar** por falta de Docker.
+- **T-14, prueba unitaria adicional**: `transaction-context.spec.ts` (`DataSource` falso) cubre la ALS (fuera/dentro
+  de `run`, tras `await`, concurrencia, resultado y error); confirmar y revertir contra Postgres solo lo cubre
+  `transaction-runner.int-spec.ts`, **sin ejecutar**. `TransactionContext` es un proveedor con `manager()` y
+  `runWith(manager, work)`; la ALS es privada del archivo y 003 la reutiliza vía `runWith`.
+- **T-17, ejecutada sin Docker**: `configure-http-app.int-spec.ts` no importa `SharedModule` (solo `EnvModule`, el
+  logger y el controlador de eco), así que no necesita contenedores. Se comprobó el rojo y el verde con
+  `jest -c jest.int.config.cjs --globalSetup <archivo vacío> test/int/shared/configure-http-app`. Hallazgo: los errores
+  de `body-parser` (cuerpo > 16 KB, codificación no admitida) no son `HttpException` y `DomainExceptionFilter` los
+  respondía como `500`; `configureHttpApp` instala tras el analizador un traductor que los convierte en
+  `HttpException` con su estado (`413` → `HTTP_413`; `400` → `VALIDATION_FAILED`, P-1).
+- **T-18, entorno `api + worker` (desviación menor)**: en lugar de `apiEnvObjectSchema.merge(workerEnvObjectSchema)`
+  con las reglas copiadas, `buildTestEnv(overrides, { withWorkerEnv: true })` valida la misma fuente con
+  `apiEnvSchema` y con `workerEnvSchema` y une ambos resultados (`ApiWorkerEnv`). Así cada proceso conserva sus
+  reglas `superRefine` sin exportar `refineApiEnv`/`refineWorkerEnv` desde `env.schema.ts` y sin tocar código de
+  producción. El arnés fija `APP_VERSION = TEST_VERSION` antes de los `overrides` (la cabecera `x-nimbo-version` sale
+  ahora de `configureHttpApp`) y conserva la opción `prefix` sobrescribiendo el prefijo tras `configureHttpApp`
+  (la usa `worker-health.int-spec.ts` con `''`). **Sin ejecutar** por falta de Docker: todas las suites del arnés
+  (`test/int/{shared,worker,identity}`, salvo `configure-http-app`) son la prueba de esta tarea.
+- **T-19, cierre del PR-1 sin Docker**: en verde `pnpm lint`, `pnpm typecheck`, `pnpm test` y `pnpm env:check`.
+  **Pendiente antes de fusionar**: `pnpm test:int` completo y `migration:run → revert → run` (ver la nota «Docker no
+  disponible»). Hallazgo: `redact-deep.spec.ts` («no degrada el logger», un umbral de microsegundos) falló una vez con
+  las tres suites de `pnpm test` en paralelo y pasó al repetirla; es anterior a 001 y sensible a la carga de la
+  máquina (candidata a revisar en 000, sin cambios aquí).
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>

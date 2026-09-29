@@ -4,8 +4,10 @@ import {
   ForbiddenError,
   InvalidInputError,
   NotFoundError,
+  TooManyRequestsError,
   UnauthorizedError,
 } from './index';
+import type { FieldIssue } from './index';
 
 class ExampleInvalidInputError extends InvalidInputError {
   readonly code = 'SHARED_EXAMPLE_INVALID_INPUT';
@@ -21,6 +23,10 @@ class ExampleNotFoundError extends NotFoundError {
 }
 class ExampleConflictError extends ConflictError {
   readonly code = 'SHARED_EXAMPLE_CONFLICT';
+}
+
+class ExampleTooManyRequestsError extends TooManyRequestsError {
+  readonly code = 'SHARED_EXAMPLE_TOO_MANY_REQUESTS';
 }
 
 const MESSAGE = 'No existe el recurso solicitado. Verifica el identificador.';
@@ -62,5 +68,38 @@ describe('DomainError y subclases', () => {
     ].map((error) => error.status);
 
     expect(new Set(statuses).size).toBe(statuses.length);
+  });
+});
+
+describe('DomainError.fields (001 CA-5, CA-6)', () => {
+  const FIELDS: readonly FieldIssue[] = [
+    { field: 'email', reason: 'INVALID_EMAIL', message: 'Escribe un correo válido.' },
+  ];
+
+  it('CA-6: `fields` es opcional', () => {
+    expect(new ExampleInvalidInputError(MESSAGE).fields).toBeUndefined();
+  });
+
+  it('CA-6: expone los `fields` recibidos', () => {
+    expect(new ExampleInvalidInputError(MESSAGE, FIELDS).fields).toEqual(FIELDS);
+  });
+
+  it('CA-6: `fields` es de solo lectura', () => {
+    const error = new ExampleInvalidInputError(MESSAGE, [...FIELDS]);
+
+    expect(Object.isFrozen(error.fields)).toBe(true);
+  });
+});
+
+describe('TooManyRequestsError (001 CA-15)', () => {
+  it('CA-15: expone `status = 429` y `retryAfterSeconds`, y es un `DomainError`', () => {
+    const error = new ExampleTooManyRequestsError('Espera un momento.', 90);
+
+    expect(error).toBeInstanceOf(DomainError);
+    expect(error).toBeInstanceOf(TooManyRequestsError);
+    expect(error.status).toBe(429);
+    expect(error.retryAfterSeconds).toBe(90);
+    expect(error.code).toBe('SHARED_EXAMPLE_TOO_MANY_REQUESTS');
+    expect(error.fields).toBeUndefined();
   });
 });

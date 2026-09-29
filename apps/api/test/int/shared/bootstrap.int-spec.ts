@@ -21,6 +21,8 @@ const envWithInvalidDatabase = (): NodeJS.ProcessEnv => ({
   MINIO_ENDPOINT: 'http://localhost:9000',
   MINIO_ACCESS_KEY: 'nimbo',
   MINIO_SECRET_KEY: 'nimbo-secret',
+  WEB_PUBLIC_URL: 'http://localhost',
+  CORS_ORIGIN: 'http://localhost',
 });
 
 const portIsClosed = (port: number): Promise<boolean> =>

@@ -3,6 +3,7 @@
 import base from '@nimbo/config/eslint/base.js';
 import nest from '@nimbo/config/eslint/nest.js';
 import next from '@nimbo/config/eslint/next.js';
+import sharedBoundaries from '@nimbo/config/eslint/shared-boundaries.js';
 import tseslint from 'typescript-eslint';
 
 const withRoot = (config) => ({
@@ -33,4 +34,5 @@ export default tseslint.config(
   ...base.map(withRoot),
   ...scoped(nest, ['apps/api/**/*.ts', 'apps/worker/**/*.ts']),
   ...scoped(next, ['apps/web/**/*.{ts,tsx}']),
+  ...sharedBoundaries,
 );
