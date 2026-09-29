@@ -26,10 +26,29 @@ export class LogSink implements DestinationStream {
   }
 }
 
-/** Módulo global que provee `LOG_STREAM`; `createLoggerModule` lo inyecta como opcional. */
+/**
+ * nestjs-pino 5 arma **un** logger raíz por proceso con el primer destino que recibe, y las apps siguientes de la
+ * misma suite lo reutilizan. Por eso `LOG_STREAM` es siempre este reenvío, que escribe en el `LogSink` de la última
+ * app creada: cada app captura sus propias líneas aunque la suite componga varias una tras otra.
+ */
+class ActiveSinkStream implements DestinationStream {
+  active: LogSink | undefined;
+
+  write(line: string): void {
+    this.active?.write(line);
+  }
+}
+
+const activeSinkStream = new ActiveSinkStream();
+
+/** Módulo global que provee `LOG_STREAM` (`createLoggerModule` lo inyecta como opcional) y activa `sink`. */
 export const createLogSinkModule = (sink: LogSink): new () => object => {
+  activeSinkStream.active = sink;
   @Global()
-  @Module({ providers: [{ provide: LOG_STREAM, useValue: sink }], exports: [LOG_STREAM] })
+  @Module({
+    providers: [{ provide: LOG_STREAM, useValue: activeSinkStream }],
+    exports: [LOG_STREAM],
+  })
   class LogSinkModule {}
   return LogSinkModule;
 };
