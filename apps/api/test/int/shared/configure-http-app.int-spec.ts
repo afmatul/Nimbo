@@ -118,33 +118,48 @@ describe('configureHttpApp (001 CA-6, CA-15)', () => {
     expect(response.headers['x-correlation-id']).toEqual(expect.any(String));
   });
 
-  it('CA-15: un origen permitido recibe CORS y ve `x-correlation-id` y `retry-after`, sin credenciales', async () => {
+  it('CA-15 (001), CA-1/CA-7 (002): un origen permitido recibe CORS con credenciales y ve `x-correlation-id` y `retry-after`', async () => {
     const response = await post().set('Origin', ALLOWED_ORIGIN).send({});
 
     expect(response.headers['access-control-allow-origin']).toBe(ALLOWED_ORIGIN);
+    expect(response.headers['access-control-allow-credentials']).toBe('true');
     const exposed = String(response.headers['access-control-expose-headers']).toLowerCase();
     expect(exposed).toContain('x-correlation-id');
     expect(exposed).toContain('retry-after');
-    expect(response.headers['access-control-allow-credentials']).toBeUndefined();
   });
 
-  it('CA-15: la verificación previa admite solo `GET`/`POST` y las cabeceras `content-type` y `x-correlation-id`', async () => {
+  it('CA-7/CA-28 (002): la verificación previa admite `DELETE` y `authorization`, con credenciales', async () => {
     const response = await request(app.getHttpServer())
       .options('/api/v1/echo')
       .set('Origin', ALLOWED_ORIGIN)
-      .set('Access-Control-Request-Method', 'POST')
-      .set('Access-Control-Request-Headers', 'content-type');
+      .set('Access-Control-Request-Method', 'DELETE')
+      .set('Access-Control-Request-Headers', 'authorization,content-type');
 
     expect(response.headers['access-control-allow-origin']).toBe(ALLOWED_ORIGIN);
-    expect(response.headers['access-control-allow-methods']).toBe('GET,POST');
+    expect(response.headers['access-control-allow-credentials']).toBe('true');
+    expect(response.headers['access-control-allow-methods']).toBe('GET,POST,DELETE');
     expect(String(response.headers['access-control-allow-headers']).toLowerCase()).toBe(
-      'content-type,x-correlation-id',
+      'content-type,x-correlation-id,authorization',
     );
   });
 
-  it('CA-15: un origen no permitido no recibe `Access-Control-Allow-Origin`', async () => {
-    const response = await post().set('Origin', FOREIGN_ORIGIN).send({});
+  it('CA-15 (001), CA-28 (002): un origen no permitido no recibe cabeceras CORS', async () => {
+    const response = await request(app.getHttpServer())
+      .options('/api/v1/echo')
+      .set('Origin', FOREIGN_ORIGIN)
+      .set('Access-Control-Request-Method', 'POST');
 
     expect(response.headers['access-control-allow-origin']).toBeUndefined();
+    expect(response.headers['access-control-allow-credentials']).toBeUndefined();
+  });
+
+  it('CA-28 (002): nunca responde el comodín `*`, tampoco sin `Origin`', async () => {
+    const [withOrigin, withoutOrigin] = await Promise.all([
+      post().set('Origin', ALLOWED_ORIGIN).send({}),
+      post().send({}),
+    ]);
+
+    expect(withOrigin.headers['access-control-allow-origin']).not.toBe('*');
+    expect(withoutOrigin.headers['access-control-allow-origin']).toBeUndefined();
   });
 });
