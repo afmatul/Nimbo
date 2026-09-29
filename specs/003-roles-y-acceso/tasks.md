@@ -334,7 +334,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   las migraciones siguientes (plan §4 (b)).
   Archivos: `docs/operations/ambientes.md`, `apps/api/src/shared/README.md`.
 
-- [ ] **T-34** Cierre del PR-B y aviso `pnpm db:app-role` — CA: n/a — Depende: T-20…T-33 — ~0,5 h
+- [x] **T-34** Cierre del PR-B y aviso `pnpm db:app-role` — CA: n/a — Depende: T-20…T-33 — ~0,5 h
   `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:int`, `pnpm test:isolation`, `pnpm env:check`;
   `migration:run → revert → revert → run` en el compose local; `\du` y `\dp` guardados para `verification.md`
   (revisión manual de CA-13). **Descripción del PR** (obligatorio, plan §9 y §11.6), en un bloque destacado al inicio:
@@ -343,6 +343,25 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   Postgres ya existe y el script de inicio no se vuelve a ejecutar); (3) `pnpm --filter api migration:run`. Sin esto la
   API no arranca (`db.role_rejected`)». Repetir el aviso en el canal del equipo. Resumen («PR parcial»).
   Archivos: `specs/003-roles-y-acceso/tasks.md` (casillas).
+
+### Resumen del PR-B (PR parcial de 003)
+
+> **Después de integrar este PR, cada integrante debe:**
+> 1. agregar `NIMBO_APP_DB_PASSWORD`, `DATABASE_URL` de `nimbo_app` y `DATABASE_MIGRATION_URL` a su `.env` (ver
+>    `.env.example`);
+> 2. correr `pnpm db:app-role` (su volumen de Postgres ya existe y el script de inicio no se vuelve a ejecutar);
+> 3. `pnpm --filter api migration:run`.
+>
+> **Sin esto la API no arranca (`db.role_rejected`).** Repetir este aviso en el canal del equipo.
+
+PR parcial de 003 (plan §6.12): roles de base de datos y `withActor`, T-20…T-34. Cubre **CA-12** (el actor vive solo
+en su transacción y en su conexión) y **CA-13** (la app corre como `nimbo_app`, sin superusuario, `BYPASSRLS` ni
+propiedad de tablas, y no arranca si no). Entrega el script de rol y `pnpm db:app-role`, `migrationEnvSchema` con
+`DATABASE_MIGRATION_URL`, el arnés con dos roles, las migraciones `conceder-permisos-nimbo-app` y
+`crear-funciones-de-actor`, `ITransactionRunner.withActor` con `requireActorScope`, `DatabaseRoleCheck`, el lint
+`rls.js`, la redacción y `env:check` de la URL nueva, `ambientes.md` y el README de `shared`. Sin políticas RLS (las
+escribe 005). Pendiente fuera de esta rama: `db:app-role` y `migration:run` en el compose local de cada integrante, y
+las actualizaciones del `architect` al integrar (plan §10.4).
 
 ## Bloque 3 — PR-C «access» (plan §6.5; ADR-0010) — depende de: PR-A (T-03) y PR-B (T-28, T-29)
 
@@ -563,8 +582,10 @@ PR-F = 9 (T-48…T-56). Total: 56.
   `pg_proc` muestra `nimbo_actor_id` y `nimbo_actor_role`.
 - **T-30**: prueba de integración de piezas ya hechas (T-27, T-29), así que no tuvo fase roja propia. Se comprobó que
   detecta el defecto que cubre: con `set_config(…, false)` en el runner, «al terminar la transacción la conexión no
-  conserva el actor» falla; con `true` pasan los 5 casos. Además del plan: `run` dentro de `withActor` no aplica aquí,
-  y `requireActorScope` dentro de un `run` sin actor también lanza `ActorScopeMissingError`.
+  conserva el actor» falla; con `true` pasan los 5 casos. El caso «`run` dentro de `withActor` se une y conserva el
+  actor» no está en esta suite porque T-30 no lo pide: lo cubre la unitaria de T-29
+  (`typeorm-transaction-runner.spec.ts`). Además del plan, la suite afirma que `requireActorScope` dentro de un `run`
+  sin actor también lanza `ActorScopeMissingError`.
 - **T-29**: segunda y última excepción a `rls.js` fuera del runner: `typeorm-transaction-runner.spec.ts` nombra el SQL
   exacto que `withActor` debe emitir. `withActor` valida el actor con `InvalidActorError` (`Error` simple, en
   `actor-scope.errors.ts`; el plan no le da nombre). `run` fuera de `withActor` no cambia respecto de 001 (un `run`
@@ -573,7 +594,10 @@ PR-F = 9 (T-48…T-56). Total: 56.
 - **T-31**: `DatabaseRoleCheck` lanza un `Error` simple con `DATABASE_ROLE_REJECTED_MESSAGE` (el plan no le da clase;
   es un error de configuración, no de negocio) y recibe el logger por su forma mínima (`DatabaseRoleLogger`, como
   `HealthLogger`). No se exporta desde `index.ts`: nadie fuera de `SharedModule` lo usa. `shared.module.spec.ts`
-  afirma que el módulo lo registra.
+  afirma que el módulo lo registra. Corrección posterior (commit `fix`, mismo sufijo): `DataSource` se inyecta con
+  `@Inject(DataSource)`, como `PinoLogger`. Con `tsx` (esbuild no emite `design:paramtypes`) la inyección por tipo
+  dejaba el índice 0 sin resolver y la API no arrancaba (`UndefinedDependencyException`); con `nest start` y ts-jest
+  no se notaba. Se encontró al arrancar `src/main.ts` real en T-34.
 - **T-32**: la app que arranca se compone con `EnvModule` + `SharedModule` (lo que cargan `api` y `worker`) y
   `app.init()`, no con `createTestApp`, porque hace falta leer la bitácora aunque el arranque falle. nestjs-pino
   conserva por proceso el logger raíz de la primera app, así que la suite usa un solo `LogSink` y lo vacía antes de
@@ -583,6 +607,21 @@ PR-F = 9 (T-48…T-56). Total: 56.
 - **`dotenv-bootstrap.int-spec.ts` (001) depende del Postgres del compose local**: arranca la API con el `.env` de la
   raíz. Desde T-24 ese `.env` (copia de `.env.example`) usa `nimbo_app`, que no existe en un volumen ya inicializado,
   así que la suite falla hasta que el integrante corre `pnpm db:app-role` y `migration:run` (el aviso de T-34).
+- **T-34, verificación manual de CA-13** (evidencia para `verification.md`): **no** se tocó el compose local
+  (`nimbo-postgres-1` lo comparten varios *worktrees*; correr `pnpm db:app-role` y `migration:run` ahí lo decide
+  Adrián). Se usó un Postgres desechable (`pgvector/pgvector:pg17`, `10-nimbo-app.sh` montado en
+  `/docker-entrypoint-initdb.d/`, puerto 55433) y un Redis desechable, ambos borrados al terminar:
+  - volumen nuevo → `\du` muestra `nimbo_app` sin atributos (`nimbo`: Superuser, Create role, Create DB,
+    Replication, Bypass RLS); el script ejecutado dos veces más a mano (lo que hace `pnpm db:app-role`): sin error;
+  - `migration:run → revert → revert → run`: aplica las cinco migraciones, revierte `CrearFuncionesDeActor…` y
+    `ConcederPermisosNimboApp…` y las vuelve a aplicar, sin error;
+  - `\dp`: `usuario` y `token_cuenta` con `nimbo_app=arw/nimbo` (sin `d`); `migracion` y `migracion_id_seq` sin
+    `nimbo_app`. `\ddp`: `nimbo_app=arwd/nimbo` en tablas y `nimbo_app=rU/nimbo` en secuencias. `pg_proc`:
+    `nimbo_actor_id`, `nimbo_actor_role`. Consulta de `DatabaseRoleCheck` como `nimbo_app` + `CREATE` en `public`:
+    todo `f`;
+  - `src/main.ts` y `src/worker.main.ts` reales (con `tsx`): con `DATABASE_URL` del dueño salen con código 1 y
+    `db.role_rejected` (`superuser`, `bypassRls`, `ownsTables` en `true`), sin `api.started`/`worker.started`; con
+    `nimbo_app` arrancan (`api.started`, `worker.started`).
 
 - **Precedencia del plan**: donde §11.2 dice «500 estrategia desconocida», «`err` se relanza como 500»,
   `access-token-strategy.ts` como archivo propio o `validate` → `false`, manda «Cambios aplicados»: 401
