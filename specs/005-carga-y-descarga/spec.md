@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Borrador — spec aprobada por Adrián el 2026-09-28; pasa a `Lista` cuando `architect` apruebe [`plan.md`](./plan.md) (`workflow.md` §2) |
+| Estado | Lista (2026-09-28) — spec aprobada por Adrián; [`plan.md`](./plan.md) aprobado por `architect` (segunda pasada) y confirmado por Adrián |
 | Dueño | Adrián (1) |
 | Fase | 1 |
 | Requisitos | RF-08, RF-09, RF-14, RNF-06, RNF-07 (principales); aplican RF-07, RF-12 (parcial), RNF-05, RNF-13, RNF-14, RNF-17 |
@@ -333,3 +333,4 @@ Ninguna.
 | 2026-09-28 | Tras la revisión del `architect` (Aprobado con cambios): se elimina de §12 la pregunta abierta de mockups (resuelta); aclaración en la fila anterior de «`400` → `422`» (CA-7 se quedó en `400`); CA-21 agrega el menú ⋮ por fila con «Descargar» como única acción, el estado de error del listado con «Reintentar» y la barra lateral sin «Carpetas» ni contador de Papelera hasta 006. §9 no se modifica (lo integra Adrián con el `ui-designer`) | Cambios 1, 4 de `plan.md` §11.4 y decisiones de Adrián del 2026-09-28 | Adrián (decisiones) |
 | 2026-09-28 | DF-51 resuelto (opción A, Fátima): `storage` declara `IPlanLimitsProvider`/`PlanLimits`, `billing` lo implementa, se elimina `storage → billing`; «Depende de», DF, Enfoque técnico y §12 actualizados y se quita el bloqueo (queda solo la implementación de 006a). CA-21: fallo de emisión de descarga → `Alert` sobre la lista (no toast), «Descargar» deshabilitado con «Preparando…» si tarda > 2 s, error del listado sin `correlationId` y con «Subir archivos» habilitado. «Ver planes» oculto hasta 008: verificado coherente (CA-4, §9, §12). §9 no se modifica | Decisiones de Fátima y Adrián del 2026-09-28 | Fátima (DF-51), Adrián (UI) |
 | 2026-09-28 | §9 final: estados del explorador (vacio, cargando, arrastre, error, acciones, descarga-preparando, descarga-fallida) y mensajes aprobados; plan aprobado por `architect` en segunda pasada | Integración de mockups y aprobación del plan | Adrián |
+| 2026-09-28 | `Borrador` → `Lista` | Plan aprobado por `architect` y confirmado por Adrián | Adrián |
