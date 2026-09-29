@@ -8,7 +8,8 @@ import type { Queue } from 'bullmq';
 
 import { IDENTITY_THROTTLERS, IdentityModule } from '../../../src/modules/identity';
 import { MAIL_QUEUE, NotificationsWorkerModule } from '../../../src/modules/notifications';
-import { getMessage, waitForMessages } from '../setup/mailpit';
+import { getMessage, listMessages } from '../setup/mailpit';
+import type { MailpitSummary } from '../setup/mailpit';
 import { buildTestEnv, createTestApp } from '../setup/test-app';
 import type { TestApp, TestAppOptions } from '../setup/test-app';
 
@@ -19,6 +20,7 @@ const LINK_TOKEN = /\/verificar-correo#token=([A-Za-z0-9_-]{43})/;
 const PENDING_MAIL_STATES = ['waiting', 'active', 'delayed', 'prioritized'] as const;
 const MAIL_DRAIN_TIMEOUT_MS = 15_000;
 const MAIL_DRAIN_STEP_MS = 100;
+const MAIL_ARRIVAL_TIMEOUT_MS = 10_000;
 
 /** Espera a que el `worker` de la app entregue todo lo encolado; lanza si no ocurre a tiempo. */
 const waitForMailQueueIdle = async (queue: Queue): Promise<void> => {
@@ -74,13 +76,25 @@ export const createIdentityTestApp = async (
   };
 };
 
+/**
+ * Espera un correo dirigido a `email`. No basta con «hay al menos un mensaje»: un correo de la prueba anterior que el
+ * `worker` entrega después del `deleteAll` del `beforeEach` llenaría la bandeja antes que el de esta prueba.
+ */
+const waitForMessageTo = async (email: string): Promise<MailpitSummary> => {
+  const deadline = Date.now() + MAIL_ARRIVAL_TIMEOUT_MS;
+  for (;;) {
+    const summary = (await listMessages()).find((message) =>
+      message.To.some((recipient) => recipient.Address === email),
+    );
+    if (summary !== undefined) return summary;
+    if (Date.now() >= deadline) throw new Error('No llegó el correo de verificación.');
+    await delay(MAIL_DRAIN_STEP_MS);
+  }
+};
+
 /** Espera el correo de verificación dirigido a `email` y devuelve el token de su enlace. */
 export const verificationTokenSentTo = async (email: string): Promise<string> => {
-  const messages = await waitForMessages(1);
-  const summary = messages.find((message) =>
-    message.To.some((recipient) => recipient.Address === email),
-  );
-  if (summary === undefined) throw new Error('No llegó el correo de verificación.');
+  const summary = await waitForMessageTo(email);
   const token = LINK_TOKEN.exec((await getMessage(summary.ID)).Text)?.[1];
   if (token === undefined) throw new Error('El correo no trae el enlace de verificación.');
   return token;

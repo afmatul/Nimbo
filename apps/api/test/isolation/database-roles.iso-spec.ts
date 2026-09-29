@@ -1,11 +1,12 @@
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { DataSource } from 'typeorm';
+import type { DataSource } from 'typeorm';
 
-import { buildDataSourceOptions, EnvModule, SharedModule } from '../../src/shared';
+import { EnvModule, SharedModule } from '../../src/shared';
 import { createLogSinkModule, LogSink } from '../int/setup/log-sink';
 import type { LogLine } from '../int/setup/log-sink';
 import { buildTestEnv } from '../int/setup/test-app';
+import { connectAsOwner, connectTo, requiredEnv } from '../support/database-urls';
 
 const APP_ROLE = 'nimbo_app';
 /** Rol de prueba que hereda la propiedad de las tablas por pertenencia (plan §11.5 cambio 4). */
@@ -20,15 +21,6 @@ const PRIVILEGES_SQL = `SELECT has_table_privilege($1, $2, 'SELECT') AS "SELECT"
         has_table_privilege($1, $2, 'INSERT') AS "INSERT",
         has_table_privilege($1, $2, 'UPDATE') AS "UPDATE",
         has_table_privilege($1, $2, 'DELETE') AS "DELETE"`;
-
-const requiredEnv = (key: string): string => {
-  const value = process.env[key];
-  if (value === undefined) throw new Error(`El arnés no definió ${key}`);
-  return value;
-};
-
-const connect = async (url: string): Promise<DataSource> =>
-  new DataSource(buildDataSourceOptions({ DATABASE_URL: url })).initialize();
 
 const withCredentials = (url: string, user: string, password: string): string => {
   const next = new URL(url);
@@ -86,15 +78,15 @@ describe('roles de base de datos (CA-13)', () => {
   };
 
   beforeAll(async () => {
-    owner = await connect(requiredEnv('DATABASE_MIGRATION_URL'));
-    app = await connect(requiredEnv('DATABASE_URL'));
+    owner = await connectAsOwner();
+    app = await connectTo(requiredEnv('DATABASE_URL'));
     const [row] = (await owner.query('SELECT current_user AS usuario')) as [{ usuario: string }];
     ownerName = row.usuario;
   });
 
   afterAll(async () => {
-    await app.destroy();
-    await owner.destroy();
+    await app?.destroy();
+    await owner?.destroy();
   });
 
   it('CA-13: el arnés migra con `DATABASE_MIGRATION_URL`, que es el dueño de las tablas', async () => {
