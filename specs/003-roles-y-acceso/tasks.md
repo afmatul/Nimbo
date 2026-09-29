@@ -318,7 +318,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   `worker`).
   Archivos: `apps/api/src/shared/infrastructure/persistence/database-role.check.{ts,spec.ts}`, `apps/api/src/shared/shared.module.ts`.
 
-- [ ] **T-32** CA-13 contra Postgres real — CA: CA-13 — Depende: T-27, T-31 — ~1 h
+- [x] **T-32** CA-13 contra Postgres real — CA: CA-13 — Depende: T-27, T-31 — ~1 h
   Completar `apps/api/test/isolation/database-roles.iso-spec.ts`: la conexión de la app no es superusuario ni
   `BYPASSRLS`, no es dueña de ninguna tabla de `public` y no tiene `CREATE` en `public`; todas las tablas son del rol
   que migra; matriz de permisos (`usuario` y `token_cuenta` sin `DELETE`, `migracion` sin permisos, tablas nuevas con
@@ -570,6 +570,16 @@ PR-F = 9 (T-48…T-56). Total: 56.
   `actor-scope.errors.ts`; el plan no le da nombre). `run` fuera de `withActor` no cambia respecto de 001 (un `run`
   dentro de otro `run` sigue abriendo su propia transacción). `index.spec.ts` ahora afirma que el puerto expone
   `run | withActor`.
+- **T-31**: `DatabaseRoleCheck` lanza un `Error` simple con `DATABASE_ROLE_REJECTED_MESSAGE` (el plan no le da clase;
+  es un error de configuración, no de negocio) y recibe el logger por su forma mínima (`DatabaseRoleLogger`, como
+  `HealthLogger`). No se exporta desde `index.ts`: nadie fuera de `SharedModule` lo usa. `shared.module.spec.ts`
+  afirma que el módulo lo registra.
+- **T-32**: la app que arranca se compone con `EnvModule` + `SharedModule` (lo que cargan `api` y `worker`) y
+  `app.init()`, no con `createTestApp`, porque hace falta leer la bitácora aunque el arranque falle. nestjs-pino
+  conserva por proceso el logger raíz de la primera app, así que la suite usa un solo `LogSink` y lo vacía antes de
+  cada arranque. El caso del rol heredero (`GRANT <dueño> TO nimbo_heredero_prueba`) se comprobó contra el defecto:
+  con `c.relowner = r.oid` en la consulta falla; con `pg_has_role(…, 'USAGE')` pasa. Las suites `bootstrap` de `api`
+  y `worker` fallan en la validación del entorno, antes de conectarse, así que no las afecta el chequeo.
 - **`dotenv-bootstrap.int-spec.ts` (001) depende del Postgres del compose local**: arranca la API con el `.env` de la
   raíz. Desde T-24 ese `.env` (copia de `.env.example`) usa `nimbo_app`, que no existe en un volumen ya inicializado,
   así que la suite falla hasta que el integrante corre `pnpm db:app-role` y `migration:run` (el aviso de T-34).
