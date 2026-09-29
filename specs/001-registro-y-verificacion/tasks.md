@@ -510,7 +510,7 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   §6.11), pendiente de `@Public()` con 003 y de `@SkipThrottle` cuando 002 agregue `login-ip`.
   Archivos: `apps/api/src/modules/identity/README.md`.
 
-- [ ] **T-54** Cierre del PR-3 — CA: n/a — Depende: T-28…T-53 — ~1 h
+- [x] **T-54** Cierre del PR-3 — CA: n/a — Depende: T-28…T-53 — ~1 h
   `pnpm lint`, `pnpm typecheck`, `pnpm test` (cobertura ≥ 60 % en `domain/` y `application/` de `identity` y
   `notifications` y en las piezas nuevas de `shared`, RNF-11), `pnpm test:int`, `pnpm test:isolation`, `pnpm env:check`.
   Prueba de humo con `pnpm dev`: `curl` de registro → correo en Mailpit (`:8025`) → `curl` de `verify-email` con el
@@ -882,5 +882,31 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
 - **T-50**: `token-secrecy`, `password-hash` e `identity-logs` **no se ejecutó** (sin Docker): compila y pasa `lint`/`typecheck`; su rojo y su verde quedan sin comprobar. CA-17 busca el token en `row_to_json(fila)::text`. **Posible defecto para la revisión**: sin `quietReqLogger`, nestjs-pino podría adjuntar `req` (con `x-forwarded-for`) a `identity.rate_limited`, contra plan §7 «sin IP».
 - **T-51**: variante de registro en `mail-degradation.int-spec.ts` **no se ejecutó** (sin Docker): compila y pasa `lint`/`typecheck`; su rojo y su verde quedan sin comprobar. Compone la app localmente porque `createIdentityTestApp` no acepta `env`; pruebas dependientes del orden.
 - **T-52**: `identity-enumeration.iso-spec.ts` (incluida en `test:isolation`) **no se ejecutó** (sin Docker): compila y pasa `lint`/`typecheck`; su rojo y su verde quedan sin comprobar. Mismo `x-correlation-id` en las peticiones equivalentes para comparar cuerpos y cabeceras byte a byte (solo se excluye `date`).
+- **T-54, cierre del PR-3 con Docker (2026-09-28)**: se ejecutaron por primera vez todas las pruebas de integración y
+  aislamiento escritas sin Docker en PR-1, PR-2 y PR-3 (las notas «sin ejecutar» de T-06 a T-52 quedan resueltas).
+  Primera corrida: `test:int` 162/168. Las seis fallas eran de las pruebas, no del código de producción, y se
+  corrigieron sin tocar ningún CA: (a) `worker/bootstrap` y `dotenv-bootstrap` arrancaban Nest con `tsx`, que no
+  emite `design:paramtypes` (plan 000 §9 R-3); `globalSetup` compila `api` con `tsc` a `dist-int/` y las dos suites
+  arrancan esa salida (`test/int/setup/compiled-api.ts`, commit `cffbc63`); `dotenv-bootstrap` exige además el `.env`
+  de la raíz (`cp .env.example .env`, como dice el README); (b) nestjs-pino 5 arma un solo logger raíz por proceso y
+  la segunda app de `mail-degradation` escribía en el `LogSink` de la primera; `LOG_STREAM` es ahora un reenvío al
+  `LogSink` de la última app creada (`b28110e`). Los reintentos que esa suite dejaba pendientes llegaban luego al
+  Mailpit compartido y rompían CA-8 de `verify-email`. Al reordenarse las suites aparecieron dos intermitencias más:
+  (c) CA-29 de `transaction-runner` usaba un `sleep` de 20 ms y ahora sincroniza con barreras (`f4c32e3`); (d) los
+  registros concurrentes de CA-3 cerraban la app con avisos encolados que otra suite entregaba después;
+  `createIdentityTestApp().close()` espera a que la cola `mail` quede vacía (`15d83ee`). Resultado final: `pnpm
+  test:int` 28 suites y 169 pruebas en verde, `pnpm test:isolation` 5/5, `pnpm lint`, `pnpm typecheck`, `pnpm test`
+  y `pnpm env:check` en verde. Cobertura de `api` con `--coverage`: `identity/domain` 88,9 % de ramas,
+  `identity/application` 82,9 %, `notifications` ≥ 70,7 %, `shared/{domain,application}` 100 % (≥ 60 %, RNF-11).
+  El umbral por archivo de `base.cjs` marca cuatro archivos con ramas < 60 % por respaldos `??` inalcanzables
+  (`escape-html.ts`, `registration-attempt-mail.template.ts`) y dos ramas sin prueba (`PasswordHash.fromPhc('')`,
+  `EmailAddress.localPart` sin «@»); `pnpm test` no activa la cobertura. `migration:run → revert ×2 → run` contra el
+  Postgres de `docker compose` sin errores (pendiente de T-06/T-19). `argon2` `0.45.1` carga y hashea en
+  `node:22-alpine` (x64), pendiente de T-41. Prueba de humo con `docker compose up -d` y `pnpm dev`: `api.started` y
+  `worker.started` con `["ping","mail"]`; `POST /auth/register` → `202 {"status":"accepted"}` con `no-store`; el
+  correo «Verifica tu correo para entrar a Nimbo» llegó a Mailpit (`:8025`) con `Message-ID`
+  `identity.verification.<uuid>@nimbo.me` y el token de 43 caracteres en `#token=`; `POST /auth/verify-email` →
+  `200 {"status":"verified"}` y la segunda vez `already-verified`; en la BD `CLIENT` con `correo_verificado = true`;
+  la bitácora de `pnpm dev` no contiene el correo ni el token.
 - **Pendiente tras el trabajo en paralelo**: subir a `identity-test-app.ts` los ayudantes duplicados (`uniqueEmail`, `nextClientIp`, `waitForMessagesTo`, `neutralView`) y aceptar `env` en `createIdentityTestApp`.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>

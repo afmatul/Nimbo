@@ -40,18 +40,22 @@ Revisor: `reviewer` (Sonnet), 2026-09-28. Tareas T-28 a T-53 y la corrección `n
 
 | CA | Prueba | Estado |
 |---|---|---|
-| CA-1 a CA-4 | `register.int-spec.ts` | sin ejecutar |
-| CA-5, CA-6, CA-7 | `register-validation.int-spec.ts` | sin ejecutar |
-| CA-8 a CA-11 | `verify-email.int-spec.ts` | sin ejecutar |
-| CA-12 | `verification-token-repository.int-spec.ts` | sin ejecutar |
-| CA-13, CA-14 | `resend-verification.int-spec.ts` | sin ejecutar |
-| CA-15 | `rate-limits.int-spec.ts` · `identity-ip-throttler.guard.spec.ts` | int sin ejecutar · unitaria en verde |
-| CA-17 | `token-secrecy.int-spec.ts` | sin ejecutar |
-| CA-18 | `identity-logs.int-spec.ts` | sin ejecutar; no cubría la fuga de IP (hallazgo 1) |
-| CA-19 | `password-hash.int-spec.ts` · `argon2id.hasher.spec.ts` | int sin ejecutar · unitaria en verde |
-| CA-21 | `mail-degradation.int-spec.ts` | sin ejecutar |
-| CA-29 | `verify-email-concurrency.int-spec.ts` · `user-repository.int-spec.ts` | sin ejecutar |
-| Anti-enumeración | `test/isolation/identity-enumeration.iso-spec.ts` | sin ejecutar |
+| CA-1 a CA-4 | `register.int-spec.ts` | verde |
+| CA-5, CA-6, CA-7 | `register-validation.int-spec.ts` | verde |
+| CA-8 a CA-11 | `verify-email.int-spec.ts` | verde |
+| CA-12 | `verification-token-repository.int-spec.ts` | verde |
+| CA-13, CA-14 | `resend-verification.int-spec.ts` | verde |
+| CA-15 | `rate-limits.int-spec.ts` · `identity-ip-throttler.guard.spec.ts` | verde · verde |
+| CA-17 | `token-secrecy.int-spec.ts` | verde |
+| CA-18 | `identity-logs.int-spec.ts` | verde (incluye la comprobación de la fuga de IP del hallazgo 1) |
+| CA-19 | `password-hash.int-spec.ts` · `argon2id.hasher.spec.ts` | verde · verde |
+| CA-21 | `mail-degradation.int-spec.ts` | verde |
+| CA-29 | `verify-email-concurrency.int-spec.ts` · `user-repository.int-spec.ts` | verde |
+| Anti-enumeración | `test/isolation/identity-enumeration.iso-spec.ts` | verde |
+
+Estados de la corrida de T-54 (2026-09-28, con Docker): `pnpm test:int` 28 suites y 169 pruebas, `pnpm test:isolation`
+5/5. Las correcciones de las pruebas que fallaron en la primera corrida están en «Notas del developer» de `tasks.md`
+(T-54).
 
 ### Lo que está bien
 
