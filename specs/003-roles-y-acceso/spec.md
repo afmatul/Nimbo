@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Aclarada (2026-09-26, Adrián) |
+| Estado | Planificada (2026-09-27, Adrián) |
 | Dueño | Adrián (1) |
 | Fase | 1 |
 | Requisitos | RF-05, RNF-05 (principales); aplican también RNF-13, RNF-17 |

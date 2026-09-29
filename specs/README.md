@@ -15,9 +15,12 @@
 Cada dueño construye backend **y** frontend de su módulo. Excepciones por spec: 001 y 002 (`identity`) las lleva
 Adrián y 006a (`billing`) la lleva Fátima; el resto de esos módulos sigue con su dueño.
 
-## Estados
+## Estados (SDD lite)
 
-`Borrador` → `Aclarada` → `Planificada` → `En implementación` → `En verificación` → `En revisión` → `Hecha`
+`Borrador` → `Lista` → `En curso` → `En revisión` → `Hecha`
+
+Mapeo desde el flujo anterior: `Aclarada`/`Planificada` → `Lista`; `En implementación`/`En verificación` → `En curso`.
+Detalle de cada estado y sus compuertas en `docs/sdd/workflow.md` §2.
 
 ## Paso previo: decidir los hallazgos del diseño
 
@@ -28,11 +31,11 @@ Antes de planificar las specs de Fase 1, el equipo decide en una reunión los ha
 
 | #    | Spec                                                                                                                       | Módulo (diagrama)   | Requisitos                | DF que dependen            | Fase | Dueño | Depende de    | Estado    |
 | ---- | -------------------------------------------------------------------------------------------------------------------------- | ------------------- | ------------------------- | -------------------------- | ---- | ----- | ------------- | --------- |
-| 000  | [fundaciones](000-fundaciones/spec.md): monorepo, compose, CI, ambientes, `shared`, logger, `correlationId`, health, lint de fronteras, imágenes ghcr.io, staging en DigitalOcean | transversal         | RNF-10, 12, 15–17, 19 (18 parcial) | 02, 03, 06, 23, 24, 30, 34 | 1    | Adrián | —             | En implementación (2026-09-22): PR-1 «esqueleto» T-01…T-10 y PR-2 «shared» T-11…T-26 (+ carga del `.env` y correcciones de revisión, #4) fusionados; bloques 3–6 (CI, imágenes, staging) desde el 30/09 |
+| 000  | [fundaciones](000-fundaciones/spec.md): monorepo, compose, CI, ambientes, `shared`, logger, `correlationId`, health, lint de fronteras, imágenes ghcr.io, staging en DigitalOcean | transversal         | RNF-10, 12, 15–17, 19 (18 parcial) | 02, 03, 06, 23, 24, 30, 34 | 1    | Adrián | —             | En curso (2026-09-22): PR-1 «esqueleto» T-01…T-10 y PR-2 «shared» T-11…T-26 (+ carga del `.env` y correcciones de revisión, #4) fusionados; bloques 3–6 (CI, imágenes, staging) desde el 30/09 |
 | 000b | [sistema-de-diseno](000b-sistema-de-diseno/spec.md): tokens Cielo Sereno en `globals.css`, tema shadcn, fuentes, layout, `components/nimbo` base, axe en E2E | transversal (web)   | RNF-13, RNF-14            | 41–48                      | 1    | Fátima | 000           | En revisión (2026-09-20); PR #2 y #5 fusionados |
 | 001  | [registro-y-verificacion](001-registro-y-verificacion/spec.md)                                                             | M1                  | RF-01, RNF-04             | 13, 33, 35                 | 1    | Adrián | 000, 006a     | Planificada (2026-09-27): [plan](001-registro-y-verificacion/plan.md) y [tareas](001-registro-y-verificacion/tasks.md) |
-| 002  | [autenticacion-sesiones-y-dispositivos](002-autenticacion-sesiones-y-dispositivos/spec.md)                                 | M1                  | RF-02, 03, 04, RNF-07     | 11, 15                     | 1    | Adrián | 001           | Aclarada (2026-09-26) |
-| 003  | [roles-y-acceso](003-roles-y-acceso/spec.md) (`RolesGuard`, `Actor`, `PermissionResolver`, `accessibleNodes`, RLS)         | T1 `shared` + M3a   | RF-05, RNF-05             | 01, 02, 32                 | 1    | Adrián | 002           | Aclarada (2026-09-26); lista para `/plan` |
+| 002  | [autenticacion-sesiones-y-dispositivos](002-autenticacion-sesiones-y-dispositivos/spec.md)                                 | M1                  | RF-02, 03, 04, RNF-07     | 11, 15                     | 1    | Adrián | 001           | Planificada (2026-09-27): [plan](002-autenticacion-sesiones-y-dispositivos/plan.md) y [tareas](002-autenticacion-sesiones-y-dispositivos/tasks.md) |
+| 003  | [roles-y-acceso](003-roles-y-acceso/spec.md) (`RolesGuard`, `Actor`, `PermissionResolver`, `accessibleNodes`, RLS)         | T1 `shared` + M3a   | RF-05, RNF-05             | 01, 02, 32                 | 1    | Adrián | 002           | Planificada (2026-09-27): [plan](003-roles-y-acceso/plan.md) y [tareas](003-roles-y-acceso/tasks.md) |
 | 004  | auditoria                                                                                                                  | T2 `audit`          | RF-07                     | 03, 12, 15                 | 1    | Adrián | 003           | Pendiente |
 | 005  | carga-y-descarga                                                                                                           | M2                  | RF-08, 09, 14, RNF-06, 07 | 06, 16, 33                 | 1    | Abel | 003, 006a     | Pendiente |
 | 006  | carpetas-y-papelera                                                                                                        | M2                  | RF-10, 11                 | 15, 40                     | 1    | Abel | 005           | Pendiente |
@@ -66,10 +69,10 @@ bloques 3–6 de 000 (CI, imágenes, staging) no bloquean a nadie.
 
 | Integrante  | Ahora                                                                                                                                                                                                                                                                                      | Después                                                                                |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
-| Adrián      | 000: bloques 3–6 desde el 30/09, empezando por el CI y la compuerta T-27 (`docs/sdd/workflow.md` §7.2); 001: `/plan 001` y `/implement 001` (su interfaz lista los planes de 006a); `/spec 002` sesiones-y-dispositivos y `/spec 003` roles-y-acceso, con sus `/plan` | `/implement 002` (depende de 001) y `/implement 003` (depende de 002); 004 auditoría   |
+| Adrián      | 000: bloques 3–6 desde el 30/09, empezando por el CI y la compuerta T-27 (`docs/sdd/workflow.md` §7.2); 001: cerrar PR-3 (T-54) y PR-4 web, luego `/review 001`; `/implement 002` y `/implement 003` (plan y tareas ya aprobados) | 004 auditoría (`/spec 004` en modo lite)   
 | Juan Marcos | `/spec 008` catalogo-y-comparador y `/spec 009` contratacion-pagos-y-facturas (Fase 2; dependen de 006a)                                                                                                                                                                                   | `/implement 008` cuando 006a esté integrada                                            |
-| Abel        | `/spec 005` carga-y-descarga y `/spec 006` carpetas-y-papelera (los mockups del explorador y de la carga ya existen); sus `/plan`                                                                                                                                                          | `/implement 005` (depende de 003 y 006a); luego 006 y 007                              |
-| Fátima      | 000b: comprobar que se demuestra en local sobre `main` (`docker compose up -d` + `pnpm dev`) y pasarla a `Hecha` (#2 y #5 ya están integrados, `workflow.md` §7.2); `/spec 006a` catalogo-y-limites, `/plan` e `/implement` (la usan 001, 005 y 007)                                       | `/spec 015` tiempo-real con el plan de 002 aprobado; `/implement 015` (depende de 002) |
+| Abel        | `/spec 005` carga-y-descarga y `/spec 006` carpetas-y-papelera (los mockups del explorador y de la carga ya existen); `/tasks` directo si no son transversales                                                                                                                            | `/implement 005` (depende de 003 y 006a); luego 006 y 007                              |
+| Fátima      | 000b: comprobar que se demuestra en local sobre `main` (`docker compose up -d` + `pnpm dev`) y pasarla a `Hecha` (#2 y #5 ya están integrados, `workflow.md` §7.2); `/spec 006a` catalogo-y-limites, `/tasks` e `/implement` (la usan 001, 005 y 007)                                      | `/spec 015` tiempo-real; `/implement 015` (depende de 002) |
 
 Reglas de convivencia: PRs pequeños y rebase frecuente sobre `main`. Los únicos archivos compartidos que se tocan
 son:
@@ -91,4 +94,4 @@ son:
 | Avance 3 (80 %) | por reprogramar         | 019–023                                                                             |
 | Final           | 1.ª semana de noviembre | 024 + diagramas y capturas actualizados + ensayo de demo                            |
 
-Mockups: el inventario de pantallas y su estado está en `docs/sdd/ui-guidelines.md` §7. Toda spec con UI necesita su mockup antes de pasar a `Aclarada`.
+Mockups: el inventario de pantallas y su estado está en `docs/sdd/ui-guidelines.md` §7. Toda spec con UI necesita su mockup antes de pasar a `Lista`.
