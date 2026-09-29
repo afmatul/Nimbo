@@ -11,7 +11,7 @@
 | Resolver antes de | Hallazgos |
 |---|---|
 | 000 fundaciones | DF-02, DF-03, DF-06, DF-23, DF-24, DF-30, DF-34, DF-49 (DF-29 parcial: indicador de Redis) |
-| 001–004 identidad y acceso | DF-01, DF-11, DF-12, DF-13, DF-32, DF-35, DF-50 (DF-15 parcial: `SessionsController`; DF-33 parcial: `usuario`) |
+| 001–004 identidad y acceso | DF-01, DF-11, DF-12, DF-13, DF-32, DF-35, DF-50, DF-53, DF-54 (DF-15 parcial: `SessionsController`; DF-33 parcial: `usuario`) |
 | 005–007 almacenamiento | DF-15 (resto), DF-16, DF-17, DF-33 (resto), DF-38, DF-40, DF-52 (plan de 005) |
 | 006a catálogo y límites | DF-51 (plan de 006a) |
 | 008–011 billing y backoffice | DF-04, DF-25, DF-26, DF-27, DF-36 |
@@ -61,6 +61,7 @@
 | DF-40 | Media | E-R compartición, Clases M2 | `comparticion` y `enlace_publico` apuntan a `archivo` **o** a `carpeta` (dos FK), mientras que la clase unifica ambos en `StorageNode` (Composite). | Opción A: `CHECK` de exclusividad (exactamente una FK). Opción B: tabla única `nodo` con `tipo`, que simplifica permisos heredados y RLS. Decidir en ADR-0011. | Abierto |
 | DF-23 | Media | E-R, Clases M4 | Dinero con tipos distintos: `Plan.priceGtq: number`, E-R `precio int`, `transaccion.monto numeric`. | `Money` como value object en centavos (`integer`) en todas las tablas; Q45.00 = 4500. | Abierto |
 | DF-24 | Baja | E-R, Clases M4 | Unidades distintas: E-R `cuota_gb` y `max_archivo_mb`; `PlanLimits` en bytes. | La conversión ocurre en un solo lugar (mapper de `plan`). Recomendado: guardar en bytes (`bigint`) y eliminar la conversión. | Abierto |
+| DF-53 | Baja | E-R usuarios, Clases M1 | `token_cuenta` no distingue un enlace **reemplazado** de uno **vencido** o **usado**, ni sabe cuándo se emitió. La 001 los necesita separados: reemplazado da `LINK_INVALID` (CA-11 a), vencido da `LINK_EXPIRED` (CA-9) y usado da «ya verificado» (CA-10). Además exige un solo enlace vigente por cuenta y tipo (D-19, RN-4). | `token_cuenta`: `usuario_id` explícito (FK con `ON DELETE CASCADE`), `invalidado_en timestamptz null`, `creado_en timestamptz not null` (lo escribe la aplicación con `IClock`), `CHECK (usado_en IS NULL OR invalidado_en IS NULL)` e índice único parcial `(usuario_id, tipo) WHERE usado_en IS NULL AND invalidado_en IS NULL`. `VerificationToken` agrega `invalidatedAt`, `createdAt`, `stateAt(now)` e `invalidate(now)`. Redibujar el E-R (usuarios) y la clase en M1 (PD-36). | Aceptado (aprobación de arquitectura del plan 001, 2026-09-27) |
 
 ## Diseño de clases
 
@@ -78,6 +79,7 @@
 | DF-34 | Baja | Clases M1, M4 | Dos puertos de notificación (`IMailer`, `INotifier`) sin módulo dueño; la tabla `notificacion` tampoco tiene dueño. | Módulo `notifications` que implementa ambos (segregación por consumidor) y es dueño de `notificacion`. | Aceptado (ADR-0010, 2026-09-26) |
 | DF-36 | Baja | Clases M8 | `BackofficeController` atiende a tres roles distintos. | `AdminController`, `SupportController` y `OpsController`, cada uno con su `@Roles`. | Abierto |
 | DF-37 | Baja | Clases M6 | `ITextExtractor.extract(b: Buffer)` carga el archivo completo en memoria. | Tamaño máximo indexable configurable (p. ej. 50 MB); los archivos mayores quedan como `not_indexable` con motivo. | Abierto |
+| DF-54 | Baja | Clases M1, T1, T4 | El plan de la 001 se aparta del diagrama de clases en lo que el diagrama no previó. **M1**: `RegistrationService` separado de `AuthService` (SRP: con la 002, `AuthService` tendría 9 métodos); `AuthController.resendVerification`; `VerificationLinkIssuer` y `RegistrationAttemptNotifier` (colaboradores de aplicación); puertos `IVerificationTokenRepository` (repositorio) e `IAccountEventsPublisher` (aísla `@nestjs/event-emitter`, ADR-0019); objetos de valor `EmailAddress`, `OpaqueToken`, `PasswordHash`, `LegalAcceptance`; evento `ClientAccountVerified`. **T1**: `TooManyRequestsError` (429), `DomainError.fields`, `ITransactionRunner` + `TransactionContext` (base de `withActor`, ADR-0005), `ZodValidationPipe` (ADR-0020), `configureHttpApp`, proveedor `REDIS_CLIENT`. **T4**: `MailProcessor` («processor», en el `worker») y `SmtpTransport` (envoltorio de nodemailer), ADR-0018. | Agregar esas clases a los diagramas M1, T1 y T4 con sus relaciones (PD-36). `design-model.md` §3 ya las lista. | Aceptado (aprobación de arquitectura del plan 001, 2026-09-27) |
 
 ## Arquitectura y operación
 

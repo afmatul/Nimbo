@@ -53,13 +53,30 @@ spec 003 D-9). Los diagramas de clases todavía no lo muestran en las firmas.
 declara y los implementa. El módulo de negocio no los declara (ADR-0010, `architecture.md` §3, regla 5).
 
 ### M1 `identity`
-- Controladores: `AuthController` (register, verifyEmail, login, refresh, forgotPassword, resetPassword); `SessionsController` (listar y revocar sesiones, RF-04; DF-15 parcial, spec 002 D-8).
-- Servicios: `AuthService`, `SessionService`.
-- Puertos → implementaciones: `IPasswordHasher` → `Argon2idHasher`; `ITokenService` → `JwtTokenService`; `IUserRepository`, `ISessionRepository` → TypeORM. Implementa hacia fuera el puerto token→`Actor` que declara T1 `shared` (002 D-14).
-- Puertos que consume: `IMailer` (lo declara e implementa T4 `notifications`); `IRateLimiter` (T1 `shared`, límite por correo de 001 D-15).
-- Dominio: `User` (abstracta) ← `ClientUser` (sin `subscriptionId`: la relación vive solo en `suscripcion.usuario_id`, DF-35), `InternalUser`; `Session`; `Device` (DF-11, spec 002 D-4); `VerificationToken`; `Role` = `CLIENT | ADMIN | SUPPORT | OPERATOR` (vive en `shared`).
+- Controladores: `AuthController` (register, verifyEmail, resendVerification, login, refresh, forgotPassword, resetPassword; `resendVerification` es nuevo, plan 001, DF-54); `SessionsController` (listar y revocar sesiones, RF-04; DF-15 parcial, spec 002 D-8).
+- Servicios:
+  - `RegistrationService` (register, resendVerification, verifyEmail), separado de `AuthService` por SRP (plan 001 DT-1, DF-54). Sus colaboradores: `VerificationLinkIssuer`, que invalida los enlaces vigentes y emite uno nuevo (lo reutiliza 002 D-15), y `RegistrationAttemptNotifier`, que envía el aviso de intento de registro (001 D-17);
+  - `AuthService` (login, refresh, logout, recuperación; 002) y `SessionService`.
+- Guard: `IdentityIpThrottlerGuard`, subclase de `ThrottlerGuard` para el límite por IP del registro (001 D-15, ADR-0017).
+- Puertos → implementaciones:
+  - `IPasswordHasher` → `Argon2idHasher` (`argon2`, ADR-0017);
+  - `ITokenService` → `JwtTokenService`;
+  - `IUserRepository`, `IVerificationTokenRepository` (nuevo, DF-54) e `ISessionRepository` → TypeORM;
+  - `IAccountEventsPublisher` (nuevo, DF-54) → `EventEmitterAccountEventsPublisher` (ADR-0019).
+  - Implementa hacia fuera el puerto token→`Actor` que declara T1 `shared` (002 D-14).
+- Puertos que consume: `IMailer` (lo declara e implementa T4 `notifications`); `IRateLimiter`, `ITransactionRunner` e `IClock` (T1 `shared`; el límite por correo es de 001 D-15).
+- Dominio:
+  - `User` (abstracta) ← `ClientUser` (sin `subscriptionId`: la relación vive solo en `suscripcion.usuario_id`, DF-35), `InternalUser`;
+  - `Session`; `Device` (DF-11, spec 002 D-4);
+  - `VerificationToken` (`issue`, `stateAt(now)`, `isValid`, `consume`, `invalidate`; DF-53);
+  - objetos de valor `EmailAddress`, `OpaqueToken`, `PasswordHash` y `LegalAcceptance` (DF-54);
+  - `AccountStatus` = `ACTIVE | SUSPENDED`; `Role` = `CLIENT | ADMIN | SUPPORT | OPERATOR` (vive en `shared`).
+- Eventos que publica (ADR-0019): `identity.client-account-verified` (`ClientAccountVerifiedEvent { userId }`), después del commit y una vez por cuenta. Lo exporta `index.ts` y lo consume `billing` (006a).
 - Patrones: Herencia de tabla única para `User`; Strategy implícita en hasher/tokens.
-- Tablas: `usuario` (`rol` con `CHECK`, sin tabla `rol`: DF-13; `correo_verificado`: DF-33 parcial), `dispositivo`, `sesion`, `token_cuenta`.
+- Tablas:
+  - `usuario`: `rol` con `CHECK`, sin tabla `rol` (DF-13); `correo_verificado`, `version_terminos`, `version_privacidad` y `terminos_aceptados_en` (DF-33 parcial, 001 D-14);
+  - `token_cuenta`: `usuario_id`, `invalidado_en` y `creado_en`, con un solo enlace vigente por cuenta y tipo (DF-53);
+  - `dispositivo` y `sesion` (002).
 
 ### M2 `storage`
 - Controlador: `FilesController` (list, download, initUpload, uploadPart, completeUpload, move, trash). Faltan carpetas, renombrar, restaurar, versiones, cuota, búsqueda, vista previa → DF-15.
@@ -87,6 +104,7 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
 - Servicios: `PlanCatalogService`, `SubscriptionService`, `PaymentService`; job `RenewalScheduler` (`@Cron`, usa `IClock`).
 - Puertos → implementaciones: `IPaymentGateway` → `SimulatedPaymentGateway` (failureRate, latencyMs); `IInvoiceGenerator` → `PdfInvoiceGenerator`; repos.
 - Puertos que consume: `INotifier` (lo declara e implementa T4 `notifications`).
+- Eventos que consume (ADR-0019): `identity.client-account-verified` → crea la suscripción Personal (001 D-4). El oyente es idempotente y se acompaña de una conciliación de las cuentas verificadas sin suscripción (006a).
 - Dominio: `Plan` con `PlanLimits` (value object); `Subscription` (pendingPlanId, isReadOnly, scheduleChange, applyPendingChange); `Payment`; `Invoice`; `Money`.
 - Implementa hacia fuera: `IPlanLimitsProvider` (M2, M5), `IAgentQuota` (M6) → DF-27.
 - Tablas: `plan`, `suscripcion`, `transaccion`, `factura`.
@@ -122,11 +140,28 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
 - Guards globales (spec 003 D-2, DF-50): `JwtAuthGuard` y `RolesGuard` (`CanActivate`), registrados para toda la API y que **niegan por defecto**. `JwtAuthGuard` verifica el token con el puerto token→`Actor` que declara `shared` y que implementa `identity` (002 D-14; nombre en el plan 003) y construye el `Actor`; `RolesGuard` comprueba `@Roles(...)`. Decoradores `@Public()` y `@Roles(...)`: toda ruta declara uno de los dos (003 D-10). El handshake de T3 `realtime` usa el mismo puerto.
 - Persistencia con actor: `withActor()` fija `app.actor_id` y `app.actor_role` por transacción para RLS (ADR-0005, 003 D-7).
 - Servicio: `HealthService` (`ready()`: ejecuta los `IHealthIndicator` en paralelo con tiempo límite; agrega `up`/`down`).
-- Puertos → implementaciones: `IHealthIndicator` → `PostgresHealthIndicator`, `RedisHealthIndicator`, `MinioHealthIndicator` (DF-29 parcial); `IClock` → `SystemClock` (infraestructura), `FixedClock` (dominio, para pruebas); con 001, `IRateLimiter` → `RedisRateLimiter` (lo consumen M1 y M3b; PD-30).
-- Dominio: `Actor` (`id`, `role`, `canReadContent`), `Role` = `CLIENT | ADMIN | SUPPORT | OPERATOR`, `DomainError` (abstracta) ← `InvalidInputError` (422), `UnauthorizedError` (401), `ForbiddenError` (403), `NotFoundError` (404), `ConflictError` (409).
-- Presentación: `DomainExceptionFilter` (único traductor `DomainError` → HTTP), `CorrelationIdMiddleware`, `VersionHeaderMiddleware`.
-- Infraestructura: `CorrelationContext` (`AsyncLocalStorage`), logger Pino con `REDACTED_FIELDS`/`redactDeep`, `loadEnv` (zod), `buildDataSourceOptions`, `enqueueWithCorrelation`, cola de prueba `ping` (`PingProcessor`).
-- Módulos NestJS: `SharedModule` (config, logger, TypeORM, conexión BullMQ) y `HealthModule.forRoot({ indicators })` (la raíz de composición de `api` y de `worker` elige los indicadores).
+- Puertos → implementaciones:
+  - `IHealthIndicator` → `PostgresHealthIndicator`, `RedisHealthIndicator`, `MinioHealthIndicator` (DF-29 parcial);
+  - `IClock` → `SystemClock` (infraestructura), `FixedClock` (dominio, para pruebas);
+  - con 001, `IRateLimiter` → `RedisRateLimiter`, con ventana deslizante en Redis (lo consumen M1 y M3b; PD-30);
+  - con 001, `ITransactionRunner` → implementación TypeORM que publica el `EntityManager` en `TransactionContext` (`AsyncLocalStorage`). `withActor` de 003 se construye sobre el mismo contexto (DF-54).
+- Dominio:
+  - `Actor` (`id`, `role`, `canReadContent`) y `Role` = `CLIENT | ADMIN | SUPPORT | OPERATOR`;
+  - `DomainError` (abstracta; desde 001 con `fields?: FieldIssue[]`) ← `InvalidInputError` (422), `UnauthorizedError` (401), `ForbiddenError` (403), `NotFoundError` (404), `ConflictError` (409) y `TooManyRequestsError` (429, con `retryAfterSeconds`; desde 001, DF-54).
+- Presentación:
+  - `DomainExceptionFilter`: único traductor `DomainError` → HTTP; desde 001 agrega `fields` y `Retry-After`;
+  - `ZodValidationPipe`: valida con los esquemas de `contracts` (ADR-0020);
+  - `configureHttpApp`: middlewares, prefijo, filtro, solo JSON, CORS y `trust proxy`. La usan `main.ts` y el arnés de pruebas;
+  - `CorrelationIdMiddleware` y `VersionHeaderMiddleware`.
+- Infraestructura:
+  - `CorrelationContext` (`AsyncLocalStorage`) y logger Pino con `REDACTED_FIELDS`/`redactDeep`;
+  - `loadEnv` (zod) y `buildDataSourceOptions`;
+  - `enqueueWithCorrelation`, que desde 001 acepta opciones del trabajo;
+  - proveedor `REDIS_CLIENT` (ioredis);
+  - cola de prueba `ping` (`PingProcessor`).
+- Módulos NestJS:
+  - `SharedModule`: config, logger, TypeORM y conexión BullMQ. Desde 001 es `@Global()` y exporta `I_CLOCK`, `REDIS_CLIENT`, `I_RATE_LIMITER` e `I_TRANSACTION_RUNNER`;
+  - `HealthModule.forRoot({ indicators })`: la raíz de composición de `api` y de `worker` elige los indicadores.
 - Tablas: ninguna de negocio; tabla de control `migracion` (TypeORM).
 
 ### T2 `audit`
@@ -139,9 +174,15 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
 ### T4 `notifications`
 - Responsabilidad: correo transaccional y notificaciones al usuario (DF-34, ADR-0010). No conoce las reglas de negocio de quien lo usa: recibe qué enviar y a quién. Dueño de la tabla `notificacion` y de la cola `mail` del `worker`.
 - Puertos que declara y exporta en su `index.ts`, segregados por consumidor (ISP): `IMailer` (lo consume `identity`: verificación, recuperación y avisos de cuenta) e `INotifier` (lo consume `billing`). Los declara el transversal, no el consumidor, para que `notifications` nunca importe un módulo de negocio (`architecture.md` §3, regla 5).
-- Implementaciones: `IMailer` → `SmtpMailer` (nodemailer; encola en `mail` y el `worker` envía, spec 001 D-11). El destino SMTP es Mailpit en local y SMTP de Resend en staging (001 D-12). `INotifier` → implementación de `notifications`; nombre y canales en el plan de la spec de `billing` que la use primero.
+- Implementaciones:
+  - `IMailer` → `SmtpMailer`. En el `api` encola en `mail` con `jobId = idempotencyKey` (spec 001 D-11);
+  - `MailProcessor` («processor», en el `worker») entrega con `SmtpTransport`, un envoltorio de nodemailer, y aplica la idempotencia: marca en Redis y `Message-ID` determinista (ADR-0018);
+  - `MailMessage` = `{ to, subject, text, html, idempotencyKey, tag, recipientId? }`;
+  - el destino SMTP es Mailpit en local y el SMTP de Resend en staging (001 D-12). Solo el `worker` tiene las credenciales SMTP;
+  - `INotifier` → implementación de `notifications`; nombre y canales en el plan de la spec de `billing` que la use primero.
+- Módulos NestJS: `NotificationsModule` (`api`: registra la cola y provee `I_MAILER`) y `NotificationsWorkerModule` (`worker`: procesador y transporte).
 - Depende de: `shared` y `realtime` (para publicar en la sala del usuario). Es la única arista entre transversales (ADR-0010).
-- Tabla: `notificacion`.
+- Tabla: `notificacion`. La crea la primera spec con notificaciones dentro de la aplicación: la 001 no la crea (su §12) y la cola `mail` no la usa (ADR-0018).
 
 ## 4. Mapeo clase ↔ tabla (E-R)
 
@@ -153,7 +194,7 @@ El mapeo vive solo en las entidades TypeORM (`@Entity('archivo')`, `@Column({ na
 | `User`, `ClientUser`, `InternalUser` | `usuario` | Tabla única; `rol` discrimina (columna con `CHECK`, sin tabla `rol`: DF-13) |
 | `Session` | `sesion` | Depende de `dispositivo` |
 | `Device` | `dispositivo` | Clase nueva (DF-11, spec 002 D-4); `huella_hash` guarda el hash del identificador aleatorio de la cookie. Falta en el diagrama |
-| `VerificationToken` | `token_cuenta` | `tipo` = verificación / recuperación |
+| `VerificationToken` | `token_cuenta` | `tipo` = verificación / recuperación; `invalidado_en` y `creado_en` (DF-53) |
 | `Folder` | `carpeta` | `ruta` como camino materializado |
 | `File` | `archivo` | |
 | `FileVersion` / `DocumentVersion` | `version_archivo` | `origen` = carga / edicion / restauracion / optimizacion |

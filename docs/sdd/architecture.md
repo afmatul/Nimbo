@@ -94,12 +94,12 @@ No hay paquete `domain` aparte salvo que un ADR lo justifique.
 
 | Módulo | Diagrama | Responsabilidad | Puede depender de |
 |---|---|---|---|
-| `shared` | T1 (DF-49) | `Actor`, `IClock`, `DomainError` + `DomainExceptionFilter`, logger Pino con redacción, `correlationId`, validación de entorno, `DataSource`, salud (`HealthModule`, `IHealthIndicator`, indicadores Postgres/Redis/MinIO), paginación. Con 001: `IRateLimiter` → `RedisRateLimiter`. Con 003: guards globales (`JwtAuthGuard`, `RolesGuard`, `@Public`, `@Roles`), el puerto token→`Actor` que implementa `identity` (002 D-14, 003 D-2) y `withActor` (ADR-0005) | — |
+| `shared` | T1 (DF-49) | `Actor`, `IClock`, `DomainError` + `DomainExceptionFilter`, logger Pino con redacción, `correlationId`, validación de entorno, `DataSource`, salud (`HealthModule`, `IHealthIndicator`, indicadores Postgres/Redis/MinIO), paginación. Con 001: `IRateLimiter` → `RedisRateLimiter`, `TooManyRequestsError` (429), `ITransactionRunner` + `TransactionContext`, `ZodValidationPipe` (ADR-0020), `configureHttpApp` (solo JSON, CORS, `trust proxy`) y el proveedor `REDIS_CLIENT`. Con 003: guards globales (`JwtAuthGuard`, `RolesGuard`, `@Public`, `@Roles`), el puerto token→`Actor` que implementa `identity` (002 D-14, 003 D-2) y `withActor` (ADR-0005) | — |
 | `audit` | T2 (extraído de M8, DF-03) | `AuditService`, `AuditEntry`; declara e implementa `IAuditLogger` (ADR-0010) | shared |
-| `notifications` | T4 (DF-34) | Correo y notificaciones; declara e implementa `IMailer` e `INotifier` (ADR-0010) | shared, realtime |
+| `notifications` | T4 (DF-34) | Correo y notificaciones; declara e implementa `IMailer` e `INotifier` (ADR-0010). El `api` encola en `mail` y el `worker` entrega por SMTP con nodemailer (ADR-0018) | shared, realtime |
 | `realtime` | T3 (generalizado desde M5, DF-30) | Único gateway Socket.IO, salas por usuario y documento; valida el token del handshake con el puerto token→`Actor` de `shared`; declara su puerto de publicación (ADR-0010) | shared |
-| `identity` | M1 | Registro, verificación, login, refresh, sesiones, dispositivos | shared, notifications, audit |
-| `billing` | M4 | Planes, suscripciones, pagos, facturas, renovación; implementa `IPlanLimitsProvider` e `IAgentQuota` | shared, notifications, audit, storage (solo `IObjectStorage` para facturas) |
+| `identity` | M1 | Registro, verificación, login, refresh, sesiones, dispositivos. Publica `identity.client-account-verified` (001, ADR-0019) | shared, notifications, audit |
+| `billing` | M4 | Planes, suscripciones, pagos, facturas, renovación; implementa `IPlanLimitsProvider` e `IAgentQuota`; crea la suscripción Personal al consumir `identity.client-account-verified` | shared, notifications, audit, storage (solo `IObjectStorage` para facturas), identity (solo contratos de eventos de su `index.ts`; ADR-0019, Propuesto) |
 | `access` | M3a (lectura) | Solo lectura: `PermissionResolver`, políticas, `accessibleNodes(actor)` | shared |
 | `storage` | M2 | Nodos, cargas, descargas, papelera, versiones, cuota, búsqueda por metadatos, vista previa | shared, access, billing (`IPlanLimitsProvider`), audit, realtime |
 | `sharing` | M3b (escritura) | Comparticiones, enlaces públicos, límite de intentos | shared, access, storage, audit |
@@ -110,7 +110,11 @@ No hay paquete `domain` aparte salvo que un ADR lo justifique.
 
 **Reglas**
 1. El grafo es un DAG. Si dos módulos se necesitan mutuamente, uno define un puerto y el otro lo implementa **sin importar al primero**, o se usa un evento de dominio.
-2. Los eventos cruzan fronteras sin acoplar: `FileUploaded`, `FileVersionCreated`, `FileTrashed`, `SubscriptionExpired`, `EditSessionClosed`.
+2. Los eventos cruzan fronteras sin acoplar: `ClientAccountVerified` (001), `FileUploaded`, `FileVersionCreated`, `FileTrashed`, `SubscriptionExpired`, `EditSessionClosed`.
+   Mecanismo (ADR-0019, Propuesto): `@nestjs/event-emitter` en proceso, publicado después del commit.
+   - El productor exporta el contrato del evento (nombre y forma) en su `index.ts`, y el consumidor depende del productor.
+   - Los oyentes son idempotentes y, si perder un evento deja datos inconsistentes, el consumidor tiene una conciliación.
+   - Si la arista del consumidor hacia el productor creara un ciclo, se vuelve a la regla 1.
 3. `access` lee tablas de `storage` y `sharing` por SQL de solo lectura. Es la **única** excepción documentada a «cada módulo es dueño de sus tablas», porque la autorización debe resolverse dentro de la consulta (DF-02, ADR-0010).
 4. Otro módulo solo importa desde `modules/<x>/index.ts`: fachadas, puertos que ese módulo implementa, eventos y tipos públicos. Se hace cumplir con lint (ADR-0008).
 5. Los transversales (`audit`, `realtime`, `notifications`) declaran sus propios puertos y nunca dependen de un módulo de negocio; entre ellos solo existe `notifications → realtime` (ADR-0010).
@@ -151,7 +155,8 @@ modules/storage/
 | `IPasswordHasher` | `Argon2idHasher` | identity (también lo usa sharing, DF-10) |
 | `ITokenService` | `JwtTokenService` | identity |
 | Puerto token→`Actor` (nombre en el plan 003) | verificador de `identity` (002 D-14) | shared → identity (lo usan `JwtAuthGuard` y el handshake de `realtime`, sin importar `identity`) |
-| `IMailer` | `SmtpMailer` (Mailpit en local) | notifications (lo declara y lo implementa; lo consume identity, ADR-0010) |
+| `IMailer` | `SmtpMailer` (encola en `mail`; `MailProcessor` + `SmtpTransport` entregan en el `worker`; Mailpit en local, SMTP de Resend en staging, ADR-0018) | notifications (lo declara y lo implementa; lo consume identity, ADR-0010) |
+| `IAccountEventsPublisher` | `EventEmitterAccountEventsPublisher` | identity (publica `identity.client-account-verified` después del commit, ADR-0019) |
 | `IObjectStorage` | `MinioStorageAdapter` | storage |
 | `IFileTypeDetector` | `MagicBytesDetector` | storage |
 | `IPlanLimitsProvider` | fachada de billing | storage/editing → billing |
@@ -163,6 +168,7 @@ modules/storage/
 | `INotifier` | notifications | notifications (lo declara y lo implementa; lo consume billing, ADR-0010) |
 | Puerto de publicación de `realtime` (nombre en el plan 015) | gateway Socket.IO de `realtime` | realtime (lo declara y lo implementa; lo consumen storage, editing, intelligence y notifications, ADR-0010) |
 | `IClock` | `SystemClock` / `FixedClock` | shared |
+| `ITransactionRunner` | TypeORM sobre `TransactionContext` (`AsyncLocalStorage`) | shared (lo consumen los servicios que escriben en más de una tabla; `withActor` de 003 usa el mismo contexto) |
 | `IDocumentEditor` | `OnlyOfficeEditor` | editing |
 | `IIdempotencyStore` | `RedisIdempotencyStore` | editing |
 | `IIndexQueue` | cola BullMQ `indexing` | editing → intelligence |
@@ -253,7 +259,7 @@ el original sigue restaurable durante la retención definida en DF-21.
 | `editing-save` | `SaveCallbackHandler` | 5 | `UNIQUE sesion_edicion_id` + candado Redis |
 | `optimization` | `OptimizationService` | 2 | por `optimizacion.id` |
 | `RenewalScheduler` (`@Cron`) | — | alerta en fallo | por suscripción + periodo |
-| `mail` | notifications | 5 | por `notificacion.id` |
+| `mail` | `SmtpMailer` (notifications) | 5 (`attempts: 6`, exponencial desde 5 s) | por `idempotencyKey` del productor como `jobId` (sin `:`) + marca `mail:sent:<jobId>` en Redis + `Message-ID` determinista (ADR-0018); no usa `notificacion` |
 | `trash-purge` (`@Cron`) | — | 3 | naturalmente idempotente; cómo opera bajo RLS sin actor: DF-52 |
 
 ## 9. Frontend
@@ -291,3 +297,7 @@ apps/web/src/
 | 0013 | Política del original en el optimizador (DF-21) |
 | 0014 | Tokens de Cielo Sereno ajustados a AA y mapeados a shadcn (DF-41–48) |
 | 0015 | Dependencias de fundaciones: gitleaks, zod, nestjs-pino, Testcontainers (menor) |
+| 0017 | Dependencias de autenticación: `argon2`, `@nestjs/throttler`, `@nestjs/jwt` (menor; Propuesto) |
+| 0018 | Correo con nodemailer por SMTP y la cola `mail` (menor; Propuesto) |
+| 0019 | Eventos de dominio en proceso; el contrato lo exporta el productor (Propuesto) |
+| 0020 | Validación HTTP con zod desde `contracts`, enmienda 0015 b (Propuesto) |
