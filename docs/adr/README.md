@@ -26,11 +26,13 @@ Son la base para defender la arquitectura en la exposición final (enunciado §6
 | 0018 | [Correo transaccional con nodemailer por SMTP y la cola `mail`](0018-correo-con-nodemailer-y-cola-mail.md) (menor) | Aceptado |
 | 0019 | [Eventos de dominio en proceso con `@nestjs/event-emitter`; el contrato lo exporta el productor](0019-eventos-de-dominio-en-proceso.md) (arista `billing → identity`) | Aceptado |
 | 0020 | [Validación HTTP con zod desde `packages/contracts`](0020-validacion-http-con-zod-desde-contracts.md) (enmienda ADR-0015 b) | Aceptado |
+| 0021 | [`storage` declara `IPlanLimitsProvider`](0021-storage-declara-iplanlimitsprovider.md) (DF-51, opción A; no bloquea 005) | Aceptado |
 
 Estados: `Pendiente` (sin redactar) · `Propuesto` (redactado, falta acuerdo del equipo) · `Aceptado` · `Reemplazado por`.
 Los ADR 0001, 0002, 0008, 0009, 0014 y 0015 se aceptaron el 26/09/2026 (Adrián, parte de ADR de la T-27 de la spec 000).
 Los ADR 0005 y 0010 se aceptaron el 26/09/2026 (Adrián). Desbloquean el PR de CI de la spec 000 (spec §13) y los planes de las specs 001 y 003.
 Los ADR 0017 a 0020 los redactó el `architect` con el plan de la spec 001 y los aceptó Adrián el 27/09/2026
 (ADR-0017 con Passport, opción c.2). ADR-0020 enmienda la parte b de ADR-0015.
+ADR-0021 se aceptó el 29/09/2026: opción A de DF-51. No bloquea el plan de 005 ni el de 006a.
 
 Usa `/adr <decisión>` para redactar uno.

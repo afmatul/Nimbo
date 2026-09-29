@@ -81,7 +81,7 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
 ### M2 `storage`
 - Controlador: `FilesController` (list, download, initUpload, uploadPart, completeUpload, move, trash). Faltan carpetas, renombrar, restaurar, versiones, cuota, búsqueda, vista previa → DF-15.
 - Servicios: `FileService`, `UploadService`, `QuotaService`.
-- Puertos → implementaciones: `IObjectStorage` → `MinioStorageAdapter`; `IFileTypeDetector` → `MagicBytesDetector`; `INodeRepository` → TypeORM; `IPlanLimitsProvider` → implementado por `billing`.
+- Puertos → implementaciones: `IObjectStorage` → `MinioStorageAdapter`; `IFileTypeDetector` → `MagicBytesDetector`; `INodeRepository` → TypeORM. `IPlanLimitsProvider` lo declara y lo exporta `storage`; lo implementa `billing` (DF-51 A, ADR-0021).
 - Dominio: `StorageNode` (abstracta) ← `Folder`, `File` (**Composite**); `FileVersion` (composición 1..* de `File`); `UploadSession`.
 - Tablas: `carpeta`, `archivo`, `version_archivo`, `carga`.
 
@@ -106,7 +106,7 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
 - Puertos que consume: `INotifier` (lo declara e implementa T4 `notifications`).
 - Eventos que consume (ADR-0019): `identity.client-account-verified` → crea la suscripción Personal (001 D-4). El oyente es idempotente y se acompaña de una conciliación de las cuentas verificadas sin suscripción (006a).
 - Dominio: `Plan` con `PlanLimits` (value object); `Subscription` (pendingPlanId, isReadOnly, scheduleChange, applyPendingChange); `Payment`; `Invoice`; `Money`.
-- Implementa hacia fuera: `IPlanLimitsProvider` (M2, M5), `IAgentQuota` (M6) → DF-27.
+- Implementa hacia fuera: `IPlanLimitsProvider`, importando el puerto desde `storage` (DF-51 A, ADR-0021); `IAgentQuota` (M6) → DF-27.
 - Tablas: `plan`, `suscripcion`, `transaccion`, `factura`.
 
 ### M5 `editing`

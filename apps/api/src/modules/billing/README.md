@@ -3,7 +3,7 @@
 - **Dueño**: Juan Marcos (`specs/README.md`).
 - **Diagrama de origen**: M4 en `docs/sdd/design-model.md` §3 y `docs/design/diagramas/`.
 - **Responsabilidad**: Planes, suscripciones, pagos, facturas, renovación; implementa `IPlanLimitsProvider` e `IAgentQuota`.
-- **Puede depender de**: shared, notifications, audit, storage (solo `IObjectStorage` para facturas) (`docs/sdd/architecture.md` §3; el lint de fronteras lo hace cumplir).
+- **Puede depender de**: shared, notifications, audit, storage (importa el puerto `IPlanLimitsProvider` que declara `storage`, ADR-0021; `IObjectStorage` para facturas sigue abierto en DF-51) (`docs/sdd/architecture.md` §3; el lint de fronteras lo hace cumplir).
 - **Specs que lo construyen**: 006a, 008, 009, 010.
 
 ## Capas (`docs/sdd/architecture.md` §4)

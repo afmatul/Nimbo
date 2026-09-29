@@ -99,11 +99,11 @@ No hay paquete `domain` aparte salvo que un ADR lo justifique.
 | `notifications` | T4 (DF-34) | Correo y notificaciones; declara e implementa `IMailer` e `INotifier` (ADR-0010). El `api` encola en `mail` y el `worker` entrega por SMTP con nodemailer (ADR-0018) | shared, realtime |
 | `realtime` | T3 (generalizado desde M5, DF-30) | Único gateway Socket.IO, salas por usuario y documento; valida el token del handshake con el puerto token→`Actor` de `shared`; declara su puerto de publicación (ADR-0010) | shared |
 | `identity` | M1 | Registro, verificación, login, refresh, sesiones, dispositivos. Publica `identity.client-account-verified` (001, ADR-0019) | shared, notifications, audit |
-| `billing` | M4 | Planes, suscripciones, pagos, facturas, renovación; implementa `IPlanLimitsProvider` e `IAgentQuota`; crea la suscripción Personal al consumir `identity.client-account-verified` | shared, notifications, audit, storage (solo `IObjectStorage` para facturas), identity (solo contratos de eventos de su `index.ts`; ADR-0019, Propuesto) |
+| `billing` | M4 | Planes, suscripciones, pagos, facturas, renovación; implementa `IPlanLimitsProvider` e `IAgentQuota`; crea la suscripción Personal al consumir `identity.client-account-verified` | shared, notifications, audit, storage (importa el puerto `IPlanLimitsProvider` que declara `storage`, ADR-0021; `IObjectStorage` para facturas sigue abierto en DF-51), identity (solo contratos de eventos de su `index.ts`; ADR-0019, Propuesto) |
 | `access` | M3a (lectura) | Solo lectura: `PermissionResolver`, políticas, `accessibleNodes(actor)` | shared |
-| `storage` | M2 | Nodos, cargas, descargas, papelera, versiones, cuota, búsqueda por metadatos, vista previa | shared, access, billing (`IPlanLimitsProvider`), audit, realtime |
+| `storage` | M2 | Nodos, cargas, descargas, papelera, versiones, cuota, búsqueda por metadatos, vista previa. Declara y exporta `IPlanLimitsProvider` (ADR-0021); no depende de `billing` | shared, access, audit, realtime |
 | `sharing` | M3b (escritura) | Comparticiones, enlaces públicos, límite de intentos | shared, access, storage, audit |
-| `editing` | M5 | Sesiones de edición, presencia, callback, autoría e historial | shared, storage, access, billing, realtime, audit |
+| `editing` | M5 | Sesiones de edición, presencia, callback, autoría e historial. Reutiliza `IPlanLimitsProvider` desde `storage` (ADR-0021) | shared, storage, access, realtime, audit |
 | `intelligence` | M6 | Indexación, recuperación híbrida, agente con citas; implementa `IIndexQueue` | shared, storage, access, billing (`IAgentQuota`), realtime |
 | `optimizer` | M7 | Estimación y optimización de PDF e imágenes | shared, storage, access |
 | `backoffice` | M8 | Administración, soporte, métricas, colas (la salud y `RolesGuard` pasaron a `shared`: DF-49, 003 D-2) | shared, audit, identity, billing, storage (fachadas, DF-04) |
@@ -116,11 +116,10 @@ No hay paquete `domain` aparte salvo que un ADR lo justifique.
    - Los oyentes son idempotentes y, si perder un evento deja datos inconsistentes, el consumidor tiene una conciliación.
    - Si la arista del consumidor hacia el productor creara un ciclo, se vuelve a la regla 1.
 3. `access` lee tablas de `storage` y `sharing` por SQL de solo lectura. Es la **única** excepción documentada a «cada módulo es dueño de sus tablas», porque la autorización debe resolverse dentro de la consulta (DF-02, ADR-0010).
-4. Otro módulo solo importa desde `modules/<x>/index.ts`: fachadas, puertos que ese módulo implementa, eventos y tipos públicos. Se hace cumplir con lint (ADR-0008).
+4. Otro módulo solo importa desde `modules/<x>/index.ts`: fachadas, puertos que ese módulo implementa, eventos y tipos públicos. También puede exportar un puerto que declara y otro módulo implementa, cuando esa dirección evita un ciclo (ADR-0021: `storage` exporta `IPlanLimitsProvider` y `billing` lo implementa). Se hace cumplir con lint (ADR-0008).
 5. Los transversales (`audit`, `realtime`, `notifications`) declaran sus propios puertos y nunca dependen de un módulo de negocio; entre ellos solo existe `notifications → realtime` (ADR-0010).
 
-**Pendiente**: la tabla aún contiene el ciclo `storage ↔ billing` (`IPlanLimitsProvider` / `IObjectStorage` para facturas) y
-§5 no coincide con ella en `IPlanLimitsProvider`, `IAgentQuota` e `IIndexQueue`. Se decide en **DF-51** antes del plan de 006a.
+**DF-51, opción A (ADR-0021, aceptada el 2026-09-29):** `storage` no depende de `billing`. Declara `IPlanLimitsProvider`, lo exporta en `index.ts`, `billing` lo implementa y la raíz de composición enlaza la implementación. `editing` lo reutiliza desde `storage`. No bloquea el plan de 005 ni el de 006a: la carga consume el puerto dentro de `storage` y no espera el resto del hallazgo. Siguen abiertos en DF-51, y no son compuerta de 005: `IAgentQuota`, `IIndexQueue` y si las facturas usan `IObjectStorage`.
 
 ## 4. Capas dentro de un módulo
 
@@ -159,7 +158,7 @@ modules/storage/
 | `IAccountEventsPublisher` | `EventEmitterAccountEventsPublisher` | identity (publica `identity.client-account-verified` después del commit, ADR-0019) |
 | `IObjectStorage` | `MinioStorageAdapter` | storage |
 | `IFileTypeDetector` | `MagicBytesDetector` | storage |
-| `IPlanLimitsProvider` | fachada de billing | storage/editing → billing |
+| `IPlanLimitsProvider` | implementación de billing | storage (lo declara y lo exporta; `editing` lo reutiliza) → billing (lo implementa). ADR-0021. `storage` no importa `billing` |
 | `IAccessPolicy` | `OwnerPolicy`, `EditorPolicy`, `ViewerPolicy` | access |
 | `IRateLimiter` | `RedisRateLimiter` | shared (lo declara y lo implementa; lo consumen identity desde 001 y sharing desde 012; `identity → sharing` no está permitido, ADR-0010) |
 | `IAuditLogger` | `AuditService` | audit (lo declara y lo implementa; lo consumen los módulos que auditan, ADR-0010) |

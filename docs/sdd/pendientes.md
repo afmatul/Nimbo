@@ -46,12 +46,12 @@ decisiones; solo faltan los diagramas.
 
 | ID | Qué hay que decidir | Origen | Resolver antes de | Responsable | Estado |
 |---|---|---|---|---|---|
-| PD-18 | Ciclo `storage ↔ billing` y la convención de §5 para `IPlanLimitsProvider`, `IAgentQuota` e `IIndexQueue`. Las opciones están en DF-51 | DF-51 | Plan de 006a | Fátima con Adrián | Abierto |
+| PD-18 | Ciclo `storage ↔ billing` por `IPlanLimitsProvider`: opción A aceptada (DF-51, ADR-0021, 2026-09-29). `storage` declara el puerto y `billing` lo implementa. No bloquea el plan de 005 ni el de 006a. Siguen abiertos `IAgentQuota`, `IIndexQueue` y las facturas con `IObjectStorage`; no son compuerta de 005 | DF-51 | El resto, antes de la spec que lo use (009, 016, 019). 005 no espera | Fátima con Adrián | Parcial |
 | PD-19 | Trabajos del worker sin actor bajo RLS, sin `BYPASSRLS` (purga de la papelera, conciliación de `espacio_usado`). Las opciones están en DF-52 | DF-52 | Plan de 005 | Abel con Adrián | Abierto |
 | PD-20 | `sharing` necesita `IPasswordHasher` de `identity` (DF-10), y ADR-0010 no permite `sharing → identity`. Hay dos salidas: un ADR que enmiende 0010 y `boundaries.js`, o mover el hasher a `shared` | ADR-0010, DF-10 | Spec 012 | Adrián | Abierto |
 | PD-21 | Cambios opcionales al flujo: implementar cuando los antecesores están en `Planificada` y ampliar los PR parciales de §4.8 | Conversación del 26/09 | — | Adrián | Abierto |
 | PD-22 | ¿Se carga Inter 800? Las hojas empaquetadas recientes lo traen; los mockups hechos a mano usan hasta 700 | `fix/000b-solo-inter` | — | Adrián | Abierto |
-| PD-31 | `INodeMetadataReader` figura como «backoffice → storage». Si `storage` lo implementa importándolo, se forma `storage → backoffice → storage`. Sigue la misma convención que DF-51, así que conviene sumarlo a ese hallazgo | `architecture.md` §5, DF-51 | Plan de 005 | Abel con Adrián | Abierto |
+| PD-31 | `INodeMetadataReader` figura como «backoffice → storage». Si `storage` lo implementa importándolo, se forma `storage → backoffice → storage`. La opción A de DF-51 (ADR-0021) no cierra este pendiente ni bloquea por sí misma el plan de 005 | `architecture.md` §5, DF-51 | Plan de 005 | Abel con Adrián | Abierto |
 | PD-40 | Pedidos de la 001 al plan de 006a: (1) oyente **idempotente** de `identity.client-account-verified` que crea la suscripción Personal; (2) **conciliación** idempotente que da Personal a toda cuenta `CLIENT` verificada sin suscripción, en su migración de datos o en un trabajo (ADR-0019); (3) lectura **pública** (sin sesión) de los planes activos con `id`, nombre, precio en centavos y una marca de plan gratuito, para la pantalla de registro (001 CA-22). Si 006a no los incluye, la 001 queda con `catalogo-no-disponible` y las cuentas verificadas sin plan | Plan 001 §6.12 y P-6, ADR-0019 | Plan de 006a | Fátima con Adrián | Abierto |
 
 ## Código y configuración

@@ -8,7 +8,7 @@
 | Requisitos | RF-19 (parcial), RNF-10, RNF-11 |
 | Depende de | 000 |
 | Habilita | 001 (lectura del catálogo), 005 y 007 (límites), 008 |
-| Última actualización | 2026-09-27 |
+| Última actualización | 2026-09-29 |
 
 ## 1. Contexto y problema
 
@@ -98,7 +98,7 @@ La tabla `plan` queda sembrada con los cuatro planes oficiales. Cualquier visita
   4. **Institucional**: Q450.00 (`45000` centavos), 2 TB (`2 199 023 255 552` bytes), máx. 2 GB (`2 147 483 648` bytes), 5 editores simultáneos, 10 000 consultas agente/mes, 100 versiones retenidas, 90 días en papelera.
 - **RN-2**: La tabla se llama `plan`, con columnas `id uuid PRIMARY KEY`, `nombre varchar NOT NULL`, `slug varchar UNIQUE NOT NULL`, `descripcion text`, `precio_centavos integer NOT NULL`, `cuota_bytes bigint NOT NULL`, `max_archivo_bytes bigint NOT NULL`, `max_editores integer NOT NULL`, `consultas_agente_mensual integer NOT NULL`, `versiones_retenidas integer NOT NULL`, `dias_retencion_papelera integer NOT NULL`, `creado_en timestamptz NOT NULL`, `actualizado_en timestamptz NOT NULL`.
 - **RN-3**: Los límites entre módulos salen solo de `IPlanLimitsProvider`. Ningún módulo externo ejecuta SQL contra `plan` (Art. VIII). El catálogo público (CA-8) es una fachada de `billing`.
-- **RN-4** (DF-51, opción A): `IPlanLimitsProvider` lo declara `storage` y lo implementa `billing`. `storage` no depende de `billing`. `editing` lo reutiliza desde `storage`, de quien ya depende. Para cumplir esta spec, `billing` no importa entidades de `storage`. El ciclo de las facturas (`billing` hacia `IObjectStorage`) se cierra en 009.
+- **RN-4** (DF-51, opción A, aceptada en ADR-0021 el 2026-09-29): `IPlanLimitsProvider` lo declara `storage` y lo implementa `billing`. `storage` no depende de `billing`. `editing` lo reutiliza desde `storage`, de quien ya depende. Para cumplir esta spec, `billing` no importa entidades de `storage`. Esta aceptación no bloquea el plan de 005: la carga consume el puerto dentro de `storage` y no espera a `IAgentQuota`, a `IIndexQueue` ni a la decisión de las facturas. El uso de `IObjectStorage` para facturas sigue abierto y se cierra en 009.
 - **RN-5**: 006a no crea filas en `suscripcion` ni consume eventos de `identity`. La cuenta nueva recibe los límites de Personal por CA-5. Crear la suscripción al verificar, si el producto lo mantiene, es un cambio de la 001 y de la 009, con su propio ADR de eventos.
 - **RN-6**: El identificador de cada plan es un UUID fijo (CA-9), de acuerdo con el Art. IX.6. El slug es la clave de negocio estable.
 
@@ -145,3 +145,4 @@ La tabla `plan` queda sembrada con los cuatro planes oficiales. Cualquier visita
 |---|---|---|---|
 | 2026-09-27 | Creación inicial en estado Borrador | Inicio de la spec de catálogo y límites | Fátima |
 | 2026-09-27 | CA-5 cerrada: sin suscripción se devuelve Personal y no se lee `usuario`. CA-6 lista `retainedVersions` y exige `bigint`. CA-8 catálogo público de solo lectura. CA-9 UUID fijos. RN-1 fija 1 GB = 1024³. RN-4 adopta DF-51 opción A. RN-5 deja la suscripción y el evento para 009. Se quita RNF-06. | El registro (001) necesita leer planes. La suscripción no cabe aquí, y `storage` → `billing` cierra un ciclo | Fátima. RN-4 queda a la espera del architect |
+| 2026-09-29 | RN-4 aceptada (ADR-0021). La opción A no bloquea el plan de 005 ni el de 006a. | El ciclo se rompe sin esperar `IAgentQuota`, `IIndexQueue` ni las facturas | Revisión de arquitectura |
