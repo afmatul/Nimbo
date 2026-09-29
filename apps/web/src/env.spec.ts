@@ -1,10 +1,39 @@
 import { loadWebEnv } from './env';
 
-const VALID = { APP_ENV: 'test', API_INTERNAL_URL: 'http://localhost:3000' };
+const VALID = {
+  APP_ENV: 'test',
+  API_INTERNAL_URL: 'http://localhost:3000',
+  API_PUBLIC_URL: 'http://localhost/api/v1',
+};
 
 describe('loadWebEnv', () => {
+  it('CA-20: falta `API_PUBLIC_URL` → issue que nombra la variable', () => {
+    const result = loadWebEnv({ APP_ENV: 'test', API_INTERNAL_URL: 'http://localhost:3000' });
+
+    expect(result).toEqual({ ok: false, issues: ['`API_PUBLIC_URL` es obligatoria'] });
+  });
+
+  it('CA-20: `http://` con `APP_ENV=staging` falla', () => {
+    const result = loadWebEnv({ ...VALID, APP_ENV: 'staging' });
+
+    expect(result).toEqual({
+      ok: false,
+      issues: ['`API_PUBLIC_URL` debe usar https en staging y en producción'],
+    });
+  });
+
+  it('CA-20: `https://` con `APP_ENV=staging` es válido', () => {
+    const result = loadWebEnv({
+      ...VALID,
+      APP_ENV: 'staging',
+      API_PUBLIC_URL: 'https://api.staging.nimbo.me/api/v1',
+    });
+
+    expect(result.ok).toBe(true);
+  });
+
   it('CA-18: falta `API_INTERNAL_URL` → issue que nombra la variable y el motivo', () => {
-    const result = loadWebEnv({ APP_ENV: 'test' });
+    const result = loadWebEnv({ APP_ENV: 'test', API_PUBLIC_URL: VALID.API_PUBLIC_URL });
 
     expect(result).toEqual({ ok: false, issues: ['`API_INTERNAL_URL` es obligatoria'] });
   });
@@ -16,7 +45,11 @@ describe('loadWebEnv', () => {
   });
 
   it('CA-18: varios errores → todos en una lista y sin valores', () => {
-    const result = loadWebEnv({ APP_ENV: 'prod-secreto', API_INTERNAL_URL: 'no-es-url' });
+    const result = loadWebEnv({
+      APP_ENV: 'prod-secreto',
+      API_INTERNAL_URL: 'no-es-url',
+      API_PUBLIC_URL: VALID.API_PUBLIC_URL,
+    });
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
@@ -30,7 +63,12 @@ describe('loadWebEnv', () => {
 
     expect(result).toEqual({
       ok: true,
-      env: { APP_ENV: 'test', API_INTERNAL_URL: 'http://localhost:3000', PORT: 3002 },
+      env: {
+        APP_ENV: 'test',
+        API_INTERNAL_URL: 'http://localhost:3000',
+        API_PUBLIC_URL: 'http://localhost/api/v1',
+        PORT: 3002,
+      },
     });
   });
 

@@ -57,27 +57,27 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
 
 ## Bloque 1 — PR-A «autorización en shared» (plan §6.1, §6.2, §6.6; ADR-0017 c.2) — depende de: `main` (000)
 
-- [ ] **T-01** Dependencias de Passport con versión exacta — CA: n/a — Depende: — — ~0,5 h
+- [x] **T-01** Dependencias de Passport con versión exacta — CA: n/a — Depende: — — ~0,5 h
   `pnpm --filter api add -E @nestjs/passport passport passport-jwt @nestjs/jwt` y `-D -E @types/passport-jwt`.
   Comprobar `pnpm typecheck` y `pnpm test` sin cambios. En la descripción del PR (y del de 001 PR-1): posible conflicto
   en `pnpm-lock.yaml`; lo resuelve quien integre segundo, combinando `package.json` y regenerando con `pnpm install`,
   nunca a mano (plan §9).
   Archivos: `apps/api/package.json`, `pnpm-lock.yaml`.
 
-- [ ] **T-02** [P] `contracts/shared`: roles y códigos de error — CA: CA-1, CA-5, CA-17 (tipos) — Depende: — — ~0,5 h
+- [x] **T-02** [P] `contracts/shared`: roles y códigos de error — CA: CA-1, CA-5, CA-17 (tipos) — Depende: — — ~0,5 h
   Prueba primero `packages/contracts/src/shared/roles.spec.ts`: `ROLES` es exactamente `CLIENT`, `ADMIN`, `SUPPORT`,
   `OPERATOR`; `roleSchema` acepta los cuatro y rechaza `client`, `''` y `ROOT`; `RoleName` es la unión;
   `SHARED_ERROR_CODES` contiene `SHARED_UNAUTHENTICATED` y `SHARED_FORBIDDEN`. Luego los archivos y la reexportación.
   Archivos: `packages/contracts/src/shared/{roles,error-codes,index}.ts`, `packages/contracts/src/shared/roles.spec.ts`, `packages/contracts/src/index.ts`.
 
-- [ ] **T-03** [P] `createActor` y `ALL_ROLES` — CA: CA-4, CA-9 — Depende: — — ~0,5 h
+- [x] **T-03** [P] `createActor` y `ALL_ROLES` — CA: CA-4, CA-9 — Depende: — — ~0,5 h
   Prueba primero `apps/api/src/shared/domain/actor.spec.ts`: `canReadContent` es `true` solo para `CLIENT` (tabla con los
   cuatro roles); el objeto está congelado (`Object.isFrozen`); `ALL_ROLES` = `Object.values(Role)` y es de solo
   lectura. Luego `createActor` en `actor.ts` y `ALL_ROLES` en `role.enum.ts`; exportar desde `shared/index.ts`
   (ajustar `index.spec.ts` si enumera exportaciones).
   Archivos: `apps/api/src/shared/domain/{actor,role.enum}.ts`, `apps/api/src/shared/domain/actor.spec.ts`, `apps/api/src/shared/index.ts`.
 
-- [ ] **T-04** Errores `UnauthenticatedError` e `InsufficientRoleError` + contrato de roles — CA: CA-1, CA-5, CA-6 — Depende: T-02, T-03 — ~1 h
+- [x] **T-04** Errores `UnauthenticatedError` e `InsufficientRoleError` + contrato de roles — CA: CA-1, CA-5, CA-6 — Depende: T-02, T-03 — ~1 h
   Prueba primero: `apps/api/src/shared/domain/errors/auth-errors.spec.ts` (`UnauthenticatedError extends
   UnauthorizedError`, `code = 'SHARED_UNAUTHENTICATED'`, 401; `InsufficientRoleError extends ForbiddenError`,
   `code = 'SHARED_FORBIDDEN'`, 403; mensajes exactos de plan §5) y
@@ -86,7 +86,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   desde `presentation`. Luego las clases y `errors/index.ts`.
   Archivos: `apps/api/src/shared/domain/errors/{unauthenticated,insufficient-role}.error.ts`, `apps/api/src/shared/domain/errors/{index.ts,auth-errors.spec.ts}`, `apps/api/src/shared/presentation/auth/roles-contract.spec.ts`.
 
-- [ ] **T-05** Puerto `IAccessTokenVerifier` y `ACCESS_TOKEN_STRATEGY` — CA: CA-2 — Depende: T-03 — ~0,5 h
+- [x] **T-05** Puerto `IAccessTokenVerifier` y `ACCESS_TOKEN_STRATEGY` — CA: CA-2 — Depende: T-03 — ~0,5 h
   Prueba primero en `apps/api/src/shared/index.spec.ts`: `shared` exporta `ACCESS_TOKEN_STRATEGY === 'jwt'` e
   `I_ACCESS_TOKEN_VERIFIER` (símbolo). Luego `i-access-token-verifier.port.ts` con `ACCESS_TOKEN_STRATEGY`,
   `I_ACCESS_TOKEN_VERIFIER`, `AccessTokenClaims`, `AccessTokenVerification` e `IAccessTokenVerifier` tal como plan §5
@@ -94,7 +94,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   el vencimiento con `IClock`».
   Archivos: `apps/api/src/shared/application/auth/i-access-token-verifier.port.ts`, `apps/api/src/shared/index.ts`, `apps/api/src/shared/index.spec.ts`.
 
-- [ ] **T-06** Suite de contrato (tramo puerto) + `TestAccessTokens` + `TestAccessTokenVerifier` — CA: CA-2 — Depende: T-01, T-05 — ~1 h
+- [x] **T-06** Suite de contrato (tramo puerto) + `TestAccessTokens` + `TestAccessTokenVerifier` — CA: CA-2 — Depende: T-01, T-05 — ~1 h
   Prueba primero `apps/api/test/support/access-token-verifier.contract.ts`: función
   `describeAccessTokenVerifierContract({ verifier, tokens, clock })` con el **tramo puerto**: válido → `valid: true`
   con `userId`, `role` y `sessionId`; vencido según `FixedClock` → `{ valid: false, reason: 'expired' }`; alterado en
@@ -105,7 +105,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   ['HS256']`, `ignoreExpiration` y vencimiento con el reloj de la prueba).
   Archivos: `apps/api/test/support/{access-token-verifier.contract,test-access-tokens,test-access-token-verifier}.ts`, `apps/api/test/support/test-access-token-verifier.spec.ts`.
 
-- [ ] **T-07** [P] `RequestPrincipal` y decoradores — CA: CA-4 — Depende: T-03 — ~1 h
+- [x] **T-07** [P] `RequestPrincipal` y decoradores — CA: CA-4 — Depende: T-03 — ~1 h
   Prueba primero `apps/api/src/shared/presentation/auth/decorators.spec.ts`: `@Public()` y `@Roles()` escriben sus
   metadatos en clase y método (el método manda al leer con `getAllAndOverride`); `@Roles()` sin argumentos no compila
   (`// @ts-expect-error`); `@CurrentActor()` devuelve lo que guardó `RequestPrincipal.set` y lanza
@@ -114,7 +114,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   del módulo, `set`/`get`) y los cuatro decoradores con `IS_PUBLIC` y `ROLES_KEY`.
   Archivos: `apps/api/src/shared/presentation/auth/{request-principal,public.decorator,roles.decorator,current-actor.decorator,current-session-id.decorator}.ts`, `apps/api/src/shared/presentation/auth/decorators.spec.ts`.
 
-- [ ] **T-08** `JwtAuthGuard.canActivate`: ruta pública y cabecera estricta — CA: CA-1 — Depende: T-01, T-04, T-05, T-07 — ~1 h
+- [x] **T-08** `JwtAuthGuard.canActivate`: ruta pública y cabecera estricta — CA: CA-1 — Depende: T-01, T-04, T-05, T-07 — ~1 h
   Prueba primero `apps/api/src/shared/presentation/auth/jwt-auth.guard.spec.ts` (primera parte): ruta `@Public()` →
   `true` **sin** llamar a `super.canActivate` ni leer la cabecera (también con un token inválido); sin cabecera →
   `missing_token`; `Basic …`, `Bearer` vacío, dos cabeceras `authorization`, espacios de más → `malformed_authorization`;
@@ -124,7 +124,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   false, undefined, ctx)`.
   Archivos: `apps/api/src/shared/presentation/auth/jwt-auth.guard.ts`, `apps/api/src/shared/presentation/auth/jwt-auth.guard.spec.ts`.
 
-- [ ] **T-09** `JwtAuthGuard.handleRequest` y bitácora `auth.unauthenticated` — CA: CA-2, CA-16 — Depende: T-08 — ~1 h
+- [x] **T-09** `JwtAuthGuard.handleRequest` y bitácora `auth.unauthenticated` — CA: CA-2, CA-16 — Depende: T-08 — ~1 h
   Prueba primero (segunda parte de `jwt-auth.guard.spec.ts`): `user` con `AccessTokenClaims` → `createActor` +
   `RequestPrincipal.set({ actor, sessionId })` y devuelve `user`; `info.name === 'TokenExpiredError'` o
   `info.reason === 'expired'` → `expired_token`; otro `info`, `user === false`, `err` no nulo o «Unknown authentication
@@ -133,14 +133,14 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   cabecera. Luego la implementación.
   Archivos: `apps/api/src/shared/presentation/auth/jwt-auth.guard.ts`, `apps/api/src/shared/presentation/auth/jwt-auth.guard.spec.ts`.
 
-- [ ] **T-10** [P] `RolesGuard` y bitácora `auth.forbidden` — CA: CA-5, CA-6, CA-16, DT-2 — Depende: T-04, T-07 — ~1 h
+- [x] **T-10** [P] `RolesGuard` y bitácora `auth.forbidden` — CA: CA-5, CA-6, CA-16, DT-2 — Depende: T-04, T-07 — ~1 h
   Prueba primero `apps/api/src/shared/presentation/auth/roles.guard.spec.ts`: ruta pública → `true`; sin `@Roles` →
   `undeclared_route` → `InsufficientRoleError`; rol no listado → `role_not_allowed`; `@Roles` de método sobrescribe al
   de clase; sin `Actor` → `UnauthenticatedError`; los rechazos registran `auth.forbidden` (`warn`) con `route`,
   `actorId`, `role`, `reason` y `requiredRoles`. Luego la implementación.
   Archivos: `apps/api/src/shared/presentation/auth/roles.guard.ts`, `apps/api/src/shared/presentation/auth/roles.guard.spec.ts`.
 
-- [ ] **T-11** `AuthGuardsModule` estático, `AppModule` y `@Public()` en salud — CA: CA-1, CA-3 — Depende: T-09, T-10 — ~0,5 h
+- [x] **T-11** `AuthGuardsModule` estático, `AppModule` y `@Public()` en salud — CA: CA-1, CA-3 — Depende: T-09, T-10 — ~0,5 h
   Prueba primero en `apps/api/src/shared/presentation/health.controller.spec.ts`: `HealthController` tiene `IS_PUBLIC`
   a nivel de clase; y en `apps/api/test/int/shared/health.int-spec.ts`, con los guards activos, `GET /health/live` y
   `/health/ready` responden 200 sin token y también con un `Bearer basura`. Luego `auth-guards.module.ts` (sin
@@ -148,7 +148,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   `app.module.ts` y `@Public()` en `HealthController`. El `worker` **no** importa `AuthGuardsModule`.
   Archivos: `apps/api/src/shared/presentation/auth/auth-guards.module.ts`, `apps/api/src/app.module.ts`, `apps/api/src/shared/presentation/health.controller.ts`, `apps/api/src/shared/presentation/health.controller.spec.ts`, `apps/api/test/int/shared/health.int-spec.ts`, `apps/api/src/shared/index.ts`.
 
-- [ ] **T-12** `TestJwtStrategy` y controlador sonda — CA: CA-1, CA-2, CA-4, CA-5, CA-6 — Depende: T-06, T-11 — ~1 h
+- [x] **T-12** `TestJwtStrategy` y controlador sonda — CA: CA-1, CA-2, CA-4, CA-5, CA-6 — Depende: T-06, T-11 — ~1 h
   Prueba primero `apps/api/test/support/test-jwt-strategy.spec.ts`: `validate(req)` con token válido devuelve los
   `claims` del verificador; con vencido devuelve `[false, { reason: 'expired' }]`; con inválido, `[false, { reason:
   'invalid' }]`; nunca lanza. Luego `TestJwtStrategy extends PassportStrategy(Strategy, ACCESS_TOKEN_STRATEGY)`
@@ -158,7 +158,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   `I_ACCESS_TOKEN_VERIFIER` → `TestAccessTokenVerifier`). Nunca en `src/`.
   Archivos: `apps/api/test/support/{test-jwt-strategy,probe.controller,probe.module}.ts`, `apps/api/test/support/test-jwt-strategy.spec.ts`.
 
-- [ ] **T-13** `createTestApp`: guards siempre y registro único de estrategia — CA: CA-1 (arnés) — Depende: T-12 — ~1 h
+- [x] **T-13** `createTestApp`: guards siempre y registro único de estrategia — CA: CA-1 (arnés) — Depende: T-12 — ~1 h
   Prueba primero `apps/api/test/int/setup/test-app.int-spec.ts`: sin opciones, una ruta sonda protegida responde 401
   sin token (los guards no se pueden apagar; **no** existe `guards: false`, cambio 7); `accessTokenStrategy: 'test'`
   (por defecto) monta `ProbeModule`; pedir `'test'` con un árbol que ya registra otra estrategia
@@ -168,7 +168,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   000 (`health`, `worker-health`, `bootstrap`, `correlation-id`…) siguen en verde con los guards activos.
   Archivos: `apps/api/test/int/setup/test-app.ts`, `apps/api/test/int/setup/test-app.int-spec.ts`.
 
-- [ ] **T-14** Suite de contrato, tramo HTTP — CA: CA-2 — Depende: T-13 — ~1 h
+- [x] **T-14** Suite de contrato, tramo HTTP — CA: CA-2 — Depende: T-13 — ~1 h
   Prueba primero: agregar a `access-token-verifier.contract.ts` el **tramo HTTP** (los mismos tokens del tramo puerto
   contra `GET /__probe/actor` con los guards globales: válido → 200 con el mismo `Actor`; vencido, alterado, otra clave,
   `alg: none`, `HS512`, *claims* rotos → 401 `SHARED_UNAUTHENTICATED`, y el `reason` de la bitácora coincide con el del
@@ -176,7 +176,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   `TestJwtStrategy` y `passport-jwt` real. Es la **única** suite de contrato; 002-PR-2 la reutiliza (002 CA-26).
   Archivos: `apps/api/test/support/access-token-verifier.contract.ts`, `apps/api/test/int/shared/access-token-contract.int-spec.ts`.
 
-- [ ] **T-15** CA-1 y CA-4 por HTTP — CA: CA-1, CA-4 — Depende: T-13 — ~1 h
+- [x] **T-15** CA-1 y CA-4 por HTTP — CA: CA-1, CA-4 — Depende: T-13 — ~1 h
   Prueba primero `apps/api/test/int/shared/auth-guards.int-spec.ts`: `/__probe/undeclared` y `/__probe/client` sin token
   → 401 con cuerpo validado por `errorResponseSchema` y espía del controlador sin llamadas; `/__probe/actor` con un token
   de cada rol devuelve `{ id, role, canReadContent }` (`true` solo para `CLIENT`); un middleware de prueba que escribe
@@ -184,21 +184,21 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   `sessionId` de `@CurrentSessionId()` (cambio 5). Sin código de producción nuevo salvo correcciones.
   Archivos: `apps/api/test/int/shared/auth-guards.int-spec.ts`.
 
-- [ ] **T-16** CA-5 y CA-6 por HTTP (sondas) — CA: CA-5, CA-6 — Depende: T-15 — ~0,5 h
+- [x] **T-16** CA-5 y CA-6 por HTTP (sondas) — CA: CA-5, CA-6 — Depende: T-15 — ~0,5 h
   Prueba en `auth-guards.int-spec.ts`: matriz `/__probe/client`, `/__probe/admin`, `/__probe/support`,
   `/__probe/operator`, `/__probe/admin-or-support` × cuatro roles (200 solo los listados; los demás 403
   `SHARED_FORBIDDEN`), y `/__probe/undeclared` con token válido → 403 (DT-2). La matriz de aislamiento con cuentas del
   mundo es T-42.
   Archivos: `apps/api/test/int/shared/auth-guards.int-spec.ts`.
 
-- [ ] **T-17** [P] Sin estrategia registrada → 401 — CA: CA-1, CA-2 — Depende: T-11 — ~0,5 h
+- [x] **T-17** [P] Sin estrategia registrada → 401 — CA: CA-1, CA-2 — Depende: T-11 — ~0,5 h
   Prueba primero `apps/api/test/int/shared/auth-guards.no-strategy.int-spec.ts` (archivo propio: el registro de
   Passport es por proceso): una app con `AuthGuardsModule` y un controlador de prueba, **sin** estrategia `'jwt'`; ruta
   no pública con cualquier `Bearer` → 401 `SHARED_UNAUTHENTICATED` y bitácora `reason: 'invalid_token'`; ruta pública
   → 200. Monta la app con `Test.createTestingModule` directo (no con `createTestApp`, que siempre registra la de prueba).
   Archivos: `apps/api/test/int/shared/auth-guards.no-strategy.int-spec.ts`.
 
-- [ ] **T-18** [P] Bitácoras de 401 y 403 sin datos sensibles — CA: CA-16 — Depende: T-13 — ~1 h
+- [x] **T-18** [P] Bitácoras de 401 y 403 sin datos sensibles — CA: CA-16 — Depende: T-13 — ~1 h
   Prueba primero `apps/api/test/int/shared/auth-logs.int-spec.ts` (con `LogSink`): 401 (`missing_token`,
   `malformed_authorization`, `invalid_token`, `expired_token`) y 403 (`role_not_allowed`, `undeclared_route`) con
   `correlationId`, `route` como patrón (una petición a `/__probe/actor/<uuid>?x=1` registra `…/:id` sin consulta),
@@ -206,7 +206,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   el valor de las cabeceras `x-user-id`/`x-actor-role`/`x-forwarded-user`. `http.domain_error` no repite el motivo.
   Archivos: `apps/api/test/int/shared/auth-logs.int-spec.ts`.
 
-- [ ] **T-19** README de `shared` y cierre del PR-A — CA: n/a — Depende: T-01…T-18 — ~1 h
+- [x] **T-19** README de `shared` y cierre del PR-A — CA: n/a — Depende: T-01…T-18 — ~1 h
   `apps/api/src/shared/README.md`: guards globales, «toda ruta se declara con `@Public()` o `@Roles(...)`» (con
   `@Roles(...ALL_ROLES)` para la sesión propia), decoradores, `IAccessTokenVerifier` + `ACCESS_TOKEN_STRATEGY` y la
   regla de una sola estrategia por app de prueba. `pnpm lint`, `pnpm typecheck`, `pnpm test` (cobertura ≥ 60 % en las
@@ -216,7 +216,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
 
 ## Bloque 2 — PR-B «roles de BD y withActor» (plan §4, §6.3, §6.4, §6.8, §6.10; ADR-0005) — depende de: **001 PR-1** (T-06, T-14)
 
-- [ ] **T-20** [P] [P×PR] Script de rol `10-nimbo-app.sh` — CA: CA-13 — Depende: — (hoy) — ~1 h
+- [x] **T-20** [P] [P×PR] Script de rol `10-nimbo-app.sh` — CA: CA-13 — Depende: — (hoy) — ~1 h
   Prueba primero `apps/api/test/int/shared/app-role-script.int-spec.ts`, con un `PostgreSqlContainer` propio (no el
   compartido): ejecutar el script **dos veces** (idempotente) y comprobar en `pg_roles` que `nimbo_app` tiene `LOGIN` y
   **no** `SUPERUSER`, `BYPASSRLS`, `CREATEDB`, `CREATEROLE` ni `REPLICATION`; puede conectarse con la contraseña dada;
@@ -225,7 +225,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   (`.gitattributes` si hace falta).
   Archivos: `infra/postgres/init/10-nimbo-app.sh`, `apps/api/test/int/shared/app-role-script.int-spec.ts`, `.gitattributes` (si aplica).
 
-- [ ] **T-21** [P×PR] Compose, `.env.example` y `pnpm db:app-role` — CA: CA-13 — Depende: T-20 — ~0,5 h
+- [x] **T-21** [P×PR] Compose, `.env.example` y `pnpm db:app-role` — CA: CA-13 — Depende: T-20 — ~0,5 h
   `compose.yml`: en `postgres`, `NIMBO_APP_DB_PASSWORD: ${NIMBO_APP_DB_PASSWORD}` y el volumen
   `./infra/postgres/init/10-nimbo-app.sh:/docker-entrypoint-initdb.d/10-nimbo-app.sh:ro`. `.env.example`:
   `NIMBO_APP_DB_PASSWORD=nimbo_app` («debe coincidir con `DATABASE_URL`») y el comentario nuevo de `POSTGRES_USER`
@@ -235,7 +235,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   cambia aquí (lo hace T-24, con los permisos).
   Archivos: `compose.yml`, `.env.example`, `package.json`.
 
-- [ ] **T-22** [P] [P×PR] Lint `rls.js` (PD-26) — CA: CA-12 — Depende: — (hoy) — ~1 h
+- [x] **T-22** [P] [P×PR] Lint `rls.js` (PD-26) — CA: CA-12 — Depende: — (hoy) — ~1 h
   Prueba primero `packages/config/eslint/rls.spec.ts` (con la API `ESLint` y `overrideConfig`): un *fixture* con
   `query('SELECT set_config($1, $2, true)')` y otro con `` `SET LOCAL app.actor_id = …` `` o `SET app.` fuera de
   `**/shared/infrastructure/persistence/typeorm-transaction-runner.ts` fallan con un mensaje que nombra `withActor`; el
@@ -244,7 +244,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   inclusión desde `nest.js`.
   Archivos: `packages/config/eslint/{rls,nest}.js`, `packages/config/eslint/rls.spec.ts`, `packages/config/jest.config.js` (si falta).
 
-- [ ] **T-23** `migrationEnvSchema` y uso en migraciones — CA: CA-13 — Depende: 001 PR-1 — ~1 h
+- [x] **T-23** `migrationEnvSchema` y uso en migraciones — CA: CA-13 — Depende: 001 PR-1 — ~1 h
   Prueba primero en `apps/api/src/shared/infrastructure/config/load-env.spec.ts` (o `env.schema.spec.ts`):
   `migrationEnvSchema` exige `DATABASE_MIGRATION_URL` (URL) y **no** cae a `DATABASE_URL` si falta (`config.invalid`);
   no forma parte de `apiEnvSchema` ni de `workerEnvSchema`. Luego el esquema en `env.schema.ts`, `data-source.cli.ts`
@@ -252,7 +252,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   `src/scripts/migrate.ts` con el mismo esquema.
   Archivos: `apps/api/src/shared/infrastructure/config/env.schema.ts`, `apps/api/src/shared/infrastructure/config/load-env.spec.ts`, `apps/api/src/migrations/data-source.cli.ts`, `apps/api/src/scripts/migrate.ts`.
 
-- [ ] **T-24** [P] `env:check`, redacción y `.env.example` de URLs — CA: CA-13, CA-16 — Depende: T-23 — ~0,5 h
+- [x] **T-24** [P] `env:check`, redacción y `.env.example` de URLs — CA: CA-13, CA-16 — Depende: T-23 — ~0,5 h
   Prueba primero: `scripts/check-env-example.spec.ts` (el grupo `migrations` exige `DATABASE_MIGRATION_URL` en
   `.env.example`) y `apps/api/src/shared/infrastructure/logging/redact-deep.spec.ts` (`DATABASE_MIGRATION_URL` se
   redacta como URL de conexión). Luego `collectSchemaKeys` con `migrations: Object.keys(migrationEnvSchema.shape)`,
@@ -260,7 +260,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   `DATABASE_MIGRATION_URL=postgres://nimbo:nimbo@localhost:5432/nimbo`.
   Archivos: `scripts/check-env-example.{ts,spec.ts}`, `apps/api/src/shared/infrastructure/logging/{redacted-fields.ts,redact-deep.spec.ts}`, `.env.example`.
 
-- [ ] **T-25** Arnés con dos roles: aprovisionar y migrar como dueño — CA: CA-13, CA-15 — Depende: T-20, T-23, 001 PR-1 (T-06) — ~1 h
+- [x] **T-25** Arnés con dos roles: aprovisionar y migrar como dueño — CA: CA-13, CA-15 — Depende: T-20, T-23, 001 PR-1 (T-06) — ~1 h
   Prueba primero: primer caso de `apps/api/test/isolation/database-roles.iso-spec.ts` — `env().DATABASE_MIGRATION_URL`
   es el dueño (`getConnectionUri()`) y el rol `nimbo_app` existe en el contenedor compartido. Luego `containers.ts`
   (`withCopyFilesToContainer([10-nimbo-app.sh → /docker-entrypoint-initdb.d/])`, `withEnvironment({
@@ -268,7 +268,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   `DATABASE_MIGRATION_URL`. En esta tarea `DATABASE_URL` sigue siendo el dueño (lo cambia T-26, que da los permisos).
   Archivos: `apps/api/test/int/setup/{containers,global-setup,migrate}.ts`, `apps/api/test/isolation/database-roles.iso-spec.ts`.
 
-- [ ] **T-26** Migración `conceder-permisos-nimbo-app` y la app como `nimbo_app` — CA: CA-13 — Depende: T-25 — ~1 h
+- [x] **T-26** Migración `conceder-permisos-nimbo-app` y la app como `nimbo_app` — CA: CA-13 — Depende: T-25 — ~1 h
   Prueba primero `apps/api/test/int/shared/migrations-nimbo-app.int-spec.ts`: dentro de una transacción del dueño que
   se revierte, `ALTER ROLE nimbo_app RENAME TO …` → el `up` falla con «Falta el rol nimbo_app: ejecuta pnpm
   db:app-role…»; `ALTER ROLE nimbo_app BYPASSRLS` → falla con el mensaje de ADR-0005; `down` y de nuevo `up` sin error.
@@ -277,21 +277,21 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   el rol sin privilegios. `run → revert → run` en local (evidencia en «Notas del developer»).
   Archivos: `apps/api/src/migrations/20260928110000-conceder-permisos-nimbo-app.ts`, `apps/api/test/int/shared/migrations-nimbo-app.int-spec.ts`, `apps/api/test/int/setup/containers.ts`.
 
-- [ ] **T-27** Migración `crear-funciones-de-actor` — CA: CA-12 — Depende: T-26 — ~0,5 h
+- [x] **T-27** Migración `crear-funciones-de-actor` — CA: CA-12 — Depende: T-26 — ~0,5 h
   Prueba primero en `migrations-nimbo-app.int-spec.ts`: como `nimbo_app`, sin fijar nada, `nimbo_actor_id()` y
   `nimbo_actor_role()` son `NULL`; tras `set_config('app.actor_id', <uuid>, true)` en una transacción devuelven el
   valor y el tipo es `uuid`; con `''` devuelven `NULL`; `down` las elimina. Luego
   `20260928110100-crear-funciones-de-actor.ts` con el SQL de plan §4 (c).
   Archivos: `apps/api/src/migrations/20260928110100-crear-funciones-de-actor.ts`, `apps/api/test/int/shared/migrations-nimbo-app.int-spec.ts`.
 
-- [ ] **T-28** `TransactionContext` con ámbito de actor — CA: CA-12 — Depende: 001 PR-1 (T-14) — ~1 h
+- [x] **T-28** `TransactionContext` con ámbito de actor — CA: CA-12 — Depende: 001 PR-1 (T-14) — ~1 h
   Prueba primero en el `*.spec.ts` de `TransactionContext` (de 001 T-14): el contexto guarda `{ manager, actor? }`;
   `requireActorScope(actor)` sin contexto o con contexto sin actor lanza `ActorScopeMissingError`; con otro `id` u otro
   rol lanza `ActorScopeConflictError`; con el mismo actor devuelve el `EntityManager`. Los dos errores son `Error`
   simples (no `DomainError`: salen como 500). Luego los cambios en `transaction-context.ts` y los errores.
   Archivos: `apps/api/src/shared/infrastructure/persistence/{transaction-context,actor-scope.errors}.ts`, su `*.spec.ts`.
 
-- [ ] **T-29** `ITransactionRunner.withActor` — CA: CA-12 — Depende: T-28 — ~1 h
+- [x] **T-29** `ITransactionRunner.withActor` — CA: CA-12 — Depende: T-28 — ~1 h
   Prueba primero en `typeorm-transaction-runner.spec.ts` (de 001 T-14, con `DataSource` falso): `actor.id` que no es
   UUID o `role` fuera de `Role` → error antes de abrir la transacción; sin contexto → una transacción, una sola
   `query('SELECT set_config($1, $2, true), set_config($3, $4, true)', ['app.actor_id', id, 'app.actor_role', role])` y
@@ -301,7 +301,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   que el lint de T-22 permite).
   Archivos: `apps/api/src/shared/application/persistence/i-transaction-runner.port.ts`, `apps/api/src/shared/infrastructure/persistence/typeorm-transaction-runner.{ts,spec.ts}`.
 
-- [ ] **T-30** CA-12 contra Postgres real — CA: CA-12 — Depende: T-27, T-29 — ~1 h
+- [x] **T-30** CA-12 contra Postgres real — CA: CA-12 — Depende: T-27, T-29 — ~1 h
   Prueba `apps/api/test/isolation/rls-context.iso-spec.ts` con `DataSource` de `nimbo_app` y `extra.max = 1`: dos
   `withActor` seguidos con actores distintos ven cada uno su `current_setting('app.actor_id')` con el mismo
   `pg_backend_pid()`; después, `current_setting('app.actor_id', true)` vacío o `NULL` y `nimbo_actor_id()` `NULL`; 20
@@ -309,7 +309,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   `ActorScopeConflictError`; `requireActorScope` fuera de `withActor` lanza.
   Archivos: `apps/api/test/isolation/rls-context.iso-spec.ts`.
 
-- [ ] **T-31** `DatabaseRoleCheck` — CA: CA-13, DT-4 — Depende: T-26 — ~1 h
+- [x] **T-31** `DatabaseRoleCheck` — CA: CA-13, DT-4 — Depende: T-26 — ~1 h
   Prueba primero `apps/api/src/shared/infrastructure/persistence/database-role.check.spec.ts` (con `DataSource` falso):
   cualquiera de `rolsuper`, `rolbypassrls`, `owns_tables` en `true` → registra `db.role_rejected` (`fatal`, solo los
   tres booleanos, sin URL) y lanza con «La API debe conectarse como nimbo_app; revisa DATABASE_URL y ejecuta pnpm
@@ -318,7 +318,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   `worker`).
   Archivos: `apps/api/src/shared/infrastructure/persistence/database-role.check.{ts,spec.ts}`, `apps/api/src/shared/shared.module.ts`.
 
-- [ ] **T-32** CA-13 contra Postgres real — CA: CA-13 — Depende: T-27, T-31 — ~1 h
+- [x] **T-32** CA-13 contra Postgres real — CA: CA-13 — Depende: T-27, T-31 — ~1 h
   Completar `apps/api/test/isolation/database-roles.iso-spec.ts`: la conexión de la app no es superusuario ni
   `BYPASSRLS`, no es dueña de ninguna tabla de `public` y no tiene `CREATE` en `public`; todas las tablas son del rol
   que migra; matriz de permisos (`usuario` y `token_cuenta` sin `DELETE`, `migracion` sin permisos, tablas nuevas con
@@ -327,14 +327,14 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   suites `bootstrap` de `api` y `worker` siguen en verde con `nimbo_app`.
   Archivos: `apps/api/test/isolation/database-roles.iso-spec.ts`.
 
-- [ ] **T-33** [P] `ambientes.md` y README de `shared` (persistencia) — CA: n/a — Depende: T-21, T-24, T-29 — ~0,5 h
+- [x] **T-33** [P] `ambientes.md` y README de `shared` (persistencia) — CA: n/a — Depende: T-21, T-24, T-29 — ~0,5 h
   `docs/operations/ambientes.md`: filas de `DATABASE_URL` (ahora `nimbo_app`), `DATABASE_MIGRATION_URL` y
   `NIMBO_APP_DB_PASSWORD` (tabla de plan §6.10) y el paso «volumen existente → `pnpm db:app-role`». README de `shared`:
   `withActor`, `requireActorScope`, regla de reentrada, lint `rls.js`, `DatabaseRoleCheck` y la regla de permisos de
   las migraciones siguientes (plan §4 (b)).
   Archivos: `docs/operations/ambientes.md`, `apps/api/src/shared/README.md`.
 
-- [ ] **T-34** Cierre del PR-B y aviso `pnpm db:app-role` — CA: n/a — Depende: T-20…T-33 — ~0,5 h
+- [x] **T-34** Cierre del PR-B y aviso `pnpm db:app-role` — CA: n/a — Depende: T-20…T-33 — ~0,5 h
   `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:int`, `pnpm test:isolation`, `pnpm env:check`;
   `migration:run → revert → revert → run` en el compose local; `\du` y `\dp` guardados para `verification.md`
   (revisión manual de CA-13). **Descripción del PR** (obligatorio, plan §9 y §11.6), en un bloque destacado al inicio:
@@ -344,9 +344,28 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   API no arranca (`db.role_rejected`)». Repetir el aviso en el canal del equipo. Resumen («PR parcial»).
   Archivos: `specs/003-roles-y-acceso/tasks.md` (casillas).
 
+### Resumen del PR-B (PR parcial de 003)
+
+> **Después de integrar este PR, cada integrante debe:**
+> 1. agregar `NIMBO_APP_DB_PASSWORD`, `DATABASE_URL` de `nimbo_app` y `DATABASE_MIGRATION_URL` a su `.env` (ver
+>    `.env.example`);
+> 2. correr `pnpm db:app-role` (su volumen de Postgres ya existe y el script de inicio no se vuelve a ejecutar);
+> 3. `pnpm --filter api migration:run`.
+>
+> **Sin esto la API no arranca (`db.role_rejected`).** Repetir este aviso en el canal del equipo.
+
+PR parcial de 003 (plan §6.12): roles de base de datos y `withActor`, T-20…T-34. Cubre **CA-12** (el actor vive solo
+en su transacción y en su conexión) y **CA-13** (la app corre como `nimbo_app`, sin superusuario, `BYPASSRLS` ni
+propiedad de tablas, y no arranca si no). Entrega el script de rol y `pnpm db:app-role`, `migrationEnvSchema` con
+`DATABASE_MIGRATION_URL`, el arnés con dos roles, las migraciones `conceder-permisos-nimbo-app` y
+`crear-funciones-de-actor`, `ITransactionRunner.withActor` con `requireActorScope`, `DatabaseRoleCheck`, el lint
+`rls.js`, la redacción y `env:check` de la URL nueva, `ambientes.md` y el README de `shared`. Sin políticas RLS (las
+escribe 005). Pendiente fuera de esta rama: `db:app-role` y `migration:run` en el compose local de cada integrante, y
+las actualizaciones del `architect` al integrar (plan §10.4).
+
 ## Bloque 3 — PR-C «access» (plan §6.5; ADR-0010) — depende de: PR-A (T-03) y PR-B (T-28, T-29)
 
-- [ ] **T-35** [P] [P×PR] Dominio de `access`: niveles, acciones y políticas — CA: CA-8, DT-10 — Depende: — (hoy) — ~1 h
+- [x] **T-35** [P] [P×PR] Dominio de `access`: niveles, acciones y políticas — CA: CA-8, DT-10 — Depende: — (hoy) — ~1 h
   Prueba primero `apps/api/src/modules/access/domain/policies/access-policies.spec.ts`: la tabla de plan §6.5 completa
   (tres niveles × once `Action`); un valor de `Action` desconocido (forzado con `as Action`) negado para Editor y
   Viewer y permitido para Owner; `policyFor` es exhaustivo por tipo y el mapa está congelado. Luego
@@ -354,7 +373,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   Editor y Viewer) y `access-policies.ts`. Sin Nest ni TypeORM.
   Archivos: `apps/api/src/modules/access/domain/{access-level.enum,action.enum}.ts`, `apps/api/src/modules/access/domain/policies/{i-access-policy,owner.policy,editor.policy,viewer.policy,access-policies}.ts`, `apps/api/src/modules/access/domain/policies/access-policies.spec.ts`.
 
-- [ ] **T-36** `PermissionResolver` e `IAccessLevelReader` — CA: CA-9, CA-8 — Depende: T-03, T-35 — ~1 h
+- [x] **T-36** `PermissionResolver` e `IAccessLevelReader` — CA: CA-9, CA-8 — Depende: T-03, T-35 — ~1 h
   Prueba primero `apps/api/src/modules/access/application/permission-resolver.spec.ts`: los tres roles internos ×
   `VIEW`, `DOWNLOAD`, `PREVIEW`, `EDIT`, `QUERY_AGENT` → `can` es `false` y `levelFor` es `null`, y el lector falso
   **no** se llama; `nodeId` que no es UUID → `null` sin consultar; `CLIENT` con nivel `EDITOR` → `can(EDIT)` `true`,
@@ -362,21 +381,21 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   el servicio (`actor` primer parámetro, DF-01).
   Archivos: `apps/api/src/modules/access/application/{permission-resolver,i-access-level-reader.port}.ts`, `apps/api/src/modules/access/application/permission-resolver.spec.ts`.
 
-- [ ] **T-37** [P] `accessibleNodes` y `AccessibleNodesFragment` — CA: CA-9, CA-10 (forma) — Depende: T-03 — ~0,5 h
+- [x] **T-37** [P] `accessibleNodes` y `AccessibleNodesFragment` — CA: CA-9, CA-10 (forma) — Depende: T-03 — ~0,5 h
   Prueba primero `apps/api/src/modules/access/infrastructure/sql/accessible-nodes.spec.ts`: para los cuatro roles (en
   003 también `CLIENT`) devuelve el conjunto vacío tipado `SELECT NULL::uuid AS nodo_id, NULL::text AS tipo_nodo,
   NULL::text AS nivel WHERE false`; todas las claves de `parameters` empiezan por `access_`; función pura, sin DI.
   Luego la función.
   Archivos: `apps/api/src/modules/access/infrastructure/sql/accessible-nodes.{ts,spec.ts}`.
 
-- [ ] **T-38** `SqlAccessLevelReader` contra Postgres — CA: CA-10 (parcial), CA-9 — Depende: T-29, T-36, T-37 — ~1 h
+- [x] **T-38** `SqlAccessLevelReader` contra Postgres — CA: CA-10 (parcial), CA-9 — Depende: T-29, T-36, T-37 — ~1 h
   Prueba primero `apps/api/test/int/access/sql-access-level-reader.int-spec.ts` (como `nimbo_app`): dentro de
   `withActor` la consulta `SELECT nivel FROM (<fragmento>) accesibles WHERE nodo_id = :access_node_id` con precedencia
   `OWNER > EDITOR > VIEWER` y `LIMIT 1` **se ejecuta** y devuelve `null`; fuera de `withActor` lanza
   `ActorScopeMissingError`. Luego el adaptador (`EntityManager` solo de `TransactionContext.requireActorScope`).
   Archivos: `apps/api/src/modules/access/infrastructure/sql/sql-access-level-reader.ts`, `apps/api/test/int/access/sql-access-level-reader.int-spec.ts`.
 
-- [ ] **T-39** `AccessModule`, `index.ts`, `AppModule` y README — CA: CA-8, CA-9 — Depende: T-38 — ~1 h
+- [x] **T-39** `AccessModule`, `index.ts`, `AppModule` y README — CA: CA-8, CA-9 — Depende: T-38 — ~1 h
   Prueba primero `apps/api/src/modules/access/index.spec.ts`: exporta exactamente `AccessModule`,
   `PermissionResolver`, `accessibleNodes`, `AccessLevel`, `Action` (y el tipo `AccessibleNodesFragment`); y en
   `sql-access-level-reader.int-spec.ts`, `PermissionResolver` se resuelve desde `AccessModule`. Luego
@@ -385,14 +404,34 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   §6.11). `pnpm lint` confirma la frontera `access → shared` (ADR-0008).
   Archivos: `apps/api/src/modules/access/{access.module,index}.ts`, `apps/api/src/modules/access/index.spec.ts`, `apps/api/src/modules/access/README.md`, `apps/api/src/app.module.ts`.
 
-- [ ] **T-40** Cierre del PR-C — CA: n/a — Depende: T-35…T-39 — ~0,5 h
+- [x] **T-40** Cierre del PR-C — CA: n/a — Depende: T-35…T-39 — ~0,5 h
   `pnpm lint`, `pnpm typecheck`, `pnpm test` (cobertura ≥ 60 % en `domain/` y `application/` de `access`, RNF-11),
   `pnpm test:int`, `pnpm test:isolation`. Resumen en el PR («PR parcial»).
   Archivos: `specs/003-roles-y-acceso/tasks.md` (casillas).
 
+### Resumen del PR-C (PR parcial de 003)
+
+PR parcial de 003 (plan §6.12): módulo `access` (M3a), T-35…T-40, sobre PR-A (integrado por *merge*) y PR-B. Cubre
+**CA-8** (tabla de tres niveles × once acciones, cerrada por defecto para Editor y Viewer) y **CA-9** (los roles
+internos reciben `false`/`null` sin consultar; `accessibleNodes` les da el conjunto vacío tipado), y deja probado
+contra Postgres el contrato de `levelFor` (parte de **CA-10**; el resto, con 005). Entrega `AccessLevel`, `Action`,
+`IAccessPolicy` y las tres políticas, `PermissionResolver`, `IAccessLevelReader` → `SqlAccessLevelReader` (solo con el
+`EntityManager` de `requireActorScope`), `accessibleNodes` + `AccessibleNodesFragment`, `AccessModule` en `AppModule`,
+`index.ts` y el README del módulo (qué agregan 005 y 012). Sin tablas ni migraciones.
+
+- **Archivo de 001 tocado**: `packages/config/eslint/shared-boundaries.js` se amplió en `b804897` para que `shared`
+  pueda importar de la raíz de `@nimbo/contracts` `ROLES`, `RoleName`, `SHARED_ERROR_CODES` y `SharedErrorCode`
+  (contratos de `contracts/shared`, T-02/T-04). Lo revisa quien integre 001.
+- **Decisión pendiente para el `architect`**: si `shared` debe exportar un `isUuid` (hoy `PermissionResolver` repite
+  el patrón UUID que ya valida `withActor`).
+- Pruebas (Docker): `pnpm lint`, `pnpm typecheck`, `pnpm test` y `pnpm test:isolation` en verde; `pnpm test:int`
+  159/160: falla solo `dotenv-bootstrap.int-spec.ts`, conocido (el compose local no tiene `nimbo_app`; aviso del
+  PR-B). Cobertura de `access`: `domain/` 100 % (`policies/` 92,9 % líneas, rama `never` del `switch` sin cubrir),
+  `application/` 100 %.
+
 ## Bloque 4 — PR-D «arnés de aislamiento y rutas» (plan §6.2, §6.7; CA-3, CA-7, CA-11, CA-15) — depende de: PR-A, PR-B, PR-C; T-45 de **001 PR-3**
 
-- [ ] **T-41** Mundo de aislamiento — CA: CA-15, D-3 — Depende: T-13, T-26, T-39 — ~1 h
+- [x] **T-41** Mundo de aislamiento — CA: CA-15, D-3 — Depende: T-13, T-26, T-39 — ~1 h
   Prueba primero `apps/api/test/isolation/isolation-world.iso-spec.ts`: el mundo crea dos clientes casi idénticos
   (mismo nombre visible, correos que difieren en un carácter, mismo estado y fechas) y una cuenta por rol interno,
   insertados con el rol **dueño**; `tokenFor(cuenta)` da un token que `/__probe/actor` acepta con ese `id` y rol;
@@ -401,27 +440,27 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   `TestAccessTokens` (002-PR-2 lo cambia a tokens reales) y `appAs` con `createTestApp`.
   Archivos: `apps/api/test/isolation/setup/isolation-world.ts`, `apps/api/test/isolation/isolation-world.iso-spec.ts`.
 
-- [ ] **T-42** [P] Matriz de roles y `Actor` en la suite de aislamiento — CA: CA-4, CA-5, CA-6 — Depende: T-41 — ~1 h
+- [x] **T-42** [P] Matriz de roles y `Actor` en la suite de aislamiento — CA: CA-4, CA-5, CA-6 — Depende: T-41 — ~1 h
   Prueba `apps/api/test/isolation/roles-and-actor.iso-spec.ts` con cuentas del mundo: CA-4, se envían `id`, `userId`,
   `role` y `actor` en la ruta (`/__probe/actor/:id`), el cuerpo (`POST /__probe/actor`), la consulta y las cabeceras
   (`x-user-id`, `x-actor-role`, `x-forwarded-user`), y el `Actor` no cambia; CA-5, `/__probe/client` con los cuatro
   roles; CA-6, las cuatro rutas internas × cuatro roles.
   Archivos: `apps/api/test/isolation/roles-and-actor.iso-spec.ts`.
 
-- [ ] **T-43** [P] Roles internos sin contenido, contra la base — CA: CA-9 — Depende: T-41 — ~0,5 h
+- [x] **T-43** [P] Roles internos sin contenido, contra la base — CA: CA-9 — Depende: T-41 — ~0,5 h
   Prueba `apps/api/test/isolation/access-internal-roles.iso-spec.ts`: `PermissionResolver` real, dentro de `withActor`
   como cada rol interno del mundo, da `false` para las acciones de contenido y `null` en `levelFor`; `accessibleNodes`
   ejecutado como subconsulta da 0 filas para cada rol.
   Archivos: `apps/api/test/isolation/access-internal-roles.iso-spec.ts`.
 
-- [ ] **T-44** [P] Recorredor de rutas — CA: CA-7, DT-2 — Depende: T-07 — ~1 h
+- [x] **T-44** [P] Recorredor de rutas — CA: CA-7, DT-2 — Depende: T-07 — ~1 h
   Prueba primero `apps/api/test/support/route-declarations.spec.ts`: con un módulo de prueba que tiene una ruta sin
   declarar, otra con `@Public()` y `@Roles()` a la vez y otras bien declaradas, el recorredor devuelve `{ method,
   path, public, roles }` con el prefijo global y lista las dos malas por método y ruta. Luego
   `route-declarations.ts` con `DiscoveryService`, `MetadataScanner` y `Reflector`.
   Archivos: `apps/api/test/support/route-declarations.{ts,spec.ts}`.
 
-- [ ] **T-45** CA-3 y CA-7 sobre la API completa (+ `@Public()` pendientes de 001) — CA: CA-3, CA-7 — Depende: T-44, **001 PR-3** — ~1 h
+- [x] **T-45** CA-3 y CA-7 sobre la API completa (+ `@Public()` pendientes de 001) — CA: CA-3, CA-7 — Depende: T-44, **001 PR-3** — ~1 h
   Prueba primero `apps/api/test/int/shared/route-declarations.int-spec.ts` con `AppModule` completo: ninguna ruta sin
   declarar ni con las dos; las rutas `@Public()` son **exactamente** la lista explícita (salud `live`/`ready`,
   `auth/register`, `auth/verify-email`, `auth/resend-verification`; las de 002 y 006a se agregan con sus PR); `GET
@@ -430,7 +469,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   siguen en verde.
   Archivos: `apps/api/test/int/shared/route-declarations.int-spec.ts`, `apps/api/src/modules/identity/presentation/auth.controller.ts` (solo si falta).
 
-- [ ] **T-46** CA-11: 404 uniforme — CA: CA-11 (parte de 003) — Depende: T-12, T-41 — ~1 h
+- [x] **T-46** CA-11: 404 uniforme — CA: CA-11 (parte de 003) — Depende: T-12, T-41 — ~1 h
   Prueba primero `apps/api/test/int/shared/not-found-uniformity.int-spec.ts`: `GET /__probe/resources/:id` como un
   cliente con el `id` de un recurso de **otra** cuenta y con un UUID inexistente → mismo `status` (404), mismo
   `code` (`PROBE_RESOURCE_NOT_FOUND`), mismas cabeceras salvo `x-correlation-id` y mismo cuerpo salvo `correlationId`;
@@ -438,12 +477,36 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   que filtra por `actor.id` **en la búsqueda** (no después) y un `NotFoundError` de prueba.
   Archivos: `apps/api/test/support/probe.controller.ts`, `apps/api/test/int/shared/not-found-uniformity.int-spec.ts`.
 
-- [ ] **T-47** CA-15 y cierre del PR-D — CA: CA-15 — Depende: T-41…T-46 — ~1 h
+- [x] **T-47** CA-15 y cierre del PR-D — CA: CA-15 — Depende: T-41…T-46 — ~1 h
   `pnpm test:isolation` corre como `nimbo_app`: `roles-and-actor`, `access-internal-roles`, `rls-context`,
   `database-roles`, `isolation-world` y la `identity-enumeration.iso-spec.ts` de 001 sin cambios. Se conserva
   `placeholder.iso-spec.ts` (`ISOLATION_FORCE_FAIL=1` hace fallar la suite; evidencia en «Notas del developer»). `pnpm
   lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:int`. Resumen en el PR («PR parcial»).
   Archivos: `specs/003-roles-y-acceso/tasks.md` (casillas).
+
+### Resumen del PR-D (PR parcial de 003)
+
+PR parcial de 003 (plan §6.12): arnés de aislamiento y rutas, T-41…T-47, sobre PR-A, PR-B y PR-C. Cubre **CA-15**
+(mundo de aislamiento: dos clientes casi idénticos y una cuenta por rol interno, insertados como el dueño, y la app
+como `nimbo_app`), **CA-3** (las rutas `@Public()` de la API completa son exactamente la lista explícita y ninguna
+responde 401 sin token), **CA-7** (toda ruta declara `@Public()` o `@Roles(...)`, y ninguna las dos) y la parte de 003
+de **CA-11** (404 uniforme para lo ajeno y lo inexistente); repite CA-4, CA-5, CA-6 y CA-9 con las cuentas del mundo.
+Deja listos para 005 `Actor`, `withActor` y `accessibleNodes`, con el mundo (`aClient()`, `anInternal(role)`,
+`tokenFor`, `appAs`) y el recorredor de rutas (`listRouteDeclarations`) en `apps/api/test/`. Sin cambios en `src/`,
+tablas ni migraciones.
+
+- **Revisión atendida**: I-1 (CA-9 con un lector que daría `OWNER`, `a1953b1`), I-2 (`requiredEnv` y
+  `connectAsOwner` compartidos en `test/support/database-urls`, `6d578e3`) y las sugerencias 1, 2, 3, 4, 6 y 7:
+  `createTestApp` relanza el error de `init` aunque falle el cierre (`bc32712`); el mundo inserta en una transacción y
+  los `afterAll` no tapan el fallo de `beforeAll` (`c3e9931`); un solo env para `createTestApp` y `AppModule.forRoot`
+  y CA-3 sin token sobre cada ruta pública (`650f257`); títulos con su CA (`6294c43`); el comentario de
+  `roles-and-actor` aclara que `TestJwtStrategy` no consulta `usuario` hasta 002-PR-2 (`fcaddd6`).
+- **Revisión no atendida (fuera de alcance)**: exportar `API_PREFIX` desde `src/` (hoy la suite de rutas repite
+  `'api/v1'`) y compartir entre guards y recorredor la precedencia `getAllAndOverride` (hoy el recorredor la repite).
+  Ambas tocan `shared` de producción; quedan para quien retome la configuración HTTP.
+- Pruebas (Docker): `pnpm lint`, `pnpm typecheck` en verde; `pnpm test` 837/837 (raíz 33, `config` 7, `contracts`
+  106, `api` 500, `web` 191); `pnpm test:int` 272/272 en 38 suites, sin reintentos (incluida `dotenv-bootstrap`);
+  `pnpm test:isolation` 97/97 en 7 suites; con `ISOLATION_FORCE_FAIL=1`, 96/97 y salida 1.
 
 ## Bloque 5 — PR-F «web» (plan §6.9; D-5, D-8; sin E2E, PD-41) — depende de: **001 PR-4** y **002-PR-5a**
 
@@ -545,6 +608,86 @@ PR-F = 9 (T-48…T-56). Total: 56.
 
 ## Notas del developer
 
+- **T-22**: 7 pruebas de `rls.js` en verde. **T-21**: compose, `.env.example` y `db:app-role` quedan como el plan; la comprobación manual del volumen no se hizo porque Docker Desktop no está en marcha. **T-20**: el script queda como plan §4 (a) (LF por `.gitattributes`, sin `set -e`) y `app-role-script.int-spec.ts` pasa con Docker (4 casos: idempotencia y atributos en `pg_roles`, conexión TCP con la contraseña dada y rechazo con otra, «falta NIMBO_APP_DB_PASSWORD», contraseña con comilla simple).
+- **T-23**: `test/int/setup/migrate.ts` pasa `DATABASE_MIGRATION_URL` al subproceso ya en T-23 (no en T-25): si no,
+  `data-source.cli.ts` la tomaría del `.env` de la raíz y el arnés migraría el Postgres local.
+- **T-25/T-26**: `env()` del arnés tiene tipo (`TestInfraEnv`) con las dos URL; `app-role-script.int-spec.ts` reutiliza
+  la ruta del script de `containers.ts`. Con la app como `nimbo_app`, dos suites de 001 se ajustan sin cambiar lo que
+  prueban: `identity/schema.int-spec.ts` (prueba el esquema y borra un `usuario` para la cascada) se conecta como el
+  dueño, y `transaction-runner.int-spec.ts` crea y borra su tabla de prueba como el dueño y ejecuta el runner como
+  `nimbo_app`.
+- **T-26, `run → revert → run`**: sobre un Postgres desechable (`pgvector/pgvector:pg17`, script de rol montado, puerto
+  55432) porque el compose local del equipo aún no tiene `nimbo_app`: `run` aplicó las cuatro migraciones, `revert`
+  deshizo `ConcederPermisosNimboApp20260928110000` y `run` la volvió a aplicar. `\dp`: `usuario` y `token_cuenta` con
+  `nimbo_app=arw/nimbo` (sin `d`), `migracion` sin `nimbo_app`. Repetir en el compose local en T-34.
+- **T-27**: la prueba de las funciones fija `app.actor_id` con `set_config` a mano (aún no existe `withActor`, y así
+  prueba el SQL sin el runner): un `eslint-disable-next-line no-restricted-syntax` con su motivo en
+  `migrations-nimbo-app.int-spec.ts`. `run → revert → revert → run` en el Postgres desechable: sin error, y
+  `pg_proc` muestra `nimbo_actor_id` y `nimbo_actor_role`.
+- **T-30**: prueba de integración de piezas ya hechas (T-27, T-29), así que no tuvo fase roja propia. Se comprobó que
+  detecta el defecto que cubre: con `set_config(…, false)` en el runner, «al terminar la transacción la conexión no
+  conserva el actor» falla; con `true` pasan los 5 casos. El caso «`run` dentro de `withActor` se une y conserva el
+  actor» no está en esta suite porque T-30 no lo pide: lo cubre la unitaria de T-29
+  (`typeorm-transaction-runner.spec.ts`). Además del plan, la suite afirma que `requireActorScope` dentro de un `run`
+  sin actor también lanza `ActorScopeMissingError`.
+- **T-29**: segunda y última excepción a `rls.js` fuera del runner: `typeorm-transaction-runner.spec.ts` nombra el SQL
+  exacto que `withActor` debe emitir. `withActor` valida el actor con `InvalidActorError` (`Error` simple, en
+  `actor-scope.errors.ts`; el plan no le da nombre). `run` fuera de `withActor` no cambia respecto de 001 (un `run`
+  dentro de otro `run` sigue abriendo su propia transacción). `index.spec.ts` ahora afirma que el puerto expone
+  `run | withActor`.
+- **T-31**: `DatabaseRoleCheck` lanza un `Error` simple con `DATABASE_ROLE_REJECTED_MESSAGE` (el plan no le da clase;
+  es un error de configuración, no de negocio) y recibe el logger por su forma mínima (`DatabaseRoleLogger`, como
+  `HealthLogger`). No se exporta desde `index.ts`: nadie fuera de `SharedModule` lo usa. `shared.module.spec.ts`
+  afirma que el módulo lo registra. Corrección posterior (commit `fix`, mismo sufijo): `DataSource` se inyecta con
+  `@Inject(DataSource)`, como `PinoLogger`. Con `tsx` (esbuild no emite `design:paramtypes`) la inyección por tipo
+  dejaba el índice 0 sin resolver y la API no arrancaba (`UndefinedDependencyException`); con `nest start` y ts-jest
+  no se notaba. Se encontró al arrancar `src/main.ts` real en T-34.
+- **T-32**: la app que arranca se compone con `EnvModule` + `SharedModule` (lo que cargan `api` y `worker`) y
+  `app.init()`, no con `createTestApp`, porque hace falta leer la bitácora aunque el arranque falle. nestjs-pino
+  conserva por proceso el logger raíz de la primera app, así que la suite usa un solo `LogSink` y lo vacía antes de
+  cada arranque. El caso del rol heredero (`GRANT <dueño> TO nimbo_heredero_prueba`) se comprobó contra el defecto:
+  con `c.relowner = r.oid` en la consulta falla; con `pg_has_role(…, 'USAGE')` pasa. Las suites `bootstrap` de `api`
+  y `worker` fallan en la validación del entorno, antes de conectarse, así que no las afecta el chequeo.
+- **`dotenv-bootstrap.int-spec.ts` (001) depende del Postgres del compose local**: arranca la API con el `.env` de la
+  raíz. Desde T-24 ese `.env` (copia de `.env.example`) usa `nimbo_app`, que no existe en un volumen ya inicializado,
+  así que la suite falla hasta que el integrante corre `pnpm db:app-role` y `migration:run` (el aviso de T-34).
+- **T-34, verificación manual de CA-13** (evidencia para `verification.md`): **no** se tocó el compose local
+  (`nimbo-postgres-1` lo comparten varios *worktrees*; correr `pnpm db:app-role` y `migration:run` ahí lo decide
+  Adrián). Se usó un Postgres desechable (`pgvector/pgvector:pg17`, `10-nimbo-app.sh` montado en
+  `/docker-entrypoint-initdb.d/`, puerto 55433) y un Redis desechable, ambos borrados al terminar:
+  - volumen nuevo → `\du` muestra `nimbo_app` sin atributos (`nimbo`: Superuser, Create role, Create DB,
+    Replication, Bypass RLS); el script ejecutado dos veces más a mano (lo que hace `pnpm db:app-role`): sin error;
+  - `migration:run → revert → revert → run`: aplica las cinco migraciones, revierte `CrearFuncionesDeActor…` y
+    `ConcederPermisosNimboApp…` y las vuelve a aplicar, sin error;
+  - `\dp`: `usuario` y `token_cuenta` con `nimbo_app=arw/nimbo` (sin `d`); `migracion` y `migracion_id_seq` sin
+    `nimbo_app`. `\ddp`: `nimbo_app=arwd/nimbo` en tablas y `nimbo_app=rU/nimbo` en secuencias. `pg_proc`:
+    `nimbo_actor_id`, `nimbo_actor_role`. Consulta de `DatabaseRoleCheck` como `nimbo_app` + `CREATE` en `public`:
+    todo `f`;
+  - `src/main.ts` y `src/worker.main.ts` reales (con `tsx`): con `DATABASE_URL` del dueño salen con código 1 y
+    `db.role_rejected` (`superuser`, `bypassRls`, `ownsTables` en `true`), sin `api.started`/`worker.started`; con
+    `nimbo_app` arrancan (`api.started`, `worker.started`).
+- **T-35**: 3 pruebas (tabla de once acciones, acción desconocida y mapa congelado) en verde sobre la versión de políticas objeto.
+- **T-38**: la consulta vive en `readAccessLevel(manager, fragment, nodeId)` (exportada del mismo archivo, no desde
+  `index.ts`) para probar la precedencia en Postgres con un fragmento `VALUES` de varias filas: en 003
+  `accessibleNodes` no devuelve filas. Los parámetros con nombre del fragmento pasan a posicionales con
+  `driver.escapeQueryWithParameters`. Además de §6.5, la consulta filtra `nivel IN (OWNER, EDITOR, VIEWER)`: un nivel
+  desconocido da `null` (cerrado por defecto) y el resultado siempre es un `AccessLevel`. `TransactionContext` se
+  inyecta con `@Inject` explícito (motivo de T-31). 5 casos en verde con Docker.
+- **T-39**: `index.spec.ts` comprueba las cinco exportaciones de valor y, por tipo, la forma de
+  `AccessibleNodesFragment`. En `sql-access-level-reader.int-spec.ts`, `PermissionResolver` sale de
+  `createTestApp({ modules: [AccessModule] })` con el lector SQL real: cliente dentro de `withActor` → `null`/`false`;
+  cliente fuera → `ActorScopeMissingError`; los tres roles internos → `false` aun sin `withActor` (no llegan al lector).
+  `I_ACCESS_LEVEL_READER` no se exporta del módulo ni de `index.ts`: nadie fuera de `access` lo usa.
+
+- **T-44/T-45 (recorredor de rutas)**: `listRouteDeclarations(app, prefix)` crea `DiscoveryService` sobre el
+  `ModulesContainer` de la app (así `AppModule` no importa `DiscoveryModule`) y lee `IS_PUBLIC`/`ROLES_KEY` de
+  `shared` con `getAllAndOverride` (método y clase, el método manda), como los guards. El prefijo se pasa como
+  argumento porque Nest no lo expone desde la app. En `main` las cinco rutas reales ya estaban declaradas
+  (`HealthController` y `AuthController` con `@Public()` de clase, commit d5d2c98): T-45 no toca
+  `auth.controller.ts`. Contra el defecto: sin el `@Public()` de `AuthController`, CA-7 nombra sus tres rutas como
+  sin declarar y CA-3 no encuentra las tres públicas. La suite compone `AppModule.forRoot` dentro de `createTestApp`
+  con `accessTokenStrategy: 'identity'` (sin sondas).
+
 - **Precedencia del plan**: donde §11.2 dice «500 estrategia desconocida», «`err` se relanza como 500»,
   `access-token-strategy.ts` como archivo propio o `validate` → `false`, manda «Cambios aplicados»: 401
   `invalid_token`, constante en el archivo del puerto y `[false, { reason }]` (T-05, T-09, T-12).
@@ -564,4 +707,62 @@ PR-F = 9 (T-48…T-56). Total: 56.
 - **Archivos de prueba que el plan no nombra**: `app-role-script.int-spec.ts` (T-20), `test-app.int-spec.ts` (T-13),
   `access-token-contract.int-spec.ts` (T-14), `isolation-world.iso-spec.ts` (T-41), `index.spec.ts` de `access` (T-39)
   y `roles-contract.spec.ts` en `shared/presentation/auth` (T-04, porque el dominio no importa `contracts`).
+- **Versiones de Passport (T-01)**: `@nestjs/jwt@12` y `@nestjs/passport@12` son solo ESM (`"type": "module"`) y
+  el `api` compila a CommonJS y prueba con `ts-jest`; se fijan las últimas de la línea 11 (la de `@nestjs/common` 11):
+  `@nestjs/jwt@11.0.2`, `@nestjs/passport@11.0.5`, `passport@0.7.0`, `passport-jwt@4.0.1`, `@types/passport-jwt@4.0.1`.
+- **Suite de contrato (T-06)**: `describeAccessTokenVerifierContract` recibe una función `() => ({ verifier, tokens,
+  clock })` que se evalúa dentro de cada prueba, para que 002 pueda construir su sujeto en un `beforeAll`. Para que
+  `test/support/*.spec.ts` corra en `pnpm test`, `apps/api/jest.config.cjs` agrega ese patrón a `testMatch`.
+- **`ALL_ROLES` como tupla (T-07)**: el plan §5 lo tipa `readonly Role[]`, pero `@Roles` exige `readonly [Role, ...Role[]]` y el *spread* de un arreglo no la cumple. Se tipa `readonly [Role, ...Role[]]` (mismos valores, congelado; `actor.spec.ts` comprueba que coincide con `Object.values(Role)`). `RequestPrincipal` agrega `require(ctx)`, que usan los dos decoradores de parámetro.
+- **Patrón de ruta en las bitácoras (T-08)**: `presentation/auth/route-pattern.ts` (archivo no listado) arma `route` con `método + baseUrl + req.route.path` para `auth.unauthenticated` y `auth.forbidden`; lo comparten los dos guards. Las dos cabeceras `authorization` se detectan en `rawHeaders`, porque Node descarta los duplicados de `authorization` en `headers`.
+- **Sondas (T-12)**: además de las rutas de plan §5, `GET /__probe/session` (`@Roles(...ALL_ROLES)`, devuelve `{ sessionId }` de `@CurrentSessionId()`) para la parte de `sessionId` de CA-4 (T-15), y `ProbeCalls` (registro de manejadores ejecutados) para afirmar que un 401/403 no corre el controlador: un `jest.spyOn` sobre el controlador no sirve porque Nest captura el método al iniciar. `ProbeModule` provee su propio `FixedClock` bajo `I_CLOCK` (`PROBE_CLOCK_START`). Sin Docker, la cadena guard → Passport → estrategia → filtro se comprobó con una app Nest mínima sin `SharedModule` (prueba temporal no incluida): 200/401/403 y bitácoras con el patrón de ruta como se esperaba.
+- **Arnés con guards (T-13)**: la comprobación de mezcla cuenta, tras compilar, los *providers* que son estrategias de Passport (`authenticate` función) con `name === ACCESS_TOKEN_STRATEGY` (`passport-jwt` usa `jwt`); con `'test'` y más de una, cierra el módulo y lanza. No se importa `passport` directamente porque `api` no tiene `@types/passport`. Los controladores de prueba de 000 (`correlation-probe`, `errors-probe`) pasan a `@Public()` porque no prueban autorización. El conteo se comprobó con una prueba temporal sin Docker (1 con sondas, 2 con otra estrategia, 0 sin sondas).
+- **Bitácoras sin `req` (T-18, archivo no previsto)**: con el logger por petición de `nestjs-pino`, cada línea escrita durante la petición (`auth.unauthenticated`, `auth.forbidden`, `http.domain_error`) llevaba `req` completo: URL con el `id` real y **todas** las cabeceras que manda el cliente (incluidas `x-forwarded-user` con un correo y las cabeceras falsas), lo que rompe CA-16. Se agrega `quietReqLogger: true` en `infrastructure/logging/logger.options.ts` (+ prueba en `logger.options.spec.ts`): esas líneas llevan solo `reqId`. La línea `http.request` de 000 sigue con `req.headers` (salvo `authorization`/`cookie`, redactadas), así que T-18 exige «sin token ni `Bearer`» en todas las líneas y «sin correo ni cabeceras falsas» en las de denegación. **Hallazgo para `security-auditor`**: `http.request` registra cabeceras arbitrarias del cliente; conviene una lista permitida de cabeceras (fuera del alcance de 003).
+- **Verificación del PR-A sin Docker (T-11…T-19)** (histórica): Docker no está disponible (aviso de Adrián, 2026-09-27), así que **no se ejecutaron** `pnpm test:int` ni `pnpm test:isolation`. Quedan sin correr: `health.int-spec.ts` (CA-3 nuevo), `test-app.int-spec.ts`, `access-token-contract.int-spec.ts`, `auth-guards.int-spec.ts`, `auth-guards.no-strategy.int-spec.ts`, `auth-logs.int-spec.ts` y las suites de 000 con guards activos (`correlation-id`, `domain-exception-filter`, `worker-health`, `ping-queue`, `bootstrap`). Compilan (typecheck/lint) y las cinco nuevas de autorización se ejecutaron en verde contra una app Nest mínima sin `SharedModule` (arnés temporal fuera del repositorio). Antes de abrir el PR hay que correr `pnpm test:int` y `pnpm test:isolation` con Docker. `pnpm lint`, `pnpm typecheck`, `pnpm test` y `pnpm env:check` en verde; cobertura de las piezas nuevas de `shared` 100 % líneas, 91 % ramas.
+  **Resuelto en la rama del PR-C (T-40, 2026-09-28)**: con Docker, las suites de PR-A (`health`, `test-app`,
+  `access-token-contract`, `auth-guards`, `auth-guards.no-strategy`, `auth-logs`, `correlation-id`,
+  `domain-exception-filter`, `worker-health`, `ping-queue`, `bootstrap` de `api` y `worker`) corrieron en verde en
+  `pnpm test:int`, y `pnpm test:isolation` también.
+- **Review I-2 resuelto (`jwt-auth.guard.ts`)**: un `err` de Passport que no es `UnauthenticatedError` ni `TokenExpiredError`/`JsonWebTokenError`/`NotBeforeError` sigue siendo 401 `invalid_token`, pero además registra `auth.unexpected_error` (`warn`) con `route`, `errorClass` y `errorMessage` recortado a 200 caracteres (sin token ni cabeceras, CA-16); plan §7 actualizado. Pruebas en `jwt-auth.guard.spec.ts`. Commit `fix(shared): registrar la clase y el mensaje de errores inesperados del guard JWT [003]`.
+- **Exhaustividad de `policyFor` (T-35)**: doble. El mapa `POLICIES: Readonly<Record<AccessLevel, IAccessPolicy>>`
+  congelado no compila si le falta un nivel, y `policyFor` usa un `switch` sobre `AccessLevel` con rama
+  `default` `never`, así que un nivel nuevo tampoco compila sin su `case`. `accessPoliciesMap()` expone el mapa para
+  la prueba de congelado.
+- **T-41**: `createIsolationWorld()` devuelve `clients`, `internals` (por rol interno), `tokenFor`, `appAs` y `close`
+  (borra las cuentas como el dueño). Los *builders* `aClient()`/`anInternal(role)` son funciones exportadas de
+  `isolation-world.ts` (con `named` y `withEmail`); los correos de los clientes llevan un UUID por mundo para no chocar
+  con `uq_usuario_correo` entre suites. `tokenFor` firma con `TestAccessTokens` sobre un `FixedClock` en
+  `PROBE_CLOCK_START` (la hora del `ProbeModule`). Archivo no previsto: `createTestApp` cierra la app si `init` falla
+  (con la URL del dueño `DatabaseRoleCheck` rechaza el arranque y, sin cerrar, la conexión quedaba abierta en la suite).
+- **T-42**: prueba de comportamiento ya implementado en PR-A (guards y sondas), así que no tuvo fase roja propia; es la
+  misma matriz de `auth-guards.int-spec.ts` pero con las cuentas del mundo y como `nimbo_app`. La suplantación de
+  CA-4 usa el `id` y el correo reales del **otro** cliente, y se agrega el caso de cada rol interno que envía el `id` y
+  el rol de un cliente.
+- **T-43**: también prueba piezas ya hechas (T-36…T-39), sin fase roja propia. `PermissionResolver`, el runner y
+  `TransactionContext` salen de `world.appAs({ modules: [AccessModule] })`. Los «nodos» de la subconsulta son los `id`
+  de las cuentas del mundo en `usuario` (en 003 no hay `archivo`): la misma consulta sin el filtro devuelve las cinco
+  filas y con `accessibleNodes(actor)` ninguna, así el 0 no se debe a una tabla vacía; pero en 003 el fragmento es el
+  conjunto vacío para **todos** los roles, así que ese 0 (y el `null` del lector real) no distingue a un interno de un
+  cliente. **Revisión I-1**: se agrega una suite con `I_ACCESS_LEVEL_READER` sustituido por un lector que da `OWNER`
+  a cualquiera: cada rol interno sigue recibiendo `null`/`false` y el lector no se llama; el mismo lector sí da
+  `OWNER` a un cliente. Quitando temporalmente `!actor.canReadContent` de `PermissionResolver.levelFor` fallan los
+  tres casos nuevos (ADMIN, SUPPORT, OPERATOR) y los 36 anteriores siguen en verde (se restauró). El control positivo
+  real (el cliente dueño ve su archivo y el interno no) queda para 005 (CA-10). Las acciones son todas las de
+  `Action` (las once son de contenido).
+- **T-46**: `ProbeResources` (almacén `Map<dueño, Map<id, recurso>>`: la búsqueda es por `actor.id` y luego por `id`,
+  no hay un `find` global que se filtre después) y `ProbeResourceNotFoundError` viven en `probe.controller.ts`; archivo
+  no previsto: `probe.module.ts` registra `ProbeResources` como proveedor (como `ProbeCalls`) para que la prueba siembre
+  recursos con `app.get(ProbeResources)`. La suite tiene dos comparaciones: con el **mismo** `x-correlation-id` las dos
+  respuestas son idénticas salvo `date` (más estricto que la tarea; `date` es la hora de respuesta y puede cambiar de
+  segundo entre peticiones), y con ids distintos coinciden salvo `x-correlation-id`, `correlationId` y `etag` (el
+  `ETag` se calcula sobre el cuerpo, que incluye el `correlationId`).
+- **T-45, un solo env**: `createTestApp` acepta `validatedEnv` (un `Env` ya validado con `buildTestEnv`); la suite de
+  rutas lo construye una vez y lo pasa a `AppModule.forRoot(env)` y a la app, para que no haya dos entornos distintos.
+  Además, cada ruta de `EXPECTED_PUBLIC_ROUTES` se pide sin token y se afirma `status !== 401`.
+- **T-47, evidencia de `ISOLATION_FORCE_FAIL`** (2026-09-29, Docker): `ISOLATION_FORCE_FAIL=1 pnpm test:isolation`
+  sale con código 1 (`ELIFECYCLE`): `FAIL test/isolation/placeholder.iso-spec.ts`, «CA-25: la suite de aislamiento
+  puede forzarse a fallar con ISOLATION_FORCE_FAIL=1» (`Expected: not "1"`); `Test Suites: 1 failed, 6 passed, 7
+  total`, `Tests: 1 failed, 96 passed, 97 total`. Sin la variable: 7/7 suites y 97/97 pruebas, salida 0. Las seis
+  suites reales (`identity-enumeration` de 001 sin cambios, `access-internal-roles`, `database-roles`,
+  `roles-and-actor`, `isolation-world`, `rls-context`) corren como `nimbo_app`.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>

@@ -1,7 +1,9 @@
+import { Reflector } from '@nestjs/core';
 import type { Response } from 'express';
 
 import type { HealthService } from '../application/health/health.service';
 
+import { IS_PUBLIC } from './auth/public.decorator';
 import { HealthController } from './health.controller';
 
 const fakeService = (result: Awaited<ReturnType<HealthService['ready']>>): HealthService =>
@@ -19,6 +21,10 @@ const fakeResponse = (): { res: Response; status: () => number | undefined } => 
 };
 
 describe('HealthController', () => {
+  it('CA-3: la salud es @Public() a nivel de clase', () => {
+    expect(new Reflector().get<boolean>(IS_PUBLIC, HealthController)).toBe(true);
+  });
+
   it('CA-20: `live()` devuelve `{ status: "ok" }` sin consultar dependencias', () => {
     const service = { ready: jest.fn() } as unknown as HealthService;
     const controller = new HealthController(service);

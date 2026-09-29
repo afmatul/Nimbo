@@ -1,6 +1,11 @@
-import type { IncomingMessage } from 'node:http';
+import { createServer } from 'node:http';
+import type { IncomingMessage, Server } from 'node:http';
 
 import { pino } from 'pino';
+import type { DestinationStream } from 'pino';
+import { pinoHttp } from 'pino-http';
+import type { Options as PinoHttpOptions } from 'pino-http';
+import request from 'supertest';
 
 import { CorrelationContext } from '../correlation/correlation-context';
 
@@ -111,6 +116,7 @@ describe('buildLoggerModuleParams', () => {
     genReqId: (req: IncomingMessage, res: unknown) => string;
     customProps: (req: IncomingMessage, res: unknown) => Record<string, unknown>;
     serializers: { req: (req: Record<string, unknown>) => Record<string, unknown> };
+    quietReqLogger?: boolean;
   }
   const pinoHttpOf = (level: string): PinoHttpUnderTest => {
     const params = buildLoggerModuleParams({ level });
@@ -125,6 +131,10 @@ describe('buildLoggerModuleParams', () => {
       socket: {},
       query: { token: 'abc' },
     }) as unknown as IncomingMessage;
+
+  it('003 CA-16: las bitácoras dentro de una petición no llevan `req` (cabeceras ni URL), solo el id de la petición', () => {
+    expect(pinoHttpOf('info').quietReqLogger).toBe(true);
+  });
 
   it('CA-13: `genReqId` usa el `correlationId` ya fijado por el middleware', () => {
     const { genReqId } = pinoHttpOf('info');
@@ -158,5 +168,90 @@ describe('buildLoggerModuleParams', () => {
     expect(serialized.url).toBe('/api/v1/files');
     expect(serialized.method).toBe('GET');
     expect(serialized).not.toHaveProperty('query');
+  });
+});
+
+describe('pino-http con las opciones de `buildLoggerModuleParams` (001 CA-18)', () => {
+  const CLIENT_IP = '198.51.100.23';
+  let sink: ReturnType<typeof memorySink>;
+  let server: Server;
+
+  /** Servidor mínimo: el *middleware* real de pino-http y un manejador que registra como lo haría un servicio. */
+  const serverWith = (
+    params: ReturnType<typeof buildLoggerModuleParams>,
+    statusCode = 200,
+  ): Server => {
+    const [options, stream] = params.pinoHttp as [PinoHttpOptions, DestinationStream];
+    const middleware = pinoHttp(options, stream);
+    return createServer((req, res) => {
+      CorrelationContext.run({ correlationId: 'corr-http' }, () => {
+        middleware(req, res, () => {
+          req.log.info({ event: 'identity.rate_limited', scope: 'ip' }, 'Límite alcanzado');
+          res.statusCode = statusCode;
+          res.end('ok');
+        });
+      });
+    });
+  };
+
+  const linesAfterRequest = async (): Promise<Record<string, unknown>[]> => {
+    await request(server)
+      .post('/api/v1/auth/register')
+      .set('X-Forwarded-For', CLIENT_IP)
+      .set('Authorization', 'Bearer secreto')
+      .set('Cookie', 'sid=1');
+    await new Promise((resolve) => setImmediate(resolve));
+    return sink.lines();
+  };
+
+  beforeEach(() => {
+    sink = memorySink();
+    server = serverWith(buildLoggerModuleParams({ level: 'info', stream: sink }));
+  });
+
+  it('CA-18: una línea de negocio escrita durante la petición no lleva `req`, cabeceras, `remoteAddress` ni la IP', async () => {
+    const lines = await linesAfterRequest();
+
+    const business = lines.find((line) => line.event === 'identity.rate_limited');
+    expect(business).toMatchObject({ correlationId: 'corr-http', scope: 'ip' });
+    expect(business).not.toHaveProperty('req');
+    expect(business).not.toHaveProperty('res');
+    const serialized = JSON.stringify(business);
+    expect(serialized).not.toContain('headers');
+    expect(serialized).not.toContain('remoteAddress');
+    expect(serialized).not.toContain('x-forwarded-for');
+    expect(serialized).not.toContain(CLIENT_IP);
+  });
+
+  it('CA-13, CA-15: la línea `http.request` conserva `req` y `res`, con `authorization` y `cookie` redactadas', async () => {
+    const lines = await linesAfterRequest();
+
+    const httpLine = lines.find((line) => line.event === 'http.request');
+    expect(httpLine).toMatchObject({
+      correlationId: 'corr-http',
+      msg: 'request completed',
+      req: { method: 'POST', url: '/api/v1/auth/register' },
+      res: { statusCode: 200 },
+      responseTime: expect.any(Number),
+    });
+    expect(at(httpLine, 'req', 'headers', 'authorization')).toBe('[REDACTED]');
+    expect(at(httpLine, 'req', 'headers', 'cookie')).toBe('[REDACTED]');
+    expect(at(httpLine, 'req', 'headers', 'x-forwarded-for')).toBe(CLIENT_IP);
+    expect(lines.filter((line) => line.event === 'http.request')).toHaveLength(1);
+  });
+
+  it('CA-13: la línea `http.request` de un `5xx` también lleva `req`, y la de negocio sigue sin él', async () => {
+    const params = buildLoggerModuleParams({ level: 'info', stream: sink });
+    server = serverWith(params, 500);
+
+    const lines = await linesAfterRequest();
+
+    const httpLine = lines.find((line) => line.event === 'http.request');
+    expect(httpLine).toMatchObject({
+      msg: 'request errored',
+      req: { method: 'POST', url: '/api/v1/auth/register' },
+      res: { statusCode: 500 },
+    });
+    expect(lines.find((line) => line.event === 'identity.rate_limited')).not.toHaveProperty('req');
   });
 });

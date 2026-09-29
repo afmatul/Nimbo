@@ -1,15 +1,16 @@
-// `pnpm env:check` (CA-19): toda variable de los esquemas de `api`, `worker` y `web` aparece en `.env.example`
-// y ningún secreto usa el prefijo `NEXT_PUBLIC_` (CA-29). Falla con `1` y nombra cada problema.
+// `pnpm env:check` (CA-19): toda variable de los esquemas de `api`, `worker`, migraciones y `web` aparece en
+// `.env.example` y ningún secreto usa el prefijo `NEXT_PUBLIC_` (CA-29). Falla con `1` y nombra cada problema.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 // Solo los esquemas (zod puro): el índice de `shared` arrastra Nest y sus decoradores, innecesarios aquí.
 import {
-  apiEnvSchema,
+  apiEnvObjectSchema,
+  migrationEnvSchema,
   SECRET_KEYS,
-  workerEnvSchema,
+  workerEnvObjectSchema,
 } from '../apps/api/src/shared/infrastructure/config/env.schema';
-import { webEnvSchema } from '../apps/web/src/env';
+import { webEnvObjectSchema } from '../apps/web/src/env';
 
 const PUBLIC_PREFIX = 'NEXT_PUBLIC_';
 const ASSIGNMENT = /^([A-Z][A-Z0-9_]*)=/;
@@ -57,9 +58,10 @@ export const checkEnvExample = (input: CheckInput): CheckResult => {
 /** Las claves salen de los esquemas reales: una variable nueva sin `.env.example` rompe CI. */
 export const collectSchemaKeys = (): SchemaKeys => ({
   schemas: {
-    api: Object.keys(apiEnvSchema.shape),
-    worker: Object.keys(workerEnvSchema.shape),
-    web: Object.keys(webEnvSchema.shape),
+    api: Object.keys(apiEnvObjectSchema.shape),
+    worker: Object.keys(workerEnvObjectSchema.shape),
+    migrations: Object.keys(migrationEnvSchema.shape),
+    web: Object.keys(webEnvObjectSchema.shape),
   },
   secrets: [...SECRET_KEYS],
 });
@@ -71,7 +73,9 @@ const main = (): void => {
     ...collectSchemaKeys(),
   });
   if (result.ok) {
-    process.stdout.write('env:check: .env.example cubre los esquemas de api, worker y web\n');
+    process.stdout.write(
+      'env:check: .env.example cubre los esquemas de api, worker, migraciones y web\n',
+    );
     return;
   }
   process.stderr.write(`env:check: ${String(result.problems.length)} problema(s)\n`);

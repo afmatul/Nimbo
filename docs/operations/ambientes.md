@@ -30,15 +30,25 @@ Secreto = nunca en el repositorio, vacío en `.env.example` de staging, redactad
 | `PORT` | ✓ | | ✓ | | | api `3000`, web `3002` | Traefik local enruta `/api` → 3000 y `/` → 3002 |
 | `WORKER_PORT` | ✓ | ✓ | | | | `3001` | Salud interna del worker; **nunca** en `ports:` (CA-23) |
 | `LOG_LEVEL` | ✓ | ✓ | | | | — | `trace` … `fatal` |
-| `DATABASE_URL` | ✓ | ✓ | | | (contiene contraseña) | — | Postgres con pgvector |
+| `DATABASE_URL` | ✓ | ✓ | | | (contiene contraseña) | — | Postgres con pgvector, **como `nimbo_app`** (003): local `postgres://nimbo_app:nimbo_app@localhost:5432/nimbo`. Con el dueño o un superusuario la app no arranca (`db.role_rejected`, §4) |
+| `DATABASE_MIGRATION_URL` | | | | | (contiene contraseña) | — | Solo migraciones (`migrationEnvSchema`: `data-source.cli.ts`, `migrate.ts`); dueño de las tablas, local `postgres://nimbo:nimbo@localhost:5432/nimbo`. No cae a `DATABASE_URL` si falta (`config.invalid`). En staging, solo en el entorno del paso de migración (PD-43, provisional) |
+| `NIMBO_APP_DB_PASSWORD` | | | | ✓ | ✓ | — | Contraseña de `nimbo_app` que fija `infra/postgres/init/10-nimbo-app.sh`; debe coincidir con `DATABASE_URL`. No la lee ninguna app |
 | `REDIS_URL` | ✓ | ✓ | | | | — | BullMQ y caché |
 | `MINIO_ENDPOINT` | ✓ | | | | | — | API S3 (puerto 9000); la consola 9001 no la usa la app |
 | `MINIO_ACCESS_KEY` | ✓ | | | | ✓ | — | |
 | `MINIO_SECRET_KEY` | ✓ | | | | ✓ | — | |
 | `MINIO_BUCKET` | ✓ | | | ✓ | | `nimbo` | Creado con versionado por `infra/minio/init.sh` |
 | `MINIO_REGION` | ✓ | | | | | `us-east-1` | Nominal, lo exige el SDK |
+| `WEB_PUBLIC_URL` | ✓ | | | | | — | Base de los enlaces de los correos (`/verificar-correo#token=…`); `https` obligatorio en staging y producción (001 CA-20) |
+| `CORS_ORIGIN` | ✓ | | | | | — | Orígenes permitidos, separados por comas (local: `http://localhost,http://localhost:3002`) |
+| `SMTP_HOST` | | ✓ | | | | — | Local: `localhost` (Mailpit); perfil `apps`: `mailpit`; staging: `smtp.resend.com` |
+| `SMTP_PORT` | | ✓ | | | | — | Mailpit `1025`; Resend `465` |
+| `SMTP_TLS` | | ✓ | | | | — | `none` | `starttls` | `implicit`; `none` prohibido en staging y producción |
+| `SMTP_USER` | | ✓ | | | | — | Opcional; obligatoria si hay `SMTP_PASSWORD` (Resend: `resend`) |
+| `SMTP_PASSWORD` | | ✓ | | | ✓ | — | **Solo** el worker la declara y la recibe; el `api` no tiene credenciales de correo (ADR-0018) |
+| `MAIL_FROM` | | ✓ | | | | — | `Nimbo <no-responder@nimbo.me>` |
 | `API_INTERNAL_URL` | | | ✓ | | | — | `web` llama a la API solo desde el servidor (sin `NEXT_PUBLIC_`) |
-| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | | | | ✓ | contraseña | — | Deben coincidir con `DATABASE_URL` |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | | | | ✓ | contraseña | — | Dueño de las tablas; deben coincidir con `DATABASE_MIGRATION_URL` |
 | `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` | | | | ✓ | contraseña | — | En local coinciden con `MINIO_ACCESS_KEY`/`MINIO_SECRET_KEY` |
 | `IMAGE_TAG`, `DOMAIN`, `WEB_HOST`, `API_HOST`, `DOCS_HOST`, `S3_HOST` | | | | ✓ | | `latest`, … | Solo staging (Traefik por host) |
 | `LETSENCRYPT_EMAIL`, `ACME_CA_SERVER` | | | | ✓ | | — | TLS en staging |
@@ -64,7 +74,22 @@ limitan a lo que CA-3 permite:
 
 Imágenes (idénticas en compose y en Testcontainers): `pgvector/pgvector:pg17`, `redis:7-alpine`,
 `quay.io/minio/minio` + `quay.io/minio/mc` (Docker Hub dejó de servir `minio/minio`), `traefik:v3`,
+`axllent/mailpit:v1.31.3` (compose local y Testcontainers),
 `onlyoffice/documentserver` (perfil `onlyoffice`, apagado por defecto).
+
+## 3b. Correo (spec 001, ADR-0018)
+
+- **Local**: Mailpit recibe todo el correo. Bandeja web en <http://localhost:8025>; SMTP en `localhost:1025`, sin TLS
+  (`SMTP_TLS=none`). Con el perfil `apps`, `compose.override.yml` le pasa al `worker` `SMTP_HOST=mailpit` y
+  `SMTP_PORT=1025`, porque dentro de la red de compose Mailpit no está en `localhost`.
+- **Por proceso**: el `api` solo encola en la cola `mail` y valida `WEB_PUBLIC_URL` y `CORS_ORIGIN`; el `worker`
+  entrega por SMTP y valida `SMTP_*` y `MAIL_FROM`. `SMTP_PASSWORD` es secreta, se declara solo en el esquema del
+  `worker`, se redacta en las bitácoras de ambos procesos y nunca se le entrega al `api`.
+- **Staging (al montarlo, D-12)**: SMTP de Resend por protocolo, no por su SDK: `SMTP_HOST=smtp.resend.com`,
+  `SMTP_PORT=465`, `SMTP_TLS=implicit`, `SMTP_USER=resend` y la clave de API de Resend como `SMTP_PASSWORD`, con SPF y
+  DKIM de `nimbo.me` verificados. La clave vive solo en GitHub Environments y en el `.env` del Droplet.
+- **Degradación**: un SMTP caído no afecta la salud del `worker` ni las respuestas del `api`; la cola reintenta 5 veces
+  (~2,5 min) y al agotar registra `mail.failed` (ver `apps/api/src/modules/notifications/README.md`).
 
 ## 4. Arranque y salud
 
@@ -78,6 +103,32 @@ puertos. Las issues nombran la variable y el motivo, nunca el valor (`` `DATABAS
 Con el entorno válido, el proceso **no termina de arrancar** hasta que Postgres y Redis respondan: TypeORM reintenta
 `retryAttempts: 10` cada `retryDelay: 3000` ms (30 s) y luego falla; compose lo garantiza con
 `depends_on: condition: service_healthy` y `restart: unless-stopped`.
+
+### Roles de base de datos (003, ADR-0005)
+
+Hay dos roles. El **dueño** de las tablas (`POSTGRES_USER`, `DATABASE_MIGRATION_URL`) solo migra. **`nimbo_app`**
+(`DATABASE_URL`) es el rol con el que corren `api` y `worker`: sin superusuario, sin `BYPASSRLS`, sin `CREATE` en
+`public` y sin ser dueño de ninguna tabla, para que las políticas de RLS (desde 005) sí lo frenen. Sus permisos los da
+la migración `conceder-permisos-nimbo-app` (`usuario` y `token_cuenta` sin `DELETE`, `migracion` sin permisos; las
+tablas nuevas reciben `SELECT/INSERT/UPDATE/DELETE` por privilegios por defecto).
+
+Al arrancar, `DatabaseRoleCheck` consulta el rol de la conexión. Si es superusuario, tiene `BYPASSRLS` o es dueño de
+alguna tabla de `public` (también por pertenencia a otro rol), registra `db.role_rejected` (`fatal`, solo tres
+booleanos, sin URL) y el proceso termina antes de abrir el puerto: «La API debe conectarse como nimbo_app; revisa
+DATABASE_URL y ejecuta pnpm db:app-role». Aplica en todos los ambientes, incluidas las pruebas.
+
+El rol lo crea `infra/postgres/init/10-nimbo-app.sh` (idempotente), no una migración, porque su contraseña es un
+secreto:
+
+- **Volumen nuevo**: el entrypoint de Postgres ejecuta el script al inicializar (compose lo monta en
+  `/docker-entrypoint-initdb.d/`).
+- **Volumen existente** (el script de inicio no se vuelve a ejecutar) o cambio de contraseña:
+  1. agregar `NIMBO_APP_DB_PASSWORD`, `DATABASE_URL` de `nimbo_app` y `DATABASE_MIGRATION_URL` al `.env` (ver
+     `.env.example`);
+  2. `pnpm db:app-role` (con el servicio `postgres` en marcha; se puede repetir sin error);
+  3. `pnpm --filter api migration:run`.
+- **Staging**: el paso de despliegue ejecuta el script de rol y luego las migraciones con `DATABASE_MIGRATION_URL`.
+- **Pruebas**: Testcontainers monta el mismo script; el arnés migra con el dueño y conecta la app como `nimbo_app`.
 
 ### `live` vs `ready`
 
@@ -103,6 +154,9 @@ que consulta `http://127.0.0.1:${WORKER_PORT}/health/ready` y sale con `1` si no
 JSON por línea (Pino). Toda línea lleva `correlationId` (de la cabecera `x-correlation-id` o generado) y, en el
 worker, `jobId`. Campos redactados en cualquier nivel (`[REDACTED]`): `password`, `passwordHash`, `token`,
 `accessToken`, `refreshToken`, `authorization`, `cookie`, `secret`, `apiKey`, `fileName`, `nombre`, `content`,
-`prompt` y las claves de `SECRET_KEYS`. Eventos de 000: `api.started`, `worker.started`, `config.invalid`,
+`prompt`, los de 001 (`email`, `correo`, `fullName`, `to`, `html`, `text`) y las claves de `SECRET_KEYS`. Eventos de 000: `api.started`, `worker.started`, `config.invalid`,
 `http.request`, `http.domain_error`, `http.unhandled_error`, `health.ready`, `queue.enqueued`, `job.started`,
-`job.completed`, `migration.run`, `migration.revert`.
+`job.completed`, `migration.run`, `migration.revert`. Eventos de correo (001): `mail.enqueued`, `mail.sent`,
+`mail.retry_scheduled`, `mail.failed` y `mail.duplicate_skipped`, solo con `tag`, `recipientId`, `jobId`,
+`attemptsMade` y códigos de error; nunca el destinatario, el asunto, el cuerpo ni el mensaje del error. De 003:
+`db.role_rejected`. `DATABASE_URL` y `DATABASE_MIGRATION_URL` se redactan como URL de conexión.

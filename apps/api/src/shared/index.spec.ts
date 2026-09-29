@@ -1,5 +1,5 @@
 import * as shared from './index';
-import type { Actor, IClock } from './index';
+import type { Actor, FieldIssue, IClock, IRateLimiter, ITransactionRunner } from './index';
 
 /** Igualdad estricta de tipos (patrón de `type-challenges`); un fallo aquí lo detecta `pnpm typecheck`. */
 type Equal<X, Y> =
@@ -10,6 +10,13 @@ type _ActorHasExactlyTheDeclaredKeys = Expect<Equal<keyof Actor, 'id' | 'role' |
 type _ActorRoleIsRole = Expect<Equal<Actor['role'], shared.Role>>;
 type _ActorFlagsContentAccess = Expect<Equal<Actor['canReadContent'], boolean>>;
 type _ClockExposesOnlyNow = Expect<Equal<keyof IClock, 'now'>>;
+type _FieldIssueHasExactlyTheDeclaredKeys = Expect<
+  Equal<keyof FieldIssue, 'field' | 'reason' | 'message'>
+>;
+type _RateLimiterExposesOnlyConsume = Expect<Equal<keyof IRateLimiter, 'consume'>>;
+type _TransactionRunnerExposesRunAndWithActor = Expect<
+  Equal<keyof ITransactionRunner, 'run' | 'withActor'>
+>;
 
 /** Valores en tiempo de ejecución que `shared/index.ts` exporta al cerrar 000 (plan §6.2), por tarea. */
 const RUNTIME_EXPORTS_BY_TASK = {
@@ -44,6 +51,28 @@ const RUNTIME_EXPORTS_BY_TASK = {
   'T-19': ['HealthModule'],
   'T-20': ['PostgresHealthIndicator', 'RedisHealthIndicator', 'MinioHealthIndicator'],
   'T-21': ['enqueueWithCorrelation', 'PING_QUEUE', 'PingProcessor', 'PingQueue'],
+  '001 T-16': [
+    'TooManyRequestsError',
+    'I_RATE_LIMITER',
+    'I_TRANSACTION_RUNNER',
+    'TransactionContext',
+    'ZodValidationPipe',
+    'REDIS_CLIENT',
+  ],
+  '001 T-17': ['configureHttpApp'],
+  '003 T-03': ['createActor', 'ALL_ROLES'],
+  '003 T-05': ['ACCESS_TOKEN_STRATEGY', 'I_ACCESS_TOKEN_VERIFIER'],
+  '003 T-11': [
+    'AuthGuardsModule',
+    'Public',
+    'IS_PUBLIC',
+    'Roles',
+    'ROLES_KEY',
+    'CurrentActor',
+    'CurrentSessionId',
+    'UnauthenticatedError',
+    'InsufficientRoleError',
+  ],
 } as const;
 
 const ALL_RUNTIME_EXPORTS: readonly string[] = Object.values(RUNTIME_EXPORTS_BY_TASK).flat();
@@ -111,6 +140,30 @@ describe('shared/index.ts (CA-17)', () => {
     // Las dos raíces de composición registran la cola, así que el productor es API pública
     // del módulo y no un interno: importarlo por ruta rompería la frontera que vigila T-28.
     expect(shared.PING_QUEUE).toBe('ping');
+  });
+  it('001 CA-5/CA-15: exporta los errores, puertos y piezas nuevas de 001 (plan §6.7, T-16)', () => {
+    expectExportsOf('001 T-16');
+    expect(typeof shared.I_RATE_LIMITER).toBe('symbol');
+    expect(typeof shared.I_TRANSACTION_RUNNER).toBe('symbol');
+    expect(typeof shared.REDIS_CLIENT).toBe('symbol');
+  });
+  it('001 CA-6/CA-15: exporta `configureHttpApp`, la configuración HTTP común de `main.ts` y el arnés (T-17)', () => {
+    expectExportsOf('001 T-17');
+    expect(typeof shared.configureHttpApp).toBe('function');
+  });
+  it('CA-4: exporta `createActor` y `ALL_ROLES` (003 T-03)', () => {
+    expectExportsOf('003 T-03');
+    expect(shared.createActor('id', shared.Role.CLIENT).canReadContent).toBe(true);
+  });
+  it('CA-2: exporta el puerto `IAccessTokenVerifier` y el nombre de la estrategia (003 T-05)', () => {
+    expectExportsOf('003 T-05');
+    expect(shared.ACCESS_TOKEN_STRATEGY).toBe('jwt');
+    expect(typeof shared.I_ACCESS_TOKEN_VERIFIER).toBe('symbol');
+  });
+  it('CA-1: exporta los guards globales, los decoradores y los errores de autorización (003 T-11)', () => {
+    expectExportsOf('003 T-11');
+    expect(new shared.UnauthenticatedError().status).toBe(401);
+    expect(new shared.InsufficientRoleError().status).toBe(403);
   });
   it('CA-17: exporta exactamente la lista del plan §6.2 al cerrar el bloque 2 (T-26)', () => {
     expect(exportedKeys()).toEqual([...ALL_RUNTIME_EXPORTS].sort());

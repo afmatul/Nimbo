@@ -2,13 +2,14 @@ import { Controller, Get } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
 import request from 'supertest';
 
-import { HealthModule } from '../../../src/shared';
+import { HealthModule, Public } from '../../../src/shared';
 import { createTestApp } from '../setup/test-app';
 import type { TestApp } from '../setup/test-app';
 
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
-/** Controlador de prueba: escribe una bitácora dentro del ciclo de la petición. */
+/** Controlador de prueba: escribe una bitácora dentro del ciclo de la petición. Público: no prueba autorización. */
+@Public()
 @Controller('correlation-probe')
 class CorrelationProbeController {
   constructor(private readonly logger: PinoLogger) {}

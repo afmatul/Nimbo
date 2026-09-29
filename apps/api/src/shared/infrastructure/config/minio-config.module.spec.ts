@@ -18,6 +18,8 @@ const API_ENV: Env = {
   MINIO_SECRET_KEY: 'nimbo-secret',
   MINIO_BUCKET: 'nimbo',
   MINIO_REGION: 'us-east-1',
+  WEB_PUBLIC_URL: 'http://localhost',
+  CORS_ORIGIN: ['http://localhost'],
 };
 
 describe('MinioConfigModule.forRoot', () => {

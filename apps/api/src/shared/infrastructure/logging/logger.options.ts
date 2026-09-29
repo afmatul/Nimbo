@@ -58,8 +58,20 @@ export const buildLoggerModuleParams = (input: LoggerOptionsInput): Params => {
   return { pinoHttp: input.stream === undefined ? options : [options, input.stream] };
 };
 
+/** Con `quietResLogger`, pino-http ya no enlaza `req` a la línea de cierre: se agrega aquí, solo a ella. */
+const withRequest = (req: IncomingMessage, _res: unknown, loggable: object): object => ({
+  ...loggable,
+  req,
+});
+
 const buildPinoHttpOptions = (input: LoggerOptionsInput): PinoHttpOptions => ({
   ...buildPinoOptions(input),
+  // `req` y `res` (cabeceras, IP) van solo en la línea `http.request`: los *loggers* de la petición que usan los
+  // servicios (vía `PinoLogger`) enlazan únicamente `reqId`, igual al `correlationId` (plan §7, CA-18; 003 CA-16).
+  quietReqLogger: true,
+  quietResLogger: true,
+  customSuccessObject: withRequest,
+  customErrorObject: (req, res, _error, loggable): object => withRequest(req, res, loggable),
   genReqId: (): string => CorrelationContext.get()?.correlationId ?? randomUUID(),
   // El `correlationId` ya lo pone el `mixin` en todas las líneas, incluida esta.
   customProps: (): Record<string, unknown> => ({ event: 'http.request' }),

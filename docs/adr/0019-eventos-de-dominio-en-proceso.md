@@ -110,6 +110,8 @@ monolito modular con un `api` y un `worker` (ADR-0001), DAG verificado por lint 
 - **Procesos**: un evento solo llega a los oyentes del proceso que lo emite. Si el consumidor debe correr en el
   `worker`, el oyente encola un trabajo BullMQ.
 - **Nombres**: `<modulo>.<hecho-en-pasado>` (`identity.client-account-verified`).
+- **Versión**: `@nestjs/event-emitter` queda fijado en `3.1.0`; la serie 12 es solo ESM y `api` compila a CommonJS.
+  Subir de serie exige migrar `api` a ESM (spec 001, revisión del PR-3).
 
 **b) Opción 1**: el contrato lo exporta el productor en su `index.ts`, como una constante con el nombre
 (`CLIENT_ACCOUNT_VERIFIED`) más el tipo de solo lectura del contenido (`ClientAccountVerifiedEvent { userId }`).

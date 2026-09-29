@@ -17,8 +17,16 @@ const SPEC_REDACTED_FIELDS = [
   'prompt',
 ] as const;
 
+/**
+ * Campos de la spec 001 (plan §6.7, D-18): el correo y el nombre completo de la persona, y los del mensaje de
+ * correo (`to` lleva la dirección; `html` y `text`, el enlace de verificación). Defensa en profundidad de la regla:
+ * **nunca** se registra `job.data` ni un `MailMessage` completo; las bitácoras de correo solo llevan `tag`,
+ * `recipientId`, `jobId`, `attemptsMade` y códigos de error.
+ */
+const IDENTITY_REDACTED_FIELDS = ['email', 'correo', 'fullName', 'to', 'html', 'text'] as const;
+
 /** URLs de conexión: llevan usuario y contraseña embebidos (`postgres://usuario:clave@host/bd`). */
-const CONNECTION_URL_FIELDS = ['DATABASE_URL', 'REDIS_URL'] as const;
+const CONNECTION_URL_FIELDS = ['DATABASE_URL', 'DATABASE_MIGRATION_URL', 'REDIS_URL'] as const;
 
 /**
  * Única lista de nombres de campo que el logger redacta, en minúsculas porque la comparación
@@ -30,7 +38,10 @@ const CONNECTION_URL_FIELDS = ['DATABASE_URL', 'REDIS_URL'] as const;
  * registrar al pie de la letra los errores de conexión (ver `RedisHealthIndicator`).
  */
 export const REDACTED_FIELDS: ReadonlySet<string> = new Set(
-  [...SPEC_REDACTED_FIELDS, ...SECRET_KEYS, ...CONNECTION_URL_FIELDS].map((field) =>
-    field.toLowerCase(),
-  ),
+  [
+    ...SPEC_REDACTED_FIELDS,
+    ...IDENTITY_REDACTED_FIELDS,
+    ...SECRET_KEYS,
+    ...CONNECTION_URL_FIELDS,
+  ].map((field) => field.toLowerCase()),
 );

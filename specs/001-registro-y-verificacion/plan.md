@@ -66,7 +66,7 @@ Hallazgos `DF-xx` que esta spec resuelve o de los que depende:
 
 | Módulo | Cambio | Capa(s) |
 |---|---|---|
-| `identity` (nuevo) | `ClientUser`, `InternalUser`, `User`, `VerificationToken`, objetos de valor y errores; `RegistrationService`, `VerificationLinkIssuer`, `RegistrationAttemptNotifier`, plantillas de correo; repositorios TypeORM, `Argon2idHasher`, `EventEmitterAccountEventsPublisher`; `AuthController`, `IdentityIpThrottlerGuard`; `identity.module.ts`; `index.ts` exporta `IdentityModule` y, como contratos de eventos, solo `CLIENT_ACCOUNT_VERIFIED` (constante con el nombre) y `ClientAccountVerifiedEvent` (tipo `{ readonly userId: string }`) | todas |
+| `identity` (nuevo) | `ClientUser`, `InternalUser`, `User`, `VerificationToken`, objetos de valor y errores; `RegistrationService`, `VerificationLinkIssuer`, `RegistrationAttemptNotifier`, plantillas de correo; repositorios TypeORM, `Argon2idHasher`, `EventEmitterAccountEventsPublisher`; `AuthController`, `IdentityIpThrottlerGuard`; `identity.module.ts`; `index.ts` exporta `IdentityModule`, `IDENTITY_THROTTLERS` (la configuración de `ThrottlerModule.forRoot`, solo para la composición: `AppModule` y los arneses de prueba; agregado en la implementación, revisión del PR-3) y, como contratos de eventos, solo `CLIENT_ACCOUNT_VERIFIED` (constante con el nombre) y `ClientAccountVerifiedEvent` (tipo `{ readonly userId: string }`) | todas |
 | `notifications` (nuevo) | `IMailer` + `MailMessage` (puerto), `SmtpMailer` (encola), `MailProcessor` y `SmtpTransport` (worker); `NotificationsModule` (api) y `NotificationsWorkerModule` (worker) | application, infrastructure |
 | `shared` | `IRateLimiter` → `RedisRateLimiter` (Lua atómico); `TooManyRequestsError`; `DomainError.fields` opcional y `Retry-After` en `DomainExceptionFilter`; `ITransactionRunner` + `TransactionContext`; `ZodValidationPipe`; `configureHttpApp`; `REDIS_CLIENT`; `I_CLOCK` provisto; `REDACTED_FIELDS` + `email`, `correo`, `fullName`, `to`, `html`, `text`; `enqueueWithCorrelation` acepta opciones del trabajo; esquemas de entorno | domain, application, infrastructure, presentation |
 | `packages/contracts` | raíz: `error.ts` con `fields` opcional y `validation.ts` (`toFieldIssues` genérica); carpeta `identity/` (esquemas, política de contraseña, lista de contraseñas comunes, parámetros, códigos de error y `reason`, mensajes de campo, versiones de Términos y Privacidad) | contratos |
@@ -230,7 +230,7 @@ Archivos de contrato de `identity` (`packages/contracts/src/identity/`, una sola
 | `schemas.ts` | `registerRequestSchema`, `resendVerificationRequestSchema`, `verifyEmailRequestSchema`, `acceptedResponseSchema`, `verifyEmailResponseSchema`; cada regla fija su `params.reason` y su mensaje desde `IDENTITY_FIELD_MESSAGES` |
 | `password-policy.ts` | `evaluatePassword(password, email): PasswordRuleResult[]` (pura, sin zod), usada por el esquema y por los requisitos en vivo de `web` |
 | `common-passwords.ts` | lista local generada (§6.2) |
-| `parameters.ts` | valores de §6 de la spec: `VERIFICATION_LINK_TTL_HOURS = 24`, `EMAIL_REQUEST_COOLDOWN_SECONDS = 60`, `EMAIL_REQUESTS_PER_HOUR = 5`, `REGISTRATIONS_PER_IP_PER_HOUR = 10`, `MAX_AVISOS_INTENTO_24H = 1`, `FULL_NAME_MAX_LENGTH = 100`, `PASSWORD_MIN_LENGTH = 12`, `PASSWORD_MAX_LENGTH = 128` |
+| `parameters.ts` | valores de §6 de la spec: `VERIFICATION_LINK_TTL_HOURS = 24`, `EMAIL_REQUEST_COOLDOWN_SECONDS = 60`, `EMAIL_REQUESTS_PER_HOUR = 5`, `REGISTRATIONS_PER_IP_PER_HOUR = 10`, `RESENDS_PER_IP_PER_HOUR = 10` (SEC-1, 2026-09-28), `MAX_AVISOS_INTENTO_24H = 1`, `FULL_NAME_MAX_LENGTH = 100`, `PASSWORD_MIN_LENGTH = 12`, `PASSWORD_MAX_LENGTH = 128` |
 | `legal.ts` | `LEGAL_DOCUMENTS = { terms: { version, effectiveDate }, privacy: { version, effectiveDate } }`: fuente única de la versión que guarda el servidor (CA-1) y que muestran las páginas (CA-23) |
 | `error-codes.ts` | `IDENTITY_ERROR_CODES`, `FIELD_ISSUE_REASONS`, `IDENTITY_FIELD_MESSAGES` |
 
@@ -296,7 +296,7 @@ apps/api/src/modules/identity/
 │  ├─ identity-ip-throttler.guard.ts      # ThrottlerGuard + tabla throttler → ámbito → IdentityTooManyRequestsError (D-15)
 │  └─ identity-validation.ts              # fábrica de errores para ZodValidationPipe (elige INVALID_INPUT o WEAK_PASSWORD)
 ├─ identity.module.ts
-└─ index.ts                               # IdentityModule; contratos de eventos: CLIENT_ACCOUNT_VERIFIED y ClientAccountVerifiedEvent (y en 002: el verificador token→Actor)
+└─ index.ts                               # IdentityModule; IDENTITY_THROTTLERS (composición); contratos de eventos: CLIENT_ACCOUNT_VERIFIED y ClientAccountVerifiedEvent (y en 002: el verificador token→Actor)
 ```
 
 Pruebas unitarias junto al código (`*.spec.ts`).
@@ -332,7 +332,8 @@ Pruebas unitarias junto al código (`*.spec.ts`).
   - Común: la contraseña en minúsculas está en la lista.
   - Igual al correo: la contraseña en minúsculas coincide con el correo normalizado o con su parte local.
 - **Lista de contraseñas comunes**: se genera con un script (`packages/contracts/scripts/build-common-passwords.mjs`)
-  desde el top 100 000 de SecLists (licencia MIT, atribución en el encabezado). Se guardan **solo** las entradas que
+  desde el top 1 000 000 de SecLists (`xato-net-10-million-passwords-1000000.txt`, licencia MIT, atribución en el
+  encabezado; el top 100 000 dejaba 5 entradas tras el filtro, review 001 I-1). Se guardan **solo** las entradas que
   pasarían las demás reglas sin la de mayúscula: 12 a 128 caracteres, con número y con símbolo. La comparación es
   insensible a mayúsculas, así que «password123!» también bloquea «Password123!». Con ese filtro la lista queda chica
   y se puede enviar al navegador, que aplica **las mismas reglas** que el `api` (CA-22). Meta: menos de 50 KB, que la
@@ -440,11 +441,15 @@ Métodos de ≤ 30 líneas (Art. VII.2): cada rama del paso 4 es un método priv
   @HttpCode(202)`, `@Post('verify-email') @HttpCode(200)`. Valida con `new ZodValidationPipe(schema,
   identityValidationError)`, llama al servicio y mapea el resultado al contrato. No tiene reglas de negocio.
 - **Límite por IP (D-15, R-10)**: `ThrottlerModule.forRoot({ throttlers: [{ name: 'register-ip', ttl: 3_600_000,
-  limit: REGISTRATIONS_PER_IP_PER_HOUR }] })` en `AppModule`, con almacenamiento **en memoria**: una sola réplica de
+  limit: REGISTRATIONS_PER_IP_PER_HOUR }, { name: 'resend-ip', ttl: 3_600_000, limit: RESENDS_PER_IP_PER_HOUR }] })`
+  en `AppModule` (`resend-ip` desde el 2026-09-28, SEC-1 y D-8 ampliada), con almacenamiento **en memoria**: una sola réplica de
   `api` (ADR-0001), y un reinicio que vacía los contadores es aceptable. La ruta `register` lleva
-  `@UseGuards(IdentityIpThrottlerGuard)` (`presentation/identity-ip-throttler.guard.ts`), una subclase de
+  `@UseGuards(IdentityIpThrottlerGuard)` (`presentation/identity-ip-throttler.guard.ts`), igual que
+  `resend-verification`; como la librería aplica todos los *throttlers* con nombre a cada ruta, `register` lleva
+  `@SkipThrottle({ 'resend-ip': true })` y `resend-verification` `@SkipThrottle({ 'register-ip': true })`, así cada ruta
+  cuenta solo en el suyo. El guard es una subclase de
   `ThrottlerGuard` que:
-  - tiene una **tabla *throttler* → ámbito** (`{ 'register-ip': 'ip' }` en 001) con la que traduce el *throttler* que
+  - tiene una **tabla *throttler* → ámbito** (`{ 'register-ip': 'ip', 'resend-ip': 'ip' }` en 001) con la que traduce el *throttler* que
     disparó al `scope` de `IdentityTooManyRequestsError` y de `identity.rate_limited`;
   - sobrescribe `throwThrottlingException` para lanzar `IdentityTooManyRequestsError` con ese `scope` y el
     `Retry-After` que da el detalle del throttler (así la respuesta es la de CA-15 y no la de Nest);
@@ -580,7 +585,9 @@ Reglas de la interfaz:
   `NEXT_PUBLIC_*` (000 CA-29). En local, `http://localhost/api/v1` a través de Traefik; en staging,
   `https://api.staging.nimbo.me/api/v1`, con CORS.
 - **Correo en `pedir-enlace`**: 002 lo prellena (CA-16) desde `sessionStorage`, **no** desde la URL, para que el
-  correo no quede en bitácoras de Next.js ni de Traefik.
+  correo no quede en bitácoras de Next.js ni de Traefik. Se guarda como `{ email, savedAt }` con
+  `saveRequestLinkEmail` (`features/identity/request-link-email-storage.ts`), vence a las 24 h como el plan elegido y
+  se borra al leerlo (SEC-2, 2026-09-28).
 - **Componentes**: se reutilizan `Button`, `Input`, `Card`, `Badge` y `StateView`. Se agregan `components/ui/label.tsx`,
   `checkbox.tsx`, `radio-group.tsx` y `alert.tsx` al estilo shadcn, pero sobre **controles nativos**
   (`<input type="checkbox|radio">`), sin Radix: son accesibles por defecto y no suman dependencias de tiempo de
@@ -835,7 +842,7 @@ de `api` y `worker`. Nombres `'CA-n: …'` (Art. II).
 | CA-12 | unit + int (parcial) | `typeorm-verification-token.repository` en `user-repository.int-spec.ts` (búsqueda por `tipo`). Se completa en 002 (restablecer) y en 003 (el token como `Bearer` no autentica) |
 | CA-13 | int + web | `apps/api/test/int/identity/resend-verification.int-spec.ts`; `features/identity/components/resend-link-button.spec.tsx` (cuenta regresiva) |
 | CA-14 | int + iso | `resend-verification.int-spec.ts`; `apps/api/test/isolation/identity-enumeration.iso-spec.ts` |
-| CA-15 | int + iso | `apps/api/test/int/shared/redis-rate-limiter.int-spec.ts` (contrato de `IRateLimiter`: ventanas, `retryAfter`, atomicidad concurrente); `apps/api/test/int/identity/rate-limits.int-spec.ts` (60 s, 5/h, 10/h por IP con `X-Forwarded-For`, `Retry-After`, mensaje); `identity-enumeration.iso-spec.ts` (la misma secuencia 202/429 y los mismos cuerpos y cabeceras en los cuatro tipos de cuenta) |
+| CA-15 | int + iso | `apps/api/test/int/shared/redis-rate-limiter.int-spec.ts` (contrato de `IRateLimiter`: ventanas, `retryAfter`, atomicidad concurrente); `apps/api/test/int/identity/rate-limits.int-spec.ts` (60 s, 5/h, 10 registros/h y 10 reenvíos/h por IP con `X-Forwarded-For`, cada ruta con su contador, `Retry-After`, mensaje); `identity-enumeration.iso-spec.ts` (la misma secuencia 202/429 y los mismos cuerpos y cabeceras en los cuatro tipos de cuenta) |
 | CA-16 | int (**en 002**) | la escribe 002 (`login.int-spec.ts`); 001 deja `emailVerified` listo |
 | CA-17 | int | `apps/api/test/int/identity/token-secrecy.int-spec.ts` (token sacado de Mailpit; búsqueda en todas las columnas de texto de `usuario` y `token_cuenta` y en el `LogSink`; `token_hash ≠ token`; dos registros → tokens distintos) |
 | CA-18 | unit + int | `shared/infrastructure/logging/redacted-fields.spec.ts` (`email`, `correo`, `fullName`, `to`, `html`, `text`); `apps/api/test/int/identity/identity-logs.int-spec.ts` (los flujos listados en CA-18; nada sensible; eventos presentes; el `correlationId` del trabajo de correo es el de la petición) |
@@ -1051,7 +1058,8 @@ interfaz.
   con `@SkipThrottle`, y viceversa, con una prueba de que el registro solo cuenta en `register-ip` (ADR-0017).
 - **Reenvío sin límite por IP**: D-8 solo limita por IP el registro. Una IP puede pedir reenvíos para muchos correos
   distintos, cada uno limitado a 5 por hora. No revela cuentas, pero el `security-auditor` debe revisarlo. Si hay
-  que limitarlo, es un cambio de spec.
+  que limitarlo, es un cambio de spec. **Resuelto el 2026-09-28** (SEC-1): D-8 ampliada y *throttler* `resend-ip`
+  (§6.5).
 - **P-1**: la opción más simple es aceptar `400 VALIDATION_FAILED` para JSON mal formado y precisarlo en CA-6. Un
   filtro por ruta sobre errores del analizador es acoplamiento sin beneficio de seguridad, porque la respuesta no
   depende del correo.

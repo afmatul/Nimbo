@@ -5,8 +5,10 @@
 
 # Dependencias y salidas de compilación
 node_modules/
+.pnpm-store/
 dist/
 dist-worker/
+dist-int/
 .next/
 next-env.d.ts
 out/

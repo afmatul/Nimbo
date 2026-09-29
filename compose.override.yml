@@ -33,7 +33,7 @@ services:
 
   # Correo de desarrollo: UI en http://localhost:8025, SMTP en 1025 (solo local; spec 000 §14).
   mailpit:
-    image: axllent/mailpit
+    image: axllent/mailpit:v1.31.3
     ports:
       - '8025:8025'
       - '1025:1025'
@@ -56,6 +56,10 @@ services:
     build:
       context: .
       dockerfile: apps/worker/Dockerfile
+    # Dentro de la red de compose el SMTP de Mailpit es `mailpit:1025`, no `localhost` (spec 001, ADR-0018).
+    environment:
+      SMTP_HOST: mailpit
+      SMTP_PORT: '1025'
 
   web:
     profiles: [apps]
