@@ -26,7 +26,8 @@
 
 ## API REST
 - Prefijo `/api/v1`. Recursos en plural e inglés: `/files`, `/folders`, `/shares`, `/subscriptions`.
-- Validación con `class-validator` en DTOs de presentación; contratos públicos en `packages/contracts`.
+- Validación con esquemas zod de `packages/contracts` y `ZodValidationPipe` de `shared` (ADR-0020); contratos públicos
+  en `packages/contracts`.
 - Paginación por cursor en listados. Fechas ISO-8601 UTC.
 - OpenAPI generado por `@nestjs/swagger`; el PR que cambia un endpoint actualiza el contrato.
 - Operaciones sensibles con `@Throttle` (login, recuperación, enlaces con contraseña, agente).
