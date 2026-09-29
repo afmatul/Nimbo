@@ -216,7 +216,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
 
 ## Bloque 2 — PR-B «roles de BD y withActor» (plan §4, §6.3, §6.4, §6.8, §6.10; ADR-0005) — depende de: **001 PR-1** (T-06, T-14)
 
-- [ ] **T-20** [P] [P×PR] Script de rol `10-nimbo-app.sh` — CA: CA-13 — Depende: — (hoy) — ~1 h
+- [x] **T-20** [P] [P×PR] Script de rol `10-nimbo-app.sh` — CA: CA-13 — Depende: — (hoy) — ~1 h
   Prueba primero `apps/api/test/int/shared/app-role-script.int-spec.ts`, con un `PostgreSqlContainer` propio (no el
   compartido): ejecutar el script **dos veces** (idempotente) y comprobar en `pg_roles` que `nimbo_app` tiene `LOGIN` y
   **no** `SUPERUSER`, `BYPASSRLS`, `CREATEDB`, `CREATEROLE` ni `REPLICATION`; puede conectarse con la contraseña dada;
@@ -545,7 +545,7 @@ PR-F = 9 (T-48…T-56). Total: 56.
 
 ## Notas del developer
 
-- **T-22**: 7 pruebas de `rls.js` en verde. **T-21**: compose, `.env.example` y `db:app-role` quedan como el plan; la comprobación manual del volumen no se hizo porque Docker Desktop no está en marcha. **T-20** sigue abierta por lo mismo: el script y su prueba de integración están, pero no se ejecutaron.
+- **T-22**: 7 pruebas de `rls.js` en verde. **T-21**: compose, `.env.example` y `db:app-role` quedan como el plan; la comprobación manual del volumen no se hizo porque Docker Desktop no está en marcha. **T-20**: el script queda como plan §4 (a) (LF por `.gitattributes`, sin `set -e`) y `app-role-script.int-spec.ts` pasa con Docker (4 casos: idempotencia y atributos en `pg_roles`, conexión TCP con la contraseña dada y rechazo con otra, «falta NIMBO_APP_DB_PASSWORD», contraseña con comilla simple).
 
 - **Precedencia del plan**: donde §11.2 dice «500 estrategia desconocida», «`err` se relanza como 500»,
   `access-token-strategy.ts` como archivo propio o `validate` → `false`, manda «Cambios aplicados»: 401
