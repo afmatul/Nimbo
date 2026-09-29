@@ -453,7 +453,7 @@ contra Postgres el contrato de `levelFor` (parte de **CA-10**; el resto, con 005
   ejecutado como subconsulta da 0 filas para cada rol.
   Archivos: `apps/api/test/isolation/access-internal-roles.iso-spec.ts`.
 
-- [ ] **T-44** [P] Recorredor de rutas — CA: CA-7, DT-2 — Depende: T-07 — ~1 h
+- [x] **T-44** [P] Recorredor de rutas — CA: CA-7, DT-2 — Depende: T-07 — ~1 h
   Prueba primero `apps/api/test/support/route-declarations.spec.ts`: con un módulo de prueba que tiene una ruta sin
   declarar, otra con `@Public()` y `@Roles()` a la vez y otras bien declaradas, el recorredor devuelve `{ method,
   path, public, roles }` con el prefijo global y lista las dos malas por método y ruta. Luego
