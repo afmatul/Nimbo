@@ -20,6 +20,7 @@ import { toApiClientError, type ApiClientError } from '../../../lib/api-error';
 import { messageForCode } from '../../../lib/error-catalog';
 import { resendVerification } from '../api';
 import { useCountdown } from '../hooks/use-countdown';
+import { takeRequestLinkEmail } from '../request-link-email-storage';
 
 import { CheckEmailPanel } from './check-email-panel';
 import { LimitAlert } from './limit-alert';
@@ -27,13 +28,6 @@ import { ResendLinkButton } from './resend-link-button';
 import { SEND_LINK_ERROR_TITLE, ServerErrorAlert } from './server-error-alert';
 
 const LOGIN_HREF = '/iniciar-sesion';
-
-/** 002 prellena el correo aquí. No se lee de la URL: no debe quedar en bitácoras de Next ni de Traefik. */
-export const REQUEST_LINK_EMAIL_KEY = 'nimbo.registro.correo';
-
-export function readRequestLinkEmail(storage: Storage | undefined): string {
-  return storage?.getItem(REQUEST_LINK_EMAIL_KEY) ?? '';
-}
 
 function LimitNotice({
   message,
@@ -76,7 +70,7 @@ export function RequestLinkForm({ apiPublicUrl }: { readonly apiPublicUrl: strin
   });
 
   useEffect(() => {
-    const stored = readRequestLinkEmail(window.sessionStorage);
+    const stored = takeRequestLinkEmail(window.sessionStorage, new Date());
     if (stored !== '') setValue('email', stored);
   }, [setValue]);
 

@@ -5,7 +5,9 @@ import { EMAIL_REQUEST_COOLDOWN_SECONDS } from '@nimbo/contracts';
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-import { REQUEST_LINK_EMAIL_KEY, RequestLinkForm } from './request-link-form';
+import { REQUEST_LINK_EMAIL_KEY, saveRequestLinkEmail } from '../request-link-email-storage';
+
+import { RequestLinkForm } from './request-link-form';
 
 function jsonResponse(
   body: unknown,
@@ -147,7 +149,7 @@ describe('RequestLinkForm', () => {
   });
 
   it('prellena el correo desde sessionStorage y no desde la URL', async () => {
-    window.sessionStorage.setItem(REQUEST_LINK_EMAIL_KEY, 'ana@ejemplo.com');
+    saveRequestLinkEmail(window.sessionStorage, 'ana@ejemplo.com', new Date());
     window.history.replaceState(null, '', '/registro/pedir-enlace?email=otro@ejemplo.com');
 
     render(<RequestLinkForm apiPublicUrl="http://localhost/api/v1" />);
@@ -156,6 +158,19 @@ describe('RequestLinkForm', () => {
       await Promise.resolve();
     });
     expect((screen.getByLabelText('Correo') as HTMLInputElement).value).toBe('ana@ejemplo.com');
+  });
+
+  it('SEC-2: un correo guardado hace 24 h o más no se prellena y se borra', async () => {
+    const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    saveRequestLinkEmail(window.sessionStorage, 'ana@ejemplo.com', dayAgo);
+
+    render(<RequestLinkForm apiPublicUrl="http://localhost/api/v1" />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect((screen.getByLabelText('Correo') as HTMLInputElement).value).toBe('');
+    expect(window.sessionStorage.getItem(REQUEST_LINK_EMAIL_KEY)).toBeNull();
   });
 
   it('sin sessionStorage el correo queda vacío aunque la URL lo traiga', () => {

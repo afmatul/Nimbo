@@ -585,7 +585,9 @@ Reglas de la interfaz:
   `NEXT_PUBLIC_*` (000 CA-29). En local, `http://localhost/api/v1` a través de Traefik; en staging,
   `https://api.staging.nimbo.me/api/v1`, con CORS.
 - **Correo en `pedir-enlace`**: 002 lo prellena (CA-16) desde `sessionStorage`, **no** desde la URL, para que el
-  correo no quede en bitácoras de Next.js ni de Traefik.
+  correo no quede en bitácoras de Next.js ni de Traefik. Se guarda como `{ email, savedAt }` con
+  `saveRequestLinkEmail` (`features/identity/request-link-email-storage.ts`), vence a las 24 h como el plan elegido y
+  se borra al leerlo (SEC-2, 2026-09-28).
 - **Componentes**: se reutilizan `Button`, `Input`, `Card`, `Badge` y `StateView`. Se agregan `components/ui/label.tsx`,
   `checkbox.tsx`, `radio-group.tsx` y `alert.tsx` al estilo shadcn, pero sobre **controles nativos**
   (`<input type="checkbox|radio">`), sin Radix: son accesibles por defecto y no suman dependencias de tiempo de
