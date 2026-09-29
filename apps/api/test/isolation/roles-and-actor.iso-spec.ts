@@ -30,7 +30,8 @@ const casesFor = (routes: readonly (readonly [string, readonly Role[]])[]) =>
 
 /**
  * Roles y `Actor` con las cuentas del mundo de aislamiento, como `nimbo_app` (003 CA-4, CA-5, CA-6, CA-15). La
- * suplantación usa el `id` real del **otro** cliente: el ataque que CA-4 cierra.
+ * suplantación usa el `id` real del **otro** cliente: el ataque que CA-4 cierra. Hasta 002-PR-2, `TestJwtStrategy`
+ * no consulta `usuario`: el `id` y el rol salen del token firmado, no de la fila de la cuenta.
  */
 describe('roles y Actor en la suite de aislamiento (CA-4, CA-5, CA-6)', () => {
   let world: IsolationWorld;
