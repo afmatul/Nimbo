@@ -2,7 +2,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { ESLint } from 'eslint';
-import tseslint from 'typescript-eslint';
+import { parser as typescriptParser } from 'typescript-eslint';
 
 import rls from './rls.js';
 
@@ -25,7 +25,7 @@ const lint = async (code: string, relativePath: string): Promise<ESLint.LintResu
   const eslint = new ESLint({
     cwd: here,
     overrideConfigFile: true,
-    overrideConfig: [{ files: ['**/*.ts'], languageOptions: { parser: tseslint.parser } }, ...rls],
+    overrideConfig: [{ files: ['**/*.ts'], languageOptions: { parser: typescriptParser } }, ...rls],
   });
   const [result] = await eslint.lintText(code, { filePath: join(here, relativePath) });
   if (result === undefined) throw new Error('ESLint no devolvió resultado');
@@ -40,14 +40,17 @@ describe('lint rls.js: el actor en SQL solo lo fija withActor (CA-12, PD-26)', (
     ['set_config(', SET_CONFIG_CALL],
     ['plantilla SET LOCAL app.actor_id', SET_LOCAL_TEMPLATE],
     ['literal SET app.', SET_APP_LITERAL],
-  ])('CA-12: %s fuera de typeorm-transaction-runner.ts es error que nombra withActor', async (_, code) => {
-    const result = await lint(code, OTHER_FILE);
+  ])(
+    'CA-12: %s fuera de typeorm-transaction-runner.ts es error que nombra withActor',
+    async (_, code) => {
+      const result = await lint(code, OTHER_FILE);
 
-    const messages = restrictedMessages(result);
-    expect(result.errorCount).toBeGreaterThan(0);
-    expect(messages).not.toHaveLength(0);
-    expect(messages.every((m) => m.includes('withActor'))).toBe(true);
-  });
+      const messages = restrictedMessages(result);
+      expect(result.errorCount).toBeGreaterThan(0);
+      expect(messages).not.toHaveLength(0);
+      expect(messages.every((m) => m.includes('withActor'))).toBe(true);
+    },
+  );
 
   it.each([
     ['set_config(', SET_CONFIG_CALL],
