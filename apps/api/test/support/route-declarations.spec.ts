@@ -78,7 +78,7 @@ describe('listRouteDeclarations (CA-7, DT-2)', () => {
     });
   });
 
-  it('sin prefijo global, las rutas empiezan en la del controlador', () => {
+  it('CA-7: sin prefijo global, las rutas empiezan en la del controlador', () => {
     const routes = listRouteDeclarations(moduleRef, '');
 
     expect(routes.map((route) => route.path)).toContain('/open');

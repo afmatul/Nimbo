@@ -75,7 +75,7 @@ describe('mundo de aislamiento (CA-15)', () => {
     expect(rows.map((row) => row?.rol)).toEqual([...internals]);
   });
 
-  it('D-3: el builder arma la cuenta con el nombre pedido y el rol del builder', () => {
+  it('CA-15: el builder arma la cuenta con el nombre pedido y el rol del builder', () => {
     const client = aClient().named('Ana López').build();
     const support = anInternal(Role.SUPPORT).build();
 
