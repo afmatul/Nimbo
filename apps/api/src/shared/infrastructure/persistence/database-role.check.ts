@@ -34,7 +34,7 @@ export interface DatabaseRoleLogger {
 @Injectable()
 export class DatabaseRoleCheck implements OnApplicationBootstrap {
   constructor(
-    private readonly dataSource: DataSource,
+    @Inject(DataSource) private readonly dataSource: DataSource,
     @Inject(PinoLogger) private readonly logger: DatabaseRoleLogger,
   ) {}
 
