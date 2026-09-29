@@ -1,10 +1,10 @@
 /**
  * @jest-environment jsdom
  */
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { StrictMode } from 'react';
 
-import { resetVerifyEmailState, useVerifyEmail } from './use-verify-email';
+import { useVerifyEmail } from './use-verify-email';
 
 function jsonResponse(body: unknown, status = 200): Response {
   return {
@@ -21,7 +21,6 @@ describe('useVerifyEmail', () => {
   beforeEach(() => {
     fetchMock.mockReset();
     global.fetch = fetchMock;
-    resetVerifyEmailState();
     window.localStorage.clear();
     window.history.replaceState(null, '', '/verificar-correo');
   });
@@ -73,5 +72,57 @@ describe('useVerifyEmail', () => {
       expect(hook.result.current.status).toBe('enlace-invalido');
     });
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  function pasteLink(fragment: string): void {
+    act(() => {
+      window.history.replaceState(null, '', `/verificar-correo${fragment}`);
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+  }
+
+  function postedTokens(): string[] {
+    return fetchMock.mock.calls.map((call) => {
+      const body = JSON.parse(String(call[1]?.body)) as { token: string };
+      return body.token;
+    });
+  }
+
+  it('otro enlace pegado en la misma pestaña verifica el token nuevo', async () => {
+    window.history.replaceState(null, '', '/verificar-correo#token=primero');
+    fetchMock.mockResolvedValueOnce(jsonResponse({ status: 'verified' }));
+    fetchMock.mockResolvedValueOnce(jsonResponse({ status: 'already-verified' }));
+
+    const hook = renderHook(() => useVerifyEmail('http://localhost/api/v1'), {
+      wrapper: StrictMode,
+    });
+    await waitFor(() => {
+      expect(hook.result.current.status).toBe('exito');
+    });
+
+    pasteLink('#token=segundo');
+    await waitFor(() => {
+      expect(hook.result.current.status).toBe('ya-verificado');
+    });
+
+    expect(postedTokens()).toEqual(['primero', 'segundo']);
+    expect(window.location.hash).toBe('');
+  });
+
+  it('un cambio de fragmento sin token nuevo no vuelve a llamar a la API', async () => {
+    window.history.replaceState(null, '', '/verificar-correo#token=unico');
+    fetchMock.mockResolvedValue(jsonResponse({ status: 'verified' }));
+
+    const hook = renderHook(() => useVerifyEmail('http://localhost/api/v1'));
+    await waitFor(() => {
+      expect(hook.result.current.status).toBe('exito');
+    });
+
+    pasteLink('#otra-cosa');
+    pasteLink('#token=unico');
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(hook.result.current.status).toBe('exito');
+    expect(window.location.hash).toBe('');
   });
 });

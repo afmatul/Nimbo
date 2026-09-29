@@ -1,7 +1,7 @@
 'use client';
 
 import { IDENTITY_ERROR_CODES } from '@nimbo/contracts';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { ApiClientError } from '../../../lib/api-error';
 import { verifyEmail } from '../api';
@@ -14,27 +14,12 @@ export type VerifyEmailViewState =
   | { readonly status: 'enlace-expirado' }
   | { readonly status: 'enlace-invalido' };
 
-/**
- * El fragmento se lee una sola vez por carga. StrictMode vuelve a montar el efecto en el mismo
- * documento; la promesa se comparte para que el `POST` no se repita. Una recarga real empieza de cero
- * y, sin fragmento, cae en enlace-invalido.
- */
-let rememberedToken: string | null | undefined;
-const flights = new Map<string, Promise<VerifyEmailViewState>>();
-
-export function resetVerifyEmailState(): void {
-  rememberedToken = undefined;
-  flights.clear();
-}
-
-function readTokenOnce(): string | null {
-  if (rememberedToken !== undefined) return rememberedToken;
+function readFragmentToken(): string | null {
   const raw = window.location.hash.startsWith('#')
     ? window.location.hash.slice(1)
     : window.location.hash;
   const token = new URLSearchParams(raw).get('token');
-  rememberedToken = token === null || token === '' ? null : token;
-  return rememberedToken;
+  return token === null || token === '' ? null : token;
 }
 
 function stripFragment(): void {
@@ -63,32 +48,59 @@ async function resolveVerification(
   }
 }
 
-function verificationFlight(apiPublicUrl: string, token: string): Promise<VerifyEmailViewState> {
-  const key = `${apiPublicUrl}\n${token}`;
-  const existing = flights.get(key);
-  if (existing !== undefined) return existing;
-  const flight = resolveVerification(apiPublicUrl, token);
-  flights.set(key, flight);
-  return flight;
+interface Verification {
+  readonly token: string | null;
+  readonly flight: Promise<VerifyEmailViewState>;
 }
 
-/** Lee `#token`, lo borra y verifica una sola vez. */
+const INVALID_LINK: VerifyEmailViewState = { status: 'enlace-invalido' };
+
+/**
+ * Lee `#token`, lo borra y verifica. La verificación en curso vive en un `ref` del componente: el
+ * segundo montaje de `<StrictMode>` la reutiliza y el `POST` no se repite. Si la pestaña ya está en
+ * la página y llega otro `#token` (`hashchange`), se verifica ese token nuevo.
+ */
 export function useVerifyEmail(apiPublicUrl: string): VerifyEmailViewState {
   const [state, setState] = useState<VerifyEmailViewState>({ status: 'verificando' });
+  const current = useRef<Verification | null>(null);
 
   useEffect(() => {
     let active = true;
-    const token = readTokenOnce();
-    stripFragment();
-    const flight: Promise<VerifyEmailViewState> =
-      token === null
-        ? Promise.resolve({ status: 'enlace-invalido' })
-        : verificationFlight(apiPublicUrl, token);
-    void flight.then((next) => {
-      if (active) setState(next);
-    });
+
+    const follow = (verification: Verification): void => {
+      void verification.flight.then((next) => {
+        if (active && current.current === verification) setState(next);
+      });
+    };
+
+    const start = (token: string | null): void => {
+      stripFragment();
+      const verification: Verification = {
+        token,
+        flight:
+          token === null ? Promise.resolve(INVALID_LINK) : resolveVerification(apiPublicUrl, token),
+      };
+      current.current = verification;
+      follow(verification);
+    };
+
+    const onHashChange = (): void => {
+      const token = readFragmentToken();
+      if (token === null) return;
+      if (token === current.current?.token) {
+        stripFragment();
+        return;
+      }
+      setState({ status: 'verificando' });
+      start(token);
+    };
+
+    if (current.current === null) start(readFragmentToken());
+    else follow(current.current);
+    window.addEventListener('hashchange', onHashChange);
     return () => {
       active = false;
+      window.removeEventListener('hashchange', onHashChange);
     };
   }, [apiPublicUrl]);
 

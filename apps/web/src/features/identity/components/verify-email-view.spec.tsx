@@ -6,7 +6,6 @@ import { axe } from 'jest-axe';
 import { StrictMode } from 'react';
 
 import { saveChosenPlan } from '../chosen-plan-storage';
-import { resetVerifyEmailState } from '../hooks/use-verify-email';
 
 import { VerifyEmailView } from './verify-email-view';
 
@@ -29,7 +28,6 @@ describe('VerifyEmailView', () => {
   beforeEach(() => {
     fetchMock.mockReset();
     global.fetch = fetchMock;
-    resetVerifyEmailState();
     window.localStorage.clear();
     window.history.replaceState(null, '', '/verificar-correo');
   });
@@ -99,7 +97,6 @@ describe('VerifyEmailView', () => {
     expect(fetchMock).not.toHaveBeenCalled();
 
     fetchMock.mockResolvedValue(jsonResponse({ status: 'verified' }));
-    resetVerifyEmailState();
     window.history.replaceState(null, '', '/verificar-correo#token=reload');
     render(<VerifyEmailView apiPublicUrl="http://localhost/api/v1" />);
     expect(
@@ -107,7 +104,6 @@ describe('VerifyEmailView', () => {
     ).toBeTruthy();
     expect(window.location.hash).toBe('');
 
-    resetVerifyEmailState();
     render(<VerifyEmailView apiPublicUrl="http://localhost/api/v1" />);
     expect((await screen.findAllByText(/Este enlace no es válido/)).length).toBeGreaterThan(0);
   });

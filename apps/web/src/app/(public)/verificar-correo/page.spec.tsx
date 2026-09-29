@@ -3,8 +3,6 @@
  */
 import { render, screen } from '@testing-library/react';
 
-import { resetVerifyEmailState } from '../../../features/identity/hooks/use-verify-email';
-
 import VerificarCorreoPage from './page';
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -22,7 +20,6 @@ describe('página verificar correo', () => {
   beforeEach(() => {
     fetchMock.mockReset();
     global.fetch = fetchMock;
-    resetVerifyEmailState();
     process.env['APP_ENV'] = 'test';
     process.env['API_INTERNAL_URL'] = 'http://internal.test/api/v1';
     process.env['API_PUBLIC_URL'] = 'http://localhost/api/v1';
