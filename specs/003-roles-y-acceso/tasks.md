@@ -365,7 +365,7 @@ las actualizaciones del `architect` al integrar (plan §10.4).
 
 ## Bloque 3 — PR-C «access» (plan §6.5; ADR-0010) — depende de: PR-A (T-03) y PR-B (T-28, T-29)
 
-- [ ] **T-35** [P] [P×PR] Dominio de `access`: niveles, acciones y políticas — CA: CA-8, DT-10 — Depende: — (hoy) — ~1 h
+- [x] **T-35** [P] [P×PR] Dominio de `access`: niveles, acciones y políticas — CA: CA-8, DT-10 — Depende: — (hoy) — ~1 h
   Prueba primero `apps/api/src/modules/access/domain/policies/access-policies.spec.ts`: la tabla de plan §6.5 completa
   (tres niveles × once `Action`); un valor de `Action` desconocido (forzado con `as Action`) negado para Editor y
   Viewer y permitido para Owner; `policyFor` es exhaustivo por tipo y el mapa está congelado. Luego
@@ -373,7 +373,7 @@ las actualizaciones del `architect` al integrar (plan §10.4).
   Editor y Viewer) y `access-policies.ts`. Sin Nest ni TypeORM.
   Archivos: `apps/api/src/modules/access/domain/{access-level.enum,action.enum}.ts`, `apps/api/src/modules/access/domain/policies/{i-access-policy,owner.policy,editor.policy,viewer.policy,access-policies}.ts`, `apps/api/src/modules/access/domain/policies/access-policies.spec.ts`.
 
-- [ ] **T-36** `PermissionResolver` e `IAccessLevelReader` — CA: CA-9, CA-8 — Depende: T-03, T-35 — ~1 h
+- [x] **T-36** `PermissionResolver` e `IAccessLevelReader` — CA: CA-9, CA-8 — Depende: T-03, T-35 — ~1 h
   Prueba primero `apps/api/src/modules/access/application/permission-resolver.spec.ts`: los tres roles internos ×
   `VIEW`, `DOWNLOAD`, `PREVIEW`, `EDIT`, `QUERY_AGENT` → `can` es `false` y `levelFor` es `null`, y el lector falso
   **no** se llama; `nodeId` que no es UUID → `null` sin consultar; `CLIENT` con nivel `EDITOR` → `can(EDIT)` `true`,
@@ -381,21 +381,21 @@ las actualizaciones del `architect` al integrar (plan §10.4).
   el servicio (`actor` primer parámetro, DF-01).
   Archivos: `apps/api/src/modules/access/application/{permission-resolver,i-access-level-reader.port}.ts`, `apps/api/src/modules/access/application/permission-resolver.spec.ts`.
 
-- [ ] **T-37** [P] `accessibleNodes` y `AccessibleNodesFragment` — CA: CA-9, CA-10 (forma) — Depende: T-03 — ~0,5 h
+- [x] **T-37** [P] `accessibleNodes` y `AccessibleNodesFragment` — CA: CA-9, CA-10 (forma) — Depende: T-03 — ~0,5 h
   Prueba primero `apps/api/src/modules/access/infrastructure/sql/accessible-nodes.spec.ts`: para los cuatro roles (en
   003 también `CLIENT`) devuelve el conjunto vacío tipado `SELECT NULL::uuid AS nodo_id, NULL::text AS tipo_nodo,
   NULL::text AS nivel WHERE false`; todas las claves de `parameters` empiezan por `access_`; función pura, sin DI.
   Luego la función.
   Archivos: `apps/api/src/modules/access/infrastructure/sql/accessible-nodes.{ts,spec.ts}`.
 
-- [ ] **T-38** `SqlAccessLevelReader` contra Postgres — CA: CA-10 (parcial), CA-9 — Depende: T-29, T-36, T-37 — ~1 h
+- [x] **T-38** `SqlAccessLevelReader` contra Postgres — CA: CA-10 (parcial), CA-9 — Depende: T-29, T-36, T-37 — ~1 h
   Prueba primero `apps/api/test/int/access/sql-access-level-reader.int-spec.ts` (como `nimbo_app`): dentro de
   `withActor` la consulta `SELECT nivel FROM (<fragmento>) accesibles WHERE nodo_id = :access_node_id` con precedencia
   `OWNER > EDITOR > VIEWER` y `LIMIT 1` **se ejecuta** y devuelve `null`; fuera de `withActor` lanza
   `ActorScopeMissingError`. Luego el adaptador (`EntityManager` solo de `TransactionContext.requireActorScope`).
   Archivos: `apps/api/src/modules/access/infrastructure/sql/sql-access-level-reader.ts`, `apps/api/test/int/access/sql-access-level-reader.int-spec.ts`.
 
-- [ ] **T-39** `AccessModule`, `index.ts`, `AppModule` y README — CA: CA-8, CA-9 — Depende: T-38 — ~1 h
+- [x] **T-39** `AccessModule`, `index.ts`, `AppModule` y README — CA: CA-8, CA-9 — Depende: T-38 — ~1 h
   Prueba primero `apps/api/src/modules/access/index.spec.ts`: exporta exactamente `AccessModule`,
   `PermissionResolver`, `accessibleNodes`, `AccessLevel`, `Action` (y el tipo `AccessibleNodesFragment`); y en
   `sql-access-level-reader.int-spec.ts`, `PermissionResolver` se resuelve desde `AccessModule`. Luego
@@ -404,10 +404,30 @@ las actualizaciones del `architect` al integrar (plan §10.4).
   §6.11). `pnpm lint` confirma la frontera `access → shared` (ADR-0008).
   Archivos: `apps/api/src/modules/access/{access.module,index}.ts`, `apps/api/src/modules/access/index.spec.ts`, `apps/api/src/modules/access/README.md`, `apps/api/src/app.module.ts`.
 
-- [ ] **T-40** Cierre del PR-C — CA: n/a — Depende: T-35…T-39 — ~0,5 h
+- [x] **T-40** Cierre del PR-C — CA: n/a — Depende: T-35…T-39 — ~0,5 h
   `pnpm lint`, `pnpm typecheck`, `pnpm test` (cobertura ≥ 60 % en `domain/` y `application/` de `access`, RNF-11),
   `pnpm test:int`, `pnpm test:isolation`. Resumen en el PR («PR parcial»).
   Archivos: `specs/003-roles-y-acceso/tasks.md` (casillas).
+
+### Resumen del PR-C (PR parcial de 003)
+
+PR parcial de 003 (plan §6.12): módulo `access` (M3a), T-35…T-40, sobre PR-A (integrado por *merge*) y PR-B. Cubre
+**CA-8** (tabla de tres niveles × once acciones, cerrada por defecto para Editor y Viewer) y **CA-9** (los roles
+internos reciben `false`/`null` sin consultar; `accessibleNodes` les da el conjunto vacío tipado), y deja probado
+contra Postgres el contrato de `levelFor` (parte de **CA-10**; el resto, con 005). Entrega `AccessLevel`, `Action`,
+`IAccessPolicy` y las tres políticas, `PermissionResolver`, `IAccessLevelReader` → `SqlAccessLevelReader` (solo con el
+`EntityManager` de `requireActorScope`), `accessibleNodes` + `AccessibleNodesFragment`, `AccessModule` en `AppModule`,
+`index.ts` y el README del módulo (qué agregan 005 y 012). Sin tablas ni migraciones.
+
+- **Archivo de 001 tocado**: `packages/config/eslint/shared-boundaries.js` se amplió en `b804897` para que `shared`
+  pueda importar de la raíz de `@nimbo/contracts` `ROLES`, `RoleName`, `SHARED_ERROR_CODES` y `SharedErrorCode`
+  (contratos de `contracts/shared`, T-02/T-04). Lo revisa quien integre 001.
+- **Decisión pendiente para el `architect`**: si `shared` debe exportar un `isUuid` (hoy `PermissionResolver` repite
+  el patrón UUID que ya valida `withActor`).
+- Pruebas (Docker): `pnpm lint`, `pnpm typecheck`, `pnpm test` y `pnpm test:isolation` en verde; `pnpm test:int`
+  159/160: falla solo `dotenv-bootstrap.int-spec.ts`, conocido (el compose local no tiene `nimbo_app`; aviso del
+  PR-B). Cobertura de `access`: `domain/` 100 % (`policies/` 92,9 % líneas, rama `never` del `switch` sin cubrir),
+  `application/` 100 %.
 
 ## Bloque 4 — PR-D «arnés de aislamiento y rutas» (plan §6.2, §6.7; CA-3, CA-7, CA-11, CA-15) — depende de: PR-A, PR-B, PR-C; T-45 de **001 PR-3**
 
@@ -622,6 +642,18 @@ PR-F = 9 (T-48…T-56). Total: 56.
   - `src/main.ts` y `src/worker.main.ts` reales (con `tsx`): con `DATABASE_URL` del dueño salen con código 1 y
     `db.role_rejected` (`superuser`, `bypassRls`, `ownsTables` en `true`), sin `api.started`/`worker.started`; con
     `nimbo_app` arrancan (`api.started`, `worker.started`).
+- **T-35**: 3 pruebas (tabla de once acciones, acción desconocida y mapa congelado) en verde sobre la versión de políticas objeto.
+- **T-38**: la consulta vive en `readAccessLevel(manager, fragment, nodeId)` (exportada del mismo archivo, no desde
+  `index.ts`) para probar la precedencia en Postgres con un fragmento `VALUES` de varias filas: en 003
+  `accessibleNodes` no devuelve filas. Los parámetros con nombre del fragmento pasan a posicionales con
+  `driver.escapeQueryWithParameters`. Además de §6.5, la consulta filtra `nivel IN (OWNER, EDITOR, VIEWER)`: un nivel
+  desconocido da `null` (cerrado por defecto) y el resultado siempre es un `AccessLevel`. `TransactionContext` se
+  inyecta con `@Inject` explícito (motivo de T-31). 5 casos en verde con Docker.
+- **T-39**: `index.spec.ts` comprueba las cinco exportaciones de valor y, por tipo, la forma de
+  `AccessibleNodesFragment`. En `sql-access-level-reader.int-spec.ts`, `PermissionResolver` sale de
+  `createTestApp({ modules: [AccessModule] })` con el lector SQL real: cliente dentro de `withActor` → `null`/`false`;
+  cliente fuera → `ActorScopeMissingError`; los tres roles internos → `false` aun sin `withActor` (no llegan al lector).
+  `I_ACCESS_LEVEL_READER` no se exporta del módulo ni de `index.ts`: nadie fuera de `access` lo usa.
 
 - **Precedencia del plan**: donde §11.2 dice «500 estrategia desconocida», «`err` se relanza como 500»,
   `access-token-strategy.ts` como archivo propio o `validate` → `false`, manda «Cambios aplicados»: 401
@@ -653,6 +685,14 @@ PR-F = 9 (T-48…T-56). Total: 56.
 - **Sondas (T-12)**: además de las rutas de plan §5, `GET /__probe/session` (`@Roles(...ALL_ROLES)`, devuelve `{ sessionId }` de `@CurrentSessionId()`) para la parte de `sessionId` de CA-4 (T-15), y `ProbeCalls` (registro de manejadores ejecutados) para afirmar que un 401/403 no corre el controlador: un `jest.spyOn` sobre el controlador no sirve porque Nest captura el método al iniciar. `ProbeModule` provee su propio `FixedClock` bajo `I_CLOCK` (`PROBE_CLOCK_START`). Sin Docker, la cadena guard → Passport → estrategia → filtro se comprobó con una app Nest mínima sin `SharedModule` (prueba temporal no incluida): 200/401/403 y bitácoras con el patrón de ruta como se esperaba.
 - **Arnés con guards (T-13)**: la comprobación de mezcla cuenta, tras compilar, los *providers* que son estrategias de Passport (`authenticate` función) con `name === ACCESS_TOKEN_STRATEGY` (`passport-jwt` usa `jwt`); con `'test'` y más de una, cierra el módulo y lanza. No se importa `passport` directamente porque `api` no tiene `@types/passport`. Los controladores de prueba de 000 (`correlation-probe`, `errors-probe`) pasan a `@Public()` porque no prueban autorización. El conteo se comprobó con una prueba temporal sin Docker (1 con sondas, 2 con otra estrategia, 0 sin sondas).
 - **Bitácoras sin `req` (T-18, archivo no previsto)**: con el logger por petición de `nestjs-pino`, cada línea escrita durante la petición (`auth.unauthenticated`, `auth.forbidden`, `http.domain_error`) llevaba `req` completo: URL con el `id` real y **todas** las cabeceras que manda el cliente (incluidas `x-forwarded-user` con un correo y las cabeceras falsas), lo que rompe CA-16. Se agrega `quietReqLogger: true` en `infrastructure/logging/logger.options.ts` (+ prueba en `logger.options.spec.ts`): esas líneas llevan solo `reqId`. La línea `http.request` de 000 sigue con `req.headers` (salvo `authorization`/`cookie`, redactadas), así que T-18 exige «sin token ni `Bearer`» en todas las líneas y «sin correo ni cabeceras falsas» en las de denegación. **Hallazgo para `security-auditor`**: `http.request` registra cabeceras arbitrarias del cliente; conviene una lista permitida de cabeceras (fuera del alcance de 003).
-- **Verificación del PR-A sin Docker (T-11…T-19)**: Docker no está disponible (aviso de Adrián, 2026-09-27), así que **no se ejecutaron** `pnpm test:int` ni `pnpm test:isolation`. Quedan sin correr: `health.int-spec.ts` (CA-3 nuevo), `test-app.int-spec.ts`, `access-token-contract.int-spec.ts`, `auth-guards.int-spec.ts`, `auth-guards.no-strategy.int-spec.ts`, `auth-logs.int-spec.ts` y las suites de 000 con guards activos (`correlation-id`, `domain-exception-filter`, `worker-health`, `ping-queue`, `bootstrap`). Compilan (typecheck/lint) y las cinco nuevas de autorización se ejecutaron en verde contra una app Nest mínima sin `SharedModule` (arnés temporal fuera del repositorio). Antes de abrir el PR hay que correr `pnpm test:int` y `pnpm test:isolation` con Docker. `pnpm lint`, `pnpm typecheck`, `pnpm test` y `pnpm env:check` en verde; cobertura de las piezas nuevas de `shared` 100 % líneas, 91 % ramas.
+- **Verificación del PR-A sin Docker (T-11…T-19)** (histórica): Docker no está disponible (aviso de Adrián, 2026-09-27), así que **no se ejecutaron** `pnpm test:int` ni `pnpm test:isolation`. Quedan sin correr: `health.int-spec.ts` (CA-3 nuevo), `test-app.int-spec.ts`, `access-token-contract.int-spec.ts`, `auth-guards.int-spec.ts`, `auth-guards.no-strategy.int-spec.ts`, `auth-logs.int-spec.ts` y las suites de 000 con guards activos (`correlation-id`, `domain-exception-filter`, `worker-health`, `ping-queue`, `bootstrap`). Compilan (typecheck/lint) y las cinco nuevas de autorización se ejecutaron en verde contra una app Nest mínima sin `SharedModule` (arnés temporal fuera del repositorio). Antes de abrir el PR hay que correr `pnpm test:int` y `pnpm test:isolation` con Docker. `pnpm lint`, `pnpm typecheck`, `pnpm test` y `pnpm env:check` en verde; cobertura de las piezas nuevas de `shared` 100 % líneas, 91 % ramas.
+  **Resuelto en la rama del PR-C (T-40, 2026-09-28)**: con Docker, las suites de PR-A (`health`, `test-app`,
+  `access-token-contract`, `auth-guards`, `auth-guards.no-strategy`, `auth-logs`, `correlation-id`,
+  `domain-exception-filter`, `worker-health`, `ping-queue`, `bootstrap` de `api` y `worker`) corrieron en verde en
+  `pnpm test:int`, y `pnpm test:isolation` también.
 - **Review I-2 resuelto (`jwt-auth.guard.ts`)**: un `err` de Passport que no es `UnauthenticatedError` ni `TokenExpiredError`/`JsonWebTokenError`/`NotBeforeError` sigue siendo 401 `invalid_token`, pero además registra `auth.unexpected_error` (`warn`) con `route`, `errorClass` y `errorMessage` recortado a 200 caracteres (sin token ni cabeceras, CA-16); plan §7 actualizado. Pruebas en `jwt-auth.guard.spec.ts`. Commit `fix(shared): registrar la clase y el mensaje de errores inesperados del guard JWT [003]`.
+- **Exhaustividad de `policyFor` (T-35)**: doble. El mapa `POLICIES: Readonly<Record<AccessLevel, IAccessPolicy>>`
+  congelado no compila si le falta un nivel, y `policyFor` usa un `switch` sobre `AccessLevel` con rama
+  `default` `never`, así que un nivel nuevo tampoco compila sin su `case`. `accessPoliciesMap()` expone el mapa para
+  la prueba de congelado.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
