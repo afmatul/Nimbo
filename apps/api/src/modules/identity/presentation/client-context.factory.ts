@@ -4,7 +4,10 @@ import { DEVICE_COOKIE, readCookie } from './session-cookies';
 
 /** Lo único que `identity` lee de la petición para abrir o renovar una sesión. */
 export interface ClientRequest {
-  readonly headers: { readonly cookie?: string; readonly 'user-agent'?: string };
+  readonly headers: {
+    readonly cookie?: string | undefined;
+    readonly 'user-agent'?: string | undefined;
+  };
   /** `req.ip` de Express, ya resuelto con `trust proxy` (001). */
   readonly ip?: string | undefined;
 }

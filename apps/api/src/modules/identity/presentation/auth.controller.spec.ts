@@ -7,8 +7,11 @@ import { PinoLogger } from 'nestjs-pino';
 import request from 'supertest';
 
 import { DomainExceptionFilter } from '../../../shared';
+import { AuthService } from '../application/auth.service';
+import { IDENTITY_CONFIG } from '../application/identity-config';
 import { RegistrationService } from '../application/registration.service';
 import type { VerifyEmailResult } from '../application/registration.service';
+import { SessionService } from '../application/session.service';
 import { IdentityModule } from '../identity.module';
 
 import { AuthController } from './auth.controller';
@@ -46,6 +49,15 @@ describe('AuthController', () => {
     controllers: [AuthController],
     providers: [
       { provide: RegistrationService, useValue: service },
+      { provide: AuthService, useValue: { login: jest.fn() } },
+      {
+        provide: SessionService,
+        useValue: { open: jest.fn(), refresh: jest.fn(), logout: jest.fn() },
+      },
+      {
+        provide: IDENTITY_CONFIG,
+        useValue: { webPublicUrl: 'http://localhost', cookieSecure: false },
+      },
       { provide: PinoLogger, useValue: { info: jest.fn(), warn: jest.fn() } },
     ],
   })

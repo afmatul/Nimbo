@@ -46,7 +46,7 @@ export class SessionCookies {
 
 /** Cabeceras de la petición; basta con `req` de Express. */
 export interface CookieCarrier {
-  readonly headers: { readonly cookie?: string };
+  readonly headers: { readonly cookie?: string | undefined };
 }
 
 /**
