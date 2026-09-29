@@ -6,7 +6,7 @@ import { DEVICE_COOKIE, readCookie } from './session-cookies';
 export interface ClientRequest {
   readonly headers: { readonly cookie?: string; readonly 'user-agent'?: string };
   /** `req.ip` de Express, ya resuelto con `trust proxy` (001). */
-  readonly ip?: string;
+  readonly ip?: string | undefined;
 }
 
 /**
