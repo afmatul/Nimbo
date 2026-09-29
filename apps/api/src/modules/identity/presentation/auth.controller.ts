@@ -1,4 +1,5 @@
 import { Body, Controller, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import {
   registerRequestSchema,
   resendVerificationRequestSchema,
@@ -15,7 +16,11 @@ import type {
 import { ZodValidationPipe } from '../../../shared';
 import { RegistrationService } from '../application/registration.service';
 
-import { IdentityIpThrottlerGuard } from './identity-ip-throttler.guard';
+import {
+  IdentityIpThrottlerGuard,
+  REGISTER_IP_THROTTLER,
+  RESEND_IP_THROTTLER,
+} from './identity-ip-throttler.guard';
 import { identityValidationError } from './identity-validation';
 
 /** Respuesta neutra de registro y reenvío: la misma exista o no la cuenta (spec §7). */
@@ -34,6 +39,7 @@ export class AuthController {
   @Post('register')
   @HttpCode(HttpStatus.ACCEPTED)
   @UseGuards(IdentityIpThrottlerGuard)
+  @SkipThrottle({ [RESEND_IP_THROTTLER]: true })
   async register(
     @Body(new ZodValidationPipe(registerRequestSchema, identityValidationError))
     body: RegisterRequest,
@@ -45,6 +51,8 @@ export class AuthController {
 
   @Post('resend-verification')
   @HttpCode(HttpStatus.ACCEPTED)
+  @UseGuards(IdentityIpThrottlerGuard)
+  @SkipThrottle({ [REGISTER_IP_THROTTLER]: true })
   async resendVerification(
     @Body(new ZodValidationPipe(resendVerificationRequestSchema, identityValidationError))
     body: ResendVerificationRequest,

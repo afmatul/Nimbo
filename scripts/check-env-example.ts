@@ -9,7 +9,7 @@ import {
   SECRET_KEYS,
   workerEnvObjectSchema,
 } from '../apps/api/src/shared/infrastructure/config/env.schema';
-import { webEnvSchema } from '../apps/web/src/env';
+import { webEnvObjectSchema } from '../apps/web/src/env';
 
 const PUBLIC_PREFIX = 'NEXT_PUBLIC_';
 const ASSIGNMENT = /^([A-Z][A-Z0-9_]*)=/;
@@ -59,7 +59,7 @@ export const collectSchemaKeys = (): SchemaKeys => ({
   schemas: {
     api: Object.keys(apiEnvObjectSchema.shape),
     worker: Object.keys(workerEnvObjectSchema.shape),
-    web: Object.keys(webEnvSchema.shape),
+    web: Object.keys(webEnvObjectSchema.shape),
   },
   secrets: [...SECRET_KEYS],
 });

@@ -10,6 +10,7 @@
 1. **Claridad sin agresividad**: azules desaturados, neutros fríos y poco ruido. Nada de colores saturados al 100 %.
 2. **El color nunca es el único diferenciador**: siempre va acompañado de ícono, etiqueta o texto (estados, cuota, tipos de archivo, participantes).
 3. **Una sola fuente de tokens**: `apps/web/src/app/globals.css`. Los componentes usan utilidades de Tailwind (`bg-primary`, `text-muted-foreground`), **nunca hex** ni valores arbitrarios (`bg-[#6B8DD6]`).
+   **Única excepción: el favicon** (`apps/web/src/app/icon.svg`). El navegador lo carga como archivo suelto, sin la hoja de estilos, así que no puede usar `var()`: fija en hex los valores de `--primary` y `--primary-foreground`, y `icon.spec.ts` comprueba que coincidan con `globals.css`. Si cambia un token, la prueba falla hasta actualizar el SVG.
 4. **Mockup = intención, no código**: se reconstruye con shadcn/ui y los componentes de `components/nimbo/`.
 5. **Todo estado se diseña**: vacío, cargando, error (con acción correctiva), éxito, solo lectura, sin permiso.
 6. **Móvil desde 360 px** y `prefers-reduced-motion` respetado.

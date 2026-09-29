@@ -2,7 +2,7 @@ import { Catch, Controller, HttpCode, Post, UseGuards } from '@nestjs/common';
 import type { ArgumentsHost, ExceptionFilter, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { ThrottlerModule } from '@nestjs/throttler';
-import { REGISTRATIONS_PER_IP_PER_HOUR } from '@nimbo/contracts';
+import { REGISTRATIONS_PER_IP_PER_HOUR, RESENDS_PER_IP_PER_HOUR } from '@nimbo/contracts';
 import type { Response } from 'express';
 import { PinoLogger } from 'nestjs-pino';
 import request from 'supertest';
@@ -13,6 +13,7 @@ import {
   IDENTITY_THROTTLERS,
   IdentityIpThrottlerGuard,
   REGISTER_IP_THROTTLER,
+  RESEND_IP_THROTTLER,
 } from './identity-ip-throttler.guard';
 
 const LIMIT = 2;
@@ -52,13 +53,11 @@ describe('IdentityIpThrottlerGuard (ADR-0017, plan §6.5)', () => {
   let filter: CapturingFilter;
   const logger = { info: jest.fn(), warn: jest.fn() };
 
-  beforeEach(async () => {
-    logger.info.mockReset();
-    logger.warn.mockReset();
+  const startApp = async (throttlerName: string): Promise<void> => {
     const moduleRef = await Test.createTestingModule({
       imports: [
         ThrottlerModule.forRoot({
-          throttlers: [{ name: REGISTER_IP_THROTTLER, ttl: TTL_MS, limit: LIMIT }],
+          throttlers: [{ name: throttlerName, ttl: TTL_MS, limit: LIMIT }],
         }),
       ],
       controllers: [LimitedController],
@@ -68,6 +67,12 @@ describe('IdentityIpThrottlerGuard (ADR-0017, plan §6.5)', () => {
     filter = new CapturingFilter();
     app.useGlobalFilters(filter);
     await app.init();
+  };
+
+  beforeEach(async () => {
+    logger.info.mockReset();
+    logger.warn.mockReset();
+    await startApp(REGISTER_IP_THROTTLER);
   });
 
   afterEach(async () => {
@@ -119,9 +124,25 @@ describe('IdentityIpThrottlerGuard (ADR-0017, plan §6.5)', () => {
     expect(JSON.stringify(payload)).not.toMatch(/127\.0\.0\.1|::1|::ffff/);
   });
 
-  it('CA-15: `IDENTITY_THROTTLERS` define `register-ip` con `REGISTRATIONS_PER_IP_PER_HOUR` por hora', () => {
+  it('CA-15: `resend-ip` también se traduce a `IdentityTooManyRequestsError` con ámbito `ip` (SEC-1)', async () => {
+    await app.close();
+    await startApp(RESEND_IP_THROTTLER);
+    for (let attempt = 1; attempt <= LIMIT; attempt += 1) {
+      await post().expect(202);
+    }
+
+    const response = await post();
+
+    expect(response.status).toBe(429);
+    expect(throttlerHeaders(response.headers)).toEqual([]);
+    expect(filter.caught[0]).toBeInstanceOf(IdentityTooManyRequestsError);
+    expect((filter.caught[0] as IdentityTooManyRequestsError).scope).toBe('ip');
+  });
+
+  it('CA-15: `IDENTITY_THROTTLERS` define `register-ip` y `resend-ip` por hora con sus límites de contracts', () => {
     expect(IDENTITY_THROTTLERS).toEqual([
       { name: REGISTER_IP_THROTTLER, ttl: TTL_MS, limit: REGISTRATIONS_PER_IP_PER_HOUR },
+      { name: RESEND_IP_THROTTLER, ttl: TTL_MS, limit: RESENDS_PER_IP_PER_HOUR },
     ]);
   });
 });

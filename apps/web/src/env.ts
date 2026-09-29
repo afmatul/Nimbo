@@ -1,23 +1,37 @@
 import { z, type ZodIssue } from 'zod';
 
 const PORT_MESSAGE = 'debe ser un entero entre 1 y 65535';
+const HTTPS_MESSAGE = 'debe usar https en staging y en producción';
 const DEFAULT_PORT = 3002;
+const PUBLISHED_ENVIRONMENTS: readonly string[] = ['staging', 'production'];
 
 /**
  * Configuración de `web`, leída solo en el servidor en tiempo de petición (CA-29): sin `NEXT_PUBLIC_*`.
  * `scripts/check-env-example.ts` (T-23) compara estas claves con `.env.example` (CA-19).
  */
-export const webEnvSchema = z.object({
+export const webEnvObjectSchema = z.object({
   APP_ENV: z.enum(['local', 'test', 'staging', 'production'], {
     errorMap: () => ({ message: 'debe ser uno de: local, test, staging, production' }),
   }),
   API_INTERNAL_URL: z.string().url({ message: 'debe ser una URL válida' }),
+  API_PUBLIC_URL: z.string().url({ message: 'debe ser una URL válida' }),
   PORT: z.coerce
     .number({ invalid_type_error: PORT_MESSAGE })
     .int(PORT_MESSAGE)
     .min(1, PORT_MESSAGE)
     .max(65535, PORT_MESSAGE)
     .default(DEFAULT_PORT),
+});
+
+/** En staging y producción el navegador solo habla con la API por https (CA-20). */
+export const webEnvSchema = webEnvObjectSchema.superRefine((env, ctx) => {
+  if (PUBLISHED_ENVIRONMENTS.includes(env.APP_ENV) && !env.API_PUBLIC_URL.startsWith('https://')) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['API_PUBLIC_URL'],
+      message: HTTPS_MESSAGE,
+    });
+  }
 });
 
 export type WebEnv = z.infer<typeof webEnvSchema>;

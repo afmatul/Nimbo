@@ -5,6 +5,7 @@ import {
   EMAIL_REQUESTS_PER_HOUR,
   errorResponseSchema,
   REGISTRATIONS_PER_IP_PER_HOUR,
+  RESENDS_PER_IP_PER_HOUR,
   verifyEmailResponseSchema,
 } from '@nimbo/contracts';
 import request from 'supertest';
@@ -32,6 +33,7 @@ const WITHIN_COOLDOWN_SECONDS = 30;
 /** IPs de documentación (RFC 5737) que llegan por `X-Forwarded-For` a través del proxy de confianza. */
 const CROWDED_IP = '198.51.100.7';
 const OTHER_IP = '198.51.100.8';
+const CROWDED_RESEND_IP = '198.51.100.9';
 
 /** Mensaje de CA-15 para una espera de `retryAfterSeconds` (minutos redondeados hacia arriba). */
 const tooManyRequestsMessage = (retryAfterSeconds: number): string => {
@@ -45,7 +47,8 @@ const tooManyRequestsMessage = (retryAfterSeconds: number): string => {
 
 /**
  * Límites de CA-15 (D-8) de punta a punta: por correo (60 s y 5 por hora, registro y reenvío juntos, con el
- * `FixedClock` que controla `RedisRateLimiter`) y por IP (10 registros por hora, `IdentityIpThrottlerGuard`).
+ * `FixedClock` que controla `RedisRateLimiter`) y por IP (10 registros y 10 reenvíos por hora, cada ruta con su
+ * contador, `IdentityIpThrottlerGuard`).
  */
 describe('Límites de registro y reenvío (CA-15)', () => {
   const clock = new FixedClock(new Date());
@@ -182,5 +185,30 @@ describe('Límites de registro y reenvío (CA-15)', () => {
       .set('X-Forwarded-For', OTHER_IP)
       .expect(202);
     await waitForMessages(REGISTRATIONS_PER_IP_PER_HOUR + 1);
+  });
+
+  it('CA-15: el reenvío siguiente a los 10 de una misma IP en una hora da 429 sin correo ni cambios; esa IP sigue registrando y otra IP sigue reenviando', async () => {
+    const email = `ana-${randomUUID()}@ejemplo.com`;
+    await registerAndReadLink(email);
+    const before = await accountState(email);
+    const fromCrowdedIp = (address: string): request.Test =>
+      resend(address).set('X-Forwarded-For', CROWDED_RESEND_IP);
+    for (let sent = 0; sent < RESENDS_PER_IP_PER_HOUR; sent += 1) {
+      await fromCrowdedIp(`sin-cuenta-${randomUUID()}@ejemplo.com`).expect(202);
+    }
+
+    const response = await fromCrowdedIp(email);
+
+    const retryAfterSeconds = Number(response.headers['retry-after']);
+    expect(retryAfterSeconds).toBeGreaterThan(0);
+    expect(retryAfterSeconds).toBeLessThanOrEqual(SECONDS_PER_HOUR);
+    expectTooManyRequests(response, retryAfterSeconds);
+    expect(await accountState(email)).toEqual(before);
+    await register(`misma-ip-${randomUUID()}@ejemplo.com`)
+      .set('X-Forwarded-For', CROWDED_RESEND_IP)
+      .expect(202);
+    clock.advance(EMAIL_REQUEST_COOLDOWN_SECONDS * MS_PER_SECOND);
+    await resend(email).set('X-Forwarded-For', OTHER_IP).expect(202);
+    await waitForMessages(2);
   });
 });

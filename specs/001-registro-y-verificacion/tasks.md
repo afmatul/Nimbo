@@ -523,32 +523,32 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
 > `ui-guidelines.md`, objetivos de 44 px (ADR-0014), textos exactos de spec §11. Cada prueba de componente incluye
 > jest-axe sin violaciones `serious` ni `critical` y recorrido con teclado.
 
-- [ ] **T-55** Entorno y dependencias de `web` — CA: CA-20 (esquema), CA-22 — Depende: — — ~1 h
+- [x] **T-55** Entorno y dependencias de `web` — CA: CA-20 (esquema), CA-22 — Depende: — — ~1 h
   Prueba primero en `apps/web/src/env.spec.ts`: `API_PUBLIC_URL` obligatoria; `http://` con `APP_ENV=staging` falla.
   Luego `env.ts`, `.env.example` (`API_PUBLIC_URL=http://localhost/api/v1`) y dependencias `react-hook-form`,
   `@hookform/resolvers`, `@testing-library/react`, `@testing-library/user-event` (versiones fijas). `pnpm env:check`.
   Archivos: `apps/web/src/env.ts`, `apps/web/src/env.spec.ts`, `apps/web/package.json`, `.env.example`.
 
-- [ ] **T-56** [P] [P×PR] Primitivas `label`, `checkbox`, `radio-group` y `alert` (controles nativos, DT-8) — CA: CA-22 — Depende: — — ~2 h
+- [x] **T-56** [P] [P×PR] Primitivas `label`, `checkbox`, `radio-group` y `alert` (controles nativos, DT-8) — CA: CA-22 — Depende: — — ~2 h
   Prueba primero `*.spec.tsx` de cada una (asociación `label`/control, `aria-invalid`, `aria-describedby`, foco
   visible, teclado —flechas en el grupo de radios nativo—, `alert` con `role="alert"` o `status` según variante,
   jest-axe). Luego los componentes al estilo shadcn sin Radix ni tokens nuevos.
   Archivos: `apps/web/src/components/ui/{label,checkbox,radio-group,alert}.tsx` y sus `*.spec.tsx`.
 
-- [ ] **T-57** [P] Cliente HTTP y catálogo de errores — CA: CA-15, CA-22 — Depende: T-01, T-02, T-55 — ~1,5 h
+- [x] **T-57** [P] Cliente HTTP y catálogo de errores — CA: CA-15, CA-22 — Depende: T-01, T-02, T-55 — ~1,5 h
   Prueba primero `lib/api-client.spec.ts` (`fetch` simulado: envía `x-correlation-id`; `2xx` → cuerpo; error → valida
   `ErrorResponse`, expone `code`, `fields`, `correlationId` y `retryAfterSeconds` de `Retry-After`; red caída o cuerpo
   no válido → error genérico con `correlationId` si existe) y `lib/error-catalog.spec.ts` (mensaje por `code` y por
   `reason`, reexporta `IDENTITY_FIELD_MESSAGES`, código desconocido → genérico de 000 §10).
   Archivos: `apps/web/src/lib/{api-client,error-catalog}.ts` y sus `*.spec.ts`.
 
-- [ ] **T-58** [P] [P×PR] `PublicHeader`, grupo `(public)` y marcador de inicio de sesión — CA: CA-8, CA-10, CA-22 (cabecera sin sesión) — Depende: — — ~1 h
+- [x] **T-58** [P] [P×PR] `PublicHeader`, grupo `(public)` y marcador de inicio de sesión — CA: CA-8, CA-10, CA-22 (cabecera sin sesión) — Depende: — — ~1 h
   Prueba primero `components/nimbo/public-header.spec.tsx` (logo, «Iniciar sesión» → `/iniciar-sesion`, sin datos de
   sesión, jest-axe) y `app/(public)/iniciar-sesion/page.spec.tsx` («Inicio de sesión disponible pronto»). Luego
   `public-header.tsx`, `app/(public)/layout.tsx` y el marcador. **Coordinar con 002**, que reemplaza este marcador.
   Archivos: `apps/web/src/components/nimbo/public-header.tsx`, `apps/web/src/app/(public)/layout.tsx`, `apps/web/src/app/(public)/iniciar-sesion/page.tsx` y sus `*.spec.tsx`.
 
-- [ ] **T-59** [P] Términos y Política de privacidad — CA: CA-23 — Depende: T-02, T-58 — ~2 h
+- [x] **T-59** [P] Términos y Política de privacidad — CA: CA-23 — Depende: T-02, T-58 — ~2 h
   Prueba primero `app/(public)/terminos/page.spec.tsx` y `privacidad/page.spec.tsx`: versión y fecha iguales a
   `LEGAL_DOCUMENTS`; texto en español con los puntos de plan §6.13 (proyecto académico, 18 años, pagos simulados,
   borrado a fines de noviembre de 2026, contacto); ningún `src`/`href` a otro origen salvo `mailto:`; jest-axe. Luego
@@ -556,34 +556,34 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   8 de la Política) y las dos páginas estáticas.
   Archivos: `apps/web/src/features/identity/components/{legal-document,terms-v1,privacy-v1}.tsx`, `apps/web/src/app/(public)/{terminos,privacidad}/page.tsx` y sus `*.spec.tsx`.
 
-- [ ] **T-60** [P] `api.ts`, `chosen-plan-storage` y `use-countdown` — CA: CA-13, CA-15, CA-28 — Depende: T-05, T-57 — ~1,5 h
+- [x] **T-60** [P] `api.ts`, `chosen-plan-storage` y `use-countdown` — CA: CA-13, CA-15, CA-28 — Depende: T-05, T-57 — ~1,5 h
   Prueba primero `features/identity/chosen-plan-storage.spec.ts` (guarda `{ planId, planName, savedAt }` en
   `nimbo.registro.plan`, sin correo ni nombre; se lee solo si `savedAt` < 24 h; se borra al leer; sin `localStorage` →
   `null`), `hooks/use-countdown.spec.ts` (60 s por defecto; con un `429` usa `Retry-After`; temporizadores falsos) y
   `api.spec.ts` (`register`, `resendVerification`, `verifyEmail` validan la respuesta con los esquemas de contratos).
   Archivos: `apps/web/src/features/identity/{api,chosen-plan-storage}.ts`, `apps/web/src/features/identity/hooks/use-countdown.ts` y sus `*.spec.ts`.
 
-- [ ] **T-61** [P] `PasswordRequirements` y `PlanPicker` — CA: CA-22, CA-5 (en vivo) — Depende: T-04, T-56 — ~2 h
+- [x] **T-61** [P] `PasswordRequirements` y `PlanPicker` — CA: CA-22, CA-5 (en vivo) — Depende: T-04, T-56 — ~2 h
   Prueba primero `password-requirements.spec.tsx` (cada regla con ícono **y** texto «Cumple»/«Falta», `aria-live=
   "polite"`, usa `evaluatePassword`) y `plan-picker.spec.tsx` (nombres y precios del catálogo recibido por *props*, sin
   valores en el código; preselecciona el plan marcado como gratuito; `unavailable` → «No pudimos cargar los planes; tu
   cuenta empezará en Personal.»; teclado; jest-axe).
   Archivos: `apps/web/src/features/identity/components/{password-requirements,plan-picker}.tsx` y sus `*.spec.tsx`.
 
-- [ ] **T-62** `RegisterForm` — CA: CA-22, CA-6, CA-7 — Depende: T-05, T-57, T-60, T-61 — ~2 h
+- [x] **T-62** `RegisterForm` — CA: CA-22, CA-6, CA-7 — Depende: T-05, T-57, T-60, T-61 — ~2 h
   Prueba primero `register-form.spec.tsx` (Testing Library + user-event): valida con `zodResolver(registerRequestSchema)`;
   errores por campo con `aria-invalid` y foco al primero; errores de la API por `fields[].field` y resumen con foco para
   los generales; estados **enviando** (botón deshabilitado con indicador, sin doble envío) y **error-servidor** (con
   `correlationId`); el plan elegido **no** se envía; casilla con dos enlaces separados; jest-axe.
   Archivos: `apps/web/src/features/identity/components/register-form.tsx`, `apps/web/src/features/identity/components/register-form.spec.tsx`.
 
-- [ ] **T-63** [P] `CheckEmailPanel` y `ResendLinkButton` — CA: CA-13, CA-15, CA-22, CA-27 — Depende: T-60 — ~1,5 h
+- [x] **T-63** [P] `CheckEmailPanel` y `ResendLinkButton` — CA: CA-13, CA-15, CA-22, CA-27 — Depende: T-60 — ~1,5 h
   Prueba primero `check-email-panel.spec.tsx` (correo escrito, «24 horas», «Cambiar correo», sin casillas de código,
   cabecera sin sesión) y `resend-link-button.spec.tsx` (deshabilitado 60 s con cuenta regresiva anunciada; al pulsar
   reinicia; `429` → estado **limite-reenvio** con el mensaje y la cuenta de `Retry-After`).
   Archivos: `apps/web/src/features/identity/components/{check-email-panel,resend-link-button}.tsx` y sus `*.spec.tsx`.
 
-- [ ] **T-64** Página `/registro` con catálogo — CA: CA-22, CA-27, CA-28 — Depende: T-58, T-62, T-63 — ~2 h
+- [x] **T-64** Página `/registro` con catálogo — CA: CA-22, CA-27, CA-28 — Depende: T-58, T-62, T-63 — ~2 h
   Prueba primero `app/(public)/registro/page.spec.tsx` (`fetch` simulado: catálogo → planes; `404`, error o más de 2 s
   → **catalogo-no-disponible** y el formulario sigue; pasa `API_PUBLIC_URL` como *prop*) y
   `features/identity/components/register-flow.spec.tsx` (éxito → «Revisa tu correo»; con plan de pago guarda
@@ -592,13 +592,13 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   006a detrás de una función, ver «Notas») y `RegisterFlow`.
   Archivos: `apps/web/src/app/(public)/registro/page.tsx`, `apps/web/src/features/identity/{plan-catalog.ts,components/register-flow.tsx}` y sus `*.spec.ts(x)`.
 
-- [ ] **T-65** [P] Pedir enlace — CA: CA-13, CA-14, CA-15 — Depende: T-57, T-60, T-63 — ~1,5 h
+- [x] **T-65** [P] Pedir enlace — CA: CA-13, CA-14, CA-15 — Depende: T-57, T-60, T-63 — ~1,5 h
   Prueba primero `request-link-form.spec.tsx` (valida con `resendVerificationRequestSchema`; éxito → mismo panel neutro
   para cualquier correo; `429` → **limite-reenvio**; prellenado desde `sessionStorage` si existe, nunca desde la URL) y
   `app/(public)/registro/pedir-enlace/page.spec.tsx`. Luego `RequestLinkForm` y la página.
   Archivos: `apps/web/src/features/identity/components/request-link-form.tsx`, `apps/web/src/app/(public)/registro/pedir-enlace/page.tsx` y sus `*.spec.tsx`.
 
-- [ ] **T-66** Página de verificación — CA: CA-8, CA-9, CA-10, CA-11, CA-23, CA-28 — Depende: T-57, T-58, T-60 — ~2 h
+- [x] **T-66** Página de verificación — CA: CA-8, CA-9, CA-10, CA-11, CA-23, CA-28 — Depende: T-57, T-58, T-60 — ~2 h
   Prueba primero `verify-email-view.spec.tsx` y `hooks/use-verify-email.spec.ts`: lee `#token`, lo borra con
   `history.replaceState` antes del `POST`; **un solo** `POST` dentro de `<StrictMode>`; estados **verificando**,
   **exito** («¡Listo! Tu correo está verificado.» e «Iniciar sesión» mientras no exista 002), **plan-de-pago-elegido**
@@ -608,14 +608,14 @@ PR-4           T-56, T-58 [P×PR] (desde ya) · T-57, T-59 (tras T-02) · T-61, 
   `use-verify-email.ts` y `app/(public)/verificar-correo/page.tsx` (Client Component).
   Archivos: `apps/web/src/features/identity/components/verify-email-view.tsx`, `apps/web/src/features/identity/hooks/use-verify-email.ts`, `apps/web/src/app/(public)/verificar-correo/page.tsx` y sus `*.spec.ts(x)`.
 
-- [ ] **T-67** **(humana)** Recorrido local completo y revisión visual — CA: CA-22, CA-23 — Depende: T-54, T-59…T-66 — ~1 h
+- [x] **T-67** **(humana)** Recorrido local completo y revisión visual — CA: CA-22, CA-23 — Depende: T-54, T-59…T-66 — ~1 h
   Con `docker compose up -d` y `pnpm dev`, por `http://localhost`: registro (con y sin catálogo) → Mailpit → enlace →
   **exito**; repetir el enlace → **ya-verificado**; enlace alterado → **enlace-invalido**; reenvío con cuenta
   regresiva; Términos y Privacidad. Anotar en la pestaña de red que el token no aparece en ninguna URL pedida al
   servidor. Pedir al `ui-designer` la revisión a 360 y 1440 px contra los mockups (produce `ui-review.md`).
   Archivos: ninguno (evidencia la recoge el `tester` en `verification.md`).
 
-- [ ] **T-68** Cierre del PR-4 y de la spec — CA: todos (trazabilidad) — Depende: T-55…T-67 — ~1 h
+- [x] **T-68** Cierre del PR-4 y de la spec — CA: todos (trazabilidad) — Depende: T-55…T-67 — ~1 h
   `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:int`, `pnpm test:isolation`, `pnpm env:check` en verde.
   `specs/README.md` → 001 `En verificación`; pedir `/verify 001` (`tester`: `verification.md`, con CA-16, CA-26 y la
   sesión de CA-29 enlazados a 002, CA-20 como pendiente de staging y la segunda parte de CA-8 a 006a),
@@ -660,6 +660,17 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   `InternalUser.rehydrate` (este rechaza `CLIENT`) para los mappers de T-39; `VerifiedAccountReplacementError` e
   `InvalidTokenTransitionError` son `Error` internos, no `DomainError` (nunca llegan al cliente). Se corrigió el
   formato de Prettier de dos pruebas (fallaba `pnpm lint`) y se antepuso `CA-n:` a los nombres de prueba (Art. II).
+- **T-55**: `API_PUBLIC_URL` obligatoria y `https` en staging y producción. Dependencias fijas: `react-hook-form@7.62.0`, `@hookform/resolvers@5.2.2`, `@testing-library/react@16.3.0`, `@testing-library/user-event@14.6.1`. `pnpm env:check` en verde.
+- **T-56 y T-58**: 21 suites de `web` en verde, incluido jest-axe. El área de 44 px es la etiqueta del checkbox y de cada radio.
+- **T-57**: el cliente interpreta `ErrorResponse` y `Retry-After`; un cuerpo inválido usa el genérico de 000 §10.
+- **T-59**: Términos y Privacidad usan `LEGAL_DOCUMENTS`. Los apartados 7 y 8 de la Política cierran con un solo punto.
+- **T-60**: el plan elegido vive en `localStorage` (`nimbo.registro.plan`) y se borra al leerlo.
+- **T-61**: los requisitos usan `evaluatePassword`; el selector no tiene precios escritos en el código.
+- **T-62**: el plan elegido no viaja en el `POST`. La casilla lleva dos enlaces, a Términos y a Privacidad.
+- **T-63**: «Revisa tu correo» muestra el correo y las 24 horas, sin casillas de código. «Reenviar enlace» espera 60 s; un 429 usa `Retry-After`.
+- **T-64**: el catálogo se lee en `GET {API_INTERNAL_URL}/plans` (ruta provisional hasta el contrato de 006a). Un 404, un error o más de 2 s muestra catalogo-no-disponible y el formulario sigue. `revalidate` es 60. El plan de pago se guarda al enviar; «Cambiar correo» conserva nombre y plan.
+- **T-65**: pedir enlace valida con `resendVerificationRequestSchema`. El éxito muestra el mismo panel para cualquier correo. El prellenado usa `sessionStorage` (`nimbo.registro.correo`), nunca la URL.
+- **T-66**: el fragmento se borra con `replaceState` antes del `POST`, y StrictMode no lo repite. `page.tsx` queda en el servidor para pasar `API_PUBLIC_URL` sin `NEXT_PUBLIC_*`; el Client Component es `VerifyEmailView`. Sin 002, el éxito ofrece «Iniciar sesión».
 
 - **Catálogo de 006a (T-64)**: el plan fija qué necesita 001 (lectura pública de planes activos con `id`, nombre, precio
   en centavos y marca de gratuito, PD-40) pero no la ruta ni el esquema, que son de 006a. `plan-catalog.ts` aísla esa
@@ -909,4 +920,13 @@ Tareas por PR: PR-1 = 19 (T-01…T-19) · PR-2 = 8 (T-20…T-27) · PR-3 = 27 (T
   `200 {"status":"verified"}` y la segunda vez `already-verified`; en la BD `CLIENT` con `correo_verificado = true`;
   la bitácora de `pnpm dev` no contiene el correo ni el token.
 - **Pendiente tras el trabajo en paralelo**: subir a `identity-test-app.ts` los ayudantes duplicados (`uniqueEmail`, `nextClientIp`, `waitForMessagesTo`, `neutralView`) y aceptar `env` en `createIdentityTestApp`.
+- **T-67 (2026-09-28)**: recorrido local aprobado por Adrián. La revisión visual del `ui-designer` (22 capturas y
+  después 32 a 360 y 1440 px, axe sin violaciones AA) va en la sección «UI (T-67)» de `review.md` y no en un
+  `ui-review.md` aparte (modo lite); sus hallazgos se cerraron en `36be355`…`8db654a`.
+- **T-68 (2026-09-28)**: en modo lite no hay `verification.md` ni `security.md`: la verificación, la seguridad, la UI y
+  el código van en `review.md`, y `specs/README.md` pone 001 en `En revisión` (no `En verificación`). Correcciones de
+  la revisión: SEC-1 amplía D-8 con 10 reenvíos por IP y por hora (`e616d47`, registro de cambios de la spec,
+  aprobado por Adrián); SEC-2 da 24 h al correo de pedir-enlace (`c178ba6`); PR-4 I-1 (`e3fd715`); I-2, S-3 y SEC-3
+  como documentación y pendientes PD-48 y PD-49 (`4eee16b`). `PlanPicker` hereda de `RadioGroup` el rótulo en
+  `font-medium` y el `ring-offset-2` del foco, un cambio visual menor frente a las capturas de T-67.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>

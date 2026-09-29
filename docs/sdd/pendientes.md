@@ -16,7 +16,7 @@ de eso se pierda entre ramas.
 - «Resolver antes de» es la compuerta que se bloquea si el pendiente sigue abierto. «—» significa que no bloquea nada.
 - `/status` y el `architect` revisan esta lista al cerrar cada fase.
 
-Última actualización: 2026-09-27.
+Última actualización: 2026-09-28.
 
 ## Diagramas por redibujar
 
@@ -64,6 +64,8 @@ decisiones; solo faltan los diagramas.
 | PD-38 | `boundaries.js`: agregar `identity` a `allowed.billing` (solo contratos de eventos, ADR-0019) y el *fixture* negativo `identity-imports-billing.ts`. Si PD-24 se integra antes de aceptar ADR-0019, se agrega en un PR aparte | `packages/config/eslint/` | ADR-0019 | Primer PR de 006a que importe de `identity` | Adrián | Abierto |
 | PD-39 | `GRANT SELECT, INSERT, UPDATE` (sin `DELETE`) a `nimbo_app` sobre `usuario` y `token_cuenta` cuando la 003 cree ese rol (PD-25); sin esto, la 001 deja de funcionar al pasar a los dos roles de BD | Script de inicio de Postgres o migración de 003 | Plan 001 §4, ADR-0005 | Plan de 003 | Adrián | Abierto |
 | PD-41 | E2E con Playwright y `@axe-core/playwright` en `e2e/` (`pnpm test:e2e` deja de ser marcador): flujo de registro y verificación de 001 y axe a 360 y 1440 px (CA-22, CA-23) | `e2e/`, `package.json` | Plan 001, P-5 | Primera semana de la Fase 2 | Adrián | Abierto |
+| PD-48 | Ruta provisional del catálogo en la 001: `apps/web/src/features/identity/plan-catalog.ts` lee `GET {API_INTERNAL_URL}/plans` con un esquema zod local, porque el contrato de la lectura pública aún no está en `packages/contracts`. Al entregar 006a su contrato (PD-40, punto 3), `plan-catalog.ts` pasa a la ruta y al esquema de `@nimbo/contracts` y se borra el esquema local | `apps/web/src/features/identity/plan-catalog.ts` | Revisión del PR-4 de 001 (I-2) | Implementación de 006a | Fátima con Adrián | Abierto |
+| PD-49 | `web` no fija CSP ni cabeceras de seguridad (`Content-Security-Policy` con `frame-ancestors`, `Referrer-Policy`, `X-Content-Type-Options`, `Permissions-Policy`), y ni el `compose.yml` ni Traefik las agregan. Decidir dónde viven (`headers()` de `next.config.ts` o *middleware* de Traefik para todas las apps), cuidando que ONLYOFFICE (016) y las URL prefirmadas de MinIO (005) sigan funcionando | `apps/web/next.config.ts` o configuración de Traefik | Revisión de seguridad de 001 (SEC-3) | Montaje de staging (inicio de la Fase 2) | Adrián | Abierto |
 | PD-27 | Token del velo de los diálogos: el mockup de «Seguridad» usa `agent-bg` al 45 % | `apps/web/src/components/nimbo/app-layout.tsx` (TODO #6), `ui-guidelines.md` | Mockup de «Seguridad» | Plan de 002 | Adrián | Abierto |
 
 ## Diseño y UX
