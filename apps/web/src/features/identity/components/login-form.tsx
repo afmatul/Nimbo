@@ -18,7 +18,13 @@ import { rememberSession } from '../session/session-memory';
 import { LoginAlert, RESET_PASSWORD_HREF } from './login-alert';
 import { PasswordField } from './password-field';
 
-function FieldError({ id, message }: { readonly id: string; readonly message?: string }) {
+function FieldError({
+  id,
+  message,
+}: {
+  readonly id: string;
+  readonly message: string | undefined;
+}): JSX.Element | null {
   if (message === undefined) return null;
   return (
     <p id={id} className="text-xs text-destructive">
