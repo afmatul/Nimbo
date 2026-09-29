@@ -27,3 +27,13 @@ export class ApiClientError extends Error {
     this.retryAfterSeconds = props.retryAfterSeconds;
   }
 }
+
+/** Un fallo que no llegó como `ApiClientError` se trata como el error genérico de 000 §10. */
+export function toApiClientError(caught: unknown): ApiClientError {
+  if (caught instanceof ApiClientError) return caught;
+  return new ApiClientError({
+    code: 'INTERNAL_ERROR',
+    message: genericErrorMessage(''),
+    correlationId: '',
+  });
+}

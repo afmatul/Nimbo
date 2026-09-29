@@ -91,4 +91,35 @@ describe('ResendLinkButton', () => {
     expect(screen.getByRole('status').textContent).toContain('2 minutos');
     expect(screen.getByText('Podrás reenviar el enlace en 120 segundos.')).toBeTruthy();
   });
+
+  it.each([
+    [
+      'un 500',
+      () =>
+        Promise.resolve(
+          jsonResponse(
+            { code: 'INTERNAL_ERROR', message: 'Falla', correlationId: 'corr-500' },
+            500,
+          ),
+        ),
+    ],
+    ['la red caída', () => Promise.reject(new TypeError('Failed to fetch'))],
+  ])('%s muestra error-servidor y deja reintentar', async (_caso, respond) => {
+    fetchMock.mockImplementationOnce(respond);
+    render(<ResendLinkButton apiPublicUrl="http://localhost/api/v1" email="ana@ejemplo.com" />);
+
+    act(() => {
+      jest.advanceTimersByTime(60_000);
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Reenviar enlace' }));
+    });
+
+    const alert = screen.getByRole('alert');
+    expect(alert.textContent).toContain('comparte este código con soporte');
+    expect(document.querySelector('[data-state="error-servidor"]')).toBeTruthy();
+    expect(
+      (screen.getByRole('button', { name: 'Reenviar enlace' }) as HTMLButtonElement).disabled,
+    ).toBe(false);
+  });
 });

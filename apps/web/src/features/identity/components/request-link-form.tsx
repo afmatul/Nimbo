@@ -9,13 +9,14 @@ import { Alert } from '../../../components/ui/alert';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
-import { ApiClientError } from '../../../lib/api-error';
+import { toApiClientError, type ApiClientError } from '../../../lib/api-error';
 import { messageForCode } from '../../../lib/error-catalog';
 import { resendVerification } from '../api';
 import { useCountdown } from '../hooks/use-countdown';
 
 import { CheckEmailPanel } from './check-email-panel';
 import { ResendLinkButton } from './resend-link-button';
+import { ServerErrorAlert } from './server-error-alert';
 
 /** 002 prellena el correo aquí. No se lee de la URL: no debe quedar en bitácoras de Next ni de Traefik. */
 export const REQUEST_LINK_EMAIL_KEY = 'nimbo.registro.correo';
@@ -52,6 +53,7 @@ export function RequestLinkForm({ apiPublicUrl }: { readonly apiPublicUrl: strin
     readonly message: string;
     readonly seconds: number;
   } | null>(null);
+  const [serverError, setServerError] = useState<ApiClientError | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const {
     register,
@@ -79,21 +81,25 @@ export function RequestLinkForm({ apiPublicUrl }: { readonly apiPublicUrl: strin
   const onSubmit = handleSubmit(async (values) => {
     if (submitting) return;
     setSubmitting(true);
+    setServerError(null);
     try {
       await resendVerification(apiPublicUrl, { email: values.email });
       setSentEmail(values.email);
     } catch (caught) {
-      if (caught instanceof ApiClientError && caught.code === 'IDENTITY_TOO_MANY_REQUESTS') {
-        const seconds = caught.retryAfterSeconds ?? 60;
-        setLimit({
-          id: (limit?.id ?? 0) + 1,
-          message: messageForCode(caught.code, {
-            correlationId: caught.correlationId,
-            retryAfterSeconds: seconds,
-          }),
-          seconds,
-        });
+      const error = toApiClientError(caught);
+      if (error.code !== 'IDENTITY_TOO_MANY_REQUESTS') {
+        setServerError(error);
+        return;
       }
+      const seconds = error.retryAfterSeconds ?? 60;
+      setLimit({
+        id: (limit?.id ?? 0) + 1,
+        message: messageForCode(error.code, {
+          correlationId: error.correlationId,
+          retryAfterSeconds: seconds,
+        }),
+        seconds,
+      });
     } finally {
       setSubmitting(false);
     }
@@ -122,6 +128,7 @@ export function RequestLinkForm({ apiPublicUrl }: { readonly apiPublicUrl: strin
         {limit !== null ? (
           <LimitNotice key={limit.id} message={limit.message} seconds={limit.seconds} />
         ) : null}
+        {serverError !== null ? <ServerErrorAlert error={serverError} /> : null}
         <Button type="submit" loading={submitting}>
           Pedir enlace
         </Button>

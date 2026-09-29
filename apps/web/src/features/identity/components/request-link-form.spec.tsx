@@ -78,6 +78,40 @@ describe('RequestLinkForm', () => {
     expect(screen.queryByRole('heading', { name: 'Revisa tu correo' })).toBeNull();
   });
 
+  it('un 500 muestra error-servidor con el mensaje genérico y el correlationId', async () => {
+    const user = userEvent.setup();
+    fetchMock.mockResolvedValue(
+      jsonResponse({ code: 'INTERNAL_ERROR', message: 'Falla', correlationId: 'corr-500' }, 500),
+    );
+    render(<RequestLinkForm apiPublicUrl="http://localhost/api/v1" />);
+
+    await user.type(screen.getByLabelText('Correo'), 'ana@ejemplo.com');
+    await user.click(screen.getByRole('button', { name: 'Pedir enlace' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toContain('Ocurrió un error inesperado');
+    expect(alert.textContent).toContain('corr-500');
+    expect(document.querySelector('[data-state="error-servidor"]')).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Revisa tu correo' })).toBeNull();
+  });
+
+  it('con la red caída muestra error-servidor y permite reintentar', async () => {
+    const user = userEvent.setup();
+    fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    fetchMock.mockResolvedValueOnce(jsonResponse({ status: 'accepted' }, 202));
+    render(<RequestLinkForm apiPublicUrl="http://localhost/api/v1" />);
+
+    await user.type(screen.getByLabelText('Correo'), 'ana@ejemplo.com');
+    await user.click(screen.getByRole('button', { name: 'Pedir enlace' }));
+
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'comparte este código con soporte',
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Pedir enlace' }));
+    expect(await screen.findByRole('heading', { name: 'Revisa tu correo' })).toBeTruthy();
+  });
+
   it('prellena el correo desde sessionStorage y no desde la URL', async () => {
     window.sessionStorage.setItem(REQUEST_LINK_EMAIL_KEY, 'ana@ejemplo.com');
     window.history.replaceState(null, '', '/registro/pedir-enlace?email=otro@ejemplo.com');

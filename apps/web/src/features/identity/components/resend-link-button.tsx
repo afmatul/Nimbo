@@ -5,10 +5,12 @@ import { useState, type JSX } from 'react';
 
 import { Alert } from '../../../components/ui/alert';
 import { Button } from '../../../components/ui/button';
-import { ApiClientError } from '../../../lib/api-error';
+import { toApiClientError, type ApiClientError } from '../../../lib/api-error';
 import { messageForCode } from '../../../lib/error-catalog';
 import { resendVerification } from '../api';
 import { useCountdown } from '../hooks/use-countdown';
+
+import { ServerErrorAlert } from './server-error-alert';
 
 interface Round {
   readonly id: number;
@@ -66,8 +68,10 @@ export function ResendLinkButton({
     limited: false,
   });
   const [limitMessage, setLimitMessage] = useState<string | null>(null);
+  const [serverError, setServerError] = useState<ApiClientError | null>(null);
 
   const onResend = async (): Promise<void> => {
+    setServerError(null);
     try {
       await resendVerification(apiPublicUrl, { email });
       setLimitMessage(null);
@@ -77,25 +81,26 @@ export function ResendLinkButton({
         limited: false,
       }));
     } catch (caught) {
-      if (
-        caught instanceof ApiClientError &&
-        caught.code === IDENTITY_ERROR_CODES.TOO_MANY_REQUESTS
-      ) {
-        const seconds = caught.retryAfterSeconds ?? EMAIL_REQUEST_COOLDOWN_SECONDS;
-        setLimitMessage(
-          messageForCode(caught.code, {
-            correlationId: caught.correlationId,
-            retryAfterSeconds: seconds,
-          }),
-        );
-        setRound((current) => ({ id: current.id + 1, seconds, limited: true }));
+      const error = toApiClientError(caught);
+      if (error.code !== IDENTITY_ERROR_CODES.TOO_MANY_REQUESTS) {
+        setServerError(error);
+        return;
       }
+      const seconds = error.retryAfterSeconds ?? EMAIL_REQUEST_COOLDOWN_SECONDS;
+      setLimitMessage(
+        messageForCode(error.code, {
+          correlationId: error.correlationId,
+          retryAfterSeconds: seconds,
+        }),
+      );
+      setRound((current) => ({ id: current.id + 1, seconds, limited: true }));
     }
   };
 
   return (
     <div className="space-y-3" data-state={round.limited ? 'limite-reenvio' : undefined}>
       {limitMessage !== null ? <Alert>{limitMessage}</Alert> : null}
+      {serverError !== null ? <ServerErrorAlert error={serverError} /> : null}
       <CooldownControl key={round.id} seconds={round.seconds} onResend={onResend} />
     </div>
   );

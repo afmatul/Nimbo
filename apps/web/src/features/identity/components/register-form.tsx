@@ -9,12 +9,12 @@ import { Button } from '../../../components/ui/button';
 import { Checkbox } from '../../../components/ui/checkbox';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
-import { ApiClientError } from '../../../lib/api-error';
-import { messageForCode } from '../../../lib/error-catalog';
+import { toApiClientError, type ApiClientError } from '../../../lib/api-error';
 import { register as registerAccount } from '../api';
 
 import { PasswordRequirements } from './password-requirements';
 import { PlanPicker, type CatalogPlan } from './plan-picker';
+import { ServerErrorAlert } from './server-error-alert';
 
 export interface RegisterFormProps {
   readonly apiPublicUrl: string;
@@ -42,14 +42,6 @@ function formFieldOf(error: ApiClientError): { name: FormField; message: string 
   const issue = error.fields[0];
   if (issue === undefined || !isFormField(issue.field)) return null;
   return { name: issue.field, message: issue.message };
-}
-
-function unexpectedError(): ApiClientError {
-  return new ApiClientError({
-    code: 'INTERNAL_ERROR',
-    message: 'Ocurrió un error inesperado. Intenta de nuevo.',
-    correlationId: '',
-  });
 }
 
 /** El plan elegido es estado local: no viaja en el `POST` (D-24, CA-7). */
@@ -100,7 +92,7 @@ export function RegisterForm({
       });
       onSuccess({ fullName: values.fullName, email: values.email, planId });
     } catch (caught) {
-      const error = caught instanceof ApiClientError ? caught : unexpectedError();
+      const error = toApiClientError(caught);
       setServerError(error);
       const field = formFieldOf(error);
       if (field !== null) {
@@ -163,17 +155,7 @@ export function RegisterForm({
         errorMessage={errors.acceptTerms?.message}
         {...register('acceptTerms')}
       />
-      {serverError ? (
-        <div ref={summaryRef} tabIndex={-1} role="alert" className="text-sm text-destructive">
-          <p>
-            {messageForCode(serverError.code, {
-              correlationId: serverError.correlationId,
-              retryAfterSeconds: serverError.retryAfterSeconds,
-            })}
-          </p>
-          {serverError.correlationId !== '' ? <p>Código: {serverError.correlationId}</p> : null}
-        </div>
-      ) : null}
+      {serverError ? <ServerErrorAlert ref={summaryRef} error={serverError} /> : null}
       <Button type="submit" loading={submitting}>
         {submitting ? 'Creando tu cuenta' : 'Crear cuenta'}
       </Button>
