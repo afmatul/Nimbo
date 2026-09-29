@@ -1,9 +1,11 @@
 import {
+  AccessLevel,
   accessibleNodes,
   AccessModule,
   Action,
   PermissionResolver,
 } from '../../src/modules/access';
+import { I_ACCESS_LEVEL_READER } from '../../src/modules/access/application/i-access-level-reader.port';
 import { createActor, I_TRANSACTION_RUNNER, Role, TransactionContext } from '../../src/shared';
 import type { Actor, ITransactionRunner } from '../../src/shared';
 import type { TestApp } from '../int/setup/test-app';
@@ -18,11 +20,14 @@ const CONTENT_ACTIONS = Object.values(Action);
 /**
  * Roles internos sin contenido, contra Postgres y como `nimbo_app` (003 CA-9, CA-15; plan §6.5): `PermissionResolver`
  * real dentro de `withActor` y `accessibleNodes` ejecutado como subconsulta. Los nodos son cuentas reales del mundo,
- * así que sin el filtro la consulta sí devolvería filas.
+ * así que sin el filtro la consulta sí devolvería filas. En 003 `accessibleNodes` es el conjunto vacío para **todos**
+ * los roles, así que el 0 filas y el `null` del lector real no distinguen a un interno de un cliente; lo que sí falla
+ * si se rompe CA-9 es el caso con un lector que daría `OWNER`. El control positivo (el cliente dueño ve su archivo y
+ * el interno no) llega con 005 (CA-10).
  */
 describe('roles internos sin contenido, contra la base (CA-9)', () => {
   let world: IsolationWorld;
-  let testApp: TestApp;
+  let testApp: TestApp | undefined;
   let resolver: PermissionResolver;
   let runner: ITransactionRunner;
   let context: TransactionContext;
@@ -59,8 +64,8 @@ describe('roles internos sin contenido, contra la base (CA-9)', () => {
   });
 
   afterAll(async () => {
-    await testApp.close();
-    await world.close();
+    await testApp?.close();
+    await world?.close();
   });
 
   describe.each(INTERNAL_ROLES)('como la cuenta %s', (role) => {
@@ -98,5 +103,63 @@ describe('roles internos sin contenido, contra la base (CA-9)', () => {
       expect(unfiltered).toHaveLength(worldIds().length);
       expect(accessible).toEqual([]);
     });
+  });
+});
+
+/**
+ * CA-9 «sin consultar a quién pertenece el recurso»: con un lector que daría `OWNER` a cualquiera, un interno sigue
+ * recibiendo `null`/`false` y el lector no se llama. Así la prueba falla si se quita el corte de `PermissionResolver`.
+ */
+describe('roles internos sin contenido aunque el lector diera OWNER (CA-9)', () => {
+  const ownerForAnyone = { levelFor: jest.fn(async () => AccessLevel.OWNER) };
+  let world: IsolationWorld;
+  let testApp: TestApp | undefined;
+  let resolver: PermissionResolver;
+  let runner: ITransactionRunner;
+
+  beforeAll(async () => {
+    world = await createIsolationWorld();
+    testApp = await world.appAs({
+      modules: [AccessModule],
+      overrides: [{ provide: I_ACCESS_LEVEL_READER, useValue: ownerForAnyone }],
+    });
+    resolver = testApp.app.get(PermissionResolver);
+    runner = testApp.app.get<ITransactionRunner>(I_TRANSACTION_RUNNER);
+  });
+
+  afterAll(async () => {
+    await testApp?.close();
+    await world?.close();
+  });
+
+  beforeEach(() => {
+    ownerForAnyone.levelFor.mockClear();
+  });
+
+  it.each(INTERNAL_ROLES)(
+    'CA-9: como %s, `levelFor` y `can` niegan sin consultar el lector',
+    async (role) => {
+      const actor = createActor(world.internals[role].id, role);
+      const nodeId = world.clients[0].id;
+
+      const [level, allowed] = await runner.withActor(actor, async () => [
+        await resolver.levelFor(actor, nodeId),
+        await Promise.all(CONTENT_ACTIONS.map((action) => resolver.can(actor, nodeId, action))),
+      ]);
+
+      expect(level).toBeNull();
+      expect(allowed.every((result) => result === false)).toBe(true);
+      expect(ownerForAnyone.levelFor).not.toHaveBeenCalled();
+    },
+  );
+
+  it('CA-9: el mismo lector sí da `OWNER` a un cliente (el corte es por rol, no por el lector)', async () => {
+    const [client] = world.clients;
+    const actor = createActor(client.id, Role.CLIENT);
+
+    const level = await runner.withActor(actor, () => resolver.levelFor(actor, client.id));
+
+    expect(level).toBe(AccessLevel.OWNER);
+    expect(ownerForAnyone.levelFor).toHaveBeenCalledTimes(1);
   });
 });

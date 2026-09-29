@@ -717,7 +717,13 @@ PR-F = 9 (T-48…T-56). Total: 56.
 - **T-43**: también prueba piezas ya hechas (T-36…T-39), sin fase roja propia. `PermissionResolver`, el runner y
   `TransactionContext` salen de `world.appAs({ modules: [AccessModule] })`. Los «nodos» de la subconsulta son los `id`
   de las cuentas del mundo en `usuario` (en 003 no hay `archivo`): la misma consulta sin el filtro devuelve las cinco
-  filas y con `accessibleNodes(actor)` ninguna, así el 0 no se debe a una tabla vacía. Las acciones son todas las de
+  filas y con `accessibleNodes(actor)` ninguna, así el 0 no se debe a una tabla vacía; pero en 003 el fragmento es el
+  conjunto vacío para **todos** los roles, así que ese 0 (y el `null` del lector real) no distingue a un interno de un
+  cliente. **Revisión I-1**: se agrega una suite con `I_ACCESS_LEVEL_READER` sustituido por un lector que da `OWNER`
+  a cualquiera: cada rol interno sigue recibiendo `null`/`false` y el lector no se llama; el mismo lector sí da
+  `OWNER` a un cliente. Quitando temporalmente `!actor.canReadContent` de `PermissionResolver.levelFor` fallan los
+  tres casos nuevos (ADMIN, SUPPORT, OPERATOR) y los 36 anteriores siguen en verde (se restauró). El control positivo
+  real (el cliente dueño ve su archivo y el interno no) queda para 005 (CA-10). Las acciones son todas las de
   `Action` (las once son de contenido).
 - **T-46**: `ProbeResources` (almacén `Map<dueño, Map<id, recurso>>`: la búsqueda es por `actor.id` y luego por `id`,
   no hay un `find` global que se filtre después) y `ProbeResourceNotFoundError` viven en `probe.controller.ts`; archivo
