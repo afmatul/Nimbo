@@ -252,7 +252,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   `src/scripts/migrate.ts` con el mismo esquema.
   Archivos: `apps/api/src/shared/infrastructure/config/env.schema.ts`, `apps/api/src/shared/infrastructure/config/load-env.spec.ts`, `apps/api/src/migrations/data-source.cli.ts`, `apps/api/src/scripts/migrate.ts`.
 
-- [ ] **T-24** [P] `env:check`, redacción y `.env.example` de URLs — CA: CA-13, CA-16 — Depende: T-23 — ~0,5 h
+- [x] **T-24** [P] `env:check`, redacción y `.env.example` de URLs — CA: CA-13, CA-16 — Depende: T-23 — ~0,5 h
   Prueba primero: `scripts/check-env-example.spec.ts` (el grupo `migrations` exige `DATABASE_MIGRATION_URL` en
   `.env.example`) y `apps/api/src/shared/infrastructure/logging/redact-deep.spec.ts` (`DATABASE_MIGRATION_URL` se
   redacta como URL de conexión). Luego `collectSchemaKeys` con `migrations: Object.keys(migrationEnvSchema.shape)`,
