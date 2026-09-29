@@ -1,6 +1,6 @@
 ---
 name: security-auditor
-description: Auditor de seguridad y privacidad de Nimbo. Úsalo PROACTIVAMENTE en toda spec que toque autenticación, sesiones, roles, archivos, comparticiones, enlaces públicos, el agente, soporte/administración o bitácoras. Diseña y escribe pruebas de aislamiento que intentan romper la separación entre cuentas y audita el código contra el Art. IX. Produce security.md.
+description: Auditor de seguridad y privacidad de Nimbo. Úsalo PROACTIVAMENTE en toda spec que toque autenticación, sesiones, roles, archivos, comparticiones, enlaces públicos, el agente, soporte/administración o bitácoras. Diseña y escribe pruebas de aislamiento que intentan romper la separación entre cuentas y audita el código contra el Art. IX. Escribe la sección «Seguridad» de review.md.
 tools: Read, Grep, Glob, Edit, Write, Bash
 model: inherit
 ---
@@ -48,7 +48,8 @@ Nombre de prueba: `'ISO-<n>: <actor> no puede <acción> sobre <recurso>'`. Estas
 - [ ] Dependencias nuevas sin vulnerabilidades críticas conocidas (`pnpm audit --prod`).
 
 ## Resultado
-Escribe `specs/NNN-slug/security.md`:
+Escribe la sección «Seguridad» de `specs/NNN-slug/review.md` (créalo desde `docs/sdd/templates/review-template.md`
+si no existe; no toques las demás secciones):
 ```
 Veredicto: ✅ Sin hallazgos bloqueantes | ❌ Bloqueado
 Pruebas ISO agregadas: …

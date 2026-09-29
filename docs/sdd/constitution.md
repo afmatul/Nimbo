@@ -8,7 +8,9 @@ de los cuatro integrantes en una reunión de revisión.
 ## Artículo I — La spec manda
 
 1. Todo cambio de comportamiento nace de una spec en `specs/NNN-slug/`.
-2. La spec describe **qué** y **por qué**; el plan describe **cómo**; las tareas describen **en qué orden**.
+2. La spec describe **qué** y **por qué**, con su «Enfoque técnico» del **cómo**; un `plan.md` aparte solo si la
+   spec es transversal, agrega un puerto entre módulos, tecnología nueva o cambia la arquitectura; las tareas
+   describen **en qué orden**.
 3. Si la implementación descubre que la spec está mal, se detiene, se corrige la spec y se continúa.
 4. Correcciones sin cambio de comportamiento (refactor, typo, dependencia menor) no requieren spec, pero sí PR y revisión.
 
@@ -110,12 +112,12 @@ Los módulos no esenciales se consumen de forma asíncrona o con manejo explíci
 ## Artículo XIV — Definición de terminado
 
 Una tarea/spec está terminada cuando:
-- [ ] Cumple todos los criterios de aceptación de su spec (`verification.md` en verde).
+- [ ] Cumple todos los criterios de aceptación de su spec (sección «Verificación» de `review.md` en verde).
 - [ ] Tiene pruebas automatizadas de lo que introduce y la cobertura no bajó del umbral.
 - [ ] Pasa lint, typecheck y todas las suites de CI, incluida la de aislamiento.
 - [ ] Está instrumentada (bitácoras con `correlationId`, métricas declaradas).
 - [ ] Fue revisada por el subagente `reviewer` y aprobada por un integrante distinto del autor.
-- [ ] Si tiene UI: coincide con su mockup, pasa axe a 360 y 1440 px y `ui-review.md` está en verde.
+- [ ] Si tiene UI: coincide con su mockup, pasa axe a 360 y 1440 px y la sección «UI» de `review.md` está en verde.
 - [ ] Está desplegada en staging y se puede demostrar.
 - [ ] La documentación afectada (spec, API, manuales, ADR) se actualizó en el mismo PR.
 

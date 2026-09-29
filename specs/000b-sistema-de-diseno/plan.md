@@ -3,7 +3,7 @@
 > Spec: `./spec.md` · Estado del plan: Aprobado
 
 ## 1. Resumen técnico
-Esta spec establece la infraestructura de interfaz de usuario en `apps/web` para todo el proyecto Nimbo. Se integra Tailwind CSS v4 y shadcn/ui utilizando como única fuente de verdad `apps/web/src/app/globals.css`, configurando los tokens de la paleta **Cielo Sereno** con los ajustes de contraste AA aprobados en la spec (DF-41 a DF-45). Se configuran las fuentes tipográficas `Inter` y `JetBrains Mono` mediante `next/font/google` en `apps/web/src/app/layout.tsx`. Se implementa una suite de componentes atómicos base (`Button`, `Input`, `Card`, `Badge`) y componentes de dominio de Nimbo (`FileTypeChip`, `CitationChip`, `StateView`), un layout base responsivo desde 360 px con menú accesible, y pruebas automatizadas de renderizado y accesibilidad con `jest-axe`.
+Esta spec establece la infraestructura de interfaz de usuario en `apps/web` para todo el proyecto Nimbo. Se integra Tailwind CSS v4 y shadcn/ui utilizando como única fuente de verdad `apps/web/src/app/globals.css`, configurando los tokens de la paleta **Cielo Sereno** con los ajustes de contraste AA aprobados en la spec (DF-41 a DF-45). Se configura la fuente `Inter`, única familia desde el 26/09/2026 (§10), mediante `next/font/google` en `apps/web/src/app/layout.tsx`. Se implementa una suite de componentes atómicos base (`Button`, `Input`, `Card`, `Badge`) y componentes de dominio de Nimbo (`FileTypeChip`, `CitationChip`, `StateView`), un layout base responsivo desde 360 px con menú accesible, y pruebas automatizadas de renderizado y accesibilidad con `jest-axe`.
 
 ## 2. Verificación contra la constitución
 | Artículo | Cumple | Nota |
@@ -63,8 +63,7 @@ No aplica. Los contratos de API ya existen en `@nimbo/contracts` y no se modific
 
 ### 6.3 Tipografías en `apps/web/src/app/layout.tsx`
 - Carga optimizada de Google Fonts mediante `next/font/google`:
-  - `Inter` asignada a variable `--font-inter`.
-  - `JetBrains_Mono` asignada a variable `--font-jetbrains-mono`.
+  - `Inter` asignada a variable `--font-inter`. Es la única familia: JetBrains Mono dejó de usarse (§10) y las cifras y metadatos usan `tabular-nums`.
 - Atributos `lang="es"` y clases en `body`: `font-sans antialiased bg-background text-foreground`.
 
 ### 6.4 Componentes base (`apps/web/src/components/ui/`)
@@ -102,7 +101,7 @@ No aplica. Los contratos de API ya existen en `@nimbo/contracts` y no se modific
 | Criterio | Nivel | Archivo propuesto | Qué valida |
 |---|---|---|---|
 | CA-1, CA-2 | unit | `apps/web/src/app/globals.spec.ts` | Existencia de todas las variables CSS de tokens y verificación matemática de contraste WCAG AA |
-| CA-3 | unit | `apps/web/src/app/layout.spec.tsx` | Layout renderiza las variables de fuente `Inter` y `JetBrains Mono` y el idioma `es` |
+| CA-3 | unit | `apps/web/src/app/layout.spec.tsx` | Layout renderiza la variable de fuente `Inter`, no carga JetBrains Mono y usa el idioma `es` |
 | CA-4 | unit | `apps/web/src/components/ui/button.spec.tsx` | Renderizado de variantes de Button, estados hover/focus/disabled/loading |
 | CA-4 | unit | `apps/web/src/components/ui/input.spec.tsx` | Renderizado de Input, atributos de accesibilidad y foco |
 | CA-4 | unit | `apps/web/src/components/ui/card.spec.tsx` | Renderizado de Card y sus subcomponentes |
@@ -122,6 +121,7 @@ No aplica. Los contratos de API ya existen en `@nimbo/contracts` y no se modific
 ## 10. Decisiones
 - **ADR-0014**: Se adopta Tailwind CSS v4 + componentes estilo shadcn/ui con tokens personalizados de Cielo Sereno en `globals.css`.
 - **DF-41 a DF-45**: Se aplican los valores de contraste corregidos como únicos tokens de texto y controles interactivos.
+- **Tipografía (2026-09-26, Adrián)**: Inter es la única familia y JetBrains Mono deja de usarse (spec §2 y CA-3, registro de cambios). Se aplicó en `apps/web` con `fix/000b-solo-inter`; `ui-review.md` y `verification.md` quedan como registro de lo verificado antes del cambio.
 
 ## 11. Aprobación de arquitectura
 > Subagente: `architect`
