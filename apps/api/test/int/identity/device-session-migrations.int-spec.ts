@@ -2,12 +2,17 @@ import { DataSource } from 'typeorm';
 import type { QueryRunner } from 'typeorm';
 
 import { CrearDispositivo20260929100000 } from '../../../src/migrations/20260929100000-crear-dispositivo';
+import { CrearSesion20260929100100 } from '../../../src/migrations/20260929100100-crear-sesion';
 import { buildDataSourceOptions } from '../../../src/shared';
 
 import { CREATED_AT, aClient, insertUser, violatedConstraint } from './identity-rows';
 
 const FINGERPRINT_A = 'a'.repeat(64);
 const FINGERPRINT_B = 'b'.repeat(64);
+const REFRESH_A = 'c'.repeat(64);
+const REFRESH_B = 'd'.repeat(64);
+const LAST_USED_AT = '2026-09-29T10:00:00Z';
+const EXPIRES_AT = '2026-10-28T10:00:00Z';
 
 interface DeviceRow {
   usuario_id: string;
@@ -33,6 +38,50 @@ const insertDevice = async (runner: QueryRunner, row: DeviceRow): Promise<string
   return rows[0]?.id ?? '';
 };
 
+interface SessionRow {
+  usuario_id: string;
+  dispositivo_id: string;
+  refresh_hash: string;
+  refresh_anterior_hash: string | null;
+  rotado_en: string | null;
+  creada_en: string;
+  ultimo_uso: string;
+  expira_en: string;
+}
+
+const aSession = (
+  usuarioId: string,
+  dispositivoId: string,
+  patch: Partial<SessionRow> = {},
+): SessionRow => ({
+  usuario_id: usuarioId,
+  dispositivo_id: dispositivoId,
+  refresh_hash: REFRESH_A,
+  refresh_anterior_hash: null,
+  rotado_en: null,
+  creada_en: CREATED_AT,
+  ultimo_uso: LAST_USED_AT,
+  expira_en: EXPIRES_AT,
+  ...patch,
+});
+
+const insertSession = (runner: QueryRunner, row: SessionRow): Promise<unknown> =>
+  runner.query(
+    `INSERT INTO sesion (usuario_id, dispositivo_id, refresh_hash, refresh_anterior_hash, rotado_en, creada_en,
+       ultimo_uso, expira_en)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+    [
+      row.usuario_id,
+      row.dispositivo_id,
+      row.refresh_hash,
+      row.refresh_anterior_hash,
+      row.rotado_en,
+      row.creada_en,
+      row.ultimo_uso,
+      row.expira_en,
+    ],
+  );
+
 const aUserIn = async (runner: QueryRunner): Promise<string> => {
   const user = aClient();
   await insertUser(runner, user);
@@ -56,6 +105,15 @@ const shapeOf = async (runner: QueryRunner, table: string): Promise<unknown> => 
     [table],
   ),
 });
+
+/** Un usuario con un dispositivo, listos para colgarles sesiones. */
+const anOwnedDevice = async (
+  runner: QueryRunner,
+): Promise<{ userId: string; deviceId: string }> => {
+  const userId = await aUserIn(runner);
+  const deviceId = await insertDevice(runner, aDevice(userId));
+  return { userId, deviceId };
+};
 
 const tableExists = async (runner: QueryRunner, table: string): Promise<boolean> => {
   const rows = (await runner.query('SELECT to_regclass($1) IS NOT NULL AS present', [table])) as {
@@ -152,14 +210,116 @@ describe('migraciones de dispositivo y sesión (CA-16, CA-17, CA-24)', () => {
     });
   });
 
-  it('CA-24: run → revert → run deja `dispositivo` igual', async () => {
-    const migration = new CrearDispositivo20260929100000();
-    const before = await shapeOf(runner, 'dispositivo');
+  describe('sesion', () => {
+    it('CA-1: acepta una sesión recién iniciada', async () => {
+      const { userId, deviceId } = await anOwnedDevice(runner);
 
-    await migration.down(runner);
+      await expect(
+        violatedConstraint(insertSession(runner, aSession(userId, deviceId))),
+      ).resolves.toBeUndefined();
+    });
+
+    it('CA-24: rechaza una sesión cuyo usuario no es el dueño del dispositivo', async () => {
+      const { deviceId } = await anOwnedDevice(runner);
+      const stranger = await aUserIn(runner);
+
+      await expect(
+        violatedConstraint(insertSession(runner, aSession(stranger, deviceId))),
+      ).resolves.toBe('fk_sesion_dispositivo_usuario');
+    });
+
+    it.each([
+      ['`refresh_anterior_hash` sin `rotado_en`', { refresh_anterior_hash: REFRESH_B }],
+      ['`rotado_en` sin `refresh_anterior_hash`', { rotado_en: LAST_USED_AT }],
+    ])('CA-7: rechaza %s', async (_label, patch) => {
+      const { userId, deviceId } = await anOwnedDevice(runner);
+
+      await expect(
+        violatedConstraint(insertSession(runner, aSession(userId, deviceId, patch))),
+      ).resolves.toBe('ck_sesion_rotacion');
+    });
+
+    it('CA-7: acepta una sesión rotada con el secreto anterior y la fecha de rotación', async () => {
+      const { userId, deviceId } = await anOwnedDevice(runner);
+      const rotated = { refresh_anterior_hash: REFRESH_B, rotado_en: LAST_USED_AT };
+
+      await expect(
+        violatedConstraint(insertSession(runner, aSession(userId, deviceId, rotated))),
+      ).resolves.toBeUndefined();
+    });
+
+    it.each([
+      ['`expira_en <= creada_en`', { expira_en: CREATED_AT }],
+      ['`ultimo_uso < creada_en`', { ultimo_uso: '2026-09-27T10:00:00Z' }],
+    ])('CA-8: rechaza %s', async (_label, patch) => {
+      const { userId, deviceId } = await anOwnedDevice(runner);
+
+      await expect(
+        violatedConstraint(insertSession(runner, aSession(userId, deviceId, patch))),
+      ).resolves.toBe('ck_sesion_vigencia');
+    });
+
+    it.each([
+      ['refresh_hash', { refresh_hash: 'A'.repeat(64) }, 'ck_sesion_refresh_hash'],
+      [
+        'refresh_anterior_hash',
+        { refresh_anterior_hash: 'x'.repeat(64), rotado_en: LAST_USED_AT },
+        'ck_sesion_refresh_anterior_hash',
+      ],
+    ])('CA-24: rechaza un `%s` que no es hex de 64', async (_label, patch, constraint) => {
+      const { userId, deviceId } = await anOwnedDevice(runner);
+
+      await expect(
+        violatedConstraint(insertSession(runner, aSession(userId, deviceId, patch))),
+      ).resolves.toBe(constraint);
+    });
+
+    it('CA-1: existen el índice parcial por dueño y el de la FK compuesta', async () => {
+      const rows = (await runner.query(
+        `SELECT indexname, indexdef FROM pg_indexes
+          WHERE tablename = 'sesion' AND indexname LIKE 'idx_%' ORDER BY indexname`,
+      )) as { indexname: string; indexdef: string }[];
+
+      expect(rows.map((row) => row.indexname)).toEqual([
+        'idx_sesion_dispositivo_id_usuario_id',
+        'idx_sesion_usuario_id_ultimo_uso',
+      ]);
+      expect(rows[1]?.indexdef).toMatch(
+        /\(usuario_id, ultimo_uso DESC\) WHERE \(revocada_en IS NULL\)/,
+      );
+    });
+
+    it('CA-24: borrar el dispositivo borra sus sesiones en cascada', async () => {
+      const { userId, deviceId } = await anOwnedDevice(runner);
+      await insertSession(runner, aSession(userId, deviceId));
+
+      await runner.query('DELETE FROM dispositivo WHERE id = $1', [deviceId]);
+
+      const rows = (await runner.query('SELECT 1 FROM sesion WHERE usuario_id = $1', [
+        userId,
+      ])) as unknown[];
+      expect(rows).toHaveLength(0);
+    });
+
+    // Los privilegios por defecto de `nimbo_app` los crea la migración 20260928110000 de 003 (`feat/003-rol-bd`),
+    // que aún no está en `main`. Se activa al integrar 003 (tasks.md, notas del developer).
+    it.todo('CA-24: `nimbo_app` tiene SELECT, INSERT, UPDATE y DELETE en `dispositivo` y `sesion`');
+  });
+
+  it('CA-24: run → revert (LIFO) → run deja `dispositivo` y `sesion` igual', async () => {
+    const [device, session] = [
+      new CrearDispositivo20260929100000(),
+      new CrearSesion20260929100100(),
+    ];
+    const before = [await shapeOf(runner, 'dispositivo'), await shapeOf(runner, 'sesion')];
+
+    await session.down(runner);
+    expect(await tableExists(runner, 'sesion')).toBe(false);
+    await device.down(runner);
     expect(await tableExists(runner, 'dispositivo')).toBe(false);
-    await migration.up(runner);
+    await device.up(runner);
+    await session.up(runner);
 
-    expect(await shapeOf(runner, 'dispositivo')).toEqual(before);
+    expect([await shapeOf(runner, 'dispositivo'), await shapeOf(runner, 'sesion')]).toEqual(before);
   });
 });
