@@ -4,9 +4,15 @@ import {
   LOGIN_FAILURE_WINDOW_MINUTES,
   LOGIN_LOCK_MINUTES,
   LOGIN_MAX_FAILURES,
+  SUPPORT_CONTACT_EMAIL,
 } from '@nimbo/contracts';
 
-import { InvalidCredentialsError, LoginLockedError } from '../domain/errors';
+import {
+  AccountSuspendedError,
+  EmailNotVerifiedError,
+  InvalidCredentialsError,
+  LoginLockedError,
+} from '../domain/errors';
 import { PasswordHash } from '../domain/password-hash.vo';
 
 import { AuthService } from './auth.service';
@@ -150,5 +156,80 @@ describe('AuthService.login: bloqueo y credenciales inválidas (plan 002 §6.3)'
     expect(ctx.hasher.hash).toHaveBeenCalledTimes(1);
     const dummy = await (ctx.hasher.hash.mock.results[0]?.value as Promise<PasswordHash>);
     expect(ctx.hasher.verify.mock.calls.every(([hash]) => hash === dummy)).toBe(true);
+  });
+});
+
+describe('AuthService.login: estados de la cuenta y éxito (plan 002 §6.3)', () => {
+  it('CA-4: contraseña correcta de una cuenta suspendida responde `ACCOUNT_SUSPENDED` sin contar fallo', async () => {
+    const ctx = await setup();
+    const user = activeUser().suspended().build();
+    ctx.users.seed(user);
+
+    const error = await ctx.service
+      .login({ email: EMAIL, password: PASSWORD }, CLIENT)
+      .catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(AccountSuspendedError);
+    expect((error as AccountSuspendedError).message).toContain(SUPPORT_CONTACT_EMAIL);
+    expect(ctx.lockout.recordFailure).not.toHaveBeenCalled();
+    expect(ctx.sessions.open).not.toHaveBeenCalled();
+    expect(loggedEvents(ctx.logger)).toContainEqual({
+      event: 'identity.login.failed',
+      reason: 'account_suspended',
+      userId: user.id,
+    });
+  });
+
+  it('CA-3: contraseña correcta de una cuenta sin verificar responde `EMAIL_NOT_VERIFIED` sin contar fallo', async () => {
+    const ctx = await setup();
+    const user = aClientUser().withPasswordHash(`fake$${PASSWORD}`).build();
+    ctx.users.seed(user);
+
+    await expect(
+      ctx.service.login({ email: EMAIL, password: PASSWORD }, CLIENT),
+    ).rejects.toBeInstanceOf(EmailNotVerifiedError);
+
+    expect(ctx.lockout.recordFailure).not.toHaveBeenCalled();
+    expect(ctx.sessions.open).not.toHaveBeenCalled();
+    expect(loggedEvents(ctx.logger)).toContainEqual({
+      event: 'identity.login.failed',
+      reason: 'email_not_verified',
+      userId: user.id,
+    });
+  });
+
+  it('CA-1: con la cuenta activa borra los fallos y abre la sesión de inicio de sesión', async () => {
+    const ctx = await setup();
+    const user = activeUser().build();
+    ctx.users.seed(user);
+
+    const result = await ctx.service.login({ email: EMAIL, password: PASSWORD }, CLIENT);
+
+    expect(result).toBe(ctx.opened);
+    expect(ctx.lockout.clear).toHaveBeenCalledWith(loginKey(EMAIL));
+    expect(ctx.sessions.open).toHaveBeenCalledWith(user, CLIENT, 'login');
+    expect(ctx.lockout.recordFailure).not.toHaveBeenCalled();
+    expect(loggedEvents(ctx.logger)).toContainEqual({
+      event: 'identity.login.succeeded',
+      userId: user.id,
+      sessionId: ctx.opened.sessionId,
+      newDevice: true,
+    });
+  });
+
+  it('CA-25: ninguna bitácora del inicio de sesión lleva el correo ni la contraseña', async () => {
+    const ctx = await setup();
+    ctx.users.seed(activeUser().build());
+
+    await ctx.service.login({ email: EMAIL, password: 'mala' }, CLIENT).catch(() => undefined);
+    await ctx.service
+      .login({ email: 'otra@ejemplo.com', password: 'mala' }, CLIENT)
+      .catch(() => undefined);
+    await ctx.service.login({ email: EMAIL, password: PASSWORD }, CLIENT);
+
+    const logged = JSON.stringify(loggedEvents(ctx.logger));
+    expect(logged).not.toContain('@');
+    expect(logged).not.toContain(PASSWORD);
+    expect(logged).not.toContain('mala');
   });
 });

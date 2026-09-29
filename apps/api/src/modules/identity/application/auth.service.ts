@@ -6,11 +6,18 @@ import {
   LOGIN_FAILURE_WINDOW_MINUTES,
   LOGIN_LOCK_MINUTES,
   LOGIN_MAX_FAILURES,
+  SUPPORT_CONTACT_EMAIL,
 } from '@nimbo/contracts';
 import { PinoLogger } from 'nestjs-pino';
 
+import { AccountStatus } from '../domain/account-status.enum';
 import { EmailAddress } from '../domain/email-address.vo';
-import { InvalidCredentialsError, LoginLockedError } from '../domain/errors';
+import {
+  AccountSuspendedError,
+  EmailNotVerifiedError,
+  InvalidCredentialsError,
+  LoginLockedError,
+} from '../domain/errors';
 import type { PasswordHash } from '../domain/password-hash.vo';
 import type { User } from '../domain/user.entity';
 
@@ -34,6 +41,9 @@ const LOGIN_POLICY: LockoutPolicy = {
   windowSeconds: LOGIN_FAILURE_WINDOW_MINUTES * SECONDS_PER_MINUTE,
   lockSeconds: LOGIN_LOCK_MINUTES * SECONDS_PER_MINUTE,
 };
+
+/** Motivo de `identity.login.failed` (plan §7). */
+type LoginFailureReason = 'invalid_credentials' | 'email_not_verified' | 'account_suspended';
 
 /** Inicio de sesión ya validado por `loginRequestSchema`; el correo aún sin normalizar. */
 export interface LoginCommand {
@@ -67,7 +77,8 @@ export class AuthService implements OnModuleInit {
     await this.dummyPasswordHash();
   }
 
-  async login(command: LoginCommand, _client: ClientContext): Promise<OpenedSession> {
+  /** CA-1 a CA-5: devuelve las credenciales de la sesión nueva; el controlador escribe las cookies. */
+  async login(command: LoginCommand, client: ClientContext): Promise<OpenedSession> {
     const email = EmailAddress.of(command.email);
     const key = loginLockoutKey(email);
     await this.enforceNotLocked(key);
@@ -79,7 +90,37 @@ export class AuthService implements OnModuleInit {
     if (!(await this.hasher.verify(user.passwordHash, command.password))) {
       return this.rejectCredentials(key, user);
     }
-    throw new Error('Inicio de sesión con la contraseña correcta: pendiente de T-35.');
+    this.enforceCanSignIn(user);
+    // DT-4: un inicio de sesión correcto borra los fallos acumulados del correo.
+    await this.lockout.clear(key);
+    const opened = await this.sessions.open(user, client, 'login');
+    this.logger.info({
+      event: 'identity.login.succeeded',
+      userId: user.id,
+      sessionId: opened.sessionId,
+      newDevice: opened.newDevice,
+    });
+    return opened;
+  }
+
+  /** Solo con la contraseña correcta (R-4, D-10); ninguno de los dos cuenta como fallo. */
+  private enforceCanSignIn(user: User): void {
+    if (user.status === AccountStatus.SUSPENDED) {
+      this.logFailure('account_suspended', user);
+      throw new AccountSuspendedError(SUPPORT_CONTACT_EMAIL);
+    }
+    if (!user.emailVerified) {
+      this.logFailure('email_not_verified', user);
+      throw new EmailNotVerifiedError();
+    }
+  }
+
+  private logFailure(reason: LoginFailureReason, user: User | null): void {
+    this.logger.info({
+      event: 'identity.login.failed',
+      reason,
+      ...(user === null ? {} : { userId: user.id }),
+    });
   }
 
   private async enforceNotLocked(key: string): Promise<void> {
@@ -97,10 +138,13 @@ export class AuthService implements OnModuleInit {
   /** El quinto fallo todavía responde credenciales inválidas; el sexto intento ya encuentra el bloqueo (CA-5). */
   private async rejectCredentials(key: string, user: User | null): Promise<never> {
     const state = await this.lockout.recordFailure(key, LOGIN_POLICY);
-    const account = user === null ? {} : { userId: user.id };
-    this.logger.info({ event: 'identity.login.failed', reason: 'invalid_credentials', ...account });
+    this.logFailure('invalid_credentials', user);
     if (state.locked) {
-      this.logger.warn({ event: 'identity.lockout.engaged', scope: 'login', ...account });
+      this.logger.warn({
+        event: 'identity.lockout.engaged',
+        scope: 'login',
+        ...(user === null ? {} : { userId: user.id }),
+      });
     }
     throw new InvalidCredentialsError();
   }
