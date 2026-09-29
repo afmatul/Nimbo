@@ -10,7 +10,7 @@ Revisor: `reviewer` (Sonnet), 2026-09-28. Tareas T-28 a T-53 y la corrección `n
 **Veredicto inicial: Bloqueante** (hallazgo 1). Las pruebas de integración y aislamiento están escritas y compilan, pero
 **no se ejecutaron** (sin Docker); T-54 sigue abierta.
 
-**Veredicto tras correcciones: Aprobado con pruebas de integración pendientes de ejecutar (sin Docker)**
+**Veredicto tras correcciones: Aprobado.** `test:int` 169/169 y `test:isolation` 5/5 en verde (2026-09-28, T-54).
 
 ### Bloqueantes
 
