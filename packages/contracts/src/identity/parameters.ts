@@ -52,3 +52,5 @@ export const PASSWORD_CHANGE_WINDOW_MINUTES = 15;
 export const PASSWORD_CHANGE_LOCK_MINUTES = 15;
 /** Vida de la cookie que identifica el dispositivo (D-4). */
 export const DEVICE_COOKIE_MAX_AGE_DAYS = 365;
+/** Sesiones que devuelve como máximo la lista de «Seguridad» (plan 002 DT-13). */
+export const SESSION_LIST_MAX_ITEMS = 50;

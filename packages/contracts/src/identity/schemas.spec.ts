@@ -3,6 +3,7 @@ import type { z } from 'zod';
 import { toFieldIssues } from '../validation';
 
 import { IDENTITY_FIELD_MESSAGES } from './error-codes';
+import { SESSION_LIST_MAX_ITEMS } from './parameters';
 import {
   acceptedResponseSchema,
   changePasswordRequestSchema,
@@ -12,6 +13,10 @@ import {
   resendVerificationRequestSchema,
   resetPasswordRequestSchema,
   resetTokenRequestSchema,
+  revokeOthersResponseSchema,
+  sessionListResponseSchema,
+  sessionResponseSchema,
+  sessionSummarySchema,
   verifyEmailRequestSchema,
   verifyEmailResponseSchema,
 } from './schemas';
@@ -327,7 +332,7 @@ describe('changePasswordRequestSchema', () => {
   });
 });
 
-describe('esquemas de respuesta', () => {
+describe('esquemas de respuesta de 001', () => {
   it('acceptedResponseSchema acepta solo `{ status: "accepted" }`', () => {
     expect(acceptedResponseSchema.safeParse({ status: 'accepted' }).success).toBe(true);
     expect(acceptedResponseSchema.safeParse({ status: 'ok' }).success).toBe(false);
@@ -337,5 +342,122 @@ describe('esquemas de respuesta', () => {
     expect(verifyEmailResponseSchema.safeParse({ status: 'verified' }).success).toBe(true);
     expect(verifyEmailResponseSchema.safeParse({ status: 'already-verified' }).success).toBe(true);
     expect(verifyEmailResponseSchema.safeParse({ status: 'expired' }).success).toBe(false);
+  });
+
+  it('CA-1: verifyEmailResponseSchema acepta `verified` con la sesión que abre la verificación', () => {
+    const response = { status: 'verified', session: VALID_SESSION };
+
+    expect(verifyEmailResponseSchema.parse(response)).toEqual(response);
+  });
+
+  it('CA-1: verifyEmailResponseSchema rechaza `already-verified` con sesión', () => {
+    expect(
+      verifyEmailResponseSchema.safeParse({ status: 'already-verified', session: VALID_SESSION })
+        .success,
+    ).toBe(false);
+  });
+});
+
+const VALID_SESSION = {
+  accessToken: 'eyJhbGciOiJIUzI1NiJ9.e30.firma',
+  accessTokenExpiresAt: '2026-09-30T15:15:00.000Z',
+  user: {
+    id: '0b7a3c1e-6f4d-4d8a-9b1e-2c3d4e5f6a7b',
+    fullName: 'Ana López',
+    email: 'ana@nimbo.me',
+    role: 'CLIENT',
+  },
+};
+
+describe('sessionResponseSchema', () => {
+  it('CA-1: acepta `{ accessToken, accessTokenExpiresAt, user: { id, fullName, email, role } }`', () => {
+    expect(sessionResponseSchema.parse(VALID_SESSION)).toEqual(VALID_SESSION);
+  });
+
+  it.each(['2026-09-30T09:15:00-06:00', '2026-09-30', 'mañana'])(
+    'CA-1: `accessTokenExpiresAt` «%s» no es ISO-8601 UTC',
+    (accessTokenExpiresAt) => {
+      expect(
+        sessionResponseSchema.safeParse({ ...VALID_SESSION, accessTokenExpiresAt }).success,
+      ).toBe(false);
+    },
+  );
+
+  it.each(['ADMIN', 'SUPPORT', 'OPERATOR'])('CA-1: acepta el rol %s', (role) => {
+    const session = { ...VALID_SESSION, user: { ...VALID_SESSION.user, role } };
+
+    expect(sessionResponseSchema.safeParse(session).success).toBe(true);
+  });
+
+  it('CA-1: rechaza un rol desconocido', () => {
+    const session = { ...VALID_SESSION, user: { ...VALID_SESSION.user, role: 'ROOT' } };
+
+    expect(sessionResponseSchema.safeParse(session).success).toBe(false);
+  });
+
+  it('CA-1: el `user` no admite campos de más (D-13: nada que no pida la web)', () => {
+    const session = { ...VALID_SESSION, user: { ...VALID_SESSION.user, estado: 'ACTIVE' } };
+
+    expect(sessionResponseSchema.safeParse(session).success).toBe(false);
+  });
+});
+
+const VALID_SUMMARY = {
+  id: '5d2f8e0a-1b3c-4d5e-8f9a-0b1c2d3e4f5a',
+  browser: 'Chrome 129',
+  os: 'Windows 11',
+  deviceKind: 'desktop',
+  startedAt: '2026-09-28T14:00:00.000Z',
+  lastActiveAt: '2026-09-30T15:00:00.000Z',
+  current: true,
+};
+
+describe('sessionSummarySchema', () => {
+  it('CA-11: acepta el resumen de una sesión', () => {
+    expect(sessionSummarySchema.parse(VALID_SUMMARY)).toEqual(VALID_SUMMARY);
+  });
+
+  it.each(['desktop', 'mobile', 'tablet'])('CA-11: acepta `deviceKind` %s', (deviceKind) => {
+    expect(sessionSummarySchema.safeParse({ ...VALID_SUMMARY, deviceKind }).success).toBe(true);
+  });
+
+  it('CA-11: rechaza otro `deviceKind`', () => {
+    expect(sessionSummarySchema.safeParse({ ...VALID_SUMMARY, deviceKind: 'tv' }).success).toBe(
+      false,
+    );
+  });
+
+  it.each([
+    ['ip', '203.0.113.7'],
+    ['userAgent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'],
+    ['deviceId', '9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d'],
+  ])('CA-11: rechaza `%s` (nunca sale de la API)', (key, value) => {
+    expect(sessionSummarySchema.safeParse({ ...VALID_SUMMARY, [key]: value }).success).toBe(false);
+  });
+});
+
+describe('sessionListResponseSchema', () => {
+  it(`CA-11: acepta hasta ${String(SESSION_LIST_MAX_ITEMS)} sesiones`, () => {
+    const items = Array.from({ length: SESSION_LIST_MAX_ITEMS }, () => VALID_SUMMARY);
+
+    expect(sessionListResponseSchema.safeParse({ items }).success).toBe(true);
+    expect(sessionListResponseSchema.safeParse({ items: [] }).success).toBe(true);
+  });
+
+  it(`CA-11: rechaza más de ${String(SESSION_LIST_MAX_ITEMS)} sesiones`, () => {
+    const items = Array.from({ length: SESSION_LIST_MAX_ITEMS + 1 }, () => VALID_SUMMARY);
+
+    expect(sessionListResponseSchema.safeParse({ items }).success).toBe(false);
+  });
+});
+
+describe('revokeOthersResponseSchema', () => {
+  it('CA-13: acepta `{ revokedCount }` entero no negativo', () => {
+    expect(revokeOthersResponseSchema.parse({ revokedCount: 0 })).toEqual({ revokedCount: 0 });
+    expect(revokeOthersResponseSchema.safeParse({ revokedCount: 3 }).success).toBe(true);
+  });
+
+  it.each([-1, 1.5, '2'])('CA-13: rechaza `revokedCount` %p', (revokedCount) => {
+    expect(revokeOthersResponseSchema.safeParse({ revokedCount }).success).toBe(false);
   });
 });

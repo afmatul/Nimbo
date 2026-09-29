@@ -1,7 +1,9 @@
 import { z } from 'zod';
 
+import { roleSchema } from '../shared/roles';
+
 import { IDENTITY_FIELD_MESSAGES, type FieldIssueReason } from './error-codes';
-import { FULL_NAME_MAX_LENGTH } from './parameters';
+import { FULL_NAME_MAX_LENGTH, SESSION_LIST_MAX_ITEMS } from './parameters';
 import { evaluatePassword } from './password-policy';
 
 /** Largo máximo de una dirección de correo (RFC 5321; columna `usuario.correo varchar(254)`). */
@@ -134,11 +136,62 @@ export const changePasswordRequestSchema = z
 /** Respuesta neutra de `register` y `resend-verification` (spec §7). */
 export const acceptedResponseSchema = z.object({ status: z.literal('accepted') }).strict();
 
+/** Instante ISO-8601 en UTC (`Z`), sin desplazamiento. */
+const utcInstant = z.string().datetime();
+
+/**
+ * Sesión recién abierta o renovada (002 plan §5). El `user` evita un `/me`; el correo va en el cuerpo, nunca en el
+ * token (D-13).
+ */
+export const sessionResponseSchema = z
+  .object({
+    accessToken: z.string().min(1),
+    accessTokenExpiresAt: utcInstant,
+    user: z
+      .object({
+        id: z.string().uuid(),
+        fullName: z.string().min(1),
+        email: z.string().email(),
+        role: roleSchema,
+      })
+      .strict(),
+  })
+  .strict();
+
 export const VERIFY_EMAIL_STATUSES = ['verified', 'already-verified'] as const;
 
-/** Respuesta de `verify-email`: `already-verified` no es un error (CA-10). */
-export const verifyEmailResponseSchema = z
-  .object({ status: z.enum(VERIFY_EMAIL_STATUSES) })
+/**
+ * Respuesta de `verify-email`: `already-verified` no es un error (001 CA-10). Solo la apertura que verifica trae la
+ * sesión (002 CA-1).
+ */
+export const verifyEmailResponseSchema = z.discriminatedUnion('status', [
+  z.object({ status: z.literal('verified'), session: sessionResponseSchema.optional() }).strict(),
+  z.object({ status: z.literal('already-verified') }).strict(),
+]);
+
+export const DEVICE_KINDS = ['desktop', 'mobile', 'tablet'] as const;
+
+/** Una sesión en «Seguridad». Sin IP, agente de usuario completo ni id del dispositivo (CA-11). */
+export const sessionSummarySchema = z
+  .object({
+    id: z.string().uuid(),
+    browser: z.string(),
+    os: z.string(),
+    deviceKind: z.enum(DEVICE_KINDS),
+    startedAt: utcInstant,
+    lastActiveAt: utcInstant,
+    current: z.boolean(),
+  })
+  .strict();
+
+/** `GET /sessions`: la actual primero y después por última actividad (D-9). */
+export const sessionListResponseSchema = z
+  .object({ items: z.array(sessionSummarySchema).max(SESSION_LIST_MAX_ITEMS) })
+  .strict();
+
+/** `POST /sessions/revoke-others` (CA-13). */
+export const revokeOthersResponseSchema = z
+  .object({ revokedCount: z.number().int().nonnegative() })
   .strict();
 
 export type RegisterRequest = z.infer<typeof registerRequestSchema>;
@@ -152,3 +205,9 @@ export type ChangePasswordRequest = z.infer<typeof changePasswordRequestSchema>;
 export type AcceptedResponse = z.infer<typeof acceptedResponseSchema>;
 export type VerifyEmailResponse = z.infer<typeof verifyEmailResponseSchema>;
 export type VerifyEmailStatus = VerifyEmailResponse['status'];
+export type SessionResponse = z.infer<typeof sessionResponseSchema>;
+export type SessionUser = SessionResponse['user'];
+export type DeviceKind = (typeof DEVICE_KINDS)[number];
+export type SessionSummary = z.infer<typeof sessionSummarySchema>;
+export type SessionListResponse = z.infer<typeof sessionListResponseSchema>;
+export type RevokeOthersResponse = z.infer<typeof revokeOthersResponseSchema>;
