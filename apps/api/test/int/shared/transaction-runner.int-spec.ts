@@ -10,6 +10,20 @@ import { TypeOrmTransactionRunner } from '../../../src/shared/infrastructure/per
 const TABLE = 'prueba_transaccion';
 const TICK_MS = 20;
 
+/** Punto de encuentro de `parties` trabajos: cada uno espera a que lleguen todos (sin depender de tiempos). */
+const barrier = (parties: number): (() => Promise<void>) => {
+  let arrived = 0;
+  let releaseAll: () => void = () => undefined;
+  const allArrived = new Promise<void>((resolve) => {
+    releaseAll = resolve;
+  });
+  return () => {
+    arrived += 1;
+    if (arrived === parties) releaseAll();
+    return allArrived;
+  };
+};
+
 /** `ITransactionRunner` sobre Postgres real (001 plan §6.7; base de `withActor` en 003). */
 describe('TypeOrmTransactionRunner (CA-3, CA-29)', () => {
   let dataSource: DataSource;
@@ -80,14 +94,18 @@ describe('TypeOrmTransactionRunner (CA-3, CA-29)', () => {
 
   it('CA-29: dos `run` concurrentes no comparten contexto ni ven lo no confirmado del otro', async () => {
     const [first, second] = [randomUUID(), randomUUID()];
+    // Ambas escriben antes de que alguna lea, y ninguna confirma antes de que la otra haya leído.
+    const bothInserted = barrier(2);
+    const bothRead = barrier(2);
     const work = (own: string, other: string) => async () => {
       await insert(own);
-      await sleep(TICK_MS);
+      await bothInserted();
       const rows = (await context
         .manager()
         .query(`SELECT id FROM ${TABLE} WHERE id IN ($1, $2)`, [own, other])) as {
         id: string;
       }[];
+      await bothRead();
       return { manager: context.manager(), ids: rows.map((row) => row.id) };
     };
 
