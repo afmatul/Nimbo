@@ -1,6 +1,6 @@
 # Plan 005 — Carga y descarga de archivos
 
-> Spec: `./spec.md` · Estado del plan: **Propuesto** (aprobado por el `architect` en la segunda pasada, 2026-09-28: ver §11; DF-51 resuelto con la opción A el 2026-09-28: `storage` declara `IPlanLimitsProvider` y `PlanLimits`; solo falta que 006a entregue la implementación, mientras tanto un doble de prueba)
+> Spec: `./spec.md` · Estado del plan: **Aprobado** (por el `architect` en la segunda pasada y confirmado por Adrián, 2026-09-28: ver §11; DF-51 resuelto con la opción A el 2026-09-28: `storage` declara `IPlanLimitsProvider` y `PlanLimits`; solo falta que 006a entregue la implementación, mientras tanto un doble de prueba)
 > Alineado el 2026-09-28 con los planes aprobados de 001, 002 y 003 (ADR-0017 a ADR-0020) y con las decisiones del usuario de esa fecha. Con los 15 cambios de §11.4 aplicados (2026-09-28); segunda pasada del `architect` hecha (§11). ADR de apoyo: 0021 (enmienda ADR-0005), 0011, 0012 y la adenda de 0015 (`@aws-sdk/s3-request-presigner`); DF-59 y DF-60 (aceptados).
 
 ## 1. Resumen técnico
