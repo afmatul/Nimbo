@@ -17,7 +17,7 @@ export class ApiClientError extends Error {
     readonly message: string;
     readonly correlationId: string;
     readonly fields?: readonly FieldIssueResponse[];
-    readonly retryAfterSeconds?: number;
+    readonly retryAfterSeconds?: number | undefined;
   }) {
     super(props.message);
     this.name = 'ApiClientError';

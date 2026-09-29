@@ -21,7 +21,10 @@ describe('chosen-plan-storage', () => {
     const storage = memoryStorage();
     saveChosenPlan(storage, { planId: 'pro', planName: 'Profesional' }, now);
 
-    const stored = JSON.parse(storage.getItem('nimbo.registro.plan') ?? '') as Record<string, unknown>;
+    const stored = JSON.parse(storage.getItem('nimbo.registro.plan') ?? '') as Record<
+      string,
+      unknown
+    >;
     expect(Object.keys(stored).sort()).toEqual(['planId', 'planName', 'savedAt']);
   });
 
@@ -46,6 +49,8 @@ describe('chosen-plan-storage', () => {
 
   it('sin almacenamiento devuelve null', () => {
     expect(takeChosenPlan(undefined, now)).toBeNull();
-    expect(() => saveChosenPlan(undefined, { planId: 'pro', planName: 'Profesional' }, now)).not.toThrow();
+    expect(() =>
+      saveChosenPlan(undefined, { planId: 'pro', planName: 'Profesional' }, now),
+    ).not.toThrow();
   });
 });

@@ -22,11 +22,7 @@ function isStored(value: unknown): value is StoredChosenPlan {
 }
 
 /** Guarda solo el plan. No persiste correo ni nombre (D-24). Sin `localStorage`, no hace nada. */
-export function saveChosenPlan(
-  storage: Storage | undefined,
-  plan: ChosenPlan,
-  now: Date,
-): void {
+export function saveChosenPlan(storage: Storage | undefined, plan: ChosenPlan, now: Date): void {
   storage?.setItem(
     STORAGE_KEY,
     JSON.stringify({ planId: plan.planId, planName: plan.planName, savedAt: now.toISOString() }),

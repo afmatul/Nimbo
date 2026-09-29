@@ -18,7 +18,7 @@ function jsonResponse(body: unknown, status: number): Response {
 }
 
 describe('página /registro', () => {
-  const fetchMock = jest.fn<typeof fetch>();
+  const fetchMock = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>();
 
   beforeEach(() => {
     fetchMock.mockReset();
@@ -52,7 +52,9 @@ describe('página /registro', () => {
     await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
 
     expect(await screen.findByRole('heading', { name: 'Revisa tu correo' })).toBeTruthy();
-    const registerCall = fetchMock.mock.calls.find((call) => String(call[0]).endsWith('/auth/register'));
+    const registerCall = fetchMock.mock.calls.find((call) =>
+      String(call[0]).endsWith('/auth/register'),
+    );
     expect(String(registerCall?.[0])).toBe('http://localhost/api/v1/auth/register');
   });
 
@@ -63,7 +65,9 @@ describe('página /registro', () => {
     fetchMock.mockImplementation(respond);
     render(await RegistroPage());
 
-    expect(screen.getByText('No pudimos cargar los planes; tu cuenta empezará en Personal.')).toBeTruthy();
+    expect(
+      screen.getByText('No pudimos cargar los planes; tu cuenta empezará en Personal.'),
+    ).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Crear cuenta' })).toBeTruthy();
     expect(screen.getByLabelText('Correo')).toBeTruthy();
   });
@@ -83,7 +87,9 @@ describe('página /registro', () => {
     await jest.advanceTimersByTimeAsync(2_000);
     render(await pending);
 
-    expect(screen.getByText('No pudimos cargar los planes; tu cuenta empezará en Personal.')).toBeTruthy();
+    expect(
+      screen.getByText('No pudimos cargar los planes; tu cuenta empezará en Personal.'),
+    ).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Crear cuenta' })).toBeTruthy();
     jest.useRealTimers();
   });

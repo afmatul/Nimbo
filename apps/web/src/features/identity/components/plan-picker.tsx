@@ -22,7 +22,7 @@ export function PlanPicker({
 }: {
   readonly plans: readonly CatalogPlan[];
   readonly unavailable?: boolean;
-  readonly value?: string;
+  readonly value?: string | undefined;
   readonly onChange?: (planId: string) => void;
 }): JSX.Element {
   if (unavailable) {
@@ -37,7 +37,11 @@ export function PlanPicker({
       {plans.map((plan) => {
         const inputId = `plan-${plan.id}`;
         return (
-          <label key={plan.id} htmlFor={inputId} className="flex min-h-11 items-center gap-3 text-sm">
+          <label
+            key={plan.id}
+            htmlFor={inputId}
+            className="flex min-h-11 items-center gap-3 text-sm"
+          >
             <input
               id={inputId}
               type="radio"

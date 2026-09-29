@@ -11,8 +11,8 @@ import {
 } from '@nimbo/contracts';
 import type { ZodType } from 'zod';
 
-import { ApiClientError, genericErrorMessage } from '../../lib/api-error';
 import { requestJson } from '../../lib/api-client';
+import { ApiClientError, genericErrorMessage } from '../../lib/api-error';
 
 function endpoint(apiPublicUrl: string, path: string): string {
   return `${apiPublicUrl.replace(/\/$/, '')}${path}`;

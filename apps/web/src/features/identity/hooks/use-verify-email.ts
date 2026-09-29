@@ -29,7 +29,9 @@ export function resetVerifyEmailState(): void {
 
 function readTokenOnce(): string | null {
   if (rememberedToken !== undefined) return rememberedToken;
-  const raw = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : window.location.hash;
+  const raw = window.location.hash.startsWith('#')
+    ? window.location.hash.slice(1)
+    : window.location.hash;
   const token = new URLSearchParams(raw).get('token');
   rememberedToken = token === null || token === '' ? null : token;
   return rememberedToken;
@@ -41,14 +43,20 @@ function stripFragment(): void {
   window.history.replaceState(null, '', next);
 }
 
-async function resolveVerification(apiPublicUrl: string, token: string): Promise<VerifyEmailViewState> {
+async function resolveVerification(
+  apiPublicUrl: string,
+  token: string,
+): Promise<VerifyEmailViewState> {
   try {
     const result = await verifyEmail(apiPublicUrl, token);
     if (result.status === 'already-verified') return { status: 'ya-verificado' };
     const plan = takeChosenPlan(window.localStorage, new Date());
     return { status: 'exito', planName: plan?.planName ?? null };
   } catch (caught) {
-    if (caught instanceof ApiClientError && caught.code === IDENTITY_ERROR_CODES.VERIFICATION_LINK_EXPIRED) {
+    if (
+      caught instanceof ApiClientError &&
+      caught.code === IDENTITY_ERROR_CODES.VERIFICATION_LINK_EXPIRED
+    ) {
       return { status: 'enlace-expirado' };
     }
     return { status: 'enlace-invalido' };
@@ -72,11 +80,11 @@ export function useVerifyEmail(apiPublicUrl: string): VerifyEmailViewState {
     let active = true;
     const token = readTokenOnce();
     stripFragment();
-    if (token === null) {
-      setState({ status: 'enlace-invalido' });
-      return undefined;
-    }
-    void verificationFlight(apiPublicUrl, token).then((next) => {
+    const flight: Promise<VerifyEmailViewState> =
+      token === null
+        ? Promise.resolve({ status: 'enlace-invalido' })
+        : verificationFlight(apiPublicUrl, token);
+    void flight.then((next) => {
       if (active) setState(next);
     });
     return () => {

@@ -25,7 +25,9 @@ describe('useCountdown', () => {
   });
 
   it('con un 429 usa los segundos de Retry-After', () => {
-    const hook = renderHook(({ seconds }) => useCountdown(seconds), { initialProps: { seconds: 90 } });
+    const hook = renderHook(({ seconds }) => useCountdown(seconds), {
+      initialProps: { seconds: 90 },
+    });
 
     expect(hook.result.current).toBe(90);
     hook.rerender({ seconds: 30 });

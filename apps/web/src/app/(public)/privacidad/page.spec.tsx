@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 import { expectNoA11yViolations } from '../../../components/test-a11y';
 import { formatLegalDate } from '../../../features/identity/components/legal-document';
+
 import PrivacidadPage from './page';
 
 describe('Política de privacidad', () => {
@@ -18,7 +19,8 @@ describe('Política de privacidad', () => {
     expect(markup).toContain('mailto:amatultab@gmail.com');
     expect(markup).not.toContain('..');
     const hrefs = markup.match(/href="[^"]+"/g) ?? [];
-    for (const href of hrefs) expect(href.startsWith('href="mailto:') || href.startsWith('href="/')).toBe(true);
+    for (const href of hrefs)
+      expect(href.startsWith('href="mailto:') || href.startsWith('href="/')).toBe(true);
   });
 
   it('no tiene violaciones de accesibilidad', async () => {

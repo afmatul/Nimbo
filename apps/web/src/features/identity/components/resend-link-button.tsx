@@ -60,7 +60,11 @@ export function ResendLinkButton({
   readonly apiPublicUrl: string;
   readonly email: string;
 }): JSX.Element {
-  const [round, setRound] = useState<Round>({ id: 0, seconds: EMAIL_REQUEST_COOLDOWN_SECONDS, limited: false });
+  const [round, setRound] = useState<Round>({
+    id: 0,
+    seconds: EMAIL_REQUEST_COOLDOWN_SECONDS,
+    limited: false,
+  });
   const [limitMessage, setLimitMessage] = useState<string | null>(null);
 
   const onResend = async (): Promise<void> => {
@@ -73,7 +77,10 @@ export function ResendLinkButton({
         limited: false,
       }));
     } catch (caught) {
-      if (caught instanceof ApiClientError && caught.code === IDENTITY_ERROR_CODES.TOO_MANY_REQUESTS) {
+      if (
+        caught instanceof ApiClientError &&
+        caught.code === IDENTITY_ERROR_CODES.TOO_MANY_REQUESTS
+      ) {
         const seconds = caught.retryAfterSeconds ?? EMAIL_REQUEST_COOLDOWN_SECONDS;
         setLimitMessage(
           messageForCode(caught.code, {

@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import { expectNoA11yViolations } from '../../../components/test-a11y';
+
 import { PasswordRequirements } from './password-requirements';
 
 describe('PasswordRequirements', () => {

@@ -6,6 +6,7 @@ import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 
 import { PublicHeader } from '../../../components/nimbo/public-header';
+
 import { CheckEmailPanel } from './check-email-panel';
 
 describe('CheckEmailPanel', () => {
@@ -34,6 +35,10 @@ describe('CheckEmailPanel', () => {
   it('no tiene violaciones graves de accesibilidad', async () => {
     const view = render(<CheckEmailPanel email="ana@ejemplo.com" onChangeEmail={jest.fn()} />);
     const results = await axe(view.container);
-    expect(results.violations.filter((violation) => violation.impact === 'serious' || violation.impact === 'critical')).toEqual([]);
+    expect(
+      results.violations.filter(
+        (violation) => violation.impact === 'serious' || violation.impact === 'critical',
+      ),
+    ).toEqual([]);
   });
 });

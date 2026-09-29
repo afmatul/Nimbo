@@ -8,7 +8,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 }
 
 describe('api de identity', () => {
-  const fetchMock = jest.fn<typeof fetch>();
+  const fetchMock = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>();
 
   beforeEach(() => {
     fetchMock.mockReset();
@@ -25,21 +25,27 @@ describe('api de identity', () => {
   it('register valida la respuesta accepted', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ status: 'accepted' }, 202));
 
-    await expect(register('http://localhost/api/v1', registerBody)).resolves.toEqual({ status: 'accepted' });
+    await expect(register('http://localhost/api/v1', registerBody)).resolves.toEqual({
+      status: 'accepted',
+    });
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe('http://localhost/api/v1/auth/register');
   });
 
   it('resendVerification valida la respuesta accepted', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ status: 'accepted' }, 202));
 
-    await expect(resendVerification('http://localhost/api/v1', { email: 'ana@ejemplo.com' })).resolves.toEqual({
+    await expect(
+      resendVerification('http://localhost/api/v1', { email: 'ana@ejemplo.com' }),
+    ).resolves.toEqual({
       status: 'accepted',
     });
   });
 
   it('verifyEmail valida verified y already-verified', async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({ status: 'verified' }));
-    await expect(verifyEmail('http://localhost/api/v1', 'token-opaco')).resolves.toEqual({ status: 'verified' });
+    await expect(verifyEmail('http://localhost/api/v1', 'token-opaco')).resolves.toEqual({
+      status: 'verified',
+    });
 
     fetchMock.mockResolvedValueOnce(jsonResponse({ status: 'already-verified' }));
     await expect(verifyEmail('http://localhost/api/v1', 'token-opaco')).resolves.toEqual({

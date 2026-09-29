@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import { expectNoA11yViolations } from '../test-a11y';
+
 import { RadioGroup } from './radio-group';
 
 const OPTIONS = [
@@ -11,7 +12,13 @@ const OPTIONS = [
 describe('RadioGroup', () => {
   it('usa radios nativos con el mismo nombre, sin un manejador de teclado propio', () => {
     const markup = renderToStaticMarkup(
-      <RadioGroup name="plan" legend="Elige un plan" options={OPTIONS} error errorMessage="Elige un plan" />,
+      <RadioGroup
+        name="plan"
+        legend="Elige un plan"
+        options={OPTIONS}
+        error
+        errorMessage="Elige un plan"
+      />,
     );
 
     expect(markup.match(/type="radio"/g)).toHaveLength(2);
@@ -26,6 +33,8 @@ describe('RadioGroup', () => {
   });
 
   it('no tiene violaciones de accesibilidad', async () => {
-    await expectNoA11yViolations(<RadioGroup name="plan" legend="Elige un plan" options={OPTIONS} />);
+    await expectNoA11yViolations(
+      <RadioGroup name="plan" legend="Elige un plan" options={OPTIONS} />,
+    );
   });
 });

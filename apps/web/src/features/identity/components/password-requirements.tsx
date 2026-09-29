@@ -1,7 +1,6 @@
+import { evaluatePassword, IDENTITY_FIELD_MESSAGES } from '@nimbo/contracts';
 import { Check, X } from 'lucide-react';
 import type { JSX } from 'react';
-
-import { evaluatePassword, IDENTITY_FIELD_MESSAGES } from '@nimbo/contracts';
 
 /** Requisitos en vivo: ícono y texto «Cumple» o «Falta», anunciados con `aria-live`. */
 export function PasswordRequirements({

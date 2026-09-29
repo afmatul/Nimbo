@@ -1,6 +1,10 @@
 import { IDENTITY_ERROR_CODES, IDENTITY_FIELD_MESSAGES } from '@nimbo/contracts';
 
-import { IDENTITY_FIELD_MESSAGES as reexported, messageForCode, messageForReason } from './error-catalog';
+import {
+  IDENTITY_FIELD_MESSAGES as reexported,
+  messageForCode,
+  messageForReason,
+} from './error-catalog';
 
 describe('error-catalog', () => {
   it('reexporta IDENTITY_FIELD_MESSAGES y resuelve cada reason', () => {
@@ -13,10 +17,12 @@ describe('error-catalog', () => {
     expect(messageForCode(IDENTITY_ERROR_CODES.INVALID_INPUT)).toContain('campos marcados');
     expect(messageForCode(IDENTITY_ERROR_CODES.WEAK_PASSWORD)).toContain('requisitos');
     expect(messageForCode(IDENTITY_ERROR_CODES.VERIFICATION_LINK_EXPIRED)).toContain('venció');
-    expect(messageForCode(IDENTITY_ERROR_CODES.VERIFICATION_LINK_INVALID)).toContain('no es válido');
-    expect(messageForCode(IDENTITY_ERROR_CODES.TOO_MANY_REQUESTS, { retryAfterSeconds: 120 })).toContain(
-      '2 minutos',
+    expect(messageForCode(IDENTITY_ERROR_CODES.VERIFICATION_LINK_INVALID)).toContain(
+      'no es válido',
     );
+    expect(
+      messageForCode(IDENTITY_ERROR_CODES.TOO_MANY_REQUESTS, { retryAfterSeconds: 120 }),
+    ).toContain('2 minutos');
   });
 
   it('un código desconocido cae en el genérico de 000 §10', () => {

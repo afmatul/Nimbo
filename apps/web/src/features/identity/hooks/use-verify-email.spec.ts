@@ -1,8 +1,8 @@
 /**
  * @jest-environment jsdom
  */
-import { StrictMode } from 'react';
 import { renderHook, waitFor } from '@testing-library/react';
+import { StrictMode } from 'react';
 
 import { resetVerifyEmailState, useVerifyEmail } from './use-verify-email';
 
@@ -16,7 +16,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 }
 
 describe('useVerifyEmail', () => {
-  const fetchMock = jest.fn<typeof fetch>();
+  const fetchMock = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>();
 
   beforeEach(() => {
     fetchMock.mockReset();
@@ -48,7 +48,9 @@ describe('useVerifyEmail', () => {
     expect(order[0]).toBe('replace:/verificar-correo');
     expect(order[1]).toBe('fetch:http://localhost/api/v1/auth/verify-email');
     expect(window.location.hash).toBe('');
-    expect(fetchMock.mock.calls.every((call) => String(call[0]).startsWith('http://localhost/api/v1'))).toBe(true);
+    expect(
+      fetchMock.mock.calls.every((call) => String(call[0]).startsWith('http://localhost/api/v1')),
+    ).toBe(true);
   });
 
   it('hace un solo POST dentro de StrictMode', async () => {

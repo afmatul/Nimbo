@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import { expectNoA11yViolations } from '../test-a11y';
+
 import { Label } from './label';
 
 describe('Label', () => {

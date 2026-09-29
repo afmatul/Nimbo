@@ -1,12 +1,13 @@
 /**
  * @jest-environment jsdom
  */
-import { StrictMode } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import { axe } from 'jest-axe';
+import { StrictMode } from 'react';
 
 import { saveChosenPlan } from '../chosen-plan-storage';
 import { resetVerifyEmailState } from '../hooks/use-verify-email';
+
 import { VerifyEmailView } from './verify-email-view';
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -23,7 +24,7 @@ function errorResponse(code: string): Response {
 }
 
 describe('VerifyEmailView', () => {
-  const fetchMock = jest.fn<typeof fetch>();
+  const fetchMock = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>();
 
   beforeEach(() => {
     fetchMock.mockReset();
@@ -47,8 +48,12 @@ describe('VerifyEmailView', () => {
     expect(screen.getByRole('status').textContent).toContain('Verificando');
     resolveFetch(jsonResponse({ status: 'verified' }));
 
-    expect(await screen.findByRole('heading', { name: '¡Listo! Tu correo está verificado.' })).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Iniciar sesión' }).getAttribute('href')).toBe('/iniciar-sesion');
+    expect(
+      await screen.findByRole('heading', { name: '¡Listo! Tu correo está verificado.' }),
+    ).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Iniciar sesión' }).getAttribute('href')).toBe(
+      '/iniciar-sesion',
+    );
     expect(screen.queryByText(/Tu cuenta empieza en el plan Personal/)).toBeNull();
   });
 
@@ -58,7 +63,9 @@ describe('VerifyEmailView', () => {
     window.history.replaceState(null, '', '/verificar-correo#token=plan');
     render(<VerifyEmailView apiPublicUrl="http://localhost/api/v1" />);
 
-    expect(await screen.findByText(/Podrás activar Profesional desde Plan y facturación/)).toBeTruthy();
+    expect(
+      await screen.findByText(/Podrás activar Profesional desde Plan y facturación/),
+    ).toBeTruthy();
     expect(document.querySelector('[data-state="plan-de-pago-elegido"]')).toBeTruthy();
   });
 
@@ -95,7 +102,9 @@ describe('VerifyEmailView', () => {
     resetVerifyEmailState();
     window.history.replaceState(null, '', '/verificar-correo#token=reload');
     render(<VerifyEmailView apiPublicUrl="http://localhost/api/v1" />);
-    expect(await screen.findByRole('heading', { name: '¡Listo! Tu correo está verificado.' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { name: '¡Listo! Tu correo está verificado.' }),
+    ).toBeTruthy();
     expect(window.location.hash).toBe('');
 
     resetVerifyEmailState();
@@ -115,17 +124,23 @@ describe('VerifyEmailView', () => {
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledTimes(1);
     });
-    expect(fetchMock.mock.calls.every((call) => String(call[0]).startsWith('http://localhost/api/v1'))).toBe(true);
+    expect(
+      fetchMock.mock.calls.every((call) => String(call[0]).startsWith('http://localhost/api/v1')),
+    ).toBe(true);
   });
 
   it('no tiene violaciones graves de accesibilidad', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ status: 'verified' }));
     window.history.replaceState(null, '', '/verificar-correo#token=a11y');
     const view = render(<VerifyEmailView apiPublicUrl="http://localhost/api/v1" />);
-    expect(await screen.findByRole('heading', { name: '¡Listo! Tu correo está verificado.' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { name: '¡Listo! Tu correo está verificado.' }),
+    ).toBeTruthy();
     const results = await axe(view.container);
-    expect(results.violations.filter((violation) => violation.impact === 'serious' || violation.impact === 'critical')).toEqual(
-      [],
-    );
+    expect(
+      results.violations.filter(
+        (violation) => violation.impact === 'serious' || violation.impact === 'critical',
+      ),
+    ).toEqual([]);
   });
 });

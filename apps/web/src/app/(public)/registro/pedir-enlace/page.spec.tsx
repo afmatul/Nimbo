@@ -16,7 +16,7 @@ function jsonResponse(body: unknown, status: number): Response {
 }
 
 describe('página pedir enlace', () => {
-  const fetchMock = jest.fn<typeof fetch>();
+  const fetchMock = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>();
 
   beforeEach(() => {
     fetchMock.mockReset();
@@ -40,6 +40,8 @@ describe('página pedir enlace', () => {
     await user.click(screen.getByRole('button', { name: 'Pedir enlace' }));
 
     expect(await screen.findByRole('heading', { name: 'Revisa tu correo' })).toBeTruthy();
-    expect(String(fetchMock.mock.calls[0]?.[0])).toBe('http://localhost/api/v1/auth/resend-verification');
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
+      'http://localhost/api/v1/auth/resend-verification',
+    );
   });
 });

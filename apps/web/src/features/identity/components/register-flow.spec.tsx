@@ -28,7 +28,7 @@ async function fillAccount(user: ReturnType<typeof userEvent.setup>): Promise<vo
 }
 
 describe('RegisterFlow', () => {
-  const fetchMock = jest.fn<typeof fetch>();
+  const fetchMock = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>();
 
   beforeEach(() => {
     fetchMock.mockReset();
@@ -59,7 +59,10 @@ describe('RegisterFlow', () => {
     await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
     expect(await screen.findByRole('heading', { name: 'Revisa tu correo' })).toBeTruthy();
 
-    const stored = JSON.parse(window.localStorage.getItem('nimbo.registro.plan') ?? '') as Record<string, unknown>;
+    const stored = JSON.parse(window.localStorage.getItem('nimbo.registro.plan') ?? '') as Record<
+      string,
+      unknown
+    >;
     expect(stored).toMatchObject({ planId: 'pro', planName: 'Profesional' });
     expect(stored).not.toHaveProperty('email');
 
@@ -69,6 +72,8 @@ describe('RegisterFlow', () => {
     expect((screen.getByLabelText('Correo') as HTMLInputElement).value).toBe('ana@ejemplo.com');
     expect((screen.getByLabelText('Contraseña') as HTMLInputElement).value).toBe('');
     expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(false);
-    expect((screen.getByRole('radio', { name: /Profesional/ }) as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByRole('radio', { name: /Profesional/ }) as HTMLInputElement).checked).toBe(
+      true,
+    );
   });
 });

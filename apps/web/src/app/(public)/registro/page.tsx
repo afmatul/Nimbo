@@ -11,6 +11,10 @@ export default async function RegistroPage(): Promise<ReactNode> {
   const env = getEnv();
   const catalog = await loadPlanCatalog(env.API_INTERNAL_URL);
   return (
-    <RegisterFlow apiPublicUrl={env.API_PUBLIC_URL} plans={catalog.plans} unavailable={catalog.unavailable} />
+    <RegisterFlow
+      apiPublicUrl={env.API_PUBLIC_URL}
+      plans={catalog.plans}
+      unavailable={catalog.unavailable}
+    />
   );
 }

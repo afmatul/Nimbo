@@ -16,11 +16,15 @@ function Shell({
   state,
   children,
 }: {
-  readonly state: VerifyEmailViewState['status'];
+  readonly state: VerifyEmailViewState['status'] | 'plan-de-pago-elegido';
   readonly children: ReactNode;
 }): JSX.Element {
   return (
-    <section aria-labelledby="verificar-correo" data-state={state} className="mx-auto w-full max-w-lg space-y-4 px-4 py-10">
+    <section
+      aria-labelledby="verificar-correo"
+      data-state={state}
+      className="mx-auto w-full max-w-lg space-y-4 px-4 py-10"
+    >
       {children}
     </section>
   );
@@ -49,7 +53,9 @@ export function VerifyEmailView({ apiPublicUrl }: { readonly apiPublicUrl: strin
         <h1 id="verificar-correo" className="text-2xl font-semibold text-foreground">
           ¡Listo! Tu correo está verificado.
         </h1>
-        {state.planName !== null ? <p className="text-sm text-foreground">{planMessage(state.planName)}</p> : null}
+        {state.planName !== null ? (
+          <p className="text-sm text-foreground">{planMessage(state.planName)}</p>
+        ) : null}
         <a
           href={LOGIN_HREF}
           className="inline-flex h-11 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-button"
@@ -69,7 +75,10 @@ export function VerifyEmailView({ apiPublicUrl }: { readonly apiPublicUrl: strin
         <p role="status" className="text-sm text-foreground">
           Tu correo ya está verificado. Inicia sesión.
         </p>
-        <a href={LOGIN_HREF} className="inline-flex h-11 items-center text-sm font-medium text-primary">
+        <a
+          href={LOGIN_HREF}
+          className="inline-flex h-11 items-center text-sm font-medium text-primary"
+        >
           Iniciar sesión
         </a>
       </Shell>
@@ -87,7 +96,10 @@ export function VerifyEmailView({ apiPublicUrl }: { readonly apiPublicUrl: strin
           expired ? 'IDENTITY_VERIFICATION_LINK_EXPIRED' : 'IDENTITY_VERIFICATION_LINK_INVALID',
         )}
       </p>
-      <a href={REQUEST_HREF} className="inline-flex h-11 items-center text-sm font-medium text-primary">
+      <a
+        href={REQUEST_HREF}
+        className="inline-flex h-11 items-center text-sm font-medium text-primary"
+      >
         Pedir un enlace nuevo
       </a>
     </Shell>

@@ -6,7 +6,11 @@ import userEvent from '@testing-library/user-event';
 
 import { REQUEST_LINK_EMAIL_KEY, RequestLinkForm } from './request-link-form';
 
-function jsonResponse(body: unknown, status: number, headers: Readonly<Record<string, string>> = {}): Response {
+function jsonResponse(
+  body: unknown,
+  status: number,
+  headers: Readonly<Record<string, string>> = {},
+): Response {
   return {
     ok: status >= 200 && status < 300,
     status,
@@ -16,7 +20,7 @@ function jsonResponse(body: unknown, status: number, headers: Readonly<Record<st
 }
 
 describe('RequestLinkForm', () => {
-  const fetchMock = jest.fn<typeof fetch>();
+  const fetchMock = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>();
 
   beforeEach(() => {
     fetchMock.mockReset();
@@ -32,7 +36,9 @@ describe('RequestLinkForm', () => {
     await user.type(screen.getByLabelText('Correo'), 'ana');
     await user.click(screen.getByRole('button', { name: 'Pedir enlace' }));
 
-    expect(await screen.findByText('Escribe un correo válido, por ejemplo nombre@dominio.com.')).toBeTruthy();
+    expect(
+      await screen.findByText('Escribe un correo válido, por ejemplo nombre@dominio.com.'),
+    ).toBeTruthy();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

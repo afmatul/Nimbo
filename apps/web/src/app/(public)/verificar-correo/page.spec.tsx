@@ -4,6 +4,7 @@
 import { render, screen } from '@testing-library/react';
 
 import { resetVerifyEmailState } from '../../../features/identity/hooks/use-verify-email';
+
 import VerificarCorreoPage from './page';
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -16,7 +17,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 }
 
 describe('página verificar correo', () => {
-  const fetchMock = jest.fn<typeof fetch>();
+  const fetchMock = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>();
 
   beforeEach(() => {
     fetchMock.mockReset();
@@ -32,7 +33,9 @@ describe('página verificar correo', () => {
     fetchMock.mockResolvedValue(jsonResponse({ status: 'verified' }));
     render(<VerificarCorreoPage />);
 
-    expect(await screen.findByRole('heading', { name: '¡Listo! Tu correo está verificado.' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { name: '¡Listo! Tu correo está verificado.' }),
+    ).toBeTruthy();
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe('http://localhost/api/v1/auth/verify-email');
     expect(window.location.hash).toBe('');
   });

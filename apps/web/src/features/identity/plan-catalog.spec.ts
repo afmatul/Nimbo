@@ -10,7 +10,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 }
 
 describe('plan-catalog', () => {
-  const fetchMock = jest.fn<typeof fetch>();
+  const fetchMock = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>();
 
   beforeEach(() => {
     fetchMock.mockReset();

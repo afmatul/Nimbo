@@ -3,15 +3,18 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 import { expectNoA11yViolations } from '../../../components/test-a11y';
 import { formatLegalDate } from '../../../features/identity/components/legal-document';
+
 import TerminosPage from './page';
 
 function assertLocalLinks(markup: string): void {
   const hrefs = markup.match(/href="[^"]+"/g) ?? [];
   const srcs = markup.match(/src="[^"]+"/g) ?? [];
   for (const value of [...hrefs, ...srcs]) {
-    expect(value.startsWith('href="mailto:') || value.startsWith('href="/') || value.startsWith('src="/')).toBe(
-      true,
-    );
+    expect(
+      value.startsWith('href="mailto:') ||
+        value.startsWith('href="/') ||
+        value.startsWith('src="/'),
+    ).toBe(true);
   }
 }
 

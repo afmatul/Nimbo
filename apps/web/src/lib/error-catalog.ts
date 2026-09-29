@@ -1,4 +1,8 @@
-import { IDENTITY_ERROR_CODES, IDENTITY_FIELD_MESSAGES, type FieldIssueReason } from '@nimbo/contracts';
+import {
+  IDENTITY_ERROR_CODES,
+  IDENTITY_FIELD_MESSAGES,
+  type FieldIssueReason,
+} from '@nimbo/contracts';
 
 import { genericErrorMessage } from './api-error';
 
@@ -28,7 +32,10 @@ export function messageForReason(reason: string, correlationId = ''): string {
 /** Mensaje de un `code`. El 429 usa los minutos de `Retry-After`. Un código desconocido es el genérico. */
 export function messageForCode(
   code: string,
-  options: { readonly correlationId?: string; readonly retryAfterSeconds?: number } = {},
+  options: {
+    readonly correlationId?: string;
+    readonly retryAfterSeconds?: number | undefined;
+  } = {},
 ): string {
   if (code === IDENTITY_ERROR_CODES.TOO_MANY_REQUESTS) {
     const minutes = Math.max(1, Math.ceil((options.retryAfterSeconds ?? MINUTE_MS) / MINUTE_MS));

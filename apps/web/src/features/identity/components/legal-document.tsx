@@ -1,6 +1,5 @@
-import { useId, type ReactNode } from 'react';
-
 import { LEGAL_DOCUMENTS } from '@nimbo/contracts';
+import { useId, type ReactNode } from 'react';
 
 const MONTHS = [
   'enero',
@@ -37,9 +36,14 @@ export function LegalDocument({
   const headingId = useId();
 
   return (
-    <section aria-labelledby={headingId} className="mx-auto w-full max-w-3xl space-y-6 px-4 py-8 text-foreground">
+    <section
+      aria-labelledby={headingId}
+      className="mx-auto w-full max-w-3xl space-y-6 px-4 py-8 text-foreground"
+    >
       <header className="space-y-2">
-        <h1 id={headingId} className="text-2xl font-bold tracking-tight">{title}</h1>
+        <h1 id={headingId} className="text-2xl font-bold tracking-tight">
+          {title}
+        </h1>
         <p className="text-sm text-muted-foreground">
           Versión {document.version} · vigente desde el {formatLegalDate(document.effectiveDate)}
         </p>

@@ -5,7 +5,11 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 
 import { ResendLinkButton } from './resend-link-button';
 
-function jsonResponse(body: unknown, status: number, headers: Readonly<Record<string, string>> = {}): Response {
+function jsonResponse(
+  body: unknown,
+  status: number,
+  headers: Readonly<Record<string, string>> = {},
+): Response {
   return {
     ok: status >= 200 && status < 300,
     status,
@@ -17,7 +21,7 @@ function jsonResponse(body: unknown, status: number, headers: Readonly<Record<st
 }
 
 describe('ResendLinkButton', () => {
-  const fetchMock = jest.fn<typeof fetch>();
+  const fetchMock = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>();
 
   beforeEach(() => {
     fetchMock.mockReset();
@@ -32,7 +36,9 @@ describe('ResendLinkButton', () => {
   it('empieza deshabilitado 60 s y anuncia la cuenta regresiva', () => {
     render(<ResendLinkButton apiPublicUrl="http://localhost/api/v1" email="ana@ejemplo.com" />);
 
-    expect((screen.getByRole('button', { name: 'Reenviar enlace' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(
+      (screen.getByRole('button', { name: 'Reenviar enlace' }) as HTMLButtonElement).disabled,
+    ).toBe(true);
     expect(screen.getByText('Podrás reenviar el enlace en 60 segundos.')).toBeTruthy();
   });
 
@@ -52,8 +58,12 @@ describe('ResendLinkButton', () => {
     });
 
     expect(screen.getByText('Podrás reenviar el enlace en 60 segundos.')).toBeTruthy();
-    expect((screen.getByRole('button', { name: 'Reenviar enlace' }) as HTMLButtonElement).disabled).toBe(true);
-    expect(String(fetchMock.mock.calls[0]?.[0])).toBe('http://localhost/api/v1/auth/resend-verification');
+    expect(
+      (screen.getByRole('button', { name: 'Reenviar enlace' }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
+      'http://localhost/api/v1/auth/resend-verification',
+    );
   });
 
   it('un 429 pasa a limite-reenvio con el mensaje y la cuenta de Retry-After', async () => {

@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import { expectNoA11yViolations } from '../../../components/test-a11y';
+
 import { PlanPicker, type CatalogPlan } from './plan-picker';
 
 const PLANS: readonly CatalogPlan[] = [
