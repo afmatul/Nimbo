@@ -91,6 +91,27 @@ describe('VerifyEmailView', () => {
     expect(document.querySelector(`[data-state="${state}"]`)).toBeTruthy();
   });
 
+  it('CA-9: un 422 IDENTITY_VERIFICATION_LINK_EXPIRED muestra enlace-expirado', async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(
+        { code: 'IDENTITY_VERIFICATION_LINK_EXPIRED', message: 'Venció', correlationId: 'corr-e' },
+        422,
+      ),
+    );
+    window.history.replaceState(null, '', '/verificar-correo#token=vencido');
+    render(<VerifyEmailView apiPublicUrl="http://localhost/api/v1" />);
+
+    expect(await screen.findByRole('heading', { name: 'Enlace vencido' })).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toBe(
+      'Este enlace venció. Pide uno nuevo y ábrelo en las próximas 24 horas.',
+    );
+    expect(screen.getByRole('link', { name: 'Pedir un enlace nuevo' }).getAttribute('href')).toBe(
+      '/registro/pedir-enlace',
+    );
+    expect(document.querySelector('[data-state="enlace-expirado"]')).toBeTruthy();
+    expect(screen.queryByText(/Este enlace no es válido/)).toBeNull();
+  });
+
   it('sin fragmento, y al recargar, muestra enlace-invalido', async () => {
     render(<VerifyEmailView apiPublicUrl="http://localhost/api/v1" />);
     expect(await screen.findByText(/Este enlace no es válido/)).toBeTruthy();
