@@ -230,7 +230,7 @@ Archivos de contrato de `identity` (`packages/contracts/src/identity/`, una sola
 | `schemas.ts` | `registerRequestSchema`, `resendVerificationRequestSchema`, `verifyEmailRequestSchema`, `acceptedResponseSchema`, `verifyEmailResponseSchema`; cada regla fija su `params.reason` y su mensaje desde `IDENTITY_FIELD_MESSAGES` |
 | `password-policy.ts` | `evaluatePassword(password, email): PasswordRuleResult[]` (pura, sin zod), usada por el esquema y por los requisitos en vivo de `web` |
 | `common-passwords.ts` | lista local generada (§6.2) |
-| `parameters.ts` | valores de §6 de la spec: `VERIFICATION_LINK_TTL_HOURS = 24`, `EMAIL_REQUEST_COOLDOWN_SECONDS = 60`, `EMAIL_REQUESTS_PER_HOUR = 5`, `REGISTRATIONS_PER_IP_PER_HOUR = 10`, `MAX_AVISOS_INTENTO_24H = 1`, `FULL_NAME_MAX_LENGTH = 100`, `PASSWORD_MIN_LENGTH = 12`, `PASSWORD_MAX_LENGTH = 128` |
+| `parameters.ts` | valores de §6 de la spec: `VERIFICATION_LINK_TTL_HOURS = 24`, `EMAIL_REQUEST_COOLDOWN_SECONDS = 60`, `EMAIL_REQUESTS_PER_HOUR = 5`, `REGISTRATIONS_PER_IP_PER_HOUR = 10`, `RESENDS_PER_IP_PER_HOUR = 10` (SEC-1, 2026-09-28), `MAX_AVISOS_INTENTO_24H = 1`, `FULL_NAME_MAX_LENGTH = 100`, `PASSWORD_MIN_LENGTH = 12`, `PASSWORD_MAX_LENGTH = 128` |
 | `legal.ts` | `LEGAL_DOCUMENTS = { terms: { version, effectiveDate }, privacy: { version, effectiveDate } }`: fuente única de la versión que guarda el servidor (CA-1) y que muestran las páginas (CA-23) |
 | `error-codes.ts` | `IDENTITY_ERROR_CODES`, `FIELD_ISSUE_REASONS`, `IDENTITY_FIELD_MESSAGES` |
 
@@ -441,11 +441,15 @@ Métodos de ≤ 30 líneas (Art. VII.2): cada rama del paso 4 es un método priv
   @HttpCode(202)`, `@Post('verify-email') @HttpCode(200)`. Valida con `new ZodValidationPipe(schema,
   identityValidationError)`, llama al servicio y mapea el resultado al contrato. No tiene reglas de negocio.
 - **Límite por IP (D-15, R-10)**: `ThrottlerModule.forRoot({ throttlers: [{ name: 'register-ip', ttl: 3_600_000,
-  limit: REGISTRATIONS_PER_IP_PER_HOUR }] })` en `AppModule`, con almacenamiento **en memoria**: una sola réplica de
+  limit: REGISTRATIONS_PER_IP_PER_HOUR }, { name: 'resend-ip', ttl: 3_600_000, limit: RESENDS_PER_IP_PER_HOUR }] })`
+  en `AppModule` (`resend-ip` desde el 2026-09-28, SEC-1 y D-8 ampliada), con almacenamiento **en memoria**: una sola réplica de
   `api` (ADR-0001), y un reinicio que vacía los contadores es aceptable. La ruta `register` lleva
-  `@UseGuards(IdentityIpThrottlerGuard)` (`presentation/identity-ip-throttler.guard.ts`), una subclase de
+  `@UseGuards(IdentityIpThrottlerGuard)` (`presentation/identity-ip-throttler.guard.ts`), igual que
+  `resend-verification`; como la librería aplica todos los *throttlers* con nombre a cada ruta, `register` lleva
+  `@SkipThrottle({ 'resend-ip': true })` y `resend-verification` `@SkipThrottle({ 'register-ip': true })`, así cada ruta
+  cuenta solo en el suyo. El guard es una subclase de
   `ThrottlerGuard` que:
-  - tiene una **tabla *throttler* → ámbito** (`{ 'register-ip': 'ip' }` en 001) con la que traduce el *throttler* que
+  - tiene una **tabla *throttler* → ámbito** (`{ 'register-ip': 'ip', 'resend-ip': 'ip' }` en 001) con la que traduce el *throttler* que
     disparó al `scope` de `IdentityTooManyRequestsError` y de `identity.rate_limited`;
   - sobrescribe `throwThrottlingException` para lanzar `IdentityTooManyRequestsError` con ese `scope` y el
     `Retry-After` que da el detalle del throttler (así la respuesta es la de CA-15 y no la de Nest);
@@ -836,7 +840,7 @@ de `api` y `worker`. Nombres `'CA-n: …'` (Art. II).
 | CA-12 | unit + int (parcial) | `typeorm-verification-token.repository` en `user-repository.int-spec.ts` (búsqueda por `tipo`). Se completa en 002 (restablecer) y en 003 (el token como `Bearer` no autentica) |
 | CA-13 | int + web | `apps/api/test/int/identity/resend-verification.int-spec.ts`; `features/identity/components/resend-link-button.spec.tsx` (cuenta regresiva) |
 | CA-14 | int + iso | `resend-verification.int-spec.ts`; `apps/api/test/isolation/identity-enumeration.iso-spec.ts` |
-| CA-15 | int + iso | `apps/api/test/int/shared/redis-rate-limiter.int-spec.ts` (contrato de `IRateLimiter`: ventanas, `retryAfter`, atomicidad concurrente); `apps/api/test/int/identity/rate-limits.int-spec.ts` (60 s, 5/h, 10/h por IP con `X-Forwarded-For`, `Retry-After`, mensaje); `identity-enumeration.iso-spec.ts` (la misma secuencia 202/429 y los mismos cuerpos y cabeceras en los cuatro tipos de cuenta) |
+| CA-15 | int + iso | `apps/api/test/int/shared/redis-rate-limiter.int-spec.ts` (contrato de `IRateLimiter`: ventanas, `retryAfter`, atomicidad concurrente); `apps/api/test/int/identity/rate-limits.int-spec.ts` (60 s, 5/h, 10 registros/h y 10 reenvíos/h por IP con `X-Forwarded-For`, cada ruta con su contador, `Retry-After`, mensaje); `identity-enumeration.iso-spec.ts` (la misma secuencia 202/429 y los mismos cuerpos y cabeceras en los cuatro tipos de cuenta) |
 | CA-16 | int (**en 002**) | la escribe 002 (`login.int-spec.ts`); 001 deja `emailVerified` listo |
 | CA-17 | int | `apps/api/test/int/identity/token-secrecy.int-spec.ts` (token sacado de Mailpit; búsqueda en todas las columnas de texto de `usuario` y `token_cuenta` y en el `LogSink`; `token_hash ≠ token`; dos registros → tokens distintos) |
 | CA-18 | unit + int | `shared/infrastructure/logging/redacted-fields.spec.ts` (`email`, `correo`, `fullName`, `to`, `html`, `text`); `apps/api/test/int/identity/identity-logs.int-spec.ts` (los flujos listados en CA-18; nada sensible; eventos presentes; el `correlationId` del trabajo de correo es el de la petición) |
@@ -1052,7 +1056,8 @@ interfaz.
   con `@SkipThrottle`, y viceversa, con una prueba de que el registro solo cuenta en `register-ip` (ADR-0017).
 - **Reenvío sin límite por IP**: D-8 solo limita por IP el registro. Una IP puede pedir reenvíos para muchos correos
   distintos, cada uno limitado a 5 por hora. No revela cuentas, pero el `security-auditor` debe revisarlo. Si hay
-  que limitarlo, es un cambio de spec.
+  que limitarlo, es un cambio de spec. **Resuelto el 2026-09-28** (SEC-1): D-8 ampliada y *throttler* `resend-ip`
+  (§6.5).
 - **P-1**: la opción más simple es aceptar `400 VALIDATION_FAILED` para JSON mal formado y precisarlo en CA-6. Un
   filtro por ruta sobre errores del analizador es acoplamiento sin beneficio de seguridad, porque la respuesta no
   depende del correo.

@@ -40,7 +40,7 @@ modules/identity/
 │  └─ event-emitter-account-events.publisher.ts
 ├─ presentation/
 │  ├─ auth.controller.ts                    # AuthController: register, resend-verification, verify-email
-│  ├─ identity-ip-throttler.guard.ts        # IdentityIpThrottlerGuard + IDENTITY_THROTTLERS (límite por IP, D-15)
+│  ├─ identity-ip-throttler.guard.ts        # IdentityIpThrottlerGuard + IDENTITY_THROTTLERS (register-ip y resend-ip, D-8, D-15)
 │  ├─ identity-validation.ts                # fábrica de errores de ZodValidationPipe (INVALID_INPUT o WEAK_PASSWORD)
 │  └─ no-store.middleware.ts                # Cache-Control: no-store en toda respuesta de AuthController
 ├─ identity.module.ts                       # IdentityModule.forRoot(env)
@@ -108,8 +108,9 @@ perderse.
 
 - **`@Public()` con 003**: cuando 003 instale el guard global de autenticación, las tres rutas de `AuthController`
   se marcan `@Public()`.
-- **`@SkipThrottle` con 002**: cuando 002-PR-2 agregue el _throttler_ `login-ip`, `register` omite `login-ip` y
-  `login` omite `register-ip` (`@SkipThrottle({ ... })` cruzados), sin renombrar nada (002 D-5).
+- **`@SkipThrottle` con 002**: `register` ya omite `resend-ip` y `resend-verification` omite `register-ip`. Cuando
+  002-PR-2 agregue el _throttler_ `login-ip`, `register` y `resend-verification` omiten también `login-ip`, y `login`
+  omite `register-ip` y `resend-ip`, sin renombrar nada (002 D-5).
 - **`nimbo_app`**: cuando 003 cree el rol de BD sin privilegios, la suite de aislamiento corre con él (ADR-0005).
 
 ## Regla

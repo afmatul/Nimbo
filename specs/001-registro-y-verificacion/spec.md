@@ -9,7 +9,7 @@
 | Depende de | 000 (bloques 1 y 2 en `main`); 000b para la interfaz con Cielo Sereno; **006a** (consume el evento de cuenta verificada, D-4, y expone por API el catálogo de planes que muestra el registro); 002 para las pruebas de CA-16, CA-26 y CA-29 (ver §13) |
 | Módulo | M1 `identity` (+ `notifications` como implementador de `IMailer`) |
 | DF | DF-13 decidido por D-1 · DF-35 decidido por D-2 · DF-33 (solo `usuario`) decidido por D-3. Los tres ya están `Aceptado` en `design-findings.md` (PD-09, 2026-09-27); falta redibujar el E-R y las clases M1 (PD-06) |
-| Última actualización | 2026-09-27 |
+| Última actualización | 2026-09-28 |
 
 ## 1. Contexto y problema
 
@@ -86,7 +86,7 @@ reescribieron después de revisar los mockups (2026-09-22) o al volver al enlace
 | D-5 | El registro pide nombre completo (1 a 100 caracteres), correo, contraseña y la aceptación de D-14. | P-5 | 2026-09-22 · Adrián |
 | D-6 | Política de contraseña: **mínimo 12 y máximo 128 caracteres, al menos una mayúscula, un número y un símbolo**, con requisitos en vivo en el formulario. Se rechazan las contraseñas comunes (lista local) y las iguales al correo o a su parte local. «Mayúscula» incluye letras acentuadas (`Á`); «símbolo» es cualquier carácter que no sea letra ni dígito, sin contar el espacio. La misma política aplica al restablecer en 002. | P-6 | 2026-09-22 · Adrián (confirmada completa 2026-09-23) |
 | D-7 | **(revisada)** El **enlace** de verificación vale **24 horas** desde que se emite. | P-7, P-23 | 2026-09-23 · Adrián |
-| D-8 | Límites: **60 s** entre dos solicitudes de registro o reenvío para un mismo correo; **5** solicitudes por correo y por hora; **10** solicitudes de registro por IP y por hora. Los límites por correo se aplican igual exista o no la cuenta. | P-8 | 2026-09-22 · Adrián |
+| D-8 | **(ampliada)** Límites: **60 s** entre dos solicitudes de registro o reenvío para un mismo correo; **5** solicitudes por correo y por hora; **10** solicitudes de registro por IP y por hora, y **10** solicitudes de reenvío por IP y por hora, con contadores separados. Los límites por correo se aplican igual exista o no la cuenta. | P-8 | 2026-09-22 · Adrián (reenvío por IP: 2026-09-28, SEC-1) |
 | D-9 | Una cuenta no verificada **no** inicia sesión. Si la contraseña es correcta, se responde `IDENTITY_EMAIL_NOT_VERIFIED` con la opción de pedir un enlace nuevo. Si es incorrecta, se da la respuesta genérica de 002. Antes de verificar no hay sesión en ninguna pantalla. | P-9 | 2026-09-22 · Adrián |
 | D-10 | **(revisada, solo redacción)** Si se registra un correo que pertenece a una cuenta no verificada: respuesta neutra, se reemplazan el nombre, la contraseña y la aceptación de D-14 por los nuevos, se invalidan los **enlaces** anteriores y se envía uno nuevo, dentro de los límites de D-8. | P-10 | 2026-09-23 · Adrián |
 | D-11 | `identity` envía el correo a través de `IMailer`. `notifications` lo implementa con `SmtpMailer` sobre **nodemailer**, con envío por la cola `mail` del `worker`. El **ADR menor** se redacta en `/plan`. | P-11 | 2026-09-22 · Adrián |
@@ -114,6 +114,7 @@ reescribieron después de revisar los mockups (2026-09-22) o al volver al enlace
 | Espera entre solicitudes | Tiempo mínimo entre dos solicitudes de registro o reenvío para un mismo correo | 60 s | D-8 |
 | Solicitudes por correo | Solicitudes de registro o reenvío por correo y por hora | 5 | D-8 |
 | Registros por IP | Solicitudes de registro por dirección IP y por hora | 10 | D-8 |
+| Reenvíos por IP | Solicitudes de reenvío por dirección IP y por hora, contadas aparte de las de registro | 10 | D-8 |
 | `MAX_AVISOS_INTENTO_24H` | Intentos de registro sobre un correo ya verificado que generan aviso a su dueño en 24 h | 1 | D-17 |
 
 ## 7. Criterios de aceptación
@@ -257,7 +258,8 @@ reescribieron después de revisar los mockups (2026-09-22) o al volver al enlace
 
 - **CA-15** (HU-3, HU-4, RNF-07, D-8) — límites de reenvío y de registro
   - **Dado** un correo normalizado con una solicitud de registro o reenvío hace menos de 60 s, o con 5 solicitudes en
-    la última hora, o una IP con 10 solicitudes de registro en la última hora,
+    la última hora, o una IP con 10 solicitudes de registro en la última hora, o una IP con 10 solicitudes de reenvío
+    en la última hora (cada ruta con su propio contador por IP),
   - **Cuando** se pide otro reenvío o registro,
   - **Entonces** se responde `429` con `IDENTITY_TOO_MANY_REQUESTS`, cabecera `Retry-After` en segundos y el mensaje
     «Ya te enviamos un enlace hace poco. Revisa tu bandeja y la carpeta de spam, o inténtalo de nuevo en N minutos.»;
@@ -460,7 +462,7 @@ reescribieron después de revisar los mockups (2026-09-22) o al volver al enlace
 - **Asignación masiva**: CA-7 (incluye plan y versión de términos).
 - **Auditoría (RF-07)**: no aplica. RF-07 cubre acciones de roles internos sobre cuentas ajenas; aquí solo actúa el
   propio visitante. El módulo `audit` llega en 004.
-- **Límite de tasa**: registro y reenvío (CA-15, D-8, D-15). La verificación no envía correo y su fuerza bruta es
+- **Límite de tasa**: registro y reenvío, por correo y por IP (CA-15, D-8, D-15). La verificación no envía correo y su fuerza bruta es
   inviable por la entropía del token (RN-4); el plan puede limitarla también.
 - **Nunca en bitácoras**: contraseña, hash de contraseña, token en claro o su hash, URL completa del enlace, nombre de
   la persona y correo (D-18: `email` y `correo` se agregan a `REDACTED_FIELDS` de `shared`, la única lista, 000 CA-15).
@@ -649,3 +651,4 @@ ajustes y estados de mockups de §11 (Art. XIII.1; compuerta de `Aclarada`, `wor
 | 2026-09-28 | §11: el mensaje «Contraseña común» pierde «Elige otra.», que se repetía dentro de `IDENTITY_WEAK_PASSWORD` («… Elige otra. Elige otra que los cumpla.»). Sin cambio de criterios | Revisión del PR-3, hallazgo 4 | — (developer; pendiente de Adrián en el PR) |
 | 2026-09-28 | §11: rótulos positivos de la lista de requisitos para contraseña común y correo cuando la regla se cumple («No es una contraseña común», «Es distinta de tu correo»); los mensajes de error no cambian. Sin cambio de criterios | Revisión visual T-67, UI-B2 | — (developer; pendiente de Adrián en el PR) |
 | 2026-09-28 | §11: mientras 002 no exista, el botón de la pantalla «Correo verificado» dice «Iniciar sesión» (no «Ir a Mis archivos») y lleva a la ruta reservada; con 002 vuelve a «Ir a Mis archivos» (D-20). Sin cambio de criterios | Revisión visual T-67, UI-B3; el texto de T-66 | Adrián |
+| 2026-09-28 | D-8, §6 y CA-15: límite de **10 reenvíos por IP y por hora** (`POST /auth/resend-verification`), con el mismo valor que el de registro pero contado aparte, el mismo guard y la misma respuesta de CA-15 (ámbito `ip`, sin cabeceras `X-RateLimit-*`). Evita que una IP pida reenvíos para miles de correos ajenos (spam a terceros y reputación del remitente). §10 lo menciona | Revisión de seguridad, SEC-1 | Adrián |

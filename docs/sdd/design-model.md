@@ -57,7 +57,7 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
 - Servicios:
   - `RegistrationService` (register, resendVerification, verifyEmail), separado de `AuthService` por SRP (plan 001 DT-1, DF-54). Sus colaboradores: `VerificationLinkIssuer`, que invalida los enlaces vigentes y emite uno nuevo (lo reutiliza 002 D-15), y `RegistrationAttemptNotifier`, que envía el aviso de intento de registro (001 D-17);
   - `AuthService` (login, refresh, logout, recuperación; 002) y `SessionService`.
-- Guard: `IdentityIpThrottlerGuard`, subclase de `ThrottlerGuard` para el límite por IP del registro (001 D-15, ADR-0017).
+- Guard: `IdentityIpThrottlerGuard`, subclase de `ThrottlerGuard` para el límite por IP del registro y del reenvío (001 D-8, D-15, ADR-0017).
 - Puertos → implementaciones:
   - `IPasswordHasher` → `Argon2idHasher` (`argon2`, ADR-0017);
   - `ITokenService` → `JwtTokenService`;

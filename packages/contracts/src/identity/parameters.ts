@@ -8,6 +8,8 @@ export const EMAIL_REQUEST_COOLDOWN_SECONDS = 60;
 export const EMAIL_REQUESTS_PER_HOUR = 5;
 /** Solicitudes de registro por dirección IP y por hora (D-8). */
 export const REGISTRATIONS_PER_IP_PER_HOUR = 10;
+/** Solicitudes de reenvío por dirección IP y por hora, contadas aparte de las de registro (D-8, SEC-1). */
+export const RESENDS_PER_IP_PER_HOUR = 10;
 /** Intentos sobre un correo ya verificado que generan aviso a su dueño en 24 h (D-17). */
 export const MAX_AVISOS_INTENTO_24H = 1;
 /** Longitud máxima del nombre completo (D-5). */

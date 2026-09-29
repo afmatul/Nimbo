@@ -12,7 +12,11 @@ import type { VerifyEmailResult } from '../application/registration.service';
 import { IdentityModule } from '../identity.module';
 
 import { AuthController } from './auth.controller';
-import { IDENTITY_THROTTLERS } from './identity-ip-throttler.guard';
+import {
+  IDENTITY_THROTTLERS,
+  REGISTER_IP_THROTTLER,
+  RESEND_IP_THROTTLER,
+} from './identity-ip-throttler.guard';
 
 const EMAIL = 'lucia@ejemplo.com';
 const REGISTRATION = {
@@ -132,19 +136,27 @@ describe('AuthController', () => {
     },
   );
 
-  it('CA-15: el límite por IP aplica solo a `register`', async () => {
-    const [registerIp] = IDENTITY_THROTTLERS;
-    const limit = Number(registerIp?.limit);
-    for (let attempt = 1; attempt <= limit; attempt += 1) {
-      await post('register', REGISTRATION).expect(202);
-    }
+  const limitOf = (name: string): number =>
+    Number(IDENTITY_THROTTLERS.find((throttler) => throttler.name === name)?.limit);
 
-    const blocked = await post('register', REGISTRATION);
-    const resend = await post('resend-verification', { email: EMAIL });
+  it.each([
+    ['register', REGISTER_IP_THROTTLER, 'resend-verification'],
+    ['resend-verification', RESEND_IP_THROTTLER, 'register'],
+  ] as const)(
+    'CA-15: `%s` tiene su propio límite por IP (`%s`) y no consume el de `%s`',
+    async (route, throttler, otherRoute) => {
+      const bodies = { register: REGISTRATION, 'resend-verification': { email: EMAIL } };
+      for (let attempt = 1; attempt <= limitOf(throttler); attempt += 1) {
+        await post(route, bodies[route]).expect(202);
+      }
 
-    expect(blocked.status).toBe(429);
-    expect(blocked.body).toMatchObject({ code: 'IDENTITY_TOO_MANY_REQUESTS' });
-    expect(blocked.headers['cache-control']).toBe('no-store');
-    expect(resend.status).toBe(202);
-  });
+      const blocked = await post(route, bodies[route]);
+      const other = await post(otherRoute, bodies[otherRoute]);
+
+      expect(blocked.status).toBe(429);
+      expect(blocked.body).toMatchObject({ code: 'IDENTITY_TOO_MANY_REQUESTS' });
+      expect(blocked.headers['cache-control']).toBe('no-store');
+      expect(other.status).toBe(202);
+    },
+  );
 });

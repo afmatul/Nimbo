@@ -9,7 +9,7 @@ import type {
   ThrottlerRequest,
   ThrottlerStorage,
 } from '@nestjs/throttler';
-import { REGISTRATIONS_PER_IP_PER_HOUR } from '@nimbo/contracts';
+import { REGISTRATIONS_PER_IP_PER_HOUR, RESENDS_PER_IP_PER_HOUR } from '@nimbo/contracts';
 import { PinoLogger } from 'nestjs-pino';
 
 import type { IdentityLogger } from '../application/identity-logger';
@@ -18,20 +18,25 @@ import type { IdentityRateLimitScope } from '../domain/errors';
 
 /** *Throttler* por IP del registro (D-15). */
 export const REGISTER_IP_THROTTLER = 'register-ip';
+/** *Throttler* por IP del reenvío, con su propio contador (D-8 ampliada, SEC-1). */
+export const RESEND_IP_THROTTLER = 'resend-ip';
 
 const ONE_HOUR_MS = 3_600_000;
 
 /**
  * *Throttlers* de `identity`, en memoria (ADR-0017): `AppModule` los registra con `ThrottlerModule.forRoot` y cada
- * ruta los aplica con `IdentityIpThrottlerGuard`. 002-PR-2 agrega `login-ip`.
+ * ruta los aplica con `IdentityIpThrottlerGuard`, omitiendo con `@SkipThrottle` los que no le corresponden (la librería
+ * aplica todos los *throttlers* con nombre a cada ruta). 002-PR-2 agrega `login-ip`.
  */
 export const IDENTITY_THROTTLERS: readonly ThrottlerOptions[] = [
   { name: REGISTER_IP_THROTTLER, ttl: ONE_HOUR_MS, limit: REGISTRATIONS_PER_IP_PER_HOUR },
+  { name: RESEND_IP_THROTTLER, ttl: ONE_HOUR_MS, limit: RESENDS_PER_IP_PER_HOUR },
 ];
 
 /** Tabla *throttler* → ámbito de `identity.rate_limited` (plan §6.5). 002-PR-2 agrega `login-ip`. */
 const THROTTLER_SCOPES: Readonly<Record<string, IdentityRateLimitScope>> = {
   [REGISTER_IP_THROTTLER]: 'ip',
+  [RESEND_IP_THROTTLER]: 'ip',
 };
 
 /**
