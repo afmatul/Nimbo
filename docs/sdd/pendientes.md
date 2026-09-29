@@ -16,7 +16,7 @@ de eso se pierda entre ramas.
 - «Resolver antes de» es la compuerta que se bloquea si el pendiente sigue abierto. «—» significa que no bloquea nada.
 - `/status` y el `architect` revisan esta lista al cerrar cada fase.
 
-Última actualización: 2026-09-27.
+Última actualización: 2026-09-28.
 
 ## Diagramas por redibujar
 
@@ -34,6 +34,7 @@ decisiones; solo faltan los diagramas.
 | PD-06 | Clases M1 y E-R con las decisiones de la 001: rol como enum en `usuario.rol` sin tabla `rol` (DF-13), sin `subscriptionId` en `ClientUser` (DF-35) y columnas nuevas de `usuario` (DF-33) | Spec 001 D-1, D-2, D-3 | — | Adrián | Abierto |
 | PD-07 | Clases M1 y E-R con las decisiones de la 002: clase `Device` y tabla `dispositivo` con hash (DF-11), y `SessionsController` (DF-15) | Spec 002 D-4, D-8 | — | Adrián | Abierto |
 | PD-08 | Firmas con `actor: Actor` en M2, M3, M5 y M8 (DF-01) y `accessibleNodes(actor)` (DF-32) | Spec 003 D-9, D-1 | — | Adrián | Abierto |
+| PD-46 | Redibujar con el plan de la 005. **Clases M2**: `UploadsController` (sin `uploadPart`), `IObjectStorage` con URLs prefirmadas, `IUploadSessionRepository`, `IQuotaRepository`, `IExpiredUploadScanner`, `FileName`, `FileKind`, `QuotaPolicy`, `UploadCleanupProcessor`; sin `FileVersionCreated`. **T1**: `details` en `DomainError`/`ErrorResponse`. **T2**: `IAuditLogger`, `AuditAction` y `LogAuditLogger` (provisional). **E-R**: `archivo`, `version_archivo`, `carga`, `usuario.espacio_usado` con `bigint` (DF-06) y RLS; nota de la excepción DF-59. **Arquitectura**: cola `upload-cleanup` y ruta del origen de objetos | Plan 005, DF-06, DF-16, DF-38, DF-52, DF-59, DF-60 | Cierre de la Fase 1 | Adrián | Abierto |
 | PD-36 | Redibujar con el plan de la 001. **Clases M1**: `RegistrationService`, `VerificationLinkIssuer`, `RegistrationAttemptNotifier`, `AuthController.resendVerification`, `IdentityIpThrottlerGuard`, `IVerificationTokenRepository`, `IAccountEventsPublisher`, los objetos de valor `EmailAddress`, `OpaqueToken`, `PasswordHash` y `LegalAcceptance`, y `VerificationToken` con `stateAt`/`invalidate`. **T1**: `TooManyRequestsError`, `ITransactionRunner`, `ZodValidationPipe`, `configureHttpApp`. **T4**: `MailProcessor` y `SmtpTransport`. **E-R**: `token_cuenta` con `usuario_id`, `invalidado_en` y `creado_en` (DF-53, DF-54) | Plan 001, DF-53, DF-54 | Cierre de la Fase 1 | Adrián | Abierto |
 
 ## Documentos por actualizar
@@ -46,24 +47,25 @@ decisiones; solo faltan los diagramas.
 
 | ID | Qué hay que decidir | Origen | Resolver antes de | Responsable | Estado |
 |---|---|---|---|---|---|
-| PD-18 | Ciclo `storage ↔ billing` y la convención de §5 para `IPlanLimitsProvider`, `IAgentQuota` e `IIndexQueue`. Las opciones están en DF-51 | DF-51 | Plan de 006a | Fátima con Adrián | Abierto |
-| PD-19 | Trabajos del worker sin actor bajo RLS, sin `BYPASSRLS` (purga de la papelera, conciliación de `espacio_usado`). Las opciones están en DF-52 | DF-52 | Plan de 005 | Abel con Adrián | Abierto |
+| PD-18 | Convención de §5 para `IIndexQueue` (propuesta: lo declara `storage`, lo implementa `intelligence`) e `IAgentQuota` (lo declara e implementa `billing`). **`IPlanLimitsProvider` y el ciclo `storage ↔ billing` quedaron resueltos con la opción A de DF-51 (Fátima, 2026-09-28)**: `storage` declara el puerto y `billing` lo implementa | DF-51 | `IIndexQueue`: plan de 019; `IAgentQuota`: plan de 006a/018 | Fátima con Adrián | Abierto (parcial) |
 | PD-20 | `sharing` necesita `IPasswordHasher` de `identity` (DF-10), y ADR-0010 no permite `sharing → identity`. Hay dos salidas: un ADR que enmiende 0010 y `boundaries.js`, o mover el hasher a `shared` | ADR-0010, DF-10 | Spec 012 | Adrián | Abierto |
 | PD-21 | Cambios opcionales al flujo: implementar cuando los antecesores están en `Planificada` y ampliar los PR parciales de §4.8 | Conversación del 26/09 | — | Adrián | Abierto |
 | PD-22 | ¿Se carga Inter 800? Las hojas empaquetadas recientes lo traen; los mockups hechos a mano usan hasta 700 | `fix/000b-solo-inter` | — | Adrián | Abierto |
-| PD-31 | `INodeMetadataReader` figura como «backoffice → storage». Si `storage` lo implementa importándolo, se forma `storage → backoffice → storage`. Sigue la misma convención que DF-51, así que conviene sumarlo a ese hallazgo | `architecture.md` §5, DF-51 | Plan de 005 | Abel con Adrián | Abierto |
+| PD-31 | `INodeMetadataReader` figura como «backoffice → storage». Si `storage` lo implementa importándolo, se forma `storage → backoffice → storage`. Sigue la misma convención que DF-51 y se suma a ese hallazgo; el plan 005 no lo necesita (llega con 011) | `architecture.md` §5, DF-51 | Plan de 011 (ya no bloquea 005) | Abel con Adrián | Abierto |
 | PD-40 | Pedidos de la 001 al plan de 006a: (1) oyente **idempotente** de `identity.client-account-verified` que crea la suscripción Personal; (2) **conciliación** idempotente que da Personal a toda cuenta `CLIENT` verificada sin suscripción, en su migración de datos o en un trabajo (ADR-0019); (3) lectura **pública** (sin sesión) de los planes activos con `id`, nombre, precio en centavos y una marca de plan gratuito, para la pantalla de registro (001 CA-22). Si 006a no los incluye, la 001 queda con `catalogo-no-disponible` y las cuentas verificadas sin plan | Plan 001 §6.12 y P-6, ADR-0019 | Plan de 006a | Fátima con Adrián | Abierto |
 
 ## Código y configuración
 
 | ID | Qué falta | Dónde | Origen | Resolver antes de | Responsable | Estado |
 |---|---|---|---|---|---|---|
-| PD-24 | `boundaries.js` con las reglas de ADR-0010, `import-x/no-cycle` y los fixtures negativos `realtime-imports-identity.ts` y `access-imports-storage.ts` | `packages/config/eslint/` | ADR-0010, T-28 de 000 | PR de CI de 000 | Adrián | Abierto |
+| PD-24 | `boundaries.js` con las reglas de ADR-0010, `import-x/no-cycle` y los fixtures negativos `realtime-imports-identity.ts` y `access-imports-storage.ts`. Con DF-51 (opción A) `storage` **no** tiene a `billing` en su lista permitida y `billing` sí a `storage`; ver PD-47 | `packages/config/eslint/` | ADR-0010, T-28 de 000 | PR de CI de 000 | Adrián | Abierto |
 | PD-25 | Segundo rol de BD (`nimbo_app`, que no es dueño) y `DATABASE_MIGRATION_URL`: script de inicio de Postgres en compose, `.env.example`, `env:check` y secretos de staging | `compose.yml`, `.env.example`, `apps/api` | ADR-0005 | Plan de 003 | Adrián | Abierto |
 | PD-26 | Regla de lint que prohíba `set_config` fuera de `withActor()` | `packages/config/eslint/` | ADR-0005 | Plan de 003 | Adrián | Abierto |
 | PD-38 | `boundaries.js`: agregar `identity` a `allowed.billing` (solo contratos de eventos, ADR-0019) y el *fixture* negativo `identity-imports-billing.ts`. Si PD-24 se integra antes de aceptar ADR-0019, se agrega en un PR aparte | `packages/config/eslint/` | ADR-0019 | Primer PR de 006a que importe de `identity` | Adrián | Abierto |
 | PD-39 | `GRANT SELECT, INSERT, UPDATE` (sin `DELETE`) a `nimbo_app` sobre `usuario` y `token_cuenta` cuando la 003 cree ese rol (PD-25); sin esto, la 001 deja de funcionar al pasar a los dos roles de BD | Script de inicio de Postgres o migración de 003 | Plan 001 §4, ADR-0005 | Plan de 003 | Adrián | Abierto |
 | PD-41 | E2E con Playwright y `@axe-core/playwright` en `e2e/` (`pnpm test:e2e` deja de ser marcador): flujo de registro y verificación de 001 y axe a 360 y 1440 px (CA-22, CA-23) | `e2e/`, `package.json` | Plan 001, P-5 | Primera semana de la Fase 2 | Adrián | Abierto |
+| PD-44 | Mundo de aislamiento de 003: `.withFiles(...)` y `.withUploads(...)` en `test/isolation/setup/isolation-world.ts`, insertando como `nimbo_app` dentro de `withActor` (no como dueño, ver §11.4 cambio 6 del plan 005) | Plan 003 §6.11, plan 005 D-18 | PR de 005 (cubierto por el plan 005; se cierra al integrar el *builder*) | Adrián | Cubierto por el plan |
+| PD-47 | `boundaries.js` para 005: `storage → shared, access, audit, realtime` (**sin `billing`**: DF-51, opción A, prohíbe cualquier import de `billing` desde `storage`), `billing → storage` (solo desde `storage/index.ts`), `access → shared`, `audit → shared`; *fixtures* negativos `storage-imports-identity.ts` (excepción DF-59) y `storage-imports-billing.ts`. Amplía PD-24 | Plan 005 §11.4 cambio 13, DF-59 | PR de 005 (o el de PD-24, lo que llegue antes) | Adrián | Abierto |
 | PD-27 | Token del velo de los diálogos: el mockup de «Seguridad» usa `agent-bg` al 45 % | `apps/web/src/components/nimbo/app-layout.tsx` (TODO #6), `ui-guidelines.md` | Mockup de «Seguridad» | Plan de 002 | Adrián | Abierto |
 
 ## Diseño y UX
@@ -79,6 +81,7 @@ decisiones; solo faltan los diagramas.
 
 | ID | Qué era | Cerrado | Dónde |
 |---|---|---|---|
+| PD-19 | Trabajos del worker sin actor bajo RLS, sin `BYPASSRLS` (DF-52): opción B con función `SECURITY DEFINER` mínima y `withActor` por dueño, RLS también en `carga`; patrón para la purga de 006 y la conciliación de 007 | 2026-09-28 | Plan 005 D-6 y ADR-0021 (Propuesto) |
 | PD-09 | DF-13, DF-35 y DF-33 (`usuario`) a `Aceptado` por la spec 001 | 2026-09-27 | `chore/adr-fase-1` |
 | PD-10 | DF-11 y DF-15 (sesiones) a `Aceptado` por la spec 002; DF-15 queda parcial a propósito | 2026-09-27 | `chore/adr-fase-1` |
 | PD-11 | DF-50 registrado; DF-01 y DF-32 a `Aceptado` por la spec 003 | 2026-09-27 | `chore/adr-fase-1` |

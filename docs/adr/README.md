@@ -16,8 +16,8 @@ Son la base para defender la arquitectura en la exposición final (enunciado §6
 | 0008 | [Verificación automática de fronteras entre módulos](0008-verificacion-automatica-de-fronteras.md) (`eslint-plugin-boundaries` + `import-x`) | Aceptado |
 | 0009 | [Crystal Clear + SDD como proceso](0009-crystal-clear-y-sdd-como-proceso.md) | Aceptado |
 | 0010 | [Separar M3 en `access`/`sharing` y extraer `audit`, `realtime`, `notifications`](0010-separacion-de-modulos.md) (DF-02, 03, 30, 34) | Aceptado |
-| 0011 | Modelo de nodos: dos tablas con `CHECK` o tabla única (DF-40) | Pendiente |
-| 0012 | Versiones por composición con `origen` (DF-17, 18) | Pendiente |
+| 0011 | [Modelo de nodos: tablas separadas `archivo` y `carpeta` con `CHECK` de exclusividad](0011-modelo-de-nodos-dos-tablas-con-check.md) (DF-40) | Propuesto |
+| 0012 | [Versiones por composición con `origen`; `storage` dueño del ciclo de vida](0012-versiones-por-composicion-con-origen.md) (DF-17, 18) | Propuesto |
 | 0013 | Política del original en el optimizador (DF-21) | Pendiente |
 | 0014 | [Tokens de Cielo Sereno ajustados a AA y mapeados a shadcn; axe en E2E](0014-tokens-cielo-sereno-shadcn-axe.md) (DF-41–48) | Aceptado |
 | 0015 | [Dependencias de fundaciones: gitleaks, zod, nestjs-pino, Testcontainers](0015-dependencias-de-fundaciones.md) (menor) | Aceptado |
@@ -25,11 +25,15 @@ Son la base para defender la arquitectura en la exposición final (enunciado §6
 | 0018 | [Correo transaccional con nodemailer por SMTP y la cola `mail`](0018-correo-con-nodemailer-y-cola-mail.md) (menor) | Aceptado |
 | 0019 | [Eventos de dominio en proceso con `@nestjs/event-emitter`; el contrato lo exporta el productor](0019-eventos-de-dominio-en-proceso.md) (arista `billing → identity`) | Aceptado |
 | 0020 | [Validación HTTP con zod desde `packages/contracts`](0020-validacion-http-con-zod-desde-contracts.md) (enmienda ADR-0015 b) | Aceptado |
+| 0021 | [Mantenimiento sin actor bajo RLS: función `SECURITY DEFINER` mínima y RLS también en `carga`](0021-mantenimiento-sin-actor-bajo-rls-y-rls-en-carga.md) (enmienda ADR-0005; DF-52, PD-19) | Propuesto |
 
 Estados: `Pendiente` (sin redactar) · `Propuesto` (redactado, falta acuerdo del equipo) · `Aceptado` · `Reemplazado por`.
 Los ADR 0001, 0002, 0008, 0009, 0014 y 0015 se aceptaron el 26/09/2026 (Adrián, parte de ADR de la T-27 de la spec 000).
 Los ADR 0005 y 0010 se aceptaron el 26/09/2026 (Adrián). Desbloquean el PR de CI de la spec 000 (spec §13) y los planes de las specs 001 y 003.
 Los ADR 0017 a 0020 los redactó el `architect` con el plan de la spec 001 y los aceptó Adrián el 27/09/2026
 (ADR-0017 con Passport, opción c.2). ADR-0020 enmienda la parte b de ADR-0015.
+
+Los ADR 0011, 0012 y 0021 los redactó el `architect` con el plan de la spec 005 (2026-09-28) como `Propuesto`; 0011 y 0012 siguen el E-R vigente y 0021 enmienda ADR-0005.
+La dependencia `@aws-sdk/s3-request-presigner` (plan 005) se registró como adenda de ADR-0015, sin ADR aparte. El 0016 está reservado por la rama de 006a (dinero en centavos y bytes).
 
 Usa `/adr <decisión>` para redactar uno.

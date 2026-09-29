@@ -229,7 +229,7 @@ identificador.
 > Estado del mockup: `Pendiente` · `Borrador` · `Aprobado`. Rutas relativas a `docs/design/`.
 > Actualicen la columna «Mockup» con lo que ya existe; el `ui-designer` la mantiene al día.
 > Los mockups `Borrador` provienen de Claude Design (`.dc.html`) o están escritos a mano en HTML autocontenido
-> (`.html`), como `mockups/identity/seguridad/`, `mockups/identity/terminos/`, `mockups/identity/privacidad/` y los estados nuevos de `mockups/storage/carga/`. Solo
+> (`.html`), como `mockups/identity/seguridad/`, `mockups/identity/terminos/`, `mockups/identity/privacidad/` y los estados nuevos de `mockups/storage/carga/` y `mockups/storage/explorador/`. Solo
 > cubren los estados entre paréntesis; el resto de estados mínimos se agregan con `/mockup` antes de aclarar la spec.
 > Cada carpeta tiene un `README.md`.
 
@@ -244,7 +244,7 @@ identificador.
 | Recuperar / restablecer contraseña | identity | 002 | — (reutiliza pedir-enlace, exito, enlace-expirado, enlace-invalido y ya-verificado de 001) | — | pedir, correo-enviado, contrasena-nueva, enlace-expirado, enlace-invalido, exito | Decisión explícita (spec 002 §11) |
 | Seguridad (sesiones y contraseña) | identity | 002 | `mockups/identity/seguridad/` | `capturas/identity/seguridad/` | default, cargando, error-sesiones, sin-otras-sesiones, confirmar-cierre, confirmar-cierre-actual, sesion-cerrada, cerrar-demas, cerrar-demas-exito, contrasena-enviando, contrasena-no-coincide, contrasena-incorrecta, contrasena-debil, contrasena-bloqueada, contrasena-cambiada | Aprobado (2026-09-26) |
 | Layout de la app (navegación, cuota lateral, menú de la cuenta) | shared | 000b | `mockups/shared/layout/` | `capturas/shared/layout/` | default, menu-cuenta-abierto, confirmar-cerrar-sesion, solo-lectura, movil-cajon-abierto (solo 360) | Borrador |
-| Explorador de archivos | storage | 005–007 | `mockups/storage/explorador/` | `capturas/storage/explorador/` | default, vacio, cargando, arrastre, seleccion | Borrador (cuadricula, lista) |
+| Explorador de archivos | storage | 005–007 | `mockups/storage/explorador/` | `capturas/storage/explorador/` | default, vacio, cargando, arrastre, error, acciones, descarga-preparando, descarga-fallida, seleccion | Borrador (cuadricula, lista, vacio, cargando, arrastre, error, acciones, descarga-preparando, descarga-fallida) |
 | Resumen de espacio (cuota, consultas, renovación) | storage | 007 | `mockups/storage/resumen-espacio/` | `capturas/storage/resumen-espacio/` | default | Borrador (default) |
 | Vista general (lienzo con todas las pantallas) | shared | 000b | `mockups/shared/vista-general/` | `capturas/shared/vista-general/` | default | Borrador (referencia) |
 | Carga en progreso | storage | 005 | `mockups/storage/carga/` | `capturas/storage/carga/` | progreso, pausa, sin-conexion, rechazo-tamano, rechazo-cuota, tipo-invalido, nombre-repetido, nombre-repetido-varios, confirmar-cancelar | Borrador (progreso, pausa, sin-conexion, rechazo-tamano, rechazo-cuota, tipo-invalido, nombre-repetido, nombre-repetido-varios, confirmar-cancelar) |

@@ -62,7 +62,11 @@ const DIALOGO_CERRAR_SESION = {
 };
 
 // ---------- Piezas ----------
-function navegacion({ activo = '', etiqueta = 'Navegación principal', idPrimerEnlace = '' } = {}) {
+// carpetas: sección «Carpetas» (por defecto, CARPETAS; con [] se omite el título y la lista).
+// contadorPapelera: por defecto, el de NAV_PRINCIPAL; con '' se omite (005: la papelera llega con 006).
+function navegacion({ activo = '', etiqueta = 'Navegación principal', idPrimerEnlace = '', carpetas = CARPETAS, contadorPapelera } = {}) {
+  const principal = contadorPapelera === undefined ? NAV_PRINCIPAL
+    : NAV_PRINCIPAL.map(([ic, label, meta]) => [ic, label, label === 'Papelera' ? contadorPapelera : meta]);
   let primero = !!idPrimerEnlace;
   const item = ([ic, label, meta = '']) => {
     const current = label === activo ? ' aria-current="page"' : '';
@@ -72,14 +76,14 @@ function navegacion({ activo = '', etiqueta = 'Navegación principal', idPrimerE
   };
   const lista = (items) => items.map((i) => `\n          ${item(i)}`).join('');
   return `<nav aria-label="${etiqueta}">
-        <ul class="nav">${lista(NAV_PRINCIPAL)}
+        <ul class="nav">${lista(principal)}
         </ul>
         <div class="nav-sep" role="presentation"></div>
         <ul class="nav">${lista(NAV_CUENTA)}
-        </ul>
+        </ul>${carpetas.length ? `
         <p class="nav-title">Carpetas</p>
-        <ul class="nav">${lista(CARPETAS)}
-        </ul>
+        <ul class="nav">${lista(carpetas)}
+        </ul>` : ''}
       </nav>`;
 }
 
@@ -95,14 +99,14 @@ function cuota({ usado, total, pct } = CUOTA) {
 const logo = (cls = 'logo') =>
   `<a class="${cls}" href="#" aria-label="Nimbo, Mis archivos"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>`;
 
-function sidebar({ activo = '', plan = 'PERSONAL', cuota: q = CUOTA } = {}) {
+function sidebar({ activo = '', plan = 'PERSONAL', cuota: q = CUOTA, carpetas = CARPETAS, contadorPapelera } = {}) {
   return `
     <aside class="sidebar" aria-label="Barra lateral">
       <div class="brand-row">
         ${logo()}
         <span class="plan-chip">${plan}</span>
       </div>
-      ${navegacion({ activo })}
+      ${navegacion({ activo, carpetas, contadorPapelera })}
       ${cuota(q)}
     </aside>`;
 }

@@ -6,6 +6,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const M = require('../marco/marco.js');
+const S = require('../mis-archivos/mis-archivos.js');
 
 const repo = process.argv[2];
 if (!repo) throw new Error('Falta la ruta del worktree');
@@ -14,89 +15,22 @@ fs.mkdirSync(OUT, { recursive: true });
 
 // ---------- Íconos propios (trazos de Lucide, 24 × 24) ----------
 const P = {
-  ...M.P,
-  upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/>',
+  ...S.P,
   pause: '<rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/>',
   play: '<path d="M6 3 20 12 6 21Z"/>',
-  file: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>',
-  fileText: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>',
-  sheet: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h2"/><path d="M14 13h2"/><path d="M8 17h2"/><path d="M14 17h2"/>',
-  slides: '<path d="M2 3h20"/><path d="M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3"/><path d="m7 21 5-5 5 5"/>',
-  film: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M3 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/><path d="M17 3v18"/><path d="M17 7.5h4"/><path d="M17 16.5h4"/>',
   wifiOff: '<path d="M12 20h.01"/><path d="M8.5 16.43a5 5 0 0 1 7 0"/><path d="M5 12.86a10 10 0 0 1 5.17-2.69"/><path d="M19 12.86a10 10 0 0 0-2-1.52"/><path d="M2 8.82a15 15 0 0 1 4.18-2.64"/><path d="M22 8.82a15 15 0 0 0-11.29-3.76"/><path d="m2 2 20 20"/>',
   ban: '<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>',
 };
-const icon = (name, size = 18, cls = '') =>
-  `<svg class="ico ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${P[name]}</svg>`;
+const icon = S.crearIcon(P);
 
-// ---------- Datos de ejemplo (en la app vienen de la API y de PlanLimits; catálogo de product-context §3) ----------
-// Plan Equipo: 350 GB de almacenamiento y 1 GB como máximo por archivo.
-const PLAN = 'EQUIPO';
-const CUOTA_NORMAL = { usado: '304 GB', total: '350 GB', pct: 87 };
-const CUOTA_LLENA = { usado: '349.4 GB', total: '350 GB', pct: 99.8 };
-
-// Tipo de archivo → ícono y tokens --file-* (FileTypeChip). La extensión siempre va en el nombre.
-const TIPOS = {
-  docx: ['fileText', 'docx'], xlsx: ['sheet', 'xlsx'], pptx: ['slides', 'pptx'], pdf: ['fileText', 'pdf'],
-  txt: ['fileText', 'other'], mp4: ['film', 'other'], zip: ['file', 'other'],
-};
-const tipo = (nombre) => TIPOS[nombre.split('.').pop().toLowerCase()] || ['file', 'other'];
-const tile = (nombre) => { const [ic, t] = tipo(nombre); return `<span class="ftile ftile-${t}">${icon(ic, 16)}</span>`; };
-
-// Archivos en la raíz de «Mis archivos» (el explorador de 005 solo muestra la raíz, RN-4)
-const RAIZ = [
-  ['Propuesta_Nimbo_v3.docx', '2.4 MB', 'hace 4 min'],
-  ['Matriz_Requisitos_RF.xlsx', '860 KB', 'hoy · 09:12'],
-  ['Demo_Fase3_avance.pptx', '18.7 MB', 'hace 2 h'],
-  ['Modelo_ER_Nimbo.pdf', '1.1 MB', 'ayer'],
-];
+// Datos de ejemplo, tipos de archivo, cuota por tramos y tabla de la raíz: mis-archivos/mis-archivos.js
+const { CUOTA_NORMAL, CUOTA_LLENA, tile, sidebar, tabla } = S;
 
 // ---------- CSS propio de la pantalla ----------
 const CSS = '\n' + M.CSS.MARCO + M.CSS.BOTONES + M.CSS.DIALOGO + M.CSS.MQ_900 +
   '  @media (max-width: 600px) {\n' + M.CSS.MQ600_MARCO + M.CSS.MQ600_DIALOGO + '  }\n' + M.EXTRA + `
   /* Propio de storage/carga */
-  :root {
-    /* Tipos de archivo (ui-guidelines §3): texto AA; fondo = tono base al 12 % */
-    --file-docx: #3F62A8; --file-docx-bg: #6B8DD620;
-    --file-xlsx: #3A7560; --file-xlsx-bg: #6DB99A20;
-    --file-pptx: #8A6424; --file-pptx-bg: #D4A96A20;
-    --file-pdf: #A34F4F;  --file-pdf-bg: #C97B7B20;
-    --file-other: #53677D; --file-other-bg: #7A90A820;
-  }
-  .app { min-height: 900px; }
-  a.btn-primary, a.btn-primary:hover { color: var(--primary-foreground); }
-  a.btn-outline:hover { color: var(--foreground); }
-
-  /* Cuota en tramos de QuotaBar (§4): 70–89 % warning; 90–100 % destructive-soft */
-  .quota-warn .quota-bar span { background: var(--warning); }
-  .quota-full { border-color: color-mix(in srgb, var(--destructive-soft) 45%, var(--card)); }
-  .quota-full .quota-bar span { background: var(--destructive-soft); }
-  .quota-note { margin: 8px 0 0; font-size: 11.5px; line-height: 1.45; font-weight: 500; }
-  .quota-warn .quota-note { color: var(--warning-foreground); }
-  .quota-full .quota-note { color: var(--destructive); }
-
-  /* Encabezado de la página */
-  .page-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-  .page-head p { margin-top: 4px; }
-
-  /* Tabla de archivos (explorador, vista de lista) */
-  .files { margin-top: 20px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); overflow: hidden; }
-  .files table { width: 100%; border-collapse: collapse; }
-  .files th { padding: 11px 16px; text-align: left; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted-foreground); background: var(--background); border-bottom: 1px solid var(--border); }
-  .files td { padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 13.5px; color: var(--secondary-foreground); }
-  .files tr:last-child td { border-bottom: 0; }
-  .files .c-size, .files .c-date { width: 130px; font-variant-numeric: tabular-nums; }
-  .fname { display: flex; align-items: center; gap: 12px; min-width: 0; color: var(--foreground); font-weight: 500; }
-  .fname-text { min-width: 0; overflow-wrap: anywhere; }
-  .fmeta-m { display: none; }
-  .badge-new { margin-left: 8px; font-size: 10.5px; font-weight: 600; letter-spacing: .04em; color: var(--success-foreground); background: var(--success-soft); border: 1px solid color-mix(in srgb, var(--success) 40%, var(--card)); border-radius: var(--radius-sm); padding: 1px 6px; white-space: nowrap; }
-  .ftile { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; flex: none; border-radius: 8px; }
-  .ftile-docx { color: var(--file-docx); background: var(--file-docx-bg); }
-  .ftile-xlsx { color: var(--file-xlsx); background: var(--file-xlsx-bg); }
-  .ftile-pptx { color: var(--file-pptx); background: var(--file-pptx-bg); }
-  .ftile-pdf { color: var(--file-pdf); background: var(--file-pdf-bg); }
-  .ftile-other { color: var(--file-other); background: var(--file-other-bg); }
-
+` + S.CSS_LISTA + `
   /* Panel de carga (UploadProgress) */
   .up { position: absolute; z-index: 5; right: 28px; bottom: 28px; width: 440px; max-width: calc(100% - 56px); background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-modal); overflow: hidden; }
   .up-head { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 16px; border-bottom: 1px solid var(--border); }
@@ -149,14 +83,7 @@ const CSS = '\n' + M.CSS.MARCO + M.CSS.BOTONES + M.CSS.DIALOGO + M.CSS.MQ_900 +
     .up { right: 16px; bottom: 16px; }
   }
   @media (max-width: 600px) {
-    .app { min-height: 920px; }
-    .page-head h1 { font-size: 23px; }
-    .files { margin-top: 16px; }
-    .files thead { display: none; }
-    .files .c-size, .files .c-date { display: none; }
-    .files td { padding: 12px; }
-    .fmeta-m { display: block; margin-top: 1px; font-size: 12px; font-weight: 400; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
-    /* En móvil el panel es una hoja al pie, a todo el ancho */
+` + S.CSS_LISTA_MQ600 + `    /* En móvil el panel es una hoja al pie, a todo el ancho */
     .up { left: 8px; right: 8px; bottom: 8px; width: auto; max-width: none; border-radius: var(--radius-lg) var(--radius-lg) var(--radius-md) var(--radius-md); }
     .up-head { padding: 6px 6px 6px 14px; }
     .up-item { padding: 12px 8px 12px 14px; }
@@ -173,35 +100,6 @@ const CSS = '\n' + M.CSS.MARCO + M.CSS.BOTONES + M.CSS.DIALOGO + M.CSS.MQ_900 +
 `;
 
 // ---------- Piezas ----------
-function cuota(q, tramo) {
-  const nota = tramo === 'full' ? 'Espacio casi agotado' : `Tu cuota está al ${q.pct} %`;
-  return M.cuota(q)
-    .replace('<div class="quota">', `<div class="quota quota-${tramo}">`)
-    .replace(/<\/div>\s*$/, `  <p class="quota-note">${nota}</p>\n      </div>`);
-}
-
-function sidebar(q, tramo) {
-  return M.sidebar({ activo: 'Mis archivos', plan: PLAN, cuota: q }).replace(M.cuota(q), cuota(q, tramo));
-}
-
-function tabla(nuevos) {
-  const filas = [...nuevos.map((n) => [...n, true]), ...RAIZ].map(([nombre, tam, fecha, nuevo]) => `
-            <tr>
-              <td><div class="fname">${tile(nombre)}<div class="fname-text">${nombre}${nuevo ? '<span class="badge-new">NUEVO</span>' : ''}<span class="fmeta-m">${tam} · ${fecha}</span></div></div></td>
-              <td class="c-size">${tam}</td>
-              <td class="c-date">${fecha}</td>
-            </tr>`).join('');
-  return `
-        <div class="files">
-          <table>
-            <caption class="sr-only">Archivos en Mis archivos</caption>
-            <thead><tr><th scope="col">Nombre</th><th scope="col" class="c-size">Tamaño</th><th scope="col" class="c-date">Modificado</th></tr></thead>
-            <tbody>${filas}
-            </tbody>
-          </table>
-        </div>`;
-}
-
 const btnIcon = (ic, label, outline = true) =>
   `<button class="ibtn${outline ? ' ibtn-outline' : ''}" type="button" aria-label="${label}">${icon(ic, 16)}</button>`;
 
@@ -311,11 +209,7 @@ function page(v) {
     ${sidebar(q, tramo)}
     <div class="main">
       ${M.topbar({ crumbs: ['Mis archivos'] })}
-      <main class="content" id="contenido">
-        <div class="page-head">
-          <h1>Mis archivos</h1>
-          <button class="btn btn-primary" type="button">${icon('upload', 16)}<span>Subir archivos</span></button>
-        </div>${tabla(v.nuevos || [])}${panel(v.panel)}
+      <main class="content" id="contenido">${S.encabezado()}${tabla(v.nuevos || [])}${panel(v.panel)}
       </main>
     </div>
   </div>${dialogo(v.dialogo)}
@@ -383,8 +277,7 @@ const ESTADOS = [
       anuncio: 'No se subió Grabacion_sesion_14.mp4. Este archivo pesa 1.2 GB y tu plan permite hasta 1 GB por archivo.',
       items: [
         { nombre: 'Grabacion_sesion_14.mp4', meta: '1.2 GB', st: 'rechazado', stCls: 'st-err',
-          msg: '<span><strong>Este archivo pesa 1.2 GB y tu plan permite hasta 1 GB por archivo.</strong> Reduce su tamaño o cambia de plan.</span>',
-          msgAcciones: '<a class="btn btn-outline btn-sm" href="#">Ver planes</a>' },
+          msg: '<span><strong>Este archivo pesa 1.2 GB y tu plan permite hasta 1 GB por archivo.</strong> Reduce su tamaño o cambia de plan.</span>' }, // «Ver planes» se oculta hasta 008 (CA-4)
         ANEXO,
       ],
     },
@@ -400,7 +293,7 @@ const ESTADOS = [
       items: [
         { nombre: 'Respaldo_fotos_campo.zip', meta: '920 MB', st: 'rechazado', stCls: 'st-err',
           msg: '<span><strong>Te faltan 320 MB de espacio para subir este archivo.</strong> Libera espacio o cambia de plan.</span>',
-          msgAcciones: '<a class="btn btn-primary btn-sm" href="#">Liberar espacio</a><a class="btn btn-outline btn-sm" href="#">Ver planes</a>' },
+          msgAcciones: '<a class="btn btn-primary btn-sm" href="#">Liberar espacio</a>' }, // «Ver planes» se oculta hasta 008 (CA-4)
         { nombre: 'Entrevistas_ronda2.docx', meta: '820 KB', st: 'subido', stCls: 'st-ok', done: true },
       ],
     },

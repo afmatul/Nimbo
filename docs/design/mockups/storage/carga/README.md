@@ -52,6 +52,10 @@ lateral al 87 % (304 GB de 350 GB) salvo en `rechazo-cuota` (349.4 GB, 99.8 %). 
 ## Decisiones de UX
 - **Destino**: la pantalla es «Mis archivos» (raíz, RN-4). No hay carpetas ni migas de carpeta: el mockup de la
   propuesta muestra «Proyecto Alpha / Fase 3 · RAG», que llega con 006.
+- **Barra lateral y lista de 005** (decisión de Adrián, 2026-09-28): sin la sección «Carpetas» ni el contador de la
+  Papelera hasta la 006, y cada fila de la lista con el menú ⋮ «Acciones de {nombre}» («Descargar»), igual que en
+  `storage/explorador`. La página «Mis archivos» (barra lateral, encabezado y tabla) sale de
+  `_generadores/mis-archivos/mis-archivos.js`, común a los dos mockups.
 - **Panel** (`UploadProgress`): tarjeta flotante de 440 px, abajo a la derecha, sobre el explorador. En móvil es una hoja
   al pie a todo el ancho. Encabezado con un `h2` («Subiendo 2 archivos», «1 archivo rechazado», «Carga en espera») y un
   resumen («2 en pausa · 54 %», «1 de 2 subido»); botón para contraer (`aria-expanded`) y, cuando no queda ninguna
@@ -80,10 +84,11 @@ lateral al 87 % (304 GB de 350 GB) salvo en `rechazo-cuota` (349.4 GB, 99.8 %). 
   No cierres ni recargues esta pestaña.» La carga se reanuda sola al volver la red; «Reanudar» permite intentarlo ya.
   La última frase explica RN-7: tras cerrar o recargar, la carga no se recupera.
 - **Rechazos antes de subir** (CA-3, CA-4, CA-7): la fila queda «rechazado», sin barra, con el mensaje de la spec en un
-  aviso `destructive` (qué pasó en negrita + qué hacer) y botones de acción: «Ver planes» en tamaño; «Liberar espacio»
-  y «Ver planes» en cuota. Los demás archivos de la misma selección siguen su curso.
+  aviso `destructive` (qué pasó en negrita + qué hacer). En cuota, el botón «Liberar espacio»; en tamaño, sin botón.
+  «Ver planes» **se oculta hasta 008** en los dos (CA-4; decisión de Adrián, 2026-09-28). Los demás archivos de la
+  misma selección siguen su curso.
 - **Destinos de los botones**: «Liberar espacio» lleva al Resumen de espacio (spec 007); mientras 007 no exista, lleva
-  a Mis archivos. «Ver planes» lleva a Plan y facturación (008).
+  a Mis archivos. Cuando exista 008, «Ver planes» volverá a los dos rechazos y llevará a Plan y facturación.
 - **Rechazos por contenido** (CA-11, CA-24): se detectan al completar, después de subir los bytes. La fila queda
   «rechazado» con su motivo; no aparece en el explorador ni suma espacio.
 - **Nombre repetido** (CA-6, RN-5): `alertdialog` con título «¿Conservar ambos archivos?», el mensaje de la spec y la
@@ -115,8 +120,8 @@ lateral al 87 % (304 GB de 350 GB) salvo en `rechazo-cuota` (349.4 GB, 99.8 %). 
 | `--file-*` sobre su fondo al 12 % (íconos de tipo) | 4.77 – 5.12 |
 
 La barra en pausa (`warning` sobre `muted`, 1.94) y la de la cuota llena (`destructive-soft`, 2.85) son decorativas: el
-estado y el porcentaje van en texto. El borde `input` de «Ver planes» dentro del aviso de rechazo da 2.74 sobre el fondo
-del aviso; el botón se identifica por su texto y su relleno `card`.
+estado y el porcentaje van en texto. El botón «Liberar espacio» del aviso de rechazo es `primary` (5.11 con
+blanco); «Ver planes», con borde `input` (2.74 sobre el aviso), se oculta hasta 008.
 
 ## Decisiones aprobadas (2026-09-28, usuario)
 1. Mientras haya cargas activas el panel solo se contrae; «Cerrar el panel de cargas» aparece cuando no queda ninguna.

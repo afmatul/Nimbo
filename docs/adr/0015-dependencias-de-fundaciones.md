@@ -70,3 +70,25 @@ integración contra servicios reales.
   DTOs); el `int` en CI tarda más que con `services:`.
 - Cómo sabremos si fue un error: si `int` + `isolation` superan 6 min en CI (R-2 del plan 000) se migran a `services:`
   salvo las pruebas que detienen contenedores; si aparece una tercera librería de validación, se unifica.
+
+## Adenda (2026-09-28, plan de la spec 005): `@aws-sdk/s3-request-presigner`
+
+La 005 firma URLs de carga y descarga contra MinIO (DF-16, RNF-06), lo que necesita `@aws-sdk/s3-request-presigner`. Es la misma familia
+y la **misma versión exacta** que `@aws-sdk/client-s3` (ya usado por el adaptador de MinIO de 000), lo mantiene el mismo proveedor, firma en local (SigV4, sin
+llamadas de red) y no arrastra dependencias propias significativas. No compite con otra opción razonable (firmar SigV4 a mano sería código propio de seguridad),
+así que no justifica un ADR aparte: queda registrada aquí como dependencia menor de fundaciones. Se importa solo en `storage/infrastructure`
+(`MinioStorageAdapter`), nunca en dominio ni en aplicación (ADR-0008). Si una versión de `client-s3` se actualiza, se actualiza la del firmador.
+
+## Adenda (2026-09-28, segunda pasada de arquitectura del plan 005): primitivas Radix de shadcn/ui
+
+ADR-0014 adopta «componentes base estilo shadcn/ui» pero **no** nombra Radix ni lo cubre como dependencia: hoy `apps/web` no lo tiene
+(solo `class-variance-authority` y `lucide-react`). La 005 necesita tres componentes que en shadcn/ui se apoyan en primitivas Radix:
+`alert-dialog` (cancelar y conflicto de nombre), `checkbox` («Aplicar a los demás») y `dropdown-menu` (menú ⋮ por fila). Se autoriza
+**solo** el paquete de primitivas Radix (`radix-ui`, o `@radix-ui/react-alert-dialog`, `-checkbox` y `-dropdown-menu` si se prefiere
+instalar por separado; se fija una sola forma y versión exacta en el primer PR que lo agregue), y únicamente para esos tres componentes
+y los que 006 y posteriores necesiten de la misma familia. Motivo: foco atrapado, `aria-*`, navegación por teclado y `Escape` de
+diálogos y menús son justo lo que CA-21 y jest-axe exigen; reimplementarlos a mano en un equipo de 4 y 10 semanas es más código y más riesgo
+de accesibilidad. Los estilos siguen siendo los tokens de ADR-0014 (sin colores a mano); el código del componente vive en
+`apps/web/src/components/ui/`. Sin ADR aparte: no compite con otra opción razonable dentro de shadcn/ui. Si una spec pide otra familia
+de componentes (p. ej. `dialog` modal de formularios complejos), basta con esta adenda mientras salga de Radix; una biblioteca distinta
+requiere ADR.
