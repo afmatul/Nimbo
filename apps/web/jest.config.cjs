@@ -8,4 +8,6 @@ module.exports = createJestConfig({
   testEnvironment: 'node',
   testMatch: ['<rootDir>/src/**/*.spec.{ts,tsx}'],
   clearMocks: true,
+  // Los formularios se prueban tecleando con user-event; con varios workers 5 s no alcanzan.
+  testTimeout: 30_000,
 });
