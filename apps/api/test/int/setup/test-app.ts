@@ -1,7 +1,12 @@
-import type { DynamicModule, INestApplication, InjectionToken, Type } from '@nestjs/common';
+import type {
+  DynamicModule,
+  INestApplication,
+  INestApplicationContext,
+  InjectionToken,
+  Type,
+} from '@nestjs/common';
 import { ModulesContainer } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
 import { Logger } from 'nestjs-pino';
 import type { z } from 'zod';
@@ -82,7 +87,9 @@ const validate = <TSchema extends z.ZodTypeAny>(
 };
 
 /** Instancias de estrategia de Passport con el nombre `ACCESS_TOKEN_STRATEGY` en el árbol compilado. */
-const accessTokenStrategiesIn = (moduleRef: TestingModule): number => {
+export const accessTokenStrategiesIn = (
+  moduleRef: Pick<INestApplicationContext, 'get'>,
+): number => {
   let count = 0;
   for (const module of moduleRef.get(ModulesContainer).values()) {
     for (const wrapper of module.providers.values()) {

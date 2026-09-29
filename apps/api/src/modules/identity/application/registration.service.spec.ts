@@ -78,7 +78,7 @@ const fakeHasher = (): jest.Mocked<IPasswordHasher> => ({
 const setup = () => {
   const timeline: string[] = [];
   const clock = new FixedClock(NOW);
-  const config = { webPublicUrl: 'http://localhost' };
+  const config = { webPublicUrl: 'http://localhost', cookieSecure: false };
   const users = new InMemoryUserRepository();
   const tokens = new InMemoryVerificationTokenRepository();
   const hasher = fakeHasher();

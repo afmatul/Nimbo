@@ -68,7 +68,7 @@ const setup = () => {
     mailer,
     new RecordingTransactionRunner(timeline),
     clock,
-    { webPublicUrl: 'http://localhost/' },
+    { webPublicUrl: 'http://localhost/', cookieSecure: false },
     logger,
   );
   const user = aClientUser().verified().build();

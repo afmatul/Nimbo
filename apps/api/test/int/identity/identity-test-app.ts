@@ -8,6 +8,7 @@ import type { Queue } from 'bullmq';
 
 import { IDENTITY_THROTTLERS, IdentityModule } from '../../../src/modules/identity';
 import { MAIL_QUEUE, NotificationsWorkerModule } from '../../../src/modules/notifications';
+import type { Env } from '../../../src/shared';
 import { getMessage, listMessages } from '../setup/mailpit';
 import type { MailpitSummary } from '../setup/mailpit';
 import { buildTestEnv, createTestApp } from '../setup/test-app';
@@ -49,22 +50,25 @@ export const validRegistration = (email: string): RegisterRequest => ({
 /**
  * App de integración con la composición de `identity` de `AppModule` (plan §6.8): eventos en proceso, *throttlers*
  * de `identity`, `IdentityModule` y, en la misma app, el lado `worker` de `notifications` para que los correos
- * lleguen a Mailpit. `close` espera a que la cola `mail` quede vacía: un correo encolado y no entregado (p. ej. los
+ * lleguen a Mailpit. La estrategia `ACCESS_TOKEN_STRATEGY` es la real de `identity` (002 T-39); `identityEnv`
+ * cambia solo lo que lee `IdentityModule.forRoot` (p. ej. `APP_ENV` para `cookieSecure`). `close` espera a que la cola `mail` quede vacía: un correo encolado y no entregado (p. ej. los
  * avisos de los registros concurrentes de CA-3) lo entregaría el `worker` de la suite siguiente en el Mailpit
  * compartido, en medio de sus pruebas.
  */
 export const createIdentityTestApp = async (
-  options: Pick<TestAppOptions, 'overrides'> = {},
+  options: Pick<TestAppOptions, 'overrides'> & { readonly identityEnv?: Partial<Env> } = {},
 ): Promise<TestApp> => {
+  const { identityEnv = {}, ...appOptions } = options;
   const testApp = await createTestApp({
     withWorkerEnv: true,
+    accessTokenStrategy: 'identity',
     modules: [
       EventEmitterModule.forRoot(),
       ThrottlerModule.forRoot({ throttlers: [...IDENTITY_THROTTLERS] }),
       NotificationsWorkerModule,
-      IdentityModule.forRoot(buildTestEnv()),
+      IdentityModule.forRoot({ ...buildTestEnv(), ...identityEnv }),
     ],
-    ...options,
+    ...appOptions,
   });
   const mailQueue = testApp.app.get<Queue>(getQueueToken(MAIL_QUEUE));
   return {
