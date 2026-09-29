@@ -469,7 +469,7 @@ contra Postgres el contrato de `levelFor` (parte de **CA-10**; el resto, con 005
   siguen en verde.
   Archivos: `apps/api/test/int/shared/route-declarations.int-spec.ts`, `apps/api/src/modules/identity/presentation/auth.controller.ts` (solo si falta).
 
-- [ ] **T-46** CA-11: 404 uniforme — CA: CA-11 (parte de 003) — Depende: T-12, T-41 — ~1 h
+- [x] **T-46** CA-11: 404 uniforme — CA: CA-11 (parte de 003) — Depende: T-12, T-41 — ~1 h
   Prueba primero `apps/api/test/int/shared/not-found-uniformity.int-spec.ts`: `GET /__probe/resources/:id` como un
   cliente con el `id` de un recurso de **otra** cuenta y con un UUID inexistente → mismo `status` (404), mismo
   `code` (`PROBE_RESOURCE_NOT_FOUND`), mismas cabeceras salvo `x-correlation-id` y mismo cuerpo salvo `correlationId`;
@@ -710,4 +710,11 @@ PR-F = 9 (T-48…T-56). Total: 56.
   de las cuentas del mundo en `usuario` (en 003 no hay `archivo`): la misma consulta sin el filtro devuelve las cinco
   filas y con `accessibleNodes(actor)` ninguna, así el 0 no se debe a una tabla vacía. Las acciones son todas las de
   `Action` (las once son de contenido).
+- **T-46**: `ProbeResources` (almacén `Map<dueño, Map<id, recurso>>`: la búsqueda es por `actor.id` y luego por `id`,
+  no hay un `find` global que se filtre después) y `ProbeResourceNotFoundError` viven en `probe.controller.ts`; archivo
+  no previsto: `probe.module.ts` registra `ProbeResources` como proveedor (como `ProbeCalls`) para que la prueba siembre
+  recursos con `app.get(ProbeResources)`. La suite tiene dos comparaciones: con el **mismo** `x-correlation-id` las dos
+  respuestas son idénticas salvo `date` (más estricto que la tarea; `date` es la hora de respuesta y puede cambiar de
+  segundo entre peticiones), y con ids distintos coinciden salvo `x-correlation-id`, `correlationId` y `etag` (el
+  `ETag` se calcula sobre el cuerpo, que incluye el `correlationId`).
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>

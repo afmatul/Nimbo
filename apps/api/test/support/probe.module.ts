@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 
 import { FixedClock, I_ACCESS_TOKEN_VERIFIER, I_CLOCK } from '../../src/shared';
 
-import { ProbeCalls, ProbeController } from './probe.controller';
+import { ProbeCalls, ProbeController, ProbeResources } from './probe.controller';
 import { TestAccessTokenVerifier } from './test-access-token-verifier';
 import { TestJwtStrategy } from './test-jwt-strategy';
 
@@ -18,6 +18,7 @@ export const PROBE_CLOCK_START = new Date('2026-09-27T12:00:00.000Z');
   controllers: [ProbeController],
   providers: [
     ProbeCalls,
+    ProbeResources,
     TestJwtStrategy,
     { provide: I_CLOCK, useFactory: (): FixedClock => new FixedClock(PROBE_CLOCK_START) },
     { provide: I_ACCESS_TOKEN_VERIFIER, useClass: TestAccessTokenVerifier },

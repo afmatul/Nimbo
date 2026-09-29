@@ -1,6 +1,16 @@
-import { Controller, Get, Injectable, Post } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 
-import { ALL_ROLES, CurrentActor, CurrentSessionId, Public, Role, Roles } from '../../src/shared';
+import { Controller, Get, Injectable, Param, Post } from '@nestjs/common';
+
+import {
+  ALL_ROLES,
+  CurrentActor,
+  CurrentSessionId,
+  NotFoundError,
+  Public,
+  Role,
+  Roles,
+} from '../../src/shared';
 import type { Actor } from '../../src/shared';
 
 const OK = { ok: true } as const;
@@ -23,13 +33,45 @@ export class ProbeCalls {
   }
 }
 
-/**
- * Rutas sonda de 003 (plan §5): una por declaración posible. Solo en `test/support`, nunca en `src/`.
- * `/__probe/resources/:id` llega con T-46.
- */
+export interface ProbeResource {
+  readonly id: string;
+  readonly ownerId: string;
+}
+
+/** Recursos de prueba por dueño (CA-11): la búsqueda ya filtra por dueño, nunca se filtra después de encontrar. */
+@Injectable()
+export class ProbeResources {
+  private readonly byOwner = new Map<string, Map<string, ProbeResource>>();
+
+  add(ownerId: string): ProbeResource {
+    const resource = Object.freeze({ id: randomUUID(), ownerId });
+    const owned = this.byOwner.get(ownerId) ?? new Map<string, ProbeResource>();
+    owned.set(resource.id, resource);
+    this.byOwner.set(ownerId, owned);
+    return resource;
+  }
+
+  findOwnedBy(ownerId: string, id: string): ProbeResource | undefined {
+    return this.byOwner.get(ownerId)?.get(id);
+  }
+}
+
+/** Mismo error para un recurso ajeno o inexistente (D-6): la respuesta no revela cuál de los dos fue. */
+export class ProbeResourceNotFoundError extends NotFoundError {
+  readonly code = 'PROBE_RESOURCE_NOT_FOUND';
+
+  constructor() {
+    super('No encontramos el recurso. Revisa el enlace o pide acceso a quien lo compartió.');
+  }
+}
+
+/** Rutas sonda de 003 (plan §5): una por declaración posible. Solo en `test/support`, nunca en `src/`. */
 @Controller('__probe')
 export class ProbeController {
-  constructor(private readonly calls: ProbeCalls) {}
+  constructor(
+    private readonly calls: ProbeCalls,
+    private readonly resources: ProbeResources,
+  ) {}
 
   @Public()
   @Get('public')
@@ -93,6 +135,14 @@ export class ProbeController {
   @Get('admin-or-support')
   adminOrSupport(): typeof OK {
     return this.ok('admin-or-support');
+  }
+
+  @Roles(Role.CLIENT)
+  @Get('resources/:id')
+  resource(@CurrentActor() actor: Actor, @Param('id') id: string): ProbeResource {
+    const resource = this.resources.findOwnedBy(actor.id, id);
+    if (resource === undefined) throw new ProbeResourceNotFoundError();
+    return resource;
   }
 
   /** Sin `@Public()` ni `@Roles(...)`: nunca debe responder 200 (CA-1, DT-2). */
