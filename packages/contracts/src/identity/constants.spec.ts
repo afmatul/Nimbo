@@ -6,16 +6,31 @@ import {
 } from './error-codes';
 import { LEGAL_DOCUMENTS } from './legal';
 import {
+  ACCESS_TOKEN_TTL_SECONDS,
+  DEVICE_COOKIE_MAX_AGE_DAYS,
   EMAIL_REQUEST_COOLDOWN_SECONDS,
   EMAIL_REQUESTS_PER_HOUR,
   FULL_NAME_MAX_LENGTH,
+  LOGIN_ATTEMPTS_PER_IP,
+  LOGIN_FAILURE_WINDOW_MINUTES,
+  LOGIN_IP_WINDOW_MINUTES,
+  LOGIN_LOCK_MINUTES,
+  LOGIN_MAX_FAILURES,
   MAX_AVISOS_INTENTO_24H,
+  PASSWORD_CHANGE_LOCK_MINUTES,
+  PASSWORD_CHANGE_MAX_FAILURES,
+  PASSWORD_CHANGE_WINDOW_MINUTES,
   PASSWORD_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
+  REFRESH_ROTATION_GRACE_SECONDS,
   REGISTRATIONS_PER_IP_PER_HOUR,
   RESENDS_PER_IP_PER_HOUR,
+  RESET_LINK_TTL_MINUTES,
+  SESSION_IDLE_TIMEOUT_DAYS,
+  SESSION_MAX_LIFETIME_DAYS,
   VERIFICATION_LINK_TTL_HOURS,
 } from './parameters';
+import * as parameters from './parameters';
 
 describe('parámetros de identity (spec §6)', () => {
   it('CA-1/CA-15: fija los valores de la spec', () => {
@@ -40,6 +55,50 @@ describe('parámetros de identity (spec §6)', () => {
       PASSWORD_MIN_LENGTH: 12,
       PASSWORD_MAX_LENGTH: 128,
     });
+  });
+});
+
+describe('parámetros de sesión y recuperación (spec 002 §6)', () => {
+  it('CA-1/CA-5/CA-6/CA-8/CA-9/CA-23: fija los valores de la spec', () => {
+    expect({
+      ACCESS_TOKEN_TTL_SECONDS,
+      SESSION_IDLE_TIMEOUT_DAYS,
+      SESSION_MAX_LIFETIME_DAYS,
+      REFRESH_ROTATION_GRACE_SECONDS,
+      LOGIN_MAX_FAILURES,
+      LOGIN_FAILURE_WINDOW_MINUTES,
+      LOGIN_LOCK_MINUTES,
+      LOGIN_ATTEMPTS_PER_IP,
+      LOGIN_IP_WINDOW_MINUTES,
+      RESET_LINK_TTL_MINUTES,
+      PASSWORD_CHANGE_MAX_FAILURES,
+      PASSWORD_CHANGE_WINDOW_MINUTES,
+      PASSWORD_CHANGE_LOCK_MINUTES,
+      DEVICE_COOKIE_MAX_AGE_DAYS,
+    }).toEqual({
+      ACCESS_TOKEN_TTL_SECONDS: 900,
+      SESSION_IDLE_TIMEOUT_DAYS: 7,
+      SESSION_MAX_LIFETIME_DAYS: 30,
+      REFRESH_ROTATION_GRACE_SECONDS: 10,
+      LOGIN_MAX_FAILURES: 5,
+      LOGIN_FAILURE_WINDOW_MINUTES: 15,
+      LOGIN_LOCK_MINUTES: 15,
+      LOGIN_ATTEMPTS_PER_IP: 20,
+      LOGIN_IP_WINDOW_MINUTES: 15,
+      RESET_LINK_TTL_MINUTES: 60,
+      PASSWORD_CHANGE_MAX_FAILURES: 5,
+      PASSWORD_CHANGE_WINDOW_MINUTES: 15,
+      PASSWORD_CHANGE_LOCK_MINUTES: 15,
+      DEVICE_COOKIE_MAX_AGE_DAYS: 365,
+    });
+  });
+
+  it('CA-18: la recuperación no define límites propios (reutiliza los de 001)', () => {
+    const recoveryLimits = Object.keys(parameters).filter(
+      (name) => name.startsWith('RESET_') || name.startsWith('FORGOT_'),
+    );
+
+    expect(recoveryLimits).toEqual(['RESET_LINK_TTL_MINUTES']);
   });
 });
 
