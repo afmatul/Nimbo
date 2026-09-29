@@ -309,7 +309,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   `ActorScopeConflictError`; `requireActorScope` fuera de `withActor` lanza.
   Archivos: `apps/api/test/isolation/rls-context.iso-spec.ts`.
 
-- [ ] **T-31** `DatabaseRoleCheck` — CA: CA-13, DT-4 — Depende: T-26 — ~1 h
+- [x] **T-31** `DatabaseRoleCheck` — CA: CA-13, DT-4 — Depende: T-26 — ~1 h
   Prueba primero `apps/api/src/shared/infrastructure/persistence/database-role.check.spec.ts` (con `DataSource` falso):
   cualquiera de `rolsuper`, `rolbypassrls`, `owns_tables` en `true` → registra `db.role_rejected` (`fatal`, solo los
   tres booleanos, sin URL) y lanza con «La API debe conectarse como nimbo_app; revisa DATABASE_URL y ejecuta pnpm

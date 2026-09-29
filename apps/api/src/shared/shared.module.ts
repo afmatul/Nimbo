@@ -12,6 +12,7 @@ import { ENV } from './infrastructure/config/env.module';
 import type { SharedEnvBase } from './infrastructure/config/env.schema';
 import { createLoggerModule } from './infrastructure/logging/logger.module';
 import { buildDataSourceOptions } from './infrastructure/persistence/data-source';
+import { DatabaseRoleCheck } from './infrastructure/persistence/database-role.check';
 import { TransactionContext } from './infrastructure/persistence/transaction-context';
 import { TypeOrmTransactionRunner } from './infrastructure/persistence/typeorm-transaction-runner';
 import { buildBullConnection } from './infrastructure/queue/bull.config';
@@ -28,6 +29,7 @@ const DB_RETRY_DELAY_MS = 3000;
  * (`AppModule`, `WorkerModule`) importa `EnvModule.forRoot(env)`, este módulo y añade lo suyo.
  * Global (001 plan §6.7): los módulos de negocio inyectan `I_CLOCK`, `REDIS_CLIENT`, `I_RATE_LIMITER`,
  * `I_TRANSACTION_RUNNER` y `TransactionContext` sin importarlo; las pruebas sustituyen `I_CLOCK` con `FixedClock`.
+ * `DatabaseRoleCheck` impide arrancar si la conexión no es la de `nimbo_app` (003 plan §6.4).
  */
 @Global()
 @Module({
@@ -55,6 +57,7 @@ const DB_RETRY_DELAY_MS = 3000;
     { provide: I_RATE_LIMITER, useClass: RedisRateLimiter },
     TransactionContext,
     { provide: I_TRANSACTION_RUNNER, useClass: TypeOrmTransactionRunner },
+    DatabaseRoleCheck,
   ],
   exports: [I_CLOCK, REDIS_CLIENT, I_RATE_LIMITER, I_TRANSACTION_RUNNER, TransactionContext],
 })
