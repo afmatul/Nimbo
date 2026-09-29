@@ -4,6 +4,7 @@ import type { DynamicModule } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerModule } from '@nestjs/throttler';
 
+import { AccessModule } from './modules/access';
 import { IDENTITY_THROTTLERS, IdentityModule } from './modules/identity';
 import { NotificationsModule } from './modules/notifications';
 import {
@@ -24,7 +25,7 @@ import type { Env } from './shared';
  * Raíz de composición de `api` (plan 000 §6.2, plan 001 §6.8): publica el entorno que `main.ts` ya validó con
  * `apiEnvSchema`, `SharedModule`, los guards globales de autorización (003), la configuración de MinIO, la salud
  * con los tres indicadores y la cola `ping`; los eventos en proceso (ADR-0019), los *throttlers* en memoria
- * (ADR-0017), `notifications` e `identity`.
+ * (ADR-0017), `notifications`, `identity` y `AccessModule` (`PermissionResolver`, 003).
  */
 @Module({})
 export class AppModule {
@@ -44,6 +45,7 @@ export class AppModule {
         ThrottlerModule.forRoot({ throttlers: [...IDENTITY_THROTTLERS] }),
         NotificationsModule,
         IdentityModule.forRoot(env),
+        AccessModule,
       ],
       providers: [PingQueue],
     };

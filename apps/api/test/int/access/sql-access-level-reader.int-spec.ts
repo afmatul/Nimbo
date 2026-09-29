@@ -2,16 +2,24 @@ import { randomUUID } from 'node:crypto';
 
 import { DataSource } from 'typeorm';
 
-import { AccessLevel } from '../../../src/modules/access/domain/access-level.enum';
+import { AccessLevel, AccessModule, Action, PermissionResolver } from '../../../src/modules/access';
 import type { AccessibleNodesFragment } from '../../../src/modules/access/infrastructure/sql/accessible-nodes';
 import {
   readAccessLevel,
   SqlAccessLevelReader,
 } from '../../../src/modules/access/infrastructure/sql/sql-access-level-reader';
-import { buildDataSourceOptions, createActor, Role } from '../../../src/shared';
+import {
+  buildDataSourceOptions,
+  createActor,
+  I_TRANSACTION_RUNNER,
+  Role,
+} from '../../../src/shared';
+import type { ITransactionRunner } from '../../../src/shared';
 import { ActorScopeMissingError } from '../../../src/shared/infrastructure/persistence/actor-scope.errors';
 import { TransactionContext } from '../../../src/shared/infrastructure/persistence/transaction-context';
 import { TypeOrmTransactionRunner } from '../../../src/shared/infrastructure/persistence/typeorm-transaction-runner';
+import { createTestApp } from '../setup/test-app';
+import type { TestApp } from '../setup/test-app';
 
 type Grant = readonly [nodeId: string, level: string];
 
@@ -115,4 +123,48 @@ describe('SqlAccessLevelReader en Postgres (CA-9, CA-10 parcial)', () => {
       await expect(levelIn([[node, 'ADMIN']])).resolves.toBeNull();
     });
   });
+});
+
+/** `AccessModule` compuesto como en `AppModule`: `PermissionResolver` con el lector SQL real (plan 003 §6.5, §6.6). */
+describe('PermissionResolver desde AccessModule (CA-8, CA-9)', () => {
+  let testApp: TestApp;
+  let resolver: PermissionResolver;
+  let runner: ITransactionRunner;
+
+  beforeAll(async () => {
+    testApp = await createTestApp({ modules: [AccessModule] });
+    resolver = testApp.app.get(PermissionResolver);
+    runner = testApp.app.get<ITransactionRunner>(I_TRANSACTION_RUNNER);
+  });
+
+  afterAll(async () => {
+    await testApp.close();
+  });
+
+  it('CA-9: para un cliente dentro de `withActor` consulta Postgres y, sin nodos en 003, niega', async () => {
+    const actor = createActor(randomUUID(), Role.CLIENT);
+    const node = randomUUID();
+
+    await runner.withActor(actor, async () => {
+      await expect(resolver.levelFor(actor, node)).resolves.toBeNull();
+      await expect(resolver.can(actor, node, Action.VIEW)).resolves.toBe(false);
+    });
+  });
+
+  it('CA-9: para un cliente fuera de `withActor` el lector lanza `ActorScopeMissingError`', async () => {
+    const actor = createActor(randomUUID(), Role.CLIENT);
+
+    await expect(resolver.can(actor, randomUUID(), Action.VIEW)).rejects.toBeInstanceOf(
+      ActorScopeMissingError,
+    );
+  });
+
+  it.each([Role.ADMIN, Role.SUPPORT, Role.OPERATOR])(
+    'CA-9: el rol interno %s recibe `false` sin llegar al lector (ni siquiera sin `withActor`)',
+    async (role) => {
+      await expect(
+        resolver.can(createActor(randomUUID(), role), randomUUID(), Action.VIEW),
+      ).resolves.toBe(false);
+    },
+  );
 });

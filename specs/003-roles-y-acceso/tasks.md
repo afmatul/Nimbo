@@ -395,7 +395,7 @@ las actualizaciones del `architect` al integrar (plan §10.4).
   `ActorScopeMissingError`. Luego el adaptador (`EntityManager` solo de `TransactionContext.requireActorScope`).
   Archivos: `apps/api/src/modules/access/infrastructure/sql/sql-access-level-reader.ts`, `apps/api/test/int/access/sql-access-level-reader.int-spec.ts`.
 
-- [ ] **T-39** `AccessModule`, `index.ts`, `AppModule` y README — CA: CA-8, CA-9 — Depende: T-38 — ~1 h
+- [x] **T-39** `AccessModule`, `index.ts`, `AppModule` y README — CA: CA-8, CA-9 — Depende: T-38 — ~1 h
   Prueba primero `apps/api/src/modules/access/index.spec.ts`: exporta exactamente `AccessModule`,
   `PermissionResolver`, `accessibleNodes`, `AccessLevel`, `Action` (y el tipo `AccessibleNodesFragment`); y en
   `sql-access-level-reader.int-spec.ts`, `PermissionResolver` se resuelve desde `AccessModule`. Luego
@@ -629,6 +629,11 @@ PR-F = 9 (T-48…T-56). Total: 56.
   `driver.escapeQueryWithParameters`. Además de §6.5, la consulta filtra `nivel IN (OWNER, EDITOR, VIEWER)`: un nivel
   desconocido da `null` (cerrado por defecto) y el resultado siempre es un `AccessLevel`. `TransactionContext` se
   inyecta con `@Inject` explícito (motivo de T-31). 5 casos en verde con Docker.
+- **T-39**: `index.spec.ts` comprueba las cinco exportaciones de valor y, por tipo, la forma de
+  `AccessibleNodesFragment`. En `sql-access-level-reader.int-spec.ts`, `PermissionResolver` sale de
+  `createTestApp({ modules: [AccessModule] })` con el lector SQL real: cliente dentro de `withActor` → `null`/`false`;
+  cliente fuera → `ActorScopeMissingError`; los tres roles internos → `false` aun sin `withActor` (no llegan al lector).
+  `I_ACCESS_LEVEL_READER` no se exporta del módulo ni de `index.ts`: nadie fuera de `access` lo usa.
 
 - **Precedencia del plan**: donde §11.2 dice «500 estrategia desconocida», «`err` se relanza como 500»,
   `access-token-strategy.ts` como archivo propio o `validate` → `false`, manda «Cambios aplicados»: 401
