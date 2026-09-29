@@ -12,6 +12,14 @@ export class ActorScopeMissingError extends Error {
   }
 }
 
+/** `withActor` recibió un `id` que no es UUID o un rol fuera de `Role`: no abre la transacción (plan §6.3 paso 1). */
+export class InvalidActorError extends Error {
+  constructor() {
+    super('Actor inválido para withActor: el id debe ser un UUID y el rol, uno de Role');
+    this.name = new.target.name;
+  }
+}
+
 export class ActorScopeConflictError extends Error {
   constructor() {
     super(

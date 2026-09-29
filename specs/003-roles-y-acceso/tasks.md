@@ -291,7 +291,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   simples (no `DomainError`: salen como 500). Luego los cambios en `transaction-context.ts` y los errores.
   Archivos: `apps/api/src/shared/infrastructure/persistence/{transaction-context,actor-scope.errors}.ts`, su `*.spec.ts`.
 
-- [ ] **T-29** `ITransactionRunner.withActor` — CA: CA-12 — Depende: T-28 — ~1 h
+- [x] **T-29** `ITransactionRunner.withActor` — CA: CA-12 — Depende: T-28 — ~1 h
   Prueba primero en `typeorm-transaction-runner.spec.ts` (de 001 T-14, con `DataSource` falso): `actor.id` que no es
   UUID o `role` fuera de `Role` → error antes de abrir la transacción; sin contexto → una transacción, una sola
   `query('SELECT set_config($1, $2, true), set_config($3, $4, true)', ['app.actor_id', id, 'app.actor_role', role])` y
@@ -558,9 +558,14 @@ PR-F = 9 (T-48…T-56). Total: 56.
   deshizo `ConcederPermisosNimboApp20260928110000` y `run` la volvió a aplicar. `\dp`: `usuario` y `token_cuenta` con
   `nimbo_app=arw/nimbo` (sin `d`), `migracion` sin `nimbo_app`. Repetir en el compose local en T-34.
 - **T-27**: la prueba de las funciones fija `app.actor_id` con `set_config` a mano (aún no existe `withActor`, y así
-  prueba el SQL sin el runner). Es la única excepción a `rls.js` fuera del runner: un `eslint-disable-next-line
-  no-restricted-syntax` con su motivo en `migrations-nimbo-app.int-spec.ts`. `run → revert → revert → run` en el
-  Postgres desechable: sin error, y `pg_proc` muestra `nimbo_actor_id` y `nimbo_actor_role`.
+  prueba el SQL sin el runner): un `eslint-disable-next-line no-restricted-syntax` con su motivo en
+  `migrations-nimbo-app.int-spec.ts`. `run → revert → revert → run` en el Postgres desechable: sin error, y
+  `pg_proc` muestra `nimbo_actor_id` y `nimbo_actor_role`.
+- **T-29**: segunda y última excepción a `rls.js` fuera del runner: `typeorm-transaction-runner.spec.ts` nombra el SQL
+  exacto que `withActor` debe emitir. `withActor` valida el actor con `InvalidActorError` (`Error` simple, en
+  `actor-scope.errors.ts`; el plan no le da nombre). `run` fuera de `withActor` no cambia respecto de 001 (un `run`
+  dentro de otro `run` sigue abriendo su propia transacción). `index.spec.ts` ahora afirma que el puerto expone
+  `run | withActor`.
 - **`dotenv-bootstrap.int-spec.ts` (001) depende del Postgres del compose local**: arranca la API con el `.env` de la
   raíz. Desde T-24 ese `.env` (copia de `.env.example`) usa `nimbo_app`, que no existe en un volumen ya inicializado,
   así que la suite falla hasta que el integrante corre `pnpm db:app-role` y `migration:run` (el aviso de T-34).
