@@ -260,7 +260,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   `DATABASE_MIGRATION_URL=postgres://nimbo:nimbo@localhost:5432/nimbo`.
   Archivos: `scripts/check-env-example.{ts,spec.ts}`, `apps/api/src/shared/infrastructure/logging/{redacted-fields.ts,redact-deep.spec.ts}`, `.env.example`.
 
-- [ ] **T-25** Arnés con dos roles: aprovisionar y migrar como dueño — CA: CA-13, CA-15 — Depende: T-20, T-23, 001 PR-1 (T-06) — ~1 h
+- [x] **T-25** Arnés con dos roles: aprovisionar y migrar como dueño — CA: CA-13, CA-15 — Depende: T-20, T-23, 001 PR-1 (T-06) — ~1 h
   Prueba primero: primer caso de `apps/api/test/isolation/database-roles.iso-spec.ts` — `env().DATABASE_MIGRATION_URL`
   es el dueño (`getConnectionUri()`) y el rol `nimbo_app` existe en el contenedor compartido. Luego `containers.ts`
   (`withCopyFilesToContainer([10-nimbo-app.sh → /docker-entrypoint-initdb.d/])`, `withEnvironment({

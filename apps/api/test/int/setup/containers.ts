@@ -1,3 +1,5 @@
+import { resolve } from 'node:path';
+
 import { CreateBucketCommand, S3Client } from '@aws-sdk/client-s3';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import type { StartedPostgreSqlContainer } from '@testcontainers/postgresql';
@@ -13,6 +15,14 @@ export const MINIO_IMAGE = 'quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z';
 /** Versión fijada del correo de pruebas (001 plan §6.8). */
 export const MAILPIT_IMAGE = 'axllent/mailpit:v1.31.3';
 
+/** El mismo script de rol que monta `compose.yml` (plan 003 §6.8, DRY): el entrypoint lo ejecuta al inicializar. */
+export const APP_ROLE_SCRIPT_SOURCE = resolve(
+  __dirname,
+  '../../../../../infra/postgres/init/10-nimbo-app.sh',
+);
+export const APP_ROLE_SCRIPT_TARGET = '/docker-entrypoint-initdb.d/10-nimbo-app.sh';
+const APP_DB_PASSWORD = 'nimbo_app';
+
 const MINIO_PORT = 9000;
 const MINIO_USER = 'nimbo';
 const MINIO_PASSWORD = 'nimbo-secret';
@@ -24,18 +34,32 @@ const TEST_MAIL_FROM = 'Nimbo <no-responder@nimbo.me>';
 /** Variable solo de pruebas con la URL de la API de Mailpit (`test/int/setup/mailpit.ts`); no es del esquema. */
 export const MAILPIT_API_URL_VAR = 'TEST_MAILPIT_API_URL';
 
+/** Entorno de los contenedores: las URL de base de datos siempre están (una por rol). */
+export type TestInfraEnv = Record<string, string> & {
+  readonly DATABASE_URL: string;
+  readonly DATABASE_MIGRATION_URL: string;
+};
+
 export interface TestInfra {
   readonly postgres: StartedPostgreSqlContainer;
   readonly redis: StartedRedisContainer;
   readonly minio: StartedTestContainer;
   readonly mailpit: StartedTestContainer;
   /**
-   * Variables que `apiEnvSchema` y `workerEnvSchema` necesitan para apuntar a estos contenedores, más
+   * Variables que `apiEnvSchema` y `workerEnvSchema` necesitan para apuntar a estos contenedores,
+   * `DATABASE_MIGRATION_URL` (dueño de las tablas, `getConnectionUri()`) con la que `global-setup.ts` migra y
    * `TEST_MAILPIT_API_URL` para consultar la bandeja.
    */
-  env(): Record<string, string>;
+  env(): TestInfraEnv;
   stopAll(): Promise<void>;
 }
+
+/** Postgres con el rol `nimbo_app` aprovisionado por `10-nimbo-app.sh` al inicializar el volumen. */
+const startPostgres = async (): Promise<StartedPostgreSqlContainer> =>
+  new PostgreSqlContainer(POSTGRES_IMAGE)
+    .withCopyFilesToContainer([{ source: APP_ROLE_SCRIPT_SOURCE, target: APP_ROLE_SCRIPT_TARGET }])
+    .withEnvironment({ NIMBO_APP_DB_PASSWORD: APP_DB_PASSWORD })
+    .start();
 
 const startMinio = async (): Promise<StartedTestContainer> =>
   new GenericContainer(MINIO_IMAGE)
@@ -92,7 +116,7 @@ export const mailpitEnv = (mailpit: StartedTestContainer): Record<string, string
 /** Arranca Postgres, Redis, MinIO y Mailpit en paralelo y deja el bucket de pruebas creado. */
 export const startTestInfra = async (): Promise<TestInfra> => {
   const [postgres, redis, minio, mailpit] = await Promise.all([
-    new PostgreSqlContainer(POSTGRES_IMAGE).start(),
+    startPostgres(),
     new RedisContainer(REDIS_IMAGE).start(),
     startMinio(),
     startMailpit(),
@@ -106,6 +130,7 @@ export const startTestInfra = async (): Promise<TestInfra> => {
     mailpit,
     env: () => ({
       DATABASE_URL: postgres.getConnectionUri(),
+      DATABASE_MIGRATION_URL: postgres.getConnectionUri(),
       REDIS_URL: redis.getConnectionUrl(),
       MINIO_ENDPOINT: endpoint,
       MINIO_ACCESS_KEY: MINIO_USER,

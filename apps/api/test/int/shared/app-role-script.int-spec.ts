@@ -1,14 +1,13 @@
-import { resolve } from 'node:path';
-
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import type { StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import type { ExecResult } from 'testcontainers';
 
-import { POSTGRES_IMAGE } from '../setup/containers';
+import {
+  APP_ROLE_SCRIPT_SOURCE as SCRIPT_SOURCE,
+  APP_ROLE_SCRIPT_TARGET as SCRIPT_TARGET,
+  POSTGRES_IMAGE,
+} from '../setup/containers';
 
-const REPO_ROOT = resolve(__dirname, '../../../../..');
-const SCRIPT_SOURCE = resolve(REPO_ROOT, 'infra/postgres/init/10-nimbo-app.sh');
-const SCRIPT_TARGET = '/docker-entrypoint-initdb.d/10-nimbo-app.sh';
 const APP_ROLE = 'nimbo_app';
 const APP_PASSWORD = 'nimbo_app';
 const QUOTED_PASSWORD = "nimbo'app";
