@@ -39,9 +39,9 @@ fábrica llegan por parámetro. Un cuerpo `text/plain` o de formulario llega vac
 
 ### `TransactionContext`, base de `withActor` (003, ADR-0005)
 
-`withActor()` de la 003 se construye **encima** de `TransactionContext` con `runWith(manager, work)`: misma
+`withActor()` de la 003 se construye **encima** de `TransactionContext` con `runWith(scope, work)`: misma
 `AsyncLocalStorage` más `set_config` del actor dentro de la transacción. No se crea una segunda ALS ni otro
-ejecutor de transacciones.
+ejecutor de transacciones. Detalle en «Persistencia con actor», más abajo.
 
 ### Regla de bitácoras de correo
 
@@ -74,6 +74,40 @@ Los guards globales viven aquí, no en `backoffice`, y `shared` sigue sin import
   mismo nombre gana. `createTestApp` monta siempre los guards y, con `accessTokenStrategy: 'test'` (por defecto), las
   sondas con `TestJwtStrategy`; lanza si el árbol trae otra `ACCESS_TOKEN_STRATEGY` (usa `'identity'` desde 002).
 - Pendiente en 003 (PR-B): `withActor()` (ADR-0005).
+
+### Persistencia con actor (003 PR-B; plan §4, §6.3, §6.4; ADR-0005)
+
+| Pieza                                         | Dónde                                                                                  | Para qué                                                                                                                                                                                                                                                                                                                                          |
+| --------------------------------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ITransactionRunner.withActor(actor, work)`   | `application/persistence/`, `infrastructure/persistence/typeorm-transaction-runner.ts` | Abre una transacción y fija `app.actor_id` y `app.actor_role` **locales a ella** (`set_config(…, true)`, con parámetros enlazados), que leen las políticas RLS desde 005 con `nimbo_actor_id()` y `nimbo_actor_role()`. Antes de abrirla valida el actor (`id` UUID, `role` de `Role`; si no, `InvalidActorError`)                                |
+| `TransactionContext.requireActorScope(actor)` | `infrastructure/persistence/transaction-context.ts`                                    | Devuelve el `EntityManager` solo si la transacción vigente es de ese actor. Sin actor lanza `ActorScopeMissingError`; con otro, `ActorScopeConflictError`. Los repositorios de datos de cliente (`findAccessible`, desde 005) y `SqlAccessLevelReader` obtienen su `EntityManager` **solo** de aquí: consultar sin actor da un error, nunca filas |
+| `DatabaseRoleCheck`                           | `infrastructure/persistence/database-role.check.ts`                                    | En `onApplicationBootstrap` de `api` y `worker`: si la conexión es superusuario, tiene `BYPASSRLS` o es dueña de alguna tabla de `public` (también por pertenencia, `pg_has_role(…, 'USAGE')`), registra `db.role_rejected` (`fatal`, tres booleanos, sin URL) y el arranque falla                                                                |
+| `migrationEnvSchema`                          | `infrastructure/config/env.schema.ts`                                                  | `DATABASE_MIGRATION_URL` (dueño de las tablas) solo para `data-source.cli.ts` y `migrate.ts`; no se une a `apiEnvSchema` ni a `workerEnvSchema`                                                                                                                                                                                                   |
+
+Los errores del ámbito de actor (`actor-scope.errors.ts`) son `Error` simples, no `DomainError`: son errores de
+programación y el filtro los responde como 500 genérico. Sus mensajes no incluyen el `id` ni el rol.
+
+**Regla de reentrada**:
+
+- `withActor` sin transacción vigente abre una y fija el actor.
+- `withActor` dentro de otro `withActor` con el **mismo** actor se une a la transacción (sin otra transacción ni otro
+  `set_config`). Con **otro** actor, o dentro de un `run` sin actor, lanza `ActorScopeConflictError`: nunca mezcla
+  actores ni fija el actor a mitad de una transacción ajena.
+- `run` dentro de `withActor` se une a esa transacción y conserva el actor.
+- `run` fuera de `withActor` no cambia respecto de 001: abre su propia transacción sin actor, para tablas sin datos de
+  cliente (`usuario`, `token_cuenta`).
+- La transacción abarca el caso de uso, no la petición: no hay interceptor por petición.
+
+**Lint `rls.js` (PD-26)**: `set_config(`, `SET LOCAL app.actor_id` y `SET app.` en literales o plantillas son error
+fuera de `typeorm-transaction-runner.ts`, con un mensaje que remite a `withActor`. Las únicas excepciones, con
+`eslint-disable-next-line` y su motivo, son dos pruebas que nombran ese SQL (`typeorm-transaction-runner.spec.ts` y
+`migrations-nimbo-app.int-spec.ts`).
+
+**Permisos en las migraciones siguientes** (plan §4 (b)): las migraciones corren como el dueño, así que toda tabla
+nueva de `public` recibe `SELECT/INSERT/UPDATE/DELETE` para `nimbo_app` por privilegios por defecto. Si una tabla no
+debe admitir `DELETE` (o menos), **su propia migración** lo revoca (`REVOKE DELETE ON TABLE … FROM nimbo_app`), y
+`database-roles.iso-spec.ts` agrega la fila a la matriz de permisos. Las tablas con datos de cliente activan RLS en su
+migración (`ENABLE` + `FORCE ROW LEVEL SECURITY`, `USING (… = nimbo_actor_id())`, desde 005).
 
 ## Capas
 

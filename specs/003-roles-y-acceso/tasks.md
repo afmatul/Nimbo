@@ -327,7 +327,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   suites `bootstrap` de `api` y `worker` siguen en verde con `nimbo_app`.
   Archivos: `apps/api/test/isolation/database-roles.iso-spec.ts`.
 
-- [ ] **T-33** [P] `ambientes.md` y README de `shared` (persistencia) — CA: n/a — Depende: T-21, T-24, T-29 — ~0,5 h
+- [x] **T-33** [P] `ambientes.md` y README de `shared` (persistencia) — CA: n/a — Depende: T-21, T-24, T-29 — ~0,5 h
   `docs/operations/ambientes.md`: filas de `DATABASE_URL` (ahora `nimbo_app`), `DATABASE_MIGRATION_URL` y
   `NIMBO_APP_DB_PASSWORD` (tabla de plan §6.10) y el paso «volumen existente → `pnpm db:app-role`». README de `shared`:
   `withActor`, `requireActorScope`, regla de reentrada, lint `rls.js`, `DatabaseRoleCheck` y la regla de permisos de
