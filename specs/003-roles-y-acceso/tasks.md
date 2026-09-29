@@ -477,12 +477,36 @@ contra Postgres el contrato de `levelFor` (parte de **CA-10**; el resto, con 005
   que filtra por `actor.id` **en la búsqueda** (no después) y un `NotFoundError` de prueba.
   Archivos: `apps/api/test/support/probe.controller.ts`, `apps/api/test/int/shared/not-found-uniformity.int-spec.ts`.
 
-- [ ] **T-47** CA-15 y cierre del PR-D — CA: CA-15 — Depende: T-41…T-46 — ~1 h
+- [x] **T-47** CA-15 y cierre del PR-D — CA: CA-15 — Depende: T-41…T-46 — ~1 h
   `pnpm test:isolation` corre como `nimbo_app`: `roles-and-actor`, `access-internal-roles`, `rls-context`,
   `database-roles`, `isolation-world` y la `identity-enumeration.iso-spec.ts` de 001 sin cambios. Se conserva
   `placeholder.iso-spec.ts` (`ISOLATION_FORCE_FAIL=1` hace fallar la suite; evidencia en «Notas del developer»). `pnpm
   lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:int`. Resumen en el PR («PR parcial»).
   Archivos: `specs/003-roles-y-acceso/tasks.md` (casillas).
+
+### Resumen del PR-D (PR parcial de 003)
+
+PR parcial de 003 (plan §6.12): arnés de aislamiento y rutas, T-41…T-47, sobre PR-A, PR-B y PR-C. Cubre **CA-15**
+(mundo de aislamiento: dos clientes casi idénticos y una cuenta por rol interno, insertados como el dueño, y la app
+como `nimbo_app`), **CA-3** (las rutas `@Public()` de la API completa son exactamente la lista explícita y ninguna
+responde 401 sin token), **CA-7** (toda ruta declara `@Public()` o `@Roles(...)`, y ninguna las dos) y la parte de 003
+de **CA-11** (404 uniforme para lo ajeno y lo inexistente); repite CA-4, CA-5, CA-6 y CA-9 con las cuentas del mundo.
+Deja listos para 005 `Actor`, `withActor` y `accessibleNodes`, con el mundo (`aClient()`, `anInternal(role)`,
+`tokenFor`, `appAs`) y el recorredor de rutas (`listRouteDeclarations`) en `apps/api/test/`. Sin cambios en `src/`,
+tablas ni migraciones.
+
+- **Revisión atendida**: I-1 (CA-9 con un lector que daría `OWNER`, `a1953b1`), I-2 (`requiredEnv` y
+  `connectAsOwner` compartidos en `test/support/database-urls`, `6d578e3`) y las sugerencias 1, 2, 3, 4, 6 y 7:
+  `createTestApp` relanza el error de `init` aunque falle el cierre (`bc32712`); el mundo inserta en una transacción y
+  los `afterAll` no tapan el fallo de `beforeAll` (`c3e9931`); un solo env para `createTestApp` y `AppModule.forRoot`
+  y CA-3 sin token sobre cada ruta pública (`650f257`); títulos con su CA (`6294c43`); el comentario de
+  `roles-and-actor` aclara que `TestJwtStrategy` no consulta `usuario` hasta 002-PR-2 (`fcaddd6`).
+- **Revisión no atendida (fuera de alcance)**: exportar `API_PREFIX` desde `src/` (hoy la suite de rutas repite
+  `'api/v1'`) y compartir entre guards y recorredor la precedencia `getAllAndOverride` (hoy el recorredor la repite).
+  Ambas tocan `shared` de producción; quedan para quien retome la configuración HTTP.
+- Pruebas (Docker): `pnpm lint`, `pnpm typecheck` en verde; `pnpm test` 837/837 (raíz 33, `config` 7, `contracts`
+  106, `api` 500, `web` 191); `pnpm test:int` 272/272 en 38 suites, sin reintentos (incluida `dotenv-bootstrap`);
+  `pnpm test:isolation` 97/97 en 7 suites; con `ISOLATION_FORCE_FAIL=1`, 96/97 y salida 1.
 
 ## Bloque 5 — PR-F «web» (plan §6.9; D-5, D-8; sin E2E, PD-41) — depende de: **001 PR-4** y **002-PR-5a**
 
@@ -732,4 +756,13 @@ PR-F = 9 (T-48…T-56). Total: 56.
   respuestas son idénticas salvo `date` (más estricto que la tarea; `date` es la hora de respuesta y puede cambiar de
   segundo entre peticiones), y con ids distintos coinciden salvo `x-correlation-id`, `correlationId` y `etag` (el
   `ETag` se calcula sobre el cuerpo, que incluye el `correlationId`).
+- **T-45, un solo env**: `createTestApp` acepta `validatedEnv` (un `Env` ya validado con `buildTestEnv`); la suite de
+  rutas lo construye una vez y lo pasa a `AppModule.forRoot(env)` y a la app, para que no haya dos entornos distintos.
+  Además, cada ruta de `EXPECTED_PUBLIC_ROUTES` se pide sin token y se afirma `status !== 401`.
+- **T-47, evidencia de `ISOLATION_FORCE_FAIL`** (2026-09-29, Docker): `ISOLATION_FORCE_FAIL=1 pnpm test:isolation`
+  sale con código 1 (`ELIFECYCLE`): `FAIL test/isolation/placeholder.iso-spec.ts`, «CA-25: la suite de aislamiento
+  puede forzarse a fallar con ISOLATION_FORCE_FAIL=1» (`Expected: not "1"`); `Test Suites: 1 failed, 6 passed, 7
+  total`, `Tests: 1 failed, 96 passed, 97 total`. Sin la variable: 7/7 suites y 97/97 pruebas, salida 0. Las seis
+  suites reales (`identity-enumeration` de 001 sin cambios, `access-internal-roles`, `database-roles`,
+  `roles-and-actor`, `isolation-world`, `rls-context`) corren como `nimbo_app`.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
