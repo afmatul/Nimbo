@@ -2,9 +2,9 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Propuesto |
+| Estado | Aceptado |
 | Fecha | 2026-09-26 |
-| Decisores | Fátima (redacta). Aceptación pendiente de un revisor distinto |
+| Decisores | Fátima (redacta). Aceptado en revisión de arquitectura el 2026-09-29 |
 | Specs relacionadas | 006a, 008, 009, 010 |
 
 ## Contexto
@@ -35,6 +35,6 @@ Adoptar la opción 1.
 
 ## Consecuencias
 
-- Positivas: la tabla `plan`, `PlanLimits` y el almacenamiento comparten unidad. Adopta el criterio para DF-06, DF-23 y DF-24 (quedando como resoluciones parciales: DF-06 hasta que la spec 005 aplique `bigint` en `version_archivo`, y DF-23 hasta que la spec 009 decida el value object `Money`).
-- Negativas / deuda aceptada: la interfaz formatea `4500` a `Q45.00` y los bytes a GB o MB. `Money` queda para 009.
+- Positivas: la tabla `plan`, `PlanLimits` y el almacenamiento comparten unidad. DF-23 y DF-24 quedan aceptados. DF-06 sigue abierto hasta que la spec 005 use `bigint` en `version_archivo`.
+- Negativas / deuda aceptada: la interfaz formatea `4500` a `Q45.00` y los bytes a GB o MB. El value object `Money` y el paso de `transaccion.monto` a centavos se implementan en la 009, con esta misma unidad.
 - Cómo sabremos si fue un error: si la facturación necesita otra unidad, o si el backend vuelve a convertir entre GB y bytes en más de un lugar.

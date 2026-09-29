@@ -104,7 +104,7 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
 - Servicios: `PlanCatalogService`, `SubscriptionService`, `PaymentService`; job `RenewalScheduler` (`@Cron`, usa `IClock`).
 - Puertos → implementaciones: `IPaymentGateway` → `SimulatedPaymentGateway` (failureRate, latencyMs); `IInvoiceGenerator` → `PdfInvoiceGenerator`; repos.
 - Puertos que consume: `INotifier` (lo declara e implementa T4 `notifications`).
-- Eventos que consume (ADR-0019): `identity.client-account-verified` → crea la suscripción Personal (001 D-4). El oyente es idempotente y se acompaña de una conciliación de las cuentas verificadas sin suscripción (006a).
+- Eventos que consume (ADR-0019): `identity.client-account-verified` → crea la suscripción Personal (001 D-4). El oyente es idempotente y se acompaña de una conciliación de las cuentas verificadas sin suscripción. Lo implementa la 009 (PD-40, 2026-09-29); la 006a no lo hace.
 - Dominio: `Plan` con `PlanLimits` (value object); `Subscription` (pendingPlanId, isReadOnly, scheduleChange, applyPendingChange); `Payment`; `Invoice`; `Money`.
 - Implementa hacia fuera: `IPlanLimitsProvider`, importando el puerto desde `storage` (DF-51 A, ADR-0021); `IAgentQuota` (M6) → DF-27.
 - Tablas: `plan`, `suscripcion`, `transaccion`, `factura`.
@@ -202,7 +202,7 @@ El mapeo vive solo en las entidades TypeORM (`@Entity('archivo')`, `@Column({ na
 | `UserShare` | `comparticion` | |
 | `PublicLink` | `enlace_publico` | |
 | (intentos) | `intento_acceso` | |
-| `Plan` + `PlanLimits` | `plan` | Unidades distintas (DF-24) |
+| `Plan` + `PlanLimits` | `plan` | Bytes `bigint` y precio en centavos (DF-24, DF-23, ADR-0016) |
 | `Subscription` | `suscripcion` | |
 | `Payment` | `transaccion` | |
 | `Invoice` | `factura` | |
@@ -222,7 +222,7 @@ El mapeo vive solo en las entidades TypeORM (`@Entity('archivo')`, `@Column({ na
 |---|---|---|
 | Identificadores | `uuid` | RNF-06 |
 | Tamaños y cuotas en bytes | `bigint` | 2 GB supera `int` (DF-06) |
-| Dinero | `integer` en centavos de quetzal (o `numeric(12,2)`, uno solo) | DF-23 |
+| Dinero | `integer` en centavos de quetzal. Q45.00 = 4500. `Money` y `transaccion.monto` se implementan en la 009 | DF-23, ADR-0016 |
 | Fechas | `timestamptz` | Vigencias y zonas horarias |
 | Procedencia | `jsonb` | Página / sección+párrafo / línea + confianza (DF-07) |
 | Embedding | `vector(768)` | Fijo desde la primera migración; configurar el modelo con dimensión de salida 768 |
