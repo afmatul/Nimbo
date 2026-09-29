@@ -301,7 +301,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   que el lint de T-22 permite).
   Archivos: `apps/api/src/shared/application/persistence/i-transaction-runner.port.ts`, `apps/api/src/shared/infrastructure/persistence/typeorm-transaction-runner.{ts,spec.ts}`.
 
-- [ ] **T-30** CA-12 contra Postgres real — CA: CA-12 — Depende: T-27, T-29 — ~1 h
+- [x] **T-30** CA-12 contra Postgres real — CA: CA-12 — Depende: T-27, T-29 — ~1 h
   Prueba `apps/api/test/isolation/rls-context.iso-spec.ts` con `DataSource` de `nimbo_app` y `extra.max = 1`: dos
   `withActor` seguidos con actores distintos ven cada uno su `current_setting('app.actor_id')` con el mismo
   `pg_backend_pid()`; después, `current_setting('app.actor_id', true)` vacío o `NULL` y `nimbo_actor_id()` `NULL`; 20
@@ -561,6 +561,10 @@ PR-F = 9 (T-48…T-56). Total: 56.
   prueba el SQL sin el runner): un `eslint-disable-next-line no-restricted-syntax` con su motivo en
   `migrations-nimbo-app.int-spec.ts`. `run → revert → revert → run` en el Postgres desechable: sin error, y
   `pg_proc` muestra `nimbo_actor_id` y `nimbo_actor_role`.
+- **T-30**: prueba de integración de piezas ya hechas (T-27, T-29), así que no tuvo fase roja propia. Se comprobó que
+  detecta el defecto que cubre: con `set_config(…, false)` en el runner, «al terminar la transacción la conexión no
+  conserva el actor» falla; con `true` pasan los 5 casos. Además del plan: `run` dentro de `withActor` no aplica aquí,
+  y `requireActorScope` dentro de un `run` sin actor también lanza `ActorScopeMissingError`.
 - **T-29**: segunda y última excepción a `rls.js` fuera del runner: `typeorm-transaction-runner.spec.ts` nombra el SQL
   exacto que `withActor` debe emitir. `withActor` valida el actor con `InvalidActorError` (`Error` simple, en
   `actor-scope.errors.ts`; el plan no le da nombre). `run` fuera de `withActor` no cambia respecto de 001 (un `run`
