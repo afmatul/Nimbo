@@ -440,7 +440,7 @@ contra Postgres el contrato de `levelFor` (parte de **CA-10**; el resto, con 005
   `TestAccessTokens` (002-PR-2 lo cambia a tokens reales) y `appAs` con `createTestApp`.
   Archivos: `apps/api/test/isolation/setup/isolation-world.ts`, `apps/api/test/isolation/isolation-world.iso-spec.ts`.
 
-- [ ] **T-42** [P] Matriz de roles y `Actor` en la suite de aislamiento — CA: CA-4, CA-5, CA-6 — Depende: T-41 — ~1 h
+- [x] **T-42** [P] Matriz de roles y `Actor` en la suite de aislamiento — CA: CA-4, CA-5, CA-6 — Depende: T-41 — ~1 h
   Prueba `apps/api/test/isolation/roles-and-actor.iso-spec.ts` con cuentas del mundo: CA-4, se envían `id`, `userId`,
   `role` y `actor` en la ruta (`/__probe/actor/:id`), el cuerpo (`POST /__probe/actor`), la consulta y las cabeceras
   (`x-user-id`, `x-actor-role`, `x-forwarded-user`), y el `Actor` no cambia; CA-5, `/__probe/client` con los cuatro
@@ -701,4 +701,8 @@ PR-F = 9 (T-48…T-56). Total: 56.
   con `uq_usuario_correo` entre suites. `tokenFor` firma con `TestAccessTokens` sobre un `FixedClock` en
   `PROBE_CLOCK_START` (la hora del `ProbeModule`). Archivo no previsto: `createTestApp` cierra la app si `init` falla
   (con la URL del dueño `DatabaseRoleCheck` rechaza el arranque y, sin cerrar, la conexión quedaba abierta en la suite).
+- **T-42**: prueba de comportamiento ya implementado en PR-A (guards y sondas), así que no tuvo fase roja propia; es la
+  misma matriz de `auth-guards.int-spec.ts` pero con las cuentas del mundo y como `nimbo_app`. La suplantación de
+  CA-4 usa el `id` y el correo reales del **otro** cliente, y se agrega el caso de cada rol interno que envía el `id` y
+  el rol de un cliente.
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
