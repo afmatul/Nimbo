@@ -75,4 +75,72 @@ describe('JwtTokenService', () => {
       ).not.toThrow();
     });
   });
+
+  describe('verify (T-25)', () => {
+    const CLAIMS = { userId: INPUT.userId, role: INPUT.role, sessionId: INPUT.sessionId };
+    const OTHER_SECRET = 'otra-clave-que-el-verificador-no-conoce-de-32-caracteres';
+    const payload = (): Record<string, unknown> => ({
+      sub: INPUT.userId,
+      rol: INPUT.role,
+      sid: INPUT.sessionId,
+      iat: NOW_SECONDS,
+      exp: NOW_SECONDS + 900,
+    });
+    const sign = (
+      claims: Record<string, unknown>,
+      secret = SECRET,
+      algorithm: 'HS256' | 'HS512' = 'HS256',
+    ): string => new JwtService().sign(claims, { secret, algorithm });
+    const tamper = (token: string): string => {
+      const signatureStart = token.lastIndexOf('.') + 1;
+      const replacement = token.charAt(signatureStart) === 'A' ? 'B' : 'A';
+      return `${token.slice(0, signatureStart)}${replacement}${token.slice(signatureStart + 1)}`;
+    };
+    const unsigned = (): string => {
+      const encode = (value: object): string =>
+        Buffer.from(JSON.stringify(value)).toString('base64url');
+      return `${encode({ alg: 'none', typ: 'JWT' })}.${encode(payload())}.`;
+    };
+    const without = (claim: string): Record<string, unknown> => {
+      const { [claim]: _omitted, ...rest } = payload();
+      return rest;
+    };
+
+    it('CA-26: un token emitido es válido y da `userId`, `role` y `sessionId`', async () => {
+      const { token } = await service.issueAccessToken(INPUT);
+
+      await expect(service.verify(token)).resolves.toEqual({ valid: true, claims: CLAIMS });
+    });
+
+    it('CA-12: a los 899 s sigue válido y a los 900 s según el reloj vence', async () => {
+      const { token } = await service.issueAccessToken(INPUT);
+
+      clock.advance(899_000);
+      await expect(service.verify(token)).resolves.toMatchObject({ valid: true });
+
+      clock.advance(1_000);
+      await expect(service.verify(token)).resolves.toEqual({ valid: false, reason: 'expired' });
+    });
+
+    it.each<[string, () => string]>([
+      ['alterado en un carácter', () => tamper(sign(payload()))],
+      ['firmado con otra clave', () => sign(payload(), OTHER_SECRET)],
+      ['con `alg: none`', unsigned],
+      ['firmado con HS512', () => sign(payload(), SECRET, 'HS512')],
+      ['con `sub` que no es uuid', () => sign({ ...payload(), sub: 'ana@nimbo.me' })],
+      ['con `sid` que no es uuid', () => sign({ ...payload(), sid: 'sesion-1' })],
+      ['con un `rol` fuera de `Role`', () => sign({ ...payload(), rol: 'ROOT' })],
+      [
+        'con el claim `role` en lugar de `rol`',
+        () => sign({ ...without('rol'), role: INPUT.role }),
+      ],
+      ['con un claim de más', () => sign({ ...payload(), email: 'ana@nimbo.me' })],
+      ['sin `sid`', () => sign(without('sid'))],
+      ['sin `exp`', () => sign(without('exp'))],
+      ['sin forma de JWT', () => 'no-es-un-jwt'],
+      ['vacío', () => ''],
+    ])('CA-26: un token %s es `invalid` y no lanza', async (_case, build) => {
+      await expect(service.verify(build())).resolves.toEqual({ valid: false, reason: 'invalid' });
+    });
+  });
 });
