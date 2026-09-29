@@ -167,6 +167,42 @@ export class SessionService {
     return this.completeRefresh(decision, client, now);
   }
 
+  /**
+   * CA-14: revoca la sesión si el token es el vigente o el anterior dentro de la gracia. En cualquier otro caso no
+   * hace nada ni avisa: la respuesta siempre es `204`.
+   */
+  async logout(rawToken: string): Promise<void> {
+    const parsed = RefreshToken.parse(rawToken);
+    if (parsed === null) {
+      return;
+    }
+    const now = this.clock.now();
+    const revoked = await this.transactions.run(() => this.logoutInTransaction(parsed, now));
+    if (revoked !== null) {
+      this.logger.info({
+        event: 'identity.session.revoked',
+        userId: revoked.userId,
+        sessionId: revoked.id,
+        reason: 'logout',
+        count: 1,
+      });
+    }
+  }
+
+  private async logoutInTransaction(
+    parsed: ParsedRefreshToken,
+    now: Date,
+  ): Promise<Session | null> {
+    const session = await this.sessions.findByIdForUpdate(parsed.sessionId);
+    if (session === null || session.revocadaEn !== null) {
+      return null;
+    }
+    if (session.matchSecret(parsed.secretHash, now, GRACE_MS) === 'reuse') {
+      return null;
+    }
+    return this.revoke(session, now);
+  }
+
   private async refreshInTransaction(
     parsed: ParsedRefreshToken,
     now: Date,

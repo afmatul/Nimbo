@@ -417,3 +417,55 @@ describe('SessionService.refresh: rotación, reúso y cuenta suspendida (plan 00
     expect(loggedEvents(ctx.logger)).toContainEqual(rejection('suspended', opened.sessionId));
   });
 });
+
+describe('SessionService.logout (plan 002 §6.3)', () => {
+  const revokedLog = (ctx: Setup, sessionId: string) => ({
+    event: 'identity.session.revoked',
+    userId: ctx.user.id,
+    sessionId,
+    reason: 'logout',
+    count: 1,
+  });
+
+  it('CA-14: con el token vigente revoca la sesión', async () => {
+    const ctx = setup();
+    const opened = await openSession(ctx);
+
+    await ctx.service.logout(opened.refreshToken);
+
+    expect(stored(ctx, opened.sessionId).revocadaEn).toEqual(NOW);
+    expect(ctx.timeline).toEqual(['commit']);
+    expect(loggedEvents(ctx.logger)).toContainEqual(revokedLog(ctx, opened.sessionId));
+  });
+
+  it('CA-14: con el token anterior dentro de la gracia también la revoca', async () => {
+    const ctx = setup();
+    const opened = await openSession(ctx);
+    await rotateStored(ctx, opened.sessionId, NOW);
+
+    await ctx.service.logout(opened.refreshToken);
+
+    expect(stored(ctx, opened.sessionId).revocadaEn).toEqual(NOW);
+  });
+
+  it('CA-14: mal formado, desconocido, reusado o ya revocado no hace nada ni lanza', async () => {
+    const ctx = setup();
+    const opened = await openSession(ctx);
+    const current = await rotateStored(ctx, opened.sessionId, NOW);
+    ctx.clock.advance(GRACE_MS + 1);
+    const before = stored(ctx, opened.sessionId);
+
+    await ctx.service.logout('basura');
+    await ctx.service.logout(RefreshToken.issue(UNKNOWN_SESSION_ID).value);
+    await ctx.service.logout(opened.refreshToken);
+
+    expect(stored(ctx, opened.sessionId)).toBe(before);
+    await ctx.sessions.update(before.revoke(NOW));
+    const revoked = stored(ctx, opened.sessionId);
+    await ctx.service.logout(current);
+    expect(stored(ctx, opened.sessionId)).toBe(revoked);
+    expect(ctx.sent).toHaveLength(0);
+    expect(ctx.logger.info).not.toHaveBeenCalled();
+    expect(ctx.logger.warn).not.toHaveBeenCalled();
+  });
+});
