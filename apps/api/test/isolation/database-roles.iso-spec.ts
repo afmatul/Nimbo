@@ -47,4 +47,15 @@ describe('roles de base de datos (CA-13)', () => {
 
     expect(rows).toEqual([{ rolcanlogin: true }]);
   });
+
+  it('CA-13: el arnés conecta la app (`DATABASE_URL`) como nimbo_app, no como el dueño', async () => {
+    const app = await connect(requiredEnv('DATABASE_URL'));
+    try {
+      const [row] = (await app.query('SELECT current_user AS usuario')) as { usuario: string }[];
+
+      expect(row?.usuario).toBe(APP_ROLE);
+    } finally {
+      await app.destroy();
+    }
+  });
 });

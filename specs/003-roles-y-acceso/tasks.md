@@ -268,7 +268,7 @@ PR-F  T-48…T-51 [P×PR] (hoy, sesión falsa) · T-52, T-53 (tras 002-PR-5a) ·
   `DATABASE_MIGRATION_URL`. En esta tarea `DATABASE_URL` sigue siendo el dueño (lo cambia T-26, que da los permisos).
   Archivos: `apps/api/test/int/setup/{containers,global-setup,migrate}.ts`, `apps/api/test/isolation/database-roles.iso-spec.ts`.
 
-- [ ] **T-26** Migración `conceder-permisos-nimbo-app` y la app como `nimbo_app` — CA: CA-13 — Depende: T-25 — ~1 h
+- [x] **T-26** Migración `conceder-permisos-nimbo-app` y la app como `nimbo_app` — CA: CA-13 — Depende: T-25 — ~1 h
   Prueba primero `apps/api/test/int/shared/migrations-nimbo-app.int-spec.ts`: dentro de una transacción del dueño que
   se revierte, `ALTER ROLE nimbo_app RENAME TO …` → el `up` falla con «Falta el rol nimbo_app: ejecuta pnpm
   db:app-role…»; `ALTER ROLE nimbo_app BYPASSRLS` → falla con el mensaje de ADR-0005; `down` y de nuevo `up` sin error.
@@ -546,6 +546,20 @@ PR-F = 9 (T-48…T-56). Total: 56.
 ## Notas del developer
 
 - **T-22**: 7 pruebas de `rls.js` en verde. **T-21**: compose, `.env.example` y `db:app-role` quedan como el plan; la comprobación manual del volumen no se hizo porque Docker Desktop no está en marcha. **T-20**: el script queda como plan §4 (a) (LF por `.gitattributes`, sin `set -e`) y `app-role-script.int-spec.ts` pasa con Docker (4 casos: idempotencia y atributos en `pg_roles`, conexión TCP con la contraseña dada y rechazo con otra, «falta NIMBO_APP_DB_PASSWORD», contraseña con comilla simple).
+- **T-23**: `test/int/setup/migrate.ts` pasa `DATABASE_MIGRATION_URL` al subproceso ya en T-23 (no en T-25): si no,
+  `data-source.cli.ts` la tomaría del `.env` de la raíz y el arnés migraría el Postgres local.
+- **T-25/T-26**: `env()` del arnés tiene tipo (`TestInfraEnv`) con las dos URL; `app-role-script.int-spec.ts` reutiliza
+  la ruta del script de `containers.ts`. Con la app como `nimbo_app`, dos suites de 001 se ajustan sin cambiar lo que
+  prueban: `identity/schema.int-spec.ts` (prueba el esquema y borra un `usuario` para la cascada) se conecta como el
+  dueño, y `transaction-runner.int-spec.ts` crea y borra su tabla de prueba como el dueño y ejecuta el runner como
+  `nimbo_app`.
+- **T-26, `run → revert → run`**: sobre un Postgres desechable (`pgvector/pgvector:pg17`, script de rol montado, puerto
+  55432) porque el compose local del equipo aún no tiene `nimbo_app`: `run` aplicó las cuatro migraciones, `revert`
+  deshizo `ConcederPermisosNimboApp20260928110000` y `run` la volvió a aplicar. `\dp`: `usuario` y `token_cuenta` con
+  `nimbo_app=arw/nimbo` (sin `d`), `migracion` sin `nimbo_app`. Repetir en el compose local en T-34.
+- **`dotenv-bootstrap.int-spec.ts` (001) depende del Postgres del compose local**: arranca la API con el `.env` de la
+  raíz. Desde T-24 ese `.env` (copia de `.env.example`) usa `nimbo_app`, que no existe en un volumen ya inicializado,
+  así que la suite falla hasta que el integrante corre `pnpm db:app-role` y `migration:run` (el aviso de T-34).
 
 - **Precedencia del plan**: donde §11.2 dice «500 estrategia desconocida», «`err` se relanza como 500»,
   `access-token-strategy.ts` como archivo propio o `validate` → `false`, manda «Cambios aplicados»: 401

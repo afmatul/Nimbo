@@ -21,7 +21,16 @@ export const APP_ROLE_SCRIPT_SOURCE = resolve(
   '../../../../../infra/postgres/init/10-nimbo-app.sh',
 );
 export const APP_ROLE_SCRIPT_TARGET = '/docker-entrypoint-initdb.d/10-nimbo-app.sh';
+const APP_DB_ROLE = 'nimbo_app';
 const APP_DB_PASSWORD = 'nimbo_app';
+
+/** La URL del dueño con las credenciales de `nimbo_app`: la app nunca se conecta como superusuario (ADR-0005). */
+const appDatabaseUrl = (ownerUrl: string): string => {
+  const url = new URL(ownerUrl);
+  url.username = APP_DB_ROLE;
+  url.password = APP_DB_PASSWORD;
+  return url.toString();
+};
 
 const MINIO_PORT = 9000;
 const MINIO_USER = 'nimbo';
@@ -46,9 +55,9 @@ export interface TestInfra {
   readonly minio: StartedTestContainer;
   readonly mailpit: StartedTestContainer;
   /**
-   * Variables que `apiEnvSchema` y `workerEnvSchema` necesitan para apuntar a estos contenedores,
-   * `DATABASE_MIGRATION_URL` (dueño de las tablas, `getConnectionUri()`) con la que `global-setup.ts` migra y
-   * `TEST_MAILPIT_API_URL` para consultar la bandeja.
+   * Variables que `apiEnvSchema` y `workerEnvSchema` necesitan para apuntar a estos contenedores (`DATABASE_URL` es
+   * `nimbo_app`), `DATABASE_MIGRATION_URL` (dueño de las tablas, `getConnectionUri()`) con la que `global-setup.ts`
+   * migra y `TEST_MAILPIT_API_URL` para consultar la bandeja.
    */
   env(): TestInfraEnv;
   stopAll(): Promise<void>;
@@ -129,7 +138,7 @@ export const startTestInfra = async (): Promise<TestInfra> => {
     minio,
     mailpit,
     env: () => ({
-      DATABASE_URL: postgres.getConnectionUri(),
+      DATABASE_URL: appDatabaseUrl(postgres.getConnectionUri()),
       DATABASE_MIGRATION_URL: postgres.getConnectionUri(),
       REDIS_URL: redis.getConnectionUrl(),
       MINIO_ENDPOINT: endpoint,

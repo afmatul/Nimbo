@@ -26,6 +26,8 @@ const barrier = (parties: number): (() => Promise<void>) => {
 
 /** `ITransactionRunner` sobre Postgres real (001 plan §6.7; base de `withActor` en 003). */
 describe('TypeOrmTransactionRunner (CA-3, CA-29)', () => {
+  /** La tabla de prueba la crea el dueño: `nimbo_app` no tiene `CREATE` en `public` (plan 003 §4 (b)). */
+  let owner: DataSource;
   let dataSource: DataSource;
   let context: TransactionContext;
   let runner: TypeOrmTransactionRunner;
@@ -41,18 +43,23 @@ describe('TypeOrmTransactionRunner (CA-3, CA-29)', () => {
   };
 
   beforeAll(async () => {
+    owner = new DataSource(
+      buildDataSourceOptions({ DATABASE_URL: process.env['DATABASE_MIGRATION_URL'] ?? '' }),
+    );
+    await owner.initialize();
+    await owner.query(`CREATE TABLE ${TABLE} (id uuid PRIMARY KEY)`);
     dataSource = new DataSource(
       buildDataSourceOptions({ DATABASE_URL: process.env['DATABASE_URL'] ?? '' }),
     );
     await dataSource.initialize();
-    await dataSource.query(`CREATE TABLE ${TABLE} (id uuid PRIMARY KEY)`);
     context = new TransactionContext(dataSource);
     runner = new TypeOrmTransactionRunner(dataSource, context);
   });
 
   afterAll(async () => {
-    await dataSource.query(`DROP TABLE ${TABLE}`);
     await dataSource.destroy();
+    await owner.query(`DROP TABLE ${TABLE}`);
+    await owner.destroy();
   });
 
   it('CA-3: `run` confirma lo escrito', async () => {
