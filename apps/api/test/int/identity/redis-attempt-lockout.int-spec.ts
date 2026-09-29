@@ -10,6 +10,7 @@ const START = new Date('2026-09-30T10:00:00Z');
 const SECOND_MS = 1000;
 const MINUTE_MS = 60 * SECOND_MS;
 const POLICY: LockoutPolicy = { maxFailures: 5, windowSeconds: 15 * 60, lockSeconds: 15 * 60 };
+const CONCURRENT_FAILURES = 10;
 
 /** `IAttemptLockout` contra Redis real (plan §6.4; CA-5, CA-19, CA-23). */
 describe('RedisAttemptLockout (CA-5, CA-19, CA-23)', () => {
@@ -94,5 +95,42 @@ describe('RedisAttemptLockout (CA-5, CA-19, CA-23)', () => {
     for (const redisKey of [...pendingKeys, ...lockedKeys]) {
       expect(redisKey).not.toContain(email);
     }
+  });
+
+  it('CA-23: `clear` quita el bloqueo y los fallos acumulados', async () => {
+    await recordFailures(POLICY.maxFailures);
+    await lockout.clear(key);
+
+    await expect(lockout.check(key)).resolves.toEqual({ locked: false });
+    await recordFailures(POLICY.maxFailures - 1);
+    await expect(lockout.check(key)).resolves.toEqual({ locked: false });
+
+    await lockout.clear(key);
+    await expect(lockout.recordFailure(key, POLICY)).resolves.toEqual({ locked: false });
+  });
+
+  it('CA-19: 10 fallos simultáneos con máximo 5 dejan un solo bloqueo y ninguna excepción', async () => {
+    const states = await Promise.all(
+      Array.from({ length: CONCURRENT_FAILURES }, () => lockout.recordFailure(key, POLICY)),
+    );
+
+    expect(states.filter((state) => !state.locked)).toHaveLength(POLICY.maxFailures - 1);
+    expect(states.filter((state) => state.locked)).toHaveLength(
+      CONCURRENT_FAILURES - POLICY.maxFailures + 1,
+    );
+    await expect(redis.keys(`${key}*`)).resolves.toEqual([`${key}:lock`]);
+    await expect(lockout.check(key)).resolves.toEqual({ locked: true, retryAfterSeconds: 900 });
+  });
+
+  it('CA-5: con Redis caído, `check` lanza (falla cerrado)', async () => {
+    const down = new Redis('redis://127.0.0.1:1', {
+      lazyConnect: true,
+      maxRetriesPerRequest: 0,
+      retryStrategy: () => null,
+    });
+    down.on('error', () => undefined);
+
+    await expect(new RedisAttemptLockout(down, clock).check(key)).rejects.toThrow();
+    down.disconnect();
   });
 });
