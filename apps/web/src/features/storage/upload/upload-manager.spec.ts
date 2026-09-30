@@ -8,6 +8,7 @@ import {
   type UploadClient,
   type UploadManagerOptions,
 } from './upload-manager';
+import { XhrPutFailedError, type PutObjectRequest } from './xhr-put';
 
 const expiresAt = '2026-09-30T06:00:00.000Z';
 const SIMPLE_ID = '00000000-0000-4000-8000-000000000001';
@@ -107,8 +108,36 @@ async function flush(): Promise<void> {
   await new Promise((resolve) => setImmediate(resolve));
 }
 
+function abortError(): Error {
+  const error = new Error('abort');
+  error.name = 'AbortError';
+  return error;
+}
+
+/** `PUT` que no termina hasta que se aborta (o hasta `release`). */
+function hangingPut(puts: string[] = []): {
+  readonly put: (request: PutObjectRequest) => Promise<void>;
+  readonly release: () => void;
+} {
+  const pending: Array<() => void> = [];
+  return {
+    put: (request) => {
+      puts.push(request.url);
+      return new Promise((resolve, reject) => {
+        pending.push(resolve);
+        request.signal?.addEventListener('abort', () => reject(abortError()));
+      });
+    },
+    release: () => pending.splice(0).forEach((resolve) => resolve()),
+  };
+}
+
 function managerWith(client: FakeClient, options: UploadManagerOptions = {}): UploadManager {
-  return new UploadManager(client, { put: async () => undefined, ...options });
+  return new UploadManager(client, {
+    put: async () => undefined,
+    sleep: async () => undefined,
+    ...options,
+  });
 }
 
 function onlyRow(
@@ -439,5 +468,464 @@ describe('UploadManager: inicio, conflicto y subida', () => {
     manager.enqueue([local('otra.txt')]);
     await manager.idle();
     expect(listener).not.toHaveBeenCalled();
+  });
+});
+
+describe('UploadManager: pausa, reanudación, corte y cancelación', () => {
+  const partsResumed = async (): Promise<ResumeUploadResponse> => ({
+    uploadId: PARTS_ID,
+    mode: 'multipart',
+    expiresAt,
+    completedParts: [{ partNumber: 1, sizeBytes: 2 }],
+    pending: {
+      partSizeBytes: 2,
+      totalParts: 2,
+      parts: [{ partNumber: 2, url: 'https://minio.local/only-2' }],
+      urlsExpireAt: expiresAt,
+    },
+  });
+
+  function sequentialIds(): () => string {
+    let next = 0;
+    return () => {
+      next += 1;
+      return `local-${String(next)}`;
+    };
+  }
+
+  it('CA-22: pausar una simple aborta el PUT, marca «Se reiniciará al reanudar» y al reanudar empieza de cero', async () => {
+    const client = new FakeClient();
+    const puts: string[] = [];
+    const hanging = hangingPut(puts);
+    const manager = managerWith(client, {
+      put: (request) => {
+        request.onProgress({ loadedBytes: 2, totalBytes: 3 });
+        return hanging.put(request);
+      },
+    });
+
+    manager.enqueue([local('nota.txt')]);
+    await flush();
+    manager.pause(onlyRow(manager).id);
+
+    expect(onlyRow(manager)).toMatchObject({
+      phase: 'paused',
+      restartsOnResume: true,
+      loadedBytes: 2,
+    });
+    await flush();
+    expect(client.cancels).toEqual([]);
+
+    manager.resume(onlyRow(manager).id);
+    await flush();
+    expect(client.resumes).toEqual([SIMPLE_ID]);
+    expect(puts).toEqual([`https://minio.local/${SIMPLE_ID}`, 'https://minio.local/resumed']);
+    expect(onlyRow(manager)).toMatchObject({ phase: 'uploading', restartsOnResume: false });
+    hanging.release();
+    await manager.idle();
+    expect(onlyRow(manager).phase).toBe('done');
+  });
+
+  it('CA-8: reanudar por partes pide resume y solo sube las faltantes, desde los bytes ya completos', async () => {
+    const client = new FakeClient();
+    client.initResult = async (body) => multipartResponse(body.name, 2, 2);
+    client.resumeResult = partsResumed;
+    const puts: string[] = [];
+    const hanging = hangingPut(puts);
+    const manager = managerWith(client, { put: hanging.put });
+
+    manager.enqueue([local('grande.bin', 4)]);
+    await flush();
+    manager.pause(onlyRow(manager).id);
+    expect(onlyRow(manager)).toMatchObject({ phase: 'paused', restartsOnResume: false });
+
+    manager.resume(onlyRow(manager).id);
+    await flush();
+    expect(onlyRow(manager).loadedBytes).toBe(2);
+    hanging.release();
+    await manager.idle();
+
+    expect(client.resumes).toEqual([PARTS_ID]);
+    expect(puts).toEqual([
+      'https://minio.local/part-1',
+      'https://minio.local/part-2',
+      'https://minio.local/only-2',
+    ]);
+    expect(onlyRow(manager)).toMatchObject({ phase: 'done', loadedBytes: 4 });
+  });
+
+  it('CA-8: pausada no ocupa lugar: el siguiente archivo de la cola empieza', async () => {
+    const client = new FakeClient();
+    const manager = managerWith(client, { put: hangingPut().put });
+
+    manager.enqueue([local('a.txt'), local('b.txt'), local('c.txt')]);
+    await flush();
+    manager.pause(manager.snapshot()[0]?.id ?? '');
+    await flush();
+
+    expect(client.inits.map((call) => call.name)).toEqual(['a.txt', 'b.txt', 'c.txt']);
+  });
+
+  it('CA-8: pausar mientras se inicia conserva la sesión y al reanudar la retoma', async () => {
+    const client = new FakeClient();
+    let answer = (): void => undefined;
+    client.initResult = (body) =>
+      new Promise((resolve) => {
+        answer = () => resolve(simpleResponse(body.name));
+      });
+    const manager = managerWith(client);
+
+    manager.enqueue([local('nota.txt')]);
+    manager.pause(onlyRow(manager).id);
+    answer();
+    await manager.idle();
+    expect(onlyRow(manager)).toMatchObject({ phase: 'paused', restartsOnResume: true });
+    expect(client.cancels).toEqual([]);
+
+    manager.resume(onlyRow(manager).id);
+    await manager.idle();
+    expect(client.resumes).toEqual([SIMPLE_ID]);
+    expect(onlyRow(manager).phase).toBe('done');
+  });
+
+  it('CA-8: un corte de red deja la carga «en espera» y el evento online llama a resume', async () => {
+    const client = new FakeClient();
+    let attempts = 0;
+    const manager = managerWith(client, {
+      isOnline: () => false,
+      put: async () => {
+        attempts += 1;
+        if (attempts === 1) throw new XhrPutFailedError(0);
+      },
+    });
+
+    manager.enqueue([local('nota.txt')]);
+    await manager.idle();
+    expect(onlyRow(manager)).toMatchObject({ phase: 'offline', restartsOnResume: true });
+
+    manager.networkOnline();
+    await manager.idle();
+
+    expect(client.resumes).toEqual([SIMPLE_ID]);
+    expect(onlyRow(manager).phase).toBe('done');
+  });
+
+  it('CA-8: el evento offline detiene lo que se envía y deja quietas las pausadas', async () => {
+    const client = new FakeClient();
+    client.initResult = async (body) =>
+      simpleResponse(body.name, body.name === 'a.txt' ? SIMPLE_ID : PARTS_ID);
+    const aborted: string[] = [];
+    const manager = managerWith(client, {
+      createId: sequentialIds(),
+      put: (request) =>
+        new Promise((_resolve, reject) => {
+          request.signal?.addEventListener('abort', () => {
+            aborted.push(request.url);
+            reject(abortError());
+          });
+        }),
+    });
+
+    manager.enqueue([local('a.txt'), local('b.txt')]);
+    await flush();
+    manager.pause('local-2');
+    manager.networkOffline();
+
+    expect(manager.snapshot().map((row) => row.phase)).toEqual(['offline', 'paused']);
+    expect(aborted).toEqual([
+      `https://minio.local/${PARTS_ID}`,
+      `https://minio.local/${SIMPLE_ID}`,
+    ]);
+  });
+
+  it('CA-8: un fallo de red con el navegador en línea se reintenta como cualquier otro', async () => {
+    const client = new FakeClient();
+    let attempts = 0;
+    const manager = managerWith(client, {
+      isOnline: () => true,
+      put: async () => {
+        attempts += 1;
+        if (attempts < 3) throw new XhrPutFailedError(0);
+      },
+    });
+
+    manager.enqueue([local('nota.txt')]);
+    await manager.idle();
+
+    expect(attempts).toBe(3);
+    expect(onlyRow(manager).phase).toBe('done');
+  });
+
+  it('CA-8: un 403 (URL vencida) vuelve a pedir resume y reintenta con la URL nueva', async () => {
+    const client = new FakeClient();
+    const puts: string[] = [];
+    const manager = managerWith(client, {
+      put: async (request) => {
+        puts.push(request.url);
+        if (puts.length === 1) throw new XhrPutFailedError(403);
+      },
+    });
+
+    manager.enqueue([local('nota.txt')]);
+    await manager.idle();
+
+    expect(client.resumes).toEqual([SIMPLE_ID]);
+    expect(puts).toEqual([`https://minio.local/${SIMPLE_ID}`, 'https://minio.local/resumed']);
+    expect(onlyRow(manager).phase).toBe('done');
+  });
+
+  it('CA-8: un 403 en una parte renueva solo la URL de esa parte', async () => {
+    const client = new FakeClient();
+    client.initResult = async (body) => multipartResponse(body.name, 2, 2);
+    client.resumeResult = partsResumed;
+    const puts: string[] = [];
+    const manager = managerWith(client, {
+      put: async (request) => {
+        puts.push(request.url);
+        if (request.url.endsWith('part-2')) throw new XhrPutFailedError(403);
+      },
+    });
+
+    manager.enqueue([local('grande.bin', 4)]);
+    await manager.idle();
+
+    expect(puts).toEqual([
+      'https://minio.local/part-1',
+      'https://minio.local/part-2',
+      'https://minio.local/only-2',
+    ]);
+    expect(onlyRow(manager).phase).toBe('done');
+  });
+
+  it('CA-8: reintenta un PUT cinco veces con espera exponencial y jitter; luego rechaza y libera la reserva', async () => {
+    const client = new FakeClient();
+    const waits: number[] = [];
+    let attempts = 0;
+    const manager = managerWith(client, {
+      put: async () => {
+        attempts += 1;
+        throw new XhrPutFailedError(500);
+      },
+      sleep: async (milliseconds) => {
+        waits.push(milliseconds);
+      },
+      random: () => 0.5,
+    });
+
+    manager.enqueue([local('nota.txt')]);
+    await manager.idle();
+
+    expect(attempts).toBe(5);
+    expect(waits).toEqual([220, 440, 880, 1760]);
+    expect(onlyRow(manager)).toMatchObject({ phase: 'rejected', errorCode: null });
+    expect(client.completes).toEqual([]);
+    expect(client.cancels).toEqual([SIMPLE_ID]);
+  });
+
+  it('CA-8: un corte en una parte detiene las demás partes de ese archivo', async () => {
+    const client = new FakeClient();
+    client.initResult = async (body) => multipartResponse(body.name, 2, 2);
+    const aborted: string[] = [];
+    const manager = managerWith(client, {
+      isOnline: () => false,
+      put: (request) => {
+        if (request.url.endsWith('part-1')) return Promise.reject(new XhrPutFailedError(0));
+        return new Promise((_resolve, reject) => {
+          request.signal?.addEventListener('abort', () => {
+            aborted.push(request.url);
+            reject(abortError());
+          });
+        });
+      },
+    });
+
+    manager.enqueue([local('grande.bin', 4)]);
+    await manager.idle();
+
+    expect(onlyRow(manager).phase).toBe('offline');
+    expect(aborted).toEqual(['https://minio.local/part-2']);
+  });
+
+  it('CA-8: si se corta durante complete, al volver la red repite complete sin volver a subir', async () => {
+    const client = new FakeClient();
+    let completes = 0;
+    client.completeResult = async () => {
+      completes += 1;
+      if (completes === 1) throw new TypeError('Failed to fetch');
+      return { file: fileSummary('nota.txt', 3) };
+    };
+    const puts: string[] = [];
+    const manager = managerWith(client, {
+      put: async (request) => {
+        puts.push(request.url);
+      },
+    });
+
+    manager.enqueue([local('nota.txt')]);
+    await manager.idle();
+    expect(onlyRow(manager).phase).toBe('offline');
+
+    manager.networkOnline();
+    await manager.idle();
+
+    expect(client.resumes).toEqual([]);
+    expect(puts).toHaveLength(1);
+    expect(client.completes).toEqual([SIMPLE_ID, SIMPLE_ID]);
+    expect(onlyRow(manager).phase).toBe('done');
+  });
+
+  it('CA-22: con 0 % cancela directo, sin pedir confirmación', async () => {
+    const client = new FakeClient();
+    const manager = managerWith(client, { put: hangingPut().put });
+
+    manager.enqueue([local('nota.txt')]);
+    await flush();
+    manager.requestCancel(onlyRow(manager).id);
+    await manager.idle();
+
+    expect(onlyRow(manager)).toMatchObject({ phase: 'cancelled', awaitingCancel: false });
+    expect(client.cancels).toEqual([SIMPLE_ID]);
+  });
+
+  it('CA-22: con progreso pausa y espera; «Cancelar carga» cancela en el servidor', async () => {
+    const client = new FakeClient();
+    const hanging = hangingPut();
+    const manager = managerWith(client, {
+      put: (request) => {
+        request.onProgress({ loadedBytes: 1, totalBytes: 3 });
+        return hanging.put(request);
+      },
+    });
+
+    manager.enqueue([local('nota.txt')]);
+    await flush();
+    manager.requestCancel(onlyRow(manager).id);
+
+    expect(onlyRow(manager)).toMatchObject({ phase: 'paused', awaitingCancel: true });
+    expect(client.cancels).toEqual([]);
+
+    manager.confirmCancel(onlyRow(manager).id);
+    await manager.idle();
+    expect(onlyRow(manager)).toMatchObject({ phase: 'cancelled', awaitingCancel: false });
+    expect(client.cancels).toEqual([SIMPLE_ID]);
+  });
+
+  it('CA-22: «Seguir subiendo» reanuda la carga que iba en curso', async () => {
+    const client = new FakeClient();
+    const hanging = hangingPut();
+    let first = true;
+    const manager = managerWith(client, {
+      put: (request) => {
+        request.onProgress({ loadedBytes: 1, totalBytes: 3 });
+        if (!first) return Promise.resolve();
+        first = false;
+        return hanging.put(request);
+      },
+    });
+
+    manager.enqueue([local('nota.txt')]);
+    await flush();
+    manager.requestCancel(onlyRow(manager).id);
+    manager.dismissCancel(onlyRow(manager).id);
+    await manager.idle();
+
+    expect(client.resumes).toEqual([SIMPLE_ID]);
+    expect(onlyRow(manager)).toMatchObject({ phase: 'done', awaitingCancel: false });
+    expect(client.cancels).toEqual([]);
+  });
+
+  it('CA-22: si ya estaba en pausa, «Seguir subiendo» la deja en pausa', async () => {
+    const client = new FakeClient();
+    const hanging = hangingPut();
+    const manager = managerWith(client, {
+      put: (request) => {
+        request.onProgress({ loadedBytes: 1, totalBytes: 3 });
+        return hanging.put(request);
+      },
+    });
+
+    manager.enqueue([local('nota.txt')]);
+    await flush();
+    manager.pause(onlyRow(manager).id);
+    manager.requestCancel(onlyRow(manager).id);
+    expect(onlyRow(manager).awaitingCancel).toBe(true);
+    manager.dismissCancel(onlyRow(manager).id);
+
+    expect(onlyRow(manager)).toMatchObject({ phase: 'paused', awaitingCancel: false });
+    expect(client.resumes).toEqual([]);
+  });
+
+  it('CA-22: cancelar mientras se inicia cancela también la sesión que llega después', async () => {
+    const client = new FakeClient();
+    let answer = (): void => undefined;
+    client.initResult = (body) =>
+      new Promise((resolve) => {
+        answer = () => resolve(simpleResponse(body.name));
+      });
+    const manager = managerWith(client);
+
+    manager.enqueue([local('nota.txt')]);
+    manager.requestCancel(onlyRow(manager).id);
+    answer();
+    await manager.idle();
+
+    expect(onlyRow(manager).phase).toBe('cancelled');
+    expect(client.cancels).toEqual([SIMPLE_ID]);
+  });
+
+  it('CA-22: una carga rechazada no se puede cancelar', async () => {
+    const client = new FakeClient();
+    client.initResult = async () => {
+      throw new StorageRequestError(422, 'STORAGE_EMPTY_FILE');
+    };
+    const manager = managerWith(client);
+
+    manager.enqueue([local('vacio.txt', 0)]);
+    await manager.idle();
+    manager.requestCancel(onlyRow(manager).id);
+
+    expect(onlyRow(manager).phase).toBe('rejected');
+    expect(client.cancels).toEqual([]);
+  });
+
+  it('CA-19: un 429 deja la fila en espera y «Reintentar» vuelve a iniciar', async () => {
+    const client = new FakeClient();
+    let calls = 0;
+    client.initResult = async (body) => {
+      calls += 1;
+      if (calls === 1) throw new StorageRequestError(429, 'STORAGE_TOO_MANY_REQUESTS');
+      return simpleResponse(body.name);
+    };
+    const manager = managerWith(client);
+
+    manager.enqueue([local('nota.txt')]);
+    await manager.idle();
+    expect(onlyRow(manager)).toMatchObject({
+      phase: 'rate_limited',
+      errorCode: 'STORAGE_TOO_MANY_REQUESTS',
+    });
+
+    manager.retry(onlyRow(manager).id);
+    await manager.idle();
+    expect(onlyRow(manager)).toMatchObject({ phase: 'done', errorCode: null });
+  });
+
+  it('CA-9: un 410 al reanudar marca la carga como caducada', async () => {
+    const client = new FakeClient();
+    client.resumeResult = async () => {
+      throw new StorageRequestError(410, 'STORAGE_UPLOAD_EXPIRED');
+    };
+    const manager = managerWith(client, { put: hangingPut().put });
+
+    manager.enqueue([local('nota.txt')]);
+    await flush();
+    manager.pause(onlyRow(manager).id);
+    manager.resume(onlyRow(manager).id);
+    await manager.idle();
+
+    expect(onlyRow(manager)).toMatchObject({
+      phase: 'expired',
+      errorCode: 'STORAGE_UPLOAD_EXPIRED',
+    });
   });
 });
