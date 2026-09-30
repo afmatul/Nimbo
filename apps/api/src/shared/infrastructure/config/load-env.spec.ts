@@ -13,6 +13,7 @@ const VALID_API = {
   MINIO_SECRET_KEY: 'nimbo-secret',
   WEB_PUBLIC_URL: 'http://localhost',
   CORS_ORIGIN: 'http://localhost,http://localhost:3002',
+  JWT_ACCESS_SECRET: 'secreto-de-prueba-de-al-menos-32-caracteres',
 };
 
 /** Mínimo válido para `worker`: el contrato común y el SMTP de Mailpit (001 plan §6.10). */
@@ -78,6 +79,7 @@ describe('loadEnv(apiEnvSchema)', () => {
         '`MINIO_SECRET_KEY` es obligatoria',
         '`WEB_PUBLIC_URL` es obligatoria',
         '`CORS_ORIGIN` es obligatoria',
+        '`JWT_ACCESS_SECRET` es obligatoria',
       ],
     });
   });
@@ -351,6 +353,11 @@ describe('loadEnv(migrationEnvSchema) (003 plan §6.8)', () => {
 
 describe('SECRET_KEYS', () => {
   it('CA-18: las claves secretas son exactamente las de `config/secret-keys.ts`', () => {
-    expect([...SECRET_KEYS]).toEqual(['MINIO_ACCESS_KEY', 'MINIO_SECRET_KEY', 'SMTP_PASSWORD']);
+    expect([...SECRET_KEYS]).toEqual([
+      'MINIO_ACCESS_KEY',
+      'MINIO_SECRET_KEY',
+      'SMTP_PASSWORD',
+      'JWT_ACCESS_SECRET',
+    ]);
   });
 });

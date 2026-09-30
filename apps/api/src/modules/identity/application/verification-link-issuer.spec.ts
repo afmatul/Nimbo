@@ -15,7 +15,10 @@ const LINK_PATTERN = /^http:\/\/localhost\/verificar-correo#token=([A-Za-z0-9_-]
 
 const setup = (webPublicUrl = WEB_PUBLIC_URL) => {
   const tokens = new InMemoryVerificationTokenRepository();
-  const issuer = new VerificationLinkIssuer(tokens, new FixedClock(NOW), { webPublicUrl });
+  const issuer = new VerificationLinkIssuer(tokens, new FixedClock(NOW), {
+    webPublicUrl,
+    cookieSecure: false,
+  });
   return { tokens, issuer };
 };
 

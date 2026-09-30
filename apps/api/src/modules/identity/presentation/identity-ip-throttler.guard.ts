@@ -9,7 +9,12 @@ import type {
   ThrottlerRequest,
   ThrottlerStorage,
 } from '@nestjs/throttler';
-import { REGISTRATIONS_PER_IP_PER_HOUR, RESENDS_PER_IP_PER_HOUR } from '@nimbo/contracts';
+import {
+  LOGIN_ATTEMPTS_PER_IP,
+  LOGIN_IP_WINDOW_MINUTES,
+  REGISTRATIONS_PER_IP_PER_HOUR,
+  RESENDS_PER_IP_PER_HOUR,
+} from '@nimbo/contracts';
 import { PinoLogger } from 'nestjs-pino';
 
 import type { IdentityLogger } from '../application/identity-logger';
@@ -20,23 +25,32 @@ import type { IdentityRateLimitScope } from '../domain/errors';
 export const REGISTER_IP_THROTTLER = 'register-ip';
 /** *Throttler* por IP del reenvío, con su propio contador (D-8 ampliada, SEC-1). */
 export const RESEND_IP_THROTTLER = 'resend-ip';
+/** *Throttler* por IP del inicio de sesión: cuenta todos los intentos, correctos o no (002 D-5, CA-6). */
+export const LOGIN_IP_THROTTLER = 'login-ip';
 
 const ONE_HOUR_MS = 3_600_000;
+const MS_PER_MINUTE = 60_000;
 
 /**
  * *Throttlers* de `identity`, en memoria (ADR-0017): `AppModule` los registra con `ThrottlerModule.forRoot` y cada
  * ruta los aplica con `IdentityIpThrottlerGuard`, omitiendo con `@SkipThrottle` los que no le corresponden (la librería
- * aplica todos los *throttlers* con nombre a cada ruta). 002-PR-2 agrega `login-ip`.
+ * aplica todos los *throttlers* con nombre a cada ruta).
  */
 export const IDENTITY_THROTTLERS: readonly ThrottlerOptions[] = [
   { name: REGISTER_IP_THROTTLER, ttl: ONE_HOUR_MS, limit: REGISTRATIONS_PER_IP_PER_HOUR },
   { name: RESEND_IP_THROTTLER, ttl: ONE_HOUR_MS, limit: RESENDS_PER_IP_PER_HOUR },
+  {
+    name: LOGIN_IP_THROTTLER,
+    ttl: LOGIN_IP_WINDOW_MINUTES * MS_PER_MINUTE,
+    limit: LOGIN_ATTEMPTS_PER_IP,
+  },
 ];
 
-/** Tabla *throttler* → ámbito de `identity.rate_limited` (plan §6.5). 002-PR-2 agrega `login-ip`. */
+/** Tabla *throttler* → ámbito de `identity.rate_limited` y del mensaje (plan §6.5, 002 DT-20). */
 const THROTTLER_SCOPES: Readonly<Record<string, IdentityRateLimitScope>> = {
   [REGISTER_IP_THROTTLER]: 'ip',
   [RESEND_IP_THROTTLER]: 'ip',
+  [LOGIN_IP_THROTTLER]: 'ip_login',
 };
 
 /**

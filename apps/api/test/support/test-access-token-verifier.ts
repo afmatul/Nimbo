@@ -13,7 +13,7 @@ const MS_PER_SECOND = 1000;
 const payloadSchema = z
   .object({
     sub: z.string().uuid(),
-    role: z.nativeEnum(Role),
+    rol: z.nativeEnum(Role),
     sid: z.string().uuid(),
     iat: z.number().int(),
     exp: z.number().int(),
@@ -38,11 +38,11 @@ export class TestAccessTokenVerifier implements IAccessTokenVerifier {
     if (!parsed.success) {
       return Promise.resolve(INVALID);
     }
-    const { sub, role, sid, exp } = parsed.data;
+    const { sub, rol, sid, exp } = parsed.data;
     if (exp * MS_PER_SECOND <= this.clock.now().getTime()) {
       return Promise.resolve(EXPIRED);
     }
-    return Promise.resolve({ valid: true, claims: { userId: sub, role, sessionId: sid } });
+    return Promise.resolve({ valid: true, claims: { userId: sub, role: rol, sessionId: sid } });
   }
 
   private decode(token: string): unknown {

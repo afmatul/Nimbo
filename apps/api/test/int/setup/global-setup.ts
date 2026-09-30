@@ -27,6 +27,7 @@ export default async function globalSetup(): Promise<void> {
     LOG_LEVEL: 'info',
     WEB_PUBLIC_URL: 'http://localhost',
     CORS_ORIGIN: 'http://localhost',
+    JWT_ACCESS_SECRET: 'secreto-de-prueba-de-al-menos-32-caracteres',
     ...infraEnv,
   });
 }

@@ -1,4 +1,8 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
+import type {
+  CorsOptions,
+  CorsOptionsDelegate,
+} from '@nestjs/common/interfaces/external/cors-options.interface';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import type { NextFunction, Request, Response } from 'express';
 import { Logger } from 'nestjs-pino';
@@ -18,9 +22,11 @@ const API_PREFIX = 'api/v1';
 const TRUSTED_PROXY_HOPS = 1;
 /** Ninguna ruta pública recibe más que un formulario corto (DT-12). */
 const JSON_BODY_LIMIT = '16kb';
-const CORS_METHODS = ['GET', 'POST'];
-const CORS_ALLOWED_HEADERS = ['content-type', CORRELATION_ID_HEADER];
+const CORS_METHODS = ['GET', 'POST', 'DELETE'];
+const CORS_ALLOWED_HEADERS = ['content-type', CORRELATION_ID_HEADER, 'authorization'];
 const CORS_EXPOSED_HEADERS = [CORRELATION_ID_HEADER, 'retry-after'];
+/** Sin CORS: el paquete `cors` no escribe ninguna cabecera, ni siquiera `Access-Control-Allow-Credentials`. */
+const NO_CORS: CorsOptions = { origin: false };
 
 /**
  * Rutas cuyas respuestas nunca se guardan en caché (plan 001 §5): las de `auth`. Se fija aquí, antes del analizador,
@@ -60,6 +66,27 @@ const translateBodyParserError = (
   next(error);
 };
 
+/**
+ * CORS con credenciales, porque la cookie de refresco viaja entre la web y la API (plan 002 §6.7). Solo responde al
+ * origen exacto de la lista `CORS_ORIGIN`, nunca con comodín; un origen no listado no recibe ninguna cabecera CORS.
+ */
+const corsForOrigins =
+  (allowedOrigins: readonly string[]): CorsOptionsDelegate<Request> =>
+  (request, callback) => {
+    const origin = request.headers.origin;
+    if (origin === undefined || !allowedOrigins.includes(origin)) {
+      callback(null, NO_CORS);
+      return;
+    }
+    callback(null, {
+      origin,
+      methods: CORS_METHODS,
+      allowedHeaders: CORS_ALLOWED_HEADERS,
+      exposedHeaders: CORS_EXPOSED_HEADERS,
+      credentials: true,
+    });
+  };
+
 const noStoreForAuth = (request: Request, response: Response, next: NextFunction): void => {
   if (request.path.toLowerCase().startsWith(NO_STORE_PATH_PREFIX)) {
     response.setHeader('Cache-Control', 'no-store');
@@ -71,7 +98,7 @@ const noStoreForAuth = (request: Request, response: Response, next: NextFunction
  * Configuración HTTP común de `main.ts` y del arnés de integración (plan 001 §6.7). La app debe crearse con
  * `bodyParser: false`: aquí se instala **solo** el analizador JSON, así un cuerpo `text/plain` o de formulario llega
  * vacío (001 CA-6). El orden importa: correlación, versión y `no-store` de `auth` antes del analizador, para que sus
- * errores también lleven `x-correlation-id` y `Cache-Control`. `credentials` de CORS lo activa 002 cuando existan cookies.
+ * errores también lleven `x-correlation-id` y `Cache-Control`.
  */
 export const configureHttpApp = (app: NestExpressApplication, env: HttpAppEnv): void => {
   const correlation = new CorrelationIdMiddleware();
@@ -80,12 +107,7 @@ export const configureHttpApp = (app: NestExpressApplication, env: HttpAppEnv): 
   app.use(version.use.bind(version));
   app.use(noStoreForAuth);
   app.set('trust proxy', TRUSTED_PROXY_HOPS);
-  app.enableCors({
-    origin: env.CORS_ORIGIN,
-    methods: CORS_METHODS,
-    allowedHeaders: CORS_ALLOWED_HEADERS,
-    exposedHeaders: CORS_EXPOSED_HEADERS,
-  });
+  app.enableCors(corsForOrigins(env.CORS_ORIGIN));
   app.useBodyParser('json', { limit: JSON_BODY_LIMIT });
   app.use(translateBodyParserError);
   app.setGlobalPrefix(API_PREFIX);
