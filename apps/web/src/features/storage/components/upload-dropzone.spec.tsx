@@ -34,9 +34,10 @@ function fileInput(): HTMLInputElement {
 async function dispatchDrag(
   type: 'dragenter' | 'dragover' | 'dragleave' | 'drop',
   files: readonly File[] = [],
+  types: readonly string[] = ['Files'],
 ): Promise<Event> {
   const event = new Event(type, { bubbles: true, cancelable: true });
-  Object.defineProperty(event, 'dataTransfer', { value: { files, types: ['Files'] } });
+  Object.defineProperty(event, 'dataTransfer', { value: { files, types } });
   await act(async () => {
     zone().dispatchEvent(event);
   });
@@ -130,6 +131,38 @@ describe('UploadDropzone (CA-1, CA-21)', () => {
     await mount(<UploadDropzone maxFileLabel="25 MB" onFiles={jest.fn()} inputRef={inputRef} />);
 
     expect(inputRef.current).toBe(fileInput());
+  });
+
+  it('CA-21 (UI-5): la región de anuncios está montada antes de arrastrar y se llena al arrastrar', async () => {
+    await mount(<UploadDropzone onFiles={jest.fn()} />);
+    const status = document.querySelector('[role="status"]');
+
+    expect(status?.className).toContain('sr-only');
+    expect(status?.textContent).toBe('');
+
+    await dispatchDrag('dragenter');
+
+    expect(document.querySelectorAll('[role="status"]')).toHaveLength(1);
+    expect(status?.textContent).toContain('Suelta para subir');
+  });
+
+  it('CA-21 (UI-5): la etiqueta visible queda fija al pie de la ventana aunque la lista sea larga', async () => {
+    await mount(<UploadDropzone onFiles={jest.fn()} />);
+
+    await dispatchDrag('dragenter');
+
+    const label = document.querySelector('[data-testid="drop-label"]');
+    expect(label?.className).toContain('fixed');
+    expect(label?.className).toContain('bottom-4');
+    expect(label?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('CA-21 (UI-5): un arrastre sin archivos (texto o enlace) no muestra «Suelta para subir»', async () => {
+    await mount(<UploadDropzone onFiles={jest.fn()} />);
+
+    await dispatchDrag('dragenter', [], ['text/plain']);
+
+    expect(document.body.textContent).not.toContain('Suelta para subir');
   });
 
   it('CA-21: usa solo tokens de Cielo Sereno, sin colores crudos', async () => {
