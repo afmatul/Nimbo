@@ -117,6 +117,12 @@ Hay dos roles. El **dueño** de las tablas (`POSTGRES_USER`, `DATABASE_MIGRATION
 la migración `conceder-permisos-nimbo-app` (`usuario` y `token_cuenta` sin `DELETE`, `migracion` sin permisos; las
 tablas nuevas reciben `SELECT/INSERT/UPDATE/DELETE` por privilegios por defecto).
 
+**Un solo rol dueño en todos los ambientes (005, ADR-0021).** `archivo`, `version_archivo` y `carga` tienen RLS
+forzada. La función `carga_expiradas` (`SECURITY DEFINER`, la usa el barrido de cargas vencidas del `worker`) se
+apoya en la política `carga_mantenimiento`, creada `TO CURRENT_USER`: queda atada al rol que corrió la migración.
+Por eso todas las migraciones corren siempre con el mismo `DATABASE_MIGRATION_URL`; cambiar el rol dueño exige una
+migración nueva que recree esa política. Con un dueño superusuario (local y pruebas `int`) la política es inerte.
+
 Al arrancar, `DatabaseRoleCheck` consulta el rol de la conexión. Si es superusuario, tiene `BYPASSRLS` o es dueño de
 alguna tabla de `public` (también por pertenencia a otro rol), registra `db.role_rejected` (`fatal`, solo tres
 booleanos, sin URL) y el proceso termina antes de abrir el puerto: «La API debe conectarse como nimbo_app; revisa
