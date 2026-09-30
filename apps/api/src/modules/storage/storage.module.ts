@@ -8,27 +8,17 @@ import { AuditModule } from '../audit';
 import { FILE_SERVICE_CONFIG } from './application/file-service-config';
 import type { FileServiceConfig } from './application/file-service-config';
 import { FileService } from './application/file.service';
-import { I_FILE_TYPE_DETECTOR } from './application/ports/i-file-type-detector.port';
-import { I_NODE_REPOSITORY } from './application/ports/i-node.repository.port';
 import { I_OBJECT_STORAGE } from './application/ports/i-object-storage.port';
 import type { IObjectStorage } from './application/ports/i-object-storage.port';
-import { I_QUOTA_REPOSITORY } from './application/ports/i-quota.repository.port';
-import { I_UPLOAD_SESSION_REPOSITORY } from './application/ports/i-upload-session.repository.port';
-import { QuotaService } from './application/quota.service';
 import { UPLOAD_CONFIG } from './application/upload-config';
 import type { UploadConfig } from './application/upload-config';
-import { UploadRegistrar } from './application/upload-registrar';
-import { UploadService } from './application/upload.service';
-import { MagicBytesDetector } from './infrastructure/magic-bytes.detector';
 import {
   buildMinioStorageClients,
   MinioStorageAdapter,
 } from './infrastructure/minio-storage.adapter';
-import { TypeOrmNodeRepository } from './infrastructure/persistence/typeorm-node.repository';
-import { TypeOrmQuotaRepository } from './infrastructure/persistence/typeorm-quota.repository';
-import { TypeOrmUploadSessionRepository } from './infrastructure/persistence/typeorm-upload-session.repository';
 import { FilesController } from './presentation/files.controller';
 import { UploadsController } from './presentation/uploads.controller';
+import { UPLOAD_LIFECYCLE_PROVIDERS } from './upload-lifecycle.providers';
 
 /** Variables del `api` que `storage` usa (plan §5); las de MinIO internas llegan por `MINIO_CONFIG`. */
 export type StorageEnv = Pick<
@@ -75,13 +65,7 @@ export class StorageModule {
               config.MINIO_BUCKET,
             ),
         },
-        { provide: I_FILE_TYPE_DETECTOR, useClass: MagicBytesDetector },
-        { provide: I_NODE_REPOSITORY, useClass: TypeOrmNodeRepository },
-        { provide: I_UPLOAD_SESSION_REPOSITORY, useClass: TypeOrmUploadSessionRepository },
-        { provide: I_QUOTA_REPOSITORY, useClass: TypeOrmQuotaRepository },
-        QuotaService,
-        UploadRegistrar,
-        UploadService,
+        ...UPLOAD_LIFECYCLE_PROVIDERS,
         FileService,
       ],
     };

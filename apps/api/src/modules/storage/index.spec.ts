@@ -20,15 +20,27 @@ type _LimitsForSignature = Expect<
 >;
 
 /**
- * API pública de `storage` (plan §6, DF-51 opción A): el token del puerto de límites y el módulo que monta la raíz de
- * composición. El detector, el escáner y los repositorios no salen.
+ * API pública de `storage` (plan §6, DF-51 opción A): el token del puerto de límites, el módulo que monta la raíz de
+ * composición del `api` y el del `worker` (T-51). El detector, el escáner y los repositorios no salen.
  */
-const RUNTIME_EXPORTS = ['I_PLAN_LIMITS_PROVIDER', 'StorageModule'] as const;
+const RUNTIME_EXPORTS = ['I_PLAN_LIMITS_PROVIDER', 'StorageModule', 'StorageWorkerModule'] as const;
 
 describe('modules/storage/index.ts', () => {
-  it('CA-3, CA-4, RN-1: exporta exactamente el token del puerto de límites y `StorageModule`', () => {
+  it('CA-3, CA-4, CA-9, RN-1: exporta exactamente el token de límites, `StorageModule` y `StorageWorkerModule`', () => {
     expect(Object.keys(storage).sort()).toEqual([...RUNTIME_EXPORTS].sort());
     expect(typeof storage.I_PLAN_LIMITS_PROVIDER).toBe('symbol');
+  });
+
+  it('CA-9, DF-52: el escáner de cargas vencidas (único acceso sin actor) no sale del módulo', () => {
+    const exported = Object.keys(storage).join(' ');
+
+    expect(exported).not.toMatch(/Scanner|EXPIRED_UPLOAD/);
+  });
+
+  it('CA-9, DF-52: `UploadService` no recibe el escáner (solo lo inyecta el procesador de limpieza)', () => {
+    const source = readFileSync(join(__dirname, 'application', 'upload.service.ts'), 'utf8');
+
+    expect(source).not.toMatch(/I_EXPIRED_UPLOAD_SCANNER|IExpiredUploadScanner/);
   });
 
   it('RN-1: `plan-limits.ts` no importa `billing` (billing implementa el puerto, no al revés)', () => {

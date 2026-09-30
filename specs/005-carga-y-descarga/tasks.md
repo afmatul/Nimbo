@@ -482,13 +482,13 @@ salvo la lectura por rango del detector.
 
 ## Bloque 5 — PR-E «limpieza a las 24 h» (plan D-6, ADR-0021) · depende de: PR-D
 
-- [ ] **T-48** `IExpiredUploadScanner` — CA: CA-9 — Depende: T-24 — ~2 h
+- [x] **T-48** `IExpiredUploadScanner` — CA: CA-9 — Depende: T-24 — ~2 h
   Prueba primero `expired-upload.scanner.int-spec.ts`: `listExpiredIds(now, limit)` llama `carga_expiradas` y solo
   devuelve `{ id, propietarioId }` de activas vencidas. No se exporta desde `storage/index.ts`. `UploadService` no
   lo recibe.
   Archivos: `apps/api/src/modules/storage/application/ports/i-expired-upload.scanner.port.ts`, `apps/api/src/modules/storage/infrastructure/persistence/sql-expired-upload.scanner.ts`, `apps/api/test/int/storage/expired-upload.scanner.int-spec.ts`, `apps/api/src/modules/storage/index.spec.ts`.
 
-- [ ] **T-49** `UploadCleanupProcessor` y programa repetible — CA: CA-9 — Depende: T-36, T-48 — ~3 h
+- [x] **T-49** `UploadCleanupProcessor` y programa repetible — CA: CA-9 — Depende: T-36, T-48 — ~3 h
   Prueba primero `upload-cleanup.processor.spec.ts` con cola y scanner falsos: `concurrency: 1`, `attempts: 3`,
   espera exponencial. Fase 1: `ITransactionRunner.run` (sin actor) llama al scanner. Fase 2: por fila,
   `withActor(createActor(propietarioId, Role.CLIENT), () => uploadService.expire(...))`. Un fallo de fila se registra
@@ -498,7 +498,7 @@ salvo la lectura por rango del detector.
   `@nestjs/schedule`.
   Archivos: `apps/api/src/modules/storage/infrastructure/upload-cleanup.processor.ts`, `apps/api/src/modules/storage/infrastructure/upload-cleanup.scheduler.ts`, `apps/api/src/modules/storage/infrastructure/upload-cleanup.processor.spec.ts`.
 
-- [ ] **T-50** Aislamiento del mantenimiento — CA: CA-9, DF-52 — Depende: T-24, T-48 — ~4 h
+- [x] **T-50** Aislamiento del mantenimiento — CA: CA-9, DF-52 — Depende: T-24, T-48 — ~4 h
   `storage-maintenance.iso-spec.ts` con contenedor propio: un script de arranque (superusuario) crea el rol dueño
   `NOSUPERUSER`, la base, `CREATE EXTENSION vector` y `nimbo_app`; las migraciones corren con ese dueño. La suite
   **falla con mensaje explícito** si el dueño es superusuario (no pasa en vacío). Afirma: `nimbo_app` sin actor ve
@@ -507,7 +507,7 @@ salvo la lectura por rango del detector.
   `carga_mantenimiento` y la función son del dueño de `carga`.
   Archivos: `apps/api/test/isolation/storage-maintenance.iso-spec.ts`, `apps/api/test/isolation/setup/nosuperuser-postgres.ts`.
 
-- [ ] **T-51** Worker y carrera con `complete` — CA: CA-9 — Depende: T-49, T-50 — ~3 h
+- [x] **T-51** Worker y carrera con `complete` — CA: CA-9 — Depende: T-49, T-50 — ~3 h
   `StorageWorkerModule` lo importa `apps/worker` **solo** desde `storage/index.ts` (exportar el módulo de worker
   desde el índice; seguir sin exportar el scanner). `WorkerModule` importa `MinioConfigModule` y
   `StorageWorkerModule`. `upload-cleanup.int-spec.ts`: el job expira, borra partes, libera la reserva y un `resume`
@@ -515,7 +515,7 @@ salvo la lectura por rango del detector.
   `pnpm test:isolation` junto con T-45.
   Archivos: `apps/api/src/modules/storage/storage-worker.module.ts`, `apps/api/src/modules/storage/index.ts`, `apps/api/src/worker.module.ts`, `apps/api/test/int/storage/upload-cleanup.int-spec.ts`.
 
-- [ ] **T-52** Cierre del PR-E — CA: n/a — Depende: T-48…T-51 — ~1 h
+- [x] **T-52** Cierre del PR-E — CA: n/a — Depende: T-48…T-51 — ~1 h
   Lint, typecheck y unitarias en verde. La descripción del PR dice si `storage-maintenance.iso-spec.ts` corrió con
   dueño `NOSUPERUSER`. Si no alcanzó a correr antes del 30/09, queda explícito que la Definición de Hecho exige
   ejecutarla en staging con dueño no superusuario (plan §8).
@@ -544,7 +544,7 @@ salvo la lectura por rango del detector.
   enlace deja de servir tras 5 minutos; recorrer 360 y 1440 px. Anotar el resultado en la descripción del PR-F.
   No sustituye a `/review` ni a la revisión del `ui-designer`.
 
-- [ ] **T-56** Documentación de operación — CA: n/a — Depende: T-24 — ~2 h
+- [x] **T-56** Documentación de operación — CA: n/a — Depende: T-24 — ~2 h
   `docs/operations/ambientes.md`: el rol que migra es el mismo en todos los ambientes; cambiarlo exige una migración
   nueva (`TO CURRENT_USER` queda fijado al crear `carga_mantenimiento`). README de `storage` con el flujo
   init → PUT directo a MinIO → complete, y la excepción DF-59 en una frase. No instrumentar métricas. No abrir
@@ -629,3 +629,62 @@ salvo la lectura por rango del detector.
   ausente como el adaptador real. No se agregó prueba `int` (la carrera no se reprodujo en 6 vueltas). (b) CA-5 está en
   `uploads-validation.int-spec.ts` (plan §8), no en T-44. (c) CA-9 por HTTP (410 tras 24 h) queda para T-51.
 - **Bloqueos**: ninguno.
+
+### Traspaso PR-E (2026-09-30)
+
+- **Hechas**: T-48 (`26bd443`), T-49 (`9333b57`), T-50 (`92e8b44`). Suites en verde: unitarias de `storage` (incluye
+  `upload-cleanup.processor.spec.ts` y `upload-cleanup.scheduler.spec.ts`), `expired-upload.scanner.int-spec.ts` (4/4) y
+  `storage-maintenance.iso-spec.ts` (9/9), esta última **corrida con dueño `NOSUPERUSER`** en contenedor propio
+  (`test/isolation/setup/nosuperuser-postgres.ts`); si el dueño fuera superusuario, `beforeAll` falla con mensaje explícito.
+- **Hecha T-51** (`5b81c57`, 2026-09-30): `StorageWorkerModule.forRoot({ UPLOAD_CLEANUP_* })` (cola, configuración,
+  escáner, programa, procesador y `UploadService` con sus dependencias), exportado por `storage/index.ts`
+  (`RUNTIME_EXPORTS` = `I_PLAN_LIMITS_PROVIDER`, `StorageModule`, `StorageWorkerModule`; el escáner sigue sin salir).
+  `WorkerModule` importa `MinioConfigModule`, `PlanLimitsBindingModule` y `StorageWorkerModule`; `WORKER_QUEUES` =
+  `ping`, `mail`, `upload-cleanup`. Los proveedores comunes con `StorageModule` salieron a `upload-lifecycle.providers.ts`
+  (archivo no listado en T-51). `upload-cleanup.int-spec.ts` (2/2: el job vence la carga por partes, aborta sus partes,
+  libera la reserva y `resume` ⇒ 410 con `STORAGE_UPLOAD_EXPIRED`; 6 vueltas de `complete` ∥ barrido sin `archivo` sin
+  objeto; en una corrida instrumentada ganaron ambos lados) entra en `pnpm test:isolation` por `testMatch` de
+  `jest.isolation.config.cjs`; no depende de T-45 (su `storage.iso-spec.ts` entra solo por `*.iso-spec.ts`). Se
+  actualizaron `test/int/worker/bootstrap.int-spec.ts` (colas de `worker.started`) y `worker-health.int-spec.ts` (cierra
+  también el `Worker` de `upload-cleanup` con Redis caído).
+- **Hechas T-52 y T-56** (2026-09-30): el README de `storage` gana la sección «Limpieza de cargas vencidas» (T-52) y
+  «Flujo de carga directa» con DF-59 en una frase (T-56); `docs/operations/ambientes.md` no se tocó (existe desde T-24).
+  Solo documentación; cada dato se verificó contra el código. El README ya incluye lo que dejó PR-D (API pública, flujo y descarga, CORS y red de seguridad de MinIO).
+- **Suites al cierre de T-51**: `pnpm lint` y `pnpm typecheck` en verde; `pnpm test` en verde (api 1083, web 272,
+  contracts 221, config 28, worker 34); `test:isolation` completo 108/108 (incluye `upload-cleanup.int-spec.ts` y
+  `storage-maintenance.iso-spec.ts`); `test/int/worker` 8/8. No se corrió `pnpm test:int` completo.
+- **Decisiones de T-51 (a confirmar en `/review`)**: (6) `I_PLAN_LIMITS_PROVIDER` en el worker lo enlaza
+  `PlanLimitsBindingModule` en `WorkerModule` (raíz de composición, DF-51): `storage` sigue sin conocer a `billing` y,
+  cuando 006a cambie ese enlace, vale para ambos procesos. (7) `UPLOAD_CONFIG` en el worker es un objeto cuyos campos
+  **lanzan al leerse** («la configuración de carga no existe en el worker»): `expire` no la lee y las variables `UPLOAD_*`
+  son solo del `api` (plan §5); se descartó sumarlas a `workerEnvSchema` y separar `expire` de `UploadService` (el
+  modelo de diseño lo pone en `UploadService`). Si `/review` prefiere separar `expire`, es un cambio de modelo.
+  (8) El adaptador de MinIO del worker usa `buildMinioStorageClients(config, config.MINIO_ENDPOINT)`: el cliente de
+  firma apunta al endpoint interno porque el worker no tiene `MINIO_PUBLIC_ENDPOINT` ni emite URLs. (9) En la prueba
+  de integración la app del worker se crea después de la de la API: el `PinoLogger` de `nestjs-pino` es estático y la
+  última app recibe las bitácoras de ambas.
+- **Decisiones tomadas (a revisar en `/review`)**: (1) el procesador llama `uploadService.expire(createActor(propietarioId,
+  CLIENT), id)` sin envolverlo en otro `withActor`: `expire` ya abre el suyo; envolverlo retendría la transacción (y el
+  CAS sin confirmar) durante los borrados en MinIO. (2) `expired` en `upload.cleanup_run` cuenta filas procesadas sin
+  error (un `expire` que pierde el CAS contra `complete` cuenta como procesada). (3) El `correlationId` del programa se
+  fija al registrarlo (payload `{ correlationId }` que pide T-49); cada ejecución se distingue por `jobId`.
+  (4) Reintentos: 3 intentos, exponencial desde 30 s; fallidos se conservan 24 h. (5) Se agregó
+  `upload-cleanup.scheduler.spec.ts` (archivo no listado en T-49).
+- **Bloqueos**: ninguno. Docker disponible.
+
+#### Borrador de la descripción del PR-E
+
+**Qué hace**: limpieza de cargas vencidas (CA-9). Cola `upload-cleanup` con programa repetible idempotente
+(`upsertJobScheduler`, id fijo), barrido en dos fases (escáner sin actor `carga_expiradas` → `UploadService.expire` como
+el dueño), `StorageWorkerModule` en el `worker`, reintentos (3, exponencial) y bitácoras `upload.cleanup_*`. Incluye la
+documentación de `storage` (T-52, T-56).
+
+**Suites**: `pnpm lint` y `pnpm typecheck` en verde; `pnpm test` en verde (api 1083, web 272, contracts 221, config 28,
+worker 34); `test:isolation` completo 108/108 (incluye `upload-cleanup.int-spec.ts`); `expired-upload.scanner.int-spec.ts`
+4/4; `test/int/worker` 8/8. **`storage-maintenance.iso-spec.ts` corrió con dueño `NOSUPERUSER` (9/9)** en contenedor propio,
+así que no queda pendiente la ejecución en staging exigida por plan §8 para este punto. No se corrió `pnpm test:int` completo.
+
+**Decisiones a revisar en `/review`**: (1) `expire` no se envuelve en otro `withActor`; (2) `expired` cuenta filas procesadas
+sin error; (3) `correlationId` del programa fijado al registrarlo; (4) reintentos 3 × exponencial desde 30 s, fallidos 24 h;
+(6) `I_PLAN_LIMITS_PROVIDER` enlazado en `WorkerModule` (DF-51); (7) `UPLOAD_CONFIG` del worker lanza al leerse; (8) MinIO
+del worker firma contra el endpoint interno.
