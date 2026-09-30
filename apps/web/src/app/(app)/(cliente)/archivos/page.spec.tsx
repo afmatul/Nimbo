@@ -152,6 +152,27 @@ describe('página Mis archivos (/archivos)', () => {
     );
   });
 
+  it('CA-1 (UI-1): soltar un archivo fuera de la zona, sobre el encabezado, no lo abre el navegador', async () => {
+    const api = fakeApi();
+    await renderPage(api);
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Mis archivos' });
+    const files = { files: [new File(['hola'], 'nuevo.pdf')], types: ['Files'] };
+
+    const over = fireEvent.dragOver(heading, { dataTransfer: files });
+    const drop = fireEvent.drop(heading, { dataTransfer: files });
+
+    expect(over).toBe(false);
+    expect(drop).toBe(false);
+    expect(api.init).not.toHaveBeenCalled();
+  });
+
+  it('CA-1 (UI-1): un arrastre que no trae archivos (texto) no se intercepta', async () => {
+    await renderPage(fakeApi());
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Mis archivos' });
+
+    expect(fireEvent.drop(heading, { dataTransfer: { types: ['text/plain'] } })).toBe(true);
+  });
+
   it('CA-1: un archivo recién subido aparece en la lista sin recargar', async () => {
     const simple: InitUploadResponse = {
       uploadId: UPLOAD_ID,

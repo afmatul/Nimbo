@@ -6,6 +6,7 @@ import * as React from 'react';
 import { createAuthFetch } from '../../identity/session/auth-fetch';
 import { useSession } from '../../identity/session/session-provider';
 import { createStorageApi, type StorageApi } from '../api';
+import { useFileDropGuard } from '../hooks/use-file-drop-guard';
 import { UploadsContext, useUploadManager, useUploads } from '../hooks/use-upload-manager';
 import type { UploadManagerOptions } from '../upload/upload-manager';
 
@@ -27,6 +28,7 @@ export function UploadsProvider({
   children,
 }: UploadsProviderProps): React.JSX.Element {
   const value = useUploadManager(api, managerOptions);
+  useFileDropGuard();
   return (
     <UploadsContext.Provider value={value}>
       {children}
