@@ -86,4 +86,12 @@ describe('requestJson', () => {
     );
     expect(invalid).toMatchObject({ correlationId: 'desde-api', code: 'INTERNAL_ERROR' });
   });
+
+  it('un 204 sin cuerpo resuelve sin error (cerrar sesión, plan 002 §5)', async () => {
+    fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+
+    await expect(
+      requestJson('http://localhost/api/v1/auth/session/logout', { method: 'POST' }),
+    ).resolves.toBeUndefined();
+  });
 });

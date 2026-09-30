@@ -7,8 +7,12 @@ import { PinoLogger } from 'nestjs-pino';
 import request from 'supertest';
 
 import { DomainExceptionFilter } from '../../../shared';
+import { AuthService } from '../application/auth.service';
+import { IDENTITY_CONFIG } from '../application/identity-config';
 import { RegistrationService } from '../application/registration.service';
 import type { VerifyEmailResult } from '../application/registration.service';
+import { SessionService } from '../application/session.service';
+import type { ClientUser } from '../domain/client-user.entity';
 import { IdentityModule } from '../identity.module';
 
 import { AuthController } from './auth.controller';
@@ -39,6 +43,7 @@ describe('AuthController', () => {
     resendVerification: jest.fn<Promise<void>, unknown[]>(),
     verifyEmail: jest.fn<Promise<VerifyEmailResult>, unknown[]>(),
   };
+  const sessions = { open: jest.fn(), refresh: jest.fn(), logout: jest.fn() };
 
   /** El controlador con los *middlewares* de `IdentityModule`, sin sus adaptadores de infraestructura. */
   @Module({
@@ -46,6 +51,12 @@ describe('AuthController', () => {
     controllers: [AuthController],
     providers: [
       { provide: RegistrationService, useValue: service },
+      { provide: AuthService, useValue: { login: jest.fn() } },
+      { provide: SessionService, useValue: sessions },
+      {
+        provide: IDENTITY_CONFIG,
+        useValue: { webPublicUrl: 'http://localhost', cookieSecure: false },
+      },
       { provide: PinoLogger, useValue: { info: jest.fn(), warn: jest.fn() } },
     ],
   })
@@ -120,12 +131,14 @@ describe('AuthController', () => {
   });
 
   it.each([
-    [{ outcome: 'VERIFIED', userId: 'u-1' } as const, 'verified'],
+    [{ outcome: 'VERIFIED', userId: 'u-1', user: {} as ClientUser } as const, 'verified'],
     [{ outcome: 'ALREADY_VERIFIED' } as const, 'already-verified'],
   ])(
     'CA-8, CA-10: `verify-email` mapea %j a `200 %s` sin caché',
     async (result: VerifyEmailResult, status: string) => {
       service.verifyEmail.mockResolvedValue(result);
+      // La sesión al verificar la cubre `verify-email-session.int-spec.ts`; aquí falla y la respuesta no la trae.
+      sessions.open.mockRejectedValue(new Error('sin sesión'));
 
       const response = await post('verify-email', { token: TOKEN });
 

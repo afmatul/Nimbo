@@ -4,8 +4,12 @@ import type { IdentityConfig } from './identity-config';
 export const WEB_PATHS = {
   verifyEmail: '/verificar-correo',
   login: '/iniciar-sesion',
-  /** La confirma 002 (recuperación de contraseña); hasta entonces la página no existe. */
+  /** Pedir el enlace de recuperación (002 §11). */
   passwordRecovery: '/recuperar-contrasena',
+  /** Elegir la contraseña nueva; el token va en el fragmento (002 CA-19). */
+  passwordReset: '/restablecer-contrasena',
+  /** «Seguridad»: sesiones abiertas y cambio de contraseña (spec 002 §11). */
+  security: '/cuenta/seguridad',
 } as const;
 
 const TRAILING_SLASHES = /\/+$/;

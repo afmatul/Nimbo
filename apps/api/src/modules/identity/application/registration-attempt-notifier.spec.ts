@@ -19,7 +19,7 @@ const setup = (decision: RateLimitDecision) => {
   const notifier = new RegistrationAttemptNotifier(
     { consume },
     new FixedClock(NOW),
-    { webPublicUrl: 'http://localhost' },
+    { webPublicUrl: 'http://localhost', cookieSecure: false },
     logger,
   );
   return { notifier, consume, logger };

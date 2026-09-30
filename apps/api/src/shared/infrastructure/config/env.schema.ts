@@ -13,6 +13,12 @@ const SMTP_TLS_MESSAGE = 'no puede ser `none` en staging ni en producción';
 const SMTP_USER_MESSAGE = 'es obligatoria si se define `SMTP_PASSWORD`';
 const POSITIVE_INT_MESSAGE = 'debe ser un entero positivo';
 const MULTIPART_THRESHOLD_MESSAGE = 'debe ser mayor o igual que `UPLOAD_PART_SIZE_BYTES`';
+const JWT_SECRET_MIN_LENGTH = 32;
+/** 32 bytes aleatorios en base64url: el mínimo en ambientes publicados (plan 002 §6.10). */
+const PUBLISHED_JWT_SECRET_MIN_LENGTH = 43;
+const JWT_SECRET_LENGTH_MESSAGE = `debe tener al menos ${String(JWT_SECRET_MIN_LENGTH)} caracteres`;
+const PUBLISHED_JWT_SECRET_LENGTH_MESSAGE = `debe tener al menos ${String(PUBLISHED_JWT_SECRET_MIN_LENGTH)} caracteres en staging y en producción`;
+const LOCAL_JWT_SECRET_MESSAGE = 'no puede ser el valor de desarrollo de .env.example';
 
 const DEFAULT_API_PORT = 3000;
 const DEFAULT_WORKER_PORT = 3001;
@@ -36,6 +42,12 @@ const DEFAULT_UPLOAD_CLEANUP_INTERVAL_MINUTES = 10;
 const DEFAULT_UPLOAD_CLEANUP_BATCH_SIZE = 100;
 /** Tope de filas que devuelve `carga_expiradas` (005 plan §4): un lote mayor no tendría efecto. */
 const MAX_UPLOAD_CLEANUP_BATCH_SIZE = 1000;
+
+/**
+ * Valor de desarrollo de `JWT_ACCESS_SECRET` que trae `.env.example` (plan 002 §6.10). Público a propósito: en
+ * staging y en producción el esquema lo rechaza.
+ */
+export const LOCAL_JWT_ACCESS_SECRET = 'solo-desarrollo-local-nunca-usar-en-staging-ni-produccion';
 
 /** Ambientes publicados: exigen https en los enlaces y TLS en el SMTP (001 CA-20). */
 const PUBLISHED_ENVIRONMENTS: readonly string[] = ['staging', 'production'];
@@ -173,7 +185,10 @@ export const workerEnvObjectSchema = sharedEnvBaseSchema.extend({
   MAIL_FROM: nonEmpty(),
 });
 
-/** Forma del entorno del `api`: además el puerto HTTP público, MinIO, la carga de archivos, `web` y CORS. */
+/**
+ * Forma del entorno del `api`: además el puerto HTTP público, MinIO, la carga de archivos (005), la URL pública de
+ * `web`, CORS y la clave que firma los tokens de acceso (002), que se declara **solo** aquí.
+ */
 export const apiEnvObjectSchema = sharedEnvBaseSchema.extend({
   ...workerPortShape,
   PORT: port(DEFAULT_API_PORT),
@@ -181,6 +196,7 @@ export const apiEnvObjectSchema = sharedEnvBaseSchema.extend({
   ...uploadApiShape,
   WEB_PUBLIC_URL: url(),
   CORS_ORIGIN: urlList(),
+  JWT_ACCESS_SECRET: z.string().min(JWT_SECRET_MIN_LENGTH, JWT_SECRET_LENGTH_MESSAGE),
 });
 
 type DeclaredKey = keyof typeof apiEnvObjectSchema.shape | keyof typeof workerEnvObjectSchema.shape;
@@ -195,25 +211,38 @@ const addEnvIssue = (ctx: z.RefinementCtx, key: string, message: string): void =
   ctx.addIssue({ code: z.ZodIssueCode.custom, path: [key], message });
 };
 
+/** En staging y producción la clave de firma es larga y nunca la de `.env.example` (002 CA-26). */
+const refinePublishedJwtSecret = (secret: string, ctx: z.RefinementCtx): void => {
+  if (secret === LOCAL_JWT_ACCESS_SECRET) {
+    addEnvIssue(ctx, 'JWT_ACCESS_SECRET', LOCAL_JWT_SECRET_MESSAGE);
+  } else if (secret.length < PUBLISHED_JWT_SECRET_MIN_LENGTH) {
+    addEnvIssue(ctx, 'JWT_ACCESS_SECRET', PUBLISHED_JWT_SECRET_LENGTH_MESSAGE);
+  }
+};
+
 /**
- * Reglas entre variables del `api`: el enlace del correo nunca viaja por http en staging (001 CA-20) y toda carga
- * por partes tiene al menos dos partes (005 plan §5).
+ * Reglas entre variables del `api`: toda carga por partes tiene al menos dos partes (005 plan §5) y, en ambientes
+ * publicados, el enlace del correo nunca viaja por http (001 CA-20) y la clave de firma no es la de desarrollo
+ * (002 CA-26).
  */
 const refineApiEnv = (
   env: {
     APP_ENV: string;
     WEB_PUBLIC_URL: string;
+    JWT_ACCESS_SECRET: string;
     UPLOAD_PART_SIZE_BYTES: number;
     UPLOAD_MULTIPART_THRESHOLD_BYTES: number;
   },
   ctx: z.RefinementCtx,
 ): void => {
-  if (isPublished(env.APP_ENV) && !env.WEB_PUBLIC_URL.startsWith('https://')) {
-    addEnvIssue(ctx, 'WEB_PUBLIC_URL', HTTPS_MESSAGE);
-  }
   if (env.UPLOAD_MULTIPART_THRESHOLD_BYTES < env.UPLOAD_PART_SIZE_BYTES) {
     addEnvIssue(ctx, 'UPLOAD_MULTIPART_THRESHOLD_BYTES', MULTIPART_THRESHOLD_MESSAGE);
   }
+  if (!isPublished(env.APP_ENV)) return;
+  if (!env.WEB_PUBLIC_URL.startsWith('https://')) {
+    addEnvIssue(ctx, 'WEB_PUBLIC_URL', HTTPS_MESSAGE);
+  }
+  refinePublishedJwtSecret(env.JWT_ACCESS_SECRET, ctx);
 };
 
 /** Reglas entre variables del `worker` (001 CA-18, CA-20). */

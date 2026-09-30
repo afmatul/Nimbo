@@ -117,6 +117,33 @@ describe('TypeormUserRepository (CA-3, CA-19)', () => {
     expect(missing).toBeNull();
   });
 
+  it('002 CA-19: `findById` devuelve la cuenta sin bloquearla, o `null` si no existe', async () => {
+    const id = await insertInternal(uniqueEmail());
+
+    const found = await repository.findById(id);
+    const missing = await repository.findById(randomUUID());
+
+    expect(found).toBeInstanceOf(InternalUser);
+    expect(found?.id).toBe(id);
+    expect(missing).toBeNull();
+  });
+
+  it('002 CA-19: `updatePasswordHash` solo cambia el hash, también de una cuenta interna', async () => {
+    const client = aClientUser().withId(randomUUID()).withEmail(uniqueEmail()).build();
+    await runner.run(() => repository.insertIfAbsent(client));
+    const internalId = await insertInternal(uniqueEmail());
+    const before = await readRow(client.id);
+    const newHash = PasswordHash.fromPhc('$argon2id$v=19$m=19456,t=2,p=1$c2FsdA$bnVldmE');
+
+    await runner.run(async () => {
+      await repository.updatePasswordHash(client.id, newHash);
+      await repository.updatePasswordHash(internalId, newHash);
+    });
+
+    expect(await readRow(client.id)).toEqual({ ...before, hash_clave: newHash.reveal() });
+    expect((await readRow(internalId))?.hash_clave).toBe(newHash.reveal());
+  });
+
   it('CA-3: `findByEmailForUpdate` bloquea la fila: una segunda transacción espera al commit de la primera', async () => {
     const user = aClientUser().withId(randomUUID()).withEmail(uniqueEmail()).build();
     await runner.run(() => repository.insertIfAbsent(user));

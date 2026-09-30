@@ -16,7 +16,7 @@ de eso se pierda entre ramas.
 - «Resolver antes de» es la compuerta que se bloquea si el pendiente sigue abierto. «—» significa que no bloquea nada.
 - `/status` y el `architect` revisan esta lista al cerrar cada fase.
 
-Última actualización: 2026-09-28.
+Última actualización: 2026-09-29.
 
 ## Diagramas por redibujar
 
@@ -53,6 +53,8 @@ decisiones; solo faltan los diagramas.
 | PD-22 | ¿Se carga Inter 800? Las hojas empaquetadas recientes lo traen; los mockups hechos a mano usan hasta 700 | `fix/000b-solo-inter` | — | Adrián | Abierto |
 | PD-31 | `INodeMetadataReader` figura como «backoffice → storage». Si `storage` lo implementa importándolo, se forma `storage → backoffice → storage`. Sigue la misma convención que DF-51 y se suma a ese hallazgo; el plan 005 no lo necesita (llega con 011) | `architecture.md` §5, DF-51 | Plan de 011 (ya no bloquea 005) | Abel con Adrián | Abierto |
 | PD-40 | Pedidos de la 001 al plan de 006a: (1) oyente **idempotente** de `identity.client-account-verified` que crea la suscripción Personal; (2) **conciliación** idempotente que da Personal a toda cuenta `CLIENT` verificada sin suscripción, en su migración de datos o en un trabajo (ADR-0019); (3) lectura **pública** (sin sesión) de los planes activos con `id`, nombre, precio en centavos y una marca de plan gratuito, para la pantalla de registro (001 CA-22). Si 006a no los incluye, la 001 queda con `catalogo-no-disponible` y las cuentas verificadas sin plan | Plan 001 §6.12 y P-6, ADR-0019 | Plan de 006a | Fátima con Adrián | Abierto |
+| PD-50 | `POST /auth/forgot-password` no tiene límite por IP (`password.controller.ts`), solo el de recuperación por correo: una IP puede pedir enlaces para muchos correos distintos. Decidir el límite (¿un *throttler* `forgot-ip` como `login-ip`?) y cambiar la spec 002 antes del código | Auditoría de seguridad de 002 (T-67, SEC-2) | 002-PR-4 o inicio de la Fase 2 | Juan Marcos con Adrián | Abierto |
+| PD-51 | `forgot-password` tarda unos 7 ms más con cuenta que sin ella (medido en local): escribe el token y arma el correo. Queda como **riesgo aceptado** (plan 002 §7b), salvo que se decida mover la búsqueda y la emisión a un trabajo en segundo plano para igualar los tiempos | Auditoría de seguridad de 002 (T-67, SEC-3) | — | Adrián | Abierto |
 
 ## Código y configuración
 
@@ -68,7 +70,9 @@ decisiones; solo faltan los diagramas.
 | PD-47 | `boundaries.js` para 005: `storage → shared, access, audit, realtime` (**sin `billing`**: DF-51, opción A, prohíbe cualquier import de `billing` desde `storage`), `billing → storage` (solo desde `storage/index.ts`), `access → shared`, `audit → shared`; *fixtures* negativos `storage-imports-identity.ts` (excepción DF-59) y `storage-imports-billing.ts`. Amplía PD-24 | Plan 005 §11.4 cambio 13, DF-59 | PR de 005 (o el de PD-24, lo que llegue antes) | Adrián | Implementado en `feat/005-persistencia` (005 T-29: `packages/config/eslint/boundaries.js`, compuesto en `eslint.config.mjs`); se cierra al integrar PR-C |
 | PD-48 | Ruta provisional del catálogo en la 001: `apps/web/src/features/identity/plan-catalog.ts` lee `GET {API_INTERNAL_URL}/plans` con un esquema zod local, porque el contrato de la lectura pública aún no está en `packages/contracts`. Al entregar 006a su contrato (PD-40, punto 3), `plan-catalog.ts` pasa a la ruta y al esquema de `@nimbo/contracts` y se borra el esquema local | `apps/web/src/features/identity/plan-catalog.ts` | Revisión del PR-4 de 001 (I-2) | Implementación de 006a | Fátima con Adrián | Abierto |
 | PD-49 | `web` no fija CSP ni cabeceras de seguridad (`Content-Security-Policy` con `frame-ancestors`, `Referrer-Policy`, `X-Content-Type-Options`, `Permissions-Policy`), y ni el `compose.yml` ni Traefik las agregan. Decidir dónde viven (`headers()` de `next.config.ts` o *middleware* de Traefik para todas las apps), cuidando que ONLYOFFICE (016) y las URL prefirmadas de MinIO (005) sigan funcionando | `apps/web/next.config.ts` o configuración de Traefik | Revisión de seguridad de 001 (SEC-3) | Montaje de staging (inicio de la Fase 2) | Adrián | Abierto |
+| PD-52 | La API responde `x-powered-by: Express` y no fija cabeceras de seguridad (`X-Content-Type-Options`, `Referrer-Policy`, etc.). Es transversal a `configureHttpApp` (`shared`), no propio de 002; conviene resolverlo junto con PD-49 | `apps/api/src/shared` (`configureHttpApp`) | Auditoría de seguridad de 002 (T-67, SEC-5) | Montaje de staging (inicio de la Fase 2) | Adrián | Abierto |
 | PD-27 | Token del velo de los diálogos: el mockup de «Seguridad» usa `agent-bg` al 45 % | `apps/web/src/components/nimbo/app-layout.tsx` (TODO #6), `ui-guidelines.md` | Mockup de «Seguridad» | Plan de 002 | Adrián | Abierto |
+| PD-51 | `SECRET_KEYS` no incluye `DATABASE_URL` ni `DATABASE_MIGRATION_URL` (llevan la contraseña en la URL): no se redactarían si llegaran a una bitácora. Agregarlas o redactar URLs con credenciales, con prueba | `apps/api/src/shared/infrastructure/config/secret-keys.ts` | Revisión 003 PR-F (SEC-2) | Cierre de la Fase 1 | Adrián | Abierto |
 
 ## Diseño y UX
 
@@ -78,6 +82,8 @@ decisiones; solo faltan los diagramas.
 | PD-33 | `AppLayout` no coincide con el mockup del layout: el ítem activo da 4.05 de contraste (`text-primary` sobre `bg-accent`, **por debajo de AA**), falta `aria-current="page"`, y cambian la estructura (cabecera a todo lo ancho frente a barra lateral de altura completa), los nombres de la navegación, las piezas (ruta, menú de la cuenta, cuota, carpetas, plan, aviso de solo lectura) y el velo (`bg-black/40`, PD-27) | `apps/web/src/components/nimbo/app-layout.tsx` | Implementación de 002 (el contraste, antes si se puede) | Fátima (000b) con Adrián | Abierto |
 | PD-34 | «Recientes» y «Favoritos» están en la propuesta firmada y en la navegación, pero no hay RF que los respalde (constitución, Art. II): agregar un RF o quitarlos | `product-context.md`, mockup del layout | Plan de 007 | Adrián | Abierto |
 | PD-35 | El mockup aprobado de «Seguridad» tiene los dos fallos que se corrigieron en el layout: la cifra de un ítem al pasar el puntero da 4.39 (`muted-foreground` sobre `muted`) y el logo mide 36 px en móvil (menos de 44). Se corrige al implementar, sin tocar el mockup aprobado | Mockup del layout | Implementación de 002 | Adrián | Abierto |
+| PD-54 | `StateView` (000b): nivel del título configurable (`titleAs`; hoy siempre `h3`, la 404 queda sin `h1` y `/interno` salta de `h1` a `h3`), foco al título al montar sin contorno (`autoFocusTitle`/`titleRef`, hoy `useFocusTitleOnMount` de 003 busca el `h3`) y `StateAction` con `href` y `loading` (hoy la navegación usa botones con `router.push`) | Revisión 003 PR-F (UI-A, UI-B, UI-C) | Cierre de la Fase 1 | Fátima (000b) | Abierto |
+| PD-53 | Sugerencias del `ui-designer` al validar las plantillas de correo de 002 (T-28, T-29, T-58, T-59; aprobadas sin bloqueantes): (1) unificar el título del cuerpo con el asunto de cada correo; (2) actualizar `docs/design/mockups/identity/correos/README.md` con los correos de 002 (hoy su «Pendiente» los da por futuros) | Validación de T-69 de 002 | — | Adrián | Abierto |
 
 ## Cerrados
 

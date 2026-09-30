@@ -1,16 +1,24 @@
 import { TooManyRequestsError } from '../../../../shared/domain/errors';
 
-const SECONDS_PER_MINUTE = 60;
+import { minutesText } from './minutes-text';
 
-/** Qué límite se alcanzó (plan §7, `identity.rate_limited`): por correo (servicio) o por IP (guard). */
-export type IdentityRateLimitScope = 'email' | 'ip';
+/**
+ * Qué límite se alcanzó (plan §7, `identity.rate_limited`): por correo (servicio), por IP de registro o reenvío
+ * (`ip`), por IP de inicio de sesión (`ip_login`, 002 DT-20) o por correo al pedir la recuperación
+ * (`password_reset`, 002 CA-18).
+ */
+export type IdentityRateLimitScope = 'email' | 'ip' | 'ip_login' | 'password_reset';
 
-const minutesText = (retryAfterSeconds: number): string => {
-  const minutes = Math.max(1, Math.ceil(retryAfterSeconds / SECONDS_PER_MINUTE));
-  return minutes === 1 ? '1 minuto' : `${String(minutes)} minutos`;
-};
+const messageFor = (scope: IdentityRateLimitScope, retryAfterSeconds: number): string =>
+  scope === 'ip_login'
+    ? 'Hiciste demasiados intentos. Espera unos minutos y vuelve a intentarlo.'
+    : 'Ya te enviamos un enlace hace poco. Revisa tu bandeja y la carpeta de spam, o inténtalo de nuevo en ' +
+      `${minutesText(retryAfterSeconds)}.`;
 
-/** Límite de registro o reenvío alcanzado (CA-15). HTTP 429 con `Retry-After`. */
+/**
+ * Límite de solicitudes alcanzado (001 CA-15, 002 CA-6). HTTP 429 con `Retry-After`. El texto depende del ámbito
+ * (DT-20): el mismo código sirve al registro, al reenvío, al inicio de sesión y a la recuperación.
+ */
 export class IdentityTooManyRequestsError extends TooManyRequestsError {
   readonly code = 'IDENTITY_TOO_MANY_REQUESTS';
 
@@ -18,10 +26,6 @@ export class IdentityTooManyRequestsError extends TooManyRequestsError {
     retryAfterSeconds: number,
     readonly scope: IdentityRateLimitScope,
   ) {
-    super(
-      'Ya te enviamos un enlace hace poco. Revisa tu bandeja y la carpeta de spam, o inténtalo de nuevo en ' +
-        `${minutesText(retryAfterSeconds)}.`,
-      retryAfterSeconds,
-    );
+    super(messageFor(scope, retryAfterSeconds), retryAfterSeconds);
   }
 }
