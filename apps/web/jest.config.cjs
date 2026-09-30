@@ -8,6 +8,10 @@ module.exports = createJestConfig({
   testEnvironment: 'node',
   testMatch: ['<rootDir>/src/**/*.spec.{ts,tsx}'],
   clearMocks: true,
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
+  // `pnpm test` corre `api` y `web` a la vez: con todos los núcleos para cada uno, las guardas de tiempo de `api`
+  // (redact-deep, R-8) y las esperas de las vistas fallan por pura contención.
+  maxWorkers: '50%',
   // Los formularios se prueban tecleando con user-event; con varios workers 5 s no alcanzan.
   testTimeout: 30_000,
 });
