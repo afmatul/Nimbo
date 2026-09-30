@@ -539,7 +539,7 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   respuestas idénticas (status, cuerpo, cabeceras salvo `x-correlation-id`), también cuando el límite se agota.
   Archivos: `apps/api/test/isolation/password-reset-enumeration.iso-spec.ts`.
 
-- [ ] **T-68** CA-24 y CA-25 de la recuperación — CA: CA-24, CA-25 — Depende: T-63, T-51, T-52 — ~1 h
+- [x] **T-68** CA-24 y CA-25 de la recuperación — CA: CA-24, CA-25 — Depende: T-63, T-51, T-52 — ~1 h
   Ampliar `credential-secrecy.int-spec.ts` (el token de recuperación sacado de Mailpit solo aparece como SHA-256 en
   `token_cuenta` y nunca en el `LogSink`) y `auth-logs.int-spec.ts` (`identity.password_reset.requested` con cada
   `kind`, `rejected` con cada `reason`, `completed`, `session.revoked` con `reason: 'password_reset'`; sin correo).
