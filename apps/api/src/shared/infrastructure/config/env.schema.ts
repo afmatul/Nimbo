@@ -11,12 +11,31 @@ const URL_LIST_MESSAGE = 'debe ser una lista de URL separadas por comas';
 const HTTPS_MESSAGE = 'debe usar https en staging y en producción';
 const SMTP_TLS_MESSAGE = 'no puede ser `none` en staging ni en producción';
 const SMTP_USER_MESSAGE = 'es obligatoria si se define `SMTP_PASSWORD`';
+const POSITIVE_INT_MESSAGE = 'debe ser un entero positivo';
+const MULTIPART_THRESHOLD_MESSAGE = 'debe ser mayor o igual que `UPLOAD_PART_SIZE_BYTES`';
 
 const DEFAULT_API_PORT = 3000;
 const DEFAULT_WORKER_PORT = 3001;
 const DEFAULT_APP_VERSION = 'dev';
 const DEFAULT_MINIO_BUCKET = 'nimbo';
 const DEFAULT_MINIO_REGION = 'us-east-1';
+const DEFAULT_MINIO_PUBLIC_ENDPOINT = 'http://localhost:9000';
+
+const MIB = 1024 * 1024;
+/** Mínimo de S3 para toda parte salvo la última (005 plan §5). */
+const MIN_UPLOAD_PART_SIZE_BYTES = 5 * MIB;
+const DEFAULT_UPLOAD_PART_SIZE_BYTES = 8 * MIB;
+const DEFAULT_UPLOAD_MULTIPART_THRESHOLD_BYTES = 16 * MIB;
+const MIN_UPLOAD_URL_TTL_SECONDS = 60;
+const MAX_UPLOAD_URL_TTL_SECONDS = 86_400;
+const DEFAULT_UPLOAD_URL_TTL_SECONDS = 3600;
+const DEFAULT_UPLOAD_COMPLETE_TIMEOUT_SECONDS = 900;
+const DEFAULT_RATE_LIMIT_UPLOAD_INIT_PER_MINUTE = 300;
+const DEFAULT_RATE_LIMIT_DOWNLOAD_URL_PER_MINUTE = 120;
+const DEFAULT_UPLOAD_CLEANUP_INTERVAL_MINUTES = 10;
+const DEFAULT_UPLOAD_CLEANUP_BATCH_SIZE = 100;
+/** Tope de filas que devuelve `carga_expiradas` (005 plan §4): un lote mayor no tendría efecto. */
+const MAX_UPLOAD_CLEANUP_BATCH_SIZE = 1000;
 
 /** Ambientes publicados: exigen https en los enlaces y TLS en el SMTP (001 CA-20). */
 const PUBLISHED_ENVIRONMENTS: readonly string[] = ['staging', 'production'];
@@ -37,6 +56,26 @@ const portNumber = (): z.ZodNumber =>
 
 const port = (defaultValue: number): z.ZodDefault<z.ZodNumber> =>
   portNumber().default(defaultValue);
+
+/** Entero dentro de `[min, max]` con mensaje propio (sin el valor recibido) y valor por defecto. */
+const boundedInt = (
+  min: number,
+  max: number,
+  message: string,
+  defaultValue: number,
+): z.ZodDefault<z.ZodNumber> =>
+  z.coerce
+    .number({ invalid_type_error: message })
+    .int(message)
+    .min(min, message)
+    .max(max, message)
+    .default(defaultValue);
+
+const positiveInt = (defaultValue: number): z.ZodDefault<z.ZodNumber> =>
+  boundedInt(1, Number.MAX_SAFE_INTEGER, POSITIVE_INT_MESSAGE, defaultValue);
+
+const intBetween = (min: number, max: number, defaultValue: number): z.ZodDefault<z.ZodNumber> =>
+  boundedInt(min, max, `debe ser un entero entre ${String(min)} y ${String(max)}`, defaultValue);
 
 /** Puerto sin valor por defecto: si falta, «es obligatoria» (no el motivo de formato). */
 const requiredPort = () => z.string().pipe(portNumber());
@@ -76,11 +115,56 @@ export type SharedEnvBase = z.infer<typeof sharedEnvBaseSchema>;
 const workerPortShape = { WORKER_PORT: port(DEFAULT_WORKER_PORT) };
 
 /**
- * Forma del entorno del `worker`: el contrato común, su puerto de salud y el SMTP (001 plan §6.10); sin `MINIO_*`
- * ni `PORT`. `SMTP_PASSWORD` se declara **solo** aquí: el `api` no la necesita.
+ * MinIO, **una sola definición** que componen `api` y `worker` (005 plan §5): el `api` firma y valida cargas y el
+ * `worker` aborta partes y borra objetos vencidos. Un secreto en ambos esquemas es válido porque es el mismo objeto.
+ */
+const minioShape = {
+  MINIO_ENDPOINT: url(),
+  MINIO_ACCESS_KEY: nonEmpty(),
+  MINIO_SECRET_KEY: nonEmpty(),
+  MINIO_BUCKET: nonEmpty().default(DEFAULT_MINIO_BUCKET),
+  MINIO_REGION: nonEmpty().default(DEFAULT_MINIO_REGION),
+};
+
+/** Carga y descarga de archivos en el `api` (005 plan §5, RN-2, RN-16). */
+const uploadApiShape = {
+  /** Host contra el que se firman las URLs; distinto de `MINIO_ENDPOINT` (interno) y nunca un prefijo de ruta. */
+  MINIO_PUBLIC_ENDPOINT: url().default(DEFAULT_MINIO_PUBLIC_ENDPOINT),
+  UPLOAD_PART_SIZE_BYTES: boundedInt(
+    MIN_UPLOAD_PART_SIZE_BYTES,
+    Number.MAX_SAFE_INTEGER,
+    `debe ser un entero de al menos ${String(MIN_UPLOAD_PART_SIZE_BYTES)} (5 MiB)`,
+    DEFAULT_UPLOAD_PART_SIZE_BYTES,
+  ),
+  UPLOAD_MULTIPART_THRESHOLD_BYTES: positiveInt(DEFAULT_UPLOAD_MULTIPART_THRESHOLD_BYTES),
+  UPLOAD_URL_TTL_SECONDS: intBetween(
+    MIN_UPLOAD_URL_TTL_SECONDS,
+    MAX_UPLOAD_URL_TTL_SECONDS,
+    DEFAULT_UPLOAD_URL_TTL_SECONDS,
+  ),
+  UPLOAD_COMPLETE_TIMEOUT_SECONDS: positiveInt(DEFAULT_UPLOAD_COMPLETE_TIMEOUT_SECONDS),
+  RATE_LIMIT_UPLOAD_INIT_PER_MINUTE: positiveInt(DEFAULT_RATE_LIMIT_UPLOAD_INIT_PER_MINUTE),
+  RATE_LIMIT_DOWNLOAD_URL_PER_MINUTE: positiveInt(DEFAULT_RATE_LIMIT_DOWNLOAD_URL_PER_MINUTE),
+};
+
+/** Barrido de cargas vencidas en el `worker` (005 plan §5). */
+const uploadCleanupShape = {
+  UPLOAD_CLEANUP_INTERVAL_MINUTES: positiveInt(DEFAULT_UPLOAD_CLEANUP_INTERVAL_MINUTES),
+  UPLOAD_CLEANUP_BATCH_SIZE: intBetween(
+    1,
+    MAX_UPLOAD_CLEANUP_BATCH_SIZE,
+    DEFAULT_UPLOAD_CLEANUP_BATCH_SIZE,
+  ),
+};
+
+/**
+ * Forma del entorno del `worker`: el contrato común, su puerto de salud, MinIO y el barrido de cargas (005) y el SMTP
+ * (001 plan §6.10); sin `PORT` ni `MINIO_PUBLIC_ENDPOINT`. `SMTP_PASSWORD` se declara **solo** aquí.
  */
 export const workerEnvObjectSchema = sharedEnvBaseSchema.extend({
   ...workerPortShape,
+  ...minioShape,
+  ...uploadCleanupShape,
   SMTP_HOST: nonEmpty(),
   SMTP_PORT: requiredPort(),
   SMTP_TLS: oneOf(['none', 'starttls', 'implicit']),
@@ -89,15 +173,12 @@ export const workerEnvObjectSchema = sharedEnvBaseSchema.extend({
   MAIL_FROM: nonEmpty(),
 });
 
-/** Forma del entorno del `api`: además el puerto HTTP público, MinIO, la URL pública de `web` y CORS. */
+/** Forma del entorno del `api`: además el puerto HTTP público, MinIO, la carga de archivos, `web` y CORS. */
 export const apiEnvObjectSchema = sharedEnvBaseSchema.extend({
   ...workerPortShape,
   PORT: port(DEFAULT_API_PORT),
-  MINIO_ENDPOINT: url(),
-  MINIO_ACCESS_KEY: nonEmpty(),
-  MINIO_SECRET_KEY: nonEmpty(),
-  MINIO_BUCKET: nonEmpty().default(DEFAULT_MINIO_BUCKET),
-  MINIO_REGION: nonEmpty().default(DEFAULT_MINIO_REGION),
+  ...minioShape,
+  ...uploadApiShape,
   WEB_PUBLIC_URL: url(),
   CORS_ORIGIN: urlList(),
 });
@@ -114,13 +195,24 @@ const addEnvIssue = (ctx: z.RefinementCtx, key: string, message: string): void =
   ctx.addIssue({ code: z.ZodIssueCode.custom, path: [key], message });
 };
 
-/** Reglas entre variables del `api` (001 CA-20): el enlace del correo nunca viaja por http en staging. */
+/**
+ * Reglas entre variables del `api`: el enlace del correo nunca viaja por http en staging (001 CA-20) y toda carga
+ * por partes tiene al menos dos partes (005 plan §5).
+ */
 const refineApiEnv = (
-  env: { APP_ENV: string; WEB_PUBLIC_URL: string },
+  env: {
+    APP_ENV: string;
+    WEB_PUBLIC_URL: string;
+    UPLOAD_PART_SIZE_BYTES: number;
+    UPLOAD_MULTIPART_THRESHOLD_BYTES: number;
+  },
   ctx: z.RefinementCtx,
 ): void => {
   if (isPublished(env.APP_ENV) && !env.WEB_PUBLIC_URL.startsWith('https://')) {
     addEnvIssue(ctx, 'WEB_PUBLIC_URL', HTTPS_MESSAGE);
+  }
+  if (env.UPLOAD_MULTIPART_THRESHOLD_BYTES < env.UPLOAD_PART_SIZE_BYTES) {
+    addEnvIssue(ctx, 'UPLOAD_MULTIPART_THRESHOLD_BYTES', MULTIPART_THRESHOLD_MESSAGE);
   }
 };
 

@@ -34,13 +34,18 @@ Secreto = nunca en el repositorio, vacío en `.env.example` de staging, redactad
 | `DATABASE_MIGRATION_URL` | | | | | (contiene contraseña) | — | Solo migraciones (`migrationEnvSchema`: `data-source.cli.ts`, `migrate.ts`); dueño de las tablas, local `postgres://nimbo:nimbo@localhost:5432/nimbo`. No cae a `DATABASE_URL` si falta (`config.invalid`). En staging, solo en el entorno del paso de migración (PD-43, provisional) |
 | `NIMBO_APP_DB_PASSWORD` | | | | ✓ | ✓ | — | Contraseña de `nimbo_app` que fija `infra/postgres/init/10-nimbo-app.sh`; debe coincidir con `DATABASE_URL`. No la lee ninguna app |
 | `REDIS_URL` | ✓ | ✓ | | | | — | BullMQ y caché |
-| `MINIO_ENDPOINT` | ✓ | | | | | — | API S3 (puerto 9000); la consola 9001 no la usa la app |
-| `MINIO_ACCESS_KEY` | ✓ | | | | ✓ | — | |
-| `MINIO_SECRET_KEY` | ✓ | | | | ✓ | — | |
-| `MINIO_BUCKET` | ✓ | | | ✓ | | `nimbo` | Creado con versionado por `infra/minio/init.sh` |
-| `MINIO_REGION` | ✓ | | | | | `us-east-1` | Nominal, lo exige el SDK |
+| `MINIO_ENDPOINT` | ✓ | ✓ | | | | — | API S3 (puerto 9000); la consola 9001 no la usa la app |
+| `MINIO_ACCESS_KEY` | ✓ | ✓ | | | ✓ | — | Una sola definición compartida por `api` y `worker` (005); el worker aborta partes y borra objetos |
+| `MINIO_SECRET_KEY` | ✓ | ✓ | | | ✓ | — | Ídem |
+| `MINIO_BUCKET` | ✓ | ✓ | | ✓ | | `nimbo` | Creado con versionado por `infra/minio/init.sh` |
+| `MINIO_REGION` | ✓ | ✓ | | | | `us-east-1` | Nominal, lo exige el SDK |
+| `MINIO_PUBLIC_ENDPOINT` | ✓ | | | | | `http://localhost:9000` | Host contra el que el `api` firma URLs (005); staging `https://s3.staging.nimbo.me`. Nunca un prefijo de ruta |
+| `UPLOAD_PART_SIZE_BYTES` / `UPLOAD_MULTIPART_THRESHOLD_BYTES` | ✓ | | | | | 8 MiB / 16 MiB | Parte ≥ 5 MiB; umbral ≥ parte (005 D-1) |
+| `UPLOAD_URL_TTL_SECONDS` / `UPLOAD_COMPLETE_TIMEOUT_SECONDS` | ✓ | | | | | `3600` / `900` | TTL entre 60 y 86400 s |
+| `RATE_LIMIT_UPLOAD_INIT_PER_MINUTE` / `RATE_LIMIT_DOWNLOAD_URL_PER_MINUTE` | ✓ | | | | | `300` / `120` | Por usuario (005 RN-16) |
+| `UPLOAD_CLEANUP_INTERVAL_MINUTES` / `UPLOAD_CLEANUP_BATCH_SIZE` | | ✓ | | | | `10` / `100` | Barrido de cargas vencidas; lote 1–1000 |
 | `WEB_PUBLIC_URL` | ✓ | | | | | — | Base de los enlaces de los correos (`/verificar-correo#token=…`); `https` obligatorio en staging y producción (001 CA-20) |
-| `CORS_ORIGIN` | ✓ | | | | | — | Orígenes permitidos, separados por comas (local: `http://localhost,http://localhost:3002`) |
+| `CORS_ORIGIN` | ✓ | | | ✓ | | — | Orígenes permitidos, separados por comas (local: `http://localhost,http://localhost:3002`); compose los pasa también a `MINIO_API_CORS_ALLOW_ORIGIN` (005, nunca `*`) |
 | `SMTP_HOST` | | ✓ | | | | — | Local: `localhost` (Mailpit); perfil `apps`: `mailpit`; staging: `smtp.resend.com` |
 | `SMTP_PORT` | | ✓ | | | | — | Mailpit `1025`; Resend `465` |
 | `SMTP_TLS` | | ✓ | | | | — | `none` | `starttls` | `implicit`; `none` prohibido en staging y producción |
@@ -68,7 +73,7 @@ limitan a lo que CA-3 permite:
 |---|---|---|
 | Apps | Corren en el host con `pnpm dev` (R-4); `build` bajo el perfil opcional `apps` | Imágenes precompiladas `ghcr.io/afmatul/nimbo-*:${IMAGE_TAG}`; sin `build` |
 | Puertos publicados | Postgres `5432`, Redis `6379`, MinIO `9000`/`9001`, Traefik `8080`, Mailpit `8025`/`1025` | Solo Traefik `80`/`443`; Postgres/Redis/MinIO sin `ports:` |
-| Traefik | `traefik.local.yml` sin TLS; `local-routes.yml` enruta `/` → host:3002 y `/api` → host:3000; `/docs` y `/s3` por etiquetas | `traefik.staging.yml` con Let's Encrypt; enrutadores por `Host()`; `s3.staging` definido pero deshabilitado hasta 005 |
+| Traefik | `traefik.local.yml` sin TLS; `local-routes.yml` enruta `/` → host:3002 y `/api` → host:3000; `/docs` por etiquetas; MinIO por el puerto 9000 (sin router `/s3`: el `stripprefix` rompe la firma, 005 R-6) | `traefik.staging.yml` con Let's Encrypt; enrutadores por `Host()`; `s3.staging` definido pero deshabilitado hasta 005 |
 | Volúmenes | Nombrados (`postgres_data`, `minio_data`, …) | Nombrados con ruta persistente del Droplet |
 | Extras | Mailpit (correo de desarrollo) | Cabeceras seguras (`secure-headers`), límites de memoria |
 
