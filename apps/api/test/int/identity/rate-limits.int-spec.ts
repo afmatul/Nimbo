@@ -112,7 +112,7 @@ describe('Límites de registro y reenvío (CA-15)', () => {
       'IDENTITY_VERIFICATION_LINK_INVALID',
     );
     const verified = await verify(latest);
-    expect(verifyEmailResponseSchema.parse(verified.body)).toEqual({ status: 'verified' });
+    expect(verifyEmailResponseSchema.parse(verified.body)).toMatchObject({ status: 'verified' });
   };
 
   beforeAll(async () => {

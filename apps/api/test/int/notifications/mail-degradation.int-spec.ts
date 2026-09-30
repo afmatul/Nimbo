@@ -78,6 +78,7 @@ describe('degradación del SMTP (CA-21, CA-18)', () => {
     smtpPort = await freePort();
     testApp = await createTestApp({
       withWorkerEnv: true,
+      accessTokenStrategy: 'identity',
       env: { SMTP_PORT: String(smtpPort) },
       modules: [NotificationsModule, NotificationsWorkerModule],
       overrides: [SHORT_BACKOFF],
@@ -192,6 +193,7 @@ describe('registro con el SMTP caído (CA-21, CA-13)', () => {
     smtpPort = await freePort();
     testApp = await createTestApp({
       withWorkerEnv: true,
+      accessTokenStrategy: 'identity',
       env: { SMTP_PORT: String(smtpPort) },
       modules: [
         EventEmitterModule.forRoot(),

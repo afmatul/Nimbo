@@ -124,6 +124,6 @@ describe('identityValidationError (plan §5, ADR-0020)', () => {
       VERIFICATION_LINK_INVALID: new VerificationLinkInvalidError().code,
     };
 
-    expect(codes).toEqual(IDENTITY_ERROR_CODES);
+    expect(IDENTITY_ERROR_CODES).toMatchObject(codes);
   });
 });

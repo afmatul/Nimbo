@@ -117,4 +117,17 @@ describe('checkEnvExample (CA-19)', () => {
       problems: ['`NEXT_PUBLIC_SMTP_PASSWORD` expone un secreto al navegador (CA-19, CA-29)'],
     });
   });
+
+  it('CA-19: `NEXT_PUBLIC_JWT_ACCESS_SECRET` expone la clave de firma del `api` (002 plan §6.10)', () => {
+    const real = collectSchemaKeys();
+    const exampleKeys = new Set([
+      ...parseEnvExample(readFileSync(join(ROOT, '.env.example'), 'utf8')),
+      'NEXT_PUBLIC_JWT_ACCESS_SECRET',
+    ]);
+
+    expect(checkEnvExample({ exampleKeys, ...real })).toEqual({
+      ok: false,
+      problems: ['`NEXT_PUBLIC_JWT_ACCESS_SECRET` expone un secreto al navegador (CA-19, CA-29)'],
+    });
+  });
 });
