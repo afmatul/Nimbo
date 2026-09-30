@@ -39,8 +39,12 @@ modules/identity/
 │  ├─ argon2id.hasher.ts                    # Argon2idHasher (m=19456, t=2, p=1; RN-3)
 │  └─ event-emitter-account-events.publisher.ts
 ├─ presentation/
-│  ├─ auth.controller.ts                    # AuthController: register, resend-verification, verify-email
-│  ├─ identity-ip-throttler.guard.ts        # IdentityIpThrottlerGuard + IDENTITY_THROTTLERS (register-ip y resend-ip, D-8, D-15)
+│  ├─ auth.controller.ts                    # AuthController: register, resend-verification, verify-email (abre sesión),
+│  │                                        # login, session/refresh, session/logout (002)
+│  ├─ session-cookies.ts                    # SessionCookies (nimbo_rt, nimbo_did) y readCookie (002 DT-2, DT-9)
+│  ├─ client-context.factory.ts             # readClientContext: nimbo_did, User-Agent y req.ip (002 CA-16)
+│  ├─ session-response.ts                   # IssuedSession → SessionResponse del contrato
+│  ├─ identity-ip-throttler.guard.ts        # IdentityIpThrottlerGuard + IDENTITY_THROTTLERS (register-ip, resend-ip, login-ip)
 │  ├─ identity-validation.ts                # fábrica de errores de ZodValidationPipe (INVALID_INPUT o WEAK_PASSWORD)
 │  └─ no-store.middleware.ts                # Cache-Control: no-store en toda respuesta de AuthController
 ├─ identity.module.ts                       # IdentityModule.forRoot(env)
@@ -79,6 +83,25 @@ desde `identity`**: el nombre del evento y su tipo, nada más. El oyente debe se
 conciliación («toda cuenta `CLIENT` verificada sin suscripción recibe Personal») porque el evento en proceso puede
 perderse.
 
+## Sesiones (002)
+
+- **Rutas** (todas `@Public()`): `POST /auth/login` (`200 SessionResponse`), `POST /auth/session/refresh` (`200
+SessionResponse`, rota `nimbo_rt`) y `POST /auth/session/logout` (`204`). `verify-email` en su apertura `verified`
+  abre sesión con `origin: 'verification'`; si eso falla responde `verified` sin `session` y registra
+  `identity.verification.session_failed`.
+- **Cookies** (`session-cookies.ts`, única fuente): `nimbo_rt` (`HttpOnly`, `SameSite=Strict`,
+  `Path=/api/v1/auth/session`, `Max-Age` = `refreshMaxAge`) y `nimbo_did` (`Path=/api/v1/auth`, 365 d, solo si el
+  navegador no traía una válida). `Secure` solo con `APP_ENV` `staging` o `production` (`IDENTITY_CONFIG.cookieSecure`).
+  `nimbo_rt` se borra ante `IDENTITY_SESSION_EXPIRED`, `IDENTITY_SESSION_REVOKED` y en `logout`; **nunca** ante
+  `IDENTITY_REFRESH_INVALID` (carrera entre pestañas, CA-9).
+- **Límites**: `login-ip` (20 intentos por IP en 15 min, ámbito `ip_login` con su propio texto, DT-20) y bloqueo por
+  correo con `IAttemptLockout` (5 fallos en 15 min → 15 min). `register` y `resend-verification` omiten `login-ip`;
+  `login` omite `register-ip` y `resend-ip`.
+- **Token de acceso**: `JwtTokenService` (HS256, `sub`, `rol`, `sid`, 900 s) implementa `ITokenService` e
+  `IAccessTokenVerifier` de `shared`; `IdentityModule` exporta `I_ACCESS_TOKEN_VERIFIER` y registra `JwtStrategy`
+  con el nombre `ACCESS_TOKEN_STRATEGY`. Las apps de prueba que componen `IdentityModule` usan
+  `accessTokenStrategy: 'identity'`.
+
 ## Reglas del módulo
 
 - **Anti-enumeración (RN-5)**: registro y reenvío responden lo mismo exista o no la cuenta (`202`), el límite por
@@ -94,8 +117,8 @@ perderse.
 ## Qué reutilizan 002 y 003 (plan 001 §6.11)
 
 - **002**:
-  - `RegistrationService.verifyEmail` devuelve `{ outcome: 'VERIFIED', userId }` una sola vez por cuenta: ahí
-    `AuthController.verifyEmail` abrirá la sesión (002 D-1, D-4) y extenderá `VerifyEmailResponse`.
+  - `RegistrationService.verifyEmail` devuelve `{ outcome: 'VERIFIED', userId, user }` una sola vez por cuenta: ahí
+    `AuthController.verifyEmail` abre la sesión (002 D-1, D-4) y extiende `VerifyEmailResponse`.
   - `IPasswordHasher`, `IUserRepository`, `IVerificationTokenRepository` (con `tipo = recuperacion`; un token de
     verificación nunca sirve para restablecer, CA-12) y `VerificationLinkIssuer` (002 D-15).
   - `IdentityIpThrottlerGuard`: 002-PR-2 agrega `login-ip` a `IDENTITY_THROTTLERS` y a la tabla de ámbitos.
@@ -107,9 +130,6 @@ perderse.
 
 ## Pendientes
 
-- **`@SkipThrottle` con 002**: `register` ya omite `resend-ip` y `resend-verification` omite `register-ip`. Cuando
-  002-PR-2 agregue el _throttler_ `login-ip`, `register` y `resend-verification` omiten también `login-ip`, y `login`
-  omite `register-ip` y `resend-ip`, sin renombrar nada (002 D-5).
 - **`nimbo_app`**: cuando 003 cree el rol de BD sin privilegios, la suite de aislamiento corre con él (ADR-0005).
 
 ## Regla

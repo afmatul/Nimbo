@@ -16,3 +16,9 @@ export const LEGAL_DOCUMENTS: {
   terms: { version: '1.0', effectiveDate: '2026-09-30' },
   privacy: { version: '1.0', effectiveDate: '2026-09-30' },
 };
+
+/**
+ * Correo de contacto de Nimbo (001 plan §6.13): única constante para las páginas legales, el mensaje de cuenta
+ * suspendida (002 CA-4) y 003.
+ */
+export const SUPPORT_CONTACT_EMAIL = 'amatultab@gmail.com';

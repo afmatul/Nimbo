@@ -211,7 +211,7 @@ describe('UploadService.init', () => {
   });
 
   it('CA-19: con la tasa agotada responde 429 con `Retry-After` antes de tocar nada más', async () => {
-    const { service, rateLimiter, journal } = setup();
+    const { service, rateLimiter, journal, logger } = setup();
     rateLimiter.decision = { allowed: false, retryAfterSeconds: 17 };
 
     const attempt = service.init(ACTOR, request());
@@ -223,6 +223,10 @@ describe('UploadService.init', () => {
       rules: [{ limit: 300, windowSeconds: 60 }],
     });
     expect(journal.entries).toEqual(['rate:consume']);
+    expect(logger.warn).toHaveBeenCalledWith({
+      event: 'upload.rate_limited',
+      operation: 'upload_init',
+    });
   });
 
   it('CA-7: un nombre inválido responde 400 con el campo en falla, sin pedir límites', async () => {

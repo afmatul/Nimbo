@@ -21,7 +21,6 @@ import {
   InvalidFileTypeError,
   InvalidUploadRequestError,
   NameConflictError,
-  StorageTooManyRequestsError,
   UploadExpiredError,
   UploadIncompleteError,
   UploadNotFoundError,
@@ -50,6 +49,7 @@ import { I_UPLOAD_SESSION_REPOSITORY } from './ports/i-upload-session.repository
 import type { IUploadSessionRepository } from './ports/i-upload-session.repository.port';
 import { QuotaService } from './quota.service';
 import { recordAudit } from './record-audit';
+import { rateLimited } from './storage-logger';
 import type { StorageLogger } from './storage-logger';
 import { UPLOAD_CONFIG } from './upload-config';
 import type { UploadConfig } from './upload-config';
@@ -184,7 +184,9 @@ export class UploadService {
     const decision = await this.rateLimiter.consume(`${INIT_RATE_KEY_PREFIX}${actor.id}`, [
       { limit: this.config.initPerMinute, windowSeconds: RATE_WINDOW_SECONDS },
     ]);
-    if (!decision.allowed) throw new StorageTooManyRequestsError(decision.retryAfterSeconds);
+    if (!decision.allowed) {
+      throw rateLimited(this.logger, 'upload_init', decision.retryAfterSeconds);
+    }
   }
 
   /** La transacción de `init`. Si se creó un multipart y algo falla (incluido el commit), se aborta. */

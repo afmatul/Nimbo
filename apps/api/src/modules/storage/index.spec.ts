@@ -19,11 +19,14 @@ type _LimitsForSignature = Expect<
   Equal<IPlanLimitsProvider['limitsFor'], (actor: Actor) => Promise<PlanLimits>>
 >;
 
-/** API pública de `storage` (plan §6, DF-51 opción A). El detector, el escáner y los repositorios no salen. */
-const RUNTIME_EXPORTS = ['I_PLAN_LIMITS_PROVIDER'] as const;
+/**
+ * API pública de `storage` (plan §6, DF-51 opción A): el token del puerto de límites y el módulo que monta la raíz de
+ * composición. El detector, el escáner y los repositorios no salen.
+ */
+const RUNTIME_EXPORTS = ['I_PLAN_LIMITS_PROVIDER', 'StorageModule'] as const;
 
 describe('modules/storage/index.ts', () => {
-  it('CA-3, CA-4, RN-1: exporta exactamente el token del puerto de límites del plan', () => {
+  it('CA-3, CA-4, RN-1: exporta exactamente el token del puerto de límites y `StorageModule`', () => {
     expect(Object.keys(storage).sort()).toEqual([...RUNTIME_EXPORTS].sort());
     expect(typeof storage.I_PLAN_LIMITS_PROVIDER).toBe('symbol');
   });

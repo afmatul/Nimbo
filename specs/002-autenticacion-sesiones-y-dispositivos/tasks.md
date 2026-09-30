@@ -63,7 +63,7 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
 
 ## Bloque 1 — PR-1 «contratos, migraciones y shared» (plan §4, §5, §6.7, §6.10) · depende de 001-PR-1
 
-- [ ] **T-01** [P] Parámetros de §6 de la spec — CA: CA-1, CA-5, CA-6, CA-8, CA-9, CA-23 — Depende: 001 T-02 (001-PR-1) — ~0,5 h
+- [x] **T-01** [P] Parámetros de §6 de la spec — CA: CA-1, CA-5, CA-6, CA-8, CA-9, CA-23 — Depende: 001 T-02 (001-PR-1) — ~0,5 h
   Prueba primero: ampliar `packages/contracts/src/identity/constants.spec.ts` con `ACCESS_TOKEN_TTL_SECONDS = 900`,
   `SESSION_IDLE_TIMEOUT_DAYS = 7`, `SESSION_MAX_LIFETIME_DAYS = 30`, `REFRESH_ROTATION_GRACE_SECONDS = 10`,
   `LOGIN_MAX_FAILURES = 5`, `LOGIN_FAILURE_WINDOW_MINUTES = 15`, `LOGIN_LOCK_MINUTES = 15`, `LOGIN_ATTEMPTS_PER_IP = 20`,
@@ -73,7 +73,7 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   Luego `parameters.ts`.
   Archivos: `packages/contracts/src/identity/parameters.ts`, `packages/contracts/src/identity/constants.spec.ts`.
 
-- [ ] **T-02** [P] Códigos de error, `reason` `WRONG_PASSWORD` y `SUPPORT_CONTACT_EMAIL` — CA: CA-2…CA-6, CA-8…CA-10, CA-12, CA-20, CA-23 — Depende: 001 T-02 (001-PR-1) — ~0,5 h
+- [x] **T-02** [P] Códigos de error, `reason` `WRONG_PASSWORD` y `SUPPORT_CONTACT_EMAIL` — CA: CA-2…CA-6, CA-8…CA-10, CA-12, CA-20, CA-23 — Depende: 001 T-02 (001-PR-1) — ~0,5 h
   Prueba primero `packages/contracts/src/identity/error-codes.spec.ts`: `IDENTITY_ERROR_CODES` contiene los de 001 más
   `IDENTITY_INVALID_CREDENTIALS`, `IDENTITY_EMAIL_NOT_VERIFIED`, `IDENTITY_ACCOUNT_SUSPENDED`, `IDENTITY_LOGIN_LOCKED`,
   `IDENTITY_REFRESH_INVALID`, `IDENTITY_SESSION_EXPIRED`, `IDENTITY_SESSION_REVOKED`, `IDENTITY_SESSION_NOT_FOUND`,
@@ -82,7 +82,7 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   `SUPPORT_CONTACT_EMAIL` existe una sola vez en `legal.ts` (si 001 ya la exportó, solo se prueba). Luego los archivos.
   Archivos: `packages/contracts/src/identity/{error-codes,legal}.ts`, `packages/contracts/src/identity/error-codes.spec.ts`.
 
-- [ ] **T-03** Esquemas de petición — CA: CA-1, CA-18, CA-20, CA-21, CA-22 — Depende: T-01, 001 T-05 (001-PR-1) — ~1 h
+- [x] **T-03** Esquemas de petición — CA: CA-1, CA-18, CA-20, CA-21, CA-22 — Depende: T-01, 001 T-05 (001-PR-1) — ~1 h
   Prueba primero `packages/contracts/src/identity/schemas.spec.ts` (ampliado): `loginRequestSchema` y
   `forgotPasswordRequestSchema` estrictos (clave extra → `UNKNOWN_FIELD`; correo mal formado → `422` de 001);
   `resetTokenRequestSchema` `{ token }`; `resetPasswordRequestSchema` `{ token, password }` con la política D-6 de 001
@@ -90,7 +90,7 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   confirmación (D-7). Luego `schemas.ts`.
   Archivos: `packages/contracts/src/identity/schemas.ts`, `packages/contracts/src/identity/schemas.spec.ts`.
 
-- [ ] **T-04** Esquemas de respuesta — CA: CA-1, CA-11, CA-13, CA-15 — Depende: T-03 (mismo archivo) — ~1 h
+- [x] **T-04** Esquemas de respuesta — CA: CA-1, CA-11, CA-13, CA-15 — Depende: T-03 (mismo archivo) — ~1 h
   Prueba primero (mismo `schemas.spec.ts`): `sessionResponseSchema` `{ accessToken, accessTokenExpiresAt (ISO-8601 UTC),
   user: { id, fullName, email, role } }`; `sessionSummarySchema` `{ id, browser, os, deviceKind: 'desktop'|'mobile'|'tablet',
   startedAt, lastActiveAt, current }` estricto (rechaza `ip`, `userAgent`, `deviceId`); `sessionListResponseSchema`
@@ -99,14 +99,14 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   en verde). Luego `schemas.ts`.
   Archivos: `packages/contracts/src/identity/schemas.ts`, `packages/contracts/src/identity/schemas.spec.ts`.
 
-- [ ] **T-05** [P] Migración `crear-dispositivo` — CA: CA-16, CA-17, CA-24 — Depende: 001 T-06 (001-PR-1) — ~1 h
+- [x] **T-05** [P] Migración `crear-dispositivo` — CA: CA-16, CA-17, CA-24 — Depende: 001 T-06 (001-PR-1) — ~1 h
   Prueba primero `apps/api/test/int/identity/device-session-migrations.int-spec.ts`: `huella_hash` rechaza lo que no
   sea hex de 64; `UNIQUE (usuario_id, huella_hash)` (misma huella en dos cuentas sí se permite); `agente_usuario`
   por defecto `''`; `ultima_ip` es `inet`; borrar el `usuario` borra sus dispositivos; `run → revert → run` limpio.
   Luego `20260929100000-crear-dispositivo.ts` con el SQL de plan §4 (sin `nombre` ni `creado_en`).
   Archivos: `apps/api/src/migrations/20260929100000-crear-dispositivo.ts`, `apps/api/test/int/identity/device-session-migrations.int-spec.ts`.
 
-- [ ] **T-06** Migración `crear-sesion` — CA: CA-1, CA-7, CA-8, CA-24 — Depende: T-05 (misma prueba) — ~1 h
+- [x] **T-06** Migración `crear-sesion` — CA: CA-1, CA-7, CA-8, CA-24 — Depende: T-05 (misma prueba) — ~1 h
   Prueba primero (mismo archivo): la FK compuesta rechaza una sesión cuyo `usuario_id` no es el dueño del dispositivo;
   `ck_sesion_rotacion` exige `refresh_anterior_hash` y `rotado_en` juntos; `ck_sesion_vigencia`; hashes hex de 64;
   existen `idx_sesion_usuario_id_ultimo_uso` (parcial) e `idx_sesion_dispositivo_id_usuario_id`; borrar el dispositivo
@@ -114,19 +114,19 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   defecto de 003 ya están (si no, el caso queda `it.todo` con nota); `revert` deshace en LIFO. Luego la migración.
   Archivos: `apps/api/src/migrations/20260929100100-crear-sesion.ts`, `apps/api/test/int/identity/device-session-migrations.int-spec.ts`.
 
-- [ ] **T-07** [P] CORS con credenciales en `configureHttpApp` — CA: CA-1, CA-7, CA-28 — Depende: 001 T-17 (001-PR-1) — ~0,5 h
+- [x] **T-07** [P] CORS con credenciales en `configureHttpApp` — CA: CA-1, CA-7, CA-28 — Depende: 001 T-17 (001-PR-1) — ~0,5 h
   Prueba primero en la prueba existente de `configureHttpApp`: la respuesta *preflight* desde `CORS_ORIGIN` lleva
   `Access-Control-Allow-Credentials: true`, permite `authorization` y `DELETE`; un origen no listado no recibe
   cabeceras CORS; nunca `*` con credenciales. Luego `configure-http-app.ts`.
   Archivos: `apps/api/src/shared/presentation/configure-http-app.ts` y su prueba.
 
-- [ ] **T-08** [P] `REDACTED_FIELDS` + `currentPassword`, `newPassword` — CA: CA-25 — Depende: 001 T-09 (001-PR-1) — ~0,5 h
+- [x] **T-08** [P] `REDACTED_FIELDS` + `currentPassword`, `newPassword` — CA: CA-25 — Depende: 001 T-09 (001-PR-1) — ~0,5 h
   Prueba primero `apps/api/src/shared/infrastructure/logging/redacted-fields.spec.ts`: un objeto con `currentPassword` y
   `newPassword` anidados sale `[REDACTED]`; `authorization`, `cookie`, `token`, `accessToken`, `refreshToken` siguen
   redactados. Luego `redacted-fields.ts`.
   Archivos: `apps/api/src/shared/infrastructure/logging/redacted-fields.ts`, `apps/api/src/shared/infrastructure/logging/redacted-fields.spec.ts`.
 
-- [ ] **T-09** [P] `JWT_ACCESS_SECRET` (esquema, secreto, `.env.example`, `env:check`) — CA: CA-26 (clave), CA-25 — Depende: 001 T-10 (001-PR-1) — ~1 h
+- [x] **T-09** [P] `JWT_ACCESS_SECRET` (esquema, secreto, `.env.example`, `env:check`) — CA: CA-26 (clave), CA-25 — Depende: 001 T-10 (001-PR-1) — ~1 h
   Prueba primero `apps/api/src/shared/infrastructure/config/env.schema.spec.ts`: sin la variable falla al arrancar;
   menos de 32 caracteres falla; con `APP_ENV=staging` exige ≥ 43 y distinta del valor de `.env.example`; está en
   `SECRET_KEYS` y **solo** en `apiEnvSchema` (no en el del `worker`); y `scripts/check-env-example.spec.ts` suma el caso
@@ -134,7 +134,7 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   desarrollo marcado como tal).
   Archivos: `apps/api/src/shared/infrastructure/config/{env.schema,secret-keys}.ts`, `apps/api/src/shared/infrastructure/config/env.schema.spec.ts`, `scripts/check-env-example.spec.ts`, `.env.example`.
 
-- [ ] **T-10** Documentación y cierre del PR-1 — CA: n/a — Depende: T-01…T-09 — ~0,5 h
+- [x] **T-10** Documentación y cierre del PR-1 — CA: n/a — Depende: T-01…T-09 — ~0,5 h
   README de `shared` (CORS con credenciales y por qué nunca comodín; `JWT_ACCESS_SECRET` como secreto del `api`).
   `pnpm lint && pnpm typecheck && pnpm test && pnpm test:int && pnpm env:check` en verde. Descripción del PR con los
   archivos de 001 que amplía. `docs/operations/ambientes.md` (secreto en staging) queda **diferido** al montar staging.
@@ -144,21 +144,21 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
 
 ### 2a. Dominio y puertos (pruebas primero; empiezan hoy, [P×PR])
 
-- [ ] **T-11** [P] [P×PR] `RefreshToken` — CA: CA-7, CA-9, CA-24 — Depende: 001 T-28 (`OpaqueToken`, dominio de 001-PR-3, empezable hoy) — ~1 h
+- [x] **T-11** [P] [P×PR] `RefreshToken` — CA: CA-7, CA-9, CA-24 — Depende: 001 T-28 (`OpaqueToken`, dominio de 001-PR-3, empezable hoy) — ~1 h
   Prueba primero `apps/api/src/modules/identity/domain/refresh-token.vo.spec.ts`: `issue(sessionId)` da
   `<uuid>.<43 base64url>` y expone `secretHash` = SHA-256 hex del secreto (nunca el valor en `toJSON`); dos emisiones
   distintas; `parse` acepta solo un uuid, **un** punto y un secreto bien formado (rechaza vacío, sin punto, dos puntos,
   uuid inválido, secreto de 42/44 caracteres o con `+/=`); `parse(v).sessionId` y `secretHash` coinciden con `issue`.
   Archivos: `apps/api/src/modules/identity/domain/refresh-token.vo.ts`, `apps/api/src/modules/identity/domain/refresh-token.vo.spec.ts`.
 
-- [ ] **T-12** [P] [P×PR] `Session`: `open` y `stateAt` — CA: CA-1, CA-8, CA-10 — Depende: — — ~1 h
+- [x] **T-12** [P] [P×PR] `Session`: `open` y `stateAt` — CA: CA-1, CA-8, CA-10 — Depende: — — ~1 h
   Prueba primero `apps/api/src/modules/identity/domain/session.entity.spec.ts`: `open({ id, userId, deviceId,
   secretHash, now, maxLifetime })` → `creadaEn = ultimoUso = now`, `expiraEn = now + maxLifetime`, sin anterior ni
   `rotadoEn`; `stateAt(now, idle)`: `revoked` si `revocadaEn`; `expired` en `expiraEn` exacto, en `ultimoUso + idle`
   exacto y 1 s después; `active` 1 s antes de cada límite. Inmutable (Art. VII.7).
   Archivos: `apps/api/src/modules/identity/domain/session.entity.ts`, `apps/api/src/modules/identity/domain/session.entity.spec.ts`.
 
-- [ ] **T-13** [P×PR] `Session`: `matchSecret`, `rotate`, `revoke`, `refreshCookieMaxAge` — CA: CA-7, CA-8, CA-9 — Depende: T-12 (mismo archivo) — ~1 h
+- [x] **T-13** [P×PR] `Session`: `matchSecret`, `rotate`, `revoke`, `refreshCookieMaxAge` — CA: CA-7, CA-8, CA-9 — Depende: T-12 (mismo archivo) — ~1 h
   Prueba primero (mismo archivo): `matchSecret(hash, now, grace)` → `current`; `previousWithinGrace` a los 0 s y a los
   10 s de `rotadoEn`; `reuse` a los 10 s + 1 ms, con un hash anterior al anterior y con uno falsificado; compara con
   `timingSafeEqual` (espía). `rotate(newHash, now)` devuelve una instancia nueva con anterior = vigente,
@@ -166,20 +166,20 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   `refreshCookieMaxAge(now, idle) = min(idle, expiraEn − now)` en el día 1 y en el día 29,5.
   Archivos: `apps/api/src/modules/identity/domain/session.entity.ts`, `apps/api/src/modules/identity/domain/session.entity.spec.ts`.
 
-- [ ] **T-14** [P] [P×PR] `Device` — CA: CA-16, CA-17 — Depende: — — ~0,5 h
+- [x] **T-14** [P] [P×PR] `Device` — CA: CA-16, CA-17 — Depende: — — ~0,5 h
   Prueba primero `apps/api/src/modules/identity/domain/device.entity.spec.ts`: `register` trunca `userAgent` a 512
   caracteres (y acepta vacío); guarda solo `secretHash`; `seen({ userAgent, ip, now })` devuelve una instancia nueva con
   `ultimoAcceso`, `agenteUsuario` y `ultimaIp` actualizados.
   Archivos: `apps/api/src/modules/identity/domain/device.entity.ts`, `apps/api/src/modules/identity/domain/device.entity.spec.ts`.
 
-- [ ] **T-15** [P] [P×PR] `UserAgentSummary.parse` — CA: CA-11, CA-16 — Depende: — — ~1 h
+- [x] **T-15** [P] [P×PR] `UserAgentSummary.parse` — CA: CA-11, CA-16 — Depende: — — ~1 h
   Prueba primero `apps/api/src/modules/identity/domain/user-agent-summary.vo.spec.ts` con una muestra de cadenas reales
   (fijadas en la prueba): Edge/Windows, Chrome/macOS, Safari/iOS (móvil), Safari/iPadOS (tableta), Chrome/Android
   (móvil), Samsung Internet, Opera, Firefox/Linux, Chrome/ChromeOS; Edge **antes** que Chrome y Chrome antes que Safari;
   vacío o desconocido → «Navegador desconocido» / «Sistema desconocido» / `desktop`. Función pura (DT-9).
   Archivos: `apps/api/src/modules/identity/domain/user-agent-summary.vo.ts`, `apps/api/src/modules/identity/domain/user-agent-summary.vo.spec.ts`.
 
-- [ ] **T-16** [P×PR] Errores nuevos de `identity` — CA: CA-2…CA-5, CA-8…CA-10, CA-12, CA-20, CA-23 — Depende: 001 T-07 (001-PR-1), 001 T-31 (patrón y carpeta) — ~1 h
+- [x] **T-16** [P×PR] Errores nuevos de `identity` — CA: CA-2…CA-5, CA-8…CA-10, CA-12, CA-20, CA-23 — Depende: 001 T-07 (001-PR-1), 001 T-31 (patrón y carpeta) — ~1 h
   Prueba primero `apps/api/src/modules/identity/domain/errors/session-errors.spec.ts`: cada una de las 12 clases de
   plan §6.1 con su `code`, su `status` por herencia (401, 403, 404, 422 o 429, DT-14) y el mensaje de plan §5;
   `LoginLockedError` y `PasswordChangeLockedError` llevan `retryAfterSeconds` y «N minutos» con `ceil(s/60)`;
@@ -188,7 +188,7 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   `code` coinciden con `IDENTITY_ERROR_CODES` (la prueba sí importa `contracts`). Luego `domain/errors/*.ts`.
   Archivos: `apps/api/src/modules/identity/domain/errors/**`.
 
-- [ ] **T-17** [P×PR] Puertos de `identity` (incluido `IAttemptLockout`) y `ClientContext` — CA: n/a (contratos internos) — Depende: T-12, T-14 — ~0,5 h
+- [x] **T-17** [P×PR] Puertos de `identity` (incluido `IAttemptLockout`) y `ClientContext` — CA: n/a (contratos internos) — Depende: T-12, T-14 — ~0,5 h
   `i-session-repository.port.ts` (`insert`, `findByIdForUpdate`, `update`, `listActive(userId, now, idleCutoff, limit)`,
   `revokeIfActive(id, userId, now): Promise<boolean>`, `revokeAllExcept(userId, exceptId | null, now): Promise<number>`),
   `i-device-repository.port.ts` (`upsertSeen(device): Promise<{ deviceId; isNew }>`), `i-token-service.port.ts`
@@ -199,52 +199,52 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
 
 ### 2b. Infraestructura
 
-- [ ] **T-18** `RedisAttemptLockout`: `recordFailure` y `check` (contrato de `IAttemptLockout`) — CA: CA-5, CA-23 — Depende: T-17, 001 T-12 (`REDIS_CLIENT`) — ~1 h
+- [x] **T-18** `RedisAttemptLockout`: `recordFailure` y `check` (contrato de `IAttemptLockout`) — CA: CA-5, CA-23 — Depende: T-17, 001 T-12 (`REDIS_CLIENT`) — ~1 h
   Prueba primero `apps/api/test/int/identity/redis-attempt-lockout.int-spec.ts` (Redis real, `FixedClock`): 4 fallos
   → `locked: false`; el 5.º → `locked` con `retryAfterSeconds = 900`; fallos fuera de la ventana de 15 min no cuentan;
   `check` a los 14 min 59 s bloqueado (1 s restante redondeado hacia arriba) y a los 15 min libre; las claves en Redis
   no contienen el correo. Luego el adaptador con un script Lua por operación y `now` de `IClock`.
   Archivos: `apps/api/src/modules/identity/infrastructure/redis-attempt-lockout.ts`, `apps/api/test/int/identity/redis-attempt-lockout.int-spec.ts`.
 
-- [ ] **T-19** `RedisAttemptLockout`: `clear`, concurrencia y Redis caído — CA: CA-5, CA-19, CA-23 — Depende: T-18 — ~0,5 h
+- [x] **T-19** `RedisAttemptLockout`: `clear`, concurrencia y Redis caído — CA: CA-5, CA-19, CA-23 — Depende: T-18 — ~0,5 h
   Prueba primero (mismo archivo): `clear` quita bloqueo y fallos; 10 `recordFailure` simultáneos con `maxFailures = 5`
   dejan un bloqueo y ninguna excepción; con el cliente desconectado `check` **lanza** (falla cerrado, plan §9).
   Archivos: `apps/api/src/modules/identity/infrastructure/redis-attempt-lockout.ts`, `apps/api/test/int/identity/redis-attempt-lockout.int-spec.ts`.
 
-- [ ] **T-20** Entidades ORM y mappers de `sesion` y `dispositivo` — CA: CA-17, CA-24 — Depende: T-05, T-06, T-12…T-14, 001 T-39 (patrón) — ~1 h
+- [x] **T-20** Entidades ORM y mappers de `sesion` y `dispositivo` — CA: CA-17, CA-24 — Depende: T-05, T-06, T-12…T-14, 001 T-39 (patrón) — ~1 h
   Prueba primero `infrastructure/persistence/{session,device}.mapper.spec.ts`: ida y vuelta dominio ↔ ORM conserva todos
   los campos (fechas `timestamptz`, `inet` como texto); el dominio nunca recibe `huella_hash` en claro (solo hash).
   Luego `sesion.orm-entity.ts`, `dispositivo.orm-entity.ts` y los dos mappers.
   Archivos: `apps/api/src/modules/identity/infrastructure/persistence/{sesion.orm-entity,dispositivo.orm-entity,session.mapper,device.mapper}.ts` y los `*.spec.ts` de los mappers.
 
-- [ ] **T-21** [P] `TypeOrmDeviceRepository.upsertSeen` — CA: CA-16, CA-17 — Depende: T-20, 001 T-14 (`TransactionContext`) — ~1 h
+- [x] **T-21** [P] `TypeOrmDeviceRepository.upsertSeen` — CA: CA-16, CA-17 — Depende: T-20, 001 T-14 (`TransactionContext`) — ~1 h
   Prueba primero `apps/api/test/int/identity/typeorm-device.repository.int-spec.ts`: primera vez `isNew = true`;
   segunda con la misma huella `isNew = false` y actualiza `ultimo_acceso`, `agente_usuario`, `ultima_ip`; misma huella
   en otra cuenta → otra fila; dos `upsertSeen` simultáneos con la misma huella → una fila y un solo `isNew = true`
   (DT-19). Luego el repositorio (`INSERT … ON CONFLICT … RETURNING id, (xmax = 0)`).
   Archivos: `apps/api/src/modules/identity/infrastructure/persistence/typeorm-device.repository.ts`, `apps/api/test/int/identity/typeorm-device.repository.int-spec.ts`.
 
-- [ ] **T-22** [P] `TypeOrmSessionRepository`: `insert`, `findByIdForUpdate`, `update` — CA: CA-7, CA-9 — Depende: T-20, 001 T-14 — ~1 h
+- [x] **T-22** [P] `TypeOrmSessionRepository`: `insert`, `findByIdForUpdate`, `update` — CA: CA-7, CA-9 — Depende: T-20, 001 T-14 — ~1 h
   Prueba primero `apps/api/test/int/identity/typeorm-session.repository.int-spec.ts`: ida y vuelta; `findByIdForUpdate`
   dentro de una transacción bloquea a una segunda transacción hasta el commit (serializa dos renovaciones); id
   inexistente → `null`. Luego el repositorio.
   Archivos: `apps/api/src/modules/identity/infrastructure/persistence/typeorm-session.repository.ts`, `apps/api/test/int/identity/typeorm-session.repository.int-spec.ts`.
 
-- [ ] **T-23** `TypeOrmSessionRepository`: `listActive`, `revokeIfActive`, `revokeAllExcept` — CA: CA-11, CA-12, CA-13, CA-19, CA-22 — Depende: T-22 (mismos archivos) — ~1 h
+- [x] **T-23** `TypeOrmSessionRepository`: `listActive`, `revokeIfActive`, `revokeAllExcept` — CA: CA-11, CA-12, CA-13, CA-19, CA-22 — Depende: T-22 (mismos archivos) — ~1 h
   Prueba primero (mismo archivo): `listActive` excluye revocadas, vencidas por 30 d y por 7 d sin uso y las de otra
   cuenta, respeta el límite y trae `agente_usuario` por `JOIN` sin `huella_hash`, `ultima_ip` ni hashes;
   `revokeIfActive` con `userId` ajeno o ya revocada → `false` sin cambios; `revokeAllExcept(u, actual)` y
   `revokeAllExcept(u, null)` devuelven el número y no tocan otras cuentas. Todo `userId` va en el `WHERE` (Art. IX.2).
   Archivos: `apps/api/src/modules/identity/infrastructure/persistence/typeorm-session.repository.ts`, `apps/api/test/int/identity/typeorm-session.repository.int-spec.ts`.
 
-- [ ] **T-24** `ACCESS_TOKEN_OPTIONS` y `JwtTokenService.issueAccessToken` — CA: CA-1, CA-26 — Depende: T-09, T-17, **003-PR-A** (`@nestjs/jwt` instalado) — ~1 h
+- [x] **T-24** `ACCESS_TOKEN_OPTIONS` y `JwtTokenService.issueAccessToken` — CA: CA-1, CA-26 — Depende: T-09, T-17, **003-PR-A** (`@nestjs/jwt` instalado) — ~1 h
   Prueba primero `apps/api/src/modules/identity/infrastructure/jwt/jwt-token.service.spec.ts`: con `FixedClock`, el JWT
   decodificado tiene **exactamente** `sub`, `rol`, `sid`, `iat`, `exp` (sin `iss`, `aud`, correo ni nombre), cabecera
   `alg: HS256`, `exp − iat = 900` y `expiresAt` ISO igual a `exp`. Luego `access-token-options.ts` (proveedor único:
   `secret`, `algorithms: ['HS256']`, `ttlSeconds`) y `issueAccessToken` (`iat`/`exp` calculados con `IClock`).
   Archivos: `apps/api/src/modules/identity/infrastructure/jwt/{access-token-options,jwt-token.service}.ts`, `apps/api/src/modules/identity/infrastructure/jwt/jwt-token.service.spec.ts`.
 
-- [ ] **T-25** `JwtTokenService.verify` (implementa `IAccessTokenVerifier`) — CA: CA-26, CA-12 — Depende: T-24, **003-PR-A** (puerto y tipos en `shared/application/auth/`) — ~1 h
+- [x] **T-25** `JwtTokenService.verify` (implementa `IAccessTokenVerifier`) — CA: CA-26, CA-12 — Depende: T-24, **003-PR-A** (puerto y tipos en `shared/application/auth/`) — ~1 h
   Prueba primero (mismo `jwt-token.service.spec.ts`): válido → `{ valid: true, claims: { userId, role, sessionId } }`;
   a los 900 s según `FixedClock` → `{ valid: false, reason: 'expired' }`; alterado, otra clave, `alg: none`, `HS512`,
   `sub`/`sid` no uuid, `rol` fuera de `Role`, *claim* de más o de menos → `{ valid: false, reason: 'invalid' }`;
@@ -252,7 +252,7 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   `parseAccessTokenClaims` **privada**.
   Archivos: `apps/api/src/modules/identity/infrastructure/jwt/jwt-token.service.ts`, `apps/api/src/modules/identity/infrastructure/jwt/jwt-token.service.spec.ts`.
 
-- [ ] **T-26** `JwtStrategy` que delega en el puerto — CA: CA-26 — Depende: T-25, **003-PR-A** (`ACCESS_TOKEN_STRATEGY`) — ~1 h
+- [x] **T-26** `JwtStrategy` que delega en el puerto — CA: CA-26 — Depende: T-25, **003-PR-A** (`ACCESS_TOKEN_STRATEGY`) — ~1 h
   Prueba primero `apps/api/src/modules/identity/infrastructure/jwt/jwt.strategy.spec.ts` (puerto falso): nombre
   `ACCESS_TOKEN_STRATEGY`; opciones `secretOrKey`/`algorithms` tomadas de `ACCESS_TOKEN_OPTIONS`,
   `ignoreExpiration: true`, `passReqToCallback: true`, extractor Bearer; `validate(req)` → `valid` devuelve `claims`
@@ -262,24 +262,24 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
 
 ### 2c. Aplicación
 
-- [ ] **T-27** [P×PR] Extraer `guatemala-date.format.ts` — CA: CA-16 — Depende: 001 T-33 (plantilla de aviso de intento) — ~0,5 h
+- [x] **T-27** [P×PR] Extraer `guatemala-date.format.ts` — CA: CA-16 — Depende: 001 T-33 (plantilla de aviso de intento) — ~0,5 h
   Prueba primero `application/mail/guatemala-date.format.spec.ts`: `2026-09-27T02:30:00Z` → fecha y hora de Guatemala
   (20:30 del 26/09) con `es-GT`; las pruebas de `registration-attempt-mail.template.spec.ts` de 001 siguen en verde
   tras usar el formateador (refactor sin cambio de salida).
   Archivos: `apps/api/src/modules/identity/application/mail/{guatemala-date.format,guatemala-date.format.spec,registration-attempt-mail.template}.ts`.
 
-- [ ] **T-28** [P] [P×PR] Plantilla «Nuevo inicio de sesión en Nimbo» — CA: CA-16 — Depende: T-27 — ~0,5 h
+- [x] **T-28** [P] [P×PR] Plantilla «Nuevo inicio de sesión en Nimbo» — CA: CA-16 — Depende: T-27 — ~0,5 h
   Prueba primero `application/mail/new-device-mail.template.spec.ts`: asunto exacto; texto y HTML con navegador ·
   sistema, fecha y hora de Guatemala y enlace `{webPublicUrl}/cuenta/seguridad`; sin IP ni agente completo; HTML
   escapado con estilos en línea (base `correos--registro.html`). Luego la función pura.
   Archivos: `apps/api/src/modules/identity/application/mail/new-device-mail.template.ts` y su `*.spec.ts`.
 
-- [ ] **T-29** [P] [P×PR] Plantilla «Cerramos una sesión por seguridad» — CA: CA-9 — Depende: T-27 — ~0,5 h
+- [x] **T-29** [P] [P×PR] Plantilla «Cerramos una sesión por seguridad» — CA: CA-9 — Depende: T-27 — ~0,5 h
   Prueba primero `application/mail/session-revoked-mail.template.spec.ts`: asunto exacto; navegador · sistema del
   dispositivo, fecha de Guatemala, enlace a Seguridad y a recuperar contraseña; sin IP. Luego la función.
   Archivos: `apps/api/src/modules/identity/application/mail/session-revoked-mail.template.ts` y su `*.spec.ts`.
 
-- [ ] **T-30** [P×PR] `SessionService.open` — CA: CA-1, CA-15, CA-16, CA-17 — Depende: T-11…T-17, T-28, 001 T-14, T-20, T-32 — ~1 h
+- [x] **T-30** [P×PR] `SessionService.open` — CA: CA-1, CA-15, CA-16, CA-17 — Depende: T-11…T-17, T-28, 001 T-14, T-20, T-32 — ~1 h
   Prueba primero `application/session.service.spec.ts` (repositorios en memoria, `FixedClock`, `IMailer` y
   `ITokenService` falsos): sin cookie de dispositivo o mal formada → genera una y la devuelve en `deviceCookie`; con una
   válida no la cambia; guarda solo hashes; `origin = 'login'` + `isNew` → un correo con `idempotencyKey =
@@ -288,14 +288,14 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   email, role } }`; el token de acceso se emite fuera de la transacción.
   Archivos: `apps/api/src/modules/identity/application/session.service.ts`, `apps/api/src/modules/identity/application/session.service.spec.ts`.
 
-- [ ] **T-31** [P×PR] `SessionService.refresh`: rechazos sin escritura — CA: CA-8, CA-9 (gracia), CA-10 (revocada) — Depende: T-30 — ~1 h
+- [x] **T-31** [P×PR] `SessionService.refresh`: rechazos sin escritura — CA: CA-8, CA-9 (gracia), CA-10 (revocada) — Depende: T-30 — ~1 h
   Prueba primero (mismo archivo): mal formado → `RefreshInvalidError` sin tocar el repositorio; `sid` desconocido →
   `RefreshInvalidError`; revocada → `SessionRevokedError`; vencida por inactividad y por 30 d → `SessionExpiredError`;
   anterior dentro de la gracia → `RefreshInvalidError` **sin** revocar; bitácora `identity.session.refresh_rejected`
   con `reason`. Luego la parte del método (resultado discriminado de la transacción).
   Archivos: `apps/api/src/modules/identity/application/session.service.ts`, `apps/api/src/modules/identity/application/session.service.spec.ts`.
 
-- [ ] **T-32** [P×PR] `SessionService.refresh`: rotación, reúso y cuenta suspendida — CA: CA-7, CA-9, CA-10 — Depende: T-31, T-29 — ~1 h
+- [x] **T-32** [P×PR] `SessionService.refresh`: rotación, reúso y cuenta suspendida — CA: CA-7, CA-9, CA-10 — Depende: T-31, T-29 — ~1 h
   Prueba primero (mismo archivo): `current` + cuenta activa → `rotate` + `update`, nuevo token y nueva cookie,
   `identity.session.refreshed`; `reuse` → la revocación se **confirma antes** de lanzar `SessionRevokedError` (un
   `ITransactionRunner` que registra el commit), correo con clave `identity.session-revoked.<sid>`,
@@ -303,13 +303,13 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   `SessionRevokedError` (`reason: 'suspended'`).
   Archivos: `apps/api/src/modules/identity/application/session.service.ts`, `apps/api/src/modules/identity/application/session.service.spec.ts`.
 
-- [ ] **T-33** [P×PR] `SessionService.logout` — CA: CA-14 — Depende: T-31 — ~0,5 h
+- [x] **T-33** [P×PR] `SessionService.logout` — CA: CA-14 — Depende: T-31 — ~0,5 h
   Prueba primero (mismo archivo): `current` o `previousWithinGrace` de una sesión no revocada → revoca
   (`identity.session.revoked`, `reason: 'logout'`); mal formado, desconocido, `reuse` o ya revocada → no hace nada ni
   envía correo; nunca lanza.
   Archivos: `apps/api/src/modules/identity/application/session.service.ts`, `apps/api/src/modules/identity/application/session.service.spec.ts`.
 
-- [ ] **T-34** [P×PR] `AuthService.login`: bloqueo y credenciales inválidas — CA: CA-2, CA-5 — Depende: T-16, T-17, 001 T-28, T-32, T-41 — ~1 h
+- [x] **T-34** [P×PR] `AuthService.login`: bloqueo y credenciales inválidas — CA: CA-2, CA-5 — Depende: T-16, T-17, 001 T-28, T-32, T-41 — ~1 h
   Prueba primero `application/auth.service.spec.ts`: bloqueado → `LoginLockedError` **sin** llamar a `findByEmail`
   (`identity.login.locked`); correo inexistente → `verify(DUMMY_HASH, …)` llamado, `recordFailure` y
   `InvalidCredentialsError`; contraseña incorrecta → `recordFailure(key, LOGIN_POLICY)` y el mismo error; el 5.º
@@ -317,7 +317,7 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   `identity:lockout:login:<sha256(correo normalizado)>`. `DUMMY_HASH` se calcula una vez al iniciar el módulo.
   Archivos: `apps/api/src/modules/identity/application/auth.service.ts`, `apps/api/src/modules/identity/application/auth.service.spec.ts`.
 
-- [ ] **T-35** [P×PR] `AuthService.login`: estados de la cuenta y éxito — CA: CA-1, CA-3, CA-4, CA-25 — Depende: T-34, T-30 — ~1 h
+- [x] **T-35** [P×PR] `AuthService.login`: estados de la cuenta y éxito — CA: CA-1, CA-3, CA-4, CA-25 — Depende: T-34, T-30 — ~1 h
   Prueba primero (mismo archivo): contraseña correcta + suspendida → `AccountSuspendedError` con
   `SUPPORT_CONTACT_EMAIL`; + no verificada → `EmailNotVerifiedError`; ninguno llama a `recordFailure`; correcta y
   activa → `lockout.clear(key)` y `SessionService.open(user, client, 'login')`; bitácoras `identity.login.succeeded`
@@ -326,19 +326,19 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
 
 ### 2d. Presentación y composición
 
-- [ ] **T-36** [P] `session-cookies.ts` y `readCookie` — CA: CA-1, CA-8, CA-14, CA-17 — Depende: T-01 — ~1 h
+- [x] **T-36** [P] `session-cookies.ts` y `readCookie` — CA: CA-1, CA-8, CA-14, CA-17 — Depende: T-01 — ~1 h
   Prueba primero `presentation/session-cookies.spec.ts`: `nimbo_rt` con `HttpOnly`, `SameSite=Strict`,
   `Path=/api/v1/auth/session` y el `Max-Age` recibido; `nimbo_did` con `Path=/api/v1/auth` y 365 d; `Secure` con
   `cookieSecure = true` y sin él en `local`; `clearRefresh` emite el borrado con la misma ruta; `readCookie` lee un
   valor base64url de una cabecera `Cookie` con varias cookies y devuelve `undefined` si falta o viene repetida.
   Archivos: `apps/api/src/modules/identity/presentation/session-cookies.ts`, `apps/api/src/modules/identity/presentation/session-cookies.spec.ts`.
 
-- [ ] **T-37** [P] `readClientContext` — CA: CA-16 — Depende: T-17, T-36 — ~0,5 h
+- [x] **T-37** [P] `readClientContext` — CA: CA-16 — Depende: T-17, T-36 — ~0,5 h
   Prueba primero `presentation/client-context.factory.spec.ts`: toma `nimbo_did`, `User-Agent` (vacío si falta) y
   `req.ip` (con `trust proxy` de 001); nada más de la petición.
   Archivos: `apps/api/src/modules/identity/presentation/client-context.factory.ts` y su `*.spec.ts`.
 
-- [ ] **T-38** [P] `login-ip` en `IdentityIpThrottlerGuard` y en `ThrottlerModule` — CA: CA-6 — Depende: T-01, 001 T-44, 001 T-45 (001-PR-3) — ~1 h
+- [x] **T-38** [P] `login-ip` en `IdentityIpThrottlerGuard` y en `ThrottlerModule` — CA: CA-6 — Depende: T-01, 001 T-44, 001 T-45 (001-PR-3) — ~1 h
   Prueba primero en `presentation/identity-ip-throttler.guard.spec.ts`: al superar `login-ip` lanza
   `IdentityTooManyRequestsError` con el ámbito de inicio de sesión (DT-20) y `Retry-After`; `register-ip` sigue igual;
   sin `X-RateLimit-*`; bitácora `identity.rate_limited` con `scope: 'ip_login'`. Luego la tabla del guard y
@@ -346,7 +346,7 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   001-PR-3 se integró con otro nombre de guard, el renombrado va aquí (DT-8).
   Archivos: `apps/api/src/modules/identity/presentation/identity-ip-throttler.guard.ts` y su `*.spec.ts`, `apps/api/src/app.module.ts`.
 
-- [ ] **T-39** Composición de `IdentityModule` (exporta `I_ACCESS_TOKEN_VERIFIER`) — CA: CA-26 — Depende: T-18…T-26, T-30…T-35, **003-PR-A** — ~1 h
+- [x] **T-39** Composición de `IdentityModule` (exporta `I_ACCESS_TOKEN_VERIFIER`) — CA: CA-26 — Depende: T-18…T-26, T-30…T-35, **003-PR-A** — ~1 h
   Prueba primero `apps/api/test/int/identity/identity-module.int-spec.ts`: `app.get(I_ACCESS_TOKEN_VERIFIER)` es la
   **misma** instancia que `app.get(JwtTokenService)` (`useExisting`); `ITokenService` resuelve a la misma clase; hay
   una sola estrategia registrada con el nombre `ACCESS_TOKEN_STRATEGY`; `IDENTITY_CONFIG.cookieSecure` es `true` con
@@ -354,7 +354,7 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   exportación). `shared` y `realtime` no importan `identity` (lint de fronteras en verde).
   Archivos: `apps/api/src/modules/identity/identity.module.ts`, `apps/api/src/modules/identity/application/identity-config.ts`, `apps/api/test/int/identity/identity-module.int-spec.ts`.
 
-- [ ] **T-40** `POST /auth/login` y `@SkipThrottle` cruzados — CA: CA-1, CA-6 — Depende: T-36…T-39 — ~1 h
+- [x] **T-40** `POST /auth/login` y `@SkipThrottle` cruzados — CA: CA-1, CA-6 — Depende: T-36…T-39 — ~1 h
   Prueba primero `apps/api/test/int/identity/login.int-spec.ts` con el camino feliz de CA-1 (`200` `SessionResponse`
   válido contra `sessionResponseSchema`, `Cache-Control: no-store`, `Set-Cookie` de `nimbo_rt` y `nimbo_did`). Luego
   en `auth.controller.ts`: `login` con `@Public()`, `@UseGuards(IdentityIpThrottlerGuard)`,
@@ -362,14 +362,14 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   `@SkipThrottle({ 'login-ip': true })`.
   Archivos: `apps/api/src/modules/identity/presentation/auth.controller.ts`, `apps/api/test/int/identity/login.int-spec.ts`.
 
-- [ ] **T-41** `POST /auth/session/refresh` y `POST /auth/session/logout` — CA: CA-7, CA-14 — Depende: T-40 — ~1 h
+- [x] **T-41** `POST /auth/session/refresh` y `POST /auth/session/logout` — CA: CA-7, CA-14 — Depende: T-40 — ~1 h
   Prueba primero `apps/api/test/int/identity/refresh.int-spec.ts` (camino feliz: cookie nueva, token nuevo) y
   `logout.int-spec.ts` (camino feliz `204`). Luego las dos rutas con `@Public()`, sin cuerpo, leyendo `nimbo_rt`;
   el controlador borra `nimbo_rt` ante `SESSION_EXPIRED`/`SESSION_REVOKED` y en `logout`, **nunca** ante
   `REFRESH_INVALID`.
   Archivos: `apps/api/src/modules/identity/presentation/auth.controller.ts`, `apps/api/test/int/identity/{refresh,logout}.int-spec.ts`.
 
-- [ ] **T-42** `verifyEmail` abre sesión — CA: CA-15 — Depende: T-40, 001 T-38, 001 T-45 — ~1 h
+- [x] **T-42** `verifyEmail` abre sesión — CA: CA-15 — Depende: T-40, 001 T-38, 001 T-45 — ~1 h
   Prueba primero `apps/api/test/int/identity/verify-email-session.int-spec.ts` (camino feliz): `200 { status:
   'verified', session }` con cookies; `already-verified` sin `session` ni cookies; con `SessionService.open` que falla
   (proveedor sustituido) → `verified` sin `session` y `identity.verification.session_failed`. Luego el cambio en
@@ -378,39 +378,39 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
 
 ### 2e. Integración por criterio
 
-- [ ] **T-43** [P] CA-1 completo, CA-2, CA-3 y CA-4 — CA: CA-1…CA-4 — Depende: T-40 — ~1 h
+- [x] **T-43** [P] CA-1 completo, CA-2, CA-3 y CA-4 — CA: CA-1…CA-4 — Depende: T-40 — ~1 h
   En `login.int-spec.ts`: `exp − iat = 900`; atributos de `nimbo_rt`; `nimbo_did` solo si no venía; fila de `sesion`
   ligada al dispositivo; correo inexistente vs. contraseña incorrecta → mismo `status`, cuerpo y cabeceras (salvo
   `x-correlation-id`), sin `Set-Cookie`; no verificada y suspendida con la correcta → `403` con su código y sin
   cookies; con la incorrecta → CA-2.
   Archivos: `apps/api/test/int/identity/login.int-spec.ts`.
 
-- [ ] **T-44** [P] CA-5 (bloqueo por correo) — CA: CA-5 — Depende: T-40 — ~1 h
+- [x] **T-44** [P] CA-5 (bloqueo por correo) — CA: CA-5 — Depende: T-40 — ~1 h
   `apps/api/test/int/identity/login-lockout.int-spec.ts`: 5 fallos → el 6.º, incluso correcto, `429
   IDENTITY_LOGIN_LOCKED` con `Retry-After` y minutos; idéntico con correo inexistente; `FixedClock` + 15 min →
   permitido; un inicio correcto borra los fallos previos (DT-4). La parte «restablecer quita el bloqueo» va en T-65.
   Archivos: `apps/api/test/int/identity/login-lockout.int-spec.ts`.
 
-- [ ] **T-45** [P] CA-6 (límite por IP) y `@SkipThrottle` cruzados — CA: CA-6 — Depende: T-40 — ~1 h
+- [x] **T-45** [P] CA-6 (límite por IP) y `@SkipThrottle` cruzados — CA: CA-6 — Depende: T-40 — ~1 h
   `apps/api/test/int/identity/login-rate-limit.int-spec.ts`: 21.º intento desde una IP (`X-Forwarded-For`) → `429
   IDENTITY_TOO_MANY_REQUESTS` sin llamar a `IAttemptLockout` (espía) ni al hasher; los inicios de sesión no consumen
   `register-ip` y los registros no consumen `login-ip`; sin `X-RateLimit-*`.
   Archivos: `apps/api/test/int/identity/login-rate-limit.int-spec.ts`.
 
-- [ ] **T-46** [P] CA-7, CA-8 y CA-10 — CA: CA-7, CA-8, CA-10 — Depende: T-41 — ~1 h
+- [x] **T-46** [P] CA-7, CA-8 y CA-10 — CA: CA-7, CA-8, CA-10 — Depende: T-41 — ~1 h
   En `refresh.int-spec.ts`: el anterior fuera de la gracia ya no sirve; `ultimo_uso` actualizado; 7 d + 1 s sin uso y
   30 d + 1 s renovando a diario → `IDENTITY_SESSION_EXPIRED` y cookie borrada; `Max-Age` nunca pasa del límite;
   sesión revocada → `SESSION_REVOKED`; cuenta suspendida por SQL tras iniciar sesión → `SESSION_REVOKED` y
   `revocada_en` escrito.
   Archivos: `apps/api/test/int/identity/refresh.int-spec.ts`.
 
-- [ ] **T-47** [P] CA-9 (reúso y gracia) — CA: CA-9 — Depende: T-41 — ~1 h
+- [x] **T-47** [P] CA-9 (reúso y gracia) — CA: CA-9 — Depende: T-41 — ~1 h
   `apps/api/test/int/identity/refresh-reuse.int-spec.ts`: anterior a los 11 s → `SESSION_REVOKED`, ningún token de la
   sesión sirve, correo en Mailpit; anterior a los 5 s → `REFRESH_INVALID` sin revocar ni borrar la cookie; dos
   renovaciones simultáneas con el mismo token → una rota y la otra cae en la gracia.
   Archivos: `apps/api/test/int/identity/refresh-reuse.int-spec.ts`.
 
-- [ ] **T-48** [P] CA-14 (cerrar sesión, backend) — CA: CA-14 — Depende: T-41 — ~0,5 h
+- [x] **T-48** [P] CA-14 (cerrar sesión, backend) — CA: CA-14 — Depende: T-41 — ~0,5 h
   En `logout.int-spec.ts`: sesión revocada, `nimbo_rt` borrada, `nimbo_did` intacta; cookie ausente, alterada o de
   sesión ya revocada → `204`. El caso `DELETE /sessions/:id` de la actual va en T-76.
   Archivos: `apps/api/test/int/identity/logout.int-spec.ts`.
@@ -441,14 +441,14 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
 
 ### 2f. Frontera con 003 (tokens reales y contrato)
 
-- [ ] **T-53** Suite de contrato de 003 con el verificador real: tramo del puerto — CA: CA-26 — Depende: T-39, **003-PR-A** (`apps/api/test/support/access-token-verifier.contract.ts`) — ~1 h
+- [x] **T-53** Suite de contrato de 003 con el verificador real: tramo del puerto — CA: CA-26 — Depende: T-39, **003-PR-A** (`apps/api/test/support/access-token-verifier.contract.ts`) — ~1 h
   Prueba: `apps/api/test/int/identity/access-token-verifier.jwt.int-spec.ts` **solo invoca** la suite de 003 con
   `JwtTokenService` real y una fábrica de tokens reales (`JwtService` + `FixedClock`: válido, vencido, alterado, otra
   clave, `alg: none`, `HS512`, *claims* de más o de menos). Sin casos propios (los unitarios están en T-25). Si la
   fábrica de 003 (`TestAccessTokens`) ya produce HS256 con la clave de pruebas, se reutiliza.
   Archivos: `apps/api/test/int/identity/access-token-verifier.jwt.int-spec.ts`, `apps/api/test/support/jwt-test-tokens.ts` (solo si hace falta).
 
-- [ ] **T-54** Suite de contrato de 003: tramo HTTP con la `JwtStrategy` real — CA: CA-26 (y 003 CA-2 con la estrategia real) — Depende: T-53 — ~1 h
+- [x] **T-54** Suite de contrato de 003: tramo HTTP con la `JwtStrategy` real — CA: CA-26 (y 003 CA-2 con la estrategia real) — Depende: T-53 — ~1 h
   Prueba (mismo archivo): el tramo HTTP de la suite contra la ruta sonda `GET /__probe/actor` en una app que compone
   `AppModule` (guards globales de 003-PR-A + `JwtStrategy` real): los mismos tokens dan `200` con el mismo actor o `401
   SHARED_UNAUTHENTICATED` con el mismo motivo (`expired`/`invalid`) que `verify`. Además, la prueba HTTP de CA-2 de 003
@@ -813,6 +813,42 @@ PR-5a = 15 (T-81…T-95) · PR-5b = 10 (T-96…T-105). Total 105.
 
 ## Notas del developer
 
+- **T-12 a T-15 y T-17**: pruebas del dominio en verde. El espía de `timingSafeEqual` usa `jest.mock` porque la exportación de Node no admite `spyOn`. (T-11 y T-16 se integraron después en `feat/002-sesiones-backend`.)
+
+- **Desviaciones de T-29 a T-35 (aplicación, 2026-09-29)**:
+  1. El correo «Cerramos una sesión por seguridad» nombra el navegador y el sistema de **quien presentó el token
+     reusado**, no los del dispositivo dueño de la sesión: `ISessionRepository` no expone el agente de usuario del
+     dispositivo. Corregirlo exige ampliar el puerto (propuesta para el `architect`).
+  2. `SessionService.refresh` lee la cuenta con `IUserRepository.findByIdForUpdate` dentro de la transacción (no hay
+     `findById` sin bloqueo); serializa además con cambios de estado de la cuenta.
+  3. `TypeOrmSessionRepository.listActive` lee también los hashes de refresco, porque el puerto devuelve `Session`
+     completas; nunca salen de `application`.
+  4. `revokeAllExcept` revoca también sesiones vencidas aún no revocadas (sin efecto visible: ya no renuevan).
+- **T-36**: `readCookie` acepta base64url **y el punto**: el valor de `nimbo_rt` es `<sid>.<secreto>` (DT-1). La
+  forma exacta la validan `RefreshToken.parse` y `OpaqueToken.isWellFormed`.
+- **T-36/T-43, `nimbo_did`**: se emite solo si el navegador no traía una válida (T-43, `OpenedSession.deviceCookie`);
+  el plan §6.5 dice «reemitida en cada inicio de sesión y verificación». Se siguió la tarea; si se quiere renovar los
+  365 d en cada inicio, basta con escribirla siempre desde el controlador (propuesta).
+- **T-38**: `IdentityRateLimitScope` gana `'ip_login'` y `IdentityTooManyRequestsError` elige el texto por ámbito
+  (DT-20). El registro sigue con `'ip'` (sin tocar 001).
+- **T-39**: `IdentityModule.forRoot(env)` pide `WEB_PUBLIC_URL`, `APP_ENV` y `JWT_ACCESS_SECRET`
+  (`IdentityEnv`). Las suites que componen `IdentityModule` (`createIdentityTestApp`, `mail-degradation`) pasan a
+  `accessTokenStrategy: 'identity'`; `createIdentityTestApp` acepta `identityEnv` y `modules`.
+- **T-42**: `VerifyEmailResult` `VERIFIED` trae `user` (la `ClientUser` ya verificada) para abrir la sesión sin
+  releer la cuenta; tres pruebas de 001 pasan de `toEqual({ status: 'verified' })` a `toMatchObject` porque la
+  respuesta ahora puede traer `session`.
+- **T-53/T-54**: los dobles de 003 (`TestAccessTokens`, `TestAccessTokenVerifier`) pasan al *claim* `rol` (commit
+  `fix(shared) … [003]`), así la misma fábrica sirve para el verificador real con la clave de pruebas. El tramo HTTP
+  corre con la `JwtStrategy` real y la ruta sonda (sin `TestJwtStrategy`). Queda pendiente la parte de T-54 sobre
+  apps que componen `AppModule`: hoy ninguna suite lo hace.
+- **PR-2 sobre `main` con 003-PR-A/B/C** (2026-09-29): historia lineal sobre PR-1 sin los commits de la copia de
+  003-PR-A (ya en `main`). `RefreshToken` queda como clase (`issue`/`parse`, `value`, `secretHash`); el commit que lo
+  traía como objeto con `ParsedRefreshToken` quedó vacío y no se conserva. Con 003-PR-B: `ITransactionRunner` gana
+  `withActor`, y `RecordingTransactionRunner` lo implementa rechazando (las sesiones usan `run`: `sesion` y
+  `dispositivo` no tienen RLS y sus repositorios filtran siempre por `usuario_id` en el `WHERE`). Los repositorios de
+  sesión y dispositivo pasan sus pruebas de integración conectados como `nimbo_app`.
+- **Pendientes de PR-2**: T-49…T-52, T-55 (depende de 003-PR-D), T-56 y T-57 (README ya actualizado con sesiones y
+  cookies; faltan DF-56, DF-57 y PD-45 con el `architect`).
 - **T-55 depende de 003-PR-D**, no solo de 003-PR-A: `isolation-world.ts` nace en 003-PR-D (plan 003 §6.7 y §6.12),
   mientras que el plan 002 pone «tokens reales en el arnés de aislamiento» en 002-PR-2, que solo espera a 003-PR-A. Si
   002-PR-2 se integra antes que 003-PR-D, T-55 pasa a 003-PR-D (quien integre segundo hace el cambio) y T-78 espera a
@@ -826,6 +862,31 @@ PR-5a = 15 (T-81…T-95) · PR-5b = 10 (T-96…T-105). Total 105.
   `login-ip`. Se conserva `'ip'` para el registro para no tocar 001.
 - **Marcador `/archivos` (T-87)**: el plan 002 dice «solo si 006 no la creó» y el plan 003 dice que la página es de
   005; T-87 solo crea el marcador si la ruta no existe, sea de quien sea.
-- **T-06 y los privilegios de `nimbo_app`**: dependen de que la migración de 003 (`20260928110000`) esté en la rama; si
-  no, el caso queda como `it.todo` y se activa al integrar 003.
-- <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
+- **T-06 y los privilegios de `nimbo_app`** (2026-09-29, rebase sobre `main` con 003-PR-A/B/C): la migración de roles
+  de 003 (`20260928110000`) ya está en `main` y sus privilegios por defecto dan `SELECT/INSERT/UPDATE/DELETE` a
+  `nimbo_app` en `dispositivo` y `sesion` (002 no revoca nada: la app borra sesiones y dispositivos). El caso de T-06
+  dejó de ser `it.todo`, y `shapeOf` compara también esos permisos antes y después de `down`/`up`. Las pruebas de
+  esquema de 002 se conectan como el dueño (`DATABASE_MIGRATION_URL`), igual que `schema.int-spec.ts` de 003-PR-B:
+  borran un `usuario` para la cascada y revierten migraciones, y `nimbo_app` no tiene `DELETE` en `usuario` ni `CREATE`.
+- **PR-1 (T-01…T-10), desviaciones menores** (2026-09-29):
+  - T-02: las pruebas de `IDENTITY_ERROR_CODES` y `FIELD_ISSUE_REASONS` pasan de `constants.spec.ts` a
+    `error-codes.spec.ts`. La prueba de `api` `identity-validation.spec.ts` compara ahora un subconjunto
+    (`toMatchObject`): las clases de los códigos nuevos llegan con T-16. `SUPPORT_CONTACT_EMAIL` =
+    `amatultab@gmail.com` (001 plan §6.13); `terms-v1.tsx` y `privacy-v1.tsx` siguen con el correo escrito: pasarlos a
+    la constante queda para la web (PR-5a).
+  - T-03: `password` de `loginRequestSchema` y `currentPassword` de `changePasswordRequestSchema` vacíos dan
+    `REQUIRED`. `newPassword` no aplica la política en el esquema: la aplica el servicio con el correo (así el error es
+    `IDENTITY_WEAK_PASSWORD`, no `IDENTITY_INVALID_INPUT`).
+  - T-04: `role` se valida con `roleSchema` de `packages/contracts/src/shared` (003-PR-A, ya en `main`: `ROLES`,
+    `roleSchema`, `RoleName`). La copia idéntica que traía PR-1 se quedó en una sola al rebasar sobre `main`. Se
+    agregan `SESSION_LIST_MAX_ITEMS = 50` (DT-13) en `parameters.ts` y `DEVICE_KINDS`.
+  - T-05/T-06: las filas de prueba de `usuario` salen a `test/int/identity/identity-rows.ts` (las usa también
+    `schema.int-spec.ts`). `run → revert → run` se prueba con `up`/`down` de las clases dentro de una transacción y
+    además se comprobó con el CLI (`migrate.ts run → revert → revert → run`) sobre un Postgres desechable.
+  - T-07: la prueba vive en `test/int/shared/configure-http-app.int-spec.ts`, donde ya estaban las de CORS de 001
+    (se actualizan «sin credenciales» y `GET,POST`). CORS se configura con un *delegate*: un origen no listado no
+    recibe **ninguna** cabecera CORS (con la lista estática, el paquete `cors` escribía igualmente
+    `Access-Control-Allow-Credentials`).
+  - T-09: el valor de desarrollo es `LOCAL_JWT_ACCESS_SECRET` en `env.schema.ts` y una prueba exige que coincida con
+    `.env.example`. Se agregó la variable a los entornos de prueba (`load-env.spec.ts`, `minio-config.module.spec.ts`,
+    `global-setup.ts`, `bootstrap.int-spec.ts`).

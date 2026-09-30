@@ -6,6 +6,8 @@ export const WEB_PATHS = {
   login: '/iniciar-sesion',
   /** La confirma 002 (recuperación de contraseña); hasta entonces la página no existe. */
   passwordRecovery: '/recuperar-contrasena',
+  /** «Seguridad»: sesiones abiertas y cambio de contraseña (spec 002 §11). */
+  security: '/cuenta/seguridad',
 } as const;
 
 const TRAILING_SLASHES = /\/+$/;
