@@ -566,7 +566,7 @@ salvo la lectura por rango del detector.
   `version_archivo` en esta spec.
 - Si una tarea supera 4 h, parar y pedir que se parta. No adelantar métricas, eventos, carpetas, «Reemplazar» ni toast.
 
-### Traspaso PR-E (2026-09-29)
+### Traspaso PR-E (2026-09-30)
 
 - **Hechas**: T-48 (`26bd443`), T-49 (`9333b57`), T-50 (`92e8b44`). Suites en verde: unitarias de `storage` (incluye
   `upload-cleanup.processor.spec.ts` y `upload-cleanup.scheduler.spec.ts`), `expired-upload.scanner.int-spec.ts` (4/4) y
@@ -583,15 +583,9 @@ salvo la lectura por rango del detector.
   `jest.isolation.config.cjs`; no depende de T-45 (su `storage.iso-spec.ts` entra solo por `*.iso-spec.ts`). Se
   actualizaron `test/int/worker/bootstrap.int-spec.ts` (colas de `worker.started`) y `worker-health.int-spec.ts` (cierra
   también el `Worker` de `upload-cleanup` con Redis caído).
-- **Pendiente T-52** (sin empezar; detenido por ALTO): sección de limpieza en `apps/api/src/modules/storage/README.md`
-  (cola `upload-cleanup`, `upsertJobScheduler` con id fijo cada `UPLOAD_CLEANUP_INTERVAL_MINUTES`, lote
-  `UPLOAD_CLEANUP_BATCH_SIZE` ≤ 1000, dos fases escáner sin actor → `expire` por dueño, 3 intentos exponenciales,
-  bitácoras `upload.cleanup_scheduled`/`upload.cleanup_run`/`upload.cleanup_failed`, `StorageWorkerModule` y las tres
-  decisiones de enlace de abajo) y borrador de la descripción del PR-E aquí mismo: `storage-maintenance.iso-spec.ts`
-  **sí** corrió con dueño `NOSUPERUSER` (9/9), más las suites listadas abajo. Antes, `pnpm lint`, `pnpm typecheck`, `pnpm test`.
-- **Pendiente T-56** (sin empezar; encargada al PR-E por el coordinador el 2026-09-30): `docs/operations/ambientes.md` ya
-  existe desde T-24 (`74f3fbf`), no duplicarlo. Falta en el README de `storage` el flujo init → `PUT` directo a MinIO →
-  complete y DF-59 en una frase. Commit propio `docs(storage): … [005 T-56]` con su casilla.
+- **Hechas T-52 y T-56** (2026-09-30): el README de `storage` gana la sección «Limpieza de cargas vencidas» (T-52) y
+  «Flujo de carga directa» con DF-59 en una frase (T-56); `docs/operations/ambientes.md` no se tocó (existe desde T-24).
+  Solo documentación; cada dato se verificó contra el código. Falta que `PR-D` agregue al README lo suyo, si corresponde.
 - **Suites al cierre de T-51**: `pnpm lint` y `pnpm typecheck` en verde; `pnpm test` en verde (api 1083, web 272,
   contracts 221, config 28, worker 34); `test:isolation` completo 108/108 (incluye `upload-cleanup.int-spec.ts` y
   `storage-maintenance.iso-spec.ts`); `test/int/worker` 8/8. No se corrió `pnpm test:int` completo.
@@ -613,3 +607,20 @@ salvo la lectura por rango del detector.
   (4) Reintentos: 3 intentos, exponencial desde 30 s; fallidos se conservan 24 h. (5) Se agregó
   `upload-cleanup.scheduler.spec.ts` (archivo no listado en T-49).
 - **Bloqueos**: ninguno. Docker disponible.
+
+#### Borrador de la descripción del PR-E
+
+**Qué hace**: limpieza de cargas vencidas (CA-9). Cola `upload-cleanup` con programa repetible idempotente
+(`upsertJobScheduler`, id fijo), barrido en dos fases (escáner sin actor `carga_expiradas` → `UploadService.expire` como
+el dueño), `StorageWorkerModule` en el `worker`, reintentos (3, exponencial) y bitácoras `upload.cleanup_*`. Incluye la
+documentación de `storage` (T-52, T-56).
+
+**Suites**: `pnpm lint` y `pnpm typecheck` en verde; `pnpm test` en verde (api 1083, web 272, contracts 221, config 28,
+worker 34); `test:isolation` completo 108/108 (incluye `upload-cleanup.int-spec.ts`); `expired-upload.scanner.int-spec.ts`
+4/4; `test/int/worker` 8/8. **`storage-maintenance.iso-spec.ts` corrió con dueño `NOSUPERUSER` (9/9)** en contenedor propio,
+así que no queda pendiente la ejecución en staging exigida por plan §8 para este punto. No se corrió `pnpm test:int` completo.
+
+**Decisiones a revisar en `/review`**: (1) `expire` no se envuelve en otro `withActor`; (2) `expired` cuenta filas procesadas
+sin error; (3) `correlationId` del programa fijado al registrarlo; (4) reintentos 3 × exponencial desde 30 s, fallidos 24 h;
+(6) `I_PLAN_LIMITS_PROVIDER` enlazado en `WorkerModule` (DF-51); (7) `UPLOAD_CONFIG` del worker lanza al leerse; (8) MinIO
+del worker firma contra el endpoint interno.
