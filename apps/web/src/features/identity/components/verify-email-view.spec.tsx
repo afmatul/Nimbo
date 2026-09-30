@@ -2,12 +2,21 @@
  * @jest-environment jsdom
  */
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 import { StrictMode } from 'react';
 
 import { saveChosenPlan } from '../chosen-plan-storage';
+import { forgetSession, recallSession } from '../session/session-memory';
+import { sessionFixture } from '../session/test-session';
 
 import { VerifyEmailView } from './verify-email-view';
+
+const replace = jest.fn();
+
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ replace }),
+}));
 
 function jsonResponse(body: unknown, status = 200): Response {
   return {
@@ -30,6 +39,44 @@ describe('VerifyEmailView', () => {
     global.fetch = fetchMock;
     window.localStorage.clear();
     window.history.replaceState(null, '', '/verificar-correo');
+  });
+
+  describe('con la sesión que abre la verificación (002 CA-15)', () => {
+    function verifiedWithSession(): Response {
+      return jsonResponse({ status: 'verified', session: sessionFixture({ token: 'del-enlace' }) });
+    }
+
+    beforeEach(() => {
+      replace.mockReset();
+      forgetSession();
+    });
+
+    it('«Ir a Mis archivos» deja la sesión en memoria y entra sin pedir iniciar sesión', async () => {
+      const user = userEvent.setup();
+      fetchMock.mockResolvedValue(verifiedWithSession());
+      window.history.replaceState(null, '', '/verificar-correo#token=con-sesion');
+      render(<VerifyEmailView apiPublicUrl="http://localhost/api/v1" />);
+
+      await screen.findByRole('heading', { name: '¡Listo! Tu correo está verificado.' });
+      expect(screen.queryByRole('link', { name: 'Iniciar sesión' })).toBeNull();
+
+      await user.click(screen.getByRole('button', { name: 'Ir a Mis archivos' }));
+
+      expect(replace).toHaveBeenCalledWith('/archivos');
+      expect(recallSession(Date.now())?.accessToken).toBe('del-enlace');
+    });
+
+    it('001 CA-28: conserva el aviso del plan de pago junto a «Ir a Mis archivos»', async () => {
+      saveChosenPlan(window.localStorage, { planId: 'pro', planName: 'Profesional' }, new Date());
+      fetchMock.mockResolvedValue(verifiedWithSession());
+      window.history.replaceState(null, '', '/verificar-correo#token=con-plan');
+      render(<VerifyEmailView apiPublicUrl="http://localhost/api/v1" />);
+
+      expect(
+        await screen.findByText(/Podrás activar Profesional desde Plan y facturación/),
+      ).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Ir a Mis archivos' })).toBeTruthy();
+    });
   });
 
   it('muestra verificando y luego el éxito con Iniciar sesión', async () => {

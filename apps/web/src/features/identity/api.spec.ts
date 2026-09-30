@@ -63,6 +63,26 @@ describe('api de identity', () => {
     });
   });
 
+  it('002 CA-15: verifyEmail manda credenciales para recibir las cookies y valida la sesión', async () => {
+    const response = {
+      status: 'verified',
+      session: {
+        accessToken: 'token-de-acceso',
+        accessTokenExpiresAt: '2026-09-30T12:15:00.000Z',
+        user: {
+          id: '0b7e6c1a-6f0e-4c1b-9d3a-2f5b8e9a1c4d',
+          fullName: 'Ana López',
+          email: 'ana@ejemplo.com',
+          role: 'CLIENT',
+        },
+      },
+    };
+    fetchMock.mockResolvedValue(jsonResponse(response));
+
+    await expect(verifyEmail('http://localhost/api/v1', 'token-opaco')).resolves.toEqual(response);
+    expect(fetchMock.mock.calls[0]?.[1]?.credentials).toBe('include');
+  });
+
   it('un cuerpo que no cumple el esquema es un error', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ status: 'otra-cosa' }, 200));
 

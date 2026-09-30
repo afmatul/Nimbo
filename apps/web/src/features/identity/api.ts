@@ -83,11 +83,13 @@ export function resendVerification(
   );
 }
 
+/** 002 CA-15: la apertura que verifica abre la sesión; la API deja las cookies de refresco y de dispositivo. */
 export function verifyEmail(apiPublicUrl: string, token: string): Promise<VerifyEmailResponse> {
   return postJson(
     endpoint(apiPublicUrl, '/auth/verify-email'),
     verifyEmailRequestSchema.parse({ token }),
     verifyEmailResponseSchema,
+    'include',
   );
 }
 

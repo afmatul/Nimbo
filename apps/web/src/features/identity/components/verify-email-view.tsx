@@ -1,14 +1,15 @@
 'use client';
 
-import { IDENTITY_ERROR_CODES } from '@nimbo/contracts';
+import { IDENTITY_ERROR_CODES, type SessionResponse } from '@nimbo/contracts';
 import { Check, Info, Loader2 } from 'lucide-react';
 import type { JSX } from 'react';
 
 import { IdentityCard } from '../../../components/nimbo/identity-card';
-import { buttonVariants } from '../../../components/ui/button';
+import { Button, buttonVariants } from '../../../components/ui/button';
 import { messageForCode } from '../../../lib/error-catalog';
 import { cn } from '../../../lib/utils';
 import { useVerifyEmail } from '../hooks/use-verify-email';
+import { useEnterSession } from '../session/use-enter-session';
 
 import { LinkProblemCard } from './link-problem-card';
 
@@ -42,9 +43,19 @@ function PlanCard({ planName }: { readonly planName: string | null }): JSX.Eleme
   );
 }
 
+/** Entra con la sesión que abrió la verificación, por el mismo camino que el inicio de sesión (002 CA-15). */
+function EnterButton({ session }: { readonly session: SessionResponse }): JSX.Element {
+  const enterSession = useEnterSession();
+  return (
+    <Button type="button" className="w-full" onClick={() => enterSession(session)}>
+      Ir a Mis archivos
+    </Button>
+  );
+}
+
 /**
- * Estados de la página de verificación. El botón de éxito dice «Iniciar sesión» y lleva a esa ruta mientras
- * no exista 002 (spec §11, registro de cambios del 2026-09-28).
+ * Estados de la página de verificación. Si la verificación abrió la sesión, el éxito ofrece «Ir a Mis archivos» (001
+ * §7); si no la trajo, «Iniciar sesión».
  */
 export function VerifyEmailView({ apiPublicUrl }: { readonly apiPublicUrl: string }): JSX.Element {
   const state = useVerifyEmail(apiPublicUrl);
@@ -79,9 +90,13 @@ export function VerifyEmailView({ apiPublicUrl }: { readonly apiPublicUrl: strin
         step={3}
       >
         <PlanCard planName={state.planName} />
-        <a href={LOGIN_HREF} className={ACTION_CLASS}>
-          Iniciar sesión
-        </a>
+        {state.session === null ? (
+          <a href={LOGIN_HREF} className={ACTION_CLASS}>
+            Iniciar sesión
+          </a>
+        ) : (
+          <EnterButton session={state.session} />
+        )}
       </IdentityCard>
     );
   }

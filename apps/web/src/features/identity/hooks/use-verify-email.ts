@@ -1,6 +1,6 @@
 'use client';
 
-import { IDENTITY_ERROR_CODES } from '@nimbo/contracts';
+import { IDENTITY_ERROR_CODES, type SessionResponse } from '@nimbo/contracts';
 import { useCallback } from 'react';
 
 import { ApiClientError } from '../../../lib/api-error';
@@ -11,7 +11,12 @@ import { useFragmentToken } from './use-fragment-token';
 
 export type VerifyEmailViewState =
   | { readonly status: 'verificando' }
-  | { readonly status: 'exito'; readonly planName: string | null }
+  | {
+      readonly status: 'exito';
+      readonly planName: string | null;
+      /** La sesión que abrió la verificación (002 CA-15); sin ella, hay que iniciar sesión. */
+      readonly session: SessionResponse | null;
+    }
   | { readonly status: 'ya-verificado' }
   | { readonly status: 'enlace-expirado' }
   | { readonly status: 'enlace-invalido' };
@@ -28,7 +33,7 @@ async function resolveVerification(
     const result = await verifyEmail(apiPublicUrl, token);
     if (result.status === 'already-verified') return { status: 'ya-verificado' };
     const plan = takeChosenPlan(window.localStorage, new Date());
-    return { status: 'exito', planName: plan?.planName ?? null };
+    return { status: 'exito', planName: plan?.planName ?? null, session: result.session ?? null };
   } catch (caught) {
     if (
       caught instanceof ApiClientError &&
