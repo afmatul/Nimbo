@@ -1,4 +1,14 @@
-import { login, logout, refresh, register, resendVerification, verifyEmail } from './api';
+import {
+  checkResetLink,
+  forgotPassword,
+  login,
+  logout,
+  refresh,
+  register,
+  resendVerification,
+  resetPassword,
+  verifyEmail,
+} from './api';
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -138,6 +148,110 @@ describe('api de identity', () => {
       expect(init.method).toBe('POST');
       expect(init.credentials).toBe('include');
       expect(init.body).toBeUndefined();
+    });
+  });
+
+  describe('recuperación (plan 002 §5)', () => {
+    function lastCall(): { url: string; init: RequestInit } {
+      const [url, init] = fetchMock.mock.calls.at(-1) ?? [];
+      return { url: String(url), init: init ?? {} };
+    }
+
+    it('CA-18: forgotPassword hace POST /auth/forgot-password sin credenciales y valida el 202', async () => {
+      fetchMock.mockResolvedValue(jsonResponse({ status: 'accepted' }, 202));
+
+      await expect(
+        forgotPassword('http://localhost/api/v1', { email: 'ana@ejemplo.com' }),
+      ).resolves.toEqual({ status: 'accepted' });
+
+      const { url, init } = lastCall();
+      expect(url).toBe('http://localhost/api/v1/auth/forgot-password');
+      expect(init.method).toBe('POST');
+      expect(init.credentials).toBeUndefined();
+      expect(JSON.parse(String(init.body))).toEqual({ email: 'ana@ejemplo.com' });
+    });
+
+    it('CA-18: forgotPassword propaga el límite con su Retry-After', async () => {
+      fetchMock.mockResolvedValue(
+        new Response(
+          JSON.stringify({ code: 'IDENTITY_TOO_MANY_REQUESTS', message: 'No', correlationId: 'c' }),
+          { status: 429, headers: { 'content-type': 'application/json', 'retry-after': '60' } },
+        ),
+      );
+
+      await expect(
+        forgotPassword('http://localhost/api/v1', { email: 'ana@ejemplo.com' }),
+      ).rejects.toMatchObject({ code: 'IDENTITY_TOO_MANY_REQUESTS', retryAfterSeconds: 60 });
+    });
+
+    it('CA-20: checkResetLink hace POST /auth/reset-password/check con el token y valida `valid`', async () => {
+      fetchMock.mockResolvedValue(jsonResponse({ status: 'valid' }));
+
+      await expect(checkResetLink('http://localhost/api/v1', 'token-opaco')).resolves.toEqual({
+        status: 'valid',
+      });
+
+      const { url, init } = lastCall();
+      expect(url).toBe('http://localhost/api/v1/auth/reset-password/check');
+      expect(init.method).toBe('POST');
+      expect(JSON.parse(String(init.body))).toEqual({ token: 'token-opaco' });
+    });
+
+    it('CA-20: checkResetLink propaga el enlace vencido', async () => {
+      fetchMock.mockResolvedValue(
+        jsonResponse(
+          { code: 'IDENTITY_RESET_LINK_EXPIRED', message: 'No', correlationId: 'c-2' },
+          422,
+        ),
+      );
+
+      await expect(checkResetLink('http://localhost/api/v1', 'viejo')).rejects.toMatchObject({
+        code: 'IDENTITY_RESET_LINK_EXPIRED',
+      });
+    });
+
+    it('CA-19: resetPassword hace POST /auth/reset-password con credenciales y valida `password-reset`', async () => {
+      fetchMock.mockResolvedValue(jsonResponse({ status: 'password-reset' }));
+
+      await expect(
+        resetPassword('http://localhost/api/v1', {
+          token: 'token-opaco',
+          password: 'UnaClaveSegura!1',
+        }),
+      ).resolves.toEqual({ status: 'password-reset' });
+
+      const { url, init } = lastCall();
+      expect(url).toBe('http://localhost/api/v1/auth/reset-password');
+      expect(init.method).toBe('POST');
+      expect(init.credentials).toBe('include');
+      expect(JSON.parse(String(init.body))).toEqual({
+        token: 'token-opaco',
+        password: 'UnaClaveSegura!1',
+      });
+    });
+
+    it('CA-21: resetPassword propaga IDENTITY_WEAK_PASSWORD con sus fields', async () => {
+      fetchMock.mockResolvedValue(
+        jsonResponse(
+          {
+            code: 'IDENTITY_WEAK_PASSWORD',
+            message: 'No',
+            correlationId: 'c-3',
+            fields: [{ field: 'password', reason: 'PASSWORD_COMMON', message: 'Común' }],
+          },
+          422,
+        ),
+      );
+
+      await expect(
+        resetPassword('http://localhost/api/v1', {
+          token: 'token-opaco',
+          password: 'UnaClaveSegura!1',
+        }),
+      ).rejects.toMatchObject({
+        code: 'IDENTITY_WEAK_PASSWORD',
+        fields: [{ field: 'password', reason: 'PASSWORD_COMMON' }],
+      });
     });
   });
 });

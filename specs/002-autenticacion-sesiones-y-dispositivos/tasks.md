@@ -621,13 +621,13 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
 
 ## Bloque 5 — PR-5a «web: sesión» (plan §6.9) · depende de 001-PR-4 y 002-PR-1 (la prueba manual, de PR-2 y PR-3)
 
-- [ ] **T-81** [P] Catálogo de errores de 002 — CA: CA-2…CA-6, CA-8, CA-18, CA-20, CA-21, CA-23 — Depende: T-02, 001 T-57 — ~0,5 h
+- [x] **T-81** [P] Catálogo de errores de 002 — CA: CA-2…CA-6, CA-8, CA-18, CA-20, CA-21, CA-23 — Depende: T-02, 001 T-57 — ~0,5 h
   Prueba primero `apps/web/lib/error-catalog.spec.ts` (ampliado): cada código nuevo de T-02 con el texto de spec §11;
   los que llevan minutos los calculan de `retryAfterSeconds`; `IDENTITY_TOO_MANY_REQUESTS` devuelve el texto por
   pantalla (DT-20: inicio de sesión o recuperación); suspendida con `SUPPORT_CONTACT_EMAIL`. Luego `error-catalog.ts`.
   Archivos: `apps/web/lib/error-catalog.ts`, `apps/web/lib/error-catalog.spec.ts`.
 
-- [ ] **T-82** [P] `api.ts`: sesión y recuperación — CA: CA-1, CA-7, CA-14, CA-18…CA-20 — Depende: T-03, T-04, 001 T-60 — ~1 h
+- [x] **T-82** [P] `api.ts`: sesión y recuperación — CA: CA-1, CA-7, CA-14, CA-18…CA-20 — Depende: T-03, T-04, 001 T-60 — ~1 h
   Prueba primero `features/identity/api.spec.ts` (`fetch` simulado): `login`, `refresh`, `logout`, `forgotPassword`,
   `checkResetLink`, `resetPassword` usan la ruta y el método de plan §5, validan la respuesta con `contracts`; las de
   `session/*` y `login` mandan `credentials: 'include'`; errores tipados por `code`. Luego las funciones.
