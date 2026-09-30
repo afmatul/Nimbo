@@ -508,7 +508,7 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   dos bloqueos, correo «Tu contraseña cambió» e `identity.password_reset.completed` con `revokedCount`; no crea sesión.
   Archivos: `apps/api/src/modules/identity/application/password.service.ts`, `apps/api/src/modules/identity/application/password.service.spec.ts`.
 
-- [ ] **T-63** `PasswordController`: tres rutas públicas — CA: CA-18, CA-19, CA-20 — Depende: T-62, T-41 (002-PR-2 integrado) — ~1 h
+- [x] **T-63** `PasswordController`: tres rutas públicas — CA: CA-18, CA-19, CA-20 — Depende: T-62, T-41 (002-PR-2 integrado) — ~1 h
   Prueba primero `apps/api/test/int/identity/password-reset.int-spec.ts` (caminos felices: `202` de
   `forgot-password`, `200 { status: 'valid' }` de `check`, `200 { status: 'password-reset' }` que borra `nimbo_rt`).
   Luego `password.controller.ts` (`@Controller('auth')`, `@Public()` en las tres, pipes con los esquemas de T-03) y su
