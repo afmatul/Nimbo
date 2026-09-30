@@ -545,9 +545,11 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   `kind`, `rejected` con cada `reason`, `completed`, `session.revoked` con `reason: 'password_reset'`; sin correo).
   Archivos: `apps/api/test/int/identity/{credential-secrecy,auth-logs}.int-spec.ts`.
 
-- [ ] **T-69** Cierre del PR-3 — CA: n/a — Depende: T-58…T-68 — ~0,5 h
+- [x] **T-69** Cierre del PR-3 — CA: n/a — Depende: T-58…T-68 — ~0,5 h
   README de `identity` (recuperación, D-15 acotada solo por el límite de recuperación, DT-5/DT-6). Suites en verde. Pedir al
   `ui-designer` que valide las plantillas de T-58 y T-59 (y las de T-28, T-29 si no lo hizo).
+  Hecho (2026-09-29): el `ui-designer` aprobó T-28, T-29, T-58 y T-59 sin bloqueantes; sus dos sugerencias quedan en
+  PD-53. Los pendientes de la auditoría T-67 que no entran en este PR quedan en PD-50, PD-51 y PD-52.
   Archivos: `apps/api/src/modules/identity/README.md`.
 
 ## Bloque 4 — PR-4 «Seguridad (backend)» (plan §6.3, §6.5) · depende de 002-PR-2 (y por él 003-PR-A) · **recortable a Fase 2 si no llega el 30/09 (decisión de Adrián pendiente)**
