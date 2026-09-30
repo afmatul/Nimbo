@@ -2,7 +2,12 @@ import { randomUUID } from 'node:crypto';
 
 import { Inject, Injectable } from '@nestjs/common';
 import { STORAGE_FIELD_MESSAGES } from '@nimbo/contracts';
-import type { InitUploadInput, InitUploadResponse, UploadPartUrl } from '@nimbo/contracts';
+import type {
+  InitUploadInput,
+  InitUploadResponse,
+  ResumeUploadResponse,
+  UploadPartUrl,
+} from '@nimbo/contracts';
 import { PinoLogger } from 'nestjs-pino';
 
 import { I_CLOCK, I_RATE_LIMITER, I_TRANSACTION_RUNNER } from '../../../shared';
@@ -12,6 +17,8 @@ import {
   InvalidUploadRequestError,
   NameConflictError,
   StorageTooManyRequestsError,
+  UploadExpiredError,
+  UploadNotFoundError,
 } from '../domain/errors';
 import { FileName } from '../domain/file-name.vo';
 import { expectedPartBytes, planParts } from '../domain/multipart-layout';
@@ -38,6 +45,8 @@ import type { UploadConfig } from './upload-config';
 const RATE_WINDOW_SECONDS = 60;
 const INIT_RATE_KEY_PREFIX = 'storage:upload-init:';
 const SECOND_MS = 1000;
+/** Intentos de borrar lo subido al cancelar o vencer (plan §6, Art. XI). */
+const DISCARD_ATTEMPTS = 3;
 
 /** El contrato llama `multipart` a lo que el dominio (y `carga.modo`) llama `por_partes`. */
 const CONTRACT_MODE = { simple: 'simple', por_partes: 'multipart' } as const satisfies Record<
@@ -92,6 +101,49 @@ export class UploadService {
       mode: CONTRACT_MODE[started.session.mode],
     });
     return started.response;
+  }
+
+  /**
+   * Reanuda una carga activa (CA-8): por partes, las partes ya recibidas (según `listParts`) y URLs nuevas solo de
+   * las que faltan; simple, una URL nueva (se sube de nuevo entera). Vencida ⇒ `expire` y 410 (CA-9).
+   */
+  async resume(actor: Actor, uploadId: string): Promise<ResumeUploadResponse> {
+    const session = await this.requireActive(actor, await this.findOwned(actor, uploadId));
+    const response = await this.resumeResponse(session);
+    this.logger.info({ event: 'upload.resumed', cargaId: session.id });
+    return response;
+  }
+
+  /**
+   * Cancela una carga activa (CA-22): CAS `activa → cancelada` primero (libera la reserva y `complete` ya no puede
+   * ganar) y borrar después. Ajena, inexistente o ya cerrada (también si el CAS pierde contra `complete`) ⇒ 404.
+   */
+  async cancel(actor: Actor, uploadId: string): Promise<void> {
+    const session = await this.transactions.withActor(actor, async () => {
+      const found = await this.sessions.findOwned(actor, uploadId);
+      if (found?.state !== 'activa') throw new UploadNotFoundError();
+      if (!(await this.close(actor, found, 'cancelada'))) throw new UploadNotFoundError();
+      return found;
+    });
+    await this.discardObject(session);
+    this.logger.info({ event: 'upload.cancelled', cargaId: session.id });
+  }
+
+  /**
+   * Vence una carga activa pasada de 24 h (CA-9): CAS `activa → expirada` y borrar después. Idempotente: si no
+   * existe para el actor, ya no está activa o todavía no vence, no hace nada. Lo usan `resume`, `complete` y la
+   * limpieza periódica.
+   */
+  async expire(actor: Actor, uploadId: string): Promise<void> {
+    const now = this.clock.now();
+    const session = await this.transactions.withActor(actor, async () => {
+      const found = await this.sessions.findOwned(actor, uploadId);
+      if (found?.state !== 'activa' || !found.isExpired(now)) return null;
+      return (await this.close(actor, found, 'expirada')) ? found : null;
+    });
+    if (session === null) return;
+    await this.discardObject(session);
+    this.logger.info({ event: 'upload.expired', cargaId: session.id });
   }
 
   private async assertInitRate(actor: Actor): Promise<void> {
@@ -163,13 +215,12 @@ export class UploadService {
       const url = await this.signObject(session);
       return { ...base, mode: 'simple', upload: { url, method: 'PUT', expiresAt: urlsExpireAt } };
     }
-    const partNumbers = Array.from({ length: multipart.totalParts }, (_, index) => index + 1);
     return {
       ...base,
       mode: 'multipart',
       partSizeBytes: Number(multipart.partSizeBytes),
       totalParts: multipart.totalParts,
-      parts: await this.signParts(session, multipart, partNumbers),
+      parts: await this.signParts(session, multipart, partNumbersOf(multipart)),
       urlsExpireAt,
     };
   }
@@ -208,6 +259,98 @@ export class UploadService {
     ).toISOString();
   }
 
+  private findOwned(actor: Actor, uploadId: string): Promise<UploadSession | null> {
+    return this.transactions.withActor(actor, () => this.sessions.findOwned(actor, uploadId));
+  }
+
+  /** La sesión si sigue activa y vigente. Vencida ⇒ la vence y 410; cualquier otro caso ⇒ 404 (CA-16, CA-22). */
+  private async requireActive(actor: Actor, session: UploadSession | null): Promise<UploadSession> {
+    if (session?.state === 'expirada') throw new UploadExpiredError();
+    if (session?.state !== 'activa') throw new UploadNotFoundError();
+    if (session.isExpired(this.clock.now())) {
+      await this.expire(actor, session.id);
+      throw new UploadExpiredError();
+    }
+    return session;
+  }
+
+  /** CAS desde `activa`; `false` si otra petición ya la cerró (Art. XI). */
+  private close(
+    actor: Actor,
+    session: UploadSession,
+    to: 'cancelada' | 'expirada',
+  ): Promise<boolean> {
+    return this.sessions.transition(actor, session.id, 'activa', to, {
+      at: this.clock.now(),
+      rejectionReason: null,
+    });
+  }
+
+  private async resumeResponse(session: UploadSession): Promise<ResumeUploadResponse> {
+    const base = { uploadId: session.id, expiresAt: session.expiresAt.toISOString() };
+    const urlsExpireAt = this.urlsExpireAt();
+    const { multipart } = session;
+    if (multipart === null) {
+      const url = await this.signObject(session);
+      return {
+        ...base,
+        mode: 'simple',
+        completedParts: [],
+        pending: { url, method: 'PUT', expiresAt: urlsExpireAt },
+      };
+    }
+    const received = await this.receivedParts(session, multipart);
+    const receivedNumbers = new Set(received.map((part) => part.partNumber));
+    const missing = partNumbersOf(multipart).filter((n) => !receivedNumbers.has(n));
+    return {
+      ...base,
+      mode: 'multipart',
+      completedParts: received.map((part) => ({
+        partNumber: part.partNumber,
+        sizeBytes: Number(part.sizeBytes),
+      })),
+      pending: {
+        partSizeBytes: Number(multipart.partSizeBytes),
+        totalParts: multipart.totalParts,
+        parts: await this.signParts(session, multipart, missing),
+        urlsExpireAt,
+      },
+    };
+  }
+
+  /**
+   * Partes recibidas según el almacenamiento. Si el multipart ya no existe (se completó y el proceso murió antes de
+   * registrar el archivo), todas cuentan como recibidas: `complete` verifica el objeto y lo recupera.
+   */
+  private async receivedParts(
+    session: UploadSession,
+    multipart: MultipartUpload,
+  ): Promise<readonly ReceivedPart[]> {
+    const listed = await this.storage.listParts(session.objectKey.value, multipart.uploadId);
+    if (listed !== null) return listed;
+    return partNumbersOf(multipart).map((partNumber) => ({
+      partNumber,
+      sizeBytes: expectedPartBytes(session.declaredBytes, multipart, partNumber),
+    }));
+  }
+
+  /**
+   * Borra lo subido tras cerrar la sesión: aborta el multipart o purga todas las versiones de la clave, hasta 3
+   * intentos. Si no se logra, queda un objeto huérfano sin `archivo` (no cuenta en la cuota, R-7) y se registra.
+   */
+  private async discardObject(session: UploadSession): Promise<void> {
+    const key = session.objectKey.value;
+    const { multipart } = session;
+    const discard = (): Promise<void> =>
+      multipart === null
+        ? this.storage.purgeObject(key)
+        : this.storage.abortMultipart(key, multipart.uploadId);
+    for (let attempt = 1; attempt <= DISCARD_ATTEMPTS; attempt += 1) {
+      if (await succeeds(discard)) return;
+    }
+    this.logger.error({ event: 'upload.discard_failed', cargaId: session.id });
+  }
+
   /** Aborta sin tapar el error original: un fallo aquí se registra (el multipart queda para la limpieza). */
   private async abortQuietly(key: string, uploadId: string): Promise<void> {
     try {
@@ -216,6 +359,12 @@ export class UploadService {
       this.logger.error({ event: 'upload.abort_failed' });
     }
   }
+}
+
+/** Parte recibida: la de `listParts` o, si el multipart ya se cerró, la esperada. */
+interface ReceivedPart {
+  readonly partNumber: number;
+  readonly sizeBytes: bigint;
 }
 
 interface ReserveInput {
@@ -232,4 +381,19 @@ function parseName(raw: string): FileName {
   throw new InvalidUploadRequestError([
     { field: 'name', reason: parsed.reason, message: STORAGE_FIELD_MESSAGES[parsed.reason] },
   ]);
+}
+
+/** 1…N de una carga por partes. */
+function partNumbersOf(multipart: MultipartUpload): number[] {
+  return Array.from({ length: multipart.totalParts }, (_, index) => index + 1);
+}
+
+/** `true` si la operación terminó; `false` si lanzó (el llamador decide si reintenta). */
+async function succeeds(operation: () => Promise<void>): Promise<boolean> {
+  try {
+    await operation();
+    return true;
+  } catch {
+    return false;
+  }
 }

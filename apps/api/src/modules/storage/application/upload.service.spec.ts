@@ -1,3 +1,5 @@
+import { randomUUID as randomId } from 'node:crypto';
+
 import type { InitUploadInput } from '@nimbo/contracts';
 
 import { FakePlanLimitsProvider } from '../../../../test/support/fake-plan-limits.provider';
@@ -20,7 +22,10 @@ import {
   NameConflictError,
   QuotaExceededError,
   StorageTooManyRequestsError,
+  UploadExpiredError,
+  UploadNotFoundError,
 } from '../domain/errors';
+import type { UploadSession } from '../domain/upload-session';
 
 import type { PlanLimits } from './plan-limits';
 import { QuotaService } from './quota.service';
@@ -303,5 +308,253 @@ describe('UploadService.init', () => {
     expect(logged).not.toContain('informe');
     expect(logged).not.toContain('https://');
     expect(logged).not.toContain(`u/${ACTOR.id}`);
+  });
+});
+
+const OTHER: Actor = createActor('22222222-2222-4222-8222-222222222222', Role.CLIENT);
+const DAY_MS = 86_400_000;
+const TEN_MINUTES_MS = 600_000;
+
+/** Inicia una carga real con el servicio y devuelve su sesión tal como quedó guardada. */
+async function started(ctx: Setup, sizeBytes = 20 * MIB): Promise<UploadSession> {
+  const response = await ctx.service.init(ACTOR, request({ sizeBytes }));
+  const session = ctx.sessions.sessions.get(response.uploadId);
+  if (session === undefined) throw new Error('la sesión no se guardó');
+  return session;
+}
+
+type ClosedState = 'completada' | 'rechazada' | 'cancelada' | 'expirada';
+
+/** Deja la sesión en `state` como si otra petición la hubiera cerrado. */
+function forceState(ctx: Setup, session: UploadSession, state: ClosedState): void {
+  const now = ctx.clock.now();
+  const close: Record<ClosedState, () => UploadSession> = {
+    completada: () => session.complete(now),
+    rechazada: () => session.reject('tamano', now),
+    cancelada: () => session.cancel(now),
+    expirada: () => session.expire(now),
+  };
+  ctx.sessions.put(close[state]());
+}
+
+describe('UploadService.resume', () => {
+  it('CA-8: por partes devuelve las partes ya recibidas y URLs nuevas solo de las que faltan', async () => {
+    const ctx = setup();
+    const session = await started(ctx);
+    ctx.storage.addPart(session.objectKey.value, 'mp-1', 1, BigInt(8 * MIB));
+    ctx.storage.signedParts.length = 0;
+    ctx.clock.advance(TEN_MINUTES_MS);
+
+    const response = await ctx.service.resume(ACTOR, session.id);
+
+    expect(response).toEqual({
+      uploadId: session.id,
+      mode: 'multipart',
+      expiresAt: IN_24_HOURS,
+      completedParts: [{ partNumber: 1, sizeBytes: 8 * MIB }],
+      pending: {
+        partSizeBytes: 8 * MIB,
+        totalParts: 3,
+        parts: [
+          { partNumber: 2, url: expect.any(String) as string },
+          { partNumber: 3, url: expect.any(String) as string },
+        ],
+        urlsExpireAt: '2026-09-30T11:10:00.000Z',
+      },
+    });
+    expect(ctx.storage.signedParts.map((part) => part.contentLength)).toEqual([
+      BigInt(8 * MIB),
+      BigInt(4 * MIB),
+    ]);
+  });
+
+  it('CA-8: si el multipart ya se cerró, todas las partes cuentan como recibidas y no hay URLs', async () => {
+    const ctx = setup();
+    const session = await started(ctx);
+    ctx.storage.multiparts.clear();
+
+    const response = await ctx.service.resume(ACTOR, session.id);
+
+    expect(response.mode === 'multipart' && response.pending.parts).toEqual([]);
+    expect(response.completedParts.map((part) => part.sizeBytes)).toEqual([
+      8 * MIB,
+      8 * MIB,
+      4 * MIB,
+    ]);
+  });
+
+  it('CA-8: una carga simple recibe una URL nueva (se reinicia desde cero)', async () => {
+    const ctx = setup();
+    const session = await started(ctx, MIB);
+
+    const response = await ctx.service.resume(ACTOR, session.id);
+
+    expect(response).toEqual({
+      uploadId: session.id,
+      mode: 'simple',
+      expiresAt: IN_24_HOURS,
+      completedParts: [],
+      pending: { url: expect.any(String) as string, method: 'PUT', expiresAt: IN_1_HOUR },
+    });
+  });
+
+  it.each(['completada', 'rechazada', 'cancelada'] as const)(
+    'CA-22: una carga %s no se reanuda (404)',
+    async (state) => {
+      const ctx = setup();
+      const session = await started(ctx);
+      forceState(ctx, session, state);
+
+      await expect(ctx.service.resume(ACTOR, session.id)).rejects.toBeInstanceOf(
+        UploadNotFoundError,
+      );
+    },
+  );
+
+  it('CA-16: la carga de otro usuario es igual a una inexistente (404)', async () => {
+    const ctx = setup();
+    const session = await started(ctx);
+
+    await expect(ctx.service.resume(OTHER, session.id)).rejects.toBeInstanceOf(UploadNotFoundError);
+    await expect(ctx.service.resume(ACTOR, randomId())).rejects.toBeInstanceOf(UploadNotFoundError);
+  });
+
+  it('CA-9: a las 24 h la vence, aborta sus partes y responde 410 (también después)', async () => {
+    const ctx = setup();
+    const session = await started(ctx);
+    ctx.clock.advance(DAY_MS);
+
+    await expect(ctx.service.resume(ACTOR, session.id)).rejects.toBeInstanceOf(UploadExpiredError);
+
+    expect(ctx.sessions.sessions.get(session.id)?.state).toBe('expirada');
+    expect(ctx.storage.aborted).toEqual([session.objectKey.value]);
+    await expect(ctx.service.resume(ACTOR, session.id)).rejects.toBeInstanceOf(UploadExpiredError);
+  });
+
+  it('CA-20: registra `upload.resumed` solo con el id de la carga', async () => {
+    const ctx = setup();
+    const session = await started(ctx);
+
+    await ctx.service.resume(ACTOR, session.id);
+
+    expect(ctx.logger.info).toHaveBeenCalledWith({ event: 'upload.resumed', cargaId: session.id });
+  });
+});
+
+describe('UploadService.cancel', () => {
+  it('CA-22: CAS a `cancelada` primero y después aborta las partes', async () => {
+    const ctx = setup();
+    const session = await started(ctx);
+
+    await ctx.service.cancel(ACTOR, session.id);
+
+    expect(ctx.sessions.sessions.get(session.id)?.state).toBe('cancelada');
+    const cas = ctx.journal.indexOf('session:transition:cancelada');
+    expect(cas).toBeGreaterThan(-1);
+    expect(ctx.journal.indexOf('storage:abortMultipart')).toBeGreaterThan(cas);
+    expect(ctx.storage.aborted).toEqual([session.objectKey.value]);
+    expect(ctx.logger.info).toHaveBeenCalledWith({
+      event: 'upload.cancelled',
+      cargaId: session.id,
+    });
+  });
+
+  it('CA-22: una carga simple purga su objeto (todas las versiones)', async () => {
+    const ctx = setup();
+    const session = await started(ctx, MIB);
+
+    await ctx.service.cancel(ACTOR, session.id);
+
+    expect(ctx.storage.purged).toEqual([session.objectKey.value]);
+  });
+
+  it('CA-22: cancelar dos veces: la segunda es 404', async () => {
+    const ctx = setup();
+    const session = await started(ctx);
+    await ctx.service.cancel(ACTOR, session.id);
+
+    await expect(ctx.service.cancel(ACTOR, session.id)).rejects.toBeInstanceOf(UploadNotFoundError);
+  });
+
+  it('CA-22: si pierde el CAS contra un `complete`, responde 404 y no borra nada', async () => {
+    const ctx = setup();
+    const session = await started(ctx);
+    ctx.sessions.raceTo = 'completada';
+
+    await expect(ctx.service.cancel(ACTOR, session.id)).rejects.toBeInstanceOf(UploadNotFoundError);
+
+    expect(ctx.storage.aborted).toEqual([]);
+    expect(ctx.storage.purged).toEqual([]);
+  });
+
+  it('CA-16: no cancela la carga de otro usuario', async () => {
+    const ctx = setup();
+    const session = await started(ctx);
+
+    await expect(ctx.service.cancel(OTHER, session.id)).rejects.toBeInstanceOf(UploadNotFoundError);
+    expect(ctx.sessions.sessions.get(session.id)?.state).toBe('activa');
+  });
+
+  it('CA-22: reintenta el borrado hasta 3 veces', async () => {
+    const ctx = setup();
+    const session = await started(ctx, MIB);
+    ctx.storage.deleteFailures = 2;
+
+    await ctx.service.cancel(ACTOR, session.id);
+
+    expect(ctx.storage.purged).toEqual([session.objectKey.value]);
+  });
+
+  it('CA-22: si el borrado falla 3 veces, la carga queda cancelada y se registra el error', async () => {
+    const ctx = setup();
+    const session = await started(ctx, MIB);
+    ctx.storage.deleteFailures = 3;
+
+    await expect(ctx.service.cancel(ACTOR, session.id)).resolves.toBeUndefined();
+
+    expect(ctx.sessions.sessions.get(session.id)?.state).toBe('cancelada');
+    expect(ctx.logger.error).toHaveBeenCalledWith({
+      event: 'upload.discard_failed',
+      cargaId: session.id,
+    });
+  });
+});
+
+describe('UploadService.expire', () => {
+  it('CA-9: vence una carga activa pasada de 24 h: CAS primero, borrar después', async () => {
+    const ctx = setup();
+    const session = await started(ctx);
+    ctx.clock.advance(DAY_MS);
+
+    await ctx.service.expire(ACTOR, session.id);
+
+    expect(ctx.sessions.sessions.get(session.id)?.state).toBe('expirada');
+    expect(ctx.journal.indexOf('storage:abortMultipart')).toBeGreaterThan(
+      ctx.journal.indexOf('session:transition:expirada'),
+    );
+    expect(ctx.logger.info).toHaveBeenCalledWith({ event: 'upload.expired', cargaId: session.id });
+  });
+
+  it('CA-9: no vence una carga que todavía está vigente', async () => {
+    const ctx = setup();
+    const session = await started(ctx);
+    ctx.clock.advance(DAY_MS - 1);
+
+    await ctx.service.expire(ACTOR, session.id);
+
+    expect(ctx.sessions.sessions.get(session.id)?.state).toBe('activa');
+    expect(ctx.storage.aborted).toEqual([]);
+  });
+
+  it('CA-9: es idempotente: una carga ya cerrada o ajena no cambia', async () => {
+    const ctx = setup();
+    const session = await started(ctx);
+    ctx.clock.advance(DAY_MS);
+    await ctx.service.expire(ACTOR, session.id);
+
+    await ctx.service.expire(ACTOR, session.id);
+    await ctx.service.expire(OTHER, session.id);
+
+    expect(ctx.storage.aborted).toHaveLength(1);
   });
 });
