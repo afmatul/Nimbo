@@ -2,8 +2,8 @@ import { Inject, Injectable } from '@nestjs/common';
 import { DOWNLOAD_URL_TTL_SECONDS, FILES_PAGE_DEFAULT, FILES_PAGE_MAX } from '@nimbo/contracts';
 import { PinoLogger } from 'nestjs-pino';
 
-import { I_CLOCK, I_RATE_LIMITER } from '../../../shared';
-import type { Actor, IClock, IRateLimiter } from '../../../shared';
+import { I_CLOCK, I_RATE_LIMITER, I_TRANSACTION_RUNNER } from '../../../shared';
+import type { Actor, IClock, IRateLimiter, ITransactionRunner } from '../../../shared';
 import { AuditAction, I_AUDIT_LOGGER } from '../../audit';
 import type { IAuditLogger } from '../../audit';
 import { NodeNotFoundError } from '../domain/errors';
@@ -36,10 +36,14 @@ function clampPageLimit(limit: number): number {
   return Math.min(Math.max(Math.trunc(limit), 1), FILES_PAGE_MAX);
 }
 
-/** Lista los archivos del actor y emite la URL de descarga (plan §6). No abre transacción: los puertos la toman. */
+/**
+ * Lista los archivos del actor y emite la URL de descarga (plan §6). Cada lectura corre en `withActor(actor)`: el
+ * repositorio toma el `EntityManager` de ese ámbito (RLS y `accessibleNodes`, CA-16).
+ */
 @Injectable()
 export class FileService {
   constructor(
+    @Inject(I_TRANSACTION_RUNNER) private readonly transactions: ITransactionRunner,
     @Inject(I_NODE_REPOSITORY) private readonly nodes: INodeRepository,
     @Inject(I_OBJECT_STORAGE) private readonly objects: IObjectStorage,
     @Inject(I_RATE_LIMITER) private readonly rateLimiter: IRateLimiter,
@@ -51,7 +55,8 @@ export class FileService {
 
   /** Página de la raíz del actor. Lanza `InvalidQueryError` si el cursor no es uno emitido por la API. */
   list(actor: Actor, query: FileListQuery): Promise<FileListPage> {
-    return this.nodes.listAccessible(actor, { ...query, limit: clampPageLimit(query.limit) });
+    const page = { ...query, limit: clampPageLimit(query.limit) };
+    return this.transactions.withActor(actor, () => this.nodes.listAccessible(actor, page));
   }
 
   /**
@@ -60,7 +65,9 @@ export class FileService {
    */
   async getDownloadUrl(actor: Actor, fileId: string): Promise<DownloadUrl> {
     await this.assertWithinRate(actor);
-    const file = await this.nodes.findAccessibleById(actor, fileId);
+    const file = await this.transactions.withActor(actor, () =>
+      this.nodes.findAccessibleById(actor, fileId),
+    );
     if (file === null) throw new NodeNotFoundError();
     const url = await this.objects.presignDownload({
       key: ObjectKey.of(file.ownerId, file.id, file.currentVersionId).value,

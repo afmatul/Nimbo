@@ -440,7 +440,7 @@ salvo la lectura por rango del detector.
   es 404 y el cliente de T-13 la trata como éxito. Bitácora `upload.rate_limited` en el 429.
   Archivos: `apps/api/src/modules/storage/presentation/{uploads,files}.controller.ts`, `apps/api/src/modules/storage/presentation/storage-validation.ts`, `apps/api/src/modules/storage/storage.module.ts`, `apps/api/src/app.module.ts`.
 
-- [ ] **T-43** Integración HTTP: simple, límites, nombre, vacíos y cuota — CA: CA-1, CA-3, CA-4, CA-6, CA-7, CA-19, CA-23 — Depende: T-42 — ~4 h
+- [x] **T-43** Integración HTTP: simple, límites, nombre, vacíos y cuota — CA: CA-1, CA-3, CA-4, CA-6, CA-7, CA-19, CA-23 — Depende: T-42 — ~4 h
   Escribir (y ejecutar con Docker) `uploads-simple.int-spec.ts`, `uploads-limits.int-spec.ts` (con
   `FakePlanLimitsProvider`), `uploads-validation.int-spec.ts` (400 con `fields`; 422 vacío), `uploads-name-conflict.int-spec.ts`
   (409, `keep_both`, dos completes simultáneos, colación «Ñ»/«ñ»), `uploads-quota-concurrency.int-spec.ts`
