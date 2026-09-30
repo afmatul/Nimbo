@@ -515,7 +515,7 @@ salvo la lectura por rango del detector.
   `pnpm test:isolation` junto con T-45.
   Archivos: `apps/api/src/modules/storage/storage-worker.module.ts`, `apps/api/src/modules/storage/index.ts`, `apps/api/src/worker.module.ts`, `apps/api/test/int/storage/upload-cleanup.int-spec.ts`.
 
-- [ ] **T-52** Cierre del PR-E — CA: n/a — Depende: T-48…T-51 — ~1 h
+- [x] **T-52** Cierre del PR-E — CA: n/a — Depende: T-48…T-51 — ~1 h
   Lint, typecheck y unitarias en verde. La descripción del PR dice si `storage-maintenance.iso-spec.ts` corrió con
   dueño `NOSUPERUSER`. Si no alcanzó a correr antes del 30/09, queda explícito que la Definición de Hecho exige
   ejecutarla en staging con dueño no superusuario (plan §8).
