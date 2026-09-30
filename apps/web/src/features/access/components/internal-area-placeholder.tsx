@@ -8,15 +8,15 @@ import { ROLE_LABELS } from '../role-labels';
 export interface InternalAreaPlaceholderProps {
   readonly fullName: string;
   readonly role: RoleName;
-  /** Acción «Cerrar sesión»; la conecta la página con la sesión de 002. */
-  readonly onLogout: () => void;
 }
 
-/** Marcador del inicio de las cuentas internas (003 §6.9, CA-17) hasta que su área exista. */
+/**
+ * Marcador del inicio de las cuentas internas (003 §6.9, CA-17) hasta que su área exista. «Cerrar sesión» lo pone la
+ * página con el `SignOutButton` de 002, que muestra la carga y no repite el cierre.
+ */
 export function InternalAreaPlaceholder({
   fullName,
   role,
-  onLogout,
 }: InternalAreaPlaceholderProps): JSX.Element {
   return (
     <StateView
@@ -24,7 +24,6 @@ export function InternalAreaPlaceholder({
       icon={ShieldCheck}
       title={`Hola, ${fullName}.`}
       description={`Tu área de ${ROLE_LABELS[role].toLowerCase()} estará disponible pronto.`}
-      action={{ label: 'Cerrar sesión', onClick: onLogout, variant: 'outline' }}
     />
   );
 }

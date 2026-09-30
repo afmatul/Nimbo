@@ -50,6 +50,14 @@ describe('ForbiddenState (CA-17)', () => {
     expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Sin permiso' }));
   });
 
+  it('CA-17: el título enfocado al montar no muestra el contorno por omisión del navegador', () => {
+    render(<ForbiddenState role="ADMIN" />);
+
+    expect(screen.getByRole('heading', { name: 'Sin permiso' }).classList).toContain(
+      'outline-none',
+    );
+  });
+
   it('CA-17: la acción tiene un objetivo táctil de al menos 44 px', () => {
     render(<ForbiddenState role="CLIENT" />);
 

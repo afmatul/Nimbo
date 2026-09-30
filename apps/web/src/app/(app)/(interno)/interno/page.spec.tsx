@@ -56,6 +56,19 @@ describe('área interna (/interno)', () => {
     expect(recallSession(Date.now())).toBeNull();
   });
 
+  it('CA-17: mientras cierra, «Cerrar sesión» muestra carga y no repite el cierre', async () => {
+    fetchMock.mockReturnValue(new Promise(() => undefined));
+    const user = userEvent.setup();
+    renderPage();
+    const button = screen.getByRole('button', { name: 'Cerrar sesión' });
+
+    await user.click(button);
+    await user.click(button);
+
+    expect(button.hasAttribute('disabled')).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('CA-17: la página no tiene violaciones serias ni críticas de axe', async () => {
     const view = render(
       <SessionProvider apiPublicUrl="http://localhost/api/v1">

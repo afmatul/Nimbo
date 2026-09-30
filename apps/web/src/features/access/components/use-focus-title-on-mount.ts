@@ -11,6 +11,8 @@ export function useFocusTitleOnMount(): RefObject<HTMLDivElement | null> {
     const title = containerRef.current?.querySelector('h3');
     if (!title) return;
     title.tabIndex = -1;
+    // Foco programático, no de teclado: sin el contorno por omisión del navegador (003 PR-F, UI-2).
+    title.classList.add('outline-none');
     title.focus();
   }, []);
 
