@@ -2,6 +2,7 @@ import {
   IDENTITY_ERROR_CODES,
   IDENTITY_FIELD_MESSAGES,
   LOGIN_LOCK_MINUTES,
+  STORAGE_ERROR_CODES,
   SUPPORT_CONTACT_EMAIL,
 } from '@nimbo/contracts';
 
@@ -9,6 +10,7 @@ import {
   IDENTITY_FIELD_MESSAGES as reexported,
   messageForCode,
   messageForReason,
+  storageMessage,
 } from './error-catalog';
 
 describe('error-catalog', () => {
@@ -116,6 +118,86 @@ describe('error-catalog', () => {
       expect(messageForCode(IDENTITY_ERROR_CODES.SESSION_NOT_FOUND)).toBe(
         'No encontramos esa sesión. Actualiza la lista.',
       );
+    });
+  });
+
+  describe('códigos de storage (005 spec §9)', () => {
+    it('CA-3: tamaño máximo con las cifras de `details`', () => {
+      expect(
+        messageForCode(STORAGE_ERROR_CODES.STORAGE_FILE_TOO_LARGE, {
+          details: { sizeBytes: 52_400_000, maxBytes: 50_000_000 },
+        }),
+      ).toBe(
+        'Este archivo pesa 52,4 MB y tu plan permite hasta 50 MB por archivo. Reduce su tamaño o cambia de plan.',
+      );
+    });
+
+    it('CA-4: cuota con lo que falta; ofrece liberar espacio y no «Ver planes»', () => {
+      const message = messageForCode(STORAGE_ERROR_CODES.STORAGE_QUOTA_EXCEEDED, {
+        details: { missingBytes: 1_500_000_000 },
+      });
+
+      expect(message).toBe(
+        'Te faltan 1,5 GB de espacio para subir este archivo. Libera espacio o cambia de plan.',
+      );
+      expect(message).not.toContain('Ver planes');
+    });
+
+    it('CA-5: tamaño distinto al declarado, sin parámetros e idéntico al del servidor', () => {
+      expect(messageForCode(STORAGE_ERROR_CODES.STORAGE_UPLOAD_SIZE_MISMATCH)).toBe(
+        'El archivo cambió durante la carga. Vuelve a subirlo.',
+      );
+    });
+
+    it('CA-10, CA-11: tipo inválido con la extensión y ejecutable', () => {
+      expect(
+        messageForCode(STORAGE_ERROR_CODES.STORAGE_INVALID_FILE_TYPE, {
+          details: { reason: 'signature', extension: 'pdf' },
+        }),
+      ).toBe('Este archivo no es un .pdf válido. Comprueba que sea el archivo correcto.');
+      expect(
+        messageForCode(STORAGE_ERROR_CODES.STORAGE_INVALID_FILE_TYPE, {
+          details: { reason: 'executable', extension: 'exe' },
+        }),
+      ).toBe('No se permiten archivos ejecutables. Sube otro archivo.');
+    });
+
+    it('CA-10: sin `extension` en `details` usa la del nombre del archivo', () => {
+      expect(
+        storageMessage(
+          STORAGE_ERROR_CODES.STORAGE_INVALID_FILE_TYPE,
+          { reason: 'text' },
+          'notas.md',
+        ),
+      ).toEqual({
+        cause: 'Este archivo no es un .md válido.',
+        fix: 'Comprueba que sea el archivo correcto.',
+      });
+    });
+
+    it('CA-7, CA-9, CA-19: vacío, caducada y tasa', () => {
+      expect(messageForCode(STORAGE_ERROR_CODES.STORAGE_EMPTY_FILE)).toBe(
+        'El archivo está vacío. Revisa que tenga contenido y súbelo de nuevo.',
+      );
+      expect(messageForCode(STORAGE_ERROR_CODES.STORAGE_UPLOAD_EXPIRED)).toBe(
+        'Esta carga caducó. Vuelve a subir el archivo.',
+      );
+      expect(messageForCode(STORAGE_ERROR_CODES.STORAGE_TOO_MANY_REQUESTS)).toBe(
+        'Hiciste demasiadas solicitudes. Espera un momento e inténtalo de nuevo.',
+      );
+    });
+
+    it('CA-21: todo código de storage tiene texto propio, con acción correctiva', () => {
+      for (const code of Object.values(STORAGE_ERROR_CODES)) {
+        const message = messageForCode(code, { correlationId: 'abc' });
+
+        expect(message).not.toContain('abc');
+        expect(message).toMatch(/\.$/);
+      }
+    });
+
+    it('un código ajeno a storage no tiene mensaje estructurado', () => {
+      expect(storageMessage('NO_EXISTE')).toBeNull();
     });
   });
 });

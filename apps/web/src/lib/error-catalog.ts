@@ -4,11 +4,13 @@ import {
   IDENTITY_FIELD_MESSAGES,
   LOGIN_LOCK_MINUTES,
   PASSWORD_CHANGE_LOCK_MINUTES,
+  STORAGE_ERROR_CODES,
   SUPPORT_CONTACT_EMAIL,
+  formatBytes,
   type FieldIssueReason,
 } from '@nimbo/contracts';
 
-import { genericErrorMessage } from './api-error';
+import { genericErrorMessage, type ApiErrorDetails } from './api-error';
 
 export { IDENTITY_FIELD_MESSAGES };
 
@@ -21,7 +23,92 @@ export interface MessageOptions {
   readonly correlationId?: string;
   readonly retryAfterSeconds?: number | undefined;
   readonly screen?: ErrorScreen;
+  /** `details` del error (005): cifras, `reason` o `extension`. */
+  readonly details?: ApiErrorDetails;
+  /** Nombre del archivo, para la extensión de `STORAGE_INVALID_FILE_TYPE` si `details` no la trae. */
+  readonly fileName?: string;
 }
+
+/** Mensaje de `storage` en dos partes: qué pasó (va en negrita en el panel) y qué hacer (005 spec §9). */
+export interface StorageMessage {
+  readonly cause: string;
+  readonly fix: string;
+}
+
+type StorageMessageBuilder = (details: ApiErrorDetails, fileName: string) => StorageMessage;
+
+function bytesOf(details: ApiErrorDetails, key: string): string {
+  return formatBytes(Number(details[key] ?? 0));
+}
+
+function extensionOf(details: ApiErrorDetails, fileName: string): string {
+  const fromServer = details['extension'];
+  if (typeof fromServer === 'string' && fromServer !== '') return fromServer;
+  return fileName.split('.').pop() ?? '';
+}
+
+const fixed =
+  (cause: string, fix: string): StorageMessageBuilder =>
+  () => ({ cause, fix });
+
+/** Reproduce los mensajes que arma el servidor con `details` (plan 005 §5, Art. VI.3). */
+const STORAGE_MESSAGES: Readonly<Record<string, StorageMessageBuilder>> = {
+  [STORAGE_ERROR_CODES.STORAGE_FILE_TOO_LARGE]: (details) => ({
+    cause: `Este archivo pesa ${bytesOf(details, 'sizeBytes')} y tu plan permite hasta ${bytesOf(details, 'maxBytes')} por archivo.`,
+    fix: 'Reduce su tamaño o cambia de plan.',
+  }),
+  [STORAGE_ERROR_CODES.STORAGE_QUOTA_EXCEEDED]: (details) => ({
+    cause: `Te faltan ${bytesOf(details, 'missingBytes')} de espacio para subir este archivo.`,
+    fix: 'Libera espacio o cambia de plan.',
+  }),
+  [STORAGE_ERROR_CODES.STORAGE_INVALID_FILE_TYPE]: (details, fileName) =>
+    details['reason'] === 'executable'
+      ? { cause: 'No se permiten archivos ejecutables.', fix: 'Sube otro archivo.' }
+      : {
+          cause: `Este archivo no es un .${extensionOf(details, fileName)} válido.`,
+          fix: 'Comprueba que sea el archivo correcto.',
+        },
+  [STORAGE_ERROR_CODES.STORAGE_EMPTY_FILE]: fixed(
+    'El archivo está vacío.',
+    'Revisa que tenga contenido y súbelo de nuevo.',
+  ),
+  [STORAGE_ERROR_CODES.STORAGE_UPLOAD_SIZE_MISMATCH]: fixed(
+    'El archivo cambió durante la carga.',
+    'Vuelve a subirlo.',
+  ),
+  [STORAGE_ERROR_CODES.STORAGE_UPLOAD_EXPIRED]: fixed(
+    'Esta carga caducó.',
+    'Vuelve a subir el archivo.',
+  ),
+  [STORAGE_ERROR_CODES.STORAGE_TOO_MANY_REQUESTS]: fixed(
+    'Hiciste demasiadas solicitudes.',
+    'Espera un momento e inténtalo de nuevo.',
+  ),
+  [STORAGE_ERROR_CODES.STORAGE_NAME_CONFLICT]: fixed(
+    'Ya tienes un archivo con ese nombre.',
+    'Elige «Conservar ambos» o cancela la carga.',
+  ),
+  [STORAGE_ERROR_CODES.STORAGE_UPLOAD_NOT_FOUND]: fixed(
+    'No encontramos esta carga.',
+    'Vuelve a subir el archivo.',
+  ),
+  [STORAGE_ERROR_CODES.STORAGE_UPLOAD_INCOMPLETE]: fixed(
+    'Aún faltan partes del archivo por subir.',
+    'Reanuda la carga para completarla.',
+  ),
+  [STORAGE_ERROR_CODES.STORAGE_NODE_NOT_FOUND]: fixed(
+    'No encontramos este archivo.',
+    'Actualiza la lista para ver tus archivos.',
+  ),
+  [STORAGE_ERROR_CODES.STORAGE_INVALID_UPLOAD_REQUEST]: fixed(
+    'El nombre o el tamaño del archivo no son válidos.',
+    'Revisa el nombre y el tamaño del archivo y vuelve a intentarlo.',
+  ),
+  [STORAGE_ERROR_CODES.STORAGE_INVALID_QUERY]: fixed(
+    'No pudimos leer esta página de la lista.',
+    'Actualiza la lista e inténtalo de nuevo.',
+  ),
+};
 
 const CODE_MESSAGES: Readonly<Record<string, string>> = {
   [IDENTITY_ERROR_CODES.INVALID_INPUT]: 'Revisa los campos marcados y corrígelos para continuar.',
@@ -83,16 +170,28 @@ function minutesFrom(seconds: number): string {
   return String(Math.max(1, Math.ceil(seconds / SECONDS_PER_MINUTE)));
 }
 
+/** Mensaje de un código de `storage` en dos partes; `null` si el código no es de `storage`. */
+export function storageMessage(
+  code: string,
+  details: ApiErrorDetails = {},
+  fileName = '',
+): StorageMessage | null {
+  return STORAGE_MESSAGES[code]?.(details, fileName) ?? null;
+}
+
 /** Mensaje de un `reason` de `fields`. Uno desconocido cae en el genérico de 000 §10. */
 export function messageForReason(reason: string, correlationId = ''): string {
   return isReason(reason) ? IDENTITY_FIELD_MESSAGES[reason] : genericErrorMessage(correlationId);
 }
 
 /**
- * Mensaje de un `code` (specs 001 y 002 §11). Los bloqueos usan los minutos de `Retry-After`; el 429 por IP del
- * inicio de sesión tiene su propio texto (DT-20). Un código desconocido es el genérico de 000 §10.
+ * Mensaje de un `code` (specs 001, 002 §11 y 005 §9). Los bloqueos usan los minutos de `Retry-After`; el 429 por IP
+ * del inicio de sesión tiene su propio texto (DT-20); los de `storage`, las cifras de `details`. Un código desconocido
+ * es el genérico de 000 §10.
  */
 export function messageForCode(code: string, options: MessageOptions = {}): string {
+  const storage = storageMessage(code, options.details, options.fileName);
+  if (storage !== null) return `${storage.cause} ${storage.fix}`;
   if (code === IDENTITY_ERROR_CODES.TOO_MANY_REQUESTS && options.screen === 'login') {
     return LOGIN_RATE_LIMIT_MESSAGE;
   }

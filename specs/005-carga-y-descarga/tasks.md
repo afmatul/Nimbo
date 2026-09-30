@@ -523,7 +523,7 @@ salvo la lectura por rango del detector.
 
 ## Bloque 6 — PR-F «página Mis archivos» (plan §6 Frontend) · depende de: PR-B, 001-PR-4, 002-PR-5a, 003-PR-F
 
-- [ ] **T-53** Cliente HTTP, catálogo y proveedor de la pestaña — CA: CA-5, CA-19, CA-21 — Depende: T-02, T-13, 001 T-57, 002 T-85 — ~3 h
+- [x] **T-53** Cliente HTTP, catálogo y proveedor de la pestaña — CA: CA-5, CA-19, CA-21 — Depende: T-02, T-13, 001 T-57, 002 T-85 — ~3 h
   Prueba primero: `features/storage/api.ts` valida con los esquemas de T-02 y usa `auth-fetch` solo contra la API.
   `lib/error-catalog.ts` gana cada `STORAGE_*` con el texto de spec §9, incluido el de `STORAGE_UPLOAD_SIZE_MISMATCH`
   sin parámetros; el aviso de cuota ofrece «Liberar espacio» y no «Ver planes». `use-upload-manager` conecta el

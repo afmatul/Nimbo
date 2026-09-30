@@ -1,6 +1,6 @@
 'use client';
 
-import { STORAGE_ERROR_CODES, formatBytes } from '@nimbo/contracts';
+import { STORAGE_ERROR_CODES } from '@nimbo/contracts';
 import { ChevronDown, Pause, X } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
@@ -13,8 +13,8 @@ import {
 } from '../../../components/nimbo/upload-progress';
 import { Button, buttonVariants } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
+import { storageMessage } from '../../../lib/error-catalog';
 import { cn } from '../../../lib/utils';
-import type { StorageErrorDetails } from '../storage-request-error';
 import type { UploadPhase, UploadView } from '../upload/upload-manager';
 
 export interface UploadPanelProps {
@@ -91,57 +91,31 @@ const ACTION_LABELS: Readonly<Record<NoticeAction, string>> = {
   upload_again: 'Subir de nuevo',
 };
 
-function bytesDetail(details: StorageErrorDetails, key: string): string {
-  return formatBytes(Number(details[key] ?? 0));
+const UNKNOWN_FAILURE: RowNotice = {
+  tone: 'destructive',
+  cause: 'No pudimos subir este archivo.',
+  fix: 'Revisa tu conexión y vuelve a subirlo.',
+  action: 'upload_again',
+};
+
+/** Aviso con el texto del catálogo de errores (spec §9); un código sin texto cae en el fallo genérico. */
+function catalogNotice(
+  code: string,
+  row: UploadView,
+  tone: NoticeTone,
+  action?: NoticeAction,
+): RowNotice {
+  const message = storageMessage(code, row.errorDetails, row.name);
+  if (message === null) return UNKNOWN_FAILURE;
+  return action === undefined ? { tone, ...message } : { tone, ...message, action };
 }
 
-function extensionOf(row: UploadView): string {
-  const fromServer = row.errorDetails['extension'];
-  if (typeof fromServer === 'string' && fromServer !== '') return fromServer;
-  return row.name.split('.').pop() ?? '';
-}
-
+/** La cuota ofrece «Liberar espacio» y nunca «Ver planes» (CA-4). */
 function rejectionNotice(row: UploadView): RowNotice {
-  const details = row.errorDetails;
-  const tone = 'destructive';
-  switch (row.errorCode) {
-    case STORAGE_ERROR_CODES.STORAGE_FILE_TOO_LARGE:
-      return {
-        tone,
-        cause: `Este archivo pesa ${bytesDetail(details, 'sizeBytes')} y tu plan permite hasta ${bytesDetail(details, 'maxBytes')} por archivo.`,
-        fix: 'Reduce su tamaño o cambia de plan.',
-      };
-    case STORAGE_ERROR_CODES.STORAGE_QUOTA_EXCEEDED:
-      return {
-        tone,
-        cause: `Te faltan ${bytesDetail(details, 'missingBytes')} de espacio para subir este archivo.`,
-        fix: 'Libera espacio o cambia de plan.',
-        action: 'free_space',
-      };
-    case STORAGE_ERROR_CODES.STORAGE_UPLOAD_SIZE_MISMATCH:
-      return { tone, cause: 'El archivo cambió durante la carga.', fix: 'Vuelve a subirlo.' };
-    case STORAGE_ERROR_CODES.STORAGE_INVALID_FILE_TYPE:
-      return details['reason'] === 'executable'
-        ? { tone, cause: 'No se permiten archivos ejecutables.', fix: 'Sube otro archivo.' }
-        : {
-            tone,
-            cause: `Este archivo no es un .${extensionOf(row)} válido.`,
-            fix: 'Comprueba que sea el archivo correcto.',
-          };
-    case STORAGE_ERROR_CODES.STORAGE_EMPTY_FILE:
-      return {
-        tone,
-        cause: 'El archivo está vacío.',
-        fix: 'Revisa que tenga contenido y súbelo de nuevo.',
-      };
-    default:
-      return {
-        tone,
-        cause: 'No pudimos subir este archivo.',
-        fix: 'Revisa tu conexión y vuelve a subirlo.',
-        action: 'upload_again',
-      };
-  }
+  if (row.errorCode === null) return UNKNOWN_FAILURE;
+  const action =
+    row.errorCode === STORAGE_ERROR_CODES.STORAGE_QUOTA_EXCEEDED ? 'free_space' : undefined;
+  return catalogNotice(row.errorCode, row, 'destructive', action);
 }
 
 function noticeOf(row: UploadView): RowNotice | null {
@@ -149,19 +123,14 @@ function noticeOf(row: UploadView): RowNotice | null {
     case 'rejected':
       return rejectionNotice(row);
     case 'expired':
-      return {
-        tone: 'destructive',
-        cause: 'Esta carga caducó.',
-        fix: 'Vuelve a subir el archivo.',
-        action: 'upload_again',
-      };
+      return catalogNotice(
+        STORAGE_ERROR_CODES.STORAGE_UPLOAD_EXPIRED,
+        row,
+        'destructive',
+        'upload_again',
+      );
     case 'rate_limited':
-      return {
-        tone: 'warning',
-        cause: 'Hiciste demasiadas solicitudes.',
-        fix: 'Espera un momento e inténtalo de nuevo.',
-        action: 'retry',
-      };
+      return catalogNotice(STORAGE_ERROR_CODES.STORAGE_TOO_MANY_REQUESTS, row, 'warning', 'retry');
     case 'cancelled':
       return {
         tone: 'muted',

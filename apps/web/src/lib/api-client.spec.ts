@@ -87,6 +87,44 @@ describe('requestJson', () => {
     expect(invalid).toMatchObject({ correlationId: 'desde-api', code: 'INTERNAL_ERROR' });
   });
 
+  it('005 plan §5: un error con respuesta expone el status HTTP y `details`', async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(
+        {
+          code: 'STORAGE_NAME_CONFLICT',
+          message: 'Ya tienes un archivo con ese nombre.',
+          correlationId: 'corr-2',
+          details: { suggestedName: 'informe (1).docx' },
+        },
+        { status: 409 },
+      ),
+    );
+
+    const error = await requestJson('http://localhost/api/v1/uploads').catch(
+      (caught: unknown) => caught,
+    );
+
+    expect(error).toMatchObject({
+      status: 409,
+      code: 'STORAGE_NAME_CONFLICT',
+      details: { suggestedName: 'informe (1).docx' },
+    });
+  });
+
+  it('005 plan §5: sin respuesta (red caída) no hay status; con un cuerpo inválido sí', async () => {
+    fetchMock.mockRejectedValue(new TypeError('failed'));
+    const network = await requestJson('http://localhost/api/v1/files').catch(
+      (caught: unknown) => caught,
+    );
+    expect(network).toMatchObject({ status: undefined, details: {} });
+
+    fetchMock.mockResolvedValue(new Response('no-json', { status: 502 }));
+    const invalid = await requestJson('http://localhost/api/v1/files').catch(
+      (caught: unknown) => caught,
+    );
+    expect(invalid).toMatchObject({ status: 502, code: 'INTERNAL_ERROR' });
+  });
+
   it('un 204 sin cuerpo resuelve sin error (cerrar sesión, plan 002 §5)', async () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
 
