@@ -572,21 +572,39 @@ salvo la lectura por rango del detector.
   `upload-cleanup.processor.spec.ts` y `upload-cleanup.scheduler.spec.ts`), `expired-upload.scanner.int-spec.ts` (4/4) y
   `storage-maintenance.iso-spec.ts` (9/9), esta última **corrida con dueño `NOSUPERUSER`** en contenedor propio
   (`test/isolation/setup/nosuperuser-postgres.ts`); si el dueño fuera superusuario, `beforeAll` falla con mensaje explícito.
-- **Pendiente T-51** (sin empezar): `storage-worker.module.ts` con `BullModule.registerQueue({ name: UPLOAD_CLEANUP_QUEUE })`,
-  `UPLOAD_CLEANUP_CONFIG` (`{ intervalMinutes: UPLOAD_CLEANUP_INTERVAL_MINUTES, batchSize: UPLOAD_CLEANUP_BATCH_SIZE }`,
-  ya validados en `workerEnvSchema`), `I_EXPIRED_UPLOAD_SCANNER → SqlExpiredUploadScanner`, `UploadCleanupScheduler`,
-  `UploadCleanupProcessor` y lo que necesita `UploadService` (repositorios, `IObjectStorage` con `MinioStorageAdapter`,
-  detector, `UploadRegistrar`, `QuotaService`, `AuditModule`, `UPLOAD_CONFIG`, y un enlace de `I_PLAN_LIMITS_PROVIDER`:
-  `expire` no lo usa, pero el constructor de `UploadService` lo pide; decidir si el worker reutiliza
-  `plan-limits-binding.module.ts` o si conviene separar `expire`). Ojo: `StorageModule.forRoot` pide `MINIO_PUBLIC_ENDPOINT`,
-  que el worker no tiene (plan §5): el adaptador del worker no firma URLs públicas. Exportar `StorageWorkerModule` desde
-  `storage/index.ts` y actualizar `RUNTIME_EXPORTS` de `index.spec.ts` (el escáner sigue sin salir). `WorkerModule`
-  importa `MinioConfigModule` y `StorageWorkerModule`; `WORKER_QUEUES` gana `upload-cleanup` (`worker.module.spec.ts`).
-  Falta `test/int/storage/upload-cleanup.int-spec.ts` (job expira, borra partes, libera la reserva, `resume` ⇒ 410;
-  `complete` y `expire` en paralelo sin `archivo` sin objeto) y sumarla a `pnpm test:isolation` junto con T-45 (T-45 es
-  de la rama de PR-D).
-- **Pendiente T-52**: README de `storage` (sección de limpieza, cola, bitácoras `upload.cleanup_run`/`upload.cleanup_failed`/
-  `upload.cleanup_scheduled`) y la nota del PR: `storage-maintenance.iso-spec.ts` **sí** corrió con dueño `NOSUPERUSER`.
+- **Hecha T-51** (`5b81c57`, 2026-09-30): `StorageWorkerModule.forRoot({ UPLOAD_CLEANUP_* })` (cola, configuración,
+  escáner, programa, procesador y `UploadService` con sus dependencias), exportado por `storage/index.ts`
+  (`RUNTIME_EXPORTS` = `I_PLAN_LIMITS_PROVIDER`, `StorageModule`, `StorageWorkerModule`; el escáner sigue sin salir).
+  `WorkerModule` importa `MinioConfigModule`, `PlanLimitsBindingModule` y `StorageWorkerModule`; `WORKER_QUEUES` =
+  `ping`, `mail`, `upload-cleanup`. Los proveedores comunes con `StorageModule` salieron a `upload-lifecycle.providers.ts`
+  (archivo no listado en T-51). `upload-cleanup.int-spec.ts` (2/2: el job vence la carga por partes, aborta sus partes,
+  libera la reserva y `resume` ⇒ 410 con `STORAGE_UPLOAD_EXPIRED`; 6 vueltas de `complete` ∥ barrido sin `archivo` sin
+  objeto; en una corrida instrumentada ganaron ambos lados) entra en `pnpm test:isolation` por `testMatch` de
+  `jest.isolation.config.cjs`; no depende de T-45 (su `storage.iso-spec.ts` entra solo por `*.iso-spec.ts`). Se
+  actualizaron `test/int/worker/bootstrap.int-spec.ts` (colas de `worker.started`) y `worker-health.int-spec.ts` (cierra
+  también el `Worker` de `upload-cleanup` con Redis caído).
+- **Pendiente T-52** (sin empezar; detenido por ALTO): sección de limpieza en `apps/api/src/modules/storage/README.md`
+  (cola `upload-cleanup`, `upsertJobScheduler` con id fijo cada `UPLOAD_CLEANUP_INTERVAL_MINUTES`, lote
+  `UPLOAD_CLEANUP_BATCH_SIZE` ≤ 1000, dos fases escáner sin actor → `expire` por dueño, 3 intentos exponenciales,
+  bitácoras `upload.cleanup_scheduled`/`upload.cleanup_run`/`upload.cleanup_failed`, `StorageWorkerModule` y las tres
+  decisiones de enlace de abajo) y borrador de la descripción del PR-E aquí mismo: `storage-maintenance.iso-spec.ts`
+  **sí** corrió con dueño `NOSUPERUSER` (9/9), más las suites listadas abajo. Antes, `pnpm lint`, `pnpm typecheck`, `pnpm test`.
+- **Pendiente T-56** (sin empezar; encargada al PR-E por el coordinador el 2026-09-30): `docs/operations/ambientes.md` ya
+  existe desde T-24 (`74f3fbf`), no duplicarlo. Falta en el README de `storage` el flujo init → `PUT` directo a MinIO →
+  complete y DF-59 en una frase. Commit propio `docs(storage): … [005 T-56]` con su casilla.
+- **Suites al cierre de T-51**: `pnpm lint` y `pnpm typecheck` en verde; `pnpm test` en verde (api 1083, web 272,
+  contracts 221, config 28, worker 34); `test:isolation` completo 108/108 (incluye `upload-cleanup.int-spec.ts` y
+  `storage-maintenance.iso-spec.ts`); `test/int/worker` 8/8. No se corrió `pnpm test:int` completo.
+- **Decisiones de T-51 (a confirmar en `/review`)**: (6) `I_PLAN_LIMITS_PROVIDER` en el worker lo enlaza
+  `PlanLimitsBindingModule` en `WorkerModule` (raíz de composición, DF-51): `storage` sigue sin conocer a `billing` y,
+  cuando 006a cambie ese enlace, vale para ambos procesos. (7) `UPLOAD_CONFIG` en el worker es un objeto cuyos campos
+  **lanzan al leerse** («la configuración de carga no existe en el worker»): `expire` no la lee y las variables `UPLOAD_*`
+  son solo del `api` (plan §5); se descartó sumarlas a `workerEnvSchema` y separar `expire` de `UploadService` (el
+  modelo de diseño lo pone en `UploadService`). Si `/review` prefiere separar `expire`, es un cambio de modelo.
+  (8) El adaptador de MinIO del worker usa `buildMinioStorageClients(config, config.MINIO_ENDPOINT)`: el cliente de
+  firma apunta al endpoint interno porque el worker no tiene `MINIO_PUBLIC_ENDPOINT` ni emite URLs. (9) En la prueba
+  de integración la app del worker se crea después de la de la API: el `PinoLogger` de `nestjs-pino` es estático y la
+  última app recibe las bitácoras de ambas.
 - **Decisiones tomadas (a revisar en `/review`)**: (1) el procesador llama `uploadService.expire(createActor(propietarioId,
   CLIENT), id)` sin envolverlo en otro `withActor`: `expire` ya abre el suyo; envolverlo retendría la transacción (y el
   CAS sin confirmar) durante los borrados en MinIO. (2) `expired` en `upload.cleanup_run` cuenta filas procesadas sin
