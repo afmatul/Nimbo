@@ -2,7 +2,12 @@ import { Catch, Controller, HttpCode, Post, UseGuards } from '@nestjs/common';
 import type { ArgumentsHost, ExceptionFilter, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { ThrottlerModule } from '@nestjs/throttler';
-import { REGISTRATIONS_PER_IP_PER_HOUR, RESENDS_PER_IP_PER_HOUR } from '@nimbo/contracts';
+import {
+  LOGIN_ATTEMPTS_PER_IP,
+  LOGIN_IP_WINDOW_MINUTES,
+  REGISTRATIONS_PER_IP_PER_HOUR,
+  RESENDS_PER_IP_PER_HOUR,
+} from '@nimbo/contracts';
 import type { Response } from 'express';
 import { PinoLogger } from 'nestjs-pino';
 import request from 'supertest';
@@ -12,6 +17,7 @@ import { IdentityTooManyRequestsError } from '../domain/errors';
 import {
   IDENTITY_THROTTLERS,
   IdentityIpThrottlerGuard,
+  LOGIN_IP_THROTTLER,
   REGISTER_IP_THROTTLER,
   RESEND_IP_THROTTLER,
 } from './identity-ip-throttler.guard';
@@ -139,10 +145,40 @@ describe('IdentityIpThrottlerGuard (ADR-0017, plan §6.5)', () => {
     expect((filter.caught[0] as IdentityTooManyRequestsError).scope).toBe('ip');
   });
 
-  it('CA-15: `IDENTITY_THROTTLERS` define `register-ip` y `resend-ip` por hora con sus límites de contracts', () => {
+  it('CA-6: `login-ip` se traduce al ámbito `ip_login` con su mensaje, `Retry-After` y sin `X-RateLimit-*` (DT-20)', async () => {
+    await app.close();
+    await startApp(LOGIN_IP_THROTTLER);
+    for (let attempt = 1; attempt <= LIMIT; attempt += 1) {
+      await post().expect(202);
+    }
+
+    const response = await post();
+
+    expect(response.status).toBe(429);
+    expect(throttlerHeaders(response.headers)).toEqual([]);
+    const error = filter.caught[0] as IdentityTooManyRequestsError;
+    expect(error).toBeInstanceOf(IdentityTooManyRequestsError);
+    expect(error.scope).toBe('ip_login');
+    expect(error.retryAfterSeconds).toBeGreaterThan(0);
+    expect(error.message).toBe(
+      'Hiciste demasiados intentos. Espera unos minutos y vuelve a intentarlo.',
+    );
+    expect(logger.warn).toHaveBeenCalledWith({
+      event: 'identity.rate_limited',
+      scope: 'ip_login',
+      retryAfterSeconds: error.retryAfterSeconds,
+    });
+  });
+
+  it('CA-6, CA-15: `IDENTITY_THROTTLERS` define `register-ip`, `resend-ip` y `login-ip` con sus límites de contracts', () => {
     expect(IDENTITY_THROTTLERS).toEqual([
       { name: REGISTER_IP_THROTTLER, ttl: TTL_MS, limit: REGISTRATIONS_PER_IP_PER_HOUR },
       { name: RESEND_IP_THROTTLER, ttl: TTL_MS, limit: RESENDS_PER_IP_PER_HOUR },
+      {
+        name: LOGIN_IP_THROTTLER,
+        ttl: LOGIN_IP_WINDOW_MINUTES * 60_000,
+        limit: LOGIN_ATTEMPTS_PER_IP,
+      },
     ]);
   });
 });
