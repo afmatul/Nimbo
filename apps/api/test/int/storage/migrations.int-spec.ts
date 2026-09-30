@@ -1,11 +1,12 @@
-import type { DataSource, QueryRunner } from 'typeorm';
+import { DataSource } from 'typeorm';
+import type { QueryRunner } from 'typeorm';
 
 import { AgregarEspacioUsadoAUsuario20260930100000 } from '../../../src/migrations/20260930100000-agregar-espacio-usado-a-usuario';
 import { CrearArchivoYVersionArchivo20260930100100 } from '../../../src/migrations/20260930100100-crear-archivo-y-version-archivo';
 import { CrearCarga20260930100200 } from '../../../src/migrations/20260930100200-crear-carga';
 import { PoliticasRlsArchivoVersionCarga20260930100300 } from '../../../src/migrations/20260930100300-politicas-rls-archivo-version-carga';
 import type { Actor } from '../../../src/shared';
-import { createActor, Role } from '../../../src/shared';
+import { buildDataSourceOptions, createActor, Role } from '../../../src/shared';
 import { connectAsOwner } from '../../support/database-urls';
 
 import type { AppDatabase } from './storage-test-db';
@@ -541,5 +542,117 @@ describe('migración politicas-rls-archivo-version-carga (CA-16, CA-17, DF-52)',
       protected: 3,
       fn: 'carga_expiradas(timestamp with time zone,integer)',
     });
+  });
+});
+
+describe('cierre de las migraciones de 005: permisos de `nimbo_app` (RN-10, plan §4 «Permisos»)', () => {
+  const tablePrivilege = async (table: string, privilege: string): Promise<boolean> => {
+    const [row] = (await owner.query("SELECT has_table_privilege('nimbo_app', $1, $2) AS ok", [
+      table,
+      privilege,
+    ])) as { ok: boolean }[];
+    return row?.ok ?? false;
+  };
+
+  it.each(
+    ['archivo', 'version_archivo', 'carga'].flatMap((table) =>
+      ['SELECT', 'INSERT', 'UPDATE', 'DELETE'].map((privilege) => [table, privilege] as const),
+    ),
+  )(
+    'RN-10: `nimbo_app` tiene %s/%s por los privilegios por defecto de 003',
+    async (table, privilege) => {
+      await expect(tablePrivilege(table, privilege)).resolves.toBe(true);
+    },
+  );
+
+  it('RN-10: sobre `usuario`, `nimbo_app` sigue con `UPDATE` y sin `DELETE` (como lo dejó 003)', async () => {
+    const [update, remove] = [
+      await tablePrivilege('usuario', 'UPDATE'),
+      await tablePrivilege('usuario', 'DELETE'),
+    ];
+
+    expect({ update, remove }).toEqual({ update: true, remove: false });
+  });
+});
+
+describe('cierre de las migraciones de 005: `revert` ×4 y `run` ×4 sobre una base vacía (RNF-10)', () => {
+  const STORAGE_MIGRATIONS = [
+    'AgregarEspacioUsadoAUsuario20260930100000',
+    'CrearArchivoYVersionArchivo20260930100100',
+    'CrearCarga20260930100200',
+    'PoliticasRlsArchivoVersionCarga20260930100300',
+  ];
+  const databaseName = `nimbo_migraciones_${String(process.pid)}_${String(Date.now())}`;
+  let fresh: DataSource;
+
+  /** Lo que dejan las cuatro migraciones: columnas, índices, restricciones, políticas, RLS y la función. */
+  const schemaOf = async (dataSource: DataSource): Promise<unknown> =>
+    dataSource.query(
+      `SELECT
+         (SELECT json_agg(c ORDER BY c.table_name, c.column_name) FROM (
+            SELECT table_name, column_name, data_type, is_nullable, column_default FROM information_schema.columns
+             WHERE table_schema = 'public' AND (table_name IN ('archivo', 'version_archivo', 'carga')
+                   OR (table_name = 'usuario' AND column_name = 'espacio_usado'))) c) AS columnas,
+         (SELECT json_agg(i.indexdef ORDER BY i.indexname) FROM pg_indexes i
+           WHERE i.tablename IN ('archivo', 'version_archivo', 'carga')) AS indices,
+         (SELECT json_agg(k.conname ORDER BY k.conname) FROM pg_constraint k
+           WHERE k.conrelid IN ('usuario'::regclass, to_regclass('archivo'), to_regclass('version_archivo'),
+                                to_regclass('carga'))
+             AND k.conname LIKE ANY (ARRAY['ck_%', 'fk_archivo%', 'uq_%'])) AS restricciones,
+         (SELECT json_agg(p.policyname ORDER BY p.policyname) FROM pg_policies p
+           WHERE p.tablename IN ('archivo', 'version_archivo', 'carga')) AS politicas,
+         (SELECT json_agg(json_build_array(r.relname, r.relrowsecurity, r.relforcerowsecurity) ORDER BY r.relname)
+            FROM pg_class r WHERE r.relname IN ('archivo', 'version_archivo', 'carga') AND r.relkind = 'r') AS rls,
+         to_regprocedure('carga_expiradas(timestamptz, integer)')::text AS funcion`,
+    );
+
+  const appliedNames = async (): Promise<string[]> =>
+    ((await fresh.query('SELECT name FROM migracion ORDER BY id')) as { name: string }[]).map(
+      (row) => row.name,
+    );
+
+  beforeAll(async () => {
+    await owner.query(`CREATE DATABASE ${databaseName}`);
+    const url = new URL(process.env['DATABASE_MIGRATION_URL'] ?? '');
+    url.pathname = `/${databaseName}`;
+    fresh = await new DataSource(
+      buildDataSourceOptions({ DATABASE_URL: url.toString() }),
+    ).initialize();
+  });
+
+  afterAll(async () => {
+    await fresh.destroy();
+    await owner.query(`DROP DATABASE IF EXISTS ${databaseName} WITH (FORCE)`);
+  });
+
+  it('RNF-10: todas las migraciones corren, las cuatro de 005 se revierten y vuelven a correr con el mismo esquema', async () => {
+    await fresh.runMigrations({ transaction: 'each' });
+    const applied = await appliedNames();
+    const before = await schemaOf(fresh);
+
+    for (const _ of STORAGE_MIGRATIONS) {
+      await fresh.undoLastMigration({ transaction: 'each' });
+    }
+    const afterRevert = await appliedNames();
+    const [gone] = (await fresh.query(
+      `SELECT to_regclass('archivo') AS archivo, to_regclass('version_archivo') AS version_archivo,
+              to_regclass('carga') AS carga,
+              to_regprocedure('carga_expiradas(timestamptz, integer)') AS funcion,
+              (SELECT count(*)::int FROM information_schema.columns
+                WHERE table_name = 'usuario' AND column_name = 'espacio_usado') AS espacio_usado`,
+    )) as Record<string, unknown>[];
+    const rerun = await fresh.runMigrations({ transaction: 'each' });
+
+    expect(applied.slice(-STORAGE_MIGRATIONS.length)).toEqual(STORAGE_MIGRATIONS);
+    expect(afterRevert).toEqual(applied.slice(0, -STORAGE_MIGRATIONS.length));
+    expect(gone).toEqual({
+      archivo: null,
+      version_archivo: null,
+      carga: null,
+      funcion: null,
+      espacio_usado: 0,
+    });
+    expect(rerun.map((migration) => migration.name)).toEqual(STORAGE_MIGRATIONS);
+    expect(await schemaOf(fresh)).toEqual(before);
   });
 });
