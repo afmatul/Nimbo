@@ -1,6 +1,6 @@
 import { Column, Entity, PrimaryColumn } from 'typeorm';
 
-import { Role } from '../../../../shared';
+import { BIGINT_TRANSFORMER, Role } from '../../../../shared';
 import { AccountStatus } from '../../domain/account-status.enum';
 
 /**
@@ -39,4 +39,17 @@ export class UsuarioOrmEntity {
 
   @Column('timestamptz', { name: 'terminos_aceptados_en', nullable: true })
   terminosAceptadosEn!: Date | null;
+
+  /**
+   * Espacio usado (005, DF-38). Solo lo escribe `storage` por SQL (`IQuotaRepository`, D-5, DF-59): para `identity`
+   * es de solo lectura, así ningún `insert`/`update` de este módulo lo pisa con un valor viejo.
+   */
+  @Column({
+    type: 'bigint',
+    name: 'espacio_usado',
+    insert: false,
+    update: false,
+    transformer: BIGINT_TRANSFORMER,
+  })
+  espacioUsadoBytes!: bigint;
 }
