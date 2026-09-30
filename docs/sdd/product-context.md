@@ -152,6 +152,9 @@ El tipo real se valida por contenido (magic bytes), no por extensión (RF-14).
 | RF-36 | Reducir PDF/imagen validando integridad y conservando original | Debería | optimizer | 3 |
 | RF-37 | Tablero de estado y trabajos con reintento para el Operador | Debe | ops | 3 |
 
+> RF-08: el progreso «en tiempo real» lo mide el navegador sobre su propia carga (DF-58, spec 005); su difusión a
+> otras pestañas o dispositivos por `realtime`, si se hace, llega con la spec 015.
+
 ## 7. Requisitos no funcionales (línea base)
 
 | ID | Requisito (resumen) | Verificación |

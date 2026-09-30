@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Aceptado (2026-09-26, Adrián) |
+| Estado | Aceptado (2026-09-26, Adrián) (barrera 2 y trabajo del `worker` enmendados por ADR-0021, Propuesto, 2026-09-28: RLS también en `carga` y mantenimiento sin actor con función `SECURITY DEFINER` mínima) |
 | Fecha | 2026-09-26 |
 | Decisores | Adrián (architect), equipo Nimbo |
 | Specs relacionadas | 003 (R-5 a R-7, D-1, D-6, D-7, D-9, D-11; CA-10 a CA-15); 005; 012; 019; suite `test/isolation` |

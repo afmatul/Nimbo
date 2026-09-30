@@ -109,14 +109,14 @@ describe('redactDeep', () => {
   });
 
   it('CA-15: tolera ciclos sin desbordar la pila', () => {
-    const node: Record<string, unknown> = { token: 't', name: 'n' };
+    const node: Record<string, unknown> = { token: 't', label: 'n' };
     node.self = node;
     const input = { root: node, list: [node] };
 
     const result = redactDeep(input);
 
     expect(at(result, 'root', 'token')).toBe('[REDACTED]');
-    expect(at(result, 'root', 'name')).toBe('n');
+    expect(at(result, 'root', 'label')).toBe('n');
     expect(at(result, 'root', 'self')).toBe('[Circular]');
     expect(at(result, 'list', 0, 'token')).toBe('[REDACTED]');
   });

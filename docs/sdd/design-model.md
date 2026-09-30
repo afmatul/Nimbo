@@ -38,7 +38,7 @@
 | M8 | Administración, Soporte y Operación | `backoffice` | Adrián | 06, 37 |
 | T1 | (transversal; recibe de M8 la salud, DF-49, y `RolesGuard`, DF-50) | `shared` | Adrián | `Actor`, `IClock`, errores, logger, `correlationId`, entorno, salud, guards globales (003) |
 | T2 | (transversal, extraído de M8) | `audit` | Adrián | 07 |
-| T3 | (transversal) | `realtime` | Fátima | 08 (progreso), 26, 32 (streaming) |
+| T3 | (transversal) | `realtime` | Fátima | 26, 32 (streaming); 08 (progreso) solo si 015 lo difunde (DF-58: en 005 es local del cliente) |
 | T4 | (transversal) | `notifications` | Juan Marcos | declara e implementa `IMailer` e `INotifier` |
 
 M3 se divide en `access` y `sharing`, y `audit`/`realtime`/`notifications` salen como transversales, para evitar
@@ -79,11 +79,12 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
   - `dispositivo` y `sesion` (002).
 
 ### M2 `storage`
-- Controlador: `FilesController` (list, download, initUpload, uploadPart, completeUpload, move, trash). Faltan carpetas, renombrar, restaurar, versiones, cuota, búsqueda, vista previa → DF-15.
-- Servicios: `FileService`, `UploadService`, `QuotaService`.
-- Puertos → implementaciones: `IObjectStorage` → `MinioStorageAdapter`; `IFileTypeDetector` → `MagicBytesDetector`; `INodeRepository` → TypeORM; `IPlanLimitsProvider` → implementado por `billing`.
-- Dominio: `StorageNode` (abstracta) ← `Folder`, `File` (**Composite**); `FileVersion` (composición 1..* de `File`); `UploadSession`.
-- Tablas: `carpeta`, `archivo`, `version_archivo`, `carga`.
+- Controladores: `FilesController` (list, download, move, trash) y, con 005, `UploadsController` (init, resume, complete, cancel; SRP; `uploadPart` desaparece porque los bytes no pasan por la API, DF-16). Faltan carpetas, renombrar, restaurar, versiones, cuota, búsqueda, vista previa → DF-15.
+- Servicios: `FileService` (con 005: `list`, `getDownloadUrl`), `UploadService` (`init`, `resume`, `complete`, `cancel`, `expire`), `QuotaService` (`assertCanUpload`). Todos con `actor: Actor` primero. Trabajo (worker): `UploadCleanupProcessor` y `UploadCleanupScheduler` (cola `upload-cleanup`).
+- Puertos → implementaciones: `IObjectStorage` → `MinioStorageAdapter` (con 005: `createMultipart`, `presignUploadPart`, `presignUploadObject`, `listParts`, `completeMultipart`, `abortMultipart`, `headObject`, `getRange`, `purgeObject`, `presignDownload`); `IFileTypeDetector` → `MagicBytesDetector`; `INodeRepository` → TypeORM (solo archivos hasta 006); `IPlanLimitsProvider` → lo **declara** `storage` con `PlanLimits` e `I_PLAN_LIMITS_PROVIDER` (`application/plan-limits.ts`, exportados por `storage/index.ts`) y lo implementa `billing` (DF-51, opción A; `storage` no importa `billing`); repositorios nuevos de 005: `IUploadSessionRepository`, `IQuotaRepository` (único punto que escribe `usuario.espacio_usado`: DF-59) e `IExpiredUploadScanner` (único acceso sin actor, ADR-0021).
+- Puertos que consume: `IAuditLogger` (lo declara T2 `audit`); `IRateLimiter` (T1 `shared`).
+- Dominio: `StorageNode` (abstracta) ← `Folder`, `File` (**Composite**); `FileVersion` (composición 1..* de `File`; `DocumentVersion` no hereda de él, ADR-0012); `UploadSession` (máquina `activa → completada | rechazada | cancelada | expirada`); con 005 también `FileName` (VO), `FileKind` + catálogo extensión → tipo/MIME, `ObjectKey` y `QuotaPolicy` (puro).
+- Tablas: `carpeta`, `archivo`, `version_archivo`, `carga`. Con 005: `archivo`, `version_archivo` y `carga` con RLS (`ENABLE` + `FORCE`); función de mantenimiento `carga_expiradas` (ADR-0021). `storage` además escribe la columna `usuario.espacio_usado` (excepción DF-59).
 
 ### M3a `access`
 - Servicio: `PermissionResolver` (levelFor, can, inheritedGrants) + `accessibleNodes(actor)`, constructor de la consulta de nodos accesibles (DF-32, spec 003 D-1: 003 entrega la firma; la consulta se completa con 005 y 012).
@@ -106,7 +107,7 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
 - Puertos que consume: `INotifier` (lo declara e implementa T4 `notifications`).
 - Eventos que consume (ADR-0019): `identity.client-account-verified` → crea la suscripción Personal (001 D-4). El oyente es idempotente y se acompaña de una conciliación de las cuentas verificadas sin suscripción (006a).
 - Dominio: `Plan` con `PlanLimits` (value object); `Subscription` (pendingPlanId, isReadOnly, scheduleChange, applyPendingChange); `Payment`; `Invoice`; `Money`.
-- Implementa hacia fuera: `IPlanLimitsProvider` (M2, M5), `IAgentQuota` (M6) → DF-27.
+- Implementa hacia fuera: `IPlanLimitsProvider` (declarado por `storage`, DF-51 opción A; lo usan M2 y M5; se importa de `storage/index.ts`) e `IAgentQuota` (M6, lo declara `billing`) → DF-27. El `PlanLimits` de dominio de `Plan` es distinto del tipo `PlanLimits` de `storage`: se mapea al implementar el puerto.
 - Tablas: `plan`, `suscripcion`, `transaccion`, `factura`.
 
 ### M5 `editing`
@@ -147,9 +148,9 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
   - con 001, `ITransactionRunner` → implementación TypeORM que publica el `EntityManager` en `TransactionContext` (`AsyncLocalStorage`). `withActor` de 003 se construye sobre el mismo contexto (DF-54).
 - Dominio:
   - `Actor` (`id`, `role`, `canReadContent`) y `Role` = `CLIENT | ADMIN | SUPPORT | OPERATOR`;
-  - `DomainError` (abstracta; desde 001 con `fields?: FieldIssue[]`) ← `InvalidInputError` (422), `UnauthorizedError` (401), `ForbiddenError` (403), `NotFoundError` (404), `ConflictError` (409) y `TooManyRequestsError` (429, con `retryAfterSeconds`; desde 001, DF-54).
+  - `DomainError` (abstracta; desde 001 con `fields?: FieldIssue[]`; con 005 también `details?` plano de `string | number | boolean`, DF-60) ← `InvalidInputError` (422), `UnauthorizedError` (401), `ForbiddenError` (403), `NotFoundError` (404), `ConflictError` (409) y `TooManyRequestsError` (429, con `retryAfterSeconds`; desde 001, DF-54).
 - Presentación:
-  - `DomainExceptionFilter`: único traductor `DomainError` → HTTP; desde 001 agrega `fields` y `Retry-After`;
+  - `DomainExceptionFilter`: único traductor `DomainError` → HTTP; desde 001 agrega `fields` y `Retry-After`; con 005 agrega `details` (y no lo registra en bitácoras: puede llevar un nombre de archivo);
   - `ZodValidationPipe`: valida con los esquemas de `contracts` (ADR-0020);
   - `configureHttpApp`: middlewares, prefijo, filtro, solo JSON, CORS y `trust proxy`. La usan `main.ts` y el arnés de pruebas;
   - `CorrelationIdMiddleware` y `VersionHeaderMiddleware`.
@@ -165,8 +166,9 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
 - Tablas: ninguna de negocio; tabla de control `migracion` (TypeORM).
 
 ### T2 `audit`
-- `AuditService` (record, listForUser), `AuditEntry` (actorId, actorRole, targetUserId, action, resourceId, occurredAt, `isVisibleTo`). Implementa `IAuditLogger`.
-- Tabla: `evento_auditoria`.
+- `AuditService` (record, listForUser), `AuditEntry` (actorId, actorRole, targetUserId, action, resourceId, occurredAt, `isVisibleTo`). Implementa `IAuditLogger` (llega con 004).
+- Con 005 (004 llega después): módulo mínimo con `IAuditLogger` (`record(entry: AuditRecord)`, donde `AuditRecord = { action: AuditAction; actor: Actor; targetUserId; resourceId?; attributes? }`, de mejor esfuerzo y posterior al commit), su token `I_AUDIT_LOGGER`, el catálogo cerrado `AuditAction` y el adaptador provisional `LogAuditLogger` (Pino, `redactDeep`; `occurredAt` y `correlationId` los pone el adaptador). 004 cambia el binding a `AuditService` sin tocar a los consumidores. `audit/index.ts` no exporta el adaptador (DF-60).
+- Tabla: `evento_auditoria` (004).
 
 ### T3 `realtime`
 - Único gateway Socket.IO: handshake autenticado con el puerto token→`Actor` de `shared` (sin depender de `identity`), salas por usuario y por documento. Declara el puerto de publicación (nombre en el plan 015) que usan `storage`, `editing`, `intelligence` y `notifications`. No conoce permisos (ADR-0010).
@@ -196,9 +198,10 @@ El mapeo vive solo en las entidades TypeORM (`@Entity('archivo')`, `@Column({ na
 | `Device` | `dispositivo` | Clase nueva (DF-11, spec 002 D-4); `huella_hash` guarda el hash del identificador aleatorio de la cookie. Falta en el diagrama |
 | `VerificationToken` | `token_cuenta` | `tipo` = verificación / recuperación; `invalidado_en` y `creado_en` (DF-53) |
 | `Folder` | `carpeta` | `ruta` como camino materializado |
-| `File` | `archivo` | |
-| `FileVersion` / `DocumentVersion` | `version_archivo` | `origen` = carga / edicion / restauracion / optimizacion |
-| `UploadSession` | `carga` | |
+| `File` | `archivo` | Con 005: solo `id`, `propietario_id`, `nombre`, `tipo`, `tamano_bytes`, `version_actual_id`, fechas y `eliminado_en`; RLS; sin `carpeta_id` (006), `estado_indexacion` (019) ni `tipo_mime` (ningún consumidor de 005 lo lee; 017 lo agrega si lo necesita; DF-60). DF-33 parcial |
+| `FileVersion` / `DocumentVersion` | `version_archivo` | `origen` = carga / edicion / restauracion / optimizacion (ADR-0012). Con 005: `clave_objeto` única (`u/{propietario}/{archivo}/{version}`), `creado_por`; sin `checksum` ni `sesion_edicion_id`; RLS, sin política para roles internos |
+| `UploadSession` | `carga` | Reserva de cuota mientras está `activa`; `upload_id` y `clave_objeto` nunca salen de la API; RLS solo para el propietario; `archivo_id`/`version_id` reservados sin FK; sin `carpeta_destino_id` (006). DF-33 parcial, ADR-0021 |
+| (uso de espacio) | `usuario.espacio_usado` | Atributo almacenado (`bigint`, `CHECK >= 0`, DF-38); `storage` lo escribe por excepción (DF-59) |
 | `UserShare` | `comparticion` | |
 | `PublicLink` | `enlace_publico` | |
 | (intentos) | `intento_acceso` | |

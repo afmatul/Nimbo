@@ -95,13 +95,13 @@ No hay paquete `domain` aparte salvo que un ADR lo justifique.
 | Módulo | Diagrama | Responsabilidad | Puede depender de |
 |---|---|---|---|
 | `shared` | T1 (DF-49) | `Actor`, `IClock`, `DomainError` + `DomainExceptionFilter`, logger Pino con redacción, `correlationId`, validación de entorno, `DataSource`, salud (`HealthModule`, `IHealthIndicator`, indicadores Postgres/Redis/MinIO), paginación. Con 001: `IRateLimiter` → `RedisRateLimiter`, `TooManyRequestsError` (429), `ITransactionRunner` + `TransactionContext`, `ZodValidationPipe` (ADR-0020), `configureHttpApp` (solo JSON, CORS, `trust proxy`) y el proveedor `REDIS_CLIENT`. Con 003: guards globales (`JwtAuthGuard`, `RolesGuard`, `@Public`, `@Roles`), el puerto token→`Actor` que implementa `identity` (002 D-14, 003 D-2) y `withActor` (ADR-0005) | — |
-| `audit` | T2 (extraído de M8, DF-03) | `AuditService`, `AuditEntry`; declara e implementa `IAuditLogger` (ADR-0010) | shared |
+| `audit` | T2 (extraído de M8, DF-03) | `AuditService`, `AuditEntry`; declara e implementa `IAuditLogger` (ADR-0010). Como 004 llega después de 005, la 005 crea el módulo mínimo: `IAuditLogger` + `I_AUDIT_LOGGER`, el catálogo cerrado `AuditAction` y el adaptador provisional `LogAuditLogger` (Pino, de mejor esfuerzo y sin datos sensibles); 004 cambia el binding a `AuditService` sin tocar a los consumidores | shared |
 | `notifications` | T4 (DF-34) | Correo y notificaciones; declara e implementa `IMailer` e `INotifier` (ADR-0010). El `api` encola en `mail` y el `worker` entrega por SMTP con nodemailer (ADR-0018) | shared, realtime |
 | `realtime` | T3 (generalizado desde M5, DF-30) | Único gateway Socket.IO, salas por usuario y documento; valida el token del handshake con el puerto token→`Actor` de `shared`; declara su puerto de publicación (ADR-0010) | shared |
 | `identity` | M1 | Registro, verificación, login, refresh, sesiones, dispositivos. Publica `identity.client-account-verified` (001, ADR-0019) | shared, notifications, audit |
-| `billing` | M4 | Planes, suscripciones, pagos, facturas, renovación; implementa `IPlanLimitsProvider` e `IAgentQuota`; crea la suscripción Personal al consumir `identity.client-account-verified` | shared, notifications, audit, storage (solo `IObjectStorage` para facturas), identity (solo contratos de eventos de su `index.ts`; ADR-0019, Propuesto) |
+| `billing` | M4 | Planes, suscripciones, pagos, facturas, renovación; implementa `IPlanLimitsProvider` (declarado por `storage`, DF-51 opción A) e `IAgentQuota`; crea la suscripción Personal al consumir `identity.client-account-verified` | shared, notifications, audit, storage (`IObjectStorage` para facturas y `IPlanLimitsProvider`/`PlanLimits` para implementarlo; solo desde `storage/index.ts`), identity (solo contratos de eventos de su `index.ts`; ADR-0019, Propuesto) |
 | `access` | M3a (lectura) | Solo lectura: `PermissionResolver`, políticas, `accessibleNodes(actor)` | shared |
-| `storage` | M2 | Nodos, cargas, descargas, papelera, versiones, cuota, búsqueda por metadatos, vista previa | shared, access, billing (`IPlanLimitsProvider`), audit, realtime |
+| `storage` | M2 | Nodos, cargas, descargas, papelera, versiones, cuota, búsqueda por metadatos, vista previa. Con 005: `UploadService`, `QuotaService`, `FileService`, cola `upload-cleanup`. Escribe la columna `usuario.espacio_usado` (regla 6, DF-59). **Declara** `IPlanLimitsProvider` y `PlanLimits` en `application/plan-limits.ts` (DF-51, opción A) y no importa `billing` en ningún archivo | shared, access, audit, realtime (arista permitida por ADR-0010, sin uso en 005: el progreso de carga es local del cliente, DF-58; primer uso probable en 015) |
 | `sharing` | M3b (escritura) | Comparticiones, enlaces públicos, límite de intentos | shared, access, storage, audit |
 | `editing` | M5 | Sesiones de edición, presencia, callback, autoría e historial | shared, storage, access, billing, realtime, audit |
 | `intelligence` | M6 | Indexación, recuperación híbrida, agente con citas; implementa `IIndexQueue` | shared, storage, access, billing (`IAgentQuota`), realtime |
@@ -118,9 +118,11 @@ No hay paquete `domain` aparte salvo que un ADR lo justifique.
 3. `access` lee tablas de `storage` y `sharing` por SQL de solo lectura. Es la **única** excepción documentada a «cada módulo es dueño de sus tablas», porque la autorización debe resolverse dentro de la consulta (DF-02, ADR-0010).
 4. Otro módulo solo importa desde `modules/<x>/index.ts`: fachadas, puertos que ese módulo implementa, eventos y tipos públicos. Se hace cumplir con lint (ADR-0008).
 5. Los transversales (`audit`, `realtime`, `notifications`) declaran sus propios puertos y nunca dependen de un módulo de negocio; entre ellos solo existe `notifications → realtime` (ADR-0010).
+6. **Segunda excepción a «cada módulo es dueño de sus tablas» (DF-59, plan 005 D-5)**: `storage` actualiza la columna `usuario.espacio_usado` (la tabla es de `identity`), y **solo esa columna**, con `SELECT espacio_usado … FOR UPDATE` y `UPDATE usuario SET espacio_usado = espacio_usado + $1`, a través de un único puerto, `IQuotaRepository`. Motivo: el espacio solo puede sumarse en la misma transacción que registra `archivo` y `version_archivo` (RN-10, DF-38), y una tabla propia de uso (`cuota_uso`) duplicaría el contador. No es una arista del grafo: `storage` no importa `identity`. Lo hace cumplir una prueba (`quota.repository.int-spec.ts`: ninguna otra columna cambia), un *fixture* negativo de `boundaries.js` (`storage-imports-identity.ts`) y la revisión del `architect`. Ningún otro módulo copia el patrón sin un DF y un ADR.
 
-**Pendiente**: la tabla aún contiene el ciclo `storage ↔ billing` (`IPlanLimitsProvider` / `IObjectStorage` para facturas) y
-§5 no coincide con ella en `IPlanLimitsProvider`, `IAgentQuota` e `IIndexQueue`. Se decide en **DF-51** antes del plan de 006a.
+**DF-51 (opción A, Fátima, 2026-09-28)**: `storage` declara `IPlanLimitsProvider`, `PlanLimits` e `I_PLAN_LIMITS_PROVIDER` y `billing` los implementa importándolos de `storage/index.ts`; el ciclo `storage ↔ billing` desaparece y queda solo `billing → storage`. `editing` (que ya depende de `storage` y de `billing`) reutiliza el puerto; `PlanLimits` solo lleva límites de almacenamiento: si 016 necesita otros límites, los pide por un puerto que declare `billing`, sin ensanchar `PlanLimits` (ISP). El enlace del token vive en la raíz de composición (`AppModule`). `boundaries.js` prohíbe cualquier import de `billing` desde `storage`.
+
+**Pendiente (PD-18)**: §5 aún no coincide con la tabla en `IAgentQuota` (lo declara e implementa `billing`; `intelligence → billing` ya existe) ni en `IIndexQueue` (propuesta: lo declara `storage`, quien encola, y lo implementa `intelligence`, que ya depende de `storage`). Se confirma en el plan de 019 (indexación); 005 no emite `FileVersionCreated` ni lo necesita (D-16).
 
 ## 4. Capas dentro de un módulo
 
@@ -128,7 +130,9 @@ No hay paquete `domain` aparte salvo que un ADR lo justifique.
 modules/storage/
 ├─ domain/                   # StorageNode, Folder, File, FileVersion, UploadSession, errores. Sin Nest ni TypeORM.
 ├─ application/
-│  ├─ ports/                 # i-object-storage.port.ts, i-node-repository.port.ts, i-file-type-detector.port.ts
+│  ├─ ports/                 # i-object-storage.port.ts, i-node-repository.port.ts, i-file-type-detector.port.ts,
+│  │                         # i-upload-session-repository.port.ts, i-quota-repository.port.ts, i-expired-upload-scanner.port.ts (005)
+│  ├─ plan-limits.ts         # DECLARA IPlanLimitsProvider, PlanLimits e I_PLAN_LIMITS_PROVIDER (DF-51, opción A); billing los implementa
 │  ├─ file.service.ts        # «service» de los diagramas
 │  ├─ upload.service.ts
 │  └─ quota.service.ts
@@ -137,6 +141,7 @@ modules/storage/
 │  ├─ minio-storage.adapter.ts
 │  └─ magic-bytes.detector.ts
 ├─ presentation/
+│  ├─ uploads.controller.ts  # init, resume, complete, cancel (005: sin uploadPart, DF-16)
 │  └─ files.controller.ts
 ├─ storage.module.ts
 └─ index.ts                  # API pública del módulo
@@ -157,12 +162,12 @@ modules/storage/
 | Puerto token→`Actor` (nombre en el plan 003) | verificador de `identity` (002 D-14) | shared → identity (lo usan `JwtAuthGuard` y el handshake de `realtime`, sin importar `identity`) |
 | `IMailer` | `SmtpMailer` (encola en `mail`; `MailProcessor` + `SmtpTransport` entregan en el `worker`; Mailpit en local, SMTP de Resend en staging, ADR-0018) | notifications (lo declara y lo implementa; lo consume identity, ADR-0010) |
 | `IAccountEventsPublisher` | `EventEmitterAccountEventsPublisher` | identity (publica `identity.client-account-verified` después del commit, ADR-0019) |
-| `IObjectStorage` | `MinioStorageAdapter` | storage |
+| `IObjectStorage` | `MinioStorageAdapter` (dos clientes S3: interno y de firma con el host público; `@aws-sdk/s3-request-presigner`, adenda de ADR-0015) | storage. Con 005 incluye `presignUploadPart`, `presignUploadObject`, `listParts`, `purgeObject` (borra todas las versiones: el bucket es versionado) y `presignDownload` (DF-16) |
 | `IFileTypeDetector` | `MagicBytesDetector` | storage |
-| `IPlanLimitsProvider` | fachada de billing | storage/editing → billing |
+| `IPlanLimitsProvider` | fachada de billing | lo declara `storage` (`application/plan-limits.ts`); lo implementa `billing` importándolo de `storage`; lo reutiliza `editing` (DF-51, opción A) |
 | `IAccessPolicy` | `OwnerPolicy`, `EditorPolicy`, `ViewerPolicy` | access |
 | `IRateLimiter` | `RedisRateLimiter` | shared (lo declara y lo implementa; lo consumen identity desde 001 y sharing desde 012; `identity → sharing` no está permitido, ADR-0010) |
-| `IAuditLogger` | `AuditService` | audit (lo declara y lo implementa; lo consumen los módulos que auditan, ADR-0010) |
+| `IAuditLogger` | `LogAuditLogger` (provisional, 005) → `AuditService` (004) | audit (lo declara y lo implementa; lo consumen los módulos que auditan, ADR-0010). Contrato: registro de mejor esfuerzo, posterior al commit; la acción sale del catálogo cerrado `AuditAction` |
 | `IPaymentGateway` | `SimulatedPaymentGateway` | billing |
 | `IInvoiceGenerator` | `PdfInvoiceGenerator` | billing |
 | `INotifier` | notifications | notifications (lo declara y lo implementa; lo consume billing, ADR-0010) |
@@ -182,7 +187,7 @@ modules/storage/
 | `IHealthIndicator` | `PostgresHealthIndicator`, `RedisHealthIndicator`, `MinioHealthIndicator` (shared); `OnlyOfficeHealthIndicator` (editing, DF-29) | shared (DF-49); cada módulo puede aportar un indicador y la raíz de composición lo registra en `HealthModule.forRoot({ indicators })` |
 | `IQueueInspector` | `BullMqInspector` | backoffice |
 | `INodeMetadataReader` | fachada de storage | backoffice → storage |
-| Repositorios `I*Repository` | TypeORM | cada módulo |
+| Repositorios `I*Repository` | TypeORM | cada módulo. `storage` (005) agrega `IUploadSessionRepository`, `IQuotaRepository` (único punto que toca `usuario`, regla 6 de §3) e `IExpiredUploadScanner` (único acceso sin actor, §6 punto 6) |
 
 Todo adaptador externo tiene una prueba de contrato compartida (Liskov).
 
@@ -202,23 +207,24 @@ export interface Actor {
 3. `access.accessibleNodes(actor)` es el CTE único que une propiedad, comparticiones y herencia por `carpeta.ruta`. Lo usan listados, búsqueda, descargas, vista previa, edición y el agente (DF-32).
 4. `PermissionResolver.can(actor, nodeId, action)` sirve para validar una acción sobre un recurso puntual, usando las políticas Strategy.
 5. Roles internos: `SupportService` usa `INodeMetadataReader`, que por construcción no devuelve `clave_objeto`, URLs ni texto.
-6. **Segunda barrera** (ADR-0005): RLS con `ENABLE` y `FORCE ROW LEVEL SECURITY` en `archivo` y `version_archivo` (desde las migraciones de 005) y en `fragmento` (019).
+6. **Segunda barrera** (ADR-0005, enmendado por ADR-0021): RLS con `ENABLE` y `FORCE ROW LEVEL SECURITY` en `archivo`, `version_archivo` y `carga` (desde las migraciones de 005) y en `fragmento` (019). `carga` no es un nodo: se filtra con `propietario_id = actor.id` en la consulta y por RLS, sin política para roles internos.
    - **Roles de BD**: `api` y `worker` se conectan por `DATABASE_URL` como `nimbo_app` (`LOGIN`, `NOSUPERUSER`, `NOBYPASSRLS`, no dueño de las tablas). El rol dueño solo lo usan las migraciones, por `DATABASE_MIGRATION_URL`, que leen `migrations/data-source.cli.ts` y `scripts/migrate.ts` y que queda fuera del esquema de entorno de `api` y `worker`.
    - **Actor por transacción**: `withActor(actor, trabajo)` (`shared/infrastructure/persistence`) abre `DataSource.transaction` y su primera sentencia es `SELECT set_config('app.actor_id', $1, true), set_config('app.actor_role', $2, true)` (equivale a `SET LOCAL`, con parámetros enlazados). Publica el `EntityManager` en `AsyncLocalStorage`; los repositorios de datos de cliente fallan si no existe. Solo `withActor` escribe esas variables (regla de lint).
    - **Políticas cerradas**: sin actor no hay filas. `CLIENT` ve las suyas (y las compartidas desde 012); `OPERATOR`, ninguna; `ADMIN` y `SUPPORT` solo leen metadatos de `archivo` y **no reciben filas de `version_archivo`** (contiene `clave_objeto`). El detalle se fija en el plan de 005.
-   - **Worker**: mismo `nimbo_app`, sin `BYPASSRLS`; un trabajo sobre un archivo actúa como el dueño de su payload. Los trabajos de mantenimiento sin actor (purga de la papelera): **DF-52**, plan de 005.
-   - **Pendiente**: hoy (000) `api`, `worker` y migraciones comparten una `DATABASE_URL` con el superusuario de `compose.yml`. Los dos roles en compose (script de inicio de Postgres) y staging (GitHub Environments), `DATABASE_MIGRATION_URL` en `.env.example` y en `pnpm env:check`, `withActor` y la regla de lint los entrega el plan de la spec 003 (D-7); las políticas, el plan de 005.
+   - **Worker**: mismo `nimbo_app`, sin `BYPASSRLS`; un trabajo sobre un archivo actúa como el dueño de su payload. **Mantenimiento sin actor** (DF-52, ADR-0021 Propuesto, opción B): una función `SECURITY DEFINER` mínima, propiedad del rol que migra, con `REVOKE … FROM PUBLIC` y `EXECUTE` solo para `nimbo_app`, devuelve únicamente identificadores `(id, propietario_id)` de filas vencidas (`carga_expiradas` en 005; el patrón sirve a la purga de 006 y a la conciliación de 007); después el trabajo corre `withActor(createActor(propietario_id, CLIENT), …)` por dueño, con RLS normal. Como `FORCE` somete también al dueño, la función tiene su propia política (`carga_mantenimiento`, `TO CURRENT_USER`); un superusuario ignora RLS, así que la prueba de mantenimiento debe correr con un dueño sin `SUPERUSER`. `nimbo_app` sin actor sigue viendo 0 filas por consulta directa. El único acceso sin actor en `storage` es `IExpiredUploadScanner`, que solo inyecta el procesador de limpieza.
+   - **Pendiente**: hoy (000) `api`, `worker` y migraciones comparten una `DATABASE_URL` con el superusuario de `compose.yml`. Los dos roles en compose (script de inicio de Postgres) y staging (GitHub Environments), `DATABASE_MIGRATION_URL` en `.env.example` y en `pnpm env:check`, `withActor` y la regla de lint los entrega el plan de la spec 003 (D-7); las políticas de `archivo`, `version_archivo` y `carga` y la función de mantenimiento, el plan de 005.
 7. **Agente**: `HybridRetriever` filtra `fragmento.archivo_id IN (accessibleNodes)` antes del `ORDER BY embedding <=> $q LIMIT topK` (DF-14).
 8. Suite `test/isolation`: cuentas con contenido casi idéntico; cualquier fuga rompe CI. Corre con los dos roles de BD reales, nunca como superusuario (ADR-0005).
 
 ## 7. Flujos críticos (con clases de los diagramas)
 
-### 7.1 Carga por partes (RF-08, RF-12, RF-14)
-1. `FilesController.initUpload` → `UploadService.init` → `QuotaService.assertCanUpload(actor, size)` usando `IPlanLimitsProvider`.
-2. `IObjectStorage.createMultipart` → `UploadSession`. Se entregan URLs firmadas por parte (`presignUploadPart`, DF-16).
-3. El navegador sube a MinIO a través de Traefik (origen aislado) y reporta el progreso a `realtime`; para reanudar consulta `listParts`.
-4. `completeUpload` → `completeMultipart` → `IFileTypeDetector.detect` sobre la cabecera → transacción: `archivo` + `version_archivo(origen=carga)` + `usuario.espacio_usado` → evento `FileVersionCreated`.
-5. Si la validación falla: `deleteObject` y la carga queda `rechazada` con motivo.
+### 7.1 Carga simple y por partes (RF-08, RF-12, RF-14; plan 005)
+Los bytes **nunca pasan por la API** (DF-16): el navegador sube y baja directo de MinIO con URLs prefirmadas contra el host público de MinIO (origen aislado, RNF-07).
+1. `UploadsController.init` → `UploadService.init(actor, request)`: límite de tasa (`IRateLimiter`) → validación de forma y de `FileName` → `IPlanLimitsProvider.limitsFor(actor)` (fuera de la transacción) → `withActor`: `IQuotaRepository.lockAndReadUsage` (`FOR UPDATE` sobre `usuario` + suma de las `carga` activas no vencidas) → `QuotaService.assertCanUpload` (máximo por archivo, luego cuota) → nombre repetido (409 con `suggestedName` si `onConflict='ask'`) → modo por umbral de configuración: **simple** (un `PUT` prefirmado) o **por partes** (`IObjectStorage.createMultipart`, una URL por parte con `presignUploadPart`) → se inserta la fila `carga` `activa`, que **es** la reserva de cuota.
+2. El navegador sube directo a MinIO. El progreso (porcentaje, bytes, velocidad, tiempo restante) lo mide el propio navegador y **no pasa por `realtime` ni por la API** (DF-58); difundirlo a otras pestañas llegaría con la 015. Para reanudar, `UploadService.resume` renueva las URLs de las partes faltantes según `listParts`; una carga simple pausada empieza de cero.
+3. `UploadsController.complete` → `UploadService.complete(actor, uploadId)`: el servidor **lista las partes él mismo** (`listParts`, no confía en ETags del cliente) → valida tamaño real → `completeMultipart` → `IFileTypeDetector.detect` por rangos (`getRange`) → en una transacción: `archivo` + `version_archivo(origen=carga)` + `usuario.espacio_usado` + `carga` a `completada` (compare-and-set). Idempotente: repetirlo devuelve el mismo archivo. **No se emite `FileVersionCreated`** en 005 (sin consumidor hasta 019, que añade `IIndexQueue`).
+4. Si la validación falla, `purgeObject` (borra **todas** las versiones del objeto: el bucket está versionado) y la carga queda `rechazada` con motivo. `cancel` y `expire` hacen **CAS primero** (`activa → cancelada|expirada`, lo que libera la reserva y descarta cualquier `complete` en curso) y **borran después** (`abortMultipart` o `purgeObject`); el residuo posible es un objeto huérfano sin `archivo`, que no cuenta en la cuota.
+5. Toda carga sin completar expira a las 24 h: la limpia el trabajo repetible `upload-cleanup` (§8), y el vencimiento se aplica también de forma perezosa en `resume` y `complete`.
 
 ### 7.2 Edición y guardado (RF-25, 26, 28, DF-05, DF-20)
 1. `EditorController.open` → `EditSessionService.open(actor, fileId)` → `assertCanEdit` (access) y `assertEditorLimit` (`IPlanLimitsProvider.maxEditors`) → `IDocumentEditor.buildConfig` (JWT firmado).
@@ -260,7 +266,8 @@ el original sigue restaurable durante la retención definida en DF-21.
 | `optimization` | `OptimizationService` | 2 | por `optimizacion.id` |
 | `RenewalScheduler` (`@Cron`) | — | alerta en fallo | por suscripción + periodo |
 | `mail` | `SmtpMailer` (notifications) | 5 (`attempts: 6`, exponencial desde 5 s) | por `idempotencyKey` del productor como `jobId` (sin `:`) + marca `mail:sent:<jobId>` en Redis + `Message-ID` determinista (ADR-0018); no usa `notificacion` |
-| `trash-purge` (`@Cron`) | — | 3 | naturalmente idempotente; cómo opera bajo RLS sin actor: DF-52 |
+| `upload-cleanup` (repetible con `upsertJobScheduler`, cada `UPLOAD_CLEANUP_INTERVAL_MINUTES`, 005) | `UploadCleanupScheduler` (worker, al arrancar) | 3, backoff exponencial; concurrencia 1 | compare-and-set sobre `carga.estado`; opera bajo RLS con la función de mantenimiento de ADR-0021 |
+| `trash-purge` (`@Cron`) | — | 3 | naturalmente idempotente; opera bajo RLS sin actor con el patrón de ADR-0021 (DF-52) |
 
 ## 9. Frontend
 
@@ -292,8 +299,8 @@ apps/web/src/
 | 0008 | Verificación automática de fronteras entre módulos |
 | 0009 | Crystal Clear + SDD |
 | 0010 | Separar M3 en `access` y `sharing`; extraer `audit`, `realtime`, `notifications` (DF-02, 03, 30, 34) |
-| 0011 | Modelo de nodos: dos tablas con `CHECK` o tabla única (DF-40) |
-| 0012 | Versiones: composición con `origen` en lugar de herencia entre módulos (DF-17, DF-18) |
+| 0011 | Modelo de nodos: tablas `archivo` y `carpeta` separadas con `CHECK` (DF-40; Propuesto) |
+| 0012 | Versiones: composición con `origen` en lugar de herencia entre módulos (DF-17, DF-18; Propuesto) |
 | 0013 | Política del original en el optimizador (DF-21) |
 | 0014 | Tokens de Cielo Sereno ajustados a AA y mapeados a shadcn (DF-41–48) |
 | 0015 | Dependencias de fundaciones: gitleaks, zod, nestjs-pino, Testcontainers (menor) |
@@ -301,3 +308,4 @@ apps/web/src/
 | 0018 | Correo con nodemailer por SMTP y la cola `mail` (menor; Propuesto) |
 | 0019 | Eventos de dominio en proceso; el contrato lo exporta el productor (Propuesto) |
 | 0020 | Validación HTTP con zod desde `contracts`, enmienda 0015 b (Propuesto) |
+| 0021 | Mantenimiento sin actor bajo RLS: función `SECURITY DEFINER` mínima y RLS también en `carga`; enmienda 0005 (Propuesto) |
