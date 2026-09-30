@@ -30,9 +30,13 @@ modules/identity/
 │  ├─ registration.service.ts               # RegistrationService: register, resendVerification, verifyEmail
 │  ├─ verification-link-issuer.ts           # invalida los vigentes, emite el token y arma el correo del enlace
 │  ├─ registration-attempt-notifier.ts      # aviso al dueño de un correo ya registrado (D-17, 1 cada 24 h)
+│  ├─ password.service.ts                   # PasswordService: requestReset, checkResetLink, resetPassword (002)
+│  ├─ account-token-lookup.ts               # findAccountToken: valor → token por hash y tipo (verificación y recuperación)
+│  ├─ identity-limit-keys.ts                # claves de límites y bloqueos (SHA-256 del correo o userId) y EMAIL_REQUEST_RULES
 │  ├─ identity-config.ts  web-links.ts      # WEB_PUBLIC_URL y rutas de `web` que usan los correos
 │  ├─ identity-logger.ts                    # interfaz mínima info/warn del logger (dobles en pruebas)
-│  ├─ mail/                                 # plantillas de verificación y de aviso de intento (funciones puras)
+│  ├─ mail/                                 # plantillas (funciones puras): verificación, aviso de intento y, de 002,
+│  │                                        # restablecer, contraseña cambiada, dispositivo nuevo y sesión cerrada
 │  └─ testing/                              # dobles en memoria y builder de ClientUser para pruebas unitarias
 ├─ infrastructure/
 │  ├─ persistence/                          # usuario.orm-entity, token-cuenta.orm-entity, mappers y repositorios TypeORM
@@ -41,6 +45,7 @@ modules/identity/
 ├─ presentation/
 │  ├─ auth.controller.ts                    # AuthController: register, resend-verification, verify-email (abre sesión),
 │  │                                        # login, session/refresh, session/logout (002)
+│  ├─ password.controller.ts                # PasswordController: forgot-password, reset-password/check, reset-password
 │  ├─ session-cookies.ts                    # SessionCookies (nimbo_rt, nimbo_did) y readCookie (002 DT-2, DT-9)
 │  ├─ client-context.factory.ts             # readClientContext: nimbo_did, User-Agent y req.ip (002 CA-16)
 │  ├─ session-response.ts                   # IssuedSession → SessionResponse del contrato
@@ -62,7 +67,8 @@ Un puerto nuevo solo existe si cumple una regla del Art. V.2 de la constitución
 | `IPasswordHasher`              | `Argon2idHasher`                     | (a) aísla Argon2; está en el diagrama M1         |
 | `IAccountEventsPublisher`      | `EventEmitterAccountEventsPublisher` | (a) aísla `@nestjs/event-emitter` (ADR-0019)     |
 
-Consume `IMailer` (`notifications`) e `IRateLimiter`, `ITransactionRunner` e `IClock` (`shared`).
+Consume `IMailer` (`notifications`) e `IRateLimiter`, `ITransactionRunner` e `IClock` (`shared`). La recuperación
+(002) suma a `IUserRepository` `findById` y `updatePasswordHash`.
 
 ## API pública (`index.ts`)
 
@@ -102,6 +108,27 @@ SessionResponse`, rota `nimbo_rt`) y `POST /auth/session/logout` (`204`). `verif
   con el nombre `ACCESS_TOKEN_STRATEGY`. Las apps de prueba que componen `IdentityModule` usan
   `accessTokenStrategy: 'identity'`.
 
+## Recuperación de contraseña (002, PR-3)
+
+- **Rutas** (todas `@Public()`, `PasswordController`): `POST /auth/forgot-password` (`202 { status: 'accepted' }`
+  siempre), `POST /auth/reset-password/check` (`200`, revisa el enlace sin consumirlo, DT-12) y
+  `POST /auth/reset-password` (`200`, no abre sesión y borra `nimbo_rt`).
+- **Pedido neutro (CA-18)**: el límite `passwordResetRequestKey` (60 s y 5 por hora) se gasta **antes** de buscar la
+  cuenta. Verificada, interna o suspendida (DT-6) → enlace de 1 h (el anterior queda invalidado). Sin verificar
+  (D-15) → enlace de verificación nuevo con `VerificationLinkIssuer`, acotado **solo** por ese límite: no consulta ni
+  gasta el de 001 (`emailRequestKey`), porque un `429` posterior en `resend-verification` delataría la cuenta (DT-7,
+  SEC-1). Sin cuenta → nada.
+- **Restablecer (CA-19 a CA-21)**: política D-6 de 001 con el correo de la cuenta (débil → el enlace sigue vigente);
+  hash fuera de la transacción; consumo atómico del token, contraseña nueva y **todas** las sesiones revocadas en una
+  transacción. Después del commit se quitan los dos bloqueos, el de inicio de sesión y el de cambio de contraseña
+  (DT-5), y se envía «Tu contraseña cambió».
+- **Bitácoras**: `identity.password_reset.requested` (`kind`: `reset_link`, `verification_link` o `ignored`, este
+  sin `userId`), `identity.password_reset.rejected` (`reason`: `expired`, `invalid` o `weak`),
+  `identity.password_reset.completed` (`revokedCount`), `identity.session.revoked` (`reason: 'password_reset'`) e
+  `identity.rate_limited` (`scope: 'password_reset'`).
+- **Pruebas**: `test/isolation/password-reset-enumeration.iso-spec.ts` compara las cuatro clases de cuenta, también
+  con el límite agotado y en la secuencia `forgot-password` → `resend-verification`.
+
 ## Reglas del módulo
 
 - **Anti-enumeración (RN-5)**: registro y reenvío responden lo mismo exista o no la cuenta (`202`), el límite por
@@ -131,6 +158,9 @@ SessionResponse`, rota `nimbo_rt`) y `POST /auth/session/logout` (`204`). `verif
 ## Pendientes
 
 - **`nimbo_app`**: cuando 003 cree el rol de BD sin privilegios, la suite de aislamiento corre con él (ADR-0005).
+- **Auditoría de seguridad de la recuperación (T-67)**, en `docs/sdd/pendientes.md`: `forgot-password` sin límite
+  por IP (PD-50, SEC-2); unos 7 ms más de respuesta con cuenta que sin ella, riesgo aceptado (PD-51, SEC-3);
+  `x-powered-by` y cabeceras de seguridad de la API (PD-52, SEC-5).
 
 ## Regla
 

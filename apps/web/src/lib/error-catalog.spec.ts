@@ -2,10 +2,12 @@ import {
   IDENTITY_ERROR_CODES,
   IDENTITY_FIELD_MESSAGES,
   LOGIN_LOCK_MINUTES,
+  SHARED_ERROR_CODES,
   STORAGE_ERROR_CODES,
   SUPPORT_CONTACT_EMAIL,
 } from '@nimbo/contracts';
 
+import { ApiClientError } from './api-error';
 import {
   IDENTITY_FIELD_MESSAGES as reexported,
   messageForCode,
@@ -198,6 +200,33 @@ describe('error-catalog', () => {
 
     it('un código ajeno a storage no tiene mensaje estructurado', () => {
       expect(storageMessage('NO_EXISTE')).toBeNull();
+    });
+  });
+
+  describe('códigos de shared (spec 003 D-6, plan §6.2)', () => {
+    it('CA-1: sin sesión válida, mensaje en español con la acción de iniciar sesión', () => {
+      expect(messageForCode(SHARED_ERROR_CODES.UNAUTHENTICATED)).toBe(
+        'Tu sesión no es válida o expiró. Inicia sesión de nuevo.',
+      );
+    });
+
+    it('CA-17: sin permiso, mensaje en español con la acción de escribir a soporte', () => {
+      expect(messageForCode(SHARED_ERROR_CODES.FORBIDDEN)).toBe(
+        `Tu cuenta no tiene permiso para esta acción. Si crees que es un error, escríbenos a ${SUPPORT_CONTACT_EMAIL}.`,
+      );
+    });
+
+    it('CA-1 y CA-17: la web no muestra el message del servidor, solo el de su catálogo', () => {
+      const serverMessage = 'Mensaje del servidor que la web no debe mostrar';
+      const errors = Object.values(SHARED_ERROR_CODES).map(
+        (code) => new ApiClientError({ code, message: serverMessage, correlationId: 'corr-1' }),
+      );
+
+      for (const error of errors) {
+        const shown = messageForCode(error.code, { correlationId: error.correlationId });
+        expect(shown).not.toContain(serverMessage);
+        expect(shown).not.toContain(error.correlationId);
+      }
     });
   });
 });

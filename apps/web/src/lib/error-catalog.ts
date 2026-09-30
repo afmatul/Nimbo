@@ -4,6 +4,7 @@ import {
   IDENTITY_FIELD_MESSAGES,
   LOGIN_LOCK_MINUTES,
   PASSWORD_CHANGE_LOCK_MINUTES,
+  SHARED_ERROR_CODES,
   STORAGE_ERROR_CODES,
   SUPPORT_CONTACT_EMAIL,
   formatBytes,
@@ -132,6 +133,8 @@ const CODE_MESSAGES: Readonly<Record<string, string>> = {
   [IDENTITY_ERROR_CODES.RESET_LINK_INVALID]:
     'Este enlace no es válido. Usa el enlace del correo más reciente o pide uno nuevo.',
   [IDENTITY_ERROR_CODES.WRONG_PASSWORD]: 'La contraseña actual no es correcta.',
+  [SHARED_ERROR_CODES.UNAUTHENTICATED]: 'Tu sesión no es válida o expiró. Inicia sesión de nuevo.',
+  [SHARED_ERROR_CODES.FORBIDDEN]: `Tu cuenta no tiene permiso para esta acción. Si crees que es un error, escríbenos a ${SUPPORT_CONTACT_EMAIL}.`,
 };
 
 interface TimedMessage {
@@ -185,9 +188,9 @@ export function messageForReason(reason: string, correlationId = ''): string {
 }
 
 /**
- * Mensaje de un `code` (specs 001, 002 §11 y 005 §9). Los bloqueos usan los minutos de `Retry-After`; el 429 por IP
- * del inicio de sesión tiene su propio texto (DT-20); los de `storage`, las cifras de `details`. Un código desconocido
- * es el genérico de 000 §10.
+ * Mensaje de un `code` (specs 001, 002 §11 y 005 §9; 003 plan §6.2 para `SHARED_*`). Los bloqueos usan los minutos
+ * de `Retry-After`; el 429 por IP del inicio de sesión tiene su propio texto (DT-20); los de `storage`, las cifras de
+ * `details`. Un código desconocido es el genérico de 000 §10.
  */
 export function messageForCode(code: string, options: MessageOptions = {}): string {
   const storage = storageMessage(code, options.details, options.fileName);

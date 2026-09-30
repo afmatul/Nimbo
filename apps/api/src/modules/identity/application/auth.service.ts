@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 
 import { Inject, Injectable } from '@nestjs/common';
 import type { OnModuleInit } from '@nestjs/common';
@@ -22,6 +22,7 @@ import type { PasswordHash } from '../domain/password-hash.vo';
 import type { User } from '../domain/user.entity';
 
 import type { ClientContext } from './client-context';
+import { loginLockoutKey } from './identity-limit-keys';
 import type { IdentityLogger } from './identity-logger';
 import { I_ATTEMPT_LOCKOUT } from './ports/i-attempt-lockout.port';
 import type { IAttemptLockout, LockoutPolicy } from './ports/i-attempt-lockout.port';
@@ -50,10 +51,6 @@ export interface LoginCommand {
   readonly email: string;
   readonly password: string;
 }
-
-/** La clave lleva el SHA-256 del correo, nunca el correo (plan §6.4). */
-const loginLockoutKey = (email: EmailAddress): string =>
-  `identity:lockout:login:${createHash('sha256').update(email.value).digest('hex')}`;
 
 /**
  * Inicio de sesión (plan 002 §6.3, design-model M1). Sin `actor`: es público. El bloqueo se consulta antes de buscar

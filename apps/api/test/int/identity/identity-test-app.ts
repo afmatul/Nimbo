@@ -16,6 +16,10 @@ import type { TestApp, TestAppOptions } from '../setup/test-app';
 
 /** Token del enlace del correo: 43 caracteres base64url en el fragmento (plan §6.2, RN-8). */
 const LINK_TOKEN = /\/verificar-correo#token=([A-Za-z0-9_-]{43})/;
+/** Token del enlace de recuperación (002 CA-18), también en el fragmento. */
+const RESET_LINK_TOKEN = /\/restablecer-contrasena#token=([A-Za-z0-9_-]{43})/;
+/** Asunto del correo de recuperación (002 §11); lo distingue de otros correos al mismo buzón. */
+export const RESET_MAIL_SUBJECT = 'Restablece tu contraseña de Nimbo';
 
 /** Estados de un trabajo de `mail` que aún no se entregó (o que el `worker` tiene entre manos). */
 const PENDING_MAIL_STATES = ['waiting', 'active', 'delayed', 'prioritized'] as const;
@@ -103,10 +107,18 @@ export const firstMessageTo = async (email: string, subject?: string): Promise<M
   }
 };
 
-/** Espera el correo de verificación dirigido a `email` y devuelve el token de su enlace. */
-export const verificationTokenSentTo = async (email: string): Promise<string> => {
-  const summary = await firstMessageTo(email);
-  const token = LINK_TOKEN.exec((await getMessage(summary.ID)).Text)?.[1];
-  if (token === undefined) throw new Error('El correo no trae el enlace de verificación.');
+/** Espera el correo dirigido a `email` (con ese asunto, si se da) y devuelve el token que `link` captura. */
+const linkTokenSentTo = async (email: string, link: RegExp, subject?: string): Promise<string> => {
+  const summary = await firstMessageTo(email, subject);
+  const token = link.exec((await getMessage(summary.ID)).Text)?.[1];
+  if (token === undefined) throw new Error('El correo no trae el enlace esperado.');
   return token;
 };
+
+/** Espera el correo de verificación dirigido a `email` y devuelve el token de su enlace. */
+export const verificationTokenSentTo = (email: string): Promise<string> =>
+  linkTokenSentTo(email, LINK_TOKEN);
+
+/** Espera el correo de recuperación dirigido a `email` y devuelve el token de su enlace (002 CA-18). */
+export const resetTokenSentTo = (email: string): Promise<string> =>
+  linkTokenSentTo(email, RESET_LINK_TOKEN, RESET_MAIL_SUBJECT);
