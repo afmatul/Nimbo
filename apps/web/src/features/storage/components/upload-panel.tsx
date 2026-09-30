@@ -51,6 +51,8 @@ const CANCELLABLE_PHASES = new Set<UploadPhase>([
   'offline',
   'rate_limited',
 ]);
+const FAILED_PHASES = new Set<UploadPhase>(['rejected', 'expired']);
+const ANNOUNCED_PHASES = new Set<UploadPhase>(['paused', 'offline', ...FAILED_PHASES]);
 const PROGRESS_PHASES = new Set<UploadPhase>(['uploading', 'paused', 'offline', 'completing']);
 
 const PHASE_LABELS: Readonly<Record<UploadPhase, string>> = {
@@ -149,7 +151,23 @@ function countLabel(count: number): string {
 function titleOf(rows: readonly UploadView[]): string {
   if (rows.some((row) => row.phase === 'offline')) return OFFLINE_TITLE;
   const active = rows.filter((row) => !FINISHED_PHASES.has(row.phase)).length;
-  return active > 0 ? `Subiendo ${countLabel(active)}` : 'Cargas terminadas';
+  if (active > 0) return `Subiendo ${countLabel(active)}`;
+  const failed = rows.filter((row) => FAILED_PHASES.has(row.phase)).length;
+  return failed > 0 ? `Cargas terminadas · ${String(failed)} con error` : 'Cargas terminadas';
+}
+
+/** Lo que se anuncia de una fila: pausas, cortes y fallos con su causa; nunca el progreso (UI-2). */
+function announcementOf(row: UploadView): string | null {
+  if (!ANNOUNCED_PHASES.has(row.phase)) return null;
+  const cause = FAILED_PHASES.has(row.phase) ? `: ${noticeOf(row)?.cause ?? ''}` : '';
+  return `${row.name}: ${PHASE_LABELS[row.phase]}${cause}`;
+}
+
+function announcementsOf(rows: readonly UploadView[]): string {
+  return rows
+    .map(announcementOf)
+    .filter((text): text is string => text !== null)
+    .join('. ');
 }
 
 interface SampleState {
@@ -330,17 +348,13 @@ export function UploadPanel(props: UploadPanelProps): React.JSX.Element {
   return (
     <Card role="region" aria-labelledby={titleId} className="flex w-full flex-col sm:w-110">
       <div className="flex items-center gap-2 border-b border-border px-4 py-3">
-        <h2
-          id={titleId}
-          aria-live="polite"
-          className="flex-1 text-sm font-semibold text-foreground"
-        >
+        <h2 id={titleId} className="flex-1 text-sm font-semibold text-foreground">
           {titleOf(rows)}
         </h2>
         <Button
           variant="ghost"
           size="icon"
-          aria-label="Minimizar el panel de cargas"
+          aria-label={expanded ? 'Minimizar el panel de cargas' : 'Expandir el panel de cargas'}
           aria-expanded={expanded}
           aria-controls={listId}
           onClick={() => setExpanded((current) => !current)}
@@ -361,6 +375,9 @@ export function UploadPanel(props: UploadPanelProps): React.JSX.Element {
           </Button>
         ) : null}
       </div>
+      <p role="status" className="sr-only">
+        {announcementsOf(rows)}
+      </p>
       <div id={listId} hidden={!expanded}>
         {offline ? (
           <p className={cn('mx-4 mt-3 rounded-md border p-3 text-sm', NOTICE_TONES.warning)}>

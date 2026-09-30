@@ -106,6 +106,7 @@ describe('UploadPanel · cierre y minimizado (CA-21)', () => {
 
     await act(async () => minimize.click());
     expect(minimize.getAttribute('aria-expanded')).toBe('false');
+    expect(minimize.getAttribute('aria-label')).toBe('Expandir el panel de cargas');
     expect(list?.hidden).toBe(true);
     expect(document.querySelector('h2')?.textContent).toBe('Subiendo 1 archivo');
 
@@ -145,7 +146,7 @@ describe('UploadPanel · cierre y minimizado (CA-21)', () => {
       />,
     );
 
-    expect(document.querySelector('h2')?.textContent).toBe('Cargas terminadas');
+    expect(document.querySelector('h2')?.textContent).toBe('Cargas terminadas · 2 con error');
     for (const name of ['hecho.pdf', 'grande.mp4', 'cancelada.docx', 'vieja.xlsx']) {
       expect(text()).toContain(name);
     }
@@ -357,6 +358,50 @@ describe('UploadPanel · avisos de rechazo (CA-3, CA-4, CA-7, CA-9, CA-19)', () 
     await mount(panel({ rows: [row({ phase: 'cancelled' })] }));
 
     expect(text()).toContain('Cancelaste esta carga. Liberamos el espacio que tenía reservado.');
+  });
+});
+
+describe('UploadPanel · anuncios para lectores de pantalla (CA-21, UI-2)', () => {
+  function announcer(): HTMLElement {
+    const found = document.querySelector<HTMLElement>('p[role="status"].sr-only');
+    if (!found) throw new Error('Región de anuncios no encontrada');
+    return found;
+  }
+
+  it('CA-21: la región de anuncios está siempre montada y no lee porcentajes', async () => {
+    await mount(panel({ rows: [row({ phase: 'uploading', loadedBytes: 431 * MB })] }));
+
+    expect(announcer().textContent).not.toContain('%');
+    expect(document.querySelector('h2')?.hasAttribute('aria-live')).toBe(false);
+  });
+
+  it('CA-22, CA-8: anuncia la pausa y el corte de conexión con el nombre del archivo', async () => {
+    await mount(
+      panel({
+        rows: [
+          row({ id: 'a', phase: 'paused', loadedBytes: MB }),
+          row({ id: 'b', name: 'nota.txt', phase: 'offline', loadedBytes: MB }),
+        ],
+      }),
+    );
+
+    expect(announcer().textContent).toContain('informe.pdf: en pausa');
+    expect(announcer().textContent).toContain('nota.txt: sin conexión');
+  });
+
+  it('CA-7: anuncia un rechazo con su causa y el título cuenta el fallo', async () => {
+    await mount(
+      panel({
+        rows: [
+          row({ id: 'a', name: 'hecho.pdf', phase: 'done', loadedBytes: MB }),
+          row({ id: 'b', phase: 'rejected', errorCode: 'STORAGE_EMPTY_FILE' }),
+        ],
+      }),
+    );
+
+    expect(announcer().textContent).toContain('informe.pdf: rechazado: El archivo está vacío.');
+    expect(document.querySelector('h2')?.textContent).toBe('Cargas terminadas · 1 con error');
+    expect(document.querySelector('[role="alert"]')).toBeNull();
   });
 });
 
