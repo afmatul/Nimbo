@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
 
 import { Inject, Injectable } from '@nestjs/common';
-import { STORAGE_FIELD_MESSAGES } from '@nimbo/contracts';
+import { formatBytes, STORAGE_FIELD_MESSAGES } from '@nimbo/contracts';
 import type {
+  CompleteUploadResponse,
   InitUploadInput,
   InitUploadResponse,
   ResumeUploadResponse,
@@ -14,22 +15,32 @@ import { I_CLOCK, I_RATE_LIMITER, I_TRANSACTION_RUNNER } from '../../../shared';
 import type { Actor, IClock, IRateLimiter, ITransactionRunner } from '../../../shared';
 import {
   EmptyFileError,
+  FileTooLargeError,
+  InvalidFileTypeError,
   InvalidUploadRequestError,
   NameConflictError,
   StorageTooManyRequestsError,
   UploadExpiredError,
+  UploadIncompleteError,
   UploadNotFoundError,
+  UploadSizeMismatchError,
 } from '../domain/errors';
+import { File } from '../domain/file';
+import type { FileKind } from '../domain/file-kind';
 import { FileName } from '../domain/file-name.vo';
+import { FileVersion } from '../domain/file-version';
 import { expectedPartBytes, planParts } from '../domain/multipart-layout';
 import { ObjectKey } from '../domain/object-key';
 import { UploadSession } from '../domain/upload-session';
-import type { MultipartUpload, UploadMode } from '../domain/upload-session';
+import type { MultipartUpload, UploadMode, UploadRejectionReason } from '../domain/upload-session';
+import { assessObjectSize, assessParts } from '../domain/uploaded-size';
+import type { SizeVerdict } from '../domain/uploaded-size';
 
+import { toFileSummary } from './file-summary';
 import { I_PLAN_LIMITS_PROVIDER } from './plan-limits';
 import type { IPlanLimitsProvider, PlanLimits } from './plan-limits';
 import { I_FILE_TYPE_DETECTOR } from './ports/i-file-type-detector.port';
-import type { IFileTypeDetector } from './ports/i-file-type-detector.port';
+import type { ByteReader, IFileTypeDetector } from './ports/i-file-type-detector.port';
 import { I_NODE_REPOSITORY } from './ports/i-node.repository.port';
 import type { INodeRepository } from './ports/i-node.repository.port';
 import { I_OBJECT_STORAGE } from './ports/i-object-storage.port';
@@ -112,6 +123,23 @@ export class UploadService {
     const response = await this.resumeResponse(session);
     this.logger.info({ event: 'upload.resumed', cargaId: session.id });
     return response;
+  }
+
+  /**
+   * Completa una carga (CA-5, CA-10, CA-11, CA-12, CA-24), fuera de transacción hasta el registro final (plan §6):
+   * ya `completada` ⇒ el mismo archivo (idempotente); vencida ⇒ 410; por partes, `listParts` es la fuente de
+   * verdad (no los ETags del cliente) y un multipart ya cerrado se recupera con `headObject`; después, tamaño real
+   * contra el plan y lo declarado, y tipo real con el detector. Un fallo de tamaño o tipo rechaza la carga y borra
+   * lo subido.
+   */
+  async complete(actor: Actor, uploadId: string): Promise<CompleteUploadResponse> {
+    const found = await this.findOwned(actor, uploadId);
+    if (found?.state === 'completada') return this.completedFile(actor, found);
+    const session = await this.requireActive(actor, found);
+    const { maxFileBytes } = await this.plans.limitsFor(actor);
+    const sizeBytes = await this.assembleObject(actor, session, maxFileBytes);
+    const kind = await this.verifyType(actor, session, sizeBytes);
+    return this.register(actor, session, sizeBytes, kind);
   }
 
   /**
@@ -259,6 +287,182 @@ export class UploadService {
     ).toISOString();
   }
 
+  private async completedFile(
+    actor: Actor,
+    session: UploadSession,
+  ): Promise<CompleteUploadResponse> {
+    const file = await this.transactions.withActor(actor, () =>
+      this.nodes.findAccessibleById(actor, session.fileId),
+    );
+    if (file === null) throw new UploadNotFoundError();
+    return { file: toFileSummary(file) };
+  }
+
+  /** Deja el objeto ensamblado en su clave final y devuelve su tamaño real, o rechaza la carga. */
+  private assembleObject(actor: Actor, session: UploadSession, maxBytes: bigint): Promise<bigint> {
+    const { multipart } = session;
+    return multipart === null
+      ? this.measureSimpleObject(actor, session, maxBytes)
+      : this.completeParts(actor, session, multipart, maxBytes);
+  }
+
+  private async completeParts(
+    actor: Actor,
+    session: UploadSession,
+    multipart: MultipartUpload,
+    maxBytes: bigint,
+  ): Promise<bigint> {
+    const key = session.objectKey.value;
+    const parts = await this.storage.listParts(key, multipart.uploadId);
+    if (parts === null) return this.recoverClosedMultipart(actor, session, maxBytes);
+    const verdict = assessParts(session.declaredBytes, multipart, parts, maxBytes);
+    if (!verdict.ok) {
+      if (verdict.violation === 'incomplete') throw new UploadIncompleteError();
+      await this.reject(actor, session, 'tamano', () =>
+        this.storage.abortMultipart(key, multipart.uploadId),
+      );
+      throw sizeErrorFor(verdict);
+    }
+    await this.storage.completeMultipart(key, multipart.uploadId, parts);
+    return verdict.sizeBytes;
+  }
+
+  /**
+   * El multipart ya no existe: se completó y el proceso murió antes de registrar el archivo, o hubo un doble clic.
+   * Si el objeto está, se sigue con él; si no, 409 si la carga sigue activa y 404 si ya no.
+   */
+  private async recoverClosedMultipart(
+    actor: Actor,
+    session: UploadSession,
+    maxBytes: bigint,
+  ): Promise<bigint> {
+    const head = await this.storage.headObject(session.objectKey.value);
+    if (head !== null) return this.checkObjectSize(actor, session, head.sizeBytes, maxBytes);
+    const current = await this.findOwned(actor, session.id);
+    throw current?.state === 'activa' ? new UploadIncompleteError() : new UploadNotFoundError();
+  }
+
+  private async measureSimpleObject(
+    actor: Actor,
+    session: UploadSession,
+    maxBytes: bigint,
+  ): Promise<bigint> {
+    const head = await this.storage.headObject(session.objectKey.value);
+    if (head === null) throw new UploadIncompleteError();
+    return this.checkObjectSize(actor, session, head.sizeBytes, maxBytes);
+  }
+
+  private async checkObjectSize(
+    actor: Actor,
+    session: UploadSession,
+    sizeBytes: bigint,
+    maxBytes: bigint,
+  ): Promise<bigint> {
+    const verdict = assessObjectSize(session.declaredBytes, sizeBytes, maxBytes);
+    if (verdict.ok) return verdict.sizeBytes;
+    await this.reject(actor, session, 'tamano', () => this.purge(session));
+    throw sizeErrorFor(verdict);
+  }
+
+  /** Tipo real por rangos del objeto (CA-11, CA-12, CA-24); la extensión sale del nombre, no del cliente. */
+  private async verifyType(
+    actor: Actor,
+    session: UploadSession,
+    sizeBytes: bigint,
+  ): Promise<FileKind> {
+    const extension = session.name.extension();
+    const result = await this.detector.detect(this.readerFor(session, sizeBytes), extension);
+    if (result.ok) return result.kind;
+    await this.reject(actor, session, 'tipo_invalido', () => this.purge(session));
+    throw new InvalidFileTypeError(result.reason, extension);
+  }
+
+  private readerFor(session: UploadSession, sizeBytes: bigint): ByteReader {
+    const key = session.objectKey.value;
+    const size = Number(sizeBytes);
+    return {
+      size,
+      read: (offset, length) => {
+        const end = Math.min(offset + length, size);
+        return end <= offset
+          ? Promise.resolve(Buffer.alloc(0))
+          : this.storage.getRange(key, offset, end - 1);
+      },
+    };
+  }
+
+  /**
+   * Rechaza la carga: CAS `activa → rechazada` con motivo y después borra lo subido (hasta 3 intentos). Si el CAS
+   * pierde, otra petición la cerró y es quien limpia: responde según quién ganó.
+   */
+  private async reject(
+    actor: Actor,
+    session: UploadSession,
+    reason: UploadRejectionReason,
+    discard: () => Promise<void>,
+  ): Promise<void> {
+    const won = await this.transactions.withActor(actor, () =>
+      this.sessions.transition(actor, session.id, 'activa', 'rechazada', {
+        at: this.clock.now(),
+        rejectionReason: reason,
+      }),
+    );
+    if (!won) throw await this.raceLostError(actor, session.id);
+    await this.retryDiscard(session, discard);
+    this.logger.info({ event: 'upload.rejected', cargaId: session.id, reason });
+  }
+
+  /**
+   * Registro del archivo: CAS `activa → completada` y `archivo` + `version_archivo` en una transacción. Si el CAS
+   * pierde contra `cancel`/`expire`, no se inserta nada.
+   */
+  private async register(
+    actor: Actor,
+    session: UploadSession,
+    sizeBytes: bigint,
+    kind: FileKind,
+  ): Promise<CompleteUploadResponse> {
+    const now = this.clock.now();
+    const file = File.create({
+      id: session.fileId,
+      ownerId: actor.id,
+      name: session.name,
+      kind,
+      sizeBytes,
+      currentVersionId: session.versionId,
+      now,
+    });
+    const version = FileVersion.fromUpload({
+      id: session.versionId,
+      fileId: session.fileId,
+      objectKey: session.objectKey,
+      sizeBytes,
+      createdBy: actor.id,
+      now,
+    });
+    const won = await this.transactions.withActor(actor, async () => {
+      const closed = await this.sessions.transition(actor, session.id, 'activa', 'completada', {
+        at: now,
+        rejectionReason: null,
+      });
+      if (closed) await this.nodes.insertWithVersion(actor, file, version);
+      return closed;
+    });
+    if (!won) throw await this.raceLostError(actor, session.id);
+    this.logger.info({ event: 'upload.completed', fileId: file.id, sizeBytes: Number(sizeBytes) });
+    return { file: toFileSummary(file) };
+  }
+
+  /** Error para quien perdió un CAS: 410 si la carga venció, 404 en cualquier otro caso. */
+  private async raceLostError(actor: Actor, uploadId: string): Promise<Error> {
+    const current = await this.findOwned(actor, uploadId);
+    return current?.state === 'expirada' ? new UploadExpiredError() : new UploadNotFoundError();
+  }
+
+  private purge(session: UploadSession): Promise<void> {
+    return this.storage.purgeObject(session.objectKey.value);
+  }
+
   private findOwned(actor: Actor, uploadId: string): Promise<UploadSession | null> {
     return this.transactions.withActor(actor, () => this.sessions.findOwned(actor, uploadId));
   }
@@ -338,13 +542,16 @@ export class UploadService {
    * Borra lo subido tras cerrar la sesión: aborta el multipart o purga todas las versiones de la clave, hasta 3
    * intentos. Si no se logra, queda un objeto huérfano sin `archivo` (no cuenta en la cuota, R-7) y se registra.
    */
-  private async discardObject(session: UploadSession): Promise<void> {
-    const key = session.objectKey.value;
+  private discardObject(session: UploadSession): Promise<void> {
     const { multipart } = session;
-    const discard = (): Promise<void> =>
+    return this.retryDiscard(session, () =>
       multipart === null
-        ? this.storage.purgeObject(key)
-        : this.storage.abortMultipart(key, multipart.uploadId);
+        ? this.purge(session)
+        : this.storage.abortMultipart(session.objectKey.value, multipart.uploadId),
+    );
+  }
+
+  private async retryDiscard(session: UploadSession, discard: () => Promise<void>): Promise<void> {
     for (let attempt = 1; attempt <= DISCARD_ATTEMPTS; attempt += 1) {
       if (await succeeds(discard)) return;
     }
@@ -395,5 +602,17 @@ async function succeeds(operation: () => Promise<void>): Promise<boolean> {
     return true;
   } catch {
     return false;
+  }
+}
+
+/** Error de un veredicto de tamaño que rechaza la carga (CA-5, CA-7). */
+function sizeErrorFor(verdict: Exclude<SizeVerdict, { ok: true }>): Error {
+  switch (verdict.violation) {
+    case 'too_large':
+      return new FileTooLargeError(verdict.sizeBytes, verdict.maxBytes, formatBytes);
+    case 'empty':
+      return new EmptyFileError();
+    default:
+      return new UploadSizeMismatchError();
   }
 }

@@ -18,12 +18,15 @@ import type { Actor } from '../../../shared';
 import {
   EmptyFileError,
   FileTooLargeError,
+  InvalidFileTypeError,
   InvalidUploadRequestError,
   NameConflictError,
   QuotaExceededError,
   StorageTooManyRequestsError,
   UploadExpiredError,
+  UploadIncompleteError,
   UploadNotFoundError,
+  UploadSizeMismatchError,
 } from '../domain/errors';
 import type { UploadSession } from '../domain/upload-session';
 
@@ -556,5 +559,288 @@ describe('UploadService.expire', () => {
     await ctx.service.expire(OTHER, session.id);
 
     expect(ctx.storage.aborted).toHaveLength(1);
+  });
+});
+
+/** Sube las tres partes de una carga de 20 MiB con sus tamaños correctos. */
+function uploadAllParts(ctx: Setup, session: UploadSession): void {
+  const key = session.objectKey.value;
+  ctx.storage.addPart(key, 'mp-1', 1, BigInt(8 * MIB));
+  ctx.storage.addPart(key, 'mp-1', 2, BigInt(8 * MIB));
+  ctx.storage.addPart(key, 'mp-1', 3, BigInt(4 * MIB));
+}
+
+function stateOf(ctx: Setup, session: UploadSession) {
+  const current = ctx.sessions.sessions.get(session.id);
+  return { state: current?.state, reason: current?.rejectionReason };
+}
+
+describe('UploadService.complete', () => {
+  it('CA-12: por partes: lista las partes él mismo, completa, valida el tipo y devuelve el archivo', async () => {
+    const ctx = setup();
+    const session = await started(ctx);
+    uploadAllParts(ctx, session);
+
+    const response = await ctx.service.complete(ACTOR, session.id);
+
+    expect(response).toEqual({
+      file: {
+        id: session.fileId,
+        name: 'informe.docx',
+        sizeBytes: 20 * MIB,
+        kind: 'docx',
+        createdAt: NOW.toISOString(),
+      },
+    });
+    expect(ctx.storage.completed[0]?.parts.map((part) => part.etag)).toEqual([
+      'etag-1',
+      'etag-2',
+      'etag-3',
+    ]);
+    expect(ctx.detector.calls).toEqual([{ extension: 'docx', size: 20 * MIB }]);
+    expect(stateOf(ctx, session).state).toBe('completada');
+    expect(ctx.nodes.inserted[0]?.version.objectKey.value).toBe(session.objectKey.value);
+    expect(ctx.logger.info).toHaveBeenCalledWith({
+      event: 'upload.completed',
+      fileId: session.fileId,
+      sizeBytes: 20 * MIB,
+    });
+  });
+
+  it('CA-12: simple: mide el objeto y guarda el tipo detectado («otros» sin firma)', async () => {
+    const ctx = setup();
+    const session = await started(ctx, MIB);
+    ctx.storage.objects.set(session.objectKey.value, Buffer.alloc(MIB));
+    ctx.detector.result = { ok: true, kind: 'otro', mime: 'application/octet-stream' };
+
+    const response = await ctx.service.complete(ACTOR, session.id);
+
+    expect(response.file).toMatchObject({ sizeBytes: MIB, kind: 'otro' });
+    expect(ctx.storage.completed).toEqual([]);
+  });
+
+  it('CA-12: repetir `complete` tras completar devuelve el mismo archivo (idempotente)', async () => {
+    const ctx = setup();
+    const session = await started(ctx);
+    uploadAllParts(ctx, session);
+    const first = await ctx.service.complete(ACTOR, session.id);
+
+    const second = await ctx.service.complete(ACTOR, session.id);
+
+    expect(second).toEqual(first);
+    expect(ctx.storage.completed).toHaveLength(1);
+    expect(ctx.nodes.inserted).toHaveLength(1);
+  });
+
+  it('CA-10: falta una parte: 409 y la sesión sigue activa y reanudable', async () => {
+    const ctx = setup();
+    const session = await started(ctx);
+    ctx.storage.addPart(session.objectKey.value, 'mp-1', 1, BigInt(8 * MIB));
+
+    await expect(ctx.service.complete(ACTOR, session.id)).rejects.toBeInstanceOf(
+      UploadIncompleteError,
+    );
+
+    expect(stateOf(ctx, session).state).toBe('activa');
+    expect(ctx.storage.aborted).toEqual([]);
+    await expect(ctx.service.resume(ACTOR, session.id)).resolves.toMatchObject({
+      mode: 'multipart',
+    });
+  });
+
+  it('CA-5: una parte intermedia de otro tamaño: aborta, `rechazada(tamano)` y 422', async () => {
+    const ctx = setup();
+    const session = await started(ctx);
+    const key = session.objectKey.value;
+    ctx.storage.addPart(key, 'mp-1', 1, BigInt(8 * MIB));
+    ctx.storage.addPart(key, 'mp-1', 2, BigInt(8 * MIB + 1));
+    ctx.storage.addPart(key, 'mp-1', 3, BigInt(4 * MIB));
+
+    await expect(ctx.service.complete(ACTOR, session.id)).rejects.toBeInstanceOf(
+      UploadSizeMismatchError,
+    );
+
+    expect(stateOf(ctx, session)).toEqual({ state: 'rechazada', reason: 'tamano' });
+    expect(ctx.storage.aborted).toEqual([key]);
+    expect(ctx.storage.completed).toEqual([]);
+    expect(ctx.nodes.inserted).toEqual([]);
+    expect(ctx.logger.info).toHaveBeenCalledWith({
+      event: 'upload.rejected',
+      cargaId: session.id,
+      reason: 'tamano',
+    });
+  });
+
+  it('CA-5: si el plan bajó y los bytes reales superan el máximo: 422 `STORAGE_FILE_TOO_LARGE`', async () => {
+    const ctx = setup();
+    const session = await started(ctx);
+    uploadAllParts(ctx, session);
+    ctx.plans.setLimits({ ...LIMITS, maxFileBytes: BigInt(10 * MIB) });
+
+    const attempt = ctx.service.complete(ACTOR, session.id);
+
+    await expect(attempt).rejects.toBeInstanceOf(FileTooLargeError);
+    await expect(attempt).rejects.toMatchObject({
+      details: { sizeBytes: 20 * MIB, maxBytes: 10 * MIB },
+    });
+    expect(stateOf(ctx, session)).toEqual({ state: 'rechazada', reason: 'tamano' });
+    expect(ctx.storage.aborted).toEqual([session.objectKey.value]);
+  });
+
+  it('CA-5: simple con más bytes que los declarados: purga el objeto y 422', async () => {
+    const ctx = setup();
+    const session = await started(ctx, MIB);
+    ctx.storage.objects.set(session.objectKey.value, Buffer.alloc(MIB + 1));
+
+    await expect(ctx.service.complete(ACTOR, session.id)).rejects.toBeInstanceOf(
+      UploadSizeMismatchError,
+    );
+
+    expect(ctx.storage.purged).toEqual([session.objectKey.value]);
+    expect(stateOf(ctx, session)).toEqual({ state: 'rechazada', reason: 'tamano' });
+  });
+
+  it('CA-7: simple de 0 bytes: `rechazada(tamano)` y 422 `STORAGE_EMPTY_FILE`', async () => {
+    const ctx = setup();
+    const session = await started(ctx, MIB);
+    ctx.storage.objects.set(session.objectKey.value, Buffer.alloc(0));
+
+    await expect(ctx.service.complete(ACTOR, session.id)).rejects.toBeInstanceOf(EmptyFileError);
+
+    expect(stateOf(ctx, session)).toEqual({ state: 'rechazada', reason: 'tamano' });
+  });
+
+  it('CA-10: simple sin objeto subido: 409 y sigue activa', async () => {
+    const ctx = setup();
+    const session = await started(ctx, MIB);
+
+    await expect(ctx.service.complete(ACTOR, session.id)).rejects.toBeInstanceOf(
+      UploadIncompleteError,
+    );
+
+    expect(stateOf(ctx, session).state).toBe('activa');
+  });
+
+  it('CA-11: la firma no corresponde: purga, `rechazada(tipo_invalido)` y 422 con motivo y extensión', async () => {
+    const ctx = setup();
+    const session = await started(ctx);
+    uploadAllParts(ctx, session);
+    ctx.detector.result = { ok: false, reason: 'signature' };
+
+    const attempt = ctx.service.complete(ACTOR, session.id);
+
+    await expect(attempt).rejects.toBeInstanceOf(InvalidFileTypeError);
+    await expect(attempt).rejects.toMatchObject({
+      details: { reason: 'signature', extension: 'docx' },
+    });
+    expect(stateOf(ctx, session)).toEqual({ state: 'rechazada', reason: 'tipo_invalido' });
+    expect(ctx.storage.purged).toEqual([session.objectKey.value]);
+    expect(ctx.nodes.inserted).toEqual([]);
+  });
+
+  it('CA-24: un ejecutable se rechaza con su propio mensaje', async () => {
+    const ctx = setup();
+    const session = await started(ctx, MIB);
+    ctx.storage.objects.set(session.objectKey.value, Buffer.alloc(MIB));
+    ctx.detector.result = { ok: false, reason: 'executable' };
+
+    const attempt = ctx.service.complete(ACTOR, session.id);
+
+    await expect(attempt).rejects.toThrow(
+      'No se permiten archivos ejecutables. Sube otro archivo.',
+    );
+    expect(stateOf(ctx, session)).toEqual({ state: 'rechazada', reason: 'tipo_invalido' });
+  });
+
+  it('CA-12: el detector lee el objeto real por rangos, no lo que dice el cliente', async () => {
+    const ctx = setup();
+    const session = await started(ctx, MIB);
+    const content = Buffer.alloc(MIB, 7);
+    ctx.storage.objects.set(session.objectKey.value, content);
+    const reads: Buffer[] = [];
+    ctx.detector.detect = async (reader) => {
+      reads.push(await reader.read(MIB - 2, 10));
+      return { ok: true, kind: 'docx', mime: 'x' };
+    };
+
+    await ctx.service.complete(ACTOR, session.id);
+
+    expect(reads).toEqual([Buffer.from([7, 7])]);
+  });
+
+  it('CA-10: multipart ya cerrado y objeto presente: recupera sin volver a completarlo', async () => {
+    const ctx = setup();
+    const session = await started(ctx);
+    ctx.storage.multiparts.clear();
+    ctx.storage.objects.set(session.objectKey.value, Buffer.alloc(20 * MIB));
+
+    const response = await ctx.service.complete(ACTOR, session.id);
+
+    expect(response.file.sizeBytes).toBe(20 * MIB);
+    expect(ctx.storage.completed).toEqual([]);
+  });
+
+  it('CA-10: multipart ya cerrado sin objeto: 409 si sigue activa', async () => {
+    const ctx = setup();
+    const session = await started(ctx);
+    ctx.storage.multiparts.clear();
+
+    await expect(ctx.service.complete(ACTOR, session.id)).rejects.toBeInstanceOf(
+      UploadIncompleteError,
+    );
+  });
+
+  it('CA-22: multipart ya cerrado sin objeto y la carga dejó de estar activa: 404', async () => {
+    const ctx = setup();
+    const session = await started(ctx);
+    ctx.storage.multiparts.clear();
+    jest.spyOn(ctx.storage, 'headObject').mockImplementation(() => {
+      forceState(ctx, session, 'cancelada');
+      return Promise.resolve(null);
+    });
+
+    await expect(ctx.service.complete(ACTOR, session.id)).rejects.toBeInstanceOf(
+      UploadNotFoundError,
+    );
+  });
+
+  it('CA-9: vencida: la vence y responde 410', async () => {
+    const ctx = setup();
+    const session = await started(ctx);
+    uploadAllParts(ctx, session);
+    ctx.clock.advance(DAY_MS);
+
+    await expect(ctx.service.complete(ACTOR, session.id)).rejects.toBeInstanceOf(
+      UploadExpiredError,
+    );
+
+    expect(stateOf(ctx, session).state).toBe('expirada');
+    expect(ctx.nodes.inserted).toEqual([]);
+  });
+
+  it('CA-22: cancelada o ajena: 404', async () => {
+    const ctx = setup();
+    const session = await started(ctx);
+    await expect(ctx.service.complete(OTHER, session.id)).rejects.toBeInstanceOf(
+      UploadNotFoundError,
+    );
+    await ctx.service.cancel(ACTOR, session.id);
+
+    await expect(ctx.service.complete(ACTOR, session.id)).rejects.toBeInstanceOf(
+      UploadNotFoundError,
+    );
+  });
+
+  it('CA-22: si `cancel` gana el CAS mientras se completaba, no se registra archivo (404)', async () => {
+    const ctx = setup();
+    const session = await started(ctx);
+    uploadAllParts(ctx, session);
+    ctx.sessions.raceTo = 'cancelada';
+
+    await expect(ctx.service.complete(ACTOR, session.id)).rejects.toBeInstanceOf(
+      UploadNotFoundError,
+    );
+
+    expect(ctx.nodes.inserted).toEqual([]);
   });
 });
