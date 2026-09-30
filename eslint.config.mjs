@@ -1,6 +1,7 @@
 // Flat config raíz. Cada app/paquete toma su variante de `@nimbo/config/eslint/*`;
 // `docs/**` (incluidos los mockups) queda fuera del lint (CA-4, CA-8).
 import base from '@nimbo/config/eslint/base.js';
+import boundaries from '@nimbo/config/eslint/boundaries.js';
 import nest from '@nimbo/config/eslint/nest.js';
 import next from '@nimbo/config/eslint/next.js';
 import sharedBoundaries from '@nimbo/config/eslint/shared-boundaries.js';
@@ -29,6 +30,8 @@ export default tseslint.config(
       '**/.next/**',
       '**/next-env.d.ts',
       '**/coverage/**',
+      // Fixtures negativos de `boundaries.js`: violan las fronteras a propósito; los lintea su prueba.
+      'packages/config/eslint/fixtures/**',
       'pnpm-lock.yaml',
     ],
   },
@@ -36,4 +39,5 @@ export default tseslint.config(
   ...scoped(nest, ['apps/api/**/*.ts', 'apps/worker/**/*.ts']),
   ...scoped(next, ['apps/web/**/*.{ts,tsx}']),
   ...sharedBoundaries,
+  ...boundaries,
 );
