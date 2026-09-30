@@ -114,3 +114,57 @@ export const insertFileWithVersion = async (
   );
   return { fileId, versionId };
 };
+
+export interface UploadRowOptions {
+  readonly mode?: 'simple' | 'por_partes';
+  readonly state?: 'activa' | 'completada' | 'rechazada' | 'cancelada' | 'expirada';
+  readonly rejection?: 'tamano' | 'tipo_invalido' | null;
+  readonly sizeBytes?: bigint;
+  readonly expiresAt?: Date;
+  /** Por defecto, coherente con `mode` (`ck_carga_partes`); se fuerza para probar la restricción. */
+  readonly multipart?: { uploadId: string; totalParts: number; partSizeBytes: bigint } | null;
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Inserta una fila `carga` (la reserva de cuota) con ids reservados de archivo y versión; devuelve su id. */
+export const insertUpload = async (
+  runner: Pick<QueryRunner, 'query'>,
+  ownerId: string,
+  options: UploadRowOptions = {},
+): Promise<string> => {
+  const id = randomUUID();
+  const fileId = randomUUID();
+  const versionId = randomUUID();
+  const mode = options.mode ?? 'simple';
+  const multipart =
+    options.multipart === undefined
+      ? mode === 'por_partes'
+        ? { uploadId: `upload-${id}`, totalParts: 2, partSizeBytes: 8_388_608n }
+        : null
+      : options.multipart;
+  const now = new Date();
+  await runner.query(
+    `INSERT INTO carga (id, propietario_id, nombre, tamano_bytes, modo, estado, motivo_rechazo, archivo_id,
+                        version_id, clave_objeto, upload_id, partes_totales, tamano_parte_bytes, expira_en,
+                        creada_en, actualizada_en)
+     VALUES ($1, $2, 'informe.pdf', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $14)`,
+    [
+      id,
+      ownerId,
+      String(options.sizeBytes ?? 1024n),
+      mode,
+      options.state ?? 'activa',
+      options.rejection ?? null,
+      fileId,
+      versionId,
+      `u/${ownerId}/${fileId}/${versionId}`,
+      multipart?.uploadId ?? null,
+      multipart?.totalParts ?? null,
+      multipart === null ? null : String(multipart.partSizeBytes),
+      options.expiresAt ?? new Date(now.getTime() + DAY_MS),
+      now,
+    ],
+  );
+  return id;
+};

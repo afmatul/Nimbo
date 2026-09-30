@@ -2,6 +2,7 @@ import type { DataSource } from 'typeorm';
 
 import { AgregarEspacioUsadoAUsuario20260930100000 } from '../../../src/migrations/20260930100000-agregar-espacio-usado-a-usuario';
 import { CrearArchivoYVersionArchivo20260930100100 } from '../../../src/migrations/20260930100100-crear-archivo-y-version-archivo';
+import { CrearCarga20260930100200 } from '../../../src/migrations/20260930100200-crear-carga';
 import { connectAsOwner } from '../../support/database-urls';
 
 import {
@@ -9,6 +10,7 @@ import {
   inRolledBackTransaction,
   insertAccount,
   insertFileWithVersion,
+  insertUpload,
 } from './storage-test-db';
 
 /**
@@ -193,5 +195,124 @@ describe('migración crear-archivo-y-version-archivo (CA-1, CA-6)', () => {
         'uq_archivo_propietario_nombre',
       ]),
     );
+  });
+});
+
+describe('migración crear-carga (CA-2, CA-9, CA-23)', () => {
+  it('CA-2: `carga` tiene las columnas del plan y los bytes en `bigint`', async () => {
+    const columns = await inRolledBackTransaction(owner, (runner) => columnsOf(runner, 'carga'));
+
+    expect(Object.keys(columns).sort()).toEqual([
+      'actualizada_en',
+      'archivo_id',
+      'clave_objeto',
+      'conservar_ambos',
+      'creada_en',
+      'estado',
+      'expira_en',
+      'finalizada_en',
+      'id',
+      'modo',
+      'motivo_rechazo',
+      'nombre',
+      'partes_totales',
+      'propietario_id',
+      'tamano_bytes',
+      'tamano_parte_bytes',
+      'upload_id',
+      'version_id',
+    ]);
+    expect(columns['tamano_bytes']?.type).toBe('bigint');
+    expect(columns['tamano_parte_bytes']?.type).toBe('bigint');
+    expect(columns['upload_id']?.nullable).toBe(true);
+    expect(columns['estado']?.default).toBe("'activa'::character varying");
+  });
+
+  it('CA-2: `archivo_id` y `version_id` son ids reservados sin FK (no existe aún la fila de `archivo`)', async () => {
+    const foreignKeys = await inRolledBackTransaction(owner, async (runner) => {
+      await insertUpload(runner, await insertAccount(runner));
+      return (await runner.query(
+        `SELECT a.attname FROM pg_constraint c
+           JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ANY (c.conkey)
+          WHERE c.conrelid = 'carga'::regclass AND c.contype = 'f' ORDER BY a.attname`,
+      )) as { attname: string }[];
+    });
+
+    expect(foreignKeys.map((row) => row.attname)).toEqual(['propietario_id']);
+  });
+
+  it('CA-2: una carga por partes con sus tres datos y una simple sin ellos son válidas', async () => {
+    const ids = await inRolledBackTransaction(owner, async (runner) => {
+      const ownerId = await insertAccount(runner);
+      return [
+        await insertUpload(runner, ownerId, { mode: 'simple' }),
+        await insertUpload(runner, ownerId, { mode: 'por_partes' }),
+      ];
+    });
+
+    expect(ids).toHaveLength(2);
+  });
+
+  it.each([
+    ['por partes sin `upload_id`', { mode: 'por_partes', multipart: null }],
+    [
+      'simple con datos de partes',
+      { mode: 'simple', multipart: { uploadId: 'x', totalParts: 2, partSizeBytes: 5_242_880n } },
+    ],
+  ] as const)('CA-2: `ck_carga_partes` rechaza una carga %s', async (_case, options) => {
+    await expect(
+      inRolledBackTransaction(owner, async (runner) => {
+        await insertUpload(runner, await insertAccount(runner), options);
+      }),
+    ).rejects.toThrow(/ck_carga_partes/);
+  });
+
+  it.each([
+    ['rechazada sin motivo', { state: 'rechazada', rejection: null }],
+    ['activa con motivo', { state: 'activa', rejection: 'tamano' }],
+  ] as const)('CA-9: `ck_carga_rechazo` rechaza una carga %s', async (_case, options) => {
+    await expect(
+      inRolledBackTransaction(owner, async (runner) => {
+        await insertUpload(runner, await insertAccount(runner), options);
+      }),
+    ).rejects.toThrow(/ck_carga_rechazo/);
+  });
+
+  it.each([
+    "UPDATE carga SET estado = 'pausada'",
+    "UPDATE carga SET modo = 'stream'",
+    'UPDATE carga SET tamano_bytes = 0',
+  ])('CA-23: los CHECK de `carga` rechazan `%s`', async (statement) => {
+    await expect(
+      inRolledBackTransaction(owner, async (runner) => {
+        await insertUpload(runner, await insertAccount(runner));
+        await runner.query(statement);
+      }),
+    ).rejects.toThrow(/violates check constraint/);
+  });
+
+  it('CA-9: el `down` borra `carga` y el `up` la recrea con los índices parciales de reservas y de barrido', async () => {
+    const migration = new CrearCarga20260930100200();
+
+    const [afterDown, indexes] = await inRolledBackTransaction(owner, async (runner) => {
+      await migration.down(runner);
+      const [table] = (await runner.query("SELECT to_regclass('carga')::text AS carga")) as {
+        carga: string | null;
+      }[];
+      await migration.up(runner);
+      const rows = (await runner.query(
+        "SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'carga' ORDER BY indexname",
+      )) as { indexname: string; indexdef: string }[];
+      return [table, rows] as const;
+    });
+
+    expect(afterDown).toEqual({ carga: null });
+    const partial = indexes.filter((row) =>
+      row.indexdef.includes("WHERE ((estado)::text = 'activa'"),
+    );
+    expect(partial.map((row) => row.indexname)).toEqual([
+      'idx_carga_activa_expira',
+      'idx_carga_propietario_activa',
+    ]);
   });
 });
