@@ -57,6 +57,30 @@ describe('RequireRole', () => {
     expect(screen.queryByText('Contenido de la ruta')).toBeNull();
   });
 
+  it.each(['ADMIN', 'OPERATOR'] as const)(
+    'CA-17: %s en una ruta de cliente también va a /interno sin ver los hijos',
+    (role) => {
+      rememberSession(sessionFixture({ role }));
+
+      renderRoute(CLIENT_ROUTE);
+
+      expect(replace).toHaveBeenCalledWith('/interno');
+      expect(screen.queryByText('Contenido de la ruta')).toBeNull();
+    },
+  );
+
+  it.each(['ADMIN', 'SUPPORT', 'OPERATOR'] as const)(
+    'CA-17: %s en una ruta interna ve los hijos sin redirección',
+    (role) => {
+      rememberSession(sessionFixture({ role }));
+
+      renderRoute(INTERNAL_ROUTE);
+
+      expect(screen.getByText('Contenido de la ruta')).toBeTruthy();
+      expect(replace).not.toHaveBeenCalled();
+    },
+  );
+
   it('CA-17: un cliente en /interno va a /archivos sin ver los hijos', () => {
     rememberSession(sessionFixture({ role: 'CLIENT' }));
 

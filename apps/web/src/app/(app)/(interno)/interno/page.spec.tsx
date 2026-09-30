@@ -3,6 +3,7 @@
  */
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { axe } from 'jest-axe';
 
 import {
   forgetSession,
@@ -53,5 +54,20 @@ describe('área interna (/interno)', () => {
       );
     });
     expect(recallSession(Date.now())).toBeNull();
+  });
+
+  it('CA-17: la página no tiene violaciones serias ni críticas de axe', async () => {
+    const view = render(
+      <SessionProvider apiPublicUrl="http://localhost/api/v1">
+        <InternoPage />
+      </SessionProvider>,
+    );
+
+    const results = await axe(view.container);
+    expect(
+      results.violations.filter(
+        (violation) => violation.impact === 'serious' || violation.impact === 'critical',
+      ),
+    ).toEqual([]);
   });
 });
