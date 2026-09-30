@@ -3,6 +3,7 @@ import type { QueryRunner } from 'typeorm';
 
 import { ConcederPermisosNimboApp20260928110000 } from '../../../src/migrations/20260928110000-conceder-permisos-nimbo-app';
 import { CrearFuncionesDeActor20260928110100 } from '../../../src/migrations/20260928110100-crear-funciones-de-actor';
+import { PoliticasRlsArchivoVersionCarga20260930100300 } from '../../../src/migrations/20260930100300-politicas-rls-archivo-version-carga';
 import { buildDataSourceOptions } from '../../../src/shared';
 
 const APP_ROLE = 'nimbo_app';
@@ -153,12 +154,17 @@ describe('migración crear-funciones-de-actor (CA-12)', () => {
 
   it('CA-12: el `down` elimina las dos funciones', async () => {
     const migration = new CrearFuncionesDeActor20260928110100();
+    /** Las políticas RLS de 005 usan las funciones: se revierten antes, como en un `migration:revert` en orden. */
+    const dependents = [new PoliticasRlsArchivoVersionCarga20260930100300()];
     const owner = await new DataSource(
       buildDataSourceOptions({ DATABASE_URL: process.env['DATABASE_MIGRATION_URL'] ?? '' }),
     ).initialize();
     const queryRunner = owner.createQueryRunner();
     await queryRunner.startTransaction();
     try {
+      for (const dependent of dependents) {
+        await dependent.down(queryRunner);
+      }
       await migration.down(queryRunner);
 
       const [row] = (await queryRunner.query(

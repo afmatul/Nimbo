@@ -70,9 +70,15 @@ const captureQueries = async (
   }
 };
 
-/** `EXPLAIN` del SQL capturado, con el recorrido secuencial desalentado para que la tabla chica no lo esconda. */
+/**
+ * `EXPLAIN` del SQL capturado, con el recorrido secuencial desalentado para que la tabla chica no lo esconda. También
+ * se desactiva el *index scan* simple: con `archivo` casi vacía el planificador podía recorrer `archivo_pkey` entero
+ * filtrando por propietario (prueba inestable). Un *bitmap scan* necesita una condición de índice, así que solo puede
+ * resolver `propietario_id = $n` con los índices de propietario.
+ */
 const planOf = async (manager: EntityManager, query: CapturedQuery): Promise<string> => {
   await manager.query('SET LOCAL enable_seqscan = off');
+  await manager.query('SET LOCAL enable_indexscan = off');
   const rows = (await manager.query(`EXPLAIN ${query.sql}`, query.parameters)) as {
     'QUERY PLAN': string;
   }[];
