@@ -531,7 +531,7 @@ salvo la lectura por rango del detector.
   las cargas al navegar dentro de la pestaña; un reload las pierde (RN-7) y no hay lista de pendientes.
   Archivos: `apps/web/src/features/storage/api.ts`, `apps/web/src/features/storage/api.spec.ts`, `apps/web/src/lib/error-catalog.ts`, `apps/web/src/features/storage/hooks/use-upload-manager.ts`, `apps/web/src/app/(app)/(cliente)/layout.tsx`.
 
-- [ ] **T-54** Página `/archivos` — CA: CA-1, CA-13, CA-21 — Depende: T-16, T-17, T-53, 003-PR-F — ~3 h
+- [x] **T-54** Página `/archivos` — CA: CA-1, CA-13, CA-21 — Depende: T-16, T-17, T-53, 003-PR-F — ~3 h
   Sustituye el marcador de 003. «Subir archivos» y soltar archivos en la página encolan en el manager. «Descargar»
   pide la URL y abre el enlace (la respuesta lleva `attachment`). El fallo del listado no toca las cargas del panel.
   «Liberar espacio» apunta a esta misma ruta hasta que exista 007. Prueba de la página con el cliente falso: vacío,

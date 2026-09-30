@@ -16,8 +16,11 @@ export type FileExplorerStatus = 'loading' | 'ready' | 'error';
 export interface FileExplorerProps {
   readonly status: FileExplorerStatus;
   readonly files: readonly FileSummary[];
-  /** Máximo por archivo ya formateado; viene de `PlanLimits` por la API, nunca del código (RN-1). */
-  readonly maxFileLabel: string;
+  /**
+   * Máximo por archivo ya formateado; viene de `PlanLimits` por la API, nunca del código (RN-1). Sin él (aún no hay
+   * contrato que lo exponga a `web`) los textos omiten la cifra.
+   */
+  readonly maxFileLabel?: string | undefined;
   readonly onFiles: (files: readonly File[]) => void;
   readonly onRetry: () => void;
   /** Selector de archivos de la vista, para que otro control (p. ej. «Subir de nuevo» del panel) lo abra. */
@@ -109,7 +112,7 @@ export function FileExplorer({
 interface ExplorerBodyProps {
   readonly status: FileExplorerStatus;
   readonly files: readonly FileSummary[];
-  readonly maxFileLabel: string;
+  readonly maxFileLabel: string | undefined;
   readonly onRetry: () => void;
   readonly onUpload: () => void;
   readonly renderRowActions: FileExplorerProps['renderRowActions'] | undefined;
@@ -133,18 +136,20 @@ function EmptyExplorer({
   maxFileLabel,
   onUpload,
 }: {
-  readonly maxFileLabel: string;
+  readonly maxFileLabel: string | undefined;
   readonly onUpload: () => void;
 }): React.JSX.Element {
   const canDrag = useCanDragFiles();
   const invitation = canDrag
     ? 'Sube tus documentos con el botón o arrástralos a esta página.'
     : 'Sube tus documentos desde tu dispositivo.';
+  const limit =
+    maxFileLabel === undefined ? '' : ` Tu plan permite hasta ${maxFileLabel} por archivo.`;
   return (
     <StateView
       type="empty"
       title="Aún no tienes archivos"
-      description={`${invitation} Tu plan permite hasta ${maxFileLabel} por archivo.`}
+      description={`${invitation}${limit}`}
       action={{ label: 'Subir archivos', onClick: onUpload }}
     />
   );

@@ -6,7 +6,8 @@ import * as React from 'react';
 import { cn } from '../../../lib/utils';
 
 export interface UploadDropzoneProps {
-  readonly maxFileLabel: string;
+  /** Máximo por archivo formateado; sin él, el aviso de arrastre omite la cifra. */
+  readonly maxFileLabel?: string | undefined;
   /** Archivos elegidos o soltados, en orden; nunca se llama con una lista vacía. */
   readonly onFiles: (files: readonly File[]) => void;
   readonly inputRef?: React.Ref<HTMLInputElement>;
@@ -82,7 +83,11 @@ export function UploadDropzone({
               <Upload className="h-4 w-4" aria-hidden="true" />
               Suelta para subir
             </p>
-            <p className="text-xs">{`Se guardarán en Mis archivos · hasta ${maxFileLabel} por archivo`}</p>
+            <p className="text-xs">
+              {maxFileLabel === undefined
+                ? 'Se guardarán en Mis archivos'
+                : `Se guardarán en Mis archivos · hasta ${maxFileLabel} por archivo`}
+            </p>
           </div>
         </div>
       )}

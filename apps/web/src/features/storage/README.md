@@ -16,6 +16,7 @@ recargar las pierde (RN-7). Las páginas leen el contexto con `useUploads()`.
 | `storage-request-error.ts`                                                        | Error HTTP de la API de `storage` (`status`, `code`, `details`); un fallo sin respuesta es de red  | T-12       |
 | `api.ts`                                                                          | Cliente de `/uploads` y `/files` sobre `auth-fetch`; valida las respuestas con `contracts/storage` | T-53       |
 | `hooks/use-upload-manager.ts`, `components/uploads-provider.tsx`                  | Manager por pestaña, eventos de red, panel y diálogos conectados                                   | T-53       |
+| `components/my-files.tsx`                                                         | Vista de `/archivos`: primera página de la raíz, recién subidos arriba, encolar y descargar        | T-54       |
 | `components/upload-panel.tsx`                                                     | Panel de cargas; reutiliza `components/nimbo/upload-progress.tsx`                                  | T-14       |
 | `components/name-conflict-dialog.tsx`, `cancel-upload-dialog.tsx`                 | Diálogos de nombre repetido y de cancelar                                                          | T-15       |
 | `components/file-explorer.tsx`, `upload-dropzone.tsx`, `explorer-error-state.tsx` | Raíz, arrastre y error del listado                                                                 | T-16       |
@@ -37,3 +38,6 @@ Los textos de error de `storage` salen de `lib/error-catalog.ts` (`storageMessag
 - `FileRowMenu.requestUrl` llama `POST /files/:id/download-url` y lanza `StorageRequestError` ante un error HTTP. El
   aviso que emite `onNotice` se pinta con `DownloadNoticeBanner` en `FileExplorer.notice`, arriba de la lista.
 - La barra lateral de `/archivos` no muestra «Carpetas» ni el contador de la Papelera hasta 006.
+- `maxFileLabel` es opcional: ningún contrato expone todavía `PlanLimits.maxFileBytes` a `web`, así que la página no lo
+  pasa y los textos omiten la cifra (propuesta en el registro de cambios de la spec).
+- La página muestra solo la primera página de `GET /files` (50, más recientes primero); «Cargar más» llega con 007.

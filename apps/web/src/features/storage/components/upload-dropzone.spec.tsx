@@ -83,6 +83,15 @@ describe('UploadDropzone (CA-1, CA-21)', () => {
     expect(document.body.innerHTML).toContain('border-dashed border-brand bg-brand/5');
   });
 
+  it('CA-21: sin máximo conocido (no hay contrato de PlanLimits para web) no inventa una cifra', async () => {
+    await mount(<UploadDropzone onFiles={jest.fn()} />);
+
+    await dispatchDrag('dragenter');
+
+    expect(document.body.textContent).toContain('Se guardarán en Mis archivos');
+    expect(document.body.textContent).not.toContain('hasta');
+  });
+
   it('CA-1: acepta el arrastre (dragover cancelado) y oculta el aviso al salir', async () => {
     await mount(<UploadDropzone maxFileLabel="25 MB" onFiles={jest.fn()} />);
 

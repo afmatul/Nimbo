@@ -102,6 +102,13 @@ describe('FileExplorer (CA-1, CA-21)', () => {
     expect(rows()).toHaveLength(0);
   });
 
+  it('CA-21: vacío sin máximo conocido: invita a subir sin inventar una cifra', async () => {
+    await mount(<FileExplorer status="ready" files={[]} onFiles={jest.fn()} onRetry={jest.fn()} />);
+
+    expect(text()).toContain('Sube tus documentos con el botón o arrástralos a esta página.');
+    expect(text()).not.toContain('Tu plan permite');
+  });
+
   it('CA-21: estado cargando: anuncia «Cargando tus archivos…»', async () => {
     await renderExplorer({ status: 'loading' });
 
