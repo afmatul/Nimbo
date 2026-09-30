@@ -46,14 +46,14 @@ await runner.withActor(actor, async () => {
 
 ## Qué agregan 005 y 012 (plan §6.11, D-1)
 
-En 003 `accessibleNodes` devuelve el **conjunto vacío tipado** para todos los roles, así que `levelFor` siempre es
-`null`; la consulta de `SqlAccessLevelReader` (precedencia `OWNER > EDITOR > VIEWER`, `LIMIT 1`) ya se ejecuta contra
-Postgres en `test/int/access/sql-access-level-reader.int-spec.ts`.
+En 003 `accessibleNodes` devolvía el **conjunto vacío tipado** para todos los roles; la consulta de
+`SqlAccessLevelReader` (precedencia `OWNER > EDITOR > VIEWER`, `LIMIT 1`) se ejecuta contra Postgres en
+`test/int/access/sql-access-level-reader.int-spec.ts`.
 
-- **005**: reemplaza el caso `CLIENT` de `accessibleNodes` por la propiedad (`archivo` y `carpeta` con
-  `propietario_id = :access_actor_id`, `nivel = 'OWNER'`); RLS `ENABLE` + `FORCE` en `archivo` y `version_archivo`;
-  índices de dueño; CA-10, CA-11 (archivos reales) y CA-14. Los roles internos siguen con el conjunto vacío: ven
-  metadatos por `INodeMetadataReader`, nunca por aquí.
+- **005 (hecho, D-17)**: el caso `CLIENT` devuelve la propiedad: `archivo` con `propietario_id = :access_actor_id` y
+  `eliminado_en IS NULL`, `tipo_nodo = 'archivo'`, `nivel = 'OWNER'` (sin carpetas: RN-4, 006). RLS `ENABLE` + `FORCE`
+  en `archivo`, `version_archivo` y `carga` (migración de 005). Los roles internos siguen con el conjunto vacío: ven
+  metadatos por `INodeMetadataReader` (011), nunca por aquí. Prueba: `test/int/access/accessible-nodes.int-spec.ts`.
 - **012**: `UNION ALL` con las comparticiones directas y heredadas por `carpeta.ruta`, `inheritedGrants` e
   `IGrantRepository`; si la regla se repite en la política RLS, una función SQL `STABLE` versionada (ADR-0005).
 - Un valor nuevo de `Action` (p. ej. historial o restaurar, 014) queda negado para Editor y Viewer hasta que su spec lo

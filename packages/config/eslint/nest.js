@@ -1,5 +1,6 @@
 // Reglas para las apps NestJS (`apps/api`, `apps/worker`).
-// T-28/T-29 agregan aquí `boundaries.js` (fronteras y capas), `import-x/no-cycle` y `typeorm-columns.js`.
+// Las fronteras entre módulos viven en `boundaries.js` (se compone en la raíz); `import-x/no-cycle` y
+// `typeorm-columns.js` siguen pendientes (PD-24).
 import tseslint from 'typescript-eslint';
 
 import base from './base.js';
