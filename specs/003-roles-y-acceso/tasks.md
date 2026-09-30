@@ -510,13 +510,13 @@ tablas ni migraciones.
 
 ## Bloque 5 — PR-F «web» (plan §6.9; D-5, D-8; sin E2E, PD-41) — depende de: **001 PR-4** y **002-PR-5a**
 
-- [ ] **T-48** [P×PR] `homePathFor` y `ROLE_LABELS` — CA: CA-17, DT-12 — Depende: T-02 — ~0,5 h
+- [x] **T-48** [P×PR] `homePathFor` y `ROLE_LABELS` — CA: CA-17, DT-12 — Depende: T-02 — ~0,5 h
   Prueba primero `apps/web/src/features/access/home-path.spec.ts`: `CLIENT` → `/archivos`; `ADMIN`, `SUPPORT`,
   `OPERATOR` → `/interno`; exhaustivo por tipo (`RoleName` de `contracts`); `ROLE_LABELS` = «Cliente»,
   «Administrador», «Soporte», «Operador». Luego `home-path.ts` y `role-labels.ts`.
   Archivos: `apps/web/src/features/access/{home-path,role-labels}.ts`, `apps/web/src/features/access/home-path.spec.ts`.
 
-- [ ] **T-49** [P] [P×PR] `ForbiddenState` — CA: CA-17 — Depende: T-48 — ~1 h
+- [x] **T-49** [P] [P×PR] `ForbiddenState` — CA: CA-17 — Depende: T-48 — ~1 h
   Prueba primero `apps/web/src/features/access/components/forbidden-state.spec.tsx` (con jest-axe): `StateView` con
   ícono de candado, título «Sin permiso», texto exacto «No tienes permiso para ver esta página. Si crees que es un
   error, escríbenos a {correo}.» con `SUPPORT_CONTACT_EMAIL`; acción «Ir a mi inicio» a `homePathFor(role)`; el foco
@@ -525,21 +525,21 @@ tablas ni migraciones.
   existe, se agrega ahí con ese nombre (plan §6.9).
   Archivos: `apps/web/src/features/access/components/forbidden-state.{tsx,spec.tsx}`, `packages/contracts/src/identity/legal.ts` (solo si falta la constante).
 
-- [ ] **T-50** [P] [P×PR] `NotFoundState` y `app/not-found.tsx` — CA: CA-17, CA-11 (web) — Depende: T-48 — ~1 h
+- [x] **T-50** [P] [P×PR] `NotFoundState` y `app/not-found.tsx` — CA: CA-17, CA-11 (web) — Depende: T-48 — ~1 h
   Prueba primero `apps/web/src/features/access/components/not-found-state.spec.tsx` y
   `apps/web/src/app/not-found.spec.tsx` (con jest-axe): texto «No encontramos lo que buscas. Puede que no exista o que
   no tengas acceso.»; con `role` → «Ir a mi inicio» a `homePathFor(role)`; sin sesión → «Ir al inicio»; foco al
   título. Luego el componente y `app/not-found.tsx` (sin sesión en la raíz: «Ir al inicio»; ver Notas).
   Archivos: `apps/web/src/features/access/components/not-found-state.{tsx,spec.tsx}`, `apps/web/src/app/not-found.{tsx,spec.tsx}`.
 
-- [ ] **T-51** [P] [P×PR] `InternalAreaPlaceholder` — CA: CA-17 — Depende: T-48 — ~0,5 h
+- [x] **T-51** [P] [P×PR] `InternalAreaPlaceholder` — CA: CA-17 — Depende: T-48 — ~0,5 h
   Prueba primero `apps/web/src/features/access/components/internal-area-placeholder.spec.tsx` (con jest-axe, props
   falsas `fullName`, `role`, `onLogout`): «Hola, {nombre}. Tu área de {rol} estará disponible pronto.» con `{rol}` en
   minúsculas desde `ROLE_LABELS`; botón «Cerrar sesión» que llama a `onLogout`. Luego el componente (recibe la acción
   de cierre por props; la conecta T-53).
   Archivos: `apps/web/src/features/access/components/internal-area-placeholder.{tsx,spec.tsx}`.
 
-- [ ] **T-52** `RequireRole` — CA: CA-17, CA-5 (experiencia) — Depende: T-48, **002-PR-5a** (contexto de sesión) — ~1 h
+- [x] **T-52** `RequireRole` — CA: CA-17, CA-5 (experiencia) — Depende: T-48, **002-PR-5a** (contexto de sesión) — ~1 h
   Prueba primero `apps/web/src/features/access/components/require-role.spec.tsx` (sesión falsa con la forma de PD-42
   `{ status, user: { id, fullName, email, role } }` y `next/navigation` simulado): cliente en ruta de cliente → hijos;
   interno en ruta de cliente → `router.replace('/interno')`; cliente en `/interno` → `router.replace('/archivos')`; sin
@@ -548,7 +548,7 @@ tablas ni migraciones.
   import al integrarlo.
   Archivos: `apps/web/src/features/access/components/require-role.{tsx,spec.tsx}`.
 
-- [ ] **T-53** Grupos `(cliente)` e `(interno)` y área interna — CA: CA-17 — Depende: T-51, T-52, **002-PR-5a** — ~1 h
+- [x] **T-53** Grupos `(cliente)` e `(interno)` y área interna — CA: CA-17 — Depende: T-51, T-52, **002-PR-5a** — ~1 h
   Prueba primero `apps/web/src/app/(app)/(interno)/interno/page.spec.tsx`: con sesión falsa de `SUPPORT`, muestra
   `InternalAreaPlaceholder` con `fullName` y «soporte», y «Cerrar sesión» usa la acción de 002. Luego
   `app/(app)/(cliente)/layout.tsx` (`RequireRole allowed={['CLIENT']}`), `app/(app)/(interno)/layout.tsx`
@@ -557,7 +557,7 @@ tablas ni migraciones.
   «Tus archivos aparecerán aquí» (ver Notas).
   Archivos: `apps/web/src/app/(app)/(cliente)/layout.tsx`, `apps/web/src/app/(app)/(interno)/{layout,interno/page}.tsx`, `apps/web/src/app/(app)/(interno)/interno/page.spec.tsx`, `apps/web/src/app/(app)/(cliente)/archivos/page.tsx` (solo si falta).
 
-- [ ] **T-54** Catálogo de errores `SHARED_*` — CA: CA-17, CA-1 (web) — Depende: T-02, **001 PR-4** — ~0,5 h
+- [x] **T-54** Catálogo de errores `SHARED_*` — CA: CA-17, CA-1 (web) — Depende: T-02, **001 PR-4** — ~0,5 h
   Prueba primero en el `*.spec.ts` de `lib/error-catalog.ts` (001): `SHARED_UNAUTHENTICATED` y `SHARED_FORBIDDEN` tienen
   mensaje en español con acción correctiva; la web no muestra el `message` del servidor. Luego las entradas (los
   códigos importados de `contracts`). La renovación ante 401 es de `auth-fetch` de 002; aquí solo el catálogo.

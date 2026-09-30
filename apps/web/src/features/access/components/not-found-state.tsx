@@ -3,10 +3,12 @@
 import type { RoleName } from '@nimbo/contracts';
 import { SearchX } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { type JSX, useEffect, useRef } from 'react';
+import type { JSX } from 'react';
 
 import { StateView } from '../../../components/nimbo/state-view';
 import { homePathFor } from '../home-path';
+
+import { useFocusTitleOnMount } from './use-focus-title-on-mount';
 
 const PUBLIC_HOME = '/';
 const MESSAGE = 'No encontramos lo que buscas. Puede que no exista o que no tengas acceso.';
@@ -17,18 +19,11 @@ const MESSAGE = 'No encontramos lo que buscas. Puede que no exista o que no teng
  */
 export function NotFoundState({ role }: { readonly role?: RoleName }): JSX.Element {
   const router = useRouter();
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useFocusTitleOnMount();
   const action =
     role === undefined
       ? { label: 'Ir al inicio', href: PUBLIC_HOME }
       : { label: 'Ir a mi inicio', href: homePathFor(role) };
-
-  useEffect(() => {
-    const title = containerRef.current?.querySelector('h3');
-    if (!title) return;
-    title.tabIndex = -1;
-    title.focus();
-  }, []);
 
   return (
     <div ref={containerRef}>
