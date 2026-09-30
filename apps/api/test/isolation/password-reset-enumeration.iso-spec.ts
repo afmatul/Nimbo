@@ -245,32 +245,26 @@ describe('anti-enumeración de la recuperación de contraseña (CA-18)', () => {
   });
 
   /**
-   * Oráculo entre rutas (hallazgo de seguridad de T-67): para la cuenta no verificada, `forgot-password` consume en
-   * silencio el límite de verificación de 001 (DT-7), compartido con registro y reenvío (001 D-8). Un `202` de
-   * `resend-verification` justo después solo cambia a `429` si el correo es de un cliente sin verificar, así que la
-   * secuencia «recuperar → reenviar» delata esa clase aunque la respuesta de `forgot-password` sea neutra.
-   * `it.failing`: hoy la prueba falla (el oráculo existe) y la suite sigue verde; cuando se corrija, Jest marcará
-   * esta prueba en rojo y habrá que cambiarla por `it`.
+   * Oráculo entre rutas (hallazgo SEC-1 de T-67): si `forgot-password` gastara el límite de verificación de 001,
+   * compartido con registro y reenvío (001 D-8), un `resend-verification` justo después cambiaría a `429` solo para
+   * un cliente sin verificar. Tras la corrección, la rama D-15 no consulta ni gasta ese límite (DT-7).
    */
-  it.failing(
-    'CA-18: `resend-verification` justo después de `forgot-password` responde igual en las cuatro clases (oráculo entre rutas)',
-    async () => {
-      const byKind = await targets();
-      const followUps = {} as Record<AccountKind, Observed>;
+  it('CA-18: `resend-verification` justo después de `forgot-password` responde igual en las cuatro clases (oráculo entre rutas)', async () => {
+    const byKind = await targets();
+    const followUps = {} as Record<AccountKind, Observed>;
 
-      for (const kind of ACCOUNT_KINDS) {
-        const ip = newIp();
-        clock.advance(COOLDOWN_MS);
-        await post(FORGOT_PASSWORD, byKind[kind].email, 'iso-oraculo-1', ip);
-        followUps[kind] = observe(await post(RESEND, byKind[kind].email, 'iso-oraculo-2', ip));
-      }
+    for (const kind of ACCOUNT_KINDS) {
+      const ip = newIp();
+      clock.advance(COOLDOWN_MS);
+      await post(FORGOT_PASSWORD, byKind[kind].email, 'iso-oraculo-1', ip);
+      followUps[kind] = observe(await post(RESEND, byKind[kind].email, 'iso-oraculo-2', ip));
+    }
 
-      for (const kind of ACCOUNT_KINDS) {
-        expect({ kind, observed: followUps[kind] }).toEqual({
-          kind,
-          observed: followUps.inexistente,
-        });
-      }
-    },
-  );
+    for (const kind of ACCOUNT_KINDS) {
+      expect({ kind, observed: followUps[kind] }).toEqual({
+        kind,
+        observed: followUps.inexistente,
+      });
+    }
+  });
 });

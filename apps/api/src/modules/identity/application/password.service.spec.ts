@@ -269,17 +269,21 @@ describe('PasswordService.requestReset (plan 002 §6.3, CA-18)', () => {
     const unverified = () =>
       aClientUser().withId(randomUUID()).withEmail('beto@ejemplo.com').build();
 
-    it('CA-18: consume en silencio el límite de 001 y envía un enlace de verificación nuevo, no uno de recuperación', async () => {
+    it('CA-18: envía un enlace de verificación nuevo, no uno de recuperación, sin consultar ni gastar el límite de 001 (SEC-1)', async () => {
       const ctx = setup();
       const account = unverified();
       ctx.users.seed(account);
+      ctx.decisions.set(emailRequestKey(account.email.value), {
+        allowed: false,
+        retryAfterSeconds: 30,
+      });
 
       await ctx.service.requestReset({ email: account.email.value });
 
-      expect(ctx.rateLimiter.consume).toHaveBeenNthCalledWith(
-        2,
+      expect(ctx.rateLimiter.consume).toHaveBeenCalledTimes(1);
+      expect(ctx.rateLimiter.consume).not.toHaveBeenCalledWith(
         emailRequestKey(account.email.value),
-        expect.any(Array),
+        expect.anything(),
       );
       expect(ctx.tokens.all().map((token) => token.type)).toEqual(['verificacion']);
       expect(ctx.sent).toHaveLength(1);
@@ -290,30 +294,6 @@ describe('PasswordService.requestReset (plan 002 §6.3, CA-18)', () => {
         {
           event: 'identity.password_reset.requested',
           kind: 'verification_link',
-          userId: account.id,
-        },
-      ]);
-    });
-
-    it('CA-18: con el límite de 001 agotado no envía nada y responde igual', async () => {
-      const ctx = setup();
-      const account = unverified();
-      ctx.users.seed(account);
-      ctx.decisions.set(emailRequestKey(account.email.value), {
-        allowed: false,
-        retryAfterSeconds: 30,
-      });
-
-      await expect(
-        ctx.service.requestReset({ email: account.email.value }),
-      ).resolves.toBeUndefined();
-
-      expect(ctx.sent).toEqual([]);
-      expect(ctx.tokens.all()).toEqual([]);
-      expect(loggedEvents(ctx.logger)).toEqual([
-        {
-          event: 'identity.password_reset.requested',
-          kind: 'verification_suppressed',
           userId: account.id,
         },
       ]);

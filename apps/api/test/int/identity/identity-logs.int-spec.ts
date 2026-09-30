@@ -322,7 +322,10 @@ describe('bitácoras de la recuperación de contraseña (CA-25)', () => {
     return created;
   };
 
-  /** `reset_link` e `ignored`; luego `verification_link` y, tras reenviar la verificación, `verification_suppressed`. */
+  /**
+   * `reset_link` e `ignored`; luego `verification_link` dos veces: la segunda, tras reenviar la verificación, muestra
+   * que la recuperación no depende del límite de 001 (SEC-1).
+   */
   const runRequestFlows = async (): Promise<{ verified: Account; expiring: Account }> => {
     const verified = await account();
     const unverified = await account({ verified: false });
@@ -417,10 +420,13 @@ describe('bitácoras de la recuperación de contraseña (CA-25)', () => {
       expect.arrayContaining([
         expect.objectContaining({ kind: 'reset_link', userId: ids.verified }),
         expect.objectContaining({ kind: 'reset_link', userId: ids.expiring }),
-        expect.objectContaining({ kind: 'verification_link', userId: ids.unverified }),
-        expect.objectContaining({ kind: 'verification_suppressed', userId: ids.unverified }),
       ]),
     );
+    const verificationLinks = requested.filter((line) => line.kind === 'verification_link');
+    expect(verificationLinks).toEqual([
+      expect.objectContaining({ userId: ids.unverified }),
+      expect.objectContaining({ userId: ids.unverified }),
+    ]);
     const ignored = requested.filter((line) => line.kind === 'ignored');
     expect(ignored).toHaveLength(1);
     expect(ignored[0]).not.toHaveProperty('userId');
@@ -466,8 +472,8 @@ describe('bitácoras de la recuperación de contraseña (CA-25)', () => {
   });
 
   it('CA-25: ninguna línea trae correo, token, su hash, contraseña, su hash ni el valor de `nimbo_rt`', () => {
-    // Dos enlaces de recuperación y dos de verificación (el pedido y el reenvío de la cuenta sin verificar).
-    expect(linkTokens.size).toBe(4);
+    // Dos enlaces de recuperación y tres de verificación (los dos pedidos y el reenvío de la cuenta sin verificar).
+    expect(linkTokens.size).toBe(5);
     expect(lines.length).toBeGreaterThan(0);
     for (const line of lines) {
       const serialized = JSON.stringify(line);

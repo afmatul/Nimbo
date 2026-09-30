@@ -30,7 +30,6 @@ import { IDENTITY_CONFIG } from './identity-config';
 import type { IdentityConfig } from './identity-config';
 import {
   EMAIL_REQUEST_RULES,
-  emailRequestKey,
   loginLockoutKey,
   passwordChangeLockoutKey,
   passwordResetRequestKey,
@@ -70,7 +69,7 @@ export interface ResetPasswordCommand {
 }
 
 /** Qué se hizo con un pedido de recuperación (plan §7, `identity.password_reset.requested`). */
-type RequestKind = 'reset_link' | 'verification_link' | 'verification_suppressed' | 'ignored';
+type RequestKind = 'reset_link' | 'verification_link' | 'ignored';
 
 /** Lo que deja la transacción del pedido: la bitácora y el correo, ambos después del commit. */
 interface RequestOutcome {
@@ -175,15 +174,11 @@ export class PasswordService {
     return { kind: 'reset_link', userId: user.id, mail: await this.issueResetLink(user) };
   }
 
-  /** D-15, DT-7: la cuenta sin verificar recibe un enlace de verificación nuevo si el límite de 001 lo permite. */
+  /**
+   * D-15, DT-7: la cuenta sin verificar recibe un enlace de verificación nuevo. No consulta ni gasta el límite de 001:
+   * el de recuperación, ya gastado antes de buscar la cuenta, es el único que la acota (SEC-1).
+   */
   private async resendVerification(user: ClientUser): Promise<RequestOutcome> {
-    const decision = await this.rateLimiter.consume(
-      emailRequestKey(user.email),
-      EMAIL_REQUEST_RULES,
-    );
-    if (!decision.allowed) {
-      return { kind: 'verification_suppressed', userId: user.id, mail: null };
-    }
     return {
       kind: 'verification_link',
       userId: user.id,

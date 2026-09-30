@@ -492,8 +492,8 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   Prueba primero `application/password.service.spec.ts` (dobles): el límite `identity:password-reset-request:<sha256>`
   (60 s y `EMAIL_REQUESTS_PER_HOUR`) se consume **antes** de buscar; rechazado → `IdentityTooManyRequestsError` con
   ámbito de recuperación; inexistente → nada (`kind: 'ignored'`); verificada, interna o suspendida →
-  `invalidateActive` + enlace de 60 min + correo tras el commit; cliente no verificado → consume en silencio el límite
-  de 001 y llama a `VerificationLinkIssuer`, o registra `verification_suppressed` sin cambiar la respuesta.
+  `invalidateActive` + enlace de 60 min + correo tras el commit; cliente no verificado → llama a `VerificationLinkIssuer`
+  (`kind: 'verification_link'`) sin consultar ni gastar el límite de 001 (DT-7, SEC-1).
   Archivos: `apps/api/src/modules/identity/application/password.service.ts`, `apps/api/src/modules/identity/application/password.service.spec.ts`.
 
 - [x] **T-61** [P×PR] `PasswordService.checkResetLink` — CA: CA-20 — Depende: T-60 — ~0,5 h
@@ -546,7 +546,7 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   Archivos: `apps/api/test/int/identity/{credential-secrecy,auth-logs}.int-spec.ts`.
 
 - [ ] **T-69** Cierre del PR-3 — CA: n/a — Depende: T-58…T-68 — ~0,5 h
-  README de `identity` (recuperación, D-15 con límites en silencio, DT-5/DT-6). Suites en verde. Pedir al
+  README de `identity` (recuperación, D-15 acotada solo por el límite de recuperación, DT-5/DT-6). Suites en verde. Pedir al
   `ui-designer` que valide las plantillas de T-58 y T-59 (y las de T-28, T-29 si no lo hizo).
   Archivos: `apps/api/src/modules/identity/README.md`.
 

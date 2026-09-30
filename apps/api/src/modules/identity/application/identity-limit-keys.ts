@@ -21,7 +21,7 @@ const sha256Of = (email: EmailAddress): string =>
 
 // Las claves de límites y bloqueos llevan el SHA-256 del correo o el `userId`, nunca el correo (plan 002 §6.4).
 
-/** Registro y reenvío de verificación (001 CA-15); la recuperación de una cuenta sin verificar también (002 D-15). */
+/** Registro y reenvío de verificación (001 CA-15). La recuperación no la usa, ni para cuentas sin verificar (002 DT-7). */
 export const emailRequestKey = (email: EmailAddress): string =>
   `identity:email-request:${sha256Of(email)}`;
 
