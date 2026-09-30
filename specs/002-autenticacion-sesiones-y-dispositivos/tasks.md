@@ -534,7 +534,7 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   `INVALID`.
   Archivos: `apps/api/test/int/identity/{password-reset,password-reset-concurrency}.int-spec.ts`.
 
-- [ ] **T-67** [P] Aislamiento: anti-enumeración de la recuperación — CA: CA-18 — Depende: T-63 — ~0,5 h
+- [x] **T-67** [P] Aislamiento: anti-enumeración de la recuperación — CA: CA-18 — Depende: T-63 — ~0,5 h
   `apps/api/test/isolation/password-reset-enumeration.iso-spec.ts`: las cuatro clases de cuenta del mundo de 003 dan
   respuestas idénticas (status, cuerpo, cabeceras salvo `x-correlation-id`), también cuando el límite se agota.
   Archivos: `apps/api/test/isolation/password-reset-enumeration.iso-spec.ts`.
