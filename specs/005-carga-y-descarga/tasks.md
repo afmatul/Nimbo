@@ -544,7 +544,7 @@ salvo la lectura por rango del detector.
   enlace deja de servir tras 5 minutos; recorrer 360 y 1440 px. Anotar el resultado en la descripción del PR-F.
   No sustituye a `/review` ni a la revisión del `ui-designer`.
 
-- [ ] **T-56** Documentación de operación — CA: n/a — Depende: T-24 — ~2 h
+- [x] **T-56** Documentación de operación — CA: n/a — Depende: T-24 — ~2 h
   `docs/operations/ambientes.md`: el rol que migra es el mismo en todos los ambientes; cambiarlo exige una migración
   nueva (`TO CURRENT_USER` queda fijado al crear `carga_mantenimiento`). README de `storage` con el flujo
   init → PUT directo a MinIO → complete, y la excepción DF-59 en una frase. No instrumentar métricas. No abrir

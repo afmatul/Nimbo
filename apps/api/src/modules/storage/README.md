@@ -92,3 +92,31 @@ Pruebas: `upload-cleanup.processor.spec.ts` y `upload-cleanup.scheduler.spec.ts`
 `test/int/storage/expired-upload.scanner.int-spec.ts`, `test/int/storage/upload-cleanup.int-spec.ts` y
 `test/isolation/storage-maintenance.iso-spec.ts`. Esta última exige que el dueño de las tablas **no** sea superusuario;
 `pnpm test:isolation` la corre así.
+
+## Flujo de carga directa (005)
+
+Los bytes **no pasan por la API** (DF-16): el navegador sube directo a MinIO con URLs prefirmadas y la API solo
+reserva, vigila y registra. Rutas bajo el prefijo global de la API, todas con actor autenticado:
+
+1. `POST /uploads` (`UploadService.init`, 201): valida tasa, nombre, tamaño > 0, límites del plan y cuota, y crea la fila
+   `carga` (la reserva de cuota). Hasta `UPLOAD_MULTIPART_THRESHOLD_BYTES` la carga es `simple` y responde una URL
+   `PUT`; por encima es `multipart` y responde `partSizeBytes`, `totalParts` y una URL firmada por parte. Un nombre
+   repetido responde 409 con la sugerencia, salvo que se envíe `onConflict: 'keep_both'`.
+2. **`PUT` directo a MinIO** con esas URLs (firmadas con el `Content-Length` exacto de cada parte, vigencia
+   `UPLOAD_URL_TTL_SECONDS`). El navegador usa `MINIO_PUBLIC_ENDPOINT`.
+3. `POST /uploads/:uploadId/complete` (`UploadService.complete`): no confía en los ETags del cliente; por partes, lista
+   las partes en MinIO y cierra el multipart; comprueba el tamaño real contra lo declarado y el plan, y el tipo real
+   por firma de bytes; registra `archivo` + `version_archivo`, suma `usuario.espacio_usado` en la misma transacción y
+   pasa la carga a `completada`. Es idempotente: repetirlo devuelve el mismo archivo. Un tamaño o tipo inválido rechaza
+   la carga y borra lo subido.
+4. `POST /uploads/:uploadId/resume`: para una carga activa devuelve las partes ya recibidas y URLs nuevas solo de las
+   que faltan (o una URL nueva si es simple). Vencida ⇒ 410 `STORAGE_UPLOAD_EXPIRED`.
+5. `DELETE /uploads/:uploadId` (204): cancela una carga activa (libera la reserva y borra lo subido). Ajena,
+   inexistente o ya cerrada ⇒ 404.
+
+`complete` y `expire`/`cancel` compiten por un compare-and-set de estado (`activa → …`): gana uno y el otro no deja un
+`archivo` sin objeto.
+
+**DF-59**: `storage` escribe **solo** `usuario.espacio_usado` (tabla de `identity`) y únicamente por `IQuotaRepository`;
+es una excepción a «cada módulo es dueño de sus tablas», no una arista (`docs/sdd/design-findings.md`). La operación de
+ambientes (rol dueño de las migraciones) está en `docs/operations/ambientes.md`.
