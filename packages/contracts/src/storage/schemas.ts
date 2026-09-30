@@ -73,9 +73,7 @@ export const initUploadSchema = z
   .object({
     name: field<string>(nameReason),
     sizeBytes: field<number>(sizeReason),
-    onConflict: z
-      .enum(ON_CONFLICT_OPTIONS, { message: ON_CONFLICT_MESSAGE })
-      .default('ask'),
+    onConflict: z.enum(ON_CONFLICT_OPTIONS, { message: ON_CONFLICT_MESSAGE }).default('ask'),
   })
   .strict(STORAGE_FIELD_MESSAGES.UNKNOWN_FIELD);
 
@@ -117,7 +115,9 @@ const resumeBase = {
 
 /** Respuesta de `POST /uploads/:id/resume`: solo las partes que faltan, o la URL única si es simple (CA-8). */
 export const resumeUploadResponseSchema = z.discriminatedUnion('mode', [
-  z.object({ ...resumeBase, mode: z.literal('simple'), pending: singleUploadTargetSchema }).strict(),
+  z
+    .object({ ...resumeBase, mode: z.literal('simple'), pending: singleUploadTargetSchema })
+    .strict(),
   z
     .object({ ...resumeBase, mode: z.literal('multipart'), pending: z.object(partsBlock).strict() })
     .strict(),
