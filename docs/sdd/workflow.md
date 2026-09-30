@@ -1,8 +1,10 @@
-# Flujo SDD lite de Nimbo
+# Flujo SDD express de Nimbo
 
 Spec-Driven Development: la especificación es el artefacto principal y el código es su consecuencia.
-El equipo adoptó una versión **lite** para avanzar más rápido: menos artefactos, menos compuertas,
-mismas garantías no negociables (pruebas primero, aislamiento, ADRs, migraciones reversibles).
+Desde la Fase 2 (30/09/2026) el equipo usa la variante **express**: el **plan es obligatorio y se aprueba antes de
+escribir código**, pero cada artefacto es corto, las tareas son pocas y verticales, y cada spec es una rama y un PR.
+Las garantías no negociables no cambian: pruebas primero, aislamiento entre cuentas, migraciones reversibles, ADR
+para dependencias nuevas, y `design-findings.md` y `pendientes.md` al día.
 Encaja con Crystal Clear: la reunión de **planificación** de cada fase decide qué specs entran y quién es dueño;
 la reunión de **revisión** verifica las specs terminadas.
 
@@ -10,83 +12,80 @@ la reunión de **revisión** verifica las specs terminadas.
 
 ```
 specs/NNN-slug/
-├─ spec.md      # QUÉ y POR QUÉ — historias, criterios de aceptación, fuera de alcance, preguntas,
-│                # y «Enfoque técnico»: módulos, tablas, contratos y riesgos
-├─ plan.md      # opcional — solo si la spec es transversal, agrega un puerto entre módulos,
-│                # tecnología nueva o cambia la arquitectura. Lo aprueba `architect`.
-├─ tasks.md     # EN QUÉ ORDEN — tareas de 2–4 h, cada una con sus criterios de aceptación
-├─ contracts/   # fragmentos OpenAPI / DTOs / eventos (opcional)
-└─ review.md    # cierre: verificación (CA → prueba → estado) + seguridad (si aplica) + UI (si aplica)
-                 # + hallazgos de revisión
+├─ spec.md      # QUÉ y POR QUÉ — historias, criterios de aceptación, reglas, seguridad, UI, fuera de alcance
+│                # ≤ 150 líneas. Sin detalles de implementación: el cómo vive en plan.md
+├─ plan.md      # CÓMO — obligatorio. Archivos, contratos, migraciones, pruebas y riesgos. ≤ 250 líneas
+├─ tasks.md     # EN QUÉ ORDEN — 5 a 12 tareas verticales de medio día a un día
+└─ review.md    # cierre — una página: CA → prueba → estado, seguridad y bloqueantes
 ```
 
-Las decisiones grandes (dependencia significativa, cambio estructural) siempre van a un ADR (`docs/adr/`),
-tenga la spec `plan.md` o no.
+El plan dice qué archivos se tocan y qué se espera de cada uno; **no** es el código escrito en prosa (sin cuerpos de
+funciones ni pseudocódigo línea a línea). Las decisiones grandes (dependencia significativa, cambio estructural) van
+a un ADR (`docs/adr/`).
 
 ## 2. Estados y compuertas
 
 | Estado | Entra cuando | Quién decide | Sale hacia |
 |---|---|---|---|
 | `Borrador` | `/spec` crea el archivo | planner | `Lista` |
-| `Lista` | No quedan preguntas `[ABIERTA]` bloqueantes; si hay UI, cada pantalla tiene mockup o decisión explícita; si la spec tiene `plan.md`, `architect` lo aprobó primero | **humano dueño** (plan.md: `architect` antes) | `En curso` |
-| `En curso` | Primer commit de `feat/NNN-*` | developer | `En revisión` |
-| `En revisión` | Todas las tareas de `tasks.md` marcadas; `/review` corrió `tester` (+ `security-auditor`, + `ui-designer` si aplican) | reviewer + humano | `Hecha` o vuelve a `En curso` |
-| `Hecha` | PR integrado y desplegado en staging (en la Fase 1: integrado y demostrable en local, §7.2) | humano | — |
+| `Lista` | Spec sin preguntas `[ABIERTA]` bloqueantes, pantallas con mockup o decisión explícita, y `plan.md` **aprobado por Adrián** | **Adrián** | `En curso` |
+| `En curso` | Primer commit de `feat/NNN-*` | dueño de la spec | `En revisión` |
+| `En revisión` | Tareas marcadas, CI en verde y `/review` corrido | reviewer + Adrián | `Hecha` o vuelve a `En curso` |
+| `Hecha` | PR integrado y desplegado en staging (mientras no exista staging: integrado y demostrable en local, §7.2) | Adrián | — |
 
-**Compuertas humanas obligatorias**: aprobar la spec (incluye el «Enfoque técnico») y aprobar el PR. Cuando la
-spec tiene `plan.md`, su aprobación por `architect` es una compuerta adicional, previa a la humana. Los agentes
-proponen; el equipo decide.
+**Compuertas humanas obligatorias**: aprobar la spec y su plan antes del código, y aprobar el PR. Las dos las da
+Adrián (tech lead); sus propios PRs siguen §7.1. `architect` solo interviene, antes de esa aprobación, si el plan
+agrega un puerto entre módulos, una tecnología nueva o cambia la arquitectura. Los agentes proponen; el equipo decide.
 
 ## 3. Secuencia típica
 
 ```
-Humano: /spec "carga de archivos por partes con control de cuota"
-  └─ planner → specs/005-carga-y-descarga/spec.md (Borrador), con «Enfoque técnico» y preguntas
-Humano responde preguntas y aprueba la spec
-  └─ si es transversal, agrega un puerto entre módulos, tecnología nueva o cambia la arquitectura:
-     /plan 005 → planner → plan.md → architect aprueba
-  └─ spec pasa a Lista
-Humano: /tasks 005
-  └─ planner → tasks.md (T-01…T-n, cada tarea con sus CA)
-Humano: /implement 005 T-01..T-04      (o sin rango para la siguiente tarea pendiente)
-  └─ developer → prueba roja → código → prueba verde → refactor → commit
-     el primer commit pasa la spec a En curso
-Humano: /review 005
-  └─ tester → pruebas de aceptación faltantes, corre suites → sección «Verificación» de review.md
-  └─ security-auditor (si la spec toca auth, datos de cliente, enlaces o bitácoras) → pruebas ISO → sección «Seguridad»
-  └─ ui-designer (si hay UI) → comparación con mockup y capturas, axe → sección «UI»
-  └─ reviewer → bloqueantes / importantes / sugerencias, cierra review.md con veredicto
-Humano abre PR → otro integrante aprueba → merge → staging      (Fase 1: excepciones de §7)
+Dueño: /spec "carga de archivos por partes"        → planner → spec.md (Borrador) con preguntas
+Dueño responde preguntas
+Dueño: /plan 005                                    → planner → plan.md
+                                                      (architect, solo si hay puerto nuevo / tecnología nueva)
+Adrián revisa spec + plan (Claude le prepara el resumen) → Aprobado → spec en Lista
+Dueño: /tasks 005                                   → planner → tasks.md (5–12 tareas)
+Dueño: /implement 005                               → developer → prueba roja → código → verde → commit por tarea
+Dueño: /review 005                                  → reviewer (+ security-auditor si aplica) → review.md
+Dueño abre el PR → CI verde → Adrián aprueba → squash merge → Hecha
 ```
-
-Apoyo opcional: `/verify NNN` corre solo `tester` (+ `security-auditor` si aplica) antes de que todas las
-tareas estén listas, para adelantar hallazgos. No sustituye a `/review`, que sigue siendo obligatorio para cerrar.
 
 ## 4. Reglas del flujo
 
-1. **Una spec ≈ un entregable demostrable** en ≤ 1 semana por una persona. Si es más grande, se divide.
+1. **Una spec ≈ un entregable demostrable** en ≤ 3 días de una persona. Si es más grande, se divide en dos specs.
 2. Las specs se numeran en orden de creación; el orden de implementación lo dan las dependencias en `specs/README.md`.
-3. Una tarea ≈ 2–4 horas y un commit. Cada tarea lista los CA que cubre; no se exige una matriz CA→tareas ni un
-   diagrama de paralelismo aparte. Si una tarea crece, el developer se detiene y pide al planner dividirla.
-4. **Cambios de alcance durante la implementación**: el developer escribe la discrepancia en la sección
-   «Registro de cambios» de la spec y se detiene; el planner la actualiza; el humano la aprueba.
-5. **Spikes**: permitidos solo con límite de tiempo (≤ 1 día) y pregunta concreta (p. ej. «¿qué campos entrega el
-   callback de ONLYOFFICE en nuestra versión?»). El resultado va a `plan.md` (si existe) o a un ADR; el código
-   del spike se descarta.
-6. **Specs transversales, con puerto nuevo entre módulos, tecnología nueva o cambio de arquitectura**: `plan.md`
-   es obligatorio y `architect` lo aprueba antes de que la spec pase a `Lista`.
-7. **Bugs**: si el comportamiento contradice la spec → `fix/` con prueba que reproduce; si la spec no lo cubría → se agrega el criterio primero.
-8. **PRs**: por defecto una spec = un PR, abierto tras `/review`. Los PRs parciales se permiten sin requisitos
-   extra más allá de lint/typecheck/unit en verde. `review.md` se escribe una sola vez, al cerrar la spec.
+3. **Tiempos de referencia**: spec 1 h · plan 2 h · revisión del plan 30 min · implementación 1–3 días · revisión
+   del PR 1 h. Si algo pasa del doble, el dueño avisa a Adrián en vez de seguir.
+4. **Tareas verticales**: 5 a 12 por spec, cada una de medio día a un día, y cada una deja algo probado de punta a
+   punta (contrato + dominio + endpoint + prueba, o componente + prueba). Sin tareas de «cierre» ni de
+   «actualizar casillas»: el PR integrado es el cierre. Una sola tarea humana: el recorrido de la demo.
+5. **Pruebas por riesgo** (el Art. III sigue: pruebas primero, integración contra servicios reales):
+   - unitarias para reglas de dominio y políticas;
+   - una prueba de integración por endpoint: caso feliz y error principal;
+   - aislamiento **siempre** que la spec toque datos de un cliente;
+   - componentes web para los estados de la spec §9; E2E solo para los flujos de la demo.
+   No se repite el mismo CA en tres capas.
+6. **Una spec = una rama `feat/NNN-slug` = un PR** (dos como máximo: `api` y `web`). La rama vive ≤ 3 días y se
+   integra con squash. No se abren ramas por bloque de tareas.
+7. **Cambios de alcance durante la implementación**: el developer escribe la discrepancia en «Registro de cambios»
+   de la spec y se detiene; se corrige spec o plan y Adrián lo aprueba.
+8. **Spikes**: solo con límite de tiempo (≤ 1 día) y pregunta concreta. El resultado va a `plan.md` o a un ADR; el
+   código del spike se descarta.
+9. **Bugs**: si el comportamiento contradice la spec → `fix/` con prueba que reproduce; si la spec no lo cubría → se agrega el criterio primero.
+10. **Hallazgos y pendientes**: toda desviación de los diagramas va a `design-findings.md` (DF-xx) y todo lo que
+    queda fuera de la spec (diagramas por redibujar, documentos por corregir, decisiones abiertas) va a
+    `pendientes.md`, en el mismo PR que lo descubre.
 
-## 5. Trabajo en paralelo de 4 personas
+## 5. Trabajo en paralelo
 
-- Cada integrante es **dueño** de un grupo de módulos (asignación en `specs/README.md`).
-- Tareas paralelizables de distintas specs pueden avanzar a la vez si no tocan los mismos archivos.
-- Los mockups se hacen **antes** de que la spec los use (`/mockup`), y quien diseña una pantalla no tiene que ser quien la implementa.
-- Los contratos (`packages/contracts`) y migraciones se integran primero y en PRs pequeños para desbloquear a los demás.
-- Quien revisa un PR no es su autor ni el dueño exclusivo del módulo (regla Crystal Clear + RNF-19). Única excepción: los PRs del diseñador principal (§7.1).
-- Coordinación asíncrona: el estado vive en `specs/README.md` y en el tablero del repo; no en la memoria de nadie.
+- **Un módulo, un dueño**, de punta a punta (backend y frontend). Asignación en `specs/README.md`. Nadie edita un
+  módulo ajeno: si lo necesita, lo pide a su dueño o por un puerto.
+- Los únicos archivos compartidos son los listados en `specs/README.md` («Reglas de convivencia»).
+- Los mockups se hacen **antes** de que la spec los use (`/mockup`).
+- Los contratos (`packages/contracts`, un archivo por módulo) y las migraciones se integran primero para desbloquear a los demás.
+- Adrián revisa todos los planes y PRs; nadie más aprueba el trabajo de otro sin él. Sus PRs siguen §7.1.
+- Coordinación asíncrona: el estado vive en `specs/README.md`; `/status` resume quién va atrasado y en qué.
 
 ## 6. Cierre de fase
 
@@ -113,7 +112,7 @@ otro integrante. Todo lo demás se mantiene:
 - Antes del merge, el PR pasa la verificación automática: el CI en cuanto exista (§7.2); mientras tanto, el autor
   corre en local `pnpm lint`, `pnpm typecheck`, `pnpm test` y `pnpm test:int` (más `pnpm test:isolation` si la
   spec toca datos de cliente) y pega el resumen en el PR.
-- `/review NNN` sin bloqueantes sigue siendo obligatorio para cerrar una spec; en un PR parcial (§4.8) llega con el
+- `/review NNN` sin bloqueantes sigue siendo obligatorio para cerrar una spec; si la spec usa dos PRs (§4.6), llega con el
   último bloque, como siempre.
 - GitHub no deja al autor pulsar «Approve»: la autoaprobación es un comentario propio en el PR («Autoaprobado,
   `workflow.md` §7.1») seguido del merge. La protección de `main` (spec 000, T-33) lo permite con dos rulesets: uno

@@ -30,7 +30,7 @@ a mano y estados sin diseñar.
 5. Escribe o actualiza el `README.md` de la carpeta: spec, estados y decisiones de UX.
 6. Actualiza la fila del inventario (§7) a `Borrador`. Solo el equipo la pasa a `Aprobado`.
 
-## Modo 3 — Auditar la UI implementada (dentro de `/verify`)
+## Modo 3 — Auditar la UI implementada (a pedido del `reviewer`, pantallas nuevas sin mockup aprobado)
 Revisa `apps/web` en el diff de la rama y las capturas de Playwright (`e2e/__screenshots__/`):
 - [ ] Coincide con el mockup en estructura, jerarquía y estados; las diferencias intencionales están explicadas.
 - [ ] Sin hex ni valores arbitrarios en componentes (`grep -rnE "#[0-9a-fA-F]{3,8}|\\[[0-9.]+px\\]" apps/web/src --include=*.tsx`), salvo las excepciones de §5.

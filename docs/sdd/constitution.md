@@ -8,9 +8,8 @@ de los cuatro integrantes en una reunión de revisión.
 ## Artículo I — La spec manda
 
 1. Todo cambio de comportamiento nace de una spec en `specs/NNN-slug/`.
-2. La spec describe **qué** y **por qué**, con su «Enfoque técnico» del **cómo**; un `plan.md` aparte solo si la
-   spec es transversal, agrega un puerto entre módulos, tecnología nueva o cambia la arquitectura; las tareas
-   describen **en qué orden**.
+2. La spec describe **qué** y **por qué**; el `plan.md`, obligatorio y aprobado antes del código, describe el
+   **cómo**; las tareas describen **en qué orden**.
 3. Si la implementación descubre que la spec está mal, se detiene, se corrige la spec y se continúa.
 4. Correcciones sin cambio de comportamiento (refactor, typo, dependencia menor) no requieren spec, pero sí PR y revisión.
 
