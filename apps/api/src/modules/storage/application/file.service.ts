@@ -16,19 +16,11 @@ import { I_NODE_REPOSITORY } from './ports/i-node.repository.port';
 import type { FileListPage, FileListQuery, INodeRepository } from './ports/i-node.repository.port';
 import { I_OBJECT_STORAGE } from './ports/i-object-storage.port';
 import type { IObjectStorage } from './ports/i-object-storage.port';
+import type { StorageLogger } from './storage-logger';
 
 const RATE_LIMIT_WINDOW_SECONDS = 60;
 const DOWNLOAD_RATE_KEY_PREFIX = 'storage:download-url:';
 const MS_PER_SECOND = 1000;
-
-/**
- * Lo mínimo que `FileService` necesita del logger (se inyecta `PinoLogger`; permite un doble en las pruebas).
- * Solo identificadores: nunca nombre de archivo, URL, clave de objeto ni firmas (plan §7, CA-20).
- */
-export interface FileServiceLogger {
-  info(payload: Record<string, unknown>): void;
-  error(payload: Record<string, unknown>): void;
-}
 
 /** URL de descarga firmada y el instante en que deja de valer (CA-13). */
 export interface DownloadUrl {
@@ -52,7 +44,7 @@ export class FileService {
     @Inject(I_AUDIT_LOGGER) private readonly audit: IAuditLogger,
     @Inject(I_CLOCK) private readonly clock: IClock,
     @Inject(FILE_SERVICE_CONFIG) private readonly config: FileServiceConfig,
-    @Inject(PinoLogger) private readonly logger: FileServiceLogger,
+    @Inject(PinoLogger) private readonly logger: StorageLogger,
   ) {}
 
   /** Página de la raíz del actor. Lanza `InvalidQueryError` si el cursor no es uno emitido por la API. */

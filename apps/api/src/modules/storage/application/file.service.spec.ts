@@ -10,9 +10,9 @@ import { FileName } from '../domain/file-name.vo';
 
 import type { FileServiceConfig } from './file-service-config';
 import { FileService } from './file.service';
-import type { FileServiceLogger } from './file.service';
 import type { FileListPage, FileListQuery, INodeRepository } from './ports/i-node.repository.port';
 import type { IObjectStorage, PresignDownloadInput } from './ports/i-object-storage.port';
+import type { StorageLogger } from './storage-logger';
 
 const NOW = new Date('2026-09-30T10:00:00.000Z');
 const OWNER_ID = '11111111-1111-4111-8111-111111111111';
@@ -110,7 +110,7 @@ function setup(options: SetupOptions = {}) {
   const rateLimiter = new FakeRateLimiter(calls, options.decision);
   const audit = new FakeAuditLogger(options.auditFails);
   const { storage, presigned } = fakeObjectStorage(calls);
-  const logger = { info: jest.fn(), error: jest.fn() } satisfies FileServiceLogger;
+  const logger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() } satisfies StorageLogger;
   const service = new FileService(
     nodes,
     storage,
