@@ -18,25 +18,11 @@ import { login } from '../api';
 import { saveRequestLinkEmail } from '../request-link-email-storage';
 import { rememberSession } from '../session/session-memory';
 
+import { FieldError } from './field-error';
 import { LoginAlert, RESET_PASSWORD_HREF } from './login-alert';
 import { PasswordField } from './password-field';
 
 const REQUEST_LINK_PATH = '/registro/pedir-enlace';
-
-function FieldError({
-  id,
-  message,
-}: {
-  readonly id: string;
-  readonly message: string | undefined;
-}): JSX.Element | null {
-  if (message === undefined) return null;
-  return (
-    <p id={id} className="text-xs text-destructive">
-      {message}
-    </p>
-  );
-}
 
 /**
  * Inicio de sesión (spec 002 §11, mockup p. 07). Con éxito deja la sesión en memoria (CA-28) y lleva al inicio del rol

@@ -683,7 +683,7 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   mockup (p. 07) dentro del `PublicHeader`; enlaces a registro y a recuperar; jest-axe. Luego la página.
   Archivos: `apps/web/app/(public)/iniciar-sesion/page.tsx` y su `*.spec.tsx`.
 
-- [ ] **T-91** `RequestResetForm` y `/recuperar-contrasena` — CA: CA-18, CA-27 — Depende: T-81, T-82, 001 T-63 — ~1 h
+- [x] **T-91** `RequestResetForm` y `/recuperar-contrasena` — CA: CA-18, CA-27 — Depende: T-81, T-82, 001 T-63 — ~1 h
   Prueba primero `features/identity/components/request-reset-form.spec.tsx`: default, enviando, error, límite (texto de
   recuperación), revisa-tu-correo con `CheckEmailPanel` en la variante sin «Cambiar correo»; la misma pantalla para
   cualquier correo; jest-axe. Luego el componente y la página (esquema de `registro--pedir-enlace`).
