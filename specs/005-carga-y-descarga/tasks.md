@@ -498,7 +498,7 @@ salvo la lectura por rango del detector.
   `@nestjs/schedule`.
   Archivos: `apps/api/src/modules/storage/infrastructure/upload-cleanup.processor.ts`, `apps/api/src/modules/storage/infrastructure/upload-cleanup.scheduler.ts`, `apps/api/src/modules/storage/infrastructure/upload-cleanup.processor.spec.ts`.
 
-- [ ] **T-50** Aislamiento del mantenimiento — CA: CA-9, DF-52 — Depende: T-24, T-48 — ~4 h
+- [x] **T-50** Aislamiento del mantenimiento — CA: CA-9, DF-52 — Depende: T-24, T-48 — ~4 h
   `storage-maintenance.iso-spec.ts` con contenedor propio: un script de arranque (superusuario) crea el rol dueño
   `NOSUPERUSER`, la base, `CREATE EXTENSION vector` y `nimbo_app`; las migraciones corren con ese dueño. La suite
   **falla con mensaje explícito** si el dueño es superusuario (no pasa en vacío). Afirma: `nimbo_app` sin actor ve
