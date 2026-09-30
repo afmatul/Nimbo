@@ -956,6 +956,40 @@ describe('UploadService.complete: registro final', () => {
     expect(ctx.audit.records).toEqual([]);
   });
 
+  it('CA-22, Art. XI: si `cancel` purga el objeto mientras se detecta el tipo, responde 404 sin archivo', async () => {
+    const ctx = setup();
+    const session = await uploadedSimple(ctx);
+    jest.spyOn(ctx.detector, 'detect').mockImplementation(async (reader) => {
+      await ctx.service.cancel(ACTOR, session.id);
+      await reader.read(0, 4);
+      return ctx.detector.result;
+    });
+
+    await expect(ctx.service.complete(ACTOR, session.id)).rejects.toBeInstanceOf(
+      UploadNotFoundError,
+    );
+
+    expect(stateOf(ctx, session).state).toBe('cancelada');
+    expect(ctx.nodes.inserted).toEqual([]);
+    expect(ctx.quotas.added).toEqual([]);
+    expect(ctx.audit.records).toEqual([]);
+  });
+
+  it('Art. XI: si leer el objeto falla y el objeto sigue ahí, propaga el error y la carga sigue activa', async () => {
+    const ctx = setup();
+    const session = await uploadedSimple(ctx);
+    const outage = new Error('minio caído');
+    jest.spyOn(ctx.storage, 'getRange').mockRejectedValue(outage);
+    jest
+      .spyOn(ctx.detector, 'detect')
+      .mockImplementation((reader) => reader.read(0, 4).then(() => ctx.detector.result));
+
+    await expect(ctx.service.complete(ACTOR, session.id)).rejects.toBe(outage);
+
+    expect(stateOf(ctx, session).state).toBe('activa');
+    expect(ctx.nodes.inserted).toEqual([]);
+  });
+
   it('CA-1, Art. XI: dos `complete` simultáneos de la misma carga responden el mismo archivo (sin 404)', async () => {
     const ctx = setup();
     const session = await uploadedSimple(ctx);

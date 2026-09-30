@@ -343,8 +343,12 @@ export class FakeObjectStorage implements IObjectStorage {
     return Promise.resolve(object === undefined ? null : { sizeBytes: BigInt(object.length) });
   }
 
+  /** Como el adaptador real: un objeto ausente rechaza (S3 responde `NoSuchKey`). */
   getRange(key: string, start: number, endInclusive: number): Promise<Buffer> {
-    const object = this.objects.get(key) ?? Buffer.alloc(0);
+    const object = this.objects.get(key);
+    if (object === undefined) {
+      return Promise.reject(Object.assign(new Error('NoSuchKey'), { name: 'NoSuchKey' }));
+    }
     return Promise.resolve(object.subarray(start, endInclusive + 1));
   }
 

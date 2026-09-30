@@ -40,7 +40,11 @@ import { toFileSummary } from './file-summary';
 import { I_PLAN_LIMITS_PROVIDER } from './plan-limits';
 import type { IPlanLimitsProvider, PlanLimits } from './plan-limits';
 import { I_FILE_TYPE_DETECTOR } from './ports/i-file-type-detector.port';
-import type { ByteReader, IFileTypeDetector } from './ports/i-file-type-detector.port';
+import type {
+  ByteReader,
+  DetectionResult,
+  IFileTypeDetector,
+} from './ports/i-file-type-detector.port';
 import { I_NODE_REPOSITORY } from './ports/i-node.repository.port';
 import type { INodeRepository } from './ports/i-node.repository.port';
 import { I_OBJECT_STORAGE } from './ports/i-object-storage.port';
@@ -145,6 +149,7 @@ export class UploadService {
     const { maxFileBytes } = await this.plans.limitsFor(actor);
     const sizeBytes = await this.assembleObject(actor, session, maxFileBytes);
     const kind = await this.verifyType(actor, session, sizeBytes);
+    if (kind === null) return this.afterLostRegistration(actor, session.id);
     return this.register(actor, session, { sizeBytes, kind });
   }
 
@@ -373,17 +378,35 @@ export class UploadService {
     throw sizeErrorFor(verdict);
   }
 
-  /** Tipo real por rangos del objeto (CA-11, CA-12, CA-24); la extensión sale del nombre, no del cliente. */
+  /**
+   * Tipo real por rangos del objeto (CA-11, CA-12, CA-24); la extensión sale del nombre, no del cliente. `null` si el
+   * objeto desapareció mientras se leía: `cancel`/`expire` ganó su CAS y lo purgó (Art. XI).
+   */
   private async verifyType(
     actor: Actor,
     session: UploadSession,
     sizeBytes: bigint,
-  ): Promise<FileKind> {
+  ): Promise<FileKind | null> {
     const extension = session.name.extension();
-    const result = await this.detector.detect(this.readerFor(session, sizeBytes), extension);
+    const result = await this.detectType(session, sizeBytes, extension);
+    if (result === null) return null;
     if (result.ok) return result.kind;
     await this.reject(actor, session, 'tipo_invalido', () => this.purge(session));
     throw new InvalidFileTypeError(result.reason, extension);
+  }
+
+  /** Detecta el tipo; si la lectura falla y el objeto ya no existe, `null`. Cualquier otro fallo se propaga. */
+  private async detectType(
+    session: UploadSession,
+    sizeBytes: bigint,
+    extension: string,
+  ): Promise<DetectionResult | null> {
+    try {
+      return await this.detector.detect(this.readerFor(session, sizeBytes), extension);
+    } catch (error) {
+      if ((await this.storage.headObject(session.objectKey.value)) !== null) throw error;
+      return null;
+    }
   }
 
   private readerFor(session: UploadSession, sizeBytes: bigint): ByteReader {
@@ -466,7 +489,10 @@ export class UploadService {
     );
   }
 
-  /** Quien perdió el CAS final: el archivo si otro `complete` lo registró; si no, el error de `raceLostError`. */
+  /**
+   * Quien perdió el CAS final (o vio desaparecer el objeto): el archivo si otro `complete` lo registró; si no, 410 si
+   * la carga venció y 404 en cualquier otro caso.
+   */
   private async afterLostRegistration(
     actor: Actor,
     uploadId: string,
