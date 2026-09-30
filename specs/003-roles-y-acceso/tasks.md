@@ -534,9 +534,9 @@ tablas ni migraciones.
 
 - [x] **T-51** [P] [P×PR] `InternalAreaPlaceholder` — CA: CA-17 — Depende: T-48 — ~0,5 h
   Prueba primero `apps/web/src/features/access/components/internal-area-placeholder.spec.tsx` (con jest-axe, props
-  falsas `fullName`, `role`, `onLogout`): «Hola, {nombre}. Tu área de {rol} estará disponible pronto.» con `{rol}` en
-  minúsculas desde `ROLE_LABELS`; botón «Cerrar sesión» que llama a `onLogout`. Luego el componente (recibe la acción
-  de cierre por props; la conecta T-53).
+  falsas `fullName`, `role`): «Hola, {nombre}. Tu área de {rol} estará disponible pronto.» con `{rol}` en
+  minúsculas desde `ROLE_LABELS`. «Cerrar sesión» no va en el componente: lo pone la página con el `SignOutButton` de
+  002 (cambio de la revisión PR-F, UI-1; ver Notas).
   Archivos: `apps/web/src/features/access/components/internal-area-placeholder.{tsx,spec.tsx}`.
 
 - [x] **T-52** `RequireRole` — CA: CA-17, CA-5 (experiencia) — Depende: T-48, **002-PR-5a** (contexto de sesión) — ~1 h
@@ -578,6 +578,10 @@ tablas ni migraciones.
   de BD) y `/review 003`. Actualizar la fila de 003 en `specs/README.md`. Si PR-D se integra después de PR-F, estos
   documentos se producen con el cierre de PR-D (plan §6.12).
   Archivos: `specs/README.md`, `specs/003-roles-y-acceso/tasks.md`.
+
+- Evidencia del PR-F (2026-09-29, Docker; rama `feat/003-web`): `pnpm lint`, `pnpm typecheck` y `pnpm env:check` en
+  verde; `pnpm test`: api 672, web 308 (68 suites); `pnpm test:int` 378/378 (con el `.env` regenerado desde
+  `.env.example`); `pnpm test:isolation` 97/97. Revisión en `review-pr-f.md`. Pendiente: T-55 (recorrido humano).
 
 ## Diferidas (no forman parte de estos PR)
 
@@ -765,4 +769,17 @@ PR-F = 9 (T-48…T-56). Total: 56.
   total`, `Tests: 1 failed, 96 passed, 97 total`. Sin la variable: 7/7 suites y 97/97 pruebas, salida 0. Las seis
   suites reales (`identity-enumeration` de 001 sin cambios, `access-internal-roles`, `database-roles`,
   `roles-and-actor`, `isolation-world`, `rls-context`) corren como `nimbo_app`.
+- **PR-F, desvíos aceptados en la revisión** (`review-pr-f.md`):
+  - `SHARED_FORBIDDEN` en el catálogo de la web lleva el correo de soporte (spec §11); la API conserva «escríbenos.»
+    (plan §6.2, con nota).
+  - «Ir a mi inicio» / «Ir al inicio» son botones con `router.push` y el foco al título se hace con
+    `useFocusTitleOnMount` (busca el `h3` y quita el contorno del navegador): `StateView` (000b) no acepta `href`,
+    nivel de título ni `ref`. Pendiente de 000b en `docs/sdd/pendientes.md`.
+  - `NotFoundState` usa el mensaje de §11 como título (la spec no fija otro); la 404 no tiene `h1` (axe: moderado).
+  - UI-1: «Cerrar sesión» del área interna es el `SignOutButton` de 002 junto al `h1` (carga y sin doble cierre);
+    `InternalAreaPlaceholder` ya no recibe `onLogout`.
+  - I-1: `CLIENT_ROLES` e `INTERNAL_ROLES` viven en `home-path.ts` (`INTERNAL_ROLES` se deriva de `ROLES`) y los usan
+    `homePathFor` y los dos layouts; ambos layouts tienen prueba.
+  - SEC-1: `RequireRole` corre en el cliente; las páginas bajo `(cliente)`/`(interno)` no piden datos desde el
+    servidor (JSDoc de `RequireRole`).
 - <Hallazgos y desviaciones, con enlace al registro de cambios de la spec.>
