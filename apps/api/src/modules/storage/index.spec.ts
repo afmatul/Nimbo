@@ -31,6 +31,18 @@ describe('modules/storage/index.ts', () => {
     expect(typeof storage.I_PLAN_LIMITS_PROVIDER).toBe('symbol');
   });
 
+  it('CA-9, DF-52: el escáner de cargas vencidas (único acceso sin actor) no sale del módulo', () => {
+    const exported = Object.keys(storage).join(' ');
+
+    expect(exported).not.toMatch(/Scanner|EXPIRED_UPLOAD/);
+  });
+
+  it('CA-9, DF-52: `UploadService` no recibe el escáner (solo lo inyecta el procesador de limpieza)', () => {
+    const source = readFileSync(join(__dirname, 'application', 'upload.service.ts'), 'utf8');
+
+    expect(source).not.toMatch(/I_EXPIRED_UPLOAD_SCANNER|IExpiredUploadScanner/);
+  });
+
   it('RN-1: `plan-limits.ts` no importa `billing` (billing implementa el puerto, no al revés)', () => {
     const source = readFileSync(join(__dirname, 'application', 'plan-limits.ts'), 'utf8');
 

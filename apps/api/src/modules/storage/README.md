@@ -36,6 +36,7 @@ Tablas (migraciones `20260930100000`…`100300`, plan §4): `archivo`, `version_
 | `INodeRepository`: `findAccessibleById`, `listAccessible`, `findTakenNames`, `insertWithVersion` | `I_NODE_REPOSITORY`           | `TypeOrmNodeRepository`                        |
 | `IUploadSessionRepository`: `insert`, `findOwned`, `transition` (compare-and-set)                | `I_UPLOAD_SESSION_REPOSITORY` | `TypeOrmUploadSessionRepository`               |
 | `IQuotaRepository`: `lockUsage`, `lockAndReadUsage`, `addUsedBytes`                              | `I_QUOTA_REPOSITORY`          | `TypeOrmQuotaRepository`                       |
+| `IExpiredUploadScanner`: `listExpiredIds(now, limit)` → `{ id, propietarioId }[]` (sin actor)    | `I_EXPIRED_UPLOAD_SCANNER`    | `SqlExpiredUploadScanner`                      |
 
 - Todo método recibe `actor` y toma el `EntityManager` de `TransactionContext.requireActorScope(actor)`: se llama
   dentro de `ITransactionRunner.withActor(actor, …)` o lanza `ActorScopeMissingError`.
@@ -45,7 +46,8 @@ Tablas (migraciones `20260930100000`…`100300`, plan §4): `archivo`, `version_
 - `listAccessible` pagina con un cursor opaco (`creado_en DESC, id DESC`); un cursor ajeno es `InvalidQueryError`.
 - `findTakenNames(actor, name)` devuelve el nombre y sus copias «base (n).ext» ocupados (sin distinguir mayúsculas,
   sin papelera) para `FileName.firstFree`.
-- Las cargas vencidas de todos los propietarios **no** se leen por estos puertos: eso es `IExpiredUploadScanner`
-  (`carga_expiradas`, ADR-0021), que llega con PR-E.
+- Las cargas vencidas de todos los propietarios **no** se leen por los puertos con actor: eso es
+  `IExpiredUploadScanner`, que llama a `carga_expiradas` (ADR-0021) dentro de `ITransactionRunner.run`. Es el único
+  acceso sin actor: solo lo inyecta `UploadCleanupProcessor` y no sale de `storage/index.ts`.
 - Pruebas: `apps/api/test/int/storage/*.int-spec.ts` y `apps/api/test/int/access/accessible-nodes.int-spec.ts`
   (Testcontainers; `pnpm test:int`).

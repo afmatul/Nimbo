@@ -482,7 +482,7 @@ salvo la lectura por rango del detector.
 
 ## Bloque 5 — PR-E «limpieza a las 24 h» (plan D-6, ADR-0021) · depende de: PR-D
 
-- [ ] **T-48** `IExpiredUploadScanner` — CA: CA-9 — Depende: T-24 — ~2 h
+- [x] **T-48** `IExpiredUploadScanner` — CA: CA-9 — Depende: T-24 — ~2 h
   Prueba primero `expired-upload.scanner.int-spec.ts`: `listExpiredIds(now, limit)` llama `carga_expiradas` y solo
   devuelve `{ id, propietarioId }` de activas vencidas. No se exporta desde `storage/index.ts`. `UploadService` no
   lo recibe.
