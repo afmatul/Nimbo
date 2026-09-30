@@ -523,7 +523,7 @@ salvo la lectura por rango del detector.
 
 ## Bloque 6 — PR-F «página Mis archivos» (plan §6 Frontend) · depende de: PR-B, 001-PR-4, 002-PR-5a, 003-PR-F
 
-- [ ] **T-53** Cliente HTTP, catálogo y proveedor de la pestaña — CA: CA-5, CA-19, CA-21 — Depende: T-02, T-13, 001 T-57, 002 T-85 — ~3 h
+- [x] **T-53** Cliente HTTP, catálogo y proveedor de la pestaña — CA: CA-5, CA-19, CA-21 — Depende: T-02, T-13, 001 T-57, 002 T-85 — ~3 h
   Prueba primero: `features/storage/api.ts` valida con los esquemas de T-02 y usa `auth-fetch` solo contra la API.
   `lib/error-catalog.ts` gana cada `STORAGE_*` con el texto de spec §9, incluido el de `STORAGE_UPLOAD_SIZE_MISMATCH`
   sin parámetros; el aviso de cuota ofrece «Liberar espacio» y no «Ver planes». `use-upload-manager` conecta el
@@ -531,7 +531,7 @@ salvo la lectura por rango del detector.
   las cargas al navegar dentro de la pestaña; un reload las pierde (RN-7) y no hay lista de pendientes.
   Archivos: `apps/web/src/features/storage/api.ts`, `apps/web/src/features/storage/api.spec.ts`, `apps/web/src/lib/error-catalog.ts`, `apps/web/src/features/storage/hooks/use-upload-manager.ts`, `apps/web/src/app/(app)/(cliente)/layout.tsx`.
 
-- [ ] **T-54** Página `/archivos` — CA: CA-1, CA-13, CA-21 — Depende: T-16, T-17, T-53, 003-PR-F — ~3 h
+- [x] **T-54** Página `/archivos` — CA: CA-1, CA-13, CA-21 — Depende: T-16, T-17, T-53, 003-PR-F — ~3 h
   Sustituye el marcador de 003. «Subir archivos» y soltar archivos en la página encolan en el manager. «Descargar»
   pide la URL y abre el enlace (la respuesta lleva `attachment`). El fallo del listado no toca las cargas del panel.
   «Liberar espacio» apunta a esta misma ruta hasta que exista 007. Prueba de la página con el cliente falso: vacío,
@@ -688,3 +688,53 @@ así que no queda pendiente la ejecución en staging exigida por plan §8 para e
 sin error; (3) `correlationId` del programa fijado al registrarlo; (4) reintentos 3 × exponencial desde 30 s, fallidos 24 h;
 (6) `I_PLAN_LIMITS_PROVIDER` enlazado en `WorkerModule` (DF-51); (7) `UPLOAD_CONFIG` del worker lanza al leerse; (8) MinIO
 del worker firma contra el endpoint interno.
+
+### Traspaso PR-F (2026-09-29)
+
+- **Hechas**: T-53 (`0e49c7b`) y T-54 (`f3af738`), en `feat/005-pagina`. `web`: lint, typecheck y 456 unitarias en
+  verde; raíz: `pnpm typecheck` y `pnpm test` en verde (api 710, contracts 221, web 456).
+- **T-56 bloqueada (no se forzó)**: la parte de `docs/operations/ambientes.md` ya existe desde T-24 (`74f3fbf`, en
+  `feat/005-persistencia` → `feat/005-api` → `feat/005-limpieza`): no se duplica aquí. Falta solo el README de
+  `apps/api/src/modules/storage/`: flujo `POST /uploads` → `PUT` directo a MinIO con URL firmada → `POST
+  /uploads/:id/complete` (y `resume`/`DELETE`), y DF-59 en una frase (`storage` escribe solo
+  `usuario.espacio_usado`). Debe escribirse sobre la versión del README de `feat/005-limpieza` (esta rama tiene la de
+  `main`; editarla aquí choca al integrar).
+- **T-57 sin marcar**: depende de T-56. `pnpm lint` falla solo por Prettier en dos archivos que este PR no toca
+  (`apps/api/src/modules/storage/domain/object-key.spec.ts` y `packages/contracts/src/storage/schemas.ts`, de PR-A);
+  arreglarlo en la rama dueña. `specs/README.md` (fila 005) se actualiza al integrar.
+- **T-55** es humana: sin empezar.
+- **Decisiones (a revisar en `/review`)**: (1) `ApiClientError` gana `status` (HTTP; `undefined` sin respuesta) y
+  `details`, aditivos, en `lib/api-error.ts` y `lib/api-client.ts` (no listados en T-53): sin ellos `api.ts` no distingue
+  un corte de red de un error HTTP ni ve `suggestedName`. (2) El proveedor quedó en `components/uploads-provider.tsx`
+  (JSX) y el hook en `hooks/use-upload-manager.ts`; la vista de la página en `components/my-files.tsx`, para que
+  `page.tsx` siga siendo un Server Component. (3) El panel toma sus textos de `storageMessage` del catálogo (sin
+  duplicarlos). (4) **Propuesta en el registro de cambios de la spec**: ningún contrato expone `maxFileBytes` a `web`;
+  `maxFileLabel` pasó a opcional y la página omite la cifra en el vacío y el arrastre. (5) Solo la primera página de
+  `GET /files` (50); sin «Cargar más» (007). (6) Los recién subidos en la pestaña se anteponen a la lista sin
+  volver a pedirla. (7) «Cerrar» del panel oculta las filas terminadas en el proveedor (el manager no tiene
+  `clear`).
+- **Pendiente para seguimiento**: la barra lateral de `AppLayout` sigue con los `href="#…"` de 003; revisión del
+  `ui-designer` de la página montada a 360 y 1440 px; guion de demo (T-55) con Docker y la API de `feat/005-api`.
+
+### Traspaso PR-F (2026-09-30)
+
+- **Fusión con `main`** (`0cfe864`): trae 003 PR-F (áreas de cliente e interno, `e581c72`) y 002 (recuperación de
+  contraseña). El layout de `(cliente)` queda como `RequireRole(CLIENT_ROLES)` → `SessionUploadsProvider` → páginas:
+  un rol interno no llega a montar el proveedor de cargas. Su prueba une CA-17 (003) y CA-21 (005) en jsdom.
+  `lib/error-catalog.ts` y su prueba cubren a la vez `SHARED_ERROR_CODES` y `STORAGE_ERROR_CODES`.
+- **Barra lateral**: `main` no la había resuelto; «Mis Archivos» enlaza a `/archivos` (`e443562`). Los otros cuatro
+  ítems siguen con `#…` hasta que existan sus páginas.
+- **Auditoría de UI cerrada**: UI-1 (`17e3ced`, soltar fuera de la zona no navega), UI-2 y UI-3 (`51df419`, anuncios
+  del panel y nombre de minimizar/expandir), UI-4 (`2465b8d`, panel en 360 px; utilidad `pb-safe` nueva en
+  `globals.css`), UI-5 (`6b06dfa`, «Suelta para subir» fijo y anunciado), UI-7 y UI-8 (`1055955`, `headingLevel` de
+  `StateView` y tamaño bajo el nombre en móvil).
+- **Pendientes de la auditoría (seguimiento)**: UI-6 (esqueleto de carga del listado) y las sugerencias UI-9 a
+  UI-15. `pb-safe` solo actúa cuando el layout raíz declare `viewportFit: 'cover'` (hoy no lo hace; es decisión
+  transversal).
+- **Suites** (raíz): `pnpm lint` y `pnpm typecheck` en verde; `pnpm test`: api 745, contracts 223, web 558, worker
+  34, config 7. `web` corre con la mitad de los núcleos y espera hasta 5 s en `findBy`/`waitFor` (`404d23a`): al
+  correr junto a `api`, 002 `reset-password-view` caducaba por contención. **Queda intermitente** la guarda R-8 de
+  `redact-deep` (`api`, spec 000): bajo carga midió 164 µs contra 150 µs en 1 de 3 corridas; sola pasa. No se tocó
+  (la guarda es de otra spec); decidirlo con su dueño.
+- **T-56/T-57** siguen como en la nota anterior (dependen del README de `storage` de PR-E). T-55 (humana) sin
+  empezar.

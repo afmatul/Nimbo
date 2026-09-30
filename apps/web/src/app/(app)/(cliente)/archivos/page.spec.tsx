@@ -1,19 +1,241 @@
-import { renderToStaticMarkup } from 'react-dom/server';
+/**
+ * @jest-environment jsdom
+ */
+import {
+  STORAGE_ERROR_CODES,
+  type FileSummary,
+  type InitUploadResponse,
+  type ListFilesResponse,
+  type ResumeUploadResponse,
+} from '@nimbo/contracts';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { axe } from 'jest-axe';
 
 import { SessionProvider } from '../../../../features/identity/session/session-provider';
+import type { StorageApi } from '../../../../features/storage/api';
+import { UploadsProvider } from '../../../../features/storage/components/uploads-provider';
+import { StorageRequestError } from '../../../../features/storage/storage-request-error';
+import type { UploadManagerOptions } from '../../../../features/storage/upload/upload-manager';
 
 import ArchivosPage from './page';
 
-describe('marcador de Mis archivos (destino de CA-1)', () => {
-  it('anuncia que los archivos aparecerán aquí y ofrece cerrar sesión', () => {
-    const markup = renderToStaticMarkup(
-      <SessionProvider apiPublicUrl="http://localhost/api/v1">
-        <ArchivosPage />
-      </SessionProvider>,
-    );
+const AT = '2026-09-30T10:00:00.000Z';
+const UPLOAD_ID = '2f0c1d2e-3a4b-4c5d-8e6f-7a8b9c0d1e2f';
+const INFORME: FileSummary = {
+  id: '7a8b9c0d-1e2f-4c5d-8e6f-2f0c1d2e3a4b',
+  name: 'informe.docx',
+  sizeBytes: 1_500,
+  kind: 'docx',
+  createdAt: AT,
+};
+const NUEVO: FileSummary = {
+  ...INFORME,
+  id: '9c0d1e2f-3a4b-4c5d-8e6f-7a8b2f0c1d2e',
+  name: 'nuevo.pdf',
+};
 
-    expect(markup).toContain('Mis archivos');
-    expect(markup).toContain('Tus archivos aparecerán aquí');
-    expect(markup).toContain('Cerrar sesión');
+function page(items: readonly FileSummary[]): ListFilesResponse {
+  return { items: [...items], nextCursor: null };
+}
+
+function never<T>(): Promise<T> {
+  return new Promise<T>(() => undefined);
+}
+
+function fakeApi(overrides: Partial<StorageApi> = {}): jest.Mocked<StorageApi> {
+  return {
+    init: jest.fn(() => never<InitUploadResponse>()),
+    resume: jest.fn(() => never<ResumeUploadResponse>()),
+    complete: jest.fn(() => Promise.resolve({ file: NUEVO })),
+    cancel: jest.fn(() => Promise.resolve()),
+    listFiles: jest.fn(() => Promise.resolve(page([]))),
+    downloadUrl: jest.fn(() => never()),
+    ...overrides,
+  } as jest.Mocked<StorageApi>;
+}
+
+async function renderPage(
+  api: StorageApi,
+  managerOptions?: UploadManagerOptions,
+): Promise<HTMLElement> {
+  const { container } = render(
+    <SessionProvider apiPublicUrl="http://localhost/api/v1">
+      <UploadsProvider api={api} {...(managerOptions ? { managerOptions } : {})}>
+        <ArchivosPage />
+      </UploadsProvider>
+    </SessionProvider>,
+  );
+  await act(async () => undefined);
+  return container;
+}
+
+async function chooseFiles(files: readonly File[]): Promise<void> {
+  const input = screen.getByLabelText<HTMLInputElement>('Elegir archivos para subir');
+  await act(async () => {
+    fireEvent.change(input, { target: { files } });
+  });
+}
+
+describe('página Mis archivos (/archivos)', () => {
+  beforeEach(() => {
+    global.fetch = jest.fn(() => never<Response>());
+  });
+
+  it('CA-1: sustituye el marcador; sin archivos muestra el vacío y «Subir archivos»', async () => {
+    const api = fakeApi();
+    await renderPage(api);
+
+    expect(await screen.findByText('Aún no tienes archivos')).toBeTruthy();
+    expect(screen.queryByText('Tus archivos aparecerán aquí')).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Mis archivos' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Cerrar sesión' })).toBeTruthy();
+    expect(api.listFiles).toHaveBeenCalledWith();
+  });
+
+  it('CA-1: lista la raíz con el menú «Acciones de {nombre}» en cada fila', async () => {
+    await renderPage(fakeApi({ listFiles: jest.fn(() => Promise.resolve(page([INFORME]))) }));
+
+    const table = await screen.findByRole('table');
+    expect(within(table).getByText('informe.docx')).toBeTruthy();
+    expect(within(table).getByRole('button', { name: 'Acciones de informe.docx' })).toBeTruthy();
+  });
+
+  it('CA-21: si el listado falla, «Reintentar» repite la petición y muestra la lista', async () => {
+    const listFiles = jest
+      .fn<Promise<ListFilesResponse>, [string?]>()
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValueOnce(page([INFORME]));
+    await renderPage(fakeApi({ listFiles }));
+
+    expect(await screen.findByText('No pudimos cargar tus archivos.')).toBeTruthy();
+    expect(screen.queryByText(/soporte/)).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
+
+    expect(await screen.findByRole('table')).toBeTruthy();
+    expect(listFiles).toHaveBeenCalledTimes(2);
+    expect(listFiles).toHaveBeenLastCalledWith();
+  });
+
+  it('CA-1, CA-21: con el listado caído, «Subir archivos» sigue habilitado y el panel sigue vivo', async () => {
+    const api = fakeApi({
+      listFiles: jest.fn(() => Promise.reject(new StorageRequestError(503, 'INTERNAL_ERROR'))),
+    });
+    await renderPage(api);
+    await screen.findByText('No pudimos cargar tus archivos.');
+
+    const upload = screen.getAllByRole('button', { name: 'Subir archivos' })[0];
+    expect(upload?.hasAttribute('disabled')).toBe(false);
+    await chooseFiles([new File(['hola'], 'nuevo.pdf')]);
+
+    expect(await screen.findByRole('region', { name: 'Subiendo 1 archivo' })).toBeTruthy();
+    expect(api.init).toHaveBeenCalledWith({ name: 'nuevo.pdf', sizeBytes: 4, onConflict: 'ask' });
+    expect(screen.getByText('No pudimos cargar tus archivos.')).toBeTruthy();
+  });
+
+  it('CA-1: soltar archivos en la página los encola en el manager', async () => {
+    const api = fakeApi();
+    await renderPage(api);
+    await screen.findByText('Aún no tienes archivos');
+
+    const zone = screen.getByTestId('upload-dropzone');
+    await act(async () => {
+      fireEvent.drop(zone, { dataTransfer: { files: [new File(['hola'], 'nuevo.pdf')] } });
+    });
+
+    await waitFor(() =>
+      expect(api.init).toHaveBeenCalledWith({
+        name: 'nuevo.pdf',
+        sizeBytes: 4,
+        onConflict: 'ask',
+      }),
+    );
+  });
+
+  it('CA-1 (UI-1): soltar un archivo fuera de la zona, sobre el encabezado, no lo abre el navegador', async () => {
+    const api = fakeApi();
+    await renderPage(api);
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Mis archivos' });
+    const files = { files: [new File(['hola'], 'nuevo.pdf')], types: ['Files'] };
+
+    const over = fireEvent.dragOver(heading, { dataTransfer: files });
+    const drop = fireEvent.drop(heading, { dataTransfer: files });
+
+    expect(over).toBe(false);
+    expect(drop).toBe(false);
+    expect(api.init).not.toHaveBeenCalled();
+  });
+
+  it('CA-1 (UI-1): un arrastre que no trae archivos (texto) no se intercepta', async () => {
+    await renderPage(fakeApi());
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Mis archivos' });
+
+    expect(fireEvent.drop(heading, { dataTransfer: { types: ['text/plain'] } })).toBe(true);
+  });
+
+  it('CA-1: un archivo recién subido aparece en la lista sin recargar', async () => {
+    const simple: InitUploadResponse = {
+      uploadId: UPLOAD_ID,
+      mode: 'simple',
+      name: 'nuevo.pdf',
+      expiresAt: AT,
+      upload: { url: 'https://s3.nimbo.test/u/a', method: 'PUT', expiresAt: AT },
+    };
+    const api = fakeApi({
+      listFiles: jest.fn(() => Promise.resolve(page([INFORME]))),
+      init: jest.fn(() => Promise.resolve(simple)),
+    });
+    await renderPage(api, { put: () => Promise.resolve() });
+    await screen.findByRole('table');
+
+    await chooseFiles([new File(['hola'], 'nuevo.pdf')]);
+
+    const table = screen.getByRole('table');
+    await waitFor(() =>
+      expect(
+        within(table)
+          .getAllByRole('row')
+          .slice(1)
+          .map((row) => row.textContent),
+      ).toEqual([expect.stringContaining('nuevo.pdf'), expect.stringContaining('informe.docx')]),
+    );
+    expect(api.listFiles).toHaveBeenCalledTimes(1);
+  });
+
+  it('CA-13: si la descarga falla con 404, el aviso va arriba de la lista y la fila se queda', async () => {
+    const api = fakeApi({
+      listFiles: jest.fn(() => Promise.resolve(page([INFORME]))),
+      downloadUrl: jest.fn(() =>
+        Promise.reject(new StorageRequestError(404, STORAGE_ERROR_CODES.STORAGE_NODE_NOT_FOUND)),
+      ),
+    });
+    await renderPage(api);
+    const trigger = await screen.findByRole('button', { name: 'Acciones de informe.docx' });
+
+    trigger.focus();
+    await act(async () => {
+      fireEvent.keyDown(trigger, { key: 'Enter' });
+    });
+    await act(async () => {
+      screen.getByRole('menuitem', { name: 'Descargar' }).click();
+    });
+
+    expect(api.downloadUrl).toHaveBeenCalledWith(INFORME.id);
+    expect(await screen.findByText('No encontramos «informe.docx».')).toBeTruthy();
+    expect(within(screen.getByRole('table')).getByText('informe.docx')).toBeTruthy();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Actualizar lista' }));
+    await waitFor(() => expect(api.listFiles).toHaveBeenCalledTimes(2));
+    expect(screen.queryByText('No encontramos «informe.docx».')).toBeNull();
+  });
+
+  it('CA-21: la lista no tiene violaciones de accesibilidad', async () => {
+    const container = await renderPage(
+      fakeApi({ listFiles: jest.fn(() => Promise.resolve(page([INFORME]))) }),
+    );
+    await screen.findByRole('table');
+
+    const results = await act(async () => axe(container));
+    expect(results.violations).toEqual([]);
   });
 });

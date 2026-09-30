@@ -14,17 +14,18 @@ function retryAfterSeconds(header: string | null, now: number): number | undefin
   return Math.max(0, Math.ceil((at - now) / 1000));
 }
 
-function generic(correlationId: string): ApiClientError {
+function generic(correlationId: string, status?: number): ApiClientError {
   return new ApiClientError({
     code: GENERIC_CODE,
     message: genericErrorMessage(correlationId),
     correlationId,
+    status,
   });
 }
 
 /**
- * `fetch` JSON con `x-correlation-id`. Un 2xx devuelve el cuerpo (un 204, `undefined`). Un error válido expone `code`,
- * `fields`, `correlationId` y `Retry-After`. Red caída o cuerpo inválido → error genérico.
+ * `fetch` JSON con `x-correlation-id`. Un 2xx devuelve el cuerpo (un 204, `undefined`). Un error válido expone `status`,
+ * `code`, `fields`, `details`, `correlationId` y `Retry-After`. Red caída (sin `status`) o cuerpo inválido → genérico.
  */
 export async function requestJson(url: string, init: RequestInit = {}): Promise<unknown> {
   const correlationId = crypto.randomUUID();
@@ -48,13 +49,13 @@ export async function requestJson(url: string, init: RequestInit = {}): Promise<
   try {
     body = await response.json();
   } catch {
-    throw generic(echoed);
+    throw generic(echoed, response.status);
   }
 
   if (response.ok) return body;
 
   const parsed = errorResponseSchema.safeParse(body);
-  if (!parsed.success) throw generic(echoed);
+  if (!parsed.success) throw generic(echoed, response.status);
 
   return Promise.reject(
     new ApiClientError({
@@ -62,7 +63,9 @@ export async function requestJson(url: string, init: RequestInit = {}): Promise<
       message: parsed.data.message,
       correlationId: parsed.data.correlationId,
       fields: parsed.data.fields ?? [],
+      details: parsed.data.details ?? {},
       retryAfterSeconds: retryAfter,
+      status: response.status,
     }),
   );
 }

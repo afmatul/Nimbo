@@ -29,6 +29,9 @@ function renderGroup(role: RoleName): void {
 
 describe('grupo (cliente)', () => {
   beforeEach(() => {
+    process.env['APP_ENV'] = 'test';
+    process.env['API_INTERNAL_URL'] = 'http://localhost:3000/api/v1';
+    process.env['API_PUBLIC_URL'] = 'http://localhost/api/v1';
     replace.mockReset();
     global.fetch = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>();
     forgetSession();
@@ -39,6 +42,13 @@ describe('grupo (cliente)', () => {
 
     expect(screen.getByText('Contenido de cliente')).toBeTruthy();
     expect(replace).not.toHaveBeenCalled();
+  });
+
+  it('CA-21 (005): envuelve las páginas del cliente con el proveedor de cargas, sin panel mientras no hay cargas', () => {
+    renderGroup('CLIENT');
+
+    expect(screen.getByText('Contenido de cliente')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /panel de cargas/ })).toBeNull();
   });
 
   it.each(['ADMIN', 'SUPPORT', 'OPERATOR'] as const)(

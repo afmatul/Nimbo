@@ -102,6 +102,13 @@ describe('FileExplorer (CA-1, CA-21)', () => {
     expect(rows()).toHaveLength(0);
   });
 
+  it('CA-21: vacío sin máximo conocido: invita a subir sin inventar una cifra', async () => {
+    await mount(<FileExplorer status="ready" files={[]} onFiles={jest.fn()} onRetry={jest.fn()} />);
+
+    expect(text()).toContain('Sube tus documentos con el botón o arrástralos a esta página.');
+    expect(text()).not.toContain('Tu plan permite');
+  });
+
   it('CA-21: estado cargando: anuncia «Cargando tus archivos…»', async () => {
     await renderExplorer({ status: 'loading' });
 
@@ -158,6 +165,36 @@ describe('FileExplorer (CA-1, CA-21)', () => {
     expect(image?.textContent).toContain('2,4 MB');
     expect(texto?.textContent).toContain('OTRO');
     expect(texto?.textContent).toContain('12 B');
+  });
+
+  it.each(['loading', 'error', 'empty'] as const)(
+    'CA-21 (UI-7): el título del estado %s es h2, justo bajo el h1 de la página',
+    async (state) => {
+      await renderExplorer({ status: state === 'empty' ? 'ready' : state });
+
+      expect(document.querySelector('h1')?.textContent).toBe('Mis archivos');
+      expect(document.querySelectorAll('h2')).toHaveLength(1);
+      expect(document.querySelector('h3')).toBeNull();
+    },
+  );
+
+  it('CA-1 (UI-8): bajo sm el tamaño pasa a una segunda línea bajo el nombre y su columna se oculta', async () => {
+    await renderExplorer({ files: FILES });
+
+    const sizeHeader = Array.from(document.querySelectorAll('thead th')).find(
+      (cell) => cell.textContent === 'Tamaño',
+    );
+    const sizeCell = rows()[0]?.querySelectorAll('td')[1];
+    for (const cell of [sizeHeader, sizeCell]) {
+      expect(cell?.classList.contains('hidden')).toBe(true);
+      expect(cell?.classList.contains('sm:table-cell')).toBe(true);
+    }
+
+    const secondLine = rows()[0]?.querySelector('[data-testid="file-size-mobile"]');
+    expect(secondLine?.textContent).toBe('1,5 KB');
+    for (const token of ['text-xs', 'text-muted-foreground', 'sm:hidden']) {
+      expect(secondLine?.classList.contains(token)).toBe(true);
+    }
   });
 
   it('CA-21: sin renderRowActions no hay acciones por fila ni «Descargar»', async () => {

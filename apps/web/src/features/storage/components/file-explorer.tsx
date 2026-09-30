@@ -16,8 +16,11 @@ export type FileExplorerStatus = 'loading' | 'ready' | 'error';
 export interface FileExplorerProps {
   readonly status: FileExplorerStatus;
   readonly files: readonly FileSummary[];
-  /** Máximo por archivo ya formateado; viene de `PlanLimits` por la API, nunca del código (RN-1). */
-  readonly maxFileLabel: string;
+  /**
+   * Máximo por archivo ya formateado; viene de `PlanLimits` por la API, nunca del código (RN-1). Sin él (aún no hay
+   * contrato que lo exponga a `web`) los textos omiten la cifra.
+   */
+  readonly maxFileLabel?: string | undefined;
   readonly onFiles: (files: readonly File[]) => void;
   readonly onRetry: () => void;
   /** Selector de archivos de la vista, para que otro control (p. ej. «Subir de nuevo» del panel) lo abra. */
@@ -109,7 +112,7 @@ export function FileExplorer({
 interface ExplorerBodyProps {
   readonly status: FileExplorerStatus;
   readonly files: readonly FileSummary[];
-  readonly maxFileLabel: string;
+  readonly maxFileLabel: string | undefined;
   readonly onRetry: () => void;
   readonly onUpload: () => void;
   readonly renderRowActions: FileExplorerProps['renderRowActions'] | undefined;
@@ -123,7 +126,9 @@ function ExplorerBody({
   onUpload,
   renderRowActions,
 }: ExplorerBodyProps): React.JSX.Element {
-  if (status === 'loading') return <StateView type="loading" title="Cargando tus archivos…" />;
+  if (status === 'loading') {
+    return <StateView type="loading" headingLevel="h2" title="Cargando tus archivos…" />;
+  }
   if (status === 'error') return <ExplorerErrorState onRetry={onRetry} />;
   if (files.length === 0) return <EmptyExplorer maxFileLabel={maxFileLabel} onUpload={onUpload} />;
   return <FileTable files={files} renderRowActions={renderRowActions} />;
@@ -133,18 +138,21 @@ function EmptyExplorer({
   maxFileLabel,
   onUpload,
 }: {
-  readonly maxFileLabel: string;
+  readonly maxFileLabel: string | undefined;
   readonly onUpload: () => void;
 }): React.JSX.Element {
   const canDrag = useCanDragFiles();
   const invitation = canDrag
     ? 'Sube tus documentos con el botón o arrástralos a esta página.'
     : 'Sube tus documentos desde tu dispositivo.';
+  const limit =
+    maxFileLabel === undefined ? '' : ` Tu plan permite hasta ${maxFileLabel} por archivo.`;
   return (
     <StateView
       type="empty"
+      headingLevel="h2"
       title="Aún no tienes archivos"
-      description={`${invitation} Tu plan permite hasta ${maxFileLabel} por archivo.`}
+      description={`${invitation}${limit}`}
       action={{ label: 'Subir archivos', onClick: onUpload }}
     />
   );
@@ -166,7 +174,7 @@ function FileTable({
             <th scope="col" className="px-4 py-2">
               Nombre
             </th>
-            <th scope="col" className="w-24 px-2 py-2 text-right">
+            <th scope="col" className="hidden w-24 px-2 py-2 text-right sm:table-cell">
               Tamaño
             </th>
             <th scope="col" className="hidden w-32 px-2 py-2 sm:table-cell">
@@ -199,12 +207,20 @@ function FileRow({
       <td className="px-4 py-2">
         <span className="flex min-w-0 items-center gap-3">
           <FileTypeChip fileType={CHIP_TYPE_BY_KIND[file.kind]} className="shrink-0" />
-          <span className="min-w-0 truncate font-medium text-foreground" title={file.name}>
-            {file.name}
+          <span className="flex min-w-0 flex-col">
+            <span className="truncate font-medium text-foreground" title={file.name}>
+              {file.name}
+            </span>
+            <span
+              data-testid="file-size-mobile"
+              className="text-xs text-muted-foreground sm:hidden tabular-nums"
+            >
+              {formatBytes(file.sizeBytes)}
+            </span>
           </span>
         </span>
       </td>
-      <td className="px-2 py-2 text-right tabular-nums text-muted-foreground">
+      <td className="hidden px-2 py-2 text-right tabular-nums text-muted-foreground sm:table-cell">
         {formatBytes(file.sizeBytes)}
       </td>
       <td className="hidden px-2 py-2 tabular-nums text-muted-foreground sm:table-cell">

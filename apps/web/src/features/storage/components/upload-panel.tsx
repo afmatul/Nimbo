@@ -1,6 +1,6 @@
 'use client';
 
-import { STORAGE_ERROR_CODES, formatBytes } from '@nimbo/contracts';
+import { STORAGE_ERROR_CODES } from '@nimbo/contracts';
 import { ChevronDown, Pause, X } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
@@ -13,8 +13,8 @@ import {
 } from '../../../components/nimbo/upload-progress';
 import { Button, buttonVariants } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
+import { storageMessage } from '../../../lib/error-catalog';
 import { cn } from '../../../lib/utils';
-import type { StorageErrorDetails } from '../storage-request-error';
 import type { UploadPhase, UploadView } from '../upload/upload-manager';
 
 export interface UploadPanelProps {
@@ -51,6 +51,8 @@ const CANCELLABLE_PHASES = new Set<UploadPhase>([
   'offline',
   'rate_limited',
 ]);
+const FAILED_PHASES = new Set<UploadPhase>(['rejected', 'expired']);
+const ANNOUNCED_PHASES = new Set<UploadPhase>(['paused', 'offline', ...FAILED_PHASES]);
 const PROGRESS_PHASES = new Set<UploadPhase>(['uploading', 'paused', 'offline', 'completing']);
 
 const PHASE_LABELS: Readonly<Record<UploadPhase, string>> = {
@@ -91,57 +93,31 @@ const ACTION_LABELS: Readonly<Record<NoticeAction, string>> = {
   upload_again: 'Subir de nuevo',
 };
 
-function bytesDetail(details: StorageErrorDetails, key: string): string {
-  return formatBytes(Number(details[key] ?? 0));
+const UNKNOWN_FAILURE: RowNotice = {
+  tone: 'destructive',
+  cause: 'No pudimos subir este archivo.',
+  fix: 'Revisa tu conexión y vuelve a subirlo.',
+  action: 'upload_again',
+};
+
+/** Aviso con el texto del catálogo de errores (spec §9); un código sin texto cae en el fallo genérico. */
+function catalogNotice(
+  code: string,
+  row: UploadView,
+  tone: NoticeTone,
+  action?: NoticeAction,
+): RowNotice {
+  const message = storageMessage(code, row.errorDetails, row.name);
+  if (message === null) return UNKNOWN_FAILURE;
+  return action === undefined ? { tone, ...message } : { tone, ...message, action };
 }
 
-function extensionOf(row: UploadView): string {
-  const fromServer = row.errorDetails['extension'];
-  if (typeof fromServer === 'string' && fromServer !== '') return fromServer;
-  return row.name.split('.').pop() ?? '';
-}
-
+/** La cuota ofrece «Liberar espacio» y nunca «Ver planes» (CA-4). */
 function rejectionNotice(row: UploadView): RowNotice {
-  const details = row.errorDetails;
-  const tone = 'destructive';
-  switch (row.errorCode) {
-    case STORAGE_ERROR_CODES.STORAGE_FILE_TOO_LARGE:
-      return {
-        tone,
-        cause: `Este archivo pesa ${bytesDetail(details, 'sizeBytes')} y tu plan permite hasta ${bytesDetail(details, 'maxBytes')} por archivo.`,
-        fix: 'Reduce su tamaño o cambia de plan.',
-      };
-    case STORAGE_ERROR_CODES.STORAGE_QUOTA_EXCEEDED:
-      return {
-        tone,
-        cause: `Te faltan ${bytesDetail(details, 'missingBytes')} de espacio para subir este archivo.`,
-        fix: 'Libera espacio o cambia de plan.',
-        action: 'free_space',
-      };
-    case STORAGE_ERROR_CODES.STORAGE_UPLOAD_SIZE_MISMATCH:
-      return { tone, cause: 'El archivo cambió durante la carga.', fix: 'Vuelve a subirlo.' };
-    case STORAGE_ERROR_CODES.STORAGE_INVALID_FILE_TYPE:
-      return details['reason'] === 'executable'
-        ? { tone, cause: 'No se permiten archivos ejecutables.', fix: 'Sube otro archivo.' }
-        : {
-            tone,
-            cause: `Este archivo no es un .${extensionOf(row)} válido.`,
-            fix: 'Comprueba que sea el archivo correcto.',
-          };
-    case STORAGE_ERROR_CODES.STORAGE_EMPTY_FILE:
-      return {
-        tone,
-        cause: 'El archivo está vacío.',
-        fix: 'Revisa que tenga contenido y súbelo de nuevo.',
-      };
-    default:
-      return {
-        tone,
-        cause: 'No pudimos subir este archivo.',
-        fix: 'Revisa tu conexión y vuelve a subirlo.',
-        action: 'upload_again',
-      };
-  }
+  if (row.errorCode === null) return UNKNOWN_FAILURE;
+  const action =
+    row.errorCode === STORAGE_ERROR_CODES.STORAGE_QUOTA_EXCEEDED ? 'free_space' : undefined;
+  return catalogNotice(row.errorCode, row, 'destructive', action);
 }
 
 function noticeOf(row: UploadView): RowNotice | null {
@@ -149,19 +125,14 @@ function noticeOf(row: UploadView): RowNotice | null {
     case 'rejected':
       return rejectionNotice(row);
     case 'expired':
-      return {
-        tone: 'destructive',
-        cause: 'Esta carga caducó.',
-        fix: 'Vuelve a subir el archivo.',
-        action: 'upload_again',
-      };
+      return catalogNotice(
+        STORAGE_ERROR_CODES.STORAGE_UPLOAD_EXPIRED,
+        row,
+        'destructive',
+        'upload_again',
+      );
     case 'rate_limited':
-      return {
-        tone: 'warning',
-        cause: 'Hiciste demasiadas solicitudes.',
-        fix: 'Espera un momento e inténtalo de nuevo.',
-        action: 'retry',
-      };
+      return catalogNotice(STORAGE_ERROR_CODES.STORAGE_TOO_MANY_REQUESTS, row, 'warning', 'retry');
     case 'cancelled':
       return {
         tone: 'muted',
@@ -180,7 +151,23 @@ function countLabel(count: number): string {
 function titleOf(rows: readonly UploadView[]): string {
   if (rows.some((row) => row.phase === 'offline')) return OFFLINE_TITLE;
   const active = rows.filter((row) => !FINISHED_PHASES.has(row.phase)).length;
-  return active > 0 ? `Subiendo ${countLabel(active)}` : 'Cargas terminadas';
+  if (active > 0) return `Subiendo ${countLabel(active)}`;
+  const failed = rows.filter((row) => FAILED_PHASES.has(row.phase)).length;
+  return failed > 0 ? `Cargas terminadas · ${String(failed)} con error` : 'Cargas terminadas';
+}
+
+/** Lo que se anuncia de una fila: pausas, cortes y fallos con su causa; nunca el progreso (UI-2). */
+function announcementOf(row: UploadView): string | null {
+  if (!ANNOUNCED_PHASES.has(row.phase)) return null;
+  const cause = FAILED_PHASES.has(row.phase) ? `: ${noticeOf(row)?.cause ?? ''}` : '';
+  return `${row.name}: ${PHASE_LABELS[row.phase]}${cause}`;
+}
+
+function announcementsOf(rows: readonly UploadView[]): string {
+  return rows
+    .map(announcementOf)
+    .filter((text): text is string => text !== null)
+    .join('. ');
 }
 
 interface SampleState {
@@ -361,17 +348,13 @@ export function UploadPanel(props: UploadPanelProps): React.JSX.Element {
   return (
     <Card role="region" aria-labelledby={titleId} className="flex w-full flex-col sm:w-110">
       <div className="flex items-center gap-2 border-b border-border px-4 py-3">
-        <h2
-          id={titleId}
-          aria-live="polite"
-          className="flex-1 text-sm font-semibold text-foreground"
-        >
+        <h2 id={titleId} className="flex-1 text-sm font-semibold text-foreground">
           {titleOf(rows)}
         </h2>
         <Button
           variant="ghost"
           size="icon"
-          aria-label="Minimizar el panel de cargas"
+          aria-label={expanded ? 'Minimizar el panel de cargas' : 'Expandir el panel de cargas'}
           aria-expanded={expanded}
           aria-controls={listId}
           onClick={() => setExpanded((current) => !current)}
@@ -392,13 +375,16 @@ export function UploadPanel(props: UploadPanelProps): React.JSX.Element {
           </Button>
         ) : null}
       </div>
+      <p role="status" className="sr-only">
+        {announcementsOf(rows)}
+      </p>
       <div id={listId} hidden={!expanded}>
         {offline ? (
           <p className={cn('mx-4 mt-3 rounded-md border p-3 text-sm', NOTICE_TONES.warning)}>
             {OFFLINE_MESSAGE}
           </p>
         ) : null}
-        <ul className="max-h-96 divide-y divide-border overflow-y-auto px-4">
+        <ul className="max-h-60 sm:max-h-96 divide-y divide-border overflow-y-auto px-4">
           {rows.map((row) => (
             <UploadRow
               key={row.id}

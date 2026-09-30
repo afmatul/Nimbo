@@ -46,4 +46,15 @@ describe('StateView component (CA-4, RNF-14)', () => {
     expect(markup).toContain('text-destructive');
     expect(markup).toContain('role="alert"');
   });
+
+  it('usa h3 por omisión y acepta headingLevel h2 cuando es el primer nivel bajo el h1 (UI-7)', () => {
+    const byDefault = renderToStaticMarkup(<StateView type="empty" title="Sin archivos" />);
+    const asH2 = renderToStaticMarkup(
+      <StateView type="empty" title="Sin archivos" headingLevel="h2" />,
+    );
+
+    expect(byDefault).toMatch(/<h3[^>]*>Sin archivos<\/h3>/);
+    expect(asH2).toMatch(/<h2[^>]*>Sin archivos<\/h2>/);
+    expect(asH2).not.toContain('<h3');
+  });
 });
