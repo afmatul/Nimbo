@@ -1,7 +1,7 @@
 import type { ArgumentsHost } from '@nestjs/common';
 import type { Logger } from 'nestjs-pino';
 
-import { InvalidInputError, TooManyRequestsError } from '../domain/errors';
+import { ConflictError, InvalidInputError, TooManyRequestsError } from '../domain/errors';
 
 import { DomainExceptionFilter } from './domain-exception.filter';
 
@@ -68,5 +68,66 @@ describe('DomainExceptionFilter: `fields` y `Retry-After` (001 CA-6, CA-15)', ()
 
     expect(response.status).toHaveBeenCalledWith(429);
     expect(response.setHeader).toHaveBeenCalledWith('Retry-After', '90');
+  });
+});
+
+class ExampleConflictError extends ConflictError {
+  readonly code = 'SHARED_EXAMPLE_CONFLICT';
+}
+
+const SUGGESTED_NAME = 'Informe confidencial (1).docx';
+
+describe('DomainExceptionFilter: `details` (005 D-12, CA-20)', () => {
+  const captured: string[] = [];
+  const capture = (...args: unknown[]): void => {
+    captured.push(JSON.stringify(args));
+  };
+  const capturingFilter = new DomainExceptionFilter({
+    warn: capture,
+    error: capture,
+    log: capture,
+  } as unknown as Logger);
+
+  beforeEach(() => {
+    captured.length = 0;
+  });
+
+  it('CA-6: agrega `details` al cuerpo si el error los trae', () => {
+    const response = fakeResponse();
+
+    capturingFilter.catch(
+      new ExampleConflictError('Ya existe.', undefined, { suggestedName: SUGGESTED_NAME }),
+      hostFor(response),
+    );
+
+    expect(response.status).toHaveBeenCalledWith(409);
+    expect(response.json).toHaveBeenCalledWith({
+      code: 'SHARED_EXAMPLE_CONFLICT',
+      message: 'Ya existe.',
+      correlationId: 'corr-1',
+      details: { suggestedName: SUGGESTED_NAME },
+    });
+  });
+
+  it('CA-20: la bitácora del error no lleva `details` (un 409 con `suggestedName` no llega al sink)', () => {
+    capturingFilter.catch(
+      new ExampleConflictError('Ya existe.', undefined, { suggestedName: SUGGESTED_NAME }),
+      hostFor(fakeResponse()),
+    );
+
+    expect(captured).toHaveLength(1);
+    expect(captured.join('\n')).toContain('SHARED_EXAMPLE_CONFLICT');
+    expect(captured.join('\n')).not.toContain(SUGGESTED_NAME);
+    expect(captured.join('\n')).not.toContain('details');
+  });
+
+  it('CA-6: sin `details` el cuerpo no tiene la clave', () => {
+    const response = fakeResponse();
+
+    capturingFilter.catch(new ExampleConflictError('Ya existe.'), hostFor(response));
+
+    expect(response.json).toHaveBeenCalledWith(
+      expect.not.objectContaining({ details: expect.anything() }),
+    );
   });
 });

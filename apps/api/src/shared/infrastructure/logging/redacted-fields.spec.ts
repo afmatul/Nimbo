@@ -44,3 +44,43 @@ describe('REDACTED_FIELDS (001 CA-18)', () => {
     expect(redactDeep(line)).toEqual(line);
   });
 });
+
+/** Campos que 005 agrega (T-41, CA-20): URLs firmadas, claves de objeto, `upload_id`, firmas y nombres. */
+const STORAGE_FIELDS = [
+  'url',
+  'uploadUrl',
+  'claveObjeto',
+  'objectKey',
+  'uploadId',
+  'signature',
+  'suggestedName',
+  'name',
+  'nombre',
+  'fileName',
+] as const;
+
+describe('REDACTED_FIELDS (005 CA-20)', () => {
+  it.each(STORAGE_FIELDS)('CA-20: `%s` sale `[REDACTED]` en cualquier nivel', (field) => {
+    expect(redactDeep({ [field]: 'valor', details: { [field]: 'valor' } })).toEqual({
+      [field]: REDACTED_VALUE,
+      details: { [field]: REDACTED_VALUE },
+    });
+  });
+
+  it('CA-20: se conservan los campos de 001 y 002', () => {
+    for (const field of ['password', 'token', 'email', 'fullname']) {
+      expect(REDACTED_FIELDS.has(field)).toBe(true);
+    }
+  });
+
+  it('CA-20: el identificador de recurso y el tamaño de la auditoría no se redactan', () => {
+    const line = {
+      event: 'file.upload_completed',
+      resourceId: 'r-1',
+      sizeBytes: 10,
+      mode: 'simple',
+    };
+
+    expect(redactDeep(line)).toEqual(line);
+  });
+});
