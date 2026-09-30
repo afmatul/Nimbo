@@ -2,10 +2,10 @@
 
 import { IDENTITY_ERROR_CODES, type SessionResponse } from '@nimbo/contracts';
 import { Check, Info, Loader2 } from 'lucide-react';
-import type { JSX } from 'react';
+import { useEffect, useRef, type JSX } from 'react';
 
 import { IdentityCard } from '../../../components/nimbo/identity-card';
-import { Button, buttonVariants } from '../../../components/ui/button';
+import { buttonVariants } from '../../../components/ui/button';
 import { messageForCode } from '../../../lib/error-catalog';
 import { cn } from '../../../lib/utils';
 import { useVerifyEmail } from '../hooks/use-verify-email';
@@ -43,19 +43,28 @@ function PlanCard({ planName }: { readonly planName: string | null }): JSX.Eleme
   );
 }
 
-/** Entra con la sesión que abrió la verificación, por el mismo camino que el inicio de sesión (002 CA-15). */
-function EnterButton({ session }: { readonly session: SessionResponse }): JSX.Element {
+/**
+ * Entra solo con la sesión que abrió la verificación, por el mismo camino que el inicio de sesión (001 D-20, 002
+ * CA-15). El `ref` evita entrar dos veces con el doble efecto de `StrictMode`.
+ */
+function AutoEnter({ session }: { readonly session: SessionResponse }): JSX.Element {
   const enterSession = useEnterSession();
+  const entered = useRef(false);
+  useEffect(() => {
+    if (entered.current) return;
+    entered.current = true;
+    enterSession(session);
+  }, [enterSession, session]);
   return (
-    <Button type="button" className="w-full" onClick={() => enterSession(session)}>
-      Ir a Mis archivos
-    </Button>
+    <p role="status" className="text-sm text-secondary-foreground">
+      Entrando a tus archivos…
+    </p>
   );
 }
 
 /**
- * Estados de la página de verificación. Si la verificación abrió la sesión, el éxito ofrece «Ir a Mis archivos» (001
- * §7); si no la trajo, «Iniciar sesión».
+ * Estados de la página de verificación. Si la verificación abrió la sesión, entra directo a Mis archivos (001 D-20);
+ * si no la trajo, el éxito ofrece «Iniciar sesión».
  */
 export function VerifyEmailView({ apiPublicUrl }: { readonly apiPublicUrl: string }): JSX.Element {
   const state = useVerifyEmail(apiPublicUrl);
@@ -79,6 +88,20 @@ export function VerifyEmailView({ apiPublicUrl }: { readonly apiPublicUrl: strin
     );
   }
 
+  if (state.status === 'exito' && state.session !== null) {
+    return (
+      <IdentityCard
+        data-state="exito"
+        titleId={TITLE_ID}
+        title="¡Listo! Tu correo está verificado."
+        icon={Check}
+        tone="success"
+        step={3}
+        description={<AutoEnter session={state.session} />}
+      />
+    );
+  }
+
   if (state.status === 'exito') {
     return (
       <IdentityCard
@@ -90,13 +113,9 @@ export function VerifyEmailView({ apiPublicUrl }: { readonly apiPublicUrl: strin
         step={3}
       >
         <PlanCard planName={state.planName} />
-        {state.session === null ? (
-          <a href={LOGIN_HREF} className={ACTION_CLASS}>
-            Iniciar sesión
-          </a>
-        ) : (
-          <EnterButton session={state.session} />
-        )}
+        <a href={LOGIN_HREF} className={ACTION_CLASS}>
+          Iniciar sesión
+        </a>
       </IdentityCard>
     );
   }

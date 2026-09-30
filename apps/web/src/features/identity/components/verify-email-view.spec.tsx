@@ -2,7 +2,6 @@
  * @jest-environment jsdom
  */
 import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 import { StrictMode } from 'react';
 
@@ -51,31 +50,28 @@ describe('VerifyEmailView', () => {
       forgetSession();
     });
 
-    it('«Ir a Mis archivos» deja la sesión en memoria y entra sin pedir iniciar sesión', async () => {
-      const user = userEvent.setup();
+    it('001 D-20: deja la sesión en memoria y entra directo a Mis archivos sin pedir iniciar sesión', async () => {
       fetchMock.mockResolvedValue(verifiedWithSession());
       window.history.replaceState(null, '', '/verificar-correo#token=con-sesion');
       render(<VerifyEmailView apiPublicUrl="http://localhost/api/v1" />);
 
-      await screen.findByRole('heading', { name: '¡Listo! Tu correo está verificado.' });
+      expect(await screen.findByText('Entrando a tus archivos…')).toBeTruthy();
       expect(screen.queryByRole('link', { name: 'Iniciar sesión' })).toBeNull();
-
-      await user.click(screen.getByRole('button', { name: 'Ir a Mis archivos' }));
-
-      expect(replace).toHaveBeenCalledWith('/archivos');
+      await waitFor(() => expect(replace).toHaveBeenCalledWith('/archivos'));
       expect(recallSession(Date.now())?.accessToken).toBe('del-enlace');
     });
 
-    it('001 CA-28: conserva el aviso del plan de pago junto a «Ir a Mis archivos»', async () => {
-      saveChosenPlan(window.localStorage, { planId: 'pro', planName: 'Profesional' }, new Date());
+    it('entra una sola vez también en StrictMode', async () => {
       fetchMock.mockResolvedValue(verifiedWithSession());
-      window.history.replaceState(null, '', '/verificar-correo#token=con-plan');
-      render(<VerifyEmailView apiPublicUrl="http://localhost/api/v1" />);
+      window.history.replaceState(null, '', '/verificar-correo#token=estricto');
+      render(
+        <StrictMode>
+          <VerifyEmailView apiPublicUrl="http://localhost/api/v1" />
+        </StrictMode>,
+      );
 
-      expect(
-        await screen.findByText(/Podrás activar Profesional desde Plan y facturación/),
-      ).toBeTruthy();
-      expect(screen.getByRole('button', { name: 'Ir a Mis archivos' })).toBeTruthy();
+      await waitFor(() => expect(replace).toHaveBeenCalledWith('/archivos'));
+      expect(replace).toHaveBeenCalledTimes(1);
     });
   });
 
