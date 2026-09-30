@@ -331,7 +331,8 @@ export class UploadService {
       );
       throw sizeErrorFor(verdict);
     }
-    await this.storage.completeMultipart(key, multipart.uploadId, parts);
+    const closedHere = await this.storage.completeMultipart(key, multipart.uploadId, parts);
+    if (!closedHere) return this.recoverClosedMultipart(actor, session, maxBytes);
     return verdict.sizeBytes;
   }
 
@@ -434,7 +435,8 @@ export class UploadService {
 
   /**
    * Registro del archivo en una transacción (`UploadRegistrar`) y, tras el commit, la auditoría de mejor esfuerzo.
-   * Si el CAS pierde contra `cancel`/`expire`, no hay archivo: 410 o 404 según quién ganó.
+   * Si el CAS pierde contra otro `complete` de la misma carga (doble clic), responde el archivo que registró ese;
+   * si pierde contra `cancel`/`expire`, no hay archivo: 410 o 404 según quién ganó.
    */
   private async register(
     actor: Actor,
@@ -442,7 +444,7 @@ export class UploadService {
     verified: VerifiedUpload,
   ): Promise<CompleteUploadResponse> {
     const file = await this.registrar.register(actor, session, verified);
-    if (file === null) throw await this.raceLostError(actor, session.id);
+    if (file === null) return this.afterLostRegistration(actor, session.id);
     const sizeBytes = Number(file.sizeBytes);
     this.logger.info({ event: 'upload.completed', fileId: file.id, sizeBytes });
     await this.recordCompleted(actor, session, file);
@@ -462,6 +464,16 @@ export class UploadService {
       },
       { fileId: file.id },
     );
+  }
+
+  /** Quien perdió el CAS final: el archivo si otro `complete` lo registró; si no, el error de `raceLostError`. */
+  private async afterLostRegistration(
+    actor: Actor,
+    uploadId: string,
+  ): Promise<CompleteUploadResponse> {
+    const current = await this.findOwned(actor, uploadId);
+    if (current?.state === 'completada') return this.completedFile(actor, current);
+    throw current?.state === 'expirada' ? new UploadExpiredError() : new UploadNotFoundError();
   }
 
   /** Error para quien perdió un CAS: 410 si la carga venció, 404 en cualquier otro caso. */

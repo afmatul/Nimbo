@@ -791,6 +791,22 @@ describe('UploadService.complete', () => {
     expect(ctx.storage.completed).toEqual([]);
   });
 
+  it('Art. XI: si otro `complete` cierra el multipart entre `listParts` y completarlo, sigue con el objeto', async () => {
+    const ctx = setup();
+    const session = await started(ctx);
+    uploadAllParts(ctx, session);
+    jest.spyOn(ctx.storage, 'completeMultipart').mockImplementationOnce(() => {
+      ctx.storage.multiparts.clear();
+      ctx.storage.objects.set(session.objectKey.value, Buffer.alloc(20 * MIB));
+      return Promise.resolve(false);
+    });
+
+    const response = await ctx.service.complete(ACTOR, session.id);
+
+    expect(response.file.sizeBytes).toBe(20 * MIB);
+    expect(ctx.nodes.inserted).toHaveLength(1);
+  });
+
   it('CA-10: multipart ya cerrado sin objeto: 409 si sigue activa', async () => {
     const ctx = setup();
     const session = await started(ctx);
@@ -938,6 +954,20 @@ describe('UploadService.complete: registro final', () => {
     expect(ctx.nodes.inserted).toEqual([]);
     expect(ctx.quotas.added).toEqual([]);
     expect(ctx.audit.records).toEqual([]);
+  });
+
+  it('CA-1, Art. XI: dos `complete` simultáneos de la misma carga responden el mismo archivo (sin 404)', async () => {
+    const ctx = setup();
+    const session = await uploadedSimple(ctx);
+
+    const [first, second] = await Promise.all([
+      ctx.service.complete(ACTOR, session.id),
+      ctx.service.complete(ACTOR, session.id),
+    ]);
+
+    expect(second).toEqual(first);
+    expect(ctx.nodes.inserted).toHaveLength(1);
+    expect(ctx.quotas.added).toEqual([BigInt(MIB)]);
   });
 
   it('CA-9: si la limpieza la vence justo antes del CAS, responde 410 sin archivo', async () => {
