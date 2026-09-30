@@ -16,6 +16,8 @@ interface BaseStateViewProps extends React.HTMLAttributes<HTMLDivElement> {
   readonly title: string;
   readonly description?: string;
   readonly icon?: React.ComponentType<{ className?: string }>;
+  /** Nivel del título según la jerarquía de la página; `h3` por omisión. */
+  readonly headingLevel?: 'h2' | 'h3';
 }
 
 export interface ErrorStateViewProps extends BaseStateViewProps {
@@ -40,6 +42,7 @@ export function StateView({
   description,
   action,
   icon: CustomIcon,
+  headingLevel: Heading = 'h3',
   className,
   ...props
 }: StateViewProps): React.JSX.Element {
@@ -70,14 +73,14 @@ export function StateView({
         )}
       </div>
 
-      <h3
+      <Heading
         className={cn(
           'text-base font-semibold text-foreground tracking-tight',
           isError && 'text-destructive',
         )}
       >
         {title}
-      </h3>
+      </Heading>
 
       {description && (
         <p className="mt-1.5 max-w-sm text-sm text-muted-foreground">{description}</p>

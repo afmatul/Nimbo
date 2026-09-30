@@ -14,6 +14,7 @@ export function ExplorerErrorState({ onRetry }: ExplorerErrorStateProps): React.
   return (
     <StateView
       type="error"
+      headingLevel="h2"
       title="No pudimos cargar tus archivos."
       description="Tus archivos siguen guardados. Inténtalo de nuevo."
       action={{ label: 'Reintentar', onClick: onRetry, variant: 'outline' }}
