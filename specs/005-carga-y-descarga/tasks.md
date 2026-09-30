@@ -568,25 +568,35 @@ salvo la lectura por rango del detector.
 
 ### Traspaso PR-D (2026-09-30)
 
-- **Hechas**: T-31…T-45. T-43 en `ec4304b`; T-44 en `01e669e` (fallo de producción) y `ae8b72d` (pruebas); T-45 en
-  `9dd184b`. Detenido por ALTO del coordinador tras T-45.
-- **PENDIENTE T-46** (spike de MinIO, no empezado): en el worktree `C:/Users/amatu/Nimbo-wt/005-spike`, rama
+- **Hechas**: T-31…T-45 y T-47. T-43 en `ec4304b`; T-44 en `01e669e` (fallo de producción) y `ae8b72d` (pruebas);
+  T-45 en `9dd184b`; T-47 en `4bb763a` (README) y el commit de casillas.
+- **PENDIENTE T-46** (spike de MinIO, no empezado; **bloqueado en la sesión en la nube del 30/09**: Docker arranca,
+  pero la política de red deniega `quay.io` (403 al `CONNECT`) y la imagen `quay.io/minio/minio` no se descarga; no
+  se buscó otro registro). Correrlo en una máquina con acceso a `quay.io`: en el worktree `C:/Users/amatu/Nimbo-wt/005-spike`, rama
   `spike/005-minio`, primero `git merge feat/005-api`. Ya están respondidas por `minio-storage.adapter.int-spec.ts`
   (MinIO `RELEASE.2025-09-07`): un `PUT` prefirmado con `Content-Length` distinto del firmado se rechaza y no crea el
   objeto; el `GET` prefirmado honra `response-content-disposition`/`response-content-type`/`response-cache-control`
   (`download.int-spec.ts` lo confirma por HTTP, con nombre UTF-8 en `filename*`). **Falta**: (a) `OPTIONS` de CORS
   con el origen configurado (`infra/minio` / variables `MINIO_*` del contenedor; comprobar
   `Access-Control-Allow-Origin` para el origen de web y que otro origen no lo recibe); (b) si MinIO limpia solo los
-  multipart abandonados (buscar el ajuste de caducidad de multipart del servidor y medirlo con un intervalo corto).
-  Anotar el resultado en `plan.md` §8 y en esta nota, y borrar el código del spike (no se fusiona).
-- **PENDIENTE T-47** (cierre, no empezado): `storage/index.ts` exporta `StorageModule` e `IPlanLimitsProvider` (con su
-  token y `PlanLimits`) y nada de infraestructura (revisar `index.spec.ts`); README de `storage`; `pnpm lint`,
-  `pnpm typecheck`, `pnpm test` en verde; texto para la descripción del PR con las suites `int`/`iso` ejecutadas (ver
-  abajo). Después, en commit aparte `docs(storage): casillas de tareas hechas [005]`, marcar T-02…T-09 y T-20…T-42
-  cuyos commits existan (`git log --grep "005 T-xx"` en `feat/005-api`), y T-47.
+  multipart abandonados (buscar el ajuste de caducidad de multipart del servidor —a comprobar, no verificado:
+  `mc admin config get <alias> api`, claves `stale_uploads_expiry` y `stale_uploads_cleanup_interval`— y medirlo con
+  un intervalo corto). Anotar el resultado en `plan.md` §8 y en esta nota, y borrar el código del spike (no se
+  fusiona). Hasta entonces CA-14 no se da por demostrada en lo que toca a CORS.
+- **T-47 hecha**: `storage/index.ts` ya exportaba solo `StorageModule`, `I_PLAN_LIMITS_PROVIDER`,
+  `IPlanLimitsProvider` y `PlanLimits` (`index.spec.ts` lo fija; sin cambios); README de `storage` con la API
+  pública, las piezas del PR-D y las rutas. Casillas marcadas en commit aparte: T-02…T-08 y T-20…T-42 (T-09 no tiene
+  commit propio y queda sin marcar; T-01, T-10 y T-11 tienen commit pero quedan fuera del rango pedido) y T-47.
 - **Suites ejecutadas** (Windows 11, Docker 29.4.0, Testcontainers sin nombres fijos, 2026-09-30): `pnpm test:int`
   de `test/int/storage` 18 suites / 200 pruebas en verde; `pnpm test:isolation` 8 suites / 112 en verde; unitarias
   api 116 suites / 1068 en verde (antes de T-45; T-45 no toca unitarias); lint y typecheck en verde.
+- **Cierre T-47** (Linux, sesión en la nube, Node 22.22.2, pnpm 10.33.0, 2026-09-30, sobre `4bb763a`): `pnpm lint` y
+  `pnpm typecheck` en verde; `pnpm test` en verde: raíz 3 / 34, `config` 2 / 28, `contracts` 11 / 221, `web` 64 / 272,
+  `api` 116 / 1068. `int` e `iso` **no** se repitieron ahí (sin imagen de MinIO); valen las de Windows de arriba.
+- **Texto para la descripción del PR-D**: «Suites ejecutadas: `pnpm test:int` (`test/int/storage`, 18 suites / 200
+  pruebas) y `pnpm test:isolation` (8 suites / 112) en Windows 11 con Docker 29.4.0; lint, typecheck y unitarias
+  (api 116 / 1068, web 64 / 272) en verde en Linux sobre la cabeza del PR. Pendiente: spike T-46 (CORS de MinIO y
+  limpieza de multipart abandonados); hasta ejecutarlo, CA-14 no se da por demostrada en CORS.»
 - **Fallo de producción corregido en T-44** (`01e669e`): dos `complete` simultáneos de la misma carga: el perdedor del
   CAS final respondía 404 aunque el archivo existía (ahora responde el mismo archivo), y si el otro ya había cerrado el
   multipart, `completeMultipart` lanzaba `NoSuchUpload` → 500. El puerto `IObjectStorage.completeMultipart` ahora
@@ -606,4 +616,4 @@ salvo la lectura por rango del detector.
   objeto: el invariante se mantiene; `uploads-cancel.int-spec.ts` no lo reprodujo en 6 vueltas). Propuesta: tratar
   un objeto ausente en `verifyType` como pérdida de carrera (`afterLostRegistration`). (b) CA-5 está en
   `uploads-validation.int-spec.ts` (plan §8), no en T-44. (c) CA-9 por HTTP (410 tras 24 h) queda para T-51.
-- **Bloqueos**: ninguno.
+- **Bloqueos**: T-46 sin imagen de MinIO en la nube (`quay.io` denegado por la política de red); ninguno para T-47.
