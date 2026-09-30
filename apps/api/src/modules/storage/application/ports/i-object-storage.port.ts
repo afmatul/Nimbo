@@ -45,7 +45,12 @@ export interface IObjectStorage {
   presignUploadObject(input: PresignUploadObjectInput): Promise<string>;
   /** Todas las partes recibidas, en orden y ya paginadas; `null` si la carga por partes no existe (`NoSuchUpload`). */
   listParts(key: string, uploadId: string): Promise<readonly UploadedPart[] | null>;
-  completeMultipart(key: string, uploadId: string, parts: readonly UploadedPart[]): Promise<void>;
+  /** `false` si la carga por partes ya no existe (`NoSuchUpload`): otra petición la cerró o se abortó. */
+  completeMultipart(
+    key: string,
+    uploadId: string,
+    parts: readonly UploadedPart[],
+  ): Promise<boolean>;
   /** Idempotente: una carga por partes que ya no existe no es error. */
   abortMultipart(key: string, uploadId: string): Promise<void>;
   /** `null` si el objeto no existe. */

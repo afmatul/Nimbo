@@ -108,13 +108,23 @@ describe('MinioStorageAdapter (operaciones, cliente falso)', () => {
     await expect(adapter.listParts(KEY, UPLOAD_ID)).resolves.toBeNull();
   });
 
+  it('Art. XI: `completeMultipart` devuelve `false` si la carga por partes ya se cerró (`NoSuchUpload`)', async () => {
+    const { adapter } = buildAdapter({
+      [CompleteMultipartUploadCommand.name]: throwing('NoSuchUpload', 404),
+    });
+
+    await expect(adapter.completeMultipart(KEY, UPLOAD_ID, [])).resolves.toBe(false);
+  });
+
   it('CA-5: `completeMultipart` envía las partes en orden con su ETag', async () => {
     const { adapter, calls } = buildAdapter({ [CompleteMultipartUploadCommand.name]: () => ({}) });
 
-    await adapter.completeMultipart(KEY, UPLOAD_ID, [
+    const completed = await adapter.completeMultipart(KEY, UPLOAD_ID, [
       { partNumber: 2, sizeBytes: 3n, etag: '"e2"' },
       { partNumber: 1, sizeBytes: 8n, etag: '"e1"' },
     ]);
+
+    expect(completed).toBe(true);
 
     expect(calls[0]?.input).toEqual({
       Bucket: BUCKET,

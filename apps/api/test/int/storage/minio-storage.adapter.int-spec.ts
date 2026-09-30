@@ -148,12 +148,23 @@ describe('MinioStorageAdapter contra MinIO real (CA-2, CA-5, CA-11, CA-13, CA-14
       [1, BigInt(MIN_PART_BYTES)],
       [2, 3n],
     ]);
-    await adapter.completeMultipart(key, uploadId, parts ?? []);
+    await expect(adapter.completeMultipart(key, uploadId, parts ?? [])).resolves.toBe(true);
 
     await expect(adapter.headObject(key)).resolves.toEqual({
       sizeBytes: BigInt(MIN_PART_BYTES + last.length),
     });
     await expect(adapter.listParts(key, uploadId)).resolves.toBeNull();
+    await adapter.purgeObject(key);
+  });
+
+  it('Art. XI: completar otra vez una carga por partes ya cerrada devuelve `false` (`NoSuchUpload`)', async () => {
+    const key = newKey();
+    const uploadId = await adapter.createMultipart(key);
+    await uploadPart(key, uploadId, 1, Buffer.from('única'));
+    const parts = (await adapter.listParts(key, uploadId)) ?? [];
+    await adapter.completeMultipart(key, uploadId, parts);
+
+    await expect(adapter.completeMultipart(key, uploadId, parts)).resolves.toBe(false);
     await adapter.purgeObject(key);
   });
 

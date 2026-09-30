@@ -1,7 +1,13 @@
 import { DOWNLOAD_URL_TTL_SECONDS, FILES_PAGE_DEFAULT, FILES_PAGE_MAX } from '@nimbo/contracts';
 
 import { createActor, FixedClock, Role } from '../../../shared';
-import type { Actor, IRateLimiter, RateLimitDecision, RateLimitRule } from '../../../shared';
+import type {
+  Actor,
+  IRateLimiter,
+  ITransactionRunner,
+  RateLimitDecision,
+  RateLimitRule,
+} from '../../../shared';
 import { AuditAction } from '../../audit';
 import type { AuditRecord, IAuditLogger } from '../../audit';
 import { NodeNotFoundError, StorageTooManyRequestsError } from '../domain/errors';
@@ -34,21 +40,49 @@ const FILE = File.create({
   now: NOW,
 });
 
+/** Ejecutor que anota el actor de cada `withActor` y sabe si hay uno abierto (como `requireActorScope`). */
+class FakeTransactions implements ITransactionRunner {
+  readonly actors: string[] = [];
+  private open: Actor | null = null;
+
+  run<T>(work: () => Promise<T>): Promise<T> {
+    return work();
+  }
+
+  async withActor<T>(actor: Actor, work: () => Promise<T>): Promise<T> {
+    this.actors.push(actor.id);
+    this.open = actor;
+    try {
+      return await work();
+    } finally {
+      this.open = null;
+    }
+  }
+
+  /** Lanza como `TransactionContext.requireActorScope` si no hay transacción abierta con ese actor. */
+  requireScope(actor: Actor): void {
+    if (this.open?.id !== actor.id) throw new Error('No hay actor en la transacción');
+  }
+}
+
 /** Doble del repositorio: devuelve el archivo solo a su propietario y anota el orden de las llamadas. */
 class FakeNodeRepository implements INodeRepository {
   readonly queries: FileListQuery[] = [];
 
   constructor(
     private readonly calls: string[],
+    private readonly transactions: FakeTransactions,
     private readonly page: FileListPage = { items: [FILE], nextCursor: 'cursor-2' },
   ) {}
 
   findAccessibleById(actor: Actor, id: string): Promise<File | null> {
+    this.transactions.requireScope(actor);
     this.calls.push('findAccessibleById');
     return Promise.resolve(actor.id === FILE.ownerId && id === FILE.id ? FILE : null);
   }
 
-  listAccessible(_actor: Actor, query: FileListQuery): Promise<FileListPage> {
+  listAccessible(actor: Actor, query: FileListQuery): Promise<FileListPage> {
+    this.transactions.requireScope(actor);
     this.calls.push('listAccessible');
     this.queries.push(query);
     return Promise.resolve(this.page);
@@ -106,12 +140,14 @@ interface SetupOptions {
 
 function setup(options: SetupOptions = {}) {
   const calls: string[] = [];
-  const nodes = new FakeNodeRepository(calls);
+  const transactions = new FakeTransactions();
+  const nodes = new FakeNodeRepository(calls, transactions);
   const rateLimiter = new FakeRateLimiter(calls, options.decision);
   const audit = new FakeAuditLogger(options.auditFails);
   const { storage, presigned } = fakeObjectStorage(calls);
   const logger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() } satisfies StorageLogger;
   const service = new FileService(
+    transactions,
     nodes,
     storage,
     rateLimiter,
@@ -120,7 +156,7 @@ function setup(options: SetupOptions = {}) {
     CONFIG,
     logger,
   );
-  return { service, calls, nodes, rateLimiter, audit, presigned, logger };
+  return { service, calls, transactions, nodes, rateLimiter, audit, presigned, logger };
 }
 
 describe('FileService', () => {
@@ -132,6 +168,14 @@ describe('FileService', () => {
 
       expect(page).toEqual({ items: [FILE], nextCursor: 'cursor-2' });
       expect(nodes.queries).toEqual([{ cursor: 'cursor-1', limit: 20 }]);
+    });
+
+    it('CA-16: consulta dentro de `withActor(actor)` (RLS y `accessibleNodes` exigen el ámbito)', async () => {
+      const { service, transactions } = setup();
+
+      await service.list(ACTOR, { limit: 20 });
+
+      expect(transactions.actors).toEqual([ACTOR.id]);
     });
 
     it.each([
@@ -150,6 +194,14 @@ describe('FileService', () => {
   });
 
   describe('getDownloadUrl', () => {
+    it('CA-16: busca el archivo dentro de `withActor(actor)`', async () => {
+      const { service, transactions } = setup();
+
+      await service.getDownloadUrl(ACTOR, FILE_ID);
+
+      expect(transactions.actors).toEqual([ACTOR.id]);
+    });
+
     it('CA-13, CA-15: firma la versión actual por 300 s, con el nombre del archivo como sugerido', async () => {
       const { service, presigned } = setup();
 

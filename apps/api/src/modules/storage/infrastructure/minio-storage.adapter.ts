@@ -163,18 +163,26 @@ export class MinioStorageAdapter implements IObjectStorage {
     key: string,
     uploadId: string,
     parts: readonly UploadedPart[],
-  ): Promise<void> {
+  ): Promise<boolean> {
     const ordered = [...parts].sort((a, b) => a.partNumber - b.partNumber);
-    await this.clients.operations.send(
-      new CompleteMultipartUploadCommand({
-        Bucket: this.bucket,
-        Key: key,
-        UploadId: uploadId,
-        MultipartUpload: {
-          Parts: ordered.map((part) => ({ PartNumber: part.partNumber, ETag: part.etag })),
-        },
-      }),
-    );
+    try {
+      await this.clients.operations.send(
+        new CompleteMultipartUploadCommand({
+          Bucket: this.bucket,
+          Key: key,
+          UploadId: uploadId,
+          MultipartUpload: {
+            Parts: ordered.map((part) => ({ PartNumber: part.partNumber, ETag: part.etag })),
+          },
+        }),
+      );
+      return true;
+    } catch (error: unknown) {
+      if (isNoSuchUpload(error)) {
+        return false;
+      }
+      throw error;
+    }
   }
 
   async abortMultipart(key: string, uploadId: string): Promise<void> {

@@ -316,13 +316,17 @@ export class FakeObjectStorage implements IObjectStorage {
     return Promise.resolve(parts === undefined ? null : [...parts]);
   }
 
-  completeMultipart(key: string, uploadId: string, parts: readonly UploadedPart[]): Promise<void> {
+  completeMultipart(
+    key: string,
+    uploadId: string,
+    parts: readonly UploadedPart[],
+  ): Promise<boolean> {
     this.journal.add('storage:completeMultipart');
+    if (!this.multiparts.delete(this.multipartKey(key, uploadId))) return Promise.resolve(false);
     this.completed.push({ key, parts });
-    this.multiparts.delete(this.multipartKey(key, uploadId));
     const total = parts.reduce((sum, part) => sum + Number(part.sizeBytes), 0);
     this.objects.set(key, this.pendingContent.get(key) ?? Buffer.alloc(total));
-    return Promise.resolve();
+    return Promise.resolve(true);
   }
 
   abortMultipart(key: string, uploadId: string): Promise<void> {
@@ -339,8 +343,12 @@ export class FakeObjectStorage implements IObjectStorage {
     return Promise.resolve(object === undefined ? null : { sizeBytes: BigInt(object.length) });
   }
 
+  /** Como el adaptador real: un objeto ausente rechaza (S3 responde `NoSuchKey`). */
   getRange(key: string, start: number, endInclusive: number): Promise<Buffer> {
-    const object = this.objects.get(key) ?? Buffer.alloc(0);
+    const object = this.objects.get(key);
+    if (object === undefined) {
+      return Promise.reject(Object.assign(new Error('NoSuchKey'), { name: 'NoSuchKey' }));
+    }
     return Promise.resolve(object.subarray(start, endInclusive + 1));
   }
 
