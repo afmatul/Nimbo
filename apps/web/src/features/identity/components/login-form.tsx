@@ -13,30 +13,15 @@ import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { toApiClientError, type ApiClientError } from '../../../lib/api-error';
 import { messageForCode } from '../../../lib/error-catalog';
-import { homePathFor } from '../../access/home-path';
 import { login } from '../api';
 import { saveRequestLinkEmail } from '../request-link-email-storage';
-import { rememberSession } from '../session/session-memory';
+import { useEnterSession } from '../session/use-enter-session';
 
+import { FieldError } from './field-error';
 import { LoginAlert, RESET_PASSWORD_HREF } from './login-alert';
 import { PasswordField } from './password-field';
 
 const REQUEST_LINK_PATH = '/registro/pedir-enlace';
-
-function FieldError({
-  id,
-  message,
-}: {
-  readonly id: string;
-  readonly message: string | undefined;
-}): JSX.Element | null {
-  if (message === undefined) return null;
-  return (
-    <p id={id} className="text-xs text-destructive">
-      {message}
-    </p>
-  );
-}
 
 /**
  * Inicio de sesión (spec 002 §11, mockup p. 07). Con éxito deja la sesión en memoria (CA-28) y lleva al inicio del rol
@@ -51,6 +36,7 @@ export function LoginForm({
   readonly sessionEnded?: boolean;
 }): JSX.Element {
   const router = useRouter();
+  const enterSession = useEnterSession();
   const [error, setError] = useState<ApiClientError | null>(null);
   const [showEndedNotice, setShowEndedNotice] = useState(sessionEnded);
   const [submitting, setSubmitting] = useState(false);
@@ -71,8 +57,7 @@ export function LoginForm({
     setShowEndedNotice(false);
     try {
       const session = await login(apiPublicUrl, values);
-      rememberSession(session);
-      router.replace(homePathFor(session.user.role));
+      enterSession(session);
     } catch (caught) {
       setError(toApiClientError(caught));
       setSubmitting(false);

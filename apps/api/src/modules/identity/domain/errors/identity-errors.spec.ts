@@ -111,6 +111,15 @@ describe('errores de `identity` (plan §5)', () => {
       );
     });
 
+    it('CA-18: con ámbito `password_reset` usa el texto de 001 con los minutos (DT-20)', () => {
+      const error = new IdentityTooManyRequestsError(60, 'password_reset');
+
+      expect(error.scope).toBe('password_reset');
+      expect(error.message).toBe(
+        'Ya te enviamos un enlace hace poco. Revisa tu bandeja y la carpeta de spam, o inténtalo de nuevo en 1 minuto.',
+      );
+    });
+
     it.each([
       [61, '2 minutos'],
       [3599, '60 minutos'],
