@@ -25,6 +25,9 @@ const SPEC_REDACTED_FIELDS = [
  */
 const IDENTITY_REDACTED_FIELDS = ['email', 'correo', 'fullName', 'to', 'html', 'text'] as const;
 
+/** Campos de la spec 002 (plan §6.7, CA-25): las contraseñas del cambio de contraseña. */
+const SESSION_REDACTED_FIELDS = ['currentPassword', 'newPassword'] as const;
+
 /** URLs de conexión: llevan usuario y contraseña embebidos (`postgres://usuario:clave@host/bd`). */
 const CONNECTION_URL_FIELDS = ['DATABASE_URL', 'DATABASE_MIGRATION_URL', 'REDIS_URL'] as const;
 
@@ -41,6 +44,7 @@ export const REDACTED_FIELDS: ReadonlySet<string> = new Set(
   [
     ...SPEC_REDACTED_FIELDS,
     ...IDENTITY_REDACTED_FIELDS,
+    ...SESSION_REDACTED_FIELDS,
     ...SECRET_KEYS,
     ...CONNECTION_URL_FIELDS,
   ].map((field) => field.toLowerCase()),
