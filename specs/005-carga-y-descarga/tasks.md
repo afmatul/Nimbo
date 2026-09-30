@@ -568,7 +568,7 @@ salvo la lectura por rango del detector.
 
 ### Traspaso PR-D (2026-09-30)
 
-- **Hechas**: T-31…T-45. T-43 en `ec4304b`; T-44 en `01e669e` (fallo de producción) y `ae8b72d` (pruebas); T-45 en
+- **Hechas**: T-31…T-47. T-43 en `ec4304b`; T-44 en `01e669e` (fallo de producción) y `ae8b72d` (pruebas); T-45 en
   `9dd184b`. Detenido por ALTO del coordinador tras T-45.
 - **T-46 hecha** (spike en `spike/005-minio`, que solo tiene la fusión de `feat/005-api`; el guion del spike se borró
   sin confirmarse). Resultado completo en `plan.md` §8. `Content-Length` firmado y `response-*`: ya los cubrían
@@ -580,14 +580,37 @@ salvo la lectura por rango del detector.
   (`MINIO_API_STALE_UPLOADS_*`); con 20 s / 5 s las partes desaparecen del disco a los ~25 s y `ListParts` responde
   `NoSuchUpload` (el adaptador ya lo tolera). `ListMultipartUploads` sigue listando el `uploadId`; la API no lo usa.
   Es una red de seguridad, no reemplaza `upload-cleanup` (PR-E).
-- **PENDIENTE T-47** (cierre, no empezado): `storage/index.ts` exporta `StorageModule` e `IPlanLimitsProvider` (con su
-  token y `PlanLimits`) y nada de infraestructura (revisar `index.spec.ts`); README de `storage`; `pnpm lint`,
-  `pnpm typecheck`, `pnpm test` en verde; texto para la descripción del PR con las suites `int`/`iso` ejecutadas (ver
-  abajo). Después, en commit aparte `docs(storage): casillas de tareas hechas [005]`, marcar T-02…T-09 y T-20…T-42
-  cuyos commits existan (`git log --grep "005 T-xx"` en `feat/005-api`), y T-47.
-- **Suites ejecutadas** (Windows 11, Docker 29.4.0, Testcontainers sin nombres fijos, 2026-09-30): `pnpm test:int`
-  de `test/int/storage` 18 suites / 200 pruebas en verde; `pnpm test:isolation` 8 suites / 112 en verde; unitarias
-  api 116 suites / 1068 en verde (antes de T-45; T-45 no toca unitarias); lint y typecheck en verde.
+- **T-47 hecha**: `storage/index.ts` ya exportaba solo `StorageModule`, `I_PLAN_LIMITS_PROVIDER` y los tipos
+  `IPlanLimitsProvider`/`PlanLimits`, y `index.spec.ts` lo fija; sin cambios de código. El README de `storage` **no**
+  se tocó en PR-D: lo escribe PR-E (T-56). Debe agregar: (1) «API pública»: lo que exporta `index.ts` (y que
+  `StorageWorkerModule` llega con T-51); (2) el flujo init → `PUT` directo a MinIO con URL prefirmada (`Content-Length`
+  firmado; por partes por encima del umbral) → complete (`listParts` como fuente de verdad, tamaño real, tipo por
+  firmas, CAS final) y la descarga con URL de 300 s y `Content-Disposition: attachment`; (3) la excepción DF-59
+  (`storage` escribe `usuario.espacio_usado`) en una frase; (4) CORS de MinIO solo para los orígenes de `web`
+  (`MINIO_API_CORS_ALLOW_ORIGIN` = `CORS_ORIGIN`) y que MinIO limpia multipart abandonados por su cuenta a las 24 h
+  (red de seguridad; `upload-cleanup` es la limpieza real), con enlace a `plan.md` §8; (5) actualizar la viñeta de
+  `IExpiredUploadScanner` («llega con PR-E») y las rutas de prueba (`test/int/storage/*`, `storage.iso-spec.ts`,
+  `storage-maintenance.iso-spec.ts`).
+- **Suites ejecutadas tras fusionar `main`** (`ca82e96` + T-46/T-44; Windows 11, Docker 29.4.0, Testcontainers sin
+  nombres fijos, 2026-09-30; máquina con carga alta de otros procesos): lint y typecheck en verde; unitarias: api 119
+  suites / 1105 pruebas, web 77 / 359, contracts 11 / 223, config 2 / 28, raíz 3 / 34, worker sin pruebas;
+  `pnpm test:int -- test/int/storage` 18 suites / 200 pruebas; `pnpm test:isolation` 9 suites / 115 (dos corridas en
+  verde). **Pruebas inestables con carga** (pasan solas y en otras corridas completas; ninguna es de lógica):
+  `redact-deep.spec.ts` «CA-15 (R-8) … no degrada el logger» (umbral de 150 µs; midió ~330 µs en 2 de 3 corridas
+  completas de api); `node.repository.int-spec.ts` «ADR-0005: el plan de … usa los índices de propietario» (con tablas
+  casi vacías y estadísticas recién analizadas por autovacuum el planificador elige `archivo_pkey`; falló en 2 de 3
+  corridas completas de `test/int/storage`); `reset-password-view.spec.tsx` (web, 002) excedió su espera una vez.
+  Propuesta para `/review`: fijar las estadísticas o el volumen de `archivo` antes del `EXPLAIN` y medir el umbral de
+  `redactDeep` en relación con una referencia, no en absoluto.
+- **Texto para la descripción del PR-D**: «PR-D de 005 (T-31…T-47): API de cargas (init, resume, complete, cancel),
+  descarga con URL prefirmada de 300 s, límites de tasa, auditoría, pruebas de integración y de aislamiento, y spike de
+  MinIO (T-46: CORS restringido a los orígenes de `web`; MinIO limpia multipart abandonados a las 24 h; resultado en
+  `plan.md` §8). Corrige dos carreras de `complete` (T-44: doble `complete` y objeto purgado por `cancel` durante la
+  detección de tipo). Suites ejecutadas en Windows 11 con Docker 29.4.0 (Testcontainers), tras fusionar `main`: lint y
+  typecheck en verde; unitarias api 119 suites / 1105 pruebas, web 77 / 359, contracts 11 / 223, config 2 / 28;
+  `pnpm test:int -- test/int/storage` 18 / 200; `pnpm test:isolation` 9 / 115. Inestables con carga (ver nota de
+  traspaso en `tasks.md`): el umbral de tiempo de `redact-deep.spec.ts` y las dos aserciones de plan de
+  `node.repository.int-spec.ts`. El README de `storage` llega con PR-E (T-56).»
 - **Fallo de producción corregido en T-44** (`01e669e`): dos `complete` simultáneos de la misma carga: el perdedor del
   CAS final respondía 404 aunque el archivo existía (ahora responde el mismo archivo), y si el otro ya había cerrado el
   multipart, `completeMultipart` lanzaba `NoSuchUpload` → 500. El puerto `IObjectStorage.completeMultipart` ahora
@@ -602,9 +625,10 @@ salvo la lectura por rango del detector.
   del `UploadService`: las cargas sembradas con él nacen vencidas (410). Los *fixtures* usan `new Date()`. (2) Crear
   varias peticiones de `supertest` antes de esperarlas da `ECONNREFUSED`: enviarlas de a una (funciones, no promesas).
   (3) El mensaje de `STORAGE_INVALID_FILE_TYPE` lleva la extensión con punto (`.pdf`).
-- **Para confirmar en /review**: (a) carrera estrecha `complete` ∥ `cancel`: si `cancel` purga el objeto mientras
-  `complete` lo lee con el detector, `getRange` lanza y `complete` responde 500 en lugar de 404 (sin `archivo` sin
-  objeto: el invariante se mantiene; `uploads-cancel.int-spec.ts` no lo reprodujo en 6 vueltas). Propuesta: tratar
-  un objeto ausente en `verifyType` como pérdida de carrera (`afterLostRegistration`). (b) CA-5 está en
+- **Para confirmar en /review**: (a) carrera estrecha `complete` ∥ `cancel` **corregida** en `fix(storage)` [005 T-44]:
+  si la lectura del detector falla y `headObject` dice que el objeto ya no existe, `complete` responde como quien
+  perdió el CAS final (`afterLostRegistration`: 404, o 410 si venció); si el objeto sigue ahí, el error se propaga.
+  Pruebas unitarias en `upload.service.spec.ts`; el doble `FakeObjectStorage.getRange` ahora rechaza un objeto
+  ausente como el adaptador real. No se agregó prueba `int` (la carrera no se reprodujo en 6 vueltas). (b) CA-5 está en
   `uploads-validation.int-spec.ts` (plan §8), no en T-44. (c) CA-9 por HTTP (410 tras 24 h) queda para T-51.
 - **Bloqueos**: ninguno.
