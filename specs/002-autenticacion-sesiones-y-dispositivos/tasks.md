@@ -689,13 +689,13 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   cualquier correo; jest-axe. Luego el componente y la página (esquema de `registro--pedir-enlace`).
   Archivos: `apps/web/features/identity/components/request-reset-form.tsx` y su `*.spec.tsx`, `apps/web/app/(public)/recuperar-contrasena/page.tsx`.
 
-- [ ] **T-92** `ResetPasswordView`: lectura y comprobación del enlace — CA: CA-20, CA-27 — Depende: T-81, T-82 — ~1 h
+- [x] **T-92** `ResetPasswordView`: lectura y comprobación del enlace — CA: CA-20, CA-27 — Depende: T-81, T-82 — ~1 h
   Prueba primero `features/identity/components/reset-password-view.spec.tsx`: lee `#token`, lo borra con
   `history.replaceState` y llama a `check` **una vez** (también en `StrictMode`); estados verificando, enlace-expirado
   y enlace-invalido con la acción «Pedir un enlace nuevo»; sin token → inválido.
   Archivos: `apps/web/features/identity/components/reset-password-view.tsx` y su `*.spec.tsx`.
 
-- [ ] **T-93** `ResetPasswordView`: formulario y `/restablecer-contrasena` — CA: CA-19, CA-21, CA-27 — Depende: T-92, 001 T-61 — ~1 h
+- [x] **T-93** `ResetPasswordView`: formulario y `/restablecer-contrasena` — CA: CA-19, CA-21, CA-27 — Depende: T-92, 001 T-61 — ~1 h
   Prueba primero (mismo archivo): default con `PasswordRequirements` y confirmación (`refine` del cliente: no envía si
   no coincide), error-campos (`fields` de `IDENTITY_WEAK_PASSWORD`), enviando, éxito («Listo. Cambiamos tu
   contraseña…» + «Iniciar sesión»); jest-axe. Luego la página.

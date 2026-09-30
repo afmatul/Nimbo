@@ -1,7 +1,7 @@
 'use client';
 
 import { IDENTITY_ERROR_CODES } from '@nimbo/contracts';
-import { AlertCircle, Check, Clock, Info, Loader2 } from 'lucide-react';
+import { Check, Info, Loader2 } from 'lucide-react';
 import type { JSX } from 'react';
 
 import { IdentityCard } from '../../../components/nimbo/identity-card';
@@ -9,6 +9,8 @@ import { buttonVariants } from '../../../components/ui/button';
 import { messageForCode } from '../../../lib/error-catalog';
 import { cn } from '../../../lib/utils';
 import { useVerifyEmail } from '../hooks/use-verify-email';
+
+import { LinkProblemCard } from './link-problem-card';
 
 const TITLE_ID = 'verificar-correo';
 const LOGIN_HREF = '/iniciar-sesion';
@@ -105,28 +107,18 @@ export function VerifyEmailView({ apiPublicUrl }: { readonly apiPublicUrl: strin
     );
   }
 
-  const expired = state.status === 'enlace-expirado';
+  const message = messageForCode(
+    state.status === 'enlace-expirado'
+      ? IDENTITY_ERROR_CODES.VERIFICATION_LINK_EXPIRED
+      : IDENTITY_ERROR_CODES.VERIFICATION_LINK_INVALID,
+  );
   return (
-    <IdentityCard
-      data-state={state.status}
+    <LinkProblemCard
+      problem={state.status}
       titleId={TITLE_ID}
-      title={expired ? 'Enlace vencido' : 'Enlace no válido'}
-      icon={expired ? Clock : AlertCircle}
-      tone={expired ? 'warning' : 'danger'}
+      message={message}
+      requestHref={REQUEST_HREF}
       step={2}
-      description={
-        <p role="alert" className="text-sm text-secondary-foreground">
-          {messageForCode(
-            expired
-              ? IDENTITY_ERROR_CODES.VERIFICATION_LINK_EXPIRED
-              : IDENTITY_ERROR_CODES.VERIFICATION_LINK_INVALID,
-          )}
-        </p>
-      }
-    >
-      <a href={REQUEST_HREF} className={ACTION_CLASS}>
-        Pedir un enlace nuevo
-      </a>
-    </IdentityCard>
+    />
   );
 }
