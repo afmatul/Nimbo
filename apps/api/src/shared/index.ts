@@ -13,7 +13,7 @@ export {
   UnauthenticatedError,
   UnauthorizedError,
 } from './domain/errors';
-export type { FieldIssue } from './domain/errors';
+export type { ErrorDetails, FieldIssue } from './domain/errors';
 export { FixedClock } from './domain/fixed.clock';
 export { I_CLOCK } from './domain/i-clock.port';
 export type { IClock } from './domain/i-clock.port';

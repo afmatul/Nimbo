@@ -19,7 +19,8 @@ export type FieldIssueResponse = z.infer<typeof fieldIssueSchema>;
 
 /**
  * Forma única de todo error HTTP de Nimbo (000 CA-16). Nunca incluye `stack` ni detalles internos.
- * `fields` aparece solo en errores de entrada (001 CA-5, CA-6).
+ * `fields` aparece solo en errores de entrada (001 CA-5, CA-6). `details` (005 D-12) es un objeto plano de
+ * `string | number | boolean` con cifras, `suggestedName` o `reason`: nunca anidado.
  */
 export const errorResponseSchema = z
   .object({
@@ -27,6 +28,7 @@ export const errorResponseSchema = z
     message: z.string().min(1),
     correlationId: z.string().min(1),
     fields: z.array(fieldIssueSchema).optional(),
+    details: z.record(z.union([z.string(), z.number(), z.boolean()])).optional(),
   })
   .strict();
 
