@@ -1,3 +1,6 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
+
+import type { AuditRecord, IAuditLogger } from '../../src/modules/audit';
 import type {
   ByteReader,
   DetectionResult,
@@ -50,9 +53,55 @@ export class Journal {
   }
 }
 
+/** Bloqueos que retiene una transacción abierta con `FakeRowLocks.transaction`. */
+interface HeldLocks {
+  readonly ids: Set<string>;
+  readonly releases: (() => void)[];
+}
+
+/**
+ * `SELECT … FOR UPDATE` en memoria: `lock(id)` espera a que suelte la fila la transacción que la tiene y la retiene
+ * hasta que termine la propia. Así dos transacciones concurrentes del mismo propietario se serializan como en
+ * PostgreSQL, desde el bloqueo y no desde el `BEGIN`.
+ */
+export class FakeRowLocks {
+  private readonly tails = new Map<string, Promise<void>>();
+  private readonly scope = new AsyncLocalStorage<HeldLocks>();
+
+  async transaction<T>(work: () => Promise<T>): Promise<T> {
+    const held: HeldLocks = { ids: new Set(), releases: [] };
+    try {
+      return await this.scope.run(held, work);
+    } finally {
+      held.releases.forEach((release) => {
+        release();
+      });
+    }
+  }
+
+  async lock(id: string): Promise<void> {
+    const held = this.scope.getStore();
+    if (held === undefined) throw new Error('FOR UPDATE fuera de una transacción');
+    if (held.ids.has(id)) return;
+    const previous = this.tails.get(id) ?? Promise.resolve();
+    let release: () => void = () => undefined;
+    const mine = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    this.tails.set(
+      id,
+      previous.then(() => mine),
+    );
+    held.ids.add(id);
+    held.releases.push(release);
+    await previous;
+  }
+}
+
 /** Corre el trabajo tal cual y anota la apertura y el cierre de cada transacción con actor. */
 export class FakeTransactionRunner implements ITransactionRunner {
   readonly actors: string[] = [];
+  readonly locks = new FakeRowLocks();
 
   constructor(private readonly journal: Journal) {}
 
@@ -64,7 +113,7 @@ export class FakeTransactionRunner implements ITransactionRunner {
     this.actors.push(actor.id);
     this.journal.add('tx:begin');
     try {
-      return await work();
+      return await this.locks.transaction(work);
     } finally {
       this.journal.add('tx:end');
     }
@@ -88,16 +137,22 @@ export class FakeQuotaRepository implements IQuotaRepository {
   usage: QuotaUsage = { usedBytes: 0n, reservedBytes: 0n };
   readonly added: bigint[] = [];
 
-  constructor(private readonly journal: Journal) {}
+  /** Con `locks`, los dos métodos `lock*` retienen la fila del actor como `FOR UPDATE`. */
+  constructor(
+    private readonly journal: Journal,
+    private readonly locks?: FakeRowLocks,
+  ) {}
 
-  lockUsage(): Promise<bigint> {
+  async lockUsage(actor: Actor): Promise<bigint> {
     this.journal.add('quota:lockUsage');
-    return Promise.resolve(this.usage.usedBytes);
+    await this.locks?.lock(actor.id);
+    return this.usage.usedBytes;
   }
 
-  lockAndReadUsage(): Promise<QuotaUsage> {
+  async lockAndReadUsage(actor: Actor): Promise<QuotaUsage> {
     this.journal.add('quota:lockAndReadUsage');
-    return Promise.resolve(this.usage);
+    await this.locks?.lock(actor.id);
+    return this.usage;
   }
 
   addUsedBytes(_actor: Actor, deltaBytes: bigint): Promise<void> {
@@ -199,11 +254,12 @@ export class FakeNodeRepository implements INodeRepository {
     return Promise.resolve({ items: [...this.files.values()], nextCursor: null });
   }
 
-  /** Devuelve los nombres que la prueba fija como ocupados; `name` solo se anota. */
-  findTakenNames(_actor: Actor, name: FileName): Promise<readonly string[]> {
+  /** Los nombres que la prueba fija como ocupados más los de los archivos del actor ya insertados. */
+  findTakenNames(actor: Actor, name: FileName): Promise<readonly string[]> {
     this.journal.add('nodes:findTakenNames');
     this.namesAsked.push(name.value);
-    return Promise.resolve([...this.taken]);
+    const owned = [...this.files.values()].filter((file) => file.ownerId === actor.id);
+    return Promise.resolve([...this.taken, ...owned.map((file) => file.name.value)]);
   }
 
   insertWithVersion(_actor: Actor, file: File, version: FileVersion): Promise<void> {
@@ -333,5 +389,20 @@ export class FakeFileTypeDetector implements IFileTypeDetector {
     this.journal.add('detector:detect');
     this.calls.push({ extension, size: reader.size });
     return Promise.resolve(this.result);
+  }
+}
+
+/** Auditoría en memoria; con `fails` lanza como lo haría un adaptador caído. */
+export class FakeAuditLogger implements IAuditLogger {
+  readonly records: AuditRecord[] = [];
+  fails = false;
+
+  constructor(private readonly journal: Journal) {}
+
+  record(entry: AuditRecord): Promise<void> {
+    this.journal.add(`audit:${entry.action}`);
+    if (this.fails) return Promise.reject(new Error('auditoría caída'));
+    this.records.push(entry);
+    return Promise.resolve();
   }
 }

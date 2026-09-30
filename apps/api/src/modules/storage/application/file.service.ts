@@ -16,6 +16,7 @@ import { I_NODE_REPOSITORY } from './ports/i-node.repository.port';
 import type { FileListPage, FileListQuery, INodeRepository } from './ports/i-node.repository.port';
 import { I_OBJECT_STORAGE } from './ports/i-object-storage.port';
 import type { IObjectStorage } from './ports/i-object-storage.port';
+import { recordAudit } from './record-audit';
 import type { StorageLogger } from './storage-logger';
 
 const RATE_LIMIT_WINDOW_SECONDS = 60;
@@ -80,12 +81,17 @@ export class FileService {
     if (!decision.allowed) throw new StorageTooManyRequestsError(decision.retryAfterSeconds);
   }
 
-  private async recordIssued(actor: Actor, file: File): Promise<void> {
-    const action = AuditAction.FILE_DOWNLOAD_URL_ISSUED;
-    try {
-      await this.audit.record({ action, actor, targetUserId: actor.id, resourceId: file.id });
-    } catch {
-      this.logger.error({ event: 'audit.record_failed', action, fileId: file.id });
-    }
+  private recordIssued(actor: Actor, file: File): Promise<void> {
+    return recordAudit(
+      this.audit,
+      this.logger,
+      {
+        action: AuditAction.FILE_DOWNLOAD_URL_ISSUED,
+        actor,
+        targetUserId: actor.id,
+        resourceId: file.id,
+      },
+      { fileId: file.id },
+    );
   }
 }

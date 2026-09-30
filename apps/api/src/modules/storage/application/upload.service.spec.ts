@@ -4,6 +4,7 @@ import type { InitUploadInput } from '@nimbo/contracts';
 
 import { FakePlanLimitsProvider } from '../../../../test/support/fake-plan-limits.provider';
 import {
+  FakeAuditLogger,
   FakeFileTypeDetector,
   FakeNodeRepository,
   FakeObjectStorage,
@@ -15,6 +16,7 @@ import {
 } from '../../../../test/support/storage-fakes';
 import { createActor, FixedClock, Role } from '../../../shared';
 import type { Actor } from '../../../shared';
+import { AuditAction } from '../../audit';
 import {
   EmptyFileError,
   FileTooLargeError,
@@ -33,6 +35,7 @@ import type { UploadSession } from '../domain/upload-session';
 import type { PlanLimits } from './plan-limits';
 import { QuotaService } from './quota.service';
 import type { UploadConfig } from './upload-config';
+import { UploadRegistrar } from './upload-registrar';
 import { UploadService } from './upload.service';
 
 const MIB = 1_048_576;
@@ -69,12 +72,13 @@ function setup() {
   const clock = new FixedClock(NOW);
   const transactions = new FakeTransactionRunner(journal);
   const rateLimiter = new FakeRateLimiter(journal);
-  const quotas = new FakeQuotaRepository(journal);
+  const quotas = new FakeQuotaRepository(journal, transactions.locks);
   const sessions = new FakeUploadSessionRepository(journal);
   const nodes = new FakeNodeRepository(journal);
   const storage = new FakeObjectStorage(journal);
   const detector = new FakeFileTypeDetector(journal);
   const plans = new JournaledPlanLimits(journal);
+  const audit = new FakeAuditLogger(journal);
   const logger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() };
   const service = new UploadService(
     transactions,
@@ -86,10 +90,13 @@ function setup() {
     nodes,
     storage,
     detector,
+    new UploadRegistrar(transactions, quotas, sessions, nodes, clock),
+    audit,
     CONFIG,
     logger,
   );
   return {
+    audit,
     journal,
     clock,
     transactions,
@@ -842,5 +849,174 @@ describe('UploadService.complete', () => {
     );
 
     expect(ctx.nodes.inserted).toEqual([]);
+  });
+});
+
+/** Una carga simple ya subida entera: el objeto está en su clave y solo falta `complete`. */
+async function uploadedSimple(ctx: Setup): Promise<UploadSession> {
+  const response = await ctx.service.init(
+    ACTOR,
+    request({ sizeBytes: MIB, onConflict: 'keep_both' }),
+  );
+  const session = ctx.sessions.sessions.get(response.uploadId);
+  if (session === undefined) throw new Error('la sesión no se guardó');
+  ctx.storage.objects.set(session.objectKey.value, Buffer.alloc(MIB));
+  return session;
+}
+
+describe('UploadService.complete: registro final', () => {
+  it('CA-1: en una transacción bloquea el uso, cierra la carga, nombra, inserta y suma el tamaño real', async () => {
+    const ctx = setup();
+    const session = await uploadedSimple(ctx);
+
+    await ctx.service.complete(ACTOR, session.id);
+
+    const entries = ctx.journal.entries;
+    expect(entries.slice(entries.lastIndexOf('tx:begin'))).toEqual([
+      'tx:begin',
+      'quota:lockUsage',
+      'session:transition:completada',
+      'nodes:findTakenNames',
+      'nodes:insertWithVersion',
+      'quota:addUsedBytes',
+      'tx:end',
+      'audit:file.upload_completed',
+    ]);
+    expect(ctx.quotas.added).toEqual([BigInt(MIB)]);
+    expect(ctx.nodes.inserted[0]?.version.origin).toBe('carga');
+  });
+
+  it('CA-6: dos cargas del mismo nombre completadas a la vez: la segunda queda «(1)» sin 409', async () => {
+    const ctx = setup();
+    const first = await uploadedSimple(ctx);
+    const second = await uploadedSimple(ctx);
+
+    const [a, b] = await Promise.all([
+      ctx.service.complete(ACTOR, first.id),
+      ctx.service.complete(ACTOR, second.id),
+    ]);
+
+    expect([a.file.name, b.file.name].sort()).toEqual(['informe (1).docx', 'informe.docx']);
+    expect(ctx.nodes.inserted).toHaveLength(2);
+  });
+
+  it('CA-6: el nombre definitivo se calcula al completar, contra lo que existe entonces', async () => {
+    const ctx = setup();
+    const session = await uploadedSimple(ctx);
+    ctx.nodes.taken = ['Informe.docx', 'informe (1).docx'];
+
+    const response = await ctx.service.complete(ACTOR, session.id);
+
+    expect(response.file.name).toBe('informe (2).docx');
+    await expect(ctx.service.complete(ACTOR, session.id)).resolves.toEqual(response);
+  });
+
+  it('CA-12: repetir `complete` no suma el tamaño ni audita otra vez', async () => {
+    const ctx = setup();
+    const session = await uploadedSimple(ctx);
+    await ctx.service.complete(ACTOR, session.id);
+
+    await ctx.service.complete(ACTOR, session.id);
+
+    expect(ctx.quotas.added).toEqual([BigInt(MIB)]);
+    expect(ctx.audit.records).toHaveLength(1);
+  });
+
+  it('CA-22: si `cancel` gana el CAS, no inserta archivo, no suma espacio ni audita (404)', async () => {
+    const ctx = setup();
+    const session = await uploadedSimple(ctx);
+    ctx.sessions.raceTo = 'cancelada';
+
+    await expect(ctx.service.complete(ACTOR, session.id)).rejects.toBeInstanceOf(
+      UploadNotFoundError,
+    );
+
+    expect(ctx.nodes.inserted).toEqual([]);
+    expect(ctx.quotas.added).toEqual([]);
+    expect(ctx.audit.records).toEqual([]);
+  });
+
+  it('CA-9: si la limpieza la vence justo antes del CAS, responde 410 sin archivo', async () => {
+    const ctx = setup();
+    const session = await uploadedSimple(ctx);
+    ctx.sessions.raceTo = 'expirada';
+
+    await expect(ctx.service.complete(ACTOR, session.id)).rejects.toBeInstanceOf(
+      UploadExpiredError,
+    );
+
+    expect(ctx.nodes.inserted).toEqual([]);
+  });
+
+  it('CA-20: audita `file.upload_completed` tras el commit, sin nombre, URL ni clave', async () => {
+    const ctx = setup();
+    const session = await uploadedSimple(ctx);
+
+    await ctx.service.complete(ACTOR, session.id);
+
+    expect(ctx.audit.records).toEqual([
+      {
+        action: AuditAction.FILE_UPLOAD_COMPLETED,
+        actor: ACTOR,
+        targetUserId: ACTOR.id,
+        resourceId: session.fileId,
+        attributes: { sizeBytes: MIB, mode: 'simple' },
+      },
+    ]);
+    expect(JSON.stringify(ctx.audit.records)).not.toContain('informe');
+  });
+
+  it('CA-20, RN-10: si la auditoría falla, el archivo queda registrado y se anota el error', async () => {
+    const ctx = setup();
+    const session = await uploadedSimple(ctx);
+    ctx.audit.fails = true;
+
+    const response = await ctx.service.complete(ACTOR, session.id);
+
+    expect(response.file.id).toBe(session.fileId);
+    expect(ctx.nodes.inserted).toHaveLength(1);
+    expect(ctx.logger.error).toHaveBeenCalledWith({
+      event: 'audit.record_failed',
+      action: AuditAction.FILE_UPLOAD_COMPLETED,
+      fileId: session.fileId,
+    });
+  });
+
+  it('CA-11, CA-20: un rechazo audita `file.upload_rejected` con su motivo y la carga', async () => {
+    const ctx = setup();
+    const session = await uploadedSimple(ctx);
+    ctx.detector.result = { ok: false, reason: 'signature' };
+
+    await expect(ctx.service.complete(ACTOR, session.id)).rejects.toBeInstanceOf(
+      InvalidFileTypeError,
+    );
+
+    expect(ctx.audit.records).toEqual([
+      {
+        action: AuditAction.FILE_UPLOAD_REJECTED,
+        actor: ACTOR,
+        targetUserId: ACTOR.id,
+        resourceId: session.id,
+        attributes: { reason: 'tipo_invalido', mode: 'simple' },
+      },
+    ]);
+  });
+
+  it('CA-5: si la auditoría del rechazo falla, el rechazo sigue igual y se anota el error', async () => {
+    const ctx = setup();
+    const session = await uploadedSimple(ctx);
+    ctx.storage.objects.set(session.objectKey.value, Buffer.alloc(MIB + 1));
+    ctx.audit.fails = true;
+
+    await expect(ctx.service.complete(ACTOR, session.id)).rejects.toBeInstanceOf(
+      UploadSizeMismatchError,
+    );
+
+    expect(stateOf(ctx, session)).toEqual({ state: 'rechazada', reason: 'tamano' });
+    expect(ctx.logger.error).toHaveBeenCalledWith({
+      event: 'audit.record_failed',
+      action: AuditAction.FILE_UPLOAD_REJECTED,
+      cargaId: session.id,
+    });
   });
 });

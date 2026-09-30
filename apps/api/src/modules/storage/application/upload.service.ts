@@ -13,6 +13,8 @@ import { PinoLogger } from 'nestjs-pino';
 
 import { I_CLOCK, I_RATE_LIMITER, I_TRANSACTION_RUNNER } from '../../../shared';
 import type { Actor, IClock, IRateLimiter, ITransactionRunner } from '../../../shared';
+import { AuditAction, I_AUDIT_LOGGER } from '../../audit';
+import type { IAuditLogger } from '../../audit';
 import {
   EmptyFileError,
   FileTooLargeError,
@@ -25,10 +27,9 @@ import {
   UploadNotFoundError,
   UploadSizeMismatchError,
 } from '../domain/errors';
-import { File } from '../domain/file';
+import type { File } from '../domain/file';
 import type { FileKind } from '../domain/file-kind';
 import { FileName } from '../domain/file-name.vo';
-import { FileVersion } from '../domain/file-version';
 import { expectedPartBytes, planParts } from '../domain/multipart-layout';
 import { ObjectKey } from '../domain/object-key';
 import { UploadSession } from '../domain/upload-session';
@@ -48,9 +49,12 @@ import type { IObjectStorage } from './ports/i-object-storage.port';
 import { I_UPLOAD_SESSION_REPOSITORY } from './ports/i-upload-session.repository.port';
 import type { IUploadSessionRepository } from './ports/i-upload-session.repository.port';
 import { QuotaService } from './quota.service';
+import { recordAudit } from './record-audit';
 import type { StorageLogger } from './storage-logger';
 import { UPLOAD_CONFIG } from './upload-config';
 import type { UploadConfig } from './upload-config';
+import { UploadRegistrar } from './upload-registrar';
+import type { VerifiedUpload } from './upload-registrar';
 
 /** Ventana del límite de inicios de carga por actor (plan D-3); el tope sale de la configuración. */
 const RATE_WINDOW_SECONDS = 60;
@@ -88,6 +92,8 @@ export class UploadService {
     @Inject(I_NODE_REPOSITORY) private readonly nodes: INodeRepository,
     @Inject(I_OBJECT_STORAGE) private readonly storage: IObjectStorage,
     @Inject(I_FILE_TYPE_DETECTOR) private readonly detector: IFileTypeDetector,
+    private readonly registrar: UploadRegistrar,
+    @Inject(I_AUDIT_LOGGER) private readonly audit: IAuditLogger,
     @Inject(UPLOAD_CONFIG) private readonly config: UploadConfig,
     @Inject(PinoLogger) private readonly logger: StorageLogger,
   ) {}
@@ -139,7 +145,7 @@ export class UploadService {
     const { maxFileBytes } = await this.plans.limitsFor(actor);
     const sizeBytes = await this.assembleObject(actor, session, maxFileBytes);
     const kind = await this.verifyType(actor, session, sizeBytes);
-    return this.register(actor, session, sizeBytes, kind);
+    return this.register(actor, session, { sizeBytes, kind });
   }
 
   /**
@@ -410,47 +416,50 @@ export class UploadService {
     if (!won) throw await this.raceLostError(actor, session.id);
     await this.retryDiscard(session, discard);
     this.logger.info({ event: 'upload.rejected', cargaId: session.id, reason });
+    await recordAudit(
+      this.audit,
+      this.logger,
+      {
+        action: AuditAction.FILE_UPLOAD_REJECTED,
+        actor,
+        targetUserId: actor.id,
+        resourceId: session.id,
+        attributes: { reason, mode: CONTRACT_MODE[session.mode] },
+      },
+      { cargaId: session.id },
+    );
   }
 
   /**
-   * Registro del archivo: CAS `activa → completada` y `archivo` + `version_archivo` en una transacción. Si el CAS
-   * pierde contra `cancel`/`expire`, no se inserta nada.
+   * Registro del archivo en una transacción (`UploadRegistrar`) y, tras el commit, la auditoría de mejor esfuerzo.
+   * Si el CAS pierde contra `cancel`/`expire`, no hay archivo: 410 o 404 según quién ganó.
    */
   private async register(
     actor: Actor,
     session: UploadSession,
-    sizeBytes: bigint,
-    kind: FileKind,
+    verified: VerifiedUpload,
   ): Promise<CompleteUploadResponse> {
-    const now = this.clock.now();
-    const file = File.create({
-      id: session.fileId,
-      ownerId: actor.id,
-      name: session.name,
-      kind,
-      sizeBytes,
-      currentVersionId: session.versionId,
-      now,
-    });
-    const version = FileVersion.fromUpload({
-      id: session.versionId,
-      fileId: session.fileId,
-      objectKey: session.objectKey,
-      sizeBytes,
-      createdBy: actor.id,
-      now,
-    });
-    const won = await this.transactions.withActor(actor, async () => {
-      const closed = await this.sessions.transition(actor, session.id, 'activa', 'completada', {
-        at: now,
-        rejectionReason: null,
-      });
-      if (closed) await this.nodes.insertWithVersion(actor, file, version);
-      return closed;
-    });
-    if (!won) throw await this.raceLostError(actor, session.id);
-    this.logger.info({ event: 'upload.completed', fileId: file.id, sizeBytes: Number(sizeBytes) });
+    const file = await this.registrar.register(actor, session, verified);
+    if (file === null) throw await this.raceLostError(actor, session.id);
+    const sizeBytes = Number(file.sizeBytes);
+    this.logger.info({ event: 'upload.completed', fileId: file.id, sizeBytes });
+    await this.recordCompleted(actor, session, file);
     return { file: toFileSummary(file) };
+  }
+
+  private recordCompleted(actor: Actor, session: UploadSession, file: File): Promise<void> {
+    return recordAudit(
+      this.audit,
+      this.logger,
+      {
+        action: AuditAction.FILE_UPLOAD_COMPLETED,
+        actor,
+        targetUserId: actor.id,
+        resourceId: file.id,
+        attributes: { sizeBytes: Number(file.sizeBytes), mode: CONTRACT_MODE[session.mode] },
+      },
+      { fileId: file.id },
+    );
   }
 
   /** Error para quien perdió un CAS: 410 si la carga venció, 404 en cualquier otro caso. */
