@@ -457,7 +457,7 @@ salvo la lectura por rango del detector.
   clave, firmas, `details` ni `suggestedName`.
   Archivos: `apps/api/test/int/storage/{uploads-multipart,uploads-resume,uploads-cancel,uploads-file-type,download,audit-and-logs}.int-spec.ts`.
 
-- [ ] **T-45** Aislamiento de cargas y archivos — CA: CA-16, CA-17 — Depende: T-42, 003 T-41 — ~4 h
+- [x] **T-45** Aislamiento de cargas y archivos — CA: CA-16, CA-17 — Depende: T-42, 003 T-41 — ~4 h
   Ampliar `isolation-world.ts` con `.withFiles()` y `.withUploads()` que insertan **como `nimbo_app` dentro de
   `withActor`**, no como dueño. `storage.iso-spec.ts`: dos clientes casi idénticos; B no completa, reanuda, cancela
   ni pide partes de una carga de A, ni descarga un archivo de A; todo 404 idéntico salvo `correlationId`

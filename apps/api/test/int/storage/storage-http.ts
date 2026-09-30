@@ -102,7 +102,6 @@ export const putToSignedUrl = (url: string, body: Uint8Array): Promise<globalThi
 /** Un cliente del mundo de la suite: su id y las rutas de `storage` con su token. */
 export interface StorageClient {
   readonly id: string;
-  readonly token: string;
   init(body: Record<string, unknown>): Promise<Response>;
   resume(uploadId: string): Promise<Response>;
   complete(uploadId: string): Promise<Response>;
@@ -122,6 +121,8 @@ export interface StorageHttpApp {
   /** Host (`host:puerto`) contra el que se firman las URLs. */
   readonly publicHost: string;
   newClient(role?: Role): Promise<StorageClient>;
+  /** Rutas de una cuenta que la suite ya creó (p. ej. el mundo de aislamiento); sin `token`, sin `Authorization`. */
+  clientFor(id: string, token?: string): StorageClient;
   /** Versiones y marcas de borrado que quedan en el bucket bajo una clave. */
   versionsOf(key: string): Promise<number>;
   readObject(key: string): Promise<Buffer>;
@@ -217,14 +218,11 @@ export const createStorageHttpApp = async (
   const accounts: string[] = [];
   const http = () => request(testApp.app.getHttpServer());
 
-  const newClient = async (role: Role = Role.CLIENT): Promise<StorageClient> => {
-    const id = await insertAccount(owner, role);
-    accounts.push(id);
-    const token = tokens.valid({ userId: id, role, sessionId: randomUUID() });
-    const auth = { Authorization: `Bearer ${token}` };
+  const clientFor = (id: string, token?: string): StorageClient => {
+    const auth: Record<string, string> =
+      token === undefined ? {} : { Authorization: `Bearer ${token}` };
     const client: StorageClient = {
       id,
-      token,
       init: (body) => http().post(`${API_PREFIX}/uploads`).set(auth).send(body),
       resume: (uploadId) => http().post(`${API_PREFIX}/uploads/${uploadId}/resume`).set(auth),
       complete: (uploadId) => http().post(`${API_PREFIX}/uploads/${uploadId}/complete`).set(auth),
@@ -242,6 +240,12 @@ export const createStorageHttpApp = async (
     return client;
   };
 
+  const newClient = async (role: Role = Role.CLIENT): Promise<StorageClient> => {
+    const id = await insertAccount(owner, role);
+    accounts.push(id);
+    return clientFor(id, tokens.valid({ userId: id, role, sessionId: randomUUID() }));
+  };
+
   return {
     testApp,
     limits,
@@ -249,6 +253,7 @@ export const createStorageHttpApp = async (
     s3,
     publicHost: new URL(publicEndpoint).host,
     newClient,
+    clientFor,
     versionsOf: async (key) => {
       const page = await s3.send(
         new ListObjectVersionsCommand({ Bucket: STORAGE_HTTP_BUCKET, Prefix: key }),
