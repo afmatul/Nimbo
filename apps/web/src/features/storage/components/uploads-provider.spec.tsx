@@ -169,6 +169,27 @@ describe('UploadsProvider', () => {
     expect(screen.queryByRole('region')).toBeNull();
   });
 
+  it('CA-21 (UI-4): mientras hay filas reserva abajo el alto del panel, así no tapa las últimas filas a 360 px', async () => {
+    const put = jest.fn(() => Promise.resolve());
+    const api = fakeApi({ init: jest.fn(() => Promise.resolve(simple('informe.docx'))) });
+    render(
+      <UploadsProvider api={api} managerOptions={{ put }}>
+        <Enqueue files={[localFile('informe.docx')]} />
+      </UploadsProvider>,
+    );
+    expect(screen.queryByTestId('upload-panel-spacer')).toBeNull();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Encolar' }));
+    const region = await screen.findByRole('region', { name: 'Cargas terminadas' });
+
+    expect(screen.getByTestId('upload-panel-spacer').getAttribute('aria-hidden')).toBe('true');
+    expect(region.querySelector('ul')?.className).toContain('max-h-60 sm:max-h-96');
+    expect(region.parentElement?.className).toContain('pb-safe');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Cerrar el panel de cargas' }));
+    expect(screen.queryByTestId('upload-panel-spacer')).toBeNull();
+  });
+
   it('CA-1: expone los archivos recién subidos para que la lista los muestre sin recargar', async () => {
     const put = jest.fn(() => Promise.resolve());
     const api = fakeApi({ init: jest.fn(() => Promise.resolve(simple('informe.docx'))) });

@@ -111,3 +111,8 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Margen inferior del área segura (barra de gestos en móviles); 0 donde no aplica. */
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}

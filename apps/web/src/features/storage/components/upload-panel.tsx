@@ -384,7 +384,7 @@ export function UploadPanel(props: UploadPanelProps): React.JSX.Element {
             {OFFLINE_MESSAGE}
           </p>
         ) : null}
-        <ul className="max-h-96 divide-y divide-border overflow-y-auto px-4">
+        <ul className="max-h-60 sm:max-h-96 divide-y divide-border overflow-y-auto px-4">
           {rows.map((row) => (
             <UploadRow
               key={row.id}
