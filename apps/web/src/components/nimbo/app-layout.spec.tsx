@@ -170,6 +170,16 @@ describe('AppLayout component (CA-5)', () => {
     });
   });
 
+  it('005 CA-1: «Mis Archivos» enlaza a la página /archivos', () => {
+    const markup = renderToStaticMarkup(
+      <AppLayout>
+        <div>Contenido</div>
+      </AppLayout>,
+    );
+
+    expect(markup).toMatch(/<a[^>]*href="\/archivos"[^>]*>(?:(?!<\/a>).)*Mis Archivos/);
+  });
+
   it('permite personalizar los ítems de navegación mediante la prop navItems (S-1)', () => {
     const customItems = [
       { label: 'Archivos Propios', icon: Folder, href: '/custom-archivos', active: true },

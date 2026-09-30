@@ -14,7 +14,7 @@ export interface NavItem {
 }
 
 export const DEFAULT_NAV_ITEMS: readonly NavItem[] = [
-  { label: 'Mis Archivos', icon: Folder, href: '#archivos', active: true },
+  { label: 'Mis Archivos', icon: Folder, href: '/archivos', active: true },
   { label: 'Compartidos', icon: Share2, href: '#compartidos' },
   { label: 'Papelera', icon: Trash2, href: '#papelera' },
   { label: 'Planes y Cuota', icon: CreditCard, href: '#planes' },
