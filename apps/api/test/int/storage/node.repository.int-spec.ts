@@ -20,7 +20,8 @@ const MINUTE_MS = 60_000;
 const BASE_TIME = new Date('2026-09-30T10:00:00.000Z').getTime();
 const HUGE_SIZE = 9_007_199_254_740_993n;
 /** Rama de propiedad de `accessibleNodes` tal como llega a Postgres (parámetro ya numerado). */
-const OWNERSHIP_BRANCH = /FROM archivo a WHERE a\.propietario_id = \$\d+ AND a\.eliminado_en IS NULL/;
+const OWNERSHIP_BRANCH =
+  /FROM archivo a WHERE a\.propietario_id = \$\d+ AND a\.eliminado_en IS NULL/;
 const OWNER_INDEXES = /idx_archivo_propietario_creado|uq_archivo_propietario_nombre/;
 
 interface CapturedQuery {

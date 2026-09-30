@@ -9,7 +9,12 @@ import type { Actor } from '../../../src/shared';
 import { ActorScopeMissingError } from '../../../src/shared/infrastructure/persistence/actor-scope.errors';
 import { connectAsOwner } from '../../support/database-urls';
 
-import { connectAsAppDatabase, insertAccount, insertUpload, removeAccounts } from './storage-test-db';
+import {
+  connectAsAppDatabase,
+  insertAccount,
+  insertUpload,
+  removeAccounts,
+} from './storage-test-db';
 import type { AppDatabase } from './storage-test-db';
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -51,10 +56,9 @@ describe('TypeOrmQuotaRepository (CA-4, CA-23, RN-10)', () => {
   const created: string[] = [];
 
   const usuarioRow = async (id: string): Promise<Record<string, unknown>> => {
-    const [row] = (await owner.query(
-      'SELECT to_jsonb(u) AS fila FROM usuario u WHERE u.id = $1',
-      [id],
-    )) as { fila: Record<string, unknown> }[];
+    const [row] = (await owner.query('SELECT to_jsonb(u) AS fila FROM usuario u WHERE u.id = $1', [
+      id,
+    ])) as { fila: Record<string, unknown> }[];
     return row?.fila ?? {};
   };
 

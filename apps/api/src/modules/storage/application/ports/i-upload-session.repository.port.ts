@@ -1,5 +1,9 @@
 import type { Actor } from '../../../../shared';
-import type { UploadRejectionReason, UploadSession, UploadState } from '../../domain/upload-session';
+import type {
+  UploadRejectionReason,
+  UploadSession,
+  UploadState,
+} from '../../domain/upload-session';
 
 /** Lo que cambia con la transición, además de `estado`: la marca de tiempo y, solo si pasa a `rechazada`, el motivo. */
 export interface UploadTransitionPatch {

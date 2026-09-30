@@ -54,9 +54,7 @@ export class TypeOrmNodeRepository implements INodeRepository {
   constructor(@Inject(TransactionContext) private readonly context: TransactionContext) {}
 
   async findAccessibleById(actor: Actor, id: string): Promise<File | null> {
-    const row = await this.accessibleFiles(actor)
-      .andWhere(`${ALIAS}.id = :id`, { id })
-      .getOne();
+    const row = await this.accessibleFiles(actor).andWhere(`${ALIAS}.id = :id`, { id }).getOne();
     return row === null ? null : toFile(row);
   }
 

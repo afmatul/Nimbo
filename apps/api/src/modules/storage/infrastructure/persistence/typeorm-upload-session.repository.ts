@@ -15,7 +15,11 @@ import { CargaOrmEntity } from './carga.orm-entity';
 const toMultipart = (row: CargaOrmEntity): MultipartUpload | null =>
   row.uploadId === null || row.partesTotales === null || row.tamanoParteBytes === null
     ? null
-    : { uploadId: row.uploadId, totalParts: row.partesTotales, partSizeBytes: row.tamanoParteBytes };
+    : {
+        uploadId: row.uploadId,
+        totalParts: row.partesTotales,
+        partSizeBytes: row.tamanoParteBytes,
+      };
 
 const toSession = (row: CargaOrmEntity): UploadSession =>
   UploadSession.rehydrate({
