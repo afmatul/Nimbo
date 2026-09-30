@@ -35,7 +35,7 @@ const tamperSignature = (token: string): string => {
 
 /**
  * Emisor de tokens de acceso para pruebas (003 §6.6): HS256 con una clave de prueba, `iat`/`exp` según el reloj de la
- * prueba y los mismos *claims* que emite 002 (`sub`, `role`, `sid`). Fabrica también las variantes inválidas de la
+ * prueba y los mismos *claims* que emite 002 (`sub`, `rol`, `sid`; RN-10). Fabrica también las variantes inválidas de la
  * suite de contrato.
  */
 export class TestAccessTokens implements AccessTokenVariants {
@@ -87,14 +87,14 @@ export class TestAccessTokens implements AccessTokenVariants {
   }
 
   withUnknownRole(): string {
-    return this.sign({ ...this.payloadFor(DEFAULT_TEST_CLAIMS), role: 'ROOT' });
+    return this.sign({ ...this.payloadFor(DEFAULT_TEST_CLAIMS), rol: 'ROOT' });
   }
 
   private payloadFor(claims: AccessTokenClaims): TokenPayload {
     const iat = this.nowSeconds();
     return {
       sub: claims.userId,
-      role: claims.role,
+      rol: claims.role,
       sid: claims.sessionId,
       iat,
       exp: iat + TTL_SECONDS,

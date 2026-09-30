@@ -140,7 +140,7 @@ describe('POST /auth/verify-email (CA-8 a CA-11)', () => {
     const response = await verify(latest);
 
     expect(response.status).toBe(200);
-    expect(verifyEmailResponseSchema.parse(response.body)).toEqual({ status: 'verified' });
+    expect(verifyEmailResponseSchema.parse(response.body)).toMatchObject({ status: 'verified' });
     expect(response.headers['cache-control']).toBe('no-store');
     const user = await userByEmail(email);
     expect(user.correo_verificado).toBe(true);

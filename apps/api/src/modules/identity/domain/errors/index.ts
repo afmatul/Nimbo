@@ -1,6 +1,18 @@
+export { AccountSuspendedError } from './account-suspended.error';
+export { EmailNotVerifiedError } from './email-not-verified.error';
 export { IdentityInvalidInputError } from './identity-invalid-input.error';
 export { IdentityTooManyRequestsError } from './identity-too-many-requests.error';
 export type { IdentityRateLimitScope } from './identity-too-many-requests.error';
 export { IdentityWeakPasswordError } from './identity-weak-password.error';
+export { InvalidCredentialsError } from './invalid-credentials.error';
+export { LoginLockedError } from './login-locked.error';
+export { PasswordChangeLockedError } from './password-change-locked.error';
+export { RefreshInvalidError } from './refresh-invalid.error';
+export { ResetLinkExpiredError } from './reset-link-expired.error';
+export { ResetLinkInvalidError } from './reset-link-invalid.error';
+export { SessionExpiredError } from './session-expired.error';
+export { SessionNotFoundError } from './session-not-found.error';
+export { SessionRevokedError } from './session-revoked.error';
 export { VerificationLinkExpiredError } from './verification-link-expired.error';
 export { VerificationLinkInvalidError } from './verification-link-invalid.error';
+export { WrongPasswordError } from './wrong-password.error';

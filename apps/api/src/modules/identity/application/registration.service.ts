@@ -65,14 +65,17 @@ interface Registration {
   readonly passwordHash: PasswordHash;
 }
 
-/** Resultado de abrir un enlace de verificación; `VERIFIED` ocurre una sola vez por cuenta (CA-8, CA-29 d). */
+/**
+ * Resultado de abrir un enlace de verificación; `VERIFIED` ocurre una sola vez por cuenta (CA-8, CA-29 d) y trae la
+ * cuenta ya verificada para que 002 abra la sesión (002 CA-15).
+ */
 export type VerifyEmailResult =
-  | { readonly outcome: 'VERIFIED'; readonly userId: string }
+  | { readonly outcome: 'VERIFIED'; readonly userId: string; readonly user: ClientUser }
   | { readonly outcome: 'ALREADY_VERIFIED' };
 
 /** Lo que decide la transacción de verificación; bitácora, error y evento van después del commit. */
 type VerificationDecision =
-  | { readonly kind: 'verified'; readonly userId: string }
+  | { readonly kind: 'verified'; readonly userId: string; readonly user: ClientUser }
   | { readonly kind: 'already_verified'; readonly userId: string }
   | { readonly kind: 'rejected'; readonly reason: 'invalid' | 'expired'; readonly userId: string };
 
@@ -180,9 +183,10 @@ export class RegistrationService {
     if (!(await this.tokens.consume(token.id, now))) {
       return { kind: 'already_verified', userId: user.id };
     }
-    await this.users.update(user.verifyEmail());
+    const verified = user.verifyEmail();
+    await this.users.update(verified);
     await this.tokens.invalidateActive(user.id, 'verificacion', now);
-    return { kind: 'verified', userId: user.id };
+    return { kind: 'verified', userId: user.id, user: verified };
   }
 
   /** Después del commit: bitácora y, según la decisión, el evento o el error público. */
@@ -191,7 +195,7 @@ export class RegistrationService {
     if (decision.kind === 'verified') {
       this.logger.info({ event: 'identity.verification.succeeded', userId });
       this.events.clientAccountVerified({ userId });
-      return { outcome: 'VERIFIED', userId };
+      return { outcome: 'VERIFIED', userId, user: decision.user };
     }
     if (decision.kind === 'already_verified') {
       this.logger.info({ event: VERIFICATION_REJECTED, reason: 'already_verified', userId });
