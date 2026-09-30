@@ -3,10 +3,10 @@
 - **Dueño**: Abel (`specs/README.md`).
 - **Diagrama de origen**: M2 en `docs/sdd/design-model.md` §3 y `docs/design/diagramas/`.
 - **Responsabilidad**: Nodos, cargas, descargas, papelera, versiones, cuota, búsqueda por metadatos, vista previa.
-- **Puede depender de**: shared, access, audit, realtime (`docs/sdd/architecture.md` §3; el lint de fronteras lo
-  hace cumplir). **No** depende de `billing`: `storage` declara `IPlanLimitsProvider` y `billing` lo implementa
-  (DF-51, opción A); el token se enlaza en `AppModule`.
-- **Specs que lo construyen**: 005 (carga y descarga, primera spec del módulo), 006, 007, 014, 017, 018.
+- **Puede depender de**: shared, access, audit, realtime. **No** de `billing` (DF-51, opción A: `storage` declara
+  `IPlanLimitsProvider` y `billing` lo implementa) ni de `identity` (DF-59). Lo hace cumplir
+  `packages/config/eslint/boundaries.js`.
+- **Specs que lo construyen**: 005, 006, 007, 014, 017, 018.
 
 ## Capas (`docs/sdd/architecture.md` §4)
 
@@ -27,3 +27,27 @@ Otros módulos importan **solo** desde `modules/storage/index.ts`. Hoy exporta `
 `IPlanLimitsProvider` y `PlanLimits`. No exporta `MagicBytesDetector`, `IExpiredUploadScanner`, el adaptador de
 auditoría ni los repositorios. Nada de `infrastructure/**` cruza la frontera. Nombres de clases y puertos: los de
 `docs/sdd/design-model.md`.
+
+## Persistencia (005, PR-C)
+
+Tablas (migraciones `20260930100000`…`100300`, plan §4): `archivo`, `version_archivo` y `carga`, con RLS `ENABLE` +
+`FORCE`; `usuario.espacio_usado` es la única columna de otra tabla que `storage` escribe (D-5, DF-59).
+
+| Puerto (`application/ports/`)                                                                    | Token                         | Implementación (`infrastructure/persistence/`) |
+| ------------------------------------------------------------------------------------------------ | ----------------------------- | ---------------------------------------------- |
+| `INodeRepository`: `findAccessibleById`, `listAccessible`, `findTakenNames`, `insertWithVersion` | `I_NODE_REPOSITORY`           | `TypeOrmNodeRepository`                        |
+| `IUploadSessionRepository`: `insert`, `findOwned`, `transition` (compare-and-set)                | `I_UPLOAD_SESSION_REPOSITORY` | `TypeOrmUploadSessionRepository`               |
+| `IQuotaRepository`: `lockUsage`, `lockAndReadUsage`, `addUsedBytes`                              | `I_QUOTA_REPOSITORY`          | `TypeOrmQuotaRepository`                       |
+
+- Todo método recibe `actor` y toma el `EntityManager` de `TransactionContext.requireActorScope(actor)`: se llama
+  dentro de `ITransactionRunner.withActor(actor, …)` o lanza `ActorScopeMissingError`.
+- Las lecturas de `archivo` unen `accessibleNodes(actor)` de `access` en la misma consulta (ADR-0005); la RLS es la
+  segunda barrera. Los roles internos reciben siempre el conjunto vacío.
+- Bytes en `bigint` de punta a punta (`BIGINT_TRANSFORMER` de `shared`; propiedades `*Bytes`).
+- `listAccessible` pagina con un cursor opaco (`creado_en DESC, id DESC`); un cursor ajeno es `InvalidQueryError`.
+- `findTakenNames(actor, name)` devuelve el nombre y sus copias «base (n).ext» ocupados (sin distinguir mayúsculas,
+  sin papelera) para `FileName.firstFree`.
+- Las cargas vencidas de todos los propietarios **no** se leen por estos puertos: eso es `IExpiredUploadScanner`
+  (`carga_expiradas`, ADR-0021), que llega con PR-E.
+- Pruebas: `apps/api/test/int/storage/*.int-spec.ts` y `apps/api/test/int/access/accessible-nodes.int-spec.ts`
+  (Testcontainers; `pnpm test:int`).

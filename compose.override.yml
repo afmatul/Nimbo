@@ -10,17 +10,12 @@ services:
     ports:
       - '6379:6379'
 
+  # Sin router `/s3` en Traefik (spec 005, R-6): el `stripprefix` invalidaría la firma de las URLs prefirmadas.
+  # El navegador usa el puerto 9000 directo (`MINIO_PUBLIC_ENDPOINT`).
   minio:
     ports:
       - '9000:9000'
       - '9001:9001'
-    labels:
-      traefik.enable: 'true'
-      traefik.http.routers.minio.rule: PathPrefix(`/s3`)
-      traefik.http.routers.minio.entrypoints: web
-      traefik.http.routers.minio.middlewares: minio-strip
-      traefik.http.middlewares.minio-strip.stripprefix.prefixes: /s3
-      traefik.http.services.minio.loadbalancer.server.port: '9000'
 
   traefik:
     ports:
