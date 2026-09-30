@@ -15,14 +15,17 @@ import type { TestApp } from '../setup/test-app';
 const API_PREFIX = 'api/v1';
 
 /**
- * Lista cerrada de rutas públicas (CA-3). Las de 002-PR-3 (recuperación) y 006a (catálogo) se agregan con sus PR.
+ * Lista cerrada de rutas públicas (CA-3). Las de 006a (catálogo) se agregan con su PR.
  */
 const EXPECTED_PUBLIC_ROUTES = [
   'GET /api/v1/health/live',
   'GET /api/v1/health/ready',
+  'POST /api/v1/auth/forgot-password',
   'POST /api/v1/auth/login',
   'POST /api/v1/auth/register',
   'POST /api/v1/auth/resend-verification',
+  'POST /api/v1/auth/reset-password',
+  'POST /api/v1/auth/reset-password/check',
   'POST /api/v1/auth/session/logout',
   'POST /api/v1/auth/session/refresh',
   'POST /api/v1/auth/verify-email',

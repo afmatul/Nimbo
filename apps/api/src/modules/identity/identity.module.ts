@@ -9,6 +9,7 @@ import { NotificationsModule } from '../notifications';
 
 import { AuthService } from './application/auth.service';
 import { IDENTITY_CONFIG, identityConfigFrom } from './application/identity-config';
+import { PasswordService } from './application/password.service';
 import { I_ACCOUNT_EVENTS_PUBLISHER } from './application/ports/i-account-events-publisher.port';
 import { I_ATTEMPT_LOCKOUT } from './application/ports/i-attempt-lockout.port';
 import { I_DEVICE_REPOSITORY } from './application/ports/i-device-repository.port';
@@ -33,18 +34,21 @@ import { TypeormVerificationTokenRepository } from './infrastructure/persistence
 import { RedisAttemptLockout } from './infrastructure/redis-attempt-lockout';
 import { AuthController } from './presentation/auth.controller';
 import { NoStoreMiddleware } from './presentation/no-store.middleware';
+import { PasswordController } from './presentation/password.controller';
 
 /** Lo que `IdentityModule.forRoot` lee del entorno validado. */
 export type IdentityEnv = Pick<Env, 'WEB_PUBLIC_URL' | 'APP_ENV' | 'JWT_ACCESS_SECRET'>;
 
 /**
- * Módulo `identity` (plan 001 §6.1, §6.8; plan 002 §6.8): registro, verificación, inicio de sesión y sesiones.
+ * Módulo `identity` (plan 001 §6.1, §6.8; plan 002 §6.8): registro, verificación, inicio de sesión, sesiones y
+ * recuperación de contraseña.
  * `forRoot(env)` publica `IDENTITY_CONFIG` (`WEB_PUBLIC_URL` y `cookieSecure` desde `APP_ENV`) y
  * `ACCESS_TOKEN_OPTIONS`, une cada puerto con su adaptador y registra la `JwtStrategy` con el nombre
  * `ACCESS_TOKEN_STRATEGY`, que el `JwtAuthGuard` de `shared` encuentra sin importar `identity`. Exporta
  * `I_ACCESS_TOKEN_VERIFIER` (implementado por `JwtTokenService`). Requiere en la raíz `EventEmitterModule.forRoot()` y
  * `ThrottlerModule.forRoot` con `IDENTITY_THROTTLERS`; `shared` aporta reloj, Redis, límites y transacciones (global).
- * Todas las respuestas de `AuthController`, también las de error, llevan `Cache-Control: no-store` (plan §5).
+ * Todas las respuestas de `AuthController` y `PasswordController`, también las de error, llevan
+ * `Cache-Control: no-store` (plan §5).
  */
 @Module({})
 export class IdentityModule implements NestModule {
@@ -53,7 +57,7 @@ export class IdentityModule implements NestModule {
       module: IdentityModule,
       // El secreto no va en `JwtModule`: `JwtTokenService` lo pasa en cada llamada desde `ACCESS_TOKEN_OPTIONS`.
       imports: [NotificationsModule, JwtModule.register({}), PassportModule],
-      controllers: [AuthController],
+      controllers: [AuthController, PasswordController],
       providers: [
         { provide: IDENTITY_CONFIG, useValue: identityConfigFrom(env) },
         accessTokenOptionsProvider(env),
@@ -73,12 +77,13 @@ export class IdentityModule implements NestModule {
         RegistrationService,
         SessionService,
         AuthService,
+        PasswordService,
       ],
       exports: [I_ACCESS_TOKEN_VERIFIER],
     };
   }
 
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(NoStoreMiddleware).forRoutes(AuthController);
+    consumer.apply(NoStoreMiddleware).forRoutes(AuthController, PasswordController);
   }
 }

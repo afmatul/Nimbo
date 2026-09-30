@@ -1,15 +1,11 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 
 import { Inject, Injectable } from '@nestjs/common';
-import {
-  EMAIL_REQUEST_COOLDOWN_SECONDS,
-  EMAIL_REQUESTS_PER_HOUR,
-  LEGAL_DOCUMENTS,
-} from '@nimbo/contracts';
+import { LEGAL_DOCUMENTS } from '@nimbo/contracts';
 import { PinoLogger } from 'nestjs-pino';
 
 import { I_CLOCK, I_RATE_LIMITER, I_TRANSACTION_RUNNER } from '../../../shared';
-import type { IClock, IRateLimiter, ITransactionRunner, RateLimitRule } from '../../../shared';
+import type { IClock, IRateLimiter, ITransactionRunner } from '../../../shared';
 import { I_MAILER } from '../../notifications';
 import type { IMailer, MailMessage } from '../../notifications';
 import { ClientUser } from '../domain/client-user.entity';
@@ -20,11 +16,12 @@ import {
   VerificationLinkInvalidError,
 } from '../domain/errors';
 import { LegalAcceptance } from '../domain/legal-acceptance.vo';
-import { OpaqueToken } from '../domain/opaque-token.vo';
 import type { PasswordHash } from '../domain/password-hash.vo';
 import type { User } from '../domain/user.entity';
 import type { VerificationToken } from '../domain/verification-token.entity';
 
+import { findAccountToken } from './account-token-lookup';
+import { EMAIL_REQUEST_RULES, emailRequestKey } from './identity-limit-keys';
 import type { IdentityLogger } from './identity-logger';
 import { I_ACCOUNT_EVENTS_PUBLISHER } from './ports/i-account-events-publisher.port';
 import type { IAccountEventsPublisher } from './ports/i-account-events-publisher.port';
@@ -37,12 +34,6 @@ import type { IVerificationTokenRepository } from './ports/i-verification-token-
 import { RegistrationAttemptNotifier } from './registration-attempt-notifier';
 import { VerificationLinkIssuer } from './verification-link-issuer';
 
-const SECONDS_PER_HOUR = 3600;
-/** D-8: una solicitud cada 60 s y 5 por hora por correo, contando juntos el registro y el reenvío (CA-15). */
-const EMAIL_REQUEST_RULES: readonly RateLimitRule[] = [
-  { limit: 1, windowSeconds: EMAIL_REQUEST_COOLDOWN_SECONDS },
-  { limit: EMAIL_REQUESTS_PER_HOUR, windowSeconds: SECONDS_PER_HOUR },
-];
 const VERIFICATION_REJECTED = 'identity.verification.rejected';
 /** Transacciones de alta: la original y un reintento si el alta chocó y la cuenta no aparece (plan §6.3). */
 const MAX_REGISTRATION_RUNS = 2;
@@ -144,7 +135,7 @@ export class RegistrationService {
    * a `VERIFIED` y el evento se publica una vez, después del commit.
    */
   async verifyEmail(tokenValue: string): Promise<VerifyEmailResult> {
-    const token = await this.findVerificationToken(tokenValue);
+    const token = await findAccountToken(this.tokens, tokenValue, 'verificacion');
     if (token === null) {
       // Sin `userId`: el token no existía (plan §7).
       this.logger.info({ event: VERIFICATION_REJECTED, reason: 'invalid' });
@@ -152,15 +143,6 @@ export class RegistrationService {
     }
     const decision = await this.transactions.run(() => this.verifyInTransaction(token));
     return this.completeVerification(decision);
-  }
-
-  /** `null` si el valor está mal formado (sin consultar, CA-11 b), no existe o es de otro tipo (CA-12). */
-  private async findVerificationToken(tokenValue: string): Promise<VerificationToken | null> {
-    if (!OpaqueToken.isWellFormed(tokenValue)) {
-      return null;
-    }
-    const token = await this.tokens.findByHash(OpaqueToken.hashOf(tokenValue), 'verificacion');
-    return token !== null && OpaqueToken.matchesHash(tokenValue, token.tokenHash) ? token : null;
   }
 
   private async verifyInTransaction(token: VerificationToken): Promise<VerificationDecision> {
@@ -209,8 +191,8 @@ export class RegistrationService {
 
   /** El límite va antes de cualquier consulta, así la secuencia 202/429 no delata la cuenta (D-8, CA-15). */
   private async enforceEmailRequestLimit(email: EmailAddress): Promise<void> {
-    const key = `identity:email-request:${createHash('sha256').update(email.value).digest('hex')}`;
-    const decision = await this.rateLimiter.consume(key, EMAIL_REQUEST_RULES);
+    // D-8: el registro y el reenvío cuentan juntos (CA-15).
+    const decision = await this.rateLimiter.consume(emailRequestKey(email), EMAIL_REQUEST_RULES);
     if (decision.allowed) {
       return;
     }

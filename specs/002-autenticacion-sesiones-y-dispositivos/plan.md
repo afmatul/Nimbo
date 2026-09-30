@@ -424,9 +424,8 @@ devuelve `{ wasCurrent }` para que el controlador borre la cookie.
    - verificada (cliente o interna; también suspendida, DT-6) → `invalidateActive(userId, 'recuperacion', now)` →
      `OpaqueToken.generate()` → `VerificationToken.issue({ type: 'recuperacion', expiresAt: now + 60 min })` → insert →
      correo con `{WEB_PUBLIC_URL}/restablecer-contrasena#token=<valor>` (fragmento, como 001);
-   - cliente no verificado (D-15) → consume **en silencio** la clave de límite de 001
-     (`identity:email-request:…`); permitido → `VerificationLinkIssuer.issue(user)`; rechazado → no envía y registra
-     `kind: 'verification_suppressed'` (DT-7). La respuesta no cambia.
+   - cliente no verificado (D-15) → `VerificationLinkIssuer.issue(user)` (`kind: 'verification_link'`), **sin**
+     consultar ni gastar la clave de límite de 001 (`identity:email-request:…`, DT-7). La respuesta no cambia.
 3. Después del commit envía el correo, si lo hay. Devuelve `void` → `202`.
 
 **`PasswordService.checkResetLink(token)`**: mal formado o `findByHash(hash, 'recuperacion')` vacío → `ResetLinkInvalidError`;
@@ -679,7 +678,7 @@ dispositivo, IP ni el agente de usuario completo (R-8, CA-25).
 | `identity.session.revoked` | info | `userId`, `reason: 'logout' \| 'user' \| 'others' \| 'password_reset' \| 'password_change' \| 'reuse' \| 'suspended'`, `count`, `sessionId?` | CA-9, CA-10, CA-12 a CA-14, CA-19, CA-22 |
 | `identity.device.new` | info | `userId`, `deviceId` (uuid de la fila, no la huella) | CA-16 |
 | `identity.verification.session_opened` / `session_failed` | info / warn | `userId`, `sessionId?` | CA-15 |
-| `identity.password_reset.requested` | info | `kind: 'reset_link' \| 'verification_link' \| 'verification_suppressed' \| 'ignored'`, `userId?` | CA-18 |
+| `identity.password_reset.requested` | info | `kind: 'reset_link' \| 'verification_link' \| 'ignored'`, `userId?` | CA-18 |
 | `identity.password_reset.rejected` | info | `reason: 'expired' \| 'invalid' \| 'weak'`, `userId?` | CA-20, CA-21 |
 | `identity.password_reset.completed` | info | `userId`, `revokedCount` | CA-19 |
 | `identity.password.changed` | info | `userId`, `revokedCount` | CA-22 |
@@ -709,7 +708,7 @@ dispositivo, IP ni el agente de usuario completo (R-8, CA-25).
   alcance, spec §12); el refresco sí se corta al instante (CA-12).
 - **Anti-enumeración (RN-2)**: bloqueo consultado antes de buscar la cuenta; Argon2id también con correo inexistente;
   los fallos cuentan exista o no la cuenta; mismas cabeceras (sin `Set-Cookie` en fallos, sin `X-RateLimit-*`);
-  recuperación con límite previo a la búsqueda y rama no verificada con su propio límite en silencio. Quedan
+  recuperación con límite previo a la búsqueda, que es el único que acota también a la rama no verificada (DT-7). Quedan
   diferencias de milisegundos (escrituras en Redis): revisión manual del `security-auditor` (CA-2).
 - **Fuerza bruta (D-5, D-7)**: 5 fallos por correo → 15 min; 20 por IP en 15 min; 5 contraseñas actuales incorrectas
   por cuenta → 15 min sin cerrar la sesión. Riesgo de bloqueo malicioso de un tercero: mitigado por el restablecimiento
@@ -817,9 +816,10 @@ preveía «si se agrega una librería» no hace falta.
   ofrecen «restablece tu contraseña» como salida.
 - **DT-6 Recuperación de una cuenta suspendida**: se envía el enlace como a cualquier verificada. La respuesta no cambia
   (RN-2), y restablecer no le da acceso porque el inicio de sesión sigue respondiendo `ACCOUNT_SUSPENDED`.
-- **DT-7 D-15 con los límites de 001 aplicados en silencio**: el límite de recuperación se aplica antes de buscar
-  (neutro); el de verificación de 001, después y sin cambiar la respuesta, porque un `429` solo para cuentas no
-  verificadas las delataría.
+- **DT-7 D-15 sin el límite de 001**: el límite de recuperación se aplica antes de buscar (neutro) y es el único que
+  acota la rama no verificada. El de registro y reenvío de 001 no se consulta ni se gasta: gastarlo, aunque fuera en
+  silencio, hacía que un `resend-verification` justo después respondiera `429` solo para cuentas no verificadas
+  (SEC-1, auditoría T-67).
 - **DT-8 `IdentityIpThrottlerGuard`**: un solo guard por IP para registro e inicio de sesión que traduce el
   *throttler* que disparó a su mensaje. **Nace con ese nombre en 001** (plan 001 §6.5), con una tabla *throttler* →
   ámbito que en 001 solo tiene `register-ip`; 002-PR-2 agrega `login-ip` y los `@SkipThrottle` cruzados. Si 001-PR-3
@@ -1094,3 +1094,9 @@ Qué cambia cada plan:
 - **Cambio 11**: §6.11 con 002-PR-5a y 002-PR-5b; Q-3 y Q-4 bloquean solo 5b; recorte: 5b y después PR-4 (§9).
 - **Cambio 12**: numeración provisional aplicada en §3, §4, §6.2 (DT-15) y §10.4.
 - Q-1 marcada `[RESUELTA]` (§10.3).
+
+## 12. Registro de cambios
+
+| Fecha | Cambio | Motivo | Aprobó |
+|---|---|---|---|
+| 2026-09-29 | DT-7, §6.3 (`requestReset`), §7 y §7b: la rama D-15 deja de consultar y de gastar el límite de 001; desaparece `kind: 'verification_suppressed'`. CA-20 de la spec: el enlace vence «con 1 hora o más» (SEC-4, sin cambio de código) | Auditoría de seguridad T-67, SEC-1 | — (orquestador; pendiente de Adrián en el PR) |
