@@ -7,14 +7,20 @@ import {
   HeadObjectCommand,
   ListObjectVersionsCommand,
   ListPartsCommand,
+  PutObjectCommand,
   S3Client,
+  UploadPartCommand,
 } from '@aws-sdk/client-s3';
 import type { ObjectIdentifier } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 import type { MinioConfig } from '../../../shared';
 import type {
   IObjectStorage,
   ObjectHead,
+  PresignDownloadInput,
+  PresignUploadObjectInput,
+  PresignUploadPartInput,
   UploadedPart,
 } from '../application/ports/i-object-storage.port';
 
@@ -51,8 +57,28 @@ export const buildMinioStorageClients = (
       requestTimeout: INTERNAL_REQUEST_TIMEOUT_MS,
     },
   }),
-  signing: new S3Client({ ...baseClientConfig(config), endpoint: publicEndpoint }),
+  signing: new S3Client({
+    ...baseClientConfig(config),
+    endpoint: publicEndpoint,
+    // Sin suma de verificación calculada al firmar: la del cuerpo vacío invalidaría el `PUT` del navegador.
+    requestChecksumCalculation: 'WHEN_REQUIRED',
+  }),
 });
+
+/** Cabeceras que la URL de carga fija en la firma: un `PUT` con otro tamaño se rechaza. */
+const SIGNED_UPLOAD_HEADERS: ReadonlySet<string> = new Set(['content-length']);
+const DOWNLOAD_CONTENT_TYPE = 'application/octet-stream';
+const DOWNLOAD_CACHE_CONTROL = 'no-store';
+
+/** `filename*` de RFC 8187: `encodeURIComponent` deja sin escapar `'()*`, que ahí no son válidos. */
+const encodeRfc8187 = (value: string): string =>
+  encodeURIComponent(value).replace(
+    /['()*]/g,
+    (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
+
+const attachmentDisposition = (fileName: string): string =>
+  `attachment; filename*=UTF-8''${encodeRfc8187(fileName)}`;
 
 const errorName = (error: unknown): string | undefined =>
   error instanceof Error ? error.name : undefined;
@@ -66,10 +92,7 @@ const isMissingObject = (error: unknown): boolean =>
   errorName(error) === 'NotFound' || errorName(error) === 'NoSuchKey' || httpStatus(error) === 404;
 
 /** Adaptador de `IObjectStorage` sobre MinIO con el SDK de S3 (ADR-0015). Nunca registra claves ni URLs. */
-export class MinioStorageAdapter implements Omit<
-  IObjectStorage,
-  'presignUploadPart' | 'presignUploadObject' | 'presignDownload'
-> {
+export class MinioStorageAdapter implements IObjectStorage {
   constructor(
     private readonly clients: MinioStorageClients,
     private readonly bucket: string,
@@ -83,6 +106,46 @@ export class MinioStorageAdapter implements Omit<
       throw new Error('MinIO no devolvió el identificador de la carga por partes.');
     }
     return output.UploadId;
+  }
+
+  presignUploadPart(input: PresignUploadPartInput): Promise<string> {
+    return getSignedUrl(
+      this.clients.signing,
+      new UploadPartCommand({
+        Bucket: this.bucket,
+        Key: input.key,
+        UploadId: input.uploadId,
+        PartNumber: input.partNumber,
+        ContentLength: Number(input.contentLength),
+      }),
+      { expiresIn: input.expiresInSeconds, signableHeaders: new Set(SIGNED_UPLOAD_HEADERS) },
+    );
+  }
+
+  presignUploadObject(input: PresignUploadObjectInput): Promise<string> {
+    return getSignedUrl(
+      this.clients.signing,
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: input.key,
+        ContentLength: Number(input.contentLength),
+      }),
+      { expiresIn: input.expiresInSeconds, signableHeaders: new Set(SIGNED_UPLOAD_HEADERS) },
+    );
+  }
+
+  presignDownload(input: PresignDownloadInput): Promise<string> {
+    return getSignedUrl(
+      this.clients.signing,
+      new GetObjectCommand({
+        Bucket: this.bucket,
+        Key: input.key,
+        ResponseContentDisposition: attachmentDisposition(input.fileName),
+        ResponseContentType: DOWNLOAD_CONTENT_TYPE,
+        ResponseCacheControl: DOWNLOAD_CACHE_CONTROL,
+      }),
+      { expiresIn: input.expiresInSeconds },
+    );
   }
 
   async listParts(key: string, uploadId: string): Promise<readonly UploadedPart[] | null> {

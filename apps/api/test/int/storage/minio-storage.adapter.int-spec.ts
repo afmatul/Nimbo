@@ -27,6 +27,13 @@ const PART_UPLOAD_CONCURRENCY = 50;
 /** Dirección no enrutable: la conexión nunca se establece y solo la corta `connectTimeout`. */
 const BLACKHOLE_ENDPOINT = 'http://10.255.255.1:9000';
 const CONNECT_TIMEOUT_MARGIN_MS = 1_500;
+const UPLOAD_TTL_SECONDS = 600;
+const DOWNLOAD_TTL_SECONDS = 300;
+const SHORT_TTL_SECONDS = 2;
+/** Espera tras un TTL de 2 s: la firma tiene resolución de segundos. */
+const SHORT_TTL_WAIT_MS = 3_500;
+const HTTP_OK = 200;
+const HTTP_FORBIDDEN = 403;
 
 const minioConfig = (): MinioConfig => ({
   MINIO_ENDPOINT: process.env.MINIO_ENDPOINT ?? '',
@@ -36,9 +43,24 @@ const minioConfig = (): MinioConfig => ({
   MINIO_REGION: process.env.MINIO_REGION ?? 'us-east-1',
 });
 
+/**
+ * El mismo MinIO con otro nombre de host: así se distingue el endpoint público (el que firma) del interno. Solo el
+ * público aparece en las URLs.
+ */
+const publicAlias = (endpoint: string): string => {
+  const url = new URL(endpoint);
+  url.hostname = url.hostname === 'localhost' ? '127.0.0.1' : 'localhost';
+  return url.origin;
+};
+
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
 const newKey = (): string => `u/${randomUUID()}/${randomUUID()}/${randomUUID()}`;
 
-describe('MinioStorageAdapter contra MinIO real (CA-5, CA-11)', () => {
+describe('MinioStorageAdapter contra MinIO real (CA-2, CA-5, CA-11, CA-13, CA-14)', () => {
   let clients: MinioStorageClients;
   let s3: S3Client;
   let adapter: MinioStorageAdapter;
@@ -66,7 +88,7 @@ describe('MinioStorageAdapter contra MinIO real (CA-5, CA-11)', () => {
 
   beforeAll(async () => {
     const config = minioConfig();
-    clients = buildMinioStorageClients(config, config.MINIO_ENDPOINT);
+    clients = buildMinioStorageClients(config, publicAlias(config.MINIO_ENDPOINT));
     s3 = clients.operations;
     adapter = new MinioStorageAdapter(clients, BUCKET);
     await s3.send(new CreateBucketCommand({ Bucket: BUCKET }));
@@ -180,5 +202,118 @@ describe('MinioStorageAdapter contra MinIO real (CA-5, CA-11)', () => {
     );
     unreachable.operations.destroy();
     unreachable.signing.destroy();
+  });
+
+  it('CA-2: la URL de carga simple apunta al endpoint público y acepta el `PUT` con el tamaño firmado', async () => {
+    const key = newKey();
+    const body = Buffer.from('contenido firmado');
+    const url = await adapter.presignUploadObject({
+      key,
+      contentLength: BigInt(body.length),
+      expiresInSeconds: UPLOAD_TTL_SECONDS,
+    });
+
+    expect(new URL(url).origin).toBe(publicAlias(minioConfig().MINIO_ENDPOINT));
+    expect(new URL(url).origin).not.toBe(new URL(minioConfig().MINIO_ENDPOINT).origin);
+    const response = await fetch(url, { method: 'PUT', body });
+
+    expect(response.status).toBe(HTTP_OK);
+    await expect(adapter.headObject(key)).resolves.toEqual({ sizeBytes: BigInt(body.length) });
+    await adapter.purgeObject(key);
+  });
+
+  it('CA-2: un `PUT` con un `Content-Length` distinto del firmado se rechaza y no crea el objeto', async () => {
+    const key = newKey();
+    const url = await adapter.presignUploadObject({
+      key,
+      contentLength: 10n,
+      expiresInSeconds: UPLOAD_TTL_SECONDS,
+    });
+
+    const response = await fetch(url, { method: 'PUT', body: Buffer.alloc(11, 0x61) });
+
+    expect(response.status).toBe(HTTP_FORBIDDEN);
+    await expect(adapter.headObject(key)).resolves.toBeNull();
+  });
+
+  it('CA-2: la URL de una parte sube esa parte; `listParts` la ve con su tamaño', async () => {
+    const key = newKey();
+    const part = Buffer.from('parte uno');
+    const uploadId = await adapter.createMultipart(key);
+    const url = await adapter.presignUploadPart({
+      key,
+      uploadId,
+      partNumber: 1,
+      contentLength: BigInt(part.length),
+      expiresInSeconds: UPLOAD_TTL_SECONDS,
+    });
+
+    const response = await fetch(url, { method: 'PUT', body: part });
+
+    expect(response.status).toBe(HTTP_OK);
+    const parts = await adapter.listParts(key, uploadId);
+    expect(parts?.map((entry) => [entry.partNumber, entry.sizeBytes])).toEqual([
+      [1, BigInt(part.length)],
+    ]);
+    await adapter.abortMultipart(key, uploadId);
+  });
+
+  it('CA-13: la descarga devuelve los mismos bytes con `attachment`, `octet-stream` y `no-store`', async () => {
+    const key = newKey();
+    const body = Buffer.from('bytes idénticos');
+    await putObject(key, body);
+    const url = await adapter.presignDownload({
+      key,
+      fileName: 'Informe año.docx',
+      expiresInSeconds: DOWNLOAD_TTL_SECONDS,
+    });
+
+    const response = await fetch(url);
+
+    expect(response.status).toBe(HTTP_OK);
+    expect(response.headers.get('content-disposition')).toBe(
+      "attachment; filename*=UTF-8''Informe%20a%C3%B1o.docx",
+    );
+    expect(response.headers.get('content-type')).toBe('application/octet-stream');
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(Buffer.from(await response.arrayBuffer())).toEqual(body);
+    await adapter.purgeObject(key);
+  });
+
+  it('CA-14: la URL de descarga solo autoriza su clave (la misma firma sobre otra clave falla)', async () => {
+    const key = newKey();
+    const otherKey = newKey();
+    await putObject(key, 'propio');
+    await putObject(otherKey, 'ajeno');
+    const url = new URL(
+      await adapter.presignDownload({
+        key,
+        fileName: 'a.txt',
+        expiresInSeconds: DOWNLOAD_TTL_SECONDS,
+      }),
+    );
+    url.pathname = `/${BUCKET}/${otherKey}`;
+
+    const response = await fetch(url);
+
+    expect(response.status).toBe(HTTP_FORBIDDEN);
+    await adapter.purgeObject(key);
+    await adapter.purgeObject(otherKey);
+  });
+
+  it('CA-14: una URL de descarga vencida (TTL de 2 s) se rechaza', async () => {
+    const key = newKey();
+    await putObject(key, 'caduca');
+    const url = await adapter.presignDownload({
+      key,
+      fileName: 'a.txt',
+      expiresInSeconds: SHORT_TTL_SECONDS,
+    });
+    expect((await fetch(url)).status).toBe(HTTP_OK);
+
+    await sleep(SHORT_TTL_WAIT_MS);
+
+    expect((await fetch(url)).status).toBe(HTTP_FORBIDDEN);
+    await adapter.purgeObject(key);
   });
 });

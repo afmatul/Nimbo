@@ -10,7 +10,8 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3';
 
-import { MinioStorageAdapter } from './minio-storage.adapter';
+import { buildMinioStorageClients, MinioStorageAdapter } from './minio-storage.adapter';
+import type { MinioStorageClients } from './minio-storage.adapter';
 
 const BUCKET = 'nimbo-test';
 const KEY = 'u/owner-1/file-1/version-1';
@@ -224,5 +225,94 @@ describe('MinioStorageAdapter (operaciones, cliente falso)', () => {
     });
 
     await expect(adapter.purgeObject(KEY)).rejects.toThrow();
+  });
+});
+
+describe('MinioStorageAdapter (firmas, cómputo local)', () => {
+  const PUBLIC_ENDPOINT = 'https://s3.staging.nimbo.me';
+  const INTERNAL_ENDPOINT = 'http://minio:9000';
+  const TTL_SECONDS = 3600;
+  const config = {
+    MINIO_ENDPOINT: INTERNAL_ENDPOINT,
+    MINIO_ACCESS_KEY: 'nimbo',
+    MINIO_SECRET_KEY: 'nimbo-secret',
+    MINIO_BUCKET: BUCKET,
+    MINIO_REGION: 'us-east-1',
+  };
+  let clients: MinioStorageClients;
+  let operations: jest.SpyInstance;
+  let adapter: MinioStorageAdapter;
+
+  beforeAll(() => {
+    clients = buildMinioStorageClients(config, PUBLIC_ENDPOINT);
+    operations = jest.spyOn(clients.operations, 'send');
+    adapter = new MinioStorageAdapter(clients, BUCKET);
+  });
+
+  afterAll(() => {
+    clients.operations.destroy();
+    clients.signing.destroy();
+  });
+
+  const signedHeaders = (url: URL): string[] =>
+    (url.searchParams.get('X-Amz-SignedHeaders') ?? '').split(';');
+
+  it('CA-2: la URL de carga simple se firma contra el endpoint público, con `Content-Length` firmado', async () => {
+    const url = new URL(
+      await adapter.presignUploadObject({
+        key: KEY,
+        contentLength: 1234n,
+        expiresInSeconds: TTL_SECONDS,
+      }),
+    );
+
+    expect(url.origin).toBe(PUBLIC_ENDPOINT);
+    expect(url.pathname).toBe(`/${BUCKET}/${KEY}`);
+    expect(signedHeaders(url)).toEqual(expect.arrayContaining(['content-length', 'host']));
+    expect(url.searchParams.get('X-Amz-Expires')).toBe(String(TTL_SECONDS));
+    expect([...url.searchParams.keys()].filter((name) => name.includes('checksum'))).toEqual([]);
+  });
+
+  it('CA-2: la URL de una parte lleva `uploadId` y `partNumber` y firma su `Content-Length`', async () => {
+    const url = new URL(
+      await adapter.presignUploadPart({
+        key: KEY,
+        uploadId: UPLOAD_ID,
+        partNumber: 3,
+        contentLength: 8n,
+        expiresInSeconds: TTL_SECONDS,
+      }),
+    );
+
+    expect(url.origin).toBe(PUBLIC_ENDPOINT);
+    expect(url.searchParams.get('uploadId')).toBe(UPLOAD_ID);
+    expect(url.searchParams.get('partNumber')).toBe('3');
+    expect(signedHeaders(url)).toContain('content-length');
+  });
+
+  it('CA-13: la URL de descarga dura lo pedido y fuerza `attachment`, `octet-stream` y `no-store`', async () => {
+    const url = new URL(
+      await adapter.presignDownload({
+        key: KEY,
+        fileName: "Informe año (1)'s*.docx",
+        expiresInSeconds: 300,
+      }),
+    );
+
+    expect(url.origin).toBe(PUBLIC_ENDPOINT);
+    expect(url.pathname).toBe(`/${BUCKET}/${KEY}`);
+    expect(url.searchParams.get('X-Amz-Expires')).toBe('300');
+    expect(url.searchParams.get('response-content-disposition')).toBe(
+      "attachment; filename*=UTF-8''Informe%20a%C3%B1o%20%281%29%27s%2A.docx",
+    );
+    expect(url.searchParams.get('response-content-type')).toBe('application/octet-stream');
+    expect(url.searchParams.get('response-cache-control')).toBe('no-store');
+  });
+
+  it('CA-14: firmar no usa el cliente interno (no hay red)', async () => {
+    await adapter.presignUploadObject({ key: KEY, contentLength: 1n, expiresInSeconds: 60 });
+    await adapter.presignDownload({ key: KEY, fileName: 'a.txt', expiresInSeconds: 60 });
+
+    expect(operations).not.toHaveBeenCalled();
   });
 });
