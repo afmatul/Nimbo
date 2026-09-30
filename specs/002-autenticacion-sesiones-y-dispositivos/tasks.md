@@ -623,13 +623,13 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
 
 ## Bloque 5 — PR-5a «web: sesión» (plan §6.9) · depende de 001-PR-4 y 002-PR-1 (la prueba manual, de PR-2 y PR-3)
 
-- [ ] **T-81** [P] Catálogo de errores de 002 — CA: CA-2…CA-6, CA-8, CA-18, CA-20, CA-21, CA-23 — Depende: T-02, 001 T-57 — ~0,5 h
+- [x] **T-81** [P] Catálogo de errores de 002 — CA: CA-2…CA-6, CA-8, CA-18, CA-20, CA-21, CA-23 — Depende: T-02, 001 T-57 — ~0,5 h
   Prueba primero `apps/web/lib/error-catalog.spec.ts` (ampliado): cada código nuevo de T-02 con el texto de spec §11;
   los que llevan minutos los calculan de `retryAfterSeconds`; `IDENTITY_TOO_MANY_REQUESTS` devuelve el texto por
   pantalla (DT-20: inicio de sesión o recuperación); suspendida con `SUPPORT_CONTACT_EMAIL`. Luego `error-catalog.ts`.
   Archivos: `apps/web/lib/error-catalog.ts`, `apps/web/lib/error-catalog.spec.ts`.
 
-- [ ] **T-82** [P] `api.ts`: sesión y recuperación — CA: CA-1, CA-7, CA-14, CA-18…CA-20 — Depende: T-03, T-04, 001 T-60 — ~1 h
+- [x] **T-82** [P] `api.ts`: sesión y recuperación — CA: CA-1, CA-7, CA-14, CA-18…CA-20 — Depende: T-03, T-04, 001 T-60 — ~1 h
   Prueba primero `features/identity/api.spec.ts` (`fetch` simulado): `login`, `refresh`, `logout`, `forgotPassword`,
   `checkResetLink`, `resetPassword` usan la ruta y el método de plan §5, validan la respuesta con `contracts`; las de
   `session/*` y `login` mandan `credentials: 'include'`; errores tipados por `code`. Luego las funciones.
@@ -685,19 +685,19 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   mockup (p. 07) dentro del `PublicHeader`; enlaces a registro y a recuperar; jest-axe. Luego la página.
   Archivos: `apps/web/app/(public)/iniciar-sesion/page.tsx` y su `*.spec.tsx`.
 
-- [ ] **T-91** `RequestResetForm` y `/recuperar-contrasena` — CA: CA-18, CA-27 — Depende: T-81, T-82, 001 T-63 — ~1 h
+- [x] **T-91** `RequestResetForm` y `/recuperar-contrasena` — CA: CA-18, CA-27 — Depende: T-81, T-82, 001 T-63 — ~1 h
   Prueba primero `features/identity/components/request-reset-form.spec.tsx`: default, enviando, error, límite (texto de
   recuperación), revisa-tu-correo con `CheckEmailPanel` en la variante sin «Cambiar correo»; la misma pantalla para
   cualquier correo; jest-axe. Luego el componente y la página (esquema de `registro--pedir-enlace`).
   Archivos: `apps/web/features/identity/components/request-reset-form.tsx` y su `*.spec.tsx`, `apps/web/app/(public)/recuperar-contrasena/page.tsx`.
 
-- [ ] **T-92** `ResetPasswordView`: lectura y comprobación del enlace — CA: CA-20, CA-27 — Depende: T-81, T-82 — ~1 h
+- [x] **T-92** `ResetPasswordView`: lectura y comprobación del enlace — CA: CA-20, CA-27 — Depende: T-81, T-82 — ~1 h
   Prueba primero `features/identity/components/reset-password-view.spec.tsx`: lee `#token`, lo borra con
   `history.replaceState` y llama a `check` **una vez** (también en `StrictMode`); estados verificando, enlace-expirado
   y enlace-invalido con la acción «Pedir un enlace nuevo»; sin token → inválido.
   Archivos: `apps/web/features/identity/components/reset-password-view.tsx` y su `*.spec.tsx`.
 
-- [ ] **T-93** `ResetPasswordView`: formulario y `/restablecer-contrasena` — CA: CA-19, CA-21, CA-27 — Depende: T-92, 001 T-61 — ~1 h
+- [x] **T-93** `ResetPasswordView`: formulario y `/restablecer-contrasena` — CA: CA-19, CA-21, CA-27 — Depende: T-92, 001 T-61 — ~1 h
   Prueba primero (mismo archivo): default con `PasswordRequirements` y confirmación (`refine` del cliente: no envía si
   no coincide), error-campos (`fields` de `IDENTITY_WEAK_PASSWORD`), enviando, éxito («Listo. Cambiamos tu
   contraseña…» + «Iniciar sesión»); jest-axe. Luego la página.
