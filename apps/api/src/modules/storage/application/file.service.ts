@@ -6,7 +6,7 @@ import { I_CLOCK, I_RATE_LIMITER } from '../../../shared';
 import type { Actor, IClock, IRateLimiter } from '../../../shared';
 import { AuditAction, I_AUDIT_LOGGER } from '../../audit';
 import type { IAuditLogger } from '../../audit';
-import { NodeNotFoundError, StorageTooManyRequestsError } from '../domain/errors';
+import { NodeNotFoundError } from '../domain/errors';
 import type { File } from '../domain/file';
 import { ObjectKey } from '../domain/object-key';
 
@@ -17,6 +17,7 @@ import type { FileListPage, FileListQuery, INodeRepository } from './ports/i-nod
 import { I_OBJECT_STORAGE } from './ports/i-object-storage.port';
 import type { IObjectStorage } from './ports/i-object-storage.port';
 import { recordAudit } from './record-audit';
+import { rateLimited } from './storage-logger';
 import type { StorageLogger } from './storage-logger';
 
 const RATE_LIMIT_WINDOW_SECONDS = 60;
@@ -78,7 +79,9 @@ export class FileService {
     const decision = await this.rateLimiter.consume(DOWNLOAD_RATE_KEY_PREFIX + actor.id, [
       { limit: this.config.downloadUrlPerMinute, windowSeconds: RATE_LIMIT_WINDOW_SECONDS },
     ]);
-    if (!decision.allowed) throw new StorageTooManyRequestsError(decision.retryAfterSeconds);
+    if (!decision.allowed) {
+      throw rateLimited(this.logger, 'download_url', decision.retryAfterSeconds);
+    }
   }
 
   private recordIssued(actor: Actor, file: File): Promise<void> {

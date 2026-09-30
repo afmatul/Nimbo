@@ -194,7 +194,7 @@ describe('FileService', () => {
     });
 
     it('CA-19: rechazada por tasa lanza 429 con Retry-After sin buscar el archivo', async () => {
-      const { service, calls, audit } = setup({
+      const { service, calls, audit, logger } = setup({
         decision: { allowed: false, retryAfterSeconds: RETRY_AFTER_SECONDS },
       });
 
@@ -204,6 +204,10 @@ describe('FileService', () => {
       expect((error as StorageTooManyRequestsError).retryAfterSeconds).toBe(RETRY_AFTER_SECONDS);
       expect(calls).toEqual(['consume']);
       expect(audit.records).toEqual([]);
+      expect(logger.warn).toHaveBeenCalledWith({
+        event: 'upload.rate_limited',
+        operation: 'download_url',
+      });
     });
 
     it('CA-20: audita file.download_url_issued sin nombre, URL ni clave', async () => {
