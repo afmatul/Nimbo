@@ -169,6 +169,14 @@ export const verifyEmailResponseSchema = z.discriminatedUnion('status', [
   z.object({ status: z.literal('already-verified') }).strict(),
 ]);
 
+/** `POST /auth/reset-password/check`: el enlace sirve; no lo consume (CA-20). */
+export const resetLinkCheckResponseSchema = z.object({ status: z.literal('valid') }).strict();
+
+/** `POST /auth/reset-password`: la contraseña cambió; no abre sesión (CA-19). */
+export const resetPasswordResponseSchema = z
+  .object({ status: z.literal('password-reset') })
+  .strict();
+
 export const DEVICE_KINDS = ['desktop', 'mobile', 'tablet'] as const;
 
 /** Una sesión en «Seguridad». Sin IP, agente de usuario completo ni id del dispositivo (CA-11). */
@@ -205,6 +213,8 @@ export type ChangePasswordRequest = z.infer<typeof changePasswordRequestSchema>;
 export type AcceptedResponse = z.infer<typeof acceptedResponseSchema>;
 export type VerifyEmailResponse = z.infer<typeof verifyEmailResponseSchema>;
 export type VerifyEmailStatus = VerifyEmailResponse['status'];
+export type ResetLinkCheckResponse = z.infer<typeof resetLinkCheckResponseSchema>;
+export type ResetPasswordResponse = z.infer<typeof resetPasswordResponseSchema>;
 export type SessionResponse = z.infer<typeof sessionResponseSchema>;
 export type SessionUser = SessionResponse['user'];
 export type DeviceKind = (typeof DEVICE_KINDS)[number];

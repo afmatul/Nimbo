@@ -477,77 +477,79 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
 
 ## Bloque 3 — PR-3 «recuperación de contraseña» (plan §6.3, §6.5) · depende de 002-PR-2
 
-- [ ] **T-58** [P] [P×PR] Plantilla «Restablece tu contraseña de Nimbo» — CA: CA-18 — Depende: T-27 — ~0,5 h
+- [x] **T-58** [P] [P×PR] Plantilla «Restablece tu contraseña de Nimbo» — CA: CA-18 — Depende: T-27 — ~0,5 h
   Prueba primero `application/mail/password-reset-mail.template.spec.ts`: asunto (propuesto, Q-2); enlace
   `{webPublicUrl}/restablecer-contrasena#token=<valor>`; «1 hora», «solo funciona una vez»; qué hacer si no lo pediste;
   sin IP. Luego la función.
   Archivos: `apps/api/src/modules/identity/application/mail/password-reset-mail.template.ts` y su `*.spec.ts`.
 
-- [ ] **T-59** [P] [P×PR] Plantilla «Tu contraseña de Nimbo cambió» — CA: CA-19, CA-22 — Depende: T-27 — ~0,5 h
+- [x] **T-59** [P] [P×PR] Plantilla «Tu contraseña de Nimbo cambió» — CA: CA-19, CA-22 — Depende: T-27 — ~0,5 h
   Prueba primero `application/mail/password-changed-mail.template.spec.ts`: asunto (propuesto, Q-2); fecha de
   Guatemala; enlace a `{webPublicUrl}/recuperar-contrasena` («si no fuiste tú»); sin IP. Luego la función.
   Archivos: `apps/api/src/modules/identity/application/mail/password-changed-mail.template.ts` y su `*.spec.ts`.
 
-- [ ] **T-60** [P×PR] `PasswordService.requestReset` — CA: CA-18 — Depende: T-16, T-17, T-58, 001 T-13, T-32, T-34 — ~1 h
+- [x] **T-60** [P×PR] `PasswordService.requestReset` — CA: CA-18 — Depende: T-16, T-17, T-58, 001 T-13, T-32, T-34 — ~1 h
   Prueba primero `application/password.service.spec.ts` (dobles): el límite `identity:password-reset-request:<sha256>`
   (60 s y `EMAIL_REQUESTS_PER_HOUR`) se consume **antes** de buscar; rechazado → `IdentityTooManyRequestsError` con
   ámbito de recuperación; inexistente → nada (`kind: 'ignored'`); verificada, interna o suspendida →
-  `invalidateActive` + enlace de 60 min + correo tras el commit; cliente no verificado → consume en silencio el límite
-  de 001 y llama a `VerificationLinkIssuer`, o registra `verification_suppressed` sin cambiar la respuesta.
+  `invalidateActive` + enlace de 60 min + correo tras el commit; cliente no verificado → llama a `VerificationLinkIssuer`
+  (`kind: 'verification_link'`) sin consultar ni gastar el límite de 001 (DT-7, SEC-1).
   Archivos: `apps/api/src/modules/identity/application/password.service.ts`, `apps/api/src/modules/identity/application/password.service.spec.ts`.
 
-- [ ] **T-61** [P×PR] `PasswordService.checkResetLink` — CA: CA-20 — Depende: T-60 — ~0,5 h
+- [x] **T-61** [P×PR] `PasswordService.checkResetLink` — CA: CA-20 — Depende: T-60 — ~0,5 h
   Prueba primero (mismo archivo): mal formado o desconocido → `ResetLinkInvalidError`; de tipo `verificacion` →
   inválido; vencido → `ResetLinkExpiredError`; usado o invalidado → inválido; válido → `ok` **sin** consumir.
   Archivos: `apps/api/src/modules/identity/application/password.service.ts`, `apps/api/src/modules/identity/application/password.service.spec.ts`.
 
-- [ ] **T-62** [P×PR] `PasswordService.resetPassword` — CA: CA-19, CA-20, CA-21 — Depende: T-61, T-59 — ~1 h
+- [x] **T-62** [P×PR] `PasswordService.resetPassword` — CA: CA-19, CA-20, CA-21 — Depende: T-61, T-59 — ~1 h
   Prueba primero (mismo archivo): débil o igual al correo de la cuenta → `IdentityWeakPasswordError` con `fields` y el
   enlace sigue vigente; el hash se calcula **fuera** de la transacción; `consume` → `false` → `ResetLinkInvalidError`
   sin cambiar la contraseña; éxito → `update`, `revokeAllExcept(userId, null, now)`, y tras el commit `clear` de los
   dos bloqueos, correo «Tu contraseña cambió» e `identity.password_reset.completed` con `revokedCount`; no crea sesión.
   Archivos: `apps/api/src/modules/identity/application/password.service.ts`, `apps/api/src/modules/identity/application/password.service.spec.ts`.
 
-- [ ] **T-63** `PasswordController`: tres rutas públicas — CA: CA-18, CA-19, CA-20 — Depende: T-62, T-41 (002-PR-2 integrado) — ~1 h
+- [x] **T-63** `PasswordController`: tres rutas públicas — CA: CA-18, CA-19, CA-20 — Depende: T-62, T-41 (002-PR-2 integrado) — ~1 h
   Prueba primero `apps/api/test/int/identity/password-reset.int-spec.ts` (caminos felices: `202` de
   `forgot-password`, `200 { status: 'valid' }` de `check`, `200 { status: 'password-reset' }` que borra `nimbo_rt`).
   Luego `password.controller.ts` (`@Controller('auth')`, `@Public()` en las tres, pipes con los esquemas de T-03) y su
   registro en `IdentityModule`.
   Archivos: `apps/api/src/modules/identity/presentation/password.controller.ts`, `apps/api/src/modules/identity/identity.module.ts`, `apps/api/test/int/identity/password-reset.int-spec.ts`.
 
-- [ ] **T-64** [P] CA-18 (pedir el enlace) — CA: CA-18 — Depende: T-63 — ~1 h
+- [x] **T-64** [P] CA-18 (pedir el enlace) — CA: CA-18 — Depende: T-63 — ~1 h
   En `password-reset.int-spec.ts`: cuatro cuentas (verificada, no verificada, interna, inexistente) → `202`
   idénticos; Mailpit: enlace de 1 h para verificada e interna, enlace de verificación de 001 para la no verificada,
   nada para la inexistente; 60 s y 5/h con y sin cuenta → `IDENTITY_TOO_MANY_REQUESTS` con `Retry-After`.
   Archivos: `apps/api/test/int/identity/password-reset.int-spec.ts`.
 
-- [ ] **T-65** [P] CA-19, CA-21 y la segunda parte de CA-5 — CA: CA-19, CA-21, CA-5 — Depende: T-63, T-44 — ~1 h
+- [x] **T-65** [P] CA-19, CA-21 y la segunda parte de CA-5 — CA: CA-19, CA-21, CA-5 — Depende: T-63, T-44 — ~1 h
   En `password-reset.int-spec.ts`: dos navegadores con sesión → ambas revocadas (su refresco falla); bloqueo de CA-5
   quitado al momento; correo «Tu contraseña cambió»; ninguna fila nueva en `sesion`; `nimbo_rt` borrada; débil y
   «igual al correo» → `IDENTITY_WEAK_PASSWORD` con `fields` y el mismo enlace sirve después.
   Archivos: `apps/api/test/int/identity/password-reset.int-spec.ts`.
 
-- [ ] **T-66** [P] CA-20 y concurrencia — CA: CA-20 — Depende: T-63 — ~1 h
+- [x] **T-66** [P] CA-20 y concurrencia — CA: CA-20 — Depende: T-63 — ~1 h
   En `password-reset.int-spec.ts`: vencido (`FixedClock` + 1 h + 1 s) → `EXPIRED`; usado, reemplazado, alterado, mal
   formado y de tipo `verificacion` → `INVALID`, en `check` y en `reset`; la contraseña no cambia. Y
   `apps/api/test/int/identity/password-reset-concurrency.int-spec.ts`: dos `reset` simultáneos → uno `200`, otro
   `INVALID`.
   Archivos: `apps/api/test/int/identity/{password-reset,password-reset-concurrency}.int-spec.ts`.
 
-- [ ] **T-67** [P] Aislamiento: anti-enumeración de la recuperación — CA: CA-18 — Depende: T-63 — ~0,5 h
+- [x] **T-67** [P] Aislamiento: anti-enumeración de la recuperación — CA: CA-18 — Depende: T-63 — ~0,5 h
   `apps/api/test/isolation/password-reset-enumeration.iso-spec.ts`: las cuatro clases de cuenta del mundo de 003 dan
   respuestas idénticas (status, cuerpo, cabeceras salvo `x-correlation-id`), también cuando el límite se agota.
   Archivos: `apps/api/test/isolation/password-reset-enumeration.iso-spec.ts`.
 
-- [ ] **T-68** CA-24 y CA-25 de la recuperación — CA: CA-24, CA-25 — Depende: T-63, T-51, T-52 — ~1 h
+- [x] **T-68** CA-24 y CA-25 de la recuperación — CA: CA-24, CA-25 — Depende: T-63, T-51, T-52 — ~1 h
   Ampliar `credential-secrecy.int-spec.ts` (el token de recuperación sacado de Mailpit solo aparece como SHA-256 en
   `token_cuenta` y nunca en el `LogSink`) y `auth-logs.int-spec.ts` (`identity.password_reset.requested` con cada
   `kind`, `rejected` con cada `reason`, `completed`, `session.revoked` con `reason: 'password_reset'`; sin correo).
   Archivos: `apps/api/test/int/identity/{credential-secrecy,auth-logs}.int-spec.ts`.
 
-- [ ] **T-69** Cierre del PR-3 — CA: n/a — Depende: T-58…T-68 — ~0,5 h
-  README de `identity` (recuperación, D-15 con límites en silencio, DT-5/DT-6). Suites en verde. Pedir al
+- [x] **T-69** Cierre del PR-3 — CA: n/a — Depende: T-58…T-68 — ~0,5 h
+  README de `identity` (recuperación, D-15 acotada solo por el límite de recuperación, DT-5/DT-6). Suites en verde. Pedir al
   `ui-designer` que valide las plantillas de T-58 y T-59 (y las de T-28, T-29 si no lo hizo).
+  Hecho (2026-09-29): el `ui-designer` aprobó T-28, T-29, T-58 y T-59 sin bloqueantes; sus dos sugerencias quedan en
+  PD-53. Los pendientes de la auditoría T-67 que no entran en este PR quedan en PD-50, PD-51 y PD-52.
   Archivos: `apps/api/src/modules/identity/README.md`.
 
 ## Bloque 4 — PR-4 «Seguridad (backend)» (plan §6.3, §6.5) · depende de 002-PR-2 (y por él 003-PR-A) · **recortable a Fase 2 si no llega el 30/09 (decisión de Adrián pendiente)**
@@ -621,13 +623,13 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
 
 ## Bloque 5 — PR-5a «web: sesión» (plan §6.9) · depende de 001-PR-4 y 002-PR-1 (la prueba manual, de PR-2 y PR-3)
 
-- [ ] **T-81** [P] Catálogo de errores de 002 — CA: CA-2…CA-6, CA-8, CA-18, CA-20, CA-21, CA-23 — Depende: T-02, 001 T-57 — ~0,5 h
+- [x] **T-81** [P] Catálogo de errores de 002 — CA: CA-2…CA-6, CA-8, CA-18, CA-20, CA-21, CA-23 — Depende: T-02, 001 T-57 — ~0,5 h
   Prueba primero `apps/web/lib/error-catalog.spec.ts` (ampliado): cada código nuevo de T-02 con el texto de spec §11;
   los que llevan minutos los calculan de `retryAfterSeconds`; `IDENTITY_TOO_MANY_REQUESTS` devuelve el texto por
   pantalla (DT-20: inicio de sesión o recuperación); suspendida con `SUPPORT_CONTACT_EMAIL`. Luego `error-catalog.ts`.
   Archivos: `apps/web/lib/error-catalog.ts`, `apps/web/lib/error-catalog.spec.ts`.
 
-- [ ] **T-82** [P] `api.ts`: sesión y recuperación — CA: CA-1, CA-7, CA-14, CA-18…CA-20 — Depende: T-03, T-04, 001 T-60 — ~1 h
+- [x] **T-82** [P] `api.ts`: sesión y recuperación — CA: CA-1, CA-7, CA-14, CA-18…CA-20 — Depende: T-03, T-04, 001 T-60 — ~1 h
   Prueba primero `features/identity/api.spec.ts` (`fetch` simulado): `login`, `refresh`, `logout`, `forgotPassword`,
   `checkResetLink`, `resetPassword` usan la ruta y el método de plan §5, validan la respuesta con `contracts`; las de
   `session/*` y `login` mandan `credentials: 'include'`; errores tipados por `code`. Luego las funciones.
@@ -683,19 +685,19 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   mockup (p. 07) dentro del `PublicHeader`; enlaces a registro y a recuperar; jest-axe. Luego la página.
   Archivos: `apps/web/app/(public)/iniciar-sesion/page.tsx` y su `*.spec.tsx`.
 
-- [ ] **T-91** `RequestResetForm` y `/recuperar-contrasena` — CA: CA-18, CA-27 — Depende: T-81, T-82, 001 T-63 — ~1 h
+- [x] **T-91** `RequestResetForm` y `/recuperar-contrasena` — CA: CA-18, CA-27 — Depende: T-81, T-82, 001 T-63 — ~1 h
   Prueba primero `features/identity/components/request-reset-form.spec.tsx`: default, enviando, error, límite (texto de
   recuperación), revisa-tu-correo con `CheckEmailPanel` en la variante sin «Cambiar correo»; la misma pantalla para
   cualquier correo; jest-axe. Luego el componente y la página (esquema de `registro--pedir-enlace`).
   Archivos: `apps/web/features/identity/components/request-reset-form.tsx` y su `*.spec.tsx`, `apps/web/app/(public)/recuperar-contrasena/page.tsx`.
 
-- [ ] **T-92** `ResetPasswordView`: lectura y comprobación del enlace — CA: CA-20, CA-27 — Depende: T-81, T-82 — ~1 h
+- [x] **T-92** `ResetPasswordView`: lectura y comprobación del enlace — CA: CA-20, CA-27 — Depende: T-81, T-82 — ~1 h
   Prueba primero `features/identity/components/reset-password-view.spec.tsx`: lee `#token`, lo borra con
   `history.replaceState` y llama a `check` **una vez** (también en `StrictMode`); estados verificando, enlace-expirado
   y enlace-invalido con la acción «Pedir un enlace nuevo»; sin token → inválido.
   Archivos: `apps/web/features/identity/components/reset-password-view.tsx` y su `*.spec.tsx`.
 
-- [ ] **T-93** `ResetPasswordView`: formulario y `/restablecer-contrasena` — CA: CA-19, CA-21, CA-27 — Depende: T-92, 001 T-61 — ~1 h
+- [x] **T-93** `ResetPasswordView`: formulario y `/restablecer-contrasena` — CA: CA-19, CA-21, CA-27 — Depende: T-92, 001 T-61 — ~1 h
   Prueba primero (mismo archivo): default con `PasswordRequirements` y confirmación (`refine` del cliente: no envía si
   no coincide), error-campos (`fields` de `IDENTITY_WEAK_PASSWORD`), enviando, éxito («Listo. Cambiamos tu
   contraseña…» + «Iniciar sesión»); jest-axe. Luego la página.

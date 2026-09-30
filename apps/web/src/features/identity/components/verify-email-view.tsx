@@ -1,14 +1,17 @@
 'use client';
 
-import { IDENTITY_ERROR_CODES } from '@nimbo/contracts';
-import { AlertCircle, Check, Clock, Info, Loader2 } from 'lucide-react';
-import type { JSX } from 'react';
+import { IDENTITY_ERROR_CODES, type SessionResponse } from '@nimbo/contracts';
+import { Check, Info, Loader2 } from 'lucide-react';
+import { useEffect, useRef, type JSX } from 'react';
 
 import { IdentityCard } from '../../../components/nimbo/identity-card';
 import { buttonVariants } from '../../../components/ui/button';
 import { messageForCode } from '../../../lib/error-catalog';
 import { cn } from '../../../lib/utils';
 import { useVerifyEmail } from '../hooks/use-verify-email';
+import { useEnterSession } from '../session/use-enter-session';
+
+import { LinkProblemCard } from './link-problem-card';
 
 const TITLE_ID = 'verificar-correo';
 const LOGIN_HREF = '/iniciar-sesion';
@@ -41,8 +44,27 @@ function PlanCard({ planName }: { readonly planName: string | null }): JSX.Eleme
 }
 
 /**
- * Estados de la página de verificación. El botón de éxito dice «Iniciar sesión» y lleva a esa ruta mientras
- * no exista 002 (spec §11, registro de cambios del 2026-09-28).
+ * Entra solo con la sesión que abrió la verificación, por el mismo camino que el inicio de sesión (001 D-20, 002
+ * CA-15). El `ref` evita entrar dos veces con el doble efecto de `StrictMode`.
+ */
+function AutoEnter({ session }: { readonly session: SessionResponse }): JSX.Element {
+  const enterSession = useEnterSession();
+  const entered = useRef(false);
+  useEffect(() => {
+    if (entered.current) return;
+    entered.current = true;
+    enterSession(session);
+  }, [enterSession, session]);
+  return (
+    <p role="status" className="text-sm text-secondary-foreground">
+      Entrando a tus archivos…
+    </p>
+  );
+}
+
+/**
+ * Estados de la página de verificación. Si la verificación abrió la sesión, entra directo a Mis archivos (001 D-20);
+ * si no la trajo, el éxito ofrece «Iniciar sesión».
  */
 export function VerifyEmailView({ apiPublicUrl }: { readonly apiPublicUrl: string }): JSX.Element {
   const state = useVerifyEmail(apiPublicUrl);
@@ -62,6 +84,20 @@ export function VerifyEmailView({ apiPublicUrl }: { readonly apiPublicUrl: strin
             Verificando…
           </p>
         }
+      />
+    );
+  }
+
+  if (state.status === 'exito' && state.session !== null) {
+    return (
+      <IdentityCard
+        data-state="exito"
+        titleId={TITLE_ID}
+        title="¡Listo! Tu correo está verificado."
+        icon={Check}
+        tone="success"
+        step={3}
+        description={<AutoEnter session={state.session} />}
       />
     );
   }
@@ -105,28 +141,18 @@ export function VerifyEmailView({ apiPublicUrl }: { readonly apiPublicUrl: strin
     );
   }
 
-  const expired = state.status === 'enlace-expirado';
+  const message = messageForCode(
+    state.status === 'enlace-expirado'
+      ? IDENTITY_ERROR_CODES.VERIFICATION_LINK_EXPIRED
+      : IDENTITY_ERROR_CODES.VERIFICATION_LINK_INVALID,
+  );
   return (
-    <IdentityCard
-      data-state={state.status}
+    <LinkProblemCard
+      problem={state.status}
       titleId={TITLE_ID}
-      title={expired ? 'Enlace vencido' : 'Enlace no válido'}
-      icon={expired ? Clock : AlertCircle}
-      tone={expired ? 'warning' : 'danger'}
+      message={message}
+      requestHref={REQUEST_HREF}
       step={2}
-      description={
-        <p role="alert" className="text-sm text-secondary-foreground">
-          {messageForCode(
-            expired
-              ? IDENTITY_ERROR_CODES.VERIFICATION_LINK_EXPIRED
-              : IDENTITY_ERROR_CODES.VERIFICATION_LINK_INVALID,
-          )}
-        </p>
-      }
-    >
-      <a href={REQUEST_HREF} className={ACTION_CLASS}>
-        Pedir un enlace nuevo
-      </a>
-    </IdentityCard>
+    />
   );
 }

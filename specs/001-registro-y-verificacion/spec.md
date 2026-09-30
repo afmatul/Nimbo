@@ -9,7 +9,7 @@
 | Depende de | 000 (bloques 1 y 2 en `main`); 000b para la interfaz con Cielo Sereno; **006a** (consume el evento de cuenta verificada, D-4, y expone por API el catálogo de planes que muestra el registro); 002 para las pruebas de CA-16, CA-26 y CA-29 (ver §13) |
 | Módulo | M1 `identity` (+ `notifications` como implementador de `IMailer`) |
 | DF | DF-13 decidido por D-1 · DF-35 decidido por D-2 · DF-33 (solo `usuario`) decidido por D-3. Los tres ya están `Aceptado` en `design-findings.md` (PD-09, 2026-09-27); falta redibujar el E-R y las clases M1 (PD-06) |
-| Última actualización | 2026-09-28 |
+| Última actualización | 2026-09-29 |
 
 ## 1. Contexto y problema
 
@@ -98,11 +98,11 @@ reescribieron después de revisar los mockups (2026-09-22) o al volver al enlace
 | D-17 | Cuando alguien intenta registrar un correo ya verificado (o de una cuenta interna), su dueño recibe un aviso de intento de registro. El aviso se limita por **número de intentos de registro sobre ese correo**: `MAX_AVISOS_INTENTO_24H = 1` (confirmado) para que no sirva para inundar el buzón. | P-17 | 2026-09-22 · Adrián |
 | D-18 | El correo **no** aparece en las bitácoras: la cuenta se identifica solo por su `id`, y `email` y `correo` se agregan a `REDACTED_FIELDS` de `shared`. | P-18 | 2026-09-22 · Adrián |
 | D-19 | **(revisada)** «Enlace firmado» (RF-01) significa «no falsificable»: un **token opaco** aleatorio (al menos 128 bits de entropía), de **un solo uso**, guardado **solo como hash** en `token_cuenta`. Se busca por su hash y cualquier comparación de secretos se hace en tiempo constante. Un enlace nuevo para la misma cuenta invalida los anteriores. | P-19, P-23 | 2026-09-23 · Adrián |
-| D-20 | **(revisada)** Verificar **inicia sesión**: al abrir un enlace válido, ese dispositivo queda con sesión y la pantalla final ofrece «Ir a Mis archivos», como el mockup. Por eso el enlace funciona como una **credencial de un solo uso válida por 24 h**; la mitigación está en D-19 (un solo uso, hash, invalidación al reemplazarse) y en CA-29. La sesión es de 002, así que la regla se fija aquí y **su prueba se escribe en 002** (mismo patrón que CA-16). Mientras 002 no exista, el botón lleva a iniciar sesión. | P-20 | 2026-09-22 · Adrián (reafirmada con enlace 2026-09-23) |
+| D-20 | **(revisada)** Verificar **inicia sesión**: al abrir un enlace válido, ese dispositivo queda con sesión y la web **entra directo a Mis archivos**, sin botón intermedio (revisada el 2026-09-29; el mockup con «Ir a Mis archivos» queda como referencia visual). Por eso el enlace funciona como una **credencial de un solo uso válida por 24 h**; la mitigación está en D-19 (un solo uso, hash, invalidación al reemplazarse) y en CA-29. La sesión es de 002, así que la regla se fija aquí y **su prueba se escribe en 002** (mismo patrón que CA-16). Mientras 002 no exista, el botón lleva a iniciar sesión. | P-20 | 2026-09-22 · Adrián (reafirmada con enlace 2026-09-23) |
 | D-21 | 001 no elimina las cuentas que nunca se verifican. Si llegan a crecer, se revisa en 011/022. | P-21 | 2026-09-22 · Adrián |
 | D-22 | El planner propone en el plan textos breves para **las dos páginas** (Términos y Política de privacidad) y el dueño los revisa. | P-22 | 2026-09-22 · Adrián |
 | D-23 | **Revertida el 2026-09-23 por P-23 → A.** La verificación es por **enlace**, como dicen la propuesta (RF-01) y `product-context.md` §5 (D-7, D-19). La versión anterior (código de 6 dígitos con tope de intentos y HMAC) queda descrita en el registro de cambios del 2026-09-22. | P-23 | 2026-09-23 · Adrián |
-| D-24 | En Fase 1, mientras 009 no existe, se **permite elegir un plan de pago**. La cuenta queda en Personal y la pantalla final dice que puede activarlo desde «Plan y facturación» cuando esté disponible. La elección **solo vive en el navegador** y no se guarda en el servidor. Si el enlace se abre en **otro dispositivo**, la elección se pierde y la cuenta queda en Personal **sin mensaje**. Es aceptable en Fase 1; lo retoma 009. | P-24 | 2026-09-23 · Adrián |
+| D-24 | En Fase 1, mientras 009 no existe, se **permite elegir un plan de pago**. La cuenta queda en Personal y la pantalla final dice que puede activarlo desde «Plan y facturación» cuando esté disponible (desde el 2026-09-29 solo cuando la verificación no abre sesión; ver CA-28). La elección **solo vive en el navegador** y no se guarda en el servidor. Si el enlace se abre en **otro dispositivo**, la elección se pierde y la cuenta queda en Personal **sin mensaje**. Es aceptable en Fase 1; lo retoma 009. | P-24 | 2026-09-23 · Adrián |
 
 ## 6. Parámetros
 
@@ -208,8 +208,8 @@ reescribieron después de revisar los mockups (2026-09-22) o al volver al enlace
   - **Cuando** el visitante abre el enlace y la página de verificación lo confirma con la API,
   - **Entonces** `correo_verificado = true`; ese token queda marcado como usado (`usado_en`); cualquier otro token de
     verificación de esa cuenta deja de servir; se publica **una vez** el evento de cuenta de cliente verificada, que
-    lleva solo el `id` (sin correo ni nombre); y la página muestra el estado **exito** («Correo verificado») con la
-    acción «Ir a Mis archivos» (mientras 002 no exista, «Iniciar sesión»; la sesión se prueba en CA-26).
+    lleva solo el `id` (sin correo ni nombre); y la página muestra el estado **exito** («Correo verificado»); si la
+    verificación abrió la sesión (CA-26) entra directo a Mis archivos, y si no, ofrece «Iniciar sesión».
   - **Y** (verificado en 006a) al consumir el evento, `billing` crea para esa cuenta una suscripción del plan
     **Personal**, cualquiera que haya sido el plan elegido.
 
@@ -290,8 +290,8 @@ reescribieron después de revisar los mockups (2026-09-22) o al volver al enlace
 - **CA-26** (HU-2, RF-01, D-20; se verifica junto con 002) — verificar inicia sesión
   - **Dado** la spec 002 implementada,
   - **Cuando** el visitante abre un enlace válido (CA-8),
-  - **Entonces** ese navegador recibe las credenciales de sesión de 002 y «Ir a Mis archivos» lo lleva directo a sus
-    archivos. Esta spec fija la regla (RN-11); la prueba automatizada se escribe en 002 y se enlaza desde el
+  - **Entonces** ese navegador recibe las credenciales de sesión de 002 y la web entra directo a sus archivos, sin pedir
+    iniciar sesión ni otra acción (D-20, revisada el 2026-09-29). Esta spec fija la regla (RN-11); la prueba automatizada se escribe en 002 y se enlaza desde el
     `verification.md` de ambas. Mientras 002 no exista, verificar no entrega credenciales y el botón lleva a iniciar sesión.
 
 - **CA-29** (HU-4, RF-01, D-19, D-20; se verifica junto con 002) — el enlace es una credencial de un solo uso
@@ -313,6 +313,8 @@ reescribieron después de revisar los mockups (2026-09-22) o al volver al enlace
   - **Y cuando** abre el enlace en **otro dispositivo**, la cuenta queda en Personal y la pantalla final **no** muestra
     ese mensaje. El servidor en ningún caso guarda la elección (D-24). Con 009 disponible, en lugar del mensaje se le
     lleva a contratarlo.
+  - **En suspenso (2026-09-29):** con la sesión de 002 la web entra directo a Mis archivos (D-20) y este aviso no se
+    muestra; solo aparece cuando la verificación no abre sesión. Se retoma al definir el flujo de planes (009).
 
 ### Prohibiciones duras (HU-4, HU-5)
 
@@ -389,7 +391,7 @@ reescribieron después de revisar los mockups (2026-09-22) o al volver al enlace
   - **Entonces**:
     - la página de verificación muestra **verificando** mientras espera y después **exito**, **enlace-expirado**,
       **ya-verificado** o **enlace-invalido**; desde los estados de error se llega a **pedir-enlace**;
-    - «Correo verificado» ofrece «Ir a Mis archivos» (o «Iniciar sesión» sin 002) y, si corresponde, el mensaje de CA-28;
+    - con sesión, «Correo verificado» entra directo a Mis archivos; sin sesión ofrece «Iniciar sesión» y, si corresponde, el mensaje de CA-28;
     - el token no queda en bitácoras de `web`, del proxy ni se envía a terceros (RN-8);
     - cada página estática está en español, es accesible sin sesión, muestra su **versión** y fecha de vigencia (la
       misma versión que se guarda en CA-1) y no carga recursos de terceros;
@@ -483,7 +485,7 @@ reescribieron después de revisar los mockups (2026-09-22) o al volver al enlace
 | Registro | `mockups/identity/registro/registro.html` (propuesta p. 03; default: planes, formulario, requisitos de contraseña, casilla) | `capturas/identity/registro/registro--default--{360,1440}.png` | Existentes: default, enviando*, error-campos*, error-servidor*, catalogo-no-disponible* (`registro--<estado>.html`) | Borrador |
 | Revisa tu correo | `mockups/identity/registro/registro--exito.html` (propuesta p. 04) | `capturas/identity/registro/registro--exito--{360,1440}.png` | Existentes: exito, limite-reenvio*, pedir-enlace* (formulario de correo para pedir un enlace nuevo; se llega desde enlace-expirado, enlace-invalido e inicio de sesión) | Borrador |
 | Verificar correo (página del enlace) | `mockups/identity/verificar-correo/verificar-correo--verificando.html` (propuesta p. 05) | `capturas/identity/verificar-correo/verificar-correo--verificando--{360,1440}.png` | Existentes: verificando*, ya-verificado*, enlace-expirado, enlace-invalido* (`verificar-correo--<estado>.html`) | Borrador |
-| Correo verificado | `mockups/identity/verificar-correo/verificar-correo--exito.html` (propuesta p. 06; con sesión, «Ir a Mis archivos») | `capturas/identity/verificar-correo/verificar-correo--exito--{360,1440}.png` | Existentes: exito, plan-de-pago-elegido* (D-24) | Borrador |
+| Correo verificado | `mockups/identity/verificar-correo/verificar-correo--exito.html` (propuesta p. 06; con sesión entra directo a Mis archivos, D-20) | `capturas/identity/verificar-correo/verificar-correo--exito--{360,1440}.png` | Existentes: exito, plan-de-pago-elegido* (D-24) | Borrador |
 | Términos* (página estática, D-14) | `mockups/identity/terminos/terminos.html` (no presentado; borrador de textos, D-22) | `capturas/identity/terminos/terminos--default--{360,1440}.png` | Existente: default | Borrador |
 | Política de privacidad* (página estática, D-14) | `mockups/identity/privacidad/privacidad.html` (no presentado; borrador de textos, D-22) | `capturas/identity/privacidad/privacidad--default--{360,1440}.png` | Existente: default | Borrador |
 | Correo con enlace de verificación* | `mockups/identity/correos/correos--registro.html` (no presentado; izquierda) | `capturas/identity/correos/correos--registro--{360,1440}.png` | Existente: enlace nuevo | Borrador |
@@ -503,8 +505,8 @@ reescribieron después de revisar los mockups (2026-09-22) o al volver al enlace
   - el selector de plan (D-4), con nombres y precios leídos de la API; los valores escritos en el mockup (`Q0.00`,
     `Q450`…) son solo de referencia;
   - la casilla de aceptación, que ya tiene dos enlaces separados, «Términos» y «Política de privacidad» (D-14);
-  - el botón «Ir a Mis archivos» de la pantalla final (D-20); mientras 002 no exista, el botón dice «Iniciar sesión»
-    y lleva a la ruta reservada (decisión de Adrián del 2026-09-28, T-66);
+  - la pantalla final (D-20), con un cambio del 2026-09-29: con sesión no muestra «Ir a Mis archivos» y entra sola a
+    Mis archivos; sin sesión, el botón dice «Iniciar sesión» y lleva a la ruta (decisión de Adrián del 2026-09-28, T-66);
   - «Cambiar correo» en «Revisa tu correo» (CA-27).
 - Nota: los mockups usan colores escritos a mano (`#546983`, `#DDE6F0`…). Es aceptable en un mockup de referencia; la
   implementación usa solo tokens (R-11).
@@ -523,7 +525,7 @@ reescribieron después de revisar los mockups (2026-09-22) o al volver al enlace
   - Enlace expirado: «Este enlace venció. Pide uno nuevo y ábrelo en las próximas 24 horas.»
   - Enlace inválido: «Este enlace no es válido. Usa el enlace del correo más reciente o pide uno nuevo.»
   - Ya verificado: «Tu correo ya está verificado. Inicia sesión.»
-  - Éxito: «¡Listo! Tu correo está verificado.» con «Ir a Mis archivos» (con 002; hasta entonces, «Iniciar sesión»).
+  - Éxito: «¡Listo! Tu correo está verificado.» Con sesión muestra «Entrando a tus archivos…» y entra directo a Mis archivos; sin sesión, «Iniciar sesión».
   - Plan de pago elegido (mismo navegador): «Tu cuenta empieza en el plan Personal. Podrás activar {plan elegido} desde Plan y facturación cuando esté disponible.»
   - Límite: «Ya te enviamos un enlace hace poco. Revisa tu bandeja y la carpeta de spam, o inténtalo de nuevo en N minutos.»
   - Error inesperado: el genérico de 000 §10 con el `correlationId`.
@@ -653,3 +655,4 @@ ajustes y estados de mockups de §11 (Art. XIII.1; compuerta de `Aclarada`, `wor
 | 2026-09-28 | §11: mientras 002 no exista, el botón de la pantalla «Correo verificado» dice «Iniciar sesión» (no «Ir a Mis archivos») y lleva a la ruta reservada; con 002 vuelve a «Ir a Mis archivos» (D-20). Sin cambio de criterios | Revisión visual T-67, UI-B3; el texto de T-66 | Adrián |
 | 2026-09-28 | D-8, §6 y CA-15: límite de **10 reenvíos por IP y por hora** (`POST /auth/resend-verification`), con el mismo valor que el de registro pero contado aparte, el mismo guard y la misma respuesta de CA-15 (ámbito `ip`, sin cabeceras `X-RateLimit-*`). Evita que una IP pida reenvíos para miles de correos ajenos (spam a terceros y reputación del remitente). §10 lo menciona | Revisión de seguridad, SEC-1 | Adrián |
 | 2026-09-28 | Dependencia con 006a (§13), sin cambiar el texto de §13: mientras 006a no publique en `packages/contracts` la lectura pública del catálogo, `web` usa la ruta provisional `GET {API_INTERNAL_URL}/plans` con un esquema local (`plan-catalog.ts`); cualquier fallo cae en `catalogo-no-disponible`. Se cierra con 006a (PD-40, PD-48). Sin cambio de criterios | Revisión del PR-4, I-2 | Adrián |
+| 2026-09-29 | D-20, D-24, CA-8, CA-26, CA-28 y §11: con la sesión de 002, verificar el correo **entra directo a Mis archivos**, sin el botón «Ir a Mis archivos» ni pantalla intermedia. El aviso del plan de pago elegido (CA-28) queda en suspenso: solo se muestra si la verificación no abre sesión, y el flujo de planes se revisa después (009) | Demo de Fase 1: entrar sin un paso extra | Adrián |
