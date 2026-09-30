@@ -9,6 +9,9 @@ import { Argon2idHasher } from '../../../src/modules/identity/infrastructure/arg
 export const LOGIN_PATH = '/api/v1/auth/login';
 export const REFRESH_PATH = '/api/v1/auth/session/refresh';
 export const LOGOUT_PATH = '/api/v1/auth/session/logout';
+export const FORGOT_PASSWORD_PATH = '/api/v1/auth/forgot-password';
+export const RESET_PASSWORD_CHECK_PATH = '/api/v1/auth/reset-password/check';
+export const RESET_PASSWORD_PATH = '/api/v1/auth/reset-password';
 
 /** Contraseña de las cuentas de prueba del inicio de sesión (cumple la política de 001). */
 export const ACCOUNT_PASSWORD = 'Nimbo-Seguro-2026';

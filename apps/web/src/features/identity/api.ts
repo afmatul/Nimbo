@@ -1,15 +1,24 @@
 import {
   acceptedResponseSchema,
+  forgotPasswordRequestSchema,
   loginRequestSchema,
   registerRequestSchema,
   resendVerificationRequestSchema,
+  resetLinkCheckResponseSchema,
+  resetPasswordRequestSchema,
+  resetPasswordResponseSchema,
+  resetTokenRequestSchema,
   sessionResponseSchema,
   verifyEmailRequestSchema,
   verifyEmailResponseSchema,
   type AcceptedResponse,
+  type ForgotPasswordRequest,
   type LoginRequest,
   type RegisterRequest,
   type ResendVerificationRequest,
+  type ResetLinkCheckResponse,
+  type ResetPasswordRequest,
+  type ResetPasswordResponse,
   type SessionResponse,
   type VerifyEmailResponse,
 } from '@nimbo/contracts';
@@ -74,11 +83,13 @@ export function resendVerification(
   );
 }
 
+/** 002 CA-15: la apertura que verifica abre la sesión; la API deja las cookies de refresco y de dispositivo. */
 export function verifyEmail(apiPublicUrl: string, token: string): Promise<VerifyEmailResponse> {
   return postJson(
     endpoint(apiPublicUrl, '/auth/verify-email'),
     verifyEmailRequestSchema.parse({ token }),
     verifyEmailResponseSchema,
+    'include',
   );
 }
 
@@ -101,4 +112,41 @@ export async function refresh(apiPublicUrl: string): Promise<SessionResponse> {
 /** Cierra la sesión de este navegador (idempotente, `204`). */
 export async function logout(apiPublicUrl: string): Promise<void> {
   await postWithCookie(endpoint(apiPublicUrl, '/auth/session/logout'));
+}
+
+/** CA-18: pide el enlace de recuperación. La respuesta es la misma para cualquier correo. */
+export function forgotPassword(
+  apiPublicUrl: string,
+  input: ForgotPasswordRequest,
+): Promise<AcceptedResponse> {
+  return postJson(
+    endpoint(apiPublicUrl, '/auth/forgot-password'),
+    forgotPasswordRequestSchema.parse(input),
+    acceptedResponseSchema,
+  );
+}
+
+/** CA-20: comprueba el enlace de recuperación sin consumirlo. */
+export function checkResetLink(
+  apiPublicUrl: string,
+  token: string,
+): Promise<ResetLinkCheckResponse> {
+  return postJson(
+    endpoint(apiPublicUrl, '/auth/reset-password/check'),
+    resetTokenRequestSchema.parse({ token }),
+    resetLinkCheckResponseSchema,
+  );
+}
+
+/** CA-19: cambia la contraseña. La API borra la cookie de refresco de este navegador y no abre sesión. */
+export function resetPassword(
+  apiPublicUrl: string,
+  input: ResetPasswordRequest,
+): Promise<ResetPasswordResponse> {
+  return postJson(
+    endpoint(apiPublicUrl, '/auth/reset-password'),
+    resetPasswordRequestSchema.parse(input),
+    resetPasswordResponseSchema,
+    'include',
+  );
 }

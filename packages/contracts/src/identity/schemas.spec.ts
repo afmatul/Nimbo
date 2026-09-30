@@ -11,7 +11,9 @@ import {
   loginRequestSchema,
   registerRequestSchema,
   resendVerificationRequestSchema,
+  resetLinkCheckResponseSchema,
   resetPasswordRequestSchema,
+  resetPasswordResponseSchema,
   resetTokenRequestSchema,
   revokeOthersResponseSchema,
   sessionListResponseSchema,
@@ -353,6 +355,23 @@ describe('esquemas de respuesta de 001', () => {
   it('CA-1: verifyEmailResponseSchema rechaza `already-verified` con sesión', () => {
     expect(
       verifyEmailResponseSchema.safeParse({ status: 'already-verified', session: VALID_SESSION })
+        .success,
+    ).toBe(false);
+  });
+});
+
+describe('respuestas de la recuperación (002 plan §5)', () => {
+  it('CA-20: resetLinkCheckResponseSchema acepta solo `{ status: "valid" }`', () => {
+    expect(resetLinkCheckResponseSchema.parse({ status: 'valid' })).toEqual({ status: 'valid' });
+    expect(resetLinkCheckResponseSchema.safeParse({ status: 'expired' }).success).toBe(false);
+  });
+
+  it('CA-19: resetPasswordResponseSchema acepta solo `{ status: "password-reset" }` y sin sesión', () => {
+    expect(resetPasswordResponseSchema.parse({ status: 'password-reset' })).toEqual({
+      status: 'password-reset',
+    });
+    expect(
+      resetPasswordResponseSchema.safeParse({ status: 'password-reset', session: VALID_SESSION })
         .success,
     ).toBe(false);
   });

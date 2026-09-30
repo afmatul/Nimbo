@@ -52,4 +52,30 @@ describe('CheckEmailPanel', () => {
       ),
     ).toEqual([]);
   });
+
+  describe('variante de recuperación (spec 002 §11)', () => {
+    it('CA-18: mensaje neutro de 1 hora, sin pasos del registro ni Cambiar correo', () => {
+      render(<CheckEmailPanel variant="password-reset" email="ana@ejemplo.com" />);
+
+      expect(screen.getByRole('heading', { name: 'Revisa tu correo' })).toBeTruthy();
+      expect(screen.getByRole('status').textContent).toBe(
+        'Si hay una cuenta con ana@ejemplo.com, te enviamos un enlace para restablecer tu contraseña. Vence en 1 hora.',
+      );
+      expect(screen.queryByRole('button', { name: 'Cambiar correo' })).toBeNull();
+      expect(screen.queryByRole('list', { name: 'Pasos del registro' })).toBeNull();
+      expect(screen.getByRole('link', { name: 'Iniciar sesión' }).getAttribute('href')).toBe(
+        '/iniciar-sesion',
+      );
+    });
+
+    it('no tiene violaciones graves de accesibilidad', async () => {
+      const view = render(<CheckEmailPanel variant="password-reset" email="ana@ejemplo.com" />);
+      const results = await axe(view.container);
+      expect(
+        results.violations.filter(
+          (violation) => violation.impact === 'serious' || violation.impact === 'critical',
+        ),
+      ).toEqual([]);
+    });
+  });
 });

@@ -200,7 +200,7 @@ Mensajes (español, con acción correctiva):
 - `SHARED_UNAUTHENTICATED`: «Tu sesión no es válida o expiró. Inicia sesión de nuevo.»
 - `SHARED_FORBIDDEN`: «Tu cuenta no tiene permiso para esta acción. Si crees que es un error, escríbenos.»
 
-La web no muestra el `message`: usa su catálogo (§6.9).
+La web no muestra el `message`: usa su catálogo (§6.9). En el catálogo, `SHARED_FORBIDDEN` añade el correo de soporte (`SUPPORT_CONTACT_EMAIL`), como pide la spec §11 para «Sin permiso» (T-54).
 
 **Rutas públicas esperadas** (CA-3). `route-declarations.int-spec.ts` las fija en una lista explícita: si alguien
 marca otra ruta como `@Public()`, la prueba falla hasta que la agregue a la lista.

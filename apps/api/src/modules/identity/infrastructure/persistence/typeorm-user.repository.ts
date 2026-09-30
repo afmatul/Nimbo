@@ -5,6 +5,7 @@ import { TransactionContext } from '../../../../shared';
 import type { IUserRepository } from '../../application/ports/i-user-repository.port';
 import type { ClientUser } from '../../domain/client-user.entity';
 import type { EmailAddress } from '../../domain/email-address.vo';
+import type { PasswordHash } from '../../domain/password-hash.vo';
 import type { User } from '../../domain/user.entity';
 
 import { toUserDomain, toUsuarioRow } from './user.mapper';
@@ -39,6 +40,11 @@ export class TypeormUserRepository implements IUserRepository {
       where: { correo: email.value },
       lock: { mode: 'pessimistic_write' },
     });
+    return row === null ? null : toUserDomain(row);
+  }
+
+  async findById(id: string): Promise<User | null> {
+    const row = await this.rows().findOneBy({ id });
     return row === null ? null : toUserDomain(row);
   }
 
@@ -86,6 +92,10 @@ export class TypeormUserRepository implements IUserRepository {
         terminosAceptadosEn,
       },
     );
+  }
+
+  async updatePasswordHash(id: string, passwordHash: PasswordHash): Promise<void> {
+    await this.rows().update({ id }, { hashClave: passwordHash.reveal() });
   }
 
   private rows(): Repository<UsuarioOrmEntity> {
