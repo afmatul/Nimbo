@@ -570,7 +570,7 @@ salvo la lectura por rango del detector.
 
 - **Hechas**: T-31…T-45. T-43 en `ec4304b`; T-44 en `01e669e` (fallo de producción) y `ae8b72d` (pruebas); T-45 en
   `9dd184b`. Detenido por ALTO del coordinador tras T-45.
-- **PENDIENTE T-46** (spike de MinIO, no empezado): en el worktree `C:SERSMATUNIMBO-WTC:\USERS\AMATU\NIMBO-WT\005-SPIKE05-SPIKE`, rama
+- **PENDIENTE T-46** (spike de MinIO, no empezado): en el worktree `C:/Users/amatu/Nimbo-wt/005-spike`, rama
   `spike/005-minio`, primero `git merge feat/005-api`. Ya están respondidas por `minio-storage.adapter.int-spec.ts`
   (MinIO `RELEASE.2025-09-07`): un `PUT` prefirmado con `Content-Length` distinto del firmado se rechaza y no crea el
   objeto; el `GET` prefirmado honra `response-content-disposition`/`response-content-type`/`response-cache-control`
