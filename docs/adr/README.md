@@ -21,11 +21,13 @@ Son la base para defender la arquitectura en la exposición final (enunciado §6
 | 0013 | Política del original en el optimizador (DF-21) | Pendiente |
 | 0014 | [Tokens de Cielo Sereno ajustados a AA y mapeados a shadcn; axe en E2E](0014-tokens-cielo-sereno-shadcn-axe.md) (DF-41–48) | Aceptado |
 | 0015 | [Dependencias de fundaciones: gitleaks, zod, nestjs-pino, Testcontainers](0015-dependencias-de-fundaciones.md) (menor) | Aceptado |
+| 0016 | [Representación de dinero en centavos y almacenamiento en bytes](0016-dinero-en-centavos-y-almacenamiento-en-bytes.md) (DF-23, DF-24) | Aceptado |
 | 0017 | [Dependencias de autenticación: `argon2`, `@nestjs/throttler` y `@nestjs/jwt` con Passport](0017-dependencias-de-autenticacion.md) (menor; cierra PD-32) | Aceptado |
 | 0018 | [Correo transaccional con nodemailer por SMTP y la cola `mail`](0018-correo-con-nodemailer-y-cola-mail.md) (menor) | Aceptado |
 | 0019 | [Eventos de dominio en proceso con `@nestjs/event-emitter`; el contrato lo exporta el productor](0019-eventos-de-dominio-en-proceso.md) (arista `billing → identity`) | Aceptado |
 | 0020 | [Validación HTTP con zod desde `packages/contracts`](0020-validacion-http-con-zod-desde-contracts.md) (enmienda ADR-0015 b) | Aceptado |
 | 0021 | [Mantenimiento sin actor bajo RLS: función `SECURITY DEFINER` mínima y RLS también en `carga`](0021-mantenimiento-sin-actor-bajo-rls-y-rls-en-carga.md) (enmienda ADR-0005; DF-52, PD-19) | Propuesto |
+| 0022 | [`storage` declara `IPlanLimitsProvider`](0022-storage-declara-iplanlimitsprovider.md) (DF-51, opción A) | Aceptado |
 | 0023 | [SDD express desde la Fase 2: plan obligatorio, artefactos cortos y un PR por spec](0023-sdd-express-desde-la-fase-2.md) (reemplaza 0009; cambia constitución Art. I.2) | Aceptado |
 
 Estados: `Pendiente` (sin redactar) · `Propuesto` (redactado, falta acuerdo del equipo) · `Aceptado` · `Reemplazado por`.
@@ -35,7 +37,9 @@ Los ADR 0017 a 0020 los redactó el `architect` con el plan de la spec 001 y los
 (ADR-0017 con Passport, opción c.2). ADR-0020 enmienda la parte b de ADR-0015.
 
 Los ADR 0011, 0012 y 0021 los redactó el `architect` con el plan de la spec 005 (2026-09-28) como `Propuesto`; 0011 y 0012 siguen el E-R vigente y 0021 enmienda ADR-0005.
-La dependencia `@aws-sdk/s3-request-presigner` (plan 005) se registró como adenda de ADR-0015, sin ADR aparte. El 0016 (dinero en centavos y bytes) y el 0022 (`storage` declara `IPlanLimitsProvider`) están en la rama de 006a.
+La dependencia `@aws-sdk/s3-request-presigner` (plan 005) se registró como adenda de ADR-0015, sin ADR aparte.
+ADR-0016 se aceptó el 29/09/2026: cierra DF-23 y DF-24. `Money` y `transaccion.monto` se implementan en la 009.
+ADR-0022 se aceptó el 29/09/2026: opción A de DF-51. El 0021 sigue siendo el de mantenimiento sin actor.
 El 0023 lo redactó y lo aceptó Adrián el 30/09/2026 al adoptar SDD express; reemplaza al 0009 y cambia el Art. I.2 de la constitución.
 
 Usa `/adr <decisión>` para redactar uno.

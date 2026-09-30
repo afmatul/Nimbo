@@ -5,12 +5,12 @@
 | Estado | Aceptado (2026-09-27, Adrián) |
 | Fecha | 2026-09-27 |
 | Decisores | Adrián (architect), equipo Nimbo |
-| Specs relacionadas | 001 (D-4, CA-8, CA-29 d), 006a (consumidor), ADR-0010 («el mecanismo de eventos se decide con su propio ADR cuando una spec lo requiera»), `architecture.md` §3 reglas 1, 2 y 4 |
+| Specs relacionadas | 001 (D-4, CA-8, CA-29 d), 009 (consumidor; el 2026-09-29 el PD-40 lo sacó de 006a), ADR-0010 («el mecanismo de eventos se decide con su propio ADR cuando una spec lo requiera»), `architecture.md` §3 reglas 1, 2 y 4 |
 
 ## Contexto
 
 La 001 es la primera spec con un evento entre módulos. Al verificar el correo, `identity` publica que una cuenta de
-cliente quedó verificada. `billing` (006a) lo consume y crea la suscripción Personal (D-4). La spec fija cuatro cosas:
+cliente quedó verificada. `billing` lo consume y crea la suscripción Personal (D-4). Desde el 2026-09-29 ese consumidor es la spec 009 (PD-40); la 006a no lo escucha. La spec fija cuatro cosas:
 
 - el evento lleva solo el `id` de la cuenta;
 - se publica **una vez** por cuenta (CA-8);
@@ -105,7 +105,7 @@ monolito modular con un `api` y un `worker` (ADR-0001), DAG verificado por lint 
     controlador), declarados con `@OnEvent(NOMBRE, { async: true })`, y delegan en un servicio de aplicación;
   - todo oyente es **idempotente** (Art. XI.2);
   - todo consumidor cuya pérdida de un evento deje datos inconsistentes tiene una **conciliación** idempotente.
-    Para 006a: «toda cuenta `CLIENT` verificada sin suscripción recibe Personal», en su migración de datos o en un
+    Para la 009 (PD-40, 2026-09-29; antes se había anotado en 006a): «toda cuenta `CLIENT` verificada sin suscripción recibe Personal», en su migración de datos o en un
     trabajo.
 - **Procesos**: un evento solo llega a los oyentes del proceso que lo emite. Si el consumidor debe correr en el
   `worker`, el oyente encola un trabajo BullMQ.
@@ -132,7 +132,7 @@ monolito modular con un `api` y un `worker` (ADR-0001), DAG verificado por lint 
   - la arista es visible y el lint la verifica.
 - Negativas / deuda aceptada:
   - Entrega «como máximo una vez»: la consistencia final depende de que cada consumidor tenga su conciliación. Es
-    una obligación más en el plan de 006a (P-6 del plan 001).
+    una obligación más en el plan de 009 (PD-40; antes, P-6 del plan 001 apuntaba a 006a).
   - Los oyentes comparten proceso con el productor: uno lento o que consuma mucha memoria afecta al `api`, así que
     el trabajo pesado va a una cola.
   - `billing` suma una dependencia a su lista.
