@@ -8,7 +8,7 @@ import {
   describeAccessTokenVerifierContract,
 } from '../../support/access-token-verifier.contract';
 import type { AccessTokenHttpContractSubject } from '../../support/access-token-verifier.contract';
-import { ProbeCalls, ProbeController } from '../../support/probe.controller';
+import { ProbeCalls, ProbeController, ProbeResources } from '../../support/probe.controller';
 import { PROBE_CLOCK_START } from '../../support/probe.module';
 import { TEST_ACCESS_TOKEN_SECRET, TestAccessTokens } from '../../support/test-access-tokens';
 import type { TestApp } from '../setup/test-app';
@@ -16,7 +16,7 @@ import type { TestApp } from '../setup/test-app';
 import { createIdentityTestApp } from './identity-test-app';
 
 /** Solo la ruta sonda de 003, sin `TestJwtStrategy`: la estrategia es la real de `IdentityModule`. */
-@Module({ controllers: [ProbeController], providers: [ProbeCalls] })
+@Module({ controllers: [ProbeController], providers: [ProbeCalls, ProbeResources] })
 class ProbeRoutesModule {}
 
 /**
