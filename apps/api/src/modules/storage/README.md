@@ -26,6 +26,14 @@ Otros módulos importan **solo** desde `modules/storage/index.ts` (fachadas, pue
 eventos y tipos públicos). Nada de `infrastructure/**` cruza la frontera. Nombres de clases y puertos: los de
 `docs/sdd/design-model.md`.
 
+## API pública
+
+`index.ts` exporta solo: `StorageModule` (API), `StorageWorkerModule` (`worker`), el token `I_PLAN_LIMITS_PROVIDER` y los
+tipos `IPlanLimitsProvider` y `PlanLimits`. `index.spec.ts` fija esa lista (`RUNTIME_EXPORTS`). No salen el detector de
+tipos, `IExpiredUploadScanner`, el adaptador de auditoría ni los repositorios. Ni `StorageModule` ni
+`StorageWorkerModule` enlazan `I_PLAN_LIMITS_PROVIDER` (DF-51): lo hace la raíz de composición (`AppModule`,
+`WorkerModule`).
+
 ## Persistencia (005, PR-C)
 
 Tablas (migraciones `20260930100000`…`100300`, plan §4): `archivo`, `version_archivo` y `carga`, con RLS `ENABLE` +
@@ -49,7 +57,8 @@ Tablas (migraciones `20260930100000`…`100300`, plan §4): `archivo`, `version_
 - Las cargas vencidas de todos los propietarios **no** se leen por los puertos con actor: eso es
   `IExpiredUploadScanner`, que llama a `carga_expiradas` (ADR-0021) dentro de `ITransactionRunner.run`. Es el único
   acceso sin actor: solo lo inyecta `UploadCleanupProcessor` y no sale de `storage/index.ts`.
-- Pruebas: `apps/api/test/int/storage/*.int-spec.ts` y `apps/api/test/int/access/accessible-nodes.int-spec.ts`
+- Pruebas: `apps/api/test/int/storage/*.int-spec.ts`, `apps/api/test/int/access/accessible-nodes.int-spec.ts`,
+  `apps/api/test/isolation/storage.iso-spec.ts` y `storage-maintenance.iso-spec.ts`
   (Testcontainers; `pnpm test:int`).
 
 ## Limpieza de cargas vencidas (005, PR-E)
@@ -114,9 +123,24 @@ reserva, vigila y registra. Rutas bajo el prefijo global de la API, todas con ac
 5. `DELETE /uploads/:uploadId` (204): cancela una carga activa (libera la reserva y borra lo subido). Ajena,
    inexistente o ya cerrada ⇒ 404.
 
+Detalles del flujo: las URLs `PUT` firman el `Content-Length` exacto (MinIO rechaza otro tamaño); por encima del umbral
+la carga es multipart con `UPLOAD_PART_SIZE_BYTES` por parte; en `complete`, `listParts` es la fuente de verdad, se mide
+el tamaño real, el tipo se detecta por firmas de bytes (`MagicBytesDetector`) y el registro final es un compare-and-set.
+
+**Descarga**: `POST /files/:fileId/download-url` devuelve una URL firmada de 300 s (`DOWNLOAD_URL_TTL_SECONDS`) para la
+versión actual, con `Content-Disposition: attachment`, `application/octet-stream` y `no-store`.
+
 `complete` y `expire`/`cancel` compiten por un compare-and-set de estado (`activa → …`): gana uno y el otro no deja un
 `archivo` sin objeto.
 
 **DF-59**: `storage` escribe **solo** `usuario.espacio_usado` (tabla de `identity`) y únicamente por `IQuotaRepository`;
 es una excepción a «cada módulo es dueño de sus tablas», no una arista (`docs/sdd/design-findings.md`). La operación de
 ambientes (rol dueño de las migraciones) está en `docs/operations/ambientes.md`.
+
+## MinIO: CORS y red de seguridad (005, T-46)
+
+- **CORS**: solo los orígenes de `web`. `compose.yml` pasa `CORS_ORIGIN` a `MINIO_API_CORS_ALLOW_ORIGIN` (nunca `*`);
+  otros orígenes reciben `204` sin cabeceras `Access-Control-*`.
+- **Multipart abandonados**: MinIO los limpia por su cuenta (`stale_uploads_expiry=24h`, revisión cada 6 h), es decir
+  después del vencimiento de la carga. Es solo una red de seguridad; la limpieza real es `upload-cleanup`.
+- Resultado completo del spike: `specs/005-carga-y-descarga/plan.md` §8.

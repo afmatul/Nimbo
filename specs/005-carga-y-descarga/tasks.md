@@ -652,7 +652,7 @@ salvo la lectura por rango del detector.
   también el `Worker` de `upload-cleanup` con Redis caído).
 - **Hechas T-52 y T-56** (2026-09-30): el README de `storage` gana la sección «Limpieza de cargas vencidas» (T-52) y
   «Flujo de carga directa» con DF-59 en una frase (T-56); `docs/operations/ambientes.md` no se tocó (existe desde T-24).
-  Solo documentación; cada dato se verificó contra el código. Falta que `PR-D` agregue al README lo suyo, si corresponde.
+  Solo documentación; cada dato se verificó contra el código. El README ya incluye lo que dejó PR-D (API pública, flujo y descarga, CORS y red de seguridad de MinIO).
 - **Suites al cierre de T-51**: `pnpm lint` y `pnpm typecheck` en verde; `pnpm test` en verde (api 1083, web 272,
   contracts 221, config 28, worker 34); `test:isolation` completo 108/108 (incluye `upload-cleanup.int-spec.ts` y
   `storage-maintenance.iso-spec.ts`); `test/int/worker` 8/8. No se corrió `pnpm test:int` completo.
