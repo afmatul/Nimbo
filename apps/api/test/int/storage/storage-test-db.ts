@@ -1,9 +1,18 @@
 import { randomUUID } from 'node:crypto';
 
 import { LEGAL_DOCUMENTS } from '@nimbo/contracts';
-import type { DataSource, QueryRunner } from 'typeorm';
+import type { DataSource, EntityManager, QueryRunner } from 'typeorm';
 
+import type { Actor } from '../../../src/shared';
 import { Role } from '../../../src/shared';
+import { TransactionContext } from '../../../src/shared/infrastructure/persistence/transaction-context';
+import { TypeOrmTransactionRunner } from '../../../src/shared/infrastructure/persistence/typeorm-transaction-runner';
+import { connectTo, requiredEnv } from '../../support/database-urls';
+
+/** Lo único que las *fixtures* necesitan: un `QueryRunner` del dueño o el `EntityManager` de `withActor`. */
+export interface Queryable {
+  query(sql: string, parameters?: unknown[]): Promise<unknown>;
+}
 
 /** PHC de relleno: nadie inicia sesión con estas cuentas. */
 const PLACEHOLDER_PHC = '$argon2id$v=19$m=19456,t=2,p=1$c2FsdGVuaXNv$c3RvcmFnZQ';
@@ -29,7 +38,7 @@ export const inRolledBackTransaction = async <T>(
 
 /** Inserta una cuenta (como el dueño: `usuario` es un *fixture* aquí) y devuelve su id. */
 export const insertAccount = async (
-  runner: Pick<QueryRunner, 'query'>,
+  runner: Queryable,
   role: Role = Role.CLIENT,
 ): Promise<string> => {
   const id = randomUUID();
@@ -53,7 +62,7 @@ export const insertAccount = async (
 
 /** Filas de `information_schema.columns` de una tabla, por nombre de columna. */
 export const columnsOf = async (
-  runner: Pick<QueryRunner, 'query'>,
+  runner: Queryable,
   table: string,
 ): Promise<Record<string, { type: string; nullable: boolean; default: string | null }>> => {
   const rows = (await runner.query(
@@ -85,7 +94,7 @@ export interface FileRowOptions {
  * ambos ids. La clave de objeto sigue el formato `u/{propietario}/{archivo}/{version}`.
  */
 export const insertFileWithVersion = async (
-  runner: Pick<QueryRunner, 'query'>,
+  runner: Queryable,
   ownerId: string,
   options: FileRowOptions = {},
 ): Promise<{ fileId: string; versionId: string }> => {
@@ -129,7 +138,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** Inserta una fila `carga` (la reserva de cuota) con ids reservados de archivo y versión; devuelve su id. */
 export const insertUpload = async (
-  runner: Pick<QueryRunner, 'query'>,
+  runner: Queryable,
   ownerId: string,
   options: UploadRowOptions = {},
 ): Promise<string> => {
@@ -167,4 +176,38 @@ export const insertUpload = async (
     ],
   );
   return id;
+};
+
+/** Conexión como `nimbo_app` con el ejecutor real de `withActor` (003): lo que ven los repositorios de 005. */
+export interface AppDatabase {
+  readonly dataSource: DataSource;
+  readonly context: TransactionContext;
+  readonly runner: TypeOrmTransactionRunner;
+  /** Corre `work` dentro de `withActor(actor)` con el `EntityManager` de ese ámbito. */
+  asActor<T>(actor: Actor, work: (manager: EntityManager) => Promise<T>): Promise<T>;
+}
+
+export const connectAsAppDatabase = async (): Promise<AppDatabase> => {
+  const dataSource = await connectTo(requiredEnv('DATABASE_URL'));
+  const context = new TransactionContext(dataSource);
+  const runner = new TypeOrmTransactionRunner(dataSource, context);
+  return {
+    dataSource,
+    context,
+    runner,
+    asActor: (actor, work) => runner.withActor(actor, () => work(context.requireActorScope(actor))),
+  };
+};
+
+/** Borra (como el dueño) las cargas, archivos y cuentas de una suite que confirmó *fixtures*. */
+export const removeAccounts = async (
+  owner: DataSource,
+  accountIds: readonly string[],
+): Promise<void> => {
+  if (accountIds.length === 0) return;
+  await owner.transaction(async (manager) => {
+    await manager.query('DELETE FROM carga WHERE propietario_id = ANY($1)', [accountIds]);
+    await manager.query('DELETE FROM archivo WHERE propietario_id = ANY($1)', [accountIds]);
+    await manager.query('DELETE FROM usuario WHERE id = ANY($1)', [accountIds]);
+  });
 };

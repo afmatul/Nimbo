@@ -1,16 +1,22 @@
-import type { DataSource } from 'typeorm';
+import type { DataSource, QueryRunner } from 'typeorm';
 
 import { AgregarEspacioUsadoAUsuario20260930100000 } from '../../../src/migrations/20260930100000-agregar-espacio-usado-a-usuario';
 import { CrearArchivoYVersionArchivo20260930100100 } from '../../../src/migrations/20260930100100-crear-archivo-y-version-archivo';
 import { CrearCarga20260930100200 } from '../../../src/migrations/20260930100200-crear-carga';
+import { PoliticasRlsArchivoVersionCarga20260930100300 } from '../../../src/migrations/20260930100300-politicas-rls-archivo-version-carga';
+import type { Actor } from '../../../src/shared';
+import { createActor, Role } from '../../../src/shared';
 import { connectAsOwner } from '../../support/database-urls';
 
+import type { AppDatabase } from './storage-test-db';
 import {
   columnsOf,
+  connectAsAppDatabase,
   inRolledBackTransaction,
   insertAccount,
   insertFileWithVersion,
   insertUpload,
+  removeAccounts,
 } from './storage-test-db';
 
 /**
@@ -314,5 +320,226 @@ describe('migración crear-carga (CA-2, CA-9, CA-23)', () => {
       'idx_carga_activa_expira',
       'idx_carga_propietario_activa',
     ]);
+  });
+});
+
+describe('migración politicas-rls-archivo-version-carga (CA-16, CA-17, DF-52)', () => {
+  const HOUR_MS = 60 * 60 * 1000;
+  const TABLES = ['archivo', 'version_archivo', 'carga'] as const;
+  let app: AppDatabase;
+  let ana: Actor;
+  let bruno: Actor;
+  const internals = {} as Record<Role.ADMIN | Role.SUPPORT | Role.OPERATOR, Actor>;
+  const created: string[] = [];
+  const uploads = { expired: '', expiredCancelled: '', current: '' };
+
+  const ownedBy = (ids: readonly string[]) => (rows: { propietario_id: string }[]) =>
+    rows.filter((row) => ids.includes(row.propietario_id)).length;
+
+  /** `version_archivo` no guarda el propietario: en estas *fixtures* lo crea el propio dueño. */
+  const ownersOf = (table: (typeof TABLES)[number]): string =>
+    table === 'version_archivo'
+      ? 'SELECT creado_por AS propietario_id FROM version_archivo'
+      : `SELECT propietario_id FROM ${table}`;
+
+  const visibleRows = (actor: Actor, table: (typeof TABLES)[number]) =>
+    app.asActor(
+      actor,
+      async (manager) => (await manager.query(ownersOf(table))) as { propietario_id: string }[],
+    );
+
+  const countVisible = async (actor: Actor, table: (typeof TABLES)[number]): Promise<number> =>
+    ownedBy([ana.id, bruno.id])(await visibleRows(actor, table));
+
+  beforeAll(async () => {
+    app = await connectAsAppDatabase();
+    const accounts = await owner.transaction(async (manager) => ({
+      ana: await insertAccount(manager),
+      bruno: await insertAccount(manager),
+      admin: await insertAccount(manager, Role.ADMIN),
+      support: await insertAccount(manager, Role.SUPPORT),
+      operator: await insertAccount(manager, Role.OPERATOR),
+    }));
+    created.push(...Object.values(accounts));
+    ana = createActor(accounts.ana, Role.CLIENT);
+    bruno = createActor(accounts.bruno, Role.CLIENT);
+    internals[Role.ADMIN] = createActor(accounts.admin, Role.ADMIN);
+    internals[Role.SUPPORT] = createActor(accounts.support, Role.SUPPORT);
+    internals[Role.OPERATOR] = createActor(accounts.operator, Role.OPERATOR);
+    const past = new Date(Date.now() - HOUR_MS);
+    await app.asActor(ana, async (manager) => {
+      await insertFileWithVersion(manager, ana.id);
+      uploads.expired = await insertUpload(manager, ana.id, { expiresAt: past });
+      uploads.expiredCancelled = await insertUpload(manager, ana.id, {
+        expiresAt: past,
+        state: 'cancelada',
+      });
+      uploads.current = await insertUpload(manager, ana.id);
+    });
+    await app.asActor(bruno, async (manager) => {
+      await insertFileWithVersion(manager, bruno.id);
+      await insertUpload(manager, bruno.id);
+    });
+  });
+
+  afterAll(async () => {
+    await app.dataSource.destroy();
+    await removeAccounts(owner, created);
+  });
+
+  it.each(TABLES)('CA-16: `%s` tiene RLS habilitada y forzada', async (table) => {
+    const [row] = (await owner.query(
+      'SELECT relrowsecurity AS enabled, relforcerowsecurity AS forced FROM pg_class WHERE oid = $1::regclass',
+      [table],
+    )) as { enabled: boolean; forced: boolean }[];
+
+    expect(row).toEqual({ enabled: true, forced: true });
+  });
+
+  it.each(TABLES)('CA-16: un cliente solo ve sus filas de `%s`', async (table) => {
+    const rows = await visibleRows(ana, table);
+
+    expect(ownedBy([ana.id])(rows)).toBeGreaterThan(0);
+    expect(ownedBy([bruno.id])(rows)).toBe(0);
+  });
+
+  it('CA-16: un cliente no puede escribir un archivo a nombre de otro (WITH CHECK)', async () => {
+    await expect(
+      app.asActor(ana, (manager) => insertFileWithVersion(manager, bruno.id)),
+    ).rejects.toThrow(/row-level security/);
+  });
+
+  it('CA-16: un cliente no puede reservar una carga a nombre de otro (WITH CHECK)', async () => {
+    await expect(app.asActor(ana, (manager) => insertUpload(manager, bruno.id))).rejects.toThrow(
+      /row-level security/,
+    );
+  });
+
+  it.each([Role.ADMIN, Role.SUPPORT] as const)(
+    'CA-17: %s lee metadatos de `archivo`, pero ninguna fila de `version_archivo` ni de `carga`',
+    async (role) => {
+      const actor = internals[role];
+
+      await expect(countVisible(actor, 'archivo')).resolves.toBe(2);
+      await expect(countVisible(actor, 'version_archivo')).resolves.toBe(0);
+      await expect(countVisible(actor, 'carga')).resolves.toBe(0);
+    },
+  );
+
+  it('CA-17: un rol interno no puede modificar `archivo` (solo tiene política de SELECT)', async () => {
+    const updated = await app.asActor(internals[Role.ADMIN], async (manager) => {
+      const [, affected] = (await manager.query(
+        "UPDATE archivo SET nombre = 'renombrado.pdf' WHERE propietario_id = $1",
+        [ana.id],
+      )) as [unknown, number];
+      return affected;
+    });
+
+    expect(updated).toBe(0);
+  });
+
+  it.each(TABLES)('CA-17: OPERATOR no ve filas de `%s`', async (table) => {
+    await expect(countVisible(internals[Role.OPERATOR], table)).resolves.toBe(0);
+  });
+
+  it.each(TABLES)('CA-16: `nimbo_app` sin actor no ve filas de `%s`', async (table) => {
+    const [row] = (await app.dataSource.query(`SELECT count(*)::int AS n FROM ${table}`)) as {
+      n: number;
+    }[];
+
+    expect(row?.n).toBe(0);
+  });
+
+  it('DF-52: `carga_expiradas` devuelve solo `(id, propietario_id)` de cargas activas vencidas, sin actor', async () => {
+    const rows = (await app.dataSource.query('SELECT * FROM carga_expiradas($1, $2)', [
+      new Date(),
+      1000,
+    ])) as Record<string, string>[];
+    const mine = rows.filter((row) => row['propietario_id'] === ana.id);
+
+    expect(mine).toEqual([{ id: uploads.expired, propietario_id: ana.id }]);
+  });
+
+  it('DF-52: un `p_ahora` futuro no revela cargas vigentes (`LEAST(p_ahora, now())`)', async () => {
+    const rows = (await app.dataSource.query('SELECT id FROM carga_expiradas($1, $2)', [
+      new Date(Date.now() + 365 * 24 * HOUR_MS),
+      1000,
+    ])) as { id: string }[];
+
+    expect(rows.map((row) => row.id)).not.toContain(uploads.current);
+  });
+
+  it.each([0, -5])('DF-52: con `p_limite = %i` no devuelve filas', async (limit) => {
+    const rows = (await app.dataSource.query('SELECT id FROM carga_expiradas($1, $2)', [
+      new Date(),
+      limit,
+    ])) as unknown[];
+
+    expect(rows).toEqual([]);
+  });
+
+  it('DF-52: devuelve como máximo 1000 filas aunque se pidan más', async () => {
+    const count = await inRolledBackTransaction(owner, async (runner) => {
+      const ownerId = await insertAccount(runner);
+      await runner.query(
+        `INSERT INTO carga (id, propietario_id, nombre, tamano_bytes, modo, archivo_id, version_id, clave_objeto,
+                            expira_en, creada_en, actualizada_en)
+         SELECT gen_random_uuid(), $1, 'x.pdf', 1, 'simple', gen_random_uuid(), gen_random_uuid(), 'k' || n,
+                now() - interval '1 hour', now(), now()
+           FROM generate_series(1, 1001) AS n`,
+        [ownerId],
+      );
+      const [row] = (await runner.query(
+        'SELECT count(*)::int AS n FROM carga_expiradas(now(), 5000)',
+      )) as { n: number }[];
+      return row?.n;
+    });
+
+    expect(count).toBe(1000);
+  });
+
+  it('DF-52: `carga_expiradas` es SECURITY DEFINER con `search_path` fijo y solo la ejecuta `nimbo_app`', async () => {
+    const [row] = (await owner.query(
+      `SELECT p.prosecdef AS definer, p.proconfig AS config,
+              has_function_privilege('nimbo_app', p.oid, 'EXECUTE') AS app,
+              has_function_privilege('public', p.oid, 'EXECUTE') AS public
+         FROM pg_proc p WHERE p.oid = 'carga_expiradas(timestamptz, integer)'::regprocedure`,
+    )) as { definer: boolean; config: string[]; app: boolean; public: boolean }[];
+
+    expect(row).toEqual({
+      definer: true,
+      config: ['search_path=pg_catalog, pg_temp'],
+      app: true,
+      public: false,
+    });
+  });
+
+  it('CA-16: el `down` quita función, políticas y RLS, y el `up` las devuelve', async () => {
+    const migration = new PoliticasRlsArchivoVersionCarga20260930100300();
+    const snapshot = async (runner: QueryRunner) => {
+      const [state] = (await runner.query(
+        `SELECT (SELECT count(*)::int FROM pg_policies WHERE tablename IN ('archivo', 'version_archivo', 'carga'))
+                  AS policies,
+                (SELECT count(*)::int FROM pg_class
+                  WHERE relname IN ('archivo', 'version_archivo', 'carga') AND (relrowsecurity OR relforcerowsecurity))
+                  AS protected,
+                to_regprocedure('carga_expiradas(timestamptz, integer)')::text AS fn`,
+      )) as { policies: number; protected: number; fn: string | null }[];
+      return state;
+    };
+
+    const [afterDown, afterUp] = await inRolledBackTransaction(owner, async (runner) => {
+      await migration.down(runner);
+      const down = await snapshot(runner);
+      await migration.up(runner);
+      return [down, await snapshot(runner)] as const;
+    });
+
+    expect(afterDown).toEqual({ policies: 0, protected: 0, fn: null });
+    expect(afterUp).toEqual({
+      policies: 5,
+      protected: 3,
+      fn: 'carga_expiradas(timestamp with time zone,integer)',
+    });
   });
 });
