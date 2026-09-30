@@ -515,19 +515,19 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   registro en `IdentityModule`.
   Archivos: `apps/api/src/modules/identity/presentation/password.controller.ts`, `apps/api/src/modules/identity/identity.module.ts`, `apps/api/test/int/identity/password-reset.int-spec.ts`.
 
-- [ ] **T-64** [P] CA-18 (pedir el enlace) — CA: CA-18 — Depende: T-63 — ~1 h
+- [x] **T-64** [P] CA-18 (pedir el enlace) — CA: CA-18 — Depende: T-63 — ~1 h
   En `password-reset.int-spec.ts`: cuatro cuentas (verificada, no verificada, interna, inexistente) → `202`
   idénticos; Mailpit: enlace de 1 h para verificada e interna, enlace de verificación de 001 para la no verificada,
   nada para la inexistente; 60 s y 5/h con y sin cuenta → `IDENTITY_TOO_MANY_REQUESTS` con `Retry-After`.
   Archivos: `apps/api/test/int/identity/password-reset.int-spec.ts`.
 
-- [ ] **T-65** [P] CA-19, CA-21 y la segunda parte de CA-5 — CA: CA-19, CA-21, CA-5 — Depende: T-63, T-44 — ~1 h
+- [x] **T-65** [P] CA-19, CA-21 y la segunda parte de CA-5 — CA: CA-19, CA-21, CA-5 — Depende: T-63, T-44 — ~1 h
   En `password-reset.int-spec.ts`: dos navegadores con sesión → ambas revocadas (su refresco falla); bloqueo de CA-5
   quitado al momento; correo «Tu contraseña cambió»; ninguna fila nueva en `sesion`; `nimbo_rt` borrada; débil y
   «igual al correo» → `IDENTITY_WEAK_PASSWORD` con `fields` y el mismo enlace sirve después.
   Archivos: `apps/api/test/int/identity/password-reset.int-spec.ts`.
 
-- [ ] **T-66** [P] CA-20 y concurrencia — CA: CA-20 — Depende: T-63 — ~1 h
+- [x] **T-66** [P] CA-20 y concurrencia — CA: CA-20 — Depende: T-63 — ~1 h
   En `password-reset.int-spec.ts`: vencido (`FixedClock` + 1 h + 1 s) → `EXPIRED`; usado, reemplazado, alterado, mal
   formado y de tipo `verificacion` → `INVALID`, en `check` y en `reset`; la contraseña no cambia. Y
   `apps/api/test/int/identity/password-reset-concurrency.int-spec.ts`: dos `reset` simultáneos → uno `200`, otro
