@@ -565,3 +565,30 @@ salvo la lectura por rango del detector.
 - Objetos huérfanos entre el CAS y el borrado están aceptados (R-7). No agregar un barrido de objetos sin
   `version_archivo` en esta spec.
 - Si una tarea supera 4 h, parar y pedir que se parta. No adelantar métricas, eventos, carpetas, «Reemplazar» ni toast.
+
+### Traspaso PR-F (2026-09-29)
+
+- **Hechas**: T-53 (`0e49c7b`) y T-54 (`f3af738`), en `feat/005-pagina`. `web`: lint, typecheck y 456 unitarias en
+  verde; raíz: `pnpm typecheck` y `pnpm test` en verde (api 710, contracts 221, web 456).
+- **T-56 bloqueada (no se forzó)**: la parte de `docs/operations/ambientes.md` ya existe desde T-24 (`74f3fbf`, en
+  `feat/005-persistencia` → `feat/005-api` → `feat/005-limpieza`): no se duplica aquí. Falta solo el README de
+  `apps/api/src/modules/storage/`: flujo `POST /uploads` → `PUT` directo a MinIO con URL firmada → `POST
+  /uploads/:id/complete` (y `resume`/`DELETE`), y DF-59 en una frase (`storage` escribe solo
+  `usuario.espacio_usado`). Debe escribirse sobre la versión del README de `feat/005-limpieza` (esta rama tiene la de
+  `main`; editarla aquí choca al integrar).
+- **T-57 sin marcar**: depende de T-56. `pnpm lint` falla solo por Prettier en dos archivos que este PR no toca
+  (`apps/api/src/modules/storage/domain/object-key.spec.ts` y `packages/contracts/src/storage/schemas.ts`, de PR-A);
+  arreglarlo en la rama dueña. `specs/README.md` (fila 005) se actualiza al integrar.
+- **T-55** es humana: sin empezar.
+- **Decisiones (a revisar en `/review`)**: (1) `ApiClientError` gana `status` (HTTP; `undefined` sin respuesta) y
+  `details`, aditivos, en `lib/api-error.ts` y `lib/api-client.ts` (no listados en T-53): sin ellos `api.ts` no distingue
+  un corte de red de un error HTTP ni ve `suggestedName`. (2) El proveedor quedó en `components/uploads-provider.tsx`
+  (JSX) y el hook en `hooks/use-upload-manager.ts`; la vista de la página en `components/my-files.tsx`, para que
+  `page.tsx` siga siendo un Server Component. (3) El panel toma sus textos de `storageMessage` del catálogo (sin
+  duplicarlos). (4) **Propuesta en el registro de cambios de la spec**: ningún contrato expone `maxFileBytes` a `web`;
+  `maxFileLabel` pasó a opcional y la página omite la cifra en el vacío y el arrastre. (5) Solo la primera página de
+  `GET /files` (50); sin «Cargar más» (007). (6) Los recién subidos en la pestaña se anteponen a la lista sin
+  volver a pedirla. (7) «Cerrar» del panel oculta las filas terminadas en el proveedor (el manager no tiene
+  `clear`).
+- **Pendiente para seguimiento**: la barra lateral de `AppLayout` sigue con los `href="#…"` de 003; revisión del
+  `ui-designer` de la página montada a 360 y 1440 px; guion de demo (T-55) con Docker y la API de `feat/005-api`.
