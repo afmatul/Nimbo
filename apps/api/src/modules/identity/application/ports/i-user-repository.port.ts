@@ -1,5 +1,6 @@
 import type { ClientUser } from '../../domain/client-user.entity';
 import type { EmailAddress } from '../../domain/email-address.vo';
+import type { PasswordHash } from '../../domain/password-hash.vo';
 import type { User } from '../../domain/user.entity';
 
 /**
@@ -9,10 +10,16 @@ import type { User } from '../../domain/user.entity';
 export interface IUserRepository {
   findByEmail(email: EmailAddress): Promise<User | null>;
   findByEmailForUpdate(email: EmailAddress): Promise<User | null>;
+  findById(id: string): Promise<User | null>;
   findByIdForUpdate(id: string): Promise<User | null>;
   /** `INSERT … ON CONFLICT (correo) DO NOTHING`: `false` si otra transacción ya confirmó ese correo (CA-3). */
   insertIfAbsent(user: ClientUser): Promise<boolean>;
   update(user: ClientUser): Promise<void>;
+  /**
+   * Solo `hash_clave`: sirve a cualquier cuenta, también a una interna, que `identity` no escribe de otro modo
+   * (002 CA-19, CA-22).
+   */
+  updatePasswordHash(id: string, passwordHash: PasswordHash): Promise<void>;
 }
 
 export const I_USER_REPOSITORY = Symbol('IUserRepository');

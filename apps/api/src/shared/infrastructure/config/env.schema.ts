@@ -11,12 +11,24 @@ const URL_LIST_MESSAGE = 'debe ser una lista de URL separadas por comas';
 const HTTPS_MESSAGE = 'debe usar https en staging y en producción';
 const SMTP_TLS_MESSAGE = 'no puede ser `none` en staging ni en producción';
 const SMTP_USER_MESSAGE = 'es obligatoria si se define `SMTP_PASSWORD`';
+const JWT_SECRET_MIN_LENGTH = 32;
+/** 32 bytes aleatorios en base64url: el mínimo en ambientes publicados (plan 002 §6.10). */
+const PUBLISHED_JWT_SECRET_MIN_LENGTH = 43;
+const JWT_SECRET_LENGTH_MESSAGE = `debe tener al menos ${String(JWT_SECRET_MIN_LENGTH)} caracteres`;
+const PUBLISHED_JWT_SECRET_LENGTH_MESSAGE = `debe tener al menos ${String(PUBLISHED_JWT_SECRET_MIN_LENGTH)} caracteres en staging y en producción`;
+const LOCAL_JWT_SECRET_MESSAGE = 'no puede ser el valor de desarrollo de .env.example';
 
 const DEFAULT_API_PORT = 3000;
 const DEFAULT_WORKER_PORT = 3001;
 const DEFAULT_APP_VERSION = 'dev';
 const DEFAULT_MINIO_BUCKET = 'nimbo';
 const DEFAULT_MINIO_REGION = 'us-east-1';
+
+/**
+ * Valor de desarrollo de `JWT_ACCESS_SECRET` que trae `.env.example` (plan 002 §6.10). Público a propósito: en
+ * staging y en producción el esquema lo rechaza.
+ */
+export const LOCAL_JWT_ACCESS_SECRET = 'solo-desarrollo-local-nunca-usar-en-staging-ni-produccion';
 
 /** Ambientes publicados: exigen https en los enlaces y TLS en el SMTP (001 CA-20). */
 const PUBLISHED_ENVIRONMENTS: readonly string[] = ['staging', 'production'];
@@ -89,7 +101,10 @@ export const workerEnvObjectSchema = sharedEnvBaseSchema.extend({
   MAIL_FROM: nonEmpty(),
 });
 
-/** Forma del entorno del `api`: además el puerto HTTP público, MinIO, la URL pública de `web` y CORS. */
+/**
+ * Forma del entorno del `api`: además el puerto HTTP público, MinIO, la URL pública de `web`, CORS y la clave que
+ * firma los tokens de acceso (002), que se declara **solo** aquí.
+ */
 export const apiEnvObjectSchema = sharedEnvBaseSchema.extend({
   ...workerPortShape,
   PORT: port(DEFAULT_API_PORT),
@@ -100,6 +115,7 @@ export const apiEnvObjectSchema = sharedEnvBaseSchema.extend({
   MINIO_REGION: nonEmpty().default(DEFAULT_MINIO_REGION),
   WEB_PUBLIC_URL: url(),
   CORS_ORIGIN: urlList(),
+  JWT_ACCESS_SECRET: z.string().min(JWT_SECRET_MIN_LENGTH, JWT_SECRET_LENGTH_MESSAGE),
 });
 
 type DeclaredKey = keyof typeof apiEnvObjectSchema.shape | keyof typeof workerEnvObjectSchema.shape;
@@ -114,14 +130,28 @@ const addEnvIssue = (ctx: z.RefinementCtx, key: string, message: string): void =
   ctx.addIssue({ code: z.ZodIssueCode.custom, path: [key], message });
 };
 
-/** Reglas entre variables del `api` (001 CA-20): el enlace del correo nunca viaja por http en staging. */
+/** En staging y producción la clave de firma es larga y nunca la de `.env.example` (002 CA-26). */
+const refinePublishedJwtSecret = (secret: string, ctx: z.RefinementCtx): void => {
+  if (secret === LOCAL_JWT_ACCESS_SECRET) {
+    addEnvIssue(ctx, 'JWT_ACCESS_SECRET', LOCAL_JWT_SECRET_MESSAGE);
+  } else if (secret.length < PUBLISHED_JWT_SECRET_MIN_LENGTH) {
+    addEnvIssue(ctx, 'JWT_ACCESS_SECRET', PUBLISHED_JWT_SECRET_LENGTH_MESSAGE);
+  }
+};
+
+/**
+ * Reglas entre variables del `api` en ambientes publicados: el enlace del correo nunca viaja por http (001 CA-20) y
+ * la clave de firma no es la de desarrollo (002 CA-26).
+ */
 const refineApiEnv = (
-  env: { APP_ENV: string; WEB_PUBLIC_URL: string },
+  env: { APP_ENV: string; WEB_PUBLIC_URL: string; JWT_ACCESS_SECRET: string },
   ctx: z.RefinementCtx,
 ): void => {
-  if (isPublished(env.APP_ENV) && !env.WEB_PUBLIC_URL.startsWith('https://')) {
+  if (!isPublished(env.APP_ENV)) return;
+  if (!env.WEB_PUBLIC_URL.startsWith('https://')) {
     addEnvIssue(ctx, 'WEB_PUBLIC_URL', HTTPS_MESSAGE);
   }
+  refinePublishedJwtSecret(env.JWT_ACCESS_SECRET, ctx);
 };
 
 /** Reglas entre variables del `worker` (001 CA-18, CA-20). */

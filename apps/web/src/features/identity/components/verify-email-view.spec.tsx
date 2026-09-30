@@ -6,8 +6,16 @@ import { axe } from 'jest-axe';
 import { StrictMode } from 'react';
 
 import { saveChosenPlan } from '../chosen-plan-storage';
+import { forgetSession, recallSession } from '../session/session-memory';
+import { sessionFixture } from '../session/test-session';
 
 import { VerifyEmailView } from './verify-email-view';
+
+const replace = jest.fn();
+
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ replace }),
+}));
 
 function jsonResponse(body: unknown, status = 200): Response {
   return {
@@ -30,6 +38,41 @@ describe('VerifyEmailView', () => {
     global.fetch = fetchMock;
     window.localStorage.clear();
     window.history.replaceState(null, '', '/verificar-correo');
+  });
+
+  describe('con la sesión que abre la verificación (002 CA-15)', () => {
+    function verifiedWithSession(): Response {
+      return jsonResponse({ status: 'verified', session: sessionFixture({ token: 'del-enlace' }) });
+    }
+
+    beforeEach(() => {
+      replace.mockReset();
+      forgetSession();
+    });
+
+    it('001 D-20: deja la sesión en memoria y entra directo a Mis archivos sin pedir iniciar sesión', async () => {
+      fetchMock.mockResolvedValue(verifiedWithSession());
+      window.history.replaceState(null, '', '/verificar-correo#token=con-sesion');
+      render(<VerifyEmailView apiPublicUrl="http://localhost/api/v1" />);
+
+      expect(await screen.findByText('Entrando a tus archivos…')).toBeTruthy();
+      expect(screen.queryByRole('link', { name: 'Iniciar sesión' })).toBeNull();
+      await waitFor(() => expect(replace).toHaveBeenCalledWith('/archivos'));
+      expect(recallSession(Date.now())?.accessToken).toBe('del-enlace');
+    });
+
+    it('entra una sola vez también en StrictMode', async () => {
+      fetchMock.mockResolvedValue(verifiedWithSession());
+      window.history.replaceState(null, '', '/verificar-correo#token=estricto');
+      render(
+        <StrictMode>
+          <VerifyEmailView apiPublicUrl="http://localhost/api/v1" />
+        </StrictMode>,
+      );
+
+      await waitFor(() => expect(replace).toHaveBeenCalledWith('/archivos'));
+      expect(replace).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('muestra verificando y luego el éxito con Iniciar sesión', async () => {

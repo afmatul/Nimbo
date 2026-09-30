@@ -1,25 +1,13 @@
-import { randomUUID } from 'node:crypto';
-
-import { DataSource, QueryFailedError } from 'typeorm';
+import { DataSource } from 'typeorm';
 import type { QueryRunner } from 'typeorm';
 
 import { buildDataSourceOptions } from '../../../src/shared';
 
+import { CREATED_AT, aClient, insertUser, violatedConstraint } from './identity-rows';
+
 const HASH_A = 'a'.repeat(64);
 const HASH_B = 'b'.repeat(64);
-const CREATED_AT = '2026-09-28T10:00:00Z';
 const EXPIRES_AT = '2026-09-29T10:00:00Z';
-
-interface UserRow {
-  id: string;
-  nombre: string;
-  correo: string;
-  rol: string;
-  estado: string;
-  version_terminos: string | null;
-  version_privacidad: string | null;
-  terminos_aceptados_en: string | null;
-}
 
 interface TokenRow {
   usuario_id: string;
@@ -31,18 +19,6 @@ interface TokenRow {
   invalidado_en: string | null;
 }
 
-const aClient = (patch: Partial<UserRow> = {}): UserRow => ({
-  id: randomUUID(),
-  nombre: 'Ana López',
-  correo: `ana-${randomUUID()}@nimbo.me`,
-  rol: 'CLIENT',
-  estado: 'activa',
-  version_terminos: '1.0',
-  version_privacidad: '1.0',
-  terminos_aceptados_en: CREATED_AT,
-  ...patch,
-});
-
 const aToken = (usuarioId: string, patch: Partial<TokenRow> = {}): TokenRow => ({
   usuario_id: usuarioId,
   tipo: 'verificacion',
@@ -53,23 +29,6 @@ const aToken = (usuarioId: string, patch: Partial<TokenRow> = {}): TokenRow => (
   invalidado_en: null,
   ...patch,
 });
-
-const insertUser = (runner: QueryRunner, row: UserRow): Promise<unknown> =>
-  runner.query(
-    `INSERT INTO usuario (id, nombre, correo, hash_clave, rol, estado, version_terminos, version_privacidad,
-       terminos_aceptados_en)
-     VALUES ($1, $2, $3, '$argon2id$prueba', $4, $5, $6, $7, $8)`,
-    [
-      row.id,
-      row.nombre,
-      row.correo,
-      row.rol,
-      row.estado,
-      row.version_terminos,
-      row.version_privacidad,
-      row.terminos_aceptados_en,
-    ],
-  );
 
 const insertToken = (runner: QueryRunner, row: TokenRow): Promise<unknown> =>
   runner.query(
@@ -85,18 +44,6 @@ const insertToken = (runner: QueryRunner, row: TokenRow): Promise<unknown> =>
       row.invalidado_en,
     ],
   );
-
-const violatedConstraint = async (work: Promise<unknown>): Promise<string | undefined> => {
-  try {
-    await work;
-  } catch (error) {
-    if (error instanceof QueryFailedError) {
-      return (error.driverError as { constraint?: string }).constraint;
-    }
-    throw error;
-  }
-  return undefined;
-};
 
 /**
  * Restricciones de `usuario` y `token_cuenta` (plan 001 §4) sobre la BD migrada por el arnés. Prueba el esquema, no

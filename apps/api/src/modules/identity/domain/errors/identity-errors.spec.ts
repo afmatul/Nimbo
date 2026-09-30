@@ -101,6 +101,25 @@ describe('errores de `identity` (plan §5)', () => {
       );
     });
 
+    it('CA-6: con ámbito `ip_login` usa el texto del inicio de sesión, sin minutos (DT-20)', () => {
+      const error = new IdentityTooManyRequestsError(600, 'ip_login');
+
+      expect(error.code).toBe('IDENTITY_TOO_MANY_REQUESTS');
+      expect(error.retryAfterSeconds).toBe(600);
+      expect(error.message).toBe(
+        'Hiciste demasiados intentos. Espera unos minutos y vuelve a intentarlo.',
+      );
+    });
+
+    it('CA-18: con ámbito `password_reset` usa el texto de 001 con los minutos (DT-20)', () => {
+      const error = new IdentityTooManyRequestsError(60, 'password_reset');
+
+      expect(error.scope).toBe('password_reset');
+      expect(error.message).toBe(
+        'Ya te enviamos un enlace hace poco. Revisa tu bandeja y la carpeta de spam, o inténtalo de nuevo en 1 minuto.',
+      );
+    });
+
     it.each([
       [61, '2 minutos'],
       [3599, '60 minutos'],

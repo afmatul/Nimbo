@@ -1,3 +1,4 @@
+import { SHARED_ERROR_CODES } from '@nimbo/contracts';
 import request from 'supertest';
 
 import { AppModule } from '../../../src/app.module';
@@ -14,14 +15,19 @@ import type { TestApp } from '../setup/test-app';
 const API_PREFIX = 'api/v1';
 
 /**
- * Lista cerrada de rutas públicas (CA-3). Las de 002 (inicio de sesión, renovación, recuperación) y 006a (catálogo)
- * se agregan con sus PR.
+ * Lista cerrada de rutas públicas (CA-3). Las de 006a (catálogo) se agregan con su PR.
  */
 const EXPECTED_PUBLIC_ROUTES = [
   'GET /api/v1/health/live',
   'GET /api/v1/health/ready',
+  'POST /api/v1/auth/forgot-password',
+  'POST /api/v1/auth/login',
   'POST /api/v1/auth/register',
   'POST /api/v1/auth/resend-verification',
+  'POST /api/v1/auth/reset-password',
+  'POST /api/v1/auth/reset-password/check',
+  'POST /api/v1/auth/session/logout',
+  'POST /api/v1/auth/session/refresh',
   'POST /api/v1/auth/verify-email',
 ];
 
@@ -65,13 +71,15 @@ describe('declaración de rutas de la API completa (CA-3, CA-7)', () => {
     expect(response.status).toBe(200);
   });
 
-  it.each(EXPECTED_PUBLIC_ROUTES)('CA-3: `%s` sin token no responde 401', async (route) => {
+  // Una ruta pública puede responder 401 por su cuenta (p. ej. `session/refresh` sin cookie, 002 CA-8); lo que CA-3
+  // prohíbe es que la rechace el guard sin token.
+  it.each(EXPECTED_PUBLIC_ROUTES)('CA-3: `%s` sin token no la rechaza el guard', async (route) => {
     const [method, path] = route.split(' ') as [string, string];
 
     const response = await request(testApp.app.getHttpServer())[
       method.toLowerCase() as 'get' | 'post'
     ](path);
 
-    expect(response.status).not.toBe(401);
+    expect((response.body as { code?: string }).code).not.toBe(SHARED_ERROR_CODES.UNAUTHENTICATED);
   });
 });

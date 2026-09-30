@@ -157,7 +157,7 @@ describe('POST /auth/resend-verification (CA-13, CA-14)', () => {
       );
     }
     const verified = await verify(latest);
-    expect(verifyEmailResponseSchema.parse(verified.body)).toEqual({ status: 'verified' });
+    expect(verifyEmailResponseSchema.parse(verified.body)).toMatchObject({ status: 'verified' });
   });
 
   it('CA-14: para un correo inexistente, de una cuenta verificada o de una interna la respuesta es idéntica a CA-13 y no sale ningún enlace', async () => {

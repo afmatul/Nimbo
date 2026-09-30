@@ -23,6 +23,7 @@ const envWithInvalidDatabase = (): NodeJS.ProcessEnv => ({
   MINIO_SECRET_KEY: 'nimbo-secret',
   WEB_PUBLIC_URL: 'http://localhost',
   CORS_ORIGIN: 'http://localhost',
+  JWT_ACCESS_SECRET: 'secreto-de-prueba-de-al-menos-32-caracteres',
 });
 
 const portIsClosed = (port: number): Promise<boolean> =>

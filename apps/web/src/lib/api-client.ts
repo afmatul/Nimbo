@@ -4,6 +4,7 @@ import { ApiClientError, genericErrorMessage } from './api-error';
 
 const CORRELATION_HEADER = 'x-correlation-id';
 const GENERIC_CODE = 'INTERNAL_ERROR';
+const NO_CONTENT = 204;
 
 function retryAfterSeconds(header: string | null, now: number): number | undefined {
   if (header === null || header.trim() === '') return undefined;
@@ -22,7 +23,7 @@ function generic(correlationId: string): ApiClientError {
 }
 
 /**
- * `fetch` JSON con `x-correlation-id`. Un 2xx devuelve el cuerpo. Un error válido expone `code`,
+ * `fetch` JSON con `x-correlation-id`. Un 2xx devuelve el cuerpo (un 204, `undefined`). Un error válido expone `code`,
  * `fields`, `correlationId` y `Retry-After`. Red caída o cuerpo inválido → error genérico.
  */
 export async function requestJson(url: string, init: RequestInit = {}): Promise<unknown> {
@@ -37,6 +38,8 @@ export async function requestJson(url: string, init: RequestInit = {}): Promise<
   } catch {
     throw generic(correlationId);
   }
+
+  if (response.status === NO_CONTENT) return undefined;
 
   const echoed = response.headers.get(CORRELATION_HEADER) ?? correlationId;
   const retryAfter = retryAfterSeconds(response.headers.get('retry-after'), Date.now());
