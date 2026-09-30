@@ -17,7 +17,9 @@ export default function ClienteGroupLayout({
 }): ReactNode {
   return (
     <RequireRole allowed={CLIENT_ROLES}>
-      <SessionUploadsProvider apiPublicUrl={getEnv().API_PUBLIC_URL}>{children}</SessionUploadsProvider>
+      <SessionUploadsProvider apiPublicUrl={getEnv().API_PUBLIC_URL}>
+        {children}
+      </SessionUploadsProvider>
     </RequireRole>
   );
 }
