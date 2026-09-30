@@ -26,6 +26,7 @@ Lo que la diferencia de una nube común:
 | Mockups (código) y capturas               | `docs/design/mockups/`, `docs/design/capturas/` |
 | Convenciones de código, git y PR          | `docs/sdd/conventions.md`                 |
 | Flujo SDD, estados y compuertas           | `docs/sdd/workflow.md`                    |
+| Guía de una página para arrancar una spec | `docs/sdd/guia-rapida.md`                 |
 | Plantillas (spec, plan, tareas, ADR…)     | `docs/sdd/templates/`                     |
 | Backlog de specs y su estado              | `specs/README.md`                         |
 | Decisiones de arquitectura                | `docs/adr/`                               |
@@ -37,25 +38,26 @@ No cargues todos los archivos siempre: lee el que la tarea necesita.
 **Sin spec aprobada no hay código.** La spec es la fuente de verdad. Si el código necesita
 comportarse distinto a lo que dice la spec, primero se corrige la spec y después el código.
 
-## Flujo de trabajo (SDD lite)
+## Flujo de trabajo (SDD express, `docs/sdd/workflow.md`)
 
 ```
-/spec  →  /tasks  →  /implement  →  /review  →  PR + aprobación humana  →  merge
+/spec  →  /plan  →  aprobación de Adrián  →  /tasks  →  /implement  →  /review  →  PR + CI + aprobación de Adrián  →  squash merge
 ```
 
-`/plan` es opcional: solo para specs transversales, con puerto nuevo entre módulos, tecnología nueva o cambio de
-arquitectura (lo aprueba `architect`). `/verify` es opcional y queda absorbido en `/review`.
+El plan es obligatorio y se aprueba antes del código; `architect` solo interviene si agrega un puerto entre módulos,
+tecnología nueva o cambia la arquitectura. Artefactos cortos (spec ≤ 150 líneas, plan ≤ 250, 5–12 tareas verticales),
+una rama y un PR por spec, pruebas por riesgo y aislamiento siempre que haya datos de cliente.
 Apoyo: `/status` (avance), `/adr` (decisiones), `/design-check` (coherencia código ↔ diagramas), `/mockup` (mockups y capturas).
 
 | Subagente          | Responsabilidad                                                     | Escribe en                          |
 |--------------------|---------------------------------------------------------------------|-------------------------------------|
-| `planner`          | Convierte una necesidad en `spec.md` (con «Enfoque técnico»), `plan.md` cuando aplica y `tasks.md` | `specs/` |
-| `architect`        | Valida fronteras, dependencias y coherencia con diagramas; ADRs y DF-xx; aprueba `plan.md` cuando existe | `docs/adr/`, `docs/sdd/architecture.md`, sección de aprobación del plan |
+| `planner`          | Convierte una necesidad en `spec.md` (qué), `plan.md` (cómo) y `tasks.md` (orden) | `specs/` |
+| `architect`        | Valida fronteras, dependencias y coherencia con diagramas; ADRs y DF-xx; opina sobre el plan si agrega puerto, tecnología o cambio de arquitectura | `docs/adr/`, `docs/sdd/architecture.md`, sección de aprobación del plan |
 | `developer`        | Implementa tareas en orden, con pruebas primero                     | `apps/`, `packages/`, migraciones   |
-| `tester`           | Traduce criterios de aceptación a pruebas y verifica la spec        | `**/test/**`, `**/*.spec.ts`, `e2e/`, sección «Verificación» de `review.md` |
-| `security-auditor` | Aislamiento entre cuentas, autorización, privacidad, secretos        | `test/isolation/`, sección «Seguridad» de `review.md` |
+| `tester`           | A pedido: pruebas de reproducción de bugs y huecos de verificación  | `**/test/**`, `**/*.spec.ts`, `e2e/`, sección «Verificación» de `review.md` |
+| `security-auditor` | Aislamiento, autorización y privacidad en 011, 012, 013, 020 o por riesgo marcado | `test/isolation/`, sección «Seguridad» de `review.md` |
 | `ui-designer`      | Mockups, capturas, sistema de diseño Cielo Sereno y auditoría de UI | `docs/design/mockups/`, `docs/design/capturas/`, `ui-guidelines.md`, sección «UI» de `review.md` |
-| `reviewer`         | Cierra `review.md`: ensambla verificación/seguridad/UI y agrega bloqueantes, importantes y sugerencias | `review.md` |
+| `reviewer`         | Una pasada: verificación, seguridad, UI y bloqueantes en un `review.md` de una página | `review.md` |
 
 ## Módulos (según los diagramas de clases)
 
@@ -109,7 +111,7 @@ pnpm seed                                   # corpus sintético (marcador hasta 
 - Tamaños en bytes siempre `bigint`; tokens y claves siempre como hash.
 - En la UI no hay colores escritos a mano: solo tokens de `ui-guidelines.md`. Contraste AA por encima de cualquier mockup.
 - `apps/web` nunca importa de `docs/design/mockups/`; los mockups son referencia.
-- Nadie aprueba su propio trabajo: el revisor humano de un PR es distinto del autor. Única excepción: los PRs del diseñador principal (`docs/sdd/workflow.md` §7.1).
+- Nadie aprueba su propio trabajo: Adrián aprueba planes y PRs del equipo; los suyos siguen `docs/sdd/workflow.md` §7.1.
 
 ## Estado del proyecto
 

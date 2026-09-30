@@ -1,84 +1,46 @@
 # Plan NNN — <Título>
 
 > Spec: `./spec.md` · Estado del plan: Propuesto | Aprobado
-> Solo existe si la spec es transversal, agrega un puerto nuevo entre módulos, tecnología nueva o cambia la
-> arquitectura. Lo aprueba `architect`; sin esos casos, el «Enfoque técnico» de la spec basta.
+> Obligatorio y ≤ 250 líneas. Dice **qué** archivos se tocan y **qué** se espera de cada uno; no es el código en
+> prosa (sin cuerpos de funciones ni pseudocódigo). Lo aprueba Adrián antes de escribir código.
 
 ## 1. Resumen técnico
 <Cómo se resuelve, en 5–10 líneas.>
 
-## 2. Verificación contra la constitución
-| Artículo | Cumple | Nota |
-|---|---|---|
-| I Spec manda | ☐ | |
-| IV SOLID | ☐ | |
-| V YAGNI — ¿alguna abstracción nueva? justificar con regla de interfaces | ☐ | |
-| VI DRY — ¿se reutiliza la fuente única existente? | ☐ | |
-| VIII Fronteras — ¿dependencias nuevas entre módulos? | ☐ | |
-| IX Seguridad — ¿`actor` en los servicios y `accessibleNodes` en las consultas? | ☐ | |
-| X Operabilidad — métricas y bitácoras | ☐ | |
-| XI Integridad — idempotencia/transacciones | ☐ | |
-| XII Degradación | ☐ | |
-
-## 3. Coherencia con los diagramas
-| Diagrama | Clases / tablas usadas | ¿Se aparta del diagrama? | Acción |
-|---|---|---|---|
-| Clases M? | `…Service`, `I…` | no / sí: … | ninguna / actualizar diagrama / DF-xx |
-| E-R | `tabla`, `tabla` | no / sí: … | ninguna / actualizar E-R / DF-xx |
-| Arquitectura | … | … | … |
-
-Hallazgos `DF-xx` que esta spec resuelve o de los que depende: …
-
-## 3b. Módulos afectados
-| Módulo | Cambio | Capa(s) |
+## 2. Módulos, archivos y diseño
+| Módulo / capa | Archivo (nuevo o cambiado) | Responsabilidad |
 |---|---|---|
 
-Dependencias nuevas entre módulos: <ninguna | A → B vía fachada/evento, justificación>
+- Clases, puertos y tablas con los nombres de `design-model.md`. Puertos nuevos: <ninguno | cuál y por qué (Art. V)>.
+- Dependencias nuevas entre módulos: <ninguna | A → B vía puerto o evento, por qué>.
+- Frontend: rutas (`app/…`), `features/<modulo>/`, componentes de `components/nimbo/` que se reutilizan o crean.
 
-## 4. Modelo de datos
+## 3. Datos
 ```sql
--- Tablas/columnas nuevas o modificadas (borrador de la migración)
+-- Tablas/columnas nuevas o modificadas (borrador de la migración), con índices y RLS
 ```
-- Índices: …
-- RLS: …
-- Migración reversible: <cómo es el down>
+- `down` de la migración: …
 
-## 5. Contratos
-### HTTP
-| Método | Ruta | Rol | Request | Respuesta | Errores |
-|---|---|---|---|---|---|
+## 4. Contratos
+| Método | Ruta | Rol | Request → Respuesta | Errores (`code`) |
+|---|---|---|---|---|
 
-### Eventos
-| Evento | Productor | Consumidores | Payload |
-|---|---|---|---|
+Eventos / Socket.IO (si aplica): <evento, productor, consumidores, payload>
 
-### Tiempo real
-| Canal/evento Socket.IO | Sala | Payload |
+## 5. Seguridad y operación
+- `actor` en los servicios y `accessibleNodes` / RLS en las consultas: <dónde>.
+- Bitácoras y auditoría: <eventos, sin datos sensibles>. Métricas: <si aplica>.
+
+## 6. Estrategia de pruebas (por riesgo)
+| CA | Nivel (unit / int / iso / web / e2e) | Archivo |
 |---|---|---|
 
-## 6. Diseño de componentes
-- Casos de uso: `…UseCase`
-- Políticas de dominio: `…Policy`
-- Puertos nuevos (justificar): …
-- Frontend: rutas (`app/…`), carpeta `features/<modulo>/`, componentes de `components/nimbo/` que se reutilizan o crean, componentes shadcn a agregar, tokens nuevos (requieren DF y aprobación)
+## 7. Riesgos y coherencia con el diseño
+- Riesgos reales y mitigación: …
+- Desviaciones de los diagramas: <ninguna | DF-xx nuevo o actualizado en `design-findings.md`>.
+- Pendientes que deja fuera: <ninguno | fila nueva en `pendientes.md`>.
+- ADR requeridos: <ninguno | ADR-00xx>.
 
-## 7. Observabilidad
-- Bitácoras (eventos): …
-- Métricas: `nimbo_…`
-- Alertas nuevas: …
-
-## 8. Estrategia de pruebas
-| Criterio | Nivel (unit/int/iso/e2e/carga) | Archivo propuesto |
-|---|---|---|
-
-## 9. Riesgos y mitigaciones
-| Riesgo | Probabilidad | Impacto | Mitigación |
-|---|---|---|---|
-
-## 10. Decisiones
-- ADR requeridos: <ninguno | ADR-00xx título>
-
-## 11. Aprobación de arquitectura
-> Sección escrita por el subagente `architect`.
-- Veredicto: Aprobado | Aprobado con cambios | Rechazado
-- Observaciones:
+## 8. Aprobación
+- `architect` (solo si hay puerto nuevo entre módulos, tecnología nueva o cambio de arquitectura): <no aplica | veredicto>
+- Adrián: Aprobado | Aprobado con cambios (lista) | Rechazado — AAAA-MM-DD

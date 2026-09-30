@@ -1,26 +1,32 @@
 # Backlog de specs
 
 > Fuente de verdad del estado del trabajo. La actualizan `/spec`, `/tasks`, `/verify`, `/review` y `/status`.
-> Dueños: Adrián (1), Juan Marcos (2), Abel (3), Fátima (4). Nadie revisa sus propios PRs (excepción: los del diseñador principal, `docs/sdd/workflow.md` §7.1).
+> Dueños: Adrián (1), Juan Marcos (2), Abel (3), Fátima (4). Adrián revisa y aprueba todos los planes y PRs; los suyos
+> siguen la autoaprobación de `docs/sdd/workflow.md` §7.1.
 
-## Dueños de módulos (propuesta, alineada con los diagramas de clases)
+## Dueños de módulos (reasignados el 30/09/2026 para la Fase 2)
 
-| Integrante      | Rol Crystal Clear               | Módulos                                                                                                          |
-| --------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Adrián (1)      | Diseñador principal (Tech Lead) | fundaciones, `shared`, `access` (M3a), `audit`, `backoffice` (M8), CI/CD, infraestructura, guardián de diagramas |
-| Juan Marcos (2) | Diseñador-programador           | `identity` (M1), `billing` (M4), `notifications`                                                                 |
-| Abel (3)        | Diseñador-programador           | `storage` (M2), `sharing` (M3b), `optimizer` (M7)                                                                |
-| Fátima (4)      | Diseñador-programador           | sistema de diseño (000b), `realtime`, `editing` (M5), `intelligence` (M6)                                        |
+En la Fase 1 solo trabajaron Adrián y Fátima; desde la Fase 2 entran Juan Marcos y Abel. La regla es **un módulo, un
+dueño, de punta a punta** (backend y frontend): nadie edita un módulo ajeno; si lo necesita, lo pide a su dueño o por
+un puerto.
 
-Cada dueño construye backend **y** frontend de su módulo. Excepciones por spec: 001 y 002 (`identity`) las lleva
-Adrián, 005 (`storage`) la lleva Adrián y 006a (`billing`) la lleva Fátima; el resto de esos módulos sigue con su dueño.
+| Integrante      | Rol Crystal Clear               | Módulos                                                                                                                                      |
+| --------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Adrián (1)      | Diseñador principal (Tech Lead) | fundaciones, `shared`, `identity` (M1), `notifications`, `storage` (M2), `access` (M3a), `audit`, `editing` (M5), `intelligence` (M6), CI/CD, infraestructura, guardián de diagramas; revisor de planes y PRs |
+| Juan Marcos (2) | Diseñador-programador           | `billing` (M4) y búsqueda (018)                                                                                                              |
+| Abel (3)        | Diseñador-programador           | previsualización (017), `optimizer` (M7), observabilidad (022)                                                                               |
+| Fátima (4)      | Diseñador-programador           | sistema de diseño (000b), `realtime`, `sharing` (M3b), `backoffice` (M8)                                                                     |
 
-## Estados (SDD lite)
+Excepciones: 006a (`billing`) la construyó Fátima y la integra Adrián. 017 y 018 viven en `storage`, pero en carpetas
+propias (`storage/preview`, `storage/search`) de Abel y Juan Marcos; los cambios al resto de `storage` los hace Adrián.
+
+## Estados (SDD express)
 
 `Borrador` → `Lista` → `En curso` → `En revisión` → `Hecha`
 
 Mapeo desde el flujo anterior: `Aclarada`/`Planificada` → `Lista`; `En implementación`/`En verificación` → `En curso`.
-Detalle de cada estado y sus compuertas en `docs/sdd/workflow.md` §2.
+Detalle de cada estado y sus compuertas en `docs/sdd/workflow.md` §2. Desde la Fase 2, `Lista` exige `plan.md` aprobado por Adrián.
+Guía de una página para arrancar una spec: `docs/sdd/guia-rapida.md`.
 
 ## Paso previo: decidir los hallazgos del diseño
 
@@ -34,28 +40,28 @@ Antes de planificar las specs de Fase 1, el equipo decide en una reunión los ha
 | 000  | [fundaciones](000-fundaciones/spec.md): monorepo, compose, CI, ambientes, `shared`, logger, `correlationId`, health, lint de fronteras, imágenes ghcr.io, staging en DigitalOcean | transversal         | RNF-10, 12, 15–17, 19 (18 parcial) | 02, 03, 06, 23, 24, 30, 34 | 1    | Adrián | —             | En curso (2026-09-22): PR-1 «esqueleto» T-01…T-10 y PR-2 «shared» T-11…T-26 (+ carga del `.env` y correcciones de revisión, #4) fusionados; bloques 3–6 (CI, imágenes, staging) desde el 30/09 |
 | 000b | [sistema-de-diseno](000b-sistema-de-diseno/spec.md): tokens Cielo Sereno en `globals.css`, tema shadcn, fuentes, layout, `components/nimbo` base, axe en E2E | transversal (web)   | RNF-13, RNF-14            | 41–48                      | 1    | Fátima | 000           | En revisión (2026-09-20); PR #2 y #5 fusionados |
 | 001  | [registro-y-verificacion](001-registro-y-verificacion/spec.md)                                                             | M1                  | RF-01, RNF-04             | 13, 33, 35                 | 1    | Adrián | 000, 006a     | En revisión (2026-09-28): registro, verificación por enlace y reenvío completos en `api`, `worker` y `web`, con todas las suites en verde; [revisión](001-registro-y-verificacion/review.md) |
-| 002  | [autenticacion-sesiones-y-dispositivos](002-autenticacion-sesiones-y-dispositivos/spec.md)                                 | M1                  | RF-02, 03, 04, RNF-07     | 11, 15                     | 1    | Adrián | 001           | Planificada (2026-09-27): [plan](002-autenticacion-sesiones-y-dispositivos/plan.md) y [tareas](002-autenticacion-sesiones-y-dispositivos/tasks.md) |
+| 002  | [autenticacion-sesiones-y-dispositivos](002-autenticacion-sesiones-y-dispositivos/spec.md)                                 | M1                  | RF-02, 03, 04, RNF-07     | 11, 15                     | 1    | Adrián | 001           | En curso (2026-09-30): inicio de sesión, renovación, cierre y recuperación (API y web) integrados; faltan PR-4 (lista y revocación de sesiones, cambio de contraseña) y PR-5b (página Seguridad). [plan](002-autenticacion-sesiones-y-dispositivos/plan.md) y [tareas](002-autenticacion-sesiones-y-dispositivos/tasks.md) |
 | 003  | [roles-y-acceso](003-roles-y-acceso/spec.md) (`RolesGuard`, `Actor`, `PermissionResolver`, `accessibleNodes`, RLS)         | T1 `shared` + M3a   | RF-05, RNF-05             | 01, 02, 32                 | 1    | Adrián | 002           | En revisión (2026-09-29): PR-A…PR-D integrados; PR-F en `feat/003-web` ([revisión](003-roles-y-acceso/review-pr-f.md)); falta T-55 (recorrido humano). [plan](003-roles-y-acceso/plan.md) y [tareas](003-roles-y-acceso/tasks.md) |
 | 004  | auditoria                                                                                                                  | T2 `audit`          | RF-07                     | 03, 12, 15                 | 1    | Adrián | 003           | Pendiente |
 | 005  | [carga-y-descarga](005-carga-y-descarga/spec.md)                                                                                                           | M2                  | RF-08, 09, 14, RNF-06, 07 | 06, 16, 33                 | 1    | Adrián | 001, 003, 006a (004 llega después: 005 declara `IAuditLogger`) | En implementación (2026-09-30): PR-A…PR-F integrados en main (#36…#41); faltan T-55 (recorrido humano), T-57 y `/review 005`. [plan](005-carga-y-descarga/plan.md) y [tareas](005-carga-y-descarga/tasks.md) |
-| 006  | carpetas-y-papelera                                                                                                        | M2                  | RF-10, 11                 | 15, 40                     | 1    | Abel | 005           | Pendiente |
-| 006a | catalogo-y-limites (tabla `plan`, `PlanLimits`, `IPlanLimitsProvider`)                                                     | M4                  | RF-19 (parcial)           | 23, 24, 27                 | 1    | Fátima | 000           | Pendiente |
-| 007  | cuota-y-explorador                                                                                                         | M2                  | RF-12, RNF-14             | 26, 38                     | 1    | Abel | 005, 006a     | Pendiente |
+| 006  | carpetas-y-papelera                                                                                                        | M2                  | RF-10, 11                 | 15, 40                     | 1    | Adrián | 005           | Pendiente |
+| 006a | catalogo-y-limites (tabla `plan`, `PlanLimits`, `IPlanLimitsProvider`)                                                     | M4                  | RF-19 (parcial)           | 23, 24, 27                 | 1    | Fátima | 000           | En curso (2026-09-30): T-01…T-12 hechas en `spec/006a-catalogo-y-limites`; falta integrarla en `main` y enlazar su adaptador en `PlanLimitsBindingModule` (lo hace Adrián) |
+| 007  | cuota-y-explorador                                                                                                         | M2                  | RF-12, RNF-14             | 26, 38                     | 1    | Adrián | 005, 006a     | Pendiente |
 | 008  | catalogo-y-comparador                                                                                                      | M4                  | RF-19                     | 15                         | 2    | Juan Marcos | 006a          | Pendiente |
 | 009  | contratacion-pagos-y-facturas                                                              | M4                  | RF-20, 21                 | 23                         | 2    | Juan Marcos | 008           | Pendiente |
 | 010  | renovacion-vencimiento-y-cambio-de-plan                                                    | M4                  | RF-22, 23, 24             | 25                         | 2    | Juan Marcos | 009           | Pendiente |
-| 011  | administracion-y-soporte                                                                   | M8                  | RF-06                     | 04, 26, 36                 | 2    | Adrián | 003, 004, 008 | Pendiente |
-| 012  | comparticion-y-accesos                                                                     | M3b                 | RF-16, 18                 | 31                         | 2    | Abel | 003, 006      | Pendiente |
-| 013  | enlaces-publicos                                                                           | M3b                 | RF-17, RNF-08             | 09, 10                     | 2    | Abel | 012           | Pendiente |
-| 014  | versiones-y-restauracion                                                                   | M2 (+ M5 autoría)   | RF-13, 29                 | 17, 18                     | 2    | Abel | 005           | Pendiente |
+| 011  | administracion-y-soporte                                                                   | M8                  | RF-06                     | 04, 26, 36                 | 2    | Fátima | 003, 004, 008 | Pendiente |
+| 012  | comparticion-y-accesos                                                                     | M3b                 | RF-16, 18                 | 31                         | 2    | Fátima | 003, 006      | Pendiente |
+| 013  | enlaces-publicos                                                                           | M3b                 | RF-17, RNF-08             | 09, 10                     | 2    | Fátima | 012           | Pendiente |
+| 014  | versiones-y-restauracion                                                                   | M2 (+ M5 autoría)   | RF-13, 29                 | 17, 18                     | 2    | Adrián | 005           | Pendiente |
 | 015  | tiempo-real                                                                                | transversal         | RF-08, 26                 | 30                         | 2    | Fátima | 002           | Pendiente |
-| 016  | edicion-colaborativa-docx                                                                  | M5                  | RF-25, 26, 28, RNF-02, 09 | 05, 19, 20, 39             | 2    | Fátima | 014, 015      | Pendiente |
+| 016  | edicion-colaborativa-docx                                                                  | M5                  | RF-25, 26, 28, RNF-02, 09 | 05, 19, 20, 39             | 2    | Adrián | 014, 015      | Pendiente |
 | 017  | previsualizacion                                                                           | M2                  | RF-27                     | 15                         | 2    | Abel | 005           | Pendiente |
-| 018  | busqueda                                                                                   | M2 (+ M6 contenido) | RF-15                     | 15, 32                     | 2    | Fátima | 005           | Pendiente |
-| 019  | indexacion                                                                                 | M6                  | RF-30, 31, RNF-03         | 07, 14, 37                 | 3    | Fátima | 005, 014      | Pendiente |
-| 020  | agente-con-citas                                                                           | M6                  | RF-32, 33, 34, RNF-03     | 08, 14, 15, 25             | 3    | Fátima | 019, 010      | Pendiente |
+| 018  | busqueda                                                                                   | M2 (+ M6 contenido) | RF-15                     | 15, 32                     | 2    | Juan Marcos | 005           | Pendiente |
+| 019  | indexacion                                                                                 | M6                  | RF-30, 31, RNF-03         | 07, 14, 37                 | 3    | Adrián | 005, 014      | Pendiente |
+| 020  | agente-con-citas                                                                           | M6                  | RF-32, 33, 34, RNF-03     | 08, 14, 15, 25             | 3    | Adrián | 019, 010      | Pendiente |
 | 021  | optimizador                                                                                | M7                  | RF-35, 36                 | 21, 22                     | 3    | Abel | 014           | Pendiente |
-| 022  | operacion-metricas-y-alertas                                                               | M8                  | RF-37, RNF-18, 20, 21     | 22, 28, 29                 | 3    | Adrián | 000           | Pendiente |
+| 022  | operacion-metricas-y-alertas                                                               | M8                  | RF-37, RNF-18, 20, 21     | 22, 28, 29                 | 3    | Abel | 000           | Pendiente |
 | 023  | pruebas-de-carga-y-aislamiento-global                                                      | transversal         | RNF-01, 02, 05, 09        | —                          | 3    | Adrián | 020           | Pendiente |
 | 024  | pulido-accesibilidad-manuales-y-diagramas-finales                                          | todos               | RNF-13, 14                | todos los abiertos         | 4    | Todos | —             | Pendiente |
 
@@ -67,12 +73,16 @@ Escribir specs, mockups y planes solo toca `specs/` y `docs/`: no espera a nadie
 los bloques 1 y 2 de 000 en `main` (ya lo están: #1 y #4) y las specs de su columna «Depende de» integradas. Los
 bloques 3–6 de 000 (CI, imágenes, staging) no bloquean a nadie.
 
-| Integrante  | Ahora                                                                                                                                                                                                                                                                                      | Después                                                                                |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
-| Adrián      | 000: bloques 3–6 desde el 30/09, empezando por el CI y la compuerta T-27 (`docs/sdd/workflow.md` §7.2); 001: cerrar PR-3 (T-54) y PR-4 web, luego `/review 001`; `/implement 002` y `/implement 003` (plan y tareas ya aprobados); `/plan 005` carga-y-descarga (lleva `plan.md`: ADR de RLS y puerto entre módulos) | 004 auditoría (`/spec 004` en modo lite); `/tasks 005` e `/implement 005` (depende de 003 y 006a; 004 blanda) |
-| Juan Marcos | `/spec 008` catalogo-y-comparador y `/spec 009` contratacion-pagos-y-facturas (Fase 2; dependen de 006a)                                                                                                                                                                                   | `/implement 008` cuando 006a esté integrada                                            |
-| Abel        | `/spec 006` carpetas-y-papelera (el mockup del explorador ya existe); `/tasks` directo si no es transversal                                                                                                                                                                                | `/implement 006` (depende de 005) y luego 007                                          |
-| Fátima      | 000b: comprobar que se demuestra en local sobre `main` (`docker compose up -d` + `pnpm dev`) y pasarla a `Hecha` (#2 y #5 ya están integrados, `workflow.md` §7.2); `/spec 006a` catalogo-y-limites, `/tasks` e `/implement` (la usan 001, 005 y 007)                                      | `/spec 015` tiempo-real; `/implement 015` (depende de 002) |
+Actualizado el 30/09/2026. Adrián cierra solo la Fase 1 (≈ 2 días); los demás arrancan la Fase 2 con `/spec` y `/plan`,
+que solo tocan `specs/` y `docs/` y no esperan a nadie. Ningún plan de Juan Marcos o Abel pasa a código sin la
+aprobación de Adrián.
+
+| Integrante  | Ahora (cierre de Fase 1 / arranque de Fase 2)                                                                                                                                                  | Después (Fase 2 → Fase 3)                                          |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Adrián      | En orden: integrar 006a y su adaptador (desbloquea la demo de 005) → cerrar 003 (T-55) y `/review 005` → 006 → 007 → 002 (PR-4 y PR-5b) → 004; CI mínimo de 000 (bloque 3). Revisa planes y PRs del equipo | 014 → 016 → 019 → 020 → 023                                        |
+| Juan Marcos | `/spec 008` y `/plan 008` catálogo y comparador (la necesitan 009 y 011: es la primera)                                                                                                       | 009 → 010 → 018                                                    |
+| Abel        | `/spec 017` y `/plan 017` previsualización (depende de 005, ya integrada)                                                                                                                    | 022 → 021 (021 depende de 014)                                     |
+| Fátima      | 000b: comprobar la demo local y pasarla a `Hecha`; `/spec 015` y `/plan 015` tiempo real (la necesita 016)                                                                                    | 012 → 013 → 011 (011 depende de 004 y 008)                         |
 
 Reglas de convivencia: PRs pequeños y rebase frecuente sobre `main`. Los únicos archivos compartidos que se tocan
 son:

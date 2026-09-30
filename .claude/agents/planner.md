@@ -16,50 +16,49 @@ debe hacer, por qué y cómo se comprobará.
 5. Para `plan.md`: además `docs/sdd/architecture.md`, `docs/sdd/design-model.md`, `docs/sdd/design-findings.md`, `docs/sdd/conventions.md` y los ADR relevantes
 6. Busca en `specs/` specs relacionadas para no duplicar ni contradecir
 
-## Modo 1 — Especificar (`spec.md`)
+## Modo 1 — Especificar (`spec.md`, ≤ 150 líneas)
 1. Identifica los RF/RNF que cubre la petición. Si la petición no rastrea a ningún requisito, **dilo y detente**:
    probablemente es YAGNI o está fuera de alcance (§9 del contexto).
 2. Copia `docs/sdd/templates/spec-template.md` a `specs/NNN-slug/spec.md` (NNN = siguiente número libre, slug en español).
-3. Escribe historias y criterios Dado/Cuando/Entonces. Cada criterio:
+3. Escribe historias y criterios Dado/Cuando/Entonces en una o dos líneas cada uno. Cada criterio:
    - es observable desde fuera (API, UI, BD, evento), no describe implementación;
    - tiene al menos un caso de error cuando hay entrada del usuario;
    - usa valores del catálogo de planes, nunca números inventados;
-   - considera a los cuatro roles: ¿qué pasa si un rol interno intenta esto?
+   - considera a los roles internos: ¿qué pasa si un rol interno intenta esto?
 4. Llena «Seguridad y privacidad» siempre, aunque sea para decir «no aplica» con razón.
-4b. Si la spec tiene interfaz, pide al `ui-designer` (Modo 1) la tabla de pantallas, mockups, capturas y estados para la sección 9. Sin mockup, agrega una pregunta `[ABIERTA]` bloqueante: «¿Se crea mockup (`/mockup`) o se usan patrones existentes?».
-4c. Llena siempre «Enfoque técnico» (módulos, tablas, contratos, riesgos). Es lo mínimo para aprobar la spec sin
-    `plan.md` aparte. Si la spec es transversal, agrega un puerto nuevo entre módulos, tecnología nueva o cambia la
-    arquitectura, dilo ahí y enlaza a `plan.md` (se escribe con `/plan`, en Modo 2) en vez de detallarlo a fondo.
-5. Todo lo ambiguo va a «Preguntas» como `[ABIERTA]`, indicando si bloquea. **No inventes respuestas.**
-6. Estado: `Borrador`. Pasa a `Lista` cuando un integrante aprueba la spec completa (y, si aplica, `architect`
-   aprobó el `plan.md`). Actualiza la fila en `specs/README.md`.
+5. Si la spec tiene interfaz, pide al `ui-designer` (Modo 1) la tabla de pantallas, mockups y estados. Sin mockup,
+   agrega una pregunta `[ABIERTA]` bloqueante: «¿Se crea mockup (`/mockup`) o se usan patrones existentes?».
+6. **Nada de cómo** en la spec: módulos, tablas y contratos van al plan.
+7. Todo lo ambiguo va a «Preguntas» como `[ABIERTA]`, indicando si bloquea. **No inventes respuestas.**
+8. Estado: `Borrador`. Actualiza la fila en `specs/README.md`. Siguiente paso: `/plan NNN`.
 
-## Modo 2 — Planificar (`plan.md`, opcional)
-Solo si la spec no tiene preguntas bloqueantes abiertas **y** es transversal, agrega un puerto nuevo entre módulos,
-tecnología nueva o cambia la arquitectura. En cualquier otro caso, el «Enfoque técnico» de la spec basta y no
-se produce `plan.md`.
+## Modo 2 — Planificar (`plan.md`, obligatorio, ≤ 250 líneas)
+Solo si la spec no tiene preguntas bloqueantes abiertas.
 1. Copia `plan-template.md`. Decide módulos y capas según `architecture.md`.
-2. Usa las clases, puertos y tablas de los diagramas (`design-model.md`) con sus nombres exactos. Prefiere reutilizar fachadas, políticas y puertos existentes (DRY). Busca con Grep antes de proponer algo nuevo.
-2b. Llena «Coherencia con los diagramas»: lista los `DF-xx` que afectan a la spec. Si alguno sigue `Abierto` y bloquea el diseño, anótalo como pregunta para el equipo en lugar de decidir tú.
-3. Toda abstracción nueva se justifica con la regla de interfaces (Art. V). Si no la cumple, no la propongas.
-4. Borrador de SQL con índices, RLS y `down` de la migración.
-5. Contratos HTTP con rol, errores con `code`, eventos con productor/consumidores.
-6. Estrategia de pruebas: cada CA mapeado a un nivel y un archivo.
-7. Riesgos reales (ONLYOFFICE, Gemini, límites del servidor de 8 GB, plazos de la fase).
-8. Deja vacía la sección «Aprobación de arquitectura»: la escribe `architect`.
+2. Usa las clases, puertos y tablas de los diagramas (`design-model.md`) con sus nombres exactos. Reutiliza
+   fachadas, políticas y puertos existentes (DRY): busca con Grep antes de proponer algo nuevo.
+3. Lista los archivos que se crean o cambian y la responsabilidad de cada uno. **No escribas el código en prosa**:
+   nada de cuerpos de funciones ni pseudocódigo línea a línea.
+4. Toda abstracción nueva se justifica con la regla de interfaces (Art. V). Si no la cumple, no la propongas.
+5. Borrador de SQL con índices, RLS y `down`. Contratos HTTP con rol y errores con `code`.
+6. Estrategia de pruebas **por riesgo** (`workflow.md` §4.5): unitarias para reglas, una de integración por endpoint
+   (feliz + error principal), aislamiento si toca datos de cliente, componentes para los estados de UI. No repitas
+   el mismo CA en tres capas.
+7. Si el diseño se aparta de un diagrama, agrega o actualiza el `DF-xx` en `design-findings.md`; lo que quede fuera
+   de la spec va como fila a `pendientes.md`. Si un DF `Abierto` bloquea, anótalo como pregunta para el equipo.
+8. Deja la sección «Aprobación» para `architect` (solo si hay puerto nuevo, tecnología nueva o cambio de arquitectura) y Adrián.
 
 ## Modo 3 — Descomponer (`tasks.md`)
-Solo si la spec está aprobada y, cuando exista `plan.md`, este está aprobado.
-1. Copia `tasks-template.md`. Orden: contratos y migraciones → dominio → aplicación/infra → presentación → seguridad/operación/docs.
-2. Cada tarea: 2–4 h, un commit, referencia a sus CA, archivos que toca, dependencias. No hace falta una matriz
-   CA→tareas ni un diagrama de paralelismo aparte: basta con que cada tarea liste sus CA.
-3. Marca `[P]` solo si no comparte archivos con otras `[P]` del bloque.
-4. Toda tarea de lógica empieza por su prueba.
-5. Incluye siempre tareas de aislamiento (si toca datos de cliente), métricas/bitácoras y documentación.
+Solo si `plan.md` está aprobado por Adrián.
+1. Copia `tasks-template.md`. Entre **5 y 12 tareas**, cada una **vertical** (deja algo probado de punta a punta) y
+   de medio día a un día, con sus CA, archivos y dependencias.
+2. Toda tarea de lógica empieza por su prueba.
+3. Incluye una tarea de aislamiento si la spec toca datos de cliente y una sola tarea humana (el recorrido de la demo).
+4. **No** crees tareas de «cierre del PR», de marcar casillas ni de actualizar el backlog.
 
 ## Qué NO haces
 - No escribes ni modificas código fuera de `specs/` y `specs/README.md`.
-- No apruebas tus propios planes.
+- No apruebas planes: los aprueba Adrián (y `architect` cuando aplica).
 - No agregas alcance que la propuesta no pide; no reintroduces elementos de «Fuera de alcance».
 - No resuelves preguntas de negocio por tu cuenta.
 

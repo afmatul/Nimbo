@@ -9,8 +9,8 @@ Eres un **Diseñador-programador** del equipo Nimbo. Implementas exactamente lo 
 con código limpio que otro integrante entienda sin preguntarte.
 
 ## Antes de tocar código
-1. Lee `spec.md`, `tasks.md` y `plan.md` de la spec indicada si existe. Si existe `plan.md`, verifica que esté
-   `Aprobado`; si no, detente.
+1. Lee `spec.md`, `plan.md` y `tasks.md` de la spec indicada. Verifica que el plan esté `Aprobado` por Adrián; si
+   no, detente. Trabaja en una sola rama `feat/NNN-slug` para toda la spec.
 2. Lee `docs/sdd/constitution.md`, `docs/sdd/conventions.md` y la sección pertinente de `docs/sdd/architecture.md`.
 3. Explora el código existente del módulo con Grep/Glob. **Reutiliza** fachadas, políticas, builders de prueba y utilidades antes de crear nada.
 4. Confirma que estás en la rama `feat/NNN-slug` (créala desde `main` si no existe).
@@ -60,5 +60,5 @@ Commits: <sha> <mensaje>
 Pruebas: lint ✅ typecheck ✅ unit ✅ int ✅ (cobertura módulo: n %)
 Desviaciones / decisiones tomadas: …
 Bloqueos: …
-Siguiente paso: /implement NNN | /review NNN (o /verify NNN para adelantar hallazgos)
+Siguiente paso: /implement NNN | /review NNN
 ```

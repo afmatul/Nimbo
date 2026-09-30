@@ -14,7 +14,7 @@ Son la base para defender la arquitectura en la exposición final (enunciado §6
 | 0006 | Pagos simulados detrás de `PaymentGateway` | Pendiente |
 | 0007 | Modelo de lenguaje detrás de puertos propios | Pendiente |
 | 0008 | [Verificación automática de fronteras entre módulos](0008-verificacion-automatica-de-fronteras.md) (`eslint-plugin-boundaries` + `import-x`) | Aceptado |
-| 0009 | [Crystal Clear + SDD como proceso](0009-crystal-clear-y-sdd-como-proceso.md) | Aceptado |
+| 0009 | [Crystal Clear + SDD como proceso](0009-crystal-clear-y-sdd-como-proceso.md) | Reemplazado por 0023 |
 | 0010 | [Separar M3 en `access`/`sharing` y extraer `audit`, `realtime`, `notifications`](0010-separacion-de-modulos.md) (DF-02, 03, 30, 34) | Aceptado |
 | 0011 | [Modelo de nodos: tablas separadas `archivo` y `carpeta` con `CHECK` de exclusividad](0011-modelo-de-nodos-dos-tablas-con-check.md) (DF-40) | Propuesto |
 | 0012 | [Versiones por composición con `origen`; `storage` dueño del ciclo de vida](0012-versiones-por-composicion-con-origen.md) (DF-17, 18) | Propuesto |
@@ -26,6 +26,7 @@ Son la base para defender la arquitectura en la exposición final (enunciado §6
 | 0019 | [Eventos de dominio en proceso con `@nestjs/event-emitter`; el contrato lo exporta el productor](0019-eventos-de-dominio-en-proceso.md) (arista `billing → identity`) | Aceptado |
 | 0020 | [Validación HTTP con zod desde `packages/contracts`](0020-validacion-http-con-zod-desde-contracts.md) (enmienda ADR-0015 b) | Aceptado |
 | 0021 | [Mantenimiento sin actor bajo RLS: función `SECURITY DEFINER` mínima y RLS también en `carga`](0021-mantenimiento-sin-actor-bajo-rls-y-rls-en-carga.md) (enmienda ADR-0005; DF-52, PD-19) | Propuesto |
+| 0023 | [SDD express desde la Fase 2: plan obligatorio, artefactos cortos y un PR por spec](0023-sdd-express-desde-la-fase-2.md) (reemplaza 0009; cambia constitución Art. I.2) | Aceptado |
 
 Estados: `Pendiente` (sin redactar) · `Propuesto` (redactado, falta acuerdo del equipo) · `Aceptado` · `Reemplazado por`.
 Los ADR 0001, 0002, 0008, 0009, 0014 y 0015 se aceptaron el 26/09/2026 (Adrián, parte de ADR de la T-27 de la spec 000).
@@ -34,6 +35,7 @@ Los ADR 0017 a 0020 los redactó el `architect` con el plan de la spec 001 y los
 (ADR-0017 con Passport, opción c.2). ADR-0020 enmienda la parte b de ADR-0015.
 
 Los ADR 0011, 0012 y 0021 los redactó el `architect` con el plan de la spec 005 (2026-09-28) como `Propuesto`; 0011 y 0012 siguen el E-R vigente y 0021 enmienda ADR-0005.
-La dependencia `@aws-sdk/s3-request-presigner` (plan 005) se registró como adenda de ADR-0015, sin ADR aparte. El 0016 está reservado por la rama de 006a (dinero en centavos y bytes).
+La dependencia `@aws-sdk/s3-request-presigner` (plan 005) se registró como adenda de ADR-0015, sin ADR aparte. El 0016 (dinero en centavos y bytes) y el 0022 (`storage` declara `IPlanLimitsProvider`) están en la rama de 006a.
+El 0023 lo redactó y lo aceptó Adrián el 30/09/2026 al adoptar SDD express; reemplaza al 0009 y cambia el Art. I.2 de la constitución.
 
 Usa `/adr <decisión>` para redactar uno.
