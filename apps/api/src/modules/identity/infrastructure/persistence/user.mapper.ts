@@ -8,8 +8,11 @@ import type { User } from '../../domain/user.entity';
 
 import type { UsuarioOrmEntity } from './usuario.orm-entity';
 
+/** Columnas de `usuario` que `identity` lee y escribe: `espacio_usado` es de `storage` (005 D-5, DF-59). */
+export type UsuarioRow = Omit<UsuarioOrmEntity, 'espacioUsadoBytes'>;
+
 /** `ClientUser` o `InternalUser` según `rol` (design-model M1, herencia de tabla única). */
-export function toUserDomain(row: UsuarioOrmEntity): User {
+export function toUserDomain(row: UsuarioRow): User {
   const common = {
     id: row.id,
     fullName: row.nombre,
@@ -25,7 +28,7 @@ export function toUserDomain(row: UsuarioOrmEntity): User {
 }
 
 /** Fila completa de un cliente; `identity` nunca escribe cuentas internas (las crea 011). */
-export function toUsuarioRow(user: ClientUser): UsuarioOrmEntity {
+export function toUsuarioRow(user: ClientUser): UsuarioRow {
   return {
     id: user.id,
     nombre: user.fullName,
@@ -41,7 +44,7 @@ export function toUsuarioRow(user: ClientUser): UsuarioOrmEntity {
 }
 
 /** `ck_usuario_aceptacion_cliente` impide un cliente sin aceptación; si aparece, es un dato corrupto. */
-function toAcceptance(row: UsuarioOrmEntity): LegalAcceptance {
+function toAcceptance(row: UsuarioRow): LegalAcceptance {
   if (
     row.versionTerminos === null ||
     row.versionPrivacidad === null ||
