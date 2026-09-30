@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
 import {
   BucketAlreadyOwnedByYou,
@@ -85,6 +85,16 @@ export const textBytes = (size: number, seed = 'nimbo'): Buffer => {
   return Buffer.alloc(size, unit);
 };
 
+/** Cabecera fija que no es de ningún ejecutable (PE, ELF, Mach-O): los bytes pasan como «otros» (CA-12). */
+const OTHER_HEADER = Buffer.from('NIMBO-BIN', 'latin1');
+
+/** Bytes aleatorios de un archivo «otros» (p. ej. `.bin`), del tamaño pedido. */
+export const otherBytes = (size: number): Buffer => {
+  const bytes = randomBytes(size);
+  OTHER_HEADER.copy(bytes, 0);
+  return bytes;
+};
+
 /** `PUT` directo a una URL prefirmada, como el navegador (los bytes no pasan por la API, DF-16). */
 export const putToSignedUrl = (url: string, body: Uint8Array): Promise<globalThis.Response> =>
   fetch(url, { method: 'PUT', body });
@@ -135,15 +145,28 @@ export const uploadBytes = async (initBody: InitBody, bytes: Buffer): Promise<vo
     await expectOk(putToSignedUrl(initBody.upload.url, bytes));
     return;
   }
+  await uploadParts(initBody.parts, initBody.partSizeBytes, bytes);
+};
+
+/** Sube, en paralelo, el trozo de `bytes` que le toca a cada parte firmada (las de un inicio o de un `resume`). */
+export const uploadParts = async (
+  parts: readonly SignedPart[],
+  partSizeBytes: number,
+  bytes: Buffer,
+): Promise<void> => {
   await Promise.all(
-    initBody.parts.map((part) => {
-      const start = (part.partNumber - 1) * initBody.partSizeBytes;
-      return expectOk(
-        putToSignedUrl(part.url, bytes.subarray(start, start + initBody.partSizeBytes)),
-      );
+    parts.map((part) => {
+      const start = (part.partNumber - 1) * partSizeBytes;
+      return expectOk(putToSignedUrl(part.url, bytes.subarray(start, start + partSizeBytes)));
     }),
   );
 };
+
+/** URL firmada de una parte. */
+export interface SignedPart {
+  readonly partNumber: number;
+  readonly url: string;
+}
 
 export type InitBody =
   | { uploadId: string; mode: 'simple'; name: string; upload: SignedTarget }
@@ -153,7 +176,7 @@ export type InitBody =
       name: string;
       partSizeBytes: number;
       totalParts: number;
-      parts: { partNumber: number; url: string }[];
+      parts: SignedPart[];
     };
 
 const expectOk = async (pending: Promise<globalThis.Response>): Promise<void> => {
@@ -257,11 +280,13 @@ export interface UploadRow {
   readonly motivo_rechazo: string | null;
   readonly clave_objeto: string;
   readonly archivo_id: string;
+  /** Id del multipart en MinIO; `null` en una carga simple. */
+  readonly upload_id: string | null;
 }
 
 export const uploadRow = async (owner: DataSource, uploadId: string): Promise<UploadRow> => {
   const rows = (await owner.query(
-    'SELECT estado, motivo_rechazo, clave_objeto, archivo_id FROM carga WHERE id = $1',
+    'SELECT estado, motivo_rechazo, clave_objeto, archivo_id, upload_id FROM carga WHERE id = $1',
     [uploadId],
   )) as UploadRow[];
   const [row] = rows;

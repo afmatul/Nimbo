@@ -448,7 +448,7 @@ salvo la lectura por rango del detector.
   Sin código de producción nuevo salvo el fallo que estas pruebas destapen.
   Archivos: `apps/api/test/int/storage/{uploads-simple,uploads-limits,uploads-validation,uploads-name-conflict,uploads-quota-concurrency,rate-limit}.int-spec.ts`.
 
-- [ ] **T-44** Integración HTTP: partes, reanudación, carrera, tipo, descarga y bitácora — CA: CA-2, CA-5, CA-8, CA-10, CA-11, CA-12, CA-13, CA-14, CA-15, CA-20, CA-22 — Depende: T-43 — ~4 h
+- [x] **T-44** Integración HTTP: partes, reanudación, carrera, tipo, descarga y bitácora — CA: CA-2, CA-5, CA-8, CA-10, CA-11, CA-12, CA-13, CA-14, CA-15, CA-20, CA-22 — Depende: T-43 — ~4 h
   `uploads-multipart.int-spec.ts` (MinIO real, SHA-256 de origen y destino, partes faltantes, `NoSuchUpload` con
   objeto ya completado, doble `complete` → un solo archivo), `uploads-resume.int-spec.ts`, `uploads-cancel.int-spec.ts`
   y la carrera `complete` ∥ `cancel`: nunca un `archivo` sin objeto. `uploads-file-type.int-spec.ts` con el bucket
