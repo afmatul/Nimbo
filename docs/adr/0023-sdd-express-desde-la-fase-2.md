@@ -2,9 +2,9 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Propuesto |
+| Estado | Aceptado (2026-09-30, Adrián) |
 | Fecha | 2026-09-30 |
-| Decisores | Adrián (diseñador principal); pendiente el acuerdo del equipo (la constitución cambia, ADR-0009) |
+| Decisores | Adrián (diseñador principal), con el cambio del Art. I.2 de la constitución |
 | Specs relacionadas | todas desde la Fase 2; reemplaza a ADR-0009 |
 
 ## Contexto

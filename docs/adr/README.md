@@ -26,7 +26,7 @@ Son la base para defender la arquitectura en la exposición final (enunciado §6
 | 0019 | [Eventos de dominio en proceso con `@nestjs/event-emitter`; el contrato lo exporta el productor](0019-eventos-de-dominio-en-proceso.md) (arista `billing → identity`) | Aceptado |
 | 0020 | [Validación HTTP con zod desde `packages/contracts`](0020-validacion-http-con-zod-desde-contracts.md) (enmienda ADR-0015 b) | Aceptado |
 | 0021 | [Mantenimiento sin actor bajo RLS: función `SECURITY DEFINER` mínima y RLS también en `carga`](0021-mantenimiento-sin-actor-bajo-rls-y-rls-en-carga.md) (enmienda ADR-0005; DF-52, PD-19) | Propuesto |
-| 0023 | [SDD express desde la Fase 2: plan obligatorio, artefactos cortos y un PR por spec](0023-sdd-express-desde-la-fase-2.md) (reemplaza 0009; cambia constitución Art. I.2) | Propuesto |
+| 0023 | [SDD express desde la Fase 2: plan obligatorio, artefactos cortos y un PR por spec](0023-sdd-express-desde-la-fase-2.md) (reemplaza 0009; cambia constitución Art. I.2) | Aceptado |
 
 Estados: `Pendiente` (sin redactar) · `Propuesto` (redactado, falta acuerdo del equipo) · `Aceptado` · `Reemplazado por`.
 Los ADR 0001, 0002, 0008, 0009, 0014 y 0015 se aceptaron el 26/09/2026 (Adrián, parte de ADR de la T-27 de la spec 000).
@@ -36,6 +36,6 @@ Los ADR 0017 a 0020 los redactó el `architect` con el plan de la spec 001 y los
 
 Los ADR 0011, 0012 y 0021 los redactó el `architect` con el plan de la spec 005 (2026-09-28) como `Propuesto`; 0011 y 0012 siguen el E-R vigente y 0021 enmienda ADR-0005.
 La dependencia `@aws-sdk/s3-request-presigner` (plan 005) se registró como adenda de ADR-0015, sin ADR aparte. El 0016 (dinero en centavos y bytes) y el 0022 (`storage` declara `IPlanLimitsProvider`) están en la rama de 006a.
-El 0023 lo redactó Adrián el 30/09/2026 al adoptar SDD express; queda `Propuesto` hasta el acuerdo del equipo (ADR-0009 lo exige para cambiar la constitución).
+El 0023 lo redactó y lo aceptó Adrián el 30/09/2026 al adoptar SDD express; reemplaza al 0009 y cambia el Art. I.2 de la constitución.
 
 Usa `/adr <decisión>` para redactar uno.
