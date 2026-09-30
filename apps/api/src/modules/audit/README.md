@@ -4,7 +4,7 @@
 - **Diagrama de origen**: T2 en `docs/sdd/design-model.md` §3 y `docs/design/diagramas/`.
 - **Responsabilidad**: `AuditService`, `AuditEntry`; implementa `IAuditLogger`.
 - **Puede depender de**: shared (`docs/sdd/architecture.md` §3; el lint de fronteras lo hace cumplir).
-- **Specs que lo construyen**: 004.
+- **Specs que lo construyen**: 005 (puerto `IAuditLogger`, catálogo `AuditAction` y adaptador provisional `LogAuditLogger` sobre Pino, D-11) y 004 (persistencia).
 
 ## Capas (`docs/sdd/architecture.md` §4)
 
