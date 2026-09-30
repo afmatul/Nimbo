@@ -1,9 +1,15 @@
 import type { DataSource } from 'typeorm';
 
 import { AgregarEspacioUsadoAUsuario20260930100000 } from '../../../src/migrations/20260930100000-agregar-espacio-usado-a-usuario';
+import { CrearArchivoYVersionArchivo20260930100100 } from '../../../src/migrations/20260930100100-crear-archivo-y-version-archivo';
 import { connectAsOwner } from '../../support/database-urls';
 
-import { columnsOf, inRolledBackTransaction, insertAccount } from './storage-test-db';
+import {
+  columnsOf,
+  inRolledBackTransaction,
+  insertAccount,
+  insertFileWithVersion,
+} from './storage-test-db';
 
 /**
  * Migraciones de 005 (plan §4) sobre el Postgres del arnés, como el dueño de las tablas. Cada caso corre en una
@@ -56,5 +62,136 @@ describe('migración agregar-espacio-usado-a-usuario (CA-4, RN-10)', () => {
 
     expect(afterDown).not.toHaveProperty('espacio_usado');
     expect(afterUp).toHaveProperty('espacio_usado');
+  });
+});
+
+describe('migración crear-archivo-y-version-archivo (CA-1, CA-6)', () => {
+  it('CA-1: `archivo` y `version_archivo` tienen las columnas del plan, bytes en `bigint` y sin columnas de más', async () => {
+    const [file, version] = await inRolledBackTransaction(owner, async (runner) => [
+      await columnsOf(runner, 'archivo'),
+      await columnsOf(runner, 'version_archivo'),
+    ]);
+
+    expect(Object.keys(file).sort()).toEqual([
+      'actualizado_en',
+      'creado_en',
+      'eliminado_en',
+      'id',
+      'nombre',
+      'propietario_id',
+      'tamano_bytes',
+      'tipo',
+      'version_actual_id',
+    ]);
+    expect(Object.keys(version).sort()).toEqual([
+      'archivo_id',
+      'clave_objeto',
+      'creada_en',
+      'creado_por',
+      'id',
+      'origen',
+      'tamano_bytes',
+    ]);
+    expect(file['tamano_bytes']?.type).toBe('bigint');
+    expect(version['tamano_bytes']?.type).toBe('bigint');
+  });
+
+  it('CA-1: la FK `version_actual_id` es diferida: `archivo` se inserta antes que su versión', async () => {
+    const ids = await inRolledBackTransaction(owner, async (runner) =>
+      insertFileWithVersion(runner, await insertAccount(runner)),
+    );
+
+    expect(ids.fileId).toEqual(expect.any(String));
+  });
+
+  it('CA-1: sin su versión, `archivo` no pasa la comprobación diferida', async () => {
+    await expect(
+      inRolledBackTransaction(owner, async (runner) => {
+        const ownerId = await insertAccount(runner);
+        await runner.query(
+          `INSERT INTO archivo (id, propietario_id, nombre, tipo, tamano_bytes, version_actual_id, creado_en,
+                                actualizado_en)
+           VALUES (gen_random_uuid(), $1, 'huerfano.pdf', 'pdf', 1, gen_random_uuid(), now(), now())`,
+          [ownerId],
+        );
+        await runner.query('SET CONSTRAINTS fk_archivo_version_actual IMMEDIATE');
+      }),
+    ).rejects.toThrow(/fk_archivo_version_actual/);
+  });
+
+  it('CA-6: el mismo nombre sin distinguir mayúsculas se rechaza por propietario (`uq_archivo_propietario_nombre`)', async () => {
+    await expect(
+      inRolledBackTransaction(owner, async (runner) => {
+        const ownerId = await insertAccount(runner);
+        await insertFileWithVersion(runner, ownerId, { name: 'Ñandú.pdf' });
+        await insertFileWithVersion(runner, ownerId, { name: 'ñandú.PDF' });
+      }),
+    ).rejects.toThrow(/uq_archivo_propietario_nombre/);
+  });
+
+  it('CA-6: el nombre se repite si el otro está en la papelera o es de otro propietario', async () => {
+    const inserted = await inRolledBackTransaction(owner, async (runner) => {
+      const ana = await insertAccount(runner);
+      const bruno = await insertAccount(runner);
+      await insertFileWithVersion(runner, ana, { name: 'plan.pdf', deletedAt: new Date() });
+      await insertFileWithVersion(runner, ana, { name: 'plan.pdf' });
+      await insertFileWithVersion(runner, bruno, { name: 'plan.pdf' });
+      return 3;
+    });
+
+    expect(inserted).toBe(3);
+  });
+
+  it.each([
+    ['archivo', 'UPDATE archivo SET tamano_bytes = 0'],
+    ['version_archivo', 'UPDATE version_archivo SET tamano_bytes = 0'],
+    ['archivo', "UPDATE archivo SET tipo = 'exe'"],
+    ['version_archivo', "UPDATE version_archivo SET origen = 'copia'"],
+  ])('CA-1: los CHECK de `%s` rechazan `%s`', async (_table, statement) => {
+    await expect(
+      inRolledBackTransaction(owner, async (runner) => {
+        await insertFileWithVersion(runner, await insertAccount(runner));
+        await runner.query(statement);
+      }),
+    ).rejects.toThrow(/violates check constraint/);
+  });
+
+  it('CA-1: `clave_objeto` es única', async () => {
+    await expect(
+      inRolledBackTransaction(owner, async (runner) => {
+        const first = await insertFileWithVersion(runner, await insertAccount(runner));
+        const second = await insertFileWithVersion(runner, await insertAccount(runner));
+        await runner.query(
+          `UPDATE version_archivo SET clave_objeto = (SELECT clave_objeto FROM version_archivo WHERE id = $1)
+            WHERE id = $2`,
+          [first.versionId, second.versionId],
+        );
+      }),
+    ).rejects.toThrow(/duplicate key/);
+  });
+
+  it('CA-1: el `down` borra ambas tablas y el `up` las recrea con sus índices', async () => {
+    const migration = new CrearArchivoYVersionArchivo20260930100100();
+
+    const [afterDown, indexes] = await inRolledBackTransaction(owner, async (runner) => {
+      await migration.down(runner);
+      const [tables] = (await runner.query(
+        "SELECT to_regclass('archivo')::text AS archivo, to_regclass('version_archivo')::text AS version",
+      )) as { archivo: string | null; version: string | null }[];
+      await migration.up(runner);
+      const rows = (await runner.query(
+        "SELECT indexname FROM pg_indexes WHERE tablename IN ('archivo', 'version_archivo') ORDER BY indexname",
+      )) as { indexname: string }[];
+      return [tables, rows.map((row) => row.indexname)] as const;
+    });
+
+    expect(afterDown).toEqual({ archivo: null, version: null });
+    expect(indexes).toEqual(
+      expect.arrayContaining([
+        'idx_archivo_propietario_creado',
+        'idx_version_archivo_archivo',
+        'uq_archivo_propietario_nombre',
+      ]),
+    );
   });
 });

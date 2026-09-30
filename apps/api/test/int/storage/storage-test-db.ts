@@ -73,3 +73,44 @@ export const columnsOf = async (
     ]),
   );
 };
+
+export interface FileRowOptions {
+  readonly name?: string;
+  readonly sizeBytes?: bigint;
+  readonly deletedAt?: Date | null;
+}
+
+/**
+ * Inserta `archivo` y su `version_archivo` en la misma transacción (la FK `version_actual_id` es diferida) y devuelve
+ * ambos ids. La clave de objeto sigue el formato `u/{propietario}/{archivo}/{version}`.
+ */
+export const insertFileWithVersion = async (
+  runner: Pick<QueryRunner, 'query'>,
+  ownerId: string,
+  options: FileRowOptions = {},
+): Promise<{ fileId: string; versionId: string }> => {
+  const fileId = randomUUID();
+  const versionId = randomUUID();
+  const size = String(options.sizeBytes ?? 1024n);
+  const now = new Date();
+  await runner.query(
+    `INSERT INTO archivo (id, propietario_id, nombre, tipo, tamano_bytes, version_actual_id, creado_en,
+                          actualizado_en, eliminado_en)
+     VALUES ($1, $2, $3, 'pdf', $4, $5, $6, $6, $7)`,
+    [
+      fileId,
+      ownerId,
+      options.name ?? `informe-${fileId}.pdf`,
+      size,
+      versionId,
+      now,
+      options.deletedAt ?? null,
+    ],
+  );
+  await runner.query(
+    `INSERT INTO version_archivo (id, archivo_id, origen, clave_objeto, tamano_bytes, creado_por, creada_en)
+     VALUES ($1, $2, 'carga', $3, $4, $5, $6)`,
+    [versionId, fileId, `u/${ownerId}/${fileId}/${versionId}`, size, ownerId, now],
+  );
+  return { fileId, versionId };
+};
