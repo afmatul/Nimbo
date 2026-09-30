@@ -592,3 +592,26 @@ salvo la lectura por rango del detector.
   `clear`).
 - **Pendiente para seguimiento**: la barra lateral de `AppLayout` sigue con los `href="#…"` de 003; revisión del
   `ui-designer` de la página montada a 360 y 1440 px; guion de demo (T-55) con Docker y la API de `feat/005-api`.
+
+### Traspaso PR-F (2026-09-30)
+
+- **Fusión con `main`** (`0cfe864`): trae 003 PR-F (áreas de cliente e interno, `e581c72`) y 002 (recuperación de
+  contraseña). El layout de `(cliente)` queda como `RequireRole(CLIENT_ROLES)` → `SessionUploadsProvider` → páginas:
+  un rol interno no llega a montar el proveedor de cargas. Su prueba une CA-17 (003) y CA-21 (005) en jsdom.
+  `lib/error-catalog.ts` y su prueba cubren a la vez `SHARED_ERROR_CODES` y `STORAGE_ERROR_CODES`.
+- **Barra lateral**: `main` no la había resuelto; «Mis Archivos» enlaza a `/archivos` (`e443562`). Los otros cuatro
+  ítems siguen con `#…` hasta que existan sus páginas.
+- **Auditoría de UI cerrada**: UI-1 (`17e3ced`, soltar fuera de la zona no navega), UI-2 y UI-3 (`51df419`, anuncios
+  del panel y nombre de minimizar/expandir), UI-4 (`2465b8d`, panel en 360 px; utilidad `pb-safe` nueva en
+  `globals.css`), UI-5 (`6b06dfa`, «Suelta para subir» fijo y anunciado), UI-7 y UI-8 (`1055955`, `headingLevel` de
+  `StateView` y tamaño bajo el nombre en móvil).
+- **Pendientes de la auditoría (seguimiento)**: UI-6 (esqueleto de carga del listado) y las sugerencias UI-9 a
+  UI-15. `pb-safe` solo actúa cuando el layout raíz declare `viewportFit: 'cover'` (hoy no lo hace; es decisión
+  transversal).
+- **Suites** (raíz): `pnpm lint` y `pnpm typecheck` en verde; `pnpm test`: api 745, contracts 223, web 558, worker
+  34, config 7. `web` corre con la mitad de los núcleos y espera hasta 5 s en `findBy`/`waitFor` (`404d23a`): al
+  correr junto a `api`, 002 `reset-password-view` caducaba por contención. **Queda intermitente** la guarda R-8 de
+  `redact-deep` (`api`, spec 000): bajo carga midió 164 µs contra 150 µs en 1 de 3 corridas; sola pasa. No se tocó
+  (la guarda es de otra spec); decidirlo con su dueño.
+- **T-56/T-57** siguen como en la nota anterior (dependen del README de `storage` de PR-E). T-55 (humana) sin
+  empezar.
