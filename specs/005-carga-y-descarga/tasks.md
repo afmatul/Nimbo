@@ -488,7 +488,7 @@ salvo la lectura por rango del detector.
   lo recibe.
   Archivos: `apps/api/src/modules/storage/application/ports/i-expired-upload.scanner.port.ts`, `apps/api/src/modules/storage/infrastructure/persistence/sql-expired-upload.scanner.ts`, `apps/api/test/int/storage/expired-upload.scanner.int-spec.ts`, `apps/api/src/modules/storage/index.spec.ts`.
 
-- [ ] **T-49** `UploadCleanupProcessor` y programa repetible — CA: CA-9 — Depende: T-36, T-48 — ~3 h
+- [x] **T-49** `UploadCleanupProcessor` y programa repetible — CA: CA-9 — Depende: T-36, T-48 — ~3 h
   Prueba primero `upload-cleanup.processor.spec.ts` con cola y scanner falsos: `concurrency: 1`, `attempts: 3`,
   espera exponencial. Fase 1: `ITransactionRunner.run` (sin actor) llama al scanner. Fase 2: por fila,
   `withActor(createActor(propietarioId, Role.CLIENT), () => uploadService.expire(...))`. Un fallo de fila se registra
