@@ -102,6 +102,25 @@ Pruebas: `upload-cleanup.processor.spec.ts` y `upload-cleanup.scheduler.spec.ts`
 `test/isolation/storage-maintenance.iso-spec.ts`. Esta última exige que el dueño de las tablas **no** sea superusuario;
 `pnpm test:isolation` la corre así.
 
+## Aplicación, infraestructura y rutas (005, PR-D)
+
+| Pieza                                      | Rol                                                                                                |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| `UploadService`                            | `init` (reserva de cuota y URLs prefirmadas), `resume`, `complete`, `cancel`, `expire`             |
+| `UploadRegistrar`                          | Paso final de `complete`: CAS `activa → completada`, nombre definitivo, `archivo` + versión, cuota |
+| `QuotaService`                             | Máximo por archivo y cuota total con reservas de cargas activas (`QuotaPolicy`)                    |
+| `FileService`                              | Listado paginado y URL de descarga de 300 s                                                        |
+| `IObjectStorage` → `MinioStorageAdapter`   | Multipart, URLs prefirmadas (`Content-Length` firmado), `headObject`, `getRange`, purga real       |
+| `IFileTypeDetector` → `MagicBytesDetector` | Tipo real por firma; rechaza ejecutables y texto disfrazado                                        |
+
+Rutas (solo `CLIENT`; roles internos → 403, sin token → 401; un id que no es UUID responde el mismo 404 que uno
+inexistente): `POST /uploads`, `POST /uploads/:uploadId/resume`, `POST /uploads/:uploadId/complete`,
+`DELETE /uploads/:uploadId`, `GET /files`, `POST /files/:fileId/download-url`. `init` y `download-url` pasan por
+`IRateLimiter`.
+
+- Pruebas HTTP: `apps/api/test/int/storage/*.int-spec.ts` (`pnpm test:int`); aislamiento:
+  `apps/api/test/isolation/storage.iso-spec.ts` (`pnpm test:isolation`).
+
 ## Flujo de carga directa (005)
 
 Los bytes **no pasan por la API** (DF-16): el navegador sube directo a MinIO con URLs prefirmadas y la API solo

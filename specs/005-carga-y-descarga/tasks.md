@@ -581,16 +581,13 @@ salvo la lectura por rango del detector.
   `NoSuchUpload` (el adaptador ya lo tolera). `ListMultipartUploads` sigue listando el `uploadId`; la API no lo usa.
   Es una red de seguridad, no reemplaza `upload-cleanup` (PR-E).
 - **T-47 hecha**: `storage/index.ts` ya exportaba solo `StorageModule`, `I_PLAN_LIMITS_PROVIDER` y los tipos
-  `IPlanLimitsProvider`/`PlanLimits`, y `index.spec.ts` lo fija; sin cambios de código. El README de `storage` **no**
-  se tocó en PR-D: lo escribe PR-E (T-56). Debe agregar: (1) «API pública»: lo que exporta `index.ts` (y que
-  `StorageWorkerModule` llega con T-51); (2) el flujo init → `PUT` directo a MinIO con URL prefirmada (`Content-Length`
-  firmado; por partes por encima del umbral) → complete (`listParts` como fuente de verdad, tamaño real, tipo por
-  firmas, CAS final) y la descarga con URL de 300 s y `Content-Disposition: attachment`; (3) la excepción DF-59
-  (`storage` escribe `usuario.espacio_usado`) en una frase; (4) CORS de MinIO solo para los orígenes de `web`
-  (`MINIO_API_CORS_ALLOW_ORIGIN` = `CORS_ORIGIN`) y que MinIO limpia multipart abandonados por su cuenta a las 24 h
-  (red de seguridad; `upload-cleanup` es la limpieza real), con enlace a `plan.md` §8; (5) actualizar la viñeta de
-  `IExpiredUploadScanner` («llega con PR-E») y las rutas de prueba (`test/int/storage/*`, `storage.iso-spec.ts`,
-  `storage-maintenance.iso-spec.ts`).
+  `IPlanLimitsProvider`/`PlanLimits`, y `index.spec.ts` lo fija; sin cambios de código. README de `storage` con la API
+  pública, las piezas del PR-D y las rutas en `4bb763a` (sesión en la nube, en paralelo). PR-E (T-52, T-56) completa
+  el README con la limpieza, el flujo de carga directa, DF-59 y el resultado de T-46 (CORS y red de seguridad de MinIO).
+- **Cierre T-47 en Linux** (sesión en la nube, Node 22.22.2, pnpm 10.33.0, sobre `4bb763a`): `pnpm lint`,
+  `pnpm typecheck` y `pnpm test` en verde (raíz 3 / 34, `config` 2 / 28, `contracts` 11 / 221, `web` 64 / 272, `api`
+  116 / 1068); `int` e `iso` no se repitieron ahí (sin imagen de MinIO). Esa sesión dejó T-46 bloqueada (`quay.io`
+  denegado); se hizo después en Windows (arriba).
 - **Suites ejecutadas tras fusionar `main`** (`ca82e96` + T-46/T-44; Windows 11, Docker 29.4.0, Testcontainers sin
   nombres fijos, 2026-09-30; máquina con carga alta de otros procesos): lint y typecheck en verde; unitarias: api 119
   suites / 1105 pruebas, web 77 / 359, contracts 11 / 223, config 2 / 28, raíz 3 / 34, worker sin pruebas;
@@ -610,7 +607,7 @@ salvo la lectura por rango del detector.
   typecheck en verde; unitarias api 119 suites / 1105 pruebas, web 77 / 359, contracts 11 / 223, config 2 / 28;
   `pnpm test:int -- test/int/storage` 18 / 200; `pnpm test:isolation` 9 / 115. Inestables con carga (ver nota de
   traspaso en `tasks.md`): el umbral de tiempo de `redact-deep.spec.ts` y las dos aserciones de plan de
-  `node.repository.int-spec.ts`. El README de `storage` llega con PR-E (T-56).»
+  `node.repository.int-spec.ts`. El README de `storage` se completa con PR-E (T-52, T-56).»
 - **Fallo de producción corregido en T-44** (`01e669e`): dos `complete` simultáneos de la misma carga: el perdedor del
   CAS final respondía 404 aunque el archivo existía (ahora responde el mismo archivo), y si el otro ya había cerrado el
   multipart, `completeMultipart` lanzaba `NoSuchUpload` → 500. El puerto `IObjectStorage.completeMultipart` ahora
