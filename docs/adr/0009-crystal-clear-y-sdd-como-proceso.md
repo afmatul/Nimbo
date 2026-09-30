@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Aceptado (2026-09-26, Adrián) |
+| Estado | Reemplazado por [ADR-0023](0023-sdd-express-desde-la-fase-2.md) (2026-09-30); Aceptado el 2026-09-26 (Adrián) |
 | Fecha | 2026-09-15 |
 | Decisores | equipo Nimbo (4 integrantes) |
 | Specs relacionadas | 000 (materializa CI, protección de `main`, plantillas y flujo de PR); todas |

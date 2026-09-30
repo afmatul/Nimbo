@@ -4,7 +4,7 @@ Spec-Driven Development: la especificación es el artefacto principal y el códi
 Desde la Fase 2 (30/09/2026) el equipo usa la variante **express**: el **plan es obligatorio y se aprueba antes de
 escribir código**, pero cada artefacto es corto, las tareas son pocas y verticales, y cada spec es una rama y un PR.
 Las garantías no negociables no cambian: pruebas primero, aislamiento entre cuentas, migraciones reversibles, ADR
-para dependencias nuevas, y `design-findings.md` y `pendientes.md` al día.
+para dependencias nuevas, y `design-findings.md` y `pendientes.md` al día. Decisión: ADR-0023 (reemplaza a ADR-0009).
 Encaja con Crystal Clear: la reunión de **planificación** de cada fase decide qué specs entran y quién es dueño;
 la reunión de **revisión** verifica las specs terminadas.
 
