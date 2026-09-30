@@ -565,3 +565,27 @@ salvo la lectura por rango del detector.
 - Objetos huérfanos entre el CAS y el borrado están aceptados (R-7). No agregar un barrido de objetos sin
   `version_archivo` en esta spec.
 - Si una tarea supera 4 h, parar y pedir que se parta. No adelantar métricas, eventos, carpetas, «Reemplazar» ni toast.
+
+### Traspaso PR-D (2026-09-29)
+
+- **Hechas**: T-31…T-43 (T-43 en `ec4304b`). Las casillas de T-01…T-42 no están marcadas en este archivo aunque sus
+  commits existen; no se tocaron.
+- **Siguen** (en orden): T-44 → T-45 → T-46 (spike, en el worktree `005-spike`, rama `spike/005-minio`, tras fusionar
+  `feat/005-api`) → T-47. Ninguna está empezada.
+- **Arnés de T-43, a reutilizar en T-44** (`apps/api/test/int/storage/storage-http.ts`): `createStorageHttpApp({ env,
+  limits })` monta `StorageModule` real + `PlanLimitsBindingModule` con el token sustituido por `FakePlanLimitsProvider`
+  (`storage.limits.setLimits(...)`), bucket propio **versionado** `nimbo-storage-http`, `MINIO_PUBLIC_ENDPOINT` = alias
+  del MinIO del arnés (`localhost` ↔ `127.0.0.1`; `storage.publicHost` para afirmar el host de CA-14) y parte/umbral de
+  5 MiB (un archivo de > 5 MiB ya es por partes). `newClient()` inserta la cuenta como dueño y devuelve las rutas con
+  token; `client.upload(name, bytes, onConflict)` hace init → PUT → complete. Utilidades: `uploadBytes`,
+  `putToSignedUrl`, `textBytes`, `sha256`, `uploadRow`, `countRows`, `usedBytesOf`, `insertCommittedFile`,
+  `storage.versionsOf/readObject/putObject` (inspección directa del bucket con credenciales raíz).
+- **Trampas encontradas**: (1) `insertFileWithVersion` exige transacción (FK diferida) → usar `insertCommittedFile`.
+  (2) `pnpm test:int -- <ruta> -t x` pasa `-t` como patrón de archivo: sin `--`. (3) Para simular un tamaño real
+  distinto del declarado, subir por fuera con `storage.putObject(clave, …)` (la clave sale de `uploadRow`); la URL
+  prefirmada fija el `Content-Length`. (4) Los `.txt` deben ser UTF-8 válido o el detector los rechaza.
+- **Fallo de producción corregido en T-43**: `FileService.list` y `getDownloadUrl` no abrían `withActor` (500 en
+  `GET /files`). Ahora sí; conviene que T-44/T-45 cubran `download-url` real (aún sin prueba HTTP).
+- **CA-5** quedó cubierto en `uploads-validation.int-spec.ts` (el plan §8 lo ubica ahí), aunque la tarea lo lista en T-44.
+- **Bloqueos**: ninguno. Docker y Testcontainers funcionan (`pnpm test:int` storage: 161 en verde; unitarias api 1065).
+- **Decisiones pendientes**: ninguna nueva.
