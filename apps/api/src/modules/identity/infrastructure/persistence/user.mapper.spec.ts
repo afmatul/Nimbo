@@ -5,11 +5,11 @@ import { ClientUser } from '../../domain/client-user.entity';
 import { InternalUser } from '../../domain/internal-user.entity';
 
 import { toUserDomain, toUsuarioRow } from './user.mapper';
-import type { UsuarioOrmEntity } from './usuario.orm-entity';
+import type { UsuarioRow } from './user.mapper';
 
 const PHC = '$argon2id$v=19$m=19456,t=2,p=1$c2FsdA$aW50ZXJuYQ';
 
-const anInternalRow = (): UsuarioOrmEntity => ({
+const anInternalRow = (): UsuarioRow => ({
   id: '0b7d4c1e-5f6a-4b8c-9d0e-1f2a3b4c5d6e',
   nombre: 'Soporte Nimbo',
   correo: 'soporte@nimbo.me',

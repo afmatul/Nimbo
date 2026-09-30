@@ -20,6 +20,9 @@ const minimalWorkerEnv = (): NodeJS.ProcessEnv => ({
   WORKER_PORT: '3998',
   DATABASE_URL: 'postgres://nimbo:nimbo@localhost:5432/nimbo',
   REDIS_URL: 'redis://localhost:6379',
+  MINIO_ENDPOINT: 'http://localhost:9000',
+  MINIO_ACCESS_KEY: 'nimbo',
+  MINIO_SECRET_KEY: 'nimbo-secret',
   SMTP_HOST: 'localhost',
   SMTP_PORT: '1025',
   SMTP_TLS: 'none',
@@ -98,11 +101,11 @@ describe('bootstrap del worker (CA-18, CA-21)', () => {
     ]);
   });
 
-  it('CA-21: `worker.started` lista las colas `ping` y `mail`', async () => {
+  it('CA-21, 005 CA-9: `worker.started` lista las colas `ping`, `mail` y `upload-cleanup`', async () => {
     const env = { ...process.env, WORKER_PORT: String(await freePort()) };
 
     const started = await waitForWorkerStarted(env);
 
-    expect(started.queues).toEqual(['ping', 'mail']);
+    expect(started.queues).toEqual(['ping', 'mail', 'upload-cleanup']);
   });
 });

@@ -13,7 +13,7 @@ export {
   UnauthenticatedError,
   UnauthorizedError,
 } from './domain/errors';
-export type { FieldIssue } from './domain/errors';
+export type { ErrorDetails, FieldIssue } from './domain/errors';
 export { FixedClock } from './domain/fixed.clock';
 export { I_CLOCK } from './domain/i-clock.port';
 export type { IClock } from './domain/i-clock.port';
@@ -52,6 +52,7 @@ export { redactDeep } from './infrastructure/logging/redact-deep';
 export { MinioHealthIndicator } from './infrastructure/health/minio.health-indicator';
 export { PostgresHealthIndicator } from './infrastructure/health/postgres.health-indicator';
 export { RedisHealthIndicator } from './infrastructure/health/redis.health-indicator';
+export { BIGINT_TRANSFORMER } from './infrastructure/persistence/bigint.transformer';
 export { buildDataSourceOptions } from './infrastructure/persistence/data-source';
 export { TransactionContext } from './infrastructure/persistence/transaction-context';
 export { REDIS_CLIENT } from './infrastructure/redis/redis-client.provider';

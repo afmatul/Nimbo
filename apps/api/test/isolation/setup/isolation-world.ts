@@ -3,7 +3,19 @@ import { randomUUID } from 'node:crypto';
 import { LEGAL_DOCUMENTS } from '@nimbo/contracts';
 import type { DataSource, EntityManager } from 'typeorm';
 
-import { FixedClock, Role } from '../../../src/shared';
+import { I_NODE_REPOSITORY } from '../../../src/modules/storage/application/ports/i-node.repository.port';
+import type { INodeRepository } from '../../../src/modules/storage/application/ports/i-node.repository.port';
+import { I_QUOTA_REPOSITORY } from '../../../src/modules/storage/application/ports/i-quota.repository.port';
+import type { IQuotaRepository } from '../../../src/modules/storage/application/ports/i-quota.repository.port';
+import { I_UPLOAD_SESSION_REPOSITORY } from '../../../src/modules/storage/application/ports/i-upload-session.repository.port';
+import type { IUploadSessionRepository } from '../../../src/modules/storage/application/ports/i-upload-session.repository.port';
+import { File } from '../../../src/modules/storage/domain/file';
+import { FileName } from '../../../src/modules/storage/domain/file-name.vo';
+import { FileVersion } from '../../../src/modules/storage/domain/file-version';
+import { ObjectKey } from '../../../src/modules/storage/domain/object-key';
+import { UploadSession } from '../../../src/modules/storage/domain/upload-session';
+import { createActor, FixedClock, I_TRANSACTION_RUNNER, Role } from '../../../src/shared';
+import type { Actor, ITransactionRunner } from '../../../src/shared';
 import { createTestApp } from '../../int/setup/test-app';
 import type { TestApp, TestAppOptions } from '../../int/setup/test-app';
 import { connectAsOwner, requiredEnv } from '../../support/database-urls';
@@ -58,6 +70,22 @@ export const aClient = (): AccountBuilder => new AccountBuilder(Role.CLIENT);
 
 export const anInternal = (role: InternalRole): AccountBuilder => new AccountBuilder(role);
 
+/** Tamaño de los archivos y cargas del mundo: igual para las dos cuentas (nada los distingue salvo el `id`). */
+const WORLD_FILE_BYTES = 4096n;
+
+/** Archivo `.txt` del mundo: solo la fila (`archivo` + `version_archivo`); no hay objeto en MinIO. */
+export interface WorldFile {
+  readonly id: string;
+  readonly ownerId: string;
+  readonly name: string;
+}
+
+/** Carga simple `activa` del mundo: solo la fila `carga` (la reserva); no hay objeto en MinIO. */
+export interface WorldUpload {
+  readonly id: string;
+  readonly ownerId: string;
+}
+
 export interface IsolationWorld {
   /** Dos clientes casi idénticos: mismo nombre, estado y fechas; correos que difieren en un carácter. */
   readonly clients: readonly [WorldAccount, WorldAccount];
@@ -66,6 +94,13 @@ export interface IsolationWorld {
   tokenFor(account: WorldAccount): string;
   /** App de Nest conectada como `nimbo_app`, nunca como el dueño (`DatabaseRoleCheck` lo impide). */
   appAs(options?: Omit<TestAppOptions, 'env'>): Promise<TestApp>;
+  /**
+   * Archivos del cliente con esos nombres, insertados **como `nimbo_app` dentro de `withActor`** con los
+   * repositorios de `storage` de `app` (que debe montar `StorageModule`): RLS los valida al escribir (005 T-45).
+   */
+  withFiles(app: TestApp, owner: WorldAccount, names: readonly string[]): Promise<WorldFile[]>;
+  /** Cargas simples activas del cliente, insertadas como `withFiles` (005 T-45). */
+  withUploads(app: TestApp, owner: WorldAccount, count: number): Promise<WorldUpload[]>;
   /** Borra las cuentas del mundo (como el dueño) y cierra su conexión. */
   close(): Promise<void>;
 }
@@ -113,10 +148,93 @@ const nearlyIdenticalEmails = (): readonly [string, string] => {
   return [`ana.lopez.${tag}@ejemplo.com`, `ana.lopes.${tag}@ejemplo.com`];
 };
 
+/** Lo que `withFiles`/`withUploads` toman de una app con `StorageModule`: escriben como `nimbo_app`. */
+const storageWritersOf = (testApp: TestApp) => {
+  const get = <T>(token: symbol | string): T =>
+    testApp.app.get<unknown, T>(token, { strict: false });
+  return {
+    transactions: get<ITransactionRunner>(I_TRANSACTION_RUNNER),
+    nodes: get<INodeRepository>(I_NODE_REPOSITORY),
+    quotas: get<IQuotaRepository>(I_QUOTA_REPOSITORY),
+    sessions: get<IUploadSessionRepository>(I_UPLOAD_SESSION_REPOSITORY),
+  };
+};
+
+const clientActor = (account: WorldAccount): Actor => {
+  if (account.role !== Role.CLIENT) throw new Error('Solo un cliente tiene archivos y cargas');
+  return createActor(account.id, Role.CLIENT);
+};
+
+const insertFiles = async (
+  testApp: TestApp,
+  owner: WorldAccount,
+  names: readonly string[],
+): Promise<WorldFile[]> => {
+  const { transactions, nodes, quotas } = storageWritersOf(testApp);
+  const actor = clientActor(owner);
+  return transactions.withActor(actor, async () => {
+    const files: WorldFile[] = [];
+    for (const name of names) {
+      const now = new Date();
+      const ids = { fileId: randomUUID(), versionId: randomUUID() };
+      const file = File.create({
+        id: ids.fileId,
+        ownerId: owner.id,
+        name: FileName.of(name),
+        kind: 'texto',
+        sizeBytes: WORLD_FILE_BYTES,
+        currentVersionId: ids.versionId,
+        now,
+      });
+      const version = FileVersion.fromUpload({
+        id: ids.versionId,
+        fileId: ids.fileId,
+        objectKey: ObjectKey.of(owner.id, ids.fileId, ids.versionId),
+        sizeBytes: WORLD_FILE_BYTES,
+        createdBy: owner.id,
+        now,
+      });
+      await nodes.insertWithVersion(actor, file, version);
+      await quotas.addUsedBytes(actor, WORLD_FILE_BYTES);
+      files.push({ id: file.id, ownerId: owner.id, name: file.name.value });
+    }
+    return files;
+  });
+};
+
+const insertUploads = async (
+  testApp: TestApp,
+  owner: WorldAccount,
+  count: number,
+): Promise<WorldUpload[]> => {
+  const { transactions, sessions } = storageWritersOf(testApp);
+  const actor = clientActor(owner);
+  return transactions.withActor(actor, async () => {
+    const uploads: WorldUpload[] = [];
+    for (let index = 0; index < count; index += 1) {
+      const session = UploadSession.start({
+        id: randomUUID(),
+        ownerId: owner.id,
+        fileId: randomUUID(),
+        versionId: randomUUID(),
+        name: FileName.of(`carga-${String(index + 1)}.txt`),
+        keepBoth: false,
+        declaredBytes: WORLD_FILE_BYTES,
+        multipart: null,
+        /** Reloj real, como el `UploadService` de la app: la carga vence a las 24 h de ahora. */
+        now: new Date(),
+      });
+      await sessions.insert(actor, session);
+      uploads.push({ id: session.id, ownerId: owner.id });
+    }
+    return uploads;
+  });
+};
+
 /**
  * Mundo de aislamiento (003 CA-15, D-3; plan §6.7). Las cuentas se insertan con el rol **dueño**
  * (`DATABASE_MIGRATION_URL`) porque son *fixtures*, no la aplicación; la app corre como `nimbo_app`. 005 agrega
- * `.withFiles(...)` al *builder*.
+ * `withFiles` y `withUploads`, que sí escriben como `nimbo_app` (con RLS).
  */
 export const createIsolationWorld = async (): Promise<IsolationWorld> => {
   const owner = await connectAsOwner();
@@ -141,10 +259,15 @@ export const createIsolationWorld = async (): Promise<IsolationWorld> => {
       tokens.valid({ userId: account.id, role: account.role, sessionId: randomUUID() }),
     appAs: (options = {}) =>
       createTestApp({ ...options, env: { DATABASE_URL: requiredEnv('DATABASE_URL') } }),
+    withFiles: insertFiles,
+    withUploads: insertUploads,
     close: async () => {
-      await owner.query('DELETE FROM usuario WHERE id = ANY($1)', [
-        accounts.map((account) => account.id),
-      ]);
+      const ids = accounts.map((account) => account.id);
+      await owner.transaction(async (manager) => {
+        await manager.query('DELETE FROM carga WHERE propietario_id = ANY($1)', [ids]);
+        await manager.query('DELETE FROM archivo WHERE propietario_id = ANY($1)', [ids]);
+        await manager.query('DELETE FROM usuario WHERE id = ANY($1)', [ids]);
+      });
       await owner.destroy();
     },
   };

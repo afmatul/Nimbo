@@ -12,9 +12,9 @@ export type MinioConfig = Pick<
 >;
 
 /**
- * Solo la raíz de composición de `api` lo importa: es el único proceso con contrato de MinIO. Así
- * `MinioHealthIndicator` depende de cinco variables y no de la unión de entornos, y no comprueba nada
- * en tiempo de ejecución. Global porque `HealthModule.forRoot` instancia los indicadores en su propio módulo.
+ * Lo importa la raíz de composición de cada proceso que habla con MinIO (`api`; el `worker` desde 005, que comparte
+ * las cinco variables). Así `MinioHealthIndicator` depende de cinco variables y no de la unión de entornos, y no
+ * comprueba nada en tiempo de ejecución. Global porque `HealthModule.forRoot` instancia los indicadores en su propio módulo.
  */
 @Global()
 @Module({})

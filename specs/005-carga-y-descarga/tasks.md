@@ -85,7 +85,7 @@ PR-B + 001-PR-4 + 002-PR-5a + 003-PR-F
   archivos y la reexportación desde `packages/contracts/src/index.ts`. El dominio de `storage` **no** importa este paquete.
   Archivos: `packages/contracts/src/storage/{error-codes,parameters,format-bytes,index}.ts`, `packages/contracts/src/storage/constants.spec.ts`, `packages/contracts/src/index.ts`.
 
-- [ ] **T-02** [P] Esquemas de carga, listado y descarga; `details` en el error — CA: CA-1, CA-2, CA-6, CA-7, CA-13 — Depende: — — ~3 h
+- [x] **T-02** [P] Esquemas de carga, listado y descarga; `details` en el error — CA: CA-1, CA-2, CA-6, CA-7, CA-13 — Depende: — — ~3 h
   Prueba primero `packages/contracts/src/storage/schemas.spec.ts` y ampliar `error.spec.ts`: `initUploadSchema` estricto
   acepta `{ name, sizeBytes, onConflict?: 'ask' | 'keep_both' }` (`onConflict` ausente = `ask`), rechaza nombre vacío,
   tamaño no entero o negativo, y campos de más; `sizeBytes = 0` **pasa el esquema** (el 422 `STORAGE_EMPTY_FILE` lo
@@ -97,7 +97,7 @@ PR-B + 001-PR-4 + 002-PR-5a + 003-PR-F
   un id malformado se distinga de uno inexistente (CA-16: ambos 404; la comprobación vive en el controlador, T-42).
   Archivos: `packages/contracts/src/storage/schemas.ts`, `packages/contracts/src/storage/schemas.spec.ts`, `packages/contracts/src/error.ts`, `packages/contracts/src/error.spec.ts`.
 
-- [ ] **T-03** [P] `FileName` y `ObjectKey` — CA: CA-6, CA-7 — Depende: — — ~3 h
+- [x] **T-03** [P] `FileName` y `ObjectKey` — CA: CA-6, CA-7 — Depende: — — ~3 h
   Prueba primero `file-name.vo.spec.ts`: NFC; recorta espacios; 1–255 puntos de código; rechaza vacío, `/`, `\`, NUL,
   controles, `.` y `..`; `extension()` en minúsculas; `firstFree(taken)` devuelve «base (n).ext» con el primer `n ≥ 1`
   libre, sin distinguir mayúsculas, y «base (n)» si no hay extensión; «Ñ» y «ñ» colisionan. `object-key.spec.ts`:
@@ -105,7 +105,7 @@ PR-B + 001-PR-4 + 002-PR-5a + 003-PR-F
   Sin Nest ni `contracts`. Luego los objetos de valor, inmutables.
   Archivos: `apps/api/src/modules/storage/domain/{file-name.vo,object-key}.ts`, `apps/api/src/modules/storage/domain/{file-name.vo,object-key}.spec.ts`.
 
-- [ ] **T-04** [P] Catálogo `FileKind` y `QuotaPolicy` — CA: CA-3, CA-4, CA-12, CA-23 — Depende: — — ~2 h
+- [x] **T-04** [P] Catálogo `FileKind` y `QuotaPolicy` — CA: CA-3, CA-4, CA-12, CA-23 — Depende: — — ~2 h
   Prueba primero `file-kind.spec.ts`: una tabla `FILE_KIND_CATALOG` (extensión → `kind` + MIME). Imagen = `png`, `jpg`,
   `jpeg`, `gif`, `webp`; `svg`, `bmp` y `heic` son `otro` (D-9). `docx`, `pdf`, `texto` (`txt`, `md`), `xlsx`, `pptx`.
   `quota-policy.spec.ts`: `check(limits, usage, declaredBytes)` es pura; primero el máximo por archivo
@@ -114,7 +114,7 @@ PR-B + 001-PR-4 + 002-PR-5a + 003-PR-F
   ningún byte del catálogo de planes está en el archivo.
   Archivos: `apps/api/src/modules/storage/domain/{file-kind,quota-policy}.ts`, `apps/api/src/modules/storage/domain/{file-kind,quota-policy}.spec.ts`.
 
-- [ ] **T-05** `UploadSession`, `File` y `FileVersion` — CA: CA-8, CA-9, CA-22 — Depende: T-03 — ~3 h
+- [x] **T-05** `UploadSession`, `File` y `FileVersion` — CA: CA-8, CA-9, CA-22 — Depende: T-03 — ~3 h
   Prueba primero `upload-session.spec.ts` con `FixedClock`: estados `activa → completada | rechazada | cancelada | expirada`
   y ninguna otra transición; `isExpired(now)` a las 24 h desde `creadaEn` (constante de dominio, no env); `rechazada`
   exige motivo `tamano` o `tipo_invalido`. `file.spec.ts`: `tamanoBytes > 0`; `FileVersion.origen` solo `carga` en esta
@@ -122,7 +122,7 @@ PR-B + 001-PR-4 + 002-PR-5a + 003-PR-F
   una copia nueva.
   Archivos: `apps/api/src/modules/storage/domain/{upload-session,file,file-version}.ts`, `apps/api/src/modules/storage/domain/{upload-session,file}.spec.ts`.
 
-- [ ] **T-06** Errores de `storage` — CA: CA-3…CA-7, CA-9, CA-10, CA-11, CA-13, CA-19, CA-24 — Depende: T-01 — ~3 h
+- [x] **T-06** Errores de `storage` — CA: CA-3…CA-7, CA-9, CA-10, CA-11, CA-13, CA-19, CA-24 — Depende: T-01 — ~3 h
   Prueba primero `storage-errors.spec.ts`: `InvalidUploadRequestError` e `InvalidQueryError` extienden `DomainError` con
   `status = 400` y `fields` (no se crea una base nueva; `InvalidInputError` de `shared` sigue en 422); `EmptyFileError`,
   `FileTooLargeError`, `QuotaExceededError`, `UploadSizeMismatchError` e `InvalidFileTypeError` extienden
@@ -137,7 +137,7 @@ PR-B + 001-PR-4 + 002-PR-5a + 003-PR-F
   en `STORAGE_ERROR_CODES`. El dominio no importa `contracts`.
   Archivos: `apps/api/src/modules/storage/domain/errors/*.ts`, `apps/api/src/modules/storage/domain/errors/storage-errors.spec.ts`, `apps/api/src/modules/storage/presentation/storage-error-codes.contract.spec.ts`.
 
-- [ ] **T-07** Puerto `IPlanLimitsProvider` y fachada de `storage` — CA: CA-3, CA-4 (puerto), RN-1 — Depende: T-04 — ~2 h
+- [x] **T-07** Puerto `IPlanLimitsProvider` y fachada de `storage` — CA: CA-3, CA-4 (puerto), RN-1 — Depende: T-04 — ~2 h
   Prueba primero `apps/api/src/modules/storage/index.spec.ts`: `storage/index.ts` exporta `I_PLAN_LIMITS_PROVIDER`,
   el tipo `PlanLimits` (`maxFileBytes`, `storageQuotaBytes` y nada más) y `IPlanLimitsProvider.limitsFor(actor)`; no
   exporta `MagicBytesDetector`, `IExpiredUploadScanner`, `LogAuditLogger` ni repositorios. `FakePlanLimitsProvider`
@@ -145,7 +145,7 @@ PR-B + 001-PR-4 + 002-PR-5a + 003-PR-F
   El enlace del token **no** entra en `StorageModule` (llega en `AppModule`, T-42).
   Archivos: `apps/api/src/modules/storage/application/plan-limits.ts`, `apps/api/src/modules/storage/index.ts`, `apps/api/src/modules/storage/index.spec.ts`, `apps/api/test/support/fake-plan-limits.provider.ts`.
 
-- [ ] **T-08** `MagicBytesDetector` — CA: CA-11, CA-12, CA-24 — Depende: T-04 — ~4 h
+- [x] **T-08** `MagicBytesDetector` — CA: CA-11, CA-12, CA-24 — Depende: T-04 — ~4 h
   Prueba primero `magic-bytes.detector.spec.ts` con un `ByteReader` en memoria (sin MinIO): (1) ejecutables antes que
   la extensión — PE (`MZ` + `e_lfanew` → `PE\0\0`), ELF `\x7FELF`, Mach-O `FEEDFACE`/`FEEDFACF`/`CEFAEDFE`/`CFFAEDFE`
   y universal `CAFEBABE` solo si el siguiente `uint32` big-endian está entre 1 y 30; un `CAFEBABE` de clase Java no se
@@ -250,7 +250,7 @@ Cuatro migraciones a mano (ADR-0002), posteriores a las de 001 (`20260928100000`
 (`20260929100000`). Si esa numeración cambió al integrar, se reajusta el timestamp, no el orden. Cada `down` deshace
 su `up`. Los repositorios toman el `EntityManager` de `TransactionContext.requireActorScope(actor)` (003 T-29).
 
-- [ ] **T-20** `MINIO_*` compartido y variables de carga — CA: CA-14 (host), RN-2, RN-16 — Depende: 001 T-10 — ~3 h
+- [x] **T-20** `MINIO_*` compartido y variables de carga — CA: CA-14 (host), RN-2, RN-16 — Depende: 001 T-10 — ~3 h
   Prueba primero en `env.schema.spec.ts`: una sola definición de las cinco `MINIO_*` actuales, compuesta por
   `apiEnvSchema` y `workerEnvSchema`; un secreto declarado en ambos pasa si las definiciones coinciden; `MINIO_PUBLIC_ENDPOINT`
   solo está en `apiEnvSchema` (defecto local `http://localhost:9000`). Refinamientos: `UPLOAD_PART_SIZE_BYTES` ≥ 5 MiB
@@ -261,25 +261,25 @@ su `up`. Los repositorios toman el `EntityManager` de `TransactionContext.requir
   (`MINIO_API_CORS_ALLOW_ORIGIN` = origen de la web, sin comodín). No reintroducir el router local `/s3`.
   Archivos: `apps/api/src/shared/infrastructure/config/env.schema.ts`, `apps/api/src/shared/infrastructure/config/env.schema.spec.ts`, `.env.example`, `compose.yml`.
 
-- [ ] **T-21** Migración `espacio_usado` — CA: CA-4, CA-23, RN-10 — Depende: 001 T-06 — ~2 h
+- [x] **T-21** Migración `espacio_usado` — CA: CA-4, CA-23, RN-10 — Depende: 001 T-06 — ~2 h
   Prueba de la migración (el caso entra en `migrations.int-spec.ts`, que se completa en T-30; aquí el archivo y el
   `down`): `ALTER TABLE usuario ADD COLUMN espacio_usado bigint NOT NULL DEFAULT 0` y
   `CHECK (espacio_usado >= 0)`. `down` quita la restricción y la columna. Sin otras columnas de `usuario`.
   Archivos: `apps/api/src/migrations/20260930100000-agregar-espacio-usado-a-usuario.ts`.
 
-- [ ] **T-22** Migración `archivo` y `version_archivo` — CA: CA-1, CA-6 — Depende: T-21 — ~3 h
+- [x] **T-22** Migración `archivo` y `version_archivo` — CA: CA-1, CA-6 — Depende: T-21 — ~3 h
   SQL de plan §4: sin `tipo_mime`, sin `carpeta_id`, sin `checksum`. `version_actual_id` con FK `DEFERRABLE INITIALLY DEFERRED`.
   Índice único parcial `(propietario_id, lower(nombre)) WHERE eliminado_en IS NULL`. `clave_objeto` única.
   `tamano_bytes > 0`. `down`: `DROP TABLE version_archivo CASCADE; DROP TABLE archivo`.
   Archivos: `apps/api/src/migrations/20260930100100-crear-archivo-y-version-archivo.ts`.
 
-- [ ] **T-23** Migración `carga` — CA: CA-2, CA-9, CA-23 — Depende: T-22 — ~3 h
+- [x] **T-23** Migración `carga` — CA: CA-2, CA-9, CA-23 — Depende: T-22 — ~3 h
   SQL de plan §4. `archivo_id` y `version_id` **sin FK** (ids reservados; una FK exigiría la fila antes de completar).
   `ck_carga_partes` y `ck_carga_rechazo`. Índices parciales de reservas (`estado = 'activa'`) y de barrido (`expira_en`).
   `upload_id` nullable. `down`: `DROP TABLE carga`.
   Archivos: `apps/api/src/migrations/20260930100200-crear-carga.ts`.
 
-- [ ] **T-24** RLS y `carga_expiradas` — CA: CA-16, CA-17, DF-52 — Depende: T-22, T-23, 003 (funciones `nimbo_actor_*`) — ~4 h
+- [x] **T-24** RLS y `carga_expiradas` — CA: CA-16, CA-17, DF-52 — Depende: T-22, T-23, 003 (funciones `nimbo_actor_*`) — ~4 h
   Políticas de plan §4 sobre `archivo`, `version_archivo` y `carga`: `ENABLE` + `FORCE`. Cliente: `propietario_id = nimbo_actor_id()`.
   Metadatos internos solo `SELECT` de `ADMIN` y `SUPPORT` sobre `archivo`; `version_archivo` sin política para roles
   internos. `carga_mantenimiento FOR SELECT TO CURRENT_USER USING (estado = 'activa')`. Función `carga_expiradas`
@@ -288,14 +288,14 @@ su `up`. Los repositorios toman el `EntityManager` de `TransactionContext.requir
   función, políticas y RLS. No hace falta `GRANT` de tabla: lo cubren los `ALTER DEFAULT PRIVILEGES` de 003; T-30 lo afirma.
   Archivos: `apps/api/src/migrations/20260930100300-politicas-rls-archivo-version-carga.ts`.
 
-- [ ] **T-25** Entidades ORM y transformer `bigint` — CA: RN-11 — Depende: T-22, T-23 — ~3 h
+- [x] **T-25** Entidades ORM y transformer `bigint` — CA: RN-11 — Depende: T-22, T-23 — ~3 h
   Prueba primero de mapeo (string de PG ↔ `bigint`, nunca `number`). Propiedades de bytes terminan en `Bytes` (lint
   DF-06). Entidades `archivo`, `version_archivo` y `carga` alineadas con las columnas de T-22/T-23; `usuario` gana
   solo `espacioUsadoBytes` en la entidad que ya tenga 001, sin que `storage` importe el módulo `identity` (la columna
   se actualiza por SQL en T-28). `synchronize: false`.
   Archivos: `apps/api/src/modules/storage/infrastructure/persistence/*.orm-entity.ts`, `apps/api/src/modules/storage/infrastructure/persistence/bigint.transformer.spec.ts`.
 
-- [ ] **T-26** Rama de propiedad y `INodeRepository` — CA: CA-13, CA-16 — Depende: T-25, 003 T-37 — ~4 h
+- [x] **T-26** Rama de propiedad y `INodeRepository` — CA: CA-13, CA-16 — Depende: T-25, 003 T-37 — ~4 h
   Prueba primero `accessible-nodes.int-spec.ts` (se ejecuta con Docker): para `CLIENT`, el fragmento devuelve
   `nodo_id`, `tipo_nodo = 'archivo'`, `nivel = 'OWNER'` de `archivo` con `eliminado_en IS NULL`; un rol interno recibe
   el conjunto vacío. `access` no importa `storage` (ADR-0010); el SQL vive en
@@ -305,20 +305,20 @@ su `up`. Los repositorios toman el `EntityManager` de `TransactionContext.requir
   `EXPLAIN` de listado y de nombre usa los índices de T-22 (afirmar el plan, no solo el resultado).
   Archivos: `apps/api/src/modules/access/infrastructure/sql/accessible-nodes.ts`, `apps/api/test/int/access/accessible-nodes.int-spec.ts`, `apps/api/src/modules/storage/application/ports/i-node.repository.port.ts`, `apps/api/src/modules/storage/infrastructure/persistence/typeorm-node.repository.ts`, `apps/api/test/int/storage/node.repository.int-spec.ts`.
 
-- [ ] **T-27** `IUploadSessionRepository` — CA: CA-9, CA-10, CA-22 — Depende: T-25 — ~3 h
+- [x] **T-27** `IUploadSessionRepository` — CA: CA-9, CA-10, CA-22 — Depende: T-25 — ~3 h
   Prueba primero `upload-session.repository.int-spec.ts`: `insert`, `findOwned` (la RLS hace que la ajena no aparezca),
   `transition(id, from, to, patch)` como compare-and-set (0 filas si el estado ya no es `from`). Todos los métodos
   exigen `requireActorScope`. No existe `listExpiredIds` en este puerto.
   Archivos: `apps/api/src/modules/storage/application/ports/i-upload-session.repository.port.ts`, `apps/api/src/modules/storage/infrastructure/persistence/typeorm-upload-session.repository.ts`, `apps/api/test/int/storage/upload-session.repository.int-spec.ts`.
 
-- [ ] **T-28** `IQuotaRepository` — CA: CA-4, CA-23, RN-10 — Depende: T-21, T-25 — ~3 h
+- [x] **T-28** `IQuotaRepository` — CA: CA-4, CA-23, RN-10 — Depende: T-21, T-25 — ~3 h
   Prueba primero `quota.repository.int-spec.ts`: `lockUsage` hace `SELECT espacio_usado … FOR UPDATE` y no suma
   reservas; `lockAndReadUsage(actor, now)` suma solo cargas `activa` con `expira_en > now`; `addUsedBytes` suma el
   delta y **ninguna otra columna de `usuario` cambia**. Dos transacciones concurrentes sobre el mismo usuario se
   serializan. Es el único archivo de `storage` con SQL contra `usuario`.
   Archivos: `apps/api/src/modules/storage/application/ports/i-quota.repository.port.ts`, `apps/api/src/modules/storage/infrastructure/persistence/typeorm-quota.repository.ts`, `apps/api/test/int/storage/quota.repository.int-spec.ts`.
 
-- [ ] **T-29** Fronteras de `storage` y `audit` — CA: n/a (Art. VIII) — Depende: T-07 — ~3 h
+- [x] **T-29** Fronteras de `storage` y `audit` — CA: n/a (Art. VIII) — Depende: T-07 — ~3 h
   Si `packages/config/eslint/boundaries.js` aún no existe (PD-24), crearlo con el alcance de PD-47 y anotarlo en
   `pendientes.md` (no cerrar PD-24 entero). Reglas: `storage` → `shared`, `access`, `audit`, `realtime` (**sin**
   `billing`); `billing` → `storage` solo vía `storage/index.ts`; `access` → `shared`; `audit` → `shared`. Fixtures
@@ -327,7 +327,7 @@ su `up`. Los repositorios toman el `EntityManager` de `TransactionContext.requir
   desde `storage/index.ts` (el módulo llega en T-51; la regla se escribe ya).
   Archivos: `packages/config/eslint/boundaries.js`, `packages/config/eslint/boundaries.spec.ts`, fixtures bajo `packages/config/eslint/fixtures/`.
 
-- [ ] **T-30** Cierre del PR-C: migraciones reversibles y permisos — CA: RN-10 — Depende: T-20…T-29 — ~3 h
+- [x] **T-30** Cierre del PR-C: migraciones reversibles y permisos — CA: RN-10 — Depende: T-20…T-29 — ~3 h
   `migrations.int-spec.ts`: `migration:revert` ×4 y `run` ×4 sobre base vacía; `nimbo_app` tiene
   `SELECT/INSERT/UPDATE/DELETE` en las tres tablas nuevas y `UPDATE` (no solo eso: no se le otorga `DELETE` de más)
   sobre `usuario` como ya lo dejó 003. `pnpm lint`, `pnpm typecheck`, `pnpm test` en verde. Las suites `int` quedan
@@ -339,13 +339,13 @@ su `up`. Los repositorios toman el `EntityManager` de `TransactionContext.requir
 Los servicios reciben `actor` primero y abren `withActor` donde tocan filas. Los bytes no pasan por la API (DF-16),
 salvo la lectura por rango del detector.
 
-- [ ] **T-31** Dependencia `@aws-sdk/s3-request-presigner` — CA: n/a — Depende: — — ~1 h
+- [x] **T-31** Dependencia `@aws-sdk/s3-request-presigner` — CA: n/a — Depende: — — ~1 h
   `pnpm --filter api add -E @aws-sdk/s3-request-presigner` en la misma versión exacta que `@aws-sdk/client-s3`.
   Typecheck y unitarias sin cambio de comportamiento. Si hay conflicto de `pnpm-lock.yaml` con otro PR, se combinan
   los `package.json` y se regenera el lock; no se edita a mano.
   Archivos: `apps/api/package.json`, `pnpm-lock.yaml`.
 
-- [ ] **T-32** `MinioStorageAdapter`: operaciones y borrado real — CA: CA-5, CA-11 (purga) — Depende: T-20, T-31 — ~4 h
+- [x] **T-32** `MinioStorageAdapter`: operaciones y borrado real — CA: CA-5, CA-11 (purga) — Depende: T-20, T-31 — ~4 h
   Puerto `IObjectStorage` con la lista de plan §6. Prueba del adaptador con cliente falso y, en
   `minio-storage.adapter.int-spec.ts` (Docker), contra MinIO real: dos `S3Client`, el interno con `connectTimeout` 2 s
   y `requestTimeout` 10 s; `purgeObject` borra todas las versiones y marcas (el bucket está versionado); `headObject`,
@@ -353,7 +353,7 @@ salvo la lectura por rango del detector.
   Firmar no usa este cliente.
   Archivos: `apps/api/src/modules/storage/application/ports/i-object-storage.port.ts`, `apps/api/src/modules/storage/infrastructure/minio-storage.adapter.ts`, `apps/api/test/int/storage/minio-storage.adapter.int-spec.ts`.
 
-- [ ] **T-33** URLs prefirmadas de carga y de descarga — CA: CA-2, CA-13, CA-14 — Depende: T-32 — ~3 h
+- [x] **T-33** URLs prefirmadas de carga y de descarga — CA: CA-2, CA-13, CA-14 — Depende: T-32 — ~3 h
   Ampliar la suite: el cliente de firma usa `MINIO_PUBLIC_ENDPOINT` (cómputo local; el host de la URL no es el de la
   API ni el de la web). Cada URL de carga firma `Content-Length`. La de descarga dura los segundos que pide el
   llamador, lleva `response-content-disposition: attachment; filename*=UTF-8''…`, `response-content-type: application/octet-stream`
@@ -361,13 +361,13 @@ salvo la lectura por rango del detector.
   en la prueba de integración.
   Archivos: `apps/api/src/modules/storage/infrastructure/minio-storage.adapter.ts`, `apps/api/test/int/storage/minio-storage.adapter.int-spec.ts`.
 
-- [ ] **T-34** `QuotaService` — CA: CA-3, CA-4, CA-23 — Depende: T-04, T-07, T-28 — ~2 h
+- [x] **T-34** `QuotaService` — CA: CA-3, CA-4, CA-23 — Depende: T-04, T-07, T-28 — ~2 h
   Prueba primero `quota.service.spec.ts` con puertos falsos: `assertCanUpload` corre **dentro** de la transacción que
   el llamador ya abrió, después de `lockAndReadUsage`; máximo por archivo antes que cuota; los límites salen de
   `IPlanLimitsProvider` (el doble de la prueba). No abre su propia transacción ni escribe `espacio_usado`.
   Archivos: `apps/api/src/modules/storage/application/quota.service.ts`, `apps/api/src/modules/storage/application/quota.service.spec.ts`.
 
-- [ ] **T-35** `UploadService.init` — CA: CA-1, CA-2, CA-3, CA-4, CA-6, CA-7, CA-19, CA-23 — Depende: T-06, T-27, T-33, T-34, 001 T-13 — ~4 h
+- [x] **T-35** `UploadService.init` — CA: CA-1, CA-2, CA-3, CA-4, CA-6, CA-7, CA-19, CA-23 — Depende: T-06, T-27, T-33, T-34, 001 T-13 — ~4 h
   Prueba primero `upload.service.spec.ts` (parte init) con reloj, almacenamiento, cuota y límite de tasa falsos.
   Orden de plan §6: tasa (`storage:upload-init:` + `actor.id`, ventana 60 s) → `FileName` → tamaño 0 →
   `limitsFor` **fuera** de la transacción → `withActor` → `lockAndReadUsage` → `QuotaPolicy` → conflicto con
@@ -378,7 +378,7 @@ salvo la lectura por rango del detector.
   sin nombre ni URL.
   Archivos: `apps/api/src/modules/storage/application/upload.service.ts`, `apps/api/src/modules/storage/application/upload.service.spec.ts`.
 
-- [ ] **T-36** `resume`, `cancel` y `expire` — CA: CA-8, CA-9, CA-22 — Depende: T-35 — ~4 h
+- [x] **T-36** `resume`, `cancel` y `expire` — CA: CA-8, CA-9, CA-22 — Depende: T-35 — ~4 h
   Misma suite. `resume`: ajena, cancelada, completada o rechazada → `UploadNotFoundError`; vencida → `expire` y 410;
   por partes devuelve las partes ya completas y URLs nuevas solo de las faltantes; simple devuelve una URL nueva.
   `cancel` y `expire`: **CAS primero** (`activa → cancelada|expirada`), borrar después (`abortMultipart` o
@@ -386,7 +386,7 @@ salvo la lectura por rango del detector.
   de contar al salir de `activa`. Bitácoras `upload.resumed`, `upload.cancelled`, `upload.expired` sin nombre ni clave.
   Archivos: `apps/api/src/modules/storage/application/upload.service.ts`, `apps/api/src/modules/storage/application/upload.service.spec.ts`.
 
-- [ ] **T-37** `complete`: validar tamaño y tipo, y recuperar un multipart ya cerrado — CA: CA-5, CA-10, CA-11, CA-12, CA-24 — Depende: T-08, T-32, T-36 — ~4 h
+- [x] **T-37** `complete`: validar tamaño y tipo, y recuperar un multipart ya cerrado — CA: CA-5, CA-10, CA-11, CA-12, CA-24 — Depende: T-08, T-32, T-36 — ~4 h
   Misma suite, todavía sin la transacción de T-38 (puede dejar el objeto validado en un doble). Carga `completada` →
   devuelve el archivo (idempotencia). Vencida → `expire` + 410. Por partes: `listParts` es la fuente de verdad (no
   ETags del cliente); falta una parte → 409 y la sesión sigue `activa`. Tamaños: todas las partes = `tamano_parte_bytes`
@@ -396,7 +396,7 @@ salvo la lectura por rango del detector.
   `rechazada(tipo_invalido)` + `details.reason` y `details.extension`. No confiar en el cliente para el tipo.
   Archivos: `apps/api/src/modules/storage/application/upload.service.ts`, `apps/api/src/modules/storage/application/upload.service.spec.ts`.
 
-- [ ] **T-38** `IAuditLogger` provisional — CA: CA-20 — Depende: 001 T-09 (redacción) — ~3 h
+- [x] **T-38** `IAuditLogger` provisional — CA: CA-20 — Depende: 001 T-09 (redacción) — ~3 h
   Prueba primero `log-audit-logger.spec.ts`: `record(AuditRecord)` no lanza; el catálogo cerrado `AuditAction` de 005
   es `file.upload_completed`, `file.upload_rejected`, `file.download_url_issued` y rechaza otra cadena; `occurredAt`
   sale de `IClock` y `correlationId` del contexto de `shared` (no viajan en el registro); atributos solo
@@ -406,7 +406,7 @@ salvo la lectura por rango del detector.
   dependen del puerto, no de la inversa.
   Archivos: `apps/api/src/modules/audit/application/{i-audit-logger.port,audit-action}.ts`, `apps/api/src/modules/audit/infrastructure/log-audit-logger.ts`, `apps/api/src/modules/audit/infrastructure/log-audit-logger.spec.ts`, `apps/api/src/modules/audit/audit.module.ts`, `apps/api/src/modules/audit/index.ts`.
 
-- [ ] **T-39** `complete`: transacción, nombre definitivo y auditoría — CA: CA-1, CA-6, CA-20, RN-10 — Depende: T-26, T-28, T-37, T-38 — ~4 h
+- [x] **T-39** `complete`: transacción, nombre definitivo y auditoría — CA: CA-1, CA-6, CA-20, RN-10 — Depende: T-26, T-28, T-37, T-38 — ~4 h
   Misma suite. Dentro de `withActor`: `lockUsage` → CAS `activa → completada` (0 filas revierte y no hay `archivo`;
   responde 410 o 404 según quien ganó) → `FileName.firstFree` contra `findTakenNames` → `INSERT archivo` +
   `INSERT version_archivo(origen=carga)` → `addUsedBytes` con el tamaño real (la reserva no se suma otra vez).
@@ -416,21 +416,21 @@ salvo la lectura por rango del detector.
   Sin `pg_advisory_xact_lock`.
   Archivos: `apps/api/src/modules/storage/application/upload.service.ts`, `apps/api/src/modules/storage/application/upload.service.spec.ts`.
 
-- [ ] **T-40** `FileService` — CA: CA-13, CA-15, CA-19, CA-20 — Depende: T-26, T-33, T-38 — ~3 h
+- [x] **T-40** `FileService` — CA: CA-13, CA-15, CA-19, CA-20 — Depende: T-26, T-33, T-38 — ~3 h
   Prueba primero `file.service.spec.ts`: `list` pagina con el cursor opaco (límite 1–100, fuera de rango se ajusta a
   50/100); `getDownloadUrl` pide **300 s**, resuelve el archivo con `findAccessibleById` (ajeno = inexistente = 404)
   y la tasa (`storage:download-url:` + `actor.id`) corre **antes** de buscar el archivo. Si `record` de
   `file.download_url_issued` falla, se entrega la URL igual. Bitácora `download.url_issued` con `fileId`, sin URL.
   Archivos: `apps/api/src/modules/storage/application/file.service.ts`, `apps/api/src/modules/storage/application/file.service.spec.ts`.
 
-- [ ] **T-41** `details` fuera de la bitácora — CA: CA-20 — Depende: T-02, 001 T-08, 001 T-09 — ~2 h
+- [x] **T-41** `details` fuera de la bitácora — CA: CA-20 — Depende: T-02, 001 T-08, 001 T-09 — ~2 h
   Prueba primero: el filtro de errores no escribe `details` (un 409 con `suggestedName` no aparece en el sink);
   `REDACTED_FIELDS` incluye `url`, `uploadUrl`, `claveObjeto`, `objectKey`, `uploadId`, `signature`, `suggestedName`,
   `name`, `nombre`, `fileName` además de los que ya puso 001/002. `DomainError` puede llevar `details` plano hacia
   la respuesta. No registrar cuerpos.
   Archivos: `apps/api/src/shared/presentation/domain-exception.filter.ts`, `apps/api/src/shared/domain/errors/domain-error.ts`, `apps/api/src/shared/infrastructure/logging/redacted-fields.ts` y sus pruebas.
 
-- [ ] **T-42** Controladores, módulo y límite de tasa — CA: CA-7, CA-17 — Depende: T-35, T-38, T-39, T-40, T-41, 001 T-15, 003-PR-A — ~4 h
+- [x] **T-42** Controladores, módulo y límite de tasa — CA: CA-7, CA-17 — Depende: T-35, T-38, T-39, T-40, T-41, 001 T-15, 003-PR-A — ~4 h
   Prueba de contrato del pipe y de las rutas: `UploadsController` (`POST /uploads`, `POST /uploads/:id/resume`,
   `POST /uploads/:id/complete`, `DELETE /uploads/:id`) y `FilesController` (`GET /files`, `POST /files/:id/download-url`).
   Todas `@Roles(Role.CLIENT)` y `@CurrentActor()`. Cuerpo con `ZodValidationPipe` y fábrica que produce
@@ -440,7 +440,7 @@ salvo la lectura por rango del detector.
   es 404 y el cliente de T-13 la trata como éxito. Bitácora `upload.rate_limited` en el 429.
   Archivos: `apps/api/src/modules/storage/presentation/{uploads,files}.controller.ts`, `apps/api/src/modules/storage/presentation/storage-validation.ts`, `apps/api/src/modules/storage/storage.module.ts`, `apps/api/src/app.module.ts`.
 
-- [ ] **T-43** Integración HTTP: simple, límites, nombre, vacíos y cuota — CA: CA-1, CA-3, CA-4, CA-6, CA-7, CA-19, CA-23 — Depende: T-42 — ~4 h
+- [x] **T-43** Integración HTTP: simple, límites, nombre, vacíos y cuota — CA: CA-1, CA-3, CA-4, CA-6, CA-7, CA-19, CA-23 — Depende: T-42 — ~4 h
   Escribir (y ejecutar con Docker) `uploads-simple.int-spec.ts`, `uploads-limits.int-spec.ts` (con
   `FakePlanLimitsProvider`), `uploads-validation.int-spec.ts` (400 con `fields`; 422 vacío), `uploads-name-conflict.int-spec.ts`
   (409, `keep_both`, dos completes simultáneos, colación «Ñ»/«ñ»), `uploads-quota-concurrency.int-spec.ts`
@@ -448,7 +448,7 @@ salvo la lectura por rango del detector.
   Sin código de producción nuevo salvo el fallo que estas pruebas destapen.
   Archivos: `apps/api/test/int/storage/{uploads-simple,uploads-limits,uploads-validation,uploads-name-conflict,uploads-quota-concurrency,rate-limit}.int-spec.ts`.
 
-- [ ] **T-44** Integración HTTP: partes, reanudación, carrera, tipo, descarga y bitácora — CA: CA-2, CA-5, CA-8, CA-10, CA-11, CA-12, CA-13, CA-14, CA-15, CA-20, CA-22 — Depende: T-43 — ~4 h
+- [x] **T-44** Integración HTTP: partes, reanudación, carrera, tipo, descarga y bitácora — CA: CA-2, CA-5, CA-8, CA-10, CA-11, CA-12, CA-13, CA-14, CA-15, CA-20, CA-22 — Depende: T-43 — ~4 h
   `uploads-multipart.int-spec.ts` (MinIO real, SHA-256 de origen y destino, partes faltantes, `NoSuchUpload` con
   objeto ya completado, doble `complete` → un solo archivo), `uploads-resume.int-spec.ts`, `uploads-cancel.int-spec.ts`
   y la carrera `complete` ∥ `cancel`: nunca un `archivo` sin objeto. `uploads-file-type.int-spec.ts` con el bucket
@@ -457,7 +457,7 @@ salvo la lectura por rango del detector.
   clave, firmas, `details` ni `suggestedName`.
   Archivos: `apps/api/test/int/storage/{uploads-multipart,uploads-resume,uploads-cancel,uploads-file-type,download,audit-and-logs}.int-spec.ts`.
 
-- [ ] **T-45** Aislamiento de cargas y archivos — CA: CA-16, CA-17 — Depende: T-42, 003 T-41 — ~4 h
+- [x] **T-45** Aislamiento de cargas y archivos — CA: CA-16, CA-17 — Depende: T-42, 003 T-41 — ~4 h
   Ampliar `isolation-world.ts` con `.withFiles()` y `.withUploads()` que insertan **como `nimbo_app` dentro de
   `withActor`**, no como dueño. `storage.iso-spec.ts`: dos clientes casi idénticos; B no completa, reanuda, cancela
   ni pide partes de una carga de A, ni descarga un archivo de A; todo 404 idéntico salvo `correlationId`
@@ -467,14 +467,14 @@ salvo la lectura por rango del detector.
   `pnpm test:isolation`. Cierra CA-10, CA-11 y CA-14 de 003 con archivos reales.
   Archivos: `apps/api/test/isolation/setup/isolation-world.ts`, `apps/api/test/isolation/storage.iso-spec.ts`.
 
-- [ ] **T-46** Spike de MinIO (código descartable) — CA: CA-14 (CORS y `Content-Disposition`) — Depende: T-33 — ~1 día, tope de `workflow.md` §4.5
+- [x] **T-46** Spike de MinIO (código descartable) — CA: CA-14 (CORS y `Content-Disposition`) — Depende: T-33 — ~1 día, tope de `workflow.md` §4.5
   Cuando haya Docker: ¿MinIO `RELEASE.2025-09-07` rechaza un `PUT` prefirmado cuyo `Content-Length` no es el firmado?,
   ¿honra `response-content-disposition` y `response-content-type`?, ¿el `OPTIONS` de CORS devuelve el origen
   configurado?, ¿limpia multipart abandonados? Anotar el resultado en `plan.md` §8. Borrar el código del spike.
   Si `Content-Length` no se puede firmar, parar y proponer *presigned POST* con `content-length-range` antes de
   cambiar el adaptador. No bloquea T-47 si las unitarias están en verde; sí bloquea dar por demostrada CA-14.
 
-- [ ] **T-47** Cierre del PR-D — CA: n/a — Depende: T-31…T-45 — ~1 h
+- [x] **T-47** Cierre del PR-D — CA: n/a — Depende: T-31…T-45 — ~1 h
   `pnpm lint`, `pnpm typecheck`, `pnpm test` en verde. Anotar en la descripción del PR qué suites `int`/`iso` se
   ejecutaron y en qué máquina. `storage/index.ts` exporta `StorageModule`, los puertos que otros módulos pueden
   implementar (`IPlanLimitsProvider`) y nada de infraestructura. `StorageWorkerModule` lo agrega al índice T-51.
@@ -482,13 +482,13 @@ salvo la lectura por rango del detector.
 
 ## Bloque 5 — PR-E «limpieza a las 24 h» (plan D-6, ADR-0021) · depende de: PR-D
 
-- [ ] **T-48** `IExpiredUploadScanner` — CA: CA-9 — Depende: T-24 — ~2 h
+- [x] **T-48** `IExpiredUploadScanner` — CA: CA-9 — Depende: T-24 — ~2 h
   Prueba primero `expired-upload.scanner.int-spec.ts`: `listExpiredIds(now, limit)` llama `carga_expiradas` y solo
   devuelve `{ id, propietarioId }` de activas vencidas. No se exporta desde `storage/index.ts`. `UploadService` no
   lo recibe.
   Archivos: `apps/api/src/modules/storage/application/ports/i-expired-upload.scanner.port.ts`, `apps/api/src/modules/storage/infrastructure/persistence/sql-expired-upload.scanner.ts`, `apps/api/test/int/storage/expired-upload.scanner.int-spec.ts`, `apps/api/src/modules/storage/index.spec.ts`.
 
-- [ ] **T-49** `UploadCleanupProcessor` y programa repetible — CA: CA-9 — Depende: T-36, T-48 — ~3 h
+- [x] **T-49** `UploadCleanupProcessor` y programa repetible — CA: CA-9 — Depende: T-36, T-48 — ~3 h
   Prueba primero `upload-cleanup.processor.spec.ts` con cola y scanner falsos: `concurrency: 1`, `attempts: 3`,
   espera exponencial. Fase 1: `ITransactionRunner.run` (sin actor) llama al scanner. Fase 2: por fila,
   `withActor(createActor(propietarioId, Role.CLIENT), () => uploadService.expire(...))`. Un fallo de fila se registra
@@ -498,7 +498,7 @@ salvo la lectura por rango del detector.
   `@nestjs/schedule`.
   Archivos: `apps/api/src/modules/storage/infrastructure/upload-cleanup.processor.ts`, `apps/api/src/modules/storage/infrastructure/upload-cleanup.scheduler.ts`, `apps/api/src/modules/storage/infrastructure/upload-cleanup.processor.spec.ts`.
 
-- [ ] **T-50** Aislamiento del mantenimiento — CA: CA-9, DF-52 — Depende: T-24, T-48 — ~4 h
+- [x] **T-50** Aislamiento del mantenimiento — CA: CA-9, DF-52 — Depende: T-24, T-48 — ~4 h
   `storage-maintenance.iso-spec.ts` con contenedor propio: un script de arranque (superusuario) crea el rol dueño
   `NOSUPERUSER`, la base, `CREATE EXTENSION vector` y `nimbo_app`; las migraciones corren con ese dueño. La suite
   **falla con mensaje explícito** si el dueño es superusuario (no pasa en vacío). Afirma: `nimbo_app` sin actor ve
@@ -507,7 +507,7 @@ salvo la lectura por rango del detector.
   `carga_mantenimiento` y la función son del dueño de `carga`.
   Archivos: `apps/api/test/isolation/storage-maintenance.iso-spec.ts`, `apps/api/test/isolation/setup/nosuperuser-postgres.ts`.
 
-- [ ] **T-51** Worker y carrera con `complete` — CA: CA-9 — Depende: T-49, T-50 — ~3 h
+- [x] **T-51** Worker y carrera con `complete` — CA: CA-9 — Depende: T-49, T-50 — ~3 h
   `StorageWorkerModule` lo importa `apps/worker` **solo** desde `storage/index.ts` (exportar el módulo de worker
   desde el índice; seguir sin exportar el scanner). `WorkerModule` importa `MinioConfigModule` y
   `StorageWorkerModule`. `upload-cleanup.int-spec.ts`: el job expira, borra partes, libera la reserva y un `resume`
@@ -515,7 +515,7 @@ salvo la lectura por rango del detector.
   `pnpm test:isolation` junto con T-45.
   Archivos: `apps/api/src/modules/storage/storage-worker.module.ts`, `apps/api/src/modules/storage/index.ts`, `apps/api/src/worker.module.ts`, `apps/api/test/int/storage/upload-cleanup.int-spec.ts`.
 
-- [ ] **T-52** Cierre del PR-E — CA: n/a — Depende: T-48…T-51 — ~1 h
+- [x] **T-52** Cierre del PR-E — CA: n/a — Depende: T-48…T-51 — ~1 h
   Lint, typecheck y unitarias en verde. La descripción del PR dice si `storage-maintenance.iso-spec.ts` corrió con
   dueño `NOSUPERUSER`. Si no alcanzó a correr antes del 30/09, queda explícito que la Definición de Hecho exige
   ejecutarla en staging con dueño no superusuario (plan §8).
@@ -544,7 +544,7 @@ salvo la lectura por rango del detector.
   enlace deja de servir tras 5 minutos; recorrer 360 y 1440 px. Anotar el resultado en la descripción del PR-F.
   No sustituye a `/review` ni a la revisión del `ui-designer`.
 
-- [ ] **T-56** Documentación de operación — CA: n/a — Depende: T-24 — ~2 h
+- [x] **T-56** Documentación de operación — CA: n/a — Depende: T-24 — ~2 h
   `docs/operations/ambientes.md`: el rol que migra es el mismo en todos los ambientes; cambiarlo exige una migración
   nueva (`TO CURRENT_USER` queda fijado al crear `carga_mantenimiento`). README de `storage` con el flujo
   init → PUT directo a MinIO → complete, y la excepción DF-59 en una frase. No instrumentar métricas. No abrir
@@ -565,6 +565,129 @@ salvo la lectura por rango del detector.
 - Objetos huérfanos entre el CAS y el borrado están aceptados (R-7). No agregar un barrido de objetos sin
   `version_archivo` en esta spec.
 - Si una tarea supera 4 h, parar y pedir que se parta. No adelantar métricas, eventos, carpetas, «Reemplazar» ni toast.
+
+### Traspaso PR-D (2026-09-30)
+
+- **Hechas**: T-31…T-47. T-43 en `ec4304b`; T-44 en `01e669e` (fallo de producción) y `ae8b72d` (pruebas); T-45 en
+  `9dd184b`. Detenido por ALTO del coordinador tras T-45.
+- **T-46 hecha** (spike en `spike/005-minio`, que solo tiene la fusión de `feat/005-api`; el guion del spike se borró
+  sin confirmarse). Resultado completo en `plan.md` §8. `Content-Length` firmado y `response-*`: ya los cubrían
+  `minio-storage.adapter.int-spec.ts` y `download.int-spec.ts`. (a) **CORS correcto**: con
+  `MINIO_API_CORS_ALLOW_ORIGIN` de `compose.yml`, el `OPTIONS` devuelve `Access-Control-Allow-Origin` solo para
+  `http://localhost` y `http://localhost:3002`; `http://evil.example` y `http://localhost:3000` reciben `204` sin
+  ninguna cabecera `Access-Control-*`. Sin cambios de configuración. (b) **MinIO limpia solo los multipart
+  abandonados**: por defecto `stale_uploads_expiry=24h`, `stale_uploads_cleanup_interval=6h`
+  (`MINIO_API_STALE_UPLOADS_*`); con 20 s / 5 s las partes desaparecen del disco a los ~25 s y `ListParts` responde
+  `NoSuchUpload` (el adaptador ya lo tolera). `ListMultipartUploads` sigue listando el `uploadId`; la API no lo usa.
+  Es una red de seguridad, no reemplaza `upload-cleanup` (PR-E).
+- **T-47 hecha**: `storage/index.ts` ya exportaba solo `StorageModule`, `I_PLAN_LIMITS_PROVIDER` y los tipos
+  `IPlanLimitsProvider`/`PlanLimits`, y `index.spec.ts` lo fija; sin cambios de código. README de `storage` con la API
+  pública, las piezas del PR-D y las rutas en `4bb763a` (sesión en la nube, en paralelo). PR-E (T-52, T-56) completa
+  el README con la limpieza, el flujo de carga directa, DF-59 y el resultado de T-46 (CORS y red de seguridad de MinIO).
+- **Cierre T-47 en Linux** (sesión en la nube, Node 22.22.2, pnpm 10.33.0, sobre `4bb763a`): `pnpm lint`,
+  `pnpm typecheck` y `pnpm test` en verde (raíz 3 / 34, `config` 2 / 28, `contracts` 11 / 221, `web` 64 / 272, `api`
+  116 / 1068); `int` e `iso` no se repitieron ahí (sin imagen de MinIO). Esa sesión dejó T-46 bloqueada (`quay.io`
+  denegado); se hizo después en Windows (arriba).
+- **Suites ejecutadas tras fusionar `main`** (`ca82e96` + T-46/T-44; Windows 11, Docker 29.4.0, Testcontainers sin
+  nombres fijos, 2026-09-30; máquina con carga alta de otros procesos): lint y typecheck en verde; unitarias: api 119
+  suites / 1105 pruebas, web 77 / 359, contracts 11 / 223, config 2 / 28, raíz 3 / 34, worker sin pruebas;
+  `pnpm test:int -- test/int/storage` 18 suites / 200 pruebas; `pnpm test:isolation` 9 suites / 115 (dos corridas en
+  verde). **Pruebas inestables con carga** (pasan solas y en otras corridas completas; ninguna es de lógica):
+  `redact-deep.spec.ts` «CA-15 (R-8) … no degrada el logger» (umbral de 150 µs; midió ~330 µs en 2 de 3 corridas
+  completas de api); `node.repository.int-spec.ts` «ADR-0005: el plan de … usa los índices de propietario» (con tablas
+  casi vacías y estadísticas recién analizadas por autovacuum el planificador elige `archivo_pkey`; falló en 2 de 3
+  corridas completas de `test/int/storage`); `reset-password-view.spec.tsx` (web, 002) excedió su espera una vez.
+  Propuesta para `/review`: fijar las estadísticas o el volumen de `archivo` antes del `EXPLAIN` y medir el umbral de
+  `redactDeep` en relación con una referencia, no en absoluto.
+- **Texto para la descripción del PR-D**: «PR-D de 005 (T-31…T-47): API de cargas (init, resume, complete, cancel),
+  descarga con URL prefirmada de 300 s, límites de tasa, auditoría, pruebas de integración y de aislamiento, y spike de
+  MinIO (T-46: CORS restringido a los orígenes de `web`; MinIO limpia multipart abandonados a las 24 h; resultado en
+  `plan.md` §8). Corrige dos carreras de `complete` (T-44: doble `complete` y objeto purgado por `cancel` durante la
+  detección de tipo). Suites ejecutadas en Windows 11 con Docker 29.4.0 (Testcontainers), tras fusionar `main`: lint y
+  typecheck en verde; unitarias api 119 suites / 1105 pruebas, web 77 / 359, contracts 11 / 223, config 2 / 28;
+  `pnpm test:int -- test/int/storage` 18 / 200; `pnpm test:isolation` 9 / 115. Inestables con carga (ver nota de
+  traspaso en `tasks.md`): el umbral de tiempo de `redact-deep.spec.ts` y las dos aserciones de plan de
+  `node.repository.int-spec.ts`. El README de `storage` se completa con PR-E (T-52, T-56).»
+- **Fallo de producción corregido en T-44** (`01e669e`): dos `complete` simultáneos de la misma carga: el perdedor del
+  CAS final respondía 404 aunque el archivo existía (ahora responde el mismo archivo), y si el otro ya había cerrado el
+  multipart, `completeMultipart` lanzaba `NoSuchUpload` → 500. El puerto `IObjectStorage.completeMultipart` ahora
+  devuelve `boolean` (`false` = ya no existe) y el servicio recupera con `headObject`. Pruebas: unitarias de
+  `upload.service` y del adaptador, `minio-storage.adapter.int-spec.ts` y `uploads-multipart.int-spec.ts`.
+- **Arnés** (`storage-http.ts`): además de lo de T-43, `uploadParts(parts, partSize, bytes)`, `otherBytes(size)` (bytes
+  «otros», no ejecutables), `UploadRow.upload_id` y `storage.clientFor(id, token?)` (rutas de una cuenta ya creada;
+  sin token, sin `Authorization`). `StorageClient.token` se quitó (nadie lo usaba). `isolation-world.ts` gana
+  `withFiles(app, cuenta, nombres)` y `withUploads(app, cuenta, n)`, que escriben como `nimbo_app` dentro de
+  `withActor` con los repositorios de `storage`, y `close()` borra `carga` y `archivo` antes que `usuario`.
+- **Trampas nuevas**: (1) `app.get(I_CLOCK, { strict: false })` devuelve el `FixedClock` de `ProbeModule` (pasado), no el
+  del `UploadService`: las cargas sembradas con él nacen vencidas (410). Los *fixtures* usan `new Date()`. (2) Crear
+  varias peticiones de `supertest` antes de esperarlas da `ECONNREFUSED`: enviarlas de a una (funciones, no promesas).
+  (3) El mensaje de `STORAGE_INVALID_FILE_TYPE` lleva la extensión con punto (`.pdf`).
+- **Para confirmar en /review**: (a) carrera estrecha `complete` ∥ `cancel` **corregida** en `fix(storage)` [005 T-44]:
+  si la lectura del detector falla y `headObject` dice que el objeto ya no existe, `complete` responde como quien
+  perdió el CAS final (`afterLostRegistration`: 404, o 410 si venció); si el objeto sigue ahí, el error se propaga.
+  Pruebas unitarias en `upload.service.spec.ts`; el doble `FakeObjectStorage.getRange` ahora rechaza un objeto
+  ausente como el adaptador real. No se agregó prueba `int` (la carrera no se reprodujo en 6 vueltas). (b) CA-5 está en
+  `uploads-validation.int-spec.ts` (plan §8), no en T-44. (c) CA-9 por HTTP (410 tras 24 h) queda para T-51.
+- **Bloqueos**: ninguno.
+
+### Traspaso PR-E (2026-09-30)
+
+- **Hechas**: T-48 (`26bd443`), T-49 (`9333b57`), T-50 (`92e8b44`). Suites en verde: unitarias de `storage` (incluye
+  `upload-cleanup.processor.spec.ts` y `upload-cleanup.scheduler.spec.ts`), `expired-upload.scanner.int-spec.ts` (4/4) y
+  `storage-maintenance.iso-spec.ts` (9/9), esta última **corrida con dueño `NOSUPERUSER`** en contenedor propio
+  (`test/isolation/setup/nosuperuser-postgres.ts`); si el dueño fuera superusuario, `beforeAll` falla con mensaje explícito.
+- **Hecha T-51** (`5b81c57`, 2026-09-30): `StorageWorkerModule.forRoot({ UPLOAD_CLEANUP_* })` (cola, configuración,
+  escáner, programa, procesador y `UploadService` con sus dependencias), exportado por `storage/index.ts`
+  (`RUNTIME_EXPORTS` = `I_PLAN_LIMITS_PROVIDER`, `StorageModule`, `StorageWorkerModule`; el escáner sigue sin salir).
+  `WorkerModule` importa `MinioConfigModule`, `PlanLimitsBindingModule` y `StorageWorkerModule`; `WORKER_QUEUES` =
+  `ping`, `mail`, `upload-cleanup`. Los proveedores comunes con `StorageModule` salieron a `upload-lifecycle.providers.ts`
+  (archivo no listado en T-51). `upload-cleanup.int-spec.ts` (2/2: el job vence la carga por partes, aborta sus partes,
+  libera la reserva y `resume` ⇒ 410 con `STORAGE_UPLOAD_EXPIRED`; 6 vueltas de `complete` ∥ barrido sin `archivo` sin
+  objeto; en una corrida instrumentada ganaron ambos lados) entra en `pnpm test:isolation` por `testMatch` de
+  `jest.isolation.config.cjs`; no depende de T-45 (su `storage.iso-spec.ts` entra solo por `*.iso-spec.ts`). Se
+  actualizaron `test/int/worker/bootstrap.int-spec.ts` (colas de `worker.started`) y `worker-health.int-spec.ts` (cierra
+  también el `Worker` de `upload-cleanup` con Redis caído).
+- **Hechas T-52 y T-56** (2026-09-30): el README de `storage` gana la sección «Limpieza de cargas vencidas» (T-52) y
+  «Flujo de carga directa» con DF-59 en una frase (T-56); `docs/operations/ambientes.md` no se tocó (existe desde T-24).
+  Solo documentación; cada dato se verificó contra el código. El README ya incluye lo que dejó PR-D (API pública, flujo y descarga, CORS y red de seguridad de MinIO).
+- **Suites al cierre de T-51**: `pnpm lint` y `pnpm typecheck` en verde; `pnpm test` en verde (api 1083, web 272,
+  contracts 221, config 28, worker 34); `test:isolation` completo 108/108 (incluye `upload-cleanup.int-spec.ts` y
+  `storage-maintenance.iso-spec.ts`); `test/int/worker` 8/8. No se corrió `pnpm test:int` completo.
+- **Decisiones de T-51 (a confirmar en `/review`)**: (6) `I_PLAN_LIMITS_PROVIDER` en el worker lo enlaza
+  `PlanLimitsBindingModule` en `WorkerModule` (raíz de composición, DF-51): `storage` sigue sin conocer a `billing` y,
+  cuando 006a cambie ese enlace, vale para ambos procesos. (7) `UPLOAD_CONFIG` en el worker es un objeto cuyos campos
+  **lanzan al leerse** («la configuración de carga no existe en el worker»): `expire` no la lee y las variables `UPLOAD_*`
+  son solo del `api` (plan §5); se descartó sumarlas a `workerEnvSchema` y separar `expire` de `UploadService` (el
+  modelo de diseño lo pone en `UploadService`). Si `/review` prefiere separar `expire`, es un cambio de modelo.
+  (8) El adaptador de MinIO del worker usa `buildMinioStorageClients(config, config.MINIO_ENDPOINT)`: el cliente de
+  firma apunta al endpoint interno porque el worker no tiene `MINIO_PUBLIC_ENDPOINT` ni emite URLs. (9) En la prueba
+  de integración la app del worker se crea después de la de la API: el `PinoLogger` de `nestjs-pino` es estático y la
+  última app recibe las bitácoras de ambas.
+- **Decisiones tomadas (a revisar en `/review`)**: (1) el procesador llama `uploadService.expire(createActor(propietarioId,
+  CLIENT), id)` sin envolverlo en otro `withActor`: `expire` ya abre el suyo; envolverlo retendría la transacción (y el
+  CAS sin confirmar) durante los borrados en MinIO. (2) `expired` en `upload.cleanup_run` cuenta filas procesadas sin
+  error (un `expire` que pierde el CAS contra `complete` cuenta como procesada). (3) El `correlationId` del programa se
+  fija al registrarlo (payload `{ correlationId }` que pide T-49); cada ejecución se distingue por `jobId`.
+  (4) Reintentos: 3 intentos, exponencial desde 30 s; fallidos se conservan 24 h. (5) Se agregó
+  `upload-cleanup.scheduler.spec.ts` (archivo no listado en T-49).
+- **Bloqueos**: ninguno. Docker disponible.
+
+#### Borrador de la descripción del PR-E
+
+**Qué hace**: limpieza de cargas vencidas (CA-9). Cola `upload-cleanup` con programa repetible idempotente
+(`upsertJobScheduler`, id fijo), barrido en dos fases (escáner sin actor `carga_expiradas` → `UploadService.expire` como
+el dueño), `StorageWorkerModule` en el `worker`, reintentos (3, exponencial) y bitácoras `upload.cleanup_*`. Incluye la
+documentación de `storage` (T-52, T-56).
+
+**Suites**: `pnpm lint` y `pnpm typecheck` en verde; `pnpm test` en verde (api 1083, web 272, contracts 221, config 28,
+worker 34); `test:isolation` completo 108/108 (incluye `upload-cleanup.int-spec.ts`); `expired-upload.scanner.int-spec.ts`
+4/4; `test/int/worker` 8/8. **`storage-maintenance.iso-spec.ts` corrió con dueño `NOSUPERUSER` (9/9)** en contenedor propio,
+así que no queda pendiente la ejecución en staging exigida por plan §8 para este punto. No se corrió `pnpm test:int` completo.
+
+**Decisiones a revisar en `/review`**: (1) `expire` no se envuelve en otro `withActor`; (2) `expired` cuenta filas procesadas
+sin error; (3) `correlationId` del programa fijado al registrarlo; (4) reintentos 3 × exponencial desde 30 s, fallidos 24 h;
+(6) `I_PLAN_LIMITS_PROVIDER` enlazado en `WorkerModule` (DF-51); (7) `UPLOAD_CONFIG` del worker lanza al leerse; (8) MinIO
+del worker firma contra el endpoint interno.
 
 ### Traspaso PR-F (2026-09-29)
 

@@ -1,5 +1,6 @@
 export { ConflictError } from './conflict.error';
 export { DomainError } from './domain-error';
+export type { ErrorDetails } from './domain-error';
 export type { FieldIssue } from './field-issue';
 export { ForbiddenError } from './forbidden.error';
 export { InsufficientRoleError } from './insufficient-role.error';

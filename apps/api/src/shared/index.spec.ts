@@ -73,6 +73,7 @@ const RUNTIME_EXPORTS_BY_TASK = {
     'UnauthenticatedError',
     'InsufficientRoleError',
   ],
+  '005 T-25': ['BIGINT_TRANSFORMER'],
 } as const;
 
 const ALL_RUNTIME_EXPORTS: readonly string[] = Object.values(RUNTIME_EXPORTS_BY_TASK).flat();
@@ -164,6 +165,10 @@ describe('shared/index.ts (CA-17)', () => {
     expectExportsOf('003 T-11');
     expect(new shared.UnauthenticatedError().status).toBe(401);
     expect(new shared.InsufficientRoleError().status).toBe(403);
+  });
+  it('RN-11: exporta `BIGINT_TRANSFORMER` para las columnas de bytes de cualquier módulo (005 T-25)', () => {
+    expectExportsOf('005 T-25');
+    expect(shared.BIGINT_TRANSFORMER.from('1')).toBe(1n);
   });
   it('CA-17: exporta exactamente la lista del plan §6.2 al cerrar el bloque 2 (T-26)', () => {
     expect(exportedKeys()).toEqual([...ALL_RUNTIME_EXPORTS].sort());

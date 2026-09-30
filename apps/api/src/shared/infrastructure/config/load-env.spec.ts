@@ -16,13 +16,16 @@ const VALID_API = {
   JWT_ACCESS_SECRET: 'secreto-de-prueba-de-al-menos-32-caracteres',
 };
 
-/** Mínimo válido para `worker`: el contrato común y el SMTP de Mailpit (001 plan §6.10). */
+/** Mínimo válido para `worker`: el contrato común, MinIO (005) y el SMTP de Mailpit (001 plan §6.10). */
 const VALID_WORKER = {
   NODE_ENV: 'test',
   APP_ENV: 'test',
   LOG_LEVEL: 'info',
   DATABASE_URL: 'postgres://nimbo:nimbo@localhost:5432/nimbo',
   REDIS_URL: 'redis://localhost:6379',
+  MINIO_ENDPOINT: 'http://localhost:9000',
+  MINIO_ACCESS_KEY: 'nimbo',
+  MINIO_SECRET_KEY: 'nimbo-secret',
   SMTP_HOST: 'localhost',
   SMTP_PORT: '1025',
   SMTP_TLS: 'none',
@@ -97,6 +100,13 @@ describe('loadEnv(apiEnvSchema)', () => {
         WORKER_PORT: 3001,
         MINIO_BUCKET: 'nimbo',
         MINIO_REGION: 'us-east-1',
+        MINIO_PUBLIC_ENDPOINT: 'http://localhost:9000',
+        UPLOAD_PART_SIZE_BYTES: 8_388_608,
+        UPLOAD_MULTIPART_THRESHOLD_BYTES: 16_777_216,
+        UPLOAD_URL_TTL_SECONDS: 3600,
+        UPLOAD_COMPLETE_TIMEOUT_SECONDS: 900,
+        RATE_LIMIT_UPLOAD_INIT_PER_MINUTE: 300,
+        RATE_LIMIT_DOWNLOAD_URL_PER_MINUTE: 120,
       },
     });
   });
@@ -153,7 +163,7 @@ describe('loadEnv(apiEnvSchema)', () => {
 });
 
 describe('loadEnv(workerEnvSchema)', () => {
-  it('CA-18: `workerEnvSchema` no exige `MINIO_*`, `PORT`, `WEB_PUBLIC_URL` ni `CORS_ORIGIN`', () => {
+  it('CA-18: `workerEnvSchema` no exige `PORT`, `WEB_PUBLIC_URL`, `CORS_ORIGIN` ni `MINIO_PUBLIC_ENDPOINT`', () => {
     const result = loadEnv(workerEnvSchema, VALID_WORKER);
 
     expect(result).toEqual({
@@ -166,6 +176,13 @@ describe('loadEnv(workerEnvSchema)', () => {
         LOG_LEVEL: 'info',
         DATABASE_URL: VALID_WORKER.DATABASE_URL,
         REDIS_URL: VALID_WORKER.REDIS_URL,
+        MINIO_ENDPOINT: VALID_WORKER.MINIO_ENDPOINT,
+        MINIO_ACCESS_KEY: VALID_WORKER.MINIO_ACCESS_KEY,
+        MINIO_SECRET_KEY: VALID_WORKER.MINIO_SECRET_KEY,
+        MINIO_BUCKET: 'nimbo',
+        MINIO_REGION: 'us-east-1',
+        UPLOAD_CLEANUP_INTERVAL_MINUTES: 10,
+        UPLOAD_CLEANUP_BATCH_SIZE: 100,
         SMTP_HOST: 'localhost',
         SMTP_PORT: 1025,
         SMTP_TLS: 'none',
@@ -307,6 +324,105 @@ describe('loadEnv(apiEnvSchema): variables de 001 (plan §6.10)', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.env).not.toHaveProperty('SMTP_PASSWORD');
+  });
+});
+
+describe('loadEnv: carga y descarga de archivos (005 T-20)', () => {
+  it('RN-2: el worker exige las credenciales de MinIO (aborta partes y borra objetos)', () => {
+    const { MINIO_ACCESS_KEY: _a, MINIO_SECRET_KEY: _s, ...source } = VALID_WORKER;
+
+    const result = loadEnv(workerEnvSchema, source);
+
+    expect(result).toEqual({
+      ok: false,
+      issues: ['`MINIO_ACCESS_KEY` es obligatoria', '`MINIO_SECRET_KEY` es obligatoria'],
+    });
+  });
+
+  it('RN-2: `UPLOAD_PART_SIZE_BYTES` menor que 5 MiB se rechaza (regla de S3)', () => {
+    const result = loadEnv(apiEnvSchema, { ...VALID_API, UPLOAD_PART_SIZE_BYTES: '5242879' });
+
+    expect(result).toEqual({
+      ok: false,
+      issues: ['`UPLOAD_PART_SIZE_BYTES` debe ser un entero de al menos 5242880 (5 MiB)'],
+    });
+  });
+
+  it('RN-2: el umbral por partes menor que el tamaño de parte se rechaza', () => {
+    const result = loadEnv(apiEnvSchema, {
+      ...VALID_API,
+      UPLOAD_PART_SIZE_BYTES: '10485760',
+      UPLOAD_MULTIPART_THRESHOLD_BYTES: '8388608',
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      issues: [
+        '`UPLOAD_MULTIPART_THRESHOLD_BYTES` debe ser mayor o igual que `UPLOAD_PART_SIZE_BYTES`',
+      ],
+    });
+  });
+
+  it('RN-2: umbral igual al tamaño de parte es válido', () => {
+    const result = loadEnv(apiEnvSchema, {
+      ...VALID_API,
+      UPLOAD_PART_SIZE_BYTES: '5242880',
+      UPLOAD_MULTIPART_THRESHOLD_BYTES: '5242880',
+    });
+
+    expect(result.ok).toBe(true);
+  });
+
+  it.each(['59', '86401', 'abc'])(
+    'CA-2: `UPLOAD_URL_TTL_SECONDS=%s` fuera de 60–86400 se rechaza',
+    (ttl) => {
+      const result = loadEnv(apiEnvSchema, { ...VALID_API, UPLOAD_URL_TTL_SECONDS: ttl });
+
+      expect(result).toEqual({
+        ok: false,
+        issues: ['`UPLOAD_URL_TTL_SECONDS` debe ser un entero entre 60 y 86400'],
+      });
+    },
+  );
+
+  it.each([
+    'RATE_LIMIT_UPLOAD_INIT_PER_MINUTE',
+    'RATE_LIMIT_DOWNLOAD_URL_PER_MINUTE',
+    'UPLOAD_COMPLETE_TIMEOUT_SECONDS',
+  ])('RN-16: `%s=0` se rechaza', (key) => {
+    const result = loadEnv(apiEnvSchema, { ...VALID_API, [key]: '0' });
+
+    expect(result).toEqual({ ok: false, issues: [`\`${key}\` debe ser un entero positivo`] });
+  });
+
+  it('CA-9: `UPLOAD_CLEANUP_BATCH_SIZE` fuera de 1–1000 se rechaza', () => {
+    const result = loadEnv(workerEnvSchema, { ...VALID_WORKER, UPLOAD_CLEANUP_BATCH_SIZE: '1001' });
+
+    expect(result).toEqual({
+      ok: false,
+      issues: ['`UPLOAD_CLEANUP_BATCH_SIZE` debe ser un entero entre 1 y 1000'],
+    });
+  });
+
+  it('CA-9: `UPLOAD_CLEANUP_INTERVAL_MINUTES=0` se rechaza', () => {
+    const result = loadEnv(workerEnvSchema, {
+      ...VALID_WORKER,
+      UPLOAD_CLEANUP_INTERVAL_MINUTES: '0',
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      issues: ['`UPLOAD_CLEANUP_INTERVAL_MINUTES` debe ser un entero positivo'],
+    });
+  });
+
+  it('CA-14: `MINIO_PUBLIC_ENDPOINT` debe ser una URL', () => {
+    const result = loadEnv(apiEnvSchema, { ...VALID_API, MINIO_PUBLIC_ENDPOINT: 'no-es-url' });
+
+    expect(result).toEqual({
+      ok: false,
+      issues: ['`MINIO_PUBLIC_ENDPOINT` debe ser una URL válida'],
+    });
   });
 });
 
