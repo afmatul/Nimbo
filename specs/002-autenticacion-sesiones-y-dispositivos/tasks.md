@@ -477,13 +477,13 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
 
 ## Bloque 3 — PR-3 «recuperación de contraseña» (plan §6.3, §6.5) · depende de 002-PR-2
 
-- [ ] **T-58** [P] [P×PR] Plantilla «Restablece tu contraseña de Nimbo» — CA: CA-18 — Depende: T-27 — ~0,5 h
+- [x] **T-58** [P] [P×PR] Plantilla «Restablece tu contraseña de Nimbo» — CA: CA-18 — Depende: T-27 — ~0,5 h
   Prueba primero `application/mail/password-reset-mail.template.spec.ts`: asunto (propuesto, Q-2); enlace
   `{webPublicUrl}/restablecer-contrasena#token=<valor>`; «1 hora», «solo funciona una vez»; qué hacer si no lo pediste;
   sin IP. Luego la función.
   Archivos: `apps/api/src/modules/identity/application/mail/password-reset-mail.template.ts` y su `*.spec.ts`.
 
-- [ ] **T-59** [P] [P×PR] Plantilla «Tu contraseña de Nimbo cambió» — CA: CA-19, CA-22 — Depende: T-27 — ~0,5 h
+- [x] **T-59** [P] [P×PR] Plantilla «Tu contraseña de Nimbo cambió» — CA: CA-19, CA-22 — Depende: T-27 — ~0,5 h
   Prueba primero `application/mail/password-changed-mail.template.spec.ts`: asunto (propuesto, Q-2); fecha de
   Guatemala; enlace a `{webPublicUrl}/recuperar-contrasena` («si no fuiste tú»); sin IP. Luego la función.
   Archivos: `apps/api/src/modules/identity/application/mail/password-changed-mail.template.ts` y su `*.spec.ts`.
