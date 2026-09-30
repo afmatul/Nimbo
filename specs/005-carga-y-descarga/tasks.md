@@ -566,26 +566,44 @@ salvo la lectura por rango del detector.
   `version_archivo` en esta spec.
 - Si una tarea supera 4 h, parar y pedir que se parta. No adelantar métricas, eventos, carpetas, «Reemplazar» ni toast.
 
-### Traspaso PR-D (2026-09-29)
+### Traspaso PR-D (2026-09-30)
 
-- **Hechas**: T-31…T-43 (T-43 en `ec4304b`). Las casillas de T-01…T-42 no están marcadas en este archivo aunque sus
-  commits existen; no se tocaron.
-- **Siguen** (en orden): T-44 → T-45 → T-46 (spike, en el worktree `005-spike`, rama `spike/005-minio`, tras fusionar
-  `feat/005-api`) → T-47. Ninguna está empezada.
-- **Arnés de T-43, a reutilizar en T-44** (`apps/api/test/int/storage/storage-http.ts`): `createStorageHttpApp({ env,
-  limits })` monta `StorageModule` real + `PlanLimitsBindingModule` con el token sustituido por `FakePlanLimitsProvider`
-  (`storage.limits.setLimits(...)`), bucket propio **versionado** `nimbo-storage-http`, `MINIO_PUBLIC_ENDPOINT` = alias
-  del MinIO del arnés (`localhost` ↔ `127.0.0.1`; `storage.publicHost` para afirmar el host de CA-14) y parte/umbral de
-  5 MiB (un archivo de > 5 MiB ya es por partes). `newClient()` inserta la cuenta como dueño y devuelve las rutas con
-  token; `client.upload(name, bytes, onConflict)` hace init → PUT → complete. Utilidades: `uploadBytes`,
-  `putToSignedUrl`, `textBytes`, `sha256`, `uploadRow`, `countRows`, `usedBytesOf`, `insertCommittedFile`,
-  `storage.versionsOf/readObject/putObject` (inspección directa del bucket con credenciales raíz).
-- **Trampas encontradas**: (1) `insertFileWithVersion` exige transacción (FK diferida) → usar `insertCommittedFile`.
-  (2) `pnpm test:int -- <ruta> -t x` pasa `-t` como patrón de archivo: sin `--`. (3) Para simular un tamaño real
-  distinto del declarado, subir por fuera con `storage.putObject(clave, …)` (la clave sale de `uploadRow`); la URL
-  prefirmada fija el `Content-Length`. (4) Los `.txt` deben ser UTF-8 válido o el detector los rechaza.
-- **Fallo de producción corregido en T-43**: `FileService.list` y `getDownloadUrl` no abrían `withActor` (500 en
-  `GET /files`). Ahora sí; conviene que T-44/T-45 cubran `download-url` real (aún sin prueba HTTP).
-- **CA-5** quedó cubierto en `uploads-validation.int-spec.ts` (el plan §8 lo ubica ahí), aunque la tarea lo lista en T-44.
-- **Bloqueos**: ninguno. Docker y Testcontainers funcionan (`pnpm test:int` storage: 161 en verde; unitarias api 1065).
-- **Decisiones pendientes**: ninguna nueva.
+- **Hechas**: T-31…T-45. T-43 en `ec4304b`; T-44 en `01e669e` (fallo de producción) y `ae8b72d` (pruebas); T-45 en
+  `9dd184b`. Detenido por ALTO del coordinador tras T-45.
+- **PENDIENTE T-46** (spike de MinIO, no empezado): en el worktree `C:SERSMATUNIMBO-WTC:\USERS\AMATU\NIMBO-WT\005-SPIKE05-SPIKE`, rama
+  `spike/005-minio`, primero `git merge feat/005-api`. Ya están respondidas por `minio-storage.adapter.int-spec.ts`
+  (MinIO `RELEASE.2025-09-07`): un `PUT` prefirmado con `Content-Length` distinto del firmado se rechaza y no crea el
+  objeto; el `GET` prefirmado honra `response-content-disposition`/`response-content-type`/`response-cache-control`
+  (`download.int-spec.ts` lo confirma por HTTP, con nombre UTF-8 en `filename*`). **Falta**: (a) `OPTIONS` de CORS
+  con el origen configurado (`infra/minio` / variables `MINIO_*` del contenedor; comprobar
+  `Access-Control-Allow-Origin` para el origen de web y que otro origen no lo recibe); (b) si MinIO limpia solo los
+  multipart abandonados (buscar el ajuste de caducidad de multipart del servidor y medirlo con un intervalo corto).
+  Anotar el resultado en `plan.md` §8 y en esta nota, y borrar el código del spike (no se fusiona).
+- **PENDIENTE T-47** (cierre, no empezado): `storage/index.ts` exporta `StorageModule` e `IPlanLimitsProvider` (con su
+  token y `PlanLimits`) y nada de infraestructura (revisar `index.spec.ts`); README de `storage`; `pnpm lint`,
+  `pnpm typecheck`, `pnpm test` en verde; texto para la descripción del PR con las suites `int`/`iso` ejecutadas (ver
+  abajo). Después, en commit aparte `docs(storage): casillas de tareas hechas [005]`, marcar T-02…T-09 y T-20…T-42
+  cuyos commits existan (`git log --grep "005 T-xx"` en `feat/005-api`), y T-47.
+- **Suites ejecutadas** (Windows 11, Docker 29.4.0, Testcontainers sin nombres fijos, 2026-09-30): `pnpm test:int`
+  de `test/int/storage` 18 suites / 200 pruebas en verde; `pnpm test:isolation` 8 suites / 112 en verde; unitarias
+  api 116 suites / 1068 en verde (antes de T-45; T-45 no toca unitarias); lint y typecheck en verde.
+- **Fallo de producción corregido en T-44** (`01e669e`): dos `complete` simultáneos de la misma carga: el perdedor del
+  CAS final respondía 404 aunque el archivo existía (ahora responde el mismo archivo), y si el otro ya había cerrado el
+  multipart, `completeMultipart` lanzaba `NoSuchUpload` → 500. El puerto `IObjectStorage.completeMultipart` ahora
+  devuelve `boolean` (`false` = ya no existe) y el servicio recupera con `headObject`. Pruebas: unitarias de
+  `upload.service` y del adaptador, `minio-storage.adapter.int-spec.ts` y `uploads-multipart.int-spec.ts`.
+- **Arnés** (`storage-http.ts`): además de lo de T-43, `uploadParts(parts, partSize, bytes)`, `otherBytes(size)` (bytes
+  «otros», no ejecutables), `UploadRow.upload_id` y `storage.clientFor(id, token?)` (rutas de una cuenta ya creada;
+  sin token, sin `Authorization`). `StorageClient.token` se quitó (nadie lo usaba). `isolation-world.ts` gana
+  `withFiles(app, cuenta, nombres)` y `withUploads(app, cuenta, n)`, que escriben como `nimbo_app` dentro de
+  `withActor` con los repositorios de `storage`, y `close()` borra `carga` y `archivo` antes que `usuario`.
+- **Trampas nuevas**: (1) `app.get(I_CLOCK, { strict: false })` devuelve el `FixedClock` de `ProbeModule` (pasado), no el
+  del `UploadService`: las cargas sembradas con él nacen vencidas (410). Los *fixtures* usan `new Date()`. (2) Crear
+  varias peticiones de `supertest` antes de esperarlas da `ECONNREFUSED`: enviarlas de a una (funciones, no promesas).
+  (3) El mensaje de `STORAGE_INVALID_FILE_TYPE` lleva la extensión con punto (`.pdf`).
+- **Para confirmar en /review**: (a) carrera estrecha `complete` ∥ `cancel`: si `cancel` purga el objeto mientras
+  `complete` lo lee con el detector, `getRange` lanza y `complete` responde 500 en lugar de 404 (sin `archivo` sin
+  objeto: el invariante se mantiene; `uploads-cancel.int-spec.ts` no lo reprodujo en 6 vueltas). Propuesta: tratar
+  un objeto ausente en `verifyType` como pérdida de carrera (`afterLostRegistration`). (b) CA-5 está en
+  `uploads-validation.int-spec.ts` (plan §8), no en T-44. (c) CA-9 por HTTP (410 tras 24 h) queda para T-51.
+- **Bloqueos**: ninguno.
