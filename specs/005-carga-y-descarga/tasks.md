@@ -565,3 +565,33 @@ salvo la lectura por rango del detector.
 - Objetos huérfanos entre el CAS y el borrado están aceptados (R-7). No agregar un barrido de objetos sin
   `version_archivo` en esta spec.
 - Si una tarea supera 4 h, parar y pedir que se parta. No adelantar métricas, eventos, carpetas, «Reemplazar» ni toast.
+
+### Traspaso PR-E (2026-09-29)
+
+- **Hechas**: T-48 (`26bd443`), T-49 (`9333b57`), T-50 (`92e8b44`). Suites en verde: unitarias de `storage` (incluye
+  `upload-cleanup.processor.spec.ts` y `upload-cleanup.scheduler.spec.ts`), `expired-upload.scanner.int-spec.ts` (4/4) y
+  `storage-maintenance.iso-spec.ts` (9/9), esta última **corrida con dueño `NOSUPERUSER`** en contenedor propio
+  (`test/isolation/setup/nosuperuser-postgres.ts`); si el dueño fuera superusuario, `beforeAll` falla con mensaje explícito.
+- **Pendiente T-51** (sin empezar): `storage-worker.module.ts` con `BullModule.registerQueue({ name: UPLOAD_CLEANUP_QUEUE })`,
+  `UPLOAD_CLEANUP_CONFIG` (`{ intervalMinutes: UPLOAD_CLEANUP_INTERVAL_MINUTES, batchSize: UPLOAD_CLEANUP_BATCH_SIZE }`,
+  ya validados en `workerEnvSchema`), `I_EXPIRED_UPLOAD_SCANNER → SqlExpiredUploadScanner`, `UploadCleanupScheduler`,
+  `UploadCleanupProcessor` y lo que necesita `UploadService` (repositorios, `IObjectStorage` con `MinioStorageAdapter`,
+  detector, `UploadRegistrar`, `QuotaService`, `AuditModule`, `UPLOAD_CONFIG`, y un enlace de `I_PLAN_LIMITS_PROVIDER`:
+  `expire` no lo usa, pero el constructor de `UploadService` lo pide; decidir si el worker reutiliza
+  `plan-limits-binding.module.ts` o si conviene separar `expire`). Ojo: `StorageModule.forRoot` pide `MINIO_PUBLIC_ENDPOINT`,
+  que el worker no tiene (plan §5): el adaptador del worker no firma URLs públicas. Exportar `StorageWorkerModule` desde
+  `storage/index.ts` y actualizar `RUNTIME_EXPORTS` de `index.spec.ts` (el escáner sigue sin salir). `WorkerModule`
+  importa `MinioConfigModule` y `StorageWorkerModule`; `WORKER_QUEUES` gana `upload-cleanup` (`worker.module.spec.ts`).
+  Falta `test/int/storage/upload-cleanup.int-spec.ts` (job expira, borra partes, libera la reserva, `resume` ⇒ 410;
+  `complete` y `expire` en paralelo sin `archivo` sin objeto) y sumarla a `pnpm test:isolation` junto con T-45 (T-45 es
+  de la rama de PR-D).
+- **Pendiente T-52**: README de `storage` (sección de limpieza, cola, bitácoras `upload.cleanup_run`/`upload.cleanup_failed`/
+  `upload.cleanup_scheduled`) y la nota del PR: `storage-maintenance.iso-spec.ts` **sí** corrió con dueño `NOSUPERUSER`.
+- **Decisiones tomadas (a revisar en `/review`)**: (1) el procesador llama `uploadService.expire(createActor(propietarioId,
+  CLIENT), id)` sin envolverlo en otro `withActor`: `expire` ya abre el suyo; envolverlo retendría la transacción (y el
+  CAS sin confirmar) durante los borrados en MinIO. (2) `expired` en `upload.cleanup_run` cuenta filas procesadas sin
+  error (un `expire` que pierde el CAS contra `complete` cuenta como procesada). (3) El `correlationId` del programa se
+  fija al registrarlo (payload `{ correlationId }` que pide T-49); cada ejecución se distingue por `jobId`.
+  (4) Reintentos: 3 intentos, exponencial desde 30 s; fallidos se conservan 24 h. (5) Se agregó
+  `upload-cleanup.scheduler.spec.ts` (archivo no listado en T-49).
+- **Bloqueos**: ninguno. Docker disponible.
