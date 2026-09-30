@@ -23,7 +23,7 @@ modules/storage/
 
 ## Regla
 
-Otros módulos importan **solo** desde `modules/storage/index.ts`. Hoy exporta `StorageModule`, `I_PLAN_LIMITS_PROVIDER` y los tipos
+Otros módulos importan **solo** desde `modules/storage/index.ts`. Hoy exporta `StorageModule`, `StorageWorkerModule`, `I_PLAN_LIMITS_PROVIDER` y los tipos
 `IPlanLimitsProvider` y `PlanLimits`. No exporta `MagicBytesDetector`, `IExpiredUploadScanner`, el adaptador de
 auditoría ni los repositorios. Nada de `infrastructure/**` cruza la frontera. Nombres de clases y puertos: los de
 `docs/sdd/design-model.md`.
