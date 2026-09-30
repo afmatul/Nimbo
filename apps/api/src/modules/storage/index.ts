@@ -3,3 +3,4 @@
 export { I_PLAN_LIMITS_PROVIDER } from './application/plan-limits';
 export type { IPlanLimitsProvider, PlanLimits } from './application/plan-limits';
 export { StorageModule } from './storage.module';
+export { StorageWorkerModule } from './storage-worker.module';

@@ -507,7 +507,7 @@ salvo la lectura por rango del detector.
   `carga_mantenimiento` y la función son del dueño de `carga`.
   Archivos: `apps/api/test/isolation/storage-maintenance.iso-spec.ts`, `apps/api/test/isolation/setup/nosuperuser-postgres.ts`.
 
-- [ ] **T-51** Worker y carrera con `complete` — CA: CA-9 — Depende: T-49, T-50 — ~3 h
+- [x] **T-51** Worker y carrera con `complete` — CA: CA-9 — Depende: T-49, T-50 — ~3 h
   `StorageWorkerModule` lo importa `apps/worker` **solo** desde `storage/index.ts` (exportar el módulo de worker
   desde el índice; seguir sin exportar el scanner). `WorkerModule` importa `MinioConfigModule` y
   `StorageWorkerModule`. `upload-cleanup.int-spec.ts`: el job expira, borra partes, libera la reserva y un `resume`
