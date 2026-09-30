@@ -488,7 +488,7 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   Guatemala; enlace a `{webPublicUrl}/recuperar-contrasena` («si no fuiste tú»); sin IP. Luego la función.
   Archivos: `apps/api/src/modules/identity/application/mail/password-changed-mail.template.ts` y su `*.spec.ts`.
 
-- [ ] **T-60** [P×PR] `PasswordService.requestReset` — CA: CA-18 — Depende: T-16, T-17, T-58, 001 T-13, T-32, T-34 — ~1 h
+- [x] **T-60** [P×PR] `PasswordService.requestReset` — CA: CA-18 — Depende: T-16, T-17, T-58, 001 T-13, T-32, T-34 — ~1 h
   Prueba primero `application/password.service.spec.ts` (dobles): el límite `identity:password-reset-request:<sha256>`
   (60 s y `EMAIL_REQUESTS_PER_HOUR`) se consume **antes** de buscar; rechazado → `IdentityTooManyRequestsError` con
   ámbito de recuperación; inexistente → nada (`kind: 'ignored'`); verificada, interna o suspendida →
@@ -496,12 +496,12 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   de 001 y llama a `VerificationLinkIssuer`, o registra `verification_suppressed` sin cambiar la respuesta.
   Archivos: `apps/api/src/modules/identity/application/password.service.ts`, `apps/api/src/modules/identity/application/password.service.spec.ts`.
 
-- [ ] **T-61** [P×PR] `PasswordService.checkResetLink` — CA: CA-20 — Depende: T-60 — ~0,5 h
+- [x] **T-61** [P×PR] `PasswordService.checkResetLink` — CA: CA-20 — Depende: T-60 — ~0,5 h
   Prueba primero (mismo archivo): mal formado o desconocido → `ResetLinkInvalidError`; de tipo `verificacion` →
   inválido; vencido → `ResetLinkExpiredError`; usado o invalidado → inválido; válido → `ok` **sin** consumir.
   Archivos: `apps/api/src/modules/identity/application/password.service.ts`, `apps/api/src/modules/identity/application/password.service.spec.ts`.
 
-- [ ] **T-62** [P×PR] `PasswordService.resetPassword` — CA: CA-19, CA-20, CA-21 — Depende: T-61, T-59 — ~1 h
+- [x] **T-62** [P×PR] `PasswordService.resetPassword` — CA: CA-19, CA-20, CA-21 — Depende: T-61, T-59 — ~1 h
   Prueba primero (mismo archivo): débil o igual al correo de la cuenta → `IdentityWeakPasswordError` con `fields` y el
   enlace sigue vigente; el hash se calcula **fuera** de la transacción; `consume` → `false` → `ResetLinkInvalidError`
   sin cambiar la contraseña; éxito → `update`, `revokeAllExcept(userId, null, now)`, y tras el commit `clear` de los
