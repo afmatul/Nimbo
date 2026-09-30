@@ -20,9 +20,12 @@ describe('ObjectKey', () => {
     ['archivo', [OWNER, '../x', VERSION]],
     ['versión', [OWNER, FILE, '']],
     ['archivo con barra', [OWNER, `${FILE}/x`, VERSION]],
-  ] as const)('CA-7: rechaza un segmento de %s que no es UUID', (_label, [owner, file, version]) => {
-    expect(() => ObjectKey.of(owner, file, version)).toThrow();
-  });
+  ] as const)(
+    'CA-7: rechaza un segmento de %s que no es UUID',
+    (_label, [owner, file, version]) => {
+      expect(() => ObjectKey.of(owner, file, version)).toThrow();
+    },
+  );
 
   it('`equals` compara por valor', () => {
     expect(ObjectKey.of(OWNER, FILE, VERSION).equals(ObjectKey.of(OWNER, FILE, VERSION))).toBe(
