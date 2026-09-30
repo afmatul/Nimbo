@@ -570,15 +570,16 @@ salvo la lectura por rango del detector.
 
 - **Hechas**: T-31…T-45. T-43 en `ec4304b`; T-44 en `01e669e` (fallo de producción) y `ae8b72d` (pruebas); T-45 en
   `9dd184b`. Detenido por ALTO del coordinador tras T-45.
-- **PENDIENTE T-46** (spike de MinIO, no empezado): en el worktree `C:/Users/amatu/Nimbo-wt/005-spike`, rama
-  `spike/005-minio`, primero `git merge feat/005-api`. Ya están respondidas por `minio-storage.adapter.int-spec.ts`
-  (MinIO `RELEASE.2025-09-07`): un `PUT` prefirmado con `Content-Length` distinto del firmado se rechaza y no crea el
-  objeto; el `GET` prefirmado honra `response-content-disposition`/`response-content-type`/`response-cache-control`
-  (`download.int-spec.ts` lo confirma por HTTP, con nombre UTF-8 en `filename*`). **Falta**: (a) `OPTIONS` de CORS
-  con el origen configurado (`infra/minio` / variables `MINIO_*` del contenedor; comprobar
-  `Access-Control-Allow-Origin` para el origen de web y que otro origen no lo recibe); (b) si MinIO limpia solo los
-  multipart abandonados (buscar el ajuste de caducidad de multipart del servidor y medirlo con un intervalo corto).
-  Anotar el resultado en `plan.md` §8 y en esta nota, y borrar el código del spike (no se fusiona).
+- **T-46 hecha** (spike en `spike/005-minio`, que solo tiene la fusión de `feat/005-api`; el guion del spike se borró
+  sin confirmarse). Resultado completo en `plan.md` §8. `Content-Length` firmado y `response-*`: ya los cubrían
+  `minio-storage.adapter.int-spec.ts` y `download.int-spec.ts`. (a) **CORS correcto**: con
+  `MINIO_API_CORS_ALLOW_ORIGIN` de `compose.yml`, el `OPTIONS` devuelve `Access-Control-Allow-Origin` solo para
+  `http://localhost` y `http://localhost:3002`; `http://evil.example` y `http://localhost:3000` reciben `204` sin
+  ninguna cabecera `Access-Control-*`. Sin cambios de configuración. (b) **MinIO limpia solo los multipart
+  abandonados**: por defecto `stale_uploads_expiry=24h`, `stale_uploads_cleanup_interval=6h`
+  (`MINIO_API_STALE_UPLOADS_*`); con 20 s / 5 s las partes desaparecen del disco a los ~25 s y `ListParts` responde
+  `NoSuchUpload` (el adaptador ya lo tolera). `ListMultipartUploads` sigue listando el `uploadId`; la API no lo usa.
+  Es una red de seguridad, no reemplaza `upload-cleanup` (PR-E).
 - **PENDIENTE T-47** (cierre, no empezado): `storage/index.ts` exporta `StorageModule` e `IPlanLimitsProvider` (con su
   token y `PlanLimits`) y nada de infraestructura (revisar `index.spec.ts`); README de `storage`; `pnpm lint`,
   `pnpm typecheck`, `pnpm test` en verde; texto para la descripción del PR con las suites `int`/`iso` ejecutadas (ver
