@@ -103,3 +103,27 @@ describe('TooManyRequestsError (001 CA-15)', () => {
     expect(error.fields).toBeUndefined();
   });
 });
+
+describe('DomainError.details (005 D-12)', () => {
+  const DETAILS = { suggestedName: 'a (1).txt', sizeBytes: 10, retry: true };
+
+  it('CA-6: `details` es opcional', () => {
+    expect(new ExampleConflictError(MESSAGE).details).toBeUndefined();
+  });
+
+  it('CA-6: expone los `details` planos recibidos, de solo lectura', () => {
+    const error = new ExampleConflictError(MESSAGE, undefined, { ...DETAILS });
+
+    expect(error.details).toEqual(DETAILS);
+    expect(Object.isFrozen(error.details)).toBe(true);
+  });
+
+  it('CA-6: `fields` y `details` conviven', () => {
+    const fields = [{ field: 'name', reason: 'REQUIRED', message: 'Completa este campo.' }];
+
+    const error = new ExampleInvalidInputError(MESSAGE, fields, { sizeBytes: 0 });
+
+    expect(error.fields).toEqual(fields);
+    expect(error.details).toEqual({ sizeBytes: 0 });
+  });
+});

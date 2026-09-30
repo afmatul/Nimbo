@@ -1,0 +1,52 @@
+import { STORAGE_ERROR_CODES } from '@nimbo/contracts';
+
+import type { DomainError } from '../../../shared/domain/errors';
+import {
+  EmptyFileError,
+  FileTooLargeError,
+  InvalidFileTypeError,
+  InvalidQueryError,
+  InvalidUploadRequestError,
+  NameConflictError,
+  NodeNotFoundError,
+  QuotaExceededError,
+  StorageTooManyRequestsError,
+  UploadExpiredError,
+  UploadIncompleteError,
+  UploadNotFoundError,
+  UploadSizeMismatchError,
+} from '../domain/errors';
+
+const format = (bytes: number): string => String(bytes);
+
+/** Una instancia de cada error de `storage`. El dominio no importa `contracts`: el contrato se prueba aquí. */
+const ALL_ERRORS: readonly DomainError[] = [
+  new InvalidUploadRequestError([]),
+  new InvalidQueryError([]),
+  new EmptyFileError(),
+  new FileTooLargeError(2n, 1n, format),
+  new QuotaExceededError(1n, format),
+  new NameConflictError('a (1).txt'),
+  new UploadNotFoundError(),
+  new UploadExpiredError(),
+  new UploadIncompleteError(),
+  new UploadSizeMismatchError(),
+  new InvalidFileTypeError('signature', 'pdf'),
+  new NodeNotFoundError(),
+  new StorageTooManyRequestsError(1),
+];
+
+describe('contrato de códigos de `storage` (CA-7, CA-19)', () => {
+  it.each(ALL_ERRORS.map((error) => [error.code]))(
+    'CA-7: `%s` está en STORAGE_ERROR_CODES',
+    (code) => {
+      expect(Object.values(STORAGE_ERROR_CODES)).toContain(code);
+    },
+  );
+
+  it('CA-7: cada código del catálogo tiene su clase de error', () => {
+    expect(ALL_ERRORS.map((error) => error.code).sort()).toEqual(
+      Object.values(STORAGE_ERROR_CODES).sort(),
+    );
+  });
+});

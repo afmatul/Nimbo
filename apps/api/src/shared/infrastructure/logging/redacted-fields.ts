@@ -25,6 +25,21 @@ const SPEC_REDACTED_FIELDS = [
  */
 const IDENTITY_REDACTED_FIELDS = ['email', 'correo', 'fullName', 'to', 'html', 'text'] as const;
 
+/**
+ * Campos de la spec 005 (T-41, CA-20): URLs firmadas y sus firmas, la clave de objeto y el `upload_id` de S3, y los
+ * nombres de archivo (`name`, `suggestedName`). La auditoría solo lleva UUID, tamaño y modo.
+ */
+const STORAGE_REDACTED_FIELDS = [
+  'url',
+  'uploadUrl',
+  'claveObjeto',
+  'objectKey',
+  'uploadId',
+  'signature',
+  'suggestedName',
+  'name',
+] as const;
+
 /** URLs de conexión: llevan usuario y contraseña embebidos (`postgres://usuario:clave@host/bd`). */
 const CONNECTION_URL_FIELDS = ['DATABASE_URL', 'DATABASE_MIGRATION_URL', 'REDIS_URL'] as const;
 
@@ -41,6 +56,7 @@ export const REDACTED_FIELDS: ReadonlySet<string> = new Set(
   [
     ...SPEC_REDACTED_FIELDS,
     ...IDENTITY_REDACTED_FIELDS,
+    ...STORAGE_REDACTED_FIELDS,
     ...SECRET_KEYS,
     ...CONNECTION_URL_FIELDS,
   ].map((field) => field.toLowerCase()),
