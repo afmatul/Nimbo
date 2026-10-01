@@ -145,7 +145,14 @@ function acciones(i, nombre, abierto, preparando = false) {
     ? `<button role="menuitem" type="button" tabindex="-1" aria-disabled="true">${icon('loader', 18, 'spin')}<span>Preparando…</span></button>`
     : `<button role="menuitem" type="button" tabindex="-1">${icon('download')}<span>Descargar</span></button>`;
   const anuncio = preparando ? `<p class="sr-only" role="status">Preparando la descarga de ${nombre}…</p>` : '';
-  return `<div class="row-actions"><button class="row-btn" type="button" id="acc-btn-${i}" aria-haspopup="menu" aria-expanded="${abierto}" aria-controls="acc-menu-${i}" aria-label="Acciones de ${nombre}">${icon('more', 18)}</button><div class="row-menu" id="acc-menu-${i}"${abierto ? '' : ' hidden'}><ul class="account-menu" role="menu" aria-labelledby="acc-btn-${i}"><li role="none">${item}</li></ul>${anuncio}</div></div>`;
+  return menuFila(i, nombre, abierto, [item], anuncio);
+}
+
+// Botón ⋮ y menú de una fila con varios ítems (HTML de cada <button role="menuitem">; 'sep' dibuja un separador).
+// Lo usan acciones() de 005 y los menús de 006 (carpetas y papelera).
+function menuFila(i, nombre, abierto, items, extra = '') {
+  const lis = items.map((it) => (it === 'sep' ? '<li role="separator" class="account-sep"></li>' : `<li role="none">${it}</li>`)).join('');
+  return `<div class="row-actions"><button class="row-btn" type="button" id="acc-btn-${i}" aria-haspopup="menu" aria-expanded="${abierto}" aria-controls="acc-menu-${i}" aria-label="Acciones de ${nombre}">${icon('more', 18)}</button><div class="row-menu" id="acc-menu-${i}"${abierto ? '' : ' hidden'}><ul class="account-menu" role="menu" aria-labelledby="acc-btn-${i}">${lis}</ul>${extra}</div></div>`;
 }
 
 // nuevos: filas recién subidas (con «NUEVO»); menuAbierto: índice de la fila con el menú ⋮ abierto (o -1);
@@ -171,5 +178,5 @@ function tabla(nuevos, { menuAbierto = -1, preparando = false } = {}) {
 
 module.exports = {
   P, crearIcon, icon, PLAN, MAX_POR_ARCHIVO, CUOTA_NORMAL, CUOTA_LLENA, RAIZ, tile,
-  CSS_LISTA, CSS_LISTA_MQ600, cuota, sidebar, botonSubir, encabezado, tabla,
+  CSS_LISTA, CSS_LISTA_MQ600, cuota, sidebar, botonSubir, encabezado, tabla, menuFila,
 };

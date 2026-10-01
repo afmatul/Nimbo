@@ -1,6 +1,6 @@
 # Generadores de los mockups escritos a mano
 
-Los mockups HTML autocontenidos de `identity/seguridad`, `shared/layout`, `storage/carga` (salvo `carga--progreso.html`) y los estados de 005 de `storage/explorador` no se editan a mano: se generan con estos
+Los mockups HTML autocontenidos de `identity/seguridad`, `shared/layout`, `storage/carga` (salvo `carga--progreso.html`), los estados de 005 y 006 de `storage/explorador` y los de 006 de `storage/papelera` no se editan a mano: se generan con estos
 scripts para que el marco de la aplicación (barra lateral, barra superior, menú de la cuenta, cajón móvil y diálogo)
 salga de **un solo lugar**. Así no se copia el marco en cada archivo (DRY). Son referencia visual; `apps/web` no
 los importa.
@@ -9,12 +9,16 @@ los importa.
 |---|---|
 | `marco/marco.js` | Piezas comunes del marco y el diálogo de «Cerrar sesión» (`DIALOGO_CERRAR_SESION`) |
 | `mis-archivos/mis-archivos.js` | Página «Mis archivos» de 005: íconos de tipo, datos de ejemplo, cuota por tramos, barra lateral de 005 (sin «Carpetas» ni contador de la Papelera), encabezado y tabla de la raíz con el menú ⋮ (comunes a `carga` y `explorador`) |
+| `mis-archivos/estados.js` | CSS y HTML de los estados comunes de una lista (vacío, esqueleto, error, `Alert`, zona de soltar) y el script del menú ⋮; los usan los estados de 005 y 006 |
+| `carpetas/carpetas.js` | Piezas de 006: logo del proyecto (nube de `docs/design/logos/` con tokens), barra lateral con «Carpetas» y contador de la Papelera, toast, diálogo con un campo, `ConfirmDestructiveDialog` con progreso y su CSS |
 | `marco/marco.js` (opciones) | `sidebar`/`navegacion` aceptan `carpetas` y `contadorPapelera`; con los valores por defecto el HTML de Seguridad y del layout no cambia |
 | `marco/css-marco.js` | CSS del marco con los tokens de Cielo Sereno (`ui-guidelines.md` §2–§3), solo Inter |
 | `seguridad/generar.js` | Los 15 estados de `identity/seguridad` (spec 002) |
 | `layout/generar.js` | Los 5 estados de `shared/layout` |
 | `carga/generar.js` | Los 8 estados escritos a mano de `storage/carga` (spec 005); `carga--progreso.html` es el paquete de la propuesta y no se genera |
 | `explorador/generar.js` | Los 7 estados de 005 de `storage/explorador` (`vacio`, `cargando`, `arrastre`, `error`, `acciones`, `descarga-preparando`, `descarga-fallida`); `cuadricula` y `lista` son el paquete de la propuesta y no se generan |
+| `explorador/generar-carpetas.js` | Los 22 estados de 006 de `storage/explorador` (carpetas, migas, crear, renombrar, «Mover a…» con «Nueva carpeta» en línea, mover a la papelera) |
+| `papelera/generar.js` | Los 12 estados de 006 de `storage/papelera`; `papelera.html` es el paquete de la propuesta y no se genera |
 | `pw/capturar-rutas.js` | Capturas a 360 y 1440 px de los HTML indicados |
 | `pw/axe-seguridad.js`, `pw/axe-layout.js` | axe-core, desbordamiento a 360 px, objetivos táctiles y consola sobre todos los `.html` de una carpeta (sirve para cualquier pantalla); el de layout recorre además el teclado |
 
@@ -25,6 +29,8 @@ node docs/design/mockups/_generadores/seguridad/generar.js "$(pwd)"
 node docs/design/mockups/_generadores/layout/generar.js "$(pwd)"
 node docs/design/mockups/_generadores/carga/generar.js "$(pwd)"
 node docs/design/mockups/_generadores/explorador/generar.js "$(pwd)"
+node docs/design/mockups/_generadores/explorador/generar-carpetas.js "$(pwd)"
+node docs/design/mockups/_generadores/papelera/generar.js "$(pwd)"
 node docs/design/mockups/_generadores/pw/capturar-rutas.js "$(pwd)" \
   identity/seguridad/seguridad.html=identity/seguridad/seguridad--default
 node docs/design/mockups/_generadores/pw/axe-layout.js "$(pwd)"

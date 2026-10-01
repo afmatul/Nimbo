@@ -198,6 +198,7 @@ Nimbo se agregan aparte (DF-47).
 | `AgentPanel` | Agente (RF-32) | Superficie `bg-agent-bg`; streaming con `aria-live`; indicador en vivo `agent-accent` (sin animación si reduced-motion) |
 | `CitationChip` | Cita del agente | «archivo · página 3», etiqueta de `SourceLocation.label()`; navegable; aviso visible si la ubicación no es certera |
 | `PlanCard` / `PlanComparison` | Catálogo y comparador (RF-19) | Precio en quetzales con `tabular-nums`; límites desde la API, nunca escritos en el frontend |
+| `Toaster` (sonner, `components/ui/sonner.tsx`) | Confirmaciones no bloqueantes con acción (papelera, restaurar) | `aria-live="polite"`, ≥ 8 s, pausa con hover y foco, solo tokens; los errores van en `Alert`, no en toast (ADR-0024) |
 
 ### Colores de participantes (DF-46)
 La secuencia de 8 colores del design system dice «visor de atribución de párrafo», pero la atribución párrafo a
@@ -230,7 +231,7 @@ identificador.
 > Estado del mockup: `Pendiente` · `Borrador` · `Aprobado`. Rutas relativas a `docs/design/`.
 > Actualicen la columna «Mockup» con lo que ya existe; el `ui-designer` la mantiene al día.
 > Los mockups `Borrador` provienen de Claude Design (`.dc.html`) o están escritos a mano en HTML autocontenido
-> (`.html`), como `mockups/identity/seguridad/`, `mockups/identity/terminos/`, `mockups/identity/privacidad/` y los estados nuevos de `mockups/storage/carga/` y `mockups/storage/explorador/`. Solo
+> (`.html`), como `mockups/identity/seguridad/`, `mockups/identity/terminos/`, `mockups/identity/privacidad/` y los estados nuevos de `mockups/storage/carga/`, `mockups/storage/explorador/` y `mockups/storage/papelera/`. Solo
 > cubren los estados entre paréntesis; el resto de estados mínimos se agregan con `/mockup` antes de aclarar la spec.
 > Cada carpeta tiene un `README.md`.
 
@@ -245,11 +246,11 @@ identificador.
 | Recuperar / restablecer contraseña | identity | 002 | — (reutiliza pedir-enlace, exito, enlace-expirado, enlace-invalido y ya-verificado de 001) | — | pedir, correo-enviado, contrasena-nueva, enlace-expirado, enlace-invalido, exito | Decisión explícita (spec 002 §11) |
 | Seguridad (sesiones y contraseña) | identity | 002 | `mockups/identity/seguridad/` | `capturas/identity/seguridad/` | default, cargando, error-sesiones, sin-otras-sesiones, confirmar-cierre, confirmar-cierre-actual, sesion-cerrada, cerrar-demas, cerrar-demas-exito, contrasena-enviando, contrasena-no-coincide, contrasena-incorrecta, contrasena-debil, contrasena-bloqueada, contrasena-cambiada | Aprobado (2026-09-26) |
 | Layout de la app (navegación, cuota lateral, menú de la cuenta) | shared | 000b | `mockups/shared/layout/` | `capturas/shared/layout/` | default, menu-cuenta-abierto, confirmar-cerrar-sesion, solo-lectura, movil-cajon-abierto (solo 360) | Borrador |
-| Explorador de archivos | storage | 005–007 | `mockups/storage/explorador/` | `capturas/storage/explorador/` | default, vacio, cargando, arrastre, error, acciones, descarga-preparando, descarga-fallida, seleccion | Borrador (cuadricula, lista, vacio, cargando, arrastre, error, acciones, descarga-preparando, descarga-fallida) |
+| Explorador de archivos | storage | 005–007 | `mockups/storage/explorador/` | `capturas/storage/explorador/` | default, vacio, cargando, arrastre, error, acciones, descarga-preparando, descarga-fallida, seleccion; 006: carpeta, migas, carpeta-vacia, carpeta-cargando, carpeta-error, carpeta-no-encontrada, nueva-carpeta, renombrar, mover, mover-nueva-carpeta, error-nombre, error-mover, eliminado | Borrador (cuadricula, lista, vacio, cargando, arrastre, error, acciones, descarga-preparando, descarga-fallida; 006: raiz-carpetas, carpeta, carpeta-vacia, carpeta-cargando, carpeta-error, carpeta-no-encontrada, carpeta-arrastre, acciones-archivo, acciones-carpeta, nueva-carpeta, nombre-invalido, nombre-repetido-carpeta, limite-niveles, renombrar, renombrar-repetido, mover, mover-carpeta, mover-conflicto, mover-nueva-carpeta, mover-nueva-carpeta-error, eliminado, eliminar-fallido) |
 | Resumen de espacio (cuota, consultas, renovación) | storage | 007 | `mockups/storage/resumen-espacio/` | `capturas/storage/resumen-espacio/` | default | Borrador (default) |
 | Vista general (lienzo con todas las pantallas) | shared | 000b | `mockups/shared/vista-general/` | `capturas/shared/vista-general/` | default | Borrador (referencia) |
 | Carga en progreso | storage | 005 | `mockups/storage/carga/` | `capturas/storage/carga/` | progreso, pausa, sin-conexion, rechazo-tamano, rechazo-cuota, tipo-invalido, nombre-repetido, nombre-repetido-varios, confirmar-cancelar | Borrador (progreso, pausa, sin-conexion, rechazo-tamano, rechazo-cuota, tipo-invalido, nombre-repetido, nombre-repetido-varios, confirmar-cancelar) |
-| Papelera | storage | 006 | `mockups/storage/papelera/` | `capturas/storage/papelera/` | default, vacio | Borrador (default) |
+| Papelera | storage | 006 | `mockups/storage/papelera/` | `capturas/storage/papelera/` | default, vacio, cargando, error, seleccion, restaurar-con-aviso, confirmar-eliminar-definitivo, vaciar | Borrador (default de la propuesta; 006: con-elementos, vacia, cargando, error, seleccion, acciones, restaurado, restaurado-con-avisos, confirmar-eliminar, confirmar-vaciar, vaciando, vaciada) |
 | Ficha de archivo (detalles, versiones, estado de indexación) | storage | 014, 019 | `mockups/storage/ficha-archivo/` | `capturas/storage/ficha-archivo/` | default, no-indexable | Borrador (default, con historial) |
 | Vista previa | storage | 017 | `mockups/storage/vista-previa/` | … | pdf, imagen, no-disponible | Pendiente |
 | Búsqueda | storage | 018 | `mockups/storage/busqueda/` | `capturas/storage/busqueda/` | resultados, sin-resultados | Borrador (resultados) |
