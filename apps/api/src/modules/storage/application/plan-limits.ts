@@ -11,8 +11,8 @@ export interface PlanLimits {
 
 /**
  * Puerto que `storage` declara y `billing` (006a) implementa importándolo de `storage/index.ts`. El enlace del
- * token vive en la raíz de composición (`AppModule`), para que `storage` no conozca a `billing`. Ningún valor del
- * catálogo de planes vive en código de producción (RN-1).
+ * token vive en la raíz de composición (`PlanLimitsBindingModule`), para que `storage` no conozca a `billing`. Ningún
+ * valor del catálogo de planes vive en código de producción (RN-1).
  */
 export interface IPlanLimitsProvider {
   limitsFor(actor: Actor): Promise<PlanLimits>;

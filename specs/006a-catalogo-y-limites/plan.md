@@ -1,13 +1,13 @@
 # Plan 006a — Catálogo y límites
 
-> Spec: `./spec.md` (Aclarada, 2026-09-28) · Estado del plan: **Propuesto** (pendiente de aprobación de arquitectura)
+> Spec: `./spec.md` (Aclarada, 2026-09-28) · Estado del plan: **Aprobado** (2026-09-30, §11) · Alineado con el código integrado el 2026-09-30 (`review.md`)
 
 ## 1. Resumen técnico
 
-Esta spec construye la infraestructura base del catálogo de suscripciones de Nimbo: la tabla `plan` en PostgreSQL, el objeto de valor inmutable `PlanLimits` y el puerto `IPlanLimitsProvider` que aísla a los demás módulos del esquema de facturación.
+Esta spec construye la infraestructura base del catálogo de suscripciones de Nimbo: la tabla `plan` en PostgreSQL, el tipo de solo lectura `PlanLimits` y el puerto `IPlanLimitsProvider` que aísla a los demás módulos del esquema de facturación.
 Siguiendo la decisión de arquitectura **ADR-0022** (resolución de DF-51 opción A) y la alineación con la spec 005 (carga y descarga):
-- El puerto `IPlanLimitsProvider` y el value object `PlanLimits` se ubican en `apps/api/src/modules/storage/application/plan-limits.ts`, identificados por el token `I_PLAN_LIMITS_PROVIDER`.
-- `PlanLimits` contiene estrictamente las cuotas que consume la carga: `maxFileBytes: bigint` y `storageQuotaBytes: bigint`.
+- El puerto `IPlanLimitsProvider` y el tipo `PlanLimits` los declaró la spec 005 en `apps/api/src/modules/storage/application/plan-limits.ts`, con el token `I_PLAN_LIMITS_PROVIDER` (`Symbol`). La 006a no los modifica.
+- `PlanLimits` es una `interface` con propiedades `readonly` y contiene estrictamente las cuotas que consume la carga: `maxFileBytes: bigint` y `storageQuotaBytes: bigint`.
 - El puerto exporta el método `limitsFor(actor: Actor): Promise<PlanLimits>`.
 - El módulo `billing` (`apps/api/src/modules/billing/`) implementa este puerto mediante `PlanLimitsAdapter` (`apps/api/src/modules/billing/infrastructure/adapters/plan-limits.adapter.ts`).
 - En esta fase (CA-5, Art. VI), `limitsFor(actor)` consulta la fila `personal` de la tabla `plan` en base de datos (`52428800n` bytes de archivo y `16106127360n` bytes de cuota) sin consultar tablas de usuario ni importar `identity`.
@@ -20,12 +20,12 @@ Siguiendo la decisión de arquitectura **ADR-0022** (resolución de DF-51 opció
 | Artículo | Cumple | Nota |
 |---|---|---|
 | I Spec manda | ☑ | El plan atiende exactamente los criterios CA-1 a CA-7 y CA-9, y las reglas RN-1 a RN-6 de `spec.md`. |
-| IV SOLID | ☑ | **S**: `PlanLimitsAdapter` tiene la única responsabilidad de adaptar la persistencia de `plan` a los límites de consumo. `PlanLimits` solo encapsula la inmutabilidad y reglas de límites. **O**: La incorporación de futuros planes o ajustes de cuotas se realiza mediante datos/migraciones sin alterar el contrato `IPlanLimitsProvider`. **L**: `PlanLimitsAdapter` sustituye a cualquier implementación o mock en pruebas sin alterar el comportamiento. **I**: El puerto expone únicamente el método `limitsFor(actor)` que consume el módulo de almacenamiento. No expone precios ni mutaciones. **D**: `storage` depende de su propia abstracción `IPlanLimitsProvider`, no de TypeORM ni de `billing`. |
-| V YAGNI | ☑ | No se implementa la entidad `Subscription`, ni el value object `Money`, ni endpoints HTTP, ni oyentes de eventos (trasladados a spec 009 según PD-40). No se crea `storage.module.ts` antes de la spec 005. |
+| IV SOLID | ☑ | **S**: `PlanLimitsAdapter` tiene la única responsabilidad de adaptar la persistencia de `plan` a los límites de consumo. `PlanLimits` solo describe los dos límites de solo lectura. **O**: La incorporación de futuros planes o ajustes de cuotas se realiza mediante datos/migraciones sin alterar el contrato `IPlanLimitsProvider`. **L**: `PlanLimitsAdapter` sustituye a cualquier implementación o mock en pruebas sin alterar el comportamiento. **I**: El puerto expone únicamente el método `limitsFor(actor)` que consume el módulo de almacenamiento. No expone precios ni mutaciones. **D**: `storage` depende de su propia abstracción `IPlanLimitsProvider`, no de TypeORM ni de `billing`. |
+| V YAGNI | ☑ | No se implementa la entidad `Subscription`, ni el value object `Money`, ni endpoints HTTP, ni oyentes de eventos (trasladados a spec 009 según PD-40). |
 | VI DRY | ☑ | La única fuente de verdad de los límites es la base de datos (sembrada por migración). Los números mágicos no se replican en el código ni en los módulos consumidores. |
 | VIII Fronteras | ☑ | Aplica ADR-0022 (DF-51 opción A): `storage` declara el puerto y `billing` lo implementa. `storage` no importa nada de `billing` (verificado por `boundaries.js`). `billing` solo expone sus contratos por `modules/billing/index.ts`. |
 | IX Seguridad | ☑ | Sin exposición HTTP directa en esta spec. La tabla `plan` contiene información pública del sistema sin datos de clientes. |
-| X Operabilidad | ☑ | Registros estructurados mediante `pino` (`logger.info` / `logger.debug`) al inicializar el adaptador y consultar límites por actor. |
+| X Operabilidad | ☑ | El adaptador no escribe bitácoras: es una lectura de catálogo sin efectos y sin datos de cliente. Los errores (`PlanNotFoundError`, `PLAN_NOT_FOUND`) suben a quien llama, que ya registra la petición (§7). |
 | XI Integridad | ☑ | Restricciones de integridad a nivel de base de datos (`CHECK` en `precio_centavos >= 0`, `cuota_bytes > 0`, etc.) e índice único en `slug`. Migración reversible con borrado limpio en `down`. |
 | XII Degradación | ☑ | Ante usuarios sin suscripción o en caso de que la tabla de suscripción no exista, `limitsFor` degrada de forma predecible y segura devolviendo el plan `personal` (CA-5). |
 
@@ -47,9 +47,10 @@ Hallazgos `DF-xx` aplicados:
 
 | Módulo | Cambio | Capa(s) |
 |---|---|---|
-| `apps/api/src/modules/storage` | Declara el value object inmutable `PlanLimits`, el puerto `IPlanLimitsProvider` y el token `I_PLAN_LIMITS_PROVIDER` en `application/plan-limits.ts` | `application` |
-| `apps/api/src/modules/billing` | Implementa `PlanOrmEntity`, repositorio, error de dominio `PlanNotFoundError`, adaptador `PlanLimitsAdapter`, migraciones y módulo NestJS | `domain`, `infrastructure/persistence`, `infrastructure/adapters`, `application` |
-| `apps/api/src/app.module.ts` | Registra `{ provide: I_PLAN_LIMITS_PROVIDER, useClass: PlanLimitsAdapter }` | Composición raíz |
+| `apps/api/src/modules/storage` | Ninguno: `PlanLimits`, `IPlanLimitsProvider` e `I_PLAN_LIMITS_PROVIDER` ya existen en `application/plan-limits.ts` (005) | — |
+| `apps/api/src/modules/billing` | Implementa `PlanOrmEntity`, error de dominio `PlanNotFoundError`, adaptador `PlanLimitsAdapter` y `BillingModule` | `domain`, `infrastructure/persistence`, `infrastructure/adapters` |
+| `apps/api/src/migrations` | `20260928233000-crear-tabla-plan.ts` y `20260928233500-sembrar-planes.ts` | Migraciones |
+| `apps/api/src/plan-limits-binding.module.ts` | Cambia el proveedor provisional de 005 por `{ provide: I_PLAN_LIMITS_PROVIDER, useExisting: PlanLimitsAdapter }` e importa `BillingModule`. `AppModule` y `WorkerModule` ya importan este módulo | Composición raíz |
 
 ### Dependencias entre módulos
 - `billing → storage`: permitida para implementar `IPlanLimitsProvider`.
@@ -134,33 +135,21 @@ No aplica.
 ## 6. Diseño de componentes
 
 ### 1. En módulo `storage` (`apps/api/src/modules/storage/application/plan-limits.ts`)
-Value object `PlanLimits`, puerto `IPlanLimitsProvider` y token `I_PLAN_LIMITS_PROVIDER`:
+Ya existe desde la 005; la 006a lo consume tal cual:
 ```typescript
-import type { Actor } from '../../../shared';
-
-export interface PlanLimitsProps {
-  maxFileBytes: bigint;
-  storageQuotaBytes: bigint;
-}
-
-export class PlanLimits {
+export interface PlanLimits {
   readonly maxFileBytes: bigint;
   readonly storageQuotaBytes: bigint;
-
-  constructor(props: PlanLimitsProps) {
-    this.maxFileBytes = props.maxFileBytes;
-    this.storageQuotaBytes = props.storageQuotaBytes;
-    Object.freeze(this);
-  }
 }
-
-export const I_PLAN_LIMITS_PROVIDER = 'I_PLAN_LIMITS_PROVIDER';
 
 export interface IPlanLimitsProvider {
   limitsFor(actor: Actor): Promise<PlanLimits>;
 }
+
+export const I_PLAN_LIMITS_PROVIDER = Symbol('IPlanLimitsProvider');
 ```
-- `modules/storage/index.ts`: Exporta `PlanLimits`, `IPlanLimitsProvider` y `I_PLAN_LIMITS_PROVIDER`.
+- `PlanLimits` es un tipo de solo lectura, no una clase: la inmutabilidad la garantiza `readonly` en compilación (CA-6), y el adaptador devuelve un objeto nuevo en cada llamada.
+- `modules/storage/index.ts` exporta los tres.
 
 ### 2. En módulo `billing` (`apps/api/src/modules/billing/`)
 - `domain/errors/plan-not-found.error.ts`:
@@ -181,10 +170,10 @@ export interface IPlanLimitsProvider {
 - `billing.module.ts`:
   Configura TypeORM para `PlanOrmEntity`, provee y exporta `PlanLimitsAdapter`.
 - `index.ts`:
-  Exporta `BillingModule` y `PlanLimitsAdapter`.
+  Exporta `BillingModule`, `PlanLimitsAdapter` y `PlanNotFoundError`.
 
 ### 3. En la raíz de composición (`apps/api/src/plan-limits-binding.module.ts`)
-- Registra el proveedor global creado en spec 005:
+- Módulo `@Global()` creado en la 005. Importa `BillingModule` y cambia el proveedor provisional por:
   ```typescript
   {
     provide: I_PLAN_LIMITS_PROVIDER,
@@ -194,17 +183,19 @@ export interface IPlanLimitsProvider {
 
 ## 7. Observabilidad
 
-- Bitácoras estructuradas `pino`:
-  - `billing.plan_limits.queried`: registro en nivel `debug` con `{ actorId, durationMs }`.
+- Sin bitácoras propias. `limitsFor` se llama en cada carga; registrarla añadiría ruido sin información útil. El `PlanNotFoundError` llega a quien llama y queda en su registro de la petición.
+- Si la 007 consulta los límites en cada operación, se evalúa una caché y su métrica entonces.
 
 ## 8. Estrategia de pruebas
 
-| Criterio | Nivel | Archivo propuesto |
+| Criterio | Nivel | Archivo |
 |---|---|---|
-| CA-1 (Semilla del catálogo oficial) | Integración | `apps/api/test/int/billing/plan-migration.int-spec.ts` |
-| CA-4 (Plan inexistente lanza `PlanNotFoundError`) | Unitario | `apps/api/src/modules/billing/domain/errors/plan-not-found.error.spec.ts` |
-| CA-5 (Límites por actor devuelven Personal) | Unitario | `apps/api/src/modules/billing/infrastructure/adapters/plan-limits.adapter.spec.ts` |
-| CA-6 (Inmutabilidad y tipos de `PlanLimits`) | Unitario | `apps/api/src/modules/storage/application/plan-limits.spec.ts` |
+| CA-1 (Semilla del catálogo oficial) | Integración | `apps/api/test/int/billing/plan-migration.int-spec.ts`, `plan-limits.adapter.int-spec.ts` |
+| CA-2 (Límites por id de plan) | Unitario e integración | `billing/infrastructure/adapters/plan-limits.adapter.spec.ts`, `apps/api/test/int/billing/plan-limits.adapter.int-spec.ts` |
+| CA-3 (Límites por slug) | Unitario e integración | `billing/infrastructure/adapters/plan-limits.adapter.spec.ts`, `apps/api/test/int/billing/plan-limits.adapter.int-spec.ts` |
+| CA-4 (Plan inexistente lanza `PlanNotFoundError`) | Unitario e integración | `billing/domain/errors/plan-not-found.error.spec.ts`, adaptador (unitaria e int-spec) |
+| CA-5 (Límites por actor devuelven Personal) | Unitario e integración | `billing/infrastructure/adapters/plan-limits.adapter.spec.ts`, int-spec (cliente y admin), `apps/api/src/plan-limits-binding.module.spec.ts` |
+| CA-6 (Inmutabilidad y tipos de `PlanLimits`) | Tipos y unitario | `readonly` lo verifica `pnpm typecheck`. Las pruebas del adaptador comparan con `toEqual` contra literales `bigint` (`52428800n`…), que fallan si el valor es `number` o si sobra una propiedad. `plan.orm-entity.spec.ts` verifica el mapeo a `bigint` |
 | CA-7 (Reversibilidad de la migración `up`/`down`) | Integración | `apps/api/test/int/billing/plan-migration.int-spec.ts` |
 | CA-9 (Identificadores estables y UUIDs fijos) | Integración | `apps/api/test/int/billing/plan-migration.int-spec.ts` |
 
@@ -227,5 +218,5 @@ export interface IPlanLimitsProvider {
 
 > Sección reservada para el subagente `architect`.
 
-- Veredicto: Pendiente
-- Observaciones:
+- Veredicto: Aprobado (2026-09-30, Adrián), registrado al cerrar la spec.
+- Observaciones: las dos decisiones de arquitectura del plan se aceptaron antes del código: ADR-0016 (DF-23, DF-24) y ADR-0022 (DF-51 opción A), ambos el 2026-09-29. Adrián integró el PR #8 el 2026-09-30, y `review.md` (✅, sin bloqueantes) confirma que el código respeta las fronteras. Este plan se alineó después con lo integrado (`PlanLimits` de 005 como `interface`, enlace con `useExisting` en `PlanLimitsBindingModule`, sin bitácoras propias).
