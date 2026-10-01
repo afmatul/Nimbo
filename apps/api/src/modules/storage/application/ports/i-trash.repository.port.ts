@@ -62,8 +62,24 @@ export interface TrashedFolder {
   readonly sizeBytes: bigint;
 }
 
+/** Una raíz de la papelera por tipo e id (lo que se restaura o se purga). */
+export interface TrashItemRef {
+  readonly type: TrashItemType;
+  readonly id: string;
+}
+
 /**
- * Papelera del actor (plan 006 §2): marcar, listar y restaurar. Las raíces se resuelven con `ownedTrashedNodes(actor)`
+ * Un archivo que borra la purga (plan 006 §1): sus claves de objeto (una por versión; nunca salen de la API ni entran
+ * en una bitácora) y la suma de sus versiones, que es lo que baja `espacio_usado`.
+ */
+export interface PurgeFile {
+  readonly id: string;
+  readonly sizeBytes: bigint;
+  readonly objectKeys: readonly string[];
+}
+
+/**
+ * Papelera del actor (plan 006 §2): marcar, listar, restaurar y purgar. Las raíces se resuelven con `ownedTrashedNodes(actor)`
  * dentro de la consulta y lo arrastrado por una carpeta se alcanza por `eliminado_con_carpeta_id` de una raíz propia;
  * todo método toma el `EntityManager` de `requireActorScope(actor)`. Como en `INodeRepository`, quien llama toma antes
  * `IQuotaRepository.lockUsage(actor)` en la misma transacción.
@@ -90,6 +106,25 @@ export interface ITrashRepository {
    * `profundidad` de todo el subárbol guardado bajo `before.storedPath`. Devuelve cuántos nodos volvieron.
    */
   restoreFolderSubtree(actor: Actor, before: TrashedFolder, restored: Folder): Promise<number>;
+  /**
+   * Archivos que borra la purga de `item`: el propio archivo o los que arrastró la carpeta. `null` si `item` no es una
+   * raíz de la papelera del actor o, con `dueBy`, si su `purgar_en` es posterior (CA-16, CA-19). Una carpeta sin
+   * archivos devuelve `[]`.
+   */
+  purgeTargets(
+    actor: Actor,
+    item: TrashItemRef,
+    dueBy: Date | null,
+  ): Promise<readonly PurgeFile[] | null>;
+  /** Borra las filas de `version_archivo` y `archivo` de un archivo de la papelera. */
+  deleteFileRows(actor: Actor, fileId: string): Promise<void>;
+  /**
+   * Borra la carpeta raíz `folderId` y las que arrastró, solo si ya no le quedan archivos arrastrados (CA-20).
+   * Devuelve cuántas carpetas borró.
+   */
+  deleteFolderRows(actor: Actor, folderId: string): Promise<number>;
+  /** «Vaciar papelera» (CA-18): adelanta `purgar_en` hasta `at` en todas las raíces de la papelera del actor. */
+  schedulePurgeOfAll(actor: Actor, at: Date): Promise<void>;
 }
 
 export const I_TRASH_REPOSITORY = Symbol('ITrashRepository');

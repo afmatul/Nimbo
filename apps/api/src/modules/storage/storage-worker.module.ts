@@ -7,6 +7,9 @@ import { MINIO_CONFIG } from '../../shared';
 import type { MinioConfig, workerEnvSchema } from '../../shared';
 import { AuditModule } from '../audit';
 
+import { FOLDER_CONFIG } from './application/folder-config';
+import type { FolderConfig } from './application/folder-config';
+import { I_EXPIRED_TRASH_SCANNER } from './application/ports/i-expired-trash.scanner.port';
 import { I_EXPIRED_UPLOAD_SCANNER } from './application/ports/i-expired-upload.scanner.port';
 import { I_OBJECT_STORAGE } from './application/ports/i-object-storage.port';
 import type { IObjectStorage } from './application/ports/i-object-storage.port';
@@ -16,7 +19,15 @@ import {
   buildMinioStorageClients,
   MinioStorageAdapter,
 } from './infrastructure/minio-storage.adapter';
+import { SqlExpiredTrashScanner } from './infrastructure/persistence/sql-expired-trash.scanner';
 import { SqlExpiredUploadScanner } from './infrastructure/persistence/sql-expired-upload.scanner';
+import { TrashPurgeProcessor } from './infrastructure/trash-purge.processor';
+import {
+  TRASH_PURGE_CONFIG,
+  TRASH_PURGE_QUEUE,
+  TrashPurgeScheduler,
+} from './infrastructure/trash-purge.scheduler';
+import type { TrashPurgeConfig } from './infrastructure/trash-purge.scheduler';
 import { UploadCleanupProcessor } from './infrastructure/upload-cleanup.processor';
 import {
   UPLOAD_CLEANUP_CONFIG,
@@ -24,12 +35,18 @@ import {
   UploadCleanupScheduler,
 } from './infrastructure/upload-cleanup.scheduler';
 import type { UploadCleanupConfig } from './infrastructure/upload-cleanup.scheduler';
-import { UPLOAD_LIFECYCLE_PROVIDERS } from './upload-lifecycle.providers';
+import {
+  TRASH_LIFECYCLE_PROVIDERS,
+  UPLOAD_LIFECYCLE_PROVIDERS,
+} from './upload-lifecycle.providers';
 
 /** Variables del `worker` que `storage` usa (plan §5); las de MinIO llegan por `MINIO_CONFIG`. */
 export type StorageWorkerEnv = Pick<
   z.infer<typeof workerEnvSchema>,
-  'UPLOAD_CLEANUP_INTERVAL_MINUTES' | 'UPLOAD_CLEANUP_BATCH_SIZE'
+  | 'UPLOAD_CLEANUP_INTERVAL_MINUTES'
+  | 'UPLOAD_CLEANUP_BATCH_SIZE'
+  | 'TRASH_PURGE_INTERVAL_MINUTES'
+  | 'TRASH_PURGE_BATCH_SIZE'
 >;
 
 const uploadConfigUnavailable = (): never => {
@@ -57,9 +74,23 @@ const WORKER_UPLOAD_CONFIG: UploadConfig = Object.freeze({
   },
 });
 
+const folderConfigUnavailable = (): never => {
+  throw new Error(
+    'La configuración de carpetas no existe en el worker: solo purga la papelera. Crea, mueve o restaura desde el api.',
+  );
+};
+
+/** `TrashService` pide `FOLDER_CONFIG`, pero el `worker` solo llama `purgeExpired`, que no la lee (plan 006 §7). */
+const WORKER_FOLDER_CONFIG: FolderConfig = Object.freeze({
+  get maxDepth(): number {
+    return folderConfigUnavailable();
+  },
+});
+
 /**
- * Parte de `storage` que corre en el `worker` (CA-9, D-6, ADR-0021): la cola `upload-cleanup`, su programa repetible y
- * el procesador, que vence cargas con `UploadService.expire`. `apps/worker` la importa solo desde `storage/index.ts`.
+ * Parte de `storage` que corre en el `worker` (CA-9, D-6, ADR-0021): las colas `upload-cleanup` y `trash-purge`
+ * (006 CA-19), sus programas repetibles y sus procesadores, que vencen cargas con `UploadService.expire` y purgan la
+ * papelera con `TrashService.purgeExpired`. `apps/worker` la importa solo desde `storage/index.ts`.
  * Como `StorageModule`, **no** enlaza `I_PLAN_LIMITS_PROVIDER` (DF-51): lo hace `WorkerModule`. El adaptador de MinIO
  * firma contra el endpoint interno porque el `worker` no tiene `MINIO_PUBLIC_ENDPOINT` ni emite URLs (plan §5): solo
  * aborta partes y borra objetos.
@@ -71,12 +102,21 @@ export class StorageWorkerModule {
       intervalMinutes: env.UPLOAD_CLEANUP_INTERVAL_MINUTES,
       batchSize: env.UPLOAD_CLEANUP_BATCH_SIZE,
     };
+    const purgeConfig: TrashPurgeConfig = {
+      intervalMinutes: env.TRASH_PURGE_INTERVAL_MINUTES,
+      batchSize: env.TRASH_PURGE_BATCH_SIZE,
+    };
     return {
       module: StorageWorkerModule,
-      imports: [AuditModule, BullModule.registerQueue({ name: UPLOAD_CLEANUP_QUEUE })],
+      imports: [
+        AuditModule,
+        BullModule.registerQueue({ name: UPLOAD_CLEANUP_QUEUE }, { name: TRASH_PURGE_QUEUE }),
+      ],
       providers: [
         { provide: UPLOAD_CLEANUP_CONFIG, useValue: cleanupConfig },
+        { provide: TRASH_PURGE_CONFIG, useValue: purgeConfig },
         { provide: UPLOAD_CONFIG, useValue: WORKER_UPLOAD_CONFIG },
+        { provide: FOLDER_CONFIG, useValue: WORKER_FOLDER_CONFIG },
         {
           provide: I_OBJECT_STORAGE,
           inject: [MINIO_CONFIG],
@@ -87,9 +127,13 @@ export class StorageWorkerModule {
             ),
         },
         { provide: I_EXPIRED_UPLOAD_SCANNER, useClass: SqlExpiredUploadScanner },
+        { provide: I_EXPIRED_TRASH_SCANNER, useClass: SqlExpiredTrashScanner },
         ...UPLOAD_LIFECYCLE_PROVIDERS,
+        ...TRASH_LIFECYCLE_PROVIDERS,
         UploadCleanupScheduler,
         UploadCleanupProcessor,
+        TrashPurgeScheduler,
+        TrashPurgeProcessor,
       ],
     };
   }

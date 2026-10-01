@@ -1,7 +1,9 @@
 import type {
   ITrashRepository,
+  PurgeFile,
   TrashedFolder,
   TrashEntry,
+  TrashItemRef,
   TrashItemType,
   TrashListQuery,
   TrashPage,
@@ -10,7 +12,8 @@ import type {
 import { File } from '../../src/modules/storage/domain/file';
 import { Folder } from '../../src/modules/storage/domain/folder';
 import { FolderPath } from '../../src/modules/storage/domain/folder-path';
-import type { TrashState } from '../../src/modules/storage/domain/trash-state';
+import { ObjectKey } from '../../src/modules/storage/domain/object-key';
+import { TrashState } from '../../src/modules/storage/domain/trash-state';
 import type { Actor } from '../../src/shared';
 
 import type { FakeNodeRepository, Journal } from './storage-fakes';
@@ -121,6 +124,57 @@ export class FakeTrashRepository implements ITrashRepository {
     this.rebase(before, restored);
     this.nodes.folders.set(restored.id, restored);
     return Promise.resolve(1 + folders.length + files.length);
+  }
+
+  purgeTargets(
+    actor: Actor,
+    item: TrashItemRef,
+    dueBy: Date | null,
+  ): Promise<readonly PurgeFile[] | null> {
+    this.journal.add('trash:purgeTargets');
+    const root =
+      item.type === 'file' ? this.nodes.files.get(item.id) : this.nodes.folders.get(item.id);
+    const due = dueBy === null || (root?.trash?.isExpired(dueBy) ?? false);
+    if (!isTrashRootOf(actor, root) || !due) return Promise.resolve(null);
+    const files =
+      root.type === 'file'
+        ? [root]
+        : [...this.nodes.files.values()].filter((file) => carriedBy(file, root.id));
+    return Promise.resolve(files.map((file) => this.purgeFileOf(file)));
+  }
+
+  deleteFileRows(_actor: Actor, fileId: string): Promise<void> {
+    this.journal.add(`trash:deleteFileRows:${fileId}`);
+    this.nodes.files.delete(fileId);
+    return Promise.resolve();
+  }
+
+  deleteFolderRows(_actor: Actor, folderId: string): Promise<number> {
+    this.journal.add(`trash:deleteFolderRows:${folderId}`);
+    const files = [...this.nodes.files.values()].filter((file) => carriedBy(file, folderId));
+    if (files.length > 0) return Promise.resolve(0);
+    const folders = [...this.nodes.folders.values()].filter(
+      (folder) => folder.id === folderId || carriedBy(folder, folderId),
+    );
+    folders.forEach((folder) => this.nodes.folders.delete(folder.id));
+    return Promise.resolve(folders.length);
+  }
+
+  schedulePurgeOfAll(actor: Actor, at: Date): Promise<void> {
+    this.journal.add('trash:schedulePurgeOfAll');
+    for (const node of [...this.nodes.files.values(), ...this.nodes.folders.values()]) {
+      if (!isTrashRootOf(actor, node) || node.trash === null || node.trash.isExpired(at)) continue;
+      const trash = TrashState.rehydrate({ ...node.trash.snapshot(), purgeAt: at });
+      if (node.type === 'file') this.nodes.files.set(node.id, withTrash(node, trash));
+      else this.nodes.folders.set(node.id, withTrash(node, trash));
+    }
+    return Promise.resolve();
+  }
+
+  /** Clave de la versión actual (los dobles tienen una versión por archivo) y su tamaño. */
+  private purgeFileOf(file: File): PurgeFile {
+    const key = ObjectKey.of(file.ownerId, file.id, file.currentVersionId);
+    return { id: file.id, sizeBytes: file.sizeBytes, objectKeys: [key.value] };
   }
 
   /** Como el `UPDATE` por prefijo: toda carpeta guardada bajo la ruta vieja, también la que sigue en la papelera. */

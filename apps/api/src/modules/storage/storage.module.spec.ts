@@ -1,4 +1,5 @@
-import type { Provider, ValueProvider } from '@nestjs/common';
+import { getQueueToken } from '@nestjs/bullmq';
+import type { DynamicModule, Provider, ValueProvider } from '@nestjs/common';
 
 import { AuditModule } from '../audit';
 
@@ -6,7 +7,11 @@ import { FILE_SERVICE_CONFIG } from './application/file-service-config';
 import { FOLDER_CONFIG } from './application/folder-config';
 import { FolderService } from './application/folder.service';
 import { I_PLAN_LIMITS_PROVIDER } from './application/plan-limits';
+import { I_TRASH_PURGE_QUEUE } from './application/ports/i-trash-purge-queue.port';
+import { TrashPurger } from './application/trash-purger';
 import { UPLOAD_CONFIG } from './application/upload-config';
+import { TrashPurgeProcessor } from './infrastructure/trash-purge.processor';
+import { TRASH_PURGE_QUEUE, TrashPurgeScheduler } from './infrastructure/trash-purge.scheduler';
 import { FilesController } from './presentation/files.controller';
 import { FoldersController } from './presentation/folders.controller';
 import { TrashController } from './presentation/trash.controller';
@@ -32,6 +37,14 @@ function valueOf(providers: readonly Provider[], token: symbol): unknown {
   return found?.useValue;
 }
 
+/** Tokens que exporta cada módulo importado (p. ej. la cola que registra `BullModule.registerQueue`). */
+const exportedByImports = (module: DynamicModule): unknown[] =>
+  (module.imports ?? []).flatMap((imported) =>
+    'exports' in imported
+      ? (imported.exports ?? []).map((exported) => tokenOf(exported as Provider))
+      : [],
+  );
+
 describe('StorageModule', () => {
   const module = StorageModule.forRoot(ENV);
   const providers = module.providers ?? [];
@@ -53,7 +66,16 @@ describe('StorageModule', () => {
 
   it('RN-1: no enlaza `I_PLAN_LIMITS_PROVIDER` (lo hace la raíz de composición) e importa la auditoría', () => {
     expect(providers.map(tokenOf)).not.toContain(I_PLAN_LIMITS_PROVIDER);
-    expect(module.imports).toEqual([AuditModule]);
+    expect(module.imports).toContain(AuditModule);
+  });
+
+  it('006 CA-18: registra la cola `trash-purge` solo para encolar «Vaciar»; no programa ni procesa', () => {
+    expect(exportedByImports(module)).toContain(getQueueToken(TRASH_PURGE_QUEUE));
+    expect(providers.map(tokenOf)).toEqual(
+      expect.arrayContaining([I_TRASH_PURGE_QUEUE, TrashPurger]),
+    );
+    expect(providers.map(tokenOf)).not.toContain(TrashPurgeScheduler);
+    expect(providers.map(tokenOf)).not.toContain(TrashPurgeProcessor);
   });
 
   it('CA-17: monta los controladores de cargas, archivos, carpetas y papelera', () => {

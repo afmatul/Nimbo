@@ -4,6 +4,7 @@ import { FakePlanLimitsProvider } from '../../../../test/support/fake-plan-limit
 import {
   FakeAuditLogger,
   FakeNodeRepository,
+  FakeObjectStorage,
   FakeQuotaRepository,
   FakeTransactionRunner,
   Journal,
@@ -19,6 +20,8 @@ import { Folder } from '../domain/folder';
 import { FolderName } from '../domain/folder-name.vo';
 
 import type { FolderConfig } from './folder-config';
+import type { ITrashPurgeQueue } from './ports/i-trash-purge-queue.port';
+import { TrashPurgeIncompleteError, TrashPurger } from './trash-purger';
 import { TrashService } from './trash.service';
 
 const NOW = new Date('2026-09-30T10:00:00.000Z');
@@ -32,6 +35,21 @@ const BRUNO: Actor = createActor('22222222-2222-4222-8222-222222222222', Role.CL
 
 const silentLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() };
 
+/** Cola `trash-purge` en memoria; con `fails` rechaza como Redis caído. */
+class FakeTrashPurgeQueue implements ITrashPurgeQueue {
+  enqueued = 0;
+  fails = false;
+
+  constructor(private readonly journal: Journal) {}
+
+  enqueueNow(): Promise<void> {
+    this.journal.add('queue:enqueueNow');
+    if (this.fails) return Promise.reject(new Error('redis caído'));
+    this.enqueued += 1;
+    return Promise.resolve();
+  }
+}
+
 function setup() {
   const journal = new Journal();
   const transactions = new FakeTransactionRunner(journal);
@@ -44,6 +62,9 @@ function setup() {
     storageQuotaBytes: 1000n,
     trashRetentionDays: RETENTION_DAYS,
   });
+  const objects = new FakeObjectStorage(journal);
+  const clock = new FixedClock(NOW);
+  const purgeQueue = new FakeTrashPurgeQueue(journal);
   const service = new TrashService(
     transactions,
     nodes,
@@ -51,9 +72,11 @@ function setup() {
     quotas,
     plans,
     audit,
-    new FixedClock(NOW),
+    clock,
     CONFIG,
     silentLogger,
+    new TrashPurger(transactions, trash, quotas, objects, silentLogger),
+    purgeQueue,
   );
 
   const folder = (name: string, parent: Folder | null = null, owner: Actor = ANA): Folder => {
@@ -84,7 +107,20 @@ function setup() {
     return created;
   };
 
-  return { journal, nodes, trash, audit, plans, service, folder, file };
+  return {
+    journal,
+    nodes,
+    trash,
+    audit,
+    plans,
+    quotas,
+    objects,
+    clock,
+    purgeQueue,
+    service,
+    folder,
+    file,
+  };
 }
 
 /** Lo que cambia el estado, en orden, sin las lecturas. */
@@ -390,5 +426,183 @@ describe('TrashService: nombres al restaurar', () => {
     const result = await service.restoreFile(ANA, first.id);
 
     expect(result.outcome).toBe('restored');
+  });
+});
+
+describe('TrashService.purge (eliminar definitivamente)', () => {
+  it('CA-18: purga el archivo al momento, devuelve los bytes liberados y baja `espacio_usado`', async () => {
+    const { service, nodes, quotas, file } = setup();
+    const target = file('enero.pdf', null, 42n);
+    await service.trashFile(ANA, target.id);
+
+    const freed = await service.purge(ANA, { type: 'file', id: target.id });
+
+    expect(freed).toBe(42n);
+    expect(nodes.files.has(target.id)).toBe(false);
+    expect(quotas.added).toEqual([-42n]);
+  });
+
+  it('CA-18: una carpeta se purga con todo lo que arrastró', async () => {
+    const { service, nodes, folder, file } = setup();
+    const root = folder('Proyectos');
+    const child = folder('Acme', root);
+    file('a.pdf', root, 5n);
+    file('b.pdf', child, 7n);
+    await service.trashFolder(ANA, root.id);
+
+    const freed = await service.purge(ANA, { type: 'folder', id: root.id });
+
+    expect(freed).toBe(12n);
+    expect(nodes.files.size).toBe(0);
+    expect(nodes.folders.size).toBe(0);
+  });
+
+  it('CA-16, CA-22: un elemento inexistente, ajeno, vivo o ya purgado es 404', async () => {
+    const { service, file } = setup();
+    const target = file('enero.pdf');
+    const live = file('vivo.pdf');
+    await service.trashFile(ANA, target.id);
+    await service.purge(ANA, { type: 'file', id: target.id });
+
+    await expect(service.purge(ANA, { type: 'file', id: target.id })).rejects.toBeInstanceOf(
+      NodeNotFoundError,
+    );
+    await expect(service.purge(BRUNO, { type: 'file', id: live.id })).rejects.toBeInstanceOf(
+      NodeNotFoundError,
+    );
+    await expect(service.purge(ANA, { type: 'file', id: live.id })).rejects.toBeInstanceOf(
+      NodeNotFoundError,
+    );
+  });
+
+  it('CA-24: audita `node.purged` (manual) con tipo, cantidad y bytes, sin nombres', async () => {
+    const { service, audit, folder, file } = setup();
+    const root = folder('Privado');
+    file('secreto.pdf', root, 9n);
+    await service.trashFolder(ANA, root.id);
+
+    await service.purge(ANA, { type: 'folder', id: root.id });
+
+    expect(audit.records.at(-1)).toEqual({
+      action: AuditAction.NODE_PURGED,
+      actor: ANA,
+      targetUserId: ANA.id,
+      resourceId: root.id,
+      attributes: { nodeType: 'folder', itemCount: 2, sizeBytes: 9, trigger: 'manual' },
+    });
+    expect(JSON.stringify(audit.records)).not.toMatch(/Privado|secreto/);
+  });
+
+  it('CA-20: si un objeto falla, el archivo sigue en la papelera y la purga falla para reintentarse', async () => {
+    const { service, nodes, quotas, objects, file } = setup();
+    const target = file('enero.pdf', null, 42n);
+    await service.trashFile(ANA, target.id);
+    objects.deleteFailures = 1;
+
+    await expect(service.purge(ANA, { type: 'file', id: target.id })).rejects.toBeInstanceOf(
+      TrashPurgeIncompleteError,
+    );
+    expect(nodes.files.get(target.id)?.trash).not.toBeNull();
+    expect(quotas.added).toEqual([]);
+  });
+});
+
+describe('TrashService.purgeExpired (purga programada)', () => {
+  it('CA-19: antes de la fecha de purga no toca nada; al vencer purga y audita `scheduled`', async () => {
+    const { service, nodes, audit, clock, file } = setup();
+    const target = file('enero.pdf', null, 42n);
+    await service.trashFile(ANA, target.id);
+
+    await service.purgeExpired(ANA, { type: 'file', id: target.id });
+    expect(nodes.files.has(target.id)).toBe(true);
+
+    clock.set(new Date(NOW.getTime() + RETENTION_DAYS * DAY_MS));
+    await service.purgeExpired(ANA, { type: 'file', id: target.id });
+
+    expect(nodes.files.has(target.id)).toBe(false);
+    expect(audit.records.at(-1)).toMatchObject({
+      action: AuditAction.NODE_PURGED,
+      attributes: { nodeType: 'file', itemCount: 1, sizeBytes: 42, trigger: 'scheduled' },
+    });
+  });
+
+  it('CA-20: idempotente: lo ya purgado o restaurado no hace nada ni audita', async () => {
+    const { service, audit, clock, file } = setup();
+    const target = file('enero.pdf');
+    await service.trashFile(ANA, target.id);
+    await service.restoreFile(ANA, target.id);
+    clock.set(new Date(NOW.getTime() + RETENTION_DAYS * DAY_MS));
+    const before = audit.records.length;
+
+    await service.purgeExpired(ANA, { type: 'file', id: target.id });
+    await service.purgeExpired(ANA, { type: 'file', id: randomUUID() });
+
+    expect(audit.records).toHaveLength(before);
+  });
+
+  it('CA-20: un objeto que falla deja el elemento y lanza para que el trabajo se reintente', async () => {
+    const { service, objects, clock, file } = setup();
+    const target = file('enero.pdf');
+    await service.trashFile(ANA, target.id);
+    clock.set(new Date(NOW.getTime() + RETENTION_DAYS * DAY_MS));
+    objects.deleteFailures = 1;
+
+    await expect(service.purgeExpired(ANA, { type: 'file', id: target.id })).rejects.toBeInstanceOf(
+      TrashPurgeIncompleteError,
+    );
+  });
+});
+
+describe('TrashService.empty (vaciar papelera)', () => {
+  it('CA-18: fija la purga en «ahora» en todas las raíces, encola el trabajo y no purga en la petición', async () => {
+    const { service, nodes, quotas, journal, purgeQueue, folder, file } = setup();
+    const root = folder('Proyectos');
+    file('a.pdf', root, 5n);
+    const loose = file('b.pdf', null, 7n);
+    await service.trashFolder(ANA, root.id);
+    await service.trashFile(ANA, loose.id);
+
+    const result = await service.empty(ANA);
+
+    expect(result).toEqual({ itemCount: 2, totalBytes: 12n });
+    expect(nodes.files.get(loose.id)?.trash?.purgeAt).toEqual(NOW);
+    expect(nodes.folders.get(root.id)?.trash?.purgeAt).toEqual(NOW);
+    expect(quotas.added).toEqual([]);
+    expect(purgeQueue.enqueued).toBe(1);
+    expect(journal.indexOf('queue:enqueueNow')).toBeGreaterThan(
+      journal.entries.lastIndexOf('tx:end'),
+    );
+  });
+
+  it('CA-24: audita `trash.emptied` con cantidad y bytes, sin nombres', async () => {
+    const { service, audit, file } = setup();
+    const loose = file('privado.pdf', null, 7n);
+    await service.trashFile(ANA, loose.id);
+
+    await service.empty(ANA);
+
+    expect(audit.records.at(-1)).toEqual({
+      action: AuditAction.TRASH_EMPTIED,
+      actor: ANA,
+      targetUserId: ANA.id,
+      attributes: { itemCount: 1, sizeBytes: 7 },
+    });
+  });
+
+  it('CA-18: con la papelera vacía no encola ni audita', async () => {
+    const { service, audit, purgeQueue } = setup();
+
+    await expect(service.empty(ANA)).resolves.toEqual({ itemCount: 0, totalBytes: 0n });
+    expect(purgeQueue.enqueued).toBe(0);
+    expect(audit.records).toEqual([]);
+  });
+
+  it('CA-18: si encolar falla, responde igual: el ciclo programado purgará lo vencido', async () => {
+    const { service, purgeQueue, file } = setup();
+    const loose = file('b.pdf', null, 7n);
+    await service.trashFile(ANA, loose.id);
+    purgeQueue.fails = true;
+
+    await expect(service.empty(ANA)).resolves.toEqual({ itemCount: 1, totalBytes: 7n });
   });
 });

@@ -111,6 +111,30 @@ papelera).
   `GET /trash/summary`, `POST /trash/files/:fileId/restore` y `POST /trash/folders/:folderId/restore`.
 - Pruebas: `trash.service.spec.ts`, `trash.controller.spec.ts` y `test/int/storage/trash.int-spec.ts`.
 
+## Purga de la papelera (006, T-06)
+
+- `TrashPurger` es el único que borra: por raíz, en un `withActor` con `lockUsage` primero, toma de
+  `ITrashRepository.purgeTargets` los archivos (claves de todas sus versiones y su suma), y por archivo hace
+  `purgeObject` de cada clave → `deleteFileRows` (las versiones caen por `CASCADE`) → `addUsedBytes(-bytes)`. Si un
+  objeto falla, ese archivo no cambia y la carpeta no se borra (`trash.purge_failed` con `nodeId` y `errorName`);
+  quien llama lanza `TrashPurgeIncompleteError` para reintentar (CA-20). Las carpetas se borran al final con
+  `deleteFolderRows`, en un solo `DELETE`; lo eliminado aparte debajo queda en la raíz por `SET NULL` (R-5).
+- `TrashService.purge` («Eliminar definitivamente», síncrono, `DELETE /trash/{files|folders}/:id` → `{ freedBytes }`);
+  `TrashService.empty` («Vaciar», `DELETE /trash` → `202 { scheduledItems, pendingBytes }`): adelanta `purgar_en` a
+  «ahora» en las raíces y encola con `ITrashPurgeQueue` (`TrashPurgeQueue`, mejor esfuerzo: si Redis falla, el ciclo
+  programado lo recoge). `TrashService.purgeExpired` (worker) vuelve a comprobar `purgar_en <= now`.
+- Worker: cola `trash-purge` (trabajo `purge`), `TrashPurgeScheduler` (`upsertJobScheduler`, id fijo, cada
+  `TRASH_PURGE_INTERVAL_MINUTES`, 3 intentos exponenciales) y `TrashPurgeProcessor` (concurrencia 1) en dos fases como
+  la limpieza de cargas: `IExpiredTrashScanner` (`papelera_vencida`, sin actor, `TRASH_PURGE_BATCH_SIZE`) y
+  `purgeExpired` como el dueño. No mira el estado de la cuenta (CA-19). Bitácoras `trash.purge_scheduled`,
+  `trash.purge_run` (`scanned`, `purged`, `failed`) y `trash.purge_item_failed`. El `api` registra la cola solo para
+  encolar.
+- Auditoría `node.purged` (`trigger: manual|scheduled`) y `trash.emptied` (`itemCount`, `sizeBytes`), sin nombres.
+- `TRASH_LIFECYCLE_PROVIDERS` (`upload-lifecycle.providers.ts`) los comparten `StorageModule` y `StorageWorkerModule`;
+  en el `worker`, `FOLDER_CONFIG` lanza al leerse, como `UPLOAD_CONFIG`.
+- Pruebas: `trash-purger.spec.ts`, `trash-purge.{scheduler,queue,processor}.spec.ts` y
+  `test/int/storage/trash-purge.int-spec.ts` (MinIO real, fallo simulado y reintento de BullMQ).
+
 ## Limpieza de cargas vencidas (005, PR-E)
 
 Una carga `activa` con más de 24 h se vence sola (CA-9). El barrido corre en el `worker`, no en la API.

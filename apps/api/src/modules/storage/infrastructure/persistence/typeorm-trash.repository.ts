@@ -7,8 +7,10 @@ import type { Actor } from '../../../../shared';
 import { accessibleNodes, ownedTrashedNodes } from '../../../access';
 import type {
   ITrashRepository,
+  PurgeFile,
   TrashedFolder,
   TrashEntry,
+  TrashItemRef,
   TrashItemType,
   TrashListQuery,
   TrashPage,
@@ -25,7 +27,7 @@ import { ArchivoOrmEntity } from './archivo.orm-entity';
 import { CarpetaOrmEntity } from './carpeta.orm-entity';
 import { decodeNodeListCursor, encodeNodeListCursor } from './node-list-cursor';
 import { nodesIn, rebaseSubtree } from './node-sql';
-import type { Condition } from './node-sql';
+import type { Condition, NodeTable } from './node-sql';
 import { trashColumns } from './trash-columns';
 import { toFile } from './typeorm-node.repository';
 
@@ -105,6 +107,25 @@ const toTrashedFolder = (row: TrashedFolderRow): TrashedFolder => ({
   deepestCarriedDepth: Math.max(row.profundidad, row.mas_honda ?? row.profundidad),
   sizeBytes: BigInt(row.tamano),
 });
+
+/** Fila de `purgeTargets`: un archivo con la suma y las claves de sus versiones. */
+interface PurgeFileRow {
+  readonly id: string;
+  readonly tamano: string;
+  readonly claves: string[];
+}
+
+const toPurgeFile = (row: PurgeFileRow): PurgeFile => ({
+  id: row.id,
+  sizeBytes: BigInt(row.tamano),
+  objectKeys: row.claves,
+});
+
+/** Tabla y alias de cada tipo de raíz de la papelera. */
+const ROOT_TABLE: Readonly<Record<TrashItemType, { table: NodeTable; alias: string }>> = {
+  file: { table: 'archivo', alias: 'a' },
+  folder: { table: 'carpeta', alias: 'c' },
+};
 
 /** Página con `nextCursor` en la última fila si quedan más. El cursor lleva `eliminado_en` en lugar de `creado_en`. */
 const pageOf = (entries: readonly TrashEntry[], hasMore: boolean): TrashPage => {
@@ -258,11 +279,92 @@ export class TypeOrmTrashRepository implements ITrashRepository {
     return files + folders + root;
   }
 
-  /** Nodos que arrastró `folderId`, solo si es una raíz de la papelera del actor. */
-  private carriedBy(actor: Actor, folderId: string): Condition {
-    const root = nodesIn(ownedTrashedNodes(actor), 'eliminado_con_carpeta_id', 'carpeta');
+  async purgeTargets(
+    actor: Actor,
+    item: TrashItemRef,
+    dueBy: Date | null,
+  ): Promise<readonly PurgeFile[] | null> {
+    if (!(await this.isDueRoot(actor, item, dueBy))) return null;
+    const files: Condition =
+      item.type === 'file'
+        ? { sql: 'a.id = :rootId', parameters: { rootId: item.id } }
+        : this.carriedBy(actor, item.id, 'a.eliminado_con_carpeta_id');
+    const rows = await this.select<PurgeFileRow>(
+      actor,
+      `SELECT a.id, COALESCE(SUM(v.tamano_bytes), 0)::text AS tamano,
+              COALESCE(array_agg(v.clave_objeto ORDER BY v.creada_en) FILTER (WHERE v.id IS NOT NULL), '{}') AS claves
+         FROM archivo a LEFT JOIN version_archivo v ON v.archivo_id = a.id
+        WHERE ${files.sql}
+        GROUP BY a.id ORDER BY a.id`,
+      files.parameters,
+    );
+    return rows.map(toPurgeFile);
+  }
+
+  /** La raíz propia o un archivo que arrastró una carpeta raíz propia; `version_archivo` cae por `ON DELETE CASCADE`. */
+  async deleteFileRows(actor: Actor, fileId: string): Promise<void> {
+    const root = nodesIn(ownedTrashedNodes(actor), 'id', 'archivo');
+    const carried = this.carriedBy(actor, null);
+    await this.delete(actor, ArchivoOrmEntity, {
+      sql: `id = :fileId AND (${root.sql} OR ${carried.sql})`,
+      parameters: { ...root.parameters, ...carried.parameters, fileId },
+    });
+  }
+
+  /**
+   * La raíz y lo que arrastró en un solo `DELETE` (la FK de `eliminado_con_carpeta_id` se comprueba al final de la
+   * sentencia). Lo eliminado aparte debajo queda en la raíz por `SET NULL` (R-5).
+   */
+  async deleteFolderRows(actor: Actor, folderId: string): Promise<number> {
+    const root = nodesIn(ownedTrashedNodes(actor), 'id', 'carpeta');
+    const carried = this.carriedBy(actor, folderId);
+    return this.delete(actor, CarpetaOrmEntity, {
+      sql:
+        `((id = :rootId AND ${root.sql}) OR ${carried.sql}) AND NOT EXISTS ` +
+        '(SELECT 1 FROM archivo h WHERE h.eliminado_con_carpeta_id = :rootId)',
+      parameters: { ...root.parameters, ...carried.parameters, rootId: folderId },
+    });
+  }
+
+  /** Solo las raíces que vencen después de `at`: lo ya vencido conserva su fecha. */
+  async schedulePurgeOfAll(actor: Actor, at: Date): Promise<void> {
+    const later = { sql: 'purgar_en > :at', parameters: { at } };
+    await this.update(actor, ArchivoOrmEntity, { purgarEn: at }, [
+      nodesIn(ownedTrashedNodes(actor), 'id', 'archivo'),
+      later,
+    ]);
+    await this.update(actor, CarpetaOrmEntity, { purgarEn: at }, [
+      nodesIn(ownedTrashedNodes(actor), 'id', 'carpeta'),
+      later,
+    ]);
+  }
+
+  /** `item` es una raíz de la papelera del actor y, con `dueBy`, ya venció. */
+  private async isDueRoot(actor: Actor, item: TrashItemRef, dueBy: Date | null): Promise<boolean> {
+    const { table, alias } = ROOT_TABLE[item.type];
+    const root = nodesIn(ownedTrashedNodes(actor), `${alias}.id`, table);
+    const due = dueBy === null ? '' : ` AND ${alias}.purgar_en <= :dueBy`;
+    const rows = await this.select<{ id: string }>(
+      actor,
+      `SELECT ${alias}.id FROM ${table} ${alias} WHERE ${alias}.id = :rootId AND ${root.sql}${due}`,
+      { ...root.parameters, rootId: item.id, ...(dueBy === null ? {} : { dueBy }) },
+    );
+    return rows.length > 0;
+  }
+
+  /**
+   * Nodos que arrastró `folderId` (o, con `null`, cualquier carpeta), solo si es una raíz de la papelera del actor.
+   * `column` es la `eliminado_con_carpeta_id` de la consulta, con alias si lo hay.
+   */
+  private carriedBy(
+    actor: Actor,
+    folderId: string | null,
+    column = 'eliminado_con_carpeta_id',
+  ): Condition {
+    const root = nodesIn(ownedTrashedNodes(actor), column, 'carpeta');
+    if (folderId === null) return root;
     return {
-      sql: `eliminado_con_carpeta_id = :carrierId AND ${root.sql}`,
+      sql: `${column} = :carrierId AND ${root.sql}`,
       parameters: { ...root.parameters, carrierId: folderId },
     };
   }
@@ -310,6 +412,21 @@ export class TypeOrmTrashRepository implements ITrashRepository {
       else builder.andWhere(condition.sql, { ...condition.parameters });
     });
     const result = await builder.execute();
+    return result.affected ?? 0;
+  }
+
+  /** `DELETE` con la condición; devuelve las filas borradas. */
+  private async delete<T extends ObjectLiteral>(
+    actor: Actor,
+    entity: new () => T,
+    condition: Condition,
+  ): Promise<number> {
+    const result = await this.manager(actor)
+      .createQueryBuilder()
+      .delete()
+      .from(entity)
+      .where(condition.sql, { ...condition.parameters })
+      .execute();
     return result.affected ?? 0;
   }
 

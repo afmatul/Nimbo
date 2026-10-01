@@ -1,3 +1,4 @@
+import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 
@@ -13,20 +14,21 @@ import type { FolderConfig } from './application/folder-config';
 import { FolderService } from './application/folder.service';
 import { I_OBJECT_STORAGE } from './application/ports/i-object-storage.port';
 import type { IObjectStorage } from './application/ports/i-object-storage.port';
-import { I_TRASH_REPOSITORY } from './application/ports/i-trash.repository.port';
-import { TrashService } from './application/trash.service';
 import { UPLOAD_CONFIG } from './application/upload-config';
 import type { UploadConfig } from './application/upload-config';
 import {
   buildMinioStorageClients,
   MinioStorageAdapter,
 } from './infrastructure/minio-storage.adapter';
-import { TypeOrmTrashRepository } from './infrastructure/persistence/typeorm-trash.repository';
+import { TRASH_PURGE_QUEUE } from './infrastructure/trash-purge.scheduler';
 import { FilesController } from './presentation/files.controller';
 import { FoldersController } from './presentation/folders.controller';
 import { TrashController } from './presentation/trash.controller';
 import { UploadsController } from './presentation/uploads.controller';
-import { UPLOAD_LIFECYCLE_PROVIDERS } from './upload-lifecycle.providers';
+import {
+  TRASH_LIFECYCLE_PROVIDERS,
+  UPLOAD_LIFECYCLE_PROVIDERS,
+} from './upload-lifecycle.providers';
 
 /** Variables del `api` que `storage` usa (plan §5); las de MinIO internas llegan por `MINIO_CONFIG`. */
 export type StorageEnv = Pick<
@@ -44,7 +46,8 @@ export type StorageEnv = Pick<
  * Módulo `storage` (M2, plan §6): carga, descarga, carpetas y papelera (006). `forRoot(env)` publica la configuración técnica (bytes como
  * `bigint`) y une cada puerto con su adaptador. **No** enlaza `I_PLAN_LIMITS_PROVIDER` ni importa `billing`: ese
  * enlace vive en la raíz de composición (DF-51, opción A). `SharedModule` (global) aporta reloj, tasa, transacciones y
- * `TransactionContext`; `MinioConfigModule` (global), `MINIO_CONFIG`.
+ * `TransactionContext`; `MinioConfigModule` (global), `MINIO_CONFIG`. La cola `trash-purge` se registra solo para que
+ * «Vaciar papelera» encole: la programa y la procesa el `worker`.
  */
 @Module({})
 export class StorageModule {
@@ -61,7 +64,7 @@ export class StorageModule {
     const folderConfig: FolderConfig = { maxDepth: env.FOLDER_MAX_DEPTH };
     return {
       module: StorageModule,
-      imports: [AuditModule],
+      imports: [AuditModule, BullModule.registerQueue({ name: TRASH_PURGE_QUEUE })],
       controllers: [UploadsController, FilesController, FoldersController, TrashController],
       providers: [
         { provide: UPLOAD_CONFIG, useValue: uploadConfig },
@@ -77,10 +80,9 @@ export class StorageModule {
             ),
         },
         ...UPLOAD_LIFECYCLE_PROVIDERS,
-        { provide: I_TRASH_REPOSITORY, useClass: TypeOrmTrashRepository },
+        ...TRASH_LIFECYCLE_PROVIDERS,
         FileService,
         FolderService,
-        TrashService,
       ],
     };
   }

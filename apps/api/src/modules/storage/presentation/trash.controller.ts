@@ -1,8 +1,10 @@
 import { Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Query } from '@nestjs/common';
 import { listTrashQuerySchema } from '@nimbo/contracts';
 import type {
+  EmptyTrashResponse,
   ListTrashQuery,
   ListTrashResponse,
+  PurgeResponse,
   RestoreResponse,
   TrashItem,
   TrashSummary,
@@ -24,7 +26,7 @@ const toRestoreResponse = (result: RestoreResult): RestoreResponse => ({
 });
 
 /**
- * Papelera del actor (plan 006 §4): eliminar archivos y carpetas, listar, resumir y restaurar. Solo `CLIENT`
+ * Papelera del actor (plan 006 §4): eliminar archivos y carpetas, listar, resumir, restaurar, purgar y vaciar. Solo `CLIENT`
  * (CA-23). Un `:id` que no es UUID es el mismo 404 que uno inexistente, ajeno o purgado (CA-16, CA-22).
  */
 @Roles(Role.CLIENT)
@@ -86,5 +88,31 @@ export class TrashController {
     @Param('folderId', nodeIdPipe()) folderId: string,
   ): Promise<RestoreResponse> {
     return toRestoreResponse(await this.trash.restoreFolder(actor, folderId));
+  }
+
+  /** CA-18: «Eliminar definitivamente», síncrono. Inexistente, ajeno, vivo o ya purgado es 404 (CA-16). */
+  @Delete('trash/files/:fileId')
+  async purgeFile(
+    @CurrentActor() actor: Actor,
+    @Param('fileId', nodeIdPipe()) fileId: string,
+  ): Promise<PurgeResponse> {
+    return { freedBytes: Number(await this.trash.purge(actor, { type: 'file', id: fileId })) };
+  }
+
+  /** CA-18: la carpeta con todo lo que arrastró. */
+  @Delete('trash/folders/:folderId')
+  async purgeFolder(
+    @CurrentActor() actor: Actor,
+    @Param('folderId', nodeIdPipe()) folderId: string,
+  ): Promise<PurgeResponse> {
+    return { freedBytes: Number(await this.trash.purge(actor, { type: 'folder', id: folderId })) };
+  }
+
+  /** CA-18: «Vaciar papelera» programa la purga y responde 202; el espacio baja cuando termina el trabajo. */
+  @Delete('trash')
+  @HttpCode(HttpStatus.ACCEPTED)
+  async empty(@CurrentActor() actor: Actor): Promise<EmptyTrashResponse> {
+    const scheduled = await this.trash.empty(actor);
+    return { scheduledItems: scheduled.itemCount, pendingBytes: Number(scheduled.totalBytes) };
   }
 }
