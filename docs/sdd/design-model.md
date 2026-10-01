@@ -71,7 +71,7 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
   - `VerificationToken` (`issue`, `stateAt(now)`, `isValid`, `consume`, `invalidate`; DF-53);
   - objetos de valor `EmailAddress`, `OpaqueToken`, `PasswordHash` y `LegalAcceptance` (DF-54);
   - `AccountStatus` = `ACTIVE | SUSPENDED`; `Role` = `CLIENT | ADMIN | SUPPORT | OPERATOR` (vive en `shared`).
-- Eventos que publica (ADR-0019): `identity.client-account-verified` (`ClientAccountVerifiedEvent { userId }`), después del commit y una vez por cuenta. Lo exporta `index.ts` y lo consume `billing` (006a).
+- Eventos que publica (ADR-0019): `identity.client-account-verified` (`ClientAccountVerifiedEvent { userId }`), después del commit y una vez por cuenta. Lo exporta `index.ts` y lo consume `billing` en la 009 (PD-40); la 006a no lo escucha.
 - Patrones: Herencia de tabla única para `User`; Strategy implícita en hasher/tokens.
 - Tablas:
   - `usuario`: `rol` con `CHECK`, sin tabla `rol` (DF-13); `correo_verificado`, `version_terminos`, `version_privacidad` y `terminos_aceptados_en` (DF-33 parcial, 001 D-14);
@@ -105,7 +105,7 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
 - Servicios: `PlanCatalogService`, `SubscriptionService`, `PaymentService`; job `RenewalScheduler` (`@Cron`, usa `IClock`).
 - Puertos → implementaciones: `IPaymentGateway` → `SimulatedPaymentGateway` (failureRate, latencyMs); `IInvoiceGenerator` → `PdfInvoiceGenerator`; repos.
 - Puertos que consume: `INotifier` (lo declara e implementa T4 `notifications`).
-- Eventos que consume (ADR-0019): `identity.client-account-verified` → crea la suscripción Personal (001 D-4). El oyente es idempotente y se acompaña de una conciliación de las cuentas verificadas sin suscripción (006a).
+- Eventos que consume (ADR-0019): `identity.client-account-verified` → crea la suscripción Personal (001 D-4). El oyente es idempotente y se acompaña de una conciliación de las cuentas verificadas sin suscripción. Lo implementa la 009 (PD-40, 2026-09-29); la 006a no lo hace.
 - Dominio: `Plan` con `PlanLimits` (value object); `Subscription` (pendingPlanId, isReadOnly, scheduleChange, applyPendingChange); `Payment`; `Invoice`; `Money`.
 - Implementa hacia fuera: `IPlanLimitsProvider` (declarado por `storage`, DF-51 opción A; lo usan M2 y M5; se importa de `storage/index.ts`) e `IAgentQuota` (M6, lo declara `billing`) → DF-27. El `PlanLimits` de dominio de `Plan` es distinto del tipo `PlanLimits` de `storage`: se mapea al implementar el puerto.
 - Tablas: `plan`, `suscripcion`, `transaccion`, `factura`.
@@ -205,7 +205,7 @@ El mapeo vive solo en las entidades TypeORM (`@Entity('archivo')`, `@Column({ na
 | `UserShare` | `comparticion` | |
 | `PublicLink` | `enlace_publico` | |
 | (intentos) | `intento_acceso` | |
-| `Plan` + `PlanLimits` | `plan` | Unidades distintas (DF-24) |
+| `Plan` + `PlanLimits` | `plan` | Bytes `bigint` y precio en centavos (DF-24, DF-23, ADR-0016) |
 | `Subscription` | `suscripcion` | |
 | `Payment` | `transaccion` | |
 | `Invoice` | `factura` | |
@@ -225,7 +225,7 @@ El mapeo vive solo en las entidades TypeORM (`@Entity('archivo')`, `@Column({ na
 |---|---|---|
 | Identificadores | `uuid` | RNF-06 |
 | Tamaños y cuotas en bytes | `bigint` | 2 GB supera `int` (DF-06) |
-| Dinero | `integer` en centavos de quetzal (o `numeric(12,2)`, uno solo) | DF-23 |
+| Dinero | `integer` en centavos de quetzal. Q45.00 = 4500. `Money` y `transaccion.monto` se implementan en la 009 | DF-23, ADR-0016 |
 | Fechas | `timestamptz` | Vigencias y zonas horarias |
 | Procedencia | `jsonb` | Página / sección+párrafo / línea + confianza (DF-07) |
 | Embedding | `vector(768)` | Fijo desde la primera migración; configurar el modelo con dimensión de salida 768 |

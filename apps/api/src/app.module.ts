@@ -28,7 +28,8 @@ import type { Env } from './shared';
  * `apiEnvSchema`, `SharedModule`, los guards globales de autorización (003), la configuración de MinIO, la salud
  * con los tres indicadores y la cola `ping`; los eventos en proceso (ADR-0019), los *throttlers* en memoria
  * (ADR-0017), `notifications`, `identity`, `AccessModule` (`PermissionResolver`, 003) y `storage` (005) con el
- * enlace de `I_PLAN_LIMITS_PROVIDER` en `PlanLimitsBindingModule` (DF-51: `storage` no conoce a `billing`).
+ * enlace de `I_PLAN_LIMITS_PROVIDER` en `PlanLimitsBindingModule` (DF-51: `storage` no conoce a `billing`;
+ * 006a aporta `PlanLimitsAdapter`).
  */
 @Module({})
 export class AppModule {
