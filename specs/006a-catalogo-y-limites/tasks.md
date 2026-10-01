@@ -26,6 +26,8 @@
 ## Notas del developer
 - El catálogo público por HTTP y el oyente de cuentas verificadas se trasladaron a la spec 009 de acuerdo con la decisión de arquitectura PD-40.
 - La interfaz y token de límites se alinean con la spec 005 (`storage/application/plan-limits.ts`, `I_PLAN_LIMITS_PROVIDER` como `Symbol`, `maxFileBytes` y `storageQuotaBytes`). `PlanLimits` sigue siendo el tipo de `storage`; no se sustituye por una clase.
-- El enlace del token vive en `PlanLimitsBindingModule` (raíz de composición que ya creó 005), no en un `AppModule` que quite `identity` ni `storage`.
-- `limitsFor` sigue devolviendo Personal con constantes, como en CA-5. No lee la fila sembrada.
+- El puerto `IPlanLimitsProvider` contiene únicamente `limitsFor(actor)` (ISP). Las consultas por ID y slug (`getLimitsByPlanId`, `getLimitsBySlug`) quedan en `PlanLimitsAdapter` como API interna de `billing` para la spec 009 (Opción A).
+- El enlace del token vive en `PlanLimitsBindingModule` (raíz de composición global creada en 005), enlazado a `PlanLimitsAdapter` mediante `useExisting`.
+- `limitsFor` consulta la fila `personal` de la tabla `plan` en base de datos (`Art. VI`), respetando CA-5 al no consultar `usuario` ni `identity`.
+- La migración de creación de `plan` no duplica el índice en `slug`: la restricción `UNIQUE` ya crea el índice automáticamente en PostgreSQL.
 - La prueba de `down` corre en una base nueva: en `main` las migraciones de 005 quedan después de las de `plan`, así que `undoLastMigration` revertiría `carga` y no el catálogo.

@@ -10,9 +10,9 @@ Siguiendo la decisión de arquitectura **ADR-0022** (resolución de DF-51 opció
 - `PlanLimits` contiene estrictamente las cuotas que consume la carga: `maxFileBytes: bigint` y `storageQuotaBytes: bigint`.
 - El puerto exporta el método `limitsFor(actor: Actor): Promise<PlanLimits>`.
 - El módulo `billing` (`apps/api/src/modules/billing/`) implementa este puerto mediante `PlanLimitsAdapter` (`apps/api/src/modules/billing/infrastructure/adapters/plan-limits.adapter.ts`).
-- En esta fase (CA-5), `limitsFor(actor)` devuelve de forma predeterminada los límites del plan Personal (`52428800n` bytes de archivo y `16106127360n` bytes de cuota) sin consultar tablas de usuario ni importar `identity`.
-- La raíz de composición (`AppModule`) registra el enlace `{ provide: I_PLAN_LIMITS_PROVIDER, useClass: PlanLimitsAdapter }` directamente, sin crear `storage.module.ts` (reservado para la spec 005).
-- La tabla `plan` se crea con tipos exactos según **ADR-0016** (precios en centavos `integer`, almacenamiento y tamaños en bytes `bigint`). Conserva todas las columnas de la regla **RN-2** (precios, cuotas, editores, consultas de agente, versiones retenidas, días de papelera), sin RLS ni columna `activo`. Dos migraciones TypeORM crean la estructura y siembran los 4 planes oficiales con UUIDs estables fijos (CA-1, CA-9).
+- En esta fase (CA-5, Art. VI), `limitsFor(actor)` consulta la fila `personal` de la tabla `plan` en base de datos (`52428800n` bytes de archivo y `16106127360n` bytes de cuota) sin consultar tablas de usuario ni importar `identity`.
+- La raíz de composición global (`PlanLimitsBindingModule`, introducido por la spec 005) registra el enlace `{ provide: I_PLAN_LIMITS_PROVIDER, useExisting: PlanLimitsAdapter }`.
+- La tabla `plan` se crea con tipos exactos según **ADR-0016** (precios en centavos `integer`, almacenamiento y tamaños en bytes `bigint`). Conserva todas las columnas de la regla **RN-2** (precios, cuotas, editores, consultas de agente, versiones retenidas, días de papelera), sin RLS ni columna `activo`. Dos migraciones TypeORM crean la estructura y siembran los 4 planes oficiales con UUIDs estables fijos (CA-1, CA-9). No se duplica el índice en `slug` ya que la restricción `UNIQUE` crea el índice automáticamente.
 - Siguiendo **PD-40**, el catálogo público por HTTP y el oyente de cuentas verificadas se trasladaron a la spec 009; por lo tanto, esta spec no expone rutas HTTP ni consume eventos.
 
 ## 2. Verificación contra la constitución
@@ -74,8 +74,6 @@ CREATE TABLE plan (
     creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
-CREATE INDEX idx_plan_slug ON plan(slug);
 ```
 
 ### Reversibilidad (`down`)
@@ -178,22 +176,21 @@ export interface IPlanLimitsProvider {
   Entidad TypeORM que mapea la tabla `plan`, con columnas `bigint` mapeadas con transformador.
 - `infrastructure/adapters/plan-limits.adapter.ts`:
   Implementa `IPlanLimitsProvider`:
-  - `limitsFor(actor: Actor)`: devuelve los límites del plan Personal (`maxFileBytes: 52428800n`, `storageQuotaBytes: 16106127360n`) sin consultar datos de usuario ni importar `identity` (CA-5).
-  - Métodos internos de billing para buscar por ID o por slug en caso de requerirse internamente.
+  - `limitsFor(actor: Actor)`: devuelve los límites del plan Personal consultando la fila `personal` de la tabla `plan` en base de datos (`maxFileBytes: 52428800n`, `storageQuotaBytes: 16106127360n`) sin consultar datos de usuario ni importar `identity` (CA-5, Art. VI).
+  - Métodos propios de billing (`getLimitsByPlanId`, `getLimitsBySlug`) para consultar límites por ID o por slug para la spec 009 (Opción A).
 - `billing.module.ts`:
   Configura TypeORM para `PlanOrmEntity`, provee y exporta `PlanLimitsAdapter`.
 - `index.ts`:
   Exporta `BillingModule` y `PlanLimitsAdapter`.
 
-### 3. En la raíz de la aplicación (`apps/api/src/app.module.ts`)
-- Registra el proveedor global:
+### 3. En la raíz de composición (`apps/api/src/plan-limits-binding.module.ts`)
+- Registra el proveedor global creado en spec 005:
   ```typescript
   {
     provide: I_PLAN_LIMITS_PROVIDER,
-    useClass: PlanLimitsAdapter,
+    useExisting: PlanLimitsAdapter,
   }
   ```
-- No se crea `storage.module.ts` en esta spec.
 
 ## 7. Observabilidad
 

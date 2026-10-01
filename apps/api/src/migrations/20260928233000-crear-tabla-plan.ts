@@ -24,8 +24,6 @@ export class CrearTablaPlan20260928233000 implements MigrationInterface {
         actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
     `);
-
-    await queryRunner.query(`CREATE INDEX idx_plan_slug ON plan(slug);`);
   }
 
   async down(queryRunner: QueryRunner): Promise<void> {

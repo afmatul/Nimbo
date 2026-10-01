@@ -5,6 +5,7 @@ specs/
 CLAUDE.md
 HARNESS.md
 .github/pull_request_template.md
+Cambios.md
 
 # Generados
 node_modules/

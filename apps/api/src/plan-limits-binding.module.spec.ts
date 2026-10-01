@@ -16,7 +16,14 @@ describe('PlanLimitsBindingModule', () => {
       imports: [PlanLimitsBindingModule],
     })
       .overrideProvider(getRepositoryToken(PlanOrmEntity))
-      .useValue({ findOneBy: jest.fn() })
+      .useValue({
+        findOneBy: jest.fn().mockResolvedValue({
+          id: '10000000-0000-4000-8000-000000000001',
+          slug: 'personal',
+          cuotaBytes: 16106127360n,
+          maxArchivoBytes: 52428800n,
+        }),
+      })
       .compile();
     const provider = moduleRef.get<IPlanLimitsProvider>(I_PLAN_LIMITS_PROVIDER);
 

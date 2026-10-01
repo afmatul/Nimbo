@@ -41,23 +41,23 @@ La tabla `plan` queda sembrada con los cuatro planes oficiales. Los módulos que
 
 - **CA-2** (HU-1, RF-19) — Consulta de límites por id de plan
   - **Dado** un `planId` de un plan existente,
-  - **Cuando** se invoca `IPlanLimitsProvider.getLimitsByPlanId(planId)`,
+  - **Cuando** se invoca `PlanLimitsAdapter.getLimitsByPlanId(planId)`,
   - **Entonces** devuelve el `PlanLimits` de ese plan.
 
 - **CA-3** (HU-1, RF-19) — Consulta de límites por slug
   - **Dado** un slug válido (`personal`, `pro`, `equipo`, `institucional`),
-  - **Cuando** se invoca `IPlanLimitsProvider.getLimitsBySlug(slug)`,
+  - **Cuando** se invoca `PlanLimitsAdapter.getLimitsBySlug(slug)`,
   - **Entonces** devuelve el `PlanLimits` correspondiente.
 
 - **CA-4** (HU-1, RF-19) — Plan inexistente
   - **Dado** un `planId` o un slug que no existe,
-  - **Cuando** se consulta por `IPlanLimitsProvider`,
+  - **Cuando** se consulta por `PlanLimitsAdapter`,
   - **Entonces** se lanza `PlanNotFoundError` con código `PLAN_NOT_FOUND` y mensaje en español, sin devolver nulos ni objetos incompletos.
 
-- **CA-5** (HU-1, RF-19) — Límites de una cuenta sin suscripción
+- **CA-5** (HU-1, RF-19, Art. VI) — Límites de una cuenta sin suscripción
   - **Dado** un actor cualquiera y que la tabla `suscripcion` todavía no existe,
   - **Cuando** se invoca `IPlanLimitsProvider.limitsFor(actor)`,
-  - **Entonces** devuelve el `PlanLimits` de `personal` (`maxFileBytes: 52428800n`, `storageQuotaBytes: 16106127360n`),
+  - **Entonces** devuelve el `PlanLimits` de `personal` (`maxFileBytes: 52428800n`, `storageQuotaBytes: 16106127360n`) leyendo la fila `personal` de la tabla `plan`,
   - **Y** la implementación no consulta `usuario` ni importa `identity`.
   - La spec 009, al crear `suscripcion`, conserva esta firma y pasa a leer el plan vigente. Si no hay fila, sigue devolviendo `personal`.
 
@@ -87,7 +87,7 @@ La tabla `plan` queda sembrada con los cuatro planes oficiales. Los módulos que
   4. **Institucional**: Q450.00 (`45000` centavos), 2 TB (`2 199 023 255 552` bytes), máx. 2 GB (`2 147 483 648` bytes), 5 editores simultáneos, 10 000 consultas agente/mes, 100 versiones retenidas, 90 días en papelera.
 - **RN-2**: La tabla se llama `plan`, con columnas `id uuid PRIMARY KEY`, `nombre varchar NOT NULL`, `slug varchar UNIQUE NOT NULL`, `descripcion text`, `precio_centavos integer NOT NULL`, `cuota_bytes bigint NOT NULL`, `max_archivo_bytes bigint NOT NULL`, `max_editores integer NOT NULL`, `consultas_agente_mensual integer NOT NULL`, `versiones_retenidas integer NOT NULL`, `dias_retencion_papelera integer NOT NULL`, `creado_en timestamptz NOT NULL`, `actualizado_en timestamptz NOT NULL`.
 - **RN-3**: Los límites entre módulos salen solo de `IPlanLimitsProvider`. Ningún módulo externo ejecuta SQL contra `plan` (Art. VIII).
-- **RN-4** (DF-51, opción A, aceptada en ADR-0022 el 2026-09-29): `IPlanLimitsProvider` lo declara `storage` y lo implementa `billing`. `storage` no depende de `billing`. `editing` lo reutiliza desde `storage`, de quien ya depende. Para cumplir esta spec, `billing` no importa entidades de `storage`. Esta aceptación no bloquea el plan de 005: la carga consume el puerto dentro de `storage` y no espera a `IAgentQuota`, a `IIndexQueue` ni a la decisión de las facturas. El uso de `IObjectStorage` para facturas sigue abierto y se cierra en 009.
+- **RN-4** (DF-51, opción A, aceptada en ADR-0022 el 2026-09-29): `IPlanLimitsProvider` lo declara `storage` con el único método `limitsFor(actor: Actor): Promise<PlanLimits>` (principio de segregación de interfaces ISP) y lo implementa `billing` mediante `PlanLimitsAdapter`. `storage` no depende de `billing`. `editing` lo reutiliza desde `storage`, de quien ya depende. `getLimitsByPlanId` y `getLimitsBySlug` son capacidades de consulta de catálogo expuestas por `PlanLimitsAdapter` para el consumo interno de `billing` (spec 009). Para cumplir esta spec, `billing` no importa entidades de `storage`.
 - **RN-5** (PD-40): 006a no crea filas en `suscripcion`, no consume `identity.client-account-verified` y no expone el catálogo por HTTP. La cuenta nueva recibe los límites de Personal por CA-5. El oyente idempotente, la conciliación de cuentas verificadas sin suscripción y la lectura pública (con marca de plan gratuito) son de la 009. Hasta entonces el registro (001) usa `catalogo-no-disponible`.
 - **RN-6**: El identificador de cada plan es un UUID fijo (CA-9), de acuerdo con el Art. IX.6. El slug es la clave de negocio estable.
 
@@ -141,3 +141,4 @@ La tabla `plan` queda sembrada con los cuatro planes oficiales. Los módulos que
 | 2026-09-29 | ADR-0016 aceptado: DF-23 y DF-24 cerrados. Se quitan HU-4 y CA-8. El PD-40 (oyente, conciliación y catálogo público) pasa a la 009. | El registro puede seguir con `catalogo-no-disponible`. La 006a se queda en la tabla `plan` y en los límites | Revisión de arquitectura |
 | 2026-09-28 | Pase a Planificada con plan.md y tasks.md generados | Plan técnico y 12 tareas trazadas listas para implementar | Fátima |
 | 2026-09-29 | Alineación de contrato con spec 005: PlanLimits con maxFileBytes y storageQuotaBytes, puerto limitsFor(actor) y tabla plan sin activo/RLS | Evitar contradicciones con el plan aprobado de spec 005 y AppModule | Fátima |
+| 2026-09-30 | Ajustes de revisión: limitsFor lee fila personal de tabla plan (Art. VI), getLimitsByPlanId y getLimitsBySlug quedan en PlanLimitsAdapter para billing (Opción A), eliminación de índice redundante idx_plan_slug | Atender retroalimentación de revisión | Fátima |

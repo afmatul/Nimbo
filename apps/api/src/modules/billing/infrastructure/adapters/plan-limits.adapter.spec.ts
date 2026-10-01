@@ -23,20 +23,43 @@ describe('PlanLimitsAdapter (T-08, CA-4, CA-5, RN-4)', () => {
     adapter = new PlanLimitsAdapter(mockRepo as unknown as Repository<PlanOrmEntity>);
   });
 
-  describe('limitsFor(actor) (CA-5)', () => {
-    it('CA-5: devuelve Personal sin consultar la base ni identity', async () => {
+  describe('limitsFor(actor) (CA-5, Art. VI)', () => {
+    it('CA-5: devuelve Personal leyendo la fila de la tabla plan sin consultar identity', async () => {
+      mockRepo.findOneBy.mockResolvedValue({
+        id: '10000000-0000-4000-8000-000000000001',
+        slug: 'personal',
+        cuotaBytes: 16106127360n,
+        maxArchivoBytes: 52428800n,
+      } as PlanOrmEntity);
+
       const limits = await adapter.limitsFor(
         createActor('123e4567-e89b-12d3-a456-426614174000', Role.CLIENT),
       );
 
       expect(limits).toEqual(PERSONAL);
-      expect(mockRepo.findOneBy).not.toHaveBeenCalled();
+      expect(mockRepo.findOneBy).toHaveBeenCalledWith({ slug: 'personal' });
     });
 
     it('CA-5: devuelve los mismos límites para cualquier rol', async () => {
+      mockRepo.findOneBy.mockResolvedValue({
+        id: '10000000-0000-4000-8000-000000000001',
+        slug: 'personal',
+        cuotaBytes: 16106127360n,
+        maxArchivoBytes: 52428800n,
+      } as PlanOrmEntity);
+
       const limits = await adapter.limitsFor(createActor('admin-id', Role.ADMIN));
 
       expect(limits).toEqual(PERSONAL);
+      expect(mockRepo.findOneBy).toHaveBeenCalledWith({ slug: 'personal' });
+    });
+
+    it('lanza PlanNotFoundError si no existe la fila personal en la tabla plan', async () => {
+      mockRepo.findOneBy.mockResolvedValue(null);
+
+      await expect(
+        adapter.limitsFor(createActor('123e4567-e89b-12d3-a456-426614174000', Role.CLIENT)),
+      ).rejects.toThrow(PlanNotFoundError);
     });
   });
 
