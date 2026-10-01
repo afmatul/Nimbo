@@ -16,7 +16,7 @@
 | CA-2, CA-3 | `billing/infrastructure/adapters/plan-limits.adapter.spec.ts` e int-spec (por id y por slug) | ✅ |
 | CA-4 | `billing/domain/errors/plan-not-found.error.spec.ts`; unitaria e int-spec para id y slug inexistentes | ✅ |
 | CA-5 | `plan-limits.adapter.spec.ts`, int-spec (cliente y admin), `plan-limits-binding.module.spec.ts` | ✅ |
-| CA-6 | Solo por tipos (`interface` con `readonly` y `bigint`); no hay prueba en ejecución (I-1) | ⚠️ |
+| CA-6 | `readonly` por `typecheck`; `bigint` y forma exacta por `toEqual` con literales `bigint` en las pruebas del adaptador y `plan.orm-entity.spec.ts` (I-1) | ✅ |
 | CA-7 | `plan-migration.int-spec.ts`: `down` de semilla y tabla, luego `up`, en base nueva | ✅ |
 | CA-9 | UUID literales en la semilla, verificados en la int-spec | ✅ |
 | RN-4 | `storage/index.spec.ts` (`plan-limits.ts` no importa `billing`) y lint de fronteras | ✅ |
@@ -43,6 +43,8 @@ Además: `migration:run` en la base local aplica `CrearTablaPlan` y `SembrarPlan
 - **[I-6]** Hueco R-3 de 005: `test/int/storage/storage-http.ts` sustituye `I_PLAN_LIMITS_PROVIDER` por un doble y ninguna prueba hace una carga con el adaptador real. Añadir una (p. ej., archivo > 50 MB rechazado con Personal) o cubrirlo en T-55 de 005.
 - **[S-1]** `.prettierignore` agrega `Cambios.md`, que no existe y está fuera de la spec. Quitar la línea.
 - **[S-2]** `limitsFor` consulta la base en cada llamada. Evaluar un caché cuando 007 lo use en cada operación.
+
+Resueltos el 2026-09-30 en esta misma rama: I-1 (plan §1, §6 y §8 y T-04 describen la `interface` de 005; CA-6 queda cubierto por `typecheck` y las comparaciones `bigint`), I-2 (plan §3b, T-05, T-10 y el comentario de `plan-limits.ts`), I-3 (se quita la bitácora del plan: §2 X y §7), I-4 (§11 aprobado) e I-5 (§8 con CA-2 y CA-3). Quedan I-6, S-1 y S-2.
 
 ## DF y pendientes
 - DF-06, DF-23, DF-24 (aceptados, ADR-0016) y DF-27 (parcial, ADR-0022) coherentes con el código. PD-40 diferido a 009.
