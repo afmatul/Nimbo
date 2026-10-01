@@ -48,4 +48,4 @@ Resueltos el 2026-09-30 en esta misma rama: I-1 (plan §1, §6 y §8 y T-04 desc
 
 ## DF y pendientes
 - DF-06, DF-23, DF-24 (aceptados, ADR-0016) y DF-27 (parcial, ADR-0022) coherentes con el código. PD-40 diferido a 009.
-- Filas nuevas sugeridas en `pendientes.md`: prueba de carga con el adaptador real (I-6); redibujar el E-R (`plan` en bytes y centavos) y los diagramas M2/M4 con el puerto declarado en `storage`.
+- Filas nuevas en `pendientes.md`: PD-55 (redibujar E-R, M2, M4 y arquitectura), PD-56 (I-6), PD-57 (S-1) y PD-58 (S-2). PD-18: `IAgentQuota` pasa a la 018.
