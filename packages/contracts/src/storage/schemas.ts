@@ -7,7 +7,6 @@ import {
   folderField,
   nameField,
   onConflictField,
-  pageQuerySchema,
   timestamp,
   uuidSchema,
 } from './schema-fields';
@@ -102,14 +101,6 @@ export const fileSummarySchema = z
 /** Respuesta de `POST /uploads/:id/complete` (idempotente). */
 export const completeUploadResponseSchema = z.object({ file: fileSummarySchema }).strict();
 
-/** Consulta de `GET /files` (005). `limit` fuera de rango se ajusta; el cursor es opaco y lo decodifica la API. */
-export const listFilesQuerySchema = pageQuerySchema;
-
-/** Respuesta de `GET /files`: raíz, sin papelera, más recientes primero. */
-export const listFilesResponseSchema = z
-  .object({ items: z.array(fileSummarySchema), nextCursor: z.string().min(1).nullable() })
-  .strict();
-
 /** Respuesta de `POST /files/:id/download-url` (vigencia `DOWNLOAD_URL_TTL_SECONDS`, CA-13). */
 export const downloadUrlSchema = z.object({ url: z.string().url(), expiresAt: timestamp }).strict();
 
@@ -121,6 +112,4 @@ export type UploadPartUrl = z.infer<typeof uploadPartUrlSchema>;
 export type CompletedPart = z.infer<typeof completedPartSchema>;
 export type FileSummary = z.infer<typeof fileSummarySchema>;
 export type CompleteUploadResponse = z.infer<typeof completeUploadResponseSchema>;
-export type ListFilesQuery = z.output<typeof listFilesQuerySchema>;
-export type ListFilesResponse = z.infer<typeof listFilesResponseSchema>;
 export type DownloadUrlResponse = z.infer<typeof downloadUrlSchema>;

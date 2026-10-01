@@ -6,18 +6,6 @@ import type { Folder } from '../../domain/folder';
 import type { FolderName } from '../../domain/folder-name.vo';
 import type { StorageNode } from '../../domain/storage-node';
 
-/** Página pedida de la raíz del actor. `cursor` es el `nextCursor` opaco de la página anterior. */
-export interface FileListQuery {
-  readonly cursor?: string;
-  readonly limit: number;
-}
-
-/** Página de archivos: sin papelera, `creado_en DESC, id DESC`. `nextCursor` es `null` en la última. */
-export interface FileListPage {
-  readonly items: readonly File[];
-  readonly nextCursor: string | null;
-}
-
 /** Página pedida de una carpeta (`folderId: null` = raíz). `cursor` es el `nextCursor` opaco de la anterior. */
 export interface NodeListQuery {
   readonly folderId: string | null;
@@ -42,8 +30,6 @@ export interface INodeRepository {
   findAccessibleById(actor: Actor, id: string): Promise<File | null>;
   /** La carpeta si el actor tiene acceso y no está en la papelera; `null` en otro caso (CA-5). */
   findAccessibleFolder(actor: Actor, id: string): Promise<Folder | null>;
-  /** Lanza `InvalidQueryError` si `cursor` no es uno emitido por este repositorio. */
-  listAccessible(actor: Actor, query: FileListQuery): Promise<FileListPage>;
   /** Subcarpetas y archivos directos de una carpeta o de la raíz (CA-5). Lanza `InvalidQueryError` si el cursor no es válido. */
   listContents(actor: Actor, query: NodeListQuery): Promise<NodeListPage>;
   /** Ancestros de `folder`, desde la raíz y sin ella (migas, CA-5). */

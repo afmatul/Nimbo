@@ -3,6 +3,7 @@ import type { ZodTypeAny } from 'zod';
 import type { FieldIssueResponse } from '../error';
 import { toFieldIssues } from '../validation';
 
+import { folderContentsQuerySchema } from './folder-schemas';
 import { FILE_NAME_MAX_LENGTH, FILES_PAGE_DEFAULT, FILES_PAGE_MAX } from './parameters';
 import {
   FILE_KINDS,
@@ -11,8 +12,6 @@ import {
   fileSummarySchema,
   initUploadResponseSchema,
   initUploadSchema,
-  listFilesQuerySchema,
-  listFilesResponseSchema,
   resumeUploadResponseSchema,
 } from './schemas';
 
@@ -199,13 +198,6 @@ describe('FileSummary, listado y descarga', () => {
     expect(completeUploadResponseSchema.parse({ file })).toEqual({ file });
   });
 
-  it('CA-1: el listado es `{ items, nextCursor }`', () => {
-    expect(listFilesResponseSchema.parse({ items: [file], nextCursor: null })).toEqual({
-      items: [file],
-      nextCursor: null,
-    });
-  });
-
   it('CA-13: la descarga es `{ url, expiresAt }`', () => {
     const download = { url: URL_A, expiresAt: AT };
 
@@ -214,9 +206,9 @@ describe('FileSummary, listado y descarga', () => {
   });
 });
 
-describe('listFilesQuerySchema', () => {
+describe('paginación de `GET /folders/contents` (la de `GET /files` de 005)', () => {
   it('CA-1: sin parámetros usa la página por defecto', () => {
-    expect(listFilesQuerySchema.parse({})).toEqual({ limit: FILES_PAGE_DEFAULT });
+    expect(folderContentsQuerySchema.parse({})).toEqual({ limit: FILES_PAGE_DEFAULT });
   });
 
   it.each([
@@ -226,15 +218,15 @@ describe('listFilesQuerySchema', () => {
     ['1000', FILES_PAGE_MAX],
     ['abc', FILES_PAGE_DEFAULT],
   ])('CA-1: `limit=%s` se ajusta a %d', (limit, expected) => {
-    expect(listFilesQuerySchema.parse({ limit }).limit).toBe(expected);
+    expect(folderContentsQuerySchema.parse({ limit }).limit).toBe(expected);
   });
 
   it('CA-1: conserva el cursor opaco', () => {
-    expect(listFilesQuerySchema.parse({ cursor: 'abc' }).cursor).toBe('abc');
+    expect(folderContentsQuerySchema.parse({ cursor: 'abc' }).cursor).toBe('abc');
   });
 
   it('CA-7: un cursor vacío es `INVALID_CURSOR`', () => {
-    const issues = issuesOf(listFilesQuerySchema, { cursor: '' });
+    const issues = issuesOf(folderContentsQuerySchema, { cursor: '' });
 
     expect(issues.map((issue) => issue.reason)).toEqual(['INVALID_CURSOR']);
   });

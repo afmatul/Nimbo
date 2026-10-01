@@ -41,12 +41,12 @@ tipos, `IExpiredUploadScanner`, el adaptador de auditoría ni los repositorios. 
 Tablas (migraciones `20260930100000`…`100300`, plan §4): `archivo`, `version_archivo` y `carga`, con RLS `ENABLE` +
 `FORCE`; `usuario.espacio_usado` es la única columna de otra tabla que `storage` escribe (D-5, DF-59).
 
-| Puerto (`application/ports/`)                                                                                             | Token                         | Implementación (`infrastructure/persistence/`) |
-| ------------------------------------------------------------------------------------------------------------------------- | ----------------------------- | ---------------------------------------------- |
-| `INodeRepository`: `findAccessibleById`, `listAccessible`, `findTakenNames`, `insertWithVersion` (y los de carpetas, 006) | `I_NODE_REPOSITORY`           | `TypeOrmNodeRepository`                        |
-| `IUploadSessionRepository`: `insert`, `findOwned`, `transition` (compare-and-set)                                         | `I_UPLOAD_SESSION_REPOSITORY` | `TypeOrmUploadSessionRepository`               |
-| `IQuotaRepository`: `lockUsage`, `lockAndReadUsage`, `addUsedBytes`                                                       | `I_QUOTA_REPOSITORY`          | `TypeOrmQuotaRepository`                       |
-| `IExpiredUploadScanner`: `listExpiredIds(now, limit)` → `{ id, propietarioId }[]` (sin actor)                             | `I_EXPIRED_UPLOAD_SCANNER`    | `SqlExpiredUploadScanner`                      |
+| Puerto (`application/ports/`)                                                                           | Token                         | Implementación (`infrastructure/persistence/`) |
+| ------------------------------------------------------------------------------------------------------- | ----------------------------- | ---------------------------------------------- |
+| `INodeRepository`: `findAccessibleById`, `findTakenNames`, `insertWithVersion` (y los de carpetas, 006) | `I_NODE_REPOSITORY`           | `TypeOrmNodeRepository`                        |
+| `IUploadSessionRepository`: `insert`, `findOwned`, `transition` (compare-and-set)                       | `I_UPLOAD_SESSION_REPOSITORY` | `TypeOrmUploadSessionRepository`               |
+| `IQuotaRepository`: `lockUsage`, `lockAndReadUsage`, `addUsedBytes`                                     | `I_QUOTA_REPOSITORY`          | `TypeOrmQuotaRepository`                       |
+| `IExpiredUploadScanner`: `listExpiredIds(now, limit)` → `{ id, propietarioId }[]` (sin actor)           | `I_EXPIRED_UPLOAD_SCANNER`    | `SqlExpiredUploadScanner`                      |
 
 - Todo método recibe `actor` y toma el `EntityManager` de `TransactionContext.requireActorScope(actor)`: se llama
   dentro de `ITransactionRunner.withActor(actor, …)` o lanza `ActorScopeMissingError`.
@@ -78,6 +78,20 @@ papelera).
 - Rutas (`FoldersController`, solo `CLIENT`): `GET /folders/contents`, `POST /folders`, `PATCH /folders/:folderId` y
   `POST /folders/:folderId/move`. Un `:folderId` que no es UUID es el mismo 404 que uno inexistente o ajeno.
 - Pruebas: `folder.service.spec.ts`, `test/int/storage/node-tree.repository.int-spec.ts` y `folders.int-spec.ts`.
+
+## Archivos en carpetas (006, T-04)
+
+- `FileService.rename` y `FileService.move` (`PATCH /files/:fileId`, `POST /files/:fileId/move`) toman `lockUsage` y
+  aplican la regla «(n)» de 005 en la carpeta del archivo o en el destino (`freeFileName`, compartida con las cargas):
+  con `onConflict: 'ask'` un nombre ocupado es `409 STORAGE_NAME_CONFLICT` con `details.suggestedName`. Un destino
+  ajeno, inexistente o en la papelera es `404`. El tamaño, las versiones y `espacio_usado` no cambian.
+- `GET /files` y `FileService.list` se retiraron: el listado es `GET /folders/contents`.
+- `POST /uploads` acepta `folderId` (`null` = raíz): `init` comprueba la carpeta tras bloquear el uso y evalúa el nombre
+  en ella. `UploadRegistrar` la vuelve a comprobar con el mismo `lockUsage`: si pasó a la papelera durante la carga,
+  CAS `activa → cancelada` (libera la reserva), `UploadService` purga lo subido y responde `404`
+  (`upload.destination_gone`).
+- Pruebas: `file.service.spec.ts`, `upload.service.spec.ts`, `test/int/storage/files-organize.int-spec.ts` y
+  `uploads-folder.int-spec.ts`.
 
 ## Limpieza de cargas vencidas (005, PR-E)
 
@@ -127,14 +141,15 @@ Pruebas: `upload-cleanup.processor.spec.ts` y `upload-cleanup.scheduler.spec.ts`
 | `UploadService`                            | `init` (reserva de cuota y URLs prefirmadas), `resume`, `complete`, `cancel`, `expire`             |
 | `UploadRegistrar`                          | Paso final de `complete`: CAS `activa → completada`, nombre definitivo, `archivo` + versión, cuota |
 | `QuotaService`                             | Máximo por archivo y cuota total con reservas de cargas activas (`QuotaPolicy`)                    |
-| `FileService`                              | Listado paginado y URL de descarga de 300 s                                                        |
+| `FileService`                              | Renombrar y mover archivos (006) y URL de descarga de 300 s                                        |
 | `FolderService` (006)                      | Crear, renombrar, mover y abrir carpetas, con migas                                                |
 | `IObjectStorage` → `MinioStorageAdapter`   | Multipart, URLs prefirmadas (`Content-Length` firmado), `headObject`, `getRange`, purga real       |
 | `IFileTypeDetector` → `MagicBytesDetector` | Tipo real por firma; rechaza ejecutables y texto disfrazado                                        |
 
 Rutas (solo `CLIENT`; roles internos → 403, sin token → 401; un id que no es UUID responde el mismo 404 que uno
 inexistente): `POST /uploads`, `POST /uploads/:uploadId/resume`, `POST /uploads/:uploadId/complete`,
-`DELETE /uploads/:uploadId`, `GET /files`, `POST /files/:fileId/download-url`. `init` y `download-url` pasan por
+`DELETE /uploads/:uploadId`, `POST /files/:fileId/download-url` (y desde 006 `PATCH /files/:fileId` y
+`POST /files/:fileId/move`). `init` y `download-url` pasan por
 `IRateLimiter`.
 
 - Pruebas HTTP: `apps/api/test/int/storage/*.int-spec.ts` (`pnpm test:int`); aislamiento:

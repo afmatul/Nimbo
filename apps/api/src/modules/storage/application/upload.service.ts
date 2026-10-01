@@ -20,7 +20,7 @@ import {
   FileTooLargeError,
   InvalidFileTypeError,
   InvalidUploadRequestError,
-  NameConflictError,
+  NodeNotFoundError,
   UploadExpiredError,
   UploadIncompleteError,
   UploadNotFoundError,
@@ -37,6 +37,7 @@ import { assessObjectSize, assessParts } from '../domain/uploaded-size';
 import type { SizeVerdict } from '../domain/uploaded-size';
 
 import { toFileSummary } from './file-summary';
+import { freeFileName } from './free-file-name';
 import { I_PLAN_LIMITS_PROVIDER } from './plan-limits';
 import type { IPlanLimitsProvider, PlanLimits } from './plan-limits';
 import { I_FILE_TYPE_DETECTOR } from './ports/i-file-type-detector.port';
@@ -104,8 +105,9 @@ export class UploadService {
 
   /**
    * Inicia una carga (CA-1, CA-2, CA-3, CA-4, CA-6, CA-7, CA-19, CA-23). Orden de plan §6: tasa → nombre → tamaño 0
-   * → límites del plan (fuera de la transacción) → en `withActor`: cuota con la fila del actor bloqueada, nombre
-   * repetido, modo, multipart, fila `carga` (la reserva) y firmas. Si algo falla tras crear el multipart, lo aborta.
+   * → límites del plan (fuera de la transacción) → en `withActor`: cuota con la fila del actor bloqueada, carpeta
+   * destino viva (006 CA-6), nombre repetido en ella, modo, multipart, fila `carga` (la reserva) y firmas. Si algo
+   * falla tras crear el multipart, lo aborta.
    */
   async init(actor: Actor, request: InitUploadInput): Promise<InitUploadResponse> {
     await this.assertInitRate(actor);
@@ -114,7 +116,13 @@ export class UploadService {
     if (declaredBytes === 0n) throw new EmptyFileError();
     const limits = await this.plans.limitsFor(actor);
     const keepBoth = request.onConflict === 'keep_both';
-    const started = await this.reserve(actor, { name, declaredBytes, keepBoth, limits });
+    const started = await this.reserve(actor, {
+      name,
+      folderId: request.folderId,
+      declaredBytes,
+      keepBoth,
+      limits,
+    });
     this.logger.info({
       event: 'upload.initiated',
       cargaId: started.session.id,
@@ -200,7 +208,8 @@ export class UploadService {
     try {
       return await this.transactions.withActor(actor, async () => {
         await this.quota.assertCanUpload(actor, input.declaredBytes, input.limits);
-        const plannedName = await this.plannedName(actor, input.name, input.keepBoth);
+        await this.assertDestinationAccessible(actor, input.folderId);
+        const plannedName = await freeFileName(this.nodes, actor, input);
         const ids = { id: randomUUID(), fileId: randomUUID(), versionId: randomUUID() };
         const key = ObjectKey.of(actor.id, ids.fileId, ids.versionId).value;
         const multipart = await this.openMultipartIfLarge(key, input.declaredBytes);
@@ -208,7 +217,7 @@ export class UploadService {
         const session = UploadSession.start({
           ...ids,
           ownerId: actor.id,
-          folderId: null,
+          folderId: input.folderId,
           name: input.name,
           keepBoth: input.keepBoth,
           declaredBytes: input.declaredBytes,
@@ -224,11 +233,12 @@ export class UploadService {
     }
   }
 
-  /** Nombre con el que se guardaría hoy. Con `ask`, un conflicto es 409 con la sugerencia (CA-6, D-4). */
-  private async plannedName(actor: Actor, name: FileName, keepBoth: boolean): Promise<FileName> {
-    const planned = name.firstFree(await this.nodes.findTakenNames(actor, name, null));
-    if (!keepBoth && !planned.sameAs(name)) throw new NameConflictError(planned.value);
-    return planned;
+  /** 006 CA-6: la carpeta destino debe estar viva y ser del actor; `null` es la raíz. */
+  private async assertDestinationAccessible(actor: Actor, folderId: string | null): Promise<void> {
+    if (folderId === null) return;
+    if ((await this.nodes.findAccessibleFolder(actor, folderId)) === null) {
+      throw new NodeNotFoundError();
+    }
   }
 
   /** Por partes solo por encima del umbral (estricto): así toda carga por partes tiene al menos 2 (RN-2, D-1). */
@@ -460,19 +470,29 @@ export class UploadService {
   /**
    * Registro del archivo en una transacción (`UploadRegistrar`) y, tras el commit, la auditoría de mejor esfuerzo.
    * Si el CAS pierde contra otro `complete` de la misma carga (doble clic), responde el archivo que registró ese;
-   * si pierde contra `cancel`/`expire`, no hay archivo: 410 o 404 según quién ganó.
+   * si pierde contra `cancel`/`expire`, no hay archivo: 410 o 404 según quién ganó. Si la carpeta destino ya no
+   * está viva, la carga quedó `cancelada`: borra lo subido y responde 404 (006 CA-6).
    */
   private async register(
     actor: Actor,
     session: UploadSession,
     verified: VerifiedUpload,
   ): Promise<CompleteUploadResponse> {
-    const file = await this.registrar.register(actor, session, verified);
-    if (file === null) return this.afterLostRegistration(actor, session.id);
+    const registration = await this.registrar.register(actor, session, verified);
+    if (registration.outcome === 'race_lost') return this.afterLostRegistration(actor, session.id);
+    if (registration.outcome === 'destination_gone') return this.discardForGoneDestination(session);
+    const { file } = registration;
     const sizeBytes = Number(file.sizeBytes);
     this.logger.info({ event: 'upload.completed', fileId: file.id, sizeBytes });
     await this.recordCompleted(actor, session, file);
     return { file: toFileSummary(file) };
+  }
+
+  /** El objeto ya está ensamblado (también si fue por partes): se purga su clave. */
+  private async discardForGoneDestination(session: UploadSession): Promise<never> {
+    await this.retryDiscard(session, () => this.purge(session));
+    this.logger.info({ event: 'upload.destination_gone', cargaId: session.id });
+    throw new NodeNotFoundError();
   }
 
   private recordCompleted(actor: Actor, session: UploadSession, file: File): Promise<void> {
@@ -626,6 +646,8 @@ interface ReceivedPart {
 
 interface ReserveInput {
   readonly name: FileName;
+  /** Carpeta destino (`null` = raíz, 006 CA-6). */
+  readonly folderId: string | null;
   readonly declaredBytes: bigint;
   readonly keepBoth: boolean;
   readonly limits: PlanLimits;

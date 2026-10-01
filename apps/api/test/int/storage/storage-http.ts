@@ -107,14 +107,20 @@ export interface StorageClient {
   resume(uploadId: string): Promise<Response>;
   complete(uploadId: string): Promise<Response>;
   cancel(uploadId: string): Promise<Response>;
-  list(query?: Record<string, string>): Promise<Response>;
   downloadUrl(fileId: string): Promise<Response>;
+  renameFile(fileId: string, body: Record<string, unknown>): Promise<Response>;
+  moveFile(fileId: string, body: Record<string, unknown>): Promise<Response>;
   folderContents(query?: Record<string, string>): Promise<Response>;
   createFolder(body: Record<string, unknown>): Promise<Response>;
   renameFolder(folderId: string, body: Record<string, unknown>): Promise<Response>;
   moveFolder(folderId: string, body: Record<string, unknown>): Promise<Response>;
-  /** Inicia, sube con la(s) URL(s) firmada(s) y completa; devuelve la respuesta de `complete`. */
-  upload(name: string, bytes: Buffer, onConflict?: 'ask' | 'keep_both'): Promise<Response>;
+  /** Inicia (en `folderId`, por defecto la raíz), sube con la(s) URL(s) firmada(s) y completa; devuelve `complete`. */
+  upload(
+    name: string,
+    bytes: Buffer,
+    onConflict?: 'ask' | 'keep_both',
+    folderId?: string | null,
+  ): Promise<Response>;
 }
 
 export interface StorageHttpApp {
@@ -232,8 +238,11 @@ export const createStorageHttpApp = async (
       resume: (uploadId) => http().post(`${API_PREFIX}/uploads/${uploadId}/resume`).set(auth),
       complete: (uploadId) => http().post(`${API_PREFIX}/uploads/${uploadId}/complete`).set(auth),
       cancel: (uploadId) => http().delete(`${API_PREFIX}/uploads/${uploadId}`).set(auth),
-      list: (query = {}) => http().get(`${API_PREFIX}/files`).query(query).set(auth),
       downloadUrl: (fileId) => http().post(`${API_PREFIX}/files/${fileId}/download-url`).set(auth),
+      renameFile: (fileId, body) =>
+        http().patch(`${API_PREFIX}/files/${fileId}`).set(auth).send(body),
+      moveFile: (fileId, body) =>
+        http().post(`${API_PREFIX}/files/${fileId}/move`).set(auth).send(body),
       folderContents: (query = {}) =>
         http().get(`${API_PREFIX}/folders/contents`).query(query).set(auth),
       createFolder: (body) => http().post(`${API_PREFIX}/folders`).set(auth).send(body),
@@ -241,8 +250,8 @@ export const createStorageHttpApp = async (
         http().patch(`${API_PREFIX}/folders/${folderId}`).set(auth).send(body),
       moveFolder: (folderId, body) =>
         http().post(`${API_PREFIX}/folders/${folderId}/move`).set(auth).send(body),
-      upload: async (name, bytes, onConflict = 'ask') => {
-        const started = await client.init({ name, sizeBytes: bytes.length, onConflict });
+      upload: async (name, bytes, onConflict = 'ask', folderId = null) => {
+        const started = await client.init({ name, sizeBytes: bytes.length, onConflict, folderId });
         if (started.status !== 201) return started;
         const body = started.body as InitBody;
         await uploadBytes(body, bytes);

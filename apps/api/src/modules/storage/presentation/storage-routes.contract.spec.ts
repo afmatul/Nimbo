@@ -40,7 +40,7 @@ describe('rutas de `storage` (CA-17)', () => {
     await moduleRef.close();
   });
 
-  it('CA-17: expone exactamente las seis rutas del plan §5, todas solo para CLIENT', () => {
+  it('CA-17, 006 CA-23: expone exactamente las rutas de cargas y archivos (005 §5 y 006 §4), todas solo para CLIENT', () => {
     const routes = listRouteDeclarations(moduleRef, PREFIX);
 
     expect(routes.map(describeRoute).sort()).toEqual(
@@ -49,8 +49,9 @@ describe('rutas de `storage` (CA-17)', () => {
         'POST /api/v1/uploads/:uploadId/resume',
         'POST /api/v1/uploads/:uploadId/complete',
         'DELETE /api/v1/uploads/:uploadId',
-        'GET /api/v1/files',
         'POST /api/v1/files/:fileId/download-url',
+        'PATCH /api/v1/files/:fileId',
+        'POST /api/v1/files/:fileId/move',
       ].sort(),
     );
     expect(routes.every((route) => !route.public)).toBe(true);
@@ -66,10 +67,23 @@ describe('rutas de `storage` (CA-17)', () => {
     expect(pipesOf(controller, method)).toEqual([expect.any(ParseUUIDPipe)]);
   });
 
+  it.each([[UploadsController, 'init']] as const)(
+    'CA-7: %p.%s valida la entrada con `ZodValidationPipe`',
+    (controller, method) => {
+      expect(pipesOf(controller, method)).toEqual([expect.any(ZodValidationPipe)]);
+    },
+  );
+
   it.each([
-    [UploadsController, 'init'],
-    [FilesController, 'list'],
-  ] as const)('CA-7: %p.%s valida la entrada con `ZodValidationPipe`', (controller, method) => {
-    expect(pipesOf(controller, method)).toEqual([expect.any(ZodValidationPipe)]);
-  });
+    [FilesController, 'rename'],
+    [FilesController, 'move'],
+  ] as const)(
+    '006 CA-4, CA-7: %p.%s valida el id como UUID y el cuerpo con `ZodValidationPipe`',
+    (controller, method) => {
+      expect(pipesOf(controller, method)).toEqual(
+        expect.arrayContaining([expect.any(ParseUUIDPipe), expect.any(ZodValidationPipe)]),
+      );
+      expect(pipesOf(controller, method)).toHaveLength(2);
+    },
+  );
 });

@@ -6,8 +6,6 @@ import { TransactionContext } from '../../../../shared';
 import type { Actor } from '../../../../shared';
 import { accessibleNodes } from '../../../access';
 import type {
-  FileListPage,
-  FileListQuery,
   INodeRepository,
   NodeListPage,
   NodeListQuery,
@@ -174,17 +172,6 @@ export class TypeOrmNodeRepository implements INodeRepository {
   async findAccessibleFolder(actor: Actor, id: string): Promise<Folder | null> {
     const row = await this.liveFolders(actor).andWhere(`${FOLDER_ALIAS}.id = :id`, { id }).getOne();
     return row === null ? null : toFolder(row);
-  }
-
-  async listAccessible(actor: Actor, query: FileListQuery): Promise<FileListPage> {
-    const after = query.cursor === undefined ? null : decodeNodeListCursor(query.cursor);
-    const rows = await newestFirst(
-      this.liveFiles(actor),
-      FILE_ALIAS,
-      after,
-      query.limit + 1,
-    ).getMany();
-    return pageOf(rows.slice(0, query.limit).map(toFile), rows.length > query.limit);
   }
 
   /** Dos consultas indexadas, carpetas y luego archivos, en lugar de un `UNION ALL` de entidades distintas (R-2). */

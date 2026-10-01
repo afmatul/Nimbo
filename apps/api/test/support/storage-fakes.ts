@@ -7,8 +7,6 @@ import type {
   IFileTypeDetector,
 } from '../../src/modules/storage/application/ports/i-file-type-detector.port';
 import type {
-  FileListPage,
-  FileListQuery,
   INodeRepository,
   NodeListPage,
   NodeListQuery,
@@ -266,10 +264,6 @@ export class FakeNodeRepository implements INodeRepository {
     this.journal.add('nodes:findAccessibleFolder');
     const folder = this.folders.get(id);
     return Promise.resolve(isLiveOf(actor, folder) ? folder : null);
-  }
-
-  listAccessible(_actor: Actor, _query: FileListQuery): Promise<FileListPage> {
-    return Promise.resolve({ items: [...this.files.values()], nextCursor: null });
   }
 
   listContents(actor: Actor, query: NodeListQuery): Promise<NodeListPage> {

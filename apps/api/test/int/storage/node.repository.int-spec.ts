@@ -209,13 +209,14 @@ describe('TypeOrmNodeRepository (CA-13, CA-16)', () => {
     });
   });
 
-  describe('listAccessible', () => {
+  describe('listContents en la raíz (antes `GET /files`)', () => {
     it('CA-1: raíz sin papelera ni archivos ajenos, `creado_en DESC, id DESC`, página a página con cursor', async () => {
       const expected = [...anaFiles].sort(byNewestFirst).map((file) => file.id);
 
       const [first, second] = await app.asActor(ana, async () => {
-        const firstPage = await repository.listAccessible(ana, { limit: 3 });
-        const secondPage = await repository.listAccessible(ana, {
+        const firstPage = await repository.listContents(ana, { folderId: null, limit: 3 });
+        const secondPage = await repository.listContents(ana, {
+          folderId: null,
           limit: 3,
           cursor: firstPage.nextCursor ?? '',
         });
@@ -230,7 +231,7 @@ describe('TypeOrmNodeRepository (CA-13, CA-16)', () => {
 
     it('CA-1: una página exacta no promete otra (`nextCursor` nulo)', async () => {
       const page = await app.asActor(ana, () =>
-        repository.listAccessible(ana, { limit: anaFiles.length }),
+        repository.listContents(ana, { folderId: null, limit: anaFiles.length }),
       );
 
       expect(page.items).toHaveLength(anaFiles.length);
@@ -238,14 +239,18 @@ describe('TypeOrmNodeRepository (CA-13, CA-16)', () => {
     });
 
     it('CA-16: un rol interno recibe la lista vacía', async () => {
-      const page = await app.asActor(admin, () => repository.listAccessible(admin, { limit: 50 }));
+      const page = await app.asActor(admin, () =>
+        repository.listContents(admin, { folderId: null, limit: 50 }),
+      );
 
       expect(page).toEqual({ items: [], nextCursor: null });
     });
 
     it('CA-7: un cursor que no emitió el repositorio es `InvalidQueryError`', async () => {
       await expect(
-        app.asActor(ana, () => repository.listAccessible(ana, { limit: 3, cursor: 'basura' })),
+        app.asActor(ana, () =>
+          repository.listContents(ana, { folderId: null, limit: 3, cursor: 'basura' }),
+        ),
       ).rejects.toBeInstanceOf(InvalidQueryError);
     });
   });
@@ -288,7 +293,6 @@ describe('TypeOrmNodeRepository (CA-13, CA-16)', () => {
     it('CA-16: toda lectura une el fragmento de `access` en la misma consulta, con el id del actor', async () => {
       const reads = [
         (): Promise<unknown> => repository.findAccessibleById(ana, brunoFile.id),
-        (): Promise<unknown> => repository.listAccessible(ana, { limit: 3 }),
         (): Promise<unknown> => repository.findTakenNames(ana, FileName.of('Plan.pdf'), null),
       ];
 
@@ -301,7 +305,6 @@ describe('TypeOrmNodeRepository (CA-13, CA-16)', () => {
     });
 
     it.each([
-      ['el listado', (): Promise<unknown> => repository.listAccessible(ana, { limit: 50 })],
       [
         'la búsqueda de nombres',
         (): Promise<unknown> => repository.findTakenNames(ana, FileName.of('Plan.pdf'), null),

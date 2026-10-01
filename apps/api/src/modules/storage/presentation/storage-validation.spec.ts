@@ -1,5 +1,5 @@
 import type { ArgumentMetadata } from '@nestjs/common';
-import { createFolderSchema, initUploadSchema, listFilesQuerySchema } from '@nimbo/contracts';
+import { createFolderSchema, folderContentsQuerySchema, initUploadSchema } from '@nimbo/contracts';
 
 import { ZodValidationPipe } from '../../../shared';
 import type { DomainError } from '../../../shared';
@@ -36,7 +36,7 @@ function thrownBy(work: () => unknown): DomainError {
 
 describe('validación de entrada de `storage` (CA-7, CA-16)', () => {
   const initPipe = new ZodValidationPipe(initUploadSchema, storageUploadValidationError);
-  const queryPipe = new ZodValidationPipe(listFilesQuerySchema, storageQueryValidationError);
+  const queryPipe = new ZodValidationPipe(folderContentsQuerySchema, storageQueryValidationError);
 
   it('CA-7: un inicio de carga inválido es 400 `STORAGE_INVALID_UPLOAD_REQUEST` con cada campo en falla', () => {
     const error = thrownBy(() => initPipe.transform({ sizeBytes: -1, extra: true }, BODY));
