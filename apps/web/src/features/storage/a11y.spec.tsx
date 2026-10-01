@@ -162,6 +162,8 @@ function rowMenu(file: FileSummary): ReactElement {
       onNotice={jest.fn()}
       onRefresh={jest.fn()}
       openUrl={jest.fn()}
+      onRename={jest.fn()}
+      onMove={jest.fn()}
     />
   );
 }

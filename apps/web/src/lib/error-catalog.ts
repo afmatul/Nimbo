@@ -146,6 +146,11 @@ export function folderNameConflictMessage(storedName: string): string {
   return `Ya existe una carpeta llamada «${storedName}» aquí. Elige otro nombre.`;
 }
 
+/** `409` al mover una carpeta (CA-3, CA-7): la web pone el nombre y el destino. */
+export function folderMoveConflictMessage(storedName: string, destinationName: string): string {
+  return `Ya existe una carpeta llamada «${storedName}» en ${destinationName}. Elige otro destino o cambia el nombre de la carpeta.`;
+}
+
 const CODE_MESSAGES: Readonly<Record<string, string>> = {
   [IDENTITY_ERROR_CODES.INVALID_INPUT]: 'Revisa los campos marcados y corrígelos para continuar.',
   [IDENTITY_ERROR_CODES.WEAK_PASSWORD]:

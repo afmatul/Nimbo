@@ -218,6 +218,41 @@ describe('UploadsProvider', () => {
     expect(await screen.findByText(FILE_ID, { selector: 'output' })).toBeTruthy();
   });
 
+  it('006 CA-7: un archivo subido que se renombra o mueve se expone con su último estado', async () => {
+    const put = jest.fn(() => Promise.resolve());
+    const api = fakeApi({ init: jest.fn(() => Promise.resolve(simple('informe.docx'))) });
+    const folderId = '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d';
+    function Uploaded(): React.JSX.Element {
+      const { uploadedFiles, reviseUploaded } = useUploads();
+      const first = uploadedFiles[0];
+      return (
+        <>
+          <output>
+            {uploadedFiles.map((file) => `${file.name}@${String(file.folderId)}`).join(', ')}
+          </output>
+          <button
+            type="button"
+            onClick={() => first && reviseUploaded({ ...first, name: 'nuevo.docx', folderId })}
+          >
+            Mover
+          </button>
+        </>
+      );
+    }
+    render(
+      <UploadsProvider api={api} managerOptions={{ put }}>
+        <Enqueue files={[localFile('informe.docx')]} />
+        <Uploaded />
+      </UploadsProvider>,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Encolar' }));
+    await screen.findByText('informe.docx@null', { selector: 'output' });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Mover' }));
+
+    expect(screen.getByText(`nuevo.docx@${folderId}`, { selector: 'output' })).toBeTruthy();
+  });
+
   it('useUploads fuera del proveedor avisa del error de montaje', () => {
     function Orphan(): null {
       useUploads();

@@ -83,6 +83,8 @@ function renderMenu(overrides: Partial<HarnessProps> = {}): Promise<void> {
     requestUrl: jest.fn(() => Promise.resolve(SIGNED)),
     onRefresh: jest.fn(),
     openUrl: jest.fn(),
+    onRename: jest.fn(),
+    onMove: jest.fn(),
     ...overrides,
   };
   return mount(<Harness {...props} />);
@@ -132,13 +134,28 @@ afterEach(async () => {
 });
 
 describe('FileRowMenu (CA-13, CA-21)', () => {
-  it('CA-13: el disparador se llama «Acciones de {nombre}» y la única acción es «Descargar»', async () => {
+  it('CA-13: el disparador se llama «Acciones de {nombre}» y «Descargar» es la primera acción', async () => {
     await renderMenu();
 
     expect(trigger().getAttribute('aria-label')).toBe('Acciones de Informe final.docx');
     await press('Enter');
 
-    expect(items().map((item) => item.textContent?.trim())).toEqual(['Descargar']);
+    expect(items()[0]?.textContent?.trim()).toBe('Descargar');
+  });
+
+  it('006 CA-4, CA-7: «Renombrar» y «Mover a…» siguen a «Descargar» y abren su diálogo', async () => {
+    const onRename = jest.fn();
+    const onMove = jest.fn();
+    await renderMenu({ onRename, onMove });
+    await press('Enter');
+
+    const labels = items().map((item) => item.textContent?.trim());
+    expect(labels.slice(0, 3)).toEqual(['Descargar', 'Renombrar', 'Mover a…']);
+    await act(async () => items()[1]?.click());
+    expect(onRename).toHaveBeenCalledTimes(1);
+    await press('Enter');
+    await act(async () => items()[2]?.click());
+    expect(onMove).toHaveBeenCalledTimes(1);
   });
 
   it.each([

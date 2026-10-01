@@ -9,6 +9,7 @@ import { StorageRequestError } from './storage-request-error';
 export interface StorageHttp {
   get(path: string): Promise<unknown>;
   post(path: string, body?: unknown): Promise<unknown>;
+  patch(path: string, body: unknown): Promise<unknown>;
   delete(path: string): Promise<unknown>;
 }
 
@@ -38,6 +39,12 @@ export function parseResponse<T>(raw: unknown, schema: ZodType<T>): T {
 export function createStorageHttp(apiPublicUrl: string, authFetch: AuthFetch): StorageHttp {
   const base = apiPublicUrl.replace(/\/$/, '');
 
+  const withJson = (method: string, body: unknown): RequestInit => ({
+    method,
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
   const call = async (path: string, init: RequestInit): Promise<unknown> => {
     try {
       return await authFetch(`${base}${path}`, init);
@@ -49,16 +56,8 @@ export function createStorageHttp(apiPublicUrl: string, authFetch: AuthFetch): S
   return {
     get: (path) => call(path, { method: 'GET' }),
     post: (path, body) =>
-      call(
-        path,
-        body === undefined
-          ? { method: 'POST' }
-          : {
-              method: 'POST',
-              headers: { 'content-type': 'application/json' },
-              body: JSON.stringify(body),
-            },
-      ),
+      call(path, body === undefined ? { method: 'POST' } : withJson('POST', body)),
+    patch: (path, body) => call(path, withJson('PATCH', body)),
     delete: (path) => call(path, { method: 'DELETE' }),
   };
 }

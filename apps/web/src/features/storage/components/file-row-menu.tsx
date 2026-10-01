@@ -1,7 +1,15 @@
 'use client';
 
 import { STORAGE_ERROR_CODES, type DownloadUrlResponse, type FileSummary } from '@nimbo/contracts';
-import { AlertCircle, Download, EllipsisVertical, Loader2, X } from 'lucide-react';
+import {
+  AlertCircle,
+  Download,
+  EllipsisVertical,
+  FolderInput,
+  Loader2,
+  Pencil,
+  X,
+} from 'lucide-react';
 import * as React from 'react';
 
 import { Alert } from '../../../components/ui/alert';
@@ -31,6 +39,10 @@ export interface FileRowMenuProps {
   readonly onNotice: (notice: DownloadNotice | null) => void;
   readonly onRefresh: () => void;
   readonly openUrl?: (url: string) => void;
+  /** Abre «Renombrar» (006 CA-4). */
+  readonly onRename: () => void;
+  /** Abre «Mover a…» (006 CA-7). */
+  readonly onMove: () => void;
 }
 
 const openInBrowser = (url: string): void => window.location.assign(url);
@@ -72,6 +84,8 @@ export function FileRowMenu({
   onNotice,
   onRefresh,
   openUrl = openInBrowser,
+  onRename,
+  onMove,
 }: FileRowMenuProps): React.JSX.Element {
   const [open, setOpen] = React.useState(false);
   const [preparing, setPreparing] = React.useState(false);
@@ -106,17 +120,7 @@ export function FileRowMenu({
   return (
     <>
       <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="shrink-0 text-secondary-foreground"
-            aria-label={`Acciones de ${file.name}`}
-          >
-            <EllipsisVertical className="h-5 w-5" aria-hidden="true" />
-          </Button>
-        </DropdownMenuTrigger>
+        <RowMenuTrigger name={file.name} />
         <DropdownMenuContent align="end">
           <DropdownMenuItem
             aria-disabled={preparing || undefined}
@@ -133,11 +137,50 @@ export function FileRowMenu({
             )}
             {preparing ? 'Preparando…' : 'Descargar'}
           </DropdownMenuItem>
+          <OrganizeMenuItems onRename={onRename} onMove={onMove} />
         </DropdownMenuContent>
       </DropdownMenu>
       <span role="status" aria-live="polite" className="sr-only">
         {preparing ? `Preparando la descarga de ${file.name}…` : ''}
       </span>
+    </>
+  );
+}
+
+/** Botón ⋮ de una fila (mockup `acciones`): «Acciones de {nombre}». */
+export function RowMenuTrigger({ name }: { readonly name: string }): React.JSX.Element {
+  return (
+    <DropdownMenuTrigger asChild>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="shrink-0 text-secondary-foreground"
+        aria-label={`Acciones de ${name}`}
+      >
+        <EllipsisVertical className="h-5 w-5" aria-hidden="true" />
+      </Button>
+    </DropdownMenuTrigger>
+  );
+}
+
+export interface OrganizeMenuItemsProps {
+  readonly onRename: () => void;
+  readonly onMove: () => void;
+}
+
+/** «Renombrar» y «Mover a…», comunes al menú de archivos y al de carpetas (mockups `acciones-*`). */
+export function OrganizeMenuItems({ onRename, onMove }: OrganizeMenuItemsProps): React.JSX.Element {
+  return (
+    <>
+      <DropdownMenuItem onSelect={onRename}>
+        <Pencil className="h-4 w-4 text-secondary-foreground" aria-hidden="true" />
+        Renombrar
+      </DropdownMenuItem>
+      <DropdownMenuItem onSelect={onMove}>
+        <FolderInput className="h-4 w-4 text-secondary-foreground" aria-hidden="true" />
+        Mover a…
+      </DropdownMenuItem>
     </>
   );
 }

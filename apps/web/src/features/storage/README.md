@@ -22,6 +22,10 @@ recargar las pierde (RN-7). Las páginas leen el contexto con `useUploads()`.
 | `components/my-files.tsx`                                                           | Vista de `/archivos` y de cada carpeta: barra lateral, migas, listado, subir a la carpeta abierta  | T-54, 006  |
 | `components/node-table.tsx`, `folder-breadcrumbs.tsx`, `folder-not-found-state.tsx` | Tabla de carpetas y archivos, migas («…» con más de 4 niveles) y «‹ Volver», 404 de carpeta        | 006 T-08   |
 | `components/new-folder-dialog.tsx`                                                  | «Nueva carpeta» (sobre `components/ui/dialog`): errores 400/409 en el campo y 422 como aviso       | 006 T-08   |
+| `components/rename-dialog.tsx`                                                      | «Renombrar»: extensión fija como sufijo; 409 de archivo con «Conservar ambos»                      | 006 T-09   |
+| `components/move-dialog.tsx`, `move-folder-tree.tsx`, `hooks/use-folder-tree.ts`    | «Mover a…»: árbol `tree` con carga perezosa, destinos deshabilitados y 409/422                     | 006 T-09   |
+| `components/tree-new-folder-field.tsx`, `folder-name-failure.ts`                    | «Nueva carpeta» en línea del árbol; reglas y errores de nombre de carpeta                          | 006 T-09   |
+| `components/folder-row-menu.tsx`, `organized-nodes.ts`                              | Menú ⋮ de carpeta; lo renombrado o movido se ve sin volver a pedir la carpeta                      | 006 T-09   |
 | `components/upload-panel.tsx`                                                       | Panel de cargas; reutiliza `components/nimbo/upload-progress.tsx`                                  | T-14       |
 | `components/name-conflict-dialog.tsx`, `cancel-upload-dialog.tsx`                   | Diálogos de nombre repetido y de cancelar                                                          | T-15       |
 | `components/file-explorer.tsx`, `upload-dropzone.tsx`, `explorer-error-state.tsx`   | Raíz, arrastre y error del listado                                                                 | T-16       |
@@ -45,6 +49,10 @@ Los textos de error de `storage` salen de `lib/error-catalog.ts` (`storageMessag
 - La barra lateral muestra «Carpetas» (solo las de primer nivel, sin cantidades) y enlaza la Papelera; el contador
   llega con 006 T-10. Las migas van en la barra superior desde `md`; por debajo, «‹ {carpeta anterior}».
 - La API no envía nombres en los errores: la web pone el nombre guardado en el `409` de carpetas (de la lista abierta).
+  Al mover una carpeta, el `409` dice también el destino («… en {destino}…», `folderMoveConflictMessage`).
+- `FileRowMenu` y `FolderRowMenu` abren `RenameDialog` y `MoveDialog`, que `MyFiles` monta solo mientras están
+  abiertos. El resultado se guarda en `organized-nodes.ts` (listado y barra lateral) y, si es un archivo subido en la
+  pestaña, en `reviseUploaded` para que no reaparezca en su carpeta anterior.
 - `maxFileLabel` es opcional: ningún contrato expone todavía `PlanLimits.maxFileBytes` a `web`, así que la página no lo
   pasa y los textos omiten la cifra (propuesta en el registro de cambios de la spec).
 - La página muestra solo la primera página de `GET /folders/contents` (carpetas primero, luego más recientes);

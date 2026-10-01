@@ -1,9 +1,13 @@
 import {
   completeUploadResponseSchema,
   downloadUrlSchema,
+  fileSummarySchema,
   initUploadResponseSchema,
   resumeUploadResponseSchema,
   type DownloadUrlResponse,
+  type FileSummary,
+  type MoveFileRequest,
+  type RenameFileRequest,
 } from '@nimbo/contracts';
 
 import type { AuthFetch } from '../identity/session/auth-fetch';
@@ -15,6 +19,10 @@ import type { UploadClient } from './upload/upload-manager';
 /** Cliente de la API de `storage` (planes 005 §5 y 006 §4): cargas, carpetas y descarga. */
 export interface StorageApi extends UploadClient, FoldersApi {
   downloadUrl(fileId: string): Promise<DownloadUrlResponse>;
+  /** Nombre repetido: `409` con `details.suggestedName` salvo con `onConflict: 'keep_both'` (005 CA-6). */
+  renameFile(fileId: string, body: RenameFileRequest): Promise<FileSummary>;
+  /** `folderId: null` mueve a la raíz; nombre repetido como en `renameFile`. */
+  moveFile(fileId: string, body: MoveFileRequest): Promise<FileSummary>;
 }
 
 /**
@@ -24,6 +32,7 @@ export interface StorageApi extends UploadClient, FoldersApi {
 export function createStorageApi(apiPublicUrl: string, authFetch: AuthFetch): StorageApi {
   const http = createStorageHttp(apiPublicUrl, authFetch);
   const uploadPath = (uploadId: string): string => `/uploads/${encodeURIComponent(uploadId)}`;
+  const filePath = (fileId: string): string => `/files/${encodeURIComponent(fileId)}`;
 
   return {
     ...createFoldersApi(http),
@@ -44,5 +53,9 @@ export function createStorageApi(apiPublicUrl: string, authFetch: AuthFetch): St
         await http.post(`/files/${encodeURIComponent(fileId)}/download-url`),
         downloadUrlSchema,
       ),
+    renameFile: async (fileId, body) =>
+      parseResponse(await http.patch(filePath(fileId), body), fileSummarySchema),
+    moveFile: async (fileId, body) =>
+      parseResponse(await http.post(`${filePath(fileId)}/move`, body), fileSummarySchema),
   };
 }

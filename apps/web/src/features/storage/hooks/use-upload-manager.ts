@@ -18,6 +18,8 @@ export interface UploadsContextValue {
   readonly rows: readonly UploadView[];
   /** Archivos que terminaron de subir en esta pestaña, del más reciente al más antiguo (CA-1). */
   readonly uploadedFiles: readonly FileSummary[];
+  /** Último estado de un archivo subido que se renombró o movió (006): así no reaparece en su carpeta anterior. */
+  readonly reviseUploaded: (file: FileSummary) => void;
   /** Encola en la carpeta abierta (`null` es la raíz, 006 CA-6). */
   readonly enqueue: (files: readonly LocalFile[], folderId: string | null) => void;
   /** «Cerrar» del panel: quita las filas terminadas hasta la próxima carga. */
@@ -77,7 +79,17 @@ export function useUploadManager(
     () => allRows.filter((row) => !closedIds.has(row.id)),
     [allRows, closedIds],
   );
-  const uploadedFiles = React.useMemo(() => uploadedFilesOf(allRows), [allRows]);
+  const [revisions, setRevisions] = React.useState<ReadonlyMap<string, FileSummary>>(
+    () => new Map(),
+  );
+  const uploadedFiles = React.useMemo(
+    () => uploadedFilesOf(allRows).map((file) => revisions.get(file.id) ?? file),
+    [allRows, revisions],
+  );
+  const reviseUploaded = React.useCallback(
+    (file: FileSummary) => setRevisions((previous) => new Map(previous).set(file.id, file)),
+    [],
+  );
   const enqueue = React.useCallback(
     (files: readonly LocalFile[], folderId: string | null) => manager.enqueue(files, folderId),
     [manager],
@@ -88,7 +100,16 @@ export function useUploadManager(
   );
 
   return React.useMemo(
-    () => ({ api, manager, rows, uploadedFiles, enqueue, closePanel, fileInputRef }),
-    [api, manager, rows, uploadedFiles, enqueue, closePanel],
+    () => ({
+      api,
+      manager,
+      rows,
+      uploadedFiles,
+      reviseUploaded,
+      enqueue,
+      closePanel,
+      fileInputRef,
+    }),
+    [api, manager, rows, uploadedFiles, reviseUploaded, enqueue, closePanel],
   );
 }

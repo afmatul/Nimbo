@@ -1,5 +1,6 @@
 'use client';
 
+import { STORAGE_ERROR_CODES } from '@nimbo/contracts';
 import * as React from 'react';
 
 import {
@@ -13,6 +14,15 @@ import {
   AlertDialogTitle,
 } from '../../../components/ui/alert-dialog';
 import { Checkbox } from '../../../components/ui/checkbox';
+import { StorageRequestError } from '../storage-request-error';
+
+/** `details.suggestedName` de un `409` de archivo (005 CA-6, 006 CA-4 y CA-7); `null` si el error es otro. */
+export function suggestedNameOf(error: unknown): string | null {
+  if (!(error instanceof StorageRequestError)) return null;
+  if (error.code !== STORAGE_ERROR_CODES.STORAGE_NAME_CONFLICT) return null;
+  const suggested = error.details['suggestedName'];
+  return typeof suggested === 'string' ? suggested : null;
+}
 
 export interface NameConflictChoice {
   readonly applyToRest: boolean;
