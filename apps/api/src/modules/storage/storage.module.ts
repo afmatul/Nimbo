@@ -13,14 +13,18 @@ import type { FolderConfig } from './application/folder-config';
 import { FolderService } from './application/folder.service';
 import { I_OBJECT_STORAGE } from './application/ports/i-object-storage.port';
 import type { IObjectStorage } from './application/ports/i-object-storage.port';
+import { I_TRASH_REPOSITORY } from './application/ports/i-trash.repository.port';
+import { TrashService } from './application/trash.service';
 import { UPLOAD_CONFIG } from './application/upload-config';
 import type { UploadConfig } from './application/upload-config';
 import {
   buildMinioStorageClients,
   MinioStorageAdapter,
 } from './infrastructure/minio-storage.adapter';
+import { TypeOrmTrashRepository } from './infrastructure/persistence/typeorm-trash.repository';
 import { FilesController } from './presentation/files.controller';
 import { FoldersController } from './presentation/folders.controller';
+import { TrashController } from './presentation/trash.controller';
 import { UploadsController } from './presentation/uploads.controller';
 import { UPLOAD_LIFECYCLE_PROVIDERS } from './upload-lifecycle.providers';
 
@@ -37,7 +41,7 @@ export type StorageEnv = Pick<
 >;
 
 /**
- * Módulo `storage` (M2, plan §6): carga, descarga y carpetas (006). `forRoot(env)` publica la configuración técnica (bytes como
+ * Módulo `storage` (M2, plan §6): carga, descarga, carpetas y papelera (006). `forRoot(env)` publica la configuración técnica (bytes como
  * `bigint`) y une cada puerto con su adaptador. **No** enlaza `I_PLAN_LIMITS_PROVIDER` ni importa `billing`: ese
  * enlace vive en la raíz de composición (DF-51, opción A). `SharedModule` (global) aporta reloj, tasa, transacciones y
  * `TransactionContext`; `MinioConfigModule` (global), `MINIO_CONFIG`.
@@ -58,7 +62,7 @@ export class StorageModule {
     return {
       module: StorageModule,
       imports: [AuditModule],
-      controllers: [UploadsController, FilesController, FoldersController],
+      controllers: [UploadsController, FilesController, FoldersController, TrashController],
       providers: [
         { provide: UPLOAD_CONFIG, useValue: uploadConfig },
         { provide: FILE_SERVICE_CONFIG, useValue: fileServiceConfig },
@@ -73,8 +77,10 @@ export class StorageModule {
             ),
         },
         ...UPLOAD_LIFECYCLE_PROVIDERS,
+        { provide: I_TRASH_REPOSITORY, useClass: TypeOrmTrashRepository },
         FileService,
         FolderService,
+        TrashService,
       ],
     };
   }

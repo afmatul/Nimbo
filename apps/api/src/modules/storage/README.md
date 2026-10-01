@@ -93,6 +93,24 @@ papelera).
 - Pruebas: `file.service.spec.ts`, `upload.service.spec.ts`, `test/int/storage/files-organize.int-spec.ts` y
   `uploads-folder.int-spec.ts`.
 
+## Papelera (006, T-05)
+
+- `TrashService` (`trashFile`, `trashFolder`, `list`, `summary`, `restoreFile`, `restoreFolder`) abre `withActor` y toma
+  primero `lockUsage`, como `FolderService`. La fecha de purga se fija al eliminar con `trashRetentionDays` del plan
+  vigente (`TrashState.start`). Eliminar no cambia `espacio_usado`: eso solo lo hace la purga (T-06).
+- `ITrashRepository` → `TypeOrmTrashRepository`: las raíces de la papelera se leen y escriben con
+  `ownedTrashedNodes(actor)` dentro de la consulta; lo vivo, con `accessibleNodes(actor)`. Eliminar una carpeta marca
+  todo su subárbol vivo con la misma fecha y `eliminado_con_carpeta_id`; restaurarla devuelve solo eso (lo eliminado
+  antes por separado sigue en la papelera). Tamaños como suma de `version_archivo.tamano_bytes` en `bigint`.
+- Restaurar: a la carpeta original si sigue viva; si no, a la raíz (`moved_to_root`); con «nombre (n)» si el nombre
+  está ocupado (`renamed`; si además va a la raíz, gana `moved_to_root`). Una carpeta que superaría `FOLDER_MAX_DEPTH`
+  responde `422`. La carpeta se lee sin `Folder.rehydrate` (`TrashedFolder.storedPath`): tras R-5 su ruta guardada
+  conserva ancestros purgados; al volver se rehace la ruta y se reubica el subárbol (`rebaseSubtree` de `node-sql.ts`).
+- Auditoría `node.trashed` y `node.restored` con `nodeType`, `itemCount` y `sizeBytes`, sin nombres.
+- Rutas (`TrashController`, solo `CLIENT`): `DELETE /files/:fileId`, `DELETE /folders/:folderId`, `GET /trash`,
+  `GET /trash/summary`, `POST /trash/files/:fileId/restore` y `POST /trash/folders/:folderId/restore`.
+- Pruebas: `trash.service.spec.ts`, `trash.controller.spec.ts` y `test/int/storage/trash.int-spec.ts`.
+
 ## Limpieza de cargas vencidas (005, PR-E)
 
 Una carga `activa` con más de 24 h se vence sola (CA-9). El barrido corre en el `worker`, no en la API.
@@ -143,6 +161,7 @@ Pruebas: `upload-cleanup.processor.spec.ts` y `upload-cleanup.scheduler.spec.ts`
 | `QuotaService`                             | Máximo por archivo y cuota total con reservas de cargas activas (`QuotaPolicy`)                    |
 | `FileService`                              | Renombrar y mover archivos (006) y URL de descarga de 300 s                                        |
 | `FolderService` (006)                      | Crear, renombrar, mover y abrir carpetas, con migas                                                |
+| `TrashService` (006)                       | Mandar a la papelera, listar, resumir y restaurar                                                  |
 | `IObjectStorage` → `MinioStorageAdapter`   | Multipart, URLs prefirmadas (`Content-Length` firmado), `headObject`, `getRange`, purga real       |
 | `IFileTypeDetector` → `MagicBytesDetector` | Tipo real por firma; rechaza ejecutables y texto disfrazado                                        |
 

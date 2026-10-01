@@ -9,6 +9,7 @@ import { I_PLAN_LIMITS_PROVIDER } from './application/plan-limits';
 import { UPLOAD_CONFIG } from './application/upload-config';
 import { FilesController } from './presentation/files.controller';
 import { FoldersController } from './presentation/folders.controller';
+import { TrashController } from './presentation/trash.controller';
 import { UploadsController } from './presentation/uploads.controller';
 import { StorageModule } from './storage.module';
 
@@ -55,7 +56,12 @@ describe('StorageModule', () => {
     expect(module.imports).toEqual([AuditModule]);
   });
 
-  it('CA-17: monta los controladores de cargas, archivos y carpetas', () => {
-    expect(module.controllers).toEqual([UploadsController, FilesController, FoldersController]);
+  it('CA-17: monta los controladores de cargas, archivos, carpetas y papelera', () => {
+    expect(module.controllers).toEqual([
+      UploadsController,
+      FilesController,
+      FoldersController,
+      TrashController,
+    ]);
   });
 });

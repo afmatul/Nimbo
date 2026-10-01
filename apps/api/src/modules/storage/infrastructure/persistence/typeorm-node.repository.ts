@@ -22,13 +22,13 @@ import { ArchivoOrmEntity } from './archivo.orm-entity';
 import { CarpetaOrmEntity } from './carpeta.orm-entity';
 import { decodeNodeListCursor, encodeNodeListCursor } from './node-list-cursor';
 import type { NodeListPosition } from './node-list-cursor';
+import { nodesIn, rebaseSubtree } from './node-sql';
+import type { Condition, NodeTable } from './node-sql';
 import { toTrashState, trashColumns } from './trash-columns';
 import { VersionArchivoOrmEntity } from './version-archivo.orm-entity';
 
 const FILE_ALIAS = 'archivo';
 const FOLDER_ALIAS = 'carpeta';
-/** `tipo_nodo` de `accessibleNodes`: el fragmento mezcla archivos y carpetas (plan 006 §2). */
-type NodeTable = 'archivo' | 'carpeta';
 /** Comodines de `LIKE` y su carácter de escape: en un nombre son texto, no patrones. */
 const LIKE_SPECIAL_CHARACTERS = /[\\%_]/g;
 
@@ -44,20 +44,9 @@ const fileCopiesPattern = (name: FileName): string => {
   return copiesPattern(name.value.slice(0, -(extension.length + 1)), `.${extension}`);
 };
 
-/** SQL con sus parámetros con nombre, para un `andWhere` de TypeORM. */
-interface Condition {
-  readonly sql: string;
-  readonly parameters: Readonly<Record<string, unknown>>;
-}
-
 /** `idColumn` está entre los nodos de `table` que el actor ve: el fragmento de `access` va dentro (ADR-0005). */
-const accessibleCondition = (actor: Actor, idColumn: string, table: NodeTable): Condition => {
-  const fragment = accessibleNodes(actor);
-  return {
-    sql: `${idColumn} IN (SELECT nodo_id FROM (${fragment.sql}) accesibles WHERE accesibles.tipo_nodo = '${table}')`,
-    parameters: fragment.parameters,
-  };
-};
+const accessibleCondition = (actor: Actor, idColumn: string, table: NodeTable): Condition =>
+  nodesIn(accessibleNodes(actor), idColumn, table);
 
 /** Hijos de `folderId`; en la raíz, `IS NULL` para que el planificador use los índices parciales de raíz (T-01). */
 const childOf = (parentColumn: string, folderId: string | null): Condition =>
@@ -65,7 +54,8 @@ const childOf = (parentColumn: string, folderId: string | null): Condition =>
     ? { sql: `${parentColumn} IS NULL`, parameters: {} }
     : { sql: `${parentColumn} = :parentFolderId`, parameters: { parentFolderId: folderId } };
 
-const toFile = (row: ArchivoOrmEntity): File =>
+/** Fila → `File`; también la usa `TypeOrmTrashRepository` (un archivo no guarda ruta: no hay nada que rehacer). */
+export const toFile = (row: ArchivoOrmEntity): File =>
   File.rehydrate({
     id: row.id,
     ownerId: row.propietarioId,
@@ -298,16 +288,11 @@ export class TypeOrmNodeRepository implements INodeRepository {
       carpetaPadreId: moved.parentId,
       actualizadoEn: moved.updatedAt,
     });
-    await this.context.requireActorScope(actor).query(
-      `UPDATE carpeta SET ruta = $1 || substr(ruta, $2), profundidad = profundidad + $3
-        WHERE propietario_id = $4 AND ruta LIKE $5`,
-      [
-        moved.path.value,
-        before.path.value.length + 1,
-        moved.depth - before.depth,
-        before.ownerId,
-        `${before.path.value}%`,
-      ],
+    await rebaseSubtree(
+      this.context.requireActorScope(actor),
+      before.ownerId,
+      before.path,
+      moved.path,
     );
   }
 

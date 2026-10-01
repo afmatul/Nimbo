@@ -25,7 +25,7 @@ import type { AppDatabase, FileRowOptions, FolderRow } from './storage-test-db';
 const MAX_DEPTH = 10;
 const LATER = new Date('2026-10-02T09:00:00.000Z');
 /** Fragmento de `accessibleNodes` filtrado por tipo, tal como llega a Postgres. */
-const TYPED_ACCESS = /accesibles\.tipo_nodo = '(archivo|carpeta)'/;
+const TYPED_ACCESS = /nodos\.tipo_nodo = '(archivo|carpeta)'/;
 const ROOT_INDEXES = /idx_(carpeta|archivo)_raiz_creado/;
 
 const idsOf = (nodes: readonly StorageNode[]): string[] => nodes.map((node) => node.id);
