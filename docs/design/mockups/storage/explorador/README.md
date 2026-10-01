@@ -202,10 +202,10 @@ niveles (P-6; en la app sale de la configuración por la API).
    `brand` y `primary-foreground`, en lugar de la «N» provisional del marco.
 
 ### Decisiones de UX de 006
-**Aprobadas por Adrián (2026-09-30) sin cambios**: «Mover a la papelera» sin rojo en el menú; toasts con `sonner` (ADR
-en curso); migas; carpetas con «—» y barra lateral de primer nivel; extensión fija al renombrar; errores dentro de los
+**Aprobadas por Adrián (2026-09-30) sin cambios**: «Mover a la papelera» sin rojo en el menú; toasts con `sonner` (ADR-0024,
+aceptado); migas; carpetas con «—» y barra lateral de primer nivel; extensión fija al renombrar; errores dentro de los
 diálogos. **Con ajustes** (2026-09-30): el enlace de regreso en móvil y «Nueva carpeta» dentro de «Mover a…» (abajo).
-Pendiente de aprobar: estos dos ajustes.
+Ajustes aprobados por Adrián (2026-09-30), incluidos el mensaje de error de red al crear desde el árbol («No pudimos crear la carpeta. Inténtalo de nuevo.») y el campo a todo el ancho del árbol a 360 px.
 
 - **Migas**: en escritorio, `nav` «Ruta» de la barra superior con enlaces; con más de 4 niveles se colapsan los
   intermedios en un botón «…» («Mostrar n carpetas intermedias», abre un menú con ellas). Por debajo de 900 px las
