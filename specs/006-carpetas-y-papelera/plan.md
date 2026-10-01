@@ -59,10 +59,11 @@
   persistencia y, el segundo, el único acceso sin actor, que solo inyecta el procesador (mismo criterio que `IExpiredUploadScanner`). No se meten
   en `INodeRepository` por ISP: el árbol vivo y la papelera tienen consumidores distintos. **Sin puertos entre módulos.**
 - **Dependencias entre módulos**: ninguna nueva. `storage → access` (función `ownedTrashedNodes`) y `billing → storage` (campo nuevo en
-  `PlanLimits`) ya existen. Sin dependencias externas nuevas.
+  `PlanLimits`) ya existen. Única dependencia externa nueva: `sonner` 2.0.8 (vía `npx shadcn add sonner`, genera
+  `apps/web/src/components/ui/sonner.tsx`), decidida en `docs/adr/0024-avisos-no-bloqueantes-con-sonner.md` (Aceptado).
 - **Frontend** (`apps/web`): rutas `app/(app)/(cliente)/archivos/page.tsx` (raíz), `archivos/carpeta/[folderId]/page.tsx` y
   `papelera/page.tsx`. `features/storage/`: `api.ts` (rutas nuevas), `components/folder-breadcrumbs`, `new-folder-dialog`,
-  `rename-dialog`, `move-dialog` (selector de destino), `trash-list`, `trash-summary`, `purge-confirm-dialog` (sobre `alert-dialog`) y
+  `rename-dialog`, `move-dialog` (selector de destino; incluye «Nueva carpeta» con el `POST /folders` existente, sin API nueva), `trash-list`, `trash-summary`, `purge-confirm-dialog` (sobre `alert-dialog`) y
   `restore-result` (avisos CA-14/15/17). `file-explorer` y `file-row-menu` se amplían; se reutiliza `name-conflict-dialog` (005) para
   archivos. `components/nimbo/app-layout.tsx`: «Carpetas» y Papelera con contador (`GET /trash/summary`). Catálogo `lib/error-catalog.ts`.
   Estados y textos según los mockups de `storage/explorador/` y `storage/papelera/`.
@@ -218,7 +219,7 @@ cola). Es idempotente: si ya lo tomó el ciclo programado, la segunda pasada no 
 
   Avanzan DF-15 (`FoldersController`) y DF-33 (`carpeta_id`, `carpeta_destino_id`). Se sigue ADR-0011 (DF-40) y se reutiliza DF-52 / ADR-0021.
 - Pendientes: se suma a PD-46 el redibujo de M2 y del E-R (`carpeta`, columnas nuevas) y la fila de `trash-purge` en arquitectura §8.
-- ADR requeridos: ninguno. No hay tecnología nueva: `NULLS NOT DISTINCT` es nativo de PG 15+ y el proyecto usa PG 17. No se agrega ningún puerto entre módulos.
+- ADR requeridos: ADR-0024 (`sonner` para avisos, Aceptado). `NULLS NOT DISTINCT` es nativo de PG 15+ y el proyecto usa PG 17. No se agrega ningún puerto entre módulos.
 - Entrega: rama de código `feat/006-carpetas-y-papelera` (`conventions.md`; `spec/006-…` es solo para los documentos), con dos PR como
   máximo (`workflow.md` §6): **PR-A** `api` + `contracts` + migraciones + worker; **PR-B** `web`.
 
