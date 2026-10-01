@@ -1,5 +1,9 @@
 import { DOWNLOAD_URL_TTL_SECONDS, FILES_PAGE_DEFAULT, FILES_PAGE_MAX } from '@nimbo/contracts';
 
+import {
+  FakeNodeRepository as InMemoryNodeRepository,
+  Journal,
+} from '../../../../test/support/storage-fakes';
 import { createActor, FixedClock, Role } from '../../../shared';
 import type {
   Actor,
@@ -16,7 +20,7 @@ import { FileName } from '../domain/file-name.vo';
 
 import type { FileServiceConfig } from './file-service-config';
 import { FileService } from './file.service';
-import type { FileListPage, FileListQuery, INodeRepository } from './ports/i-node.repository.port';
+import type { FileListPage, FileListQuery } from './ports/i-node.repository.port';
 import type { IObjectStorage, PresignDownloadInput } from './ports/i-object-storage.port';
 import type { StorageLogger } from './storage-logger';
 
@@ -67,34 +71,28 @@ class FakeTransactions implements ITransactionRunner {
 }
 
 /** Doble del repositorio: devuelve el archivo solo a su propietario y anota el orden de las llamadas. */
-class FakeNodeRepository implements INodeRepository {
+class FakeNodeRepository extends InMemoryNodeRepository {
   readonly queries: FileListQuery[] = [];
 
   constructor(
     private readonly calls: string[],
     private readonly transactions: FakeTransactions,
     private readonly page: FileListPage = { items: [FILE], nextCursor: 'cursor-2' },
-  ) {}
+  ) {
+    super(new Journal());
+  }
 
-  findAccessibleById(actor: Actor, id: string): Promise<File | null> {
+  override findAccessibleById(actor: Actor, id: string): Promise<File | null> {
     this.transactions.requireScope(actor);
     this.calls.push('findAccessibleById');
     return Promise.resolve(actor.id === FILE.ownerId && id === FILE.id ? FILE : null);
   }
 
-  listAccessible(actor: Actor, query: FileListQuery): Promise<FileListPage> {
+  override listAccessible(actor: Actor, query: FileListQuery): Promise<FileListPage> {
     this.transactions.requireScope(actor);
     this.calls.push('listAccessible');
     this.queries.push(query);
     return Promise.resolve(this.page);
-  }
-
-  findTakenNames(): Promise<readonly string[]> {
-    return Promise.resolve([]);
-  }
-
-  insertWithVersion(): Promise<void> {
-    return Promise.resolve();
   }
 }
 

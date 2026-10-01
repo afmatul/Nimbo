@@ -3,9 +3,12 @@ import type { Provider, ValueProvider } from '@nestjs/common';
 import { AuditModule } from '../audit';
 
 import { FILE_SERVICE_CONFIG } from './application/file-service-config';
+import { FOLDER_CONFIG } from './application/folder-config';
+import { FolderService } from './application/folder.service';
 import { I_PLAN_LIMITS_PROVIDER } from './application/plan-limits';
 import { UPLOAD_CONFIG } from './application/upload-config';
 import { FilesController } from './presentation/files.controller';
+import { FoldersController } from './presentation/folders.controller';
 import { UploadsController } from './presentation/uploads.controller';
 import { StorageModule } from './storage.module';
 
@@ -16,6 +19,7 @@ const ENV = {
   UPLOAD_URL_TTL_SECONDS: 3600,
   RATE_LIMIT_UPLOAD_INIT_PER_MINUTE: 300,
   RATE_LIMIT_DOWNLOAD_URL_PER_MINUTE: 120,
+  FOLDER_MAX_DEPTH: 7,
 };
 
 const tokenOf = (provider: Provider): unknown =>
@@ -41,12 +45,17 @@ describe('StorageModule', () => {
     expect(valueOf(providers, FILE_SERVICE_CONFIG)).toEqual({ downloadUrlPerMinute: 120 });
   });
 
+  it('006 CA-9: publica la profundidad máxima de carpetas del entorno y registra `FolderService`', () => {
+    expect(valueOf(providers, FOLDER_CONFIG)).toEqual({ maxDepth: 7 });
+    expect(providers).toContain(FolderService);
+  });
+
   it('RN-1: no enlaza `I_PLAN_LIMITS_PROVIDER` (lo hace la raíz de composición) e importa la auditoría', () => {
     expect(providers.map(tokenOf)).not.toContain(I_PLAN_LIMITS_PROVIDER);
     expect(module.imports).toEqual([AuditModule]);
   });
 
-  it('CA-17: monta los controladores de cargas y archivos', () => {
-    expect(module.controllers).toEqual([UploadsController, FilesController]);
+  it('CA-17: monta los controladores de cargas, archivos y carpetas', () => {
+    expect(module.controllers).toEqual([UploadsController, FilesController, FoldersController]);
   });
 });

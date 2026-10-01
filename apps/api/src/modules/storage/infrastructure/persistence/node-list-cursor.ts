@@ -2,12 +2,18 @@ import { STORAGE_FIELD_MESSAGES } from '@nimbo/contracts';
 
 import { InvalidQueryError } from '../../domain/errors';
 
-/** Posición de la última fila de una página, en el orden del listado (`creado_en DESC, id DESC`). */
-export interface FileListPosition {
+/** Grupo de la fila: el listado da primero las carpetas y después los archivos. */
+export type NodeListGroup = 'folder' | 'file';
+
+/** Posición de la última fila de una página: su grupo y su lugar en `creado_en DESC, id DESC`. */
+export interface NodeListPosition {
+  readonly type: NodeListGroup;
   readonly createdAt: Date;
   readonly id: string;
 }
 
+const GROUPS: ReadonlySet<unknown> = new Set<NodeListGroup>(['folder', 'file']);
+const TUPLE_LENGTH = 3;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 const invalidCursor = (): InvalidQueryError =>
@@ -23,21 +29,21 @@ const parseTuple = (cursor: string): unknown => {
   }
 };
 
-/** Cursor opaco (base64url de `[creado_en, id]`): el cliente lo devuelve tal cual y no depende de su forma. */
-export const encodeFileListCursor = (position: FileListPosition): string =>
-  Buffer.from(JSON.stringify([position.createdAt.toISOString(), position.id])).toString(
-    'base64url',
-  );
+/** Cursor opaco (base64url de `[grupo, creado_en, id]`): el cliente lo devuelve tal cual y no depende de su forma. */
+export const encodeNodeListCursor = (position: NodeListPosition): string =>
+  Buffer.from(
+    JSON.stringify([position.type, position.createdAt.toISOString(), position.id]),
+  ).toString('base64url');
 
-/** Lanza `InvalidQueryError` (`INVALID_CURSOR`) si el cursor no es uno emitido por `encodeFileListCursor`. */
-export const decodeFileListCursor = (cursor: string): FileListPosition => {
+/** Lanza `InvalidQueryError` (`INVALID_CURSOR`) si el cursor no es uno emitido por `encodeNodeListCursor`. */
+export const decodeNodeListCursor = (cursor: string): NodeListPosition => {
   const tuple = parseTuple(cursor);
-  if (!Array.isArray(tuple) || tuple.length !== 2) throw invalidCursor();
-  const [createdAt, id] = tuple as unknown[];
-  if (typeof createdAt !== 'string' || typeof id !== 'string' || !UUID_PATTERN.test(id)) {
+  if (!Array.isArray(tuple) || tuple.length !== TUPLE_LENGTH) throw invalidCursor();
+  const [type, createdAt, id] = tuple as unknown[];
+  if (!GROUPS.has(type) || typeof createdAt !== 'string' || typeof id !== 'string') {
     throw invalidCursor();
   }
   const date = new Date(createdAt);
-  if (Number.isNaN(date.getTime())) throw invalidCursor();
-  return { createdAt: date, id };
+  if (!UUID_PATTERN.test(id) || Number.isNaN(date.getTime())) throw invalidCursor();
+  return { type: type as NodeListGroup, createdAt: date, id };
 };

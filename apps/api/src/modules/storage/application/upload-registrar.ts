@@ -50,7 +50,9 @@ export class UploadRegistrar {
         rejectionReason: null,
       });
       if (!closed) return null;
-      const name = session.name.firstFree(await this.nodes.findTakenNames(actor, session.name));
+      const name = session.name.firstFree(
+        await this.nodes.findTakenNames(actor, session.name, session.folderId),
+      );
       const file = File.create({
         id: session.fileId,
         ownerId: actor.id,

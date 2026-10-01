@@ -7,7 +7,7 @@ import type { Actor } from '../../../shared';
 import { toFileSummary } from '../application/file-summary';
 import { FileService } from '../application/file.service';
 
-import { fileIdPipe, storageQueryValidationError } from './storage-validation';
+import { nodeIdPipe, storageQueryValidationError } from './storage-validation';
 
 /**
  * Archivos del actor (plan §5): listado paginado de la raíz y URL de descarga de 300 s. Solo `CLIENT` (CA-17). Mapea
@@ -33,7 +33,7 @@ export class FilesController {
   @HttpCode(HttpStatus.OK)
   async downloadUrl(
     @CurrentActor() actor: Actor,
-    @Param('fileId', fileIdPipe()) fileId: string,
+    @Param('fileId', nodeIdPipe()) fileId: string,
   ): Promise<DownloadUrlResponse> {
     const { url, expiresAt } = await this.files.getDownloadUrl(actor, fileId);
     return { url, expiresAt: expiresAt.toISOString() };

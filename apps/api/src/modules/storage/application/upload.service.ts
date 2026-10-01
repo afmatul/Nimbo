@@ -226,7 +226,7 @@ export class UploadService {
 
   /** Nombre con el que se guardaría hoy. Con `ask`, un conflicto es 409 con la sugerencia (CA-6, D-4). */
   private async plannedName(actor: Actor, name: FileName, keepBoth: boolean): Promise<FileName> {
-    const planned = name.firstFree(await this.nodes.findTakenNames(actor, name));
+    const planned = name.firstFree(await this.nodes.findTakenNames(actor, name, null));
     if (!keepBoth && !planned.sameAs(name)) throw new NameConflictError(planned.value);
     return planned;
   }

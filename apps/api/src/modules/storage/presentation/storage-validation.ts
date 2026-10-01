@@ -2,6 +2,7 @@ import { ParseUUIDPipe } from '@nestjs/common';
 
 import type { DomainError, FieldIssue, InvalidInputFactory } from '../../../shared';
 import {
+  InvalidNodeRequestError,
   InvalidQueryError,
   InvalidUploadRequestError,
   NodeNotFoundError,
@@ -13,7 +14,12 @@ export const storageUploadValidationError: InvalidInputFactory = (
   issues: readonly FieldIssue[],
 ): DomainError => new InvalidUploadRequestError(issues);
 
-/** Fábrica de `ZodValidationPipe` para `GET /files`: 400 `STORAGE_INVALID_QUERY` con `fields`. */
+/** Fábrica de `ZodValidationPipe` para crear, renombrar o mover nodos: 400 `STORAGE_INVALID_NODE_REQUEST` (006 CA-2). */
+export const storageNodeValidationError: InvalidInputFactory = (
+  issues: readonly FieldIssue[],
+): DomainError => new InvalidNodeRequestError(issues);
+
+/** Fábrica de `ZodValidationPipe` para las consultas paginadas: 400 `STORAGE_INVALID_QUERY` con `fields`. */
 export const storageQueryValidationError: InvalidInputFactory = (
   issues: readonly FieldIssue[],
 ): DomainError => new InvalidQueryError(issues);
@@ -25,6 +31,6 @@ export const storageQueryValidationError: InvalidInputFactory = (
 export const uploadIdPipe = (): ParseUUIDPipe =>
   new ParseUUIDPipe({ exceptionFactory: () => new UploadNotFoundError() });
 
-/** `:fileId` que no es UUID: el mismo 404 que un archivo inexistente o ajeno (CA-16). */
-export const fileIdPipe = (): ParseUUIDPipe =>
+/** `:fileId` o `:folderId` que no es UUID: el mismo 404 que un nodo inexistente o ajeno (CA-16, 006 CA-5). */
+export const nodeIdPipe = (): ParseUUIDPipe =>
   new ParseUUIDPipe({ exceptionFactory: () => new NodeNotFoundError() });

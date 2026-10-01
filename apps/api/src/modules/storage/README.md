@@ -41,12 +41,12 @@ tipos, `IExpiredUploadScanner`, el adaptador de auditoría ni los repositorios. 
 Tablas (migraciones `20260930100000`…`100300`, plan §4): `archivo`, `version_archivo` y `carga`, con RLS `ENABLE` +
 `FORCE`; `usuario.espacio_usado` es la única columna de otra tabla que `storage` escribe (D-5, DF-59).
 
-| Puerto (`application/ports/`)                                                                    | Token                         | Implementación (`infrastructure/persistence/`) |
-| ------------------------------------------------------------------------------------------------ | ----------------------------- | ---------------------------------------------- |
-| `INodeRepository`: `findAccessibleById`, `listAccessible`, `findTakenNames`, `insertWithVersion` | `I_NODE_REPOSITORY`           | `TypeOrmNodeRepository`                        |
-| `IUploadSessionRepository`: `insert`, `findOwned`, `transition` (compare-and-set)                | `I_UPLOAD_SESSION_REPOSITORY` | `TypeOrmUploadSessionRepository`               |
-| `IQuotaRepository`: `lockUsage`, `lockAndReadUsage`, `addUsedBytes`                              | `I_QUOTA_REPOSITORY`          | `TypeOrmQuotaRepository`                       |
-| `IExpiredUploadScanner`: `listExpiredIds(now, limit)` → `{ id, propietarioId }[]` (sin actor)    | `I_EXPIRED_UPLOAD_SCANNER`    | `SqlExpiredUploadScanner`                      |
+| Puerto (`application/ports/`)                                                                                             | Token                         | Implementación (`infrastructure/persistence/`) |
+| ------------------------------------------------------------------------------------------------------------------------- | ----------------------------- | ---------------------------------------------- |
+| `INodeRepository`: `findAccessibleById`, `listAccessible`, `findTakenNames`, `insertWithVersion` (y los de carpetas, 006) | `I_NODE_REPOSITORY`           | `TypeOrmNodeRepository`                        |
+| `IUploadSessionRepository`: `insert`, `findOwned`, `transition` (compare-and-set)                                         | `I_UPLOAD_SESSION_REPOSITORY` | `TypeOrmUploadSessionRepository`               |
+| `IQuotaRepository`: `lockUsage`, `lockAndReadUsage`, `addUsedBytes`                                                       | `I_QUOTA_REPOSITORY`          | `TypeOrmQuotaRepository`                       |
+| `IExpiredUploadScanner`: `listExpiredIds(now, limit)` → `{ id, propietarioId }[]` (sin actor)                             | `I_EXPIRED_UPLOAD_SCANNER`    | `SqlExpiredUploadScanner`                      |
 
 - Todo método recibe `actor` y toma el `EntityManager` de `TransactionContext.requireActorScope(actor)`: se llama
   dentro de `ITransactionRunner.withActor(actor, …)` o lanza `ActorScopeMissingError`.
@@ -54,14 +54,30 @@ Tablas (migraciones `20260930100000`…`100300`, plan §4): `archivo`, `version_
   segunda barrera. Los roles internos reciben siempre el conjunto vacío.
 - Bytes en `bigint` de punta a punta (`BIGINT_TRANSFORMER` de `shared`; propiedades `*Bytes`).
 - `listAccessible` pagina con un cursor opaco (`creado_en DESC, id DESC`); un cursor ajeno es `InvalidQueryError`.
-- `findTakenNames(actor, name)` devuelve el nombre y sus copias «base (n).ext» ocupados (sin distinguir mayúsculas,
-  sin papelera) para `FileName.firstFree`.
+- `findTakenNames(actor, name, folderId, exceptId?)` devuelve el nombre y sus copias «base (n).ext» ocupados en esa
+  carpeta (sin distinguir mayúsculas, sin papelera) para `FileName.firstFree`.
 - Las cargas vencidas de todos los propietarios **no** se leen por los puertos con actor: eso es
   `IExpiredUploadScanner`, que llama a `carga_expiradas` (ADR-0021) dentro de `ITransactionRunner.run`. Es el único
   acceso sin actor: solo lo inyecta `UploadCleanupProcessor` y no sale de `storage/index.ts`.
 - Pruebas: `apps/api/test/int/storage/*.int-spec.ts`, `apps/api/test/int/access/accessible-nodes.int-spec.ts`,
   `apps/api/test/isolation/storage.iso-spec.ts` y `storage-maintenance.iso-spec.ts`
   (Testcontainers; `pnpm test:int`).
+
+## Carpetas (006, T-03)
+
+`INodeRepository` suma el árbol vivo: `findAccessibleFolder`, `listContents` (carpetas primero y luego archivos, cada
+grupo `creado_en DESC, id DESC`; cursor opaco `[grupo, creado_en, id]` de `node-list-cursor.ts`), `breadcrumbs`,
+`findTakenFolderNames`, `maxSubtreeDepth`, `insertFolder`, `renameFolder`, `renameFile`, `moveFile` y
+`moveFolderSubtree` (un `UPDATE` por prefijo de `ruta` que reubica todo el subárbol del dueño, también lo que está en la
+papelera).
+
+- Las lecturas y las escrituras por id unen `accessibleNodes(actor)` filtrado por `tipo_nodo` (`archivo` o `carpeta`):
+  desde 006 el fragmento mezcla ambos tipos. En la raíz se filtra con `IS NULL` para usar los índices parciales de raíz.
+- `FolderService` (`create`, `rename`, `move`, `contents`) abre `withActor` y toma primero `lockUsage`: es el punto de
+  serialización de toda mutación del árbol. La profundidad máxima sale de `FOLDER_CONFIG` (`FOLDER_MAX_DEPTH`).
+- Rutas (`FoldersController`, solo `CLIENT`): `GET /folders/contents`, `POST /folders`, `PATCH /folders/:folderId` y
+  `POST /folders/:folderId/move`. Un `:folderId` que no es UUID es el mismo 404 que uno inexistente o ajeno.
+- Pruebas: `folder.service.spec.ts`, `test/int/storage/node-tree.repository.int-spec.ts` y `folders.int-spec.ts`.
 
 ## Limpieza de cargas vencidas (005, PR-E)
 
@@ -112,6 +128,7 @@ Pruebas: `upload-cleanup.processor.spec.ts` y `upload-cleanup.scheduler.spec.ts`
 | `UploadRegistrar`                          | Paso final de `complete`: CAS `activa → completada`, nombre definitivo, `archivo` + versión, cuota |
 | `QuotaService`                             | Máximo por archivo y cuota total con reservas de cargas activas (`QuotaPolicy`)                    |
 | `FileService`                              | Listado paginado y URL de descarga de 300 s                                                        |
+| `FolderService` (006)                      | Crear, renombrar, mover y abrir carpetas, con migas                                                |
 | `IObjectStorage` → `MinioStorageAdapter`   | Multipart, URLs prefirmadas (`Content-Length` firmado), `headObject`, `getRange`, purga real       |
 | `IFileTypeDetector` → `MagicBytesDetector` | Tipo real por firma; rechaza ejecutables y texto disfrazado                                        |
 

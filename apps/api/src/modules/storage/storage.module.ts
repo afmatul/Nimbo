@@ -8,6 +8,9 @@ import { AuditModule } from '../audit';
 import { FILE_SERVICE_CONFIG } from './application/file-service-config';
 import type { FileServiceConfig } from './application/file-service-config';
 import { FileService } from './application/file.service';
+import { FOLDER_CONFIG } from './application/folder-config';
+import type { FolderConfig } from './application/folder-config';
+import { FolderService } from './application/folder.service';
 import { I_OBJECT_STORAGE } from './application/ports/i-object-storage.port';
 import type { IObjectStorage } from './application/ports/i-object-storage.port';
 import { UPLOAD_CONFIG } from './application/upload-config';
@@ -17,6 +20,7 @@ import {
   MinioStorageAdapter,
 } from './infrastructure/minio-storage.adapter';
 import { FilesController } from './presentation/files.controller';
+import { FoldersController } from './presentation/folders.controller';
 import { UploadsController } from './presentation/uploads.controller';
 import { UPLOAD_LIFECYCLE_PROVIDERS } from './upload-lifecycle.providers';
 
@@ -29,10 +33,11 @@ export type StorageEnv = Pick<
   | 'UPLOAD_URL_TTL_SECONDS'
   | 'RATE_LIMIT_UPLOAD_INIT_PER_MINUTE'
   | 'RATE_LIMIT_DOWNLOAD_URL_PER_MINUTE'
+  | 'FOLDER_MAX_DEPTH'
 >;
 
 /**
- * Módulo `storage` (M2, plan §6): carga y descarga. `forRoot(env)` publica la configuración técnica (bytes como
+ * Módulo `storage` (M2, plan §6): carga, descarga y carpetas (006). `forRoot(env)` publica la configuración técnica (bytes como
  * `bigint`) y une cada puerto con su adaptador. **No** enlaza `I_PLAN_LIMITS_PROVIDER` ni importa `billing`: ese
  * enlace vive en la raíz de composición (DF-51, opción A). `SharedModule` (global) aporta reloj, tasa, transacciones y
  * `TransactionContext`; `MinioConfigModule` (global), `MINIO_CONFIG`.
@@ -49,13 +54,15 @@ export class StorageModule {
     const fileServiceConfig: FileServiceConfig = {
       downloadUrlPerMinute: env.RATE_LIMIT_DOWNLOAD_URL_PER_MINUTE,
     };
+    const folderConfig: FolderConfig = { maxDepth: env.FOLDER_MAX_DEPTH };
     return {
       module: StorageModule,
       imports: [AuditModule],
-      controllers: [UploadsController, FilesController],
+      controllers: [UploadsController, FilesController, FoldersController],
       providers: [
         { provide: UPLOAD_CONFIG, useValue: uploadConfig },
         { provide: FILE_SERVICE_CONFIG, useValue: fileServiceConfig },
+        { provide: FOLDER_CONFIG, useValue: folderConfig },
         {
           provide: I_OBJECT_STORAGE,
           inject: [MINIO_CONFIG],
@@ -67,6 +74,7 @@ export class StorageModule {
         },
         ...UPLOAD_LIFECYCLE_PROVIDERS,
         FileService,
+        FolderService,
       ],
     };
   }

@@ -1,9 +1,10 @@
 import type { ArgumentMetadata } from '@nestjs/common';
-import { initUploadSchema, listFilesQuerySchema } from '@nimbo/contracts';
+import { createFolderSchema, initUploadSchema, listFilesQuerySchema } from '@nimbo/contracts';
 
 import { ZodValidationPipe } from '../../../shared';
 import type { DomainError } from '../../../shared';
 import {
+  InvalidNodeRequestError,
   InvalidQueryError,
   InvalidUploadRequestError,
   NodeNotFoundError,
@@ -11,7 +12,8 @@ import {
 } from '../domain/errors';
 
 import {
-  fileIdPipe,
+  nodeIdPipe,
+  storageNodeValidationError,
   storageQueryValidationError,
   storageUploadValidationError,
   uploadIdPipe,
@@ -72,11 +74,26 @@ describe('validación de entrada de `storage` (CA-7, CA-16)', () => {
   );
 
   it('CA-16: el id de archivo malformado responde el mismo 404 que uno inexistente', async () => {
-    await expect(fileIdPipe().transform('x', PARAM)).rejects.toBeInstanceOf(NodeNotFoundError);
+    await expect(nodeIdPipe().transform('x', PARAM)).rejects.toBeInstanceOf(NodeNotFoundError);
   });
 
   it('CA-16: un UUID pasa tal cual', async () => {
     await expect(uploadIdPipe().transform(UUID, PARAM)).resolves.toBe(UUID);
-    await expect(fileIdPipe().transform(UUID, PARAM)).resolves.toBe(UUID);
+    await expect(nodeIdPipe().transform(UUID, PARAM)).resolves.toBe(UUID);
+  });
+
+  it('006 CA-2: crear una carpeta con un nombre inválido es 400 `STORAGE_INVALID_NODE_REQUEST` con `fields`', () => {
+    const folderPipe = new ZodValidationPipe(createFolderSchema, storageNodeValidationError);
+
+    const error = thrownBy(() => folderPipe.transform({ name: 'a/b', parentId: 'x' }, BODY));
+
+    expect(error).toBeInstanceOf(InvalidNodeRequestError);
+    expect(error.status).toBe(400);
+    expect((error.fields ?? []).map((issue) => [issue.field, issue.reason])).toEqual(
+      expect.arrayContaining([
+        ['name', 'INVALID_NAME'],
+        ['parentId', 'INVALID_FOLDER'],
+      ]),
+    );
   });
 });

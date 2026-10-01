@@ -253,7 +253,7 @@ describe('TypeOrmNodeRepository (CA-13, CA-16)', () => {
   describe('findTakenNames', () => {
     it('CA-6: devuelve el nombre y sus copias «(n)» sin distinguir mayúsculas, sin papelera ni ajenos', async () => {
       const taken = await app.asActor(ana, () =>
-        repository.findTakenNames(ana, FileName.of('PLAN.pdf')),
+        repository.findTakenNames(ana, FileName.of('PLAN.pdf'), null),
       );
 
       expect([...taken].sort()).toEqual(['Plan.pdf', 'plan (1).PDF']);
@@ -262,7 +262,7 @@ describe('TypeOrmNodeRepository (CA-13, CA-16)', () => {
 
     it('CA-6: los comodines de `LIKE` del nombre se tratan como texto', async () => {
       const taken = await app.asActor(ana, () =>
-        repository.findTakenNames(ana, FileName.of('P_an%.pdf')),
+        repository.findTakenNames(ana, FileName.of('P_an%.pdf'), null),
       );
 
       expect(taken).toEqual([]);
@@ -275,7 +275,7 @@ describe('TypeOrmNodeRepository (CA-13, CA-16)', () => {
       const taken = await app.asActor(ana, async (manager) => {
         await repository.insertWithVersion(ana, file, version);
         await repository.insertWithVersion(ana, copy, copyVersion);
-        const names = await repository.findTakenNames(ana, FileName.of('NOTAS'));
+        const names = await repository.findTakenNames(ana, FileName.of('NOTAS'), null);
         await manager.query('DELETE FROM archivo WHERE id = ANY($1)', [[file.id, copy.id]]);
         return names;
       });
@@ -289,7 +289,7 @@ describe('TypeOrmNodeRepository (CA-13, CA-16)', () => {
       const reads = [
         (): Promise<unknown> => repository.findAccessibleById(ana, brunoFile.id),
         (): Promise<unknown> => repository.listAccessible(ana, { limit: 3 }),
-        (): Promise<unknown> => repository.findTakenNames(ana, FileName.of('Plan.pdf')),
+        (): Promise<unknown> => repository.findTakenNames(ana, FileName.of('Plan.pdf'), null),
       ];
 
       for (const read of reads) {
@@ -304,7 +304,7 @@ describe('TypeOrmNodeRepository (CA-13, CA-16)', () => {
       ['el listado', (): Promise<unknown> => repository.listAccessible(ana, { limit: 50 })],
       [
         'la búsqueda de nombres',
-        (): Promise<unknown> => repository.findTakenNames(ana, FileName.of('Plan.pdf')),
+        (): Promise<unknown> => repository.findTakenNames(ana, FileName.of('Plan.pdf'), null),
       ],
     ])('ADR-0005: el plan de %s usa los índices de propietario de `archivo`', async (_, read) => {
       const plan = await app.asActor(ana, async (manager) => {
