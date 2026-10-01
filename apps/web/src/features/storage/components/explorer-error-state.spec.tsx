@@ -23,7 +23,7 @@ afterEach(async () => {
 
 describe('ExplorerErrorState (CA-21)', () => {
   it('CA-21: anuncia el error del listado con los textos de la spec', async () => {
-    await mount(<ExplorerErrorState onRetry={jest.fn()} />);
+    await mount(<ExplorerErrorState title="No pudimos cargar tus archivos." onRetry={jest.fn()} />);
 
     const alert = document.querySelector('[role="alert"]');
     expect(alert?.textContent).toContain('No pudimos cargar tus archivos.');
@@ -32,7 +32,7 @@ describe('ExplorerErrorState (CA-21)', () => {
 
   it('CA-21: «Reintentar» es outline y llama onRetry', async () => {
     const onRetry = jest.fn();
-    await mount(<ExplorerErrorState onRetry={onRetry} />);
+    await mount(<ExplorerErrorState title="No pudimos cargar tus archivos." onRetry={onRetry} />);
     const retry = Array.from(document.querySelectorAll('button')).find(
       (button) => button.textContent === 'Reintentar',
     );
@@ -45,7 +45,7 @@ describe('ExplorerErrorState (CA-21)', () => {
   });
 
   it('CA-21: no muestra código de soporte ni correlationId', async () => {
-    await mount(<ExplorerErrorState onRetry={jest.fn()} />);
+    await mount(<ExplorerErrorState title="No pudimos cargar tus archivos." onRetry={jest.fn()} />);
 
     expect(document.body.textContent).not.toMatch(/correlation|código|soporte/i);
   });

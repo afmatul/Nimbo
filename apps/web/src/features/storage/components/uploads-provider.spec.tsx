@@ -43,7 +43,8 @@ function fakeApi(overrides: Partial<StorageApi> = {}): jest.Mocked<StorageApi> {
       }),
     ),
     cancel: jest.fn(() => Promise.resolve()),
-    listFiles: jest.fn(),
+    folderContents: jest.fn(),
+    createFolder: jest.fn(),
     downloadUrl: jest.fn(),
     ...overrides,
   } as jest.Mocked<StorageApi>;
@@ -56,7 +57,7 @@ function localFile(name: string, size = 4): File {
 function Enqueue({ files }: { readonly files: readonly File[] }): React.JSX.Element {
   const { enqueue } = useUploads();
   return (
-    <button type="button" onClick={() => enqueue(files)}>
+    <button type="button" onClick={() => enqueue(files, null)}>
       Encolar
     </button>
   );
@@ -112,6 +113,7 @@ describe('UploadsProvider', () => {
         name: 'informe.docx',
         sizeBytes: 4,
         onConflict: 'keep_both',
+        folderId: null,
       }),
     );
     expect(screen.queryByRole('alertdialog')).toBeNull();

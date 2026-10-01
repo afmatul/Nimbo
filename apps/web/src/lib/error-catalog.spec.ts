@@ -4,12 +4,15 @@ import {
   LOGIN_LOCK_MINUTES,
   SHARED_ERROR_CODES,
   STORAGE_ERROR_CODES,
+  STORAGE_NODE_FIELD_MESSAGES,
   SUPPORT_CONTACT_EMAIL,
 } from '@nimbo/contracts';
 
 import { ApiClientError } from './api-error';
 import {
   IDENTITY_FIELD_MESSAGES as reexported,
+  folderNameConflictMessage,
+  folderNameFieldMessage,
   messageForCode,
   messageForReason,
   storageMessage,
@@ -200,6 +203,38 @@ describe('error-catalog', () => {
 
     it('un código ajeno a storage no tiene mensaje estructurado', () => {
       expect(storageMessage('NO_EXISTE')).toBeNull();
+    });
+  });
+
+  describe('carpetas (006 spec §3)', () => {
+    it('CA-3: nombre repetido de carpeta con el nombre guardado', () => {
+      expect(folderNameConflictMessage('Prompts')).toBe(
+        'Ya existe una carpeta llamada «Prompts» aquí. Elige otro nombre.',
+      );
+    });
+
+    it('CA-2: mensajes del campo de nombre por `reason`', () => {
+      expect(folderNameFieldMessage('REQUIRED')).toBe('Escribe un nombre para la carpeta.');
+      expect(folderNameFieldMessage('NAME_TOO_LONG')).toBe(
+        'El nombre puede tener hasta 255 caracteres.',
+      );
+      expect(folderNameFieldMessage('INVALID_NAME')).toBe(STORAGE_NODE_FIELD_MESSAGES.INVALID_NAME);
+      expect(folderNameFieldMessage('NO_EXISTE')).toBe(STORAGE_NODE_FIELD_MESSAGES.INVALID_NAME);
+    });
+
+    it('CA-9: profundidad máxima con la cifra de `details`', () => {
+      expect(
+        messageForCode(STORAGE_ERROR_CODES.STORAGE_FOLDER_DEPTH_EXCEEDED, {
+          details: { maxDepth: 10 },
+        }),
+      ).toBe('Llegaste al máximo de 10 niveles de carpetas. Crea la carpeta en otro lugar.');
+    });
+
+    it('CA-6: un 404 al subir o crear habla de la carpeta de destino, no de un archivo', () => {
+      expect(storageMessage(STORAGE_ERROR_CODES.STORAGE_NODE_NOT_FOUND)).toEqual({
+        cause: 'No encontramos la carpeta de destino.',
+        fix: 'Puede que la hayas movido a la papelera. Elige otra carpeta y vuelve a intentarlo.',
+      });
     });
   });
 

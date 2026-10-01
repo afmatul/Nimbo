@@ -193,4 +193,53 @@ describe('AppLayout component (CA-5)', () => {
     expect(markup).toContain('Archivos Propios');
     expect(markup).toContain('/custom-archivos');
   });
+  it('006: la Papelera enlaza a /papelera', () => {
+    const markup = renderToStaticMarkup(
+      <AppLayout>
+        <div>Contenido</div>
+      </AppLayout>,
+    );
+
+    expect(markup).toMatch(/<a[^>]*href="\/papelera"[^>]*>(?:(?!<\/a>).)*Papelera/);
+  });
+
+  it('006 CA-5: pinta la barra superior que recibe (migas) solo en escritorio', () => {
+    const markup = renderToStaticMarkup(
+      <AppLayout topBar={<nav aria-label="Ruta">Mis archivos</nav>}>
+        <div>Contenido</div>
+      </AppLayout>,
+    );
+
+    expect(markup).toMatch(
+      /<header[^>]*>.*<div class="[^"]*hidden[^"]*md:flex[^"]*"><nav aria-label="Ruta">/,
+    );
+  });
+
+  it('006: la sección «Carpetas» lista las carpetas de primer nivel, sin cantidades', () => {
+    const folders = [
+      { label: 'Proyecto Alpha', icon: Folder, href: '/archivos/carpeta/a' },
+      { label: 'Finanzas', icon: Folder, href: '/archivos/carpeta/b' },
+    ];
+    const markup = renderToStaticMarkup(
+      <AppLayout folderItems={folders} initialMobileMenuOpen>
+        <div>Contenido</div>
+      </AppLayout>,
+    );
+
+    expect(markup.match(/>Carpetas</g)).toHaveLength(2);
+    expect(markup).toMatch(
+      /<a[^>]*href="\/archivos\/carpeta\/a"[^>]*>(?:(?!<\/a>).)*Proyecto Alpha/,
+    );
+    expect(markup).toContain('Finanzas');
+  });
+
+  it('006: sin carpetas no muestra el título «Carpetas»', () => {
+    const markup = renderToStaticMarkup(
+      <AppLayout folderItems={[]}>
+        <div>Contenido</div>
+      </AppLayout>,
+    );
+
+    expect(markup).not.toContain('>Carpetas<');
+  });
 });

@@ -18,7 +18,8 @@ export interface UploadsContextValue {
   readonly rows: readonly UploadView[];
   /** Archivos que terminaron de subir en esta pestaña, del más reciente al más antiguo (CA-1). */
   readonly uploadedFiles: readonly FileSummary[];
-  readonly enqueue: (files: readonly LocalFile[]) => void;
+  /** Encola en la carpeta abierta (`null` es la raíz, 006 CA-6). */
+  readonly enqueue: (files: readonly LocalFile[], folderId: string | null) => void;
   /** «Cerrar» del panel: quita las filas terminadas hasta la próxima carga. */
   readonly closePanel: () => void;
   /** Selector de archivos de la página; «Subir de nuevo» del panel lo abre. */
@@ -78,7 +79,7 @@ export function useUploadManager(
   );
   const uploadedFiles = React.useMemo(() => uploadedFilesOf(allRows), [allRows]);
   const enqueue = React.useCallback(
-    (files: readonly LocalFile[]) => manager.enqueue(files),
+    (files: readonly LocalFile[], folderId: string | null) => manager.enqueue(files, folderId),
     [manager],
   );
   const closePanel = React.useCallback(

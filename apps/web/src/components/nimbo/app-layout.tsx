@@ -16,7 +16,7 @@ export interface NavItem {
 export const DEFAULT_NAV_ITEMS: readonly NavItem[] = [
   { label: 'Mis Archivos', icon: Folder, href: '/archivos', active: true },
   { label: 'Compartidos', icon: Share2, href: '#compartidos' },
-  { label: 'Papelera', icon: Trash2, href: '#papelera' },
+  { label: 'Papelera', icon: Trash2, href: '/papelera' },
   { label: 'Planes y Cuota', icon: CreditCard, href: '#planes' },
   { label: 'Agente Nimbo', icon: Sparkles, href: '#agente' },
 ];
@@ -26,6 +26,42 @@ export interface AppLayoutProps {
   readonly userEmail?: string;
   readonly initialMobileMenuOpen?: boolean;
   readonly navItems?: readonly NavItem[];
+  /** Contenido de la barra superior en escritorio, junto al logo (p. ej. las migas de Mis archivos, 006). */
+  readonly topBar?: React.ReactNode;
+  /** Carpetas de primer nivel bajo el título «Carpetas»; sin elementos no se muestra la sección (006). */
+  readonly folderItems?: readonly NavItem[];
+}
+
+const FOLDER_LINK_CLASS =
+  'flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-accent/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+
+/** Sección «Carpetas» de la barra lateral: solo el nombre (sin cantidades: `FolderRef` no las trae). */
+function FolderSection({
+  items,
+  onNavigate,
+}: {
+  readonly items: readonly NavItem[];
+  readonly onNavigate?: () => void;
+}): React.JSX.Element | null {
+  if (items.length === 0) return null;
+  return (
+    <div className="mt-4">
+      <p className="px-3 pb-1 text-xs font-semibold text-muted-foreground">Carpetas</p>
+      <ul className="space-y-1">
+        {items.map((item) => {
+          const Icon = item.icon;
+          return (
+            <li key={item.href}>
+              <a href={item.href} onClick={onNavigate} className={FOLDER_LINK_CLASS}>
+                <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span className="truncate">{item.label}</span>
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
 }
 
 /**
@@ -38,6 +74,8 @@ export function AppLayout({
   userEmail,
   initialMobileMenuOpen = false,
   navItems = DEFAULT_NAV_ITEMS,
+  topBar,
+  folderItems = [],
 }: AppLayoutProps): React.JSX.Element {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(initialMobileMenuOpen);
   const menuButtonRef = React.useRef<HTMLButtonElement>(null);
@@ -97,6 +135,7 @@ export function AppLayout({
             </div>
             <span className="text-xl font-bold tracking-tight text-foreground">Nimbo</span>
           </a>
+          {topBar ? <div className="hidden min-w-0 md:ml-6 md:flex">{topBar}</div> : null}
         </div>
 
         <div className="flex items-center gap-3">
@@ -136,6 +175,7 @@ export function AppLayout({
                 </a>
               );
             })}
+            <FolderSection items={folderItems} />
           </nav>
         </aside>
 
@@ -197,6 +237,7 @@ export function AppLayout({
                     </a>
                   );
                 })}
+                <FolderSection items={folderItems} onNavigate={handleCloseMenu} />
               </nav>
             </aside>
           </div>

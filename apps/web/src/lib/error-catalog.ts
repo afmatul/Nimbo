@@ -1,11 +1,13 @@
 import {
   EMAIL_REQUEST_COOLDOWN_SECONDS,
+  FILE_NAME_MAX_LENGTH,
   IDENTITY_ERROR_CODES,
   IDENTITY_FIELD_MESSAGES,
   LOGIN_LOCK_MINUTES,
   PASSWORD_CHANGE_LOCK_MINUTES,
   SHARED_ERROR_CODES,
   STORAGE_ERROR_CODES,
+  STORAGE_NODE_FIELD_MESSAGES,
   SUPPORT_CONTACT_EMAIL,
   formatBytes,
   type FieldIssueReason,
@@ -97,9 +99,10 @@ const STORAGE_MESSAGES: Readonly<Record<string, StorageMessageBuilder>> = {
     'Aún faltan partes del archivo por subir.',
     'Reanuda la carga para completarla.',
   ),
+  // Lo responden subir y crear cuando la carpeta de destino ya no existe o está en la papelera (006 CA-6).
   [STORAGE_ERROR_CODES.STORAGE_NODE_NOT_FOUND]: fixed(
-    'No encontramos este archivo.',
-    'Actualiza la lista para ver tus archivos.',
+    'No encontramos la carpeta de destino.',
+    'Puede que la hayas movido a la papelera. Elige otra carpeta y vuelve a intentarlo.',
   ),
   [STORAGE_ERROR_CODES.STORAGE_INVALID_UPLOAD_REQUEST]: fixed(
     'El nombre o el tamaño del archivo no son válidos.',
@@ -115,13 +118,33 @@ const STORAGE_MESSAGES: Readonly<Record<string, StorageMessageBuilder>> = {
   ),
   [STORAGE_ERROR_CODES.STORAGE_INVALID_MOVE]: fixed(
     'No puedes mover una carpeta dentro de sí misma.',
-    'Elige otra carpeta de destino.',
+    'Elige otro destino.',
   ),
   [STORAGE_ERROR_CODES.STORAGE_FOLDER_DEPTH_EXCEEDED]: (details) => ({
     cause: `Llegaste al máximo de ${String(details['maxDepth'] ?? '')} niveles de carpetas.`,
     fix: 'Crea la carpeta en otro lugar.',
   }),
 };
+
+/**
+ * Campo «Nombre de la carpeta» (mockup `storage/explorador`, 006 CA-2). `INVALID_NAME` usa el texto de `contracts`
+ * porque también cubre «.», «..» y caracteres de control, no solo los separadores de ruta.
+ */
+const FOLDER_NAME_FIELD_MESSAGES: Readonly<Record<string, string>> = {
+  REQUIRED: 'Escribe un nombre para la carpeta.',
+  NAME_TOO_LONG: `El nombre puede tener hasta ${String(FILE_NAME_MAX_LENGTH)} caracteres.`,
+  INVALID_NAME: STORAGE_NODE_FIELD_MESSAGES.INVALID_NAME,
+};
+
+/** Mensaje del campo de nombre de carpeta para un `reason` de `fields`; otro motivo cae en «nombre no válido». */
+export function folderNameFieldMessage(reason: string): string {
+  return FOLDER_NAME_FIELD_MESSAGES[reason] ?? STORAGE_NODE_FIELD_MESSAGES.INVALID_NAME;
+}
+
+/** `409` al crear o renombrar una carpeta (CA-3). La API no envía nombres: la web pone el guardado. */
+export function folderNameConflictMessage(storedName: string): string {
+  return `Ya existe una carpeta llamada «${storedName}» aquí. Elige otro nombre.`;
+}
 
 const CODE_MESSAGES: Readonly<Record<string, string>> = {
   [IDENTITY_ERROR_CODES.INVALID_INPUT]: 'Revisa los campos marcados y corrígelos para continuar.',
