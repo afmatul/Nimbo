@@ -25,6 +25,9 @@
   abren `withActor` y toman primero `IQuotaRepository.lockUsage(actor)` (`FOR UPDATE` de la fila del dueño, el mismo punto de 005). Así no
   hay carreras de ciclo ni de nombre, y una carga no se registra en una carpeta que se está eliminando (CA-6).
 
+> Nota 2026-10-01: la purga se implementó dentro de la transacción y no antes, como dice el párrafo «Purga». Ver DF-61 y las
+> notas del developer de `tasks.md` (T-06).
+
 ## 2. Módulos, archivos y diseño
 | Módulo / capa | Archivo (nuevo o cambiado) | Responsabilidad |
 |---|---|---|
@@ -67,6 +70,9 @@
   `restore-result` (avisos CA-14/15/17). `file-explorer` y `file-row-menu` se amplían; se reutiliza `name-conflict-dialog` (005) para
   archivos. `components/nimbo/app-layout.tsx`: «Carpetas» y Papelera con contador (`GET /trash/summary`). Catálogo `lib/error-catalog.ts`.
   Estados y textos según los mockups de `storage/explorador/` y `storage/papelera/`.
+
+> Nota 2026-10-01: la implementación agregó `ITrashRepository.schedulePurgeOfAll`, `TRASH_LIFECYCLE_PROVIDERS` y la cola
+> `trash-purge` en `worker.module.ts`. Ver DF-61 y las notas del developer de `tasks.md` (T-06).
 
 ## 3. Datos
 ```sql

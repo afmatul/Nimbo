@@ -16,7 +16,7 @@ de eso se pierda entre ramas.
 - «Resolver antes de» es la compuerta que se bloquea si el pendiente sigue abierto. «—» significa que no bloquea nada.
 - `/status` y el `architect` revisan esta lista al cerrar cada fase.
 
-Última actualización: 2026-09-29.
+Última actualización: 2026-10-01.
 
 ## Diagramas por redibujar
 
@@ -76,6 +76,8 @@ decisiones; solo faltan los diagramas.
 | PD-27 | Token del velo de los diálogos: el mockup de «Seguridad» usa `agent-bg` al 45 % | `apps/web/src/components/nimbo/app-layout.tsx` (TODO #6), `ui-guidelines.md` | Mockup de «Seguridad» | Plan de 002 | Adrián | Abierto |
 | PD-51 | `SECRET_KEYS` no incluye `DATABASE_URL` ni `DATABASE_MIGRATION_URL` (llevan la contraseña en la URL): no se redactarían si llegaran a una bitácora. Agregarlas o redactar URLs con credenciales, con prueba | `apps/api/src/shared/infrastructure/config/secret-keys.ts` | Revisión 003 PR-F (SEC-2) | Cierre de la Fase 1 | Adrián | Abierto |
 | PD-56 | Ninguna prueba hace una carga con el `IPlanLimitsProvider` real: `test/int/storage/storage-http.ts` lo sustituye por un doble (R-3 de 005) y las pruebas de `PlanLimitsAdapter` no pasan por `UploadService`. Agregar una prueba de integración con `PlanLimitsBindingModule` sin *override* y la semilla de `plan` (p. ej., un archivo de más de 50 MB rechazado con Personal), o cubrirlo en el recorrido humano T-55 | `apps/api/test/int/storage/` | Revisión 006a (I-6) | `/review 005` | Adrián | Abierto |
+| PD-60 | Medir el costo de `TrashPurger` con k6: purga cada elemento dentro de `withActor` + `lockUsage`, retiene la fila del dueño y una conexión mientras MinIO responde (bloquea sus cargas; crece con archivos × versiones de una carpeta grande) y, si un error de BD aborta la transacción tras borrar objetos de archivos anteriores, deja registros sin objeto. Si pesa, purgar por archivo en transacciones separadas | `apps/api/src/modules/storage/application/trash-purger.ts` | Revisión 006 (I-2), DF-61 | Specs 021/022 (carga) | Adrián | Abierto |
+| PD-61 | Volver a probar CA-19 de 006 con la suscripción vencida real cuando llegue la 004; hoy `trash-purge.int-spec.ts` lo simula con `usuario.estado = 'suspendida'` | `apps/api/test/int/storage/trash-purge.int-spec.ts` | Revisión 006 (I-3), DF-61 | Plan de 004 | Adrián | Abierto |
 | PD-57 | `.prettierignore` ignora `Cambios.md`, un archivo que no existe y que ninguna spec pide (entró con el squash de 006a, PR #8). Quitar la línea o explicar su uso | `.prettierignore` | Revisión 006a (S-1) | Siguiente PR que toque la raíz | Fátima | Abierto |
 
 ## Diseño y UX
