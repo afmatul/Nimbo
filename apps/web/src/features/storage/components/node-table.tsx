@@ -16,7 +16,7 @@ export interface NodeTableProps {
   readonly renderRowActions: ((node: NodeSummary) => React.ReactNode) | undefined;
 }
 
-const CHIP_TYPE_BY_KIND: Readonly<Record<FileKind, FileType>> = {
+export const CHIP_TYPE_BY_KIND: Readonly<Record<FileKind, FileType>> = {
   docx: 'docx',
   pdf: 'pdf',
   xlsx: 'xlsx',

@@ -85,6 +85,7 @@ function renderMenu(overrides: Partial<HarnessProps> = {}): Promise<void> {
     openUrl: jest.fn(),
     onRename: jest.fn(),
     onMove: jest.fn(),
+    onMoveToTrash: jest.fn(),
     ...overrides,
   };
   return mount(<Harness {...props} />);
@@ -156,6 +157,18 @@ describe('FileRowMenu (CA-13, CA-21)', () => {
     await press('Enter');
     await act(async () => items()[2]?.click());
     expect(onMove).toHaveBeenCalledTimes(1);
+  });
+
+  it('006 CA-10: «Mover a la papelera» es la última acción, sin color destructivo', async () => {
+    const onMoveToTrash = jest.fn();
+    await renderMenu({ onMoveToTrash });
+    await press('Enter');
+
+    const last = items().at(-1);
+    expect(last?.textContent?.trim()).toBe('Mover a la papelera');
+    expect(last?.className).not.toMatch(/destructive/);
+    await act(async () => last?.click());
+    expect(onMoveToTrash).toHaveBeenCalledTimes(1);
   });
 
   it.each([

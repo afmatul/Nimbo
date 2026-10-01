@@ -22,12 +22,18 @@ beforeAll(() => {
 });
 
 describe('FolderRowMenu (mockup acciones-carpeta)', () => {
-  it('CA-4, CA-7: «Acciones de {carpeta}» abre «Renombrar» y «Mover a…»', async () => {
+  it('CA-4, CA-7, CA-11: «Acciones de {carpeta}» abre «Renombrar», «Mover a…» y «Mover a la papelera»', async () => {
     const onRename = jest.fn();
     const onMove = jest.fn();
+    const onMoveToTrash = jest.fn();
     render(
       <main>
-        <FolderRowMenu folder={FOLDER} onRename={onRename} onMove={onMove} />
+        <FolderRowMenu
+          folder={FOLDER}
+          onRename={onRename}
+          onMove={onMove}
+          onMoveToTrash={onMoveToTrash}
+        />
       </main>,
     );
 
@@ -35,6 +41,7 @@ describe('FolderRowMenu (mockup acciones-carpeta)', () => {
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
       'Renombrar',
       'Mover a…',
+      'Mover a la papelera',
     ]);
     const { violations } = await axe(document.body);
     expect(violations.filter((violation) => BLOCKING_IMPACTS.has(violation.impact ?? ''))).toEqual(
@@ -46,5 +53,11 @@ describe('FolderRowMenu (mockup acciones-carpeta)', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Acciones de Prompts' }));
     await userEvent.click(screen.getByRole('menuitem', { name: 'Mover a…' }));
     expect(onMove).toHaveBeenCalledTimes(1);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Acciones de Prompts' }));
+    const trash = screen.getByRole('menuitem', { name: 'Mover a la papelera' });
+    expect(trash.className).not.toMatch(/destructive/);
+    await userEvent.click(trash);
+    expect(onMoveToTrash).toHaveBeenCalledTimes(1);
   });
 });

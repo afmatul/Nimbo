@@ -242,4 +242,40 @@ describe('AppLayout component (CA-5)', () => {
 
     expect(markup).not.toContain('>Carpetas<');
   });
+  it('006 CA-12: la Papelera muestra su contador, en escritorio y en el menú móvil', () => {
+    const markup = renderToStaticMarkup(
+      <AppLayout trashCount={6} initialMobileMenuOpen>
+        <div>Contenido</div>
+      </AppLayout>,
+    );
+
+    const trashLinks = markup.match(/<a[^>]*href="\/papelera"[^>]*>(?:(?!<\/a>).)*<\/a>/g) ?? [];
+    expect(trashLinks).toHaveLength(2);
+    for (const link of trashLinks) {
+      expect(link).toMatch(/tabular-nums[^"]*"><span aria-hidden="true">6</);
+      expect(link).toContain('6 elementos');
+    }
+  });
+
+  it('006 CA-12: con la papelera vacía o sin dato no muestra contador', () => {
+    for (const trashCount of [0, undefined]) {
+      const markup = renderToStaticMarkup(
+        <AppLayout trashCount={trashCount}>
+          <div>Contenido</div>
+        </AppLayout>,
+      );
+
+      expect(markup).not.toContain('elementos</span>');
+    }
+  });
+
+  it('006 CA-10: monta la región de avisos (sonner, ADR-0024)', () => {
+    const markup = renderToStaticMarkup(
+      <AppLayout>
+        <div>Contenido</div>
+      </AppLayout>,
+    );
+
+    expect(markup).toMatch(/<section[^>]*aria-label="Avisos"[^>]*aria-live="polite"/);
+  });
 });

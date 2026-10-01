@@ -14,10 +14,11 @@ import type { AuthFetch } from '../identity/session/auth-fetch';
 
 import { createFoldersApi, type FoldersApi } from './folders-api';
 import { createStorageHttp, parseResponse } from './storage-http';
+import { createTrashApi, type TrashApi } from './trash-api';
 import type { UploadClient } from './upload/upload-manager';
 
-/** Cliente de la API de `storage` (planes 005 §5 y 006 §4): cargas, carpetas y descarga. */
-export interface StorageApi extends UploadClient, FoldersApi {
+/** Cliente de la API de `storage` (planes 005 §5 y 006 §4): cargas, carpetas, papelera y descarga. */
+export interface StorageApi extends UploadClient, FoldersApi, TrashApi {
   downloadUrl(fileId: string): Promise<DownloadUrlResponse>;
   /** Nombre repetido: `409` con `details.suggestedName` salvo con `onConflict: 'keep_both'` (005 CA-6). */
   renameFile(fileId: string, body: RenameFileRequest): Promise<FileSummary>;
@@ -36,6 +37,7 @@ export function createStorageApi(apiPublicUrl: string, authFetch: AuthFetch): St
 
   return {
     ...createFoldersApi(http),
+    ...createTrashApi(http),
     init: async (body) =>
       parseResponse(await http.post('/uploads', body), initUploadResponseSchema),
     resume: async (uploadId) =>

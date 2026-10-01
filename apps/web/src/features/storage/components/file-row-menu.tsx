@@ -22,6 +22,8 @@ import {
 } from '../../../components/ui/dropdown-menu';
 import { StorageRequestError } from '../storage-request-error';
 
+import { MoveToTrashMenuItem } from './move-to-trash-menu-item';
+
 export interface DownloadNotice {
   readonly title: string;
   readonly description: string;
@@ -43,6 +45,8 @@ export interface FileRowMenuProps {
   readonly onRename: () => void;
   /** Abre «Mover a…» (006 CA-7). */
   readonly onMove: () => void;
+  /** «Mover a la papelera», sin confirmación (006 CA-10). */
+  readonly onMoveToTrash: () => void;
 }
 
 const openInBrowser = (url: string): void => window.location.assign(url);
@@ -86,6 +90,7 @@ export function FileRowMenu({
   openUrl = openInBrowser,
   onRename,
   onMove,
+  onMoveToTrash,
 }: FileRowMenuProps): React.JSX.Element {
   const [open, setOpen] = React.useState(false);
   const [preparing, setPreparing] = React.useState(false);
@@ -138,6 +143,7 @@ export function FileRowMenu({
             {preparing ? 'Preparando…' : 'Descargar'}
           </DropdownMenuItem>
           <OrganizeMenuItems onRename={onRename} onMove={onMove} />
+          <MoveToTrashMenuItem onSelect={onMoveToTrash} />
         </DropdownMenuContent>
       </DropdownMenu>
       <span role="status" aria-live="polite" className="sr-only">

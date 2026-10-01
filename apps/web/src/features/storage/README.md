@@ -29,6 +29,12 @@ recargar las pierde (RN-7). Las páginas leen el contexto con `useUploads()`.
 | `components/upload-panel.tsx`                                                       | Panel de cargas; reutiliza `components/nimbo/upload-progress.tsx`                                  | T-14       |
 | `components/name-conflict-dialog.tsx`, `cancel-upload-dialog.tsx`                   | Diálogos de nombre repetido y de cancelar                                                          | T-15       |
 | `components/file-explorer.tsx`, `upload-dropzone.tsx`, `explorer-error-state.tsx`   | Raíz, arrastre y error del listado                                                                 | T-16       |
+| `trash-api.ts`, `trash-dates.ts`                                                    | Papelera en la API (`DELETE` de nodos, `/trash`, restaurar, purgar, vaciar); días desde `purgeAt`  | 006 T-10   |
+| `components/trash-view.tsx`, `hooks/use-trash.ts`, `hooks/use-trash-actions.tsx`    | `/papelera`: carga, error, vacía, lista; restaurar, eliminar definitivamente y vaciar en diferido  | 006 T-10   |
+| `components/trash-list.tsx`, `trash-summary.tsx`, `trash-selection-bar.tsx`         | Tabla con selección y ⋮, resumen y retención, aviso de purga próxima y «Vaciando…»                 | 006 T-10   |
+| `components/restore-result.tsx`, `purge-confirm-dialog.tsx`                         | Resultado de restaurar por elemento (CA-14/15/17) y confirmación con el espacio que se libera      | 006 T-10   |
+| `components/move-to-trash-menu-item.tsx`, `hooks/use-move-to-trash.tsx`             | «Mover a la papelera» en los menús ⋮ (sin rojo) y aviso «Movimos…» con «Ver papelera» (`sonner`)   | 006 T-10   |
+| `hooks/use-trash-count.ts`                                                          | Contador de la Papelera en la barra lateral (`GET /trash/summary`), vía `AppLayout.trashCount`     | 006 T-10   |
 | `components/file-row-menu.tsx`                                                      | Menú ⋮ con «Descargar» y `DownloadNoticeBanner`                                                    | T-17       |
 
 Los textos de error de `storage` salen de `lib/error-catalog.ts` (`storageMessage`: causa y acción, con las cifras de
@@ -46,8 +52,9 @@ Los textos de error de `storage` salen de `lib/error-catalog.ts` (`storageMessag
   API (nunca de una constante). `onRetry` repite la última petición de listado con el mismo cursor.
 - `FileRowMenu.requestUrl` llama `POST /files/:id/download-url` y lanza `StorageRequestError` ante un error HTTP. El
   aviso que emite `onNotice` se pinta con `DownloadNoticeBanner` en `FileExplorer.notice`, arriba de la lista.
-- La barra lateral muestra «Carpetas» (solo las de primer nivel, sin cantidades) y enlaza la Papelera; el contador
-  llega con 006 T-10. Las migas van en la barra superior desde `md`; por debajo, «‹ {carpeta anterior}».
+- La barra lateral muestra «Carpetas» (solo las de primer nivel, sin cantidades) y enlaza la Papelera con su contador
+  (006 T-10). Los avisos de éxito van por `components/ui/sonner.tsx` (`<Toaster />` en `AppLayout`, ADR-0024); los
+  errores siguen arriba de la lista. Las migas van en la barra superior desde `md`; por debajo, «‹ {carpeta anterior}».
 - La API no envía nombres en los errores: la web pone el nombre guardado en el `409` de carpetas (de la lista abierta).
   Al mover una carpeta, el `409` dice también el destino («… en {destino}…», `folderMoveConflictMessage`).
 - `FileRowMenu` y `FolderRowMenu` abren `RenameDialog` y `MoveDialog`, que `MyFiles` monta solo mientras están

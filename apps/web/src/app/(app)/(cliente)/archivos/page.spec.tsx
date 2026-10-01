@@ -58,6 +58,10 @@ function fakeApi(overrides: Partial<StorageApi> = {}): jest.Mocked<StorageApi> {
     folderContents: jest.fn(() => Promise.resolve(page([]))),
     createFolder: jest.fn(() => never()),
     downloadUrl: jest.fn(() => never()),
+    trashSummary: jest.fn(() =>
+      Promise.resolve({ itemCount: 0, totalBytes: 0, retentionDays: 60 }),
+    ),
+    moveToTrash: jest.fn(() => never()),
     ...overrides,
   } as jest.Mocked<StorageApi>;
 }
@@ -271,6 +275,45 @@ describe('página Mis archivos (/archivos)', () => {
       `/archivos/carpeta/${created.id}`,
     );
     expect(api.folderContents).toHaveBeenCalledTimes(1);
+  });
+
+  it('006 CA-10: «Mover a la papelera» quita la fila sin confirmar, avisa y sube el contador', async () => {
+    const trashSummary = jest
+      .fn()
+      .mockResolvedValueOnce({ itemCount: 0, totalBytes: 0, retentionDays: 60 })
+      .mockResolvedValue({ itemCount: 1, totalBytes: 1_500, retentionDays: 60 });
+    const api = fakeApi({
+      folderContents: jest.fn(() => Promise.resolve(page([INFORME]))),
+      trashSummary,
+      moveToTrash: jest.fn(() =>
+        Promise.resolve({
+          id: INFORME.id,
+          type: 'file' as const,
+          name: INFORME.name,
+          sizeBytes: INFORME.sizeBytes,
+          originalFolder: null,
+          deletedAt: AT,
+          purgeAt: AT,
+        }),
+      ),
+    });
+    await renderPage(api);
+    await screen.findByRole('table');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Acciones de informe.docx' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Mover a la papelera' }));
+
+    expect(api.moveToTrash).toHaveBeenCalledWith('file', INFORME.id);
+    expect(await screen.findByText('Movimos «informe.docx» a la papelera.')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Ver papelera' }).getAttribute('href')).toBe(
+      '/papelera',
+    );
+    expect(screen.queryByRole('table')).toBeNull();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    const sidebar = screen.getByRole('complementary', { name: 'Barra lateral de escritorio' });
+    await waitFor(() =>
+      expect(within(sidebar).getByRole('link', { name: 'Papelera (1 elemento)' })).toBeTruthy(),
+    );
   });
 
   it('CA-21: la lista no tiene violaciones de accesibilidad', async () => {

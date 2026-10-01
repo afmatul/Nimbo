@@ -5,6 +5,7 @@ import { Cloud, Menu, X, Folder, Share2, Trash2, CreditCard, Sparkles } from 'lu
 import * as React from 'react';
 
 import { cn } from '../../lib/utils';
+import { Toaster } from '../ui/sonner';
 
 export interface NavItem {
   readonly label: string;
@@ -13,10 +14,13 @@ export interface NavItem {
   readonly active?: boolean;
 }
 
+/** Enlace de la Papelera, el que lleva el contador (006). */
+const TRASH_HREF = '/papelera';
+
 export const DEFAULT_NAV_ITEMS: readonly NavItem[] = [
   { label: 'Mis Archivos', icon: Folder, href: '/archivos', active: true },
   { label: 'Compartidos', icon: Share2, href: '#compartidos' },
-  { label: 'Papelera', icon: Trash2, href: '/papelera' },
+  { label: 'Papelera', icon: Trash2, href: TRASH_HREF },
   { label: 'Planes y Cuota', icon: CreditCard, href: '#planes' },
   { label: 'Agente Nimbo', icon: Sparkles, href: '#agente' },
 ];
@@ -30,6 +34,30 @@ export interface AppLayoutProps {
   readonly topBar?: React.ReactNode;
   /** Carpetas de primer nivel bajo el título «Carpetas»; sin elementos no se muestra la sección (006). */
   readonly folderItems?: readonly NavItem[];
+  /** Elementos en la papelera (`GET /trash/summary`); sin dato o en 0 no se muestra (006). */
+  readonly trashCount?: number | undefined;
+}
+
+/** Texto del ítem y, en la Papelera, su contador («6», leído como «Papelera (6 elementos)»). */
+function NavLabel({
+  item,
+  trashCount,
+}: {
+  readonly item: NavItem;
+  readonly trashCount: number | undefined;
+}): React.JSX.Element {
+  const count = item.href === TRASH_HREF && trashCount ? trashCount : 0;
+  return (
+    <>
+      <span>{item.label}</span>
+      {count > 0 ? (
+        <span className="ml-auto text-xs font-medium tabular-nums text-secondary-foreground">
+          <span aria-hidden="true">{count}</span>
+          <span className="sr-only">{`(${String(count)} ${count === 1 ? 'elemento' : 'elementos'})`}</span>
+        </span>
+      ) : null}
+    </>
+  );
 }
 
 const FOLDER_LINK_CLASS =
@@ -76,6 +104,7 @@ export function AppLayout({
   navItems = DEFAULT_NAV_ITEMS,
   topBar,
   folderItems = [],
+  trashCount,
 }: AppLayoutProps): React.JSX.Element {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(initialMobileMenuOpen);
   const menuButtonRef = React.useRef<HTMLButtonElement>(null);
@@ -171,7 +200,7 @@ export function AppLayout({
                   )}
                 >
                   <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                  <span>{item.label}</span>
+                  <NavLabel item={item} trashCount={trashCount} />
                 </a>
               );
             })}
@@ -233,7 +262,7 @@ export function AppLayout({
                       )}
                     >
                       <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
-                      <span>{item.label}</span>
+                      <NavLabel item={item} trashCount={trashCount} />
                     </a>
                   );
                 })}
@@ -251,6 +280,7 @@ export function AppLayout({
           {children}
         </main>
       </div>
+      <Toaster />
     </div>
   );
 }

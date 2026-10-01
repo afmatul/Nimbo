@@ -80,6 +80,10 @@ function fakeApi(overrides: Partial<StorageApi> = {}): jest.Mocked<StorageApi> {
     ),
     createFolder: jest.fn(() => never<FolderSummary>()),
     downloadUrl: jest.fn(() => never()),
+    trashSummary: jest.fn(() =>
+      Promise.resolve({ itemCount: 0, totalBytes: 0, retentionDays: 60 }),
+    ),
+    moveToTrash: jest.fn(() => never()),
     ...overrides,
   } as jest.Mocked<StorageApi>;
 }

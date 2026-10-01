@@ -11,6 +11,8 @@ import {
   useRootFolders,
   type FolderListing,
 } from '../hooks/use-folder-contents';
+import { useMoveToTrash } from '../hooks/use-move-to-trash';
+import { useTrashCount } from '../hooks/use-trash-count';
 import { useUploads } from '../hooks/use-upload-manager';
 import { withOrganized, withOrganizedRootFolders, type OrganizedNodes } from '../organized-nodes';
 import { folderPath } from '../routes';
@@ -72,7 +74,7 @@ export interface MyFilesProps {
 
 /**
  * Mis archivos y cada carpeta: lista la ubicación con sus migas, crea carpetas, sube a la carpeta abierta, descarga,
- * renombra y mueve.
+ * renombra, mueve y manda a la papelera (con el contador de la Papelera en la barra lateral).
  * Si el listado falla, «Subir archivos» sigue habilitado y el panel de cargas no se entera.
  */
 export function MyFiles({ folderId }: MyFilesProps): React.JSX.Element {
@@ -86,7 +88,22 @@ export function MyFiles({ folderId }: MyFilesProps): React.JSX.Element {
   const [organized, setOrganized] = React.useState<OrganizedNodes>(() => new Map());
   const requestUrl = React.useCallback((fileId: string) => api.downloadUrl(fileId), [api]);
   const { breadcrumbs, items } = readyContents(listing);
-  const nodes = withOrganized(withUploaded(uploadedFiles, folderId, items), organized, folderId);
+  const refresh = React.useCallback(() => {
+    setNotice(null);
+    reload();
+  }, [reload]);
+  const trashCount = useTrashCount(api);
+  const { trashedIds, moveToTrash } = useMoveToTrash({
+    api,
+    onMoved: trashCount.refresh,
+    onNotice: setNotice,
+    onRefresh: refresh,
+  });
+  const nodes = withOrganized(
+    withUploaded(uploadedFiles, folderId, items),
+    organized,
+    folderId,
+  ).filter((node) => !trashedIds.has(node.id));
 
   const remember = React.useCallback(
     (node: NodeSummary) => {
@@ -104,15 +121,13 @@ export function MyFiles({ folderId }: MyFilesProps): React.JSX.Element {
     [addFolder, folderId, remember],
   );
 
-  const refresh = React.useCallback(() => {
-    setNotice(null);
-    reload();
-  }, [reload]);
-
   return (
     <AppLayout
       topBar={listing.status === 'ready' ? <FolderBreadcrumbs breadcrumbs={breadcrumbs} /> : null}
-      folderItems={withOrganizedRootFolders(rootFolders, organized).map(toNavItem)}
+      folderItems={withOrganizedRootFolders(rootFolders, organized)
+        .filter((folder) => !trashedIds.has(folder.id))
+        .map(toNavItem)}
+      trashCount={trashCount.count}
     >
       <div className="space-y-4">
         <div className="flex justify-end">
@@ -139,12 +154,14 @@ export function MyFiles({ folderId }: MyFilesProps): React.JSX.Element {
                   onRefresh={refresh}
                   onRename={() => setOrganizing({ action: 'rename', node })}
                   onMove={() => setOrganizing({ action: 'move', node })}
+                  onMoveToTrash={() => void moveToTrash(node)}
                 />
               ) : (
                 <FolderRowMenu
                   folder={node}
                   onRename={() => setOrganizing({ action: 'rename', node })}
                   onMove={() => setOrganizing({ action: 'move', node })}
+                  onMoveToTrash={() => void moveToTrash(node)}
                 />
               )
             }
