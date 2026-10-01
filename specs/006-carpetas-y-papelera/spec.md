@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Lista (plan aprobado por Adrián el 2026-09-30; mockups de §6 en cierre por `ui-designer`) |
+| Estado | En curso (2026-09-30: T-01 y T-02 hechas en `feat/006-carpetas-y-papelera`; plan aprobado por Adrián el 2026-09-30) |
 | Dueño | Adrián (1) |
 | Fase | 1 |
 | Requisitos | RF-10, RF-11 (principales); aplican RF-07, RF-12 (parcial), RNF-05, RNF-13, RNF-14, RNF-17 |
@@ -101,3 +101,4 @@ Sin preguntas abiertas. Pendiente no es una pregunta sino una dependencia: los m
 | 2026-09-30 | Creación en `Borrador`; 005 §11 y su RN-4 (solo raíz) pasan a esta spec: carga y listado con carpeta destino | `/spec 006` | — |
 | 2026-09-30 | Resueltas P-1 a P-12 y quitadas sus marcas: mockups con `/mockup` como dependencia (P-1); eliminar definitivamente y vaciar con confirmación (P-2); fecha de purga fijada al eliminar y purga con cuenta vencida (P-3, CA-19); restaurar con «(n)», a la raíz y subárbol con misma fecha (P-4); mover y renombrar entran (P-5); profundidad configurable (P-6, CA-9); unicidad por tipo (P-7, CA-3, RN-5); 409 en carpetas sin fusionar (P-8); sin descarga desde papelera y corrección de «descárgalos» (P-9); «Eliminado por», «Eliminados por mí» e indexación al futuro (P-10); sin auditar crear/renombrar/mover (P-11); eliminar sin confirmación con «Ver papelera» (P-12, CA-10) | Respuestas de Adrián | Adrián |
 | 2026-09-30 | CA-15: restaurar por encima de la profundidad máxima responde `422` y sugiere mover la carpeta original. CA-18: «Vaciar» es diferido («Vaciando…»). Estado `Lista` | Aprobación del plan | Adrián |
+| 2026-09-30 | Estado `En curso`: T-01 (migraciones, entidades y fragmentos de `access`) en la rama | `/implement 006` | — |

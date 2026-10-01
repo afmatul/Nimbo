@@ -22,7 +22,7 @@ const HUGE_SIZE = 9_007_199_254_740_993n;
 /** Rama de propiedad de `accessibleNodes` tal como llega a Postgres (parámetro ya numerado). */
 const OWNERSHIP_BRANCH =
   /FROM archivo a WHERE a\.propietario_id = \$\d+ AND a\.eliminado_en IS NULL/;
-const OWNER_INDEXES = /idx_archivo_propietario_creado|uq_archivo_propietario_nombre/;
+const OWNER_INDEXES = /idx_archivo_(carpeta|raiz)_creado|uq_archivo_hermanos_nombre/;
 
 interface CapturedQuery {
   readonly sql: string;
@@ -137,7 +137,9 @@ describe('TypeOrmNodeRepository (CA-13, CA-16)', () => {
     brunoFile = brunos[0];
     trashedId = trashed[0].id;
     await app.asActor(ana, (manager) =>
-      manager.query('UPDATE archivo SET eliminado_en = now() WHERE id = $1', [trashedId]),
+      manager.query('UPDATE archivo SET eliminado_en = now(), purgar_en = now() WHERE id = $1', [
+        trashedId,
+      ]),
     );
   });
 

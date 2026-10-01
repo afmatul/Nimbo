@@ -5,6 +5,7 @@ import type { DataSource } from 'typeorm';
 import { UsuarioOrmEntity } from '../../../src/modules/identity/infrastructure/persistence/usuario.orm-entity';
 import { ArchivoOrmEntity } from '../../../src/modules/storage/infrastructure/persistence/archivo.orm-entity';
 import { CargaOrmEntity } from '../../../src/modules/storage/infrastructure/persistence/carga.orm-entity';
+import { CarpetaOrmEntity } from '../../../src/modules/storage/infrastructure/persistence/carpeta.orm-entity';
 import { VersionArchivoOrmEntity } from '../../../src/modules/storage/infrastructure/persistence/version-archivo.orm-entity';
 import { connectAsOwner } from '../../support/database-urls';
 
@@ -14,9 +15,10 @@ const STORAGE_ENTITIES = [
   ['archivo', ArchivoOrmEntity],
   ['version_archivo', VersionArchivoOrmEntity],
   ['carga', CargaOrmEntity],
+  ['carpeta', CarpetaOrmEntity],
 ] as const;
 
-/** Entidades de 005 contra el esquema real que dejan las migraciones (`synchronize: false`). */
+/** Entidades de 005 y 006 contra el esquema real que dejan las migraciones (`synchronize: false`). */
 describe('entidades ORM de storage (RN-11)', () => {
   let owner: DataSource;
 

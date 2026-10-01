@@ -18,6 +18,10 @@ export class CargaOrmEntity {
   @Column('varchar', { length: 255 })
   nombre!: string;
 
+  /** Carpeta destino (006); sin FK: se valida al iniciar y al completar. `NULL` es la raíz. */
+  @Column('uuid', { name: 'carpeta_destino_id', nullable: true })
+  carpetaDestinoId!: string | null;
+
   @Column('boolean', { name: 'conservar_ambos' })
   conservarAmbos!: boolean;
 

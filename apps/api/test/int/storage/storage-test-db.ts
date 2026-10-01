@@ -86,7 +86,11 @@ export const columnsOf = async (
 export interface FileRowOptions {
   readonly name?: string;
   readonly sizeBytes?: bigint;
+  /** En la papelera; la fecha de purga (`ck_archivo_papelera`) es `purgeAt` o, si falta, la misma. */
   readonly deletedAt?: Date | null;
+  readonly purgeAt?: Date;
+  readonly folderId?: string | null;
+  readonly trashedWithFolderId?: string | null;
 }
 
 /**
@@ -102,10 +106,11 @@ export const insertFileWithVersion = async (
   const versionId = randomUUID();
   const size = String(options.sizeBytes ?? 1024n);
   const now = new Date();
+  const deletedAt = options.deletedAt ?? null;
   await runner.query(
     `INSERT INTO archivo (id, propietario_id, nombre, tipo, tamano_bytes, version_actual_id, creado_en,
-                          actualizado_en, eliminado_en)
-     VALUES ($1, $2, $3, 'pdf', $4, $5, $6, $6, $7)`,
+                          actualizado_en, eliminado_en, purgar_en, carpeta_id, eliminado_con_carpeta_id)
+     VALUES ($1, $2, $3, 'pdf', $4, $5, $6, $6, $7, $8, $9, $10)`,
     [
       fileId,
       ownerId,
@@ -113,7 +118,10 @@ export const insertFileWithVersion = async (
       size,
       versionId,
       now,
-      options.deletedAt ?? null,
+      deletedAt,
+      deletedAt === null ? null : (options.purgeAt ?? deletedAt),
+      options.folderId ?? null,
+      options.trashedWithFolderId ?? null,
     ],
   );
   await runner.query(
@@ -122,6 +130,52 @@ export const insertFileWithVersion = async (
     [versionId, fileId, `u/${ownerId}/${fileId}/${versionId}`, size, ownerId, now],
   );
   return { fileId, versionId };
+};
+
+export interface FolderRowOptions {
+  readonly name?: string;
+  /** Carpeta padre ya insertada; sin ella, la carpeta va en la raíz. */
+  readonly parent?: { readonly id: string; readonly path: string; readonly depth: number } | null;
+  readonly deletedAt?: Date | null;
+  readonly purgeAt?: Date;
+  readonly trashedWithFolderId?: string | null;
+}
+
+export interface FolderRow {
+  readonly id: string;
+  readonly path: string;
+  readonly depth: number;
+}
+
+/** Inserta una `carpeta` con su `ruta` (`/<id>/…/<id>/`) y `profundidad` derivadas del padre; devuelve las tres. */
+export const insertFolder = async (
+  runner: Queryable,
+  ownerId: string,
+  options: FolderRowOptions = {},
+): Promise<FolderRow> => {
+  const id = randomUUID();
+  const parent = options.parent ?? null;
+  const folder = { id, path: `${parent?.path ?? '/'}${id}/`, depth: (parent?.depth ?? 0) + 1 };
+  const deletedAt = options.deletedAt ?? null;
+  const now = new Date();
+  await runner.query(
+    `INSERT INTO carpeta (id, propietario_id, carpeta_padre_id, nombre, ruta, profundidad, creado_en, actualizado_en,
+                          eliminado_en, purgar_en, eliminado_con_carpeta_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $7, $8, $9, $10)`,
+    [
+      id,
+      ownerId,
+      parent?.id ?? null,
+      options.name ?? `carpeta-${id}`,
+      folder.path,
+      folder.depth,
+      now,
+      deletedAt,
+      deletedAt === null ? null : (options.purgeAt ?? deletedAt),
+      options.trashedWithFolderId ?? null,
+    ],
+  );
+  return folder;
 };
 
 export interface UploadRowOptions {
@@ -199,7 +253,7 @@ export const connectAsAppDatabase = async (): Promise<AppDatabase> => {
   };
 };
 
-/** Borra (como el dueño) las cargas, archivos y cuentas de una suite que confirmó *fixtures*. */
+/** Borra (como el dueño) las cargas, archivos, carpetas y cuentas de una suite que confirmó *fixtures*. */
 export const removeAccounts = async (
   owner: DataSource,
   accountIds: readonly string[],
@@ -208,6 +262,7 @@ export const removeAccounts = async (
   await owner.transaction(async (manager) => {
     await manager.query('DELETE FROM carga WHERE propietario_id = ANY($1)', [accountIds]);
     await manager.query('DELETE FROM archivo WHERE propietario_id = ANY($1)', [accountIds]);
+    await manager.query('DELETE FROM carpeta WHERE propietario_id = ANY($1)', [accountIds]);
     await manager.query('DELETE FROM usuario WHERE id = ANY($1)', [accountIds]);
   });
 };
