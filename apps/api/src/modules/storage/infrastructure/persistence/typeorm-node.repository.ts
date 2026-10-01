@@ -15,6 +15,7 @@ import type { FileVersion } from '../../domain/file-version';
 
 import { ArchivoOrmEntity } from './archivo.orm-entity';
 import { decodeFileListCursor, encodeFileListCursor } from './file-list-cursor';
+import { toTrashState, trashColumns } from './trash-columns';
 import { VersionArchivoOrmEntity } from './version-archivo.orm-entity';
 
 const ALIAS = 'archivo';
@@ -35,13 +36,14 @@ const toFile = (row: ArchivoOrmEntity): File =>
   File.rehydrate({
     id: row.id,
     ownerId: row.propietarioId,
+    folderId: row.carpetaId,
     name: FileName.of(row.nombre),
     kind: row.tipo,
     sizeBytes: row.tamanoBytes,
     currentVersionId: row.versionActualId,
     createdAt: row.creadoEn,
     updatedAt: row.actualizadoEn,
-    deletedAt: row.eliminadoEn,
+    trash: toTrashState(row),
   });
 
 /**
@@ -96,13 +98,14 @@ export class TypeOrmNodeRepository implements INodeRepository {
     await manager.insert(ArchivoOrmEntity, {
       id: file.id,
       propietarioId: file.ownerId,
+      carpetaId: file.folderId,
       nombre: file.name.value,
       tipo: file.kind,
       tamanoBytes: file.sizeBytes,
       versionActualId: file.currentVersionId,
       creadoEn: file.createdAt,
       actualizadoEn: file.updatedAt,
-      eliminadoEn: file.deletedAt,
+      ...trashColumns(file.trash),
     });
     await manager.insert(VersionArchivoOrmEntity, {
       id: version.id,

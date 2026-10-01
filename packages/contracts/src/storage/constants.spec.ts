@@ -9,12 +9,13 @@ import {
   STORAGE_ERROR_CODES,
   STORAGE_FIELD_ISSUE_REASONS,
   STORAGE_FIELD_MESSAGES,
+  STORAGE_NODE_FIELD_MESSAGES,
   UPLOAD_TTL_HOURS,
   formatBytes,
 } from '../index';
 
 describe('STORAGE_ERROR_CODES', () => {
-  it('CA-3, CA-4, CA-7, CA-19: es exactamente el catálogo de plan §5', () => {
+  it('CA-3, CA-4, CA-7, CA-19: es exactamente el catálogo de 005 (plan §5) más el de 006 (plan §4)', () => {
     expect(Object.values(STORAGE_ERROR_CODES).sort()).toEqual(
       [
         'STORAGE_INVALID_UPLOAD_REQUEST',
@@ -30,6 +31,9 @@ describe('STORAGE_ERROR_CODES', () => {
         'STORAGE_INVALID_FILE_TYPE',
         'STORAGE_NODE_NOT_FOUND',
         'STORAGE_TOO_MANY_REQUESTS',
+        'STORAGE_INVALID_MOVE',
+        'STORAGE_FOLDER_DEPTH_EXCEEDED',
+        'STORAGE_INVALID_NODE_REQUEST',
       ].sort(),
     );
   });
@@ -51,6 +55,7 @@ describe('motivos', () => {
         'INVALID_SIZE',
         'UNKNOWN_FIELD',
         'INVALID_CURSOR',
+        'INVALID_FOLDER',
       ].sort(),
     );
   });
@@ -63,6 +68,15 @@ describe('motivos', () => {
       expect(message).toMatch(/\.$/);
     }
     expect(STORAGE_FIELD_MESSAGES.NAME_TOO_LONG).toContain(String(FILE_NAME_MAX_LENGTH));
+  });
+
+  it('CA-2 (006): carpetas y renombrar usan los mismos motivos, con mensajes de nombre sin «subir»', () => {
+    expect(Object.keys(STORAGE_NODE_FIELD_MESSAGES).sort()).toEqual(
+      [...STORAGE_FIELD_ISSUE_REASONS].sort(),
+    );
+    expect(STORAGE_NODE_FIELD_MESSAGES.INVALID_NAME).not.toMatch(/subir/i);
+    expect(STORAGE_NODE_FIELD_MESSAGES.NAME_TOO_LONG).toContain(String(FILE_NAME_MAX_LENGTH));
+    expect(STORAGE_NODE_FIELD_MESSAGES.NAME_TOO_LONG).not.toMatch(/subir/i);
   });
 
   it('CA-7: no pisa el FIELD_ISSUE_REASONS de identity en la raíz del paquete', () => {

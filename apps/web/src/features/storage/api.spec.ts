@@ -11,7 +11,14 @@ const UPLOAD_ID = '2f0c1d2e-3a4b-4c5d-8e6f-7a8b9c0d1e2f';
 const FILE_ID = '7a8b9c0d-1e2f-4c5d-8e6f-2f0c1d2e3a4b';
 const AT = '2026-09-30T10:00:00.000Z';
 const SIGNED_URL = 'https://s3.nimbo.test/nimbo/u/a?X-Amz-Signature=abc';
-const FILE = { id: FILE_ID, name: 'informe.docx', sizeBytes: 1024, kind: 'docx', createdAt: AT };
+const FILE = {
+  id: FILE_ID,
+  name: 'informe.docx',
+  sizeBytes: 1024,
+  kind: 'docx',
+  folderId: null,
+  createdAt: AT,
+};
 
 function storageError(
   code: string,

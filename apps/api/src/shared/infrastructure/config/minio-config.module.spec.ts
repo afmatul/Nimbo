@@ -25,6 +25,7 @@ const API_ENV: Env = {
   UPLOAD_COMPLETE_TIMEOUT_SECONDS: 900,
   RATE_LIMIT_UPLOAD_INIT_PER_MINUTE: 300,
   RATE_LIMIT_DOWNLOAD_URL_PER_MINUTE: 120,
+  FOLDER_MAX_DEPTH: 10,
   WEB_PUBLIC_URL: 'http://localhost',
   CORS_ORIGIN: ['http://localhost'],
   JWT_ACCESS_SECRET: 'secreto-de-prueba-de-al-menos-32-caracteres',

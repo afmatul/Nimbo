@@ -1,12 +1,15 @@
 import type { Actor } from '../../../shared';
 
 /**
- * Límites de almacenamiento del plan del actor, en bytes (DF-51, opción A). Solo estos dos: si otro módulo
- * necesita otros límites, los pide por un puerto de `billing` en lugar de ensanchar este tipo (ISP).
+ * Límites de almacenamiento del plan del actor (DF-51, opción A): bytes y, desde 006, la retención en papelera
+ * (plan 006 §7, decisión 1: es un límite de almacenamiento que consume `storage` mismo). Si otro módulo necesita
+ * otros límites, los pide por un puerto de `billing` en lugar de ensanchar este tipo (ISP).
  */
 export interface PlanLimits {
   readonly maxFileBytes: bigint;
   readonly storageQuotaBytes: bigint;
+  /** Días que un elemento eliminado espera en la papelera antes de la purga (RN-1, CA-19). */
+  readonly trashRetentionDays: number;
 }
 
 /**

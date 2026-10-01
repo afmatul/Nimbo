@@ -4,6 +4,10 @@ import type { DomainError } from '../../../shared/domain/errors';
 import {
   EmptyFileError,
   FileTooLargeError,
+  FolderDepthExceededError,
+  FolderNameConflictError,
+  InvalidMoveError,
+  InvalidNodeRequestError,
   InvalidFileTypeError,
   InvalidQueryError,
   InvalidUploadRequestError,
@@ -34,10 +38,19 @@ const ALL_ERRORS: readonly DomainError[] = [
   new InvalidFileTypeError('signature', 'pdf'),
   new NodeNotFoundError(),
   new StorageTooManyRequestsError(1),
+  new InvalidNodeRequestError([]),
+  new InvalidMoveError(),
+  new FolderDepthExceededError(1, 'place'),
+];
+
+/** Errores que comparten código con otro ya listado (mismo contrato, distinto mensaje). */
+const SHARED_CODE_ERRORS: readonly DomainError[] = [
+  new FolderNameConflictError(),
+  new FolderDepthExceededError(1, 'restore'),
 ];
 
 describe('contrato de códigos de `storage` (CA-7, CA-19)', () => {
-  it.each(ALL_ERRORS.map((error) => [error.code]))(
+  it.each([...ALL_ERRORS, ...SHARED_CODE_ERRORS].map((error) => [error.code]))(
     'CA-7: `%s` está en STORAGE_ERROR_CODES',
     (code) => {
       expect(Object.values(STORAGE_ERROR_CODES)).toContain(code);

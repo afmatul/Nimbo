@@ -42,6 +42,13 @@ const DEFAULT_UPLOAD_CLEANUP_INTERVAL_MINUTES = 10;
 const DEFAULT_UPLOAD_CLEANUP_BATCH_SIZE = 100;
 /** Tope de filas que devuelve `carga_expiradas` (005 plan §4): un lote mayor no tendría efecto. */
 const MAX_UPLOAD_CLEANUP_BATCH_SIZE = 1000;
+/** Profundidad máxima del árbol de carpetas (006 plan §7, decisión 2): configuración, no regla del plan. */
+const MAX_FOLDER_MAX_DEPTH = 50;
+const DEFAULT_FOLDER_MAX_DEPTH = 10;
+const DEFAULT_TRASH_PURGE_INTERVAL_MINUTES = 60;
+const DEFAULT_TRASH_PURGE_BATCH_SIZE = 100;
+/** Tope de filas que devuelve `papelera_vencida` (006 plan §3): un lote mayor no tendría efecto. */
+const MAX_TRASH_PURGE_BATCH_SIZE = 1000;
 
 /**
  * Valor de desarrollo de `JWT_ACCESS_SECRET` que trae `.env.example` (plan 002 §6.10). Público a propósito: en
@@ -169,14 +176,26 @@ const uploadCleanupShape = {
   ),
 };
 
+/** Carpetas en el `api` (006 plan §7, CA-9). */
+const foldersApiShape = {
+  FOLDER_MAX_DEPTH: intBetween(1, MAX_FOLDER_MAX_DEPTH, DEFAULT_FOLDER_MAX_DEPTH),
+};
+
+/** Purga programada de la papelera en el `worker` (006 plan §4, CA-19). */
+const trashPurgeShape = {
+  TRASH_PURGE_INTERVAL_MINUTES: positiveInt(DEFAULT_TRASH_PURGE_INTERVAL_MINUTES),
+  TRASH_PURGE_BATCH_SIZE: intBetween(1, MAX_TRASH_PURGE_BATCH_SIZE, DEFAULT_TRASH_PURGE_BATCH_SIZE),
+};
+
 /**
- * Forma del entorno del `worker`: el contrato común, su puerto de salud, MinIO y el barrido de cargas (005) y el SMTP
- * (001 plan §6.10); sin `PORT` ni `MINIO_PUBLIC_ENDPOINT`. `SMTP_PASSWORD` se declara **solo** aquí.
+ * Forma del entorno del `worker`: el contrato común, su puerto de salud, MinIO, el barrido de cargas (005), la purga
+ * de la papelera (006) y el SMTP (001 plan §6.10); sin `PORT` ni `MINIO_PUBLIC_ENDPOINT`. `SMTP_PASSWORD` se declara **solo** aquí.
  */
 export const workerEnvObjectSchema = sharedEnvBaseSchema.extend({
   ...workerPortShape,
   ...minioShape,
   ...uploadCleanupShape,
+  ...trashPurgeShape,
   SMTP_HOST: nonEmpty(),
   SMTP_PORT: requiredPort(),
   SMTP_TLS: oneOf(['none', 'starttls', 'implicit']),
@@ -186,14 +205,15 @@ export const workerEnvObjectSchema = sharedEnvBaseSchema.extend({
 });
 
 /**
- * Forma del entorno del `api`: además el puerto HTTP público, MinIO, la carga de archivos (005), la URL pública de
- * `web`, CORS y la clave que firma los tokens de acceso (002), que se declara **solo** aquí.
+ * Forma del entorno del `api`: además el puerto HTTP público, MinIO, la carga de archivos (005), las carpetas (006),
+ * la URL pública de `web`, CORS y la clave que firma los tokens de acceso (002), que se declara **solo** aquí.
  */
 export const apiEnvObjectSchema = sharedEnvBaseSchema.extend({
   ...workerPortShape,
   PORT: port(DEFAULT_API_PORT),
   ...minioShape,
   ...uploadApiShape,
+  ...foldersApiShape,
   WEB_PUBLIC_URL: url(),
   CORS_ORIGIN: urlList(),
   JWT_ACCESS_SECRET: z.string().min(JWT_SECRET_MIN_LENGTH, JWT_SECRET_LENGTH_MESSAGE),

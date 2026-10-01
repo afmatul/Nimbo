@@ -16,6 +16,7 @@ const FILES: readonly FileSummary[] = [
     name: 'Informe final.docx',
     sizeBytes: 1_500,
     kind: 'docx',
+    folderId: null,
     createdAt: '2026-09-01T10:00:00.000Z',
   },
   {
@@ -23,6 +24,7 @@ const FILES: readonly FileSummary[] = [
     name: 'foto.png',
     sizeBytes: 2_400_000,
     kind: 'imagen',
+    folderId: null,
     createdAt: '2026-09-02T10:00:00.000Z',
   },
   {
@@ -30,6 +32,7 @@ const FILES: readonly FileSummary[] = [
     name: 'notas.txt',
     sizeBytes: 12,
     kind: 'texto',
+    folderId: null,
     createdAt: '2026-09-03T10:00:00.000Z',
   },
 ];

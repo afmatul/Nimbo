@@ -18,6 +18,7 @@ function file(): File {
   return File.create({
     id: FILE_ID,
     ownerId: ACTOR.id,
+    folderId: null,
     name: parsed.name,
     kind: 'pdf',
     sizeBytes: 2048n,
@@ -52,6 +53,7 @@ describe('FilesController', () => {
           name: 'informe.pdf',
           sizeBytes: 2048,
           kind: 'pdf',
+          folderId: null,
           createdAt: CREATED.toISOString(),
         },
       ],

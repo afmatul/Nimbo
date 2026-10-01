@@ -208,6 +208,7 @@ export class UploadService {
         const session = UploadSession.start({
           ...ids,
           ownerId: actor.id,
+          folderId: null,
           name: input.name,
           keepBoth: input.keepBoth,
           declaredBytes: input.declaredBytes,

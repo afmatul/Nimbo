@@ -15,7 +15,11 @@ describe('dos inicios simultáneos con cupo para uno (CA-23)', () => {
 
   beforeAll(async () => {
     storage = await createStorageHttpApp({
-      limits: { maxFileBytes: BigInt(QUOTA_BYTES), storageQuotaBytes: BigInt(QUOTA_BYTES) },
+      limits: {
+        maxFileBytes: BigInt(QUOTA_BYTES),
+        storageQuotaBytes: BigInt(QUOTA_BYTES),
+        trashRetentionDays: 30,
+      },
     });
   });
 

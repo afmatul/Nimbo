@@ -46,6 +46,7 @@ const ACTOR: Actor = createActor('11111111-1111-4111-8111-111111111111', Role.CL
 const LIMITS: PlanLimits = {
   maxFileBytes: 1_000n * BigInt(MIB),
   storageQuotaBytes: 2_000n * BigInt(MIB),
+  trashRetentionDays: 30,
 };
 const CONFIG: UploadConfig = {
   partSizeBytes: BigInt(8 * MIB),
@@ -115,7 +116,7 @@ function setup() {
 type Setup = ReturnType<typeof setup>;
 
 function request(overrides: Partial<InitUploadInput> = {}): InitUploadInput {
-  return { name: 'informe.docx', sizeBytes: MIB, onConflict: 'ask', ...overrides };
+  return { name: 'informe.docx', sizeBytes: MIB, onConflict: 'ask', folderId: null, ...overrides };
 }
 
 function loggedPayloads(logger: Setup['logger']): string {
@@ -600,6 +601,7 @@ describe('UploadService.complete', () => {
         name: 'informe.docx',
         sizeBytes: 20 * MIB,
         kind: 'docx',
+        folderId: null,
         createdAt: NOW.toISOString(),
       },
     });

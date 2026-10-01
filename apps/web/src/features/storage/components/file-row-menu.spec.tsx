@@ -30,6 +30,7 @@ const FILE: FileSummary = {
   name: 'Informe final.docx',
   sizeBytes: 1_500,
   kind: 'docx',
+  folderId: null,
   createdAt: '2026-09-01T10:00:00.000Z',
 };
 

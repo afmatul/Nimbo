@@ -4,6 +4,13 @@ export { InvalidFileTypeError } from './invalid-file-type.error';
 export type { FileTypeRejectionReason } from './invalid-file-type.error';
 export { InvalidQueryError, InvalidUploadRequestError } from './invalid-request.errors';
 export {
+  FolderDepthExceededError,
+  FolderNameConflictError,
+  InvalidMoveError,
+  InvalidNodeRequestError,
+} from './node.errors';
+export type { FolderDepthOperation } from './node.errors';
+export {
   EmptyFileError,
   FileTooLargeError,
   QuotaExceededError,

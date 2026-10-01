@@ -22,6 +22,7 @@ function fileSummary(name: string, sizeBytes: number): FileSummary {
     name,
     sizeBytes,
     kind: 'otro',
+    folderId: null,
     createdAt: expiresAt,
   };
 }

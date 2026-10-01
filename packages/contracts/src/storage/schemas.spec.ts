@@ -30,12 +30,19 @@ function reasonsOf(input: unknown): string[] {
 }
 
 describe('initUploadSchema', () => {
-  it('CA-1: acepta `{ name, sizeBytes }` y `onConflict` ausente es `ask`', () => {
+  it('CA-1: acepta `{ name, sizeBytes }`; `onConflict` ausente es `ask` y `folderId` ausente es la raíz', () => {
     expect(initUploadSchema.parse({ name: 'informe.docx', sizeBytes: 1024 })).toEqual({
       name: 'informe.docx',
       sizeBytes: 1024,
       onConflict: 'ask',
+      folderId: null,
     });
+  });
+
+  it('CA-6 (006): acepta la carpeta destino', () => {
+    const parsed = initUploadSchema.parse({ name: 'a.pdf', sizeBytes: 1, folderId: UUID });
+
+    expect(parsed.folderId).toBe(UUID);
   });
 
   it('CA-6: acepta `onConflict: keep_both`', () => {
@@ -65,7 +72,8 @@ describe('initUploadSchema', () => {
     [{ name: 'a.txt', sizeBytes: -1 }, 'sizeBytes:INVALID_SIZE'],
     [{ name: 'a.txt', sizeBytes: '10' }, 'sizeBytes:INVALID_SIZE'],
     [{ name: 'a.txt', sizeBytes: Number.MAX_SAFE_INTEGER + 1 }, 'sizeBytes:INVALID_SIZE'],
-    [{ name: 'a.txt', sizeBytes: 1, folderId: UUID }, 'folderId:UNKNOWN_FIELD'],
+    [{ name: 'a.txt', sizeBytes: 1, folderId: 'no-es-uuid' }, 'folderId:INVALID_FOLDER'],
+    [{ name: 'a.txt', sizeBytes: 1, parentId: UUID }, 'parentId:UNKNOWN_FIELD'],
   ])('CA-7: %j se rechaza con %s', (input, expected) => {
     expect(reasonsOf(input)).toEqual([expected]);
   });
@@ -165,11 +173,19 @@ describe('resumeUploadResponseSchema', () => {
 });
 
 describe('FileSummary, listado y descarga', () => {
-  const file = { id: UUID, name: 'informe.docx', sizeBytes: 1024, kind: 'docx', createdAt: AT };
+  const file = {
+    id: UUID,
+    name: 'informe.docx',
+    sizeBytes: 1024,
+    kind: 'docx',
+    folderId: null,
+    createdAt: AT,
+  };
 
-  it('CA-1: `FileSummary` es `{ id, name, sizeBytes, kind, createdAt }`', () => {
+  it('CA-1: `FileSummary` es `{ id, name, sizeBytes, kind, folderId, createdAt }`', () => {
     expect(fileSummarySchema.parse(file)).toEqual(file);
     expect(fileSummarySchema.safeParse({ ...file, objectKey: 'u/x' }).success).toBe(false);
+    expect(fileSummarySchema.safeParse({ ...file, folderId: 'x' }).success).toBe(false);
   });
 
   it('CA-12: `kind` sale del catálogo de tipos', () => {

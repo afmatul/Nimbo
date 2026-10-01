@@ -34,6 +34,7 @@ export const TEST_PART_BYTES = 5 * MIB;
 export const DEFAULT_TEST_LIMITS: PlanLimits = {
   maxFileBytes: BigInt(64 * MIB),
   storageQuotaBytes: BigInt(256 * MIB),
+  trashRetentionDays: 30,
 };
 /** Bucket propio y **versionado**, como el de `infra/minio/init.sh`: el compartido del arnés no tiene versionado. */
 export const STORAGE_HTTP_BUCKET = 'nimbo-storage-http';

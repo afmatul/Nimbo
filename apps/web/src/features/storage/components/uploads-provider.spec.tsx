@@ -32,7 +32,14 @@ function fakeApi(overrides: Partial<StorageApi> = {}): jest.Mocked<StorageApi> {
     resume: jest.fn(() => new Promise<ResumeUploadResponse>(() => undefined)),
     complete: jest.fn(() =>
       Promise.resolve({
-        file: { id: FILE_ID, name: 'informe.docx', sizeBytes: 4, kind: 'docx', createdAt: AT },
+        file: {
+          id: FILE_ID,
+          name: 'informe.docx',
+          sizeBytes: 4,
+          kind: 'docx',
+          folderId: null,
+          createdAt: AT,
+        },
       }),
     ),
     cancel: jest.fn(() => Promise.resolve()),

@@ -50,11 +50,12 @@ describe('validación de entrada de `storage` (CA-7, CA-16)', () => {
     );
   });
 
-  it('CA-7: un inicio válido pasa con `onConflict` por defecto en `ask`', () => {
+  it('CA-7: un inicio válido pasa con `onConflict` en `ask` y `folderId` en la raíz por defecto', () => {
     expect(initPipe.transform({ name: 'a.pdf', sizeBytes: 10 }, BODY)).toEqual({
       name: 'a.pdf',
       sizeBytes: 10,
       onConflict: 'ask',
+      folderId: null,
     });
   });
 

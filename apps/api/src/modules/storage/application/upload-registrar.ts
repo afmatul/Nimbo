@@ -54,6 +54,7 @@ export class UploadRegistrar {
       const file = File.create({
         id: session.fileId,
         ownerId: actor.id,
+        folderId: session.folderId,
         name,
         kind: verified.kind,
         sizeBytes: verified.sizeBytes,

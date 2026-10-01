@@ -33,6 +33,7 @@ const CONFIG: FileServiceConfig = { downloadUrlPerMinute: DOWNLOAD_PER_MINUTE };
 const FILE = File.create({
   id: FILE_ID,
   ownerId: OWNER_ID,
+  folderId: null,
   name: FileName.of('Informe final.docx'),
   kind: 'docx',
   sizeBytes: 1_024n,

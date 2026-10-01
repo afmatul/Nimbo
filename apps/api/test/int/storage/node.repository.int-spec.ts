@@ -37,6 +37,7 @@ const aFile = (owner: Actor, name: string, minute: number): [File, FileVersion] 
   const file = File.create({
     id,
     ownerId: owner.id,
+    folderId: null,
     name: FileName.of(name),
     kind: 'pdf',
     sizeBytes: HUGE_SIZE,

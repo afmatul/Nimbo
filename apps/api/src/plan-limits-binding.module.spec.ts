@@ -22,6 +22,7 @@ describe('PlanLimitsBindingModule', () => {
           slug: 'personal',
           cuotaBytes: 16106127360n,
           maxArchivoBytes: 52428800n,
+          diasRetencionPapelera: 7,
         }),
       })
       .compile();
@@ -31,6 +32,7 @@ describe('PlanLimitsBindingModule', () => {
     await expect(provider.limitsFor(ACTOR)).resolves.toEqual({
       maxFileBytes: 52428800n,
       storageQuotaBytes: 16106127360n,
+      trashRetentionDays: 7,
     });
     await moduleRef.close();
   });

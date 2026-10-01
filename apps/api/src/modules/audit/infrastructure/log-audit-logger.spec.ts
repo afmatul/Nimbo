@@ -24,9 +24,17 @@ const uploadCompleted = (overrides: Partial<AuditRecord> = {}): AuditRecord => (
 });
 
 describe('LogAuditLogger (IAuditLogger provisional)', () => {
-  it('CA-20: el catálogo `AuditAction` de 005 es exactamente las tres acciones de carga y descarga', () => {
+  it('CA-20 (005), CA-24 (006): el catálogo `AuditAction` es carga, descarga y papelera', () => {
     expect(Object.values(AuditAction).sort()).toEqual(
-      ['file.download_url_issued', 'file.upload_completed', 'file.upload_rejected'].sort(),
+      [
+        'file.download_url_issued',
+        'file.upload_completed',
+        'file.upload_rejected',
+        'node.trashed',
+        'node.restored',
+        'node.purged',
+        'trash.emptied',
+      ].sort(),
     );
   });
 

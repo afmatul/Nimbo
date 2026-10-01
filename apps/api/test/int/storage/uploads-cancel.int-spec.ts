@@ -109,6 +109,7 @@ describe('DELETE /uploads/:id y la carrera con complete (CA-22)', () => {
     storage.limits.setLimits({
       maxFileBytes: DEFAULT_TEST_LIMITS.maxFileBytes,
       storageQuotaBytes: BigInt(SMALL_BYTES + SMALL_BYTES / 2),
+      trashRetentionDays: 30,
     });
     const client = await storage.newClient();
     const paused = await start(client, 'pausada.txt', SMALL_BYTES);

@@ -109,6 +109,18 @@ const STORAGE_MESSAGES: Readonly<Record<string, StorageMessageBuilder>> = {
     'No pudimos leer esta página de la lista.',
     'Actualiza la lista e inténtalo de nuevo.',
   ),
+  [STORAGE_ERROR_CODES.STORAGE_INVALID_NODE_REQUEST]: fixed(
+    'El nombre no es válido.',
+    'Revisa el nombre y vuelve a intentarlo.',
+  ),
+  [STORAGE_ERROR_CODES.STORAGE_INVALID_MOVE]: fixed(
+    'No puedes mover una carpeta dentro de sí misma.',
+    'Elige otra carpeta de destino.',
+  ),
+  [STORAGE_ERROR_CODES.STORAGE_FOLDER_DEPTH_EXCEEDED]: (details) => ({
+    cause: `Llegaste al máximo de ${String(details['maxDepth'] ?? '')} niveles de carpetas.`,
+    fix: 'Crea la carpeta en otro lugar.',
+  }),
 };
 
 const CODE_MESSAGES: Readonly<Record<string, string>> = {

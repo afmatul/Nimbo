@@ -9,6 +9,7 @@ export function toFileSummary(file: File): FileSummary {
     name: file.name.value,
     sizeBytes: Number(file.sizeBytes),
     kind: file.kind,
+    folderId: file.folderId,
     createdAt: file.createdAt.toISOString(),
   };
 }

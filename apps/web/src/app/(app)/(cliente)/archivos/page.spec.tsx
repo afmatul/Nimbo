@@ -27,6 +27,7 @@ const INFORME: FileSummary = {
   name: 'informe.docx',
   sizeBytes: 1_500,
   kind: 'docx',
+  folderId: null,
   createdAt: AT,
 };
 const NUEVO: FileSummary = {

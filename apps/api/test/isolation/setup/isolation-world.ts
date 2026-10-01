@@ -180,6 +180,7 @@ const insertFiles = async (
       const file = File.create({
         id: ids.fileId,
         ownerId: owner.id,
+        folderId: null,
         name: FileName.of(name),
         kind: 'texto',
         sizeBytes: WORLD_FILE_BYTES,
@@ -215,6 +216,7 @@ const insertUploads = async (
       const session = UploadSession.start({
         id: randomUUID(),
         ownerId: owner.id,
+        folderId: null,
         fileId: randomUUID(),
         versionId: randomUUID(),
         name: FileName.of(`carga-${String(index + 1)}.txt`),
