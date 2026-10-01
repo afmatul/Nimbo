@@ -2,13 +2,13 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Planificada (2026-09-28) |
+| Estado | Hecha (2026-09-30) |
 | Dueño | Fátima |
 | Fase | 1 |
 | Requisitos | RF-19 (parcial), RNF-10, RNF-11 |
 | Depende de | 000 |
 | Habilita | 005 y 007 (límites), 008. El catálogo público y la suscripción Personal los hace la 009 (PD-40) |
-| Última actualización | 2026-09-29 |
+| Última actualización | 2026-09-30 |
 
 ## 1. Contexto y problema
 
