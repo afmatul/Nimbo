@@ -4,16 +4,21 @@ import type { FileName } from '../../domain/file-name.vo';
 import type { FileVersion } from '../../domain/file-version';
 import type { Folder } from '../../domain/folder';
 import type { FolderName } from '../../domain/folder-name.vo';
+import type { NodeOrder } from '../../domain/node-order';
 import type { StorageNode } from '../../domain/storage-node';
 
-/** Página pedida de una carpeta (`folderId: null` = raíz). `cursor` es el `nextCursor` opaco de la anterior. */
+/**
+ * Página pedida de una carpeta (`folderId: null` = raíz) en el orden `order`. `cursor` es el `nextCursor` opaco de la
+ * anterior, emitido con el mismo orden.
+ */
 export interface NodeListQuery {
   readonly folderId: string | null;
+  readonly order: NodeOrder;
   readonly cursor?: string;
   readonly limit: number;
 }
 
-/** Contenido directo de una carpeta: carpetas primero y luego archivos, cada grupo `creado_en DESC, id DESC`. */
+/** Contenido directo de una carpeta: carpetas primero y luego archivos, cada grupo en su clave de `order` (007 D-7). */
 export interface NodeListPage {
   readonly items: readonly StorageNode[];
   readonly nextCursor: string | null;
@@ -30,7 +35,7 @@ export interface INodeRepository {
   findAccessibleById(actor: Actor, id: string): Promise<File | null>;
   /** La carpeta si el actor tiene acceso y no está en la papelera; `null` en otro caso (CA-5). */
   findAccessibleFolder(actor: Actor, id: string): Promise<Folder | null>;
-  /** Subcarpetas y archivos directos de una carpeta o de la raíz (CA-5). Lanza `InvalidQueryError` si el cursor no es válido. */
+  /** Subcarpetas y archivos directos de una carpeta o de la raíz (CA-5). Lanza `InvalidQueryError` si el cursor no es válido o es de otro orden. */
   listContents(actor: Actor, query: NodeListQuery): Promise<NodeListPage>;
   /** Ancestros de `folder`, desde la raíz y sin ella (migas, CA-5). */
   breadcrumbs(actor: Actor, folder: Folder): Promise<readonly Folder[]>;

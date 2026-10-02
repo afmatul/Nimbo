@@ -162,13 +162,15 @@ describe('carpetas por HTTP (006 CA-1, CA-2, CA-3, CA-5, CA-8, CA-9)', () => {
   });
 
   describe('PATCH /folders/:folderId', () => {
-    it('CA-4: renombra la carpeta', async () => {
+    it('CA-4: renombra la carpeta y avanza su fecha de modificación (007 `updatedAt`)', async () => {
       const folder = await created(ana, 'Borrador');
 
       const response = await ana.renameFolder(folder.id, { name: 'Final' });
 
       expect(response.status).toBe(200);
-      expect(folderSummarySchema.parse(response.body)).toEqual({ ...folder, name: 'Final' });
+      const renamed = folderSummarySchema.parse(response.body);
+      expect(renamed).toEqual({ ...folder, name: 'Final', updatedAt: renamed.updatedAt });
+      expect(Date.parse(renamed.updatedAt)).toBeGreaterThanOrEqual(Date.parse(folder.updatedAt));
     });
 
     it('CA-3: el nombre de una hermana es 409 y no cambia nada', async () => {

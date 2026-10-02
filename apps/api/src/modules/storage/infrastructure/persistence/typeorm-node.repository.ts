@@ -16,12 +16,14 @@ import type { FileVersion } from '../../domain/file-version';
 import { Folder } from '../../domain/folder';
 import { FolderName } from '../../domain/folder-name.vo';
 import { FolderPath } from '../../domain/folder-path';
+import type { NodeGroup, NodeOrder } from '../../domain/node-order';
 import type { StorageNode } from '../../domain/storage-node';
 
 import { ArchivoOrmEntity } from './archivo.orm-entity';
 import { CarpetaOrmEntity } from './carpeta.orm-entity';
 import { decodeNodeListCursor, encodeNodeListCursor } from './node-list-cursor';
 import type { NodeListPosition } from './node-list-cursor';
+import { afterCondition, orderByOf } from './node-order-sql';
 import { nodesIn, rebaseSubtree } from './node-sql';
 import type { Condition, NodeTable } from './node-sql';
 import { toTrashState, trashColumns } from './trash-columns';
@@ -93,30 +95,39 @@ const toFolderRow = (folder: Folder): CarpetaOrmEntity => ({
   ...trashColumns(folder.trash),
 });
 
-/** Página con `nextCursor` en la última fila si quedan más. */
-const pageOf = <T extends StorageNode>(
-  items: readonly T[],
+/** Página con `nextCursor` (emitido con `order`) en la última fila si quedan más. */
+const pageOf = (
+  order: NodeOrder,
+  items: readonly StorageNode[],
   hasMore: boolean,
-): { items: readonly T[]; nextCursor: string | null } => {
+): NodeListPage => {
   const last = items.at(-1);
   if (!hasMore || last === undefined) return { items, nextCursor: null };
-  const position = { type: last.type, createdAt: last.createdAt, id: last.id };
-  return { items, nextCursor: encodeNodeListCursor(position) };
+  return { items, nextCursor: encodeNodeListCursor(order, last) };
 };
 
-/** Orden del listado (`creado_en DESC, id DESC`) a partir de `after` (exclusivo), con `take` filas como máximo. */
-const newestFirst = <T extends ObjectLiteral>(
+/** Una página de un grupo del listado: su orden (`node-order-sql`) a partir de `after` (exclusivo). */
+interface GroupPage {
+  readonly group: NodeGroup;
+  readonly query: NodeListQuery;
+  readonly after: NodeListPosition | null;
+}
+
+/**
+ * Ordena `builder` (alias `alias`) por la clave del grupo y deja `limit + 1` filas para saber si hay más. `orderBy` con
+ * `lower(...)` funciona porque se usa `limit` y no `take` (R-1): TypeORM no envuelve la consulta.
+ */
+const ordered = <T extends ObjectLiteral>(
   builder: SelectQueryBuilder<T>,
   alias: string,
-  after: NodeListPosition | null,
-  take: number,
+  page: GroupPage,
 ): SelectQueryBuilder<T> => {
-  builder.orderBy(`${alias}.creadoEn`, 'DESC').addOrderBy(`${alias}.id`, 'DESC').limit(take);
-  if (after === null) return builder;
-  return builder.andWhere(`(${alias}.creadoEn, ${alias}.id) < (:afterCreatedAt, :afterId)`, {
-    afterCreatedAt: after.createdAt,
-    afterId: after.id,
-  });
+  const key = page.query.order.keyFor(page.group);
+  builder.orderBy().limit(page.query.limit + 1);
+  orderByOf(alias, key).forEach(([column, direction]) => builder.addOrderBy(column, direction));
+  if (page.after === null) return builder;
+  const after = afterCondition(alias, key, page.after);
+  return builder.andWhere(after.sql, after.parameters);
 };
 
 /** Nombres ocupados por `exact` o sus copias entre los hijos de `folderId`, sin `exceptId`. */
@@ -164,20 +175,25 @@ export class TypeOrmNodeRepository implements INodeRepository {
     return row === null ? null : toFolder(row);
   }
 
-  /** Dos consultas indexadas, carpetas y luego archivos, en lugar de un `UNION ALL` de entidades distintas (R-2). */
+  /**
+   * Dos consultas, carpetas y luego archivos, en lugar de un `UNION ALL` de entidades distintas (006 R-2); cada una en
+   * la clave de su grupo (007 D-7). Un cursor de archivos salta las carpetas.
+   */
   async listContents(actor: Actor, query: NodeListQuery): Promise<NodeListPage> {
-    const after = query.cursor === undefined ? null : decodeNodeListCursor(query.cursor);
+    const { order, limit, cursor } = query;
+    const after = cursor === undefined ? null : decodeNodeListCursor(cursor, order);
     const folders =
-      after?.type === 'file' ? [] : await this.childFolders(actor, query, after, query.limit + 1);
-    if (folders.length > query.limit) return pageOf(folders.slice(0, query.limit), true);
-    const room = query.limit - folders.length;
-    const files = await this.childFiles(
-      actor,
-      query,
-      after?.type === 'file' ? after : null,
-      room + 1,
-    );
-    return pageOf([...folders, ...files.slice(0, room)], files.length > room);
+      after?.group === 'file'
+        ? []
+        : await this.childFolders(actor, { group: 'folder', query, after });
+    if (folders.length > limit) return pageOf(order, folders.slice(0, limit), true);
+    const room = limit - folders.length;
+    const files = await this.childFiles(actor, {
+      group: 'file',
+      query: { ...query, limit: room },
+      after: after?.group === 'file' ? after : null,
+    });
+    return pageOf(order, [...folders, ...files.slice(0, room)], files.length > room);
   }
 
   async breadcrumbs(actor: Actor, folder: Folder): Promise<readonly Folder[]> {
@@ -320,27 +336,17 @@ export class TypeOrmNodeRepository implements INodeRepository {
       .andWhere(`${alias}.eliminadoEn IS NULL`);
   }
 
-  private async childFolders(
-    actor: Actor,
-    query: NodeListQuery,
-    after: NodeListPosition | null,
-    take: number,
-  ): Promise<Folder[]> {
-    const children = childOf(`${FOLDER_ALIAS}.carpetaPadreId`, query.folderId);
+  private async childFolders(actor: Actor, page: GroupPage): Promise<Folder[]> {
+    const children = childOf(`${FOLDER_ALIAS}.carpetaPadreId`, page.query.folderId);
     const builder = this.liveFolders(actor).andWhere(children.sql, children.parameters);
-    const rows = await newestFirst(builder, FOLDER_ALIAS, after, take).getMany();
+    const rows = await ordered(builder, FOLDER_ALIAS, page).getMany();
     return rows.map(toFolder);
   }
 
-  private async childFiles(
-    actor: Actor,
-    query: NodeListQuery,
-    after: NodeListPosition | null,
-    take: number,
-  ): Promise<File[]> {
-    const children = childOf(`${FILE_ALIAS}.carpetaId`, query.folderId);
+  private async childFiles(actor: Actor, page: GroupPage): Promise<File[]> {
+    const children = childOf(`${FILE_ALIAS}.carpetaId`, page.query.folderId);
     const builder = this.liveFiles(actor).andWhere(children.sql, children.parameters);
-    const rows = await newestFirst(builder, FILE_ALIAS, after, take).getMany();
+    const rows = await ordered(builder, FILE_ALIAS, page).getMany();
     return rows.map(toFile);
   }
 

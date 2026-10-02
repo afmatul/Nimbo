@@ -28,6 +28,7 @@ import { CurrentActor, Role, Roles, ZodValidationPipe } from '../../../shared';
 import type { Actor } from '../../../shared';
 import { FolderService } from '../application/folder.service';
 import { toFolderRef, toFolderSummary, toNodeSummary } from '../application/node-summary';
+import { NodeOrder } from '../domain/node-order';
 
 import {
   nodeIdPipe,
@@ -45,16 +46,17 @@ import {
 export class FoldersController {
   constructor(private readonly folders: FolderService) {}
 
-  /** Sin `folderId`, la raíz. Reemplaza a `GET /files`. */
+  /** Sin `folderId`, la raíz; sin `sort` ni `dir`, el orden de 006 (007 D-6). Reemplaza a `GET /files`. */
   @Get('contents')
   async contents(
     @CurrentActor() actor: Actor,
     @Query(new ZodValidationPipe(folderContentsQuerySchema, storageQueryValidationError))
     query: FolderContentsQuery,
   ): Promise<FolderContentsResponse> {
-    const { folderId, cursor, limit } = query;
+    const { folderId, cursor, limit, sort, dir } = query;
     const result = await this.folders.contents(actor, {
       folderId: folderId ?? null,
+      order: NodeOrder.of(sort, dir),
       limit,
       ...(cursor === undefined ? {} : { cursor }),
     });

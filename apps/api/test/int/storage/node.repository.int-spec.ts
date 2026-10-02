@@ -6,6 +6,7 @@ import { InvalidQueryError } from '../../../src/modules/storage/domain/errors';
 import { File } from '../../../src/modules/storage/domain/file';
 import { FileName } from '../../../src/modules/storage/domain/file-name.vo';
 import { FileVersion } from '../../../src/modules/storage/domain/file-version';
+import { NodeOrder } from '../../../src/modules/storage/domain/node-order';
 import { ObjectKey } from '../../../src/modules/storage/domain/object-key';
 import { TypeOrmNodeRepository } from '../../../src/modules/storage/infrastructure/persistence/typeorm-node.repository';
 import { createActor, Role } from '../../../src/shared';
@@ -16,6 +17,8 @@ import { connectAsOwner } from '../../support/database-urls';
 import { connectAsAppDatabase, insertAccount, removeAccounts } from './storage-test-db';
 import type { AppDatabase } from './storage-test-db';
 
+/** El orden de 006 (sin `sort` ni `dir`, 007 D-6). */
+const DEFAULT_ORDER = NodeOrder.of();
 const MINUTE_MS = 60_000;
 const BASE_TIME = new Date('2026-09-30T10:00:00.000Z').getTime();
 const HUGE_SIZE = 9_007_199_254_740_993n;
@@ -214,9 +217,14 @@ describe('TypeOrmNodeRepository (CA-13, CA-16)', () => {
       const expected = [...anaFiles].sort(byNewestFirst).map((file) => file.id);
 
       const [first, second] = await app.asActor(ana, async () => {
-        const firstPage = await repository.listContents(ana, { folderId: null, limit: 3 });
+        const firstPage = await repository.listContents(ana, {
+          folderId: null,
+          order: DEFAULT_ORDER,
+          limit: 3,
+        });
         const secondPage = await repository.listContents(ana, {
           folderId: null,
+          order: DEFAULT_ORDER,
           limit: 3,
           cursor: firstPage.nextCursor ?? '',
         });
@@ -231,7 +239,11 @@ describe('TypeOrmNodeRepository (CA-13, CA-16)', () => {
 
     it('CA-1: una página exacta no promete otra (`nextCursor` nulo)', async () => {
       const page = await app.asActor(ana, () =>
-        repository.listContents(ana, { folderId: null, limit: anaFiles.length }),
+        repository.listContents(ana, {
+          folderId: null,
+          order: DEFAULT_ORDER,
+          limit: anaFiles.length,
+        }),
       );
 
       expect(page.items).toHaveLength(anaFiles.length);
@@ -240,7 +252,7 @@ describe('TypeOrmNodeRepository (CA-13, CA-16)', () => {
 
     it('CA-16: un rol interno recibe la lista vacía', async () => {
       const page = await app.asActor(admin, () =>
-        repository.listContents(admin, { folderId: null, limit: 50 }),
+        repository.listContents(admin, { folderId: null, order: DEFAULT_ORDER, limit: 50 }),
       );
 
       expect(page).toEqual({ items: [], nextCursor: null });
@@ -249,7 +261,12 @@ describe('TypeOrmNodeRepository (CA-13, CA-16)', () => {
     it('CA-7: un cursor que no emitió el repositorio es `InvalidQueryError`', async () => {
       await expect(
         app.asActor(ana, () =>
-          repository.listContents(ana, { folderId: null, limit: 3, cursor: 'basura' }),
+          repository.listContents(ana, {
+            folderId: null,
+            order: DEFAULT_ORDER,
+            limit: 3,
+            cursor: 'basura',
+          }),
         ),
       ).rejects.toBeInstanceOf(InvalidQueryError);
     });

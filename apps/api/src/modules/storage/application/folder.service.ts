@@ -12,6 +12,7 @@ import {
 } from '../domain/errors';
 import { Folder } from '../domain/folder';
 import { FolderName } from '../domain/folder-name.vo';
+import type { NodeOrder } from '../domain/node-order';
 
 import { FOLDER_CONFIG } from './folder-config';
 import type { FolderConfig } from './folder-config';
@@ -26,9 +27,10 @@ export interface CreateFolderCommand {
   readonly parentId: string | null;
 }
 
-/** Página pedida de una carpeta (`folderId: null` = raíz). */
+/** Página pedida de una carpeta (`folderId: null` = raíz) en el orden `order` (007 CA-10). */
 export interface FolderContentsQuery {
   readonly folderId: string | null;
+  readonly order: NodeOrder;
   readonly cursor?: string;
   readonly limit: number;
 }

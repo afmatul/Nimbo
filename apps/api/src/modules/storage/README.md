@@ -66,7 +66,9 @@ Tablas (migraciones `20260930100000`…`100300`, plan §4): `archivo`, `version_
 ## Carpetas (006, T-03)
 
 `INodeRepository` suma el árbol vivo: `findAccessibleFolder`, `listContents` (carpetas primero y luego archivos, cada
-grupo `creado_en DESC, id DESC`; cursor opaco `[grupo, creado_en, id]` de `node-list-cursor.ts`), `breadcrumbs`,
+grupo en la clave de `NodeOrder` (007): por defecto `creado_en DESC, id DESC`; `ORDER BY` y condición de teclado de
+`node-order-sql.ts`; cursor opaco `[sort, dir, grupo, valor, id]` de `node-list-cursor.ts`, rechazado si es de otro
+orden; la papelera conserva el suyo, `[tipo, eliminado_en, id]`, en `trash-cursor.ts`), `breadcrumbs`,
 `findTakenFolderNames`, `maxSubtreeDepth`, `insertFolder`, `renameFolder`, `renameFile`, `moveFile` y
 `moveFolderSubtree` (un `UPDATE` por prefijo de `ruta` que reubica todo el subárbol del dueño, también lo que está en la
 papelera).

@@ -3,6 +3,10 @@ import type { PipeTransform, Type } from '@nestjs/common';
 import { ROUTE_ARGS_METADATA } from '@nestjs/common/constants';
 import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
+import {
+  NODE_SORTS as CONTRACT_NODE_SORTS,
+  SORT_DIRECTIONS as CONTRACT_SORT_DIRECTIONS,
+} from '@nimbo/contracts';
 
 import { describeRoute, listRouteDeclarations } from '../../../../test/support/route-declarations';
 import { Role, ZodValidationPipe } from '../../../shared';
@@ -10,6 +14,7 @@ import { FileService } from '../application/file.service';
 import { SpaceSummaryService } from '../application/space-summary.service';
 import { UploadService } from '../application/upload.service';
 import { InvalidQueryError } from '../domain/errors';
+import { NODE_SORTS, SORT_DIRECTIONS } from '../domain/node-order';
 
 import { FilesController } from './files.controller';
 import { FoldersController } from './folders.controller';
@@ -151,4 +156,11 @@ describe('consulta de `GET /folders/contents` (007 plan §4)', () => {
       });
     },
   );
+});
+
+describe('orden del dominio y del contrato (007 CA-10)', () => {
+  it('`NodeOrder` acepta exactamente los criterios y direcciones de `@nimbo/contracts`', () => {
+    expect(NODE_SORTS).toEqual(CONTRACT_NODE_SORTS);
+    expect(SORT_DIRECTIONS).toEqual(CONTRACT_SORT_DIRECTIONS);
+  });
 });

@@ -7,6 +7,7 @@ import { File } from '../../../src/modules/storage/domain/file';
 import { FileName } from '../../../src/modules/storage/domain/file-name.vo';
 import { Folder } from '../../../src/modules/storage/domain/folder';
 import { FolderName } from '../../../src/modules/storage/domain/folder-name.vo';
+import { NodeOrder } from '../../../src/modules/storage/domain/node-order';
 import type { StorageNode } from '../../../src/modules/storage/domain/storage-node';
 import { TypeOrmNodeRepository } from '../../../src/modules/storage/infrastructure/persistence/typeorm-node.repository';
 import { createActor, Role } from '../../../src/shared';
@@ -22,6 +23,8 @@ import {
 } from './storage-test-db';
 import type { AppDatabase, FileRowOptions, FolderRow } from './storage-test-db';
 
+/** El orden de 006 (sin `sort` ni `dir`, 007 D-6). */
+const DEFAULT_ORDER = NodeOrder.of();
 const MAX_DEPTH = 10;
 const LATER = new Date('2026-10-02T09:00:00.000Z');
 /** Fragmento de `accessibleNodes` filtrado por tipo, tal como llega a Postgres. */
@@ -134,9 +137,14 @@ describe('TypeOrmNodeRepository · carpetas (006 CA-1, CA-3, CA-5, CA-7, CA-9)',
       await fileRow(ana, { folderId: box.id, deletedAt: new Date() });
 
       const [first, second] = await asAna(async () => {
-        const page = await repository.listContents(ana, { folderId: box.id, limit: 3 });
+        const page = await repository.listContents(ana, {
+          folderId: box.id,
+          order: DEFAULT_ORDER,
+          limit: 3,
+        });
         const next = await repository.listContents(ana, {
           folderId: box.id,
+          order: DEFAULT_ORDER,
           limit: 3,
           cursor: page.nextCursor ?? '',
         });
@@ -154,9 +162,14 @@ describe('TypeOrmNodeRepository · carpetas (006 CA-1, CA-3, CA-5, CA-7, CA-9)',
       const file = await fileRow(ana, { folderId: box.id });
 
       const [first, second] = await asAna(async () => {
-        const page = await repository.listContents(ana, { folderId: box.id, limit: 1 });
+        const page = await repository.listContents(ana, {
+          folderId: box.id,
+          order: DEFAULT_ORDER,
+          limit: 1,
+        });
         const next = await repository.listContents(ana, {
           folderId: box.id,
+          order: DEFAULT_ORDER,
           limit: 1,
           cursor: page.nextCursor ?? '',
         });
@@ -178,7 +191,7 @@ describe('TypeOrmNodeRepository · carpetas (006 CA-1, CA-3, CA-5, CA-7, CA-9)',
       await folderRow(bruno, 'Raíz de Bruno');
 
       const page = await app.asActor(carla, () =>
-        repository.listContents(carla, { folderId: null, limit: 50 }),
+        repository.listContents(carla, { folderId: null, order: DEFAULT_ORDER, limit: 50 }),
       );
 
       expect(idsOf(page.items)).toEqual([top.id, loose.fileId]);
@@ -186,7 +199,14 @@ describe('TypeOrmNodeRepository · carpetas (006 CA-1, CA-3, CA-5, CA-7, CA-9)',
 
     it('CA-5: un cursor que no emitió el repositorio es `InvalidQueryError`', async () => {
       await expect(
-        asAna(() => repository.listContents(ana, { folderId: null, limit: 3, cursor: 'basura' })),
+        asAna(() =>
+          repository.listContents(ana, {
+            folderId: null,
+            order: DEFAULT_ORDER,
+            limit: 3,
+            cursor: 'basura',
+          }),
+        ),
       ).rejects.toBeInstanceOf(InvalidQueryError);
     });
 
@@ -195,7 +215,7 @@ describe('TypeOrmNodeRepository · carpetas (006 CA-1, CA-3, CA-5, CA-7, CA-9)',
         const runner = manager.queryRunner;
         if (runner === undefined) throw new Error('withActor no abrió un QueryRunner');
         const spy = jest.spyOn(runner, 'query');
-        await repository.listContents(ana, { folderId: null, limit: 5 });
+        await repository.listContents(ana, { folderId: null, order: DEFAULT_ORDER, limit: 5 });
         const queries = spy.mock.calls.map(([sql, parameters]) => ({ sql, parameters }));
         spy.mockRestore();
         const explained: string[] = [];

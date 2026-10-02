@@ -25,10 +25,10 @@ import type { TrashState } from '../../domain/trash-state';
 
 import { ArchivoOrmEntity } from './archivo.orm-entity';
 import { CarpetaOrmEntity } from './carpeta.orm-entity';
-import { decodeNodeListCursor, encodeNodeListCursor } from './node-list-cursor';
 import { FILE_BYTES_SQL, nodesIn, rebaseSubtree, selectRows } from './node-sql';
 import type { Condition, NodeTable } from './node-sql';
 import { trashColumns } from './trash-columns';
+import { decodeTrashCursor, encodeTrashCursor } from './trash-cursor';
 import { toFile } from './typeorm-node.repository';
 
 /** Columnas de papelera de un nodo que vuelve. */
@@ -123,12 +123,12 @@ const ROOT_TABLE: Readonly<Record<TrashItemType, { table: NodeTable; alias: stri
   folder: { table: 'carpeta', alias: 'c' },
 };
 
-/** Página con `nextCursor` en la última fila si quedan más. El cursor lleva `eliminado_en` en lugar de `creado_en`. */
+/** Página con `nextCursor` (`[tipo, eliminado_en, id]`) en la última fila si quedan más. */
 const pageOf = (entries: readonly TrashEntry[], hasMore: boolean): TrashPage => {
   const last = entries.at(-1);
   if (!hasMore || last === undefined) return { items: entries, nextCursor: null };
-  const position = { type: last.type, createdAt: last.deletedAt, id: last.id };
-  return { items: entries, nextCursor: encodeNodeListCursor(position) };
+  const position = { type: last.type, deletedAt: last.deletedAt, id: last.id };
+  return { items: entries, nextCursor: encodeTrashCursor(position) };
 };
 
 /**
@@ -175,13 +175,13 @@ export class TypeOrmTrashRepository implements ITrashRepository {
   }
 
   async listTrash(actor: Actor, query: TrashListQuery): Promise<TrashPage> {
-    const after = query.cursor === undefined ? null : decodeNodeListCursor(query.cursor);
+    const after = query.cursor === undefined ? null : decodeTrashCursor(query.cursor);
     const filter: Condition =
       after === null
         ? { sql: 'true', parameters: {} }
         : {
             sql: '(n.eliminado_en, n.id) < (:afterDeletedAt, :afterId)',
-            parameters: { afterDeletedAt: after.createdAt, afterId: after.id },
+            parameters: { afterDeletedAt: after.deletedAt, afterId: after.id },
           };
     const rows = await this.entries(actor, filter, query.limit + 1);
     return pageOf(rows.slice(0, query.limit).map(toEntry), rows.length > query.limit);
