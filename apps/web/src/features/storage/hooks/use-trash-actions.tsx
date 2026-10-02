@@ -76,11 +76,69 @@ function announceRestore(attempts: readonly RestoreAttempt[]): readonly RestoreL
   return attempts.map((attempt) => attempt.line);
 }
 
-/** Selección, restaurar (uno o varios), eliminar definitivamente y vaciar (CA-13 a CA-18). */
-export function useTrashActions(
-  api: Pick<TrashApi, 'restore' | 'purge' | 'emptyTrash'>,
-  { removeItems, refreshSummary, startEmptying }: TrashState,
-): {
+/** Elementos marcados; `forget` los quita de la lista y de la selección (ya no están en la papelera). */
+function useSelection(removeItems: TrashState['removeItems']) {
+  const [selectedIds, setSelectedIds] = React.useState<ReadonlySet<string>>(NO_SELECTION);
+  const forget = React.useCallback(
+    (ids: ReadonlySet<string>): void => {
+      removeItems(ids);
+      setSelectedIds((previous) => new Set([...previous].filter((id) => !ids.has(id))));
+    },
+    [removeItems],
+  );
+  return { selectedIds, setSelectedIds, forget };
+}
+
+type Selection = ReturnType<typeof useSelection>;
+
+/** Restaurar uno o varios: quita lo restaurado (o ya inexistente) y anuncia el resultado (CA-15 a CA-17). */
+function useRestore(
+  api: Pick<TrashApi, 'restore'>,
+  selection: Selection,
+  refreshSummary: TrashState['refreshSummary'],
+) {
+  const [restoring, setRestoring] = React.useState(false);
+  const [result, setResult] = React.useState<readonly RestoreLine[] | null>(null);
+  const restore = async (items: readonly TrashItem[]): Promise<void> => {
+    setRestoring(true);
+    setResult(null);
+    const attempts = await restoreEach(api, items);
+    selection.forget(new Set(attempts.filter((a) => a.response || a.gone).map((a) => a.item.id)));
+    selection.setSelectedIds(NO_SELECTION);
+    refreshSummary();
+    setResult(announceRestore(attempts));
+    setRestoring(false);
+  };
+  return { restoring, result, dismissResult: () => setResult(null), restore };
+}
+
+/** Eliminar definitivamente un elemento o vaciar la papelera, tras confirmar (CA-13, CA-14, CA-18). */
+function usePurge(
+  api: Pick<TrashApi, 'purge' | 'emptyTrash'>,
+  selection: Selection,
+  { refreshSummary, startEmptying }: Omit<TrashState, 'removeItems'>,
+) {
+  const [purgeTarget, setPurgeTarget] = React.useState<PurgeTarget | null>(null);
+  const purgeItem = async (item: TrashItem): Promise<void> => {
+    try {
+      await api.purge(item.type, item.id);
+    } catch (error) {
+      if (isStorageNotFound(error)) selection.forget(new Set([item.id]));
+      throw error;
+    }
+    selection.forget(new Set([item.id]));
+    refreshSummary();
+  };
+  const confirmPurge = async (): Promise<void> => {
+    if (purgeTarget === null) return;
+    if (purgeTarget.scope === 'item') return purgeItem(purgeTarget.item);
+    startEmptying(await api.emptyTrash());
+    selection.setSelectedIds(NO_SELECTION);
+  };
+  return { purgeTarget, setPurgeTarget, confirmPurge };
+}
+
+export interface TrashActions {
   readonly selectedIds: ReadonlySet<string>;
   readonly setSelectedIds: (ids: ReadonlySet<string>) => void;
   readonly restoring: boolean;
@@ -90,58 +148,19 @@ export function useTrashActions(
   readonly purgeTarget: PurgeTarget | null;
   readonly setPurgeTarget: (target: PurgeTarget | null) => void;
   readonly confirmPurge: () => Promise<void>;
-} {
-  const [selectedIds, setSelectedIds] = React.useState<ReadonlySet<string>>(NO_SELECTION);
-  const [restoring, setRestoring] = React.useState(false);
-  const [result, setResult] = React.useState<readonly RestoreLine[] | null>(null);
-  const [purgeTarget, setPurgeTarget] = React.useState<PurgeTarget | null>(null);
+}
 
-  const forget = (ids: ReadonlySet<string>): void => {
-    removeItems(ids);
-    setSelectedIds((previous) => new Set([...previous].filter((id) => !ids.has(id))));
-  };
-
-  const restore = async (items: readonly TrashItem[]): Promise<void> => {
-    setRestoring(true);
-    setResult(null);
-    const attempts = await restoreEach(api, items);
-    forget(new Set(attempts.filter((a) => a.response || a.gone).map((a) => a.item.id)));
-    setSelectedIds(NO_SELECTION);
-    refreshSummary();
-    setResult(announceRestore(attempts));
-    setRestoring(false);
-  };
-
-  const purgeItem = async (item: TrashItem): Promise<void> => {
-    try {
-      await api.purge(item.type, item.id);
-    } catch (error) {
-      if (isStorageNotFound(error)) forget(new Set([item.id]));
-      throw error;
-    }
-    forget(new Set([item.id]));
-    refreshSummary();
-  };
-
-  const confirmPurge = async (): Promise<void> => {
-    if (purgeTarget === null) return;
-    if (purgeTarget.scope === 'item') {
-      await purgeItem(purgeTarget.item);
-      return;
-    }
-    startEmptying(await api.emptyTrash());
-    setSelectedIds(NO_SELECTION);
-  };
-
+/** Selección, restaurar (uno o varios), eliminar definitivamente y vaciar (CA-13 a CA-18). */
+export function useTrashActions(
+  api: Pick<TrashApi, 'restore' | 'purge' | 'emptyTrash'>,
+  trash: TrashState,
+): TrashActions {
+  const selection = useSelection(trash.removeItems);
+  const { selectedIds, setSelectedIds } = selection;
   return {
     selectedIds,
     setSelectedIds,
-    restoring,
-    result,
-    dismissResult: () => setResult(null),
-    restore,
-    purgeTarget,
-    setPurgeTarget,
-    confirmPurge,
+    ...useRestore(api, selection, trash.refreshSummary),
+    ...usePurge(api, selection, trash),
   };
 }

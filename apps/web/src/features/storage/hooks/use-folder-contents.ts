@@ -24,11 +24,10 @@ export type FolderListing =
       readonly order: NodeOrder;
     };
 
-export type LoadFolderContents = (folderId: string | null) => Promise<FolderContentsResponse>;
-
-export type LoadFolderPage = (
+/** `GET /folders/contents`: sin `page`, la primera página en el orden de 006 (el árbol de «Mover a…» y la barra lateral). */
+export type LoadFolderContents = (
   folderId: string | null,
-  page: FolderPageQuery,
+  page?: FolderPageQuery,
 ) => Promise<FolderContentsResponse>;
 
 /** Estado de «Cargar más»: lista para pedir, pidiendo la página siguiente o falló (lo visible se conserva). */
@@ -116,7 +115,7 @@ function nextCursorOf(state: ContentsState, requested: NodeOrder): string | null
 type SetContents = React.Dispatch<React.SetStateAction<ContentsState>>;
 
 interface PageRequest {
-  readonly load: LoadFolderPage;
+  readonly load: LoadFolderContents;
   readonly folderId: string | null;
   readonly order: NodeOrder;
 }
@@ -154,6 +153,17 @@ function requestNextPage(
   );
 }
 
+/** «Cargar más»: pide la página siguiente si se puede (`cursor` no nulo); si no, no hace nada. */
+function loadMoreOf(
+  request: PageRequest,
+  cursor: string | null,
+  setState: SetContents,
+): () => void {
+  return () => {
+    if (cursor !== null) requestNextPage({ ...request, cursor }, setState);
+  };
+}
+
 function controlsOf(
   state: ContentsState,
   order: NodeOrder,
@@ -176,7 +186,7 @@ function controlsOf(
  * llega; «Cargar más» acumula con `nextCursor`.
  */
 export function useFolderContents(
-  load: LoadFolderPage,
+  load: LoadFolderContents,
   folderId: string | null,
 ): {
   readonly listing: FolderListing;
@@ -195,10 +205,7 @@ export function useFolderContents(
   useFirstPage({ load, folderId, order, location }, setState);
   const current = state.location === location ? state : { location, listing: LOADING, ...IDLE };
   const actions = useListActions(setState, setOrder, setAttempt);
-  const cursor = nextCursorOf(current, order);
-  const loadMore = (): void => {
-    if (cursor !== null) requestNextPage({ load, folderId, order, cursor }, setState);
-  };
+  const loadMore = loadMoreOf({ load, folderId, order }, nextCursorOf(current, order), setState);
   return {
     listing: current.listing,
     reload: actions.reload,

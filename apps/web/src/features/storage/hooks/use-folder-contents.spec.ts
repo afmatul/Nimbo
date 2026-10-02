@@ -11,7 +11,7 @@ import { act, renderHook } from '@testing-library/react';
 import type { FolderPageQuery } from '../folders-api';
 import { DEFAULT_NODE_ORDER } from '../node-order';
 
-import { useFolderContents, type LoadFolderPage } from './use-folder-contents';
+import { useFolderContents, type LoadFolderContents } from './use-folder-contents';
 
 const AT = '2026-09-30T10:00:00.000Z';
 const FOLDER_ID = '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d';
@@ -56,12 +56,12 @@ interface Deferred {
 
 /** Cada llamada queda pendiente hasta que la prueba la resuelve, para controlar el orden de llegada. */
 function deferredLoader(): {
-  readonly load: jest.MockedFunction<LoadFolderPage>;
+  readonly load: jest.MockedFunction<LoadFolderContents>;
   readonly calls: Deferred[];
 } {
   const calls: Deferred[] = [];
-  const load = jest.fn<ReturnType<LoadFolderPage>, Parameters<LoadFolderPage>>(
-    (folderId, query) =>
+  const load = jest.fn<ReturnType<LoadFolderContents>, Parameters<LoadFolderContents>>(
+    (folderId, query = {}) =>
       new Promise((resolve, reject) => {
         calls.push({ resolve, reject, folderId, query });
       }),
