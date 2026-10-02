@@ -14,6 +14,7 @@ const FOLDER: FolderSummary = {
   name: 'Prompts',
   parentId: null,
   createdAt: '2026-09-30T10:00:00.000Z',
+  updatedAt: '2026-09-30T10:00:00.000Z',
 };
 
 beforeAll(() => {

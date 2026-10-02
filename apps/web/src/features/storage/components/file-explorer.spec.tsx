@@ -18,6 +18,7 @@ const FILES: readonly FileSummary[] = [
     kind: 'docx',
     folderId: null,
     createdAt: '2026-09-01T10:00:00.000Z',
+    updatedAt: '2026-09-01T10:00:00.000Z',
   },
   {
     id: 'f-2',
@@ -26,6 +27,7 @@ const FILES: readonly FileSummary[] = [
     kind: 'imagen',
     folderId: null,
     createdAt: '2026-09-02T10:00:00.000Z',
+    updatedAt: '2026-09-02T10:00:00.000Z',
   },
   {
     id: 'f-3',
@@ -34,6 +36,7 @@ const FILES: readonly FileSummary[] = [
     kind: 'texto',
     folderId: null,
     createdAt: '2026-09-03T10:00:00.000Z',
+    updatedAt: '2026-09-03T10:00:00.000Z',
   },
 ];
 
@@ -47,6 +50,7 @@ const PROMPTS: NodeSummary = {
   name: 'Prompts',
   parentId: FASE3.id,
   createdAt: '2026-09-04T10:00:00.000Z',
+  updatedAt: '2026-09-04T10:00:00.000Z',
 };
 
 let root: Root;

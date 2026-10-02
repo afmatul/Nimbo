@@ -42,6 +42,7 @@ const FILE: FileSummary = {
   kind: 'docx',
   folderId: null,
   createdAt: '2026-09-01T10:00:00.000Z',
+  updatedAt: '2026-09-01T10:00:00.000Z',
 };
 
 const FILE_NODE: NodeSummary = { type: 'file', ...FILE };
@@ -53,6 +54,7 @@ const PROMPTS: NodeSummary = {
   name: 'Prompts',
   parentId: FASE3.id,
   createdAt: '2026-09-01T10:00:00.000Z',
+  updatedAt: '2026-09-01T10:00:00.000Z',
 };
 
 let root: Root | null = null;

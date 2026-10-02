@@ -15,6 +15,7 @@ const CREATED: FolderSummary = {
   name: 'Actas',
   parentId: PARENT_ID,
   createdAt: '2026-09-30T10:00:00.000Z',
+  updatedAt: '2026-09-30T10:00:00.000Z',
 };
 
 function renderDialog(overrides: Partial<NewFolderDialogProps> = {}): NewFolderDialogProps {

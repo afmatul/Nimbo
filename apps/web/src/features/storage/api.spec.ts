@@ -18,6 +18,7 @@ const FILE = {
   kind: 'docx',
   folderId: null,
   createdAt: AT,
+  updatedAt: AT,
 };
 const EMPTY_ROOT = { folder: null, breadcrumbs: [], items: [], nextCursor: null };
 

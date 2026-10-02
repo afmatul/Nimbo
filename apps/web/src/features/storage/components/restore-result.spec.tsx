@@ -45,6 +45,7 @@ function restored(
       kind: 'xlsx',
       folderId: outcome === 'moved_to_root' ? null : FASE3.id,
       createdAt: AT,
+      updatedAt: AT,
     },
     outcome,
     originalName,

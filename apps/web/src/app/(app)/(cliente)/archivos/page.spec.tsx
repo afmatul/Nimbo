@@ -29,6 +29,7 @@ const INFORME: FileSummary = {
   kind: 'docx',
   folderId: null,
   createdAt: AT,
+  updatedAt: AT,
 };
 const NUEVO: FileSummary = {
   ...INFORME,
@@ -254,6 +255,7 @@ describe('página Mis archivos (/archivos)', () => {
       name: 'Actas',
       parentId: null,
       createdAt: AT,
+      updatedAt: AT,
     };
     const api = fakeApi({
       folderContents: jest.fn(() => Promise.resolve(page([INFORME]))),

@@ -22,6 +22,7 @@ const FILE: NodeSummary = {
   kind: 'xlsx',
   folderId: null,
   createdAt: AT,
+  updatedAt: AT,
 };
 const FOLDER: NodeSummary = {
   type: 'folder',
@@ -29,6 +30,7 @@ const FOLDER: NodeSummary = {
   name: 'Fase 3',
   parentId: null,
   createdAt: AT,
+  updatedAt: AT,
 };
 const ITEM: TrashItem = {
   id: FILE.id,

@@ -9,7 +9,7 @@ import { StorageRequestError } from './storage-request-error';
 const API = 'http://localhost/api/v1';
 const AT = '2026-09-30T10:00:00.000Z';
 const ALPHA = { id: '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d', name: 'Proyecto Alpha' };
-const FOLDER = { type: 'folder', ...ALPHA, parentId: null, createdAt: AT };
+const FOLDER = { type: 'folder', ...ALPHA, parentId: null, createdAt: AT, updatedAt: AT };
 const FILE = {
   type: 'file',
   id: '7a8b9c0d-1e2f-4c5d-8e6f-2f0c1d2e3a4b',
@@ -18,6 +18,7 @@ const FILE = {
   kind: 'docx',
   folderId: ALPHA.id,
   createdAt: AT,
+  updatedAt: AT,
 };
 
 describe('api de carpetas', () => {
@@ -68,7 +69,7 @@ describe('api de carpetas', () => {
   });
 
   it('CA-1: crea con POST /folders y valida la carpeta devuelta', async () => {
-    const created = { id: ALPHA.id, name: 'Actas', parentId: null, createdAt: AT };
+    const created = { id: ALPHA.id, name: 'Actas', parentId: null, createdAt: AT, updatedAt: AT };
     fetchMock.mockResolvedValue(jsonResponse(created, 201));
 
     await expect(api.createFolder({ name: 'Actas', parentId: null })).resolves.toEqual(created);

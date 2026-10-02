@@ -84,6 +84,7 @@ function restoredAs(
       kind: 'docx',
       folderId: outcome === 'moved_to_root' ? null : FASE3.id,
       createdAt: item.deletedAt,
+      updatedAt: item.deletedAt,
     },
     outcome,
     originalName: item.name,

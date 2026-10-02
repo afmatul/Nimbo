@@ -30,6 +30,7 @@ const PROMPTS: FolderSummary = {
   name: 'Prompts',
   parentId: FASE3.id,
   createdAt: AT,
+  updatedAt: AT,
 };
 const INFORME: FileSummary = {
   id: '7a8b9c0d-1e2f-4c5d-8e6f-2f0c1d2e3a4b',
@@ -38,14 +39,15 @@ const INFORME: FileSummary = {
   kind: 'docx',
   folderId: FASE3.id,
   createdAt: AT,
+  updatedAt: AT,
 };
 
 const ROOT: FolderContentsResponse = {
   folder: null,
   breadcrumbs: [],
   items: [
-    { type: 'folder', ...ALPHA, parentId: null, createdAt: AT },
-    { type: 'folder', ...FINANZAS, parentId: null, createdAt: AT },
+    { type: 'folder', ...ALPHA, parentId: null, createdAt: AT, updatedAt: AT },
+    { type: 'folder', ...FINANZAS, parentId: null, createdAt: AT, updatedAt: AT },
   ],
   nextCursor: null,
 };
@@ -275,6 +277,7 @@ describe('página de una carpeta (/archivos/carpeta/[folderId])', () => {
       name: 'Resultados finales',
       parentId: FASE3.id,
       createdAt: AT,
+      updatedAt: AT,
     };
     const api = fakeApi({ createFolder: jest.fn(() => Promise.resolve(created)) });
     await renderFolder(api);

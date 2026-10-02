@@ -27,12 +27,14 @@ const FILE: FileSummary = {
   kind: 'docx',
   folderId: PARENT_ID,
   createdAt: AT,
+  updatedAt: AT,
 };
 const FOLDER: FolderSummary = {
   id: '3c4d5e6f-7a8b-4c9d-8e1f-2a3b4c5d6e7f',
   name: 'Pruebas de recuperación',
   parentId: PARENT_ID,
   createdAt: AT,
+  updatedAt: AT,
 };
 const FILE_NODE: NodeSummary = { type: 'file', ...FILE };
 const FOLDER_NODE: NodeSummary = { type: 'folder', ...FOLDER };
