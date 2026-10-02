@@ -37,6 +37,8 @@ export const STORAGE_FIELD_ISSUE_REASONS = [
   'UNKNOWN_FIELD',
   'INVALID_CURSOR',
   'INVALID_FOLDER',
+  'INVALID_SORT',
+  'INVALID_DIRECTION',
 ] as const;
 export type StorageFieldIssueReason = (typeof STORAGE_FIELD_ISSUE_REASONS)[number];
 
@@ -51,6 +53,10 @@ export const STORAGE_FIELD_MESSAGES: Readonly<Record<StorageFieldIssueReason, st
   INVALID_CURSOR:
     'No pudimos leer esta página de la lista. Actualiza la lista e inténtalo de nuevo.',
   INVALID_FOLDER: 'Esta carpeta no es válida. Elige otra carpeta y vuelve a intentarlo.',
+  INVALID_SORT:
+    'Este orden no es válido. Ordena por nombre, tamaño, fecha de modificación o fecha de creación y vuelve a intentarlo.',
+  INVALID_DIRECTION:
+    'Esta dirección de orden no es válida. Elige ascendente o descendente y vuelve a intentarlo.',
 };
 
 /**

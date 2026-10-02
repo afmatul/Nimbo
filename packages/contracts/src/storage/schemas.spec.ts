@@ -179,12 +179,18 @@ describe('FileSummary, listado y descarga', () => {
     kind: 'docx',
     folderId: null,
     createdAt: AT,
+    updatedAt: AT,
   };
 
-  it('CA-1: `FileSummary` es `{ id, name, sizeBytes, kind, folderId, createdAt }`', () => {
+  it('CA-1: `FileSummary` es `{ id, name, sizeBytes, kind, folderId, createdAt, updatedAt }`', () => {
     expect(fileSummarySchema.parse(file)).toEqual(file);
     expect(fileSummarySchema.safeParse({ ...file, objectKey: 'u/x' }).success).toBe(false);
     expect(fileSummarySchema.safeParse({ ...file, folderId: 'x' }).success).toBe(false);
+  });
+
+  it('007 CA-10: `FileSummary` exige `updatedAt` (columna «Modificado»)', () => {
+    expect(fileSummarySchema.safeParse({ ...file, updatedAt: undefined }).success).toBe(false);
+    expect(fileSummarySchema.safeParse({ ...file, updatedAt: 'ayer' }).success).toBe(false);
   });
 
   it('CA-12: `kind` sale del catálogo de tipos', () => {

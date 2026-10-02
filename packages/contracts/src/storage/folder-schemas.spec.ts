@@ -12,7 +12,9 @@ import {
   moveFolderSchema,
   nodeSummarySchema,
   renameFileSchema,
+  NODE_SORTS,
   renameFolderSchema,
+  SORT_DIRECTIONS,
 } from './folder-schemas';
 import { FILE_NAME_MAX_LENGTH, FILES_PAGE_DEFAULT } from './parameters';
 
@@ -27,7 +29,7 @@ function reasonsOf(schema: ZodTypeAny, input: unknown): string[] {
     : toFieldIssues(result.error).map((issue) => `${issue.field}:${issue.reason}`);
 }
 
-const folder = { id: FOLDER_ID, name: 'Fotos', parentId: null, createdAt: AT };
+const folder = { id: FOLDER_ID, name: 'Fotos', parentId: null, createdAt: AT, updatedAt: AT };
 const file = {
   id: FILE_ID,
   name: 'informe.docx',
@@ -35,6 +37,7 @@ const file = {
   kind: 'docx',
   folderId: FOLDER_ID,
   createdAt: AT,
+  updatedAt: AT,
 };
 
 describe('createFolderSchema', () => {
@@ -118,6 +121,43 @@ describe('contenido de una carpeta', () => {
     expect(reasonsOf(folderContentsQuerySchema, { cursor: '' })).toEqual(['cursor:INVALID_CURSOR']);
   });
 
+  it('007 CA-10: sin `sort` ni `dir` la consulta es la de 006 (el orden por defecto lo resuelve la API)', () => {
+    expect(folderContentsQuerySchema.parse({ folderId: FOLDER_ID })).toEqual({
+      folderId: FOLDER_ID,
+      limit: FILES_PAGE_DEFAULT,
+    });
+  });
+
+  it.each(NODE_SORTS.flatMap((sort) => SORT_DIRECTIONS.map((dir) => [sort, dir] as const)))(
+    '007 CA-10: acepta `sort=%s` y `dir=%s`',
+    (sort, dir) => {
+      expect(folderContentsQuerySchema.parse({ sort, dir })).toEqual({
+        sort,
+        dir,
+        limit: FILES_PAGE_DEFAULT,
+      });
+    },
+  );
+
+  it('007 CA-10: los órdenes son nombre, tamaño, modificación y creación; las direcciones, asc y desc', () => {
+    expect([...NODE_SORTS].sort()).toEqual(['created', 'name', 'size', 'updated']);
+    expect([...SORT_DIRECTIONS].sort()).toEqual(['asc', 'desc']);
+  });
+
+  it.each([
+    [{ sort: 'tamano' }, 'sort:INVALID_SORT'],
+    [{ sort: '' }, 'sort:INVALID_SORT'],
+    [{ sort: ['name'] }, 'sort:INVALID_SORT'],
+    [{ dir: 'up' }, 'dir:INVALID_DIRECTION'],
+    [{ dir: 'DESC' }, 'dir:INVALID_DIRECTION'],
+  ])('007 CA-11: %j se rechaza con %s', (input, expected) => {
+    expect(reasonsOf(folderContentsQuerySchema, input)).toEqual([expected]);
+  });
+
+  it('007 CA-11: un `limit` fuera de rango no es error: se ajusta como en 006', () => {
+    expect(folderContentsQuerySchema.parse({ sort: 'name', limit: '0' }).limit).toBe(1);
+  });
+
   it('CA-5: la respuesta lleva carpeta, migas, elementos de ambos tipos y cursor', () => {
     const response = {
       folder: { id: FOLDER_ID, name: 'Fotos' },
@@ -140,6 +180,7 @@ describe('contenido de una carpeta', () => {
 
   it('CA-1: `FolderSummary` y `NodeSummary` son estrictos y se discriminan por `type`', () => {
     expect(folderSummarySchema.parse(folder)).toEqual(folder);
+    expect(folderSummarySchema.safeParse({ ...folder, updatedAt: undefined }).success).toBe(false);
     expect(nodeSummarySchema.safeParse({ type: 'folder', ...file }).success).toBe(false);
     expect(nodeSummarySchema.safeParse({ type: 'link', ...folder }).success).toBe(false);
   });

@@ -2,7 +2,10 @@ import type { FileSummary } from '@nimbo/contracts';
 
 import type { File } from '../domain/file';
 
-/** Archivo tal como lo ve el cliente: sin clave de objeto ni ids de versión. Tamaño en JSON como entero seguro (D-13). */
+/**
+ * Archivo tal como lo ve el cliente: sin clave de objeto ni ids de versión. Tamaño en JSON como entero seguro (D-13);
+ * `updatedAt` alimenta la columna «Modificado» (007).
+ */
 export function toFileSummary(file: File): FileSummary {
   return {
     id: file.id,
@@ -11,5 +14,6 @@ export function toFileSummary(file: File): FileSummary {
     kind: file.kind,
     folderId: file.folderId,
     createdAt: file.createdAt.toISOString(),
+    updatedAt: file.updatedAt.toISOString(),
   };
 }

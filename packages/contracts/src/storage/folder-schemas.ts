@@ -5,13 +5,21 @@ import {
   folderField,
   nameField,
   onConflictField,
+  optionField,
   pageQuerySchema,
   timestamp,
   uuidSchema,
 } from './schema-fields';
 import { fileSummarySchema } from './schemas';
 
-/** Esquemas de carpetas y de organizar archivos (spec 006, plan §4). */
+/** Esquemas de carpetas y de organizar archivos (spec 006, plan §4) y orden del explorador (spec 007, plan §4). */
+
+/** Criterio de orden de `GET /folders/contents`: nombre, tamaño, fecha de modificación o de creación (007 CA-10). */
+export const NODE_SORTS = ['name', 'size', 'updated', 'created'] as const;
+export type NodeSort = (typeof NODE_SORTS)[number];
+
+export const SORT_DIRECTIONS = ['asc', 'desc'] as const;
+export type SortDirection = (typeof SORT_DIRECTIONS)[number];
 
 const UNKNOWN_FIELD_MESSAGE = STORAGE_NODE_FIELD_MESSAGES.UNKNOWN_FIELD;
 
@@ -28,6 +36,7 @@ export const folderSummarySchema = z
     name: z.string().min(1),
     parentId: uuidSchema.nullable(),
     createdAt: timestamp,
+    updatedAt: timestamp,
   })
   .strict();
 
@@ -58,13 +67,18 @@ export const moveFileSchema = z
   .object({ folderId: folderField, onConflict: onConflictField })
   .strict(UNKNOWN_FIELD_MESSAGE);
 
-/** `GET /folders/contents`: sin `folderId` lista la raíz. Reemplaza a `GET /files`. */
+/**
+ * `GET /folders/contents`: sin `folderId` lista la raíz. Reemplaza a `GET /files`. `sort` y `dir` ausentes quedan
+ * ausentes: la API aplica el orden de 006 (007 D-6: `created`; `desc` con `created` y `asc` con los demás).
+ */
 export const folderContentsQuerySchema = pageQuerySchema.extend({
   folderId: folderField.optional(),
+  sort: optionField(NODE_SORTS, 'INVALID_SORT').optional(),
+  dir: optionField(SORT_DIRECTIONS, 'INVALID_DIRECTION').optional(),
 });
 
 /**
- * Respuesta de `GET /folders/contents`: carpetas primero y luego más recientes primero. `folder` es `null` en la raíz;
+ * Respuesta de `GET /folders/contents`: carpetas primero y luego en el orden pedido (por defecto, más recientes primero). `folder` es `null` en la raíz;
  * `breadcrumbs` va desde la raíz hasta la carpeta abierta, sin «Mis archivos».
  */
 export const folderContentsResponseSchema = z

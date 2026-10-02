@@ -57,6 +57,8 @@ describe('motivos', () => {
         'UNKNOWN_FIELD',
         'INVALID_CURSOR',
         'INVALID_FOLDER',
+        'INVALID_SORT',
+        'INVALID_DIRECTION',
       ].sort(),
     );
   });

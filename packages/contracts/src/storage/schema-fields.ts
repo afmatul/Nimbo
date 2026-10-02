@@ -78,6 +78,15 @@ export function field<T>(
   });
 }
 
+/** Campo opcional que solo admite un valor de `options`; cualquier otro (texto distinto, lista, vacío) es `reason`. */
+export function optionField<const T extends string>(
+  options: readonly T[],
+  reason: StorageFieldIssueReason,
+): Field<T> {
+  const allowed: ReadonlySet<unknown> = new Set(options);
+  return field<T>((value) => (allowed.has(value) ? null : reason));
+}
+
 /** Nombre de archivo o carpeta; el servicio lo normaliza con su VO. */
 export const nameField = (messages: FieldMessages = STORAGE_FIELD_MESSAGES): Field<string> =>
   field<string>(nameReason, messages);

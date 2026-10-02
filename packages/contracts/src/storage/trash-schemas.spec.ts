@@ -72,6 +72,7 @@ describe('restaurar, eliminar definitivamente y vaciar', () => {
         name: 'Fotos (1)',
         parentId: null,
         createdAt: AT,
+        updatedAt: AT,
       };
       const response = { item, outcome, originalName: 'Fotos' };
 

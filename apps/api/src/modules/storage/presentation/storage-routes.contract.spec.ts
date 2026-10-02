@@ -8,8 +8,10 @@ import { describeRoute, listRouteDeclarations } from '../../../../test/support/r
 import { Role, ZodValidationPipe } from '../../../shared';
 import { FileService } from '../application/file.service';
 import { UploadService } from '../application/upload.service';
+import { InvalidQueryError } from '../domain/errors';
 
 import { FilesController } from './files.controller';
+import { FoldersController } from './folders.controller';
 import { UploadsController } from './uploads.controller';
 
 const PREFIX = 'api/v1';
@@ -84,6 +86,44 @@ describe('rutas de `storage` (CA-17)', () => {
         expect.arrayContaining([expect.any(ParseUUIDPipe), expect.any(ZodValidationPipe)]),
       );
       expect(pipesOf(controller, method)).toHaveLength(2);
+    },
+  );
+});
+
+describe('consulta de `GET /folders/contents` (007 plan §4)', () => {
+  const [pipe] = pipesOf(FoldersController, 'contents') as [ZodValidationPipe<unknown>];
+  const METADATA = { type: 'query' } as const;
+
+  function rejectionOf(query: Record<string, unknown>): unknown {
+    try {
+      pipe.transform(query, METADATA);
+    } catch (error) {
+      return error;
+    }
+    throw new Error('la consulta debía rechazarse');
+  }
+
+  it('007 CA-10: pasa `sort` y `dir` válidos al controlador', () => {
+    expect(pipe.transform({ sort: 'size', dir: 'desc' }, METADATA)).toEqual(
+      expect.objectContaining({ sort: 'size', dir: 'desc' }),
+    );
+  });
+
+  it.each([
+    [{ sort: 'peso' }, 'sort', 'INVALID_SORT'],
+    [{ dir: 'arriba' }, 'dir', 'INVALID_DIRECTION'],
+    [{ cursor: '' }, 'cursor', 'INVALID_CURSOR'],
+  ])(
+    '007 CA-11: %j responde `400 STORAGE_INVALID_QUERY` con `%s` `%s` en `fields`',
+    (query, field, reason) => {
+      const error = rejectionOf(query);
+
+      expect(error).toBeInstanceOf(InvalidQueryError);
+      expect(error).toMatchObject({
+        status: 400,
+        code: 'STORAGE_INVALID_QUERY',
+        fields: [expect.objectContaining({ field, reason })],
+      });
     },
   );
 });

@@ -609,6 +609,7 @@ describe('UploadService.complete', () => {
         kind: 'docx',
         folderId: null,
         createdAt: NOW.toISOString(),
+        updatedAt: NOW.toISOString(),
       },
     });
     expect(ctx.storage.completed[0]?.parts.map((part) => part.etag)).toEqual([
