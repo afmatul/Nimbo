@@ -153,6 +153,12 @@ export class FakeQuotaRepository implements IQuotaRepository {
     return this.usage.usedBytes;
   }
 
+  /** Sin bloqueo: no espera a la transacción que tenga la fila (007 D-1). */
+  readUsage(): Promise<QuotaUsage> {
+    this.journal.add('quota:readUsage');
+    return Promise.resolve(this.usage);
+  }
+
   async lockAndReadUsage(actor: Actor): Promise<QuotaUsage> {
     this.journal.add('quota:lockAndReadUsage');
     await this.locks?.lock(actor.id);

@@ -7,11 +7,13 @@ import { Test } from '@nestjs/testing';
 import { describeRoute, listRouteDeclarations } from '../../../../test/support/route-declarations';
 import { Role, ZodValidationPipe } from '../../../shared';
 import { FileService } from '../application/file.service';
+import { SpaceSummaryService } from '../application/space-summary.service';
 import { UploadService } from '../application/upload.service';
 import { InvalidQueryError } from '../domain/errors';
 
 import { FilesController } from './files.controller';
 import { FoldersController } from './folders.controller';
+import { SpaceController } from './space.controller';
 import { UploadsController } from './uploads.controller';
 
 const PREFIX = 'api/v1';
@@ -88,6 +90,29 @@ describe('rutas de `storage` (CA-17)', () => {
       expect(pipesOf(controller, method)).toHaveLength(2);
     },
   );
+});
+
+describe('ruta del resumen de espacio (007 plan §4)', () => {
+  let moduleRef: TestingModule;
+
+  beforeAll(async () => {
+    moduleRef = await Test.createTestingModule({
+      controllers: [SpaceController],
+      providers: [{ provide: SpaceSummaryService, useValue: {} }],
+    }).compile();
+  });
+
+  afterAll(async () => {
+    await moduleRef.close();
+  });
+
+  it('007 CA-17: expone solo `GET /storage/summary`, solo para CLIENT', () => {
+    const routes = listRouteDeclarations(moduleRef, PREFIX);
+
+    expect(routes.map(describeRoute)).toEqual(['GET /api/v1/storage/summary']);
+    expect(routes.every((route) => !route.public)).toBe(true);
+    expect(routes.every((route) => route.roles.join() === Role.CLIENT)).toBe(true);
+  });
 });
 
 describe('consulta de `GET /folders/contents` (007 plan §4)', () => {

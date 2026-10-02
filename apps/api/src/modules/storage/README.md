@@ -45,7 +45,7 @@ Tablas (migraciones `20260930100000`…`100300`, plan §4): `archivo`, `version_
 | ------------------------------------------------------------------------------------------------------- | ----------------------------- | ---------------------------------------------- |
 | `INodeRepository`: `findAccessibleById`, `findTakenNames`, `insertWithVersion` (y los de carpetas, 006) | `I_NODE_REPOSITORY`           | `TypeOrmNodeRepository`                        |
 | `IUploadSessionRepository`: `insert`, `findOwned`, `transition` (compare-and-set)                       | `I_UPLOAD_SESSION_REPOSITORY` | `TypeOrmUploadSessionRepository`               |
-| `IQuotaRepository`: `lockUsage`, `lockAndReadUsage`, `addUsedBytes`                                     | `I_QUOTA_REPOSITORY`          | `TypeOrmQuotaRepository`                       |
+| `IQuotaRepository`: `lockUsage`, `readUsage` (007), `lockAndReadUsage`, `addUsedBytes`                  | `I_QUOTA_REPOSITORY`          | `TypeOrmQuotaRepository`                       |
 | `IExpiredUploadScanner`: `listExpiredIds(now, limit)` → `{ id, propietarioId }[]` (sin actor)           | `I_EXPIRED_UPLOAD_SCANNER`    | `SqlExpiredUploadScanner`                      |
 
 - Todo método recibe `actor` y toma el `EntityManager` de `TransactionContext.requireActorScope(actor)`: se llama
@@ -165,6 +165,20 @@ STORAGE_NODE_NOT_FOUND` que un nodo ajeno, inexistente o en la papelera.
   `RECENTS_STORED`, incluidas las de nodos en la papelera.
 - Sin auditoría ni bitácoras propias (sin nombres). Pruebas: `quick-access.service.spec.ts`,
   `quick-access.controller.spec.ts` y `test/int/storage/quick-access.int-spec.ts`.
+
+## Resumen de espacio (007, T-03)
+
+- `GET /storage/summary` (`SpaceController`, solo `CLIENT`) → `SpaceSummaryService.summary(actor)`: los límites de
+  `IPlanLimitsProvider` fuera de la transacción y, en `withActor`, `IQuotaRepository.readUsage` (contador y reserva
+  **sin** `FOR UPDATE`, D-1) más `SpaceMeasurer.measure`. Disponible = `QuotaPolicy.available` (cuota − usado −
+  reservado, nunca negativo). Leerlo no se audita ni deja bitácora.
+- `SpaceMeasurer.measure(actor)` corre dentro de la `withActor` del llamador: `ISpaceRepository.liveBytesByKind`
+  (`TypeOrmSpaceRepository`: versiones de archivos vivos con `accessibleNodes(actor)` dentro de la consulta **y**
+  `propietario_id = actor.id`, agrupadas por `tipo`) + `ITrashRepository.trashSummary` (raíces: una carpeta pesa lo que
+  arrastró) en un `SpaceBreakdown`. La reutiliza la conciliación (T-05).
+- `FILE_BYTES_SQL` y `selectRows` (parámetros con nombre) viven en `node-sql.ts` y los comparten papelera y espacio.
+- Pruebas: `space-measurer.spec.ts`, `space-summary.service.spec.ts`, `space.controller.spec.ts`,
+  `storage-routes.contract.spec.ts` y `test/int/storage/space-summary.int-spec.ts`.
 
 ## Limpieza de cargas vencidas (005, PR-E)
 

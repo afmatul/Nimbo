@@ -24,6 +24,11 @@ class FakeQuotaRepository implements IQuotaRepository {
     return Promise.resolve(this.usage.usedBytes);
   }
 
+  readUsage(): Promise<QuotaUsage> {
+    this.calls.push('readUsage');
+    return Promise.resolve(this.usage);
+  }
+
   lockAndReadUsage(actor: Actor, now: Date): Promise<QuotaUsage> {
     this.calls.push(`lockAndReadUsage:${actor.id}`);
     this.readAt.push(now);

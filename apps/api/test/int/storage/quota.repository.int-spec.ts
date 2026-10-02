@@ -118,6 +118,29 @@ describe('TypeOrmQuotaRepository (CA-4, CA-23, RN-10)', () => {
     expect(usage).toEqual({ usedBytes: 5000n, reservedBytes: 0n });
   });
 
+  it('007 D-1: `readUsage` lee lo usado y lo reservado sin esperar a quien tiene la fila bloqueada', async () => {
+    let releaseFirst: () => void = () => undefined;
+    const firstHolds = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    let firstLocked: () => void = () => undefined;
+    const lockTaken = new Promise<void>((resolve) => {
+      firstLocked = resolve;
+    });
+    const first = app.asActor(ana, async () => {
+      await repository.lockUsage(ana);
+      firstLocked();
+      await firstHolds;
+    });
+    await lockTaken;
+
+    const usage = await app.asActor(ana, () => repository.readUsage(ana, NOW));
+    releaseFirst();
+    await first;
+
+    expect(usage).toEqual({ usedBytes: 5000n, reservedBytes: 120n });
+  });
+
   it('RN-10: `addUsedBytes` suma el delta y ninguna otra columna de `usuario` cambia', async () => {
     const before = await usuarioRow(bruno.id);
 
@@ -164,6 +187,7 @@ describe('TypeOrmQuotaRepository (CA-4, CA-23, RN-10)', () => {
       ActorScopeMissingError,
     );
     await expect(repository.addUsedBytes(ana, 1n)).rejects.toBeInstanceOf(ActorScopeMissingError);
+    await expect(repository.readUsage(ana, NOW)).rejects.toBeInstanceOf(ActorScopeMissingError);
   });
 
   it('D-5: es el único archivo de `storage` con SQL contra `usuario`', () => {

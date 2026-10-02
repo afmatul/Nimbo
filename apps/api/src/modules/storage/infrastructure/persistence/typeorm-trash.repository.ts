@@ -26,17 +26,13 @@ import type { TrashState } from '../../domain/trash-state';
 import { ArchivoOrmEntity } from './archivo.orm-entity';
 import { CarpetaOrmEntity } from './carpeta.orm-entity';
 import { decodeNodeListCursor, encodeNodeListCursor } from './node-list-cursor';
-import { nodesIn, rebaseSubtree } from './node-sql';
+import { FILE_BYTES_SQL, nodesIn, rebaseSubtree, selectRows } from './node-sql';
 import type { Condition, NodeTable } from './node-sql';
 import { trashColumns } from './trash-columns';
 import { toFile } from './typeorm-node.repository';
 
 /** Columnas de papelera de un nodo que vuelve. */
 const LIVE = trashColumns(null);
-
-/** Bytes de un archivo: la suma de sus versiones (plan 006 §3: lo que se muestra es lo que libera la purga). */
-const FILE_BYTES_SQL =
-  '(SELECT COALESCE(SUM(v.tamano_bytes), 0) FROM version_archivo v WHERE v.archivo_id = a.id)';
 
 /** Bytes de una carpeta de la papelera: las versiones de los archivos que arrastró (RN-6, en `numeric` sin pérdida). */
 const FOLDER_BYTES_SQL =
@@ -385,18 +381,12 @@ export class TypeOrmTrashRepository implements ITrashRepository {
     );
   }
 
-  private async select<T>(
+  private select<T>(
     actor: Actor,
     sql: string,
     parameters: Readonly<Record<string, unknown>>,
   ): Promise<T[]> {
-    const manager = this.manager(actor);
-    const [query, values] = manager.connection.driver.escapeQueryWithParameters(
-      sql,
-      { ...parameters },
-      {},
-    );
-    return (await manager.query(query, values)) as T[];
+    return selectRows<T>(this.manager(actor), sql, parameters);
   }
 
   /** `UPDATE` con todas las condiciones; devuelve las filas tocadas. */
