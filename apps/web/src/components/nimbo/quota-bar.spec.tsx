@@ -4,7 +4,7 @@
 import { act, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
-import { QuotaBar, quotaPercentOf, quotaTierOf } from './quota-bar';
+import { QuotaBar, quotaPercentOf, quotaStateOf, quotaTierOf } from './quota-bar';
 
 const RAW_COLOR =
   /#[0-9a-f]{3,8}\b|\b(?:bg|text|border)-(?:red|blue|green|gray|slate|zinc|neutral|white|black|amber|yellow)\b|\b(?:bg|text|border)-\[/i;
@@ -70,6 +70,21 @@ describe('quotaPercentOf y quotaTierOf (CA-5, RN-4)', () => {
     [100, 'full'],
   ] as const)('CA-5: %i %% es el tramo %s', (percent, tier) => {
     expect(quotaTierOf(percent)).toBe(tier);
+  });
+});
+
+describe('quotaStateOf (CA-5, RN-4)', () => {
+  it.each([
+    [32, 'normal', null],
+    [82, 'warning', 'Tu cuota está al 82 %.'],
+    [94, 'critical', 'Espacio casi agotado.'],
+    [100, 'full', 'Espacio agotado.'],
+  ] as const)('CA-5: al %i %% el tramo es %s con el aviso %s', (percent, tier, notice) => {
+    expect(quotaStateOf({ usedBytes: usedAt(percent), quotaBytes: QUOTA })).toEqual({
+      percent,
+      tier,
+      notice,
+    });
   });
 });
 

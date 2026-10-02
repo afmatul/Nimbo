@@ -1,7 +1,7 @@
 import { formatBytes, type SpaceSummaryResponse } from '@nimbo/contracts';
-import Link from 'next/link';
 import type * as React from 'react';
 
+import { QuotaLink } from '../../../components/nimbo/quota-bar';
 import { Card } from '../../../components/ui/card';
 import { cn } from '../../../lib/utils';
 import { TRASH_PATH } from '../routes';
@@ -157,12 +157,7 @@ function TrashNote({ summary }: { readonly summary: SpaceSummaryResponse }): Rea
   return (
     <p className="mt-1.5 flex flex-wrap items-center gap-x-3.5 pl-6.5 text-xs text-secondary-foreground">
       {`Cuenta en tu cuota hasta que la vacías o pasan ${retentionLabel(summary.trashRetentionDays)} desde que moviste cada elemento.`}
-      <Link
-        href={TRASH_PATH}
-        className="inline-flex min-h-6 items-center rounded-sm font-semibold text-primary underline underline-offset-4 hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        Ver papelera
-      </Link>
+      <QuotaLink href={TRASH_PATH}>Ver papelera</QuotaLink>
     </p>
   );
 }

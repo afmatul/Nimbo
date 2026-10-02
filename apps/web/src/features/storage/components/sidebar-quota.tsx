@@ -2,12 +2,7 @@ import type { SpaceSummaryResponse } from '@nimbo/contracts';
 import { CircleAlert } from 'lucide-react';
 import type * as React from 'react';
 
-import {
-  QuotaBar,
-  QuotaLink,
-  quotaNoticeOf,
-  quotaPercentOf,
-} from '../../../components/nimbo/quota-bar';
+import { QuotaBar, QuotaLink, quotaStateOf } from '../../../components/nimbo/quota-bar';
 import { SPACE_PATH } from '../routes';
 
 import type { SpaceSummaryState } from './space-provider';
@@ -27,7 +22,7 @@ function ReadyQuota({
   readonly summary: SpaceSummaryResponse;
   readonly linked: boolean;
 }): React.JSX.Element {
-  const hasNotice = quotaNoticeOf(quotaPercentOf(summary.usedBytes, summary.quotaBytes)) !== null;
+  const hasNotice = quotaStateOf(summary).notice !== null;
   return (
     <>
       <QuotaBar

@@ -6,13 +6,7 @@ import Link from 'next/link';
 import type * as React from 'react';
 
 import { AppLayout, DEFAULT_NAV_ITEMS } from '../../../components/nimbo/app-layout';
-import {
-  QuotaBar,
-  quotaNoticeOf,
-  quotaPercentOf,
-  quotaTierOf,
-  type QuotaTier,
-} from '../../../components/nimbo/quota-bar';
+import { QuotaBar, quotaStateOf, type QuotaTier } from '../../../components/nimbo/quota-bar';
 import { StateView } from '../../../components/nimbo/state-view';
 import { Alert } from '../../../components/ui/alert';
 import { buttonVariants } from '../../../components/ui/button';
@@ -37,10 +31,6 @@ const SPACE_NAV_ITEMS = DEFAULT_NAV_ITEMS.map((item) => ({
 
 const TRASH_REMINDER =
   'Lo que está en la papelera sigue ocupando espacio hasta que se elimina definitivamente.';
-
-function percentOf(summary: SpaceSummaryResponse): number {
-  return quotaPercentOf(summary.usedBytes, summary.quotaBytes);
-}
 
 /** Cuerpo del aviso: lo que queda (70–99 %) o que no se puede subir (100 %), y que la papelera ocupa espacio. */
 function noticeBodyOf(summary: SpaceSummaryResponse, tier: QuotaTier): string {
@@ -77,10 +67,8 @@ function QuotaNoticeAlert({
 }: {
   readonly summary: SpaceSummaryResponse;
 }): React.JSX.Element | null {
-  const percent = percentOf(summary);
-  const title = quotaNoticeOf(percent);
+  const { notice: title, tier } = quotaStateOf(summary);
   if (title === null) return null;
-  const tier = quotaTierOf(percent);
   const Icon = tier === 'warning' ? TriangleAlert : CircleAlert;
   return (
     <Alert
@@ -130,7 +118,7 @@ function UsageCard({ summary }: { readonly summary: SpaceSummaryResponse }): Rea
         quotaBytes={summary.quotaBytes}
         className="mt-4"
       />
-      {quotaNoticeOf(percentOf(summary)) === null ? (
+      {quotaStateOf(summary).notice === null ? (
         <p className="mt-2 text-sm text-secondary-foreground">Tienes espacio de sobra.</p>
       ) : null}
       <dl className="mt-4 grid gap-3 border-t border-border pt-4 sm:grid-cols-3">

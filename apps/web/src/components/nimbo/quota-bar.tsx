@@ -40,14 +40,33 @@ export function quotaTierOf(percent: number): QuotaTier {
 }
 
 /** Texto de aviso del tramo (spec 007 §6); `null` cuando hay espacio de sobra. */
-export function quotaNoticeOf(percent: number): string | null {
+function quotaNoticeOf(percent: number, tier: QuotaTier): string | null {
   const notices: Readonly<Record<QuotaTier, string | null>> = {
     normal: null,
-    warning: `Tu cuota está al ${percent} %.`,
+    warning: `Tu cuota está al ${String(percent)} %.`,
     critical: 'Espacio casi agotado.',
     full: 'Espacio agotado.',
   };
-  return notices[quotaTierOf(percent)];
+  return notices[tier];
+}
+
+/** Bytes usados y cuota, p. ej. el resumen de `GET /storage/summary`. */
+export interface QuotaUsage {
+  readonly usedBytes: number;
+  readonly quotaBytes: number;
+}
+
+/** Porcentaje, tramo y texto de aviso de un uso: una sola fuente para el medidor, la tarjeta y el aviso de pantalla. */
+export interface QuotaState {
+  readonly percent: number;
+  readonly tier: QuotaTier;
+  readonly notice: string | null;
+}
+
+export function quotaStateOf({ usedBytes, quotaBytes }: QuotaUsage): QuotaState {
+  const percent = quotaPercentOf(usedBytes, quotaBytes);
+  const tier = quotaTierOf(percent);
+  return { percent, tier, notice: quotaNoticeOf(percent, tier) };
 }
 
 export interface QuotaBarProps {
@@ -60,7 +79,7 @@ export interface QuotaBarProps {
 }
 
 interface QuotaNoticeProps {
-  readonly percent: number;
+  readonly quota: QuotaState;
   readonly freeSpaceHref: string | undefined;
 }
 
@@ -82,9 +101,9 @@ export function QuotaLink({
   );
 }
 
-function QuotaNotice({ percent, freeSpaceHref }: QuotaNoticeProps): React.JSX.Element | null {
-  const notice = quotaNoticeOf(percent);
-  const style = TIER_STYLES[quotaTierOf(percent)];
+function QuotaNotice({ quota, freeSpaceHref }: QuotaNoticeProps): React.JSX.Element | null {
+  const { notice } = quota;
+  const style = TIER_STYLES[quota.tier];
   if (notice === null || style.icon === null) return null;
   const Icon = style.icon;
   return (
@@ -103,12 +122,13 @@ function QuotaNotice({ percent, freeSpaceHref }: QuotaNoticeProps): React.JSX.El
 
 interface QuotaTrackProps {
   readonly label: string;
-  readonly percent: number;
+  readonly quota: QuotaState;
   readonly amounts: string;
 }
 
 /** Pista con borde `input` para llegar a ≥ 3:1 contra la tarjeta (D-19 a). */
-function QuotaTrack({ label, percent, amounts }: QuotaTrackProps): React.JSX.Element {
+function QuotaTrack({ label, quota, amounts }: QuotaTrackProps): React.JSX.Element {
+  const { percent } = quota;
   return (
     <div
       role="progressbar"
@@ -122,7 +142,7 @@ function QuotaTrack({ label, percent, amounts }: QuotaTrackProps): React.JSX.Ele
       <div
         className={cn(
           'h-full rounded-full transition-[width] motion-reduce:transition-none',
-          TIER_STYLES[quotaTierOf(percent)].fill,
+          TIER_STYLES[quota.tier].fill,
         )}
         style={{ width: `${percent}%` }}
       />
@@ -138,17 +158,17 @@ export function QuotaBar({
   freeSpaceHref,
   className,
 }: QuotaBarProps): React.JSX.Element {
-  const percent = quotaPercentOf(usedBytes, quotaBytes);
+  const quota = quotaStateOf({ usedBytes, quotaBytes });
   const amounts = `${formatBytes(usedBytes)} de ${formatBytes(quotaBytes)}`;
   return (
     <div className={cn('flex flex-col gap-1.5', className)}>
       <div className="flex items-baseline justify-between gap-2 text-xs font-semibold tabular-nums">
         <span>{label}</span>
-        <span>{percent} %</span>
+        <span>{quota.percent} %</span>
       </div>
-      <QuotaTrack label={label} percent={percent} amounts={amounts} />
+      <QuotaTrack label={label} quota={quota} amounts={amounts} />
       <p className="text-xs font-medium text-muted-foreground tabular-nums">{amounts}</p>
-      <QuotaNotice percent={percent} freeSpaceHref={freeSpaceHref} />
+      <QuotaNotice quota={quota} freeSpaceHref={freeSpaceHref} />
     </div>
   );
 }
