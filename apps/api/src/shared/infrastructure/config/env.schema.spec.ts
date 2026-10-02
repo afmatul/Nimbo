@@ -144,6 +144,24 @@ describe('carpetas y papelera (006 plan §7)', () => {
     expect(batch.safeParse('1001').success).toBe(false);
     expect(batch.safeParse('0').success).toBe(false);
   });
+
+  it.each(['USAGE_RECONCILE_INTERVAL_MINUTES', 'USAGE_RECONCILE_BATCH_SIZE'])(
+    '007 CA-13: `%s` es solo del `worker`',
+    (key) => {
+      expect(declaredIn(key)).toEqual(['worker']);
+    },
+  );
+
+  it('007 CA-13: la conciliación corre una vez al día por defecto, en páginas de 100 cuentas (1–1000)', () => {
+    const { USAGE_RECONCILE_INTERVAL_MINUTES: interval, USAGE_RECONCILE_BATCH_SIZE: batch } =
+      workerEnvObjectSchema.shape;
+
+    expect(interval.parse(undefined)).toBe(1440);
+    expect(batch.parse(undefined)).toBe(100);
+    expect(batch.safeParse('1000').success).toBe(true);
+    expect(batch.safeParse('1001').success).toBe(false);
+    expect(batch.safeParse('0').success).toBe(false);
+  });
 });
 
 describe('accesos rápidos (006 plan §9.2)', () => {

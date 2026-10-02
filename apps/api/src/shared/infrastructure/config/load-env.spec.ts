@@ -188,6 +188,8 @@ describe('loadEnv(workerEnvSchema)', () => {
         UPLOAD_CLEANUP_BATCH_SIZE: 100,
         TRASH_PURGE_INTERVAL_MINUTES: 60,
         TRASH_PURGE_BATCH_SIZE: 100,
+        USAGE_RECONCILE_INTERVAL_MINUTES: 1440,
+        USAGE_RECONCILE_BATCH_SIZE: 100,
         SMTP_HOST: 'localhost',
         SMTP_PORT: 1025,
         SMTP_TLS: 'none',

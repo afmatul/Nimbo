@@ -9,16 +9,19 @@ import { AuditModule } from '../audit';
 
 import { FOLDER_CONFIG } from './application/folder-config';
 import type { FolderConfig } from './application/folder-config';
+import { I_CLIENT_ACCOUNT_SCANNER } from './application/ports/i-client-account.scanner.port';
 import { I_EXPIRED_TRASH_SCANNER } from './application/ports/i-expired-trash.scanner.port';
 import { I_EXPIRED_UPLOAD_SCANNER } from './application/ports/i-expired-upload.scanner.port';
 import { I_OBJECT_STORAGE } from './application/ports/i-object-storage.port';
 import type { IObjectStorage } from './application/ports/i-object-storage.port';
 import { UPLOAD_CONFIG } from './application/upload-config';
 import type { UploadConfig } from './application/upload-config';
+import { UsageReconciler } from './application/usage-reconciler';
 import {
   buildMinioStorageClients,
   MinioStorageAdapter,
 } from './infrastructure/minio-storage.adapter';
+import { SqlClientAccountScanner } from './infrastructure/persistence/sql-client-account.scanner';
 import { SqlExpiredTrashScanner } from './infrastructure/persistence/sql-expired-trash.scanner';
 import { SqlExpiredUploadScanner } from './infrastructure/persistence/sql-expired-upload.scanner';
 import { TrashPurgeProcessor } from './infrastructure/trash-purge.processor';
@@ -35,7 +38,15 @@ import {
   UploadCleanupScheduler,
 } from './infrastructure/upload-cleanup.scheduler';
 import type { UploadCleanupConfig } from './infrastructure/upload-cleanup.scheduler';
+import { UsageReconcileProcessor } from './infrastructure/usage-reconcile.processor';
 import {
+  USAGE_RECONCILE_CONFIG,
+  USAGE_RECONCILE_QUEUE,
+  UsageReconcileScheduler,
+} from './infrastructure/usage-reconcile.scheduler';
+import type { UsageReconcileConfig } from './infrastructure/usage-reconcile.scheduler';
+import {
+  SPACE_PROVIDERS,
   TRASH_LIFECYCLE_PROVIDERS,
   UPLOAD_LIFECYCLE_PROVIDERS,
 } from './upload-lifecycle.providers';
@@ -47,6 +58,8 @@ export type StorageWorkerEnv = Pick<
   | 'UPLOAD_CLEANUP_BATCH_SIZE'
   | 'TRASH_PURGE_INTERVAL_MINUTES'
   | 'TRASH_PURGE_BATCH_SIZE'
+  | 'USAGE_RECONCILE_INTERVAL_MINUTES'
+  | 'USAGE_RECONCILE_BATCH_SIZE'
 >;
 
 const uploadConfigUnavailable = (): never => {
@@ -88,9 +101,10 @@ const WORKER_FOLDER_CONFIG: FolderConfig = Object.freeze({
 });
 
 /**
- * Parte de `storage` que corre en el `worker` (CA-9, D-6, ADR-0021): las colas `upload-cleanup` y `trash-purge`
- * (006 CA-19), sus programas repetibles y sus procesadores, que vencen cargas con `UploadService.expire` y purgan la
- * papelera con `TrashService.purgeExpired`. `apps/worker` la importa solo desde `storage/index.ts`.
+ * Parte de `storage` que corre en el `worker` (CA-9, D-6, ADR-0021): las colas `upload-cleanup`, `trash-purge`
+ * (006 CA-19) y `usage-reconcile` (007 CA-13), sus programas repetibles y sus procesadores, que vencen cargas con
+ * `UploadService.expire`, purgan la papelera con `TrashService.purgeExpired` y concilian `espacio_usado` con
+ * `UsageReconciler`. `apps/worker` la importa solo desde `storage/index.ts`.
  * Como `StorageModule`, **no** enlaza `I_PLAN_LIMITS_PROVIDER` (DF-51): lo hace `WorkerModule`. El adaptador de MinIO
  * firma contra el endpoint interno porque el `worker` no tiene `MINIO_PUBLIC_ENDPOINT` ni emite URLs (plan §5): solo
  * aborta partes y borra objetos.
@@ -106,15 +120,24 @@ export class StorageWorkerModule {
       intervalMinutes: env.TRASH_PURGE_INTERVAL_MINUTES,
       batchSize: env.TRASH_PURGE_BATCH_SIZE,
     };
+    const reconcileConfig: UsageReconcileConfig = {
+      intervalMinutes: env.USAGE_RECONCILE_INTERVAL_MINUTES,
+      batchSize: env.USAGE_RECONCILE_BATCH_SIZE,
+    };
     return {
       module: StorageWorkerModule,
       imports: [
         AuditModule,
-        BullModule.registerQueue({ name: UPLOAD_CLEANUP_QUEUE }, { name: TRASH_PURGE_QUEUE }),
+        BullModule.registerQueue(
+          { name: UPLOAD_CLEANUP_QUEUE },
+          { name: TRASH_PURGE_QUEUE },
+          { name: USAGE_RECONCILE_QUEUE },
+        ),
       ],
       providers: [
         { provide: UPLOAD_CLEANUP_CONFIG, useValue: cleanupConfig },
         { provide: TRASH_PURGE_CONFIG, useValue: purgeConfig },
+        { provide: USAGE_RECONCILE_CONFIG, useValue: reconcileConfig },
         { provide: UPLOAD_CONFIG, useValue: WORKER_UPLOAD_CONFIG },
         { provide: FOLDER_CONFIG, useValue: WORKER_FOLDER_CONFIG },
         {
@@ -128,12 +151,17 @@ export class StorageWorkerModule {
         },
         { provide: I_EXPIRED_UPLOAD_SCANNER, useClass: SqlExpiredUploadScanner },
         { provide: I_EXPIRED_TRASH_SCANNER, useClass: SqlExpiredTrashScanner },
+        { provide: I_CLIENT_ACCOUNT_SCANNER, useClass: SqlClientAccountScanner },
         ...UPLOAD_LIFECYCLE_PROVIDERS,
         ...TRASH_LIFECYCLE_PROVIDERS,
+        ...SPACE_PROVIDERS,
+        UsageReconciler,
         UploadCleanupScheduler,
         UploadCleanupProcessor,
         TrashPurgeScheduler,
         TrashPurgeProcessor,
+        UsageReconcileScheduler,
+        UsageReconcileProcessor,
       ],
     };
   }

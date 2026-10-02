@@ -15,11 +15,9 @@ import { FolderService } from './application/folder.service';
 import { I_OBJECT_STORAGE } from './application/ports/i-object-storage.port';
 import type { IObjectStorage } from './application/ports/i-object-storage.port';
 import { I_QUICK_ACCESS_REPOSITORY } from './application/ports/i-quick-access.repository.port';
-import { I_SPACE_REPOSITORY } from './application/ports/i-space.repository.port';
 import { QUICK_ACCESS_CONFIG } from './application/quick-access-config';
 import type { QuickAccessConfig } from './application/quick-access-config';
 import { QuickAccessService } from './application/quick-access.service';
-import { SpaceMeasurer } from './application/space-measurer';
 import { SpaceSummaryService } from './application/space-summary.service';
 import { UPLOAD_CONFIG } from './application/upload-config';
 import type { UploadConfig } from './application/upload-config';
@@ -28,7 +26,6 @@ import {
   MinioStorageAdapter,
 } from './infrastructure/minio-storage.adapter';
 import { TypeOrmQuickAccessRepository } from './infrastructure/persistence/typeorm-quick-access.repository';
-import { TypeOrmSpaceRepository } from './infrastructure/persistence/typeorm-space.repository';
 import { TRASH_PURGE_QUEUE } from './infrastructure/trash-purge.scheduler';
 import { FilesController } from './presentation/files.controller';
 import { FoldersController } from './presentation/folders.controller';
@@ -37,6 +34,7 @@ import { SpaceController } from './presentation/space.controller';
 import { TrashController } from './presentation/trash.controller';
 import { UploadsController } from './presentation/uploads.controller';
 import {
+  SPACE_PROVIDERS,
   TRASH_LIFECYCLE_PROVIDERS,
   UPLOAD_LIFECYCLE_PROVIDERS,
 } from './upload-lifecycle.providers';
@@ -107,8 +105,7 @@ export class StorageModule {
         },
         ...UPLOAD_LIFECYCLE_PROVIDERS,
         ...TRASH_LIFECYCLE_PROVIDERS,
-        { provide: I_SPACE_REPOSITORY, useClass: TypeOrmSpaceRepository },
-        SpaceMeasurer,
+        ...SPACE_PROVIDERS,
         SpaceSummaryService,
         FileService,
         FolderService,

@@ -83,12 +83,15 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
   - `FilesController` (con 006: renombrar, mover, `download-url`) y, con 005, `UploadsController` (init, resume, complete, cancel; SRP; `uploadPart` desaparece porque los bytes no pasan por la API, DF-16);
   - con 006 (DF-61): `FoldersController` (`GET /folders/contents`, crear, renombrar, mover; reemplaza `FilesController.list`) y `TrashController` (eliminar a la papelera, listar, resumen, restaurar, eliminar definitivamente, vaciar);
   - con 006 §9 (DF-63): `QuickAccessController` (`GET /quick-access`, `PUT`/`DELETE /quick-access/pins/:nodeType/:nodeId`, `POST /quick-access/recents/:nodeType/:nodeId`; `:nodeType` ∈ `files|folders`; `@Roles(Role.CLIENT)`).
+  - con 007 (DF-62): `SpaceController` (`GET /storage/summary`, `@Roles(Role.CLIENT)`).
   - Faltan versiones, búsqueda y vista previa → DF-15.
 - Servicios (todos con `actor: Actor` primero):
   - `FileService` (`getDownloadUrl`, renombrar, mover), `UploadService` (`init`, `resume`, `complete`, `cancel`, `expire`), `QuotaService` (`assertCanUpload`);
   - con 006 (DF-61): `FolderService` (`create`, `rename`, `move`, `contents`), `TrashService` (eliminar, listar, restaurar, purgar, vaciar; el `trash` del diagrama sale de `FileService` por SRP) y `TrashPurger` (borrado definitivo de objetos, filas y `espacio_usado` en una transacción con `lockUsage` primero);
   - con 006 §9 (DF-63): `QuickAccessService` (`list`, `pin`, `unpin`, `recordOpen`; solo `pin` toma `IQuotaRepository.lockUsage` y comprueba el tope). Configuración `QUICK_ACCESS_CONFIG` = `{ maxPinned, recentVisible }` desde `QUICK_ACCESS_MAX_PINNED` (5) y `QUICK_ACCESS_RECENT_VISIBLE` (3, decisión de Adrián del 2026-10-03) y la constante `RECENTS_STORED = 25` (colchón de poda, no configuración).
+  - con 007 (DF-62): `SpaceSummaryService` (`summary`), `SpaceMeasurer` (`measure`, compartido por el resumen y la conciliación) y `UsageReconciler` (`reconcile`).
   - Trabajos (worker): `UploadCleanupProcessor` y `UploadCleanupScheduler` (cola `upload-cleanup`); con 006, `TrashPurgeScheduler` y `TrashPurgeProcessor` (cola `trash-purge`, repetible con `upsertJobScheduler`, `concurrency: 1`).
+  - con 007 (DF-62): `UsageReconcileProcessor` y `UsageReconcileScheduler` (cola `usage-reconcile`).
 - Puertos → implementaciones:
   - `IObjectStorage` → `MinioStorageAdapter` (con 005: `createMultipart`, `presignUploadPart`, `presignUploadObject`, `listParts`, `completeMultipart`, `abortMultipart`, `headObject`, `getRange`, `purgeObject`, `presignDownload`); `IFileTypeDetector` → `MagicBytesDetector`;
   - `INodeRepository` → TypeORM (archivos y, con 006, carpetas);
@@ -96,6 +99,7 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
   - repositorios de 005: `IUploadSessionRepository`, `IQuotaRepository` (único punto que escribe `usuario.espacio_usado`: DF-59) e `IExpiredUploadScanner` (acceso sin actor de la limpieza, ADR-0021);
   - repositorios de 006 (internos, DF-61): `ITrashRepository` (incluye `schedulePurgeOfAll`), `IExpiredTrashScanner` (único acceso sin actor de la purga, función `papelera_vencida`) e `ITrashPurgeQueue` → `TrashPurgeQueue`;
   - repositorio de 006 §9 (interno, DF-63): `IQuickAccessRepository` → `TypeOrmQuickAccessRepository` (`list`, `countPinned`, `findAccessibleNode`, `upsertPin`, `removePin`, `touchRecent`, `pruneRecents`). Toda lectura y escritura une `accessibleNodes(actor)` dentro de la consulta. No hay puerto entre módulos.
+  - con 007 (internos, DF-62): `ISpaceRepository` → `TypeOrmSpaceRepository` (bytes vivos propios por tipo), `IClientAccountScanner` → `SqlClientAccountScanner` (solo ids de cuentas de cliente; único acceso sin actor de la conciliación) e `IQuotaRepository.readUsage` (sin bloqueo).
 - Puertos que consume: `IAuditLogger` (lo declara T2 `audit`); `IRateLimiter` (T1 `shared`).
 - Dominio:
   - `StorageNode` ← `Folder`, `File` (**Composite**). Con 006 es una unión `File | Folder` y no una clase abstracta: no hay comportamiento común que heredar (DF-61);
@@ -103,7 +107,8 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
   - con 005: `FileName` (VO), `FileKind` + catálogo extensión → tipo/MIME, `ObjectKey` y `QuotaPolicy` (puro);
   - con 006: `FolderName` (VO), `FolderPath` y `TrashState`;
   - con 006 §9: `QuickAccessItem` (modelo de lectura: `type`, `id`, `name`, `kind?`), `QuickAccessList` (`pinned`, `recent`, `hasMoreRecent`) y `QuickAccessLimitError` (422, `STORAGE_QUICK_ACCESS_LIMIT`, `details.maxPinned`).
-- Tablas: `carpeta`, `archivo`, `version_archivo`, `carga` y, con 006 §9, `acceso_rapido`. Con 005: `archivo`, `version_archivo` y `carga` con RLS (`ENABLE` + `FORCE`); función de mantenimiento `carga_expiradas` (ADR-0021). Con 006: RLS en `carpeta` y función `papelera_vencida`. Con 006 §9: RLS de cliente en `acceso_rapido`, sin política para roles internos ni de mantenimiento. `storage` además escribe la columna `usuario.espacio_usado` (excepción DF-59).
+  - con 007: `FileCategory`, `SpaceBreakdown`, `NodeOrder` y `QuotaPolicy.available`.
+- Tablas: `carpeta`, `archivo`, `version_archivo`, `carga` y, con 006 §9, `acceso_rapido`. Con 005: `archivo`, `version_archivo` y `carga` con RLS (`ENABLE` + `FORCE`); función de mantenimiento `carga_expiradas` (ADR-0021). Con 006: RLS en `carpeta` y función `papelera_vencida`. Con 006 §9: RLS de cliente en `acceso_rapido`, sin política para roles internos ni de mantenimiento. `storage` además escribe la columna `usuario.espacio_usado` (excepción DF-59). Desde 007, `storage` lee `usuario.id` y `rol` para listar cuentas en la conciliación (extensión de DF-59, DF-62).
 
 ### M3a `access`
 - Servicio: `PermissionResolver` (levelFor, can, inheritedGrants) + `accessibleNodes(actor)`, constructor de la consulta de nodos accesibles (DF-32, spec 003 D-1: 003 entrega la firma; la consulta se completa con 005 y 012).
