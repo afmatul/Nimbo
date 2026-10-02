@@ -1,11 +1,10 @@
-import { formatBytes } from '@nimbo/contracts';
+import { formatBytes, type SpaceSummaryResponse } from '@nimbo/contracts';
 import Link from 'next/link';
 import type * as React from 'react';
 
 import { Card } from '../../../components/ui/card';
 import { cn } from '../../../lib/utils';
 import { TRASH_PATH } from '../routes';
-import type { SpaceSummaryResponse } from '../space-types';
 
 import { retentionLabel } from './trash-summary';
 

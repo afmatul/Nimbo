@@ -46,9 +46,11 @@ function withSummary(listing: TrashListing, summary: TrashSummary): TrashListing
 /**
  * Lista y resumen de la papelera (primera página, CA-12). Las acciones quitan filas en el momento y vuelven a leer el
  * resumen; «Vaciar» deja las filas en «Vaciando…» y relee el resumen hasta que la papelera queda vacía (CA-18).
+ * Cada relectura tras restaurar, purgar o terminar de vaciar avisa con `onTrashChanged` (el espacio cambió, 007 D-16).
  */
 export function useTrash(
   api: TrashReader,
+  onTrashChanged: () => void,
   now: () => number = Date.now,
 ): {
   readonly listing: TrashListing;
@@ -83,11 +85,12 @@ export function useTrash(
   );
 
   const refreshSummary = React.useCallback(() => {
+    onTrashChanged();
     api.trashSummary().then(
       (summary) => update((listing) => withSummary(listing, summary)),
       () => undefined,
     );
-  }, [api, update]);
+  }, [api, update, onTrashChanged]);
 
   React.useEffect(() => {
     if (emptying === null) return undefined;
@@ -99,6 +102,7 @@ export function useTrash(
         `Vaciaste la papelera. Liberaste ${formatBytes(emptying.pendingBytes)} de espacio.`,
       );
       setEmptying(null);
+      onTrashChanged();
     };
     // Mientras se vacía, relee el resumen; un fallo de lectura solo espera a la siguiente vuelta.
     const timer = setInterval(() => {
@@ -113,7 +117,7 @@ export function useTrash(
       current = false;
       clearInterval(timer);
     };
-  }, [api, emptying, now, update]);
+  }, [api, emptying, now, update, onTrashChanged]);
 
   return {
     listing: state.attempt === attempt ? state.listing : LOADING,

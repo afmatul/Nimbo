@@ -5,9 +5,10 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { SessionProvider } from '../../identity/session/session-provider';
-import { GB, spaceSummaryWith } from '../test-space-summary';
+import { GB, spaceSummaryWith, TEST_PLAN_NAME } from '../test-space-summary';
 
-import { SpaceSummaryView, type SpaceSummaryState } from './space-summary-view';
+import type { SpaceSummaryState } from './space-provider';
+import { SpaceSummaryView } from './space-summary-view';
 
 function renderView(state: SpaceSummaryState, onRetry: () => void = jest.fn()): void {
   render(
@@ -48,10 +49,11 @@ describe('SpaceSummaryView', () => {
     expect(screen.queryByRole('status', { name: /cuota/u })).toBeNull();
   });
 
-  it('CA-1, CA-6: «Tu plan» muestra cuota, máximo por archivo y días de papelera de la API', () => {
+  it('CA-1, CA-6, D-20: «Tu plan» muestra nombre, cuota, máximo por archivo y días de papelera de la API', () => {
     renderView(ready(4.8 * GB));
 
     const plan = screen.getByRole('region', { name: 'Tu plan' });
+    expect(within(plan).getByText(TEST_PLAN_NAME)).toBeTruthy();
     expect(plan.textContent).toContain('15 GB de almacenamiento');
     expect(plan.textContent).toContain('Hasta 50 MB por archivo');
     expect(plan.textContent).toContain('La papelera guarda lo eliminado 7 días');
@@ -84,6 +86,25 @@ describe('SpaceSummaryView', () => {
     expect(within(usageCard()).queryByRole('link')).toBeNull();
   });
 
+  it('CA-5: la tarjeta de cuota de la barra lateral repite el tramo sin enlaces (ya estás en el resumen)', () => {
+    renderView(ready(12.3 * GB));
+
+    const sidebar = screen.getByRole('complementary', { name: 'Barra lateral de escritorio' });
+    const quota = within(sidebar).getByRole('region', { name: 'Almacenamiento' });
+    expect(quota.textContent).toContain('Tu cuota está al 82 %.');
+    expect(within(quota).queryByRole('link')).toBeNull();
+  });
+
+  it('CA-8: si el resumen falla, la tarjeta lateral también lo dice y la navegación sigue', () => {
+    renderView({ status: 'error' });
+
+    const sidebar = screen.getByRole('complementary', { name: 'Barra lateral de escritorio' });
+    expect(within(sidebar).getByRole('region', { name: 'Almacenamiento' }).textContent).toContain(
+      'No pudimos calcular tu espacio.',
+    );
+    expect(within(sidebar).getByRole('link', { name: 'Mis Archivos' })).toBeTruthy();
+  });
+
   it('CA-5: en 90–99 % el aviso es una alerta «Espacio casi agotado.»', () => {
     renderView(ready(14.1 * GB, 0.8 * GB));
 
@@ -106,7 +127,7 @@ describe('SpaceSummaryView', () => {
     renderView({ status: 'loading' });
 
     expect(
-      screen
+      within(screen.getByRole('main'))
         .getByText('Calculando tu espacio…')
         .closest('[role="status"]')
         ?.getAttribute('aria-live'),
@@ -119,7 +140,7 @@ describe('SpaceSummaryView', () => {
     const onRetry = jest.fn();
     renderView({ status: 'error' }, onRetry);
 
-    const error = screen.getByRole('alert');
+    const error = within(screen.getByRole('main')).getByRole('alert');
     expect(error.textContent).toContain('No pudimos calcular tu espacio.');
     expect(error.textContent).toContain('Tus archivos siguen guardados.');
     await userEvent.click(within(error).getByRole('button', { name: 'Reintentar' }));

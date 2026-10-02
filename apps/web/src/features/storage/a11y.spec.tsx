@@ -13,6 +13,7 @@ import { axe } from 'jest-axe';
 import { act, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
+import { AppLayout } from '../../components/nimbo/app-layout';
 import { SessionProvider } from '../identity/session/session-provider';
 
 import { CancelUploadDialog } from './components/cancel-upload-dialog';
@@ -24,7 +25,9 @@ import { NameConflictDialog } from './components/name-conflict-dialog';
 import { NewFolderDialog } from './components/new-folder-dialog';
 import type { DisclosedLevel, FolderDisclosure } from './components/node-table';
 import { QuickAccessLimitAlert } from './components/quick-access-limit-alert';
-import { SpaceSummaryView, type SpaceSummaryState } from './components/space-summary-view';
+import { SidebarQuota } from './components/sidebar-quota';
+import type { SpaceSummaryState } from './components/space-provider';
+import { SpaceSummaryView } from './components/space-summary-view';
 import { UploadPanel } from './components/upload-panel';
 import { StorageRequestError, type StorageErrorDetails } from './storage-request-error';
 import { GB, spaceSummaryWith } from './test-space-summary';
@@ -697,6 +700,35 @@ describe('Accesibilidad del resumen de espacio (007 CA-1, CA-2, CA-3, CA-5, CA-8
       <SessionProvider apiPublicUrl="http://localhost/api/v1">
         <SpaceSummaryView state={state} onRetry={jest.fn()} />
       </SessionProvider>,
+    );
+
+    expect(text()).toContain(expected);
+    await expectNoBlockingViolations();
+  });
+});
+
+describe('Accesibilidad de la tarjeta de cuota de la barra lateral (007 CA-5, CA-8)', () => {
+  const states: ReadonlyArray<readonly [string, SpaceSummaryState, string]> = [
+    ['bajo el 70 %', { status: 'ready', summary: spaceSummaryWith(4.8 * GB) }, 'Ver detalle'],
+    [
+      'tramo 70–89 %',
+      { status: 'ready', summary: spaceSummaryWith(12.3 * GB) },
+      'Tu cuota está al 82 %.',
+    ],
+    [
+      'tramo 90–100 %',
+      { status: 'ready', summary: spaceSummaryWith(14.1 * GB) },
+      'Espacio casi agotado.',
+    ],
+    ['cargando', { status: 'loading' }, 'Calculando tu espacio…'],
+    ['error', { status: 'error' }, 'No pudimos calcular tu espacio.'],
+  ];
+
+  it.each(states)('%s', async (_name, state, expected) => {
+    await mount(
+      <AppLayout quotaCard={<SidebarQuota state={state} />}>
+        <h1>Mis archivos</h1>
+      </AppLayout>,
     );
 
     expect(text()).toContain(expected);

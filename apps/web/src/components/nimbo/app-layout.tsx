@@ -54,6 +54,8 @@ export interface AppLayoutProps {
   readonly sidebarSection?: React.ReactNode;
   /** Elementos en la papelera (`GET /trash/summary`); sin dato o en 0 no se muestra (006). */
   readonly trashCount?: number | undefined;
+  /** Tarjeta de cuota al pie de la barra lateral y del menú móvil (007); sin ella no se reserva espacio. */
+  readonly quotaCard?: React.ReactNode;
 }
 
 /** Texto del ítem y, en la Papelera, su contador («6», leído como «Papelera (6 elementos)»). */
@@ -78,6 +80,16 @@ function NavLabel({
   );
 }
 
+/** Pie de la barra lateral con la tarjeta de cuota (007 CA-5). */
+function QuotaSlot({ card }: { readonly card: React.ReactNode }): React.JSX.Element | null {
+  if (card === undefined || card === null) return null;
+  return (
+    <div data-quota-card="" className="mt-6">
+      {card}
+    </div>
+  );
+}
+
 /**
  * Layout base responsivo de Nimbo.
  * Diseñado desde 360 px (móvil) hasta escritorio, con navegación accesible,
@@ -91,6 +103,7 @@ export function AppLayout({
   topBar,
   sidebarSection,
   trashCount,
+  quotaCard,
 }: AppLayoutProps): React.JSX.Element {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(initialMobileMenuOpen);
   const menuButtonRef = React.useRef<HTMLButtonElement>(null);
@@ -192,6 +205,7 @@ export function AppLayout({
             })}
             {sidebarSection}
           </nav>
+          <QuotaSlot card={quotaCard} />
         </aside>
 
         {/* Sidebar móvil (Drawer) — Cambio 3: aria-labelledby="mobile-menu-title" */}
@@ -258,6 +272,7 @@ export function AppLayout({
                   {sidebarSection}
                 </SidebarSlotContext.Provider>
               </nav>
+              <QuotaSlot card={quotaCard} />
             </aside>
           </div>
         )}

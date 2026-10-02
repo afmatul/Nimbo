@@ -64,6 +64,24 @@ interface QuotaNoticeProps {
   readonly freeSpaceHref: string | undefined;
 }
 
+/** Acción de texto junto al medidor («Liberar espacio», «Ver detalle»): subrayada, no solo por color. */
+export function QuotaLink({
+  href,
+  children,
+}: {
+  readonly href: string;
+  readonly children: React.ReactNode;
+}): React.JSX.Element {
+  return (
+    <Link
+      href={href}
+      className="inline-flex min-h-6 items-center rounded-sm text-xs font-semibold text-primary underline underline-offset-4 hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+    >
+      {children}
+    </Link>
+  );
+}
+
 function QuotaNotice({ percent, freeSpaceHref }: QuotaNoticeProps): React.JSX.Element | null {
   const notice = quotaNoticeOf(percent);
   const style = TIER_STYLES[quotaTierOf(percent)];
@@ -78,14 +96,7 @@ function QuotaNotice({ percent, freeSpaceHref }: QuotaNoticeProps): React.JSX.El
         <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
         <span>{notice}</span>
       </p>
-      {freeSpaceHref !== undefined && (
-        <Link
-          href={freeSpaceHref}
-          className="inline-flex min-h-6 items-center rounded-sm text-xs font-semibold text-primary underline underline-offset-4 hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        >
-          Liberar espacio
-        </Link>
-      )}
+      {freeSpaceHref !== undefined && <QuotaLink href={freeSpaceHref}>Liberar espacio</QuotaLink>}
     </div>
   );
 }

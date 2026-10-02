@@ -15,8 +15,10 @@ import userEvent from '@testing-library/user-event';
 
 import { SessionProvider } from '../../../../../../features/identity/session/session-provider';
 import type { StorageApi } from '../../../../../../features/storage/api';
+import { UploadsSpaceProvider } from '../../../../../../features/storage/components/space-provider';
 import { UploadsProvider } from '../../../../../../features/storage/components/uploads-provider';
 import { StorageRequestError } from '../../../../../../features/storage/storage-request-error';
+import { GB, spaceSummaryWith } from '../../../../../../features/storage/test-space-summary';
 import type { UploadManagerOptions } from '../../../../../../features/storage/upload/upload-manager';
 
 import CarpetaPage from './page';
@@ -88,6 +90,7 @@ function fakeApi(overrides: Partial<StorageApi> = {}): jest.Mocked<StorageApi> {
     moveToTrash: jest.fn(() => never()),
     quickAccess: jest.fn(() => Promise.resolve({ pinned: [], recent: [], hasMoreRecent: false })),
     recordRecent: jest.fn(() => Promise.resolve()),
+    spaceSummary: jest.fn(() => Promise.resolve(spaceSummaryWith(4.8 * GB))),
     ...overrides,
   } as jest.Mocked<StorageApi>;
 }
@@ -101,7 +104,7 @@ async function renderFolder(
   render(
     <SessionProvider apiPublicUrl="http://localhost/api/v1">
       <UploadsProvider api={api} {...(managerOptions ? { managerOptions } : {})}>
-        {page}
+        <UploadsSpaceProvider>{page}</UploadsSpaceProvider>
       </UploadsProvider>
     </SessionProvider>,
   );

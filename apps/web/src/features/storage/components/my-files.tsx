@@ -1,16 +1,18 @@
 'use client';
 
-import type {
-  FileSummary,
-  FolderContentsResponse,
-  FolderRef,
-  FolderSummary,
-  NodeSummary,
+import {
+  formatBytes,
+  type FileSummary,
+  type FolderContentsResponse,
+  type FolderRef,
+  type FolderSummary,
+  type NodeSummary,
 } from '@nimbo/contracts';
 import * as React from 'react';
 
 import { AppLayout } from '../../../components/nimbo/app-layout';
 import { SignOutButton } from '../../identity/components/sign-out-button';
+import type { StorageApi } from '../api';
 import { useFolderContents, type FolderListing } from '../hooks/use-folder-contents';
 import {
   toFolderDisclosure,
@@ -32,6 +34,8 @@ import { NewFolderDialog } from './new-folder-dialog';
 import { QuickAccessLimitAlert } from './quick-access-limit-alert';
 import { useQuickAccessSidebar, type QuickAccessSidebar } from './quick-access-sidebar';
 import { RenameDialog } from './rename-dialog';
+import { SidebarQuota } from './sidebar-quota';
+import { useSpace, type SpaceSummaryState } from './space-provider';
 
 /**
  * Carpetas primero; después los subidos en esta pestaña a esta ubicación (sin repetir los que el listado ya trae) y
@@ -131,6 +135,29 @@ function explorerNotices(
   );
 }
 
+/** `{máximo}` de los estados vacío y arrastre: el del plan según el resumen; sin resumen, el texto lo omite (CA-6). */
+function maxFileLabelOf(state: SpaceSummaryState): string | undefined {
+  return state.status === 'ready' ? formatBytes(state.summary.maxFileBytes) : undefined;
+}
+
+/**
+ * Contador de la Papelera y resumen de espacio de la barra lateral; mandar algo a la papelera relee ambos (006 CA-12,
+ * 007 CA-4).
+ */
+function useSidebarCounters(api: StorageApi): {
+  readonly trashCount: number | undefined;
+  readonly space: SpaceSummaryState;
+  readonly onMovedToTrash: () => void;
+} {
+  const { count, refresh: refreshTrashCount } = useTrashCount(api);
+  const { state, refresh: refreshSpace } = useSpace();
+  const onMovedToTrash = React.useCallback(() => {
+    refreshTrashCount();
+    refreshSpace();
+  }, [refreshTrashCount, refreshSpace]);
+  return { trashCount: count, space: state, onMovedToTrash };
+}
+
 export interface MyFilesProps {
   /** Carpeta de la URL (`/archivos/carpeta/[folderId]`); `null` es la raíz (`/archivos`). */
   readonly folderId: string | null;
@@ -138,7 +165,7 @@ export interface MyFilesProps {
 
 /**
  * Mis archivos y cada carpeta: lista la ubicación con sus migas, crea carpetas, sube a la carpeta abierta, descarga,
- * renombra, mueve y manda a la papelera (con el contador de la Papelera en la barra lateral).
+ * renombra, mueve y manda a la papelera (con el contador de la Papelera y la tarjeta de cuota en la barra lateral).
  * Si el listado falla, «Subir archivos» sigue habilitado y el panel de cargas no se entera.
  */
 export function MyFiles({ folderId }: MyFilesProps): React.JSX.Element {
@@ -157,12 +184,12 @@ export function MyFiles({ folderId }: MyFilesProps): React.JSX.Element {
     reload();
     disclosed.refreshAll();
   };
-  const trashCount = useTrashCount(api);
+  const counters = useSidebarCounters(api);
   const reloadQuickAccess = sidebar.quickAccess.reload;
   const { trashedIds, moveToTrash } = useMoveToTrash({
     api,
     onMoved: () => {
-      trashCount.refresh();
+      counters.onMovedToTrash();
       reloadQuickAccess();
     },
     onNotice: setNotice,
@@ -204,7 +231,8 @@ export function MyFiles({ folderId }: MyFilesProps): React.JSX.Element {
     <AppLayout
       topBar={listing.status === 'ready' ? <FolderBreadcrumbs breadcrumbs={breadcrumbs} /> : null}
       sidebarSection={sidebar.sidebarSection}
-      trashCount={trashCount.count}
+      trashCount={counters.trashCount}
+      quotaCard={<SidebarQuota state={counters.space} />}
     >
       <div className="space-y-4">
         <div className="flex justify-end">
@@ -218,6 +246,7 @@ export function MyFiles({ folderId }: MyFilesProps): React.JSX.Element {
             folderId={folderId}
             breadcrumbs={breadcrumbs}
             nodes={nodes}
+            maxFileLabel={maxFileLabelOf(counters.space)}
             onFiles={(files) => enqueue(files, folderId)}
             onRetry={reload}
             onNewFolder={() => setCreatingFolder(true)}

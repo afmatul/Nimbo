@@ -277,6 +277,27 @@ describe('AppLayout component (CA-5)', () => {
     }
   });
 
+  it('007 CA-5: pinta la tarjeta de cuota que recibe bajo la navegación, en escritorio y en el menú móvil', () => {
+    const markup = renderToStaticMarkup(
+      <AppLayout quotaCard={<p>Tarjeta de cuota</p>} initialMobileMenuOpen>
+        <div>Contenido</div>
+      </AppLayout>,
+    );
+
+    expect(markup.match(/<p>Tarjeta de cuota<\/p>/g)).toHaveLength(2);
+    expect(markup.indexOf('Tarjeta de cuota')).toBeGreaterThan(markup.indexOf('</nav>'));
+  });
+
+  it('007: sin tarjeta de cuota la barra lateral no deja hueco', () => {
+    const markup = renderToStaticMarkup(
+      <AppLayout>
+        <div>Contenido</div>
+      </AppLayout>,
+    );
+
+    expect(markup).not.toContain('data-quota-card');
+  });
+
   it('006 CA-10: monta la región de avisos (sonner, ADR-0024)', () => {
     const markup = renderToStaticMarkup(
       <AppLayout>

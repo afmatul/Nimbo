@@ -1,6 +1,6 @@
 'use client';
 
-import { formatBytes } from '@nimbo/contracts';
+import { formatBytes, type SpaceSummaryResponse } from '@nimbo/contracts';
 import { Check, CircleAlert, Trash2, TriangleAlert } from 'lucide-react';
 import Link from 'next/link';
 import type * as React from 'react';
@@ -19,15 +19,11 @@ import { buttonVariants } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { SignOutButton } from '../../identity/components/sign-out-button';
 import { MY_FILES_PATH, SPACE_PATH, TRASH_PATH } from '../routes';
-import type { SpaceSummaryResponse } from '../space-types';
 
+import { SidebarQuota } from './sidebar-quota';
 import { SpaceBreakdown } from './space-breakdown';
+import type { SpaceSummaryState } from './space-provider';
 import { retentionLabel } from './trash-summary';
-
-export type SpaceSummaryState =
-  | { readonly status: 'loading' }
-  | { readonly status: 'error' }
-  | { readonly status: 'ready'; readonly summary: SpaceSummaryResponse };
 
 export interface SpaceSummaryViewProps {
   readonly state: SpaceSummaryState;
@@ -155,7 +151,7 @@ function PlanFact({ children }: { readonly children: React.ReactNode }): React.J
   );
 }
 
-/** «Tu plan» (CA-1, CA-6): límites que entrega la API; sin precio, «Ampliar» ni «Ver planes» (spec 007 §6). */
+/** «Tu plan» (CA-1, CA-6, D-20): nombre y límites que entrega la API; sin precio, «Ampliar» ni «Ver planes» (spec 007 §6). */
 function PlanCard({ summary }: { readonly summary: SpaceSummaryResponse }): React.JSX.Element {
   const strong = 'font-semibold text-foreground tabular-nums';
   return (
@@ -163,6 +159,7 @@ function PlanCard({ summary }: { readonly summary: SpaceSummaryResponse }): Reac
       <h2 id="plan-titulo" className="text-base font-semibold">
         Tu plan
       </h2>
+      <p className="mt-3.5 text-xl font-bold text-foreground">{summary.planName}</p>
       <ul className="mt-3.5 grid gap-2.5 text-sm text-secondary-foreground">
         <PlanFact>
           <strong className={strong}>{formatBytes(summary.quotaBytes)}</strong> de almacenamiento
@@ -208,11 +205,11 @@ function SpaceBody({ state, onRetry }: SpaceSummaryViewProps): React.JSX.Element
 
 /**
  * Resumen de espacio (spec 007, mockup `storage/resumen-espacio`): aviso de tramo, medidor, plan y desglose; cargando
- * y error con «Reintentar» sin bloquear la navegación (CA-8). Recibe el resumen por props; T-10 lo conecta a la API.
+ * y error con «Reintentar» sin bloquear la navegación (CA-8). Recibe el estado de `useSpace()` por props.
  */
 export function SpaceSummaryView({ state, onRetry }: SpaceSummaryViewProps): React.JSX.Element {
   return (
-    <AppLayout navItems={SPACE_NAV_ITEMS}>
+    <AppLayout navItems={SPACE_NAV_ITEMS} quotaCard={<SidebarQuota state={state} linked={false} />}>
       <div className="space-y-4">
         <div className="flex justify-end">
           <SignOutButton />

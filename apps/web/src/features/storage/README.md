@@ -1,6 +1,6 @@
 # Storage en la web
 
-Componentes de las specs 005 y 006 para cargar, navegar carpetas, crear carpetas y descargar. Cada componente recibe sus datos y
+Componentes de las specs 005, 006 y 007 para cargar, navegar carpetas, crear carpetas, descargar y ver el espacio. Cada componente recibe sus datos y
 callbacks por props; solo `api.ts` habla con la API.
 
 **Proveedor de la pestaña (T-53)**: `app/(app)/(cliente)/layout.tsx` monta `SessionUploadsProvider`
@@ -8,6 +8,14 @@ callbacks por props; solo `api.ts` habla con la API.
 memoria de la sesión y crea **un** `UploadManager` por pestaña (`hooks/use-upload-manager.ts`). Escucha
 `online`/`offline`, pinta el panel flotante y abre los diálogos. Navegar dentro de `(cliente)` conserva las cargas;
 recargar las pierde (RN-7). Las páginas leen el contexto con `useUploads()`.
+
+**Resumen de espacio (007 T-10)**: dentro del proveedor de cargas, el layout monta `UploadsSpaceProvider`
+(`components/space-provider.tsx`), que hace **una** lectura de `GET /storage/summary` para toda la pestaña (D-15) y la
+expone con `useSpace()` (`{ state: loading | error | ready, refresh }`). La leen la tarjeta de cuota de la barra lateral,
+el `{máximo}` del explorador y `/espacio`. `refresh()` conserva la cifra visible hasta la respuesta (desde `error` vuelve
+a «cargando») y descarta respuestas de intentos anteriores. Se refresca al completar una carga (cambia
+`uploadedFiles.length`; el `UploadManager` no se toca), al mandar a la papelera, restaurar, eliminar definitivamente y al
+terminar de vaciar (D-16). Sin empuje en tiempo real (P-2). Si el resumen falla, el resto de la app sigue usable (CA-8).
 
 | Pieza                                                                               | Qué hace                                                                                            | Tarea      |
 | ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ---------- |
@@ -36,6 +44,11 @@ recargar las pierde (RN-7). Las páginas leen el contexto con `useUploads()`.
 | `components/restore-result.tsx`, `purge-confirm-dialog.tsx`                         | Resultado de restaurar por elemento (CA-14/15/17) y confirmación con el espacio que se libera       | 006 T-10   |
 | `components/move-to-trash-menu-item.tsx`, `hooks/use-move-to-trash.tsx`             | «Mover a la papelera» en los menús ⋮ (sin rojo) y aviso «Movimos…» con «Ver papelera» (`sonner`)    | 006 T-10   |
 | `hooks/use-trash-count.ts`                                                          | Contador de la Papelera en la barra lateral (`GET /trash/summary`), vía `AppLayout.trashCount`      | 006 T-10   |
+**Resumen de espacio (007 T-10)**: dentro del proveedor de cargas, el layout monta `UploadsSpaceProvider`
+| `space-api.ts`                                                                      | `GET /storage/summary` validado con `spaceSummaryResponseSchema` de `contracts`                    | 007 T-10   |
+| `components/space-provider.tsx`                                                     | `SpaceProvider`, `UploadsSpaceProvider` y `useSpace()`: resumen compartido y su refresco           | 007 T-10   |
+| `components/sidebar-quota.tsx`                                                      | Tarjeta «Almacenamiento» de la barra lateral (`AppLayout.quotaCard`): `QuotaBar`, «Ver detalle»    | 007 T-10   |
+| `components/space-summary-view.tsx`, `space-breakdown.tsx`                          | `/espacio`: aviso de tramo, medidor, «Tu plan» con su nombre y desglose; cargando y error          | 007 T-08   |
 | `components/file-row-menu.tsx`                                                      | Menú ⋮ con «Descargar» y `DownloadNoticeBanner`; «Fijar/Quitar de la barra lateral» (`PinMenuItem`) | T-17, 006  |
 | `quick-access-api.ts`, `hooks/use-quick-access.ts`                                  | `/quick-access`: fijados y recientes, fijar, quitar y registrar aperturas (mejor esfuerzo)          | 006 T-16   |
 | `components/quick-access-section.tsx`, `quick-access-sidebar.tsx`                   | «Accesos rápidos» en la barra y el cajón (⋮ en cada fijado); descarga y menús de fila conectados    | 006 T-16   |
@@ -52,8 +65,8 @@ Los textos de error de `storage` salen de `lib/error-catalog.ts` (`storageMessag
   `dismissCancel`); las cifras se formatean con `formatBytes`.
 - La primera fila en `conflict` abre `NameConflictDialog` con `finalName = suggestedName` y
   `othersCount = pendingConflictsInBatch(id)`; la respuesta va a `resolveConflict(id, decision, applyToRest)`.
-- `FileExplorer.onFiles` entrega `File[]` para `manager.enqueue`; `maxFileLabel` sale de los límites del plan por la
-  API (nunca de una constante). `onRetry` repite la última petición de listado con el mismo cursor.
+- `FileExplorer.onFiles` entrega `File[]` para `manager.enqueue`; `maxFileLabel` es `maxFileBytes` del resumen de
+  espacio (`useSpace()`, 007 CA-6), nunca una constante; mientras no hay resumen, los textos omiten la cifra. `onRetry` repite la última petición de listado con el mismo cursor.
 - `FileRowMenu.requestUrl` llama `POST /files/:id/download-url` y lanza `StorageRequestError` ante un error HTTP. El
   aviso que emite `onNotice` se pinta con `DownloadNoticeBanner` en `FileExplorer.notice`, arriba de la lista.
 - La barra lateral muestra «Accesos rápidos» (006 CA-27; reemplaza a «Carpetas») y enlaza la Papelera con su contador
@@ -64,8 +77,8 @@ Los textos de error de `storage` salen de `lib/error-catalog.ts` (`storageMessag
 - `FileRowMenu` y `FolderRowMenu` abren `RenameDialog` y `MoveDialog`, que `MyFiles` monta solo mientras están
   abiertos. El resultado se guarda en `organized-nodes.ts` (listado y barra lateral) y, si es un archivo subido en la
   pestaña, en `reviseUploaded` para que no reaparezca en su carpeta anterior.
-- `maxFileLabel` es opcional: ningún contrato expone todavía `PlanLimits.maxFileBytes` a `web`, así que la página no lo
-  pasa y los textos omiten la cifra (propuesta en el registro de cambios de la spec).
+- «Liberar espacio» del rechazo por cuota (panel de cargas) y de la tarjeta lateral lleva a `/espacio` (`SPACE_PATH`,
+  007 CA-7). La tarjeta muestra «Ver detalle» bajo el 70 % y, en `/espacio`, no lleva enlaces.
 - La página muestra solo la primera página de `GET /folders/contents` (carpetas primero, luego más recientes);
   «Cargar más» llega con 007.
 - Desglose (006 CA-26): `useFolderDisclosure` pide `GET /folders/contents` de cada carpeta desglosada y descarta la
