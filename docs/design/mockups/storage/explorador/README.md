@@ -355,7 +355,7 @@ datos con Enter agrega la fila «vacía» (con su sangría y guías) y axe sigue
 abre con el foco en el primer ítem.
 
 ## Estados de 007 (orden y «Cargar más»)
-**Spec 007** (CA-9, CA-10, CA-12; P-4 y P-5 resueltas). Generados con `../../_generadores/explorador/generar-orden.js`;
+**Spec 007** (CA-9, CA-10, CA-12; P-4 y P-5 resueltas; orden por defecto corregido en D-6). Generados con `../../_generadores/explorador/generar-orden.js`;
 no se editan a mano. Carpeta «Proyecto Alpha / Documentación» con 3 subcarpetas y archivos de plan Personal (ninguno pasa
 de 50 MB); la página de ejemplo tiene 20 elementos (el tamaño real lo fija el plan, RN-6). Barra lateral de 007
 (`espacio/espacio.js`): plan Personal al 32 % con «Ver detalle». Capturas: `explorador--<estado>--<360|1440>.png`. En
@@ -363,10 +363,10 @@ los 6 estados: axe-core sin violaciones a 360 y 1440 px, sin desbordamiento a 36
 
 | Estado | Archivo | Qué muestra |
 |---|---|---|
-| orden-menu | `explorador--orden-menu.html` | Menú «Ordenar» abierto: «Ordenar por» (Nombre, Tamaño, Fecha de modificación) y «Orden» (A–Z / Z–A), con la nota «Las carpetas siempre van primero. El tamaño ordena solo los archivos.» |
+| orden-menu | `explorador--orden-menu.html` | Menú «Ordenar» abierto: «Ordenar por» (Nombre, Tamaño, Fecha de modificación, Fecha de creación; marcada por defecto) y «Orden» (aquí «Más recientes primero» marcado), con la nota «Las carpetas siempre van primero. El tamaño ordena solo los archivos.» |
 | ordenando | `explorador--ordenando.html` | Se eligió «Tamaño, mayor primero»: el botón pasa a «Ordenando…» y la lista visible se conserva (`aria-busy`) hasta que llega la respuesta (CA-12) |
 | ordenado | `explorador--ordenado.html` | Ordenado por tamaño, mayor primero: carpetas primero (por nombre) y luego archivos de mayor a menor; la columna lleva `aria-sort` y flecha |
-| mas-paginas | `explorador--mas-paginas.html` | Primera página con el orden inicial (nombre ascendente) y «Cargar más» debajo de la lista |
+| mas-paginas | `explorador--mas-paginas.html` | Primera página con el orden inicial (fecha de creación, más recientes primero) y «Cargar más» debajo de la lista |
 | cargando-mas | `explorador--cargando-mas.html` | «Cargar más» en curso: «Cargando más…» deshabilitado con `aria-disabled` y anuncio `role="status"`; la lista se conserva |
 | cargar-mas-error | `explorador--cargar-mas-error.html` | Falló la página siguiente: `Alert` destructivo debajo de la lista, «No pudimos cargar más elementos.» con «Reintentar» |
 
@@ -374,9 +374,16 @@ los 6 estados: axe-core sin violaciones a 360 y 1440 px, sin desbordamiento a 36
 - **Un solo control de orden** para todos los anchos: `DropdownMenu` con dos grupos de `menuitemradio`, a la derecha
   encima de la lista (a todo el ancho y 44 px en móvil, donde la tabla no tiene encabezados). El botón dice el orden
   vigente en texto («Ordenar: Tamaño, mayor primero»). Los encabezados de columna no son botones: solo muestran
-  `aria-sort` y una flecha en la columna activa. Alternativa (encabezados clicables además del menú) pendiente de Adrián.
-- **Textos de la dirección según el campo**: Nombre «A–Z» / «Z–A»; Tamaño «Menor primero» / «Mayor primero»; Fecha
-  «Más antiguos primero» / «Más recientes primero». Por defecto, Nombre A–Z (RN-6).
+  `aria-sort` y una flecha en la columna activa (con el orden por defecto, por fecha de creación, ninguna columna la
+  lleva: la tabla muestra «Modificado», no la fecha de creación). Alternativa (encabezados clicables además del menú) pendiente de Adrián.
+- **Cuatro campos de orden** (CA-10): Nombre, Tamaño, Fecha de modificación y Fecha de creación (`created`), cada uno
+  ascendente o descendente.
+- **Textos de la dirección según el campo**: Nombre «A–Z» / «Z–A»; Tamaño «Menor primero» / «Mayor primero»; las dos
+  fechas «Más antiguos primero» / «Más recientes primero».
+- **Orden por defecto: «Fecha de creación, más recientes primero»** (RN-6, D-6; corrección de Adrián, 2026-10-01): es
+  el orden de 006 y el que marca el menú al abrir la carpeta. Sustituye al «Nombre A–Z» de la primera versión del
+  mockup. Como la columna visible es «Modificado», las fechas de la lista por defecto no salen en orden; es
+  esperado y no un error.
 - **Carpetas primero siempre** (006 CA-5). Al ordenar por tamaño las carpetas no tienen tamaño (RN-5) y quedan por
   nombre ascendente; lo dice la nota del menú.
 - **Al cambiar el orden** se pide la primera página con el orden nuevo; la lista visible se conserva hasta que llega

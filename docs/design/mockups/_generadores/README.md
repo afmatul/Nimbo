@@ -21,7 +21,7 @@ los importa.
 | `explorador/generar-carpetas.js` | Los 31 estados de 006 de `storage/explorador`: 22 de carpetas, migas, crear, renombrar, «Mover a…» con «Nueva carpeta» en línea y mover a la papelera, y 9 de desglose, «Ver más» y accesos rápidos (CA-26 a CA-28) |
 | `explorador/desglose.js` | Filas desglosables de la lista (control con `aria-expanded`, sangría y guías con el token `tree-indent`/`tree-guides` de `globals.css`, cargando, vacía, error y «Ver más» en la fila), menú ⋮ con «Fijar»/«Quitar de la barra lateral», CSS y script de los estados de CA-26 |
 | `accesos/accesos.js` | Sección «Accesos rápidos» de la barra lateral y del cajón (Fijados con menú ⋮ «Quitar de la barra lateral», 3 Recientes visibles y «Ver más»), su script de «Quitar» y el aviso del tope de fijados (`Alert` `warning`); entra al marco por `marco.sidebar({ accesos })` |
-| `explorador/generar-orden.js` | Los 6 estados de 007 de `storage/explorador` (control de orden y «Cargar más») |
+| `explorador/generar-orden.js` | Los 6 estados de 007 de `storage/explorador` (control de orden y «Cargar más»); orden por defecto: fecha de creación, más recientes primero |
 | `resumen-espacio/generar.js` | Los 7 estados de `storage/resumen-espacio` (spec 007) |
 | `papelera/generar.js` | Los 12 estados de 006 de `storage/papelera`; `papelera.html` es el paquete de la propuesta y no se genera |
 | `pw/capturar-rutas.js` | Capturas a 360 y 1440 px de los HTML indicados |

@@ -1,5 +1,5 @@
-// Genera los estados de la spec 007 en storage/explorador: control de orden (nombre, tamaño, fecha de modificación;
-// ascendente o descendente) y paginación por cursor con «Cargar más». Las carpetas van siempre primero.
+// Genera los estados de la spec 007 en storage/explorador: control de orden (nombre, tamaño, fecha de modificación y fecha de
+// creación; ascendente o descendente; por defecto, fecha de creación, más recientes primero: RN-6, D-6) y paginación por cursor con «Cargar más». Las carpetas van siempre primero.
 // Uso: node generar-orden.js <ruta-del-worktree>
 // Los estados de 005 (generar.js) y 006 (generar-carpetas.js) no cambian. Marco: marco/marco.js; tabla y encabezado:
 // carpetas/carpetas.js; estados comunes: mis-archivos/estados.js; barra lateral de 007 (plan Personal, tarjeta de
@@ -66,45 +66,48 @@ const CSS = '\n' + M.CSS.MARCO + M.CSS.BOTONES + M.CSS.MQ_900 +
 
 // ---------- Datos de ejemplo (plan Personal: ningún archivo pasa de 50 MB) ----------
 // Carpeta «Documentación» con 3 subcarpetas y 41 archivos. Página de ejemplo: 20 elementos (el tamaño de página lo
-// fija el plan, RN-6). [tipo, nombre, tamaño, modificado, bytes para ordenar, días desde la modificación]
+// fija el plan, RN-6). [tipo, nombre, tamaño, modificado, bytes para ordenar, días desde la creación (para ordenar)]
 const RUTA = ['Mis archivos', 'Proyecto Alpha', 'Documentación'];
 const CARPETAS = [
-  ['carpeta', 'Anexos', '', '29 sep', 0, 2],
-  ['carpeta', 'Borradores', '', 'hace 3 h', 0, 0],
-  ['carpeta', 'Revisiones del asesor', '', '24 sep', 0, 7],
+  ['carpeta', 'Anexos', '', '29 sep', 0, 20],
+  ['carpeta', 'Borradores', '', 'hace 3 h', 0, 3],
+  ['carpeta', 'Revisiones del asesor', '', '24 sep', 0, 30],
 ];
 const ARCHIVOS = [
-  ['Acta_reunion_01.docx', '84 KB', '14 ago', 0.084, 48],
-  ['Acta_reunion_02.docx', '91 KB', '21 ago', 0.091, 41],
-  ['Arquitectura_C4_contexto.png', '1.8 MB', '2 sep', 1.8, 29],
-  ['Arquitectura_C4_contenedores.png', '2.3 MB', '2 sep', 2.3, 29],
-  ['Bitacora_de_decisiones.md', '36 KB', 'ayer', 0.036, 1],
-  ['Casos_de_uso_completos.pdf', '6.4 MB', '10 sep', 6.4, 21],
-  ['Cronograma_fases.xlsx', '212 KB', '27 sep', 0.212, 4],
-  ['Diagrama_clases_M2.pdf', '3.1 MB', '18 sep', 3.1, 13],
-  ['Diagrama_ER_v4.pdf', '2.7 MB', '25 sep', 2.7, 6],
-  ['Encuesta_usuarios_resultados.xlsx', '1.2 MB', '5 sep', 1.2, 26],
-  ['Entrevista_cliente_audio.m4a', '38.6 MB', '28 ago', 38.6, 34],
-  ['Glosario.docx', '58 KB', '9 sep', 0.058, 22],
-  ['Guia_de_estilo_UI.pdf', '9.8 MB', '12 sep', 9.8, 19],
-  ['Informe_avance_fase1.docx', '1.4 MB', '29 sep', 1.4, 2],
-  ['Manual_de_usuario_borrador.docx', '4.2 MB', 'hoy · 08:40', 4.2, 0],
-  ['Mockups_explorador.pdf', '14.5 MB', '20 sep', 14.5, 11],
-  ['Presentacion_avance.pptx', '22.9 MB', '26 sep', 22.9, 5],
-  ['Requisitos_funcionales.docx', '742 KB', '3 sep', 0.742, 28],
-].map(([n, t, f, mb, d]) => ['archivo', n, t, f, mb, d]);
-// Página 1 por nombre ascendente (orden inicial, RN-6): carpetas por nombre y luego los primeros 17 archivos.
+  ['Acta_reunion_01.docx', '84 KB', '14 ago', 0.084, 60],
+  ['Acta_reunion_02.docx', '91 KB', '21 ago', 0.091, 55],
+  ['Arquitectura_C4_contexto.png', '1.8 MB', '2 sep', 1.8, 40],
+  ['Arquitectura_C4_contenedores.png', '2.3 MB', '2 sep', 2.3, 39],
+  ['Bitacora_de_decisiones.md', '36 KB', 'ayer', 0.036, 30],
+  ['Casos_de_uso_completos.pdf', '6.4 MB', '10 sep', 6.4, 35],
+  ['Cronograma_fases.xlsx', '212 KB', '27 sep', 0.212, 25],
+  ['Diagrama_clases_M2.pdf', '3.1 MB', '18 sep', 3.1, 20],
+  ['Diagrama_ER_v4.pdf', '2.7 MB', '25 sep', 2.7, 18],
+  ['Encuesta_usuarios_resultados.xlsx', '1.2 MB', '5 sep', 1.2, 33],
+  ['Entrevista_cliente_audio.m4a', '38.6 MB', '28 ago', 38.6, 45],
+  ['Glosario.docx', '58 KB', '9 sep', 0.058, 31],
+  ['Guia_de_estilo_UI.pdf', '9.8 MB', '12 sep', 9.8, 27],
+  ['Informe_avance_fase1.docx', '1.4 MB', '29 sep', 1.4, 14],
+  ['Manual_de_usuario_borrador.docx', '4.2 MB', 'hoy · 08:40', 4.2, 2],
+  ['Mockups_explorador.pdf', '14.5 MB', '20 sep', 14.5, 15],
+  ['Presentacion_avance.pptx', '22.9 MB', '26 sep', 22.9, 12],
+  ['Requisitos_funcionales.docx', '742 KB', '3 sep', 0.742, 38],
+].map(([n, t, f, mb, c]) => ['archivo', n, t, f, mb, c]);
+// Página 1 por fecha de creación descendente (orden inicial, RN-6 y D-6): carpetas y luego los primeros 17 archivos,
+// de la más reciente a la más antigua. Las columnas muestran la fecha de modificación, que no sigue este orden.
+const porCreacion = (a, b) => a[5] - b[5];
+const PAG_CREACION = [...CARPETAS].sort(porCreacion).concat([...ARCHIVOS].sort(porCreacion).slice(0, 17));
 const porNombre = (a, b) => a[1].localeCompare(b[1], 'es');
-const PAG_NOMBRE = [...CARPETAS].sort(porNombre).concat([...ARCHIVOS].sort(porNombre).slice(0, 17));
 // Página 1 por tamaño descendente: las carpetas no tienen tamaño (RN-5) y van primero por nombre; luego archivos.
 const PAG_TAMANO = [...CARPETAS].sort(porNombre).concat([...ARCHIVOS].sort((a, b) => b[4] - a[4]).slice(0, 17));
 
 // ---------- Control de orden ----------
-const CAMPOS = [['nombre', 'Nombre'], ['tamano', 'Tamaño'], ['fecha', 'Fecha de modificación']];
+const CAMPOS = [['nombre', 'Nombre'], ['tamano', 'Tamaño'], ['fecha', 'Fecha de modificación'], ['creacion', 'Fecha de creación']];
 const DIRS = {
   nombre: { asc: 'A–Z', desc: 'Z–A' },
   tamano: { asc: 'Menor primero', desc: 'Mayor primero' },
   fecha: { asc: 'Más antiguos primero', desc: 'Más recientes primero' },
+  creacion: { asc: 'Más antiguos primero', desc: 'Más recientes primero' },
 };
 const etiqueta = ({ campo, dir }) => `${CAMPOS.find(([c]) => c === campo)[1]}, ${DIRS[campo][dir].toLowerCase().replace('a–z', 'A–Z').replace('z–a', 'Z–A')}`;
 
@@ -223,21 +226,21 @@ function page(v) {
 `);
 }
 
-const NOMBRE = { campo: 'nombre', dir: 'asc' };
+const CREACION = { campo: 'creacion', dir: 'desc' };
 const TAMANO = { campo: 'tamano', dir: 'desc' };
 const lista = (nodos, orden, ocupado = false) => C.tabla(nodos, 'Documentación', -1, { orden })
   .replace('<div class="files">', ocupado ? '<div class="files" aria-busy="true">' : '<div class="files">');
 
 const ESTADOS = [
   {
-    estado: 'orden-menu', titulo: 'menú «Ordenar» abierto: nombre, tamaño o fecha; ascendente o descendente',
-    orden: NOMBRE, control: { abierto: true },
-    cuerpo: () => lista(PAG_NOMBRE, NOMBRE) + cargarMas(),
+    estado: 'orden-menu', titulo: 'menú «Ordenar» abierto: nombre, tamaño, fecha de modificación o de creación; ascendente o descendente',
+    orden: CREACION, control: { abierto: true },
+    cuerpo: () => lista(PAG_CREACION, CREACION) + cargarMas(),
   },
   {
     estado: 'ordenando', titulo: 'se pidió otro orden: la lista visible se conserva mientras llega (CA-12)',
     orden: TAMANO, control: { ocupado: true },
-    cuerpo: () => lista(PAG_NOMBRE, NOMBRE, true) + cargarMas(),
+    cuerpo: () => lista(PAG_CREACION, CREACION, true) + cargarMas(),
   },
   {
     estado: 'ordenado', titulo: 'ordenado por tamaño, mayor primero: carpetas primero y luego archivos',
@@ -245,19 +248,19 @@ const ESTADOS = [
     cuerpo: () => lista(PAG_TAMANO, TAMANO) + cargarMas(),
   },
   {
-    estado: 'mas-paginas', titulo: 'primera página (orden inicial por nombre) con «Cargar más»',
-    orden: NOMBRE,
-    cuerpo: () => lista(PAG_NOMBRE, NOMBRE) + cargarMas(),
+    estado: 'mas-paginas', titulo: 'primera página (orden inicial: fecha de creación, más recientes primero) con «Cargar más»',
+    orden: CREACION,
+    cuerpo: () => lista(PAG_CREACION, CREACION) + cargarMas(),
   },
   {
     estado: 'cargando-mas', titulo: '«Cargar más» en curso: la lista visible se conserva',
-    orden: NOMBRE,
-    cuerpo: () => lista(PAG_NOMBRE, NOMBRE) + cargarMas('cargando'),
+    orden: CREACION,
+    cuerpo: () => lista(PAG_CREACION, CREACION) + cargarMas('cargando'),
   },
   {
     estado: 'cargar-mas-error', titulo: 'falló la página siguiente: aviso con «Reintentar» debajo de la lista',
-    orden: NOMBRE,
-    cuerpo: () => lista(PAG_NOMBRE, NOMBRE) + cargarMas('error'),
+    orden: CREACION,
+    cuerpo: () => lista(PAG_CREACION, CREACION) + cargarMas('error'),
   },
 ];
 
