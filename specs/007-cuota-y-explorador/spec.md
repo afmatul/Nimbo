@@ -32,7 +32,7 @@ sabe cuánto espacio tiene, en qué se va y qué liberar, y encuentra sus archiv
 > Cuota y máximo por archivo salen de `IPlanLimitsProvider` (catálogo en BD). Esta spec no fija cifras de plan: el catálogo se revisará más adelante y ninguna prueba depende de un valor concreto.
 
 ### Medidor de espacio (HU-1, HU-2, HU-4, RF-12)
-- **CA-1** (HU-1, RF-12) Dado un cliente con archivos propios, cuando abre el resumen, entonces ve espacio usado, cuota de su plan, espacio disponible y porcentaje, con los valores que entrega `IPlanLimitsProvider`, bytes exactos en `bigint` formateados a GB/MB, y sin ofertas de ampliación.
+- **CA-1** (HU-1, RF-12) Dado un cliente con archivos propios, cuando abre el resumen, entonces ve el nombre de su plan («Tu plan»), espacio usado, cuota de su plan, espacio disponible y porcentaje, con los valores que entrega `IPlanLimitsProvider`, bytes exactos en `bigint` formateados a GB/MB, y sin ofertas de ampliación.
 - **CA-2** (HU-1) Dado archivos de varios formatos, cuando abre el resumen, entonces ve el desglose en Documentos (`.docx`, `.pdf`, `.txt`, `.md`, `.xlsx`, `.pptx`), Imágenes y Otros, y la suma de segmentos más la papelera coincide con el espacio usado.
 - **CA-3** (HU-1, 006 CA-21) Dado elementos en la papelera, cuando abre el resumen, entonces el espacio de la papelera se muestra como segmento aparte, cuenta dentro del usado y de la cuota total, y baja solo cuando se purga. Lo arrastrado por una carpeta eliminada se cuenta una sola vez.
 - **CA-4** (HU-2, RF-12) Dado que el cliente completa una carga, manda algo a la papelera o purga, cuando el medidor se vuelve a pedir tras esa operación, entonces la cifra refleja el cambio sin recargar la sesión. No hay empuje por `realtime` (015), como en DF-58.
@@ -106,3 +106,4 @@ Sin preguntas abiertas.
 | 2026-10-01 | Creación en `Borrador` con 17 CA y 8 preguntas | `/spec 007` | — |
 | 2026-10-01 | Resueltas P-1 a P-10. «Depende de» y CA-9 a CA-12 usan `GET /folders/contents` (006 reemplazó `GET /files`) con `sort`/`dir`; CA-11 deja el `limit` ajustable (P-9); CA-1 y §6 sin cifras de plan ni ofertas; §7 con filtros → 018 y cuadrícula/selección múltiple diferidas | Respuestas de Adrián | Adrián |
 | 2026-10-01 | Corrección de Adrián: P-5, RN-6 y CA-10 vuelven al orden de 006 (`created` descendente, carpetas primero); `created` se agrega a los valores de orden (CA-10, CA-11). RN-4, CA-5 y §6: al 100 % el título es «Espacio agotado.». Estado `Lista` tras aprobar el plan | Decisiones de Adrián sobre el orden y el mockup `resumen-espacio` | Adrián |
+| 2026-10-01 | CA-1: el resumen trae también el nombre del plan (`planName`) para la tarjeta «Tu plan» | La web no podía mostrarlo con el contrato de T-01 | Adrián |
