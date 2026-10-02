@@ -16,6 +16,10 @@
   - menu-cuenta-abierto: menú de la cuenta abierto con el foco en «Seguridad» (`layout--menu-cuenta-abierto.html`)
   - confirmar-cerrar-sesion: «Cerrar sesión» desde el menú pide confirmación (`layout--confirmar-cerrar-sesion.html`)
   - solo-lectura: plan Pro vencido; aviso persistente con «Renovar plan» (`layout--solo-lectura.html`, RF-23)
+  - cuota-70 (spec 007): tarjeta de cuota al 82 % con «Tu cuota está al 82 %» (ícono de triángulo) y «Liberar espacio»
+    (`layout--cuota-70.html`). A 360 px se ve en el cajón abierto, porque la barra lateral solo existe ahí.
+  - cuota-90 (spec 007): tarjeta al 94 % con «Espacio casi agotado» (ícono de círculo) y «Liberar espacio»
+    (`layout--cuota-90.html`). A 360 px, en el cajón.
   - movil-cajon-abierto: por debajo de 900 px, la barra lateral se abre como cajón (`layout--movil-cajon-abierto.html`).
     Solo existe en móvil y tableta; a 1440 px el archivo muestra el marco de escritorio y no tiene captura.
   - **Accesos rápidos (spec 006, CA-27 y CA-28, Aprobado 2026-10-03)**: nueve estados nuevos, descritos en «Accesos
@@ -23,7 +27,7 @@
     tope-de-fijados, fijado-menu-abierto (solo captura a 1440), movil-cajon-con-accesos y
     movil-cajon-fijado-menu-abierto (`layout--<estado>.html`; los dos del cajón solo tienen captura a 360 px).
 - **Capturas**: `docs/design/capturas/shared/layout/` (`layout--<estado>--<360|1440>.png`; el cajón, solo a 360).
-  axe-core sin violaciones en los 5 estados a 360 y 1440 px y en los recorridos de teclado (menú abierto, diálogo
+  axe-core sin violaciones en los 7 estados a 360 y 1440 px y en los recorridos de teclado (menú abierto, diálogo
   abierto, cajón abierto). Sin desbordamiento horizontal a 360 px, sin errores de consola, objetivos de al menos 24 px
   y de 44 px en la barra superior y el cajón móviles (CA-5 de 000b).
 
@@ -256,7 +260,10 @@ su ícono, su título y su fondo.
 
 ## Pendiente
 - Velo de los diálogos y del cajón: `agent-bg` al 45 %; falta el token en `globals.css` (TODO #6 de `app-layout.tsx`).
-- Tramos de 70 % y 90 % de la cuota en la barra lateral y su enlace al optimizador: los dibuja 007.
+- Tramos de 70 % y 90 % de la cuota: dibujados por 007 (`cuota-70`, `cuota-90`; tarjeta de
+  `_generadores/espacio/espacio.js`). La acción es «Liberar espacio» y lleva al resumen de espacio (007 CA-5, CA-7); no
+  hay enlace al optimizador (021). En 0–69 % 007 propone «Ver detalle» como entrada al resumen; el `default` de este
+  mockup todavía no lo muestra (pendiente de aprobación en `storage/resumen-espacio/README.md`).
 - Árbol de carpetas y «Nueva carpeta» en la barra lateral: no se dibujan; 006 los reemplazó por «Accesos rápidos»
   (sin desglose) y el botón «Nueva carpeta» vive en el encabezado del explorador. En solo lectura, «Nueva carpeta» se
   deshabilita.

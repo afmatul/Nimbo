@@ -9,6 +9,7 @@ const M = require('../marco/marco.js');
 const E = require('../mis-archivos/estados.js');
 const A = require('../accesos/accesos.js');
 const S = require('../mis-archivos/mis-archivos.js');
+const Q = require('../espacio/espacio.js');
 
 const { icon } = M;
 
@@ -128,6 +129,12 @@ function avisoSoloLectura(a) {
         </section>`;
 }
 
+// 007: a 360 el cajón debe mostrar la tarjeta completa (con «Liberar espacio») sin recortarse
+const CSS_TRAMO = '  @media (max-width: 900px) { .canvas { min-height: 940px; } }\n';
+
+// 007: en los estados de tramo, la tarjeta de cuota lleva el texto del tramo con ícono y «Liberar espacio» (QuotaBar)
+const conTarjeta = (html, v) => (v.tramo ? html.replace(M.cuota(v.cuota), Q.tarjeta(v.cuota)) : html);
+
 function page(v) {
   const file = v.estado === 'default' ? 'layout.html' : `layout--${v.estado}.html`;
   const plan = v.plan || 'PERSONAL';
@@ -152,7 +159,7 @@ ${E.CSS_ALERT_MQ600}  }
       'Colores: valores de ui-guidelines.md §3 (tonos AA de ADR-0014). La implementación usa tokens, components/ui y AppLayout.',
       'Piezas del marco generadas con marco/marco.js, las mismas que identity/seguridad.',
     ],
-    css: CSS + cssAccesos + cssCajon,
+    css: CSS + (v.tramo ? M.CSS.TRAMOS + Q.CSS_TARJETA + CSS_TRAMO : '') + cssAccesos + cssCajon,
   })}
 <body>
 
@@ -160,7 +167,7 @@ ${E.CSS_ALERT_MQ600}  }
 
 <div class="canvas">
   <div class="app"${v.dialogo ? ' inert' : ''}>
-    ${M.sidebar({ activo, plan, cuota, ...barra })}
+    ${conTarjeta(M.sidebar({ activo, plan, cuota, ...barra }), v)}
     <div class="main">
       ${M.topbar({ crumbs: ['Mis archivos'], conMenu: true, menuAbierto: !!v.menu, cajonAbierto: !!v.cajon })}
       <main class="content" id="contenido">${avisoSoloLectura(v.soloLectura)}
@@ -173,7 +180,7 @@ ${E.CSS_ALERT_MQ600}  }
         </div>
       </main>
     </div>
-  </div>${M.cajon({ activo, plan, cuota, abierto: !!v.cajon, ...cajonAcc })}${M.dialog(M.DIALOGO_CERRAR_SESION, { oculto: !v.dialogo })}
+  </div>${conTarjeta(M.cajon({ activo, plan, cuota, abierto: !!v.cajon, ...cajonAcc }), v)}${M.dialog(M.DIALOGO_CERRAR_SESION, { oculto: !v.dialogo })}
 </div>
 
 <script>${JS}${v.accesos ? E.JS_MENU + A.JS_QUITAR : ''}</script>
@@ -191,6 +198,14 @@ const ESTADOS = [
     estado: 'solo-lectura', titulo: 'cuenta en solo lectura por plan vencido (RF-23)',
     plan: 'PRO', cuota: { usado: '21 GB', total: '100 GB', pct: 21 },
     soloLectura: { cuerpo: 'Tu plan Pro venció el 20 sep 2026. Tus archivos siguen aquí: puedes verlos y descargarlos, pero no subir ni editar hasta que renueves.' },
+  },
+  {
+    estado: 'cuota-70', titulo: 'cuota en el tramo 70–89 %: aviso y «Liberar espacio» (spec 007; a 360, en el cajón)',
+    tramo: true, cuota: Q.CUOTAS.warn, cajon: true,
+  },
+  {
+    estado: 'cuota-90', titulo: 'cuota en el tramo 90–100 %: «Espacio casi agotado» y «Liberar espacio» (spec 007; a 360, en el cajón)',
+    tramo: true, cuota: Q.CUOTAS.full, cajon: true,
   },
   { estado: 'movil-cajon-abierto', titulo: 'cajón de navegación abierto (solo por debajo de 900 px)', cajon: true },
   // Accesos rápidos (006, CA-27 y CA-28)

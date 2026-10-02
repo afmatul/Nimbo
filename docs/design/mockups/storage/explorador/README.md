@@ -2,7 +2,8 @@
 
 - **Spec**: 005–007 (005: explorador mínimo de la raíz con «Subir archivos», arrastrar y soltar y «Descargar», §9;
   006: carpetas, migas, crear, renombrar, «Mover a…» y mover a la papelera; ver «Estados de 006»; desde el 2026-10-03,
-  desglose de carpetas y accesos rápidos: ver «Estados de 006: desglose y accesos rápidos», aprobados el 2026-10-03)
+  desglose de carpetas y accesos rápidos: ver «Estados de 006: desglose y accesos rápidos», aprobados el 2026-10-03;
+  007: orden y «Cargar más»; ver «Estados de 007»)
 - **Propuesta presentada**: p. 08 (cuadricula) y p. 09 (lista). Los estados de 005 (`vacio`, `cargando`, `arrastre`,
   `error`, `acciones`, `descarga-preparando`, `descarga-fallida`) no se presentaron.
 - **Cambios respecto de la propuesta**: ninguno en `cuadricula` ni `lista`; al implementar, el botón principal usa el
@@ -18,9 +19,12 @@
   - Los 22 estados de 006 (ver «Estados de 006»): HTML autocontenido generado con
     `../../_generadores/explorador/generar-carpetas.js`; no se edita a mano. Mismo marco y módulo `mis-archivos`, más
     `_generadores/carpetas/carpetas.js` (logo, barra lateral con «Carpetas» y contador de la Papelera, toast y diálogos),
-    que comparte con `storage/papelera`.
+    que comparte con `storage/papelera`. La fila, la tabla y el encabezado de 006 viven ahora en `carpetas.js` (el
+    HTML de 006 no cambió) para que 007 los reutilice.
   - Los 9 estados de CA-26 a CA-28 (desglose, «Ver más», «Fijar en la barra lateral» y tope): mismo generador, con
     `../../_generadores/explorador/desglose.js` y `../../_generadores/accesos/accesos.js`.
+  - Los 6 estados de 007 (ver «Estados de 007»): generados con `../../_generadores/explorador/generar-orden.js`, con
+    la misma tabla de `carpetas.js` y la barra lateral de `_generadores/espacio/espacio.js`.
   - Son referencia visual; `apps/web` no los importa.
 - **Estados incluidos** (los de 006 están en «Estados de 006»):
   - cuadricula (`explorador--cuadricula.html`, propuesta p. 08)
@@ -350,11 +354,47 @@ además el script del mockup: contraer y volver a abrir «Proyecto Alpha» ocult
 datos con Enter agrega la fila «vacía» (con su sangría y guías) y axe sigue sin violaciones; el menú ⋮ de una fila anidada
 abre con el foco en el primer ítem.
 
+## Estados de 007 (orden y «Cargar más»)
+**Spec 007** (CA-9, CA-10, CA-12; P-4 y P-5 resueltas). Generados con `../../_generadores/explorador/generar-orden.js`;
+no se editan a mano. Carpeta «Proyecto Alpha / Documentación» con 3 subcarpetas y archivos de plan Personal (ninguno pasa
+de 50 MB); la página de ejemplo tiene 20 elementos (el tamaño real lo fija el plan, RN-6). Barra lateral de 007
+(`espacio/espacio.js`): plan Personal al 32 % con «Ver detalle». Capturas: `explorador--<estado>--<360|1440>.png`. En
+los 6 estados: axe-core sin violaciones a 360 y 1440 px, sin desbordamiento a 360 px y sin objetivos menores de 24 px.
+
+| Estado | Archivo | Qué muestra |
+|---|---|---|
+| orden-menu | `explorador--orden-menu.html` | Menú «Ordenar» abierto: «Ordenar por» (Nombre, Tamaño, Fecha de modificación) y «Orden» (A–Z / Z–A), con la nota «Las carpetas siempre van primero. El tamaño ordena solo los archivos.» |
+| ordenando | `explorador--ordenando.html` | Se eligió «Tamaño, mayor primero»: el botón pasa a «Ordenando…» y la lista visible se conserva (`aria-busy`) hasta que llega la respuesta (CA-12) |
+| ordenado | `explorador--ordenado.html` | Ordenado por tamaño, mayor primero: carpetas primero (por nombre) y luego archivos de mayor a menor; la columna lleva `aria-sort` y flecha |
+| mas-paginas | `explorador--mas-paginas.html` | Primera página con el orden inicial (nombre ascendente) y «Cargar más» debajo de la lista |
+| cargando-mas | `explorador--cargando-mas.html` | «Cargar más» en curso: «Cargando más…» deshabilitado con `aria-disabled` y anuncio `role="status"`; la lista se conserva |
+| cargar-mas-error | `explorador--cargar-mas-error.html` | Falló la página siguiente: `Alert` destructivo debajo de la lista, «No pudimos cargar más elementos.» con «Reintentar» |
+
+### Decisiones de UX de 007
+- **Un solo control de orden** para todos los anchos: `DropdownMenu` con dos grupos de `menuitemradio`, a la derecha
+  encima de la lista (a todo el ancho y 44 px en móvil, donde la tabla no tiene encabezados). El botón dice el orden
+  vigente en texto («Ordenar: Tamaño, mayor primero»). Los encabezados de columna no son botones: solo muestran
+  `aria-sort` y una flecha en la columna activa. Alternativa (encabezados clicables además del menú) pendiente de Adrián.
+- **Textos de la dirección según el campo**: Nombre «A–Z» / «Z–A»; Tamaño «Menor primero» / «Mayor primero»; Fecha
+  «Más antiguos primero» / «Más recientes primero». Por defecto, Nombre A–Z (RN-6).
+- **Carpetas primero siempre** (006 CA-5). Al ordenar por tamaño las carpetas no tienen tamaño (RN-5) y quedan por
+  nombre ascendente; lo dice la nota del menú.
+- **Al cambiar el orden** se pide la primera página con el orden nuevo; la lista visible se conserva hasta que llega
+  (CA-12) y el orden queda en la URL (`?orden=tamano&dir=desc`) para que sobreviva a recargar y a «Atrás».
+- **Paginación por cursor con «Cargar más»** (CA-9; `nextCursor` de `GET /folders/contents`): no hay total ni números
+  de página. El botón desaparece cuando no hay `nextCursor`. Al cargar, las filas nuevas se agregan al final, el foco
+  se queda en «Cargar más» y un `role="status"` anuncia «Se cargaron N elementos más.». Si falla, el botón se
+  reemplaza por el `Alert` con «Reintentar» y lo ya cargado sigue visible.
+- **Imágenes** en la lista: ícono de imagen con `--file-img` (antes caían en «otro»).
+- Sin cuadrícula, filtros ni selección múltiple (spec 007 §7).
+- **Plan de los datos**: los estados de 005 y 006 usan plan Equipo (350 GB, 87 %); los de 007, plan Personal como el
+  resumen de espacio. Al regenerar 005/006 conviene pasarlos a Personal para que todas las pantallas cuenten lo mismo.
+
 ## Pendiente
 - Datos de ejemplo de `cuadricula` y `lista` contra el catálogo (product-context §3): la zona de arrastre dice «máx.
   2 GB por archivo», pero el plan Equipo permite 1 GB; y la lista incluye archivos de 8.5 GB y 18 GB.
 - Botón principal `#6B8DD6` con texto blanco (3.28:1) en `cuadricula` y `lista` no cumple AA (DF-41); la
   implementación y los estados de 005 usan el token corregido.
 - Versión móvil real a 360 px de `cuadricula` y `lista`: el paquete está diseñado para escritorio.
-- Estado `seleccion` del inventario: la selección múltiple del explorador es de 007 (006 §7); 006 solo tiene acciones
-  por fila.
+- Estado `seleccion` del inventario: la selección múltiple se difiere (spec 007 §7, P-4), igual que la cuadrícula y los
+  filtros (pasan a 018).

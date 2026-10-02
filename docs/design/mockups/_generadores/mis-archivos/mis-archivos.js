@@ -69,14 +69,7 @@ const CSS_LISTA = `  :root {
   a.btn-primary, a.btn-primary:hover { color: var(--primary-foreground); }
   a.btn-outline:hover { color: var(--foreground); }
 
-  /* Cuota en tramos de QuotaBar (§4): 70–89 % warning; 90–100 % destructive-soft */
-  .quota-warn .quota-bar span { background: var(--warning); }
-  .quota-full { border-color: color-mix(in srgb, var(--destructive-soft) 45%, var(--card)); }
-  .quota-full .quota-bar span { background: var(--destructive-soft); }
-  .quota-note { margin: 8px 0 0; font-size: 11.5px; line-height: 1.45; font-weight: 500; }
-  .quota-warn .quota-note { color: var(--warning-foreground); }
-  .quota-full .quota-note { color: var(--destructive); }
-
+${M.CSS.TRAMOS}
   /* Encabezado de la página */
   .page-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   .page-head p { margin-top: 4px; }
