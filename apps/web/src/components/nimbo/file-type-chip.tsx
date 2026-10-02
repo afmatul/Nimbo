@@ -75,7 +75,8 @@ export function FileTypeIcon({
 }
 
 /**
- * Obtiene el tipo de archivo clasificado a partir de un nombre o extensión.
+ * Obtiene el tipo de archivo clasificado a partir de un nombre o extensión. Las imágenes son las mismas que `imagen` en
+ * la API (las que tienen firma que validar); `svg` y el resto son «otro».
  */
 export function getFileTypeFromExtension(filenameOrExt: string): FileType {
   const ext = filenameOrExt.split('.').pop()?.toLowerCase() ?? '';
@@ -97,7 +98,6 @@ export function getFileTypeFromExtension(filenameOrExt: string): FileType {
     case 'png':
     case 'gif':
     case 'webp':
-    case 'svg':
       return 'img';
     default:
       return 'other';
