@@ -193,6 +193,18 @@ describe('AppLayout component (CA-5)', () => {
     expect(markup).toContain('Archivos Propios');
     expect(markup).toContain('/custom-archivos');
   });
+  it('007 D-18: «Espacio» enlaza a /espacio y ya no hay «Planes y Cuota» (#planes)', () => {
+    const markup = renderToStaticMarkup(
+      <AppLayout>
+        <div>Contenido</div>
+      </AppLayout>,
+    );
+
+    expect(markup).toMatch(/<a[^>]*href="\/espacio"[^>]*>(?:(?!<\/a>).)*Espacio/);
+    expect(markup).not.toContain('#planes');
+    expect(markup).not.toContain('Planes y Cuota');
+  });
+
   it('006: la Papelera enlaza a /papelera', () => {
     const markup = renderToStaticMarkup(
       <AppLayout>

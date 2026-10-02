@@ -1,7 +1,7 @@
 'use client';
 
 import type { LucideIcon } from 'lucide-react';
-import { Cloud, Menu, X, Folder, Share2, Trash2, CreditCard, Sparkles } from 'lucide-react';
+import { Cloud, Menu, X, Folder, Share2, Trash2, HardDrive, Sparkles } from 'lucide-react';
 import * as React from 'react';
 
 import { cn } from '../../lib/utils';
@@ -29,14 +29,14 @@ export function useSidebarSlot(): SidebarSlot {
   return React.useContext(SidebarSlotContext);
 }
 
-/** Enlace de la Papelera, el que lleva el contador (006). */
+/** Enlace de la Papelera, el que lleva el contador (006). «Espacio» reemplaza a «Planes y Cuota» hasta 008 (007 D-18). */
 const TRASH_HREF = '/papelera';
 
 export const DEFAULT_NAV_ITEMS: readonly NavItem[] = [
   { label: 'Mis Archivos', icon: Folder, href: '/archivos', active: true },
   { label: 'Compartidos', icon: Share2, href: '#compartidos' },
   { label: 'Papelera', icon: Trash2, href: TRASH_HREF },
-  { label: 'Planes y Cuota', icon: CreditCard, href: '#planes' },
+  { label: 'Espacio', icon: HardDrive, href: '/espacio' },
   { label: 'Agente Nimbo', icon: Sparkles, href: '#agente' },
 ];
 

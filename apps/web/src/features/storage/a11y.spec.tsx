@@ -13,6 +13,8 @@ import { axe } from 'jest-axe';
 import { act, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
+import { SessionProvider } from '../identity/session/session-provider';
+
 import { CancelUploadDialog } from './components/cancel-upload-dialog';
 import { FileExplorer, type FileExplorerProps } from './components/file-explorer';
 import { DownloadNoticeBanner, FileRowMenu, PREPARING_DELAY_MS } from './components/file-row-menu';
@@ -22,8 +24,10 @@ import { NameConflictDialog } from './components/name-conflict-dialog';
 import { NewFolderDialog } from './components/new-folder-dialog';
 import type { DisclosedLevel, FolderDisclosure } from './components/node-table';
 import { QuickAccessLimitAlert } from './components/quick-access-limit-alert';
+import { SpaceSummaryView, type SpaceSummaryState } from './components/space-summary-view';
 import { UploadPanel } from './components/upload-panel';
 import { StorageRequestError, type StorageErrorDetails } from './storage-request-error';
+import { GB, spaceSummaryWith } from './test-space-summary';
 import type { UploadPhase, UploadView } from './upload/upload-manager';
 
 const BLOCKING_IMPACTS = new Set(['serious', 'critical']);
@@ -649,5 +653,51 @@ describe('Accesibilidad de los estados de carga y descarga (CA-21)', () => {
       );
       await expectNoBlockingViolations();
     });
+  });
+});
+
+describe('Accesibilidad del resumen de espacio (007 CA-1, CA-2, CA-3, CA-5, CA-8)', () => {
+  const states: ReadonlyArray<readonly [string, SpaceSummaryState, string]> = [
+    [
+      'default',
+      { status: 'ready', summary: spaceSummaryWith(4.8 * GB) },
+      'Tienes espacio de sobra.',
+    ],
+    ['cargando', { status: 'loading' }, 'Calculando tu espacio…'],
+    ['error', { status: 'error' }, 'No pudimos calcular tu espacio.'],
+    [
+      'tramo 70–89 %',
+      { status: 'ready', summary: spaceSummaryWith(12.3 * GB, { trashBytes: 0.5 * GB }) },
+      'Tu cuota está al 82 %.',
+    ],
+    [
+      'tramo 90–100 %',
+      { status: 'ready', summary: spaceSummaryWith(14.1 * GB, { trashBytes: 0.8 * GB }) },
+      'Espacio casi agotado.',
+    ],
+    ['cuota llena', { status: 'ready', summary: spaceSummaryWith(15 * GB) }, 'Espacio agotado.'],
+    [
+      'papelera con espacio y cargas en curso',
+      {
+        status: 'ready',
+        summary: spaceSummaryWith(7 * GB, { trashBytes: 2.6 * GB, reservedBytes: 0.3 * GB }),
+      },
+      'Cargas en curso',
+    ],
+  ];
+
+  beforeEach(() => {
+    global.fetch = jest.fn(() => new Promise<Response>(() => undefined));
+  });
+
+  it.each(states)('%s', async (_name, state, expected) => {
+    await mount(
+      <SessionProvider apiPublicUrl="http://localhost/api/v1">
+        <SpaceSummaryView state={state} onRetry={jest.fn()} />
+      </SessionProvider>,
+    );
+
+    expect(text()).toContain(expected);
+    await expectNoBlockingViolations();
   });
 });

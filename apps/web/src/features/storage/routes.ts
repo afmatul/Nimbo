@@ -2,6 +2,8 @@
 export const MY_FILES_PATH = '/archivos';
 export const MY_FILES_LABEL = 'Mis archivos';
 export const TRASH_PATH = '/papelera';
+/** Resumen de espacio (spec 007 D-18). */
+export const SPACE_PATH = '/espacio';
 
 export function folderPath(folderId: string): string {
   return `${MY_FILES_PATH}/carpeta/${encodeURIComponent(folderId)}`;
