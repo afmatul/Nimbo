@@ -128,7 +128,7 @@ describe('página de una carpeta (/archivos/carpeta/[folderId])', () => {
     await renderFolder(api);
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Fase 3 · RAG' })).toBeTruthy();
-    expect(api.folderContents).toHaveBeenCalledWith(FASE3.id);
+    expect(api.folderContents).toHaveBeenCalledWith(FASE3.id, { sort: 'created', dir: 'desc' });
     const rows = within(screen.getByRole('table')).getAllByRole('row').slice(1);
     expect(rows.map((row) => row.textContent)).toEqual([
       expect.stringContaining('Prompts'),

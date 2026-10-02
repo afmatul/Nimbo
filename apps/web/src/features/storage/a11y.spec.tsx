@@ -29,6 +29,8 @@ import { SidebarQuota } from './components/sidebar-quota';
 import type { SpaceSummaryState } from './components/space-provider';
 import { SpaceSummaryView } from './components/space-summary-view';
 import { UploadPanel } from './components/upload-panel';
+import type { ListControls } from './hooks/use-folder-contents';
+import { DEFAULT_NODE_ORDER, type NodeOrder } from './node-order';
 import { StorageRequestError, type StorageErrorDetails } from './storage-request-error';
 import { GB, spaceSummaryWith } from './test-space-summary';
 import type { UploadPhase, UploadView } from './upload/upload-manager';
@@ -732,6 +734,62 @@ describe('Accesibilidad de la tarjeta de cuota de la barra lateral (007 CA-5, CA
     );
 
     expect(text()).toContain(expected);
+    await expectNoBlockingViolations();
+  });
+});
+
+describe('Accesibilidad del orden y «Cargar más» del explorador (007 CA-9, CA-10, CA-12)', () => {
+  const BY_SIZE: NodeOrder = { sort: 'size', dir: 'desc' };
+  const ANEXOS: NodeSummary = {
+    ...PROMPTS,
+    id: '4d5e6f7a-8b9c-4d0e-8f1a-2b3c4d5e6f7a',
+    name: 'Anexos',
+  };
+
+  function listControls(overrides: Partial<ListControls>): ListControls {
+    return {
+      order: DEFAULT_NODE_ORDER,
+      shownOrder: DEFAULT_NODE_ORDER,
+      sorting: false,
+      more: 'idle',
+      added: 0,
+      hasMore: true,
+      changeOrder: jest.fn(),
+      loadMore: jest.fn(),
+      dismissMoreError: jest.fn(),
+      ...overrides,
+    };
+  }
+
+  const states: ReadonlyArray<readonly [string, Partial<ListControls>, string]> = [
+    [
+      'ordenado por tamaño, mayor primero',
+      { order: BY_SIZE, shownOrder: BY_SIZE },
+      'Ordenar: Tamaño, mayor primero',
+    ],
+    ['ordenando', { order: BY_SIZE, sorting: true }, 'Ordenando…'],
+    ['más páginas', {}, 'Cargar más'],
+    ['cargando más', { more: 'loading' }, 'Cargando más…'],
+    ['error al cargar más', { more: 'error' }, 'No pudimos cargar más elementos.'],
+  ];
+
+  it.each(states)('%s', async (_name, overrides, expected) => {
+    await renderExplorer({
+      folderId: FASE3.id,
+      breadcrumbs: [ALPHA, FASE3],
+      nodes: [ANEXOS, PROMPTS, FILE_NODE],
+      controls: listControls(overrides),
+    });
+
+    expect(text()).toContain(expected);
+    await expectNoBlockingViolations();
+  });
+
+  it('menú «Ordenar» abierto', async () => {
+    await renderExplorer({ nodes: [PROMPTS, FILE_NODE], controls: listControls({}) });
+    await openMenu();
+
+    expect(document.querySelectorAll('[role="menuitemradio"]')).toHaveLength(6);
     await expectNoBlockingViolations();
   });
 });

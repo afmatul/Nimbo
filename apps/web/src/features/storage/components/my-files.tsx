@@ -13,6 +13,7 @@ import * as React from 'react';
 import { AppLayout } from '../../../components/nimbo/app-layout';
 import { SignOutButton } from '../../identity/components/sign-out-button';
 import type { StorageApi } from '../api';
+import type { FolderPageQuery } from '../folders-api';
 import { useFolderContents, type FolderListing } from '../hooks/use-folder-contents';
 import {
   toFolderDisclosure,
@@ -171,7 +172,11 @@ export interface MyFilesProps {
 export function MyFiles({ folderId }: MyFilesProps): React.JSX.Element {
   const { api, enqueue, fileInputRef, uploadedFiles, reviseUploaded } = useUploads();
   const load = React.useCallback((id: string | null) => api.folderContents(id), [api]);
-  const { listing, reload, addFolder } = useFolderContents(load, folderId);
+  const loadPage = React.useCallback(
+    (id: string | null, page: FolderPageQuery) => api.folderContents(id, page),
+    [api],
+  );
+  const { listing, reload, addFolder, controls } = useFolderContents(loadPage, folderId);
   const [notice, setNotice] = React.useState<DownloadNotice | null>(null);
   const sidebar = useQuickAccessSidebar({ api, openedFolderId: folderId, onNotice: setNotice });
   const [creatingFolder, setCreatingFolder] = React.useState(false);
@@ -252,6 +257,7 @@ export function MyFiles({ folderId }: MyFilesProps): React.JSX.Element {
             onNewFolder={() => setCreatingFolder(true)}
             fileInputRef={fileInputRef}
             disclosure={disclosure}
+            controls={controls}
             renderRowActions={(node) =>
               node.type === 'file' ? (
                 <FileRowMenu

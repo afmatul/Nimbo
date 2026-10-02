@@ -1,4 +1,4 @@
-import { STORAGE_ERROR_CODES } from '@nimbo/contracts';
+import { STORAGE_ERROR_CODES, folderContentsResponseSchema } from '@nimbo/contracts';
 
 import { jsonResponse } from '../../lib/test-http';
 import { createAuthFetch } from '../identity/session/auth-fetch';
@@ -52,6 +52,39 @@ describe('api de carpetas', () => {
 
     await expect(api.folderContents(ALPHA.id)).resolves.toEqual(contents);
     expect(lastCall().url).toBe(`${API}/folders/contents?folderId=${ALPHA.id}`);
+  });
+
+  it('007 CA-10: envía el orden pedido (sort y dir) y valida updatedAt en cada elemento', async () => {
+    const contents = {
+      folder: ALPHA,
+      breadcrumbs: [ALPHA],
+      items: [FOLDER, FILE],
+      nextCursor: 'c-2',
+    };
+    fetchMock.mockResolvedValue(jsonResponse(folderContentsResponseSchema.parse(contents)));
+
+    await expect(api.folderContents(ALPHA.id, { sort: 'size', dir: 'desc' })).resolves.toEqual(
+      contents,
+    );
+    expect(lastCall().url).toBe(`${API}/folders/contents?folderId=${ALPHA.id}&sort=size&dir=desc`);
+  });
+
+  it('007 CA-9: pide la página siguiente con el nextCursor y el mismo orden', async () => {
+    const page = { folder: null, breadcrumbs: [], items: [FILE], nextCursor: null };
+    fetchMock.mockResolvedValue(jsonResponse(page));
+
+    await api.folderContents(null, { sort: 'created', dir: 'desc', cursor: 'c-2' });
+
+    expect(lastCall().url).toBe(`${API}/folders/contents?sort=created&dir=desc&cursor=c-2`);
+  });
+
+  it('007 CA-10: una respuesta sin updatedAt no pasa la validación del contrato', async () => {
+    const withoutUpdatedAt = { ...FILE, updatedAt: undefined };
+    fetchMock.mockResolvedValue(
+      jsonResponse({ folder: null, breadcrumbs: [], items: [withoutUpdatedAt], nextCursor: null }),
+    );
+
+    await expect(api.folderContents(null, { sort: 'name', dir: 'asc' })).rejects.toThrow();
   });
 
   it('CA-5: una carpeta ajena, inexistente o en la papelera llega como 404', async () => {

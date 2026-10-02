@@ -2,8 +2,12 @@
  * @jest-environment jsdom
  */
 import type { FileSummary, FolderRef, NodeSummary } from '@nimbo/contracts';
+import userEvent from '@testing-library/user-event';
 import { act, createRef, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+
+import type { ListControls } from '../hooks/use-folder-contents';
+import { DEFAULT_NODE_ORDER, type NodeOrder } from '../node-order';
 
 import { FileExplorer, type FileExplorerProps } from './file-explorer';
 
@@ -225,7 +229,7 @@ describe('FileExplorer (CA-1, CA-21)', () => {
     }
 
     const secondLine = rows()[0]?.querySelector('[data-testid="file-size-mobile"]');
-    expect(secondLine?.textContent).toBe('1,5 KB');
+    expect(secondLine?.textContent).toMatch(/^1,5 KB · /);
     for (const token of ['text-xs', 'text-muted-foreground', 'sm:hidden']) {
       expect(secondLine?.classList.contains(token)).toBe(true);
     }
@@ -436,6 +440,223 @@ describe('FileExplorer con carpetas (006: CA-1, CA-5, CA-6, CA-25)', () => {
 
   it('CA-25: la fila de carpeta usa solo tokens', async () => {
     await renderExplorer({ ...inFase3, nodes: [PROMPTS] });
+
+    expect(document.body.innerHTML).not.toMatch(RAW_COLOR);
+  });
+});
+
+function radioByText(label: string): HTMLElement {
+  const found = Array.from(document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')).find(
+    (radio) => radio.textContent === label,
+  );
+  if (!found) throw new Error(`Opción «${label}» no encontrada`);
+  return found;
+}
+
+function sortButton(): HTMLButtonElement {
+  const found = document.querySelector<HTMLButtonElement>('button[aria-haspopup="menu"]');
+  if (!found) throw new Error('Botón «Ordenar» no encontrado');
+  return found;
+}
+
+function statusTexts(): readonly string[] {
+  return Array.from(document.querySelectorAll('[role="status"]')).map(
+    (node) => node.textContent ?? '',
+  );
+}
+
+function controls(overrides: Partial<ListControls> = {}): ListControls {
+  return {
+    order: DEFAULT_NODE_ORDER,
+    shownOrder: DEFAULT_NODE_ORDER,
+    sorting: false,
+    more: 'idle',
+    added: 0,
+    hasMore: true,
+    changeOrder: jest.fn(),
+    loadMore: jest.fn(),
+    dismissMoreError: jest.fn(),
+    ...overrides,
+  };
+}
+
+const BY_SIZE: NodeOrder = { sort: 'size', dir: 'desc' };
+
+describe('FileExplorer: control de orden (007 CA-10, CA-12)', () => {
+  it('CA-10: el control dice el orden por defecto «Fecha de creación, más recientes primero»', async () => {
+    await renderExplorer({ nodes: FILE_NODES, controls: controls() });
+
+    expect(sortButton().textContent).toBe('Ordenar: Fecha de creación, más recientes primero');
+  });
+
+  it('CA-10: el menú lista los cuatro campos y las dos direcciones, con la nota de las carpetas', async () => {
+    await renderExplorer({ nodes: FILE_NODES, controls: controls() });
+
+    await userEvent.click(sortButton());
+
+    const radios = Array.from(document.querySelectorAll('[role="menuitemradio"]'));
+    expect(radios.map((radio) => radio.textContent)).toEqual([
+      'Nombre',
+      'Tamaño',
+      'Fecha de modificación',
+      'Fecha de creación',
+      'Más antiguos primero',
+      'Más recientes primero',
+    ]);
+    const checked = radios.filter((radio) => radio.getAttribute('aria-checked') === 'true');
+    expect(checked.map((radio) => radio.textContent)).toEqual([
+      'Fecha de creación',
+      'Más recientes primero',
+    ]);
+    expect(text()).toContain(
+      'Las carpetas siempre van primero. El tamaño ordena solo los archivos.',
+    );
+  });
+
+  it('CA-10: elegir un campo conserva la dirección; elegir dirección conserva el campo', async () => {
+    const changeOrder = jest.fn();
+    await renderExplorer({ nodes: FILE_NODES, controls: controls({ changeOrder }) });
+
+    await userEvent.click(sortButton());
+    await userEvent.click(radioByText('Tamaño'));
+    await userEvent.click(sortButton());
+    await userEvent.click(radioByText('Más antiguos primero'));
+
+    expect(changeOrder.mock.calls).toEqual([[BY_SIZE], [{ sort: 'created', dir: 'asc' }]]);
+  });
+
+  it('CA-10: los textos de dirección siguen al campo (Tamaño: menor o mayor primero)', async () => {
+    await renderExplorer({
+      nodes: FILE_NODES,
+      controls: controls({ order: BY_SIZE, shownOrder: BY_SIZE }),
+    });
+    expect(sortButton().textContent).toBe('Ordenar: Tamaño, mayor primero');
+
+    await userEvent.click(sortButton());
+
+    expect(text()).toContain('Menor primero');
+    expect(text()).toContain('Mayor primero');
+  });
+
+  it('CA-10: por nombre el control dice «A–Z»', async () => {
+    const byName: NodeOrder = { sort: 'name', dir: 'asc' };
+    await renderExplorer({
+      nodes: FILE_NODES,
+      controls: controls({ order: byName, shownOrder: byName }),
+    });
+
+    expect(sortButton().textContent).toBe('Ordenar: Nombre, A–Z');
+  });
+
+  it('CA-12: mientras llega otro orden dice «Ordenando…», la lista sigue visible y ocupada', async () => {
+    await renderExplorer({
+      nodes: FILE_NODES,
+      controls: controls({ order: BY_SIZE, sorting: true }),
+    });
+
+    expect(sortButton().textContent).toBe('Ordenando…');
+    expect(sortButton().getAttribute('aria-disabled')).toBe('true');
+    expect(rows()).toHaveLength(3);
+    expect(document.querySelector('[aria-busy="true"] table')).not.toBeNull();
+    expect(statusTexts()).toContain('Ordenando por tamaño, mayor primero…');
+
+    await userEvent.click(sortButton());
+    expect(document.querySelector('[role="menu"]')).toBeNull();
+  });
+
+  it('CA-10: la tabla marca con aria-sort el orden que muestra, no el pedido', async () => {
+    await renderExplorer({
+      nodes: FILE_NODES,
+      controls: controls({ order: BY_SIZE, sorting: true }),
+    });
+
+    expect(document.querySelectorAll('th[aria-sort]')).toHaveLength(0);
+  });
+
+  it('CA-10: pulsar el encabezado «Nombre» ordena por nombre', async () => {
+    const changeOrder = jest.fn();
+    await renderExplorer({ nodes: FILE_NODES, controls: controls({ changeOrder }) });
+
+    await userEvent.click(buttonByText('Nombre'));
+
+    expect(changeOrder).toHaveBeenCalledWith({ sort: 'name', dir: 'asc' });
+  });
+
+  it('sin listado (cargando) no hay control de orden ni «Cargar más»', async () => {
+    await renderExplorer({ status: 'loading', controls: controls() });
+
+    expect(document.querySelector('button[aria-haspopup="menu"]')).toBeNull();
+    expect(text()).not.toContain('Cargar más');
+  });
+});
+
+describe('FileExplorer: «Cargar más» (007 CA-9, CA-12)', () => {
+  it('CA-9: «Cargar más» debajo de la lista pide la página siguiente', async () => {
+    const loadMore = jest.fn();
+    await renderExplorer({ nodes: FILE_NODES, controls: controls({ loadMore }) });
+
+    const button = buttonByText('Cargar más');
+    const table = document.querySelector('table');
+    expect(table && button.compareDocumentPosition(table)).toBe(Node.DOCUMENT_POSITION_PRECEDING);
+    await userEvent.click(button);
+
+    expect(loadMore).toHaveBeenCalledTimes(1);
+  });
+
+  it('CA-9: sin más páginas no hay «Cargar más»', async () => {
+    await renderExplorer({ nodes: FILE_NODES, controls: controls({ hasMore: false }) });
+
+    expect(text()).not.toContain('Cargar más');
+  });
+
+  it('CA-9: anuncia cuántos elementos se agregaron, también tras la última página', async () => {
+    await renderExplorer({ nodes: FILE_NODES, controls: controls({ added: 20, hasMore: false }) });
+
+    expect(statusTexts()).toContain('Se cargaron 20 elementos más.');
+  });
+
+  it('CA-12: cargando más: «Cargando más…» con aria-disabled, anuncio y la lista intacta', async () => {
+    const loadMore = jest.fn();
+    await renderExplorer({
+      folderId: FASE3.id,
+      breadcrumbs: [ALPHA, FASE3],
+      nodes: FILE_NODES,
+      controls: controls({ more: 'loading', loadMore }),
+    });
+
+    const button = buttonByText('Cargando más…');
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    expect(statusTexts()).toContain('Cargando más elementos de Fase 3 · RAG…');
+    expect(rows()).toHaveLength(3);
+    await userEvent.click(button);
+    expect(loadMore).not.toHaveBeenCalled();
+  });
+
+  it('CA-12: si falla la página siguiente: aviso con «Reintentar» que conserva lo visible', async () => {
+    const loadMore = jest.fn();
+    const dismissMoreError = jest.fn();
+    await renderExplorer({
+      nodes: FILE_NODES,
+      controls: controls({ more: 'error', loadMore, dismissMoreError }),
+    });
+
+    const alert = document.querySelector('[role="alert"]');
+    expect(alert?.textContent).toContain('No pudimos cargar más elementos.');
+    expect(alert?.textContent).toContain(
+      'Revisa tu conexión e inténtalo de nuevo. Lo que ya ves sigue aquí.',
+    );
+    expect(rows()).toHaveLength(3);
+    expect(text()).not.toContain('Cargar más');
+    await userEvent.click(buttonByText('Reintentar'));
+    const close = document.querySelector<HTMLElement>('button[aria-label="Cerrar aviso"]');
+    if (close) await userEvent.click(close);
+
+    expect(loadMore).toHaveBeenCalledTimes(1);
+    expect(dismissMoreError).toHaveBeenCalledTimes(1);
+  });
+
+  it('CA-12: el control de orden y el aviso usan solo tokens', async () => {
+    await renderExplorer({ nodes: FILE_NODES, controls: controls({ more: 'error' }) });
 
     expect(document.body.innerHTML).not.toMatch(RAW_COLOR);
   });

@@ -6,11 +6,14 @@ import * as React from 'react';
 
 import { StateView } from '../../../components/nimbo/state-view';
 import { Button } from '../../../components/ui/button';
+import type { ListControls } from '../hooks/use-folder-contents';
 import { MY_FILES_LABEL } from '../routes';
 
 import { ExplorerErrorState } from './explorer-error-state';
 import { FolderBackLink } from './folder-breadcrumbs';
-import { NodeTable, type FolderDisclosure } from './node-table';
+import { LoadMore } from './load-more';
+import { NodeSortMenu } from './node-sort-menu';
+import { NodeTable, type FolderDisclosure, type NodeTableProps } from './node-table';
 import { UploadDropzone } from './upload-dropzone';
 
 export type FileExplorerStatus = 'loading' | 'ready' | 'error';
@@ -38,6 +41,8 @@ export interface FileExplorerProps {
   readonly disclosure?: FolderDisclosure | undefined;
   /** Aviso que va arriba de la lista (fallo de descarga, CA-21 de 005). */
   readonly notice?: React.ReactNode;
+  /** Orden y «Cargar más» del listado (007); sin ellos la lista no se ordena ni pagina. */
+  readonly controls?: ListControls;
 }
 
 const UNKNOWN_FOLDER_TITLE = 'Carpeta';
@@ -94,6 +99,7 @@ export function FileExplorer({
   renderRowActions,
   disclosure,
   notice,
+  controls,
 }: FileExplorerProps): React.JSX.Element {
   const ownInputRef = React.useRef<HTMLInputElement>(null);
   const inputRef = fileInputRef ?? ownInputRef;
@@ -146,6 +152,7 @@ export function FileExplorer({
           onUpload={openPicker}
           renderRowActions={renderRowActions}
           disclosure={disclosure}
+          controls={controls}
         />
       </UploadDropzone>
     </section>
@@ -188,6 +195,7 @@ interface ExplorerBodyProps {
   readonly onUpload: () => void;
   readonly renderRowActions: FileExplorerProps['renderRowActions'] | undefined;
   readonly disclosure: FolderDisclosure | undefined;
+  readonly controls: ListControls | undefined;
 }
 
 function ExplorerBody({
@@ -200,6 +208,7 @@ function ExplorerBody({
   onUpload,
   renderRowActions,
   disclosure,
+  controls,
 }: ExplorerBodyProps): React.JSX.Element {
   if (status === 'loading') {
     const title = isRoot ? 'Cargando tus archivos…' : 'Cargando el contenido de la carpeta…';
@@ -212,13 +221,43 @@ function ExplorerBody({
   if (nodes.length === 0) {
     return <EmptyExplorer isRoot={isRoot} maxFileLabel={maxFileLabel} onUpload={onUpload} />;
   }
+  const table = { nodes, placeName, renderRowActions, disclosure };
+  return controls ? <ControlledList table={table} controls={controls} /> : <NodeTable {...table} />;
+}
+
+/**
+ * «Ordenar» encima y «Cargar más» debajo (007). Mientras llega otro orden la lista visible se conserva con
+ * `aria-busy` y la tabla marca el orden de lo que muestra, no el pedido (CA-12).
+ */
+function ControlledList({
+  table,
+  controls,
+}: {
+  readonly table: Omit<NodeTableProps, 'sorting'>;
+  readonly controls: ListControls;
+}): React.JSX.Element {
   return (
-    <NodeTable
-      nodes={nodes}
-      placeName={placeName}
-      renderRowActions={renderRowActions}
-      disclosure={disclosure}
-    />
+    <div className="flex flex-col gap-3">
+      <NodeSortMenu
+        order={controls.order}
+        sorting={controls.sorting}
+        onChange={controls.changeOrder}
+      />
+      <div aria-busy={controls.sorting || undefined}>
+        <NodeTable
+          {...table}
+          sorting={{ order: controls.shownOrder, onSort: controls.changeOrder }}
+        />
+      </div>
+      <LoadMore
+        status={controls.more}
+        hasMore={controls.hasMore}
+        added={controls.added}
+        placeName={table.placeName}
+        onLoadMore={controls.loadMore}
+        onDismissError={controls.dismissMoreError}
+      />
+    </div>
   );
 }
 

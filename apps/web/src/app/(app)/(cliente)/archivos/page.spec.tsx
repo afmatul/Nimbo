@@ -109,7 +109,7 @@ describe('página Mis archivos (/archivos)', () => {
     expect(screen.queryByText('Tus archivos aparecerán aquí')).toBeNull();
     expect(screen.getByRole('heading', { name: 'Mis archivos' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Cerrar sesión' })).toBeTruthy();
-    expect(api.folderContents).toHaveBeenCalledWith(null);
+    expect(api.folderContents).toHaveBeenCalledWith(null, { sort: 'created', dir: 'desc' });
   });
 
   it('CA-1: lista la raíz con el menú «Acciones de {nombre}» en cada fila', async () => {
@@ -133,7 +133,7 @@ describe('página Mis archivos (/archivos)', () => {
 
     expect(await screen.findByRole('table')).toBeTruthy();
     expect(folderContents).toHaveBeenCalledTimes(2);
-    expect(folderContents).toHaveBeenLastCalledWith(null);
+    expect(folderContents).toHaveBeenLastCalledWith(null, { sort: 'created', dir: 'desc' });
   });
 
   it('CA-1, CA-21: con el listado caído, «Subir archivos» sigue habilitado y el panel sigue vivo', async () => {

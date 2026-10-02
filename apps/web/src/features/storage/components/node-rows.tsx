@@ -35,7 +35,8 @@ export const rowIdOf = (nodeId: string): string => `fila-${nodeId}`;
 
 const dateFormatter = new Intl.DateTimeFormat('es-GT', { dateStyle: 'medium' });
 
-function CreatedAt({ value }: { readonly value: string }): React.JSX.Element {
+/** Fecha de una fila: la de modificación (`updatedAt`, 007 CA-10). */
+function NodeDate({ value }: { readonly value: string }): React.JSX.Element {
   return <time dateTime={value}>{dateFormatter.format(new Date(value))}</time>;
 }
 
@@ -157,7 +158,7 @@ export function FolderRow({
           </Link>
           <InsideOf parentName={parentName} />
           <span className="text-xs text-muted-foreground sm:hidden tabular-nums">
-            Carpeta · <CreatedAt value={folder.createdAt} />
+            Carpeta · <NodeDate value={folder.updatedAt} />
           </span>
         </span>
       </NameCell>
@@ -166,7 +167,7 @@ export function FolderRow({
         <span className="sr-only">Carpeta, sin tamaño</span>
       </td>
       <td className="hidden px-2 py-2 tabular-nums text-muted-foreground sm:table-cell">
-        <CreatedAt value={folder.createdAt} />
+        <NodeDate value={folder.updatedAt} />
       </td>
       <td className="px-2 py-2 text-right">{actions}</td>
     </tr>
@@ -193,7 +194,7 @@ export function FileRow({
             data-testid="file-size-mobile"
             className="text-xs text-muted-foreground sm:hidden tabular-nums"
           >
-            {formatBytes(file.sizeBytes)}
+            {formatBytes(file.sizeBytes)} · <NodeDate value={file.updatedAt} />
           </span>
         </span>
       </NameCell>
@@ -201,7 +202,7 @@ export function FileRow({
         {formatBytes(file.sizeBytes)}
       </td>
       <td className="hidden px-2 py-2 tabular-nums text-muted-foreground sm:table-cell">
-        <CreatedAt value={file.createdAt} />
+        <NodeDate value={file.updatedAt} />
       </td>
       <td className="px-2 py-2 text-right">{actions}</td>
     </tr>
