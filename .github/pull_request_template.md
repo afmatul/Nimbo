@@ -18,6 +18,7 @@
 - [ ] CI verde: lint · typecheck · unit · int · isolation · migraciones
   <!-- Fase 1: sin CI; pegar el resumen de lint, typecheck, test y test:int corridos en local (`workflow.md` §7.2) -->
 - [ ] Cobertura de lógica de negocio ≥ 60 %
+- [ ] Constitución Art. IV–VII: SOLID (una razón de cambio, puertos pequeños), YAGNI (nada sin CA que lo pida) y DRY (fuentes únicas, sin números mágicos)
 
 ## Cambios de datos y contratos
 <!-- no mostrar en el PR lo que no aplica -->
