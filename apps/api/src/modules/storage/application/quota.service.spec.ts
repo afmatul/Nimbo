@@ -42,6 +42,7 @@ async function setup(usage: QuotaUsage) {
     maxFileBytes: MAX_FILE,
     storageQuotaBytes: QUOTA,
     trashRetentionDays: 30,
+    planName: 'Plan de prueba',
   });
   const service = new QuotaService(quotas, new FixedClock(NOW));
   const limits = await plans.limitsFor(ACTOR);

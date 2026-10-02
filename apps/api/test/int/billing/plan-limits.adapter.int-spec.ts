@@ -48,6 +48,7 @@ describe('PlanLimitsAdapter integración con base de datos real (T-11, CA-1, CA-
       );
 
       expect(limits).toEqual({
+        planName: 'Personal',
         maxFileBytes: 52428800n,
         storageQuotaBytes: 16106127360n,
         trashRetentionDays: 7,
@@ -60,6 +61,7 @@ describe('PlanLimitsAdapter integración con base de datos real (T-11, CA-1, CA-
       );
 
       expect(limits).toEqual({
+        planName: 'Personal',
         maxFileBytes: 52428800n,
         storageQuotaBytes: 16106127360n,
         trashRetentionDays: 7,
@@ -71,6 +73,7 @@ describe('PlanLimitsAdapter integración con base de datos real (T-11, CA-1, CA-
     it('CA-1, CA-9: obtiene los límites de los cuatro planes por sus UUID fijos', async () => {
       const personal = await adapter.getLimitsByPlanId('10000000-0000-4000-8000-000000000001');
       expect(personal).toEqual({
+        planName: 'Personal',
         maxFileBytes: 52428800n,
         storageQuotaBytes: 16106127360n,
         trashRetentionDays: 7,
@@ -78,6 +81,7 @@ describe('PlanLimitsAdapter integración con base de datos real (T-11, CA-1, CA-
 
       const pro = await adapter.getLimitsByPlanId('10000000-0000-4000-8000-000000000002');
       expect(pro).toEqual({
+        planName: 'Pro',
         maxFileBytes: 524288000n,
         storageQuotaBytes: 107374182400n,
         trashRetentionDays: 30,
@@ -85,6 +89,7 @@ describe('PlanLimitsAdapter integración con base de datos real (T-11, CA-1, CA-
 
       const equipo = await adapter.getLimitsByPlanId('10000000-0000-4000-8000-000000000003');
       expect(equipo).toEqual({
+        planName: 'Equipo',
         maxFileBytes: 1073741824n,
         storageQuotaBytes: 375809638400n,
         trashRetentionDays: 60,
@@ -92,6 +97,7 @@ describe('PlanLimitsAdapter integración con base de datos real (T-11, CA-1, CA-
 
       const institucional = await adapter.getLimitsByPlanId('10000000-0000-4000-8000-000000000004');
       expect(institucional).toEqual({
+        planName: 'Institucional',
         maxFileBytes: 2147483648n,
         storageQuotaBytes: 2199023255552n,
         trashRetentionDays: 90,
@@ -112,21 +118,25 @@ describe('PlanLimitsAdapter integración con base de datos real (T-11, CA-1, CA-
   describe('getLimitsBySlug (CA-1, CA-3, CA-4)', () => {
     it('CA-1: obtiene los límites de los cuatro planes por slug', async () => {
       await expect(adapter.getLimitsBySlug('personal')).resolves.toEqual({
+        planName: 'Personal',
         maxFileBytes: 52428800n,
         storageQuotaBytes: 16106127360n,
         trashRetentionDays: 7,
       });
       await expect(adapter.getLimitsBySlug('pro')).resolves.toEqual({
+        planName: 'Pro',
         maxFileBytes: 524288000n,
         storageQuotaBytes: 107374182400n,
         trashRetentionDays: 30,
       });
       await expect(adapter.getLimitsBySlug('equipo')).resolves.toEqual({
+        planName: 'Equipo',
         maxFileBytes: 1073741824n,
         storageQuotaBytes: 375809638400n,
         trashRetentionDays: 60,
       });
       await expect(adapter.getLimitsBySlug('institucional')).resolves.toEqual({
+        planName: 'Institucional',
         maxFileBytes: 2147483648n,
         storageQuotaBytes: 2199023255552n,
         trashRetentionDays: 90,
