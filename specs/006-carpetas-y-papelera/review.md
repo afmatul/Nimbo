@@ -4,7 +4,7 @@
 |---|---|
 | Fecha | 2026-10-01 |
 | Rango revisado | `main..feat/006-carpetas-y-papelera` (T-01 a T-10) |
-| CI | local: `pnpm lint`, `typecheck` y `test` en verde (api 1339, web 723, contracts 253); `test:isolation` 12 suites / 163 pruebas en verde. `test:int` completo sin repetir aquí (ver I-1) |
+| CI | local: `pnpm lint`, `typecheck` y `test` en verde (api 1339, web 723, contracts 253); `test:isolation` 12 suites / 163 pruebas en verde. `test:int` completo con Docker: 84 suites / 748 pruebas en verde (I-1) |
 | Veredicto | ✅ Aprobar, con 3 importantes antes del cierre de fase. T-11 (humana) sigue pendiente |
 
 ## Verificación
@@ -44,14 +44,14 @@
 - Ninguno.
 
 ## Importantes y sugerencias
-- **[I-1]** `apps/api/test/int/shared/dotenv-bootstrap.int-spec.ts:89` — al repetirla aquí falla («api» sale antes de responder `health/live`; sin Postgres/Redis locales). Probablemente es de entorno y ajena a 006, pero la corrida completa de `test:int` no terminó y hubo «Cannot log after tests are done». Antes del PR: confirmar en CI que `test:int` completo está verde y que el aviso viene de pruebas de worker (`bootstrap/worker-health` ahora cierran el `Worker` de `trash-purge`).
+- **[I-1] ✅ Resuelto (2026-10-01):** causa de entorno, ajena a 006. Con `docker compose up -d` (`postgres`, `redis` y `minio` sanos) `dotenv-bootstrap.int-spec.ts` pasa sola (3/3): la `api` compilada lee el `.env` de la raíz y necesita Postgres y Redis de compose para no salir antes de `health/live`; el `.env` local no tenía `FOLDER_MAX_DEPTH` ni `TRASH_PURGE_*` y aun así arranca porque tienen valor por defecto. `pnpm test:int` completo: 84 suites / 748 pruebas en verde (355 s), sin «Cannot log after tests are done» ni «Jest did not exit». Origen del aviso y del corte: un `Worker` de BullMQ sin cerrar con Redis caído en `worker/worker-health.int-spec.ts`; al quitar a modo de prueba el `worker.close(true)` de `TrashPurgeProcessor` en su `afterAll`, la suite pasa pero Jest no termina («did not exit»). El cierre ya está en la rama, así que no hubo cambio de código. Hallazgo original: `apps/api/test/int/shared/dotenv-bootstrap.int-spec.ts:89` — al repetirla aquí falla («api» sale antes de responder `health/live`; sin Postgres/Redis locales).
 - **[I-2] ✅ Resuelto en documentación (2026-10-01):** PD-60 en `pendientes.md` y desviación 4 en DF-61. `trash-purger.ts:56-74` (desviación 1) — aceptable y mejor que el plan (evita la carrera restaurar/purgar), pero retiene la fila del dueño y una conexión mientras MinIO responde, y bloquea sus cargas. Con una carpeta grande el bloqueo crece con N archivos × versiones. Aceptar con registro: añadir fila en `pendientes.md` para medir con k6 (spec 021/022) y, si hace falta, purgar por archivo en transacciones separadas. Además, si un error de BD (no de MinIO) aborta la transacción tras borrar objetos de archivos anteriores, esos registros se revierten con objeto ya borrado: poco probable, pero conviene la misma fila.
 - **[I-3] ✅ Resuelto en documentación (2026-10-01):** DF-61 registra `schedulePurgeOfAll`, `TRASH_LIFECYCLE_PROVIDERS` y la cola `trash-purge`; notas fechadas al final de plan §1 y §2; PD-61 en `pendientes.md`. Desviaciones 2, 3 y 4 ya constan en «Notas del developer», pero `plan.md` §2 y `design-findings.md` (DF-61) no mencionan `ITrashRepository.schedulePurgeOfAll` ni `TRASH_LIFECYCLE_PROVIDERS`/`worker.module.ts`; DF-61 sí cita `suspendida`. Agregar `schedulePurgeOfAll` al plan §2 / DF-61. La desviación 3 (CA-19 con `usuario.estado = 'suspendida'`) es válida mientras no exista suscripción (004): dejar una fila en `pendientes.md` para sumar el caso de suscripción vencida cuando exista.
 - **[S-1]** `trash.service.ts:87-100` — 11 dependencias en el constructor; `TrashService` junta eliminar, restaurar, purgar y vaciar. Si en 011 (restauración por Soporte) crece más, separar `TrashRestorer`.
 - **[S-2]** `trash.service.ts:240,344` — `Number(bigint)` en atributos de auditoría; sigue la convención de 005 y el contrato, pero la regla «bytes siempre `bigint`» sugiere serializar como `string` cuando llegue a la bitácora de 004.
 
 ## DF y pendientes
-- DF-61 y PD-59 agregados. I-2 e I-3 resueltos en documentación: PD-60 (medir bloqueo de purga), PD-61 (caso de suscripción vencida) y desviaciones en DF-61 y notas de plan §1/§2. Sigue abierto I-1 (confirmar `test:int` en CI o con Docker).
+- DF-61 y PD-59 agregados. I-2 e I-3 resueltos en documentación: PD-60 (medir bloqueo de purga), PD-61 (caso de suscripción vencida) y desviaciones en DF-61 y notas de plan §1/§2. I-1 resuelto con `test:int` completo en verde con Docker (84 suites / 748 pruebas).
 
 ## Lo que está bien hecho
 - Una sola vía de borrado (`TrashPurger`) compartida por manual y programada; idempotente y sin nombres ni claves en errores.
