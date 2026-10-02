@@ -1,0 +1,57 @@
+# Tareas 007 — Cuota y explorador
+
+> Spec: `./spec.md` · Plan: `./plan.md` (aprobado 2026-10-01)
+> 12 tareas verticales en **dos líneas paralelas**, un commit cada una (`feat(storage): … [007 T-xx]`). Toda tarea de lógica empieza por su prueba.
+> **Línea A** (`api` + `contracts` + `worker`) → rama `feat/007-cuota-y-explorador-api` → PR-A. **Línea B** (`web` y mockups) → rama `feat/007-cuota-y-explorador-web` → PR-B.
+> Reparto de archivos sin solapes: A es dueña de `apps/api`, `apps/worker`, `packages/contracts`, `test/`, `.env.example`, `design-findings.md`, `design-model.md`, `architecture.md`, `pendientes.md` y `006/spec.md`; B, de `apps/web`, `docs/design/` y `ui-guidelines.md`. B **no edita** `packages/contracts`: si necesita un cambio, se lo pide a A.
+
+## Línea A — api + contracts + worker
+
+- [ ] **T-01** (A) Contratos Zod en `packages/contracts`: `SpaceSummaryResponse` (`usedBytes`, `reservedBytes`, `quotaBytes`, `availableBytes`, `maxFileBytes`, `trashRetentionDays`, `breakdown`), `sort` (`name|size|updated|created`) y `dir` en la consulta de `/folders/contents`, `updatedAt` en `FileSummary` y `FolderSummary`, razones `INVALID_SORT`, `INVALID_DIRECTION`, `INVALID_CURSOR` y sus mensajes. Pruebas de contrato primero (rutas y códigos). **Desbloquea a la línea B; se integra y se empuja primero.** — CA: CA-1, CA-6, CA-10, CA-11 (forma) — Archivos: `packages/contracts/src/storage/{space-schemas,folder-schemas,schemas,error-codes,schema-fields}.ts`, `apps/api/src/modules/storage/presentation/storage-{routes,error-codes}.contract.spec.ts`
+- [ ] **T-02** (A) Dominio puro con pruebas unitarias: `file-category.ts`, `space-breakdown.ts`, `QuotaPolicy.available`, `node-order.ts` (por defecto `created` descendente; carpetas con `size` por nombre ascendente) — CA: CA-1, CA-2, CA-3, CA-10, CA-11 — Archivos: `apps/api/src/modules/storage/domain/{file-category,space-breakdown,quota-policy,node-order}.ts` y sus `.spec.ts` — Depende: T-01
+- [ ] **T-03** (A) `GET /storage/summary`: `ISpaceRepository`, `readUsage`, `SpaceMeasurer`, `SpaceSummaryService`, `SpaceController`; integración (feliz con papelera y reserva; carpeta anidada contada una vez; baja al purgar; `403` rol interno, `401`) — CA: CA-1, CA-2, CA-3, CA-4, CA-6, CA-17 (resumen) — Archivos: `application/{space-measurer,space-summary.service}.ts`, `application/ports/{i-space.repository,i-quota.repository}.port.ts`, `infrastructure/persistence/{typeorm-space,typeorm-quota}.repository.ts`, `presentation/space.controller.ts`, `storage.module.ts`, `test/int/storage/space-summary.int-spec.ts` — Depende: T-01, T-02
+- [ ] **T-04** (A) Orden y paginación en `GET /folders/contents`: `node-list-cursor` con orden, `node-order-sql`, `listContents`, `FolderService.contents`, `updatedAt`; integración (4 órdenes × 2 direcciones sin duplicados ni omisiones en el límite carpeta/archivo, sin parámetros idéntico a 006, `400` con `fields`, `limit` ajustado, 20 000 archivos ≤ 2 s por orden) — CA: CA-9, CA-10, CA-11, CA-17 (listado) — Archivos: `infrastructure/persistence/{node-list-cursor,node-order-sql,typeorm-node.repository}.ts`, `application/{folder.service,file-summary,node-summary}.ts`, `ports/i-node.repository.port.ts`, `presentation/folders.controller.ts`, `test/int/storage/folders-order.int-spec.ts` — Depende: T-01, T-02
+- [ ] **T-05** (A) Conciliación programada en el `worker`: `UsageReconciler`, `IClientAccountScanner` (`SelectClientAccountScanner`), cola `usage-reconcile` (scheduler + processor), variables `USAGE_RECONCILE_*` en esquemas y `.env.example`; integración contra Postgres y MinIO (deriva en ambos sentidos, carga activa intacta, cuenta fallida no frena las demás). Registra **DF-62**, y actualiza `design-model.md`, `architecture.md` (§8, §6.6), `pendientes.md` (PD-34, PD-58 y las dos filas nuevas) y `006/spec.md` §7 — CA: CA-13, CA-14, CA-15 — Archivos: `application/{usage-reconciler}.ts`, `application/ports/i-client-account.scanner.port.ts`, `infrastructure/{usage-reconcile.scheduler,usage-reconcile.processor,sql-client-account.scanner}.ts`, `storage-worker.module.ts`, `upload-lifecycle.providers.ts`, esquemas de entorno, `.env.example`, `test/int/storage/usage-reconcile.int-spec.ts`, `docs/sdd/{design-findings,design-model,architecture,pendientes}.md` — Depende: T-03 (reutiliza `SpaceMeasurer`)
+- [ ] **T-06** (A) Aislamiento (bloqueante): A no ve a B en resumen ni listado ordenado, carpeta ajena `404` idéntico a una inexistente, roles internos `403`, la conciliación solo obtiene ids de cuenta y mide bajo RLS — CA: CA-16, CA-17 — RNF-05 — Archivos: `test/isolation/storage-space.iso-spec.ts` — Depende: T-03, T-04, T-05
+
+## Línea B — web (y mockups)
+
+- [ ] **T-07** (B) `QuotaBar` compartido (`components/nimbo/quota-bar.tsx`): `role="progressbar"`, tramos y textos de `ui-guidelines.md` §4 incluido «Espacio agotado.» al 100 %, borde `input` en el fondo (≥ 3:1), color nunca único; y tipo imagen en `FileTypeChip`. Pruebas de componente primero — CA: CA-5 (componente) — Archivos: `apps/web/src/components/nimbo/quota-bar.tsx` y `.spec.tsx`, `FileTypeChip` y su spec — **No depende de A**
+- [ ] **T-08** (B) Ruta `/espacio` con **datos falsos** (resumen, desglose con segmentos y papelera, fila «Cargas en curso» solo si > 0, estados: cargando, error con «Reintentar», tramos 70–89 y 90–100, cuota llena); ítem «Espacio» en la navegación, `SPACE_PATH`; axe a 360 y 1440 px — CA: CA-1, CA-2, CA-3, CA-5, CA-8 (UI) — Archivos: `apps/web/src/app/(app)/(cliente)/espacio/page.tsx`, `features/storage/components/{space-summary-view,space-breakdown}.tsx`, `lib/routes.ts`, `app-layout.tsx`, `a11y.spec.tsx` — Depende: T-07. Los tipos locales se reemplazan por los de T-01 en T-10
+- [ ] **T-09** (B) Mockup del menú de orden: el valor por defecto pasa a «Fecha de creación, más recientes primero» (y se regeneran capturas y README) con `generar-orden.js` — CA: CA-10 (UX) — Archivos: `docs/design/mockups/_generadores/explorador/generar-orden.js`, `docs/design/mockups/storage/explorador/`, `docs/design/capturas/storage/explorador/` — **No depende de A**
+- [ ] **T-10** (B) Datos reales del resumen: `space-api.ts`, `SpaceProvider`/`useSpace()` (refresco tras subir, eliminar, restaurar, purgar y vaciar), `sidebar-quota` con «Ver detalle» bajo el 70 %, `{máximo}` del explorador desde el resumen, «Liberar espacio» de `upload-panel` a `/espacio`; sustituye los datos falsos de T-08; actualiza `features/storage/README.md` y `ui-guidelines.md` §7 — CA: CA-1, CA-4, CA-5, CA-6, CA-7, CA-8 — Archivos: `features/storage/{space-api.ts,components/space-provider.tsx,components/sidebar-quota.tsx,components/upload-panel.tsx,my-files.tsx,hooks/use-move-to-trash,hooks/use-trash-actions}`, `(cliente)/layout.tsx`, specs — Depende: **A T-01** (contratos; si A aún no los integra, B mergea esa rama); contra API real, **A T-03**, T-08
+- [ ] **T-11** (B) Explorador: encabezados ordenables con `aria-sort` y menú de orden (por defecto fecha de creación descendente), columna «Modificado» con `updatedAt`, «Cargar más» que acumula, estados cargando y error conservando lo visible; axe a 360 y 1440 px — CA: CA-9, CA-10, CA-12 — Archivos: `features/storage/{folders-api.ts,hooks/use-folder-contents.ts,components/node-table.tsx,my-files.tsx}`, specs — Depende: T-09, **A T-01**; contra API real, **A T-04**
+- [ ] **T-12** (humana, Adrián) Recorrido de la demo en local con ambos PR integrados (subir, ver medidor y tramos, papelera, ordenar, «Cargar más», cuenta de otro cliente) y nota en el PR — CA: los visibles — Depende: T-06, T-10, T-11
+
+## Dependencias entre líneas
+- B espera a **A T-01** para T-10 y T-11 (tipos y esquemas). Hasta entonces B hace T-07, T-08 y T-09.
+- Las pruebas de B usan respuestas simuladas con los esquemas de T-01; la verificación contra API real (T-10, T-11) necesita **A T-03** y **A T-04** en la rama de A.
+- Los contratos quedan congelados tras T-01. Si A debe cambiarlos, avisa a B y los dos reintegran.
+
+## Arranque por sesión
+
+### Sesión A (api + contracts + worker)
+```
+Implementa la spec 007 (cuota y explorador), línea A. Lee specs/007-cuota-y-explorador/{spec,plan,tasks}.md.
+1. Crea la rama feat/007-cuota-y-explorador-api desde spec/007-cuota-y-explorador (git switch -c … spec/007-cuota-y-explorador).
+2. Ejecuta, en este orden, /implement 007 T-01, luego T-02, T-03, T-04, T-05 y T-06 (T-03 y T-04 pueden ir en cualquier orden entre sí). Cada tarea empieza por su prueba y es un commit.
+3. T-01 va primero y se empuja en cuanto pase (git push -u origin …): la sesión B la necesita para los contratos. No cambies esos contratos después sin avisar a Adrián.
+4. Solo tocas apps/api, apps/worker, packages/contracts, test/, .env.example y los docs de docs/sdd indicados en tasks.md. No toques apps/web ni docs/design.
+5. No esperas a la línea B. Al terminar T-06 pasa pnpm lint, typecheck, test, test:int, test:isolation y env:check; abre PR-A contra main y pide /review.
+6. Integración: PR-A se mergea (squash) primero, tras la aprobación de Adrián. T-12 (demo) la hace Adrián cuando ambos PR estén integrados.
+```
+
+### Sesión B (web + mockups)
+```
+Implementa la spec 007 (cuota y explorador), línea B. Lee specs/007-cuota-y-explorador/{spec,plan,tasks}.md.
+1. Crea la rama feat/007-cuota-y-explorador-web desde spec/007-cuota-y-explorador (git switch -c … spec/007-cuota-y-explorador).
+2. Empieza ya con lo que no depende de la línea A: /implement 007 T-07, luego T-08 (datos falsos) y T-09 (mockup del menú de orden, generar-orden.js).
+3. Antes de T-10 y T-11 espera a que la sesión A empuje T-01 (contratos en packages/contracts) y haz git merge origin/feat/007-cuota-y-explorador-api; si aún no existe, sigue con T-09 y avisa a Adrián. No edites packages/contracts ni apps/api.
+4. Después: /implement 007 T-10 y T-11. Para probar contra la API real necesitas además A T-03 (resumen) y A T-04 (orden): vuelve a mergear la rama de A cuando estén. Las pruebas de componente no lo necesitan.
+5. Solo tocas apps/web, docs/design y ui-guidelines.md. Sin colores escritos a mano; AA y axe a 360 y 1440 px.
+6. Al terminar pasa pnpm lint, typecheck y test; abre PR-B contra main y pide /review.
+7. Integración: PR-B se mergea después de PR-A. Cuando PR-A esté en main, ejecuta git merge origin/main (en conflictos de packages/contracts gana main) y repite los chequeos antes de integrar. T-12 (demo) la hace Adrián.
+```
+
+## Notas del developer
+<Desviaciones (con enlace al registro de cambios de la spec), DF o pendientes que surgieron.>
