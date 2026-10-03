@@ -21,6 +21,8 @@ const HOUR_MS = 60 * 60 * 1000;
 const NOW = new Date();
 const STORAGE_SRC = join(__dirname, '../../../src/modules/storage');
 const QUOTA_REPOSITORY_FILE = 'infrastructure/persistence/typeorm-quota.repository.ts';
+/** Única extensión de la excepción DF-59 (DF-62, 007 D-12): lista ids de cuentas de cliente, nada más. */
+const CLIENT_ACCOUNT_SCANNER_FILE = 'infrastructure/persistence/sql-client-account.scanner.ts';
 const SQL_ON_USUARIO = /\b(FROM|UPDATE|JOIN|INTO)\s+"?usuario"?\b/i;
 /** Tiempo que la segunda transacción debe seguir bloqueada mientras la primera tiene la fila. */
 const LOCK_PROBE_MS = 300;
@@ -190,11 +192,11 @@ describe('TypeOrmQuotaRepository (CA-4, CA-23, RN-10)', () => {
     await expect(repository.readUsage(ana, NOW)).rejects.toBeInstanceOf(ActorScopeMissingError);
   });
 
-  it('D-5: es el único archivo de `storage` con SQL contra `usuario`', () => {
+  it('D-5, DF-62: solo el repositorio de cuota y el escáner de cuentas tienen SQL contra `usuario`', () => {
     const offenders = sourceFilesUnder(STORAGE_SRC)
       .filter((file) => SQL_ON_USUARIO.test(codeOf(file)))
       .map((file) => relative(STORAGE_SRC, file).split('\\').join('/'));
 
-    expect(offenders).toEqual([QUOTA_REPOSITORY_FILE]);
+    expect(offenders.sort()).toEqual([CLIENT_ACCOUNT_SCANNER_FILE, QUOTA_REPOSITORY_FILE]);
   });
 });

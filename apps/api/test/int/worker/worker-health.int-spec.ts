@@ -7,6 +7,7 @@ import request from 'supertest';
 import { MailProcessor } from '../../../src/modules/notifications/infrastructure/mail.processor';
 import { TrashPurgeProcessor } from '../../../src/modules/storage/infrastructure/trash-purge.processor';
 import { UploadCleanupProcessor } from '../../../src/modules/storage/infrastructure/upload-cleanup.processor';
+import { UsageReconcileProcessor } from '../../../src/modules/storage/infrastructure/usage-reconcile.processor';
 import { PingProcessor } from '../../../src/shared';
 import { WorkerModule } from '../../../src/worker.module';
 import { startTestInfra } from '../setup/containers';
@@ -56,6 +57,7 @@ describe('salud del worker (CA-23, CA-21)', () => {
     await testApp?.app.get(MailProcessor).worker.close(true);
     await testApp?.app.get(UploadCleanupProcessor).worker.close(true);
     await testApp?.app.get(TrashPurgeProcessor).worker.close(true);
+    await testApp?.app.get(UsageReconcileProcessor).worker.close(true);
     await Promise.allSettled([testApp?.close(), infra?.stopAll()]);
   }, 60_000);
 
