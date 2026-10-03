@@ -204,7 +204,7 @@ function useOrganizing({
  */
 function useListing(api: StorageApi, folderId: string | null) {
   const load = React.useCallback<LoadFolderContents>(
-    (id, page) => api.folderContents(id, page),
+    (...args) => api.folderContents(...args),
     [api],
   );
   const contents = useFolderContents(load, folderId);
