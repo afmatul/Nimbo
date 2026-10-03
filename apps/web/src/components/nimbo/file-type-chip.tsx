@@ -4,13 +4,14 @@ import {
   Presentation,
   FileType,
   Image as ImageIcon,
+  NotebookText,
   File,
 } from 'lucide-react';
 import * as React from 'react';
 
 import { cn } from '../../lib/utils';
 
-export type FileType = 'docx' | 'xlsx' | 'pptx' | 'pdf' | 'img' | 'other';
+export type FileType = 'docx' | 'xlsx' | 'pptx' | 'pdf' | 'img' | 'text' | 'other';
 
 export interface FileTypeConfig {
   readonly label: string;
@@ -49,6 +50,13 @@ const FILE_TYPE_MAP: Record<FileType, FileTypeConfig> = {
     textColorVar: 'var(--file-img)',
     bgColorVar: 'var(--file-img-bg)',
     icon: ImageIcon,
+  },
+  // `.txt` y `.md` (`texto` en la API, Documentos en el resumen de 007): sin token propio, usa los neutros.
+  text: {
+    label: 'TEXTO',
+    textColorVar: 'var(--file-other)',
+    bgColorVar: 'var(--file-other-bg)',
+    icon: NotebookText,
   },
   other: {
     label: 'OTRO',
@@ -99,6 +107,9 @@ export function getFileTypeFromExtension(filenameOrExt: string): FileType {
     case 'gif':
     case 'webp':
       return 'img';
+    case 'txt':
+    case 'md':
+      return 'text';
     default:
       return 'other';
   }

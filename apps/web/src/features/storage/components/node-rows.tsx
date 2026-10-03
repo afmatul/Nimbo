@@ -16,7 +16,7 @@ export const CHIP_TYPE_BY_KIND: Readonly<Record<FileKind, FileType>> = {
   xlsx: 'xlsx',
   pptx: 'pptx',
   imagen: 'img',
-  texto: 'other',
+  texto: 'text',
   otro: 'other',
 };
 

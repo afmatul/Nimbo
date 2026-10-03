@@ -201,7 +201,7 @@ describe('FileExplorer (CA-1, CA-21)', () => {
     expect(docx?.textContent).toContain('1,5 KB');
     expect(image?.textContent).toContain('IMG');
     expect(image?.textContent).toContain('2,4 MB');
-    expect(texto?.textContent).toContain('OTRO');
+    expect(texto?.textContent).toContain('TEXTO');
     expect(texto?.textContent).toContain('12 B');
   });
 
