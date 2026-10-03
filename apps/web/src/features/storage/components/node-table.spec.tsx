@@ -94,17 +94,28 @@ describe('NodeTable: orden y columna «Modificado» (007 CA-10)', () => {
     expect(document.querySelectorAll('th[aria-sort]')).toHaveLength(0);
   });
 
-  it('CA-10: pulsar una columna inactiva ordena por ella ascendente; la activa invierte la dirección', async () => {
+  it('CA-10: el primer clic ordena «Nombre» A–Z y «Tamaño» y «Modificado» de mayor o más reciente a menor', async () => {
     const onSort = jest.fn();
-    renderTable(sortingWith({ sort: 'size', dir: 'desc' }, onSort));
+    renderTable(sortingWith({ sort: 'created', dir: 'desc' }, onSort));
 
     await userEvent.click(within(header('Nombre')).getByRole('button'));
     await userEvent.click(within(header('Tamaño')).getByRole('button'));
+    await userEvent.click(within(header('Modificado')).getByRole('button'));
 
     expect(onSort.mock.calls).toEqual([
       [{ sort: 'name', dir: 'asc' }],
-      [{ sort: 'size', dir: 'asc' }],
+      [{ sort: 'size', dir: 'desc' }],
+      [{ sort: 'updated', dir: 'desc' }],
     ]);
+  });
+
+  it('CA-10: pulsar la columna activa invierte la dirección', async () => {
+    const onSort = jest.fn();
+    renderTable(sortingWith({ sort: 'size', dir: 'desc' }, onSort));
+
+    await userEvent.click(within(header('Tamaño')).getByRole('button'));
+
+    expect(onSort).toHaveBeenCalledWith({ sort: 'size', dir: 'asc' });
   });
 
   it('CA-10 (RN-5): las carpetas siguen sin tamaño: «—» con texto para lectores de pantalla', () => {

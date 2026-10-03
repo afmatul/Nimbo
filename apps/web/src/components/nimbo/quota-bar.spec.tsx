@@ -136,6 +136,7 @@ describe('QuotaBar (CA-5)', () => {
       (anchor) => anchor.textContent === 'Liberar espacio',
     );
     expect(link?.getAttribute('href')).toBe('/espacio');
+    expect(link?.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
   });
 
   it('CA-5: sin destino no muestra «Liberar espacio» (la pantalla lo ofrece en su aviso)', async () => {

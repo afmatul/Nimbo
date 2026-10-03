@@ -30,6 +30,30 @@ function announcement({ status, added, placeName }: LoadMoreProps): string {
   return added === 1 ? 'Se cargó 1 elemento más.' : `Se cargaron ${String(added)} elementos más.`;
 }
 
+/** Mientras carga queda `aria-disabled` (conserva el foco) y no vuelve a pedir. */
+function LoadMoreButton({
+  loading,
+  onLoadMore,
+}: {
+  readonly loading: boolean;
+  readonly onLoadMore: () => void;
+}): React.JSX.Element {
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      aria-disabled={loading || undefined}
+      className="w-full text-foreground aria-disabled:cursor-progress sm:w-auto"
+      onClick={loading ? undefined : onLoadMore}
+    >
+      {loading ? (
+        <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+      ) : null}
+      {loading ? 'Cargando más…' : 'Cargar más'}
+    </Button>
+  );
+}
+
 /**
  * «Cargar más» debajo de la lista (mockups `mas-paginas`, `cargando-mas`, `cargar-mas-error`; CA-9, CA-12): sin total ni
  * números de página. Mientras carga, el botón queda `aria-disabled` y conserva el foco; si falla, lo reemplaza un aviso
@@ -37,7 +61,6 @@ function announcement({ status, added, placeName }: LoadMoreProps): string {
  */
 export function LoadMore(props: LoadMoreProps): React.JSX.Element {
   const { status, hasMore, onLoadMore, onDismissError } = props;
-  const loading = status === 'loading';
   return (
     <div className="flex flex-col items-center gap-2">
       {status === 'error' ? (
@@ -49,21 +72,7 @@ export function LoadMore(props: LoadMoreProps): React.JSX.Element {
         </div>
       ) : null}
       {status !== 'error' && hasMore ? (
-        <Button
-          type="button"
-          variant="outline"
-          aria-disabled={loading || undefined}
-          className="w-full text-foreground aria-disabled:cursor-progress sm:w-auto"
-          onClick={loading ? undefined : onLoadMore}
-        >
-          {loading ? (
-            <Loader2
-              className="h-4 w-4 animate-spin motion-reduce:animate-none"
-              aria-hidden="true"
-            />
-          ) : null}
-          {loading ? 'Cargando más…' : 'Cargar más'}
-        </Button>
+        <LoadMoreButton loading={status === 'loading'} onLoadMore={onLoadMore} />
       ) : null}
       <p role="status" className="sr-only">
         {announcement(props)}

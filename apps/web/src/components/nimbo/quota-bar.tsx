@@ -1,5 +1,5 @@
 import { formatBytes } from '@nimbo/contracts';
-import { CircleAlert, TriangleAlert } from 'lucide-react';
+import { ChevronRight, CircleAlert, TriangleAlert } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
 
@@ -63,6 +63,11 @@ export interface QuotaState {
   readonly notice: string | null;
 }
 
+/** «4,8 GB de 15 GB»: lo usado y la cuota en texto (el porcentaje va aparte). */
+export function quotaAmountsOf({ usedBytes, quotaBytes }: QuotaUsage): string {
+  return `${formatBytes(usedBytes)} de ${formatBytes(quotaBytes)}`;
+}
+
 export function quotaStateOf({ usedBytes, quotaBytes }: QuotaUsage): QuotaState {
   const percent = quotaPercentOf(usedBytes, quotaBytes);
   const tier = quotaTierOf(percent);
@@ -83,7 +88,7 @@ interface QuotaNoticeProps {
   readonly freeSpaceHref: string | undefined;
 }
 
-/** Acción de texto junto al medidor («Liberar espacio», «Ver detalle»): subrayada, no solo por color. */
+/** Acción de texto junto al medidor («Liberar espacio», «Ver detalle»): subrayada y con flecha, no solo por color. */
 export function QuotaLink({
   href,
   children,
@@ -94,9 +99,10 @@ export function QuotaLink({
   return (
     <Link
       href={href}
-      className="inline-flex min-h-6 items-center rounded-sm text-xs font-semibold text-primary underline underline-offset-4 hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      className="inline-flex min-h-6 items-center gap-0.5 rounded-sm text-xs font-semibold text-primary underline underline-offset-4 hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
       {children}
+      <ChevronRight className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
     </Link>
   );
 }
@@ -120,14 +126,19 @@ function QuotaNotice({ quota, freeSpaceHref }: QuotaNoticeProps): React.JSX.Elem
   );
 }
 
-interface QuotaTrackProps {
+export interface QuotaTrackProps {
   readonly label: string;
-  readonly quota: QuotaState;
-  readonly amounts: string;
+  readonly usage: QuotaUsage;
+  /** Alto u otros ajustes de la pista (p. ej. el medidor grande de `/espacio`). */
+  readonly className?: string;
 }
 
-/** Pista con borde `input` para llegar a ≥ 3:1 contra la tarjeta (D-19 a). */
-function QuotaTrack({ label, quota, amounts }: QuotaTrackProps): React.JSX.Element {
+/**
+ * Barra con `role="progressbar"` y el tramo como relleno; pista con borde `input` para llegar a ≥ 3:1 contra la
+ * tarjeta (D-19 a). La usan `QuotaBar` y el medidor grande del resumen de espacio.
+ */
+export function QuotaTrack({ label, usage, className }: QuotaTrackProps): React.JSX.Element {
+  const quota = quotaStateOf(usage);
   const { percent } = quota;
   return (
     <div
@@ -136,8 +147,11 @@ function QuotaTrack({ label, quota, amounts }: QuotaTrackProps): React.JSX.Eleme
       aria-valuemin={0}
       aria-valuemax={QUOTA_FULL_PERCENT}
       aria-valuenow={percent}
-      aria-valuetext={`${amounts} (${percent} %)`}
-      className="h-1.5 w-full overflow-hidden rounded-full border border-input bg-muted"
+      aria-valuetext={`${quotaAmountsOf(usage)} (${String(percent)} %)`}
+      className={cn(
+        'h-1.5 w-full overflow-hidden rounded-full border border-input bg-muted',
+        className,
+      )}
     >
       <div
         className={cn(
@@ -158,16 +172,18 @@ export function QuotaBar({
   freeSpaceHref,
   className,
 }: QuotaBarProps): React.JSX.Element {
-  const quota = quotaStateOf({ usedBytes, quotaBytes });
-  const amounts = `${formatBytes(usedBytes)} de ${formatBytes(quotaBytes)}`;
+  const usage = { usedBytes, quotaBytes };
+  const quota = quotaStateOf(usage);
   return (
     <div className={cn('flex flex-col gap-1.5', className)}>
       <div className="flex items-baseline justify-between gap-2 text-xs font-semibold tabular-nums">
         <span>{label}</span>
         <span>{quota.percent} %</span>
       </div>
-      <QuotaTrack label={label} quota={quota} amounts={amounts} />
-      <p className="text-xs font-medium text-muted-foreground tabular-nums">{amounts}</p>
+      <QuotaTrack label={label} usage={usage} />
+      <p className="text-xs font-medium text-muted-foreground tabular-nums">
+        {quotaAmountsOf(usage)}
+      </p>
       <QuotaNotice quota={quota} freeSpaceHref={freeSpaceHref} />
     </div>
   );

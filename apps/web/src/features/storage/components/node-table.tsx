@@ -69,29 +69,39 @@ export function NodeTable({
     <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
       <table className="w-full table-fixed text-sm">
         <caption className="sr-only">{`Carpetas y archivos en ${placeName}`}</caption>
-        <thead className="border-b border-border text-left text-xs font-medium text-muted-foreground">
-          <tr>
-            <SortableHeader column="name" className="px-4 py-2" sorting={sorting} />
-            <SortableHeader
-              column="size"
-              className="hidden w-24 px-2 py-2 text-right sm:table-cell"
-              sorting={sorting}
-            />
-            <SortableHeader
-              column="updated"
-              className="hidden w-32 px-2 py-2 sm:table-cell"
-              sorting={sorting}
-            />
-            <th scope="col" className="w-14 px-2 py-2">
-              <span className="sr-only">Acciones</span>
-            </th>
-          </tr>
-        </thead>
+        <NodeTableHead sorting={sorting} />
         <tbody className="divide-y divide-border">
           <NodeRows nodes={nodes} depth={0} context={{ renderRowActions, disclosure }} />
         </tbody>
       </table>
     </div>
+  );
+}
+
+function NodeTableHead({
+  sorting,
+}: {
+  readonly sorting: TableSorting | undefined;
+}): React.JSX.Element {
+  return (
+    <thead className="border-b border-border text-left text-xs font-medium text-muted-foreground">
+      <tr>
+        <SortableHeader column="name" className="px-4 py-2" sorting={sorting} />
+        <SortableHeader
+          column="size"
+          className="hidden w-24 px-2 py-2 text-right sm:table-cell"
+          sorting={sorting}
+        />
+        <SortableHeader
+          column="updated"
+          className="hidden w-32 px-2 py-2 sm:table-cell"
+          sorting={sorting}
+        />
+        <th scope="col" className="w-14 px-2 py-2">
+          <span className="sr-only">Acciones</span>
+        </th>
+      </tr>
+    </thead>
   );
 }
 

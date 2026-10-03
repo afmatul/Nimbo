@@ -210,7 +210,7 @@ móvil a 600 px; la implementación usa `sm`, 640 px, y no es una diferencia que
 | Componente | Uso | Reglas |
 |---|---|---|
 | `FileTypeChip` | Tipo de archivo en listas y fichas | Mapa único tipo → tokens `--file-*`; muestra la extensión en texto |
-| `QuotaBar` | Medidor de cuota (RF-12) | 0–69 % `success`, 70–89 % `warning` con «Tu cuota está al X %», 90–99 % `destructive-soft` con «Espacio casi agotado» y 100 % con «Espacio agotado.» (007 RN-4); siempre muestra el porcentaje y los GB en texto; `role="progressbar"`; pista con borde `input` (≥ 3:1, 007 D-19 a). `QuotaLink` es su acción de texto («Liberar espacio», «Ver detalle») |
+| `QuotaBar` | Medidor de cuota (RF-12) | 0–69 % `success`, 70–89 % `warning` con «Tu cuota está al X %», 90–99 % `destructive-soft` con «Espacio casi agotado» y 100 % con «Espacio agotado.» (007 RN-4); siempre muestra el porcentaje y los GB en texto; `role="progressbar"`; pista con borde `input` (≥ 3:1, 007 D-19 a). `quotaStateOf(uso)` da porcentaje, tramo y texto (una sola fuente). `QuotaLink` es su acción de texto con `ChevronRight` («Liberar espacio», «Ver detalle»). `QuotaTrack` es la barra sola, para el medidor grande de `/espacio`, que no repite el texto del tramo porque ya lo dice el `Alert` de la pantalla (`warning` en 70–89 %, `critical` con fondo `destructive-soft` en 90–100 %) |
 | `UploadProgress` | Carga por partes (RF-08) | Porcentaje, bytes, reanudar/cancelar; `aria-live="polite"` |
 | `StatusBadge` | Estados de indexación, sesión, suscripción, trabajo | Ícono + etiqueta; nunca solo color |
 | `EmptyState` / `ErrorState` | Estados de pantalla | El error muestra la acción correctiva que envía la API (RNF-14) |

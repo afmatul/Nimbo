@@ -1,4 +1,4 @@
-import type { NodeSort } from '@nimbo/contracts';
+import type { NodeSort, SortDirection } from '@nimbo/contracts';
 import { ArrowDown, ArrowUp } from 'lucide-react';
 import * as React from 'react';
 
@@ -19,13 +19,20 @@ const COLUMN_LABELS: Readonly<Record<SortableColumn, string>> = {
   updated: 'Modificado',
 };
 
-/** La columna activa invierte la dirección; otra empieza ascendente, el valor por defecto de la API (D-6). */
+/** Primer clic en una columna: el nombre de la A a la Z; tamaño y fecha, lo más grande o reciente primero. */
+const FIRST_DIRECTION: Readonly<Record<SortableColumn, SortDirection>> = {
+  name: 'asc',
+  size: 'desc',
+  updated: 'desc',
+};
+
+/** La columna activa invierte la dirección; otra empieza en su `FIRST_DIRECTION` (la web siempre envía `dir`). */
 function nextOrder(column: SortableColumn, order: NodeOrder): NodeOrder {
-  if (order.sort !== column) return { sort: column, dir: 'asc' };
+  if (order.sort !== column) return { sort: column, dir: FIRST_DIRECTION[column] };
   return { sort: column, dir: order.dir === 'asc' ? 'desc' : 'asc' };
 }
 
-function ariaSortOf(active: NodeOrder['dir'] | undefined): 'ascending' | 'descending' | undefined {
+function ariaSortOf(active: SortDirection | undefined): 'ascending' | 'descending' | undefined {
   if (active === undefined) return undefined;
   return active === 'asc' ? 'ascending' : 'descending';
 }
@@ -52,20 +59,38 @@ export function SortableHeader({
     );
   }
   const active = sorting.order.sort === column ? sorting.order.dir : undefined;
-  const Arrow = active === 'asc' ? ArrowUp : ArrowDown;
   return (
     <th scope="col" className={className} aria-sort={ariaSortOf(active)}>
-      <button
-        type="button"
+      <SortButton
+        label={label}
+        active={active}
         onClick={() => sorting.onSort(nextOrder(column, sorting.order))}
-        className={cn(
-          'inline-flex min-h-6 items-center gap-1 rounded-sm font-medium hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-          active ? 'text-secondary-foreground' : undefined,
-        )}
-      >
-        {label}
-        {active ? <Arrow className="h-3.5 w-3.5 text-primary" aria-hidden="true" /> : null}
-      </button>
+      />
     </th>
+  );
+}
+
+function SortButton({
+  label,
+  active,
+  onClick,
+}: {
+  readonly label: string;
+  readonly active: SortDirection | undefined;
+  readonly onClick: () => void;
+}): React.JSX.Element {
+  const Arrow = active === 'asc' ? ArrowUp : ArrowDown;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'inline-flex min-h-6 items-center gap-1 rounded-sm font-medium hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        active ? 'text-secondary-foreground' : undefined,
+      )}
+    >
+      {label}
+      {active ? <Arrow className="h-3.5 w-3.5 text-primary" aria-hidden="true" /> : null}
+    </button>
   );
 }

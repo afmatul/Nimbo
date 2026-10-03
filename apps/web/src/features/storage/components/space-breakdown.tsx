@@ -83,7 +83,7 @@ function SpaceStack({ summary }: { readonly summary: SpaceSummaryResponse }): Re
     <div
       data-space-stack=""
       aria-hidden="true"
-      className="mt-4 flex h-3.5 gap-0.5 overflow-hidden rounded-full bg-muted"
+      className="mt-4 flex h-3.5 gap-0.5 overflow-hidden rounded-full border border-input bg-muted"
     >
       {visible.map((segment) => (
         <span

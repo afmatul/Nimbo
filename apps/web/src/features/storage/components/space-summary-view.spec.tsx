@@ -40,6 +40,7 @@ describe('SpaceSummaryView', () => {
     expect(screen.getByText('Cuánto usas de tu plan y en qué se va.')).toBeTruthy();
     const card = usageCard();
     expect(within(card).getByRole('progressbar').getAttribute('aria-valuenow')).toBe('32');
+    expect(card.querySelector('[data-usage-figure]')?.textContent).toBe('4,8 GB de 15 GB');
     expect(card.textContent).toContain('32 %');
     expect(card.textContent).toContain('Usado4,8 GB');
     expect(card.textContent).toContain('Disponible10,2 GB');
@@ -82,8 +83,15 @@ describe('SpaceSummaryView', () => {
     expect(
       within(notice).getByRole('link', { name: 'Ver papelera (500 MB)' }).getAttribute('href'),
     ).toBe('/papelera');
-    expect(usageCard().textContent).toContain('Tu cuota está al 82 %.');
     expect(within(usageCard()).queryByRole('link')).toBeNull();
+  });
+
+  it('CA-5: el texto del tramo aparece una sola vez en el contenido (el aviso), no también en el medidor', () => {
+    renderView(ready(12.3 * GB));
+
+    expect(within(screen.getByRole('main')).getAllByText('Tu cuota está al 82 %.')).toHaveLength(1);
+    expect(usageCard().textContent).not.toContain('Tu cuota está al 82 %.');
+    expect(usageCard().textContent).not.toContain('Tienes espacio de sobra.');
   });
 
   it('CA-5: la tarjeta de cuota de la barra lateral repite el tramo sin enlaces (ya estás en el resumen)', () => {
@@ -110,6 +118,7 @@ describe('SpaceSummaryView', () => {
 
     const notice = screen.getByRole('alert', { name: 'Espacio casi agotado.' });
     expect(notice.textContent).toContain('Te quedan 900 MB.');
+    expect(notice.className).toContain('bg-destructive-soft/10');
   });
 
   it('CA-5: al 100 % dice «Espacio agotado.» y que no se puede subir; sin papelera no la ofrece', () => {
@@ -123,15 +132,16 @@ describe('SpaceSummaryView', () => {
     expect(within(notice).queryByRole('link', { name: /Ver papelera/u })).toBeNull();
   });
 
-  it('CA-8: mientras carga muestra «Calculando tu espacio…» y la navegación sigue disponible', () => {
+  it('CA-8: mientras carga muestra el esqueleto de las tarjetas, «Calculando tu espacio…» y la navegación sigue', () => {
     renderView({ status: 'loading' });
 
-    expect(
-      within(screen.getByRole('main'))
-        .getByText('Calculando tu espacio…')
-        .closest('[role="status"]')
-        ?.getAttribute('aria-live'),
-    ).toBe('polite');
+    const main = screen.getByRole('main');
+    expect(within(main).getByRole('status').textContent).toBe('Calculando tu espacio…');
+    const busy = main.querySelector('[aria-busy="true"]');
+    const skeleton = busy?.querySelector('[data-space-skeleton]');
+    expect(skeleton?.getAttribute('aria-hidden')).toBe('true');
+    expect(skeleton?.innerHTML).toContain('animate-pulse');
+    expect(skeleton?.innerHTML).toContain('motion-reduce:animate-none');
     expect(screen.queryByRole('region', { name: 'Espacio usado' })).toBeNull();
     expect(screen.getAllByRole('link', { name: 'Mis Archivos' }).length).toBeGreaterThan(0);
   });

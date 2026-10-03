@@ -6,7 +6,7 @@ import Link from 'next/link';
 import type * as React from 'react';
 
 import { AppLayout, DEFAULT_NAV_ITEMS } from '../../../components/nimbo/app-layout';
-import { QuotaBar, quotaStateOf, type QuotaTier } from '../../../components/nimbo/quota-bar';
+import { QuotaTrack, quotaStateOf, type QuotaTier } from '../../../components/nimbo/quota-bar';
 import { StateView } from '../../../components/nimbo/state-view';
 import { Alert } from '../../../components/ui/alert';
 import { buttonVariants } from '../../../components/ui/button';
@@ -17,6 +17,7 @@ import { MY_FILES_PATH, SPACE_PATH, TRASH_PATH } from '../routes';
 import { SidebarQuota } from './sidebar-quota';
 import { SpaceBreakdown } from './space-breakdown';
 import type { SpaceSummaryState } from './space-provider';
+import { SpaceSummarySkeleton } from './space-summary-skeleton';
 import { retentionLabel } from './trash-summary';
 
 export interface SpaceSummaryViewProps {
@@ -72,7 +73,7 @@ function QuotaNoticeAlert({
   const Icon = tier === 'warning' ? TriangleAlert : CircleAlert;
   return (
     <Alert
-      variant={tier === 'warning' ? 'warning' : 'error'}
+      variant={tier === 'warning' ? 'warning' : 'critical'}
       aria-labelledby="aviso-cuota"
       className="flex items-start gap-3"
     >
@@ -105,21 +106,45 @@ function Stat({
   );
 }
 
-/** «Espacio usado» (CA-1): `QuotaBar` con su tramo, y Usado · Disponible · Cuota del plan en texto. */
+/** Cifra grande «4,8 GB de 15 GB» con el porcentaje al lado (mockup `resumen-espacio`). */
+function UsageFigure({
+  summary,
+  percent,
+}: {
+  readonly summary: SpaceSummaryResponse;
+  readonly percent: number;
+}): React.JSX.Element {
+  return (
+    <div className="mt-3.5 flex flex-wrap items-baseline justify-between gap-3">
+      <p
+        data-usage-figure=""
+        className="text-2xl font-bold tracking-tight tabular-nums sm:text-3xl"
+      >
+        {formatBytes(summary.usedBytes)}{' '}
+        <span className="text-base font-medium tracking-normal text-secondary-foreground">
+          de {formatBytes(summary.quotaBytes)}
+        </span>
+      </p>
+      <span className="text-base font-semibold tabular-nums">{percent} %</span>
+    </div>
+  );
+}
+
+/**
+ * «Espacio usado» (CA-1): cifra grande, barra del tramo y Usado · Disponible · Cuota del plan en texto. El texto del
+ * tramo va solo en el aviso de arriba (no se repite aquí); sin aviso, «Tienes espacio de sobra.».
+ */
 function UsageCard({ summary }: { readonly summary: SpaceSummaryResponse }): React.JSX.Element {
+  const { percent, notice } = quotaStateOf(summary);
   return (
     <Card role="region" aria-labelledby="medidor-titulo" className="p-5 lg:col-span-2">
       <h2 id="medidor-titulo" className="text-base font-semibold">
         Espacio usado
       </h2>
-      <QuotaBar
-        label="Cuota usada"
-        usedBytes={summary.usedBytes}
-        quotaBytes={summary.quotaBytes}
-        className="mt-4"
-      />
-      {quotaStateOf(summary).notice === null ? (
-        <p className="mt-2 text-sm text-secondary-foreground">Tienes espacio de sobra.</p>
+      <UsageFigure summary={summary} percent={percent} />
+      <QuotaTrack label="Espacio usado" usage={summary} className="mt-3 h-2.5" />
+      {notice === null ? (
+        <p className="mt-2.5 text-sm text-secondary-foreground">Tienes espacio de sobra.</p>
       ) : null}
       <dl className="mt-4 grid gap-3 border-t border-border pt-4 sm:grid-cols-3">
         <Stat label="Usado" bytes={summary.usedBytes} />
@@ -165,9 +190,7 @@ function PlanCard({ summary }: { readonly summary: SpaceSummaryResponse }): Reac
 }
 
 function SpaceBody({ state, onRetry }: SpaceSummaryViewProps): React.JSX.Element {
-  if (state.status === 'loading') {
-    return <StateView type="loading" headingLevel="h2" title="Calculando tu espacio…" />;
-  }
+  if (state.status === 'loading') return <SpaceSummarySkeleton />;
   if (state.status === 'error') {
     return (
       <StateView

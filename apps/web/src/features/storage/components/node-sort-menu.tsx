@@ -1,6 +1,6 @@
 'use client';
 
-import { NODE_SORTS, SORT_DIRECTIONS } from '@nimbo/contracts';
+import { NODE_SORTS, SORT_DIRECTIONS, type NodeSort, type SortDirection } from '@nimbo/contracts';
 import { ArrowUpDown, ChevronDown, Info, Loader2 } from 'lucide-react';
 import * as React from 'react';
 
@@ -50,6 +50,15 @@ export function NodeSortMenu({ order, sorting, onChange }: NodeSortMenuProps): R
   );
 }
 
+const FIELD_OPTIONS = NODE_SORTS.map((sort) => ({ value: sort, label: SORT_LABELS[sort] }));
+
+/** Textos de la dirección según el campo: «A–Z», «Mayor primero», «Más recientes primero»… */
+function directionOptionsOf(
+  sort: NodeSort,
+): ReadonlyArray<{ readonly value: SortDirection; readonly label: string }> {
+  return SORT_DIRECTIONS.map((dir) => ({ value: dir, label: DIRECTION_LABELS[sort][dir] }));
+}
+
 function SortMenuContent({
   order,
   onChange,
@@ -63,7 +72,7 @@ function SortMenuContent({
       <SortGroup
         labelledBy={fieldId}
         value={order.sort}
-        options={NODE_SORTS.map((sort) => ({ value: sort, label: SORT_LABELS[sort] }))}
+        options={FIELD_OPTIONS}
         onSelect={(sort) => onChange({ ...order, sort })}
       />
       <DropdownMenuSeparator />
@@ -71,25 +80,38 @@ function SortMenuContent({
       <SortGroup
         labelledBy={directionId}
         value={order.dir}
-        options={SORT_DIRECTIONS.map((dir) => ({
-          value: dir,
-          label: DIRECTION_LABELS[order.sort][dir],
-        }))}
+        options={directionOptionsOf(order.sort)}
         onSelect={(dir) => onChange({ ...order, dir })}
       />
-      <p
-        id={noteId}
-        className="m-1 flex items-start gap-2 rounded-md bg-muted px-2.5 py-2 text-xs text-secondary-foreground"
-      >
-        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
-        {SORT_NOTE}
-      </p>
+      <SortNote id={noteId} />
     </DropdownMenuContent>
+  );
+}
+
+function SortNote({ id }: { readonly id: string }): React.JSX.Element {
+  return (
+    <p
+      id={id}
+      className="m-1 flex items-start gap-2 rounded-md bg-muted px-2.5 py-2 text-xs text-secondary-foreground"
+    >
+      <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
+      {SORT_NOTE}
+    </p>
   );
 }
 
 function lowerFirst(text: string): string {
   return `${text.charAt(0).toLowerCase()}${text.slice(1)}`;
+}
+
+function TriggerIcon({ sorting }: { readonly sorting: boolean }): React.JSX.Element {
+  if (!sorting) return <ArrowUpDown className="h-4 w-4 shrink-0" aria-hidden="true" />;
+  return (
+    <Loader2
+      className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none"
+      aria-hidden="true"
+    />
+  );
 }
 
 /** Botón con el orden vigente; mientras llega otro, «Ordenando…» con `aria-disabled` (sigue enfocable). */
@@ -109,14 +131,7 @@ function SortTrigger({
         aria-disabled={sorting || undefined}
         className="h-11 w-full justify-between text-foreground aria-disabled:cursor-progress sm:h-9 sm:w-auto sm:justify-start"
       >
-        {sorting ? (
-          <Loader2
-            className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none"
-            aria-hidden="true"
-          />
-        ) : (
-          <ArrowUpDown className="h-4 w-4 shrink-0" aria-hidden="true" />
-        )}
+        <TriggerIcon sorting={sorting} />
         <span className="min-w-0 flex-1 truncate text-left">
           {sorting ? 'Ordenando…' : `Ordenar: ${label}`}
         </span>

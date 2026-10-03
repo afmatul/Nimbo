@@ -41,6 +41,7 @@ describe('SpaceBreakdown', () => {
     const stack = container.querySelector('[data-space-stack]');
     expect(stack?.getAttribute('aria-hidden')).toBe('true');
     expect(stack?.children).toHaveLength(3);
+    expect(stack?.className).toContain('border-input');
   });
 
   it('CA-3: la papelera con espacio es un segmento aparte que cuenta en la cuota, con «Ver papelera»', () => {
