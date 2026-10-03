@@ -15,6 +15,7 @@ import type { DownloadNotice, PinToggle } from '../components/file-row-menu';
 import type { FolderDisclosure } from '../components/node-table';
 import { useQuickAccessSidebar } from '../components/quick-access-sidebar';
 import { useSpace, type SpaceSummaryState } from '../components/space-provider';
+import { DEFAULT_NODE_ORDER, sameOrder, type NodeOrder } from '../node-order';
 import { locationOf, withArrivals, withOrganized, type OrganizedNodes } from '../organized-nodes';
 
 import {
@@ -94,6 +95,23 @@ function visibleAt(
   return withOrganized(withLocal, changes.organized, folderId).filter(
     (node) => !changes.trashedIds.has(node.id),
   );
+}
+
+function isDefaultOrder(order: NodeOrder): boolean {
+  return sameOrder(order, DEFAULT_NODE_ORDER);
+}
+
+/**
+ * Con otro orden que el de 006 el listado lo ordena el servidor: cuando cambia `signal` (una carga terminó, algo se
+ * renombró o se movió) se relee la primera página sin perder lo visible. No actúa al montar (I-1, CA-10).
+ */
+export function useRefreshWhen(enabled: boolean, refresh: () => void, signal: unknown): void {
+  const seen = React.useRef(signal);
+  React.useEffect(() => {
+    if (Object.is(seen.current, signal)) return;
+    seen.current = signal;
+    if (enabled) refresh();
+  }, [enabled, refresh, signal]);
 }
 
 function readyContents(listing: FolderListing): {
@@ -200,7 +218,8 @@ function useOrganizing({
 
 /**
  * Listado paginado de la ubicación y desglose de sus carpetas, con la misma lectura de `GET /folders/contents`.
- * `reloadAll` relee ambos («Actualizar lista», 006 CA-26).
+ * `reloadAll` relee ambos («Actualizar lista», 006 CA-26). Pasa los argumentos tal cual: sin página, la API recibe solo
+ * la carpeta (desglose y árbol de «Mover a…»).
  */
 function useListing(api: StorageApi, folderId: string | null) {
   const load = React.useCallback<LoadFolderContents>(
@@ -223,16 +242,29 @@ interface VisibleSources {
   readonly listing: FolderListing;
   readonly disclosed: FolderDisclosureState;
   readonly changes: LocalChanges;
+  /** Orden de los elementos visibles (`controls.shownOrder`). */
+  readonly shownOrder: NodeOrder;
 }
 
-/** Lo que se ve: migas, elementos de la ubicación y de cada carpeta desglosada, sin lo mandado a la papelera. */
-function visibleOf({ folderId, listing, disclosed, changes }: VisibleSources): Level & {
+/**
+ * Lo que se ve: migas, elementos de la ubicación y de cada carpeta desglosada, sin lo mandado a la papelera. Solo con
+ * el orden de 006 (creación descendente) lo subido va arriba de la ubicación abierta; con otro orden lo coloca el
+ * servidor al releer (007 CA-10, I-1). Las carpetas desglosadas siempre llegan con el orden de 006.
+ */
+export function visibleOf({
+  folderId,
+  listing,
+  disclosed,
+  changes,
+  shownOrder,
+}: VisibleSources): Level & {
   readonly disclosure: FolderDisclosure;
   /** Nivel de un elemento, para los diálogos de «Renombrar» y «Mover a…». */
   readonly levelOf: (node: NodeSummary) => Level;
 } {
   const { breadcrumbs, items } = readyContents(listing);
-  const nodes = visibleAt(changes, folderId, items);
+  const openedChanges = isDefaultOrder(shownOrder) ? changes : { ...changes, uploaded: [] };
+  const nodes = visibleAt(openedChanges, folderId, items);
   return {
     breadcrumbs,
     nodes,
@@ -280,6 +312,17 @@ export interface MyFilesState {
   readonly rowActions: RowActionHandlers;
 }
 
+/** Con otro orden, terminar una carga, renombrar o mover relee el listado en vez de colocar el elemento a mano (I-1). */
+function useServerOrderedRefresh(
+  contents: ReturnType<typeof useFolderContents>,
+  uploadedCount: number,
+  organized: OrganizedNodes,
+): void {
+  const serverOrdered = !isDefaultOrder(contents.controls.shownOrder);
+  useRefreshWhen(serverOrdered, contents.refresh, uploadedCount);
+  useRefreshWhen(serverOrdered, contents.refresh, organized);
+}
+
 /** «Mover a la papelera» con sus avisos; si sale bien, relee la barra lateral. */
 function useTrashing(
   api: StorageApi,
@@ -311,6 +354,7 @@ export function useMyFilesState(folderId: string | null): MyFilesState {
     reloadQuickAccess: sidebar.quickAccess.reload,
   });
   const [creatingFolder, setCreatingFolder] = React.useState(false);
+  useServerOrderedRefresh(contents, uploads.uploadedFiles.length, organize.organized);
   const changes = { uploaded: uploads.uploadedFiles, organized: organize.organized, trashedIds };
   return {
     folderId,
@@ -319,7 +363,13 @@ export function useMyFilesState(folderId: string | null): MyFilesState {
     contents,
     sidebar,
     organize,
-    view: visibleOf({ folderId, listing: contents.listing, disclosed, changes }),
+    view: visibleOf({
+      folderId,
+      listing: contents.listing,
+      disclosed,
+      changes,
+      shownOrder: contents.controls.shownOrder,
+    }),
     notices,
     creating: { open: creatingFolder, setOpen: setCreatingFolder },
     rowActions: rowActionsOf({ sidebar, notices, moveToTrash, organize: organize.setOrganizing }),

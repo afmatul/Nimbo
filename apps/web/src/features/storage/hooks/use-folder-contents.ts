@@ -120,12 +120,15 @@ interface PageRequest {
   readonly order: NodeOrder;
 }
 
-/** Primera página en el orden pedido; la respuesta de una petición anterior (otro orden u otra carpeta) se descarta. */
+/**
+ * Primera página en el orden pedido; la respuesta de una petición anterior (otro orden u otra carpeta) se descarta.
+ * `refreshes` la vuelve a pedir sin pasar por «cargando»: lo visible se conserva hasta que llega.
+ */
 function useFirstPage(
-  request: PageRequest & { readonly location: string },
+  request: PageRequest & { readonly location: string; readonly refreshes: number },
   setState: SetContents,
 ): void {
-  const { load, folderId, order, location } = request;
+  const { load, folderId, order, location, refreshes } = request;
   React.useEffect(() => {
     let current = true;
     const settle = (listing: FolderListing): void => {
@@ -138,7 +141,7 @@ function useFirstPage(
     return () => {
       current = false;
     };
-  }, [load, folderId, order, location, setState]);
+  }, [load, folderId, order, location, refreshes, setState]);
 }
 
 function requestNextPage(
@@ -191,24 +194,26 @@ export function useFolderContents(
 ): {
   readonly listing: FolderListing;
   readonly reload: () => void;
+  readonly refresh: () => void;
   readonly addFolder: (folder: FolderSummary) => void;
   readonly controls: ListControls;
 } {
-  const [attempt, setAttempt] = React.useState(0);
+  const counters = useCounters();
   const [order, setOrder] = React.useState<NodeOrder>(DEFAULT_NODE_ORDER);
-  const location = `${folderId ?? ''}#${String(attempt)}`;
+  const location = `${folderId ?? ''}#${String(counters.attempt)}`;
   const [state, setState] = React.useState<ContentsState>({
     location: '',
     listing: LOADING,
     ...IDLE,
   });
-  useFirstPage({ load, folderId, order, location }, setState);
+  useFirstPage({ load, folderId, order, location, refreshes: counters.refreshes }, setState);
   const current = state.location === location ? state : { location, listing: LOADING, ...IDLE };
-  const actions = useListActions(setState, setOrder, setAttempt);
+  const actions = useListActions(setState, setOrder, counters);
   const loadMore = loadMoreOf({ load, folderId, order }, nextCursorOf(current, order), setState);
   return {
     listing: current.listing,
     reload: actions.reload,
+    refresh: actions.refresh,
     addFolder: actions.addFolder,
     controls: { ...controlsOf(current, order), ...actions.controls, loadMore },
   };
@@ -216,18 +221,38 @@ export function useFolderContents(
 
 type Setter<T> = React.Dispatch<React.SetStateAction<T>>;
 
+/**
+ * `attempt` vuelve a «cargando» (carpeta nueva o «Reintentar»); `refreshes` solo relee la primera página, sin perder
+ * lo visible (el listado ordenado por el servidor tras subir, renombrar o mover, I-1).
+ */
+interface Counters {
+  readonly attempt: number;
+  readonly refreshes: number;
+  readonly setAttempt: Setter<number>;
+  readonly setRefreshes: Setter<number>;
+}
+
+function useCounters(): Counters {
+  const [attempt, setAttempt] = React.useState(0);
+  const [refreshes, setRefreshes] = React.useState(0);
+  return { attempt, refreshes, setAttempt, setRefreshes };
+}
+
 function useListActions(
   setState: SetContents,
   setOrder: Setter<NodeOrder>,
-  setAttempt: Setter<number>,
+  counters: Counters,
 ): {
   readonly reload: () => void;
+  readonly refresh: () => void;
   readonly addFolder: (folder: FolderSummary) => void;
   readonly controls: Pick<ListControls, 'changeOrder' | 'dismissMoreError'>;
 } {
+  const { setAttempt, setRefreshes } = counters;
   return React.useMemo(
     () => ({
       reload: () => setAttempt((previous) => previous + 1),
+      refresh: () => setRefreshes((previous) => previous + 1),
       addFolder: (folder: FolderSummary) =>
         setState((previous) => ({ ...previous, listing: withNewFolder(previous.listing, folder) })),
       controls: {
@@ -239,6 +264,6 @@ function useListActions(
           ),
       },
     }),
-    [setState, setOrder, setAttempt],
+    [setState, setOrder, setAttempt, setRefreshes],
   );
 }

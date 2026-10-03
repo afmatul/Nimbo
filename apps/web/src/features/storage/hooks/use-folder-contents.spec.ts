@@ -136,6 +136,25 @@ describe('useFolderContents: orden y «Cargar más» (007 CA-9, CA-10, CA-12)', 
     });
   });
 
+  it('CA-10 (I-1): refresh relee la primera página en el orden actual y conserva lo visible mientras llega', async () => {
+    const { load, calls } = deferredLoader();
+    const { result } = renderHook(() => useFolderContents(load, null));
+    act(() => result.current.controls.changeOrder({ sort: 'name', dir: 'asc' }));
+    await settle(calls[1], page([fileNode(1), fileNode(3)], null));
+
+    act(() => result.current.refresh());
+
+    expect(calls[2]?.query).toEqual({ sort: 'name', dir: 'asc' });
+    expect(result.current.listing.status).toBe('ready');
+    expect(itemIds(result.current.listing)).toEqual([fileNode(1).id, fileNode(3).id]);
+    await settle(calls[2], page([fileNode(1), fileNode(2), fileNode(3)], null));
+    expect(itemIds(result.current.listing)).toEqual([
+      fileNode(1).id,
+      fileNode(2).id,
+      fileNode(3).id,
+    ]);
+  });
+
   it('CA-10: elegir el mismo orden no vuelve a pedir la carpeta', async () => {
     const { load, calls } = deferredLoader();
     const { result } = renderHook(() => useFolderContents(load, null));
