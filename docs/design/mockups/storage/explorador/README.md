@@ -376,6 +376,10 @@ los 6 estados: axe-core sin violaciones a 360 y 1440 px, sin desbordamiento a 36
   vigente en texto («Ordenar: Tamaño, mayor primero»). Los encabezados de columna no son botones: solo muestran
   `aria-sort` y una flecha en la columna activa (con el orden por defecto, por fecha de creación, ninguna columna la
   lleva: la tabla muestra «Modificado», no la fecha de creación). Alternativa (encabezados clicables además del menú) pendiente de Adrián.
+  La web (T-11) ya la implementa: el primer clic ordena «Nombre» de la A a la Z y «Tamaño» y «Modificado» de mayor o
+  más reciente a menor; un segundo clic en la columna activa invierte la dirección.
+- **Navegación**: en los estados de 007 el ítem «Espacio» reemplaza a «Plan y facturación» (decisión e del resumen de
+  espacio, hasta 008).
 - **Cuatro campos de orden** (CA-10): Nombre, Tamaño, Fecha de modificación y Fecha de creación (`created`), cada uno
   ascendente o descendente.
 - **Textos de la dirección según el campo**: Nombre «A–Z» / «Z–A»; Tamaño «Menor primero» / «Mayor primero»; las dos

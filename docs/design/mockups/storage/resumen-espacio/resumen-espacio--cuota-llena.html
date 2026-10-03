@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Espacio de almacenamiento · Nimbo — cuota llena (100 %): no se puede subir más</title>
+<title>Espacio de almacenamiento · Nimbo — cuota llena (100 %): «Espacio agotado.», no se puede subir más</title>
 <!-- Mockup de referencia (spec 007: cuota y explorador). Estado: cuota-llena. -->
 <!-- Colores: valores de ui-guidelines.md §3 (tonos AA). La implementación usa tokens, components/ui y components/nimbo (QuotaBar). -->
 <!-- Generado con _generadores/resumen-espacio/generar.js (marco, espacio, carpetas y estados). No editar a mano. -->
@@ -352,7 +352,6 @@
   .meter .quota-bar { height: 10px; margin: 12px 0 0; }
   .meter.quota-warn .quota-bar span { background: var(--warning); }
   .meter.quota-full .quota-bar span { background: var(--destructive-soft); }
-  .meter .quota-note { font-size: 13px; margin-top: 10px; }
   .meter-note-ok { margin: 10px 0 0; font-size: 13px; color: var(--secondary-foreground); }
   .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 18px 0 0; padding: 16px 0 0; border-top: 1px solid var(--border); }
   .stats div { min-width: 0; }
@@ -380,7 +379,8 @@
 
   /* Desglose por tipo: barra apilada (decorativa) + lista con cifras en texto */
   .breakdown { margin-top: 20px; }
-  .stack { display: flex; gap: 2px; height: 14px; margin-top: 16px; border-radius: 999px; overflow: hidden; background: var(--muted); }
+  /* Pista con borde input, como QuotaBar (≥ 3:1 contra card; revisión de UI de 007) */
+  .stack { display: flex; gap: 2px; height: 14px; margin-top: 16px; border-radius: 999px; overflow: hidden; background: var(--muted); border: 1px solid var(--input); }
   .stack span { display: block; height: 100%; min-width: 3px; }
   .sw-docs { background: var(--file-docx); }
   .sw-img { background: var(--file-img); }
@@ -448,7 +448,7 @@
 </head>
 <body>
 
-<aside class="sheet-label" aria-label="Rótulo del mockup"><span class="chip">007</span> <strong>Resumen de espacio</strong> <span class="file">resumen-espacio--cuota-llena.html</span> <span>plan Personal (ejemplo) · estado: cuota llena (100 %): no se puede subir más</span></aside>
+<aside class="sheet-label" aria-label="Rótulo del mockup"><span class="chip">007</span> <strong>Resumen de espacio</strong> <span class="file">resumen-espacio--cuota-llena.html</span> <span>plan Personal (ejemplo) · estado: cuota llena (100 %): «Espacio agotado.», no se puede subir más</span></aside>
 
 <div class="canvas">
   <div class="app">
@@ -469,7 +469,7 @@
         <div class="nav-sep" role="presentation"></div>
         <ul class="nav">
           <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m12 3-1.9 5.8L4 10.7l6.1 1.9 1.9 5.9 1.9-5.9 6.1-1.9-6.1-1.9Z"/><path d="M5 3v4"/><path d="M3 5h4"/></svg><span>Optimizador</span></a></li>
-          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/></svg><span>Plan y facturación</span></a></li>
+          <li><a href="#" aria-current="page"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M22 12H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><path d="M6 16h.01"/><path d="M10 16h.01"/></svg><span>Espacio</span></a></li>
         </ul>
         <p class="nav-title">Carpetas</p>
         <ul class="nav">
@@ -482,7 +482,7 @@
         <div class="quota-head"><span>Almacenamiento</span><span>100 %</span></div>
         <div class="quota-bar" role="progressbar" aria-label="Almacenamiento usado" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" aria-valuetext="15 GB de 15 GB (100 %)"><span style="width: 100%"></span></div>
         <div class="quota-meta">15 GB de 15 GB</div>
-        <p class="quota-note"><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg><span>Espacio casi agotado</span></p>
+        <p class="quota-note"><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg><span>Espacio agotado.</span></p>
       </div>
     </aside>
     <div class="main">
@@ -509,7 +509,7 @@
         <section class="notice notice-full" role="alert" aria-labelledby="aviso-t">
           <svg class="ico " width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
           <div class="notice-body">
-            <h2 class="notice-title" id="aviso-t">Espacio casi agotado.</h2>
+            <h2 class="notice-title" id="aviso-t">Espacio agotado.</h2>
             <p class="notice-text">Usas 15 GB de 15 GB. No podrás subir archivos hasta que liberes espacio. Lo que está en la papelera sigue ocupando espacio hasta que se elimina definitivamente.</p>
             <div class="notice-actions">
               <a class="btn btn-primary" href="#">Liberar espacio</a><a class="btn btn-outline" href="#"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg><span>Ver papelera (0.8 GB)</span></a>
@@ -524,7 +524,7 @@
               <span class="meter-pct">100 %</span>
             </div>
             <div class="quota-bar" role="progressbar" aria-labelledby="medidor-t" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" aria-valuetext="15 GB de 15 GB (100 %)"><span style="width: 100%"></span></div>
-            <p class="quota-note"><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg><span>Espacio casi agotado</span></p>
+            
             <dl class="stats">
               <div><dt>Usado</dt><dd>15 GB</dd></div>
               <div><dt>Disponible</dt><dd>0 B</dd></div>

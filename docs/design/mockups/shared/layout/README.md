@@ -16,10 +16,11 @@
   - menu-cuenta-abierto: menú de la cuenta abierto con el foco en «Seguridad» (`layout--menu-cuenta-abierto.html`)
   - confirmar-cerrar-sesion: «Cerrar sesión» desde el menú pide confirmación (`layout--confirmar-cerrar-sesion.html`)
   - solo-lectura: plan Pro vencido; aviso persistente con «Renovar plan» (`layout--solo-lectura.html`, RF-23)
-  - cuota-70 (spec 007): tarjeta de cuota al 82 % con «Tu cuota está al 82 %» (ícono de triángulo) y «Liberar espacio»
+  - cuota-70 (spec 007): tarjeta de cuota al 82 % con «Tu cuota está al 82 %.» (ícono de triángulo) y «Liberar espacio»
     (`layout--cuota-70.html`). A 360 px se ve en el cajón abierto, porque la barra lateral solo existe ahí.
-  - cuota-90 (spec 007): tarjeta al 94 % con «Espacio casi agotado» (ícono de círculo) y «Liberar espacio»
-    (`layout--cuota-90.html`). A 360 px, en el cajón.
+  - cuota-90 (spec 007): tarjeta al 94 % con «Espacio casi agotado.» (ícono de círculo) y «Liberar espacio»
+    (`layout--cuota-90.html`). A 360 px, en el cajón. Al 100 % la tarjeta dice «Espacio agotado.» (se ve en
+    `storage/resumen-espacio/resumen-espacio--cuota-llena.html`).
   - movil-cajon-abierto: por debajo de 900 px, la barra lateral se abre como cajón (`layout--movil-cajon-abierto.html`).
     Solo existe en móvil y tableta; a 1440 px el archivo muestra el marco de escritorio y no tiene captura.
   - **Accesos rápidos (spec 006, CA-27 y CA-28, Aprobado 2026-10-03)**: nueve estados nuevos, descritos en «Accesos

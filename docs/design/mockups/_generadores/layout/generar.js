@@ -200,11 +200,11 @@ const ESTADOS = [
     soloLectura: { cuerpo: 'Tu plan Pro venció el 20 sep 2026. Tus archivos siguen aquí: puedes verlos y descargarlos, pero no subir ni editar hasta que renueves.' },
   },
   {
-    estado: 'cuota-70', titulo: 'cuota en el tramo 70–89 %: aviso y «Liberar espacio» (spec 007; a 360, en el cajón)',
+    estado: 'cuota-70', titulo: 'cuota en el tramo 70–89 %: «Tu cuota está al 82 %.» y «Liberar espacio» (spec 007; a 360, en el cajón)',
     tramo: true, cuota: Q.CUOTAS.warn, cajon: true,
   },
   {
-    estado: 'cuota-90', titulo: 'cuota en el tramo 90–100 %: «Espacio casi agotado» y «Liberar espacio» (spec 007; a 360, en el cajón)',
+    estado: 'cuota-90', titulo: 'cuota en el tramo 90–99 %: «Espacio casi agotado.» y «Liberar espacio» (spec 007; a 360, en el cajón)',
     tramo: true, cuota: Q.CUOTAS.full, cajon: true,
   },
   { estado: 'movil-cajon-abierto', titulo: 'cajón de navegación abierto (solo por debajo de 900 px)', cajon: true },

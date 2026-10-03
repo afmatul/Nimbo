@@ -34,6 +34,11 @@ const CUOTAS = {
   llena: { usado: '15 GB', total: CUOTA_TOTAL, pct: 100 },
 };
 const tramoDe = (pct) => (pct >= 90 ? 'full' : pct >= 70 ? 'warn' : 'ok');
+// Textos del tramo de QuotaBar (ui-guidelines §4, spec 007 RN-4): con punto final y «Espacio agotado.» al 100 %.
+const notaDe = (pct) => {
+  if (pct >= 100) return 'Espacio agotado.';
+  return pct >= 90 ? 'Espacio casi agotado.' : `Tu cuota está al ${pct} %.`;
+};
 
 // ---------- Tarjeta de cuota (QuotaBar compacto de la barra lateral) ----------
 // estado: 'listo' | 'cargando' | 'error'. enlace: false en el propio resumen (ya es el destino).
@@ -53,7 +58,7 @@ function tarjeta(q, { estado = 'listo', enlace = true, drawer = false } = {}) {
       </div>`;
   }
   const tramo = tramoDe(q.pct);
-  const nota = tramo === 'full' ? 'Espacio casi agotado' : `Tu cuota está al ${q.pct} %`;
+  const nota = notaDe(q.pct);
   const notaHtml = tramo === 'ok' ? '' : `
         <p class="quota-note">${icon(tramo === 'full' ? 'alert' : 'warn', 14)}<span>${nota}</span></p>`;
   const accion = tramo === 'ok' ? 'Ver detalle' : 'Liberar espacio';
@@ -66,13 +71,22 @@ function tarjeta(q, { estado = 'listo', enlace = true, drawer = false } = {}) {
       </div>`;
 }
 
-// Barra lateral de 007: la de 006 (carpetas de primer nivel y contador de la Papelera) con plan Personal y la tarjeta
-// de 007. carpetas/contador por defecto: los de carpetas/carpetas.js.
+// Decisión (e) de 007 (plan D-18): el ítem «Espacio» (/espacio) reemplaza a «Plan y facturación» hasta que 008
+// entregue los planes. activo: 'Espacio' lo marca con aria-current="page" (en el propio resumen).
+const ITEM_PLAN = /<li><a href="#"><svg[^>]*>(?:(?!<li>)[\s\S])*?<\/svg><span>Plan y facturación<\/span><\/a><\/li>/;
+function conItemEspacio(html, activo) {
+  const actual = activo === 'Espacio' ? ' aria-current="page"' : '';
+  return html.replace(ITEM_PLAN, `<li><a href="#"${actual}>${icon('hardDrive')}<span>Espacio</span></a></li>`);
+}
+
+// Barra lateral de 007: la de 006 (carpetas de primer nivel y contador de la Papelera) con plan Personal, el ítem
+// «Espacio» y la tarjeta de 007. carpetas/contador por defecto: los de carpetas/carpetas.js.
 function sidebar({ activo = '', q = CUOTAS.ok, estado = 'listo', enlace = true, carpetas, papelera = '6' } = {}) {
   const C = require('../carpetas/carpetas.js');
   const lista = (carpetas || C.CARPETAS_RAIZ).map((n) => ['folder', n]);
-  return M.sidebar({ activo, plan: PLAN, cuota: q, carpetas: lista, contadorPapelera: papelera })
+  const html = M.sidebar({ activo, plan: PLAN, cuota: q, carpetas: lista, contadorPapelera: papelera })
     .replace(M.cuota(q), tarjeta(q, { estado, enlace }));
+  return conItemEspacio(html, activo);
 }
 
 // ---------- CSS de la tarjeta (se suma a M.CSS.TRAMOS) ----------
@@ -92,6 +106,6 @@ const CSS_TARJETA = `
 `;
 
 module.exports = {
-  P, icon, PLAN, PLAN_NOMBRE, CUOTA_TOTAL, MAX_POR_ARCHIVO, RETENCION, CUOTAS, tramoDe,
+  P, icon, PLAN, PLAN_NOMBRE, CUOTA_TOTAL, MAX_POR_ARCHIVO, RETENCION, CUOTAS, tramoDe, notaDe,
   tarjeta, sidebar, CSS_TARJETA,
 };

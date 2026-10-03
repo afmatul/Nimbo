@@ -42,7 +42,6 @@ const CSS = '\n' + M.CSS.MARCO + M.CSS.BOTONES + M.CSS.MQ_900 +
   .meter .quota-bar { height: 10px; margin: 12px 0 0; }
   .meter.quota-warn .quota-bar span { background: var(--warning); }
   .meter.quota-full .quota-bar span { background: var(--destructive-soft); }
-  .meter .quota-note { font-size: 13px; margin-top: 10px; }
   .meter-note-ok { margin: 10px 0 0; font-size: 13px; color: var(--secondary-foreground); }
   .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 18px 0 0; padding: 16px 0 0; border-top: 1px solid var(--border); }
   .stats div { min-width: 0; }
@@ -70,7 +69,8 @@ const CSS = '\n' + M.CSS.MARCO + M.CSS.BOTONES + M.CSS.MQ_900 +
 
   /* Desglose por tipo: barra apilada (decorativa) + lista con cifras en texto */
   .breakdown { margin-top: 20px; }
-  .stack { display: flex; gap: 2px; height: 14px; margin-top: 16px; border-radius: 999px; overflow: hidden; background: var(--muted); }
+  /* Pista con borde input, como QuotaBar (≥ 3:1 contra card; revisión de UI de 007) */
+  .stack { display: flex; gap: 2px; height: 14px; margin-top: 16px; border-radius: 999px; overflow: hidden; background: var(--muted); border: 1px solid var(--input); }
   .stack span { display: block; height: 100%; min-width: 3px; }
   .sw-docs { background: var(--file-docx); }
   .sw-img { background: var(--file-img); }
@@ -143,7 +143,7 @@ function aviso(d) {
   const tramo = Q.tramoDe(d.q.pct);
   if (tramo === 'ok') return '';
   const llena = d.q.pct >= 100;
-  const titulo = tramo === 'full' ? 'Espacio casi agotado.' : `Tu cuota está al ${d.q.pct} %.`;
+  const titulo = Q.notaDe(d.q.pct);
   const texto = llena
     ? `Usas ${d.q.usado} de ${d.q.total}. No podrás subir archivos hasta que liberes espacio.`
     : `Te quedan ${d.libre}. Elimina archivos que ya no necesites para seguir subiendo.`;
@@ -162,11 +162,11 @@ function aviso(d) {
         </section>`;
 }
 
+// El texto del tramo va una sola vez en la pantalla: en el aviso de arriba. El medidor solo dice «Tienes espacio de
+// sobra.» en 0–69 % (revisión de UI de 007).
 function medidor(d) {
   const tramo = Q.tramoDe(d.q.pct);
-  const nota = tramo === 'ok'
-    ? `<p class="meter-note-ok">Tienes espacio de sobra.</p>`
-    : `<p class="quota-note">${icon(tramo === 'full' ? 'alert' : 'warn', 14)}<span>${tramo === 'full' ? 'Espacio casi agotado' : `Tu cuota está al ${d.q.pct} %`}</span></p>`;
+  const nota = tramo === 'ok' ? `<p class="meter-note-ok">Tienes espacio de sobra.</p>` : '';
   return `
           <section class="card meter${tramo === 'ok' ? '' : ` quota-${tramo}`}" aria-labelledby="medidor-t">
             <h2 id="medidor-t">Espacio usado</h2>
@@ -263,7 +263,7 @@ function page(v) {
 
 <div class="canvas">
   <div class="app">
-    ${Q.sidebar({ q, estado: v.tarjeta || 'listo', enlace: false })}
+    ${Q.sidebar({ q, estado: v.tarjeta || 'listo', enlace: false, activo: 'Espacio' })}
     <div class="main">
       ${M.topbar({ crumbs: ['Cuenta', 'Espacio de almacenamiento'] })}
       <main class="content" id="contenido">${v.cuerpo()}
@@ -285,9 +285,9 @@ const ESTADOS = [
     estado: 'error', titulo: 'no se pudo calcular el espacio: causa y «Reintentar»', tarjeta: 'error',
     cuerpo: () => encabezado() + E.errorEstado('No pudimos calcular tu espacio.', 'Tus archivos siguen guardados. Inténtalo de nuevo en unos segundos.'),
   },
-  { estado: 'tramo-70', titulo: 'tramo 70–89 %: «Tu cuota está al 82 %» con «Liberar espacio»', datos: D.warn, cuerpo: listo(D.warn) },
-  { estado: 'tramo-90', titulo: 'tramo 90–100 %: «Espacio casi agotado» con «Liberar espacio»', datos: D.full, cuerpo: listo(D.full) },
-  { estado: 'cuota-llena', titulo: 'cuota llena (100 %): no se puede subir más', datos: D.llena, cuerpo: listo(D.llena) },
+  { estado: 'tramo-70', titulo: 'tramo 70–89 %: «Tu cuota está al 82 %.» con «Liberar espacio»', datos: D.warn, cuerpo: listo(D.warn) },
+  { estado: 'tramo-90', titulo: 'tramo 90–99 %: «Espacio casi agotado.» con «Liberar espacio»', datos: D.full, cuerpo: listo(D.full) },
+  { estado: 'cuota-llena', titulo: 'cuota llena (100 %): «Espacio agotado.», no se puede subir más', datos: D.llena, cuerpo: listo(D.llena) },
   { estado: 'con-papelera', titulo: 'la papelera ocupa 2.6 GB y cuenta en la cuota', datos: D.papelera, cuerpo: listo(D.papelera) },
 ];
 
