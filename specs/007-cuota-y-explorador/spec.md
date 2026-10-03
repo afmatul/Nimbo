@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | En curso (2026-10-01; plan aprobado por Adrián) |
+| Estado | En revisión (2026-10-02; plan aprobado por Adrián el 2026-10-01) |
 | Dueño | Adrián (1) |
 | Fase | 1 |
 | Requisitos | RF-12, RNF-14 (principales); aplican RNF-05, RNF-13, RNF-17 |
