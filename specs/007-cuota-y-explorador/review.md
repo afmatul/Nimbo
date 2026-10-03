@@ -5,7 +5,7 @@
 | Fecha | 2026-10-02 |
 | Rango revisado | `main..1445f0c` (rama `feat/007-cuota-y-explorador-web`, con la línea A integrada). Solo commits [007] desde `8374a8e`/`b51af44`; los [006] y `5d40b55` quedan fuera |
 | CI | ✅ local: lint, typecheck, test (api 1445, contracts 281, config 28, scripts 34, web 861/862 \*), test:int 87 suites/792, test:isolation 13/198, env:check |
-| Veredicto | ✅ Aprobar (sin bloqueantes; I-1 e I-2 antes del cierre de fase) |
+| Veredicto | ✅ Aprobar (sin bloqueantes; I-1 corregido en `53a0afa`; I-2 antes del cierre de fase) |
 
 \* `apps/web/src/features/identity/components/register-form.spec.tsx` falló una vez de forma intermitente; es ajena a 007 y no se reprodujo en 13 corridas posteriores (S-4).
 
@@ -55,7 +55,7 @@ Recorrido manual contra la API real (2026-10-02): cifras y desglose, 401, 4 órd
 Ninguno.
 
 ## Importantes y sugerencias
-- **[I-1]** `apps/web/src/features/storage/hooks/use-my-files-state.ts:49-63` (`withUploaded`) y `:160` (`withOrganized`): con un orden distinto de creación descendente, lo subido en la pestaña se antepone y lo renombrado o movido queda en su posición vieja hasta recargar (CA-10). Corrección: con orden no predeterminado, no anteponer y recargar el listado al completar una carga u organizar; o registrarlo como decisión de Adrián en `features/storage/README.md`.
+- **[I-1] ✅ Corregido en `53a0afa`** (con otro orden, `visibleOf` no antepone lo subido y `useRefreshWhen` relee la primera página al terminar una carga, renombrar o mover; pruebas en `use-my-files-state.spec.ts` y `use-folder-contents.spec.ts`; comprobado en navegador: `zeta-prueba.txt` subido con orden por nombre quedó al final). Hallazgo original: `apps/web/src/features/storage/hooks/use-my-files-state.ts:49-63` (`withUploaded`) y `:160` (`withOrganized`): con un orden distinto de creación descendente, lo subido en la pestaña se antepone y lo renombrado o movido queda en su posición vieja hasta recargar (CA-10). Corrección: con orden no predeterminado, no anteponer y recargar el listado al completar una carga u organizar; o registrarlo como decisión de Adrián en `features/storage/README.md`.
 - **[I-2]** Cierre: commit del estado de la spec; T-12 abierta (incluir tramo 90–99 % y rechazo por cuota desde el panel de carga); integrar 006 en `main` antes de este PR para que el diff no arrastre commits [006].
 - **[S-1]** `apps/api/src/modules/storage/domain/space-breakdown.ts:24-31`: constructor privado con 4 parámetros (Art. VII.2) → recibir un objeto.
 - **[S-2]** `apps/api/src/modules/storage/infrastructure/persistence/node-list-cursor.ts:36-37`: el cursor guarda fechas con precisión de ms y `timestamptz` guarda µs; documentar el supuesto y cubrirlo con una prueba.
