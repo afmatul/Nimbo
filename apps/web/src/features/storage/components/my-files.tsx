@@ -1,91 +1,288 @@
 'use client';
 
-import type { FileSummary } from '@nimbo/contracts';
+import type {
+  FileSummary,
+  FolderContentsResponse,
+  FolderRef,
+  FolderSummary,
+  NodeSummary,
+} from '@nimbo/contracts';
 import * as React from 'react';
 
+import { AppLayout } from '../../../components/nimbo/app-layout';
+import { SignOutButton } from '../../identity/components/sign-out-button';
+import { useFolderContents, type FolderListing } from '../hooks/use-folder-contents';
+import {
+  toFolderDisclosure,
+  useFolderDisclosure,
+  type FolderDisclosureState,
+} from '../hooks/use-folder-disclosure';
+import { useMoveToTrash } from '../hooks/use-move-to-trash';
+import { useTrashCount } from '../hooks/use-trash-count';
 import { useUploads } from '../hooks/use-upload-manager';
+import { locationOf, withArrivals, withOrganized, type OrganizedNodes } from '../organized-nodes';
 
-import { FileExplorer, type FileExplorerStatus } from './file-explorer';
+import { FileExplorer, placeNameOf } from './file-explorer';
 import { DownloadNoticeBanner, FileRowMenu, type DownloadNotice } from './file-row-menu';
+import { FolderBreadcrumbs } from './folder-breadcrumbs';
+import { FolderNotFoundState } from './folder-not-found-state';
+import { FolderRowMenu } from './folder-row-menu';
+import { MoveDialog } from './move-dialog';
+import { NewFolderDialog } from './new-folder-dialog';
+import { QuickAccessLimitAlert } from './quick-access-limit-alert';
+import { useQuickAccessSidebar, type QuickAccessSidebar } from './quick-access-sidebar';
+import { RenameDialog } from './rename-dialog';
 
-interface Listing {
-  readonly status: FileExplorerStatus;
-  readonly items: readonly FileSummary[];
-}
-
-const LOADING: Listing = { status: 'loading', items: [] };
-
-/** Los recién subidos en esta pestaña van primero, sin repetir los que el listado ya trae (CA-1). */
+/**
+ * Carpetas primero; después los subidos en esta pestaña a esta ubicación (sin repetir los que el listado ya trae) y
+ * luego los archivos listados (005 CA-1, 006 CA-6).
+ */
 function withUploaded(
   uploaded: readonly FileSummary[],
-  listed: readonly FileSummary[],
-): readonly FileSummary[] {
-  const listedIds = new Set(listed.map((file) => file.id));
-  return [...uploaded.filter((file) => !listedIds.has(file.id)), ...listed];
+  folderId: string | null,
+  listed: readonly NodeSummary[],
+): readonly NodeSummary[] {
+  const listedIds = new Set(listed.map((node) => node.id));
+  const fresh: NodeSummary[] = uploaded
+    .filter((file) => file.folderId === folderId && !listedIds.has(file.id))
+    .map((file) => ({ type: 'file', ...file }));
+  return [
+    ...listed.filter((node) => node.type === 'folder'),
+    ...fresh,
+    ...listed.filter((node) => node.type === 'file'),
+  ];
 }
 
-/** Primera página de la raíz. Al pedir otra vez, la respuesta de la petición anterior se descarta. */
-function useRootListing(listFiles: () => Promise<{ readonly items: readonly FileSummary[] }>): {
-  readonly listing: Listing;
-  readonly reload: () => void;
-} {
-  const [listing, setListing] = React.useState<Listing>(LOADING);
-  const [attempt, setAttempt] = React.useState(0);
+/** Lo que esta pestaña ya sabe y el listado aún no: cargas, renombrados o movidos y enviados a la papelera. */
+interface LocalChanges {
+  readonly uploaded: readonly FileSummary[];
+  readonly organized: OrganizedNodes;
+  readonly trashedIds: ReadonlySet<string>;
+}
 
-  React.useEffect(() => {
-    let current = true;
-    listFiles().then(
-      ({ items }) => {
-        if (current) setListing({ status: 'ready', items });
-      },
-      () => {
-        if (current) setListing({ status: 'error', items: [] });
-      },
-    );
-    return () => {
-      current = false;
-    };
-  }, [listFiles, attempt]);
+/** Lo que se ve de una ubicación (la abierta o una carpeta desglosada, CA-26) con los cambios de la pestaña. */
+function visibleAt(
+  changes: LocalChanges,
+  folderId: string | null,
+  listed: readonly NodeSummary[],
+): readonly NodeSummary[] {
+  const withLocal = withUploaded(
+    changes.uploaded,
+    folderId,
+    withArrivals(listed, changes.organized, folderId),
+  );
+  return withOrganized(withLocal, changes.organized, folderId).filter(
+    (node) => !changes.trashedIds.has(node.id),
+  );
+}
 
-  const reload = React.useCallback(() => {
-    setListing(LOADING);
-    setAttempt((previous) => previous + 1);
-  }, []);
+/** Migas y contenido visible de una ubicación. */
+interface Level {
+  readonly breadcrumbs: readonly FolderRef[];
+  readonly nodes: readonly NodeSummary[];
+}
 
-  return { listing, reload };
+function readyContents(
+  listing: FolderListing,
+): Pick<FolderContentsResponse, 'breadcrumbs' | 'items'> {
+  return listing.status === 'ready' ? listing.contents : { breadcrumbs: [], items: [] };
 }
 
 /**
- * Vista de Mis archivos: encola en el manager de la pestaña lo que se elige o se suelta, lista la raíz y descarga. Si
- * el listado falla, «Subir archivos» sigue habilitado y el panel no se entera.
+ * Nivel donde está el elemento: la ubicación abierta o la carpeta desglosada que lo muestra. Así «Renombrar» y
+ * «Mover a…» comparan con sus hermanas y parten de su carpeta, en cualquier nivel (CA-26).
  */
-export function MyFiles(): React.JSX.Element {
-  const { api, enqueue, fileInputRef, uploadedFiles } = useUploads();
-  const listFiles = React.useCallback(() => api.listFiles(), [api]);
-  const requestUrl = React.useCallback((fileId: string) => api.downloadUrl(fileId), [api]);
-  const { listing, reload } = useRootListing(listFiles);
-  const [notice, setNotice] = React.useState<DownloadNotice | null>(null);
+function levelOfNode(
+  node: NodeSummary,
+  opened: Level & { readonly folderId: string | null },
+  disclosed: { readonly state: FolderDisclosureState; readonly changes: LocalChanges },
+): Level {
+  const location = locationOf(node);
+  const listing = location === null ? undefined : disclosed.state.listingOf(location);
+  if (location === opened.folderId || listing?.status !== 'ready') return opened;
+  const { breadcrumbs, items } = listing.contents;
+  return { breadcrumbs, nodes: visibleAt(disclosed.changes, location, items) };
+}
 
-  const refresh = React.useCallback(() => {
+/** Elemento con «Renombrar» o «Mover a…» abierto (006 CA-4, CA-7). */
+interface Organizing {
+  readonly action: 'rename' | 'move';
+  readonly node: NodeSummary;
+}
+
+function folderNamesOf(nodes: readonly NodeSummary[]): readonly string[] {
+  return nodes.flatMap((node) => (node.type === 'folder' ? [node.name] : []));
+}
+
+/** Arriba de la lista: el tope de fijados (CA-28) y el fallo de una descarga (005 CA-21); `undefined` sin avisos. */
+function explorerNotices(
+  quickAccess: QuickAccessSidebar['quickAccess'],
+  notice: DownloadNotice | null,
+  onDismissNotice: () => void,
+): React.ReactNode {
+  if (quickAccess.limit === null && notice === null) return undefined;
+  return (
+    <div className="space-y-3">
+      {quickAccess.limit === null ? null : (
+        <QuickAccessLimitAlert maxPinned={quickAccess.limit} onDismiss={quickAccess.dismissLimit} />
+      )}
+      {notice ? <DownloadNoticeBanner notice={notice} onDismiss={onDismissNotice} /> : null}
+    </div>
+  );
+}
+
+export interface MyFilesProps {
+  /** Carpeta de la URL (`/archivos/carpeta/[folderId]`); `null` es la raíz (`/archivos`). */
+  readonly folderId: string | null;
+}
+
+/**
+ * Mis archivos y cada carpeta: lista la ubicación con sus migas, crea carpetas, sube a la carpeta abierta, descarga,
+ * renombra, mueve y manda a la papelera (con el contador de la Papelera en la barra lateral).
+ * Si el listado falla, «Subir archivos» sigue habilitado y el panel de cargas no se entera.
+ */
+export function MyFiles({ folderId }: MyFilesProps): React.JSX.Element {
+  const { api, enqueue, fileInputRef, uploadedFiles, reviseUploaded } = useUploads();
+  const load = React.useCallback((id: string | null) => api.folderContents(id), [api]);
+  const { listing, reload, addFolder } = useFolderContents(load, folderId);
+  const [notice, setNotice] = React.useState<DownloadNotice | null>(null);
+  const sidebar = useQuickAccessSidebar({ api, openedFolderId: folderId, onNotice: setNotice });
+  const [creatingFolder, setCreatingFolder] = React.useState(false);
+  const [organizing, setOrganizing] = React.useState<Organizing | null>(null);
+  const [organized, setOrganized] = React.useState<OrganizedNodes>(() => new Map());
+  const { breadcrumbs, items } = readyContents(listing);
+  const disclosed = useFolderDisclosure(load);
+  const refresh = (): void => {
     setNotice(null);
     reload();
-  }, [reload]);
+    disclosed.refreshAll();
+  };
+  const trashCount = useTrashCount(api);
+  const reloadQuickAccess = sidebar.quickAccess.reload;
+  const { trashedIds, moveToTrash } = useMoveToTrash({
+    api,
+    onMoved: () => {
+      trashCount.refresh();
+      reloadQuickAccess();
+    },
+    onNotice: setNotice,
+    onRefresh: refresh,
+  });
+  const changes: LocalChanges = { uploaded: uploadedFiles, organized, trashedIds };
+  const nodes = visibleAt(changes, folderId, items);
+  const disclosure = toFolderDisclosure(disclosed, (id, contents) =>
+    visibleAt(changes, id, contents.items),
+  );
+  const organizingLevel =
+    organizing === null
+      ? null
+      : levelOfNode(
+          organizing.node,
+          { folderId, breadcrumbs, nodes },
+          { state: disclosed, changes },
+        );
+
+  /** Renombrado o movido: la lista lo refleja sin pedirla y la barra vuelve a leer su nombre (CA-27). */
+  const remember = React.useCallback(
+    (node: NodeSummary) => {
+      setOrganized((previous) => new Map(previous).set(node.id, node));
+      if (node.type === 'file') reviseUploaded(node);
+      reloadQuickAccess();
+    },
+    [reviseUploaded, reloadQuickAccess],
+  );
+
+  const folderCreatedFromMove = React.useCallback(
+    (folder: FolderSummary) => {
+      if (folder.parentId === folderId) addFolder(folder);
+      remember({ type: 'folder', ...folder });
+    },
+    [addFolder, folderId, remember],
+  );
 
   return (
-    <FileExplorer
-      status={listing.status}
-      files={withUploaded(uploadedFiles, listing.items)}
-      onFiles={enqueue}
-      onRetry={reload}
-      fileInputRef={fileInputRef}
-      renderRowActions={(file) => (
-        <FileRowMenu file={file} requestUrl={requestUrl} onNotice={setNotice} onRefresh={refresh} />
-      )}
-      notice={
-        notice ? (
-          <DownloadNoticeBanner notice={notice} onDismiss={() => setNotice(null)} />
-        ) : undefined
-      }
-    />
+    <AppLayout
+      topBar={listing.status === 'ready' ? <FolderBreadcrumbs breadcrumbs={breadcrumbs} /> : null}
+      sidebarSection={sidebar.sidebarSection}
+      trashCount={trashCount.count}
+    >
+      <div className="space-y-4">
+        <div className="flex justify-end">
+          <SignOutButton />
+        </div>
+        {listing.status === 'not_found' ? (
+          <FolderNotFoundState />
+        ) : (
+          <FileExplorer
+            status={listing.status}
+            folderId={folderId}
+            breadcrumbs={breadcrumbs}
+            nodes={nodes}
+            onFiles={(files) => enqueue(files, folderId)}
+            onRetry={reload}
+            onNewFolder={() => setCreatingFolder(true)}
+            fileInputRef={fileInputRef}
+            disclosure={disclosure}
+            renderRowActions={(node) =>
+              node.type === 'file' ? (
+                <FileRowMenu
+                  file={node}
+                  requestUrl={sidebar.requestUrl}
+                  onNotice={setNotice}
+                  onRefresh={refresh}
+                  onRename={() => setOrganizing({ action: 'rename', node })}
+                  onMove={() => setOrganizing({ action: 'move', node })}
+                  onMoveToTrash={() => void moveToTrash(node)}
+                  pin={sidebar.pinToggleFor(node)}
+                />
+              ) : (
+                <FolderRowMenu
+                  folder={node}
+                  onRename={() => setOrganizing({ action: 'rename', node })}
+                  onMove={() => setOrganizing({ action: 'move', node })}
+                  onMoveToTrash={() => void moveToTrash(node)}
+                  pin={sidebar.pinToggleFor(node)}
+                />
+              )
+            }
+            notice={explorerNotices(sidebar.quickAccess, notice, () => setNotice(null))}
+          />
+        )}
+      </div>
+      <NewFolderDialog
+        open={creatingFolder}
+        onOpenChange={setCreatingFolder}
+        parentId={folderId}
+        destinationName={placeNameOf(folderId, breadcrumbs)}
+        siblingFolderNames={folderNamesOf(nodes)}
+        createFolder={(body) => api.createFolder(body)}
+        onCreated={addFolder}
+      />
+      {organizing?.action === 'rename' ? (
+        <RenameDialog
+          key={organizing.node.id}
+          node={organizing.node}
+          siblingFolderNames={folderNamesOf(organizingLevel?.nodes ?? nodes)}
+          renameFile={(fileId, body) => api.renameFile(fileId, body)}
+          renameFolder={(id, body) => api.renameFolder(id, body)}
+          onRenamed={remember}
+          onClose={() => setOrganizing(null)}
+        />
+      ) : null}
+      {organizing?.action === 'move' ? (
+        <MoveDialog
+          key={organizing.node.id}
+          node={organizing.node}
+          breadcrumbs={organizingLevel?.breadcrumbs ?? breadcrumbs}
+          folderContents={load}
+          createFolder={(body) => api.createFolder(body)}
+          moveFile={(fileId, body) => api.moveFile(fileId, body)}
+          moveFolder={(id, body) => api.moveFolder(id, body)}
+          onMoved={remember}
+          onFolderCreated={folderCreatedFromMove}
+          onClose={() => setOrganizing(null)}
+        />
+      ) : null}
+    </AppLayout>
   );
 }

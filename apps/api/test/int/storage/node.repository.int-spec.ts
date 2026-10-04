@@ -22,7 +22,7 @@ const HUGE_SIZE = 9_007_199_254_740_993n;
 /** Rama de propiedad de `accessibleNodes` tal como llega a Postgres (parámetro ya numerado). */
 const OWNERSHIP_BRANCH =
   /FROM archivo a WHERE a\.propietario_id = \$\d+ AND a\.eliminado_en IS NULL/;
-const OWNER_INDEXES = /idx_archivo_propietario_creado|uq_archivo_propietario_nombre/;
+const OWNER_INDEXES = /idx_archivo_(carpeta|raiz)_creado|uq_archivo_hermanos_nombre/;
 
 interface CapturedQuery {
   readonly sql: string;
@@ -37,6 +37,7 @@ const aFile = (owner: Actor, name: string, minute: number): [File, FileVersion] 
   const file = File.create({
     id,
     ownerId: owner.id,
+    folderId: null,
     name: FileName.of(name),
     kind: 'pdf',
     sizeBytes: HUGE_SIZE,
@@ -136,7 +137,9 @@ describe('TypeOrmNodeRepository (CA-13, CA-16)', () => {
     brunoFile = brunos[0];
     trashedId = trashed[0].id;
     await app.asActor(ana, (manager) =>
-      manager.query('UPDATE archivo SET eliminado_en = now() WHERE id = $1', [trashedId]),
+      manager.query('UPDATE archivo SET eliminado_en = now(), purgar_en = now() WHERE id = $1', [
+        trashedId,
+      ]),
     );
   });
 
@@ -206,13 +209,14 @@ describe('TypeOrmNodeRepository (CA-13, CA-16)', () => {
     });
   });
 
-  describe('listAccessible', () => {
+  describe('listContents en la raíz (antes `GET /files`)', () => {
     it('CA-1: raíz sin papelera ni archivos ajenos, `creado_en DESC, id DESC`, página a página con cursor', async () => {
       const expected = [...anaFiles].sort(byNewestFirst).map((file) => file.id);
 
       const [first, second] = await app.asActor(ana, async () => {
-        const firstPage = await repository.listAccessible(ana, { limit: 3 });
-        const secondPage = await repository.listAccessible(ana, {
+        const firstPage = await repository.listContents(ana, { folderId: null, limit: 3 });
+        const secondPage = await repository.listContents(ana, {
+          folderId: null,
           limit: 3,
           cursor: firstPage.nextCursor ?? '',
         });
@@ -227,7 +231,7 @@ describe('TypeOrmNodeRepository (CA-13, CA-16)', () => {
 
     it('CA-1: una página exacta no promete otra (`nextCursor` nulo)', async () => {
       const page = await app.asActor(ana, () =>
-        repository.listAccessible(ana, { limit: anaFiles.length }),
+        repository.listContents(ana, { folderId: null, limit: anaFiles.length }),
       );
 
       expect(page.items).toHaveLength(anaFiles.length);
@@ -235,14 +239,18 @@ describe('TypeOrmNodeRepository (CA-13, CA-16)', () => {
     });
 
     it('CA-16: un rol interno recibe la lista vacía', async () => {
-      const page = await app.asActor(admin, () => repository.listAccessible(admin, { limit: 50 }));
+      const page = await app.asActor(admin, () =>
+        repository.listContents(admin, { folderId: null, limit: 50 }),
+      );
 
       expect(page).toEqual({ items: [], nextCursor: null });
     });
 
     it('CA-7: un cursor que no emitió el repositorio es `InvalidQueryError`', async () => {
       await expect(
-        app.asActor(ana, () => repository.listAccessible(ana, { limit: 3, cursor: 'basura' })),
+        app.asActor(ana, () =>
+          repository.listContents(ana, { folderId: null, limit: 3, cursor: 'basura' }),
+        ),
       ).rejects.toBeInstanceOf(InvalidQueryError);
     });
   });
@@ -250,7 +258,7 @@ describe('TypeOrmNodeRepository (CA-13, CA-16)', () => {
   describe('findTakenNames', () => {
     it('CA-6: devuelve el nombre y sus copias «(n)» sin distinguir mayúsculas, sin papelera ni ajenos', async () => {
       const taken = await app.asActor(ana, () =>
-        repository.findTakenNames(ana, FileName.of('PLAN.pdf')),
+        repository.findTakenNames(ana, FileName.of('PLAN.pdf'), null),
       );
 
       expect([...taken].sort()).toEqual(['Plan.pdf', 'plan (1).PDF']);
@@ -259,7 +267,7 @@ describe('TypeOrmNodeRepository (CA-13, CA-16)', () => {
 
     it('CA-6: los comodines de `LIKE` del nombre se tratan como texto', async () => {
       const taken = await app.asActor(ana, () =>
-        repository.findTakenNames(ana, FileName.of('P_an%.pdf')),
+        repository.findTakenNames(ana, FileName.of('P_an%.pdf'), null),
       );
 
       expect(taken).toEqual([]);
@@ -272,7 +280,7 @@ describe('TypeOrmNodeRepository (CA-13, CA-16)', () => {
       const taken = await app.asActor(ana, async (manager) => {
         await repository.insertWithVersion(ana, file, version);
         await repository.insertWithVersion(ana, copy, copyVersion);
-        const names = await repository.findTakenNames(ana, FileName.of('NOTAS'));
+        const names = await repository.findTakenNames(ana, FileName.of('NOTAS'), null);
         await manager.query('DELETE FROM archivo WHERE id = ANY($1)', [[file.id, copy.id]]);
         return names;
       });
@@ -285,8 +293,7 @@ describe('TypeOrmNodeRepository (CA-13, CA-16)', () => {
     it('CA-16: toda lectura une el fragmento de `access` en la misma consulta, con el id del actor', async () => {
       const reads = [
         (): Promise<unknown> => repository.findAccessibleById(ana, brunoFile.id),
-        (): Promise<unknown> => repository.listAccessible(ana, { limit: 3 }),
-        (): Promise<unknown> => repository.findTakenNames(ana, FileName.of('Plan.pdf')),
+        (): Promise<unknown> => repository.findTakenNames(ana, FileName.of('Plan.pdf'), null),
       ];
 
       for (const read of reads) {
@@ -298,10 +305,9 @@ describe('TypeOrmNodeRepository (CA-13, CA-16)', () => {
     });
 
     it.each([
-      ['el listado', (): Promise<unknown> => repository.listAccessible(ana, { limit: 50 })],
       [
         'la búsqueda de nombres',
-        (): Promise<unknown> => repository.findTakenNames(ana, FileName.of('Plan.pdf')),
+        (): Promise<unknown> => repository.findTakenNames(ana, FileName.of('Plan.pdf'), null),
       ],
     ])('ADR-0005: el plan de %s usa los índices de propietario de `archivo`', async (_, read) => {
       const plan = await app.asActor(ana, async (manager) => {

@@ -102,7 +102,7 @@ describe('validación de cargas por HTTP (CA-5, CA-7)', () => {
     it('CA-7: un cursor que la API no emitió es 400 `STORAGE_INVALID_QUERY`', async () => {
       const client = await storage.newClient();
 
-      const response = await client.list({ cursor: 'no-es-un-cursor' });
+      const response = await client.folderContents({ cursor: 'no-es-un-cursor' });
 
       expect(response.status).toBe(400);
       expect(response.body).toMatchObject({ code: 'STORAGE_INVALID_QUERY' });

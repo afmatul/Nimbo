@@ -5,6 +5,7 @@ import { Cloud, Menu, X, Folder, Share2, Trash2, CreditCard, Sparkles } from 'lu
 import * as React from 'react';
 
 import { cn } from '../../lib/utils';
+import { Toaster } from '../ui/sonner';
 
 export interface NavItem {
   readonly label: string;
@@ -13,10 +14,28 @@ export interface NavItem {
   readonly active?: boolean;
 }
 
+/** Dónde se dibuja `sidebarSection`: en el cajón, los objetivos miden 44 px y elegir un enlace lo cierra. */
+export interface SidebarSlot {
+  readonly inDrawer: boolean;
+  readonly onNavigate: () => void;
+}
+
+const DESKTOP_SLOT: SidebarSlot = { inDrawer: false, onNavigate: () => undefined };
+
+const SidebarSlotContext = React.createContext<SidebarSlot>(DESKTOP_SLOT);
+
+/** Lugar de `sidebarSection`: la barra de escritorio (por omisión) o el cajón móvil. */
+export function useSidebarSlot(): SidebarSlot {
+  return React.useContext(SidebarSlotContext);
+}
+
+/** Enlace de la Papelera, el que lleva el contador (006). */
+const TRASH_HREF = '/papelera';
+
 export const DEFAULT_NAV_ITEMS: readonly NavItem[] = [
   { label: 'Mis Archivos', icon: Folder, href: '/archivos', active: true },
   { label: 'Compartidos', icon: Share2, href: '#compartidos' },
-  { label: 'Papelera', icon: Trash2, href: '#papelera' },
+  { label: 'Papelera', icon: Trash2, href: TRASH_HREF },
   { label: 'Planes y Cuota', icon: CreditCard, href: '#planes' },
   { label: 'Agente Nimbo', icon: Sparkles, href: '#agente' },
 ];
@@ -26,6 +45,37 @@ export interface AppLayoutProps {
   readonly userEmail?: string;
   readonly initialMobileMenuOpen?: boolean;
   readonly navItems?: readonly NavItem[];
+  /** Contenido de la barra superior en escritorio, junto al logo (p. ej. las migas de Mis archivos, 006). */
+  readonly topBar?: React.ReactNode;
+  /**
+   * Sección de la página al final de la navegación, en la barra de escritorio y en el cajón móvil (p. ej. «Accesos
+   * rápidos» de Mis archivos, 006 CA-27). Sabe dónde está con `useSidebarSlot()`.
+   */
+  readonly sidebarSection?: React.ReactNode;
+  /** Elementos en la papelera (`GET /trash/summary`); sin dato o en 0 no se muestra (006). */
+  readonly trashCount?: number | undefined;
+}
+
+/** Texto del ítem y, en la Papelera, su contador («6», leído como «Papelera (6 elementos)»). */
+function NavLabel({
+  item,
+  trashCount,
+}: {
+  readonly item: NavItem;
+  readonly trashCount: number | undefined;
+}): React.JSX.Element {
+  const count = item.href === TRASH_HREF && trashCount ? trashCount : 0;
+  return (
+    <>
+      <span>{item.label}</span>
+      {count > 0 ? (
+        <span className="ml-auto text-xs font-medium tabular-nums text-secondary-foreground">
+          <span aria-hidden="true">{count}</span>
+          <span className="sr-only">{`(${String(count)} ${count === 1 ? 'elemento' : 'elementos'})`}</span>
+        </span>
+      ) : null}
+    </>
+  );
 }
 
 /**
@@ -38,6 +88,9 @@ export function AppLayout({
   userEmail,
   initialMobileMenuOpen = false,
   navItems = DEFAULT_NAV_ITEMS,
+  topBar,
+  sidebarSection,
+  trashCount,
 }: AppLayoutProps): React.JSX.Element {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(initialMobileMenuOpen);
   const menuButtonRef = React.useRef<HTMLButtonElement>(null);
@@ -97,6 +150,7 @@ export function AppLayout({
             </div>
             <span className="text-xl font-bold tracking-tight text-foreground">Nimbo</span>
           </a>
+          {topBar ? <div className="hidden min-w-0 md:ml-6 md:flex">{topBar}</div> : null}
         </div>
 
         <div className="flex items-center gap-3">
@@ -132,10 +186,11 @@ export function AppLayout({
                   )}
                 >
                   <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                  <span>{item.label}</span>
+                  <NavLabel item={item} trashCount={trashCount} />
                 </a>
               );
             })}
+            {sidebarSection}
           </nav>
         </aside>
 
@@ -193,10 +248,15 @@ export function AppLayout({
                       )}
                     >
                       <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
-                      <span>{item.label}</span>
+                      <NavLabel item={item} trashCount={trashCount} />
                     </a>
                   );
                 })}
+                <SidebarSlotContext.Provider
+                  value={{ inDrawer: true, onNavigate: handleCloseMenu }}
+                >
+                  {sidebarSection}
+                </SidebarSlotContext.Provider>
               </nav>
             </aside>
           </div>
@@ -210,6 +270,7 @@ export function AppLayout({
           {children}
         </main>
       </div>
+      <Toaster />
     </div>
   );
 }

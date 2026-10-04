@@ -1,10 +1,15 @@
-import type { DataSource } from 'typeorm';
+import type { DataSource, EntityManager } from 'typeorm';
 
 import { createActor, Role } from '../../src/shared';
 import type { Actor } from '../../src/shared';
 import { TransactionContext } from '../../src/shared/infrastructure/persistence/transaction-context';
 import { TypeOrmTransactionRunner } from '../../src/shared/infrastructure/persistence/typeorm-transaction-runner';
-import { insertAccount, insertUpload } from '../int/storage/storage-test-db';
+import {
+  insertAccount,
+  insertFileWithVersion,
+  insertFolder,
+  insertUpload,
+} from '../int/storage/storage-test-db';
 import type { UploadRowOptions } from '../int/storage/storage-test-db';
 import { connectTo } from '../support/database-urls';
 
@@ -16,6 +21,11 @@ const YEAR_MS = 365 * 24 * HOUR_MS;
 /** Tope fijo de `carga_expiradas` (ADR-0021). */
 const FUNCTION_CAP = 1000;
 const FUNCTION_SIGNATURE = 'carga_expiradas(timestamptz, integer)';
+/** Tope fijo de `papelera_vencida` (006 plan §3), el mismo que el de `carga_expiradas`. */
+const TRASH_FUNCTION_CAP = 1000;
+const TRASH_FUNCTION_SIGNATURE = 'papelera_vencida(timestamptz, integer)';
+/** Columnas que `papelera_vencida` puede devolver: sin nombres, rutas ni claves de objeto. */
+const TRASH_FUNCTION_COLUMNS = ['id', 'propietario_id', 'tipo_nodo'];
 
 interface OwnerRole {
   readonly owner: string;
@@ -177,6 +187,165 @@ describe('mantenimiento sin actor bajo RLS con dueño NOSUPERUSER (CA-9, DF-52, 
       function_owner: RESTRICTED_OWNER_ROLE,
       security_definer: true,
       table_owner: RESTRICTED_OWNER_ROLE,
+    });
+  });
+
+  /**
+   * 006 CA-19, CA-22 (DF-52, ADR-0021): `papelera_vencida` es la única lectura sin actor de la purga. Devuelve solo
+   * `(tipo_nodo, id, propietario_id)` de las **raíces** de la papelera **vencidas**, con tope; nunca filas vivas, ni
+   * no vencidas, ni lo que arrastró una carpeta. Las *fixtures* se insertan como `nimbo_app` dentro de `withActor`.
+   */
+  describe('purga de la papelera sin actor (006 CA-19, CA-22)', () => {
+    let carla: Actor;
+    let bulkTrash: Actor;
+    const trash = {
+      expiredFile: '',
+      expiredFolder: '',
+      carriedFile: '',
+      pendingFile: '',
+      pendingFolder: '',
+      liveFile: '',
+      liveFolder: '',
+    };
+
+    const asCarla = <T>(work: (scope: EntityManager) => Promise<T>): Promise<T> =>
+      transactions.withActor(carla, () => work(context.requireActorScope(carla)));
+
+    const trashDueFor = async (now: Date, limit: number): Promise<Record<string, unknown>[]> =>
+      (await app.query('SELECT * FROM papelera_vencida($1, $2)', [now, limit])) as Record<
+        string,
+        unknown
+      >[];
+
+    const carlaIdsDue = async (now: Date): Promise<unknown[]> =>
+      (await trashDueFor(now, TRASH_FUNCTION_CAP))
+        .filter((row) => row['propietario_id'] === carla.id)
+        .map((row) => row['id']);
+
+    beforeAll(async () => {
+      carla = createActor(await insertAccount(owner), Role.CLIENT);
+      bulkTrash = createActor(await insertAccount(owner), Role.CLIENT);
+      const deletedAt = new Date(Date.now() - 2 * HOUR_MS);
+      const due = { deletedAt, purgeAt: new Date(Date.now() - HOUR_MS) };
+      const pending = { deletedAt, purgeAt: new Date(Date.now() + HOUR_MS) };
+      await asCarla(async (scope) => {
+        trash.expiredFile = (await insertFileWithVersion(scope, carla.id, due)).fileId;
+        const expiredFolder = await insertFolder(scope, carla.id, due);
+        trash.expiredFolder = expiredFolder.id;
+        trash.carriedFile = (
+          await insertFileWithVersion(scope, carla.id, {
+            ...due,
+            folderId: expiredFolder.id,
+            trashedWithFolderId: expiredFolder.id,
+          })
+        ).fileId;
+        trash.pendingFile = (await insertFileWithVersion(scope, carla.id, pending)).fileId;
+        trash.pendingFolder = (await insertFolder(scope, carla.id, pending)).id;
+        trash.liveFile = (await insertFileWithVersion(scope, carla.id)).fileId;
+        trash.liveFolder = (await insertFolder(scope, carla.id)).id;
+      });
+    });
+
+    it('CA-22: `nimbo_app` sin actor ve 0 filas de `carpeta` por consulta directa', async () => {
+      const [row] = (await app.query('SELECT count(*)::int AS n FROM carpeta')) as { n: number }[];
+
+      expect(row?.n).toBe(0);
+    });
+
+    it('DF-52: `FORCE` somete al dueño: por consulta directa solo ve carpetas y archivos en la papelera', async () => {
+      const visible = async (table: 'carpeta' | 'archivo'): Promise<string[]> =>
+        (
+          (await owner.query(`SELECT id FROM ${table} WHERE propietario_id = $1`, [carla.id])) as {
+            id: string;
+          }[]
+        )
+          .map((row) => row.id)
+          .sort();
+
+      await expect(visible('carpeta')).resolves.toEqual(
+        [trash.expiredFolder, trash.pendingFolder].sort(),
+      );
+      await expect(visible('archivo')).resolves.toEqual(
+        [trash.expiredFile, trash.carriedFile, trash.pendingFile].sort(),
+      );
+    });
+
+    it('CA-19: devuelve solo `(tipo_nodo, id, propietario_id)` de las raíces vencidas, sin nombres ni claves', async () => {
+      const rows = (await trashDueFor(new Date(), TRASH_FUNCTION_CAP)).filter(
+        (row) => row['propietario_id'] === carla.id,
+      );
+
+      expect(rows).toHaveLength(2);
+      expect(rows).toEqual(
+        expect.arrayContaining([
+          { tipo_nodo: 'archivo', id: trash.expiredFile, propietario_id: carla.id },
+          { tipo_nodo: 'carpeta', id: trash.expiredFolder, propietario_id: carla.id },
+        ]),
+      );
+      for (const row of rows) expect(Object.keys(row).sort()).toEqual(TRASH_FUNCTION_COLUMNS);
+    });
+
+    it('DF-52: no devuelve filas vivas ni lo que arrastró una carpeta', async () => {
+      const ids = await carlaIdsDue(new Date());
+
+      expect(ids).not.toContain(trash.liveFile);
+      expect(ids).not.toContain(trash.liveFolder);
+      expect(ids).not.toContain(trash.carriedFile);
+    });
+
+    it('DF-52: no devuelve lo no vencido aunque `p_ahora` sea dentro de un año', async () => {
+      const ids = await carlaIdsDue(new Date(Date.now() + YEAR_MS));
+
+      expect(ids).not.toContain(trash.pendingFile);
+      expect(ids).not.toContain(trash.pendingFolder);
+    });
+
+    it('DF-52: devuelve como máximo 1000 filas aunque se pidan más', async () => {
+      await transactions.withActor(bulkTrash, () =>
+        context.requireActorScope(bulkTrash).query(
+          `INSERT INTO carpeta (id, propietario_id, nombre, ruta, profundidad, creado_en, actualizado_en,
+                                eliminado_en, purgar_en)
+           SELECT g.id, $1::uuid, 'x' || g.n, '/' || g.id || '/', 1, now(), now(),
+                  now() - interval '2 hours', now() - interval '1 hour'
+             FROM (SELECT gen_random_uuid() AS id, n FROM generate_series(1, $2::int) AS n) AS g`,
+          [bulkTrash.id, TRASH_FUNCTION_CAP + 1],
+        ),
+      );
+
+      await expect(trashDueFor(new Date(), TRASH_FUNCTION_CAP * 5)).resolves.toHaveLength(
+        TRASH_FUNCTION_CAP,
+      );
+    });
+
+    it('DF-52: `PUBLIC` no puede ejecutar `papelera_vencida`; `nimbo_app` sí', async () => {
+      const [row] = (await owner.query(
+        `SELECT has_function_privilege('public', $1, 'EXECUTE') AS public,
+                has_function_privilege('nimbo_app', $1, 'EXECUTE') AS app`,
+        [TRASH_FUNCTION_SIGNATURE],
+      )) as { public: boolean; app: boolean }[];
+
+      expect(row).toEqual({ public: false, app: true });
+    });
+
+    it('DF-52: las políticas de mantenimiento y la función son del dueño de las tablas', async () => {
+      const [row] = (await owner.query(
+        `SELECT (SELECT array_agg(DISTINCT r ORDER BY r) FROM pg_policies, unnest(roles::text[]) r
+                  WHERE policyname IN ('archivo_mantenimiento', 'carpeta_mantenimiento')) AS policy_roles,
+                (SELECT array_agg(DISTINCT cmd) FROM pg_policies
+                  WHERE policyname IN ('archivo_mantenimiento', 'carpeta_mantenimiento')) AS policy_cmds,
+                (SELECT proowner::regrole::text FROM pg_proc WHERE oid = $1::regprocedure) AS function_owner,
+                (SELECT prosecdef FROM pg_proc WHERE oid = $1::regprocedure) AS security_definer,
+                (SELECT tableowner::text FROM pg_tables WHERE tablename = 'carpeta') AS table_owner`,
+        [TRASH_FUNCTION_SIGNATURE],
+      )) as Record<string, unknown>[];
+
+      expect(row).toEqual({
+        policy_roles: [RESTRICTED_OWNER_ROLE],
+        policy_cmds: ['SELECT'],
+        function_owner: RESTRICTED_OWNER_ROLE,
+        security_definer: true,
+        table_owner: RESTRICTED_OWNER_ROLE,
+      });
     });
   });
 });

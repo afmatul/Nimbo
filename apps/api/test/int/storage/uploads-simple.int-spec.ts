@@ -1,7 +1,7 @@
 import {
   completeUploadResponseSchema,
+  folderContentsResponseSchema,
   initUploadResponseSchema,
-  listFilesResponseSchema,
 } from '@nimbo/contracts';
 
 import {
@@ -56,11 +56,11 @@ describe('POST /uploads simple → PUT a MinIO → complete (CA-1)', () => {
     const completed = await client.upload('lista.txt', textBytes(SMALL_BYTES));
     const { file } = completeUploadResponseSchema.parse(completed.body);
 
-    const listed = await client.list();
+    const listed = await client.folderContents();
 
     expect(listed.status).toBe(200);
-    const page = listFilesResponseSchema.parse(listed.body);
-    expect(page.items).toEqual([file]);
+    const page = folderContentsResponseSchema.parse(listed.body);
+    expect(page.items).toEqual([{ type: 'file', ...file }]);
     expect(page.nextCursor).toBeNull();
   });
 

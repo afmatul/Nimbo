@@ -1,41 +1,22 @@
+import {
+  NODE_NAME_MAX_LENGTH,
+  firstFreeName,
+  nameComparisonKey,
+  parseNodeName,
+  withCopySuffix,
+  type NodeNameIssue,
+  type NodeNameParseResult,
+} from './node-name';
+
 /** Largo máximo del nombre, en puntos de código (`archivo.nombre varchar(255)`). Regla de dominio, no configuración. */
-export const FILE_NAME_MAX_LENGTH = 255;
+export const FILE_NAME_MAX_LENGTH = NODE_NAME_MAX_LENGTH;
 
 /** Regla incumplida por un nombre. Coincide con los `reason` de campo de `contracts/storage` (sin importarlo, ADR-0008). */
-export type FileNameIssue = 'REQUIRED' | 'INVALID_NAME' | 'NAME_TOO_LONG';
+export type FileNameIssue = NodeNameIssue;
 
-export type FileNameParseResult =
-  | { readonly ok: true; readonly name: FileName }
-  | { readonly ok: false; readonly reason: FileNameIssue };
+export type FileNameParseResult = NodeNameParseResult<FileName>;
 
-const PATH_SEPARATORS = new Set(['/', '\\']);
-const RESERVED_NAMES = new Set(['.', '..']);
-const LAST_C0_CONTROL = 0x1f;
-const FIRST_DEL_OR_C1_CONTROL = 0x7f;
-const LAST_C1_CONTROL = 0x9f;
 const EXTENSION_SEPARATOR = '.';
-
-/** Separador de ruta, NUL o carácter de control (C0, DEL y C1). */
-function isForbiddenCharacter(character: string): boolean {
-  const code = character.codePointAt(0) ?? 0;
-  return (
-    PATH_SEPARATORS.has(character) ||
-    code <= LAST_C0_CONTROL ||
-    (code >= FIRST_DEL_OR_C1_CONTROL && code <= LAST_C1_CONTROL)
-  );
-}
-
-function issueOf(name: string): FileNameIssue | null {
-  if (name === '') return 'REQUIRED';
-  const characters = Array.from(name);
-  if (RESERVED_NAMES.has(name) || characters.some(isForbiddenCharacter)) return 'INVALID_NAME';
-  return characters.length > FILE_NAME_MAX_LENGTH ? 'NAME_TOO_LONG' : null;
-}
-
-/** Clave de comparación: los nombres se comparan sin distinguir mayúsculas (CA-6, `lower(nombre)` en BD). */
-function comparisonKey(value: string): string {
-  return value.toLowerCase();
-}
 
 /** Posición del punto de la extensión, o -1: un punto inicial («.bashrc») o final («nota.») no marca extensión. */
 function extensionDot(value: string): number {
@@ -44,8 +25,9 @@ function extensionDot(value: string): number {
 }
 
 /**
- * Nombre de un archivo (VO inmutable): NFC, sin espacios en los extremos, 1–255 puntos de código, sin `/`, `\`,
- * NUL ni caracteres de control, y distinto de `.` y `..`. Nunca forma parte de una clave de objeto.
+ * Nombre de un archivo (VO inmutable): reglas comunes de `node-name.ts` (NFC, sin espacios en los extremos, 1–255
+ * puntos de código, sin separadores ni caracteres de control, distinto de `.` y `..`). Nunca forma parte de una clave
+ * de objeto.
  */
 export class FileName {
   private constructor(readonly value: string) {
@@ -53,9 +35,7 @@ export class FileName {
   }
 
   static parse(raw: string): FileNameParseResult {
-    const value = raw.normalize('NFC').trim();
-    const reason = issueOf(value);
-    return reason === null ? { ok: true, name: new FileName(value) } : { ok: false, reason };
+    return parseNodeName(raw, (value) => new FileName(value));
   }
 
   /** Para valores ya validados (p. ej. leídos de la BD). Lanza si el nombre no es válido. */
@@ -72,7 +52,7 @@ export class FileName {
   }
 
   sameAs(other: FileName): boolean {
-    return comparisonKey(this.value) === comparisonKey(other.value);
+    return nameComparisonKey(this.value) === nameComparisonKey(other.value);
   }
 
   /**
@@ -80,12 +60,8 @@ export class FileName {
    * primer `n ≥ 1` libre. `taken` son los nombres ocupados; la comparación no distingue mayúsculas.
    */
   firstFree(taken: Iterable<string>): FileName {
-    const occupied = new Set(Array.from(taken, (name) => comparisonKey(name.normalize('NFC'))));
-    if (!occupied.has(comparisonKey(this.value))) return this;
-    for (let n = 1; ; n += 1) {
-      const candidate = this.withCopyNumber(n);
-      if (!occupied.has(comparisonKey(candidate.value))) return candidate;
-    }
+    const free = firstFreeName(this.value, taken, (n) => this.withCopyNumber(n));
+    return free === this.value ? this : new FileName(free);
   }
 
   toString(): string {
@@ -93,13 +69,10 @@ export class FileName {
   }
 
   /** «base (n).ext»; recorta la base si hace falta para no pasar de 255 puntos de código. */
-  private withCopyNumber(n: number): FileName {
+  private withCopyNumber(n: number): string {
     const dot = extensionDot(this.value);
     const base = dot === -1 ? this.value : this.value.slice(0, dot);
     const tail = dot === -1 ? '' : this.value.slice(dot);
-    const suffix = ` (${String(n)})${tail}`;
-    const room = FILE_NAME_MAX_LENGTH - Array.from(suffix).length;
-    const fittedBase = Array.from(base).slice(0, room).join('').trimEnd();
-    return new FileName(`${fittedBase}${suffix}`);
+    return withCopySuffix(base, tail, n);
   }
 }

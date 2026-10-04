@@ -58,6 +58,22 @@ const FILE_TYPE_MAP: Record<FileType, FileTypeConfig> = {
   },
 };
 
+/** Ícono del tipo, el mismo del chip, decorativo (p. ej. junto al nombre en «Accesos rápidos», 006 CA-27). */
+export function FileTypeIcon({
+  fileType,
+  className,
+}: {
+  readonly fileType: FileType;
+  readonly className?: string;
+}): React.JSX.Element {
+  const Icon = FILE_TYPE_MAP[fileType].icon;
+  return (
+    <span aria-hidden="true" className={className}>
+      <Icon className="h-4 w-4" />
+    </span>
+  );
+}
+
 /**
  * Obtiene el tipo de archivo clasificado a partir de un nombre o extensión.
  */

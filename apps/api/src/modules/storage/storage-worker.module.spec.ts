@@ -3,12 +3,22 @@ import type { DynamicModule, Provider, ValueProvider } from '@nestjs/common';
 
 import { AuditModule } from '../audit';
 
+import { FOLDER_CONFIG } from './application/folder-config';
+import type { FolderConfig } from './application/folder-config';
 import { I_PLAN_LIMITS_PROVIDER } from './application/plan-limits';
+import { I_EXPIRED_TRASH_SCANNER } from './application/ports/i-expired-trash.scanner.port';
 import { I_EXPIRED_UPLOAD_SCANNER } from './application/ports/i-expired-upload.scanner.port';
 import { I_OBJECT_STORAGE } from './application/ports/i-object-storage.port';
+import { TrashService } from './application/trash.service';
 import { UPLOAD_CONFIG } from './application/upload-config';
 import type { UploadConfig } from './application/upload-config';
 import { UploadService } from './application/upload.service';
+import { TrashPurgeProcessor } from './infrastructure/trash-purge.processor';
+import {
+  TRASH_PURGE_CONFIG,
+  TRASH_PURGE_QUEUE,
+  TrashPurgeScheduler,
+} from './infrastructure/trash-purge.scheduler';
 import { UploadCleanupProcessor } from './infrastructure/upload-cleanup.processor';
 import {
   UPLOAD_CLEANUP_CONFIG,
@@ -17,7 +27,12 @@ import {
 } from './infrastructure/upload-cleanup.scheduler';
 import { StorageWorkerModule } from './storage-worker.module';
 
-const ENV = { UPLOAD_CLEANUP_INTERVAL_MINUTES: 10, UPLOAD_CLEANUP_BATCH_SIZE: 100 };
+const ENV = {
+  UPLOAD_CLEANUP_INTERVAL_MINUTES: 10,
+  UPLOAD_CLEANUP_BATCH_SIZE: 100,
+  TRASH_PURGE_INTERVAL_MINUTES: 60,
+  TRASH_PURGE_BATCH_SIZE: 200,
+};
 
 const tokenOf = (provider: Provider): unknown =>
   typeof provider === 'function' ? provider : provider.provide;
@@ -59,6 +74,25 @@ describe('StorageWorkerModule', () => {
         UploadService,
       ]),
     );
+  });
+
+  it('006 CA-19: publica el intervalo y el lote de la purga y registra la cola `trash-purge`, su programa y su procesador', () => {
+    expect(valueOf(providers, TRASH_PURGE_CONFIG)).toEqual({ intervalMinutes: 60, batchSize: 200 });
+    expect(exportedByImports(module)).toContain(getQueueToken(TRASH_PURGE_QUEUE));
+    expect(providers.map(tokenOf)).toEqual(
+      expect.arrayContaining([
+        TrashPurgeScheduler,
+        TrashPurgeProcessor,
+        I_EXPIRED_TRASH_SCANNER,
+        TrashService,
+      ]),
+    );
+  });
+
+  it('006 plan §7: la configuración de carpetas no existe en el `worker`; leerla falla con un mensaje explícito', () => {
+    const config = valueOf(providers, FOLDER_CONFIG) as FolderConfig;
+
+    expect(() => config.maxDepth).toThrow(/worker/);
   });
 
   it('CA-9: es solo de trabajo: sin controladores y sin exportar nada', () => {

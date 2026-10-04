@@ -48,6 +48,7 @@ export class PlanLimitsAdapter implements IPlanLimitsProvider {
     return {
       maxFileBytes: plan.maxArchivoBytes,
       storageQuotaBytes: plan.cuotaBytes,
+      trashRetentionDays: plan.diasRetencionPapelera,
     };
   }
 }

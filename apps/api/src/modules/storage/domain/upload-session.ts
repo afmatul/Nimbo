@@ -35,6 +35,8 @@ export interface StartUploadInput {
   /** Ids reservados del futuro `archivo` y de su versión: fijan la clave final desde el inicio. */
   readonly fileId: string;
   readonly versionId: string;
+  /** Carpeta destino; `null` es la raíz (006, CA-6). Se vuelve a comprobar viva al completar. */
+  readonly folderId: string | null;
   readonly name: FileName;
   readonly keepBoth: boolean;
   /** Tamaño declarado: es la reserva de cuota (RN-13). */
@@ -48,6 +50,7 @@ export interface UploadSessionSnapshot {
   readonly ownerId: string;
   readonly fileId: string;
   readonly versionId: string;
+  readonly folderId: string | null;
   readonly name: FileName;
   readonly keepBoth: boolean;
   readonly declaredBytes: bigint;
@@ -142,6 +145,10 @@ export class UploadSession {
 
   get versionId(): string {
     return this.data.versionId;
+  }
+
+  get folderId(): string | null {
+    return this.data.folderId;
   }
 
   get name(): FileName {

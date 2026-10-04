@@ -4,7 +4,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 
-import { AppLayout } from './app-layout';
+import { AppLayout, useSidebarSlot } from './app-layout';
 
 describe('AppLayout component (CA-5)', () => {
   it('renderiza encabezado, barra lateral de navegación y área de contenido principal', () => {
@@ -192,5 +192,86 @@ describe('AppLayout component (CA-5)', () => {
 
     expect(markup).toContain('Archivos Propios');
     expect(markup).toContain('/custom-archivos');
+  });
+  it('006: la Papelera enlaza a /papelera', () => {
+    const markup = renderToStaticMarkup(
+      <AppLayout>
+        <div>Contenido</div>
+      </AppLayout>,
+    );
+
+    expect(markup).toMatch(/<a[^>]*href="\/papelera"[^>]*>(?:(?!<\/a>).)*Papelera/);
+  });
+
+  it('006 CA-5: pinta la barra superior que recibe (migas) solo en escritorio', () => {
+    const markup = renderToStaticMarkup(
+      <AppLayout topBar={<nav aria-label="Ruta">Mis archivos</nav>}>
+        <div>Contenido</div>
+      </AppLayout>,
+    );
+
+    expect(markup).toMatch(
+      /<header[^>]*>.*<div class="[^"]*hidden[^"]*md:flex[^"]*"><nav aria-label="Ruta">/,
+    );
+  });
+
+  it('006 CA-27: la sección de la página va en la barra de escritorio y en el cajón móvil', () => {
+    function WhereAmI(): React.JSX.Element {
+      return <p>{useSidebarSlot().inDrawer ? 'En el cajón' : 'En la barra'}</p>;
+    }
+    const markup = renderToStaticMarkup(
+      <AppLayout initialMobileMenuOpen sidebarSection={<WhereAmI />}>
+        <div>Contenido</div>
+      </AppLayout>,
+    );
+
+    expect(markup).toContain('>En la barra<');
+    expect(markup).toContain('>En el cajón<');
+  });
+
+  it('006 CA-27: la barra lateral ya no tiene la sección «Carpetas» (la reemplaza «Accesos rápidos»)', () => {
+    const markup = renderToStaticMarkup(
+      <AppLayout>
+        <div>Contenido</div>
+      </AppLayout>,
+    );
+
+    expect(markup).not.toContain('>Carpetas<');
+  });
+  it('006 CA-12: la Papelera muestra su contador, en escritorio y en el menú móvil', () => {
+    const markup = renderToStaticMarkup(
+      <AppLayout trashCount={6} initialMobileMenuOpen>
+        <div>Contenido</div>
+      </AppLayout>,
+    );
+
+    const trashLinks = markup.match(/<a[^>]*href="\/papelera"[^>]*>(?:(?!<\/a>).)*<\/a>/g) ?? [];
+    expect(trashLinks).toHaveLength(2);
+    for (const link of trashLinks) {
+      expect(link).toMatch(/tabular-nums[^"]*"><span aria-hidden="true">6</);
+      expect(link).toContain('6 elementos');
+    }
+  });
+
+  it('006 CA-12: con la papelera vacía o sin dato no muestra contador', () => {
+    for (const trashCount of [0, undefined]) {
+      const markup = renderToStaticMarkup(
+        <AppLayout trashCount={trashCount}>
+          <div>Contenido</div>
+        </AppLayout>,
+      );
+
+      expect(markup).not.toContain('elementos</span>');
+    }
+  });
+
+  it('006 CA-10: monta la región de avisos (sonner, ADR-0024)', () => {
+    const markup = renderToStaticMarkup(
+      <AppLayout>
+        <div>Contenido</div>
+      </AppLayout>,
+    );
+
+    expect(markup).toMatch(/<section[^>]*aria-label="Avisos"[^>]*aria-live="polite"/);
   });
 });

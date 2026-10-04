@@ -1,10 +1,13 @@
 import type { FileKind } from './file-kind';
 import type { FileName } from './file-name.vo';
+import type { TrashState } from './trash-state';
 
 export interface CreateFileInput {
   readonly id: string;
   readonly ownerId: string;
-  /** Nombre final, ya resuelto con `FileName.firstFree` (D-4). */
+  /** Carpeta que lo contiene; `null` es la raíz del propietario (006). */
+  readonly folderId: string | null;
+  /** Nombre final, ya resuelto con `FileName.firstFree` en su carpeta (D-4). */
   readonly name: FileName;
   readonly kind: FileKind;
   /** Tamaño de la versión actual (denormalizado, DF-33). */
@@ -16,22 +19,20 @@ export interface CreateFileInput {
 export interface FileSnapshot {
   readonly id: string;
   readonly ownerId: string;
+  readonly folderId: string | null;
   readonly name: FileName;
   readonly kind: FileKind;
   readonly sizeBytes: bigint;
   readonly currentVersionId: string;
   readonly createdAt: Date;
   readonly updatedAt: Date;
-  /** Papelera (006); en 005 siempre `null`. */
-  readonly deletedAt: Date | null;
+  /** `null` mientras está vivo (RN-4). */
+  readonly trash: TrashState | null;
 }
 
-function copyDate(date: Date | null): Date | null {
-  return date === null ? null : new Date(date.getTime());
-}
-
-/** Archivo (`archivo`), inmutable. En 005 vive siempre en la raíz del propietario (RN-4). */
+/** Archivo (`archivo`), inmutable. Junto con `Folder` forma `StorageNode` (DF-61). */
 export class File {
+  readonly type = 'file' as const;
   private readonly data: FileSnapshot;
 
   private constructor(snapshot: FileSnapshot) {
@@ -42,14 +43,13 @@ export class File {
       ...snapshot,
       createdAt: new Date(snapshot.createdAt.getTime()),
       updatedAt: new Date(snapshot.updatedAt.getTime()),
-      deletedAt: copyDate(snapshot.deletedAt),
     });
     Object.freeze(this);
   }
 
   static create(input: CreateFileInput): File {
     const { now, ...rest } = input;
-    return new File({ ...rest, createdAt: now, updatedAt: now, deletedAt: null });
+    return new File({ ...rest, createdAt: now, updatedAt: now, trash: null });
   }
 
   static rehydrate(snapshot: FileSnapshot): File {
@@ -62,6 +62,10 @@ export class File {
 
   get ownerId(): string {
     return this.data.ownerId;
+  }
+
+  get folderId(): string | null {
+    return this.data.folderId;
   }
 
   get name(): FileName {
@@ -88,16 +92,11 @@ export class File {
     return new Date(this.data.updatedAt.getTime());
   }
 
-  get deletedAt(): Date | null {
-    return copyDate(this.data.deletedAt);
+  get trash(): TrashState | null {
+    return this.data.trash;
   }
 
   snapshot(): FileSnapshot {
-    return {
-      ...this.data,
-      createdAt: this.createdAt,
-      updatedAt: this.updatedAt,
-      deletedAt: this.deletedAt,
-    };
+    return { ...this.data, createdAt: this.createdAt, updatedAt: this.updatedAt };
   }
 }

@@ -11,7 +11,15 @@ const UPLOAD_ID = '2f0c1d2e-3a4b-4c5d-8e6f-7a8b9c0d1e2f';
 const FILE_ID = '7a8b9c0d-1e2f-4c5d-8e6f-2f0c1d2e3a4b';
 const AT = '2026-09-30T10:00:00.000Z';
 const SIGNED_URL = 'https://s3.nimbo.test/nimbo/u/a?X-Amz-Signature=abc';
-const FILE = { id: FILE_ID, name: 'informe.docx', sizeBytes: 1024, kind: 'docx', createdAt: AT };
+const FILE = {
+  id: FILE_ID,
+  name: 'informe.docx',
+  sizeBytes: 1024,
+  kind: 'docx',
+  folderId: null,
+  createdAt: AT,
+};
+const EMPTY_ROOT = { folder: null, breadcrumbs: [], items: [], nextCursor: null };
 
 function storageError(
   code: string,
@@ -51,7 +59,7 @@ describe('api de storage', () => {
     fetchMock.mockResolvedValue(jsonResponse(simple, 201));
 
     await expect(
-      api.init({ name: 'informe.docx', sizeBytes: 1024, onConflict: 'ask' }),
+      api.init({ name: 'informe.docx', sizeBytes: 1024, onConflict: 'ask', folderId: null }),
     ).resolves.toEqual(simple);
 
     const { url, init } = lastCall();
@@ -63,6 +71,7 @@ describe('api de storage', () => {
       name: 'informe.docx',
       sizeBytes: 1024,
       onConflict: 'ask',
+      folderId: null,
     });
   });
 
@@ -74,7 +83,7 @@ describe('api de storage', () => {
     );
 
     const error = await api
-      .init({ name: 'informe.docx', sizeBytes: 1024, onConflict: 'ask' })
+      .init({ name: 'informe.docx', sizeBytes: 1024, onConflict: 'ask', folderId: null })
       .catch((caught: unknown) => caught);
 
     expect(error).toBeInstanceOf(StorageRequestError);
@@ -89,7 +98,7 @@ describe('api de storage', () => {
     fetchMock.mockResolvedValue(storageError(STORAGE_ERROR_CODES.STORAGE_TOO_MANY_REQUESTS, 429));
 
     await expect(
-      api.init({ name: 'a.pdf', sizeBytes: 1, onConflict: 'ask' }),
+      api.init({ name: 'a.pdf', sizeBytes: 1, onConflict: 'ask', folderId: null }),
     ).rejects.toMatchObject({ status: 429, code: STORAGE_ERROR_CODES.STORAGE_TOO_MANY_REQUESTS });
   });
 
@@ -146,16 +155,6 @@ describe('api de storage', () => {
     });
   });
 
-  it('CA-1: lista la raíz con GET /files y pasa el cursor opaco tal cual', async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ items: [FILE], nextCursor: null }));
-
-    await expect(api.listFiles()).resolves.toEqual({ items: [FILE], nextCursor: null });
-    expect(lastCall().url).toBe(`${API}/files`);
-
-    await api.listFiles('abc+/=');
-    expect(lastCall().url).toBe(`${API}/files?cursor=abc%2B%2F%3D`);
-  });
-
   it('CA-13: pide la URL de descarga con POST /files/:id/download-url', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ url: SIGNED_URL, expiresAt: AT }));
 
@@ -177,10 +176,10 @@ describe('api de storage', () => {
 
   it('una respuesta 2xx que no cumple el contrato es un error del servidor, no un corte', async () => {
     fetchMock.mockResolvedValue(
-      jsonResponse({ items: [{ ...FILE, objectKey: 'u/x' }], nextCursor: null }),
+      jsonResponse({ ...EMPTY_ROOT, items: [{ type: 'file', ...FILE, objectKey: 'u/x' }] }),
     );
 
-    const error = await api.listFiles().catch((caught: unknown) => caught);
+    const error = await api.folderContents(null).catch((caught: unknown) => caught);
 
     expect(error).toBeInstanceOf(StorageRequestError);
   });
@@ -189,9 +188,9 @@ describe('api de storage', () => {
     renew.mockResolvedValue('token-b');
     fetchMock
       .mockResolvedValueOnce(storageError('SHARED_UNAUTHENTICATED', 401))
-      .mockResolvedValueOnce(jsonResponse({ items: [], nextCursor: null }));
+      .mockResolvedValueOnce(jsonResponse(EMPTY_ROOT));
 
-    await expect(api.listFiles()).resolves.toEqual({ items: [], nextCursor: null });
+    await expect(api.folderContents(null)).resolves.toEqual(EMPTY_ROOT);
     expect(new Headers(lastCall().init.headers).get('authorization')).toBe('Bearer token-b');
   });
 });

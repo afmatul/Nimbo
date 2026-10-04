@@ -14,7 +14,7 @@ Lo que la diferencia de una nube común:
 
 | Necesitas saber…                          | Archivo                                   |
 |-------------------------------------------|-------------------------------------------|
-| Principios no negociables                 | `docs/sdd/constitution.md`                |
+| Principios no negociables (SOLID Art. IV, YAGNI Art. V, DRY Art. VI, código limpio Art. VII) | `docs/sdd/constitution.md` |
 | Qué hace el producto (RF, RNF, roles, planes) | `docs/sdd/product-context.md`         |
 | Cómo está construido                      | `docs/sdd/architecture.md`                |
 | Clases, puertos, tablas y su mapeo        | `docs/sdd/design-model.md`                |
@@ -99,6 +99,9 @@ pnpm seed                                   # corpus sintético (marcador hasta 
 ```
 
 ## Prohibiciones duras (cualquier agente)
+
+- La constitución del proyecto manda sobre reglas genéricas de usuario (tamaños de función y archivo, cobertura): funciones ≤ 30 líneas
+  y ≤ 3 parámetros, cobertura de lógica de negocio ≥ 60 %. SOLID, YAGNI (regla de interfaces, Art. V.2) y DRY (regla de tres, Art. VI.2) se aplican en planes, código y revisión.
 
 - Ningún rol interno (Administrador, Soporte, Operador) accede a **contenido** ni vistas previas de archivos. No existe la suplantación.
 - Todo servicio que toca datos de un usuario recibe `actor: Actor`, y la consulta filtra con `accessibleNodes(actor)`. No se filtra después de consultar.

@@ -115,6 +115,62 @@ describe('MinIO compartido por `api` y `worker` (005 T-20)', () => {
   );
 });
 
+describe('carpetas y papelera (006 plan §7)', () => {
+  const apiIssuesFor = (patch: Record<string, string>): readonly string[] => {
+    const result = loadEnv(apiEnvSchema, { ...API_ENV, ...patch });
+    return result.ok ? [] : result.issues;
+  };
+
+  it('CA-9: `FOLDER_MAX_DEPTH` es solo del `api` y vale 10 por defecto', () => {
+    expect(declaredIn('FOLDER_MAX_DEPTH')).toEqual(['api']);
+    expect(apiEnvObjectSchema.shape.FOLDER_MAX_DEPTH.parse(undefined)).toBe(10);
+  });
+
+  it.each(['0', '51', '2.5', 'diez'])('CA-9: `FOLDER_MAX_DEPTH=%s` no pasa (1–50)', (value) => {
+    expect(apiIssuesFor({ FOLDER_MAX_DEPTH: value }).join(' ')).toContain('FOLDER_MAX_DEPTH');
+  });
+
+  it.each(['TRASH_PURGE_INTERVAL_MINUTES', 'TRASH_PURGE_BATCH_SIZE'])(
+    'CA-19: `%s` es solo del `worker`',
+    (key) => {
+      expect(declaredIn(key)).toEqual(['worker']);
+    },
+  );
+
+  it('CA-19: el lote de purga se acota a 1000, como `papelera_vencida`', () => {
+    const batch = workerEnvObjectSchema.shape.TRASH_PURGE_BATCH_SIZE;
+
+    expect(batch.safeParse('1000').success).toBe(true);
+    expect(batch.safeParse('1001').success).toBe(false);
+    expect(batch.safeParse('0').success).toBe(false);
+  });
+});
+
+describe('accesos rápidos (006 plan §9.2)', () => {
+  const apiIssuesFor = (patch: Record<string, string>): readonly string[] => {
+    const result = loadEnv(apiEnvSchema, { ...API_ENV, ...patch });
+    return result.ok ? [] : result.issues;
+  };
+
+  it.each([
+    ['QUICK_ACCESS_MAX_PINNED', 5],
+    ['QUICK_ACCESS_RECENT_VISIBLE', 3],
+  ] as const)('CA-27, CA-28: `%s` es solo del `api` y vale %i por defecto', (key, fallback) => {
+    expect(declaredIn(key)).toEqual(['api']);
+    expect(apiEnvObjectSchema.shape[key].parse(undefined)).toBe(fallback);
+  });
+
+  it.each([
+    ['QUICK_ACCESS_MAX_PINNED', '0'],
+    ['QUICK_ACCESS_MAX_PINNED', '21'],
+    ['QUICK_ACCESS_RECENT_VISIBLE', '0'],
+    ['QUICK_ACCESS_RECENT_VISIBLE', '21'],
+    ['QUICK_ACCESS_RECENT_VISIBLE', 'tres'],
+  ])('CA-27, CA-28: `%s=%s` no pasa (1–20)', (key, value) => {
+    expect(apiIssuesFor({ [key]: value }).join(' ')).toContain(key);
+  });
+});
+
 describe('JWT_ACCESS_SECRET (002 plan §6.10, CA-25, CA-26)', () => {
   const issuesFor = (patch: Record<string, string | undefined>): readonly string[] => {
     const result = loadEnv(apiEnvSchema, { ...API_ENV, ...patch });

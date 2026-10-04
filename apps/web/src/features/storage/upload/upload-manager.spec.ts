@@ -22,6 +22,7 @@ function fileSummary(name: string, sizeBytes: number): FileSummary {
     name,
     sizeBytes,
     kind: 'otro',
+    folderId: null,
     createdAt: expiresAt,
   };
 }
@@ -173,9 +174,26 @@ describe('UploadManager: inicio, conflicto y subida', () => {
       loadedBytes: 3,
       file: fileSummary('guardado.txt', 3),
     });
-    expect(client.inits).toEqual([{ name: 'nota.txt', sizeBytes: 3, onConflict: 'ask' }]);
+    expect(client.inits).toEqual([
+      { name: 'nota.txt', sizeBytes: 3, onConflict: 'ask', folderId: null },
+    ]);
     expect(puts).toEqual([`https://minio.local/${SIMPLE_ID}`]);
     expect(client.completes).toEqual([SIMPLE_ID]);
+  });
+
+  it('CA-6 (006): sube a la carpeta indicada y «Conservar ambos» repite en la misma carpeta', async () => {
+    const folderId = '22222222-2222-4222-8222-222222222222';
+    const client = new FakeClient();
+    client.initResult = conflictOnAsk;
+    const manager = managerWith(client);
+
+    manager.enqueue([local('nota.txt')], folderId);
+    await manager.idle();
+    manager.resolveConflict(onlyRow(manager).id, 'keep_both');
+    await manager.idle();
+
+    expect(client.inits.map((body) => body.folderId)).toEqual([folderId, folderId]);
+    expect(onlyRow(manager).phase).toBe('done');
   });
 
   it('CA-1: no inicia más de dos archivos a la vez', async () => {
