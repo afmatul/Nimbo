@@ -94,7 +94,7 @@ carpetas y archivos, sube a la carpeta que tiene abierta, restaura desde la pape
 - **Menú de la fila:** la acción se llama «Mover a la papelera» (no «Eliminar») y no usa color destructivo; el rojo queda solo para «Eliminar definitivamente» en la papelera.
 - **Avisos** (p. ej. «Movimos «{nombre}» a la papelera.»): aviso no bloqueante (`role="status"`, ≥ 8 s), con `sonner` (ADR-0024).
 - «Accesos rápidos» (fijados y recientes, carpetas y archivos, sin desglose; CA-27, CA-28) reemplaza a la sección «Carpetas» de la barra lateral; el contador de la Papelera se mantiene (`mockups/storage/explorador/README.md`).
-- **Avisos de fallo de accesos rápidos:** si falla quitar un elemento desde la barra, se anuncia «No pudimos quitar {nombre} de la barra lateral. Inténtalo de nuevo.»; si falla fijar por una causa distinta del tope, se muestra un aviso arriba de la lista con el mensaje del catálogo de errores (no es el del tope de CA-28).
+- **Avisos de fallo de accesos rápidos:** si fijar (por una causa distinta del tope de CA-28) o quitar falla, desde la fila o desde la barra, aparece un aviso de error arriba de la lista: «No pudimos fijar «{nombre}» en la barra lateral.» o «No pudimos quitar «{nombre}» de la barra lateral.», con la causa del catálogo de errores y «Reintentar»; si el elemento ya no existe (`404`), el texto de «ya no está» de la descarga (005 CA-21) con «Actualizar lista». Se cierra con «Cerrar aviso».
 - Las filas de carpeta se desglosan en la lista (CA-26): el mockup `storage/explorador/` agrega el estado «carpeta desglosada».
 
 ## 7. Fuera de alcance

@@ -156,3 +156,13 @@ DF-63 y PD-46 actualizados; PD-34 resuelto para RF-38. Falta la fila de SEC-3 (I
 - El tope se serializa con el `lockUsage` existente y tiene prueba de concurrencia real. `PUT` es idempotente y conserva el orden. El `CASCADE` evita tocar la papelera (SRP).
 - Desglose bien separado: `useFolderDisclosure` (turnos por carpeta), `toFolderDisclosure` (cambios locales) y `NodeTable` sin conocer peticiones. Token de sangría único, sin clases por nivel.
 - Accesibilidad cuidada: `aria-controls` con las filas reales, foco al quitar un fijado, Escape solo cierra el menú dentro del cajón. Pruebas nombradas por CA y estado de mockup.
+
+### Seguimiento de la revisión de la adición (2026-10-04)
+- **B-1** corregido en 650281d (CA-26 con el token de sangría, CA-27 enlace/botón, §6 «Accesos rápidos» reemplaza a «Carpetas») y en el commit de este seguimiento (§6, avisos de fallo como se implementaron).
+- **I-4** corregido en 81066d3: mover a la papelera, renombrar, mover y restaurar recargan los accesos rápidos.
+- **I-5** corregido en 81066d3: fallos de fijar y quitar (fila y barra) muestran un aviso arriba de la lista con «Reintentar» o «Actualizar lista»; `isStorageNotFound` extraído (DRY).
+- **I-6** corregido en 650281d: PD-64 (SEC-3) y PD-65 (S-6).
+- **I-7** pendiente de Adrián (`CLAUDE.md` y la excepción de `architecture.md` §6).
+- **I-8** corregido en 650281d (notas del developer de T-12 a T-16 y SEC-1).
+- **S-3** hecho en 81066d3 (`@custom-variant hover-none`). S-4 y S-5 quedan como sugerencias; S-6 pasa a PD-65.
+- **Veredicto:** ✅ aprobable, salvo I-7 (decisión de Adrián) y los recorridos humanos T-11 y T-17.
