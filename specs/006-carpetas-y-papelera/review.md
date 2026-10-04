@@ -64,6 +64,8 @@ Hallazgos:
   AND (carpeta_id IS NULL OR EXISTS (SELECT 1 FROM carpeta c WHERE c.id = carpeta_id AND c.eliminado_en IS NULL))`
   (las subconsultas corren con la RLS de quien escribe, así que seguirá valiendo con las comparticiones de 012), y una
   prueba ISO que espere el rechazo. Antes del cierre de la fase o en 012, a más tardar.
+  **Corregido en a6214ee** (en la misma migración, no publicada): el `WITH CHECK` exige el nodo vivo y visible; ISO
+  cubre ajeno, inexistente (mismo rechazo de RLS, sin llegar a la FK), en la papelera y redirigir una fila por `UPDATE`.
 - **[SEC-2] baja** · `typeorm-quick-access.repository.ts:171-181` (`pruneRecents`) · decisión auditada: filtra por
   `usuario_id = :actorId` y además la RLS limita `DELETE` a filas del actor, así que no puede tocar filas de otra cuenta
   (probado). No lee ni devuelve datos de nodos ni recibe un nodo, por lo que no contradice «toda consulta filtra con
