@@ -115,3 +115,13 @@ CA sin cubrir: ninguno.
   `test/int/worker/bootstrap.int-spec.ts` y `worker-health.int-spec.ts` (cierra también el `Worker` de `trash-purge`).
 - **T-06 · «cuenta vencida» (CA-19)**: no hay suscripción hasta 004; la integración usa `usuario.estado = 'suspendida'`
   como el estado de cuenta que la purga no mira. Cuando exista la suscripción vencida conviene sumarla a la prueba.
+- **T-12 a T-16 · barra lateral**: se quitaron `FolderSection`, `useRootFolders` y `withOrganizedRootFolders` (la sección
+  «Carpetas» la reemplaza «Accesos rápidos»). Se agregaron `AppLayout.sidebarSection` y `useSidebarSlot()` para que la
+  página inyecte la sección en la barra y el cajón. Los archivos de la barra son `<button>` con `aria-label` (descargan),
+  en lugar de texto `sr-only`; las carpetas son enlaces.
+- **T-12 a T-16 · pruebas de la migración**: van en `quick-access-migrations.int-spec.ts`, no en `folders-migrations`,
+  que pasaría de 800 líneas. `alert.tsx` quedó sin cambios: la variante `warning` ya existía.
+- **T-12 a T-16 · configuración**: `QUICK_ACCESS_RECENT_VISIBLE=3` (con `QUICK_ACCESS_MAX_PINNED=5`). `pruneRecents` no une
+  `accessibleNodes` (excepción de `architecture.md` §6, SEC-2: metadatos por cuenta, acotados a la propia).
+- **SEC-1** corrigió el `WITH CHECK` de la misma migración de `acceso_rapido` (aún no publicada), sin migración nueva:
+  exige el nodo vivo y visible.
