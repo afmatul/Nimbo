@@ -9,6 +9,16 @@ export const NOTICE_DURATION_MS = 8_000;
 
 const PAUSED = Number.POSITIVE_INFINITY;
 
+/** Alto del encabezado de `AppLayout` (`--header-height` de `globals.css`); el aviso aparece debajo, sin taparlo (007 CA-18). */
+export const APP_HEADER_HEIGHT = 'var(--header-height)';
+
+/** Separación entre el encabezado y el aviso: la de `sonner` por omisión en escritorio (24 px) y en móvil (16 px). */
+const NOTICE_GAP = '1.5rem';
+const MOBILE_NOTICE_GAP = '1rem';
+
+const NOTICE_OFFSET = { top: `calc(${APP_HEADER_HEIGHT} + ${NOTICE_GAP})` };
+const MOBILE_NOTICE_OFFSET = { top: `calc(${APP_HEADER_HEIGHT} + ${MOBILE_NOTICE_GAP})` };
+
 /**
  * Pausa o reanuda los avisos visibles. `sonner` solo pausa con el puntero; con foco se cambia su duración (ADR-0024:
  * «si la pausa por foco no la da la librería, se resuelve en el wrapper»). Al reanudar vuelve a contar los 8 s.
@@ -41,8 +51,9 @@ const TOKEN_STYLE = {
 } as React.CSSProperties;
 
 /**
- * Región de avisos no bloqueantes (`role="status"`, `aria-live="polite"`), abajo a la derecha y a todo el ancho en
- * móvil. Solo confirma acciones con éxito; los errores siguen como `Alert` (ADR-0024).
+ * Región de avisos no bloqueantes (`role="status"`, `aria-live="polite"`), arriba y al centro, debajo del encabezado,
+ * para no tapar el panel de cargas (spec 007 CA-18); en móvil (< 600 px) ocupa el ancho disponible. Solo confirma
+ * acciones con éxito; los errores siguen como `Alert` (ADR-0024).
  */
 export function Toaster(props: ToasterProps): React.JSX.Element {
   const regionRef = React.useRef<HTMLDivElement>(null);
@@ -60,7 +71,9 @@ export function Toaster(props: ToasterProps): React.JSX.Element {
     <div ref={regionRef} onFocus={() => setVisibleDurations(PAUSED)} onBlur={handleBlur}>
       <Sonner
         theme="light"
-        position="bottom-right"
+        position="top-center"
+        offset={NOTICE_OFFSET}
+        mobileOffset={MOBILE_NOTICE_OFFSET}
         duration={NOTICE_DURATION_MS}
         closeButton
         customAriaLabel="Avisos"

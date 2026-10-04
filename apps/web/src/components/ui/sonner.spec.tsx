@@ -6,7 +6,7 @@ import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 import { toast } from 'sonner';
 
-import { NOTICE_DURATION_MS, showNotice, Toaster } from './sonner';
+import { APP_HEADER_HEIGHT, NOTICE_DURATION_MS, showNotice, Toaster } from './sonner';
 
 const MESSAGE = 'Movimos «informe.docx» a la papelera.';
 const RAW_COLOR = /#[0-9a-f]{3,8}\b/i;
@@ -40,6 +40,18 @@ describe('Toaster (ADR-0024)', () => {
     expect(region.getAttribute('aria-live')).toBe('polite');
     expect(await screen.findByText(MESSAGE)).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Cerrar aviso' })).toBeTruthy();
+  });
+
+  it('CA-18: la región queda arriba y al centro, debajo del encabezado, y dura 8 s', async () => {
+    await renderWithNotice();
+    await screen.findByText(MESSAGE);
+
+    const list = document.querySelector<HTMLElement>('[data-sonner-toaster]');
+    expect(list?.getAttribute('data-y-position')).toBe('top');
+    expect(list?.getAttribute('data-x-position')).toBe('center');
+    expect(list?.style.getPropertyValue('--offset-top')).toContain(APP_HEADER_HEIGHT);
+    expect(list?.style.getPropertyValue('--mobile-offset-top')).toContain(APP_HEADER_HEIGHT);
+    expect(NOTICE_DURATION_MS).toBe(8_000);
   });
 
   it('CA-10: la acción se alcanza y se activa con el teclado', async () => {

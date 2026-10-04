@@ -738,6 +738,36 @@ describe('Accesibilidad de la tarjeta de cuota de la barra lateral (007 CA-5, CA
   });
 });
 
+describe('Accesibilidad de la barra lateral con sección y cuota (007 CA-19)', () => {
+  const section = (
+    <ul aria-label="Sección de la página">
+      <li>
+        <a href="/archivos/carpeta/a">Proyecto Alpha</a>
+      </li>
+      <li>
+        <a href="/archivos/carpeta/b">Finanzas</a>
+      </li>
+    </ul>
+  );
+
+  it.each([false, true])('menú móvil abierto: %s', async (menuOpen) => {
+    await mount(
+      <AppLayout
+        sidebarSection={section}
+        quotaCard={
+          <SidebarQuota state={{ status: 'ready', summary: spaceSummaryWith(4.8 * GB) }} />
+        }
+        initialMobileMenuOpen={menuOpen}
+      >
+        <h1>Mis archivos</h1>
+      </AppLayout>,
+    );
+
+    expect(text()).toContain('Proyecto Alpha');
+    await expectNoBlockingViolations();
+  });
+});
+
 describe('Accesibilidad del orden y «Cargar más» del explorador (007 CA-9, CA-10, CA-12)', () => {
   const BY_SIZE: NodeOrder = { sort: 'size', dir: 'desc' };
   const ANEXOS: NodeSummary = {
