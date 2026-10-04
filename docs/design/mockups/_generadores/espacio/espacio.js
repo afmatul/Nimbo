@@ -107,5 +107,5 @@ const CSS_TARJETA = `
 
 module.exports = {
   P, icon, PLAN, PLAN_NOMBRE, CUOTA_TOTAL, MAX_POR_ARCHIVO, RETENCION, CUOTAS, tramoDe, notaDe,
-  tarjeta, sidebar, CSS_TARJETA,
+  tarjeta, sidebar, conItemEspacio, CSS_TARJETA,
 };

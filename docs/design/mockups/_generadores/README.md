@@ -7,15 +7,17 @@ los importa.
 
 | Archivo | Qué hace |
 |---|---|
-| `marco/marco.js` | Piezas comunes del marco (navegación con «Mis archivos», «Compartidos conmigo», «Recientes», «Fijados» y «Papelera») y el diálogo de «Cerrar sesión» (`DIALOGO_CERRAR_SESION`) |
+| `marco/marco.js` | Piezas comunes del marco (navegación con «Mis archivos», «Compartidos conmigo», «Recientes», «Fijados» y «Papelera») y el diálogo de «Cerrar sesión» (`DIALOGO_CERRAR_SESION`); exporta `logo`, que usa `layout/barra.js` |
 | `mis-archivos/mis-archivos.js` | Página «Mis archivos» de 005: íconos de tipo, datos de ejemplo, cuota por tramos, barra lateral de 005 (sin «Carpetas» ni contador de la Papelera), encabezado y tabla de la raíz con el menú ⋮ (comunes a `carga` y `explorador`) |
 | `mis-archivos/estados.js` | CSS y HTML de los estados comunes de una lista (vacío, esqueleto, error, `Alert`, zona de soltar) y el script del menú ⋮; los usan los estados de 005 y 006 |
 | `carpetas/carpetas.js` | Piezas de 006: logo del proyecto (nube de `docs/design/logos/` con tokens), barra lateral con «Carpetas» y contador de la Papelera, toast, diálogo con un campo, `ConfirmDestructiveDialog` con progreso y su CSS; fila, tabla (con `aria-sort` opcional de 007) y encabezado de una carpeta |
-| `espacio/espacio.js` | Piezas de 007: datos del plan Personal de ejemplo, tarjeta de cuota de la barra lateral con sus tramos, ícono, «Ver detalle»/«Liberar espacio» y estados de carga y error, y la barra lateral de 007 |
+| `espacio/espacio.js` | Piezas de 007: datos del plan Personal de ejemplo, tarjeta de cuota de la barra lateral con sus tramos, ícono, «Ver detalle»/«Liberar espacio» y estados de carga y error, la barra lateral de 007 y `conItemEspacio` (ítem «Espacio», D-18) |
+| `layout/barra.js` | Barra lateral y cajón en **tres bloques** (007 CA-19): navegación arriba, región central con desplazamiento propio (`central`; hoy `regionCarpetas`) y tarjeta de cuota fija al pie. 006 (CA-27, CA-28) cambia solo el `central` por «Accesos rápidos» |
+| `carga/panel.js` | Panel de cargas (`UploadProgress`) de 005, extraído de `carga/generar.js` sin cambios en su HTML; lo reutiliza el layout (007 CA-18) |
 | `marco/marco.js` (opciones) | `sidebar`/`navegacion` aceptan `carpetas` y `contadorPapelera`; con los valores por defecto el HTML de Seguridad y del layout no cambia |
 | `marco/css-marco.js` | CSS del marco con los tokens de Cielo Sereno (`ui-guidelines.md` §2–§3), solo Inter; `TRAMOS`: CSS de los tramos de `QuotaBar` en la tarjeta de cuota |
 | `seguridad/generar.js` | Los 15 estados de `identity/seguridad` (spec 002) |
-| `layout/generar.js` | Los 16 estados de `shared/layout`: 5 del marco, 9 de «Accesos rápidos» (CA-27 y CA-28, con el menú ⋮ de los fijados en barra y cajón) y 2 de cuota (`cuota-70` y `cuota-90` de 007) |
+| `layout/generar.js` | Los 18 estados de `shared/layout`: 5 del marco, 9 de «Accesos rápidos» (CA-27 y CA-28, con el menú ⋮ de los fijados en barra y cajón) y 4 de 007 (`cuota-70`, `cuota-90`, `aviso-arriba-centro` y `barra-fija-lista-larga`) |
 | `carga/generar.js` | Los 8 estados escritos a mano de `storage/carga` (spec 005); `carga--progreso.html` es el paquete de la propuesta y no se genera |
 | `explorador/generar.js` | Los 7 estados de 005 de `storage/explorador` (`vacio`, `cargando`, `arrastre`, `error`, `acciones`, `descarga-preparando`, `descarga-fallida`); `cuadricula` y `lista` son el paquete de la propuesta y no se generan |
 | `explorador/generar-carpetas.js` | Los 31 estados de 006 de `storage/explorador`: 22 de carpetas, migas, crear, renombrar, «Mover a…» con «Nueva carpeta» en línea y mover a la papelera, y 9 de desglose, «Ver más» y accesos rápidos (CA-26 a CA-28) |
