@@ -573,11 +573,26 @@ describe('Accesibilidad de los estados de carga y descarga (CA-21)', () => {
 
     it('desglosada a dos niveles', async () => {
       await renderDisclosed({
-        [ALPHA.id]: { status: 'ready', nodes: [FASE3_NODE, { ...FILE_NODE, id: 'f-2' }] },
-        [FASE3.id]: { status: 'ready', nodes: [PROMPTS_IN_FASE3] },
+        [ALPHA.id]: {
+          status: 'ready',
+          nodes: [FASE3_NODE, { ...FILE_NODE, id: 'f-2' }],
+          hasMore: false,
+        },
+        [FASE3.id]: { status: 'ready', nodes: [PROMPTS_IN_FASE3], hasMore: false },
       });
 
       expect(document.querySelectorAll('[aria-expanded="true"]')).toHaveLength(2);
+      await expectNoBlockingViolations();
+    });
+
+    it('desglosada con «Ver más» al final de cada nivel', async () => {
+      await renderDisclosed({
+        [ALPHA.id]: { status: 'ready', nodes: [FASE3_NODE], hasMore: true },
+        [FASE3.id]: { status: 'ready', nodes: [PROMPTS_IN_FASE3], hasMore: true },
+      });
+
+      expect(document.querySelectorAll('a[href^="/archivos/carpeta/"]')).toHaveLength(5);
+      expect(text()).toContain('Ver más en Fase 3 · RAG');
       await expectNoBlockingViolations();
     });
 
@@ -589,7 +604,7 @@ describe('Accesibilidad de los estados de carga y descarga (CA-21)', () => {
     });
 
     it('desglosada vacía', async () => {
-      await renderDisclosed({ [ALPHA.id]: { status: 'ready', nodes: [] } });
+      await renderDisclosed({ [ALPHA.id]: { status: 'ready', nodes: [], hasMore: false } });
 
       expect(text()).toContain('Esta carpeta está vacía');
       await expectNoBlockingViolations();

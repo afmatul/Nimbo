@@ -21,25 +21,14 @@ export const CHIP_TYPE_BY_KIND: Readonly<Record<FileKind, FileType>> = {
 };
 
 /**
- * Sangría de la celda del nombre por nivel de desglose (0 = la ubicación abierta, 006 CA-26): 28 px por nivel y 16 px
- * en móvil (mockup `explorador--carpeta-desglosada`). Clases literales para que Tailwind las genere; más allá del
- * último nivel se repite.
+ * Nivel de desglose de la fila (0 = la ubicación abierta, 006 CA-26). Las utilidades `tree-indent` y `tree-guides` de
+ * `globals.css` lo leen para la sangría y las guías (`ui-guidelines.md` §3); dejan de crecer en `--tree-max-level`.
  */
-const NAME_INDENT = [
-  'pl-4',
-  'pl-8 sm:pl-11',
-  'pl-12 sm:pl-18',
-  'pl-16 sm:pl-25',
-  'pl-20 sm:pl-32',
-  'pl-24 sm:pl-39',
-  'pl-28 sm:pl-46',
-  'pl-32 sm:pl-53',
-  'pl-36 sm:pl-60',
-  'pl-40 sm:pl-67',
-];
+export const treeLevelStyle = (depth: number): React.CSSProperties =>
+  ({ '--tree-level': depth }) as React.CSSProperties;
 
-export const nameIndent = (depth: number): string =>
-  NAME_INDENT[Math.min(depth, NAME_INDENT.length - 1)] ?? '';
+/** Celda del nombre con las guías de sus ancestros; el contenido lleva la sangría (`tree-indent`). */
+export const TREE_CELL_CLASS = 'tree-guides py-2 pr-4 pl-3 sm:pl-4';
 
 /** Identificador de la fila de un elemento, para el `aria-controls` del control de desglose. */
 export const rowIdOf = (nodeId: string): string => `fila-${nodeId}`;
@@ -122,19 +111,17 @@ function InsideOf({
   );
 }
 
-/** Celda del nombre: control de desglose (o su lugar), ícono y texto, con la sangría del nivel. */
+/** Celda del nombre: control de desglose (o su lugar), ícono y texto, con la sangría y las guías del nivel. */
 function NameCell({
-  depth,
   lead,
   children,
 }: {
-  readonly depth: number;
   readonly lead: React.ReactNode;
   readonly children: React.ReactNode;
 }): React.JSX.Element {
   return (
-    <td className={cn('py-2 pr-4', nameIndent(depth))}>
-      <span className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+    <td className={TREE_CELL_CLASS}>
+      <span className="tree-indent flex min-w-0 items-center gap-2.5 sm:gap-3">
         {lead}
         {children}
       </span>
@@ -155,8 +142,8 @@ export function FolderRow({
 }: FolderRowProps): React.JSX.Element {
   const lead = toggle ? <DisclosureButton name={folder.name} toggle={toggle} /> : null;
   return (
-    <tr id={rowIdOf(folder.id)} className="h-14">
-      <NameCell depth={depth} lead={lead}>
+    <tr id={rowIdOf(folder.id)} className="h-14" style={treeLevelStyle(depth)}>
+      <NameCell lead={lead}>
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand/10 text-primary">
           <Folder className="h-4 w-4" aria-hidden="true" />
         </span>
@@ -194,8 +181,8 @@ export function FileRow({
   besideToggles,
 }: FileRowProps): React.JSX.Element {
   return (
-    <tr id={rowIdOf(file.id)} className="h-14">
-      <NameCell depth={depth} lead={besideToggles ? <DisclosureSpacer /> : null}>
+    <tr id={rowIdOf(file.id)} className="h-14" style={treeLevelStyle(depth)}>
+      <NameCell lead={besideToggles ? <DisclosureSpacer /> : null}>
         <FileTypeChip fileType={CHIP_TYPE_BY_KIND[file.kind]} className="shrink-0" />
         <span className="flex min-w-0 flex-col">
           <span className="truncate font-medium text-foreground" title={file.name}>

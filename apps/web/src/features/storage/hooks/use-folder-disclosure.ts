@@ -91,7 +91,11 @@ export function toFolderDisclosure(
     levelOf: (folderId): DisclosedLevel | undefined => {
       const listing = state.listingOf(folderId);
       if (listing?.status !== 'ready') return listing;
-      return { status: 'ready', nodes: present(folderId, listing.contents) };
+      return {
+        status: 'ready',
+        nodes: present(folderId, listing.contents),
+        hasMore: listing.contents.nextCursor !== null,
+      };
     },
     toggle: state.toggle,
     retry: state.retry,

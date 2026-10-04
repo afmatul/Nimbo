@@ -70,3 +70,6 @@ Los textos de error de `storage` salen de `lib/error-catalog.ts` (`storageMessag
   `organized-nodes.ts` con lo que llegó por «Mover a…» y lo enviado a la papelera), así una acción en cualquier nivel
   se ve en el nivel correcto; «Renombrar» y «Mover a…» toman las hermanas y las migas del nivel del elemento.
   «Actualizar lista» vuelve a pedir también las carpetas desglosadas.
+  Solo se pide la primera página: si trae `nextCursor`, al final del nivel va la fila «Ver más», un enlace a la página
+  de la carpeta (Q-2). La sangría y las guías usan el token del desglose (`tree-indent`, `tree-guides` y
+  `--tree-level` en la fila, `ui-guidelines.md` §3).

@@ -1,26 +1,36 @@
 import type { NodeSummary } from '@nimbo/contracts';
-import { AlertCircle, FolderOpen, Loader2, RotateCcw } from 'lucide-react';
+import { AlertCircle, ChevronRight, FolderOpen, Loader2, RotateCcw } from 'lucide-react';
+import Link from 'next/link';
 import * as React from 'react';
 
 import { Button } from '../../../components/ui/button';
 import { cn } from '../../../lib/utils';
+import { folderPath } from '../routes';
 
 import {
   DisclosureSpacer,
   FileRow,
   FolderRow,
-  nameIndent,
   rowIdOf,
+  TREE_CELL_CLASS,
+  treeLevelStyle,
   type FolderToggle,
 } from './node-rows';
 
 type FolderNode = Extract<NodeSummary, { type: 'folder' }>;
 
-/** Contenido de una carpeta desglosada, listo para pintar (carpetas primero, 006 CA-26). */
+/**
+ * Contenido de una carpeta desglosada, listo para pintar (carpetas primero, 006 CA-26). `hasMore`: la carpeta tiene más
+ * de una página; el resto se ve en su página («Ver más», Q-2).
+ */
 export type DisclosedLevel =
   | { readonly status: 'loading' }
   | { readonly status: 'error' }
-  | { readonly status: 'ready'; readonly nodes: readonly NodeSummary[] };
+  | {
+      readonly status: 'ready';
+      readonly nodes: readonly NodeSummary[];
+      readonly hasMore: boolean;
+    };
 
 /** Desglose de carpetas en la lista (006 CA-26); sin él, las carpetas solo se abren. */
 export interface FolderDisclosure {
@@ -115,14 +125,17 @@ function NodeRows({
 }
 
 const noteRowIdOf = (folderId: string): string => `fila-aviso-${folderId}`;
+const moreRowIdOf = (folderId: string): string => `fila-ver-mas-${folderId}`;
 
-/** Filas que muestra una carpeta desglosada: las de su contenido o la de su aviso (cargando, vacía o error). */
+/**
+ * Filas que muestra una carpeta desglosada: las de su contenido (y su «Ver más») o la de su aviso (cargando, vacía o
+ * error).
+ */
 function controlledRows(folderId: string, level: DisclosedLevel | undefined): readonly string[] {
   if (level === undefined) return [];
-  if (level.status === 'ready' && level.nodes.length > 0) {
-    return level.nodes.map((node) => rowIdOf(node.id));
-  }
-  return [noteRowIdOf(folderId)];
+  if (level.status !== 'ready' || level.nodes.length === 0) return [noteRowIdOf(folderId)];
+  const rows = level.nodes.map((node) => rowIdOf(node.id));
+  return level.hasMore ? [...rows, moreRowIdOf(folderId)] : rows;
 }
 
 function toggleOf(
@@ -193,10 +206,41 @@ function DisclosedRows({
       </LevelNoteRow>
     );
   }
-  return <NodeRows nodes={level.nodes} parent={folder} depth={depth} context={context} />;
+  return (
+    <>
+      <NodeRows nodes={level.nodes} parent={folder} depth={depth} context={context} />
+      {level.hasMore ? <LevelMoreRow folder={folder} depth={depth} /> : null}
+    </>
+  );
 }
 
-/** Fila de aviso dentro de una carpeta desglosada, alineada con los íconos de su nivel. */
+/** Al final de un nivel con más de una página: lleva a la página de la carpeta, sin «Cargar más» (Q-2). */
+function LevelMoreRow({
+  folder,
+  depth,
+}: {
+  readonly folder: FolderNode;
+  readonly depth: number;
+}): React.JSX.Element {
+  return (
+    <LevelNoteRow id={moreRowIdOf(folder.id)} depth={depth}>
+      <Link
+        href={folderPath(folder.id)}
+        className="-ml-2 inline-flex min-h-11 items-center gap-1 rounded-md px-2 font-semibold text-primary hover:bg-muted hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8"
+      >
+        <span>
+          Ver más<span className="sr-only">{` en ${folder.name}`}</span>
+        </span>
+        <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+      </Link>
+    </LevelNoteRow>
+  );
+}
+
+/**
+ * Fila de estado dentro de una carpeta desglosada (cargando, vacía, error o «Ver más»), alineada con los íconos de su
+ * nivel: la sangría va en un contenedor y el contenido salta el ancho del control de desglose (`ui-guidelines.md` §3).
+ */
 function LevelNoteRow({
   id,
   depth,
@@ -207,10 +251,12 @@ function LevelNoteRow({
   readonly children: React.ReactNode;
 }): React.JSX.Element {
   return (
-    <tr id={id} className="h-12">
-      <td colSpan={4} className={cn('py-2 pr-4', nameIndent(depth))}>
-        <div className="flex min-h-11 min-w-0 flex-wrap items-center gap-x-3 gap-y-2 pl-9 text-sm text-secondary-foreground sm:min-h-8 sm:pl-11">
-          {children}
+    <tr id={id} className="h-12" style={treeLevelStyle(depth)}>
+      <td colSpan={4} className={TREE_CELL_CLASS}>
+        <div className="tree-indent">
+          <div className="flex min-h-11 min-w-0 flex-wrap items-center gap-x-3 gap-y-2 pl-9 text-sm text-secondary-foreground sm:min-h-8 sm:pl-11">
+            {children}
+          </div>
         </div>
       </td>
     </tr>
@@ -238,9 +284,9 @@ function LevelLoading({
         </span>
       </LevelNoteRow>
       {SKELETON_WIDTHS.map((width) => (
-        <tr key={width} aria-hidden="true" className="h-12">
-          <td colSpan={4} className={cn('py-2 pr-4', nameIndent(depth))}>
-            <span className="flex items-center gap-3">
+        <tr key={width} aria-hidden="true" className="h-12" style={treeLevelStyle(depth)}>
+          <td colSpan={4} className={TREE_CELL_CLASS}>
+            <span className="tree-indent flex items-center gap-3">
               <DisclosureSpacer />
               <span className="h-8 w-8 shrink-0 animate-pulse rounded-md bg-muted" />
               <span className={cn('h-3 animate-pulse rounded-md bg-muted', width)} />

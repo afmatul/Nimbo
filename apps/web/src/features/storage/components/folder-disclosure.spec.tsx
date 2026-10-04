@@ -83,6 +83,11 @@ function rowOf(name: string): HTMLElement {
   return row;
 }
 
+/** Nivel de desglose de la fila (`--tree-level`), del que salen la sangría y las guías del token (CA-26). */
+function levelOf(name: string): string {
+  return rowOf(name).style.getPropertyValue('--tree-level');
+}
+
 describe('Desglosar carpetas en la lista (006 CA-26)', () => {
   it('CA-26: el control de desglose tiene nombre accesible y empieza contraído; el nombre sigue abriendo la carpeta', async () => {
     render(<Harness load={resolving} />);
@@ -101,10 +106,9 @@ describe('Desglosar carpetas en la lista (006 CA-26)', () => {
 
     expect(toggleOf('Proyecto Alpha').getAttribute('aria-expanded')).toBe('true');
     expect(rowNames()).toEqual(['Proyecto Alpha', 'Fase 3', 'acta.pdf', 'Beta', 'raiz.pdf']);
-    const nameCell = (name: string): HTMLElement | null => rowOf(name).querySelector('td');
-    expect(nameCell('Proyecto Alpha')?.className).toContain('pl-4');
-    expect(nameCell('Fase 3')?.className).toMatch(/\bsm:pl-11\b/);
-    expect(nameCell('acta.pdf')?.className).toMatch(/\bsm:pl-11\b/);
+    expect(levelOf('Proyecto Alpha')).toBe('0');
+    expect(levelOf('Fase 3')).toBe('1');
+    expect(levelOf('acta.pdf')).toBe('1');
     expect(document.querySelector('h1')?.textContent).toBe('Mis archivos');
   });
 
@@ -146,7 +150,7 @@ describe('Desglosar carpetas en la lista (006 CA-26)', () => {
       'Beta',
       'raiz.pdf',
     ]);
-    expect(rowOf('prompts.pdf').querySelector('td')?.className).toMatch(/\bsm:pl-18\b/);
+    expect(levelOf('prompts.pdf')).toBe('2');
   });
 
   it('CA-26: mientras carga, la fila anuncia «Cargando el contenido de …»', async () => {
@@ -224,5 +228,46 @@ describe('Desglosar carpetas en la lista (006 CA-26)', () => {
 
     expect(toggleOf('Proyecto Alpha').getAttribute('aria-expanded')).toBe('false');
     expect(screen.queryByText('acta.pdf')).toBeNull();
+  });
+
+  it('CA-26: la sangría y las guías usan el token del desglose (tree-indent y tree-guides), sin clases por nivel', async () => {
+    render(<Harness load={resolving} />);
+
+    await userEvent.click(toggleOf('Proyecto Alpha'));
+
+    const cell = rowOf('acta.pdf').querySelector('td');
+    expect(cell?.className.split(' ')).toContain('tree-guides');
+    expect(cell?.querySelector('.tree-indent')).not.toBeNull();
+    expect(cell?.className).not.toMatch(/\bsm:pl-11\b/);
+  });
+
+  it('CA-26: con más de una página, al final de su nivel hay una fila «Ver más» que lleva a la página de la carpeta', async () => {
+    const paged: LoadFolderContents = (folderId) =>
+      resolving(folderId).then((listed) =>
+        folderId === ALPHA.id ? { ...listed, nextCursor: 'siguiente' } : listed,
+      );
+    render(<Harness load={paged} />);
+
+    await userEvent.click(toggleOf('Proyecto Alpha'));
+
+    const more = screen.getByRole('link', { name: 'Ver más en Proyecto Alpha' });
+    expect(more.getAttribute('href')).toBe(`/archivos/carpeta/${ALPHA.id}`);
+    const moreRow = more.closest('tr') as HTMLElement;
+    expect(moreRow.previousElementSibling).toBe(rowOf('acta.pdf'));
+    expect(moreRow.nextElementSibling).toBe(rowOf('Beta'));
+    expect(moreRow.style.getPropertyValue('--tree-level')).toBe('1');
+    expect(toggleOf('Proyecto Alpha').getAttribute('aria-controls')?.split(' ')).toContain(
+      moreRow.id,
+    );
+    expect(screen.queryByRole('button', { name: /Cargar más/ })).toBeNull();
+  });
+
+  it('CA-26: sin más páginas no aparece «Ver más»', async () => {
+    render(<Harness load={resolving} />);
+
+    await userEvent.click(toggleOf('Proyecto Alpha'));
+
+    expect(screen.getByText('acta.pdf')).toBeTruthy();
+    expect(screen.queryByRole('link', { name: /Ver más/ })).toBeNull();
   });
 });
