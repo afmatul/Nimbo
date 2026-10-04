@@ -111,3 +111,48 @@ Checklist:
 - `ownedTrashedNodes` y `accessibleNodes` con las mismas columnas y `tipo_nodo`; restauración sin `Folder.rehydrate` tras R-5, probada.
 - Índices extra de raíz justificados con `EXPLAIN` en la prueba de migración; migraciones reversibles.
 - Pruebas de aislamiento amplias (rutas, RLS, `papelera_vencida`) y pruebas web con axe en ambos anchos.
+
+## Adición CA-26 a CA-28 (2026-10-03)
+| Campo | Valor |
+|---|---|
+| Rango | `5d40b55..HEAD` (a453c03…36f0521): T-12 a T-16, SEC-1, SEC-2 |
+| CI local | lint y typecheck en verde · `test`: api 1384, web 783, contracts 265 · `test:int` 86 suites / 797 · `test:isolation` 13 / 192 |
+| Veredicto | 🔁 Un bloqueante documental (B-1, sin código). Al corregirlo: ✅ con I-4 a I-8 antes del cierre de fase. T-11 y T-17 (humanas) pendientes |
+
+### Verificación
+| CA | Prueba | Estado |
+|---|---|---|
+| CA-26 | `folder-disclosure.spec.tsx` (expandir/contraer, 2 niveles, cargando/vacía/error por fila, teclado, respuesta tardía, token, «Ver más»), `my-files.spec.tsx` (acciones en subnivel), `a11y.spec.tsx` (5 estados, 360/1440) | ✅ (sangría: B-1) |
+| CA-27 | `quick-access.service.spec.ts`, `quick-access.int-spec.ts` (orden, 3 + `hasMoreRecent`, poda, papelera/restaurar, `CASCADE`), `quick-access-section.spec.tsx` (5 + 3, solo uno, «Ver más», oculta, ⋮, foco, cajón), `file-row-menu`/`folder-row-menu.spec.tsx`, `carpeta/[folderId]/page.spec.tsx` (reciente al montar), `my-files.spec.tsx` (descarga cuenta, desglosar no) | ✅ (barra desactualizada en sesión: I-4) |
+| CA-28 | `quick-access.service.spec.ts` y `.int-spec.ts` (422 con `maxPinned`, `PUT` repetido 200, concurrencia R-7, roles 403, sin nombres en bitácoras), `quick-access-migrations.int-spec.ts` (RLS, up/down ×3, `EXPLAIN`), `storage-quick-access.iso-spec.ts`, `my-files.spec.tsx` (`Alert` `warning`) | ✅ |
+
+### Seguridad (resumen del auditor)
+Sin bloqueantes. SEC-1 corregido en a6214ee (`WITH CHECK` exige el nodo vivo y visible; ISO de ajeno, inexistente, papelera y `UPDATE`). SEC-2 aceptado con la excepción en `architecture.md` §6. SEC-3 (límite de tasa) abierto: I-6.
+
+### UI
+Coincide con los mockups aprobados de `explorador/` (desglose, menú de fila, tope) y `shared/layout/` (fijados, recientes, ⋮, cajón). Solo tokens (`tree-*`, `warning`), textos en español, axe sin hallazgos serios a 360 y 1440 px. La sección «Carpetas» se reemplaza por «Accesos rápidos» según el mockup.
+
+### Bloqueantes
+- **[B-1] (documental)** La spec contradice el código y los mockups aprobados: (a) CA-26 dice «16 px por nivel… se repite pasados 10 niveles», pero el token (`ui-guidelines.md`, `globals.css`) deja de crecer en el nivel 3 a 360 px y en el 6 desde `sm` (28 px), como aprobó Adrián en `mockups/storage/explorador/README.md`; (b) CA-27 dice «cada elemento es un enlace», pero el archivo es un `<button>` que descarga (`quick-access-section.tsx`); (c) §6 dice que la barra «recupera "Carpetas"». Corregir CA-26, CA-27 y §6 con fila en el registro de cambios.
+
+### Importantes
+- **[I-4]** `my-files.tsx` y `trash-view.tsx`: mover a la papelera, renombrar o restaurar no recargan los accesos rápidos; un fijado en la papelera sigue en la barra hasta navegar (CA-27). Llamar a `sidebar.quickAccess.reload()` en `onMoved`, `remember` y tras restaurar, con prueba en `my-files.spec.tsx`.
+- **[I-5]** `use-quick-access.ts`: un fallo de `pin` que no es el tope se ignora; `quick-access-sidebar.tsx` descarta el `false` de `unpin` desde la fila (Art. VII). Mostrar un aviso arriba de la lista con `storageMessage`.
+- **[I-6]** SEC-3 sin fila en `pendientes.md`: agregarla (limitador general / RNF de abuso).
+- **[I-7] (Adrián)** `CLAUDE.md` formula «filtra con `accessibleNodes(actor)`» sin la excepción de `architecture.md` §6 (SEC-2); remitir a ella.
+- **[I-8]** Faltan «Notas del developer» de T-12 a T-16 en `tasks.md`: se quitaron `FolderSection`, `useRootFolders` y `withOrganizedRootFolders`; se agregaron `AppLayout.sidebarSection` y `useSidebarSlot()`; archivos de la barra como `<button>` con `aria-label`; pruebas de la migración en `quick-access-migrations.int-spec.ts`; `alert.tsx` sin cambios (la variante `warning` ya existía); el anuncio «No pudimos quitar {nombre} de la barra lateral…», que no está en spec ni en mockup.
+
+### Sugerencias
+- **[S-3]** `quick-access-section.tsx`: `[@media(hover:none)]` → `@custom-variant` en `globals.css`.
+- **[S-4]** El texto del tope está en el dominio, en `quickAccessLimitMessage` (solo lo usan las pruebas) y en `error-catalog.ts`; mismo patrón que la profundidad y vigilado por pruebas. Considerar armar el catálogo desde contracts.
+- **[S-5]** `MyFiles` mide 139 líneas (133 antes de la adición): extraer un hook de niveles.
+- **[S-6]** `acceso_rapido.usuario_id` sin `CASCADE`: anotar en PD que la baja de cuentas debe borrar antes estas filas.
+
+### DF y pendientes
+DF-63 y PD-46 actualizados; PD-34 resuelto para RF-38. Falta la fila de SEC-3 (I-6).
+
+### Lo que está bien hecho
+- Toda lectura y escritura une `accessibleNodes(actor)` dentro del SQL (`INSERT … SELECT` desde el nodo visible). RLS con `WITH CHECK` sin oráculo de existencia y 404 idéntico probado en ISO.
+- El tope se serializa con el `lockUsage` existente y tiene prueba de concurrencia real. `PUT` es idempotente y conserva el orden. El `CASCADE` evita tocar la papelera (SRP).
+- Desglose bien separado: `useFolderDisclosure` (turnos por carpeta), `toFolderDisclosure` (cambios locales) y `NodeTable` sin conocer peticiones. Token de sangría único, sin clases por nivel.
+- Accesibilidad cuidada: `aria-controls` con las filas reales, foco al quitar un fijado, Escape solo cierra el menú dentro del cajón. Pruebas nombradas por CA y estado de mockup.
