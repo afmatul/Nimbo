@@ -230,7 +230,7 @@ identificador.
 > Estado del mockup: `Pendiente` · `Borrador` · `Aprobado`. Rutas relativas a `docs/design/`.
 > Actualicen la columna «Mockup» con lo que ya existe; el `ui-designer` la mantiene al día.
 > Los mockups `Borrador` provienen de Claude Design (`.dc.html`) o están escritos a mano en HTML autocontenido
-> (`.html`), como `mockups/identity/seguridad/`, `mockups/identity/terminos/`, `mockups/identity/privacidad/` y los estados nuevos de `mockups/storage/carga/` y `mockups/storage/explorador/`. Solo
+> (`.html`), como `mockups/identity/seguridad/`, `mockups/identity/terminos/`, `mockups/identity/privacidad/`, `mockups/backoffice/admin/` y los estados nuevos de `mockups/storage/carga/` y `mockups/storage/explorador/`. Solo
 > cubren los estados entre paréntesis; el resto de estados mínimos se agregan con `/mockup` antes de aclarar la spec.
 > Cada carpeta tiene un `README.md`.
 
@@ -264,7 +264,7 @@ identificador.
 | Panel del agente | intelligence | 020 | `mockups/intelligence/panel-agente/` | `capturas/intelligence/panel-agente/` | vacio, respondiendo, con-citas, cita-incierta, limite-alcanzado | Borrador (con-citas) |
 | Optimizador | optimizer | 021 | `mockups/optimizer/optimizador/` | `capturas/optimizer/optimizador/` | estimacion, no-conviene, procesando, completado | Borrador (estimacion) |
 | Mi bitácora de auditoría | backoffice | 004 | `mockups/backoffice/mi-auditoria/` | … | default, vacio | Pendiente |
-| Admin: cuentas y catálogo | backoffice | 011 | `mockups/backoffice/admin/` | `capturas/backoffice/admin/` | default | Borrador (default, vista de cuentas) |
+| Admin: cuentas y ficha | backoffice | 011 | `mockups/backoffice/admin/` | `capturas/backoffice/admin/` | default, vacio, cargando, error, confirmar-suspender, suspendida | Borrador (default, vacio, cargando, error, confirmar-suspender, suspendida, confirmar-reactivar, propia-cuenta) |
 | Soporte: metadatos y operaciones | backoffice | 011 | `mockups/backoffice/soporte/` | … | default (sin contenido de archivos) | Pendiente |
 | Operador: estado y colas | backoffice | 022 | `mockups/backoffice/operacion/` | … | sano, con-fallos | Pendiente |
 
