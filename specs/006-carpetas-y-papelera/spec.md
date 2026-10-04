@@ -10,7 +10,7 @@
 | Requisitos | RF-10, RF-11 (principales); aplican RF-07, RF-12 (parcial), RNF-05, RNF-13, RNF-14, RNF-17 |
 | Depende de | 005 (archivos, cargas, cuota, `FileService`), 003 (`Actor`, `accessibleNodes`, RLS), 006a (retención en papelera por plan), 004 (solo el puerto `IAuditLogger`, ya declarado por 005) |
 | DF | DF-15 (`FoldersController`), DF-33 (`carpeta_id`, `carpeta_destino_id`), DF-40 (ADR-0011: tablas `archivo` y `carpeta` separadas), DF-52 y PD-19 (purga bajo RLS, patrón ya usado por 005) |
-| Última actualización | 2026-09-30 |
+| Última actualización | 2026-10-03 (aprobada por Adrián; CA-26 a CA-28 por implementar; agrega RF-38) |
 
 ## 1. Contexto y objetivo
 005 dejó todos los archivos en una sola raíz y sin forma de borrarlos. Esta spec permite organizar el espacio en carpetas
@@ -59,6 +59,11 @@ carpetas y archivos, sube a la carpeta que tiene abierta, restaura desde la pape
 - **CA-24** (RF-07, RNF-17) Dado eliminar, restaurar, eliminar definitivamente, vaciar y purgar (manual o programada), cuando se revisan auditoría y bitácoras, entonces cada una deja un evento por `IAuditLogger` con actor, tipo, UUID del recurso, cantidad de elementos, bytes y `correlationId`, y **nunca** nombres de archivos o carpetas. Crear, renombrar y mover no se auditan.
 - **CA-25** (RNF-13, RNF-14) Dado la interfaz de carpetas y papelera, cuando se usa a 360 y 1440 px, entonces cada estado de §6 existe en español, con causa y acción correctiva, sin violaciones serias de axe.
 
+### Navegación de carpetas (revisión de Adrián, 2026-10-03; pendiente de implementar)
+- **CA-26** (HU-1) Dado una carpeta propia en la lista de Mis archivos, cuando el cliente la desglosa (control de expandir con `aria-expanded`, además de abrirla como en CA-5), entonces ve sus subcarpetas y archivos directos (carpetas primero) bajo la fila y con sangría, sin salir de la carpeta actual; al contraer deja de verlos. Cada subcarpeta se puede desglosar a su vez y las acciones de la fila (renombrar, mover, mover a la papelera) valen en cualquier nivel. La carga usa `GET /folders/contents` de la carpeta desglosada y muestra cargando, vacía y error con «Reintentar» solo en esa fila.
+- **CA-27** (HU-1, RF-38) Dado una carpeta o un archivo propios, cuando el cliente usa «Fijar en la barra lateral» (menú de la fila; «Quitar de la barra lateral» lo desfija), o abre una carpeta o descarga un archivo, entonces la barra lateral muestra la sección «Accesos rápidos» con dos grupos: **Fijados** (hasta 5, los que el cliente eligió) y **Recientes** (los últimos 5 abiertos, sin repetir los fijados), mezclando carpetas y archivos con su ícono. Cada elemento es un enlace (una carpeta abre su contenido; un archivo se descarga como en 005) y **no se desglosa** en la barra. Si hay más recientes que los visibles, al final aparece «Ver más», que lleva a Mis archivos (raíz); sin más, no aparece. Un elemento en la papelera, purgado o ajeno no aparece (al restaurarlo, sus marcas siguen). Sin fijados ni recientes la sección se oculta. Aplica a la barra de escritorio y al menú móvil.
+- **CA-28** (HU-1, RF-38, RNF-05) Dado el cliente con accesos rápidos, cuando intenta fijar un sexto elemento, entonces ve «Ya fijaste 5 elementos. Quita uno para fijar otro.» y no cambia nada (el tope es un valor técnico que fija el plan, 5 de inicio). Los accesos rápidos viven en el servidor, por cuenta, y se ven en todos los dispositivos; el cliente B nunca ve ni modifica los de A (`accessibleNodes(actor)` dentro de la consulta; ids ajenos o inexistentes responden `404` idéntico), y los roles internos reciben `403`. No se auditan ni dejan nombres en bitácoras. Se añade a `pnpm test:isolation`.
+
 ## 4. Reglas de negocio
 - **RN-1** Retención en papelera: 7/30/60/90 días del catálogo (`product-context.md` §3), leída de `PlanLimits`; nunca escrita en código ni en esta spec como constante. Hoy `PlanLimits` solo trae cuota y máximo por archivo: el plan decide cómo se amplía (DF-51).
 - **RN-2** Eliminar es lógico y reversible hasta la purga; solo la purga borra bytes y libera cuota (DF-38: 006 reduce `espacio_usado`).
@@ -78,24 +83,28 @@ carpetas y archivos, sube a la carpeta que tiene abierta, restaura desde la pape
 | Pantalla | Mockup (`docs/design/mockups/…`) | Estados requeridos | Estado del mockup |
 |---|---|---|---|
 | Papelera | `storage/papelera/` | default, vacio, cargando, error, restaurar-con-aviso, confirmar-eliminar-definitivo, vaciar | En elaboración por `ui-designer` (`/mockup`, logos y sistema Cielo Sereno); propuesta p. 11 como base |
-| Mis archivos con carpetas | `storage/explorador/` | contenido de carpeta, migas, carpeta-vacia, nueva-carpeta, renombrar, mover (selector de destino), error-nombre, error-mover | En elaboración por `ui-designer`; propuesta p. 08–09 como base |
+| Mis archivos con carpetas | `storage/explorador/` | contenido de carpeta, migas, carpeta-vacia, nueva-carpeta, renombrar, mover (selector de destino), error-nombre, error-mover; **nuevos (CA-26, CA-27):** carpeta-desglosada (con sangría, a dos niveles), desglosando-cargando, desglosada-vacia, desglosada-error, menu-fila con «Fijar en la barra lateral» / «Quitar de la barra lateral» (carpetas y archivos), tope-de-fijados | En elaboración por `ui-designer`; propuesta p. 08–09 como base. Los estados nuevos están por dibujar |
+| Barra lateral: Accesos rápidos | `shared/layout/` | **nuevos (CA-27, CA-28):** fijados-y-recientes (5 + 5, con carpetas y archivos mezclados), solo-recientes, solo-fijados, con-ver-mas, sin-accesos (sección oculta), tope-de-fijados (aviso), movil-cajon-con-accesos (360 px). El `ui-designer` comprueba que 5 + 5 no se vea apretado ni cargue de más (P-15) y propone el ajuste | Por dibujar por `ui-designer` (`/mockup`); regenera las capturas de `capturas/shared/layout/` |
 
 - **Dependencia para pasar a `Lista`:** mockups y capturas de ambas pantallas en `docs/design/mockups/` con todos los estados de la tabla, revisados por Adrián.
 - **Mensajes clave** (español, tuteo, con acción): papelera vacía «La papelera está vacía» / «Lo que elimines aparecerá aquí durante {días} días, la retención de tu plan.»; aviso de purga próxima (umbral fijo de 7 días en la UI) «{n} elementos se eliminarán definitivamente en los próximos 7 días. Restáuralos antes de esa fecha si los necesitas.»; tras eliminar «Movimos «{nombre}» a la papelera.» con «Ver papelera».
 - **Cambios frente al mockup firmado de la papelera:** se corrige el texto «descárgalos» (no se descarga desde la papelera); sin «Eliminado por», «Eliminados por mí» ni «se vuelven a indexar» (futuro, ver §7); el botón principal usa el token corregido (DF-41).
 - **Menú de la fila:** la acción se llama «Mover a la papelera» (no «Eliminar») y no usa color destructivo; el rojo queda solo para «Eliminar definitivamente» en la papelera.
 - **Avisos** (p. ej. «Movimos «{nombre}» a la papelera.»): aviso no bloqueante (`role="status"`, ≥ 8 s), con `sonner` (ADR-0024).
-- La barra lateral de 005 recupera «Carpetas» y el contador de la Papelera (`mockups/storage/explorador/README.md`).
+- La barra lateral de 005 recupera «Carpetas» y el contador de la Papelera (`mockups/storage/explorador/README.md`); pasa a «Accesos rápidos» con fijados y recientes, carpetas y archivos, sin desglose (CA-27, CA-28). Las filas de carpeta se desglosan en la lista (CA-26): el mockup `storage/explorador/` agrega el estado «carpeta desglosada».
 
 ## 7. Fuera de alcance
 - Compartir carpetas, permisos heredados, «Eliminado por» y «Eliminados por mí» (012); enlaces públicos (013); versiones y restaurar versión (014).
-- Cuota mostrada, desglose por tipo, ordenar, filtros, cuadrícula y selección múltiple del explorador (007); búsqueda (018); aviso «se vuelven a indexar» y reindexación al restaurar (019).
-- Descargar carpetas o `.zip`; descargar desde la papelera; mover por arrastre; copiar; favoritos y recientes; «Deshacer» flotante; auditar crear, renombrar y mover.
-- Restauración por Soporte (011); bloqueo en solo lectura por plan vencido (010); conciliación nocturna de `espacio_usado` (007).
+- Cuota mostrada, desglose por tipo y ordenar (007); filtros del explorador (018, con la búsqueda); cuadrícula y selección múltiple (diferidas por YAGNI en la spec 007 §7); búsqueda (018); aviso «se vuelven a indexar» y reindexación al restaurar (019).
+- Descargar carpetas o `.zip`; descargar desde la papelera; mover por arrastre; copiar; favoritos y recientes de archivos y de otras secciones (PD-34; en 006 solo los accesos rápidos de la barra lateral, RF-38, CA-27 y CA-28); «Deshacer» flotante; auditar crear, renombrar y mover.
+- Restauración por Soporte (011); bloqueo en solo lectura por plan vencido (010); conciliación programada de `espacio_usado` (007, cola `usage-reconcile`).
 - Carpetas inteligentes y todo lo de `product-context.md` §9.
 
 ## 8. Preguntas
-Sin preguntas abiertas. Pendiente no es una pregunta sino una dependencia: los mockups de §6 (en curso) para pasar a `Lista`. El valor exacto de la profundidad máxima y el modo de ampliar `PlanLimits` se deciden en el plan.
+Pendiente no es una pregunta sino una dependencia: los mockups de §6 (en curso) para pasar a `Lista`. El valor exacto de la profundidad máxima y el modo de ampliar `PlanLimits` se deciden en el plan. Resueltas por la revisión del 2026-10-03:
+- [RESUELTA] P-13 Se agrega el requisito **RF-38** (accesos rápidos: fijados y recientes, carpetas y archivos) a `product-context.md` §6; cierra PD-34 para esta parte → CA-27, CA-28 (2026-10-03, Adrián)
+- [RESUELTA] P-14 Viven en el servidor, por cuenta; obliga a redibujar el diagrama de clases de M2 y el E-R (DF-63) → CA-28 (2026-10-03, Adrián)
+- [RESUELTA] P-15 Se parte de 5 fijados y 5 recientes; el `ui-designer` lo valida en el mockup para que no se vea apretado ni cargue cognitivamente, y el plan lo deja como configuración → CA-27, CA-28 (2026-10-03, Adrián)
 
 ## 9. Registro de cambios
 | Fecha | Cambio | Motivo | Aprobó |
@@ -105,4 +114,6 @@ Sin preguntas abiertas. Pendiente no es una pregunta sino una dependencia: los m
 | 2026-09-30 | CA-15: restaurar por encima de la profundidad máxima responde `422` y sugiere mover la carpeta original. CA-18: «Vaciar» es diferido («Vaciando…»). Estado `Lista` | Aprobación del plan | Adrián |
 | 2026-09-30 | Estado `En curso`: T-01 (migraciones, entidades y fragmentos de `access`) en la rama | `/implement 006` | — |
 | 2026-09-30 | UX sobre los mockups: extensión fija al renombrar archivos (CA-4); mensaje 409 al mover carpeta (CA-3, CA-7); crear carpeta desde «Mover a…» (CA-7); acción «Mover a la papelera» sin color destructivo (CA-10, CA-11, §6); avisos con `sonner`, `role="status"`, ≥ 8 s (§6) | Revisión de mockups | Adrián |
+| 2026-10-03 | Revisión de Adrián: se agregan CA-26 (desglosar carpetas en la lista de Mis archivos) y CA-27 (límite de carpetas en la barra lateral con «Ver más»). La cancelación de carga no se probó en navegador (el archivo sube muy rápido); queda aprobada por las pruebas. Aprobada por Adrián, pendiente de integrar | Recorrido de la demo (T-11) | Adrián |
+| 2026-10-03 | CA-27 cambia: la barra lateral tiene «Accesos rápidos» con Fijados (hasta 5) y Recientes (5), de carpetas y archivos, sin desglose, con «Ver más» (antes: solo carpetas de primer nivel con límite). Nuevo CA-28 (tope, servidor, aislamiento) y RF-38 en `product-context.md`. §6 agrega los estados de mockup de CA-26 a CA-28 (`storage/explorador/` y `shared/layout/`); §7 aclara que «favoritos y recientes» sigue fuera salvo esto. P-13 a P-15 resueltas. DF-63: redibujar clases de M2 y E-R | Propuesta y decisiones de Adrián en la revisión | Adrián |
 | 2026-09-30 | UX de la papelera aprobada (decisiones 9–14 del mockup): resumen en dos bloques sobre la lista, «Restaurar» visible y «Eliminar definitivamente» en ⋮; aviso de purga próxima a 7 días; resultado de restaurar en aviso (uno sin cambios) o panel por elemento; la selección solo restaura; texto de papelera vacía con los días; «Eliminando…» si tarda > 2 s (§6) | Revisión de mockups | Adrián |

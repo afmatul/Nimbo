@@ -151,6 +151,7 @@ El tipo real se valida por contenido (magic bytes), no por extensión (RF-14).
 | RF-35 | Estimar ahorro antes de optimizar; no ofrecer si es marginal | Debe | optimizer | 3 |
 | RF-36 | Reducir PDF/imagen validando integridad y conservando original | Debería | optimizer | 3 |
 | RF-37 | Tablero de estado y trabajos con reintento para el Operador | Debe | ops | 3 |
+| RF-38 | Accesos rápidos en la barra lateral: carpetas y archivos fijados por el cliente y recientes (5 + 5 de inicio), por cuenta (spec 006, 2026-10-03) | Debería | storage | 2 |
 
 > RF-08: el progreso «en tiempo real» lo mide el navegador sobre su propia carga (DF-58, spec 005); su difusión a
 > otras pestañas o dispositivos por `realtime`, si se hace, llega con la spec 015.
