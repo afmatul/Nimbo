@@ -20,6 +20,7 @@ import { FolderBreadcrumbs } from './components/folder-breadcrumbs';
 import { FolderNotFoundState } from './components/folder-not-found-state';
 import { NameConflictDialog } from './components/name-conflict-dialog';
 import { NewFolderDialog } from './components/new-folder-dialog';
+import type { DisclosedLevel, FolderDisclosure } from './components/node-table';
 import { UploadPanel } from './components/upload-panel';
 import { StorageRequestError, type StorageErrorDetails } from './storage-request-error';
 import type { UploadPhase, UploadView } from './upload/upload-manager';
@@ -538,6 +539,66 @@ describe('Accesibilidad de los estados de carga y descarga (CA-21)', () => {
       expect(
         document.querySelector('[aria-label="Mostrar 8 carpetas intermedias"]'),
       ).not.toBeNull();
+      await expectNoBlockingViolations();
+    });
+  });
+
+  describe('carpetas desglosadas (006 CA-26)', () => {
+    const ALPHA_NODE: NodeSummary = {
+      type: 'folder',
+      ...ALPHA,
+      parentId: null,
+      createdAt: FILE.createdAt,
+    };
+    const FASE3_NODE: NodeSummary = {
+      type: 'folder',
+      ...FASE3,
+      parentId: ALPHA.id,
+      createdAt: FILE.createdAt,
+    };
+    const PROMPTS_IN_FASE3: NodeSummary = { ...PROMPTS, parentId: FASE3.id };
+
+    function renderDisclosed(levels: Readonly<Record<string, DisclosedLevel>>): Promise<void> {
+      const disclosure: FolderDisclosure = {
+        levelOf: (folderId) => levels[folderId],
+        toggle: jest.fn(),
+        retry: jest.fn(),
+      };
+      return renderExplorer({
+        nodes: [ALPHA_NODE, FILE_NODE],
+        disclosure,
+        renderRowActions: (node) => <button type="button">{`Acciones de ${node.name}`}</button>,
+      });
+    }
+
+    it('desglosada a dos niveles', async () => {
+      await renderDisclosed({
+        [ALPHA.id]: { status: 'ready', nodes: [FASE3_NODE, { ...FILE_NODE, id: 'f-2' }] },
+        [FASE3.id]: { status: 'ready', nodes: [PROMPTS_IN_FASE3] },
+      });
+
+      expect(document.querySelectorAll('[aria-expanded="true"]')).toHaveLength(2);
+      await expectNoBlockingViolations();
+    });
+
+    it('desglosando: cargando', async () => {
+      await renderDisclosed({ [ALPHA.id]: { status: 'loading' } });
+
+      expect(text()).toContain('Cargando el contenido de Proyecto Alpha…');
+      await expectNoBlockingViolations();
+    });
+
+    it('desglosada vacía', async () => {
+      await renderDisclosed({ [ALPHA.id]: { status: 'ready', nodes: [] } });
+
+      expect(text()).toContain('Esta carpeta está vacía');
+      await expectNoBlockingViolations();
+    });
+
+    it('desglosada con error y «Reintentar»', async () => {
+      await renderDisclosed({ [ALPHA.id]: { status: 'error' } });
+
+      expect(text()).toContain('No pudimos cargar el contenido de Proyecto Alpha.');
       await expectNoBlockingViolations();
     });
   });

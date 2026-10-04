@@ -21,6 +21,7 @@ recargar las pierde (RN-7). Las páginas leen el contexto con `useUploads()`.
 | `hooks/use-upload-manager.ts`, `components/uploads-provider.tsx`                    | Manager por pestaña, eventos de red, panel y diálogos conectados                                   | T-53       |
 | `components/my-files.tsx`                                                           | Vista de `/archivos` y de cada carpeta: barra lateral, migas, listado, subir a la carpeta abierta  | T-54, 006  |
 | `components/node-table.tsx`, `folder-breadcrumbs.tsx`, `folder-not-found-state.tsx` | Tabla de carpetas y archivos, migas («…» con más de 4 niveles) y «‹ Volver», 404 de carpeta        | 006 T-08   |
+| `components/node-rows.tsx`, `hooks/use-folder-disclosure.ts`                        | Filas de carpeta y archivo con sangría; desglose de carpetas en la lista (cargando, vacía, error)  | 006 CA-26  |
 | `components/new-folder-dialog.tsx`                                                  | «Nueva carpeta» (sobre `components/ui/dialog`): errores 400/409 en el campo y 422 como aviso       | 006 T-08   |
 | `components/rename-dialog.tsx`                                                      | «Renombrar»: extensión fija como sufijo; 409 de archivo con «Conservar ambos»                      | 006 T-09   |
 | `components/move-dialog.tsx`, `move-folder-tree.tsx`, `hooks/use-folder-tree.ts`    | «Mover a…»: árbol `tree` con carga perezosa, destinos deshabilitados y 409/422                     | 006 T-09   |
@@ -64,3 +65,8 @@ Los textos de error de `storage` salen de `lib/error-catalog.ts` (`storageMessag
   pasa y los textos omiten la cifra (propuesta en el registro de cambios de la spec).
 - La página muestra solo la primera página de `GET /folders/contents` (carpetas primero, luego más recientes);
   «Cargar más» llega con 007.
+- Desglose (006 CA-26): `useFolderDisclosure` pide `GET /folders/contents` de cada carpeta desglosada y descarta la
+  respuesta de una carpeta ya contraída. `MyFiles` aplica a cada nivel lo mismo que a la ubicación abierta (cargas,
+  `organized-nodes.ts` con lo que llegó por «Mover a…» y lo enviado a la papelera), así una acción en cualquier nivel
+  se ve en el nivel correcto; «Renombrar» y «Mover a…» toman las hermanas y las migas del nivel del elemento.
+  «Actualizar lista» vuelve a pedir también las carpetas desglosadas.

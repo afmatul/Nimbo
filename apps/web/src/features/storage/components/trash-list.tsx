@@ -22,7 +22,7 @@ import {
   remainingLabel,
 } from '../trash-dates';
 
-import { CHIP_TYPE_BY_KIND } from './node-table';
+import { CHIP_TYPE_BY_KIND } from './node-rows';
 import { originalPlaceName } from './restore-result';
 
 export interface TrashListProps {

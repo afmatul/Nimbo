@@ -7,8 +7,24 @@ import type { FolderRef, NodeSummary } from '@nimbo/contracts';
 export type OrganizedNodes = ReadonlyMap<string, NodeSummary>;
 
 /** Carpeta donde está el elemento; `null` es la raíz. */
-function locationOf(node: NodeSummary): string | null {
+export function locationOf(node: NodeSummary): string | null {
   return node.type === 'folder' ? node.parentId : node.folderId;
+}
+
+/**
+ * Suma al final lo que llegó a `folderId` en esta vista y el listado aún no trae (p. ej. movido desde una carpeta
+ * desglosada, 006 CA-26).
+ */
+export function withArrivals(
+  nodes: readonly NodeSummary[],
+  organized: OrganizedNodes,
+  folderId: string | null,
+): readonly NodeSummary[] {
+  const listed = new Set(nodes.map((node) => node.id));
+  const arrived = [...organized.values()].filter(
+    (node) => locationOf(node) === folderId && !listed.has(node.id),
+  );
+  return [...nodes, ...arrived];
 }
 
 /** Reemplaza cada elemento por su último estado y quita lo que ya no está en `folderId`. */

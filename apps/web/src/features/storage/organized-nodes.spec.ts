@@ -1,6 +1,6 @@
 import type { FolderRef, NodeSummary } from '@nimbo/contracts';
 
-import { withOrganized, withOrganizedRootFolders } from './organized-nodes';
+import { withArrivals, withOrganized, withOrganizedRootFolders } from './organized-nodes';
 
 const AT = '2026-09-30T10:00:00.000Z';
 const ALPHA = '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d';
@@ -47,6 +47,23 @@ describe('withOrganized (006 CA-4, CA-7)', () => {
     ]);
 
     expect(withOrganized(listed, organized, ALPHA).map((node) => node.id)).toEqual(['f-1']);
+  });
+});
+
+describe('withArrivals (006 CA-26)', () => {
+  it('CA-26: suma lo que llegó a la carpeta desde otro nivel, sin repetir lo listado', () => {
+    const listed = [folder(BETA, 'Beta', ALPHA), file('f-1', 'a.pdf', ALPHA)];
+    const organized = new Map([
+      ['f-1', file('f-1', 'a2.pdf', ALPHA)],
+      ['f-9', file('f-9', 'llegó.pdf', ALPHA)],
+      ['f-8', file('f-8', 'otra.pdf', BETA)],
+    ]);
+
+    expect(withArrivals(listed, organized, ALPHA).map((node) => node.id)).toEqual([
+      BETA,
+      'f-1',
+      'f-9',
+    ]);
   });
 });
 

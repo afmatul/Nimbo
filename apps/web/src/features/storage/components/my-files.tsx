@@ -1,6 +1,12 @@
 'use client';
 
-import type { FileSummary, FolderRef, FolderSummary, NodeSummary } from '@nimbo/contracts';
+import type {
+  FileSummary,
+  FolderContentsResponse,
+  FolderRef,
+  FolderSummary,
+  NodeSummary,
+} from '@nimbo/contracts';
 import { Folder } from 'lucide-react';
 import * as React from 'react';
 
@@ -11,10 +17,21 @@ import {
   useRootFolders,
   type FolderListing,
 } from '../hooks/use-folder-contents';
+import {
+  toFolderDisclosure,
+  useFolderDisclosure,
+  type FolderDisclosureState,
+} from '../hooks/use-folder-disclosure';
 import { useMoveToTrash } from '../hooks/use-move-to-trash';
 import { useTrashCount } from '../hooks/use-trash-count';
 import { useUploads } from '../hooks/use-upload-manager';
-import { withOrganized, withOrganizedRootFolders, type OrganizedNodes } from '../organized-nodes';
+import {
+  locationOf,
+  withArrivals,
+  withOrganized,
+  withOrganizedRootFolders,
+  type OrganizedNodes,
+} from '../organized-nodes';
 import { folderPath } from '../routes';
 
 import { FileExplorer, placeNameOf } from './file-explorer';
@@ -46,11 +63,55 @@ function withUploaded(
   ];
 }
 
-function readyContents(listing: FolderListing): {
+/** Lo que esta pestaña ya sabe y el listado aún no: cargas, renombrados o movidos y enviados a la papelera. */
+interface LocalChanges {
+  readonly uploaded: readonly FileSummary[];
+  readonly organized: OrganizedNodes;
+  readonly trashedIds: ReadonlySet<string>;
+}
+
+/** Lo que se ve de una ubicación (la abierta o una carpeta desglosada, CA-26) con los cambios de la pestaña. */
+function visibleAt(
+  changes: LocalChanges,
+  folderId: string | null,
+  listed: readonly NodeSummary[],
+): readonly NodeSummary[] {
+  const withLocal = withUploaded(
+    changes.uploaded,
+    folderId,
+    withArrivals(listed, changes.organized, folderId),
+  );
+  return withOrganized(withLocal, changes.organized, folderId).filter(
+    (node) => !changes.trashedIds.has(node.id),
+  );
+}
+
+/** Migas y contenido visible de una ubicación. */
+interface Level {
   readonly breadcrumbs: readonly FolderRef[];
-  readonly items: readonly NodeSummary[];
-} {
+  readonly nodes: readonly NodeSummary[];
+}
+
+function readyContents(
+  listing: FolderListing,
+): Pick<FolderContentsResponse, 'breadcrumbs' | 'items'> {
   return listing.status === 'ready' ? listing.contents : { breadcrumbs: [], items: [] };
+}
+
+/**
+ * Nivel donde está el elemento: la ubicación abierta o la carpeta desglosada que lo muestra. Así «Renombrar» y
+ * «Mover a…» comparan con sus hermanas y parten de su carpeta, en cualquier nivel (CA-26).
+ */
+function levelOfNode(
+  node: NodeSummary,
+  opened: Level & { readonly folderId: string | null },
+  disclosed: { readonly state: FolderDisclosureState; readonly changes: LocalChanges },
+): Level {
+  const location = locationOf(node);
+  const listing = location === null ? undefined : disclosed.state.listingOf(location);
+  if (location === opened.folderId || listing?.status !== 'ready') return opened;
+  const { breadcrumbs, items } = listing.contents;
+  return { breadcrumbs, nodes: visibleAt(disclosed.changes, location, items) };
 }
 
 /** Elemento con «Renombrar» o «Mover a…» abierto (006 CA-4, CA-7). */
@@ -88,10 +149,12 @@ export function MyFiles({ folderId }: MyFilesProps): React.JSX.Element {
   const [organized, setOrganized] = React.useState<OrganizedNodes>(() => new Map());
   const requestUrl = React.useCallback((fileId: string) => api.downloadUrl(fileId), [api]);
   const { breadcrumbs, items } = readyContents(listing);
-  const refresh = React.useCallback(() => {
+  const disclosed = useFolderDisclosure(load);
+  const refresh = (): void => {
     setNotice(null);
     reload();
-  }, [reload]);
+    disclosed.refreshAll();
+  };
   const trashCount = useTrashCount(api);
   const { trashedIds, moveToTrash } = useMoveToTrash({
     api,
@@ -99,11 +162,19 @@ export function MyFiles({ folderId }: MyFilesProps): React.JSX.Element {
     onNotice: setNotice,
     onRefresh: refresh,
   });
-  const nodes = withOrganized(
-    withUploaded(uploadedFiles, folderId, items),
-    organized,
-    folderId,
-  ).filter((node) => !trashedIds.has(node.id));
+  const changes: LocalChanges = { uploaded: uploadedFiles, organized, trashedIds };
+  const nodes = visibleAt(changes, folderId, items);
+  const disclosure = toFolderDisclosure(disclosed, (id, contents) =>
+    visibleAt(changes, id, contents.items),
+  );
+  const organizingLevel =
+    organizing === null
+      ? null
+      : levelOfNode(
+          organizing.node,
+          { folderId, breadcrumbs, nodes },
+          { state: disclosed, changes },
+        );
 
   const remember = React.useCallback(
     (node: NodeSummary) => {
@@ -145,6 +216,7 @@ export function MyFiles({ folderId }: MyFilesProps): React.JSX.Element {
             onRetry={reload}
             onNewFolder={() => setCreatingFolder(true)}
             fileInputRef={fileInputRef}
+            disclosure={disclosure}
             renderRowActions={(node) =>
               node.type === 'file' ? (
                 <FileRowMenu
@@ -186,7 +258,7 @@ export function MyFiles({ folderId }: MyFilesProps): React.JSX.Element {
         <RenameDialog
           key={organizing.node.id}
           node={organizing.node}
-          siblingFolderNames={folderNamesOf(nodes)}
+          siblingFolderNames={folderNamesOf(organizingLevel?.nodes ?? nodes)}
           renameFile={(fileId, body) => api.renameFile(fileId, body)}
           renameFolder={(id, body) => api.renameFolder(id, body)}
           onRenamed={remember}
@@ -197,7 +269,7 @@ export function MyFiles({ folderId }: MyFilesProps): React.JSX.Element {
         <MoveDialog
           key={organizing.node.id}
           node={organizing.node}
-          breadcrumbs={breadcrumbs}
+          breadcrumbs={organizingLevel?.breadcrumbs ?? breadcrumbs}
           folderContents={load}
           createFolder={(body) => api.createFolder(body)}
           moveFile={(fileId, body) => api.moveFile(fileId, body)}

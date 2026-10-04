@@ -10,7 +10,7 @@ import { MY_FILES_LABEL } from '../routes';
 
 import { ExplorerErrorState } from './explorer-error-state';
 import { FolderBackLink } from './folder-breadcrumbs';
-import { NodeTable } from './node-table';
+import { NodeTable, type FolderDisclosure } from './node-table';
 import { UploadDropzone } from './upload-dropzone';
 
 export type FileExplorerStatus = 'loading' | 'ready' | 'error';
@@ -34,6 +34,8 @@ export interface FileExplorerProps {
   /** Selector de archivos de la vista, para que otro control (p. ej. «Subir de nuevo» del panel) lo abra. */
   readonly fileInputRef?: React.RefObject<HTMLInputElement | null>;
   readonly renderRowActions?: (node: NodeSummary) => React.ReactNode;
+  /** Desglose de carpetas en la lista (CA-26); sin él, las carpetas solo se abren. */
+  readonly disclosure?: FolderDisclosure | undefined;
   /** Aviso que va arriba de la lista (fallo de descarga, CA-21 de 005). */
   readonly notice?: React.ReactNode;
 }
@@ -90,6 +92,7 @@ export function FileExplorer({
   onNewFolder,
   fileInputRef,
   renderRowActions,
+  disclosure,
   notice,
 }: FileExplorerProps): React.JSX.Element {
   const ownInputRef = React.useRef<HTMLInputElement>(null);
@@ -142,6 +145,7 @@ export function FileExplorer({
           onRetry={onRetry}
           onUpload={openPicker}
           renderRowActions={renderRowActions}
+          disclosure={disclosure}
         />
       </UploadDropzone>
     </section>
@@ -183,6 +187,7 @@ interface ExplorerBodyProps {
   readonly onRetry: () => void;
   readonly onUpload: () => void;
   readonly renderRowActions: FileExplorerProps['renderRowActions'] | undefined;
+  readonly disclosure: FolderDisclosure | undefined;
 }
 
 function ExplorerBody({
@@ -194,6 +199,7 @@ function ExplorerBody({
   onRetry,
   onUpload,
   renderRowActions,
+  disclosure,
 }: ExplorerBodyProps): React.JSX.Element {
   if (status === 'loading') {
     const title = isRoot ? 'Cargando tus archivos…' : 'Cargando el contenido de la carpeta…';
@@ -206,7 +212,14 @@ function ExplorerBody({
   if (nodes.length === 0) {
     return <EmptyExplorer isRoot={isRoot} maxFileLabel={maxFileLabel} onUpload={onUpload} />;
   }
-  return <NodeTable nodes={nodes} placeName={placeName} renderRowActions={renderRowActions} />;
+  return (
+    <NodeTable
+      nodes={nodes}
+      placeName={placeName}
+      renderRowActions={renderRowActions}
+      disclosure={disclosure}
+    />
+  );
 }
 
 /** Textos del vacío: la raíz es el de 005; una carpeta invita también a crear una subcarpeta (`carpeta-vacia`). */
