@@ -38,17 +38,7 @@ const MONICA = CUENTAS.find((c) => c[0] === YO.nombre);
 const CSS = A.CSS + `
   /* Propio de backoffice/admin (spec 011: cuentas y ficha) */
 
-  /* Búsqueda por correo (Input + Button) */
-  .search { margin-top: 20px; }
-  .search label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; }
-  .search-row { display: flex; gap: 10px; max-width: 560px; }
-  .input-wrap { position: relative; flex: 1; min-width: 0; }
-  .input-wrap .ico { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted-foreground); pointer-events: none; }
-  .input { width: 100%; min-height: 40px; padding: 8px 12px 8px 38px; border: 1px solid var(--input); border-radius: var(--radius-md); background: var(--card); color: var(--foreground); font: inherit; font-size: 14px; }
-  .input::placeholder { color: var(--muted-foreground); }
-  .input:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
-  .search-hint { margin: 6px 0 0; font-size: 12.5px; color: var(--muted-foreground); }
-
+${A.CSS_BUSQUEDA}
   /* Tabla de cuentas */
   .accounts { margin-top: 16px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); overflow: hidden; }
   .accounts table { width: 100%; border-collapse: collapse; }
@@ -75,12 +65,7 @@ const CSS = A.CSS + `
   .use-warn span { background: var(--warning); }
   .use-full span { background: var(--destructive-soft); }
 
-  /* Paginación */
-  .pager { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; margin-top: 14px; font-size: 13px; color: var(--secondary-foreground); }
-  .pager p { margin: 0; }
-  .pager-ctrl { display: flex; align-items: center; gap: 8px; }
-  .pager-page { min-width: 96px; text-align: center; white-space: nowrap; }
-
+${A.CSS_PAGINACION}
   /* Esqueleto de la lista (StateView y skeleton-line en area.js) */
   .sk-row { display: grid; grid-template-columns: minmax(0, 1fr) 124px 136px 100px 112px 176px 104px; gap: 0 14px; align-items: center; padding: 14px; border-bottom: 1px solid var(--border); }
   .sk-row:last-child { border-bottom: 0; }
@@ -115,22 +100,14 @@ const CSS = A.CSS + `
   }
   @media (max-width: 600px) {
     .page-head .btn { width: 100%; }
-    .search-row { max-width: none; }
-    .input { min-height: 44px; }
-    .search .btn { min-height: 44px; }
-    /* Tabla → filas apiladas: la primera celda resume todo; el resto de columnas se ocultan */
+${A.CSS_BUSQUEDA_MQ600}    /* Tabla → filas apiladas: la primera celda resume todo; el resto de columnas se ocultan */
     .accounts thead { display: none; }
     .accounts td:not(.c-cuenta) { display: none; }
     .accounts td { padding: 14px 12px; }
     .acct-m { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 8px; font-size: 12.5px; color: var(--secondary-foreground); }
     .acct-m .use { flex-basis: 100%; }
     .acct-m .use-bar { max-width: 220px; }
-    .pager { flex-direction: column; align-items: stretch; }
-    .pager p { text-align: center; }
-    .pager-ctrl { justify-content: space-between; }
-    .pager-ctrl .btn { min-height: 44px; }
-    .pager-page { min-width: 0; }
-    .sk-row { grid-template-columns: minmax(0, 1fr); padding: 14px 12px; }
+${A.CSS_PAGINACION_MQ600}    .sk-row { grid-template-columns: minmax(0, 1fr); padding: 14px 12px; }
     .sk-row > .sk-col, .sk-head { display: none; }
     .profile-head h1 { font-size: 23px; }
     .facts { grid-template-columns: minmax(0, 1fr); }
@@ -154,16 +131,7 @@ function encabezadoLista() {
         </div>${privacidad()}`;
 }
 
-function busqueda(valor = '') {
-  return `
-        <form class="search" role="search" aria-label="Buscar cuentas" onsubmit="return false">
-          <label for="q">Buscar por correo</label>
-          <div class="search-row">
-            <div class="input-wrap">${icon('search', 16)}<input class="input" id="q" name="q" type="search" inputmode="email" autocomplete="off" placeholder="nombre@dominio.com" value="${valor}"></div>
-            <button class="btn btn-outline" type="submit">Buscar</button>
-          </div>
-        </form>`;
-}
+const busqueda = (valor = '') => A.busqueda({ valor });
 
 const tramo = (pct) => (pct >= 90 ? 'use-full' : pct >= 70 ? 'use-warn' : 'use-ok');
 const estadoBadge = (e) => (e === 'suspendida'
@@ -200,15 +168,7 @@ function tabla() {
             <tbody>${CUENTAS.map(fila).join('')}
             </tbody>
           </table>
-        </div>
-        <nav class="pager" aria-label="Paginación de cuentas">
-          <p class="num">Mostrando 1–10 de ${TOTAL} cuentas</p>
-          <div class="pager-ctrl">
-            <button class="btn btn-outline btn-sm" type="button" disabled>${icon('chevLeft', 16)}Anterior</button>
-            <span class="pager-page num" aria-current="page">Página 1 de ${PAGINAS}</span>
-            <button class="btn btn-outline btn-sm" type="button">Siguiente${icon('chevRight', 16)}</button>
-          </div>
-        </nav>`;
+        </div>${A.paginacion({ aria: 'Paginación de cuentas', resumen: `Mostrando 1–10 de ${TOTAL} cuentas`, paginas: PAGINAS })}`;
 }
 
 function vacio(q) {

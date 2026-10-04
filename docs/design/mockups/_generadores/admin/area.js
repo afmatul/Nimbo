@@ -1,12 +1,15 @@
 // Marco del área de administración (spec 011): íconos, persona, barra lateral, cajón, barra superior, CSS común del
 // área, comportamiento y página. Lo usan admin/generar.js (cuentas y ficha), alta-interna/generar.js (alta interna),
-// catalogo/generar.js (catálogo de planes) y metricas/generar.js (métricas agregadas).
+// catalogo/generar.js (catálogo de planes), metricas/generar.js (métricas agregadas) y soporte/generar.js (metadatos de
+// los archivos de un cliente, vistos por Soporte).
+// El área es configurable (AREA_ADMIN por defecto, AREA_SOPORTE): etiqueta, distintivo, persona y navegación. Soporte
+// usa el mismo marco con otra persona y una navegación con solo lo que puede hacer (CA-14).
 // El CSS del marco de la aplicación (tokens, barra lateral, barra superior, botones, diálogo, cajón y cortes 900/600 px)
 // viene de marco/marco.js; aquí solo se agrega lo propio del área (otra navegación y otra persona) con las mismas clases.
 // También viven aquí las piezas que usan dos o más pantallas del área: distintivos de estado, estados de pantalla
 // (vacío, error, esqueleto), diálogo de confirmación con consecuencias, botón destructivo con borde y el formulario
 // (campos, resumen de errores, aviso de auditoría y acciones; CSS_FORM, campo y resumenErrores).
-// Regla: con los valores por defecto, admin, alta-interna y catalogo se ven exactamente como en sus capturas aprobadas.
+// Regla: con los valores por defecto, admin, alta-interna, catalogo y metricas se ven exactamente como en sus capturas aprobadas.
 const M = require('../marco/marco.js');
 
 // ---------- Íconos (trazos de Lucide, 24 × 24) ----------
@@ -182,6 +185,37 @@ const CSS_FORM = `
   }
 `;
 
+// ---------- CSS de la búsqueda por correo y de la paginación ----------
+// Segundo uso (backoffice/admin y backoffice/soporte): se extraen de admin/generar.js tal cual, sin cambiar un byte; admin
+// los interpola en el mismo lugar de su CSS. Las reglas de 600 px van aparte porque viven dentro del @media de cada pantalla.
+const CSS_BUSQUEDA = `  /* Búsqueda por correo (Input + Button) */
+  .search { margin-top: 20px; }
+  .search label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; }
+  .search-row { display: flex; gap: 10px; max-width: 560px; }
+  .input-wrap { position: relative; flex: 1; min-width: 0; }
+  .input-wrap .ico { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted-foreground); pointer-events: none; }
+  .input { width: 100%; min-height: 40px; padding: 8px 12px 8px 38px; border: 1px solid var(--input); border-radius: var(--radius-md); background: var(--card); color: var(--foreground); font: inherit; font-size: 14px; }
+  .input::placeholder { color: var(--muted-foreground); }
+  .input:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+  .search-hint { margin: 6px 0 0; font-size: 12.5px; color: var(--muted-foreground); }
+`;
+const CSS_BUSQUEDA_MQ600 = `    .search-row { max-width: none; }
+    .input { min-height: 44px; }
+    .search .btn { min-height: 44px; }
+`;
+const CSS_PAGINACION = `  /* Paginación */
+  .pager { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; margin-top: 14px; font-size: 13px; color: var(--secondary-foreground); }
+  .pager p { margin: 0; }
+  .pager-ctrl { display: flex; align-items: center; gap: 8px; }
+  .pager-page { min-width: 96px; text-align: center; white-space: nowrap; }
+`;
+const CSS_PAGINACION_MQ600 = `    .pager { flex-direction: column; align-items: stretch; }
+    .pager p { text-align: center; }
+    .pager-ctrl { justify-content: space-between; }
+    .pager-ctrl .btn { min-height: 44px; }
+    .pager-page { min-width: 0; }
+`;
+
 // ---------- Comportamiento: cajón móvil (sin el resto del marco del cliente) ----------
 const JS = `
 (function () {
@@ -205,60 +239,72 @@ const JS = `
 // ---------- Piezas del marco del área ----------
 const NAV = [['users', 'Cuentas', TOTAL], ['grid', 'Catálogo de planes'], ['chart', 'Métricas']];
 
+// Áreas internas que comparten el marco. etiqueta: nombre del área (logo, navegación y rótulo); chip: distintivo junto al
+// logo; yo: persona de la barra lateral y de la barra superior; iconoRol: ícono junto al rol; nav: [ícono, etiqueta, meta].
+const AREA_ADMIN = { etiqueta: 'Administración', chip: 'ADMIN', yo: YO, iconoRol: 'shield', nav: NAV };
+// Soporte (spec 011, HU-5): solo «Metadatos de archivos» (CA-14). Bitácoras y trabajos (022b) y restauración de papelera
+// (011b) no aparecen hasta sus specs. Andrea Ruiz es la cuenta de Soporte de la lista de cuentas de backoffice/admin.
+const AREA_SOPORTE = {
+  etiqueta: 'Soporte', chip: 'SOPORTE', iconoRol: 'headset',
+  yo: { nombre: 'Andrea Ruiz', iniciales: 'AR', rol: 'Soporte', correo: 'andrea.ruiz@nimbo.gt' },
+  nav: [['fileSearch', 'Metadatos de archivos']],
+};
+
 // actual: entrada marcada con aria-current (por defecto «Cuentas», como en admin y alta-interna).
-function navegacion(idPrimero = '', actual = 'Cuentas') {
+function navegacion(idPrimero = '', actual = 'Cuentas', area = AREA_ADMIN) {
   let primero = !!idPrimero;
-  const items = NAV.map(([ic, label, meta]) => {
+  const items = area.nav.map(([ic, label, meta]) => {
     const id = primero ? ` id="${idPrimero}"` : '';
     primero = false;
     const cur = label === actual ? ' aria-current="page"' : '';
     return `\n          <li><a href="#"${id}${cur}>${icon(ic)}<span>${label}</span>${meta ? `<span class="meta">${meta}</span>` : ''}</a></li>`;
   }).join('');
-  return `<nav aria-label="Navegación de administración">
+  return `<nav aria-label="Navegación de ${area.etiqueta.toLowerCase()}">
         <ul class="nav">${items}
         </ul>
       </nav>`;
 }
 
-const logo = (cls = 'logo') =>
-  `<a class="${cls}" href="#" aria-label="Nimbo, Administración"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>`;
-const chip = '<span class="plan-chip area-chip">ADMIN</span>';
-const quien = `<div class="who">
-        <p class="who-name">${YO.nombre}</p>
-        <p class="who-role">${icon('shield', 14)}<span>${YO.rol}</span></p>
+const logo = (cls = 'logo', area = AREA_ADMIN) =>
+  `<a class="${cls}" href="#" aria-label="Nimbo, ${area.etiqueta}"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>`;
+const chip = (area) => `<span class="plan-chip area-chip">${area.chip}</span>`;
+const quien = (area) => `<div class="who">
+        <p class="who-name">${area.yo.nombre}</p>
+        <p class="who-role">${icon(area.iconoRol, 14)}<span>${area.yo.rol}</span></p>
       </div>`;
 
-const sidebar = (actual) => `
+const sidebar = (actual, area = AREA_ADMIN) => `
     <aside class="sidebar" aria-label="Barra lateral">
       <div class="brand-row">
-        ${logo()}
-        ${chip}
+        ${logo('logo', area)}
+        ${chip(area)}
       </div>
-      ${navegacion('', actual)}
-      ${quien}
+      ${navegacion('', actual, area)}
+      ${quien(area)}
     </aside>`;
 
-const cajon = (actual) => `
+const cajon = (actual, area = AREA_ADMIN) => `
   <div class="drawer-overlay" data-cerrar-cajon aria-hidden="true" hidden></div>
   <div class="drawer" id="cajon" role="dialog" aria-modal="true" aria-labelledby="cajon-t" hidden>
       <div class="drawer-head">
-        ${logo()}
-        ${chip}
+        ${logo('logo', area)}
+        ${chip(area)}
         <h2 id="cajon-t" class="sr-only">Menú de navegación</h2>
         <button class="icon-btn" type="button" data-cerrar-cajon aria-label="Cerrar menú">${icon('x', 22)}</button>
       </div>
-      ${navegacion('cajon-primero', actual)}
-      ${quien}
+      ${navegacion('cajon-primero', actual, area)}
+      ${quien(area)}
   </div>`;
 
-function topbar(crumbs) {
+function topbar(crumbs, area = AREA_ADMIN) {
+  const YO = area.yo;
   const items = crumbs.map((c, i) =>
     i === crumbs.length - 1 ? `<li><span aria-current="page">${c}</span></li>` : `<li><a href="#">${c}</a></li>`).join('');
   return `
       <header class="topbar">
         <div class="topbar-left">
           <button class="menu-btn" type="button" aria-label="Abrir menú de navegación" aria-expanded="false" aria-controls="cajon">${icon('menu', 22)}</button>
-          ${logo('logo logo-mobile')}
+          ${logo('logo logo-mobile', area)}
           <nav class="crumbs" aria-label="Ruta">
             <ol>${items}</ol>
           </nav>
@@ -269,8 +315,35 @@ function topbar(crumbs) {
       </header>`;
 }
 
-const privacidad = () => `
-        <div class="privacy">${icon('lock', 16)}<p>${AVISO_PRIVACIDAD}</p></div>`;
+const privacidad = (texto = AVISO_PRIVACIDAD) => `
+        <div class="privacy">${icon('lock', 16)}<p>${texto}</p></div>`;
+
+// Búsqueda por correo (Input + Button). Sin opciones es exactamente la de backoffice/admin. ayuda: texto bajo el campo
+// (search-hint, enlazado con aria-describedby); boton: variante del botón; tipo: atributos del campo.
+function busqueda({ valor = '', aria = 'Buscar cuentas', etiqueta = 'Buscar por correo', boton = 'btn-outline', ayuda = '',
+  id = 'q', autofocus = false } = {}) {
+  const desc = ayuda ? ` aria-describedby="${id}-ayuda"` : '';
+  return `
+        <form class="search" role="search" aria-label="${aria}" onsubmit="return false">
+          <label for="${id}">${etiqueta}</label>
+          <div class="search-row">
+            <div class="input-wrap">${icon('search', 16)}<input class="input" id="${id}" name="${id}" type="search" inputmode="email" autocomplete="off" placeholder="nombre@dominio.com" value="${valor}"${desc}${autofocus ? ' autofocus' : ''}></div>
+            <button class="btn ${boton}" type="submit">Buscar</button>
+          </div>${ayuda ? `
+          <p class="search-hint" id="${id}-ayuda">${ayuda}</p>` : ''}
+        </form>`;
+}
+
+// Paginación «Anterior / Página N de M / Siguiente» con el total en texto (primera página: «Anterior» deshabilitado).
+const paginacion = ({ aria, resumen, paginas }) => `
+        <nav class="pager" aria-label="${aria}">
+          <p class="num">${resumen}</p>
+          <div class="pager-ctrl">
+            <button class="btn btn-outline btn-sm" type="button" disabled>${icon('chevLeft', 16)}Anterior</button>
+            <span class="pager-page num" aria-current="page">Página 1 de ${paginas}</span>
+            <button class="btn btn-outline btn-sm" type="button">Siguiente${icon('chevRight', 16)}</button>
+          </div>
+        </nav>`;
 
 // ---------- Piezas compartidas por las pantallas del área ----------
 // Distintivo «Inactivo» de un plan (catálogo y métricas).
@@ -332,22 +405,22 @@ function resumenErrores({ titulo, texto, items }) {
 
 // ---------- Página ----------
 // titulo: <title>; rotulo: pantalla en el rótulo de la hoja; estado: descripción del estado; cuerpo: HTML de <main>.
-// actual: entrada de la navegación de la pantalla (por defecto «Cuentas»).
-function pagina({ titulo, comentarios, css, rotulo, file, estado, crumbs, cuerpo, dialogo = '', actual = 'Cuentas' }) {
+// actual: entrada de la navegación de la pantalla (por defecto «Cuentas»); area: AREA_ADMIN (por defecto) o AREA_SOPORTE.
+function pagina({ titulo, comentarios, css, rotulo, file, estado, crumbs, cuerpo, dialogo = '', actual = 'Cuentas', area = AREA_ADMIN }) {
   return `${M.cabecera({ titulo, comentarios, css })}
 <body>
 
-<aside class="sheet-label" aria-label="Rótulo del mockup"><span class="chip">011</span> <strong>Administración · ${rotulo}</strong> <span class="file">${file}</span> <span>sin acceso al contenido de los archivos · estado: ${estado}</span></aside>
+<aside class="sheet-label" aria-label="Rótulo del mockup"><span class="chip">011</span> <strong>${area.etiqueta} · ${rotulo}</strong> <span class="file">${file}</span> <span>sin acceso al contenido de los archivos · estado: ${estado}</span></aside>
 
 <div class="canvas">
   <div class="app"${dialogo ? ' inert' : ''}>
-    ${sidebar(actual)}
+    ${sidebar(actual, area)}
     <div class="main">
-      ${topbar(crumbs)}
+      ${topbar(crumbs, area)}
       <main class="content" id="contenido">${cuerpo}
       </main>
     </div>
-  </div>${cajon(actual)}${dialogo}
+  </div>${cajon(actual, area)}${dialogo}
 </div>
 
 <script>${JS}</script>
@@ -359,4 +432,5 @@ function pagina({ titulo, comentarios, css, rotulo, file, estado, crumbs, cuerpo
 module.exports = {
   P, icon, YO, TOTAL, AVISO_PRIVACIDAD, CSS, CSS_FORM, JS, sidebar, cajon, topbar, privacidad, pagina,
   estadoError, dialogo, campo, resumenErrores, badgeInactivo,
+  AREA_ADMIN, AREA_SOPORTE, busqueda, paginacion, CSS_BUSQUEDA, CSS_BUSQUEDA_MQ600, CSS_PAGINACION, CSS_PAGINACION_MQ600,
 };
