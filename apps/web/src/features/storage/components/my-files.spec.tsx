@@ -15,8 +15,10 @@ import userEvent from '@testing-library/user-event';
 
 import type { StorageApi } from '../api';
 import { StorageRequestError } from '../storage-request-error';
+import { GB, spaceSummaryWith } from '../test-space-summary';
 
 import { MyFiles } from './my-files';
+import { UploadsSpaceProvider } from './space-provider';
 import { UploadsProvider } from './uploads-provider';
 
 jest.mock('../../identity/components/sign-out-button', () => ({ SignOutButton: () => null }));
@@ -30,6 +32,7 @@ const folderSummary = (ref: FolderRef, parentId: string | null): FolderSummary =
   ...ref,
   parentId,
   createdAt: AT,
+  updatedAt: AT,
 });
 const folder = (ref: FolderRef, parentId: string | null): NodeSummary => ({
   type: 'folder',
@@ -43,6 +46,7 @@ const file = (id: string, name: string, folderId: string | null): NodeSummary =>
   kind: 'pdf',
   folderId,
   createdAt: AT,
+  updatedAt: AT,
 });
 
 const LISTINGS: Readonly<Record<string, FolderContentsResponse>> = {
@@ -88,16 +92,24 @@ function fakeApi(overrides: Partial<StorageApi> = {}): StorageApi {
     pin: jest.fn(pending),
     unpin: jest.fn(() => Promise.resolve()),
     recordRecent: jest.fn(() => Promise.resolve()),
+    spaceSummary: jest.fn(() => Promise.resolve(spaceSummaryWith(4.8 * GB))),
     ...overrides,
   } as StorageApi;
 }
 
-async function renderMyFilesWithAlphaExpanded(api: StorageApi): Promise<void> {
+/** Mis archivos en la raíz con los proveedores del layout de `(cliente)`: cargas y resumen de espacio (007). */
+function renderMyFiles(api: StorageApi): void {
   render(
     <UploadsProvider api={api}>
-      <MyFiles folderId={null} />
+      <UploadsSpaceProvider>
+        <MyFiles folderId={null} />
+      </UploadsSpaceProvider>
     </UploadsProvider>,
   );
+}
+
+async function renderMyFilesWithAlphaExpanded(api: StorageApi): Promise<void> {
+  renderMyFiles(api);
   await userEvent.click(
     await screen.findByRole('button', { name: 'Mostrar contenido de Proyecto Alpha' }),
   );
@@ -167,11 +179,7 @@ function desktopSidebar(): HTMLElement {
 }
 
 async function renderRoot(api: StorageApi): Promise<void> {
-  render(
-    <UploadsProvider api={api}>
-      <MyFiles folderId={null} />
-    </UploadsProvider>,
-  );
+  renderMyFiles(api);
   await screen.findByText('raiz.pdf');
 }
 

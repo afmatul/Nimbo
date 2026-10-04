@@ -562,12 +562,14 @@ describe('Accesibilidad de los estados de carga y descarga (CA-21)', () => {
       ...ALPHA,
       parentId: null,
       createdAt: FILE.createdAt,
+      updatedAt: FILE.updatedAt,
     };
     const FASE3_NODE: NodeSummary = {
       type: 'folder',
       ...FASE3,
       parentId: ALPHA.id,
       createdAt: FILE.createdAt,
+      updatedAt: FILE.updatedAt,
     };
     const PROMPTS_IN_FASE3: NodeSummary = { ...PROMPTS, parentId: FASE3.id };
 

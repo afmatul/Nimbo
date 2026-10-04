@@ -20,6 +20,7 @@ const folder = (ref: FolderRef, parentId: string | null): NodeSummary => ({
   ...ref,
   parentId,
   createdAt: AT,
+  updatedAt: AT,
 });
 const file = (id: string, name: string, folderId: string | null): NodeSummary => ({
   type: 'file',
@@ -29,6 +30,7 @@ const file = (id: string, name: string, folderId: string | null): NodeSummary =>
   kind: 'pdf',
   folderId,
   createdAt: AT,
+  updatedAt: AT,
 });
 
 const ROOT_NODES = [folder(ALPHA, null), folder(BETA, null), file('f-root', 'raiz.pdf', null)];
