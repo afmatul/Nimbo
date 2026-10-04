@@ -14,6 +14,8 @@
 | 4 | T-06 | `trash-purger.ts`, `trash-purge.*`, `sql-expired-trash.scanner.ts`, `storage-worker.module.ts` |
 | 5 | T-07, luego T-11 | `test/isolation/` |
 
+> Adición del 2026-10-03: T-12 a T-17 (CA-26 a CA-28) al final de «Tareas», pendientes de aprobación de plan §9 salvo T-12.
+
 `storage.module.ts` lo tocan T-03, T-04, T-05 y T-06, y en cada caso solo para agregar sus proveedores. Cada tarea agrega solo sus líneas y resuelve el rebase.
 
 ## Tareas
@@ -41,6 +43,34 @@
 | CA-7 | T-04, T-09 | CA-16 | T-05, T-06 | CA-25 | T-08, T-09, T-10 |
 | CA-8 | T-02, T-03, T-09 | CA-17 | T-10 | | |
 | CA-9 | T-02, T-03, T-09 | CA-18 | T-06, T-10 | | |
+
+CA sin cubrir: ninguno.
+
+## Adición 2026-10-03 (CA-26 a CA-28; plan §9)
+> Estado: propuesta. T-12 no depende de la aprobación (solo web, sin API nueva) y **está en curso por el developer**. T-13 a T-17 quedan **bloqueadas hasta que `architect` revise y Adrián apruebe plan §9**.
+> Supera el rango de 5–12 tareas de la plantilla por ser una adición posterior a la aprobación. Un commit por tarea, `feat(storage): … [006 T-xx]`. Pruebas primero.
+
+| Ola | Tareas | Propiedad exclusiva de archivos |
+|---|---|---|
+| A | T-12 (en curso) ∥ T-13 | T-12: `file-explorer.tsx` y su componente de filas anidadas (`apps/web`). T-13: `migrations/`, `*.orm-entity.ts`, `storage/domain/`, `packages/contracts/`, esquemas de entorno |
+| B | T-14 | `quick-access.*`, `i-quick-access.repository.port.ts`, `typeorm-quick-access.repository.ts`, `typeorm-trash.repository.ts`, `storage.module.ts` |
+| C | T-15 ∥ T-16 | T-15: `test/isolation/`. T-16: `apps/web` (`app-layout.tsx`, `file-row-menu.tsx`, `quick-access-*`, `error-catalog.ts`) |
+| D | T-17 | humana |
+
+- [ ] **T-12** Web: desglosar carpetas en la lista (CA-26), **en curso por el developer** (mockup `storage/explorador/`, estados carpeta-desglosada, desglosando-cargando, desglosada-vacia, desglosada-error). Control de expandir con `aria-expanded`/`aria-controls` en la fila de carpeta; filas hijas con sangría, a varios niveles; carga con `GET /folders/contents?folderId` (sin API nueva); cargando, vacía y error con «Reintentar» por fila; acciones de fila válidas en cualquier nivel con relectura del padre. Pruebas de componente por estado y axe a 360 y 1440 px. — CA: CA-26, CA-25 — Archivos: `apps/web/src/features/storage/components/file-explorer.tsx`, componente de filas anidadas nuevo, sus pruebas — Depende: T-08, T-09, T-10 (hechas) — Paralela con T-13
+- [ ] **T-13** *(bloqueada: aprobación de plan §9)* Datos, dominio y contratos de accesos rápidos. Pruebas unitarias primero de `QuickAccessItem`/errores y de los esquemas. Migración(es) de `acceso_rapido` con índices, `CHECK`, RLS `acceso_rapido_cliente` y `down`; `acceso-rapido.orm-entity.ts`; `QuickAccessLimitError`; `quick-access-schemas.ts` y `STORAGE_QUICK_ACCESS_LIMIT` en `contracts`; `QUICK_ACCESS_MAX_PINNED`, `QUICK_ACCESS_RECENT_VISIBLE` y `QUICK_ACCESS_RECENT_STORED` en esquemas, `.env.example` y `pnpm env:check`. Integración: up/down ×3 sobre BD vacía, unicidad por (dueño, tipo, nodo), `CHECK` y `EXPLAIN` de los dos listados. — CA: CA-27, CA-28 (datos, RLS, configuración) — Archivos: `apps/api/src/migrations/20261003100000…`, `storage/infrastructure/persistence/acceso-rapido.orm-entity.ts`, `storage/domain/{quick-access.ts,errors/quick-access.errors.ts}`, `storage/application/quick-access-config.ts`, `shared/config/*`, `.env.example`, `packages/contracts/src/storage/{quick-access-schemas.ts,error-codes.ts}`, `test/int/storage/folders-migrations.int-spec.ts` — Depende: aprobación de plan §9 — Paralela con T-12
+- [ ] **T-14** *(bloqueada)* Accesos rápidos en la API. Primero `quick-access.service.spec.ts` (tope, recientes sin fijados, poda a `recentStored`, `hasMoreRecent`, quitar con y sin apertura). `QuickAccessService`, `IQuickAccessRepository` y `TypeOrmQuickAccessRepository` (todo con `accessibleNodes(actor)` en la consulta; tope bajo `lockUsage`), `QuickAccessController` (`GET /quick-access`, `PUT`/`DELETE /quick-access/pins/:nodeType/:nodeId`, `POST /quick-access/recents`), borrado de filas en `deleteFileRows`/`deleteFolderRows` al purgar. Integración, una por ruta (feliz y error principal) más: nodo en la papelera no aparece y al restaurar las marcas siguen, purga borra las filas, sexto fijado `422` con `details.maxPinned`, `PUT` concurrentes no pasan del tope, roles internos `403`. Sin auditoría. — CA: CA-27, CA-28 — Archivos: `storage/application/{quick-access.service(.spec).ts,ports/i-quick-access.repository.port.ts}`, `persistence/{typeorm-quick-access.repository.ts,typeorm-trash.repository.ts}`, `presentation/{quick-access.controller.ts,storage-validation.ts}`, `storage.module.ts`, `storage/index.ts`, `test/int/storage/quick-access.int-spec.ts` — Depende: T-13
+- [ ] **T-15** *(bloqueada)* Aislamiento de accesos rápidos (RNF-05). Fixture `.withQuickAccess()` como `nimbo_app` en `withActor`. `storage-quick-access.iso-spec.ts`: B contra A en las 4 rutas ⇒ `404` idéntico salvo `correlationId`; `GET` de B no incluye nada de A; RLS niega `acceso_rapido` sin filtro y sin actor; Administrador, Soporte y Operador `403`; sin token `401`. Se agrega a `pnpm test:isolation`. — CA: CA-28 — Archivos: `test/isolation/setup/isolation-world.ts`, `test/isolation/storage-quick-access.iso-spec.ts` — Depende: T-14 — Paralela con T-16
+- [ ] **T-16** *(bloqueada; además requiere el mockup de `shared/layout/` aprobado por Adrián)* Web: accesos rápidos (CA-27, CA-28). `quick-access-api.ts`; `quick-access-section.tsx` (Fijados y Recientes, carpetas y archivos con ícono, enlaces sin desglose, «Ver más» solo con `hasMoreRecent`, oculta si vacía) usada por la barra de escritorio y el cajón móvil; «Fijar/Quitar de la barra lateral» en `file-row-menu` (solo esa entrada); aviso del tope con `sonner` y el mensaje de `error-catalog`; registro de apertura al montar la página de la carpeta y al pedir la descarga. Pruebas de componente por estado (5 + 5, solo uno, con «Ver más», oculta, tope, móvil) y axe a 360 y 1440 px. — CA: CA-27, CA-28, CA-25 — Archivos: `apps/web/src/features/storage/{quick-access-api.ts,components/quick-access-section.tsx}`, `components/nimbo/app-layout.tsx`, `file-row-menu.tsx` (solo la entrada de fijar), `lib/error-catalog.ts`, página de carpeta y el punto de descarga — Depende: T-14 y T-12 integrada (comparten `file-explorer` y el menú de fila) — Paralela con T-15
+- [ ] **T-17** **(humana)** Recorrido de la adición en local con Docker: desglosar carpetas a dos niveles y operar en el nivel interno (T-12); fijar 5 elementos (carpetas y archivos), ver el aviso al sexto; abrir carpetas y descargar archivos y ver «Recientes» sin repetir fijados y «Ver más»; eliminar un fijado y restaurarlo; entrar con otra cuenta y comprobar que no ve nada; cuenta de rol interno `403`; escritorio y 360 px. Nota con capturas en el PR. (Si T-11 sigue pendiente, se hace un solo recorrido que cubra ambas.) — CA: CA-26 a CA-28 — Depende: T-12, T-15, T-16
+
+### Matriz de CA → tareas (adición)
+| CA | Tareas |
+|---|---|
+| CA-26 | T-12, T-17 |
+| CA-27 | T-13, T-14, T-16, T-17 |
+| CA-28 | T-13, T-14, T-15, T-16, T-17 |
+| CA-25 (nuevos estados) | T-12, T-16 |
 
 CA sin cubrir: ninguno.
 

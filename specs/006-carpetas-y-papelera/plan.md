@@ -237,3 +237,107 @@ cola). Es idempotente: si ya lo tomó el ciclo programado, la segunda pasada no 
   3. «Eliminar definitivamente» es síncrono; «Vaciar papelera» fija `purgar_en = now` y encola `trash-purge`.
   4. Rama `feat/006-carpetas-y-papelera`, con un PR de `api` y otro de `web`.
   5. Lo eliminado aparte bajo una carpeta purgada se restaura en la raíz, posiblemente sin aviso (R-5).
+
+## 9. Adición 2026-10-03 — CA-26 a CA-28
+> Estado: **Propuesta, pendiente de architect y de Adrián.** No modifica §1 a §8 (aprobados). Cubre RF-38. Con esta adición el plan supera
+> las 250 líneas de la plantilla; es una excepción por revisión posterior a la aprobación.
+
+### 9.1 CA-26 — desglosar carpetas en la lista (solo web, sin API nueva)
+- Reutiliza `GET /folders/contents?folderId&cursor&limit` (§4) y sus `NodeSummary`. Sin ruta, tabla, puerto ni contrato nuevos. **Un developer ya lo
+  implementa (T-12)**; esto es solo trazabilidad.
+- Componentes (`apps/web/src/features/storage/`): `components/file-explorer.tsx` (fila de carpeta con control de expandir y filas hijas con sangría
+  por nivel) y un componente de filas anidadas que carga con `folders-api.ts`. Las acciones de fila (Renombrar, Mover, Mover a la papelera)
+  son las mismas de `file-row-menu` en cualquier nivel; tras una acción se vuelve a leer el padre afectado.
+- Estado **por fila**: cargando, vacía («Esta carpeta está vacía») y error con «Reintentar», sin tocar el resto de la lista. Expandir no abre la
+  carpeta ni cuenta como reciente (CA-27): solo abrirla la registra.
+- Accesibilidad: botón con `aria-expanded` y `aria-controls` hacia el contenedor de hijas, operable con teclado (Enter/Espacio), nivel anunciado a
+  lectores de pantalla y foco que no salta al expandir. El patrón exacto (filas anidadas o `treegrid`) lo fija el developer según el mockup.
+- Los estados siguen CA-25 (360 y 1440 px, axe). Sangría acotada en 360 px: ver pregunta Q-1.
+
+### 9.2 CA-27 y CA-28 — accesos rápidos (RF-38)
+**Decisión**: concepto nuevo en M2 (`storage`), por cuenta, en el servidor. Cabe en `storage` (usa `accessibleNodes` y los mismos nodos); no hay
+puerto entre módulos. **Reutiliza** `accessibleNodes(actor)`, `IQuotaRepository.lockUsage` (punto de serialización por dueño, §1), `NodeNotFoundError`, `FOLDER_CONFIG`-style
+de configuración, `sonner` (ADR-0024) y la sección de la barra lateral de `app-layout.tsx`.
+
+| Capa | Archivo (nuevo o cambiado) | Responsabilidad |
+|---|---|---|
+| storage/domain | `quick-access.ts` (nuevo) | Tipos `QuickAccessItem` (modelo de lectura: tipo, id, nombre, `kind?`, `folderId?`, `pinnedAt?`, `openedAt?`) y `QuickAccessList { pinned, recent, hasMoreRecent }` |
+| storage/domain | `errors/quick-access.errors.ts` (nuevo) | `QuickAccessLimitError` (422, `details.maxPinned`) |
+| storage/application | `quick-access.service.ts` (nuevo) | `QuickAccessService`: `list`, `pin`, `unpin`, `recordOpen`; `actor` primero; comprueba el tope bajo `lockUsage` |
+| storage/application | `quick-access-config.ts` (nuevo) | `QUICK_ACCESS_CONFIG = { maxPinned, recentVisible, recentStored }` |
+| storage/application/ports | `i-quick-access.repository.port.ts` (nuevo) | `IQuickAccessRepository`: `list`, `countPinned`, `findAccessibleNode` (tipo, id), `upsertPin`, `removePin`, `touchRecent`, `pruneRecents` |
+| storage/infrastructure/persistence | `acceso-rapido.orm-entity.ts`, `typeorm-quick-access.repository.ts` (nuevos) | Mapeo y SQL; **toda lectura y escritura une `accessibleNodes(actor)` en la consulta** |
+| storage/infrastructure/persistence | `typeorm-trash.repository.ts` (cambia) | `deleteFileRows` y `deleteFolderRows` borran también las filas de `acceso_rapido` de los nodos purgados (la purga ya corre bajo `withActor` del dueño) |
+| storage/presentation | `quick-access.controller.ts` (nuevo), `storage-validation.ts` (cambia) | Rutas de abajo, `@Roles(Role.CLIENT)`, pipes zod; `nodeIdPipe` existente |
+| storage | `storage.module.ts`, `index.ts` | Proveedores y exportaciones |
+| shared/config | esquemas de entorno, `.env.example` | `QUICK_ACCESS_MAX_PINNED` (api, 5, zod 1–20), `QUICK_ACCESS_RECENT_VISIBLE` (5, 1–20), `QUICK_ACCESS_RECENT_STORED` (25, entre visibles y 100); van a `pnpm env:check` |
+| packages/contracts/storage | `quick-access-schemas.ts` (nuevo), `error-codes.ts` (cambia) | Esquemas de §9.2 y código `STORAGE_QUICK_ACCESS_LIMIT` |
+
+- **Puerto nuevo**: `IQuickAccessRepository`, **dentro de `storage`**, regla b del Art. V (repositorio: dominio sin TypeORM). `QuickAccessService`
+  es un servicio de aplicación, no una abstracción: sin interfaz. No se amplía `INodeRepository` (ISP: otro consumidor y otra tabla) ni se crea política: el tope es una
+  comparación contra configuración. Sin puertos entre módulos ni dependencias externas nuevas.
+- **Datos** (migración `20261003100000-crear-acceso-rapido.ts`, con `down`; RLS en la misma migración o en una segunda `…100100…`, como 005/006):
+```sql
+CREATE TABLE acceso_rapido (
+  id uuid PRIMARY KEY,
+  propietario_id uuid NOT NULL REFERENCES usuario(id),
+  tipo_nodo text NOT NULL CHECK (tipo_nodo IN ('archivo','carpeta')),     -- mismo vocabulario que accessibleNodes
+  nodo_id uuid NOT NULL,                                                    -- polimórfico, sin FK (como carga.archivo_id)
+  fijado boolean NOT NULL DEFAULT false, fijado_en timestamptz, abierto_en timestamptz,
+  creado_en timestamptz NOT NULL, actualizado_en timestamptz NOT NULL,
+  CONSTRAINT ck_acceso_fijado CHECK (fijado = (fijado_en IS NOT NULL)),
+  CONSTRAINT ck_acceso_util CHECK (fijado OR abierto_en IS NOT NULL)        -- sin marca no hay fila
+);
+CREATE UNIQUE INDEX uq_acceso_nodo ON acceso_rapido (propietario_id, tipo_nodo, nodo_id);
+CREATE INDEX idx_acceso_fijados ON acceso_rapido (propietario_id, fijado_en DESC, id DESC) WHERE fijado;
+CREATE INDEX idx_acceso_recientes ON acceso_rapido (propietario_id, abierto_en DESC, id DESC) WHERE NOT fijado;
+ALTER TABLE acceso_rapido ENABLE ROW LEVEL SECURITY; ALTER TABLE acceso_rapido FORCE ROW LEVEL SECURITY;
+CREATE POLICY acceso_rapido_cliente ON acceso_rapido TO nimbo_app USING (rol CLIENT y propietario) WITH CHECK (igual);  -- como archivo_cliente
+-- down: DROP POLICY; DROP TABLE acceso_rapido;   (sin política de metadatos internos ni de mantenimiento: no hacen falta)
+```
+- **Semántica**: el listado une `accessibleNodes(actor)`, que excluye la papelera: un nodo eliminado no aparece y **al restaurarlo las marcas siguen** (las filas
+  no se tocan al eliminar). Al **purgar** el nodo se borran sus filas (hijos de una carpeta incluidos). Quitar un fijado que además fue abierto lo deja como reciente; si
+  nunca se abrió, se borra la fila. Los recientes **excluyen los fijados**; `recordOpen` sobre un fijado solo actualiza `abierto_en`. Tras cada `recordOpen`,
+  `pruneRecents` conserva los últimos `recentStored` no fijados (colchón para los nodos en la papelera); el listado pide `recentVisible + 1` para saber si hay «Ver más».
+- **Contratos** (`/api/v1`, `@Roles(Role.CLIENT)`: roles internos `403 SHARED_FORBIDDEN`, sin token `401`; `:nodeType` ∈ `files|folders`, otro valor o id no UUID ⇒ `404`):
+
+| Método | Ruta | Request → Respuesta | Errores (`code`) |
+|---|---|---|---|
+| GET | `/quick-access` | → `200 { pinned: QuickAccessItem[], recent: QuickAccessItem[], hasMoreRecent }` (fijados por `fijado_en DESC`; recientes por `abierto_en DESC`) | — |
+| PUT | `/quick-access/pins/:nodeType/:nodeId` | Idempotente; → `200 QuickAccessItem` | `404 STORAGE_NODE_NOT_FOUND` (ajeno, inexistente, en la papelera) · `422 STORAGE_QUICK_ACCESS_LIMIT` (`details.maxPinned`) |
+| DELETE | `/quick-access/pins/:nodeType/:nodeId` | → `204`; idempotente si no estaba fijado | `404` (mismo criterio) |
+| POST | `/quick-access/recents` | `{ type: 'file'\|'folder', id }` → `204` | `400 STORAGE_INVALID_NODE_REQUEST` · `404` |
+
+  Mensaje del tope en `contracts` y `lib/error-catalog.ts`: «Ya fijaste {maxPinned} elementos. Quita uno para fijar otro.» El nodo ajeno responde el mismo `404` que
+  el resto de §4 (CA-22, CA-28). Se usa `422` (regla de negocio del plan, como la profundidad) y no `409`.
+- **Recientes: ruta explícita, no efecto de `GET /folders/contents` ni de `POST /files/:id/download-url`.** Razones: (1) `GET contents` es de lectura y lo usan el desglose
+  (CA-26), el selector de «Mover a…» y las migas: registrar ahí contaría como «abrir» cosas que no se abrieron; (2) un efecto escondido acoplaría `FolderService` y `FileService`
+  al nuevo servicio (SRP, y cada prueba existente cambiaría); (3) «abrir» es una decisión de UI (navegar a la carpeta, pedir la descarga), no de la API. Costo: una petición extra,
+  de mejor esfuerzo (un fallo no se muestra al cliente) y que `web` debe llamarla; la prueba de componente lo asegura.
+- **Auditoría y privacidad**: no se audita (no está en CA-24 ni es dato sensible); ningún evento, log ni métrica lleva nombres; los registros de error llevan solo UUID y `errorName`.
+- **Web**: `quick-access-api.ts`; `components/quick-access-section.tsx` en `app-layout.tsx` (un solo componente para la barra de escritorio y el cajón móvil, DRY); entrada
+  «Fijar en la barra lateral» / «Quitar de la barra lateral» en `file-row-menu` (carpetas y archivos, en cualquier nivel del desglose, sin color destructivo); aviso del tope con `sonner`
+  (`role="status"`, ≥ 8 s). Elementos como enlaces: carpeta a `archivos/carpeta/[folderId]`, archivo con la descarga de 005, sin desglose; «Ver más» a `archivos` (raíz) solo si
+  `hasMoreRecent`; sección oculta si no hay nada. La carpeta se registra como reciente al montar su página (no al expandir) y el archivo al pedir la descarga. Estados: cargando, vacío (oculta), error discreto con «Reintentar».
+  Revalida tras fijar, quitar y registrar.
+
+### 9.3 Pruebas por riesgo
+| CA | Nivel | Archivo |
+|---|---|---|
+| CA-27, CA-28 (tope, recientes sin fijados, poda, «Ver más», quitar con y sin apertura) | unit | `application/quick-access.service.spec.ts` |
+| CA-27, CA-28 (una por ruta: feliz y error principal; papelera oculta y restaurar conserva; purga borra filas; tope concurrente `422`) | int | `test/int/storage/quick-access.int-spec.ts`; migración up/down ×3 en `folders-migrations.int-spec.ts` |
+| CA-28 (RNF-05) | iso | `test/isolation/storage-quick-access.iso-spec.ts`: B contra A en las 4 rutas ⇒ `404` idéntico salvo `correlationId`; B nunca ve filas de A en `GET`; RLS niega `acceso_rapido` sin filtro; roles internos `403`, sin token `401` |
+| CA-26 | web | `file-explorer.spec.tsx` (expandir/contraer, dos niveles, cargando/vacía/error por fila, `aria-expanded`), axe a 360 y 1440 px |
+| CA-27, CA-28, CA-25 | web | `quick-access-section.spec.tsx` (5 + 5, mezcla, solo uno, «Ver más», oculta, aviso del tope, cajón móvil), `file-row-menu.spec.tsx` (Fijar/Quitar), registro de apertura; axe |
+
+### 9.4 Riesgos, desviaciones y aprobación
+- R-6 **Dos fuentes para «qué existe»**: `acceso_rapido.nodo_id` no tiene FK. Mitigación: nunca se lee sin unir `accessibleNodes` (aunque quedaran huérfanas no se ven) y la purga las borra; prueba de integración.
+- R-7 **Concurrencia en el tope**: dos `PUT` simultáneos podrían pasar de 5. Se serializa con `lockUsage(actor)`; lo prueba una integración. Costo menor: comparte candado con cargas del mismo dueño.
+- R-8 **Densidad 5 + 5** (P-15): la valida el `ui-designer` en el mockup; el valor es configuración, no hay que tocar código si cambia.
+- R-9 **Sin API para CA-26**: carpetas muy grandes paginan por cursor; ver Q-2.
+- **DF-63** pasa de «Propuesto» a «Propuesto con plan (006 §9)»; texto a registrar en `design-findings.md`: tabla `acceso_rapido` (propietario, tipo de nodo, id, fijado, fijado en, abierto en; RLS de cliente),
+  `QuickAccessService` e `IQuickAccessRepository` internos de `storage`, 4 rutas bajo `/quick-access`, recientes por ruta explícita, claves de configuración `QUICK_ACCESS_*`; redibujar clases de M2 y el E-R
+  y reflejarlo en `design-model.md` (PD-46). Un cambio de modelo, no de arquitectura entre módulos.
+- **Preguntas para Adrián**: **Q-1** sangría del desglose en 360 px (¿tope de niveles visibles con desplazamiento horizontal, o sangría fija pequeña?; lo propone el `ui-designer`). **Q-2** carpeta desglosada con más
+  elementos que una página: ¿«Cargar más» en la fila o se muestra solo la primera página con enlace «Abrir carpeta»? **Q-3** ¿Abrir una carpeta por URL o desde «Ver más» también cuenta como reciente (propuesto: sí, al montar su página)?
+- **Aprobación de la adición**: `architect`: **debe intervenir** (cambia el modelo: tabla nueva y concepto nuevo en M2; revisa DF-63 y el redibujo). Adrián: **pendiente**. Hasta entonces solo se implementa CA-26 (T-12).
