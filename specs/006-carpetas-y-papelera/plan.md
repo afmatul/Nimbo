@@ -239,7 +239,7 @@ cola). Es idempotente: si ya lo tomó el ciclo programado, la segunda pasada no 
   5. Lo eliminado aparte bajo una carpeta purgada se restaura en la raíz, posiblemente sin aviso (R-5).
 
 ## 9. Adición 2026-10-03 — CA-26 a CA-28
-> Estado: **Propuesta, pendiente de architect y de Adrián.** No modifica §1 a §8 (aprobados). Cubre RF-38. Con esta adición el plan supera
+> Estado: **Propuesta; architect: aprobado con cambios aplicados (2026-10-03); pendiente de Adrián.** No modifica §1 a §8 (aprobados). Cubre RF-38. Con esta adición el plan supera
 > las 250 líneas de la plantilla; es una excepción por revisión posterior a la aprobación.
 
 ### 9.1 CA-26 — desglosar carpetas en la lista (solo web, sin API nueva)
@@ -261,16 +261,15 @@ de configuración, `sonner` (ADR-0024) y la sección de la barra lateral de `app
 
 | Capa | Archivo (nuevo o cambiado) | Responsabilidad |
 |---|---|---|
-| storage/domain | `quick-access.ts` (nuevo) | Tipos `QuickAccessItem` (modelo de lectura: tipo, id, nombre, `kind?`, `folderId?`, `pinnedAt?`, `openedAt?`) y `QuickAccessList { pinned, recent, hasMoreRecent }` |
+| storage/domain | `quick-access.ts` (nuevo) | Tipos `QuickAccessItem` (modelo de lectura: `type`, `id`, `name`, `kind?` para el ícono) y `QuickAccessList { pinned, recent, hasMoreRecent }` |
 | storage/domain | `errors/quick-access.errors.ts` (nuevo) | `QuickAccessLimitError` (422, `details.maxPinned`) |
-| storage/application | `quick-access.service.ts` (nuevo) | `QuickAccessService`: `list`, `pin`, `unpin`, `recordOpen`; `actor` primero; comprueba el tope bajo `lockUsage` |
-| storage/application | `quick-access-config.ts` (nuevo) | `QUICK_ACCESS_CONFIG = { maxPinned, recentVisible, recentStored }` |
+| storage/application | `quick-access.service.ts` (nuevo) | `QuickAccessService`: `list`, `pin`, `unpin`, `recordOpen`; `actor` primero; solo `pin` toma `lockUsage` y comprueba el tope |
+| storage/application | `quick-access-config.ts` (nuevo) | `QUICK_ACCESS_CONFIG = { maxPinned, recentVisible }` (entorno) y la constante con nombre `RECENTS_STORED = 25` (colchón de poda; no es configuración) |
 | storage/application/ports | `i-quick-access.repository.port.ts` (nuevo) | `IQuickAccessRepository`: `list`, `countPinned`, `findAccessibleNode` (tipo, id), `upsertPin`, `removePin`, `touchRecent`, `pruneRecents` |
-| storage/infrastructure/persistence | `acceso-rapido.orm-entity.ts`, `typeorm-quick-access.repository.ts` (nuevos) | Mapeo y SQL; **toda lectura y escritura une `accessibleNodes(actor)` en la consulta** |
-| storage/infrastructure/persistence | `typeorm-trash.repository.ts` (cambia) | `deleteFileRows` y `deleteFolderRows` borran también las filas de `acceso_rapido` de los nodos purgados (la purga ya corre bajo `withActor` del dueño) |
-| storage/presentation | `quick-access.controller.ts` (nuevo), `storage-validation.ts` (cambia) | Rutas de abajo, `@Roles(Role.CLIENT)`, pipes zod; `nodeIdPipe` existente |
+| storage/infrastructure/persistence | `acceso-rapido.orm-entity.ts`, `typeorm-quick-access.repository.ts` (nuevos) | Mapeo y SQL; **toda lectura y escritura une `accessibleNodes(actor)` en la consulta** (por `tipo_nodo` y la FK que corresponda) |
+| storage/presentation | `quick-access.controller.ts` (nuevo), `storage-validation.ts` (cambia) | Rutas de abajo, `@Roles(Role.CLIENT)`, pipes zod; `nodeIdPipe` existente y un pipe de `:nodeType` (`files`\|`folders`) compartido por las tres rutas con nodo |
 | storage | `storage.module.ts`, `index.ts` | Proveedores y exportaciones |
-| shared/config | esquemas de entorno, `.env.example` | `QUICK_ACCESS_MAX_PINNED` (api, 5, zod 1–20), `QUICK_ACCESS_RECENT_VISIBLE` (5, 1–20), `QUICK_ACCESS_RECENT_STORED` (25, entre visibles y 100); van a `pnpm env:check` |
+| shared/config | esquemas de entorno, `.env.example` | `QUICK_ACCESS_MAX_PINNED` (api, 5, zod 1–20) y `QUICK_ACCESS_RECENT_VISIBLE` (5, 1–20); van a `pnpm env:check` |
 | packages/contracts/storage | `quick-access-schemas.ts` (nuevo), `error-codes.ts` (cambia) | Esquemas de §9.2 y código `STORAGE_QUICK_ACCESS_LIMIT` |
 
 - **Puerto nuevo**: `IQuickAccessRepository`, **dentro de `storage`**, regla b del Art. V (repositorio: dominio sin TypeORM). `QuickAccessService`
@@ -280,33 +279,48 @@ de configuración, `sonner` (ADR-0024) y la sección de la barra lateral de `app
 ```sql
 CREATE TABLE acceso_rapido (
   id uuid PRIMARY KEY,
-  propietario_id uuid NOT NULL REFERENCES usuario(id),
-  tipo_nodo text NOT NULL CHECK (tipo_nodo IN ('archivo','carpeta')),     -- mismo vocabulario que accessibleNodes
-  nodo_id uuid NOT NULL,                                                    -- polimórfico, sin FK (como carga.archivo_id)
-  fijado boolean NOT NULL DEFAULT false, fijado_en timestamptz, abierto_en timestamptz,
+  usuario_id uuid NOT NULL REFERENCES usuario(id),                          -- la cuenta dueña del acceso (no del nodo)
+  archivo_id uuid REFERENCES archivo(id) ON DELETE CASCADE,                 -- dos FK con CHECK de exclusividad (ADR-0011)
+  carpeta_id uuid REFERENCES carpeta(id) ON DELETE CASCADE,
+  fijado_en timestamptz, abierto_en timestamptz,                            -- fijado ⇔ fijado_en IS NOT NULL
   creado_en timestamptz NOT NULL, actualizado_en timestamptz NOT NULL,
-  CONSTRAINT ck_acceso_fijado CHECK (fijado = (fijado_en IS NOT NULL)),
-  CONSTRAINT ck_acceso_util CHECK (fijado OR abierto_en IS NOT NULL)        -- sin marca no hay fila
+  CONSTRAINT ck_acceso_un_nodo CHECK ((archivo_id IS NULL) <> (carpeta_id IS NULL)),
+  CONSTRAINT ck_acceso_util CHECK (fijado_en IS NOT NULL OR abierto_en IS NOT NULL),   -- sin marca no hay fila
+  CONSTRAINT uq_acceso_archivo UNIQUE (archivo_id, usuario_id),             -- también sirven al CASCADE (empiezan por la FK)
+  CONSTRAINT uq_acceso_carpeta UNIQUE (carpeta_id, usuario_id)              -- NULLS DISTINCT: no chocan entre tipos
 );
-CREATE UNIQUE INDEX uq_acceso_nodo ON acceso_rapido (propietario_id, tipo_nodo, nodo_id);
-CREATE INDEX idx_acceso_fijados ON acceso_rapido (propietario_id, fijado_en DESC, id DESC) WHERE fijado;
-CREATE INDEX idx_acceso_recientes ON acceso_rapido (propietario_id, abierto_en DESC, id DESC) WHERE NOT fijado;
+CREATE INDEX idx_acceso_fijados ON acceso_rapido (usuario_id, fijado_en DESC, id DESC) WHERE fijado_en IS NOT NULL;
+CREATE INDEX idx_acceso_recientes ON acceso_rapido (usuario_id, abierto_en DESC, id DESC) WHERE fijado_en IS NULL;
 ALTER TABLE acceso_rapido ENABLE ROW LEVEL SECURITY; ALTER TABLE acceso_rapido FORCE ROW LEVEL SECURITY;
-CREATE POLICY acceso_rapido_cliente ON acceso_rapido TO nimbo_app USING (rol CLIENT y propietario) WITH CHECK (igual);  -- como archivo_cliente
+CREATE POLICY acceso_rapido_cliente ON acceso_rapido TO nimbo_app USING (rol CLIENT y usuario_id = actor) WITH CHECK (igual);  -- como archivo_cliente
 -- down: DROP POLICY; DROP TABLE acceso_rapido;   (sin política de metadatos internos ni de mantenimiento: no hacen falta)
 ```
+- **Integridad (dictamen de architect)**: dos FK con `CHECK` de exactamente una, como manda ADR-0011 para todo lo que referencia nodos (`comparticion`,
+  `enlace_publico`), y no un `nodo_id` polimórfico. `ON DELETE CASCADE` borra las filas cuando `TrashPurger` borra el `archivo` o la `carpeta`:
+  **no se toca `typeorm-trash.repository.ts`** (la papelera no conoce los accesos rápidos) y no puede quedar ninguna fila huérfana. Eliminar a la
+  papelera es un `UPDATE`, así que las marcas siguen al restaurar. `usuario_id` (y no `propietario_id`) porque con 012 un cliente podrá tener
+  acceso a un nodo ajeno compartido: la fila es de quien fija, no del dueño del nodo. Las ayudas de prueba que borran cuentas (`removeAccounts`)
+  borran antes `acceso_rapido`.
 - **Semántica**: el listado une `accessibleNodes(actor)`, que excluye la papelera: un nodo eliminado no aparece y **al restaurarlo las marcas siguen** (las filas
-  no se tocan al eliminar). Al **purgar** el nodo se borran sus filas (hijos de una carpeta incluidos). Quitar un fijado que además fue abierto lo deja como reciente; si
+  no se tocan al eliminar). Al **purgar** el nodo, el `CASCADE` borra sus filas (hijos de una carpeta incluidos). Quitar un fijado que además fue abierto lo deja como reciente; si
   nunca se abrió, se borra la fila. Los recientes **excluyen los fijados**; `recordOpen` sobre un fijado solo actualiza `abierto_en`. Tras cada `recordOpen`,
-  `pruneRecents` conserva los últimos `recentStored` no fijados (colchón para los nodos en la papelera); el listado pide `recentVisible + 1` para saber si hay «Ver más».
-- **Contratos** (`/api/v1`, `@Roles(Role.CLIENT)`: roles internos `403 SHARED_FORBIDDEN`, sin token `401`; `:nodeType` ∈ `files|folders`, otro valor o id no UUID ⇒ `404`):
+  `pruneRecents` conserva los últimos `RECENTS_STORED` no fijados (colchón para los nodos en la papelera); el listado pide `recentVisible + 1` para saber si hay «Ver más».
+- **Tope (dictamen de architect)**: solo `pin` toma `lockUsage(actor)` (el punto de serialización por dueño de §1; un candado propio o un disparador
+  serían un segundo mecanismo para lo mismo) y, en esa transacción, comprueba el nodo, cuenta y escribe. `countPinned` cuenta **solo los fijados
+  visibles** (misma unión con `accessibleNodes` que el listado): un fijado en la papelera no ocupa lugar. `PUT` sobre un nodo ya fijado responde `200`
+  sin comprobar el tope ni cambiar `fijado_en` (idempotente, conserva el orden). Si al restaurar un nodo o al bajar `QUICK_ACCESS_MAX_PINNED` quedan
+  más fijados visibles que el tope, el listado devuelve los `maxPinned` más recientes por `fijado_en` y el resto vuelve a verse al quitar uno (R-10).
+  `unpin`, `recordOpen` y `list` no toman el candado (`touchRecent` es un `INSERT … ON CONFLICT ON CONSTRAINT uq_acceso_*`).
+- **Estado «fijado» en el menú de fila**: `web` lo deriva de `pinned` de `GET /quick-access` (ya cargado por la barra lateral; ≤ `maxPinned` elementos).
+  No se agrega `pinned` a `NodeSummary` ni se toca `FolderService`.
+- **Contratos** (`/api/v1`, `@Roles(Role.CLIENT)`: roles internos `403 SHARED_FORBIDDEN`, sin token `401`; `:nodeType` ∈ `files|folders`, como `/trash/{files|folders}/:id`; otro valor o id no UUID ⇒ `404`):
 
 | Método | Ruta | Request → Respuesta | Errores (`code`) |
 |---|---|---|---|
 | GET | `/quick-access` | → `200 { pinned: QuickAccessItem[], recent: QuickAccessItem[], hasMoreRecent }` (fijados por `fijado_en DESC`; recientes por `abierto_en DESC`) | — |
-| PUT | `/quick-access/pins/:nodeType/:nodeId` | Idempotente; → `200 QuickAccessItem` | `404 STORAGE_NODE_NOT_FOUND` (ajeno, inexistente, en la papelera) · `422 STORAGE_QUICK_ACCESS_LIMIT` (`details.maxPinned`) |
+| PUT | `/quick-access/pins/:nodeType/:nodeId` | Idempotente; → `200 QuickAccessItem` | `404 STORAGE_NODE_NOT_FOUND` (ajeno, inexistente, en la papelera) · `422 STORAGE_QUICK_ACCESS_LIMIT` (`details.maxPinned`; nunca si ya estaba fijado) |
 | DELETE | `/quick-access/pins/:nodeType/:nodeId` | → `204`; idempotente si no estaba fijado | `404` (mismo criterio) |
-| POST | `/quick-access/recents` | `{ type: 'file'\|'folder', id }` → `204` | `400 STORAGE_INVALID_NODE_REQUEST` · `404` |
+| POST | `/quick-access/recents/:nodeType/:nodeId` | Sin cuerpo → `204` | `404` (mismo criterio) |
 
   Mensaje del tope en `contracts` y `lib/error-catalog.ts`: «Ya fijaste {maxPinned} elementos. Quita uno para fijar otro.» El nodo ajeno responde el mismo `404` que
   el resto de §4 (CA-22, CA-28). Se usa `422` (regla de negocio del plan, como la profundidad) y no `409`.
@@ -324,20 +338,41 @@ CREATE POLICY acceso_rapido_cliente ON acceso_rapido TO nimbo_app USING (rol CLI
 ### 9.3 Pruebas por riesgo
 | CA | Nivel | Archivo |
 |---|---|---|
-| CA-27, CA-28 (tope, recientes sin fijados, poda, «Ver más», quitar con y sin apertura) | unit | `application/quick-access.service.spec.ts` |
-| CA-27, CA-28 (una por ruta: feliz y error principal; papelera oculta y restaurar conserva; purga borra filas; tope concurrente `422`) | int | `test/int/storage/quick-access.int-spec.ts`; migración up/down ×3 en `folders-migrations.int-spec.ts` |
+| CA-27, CA-28 (tope, `PUT` repetido en el tope ⇒ `200`, recientes sin fijados, poda, «Ver más», quitar con y sin apertura) | unit | `application/quick-access.service.spec.ts` |
+| CA-27, CA-28 (una por ruta: feliz y error principal; papelera oculta, no ocupa tope y restaurar conserva; purga ⇒ `CASCADE` borra filas; tope concurrente `422`; `CHECK` de un nodo) | int | `test/int/storage/quick-access.int-spec.ts`; migración up/down ×3 en `folders-migrations.int-spec.ts` |
 | CA-28 (RNF-05) | iso | `test/isolation/storage-quick-access.iso-spec.ts`: B contra A en las 4 rutas ⇒ `404` idéntico salvo `correlationId`; B nunca ve filas de A en `GET`; RLS niega `acceso_rapido` sin filtro; roles internos `403`, sin token `401` |
 | CA-26 | web | `file-explorer.spec.tsx` (expandir/contraer, dos niveles, cargando/vacía/error por fila, `aria-expanded`), axe a 360 y 1440 px |
 | CA-27, CA-28, CA-25 | web | `quick-access-section.spec.tsx` (5 + 5, mezcla, solo uno, «Ver más», oculta, aviso del tope, cajón móvil), `file-row-menu.spec.tsx` (Fijar/Quitar), registro de apertura; axe |
 
 ### 9.4 Riesgos, desviaciones y aprobación
-- R-6 **Dos fuentes para «qué existe»**: `acceso_rapido.nodo_id` no tiene FK. Mitigación: nunca se lee sin unir `accessibleNodes` (aunque quedaran huérfanas no se ven) y la purga las borra; prueba de integración.
-- R-7 **Concurrencia en el tope**: dos `PUT` simultáneos podrían pasar de 5. Se serializa con `lockUsage(actor)`; lo prueba una integración. Costo menor: comparte candado con cargas del mismo dueño.
+- R-6 **Integridad referencial**: resuelta con dos FK `ON DELETE CASCADE` y `CHECK` (ADR-0011). Además, nunca se lee sin unir `accessibleNodes`. La unión
+  por `tipo_nodo` + FK es una `OR` sobre ≤ ~30 filas por cuenta; `EXPLAIN` en T-13.
+- R-7 **Concurrencia en el tope**: dos `PUT` simultáneos podrían pasar de 5. Se serializa con `lockUsage(actor)` solo en `pin`; lo prueba una integración.
+  Costo menor: comparte candado con cargas y mutaciones del árbol del mismo dueño (una operación de milisegundos).
+- R-10 **Más fijados visibles que el tope** (restaurar uno que estaba en la papelera, o bajar la configuración): el listado corta en `maxPinned`; sin pérdida de datos.
 - R-8 **Densidad 5 + 5** (P-15): la valida el `ui-designer` en el mockup; el valor es configuración, no hay que tocar código si cambia.
 - R-9 **Sin API para CA-26**: carpetas muy grandes paginan por cursor; ver Q-2.
-- **DF-63** pasa de «Propuesto» a «Propuesto con plan (006 §9)»; texto a registrar en `design-findings.md`: tabla `acceso_rapido` (propietario, tipo de nodo, id, fijado, fijado en, abierto en; RLS de cliente),
-  `QuickAccessService` e `IQuickAccessRepository` internos de `storage`, 4 rutas bajo `/quick-access`, recientes por ruta explícita, claves de configuración `QUICK_ACCESS_*`; redibujar clases de M2 y el E-R
-  y reflejarlo en `design-model.md` (PD-46). Un cambio de modelo, no de arquitectura entre módulos.
+- **DF-63** pasa de «Propuesto» a «Propuesto con plan (006 §9)»; texto registrado en `design-findings.md`: tabla `acceso_rapido` (usuario, `archivo_id`/`carpeta_id` con `CHECK` de exactamente uno y
+  `ON DELETE CASCADE` según ADR-0011, fijado en, abierto en; RLS de cliente), `QuickAccessService` e `IQuickAccessRepository` internos de `storage`, `QuickAccessController` con 4 rutas bajo
+  `/quick-access`, recientes por ruta explícita, `QUICK_ACCESS_MAX_PINNED` y `QUICK_ACCESS_RECENT_VISIBLE`; redibujar clases de M2 y el E-R y reflejarlo en `design-model.md` (PD-46). Un cambio de
+  modelo, no de arquitectura entre módulos.
 - **Preguntas para Adrián**: **Q-1** sangría del desglose en 360 px (¿tope de niveles visibles con desplazamiento horizontal, o sangría fija pequeña?; lo propone el `ui-designer`). **Q-2** carpeta desglosada con más
   elementos que una página: ¿«Cargar más» en la fila o se muestra solo la primera página con enlace «Abrir carpeta»? **Q-3** ¿Abrir una carpeta por URL o desde «Ver más» también cuenta como reciente (propuesto: sí, al montar su página)?
-- **Aprobación de la adición**: `architect`: **debe intervenir** (cambia el modelo: tabla nueva y concepto nuevo en M2; revisa DF-63 y el redibujo). Adrián: **pendiente**. Hasta entonces solo se implementa CA-26 (T-12).
+- **Aprobación de la adición**:
+  - `architect`: **Aprobado con cambios (2026-10-03); los cambios ya están aplicados en §9.2 a §9.4 y en T-13/T-14 de `tasks.md`.**
+    Fronteras, DAG y capas correctos: todo queda en `storage`, `access` solo aporta `accessibleNodes` (arista existente), no hay puerto entre módulos ni
+    dependencia nueva, e `IQuickAccessRepository` cumple la regla b del Art. V.2. **No hace falta ADR**: se sigue ADR-0005 (autorización en la consulta y
+    RLS), ADR-0011 (con el cambio 1) y el candado de §1. Cambios:
+    1. `nodo_id` polimórfico sin FK ⇒ `archivo_id` y `carpeta_id` con `CHECK` de exactamente uno y `ON DELETE CASCADE` (ADR-0011). `typeorm-trash.repository.ts`
+       ya no cambia: la papelera no conoce los accesos rápidos (SRP) y no pueden quedar huérfanas. `carga.archivo_id` no es precedente: allí es un id reservado antes de existir la fila.
+    2. Sin la columna `fijado`: la deriva `fijado_en IS NOT NULL` (dato duplicado con un `CHECK` para mantenerlo igual).
+    3. `propietario_id` ⇒ `usuario_id`: la fila es de quien fija; con 012 el nodo puede ser de otro.
+    4. Recientes: `POST /quick-access/recents/:nodeType/:nodeId` sin cuerpo, con los mismos pipes que `pins`, en lugar de `{ type, id }` (un vocabulario y un
+       esquema menos; desaparece el `400`). Ruta explícita y no efecto de lectura: **de acuerdo** con las tres razones.
+    5. Tope: `lockUsage` solo en `pin` (**aceptado**; un candado o disparador propios serían un segundo mecanismo); se cuentan solo los fijados visibles; `PUT` repetido
+       en el tope ⇒ `200`; el listado corta en `maxPinned` (R-10). `422` y no `409`: **de acuerdo** (límite de regla, como la profundidad; `409` queda para choques de nombre).
+    6. `QUICK_ACCESS_RECENT_STORED` deja de ser variable de entorno: es una constante con nombre (`RECENTS_STORED`); ninguna spec pide ajustarla (YAGNI).
+    7. `QuickAccessItem` sin `folderId?`, `pinnedAt?` ni `openedAt?`: nadie los consume (el orden lo da el servidor). El estado «fijado» del menú de fila sale de `GET /quick-access`; `NodeSummary` no cambia.
+    Punto 5 del pedido: el listado y las escrituras unen `accessibleNodes(actor)` dentro de la consulta y la RLS sin política para roles internos es lo correcto
+    (no tienen rutas, `403`; `accessibleNodes` les da vacío). Tras la aprobación de Adrián: actualizar `design-model.md` (M2 y tabla) y redibujar (PD-46).
+  - Adrián: **pendiente**. Hasta entonces solo se implementa CA-26 (T-12).
