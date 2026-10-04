@@ -239,7 +239,7 @@ cola). Es idempotente: si ya lo tomó el ciclo programado, la segunda pasada no 
   5. Lo eliminado aparte bajo una carpeta purgada se restaura en la raíz, posiblemente sin aviso (R-5).
 
 ## 9. Adición 2026-10-03 — CA-26 a CA-28
-> Estado: **Propuesta; architect: aprobado con cambios aplicados (2026-10-03); pendiente de Adrián.** No modifica §1 a §8 (aprobados). Cubre RF-38. Con esta adición el plan supera
+> Estado: **Aprobado — Adrián, 2026-10-03** (architect: aprobado con cambios aplicados, 2026-10-03; decisiones de Adrián en §9.4). No modifica §1 a §8 (aprobados). Cubre RF-38. Con esta adición el plan supera
 > las 250 líneas de la plantilla; es una excepción por revisión posterior a la aprobación.
 
 ### 9.1 CA-26 — desglosar carpetas en la lista (solo web, sin API nueva)
@@ -250,9 +250,12 @@ cola). Es idempotente: si ya lo tomó el ciclo programado, la segunda pasada no 
   son las mismas de `file-row-menu` en cualquier nivel; tras una acción se vuelve a leer el padre afectado.
 - Estado **por fila**: cargando, vacía («Esta carpeta está vacía») y error con «Reintentar», sin tocar el resto de la lista. Expandir no abre la
   carpeta ni cuenta como reciente (CA-27): solo abrirla la registra.
+- **Q-2 (aprobada)**: se pide solo la primera página de la carpeta desglosada; si `nextCursor` no es nulo, al final de su nivel va una fila «Ver más» que es un
+  enlace a `archivos/carpeta/[folderId]`, sin «Cargar más» en la fila. **Guías verticales** con el token de color nuevo que define `ui-guidelines.md` y `globals.css`
+  (sin colores escritos a mano).
 - Accesibilidad: botón con `aria-expanded` y `aria-controls` hacia el contenedor de hijas, operable con teclado (Enter/Espacio), nivel anunciado a
   lectores de pantalla y foco que no salta al expandir. El patrón exacto (filas anidadas o `treegrid`) lo fija el developer según el mockup.
-- Los estados siguen CA-25 (360 y 1440 px, axe). Sangría acotada en 360 px: ver pregunta Q-1.
+- Los estados siguen CA-25 (360 y 1440 px, axe). Sangría a 360 px (Q-1, aprobada): 16 px por nivel y se repite pasados 10 niveles.
 
 ### 9.2 CA-27 y CA-28 — accesos rápidos (RF-38)
 **Decisión**: concepto nuevo en M2 (`storage`), por cuenta, en el servidor. Cabe en `storage` (usa `accessibleNodes` y los mismos nodos); no hay
@@ -269,7 +272,7 @@ de configuración, `sonner` (ADR-0024) y la sección de la barra lateral de `app
 | storage/infrastructure/persistence | `acceso-rapido.orm-entity.ts`, `typeorm-quick-access.repository.ts` (nuevos) | Mapeo y SQL; **toda lectura y escritura une `accessibleNodes(actor)` en la consulta** (por `tipo_nodo` y la FK que corresponda) |
 | storage/presentation | `quick-access.controller.ts` (nuevo), `storage-validation.ts` (cambia) | Rutas de abajo, `@Roles(Role.CLIENT)`, pipes zod; `nodeIdPipe` existente y un pipe de `:nodeType` (`files`\|`folders`) compartido por las tres rutas con nodo |
 | storage | `storage.module.ts`, `index.ts` | Proveedores y exportaciones |
-| shared/config | esquemas de entorno, `.env.example` | `QUICK_ACCESS_MAX_PINNED` (api, 5, zod 1–20) y `QUICK_ACCESS_RECENT_VISIBLE` (5, 1–20); van a `pnpm env:check` |
+| shared/config | esquemas de entorno, `.env.example` | `QUICK_ACCESS_MAX_PINNED` (api, 5, zod 1–20) y `QUICK_ACCESS_RECENT_VISIBLE` (**3**, 1–20; P-15); van a `pnpm env:check` |
 | packages/contracts/storage | `quick-access-schemas.ts` (nuevo), `error-codes.ts` (cambia) | Esquemas de §9.2 y código `STORAGE_QUICK_ACCESS_LIMIT` |
 
 - **Puerto nuevo**: `IQuickAccessRepository`, **dentro de `storage`**, regla b del Art. V (repositorio: dominio sin TypeORM). `QuickAccessService`
@@ -330,10 +333,11 @@ CREATE POLICY acceso_rapido_cliente ON acceso_rapido TO nimbo_app USING (rol CLI
   de mejor esfuerzo (un fallo no se muestra al cliente) y que `web` debe llamarla; la prueba de componente lo asegura.
 - **Auditoría y privacidad**: no se audita (no está en CA-24 ni es dato sensible); ningún evento, log ni métrica lleva nombres; los registros de error llevan solo UUID y `errorName`.
 - **Web**: `quick-access-api.ts`; `components/quick-access-section.tsx` en `app-layout.tsx` (un solo componente para la barra de escritorio y el cajón móvil, DRY); entrada
-  «Fijar en la barra lateral» / «Quitar de la barra lateral» en `file-row-menu` (carpetas y archivos, en cualquier nivel del desglose, sin color destructivo); aviso del tope con `sonner`
-  (`role="status"`, ≥ 8 s). Elementos como enlaces: carpeta a `archivos/carpeta/[folderId]`, archivo con la descarga de 005, sin desglose; «Ver más» a `archivos` (raíz) solo si
-  `hasMoreRecent`; sección oculta si no hay nada. La carpeta se registra como reciente al montar su página (no al expandir) y el archivo al pedir la descarga. Estados: cargando, vacío (oculta), error discreto con «Reintentar».
-  Revalida tras fijar, quitar y registrar.
+  «Fijar en la barra lateral» / «Quitar de la barra lateral» en `file-row-menu` (carpetas y archivos, en cualquier nivel del desglose, sin color destructivo); **menú ⋮ en cada fijado**
+  de la barra (escritorio y cajón móvil, mismo componente) con «Quitar de la barra lateral»; aviso del tope con `Alert` en tono de advertencia (ADR-0024: lo que no es confirmación va en
+  `Alert`; ya no `sonner`), con una **variante `warning`** nueva en `components/ui/alert` (sin dependencia nueva; solo tokens de `ui-guidelines.md`). Elementos como enlaces: carpeta a `archivos/carpeta/[folderId]`, archivo con la descarga de 005, **nada se desglosa**; «Ver más» a `archivos` (raíz) solo si
+  `hasMoreRecent`; sección oculta si no hay nada. Se muestran 5 fijados y 3 recientes (`QUICK_ACCESS_*`). La carpeta se registra como reciente al montar su página (por URL, «Ver más», migas o barra; no al expandir, Q-3) y el archivo al pedir la descarga. Estados: cargando, vacío (oculta), error discreto con «Reintentar».
+  Revalida tras fijar, quitar y registrar. La web **no agrega** enlaces de navegación «Fijados» ni «Recientes» (solo los grupos de «Accesos rápidos»).
 
 ### 9.3 Pruebas por riesgo
 | CA | Nivel | Archivo |
@@ -342,7 +346,7 @@ CREATE POLICY acceso_rapido_cliente ON acceso_rapido TO nimbo_app USING (rol CLI
 | CA-27, CA-28 (una por ruta: feliz y error principal; papelera oculta, no ocupa tope y restaurar conserva; purga ⇒ `CASCADE` borra filas; tope concurrente `422`; `CHECK` de un nodo) | int | `test/int/storage/quick-access.int-spec.ts`; migración up/down ×3 en `folders-migrations.int-spec.ts` |
 | CA-28 (RNF-05) | iso | `test/isolation/storage-quick-access.iso-spec.ts`: B contra A en las 4 rutas ⇒ `404` idéntico salvo `correlationId`; B nunca ve filas de A en `GET`; RLS niega `acceso_rapido` sin filtro; roles internos `403`, sin token `401` |
 | CA-26 | web | `file-explorer.spec.tsx` (expandir/contraer, dos niveles, cargando/vacía/error por fila, `aria-expanded`), axe a 360 y 1440 px |
-| CA-27, CA-28, CA-25 | web | `quick-access-section.spec.tsx` (5 + 5, mezcla, solo uno, «Ver más», oculta, aviso del tope, cajón móvil), `file-row-menu.spec.tsx` (Fijar/Quitar), registro de apertura; axe |
+| CA-27, CA-28, CA-25 | web | `quick-access-section.spec.tsx` (5 + 3, mezcla, solo uno, «Ver más», oculta, menú ⋮ de fijados, `Alert` `warning` del tope, cajón móvil), `file-row-menu.spec.tsx` (Fijar/Quitar), `alert.spec.tsx` (variante), registro de apertura al montar la carpeta y al descargar; axe |
 
 ### 9.4 Riesgos, desviaciones y aprobación
 - R-6 **Integridad referencial**: resuelta con dos FK `ON DELETE CASCADE` y `CHECK` (ADR-0011). Además, nunca se lee sin unir `accessibleNodes`. La unión
@@ -350,14 +354,15 @@ CREATE POLICY acceso_rapido_cliente ON acceso_rapido TO nimbo_app USING (rol CLI
 - R-7 **Concurrencia en el tope**: dos `PUT` simultáneos podrían pasar de 5. Se serializa con `lockUsage(actor)` solo en `pin`; lo prueba una integración.
   Costo menor: comparte candado con cargas y mutaciones del árbol del mismo dueño (una operación de milisegundos).
 - R-10 **Más fijados visibles que el tope** (restaurar uno que estaba en la papelera, o bajar la configuración): el listado corta en `maxPinned`; sin pérdida de datos.
-- R-8 **Densidad 5 + 5** (P-15): la valida el `ui-designer` en el mockup; el valor es configuración, no hay que tocar código si cambia.
-- R-9 **Sin API para CA-26**: carpetas muy grandes paginan por cursor; ver Q-2.
+- R-8 **Densidad** (P-15, resuelta): 5 fijados y 3 recientes visibles; el valor es configuración, no hay que tocar código si cambia.
+- R-9 **Sin API para CA-26**: carpetas muy grandes paginan por cursor; Q-2 resuelta: solo la primera página y fila «Ver más» a la carpeta.
 - **DF-63** pasa de «Propuesto» a «Propuesto con plan (006 §9)»; texto registrado en `design-findings.md`: tabla `acceso_rapido` (usuario, `archivo_id`/`carpeta_id` con `CHECK` de exactamente uno y
   `ON DELETE CASCADE` según ADR-0011, fijado en, abierto en; RLS de cliente), `QuickAccessService` e `IQuickAccessRepository` internos de `storage`, `QuickAccessController` con 4 rutas bajo
   `/quick-access`, recientes por ruta explícita, `QUICK_ACCESS_MAX_PINNED` y `QUICK_ACCESS_RECENT_VISIBLE`; redibujar clases de M2 y el E-R y reflejarlo en `design-model.md` (PD-46). Un cambio de
   modelo, no de arquitectura entre módulos.
-- **Preguntas para Adrián**: **Q-1** sangría del desglose en 360 px (¿tope de niveles visibles con desplazamiento horizontal, o sangría fija pequeña?; lo propone el `ui-designer`). **Q-2** carpeta desglosada con más
-  elementos que una página: ¿«Cargar más» en la fila o se muestra solo la primera página con enlace «Abrir carpeta»? **Q-3** ¿Abrir una carpeta por URL o desde «Ver más» también cuenta como reciente (propuesto: sí, al montar su página)?
+- **Decisiones de Adrián (2026-10-03; todas resueltas)**: **Q-1** sangría de 16 px por nivel a 360 px, repetida pasados 10 niveles. **Q-2** fila «Ver más» al final del nivel que redirige a `/archivos/carpeta/{id}`, sin «Cargar más».
+  **Q-3** abrir una carpeta (URL, «Ver más», migas o barra) cuenta como reciente al montar su página; descargar un archivo también; expandir no. **P-15** 5 fijados y 3 recientes visibles.
+  También: nada se desglosa en la barra; «Favoritos» pasa a «Fijados» sin enlaces ni páginas nuevas; menú ⋮ de fijados; `Alert` `warning` para el tope; token nuevo para las guías del desglose.
 - **Aprobación de la adición**:
   - `architect`: **Aprobado con cambios (2026-10-03); los cambios ya están aplicados en §9.2 a §9.4 y en T-13/T-14 de `tasks.md`.**
     Fronteras, DAG y capas correctos: todo queda en `storage`, `access` solo aporta `accessibleNodes` (arista existente), no hay puerto entre módulos ni
@@ -375,4 +380,4 @@ CREATE POLICY acceso_rapido_cliente ON acceso_rapido TO nimbo_app USING (rol CLI
     7. `QuickAccessItem` sin `folderId?`, `pinnedAt?` ni `openedAt?`: nadie los consume (el orden lo da el servidor). El estado «fijado» del menú de fila sale de `GET /quick-access`; `NodeSummary` no cambia.
     Punto 5 del pedido: el listado y las escrituras unen `accessibleNodes(actor)` dentro de la consulta y la RLS sin política para roles internos es lo correcto
     (no tienen rutas, `403`; `accessibleNodes` les da vacío). Tras la aprobación de Adrián: actualizar `design-model.md` (M2 y tabla) y redibujar (PD-46).
-  - Adrián: **pendiente**. Hasta entonces solo se implementa CA-26 (T-12).
+  - Adrián: **Aprobado — Adrián, 2026-10-03**, con el dictamen del architect aplicado y las decisiones de arriba. T-13 a T-17 quedan desbloqueadas.
