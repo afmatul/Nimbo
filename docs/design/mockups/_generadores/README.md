@@ -14,10 +14,12 @@ los importa.
 | `marco/marco.js` (opciones) | `sidebar`/`navegacion` aceptan `carpetas` y `contadorPapelera`; con los valores por defecto el HTML de Seguridad y del layout no cambia |
 | `marco/css-marco.js` | CSS del marco con los tokens de Cielo Sereno (`ui-guidelines.md` §2–§3), solo Inter |
 | `seguridad/generar.js` | Los 15 estados de `identity/seguridad` (spec 002) |
-| `layout/generar.js` | Los 5 estados de `shared/layout` |
+| `layout/generar.js` | Los 12 estados de `shared/layout`: 5 del marco y 7 de «Accesos rápidos» (CA-27 y CA-28) |
 | `carga/generar.js` | Los 8 estados escritos a mano de `storage/carga` (spec 005); `carga--progreso.html` es el paquete de la propuesta y no se genera |
 | `explorador/generar.js` | Los 7 estados de 005 de `storage/explorador` (`vacio`, `cargando`, `arrastre`, `error`, `acciones`, `descarga-preparando`, `descarga-fallida`); `cuadricula` y `lista` son el paquete de la propuesta y no se generan |
-| `explorador/generar-carpetas.js` | Los 22 estados de 006 de `storage/explorador` (carpetas, migas, crear, renombrar, «Mover a…» con «Nueva carpeta» en línea, mover a la papelera) |
+| `explorador/generar-carpetas.js` | Los 30 estados de 006 de `storage/explorador`: 22 de carpetas, migas, crear, renombrar, «Mover a…» con «Nueva carpeta» en línea y mover a la papelera, y 8 de desglose y accesos rápidos (CA-26 a CA-28) |
+| `explorador/desglose.js` | Filas desglosables de la lista (control con `aria-expanded`, sangría, cargando, vacía y error en la fila), menú ⋮ con «Fijar»/«Quitar de la barra lateral», CSS y script de los estados de CA-26 |
+| `accesos/accesos.js` | Sección «Accesos rápidos» de la barra lateral y del cajón (Fijados y Recientes, «Ver más») y aviso del tope de fijados; entra al marco por `marco.sidebar({ accesos })` |
 | `papelera/generar.js` | Los 12 estados de 006 de `storage/papelera`; `papelera.html` es el paquete de la propuesta y no se genera |
 | `pw/capturar-rutas.js` | Capturas a 360 y 1440 px de los HTML indicados |
 | `pw/axe-seguridad.js`, `pw/axe-layout.js` | axe-core, desbordamiento a 360 px, objetivos táctiles y consola sobre todos los `.html` de una carpeta (sirve para cualquier pantalla); el de layout recorre además el teclado |

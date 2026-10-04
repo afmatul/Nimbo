@@ -1,10 +1,13 @@
 // Genera los mockups autocontenidos de shared/layout (marco de la aplicación, PD-28), un archivo por estado.
 // Uso: node generar.js <ruta-del-worktree>
 // Las piezas comunes (barra lateral, barra superior, menú de la cuenta, cajón y diálogo) vienen de marco/marco.js,
-// las mismas que usa identity/seguridad.
+// las mismas que usa identity/seguridad. Los estados de «Accesos rápidos» (spec 006, CA-27 y CA-28) usan accesos/accesos.js
+// y suman su CSS solo a esas páginas: los cinco estados anteriores no cambian ni un byte.
 const fs = require('node:fs');
 const path = require('node:path');
 const M = require('../marco/marco.js');
+const E = require('../mis-archivos/estados.js');
+const A = require('../accesos/accesos.js');
 
 const { icon } = M;
 
@@ -129,6 +132,16 @@ function page(v) {
   const plan = v.plan || 'PERSONAL';
   const cuota = v.cuota || M.CUOTA;
   const activo = 'Mis archivos';
+  // Accesos rápidos reemplaza a «Carpetas» (006): la barra y el cajón llevan la misma sección con ids distintos
+  const acc = v.accesos ? { carpetas: [] } : {};
+  const barra = v.accesos ? { ...acc, accesos: A.seccion(v.accesos, 'barra') } : {};
+  const cajonAcc = v.accesos ? { ...acc, accesos: A.seccion(v.accesos, 'cajon') } : {};
+  const cssAccesos = v.accesos ? `${A.CSS}${E.CSS_ALERT}  @media (max-width: 600px) {
+${E.CSS_ALERT_MQ600}  }
+` : '';
+  const aviso = v.aviso ? A.avisoTope() : '';
+  // El cajón real se desplaza dentro del alto de la pantalla; aquí el lienzo crece para dibujarlo completo en la captura
+  const cssCajon = v.cajonCompleto ? '  @media (max-width: 900px) { .canvas { min-height: 1120px; } }' + String.fromCharCode(10) : '';
   return `${M.cabecera({
     titulo: `Layout de la app · Nimbo — ${v.titulo}`,
     comentarios: [
@@ -136,7 +149,7 @@ function page(v) {
       'Colores: valores de ui-guidelines.md §3 (tonos AA de ADR-0014). La implementación usa tokens, components/ui y AppLayout.',
       'Piezas del marco generadas con marco/marco.js, las mismas que identity/seguridad.',
     ],
-    css: CSS,
+    css: CSS + cssAccesos + cssCajon,
   })}
 <body>
 
@@ -144,20 +157,20 @@ function page(v) {
 
 <div class="canvas">
   <div class="app"${v.dialogo ? ' inert' : ''}>
-    ${M.sidebar({ activo, plan, cuota })}
+    ${M.sidebar({ activo, plan, cuota, ...barra })}
     <div class="main">
       ${M.topbar({ crumbs: ['Mis archivos'], conMenu: true, menuAbierto: !!v.menu, cajonAbierto: !!v.cajon })}
       <main class="content" id="contenido">${avisoSoloLectura(v.soloLectura)}
         <div class="page-head">
           <h1>Mis archivos</h1>
-        </div>
+        </div>${aviso}
         <div class="slot">
           <p class="slot-t">Contenido de la pantalla</p>
           <p>Cada pantalla (explorador, Plan y facturación, Seguridad…) dibuja aquí su contenido en su propio mockup.</p>
         </div>
       </main>
     </div>
-  </div>${M.cajon({ activo, plan, cuota, abierto: !!v.cajon })}${M.dialog(M.DIALOGO_CERRAR_SESION, { oculto: !v.dialogo })}
+  </div>${M.cajon({ activo, plan, cuota, abierto: !!v.cajon, ...cajonAcc })}${M.dialog(M.DIALOGO_CERRAR_SESION, { oculto: !v.dialogo })}
 </div>
 
 <script>${JS}</script>
@@ -177,6 +190,36 @@ const ESTADOS = [
     soloLectura: { cuerpo: 'Tu plan Pro venció el 20 sep 2026. Tus archivos siguen aquí: puedes verlos y descargarlos, pero no subir ni editar hasta que renueves.' },
   },
   { estado: 'movil-cajon-abierto', titulo: 'cajón de navegación abierto (solo por debajo de 900 px)', cajon: true },
+  // Accesos rápidos (006, CA-27 y CA-28)
+  {
+    estado: 'fijados-y-recientes', titulo: 'Accesos rápidos con 5 fijados y 5 recientes, carpetas y archivos mezclados',
+    accesos: { fijados: A.FIJADOS_5, recientes: A.RECIENTES_5 },
+  },
+  {
+    estado: 'solo-recientes', titulo: 'Accesos rápidos sin fijados: solo el grupo Recientes',
+    accesos: { recientes: A.RECIENTES_5 },
+  },
+  {
+    estado: 'solo-fijados', titulo: 'Accesos rápidos sin recientes: solo el grupo Fijados',
+    accesos: { fijados: A.FIJADOS_5.slice(0, 3) },
+  },
+  {
+    estado: 'con-ver-mas', titulo: 'hay más recientes que los visibles: «Ver más» lleva a Mis archivos',
+    // El último reciente tiene un nombre largo: se corta con «…» y el título completo queda en `title` y en el nombre accesible
+    accesos: { fijados: A.FIJADOS_5, recientes: [...A.RECIENTES_5.slice(0, 4), ['archivo', 'Informe_final_de_resultados_septiembre.docx']], verMas: true },
+  },
+  {
+    estado: 'sin-accesos', titulo: 'sin fijados ni recientes: la sección se oculta',
+    accesos: { fijados: [], recientes: [] },
+  },
+  {
+    estado: 'tope-de-fijados', titulo: 'sexto fijado: aviso «Ya fijaste 5 elementos…» y no cambia nada (CA-28)',
+    accesos: { fijados: A.FIJADOS_5, recientes: A.RECIENTES_5.slice(0, 3) }, aviso: true,
+  },
+  {
+    estado: 'movil-cajon-con-accesos', titulo: 'cajón de navegación con Accesos rápidos a 360 px (5 + 5, «Ver más»)',
+    cajon: true, cajonCompleto: true, accesos: { fijados: A.FIJADOS_5, recientes: A.RECIENTES_5, verMas: true },
+  },
 ];
 
 for (const v of ESTADOS) {

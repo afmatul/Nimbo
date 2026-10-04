@@ -1,5 +1,6 @@
 // Genera los estados de la spec 006 en storage/explorador: Mis archivos con carpetas (migas, crear, renombrar,
-// mover a…, mover a la papelera, subir a la carpeta abierta).
+// mover a…, mover a la papelera, subir a la carpeta abierta) y, desde la revisión de Adrián del 2026-10-03, el desglose de
+// carpetas en la lista (CA-26) y «Fijar en la barra lateral» con el tope de fijados (CA-27, CA-28): ver desglose.js.
 // Uso: node generar-carpetas.js <ruta-del-worktree>
 // Los estados de 005 siguen saliendo de generar.js y no cambian. Marco: marco/marco.js; tabla, cuota y estados comunes:
 // mis-archivos/; piezas de 006 (logo, barra lateral con «Carpetas», toast, diálogos): carpetas/carpetas.js.
@@ -9,6 +10,8 @@ const M = require('../marco/marco.js');
 const S = require('../mis-archivos/mis-archivos.js');
 const E = require('../mis-archivos/estados.js');
 const C = require('../carpetas/carpetas.js');
+const A = require('../accesos/accesos.js');
+const D = require('./desglose.js');
 
 const repo = process.argv[2];
 if (!repo) throw new Error('Falta la ruta del worktree');
@@ -80,7 +83,7 @@ const PROFUNDA = [
 const RUTA_FASE3 = ['Mis archivos', 'Proyecto Alpha', 'Fase 3 · RAG'];
 
 // ---------- Piezas ----------
-const mi = (ic, label) => `<button role="menuitem" type="button" tabindex="-1">${icon(ic)}<span>${label}</span></button>`;
+const mi = C.itemMenu;
 // «Mover a la papelera» no va en rojo: es reversible y no pide confirmación; el rojo queda para lo definitivo.
 const MENU_ARCHIVO = [mi('download', 'Descargar'), mi('pencil', 'Renombrar'), mi('folderInput', 'Mover a…'), 'sep', mi('trash', 'Mover a la papelera')];
 const MENU_CARPETA = [mi('pencil', 'Renombrar'), mi('folderInput', 'Mover a…'), 'sep', mi('trash', 'Mover a la papelera')];
@@ -344,7 +347,7 @@ function page(v) {
       'Colores: valores de ui-guidelines.md §3 (tonos AA). La implementación usa tokens, components/ui y components/nimbo.',
       'Generado con _generadores/explorador/generar-carpetas.js (marco, mis-archivos y carpetas). No editar a mano.',
     ],
-    css: CSS + (v.dialogo ? CSS_ARBOL_CERRADO : ''),
+    css: CSS + (v.dialogo ? CSS_ARBOL_CERRADO : '') + (v.nuevo ? A.CSS + D.CSS : ''),
   })}
 <body>
 
@@ -352,7 +355,7 @@ function page(v) {
 
 <div class="canvas">
   <div class="app"${v.dialogo ? ' inert' : ''}>
-    ${C.sidebar({ papelera: v.papelera || '6' })}
+    ${C.sidebar({ papelera: v.papelera || '6', accesos: v.nuevo ? (v.accesos || ACCESOS) : '' })}
     <div class="main">
       ${crumbs}
       <main class="content" id="contenido">${v.cuerpo()}
@@ -367,6 +370,33 @@ ${v.js ? `
 </html>
 `);
 }
+
+// ---------- Desglose de carpetas y accesos rápidos (CA-26 a CA-28) ----------
+// Los estados anteriores conservan la barra lateral con «Carpetas» y las filas sin control de desglose; los nuevos
+// (`nuevo: true`) llevan «Accesos rápidos» y el control de desglose en cada carpeta.
+const ACCESOS = A.seccion({
+  fijados: [['carpeta', 'Proyecto Alpha'], ['archivo', 'Propuesta_Nimbo_v3.docx'], ['carpeta', 'Finanzas']],
+  recientes: [['carpeta', 'Fase 3 · RAG'], ['archivo', 'Informe_avance_RAG.docx'], ['archivo', 'Modelo_ER_Nimbo.pdf'], ['carpeta', 'Actas']],
+}, 'barra');
+const ACCESOS_TOPE = A.seccion({ fijados: A.FIJADOS_5, recientes: A.RECIENTES_5.slice(0, 3) }, 'barra');
+const carp = (nombre, fecha, extra = {}) => ({ tipo: 'carpeta', nombre, tam: '', fecha, ...extra });
+const arch = (nombre, tam, fecha, extra = {}) => ({ tipo: 'archivo', nombre, tam, fecha, ...extra });
+// Raíz con «Proyecto Alpha» desglosada en dos niveles. `sobre` cambia nodos por nombre (estado, abierto…).
+function raizDesglosada(sobre = {}) {
+  const n = (nombre, base) => ({ ...base, ...(sobre[nombre] || {}) });
+  const rag = n('Fase 3 · RAG', carp('Fase 3 · RAG', 'hace 20 min', { abierto: true, hijos: [
+    n('Prompts', carp('Prompts', 'hace 1 h')),
+    n('Informe_avance_RAG.docx', arch('Informe_avance_RAG.docx', '1.2 MB', 'hace 20 min')),
+    n('Benchmark_pgvector.pdf', arch('Benchmark_pgvector.pdf', '4.9 MB', '22 sep')),
+  ] }));
+  const alpha = n('Proyecto Alpha', carp('Proyecto Alpha', 'hace 1 h', { fijado: true, abierto: true, hijos: [
+    n('Actas', carp('Actas', '2 ago')), n('Documentación', carp('Documentación', '27 sep')), rag,
+    n('Plan_de_trabajo.docx', arch('Plan_de_trabajo.docx', '210 KB', '30 sep')),
+  ] }));
+  return [alpha, n('Documentos Legales', carp('Documentos Legales', '18 sep')), n('Finanzas', carp('Finanzas', 'ayer', { fijado: true })),
+    ...S.RAIZ.map(([nombre, tam, fecha]) => n(nombre, arch(nombre, tam, fecha, { fijado: nombre === 'Propuesta_Nimbo_v3.docx' })))];
+}
+const desglosada = (sobre, opciones) => () => encabezado(['Mis archivos']) + D.tabla(raizDesglosada(sobre), opciones);
 
 // ---------- Estados ----------
 const enFase3 = (cuerpo, nodos = FASE3) => () => encabezado(RUTA_FASE3) + cuerpo(nodos);
@@ -489,6 +519,46 @@ const ESTADOS = [
     estado: 'eliminar-fallido', titulo: 'no se pudo mover a la papelera: aviso arriba de la lista con «Reintentar»',
     ruta: RUTA_FASE3,
     cuerpo: () => encabezado(RUTA_FASE3) + E.aviso({ titulo: 'No pudimos mover «Resultados_evaluacion.xlsx» a la papelera.', texto: 'Revisa tu conexión e inténtalo de nuevo. El archivo sigue en esta carpeta.', accion: 'Reintentar' }) + listaFase3(FASE3),
+  },
+  // Desglose de carpetas (CA-26) y accesos rápidos (CA-27, CA-28)
+  {
+    estado: 'carpeta-desglosada', titulo: 'carpeta desglosada a dos niveles, con sangría, sin salir de Mis archivos (CA-26)',
+    ruta: ['Mis archivos'], nuevo: true, js: D.JS_MENU + D.JS, cuerpo: desglosada(),
+  },
+  {
+    estado: 'desglosando-cargando', titulo: 'se desglosa «Documentación»: cargando en su fila (CA-26)',
+    ruta: ['Mis archivos'], nuevo: true, js: D.JS_MENU + D.JS,
+    cuerpo: desglosada({ 'Documentación': { abierto: true, estado: 'cargando' }, 'Fase 3 · RAG': { abierto: false } }),
+  },
+  {
+    estado: 'desglosada-vacia', titulo: 'carpeta desglosada sin contenido: fila «Esta carpeta está vacía» (CA-26)',
+    ruta: ['Mis archivos'], nuevo: true, js: D.JS_MENU + D.JS,
+    cuerpo: desglosada({ Actas: { abierto: true, estado: 'vacia' }, 'Fase 3 · RAG': { abierto: false } }),
+  },
+  {
+    estado: 'desglosada-error', titulo: 'falló el contenido de «Documentación»: error con «Reintentar» solo en su fila (CA-26)',
+    ruta: ['Mis archivos'], nuevo: true, js: D.JS_MENU + D.JS,
+    cuerpo: desglosada({ 'Documentación': { abierto: true, estado: 'error' }, 'Fase 3 · RAG': { abierto: false } }),
+  },
+  {
+    estado: 'menu-fila-carpeta', titulo: 'menú ⋮ de una subcarpeta (nivel 2): «Fijar en la barra lateral» (CA-27)',
+    ruta: ['Mis archivos'], nuevo: true, js: D.JS_MENU + D.JS,
+    cuerpo: desglosada({ 'Fase 3 · RAG': { abierto: false } }, { menuEn: 'Fase 3 · RAG' }),
+  },
+  {
+    estado: 'menu-fila-archivo', titulo: 'menú ⋮ de un archivo anidado (nivel 3): «Fijar en la barra lateral» (CA-27)',
+    ruta: ['Mis archivos'], nuevo: true, js: D.JS_MENU + D.JS,
+    cuerpo: desglosada({}, { menuEn: 'Informe_avance_RAG.docx' }),
+  },
+  {
+    estado: 'menu-fila-quitar', titulo: 'menú ⋮ de un elemento ya fijado: «Quitar de la barra lateral» (CA-27)',
+    ruta: ['Mis archivos'], nuevo: true, js: D.JS_MENU + D.JS,
+    cuerpo: desglosada({ 'Proyecto Alpha': { abierto: false } }, { menuEn: 'Propuesta_Nimbo_v3.docx' }),
+  },
+  {
+    estado: 'tope-de-fijados', titulo: 'sexto fijado: aviso «Ya fijaste 5 elementos…» y no cambia nada (CA-28)',
+    ruta: ['Mis archivos'], nuevo: true, js: D.JS_MENU + D.JS, accesos: ACCESOS_TOPE,
+    cuerpo: () => encabezado(['Mis archivos']) + A.avisoTope() + D.tabla(raizDesglosada({ 'Proyecto Alpha': { abierto: false } })),
   },
 ];
 

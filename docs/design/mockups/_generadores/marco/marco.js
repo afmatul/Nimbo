@@ -63,8 +63,9 @@ const DIALOGO_CERRAR_SESION = {
 
 // ---------- Piezas ----------
 // carpetas: sección «Carpetas» (por defecto, CARPETAS; con [] se omite el título y la lista).
+// accesos: HTML de la sección «Accesos rápidos» de 006 (accesos/accesos.js); con '' no aparece y el marco no cambia.
 // contadorPapelera: por defecto, el de NAV_PRINCIPAL; con '' se omite (005: la papelera llega con 006).
-function navegacion({ activo = '', etiqueta = 'Navegación principal', idPrimerEnlace = '', carpetas = CARPETAS, contadorPapelera } = {}) {
+function navegacion({ activo = '', etiqueta = 'Navegación principal', idPrimerEnlace = '', carpetas = CARPETAS, contadorPapelera, accesos = '' } = {}) {
   const principal = contadorPapelera === undefined ? NAV_PRINCIPAL
     : NAV_PRINCIPAL.map(([ic, label, meta]) => [ic, label, label === 'Papelera' ? contadorPapelera : meta]);
   let primero = !!idPrimerEnlace;
@@ -83,7 +84,7 @@ function navegacion({ activo = '', etiqueta = 'Navegación principal', idPrimerE
         </ul>${carpetas.length ? `
         <p class="nav-title">Carpetas</p>
         <ul class="nav">${lista(carpetas)}
-        </ul>` : ''}
+        </ul>` : ''}${accesos}
       </nav>`;
 }
 
@@ -99,20 +100,20 @@ function cuota({ usado, total, pct } = CUOTA) {
 const logo = (cls = 'logo') =>
   `<a class="${cls}" href="#" aria-label="Nimbo, Mis archivos"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>`;
 
-function sidebar({ activo = '', plan = 'PERSONAL', cuota: q = CUOTA, carpetas = CARPETAS, contadorPapelera } = {}) {
+function sidebar({ activo = '', plan = 'PERSONAL', cuota: q = CUOTA, carpetas = CARPETAS, contadorPapelera, accesos = '' } = {}) {
   return `
     <aside class="sidebar" aria-label="Barra lateral">
       <div class="brand-row">
         ${logo()}
         <span class="plan-chip">${plan}</span>
       </div>
-      ${navegacion({ activo, carpetas, contadorPapelera })}
+      ${navegacion({ activo, carpetas, contadorPapelera, accesos })}
       ${cuota(q)}
     </aside>`;
 }
 
 // Cajón móvil (por debajo de 900 px): mismo contenido que la barra lateral dentro de un diálogo modal.
-function cajon({ activo = '', plan = 'PERSONAL', cuota: q = CUOTA, abierto = false } = {}) {
+function cajon({ activo = '', plan = 'PERSONAL', cuota: q = CUOTA, abierto = false, carpetas = CARPETAS, accesos = '' } = {}) {
   const oculto = abierto ? '' : ' hidden';
   return `
   <div class="drawer-overlay" data-cerrar-cajon aria-hidden="true"${oculto}></div>
@@ -123,7 +124,7 @@ function cajon({ activo = '', plan = 'PERSONAL', cuota: q = CUOTA, abierto = fal
         <h2 id="cajon-t" class="sr-only">Menú de navegación</h2>
         <button class="icon-btn" type="button" data-cerrar-cajon aria-label="Cerrar menú">${icon('x', 22)}</button>
       </div>
-      ${navegacion({ activo, idPrimerEnlace: 'cajon-primero' })}
+      ${navegacion({ activo, idPrimerEnlace: 'cajon-primero', carpetas, accesos })}
       ${cuota(q)}
   </div>`;
 }

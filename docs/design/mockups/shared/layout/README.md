@@ -18,6 +18,9 @@
   - solo-lectura: plan Pro vencido; aviso persistente con «Renovar plan» (`layout--solo-lectura.html`, RF-23)
   - movil-cajon-abierto: por debajo de 900 px, la barra lateral se abre como cajón (`layout--movil-cajon-abierto.html`).
     Solo existe en móvil y tableta; a 1440 px el archivo muestra el marco de escritorio y no tiene captura.
+  - **Accesos rápidos (spec 006, CA-27 y CA-28)**: siete estados nuevos, descritos en «Accesos rápidos de la barra
+    lateral (006)»: fijados-y-recientes, solo-recientes, solo-fijados, con-ver-mas, sin-accesos, tope-de-fijados y
+    movil-cajon-con-accesos (`layout--<estado>.html`; el cajón solo tiene captura a 360 px).
 - **Capturas**: `docs/design/capturas/shared/layout/` (`layout--<estado>--<360|1440>.png`; el cajón, solo a 360).
   axe-core sin violaciones en los 5 estados a 360 y 1440 px y en los recorridos de teclado (menú abierto, diálogo
   abierto, cajón abierto). Sin desbordamiento horizontal a 360 px, sin errores de consola, objetivos de al menos 24 px
@@ -62,6 +65,113 @@
 - **Contenido central**: un marcador neutro con el `h1` de la página. Cada pantalla dibuja su contenido en su mockup.
 - Los roles internos (Administrador, Soporte, Operador) no usan este marco: tienen el suyo en 011 y 022, sin
   navegación de archivos.
+
+## Accesos rápidos de la barra lateral (006)
+**Spec 006** (CA-27, CA-28, RF-38; revisión de Adrián, 2026-10-03). **Estado: Borrador**, pendiente de revisión de Adrián.
+La sección «Accesos rápidos» reemplaza a «Carpetas» en la barra lateral y en el cajón móvil. Los cinco estados
+anteriores no cambiaron ni un byte: conservan «Carpetas» (con 3 carpetas de ejemplo); solo los siete nuevos llevan
+la sección. Se generan con `_generadores/accesos/accesos.js`, que entra al marco por la opción `accesos` de `marco/marco.js`.
+Capturas: `docs/design/capturas/shared/layout/layout--<estado>--<360|1440>.png`.
+
+| Estado | Qué muestra |
+|---|---|
+| fijados-y-recientes | Caso lleno: 5 fijados y 5 recientes, carpetas y archivos mezclados, sin «Ver más» |
+| solo-recientes | Sin fijados: solo el grupo «Recientes» (5) |
+| solo-fijados | Sin recientes: solo el grupo «Fijados» (3) |
+| con-ver-mas | 5 + 5 más «Ver más» al final; el último reciente tiene un nombre largo para ver el corte con «…» |
+| sin-accesos | Sin fijados ni recientes: la sección y sus títulos no se dibujan (la barra queda como la de 005) |
+| tope-de-fijados | Cinco fijados; el cliente intenta fijar un sexto: aviso arriba del contenido «Ya fijaste 5 elementos. Quita uno para fijar otro.» y la barra no cambia |
+| movil-cajon-con-accesos | Cajón a 360 px con la sección completa (5 + 5, «Ver más») y la cuota al final |
+
+### Decisiones de UX (propias de este mockup)
+- **Estructura**: título «ACCESOS RÁPIDOS» (el mismo estilo que tenía «Carpetas») y, dentro, dos grupos con su título en
+  12 px y 600, sin mayúsculas: «Fijados» (ícono de chincheta) y «Recientes» (ícono de reloj). Cada grupo es una lista
+  (`ul`) nombrada con la sección y el grupo («Accesos rápidos Fijados») mediante `aria-labelledby`. Los títulos son
+  `p`, como el de «Carpetas», no encabezados: dentro de la barra no compiten con el `h1`.
+- **Ítems**: enlaces de 32 px de alto en escritorio y 44 px en el cajón (CA-5 de 000b), 13 px, con el ícono de la
+  carpeta en `primary` y el del archivo por tipo (texto, hoja de cálculo, presentación) en `secondary-foreground`.
+  Carpetas y archivos se distinguen por la forma del ícono y por el nombre, no solo por el color. **No hay flecha de
+  desglose**: no se despliegan (CA-27).
+- **Nombre**: una línea; si no cabe se corta en medio con «…» y **la extensión queda siempre visible**
+  (`Propuesta_Nimbo….docx`), con el nombre completo en `title`. Cada enlace lleva texto para lectores de pantalla:
+  «, carpeta» o «, archivo, se descarga» (el archivo se descarga al activarlo, como en 005).
+- **«Ver más»**: enlace al final de «Recientes», en `primary` (4.97:1 sobre `card`), con el ícono ›; su nombre accesible
+  es «Ver más en Mis archivos» porque la spec lo manda a Mis archivos (raíz). Solo aparece si hay más recientes que los
+  visibles.
+- **Aviso del tope (CA-28)**: `Alert` arriba del contenido (de la lista, en el explorador) en tono **warning**: borde
+  `warning` al 45 %, fondo `warning` al 12 %, ícono y texto en `warning-foreground` (4.79:1), «Cerrar aviso» y
+  `role="alert"`. No es un toast: `ui-guidelines.md` §4 y ADR-0024 dicen que lo que no es una confirmación va en
+  `Alert`; y no es destructivo, porque llegar al límite no es una falla. El ítem «Fijar» del menú **no** se deshabilita:
+  la spec pide que intentar fijar el sexto muestre el aviso. El foco se queda en el botón ⋮ que lo originó.
+- **Sin accesos**: la sección desaparece completa (CA-27); no hay estado vacío con instrucciones.
+- **Cajón móvil**: mismo contenido que la barra, con ids distintos (`cajon-…` y `barra-…`) para no repetirlos. En
+  la captura el lienzo crece para dibujar el cajón completo (1120 px); en un teléfono el cajón se desplaza dentro de la
+  pantalla.
+
+### Validación de 5 + 5 (P-15)
+Medido con Playwright sobre estos mockups (barra de 236 px; la cuota queda abajo):
+
+| | Sin la sección («Carpetas» de 000b) | 5 + 5 | 5 + 5 con «Ver más» |
+|---|---|---|---|
+| Alto de la sección (escritorio) | ≈ 130 px | 415 px | 449 px |
+| Alto total de la barra (escritorio) | 860 px (mínimo del marco) | 876 px | 910 px |
+| Enlaces en la barra (paradas de Tab antes del contenido) | 10 | 17 | 18 |
+| Alto total del cajón a 360 px | 676 px | — | 1120 px |
+
+**Veredicto: 5 + 5 no se ve apretado, pero sí carga de más en vertical.** Horizontalmente se lee limpio (32 px por
+ítem, dos grupos con título, sin colores que compitan). El problema es la altura:
+1. La sección ocupa casi la mitad de la barra (415 de 876 px). En una ventana de 1440 × 900 el área útil del
+   navegador es de unos 780–800 px y en un portátil de 1366 × 768, de unos 650: la cuota queda bajo el borde, o hay que
+   desplazar la barra.
+2. En el cajón de 360 px la sección empieza a 416 px del borde de arriba y el cajón mide 1120 px: en un teléfono de 640 a
+   720 px de alto solo se ven de 4 a 6 accesos sin desplazar, y la cuota queda a dos pantallas.
+3. Sube de 10 a 17–18 las paradas de Tab antes del contenido (WCAG 2.4.1: hace falta un enlace «Saltar al contenido»;
+   `#contenido` ya existe en el marco, el enlace no).
+4. En 236 px casi ningún nombre de archivo cabe completo (`Propuesta_Nimbo_v3.docx` ya se corta).
+
+**Ajuste propuesto (decisión para Adrián, la spec no cambia):** mantener hasta **5 fijados** (los eligió el cliente) y
+mostrar **3 recientes** por defecto; los otros hasta 5 quedan detrás de «Ver más». El plan ya deja ambas cifras como
+configuración (P-15), así que es cambiar los recientes visibles de 5 a 3. Ahorra 64 px en escritorio y 88 px en el
+cajón. Complementos, en orden de prioridad:
+- **Barra con región desplazable**: el bloque de navegación y accesos hace `overflow-y: auto` y la cuota queda fija abajo,
+  para que la cuota nunca salga de la pantalla aunque haya 5 + 5.
+- **Enlace «Saltar al contenido»** al inicio de la barra.
+- **Barra de 256–264 px** en lugar de 236 si se quiere que quepan más nombres. La extensión visible ya mitiga el corte.
+- Alternativa descartada por ahora: grupos plegables (`aria-expanded`); añaden un control y un estado a una sección que
+  la spec quiere sin desglose.
+
+### Otras decisiones de UX para Adrián (sobre CA-27 y CA-28)
+1. **Nombres repetidos en la navegación.** La barra ya tiene «Recientes» y «Favoritos» (propuesta p. 08, pendiente 5 de
+   este README: sin RF) y ahora «Fijados» y «Recientes» dentro de «Accesos rápidos». El cliente verá dos «Recientes»
+   que hacen cosas distintas. Conviene quitar «Recientes» y «Favoritos» de la navegación principal (PD-34 los deja fuera
+   de alcance) o renombrar uno de los dos.
+2. **«Ver más» no muestra más recientes.** Por spec lleva a Mis archivos (raíz), que no es una lista de recientes: el
+   texto promete algo que el destino no cumple. Alternativas: que despliegue en el lugar los recientes restantes
+   (`aria-expanded`), o cambiar el texto a «Ir a Mis archivos».
+3. **No se puede quitar un fijado desde la barra.** Hay que encontrar la fila en Mis archivos para usar «Quitar de la
+   barra lateral»; si el elemento está dentro de varias carpetas, es un recorrido largo. Propuesta (no dibujada, la spec
+   no lo pide): un botón ⋮ en cada fijado al pasar el puntero o al enfocar, con «Quitar de la barra lateral».
+4. **Un archivo reciente se descarga al activarlo.** Es lo que dice la spec, pero un enlace en una lista de navegación no
+   suele descargar. Se avisa con `title` y con texto para lectores de pantalla; un ícono de descarga solo al pasar el
+   puntero lo haría visible.
+5. **Tono del aviso del tope**: el `Alert` en tono warning (el que se dibuja) exige agregar una variante `warning` a
+   `components/ui/alert` (un `cva`, sin dependencia nueva; los tokens ya existen). La alternativa es la variante
+   destructiva ya aprobada, sin código nuevo.
+
+### Contraste de los pares nuevos (WCAG 2.1)
+| Par | Contraste |
+|---|---|
+| `muted-foreground` sobre `card` (títulos «Fijados» y «Recientes», 12 px) | 4.76 |
+| `secondary-foreground` sobre `card` (nombre del ítem) | 8.09 |
+| `foreground` sobre `muted` (ítem con puntero) | 12.51 |
+| `primary` sobre `card` («Ver más»; ícono de carpeta) | 4.97 |
+| `primary-hover` sobre `muted` («Ver más» con puntero) | 6.24 |
+| `warning-foreground` sobre `warning` al 12 % (aviso del tope) | 4.79 |
+
+Verificación: axe-core sin violaciones a 360 y 1440 px en los siete estados nuevos (y en los cinco anteriores),
+sin desbordamiento horizontal a 360 px, sin objetivos menores de 24 px y sin ítems del cajón menores de 44 px
+(`_generadores/pw/axe-layout.js`), sin errores de consola. El recorrido de teclado del cajón y del menú de la cuenta
+no cambió.
 
 ## Cambios respecto de la propuesta (marco de p. 08 y p. 17)
 | En la propuesta | En este mockup | Motivo |
@@ -141,7 +251,8 @@ su ícono, su título y su fondo.
 ## Pendiente
 - Velo de los diálogos y del cajón: `agent-bg` al 45 %; falta el token en `globals.css` (TODO #6 de `app-layout.tsx`).
 - Tramos de 70 % y 90 % de la cuota en la barra lateral y su enlace al optimizador: los dibuja 007.
-- Árbol de carpetas y «Nueva carpeta» en la barra lateral: los dibuja 006. En solo lectura, «Nueva carpeta» se
+- Árbol de carpetas y «Nueva carpeta» en la barra lateral: no se dibujan; 006 los reemplazó por «Accesos rápidos»
+  (sin desglose) y el botón «Nueva carpeta» vive en el encabezado del explorador. En solo lectura, «Nueva carpeta» se
   deshabilita.
 - Herramientas de página en la barra superior (buscador, presencia, «Agente Nimbo»): las definen el explorador y
   018/020. `AppLayout` necesitará un espacio para ellas entre la ruta y la cuenta.

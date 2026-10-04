@@ -1,5 +1,19 @@
 // Estados comunes de las páginas de lista (Mis archivos de 005 y 006, Papelera de 006): CSS de vacío, cargando, error,
 // aviso (Alert) y zona de soltar, y el script del menú ⋮ por fila. Extraído de explorador/generar.js sin cambios.
+// Alert (aviso arriba de la lista), compartido con shared/layout (aviso del tope de fijados)
+const CSS_ALERT = `  /* Aviso de descarga fallida (Alert de shadcn, variante destructiva), arriba de la lista */
+  .alert { display: flex; align-items: flex-start; gap: 12px; margin: 20px 0 0; padding: 12px 8px 12px 16px; border: 1px solid color-mix(in srgb, var(--destructive-soft) 45%, var(--card)); border-radius: var(--radius-lg); background: var(--destructive-tint); }
+  .alert > .ico { margin-top: 2px; color: var(--destructive); }
+  .alert-body { flex: 1; min-width: 0; }
+  .alert-title { margin: 0; font-size: 14px; font-weight: 600; color: var(--destructive); overflow-wrap: anywhere; }
+  .alert-text { margin: 2px 0 0; font-size: 13.5px; color: var(--foreground); }
+  .alert-actions { display: flex; align-items: center; gap: 4px; flex: none; }
+  .alert .icon-btn { width: 36px; height: 36px; color: var(--secondary-foreground); }
+  .alert + .files { margin-top: 16px; }
+
+`;
+exports.CSS_ALERT = CSS_ALERT;
+
 exports.CSS_ESTADOS = `  /* Vacío (StateView type="empty" de 000b): borde discontinuo, ícono, título, descripción y acción */
   .state-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 224px; margin-top: 20px; padding: 32px; text-align: center; background: var(--card); border: 1px dashed var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }
   .state-empty > .ico { margin-bottom: 16px; color: var(--muted-foreground); }
@@ -28,17 +42,7 @@ exports.CSS_ESTADOS = `  /* Vacío (StateView type="empty" de 000b): borde disco
   .state-error h2 { margin: 12px 0 6px; font-size: 16px; line-height: 1.5; font-weight: 600; color: var(--destructive); }
   .state-error p { margin: 0 0 20px; max-width: 46ch; font-size: 14px; color: var(--foreground); }
 
-  /* Aviso de descarga fallida (Alert de shadcn, variante destructiva), arriba de la lista */
-  .alert { display: flex; align-items: flex-start; gap: 12px; margin: 20px 0 0; padding: 12px 8px 12px 16px; border: 1px solid color-mix(in srgb, var(--destructive-soft) 45%, var(--card)); border-radius: var(--radius-lg); background: var(--destructive-tint); }
-  .alert > .ico { margin-top: 2px; color: var(--destructive); }
-  .alert-body { flex: 1; min-width: 0; }
-  .alert-title { margin: 0; font-size: 14px; font-weight: 600; color: var(--destructive); overflow-wrap: anywhere; }
-  .alert-text { margin: 2px 0 0; font-size: 13.5px; color: var(--foreground); }
-  .alert-actions { display: flex; align-items: center; gap: 4px; flex: none; }
-  .alert .icon-btn { width: 36px; height: 36px; color: var(--secondary-foreground); }
-  .alert + .files { margin-top: 16px; }
-
-  /* Arrastre (§5): zona de soltar sobre Mis archivos, bg-brand/5 + borde 1.5 px discontinuo brand */
+${CSS_ALERT}  /* Arrastre (§5): zona de soltar sobre Mis archivos, bg-brand/5 + borde 1.5 px discontinuo brand */
   .content { position: relative; flex: 1; } /* la zona de soltar ocupa todo el área bajo la barra superior */
   .dropzone { position: absolute; inset: 10px; z-index: 4; border: 1.5px dashed var(--brand); border-radius: var(--radius-lg); background: color-mix(in srgb, var(--brand) 5%, transparent); pointer-events: none; }
   .drop-label { position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; width: max-content; max-width: calc(100% - 32px); margin: 0; padding: 12px 20px 12px 14px; border-radius: var(--radius-lg); background: var(--primary); color: var(--primary-foreground); box-shadow: var(--shadow-modal); }
@@ -49,15 +53,18 @@ exports.CSS_ESTADOS = `  /* Vacío (StateView type="empty" de 000b): borde disco
 `;
 
 // Reglas por debajo de 600 px (van dentro del @media de cada generador)
-exports.CSS_ESTADOS_MQ600 = `    .state-empty { margin-top: 16px; padding: 32px 16px; }
-    .state-empty .btn, .state-error .btn { width: 100%; }
-    .state-error { margin-top: 16px; padding: 32px 16px; }
-    /* Aviso en móvil: la X arriba a la derecha (44 px) y «Reintentar» a todo el ancho debajo del texto */
+const CSS_ALERT_MQ600 = `    /* Aviso en móvil: la X arriba a la derecha (44 px) y «Reintentar» a todo el ancho debajo del texto */
     .alert { position: relative; flex-wrap: wrap; margin-top: 16px; padding: 12px 52px 12px 12px; }
     .alert-actions { width: calc(100% + 40px); padding-left: 30px; }
     .alert-actions .btn { flex: 1; min-height: 44px; }
     .alert .icon-btn { position: absolute; top: 4px; right: 4px; width: 44px; height: 44px; }
-    .solo-escritorio { display: none; }
+`;
+exports.CSS_ALERT_MQ600 = CSS_ALERT_MQ600;
+
+exports.CSS_ESTADOS_MQ600 = `    .state-empty { margin-top: 16px; padding: 32px 16px; }
+    .state-empty .btn, .state-error .btn { width: 100%; }
+    .state-error { margin-top: 16px; padding: 32px 16px; }
+${CSS_ALERT_MQ600}    .solo-escritorio { display: none; }
     .solo-tactil { display: inline; }
     .files-skeleton .sk-head { display: none; }
     .sk-row { grid-template-columns: minmax(0, 1fr); padding: 12px; }
@@ -145,21 +152,29 @@ exports.errorEstado = function errorEstado(titulo, texto) {
         </div>`;
 };
 
-// Aviso arriba de la lista (Alert de shadcn, variante destructiva) con una acción y «Cerrar aviso»
-exports.aviso = function aviso({ titulo, texto, accion }) {
+// Aviso arriba de la lista (Alert de shadcn, variante destructiva) con una acción y «Cerrar aviso».
+// `texto` y `accion` son opcionales; tono 'warn' (límite alcanzado, no es una falla) usa los tokens warning.
+exports.aviso = function aviso({ titulo, texto = '', accion = '', tono = '' }) {
   return `
-        <div class="alert" role="alert">
+        <div class="alert${tono ? ` alert-${tono}` : ''}" role="alert">
           ${icon('alert', 18)}
           <div class="alert-body">
-            <p class="alert-title">${titulo}</p>
-            <p class="alert-text">${texto}</p>
+            <p class="alert-title">${titulo}</p>${texto ? `
+            <p class="alert-text">${texto}</p>` : ''}
           </div>
-          <div class="alert-actions">
-            <button class="btn btn-outline btn-sm" type="button">${icon('retry', 14)}<span>${accion}</span></button>
+          <div class="alert-actions">${accion ? `
+            <button class="btn btn-outline btn-sm" type="button">${icon('retry', 14)}<span>${accion}</span></button>` : ''}
             <button class="icon-btn" type="button" aria-label="Cerrar aviso">${icon('x', 18)}</button>
           </div>
         </div>`;
 };
+
+// Variante de aviso «warn»: el tope de fijados no es una falla del sistema (warning-foreground sobre warning al 12 %: 4.79)
+exports.CSS_ALERT_WARN = `  .alert.alert-warn { border-color: color-mix(in srgb, var(--warning) 45%, var(--card)); background: var(--warning-soft); }
+  .alert.alert-warn { align-items: center; }
+  .alert.alert-warn > .ico { margin-top: 0; }
+  .alert.alert-warn > .ico, .alert.alert-warn .alert-title { color: var(--warning-foreground); }
+`;
 
 // Zona de soltar sobre el área de contenido; destino: «Mis archivos» o el nombre de la carpeta abierta
 exports.arrastre = function arrastre(destino, max) {

@@ -19,6 +19,8 @@ const P = {
   house: '<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
   warn: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
   hardDrive: '<path d="M22 12H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><path d="M6 16h.01"/><path d="M10 16h.01"/>',
+  pin: '<path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/>',
+  pinOff: '<path d="M12 17v5"/><path d="M15 9.34V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H7.89"/><path d="m2 2 20 20"/><path d="M9 9v1.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h11"/>',
   xCircle: '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>',
 };
 const icon = S.crearIcon(P);
@@ -37,12 +39,16 @@ const MAX_NIVELES = 10;
 // Carpetas de primer nivel en la barra lateral (solo el nombre: FolderRef no trae cantidades)
 const CARPETAS_RAIZ = ['Proyecto Alpha', 'Documentos Legales', 'Finanzas'];
 
-function sidebar({ activo = 'Mis archivos', papelera = '6', cuota = S.CUOTA_NORMAL, tramo = 'warn' } = {}) {
+// accesos: HTML de «Accesos rápidos» (accesos/accesos.js, CA-27); reemplaza a «Carpetas» en la barra lateral.
+function sidebar({ activo = 'Mis archivos', papelera = '6', cuota = S.CUOTA_NORMAL, tramo = 'warn', accesos = '' } = {}) {
   return M.sidebar({
-    activo, plan: S.PLAN, cuota, contadorPapelera: papelera,
-    carpetas: CARPETAS_RAIZ.map((n) => ['folder', n]),
+    activo, plan: S.PLAN, cuota, contadorPapelera: papelera, accesos,
+    carpetas: accesos ? [] : CARPETAS_RAIZ.map((n) => ['folder', n]),
   }).replace(M.cuota(cuota), S.cuota(cuota, tramo));
 }
+
+// Ítem de un menú ⋮ (DropdownMenu): ícono y texto; 'sep' lo dibuja menuFila
+const itemMenu = (ic, label) => `<button role="menuitem" type="button" tabindex="-1">${icon(ic)}<span>${label}</span></button>`;
 
 // ---------- Aviso flotante (toast; Sonner de shadcn si se aprueba su ADR) ----------
 // role="status": lo anuncian los lectores de pantalla sin mover el foco. La acción es un enlace o botón real.
@@ -190,5 +196,5 @@ const CSS_006_MQ600 = `    .page-head { align-items: flex-start; }
 
 module.exports = {
   P, icon, LOGO_NUBE, conLogo, RETENCION, MAX_NIVELES, CARPETAS_RAIZ,
-  sidebar, toast, dialogoNombre, alertaDialogo, confirmar, CSS_006, CSS_006_MQ600,
+  sidebar, itemMenu, toast, dialogoNombre, alertaDialogo, confirmar, CSS_006, CSS_006_MQ600,
 };

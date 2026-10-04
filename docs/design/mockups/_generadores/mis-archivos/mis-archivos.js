@@ -177,6 +177,6 @@ function tabla(nuevos, { menuAbierto = -1, preparando = false } = {}) {
 }
 
 module.exports = {
-  P, crearIcon, icon, PLAN, MAX_POR_ARCHIVO, CUOTA_NORMAL, CUOTA_LLENA, RAIZ, tile,
+  P, crearIcon, icon, PLAN, MAX_POR_ARCHIVO, CUOTA_NORMAL, CUOTA_LLENA, RAIZ, tile, tipo,
   CSS_LISTA, CSS_LISTA_MQ600, cuota, sidebar, botonSubir, encabezado, tabla, menuFila,
 };
