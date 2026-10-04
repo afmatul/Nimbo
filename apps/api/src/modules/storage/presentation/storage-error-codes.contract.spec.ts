@@ -13,6 +13,7 @@ import {
   InvalidUploadRequestError,
   NameConflictError,
   NodeNotFoundError,
+  QuickAccessLimitError,
   QuotaExceededError,
   StorageTooManyRequestsError,
   UploadExpiredError,
@@ -41,6 +42,7 @@ const ALL_ERRORS: readonly DomainError[] = [
   new InvalidNodeRequestError([]),
   new InvalidMoveError(),
   new FolderDepthExceededError(1, 'place'),
+  new QuickAccessLimitError(5),
 ];
 
 /** Errores que comparten código con otro ya listado (mismo contrato, distinto mensaje). */

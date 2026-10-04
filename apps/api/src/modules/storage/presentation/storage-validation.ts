@@ -1,4 +1,7 @@
 import { ParseUUIDPipe } from '@nestjs/common';
+import type { PipeTransform } from '@nestjs/common';
+import { quickAccessNodePathSchema } from '@nimbo/contracts';
+import type { QuickAccessNodePath } from '@nimbo/contracts';
 
 import type { DomainError, FieldIssue, InvalidInputFactory } from '../../../shared';
 import {
@@ -8,6 +11,7 @@ import {
   NodeNotFoundError,
   UploadNotFoundError,
 } from '../domain/errors';
+import type { StorageNode } from '../domain/storage-node';
 
 /** Fábrica de `ZodValidationPipe` para `POST /uploads`: 400 `STORAGE_INVALID_UPLOAD_REQUEST` con `fields` (CA-7). */
 export const storageUploadValidationError: InvalidInputFactory = (
@@ -34,3 +38,20 @@ export const uploadIdPipe = (): ParseUUIDPipe =>
 /** `:fileId` o `:folderId` que no es UUID: el mismo 404 que un nodo inexistente o ajeno (CA-16, 006 CA-5). */
 export const nodeIdPipe = (): ParseUUIDPipe =>
   new ParseUUIDPipe({ exceptionFactory: () => new NodeNotFoundError() });
+
+const NODE_TYPE_BY_PATH: Readonly<Record<QuickAccessNodePath, StorageNode['type']>> = {
+  files: 'file',
+  folders: 'folder',
+};
+
+/**
+ * `:nodeType` de `/quick-access/{pins|recents}/:nodeType/:nodeId` (`files` | `folders`, como `/trash/{files|folders}`)
+ * al tipo de nodo. Otro valor es el mismo 404 que un nodo inexistente (006 CA-22, CA-28).
+ */
+export class NodeTypePipe implements PipeTransform<string, StorageNode['type']> {
+  transform(value: string): StorageNode['type'] {
+    const parsed = quickAccessNodePathSchema.safeParse(value);
+    if (!parsed.success) throw new NodeNotFoundError();
+    return NODE_TYPE_BY_PATH[parsed.data];
+  }
+}

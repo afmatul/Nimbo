@@ -150,6 +150,22 @@ papelera).
 - Pruebas: `test/int/storage/quick-access-migrations.int-spec.ts` (restricciones, `CASCADE`, RLS, `EXPLAIN` de los
   listados unidos a `accessibleNodes`, `revert` ×3).
 
+## Accesos rápidos: API (006, T-14)
+
+- Rutas (`QuickAccessController`, solo `CLIENT`; internos `403`, sin token `401`): `GET /quick-access`,
+  `PUT`/`DELETE /quick-access/pins/:nodeType/:nodeId` y `POST /quick-access/recents/:nodeType/:nodeId` (sin cuerpo,
+  `204`). `:nodeType` ∈ `files|folders` (`NodeTypePipe`); otro valor o id no UUID es el mismo `404
+STORAGE_NODE_NOT_FOUND` que un nodo ajeno, inexistente o en la papelera.
+- `QuickAccessService`: solo `pin` toma `lockUsage(actor)`; `PUT` sobre un fijado responde `200` sin mirar el tope ni
+  cambiar `fijado_en`; `countPinned` cuenta solo fijados visibles. El listado pide `maxPinned` fijados (R-10: los más
+  recientes) y `recentVisible + 1` recientes para `hasMoreRecent`; los recientes excluyen los fijados.
+- `TypeOrmQuickAccessRepository`: lecturas y escrituras unen `accessibleNodes(actor)` (por `tipo_nodo` y la FK); las
+  escrituras son `INSERT … SELECT` desde el nodo visible con `ON CONFLICT ON CONSTRAINT uq_acceso_*`. Quitar un
+  fijado nunca abierto borra la fila. `pruneRecents` filtra por `usuario_id` (las filas son de la cuenta) y conserva
+  `RECENTS_STORED`, incluidas las de nodos en la papelera.
+- Sin auditoría ni bitácoras propias (sin nombres). Pruebas: `quick-access.service.spec.ts`,
+  `quick-access.controller.spec.ts` y `test/int/storage/quick-access.int-spec.ts`.
+
 ## Limpieza de cargas vencidas (005, PR-E)
 
 Una carga `activa` con más de 24 h se vence sola (CA-9). El barrido corre en el `worker`, no en la API.

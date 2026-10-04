@@ -14,15 +14,21 @@ import type { FolderConfig } from './application/folder-config';
 import { FolderService } from './application/folder.service';
 import { I_OBJECT_STORAGE } from './application/ports/i-object-storage.port';
 import type { IObjectStorage } from './application/ports/i-object-storage.port';
+import { I_QUICK_ACCESS_REPOSITORY } from './application/ports/i-quick-access.repository.port';
+import { QUICK_ACCESS_CONFIG } from './application/quick-access-config';
+import type { QuickAccessConfig } from './application/quick-access-config';
+import { QuickAccessService } from './application/quick-access.service';
 import { UPLOAD_CONFIG } from './application/upload-config';
 import type { UploadConfig } from './application/upload-config';
 import {
   buildMinioStorageClients,
   MinioStorageAdapter,
 } from './infrastructure/minio-storage.adapter';
+import { TypeOrmQuickAccessRepository } from './infrastructure/persistence/typeorm-quick-access.repository';
 import { TRASH_PURGE_QUEUE } from './infrastructure/trash-purge.scheduler';
 import { FilesController } from './presentation/files.controller';
 import { FoldersController } from './presentation/folders.controller';
+import { QuickAccessController } from './presentation/quick-access.controller';
 import { TrashController } from './presentation/trash.controller';
 import { UploadsController } from './presentation/uploads.controller';
 import {
@@ -40,10 +46,12 @@ export type StorageEnv = Pick<
   | 'RATE_LIMIT_UPLOAD_INIT_PER_MINUTE'
   | 'RATE_LIMIT_DOWNLOAD_URL_PER_MINUTE'
   | 'FOLDER_MAX_DEPTH'
+  | 'QUICK_ACCESS_MAX_PINNED'
+  | 'QUICK_ACCESS_RECENT_VISIBLE'
 >;
 
 /**
- * Módulo `storage` (M2, plan §6): carga, descarga, carpetas y papelera (006). `forRoot(env)` publica la configuración técnica (bytes como
+ * Módulo `storage` (M2, plan §6): carga, descarga, carpetas, papelera y accesos rápidos (006). `forRoot(env)` publica la configuración técnica (bytes como
  * `bigint`) y une cada puerto con su adaptador. **No** enlaza `I_PLAN_LIMITS_PROVIDER` ni importa `billing`: ese
  * enlace vive en la raíz de composición (DF-51, opción A). `SharedModule` (global) aporta reloj, tasa, transacciones y
  * `TransactionContext`; `MinioConfigModule` (global), `MINIO_CONFIG`. La cola `trash-purge` se registra solo para que
@@ -62,14 +70,26 @@ export class StorageModule {
       downloadUrlPerMinute: env.RATE_LIMIT_DOWNLOAD_URL_PER_MINUTE,
     };
     const folderConfig: FolderConfig = { maxDepth: env.FOLDER_MAX_DEPTH };
+    const quickAccessConfig: QuickAccessConfig = {
+      maxPinned: env.QUICK_ACCESS_MAX_PINNED,
+      recentVisible: env.QUICK_ACCESS_RECENT_VISIBLE,
+    };
     return {
       module: StorageModule,
       imports: [AuditModule, BullModule.registerQueue({ name: TRASH_PURGE_QUEUE })],
-      controllers: [UploadsController, FilesController, FoldersController, TrashController],
+      controllers: [
+        UploadsController,
+        FilesController,
+        FoldersController,
+        TrashController,
+        QuickAccessController,
+      ],
       providers: [
         { provide: UPLOAD_CONFIG, useValue: uploadConfig },
         { provide: FILE_SERVICE_CONFIG, useValue: fileServiceConfig },
         { provide: FOLDER_CONFIG, useValue: folderConfig },
+        { provide: QUICK_ACCESS_CONFIG, useValue: quickAccessConfig },
+        { provide: I_QUICK_ACCESS_REPOSITORY, useClass: TypeOrmQuickAccessRepository },
         {
           provide: I_OBJECT_STORAGE,
           inject: [MINIO_CONFIG],
@@ -83,6 +103,7 @@ export class StorageModule {
         ...TRASH_LIFECYCLE_PROVIDERS,
         FileService,
         FolderService,
+        QuickAccessService,
       ],
     };
   }

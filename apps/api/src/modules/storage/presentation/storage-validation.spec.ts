@@ -13,6 +13,7 @@ import {
 
 import {
   nodeIdPipe,
+  NodeTypePipe,
   storageNodeValidationError,
   storageQueryValidationError,
   storageUploadValidationError,
@@ -96,4 +97,18 @@ describe('validación de entrada de `storage` (CA-7, CA-16)', () => {
       ]),
     );
   });
+
+  it.each([
+    ['files', 'file'],
+    ['folders', 'folder'],
+  ])('006 CA-27, CA-28: `:nodeType` «%s» es el nodo «%s»', (path, type) => {
+    expect(new NodeTypePipe().transform(path)).toBe(type);
+  });
+
+  it.each(['file', 'FILES', 'uploads', ''])(
+    '006 CA-22: `:nodeType` «%s» es el mismo 404 que un nodo inexistente',
+    (path) => {
+      expect(thrownBy(() => new NodeTypePipe().transform(path))).toBeInstanceOf(NodeNotFoundError);
+    },
+  );
 });

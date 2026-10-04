@@ -7,13 +7,17 @@ import { FILE_SERVICE_CONFIG } from './application/file-service-config';
 import { FOLDER_CONFIG } from './application/folder-config';
 import { FolderService } from './application/folder.service';
 import { I_PLAN_LIMITS_PROVIDER } from './application/plan-limits';
+import { I_QUICK_ACCESS_REPOSITORY } from './application/ports/i-quick-access.repository.port';
 import { I_TRASH_PURGE_QUEUE } from './application/ports/i-trash-purge-queue.port';
+import { QUICK_ACCESS_CONFIG } from './application/quick-access-config';
+import { QuickAccessService } from './application/quick-access.service';
 import { TrashPurger } from './application/trash-purger';
 import { UPLOAD_CONFIG } from './application/upload-config';
 import { TrashPurgeProcessor } from './infrastructure/trash-purge.processor';
 import { TRASH_PURGE_QUEUE, TrashPurgeScheduler } from './infrastructure/trash-purge.scheduler';
 import { FilesController } from './presentation/files.controller';
 import { FoldersController } from './presentation/folders.controller';
+import { QuickAccessController } from './presentation/quick-access.controller';
 import { TrashController } from './presentation/trash.controller';
 import { UploadsController } from './presentation/uploads.controller';
 import { StorageModule } from './storage.module';
@@ -26,6 +30,8 @@ const ENV = {
   RATE_LIMIT_UPLOAD_INIT_PER_MINUTE: 300,
   RATE_LIMIT_DOWNLOAD_URL_PER_MINUTE: 120,
   FOLDER_MAX_DEPTH: 7,
+  QUICK_ACCESS_MAX_PINNED: 4,
+  QUICK_ACCESS_RECENT_VISIBLE: 2,
 };
 
 const tokenOf = (provider: Provider): unknown =>
@@ -64,6 +70,13 @@ describe('StorageModule', () => {
     expect(providers).toContain(FolderService);
   });
 
+  it('006 CA-27, CA-28: publica la configuración de accesos rápidos del entorno y registra su servicio', () => {
+    expect(valueOf(providers, QUICK_ACCESS_CONFIG)).toEqual({ maxPinned: 4, recentVisible: 2 });
+    expect(providers.map(tokenOf)).toEqual(
+      expect.arrayContaining([I_QUICK_ACCESS_REPOSITORY, QuickAccessService]),
+    );
+  });
+
   it('RN-1: no enlaza `I_PLAN_LIMITS_PROVIDER` (lo hace la raíz de composición) e importa la auditoría', () => {
     expect(providers.map(tokenOf)).not.toContain(I_PLAN_LIMITS_PROVIDER);
     expect(module.imports).toContain(AuditModule);
@@ -78,12 +91,13 @@ describe('StorageModule', () => {
     expect(providers.map(tokenOf)).not.toContain(TrashPurgeProcessor);
   });
 
-  it('CA-17: monta los controladores de cargas, archivos, carpetas y papelera', () => {
+  it('CA-17: monta los controladores de cargas, archivos, carpetas, papelera y accesos rápidos', () => {
     expect(module.controllers).toEqual([
       UploadsController,
       FilesController,
       FoldersController,
       TrashController,
+      QuickAccessController,
     ]);
   });
 });

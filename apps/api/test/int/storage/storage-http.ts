@@ -114,6 +114,13 @@ export interface StorageClient {
   createFolder(body: Record<string, unknown>): Promise<Response>;
   renameFolder(folderId: string, body: Record<string, unknown>): Promise<Response>;
   moveFolder(folderId: string, body: Record<string, unknown>): Promise<Response>;
+  /** `GET /quick-access` (006 §9.2). */
+  quickAccess(): Promise<Response>;
+  /** `PUT /quick-access/pins/:nodeType/:nodeId`; `nodeType` es `files` o `folders` (otro valor prueba el 404). */
+  pin(nodeType: string, nodeId: string): Promise<Response>;
+  unpin(nodeType: string, nodeId: string): Promise<Response>;
+  /** `POST /quick-access/recents/:nodeType/:nodeId`, sin cuerpo. */
+  recordOpen(nodeType: string, nodeId: string): Promise<Response>;
   /** Inicia (en `folderId`, por defecto la raíz), sube con la(s) URL(s) firmada(s) y completa; devuelve `complete`. */
   upload(
     name: string,
@@ -250,6 +257,13 @@ export const createStorageHttpApp = async (
         http().patch(`${API_PREFIX}/folders/${folderId}`).set(auth).send(body),
       moveFolder: (folderId, body) =>
         http().post(`${API_PREFIX}/folders/${folderId}/move`).set(auth).send(body),
+      quickAccess: () => http().get(`${API_PREFIX}/quick-access`).set(auth),
+      pin: (nodeType, nodeId) =>
+        http().put(`${API_PREFIX}/quick-access/pins/${nodeType}/${nodeId}`).set(auth),
+      unpin: (nodeType, nodeId) =>
+        http().delete(`${API_PREFIX}/quick-access/pins/${nodeType}/${nodeId}`).set(auth),
+      recordOpen: (nodeType, nodeId) =>
+        http().post(`${API_PREFIX}/quick-access/recents/${nodeType}/${nodeId}`).set(auth),
       upload: async (name, bytes, onConflict = 'ask', folderId = null) => {
         const started = await client.init({ name, sizeBytes: bytes.length, onConflict, folderId });
         if (started.status !== 201) return started;
