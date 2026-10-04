@@ -355,6 +355,7 @@
   .action h3 { margin: 0; font-size: 14px; font-weight: 600; }
   .action p { margin: 4px 0 12px; font-size: 13.5px; color: var(--secondary-foreground); }
   .action .info-box p { margin: 0; font-size: 13.5px; } /* el recuadro de area.js no hereda el margen de .action p */
+  a.btn-destructive-outline, a.btn-destructive-outline:hover { color: var(--destructive); } /* «Suspender cuenta» enlaza la confirmación */
 
   @media (max-width: 900px) {
     .ficha-grid { grid-template-columns: minmax(0, 1fr); }
@@ -398,14 +399,14 @@
     
     <aside class="sidebar" aria-label="Barra lateral">
       <div class="brand-row">
-        <a class="logo" href="#" aria-label="Nimbo, Administración"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>
+        <a class="logo" href="../admin/admin.html" aria-label="Nimbo, Administración"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>
         <span class="plan-chip area-chip">ADMIN</span>
       </div>
       <nav aria-label="Navegación de administración">
         <ul class="nav">
-          <li><a href="#" aria-current="page"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Cuentas</span><span class="meta">1 284</span></a></li>
-          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg><span>Catálogo de planes</span></a></li>
-          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span>Métricas</span></a></li>
+          <li><a href="../admin/admin.html" aria-current="page"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Cuentas</span><span class="meta">1 284</span></a></li>
+          <li><a href="../catalogo/catalogo.html"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg><span>Catálogo de planes</span></a></li>
+          <li><a href="../metricas/metricas.html"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span>Métricas</span></a></li>
         </ul>
       </nav>
       <div class="who">
@@ -418,9 +419,9 @@
       <header class="topbar">
         <div class="topbar-left">
           <button class="menu-btn" type="button" aria-label="Abrir menú de navegación" aria-expanded="false" aria-controls="cajon"><svg class="ico " width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg></button>
-          <a class="logo logo-mobile" href="#" aria-label="Nimbo, Administración"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>
+          <a class="logo logo-mobile" href="../admin/admin.html" aria-label="Nimbo, Administración"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>
           <nav class="crumbs" aria-label="Ruta">
-            <ol><li><a href="#">Administración</a></li><li><a href="#">Cuentas</a></li><li><span aria-current="page">Laura Barrios</span></li></ol>
+            <ol><li><a href="../admin/admin.html">Administración</a></li><li><a href="../admin/admin.html">Cuentas</a></li><li><span aria-current="page">Laura Barrios</span></li></ol>
           </nav>
         </div>
         <button class="account-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Menú de la cuenta de Mónica Herrera">
@@ -436,7 +437,7 @@
           </div>
           <div class="badges"><span class="badge badge-ok"><svg class="ico " width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>Activa</span><span class="badge badge-role"><svg class="ico " width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Cliente</span></div>
         </div>
-        <div class="privacy"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><p>La administración muestra metadatos de los archivos (nombre, tipo, tamaño, fechas), nunca su contenido.</p></div>
+        <div class="privacy"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><p>La administración muestra metadatos de los archivos (nombre, tipo, tamaño, fechas y estado), nunca su contenido.</p></div>
         <div class="ficha-grid">
           <section class="card" aria-labelledby="datos-t">
             <h2 id="datos-t">Datos de la cuenta</h2>
@@ -456,12 +457,12 @@
             <div class="action">
               <h3>Metadatos de archivos</h3>
               <p>Nombre, tipo, tamaño, fechas y estado de sus archivos. La consulta queda en la auditoría que ve Laura.</p>
-              <a class="btn btn-outline" href="#"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M4.27 21a2 2 0 0 0 1.73 1H18a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v3"/><path d="m9 18-1.5-1.5"/><circle cx="5" cy="14" r="3"/></svg><span>Ver metadatos de archivos</span></a>
+              <a class="btn btn-outline" href="../soporte/soporte--desde-admin.html"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M4.27 21a2 2 0 0 0 1.73 1H18a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v3"/><path d="m9 18-1.5-1.5"/><circle cx="5" cy="14" r="3"/></svg><span>Ver metadatos de archivos</span></a>
             </div>
             <div class="action">
               <h3>Suspender cuenta</h3>
               <p>Cierra sus sesiones y pausa sus comparticiones y enlaces mientras esté suspendida. No borra nada.</p>
-              <button class="btn btn-destructive-outline" type="button"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg>Suspender cuenta</button>
+              <a class="btn btn-destructive-outline" href="admin--confirmar-suspender.html"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg>Suspender cuenta</a>
             </div>
           </section>
         </div>
@@ -471,16 +472,16 @@
   <div class="drawer-overlay" data-cerrar-cajon aria-hidden="true" hidden></div>
   <div class="drawer" id="cajon" role="dialog" aria-modal="true" aria-labelledby="cajon-t" hidden>
       <div class="drawer-head">
-        <a class="logo" href="#" aria-label="Nimbo, Administración"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>
+        <a class="logo" href="../admin/admin.html" aria-label="Nimbo, Administración"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>
         <span class="plan-chip area-chip">ADMIN</span>
         <h2 id="cajon-t" class="sr-only">Menú de navegación</h2>
         <button class="icon-btn" type="button" data-cerrar-cajon aria-label="Cerrar menú"><svg class="ico " width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
       </div>
       <nav aria-label="Navegación de administración">
         <ul class="nav">
-          <li><a href="#" id="cajon-primero" aria-current="page"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Cuentas</span><span class="meta">1 284</span></a></li>
-          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg><span>Catálogo de planes</span></a></li>
-          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span>Métricas</span></a></li>
+          <li><a href="../admin/admin.html" id="cajon-primero" aria-current="page"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Cuentas</span><span class="meta">1 284</span></a></li>
+          <li><a href="../catalogo/catalogo.html"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg><span>Catálogo de planes</span></a></li>
+          <li><a href="../metricas/metricas.html"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span>Métricas</span></a></li>
         </ul>
       </nav>
       <div class="who">
@@ -501,7 +502,7 @@
       </ul>
     </div>
     <div class="dialog-actions">
-      <button class="btn btn-outline" type="button" autofocus>Cancelar</button>
+      <a class="btn btn-outline" href="admin--ficha.html" autofocus>Cancelar</a>
       <button class="btn btn-destructive" type="button"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg>Suspender cuenta</button>
     </div>
   </div>

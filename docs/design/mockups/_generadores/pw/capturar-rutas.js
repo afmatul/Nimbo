@@ -13,7 +13,8 @@ const WIDTHS = [
 (async () => {
   const browser = await chromium.launch();
   for (const [width, height] of WIDTHS) {
-    const page = await browser.newPage({ viewport: { width, height } });
+    // Movimiento reducido: los esqueletos y los indicadores de carga salen quietos, sin un fotograma a medias.
+    const page = await browser.newPage({ viewport: { width, height }, reducedMotion: 'reduce' });
     const errores = [];
     page.on('pageerror', (e) => errores.push(e.message));
     for (const [mockup, capture] of SCREENS) {

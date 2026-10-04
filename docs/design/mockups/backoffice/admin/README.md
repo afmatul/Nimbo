@@ -3,7 +3,7 @@
 - **Spec**: 011 (CA-1 a CA-4, CA-13, CA-14, CA-17; RN-1, RN-6, RN-7; §6)
 - **Propuesta presentada**: p. 18 (vista de cuentas con ficha lateral).
 - **Cambios respecto de la propuesta** (decisiones de la dueña, 2026-10-03, y de esta revisión):
-  - Aviso de privacidad: «metadatos de los archivos (nombre, tipo, tamaño, fechas), nunca su contenido» (P-5), en
+  - Aviso de privacidad: «metadatos de los archivos (nombre, tipo, tamaño, fechas y estado), nunca su contenido» (P-5), en
     lugar de «no da acceso a nombres ni contenido».
   - Fuera de la ficha «Cambiar plan» y «Cerrar sesiones abiertas» (P-10, no están en la matriz); quedan suspender o
     reactivar con confirmación y el acceso a «Ver metadatos de archivos» (CA-13).
@@ -20,17 +20,30 @@
   la barra superior del área se arman en `_generadores/admin/area.js` (compartido con `backoffice/alta-interna`) con las
   mismas clases. Tonos AA de `ui-guidelines.md` §2–§3,
   solo Inter, cifras con `tabular-nums`, versión móvil real a 360 px. Es referencia visual; `apps/web` no lo importa.
+- **Enlaces entre mockups** (rutas relativas): la barra lateral, el cajón, el logo y las migas llevan a Cuentas
+  (`../admin/admin.html`), Catálogo de planes (`../catalogo/catalogo.html`) y Métricas (`../metricas/metricas.html`); «Nueva cuenta interna» →
+  `../alta-interna/alta-interna.html`; «Volver a cuentas» → `admin.html`; «Ver metadatos de archivos» →
+  `../soporte/soporte--desde-admin.html`; en la ficha de Laura Barrios activa, «Suspender cuenta» →
+  `admin--confirmar-suspender.html`, y en ese diálogo «Cancelar» → `admin--ficha.html`. En la lista, «Laura Barrios» →
+  `admin--ficha.html` y «Mónica Herrera TÚ» → `admin--propia-cuenta.html`. Los otros ocho nombres quedan en `#` a
+  propósito: no tienen ficha dibujada y llevarlos a la de Laura mostraría a otra persona con otros datos (correo, plan,
+  espacio, alta), lo que confunde al recorrer el mockup; en la app cada nombre abre `/admin/cuentas/:id`.
+  «Reactivar cuenta» (suspendida) y «Cancelar» de confirmar-reactivar siguen siendo botones: la ficha suspendida sin
+  aviso no está dibujada.
 - **Estados incluidos**:
   - default: lista paginada (10 de 1 284), clientes e internas, búsqueda vacía (`admin.html`)
   - vacio: búsqueda por correo sin resultados, con «Limpiar búsqueda» (`admin--vacio.html`)
   - cargando: esqueleto de la tabla y «Cargando cuentas…» con `role="status"` (`admin--cargando.html`)
   - error: falló la lista; error con «Reintentar» (`admin--error.html`)
-  - confirmar-suspender: ficha de una clienta activa con el diálogo de confirmación (`admin--confirmar-suspender.html`)
+  - ficha: ficha de una clienta activa (Laura Barrios, Equipo) sin diálogo ni aviso, con «Ver metadatos de archivos» y
+    «Suspender cuenta» (`admin--ficha.html`)
+  - confirmar-suspender: la misma ficha con el diálogo de confirmación (`admin--confirmar-suspender.html`)
   - suspendida: ficha tras suspender, con «Esta cuenta quedó suspendida y se cerraron sus sesiones.» y «Reactivar
     cuenta» (`admin--suspendida.html`)
   - confirmar-reactivar (extra): ficha suspendida con el diálogo de reactivar (`admin--confirmar-reactivar.html`)
   - propia-cuenta (extra, CA-4): ficha de la propia Administradora, sin «Suspender» y con el motivo (`admin--propia-cuenta.html`)
-- **Capturas**: `docs/design/capturas/backoffice/admin/` (`admin--<estado>--<360|1440>.png`). En los ocho estados:
+- **Capturas**: `docs/design/capturas/backoffice/admin/` (`admin--<estado>--<360|1440>.png`, con movimiento
+  reducido). En los nueve estados:
   axe-core sin violaciones a 360 y 1440 px, sin desbordamiento horizontal a 360 px, sin errores de consola y sin
   objetivos menores de 24 px (`_generadores/pw/axe-seguridad.js` sobre la carpeta).
 
@@ -43,7 +56,8 @@ API; los del mockup son de ejemplo. Las cuentas internas usan `@nimbo.gt` y no t
    columnas de CA-1 no caben junto a un panel a 1440 px, la página funciona igual a 360 px y el diálogo de confirmar no
    queda encima de otro panel. El nombre de cada fila es el enlace a la ficha.
 2. **Aviso de privacidad** fijo bajo el título en la lista y en la ficha: «La administración muestra metadatos de los
-   archivos (nombre, tipo, tamaño, fechas), nunca su contenido.» Ícono de candado + texto.
+   archivos (nombre, tipo, tamaño, fechas y estado), nunca su contenido.» Ícono de candado + texto. Incluye «estado»
+   desde el 2026-10-03, como P-5 y la vista de Soporte.
 3. **Búsqueda por correo** con etiqueta visible y botón «Buscar» (se envía, no busca al teclear). La paginación usa
    «Anterior / Página N de M / Siguiente» y el total en texto.
 4. **Estado y verificación nunca solo por color** (Art. XIII.4): `StatusBadge` con ícono y texto («Activa» con círculo

@@ -91,6 +91,7 @@ ${A.CSS_PAGINACION}
   .action h3 { margin: 0; font-size: 14px; font-weight: 600; }
   .action p { margin: 4px 0 12px; font-size: 13.5px; color: var(--secondary-foreground); }
   .action .info-box p { margin: 0; font-size: 13.5px; } /* el recuadro de area.js no hereda el margen de .action p */
+  a.btn-destructive-outline, a.btn-destructive-outline:hover { color: var(--destructive); } /* «Suspender cuenta» enlaza la confirmación */
 
   @media (max-width: 900px) {
     .ficha-grid { grid-template-columns: minmax(0, 1fr); }
@@ -127,7 +128,7 @@ function encabezadoLista() {
             <h1>Cuentas</h1>
             <p>Clientes y cuentas internas. Abre una ficha para suspenderla o reactivarla.</p>
           </div>
-          <a class="btn btn-primary" href="#">${icon('userPlus', 16)}<span>Nueva cuenta interna</span></a>
+          <a class="btn btn-primary" href="../alta-interna/alta-interna.html">${icon('userPlus', 16)}<span>Nueva cuenta interna</span></a>
         </div>${privacidad()}`;
 }
 
@@ -141,6 +142,10 @@ const verif = (v) => `<span class="yesno">${icon(v ? 'check' : 'minus', 14)}${v 
 const uso = (usado, total, pct) => `<span class="use"><span class="use-text">${usado} de ${total} · ${pct} %</span><span class="use-bar ${tramo(pct)}" aria-hidden="true"><span style="width: ${Math.max(pct, 0)}%"></span></span></span>`;
 const NA = '<span class="na" aria-hidden="true">—</span><span class="sr-only">No aplica: cuenta interna</span>';
 
+// Ficha de cada fila: solo Laura Barrios (ficha) y la propia cuenta (propia-cuenta) tienen una ficha dibujada sin diálogo
+// ni aviso. Las demás quedan en «#»: llevarlas a la ficha de Laura mostraría a otra persona con otros datos.
+const FICHA = { 'Laura Barrios': 'admin--ficha.html', [YO.nombre]: 'admin--propia-cuenta.html' };
+
 function fila(c) {
   const [nombre, correo, rol, estado, verificada, plan, usado, total, pct, alta, extra] = c;
   const tu = extra === 'tu' ? '<span class="you">TÚ</span>' : '';
@@ -149,7 +154,7 @@ function fila(c) {
     : `${estadoBadge(estado)}<span>${rol}</span><span aria-hidden="true">·</span><span>${verificada ? 'Correo verificado' : 'Correo sin verificar'}</span><span class="num" style="flex-basis: 100%">Cuenta interna · alta: ${alta}</span>`;
   return `
             <tr>
-              <td class="c-cuenta"><div class="acct"><a class="acct-link" href="#">${nombre}</a>${tu}<span class="acct-mail">${correo}</span><div class="acct-m">${movil}</div></div></td>
+              <td class="c-cuenta"><div class="acct"><a class="acct-link" href="${FICHA[nombre] || '#'}">${nombre}</a>${tu}<span class="acct-mail">${correo}</span><div class="acct-m">${movil}</div></div></td>
               <td class="c-rol">${rol}</td>
               <td class="c-estado">${estadoBadge(estado)}</td>
               <td class="c-verif">${verif(verificada)}</td>
@@ -222,7 +227,7 @@ function ficha(c, { estado = c[3], exito = '', propia = false } = {}) {
             <div class="action">
               <h3>Metadatos de archivos</h3>
               <p>Nombre, tipo, tamaño, fechas y estado de sus archivos. La consulta queda en la auditoría que ve ${nombre.split(' ')[0]}.</p>
-              <a class="btn btn-outline" href="#">${icon('fileSearch', 16)}<span>Ver metadatos de archivos</span></a>
+              <a class="btn btn-outline" href="../soporte/soporte--desde-admin.html">${icon('fileSearch', 16)}<span>Ver metadatos de archivos</span></a>
             </div>`;
   let cambio;
   if (propia) {
@@ -242,7 +247,7 @@ function ficha(c, { estado = c[3], exito = '', propia = false } = {}) {
             <div class="action">
               <h3>Suspender cuenta</h3>
               <p>Cierra sus sesiones y pausa sus comparticiones y enlaces mientras esté suspendida. No borra nada.</p>
-              <button class="btn btn-destructive-outline" type="button">${icon('ban', 16)}Suspender cuenta</button>
+              <a class="btn btn-destructive-outline" href="admin--confirmar-suspender.html">${icon('ban', 16)}Suspender cuenta</a>
             </div>`;
   }
   return `
@@ -276,7 +281,7 @@ const DLG_SUSPENDER = dialogo({
     ['database', 'No se borra nada: al reactivarla, sus archivos, comparticiones y enlaces vuelven como estaban.'],
     ['history', 'La acción queda en su auditoría con tu nombre y rol.'],
   ],
-  confirmar: 'Suspender cuenta', clase: 'btn-destructive', ic: 'ban',
+  confirmar: 'Suspender cuenta', clase: 'btn-destructive', ic: 'ban', cancelar: 'admin--ficha.html',
 });
 
 const DLG_REACTIVAR = dialogo({
@@ -320,6 +325,8 @@ const ESTADOS = [
     cuerpo: () => encabezadoLista() + busqueda() + cargando() },
   { estado: 'error', titulo: 'falló la lista: error con «Reintentar»',
     cuerpo: () => encabezadoLista() + busqueda() + error() },
+  { estado: 'ficha', titulo: 'ficha de una clienta activa, sin diálogo ni aviso', ficha: 'Laura Barrios',
+    cuerpo: () => ficha(LAURA) },
   { estado: 'confirmar-suspender', titulo: 'ficha de una clienta activa con la confirmación de suspender', ficha: 'Laura Barrios',
     cuerpo: () => ficha(LAURA), dialogo: DLG_SUSPENDER },
   { estado: 'suspendida', titulo: 'ficha tras suspender: aviso de éxito y «Reactivar cuenta»', ficha: 'Laura Barrios',

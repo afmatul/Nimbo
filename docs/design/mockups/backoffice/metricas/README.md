@@ -4,21 +4,27 @@
 - **Propuesta presentada**: ninguna. La pantalla es nueva y sale de CA-12: solo totales y conteos (cuentas por estado y
   por plan, espacio total usado), nunca filas de una cuenta.
 - **Ruta sugerida**: `/admin/metricas`. Ruta de navegación `Administración / Métricas`; «Métricas» marcado en la barra
-  lateral.
+  lateral. Para el Operador, la misma pantalla en su área (`Operación / Métricas`); la ruta la fija el plan.
 - **Origen**: HTML autocontenido generado con `../../_generadores/metricas/generar.js`; no se edita a mano. El marco del
   área (barra lateral, barra superior, cajón, aviso, distintivos y estados de pantalla) sale de
   `_generadores/admin/area.js`, el mismo de `backoffice/admin`, `alta-interna` y `catalogo`. Tonos AA de
   `ui-guidelines.md` §2–§3, solo Inter, cifras con `tabular-nums`, versión móvil real a 360 px. Gráficos en HTML y CSS,
-  sin librerías. Es referencia visual; `apps/web` no lo importa. Los mockups aún no se enlazan entre sí (los `href` son `#`).
+  sin librerías. Es referencia visual; `apps/web` no lo importa.
+- **Enlaces entre mockups** (rutas relativas): en el área de administración, la barra lateral, el cajón, el logo y las migas llevan a Cuentas
+  (`../admin/admin.html`), Catálogo de planes (`../catalogo/catalogo.html`) y Métricas (`../metricas/metricas.html`). En
+  `metricas--operador.html`, la única entrada, el logo y la miga «Operación» llevan a `metricas--operador.html`.
 - **Estados incluidos**:
   - default: dos totales y dos tablas con barras; ningún plan inactivo con cuentas (`metricas.html`)
   - cargando: esqueleto de los totales y las tablas, y «Cargando las métricas…» con `role="status"` (`metricas--cargando.html`)
   - error: «No pudimos cargar las métricas.» con «Reintentar» (`metricas--error.html`)
+  - operador (extra, CA-12, CA-17): la misma pantalla y los mismos datos que default, en solo lectura, en el área del
+    Operador: persona «Pablo Xicará · Operador» (la cuenta de Operador de la lista de `backoffice/admin`), distintivo
+    «OPERADOR» y una sola entrada, «Métricas»; sin Cuentas, Catálogo ni Soporte (`metricas--operador.html`)
   - con-plan-inactivo (extra): Equipo desactivado aún con 52 cuentas, con su distintivo «Inactivo», y Equipo 2027 activo
     con 0 (`metricas--con-plan-inactivo.html`). Se agrega porque la marca de inactivo tiene que verse para aprobarse;
     es el mismo momento que `catalogo--desactivado`.
 - **Capturas**: `docs/design/capturas/backoffice/metricas/` (`metricas--<estado>--<360|1440>.png`, con movimiento
-  reducido). En los cuatro estados: axe-core sin violaciones a 360 y 1440 px, sin desbordamiento horizontal a 360 px,
+  reducido). En los cinco estados: axe-core sin violaciones a 360 y 1440 px, sin desbordamiento horizontal a 360 px,
   sin errores de consola y sin objetivos menores de 24 px (`_generadores/pw/axe-seguridad.js` sobre la carpeta).
 
 ## Datos de ejemplo
@@ -65,11 +71,15 @@ decimal, los calcula la web sobre el total de cada tabla. El generador comprueba
     `role="status"`; la animación se detiene con movimiento reducido. **Error**: `ErrorState` con «Reintentar».
 11. **A 360 px**: totales y tablas en una columna; las tablas conservan sus tres columnas (nombre con barra, cuentas y
     porcentaje) sin desplazamiento horizontal; el menú pasa al cajón del marco.
+12. **Vista del Operador** (`operador`): la matriz §2 le da «Ver métricas agregadas» y nada más del área; ve la misma
+    pantalla, sin acciones (no hay ninguna que dar) y en su propio marco («Operación», distintivo «OPERADOR», persona
+    con ícono de servidor y una sola entrada), para que la navegación no sugiera Cuentas, Catálogo ni Soporte, que el
+    servidor le niega (CA-14). Sus métricas técnicas llegan con 022b.
 
 ## Pendiente
-- **Operador y métricas**: la matriz de `product-context.md` §2 da al Operador «Ver métricas agregadas», pero la spec
-  011 (§5, CA-14) le responde `403` en todo lo de esta spec. Hay que decidir si el Operador ve esta pantalla o si «sus»
-  métricas son las técnicas de 022/022b, y corregir la matriz o la spec.
+- **Métricas técnicas del Operador** (colas, trabajos, bitácoras técnicas, RF-37): llegan con 022b, en su propia
+  pantalla (`backoffice/operacion`). Hasta entonces el área del Operador solo tiene «Métricas» (estas, agregadas), como
+  dicen la matriz de `product-context.md` §2 y CA-17.
 - **Vacío**: no tiene estado propio. Siempre hay al menos un Administrador activo (RN-7); sin clientes, la tabla por
   plan muestra los planes activos con 0 y el espacio «0 B».
 - **«Sin permiso»** (Soporte abre `/admin/metricas`, CA-14): pantalla común del marco, como en `backoffice/admin`.

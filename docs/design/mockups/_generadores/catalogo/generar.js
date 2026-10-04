@@ -143,7 +143,7 @@ const encabezado = (aviso = '') => `
             <h1>Catálogo de planes</h1>
             <p>Los planes que se ofrecen a los clientes, con su precio y sus límites.</p>
           </div>
-          <a class="btn btn-primary" href="#">${icon('plus', 16)}<span>Nuevo plan</span></a>
+          <a class="btn btn-primary" href="catalogo--creando.html">${icon('plus', 16)}<span>Nuevo plan</span></a>
         </div>${aviso}
         <div class="rule">${icon('info', 16)}<p><strong>Los planes no se editan: crea uno nuevo y desactiva el anterior.</strong>Así, quien ya tiene un plan conserva su precio y sus límites.</p></div>
         <p class="audit-note">${icon('history', 15)}<span>Crear o desactivar un plan queda en la auditoría con tu nombre y rol.</span></p>`;
@@ -248,7 +248,7 @@ const DLG_DESACTIVAR = A.dialogo({
 
 // ---------- Piezas: nuevo plan ----------
 const volver = `
-        <a class="back" href="#">${icon('arrowLeft', 16)}Volver al catálogo</a>`;
+        <a class="back" href="catalogo.html">${icon('arrowLeft', 16)}Volver al catálogo</a>`;
 
 const encabezadoForm = `
         <div class="page-head form-head">
@@ -322,7 +322,7 @@ function formulario(f = {}) {
           <p class="audit-note">${icon('history', 15)}<span>La creación queda en la auditoría con tu nombre y rol.</span></p>
           <div class="form-actions">
             <button class="btn btn-primary" type="submit">${icon('plus', 16)}Crear plan</button>
-            <a class="btn btn-outline" href="#">Cancelar</a>
+            <a class="btn btn-outline" href="catalogo.html">Cancelar</a>
           </div>
         </form>`;
 }

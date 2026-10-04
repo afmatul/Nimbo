@@ -2,14 +2,16 @@
 // área, comportamiento y página. Lo usan admin/generar.js (cuentas y ficha), alta-interna/generar.js (alta interna),
 // catalogo/generar.js (catálogo de planes), metricas/generar.js (métricas agregadas) y soporte/generar.js (metadatos de
 // los archivos de un cliente, vistos por Soporte).
-// El área es configurable (AREA_ADMIN por defecto, AREA_SOPORTE): etiqueta, distintivo, persona y navegación. Soporte
-// usa el mismo marco con otra persona y una navegación con solo lo que puede hacer (CA-14).
+// El área es configurable (AREA_ADMIN por defecto, AREA_SOPORTE, AREA_OPERADOR): etiqueta, distintivo, persona, navegación
+// e inicio. Soporte y Operador usan el mismo marco con otra persona y una navegación con solo lo que pueden hacer (CA-14).
+// Los enlaces de la navegación, del logo y de las migas apuntan a los HTML de los otros mockups (rutas relativas).
 // El CSS del marco de la aplicación (tokens, barra lateral, barra superior, botones, diálogo, cajón y cortes 900/600 px)
 // viene de marco/marco.js; aquí solo se agrega lo propio del área (otra navegación y otra persona) con las mismas clases.
 // También viven aquí las piezas que usan dos o más pantallas del área: distintivos de estado, estados de pantalla
 // (vacío, error, esqueleto), diálogo de confirmación con consecuencias, botón destructivo con borde y el formulario
 // (campos, resumen de errores, aviso de auditoría y acciones; CSS_FORM, campo y resumenErrores).
-// Regla: con los valores por defecto, admin, alta-interna, catalogo y metricas se ven exactamente como en sus capturas aprobadas.
+// Regla: los enlaces no cambian el aspecto; con los valores por defecto, admin, alta-interna, catalogo y metricas se ven
+// como en sus capturas aprobadas (salvo el aviso de privacidad, que incluye «estado» desde el 2026-10-03).
 const M = require('../marco/marco.js');
 
 // ---------- Íconos (trazos de Lucide, 24 × 24) ----------
@@ -48,7 +50,7 @@ const icon = (name, size = 18, cls = '') =>
 // ---------- Datos del área (en la app vienen de la API) ----------
 const YO = { nombre: 'Mónica Herrera', iniciales: 'MH', rol: 'Administrador', correo: 'monica.herrera@nimbo.gt' };
 const TOTAL = '1 284';
-const AVISO_PRIVACIDAD = 'La administración muestra metadatos de los archivos (nombre, tipo, tamaño, fechas), nunca su contenido.';
+const AVISO_PRIVACIDAD = 'La administración muestra metadatos de los archivos (nombre, tipo, tamaño, fechas y estado), nunca su contenido.';
 
 // ---------- CSS ----------
 // Marco de la aplicación + piezas comunes del área. Cada pantalla agrega el suyo después.
@@ -237,27 +239,44 @@ const JS = `
 `;
 
 // ---------- Piezas del marco del área ----------
-const NAV = [['users', 'Cuentas', TOTAL], ['grid', 'Catálogo de planes'], ['chart', 'Métricas']];
+// Enlaces entre mockups: rutas relativas a los HTML de backoffice/<pantalla>/ (todas las carpetas son hermanas). Lo que
+// no tiene pantalla dibujada queda en «#».
+const NAV = [
+  ['users', 'Cuentas', TOTAL, '../admin/admin.html'],
+  ['grid', 'Catálogo de planes', '', '../catalogo/catalogo.html'],
+  ['chart', 'Métricas', '', '../metricas/metricas.html'],
+];
 
 // Áreas internas que comparten el marco. etiqueta: nombre del área (logo, navegación y rótulo); chip: distintivo junto al
-// logo; yo: persona de la barra lateral y de la barra superior; iconoRol: ícono junto al rol; nav: [ícono, etiqueta, meta].
-const AREA_ADMIN = { etiqueta: 'Administración', chip: 'ADMIN', yo: YO, iconoRol: 'shield', nav: NAV };
+// logo; yo: persona de la barra lateral y de la barra superior; iconoRol: ícono junto al rol; nav: [ícono, etiqueta, meta,
+// href]; inicio: destino del logo y de la primera miga (la pantalla de inicio del área).
+const AREA_ADMIN = { etiqueta: 'Administración', chip: 'ADMIN', yo: YO, iconoRol: 'shield', nav: NAV, inicio: '../admin/admin.html' };
 // Soporte (spec 011, HU-5): solo «Metadatos de archivos» (CA-14). Bitácoras y trabajos (022b) y restauración de papelera
 // (011b) no aparecen hasta sus specs. Andrea Ruiz es la cuenta de Soporte de la lista de cuentas de backoffice/admin.
 const AREA_SOPORTE = {
   etiqueta: 'Soporte', chip: 'SOPORTE', iconoRol: 'headset',
   yo: { nombre: 'Andrea Ruiz', iniciales: 'AR', rol: 'Soporte', correo: 'andrea.ruiz@nimbo.gt' },
-  nav: [['fileSearch', 'Metadatos de archivos']],
+  nav: [['fileSearch', 'Metadatos de archivos', '', '../soporte/soporte--inicial.html']],
+  inicio: '../soporte/soporte--inicial.html',
+};
+// Operador (product-context §2: «Ver métricas agregadas»): solo «Métricas», en solo lectura; sin Cuentas, Catálogo ni
+// Soporte. Sus métricas técnicas (colas, trabajos, bitácoras) llegan con 022b. Pablo Xicará es la cuenta de Operador de
+// la lista de cuentas de backoffice/admin.
+const AREA_OPERADOR = {
+  etiqueta: 'Operación', chip: 'OPERADOR', iconoRol: 'server',
+  yo: { nombre: 'Pablo Xicará', iniciales: 'PX', rol: 'Operador', correo: 'pablo.xicara@nimbo.gt' },
+  nav: [['chart', 'Métricas', '', '../metricas/metricas--operador.html']],
+  inicio: '../metricas/metricas--operador.html',
 };
 
 // actual: entrada marcada con aria-current (por defecto «Cuentas», como en admin y alta-interna).
 function navegacion(idPrimero = '', actual = 'Cuentas', area = AREA_ADMIN) {
   let primero = !!idPrimero;
-  const items = area.nav.map(([ic, label, meta]) => {
+  const items = area.nav.map(([ic, label, meta, href = '#']) => {
     const id = primero ? ` id="${idPrimero}"` : '';
     primero = false;
     const cur = label === actual ? ' aria-current="page"' : '';
-    return `\n          <li><a href="#"${id}${cur}>${icon(ic)}<span>${label}</span>${meta ? `<span class="meta">${meta}</span>` : ''}</a></li>`;
+    return `\n          <li><a href="${href}"${id}${cur}>${icon(ic)}<span>${label}</span>${meta ? `<span class="meta">${meta}</span>` : ''}</a></li>`;
   }).join('');
   return `<nav aria-label="Navegación de ${area.etiqueta.toLowerCase()}">
         <ul class="nav">${items}
@@ -266,7 +285,7 @@ function navegacion(idPrimero = '', actual = 'Cuentas', area = AREA_ADMIN) {
 }
 
 const logo = (cls = 'logo', area = AREA_ADMIN) =>
-  `<a class="${cls}" href="#" aria-label="Nimbo, ${area.etiqueta}"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>`;
+  `<a class="${cls}" href="${area.inicio || '#'}" aria-label="Nimbo, ${area.etiqueta}"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>`;
 const chip = (area) => `<span class="plan-chip area-chip">${area.chip}</span>`;
 const quien = (area) => `<div class="who">
         <p class="who-name">${area.yo.nombre}</p>
@@ -296,10 +315,20 @@ const cajon = (actual, area = AREA_ADMIN) => `
       ${quien(area)}
   </div>`;
 
+// crumbs: etiquetas o [etiqueta, href]. Sin href, la primera miga va al inicio del área y las demás a la entrada de la
+// navegación con la misma etiqueta; si no hay ninguna, «#».
+function hrefMiga(c, i, area) {
+  if (Array.isArray(c)) return c[1];
+  if (i === 0) return area.inicio || '#';
+  const n = area.nav.find(([, label]) => label === c);
+  return (n && n[3]) || '#';
+}
 function topbar(crumbs, area = AREA_ADMIN) {
   const YO = area.yo;
-  const items = crumbs.map((c, i) =>
-    i === crumbs.length - 1 ? `<li><span aria-current="page">${c}</span></li>` : `<li><a href="#">${c}</a></li>`).join('');
+  const items = crumbs.map((c, i) => {
+    const label = Array.isArray(c) ? c[0] : c;
+    return i === crumbs.length - 1 ? `<li><span aria-current="page">${label}</span></li>` : `<li><a href="${hrefMiga(c, i, area)}">${label}</a></li>`;
+  }).join('');
   return `
       <header class="topbar">
         <div class="topbar-left">
@@ -358,8 +387,9 @@ const estadoError = (titulo, texto) => `
           <button class="btn btn-outline" type="button">${icon('retry', 16)}Reintentar</button>
         </div>`;
 
-// Diálogo de confirmación (ConfirmDestructiveDialog) con la lista de consecuencias.
-function dialogo({ titulo, quienLinea, items, confirmar, clase, ic }) {
+// Diálogo de confirmación (ConfirmDestructiveDialog) con la lista de consecuencias. cancelar: href opcional del mockup
+// al que vuelve «Cancelar» (en la app cierra el diálogo sin cambiar nada); sin él, «Cancelar» es un botón.
+function dialogo({ titulo, quienLinea, items, confirmar, clase, ic, cancelar = '' }) {
   return `
   <div class="overlay" aria-hidden="true"></div>
   <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dlg-t" aria-describedby="dlg-d">
@@ -370,7 +400,7 @@ function dialogo({ titulo, quienLinea, items, confirmar, clase, ic }) {
       </ul>
     </div>
     <div class="dialog-actions">
-      <button class="btn btn-outline" type="button" autofocus>Cancelar</button>
+      ${cancelar ? `<a class="btn btn-outline" href="${cancelar}" autofocus>Cancelar</a>` : '<button class="btn btn-outline" type="button" autofocus>Cancelar</button>'}
       <button class="btn ${clase}" type="button">${icon(ic, 16)}${confirmar}</button>
     </div>
   </div>`;
@@ -405,7 +435,8 @@ function resumenErrores({ titulo, texto, items }) {
 
 // ---------- Página ----------
 // titulo: <title>; rotulo: pantalla en el rótulo de la hoja; estado: descripción del estado; cuerpo: HTML de <main>.
-// actual: entrada de la navegación de la pantalla (por defecto «Cuentas»); area: AREA_ADMIN (por defecto) o AREA_SOPORTE.
+// actual: entrada de la navegación de la pantalla (por defecto «Cuentas»); area: AREA_ADMIN (por defecto), AREA_SOPORTE
+// o AREA_OPERADOR.
 function pagina({ titulo, comentarios, css, rotulo, file, estado, crumbs, cuerpo, dialogo = '', actual = 'Cuentas', area = AREA_ADMIN }) {
   return `${M.cabecera({ titulo, comentarios, css })}
 <body>
@@ -432,5 +463,5 @@ function pagina({ titulo, comentarios, css, rotulo, file, estado, crumbs, cuerpo
 module.exports = {
   P, icon, YO, TOTAL, AVISO_PRIVACIDAD, CSS, CSS_FORM, JS, sidebar, cajon, topbar, privacidad, pagina,
   estadoError, dialogo, campo, resumenErrores, badgeInactivo,
-  AREA_ADMIN, AREA_SOPORTE, busqueda, paginacion, CSS_BUSQUEDA, CSS_BUSQUEDA_MQ600, CSS_PAGINACION, CSS_PAGINACION_MQ600,
+  AREA_ADMIN, AREA_SOPORTE, AREA_OPERADOR, busqueda, paginacion, CSS_BUSQUEDA, CSS_BUSQUEDA_MQ600, CSS_PAGINACION, CSS_PAGINACION_MQ600,
 };

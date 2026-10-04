@@ -8,6 +8,9 @@
   del área (barra lateral con la persona, barra superior, cajón, CSS común, avisos y página) sale de
   `_generadores/admin/area.js`, el mismo de `backoffice/admin`, que a su vez usa `_generadores/marco/marco.js`. Tonos AA
   de `ui-guidelines.md` §2–§3, solo Inter, versión móvil real a 360 px. Es referencia visual; `apps/web` no lo importa.
+- **Enlaces entre mockups** (rutas relativas): la barra lateral, el cajón, el logo y las migas llevan a Cuentas
+  (`../admin/admin.html`), Catálogo de planes (`../catalogo/catalogo.html`) y Métricas (`../metricas/metricas.html`); «Volver a cuentas», «Cancelar», «busca la
+  cuenta en Cuentas» y «Volver a cuentas» del éxito → `../admin/admin.html`; «Crear otra cuenta» → `alta-interna.html`.
 - **Estados incluidos**:
   - default: formulario vacío, sin rol elegido (`alta-interna.html`)
   - error-campos: validación en el navegador; nombre vacío, correo inválido y rol sin elegir, con resumen y error en

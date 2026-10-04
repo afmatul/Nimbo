@@ -242,9 +242,11 @@ function cargando() {
 const error = () => A.estadoError('No pudimos completar la búsqueda.', 'Revisa tu conexión e inténtalo de nuevo.');
 
 // Vista del Administrador (desde «Ver metadatos de archivos» de la ficha): mismo contenido, en su área y sin buscador.
+// «Volver a la ficha» y la miga con el nombre llevan a la ficha de Laura Barrios activa (backoffice/admin, estado ficha).
+const FICHA_LAURA = '../admin/admin--ficha.html';
 function desdeAdmin() {
   return `
-        <a class="back" href="#">${icon('arrowLeft', 16)}Volver a la ficha de ${LAURA.nombre}</a>
+        <a class="back" href="${FICHA_LAURA}">${icon('arrowLeft', 16)}Volver a la ficha de ${LAURA.nombre}</a>
         <div class="page-head">
           <div>
             <h1>Metadatos de archivos</h1>
@@ -268,7 +270,7 @@ const VARIANTES = [
   { estado: 'error', titulo: 'falló la búsqueda: error con «Reintentar»',
     cuerpo: () => encabezado() + busqueda(LAURA.correo) + error() },
   { estado: 'desde-admin', titulo: 'la misma vista para el Administrador, desde la ficha de la cuenta', area: A.AREA_ADMIN,
-    actual: 'Cuentas', crumbs: ['Administración', 'Cuentas', LAURA.nombre, 'Metadatos de archivos'], cuerpo: desdeAdmin },
+    actual: 'Cuentas', crumbs: ['Administración', 'Cuentas', [LAURA.nombre, FICHA_LAURA], 'Metadatos de archivos'], cuerpo: desdeAdmin },
 ];
 
 for (const v of VARIANTES) {

@@ -264,10 +264,10 @@ identificador.
 | Panel del agente | intelligence | 020 | `mockups/intelligence/panel-agente/` | `capturas/intelligence/panel-agente/` | vacio, respondiendo, con-citas, cita-incierta, limite-alcanzado | Borrador (con-citas) |
 | Optimizador | optimizer | 021 | `mockups/optimizer/optimizador/` | `capturas/optimizer/optimizador/` | estimacion, no-conviene, procesando, completado | Borrador (estimacion) |
 | Mi bitácora de auditoría | backoffice | 004 | `mockups/backoffice/mi-auditoria/` | … | default, vacio | Pendiente |
-| Admin: cuentas y ficha | backoffice | 011 | `mockups/backoffice/admin/` | `capturas/backoffice/admin/` | default, vacio, cargando, error, confirmar-suspender, suspendida | Borrador (default, vacio, cargando, error, confirmar-suspender, suspendida, confirmar-reactivar, propia-cuenta) |
+| Admin: cuentas y ficha | backoffice | 011 | `mockups/backoffice/admin/` | `capturas/backoffice/admin/` | default, vacio, cargando, error, confirmar-suspender, suspendida | Borrador (default, vacio, cargando, error, ficha, confirmar-suspender, suspendida, confirmar-reactivar, propia-cuenta) |
 | Admin: alta de cuenta interna | backoffice | 011 | `mockups/backoffice/alta-interna/` | `capturas/backoffice/alta-interna/` | default, error-campos, exito | Borrador (default, error-campos, error-conflicto, enviando, exito) |
 | Admin: catálogo de planes | backoffice | 011 | `mockups/backoffice/catalogo/` | `capturas/backoffice/catalogo/` | default, creando, confirmar-desactivar, error-campos, exito | Borrador (default, cargando, error, creando, error-campos, exito, confirmar-desactivar, desactivado) |
-| Admin: métricas agregadas | backoffice | 011 | `mockups/backoffice/metricas/` | `capturas/backoffice/metricas/` | default, cargando, error | Borrador (default, cargando, error, con-plan-inactivo) |
+| Admin y Operador: métricas agregadas | backoffice | 011 | `mockups/backoffice/metricas/` | `capturas/backoffice/metricas/` | default, cargando, error, operador | Borrador (default, cargando, error, con-plan-inactivo, operador) |
 | Soporte: metadatos de los archivos de un cliente | backoffice | 011 | `mockups/backoffice/soporte/` | `capturas/backoffice/soporte/` | default, vacio, cargando, no-encontrado | Borrador (default, inicial, cargando, vacio, no-encontrado, error, desde-admin) |
 | Operador: estado y colas | backoffice | 022 | `mockups/backoffice/operacion/` | … | sano, con-fallos | Pendiente |
 

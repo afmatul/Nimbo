@@ -10,7 +10,12 @@
   por correo y la paginación son las mismas piezas de `backoffice/admin` (extraídas a `area.js` sin cambiar un byte de
   sus mockups). Íconos de tipo de `_generadores/mis-archivos/mis-archivos.js`. Tonos AA de `ui-guidelines.md` §2–§3,
   solo Inter, cifras y fechas con `tabular-nums`, versión móvil real a 360 px. Es referencia visual; `apps/web` no lo
-  importa. Los mockups aún no se enlazan entre sí (los `href` son `#`).
+  importa.
+- **Enlaces entre mockups** (rutas relativas): en el área de Soporte, la única entrada, el logo y la miga «Soporte» llevan
+  a `soporte--inicial.html` (inicio del área). En `desde-admin`, la navegación es la del Administrador (Cuentas,
+  Catálogo de planes, Métricas) y las migas «Administración» y «Cuentas» van a `../admin/admin.html`; «Volver a la
+  ficha de Laura Barrios» y la miga con su nombre van a `../admin/admin--ficha.html` (su ficha activa, sin diálogo ni
+  aviso).
 - **Estados incluidos**:
   - default: metadatos de los archivos de Laura Barrios, con el aviso de auditoría (`soporte.html`)
   - inicial (extra): antes de buscar; dice qué se verá y que la consulta se audita (`soporte--inicial.html`)
@@ -71,9 +76,6 @@ horaria de la persona que consulta y el total para la paginación.
     Barrios» y el aviso de auditoría con «tu rol (Administrador)».
 
 ## Pendiente
-- **Aviso del área de administración**: el texto común de `area.js` dice «(nombre, tipo, tamaño, fechas)» sin «estado»
-  (P-5 lo incluye). Se deja igual en `desde-admin` para no mover las capturas aprobadas; si el equipo lo corrige,
-  cambian las capturas de `backoffice/admin` (lista y ficha) y la de `desde-admin`.
 - **Cargas en curso** como metadato de Soporte («¿por qué no veo mi archivo?»): necesitaría leer `carga` fuera del
   propietario; se decide en el plan o en 011b.
 - **Estados de specs futuras**: indexación (019), optimización (021) y versiones (014) no se muestran; las versiones

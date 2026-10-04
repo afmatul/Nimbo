@@ -3,6 +3,7 @@
 // El marco del área de administración (íconos, persona, barra lateral, barra superior, cajón, CSS común, distintivos,
 // estados de pantalla y página) viene de admin/area.js, el mismo de backoffice/admin, alta-interna y catalogo. Aquí solo
 // van los totales, las dos tablas con barras y sus estados. Sin librerías de gráficos: HTML y CSS.
+// El estado «operador» es la misma pantalla en el área del Operador (AREA_OPERADOR de area.js): solo «Métricas».
 const fs = require('node:fs');
 const path = require('node:path');
 const A = require('../admin/area.js');
@@ -190,6 +191,9 @@ const VARIANTES = [
     cuerpo: () => encabezado + cargando() },
   { estado: 'error', titulo: 'falló la carga de las métricas: error con «Reintentar»',
     cuerpo: () => encabezado + error() },
+  { estado: 'operador', titulo: 'vista del Operador: las mismas métricas, en solo lectura, en su área (solo «Métricas»)',
+    area: A.AREA_OPERADOR, crumbs: ['Operación', 'Métricas'],
+    cuerpo: () => encabezado + totales + tablas(PLANES) },
   { estado: 'con-plan-inactivo', titulo: 'Equipo desactivado con 52 cuentas: aparece con su marca «Inactivo» (como catalogo--desactivado)',
     cuerpo: () => encabezado + totales + tablas(PLANES_CON_INACTIVO) },
 ];
@@ -197,7 +201,7 @@ const VARIANTES = [
 for (const v of VARIANTES) {
   const file = v.estado === 'default' ? 'metricas.html' : `metricas--${v.estado}.html`;
   const html = A.pagina({
-    titulo: `Métricas · Administración · Nimbo — ${v.estado}`,
+    titulo: `Métricas · ${(v.area || A.AREA_ADMIN).etiqueta} · Nimbo — ${v.estado}`,
     comentarios: [
       `Mockup de referencia (spec 011: administración, métricas agregadas, CA-12). Estado: ${v.estado}.`,
       'Colores: valores de ui-guidelines.md §3 (tonos AA). La implementación usa tokens, components/ui y components/nimbo.',
@@ -207,9 +211,10 @@ for (const v of VARIANTES) {
     rotulo: 'Métricas',
     file,
     estado: v.titulo,
-    crumbs: ['Administración', 'Métricas'],
+    crumbs: v.crumbs || ['Administración', 'Métricas'],
     cuerpo: v.cuerpo(),
     actual: 'Métricas',
+    area: v.area || A.AREA_ADMIN,
   });
   fs.writeFileSync(path.join(OUT, file), html, 'utf8');
   console.log(file);

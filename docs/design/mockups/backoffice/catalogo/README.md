@@ -9,7 +9,9 @@
   área (barra lateral, barra superior, cajón, avisos, distintivos, estados de pantalla, diálogo y formulario) sale de
   `_generadores/admin/area.js`, el mismo de `backoffice/admin` y `backoffice/alta-interna`. Tonos AA de
   `ui-guidelines.md` §2–§3, solo Inter, versión móvil real a 360 px. Es referencia visual; `apps/web` no lo importa.
-  Los mockups aún no se enlazan entre sí (los `href` son `#`).
+- **Enlaces entre mockups** (rutas relativas): la barra lateral, el cajón, el logo y las migas llevan a Cuentas
+  (`../admin/admin.html`), Catálogo de planes (`../catalogo/catalogo.html`) y Métricas (`../metricas/metricas.html`); «Nuevo plan» →
+  `catalogo--creando.html`; «Volver al catálogo» y «Cancelar» del formulario → `catalogo.html`.
 - **Estados incluidos**:
   - default: los cuatro planes oficiales activos y «Planes inactivos (0)» con su mensaje vacío (`catalogo.html`)
   - cargando (extra, CA-17): esqueleto de cuatro tarjetas y «Cargando el catálogo…» (`catalogo--cargando.html`)
@@ -22,7 +24,8 @@
   - confirmar-desactivar: diálogo «¿Desactivar el plan Equipo?» con sus consecuencias (`catalogo--confirmar-desactivar.html`)
   - desactivado (extra): aviso de éxito y Equipo entre los inactivos con «52 cuentas lo conservan»
     (`catalogo--desactivado.html`)
-- **Capturas**: `docs/design/capturas/backoffice/catalogo/` (`catalogo--<estado>--<360|1440>.png`). En los ocho estados:
+- **Capturas**: `docs/design/capturas/backoffice/catalogo/` (`catalogo--<estado>--<360|1440>.png`, con
+  movimiento reducido). En los ocho estados:
   axe-core sin violaciones a 360 y 1440 px, sin desbordamiento horizontal a 360 px, sin errores de consola y sin
   objetivos menores de 24 px (`_generadores/pw/axe-seguridad.js` sobre la carpeta).
 
