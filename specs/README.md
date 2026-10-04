@@ -15,7 +15,7 @@ un puerto.
 | Adrián (1)      | Diseñador principal (Tech Lead) | fundaciones, `shared`, `identity` (M1), `notifications`, `storage` (M2), `access` (M3a), `audit`, `editing` (M5), `intelligence` (M6), CI/CD, infraestructura, guardián de diagramas; revisor de planes y PRs |
 | Juan Marcos (2) | Diseñador-programador           | `billing` (M4) y búsqueda (018)                                                                                                              |
 | Abel (3)        | Diseñador-programador           | previsualización (017), `optimizer` (M7), observabilidad (022)                                                                               |
-| Fátima (4)      | Diseñador-programador           | sistema de diseño (000b), `realtime`, `sharing` (M3b), `backoffice` (M8)                                                                     |
+| Fátima (4)      | Diseñador-programador           | sistema de diseño (000b), `realtime`, `sharing` (M3b), `backoffice` (M8), incluido el tablero de operación (022b)                             |
 
 Excepciones: 006a (`billing`) la construyó Fátima y la integra Adrián. 017 y 018 viven en `storage`, pero en carpetas
 propias (`storage/preview`, `storage/search`) de Abel y Juan Marcos; los cambios al resto de `storage` los hace Adrián.
@@ -62,7 +62,8 @@ Antes de planificar las specs de Fase 1, el equipo decide en una reunión los ha
 | 019  | indexacion                                                                                 | M6                  | RF-30, 31, RNF-03         | 07, 14, 37                 | 3    | Adrián | 005, 014      | Pendiente |
 | 020  | agente-con-citas                                                                           | M6                  | RF-32, 33, 34, RNF-03     | 08, 14, 15, 25             | 3    | Adrián | 019, 010      | Pendiente |
 | 021  | optimizador                                                                                | M7                  | RF-35, 36                 | 21, 22                     | 3    | Abel | 014           | Pendiente |
-| 022  | operacion-metricas-y-alertas                                                               | M8                  | RF-37, RNF-18, 20, 21     | 22, 28, 29                 | 3    | Abel | 000           | Pendiente |
+| 022  | operacion-metricas-y-alertas (observabilidad: Prometheus, Grafana, alertas y respaldos; RF-37 pasó a 022b) | transversal         | RNF-18, 20, 21            | 28, 29                     | 3    | Abel | 000           | Pendiente |
+| 022b | tablero-de-operacion (trabajos con reintento y una sola pantalla de bitácoras técnicas y trabajos para Admin, Soporte y Operador; separada de 022 el 2026-10-03, decisión de Adrián) | M8 | RF-37 | 22 | 3 | Fátima | 000, 011 | Pendiente |
 | 023  | pruebas-de-carga-y-aislamiento-global                                                      | transversal         | RNF-01, 02, 05, 09        | —                          | 3    | Adrián | 020           | Pendiente |
 | 024  | pulido-accesibilidad-manuales-y-diagramas-finales                                          | todos               | RNF-13, 14                | todos los abiertos         | 4    | Todos | —             | Pendiente |
 

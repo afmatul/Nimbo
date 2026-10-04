@@ -27,7 +27,7 @@ cliente (Art. IX, RF-07). Al terminar, Administrador y Soporte tienen su área r
 ## 3. Criterios de aceptación
 **Cuentas (HU-1, HU-2)**
 - **CA-1** (HU-1, RF-06) Dado un Administrador, cuando lista cuentas o busca por correo, entonces recibe una lista
-  paginada con correo, nombre, rol, estado, plan, espacio usado y fecha de alta, sin datos de archivos.
+  paginada con correo, nombre, rol, estado, verificada (sí/no), plan, espacio usado y fecha de alta, sin datos de archivos.
 - **CA-2** (HU-1, RF-06, RF-07) Dado una cuenta activa ajena (cliente o interna), cuando el Administrador la suspende,
   entonces queda `suspendida`, se revocan sus sesiones (002 D-10), su inicio de sesión recibe `IDENTITY_ACCOUNT_SUSPENDED`
   y la acción se audita.
@@ -73,7 +73,7 @@ cliente (Art. IX, RF-07). Al terminar, Administrador y Soporte tienen su área r
 
 **Web**
 - **CA-17** (RF-06, RNF-13, RNF-14) Dado Administrador o Soporte, cuando llega a su área, entonces ve sus pantallas con
-  estados vacío, cargando, error con «Reintentar», éxito y sin permiso, usables a 360 px; el Operador sigue con el marcador (022).
+  estados vacío, cargando, error con «Reintentar», éxito y sin permiso, usables a 360 px; el Operador sigue con el marcador (022b).
 
 ## 4. Reglas de negocio
 - **RN-1** El rol interno nunca da acceso a contenido ni vista previa; no hay suplantación ni «ver como» (Art. IX).
@@ -112,8 +112,10 @@ cliente (Art. IX, RF-07). Al terminar, Administrador y Soporte tienen su área r
 
 ## 7. Fuera de alcance
 - Ajuste de cuota, ajuste de vigencia y restauración de papelera por Soporte: **011b** (P-8).
-- Consultar bitácoras técnicas y trabajos, y reintentar procesos: **022** (RF-37), una sola pantalla para Admin, Soporte
+- Consultar bitácoras técnicas y trabajos, y reintentar procesos: **022b** (RF-37), una sola pantalla para Admin, Soporte
   y Operador (P-9).
+- Ver o cerrar sesiones de otra cuenta: no está en la matriz; la 002 se corrige (PD-60).
+- Limpieza de cuentas nunca verificadas (001 D-21): ningún RF la pide (YAGNI).
 - «Cambiar plan» y «cerrar sesiones» sin suspender: no están en la matriz (P-10).
 - Suplantación, «ver como», vistas previas o descargas para roles internos (Art. IX).
 - Borrar cuentas, roles configurables, organizaciones con administración delegada, prorrateo y dinero real (§9).
@@ -129,7 +131,7 @@ cliente (Art. IX, RF-07). Al terminar, Administrador y Soporte tienen su área r
 - [RESUELTA] **P-6** Alta interna → enlace de un uso (A); primer Admin por comando de servidor (A) (2026-10-03, Fátima).
 - [RESUELTA] **P-7** Mockups → se crean con `/mockup` (2026-10-03, Fátima).
 - [RESUELTA] **P-8** Tamaño → se divide en 011 y 011b (B) (2026-10-03, Fátima).
-- [RESUELTA] **P-9** Bitácoras, trabajos y reintentos → 022, anotado en PD-59 (2026-10-03, Fátima).
+- [RESUELTA] **P-9** Bitácoras, trabajos y reintentos → 022b, anotado en PD-59 (2026-10-03, Fátima).
 - [RESUELTA] **P-10** Se respeta la matriz; quedan fuera (2026-10-03, Fátima).
 - [RESUELTA] **P-11** Sin autosuspensión, sin suspender al último Admin, sí se suspenden internas (A, A, A) (2026-10-03, Fátima).
 - [RESUELTA] **P-12** La auditoría del cliente muestra nombre y rol (2026-10-03, Fátima).
@@ -143,3 +145,4 @@ cliente (Art. IX, RF-07). Al terminar, Administrador y Soporte tienen su área r
 |---|---|---|---|
 | 2026-10-03 | Creación en estado Borrador | Inicio de la spec 011 (RF-06) | — |
 | 2026-10-03 | P-1…P-14 resueltas; cuota, vigencia y restauración pasan a 011b; 005 en «Depende de» | Respuestas de la dueña | Fátima (pendiente Adrián) |
+| 2026-10-03 | CA-1 con «verificada»; bitácoras y trabajos → 022b; fuera: sesiones ajenas y limpieza de no verificadas | División de 022 (Adrián) y revisión de 001/002 | Fátima (pendiente Adrián) |
