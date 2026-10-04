@@ -17,7 +17,8 @@
 - **Origen**: HTML autocontenido generado con `../../_generadores/admin/generar.js`; no se edita a mano. El CSS del
   marco (tokens, barra lateral, barra superior, botones, diálogo, cajón y cortes a 900/600 px) sale de
   `_generadores/marco/marco.js`, el mismo de `identity/seguridad`, `shared/layout` y `storage`; la navegación, la persona y
-  la barra superior del área se arman en el generador con las mismas clases. Tonos AA de `ui-guidelines.md` §2–§3,
+  la barra superior del área se arman en `_generadores/admin/area.js` (compartido con `backoffice/alta-interna`) con las
+  mismas clases. Tonos AA de `ui-guidelines.md` §2–§3,
   solo Inter, cifras con `tabular-nums`, versión móvil real a 360 px. Es referencia visual; `apps/web` no lo importa.
 - **Estados incluidos**:
   - default: lista paginada (10 de 1 284), clientes e internas, búsqueda vacía (`admin.html`)

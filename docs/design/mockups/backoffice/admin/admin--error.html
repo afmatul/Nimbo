@@ -6,7 +6,7 @@
 <title>Cuentas · Administración · Nimbo — error</title>
 <!-- Mockup de referencia (spec 011: administración, cuentas y ficha). Estado: error. -->
 <!-- Colores: valores de ui-guidelines.md §3 (tonos AA). La implementación usa tokens, components/ui y components/nimbo. -->
-<!-- Generado con _generadores/admin/generar.js (CSS del marco de _generadores/marco/marco.js). No editar a mano. -->
+<!-- Generado con _generadores/admin/generar.js (marco del área en admin/area.js y CSS del marco en marco/marco.js). No editar a mano. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -195,7 +195,7 @@
     .readonly .btn { width: 100%; }
   }
 
-  /* Propio de backoffice/admin (spec 011) */
+  /* Común del área de administración (spec 011) */
   .app { min-height: 900px; }
   a.btn-primary, a.btn-primary:hover { color: var(--primary-foreground); }
   a.btn-outline:hover { color: var(--foreground); }
@@ -217,6 +217,38 @@
   .privacy { display: flex; align-items: flex-start; gap: 10px; margin: 20px 0 0; padding: 12px 16px; border: 1px solid color-mix(in srgb, var(--brand) 35%, var(--card)); border-radius: var(--radius-lg); background: var(--brand-soft); font-size: 13.5px; color: var(--foreground); }
   .privacy .ico { margin-top: 2px; color: var(--primary); }
   .privacy p { margin: 0; }
+
+  /* Volver, tarjeta, recuadro informativo y avisos (Alert de shadcn) */
+  .crumbs a { display: inline-flex; align-items: center; min-height: 24px; } /* objetivo táctil de 24 px (WCAG 2.5.8) */
+  .back { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; font-size: 13.5px; font-weight: 500; text-decoration: none; }
+  .back:hover { text-decoration: underline; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: 20px; }
+  .card h2 { margin: 0 0 4px; font-size: 16px; font-weight: 600; }
+  .card > .sub { margin: 0 0 12px; font-size: 13px; color: var(--muted-foreground); }
+  .info-box { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--muted); font-size: 13.5px; color: var(--secondary-foreground); }
+  .info-box .ico { margin-top: 2px; color: var(--secondary-foreground); }
+  .info-box p { margin: 0; }
+  .info-box strong { display: block; color: var(--foreground); font-weight: 600; }
+  .alert { display: flex; align-items: flex-start; gap: 12px; margin: 20px 0 0; padding: 14px 16px; border-radius: var(--radius-lg); }
+  .alert > .ico { margin-top: 2px; flex: none; }
+  .alert p { margin: 0; }
+  .alert-title { font-size: 14px; font-weight: 600; }
+  .alert-text { margin-top: 2px !important; font-size: 13.5px; color: var(--foreground); }
+  .alert-ok { border: 1px solid color-mix(in srgb, var(--success) 45%, var(--card)); background: var(--success-soft); }
+  .alert-ok > .ico, .alert-ok .alert-title { color: var(--success-foreground); }
+
+  @media (max-width: 900px) {
+    .who { margin-top: 8px; }
+  }
+  @media (max-width: 600px) {
+    .app { min-height: 0; }
+    .privacy { padding: 12px; margin-top: 16px; }
+    .card { padding: 16px; }
+    .back { min-height: 44px; }
+    .alert { padding: 12px; }
+  }
+
+  /* Propio de backoffice/admin (spec 011: cuentas y ficha) */
 
   /* Búsqueda por correo (Input + Button) */
   .search { margin-top: 20px; }
@@ -240,7 +272,6 @@
   .c-alta, .c-uso { font-variant-numeric: tabular-nums; }
   .acct { min-width: 0; }
   .acct-link { display: inline-flex; align-items: center; min-height: 24px; color: var(--foreground); font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
-  .crumbs a { display: inline-flex; align-items: center; min-height: 24px; } /* objetivo táctil de 24 px (WCAG 2.5.8) */
   .acct-link:hover { color: var(--primary-hover); text-decoration: underline; }
   .acct-mail { display: block; font-size: 12.5px; color: var(--muted-foreground); overflow-wrap: anywhere; }
   .you { margin-left: 6px; font-size: 10.5px; font-weight: 600; letter-spacing: .04em; color: var(--secondary-foreground); background: var(--muted); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 1px 6px; white-space: nowrap; }
@@ -289,16 +320,11 @@
   .loading-text { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; font-size: 13px; color: var(--secondary-foreground); }
 
   /* Ficha de la cuenta */
-  .back { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; font-size: 13.5px; font-weight: 500; text-decoration: none; }
-  .back:hover { text-decoration: underline; }
   .profile-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; margin-top: 8px; }
   .profile-head h1 { margin: 0; font-size: 26px; line-height: 1.25; font-weight: 700; letter-spacing: -.01em; }
   .profile-head .mail { margin: 4px 0 0; color: var(--secondary-foreground); font-size: 14.5px; overflow-wrap: anywhere; }
   .badges { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 6px; }
   .ficha-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 20px; margin-top: 20px; align-items: start; }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: 20px; }
-  .card h2 { margin: 0 0 4px; font-size: 16px; font-weight: 600; }
-  .card > .sub { margin: 0 0 12px; font-size: 13px; color: var(--muted-foreground); }
   .facts { display: grid; grid-template-columns: 170px minmax(0, 1fr); margin: 0; }
   .facts dt, .facts dd { padding: 11px 0; border-top: 1px solid var(--border); font-size: 14px; }
   .facts dt { color: var(--secondary-foreground); }
@@ -310,21 +336,9 @@
   .action:first-of-type { border-top: 0; padding-top: 4px; }
   .action h3 { margin: 0; font-size: 14px; font-weight: 600; }
   .action p { margin: 4px 0 12px; font-size: 13.5px; color: var(--secondary-foreground); }
+  .action .info-box p { margin: 0; font-size: 13.5px; } /* el recuadro de area.js no hereda el margen de .action p */
   .btn-destructive-outline { color: var(--destructive); background: var(--card); border: 1px solid var(--destructive); }
   .btn-destructive-outline:hover { background: var(--destructive-tint); }
-  .info-box { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--muted); font-size: 13.5px; color: var(--secondary-foreground); }
-  .info-box .ico { margin-top: 2px; color: var(--secondary-foreground); }
-  .info-box p { margin: 0; }
-  .info-box strong { display: block; color: var(--foreground); font-weight: 600; }
-
-  /* Aviso de éxito y de error en la ficha (Alert de shadcn) */
-  .alert { display: flex; align-items: flex-start; gap: 12px; margin: 20px 0 0; padding: 14px 16px; border-radius: var(--radius-lg); }
-  .alert > .ico { margin-top: 2px; flex: none; }
-  .alert p { margin: 0; }
-  .alert-title { font-size: 14px; font-weight: 600; }
-  .alert-text { margin-top: 2px !important; font-size: 13.5px; color: var(--foreground); }
-  .alert-ok { border: 1px solid color-mix(in srgb, var(--success) 45%, var(--card)); background: var(--success-soft); }
-  .alert-ok > .ico, .alert-ok .alert-title { color: var(--success-foreground); }
 
   /* Diálogo: lista de consecuencias */
   .dialog { top: 120px; width: min(500px, calc(100% - 32px)); }
@@ -336,15 +350,12 @@
 
   @media (max-width: 900px) {
     .ficha-grid { grid-template-columns: minmax(0, 1fr); }
-    .who { margin-top: 8px; }
   }
   @media (max-width: 1180px) and (min-width: 601px) {
     .c-verif, .c-alta { display: none; }
   }
   @media (max-width: 600px) {
-    .app { min-height: 0; }
     .page-head .btn { width: 100%; }
-    .privacy { padding: 12px; margin-top: 16px; }
     .search-row { max-width: none; }
     .input { min-height: 44px; }
     .search .btn { min-height: 44px; }
@@ -365,13 +376,10 @@
     .sk-row { grid-template-columns: minmax(0, 1fr); padding: 14px 12px; }
     .sk-row > .sk-col, .sk-head { display: none; }
     .profile-head h1 { font-size: 23px; }
-    .card { padding: 16px; }
     .facts { grid-template-columns: minmax(0, 1fr); }
     .facts dt { padding-bottom: 0; font-size: 13px; }
     .facts dd { border-top: 0; padding-top: 2px; }
     .action .btn { width: 100%; min-height: 44px; }
-    .back { min-height: 44px; }
-    .alert { padding: 12px; }
   }
 </style>
 </head>

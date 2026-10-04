@@ -1,45 +1,21 @@
 // Genera los mockups autocontenidos de backoffice/admin (spec 011: cuentas y ficha), un archivo por estado.
 // Uso: node generar.js <ruta-del-worktree>
-// El CSS del marco (tokens, barra lateral, barra superior, botones, diálogo, cajón y cortes 900/600 px) viene de
-// marco/marco.js, el mismo de identity/seguridad, shared/layout y storage. La barra lateral, la barra superior y el cajón
-// son propios del área de administración (otra navegación y otra persona), así que se arman aquí con las mismas clases.
+// El marco del área de administración (íconos, persona, barra lateral, barra superior, cajón, CSS común y página) viene
+// de admin/area.js, que a su vez usa el CSS del marco de marco/marco.js (el mismo de identity/seguridad, shared/layout
+// y storage). Aquí solo va lo propio de cuentas y ficha.
 const fs = require('node:fs');
 const path = require('node:path');
-const M = require('../marco/marco.js');
+const A = require('./area.js');
 
 const repo = process.argv[2];
 if (!repo) throw new Error('Falta la ruta del worktree');
 const OUT = path.join(repo, 'docs/design/mockups/backoffice/admin');
 fs.mkdirSync(OUT, { recursive: true });
 
-// ---------- Íconos (trazos de Lucide, 24 × 24) ----------
-const P = {
-  ...M.P,
-  users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
-  grid: '<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>',
-  chart: '<path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>',
-  search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
-  ban: '<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>',
-  userCheck: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m16 11 2 2 4-4"/>',
-  userPlus: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6"/><path d="M22 11h-6"/>',
-  arrowLeft: '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
-  chevLeft: '<path d="m15 18-6-6 6-6"/>',
-  chevRight: '<path d="m9 18 6-6-6-6"/>',
-  minus: '<path d="M5 12h14"/>',
-  fileSearch: '<path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M4.27 21a2 2 0 0 0 1.73 1H18a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v3"/><path d="m9 18-1.5-1.5"/><circle cx="5" cy="14" r="3"/>',
-  pause: '<rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/>',
-  link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
-  history: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
-  database: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/>',
-};
-const icon = (name, size = 18, cls = '') =>
-  `<svg class="ico ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${P[name]}</svg>`;
+const { icon, YO, TOTAL } = A;
 
 // ---------- Datos de ejemplo (en la app vienen de la API; planes y cuotas del catálogo, product-context §3) ----------
-const YO = { nombre: 'Mónica Herrera', iniciales: 'MH', rol: 'Administrador', correo: 'monica.herrera@nimbo.gt' };
-const TOTAL = '1 284';
 const PAGINAS = '129';
-const AVISO_PRIVACIDAD = 'La administración muestra metadatos de los archivos (nombre, tipo, tamaño, fechas), nunca su contenido.';
 
 // [nombre, correo, rol, estado, verificada, plan, usado, total, pct, alta, extra]
 // Ordenadas por fecha de alta, de la más reciente. Las internas no tienen plan ni archivos.
@@ -59,30 +35,8 @@ const LAURA = CUENTAS.find((c) => c[0] === 'Laura Barrios');
 const MONICA = CUENTAS.find((c) => c[0] === YO.nombre);
 
 // ---------- CSS ----------
-const CSS = '\n' + M.CSS.MARCO + M.CSS.BOTONES + M.CSS.DIALOGO + M.CSS.MQ_900 +
-  '  @media (max-width: 600px) {\n' + M.CSS.MQ600_MARCO + M.CSS.MQ600_DIALOGO + '  }\n' + M.EXTRA + `
-  /* Propio de backoffice/admin (spec 011) */
-  .app { min-height: 900px; }
-  a.btn-primary, a.btn-primary:hover { color: var(--primary-foreground); }
-  a.btn-outline:hover { color: var(--foreground); }
-  .num { font-variant-numeric: tabular-nums; }
-
-  /* Barra lateral del área de administración: persona abajo en lugar de la cuota */
-  .area-chip { color: var(--primary-foreground); background: var(--secondary-foreground); }
-  .who { margin-top: auto; border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 12px 14px; background: var(--card); }
-  .who p { margin: 0; }
-  .who-name { font-size: 13.5px; font-weight: 600; }
-  .who-role { display: flex; align-items: center; gap: 6px; margin-top: 2px; font-size: 12px; color: var(--secondary-foreground); }
-  .who-role .ico { color: var(--primary); }
-
-  /* Encabezado de página */
-  .page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px 16px; flex-wrap: wrap; }
-  .page-head p { margin-top: 4px; }
-
-  /* Aviso de privacidad (Alert de shadcn, variante informativa): ícono + texto, nunca solo color */
-  .privacy { display: flex; align-items: flex-start; gap: 10px; margin: 20px 0 0; padding: 12px 16px; border: 1px solid color-mix(in srgb, var(--brand) 35%, var(--card)); border-radius: var(--radius-lg); background: var(--brand-soft); font-size: 13.5px; color: var(--foreground); }
-  .privacy .ico { margin-top: 2px; color: var(--primary); }
-  .privacy p { margin: 0; }
+const CSS = A.CSS + `
+  /* Propio de backoffice/admin (spec 011: cuentas y ficha) */
 
   /* Búsqueda por correo (Input + Button) */
   .search { margin-top: 20px; }
@@ -106,7 +60,6 @@ const CSS = '\n' + M.CSS.MARCO + M.CSS.BOTONES + M.CSS.DIALOGO + M.CSS.MQ_900 +
   .c-alta, .c-uso { font-variant-numeric: tabular-nums; }
   .acct { min-width: 0; }
   .acct-link { display: inline-flex; align-items: center; min-height: 24px; color: var(--foreground); font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
-  .crumbs a { display: inline-flex; align-items: center; min-height: 24px; } /* objetivo táctil de 24 px (WCAG 2.5.8) */
   .acct-link:hover { color: var(--primary-hover); text-decoration: underline; }
   .acct-mail { display: block; font-size: 12.5px; color: var(--muted-foreground); overflow-wrap: anywhere; }
   .you { margin-left: 6px; font-size: 10.5px; font-weight: 600; letter-spacing: .04em; color: var(--secondary-foreground); background: var(--muted); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 1px 6px; white-space: nowrap; }
@@ -155,16 +108,11 @@ const CSS = '\n' + M.CSS.MARCO + M.CSS.BOTONES + M.CSS.DIALOGO + M.CSS.MQ_900 +
   .loading-text { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; font-size: 13px; color: var(--secondary-foreground); }
 
   /* Ficha de la cuenta */
-  .back { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; font-size: 13.5px; font-weight: 500; text-decoration: none; }
-  .back:hover { text-decoration: underline; }
   .profile-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; margin-top: 8px; }
   .profile-head h1 { margin: 0; font-size: 26px; line-height: 1.25; font-weight: 700; letter-spacing: -.01em; }
   .profile-head .mail { margin: 4px 0 0; color: var(--secondary-foreground); font-size: 14.5px; overflow-wrap: anywhere; }
   .badges { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 6px; }
   .ficha-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 20px; margin-top: 20px; align-items: start; }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: 20px; }
-  .card h2 { margin: 0 0 4px; font-size: 16px; font-weight: 600; }
-  .card > .sub { margin: 0 0 12px; font-size: 13px; color: var(--muted-foreground); }
   .facts { display: grid; grid-template-columns: 170px minmax(0, 1fr); margin: 0; }
   .facts dt, .facts dd { padding: 11px 0; border-top: 1px solid var(--border); font-size: 14px; }
   .facts dt { color: var(--secondary-foreground); }
@@ -176,21 +124,9 @@ const CSS = '\n' + M.CSS.MARCO + M.CSS.BOTONES + M.CSS.DIALOGO + M.CSS.MQ_900 +
   .action:first-of-type { border-top: 0; padding-top: 4px; }
   .action h3 { margin: 0; font-size: 14px; font-weight: 600; }
   .action p { margin: 4px 0 12px; font-size: 13.5px; color: var(--secondary-foreground); }
+  .action .info-box p { margin: 0; font-size: 13.5px; } /* el recuadro de area.js no hereda el margen de .action p */
   .btn-destructive-outline { color: var(--destructive); background: var(--card); border: 1px solid var(--destructive); }
   .btn-destructive-outline:hover { background: var(--destructive-tint); }
-  .info-box { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--muted); font-size: 13.5px; color: var(--secondary-foreground); }
-  .info-box .ico { margin-top: 2px; color: var(--secondary-foreground); }
-  .info-box p { margin: 0; }
-  .info-box strong { display: block; color: var(--foreground); font-weight: 600; }
-
-  /* Aviso de éxito y de error en la ficha (Alert de shadcn) */
-  .alert { display: flex; align-items: flex-start; gap: 12px; margin: 20px 0 0; padding: 14px 16px; border-radius: var(--radius-lg); }
-  .alert > .ico { margin-top: 2px; flex: none; }
-  .alert p { margin: 0; }
-  .alert-title { font-size: 14px; font-weight: 600; }
-  .alert-text { margin-top: 2px !important; font-size: 13.5px; color: var(--foreground); }
-  .alert-ok { border: 1px solid color-mix(in srgb, var(--success) 45%, var(--card)); background: var(--success-soft); }
-  .alert-ok > .ico, .alert-ok .alert-title { color: var(--success-foreground); }
 
   /* Diálogo: lista de consecuencias */
   .dialog { top: 120px; width: min(500px, calc(100% - 32px)); }
@@ -202,15 +138,12 @@ const CSS = '\n' + M.CSS.MARCO + M.CSS.BOTONES + M.CSS.DIALOGO + M.CSS.MQ_900 +
 
   @media (max-width: 900px) {
     .ficha-grid { grid-template-columns: minmax(0, 1fr); }
-    .who { margin-top: 8px; }
   }
   @media (max-width: 1180px) and (min-width: 601px) {
     .c-verif, .c-alta { display: none; }
   }
   @media (max-width: 600px) {
-    .app { min-height: 0; }
     .page-head .btn { width: 100%; }
-    .privacy { padding: 12px; margin-top: 16px; }
     .search-row { max-width: none; }
     .input { min-height: 44px; }
     .search .btn { min-height: 44px; }
@@ -231,105 +164,15 @@ const CSS = '\n' + M.CSS.MARCO + M.CSS.BOTONES + M.CSS.DIALOGO + M.CSS.MQ_900 +
     .sk-row { grid-template-columns: minmax(0, 1fr); padding: 14px 12px; }
     .sk-row > .sk-col, .sk-head { display: none; }
     .profile-head h1 { font-size: 23px; }
-    .card { padding: 16px; }
     .facts { grid-template-columns: minmax(0, 1fr); }
     .facts dt { padding-bottom: 0; font-size: 13px; }
     .facts dd { border-top: 0; padding-top: 2px; }
     .action .btn { width: 100%; min-height: 44px; }
-    .back { min-height: 44px; }
-    .alert { padding: 12px; }
   }
 `;
 
-// ---------- Comportamiento: cajón móvil (sin el resto del marco del cliente) ----------
-const JS = `
-(function () {
-  var app = document.querySelector('.app');
-  var btn = document.querySelector('.menu-btn');
-  var cajon = document.getElementById('cajon');
-  var velo = document.querySelector('.drawer-overlay');
-  var primero = document.getElementById('cajon-primero');
-  var conDialogo = !!document.querySelector('.dialog');
-  function abrir() { cajon.hidden = false; velo.hidden = false; btn.setAttribute('aria-expanded', 'true'); app.inert = true; primero.focus(); }
-  function cerrar() { cajon.hidden = true; velo.hidden = true; btn.setAttribute('aria-expanded', 'false'); app.inert = conDialogo; btn.focus(); }
-  btn.addEventListener('click', abrir);
-  Array.prototype.forEach.call(document.querySelectorAll('[data-cerrar-cajon]'), function (el) { el.addEventListener('click', cerrar); });
-  cajon.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.preventDefault(); cerrar(); } });
-  // Diálogo: el foco empieza en «Cancelar» (autofocus); en la app, Escape o «Cancelar» lo cierran sin cambiar nada.
-  var dlg = document.querySelector('.dialog');
-  if (dlg) dlg.querySelector('[autofocus]').focus();
-})();
-`;
-
-// ---------- Piezas del marco del área ----------
-const NAV = [['users', 'Cuentas', TOTAL], ['grid', 'Catálogo de planes'], ['chart', 'Métricas']];
-
-function navegacion(idPrimero = '') {
-  let primero = !!idPrimero;
-  const items = NAV.map(([ic, label, meta]) => {
-    const id = primero ? ` id="${idPrimero}"` : '';
-    primero = false;
-    const cur = label === 'Cuentas' ? ' aria-current="page"' : '';
-    return `\n          <li><a href="#"${id}${cur}>${icon(ic)}<span>${label}</span>${meta ? `<span class="meta">${meta}</span>` : ''}</a></li>`;
-  }).join('');
-  return `<nav aria-label="Navegación de administración">
-        <ul class="nav">${items}
-        </ul>
-      </nav>`;
-}
-
-const logo = (cls = 'logo') =>
-  `<a class="${cls}" href="#" aria-label="Nimbo, Administración"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>`;
-const chip = '<span class="plan-chip area-chip">ADMIN</span>';
-const quien = `<div class="who">
-        <p class="who-name">${YO.nombre}</p>
-        <p class="who-role">${icon('shield', 14)}<span>${YO.rol}</span></p>
-      </div>`;
-
-const sidebar = () => `
-    <aside class="sidebar" aria-label="Barra lateral">
-      <div class="brand-row">
-        ${logo()}
-        ${chip}
-      </div>
-      ${navegacion()}
-      ${quien}
-    </aside>`;
-
-const cajon = () => `
-  <div class="drawer-overlay" data-cerrar-cajon aria-hidden="true" hidden></div>
-  <div class="drawer" id="cajon" role="dialog" aria-modal="true" aria-labelledby="cajon-t" hidden>
-      <div class="drawer-head">
-        ${logo()}
-        ${chip}
-        <h2 id="cajon-t" class="sr-only">Menú de navegación</h2>
-        <button class="icon-btn" type="button" data-cerrar-cajon aria-label="Cerrar menú">${icon('x', 22)}</button>
-      </div>
-      ${navegacion('cajon-primero')}
-      ${quien}
-  </div>`;
-
-function topbar(crumbs) {
-  const items = crumbs.map((c, i) =>
-    i === crumbs.length - 1 ? `<li><span aria-current="page">${c}</span></li>` : `<li><a href="#">${c}</a></li>`).join('');
-  return `
-      <header class="topbar">
-        <div class="topbar-left">
-          <button class="menu-btn" type="button" aria-label="Abrir menú de navegación" aria-expanded="false" aria-controls="cajon">${icon('menu', 22)}</button>
-          ${logo('logo logo-mobile')}
-          <nav class="crumbs" aria-label="Ruta">
-            <ol>${items}</ol>
-          </nav>
-        </div>
-        <button class="account-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Menú de la cuenta de ${YO.nombre}">
-          <span class="account-name">${YO.nombre}</span><span class="avatar" aria-hidden="true">${YO.iniciales}</span>
-        </button>
-      </header>`;
-}
-
 // ---------- Piezas de la pantalla ----------
-const privacidad = () => `
-        <div class="privacy">${icon('lock', 16)}<p>${AVISO_PRIVACIDAD}</p></div>`;
+const privacidad = A.privacidad;
 
 function encabezadoLista() {
   return `
@@ -544,34 +387,21 @@ const DLG_REACTIVAR = dialogo({
 // ---------- Página ----------
 function page(v) {
   const file = v.estado === 'default' ? 'admin.html' : `admin--${v.estado}.html`;
-  return `${M.cabecera({
+  return A.pagina({
     titulo: `${v.ficha ? v.ficha : 'Cuentas'} · Administración · Nimbo — ${v.estado}`,
     comentarios: [
       `Mockup de referencia (spec 011: administración, cuentas y ficha). Estado: ${v.estado}.`,
       'Colores: valores de ui-guidelines.md §3 (tonos AA). La implementación usa tokens, components/ui y components/nimbo.',
-      'Generado con _generadores/admin/generar.js (CSS del marco de _generadores/marco/marco.js). No editar a mano.',
+      'Generado con _generadores/admin/generar.js (marco del área en admin/area.js y CSS del marco en marco/marco.js). No editar a mano.',
     ],
     css: CSS,
-  })}
-<body>
-
-<aside class="sheet-label" aria-label="Rótulo del mockup"><span class="chip">011</span> <strong>Administración · ${v.ficha ? 'Ficha de cuenta' : 'Cuentas'}</strong> <span class="file">${file}</span> <span>sin acceso al contenido de los archivos · estado: ${v.titulo}</span></aside>
-
-<div class="canvas">
-  <div class="app"${v.dialogo ? ' inert' : ''}>
-    ${sidebar()}
-    <div class="main">
-      ${topbar(v.ficha ? ['Administración', 'Cuentas', v.ficha] : ['Administración', 'Cuentas'])}
-      <main class="content" id="contenido">${v.cuerpo()}
-      </main>
-    </div>
-  </div>${cajon()}${v.dialogo || ''}
-</div>
-
-<script>${JS}</script>
-</body>
-</html>
-`;
+    rotulo: v.ficha ? 'Ficha de cuenta' : 'Cuentas',
+    file,
+    estado: v.titulo,
+    crumbs: v.ficha ? ['Administración', 'Cuentas', v.ficha] : ['Administración', 'Cuentas'],
+    cuerpo: v.cuerpo(),
+    dialogo: v.dialogo || '',
+  });
 }
 
 // ---------- Estados ----------
