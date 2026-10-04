@@ -5,6 +5,7 @@ import { AgregarEspacioUsadoAUsuario20260930100000 } from '../../../src/migratio
 import { CrearArchivoYVersionArchivo20260930100100 } from '../../../src/migrations/20260930100100-crear-archivo-y-version-archivo';
 import { CrearCarga20260930100200 } from '../../../src/migrations/20260930100200-crear-carga';
 import { PoliticasRlsArchivoVersionCarga20260930100300 } from '../../../src/migrations/20260930100300-politicas-rls-archivo-version-carga';
+import { CrearAccesoRapido20261003100000 } from '../../../src/migrations/20261003100000-crear-acceso-rapido';
 import type { Actor } from '../../../src/shared';
 import { buildDataSourceOptions, createActor, Role } from '../../../src/shared';
 import { connectAsOwner } from '../../support/database-urls';
@@ -187,6 +188,8 @@ describe('migración crear-archivo-y-version-archivo (CA-1, CA-6)', () => {
     const migration = new CrearArchivoYVersionArchivo20260930100100();
 
     const [afterDown, indexes] = await inRolledBackTransaction(owner, async (runner) => {
+      /** `acceso_rapido` (006 §9.2) referencia `archivo`: se revierte antes, como en un `migration:revert` en orden. */
+      await new CrearAccesoRapido20261003100000().down(runner);
       await migration.down(runner);
       const [tables] = (await runner.query(
         "SELECT to_regclass('archivo')::text AS archivo, to_regclass('version_archivo')::text AS version",
@@ -308,6 +311,8 @@ describe('migración crear-carga (CA-2, CA-9, CA-23)', () => {
     const migration = new CrearCarga20260930100200();
 
     const [afterDown, indexes] = await inRolledBackTransaction(owner, async (runner) => {
+      /** `acceso_rapido` (006 §9.2) referencia `archivo`: se revierte antes, como en un `migration:revert` en orden. */
+      await new CrearAccesoRapido20261003100000().down(runner);
       await migration.down(runner);
       const [table] = (await runner.query("SELECT to_regclass('carga')::text AS carga")) as {
         carga: string | null;

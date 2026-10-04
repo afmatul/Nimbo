@@ -108,6 +108,8 @@ describe('loadEnv(apiEnvSchema)', () => {
         RATE_LIMIT_UPLOAD_INIT_PER_MINUTE: 300,
         RATE_LIMIT_DOWNLOAD_URL_PER_MINUTE: 120,
         FOLDER_MAX_DEPTH: 10,
+        QUICK_ACCESS_MAX_PINNED: 5,
+        QUICK_ACCESS_RECENT_VISIBLE: 3,
       },
     });
   });

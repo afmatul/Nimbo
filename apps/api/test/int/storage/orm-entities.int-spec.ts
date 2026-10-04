@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { DataSource } from 'typeorm';
 
 import { UsuarioOrmEntity } from '../../../src/modules/identity/infrastructure/persistence/usuario.orm-entity';
+import { AccesoRapidoOrmEntity } from '../../../src/modules/storage/infrastructure/persistence/acceso-rapido.orm-entity';
 import { ArchivoOrmEntity } from '../../../src/modules/storage/infrastructure/persistence/archivo.orm-entity';
 import { CargaOrmEntity } from '../../../src/modules/storage/infrastructure/persistence/carga.orm-entity';
 import { CarpetaOrmEntity } from '../../../src/modules/storage/infrastructure/persistence/carpeta.orm-entity';
@@ -16,9 +17,10 @@ const STORAGE_ENTITIES = [
   ['version_archivo', VersionArchivoOrmEntity],
   ['carga', CargaOrmEntity],
   ['carpeta', CarpetaOrmEntity],
+  ['acceso_rapido', AccesoRapidoOrmEntity],
 ] as const;
 
-/** Entidades de 005 y 006 contra el esquema real que dejan las migraciones (`synchronize: false`). */
+/** Entidades de 005 y 006 (con accesos rápidos) contra el esquema real que dejan las migraciones (`synchronize: false`). */
 describe('entidades ORM de storage (RN-11)', () => {
   let owner: DataSource;
 

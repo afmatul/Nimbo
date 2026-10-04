@@ -178,6 +178,40 @@ export const insertFolder = async (
   return folder;
 };
 
+/** Nodo de un acceso rápido: exactamente uno de los dos (`ck_acceso_un_nodo`). */
+export type QuickAccessNode = { readonly fileId: string } | { readonly folderId: string };
+
+export interface QuickAccessRowOptions {
+  readonly pinnedAt?: Date | null;
+  readonly openedAt?: Date | null;
+}
+
+/** Inserta una fila de `acceso_rapido` de `userId` sobre `node`; por defecto, fijada ahora y nunca abierta. */
+export const insertQuickAccess = async (
+  runner: Queryable,
+  userId: string,
+  node: QuickAccessNode,
+  options: QuickAccessRowOptions = {},
+): Promise<string> => {
+  const id = randomUUID();
+  const now = new Date();
+  await runner.query(
+    `INSERT INTO acceso_rapido (id, usuario_id, archivo_id, carpeta_id, fijado_en, abierto_en, creado_en,
+                                actualizado_en)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $7)`,
+    [
+      id,
+      userId,
+      'fileId' in node ? node.fileId : null,
+      'folderId' in node ? node.folderId : null,
+      options.pinnedAt === undefined ? now : options.pinnedAt,
+      options.openedAt ?? null,
+      now,
+    ],
+  );
+  return id;
+};
+
 export interface UploadRowOptions {
   readonly mode?: 'simple' | 'por_partes';
   readonly state?: 'activa' | 'completada' | 'rechazada' | 'cancelada' | 'expirada';
@@ -253,13 +287,17 @@ export const connectAsAppDatabase = async (): Promise<AppDatabase> => {
   };
 };
 
-/** Borra (como el dueño) las cargas, archivos, carpetas y cuentas de una suite que confirmó *fixtures*. */
+/**
+ * Borra (como el dueño) los accesos rápidos, cargas, archivos, carpetas y cuentas de una suite que confirmó *fixtures*.
+ * `acceso_rapido` va primero: su `usuario_id` no se borra en cascada (con 012 puede señalar un nodo ajeno).
+ */
 export const removeAccounts = async (
   owner: DataSource,
   accountIds: readonly string[],
 ): Promise<void> => {
   if (accountIds.length === 0) return;
   await owner.transaction(async (manager) => {
+    await manager.query('DELETE FROM acceso_rapido WHERE usuario_id = ANY($1)', [accountIds]);
     await manager.query('DELETE FROM carga WHERE propietario_id = ANY($1)', [accountIds]);
     await manager.query('DELETE FROM archivo WHERE propietario_id = ANY($1)', [accountIds]);
     await manager.query('DELETE FROM carpeta WHERE propietario_id = ANY($1)', [accountIds]);

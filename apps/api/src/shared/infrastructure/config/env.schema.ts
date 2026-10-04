@@ -49,6 +49,10 @@ const DEFAULT_TRASH_PURGE_INTERVAL_MINUTES = 60;
 const DEFAULT_TRASH_PURGE_BATCH_SIZE = 100;
 /** Tope de filas que devuelve `papelera_vencida` (006 plan §3): un lote mayor no tendría efecto. */
 const MAX_TRASH_PURGE_BATCH_SIZE = 1000;
+/** Accesos rápidos de la barra lateral (006 plan §9.2): fijados y recientes visibles por cuenta. */
+const MAX_QUICK_ACCESS_ITEMS = 20;
+const DEFAULT_QUICK_ACCESS_MAX_PINNED = 5;
+const DEFAULT_QUICK_ACCESS_RECENT_VISIBLE = 3;
 
 /**
  * Valor de desarrollo de `JWT_ACCESS_SECRET` que trae `.env.example` (plan 002 §6.10). Público a propósito: en
@@ -181,6 +185,16 @@ const foldersApiShape = {
   FOLDER_MAX_DEPTH: intBetween(1, MAX_FOLDER_MAX_DEPTH, DEFAULT_FOLDER_MAX_DEPTH),
 };
 
+/** Accesos rápidos en el `api` (006 plan §9.2, CA-27, CA-28). */
+const quickAccessApiShape = {
+  QUICK_ACCESS_MAX_PINNED: intBetween(1, MAX_QUICK_ACCESS_ITEMS, DEFAULT_QUICK_ACCESS_MAX_PINNED),
+  QUICK_ACCESS_RECENT_VISIBLE: intBetween(
+    1,
+    MAX_QUICK_ACCESS_ITEMS,
+    DEFAULT_QUICK_ACCESS_RECENT_VISIBLE,
+  ),
+};
+
 /** Purga programada de la papelera en el `worker` (006 plan §4, CA-19). */
 const trashPurgeShape = {
   TRASH_PURGE_INTERVAL_MINUTES: positiveInt(DEFAULT_TRASH_PURGE_INTERVAL_MINUTES),
@@ -205,8 +219,9 @@ export const workerEnvObjectSchema = sharedEnvBaseSchema.extend({
 });
 
 /**
- * Forma del entorno del `api`: además el puerto HTTP público, MinIO, la carga de archivos (005), las carpetas (006),
- * la URL pública de `web`, CORS y la clave que firma los tokens de acceso (002), que se declara **solo** aquí.
+ * Forma del entorno del `api`: además el puerto HTTP público, MinIO, la carga de archivos (005), las carpetas y los
+ * accesos rápidos (006), la URL pública de `web`, CORS y la clave que firma los tokens de acceso (002), que se declara
+ * **solo** aquí.
  */
 export const apiEnvObjectSchema = sharedEnvBaseSchema.extend({
   ...workerPortShape,
@@ -214,6 +229,7 @@ export const apiEnvObjectSchema = sharedEnvBaseSchema.extend({
   ...minioShape,
   ...uploadApiShape,
   ...foldersApiShape,
+  ...quickAccessApiShape,
   WEB_PUBLIC_URL: url(),
   CORS_ORIGIN: urlList(),
   JWT_ACCESS_SECRET: z.string().min(JWT_SECRET_MIN_LENGTH, JWT_SECRET_LENGTH_MESSAGE),

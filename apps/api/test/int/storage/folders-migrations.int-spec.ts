@@ -637,17 +637,22 @@ describe('cierre de las migraciones de 006: `revert` ×3 y `run` ×3 sobre una b
     await owner.query(`DROP DATABASE IF EXISTS ${databaseName} WITH (FORCE)`);
   });
 
-  it('RNF-10: las tres migraciones de 006 se revierten y vuelven a correr tres veces con el mismo esquema', async () => {
+  /** Las tres de carpetas y las que vinieron después (accesos rápidos…): para revertirlas hay que revertir antes las posteriores. */
+  const fromFolders = (applied: readonly string[]): string[] =>
+    applied.slice(applied.indexOf(FOLDER_MIGRATIONS[0] ?? ''));
+
+  it('RNF-10: las tres migraciones de 006 (y las posteriores) se revierten y vuelven a correr tres veces con el mismo esquema', async () => {
     await fresh.runMigrations({ transaction: 'each' });
     const applied = await appliedNames();
+    const reverted = fromFolders(applied);
     const before = await schemaOf(fresh);
 
-    expect(applied.slice(-FOLDER_MIGRATIONS.length)).toEqual(FOLDER_MIGRATIONS);
+    expect(reverted.slice(0, FOLDER_MIGRATIONS.length)).toEqual(FOLDER_MIGRATIONS);
     for (let cycle = 0; cycle < CYCLES; cycle += 1) {
-      for (const _ of FOLDER_MIGRATIONS) {
+      for (const _ of reverted) {
         await fresh.undoLastMigration({ transaction: 'each' });
       }
-      expect(await appliedNames()).toEqual(applied.slice(0, -FOLDER_MIGRATIONS.length));
+      expect(await appliedNames()).toEqual(applied.slice(0, -reverted.length));
       expect(await stateAfterRevert()).toEqual({
         carpeta: null,
         funcion: null,
@@ -658,7 +663,7 @@ describe('cierre de las migraciones de 006: `revert` ×3 y `run` ×3 sobre una b
 
       const rerun = await fresh.runMigrations({ transaction: 'each' });
 
-      expect(rerun.map((migration) => migration.name)).toEqual(FOLDER_MIGRATIONS);
+      expect(rerun.map((migration) => migration.name)).toEqual(reverted);
       expect(await schemaOf(fresh)).toEqual(before);
     }
   });

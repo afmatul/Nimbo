@@ -1,7 +1,7 @@
 import { FILE_NAME_MAX_LENGTH } from './parameters';
 
 /**
- * Catálogo único de códigos de error de `storage` (plan 005 §5 y plan 006 §4). Las clases de `api` los reutilizan
+ * Catálogo único de códigos de error de `storage` (plan 005 §5 y plan 006 §4 y §9.2). Las clases de `api` los reutilizan
  * (Art. VI).
  */
 export const STORAGE_ERROR_CODES = {
@@ -21,6 +21,7 @@ export const STORAGE_ERROR_CODES = {
   STORAGE_INVALID_MOVE: 'STORAGE_INVALID_MOVE',
   STORAGE_FOLDER_DEPTH_EXCEEDED: 'STORAGE_FOLDER_DEPTH_EXCEEDED',
   STORAGE_INVALID_NODE_REQUEST: 'STORAGE_INVALID_NODE_REQUEST',
+  STORAGE_QUICK_ACCESS_LIMIT: 'STORAGE_QUICK_ACCESS_LIMIT',
 } as const;
 export type StorageErrorCode = (typeof STORAGE_ERROR_CODES)[keyof typeof STORAGE_ERROR_CODES];
 

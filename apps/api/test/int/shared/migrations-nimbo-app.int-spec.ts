@@ -5,6 +5,7 @@ import { ConcederPermisosNimboApp20260928110000 } from '../../../src/migrations/
 import { CrearFuncionesDeActor20260928110100 } from '../../../src/migrations/20260928110100-crear-funciones-de-actor';
 import { PoliticasRlsArchivoVersionCarga20260930100300 } from '../../../src/migrations/20260930100300-politicas-rls-archivo-version-carga';
 import { RlsCarpetaYPurgaDePapelera20261001100200 } from '../../../src/migrations/20261001100200-rls-carpeta-y-purga-de-papelera';
+import { CrearAccesoRapido20261003100000 } from '../../../src/migrations/20261003100000-crear-acceso-rapido';
 import { buildDataSourceOptions } from '../../../src/shared';
 
 const APP_ROLE = 'nimbo_app';
@@ -157,6 +158,7 @@ describe('migración crear-funciones-de-actor (CA-12)', () => {
     const migration = new CrearFuncionesDeActor20260928110100();
     /** Las políticas RLS de 006 y 005 usan las funciones: se revierten antes, como en un `migration:revert` en orden. */
     const dependents = [
+      new CrearAccesoRapido20261003100000(),
       new RlsCarpetaYPurgaDePapelera20261001100200(),
       new PoliticasRlsArchivoVersionCarga20260930100300(),
     ];

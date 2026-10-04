@@ -15,7 +15,7 @@ import {
 } from '../index';
 
 describe('STORAGE_ERROR_CODES', () => {
-  it('CA-3, CA-4, CA-7, CA-19: es exactamente el catálogo de 005 (plan §5) más el de 006 (plan §4)', () => {
+  it('CA-3, CA-4, CA-7, CA-19, CA-28: es exactamente el catálogo de 005 (plan §5) más el de 006 (plan §4 y §9.2)', () => {
     expect(Object.values(STORAGE_ERROR_CODES).sort()).toEqual(
       [
         'STORAGE_INVALID_UPLOAD_REQUEST',
@@ -34,6 +34,7 @@ describe('STORAGE_ERROR_CODES', () => {
         'STORAGE_INVALID_MOVE',
         'STORAGE_FOLDER_DEPTH_EXCEEDED',
         'STORAGE_INVALID_NODE_REQUEST',
+        'STORAGE_QUICK_ACCESS_LIMIT',
       ].sort(),
     );
   });

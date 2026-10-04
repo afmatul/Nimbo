@@ -3,5 +3,6 @@ export * from './error-codes';
 export * from './folder-schemas';
 export * from './format-bytes';
 export * from './parameters';
+export * from './quick-access-schemas';
 export * from './schemas';
 export * from './trash-schemas';

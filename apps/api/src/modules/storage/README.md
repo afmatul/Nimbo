@@ -135,6 +135,21 @@ papelera).
 - Pruebas: `trash-purger.spec.ts`, `trash-purge.{scheduler,queue,processor}.spec.ts` y
   `test/int/storage/trash-purge.int-spec.ts` (MinIO real, fallo simulado y reintento de BullMQ).
 
+## Accesos rápidos: datos (006, T-13)
+
+- Tabla `acceso_rapido` (migración `20261003100000`, plan §9.2, DF-63): una fila por cuenta (`usuario_id`, quien fija
+  o abre, no el dueño del nodo) y nodo, con `archivo_id` **o** `carpeta_id` (`ck_acceso_un_nodo`, ADR-0011) y las marcas
+  `fijado_en` (fijado ⇔ no nulo) y `abierto_en`; sin ninguna, no hay fila (`ck_acceso_util`). Unicidades
+  `uq_acceso_archivo` / `uq_acceso_carpeta` por (nodo, cuenta); índices `idx_acceso_fijados` e `idx_acceso_recientes`.
+- Las FK de nodo son `ON DELETE CASCADE`: la purga borra los accesos sin que la papelera los conozca; eliminar a la
+  papelera es un `UPDATE` y las marcas siguen al restaurar. `usuario_id` no es en cascada.
+- RLS `acceso_rapido_cliente` (`ENABLE` + `FORCE`), como `archivo_cliente`; sin política para roles internos.
+- Configuración: `QUICK_ACCESS_MAX_PINNED` (5) y `QUICK_ACCESS_RECENT_VISIBLE` (3), 1–20, en `QuickAccessConfig`;
+  `RECENTS_STORED` (25) es constante. Tope: `QuickAccessLimitError` (`422 STORAGE_QUICK_ACCESS_LIMIT`,
+  `details.maxPinned`).
+- Pruebas: `test/int/storage/quick-access-migrations.int-spec.ts` (restricciones, `CASCADE`, RLS, `EXPLAIN` de los
+  listados unidos a `accessibleNodes`, `revert` ×3).
+
 ## Limpieza de cargas vencidas (005, PR-E)
 
 Una carga `activa` con más de 24 h se vence sola (CA-9). El barrido corre en el `worker`, no en la API.

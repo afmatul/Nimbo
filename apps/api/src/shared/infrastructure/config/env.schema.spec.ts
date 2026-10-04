@@ -146,6 +146,31 @@ describe('carpetas y papelera (006 plan §7)', () => {
   });
 });
 
+describe('accesos rápidos (006 plan §9.2)', () => {
+  const apiIssuesFor = (patch: Record<string, string>): readonly string[] => {
+    const result = loadEnv(apiEnvSchema, { ...API_ENV, ...patch });
+    return result.ok ? [] : result.issues;
+  };
+
+  it.each([
+    ['QUICK_ACCESS_MAX_PINNED', 5],
+    ['QUICK_ACCESS_RECENT_VISIBLE', 3],
+  ] as const)('CA-27, CA-28: `%s` es solo del `api` y vale %i por defecto', (key, fallback) => {
+    expect(declaredIn(key)).toEqual(['api']);
+    expect(apiEnvObjectSchema.shape[key].parse(undefined)).toBe(fallback);
+  });
+
+  it.each([
+    ['QUICK_ACCESS_MAX_PINNED', '0'],
+    ['QUICK_ACCESS_MAX_PINNED', '21'],
+    ['QUICK_ACCESS_RECENT_VISIBLE', '0'],
+    ['QUICK_ACCESS_RECENT_VISIBLE', '21'],
+    ['QUICK_ACCESS_RECENT_VISIBLE', 'tres'],
+  ])('CA-27, CA-28: `%s=%s` no pasa (1–20)', (key, value) => {
+    expect(apiIssuesFor({ [key]: value }).join(' ')).toContain(key);
+  });
+});
+
 describe('JWT_ACCESS_SECRET (002 plan §6.10, CA-25, CA-26)', () => {
   const issuesFor = (patch: Record<string, string | undefined>): readonly string[] => {
     const result = loadEnv(apiEnvSchema, { ...API_ENV, ...patch });
