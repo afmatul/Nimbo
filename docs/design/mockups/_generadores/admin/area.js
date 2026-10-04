@@ -1,12 +1,12 @@
 // Marco del área de administración (spec 011): íconos, persona, barra lateral, cajón, barra superior, CSS común del
-// área, comportamiento y página. Lo usan admin/generar.js (cuentas y ficha), alta-interna/generar.js (alta interna) y
-// catalogo/generar.js (catálogo de planes).
+// área, comportamiento y página. Lo usan admin/generar.js (cuentas y ficha), alta-interna/generar.js (alta interna),
+// catalogo/generar.js (catálogo de planes) y metricas/generar.js (métricas agregadas).
 // El CSS del marco de la aplicación (tokens, barra lateral, barra superior, botones, diálogo, cajón y cortes 900/600 px)
 // viene de marco/marco.js; aquí solo se agrega lo propio del área (otra navegación y otra persona) con las mismas clases.
 // También viven aquí las piezas que usan dos o más pantallas del área: distintivos de estado, estados de pantalla
 // (vacío, error, esqueleto), diálogo de confirmación con consecuencias, botón destructivo con borde y el formulario
 // (campos, resumen de errores, aviso de auditoría y acciones; CSS_FORM, campo y resumenErrores).
-// Regla: con los valores por defecto, admin y alta-interna se ven exactamente como en sus capturas aprobadas.
+// Regla: con los valores por defecto, admin, alta-interna y catalogo se ven exactamente como en sus capturas aprobadas.
 const M = require('../marco/marco.js');
 
 // ---------- Íconos (trazos de Lucide, 24 × 24) ----------
@@ -98,6 +98,8 @@ const CSS = '\n' + M.CSS.MARCO + M.CSS.BOTONES + M.CSS.DIALOGO + M.CSS.MQ_900 +
   .badge-ok { color: var(--success-foreground); background: var(--success-soft); border-color: color-mix(in srgb, var(--success) 40%, var(--card)); }
   .badge-off { color: var(--destructive); background: var(--destructive-tint); border-color: color-mix(in srgb, var(--destructive-soft) 45%, var(--card)); }
   .badge-role { color: var(--secondary-foreground); background: var(--muted); border-color: var(--border); }
+  /* Plan inactivo (catálogo y métricas): contorno neutro, nunca rojo (no es un error) */
+  .badge-idle { color: var(--secondary-foreground); background: var(--card); border-color: var(--input); }
 
   /* Estados de pantalla (StateView): vacío, cargando y error */
   .state { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 260px; margin-top: 16px; padding: 32px; text-align: center; border-radius: var(--radius-lg); }
@@ -271,6 +273,9 @@ const privacidad = () => `
         <div class="privacy">${icon('lock', 16)}<p>${AVISO_PRIVACIDAD}</p></div>`;
 
 // ---------- Piezas compartidas por las pantallas del área ----------
+// Distintivo «Inactivo» de un plan (catálogo y métricas).
+const badgeInactivo = `<span class="badge badge-idle">${icon('pauseCircle', 13)}Inactivo</span>`;
+
 // Error de carga (ErrorState) con «Reintentar».
 const estadoError = (titulo, texto) => `
         <div class="state state-error" role="alert">
@@ -353,5 +358,5 @@ function pagina({ titulo, comentarios, css, rotulo, file, estado, crumbs, cuerpo
 
 module.exports = {
   P, icon, YO, TOTAL, AVISO_PRIVACIDAD, CSS, CSS_FORM, JS, sidebar, cajon, topbar, privacidad, pagina,
-  estadoError, dialogo, campo, resumenErrores,
+  estadoError, dialogo, campo, resumenErrores, badgeInactivo,
 };

@@ -242,6 +242,8 @@
   .badge-ok { color: var(--success-foreground); background: var(--success-soft); border-color: color-mix(in srgb, var(--success) 40%, var(--card)); }
   .badge-off { color: var(--destructive); background: var(--destructive-tint); border-color: color-mix(in srgb, var(--destructive-soft) 45%, var(--card)); }
   .badge-role { color: var(--secondary-foreground); background: var(--muted); border-color: var(--border); }
+  /* Plan inactivo (catálogo y métricas): contorno neutro, nunca rojo (no es un error) */
+  .badge-idle { color: var(--secondary-foreground); background: var(--card); border-color: var(--input); }
 
   /* Estados de pantalla (StateView): vacío, cargando y error */
   .state { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 260px; margin-top: 16px; padding: 32px; text-align: center; border-radius: var(--radius-lg); }
@@ -358,9 +360,8 @@
   .fixed { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--muted); font-size: 12.5px; color: var(--secondary-foreground); }
   .fixed .ico { margin-top: 1px; color: var(--primary); }
   .fixed strong { display: block; color: var(--foreground); font-weight: 600; }
-  /* Inactivo: sin sombra, sobre el fondo de la página, distintivo con ícono y texto; nunca solo color */
+  /* Inactivo: sin sombra, sobre el fondo de la página, distintivo con ícono y texto (.badge-idle, en area.js); nunca solo color */
   .plan.is-off { background: var(--background); box-shadow: none; }
-  .badge-idle { color: var(--secondary-foreground); background: var(--card); border-color: var(--input); }
 
   /* Esqueleto de tarjetas */
   .plan.sk { gap: 10px; }

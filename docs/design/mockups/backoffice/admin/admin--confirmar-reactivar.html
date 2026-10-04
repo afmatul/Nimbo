@@ -242,6 +242,8 @@
   .badge-ok { color: var(--success-foreground); background: var(--success-soft); border-color: color-mix(in srgb, var(--success) 40%, var(--card)); }
   .badge-off { color: var(--destructive); background: var(--destructive-tint); border-color: color-mix(in srgb, var(--destructive-soft) 45%, var(--card)); }
   .badge-role { color: var(--secondary-foreground); background: var(--muted); border-color: var(--border); }
+  /* Plan inactivo (catálogo y métricas): contorno neutro, nunca rojo (no es un error) */
+  .badge-idle { color: var(--secondary-foreground); background: var(--card); border-color: var(--input); }
 
   /* Estados de pantalla (StateView): vacío, cargando y error */
   .state { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 260px; margin-top: 16px; padding: 32px; text-align: center; border-radius: var(--radius-lg); }

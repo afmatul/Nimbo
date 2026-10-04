@@ -12,7 +12,7 @@ if (!repo) throw new Error('Falta la ruta del worktree');
 const OUT = path.join(repo, 'docs/design/mockups/backoffice/catalogo');
 fs.mkdirSync(OUT, { recursive: true });
 
-const { icon, campo, resumenErrores } = A;
+const { icon, campo, resumenErrores, badgeInactivo } = A;
 
 // ---------- Datos de ejemplo ----------
 // Los cuatro planes oficiales con sus valores reales (product-context §3; semilla de 006a, creada el 28/09/2026).
@@ -78,9 +78,8 @@ const CSS = A.CSS + A.CSS_FORM + `
   .fixed { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--muted); font-size: 12.5px; color: var(--secondary-foreground); }
   .fixed .ico { margin-top: 1px; color: var(--primary); }
   .fixed strong { display: block; color: var(--foreground); font-weight: 600; }
-  /* Inactivo: sin sombra, sobre el fondo de la página, distintivo con ícono y texto; nunca solo color */
+  /* Inactivo: sin sombra, sobre el fondo de la página, distintivo con ícono y texto (.badge-idle, en area.js); nunca solo color */
   .plan.is-off { background: var(--background); box-shadow: none; }
-  .badge-idle { color: var(--secondary-foreground); background: var(--card); border-color: var(--input); }
 
   /* Esqueleto de tarjetas */
   .plan.sk { gap: 10px; }
@@ -150,7 +149,6 @@ const encabezado = (aviso = '') => `
         <p class="audit-note">${icon('history', 15)}<span>Crear o desactivar un plan queda en la auditoría con tu nombre y rol.</span></p>`;
 
 const badgeActivo = `<span class="badge badge-ok">${icon('ok', 13)}Activo</span>`;
-const badgeInactivo = `<span class="badge badge-idle">${icon('pauseCircle', 13)}Inactivo</span>`;
 
 // p: plan; off: fecha de desactivación si está inactivo.
 function tarjeta(p, { off = '' } = {}) {
