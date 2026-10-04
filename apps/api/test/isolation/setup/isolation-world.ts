@@ -7,6 +7,11 @@ import { FOLDER_CONFIG } from '../../../src/modules/storage/application/folder-c
 import type { FolderConfig } from '../../../src/modules/storage/application/folder-config';
 import { I_NODE_REPOSITORY } from '../../../src/modules/storage/application/ports/i-node.repository.port';
 import type { INodeRepository } from '../../../src/modules/storage/application/ports/i-node.repository.port';
+import { I_QUICK_ACCESS_REPOSITORY } from '../../../src/modules/storage/application/ports/i-quick-access.repository.port';
+import type {
+  IQuickAccessRepository,
+  QuickAccessNodeRef,
+} from '../../../src/modules/storage/application/ports/i-quick-access.repository.port';
 import { I_QUOTA_REPOSITORY } from '../../../src/modules/storage/application/ports/i-quota.repository.port';
 import type { IQuotaRepository } from '../../../src/modules/storage/application/ports/i-quota.repository.port';
 import { I_TRASH_REPOSITORY } from '../../../src/modules/storage/application/ports/i-trash.repository.port';
@@ -115,6 +120,15 @@ export interface WorldUpload {
   readonly ownerId: string;
 }
 
+/** Nodo del cliente que `withQuickAccess` fija o abre (por tipo e id). */
+export type WorldNodeRef = QuickAccessNodeRef;
+
+/** Lo que `withQuickAccess` marca, en orden: el último de cada lista es el más nuevo. */
+export interface WorldQuickAccessRequest {
+  readonly pinned?: readonly WorldNodeRef[];
+  readonly opened?: readonly WorldNodeRef[];
+}
+
 export interface IsolationWorld {
   /** Dos clientes casi idénticos: mismo nombre, estado y fechas; correos que difieren en un carácter. */
   readonly clients: readonly [WorldAccount, WorldAccount];
@@ -137,6 +151,15 @@ export interface IsolationWorld {
    * `withFiles` (006 T-07): quedan como raíces de la papelera, sin vencer.
    */
   withTrash(app: TestApp, owner: WorldAccount, request: WorldTrashRequest): Promise<WorldTrash>;
+  /**
+   * Fijados y aperturas del cliente sobre nodos suyos, escritos con `IQuickAccessRepository` como `withFiles` (006
+   * T-15): RLS de `acceso_rapido` los valida al escribir. Cada marca es 1 ms posterior a la anterior; sin poda.
+   */
+  withQuickAccess(
+    app: TestApp,
+    owner: WorldAccount,
+    request: WorldQuickAccessRequest,
+  ): Promise<void>;
   /** Borra las cuentas del mundo (como el dueño) y cierra su conexión. */
   close(): Promise<void>;
 }
@@ -194,6 +217,7 @@ const storageWritersOf = (testApp: TestApp) => {
     quotas: get<IQuotaRepository>(I_QUOTA_REPOSITORY),
     sessions: get<IUploadSessionRepository>(I_UPLOAD_SESSION_REPOSITORY),
     trash: get<ITrashRepository>(I_TRASH_REPOSITORY),
+    quickAccess: get<IQuickAccessRepository>(I_QUICK_ACCESS_REPOSITORY),
     folderConfig: get<FolderConfig>(FOLDER_CONFIG),
   };
 };
@@ -317,6 +341,32 @@ const insertTrash = async (
   });
 };
 
+/** Marcas de `withQuickAccess`: estrictamente crecientes en todo el mundo, para que el orden sea el de la llamada. */
+const quickAccessTicks = (() => {
+  let last = 0;
+  return (): Date => {
+    last = Math.max(last + 1, Date.now());
+    return new Date(last);
+  };
+})();
+
+const insertQuickAccess = async (
+  testApp: TestApp,
+  owner: WorldAccount,
+  request: WorldQuickAccessRequest,
+): Promise<void> => {
+  const { transactions, quickAccess } = storageWritersOf(testApp);
+  const actor = clientActor(owner);
+  await transactions.withActor(actor, async () => {
+    for (const ref of request.pinned ?? []) {
+      await quickAccess.upsertPin(actor, ref, quickAccessTicks());
+    }
+    for (const ref of request.opened ?? []) {
+      await quickAccess.touchRecent(actor, ref, quickAccessTicks());
+    }
+  });
+};
+
 const insertUploads = async (
   testApp: TestApp,
   owner: WorldAccount,
@@ -350,7 +400,7 @@ const insertUploads = async (
 /**
  * Mundo de aislamiento (003 CA-15, D-3; plan §6.7). Las cuentas se insertan con el rol **dueño**
  * (`DATABASE_MIGRATION_URL`) porque son *fixtures*, no la aplicación; la app corre como `nimbo_app`. 005 agrega
- * `withFiles` y `withUploads`, que sí escriben como `nimbo_app` (con RLS); 006, `withFolders` y `withTrash`.
+ * `withFiles` y `withUploads`, que sí escriben como `nimbo_app` (con RLS); 006, `withFolders`, `withTrash` y `withQuickAccess`.
  */
 export const createIsolationWorld = async (): Promise<IsolationWorld> => {
   const owner = await connectAsOwner();
@@ -379,9 +429,11 @@ export const createIsolationWorld = async (): Promise<IsolationWorld> => {
     withUploads: insertUploads,
     withFolders: insertFolders,
     withTrash: insertTrash,
+    withQuickAccess: insertQuickAccess,
     close: async () => {
       const ids = accounts.map((account) => account.id);
       await owner.transaction(async (manager) => {
+        await manager.query('DELETE FROM acceso_rapido WHERE usuario_id = ANY($1)', [ids]);
         await manager.query('DELETE FROM carga WHERE propietario_id = ANY($1)', [ids]);
         await manager.query('DELETE FROM archivo WHERE propietario_id = ANY($1)', [ids]);
         await manager.query('DELETE FROM carpeta WHERE propietario_id = ANY($1)', [ids]);

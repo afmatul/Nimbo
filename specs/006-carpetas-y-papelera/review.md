@@ -37,6 +37,57 @@
 - Migraciones: las 3 tienen `down` y se prueban up/down ×3 (`folders-migrations.int-spec.ts`). ✅ Tamaños: SQL con `SUM` en `numeric` y `BigInt(...)` en `typeorm-trash.repository.ts:78,108`. ✅
 - Sin hallazgos SEC bloqueantes.
 
+### Adición CA-26 a CA-28 (2026-10-03)
+Veredicto: ✅ Sin hallazgos bloqueantes (T-13, T-14 y T-15; auditor de seguridad).
+
+Pruebas ISO agregadas: `apps/api/test/isolation/storage-quick-access.iso-spec.ts` (22) y fixture `withQuickAccess` en
+`setup/isolation-world.ts` (escribe con `IQuickAccessRepository` como `nimbo_app` dentro de `withActor`; `close` borra
+antes `acceso_rapido`). A y B con carpetas y archivos de igual nombre, 2 fijados y 2 recientes cada uno:
+- `GET /quick-access` de B no trae ningún nodo de A; `PUT`/`DELETE /pins` y `POST /recents` de B sobre nodos de A
+  (carpeta y archivo, fijados y no fijados) dan el 404 `STORAGE_NODE_NOT_FOUND` idéntico al inexistente salvo
+  `correlationId`; quitar «su» fijado con el id de A no cambia ni a A ni a B; B no queda con filas sobre nodos de A.
+- RLS: `nimbo_app` sin actor ve 0 filas y su `UPDATE` afecta 0; con el actor de B, `SELECT` sin filtro solo da filas de
+  B, `UPDATE`/`DELETE` de filas de A afectan 0 e `INSERT` a nombre de A lo rechaza la política; roles internos ven 0.
+- Una fila de B que señala nodos de A (sembrada como dueño) no aparece en el listado ni habilita quitarla (404 idéntico).
+- La poda de recientes de B (más de `RECENTS_STORED`) deja 25 suyas y no toca las de A.
+- Administrador, Soporte y Operador `403 SHARED_FORBIDDEN` en las 4 rutas (7 llamadas) sin escribir filas; sin token `401`.
+- `pnpm test:isolation`: 13 suites / 185 pruebas en verde.
+
+Hallazgos:
+- **[SEC-1] media** · `apps/api/src/migrations/20261003100000-crear-acceso-rapido.ts:46-48` · la política
+  `acceso_rapido_cliente` solo comprueba `usuario_id = nimbo_actor_id()`; no que el nodo sea visible. Probado como
+  `nimbo_app` con el actor de B: `INSERT` de una fila propia con `archivo_id` de A **pasa**, y con un id inexistente
+  falla por FK (oráculo de existencia a nivel SQL). Hoy no es explotable por la API (toda escritura es `INSERT … SELECT`
+  desde `accessibleNodes`, y el listado une `archivo`/`carpeta` bajo su RLS, así que no filtra nombres), pero la segunda
+  barrera de Art. IX queda incompleta. Corrección: migración que agregue al `WITH CHECK`
+  `AND (archivo_id IS NULL OR EXISTS (SELECT 1 FROM archivo f WHERE f.id = archivo_id AND f.eliminado_en IS NULL))
+  AND (carpeta_id IS NULL OR EXISTS (SELECT 1 FROM carpeta c WHERE c.id = carpeta_id AND c.eliminado_en IS NULL))`
+  (las subconsultas corren con la RLS de quien escribe, así que seguirá valiendo con las comparticiones de 012), y una
+  prueba ISO que espere el rechazo. Antes del cierre de la fase o en 012, a más tardar.
+- **[SEC-2] baja** · `typeorm-quick-access.repository.ts:171-181` (`pruneRecents`) · decisión auditada: filtra por
+  `usuario_id = :actorId` y además la RLS limita `DELETE` a filas del actor, así que no puede tocar filas de otra cuenta
+  (probado). No lee ni devuelve datos de nodos ni recibe un nodo, por lo que no contradice «toda consulta filtra con
+  `accessibleNodes(actor)`», que protege nodos; unirlo impediría podar filas de nodos en la papelera o, con 012, de
+  comparticiones revocadas. Corrección: dejar la excepción escrita en `architecture.md` §6 (filas de metadatos propias
+  de la cuenta, clave `usuario_id`) para que no se copie a tablas de contenido.
+- **[SEC-3] baja** · `quick-access.controller.ts` · sin límite de tasa en `PUT /pins` y `POST /recents` (cada llamada
+  escribe y `pin` toma `lockUsage`, que serializa también las cargas del dueño). El daño queda acotado a la propia cuenta
+  y la poda limita el crecimiento; sumar al limitador general cuando exista (PD de RNF de abuso).
+
+Checklist:
+- [x] `actor` en cada método; lecturas, `findAccessibleNode`, `upsert` (`INSERT … SELECT` del nodo visible),
+  `removePin` y `countPinned` unen `accessibleNodes(actor)` en la consulta y por `tipo_nodo`; `pruneRecents` ver SEC-2.
+- [x] RLS `ENABLE` + `FORCE` en `acceso_rapido`, política solo `CLIENT` dueño de la fila; `SET LOCAL` por `withActor`.
+  `WITH CHECK` incompleto: SEC-1.
+- [x] Roles internos: `@Roles(Role.CLIENT)` en el controlador y política sin rama interna; sin `objectKey`, URL ni texto
+  en las respuestas (solo `type`, `id`, `name`, `kind` del propio cliente).
+- [x] Ajeno, inexistente, en la papelera, `:nodeType` o `:nodeId` inválidos: el mismo 404; `lockUsage` va antes de
+  buscar el nodo en `pin`, así que el camino es igual para ajeno e inexistente.
+- [x] SQL parametrizado; tabla, FK y restricción salen de un mapa constante (`COLUMNS`), no de la entrada.
+- [x] Bitácoras: servicio, repositorio y controlador no registran nada; sin auditoría por diseño (plan §9.2).
+- [x] Migración con `down`; sin dependencias nuevas en T-13/T-14 (sin cambios de `package.json` ni del lockfile).
+- [ ] Límite de tasa: SEC-3.
+
 ## UI
 - Coincide con los mockups de `explorador/` y `papelera/` y sus estados; solo tokens (las únicas medidas arbitrarias, `border-l-[3px]` y `border-[1.5px]`, están permitidas por `ui-guidelines.md:221`); axe sin serios; textos en español; `sonner` con `role="status"`: ✅.
 
