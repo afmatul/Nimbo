@@ -15,7 +15,9 @@ import { useUploads } from '../hooks/use-upload-manager';
 import { MY_FILES_PATH, TRASH_PATH } from '../routes';
 import { daysLeft, isPurgeDue, PURGE_SOON_DAYS } from '../trash-dates';
 
+import { DownloadNoticeBanner, type DownloadNotice } from './file-row-menu';
 import { PurgeConfirmDialog } from './purge-confirm-dialog';
+import { useQuickAccessSidebar } from './quick-access-sidebar';
 import { RestoreResult } from './restore-result';
 import { TrashList } from './trash-list';
 import { TrashSelectionBar } from './trash-selection-bar';
@@ -53,16 +55,20 @@ export function TrashView(): React.JSX.Element {
   const { listing, emptying } = trash;
   const ready = listing.status === 'ready' && listing.items.length > 0 ? listing : null;
   const selected = ready ? ready.items.filter((item) => actions.selectedIds.has(item.id)) : [];
+  const [notice, setNotice] = React.useState<DownloadNotice | null>(null);
+  const sidebar = useQuickAccessSidebar({ api, openedFolderId: null, onNotice: setNotice });
 
   return (
     <AppLayout
       navItems={TRASH_NAV_ITEMS}
+      sidebarSection={sidebar.sidebarSection}
       trashCount={listing.status === 'ready' ? listing.summary.itemCount : undefined}
     >
       <div className="space-y-4">
         <div className="flex justify-end">
           <SignOutButton />
         </div>
+        {notice ? <DownloadNoticeBanner notice={notice} onDismiss={() => setNotice(null)} /> : null}
         <section className="flex flex-col gap-4" aria-labelledby="papelera-titulo">
           <TrashHeader
             ready={ready}

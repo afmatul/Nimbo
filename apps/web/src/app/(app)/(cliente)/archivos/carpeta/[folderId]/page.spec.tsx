@@ -84,6 +84,8 @@ function fakeApi(overrides: Partial<StorageApi> = {}): jest.Mocked<StorageApi> {
       Promise.resolve({ itemCount: 0, totalBytes: 0, retentionDays: 60 }),
     ),
     moveToTrash: jest.fn(() => never()),
+    quickAccess: jest.fn(() => Promise.resolve({ pinned: [], recent: [], hasMoreRecent: false })),
+    recordRecent: jest.fn(() => Promise.resolve()),
     ...overrides,
   } as jest.Mocked<StorageApi>;
 }
@@ -134,22 +136,42 @@ describe('página de una carpeta (/archivos/carpeta/[folderId])', () => {
     expect(crumbs.getByRole('link', { name: 'Proyecto Alpha' })).toBeTruthy();
   });
 
-  it('CA-5: la barra lateral muestra solo las carpetas de primer nivel, sin cantidades', async () => {
-    const api = fakeApi();
+  it('006 CA-27 (Q-3): al montar la página la carpeta se registra como reciente y la barra la muestra', async () => {
+    const quickAccess = jest.fn(() =>
+      Promise.resolve({
+        pinned: [],
+        recent: [{ type: 'folder' as const, ...FASE3 }],
+        hasMoreRecent: false,
+      }),
+    );
+    const api = fakeApi({ quickAccess });
     await renderFolder(api);
 
+    expect(api.recordRecent).toHaveBeenCalledWith('folder', FASE3.id);
     const sidebar = await screen.findByRole('complementary', {
       name: 'Barra lateral de escritorio',
     });
-    await waitFor(() => expect(within(sidebar).getByText('Finanzas')).toBeTruthy());
-    expect(within(sidebar).getByText('Carpetas')).toBeTruthy();
-    expect(within(sidebar).getByRole('link', { name: 'Proyecto Alpha' }).getAttribute('href')).toBe(
-      `/archivos/carpeta/${ALPHA.id}`,
+    expect(
+      (await within(sidebar).findByRole('link', { name: 'Fase 3 · RAG, carpeta' })).getAttribute(
+        'href',
+      ),
+    ).toBe(`/archivos/carpeta/${FASE3.id}`);
+    expect(api.recordRecent.mock.invocationCallOrder[0]).toBeLessThan(
+      quickAccess.mock.invocationCallOrder[0] ?? 0,
     );
-    expect(within(sidebar).getByRole('link', { name: 'Papelera' }).getAttribute('href')).toBe(
-      '/papelera',
-    );
-    expect(api.folderContents).toHaveBeenCalledWith(null);
+    expect(within(sidebar).queryByText('Carpetas')).toBeNull();
+    expect(api.folderContents).not.toHaveBeenCalledWith(null);
+  });
+
+  it('006 CA-27: si registrar el reciente falla, la carpeta se abre igual (mejor esfuerzo)', async () => {
+    const api = fakeApi({
+      recordRecent: jest.fn(() => Promise.reject(new TypeError('Failed to fetch'))),
+    });
+    await renderFolder(api);
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Fase 3 · RAG' })).toBeTruthy();
+    await waitFor(() => expect(api.quickAccess).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 
   it('CA-5: carpeta ajena, inexistente o en la papelera: «No encontramos esta carpeta»', async () => {
@@ -274,7 +296,7 @@ describe('página de una carpeta (/archivos/carpeta/[folderId])', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     const [first] = within(screen.getByRole('table')).getAllByRole('row').slice(1);
     expect(first?.textContent).toContain('Resultados finales');
-    expect(api.folderContents).toHaveBeenCalledTimes(2);
+    expect(api.folderContents).toHaveBeenCalledTimes(1);
   });
 
   it('CA-3: el 409 dice el nombre de la carpeta como está guardado', async () => {

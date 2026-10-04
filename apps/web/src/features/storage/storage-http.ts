@@ -10,6 +10,8 @@ export interface StorageHttp {
   get(path: string): Promise<unknown>;
   post(path: string, body?: unknown): Promise<unknown>;
   patch(path: string, body: unknown): Promise<unknown>;
+  /** Sin cuerpo: los `PUT` de la API son idempotentes y no llevan datos (006 `PUT /quick-access/pins/…`). */
+  put(path: string): Promise<unknown>;
   delete(path: string): Promise<unknown>;
 }
 
@@ -58,6 +60,7 @@ export function createStorageHttp(apiPublicUrl: string, authFetch: AuthFetch): S
     post: (path, body) =>
       call(path, body === undefined ? { method: 'POST' } : withJson('POST', body)),
     patch: (path, body) => call(path, withJson('PATCH', body)),
+    put: (path) => call(path, { method: 'PUT' }),
     delete: (path) => call(path, { method: 'DELETE' }),
   };
 }

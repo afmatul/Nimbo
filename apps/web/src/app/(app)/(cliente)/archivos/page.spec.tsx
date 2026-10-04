@@ -62,6 +62,8 @@ function fakeApi(overrides: Partial<StorageApi> = {}): jest.Mocked<StorageApi> {
       Promise.resolve({ itemCount: 0, totalBytes: 0, retentionDays: 60 }),
     ),
     moveToTrash: jest.fn(() => never()),
+    quickAccess: jest.fn(() => Promise.resolve({ pinned: [], recent: [], hasMoreRecent: false })),
+    recordRecent: jest.fn(() => Promise.resolve()),
     ...overrides,
   } as jest.Mocked<StorageApi>;
 }
@@ -246,7 +248,7 @@ describe('página Mis archivos (/archivos)', () => {
     expect(screen.queryByText('No encontramos «informe.docx».')).toBeNull();
   });
 
-  it('006 CA-1: «Nueva carpeta» en la raíz la crea, la lista primero y la suma a la barra lateral', async () => {
+  it('006 CA-1: «Nueva carpeta» en la raíz la crea y la lista primero, sin volver a pedir la raíz', async () => {
     const created = {
       id: '5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b',
       name: 'Actas',
@@ -270,10 +272,6 @@ describe('página Mis archivos (/archivos)', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     const [first] = within(screen.getByRole('table')).getAllByRole('row').slice(1);
     expect(first?.textContent).toContain('Actas');
-    const sidebar = screen.getByRole('complementary', { name: 'Barra lateral de escritorio' });
-    expect(within(sidebar).getByRole('link', { name: 'Actas' }).getAttribute('href')).toBe(
-      `/archivos/carpeta/${created.id}`,
-    );
     expect(api.folderContents).toHaveBeenCalledTimes(1);
   });
 

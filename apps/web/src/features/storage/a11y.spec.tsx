@@ -21,6 +21,7 @@ import { FolderNotFoundState } from './components/folder-not-found-state';
 import { NameConflictDialog } from './components/name-conflict-dialog';
 import { NewFolderDialog } from './components/new-folder-dialog';
 import type { DisclosedLevel, FolderDisclosure } from './components/node-table';
+import { QuickAccessLimitAlert } from './components/quick-access-limit-alert';
 import { UploadPanel } from './components/upload-panel';
 import { StorageRequestError, type StorageErrorDetails } from './storage-request-error';
 import type { UploadPhase, UploadView } from './upload/upload-manager';
@@ -155,7 +156,7 @@ function renderExplorer(overrides: Partial<FileExplorerProps> = {}): Promise<voi
 
 const neverResolves = (): Promise<DownloadUrlResponse> => new Promise(() => undefined);
 
-function rowMenu(file: FileSummary): ReactElement {
+function rowMenu(file: FileSummary, pinned = false): ReactElement {
   return (
     <FileRowMenu
       file={file}
@@ -166,6 +167,7 @@ function rowMenu(file: FileSummary): ReactElement {
       onRename={jest.fn()}
       onMove={jest.fn()}
       onMoveToTrash={jest.fn()}
+      pin={{ pinned, onToggle: jest.fn() }}
     />
   );
 }
@@ -614,6 +616,37 @@ describe('Accesibilidad de los estados de carga y descarga (CA-21)', () => {
       await renderDisclosed({ [ALPHA.id]: { status: 'error' } });
 
       expect(text()).toContain('No pudimos cargar el contenido de Proyecto Alpha.');
+      await expectNoBlockingViolations();
+    });
+  });
+
+  describe('accesos rápidos en el explorador (006 CA-27, CA-28)', () => {
+    it('menu-fila-archivo: el ⋮ de la fila con «Fijar en la barra lateral»', async () => {
+      await renderExplorer({ nodes: [FILE_NODE], renderRowActions: () => rowMenu(FILE) });
+      await openMenu();
+
+      expect(text()).toContain('Fijar en la barra lateral');
+      await expectNoBlockingViolations();
+    });
+
+    it('menu-fila-quitar: el ⋮ de un archivo fijado con «Quitar de la barra lateral»', async () => {
+      await renderExplorer({ nodes: [FILE_NODE], renderRowActions: () => rowMenu(FILE, true) });
+      await openMenu();
+
+      expect(text()).toContain('Quitar de la barra lateral');
+      await expectNoBlockingViolations();
+    });
+
+    it('tope-de-fijados: aviso de advertencia arriba de la lista', async () => {
+      await renderExplorer({
+        nodes: [FILE_NODE],
+        renderRowActions: () => rowMenu(FILE),
+        notice: <QuickAccessLimitAlert maxPinned={5} onDismiss={jest.fn()} />,
+      });
+
+      expect(document.querySelector('[role="status"]')?.textContent).toContain(
+        'Ya fijaste 5 elementos. Quita uno para fijar otro.',
+      );
       await expectNoBlockingViolations();
     });
   });

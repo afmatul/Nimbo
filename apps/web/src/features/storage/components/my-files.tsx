@@ -7,16 +7,11 @@ import type {
   FolderSummary,
   NodeSummary,
 } from '@nimbo/contracts';
-import { Folder } from 'lucide-react';
 import * as React from 'react';
 
-import { AppLayout, type NavItem } from '../../../components/nimbo/app-layout';
+import { AppLayout } from '../../../components/nimbo/app-layout';
 import { SignOutButton } from '../../identity/components/sign-out-button';
-import {
-  useFolderContents,
-  useRootFolders,
-  type FolderListing,
-} from '../hooks/use-folder-contents';
+import { useFolderContents, type FolderListing } from '../hooks/use-folder-contents';
 import {
   toFolderDisclosure,
   useFolderDisclosure,
@@ -25,14 +20,7 @@ import {
 import { useMoveToTrash } from '../hooks/use-move-to-trash';
 import { useTrashCount } from '../hooks/use-trash-count';
 import { useUploads } from '../hooks/use-upload-manager';
-import {
-  locationOf,
-  withArrivals,
-  withOrganized,
-  withOrganizedRootFolders,
-  type OrganizedNodes,
-} from '../organized-nodes';
-import { folderPath } from '../routes';
+import { locationOf, withArrivals, withOrganized, type OrganizedNodes } from '../organized-nodes';
 
 import { FileExplorer, placeNameOf } from './file-explorer';
 import { DownloadNoticeBanner, FileRowMenu, type DownloadNotice } from './file-row-menu';
@@ -41,6 +29,8 @@ import { FolderNotFoundState } from './folder-not-found-state';
 import { FolderRowMenu } from './folder-row-menu';
 import { MoveDialog } from './move-dialog';
 import { NewFolderDialog } from './new-folder-dialog';
+import { QuickAccessLimitAlert } from './quick-access-limit-alert';
+import { useQuickAccessSidebar, type QuickAccessSidebar } from './quick-access-sidebar';
 import { RenameDialog } from './rename-dialog';
 
 /**
@@ -124,8 +114,21 @@ function folderNamesOf(nodes: readonly NodeSummary[]): readonly string[] {
   return nodes.flatMap((node) => (node.type === 'folder' ? [node.name] : []));
 }
 
-function toNavItem(folder: FolderRef): NavItem {
-  return { label: folder.name, href: folderPath(folder.id), icon: Folder };
+/** Arriba de la lista: el tope de fijados (CA-28) y el fallo de una descarga (005 CA-21); `undefined` sin avisos. */
+function explorerNotices(
+  quickAccess: QuickAccessSidebar['quickAccess'],
+  notice: DownloadNotice | null,
+  onDismissNotice: () => void,
+): React.ReactNode {
+  if (quickAccess.limit === null && notice === null) return undefined;
+  return (
+    <div className="space-y-3">
+      {quickAccess.limit === null ? null : (
+        <QuickAccessLimitAlert maxPinned={quickAccess.limit} onDismiss={quickAccess.dismissLimit} />
+      )}
+      {notice ? <DownloadNoticeBanner notice={notice} onDismiss={onDismissNotice} /> : null}
+    </div>
+  );
 }
 
 export interface MyFilesProps {
@@ -142,12 +145,11 @@ export function MyFiles({ folderId }: MyFilesProps): React.JSX.Element {
   const { api, enqueue, fileInputRef, uploadedFiles, reviseUploaded } = useUploads();
   const load = React.useCallback((id: string | null) => api.folderContents(id), [api]);
   const { listing, reload, addFolder } = useFolderContents(load, folderId);
-  const rootFolders = useRootFolders(load, folderId, listing);
   const [notice, setNotice] = React.useState<DownloadNotice | null>(null);
+  const sidebar = useQuickAccessSidebar({ api, openedFolderId: folderId, onNotice: setNotice });
   const [creatingFolder, setCreatingFolder] = React.useState(false);
   const [organizing, setOrganizing] = React.useState<Organizing | null>(null);
   const [organized, setOrganized] = React.useState<OrganizedNodes>(() => new Map());
-  const requestUrl = React.useCallback((fileId: string) => api.downloadUrl(fileId), [api]);
   const { breadcrumbs, items } = readyContents(listing);
   const disclosed = useFolderDisclosure(load);
   const refresh = (): void => {
@@ -195,9 +197,7 @@ export function MyFiles({ folderId }: MyFilesProps): React.JSX.Element {
   return (
     <AppLayout
       topBar={listing.status === 'ready' ? <FolderBreadcrumbs breadcrumbs={breadcrumbs} /> : null}
-      folderItems={withOrganizedRootFolders(rootFolders, organized)
-        .filter((folder) => !trashedIds.has(folder.id))
-        .map(toNavItem)}
+      sidebarSection={sidebar.sidebarSection}
       trashCount={trashCount.count}
     >
       <div className="space-y-4">
@@ -221,12 +221,13 @@ export function MyFiles({ folderId }: MyFilesProps): React.JSX.Element {
               node.type === 'file' ? (
                 <FileRowMenu
                   file={node}
-                  requestUrl={requestUrl}
+                  requestUrl={sidebar.requestUrl}
                   onNotice={setNotice}
                   onRefresh={refresh}
                   onRename={() => setOrganizing({ action: 'rename', node })}
                   onMove={() => setOrganizing({ action: 'move', node })}
                   onMoveToTrash={() => void moveToTrash(node)}
+                  pin={sidebar.pinToggleFor(node)}
                 />
               ) : (
                 <FolderRowMenu
@@ -234,14 +235,11 @@ export function MyFiles({ folderId }: MyFilesProps): React.JSX.Element {
                   onRename={() => setOrganizing({ action: 'rename', node })}
                   onMove={() => setOrganizing({ action: 'move', node })}
                   onMoveToTrash={() => void moveToTrash(node)}
+                  pin={sidebar.pinToggleFor(node)}
                 />
               )
             }
-            notice={
-              notice ? (
-                <DownloadNoticeBanner notice={notice} onDismiss={() => setNotice(null)} />
-              ) : undefined
-            }
+            notice={explorerNotices(sidebar.quickAccess, notice, () => setNotice(null))}
           />
         )}
       </div>

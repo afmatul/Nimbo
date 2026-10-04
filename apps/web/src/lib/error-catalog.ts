@@ -124,6 +124,11 @@ const STORAGE_MESSAGES: Readonly<Record<string, StorageMessageBuilder>> = {
     cause: `Llegaste al máximo de ${String(details['maxDepth'] ?? '')} niveles de carpetas.`,
     fix: 'Crea la carpeta en otro lugar.',
   }),
+  // Mismo texto que `quickAccessLimitMessage` de contracts, en dos partes (006 CA-28).
+  [STORAGE_ERROR_CODES.STORAGE_QUICK_ACCESS_LIMIT]: (details) => ({
+    cause: `Ya fijaste ${String(details['maxPinned'] ?? '')} elementos.`,
+    fix: 'Quita uno para fijar otro.',
+  }),
 };
 
 /**

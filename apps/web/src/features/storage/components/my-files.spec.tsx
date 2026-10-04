@@ -7,8 +7,10 @@ import {
   type FolderRef,
   type FolderSummary,
   type NodeSummary,
+  type QuickAccessList,
+  quickAccessLimitMessage,
 } from '@nimbo/contracts';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import type { StorageApi } from '../api';
@@ -58,6 +60,8 @@ const LISTINGS: Readonly<Record<string, FolderContentsResponse>> = {
   },
 };
 
+const NO_QUICK_ACCESS: QuickAccessList = { pinned: [], recent: [], hasMoreRecent: false };
+
 function fakeApi(overrides: Partial<StorageApi> = {}): StorageApi {
   const pending = (): Promise<never> => new Promise(() => undefined);
   return {
@@ -80,6 +84,10 @@ function fakeApi(overrides: Partial<StorageApi> = {}): StorageApi {
     folderContents: jest.fn((folderId: string | null) =>
       Promise.resolve(LISTINGS[folderId ?? 'root'] as FolderContentsResponse),
     ),
+    quickAccess: jest.fn(() => Promise.resolve(NO_QUICK_ACCESS)),
+    pin: jest.fn(pending),
+    unpin: jest.fn(() => Promise.resolve()),
+    recordRecent: jest.fn(() => Promise.resolve()),
     ...overrides,
   } as StorageApi;
 }
@@ -97,7 +105,8 @@ async function renderMyFilesWithAlphaExpanded(api: StorageApi): Promise<void> {
 }
 
 async function chooseRowAction(name: string, action: string): Promise<void> {
-  await userEvent.click(screen.getByRole('button', { name: `Acciones de ${name}` }));
+  const table = screen.getByRole('table');
+  await userEvent.click(within(table).getByRole('button', { name: `Acciones de ${name}` }));
   await userEvent.click(screen.getByRole('menuitem', { name: action }));
 }
 
@@ -150,5 +159,156 @@ describe('MyFiles con carpetas desglosadas (006 CA-26)', () => {
     expect(
       await screen.findByText('Ya existe una carpeta llamada «Notas» aquí. Elige otro nombre.'),
     ).toBeTruthy();
+  });
+});
+
+function desktopSidebar(): HTMLElement {
+  return screen.getByRole('complementary', { name: 'Barra lateral de escritorio' });
+}
+
+async function renderRoot(api: StorageApi): Promise<void> {
+  render(
+    <UploadsProvider api={api}>
+      <MyFiles folderId={null} />
+    </UploadsProvider>,
+  );
+  await screen.findByText('raiz.pdf');
+}
+
+describe('MyFiles con accesos rápidos (006 CA-27, CA-28)', () => {
+  it('CA-27: «Fijar en la barra lateral» en una subcarpeta la fija y la barra se refresca', async () => {
+    const quickAccess = jest
+      .fn<Promise<QuickAccessList>, []>()
+      .mockResolvedValueOnce(NO_QUICK_ACCESS)
+      .mockResolvedValue({ ...NO_QUICK_ACCESS, pinned: [{ type: 'folder', ...FASE3 }] });
+    const api = fakeApi({
+      quickAccess,
+      pin: jest.fn(() => Promise.resolve({ type: 'folder' as const, ...FASE3 })),
+    });
+    await renderMyFilesWithAlphaExpanded(api);
+    expect(within(desktopSidebar()).queryByText('Accesos rápidos')).toBeNull();
+
+    await chooseRowAction('Fase 3', 'Fijar en la barra lateral');
+
+    expect(api.pin).toHaveBeenCalledWith('folder', FASE3.id);
+    expect(
+      await within(desktopSidebar()).findByRole('link', { name: 'Fase 3, carpeta' }),
+    ).toBeTruthy();
+  });
+
+  it('CA-27: lo fijado (según GET /quick-access) ofrece «Quitar de la barra lateral» en su fila', async () => {
+    const api = fakeApi({
+      quickAccess: jest.fn(() =>
+        Promise.resolve({
+          ...NO_QUICK_ACCESS,
+          pinned: [{ type: 'file' as const, id: 'f-root', name: 'raiz.pdf', kind: 'pdf' as const }],
+        }),
+      ),
+    });
+    await renderRoot(api);
+    await within(desktopSidebar()).findByText('Accesos rápidos');
+
+    await chooseRowAction('raiz.pdf', 'Quitar de la barra lateral');
+
+    expect(api.unpin).toHaveBeenCalledWith('file', 'f-root');
+  });
+
+  it('CA-28: el sexto fijado muestra el aviso de advertencia arriba de la lista y no cambia nada', async () => {
+    const api = fakeApi({
+      pin: jest.fn(() =>
+        Promise.reject(
+          new StorageRequestError(422, STORAGE_ERROR_CODES.STORAGE_QUICK_ACCESS_LIMIT, {
+            maxPinned: 5,
+          }),
+        ),
+      ),
+    });
+    await renderRoot(api);
+
+    await chooseRowAction('Proyecto Alpha', 'Fijar en la barra lateral');
+
+    const notice = await screen.findByTestId('explorer-notice');
+    const alert = within(notice).getByRole('status');
+    expect(alert.textContent).toContain(quickAccessLimitMessage(5));
+    expect(alert.className).toContain('border-warning');
+    expect(api.quickAccess).toHaveBeenCalledTimes(1);
+    await userEvent.click(within(alert).getByRole('button', { name: 'Cerrar aviso' }));
+    expect(screen.queryByText(quickAccessLimitMessage(5))).toBeNull();
+  });
+
+  it('CA-27 (Q-3): abrir Mis archivos o desglosar una carpeta no la registra como reciente', async () => {
+    const api = fakeApi();
+    await renderMyFilesWithAlphaExpanded(api);
+
+    expect(api.recordRecent).not.toHaveBeenCalled();
+  });
+
+  it('CA-27 (Q-3): descargar un archivo desde su fila lo registra como reciente y refresca la barra', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const api = fakeApi({
+      downloadUrl: jest.fn(() =>
+        Promise.resolve({ url: 'https://objetos.local/firmada', expiresAt: AT }),
+      ),
+    });
+    await renderRoot(api);
+
+    await chooseRowAction('raiz.pdf', 'Descargar');
+
+    await waitFor(() => expect(api.recordRecent).toHaveBeenCalledWith('file', 'f-root'));
+    await waitFor(() => expect(api.quickAccess).toHaveBeenCalledTimes(2));
+    jest.restoreAllMocks();
+  });
+
+  it('CA-27: un archivo de la barra se descarga como en 005 y cuenta como reciente', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const api = fakeApi({
+      quickAccess: jest.fn(() =>
+        Promise.resolve({
+          ...NO_QUICK_ACCESS,
+          recent: [{ type: 'file' as const, id: 'f-a', name: 'acta.pdf', kind: 'pdf' as const }],
+        }),
+      ),
+      downloadUrl: jest.fn(() =>
+        Promise.resolve({ url: 'https://objetos.local/firmada', expiresAt: AT }),
+      ),
+    });
+    await renderRoot(api);
+
+    await userEvent.click(
+      await within(desktopSidebar()).findByRole('button', {
+        name: 'acta.pdf, archivo, se descarga',
+      }),
+    );
+
+    expect(api.downloadUrl).toHaveBeenCalledWith('f-a');
+    await waitFor(() => expect(api.recordRecent).toHaveBeenCalledWith('file', 'f-a'));
+    jest.restoreAllMocks();
+  });
+
+  it('CA-27: si la descarga desde la barra falla, el aviso va arriba de la lista', async () => {
+    const api = fakeApi({
+      quickAccess: jest.fn(() =>
+        Promise.resolve({
+          ...NO_QUICK_ACCESS,
+          pinned: [{ type: 'file' as const, id: 'f-a', name: 'acta.pdf', kind: 'pdf' as const }],
+        }),
+      ),
+      downloadUrl: jest.fn(() =>
+        Promise.reject(new StorageRequestError(404, STORAGE_ERROR_CODES.STORAGE_NODE_NOT_FOUND)),
+      ),
+    });
+    await renderRoot(api);
+
+    await userEvent.click(
+      await within(desktopSidebar()).findByRole('button', {
+        name: 'acta.pdf, archivo, se descarga',
+      }),
+    );
+    await act(async () => undefined);
+
+    expect(within(screen.getByTestId('explorer-notice')).getByRole('alert').textContent).toContain(
+      'No encontramos «acta.pdf».',
+    );
+    expect(api.recordRecent).not.toHaveBeenCalled();
   });
 });

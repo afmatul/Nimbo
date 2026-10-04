@@ -3,7 +3,6 @@
 import {
   STORAGE_ERROR_CODES,
   type FolderContentsResponse,
-  type FolderRef,
   type FolderSummary,
 } from '@nimbo/contracts';
 import * as React from 'react';
@@ -85,40 +84,4 @@ export function useFolderContents(
   );
 
   return { listing: state.key === key ? state.listing : LOADING, reload, addFolder };
-}
-
-function foldersOf(contents: FolderContentsResponse): readonly FolderRef[] {
-  return contents.items.flatMap((item) =>
-    item.type === 'folder' ? [{ id: item.id, name: item.name }] : [],
-  );
-}
-
-/**
- * Carpetas de primer nivel para la barra lateral (solo nombres). En la raíz salen del listado abierto; dentro de una
- * carpeta se piden aparte una vez. Si esa petición falla, la sección no se muestra.
- */
-export function useRootFolders(
-  load: LoadFolderContents,
-  folderId: string | null,
-  listing: FolderListing,
-): readonly FolderRef[] {
-  const [fetched, setFetched] = React.useState<readonly FolderRef[]>([]);
-  const insideFolder = folderId !== null;
-
-  React.useEffect(() => {
-    if (!insideFolder) return undefined;
-    let current = true;
-    load(null).then(
-      (contents) => {
-        if (current) setFetched(foldersOf(contents));
-      },
-      () => undefined,
-    );
-    return () => {
-      current = false;
-    };
-  }, [load, insideFolder]);
-
-  if (insideFolder) return fetched;
-  return listing.status === 'ready' ? foldersOf(listing.contents) : [];
 }

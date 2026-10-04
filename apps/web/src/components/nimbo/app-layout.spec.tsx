@@ -4,7 +4,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 
-import { AppLayout } from './app-layout';
+import { AppLayout, useSidebarSlot } from './app-layout';
 
 describe('AppLayout component (CA-5)', () => {
   it('renderiza encabezado, barra lateral de navegación y área de contenido principal', () => {
@@ -215,27 +215,23 @@ describe('AppLayout component (CA-5)', () => {
     );
   });
 
-  it('006: la sección «Carpetas» lista las carpetas de primer nivel, sin cantidades', () => {
-    const folders = [
-      { label: 'Proyecto Alpha', icon: Folder, href: '/archivos/carpeta/a' },
-      { label: 'Finanzas', icon: Folder, href: '/archivos/carpeta/b' },
-    ];
+  it('006 CA-27: la sección de la página va en la barra de escritorio y en el cajón móvil', () => {
+    function WhereAmI(): React.JSX.Element {
+      return <p>{useSidebarSlot().inDrawer ? 'En el cajón' : 'En la barra'}</p>;
+    }
     const markup = renderToStaticMarkup(
-      <AppLayout folderItems={folders} initialMobileMenuOpen>
+      <AppLayout initialMobileMenuOpen sidebarSection={<WhereAmI />}>
         <div>Contenido</div>
       </AppLayout>,
     );
 
-    expect(markup.match(/>Carpetas</g)).toHaveLength(2);
-    expect(markup).toMatch(
-      /<a[^>]*href="\/archivos\/carpeta\/a"[^>]*>(?:(?!<\/a>).)*Proyecto Alpha/,
-    );
-    expect(markup).toContain('Finanzas');
+    expect(markup).toContain('>En la barra<');
+    expect(markup).toContain('>En el cajón<');
   });
 
-  it('006: sin carpetas no muestra el título «Carpetas»', () => {
+  it('006 CA-27: la barra lateral ya no tiene la sección «Carpetas» (la reemplaza «Accesos rápidos»)', () => {
     const markup = renderToStaticMarkup(
-      <AppLayout folderItems={[]}>
+      <AppLayout>
         <div>Contenido</div>
       </AppLayout>,
     );

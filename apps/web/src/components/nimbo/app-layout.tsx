@@ -14,6 +14,21 @@ export interface NavItem {
   readonly active?: boolean;
 }
 
+/** Dónde se dibuja `sidebarSection`: en el cajón, los objetivos miden 44 px y elegir un enlace lo cierra. */
+export interface SidebarSlot {
+  readonly inDrawer: boolean;
+  readonly onNavigate: () => void;
+}
+
+const DESKTOP_SLOT: SidebarSlot = { inDrawer: false, onNavigate: () => undefined };
+
+const SidebarSlotContext = React.createContext<SidebarSlot>(DESKTOP_SLOT);
+
+/** Lugar de `sidebarSection`: la barra de escritorio (por omisión) o el cajón móvil. */
+export function useSidebarSlot(): SidebarSlot {
+  return React.useContext(SidebarSlotContext);
+}
+
 /** Enlace de la Papelera, el que lleva el contador (006). */
 const TRASH_HREF = '/papelera';
 
@@ -32,8 +47,11 @@ export interface AppLayoutProps {
   readonly navItems?: readonly NavItem[];
   /** Contenido de la barra superior en escritorio, junto al logo (p. ej. las migas de Mis archivos, 006). */
   readonly topBar?: React.ReactNode;
-  /** Carpetas de primer nivel bajo el título «Carpetas»; sin elementos no se muestra la sección (006). */
-  readonly folderItems?: readonly NavItem[];
+  /**
+   * Sección de la página al final de la navegación, en la barra de escritorio y en el cajón móvil (p. ej. «Accesos
+   * rápidos» de Mis archivos, 006 CA-27). Sabe dónde está con `useSidebarSlot()`.
+   */
+  readonly sidebarSection?: React.ReactNode;
   /** Elementos en la papelera (`GET /trash/summary`); sin dato o en 0 no se muestra (006). */
   readonly trashCount?: number | undefined;
 }
@@ -60,38 +78,6 @@ function NavLabel({
   );
 }
 
-const FOLDER_LINK_CLASS =
-  'flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-accent/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
-
-/** Sección «Carpetas» de la barra lateral: solo el nombre (sin cantidades: `FolderRef` no las trae). */
-function FolderSection({
-  items,
-  onNavigate,
-}: {
-  readonly items: readonly NavItem[];
-  readonly onNavigate?: () => void;
-}): React.JSX.Element | null {
-  if (items.length === 0) return null;
-  return (
-    <div className="mt-4">
-      <p className="px-3 pb-1 text-xs font-semibold text-muted-foreground">Carpetas</p>
-      <ul className="space-y-1">
-        {items.map((item) => {
-          const Icon = item.icon;
-          return (
-            <li key={item.href}>
-              <a href={item.href} onClick={onNavigate} className={FOLDER_LINK_CLASS}>
-                <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                <span className="truncate">{item.label}</span>
-              </a>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
-  );
-}
-
 /**
  * Layout base responsivo de Nimbo.
  * Diseñado desde 360 px (móvil) hasta escritorio, con navegación accesible,
@@ -103,7 +89,7 @@ export function AppLayout({
   initialMobileMenuOpen = false,
   navItems = DEFAULT_NAV_ITEMS,
   topBar,
-  folderItems = [],
+  sidebarSection,
   trashCount,
 }: AppLayoutProps): React.JSX.Element {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(initialMobileMenuOpen);
@@ -204,7 +190,7 @@ export function AppLayout({
                 </a>
               );
             })}
-            <FolderSection items={folderItems} />
+            {sidebarSection}
           </nav>
         </aside>
 
@@ -266,7 +252,11 @@ export function AppLayout({
                     </a>
                   );
                 })}
-                <FolderSection items={folderItems} onNavigate={handleCloseMenu} />
+                <SidebarSlotContext.Provider
+                  value={{ inDrawer: true, onNavigate: handleCloseMenu }}
+                >
+                  {sidebarSection}
+                </SidebarSlotContext.Provider>
               </nav>
             </aside>
           </div>

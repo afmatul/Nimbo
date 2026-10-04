@@ -8,6 +8,8 @@ import {
   FolderInput,
   Loader2,
   Pencil,
+  Pin,
+  PinOff,
   X,
 } from 'lucide-react';
 import * as React from 'react';
@@ -47,20 +49,29 @@ export interface FileRowMenuProps {
   readonly onMove: () => void;
   /** «Mover a la papelera», sin confirmación (006 CA-10). */
   readonly onMoveToTrash: () => void;
+  readonly pin: PinToggle;
 }
 
-const openInBrowser = (url: string): void => window.location.assign(url);
+/** Abre la URL firmada en la pestaña: el navegador descarga (005 CA-13). */
+export const openInBrowser = (url: string): void => window.location.assign(url);
 
 function codeOf(error: unknown): string | null {
   return error instanceof StorageRequestError ? error.code : null;
 }
 
-function failureNotice(
+/** Acciones del aviso de descarga fallida: «Reintentar» o, si ya no existe, «Actualizar lista». */
+export interface DownloadFailureActions {
+  readonly retry: () => void;
+  readonly refresh: () => void;
+}
+
+/** Aviso de una descarga fallida (005 CA-21), desde la fila o desde la barra lateral (006 CA-27). */
+export function downloadFailureNotice(
   name: string,
-  code: string | null,
-  retry: () => void,
-  refresh: () => void,
+  error: unknown,
+  { retry, refresh }: DownloadFailureActions,
 ): DownloadNotice {
+  const code = codeOf(error);
   if (code === STORAGE_ERROR_CODES.STORAGE_NODE_NOT_FOUND) {
     return {
       title: `No encontramos «${name}».`,
@@ -91,6 +102,7 @@ export function FileRowMenu({
   onRename,
   onMove,
   onMoveToTrash,
+  pin,
 }: FileRowMenuProps): React.JSX.Element {
   const [open, setOpen] = React.useState(false);
   const [preparing, setPreparing] = React.useState(false);
@@ -108,7 +120,12 @@ export function FileRowMenu({
       const { url } = await requestUrl(file.id);
       openUrl(url);
     } catch (error) {
-      onNotice(failureNotice(file.name, codeOf(error), () => void download(), onRefresh));
+      onNotice(
+        downloadFailureNotice(file.name, error, {
+          retry: () => void download(),
+          refresh: onRefresh,
+        }),
+      );
     } finally {
       clearTimeout(preparingTimer.current);
       inFlight.current = false;
@@ -143,6 +160,7 @@ export function FileRowMenu({
             {preparing ? 'Preparando…' : 'Descargar'}
           </DropdownMenuItem>
           <OrganizeMenuItems onRename={onRename} onMove={onMove} />
+          <PinMenuItem pin={pin} />
           <MoveToTrashMenuItem onSelect={onMoveToTrash} />
         </DropdownMenuContent>
       </DropdownMenu>
@@ -188,6 +206,26 @@ export function OrganizeMenuItems({ onRename, onMove }: OrganizeMenuItemsProps):
         Mover a…
       </DropdownMenuItem>
     </>
+  );
+}
+
+/** Estado «fijado» (de `GET /quick-access`) y la acción de fijar o quitar (006 CA-27). */
+export interface PinToggle {
+  readonly pinned: boolean;
+  readonly onToggle: () => void;
+}
+
+/**
+ * «Fijar en la barra lateral» o, si ya está fijado, «Quitar de la barra lateral» (mockups `menu-fila-*`). No se
+ * deshabilita en el tope: intentar el sexto muestra el aviso (CA-28).
+ */
+export function PinMenuItem({ pin }: { readonly pin: PinToggle }): React.JSX.Element {
+  const Icon = pin.pinned ? PinOff : Pin;
+  return (
+    <DropdownMenuItem onSelect={pin.onToggle}>
+      <Icon className="h-4 w-4 text-secondary-foreground" aria-hidden="true" />
+      {pin.pinned ? 'Quitar de la barra lateral' : 'Fijar en la barra lateral'}
+    </DropdownMenuItem>
   );
 }
 

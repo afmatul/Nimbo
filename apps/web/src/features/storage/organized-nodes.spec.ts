@@ -1,6 +1,6 @@
-import type { FolderRef, NodeSummary } from '@nimbo/contracts';
+import type { NodeSummary } from '@nimbo/contracts';
 
-import { withArrivals, withOrganized, withOrganizedRootFolders } from './organized-nodes';
+import { withArrivals, withOrganized } from './organized-nodes';
 
 const AT = '2026-09-30T10:00:00.000Z';
 const ALPHA = '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d';
@@ -63,27 +63,6 @@ describe('withArrivals (006 CA-26)', () => {
       BETA,
       'f-1',
       'f-9',
-    ]);
-  });
-});
-
-describe('withOrganizedRootFolders (barra lateral)', () => {
-  const roots: FolderRef[] = [
-    { id: ALPHA, name: 'Alpha' },
-    { id: 'c', name: 'Gamma' },
-  ];
-
-  it('CA-4 y CA-7: renombra, quita lo que salió de la raíz y suma lo que llegó', () => {
-    const organized = new Map([
-      [ALPHA, folder(ALPHA, 'Alpha 2', null)],
-      ['c', folder('c', 'Gamma', ALPHA)],
-      [BETA, folder(BETA, 'Beta', null)],
-      ['f-1', file('f-1', 'a.pdf', null)],
-    ]);
-
-    expect(withOrganizedRootFolders(roots, organized)).toEqual([
-      { id: ALPHA, name: 'Alpha 2' },
-      { id: BETA, name: 'Beta' },
     ]);
   });
 });

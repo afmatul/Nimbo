@@ -105,6 +105,7 @@ function fakeApi(overrides: Partial<StorageApi> = {}): jest.Mocked<StorageApi> {
     restore: jest.fn(() => never()),
     purge: jest.fn(() => never()),
     emptyTrash: jest.fn(() => never()),
+    quickAccess: jest.fn(() => never()),
     ...overrides,
   } as jest.Mocked<StorageApi>;
 }
@@ -165,6 +166,26 @@ describe('página Papelera (/papelera)', () => {
     expect(screen.getAllByText('3 elementos', { selector: 'p' })).toHaveLength(2);
     const sidebar = screen.getByRole('complementary', { name: 'Barra lateral de escritorio' });
     expect(within(sidebar).getByRole('link', { name: 'Papelera (3 elementos)' })).toBeTruthy();
+  });
+
+  it('006 CA-27: la barra lateral de la papelera también tiene «Accesos rápidos», sin registrar recientes', async () => {
+    const api = fakeApi({
+      quickAccess: jest.fn(() =>
+        Promise.resolve({
+          pinned: [{ type: 'folder' as const, id: ITEMS[0]?.id ?? '', name: 'Proyecto Alpha' }],
+          recent: [],
+          hasMoreRecent: false,
+        }),
+      ),
+      recordRecent: jest.fn(() => Promise.resolve()),
+    });
+    await renderPage(api);
+
+    const sidebar = screen.getByRole('complementary', { name: 'Barra lateral de escritorio' });
+    expect(
+      await within(sidebar).findByRole('link', { name: 'Proyecto Alpha, carpeta' }),
+    ).toBeTruthy();
+    expect(api.recordRecent).not.toHaveBeenCalled();
   });
 
   it('CA-12: avisa los que se purgan en los próximos 7 días, con reloj en la fila', async () => {

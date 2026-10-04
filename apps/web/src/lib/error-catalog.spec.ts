@@ -6,6 +6,7 @@ import {
   STORAGE_ERROR_CODES,
   STORAGE_NODE_FIELD_MESSAGES,
   SUPPORT_CONTACT_EMAIL,
+  quickAccessLimitMessage,
 } from '@nimbo/contracts';
 
 import { ApiClientError } from './api-error';
@@ -228,6 +229,19 @@ describe('error-catalog', () => {
           details: { maxDepth: 10 },
         }),
       ).toBe('Llegaste al máximo de 10 niveles de carpetas. Crea la carpeta en otro lugar.');
+    });
+
+    it('CA-28: el tope de fijados usa la cifra de `details.maxPinned`, como el texto de contracts', () => {
+      expect(
+        messageForCode(STORAGE_ERROR_CODES.STORAGE_QUICK_ACCESS_LIMIT, {
+          details: { maxPinned: 5 },
+        }),
+      ).toBe(quickAccessLimitMessage(5));
+      expect(
+        messageForCode(STORAGE_ERROR_CODES.STORAGE_QUICK_ACCESS_LIMIT, {
+          details: { maxPinned: 8 },
+        }),
+      ).toBe('Ya fijaste 8 elementos. Quita uno para fijar otro.');
     });
 
     it('CA-6: un 404 al subir o crear habla de la carpeta de destino, no de un archivo', () => {

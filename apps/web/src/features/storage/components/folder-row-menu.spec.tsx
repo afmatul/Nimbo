@@ -33,6 +33,7 @@ describe('FolderRowMenu (mockup acciones-carpeta)', () => {
           onRename={onRename}
           onMove={onMove}
           onMoveToTrash={onMoveToTrash}
+          pin={{ pinned: false, onToggle: jest.fn() }}
         />
       </main>,
     );
@@ -41,6 +42,7 @@ describe('FolderRowMenu (mockup acciones-carpeta)', () => {
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
       'Renombrar',
       'Mover a…',
+      'Fijar en la barra lateral',
       'Mover a la papelera',
     ]);
     const { violations } = await axe(document.body);
@@ -59,5 +61,38 @@ describe('FolderRowMenu (mockup acciones-carpeta)', () => {
     expect(trash.className).not.toMatch(/destructive/);
     await userEvent.click(trash);
     expect(onMoveToTrash).toHaveBeenCalledTimes(1);
+  });
+
+  it('006 CA-27: fijar y quitar una carpeta de la barra lateral desde su menú', async () => {
+    const onToggle = jest.fn();
+    const { rerender } = render(
+      <main>
+        <FolderRowMenu
+          folder={FOLDER}
+          onRename={jest.fn()}
+          onMove={jest.fn()}
+          onMoveToTrash={jest.fn()}
+          pin={{ pinned: false, onToggle }}
+        />
+      </main>,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Acciones de Prompts' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Fijar en la barra lateral' }));
+    expect(onToggle).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <main>
+        <FolderRowMenu
+          folder={FOLDER}
+          onRename={jest.fn()}
+          onMove={jest.fn()}
+          onMoveToTrash={jest.fn()}
+          pin={{ pinned: true, onToggle }}
+        />
+      </main>,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Acciones de Prompts' }));
+
+    expect(screen.getByRole('menuitem', { name: 'Quitar de la barra lateral' })).toBeTruthy();
   });
 });

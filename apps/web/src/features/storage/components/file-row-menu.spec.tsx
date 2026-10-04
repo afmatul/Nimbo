@@ -86,6 +86,7 @@ function renderMenu(overrides: Partial<HarnessProps> = {}): Promise<void> {
     onRename: jest.fn(),
     onMove: jest.fn(),
     onMoveToTrash: jest.fn(),
+    pin: { pinned: false, onToggle: jest.fn() },
     ...overrides,
   };
   return mount(<Harness {...props} />);
@@ -169,6 +170,31 @@ describe('FileRowMenu (CA-13, CA-21)', () => {
     expect(last?.className).not.toMatch(/destructive/);
     await act(async () => last?.click());
     expect(onMoveToTrash).toHaveBeenCalledTimes(1);
+  });
+
+  it('006 CA-27: «Fijar en la barra lateral» va después de «Mover a…» y fija el archivo', async () => {
+    const onToggle = jest.fn();
+    await renderMenu({ pin: { pinned: false, onToggle } });
+    await press('Enter');
+
+    const labels = items().map((item) => item.textContent?.trim());
+    expect(labels).toEqual([
+      'Descargar',
+      'Renombrar',
+      'Mover a…',
+      'Fijar en la barra lateral',
+      'Mover a la papelera',
+    ]);
+    await act(async () => items()[3]?.click());
+    expect(onToggle).toHaveBeenCalledTimes(1);
+  });
+
+  it('006 CA-27: si ya está fijado, el ítem dice «Quitar de la barra lateral» (mockup menu-fila-quitar)', async () => {
+    await renderMenu({ pin: { pinned: true, onToggle: jest.fn() } });
+    await press('Enter');
+
+    expect(items()[3]?.textContent?.trim()).toBe('Quitar de la barra lateral');
+    expect(items()[3]?.getAttribute('aria-disabled')).toBeNull();
   });
 
   it.each([
