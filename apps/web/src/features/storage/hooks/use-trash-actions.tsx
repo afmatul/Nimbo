@@ -1,6 +1,6 @@
 'use client';
 
-import { STORAGE_ERROR_CODES, type RestoreResponse, type TrashItem } from '@nimbo/contracts';
+import type { RestoreResponse, TrashItem } from '@nimbo/contracts';
 import Link from 'next/link';
 import * as React from 'react';
 
@@ -14,7 +14,7 @@ import {
   type RestoreLine,
 } from '../components/restore-result';
 import { locationPath } from '../routes';
-import { StorageRequestError } from '../storage-request-error';
+import { isStorageNotFound } from '../storage-request-error';
 import type { TrashApi } from '../trash-api';
 
 import type { useTrash } from './use-trash';
@@ -34,13 +34,6 @@ interface RestoreAttempt {
   readonly gone: boolean;
 }
 
-function isNotFound(error: unknown): boolean {
-  return (
-    error instanceof StorageRequestError &&
-    error.code === STORAGE_ERROR_CODES.STORAGE_NODE_NOT_FOUND
-  );
-}
-
 /** Una llamada por elemento (plan 006 §4, CA-17); cada una informa su resultado. */
 function restoreEach(
   api: Pick<TrashApi, 'restore'>,
@@ -53,7 +46,7 @@ function restoreEach(
         (error: unknown) => ({
           item,
           line: restoreFailureLine(item, error),
-          gone: isNotFound(error),
+          gone: isStorageNotFound(error),
         }),
       ),
     ),
@@ -123,7 +116,7 @@ export function useTrashActions(
     try {
       await api.purge(item.type, item.id);
     } catch (error) {
-      if (isNotFound(error)) forget(new Set([item.id]));
+      if (isStorageNotFound(error)) forget(new Set([item.id]));
       throw error;
     }
     forget(new Set([item.id]));

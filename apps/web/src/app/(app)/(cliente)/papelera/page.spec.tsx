@@ -257,6 +257,34 @@ describe('página Papelera (/papelera)', () => {
     expect(api.trashSummary).toHaveBeenCalledTimes(2);
   });
 
+  it('006 CA-27: restaurar un fijado lo devuelve a la barra lateral sin navegar', async () => {
+    const quickAccess = jest
+      .fn()
+      .mockResolvedValueOnce({ pinned: [], recent: [], hasMoreRecent: false })
+      .mockResolvedValue({
+        pinned: [{ type: 'file' as const, id: BORRADOR.id, name: BORRADOR.name, kind: 'docx' }],
+        recent: [],
+        hasMoreRecent: false,
+      });
+    const api = fakeApi({
+      quickAccess,
+      restore: jest.fn(() => Promise.resolve(restoredAs(BORRADOR, 'restored'))),
+    });
+    await renderPage(api);
+    await screen.findByRole('table');
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Restaurar Borrador_propuesta_v1.docx' }),
+    );
+
+    const sidebar = screen.getByRole('complementary', { name: 'Barra lateral de escritorio' });
+    expect(
+      await within(sidebar).findByRole('button', {
+        name: 'Borrador_propuesta_v1.docx, archivo, se descarga',
+      }),
+    ).toBeTruthy();
+  });
+
   it('CA-14, CA-15, CA-17: restaurar la selección informa el resultado por elemento', async () => {
     const restore = jest.fn((type: TrashItem['type'], id: string) => {
       if (id === BORRADOR.id) {

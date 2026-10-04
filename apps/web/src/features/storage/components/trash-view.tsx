@@ -57,6 +57,9 @@ export function TrashView(): React.JSX.Element {
   const selected = ready ? ready.items.filter((item) => actions.selectedIds.has(item.id)) : [];
   const [notice, setNotice] = React.useState<DownloadNotice | null>(null);
   const sidebar = useQuickAccessSidebar({ api, openedFolderId: null, onNotice: setNotice });
+  /** Lo restaurado vuelve a la barra si estaba fijado o era reciente (CA-27). */
+  const restore = (items: readonly TrashItem[]): void =>
+    void actions.restore(items).then(sidebar.quickAccess.reload);
 
   return (
     <AppLayout
@@ -90,7 +93,7 @@ export function TrashView(): React.JSX.Element {
                   count={selected.length}
                   totalBytes={bytesOf(ready.items, actions.selectedIds)}
                   busy={actions.restoring}
-                  onRestore={() => void actions.restore(selected)}
+                  onRestore={() => restore(selected)}
                   onClear={() => actions.setSelectedIds(new Set())}
                 />
                 <TrashList
@@ -100,7 +103,7 @@ export function TrashView(): React.JSX.Element {
                   busy={actions.restoring}
                   selectedIds={actions.selectedIds}
                   onSelectionChange={actions.setSelectedIds}
-                  onRestore={(item) => void actions.restore([item])}
+                  onRestore={(item) => restore([item])}
                   onPurge={(item) => actions.setPurgeTarget({ scope: 'item', item })}
                 />
               </>

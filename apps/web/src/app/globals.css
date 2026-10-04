@@ -1,6 +1,9 @@
 /* apps/web/src/app/globals.css */
 @import 'tailwindcss';
 
+/* Sin puntero que pase por encima (táctil): lo que en escritorio aparece con el puntero se ve siempre. */
+@custom-variant hover-none (@media (hover: none));
+
 :root {
   /* Superficies */
   --background: #f4f7fb; /* color-bg */

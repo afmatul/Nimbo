@@ -12,20 +12,39 @@ export type QuickAccessState =
   | { readonly status: 'error' }
   | { readonly status: 'ready'; readonly list: QuickAccessList };
 
-/** Carpeta o archivo que se fija, se quita o se abre. */
+/** Carpeta o archivo que se abre (y cuenta como reciente). */
 export interface QuickAccessNode {
   readonly type: QuickAccessNodeType;
   readonly id: string;
 }
+
+/** Carpeta o archivo que se fija o se quita: el nombre es para el aviso si falla. */
+export interface NamedQuickAccessNode extends QuickAccessNode {
+  readonly name: string;
+}
+
+/** Fijar o quitar falló por algo que no es el tope (404, red, 429…): la página lo avisa arriba de la lista. */
+export interface QuickAccessFailure {
+  readonly action: 'pin' | 'unpin';
+  readonly name: string;
+  readonly error: unknown;
+  readonly retry: () => void;
+  /** Vuelve a leer los accesos rápidos (p. ej. si el elemento ya no existe). */
+  readonly refresh: () => void;
+}
+
+/** `null` al empezar otro intento: el aviso anterior deja de valer. */
+export type QuickAccessFailureListener = (failure: QuickAccessFailure | null) => void;
 
 export interface QuickAccess {
   readonly state: QuickAccessState;
   readonly reload: () => void;
   /** Según los fijados de `GET /quick-access` (plan §9.2: `NodeSummary` no cambia). */
   readonly isPinned: (node: QuickAccessNode) => boolean;
-  readonly pin: (node: QuickAccessNode) => Promise<void>;
-  /** `false` si la API no lo quitó. */
-  readonly unpin: (node: QuickAccessNode) => Promise<boolean>;
+  /** Un fallo que no es el tope llega a `onFailure`. */
+  readonly pin: (node: NamedQuickAccessNode) => Promise<void>;
+  /** `false` si la API no lo quitó; el fallo llega a `onFailure`. */
+  readonly unpin: (node: NamedQuickAccessNode) => Promise<boolean>;
   /** Abrir una carpeta o descargar un archivo (Q-3), de mejor esfuerzo: un fallo no se muestra. */
   readonly recordOpen: (node: QuickAccessNode) => void;
   /** Tope del último intento de fijar de más (CA-28); `null` sin aviso. */
@@ -78,43 +97,62 @@ function useQuickAccessList(api: QuickAccessApi) {
 
 type ListControls = Pick<ReturnType<typeof useQuickAccessList>, 'setState' | 'reload'>;
 
-/** Fijar y quitar; el sexto fijado deja el tope en `limit` y no cambia nada (CA-28). */
-function usePinning(api: QuickAccessApi, { setState, reload }: ListControls) {
+interface PinningOptions extends ListControls {
+  readonly onFailure: QuickAccessFailureListener;
+}
+
+/** Fijar; el sexto fijado deja el tope en `limit` y no cambia nada (CA-28). Otro fallo va a `onFailure`. */
+function usePin(api: QuickAccessApi, { reload, onFailure }: PinningOptions) {
   const [limit, setLimit] = React.useState<number | null>(null);
 
-  const pin = async (node: QuickAccessNode): Promise<void> => {
+  const pin = async (node: NamedQuickAccessNode): Promise<void> => {
     setLimit(null);
+    onFailure(null);
     try {
       await attempt(() => api.pin(node.type, node.id));
     } catch (error) {
       const maxPinned = limitOf(error);
       if (maxPinned !== null) return setLimit(maxPinned);
+      const retry = (): void => void pin(node);
+      return onFailure({ action: 'pin', name: node.name, error, retry, refresh: reload });
     }
     reload();
   };
 
-  const unpin = async (node: QuickAccessNode): Promise<boolean> => {
+  return { pin, limit, dismissLimit: () => setLimit(null) };
+}
+
+/** Quitar: sale de la lista sin esperar a releerla; un fallo va a `onFailure`. */
+function useUnpin(api: QuickAccessApi, { setState, reload, onFailure }: PinningOptions) {
+  const unpin = async (node: NamedQuickAccessNode): Promise<boolean> => {
+    onFailure(null);
     try {
       await attempt(() => api.unpin(node.type, node.id));
-    } catch {
+    } catch (error) {
+      const retry = (): void => void unpin(node);
+      onFailure({ action: 'unpin', name: node.name, error, retry, refresh: reload });
       return false;
     }
     setState((previous) => withoutPinned(previous, node));
     reload();
     return true;
   };
-
-  return { pin, unpin, limit, dismissLimit: () => setLimit(null) };
+  return unpin;
 }
 
 /**
  * Accesos rápidos de la cuenta. Al montar la página de una carpeta (`openedFolderId`) la registra como reciente antes de
  * leer la lista (Q-3: por URL, migas, barra o «Ver más»; desglosar en la lista no la registra).
  */
-export function useQuickAccess(api: QuickAccessApi, openedFolderId: string | null): QuickAccess {
+export function useQuickAccess(
+  api: QuickAccessApi,
+  openedFolderId: string | null,
+  onFailure: QuickAccessFailureListener,
+): QuickAccess {
   const list = useQuickAccessList(api);
   const { state, reload } = list;
-  const pinning = usePinning(api, list);
+  const pinning = usePin(api, { ...list, onFailure });
+  const unpin = useUnpin(api, { ...list, onFailure });
 
   const recordOpen = React.useCallback(
     (node: QuickAccessNode) => {
@@ -133,5 +171,5 @@ export function useQuickAccess(api: QuickAccessApi, openedFolderId: string | nul
   const isPinned = (node: QuickAccessNode): boolean =>
     state.status === 'ready' && state.list.pinned.some((item) => sameNode(item, node));
 
-  return { state, reload, isPinned, recordOpen, ...pinning };
+  return { state, reload, isPinned, recordOpen, unpin, ...pinning };
 }

@@ -312,3 +312,116 @@ describe('MyFiles con accesos rápidos (006 CA-27, CA-28)', () => {
     expect(api.recordRecent).not.toHaveBeenCalled();
   });
 });
+
+const PINNED_RAIZ: QuickAccessList = {
+  ...NO_QUICK_ACCESS,
+  pinned: [{ type: 'file', id: 'f-root', name: 'raiz.pdf', kind: 'pdf' }],
+};
+const RAIZ_IN_SIDEBAR = 'raiz.pdf, archivo, se descarga';
+
+describe('MyFiles mantiene al día los accesos rápidos (006 CA-27)', () => {
+  it('CA-27: mover a la papelera un fijado lo saca de la barra sin navegar', async () => {
+    const quickAccess = jest
+      .fn<Promise<QuickAccessList>, []>()
+      .mockResolvedValueOnce(PINNED_RAIZ)
+      .mockResolvedValue(NO_QUICK_ACCESS);
+    const api = fakeApi({
+      quickAccess,
+      moveToTrash: jest.fn(() => Promise.resolve({} as never)),
+    });
+    await renderRoot(api);
+    await within(desktopSidebar()).findByRole('button', { name: RAIZ_IN_SIDEBAR });
+
+    await chooseRowAction('raiz.pdf', 'Mover a la papelera');
+
+    await waitFor(() =>
+      expect(within(desktopSidebar()).queryByRole('button', { name: RAIZ_IN_SIDEBAR })).toBeNull(),
+    );
+  });
+
+  it('CA-27: renombrar un fijado muestra el nombre nuevo en la barra', async () => {
+    const quickAccess = jest
+      .fn<Promise<QuickAccessList>, []>()
+      .mockResolvedValueOnce({ ...NO_QUICK_ACCESS, pinned: [{ type: 'folder', ...ALPHA }] })
+      .mockResolvedValue({
+        ...NO_QUICK_ACCESS,
+        pinned: [{ type: 'folder', id: ALPHA.id, name: 'Proyecto Beta' }],
+      });
+    const api = fakeApi({
+      quickAccess,
+      renameFolder: jest.fn(() =>
+        Promise.resolve(folderSummary({ id: ALPHA.id, name: 'Proyecto Beta' }, null)),
+      ),
+    });
+    await renderRoot(api);
+    await within(desktopSidebar()).findByRole('link', { name: 'Proyecto Alpha, carpeta' });
+
+    await chooseRowAction('Proyecto Alpha', 'Renombrar');
+    const field = screen.getByRole('textbox');
+    await userEvent.clear(field);
+    await userEvent.type(field, 'Proyecto Beta');
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar nombre' }));
+
+    expect(
+      await within(desktopSidebar()).findByRole('link', { name: 'Proyecto Beta, carpeta' }),
+    ).toBeTruthy();
+  });
+});
+
+function explorerAlert(): HTMLElement {
+  return within(screen.getByTestId('explorer-notice')).getByRole('alert');
+}
+
+describe('MyFiles avisa cuando fijar o quitar falla (006 CA-27)', () => {
+  it('CA-27: si fijar falla sin ser el tope, el aviso va arriba de la lista y «Reintentar» lo repite', async () => {
+    const api = fakeApi({ pin: jest.fn(() => Promise.reject(new TypeError('Failed to fetch'))) });
+    await renderRoot(api);
+
+    await chooseRowAction('Proyecto Alpha', 'Fijar en la barra lateral');
+
+    const alert = await waitFor(explorerAlert);
+    expect(alert.textContent).toContain('No pudimos fijar «Proyecto Alpha» en la barra lateral.');
+    expect(alert.textContent).toContain('Revisa tu conexión e inténtalo de nuevo.');
+    await userEvent.click(within(alert).getByRole('button', { name: 'Reintentar' }));
+    expect(api.pin).toHaveBeenCalledTimes(2);
+    await userEvent.click(within(explorerAlert()).getByRole('button', { name: 'Cerrar aviso' }));
+    expect(screen.queryByTestId('explorer-notice')).toBeNull();
+  });
+
+  it('CA-27: si quitar desde la fila falla, el aviso va arriba de la lista', async () => {
+    const api = fakeApi({
+      quickAccess: jest.fn(() => Promise.resolve(PINNED_RAIZ)),
+      unpin: jest.fn(() =>
+        Promise.reject(new StorageRequestError(404, STORAGE_ERROR_CODES.STORAGE_NODE_NOT_FOUND)),
+      ),
+    });
+    await renderRoot(api);
+    await within(desktopSidebar()).findByRole('button', { name: RAIZ_IN_SIDEBAR });
+
+    await chooseRowAction('raiz.pdf', 'Quitar de la barra lateral');
+
+    const alert = await waitFor(explorerAlert);
+    expect(alert.textContent).toContain('No pudimos quitar «raiz.pdf» de la barra lateral.');
+    expect(within(alert).getByRole('button', { name: 'Actualizar lista' })).toBeTruthy();
+  });
+
+  it('CA-27: si quitar desde el ⋮ de la barra falla, el aviso también va arriba de la lista', async () => {
+    const api = fakeApi({
+      quickAccess: jest.fn(() => Promise.resolve(PINNED_RAIZ)),
+      unpin: jest.fn(() =>
+        Promise.reject(new StorageRequestError(429, STORAGE_ERROR_CODES.STORAGE_TOO_MANY_REQUESTS)),
+      ),
+    });
+    await renderRoot(api);
+
+    await userEvent.click(
+      await within(desktopSidebar()).findByRole('button', { name: 'Acciones de raiz.pdf' }),
+    );
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Quitar de la barra lateral' }));
+
+    const alert = await waitFor(explorerAlert);
+    expect(alert.textContent).toContain('No pudimos quitar «raiz.pdf» de la barra lateral.');
+    expect(alert.textContent).toContain('Hiciste demasiadas solicitudes.');
+    expect(within(desktopSidebar()).getByRole('button', { name: RAIZ_IN_SIDEBAR })).toBeTruthy();
+  });
+});

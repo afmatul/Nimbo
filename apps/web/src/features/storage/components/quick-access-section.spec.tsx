@@ -65,7 +65,7 @@ interface HarnessProps {
 }
 
 function Harness({ api, onOpenFile = jest.fn() }: HarnessProps): React.JSX.Element {
-  const quickAccess = useQuickAccess(api, null);
+  const quickAccess = useQuickAccess(api, null, () => undefined);
   return (
     <main>
       <nav aria-label="Navegación principal">
@@ -259,13 +259,13 @@ describe('Accesos rápidos de la barra lateral (006 CA-27, CA-28)', () => {
     expect(trigger.className).toMatch(/\bopacity-0\b/);
     expect(trigger.className).toContain('group-hover:opacity-100');
     expect(trigger.className).toContain('group-focus-within:opacity-100');
-    expect(trigger.className).toContain('[@media(hover:none)]:opacity-100');
+    expect(trigger.className).toContain('hover-none:opacity-100');
   });
 });
 
 describe('Accesos rápidos en el cajón móvil (006 CA-27)', () => {
   function DrawerHarness({ api }: { readonly api: QuickAccessApi }): React.JSX.Element {
-    const quickAccess = useQuickAccess(api, null);
+    const quickAccess = useQuickAccess(api, null, () => undefined);
     return (
       <AppLayout
         initialMobileMenuOpen

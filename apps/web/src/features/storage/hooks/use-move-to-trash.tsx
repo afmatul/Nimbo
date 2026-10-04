@@ -1,6 +1,6 @@
 'use client';
 
-import { STORAGE_ERROR_CODES, type NodeSummary } from '@nimbo/contracts';
+import type { NodeSummary } from '@nimbo/contracts';
 import Link from 'next/link';
 import * as React from 'react';
 
@@ -8,7 +8,7 @@ import { buttonVariants } from '../../../components/ui/button';
 import { showNotice } from '../../../components/ui/sonner';
 import type { DownloadNotice } from '../components/file-row-menu';
 import { TRASH_PATH } from '../routes';
-import { StorageRequestError } from '../storage-request-error';
+import { isStorageNotFound } from '../storage-request-error';
 import type { TrashApi } from '../trash-api';
 
 export interface UseMoveToTrashOptions {
@@ -26,10 +26,7 @@ function failureNotice(
   retry: () => void,
   refresh: () => void,
 ): DownloadNotice {
-  if (
-    error instanceof StorageRequestError &&
-    error.code === STORAGE_ERROR_CODES.STORAGE_NODE_NOT_FOUND
-  ) {
+  if (isStorageNotFound(error)) {
     return {
       title: `No encontramos «${node.name}».`,
       description:

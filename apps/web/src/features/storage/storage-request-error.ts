@@ -1,4 +1,4 @@
-import type { FieldIssueResponse } from '@nimbo/contracts';
+import { STORAGE_ERROR_CODES, type FieldIssueResponse } from '@nimbo/contracts';
 
 /** `details` de `ErrorResponse` (plan 005 §5): cifras, `suggestedName`, `reason` o `extension`. */
 export type StorageErrorDetails = Readonly<Record<string, string | number | boolean>>;
@@ -18,4 +18,12 @@ export class StorageRequestError extends Error {
     super(code);
     this.name = 'StorageRequestError';
   }
+}
+
+/** `404 STORAGE_NODE_NOT_FOUND`: el elemento ya no existe, está en la papelera o no es visible para la cuenta. */
+export function isStorageNotFound(error: unknown): boolean {
+  return (
+    error instanceof StorageRequestError &&
+    error.code === STORAGE_ERROR_CODES.STORAGE_NODE_NOT_FOUND
+  );
 }

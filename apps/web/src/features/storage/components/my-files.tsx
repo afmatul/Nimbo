@@ -158,9 +158,13 @@ export function MyFiles({ folderId }: MyFilesProps): React.JSX.Element {
     disclosed.refreshAll();
   };
   const trashCount = useTrashCount(api);
+  const reloadQuickAccess = sidebar.quickAccess.reload;
   const { trashedIds, moveToTrash } = useMoveToTrash({
     api,
-    onMoved: trashCount.refresh,
+    onMoved: () => {
+      trashCount.refresh();
+      reloadQuickAccess();
+    },
     onNotice: setNotice,
     onRefresh: refresh,
   });
@@ -178,12 +182,14 @@ export function MyFiles({ folderId }: MyFilesProps): React.JSX.Element {
           { state: disclosed, changes },
         );
 
+  /** Renombrado o movido: la lista lo refleja sin pedirla y la barra vuelve a leer su nombre (CA-27). */
   const remember = React.useCallback(
     (node: NodeSummary) => {
       setOrganized((previous) => new Map(previous).set(node.id, node));
       if (node.type === 'file') reviseUploaded(node);
+      reloadQuickAccess();
     },
-    [reviseUploaded],
+    [reviseUploaded, reloadQuickAccess],
   );
 
   const folderCreatedFromMove = React.useCallback(

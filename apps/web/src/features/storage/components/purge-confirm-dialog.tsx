@@ -1,6 +1,6 @@
 'use client';
 
-import { formatBytes, STORAGE_ERROR_CODES, type TrashItem } from '@nimbo/contracts';
+import { formatBytes, type TrashItem } from '@nimbo/contracts';
 import { Loader2 } from 'lucide-react';
 import * as React from 'react';
 
@@ -16,7 +16,7 @@ import {
   AlertDialogTitle,
 } from '../../../components/ui/alert-dialog';
 import { buttonVariants } from '../../../components/ui/button';
-import { StorageRequestError } from '../storage-request-error';
+import { isStorageNotFound } from '../storage-request-error';
 
 /** Un elemento de la papelera (síncrono) o la papelera completa (diferido, `202`). */
 export type PurgeTarget =
@@ -74,10 +74,7 @@ function failureMessage(target: PurgeTarget, error: unknown): string {
     return 'No pudimos vaciar la papelera. Revisa tu conexión e inténtalo de nuevo.';
   }
   const { name } = target.item;
-  if (
-    error instanceof StorageRequestError &&
-    error.code === STORAGE_ERROR_CODES.STORAGE_NODE_NOT_FOUND
-  ) {
+  if (isStorageNotFound(error)) {
     return `No encontramos «${name}» en la papelera. Puede que ya se haya eliminado definitivamente.`;
   }
   return `No pudimos eliminar «${name}». Revisa tu conexión e inténtalo de nuevo.`;

@@ -89,7 +89,10 @@ function focusNear(container: HTMLElement | null, pending: PendingFocus): void {
   (nearest ?? firstOfSection ?? pending.fallback)?.focus();
 }
 
-/** Al quitar un fijado: el foco pasa al siguiente (o al anterior) y un `status` lo anuncia (mockup `fijado-menu-abierto`). */
+/**
+ * Al quitar un fijado: el foco pasa al siguiente (o al anterior) y un `status` lo anuncia (mockup `fijado-menu-abierto`).
+ * Si falla, el foco se queda y el aviso lo muestra la página arriba de la lista (`onNotice`).
+ */
 function useFocusAfterRemoval(
   containerRef: React.RefObject<HTMLDivElement | null>,
   pinned: readonly QuickAccessItem[] | undefined,
@@ -107,12 +110,11 @@ function useFocusAfterRemoval(
     const fallback = containerRef.current?.closest('nav')?.querySelector<HTMLElement>('a') ?? null;
     pending.current = { index, fallback };
     const removed = await quickAccess.unpin(item);
-    if (!removed) pending.current = null;
-    setAnnouncement(
-      removed
-        ? `${item.name} ya no está en la barra lateral`
-        : `No pudimos quitar ${item.name} de la barra lateral. Inténtalo de nuevo.`,
-    );
+    if (!removed) {
+      pending.current = null;
+      return;
+    }
+    setAnnouncement(`${item.name} ya no está en la barra lateral`);
   };
 
   return { announcement, unpin };
@@ -296,7 +298,7 @@ const TRIGGER_CLASS = `absolute flex items-center justify-center rounded-md text
 /** En escritorio aparece con el puntero, el foco o el menú abierto; sin puntero (`hover: none`) y en el cajón, siempre. */
 const TRIGGER_PLACEMENT = {
   desktop:
-    'right-0.5 top-1/2 h-7 w-7 -translate-y-1/2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 data-[state=open]:opacity-100 [@media(hover:none)]:opacity-100',
+    'right-0.5 top-1/2 h-7 w-7 -translate-y-1/2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 data-[state=open]:opacity-100 hover-none:opacity-100',
   drawer: 'right-0 top-0 h-11 w-11',
 } as const;
 

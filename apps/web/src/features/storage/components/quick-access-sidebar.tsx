@@ -1,10 +1,16 @@
 'use client';
 
-import type { DownloadUrlResponse, QuickAccessItem } from '@nimbo/contracts';
+import type { DownloadUrlResponse, NodeSummary, QuickAccessItem } from '@nimbo/contracts';
 import * as React from 'react';
 
-import { useQuickAccess, type QuickAccess, type QuickAccessNode } from '../hooks/use-quick-access';
+import { storageMessage } from '../../../lib/error-catalog';
+import {
+  useQuickAccess,
+  type QuickAccess,
+  type QuickAccessFailure,
+} from '../hooks/use-quick-access';
 import type { QuickAccessApi } from '../quick-access-api';
+import { isStorageNotFound, StorageRequestError } from '../storage-request-error';
 
 import {
   downloadFailureNotice,
@@ -20,7 +26,7 @@ export interface QuickAccessSidebarOptions {
   };
   /** Carpeta cuya página se montó (se registra como reciente, Q-3); `null` en otras páginas. */
   readonly openedFolderId: string | null;
-  /** Aviso de una descarga fallida desde la barra, arriba del contenido (como en 005). */
+  /** Aviso de una descarga, un fijado o un quitado fallidos, arriba del contenido (como en 005). */
   readonly onNotice: (notice: DownloadNotice | null) => void;
 }
 
@@ -31,10 +37,39 @@ export interface QuickAccessSidebar {
   /** Para `AppLayout.sidebarSection`: barra de escritorio y cajón móvil. */
   readonly sidebarSection: React.ReactNode;
   /** «Fijar…» o «Quitar de la barra lateral» en el menú de una fila (CA-27). */
-  readonly pinToggleFor: (node: QuickAccessNode) => PinToggle;
+  readonly pinToggleFor: (node: NodeSummary) => PinToggle;
 }
 
-function pinToggle(quickAccess: QuickAccess, node: QuickAccessNode): PinToggle {
+const NOT_FOUND_DESCRIPTION =
+  'Puede que ya no esté en Mis archivos. Actualiza la lista para ver tus archivos.';
+const NETWORK_DESCRIPTION = 'Revisa tu conexión e inténtalo de nuevo.';
+
+function failureTitle({ action, name }: QuickAccessFailure): string {
+  return action === 'pin'
+    ? `No pudimos fijar «${name}» en la barra lateral.`
+    : `No pudimos quitar «${name}» de la barra lateral.`;
+}
+
+/** Causa y acción con `storageMessage`; el 404 dice que ya no está (el texto del catálogo habla de un destino). */
+function failureDescription(error: unknown): string {
+  if (isStorageNotFound(error)) return NOT_FOUND_DESCRIPTION;
+  const known =
+    error instanceof StorageRequestError ? storageMessage(error.code, error.details) : null;
+  return known === null ? NETWORK_DESCRIPTION : `${known.cause} ${known.fix}`;
+}
+
+/** Aviso de un fijado o quitado fallido (CA-27): si ya no existe, «Actualizar lista»; si no, «Reintentar». */
+function quickAccessFailureNotice(failure: QuickAccessFailure): DownloadNotice {
+  const gone = isStorageNotFound(failure.error);
+  return {
+    title: failureTitle(failure),
+    description: failureDescription(failure.error),
+    actionLabel: gone ? 'Actualizar lista' : 'Reintentar',
+    onAction: gone ? failure.refresh : failure.retry,
+  };
+}
+
+function pinToggle(quickAccess: QuickAccess, node: NodeSummary): PinToggle {
   const pinned = quickAccess.isPinned(node);
   return {
     pinned,
@@ -72,7 +107,10 @@ function useRecordedDownload(
 
 /** Accesos rápidos de una página con barra lateral (006 CA-27, CA-28): estado, descarga y menús de fila. */
 export function useQuickAccessSidebar(options: QuickAccessSidebarOptions): QuickAccessSidebar {
-  const quickAccess = useQuickAccess(options.api, options.openedFolderId);
+  const { onNotice } = options;
+  const quickAccess = useQuickAccess(options.api, options.openedFolderId, (failure) =>
+    onNotice(failure && quickAccessFailureNotice(failure)),
+  );
   const { requestUrl, openFile } = useRecordedDownload(options, quickAccess);
   return {
     quickAccess,
