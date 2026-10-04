@@ -20,6 +20,8 @@ export interface FolderPageQuery {
   readonly sort?: NodeSort;
   readonly dir?: SortDirection;
   readonly cursor?: string;
+  /** Tamaño de página; sin él, el de la API (la API lo ajusta a su rango, 007 P-9). */
+  readonly limit?: number;
 }
 
 /** Carpetas en la API (plan 006 §4). `GET /folders/contents` reemplaza a `GET /files` de 005. */
@@ -35,8 +37,8 @@ export interface FoldersApi {
 const folderPath = (folderId: string): string => `/folders/${encodeURIComponent(folderId)}`;
 
 function contentsQuery(folderId: string | null, page: FolderPageQuery): string {
-  const params = Object.entries({ folderId, ...page }).filter(
-    (entry): entry is [string, string] => typeof entry[1] === 'string',
+  const params = Object.entries({ folderId, ...page }).flatMap(([key, value]) =>
+    typeof value === 'string' || typeof value === 'number' ? [[key, String(value)]] : [],
   );
   const query = new URLSearchParams(params).toString();
   return query === '' ? '' : `?${query}`;

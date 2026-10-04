@@ -86,8 +86,9 @@ Los textos de error de `storage` salen de `lib/error-catalog.ts` (`storageMessag
   `organized-nodes.ts` con lo que llegó por «Mover a…» y lo enviado a la papelera), así una acción en cualquier nivel
   se ve en el nivel correcto; «Renombrar» y «Mover a…» toman las hermanas y las migas del nivel del elemento.
   «Actualizar lista» vuelve a pedir también las carpetas desglosadas.
-  Solo se pide la primera página: si trae `nextCursor`, al final del nivel va la fila «Ver más», un enlace a la página
-  de la carpeta (Q-2). La sangría y las guías usan el token del desglose (`tree-indent`, `tree-guides` y
+  Cada nivel se pide con el orden que muestra la tabla (`controls.shownOrder`) y 10 elementos (`DISCLOSED_PAGE_SIZE`,
+  007 CA-20); al cambiar el orden se vuelven a pedir los niveles abiertos, conservando lo visible hasta que llega. Si
+  trae `nextCursor`, al final del nivel va la fila «Ver más», un enlace a la página de la carpeta (Q-2). La sangría y las guías usan el token del desglose (`tree-indent`, `tree-guides` y
   `--tree-level` en la fila, `ui-guidelines.md` §3).
 - Accesos rápidos (006 CA-27, CA-28): `useQuickAccessSidebar` (en `MyFiles` y `TrashView`) da la sección para
   `AppLayout.sidebarSection` (la misma en la barra y el cajón, que sabe dónde está con `useSidebarSlot()`), el
@@ -108,6 +109,9 @@ Los textos de error de `storage` salen de `lib/error-catalog.ts` (`storageMessag
   Una página que llega después de cambiar de orden o de carpeta se descarta (su cursor ya no es el siguiente). Si
   falla, lo visible se conserva y el botón cambia por el aviso «No pudimos cargar más elementos.» con «Reintentar» y
   «Cerrar aviso» (reutiliza `DownloadNoticeBanner`); un `role="status"` anuncia «Se cargaron N elementos más.».
+- Con otro orden que el de 006, subir, renombrar o mover relee el listado (I-1) **con todas las páginas que ya había**:
+  `withPagesUpTo` sigue los `nextCursor` hasta reunir los elementos visibles y reemplaza la lista de una vez (007
+  CA-21). Si una de esas páginas falla, se ve el error del listado con «Reintentar».
 - Encabezados: «Nombre», «Tamaño» y «Modificado» son botones dentro del `th` (la columna activa invierte la dirección;
   otra empieza ascendente, el valor por defecto de la API) y solo la columna activa lleva `aria-sort`. **Con el orden por
   fecha de creación ninguna columna lleva `aria-sort`**: la tabla muestra «Modificado» (`updatedAt`), no la fecha de

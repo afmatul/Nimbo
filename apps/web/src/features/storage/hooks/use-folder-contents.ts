@@ -91,6 +91,16 @@ function withMoreStatus(state: ContentsState, cursor: string, more: MoreStatus):
 }
 
 /** Agrega la página al final, sin repetir lo que ya está (p. ej. una carpeta creada en esta pestaña). */
+function appendPage(
+  contents: FolderContentsResponse,
+  page: FolderContentsResponse,
+): { readonly contents: FolderContentsResponse; readonly added: number } {
+  const seen = new Set(contents.items.map((item) => item.id));
+  const fresh = page.items.filter((item) => !seen.has(item.id));
+  const items = [...contents.items, ...fresh];
+  return { contents: { ...contents, items, nextCursor: page.nextCursor }, added: fresh.length };
+}
+
 function withPage(
   state: ContentsState,
   cursor: string,
@@ -98,11 +108,27 @@ function withPage(
 ): ContentsState {
   const { listing } = state;
   if (listing.status !== 'ready' || !isNextOf(state, cursor)) return state;
-  const seen = new Set(listing.contents.items.map((item) => item.id));
-  const fresh = page.items.filter((item) => !seen.has(item.id));
-  const items = [...listing.contents.items, ...fresh];
-  const contents = { ...listing.contents, items, nextCursor: page.nextCursor };
-  return { ...state, listing: { ...listing, contents }, more: 'idle', added: fresh.length };
+  const { contents, added } = appendPage(listing.contents, page);
+  return { ...state, listing: { ...listing, contents }, more: 'idle', added };
+}
+
+/** Elementos ya visibles en el orden pedido; con otro orden u otra carpeta, ninguno (se empieza de cero). */
+function loadedCountOf(state: ContentsState, order: NodeOrder): number {
+  const { listing } = state;
+  if (listing.status !== 'ready' || !sameOrder(listing.order, order)) return 0;
+  return listing.contents.items.length;
+}
+
+/** Sigue los `nextCursor` hasta reunir al menos `minItems` elementos o no haber más (007 CA-21). */
+async function withPagesUpTo(
+  request: PageRequest,
+  contents: FolderContentsResponse,
+  minItems: number,
+): Promise<FolderContentsResponse> {
+  const cursor = contents.nextCursor;
+  if (cursor === null || contents.items.length >= minItems) return contents;
+  const page = await request.load(request.folderId, { ...request.order, cursor });
+  return withPagesUpTo(request, appendPage(contents, page).contents, minItems);
 }
 
 /** Cursor de la página siguiente si se puede pedir: hay más, no se está pidiendo y no hay otro orden en camino. */
@@ -122,26 +148,34 @@ interface PageRequest {
 
 /**
  * Primera página en el orden pedido; la respuesta de una petición anterior (otro orden u otra carpeta) se descarta.
- * `refreshes` la vuelve a pedir sin pasar por «cargando»: lo visible se conserva hasta que llega.
+ * `refreshes` la vuelve a pedir sin pasar por «cargando»: lo visible se conserva hasta que llega y se vuelven a pedir
+ * tantas páginas como había (`loaded`, 007 CA-21).
  */
 function useFirstPage(
-  request: PageRequest & { readonly location: string; readonly refreshes: number },
+  request: PageRequest & {
+    readonly location: string;
+    readonly refreshes: number;
+    readonly loaded: React.RefObject<number>;
+  },
   setState: SetContents,
 ): void {
-  const { load, folderId, order, location, refreshes } = request;
+  const { load, folderId, order, location, refreshes, loaded } = request;
   React.useEffect(() => {
     let current = true;
     const settle = (listing: FolderListing): void => {
       if (current) setState({ location, listing, ...IDLE });
     };
-    load(folderId, { ...order }).then(
-      (contents) => settle({ status: 'ready', contents, order }),
-      (error: unknown) => settle({ status: isNotFound(error) ? 'not_found' : 'error' }),
-    );
+    const pages = { load, folderId, order };
+    load(folderId, { ...order })
+      .then((first) => withPagesUpTo(pages, first, loaded.current))
+      .then(
+        (contents) => settle({ status: 'ready', contents, order }),
+        (error: unknown) => settle({ status: isNotFound(error) ? 'not_found' : 'error' }),
+      );
     return () => {
       current = false;
     };
-  }, [load, folderId, order, location, refreshes, setState]);
+  }, [load, folderId, order, location, refreshes, loaded, setState]);
 }
 
 function requestNextPage(
@@ -206,8 +240,12 @@ export function useFolderContents(
     listing: LOADING,
     ...IDLE,
   });
-  useFirstPage({ load, folderId, order, location, refreshes: counters.refreshes }, setState);
   const current = state.location === location ? state : { location, listing: LOADING, ...IDLE };
+  const loaded = useLoadedCount(loadedCountOf(current, order));
+  useFirstPage(
+    { load, folderId, order, location, refreshes: counters.refreshes, loaded },
+    setState,
+  );
   const actions = useListActions(setState, setOrder, counters);
   const loadMore = loadMoreOf({ load, folderId, order }, nextCursorOf(current, order), setState);
   return {
@@ -217,6 +255,15 @@ export function useFolderContents(
     addFolder: actions.addFolder,
     controls: { ...controlsOf(current, order), ...actions.controls, loadMore },
   };
+}
+
+/** Lo visible al momento de releer; se lee desde el efecto sin volver a disparar la petición. */
+function useLoadedCount(count: number): React.RefObject<number> {
+  const loaded = React.useRef(count);
+  React.useEffect(() => {
+    loaded.current = count;
+  }, [count]);
+  return loaded;
 }
 
 type Setter<T> = React.Dispatch<React.SetStateAction<T>>;

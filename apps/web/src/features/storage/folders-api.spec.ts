@@ -78,6 +78,17 @@ describe('api de carpetas', () => {
     expect(lastCall().url).toBe(`${API}/folders/contents?sort=created&dir=desc&cursor=c-2`);
   });
 
+  it('007 CA-20: envía el tamaño de página (limit) cuando se pide', async () => {
+    const page = { folder: ALPHA, breadcrumbs: [ALPHA], items: [FILE], nextCursor: 'c-2' };
+    fetchMock.mockResolvedValue(jsonResponse(page));
+
+    await api.folderContents(ALPHA.id, { sort: 'name', dir: 'asc', limit: 10 });
+
+    expect(lastCall().url).toBe(
+      `${API}/folders/contents?folderId=${ALPHA.id}&sort=name&dir=asc&limit=10`,
+    );
+  });
+
   it('007 CA-10: una respuesta sin updatedAt no pasa la validación del contrato', async () => {
     const withoutUpdatedAt = { ...FILE, updatedAt: undefined };
     fetchMock.mockResolvedValue(

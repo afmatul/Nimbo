@@ -24,8 +24,8 @@
 - [x] **T-13** (B, adenda 2026-10-03) Barra lateral fija y costura con 006 CA-27 (plan D-22, D-23): `app-layout.tsx` se divide en `app-sidebar.tsx` y `mobile-nav-drawer.tsx`; slot `sidebarSections` en lugar de `folderItems`; «Carpetas» a `features/storage/components/sidebar-folders.tsx`; el cajón se cierra al activar cualquier enlace; raíz `overflow-x-clip`, barra `sticky` bajo el encabezado, región central desplazable y cuota al pie. Pruebas primero — CA: CA-19 — Archivos: `components/nimbo/{app-layout,app-sidebar,mobile-nav-drawer}.tsx` y specs, `features/storage/components/{sidebar-folders,my-files,trash-view,space-summary-view}.tsx` y specs, `a11y.spec.tsx`
 - [x] **T-14** (B, adenda 2026-10-03) Avisos arriba y al centro bajo el encabezado, a todo el ancho en 360 px (plan D-21) — CA: CA-18 — Archivos: `components/ui/sonner.tsx` y su spec, `ui-guidelines.md` (posición de los avisos)
 - [x] **T-15** (B, adenda 2026-10-03) Mockup `shared/layout/`: estados `aviso-arriba-centro` y `barra-fija-lista-larga` con capturas a 360 y 1440 px; el generador separa la región central de la barra para los estados de 006 CA-27 — CA: CA-18, CA-19 (UX) — Archivos: `docs/design/mockups/_generadores/layout/`, `docs/design/mockups/shared/layout/`, `docs/design/capturas/shared/layout/`
-- [ ] **T-16** (B, adenda 2026-10-04) Lo desglosado sigue el orden de la tabla y pide 10 por nivel con «Ver más» (plan D-24) — CA: CA-20 — Archivos: `folders-api.ts` (`limit`), `hooks/use-folder-disclosure.ts`, `hooks/use-my-files-state.ts` y sus pruebas
-- [ ] **T-17** (B, adenda 2026-10-04) Releer con otro orden conserva las páginas cargadas (plan D-25) — CA: CA-21 — Archivos: `hooks/use-folder-contents.ts` y su spec
+- [x] **T-16** (B, adenda 2026-10-04) Lo desglosado sigue el orden de la tabla y pide 10 por nivel con «Ver más» (plan D-24) — CA: CA-20 — Archivos: `folders-api.ts` (`limit`), `hooks/use-folder-disclosure.ts`, `hooks/use-my-files-state.ts` y sus pruebas
+- [x] **T-17** (B, adenda 2026-10-04) Releer con otro orden conserva las páginas cargadas (plan D-25) — CA: CA-21 — Archivos: `hooks/use-folder-contents.ts` y su spec
 - [ ] **T-12** (humana, Adrián) Recorrido de la demo en local con ambos PR integrados (subir, ver medidor y tramos, papelera, ordenar, «Cargar más», cuenta de otro cliente) y nota en el PR — CA: los visibles (incluye CA-18 y CA-19 a 360 y 1440 px con una lista larga y el panel de cargas abierto) — Depende: T-06, T-10, T-11, T-13, T-14
 
 ## Dependencias entre líneas
@@ -72,8 +72,7 @@ Implementa la spec 007 (cuota y explorador), línea B. Lee specs/007-cuota-y-exp
   para los diálogos). (3) Las filas viven en `node-rows.tsx` (de 006): ahí van `updatedAt` y el chip «TEXTO»; los
   encabezados de orden pasan a `sortable-header.tsx`. (4) `useRefreshWhen` (`hooks/use-refresh-when.ts`) reemplaza a
   `useRefreshOnChange` de `space-provider.tsx` (DRY).
-- Pendiente de decisión de Adrián (revisión del rebase, sin cambio de código): (a) las carpetas desglosadas se piden
-  siempre con el orden de 006 aunque la tabla tenga otro orden (CA-10 frente a 006 CA-26); (b) con otro orden, releer
-  tras subir, renombrar o mover vuelve a la primera página y descarta lo traído con «Cargar más» (CA-12). Los mockups de
+- Revisión del rebase: las costuras (a) orden de lo desglosado y (b) releer sin perder páginas las resolvió Adrián el
+  2026-10-04 como CA-20 y CA-21 (T-16, T-17). Al volver a pedir un nivel ya visible, se conserva hasta que llega. Los mockups de
   007 `aviso-arriba-centro` y `barra-fija-lista-larga` aún dibujan «Carpetas» en la región central y sus capturas no se
   rehicieron.

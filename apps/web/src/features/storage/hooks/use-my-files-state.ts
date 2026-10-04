@@ -206,8 +206,8 @@ function useOrganizing({
 
 /**
  * Listado paginado de la ubicación y desglose de sus carpetas, con la misma lectura de `GET /folders/contents`.
- * `reloadAll` relee ambos («Actualizar lista», 006 CA-26). Pasa los argumentos tal cual: sin página, la API recibe solo
- * la carpeta (desglose y árbol de «Mover a…»).
+ * `reloadAll` relee ambos («Actualizar lista», 006 CA-26). Lo desglosado sigue el orden que muestra la tabla (007
+ * CA-20). Pasa los argumentos tal cual: sin página, la API recibe solo la carpeta (árbol de «Mover a…»).
  */
 function useListing(api: StorageApi, folderId: string | null) {
   const load = React.useCallback<LoadFolderContents>(
@@ -215,7 +215,7 @@ function useListing(api: StorageApi, folderId: string | null) {
     [api],
   );
   const contents = useFolderContents(load, folderId);
-  const disclosed = useFolderDisclosure(load);
+  const disclosed = useFolderDisclosure(load, contents.controls.shownOrder);
   const { reload } = contents;
   const { refreshAll } = disclosed;
   const reloadAll = React.useCallback(() => {

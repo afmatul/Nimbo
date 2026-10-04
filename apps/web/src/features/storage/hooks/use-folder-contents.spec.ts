@@ -155,6 +155,41 @@ describe('useFolderContents: orden y «Cargar más» (007 CA-9, CA-10, CA-12)', 
     ]);
   });
 
+  it('CA-21: con otro orden, refresh vuelve a pedir todas las páginas cargadas y no vuelve a la primera', async () => {
+    const { load, calls } = deferredLoader();
+    const { result } = renderHook(() => useFolderContents(load, null));
+    act(() => result.current.controls.changeOrder({ sort: 'name', dir: 'asc' }));
+    await settle(calls[1], page([fileNode(1), fileNode(2)], 'c-2'));
+    act(() => result.current.controls.loadMore());
+    await settle(calls[2], page([fileNode(3), fileNode(4)], 'c-3'));
+
+    act(() => result.current.refresh());
+    await settle(calls[3], page([fileNode(1), fileNode(2)], 'n-2'));
+
+    expect(calls[3]?.query).toEqual({ sort: 'name', dir: 'asc' });
+    expect(calls[4]?.query).toEqual({ sort: 'name', dir: 'asc', cursor: 'n-2' });
+    expect(itemIds(result.current.listing)).toHaveLength(4);
+    await settle(calls[4], page([fileNode(3), fileNode(5), fileNode(4)], 'n-3'));
+    expect(calls).toHaveLength(5);
+    expect(itemIds(result.current.listing)).toEqual([1, 2, 3, 5, 4].map((n) => fileNode(n).id));
+    expect(result.current.controls.hasMore).toBe(true);
+  });
+
+  it('CA-21: si falla una de las páginas al releer, se ve el error del listado', async () => {
+    const { load, calls } = deferredLoader();
+    const { result } = renderHook(() => useFolderContents(load, null));
+    act(() => result.current.controls.changeOrder({ sort: 'name', dir: 'asc' }));
+    await settle(calls[1], page([fileNode(1)], 'c-2'));
+    act(() => result.current.controls.loadMore());
+    await settle(calls[2], page([fileNode(2)], null));
+
+    act(() => result.current.refresh());
+    await settle(calls[3], page([fileNode(1)], 'n-2'));
+    await act(async () => calls[4]?.reject(new Error('red')));
+
+    expect(result.current.listing.status).toBe('error');
+  });
+
   it('CA-10: elegir el mismo orden no vuelve a pedir la carpeta', async () => {
     const { load, calls } = deferredLoader();
     const { result } = renderHook(() => useFolderContents(load, null));
