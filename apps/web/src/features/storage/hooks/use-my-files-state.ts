@@ -29,6 +29,7 @@ import {
   type FolderDisclosureState,
 } from './use-folder-disclosure';
 import { useMoveToTrash } from './use-move-to-trash';
+import { useRefreshWhen } from './use-refresh-when';
 import { useTrashCount } from './use-trash-count';
 import { useUploads } from './use-upload-manager';
 
@@ -99,19 +100,6 @@ function visibleAt(
 
 function isDefaultOrder(order: NodeOrder): boolean {
   return sameOrder(order, DEFAULT_NODE_ORDER);
-}
-
-/**
- * Con otro orden que el de 006 el listado lo ordena el servidor: cuando cambia `signal` (una carga terminó, algo se
- * renombró o se movió) se relee la primera página sin perder lo visible. No actúa al montar (I-1, CA-10).
- */
-export function useRefreshWhen(enabled: boolean, refresh: () => void, signal: unknown): void {
-  const seen = React.useRef(signal);
-  React.useEffect(() => {
-    if (Object.is(seen.current, signal)) return;
-    seen.current = signal;
-    if (enabled) refresh();
-  }, [enabled, refresh, signal]);
 }
 
 function readyContents(listing: FolderListing): {
@@ -312,7 +300,10 @@ export interface MyFilesState {
   readonly rowActions: RowActionHandlers;
 }
 
-/** Con otro orden, terminar una carga, renombrar o mover relee el listado en vez de colocar el elemento a mano (I-1). */
+/**
+ * Con otro orden que el de 006 el listado lo ordena el servidor: terminar una carga, renombrar o mover relee la primera
+ * página sin perder lo visible, en vez de colocar el elemento a mano (I-1, CA-10).
+ */
 function useServerOrderedRefresh(
   contents: ReturnType<typeof useFolderContents>,
   uploadedCount: number,

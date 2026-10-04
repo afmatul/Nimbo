@@ -71,10 +71,10 @@ Ninguno.
 | CA | Prueba | Estado |
 |---|---|---|
 | CA-18 | `sonner.spec.tsx` «CA-18: … arriba y al centro, debajo del encabezado, y dura 8 s» (`top`/`center`, `--offset-top` y `--mobile-offset-top` con `--header-height`) | ✅ |
-| CA-19 | `app-layout.spec.tsx` (5 casos: región central desplazable, cuota al pie fuera de ella, barra `sticky` bajo el encabezado, raíz sin `overflow-x-hidden`, un enlace del slot cierra el cajón); `sidebar-folders.spec.tsx`; `a11y.spec.tsx` con el cajón abierto y cerrado | ✅ (vista real en T-12) |
+| CA-19 | `app-layout.spec.tsx` (5 casos: región central desplazable, cuota al pie fuera de ella, barra `sticky` bajo el encabezado, raíz sin `overflow-x-hidden`, un enlace del slot cierra el cajón); `a11y.spec.tsx` con el cajón abierto y cerrado | ✅ (vista real en T-12) |
 
 - CI local: `typecheck` y `test` de `web` en verde (121 suites, 876 pruebas); ESLint y Prettier limpios. Mockups `aviso-arriba-centro` y `barra-fija-lista-larga` con axe-core sin violaciones a 360 y 1440 px.
-- Costura D-23 ✅: 006 CA-27 agrega su componente en `features/storage` y lo pasa por `sidebarSections`, sin editar `app-layout.tsx` ni `app-sidebar.tsx`; el cajón se cierra por delegación al activar un enlace. `--header-height` es la única fuente del alto (encabezado, barra y avisos).
+- Costura D-23 ✅: 006 CA-27 agrega su componente en `features/storage` y lo pasa por `sidebarSection` (nombre de `main` tras el rebase del 2026-10-04), sin editar `app-sidebar.tsx`; el cajón se cierra por delegación al activar un enlace y da `useSidebarSlot()` a la sección. `--header-height` es la única fuente del alto (encabezado, barra y avisos).
 - Bloqueantes: ninguno.
 - **[I-A] ✅ Corregido**: `use-mobile-nav.ts` devolvía el foco al botón con el encabezado todavía `inert` (se perdía en navegador; jsdom ignora `inert`). Ahora cierra con `flushSync` antes de enfocar. Confirmar en T-12.
 - **[S-A] ✅ Corregido**: ciclo `app-layout` ↔ `app-sidebar`; `NavItem` vive en `app-sidebar.tsx` y `app-layout.tsx` lo reexporta.

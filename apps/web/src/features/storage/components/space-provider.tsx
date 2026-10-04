@@ -3,6 +3,7 @@
 import type { SpaceSummaryResponse } from '@nimbo/contracts';
 import * as React from 'react';
 
+import { useRefreshWhen } from '../hooks/use-refresh-when';
 import { useUploads } from '../hooks/use-upload-manager';
 import type { SpaceApi } from '../space-api';
 
@@ -56,16 +57,6 @@ function useSpaceSummary(api: SpaceApi): SpaceContextValue {
   return React.useMemo(() => ({ state, refresh }), [state, refresh]);
 }
 
-/** Refresca cuando cambia `count`; el valor del montaje no cuenta (la primera lectura ya está en curso). */
-function useRefreshOnChange(count: number, refresh: () => void): void {
-  const seen = React.useRef(count);
-  React.useEffect(() => {
-    if (seen.current === count) return;
-    seen.current = count;
-    refresh();
-  }, [count, refresh]);
-}
-
 export interface SpaceProviderProps {
   readonly api: SpaceApi;
   /** Cargas completadas en la pestaña: cada una nueva vuelve a pedir el resumen (CA-4, D-16). */
@@ -83,7 +74,7 @@ export function SpaceProvider({
   children,
 }: SpaceProviderProps): React.JSX.Element {
   const value = useSpaceSummary(api);
-  useRefreshOnChange(uploadedCount, value.refresh);
+  useRefreshWhen(true, value.refresh, uploadedCount);
   return <SpaceContext.Provider value={value}>{children}</SpaceContext.Provider>;
 }
 

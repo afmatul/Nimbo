@@ -68,11 +68,16 @@ export function useFolderDisclosure(load: LoadFolderContents): FolderDisclosureS
     setListings((previous) => withoutListing(previous, folderId));
   }, []);
 
+  const refreshAll = React.useCallback(
+    () => [...listings.keys()].forEach(fetchLevel),
+    [listings, fetchLevel],
+  );
+
   return {
     listingOf: (folderId) => listings.get(folderId),
     toggle: (folderId) => (listings.has(folderId) ? collapse(folderId) : fetchLevel(folderId)),
     retry: fetchLevel,
-    refreshAll: () => [...listings.keys()].forEach(fetchLevel),
+    refreshAll,
   };
 }
 

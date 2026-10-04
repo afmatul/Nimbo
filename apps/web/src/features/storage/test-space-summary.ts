@@ -2,7 +2,7 @@ import type { SpaceSummaryResponse } from '@nimbo/contracts';
 
 /** Constructor de resúmenes de espacio para pruebas: segmentos + papelera = usado; disponible = cuota − usado − reservas. */
 export const GB = 1_000_000_000;
-export const TEST_QUOTA_BYTES = 15 * GB;
+const TEST_QUOTA_BYTES = 15 * GB;
 export const TEST_PLAN_NAME = 'Personal';
 
 interface SpaceExtras {

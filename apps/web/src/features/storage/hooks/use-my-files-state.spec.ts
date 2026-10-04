@@ -8,7 +8,8 @@ import { DEFAULT_NODE_ORDER, type NodeOrder } from '../node-order';
 
 import type { FolderListing } from './use-folder-contents';
 import type { FolderDisclosureState } from './use-folder-disclosure';
-import { useRefreshWhen, visibleOf } from './use-my-files-state';
+import { visibleOf } from './use-my-files-state';
+import { useRefreshWhen } from './use-refresh-when';
 
 const AT = '2026-09-30T10:00:00.000Z';
 const BY_NAME: NodeOrder = { sort: 'name', dir: 'asc' };

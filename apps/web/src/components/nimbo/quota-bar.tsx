@@ -6,9 +6,9 @@ import * as React from 'react';
 import { cn } from '../../lib/utils';
 
 /** Tramos de `QuotaBar` (`ui-guidelines.md` §4, RN-4): no se inventan umbrales. */
-export const QUOTA_WARNING_PERCENT = 70;
-export const QUOTA_CRITICAL_PERCENT = 90;
-export const QUOTA_FULL_PERCENT = 100;
+const QUOTA_WARNING_PERCENT = 70;
+const QUOTA_CRITICAL_PERCENT = 90;
+const QUOTA_FULL_PERCENT = 100;
 
 export type QuotaTier = 'normal' | 'warning' | 'critical' | 'full';
 
@@ -57,7 +57,7 @@ export interface QuotaUsage {
 }
 
 /** Porcentaje, tramo y texto de aviso de un uso: una sola fuente para el medidor, la tarjeta y el aviso de pantalla. */
-export interface QuotaState {
+interface QuotaState {
   readonly percent: number;
   readonly tier: QuotaTier;
   readonly notice: string | null;
