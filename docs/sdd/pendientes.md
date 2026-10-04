@@ -16,7 +16,7 @@ de eso se pierda entre ramas.
 - «Resolver antes de» es la compuerta que se bloquea si el pendiente sigue abierto. «—» significa que no bloquea nada.
 - `/status` y el `architect` revisan esta lista al cerrar cada fase.
 
-Última actualización: 2026-09-29.
+Última actualización: 2026-10-03.
 
 ## Diagramas por redibujar
 
@@ -57,6 +57,7 @@ decisiones; solo faltan los diagramas.
 | PD-50 | `POST /auth/forgot-password` no tiene límite por IP (`password.controller.ts`), solo el de recuperación por correo: una IP puede pedir enlaces para muchos correos distintos. Decidir el límite (¿un *throttler* `forgot-ip` como `login-ip`?) y cambiar la spec 002 antes del código | Auditoría de seguridad de 002 (T-67, SEC-2) | 002-PR-4 o inicio de la Fase 2 | Juan Marcos con Adrián | Abierto |
 | PD-51 | `forgot-password` tarda unos 7 ms más con cuenta que sin ella (medido en local): escribe el token y arma el correo. Queda como **riesgo aceptado** (plan 002 §7b), salvo que se decida mover la búsqueda y la emisión a un trabajo en segundo plano para igualar los tiempos | Auditoría de seguridad de 002 (T-67, SEC-3) | — | Adrián | Abierto |
 | PD-58 | ¿Caché de límites de plan? `PlanLimitsAdapter.limitsFor` consulta la tabla `plan` en cada llamada (hoy, una por carga). Si la 007 los pide en cada operación del explorador, decidir caché en memoria con invalidación al cambiar el catálogo o de plan (009/010) y su métrica | Revisión 006a (S-2) | Plan de 007 | Adrián con Juan Marcos | Abierto |
+| PD-59 | La 022 hace **una sola** pantalla de bitácoras técnicas y trabajos para Administrador, Soporte y Operador (matriz §2: «Consultar bitácoras técnicas y trabajos»), no solo para el Operador (RF-37). Decidir quién puede reintentar procesos: la tabla de roles dice Soporte y RF-37 dice Operador | Spec 011, P-9 | Spec de 022 | Abel | Abierto |
 
 ## Código y configuración
 
