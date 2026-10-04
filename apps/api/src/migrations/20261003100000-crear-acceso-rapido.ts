@@ -11,6 +11,11 @@ import type { MigrationInterface, QueryRunner } from 'typeorm';
  *   que las marcas siguen al restaurar.
  * - Las unicidades empiezan por la FK, así que también sirven al `CASCADE`; con `NULLS DISTINCT` no chocan entre tipos.
  * - RLS como `archivo_cliente`: solo el cliente dueño de la fila. Sin política para roles internos ni de mantenimiento.
+ *   El `WITH CHECK` exige además que el nodo exista vivo y sea visible para quien escribe (SEC-1): las subconsultas
+ *   corren con la RLS de `archivo` y `carpeta` del actor, así que con 012 valdrán también para lo compartido. Se evalúa
+ *   antes que la FK, así que un id inexistente da el mismo rechazo que uno ajeno (sin oráculo de existencia). Solo
+ *   restringe filas nuevas: quitar un fijado con `UPDATE` exige el nodo visible igual que el repositorio, y la poda y
+ *   la purga son `DELETE`.
  */
 export class CrearAccesoRapido20261003100000 implements MigrationInterface {
   name = 'CrearAccesoRapido20261003100000';
@@ -45,7 +50,11 @@ export class CrearAccesoRapido20261003100000 implements MigrationInterface {
     await queryRunner.query(`
       CREATE POLICY acceso_rapido_cliente ON acceso_rapido TO nimbo_app
         USING      (nimbo_actor_role() = 'CLIENT' AND usuario_id = nimbo_actor_id())
-        WITH CHECK (nimbo_actor_role() = 'CLIENT' AND usuario_id = nimbo_actor_id())
+        WITH CHECK (nimbo_actor_role() = 'CLIENT' AND usuario_id = nimbo_actor_id()
+                    AND (EXISTS (SELECT 1 FROM archivo a
+                                  WHERE a.id = acceso_rapido.archivo_id AND a.eliminado_en IS NULL)
+                      OR EXISTS (SELECT 1 FROM carpeta c
+                                  WHERE c.id = acceso_rapido.carpeta_id AND c.eliminado_en IS NULL)))
     `);
   }
 

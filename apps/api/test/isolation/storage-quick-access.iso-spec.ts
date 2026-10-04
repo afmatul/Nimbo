@@ -310,6 +310,89 @@ describe('aislamiento de accesos rápidos (CA-28, RNF-05)', () => {
       ).rejects.toThrow(/row-level security/);
     });
 
+    describe('fila propia de B sobre un nodo que B no ve vivo (SEC-1)', () => {
+      const insertOwnRow = (
+        column: 'archivo_id' | 'carpeta_id',
+        nodeId: string,
+      ): Promise<unknown> =>
+        inScope(
+          createActor(b.id, Role.CLIENT),
+          `INSERT INTO acceso_rapido (id, usuario_id, ${column}, fijado_en, creado_en, actualizado_en)
+           VALUES ($1, $2, $3, now(), now(), now())`,
+          [randomUUID(), b.id, nodeId],
+        );
+
+      /** Mensaje del rechazo, o `null` si la sentencia pasó. */
+      const rejectionOf = async (attempt: Promise<unknown>): Promise<string | null> =>
+        attempt.then(
+          () => null,
+          (error: unknown) => (error instanceof Error ? error.message : String(error)),
+        );
+
+      it.each([
+        ['archivo_id', () => at(nodesA.files, 1).id],
+        ['carpeta_id', () => at(nodesA.folders, 1).id],
+      ] as const)(
+        'CA-28: con el actor de B, insertar una fila propia con `%s` de A lo rechaza la política',
+        async (column, nodeOfA) => {
+          await expect(insertOwnRow(column, nodeOfA())).rejects.toThrow(
+            /new row violates row-level security policy for table "acceso_rapido"/,
+          );
+          expect(await rowsOfBOnNodesOfA()).toBe(0);
+        },
+      );
+
+      /**
+       * Sin oráculo de existencia: PostgreSQL evalúa el `WITH CHECK` de la RLS antes que las restricciones y la FK (un
+       * disparador `AFTER`), así que un id inexistente se rechaza con el mismo error de política que uno ajeno y nunca
+       * llega a `acceso_rapido_*_fkey`.
+       */
+      it.each(['archivo_id', 'carpeta_id'] as const)(
+        'CA-28: con el actor de B, un `%s` inexistente da el mismo rechazo que uno de A (sin oráculo por FK)',
+        async (column) => {
+          const foreignId =
+            column === 'archivo_id' ? at(nodesA.files, 1).id : at(nodesA.folders, 1).id;
+
+          const missing = await rejectionOf(insertOwnRow(column, randomUUID()));
+          const foreign = await rejectionOf(insertOwnRow(column, foreignId));
+
+          expect(missing).toMatch(/row-level security/);
+          expect(missing).not.toMatch(/foreign key/);
+          expect(missing).toBe(foreign);
+        },
+      );
+
+      it.each([
+        ['archivo', 'file'],
+        ['carpeta', 'folder'],
+      ] as const)(
+        'CA-28: con el actor de B, insertar una fila propia sobre su %s en la papelera lo rechaza la política',
+        async (_label, kind) => {
+          const trash = await world.withTrash(storage.testApp, b, {
+            files: kind === 'file' ? ['en-papelera.txt'] : [],
+            folders: kind === 'folder' ? ['En papelera'] : [],
+          });
+          const [column, node] =
+            kind === 'file'
+              ? (['archivo_id', at(trash.files, 0)] as const)
+              : (['carpeta_id', at(trash.folders, 0)] as const);
+
+          await expect(insertOwnRow(column, node.id)).rejects.toThrow(/row-level security/);
+        },
+      );
+
+      it('CA-28: con el actor de B, redirigir su fila a un nodo de A lo rechaza la política', async () => {
+        await expect(
+          inScope(
+            createActor(b.id, Role.CLIENT),
+            'UPDATE acceso_rapido SET carpeta_id = $1 WHERE usuario_id = $2 AND carpeta_id = $3',
+            [at(nodesA.folders, 0).id, b.id, at(nodesB.folders, 0).id],
+          ),
+        ).rejects.toThrow(/row-level security/);
+        expect(await rowsOfBOnNodesOfA()).toBe(0);
+      });
+    });
+
     it.each(INTERNAL_ROLES)(
       'CA-28: como %s, `acceso_rapido` da 0 filas por consulta directa',
       async (role) => {
