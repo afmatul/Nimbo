@@ -62,6 +62,15 @@
   `hooks/use-folder-contents.ts` (orden y `loadMore`), `node-table.tsx` (encabezados con `aria-sort`, columna «Modificado»
   con `updatedAt`), `my-files.tsx` (estado de orden, «Cargar más» y `maxFileLabel` desde `useSpace()`), `use-move-to-trash` y
   `use-trash-actions` (refrescan el resumen) y `(cliente)/layout.tsx` (monta `SpaceProvider`). Textos y estados según el mockup corregido.
+- **Adenda 2026-10-03 (CA-18, CA-19; solo `web` y mockups)**: `components/ui/sonner.tsx`: el `Toaster` pasa a `top-center` con
+  desplazamiento superior bajo el encabezado (constante nombrada), a todo el ancho en 360 px; el panel de cargas sigue abajo,
+  así que no se tapan (D-21). `components/nimbo/app-layout.tsx` se divide: `app-sidebar.tsx` (cuerpo único de la barra para
+  escritorio y cajón: navegación, región central desplazable `sidebarSections` y tarjeta de cuota fija al pie),
+  `mobile-nav-drawer.tsx` (cajón, foco y Escape) y `app-layout.tsx` (composición). La barra de escritorio es `sticky` bajo el
+  encabezado con alto de la ventana; la raíz pasa de `overflow-x-hidden` a `overflow-x-clip` para no romper `sticky` (D-22).
+  La prop `folderItems` se reemplaza por el slot `sidebarSections` y la sección «Carpetas» sale del layout compartido a
+  `features/storage/components/sidebar-folders.tsx` (D-23). Mockup `shared/layout/`: estados `aviso-arriba-centro` y
+  `barra-fija-lista-larga`.
 
 ## 3. Datos
 Sin migraciones. Consultas nuevas, todas parametrizadas:
@@ -127,6 +136,8 @@ Prefijo `/api/v1`. `@Roles(Role.CLIENT)`: rol interno `403 SHARED_FORBIDDEN`, si
 | CA-7 («Liberar espacio» llega a `/espacio`) | web | `upload-panel.spec.tsx` (se amplía) |
 | CA-9, CA-10, CA-12 (encabezados con `aria-sort`, «Cargar más» conserva lo visible) | web | `node-table.spec.tsx`, `file-explorer.spec.tsx`, `use-folder-contents.spec.ts` |
 | RNF-13 (360 y 1440 px, axe) | web | `a11y.spec.tsx` (se amplía) |
+| CA-18 (arriba y al centro, bajo el encabezado, 8 s, pausa por foco) | web | `components/ui/sonner.spec.tsx` (se amplía) |
+| CA-19 (región central desplazable, cuota fuera de ella, slot en escritorio y cajón, el cajón se cierra al navegar) | web | `app-layout.spec.tsx` (se amplía), `sidebar-folders.spec.tsx` |
 
 CA-4 se prueba en el servidor (la cifra cambia tras cada operación) y en la web (el refresco se dispara); no se repite en e2e.
 
@@ -151,6 +162,19 @@ CA-4 se prueba en el servidor (la cifra cambia tras cada operación) y en la web
 - **D-18 Rutas**: `/espacio`; el ítem de navegación se llama «Espacio» hasta que 008 entregue los planes (decisión e) y, junto con «Liberar espacio», apunta ahí; `#planes` desaparece; «Ver planes» sigue oculto.
 - **D-20 Nombre del plan** (cambio de Adrián, 2026-10-01): «Tu plan» necesita el nombre; `SpaceSummaryResponse.planName` sale de `PlanLimits.planName`, que el adaptador de billing ya tiene en la fila leída. No se agrega puerto ni consulta.
 - **D-19 Decisiones de UI aceptadas** (mockup `resumen-espacio`): (a) `QuotaBar` suma un borde con el token `input` al fondo de la barra para llegar a ≥ 3:1; (b) al 100 % el título es «Espacio agotado.» (spec RN-4 y fila de `QuotaBar` en `ui-guidelines.md` §4); (c) fila «Cargas en curso» solo si `reservedBytes` > 0 (D-5); (d) bajo el 70 % la tarjeta de la barra lateral muestra «Ver detalle» hacia `/espacio`; (e) ítem «Espacio» (D-18); (f) paginación con «Cargar más» que acumula; (g) cuentas listadas con un `SELECT` simple, registrado en DF-62 (D-12).
+- **D-21 Avisos (CA-18)**: solo cambia la posición del único `<Toaster />` (ADR-0024 sigue igual: un aviso, 8 s, pausa por
+  foco, errores como `Alert`). Arriba y al centro bajo el encabezado nunca coincide con el panel de cargas, que vive abajo.
+- **D-22 Barra fija (CA-19)**: `sticky` en la barra, no un segundo contenedor de desplazamiento: la página sigue
+  desplazándose con la ventana (teclado, anclas y el espaciador del panel de cargas no cambian). jsdom no mide layout: las
+  pruebas comprueban la estructura (cuota fuera de la región desplazable) y el recorrido de T-12 la vista real.
+- **D-23 Costura con 006 CA-27 (conflicto de fusión en `app-layout.tsx`)**: 006 CA-27 reemplaza «Carpetas» por «Accesos
+  rápidos». Para que no vuelva a editar el layout compartido, 007 deja la barra en tres bloques (navegación, región central
+  `sidebarSections`, cuota al pie) y saca «Carpetas» a `storage`. CA-27 solo agrega su componente en `features/storage` y lo
+  pasa por `sidebarSections` (o reemplaza `SidebarFolders`); el cajón se cierra al activar cualquier enlace, así que el slot
+  no necesita `onNavigate`. **Orden de integración**: 006 (sin CA-26 a CA-28) a `main` → 007 a `main` → CA-26 a CA-28 en
+  una rama desde `main`. Lo mismo en el mockup: el generador de `shared/layout/` separa la región central para que los
+  estados de 006 solo cambien su contenido. Es SRP (el layout no conoce carpetas) y no agrega abstracción sin consumidor:
+  el slot lo usan hoy «Carpetas» y mañana CA-27.
 - **Punto abierto no bloqueante**: el mockup manda «Liberar espacio» del resumen a Mis archivos ordenado por tamaño (`?orden=tamano&dir=desc`, README, pendiente 1). Adrián no lo incluyó entre las decisiones aceptadas; mientras tanto el control de orden vive en el estado del componente y «Liberar espacio» del resumen lleva a `/archivos`. Si se acepta, la línea web lee `orden` y `dir` de la URL (cambio solo de `web`).
 - R-1 `lower(...)` en `orderBy` con `limit` de TypeORM puede fallar al armar la consulta: el repositorio lo escribe con `addSelect` o SQL parametrizado y la prueba de integración lo cubre.
 - R-2 Carpetas enormes sin índice de orden: mitigado por top-N, la prueba de 20 000 y el umbral de D-9.
@@ -166,3 +190,5 @@ CA-4 se prueba en el servidor (la cifra cambia tras cada operación) y en la web
 ## 8. Aprobación
 - `architect`: no aplica (sin puerto entre módulos, sin tecnología nueva, sin cambio de arquitectura). Se le pide revisar DF-62 al redibujar (PD-46).
 - Adrián: aprobado el 2026-10-01 (con la corrección del orden por defecto, D-6, y las decisiones de UI de D-19).
+- Adenda CA-18 y CA-19 (D-21 a D-23, 2026-10-03): `architect` no aplica (sin puerto, tecnología ni cambio de arquitectura;
+  solo `web`). Pedida por Adrián junto con su implementación; su visto bueno queda en el PR-B.

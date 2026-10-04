@@ -4,14 +4,14 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | En revisión (2026-10-02; plan aprobado por Adrián el 2026-10-01) |
+| Estado | En revisión (2026-10-02; plan aprobado por Adrián el 2026-10-01). Aprobada el 2026-10-03 con CA-18 y CA-19 por implementar |
 | Dueño | Adrián (1) |
 | Fase | 1 |
 | Requisitos | RF-12, RNF-14 (principales); aplican RNF-05, RNF-13, RNF-17 |
 | Depende de | 005 (archivos, cuota reservada, descarga), 006 (`GET /folders/contents` con migas y paginación por cursor; papelera), 006a (`PlanLimits`, `IPlanLimitsProvider`) |
 | Módulo | M2 `storage` |
 | Casos de uso | CU-26 «consultar espacio», CU-38 «explorar archivos» |
-| Última actualización | 2026-10-01 |
+| Última actualización | 2026-10-03 |
 
 ## 1. Contexto y objetivo
 RF-12 pide mostrar el espacio consumido y bloquear el exceso de cuota o tamaño. **El bloqueo ya lo entrega 005**
@@ -56,6 +56,10 @@ sabe cuánto espacio tiene, en qué se va y qué liberar, y encuentra sus archiv
 - **CA-16** (HU-5, RNF-05) Dado dos clientes A y B, cuando B pide el resumen o un listado ordenado, entonces solo recibe cifras y archivos propios; el listado de una carpeta de A responde `404` idéntico a una inexistente (`accessibleNodes(actor)` dentro de la consulta). Se añade a `pnpm test:isolation`.
 - **CA-17** (RF-05) Dado un Administrador, un Soporte o un Operador, cuando llaman el resumen o el listado, entonces `403` `SHARED_FORBIDDEN`; sin token, `401` `SHARED_UNAUTHENTICATED`.
 
+### Avisos y barra lateral (revisión de Adrián, 2026-10-03; pendiente de implementar)
+- **CA-18** (RNF-14) Dado un aviso de éxito (p. ej. «Movimos «{nombre}» a la papelera.»), cuando aparece, entonces se muestra arriba y al centro de la pantalla, nunca sobre el panel de cargas ni sobre sus cargas terminadas, y se retira solo a los 8 s o al cerrarlo (ADR-0024; cambia su posición de abajo a la derecha). En 360 px ocupa el ancho disponible.
+- **CA-19** (RNF-14) Dado un listado largo, cuando el cliente desplaza la página, entonces la barra lateral de escritorio queda fija bajo el encabezado, con su tarjeta de cuota siempre visible y desplazamiento propio si su contenido no cabe; solo se desplaza el contenido principal.
+
 ## 4. Reglas de negocio
 - **RN-1** Cuota y máximo por archivo salen de `IPlanLimitsProvider`; el cálculo de «cabe o no» al subir sigue siendo de 005 (`QuotaService`).
 - **RN-2** El espacio usado cuenta archivos vivos y los de la papelera hasta su purga (006 RN-2, CA-21); las reservas de cargas activas se tratan como en 005 RN-13.
@@ -74,7 +78,7 @@ sabe cuánto espacio tiene, en qué se va y qué liberar, y encuentra sus archiv
 |---|---|---|---|
 | Resumen de espacio | `storage/resumen-espacio/` | default, cargando, error, tramo 70–89 %, tramo 90–100 %, cuota llena, papelera con espacio | Corregido y completo (decisiones aprobadas el 2026-10-01 en su README) |
 | Explorador: orden y «Cargar más» | `storage/explorador/` (lista) | default, ordenado, más páginas, cargando, error (los de 005 y 006 se reutilizan) | Definidos; el menú de orden se actualiza para que el valor por defecto sea «Fecha de creación, más recientes primero» |
-| Barra lateral: tarjeta de cuota | `shared/layout/` | tramos 70 y 90 % | Los dibuja 007 (README del layout) |
+| Barra lateral: tarjeta de cuota | `shared/layout/` | tramos 70 y 90 %; **nuevos (CA-18, CA-19):** aviso-arriba-centro (sin tapar el panel de cargas), barra-fija-lista-larga | Los dibuja 007 (README del layout); los dos estados nuevos, dibujados el 2026-10-03 (T-15) |
 
 - Mensajes clave (español, tuteo, con acción): «Tu cuota está al X %.» · «Espacio casi agotado.» (90–99 %) · «Espacio agotado.» (100 %) · «No pudimos calcular tu espacio. Tus archivos siguen guardados.» con «Reintentar».
 - Sin cifras de plan ni «Ampliar plan» en el resumen; «Ver planes» sigue oculto hasta 008. A 360 y 1440 px, AA, sin violaciones serias de axe (RNF-13).
@@ -97,7 +101,7 @@ Sin preguntas abiertas.
 - [RESUELTA] P-7 CU-26 es «consultar espacio» y CU-38 es «explorar archivos» → cabecera (2026-10-01, Adrián)
 - [RESUELTA] P-8 La conciliación es solo programada → §7 (2026-10-01, Adrián)
 - [RESUELTA] P-9 Un `limit` fuera de rango se sigue ajustando (`clampLimit`, sin romper 006); solo `sort`, `dir` o cursor inválidos responden `400` con `fields` → CA-11 (2026-10-01, Adrián)
-- [RESUELTA] P-10 Se ordena por nombre, tamaño o fecha de modificación; los índices los decide el plan verificando RNF-14 (≤ 2 s) → CA-10 (2026-10-01, Adrián)
+- [RESUELTA] P-10 Se ordena por nombre, tamaño o fecha de modificación (y de creación, P-5); los índices los decide el plan verificando RNF-14 (≤ 2 s) → CA-10 (2026-10-01, Adrián)
 - Nota para el plan (no es pregunta): caché de límites de plan (PD-58) si el medidor lo pide en cada operación.
 
 ## 9. Registro de cambios
@@ -107,3 +111,5 @@ Sin preguntas abiertas.
 | 2026-10-01 | Resueltas P-1 a P-10. «Depende de» y CA-9 a CA-12 usan `GET /folders/contents` (006 reemplazó `GET /files`) con `sort`/`dir`; CA-11 deja el `limit` ajustable (P-9); CA-1 y §6 sin cifras de plan ni ofertas; §7 con filtros → 018 y cuadrícula/selección múltiple diferidas | Respuestas de Adrián | Adrián |
 | 2026-10-01 | Corrección de Adrián: P-5, RN-6 y CA-10 vuelven al orden de 006 (`created` descendente, carpetas primero); `created` se agrega a los valores de orden (CA-10, CA-11). RN-4, CA-5 y §6: al 100 % el título es «Espacio agotado.». Estado `Lista` tras aprobar el plan | Decisiones de Adrián sobre el orden y el mockup `resumen-espacio` | Adrián |
 | 2026-10-01 | CA-1: el resumen trae también el nombre del plan (`planName`) para la tarjeta «Tu plan» | La web no podía mostrarlo con el contrato de T-01 | Adrián |
+| 2026-10-03 | Revisión de Adrián: se agregan CA-18 (avisos arriba y al centro, sin tapar las cargas) y CA-19 (barra lateral fija). Aprobada por Adrián con esos dos cambios por implementar y pendiente de integrar | Recorrido de la demo (T-12) | Adrián |
+| 2026-10-03 | Adenda del plan (D-21 a D-23) y tareas T-13 a T-15: CA-19 deja la barra lateral en tres bloques con el slot `sidebarSections`, para que 006 CA-27 no vuelva a editar `app-layout.tsx` (conflicto de fusión); orden de integración 006 → 007 → 006 CA-26 a CA-28. P-10 nombra también la fecha de creación (P-5) | Conflicto de fusión entre 007 CA-19 y 006 CA-27 | Adrián |

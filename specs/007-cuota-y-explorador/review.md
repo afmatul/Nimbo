@@ -66,3 +66,17 @@ Ninguno.
 - DF-62 (nuevo): `SpaceSummaryService`, `SpaceMeasurer`, `UsageReconciler`, puertos internos, `GET /storage/summary`, cola `usage-reconcile`, `updatedAt`, extensión de DF-59. Reflejado en `design-model.md` y `architecture.md` §6.6 y §8; `architect` lo revisa al redibujar (PD-46).
 - `pendientes.md`: PD-62 (índices de orden) y PD-63 (patrón de schedulers) nuevos; PD-58 resuelto; PD-34 actualizado.
 - Punto abierto del plan: «Liberar espacio» del resumen lleva a `/archivos` sin orden por tamaño.
+
+## Adenda CA-18 y CA-19 (2026-10-03)
+| CA | Prueba | Estado |
+|---|---|---|
+| CA-18 | `sonner.spec.tsx` «CA-18: … arriba y al centro, debajo del encabezado, y dura 8 s» (`top`/`center`, `--offset-top` y `--mobile-offset-top` con `--header-height`) | ✅ |
+| CA-19 | `app-layout.spec.tsx` (5 casos: región central desplazable, cuota al pie fuera de ella, barra `sticky` bajo el encabezado, raíz sin `overflow-x-hidden`, un enlace del slot cierra el cajón); `sidebar-folders.spec.tsx`; `a11y.spec.tsx` con el cajón abierto y cerrado | ✅ (vista real en T-12) |
+
+- CI local: `typecheck` y `test` de `web` en verde (121 suites, 876 pruebas); ESLint y Prettier limpios. Mockups `aviso-arriba-centro` y `barra-fija-lista-larga` con axe-core sin violaciones a 360 y 1440 px.
+- Costura D-23 ✅: 006 CA-27 agrega su componente en `features/storage` y lo pasa por `sidebarSections`, sin editar `app-layout.tsx` ni `app-sidebar.tsx`; el cajón se cierra por delegación al activar un enlace. `--header-height` es la única fuente del alto (encabezado, barra y avisos).
+- Bloqueantes: ninguno.
+- **[I-A] ✅ Corregido**: `use-mobile-nav.ts` devolvía el foco al botón con el encabezado todavía `inert` (se perdía en navegador; jsdom ignora `inert`). Ahora cierra con `flushSync` antes de enfocar. Confirmar en T-12.
+- **[S-A] ✅ Corregido**: ciclo `app-layout` ↔ `app-sidebar`; `NavItem` vive en `app-sidebar.tsx` y `app-layout.tsx` lo reexporta.
+- **[S-B] ✅ Corregido**: «Carpetas» es `nav` con nombre, como en el mockup.
+- **[S-C]** Sin `overflow-y-auto` en `main`, lo que desborde a lo ancho se recorta por `overflow-x-clip`: revisar en T-12 a 360 px migas, diálogos y tablas.

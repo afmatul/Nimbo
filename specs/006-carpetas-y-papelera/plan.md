@@ -228,6 +228,11 @@ cola). Es idempotente: si ya lo tomó el ciclo programado, la segunda pasada no 
 - ADR requeridos: ADR-0024 (`sonner` para avisos, Aceptado). `NULLS NOT DISTINCT` es nativo de PG 15+ y el proyecto usa PG 17. No se agrega ningún puerto entre módulos.
 - Entrega: rama de código `feat/006-carpetas-y-papelera` (`conventions.md`; `spec/006-…` es solo para los documentos), con dos PR como
   máximo (`workflow.md` §6): **PR-A** `api` + `contracts` + migraciones + worker; **PR-B** `web`.
+- **Coordinación con 007 (CA-26 a CA-28, por planificar)**: 007 CA-19 reorganiza la barra lateral (plan 007 D-23): `AppLayout`
+  ya no recibe `folderItems` sino el slot `sidebarSections`, y «Carpetas» vive en `features/storage/components/sidebar-folders.tsx`.
+  CA-27 («Accesos rápidos») se implementa en `features/storage` y entra por ese slot, **sin editar `components/nimbo/app-layout.tsx`**;
+  el cajón móvil ya se cierra al activar cualquier enlace. Los estados de mockup de CA-27/28 solo cambian la región central del
+  generador de `shared/layout/`. Orden: 006 (sin CA-26 a CA-28) a `main` → 007 a `main` → CA-26 a CA-28 en una rama desde `main`.
 
 ## 8. Aprobación
 - `architect`: no aplica (sin puerto entre módulos, sin tecnología nueva y sin cambio de arquitectura). Se le pide revisar DF-61 al redibujar (PD-46).
