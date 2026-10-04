@@ -74,5 +74,4 @@ Implementa la spec 007 (cuota y explorador), línea B. Lee specs/007-cuota-y-exp
   `useRefreshOnChange` de `space-provider.tsx` (DRY).
 - Revisión del rebase: las costuras (a) orden de lo desglosado y (b) releer sin perder páginas las resolvió Adrián el
   2026-10-04 como CA-20 y CA-21 (T-16, T-17). Al volver a pedir un nivel ya visible, se conserva hasta que llega. Los mockups de
-  007 `aviso-arriba-centro` y `barra-fija-lista-larga` aún dibujan «Carpetas» en la región central y sus capturas no se
-  rehicieron.
+  007 que aún dibujan «Carpetas» en la barra no se actualizan (decisión de Adrián, 2026-10-04): son referencia.
