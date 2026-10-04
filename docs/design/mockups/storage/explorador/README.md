@@ -2,7 +2,7 @@
 
 - **Spec**: 005–007 (005: explorador mínimo de la raíz con «Subir archivos», arrastrar y soltar y «Descargar», §9;
   006: carpetas, migas, crear, renombrar, «Mover a…» y mover a la papelera; ver «Estados de 006»; desde el 2026-10-03,
-  desglose de carpetas y accesos rápidos: ver «Estados de 006: desglose y accesos rápidos»)
+  desglose de carpetas y accesos rápidos: ver «Estados de 006: desglose y accesos rápidos», aprobados el 2026-10-03)
 - **Propuesta presentada**: p. 08 (cuadricula) y p. 09 (lista). Los estados de 005 (`vacio`, `cargando`, `arrastre`,
   `error`, `acciones`, `descarga-preparando`, `descarga-fallida`) no se presentaron.
 - **Cambios respecto de la propuesta**: ninguno en `cuadricula` ni `lista`; al implementar, el botón principal usa el
@@ -19,7 +19,7 @@
     `../../_generadores/explorador/generar-carpetas.js`; no se edita a mano. Mismo marco y módulo `mis-archivos`, más
     `_generadores/carpetas/carpetas.js` (logo, barra lateral con «Carpetas» y contador de la Papelera, toast y diálogos),
     que comparte con `storage/papelera`.
-  - Los 8 estados de CA-26 a CA-28 (desglose, «Fijar en la barra lateral» y tope): mismo generador, con
+  - Los 9 estados de CA-26 a CA-28 (desglose, «Ver más», «Fijar en la barra lateral» y tope): mismo generador, con
     `../../_generadores/explorador/desglose.js` y `../../_generadores/accesos/accesos.js`.
   - Son referencia visual; `apps/web` no los importa.
 - **Estados incluidos** (los de 006 están en «Estados de 006»):
@@ -149,7 +149,7 @@ la app los límites vienen de `PlanLimits` por la API; los del mockup son de eje
   `role="status"`. Hace falta un `Skeleton` (shadcn) o una variante de `StateView`.
 - El menú ⋮ necesita el componente `dropdown-menu` de shadcn y el aviso de descarga, `alert`; el plan de 005 no los
   lista (solo `alert-dialog` y `checkbox`). `alert` es solo un archivo con `cva`, sin dependencia nueva.
-- `AppLayout` de 000b no tiene la cuota lateral, «Recientes», «Favoritos» ni «Optimizador», y el ítem se llama «Mis
+- `AppLayout` de 000b no tiene la cuota lateral, «Recientes», «Fijados» ni «Optimizador», y el ítem se llama «Mis
   Archivos»; el marco de los mockups es el de `shared/layout`.
 
 ## Estados de 006 (carpetas)
@@ -258,17 +258,19 @@ Ajustes aprobados por Adrián (2026-09-30), incluidos el mensaje de error de red
   archivos» y «Ver papelera». Mismo texto para inexistente, ajena o en la papelera, para no revelar nada (CA-22).
 
 ## Estados de 006: desglose y accesos rápidos (CA-26 a CA-28)
-**Spec 006**, revisión de Adrián (2026-10-03). **Estado: Borrador**, pendiente de revisión de Adrián. Ocho estados nuevos,
-generados con `generar-carpetas.js` y `explorador/desglose.js` (filas, CSS y script del desglose) más
+**Spec 006**. **Estado: Aprobado (2026-10-03, Adrián)**, con los ajustes que se describen abajo ya aplicados. Nueve estados
+nuevos, generados con `generar-carpetas.js` y `explorador/desglose.js` (filas, CSS y script del desglose) más
 `accesos/accesos.js` (la sección de la barra lateral, la misma de `shared/layout`; ver su README para P-15). Todos parten
-de la raíz de Mis archivos con «Proyecto Alpha» desglosada a dos niveles. **Los 22 estados anteriores no cambiaron ni un
-byte**: conservan la barra lateral con «Carpetas» y las filas sin control de desglose; los nuevos llevan «Accesos
-rápidos» (3 fijados y 4 recientes; en `tope-de-fijados`, 5 fijados y 3 recientes) y el control en cada carpeta.
+de la raíz de Mis archivos con «Proyecto Alpha» desglosada a dos niveles. **Los 22 estados anteriores solo cambiaron en la
+etiqueta «Fijados» (antes «Favoritos») de la navegación**: conservan la barra lateral con «Carpetas» y las filas sin
+control de desglose; los nuevos llevan «Accesos rápidos» (3 fijados y 3 recientes con «Ver más»; en `tope-de-fijados`, 5
+fijados y 3 recientes con «Ver más») y el control en cada carpeta.
 Capturas: `explorador--<estado>--<360|1440>.png`.
 
 | Estado | Qué muestra |
 |---|---|
-| carpeta-desglosada | «Proyecto Alpha» abierta con «Actas», «Documentación», «Fase 3 · RAG» (también abierta, con «Prompts», `.docx` y `.pdf`) y un archivo; carpetas primero y sangría en dos niveles |
+| carpeta-desglosada | «Proyecto Alpha» abierta con «Actas», «Documentación», «Fase 3 · RAG» (también abierta, con «Prompts», `.docx` y `.pdf`) y un archivo; carpetas primero, sangría y guías en dos niveles |
+| **desglosada-ver-mas** | Q-2: «Fase 3 · RAG» y «Proyecto Alpha» tienen más de una página; al final de cada nivel, una fila «Ver más» (nivel 3 y nivel 2) que lleva a la página de esa carpeta |
 | desglosando-cargando | Se desglosa «Documentación»: el control muestra el ícono giratorio, y bajo la fila, «Cargando el contenido de Documentación…» y dos filas de esqueleto |
 | desglosada-vacia | «Actas» abierta sin contenido: fila «Esta carpeta está vacía» |
 | desglosada-error | Falló el contenido de «Documentación»: fila «No pudimos cargar el contenido de Documentación.» con «Reintentar»; el resto de la lista sigue usable |
@@ -277,15 +279,28 @@ Capturas: `explorador--<estado>--<360|1440>.png`.
 | menu-fila-quitar | Menú ⋮ de un archivo ya fijado (aparece en la barra): **Quitar de la barra lateral** |
 | tope-de-fijados | Cinco fijados; aviso arriba de la lista «Ya fijaste 5 elementos. Quita uno para fijar otro.» |
 
+### Ajustes aprobados por Adrián (2026-10-03)
+- **Token de guías y sangría (CA-26)**: el mockup usa exactamente el token que define `ui-guidelines.md` §3 y está en
+  `apps/web/src/app/globals.css`: variables `--tree-indent`, `--tree-guide-x`, `--tree-max-level` y `--tree-guide`, y las
+  utilidades `tree-indent` (sangría) y `tree-guides` (guías). Aquí son las mismas variables y clases en CSS plano; el nivel
+  de cada fila es `style="--tree-level: n"`. El mockup cambia a móvil a 600 px y la implementación usa `sm` (640 px).
+- **Q-2: «Ver más» en el desglose**: si una carpeta tiene más de una página, al final de su nivel (con su sangría y sus
+  guías) aparece una fila «Ver más ›» en `primary` que lleva a la página de esa carpeta. Nombre accesible «Ver más en
+  {carpeta}» (empieza con el texto visible); 32 px de alto (44 px a 360 px). Cuenta como una fila hija más de `aria-controls`.
+- **Tope**: `Alert` variante `warning` (`ui-guidelines.md` §4), `role="status"`.
+- **Barra lateral**: 3 recientes visibles (P-15), «Fijados» en la navegación y menú ⋮ en cada fijado (no se dibuja
+  en este mockup; ver `shared/layout`, estados `fijado-menu-abierto` y `movil-cajon-fijado-menu-abierto`; el script del
+  explorador también lo hace funcionar).
+
 ### Decisiones de UX (propias de estos estados)
 - **Control de desglose** (CA-26): botón de 32 px (44 px a 360 px, con margen negativo para no ensanchar la fila) antes
   del ícono de la carpeta, con la flecha ›, que gira 90° al abrir. `aria-expanded`, `aria-controls` (las filas hijas) y un
   nombre fijo, «Mostrar contenido de {nombre}»: el estado lo da `aria-expanded`, no el texto. **El nombre de la carpeta
   sigue siendo el enlace que la abre** (CA-5) y la fila entera sigue sin ser clicable; el control nunca navega. Enter o
   Espacio lo activan. Las filas de archivo reservan el mismo ancho (sin control) para que los íconos queden alineados.
-- **Sangría**: 28 px por nivel (16 px a 360 px, con tope en el nivel 3 para que el nombre no se quede sin ancho: la profundidad
-  máxima es 10) y una guía vertical `border` bajo el control de cada ancestro; la guía es decorativa. Las filas hijas
-  llevan para lectores de pantalla «, dentro de {carpeta}».
+- **Sangría y guías**: 28 px por nivel (16 px a 360 px) con una guía vertical bajo el control de cada ancestro (1 px,
+  `border`, decorativa). La sangría y las guías dejan de crecer en el nivel 6 (nivel 3 a 360 px) para que el nombre no se
+  quede sin ancho: la profundidad máxima es 10. Las filas hijas llevan para lectores de pantalla «, dentro de {carpeta}».
 - **Tabla, no `treegrid`**: es una sola tabla con filas hijas (`data-padre`). Un `treegrid` pediría navegar con flechas
   entre celdas y reemplazaría el orden de Tab de la fila (control, enlace, ⋮); con tres controles por fila y acciones en
   cualquier nivel, el botón con `aria-expanded` y el sufijo «dentro de…» son más simples y suficientes. Se puede revisar si
@@ -302,21 +317,20 @@ Capturas: `explorador--<estado>--<360|1440>.png`.
   cabía. Con «Fijar», el menú de un archivo llega a **cinco acciones y un separador**: sigue siendo un menú desplegable
   (a 360 px los ítems miden 44 px); el límite de «4–5 acciones» de 005 queda alcanzado y una acción más obligaría a revisar
   la hoja inferior.
-- **Tope** (CA-28): `Alert` en tono warning arriba de la lista, texto exacto de la spec y «Cerrar aviso»; no es un toast
-  (ADR-0024: lo que no es una confirmación va en `Alert`). Ver la decisión 5 en el README de `shared/layout`.
-  «Fijar en la barra lateral» no se deshabilita al llegar a 5: intentar el sexto muestra el aviso y no cambia nada.
+- **Tope** (CA-28): `Alert` variante `warning` arriba de la lista, texto exacto de la spec y «Cerrar aviso»; no es un toast
+  (ADR-0024: lo que no es una confirmación va en `Alert`). «Fijar en la barra lateral» no se deshabilita al llegar a 5:
+  intentar el sexto muestra el aviso y no cambia nada.
 - **Qué hace el mockup**: el control abre y cierra y, al contraer, oculta también a los descendientes; una carpeta sin filas
   de ejemplo se abre «vacía». En la app, abrir pide `GET /folders/contents` de esa carpeta.
 
-### Decisiones de UX para Adrián
+### Decisiones abiertas (no bloquean)
 1. **¿Se actualizan los 22 estados anteriores?** Si «Accesos rápidos» reemplaza a «Carpetas» y toda carpeta se desglosa,
    cualquier captura vieja de Mis archivos (`carpeta`, `raiz-carpetas`, los diálogos…) muestra una barra lateral y unas
-   filas que ya no existirán. Se dejaron intactas para no cambiar lo que Adrián ya aprobó el 2026-09-30; regenerarlas es
+   filas que ya no existirán. Se dejaron como Adrián las aprobó el 2026-09-30 (salvo la etiqueta «Fijados»); regenerarlas es
    cambiar dos opciones del generador (`nuevo: true`) y volver a capturar.
 2. **¿Se marca en la fila que el elemento está fijado?** Hoy solo se sabe por el texto del menú («Quitar…») y por la barra.
    Una chincheta pequeña junto al nombre lo haría visible; no está en la spec y no se dibujó.
-3. **Aviso del tope en tono warning o destructivo** (ver `shared/layout`, decisión 5).
-4. **Qué pasa con las hijas al contraer** (sin dibujar): propuesta para el plan, conservar lo cargado mientras viva la
+3. **Qué pasa con las hijas al contraer** (sin dibujar): propuesta para el plan, conservar lo cargado mientras viva la
    página y volver a pedirlo tras renombrar, mover o enviar a la papelera dentro de esa carpeta.
 
 ### Contraste de los pares nuevos (WCAG 2.1)
@@ -326,13 +340,15 @@ Capturas: `explorador--<estado>--<360|1440>.png`.
 | `secondary-foreground` sobre `muted` (control con puntero) | 7.45 |
 | `foreground` sobre `card` (texto de la fila de error) | 13.58 |
 | `destructive` sobre `card` (ícono de la fila de error, no es texto) | 5.39 |
-| `warning-foreground` sobre `warning` al 12 % (aviso del tope) | 4.79 |
+| `warning-foreground` sobre `warning` al 10 % (aviso del tope) sobre `background` / `card` | 4.66 / 4.86 |
+| `primary` sobre `card` («Ver más» de una carpeta) / `primary-hover` sobre `muted` (con puntero) | 4.97 / 6.24 |
 | Guías de sangría `border` sobre `card` (decorativas) | 1.23 |
 
-Verificación: axe-core sin violaciones a 360 y 1440 px en los ocho estados, sin desbordamiento horizontal a 360 px, sin
-objetivos menores de 24 px y sin errores de consola (`_generadores/pw/axe-seguridad.js`). Se probó además el script del
-mockup: contraer y volver a abrir «Proyecto Alpha» oculta y muestra sus 7 filas, abrir una carpeta sin datos con Enter
-agrega la fila «vacía» y axe sigue sin violaciones; el menú ⋮ de una fila anidada abre con el foco en el primer ítem.
+Verificación: axe-core sin violaciones a 360 y 1440 px en los nueve estados, sin desbordamiento horizontal a 360 px, sin
+objetivos menores de 24 px (44 px donde ya se pedían) y sin errores de consola (`_generadores/pw/axe-seguridad.js`). Se probó
+además el script del mockup: contraer y volver a abrir «Proyecto Alpha» oculta y muestra sus filas, abrir una carpeta sin
+datos con Enter agrega la fila «vacía» (con su sangría y guías) y axe sigue sin violaciones; el menú ⋮ de una fila anidada
+abre con el foco en el primer ítem.
 
 ## Pendiente
 - Datos de ejemplo de `cuadricula` y `lista` contra el catálogo (product-context §3): la zona de arrastre dice «máx.

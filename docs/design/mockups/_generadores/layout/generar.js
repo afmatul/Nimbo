@@ -8,6 +8,7 @@ const path = require('node:path');
 const M = require('../marco/marco.js');
 const E = require('../mis-archivos/estados.js');
 const A = require('../accesos/accesos.js');
+const S = require('../mis-archivos/mis-archivos.js');
 
 const { icon } = M;
 
@@ -107,7 +108,7 @@ const JS = `
   Array.prototype.forEach.call(cajon.querySelectorAll('.nav a'), function (a) {
     a.addEventListener('click', function (e) { e.preventDefault(); cerrarCajon(true); });
   });
-  cajon.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.preventDefault(); cerrarCajon(true); } });
+  cajon.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !e.target.closest('.row-menu')) { e.preventDefault(); cerrarCajon(true); } });
   mq.addEventListener('change', function (e) { if (!e.matches && !cajon.hidden) cerrarCajon(false); });
 
   // Estado inicial de la hoja
@@ -134,14 +135,16 @@ function page(v) {
   const activo = 'Mis archivos';
   // Accesos rápidos reemplaza a «Carpetas» (006): la barra y el cajón llevan la misma sección con ids distintos
   const acc = v.accesos ? { carpetas: [] } : {};
-  const barra = v.accesos ? { ...acc, accesos: A.seccion(v.accesos, 'barra') } : {};
-  const cajonAcc = v.accesos ? { ...acc, accesos: A.seccion(v.accesos, 'cajon') } : {};
-  const cssAccesos = v.accesos ? `${A.CSS}${E.CSS_ALERT}  @media (max-width: 600px) {
+  // El menú ⋮ abierto vive en la barra (escritorio) o en el cajón (móvil), nunca en los dos a la vez
+  const sinMenu = { ...v.accesos, menuEn: '' };
+  const barra = v.accesos ? { ...acc, accesos: A.seccion(v.cajon ? sinMenu : v.accesos, 'barra') } : {};
+  const cajonAcc = v.accesos ? { ...acc, accesos: A.seccion(v.cajon ? v.accesos : sinMenu, 'cajon') } : {};
+  const cssAccesos = v.accesos ? `${S.CSS_MENU_FILA}${A.CSS}${E.CSS_ALERT}  @media (max-width: 600px) {
 ${E.CSS_ALERT_MQ600}  }
 ` : '';
   const aviso = v.aviso ? A.avisoTope() : '';
   // El cajón real se desplaza dentro del alto de la pantalla; aquí el lienzo crece para dibujarlo completo en la captura
-  const cssCajon = v.cajonCompleto ? '  @media (max-width: 900px) { .canvas { min-height: 1120px; } }' + String.fromCharCode(10) : '';
+  const cssCajon = v.cajonCompleto ? `  @media (max-width: 900px) { .canvas { min-height: ${v.cajonCompleto}px; } }` + String.fromCharCode(10) : '';
   return `${M.cabecera({
     titulo: `Layout de la app · Nimbo — ${v.titulo}`,
     comentarios: [
@@ -173,7 +176,7 @@ ${E.CSS_ALERT_MQ600}  }
   </div>${M.cajon({ activo, plan, cuota, abierto: !!v.cajon, ...cajonAcc })}${M.dialog(M.DIALOGO_CERRAR_SESION, { oculto: !v.dialogo })}
 </div>
 
-<script>${JS}</script>
+<script>${JS}${v.accesos ? E.JS_MENU + A.JS_QUITAR : ''}</script>
 </body>
 </html>
 `;
@@ -192,12 +195,12 @@ const ESTADOS = [
   { estado: 'movil-cajon-abierto', titulo: 'cajón de navegación abierto (solo por debajo de 900 px)', cajon: true },
   // Accesos rápidos (006, CA-27 y CA-28)
   {
-    estado: 'fijados-y-recientes', titulo: 'Accesos rápidos con 5 fijados y 5 recientes, carpetas y archivos mezclados',
-    accesos: { fijados: A.FIJADOS_5, recientes: A.RECIENTES_5 },
+    estado: 'fijados-y-recientes', titulo: 'Accesos rápidos con 5 fijados y 3 recientes, carpetas y archivos mezclados',
+    accesos: { fijados: A.FIJADOS_5, recientes: A.RECIENTES.slice(0, 3) },
   },
   {
     estado: 'solo-recientes', titulo: 'Accesos rápidos sin fijados: solo el grupo Recientes',
-    accesos: { recientes: A.RECIENTES_5 },
+    accesos: { recientes: A.RECIENTES.slice(0, 3) },
   },
   {
     estado: 'solo-fijados', titulo: 'Accesos rápidos sin recientes: solo el grupo Fijados',
@@ -205,8 +208,8 @@ const ESTADOS = [
   },
   {
     estado: 'con-ver-mas', titulo: 'hay más recientes que los visibles: «Ver más» lleva a Mis archivos',
-    // El último reciente tiene un nombre largo: se corta con «…» y el título completo queda en `title` y en el nombre accesible
-    accesos: { fijados: A.FIJADOS_5, recientes: [...A.RECIENTES_5.slice(0, 4), ['archivo', 'Informe_final_de_resultados_septiembre.docx']], verMas: true },
+    // El tercer reciente tiene un nombre largo: se corta con «…» y el título completo queda en `title` y en el nombre accesible
+    accesos: { fijados: A.FIJADOS_5, recientes: [...A.RECIENTES.slice(0, 2), ['archivo', 'Informe_final_de_resultados_septiembre.docx'], ...A.RECIENTES.slice(3)], verMas: true },
   },
   {
     estado: 'sin-accesos', titulo: 'sin fijados ni recientes: la sección se oculta',
@@ -214,11 +217,19 @@ const ESTADOS = [
   },
   {
     estado: 'tope-de-fijados', titulo: 'sexto fijado: aviso «Ya fijaste 5 elementos…» y no cambia nada (CA-28)',
-    accesos: { fijados: A.FIJADOS_5, recientes: A.RECIENTES_5.slice(0, 3) }, aviso: true,
+    accesos: { fijados: A.FIJADOS_5, recientes: A.RECIENTES, verMas: true }, aviso: true,
   },
   {
-    estado: 'movil-cajon-con-accesos', titulo: 'cajón de navegación con Accesos rápidos a 360 px (5 + 5, «Ver más»)',
-    cajon: true, cajonCompleto: true, accesos: { fijados: A.FIJADOS_5, recientes: A.RECIENTES_5, verMas: true },
+    estado: 'fijado-menu-abierto', titulo: 'menú ⋮ de un fijado abierto en la barra lateral: «Quitar de la barra lateral» (CA-27)',
+    accesos: { fijados: A.FIJADOS_5, recientes: A.RECIENTES, verMas: true, menuEn: 'Finanzas' },
+  },
+  {
+    estado: 'movil-cajon-con-accesos', titulo: 'cajón de navegación con Accesos rápidos a 360 px (5 + 3, «Ver más»)',
+    cajon: true, cajonCompleto: 1032, accesos: { fijados: A.FIJADOS_5, recientes: A.RECIENTES, verMas: true },
+  },
+  {
+    estado: 'movil-cajon-fijado-menu-abierto', titulo: 'cajón con el menú ⋮ de un fijado abierto a 360 px (CA-27)',
+    cajon: true, cajonCompleto: 1032, accesos: { fijados: A.FIJADOS_5, recientes: A.RECIENTES, verMas: true, menuEn: 'Matriz_Requisitos_RF.xlsx' },
   },
 ];
 

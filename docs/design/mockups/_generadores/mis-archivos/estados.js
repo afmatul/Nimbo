@@ -156,7 +156,7 @@ exports.errorEstado = function errorEstado(titulo, texto) {
 // `texto` y `accion` son opcionales; tono 'warn' (límite alcanzado, no es una falla) usa los tokens warning.
 exports.aviso = function aviso({ titulo, texto = '', accion = '', tono = '' }) {
   return `
-        <div class="alert${tono ? ` alert-${tono}` : ''}" role="alert">
+        <div class="alert${tono ? ` alert-${tono}` : ''}" role="${tono === 'warn' ? 'status' : 'alert'}">
           ${icon('alert', 18)}
           <div class="alert-body">
             <p class="alert-title">${titulo}</p>${texto ? `
@@ -169,8 +169,9 @@ exports.aviso = function aviso({ titulo, texto = '', accion = '', tono = '' }) {
         </div>`;
 };
 
-// Variante de aviso «warn»: el tope de fijados no es una falla del sistema (warning-foreground sobre warning al 12 %: 4.79)
-exports.CSS_ALERT_WARN = `  .alert.alert-warn { border-color: color-mix(in srgb, var(--warning) 45%, var(--card)); background: var(--warning-soft); }
+// Variante de aviso «warn» = `Alert variant="warning"` de ui-guidelines.md §4 (border-warning bg-warning/10 text-warning-foreground):
+// el tope de fijados no es una falla del sistema; warning-foreground sobre warning al 10 %: 4.66 como mínimo (sobre background)
+exports.CSS_ALERT_WARN = `  .alert.alert-warn { border-color: var(--warning); background: color-mix(in srgb, var(--warning) 10%, transparent); }
   .alert.alert-warn { align-items: center; }
   .alert.alert-warn > .ico { margin-top: 0; }
   .alert.alert-warn > .ico, .alert.alert-warn .alert-title { color: var(--warning-foreground); }

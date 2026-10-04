@@ -1,13 +1,13 @@
 # Mockup: Layout de la app (marco compartido)
 
-- **Spec**: 000b (layout base, CA-5), pendiente PD-28. Toma requisitos de RF-12 (cuota en la barra lateral), RF-23
+- **Spec**: 000b (layout base, CA-5), pendiente PD-28. Accesos rápidos: spec 006 (CA-27, CA-28), **aprobados el 2026-10-03**. Toma requisitos de RF-12 (cuota en la barra lateral), RF-23
   (solo lectura) y 002 (menú de la cuenta, CA-14, D-8, D-16).
 - **Propuesta presentada**: no tiene pantalla propia. El marco (barra lateral con distintivo de plan, navegación,
   carpetas y cuota; barra superior con ruta y avatar) es el de las p. 08 (explorador) y p. 17 (Plan y facturación) del
   PDF «Mockups nimbo final». Los cambios respecto de ese marco están en «Cambios respecto de la propuesta».
 - **Origen**: HTML autocontenido, un archivo por estado, generado con el mismo marco que `identity/seguridad/` (`../../_generadores/layout/generar.js`; ver [`_generadores/README.md`](../../_generadores/README.md)). La
   barra lateral, la barra superior, el diálogo de confirmación y su CSS salen de un solo módulo, así que las dos carpetas
-  no pueden divergir. El HTML de Seguridad no cambió ni un byte. Usa Cielo Sereno con los tonos AA de
+  no pueden divergir. El HTML de Seguridad solo cambió en la etiqueta «Fijados» de la navegación (2026-10-03). Usa Cielo Sereno con los tonos AA de
   `ui-guidelines.md` §2–§3 y solo Inter 400/500/600/700; las cifras (cuota, contadores) llevan
   `font-variant-numeric: tabular-nums`. Incluye un script en línea que demuestra el teclado del menú, el diálogo y el
   cajón. Es referencia visual; `apps/web` no lo importa.
@@ -18,9 +18,10 @@
   - solo-lectura: plan Pro vencido; aviso persistente con «Renovar plan» (`layout--solo-lectura.html`, RF-23)
   - movil-cajon-abierto: por debajo de 900 px, la barra lateral se abre como cajón (`layout--movil-cajon-abierto.html`).
     Solo existe en móvil y tableta; a 1440 px el archivo muestra el marco de escritorio y no tiene captura.
-  - **Accesos rápidos (spec 006, CA-27 y CA-28)**: siete estados nuevos, descritos en «Accesos rápidos de la barra
-    lateral (006)»: fijados-y-recientes, solo-recientes, solo-fijados, con-ver-mas, sin-accesos, tope-de-fijados y
-    movil-cajon-con-accesos (`layout--<estado>.html`; el cajón solo tiene captura a 360 px).
+  - **Accesos rápidos (spec 006, CA-27 y CA-28, Aprobado 2026-10-03)**: nueve estados nuevos, descritos en «Accesos
+    rápidos de la barra lateral (006)»: fijados-y-recientes, solo-recientes, solo-fijados, con-ver-mas, sin-accesos,
+    tope-de-fijados, fijado-menu-abierto (solo captura a 1440), movil-cajon-con-accesos y
+    movil-cajon-fijado-menu-abierto (`layout--<estado>.html`; los dos del cajón solo tienen captura a 360 px).
 - **Capturas**: `docs/design/capturas/shared/layout/` (`layout--<estado>--<360|1440>.png`; el cajón, solo a 360).
   axe-core sin violaciones en los 5 estados a 360 y 1440 px y en los recorridos de teclado (menú abierto, diálogo
   abierto, cajón abierto). Sin desbordamiento horizontal a 360 px, sin errores de consola, objetivos de al menos 24 px
@@ -28,7 +29,7 @@
 
 ## Decisiones de UX
 - **Barra lateral** (escritorio, 236 px): logo «N · NIMBO» con el distintivo del plan, navegación principal (Mis
-  archivos, Compartidos conmigo, Recientes, Favoritos, Papelera con su contador), separador, Optimizador y Plan y
+  archivos, Compartidos conmigo, Recientes, Fijados, Papelera con su contador), separador, Optimizador y Plan y
   facturación, «Carpetas» con las carpetas de primer nivel y su número de elementos, y la tarjeta de cuota abajo.
 - **Ítem activo**: fondo `accent`, texto `foreground` en 600, barra izquierda de 3 px `primary` y
   `aria-current="page"`. La página actual no depende solo del color. Su contador pasa a `secondary-foreground`, y
@@ -67,21 +68,35 @@
   navegación de archivos.
 
 ## Accesos rápidos de la barra lateral (006)
-**Spec 006** (CA-27, CA-28, RF-38; revisión de Adrián, 2026-10-03). **Estado: Borrador**, pendiente de revisión de Adrián.
-La sección «Accesos rápidos» reemplaza a «Carpetas» en la barra lateral y en el cajón móvil. Los cinco estados
-anteriores no cambiaron ni un byte: conservan «Carpetas» (con 3 carpetas de ejemplo); solo los siete nuevos llevan
-la sección. Se generan con `_generadores/accesos/accesos.js`, que entra al marco por la opción `accesos` de `marco/marco.js`.
+**Spec 006** (CA-27, CA-28, RF-38). **Estado: Aprobado (2026-10-03, Adrián)**, con los ajustes que se describen abajo ya
+aplicados. La sección «Accesos rápidos» reemplaza a «Carpetas» en la barra lateral y en el cajón móvil. Los cinco estados
+anteriores conservan «Carpetas» (con 3 carpetas de ejemplo); solo cambia en ellos la etiqueta «Fijados» (antes
+«Favoritos») de la navegación; los nueve nuevos llevan la sección. Se generan con `_generadores/accesos/accesos.js`, que
+entra al marco por la opción `accesos` de `marco/marco.js`.
 Capturas: `docs/design/capturas/shared/layout/layout--<estado>--<360|1440>.png`.
 
 | Estado | Qué muestra |
 |---|---|
-| fijados-y-recientes | Caso lleno: 5 fijados y 5 recientes, carpetas y archivos mezclados, sin «Ver más» |
-| solo-recientes | Sin fijados: solo el grupo «Recientes» (5) |
+| fijados-y-recientes | Caso lleno: 5 fijados y 3 recientes, carpetas y archivos mezclados, sin «Ver más» |
+| solo-recientes | Sin fijados: solo el grupo «Recientes» (3) |
 | solo-fijados | Sin recientes: solo el grupo «Fijados» (3) |
-| con-ver-mas | 5 + 5 más «Ver más» al final; el último reciente tiene un nombre largo para ver el corte con «…» |
+| con-ver-mas | 5 + 3 y «Ver más» al final; hay más recientes que los visibles. El tercer reciente tiene un nombre largo para ver el corte con «…» |
 | sin-accesos | Sin fijados ni recientes: la sección y sus títulos no se dibujan (la barra queda como la de 005) |
 | tope-de-fijados | Cinco fijados; el cliente intenta fijar un sexto: aviso arriba del contenido «Ya fijaste 5 elementos. Quita uno para fijar otro.» y la barra no cambia |
-| movil-cajon-con-accesos | Cajón a 360 px con la sección completa (5 + 5, «Ver más») y la cuota al final |
+| **fijado-menu-abierto** | Escritorio: menú ⋮ del fijado «Finanzas» abierto, con «Quitar de la barra lateral» y el foco en ese ítem (solo captura a 1440 px: a 360 px la barra pasa al cajón) |
+| movil-cajon-con-accesos | Cajón a 360 px con la sección completa (5 + 3, «Ver más») y la cuota al final |
+| **movil-cajon-fijado-menu-abierto** | Cajón a 360 px con el menú ⋮ de «Matriz_Requisitos_RF.xlsx» abierto (solo captura a 360 px) |
+
+### Ajustes aprobados por Adrián (2026-10-03)
+1. **P-15: 5 fijados y 3 recientes visibles.** La barra dibuja los 3 recientes más nuevos y, si hay más, «Ver más». «Ver
+   más» lleva a Mis archivos (raíz); nada se desglosa en la barra.
+2. **«Favoritos» pasa a «Fijados»** en la navegación principal, con el ícono de la chincheta (el mismo del grupo «Fijados»
+   y de «Fijar en la barra lateral»). «Recientes» se queda. Cambia en todos los mockups generados con el marco
+   (Seguridad, layout, carga, explorador y papelera); lo demás del marco no cambió. Los HTML que no se generan (las
+   hojas de la propuesta y de Claude Design: `cuadricula`, `lista`, `planes`, `suscripcion`, `compartir`, etc.) siguen
+   diciendo «Favoritos»: son la propuesta firmada y no se editan.
+3. **Menú ⋮ en cada fijado** (barra y cajón) con «Quitar de la barra lateral».
+4. **Aviso del tope**: `Alert` variante `warning` (definida en `ui-guidelines.md` §4).
 
 ### Decisiones de UX (propias de este mockup)
 - **Estructura**: título «ACCESOS RÁPIDOS» (el mismo estilo que tenía «Carpetas») y, dentro, dos grupos con su título en
@@ -97,81 +112,72 @@ Capturas: `docs/design/capturas/shared/layout/layout--<estado>--<360|1440>.png`.
   «, carpeta» o «, archivo, se descarga» (el archivo se descarga al activarlo, como en 005).
 - **«Ver más»**: enlace al final de «Recientes», en `primary` (4.97:1 sobre `card`), con el ícono ›; su nombre accesible
   es «Ver más en Mis archivos» porque la spec lo manda a Mis archivos (raíz). Solo aparece si hay más recientes que los
-  visibles.
-- **Aviso del tope (CA-28)**: `Alert` arriba del contenido (de la lista, en el explorador) en tono **warning**: borde
-  `warning` al 45 %, fondo `warning` al 12 %, ícono y texto en `warning-foreground` (4.79:1), «Cerrar aviso» y
-  `role="alert"`. No es un toast: `ui-guidelines.md` §4 y ADR-0024 dicen que lo que no es una confirmación va en
-  `Alert`; y no es destructivo, porque llegar al límite no es una falla. El ítem «Fijar» del menú **no** se deshabilita:
-  la spec pide que intentar fijar el sexto muestre el aviso. El foco se queda en el botón ⋮ que lo originó.
+  3 visibles.
+- **Menú ⋮ de un fijado** (patrón «menu button» de WAI-ARIA, el mismo `DropdownMenu` de las filas del explorador, con un
+  solo ítem):
+  - botón de 28 px en escritorio (44 px en el cajón), con `aria-haspopup="menu"`, `aria-expanded`, `aria-controls` y
+    nombre «Acciones de {nombre}»; el menú tiene un `menuitem`, «Quitar de la barra lateral», con la chincheta tachada;
+  - **visibilidad**: en escritorio aparece al pasar el puntero, al enfocar la fila (el enlace o el propio botón) o con el
+    menú abierto, para no quitar ancho a los nombres; en pantallas sin puntero (`hover: none`) y en el cajón se ve
+    siempre. El botón siempre está en el orden de Tab justo después de su enlace, así que con teclado nunca queda oculto
+    al enfocarlo;
+  - teclado: Enter, Espacio o ↓ abren con el foco en «Quitar…» (↑ abre en el último); Escape cierra y devuelve el foco al
+    botón (dentro del cajón cierra solo el menú, no el cajón); Tab cierra y sigue; un clic fuera cierra;
+  - al activar «Quitar de la barra lateral» el elemento sale de la lista, el foco pasa al ítem siguiente (o al anterior;
+    si era el único, al primer enlace de la barra) y un mensaje `role="status"` lo anuncia («{nombre} ya no está en la
+    barra lateral»). El elemento sigue en Mis archivos: solo se borra el acceso;
+  - Tab: cada fijado suma una parada (el botón): 5 fijados + 3 recientes = 21 paradas antes del contenido (16 enlaces y 5
+    botones). Sigue haciendo falta el enlace «Saltar al contenido» (`#contenido` ya existe en el marco).
+- **Aviso del tope (CA-28)**: `Alert` arriba del contenido (de la lista, en el explorador) con la variante **`warning`**
+  (`border-warning bg-warning/10 text-warning-foreground`, `ui-guidelines.md` §4): ícono, título en `warning-foreground` 600 y
+  «Cerrar aviso». `role="status"` (no interrumpe; no es una falla). No es un toast: lo que no es una confirmación va en
+  `Alert` (ADR-0024). El ítem «Fijar» del menú **no** se deshabilita: la spec pide que intentar fijar el sexto muestre el
+  aviso. El foco se queda en el botón ⋮ que lo originó.
 - **Sin accesos**: la sección desaparece completa (CA-27); no hay estado vacío con instrucciones.
 - **Cajón móvil**: mismo contenido que la barra, con ids distintos (`cajon-…` y `barra-…`) para no repetirlos. En
-  la captura el lienzo crece para dibujar el cajón completo (1120 px); en un teléfono el cajón se desplaza dentro de la
+  la captura el lienzo crece para dibujar el cajón completo (1032 px); en un teléfono el cajón se desplaza dentro de la
   pantalla.
 
-### Validación de 5 + 5 (P-15)
+### Validación de 5 + 3 (P-15)
 Medido con Playwright sobre estos mockups (barra de 236 px; la cuota queda abajo):
 
-| | Sin la sección («Carpetas» de 000b) | 5 + 5 | 5 + 5 con «Ver más» |
+| | Sin la sección («Carpetas» de 000b) | 5 + 5 (versión anterior) | **5 + 3 con «Ver más» (aprobada)** |
 |---|---|---|---|
-| Alto de la sección (escritorio) | ≈ 130 px | 415 px | 449 px |
-| Alto total de la barra (escritorio) | 860 px (mínimo del marco) | 876 px | 910 px |
-| Enlaces en la barra (paradas de Tab antes del contenido) | 10 | 17 | 18 |
-| Alto total del cajón a 360 px | 676 px | — | 1120 px |
+| Alto de la sección (escritorio) | ≈ 130 px | 449 px | **381 px** (347 px sin «Ver más») |
+| Alto total de la barra (escritorio) | 860 px (mínimo del marco) | 910 px | **860 px**: cabe en el mínimo del marco |
+| Paradas de Tab en la barra (enlaces + ⋮) | 10 | 18 | **22** (17 enlaces y 5 botones) |
+| Alto total del cajón a 360 px | 676 px | 1120 px | **1032 px** |
 
-**Veredicto: 5 + 5 no se ve apretado, pero sí carga de más en vertical.** Horizontalmente se lee limpio (32 px por
-ítem, dos grupos con título, sin colores que compitan). El problema es la altura:
-1. La sección ocupa casi la mitad de la barra (415 de 876 px). En una ventana de 1440 × 900 el área útil del
-   navegador es de unos 780–800 px y en un portátil de 1366 × 768, de unos 650: la cuota queda bajo el borde, o hay que
-   desplazar la barra.
-2. En el cajón de 360 px la sección empieza a 416 px del borde de arriba y el cajón mide 1120 px: en un teléfono de 640 a
-   720 px de alto solo se ven de 4 a 6 accesos sin desplazar, y la cuota queda a dos pantallas.
-3. Sube de 10 a 17–18 las paradas de Tab antes del contenido (WCAG 2.4.1: hace falta un enlace «Saltar al contenido»;
-   `#contenido` ya existe en el marco, el enlace no).
-4. En 236 px casi ningún nombre de archivo cabe completo (`Propuesta_Nimbo_v3.docx` ya se corta).
+Con 3 recientes la barra deja de crecer por encima del mínimo del marco y la cuota queda visible. En el cajón la
+sección sigue empezando a unos 530 px del borde superior: en un teléfono hay que desplazar para llegar a «Recientes» y
+a la cuota. Mejoras no pedidas, por si la auditoría de la implementación las pide: región desplazable con la cuota fija
+y enlace «Saltar al contenido».
 
-**Ajuste propuesto (decisión para Adrián, la spec no cambia):** mantener hasta **5 fijados** (los eligió el cliente) y
-mostrar **3 recientes** por defecto; los otros hasta 5 quedan detrás de «Ver más». El plan ya deja ambas cifras como
-configuración (P-15), así que es cambiar los recientes visibles de 5 a 3. Ahorra 64 px en escritorio y 88 px en el
-cajón. Complementos, en orden de prioridad:
-- **Barra con región desplazable**: el bloque de navegación y accesos hace `overflow-y: auto` y la cuota queda fija abajo,
-  para que la cuota nunca salga de la pantalla aunque haya 5 + 5.
-- **Enlace «Saltar al contenido»** al inicio de la barra.
-- **Barra de 256–264 px** en lugar de 236 si se quiere que quepan más nombres. La extensión visible ya mitiga el corte.
-- Alternativa descartada por ahora: grupos plegables (`aria-expanded`); añaden un control y un estado a una sección que
-  la spec quiere sin desglose.
-
-### Otras decisiones de UX para Adrián (sobre CA-27 y CA-28)
-1. **Nombres repetidos en la navegación.** La barra ya tiene «Recientes» y «Favoritos» (propuesta p. 08, pendiente 5 de
-   este README: sin RF) y ahora «Fijados» y «Recientes» dentro de «Accesos rápidos». El cliente verá dos «Recientes»
-   que hacen cosas distintas. Conviene quitar «Recientes» y «Favoritos» de la navegación principal (PD-34 los deja fuera
-   de alcance) o renombrar uno de los dos.
-2. **«Ver más» no muestra más recientes.** Por spec lleva a Mis archivos (raíz), que no es una lista de recientes: el
-   texto promete algo que el destino no cumple. Alternativas: que despliegue en el lugar los recientes restantes
-   (`aria-expanded`), o cambiar el texto a «Ir a Mis archivos».
-3. **No se puede quitar un fijado desde la barra.** Hay que encontrar la fila en Mis archivos para usar «Quitar de la
-   barra lateral»; si el elemento está dentro de varias carpetas, es un recorrido largo. Propuesta (no dibujada, la spec
-   no lo pide): un botón ⋮ en cada fijado al pasar el puntero o al enfocar, con «Quitar de la barra lateral».
-4. **Un archivo reciente se descarga al activarlo.** Es lo que dice la spec, pero un enlace en una lista de navegación no
-   suele descargar. Se avisa con `title` y con texto para lectores de pantalla; un ícono de descarga solo al pasar el
-   puntero lo haría visible.
-5. **Tono del aviso del tope**: el `Alert` en tono warning (el que se dibuja) exige agregar una variante `warning` a
-   `components/ui/alert` (un `cva`, sin dependencia nueva; los tokens ya existen). La alternativa es la variante
-   destructiva ya aprobada, sin código nuevo.
+### Decisiones abiertas (no bloquean)
+1. **Nombres repetidos en la navegación.** Ahora hay «Fijados» (destino de la navegación principal) y «Fijados» (grupo de
+   «Accesos rápidos»), y dos «Recientes». Hacen cosas parecidas pero no iguales: la navegación abriría una página
+   completa, el grupo es un atajo. Ningún RF respalda las dos páginas (ver «Pendiente de aprobación», punto 5).
+2. **«Ver más» no muestra más recientes.** Por spec lleva a Mis archivos (raíz): el texto promete algo que el destino
+   no cumple del todo. Se mantiene por decisión de Adrián.
+3. **Un archivo reciente se descarga al activarlo.** Es lo que dice la spec; se avisa con `title` y con texto para
+   lectores de pantalla. Un ícono de descarga solo al pasar el puntero lo haría visible.
 
 ### Contraste de los pares nuevos (WCAG 2.1)
 | Par | Contraste |
 |---|---|
 | `muted-foreground` sobre `card` (títulos «Fijados» y «Recientes», 12 px) | 4.76 |
-| `secondary-foreground` sobre `card` (nombre del ítem) | 8.09 |
+| `secondary-foreground` sobre `card` (nombre del ítem; botón ⋮) | 8.09 |
 | `foreground` sobre `muted` (ítem con puntero) | 12.51 |
 | `primary` sobre `card` («Ver más»; ícono de carpeta) | 4.97 |
 | `primary-hover` sobre `muted` («Ver más» con puntero) | 6.24 |
-| `warning-foreground` sobre `warning` al 12 % (aviso del tope) | 4.79 |
+| `warning-foreground` sobre `warning` al 10 % (aviso del tope) sobre `background` / `card` | 4.66 / 4.86 |
+| Anillo de foco `ring` sobre `card` (botón ⋮, ítem del menú) | 4.97 |
 
-Verificación: axe-core sin violaciones a 360 y 1440 px en los siete estados nuevos (y en los cinco anteriores),
+Verificación: axe-core sin violaciones a 360 y 1440 px en los trece estados del layout y en los recorridos de teclado,
 sin desbordamiento horizontal a 360 px, sin objetivos menores de 24 px y sin ítems del cajón menores de 44 px
-(`_generadores/pw/axe-layout.js`), sin errores de consola. El recorrido de teclado del cajón y del menú de la cuenta
-no cambió.
+(`_generadores/pw/axe-layout.js`), sin errores de consola. Se probó además a mano con Playwright el teclado del menú ⋮ de
+un fijado (Tab llega al botón, Enter abre en «Quitar…», Escape devuelve el foco, Enter en «Quitar…» mueve el foco al
+siguiente) y que Escape dentro del cajón cierra solo el menú.
 
 ## Cambios respecto de la propuesta (marco de p. 08 y p. 17)
 | En la propuesta | En este mockup | Motivo |
@@ -192,7 +198,7 @@ Este mockup es la referencia para rehacer `AppLayout`. Hoy difiere en lo siguien
    plan arriba, y la barra superior dentro de la columna de contenido, con la ruta y la cuenta.
 2. **Navegación**: `AppLayout` tiene «Mis Archivos», «Compartidos», «Papelera», «Planes y Cuota» y «Agente Nimbo»,
    con mayúsculas de título. El mockup sigue la propuesta: «Mis archivos», «Compartidos conmigo», «Recientes»,
-   «Favoritos», «Papelera», «Optimizador», «Plan y facturación» y las carpetas. El agente se abre desde el explorador
+   «Fijados», «Papelera», «Optimizador», «Plan y facturación» y las carpetas. El agente se abre desde el explorador
    (p. 08), no desde la navegación.
 3. **Contraste del ítem activo**: `text-primary` sobre `bg-accent` da **4.05**, por debajo de AA (1.4.3; texto de
    14 px). El mockup usa `text-foreground` en 600 (11.07) y conserva la barra `border-l-primary` (S-2 de 000b).
@@ -243,7 +249,7 @@ su ícono, su título y su fondo.
    la suscripción. Superar la cuota bloquea las cargas (RF-12), pero no pone la cuenta en solo lectura. Si 010 decide
    que bajar a un plan con menos espacio que el usado también degrada, se reutiliza el mismo aviso con otro cuerpo
    (por definir). Este mockup no lo dibuja.
-5. **«Recientes» y «Favoritos»**: están en la propuesta firmada, pero ningún RF los respalda, y el Artículo II
+5. **«Recientes» y «Fijados»** («Favoritos» en la propuesta firmada; renombrado el 2026-10-03): ningún RF respalda esas páginas, y el Artículo II
    (Trazabilidad) de la constitución dice que no se construye lo que no se pueda rastrear hasta un requisito. Hay que agregar un RF (o
    asignarlos a 007) o quitarlos de la navegación.
 6. **Correo en el menú de la cuenta**: se muestra debajo del nombre para confirmar con qué cuenta se entró.

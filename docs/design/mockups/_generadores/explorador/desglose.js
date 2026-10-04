@@ -33,17 +33,25 @@ function celdaNombre(n, control) {
   const visible = n.nombre.replace(/_/g, '_<wbr>');
   const texto = carpeta ? `<a class="fname-link" href="#">${visible}</a>` : visible;
   const contexto = n.padre ? `<span class="sr-only">, dentro de ${n.padre}</span>` : '';
-  return `<div class="fname">${control}${tile}<div class="fname-text">${texto}${contexto}<span class="fmeta-m">${carpeta ? 'Carpeta' : n.tam} · ${n.fecha}</span></div></div>`;
+  return `<div class="fname tree-indent">${control}${tile}<div class="fname-text">${texto}${contexto}<span class="fmeta-m">${carpeta ? 'Carpeta' : n.tam} · ${n.fecha}</span></div></div>`;
 }
+
+// Nivel de la fila: `--tree-level` alimenta las utilidades tree-indent y tree-guides (token de globals.css)
+const nivelDe = (nivel) => `data-nivel="${nivel}" style="--tree-level: ${nivel}"`;
 
 // Fila de estado de una carpeta desglosada (cargando, vacía o error); ocupa todo el ancho y respeta la sangría
 function filaEstado({ id, padre, nivel, contenido, aria = '' }) {
   return `
-            <tr id="${id}" data-padre="${padre}" data-nivel="${nivel}"><td colspan="4"><div class="sub-state"${aria}>${contenido}</div></td></tr>`;
+            <tr id="${id}" data-padre="${padre}" ${nivelDe(nivel)}><td colspan="4" class="tree-guides"><div class="sub-state"${aria}>${contenido}</div></td></tr>`;
 }
 function filaEsqueleto({ id, padre, nivel, ancho }) {
   return `
-            <tr id="${id}" data-padre="${padre}" data-nivel="${nivel}" aria-hidden="true"><td colspan="4"><div class="fname"><span class="exp-spacer"></span><span class="skeleton-line tile"></span><span class="skeleton-line ${ancho}"></span></div></td></tr>`;
+            <tr id="${id}" data-padre="${padre}" ${nivelDe(nivel)} aria-hidden="true"><td colspan="4" class="tree-guides"><div class="fname tree-indent"><span class="exp-spacer"></span><span class="skeleton-line tile"></span><span class="skeleton-line ${ancho}"></span></div></td></tr>`;
+}
+// Q-2: si la carpeta tiene más de una página, al final de su nivel va «Ver más», que abre la página de esa carpeta.
+function filaVerMas({ id, padre, nivel, nombre }) {
+  return `
+            <tr id="${id}" data-padre="${padre}" ${nivelDe(nivel)}><td colspan="4" class="tree-guides"><div class="sub-state sub-more"><a class="more-link" href="#"><span>Ver más<span class="sr-only"> en ${nombre}</span></span>${icon('chevronRight', 14)}</a></div></td></tr>`;
 }
 
 // Devuelve el HTML de las filas del nodo y de sus descendientes. `ctx`: { n: contador de ids, menuEn }
@@ -55,10 +63,10 @@ function filas(n, ctx, nivel = 0, padre = '', nombrePadre = '') {
   const ctl = !carpeta ? '<span class="exp-spacer"></span>'
     : `<button class="exp-btn" type="button" aria-expanded="${!!n.abierto}"${hijos.ids.length ? ` aria-controls="${hijos.ids.join(' ')}"` : ''} aria-label="Mostrar contenido de ${n.nombre}"${n.estado === 'cargando' ? ' aria-busy="true"' : ''}>${icon(n.estado === 'cargando' ? 'loader' : 'chevronRight', 16, n.estado === 'cargando' ? 'spin' : '')}</button>`;
   const dato = { ...n, padre: nombrePadre };
-  const attrs = `id="${id}"${padre ? ` data-padre="${padre}"` : ''} data-nivel="${nivel}"`;
+  const attrs = `id="${id}"${padre ? ` data-padre="${padre}"` : ''} ${nivelDe(nivel)}`;
   return `
             <tr ${attrs}>
-              <td>${celdaNombre(dato, ctl)}</td>
+              <td class="tree-guides">${celdaNombre(dato, ctl)}</td>
               <td class="c-size">${carpeta ? '<span aria-hidden="true">—</span><span class="sr-only">Carpeta, sin tamaño</span>' : n.tam}</td>
               <td class="c-date">${n.fecha}</td>
               <td class="c-act">${S.menuFila(i, n.nombre, ctx.menuEn === n.nombre, menuDe(n))}</td>
@@ -83,6 +91,7 @@ function hijasDe(n, ctx, nivel, padreId) {
     return { ids: [id], html: filaEstado({ ...base, id, aria: n.estado === 'error' ? ' role="alert"' : '', contenido }) };
   }
   const partes = (n.hijos || []).map((h) => filas(h, ctx, nivel, padreId, n.nombre));
+  if (n.verMas) partes.push(filaVerMas({ ...base, id: `r-${ctx.n++}`, nombre: n.nombre }));
   const ids = [...partes.join('').matchAll(new RegExp(`<tr id="(r-\\d+)" data-padre="${padreId}"`, 'g'))].map((m) => m[1]);
   return { ids, html: partes.join('') };
 }
@@ -102,28 +111,36 @@ function tabla(nodos, { lugar = 'Mis archivos', menuEn = '' } = {}) {
 }
 
 // ---------- CSS ----------
-// Sangría de 28 px por nivel (16 px a 360 px). El control mide 32 px (44 px a 360 px, con margen negativo para no
-// ensanchar la fila). Guías verticales de `border` bajo el control de cada ancestro: decorativas.
-const GUIA = 'linear-gradient(var(--border), var(--border))';
-const CSS = `
+// Sangría y guías: token de ui-guidelines.md §3 (apps/web/src/app/globals.css). Aquí es el mismo CSS en claro: las
+// variables `--tree-*` tienen los mismos valores y las clases `tree-indent` y `tree-guides` son las utilidades de
+// Tailwind del mismo nombre. Sangría de 28 px por nivel (16 px a 360 px); el control mide 32 px (44 px a 360 px, con
+// margen negativo para no ensanchar la fila). Las guías son decorativas: la sangría ya dice el nivel.
+const TOKEN_ARBOL = `
+  /* Token de guías y sangría del desglose (= @utility tree-indent y tree-guides de globals.css) */
+  :root { --tree-guide: var(--border); --tree-indent: 16px; --tree-guide-x: 25px; --tree-max-level: 3; }
+  @media (min-width: 601px) { :root { --tree-indent: 28px; --tree-guide-x: 31px; --tree-max-level: 6; } }
+  .tree-indent { padding-inline-start: calc(min(var(--tree-level, 0), var(--tree-max-level)) * var(--tree-indent)); }
+  .tree-guides { background-image: repeating-linear-gradient(to right, var(--tree-guide) 0 1px, transparent 1px var(--tree-indent)); background-repeat: no-repeat; background-position: var(--tree-guide-x) 0; background-size: calc(min(var(--tree-level, 0), var(--tree-max-level)) * var(--tree-indent)) 100%; }
+`;
+const CSS = TOKEN_ARBOL + `
   /* Desglose de carpetas (spec 006, CA-26) */
   .exp-btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex: none; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--secondary-foreground); cursor: pointer; }
   .exp-btn:hover { background: var(--muted); color: var(--foreground); }
   .exp-btn[aria-expanded="true"] .ico:not(.spin) { transform: rotate(90deg); }
   .exp-spacer { width: 32px; height: 32px; flex: none; }
-  .files .fname { padding-left: calc(var(--nivel, 0) * 28px); }
-  tr[data-nivel="1"] { --nivel: 1; } tr[data-nivel="2"] { --nivel: 2; } tr[data-nivel="3"] { --nivel: 3; }
-  tr[data-nivel="1"] > td:first-child { background: ${GUIA} 31px 0 / 1px 100% no-repeat; }
-  tr[data-nivel="2"] > td:first-child { background: ${GUIA} 31px 0 / 1px 100% no-repeat, ${GUIA} 59px 0 / 1px 100% no-repeat; }
   .files tr[aria-hidden="true"] .fname { gap: 12px; }
   .files tr[aria-hidden="true"] .skeleton-line:not(.tile) { height: 12px; }
 
   /* Filas de estado de la carpeta desglosada: cargando, vacía y error (con «Reintentar» solo en la fila) */
-  .sub-state { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; min-height: 32px; padding-left: calc(var(--nivel, 0) * 28px + 44px); font-size: 13.5px; color: var(--secondary-foreground); }
+  .sub-state { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; min-height: 32px; padding-left: calc(min(var(--tree-level, 0), var(--tree-max-level)) * var(--tree-indent) + 44px); font-size: 13.5px; color: var(--secondary-foreground); }
   .sub-state .ico { color: var(--secondary-foreground); }
   .sub-state > span { flex: 1 1 12ch; min-width: 0; }
   .sub-state[role="alert"] { color: var(--foreground); }
   .sub-state[role="alert"] .ico { color: var(--destructive); }
+  /* «Ver más» al final del nivel (Q-2): enlace a la página de la carpeta */
+  .more-link { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 0 8px; margin-left: -8px; border-radius: var(--radius-md); color: var(--primary); font-weight: 600; text-decoration: none; }
+  .more-link:hover { background: var(--muted); color: var(--primary-hover); }
+  .more-link .ico { color: inherit; }
 
   /* Menú ⋮ con «Quitar de la barra lateral»: el texto más largo no cabe en 208 px */
   .row-menu { min-width: 208px; width: max-content; max-width: calc(100vw - 32px); }
@@ -131,11 +148,9 @@ const CSS = `
   @media (max-width: 600px) {
     .exp-btn { width: 44px; height: 44px; margin-left: -8px; }
     .exp-spacer { width: 36px; height: 44px; }
-    .files .fname { gap: 10px; padding-left: min(calc(var(--nivel, 0) * 16px), 48px); } /* la sangría se detiene en el nivel 3 */
-    tr[data-nivel="1"] > td:first-child { background-position: 25px 0; }
-    tr[data-nivel="2"] > td:first-child { background-position: 25px 0, 41px 0; }
-    .sub-state { padding-left: calc(min(calc(var(--nivel, 0) * 16px), 48px) + 36px); min-height: 44px; }
-    .sub-state .btn { min-height: 44px; }
+    .files .fname { gap: 10px; } /* la sangría se detiene en el nivel 3 (--tree-max-level) */
+    .sub-state { padding-left: calc(min(var(--tree-level, 0), var(--tree-max-level)) * var(--tree-indent) + 36px); min-height: 44px; }
+    .sub-state .btn, .more-link { min-height: 44px; }
     .files tr[aria-hidden="true"] .exp-spacer { height: 30px; }
   }
 `;
@@ -154,7 +169,7 @@ const JS = `
     btn.addEventListener('click', function () {
       var tr = btn.closest('tr'), abierto = btn.getAttribute('aria-expanded') === 'true';
       if (!abierto && !document.querySelector('tr[data-padre="' + tr.id + '"]')) {
-        var id = 'r-' + (n++), html = T_VACIA.replace('__ID__', id).replace('__PADRE__', tr.id).replace('__NIVEL__', +tr.getAttribute('data-nivel') + 1);
+        var id = 'r-' + (n++), html = T_VACIA.replace('__ID__', id).replace('__PADRE__', tr.id).split('__NIVEL__').join(+tr.getAttribute('data-nivel') + 1);
         tr.insertAdjacentHTML('afterend', html); btn.setAttribute('aria-controls', id);
       }
       btn.setAttribute('aria-expanded', String(!abierto)); refrescar();

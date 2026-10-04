@@ -364,7 +364,7 @@ function page(v) {
   </div>${capa}${v.toast || ''}
 </div>
 ${v.js ? `
-<script>${v.js}</script>
+<script>${v.js}${v.nuevo ? A.JS_QUITAR : ''}</script>
 ` : ''}
 </body>
 </html>
@@ -376,9 +376,9 @@ ${v.js ? `
 // (`nuevo: true`) llevan «Accesos rápidos» y el control de desglose en cada carpeta.
 const ACCESOS = A.seccion({
   fijados: [['carpeta', 'Proyecto Alpha'], ['archivo', 'Propuesta_Nimbo_v3.docx'], ['carpeta', 'Finanzas']],
-  recientes: [['carpeta', 'Fase 3 · RAG'], ['archivo', 'Informe_avance_RAG.docx'], ['archivo', 'Modelo_ER_Nimbo.pdf'], ['carpeta', 'Actas']],
+  recientes: A.RECIENTES, verMas: true, // la barra dibuja los 3 primeros y «Ver más» (P-15)
 }, 'barra');
-const ACCESOS_TOPE = A.seccion({ fijados: A.FIJADOS_5, recientes: A.RECIENTES_5.slice(0, 3) }, 'barra');
+const ACCESOS_TOPE = A.seccion({ fijados: A.FIJADOS_5, recientes: A.RECIENTES, verMas: true }, 'barra');
 const carp = (nombre, fecha, extra = {}) => ({ tipo: 'carpeta', nombre, tam: '', fecha, ...extra });
 const arch = (nombre, tam, fecha, extra = {}) => ({ tipo: 'archivo', nombre, tam, fecha, ...extra });
 // Raíz con «Proyecto Alpha» desglosada en dos niveles. `sobre` cambia nodos por nombre (estado, abierto…).
@@ -524,6 +524,11 @@ const ESTADOS = [
   {
     estado: 'carpeta-desglosada', titulo: 'carpeta desglosada a dos niveles, con sangría, sin salir de Mis archivos (CA-26)',
     ruta: ['Mis archivos'], nuevo: true, js: D.JS_MENU + D.JS, cuerpo: desglosada(),
+  },
+  {
+    estado: 'desglosada-ver-mas', titulo: 'carpetas con más de una página: «Ver más» al final de su nivel, lleva a la carpeta (Q-2)',
+    ruta: ['Mis archivos'], nuevo: true, js: D.JS_MENU + D.JS,
+    cuerpo: desglosada({ 'Proyecto Alpha': { verMas: true }, 'Fase 3 · RAG': { verMas: true } }),
   },
   {
     estado: 'desglosando-cargando', titulo: 'se desglosa «Documentación»: cargando en su fila (CA-26)',

@@ -47,6 +47,16 @@ const RAIZ = [
 ];
 
 // ---------- CSS de Mis archivos (tokens de tipo, cuota por tramos, encabezado y tabla) ----------
+// Acciones por fila (DropdownMenu de shadcn, como el menú de la cuenta): botón ⋮ y menú con «Descargar»; también lo usan
+// los fijados de la barra lateral (accesos/accesos.js) en shared/layout
+const CSS_MENU_FILA = `  .row-actions { position: relative; display: inline-flex; }
+  .row-btn { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--secondary-foreground); cursor: pointer; }
+  .row-btn:hover, .row-btn[aria-expanded="true"] { background: var(--muted); color: var(--foreground); }
+  .account-menu [role="menuitem"][aria-disabled="true"] { cursor: progress; color: var(--secondary-foreground); background: transparent; }
+  .account-menu [role="menuitem"][aria-disabled="true"] .ico { color: var(--primary); }
+  .row-menu { position: absolute; z-index: 6; top: calc(100% + 4px); right: 0; width: 208px; text-align: left; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-modal); padding: 6px; }
+`;
+
 const CSS_LISTA = `  :root {
     /* Tipos de archivo (ui-guidelines §3): texto AA; fondo = tono base al 12 % */
     --file-docx: #3F62A8; --file-docx-bg: #6B8DD620;
@@ -91,13 +101,7 @@ const CSS_LISTA = `  :root {
 
   /* Acciones por fila (DropdownMenu de shadcn, como el menú de la cuenta): botón ⋮ y menú con «Descargar» */
   .files .c-act { width: 64px; padding: 6px 14px 6px 0; text-align: right; }
-  .row-actions { position: relative; display: inline-flex; }
-  .row-btn { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--secondary-foreground); cursor: pointer; }
-  .row-btn:hover, .row-btn[aria-expanded="true"] { background: var(--muted); color: var(--foreground); }
-  .account-menu [role="menuitem"][aria-disabled="true"] { cursor: progress; color: var(--secondary-foreground); background: transparent; }
-  .account-menu [role="menuitem"][aria-disabled="true"] .ico { color: var(--primary); }
-  .row-menu { position: absolute; z-index: 6; top: calc(100% + 4px); right: 0; width: 208px; text-align: left; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-modal); padding: 6px; }
-`;
+${CSS_MENU_FILA}`;
 
 // Reglas de la tabla por debajo de 600 px (van dentro del @media de cada generador)
 const CSS_LISTA_MQ600 = `    .app { min-height: 920px; }
@@ -178,5 +182,5 @@ function tabla(nuevos, { menuAbierto = -1, preparando = false } = {}) {
 
 module.exports = {
   P, crearIcon, icon, PLAN, MAX_POR_ARCHIVO, CUOTA_NORMAL, CUOTA_LLENA, RAIZ, tile, tipo,
-  CSS_LISTA, CSS_LISTA_MQ600, cuota, sidebar, botonSubir, encabezado, tabla, menuFila,
+  CSS_LISTA, CSS_LISTA_MQ600, CSS_MENU_FILA, cuota, sidebar, botonSubir, encabezado, tabla, menuFila,
 };
