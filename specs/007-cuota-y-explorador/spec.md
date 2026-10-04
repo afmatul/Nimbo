@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | En revisión (2026-10-02; plan aprobado por Adrián el 2026-10-01). Aprobada el 2026-10-03 con CA-18 y CA-19 por implementar |
+| Estado | En revisión (2026-10-02; plan aprobado por Adrián el 2026-10-01). Aprobada el 2026-10-03 con CA-18 y CA-19 por implementar; CA-20 y CA-21 agregados el 2026-10-04 |
 | Dueño | Adrián (1) |
 | Fase | 1 |
 | Requisitos | RF-12, RNF-14 (principales); aplican RNF-05, RNF-13, RNF-17 |
@@ -59,6 +59,8 @@ sabe cuánto espacio tiene, en qué se va y qué liberar, y encuentra sus archiv
 ### Avisos y barra lateral (revisión de Adrián, 2026-10-03; pendiente de implementar)
 - **CA-18** (RNF-14) Dado un aviso de éxito (p. ej. «Movimos «{nombre}» a la papelera.»), cuando aparece, entonces se muestra arriba y al centro de la pantalla, nunca sobre el panel de cargas ni sobre sus cargas terminadas, y se retira solo a los 8 s o al cerrarlo (ADR-0024; cambia su posición de abajo a la derecha). En 360 px ocupa el ancho disponible.
 - **CA-19** (RNF-14) Dado un listado largo, cuando el cliente desplaza la página, entonces la barra lateral de escritorio queda fija bajo el encabezado, con su tarjeta de cuota siempre visible y desplazamiento propio si su contenido no cabe; solo se desplaza el contenido principal.
+- **CA-20** (HU-3, costura con 006 CA-26) Dado un listado ordenado, cuando el cliente desglosa una carpeta, entonces su contenido sigue el mismo orden que la tabla (carpetas primero) y muestra a lo sumo 10 elementos; si hay más, al final del nivel aparece «Ver más», que lleva a la página de esa carpeta. Al cambiar el orden, los niveles desglosados se vuelven a pedir con el orden nuevo.
+- **CA-21** (HU-3, RNF-14) Dado un listado con un orden distinto del de 006 y varias páginas cargadas con «Cargar más», cuando el cliente sube, renombra o mueve un elemento, entonces la lista se vuelve a pedir con todas las páginas que ya tenía, sin volver a la primera ni perder lo visible mientras llega.
 
 ## 4. Reglas de negocio
 - **RN-1** Cuota y máximo por archivo salen de `IPlanLimitsProvider`; el cálculo de «cabe o no» al subir sigue siendo de 005 (`QuotaService`).
@@ -113,3 +115,4 @@ Sin preguntas abiertas.
 | 2026-10-01 | CA-1: el resumen trae también el nombre del plan (`planName`) para la tarjeta «Tu plan» | La web no podía mostrarlo con el contrato de T-01 | Adrián |
 | 2026-10-03 | Revisión de Adrián: se agregan CA-18 (avisos arriba y al centro, sin tapar las cargas) y CA-19 (barra lateral fija). Aprobada por Adrián con esos dos cambios por implementar y pendiente de integrar | Recorrido de la demo (T-12) | Adrián |
 | 2026-10-03 | Adenda del plan (D-21 a D-23) y tareas T-13 a T-15: CA-19 deja la barra lateral en tres bloques con el slot `sidebarSections`, para que 006 CA-27 no vuelva a editar `app-layout.tsx` (conflicto de fusión); orden de integración 006 → 007 → 006 CA-26 a CA-28. P-10 nombra también la fecha de creación (P-5) | Conflicto de fusión entre 007 CA-19 y 006 CA-27 | Adrián |
+| 2026-10-04 | Decisiones de Adrián tras el rebase sobre `main` (006 con CA-26 a CA-28): CA-20 (lo desglosado sigue el orden de la tabla, 10 elementos por nivel y «Ver más» a la carpeta) y CA-21 (releer con otro orden conserva las páginas cargadas) | Costuras 006×007 que ninguna spec definía (revisión del rebase) | Adrián |

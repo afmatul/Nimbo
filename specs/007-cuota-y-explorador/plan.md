@@ -175,6 +175,15 @@ CA-4 se prueba en el servidor (la cifra cambia tras cada operación) y en la web
   una rama desde `main`. Lo mismo en el mockup: el generador de `shared/layout/` separa la región central para que los
   estados de 006 solo cambien su contenido. Es SRP (el layout no conoce carpetas) y no agrega abstracción sin consumidor:
   el slot lo usan hoy «Carpetas» y mañana CA-27.
+- **D-24 Orden y tamaño de lo desglosado (CA-20)**: `useFolderDisclosure` recibe el orden que muestra la tabla
+  (`controls.shownOrder`, no el pedido: mientras llega otro orden lo desglosado no se adelanta) y pide cada nivel con
+  `sort`, `dir` y `limit: 10` (`DISCLOSED_PAGE_SIZE`); con `nextCursor`, la fila «Ver más» de 006 Q-2 lleva a la carpeta.
+  Cuando cambia ese orden vuelve a pedir los niveles abiertos (`useRefreshWhen`). Solo web: la API ya acepta `limit`
+  (`FolderPageQuery.limit`, ajustado por `clampLimit`, P-9).
+- **D-25 Releer sin perder páginas (CA-21)**: `refresh` de `useFolderContents` pide la primera página y sigue los
+  `nextCursor` hasta reunir al menos los elementos que había (`loadPagesUpTo`), sin repetir ids, y reemplaza la lista de
+  una vez con el `nextCursor` de la última página. Cambiar de orden o de carpeta sigue pidiendo solo la primera. Son N
+  peticiones seguidas (N = páginas cargadas); se acepta frente a replicar el orden del servidor en el navegador (DRY).
 - **Punto abierto no bloqueante**: el mockup manda «Liberar espacio» del resumen a Mis archivos ordenado por tamaño (`?orden=tamano&dir=desc`, README, pendiente 1). Adrián no lo incluyó entre las decisiones aceptadas; mientras tanto el control de orden vive en el estado del componente y «Liberar espacio» del resumen lleva a `/archivos`. Si se acepta, la línea web lee `orden` y `dir` de la URL (cambio solo de `web`).
 - R-1 `lower(...)` en `orderBy` con `limit` de TypeORM puede fallar al armar la consulta: el repositorio lo escribe con `addSelect` o SQL parametrizado y la prueba de integración lo cubre.
 - R-2 Carpetas enormes sin índice de orden: mitigado por top-N, la prueba de 20 000 y el umbral de D-9.
@@ -192,3 +201,5 @@ CA-4 se prueba en el servidor (la cifra cambia tras cada operación) y en la web
 - Adrián: aprobado el 2026-10-01 (con la corrección del orden por defecto, D-6, y las decisiones de UI de D-19).
 - Adenda CA-18 y CA-19 (D-21 a D-23, 2026-10-03): `architect` no aplica (sin puerto, tecnología ni cambio de arquitectura;
   solo `web`). Pedida por Adrián junto con su implementación; su visto bueno queda en el PR-B.
+- Adenda CA-20 y CA-21 (D-24 y D-25, 2026-10-04): `architect` no aplica (solo `web`, sin contrato nuevo). Decidida por
+  Adrián en la revisión del rebase (opción A en ambas, con 10 elementos por nivel desglosado).
