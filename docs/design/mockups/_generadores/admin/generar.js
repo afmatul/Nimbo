@@ -68,12 +68,6 @@ const CSS = A.CSS + `
   .yesno { display: inline-flex; align-items: center; gap: 6px; }
   .yesno .ico { color: var(--secondary-foreground); }
 
-  /* StatusBadge: ícono + etiqueta (Art. XIII.4) */
-  .badge { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 600; line-height: 1.5; white-space: nowrap; border: 1px solid transparent; }
-  .badge-ok { color: var(--success-foreground); background: var(--success-soft); border-color: color-mix(in srgb, var(--success) 40%, var(--card)); }
-  .badge-off { color: var(--destructive); background: var(--destructive-tint); border-color: color-mix(in srgb, var(--destructive-soft) 45%, var(--card)); }
-  .badge-role { color: var(--secondary-foreground); background: var(--muted); border-color: var(--border); }
-
   /* Uso del espacio (QuotaBar en miniatura: tramo por color y siempre GB y % en texto) */
   .use-text { display: block; font-size: 12.5px; color: var(--secondary-foreground); white-space: nowrap; }
   .use-bar { display: block; height: 5px; margin-top: 5px; border-radius: 999px; background: var(--muted); overflow: hidden; }
@@ -87,25 +81,12 @@ const CSS = A.CSS + `
   .pager-ctrl { display: flex; align-items: center; gap: 8px; }
   .pager-page { min-width: 96px; text-align: center; white-space: nowrap; }
 
-  /* Estados de la lista (StateView): vacío, cargando y error */
-  .state { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 260px; margin-top: 16px; padding: 32px; text-align: center; border-radius: var(--radius-lg); }
-  .state h2 { margin: 12px 0 6px; font-size: 16px; line-height: 1.5; font-weight: 600; }
-  .state p { margin: 0 0 20px; max-width: 48ch; font-size: 14px; }
-  .state-empty { background: var(--card); border: 1px dashed var(--input); box-shadow: var(--shadow-card); }
-  .state-empty > .ico { color: var(--muted-foreground); }
-  .state-empty p { color: var(--secondary-foreground); }
-  .state-error { border: 1px dashed color-mix(in srgb, var(--destructive-soft) 60%, var(--card)); background: var(--destructive-tint); }
-  .state-error > .ico, .state-error h2 { color: var(--destructive); }
-  .state-error p { color: var(--foreground); }
+  /* Esqueleto de la lista (StateView y skeleton-line en area.js) */
   .sk-row { display: grid; grid-template-columns: minmax(0, 1fr) 124px 136px 100px 112px 176px 104px; gap: 0 14px; align-items: center; padding: 14px; border-bottom: 1px solid var(--border); }
   .sk-row:last-child { border-bottom: 0; }
   .sk-head { padding: 12px 14px; background: var(--background); }
-  .skeleton-line { display: block; height: 12px; border-radius: 999px; background: var(--muted); animation: pulse 1.4s ease-in-out infinite; }
   .sk-head .skeleton-line { height: 10px; width: 60%; background: var(--border); }
   .sk-two .skeleton-line + .skeleton-line { margin-top: 7px; height: 10px; }
-  .w30 { width: 30%; } .w40 { width: 40%; } .w50 { width: 50%; } .w60 { width: 60%; } .w70 { width: 70%; } .w80 { width: 80%; }
-  @keyframes pulse { 50% { opacity: .55; } }
-  .loading-text { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; font-size: 13px; color: var(--secondary-foreground); }
 
   /* Ficha de la cuenta */
   .profile-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; margin-top: 8px; }
@@ -125,16 +106,6 @@ const CSS = A.CSS + `
   .action h3 { margin: 0; font-size: 14px; font-weight: 600; }
   .action p { margin: 4px 0 12px; font-size: 13.5px; color: var(--secondary-foreground); }
   .action .info-box p { margin: 0; font-size: 13.5px; } /* el recuadro de area.js no hereda el margen de .action p */
-  .btn-destructive-outline { color: var(--destructive); background: var(--card); border: 1px solid var(--destructive); }
-  .btn-destructive-outline:hover { background: var(--destructive-tint); }
-
-  /* Diálogo: lista de consecuencias */
-  .dialog { top: 120px; width: min(500px, calc(100% - 32px)); }
-  .dialog .who-line { margin-top: 6px; font-weight: 500; color: var(--foreground); overflow-wrap: anywhere; }
-  .conseq { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 10px; }
-  .conseq li { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: var(--secondary-foreground); }
-  .conseq .ico { margin-top: 2px; color: var(--secondary-foreground); }
-  .btn-primary-dlg { color: var(--primary-foreground); background: var(--primary); border: 1px solid var(--primary); box-shadow: var(--shadow-button); }
 
   @media (max-width: 900px) {
     .ficha-grid { grid-template-columns: minmax(0, 1fr); }
@@ -159,8 +130,6 @@ const CSS = A.CSS + `
     .pager-ctrl { justify-content: space-between; }
     .pager-ctrl .btn { min-height: 44px; }
     .pager-page { min-width: 0; }
-    .state { padding: 28px 16px; }
-    .state .btn { width: 100%; }
     .sk-row { grid-template-columns: minmax(0, 1fr); padding: 14px 12px; }
     .sk-row > .sk-col, .sk-head { display: none; }
     .profile-head h1 { font-size: 23px; }
@@ -267,15 +236,7 @@ function cargando() {
         </div>`;
 }
 
-function error() {
-  return `
-        <div class="state state-error" role="alert">
-          ${icon('alert', 36)}
-          <h2>No pudimos cargar las cuentas.</h2>
-          <p>Ninguna cuenta cambió. Revisa tu conexión e inténtalo de nuevo.</p>
-          <button class="btn btn-outline" type="button">${icon('retry', 16)}Reintentar</button>
-        </div>`;
-}
+const error = () => A.estadoError('No pudimos cargar las cuentas.', 'Ninguna cuenta cambió. Revisa tu conexión e inténtalo de nuevo.');
 
 // Ficha de una cuenta. c: fila de CUENTAS; estado puede sobrescribirse (tras suspender).
 function ficha(c, { estado = c[3], exito = '', propia = false } = {}) {
@@ -344,22 +305,7 @@ function ficha(c, { estado = c[3], exito = '', propia = false } = {}) {
 const exitoSuspension = `
         <div class="alert alert-ok" role="status">${icon('ok', 18)}<div><p class="alert-title">Esta cuenta quedó suspendida y se cerraron sus sesiones.</p><p class="alert-text">Sus comparticiones y enlaces públicos están en pausa hasta que la reactives. No se borró nada.</p></div></div>`;
 
-function dialogo({ titulo, quienLinea, items, confirmar, clase, ic }) {
-  return `
-  <div class="overlay" aria-hidden="true"></div>
-  <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dlg-t" aria-describedby="dlg-d">
-    <h2 id="dlg-t">${titulo}</h2>
-    <div id="dlg-d">
-      <p class="who-line">${quienLinea}</p>
-      <ul class="conseq">${items.map(([i, t]) => `\n        <li>${icon(i, 16)}<span>${t}</span></li>`).join('')}
-      </ul>
-    </div>
-    <div class="dialog-actions">
-      <button class="btn btn-outline" type="button" autofocus>Cancelar</button>
-      <button class="btn ${clase}" type="button">${icon(ic, 16)}${confirmar}</button>
-    </div>
-  </div>`;
-}
+const { dialogo } = A;
 
 const DLG_SUSPENDER = dialogo({
   titulo: '¿Suspender la cuenta de Laura Barrios?',

@@ -11,7 +11,7 @@ if (!repo) throw new Error('Falta la ruta del worktree');
 const OUT = path.join(repo, 'docs/design/mockups/backoffice/alta-interna');
 fs.mkdirSync(OUT, { recursive: true });
 
-const { icon } = A;
+const { icon, campo, resumenErrores } = A;
 
 // ---------- Datos de ejemplo (en la app los roles y los mensajes de conflicto vienen de la API) ----------
 // Roles internos (product-context §2): nunca Cliente. Una línea por rol para ayudar a elegir.
@@ -25,25 +25,11 @@ const NUEVO = { nombre: 'Rodrigo Pérez', correo: 'rodrigo.perez@nimbo.gt', codi
 const REPETIDO = { nombre: 'Andrea Ruiz', correo: 'andrea.ruiz@nimbo.gt', codigo: 'EMP-0118', rol: 'soporte' };
 
 // ---------- CSS ----------
-const CSS = A.CSS + `
+const CSS = A.CSS + A.CSS_FORM + `
   /* Propio de backoffice/alta-interna (spec 011: alta de cuenta interna) */
   .page-head { margin-top: 8px; }
   .form-card, .done { max-width: 720px; margin-top: 20px; }
-  .req-note { margin: 0; font-size: 13px; color: var(--secondary-foreground); }
-
-  /* Campos (Input de shadcn + Label): ayuda bajo la etiqueta y error bajo el control, con ícono y texto */
-  .field { margin-top: 20px; }
-  .field > label, .legend { display: block; margin: 0 0 4px; padding: 0; font-size: 13.5px; font-weight: 600; color: var(--foreground); }
-  .field-help { margin: 0 0 8px; font-size: 13px; color: var(--secondary-foreground); }
-  .text-input { width: 100%; max-width: 440px; min-height: 40px; padding: 8px 12px; border: 1px solid var(--input); border-radius: var(--radius-md); background: var(--card); color: var(--foreground); font: inherit; font-size: 14px; }
-  .text-input.short { max-width: 220px; }
-  .text-input:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
-  .text-input[aria-invalid="true"] { border-color: var(--destructive); box-shadow: 0 0 0 1px var(--destructive); }
-  .text-input[readonly] { background: var(--muted); color: var(--secondary-foreground); }
-  .field-error { display: flex; gap: 6px; align-items: flex-start; margin: 6px 0 0; font-size: 13px; font-weight: 500; color: var(--destructive); }
-  .field-error .ico { margin-top: 2px; }
-  .field-error a { display: inline-flex; align-items: center; min-height: 24px; color: var(--destructive); }
-  .field-error a:hover { color: var(--foreground); }
+  /* Campos, resumen de errores, aviso de auditoría y acciones: CSS_FORM de admin/area.js */
 
   /* Rol (RadioGroup de shadcn): opción entera clicable, radio de 24 px, seleccionada con borde, fondo y el punto del radio */
   .roles { margin: 20px 0 0; padding: 0; border: 0; min-width: 0; }
@@ -64,19 +50,8 @@ const CSS = A.CSS + `
   .role-note { display: flex; align-items: flex-start; gap: 8px; margin: 10px 0 0; font-size: 13px; color: var(--secondary-foreground); }
   .role-note .ico { margin-top: 2px; color: var(--primary); }
 
-  /* Contraseña por enlace y auditoría, justo antes de crear */
+  /* Contraseña por enlace, justo antes de crear */
   .form-card .info-box { margin-top: 22px; }
-  .audit-note { display: flex; align-items: flex-start; gap: 8px; margin: 12px 0 0; font-size: 13px; color: var(--secondary-foreground); }
-  .audit-note .ico { margin-top: 2px; }
-  .form-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--border); }
-
-  /* Resumen de errores (Alert destructivo): cuántos campos y enlaces a cada uno */
-  .form-card .alert { margin: 0 0 16px; }
-  .alert-error { border: 1px solid color-mix(in srgb, var(--destructive-soft) 60%, var(--card)); background: var(--destructive-tint); }
-  .alert-error > .ico, .alert-error .alert-title { color: var(--destructive); }
-  .alert-list { margin: 6px 0 0; padding-left: 18px; font-size: 13.5px; color: var(--destructive); }
-  .alert-list a { display: inline-flex; align-items: center; min-height: 24px; color: var(--destructive); font-weight: 500; }
-  .alert-list a:hover { color: var(--foreground); }
 
   /* Éxito: la tarjeta reemplaza el formulario */
   .done-head { display: flex; align-items: flex-start; gap: 14px; }
@@ -95,11 +70,7 @@ const CSS = A.CSS + `
   @media (max-width: 600px) {
     .page-head { margin-top: 4px; }
     .form-card, .done { margin-top: 16px; }
-    .text-input, .text-input.short { max-width: none; min-height: 44px; }
     .role { padding: 12px; }
-    .form-actions { flex-direction: column; align-items: stretch; }
-    .form-actions .btn { width: 100%; min-height: 44px; }
-    .alert-list a { min-height: 32px; }
     .done-head { gap: 12px; }
     .done h2 { font-size: 17px; margin-top: 2px; }
     .summary { grid-template-columns: minmax(0, 1fr); }
@@ -120,18 +91,6 @@ const encabezado = `
           </div>
         </div>`;
 
-// Campo de texto. err: mensaje (HTML) o ''; ro: solo lectura mientras se envía.
-function campo({ id, label, help, type = 'text', value = '', err = '', ro = false, extra = '', short = false }) {
-  const desc = [`${id}-ayuda`, ...(err ? [`${id}-error`] : [])].join(' ');
-  return `
-          <div class="field">
-            <label for="${id}">${label}</label>
-            <p class="field-help" id="${id}-ayuda">${help}</p>
-            <input class="text-input${short ? ' short' : ''}" id="${id}" name="${id}" type="${type}" value="${value}" required aria-describedby="${desc}"${err ? ' aria-invalid="true"' : ''}${ro ? ' readonly' : ''} ${extra}>${err ? `
-            <p class="field-error" id="${id}-error">${icon('alert', 15)}<span>${err}</span></p>` : ''}
-          </div>`;
-}
-
 function roles({ elegido = '', err = '', ro = false } = {}) {
   const opciones = ROLES.map(([val, nombre, ic, desc], i) => `
               <li><label class="role"><input type="radio" name="rol" value="${val}"${i === 0 ? ' required' : ''}${val === elegido ? ' checked' : ''}${ro ? ' disabled' : ''} aria-describedby="rol-${val}-d"><span class="role-body"><span class="role-name">${icon(ic, 16)}${nombre}</span><span class="role-desc" id="rol-${val}-d">${desc}</span></span></label></li>`).join('');
@@ -145,12 +104,6 @@ function roles({ elegido = '', err = '', ro = false } = {}) {
             <p class="field-error" id="rol-error">${icon('alert', 15)}<span>${err}</span></p>` : ''}
             <p class="role-note" id="rol-nota">${icon('lock', 15)}<span>Ningún rol ve el contenido de los archivos de los clientes.</span></p>
           </fieldset>`;
-}
-
-function resumenErrores({ titulo, texto, items }) {
-  return `
-          <div class="alert alert-error" role="alert" tabindex="-1" id="errores">${icon('alert', 18)}<div><p class="alert-title">${titulo}</p><p class="alert-text">${texto}</p>
-            <ul class="alert-list">${items.map(([id, t]) => `<li><a href="#${id}">${t}</a></li>`).join('')}</ul></div></div>`;
 }
 
 // f: valores y errores del formulario

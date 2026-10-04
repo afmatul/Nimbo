@@ -230,7 +230,7 @@ identificador.
 > Estado del mockup: `Pendiente` · `Borrador` · `Aprobado`. Rutas relativas a `docs/design/`.
 > Actualicen la columna «Mockup» con lo que ya existe; el `ui-designer` la mantiene al día.
 > Los mockups `Borrador` provienen de Claude Design (`.dc.html`) o están escritos a mano en HTML autocontenido
-> (`.html`), como `mockups/identity/seguridad/`, `mockups/identity/terminos/`, `mockups/identity/privacidad/`, `mockups/backoffice/admin/`, `mockups/backoffice/alta-interna/` y los estados nuevos de `mockups/storage/carga/` y `mockups/storage/explorador/`. Solo
+> (`.html`), como `mockups/identity/seguridad/`, `mockups/identity/terminos/`, `mockups/identity/privacidad/`, `mockups/backoffice/admin/`, `mockups/backoffice/alta-interna/`, `mockups/backoffice/catalogo/` y los estados nuevos de `mockups/storage/carga/` y `mockups/storage/explorador/`. Solo
 > cubren los estados entre paréntesis; el resto de estados mínimos se agregan con `/mockup` antes de aclarar la spec.
 > Cada carpeta tiene un `README.md`.
 
@@ -266,6 +266,7 @@ identificador.
 | Mi bitácora de auditoría | backoffice | 004 | `mockups/backoffice/mi-auditoria/` | … | default, vacio | Pendiente |
 | Admin: cuentas y ficha | backoffice | 011 | `mockups/backoffice/admin/` | `capturas/backoffice/admin/` | default, vacio, cargando, error, confirmar-suspender, suspendida | Borrador (default, vacio, cargando, error, confirmar-suspender, suspendida, confirmar-reactivar, propia-cuenta) |
 | Admin: alta de cuenta interna | backoffice | 011 | `mockups/backoffice/alta-interna/` | `capturas/backoffice/alta-interna/` | default, error-campos, exito | Borrador (default, error-campos, error-conflicto, enviando, exito) |
+| Admin: catálogo de planes | backoffice | 011 | `mockups/backoffice/catalogo/` | `capturas/backoffice/catalogo/` | default, creando, confirmar-desactivar, error-campos, exito | Borrador (default, cargando, error, creando, error-campos, exito, confirmar-desactivar, desactivado) |
 | Soporte: metadatos y operaciones | backoffice | 011 | `mockups/backoffice/soporte/` | … | default (sin contenido de archivos) | Pendiente |
 | Operador: estado y colas | backoffice | 022 | `mockups/backoffice/operacion/` | … | sano, con-fallos | Pendiente |
 

@@ -77,5 +77,6 @@ mensajes de conflicto vienen de la API (`code` de CA-6).
   interna, no aquí.
 - **Error del servidor no relacionado con los campos** (red o `500`): aviso destructivo sobre el formulario con los
   datos conservados y «Reintentar», como `identity/registro--error-servidor`; sin estado propio.
-- Las reglas de campo (`.field-help`, `.field-error`, `aria-invalid`) repiten las de `identity/seguridad`; si una
-  tercera pantalla las usa, conviene moverlas a `_generadores/marco/` (no se movieron para no tocar Seguridad, aprobada).
+- Las reglas de campo (`.field-help`, `.field-error`, `aria-invalid`), el resumen de errores y `campo()` se movieron a
+  `CSS_FORM` de `_generadores/admin/area.js` al usarlas `backoffice/catalogo` (regla de tres); las capturas no cambiaron.
+  Las de `identity/seguridad` siguen aparte (otro marco y otras medidas; aprobada).
