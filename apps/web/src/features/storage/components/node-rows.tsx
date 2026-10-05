@@ -4,6 +4,7 @@ import Link from 'next/link';
 import * as React from 'react';
 
 import { FileTypeChip, type FileType } from '../../../components/nimbo/file-type-chip';
+import { DATE_LOCALE } from '../../../lib/format-date';
 import { cn } from '../../../lib/utils';
 import { folderPath } from '../routes';
 
@@ -33,7 +34,7 @@ export const TREE_CELL_CLASS = 'tree-guides py-2 pr-4 pl-3 sm:pl-4';
 /** Identificador de la fila de un elemento, para el `aria-controls` del control de desglose. */
 export const rowIdOf = (nodeId: string): string => `fila-${nodeId}`;
 
-const dateFormatter = new Intl.DateTimeFormat('es-GT', { dateStyle: 'medium' });
+const dateFormatter = new Intl.DateTimeFormat(DATE_LOCALE, { dateStyle: 'medium' });
 
 /** Fecha de una fila: la de modificación (`updatedAt`, 007 CA-10). */
 function NodeDate({ value }: { readonly value: string }): React.JSX.Element {

@@ -1,5 +1,7 @@
 /** Fechas de la papelera calculadas en `web` desde `purgeAt` y `deletedAt` (plan 006 §4). */
 
+import { DATE_LOCALE } from '../../lib/format-date';
+
 const DAY_MS = 86_400_000;
 
 /** Umbral fijo de la UI para el aviso de purga próxima y el reloj de la fila (spec 006 §6). */
@@ -19,8 +21,8 @@ export function remainingLabel(days: number): string {
   return days === 1 ? 'queda 1 día' : `quedan ${String(days)} días`;
 }
 
-const dayMonthFormatter = new Intl.DateTimeFormat('es-GT', { day: 'numeric', month: 'short' });
-const timeFormatter = new Intl.DateTimeFormat('es-GT', {
+const dayMonthFormatter = new Intl.DateTimeFormat(DATE_LOCALE, { day: 'numeric', month: 'short' });
+const timeFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
   hour: '2-digit',
   minute: '2-digit',
   hourCycle: 'h23',
