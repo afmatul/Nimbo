@@ -9,6 +9,7 @@ import {
   verifyEmailResponseSchema,
 } from '@nimbo/contracts';
 import request from 'supertest';
+import type { Response } from 'supertest';
 import { DataSource } from 'typeorm';
 
 import { CLIENT_ACCOUNT_VERIFIED } from '../../../src/modules/identity';
@@ -36,14 +37,21 @@ const OPENINGS = 2;
 interface AccountState {
   user: { id: string; correo_verificado: boolean };
   tokens: { usado_en: Date | null; invalidado_en: Date | null }[];
+  /** Filas de `sesion` de la cuenta (002 CA-15). */
+  sessions: number;
 }
 
+/** La respuesta entrega una sesión: `session` en el cuerpo o alguna cookie de `identity` (002 CA-15). */
+const deliversSession = (response: Response): boolean =>
+  (response.body as { session?: unknown }).session !== undefined ||
+  response.headers['set-cookie'] !== undefined;
+
 /**
- * CA-29 (parte del token, D-19): el enlace es una credencial de un solo uso. La sesión la prueba 002; aquí se fija
- * que (a) a (c) no tienen efectos repetidos y que (d) dos aperturas simultáneas verifican una sola vez. La app
- * escucha en un puerto propio para que las peticiones simultáneas lleguen de verdad en paralelo.
+ * CA-29 (parte del token, D-19): el enlace es una credencial de un solo uso. Se fija que (a) a (c) no tienen efectos
+ * repetidos ni abren sesión y que (d) dos aperturas simultáneas verifican una sola vez y solo la ganadora recibe la
+ * sesión (002 CA-15). La app escucha en un puerto propio para que las peticiones simultáneas lleguen de verdad en paralelo.
  */
-describe('POST /auth/verify-email: un solo uso y concurrencia (CA-29)', () => {
+describe('POST /auth/verify-email: un solo uso y concurrencia (CA-29; 002 CA-15)', () => {
   const clock = new FixedClock(new Date());
   const events: ClientAccountVerifiedEvent[] = [];
   let testApp: TestApp;
@@ -71,19 +79,26 @@ describe('POST /auth/verify-email: un solo uso y concurrencia (CA-29)', () => {
         WHERE usuario_id = $1 AND tipo = 'verificacion' ORDER BY creado_en`,
       [user.id],
     )) as AccountState['tokens'];
-    return { user, tokens };
+    const [sessions] = (await dataSource.query(
+      'SELECT count(*)::int AS total FROM sesion WHERE usuario_id = $1',
+      [user.id],
+    )) as { total: number }[];
+    return { user, tokens, sessions: sessions?.total ?? 0 };
   };
 
-  /** Abre el enlace `OPENINGS` veces y devuelve el estado de cada respuesta con su código de error, si lo hay. */
+  /**
+   * Abre el enlace `OPENINGS` veces y devuelve el estado de cada respuesta con su código de error, si lo hay, y
+   * « con sesión» si además entregó una (002 CA-15).
+   */
   const openRepeatedly = async (token: string): Promise<string[]> => {
     const outcomes: string[] = [];
     for (let opening = 0; opening < OPENINGS; opening += 1) {
       const response = await verify(token);
-      outcomes.push(
+      const outcome =
         response.status === 200
           ? `200 ${verifyEmailResponseSchema.parse(response.body).status}`
-          : `${String(response.status)} ${errorResponseSchema.parse(response.body).code}`,
-      );
+          : `${String(response.status)} ${errorResponseSchema.parse(response.body).code}`;
+      outcomes.push(deliversSession(response) ? `${outcome} con sesión` : outcome);
     }
     return outcomes;
   };
@@ -111,7 +126,7 @@ describe('POST /auth/verify-email: un solo uso y concurrencia (CA-29)', () => {
     events.length = 0;
   });
 
-  it('CA-29 (d): dos aperturas simultáneas del mismo enlace dan un `verified`, un `already-verified` y un solo evento', async () => {
+  it('CA-29 (d) / CA-15: dos aperturas simultáneas del mismo enlace dan un `verified` con la única sesión, un `already-verified` sin sesión y un solo evento', async () => {
     const email = `ana-${randomUUID()}@ejemplo.com`;
     const token = await registerAndReadLink(email);
 
@@ -122,7 +137,11 @@ describe('POST /auth/verify-email: un solo uso y concurrencia (CA-29)', () => {
       (response) => verifyEmailResponseSchema.parse(response.body).status,
     );
     expect(statuses.sort()).toEqual(['already-verified', 'verified']);
-    const { user, tokens } = await stateOf(email);
+    const withSession = responses.filter(deliversSession);
+    expect(withSession).toHaveLength(1);
+    expect(verifyEmailResponseSchema.parse(withSession[0]?.body).status).toBe('verified');
+    const { user, tokens, sessions } = await stateOf(email);
+    expect(sessions).toBe(1);
     expect(user.correo_verificado).toBe(true);
     expect(tokens).toEqual([{ usado_en: clock.now(), invalidado_en: null }]);
     expect(events).toEqual([{ userId: user.id }]);
@@ -131,7 +150,7 @@ describe('POST /auth/verify-email: un solo uso y concurrencia (CA-29)', () => {
     ).toHaveLength(1);
   });
 
-  it('CA-29 (a): abrir otra vez un enlace ya usado no repite efectos: `already-verified`, sin evento ni correo', async () => {
+  it('CA-29 (a) / CA-15: abrir otra vez un enlace ya usado no repite efectos: `already-verified`, sin sesión, evento ni correo', async () => {
     const email = `ana-${randomUUID()}@ejemplo.com`;
     const token = await registerAndReadLink(email);
     await verify(token).expect(200);
@@ -142,12 +161,13 @@ describe('POST /auth/verify-email: un solo uso y concurrencia (CA-29)', () => {
     const outcomes = await openRepeatedly(token);
 
     expect(outcomes).toEqual(['200 already-verified', '200 already-verified']);
+    expect(afterFirstUse.sessions).toBe(1);
     expect(await stateOf(email)).toEqual(afterFirstUse);
     expect(events).toEqual([{ userId: afterFirstUse.user.id }]);
     expect(testApp.logs.lines().filter((line) => line.event === 'mail.enqueued')).toEqual([]);
   });
 
-  it('CA-29 (b): un enlace reemplazado no verifica ni cambia nada, por más veces que se abra', async () => {
+  it('CA-29 (b) / CA-15: un enlace reemplazado no verifica, no abre sesión ni cambia nada, por más veces que se abra', async () => {
     const email = `ana-${randomUUID()}@ejemplo.com`;
     const replaced = await registerAndReadLink(email);
     clock.advance(PAST_COOLDOWN_MS);
@@ -161,11 +181,12 @@ describe('POST /auth/verify-email: un solo uso y concurrencia (CA-29)', () => {
       '422 IDENTITY_VERIFICATION_LINK_INVALID',
       '422 IDENTITY_VERIFICATION_LINK_INVALID',
     ]);
+    expect(before.sessions).toBe(0);
     expect(await stateOf(email)).toEqual(before);
     expect(events).toEqual([]);
   });
 
-  it('CA-29 (c): un enlace de más de 24 h no verifica ni cambia nada, por más veces que se abra', async () => {
+  it('CA-29 (c) / CA-15: un enlace de más de 24 h no verifica, no abre sesión ni cambia nada, por más veces que se abra', async () => {
     const email = `ana-${randomUUID()}@ejemplo.com`;
     const token = await registerAndReadLink(email);
     clock.advance(LINK_TTL_MS + MS_PER_SECOND);
@@ -179,6 +200,7 @@ describe('POST /auth/verify-email: un solo uso y concurrencia (CA-29)', () => {
     ]);
     expect(await stateOf(email)).toEqual(before);
     expect(before.user.correo_verificado).toBe(false);
+    expect(before.sessions).toBe(0);
     expect(events).toEqual([]);
   });
 });
