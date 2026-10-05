@@ -194,7 +194,7 @@ Todas las tomó Adrián el 2026-09-26. La numeración D-n sigue a la pregunta P-
   - **Dado** un cliente con sesión,
   - **Cuando** cierra sesión,
   - **Entonces** su sesión queda revocada, la cookie de refresco se borra y la de dispositivo se conserva;
-  - **Y** si la cierra desde la lista de «Seguridad», antes se pide confirmación (D-8).
+  - **Y** si la cierra desde la lista de «Seguridad» o desde el menú de la cuenta, antes se pide confirmación (D-8, Q-3).
 - **CA-15** (R-5; **cierra CA-26 y CA-29 de 001**) — sesión al verificar
   - **Dado** un enlace de verificación válido de 001,
   - **Cuando** se abre,
@@ -466,3 +466,4 @@ Ninguna.
 | 2026-09-26 | **Aclarada.** El dueño aprueba las decisiones de UX del mockup de «Seguridad» (D-16) con un cambio: cerrar la sesión actual desde la lista pide confirmación (D-8, CA-14, estado `confirmar-cierre-actual`). D-7 incluye la confirmación de la contraseña nueva (estado `contrasena-no-coincide`). El bloqueo del cambio de contraseña tiene código propio, `IDENTITY_PASSWORD_CHANGE_LOCKED`, con los minutos que faltan, y cae en el intento siguiente al quinto fallo, igual que CA-5 (D-7, CA-23). §11 fija los textos aprobados | Revisión del mockup por el dueño | Adrián |
 | 2026-09-26 | D-14 alineada con ADR-0010 (aceptado): `realtime` y el guard usan el puerto de `shared` y la raíz de composición enlaza la implementación de `identity` | Aceptación de ADR-0010 | Adrián |
 | 2026-09-29 | D-15: la recuperación de una cuenta no verificada deja de consultar y de gastar el límite de 001 (D-8); solo la acota el límite de recuperación, previo a la búsqueda (SEC-1). CA-20: el enlace vence a la hora, «con 1 hora o más», como ya hace el código (SEC-4) | Auditoría de seguridad T-67, SEC-1 | — (orquestador; pendiente de Adrián en el PR) |
+| 2026-10-04 | Q-3 resuelta: «Cerrar sesión» desde el menú de la cuenta también pide confirmación, como en el mockup del layout; CA-14 cubre los dos lugares (PD-28) | Decisión del dueño | Adrián |
