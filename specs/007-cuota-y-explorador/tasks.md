@@ -26,7 +26,7 @@
 - [x] **T-15** (B, adenda 2026-10-03) Mockup `shared/layout/`: estados `aviso-arriba-centro` y `barra-fija-lista-larga` con capturas a 360 y 1440 px; el generador separa la región central de la barra para los estados de 006 CA-27 — CA: CA-18, CA-19 (UX) — Archivos: `docs/design/mockups/_generadores/layout/`, `docs/design/mockups/shared/layout/`, `docs/design/capturas/shared/layout/`
 - [x] **T-16** (B, adenda 2026-10-04) Lo desglosado sigue el orden de la tabla y pide 10 por nivel con «Ver más» (plan D-24) — CA: CA-20 — Archivos: `folders-api.ts` (`limit`), `hooks/use-folder-disclosure.ts`, `hooks/use-my-files-state.ts` y sus pruebas
 - [x] **T-17** (B, adenda 2026-10-04) Releer con otro orden conserva las páginas cargadas (plan D-25) — CA: CA-21 — Archivos: `hooks/use-folder-contents.ts` y su spec
-- [ ] **T-12** (humana, Adrián) Recorrido de la demo en local con ambos PR integrados (subir, ver medidor y tramos, papelera, ordenar, «Cargar más», cuenta de otro cliente) y nota en el PR — CA: los visibles (incluye CA-18 y CA-19 a 360 y 1440 px con una lista larga y el panel de cargas abierto) — Depende: T-06, T-10, T-11, T-13, T-14
+- [x] **T-12** (humana, Adrián; hecha el 2026-10-04 sobre la rama rebasada, incluidos CA-20 y CA-21) Recorrido de la demo en local con ambos PR integrados (subir, ver medidor y tramos, papelera, ordenar, «Cargar más», cuenta de otro cliente) y nota en el PR — CA: los visibles (incluye CA-18 y CA-19 a 360 y 1440 px con una lista larga y el panel de cargas abierto) — Depende: T-06, T-10, T-11, T-13, T-14
 
 ## Dependencias entre líneas
 - B espera a **A T-01** para T-10 y T-11 (tipos y esquemas). Hasta entonces B hace T-07, T-08 y T-09.
