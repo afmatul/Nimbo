@@ -258,5 +258,5 @@ const EXTRA = `
 
 module.exports = {
   CSS, EXTRA, P, icon, CUENTA, CUOTA, DIALOGO_CERRAR_SESION,
-  sidebar, cajon, topbar, dialog, cabecera, navegacion, cuota,
+  sidebar, cajon, topbar, dialog, cabecera, navegacion, cuota, logo,
 };

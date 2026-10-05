@@ -24,6 +24,7 @@ function fileSummary(name: string, sizeBytes: number): FileSummary {
     kind: 'otro',
     folderId: null,
     createdAt: expiresAt,
+    updatedAt: expiresAt,
   };
 }
 

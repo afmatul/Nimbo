@@ -16,6 +16,7 @@ import {
   treeLevelStyle,
   type FolderToggle,
 } from './node-rows';
+import { SortableHeader, type TableSorting } from './sortable-header';
 
 type FolderNode = Extract<NodeSummary, { type: 'folder' }>;
 
@@ -46,6 +47,8 @@ export interface NodeTableProps {
   readonly placeName: string;
   readonly renderRowActions: ((node: NodeSummary) => React.ReactNode) | undefined;
   readonly disclosure?: FolderDisclosure | undefined;
+  /** Sin él los encabezados son texto (sin botones ni `aria-sort`, 007). */
+  readonly sorting?: TableSorting | undefined;
 }
 
 /** Lo que cada fila necesita de la tabla, en cualquier nivel. */
@@ -60,32 +63,45 @@ export function NodeTable({
   placeName,
   renderRowActions,
   disclosure,
+  sorting,
 }: NodeTableProps): React.JSX.Element {
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
       <table className="w-full table-fixed text-sm">
         <caption className="sr-only">{`Carpetas y archivos en ${placeName}`}</caption>
-        <thead className="border-b border-border text-left text-xs font-medium text-muted-foreground">
-          <tr>
-            <th scope="col" className="px-4 py-2">
-              Nombre
-            </th>
-            <th scope="col" className="hidden w-24 px-2 py-2 text-right sm:table-cell">
-              Tamaño
-            </th>
-            <th scope="col" className="hidden w-32 px-2 py-2 sm:table-cell">
-              Modificado
-            </th>
-            <th scope="col" className="w-14 px-2 py-2">
-              <span className="sr-only">Acciones</span>
-            </th>
-          </tr>
-        </thead>
+        <NodeTableHead sorting={sorting} />
         <tbody className="divide-y divide-border">
           <NodeRows nodes={nodes} depth={0} context={{ renderRowActions, disclosure }} />
         </tbody>
       </table>
     </div>
+  );
+}
+
+function NodeTableHead({
+  sorting,
+}: {
+  readonly sorting: TableSorting | undefined;
+}): React.JSX.Element {
+  return (
+    <thead className="border-b border-border text-left text-xs font-medium text-muted-foreground">
+      <tr>
+        <SortableHeader column="name" className="px-4 py-2" sorting={sorting} />
+        <SortableHeader
+          column="size"
+          className="hidden w-24 px-2 py-2 text-right sm:table-cell"
+          sorting={sorting}
+        />
+        <SortableHeader
+          column="updated"
+          className="hidden w-32 px-2 py-2 sm:table-cell"
+          sorting={sorting}
+        />
+        <th scope="col" className="w-14 px-2 py-2">
+          <span className="sr-only">Acciones</span>
+        </th>
+      </tr>
+    </thead>
   );
 }
 

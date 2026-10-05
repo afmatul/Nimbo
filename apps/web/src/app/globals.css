@@ -59,6 +59,8 @@
   --file-other: #53677d;
   --file-other-bg: #7a90a820;
 
+  /* Medidas del layout de la app */
+  --header-height: 4rem; /* encabezado de AppLayout; la barra lateral fija se coloca debajo (007 CA-19) */
   /* Guías y sangría del desglose de carpetas (spec 006, CA-26): 16 px por nivel en móvil y 28 px desde sm. Dejan de
      crecer en el nivel --tree-max-level para que el nombre conserve ancho. --tree-guide-x es el centro del control de
      desglose dentro de la celda (44 px con margen de -8 px en móvil; 32 px en escritorio). */
@@ -111,6 +113,8 @@
 
   --font-sans: var(--font-inter), system-ui, sans-serif;
 
+  --spacing-header: var(--header-height);
+
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;
@@ -153,4 +157,9 @@
 /* Margen inferior del área segura (barra de gestos en móviles); 0 donde no aplica. */
 @utility pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Alto de la ventana bajo el encabezado: la barra lateral fija de escritorio (007 CA-19). */
+@utility h-below-header {
+  height: calc(100dvh - var(--header-height));
 }

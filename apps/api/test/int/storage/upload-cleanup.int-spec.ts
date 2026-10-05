@@ -47,6 +47,7 @@ const TEST_LIMITS = {
   maxFileBytes: BigInt(64 * MIB),
   storageQuotaBytes: BigInt(256 * MIB),
   trashRetentionDays: 30,
+  planName: 'Plan de prueba',
 };
 /** Un `.pdf` mínimo que el detector acepta: la firma `%PDF-` y relleno. */
 const PDF_BYTES = Buffer.concat([Buffer.from('%PDF-1.7\n'), Buffer.alloc(2048, 0x20)]);

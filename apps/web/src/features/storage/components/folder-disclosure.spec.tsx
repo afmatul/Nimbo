@@ -7,10 +7,12 @@ import userEvent from '@testing-library/user-event';
 
 import type { LoadFolderContents } from '../hooks/use-folder-contents';
 import { toFolderDisclosure, useFolderDisclosure } from '../hooks/use-folder-disclosure';
+import { DEFAULT_NODE_ORDER, type NodeOrder } from '../node-order';
 
 import { FileExplorer } from './file-explorer';
 
 const AT = '2026-09-30T10:00:00.000Z';
+const BY_SIZE: NodeOrder = { sort: 'size', dir: 'desc' };
 const ALPHA: FolderRef = { id: '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d', name: 'Proyecto Alpha' };
 const FASE3: FolderRef = { id: '2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e', name: 'Fase 3' };
 const BETA: FolderRef = { id: '4d5e6f7a-8b9c-4d0e-9f1a-2b3c4d5e6f7a', name: 'Beta' };
@@ -20,6 +22,7 @@ const folder = (ref: FolderRef, parentId: string | null): NodeSummary => ({
   ...ref,
   parentId,
   createdAt: AT,
+  updatedAt: AT,
 });
 const file = (id: string, name: string, folderId: string | null): NodeSummary => ({
   type: 'file',
@@ -29,6 +32,7 @@ const file = (id: string, name: string, folderId: string | null): NodeSummary =>
   kind: 'pdf',
   folderId,
   createdAt: AT,
+  updatedAt: AT,
 });
 
 const ROOT_NODES = [folder(ALPHA, null), folder(BETA, null), file('f-root', 'raiz.pdf', null)];
@@ -39,8 +43,14 @@ function contents(items: readonly NodeSummary[]): FolderContentsResponse {
   return { folder: null, breadcrumbs: [], items: [...items], nextCursor: null };
 }
 
-function Harness({ load }: { readonly load: LoadFolderContents }): React.JSX.Element {
-  const state = useFolderDisclosure(load);
+function Harness({
+  load,
+  order = DEFAULT_NODE_ORDER,
+}: {
+  readonly load: LoadFolderContents;
+  readonly order?: NodeOrder;
+}): React.JSX.Element {
+  const state = useFolderDisclosure(load, order);
   return (
     <main>
       <FileExplorer
@@ -189,7 +199,7 @@ describe('Desglosar carpetas en la lista (006 CA-26)', () => {
 
     await userEvent.click(within(errorRow).getByRole('button', { name: 'Reintentar' }));
 
-    expect(load).toHaveBeenLastCalledWith(ALPHA.id);
+    expect(load).toHaveBeenLastCalledWith(ALPHA.id, { ...DEFAULT_NODE_ORDER, limit: 10 });
     expect(screen.queryByRole('alert')).toBeNull();
     expect(screen.getByText('acta.pdf')).toBeTruthy();
     expect(screen.getByText('Esta carpeta está vacía')).toBeTruthy();
@@ -260,6 +270,29 @@ describe('Desglosar carpetas en la lista (006 CA-26)', () => {
       moreRow.id,
     );
     expect(screen.queryByRole('button', { name: /Cargar más/ })).toBeNull();
+  });
+
+  it('007 CA-20: cada nivel se pide con el orden de la tabla y 10 elementos', async () => {
+    const load = jest.fn(resolving);
+    render(<Harness load={load} order={BY_SIZE} />);
+
+    await userEvent.click(toggleOf('Proyecto Alpha'));
+
+    expect(load).toHaveBeenCalledWith(ALPHA.id, { sort: 'size', dir: 'desc', limit: 10 });
+  });
+
+  it('007 CA-20: al cambiar el orden vuelve a pedir los niveles abiertos con el orden nuevo', async () => {
+    const load = jest.fn(resolving);
+    const { rerender } = render(<Harness load={load} />);
+    await userEvent.click(toggleOf('Proyecto Alpha'));
+    load.mockClear();
+
+    rerender(<Harness load={load} order={BY_SIZE} />);
+    await act(async () => undefined);
+
+    expect(load).toHaveBeenCalledTimes(1);
+    expect(load).toHaveBeenCalledWith(ALPHA.id, { sort: 'size', dir: 'desc', limit: 10 });
+    expect(screen.getByText('acta.pdf')).toBeTruthy();
   });
 
   it('CA-26: sin más páginas no aparece «Ver más»', async () => {

@@ -61,6 +61,7 @@ function setup() {
     maxFileBytes: 100n,
     storageQuotaBytes: 1000n,
     trashRetentionDays: RETENTION_DAYS,
+    planName: 'Plan de prueba',
   });
   const objects = new FakeObjectStorage(journal);
   const clock = new FixedClock(NOW);
@@ -407,7 +408,12 @@ describe('TrashService.list y summary', () => {
     const { service, plans, file } = setup();
     const target = file('a.pdf');
     await service.trashFile(ANA, target.id);
-    plans.setLimits({ maxFileBytes: 100n, storageQuotaBytes: 1000n, trashRetentionDays: 7 });
+    plans.setLimits({
+      planName: 'Plan de prueba',
+      maxFileBytes: 100n,
+      storageQuotaBytes: 1000n,
+      trashRetentionDays: 7,
+    });
 
     const page = await service.list(ANA, { limit: 10 });
 

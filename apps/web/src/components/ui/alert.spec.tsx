@@ -25,12 +25,21 @@ describe('Alert', () => {
     expect(markup).toContain('border-warning');
   });
 
+  it('anuncia un aviso crítico con role alert sobre fondo destructive-soft, sin cambiar error', () => {
+    const markup = renderToStaticMarkup(<Alert variant="critical">Espacio casi agotado.</Alert>);
+    expect(markup).toContain('role="alert"');
+    expect(markup).toContain('bg-destructive-soft/10');
+    expect(markup).toContain('text-destructive');
+    expect(renderToStaticMarkup(<Alert variant="error">x</Alert>)).toContain('bg-card');
+  });
+
   it('no tiene violaciones de accesibilidad', async () => {
     await expectNoA11yViolations(
       <div>
         <Alert variant="error">No pudimos guardar.</Alert>
         <Alert>Revisa tu correo.</Alert>
         <Alert variant="warning">Espera un momento.</Alert>
+        <Alert variant="critical">Espacio casi agotado.</Alert>
       </div>,
     );
   });

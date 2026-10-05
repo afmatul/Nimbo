@@ -11,6 +11,8 @@ import { I_QUICK_ACCESS_REPOSITORY } from './application/ports/i-quick-access.re
 import { I_TRASH_PURGE_QUEUE } from './application/ports/i-trash-purge-queue.port';
 import { QUICK_ACCESS_CONFIG } from './application/quick-access-config';
 import { QuickAccessService } from './application/quick-access.service';
+import { SpaceMeasurer } from './application/space-measurer';
+import { SpaceSummaryService } from './application/space-summary.service';
 import { TrashPurger } from './application/trash-purger';
 import { UPLOAD_CONFIG } from './application/upload-config';
 import { TrashPurgeProcessor } from './infrastructure/trash-purge.processor';
@@ -18,6 +20,7 @@ import { TRASH_PURGE_QUEUE, TrashPurgeScheduler } from './infrastructure/trash-p
 import { FilesController } from './presentation/files.controller';
 import { FoldersController } from './presentation/folders.controller';
 import { QuickAccessController } from './presentation/quick-access.controller';
+import { SpaceController } from './presentation/space.controller';
 import { TrashController } from './presentation/trash.controller';
 import { UploadsController } from './presentation/uploads.controller';
 import { StorageModule } from './storage.module';
@@ -91,13 +94,18 @@ describe('StorageModule', () => {
     expect(providers.map(tokenOf)).not.toContain(TrashPurgeProcessor);
   });
 
-  it('CA-17: monta los controladores de cargas, archivos, carpetas, papelera y accesos rápidos', () => {
+  it('CA-17: monta los controladores de cargas, archivos, carpetas, papelera, accesos rápidos y espacio', () => {
     expect(module.controllers).toEqual([
       UploadsController,
       FilesController,
       FoldersController,
       TrashController,
       QuickAccessController,
+      SpaceController,
     ]);
+  });
+
+  it('007 CA-1: registra el resumen de espacio con su medición', () => {
+    expect(providers).toEqual(expect.arrayContaining([SpaceMeasurer, SpaceSummaryService]));
   });
 });

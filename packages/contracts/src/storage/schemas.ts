@@ -86,7 +86,10 @@ export const resumeUploadResponseSchema = z.discriminatedUnion('mode', [
     .strict(),
 ]);
 
-/** Archivo tal como lo ve el cliente. Nunca lleva clave de objeto ni `upload_id`. `folderId: null` es la raíz. */
+/**
+ * Archivo tal como lo ve el cliente. Nunca lleva clave de objeto ni `upload_id`. `folderId: null` es la raíz.
+ * `updatedAt` alimenta la columna «Modificado» (007).
+ */
 export const fileSummarySchema = z
   .object({
     id: uuidSchema,
@@ -95,6 +98,7 @@ export const fileSummarySchema = z
     kind: z.enum(FILE_KINDS),
     folderId: uuidSchema.nullable(),
     createdAt: timestamp,
+    updatedAt: timestamp,
   })
   .strict();
 

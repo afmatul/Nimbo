@@ -18,6 +18,7 @@ import { I_QUICK_ACCESS_REPOSITORY } from './application/ports/i-quick-access.re
 import { QUICK_ACCESS_CONFIG } from './application/quick-access-config';
 import type { QuickAccessConfig } from './application/quick-access-config';
 import { QuickAccessService } from './application/quick-access.service';
+import { SpaceSummaryService } from './application/space-summary.service';
 import { UPLOAD_CONFIG } from './application/upload-config';
 import type { UploadConfig } from './application/upload-config';
 import {
@@ -29,9 +30,11 @@ import { TRASH_PURGE_QUEUE } from './infrastructure/trash-purge.scheduler';
 import { FilesController } from './presentation/files.controller';
 import { FoldersController } from './presentation/folders.controller';
 import { QuickAccessController } from './presentation/quick-access.controller';
+import { SpaceController } from './presentation/space.controller';
 import { TrashController } from './presentation/trash.controller';
 import { UploadsController } from './presentation/uploads.controller';
 import {
+  SPACE_PROVIDERS,
   TRASH_LIFECYCLE_PROVIDERS,
   UPLOAD_LIFECYCLE_PROVIDERS,
 } from './upload-lifecycle.providers';
@@ -51,7 +54,7 @@ export type StorageEnv = Pick<
 >;
 
 /**
- * Módulo `storage` (M2, plan §6): carga, descarga, carpetas, papelera y accesos rápidos (006). `forRoot(env)` publica la configuración técnica (bytes como
+ * Módulo `storage` (M2, plan §6): carga, descarga, carpetas, papelera y accesos rápidos (006) y resumen de espacio (007). `forRoot(env)` publica la configuración técnica (bytes como
  * `bigint`) y une cada puerto con su adaptador. **No** enlaza `I_PLAN_LIMITS_PROVIDER` ni importa `billing`: ese
  * enlace vive en la raíz de composición (DF-51, opción A). `SharedModule` (global) aporta reloj, tasa, transacciones y
  * `TransactionContext`; `MinioConfigModule` (global), `MINIO_CONFIG`. La cola `trash-purge` se registra solo para que
@@ -83,6 +86,7 @@ export class StorageModule {
         FoldersController,
         TrashController,
         QuickAccessController,
+        SpaceController,
       ],
       providers: [
         { provide: UPLOAD_CONFIG, useValue: uploadConfig },
@@ -101,6 +105,8 @@ export class StorageModule {
         },
         ...UPLOAD_LIFECYCLE_PROVIDERS,
         ...TRASH_LIFECYCLE_PROVIDERS,
+        ...SPACE_PROVIDERS,
+        SpaceSummaryService,
         FileService,
         FolderService,
         QuickAccessService,

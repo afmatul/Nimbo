@@ -257,7 +257,7 @@ describe('UploadPanel · avisos de rechazo (CA-3, CA-4, CA-7, CA-9, CA-19)', () 
     expect(text()).not.toContain('Ver planes');
   });
 
-  it('CA-4: cuota con «Liberar espacio» hacia /archivos y sin «Ver planes»', async () => {
+  it('CA-4, 007 CA-7: cuota con «Liberar espacio» hacia el resumen /espacio y sin «Ver planes»', async () => {
     await mount(
       panel({
         rows: [
@@ -273,7 +273,7 @@ describe('UploadPanel · avisos de rechazo (CA-3, CA-4, CA-7, CA-9, CA-19)', () 
     expect(text()).toContain(
       'Te faltan 120 MB de espacio para subir este archivo. Libera espacio o cambia de plan.',
     );
-    expect(link('Liberar espacio')?.getAttribute('href')).toBe('/archivos');
+    expect(link('Liberar espacio')?.getAttribute('href')).toBe('/espacio');
     expect(text()).not.toContain('Ver planes');
   });
 

@@ -21,6 +21,9 @@ const P = {
   hardDrive: '<path d="M22 12H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><path d="M6 16h.01"/><path d="M10 16h.01"/>',
   pin: '<path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/>',
   pinOff: '<path d="M12 17v5"/><path d="M15 9.34V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H7.89"/><path d="m2 2 20 20"/><path d="M9 9v1.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h11"/>',
+  arrowUp: '<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
+  arrowDown: '<path d="M12 5v14"/><path d="m19 12-7 7-7-7"/>',
+  image: '<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
   xCircle: '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>',
 };
 const icon = S.crearIcon(P);
@@ -98,6 +101,69 @@ function alertaDialogo(texto) {
 // ---------- Diálogo de confirmación destructiva (ConfirmDestructiveDialog, AlertDialog de shadcn) ----------
 // Eliminar definitivamente es síncrono; Vaciar es diferido (202) y no deja el diálogo abierto (spec CA-18, plan §4).
 const confirmar = ({ titulo, cuerpo, boton }) => M.dialog({ title: titulo, body: cuerpo, confirm: boton });
+
+// Imágenes (007): ícono de imagen con los tokens --file-img (FileTypeChip). El resto, como en 005.
+const IMAGENES = ['png', 'jpg', 'jpeg', 'webp'];
+const tileArchivo = (nombre) => (IMAGENES.includes(nombre.split('.').pop().toLowerCase())
+  ? `<span class="ftile ftile-img">${icon('image', 16)}</span>` : S.tile(nombre));
+
+// Encabezado de columna. orden: { campo, dir } (007); la columna activa lleva aria-sort y una flecha. Sin orden, el
+// HTML es el de 006.
+function th(campo, texto, cls, orden) {
+  const c = cls ? ` class="${cls}"` : '';
+  if (!orden || orden.campo !== campo) return `<th scope="col"${c}>${texto}</th>`;
+  const asc = orden.dir === 'asc';
+  return `<th scope="col"${c} aria-sort="${asc ? 'ascending' : 'descending'}"><span class="th-sort">${texto}${icon(asc ? 'arrowUp' : 'arrowDown', 13)}</span></th>`;
+}
+
+// ---------- Filas, tabla y encabezado de Mis archivos con carpetas (006; 007 suma el orden) ----------
+const mi = itemMenu;
+// «Mover a la papelera» no va en rojo: es reversible y no pide confirmación; el rojo queda para lo definitivo.
+const MENU_ARCHIVO = [mi('download', 'Descargar'), mi('pencil', 'Renombrar'), mi('folderInput', 'Mover a…'), 'sep', mi('trash', 'Mover a la papelera')];
+const MENU_CARPETA = [mi('pencil', 'Renombrar'), mi('folderInput', 'Mover a…'), 'sep', mi('trash', 'Mover a la papelera')];
+
+function fila([tipo, nombre, tam, fecha], i, menuAbierto) {
+  const carpeta = tipo === 'carpeta';
+  const tile = carpeta ? `<span class="ftile ftile-folder">${icon('folder', 16)}</span>` : tileArchivo(nombre);
+  const texto = carpeta ? `<a class="fname-link" href="#">${nombre}</a>` : nombre;
+  return `
+            <tr>
+              <td><div class="fname">${tile}<div class="fname-text">${texto}<span class="fmeta-m">${carpeta ? 'Carpeta' : tam} · ${fecha}</span></div></div></td>
+              <td class="c-size">${carpeta ? '<span aria-hidden="true">—</span><span class="sr-only">Carpeta, sin tamaño</span>' : tam}</td>
+              <td class="c-date">${fecha}</td>
+              <td class="c-act">${S.menuFila(i, nombre, i === menuAbierto, carpeta ? MENU_CARPETA : MENU_ARCHIVO)}</td>
+            </tr>`;
+}
+
+function tabla(nodos, lugar, menuAbierto = -1, { orden = null } = {}) {
+  return `
+        <div class="files">
+          <table>
+            <caption class="sr-only">Carpetas y archivos en ${lugar}</caption>
+            <thead><tr>${th('nombre', 'Nombre', '', orden)}${th('tamano', 'Tamaño', 'c-size', orden)}${th('fecha', 'Modificado', 'c-date', orden)}<th scope="col" class="c-act"><span class="sr-only">Acciones</span></th></tr></thead>
+            <tbody>${nodos.map((n, i) => fila(n, i, menuAbierto)).join('')}
+            </tbody>
+          </table>
+        </div>`;
+}
+
+const botonNuevaCarpeta = () => `<button class="btn btn-outline" type="button">${icon('folderPlus', 16)}<span>Nueva carpeta</span></button>`;
+
+// ruta: [Mis archivos, …, carpeta abierta]. En móvil (sin migas en la barra superior) se ve «‹ {carpeta anterior}»
+// con el nombre real («‹ Mis archivos» en el primer nivel) y el nombre accesible «Volver a {nombre}».
+function encabezado(ruta) {
+  const actual = ruta[ruta.length - 1];
+  const anterior = ruta[ruta.length - 2];
+  const volver = anterior ? `
+        <a class="back-link" href="#" aria-label="Volver a ${anterior}">${icon('chevronLeft', 18)}<span>${anterior}</span></a>` : '';
+  return `${volver}
+        <div class="page-head">
+          <div>
+            <h1>${actual}</h1>
+          </div>
+          <div class="head-actions">${botonNuevaCarpeta()}${S.botonSubir()}</div>
+        </div>`;
+}
 
 // ---------- CSS propio de 006 ----------
 const CSS_006 = `
@@ -197,4 +263,5 @@ const CSS_006_MQ600 = `    .page-head { align-items: flex-start; }
 module.exports = {
   P, icon, LOGO_NUBE, conLogo, RETENCION, MAX_NIVELES, CARPETAS_RAIZ,
   sidebar, itemMenu, toast, dialogoNombre, alertaDialogo, confirmar, CSS_006, CSS_006_MQ600,
+  MENU_ARCHIVO, MENU_CARPETA, fila, tabla, botonNuevaCarpeta, encabezado,
 };

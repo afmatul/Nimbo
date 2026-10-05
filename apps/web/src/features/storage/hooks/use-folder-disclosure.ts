@@ -4,8 +4,13 @@ import type { FolderContentsResponse, NodeSummary } from '@nimbo/contracts';
 import * as React from 'react';
 
 import type { DisclosedLevel, FolderDisclosure } from '../components/node-table';
+import type { NodeOrder } from '../node-order';
 
 import type { LoadFolderContents } from './use-folder-contents';
+import { useRefreshWhen } from './use-refresh-when';
+
+/** Elementos por nivel desglosado; con más, «Ver más» lleva a la página de la carpeta (007 CA-20). */
+const DISCLOSED_PAGE_SIZE = 10;
 
 /** Contenido de una carpeta desglosada en la lista (006 CA-26). */
 export type DisclosedListing =
@@ -30,6 +35,13 @@ function withListing(listings: Listings, folderId: string, listing: DisclosedLis
   return new Map(listings).set(folderId, listing);
 }
 
+/** Al volver a pedir un nivel ya visible (otro orden, «Actualizar lista») se conserva hasta que llega (007 CA-12). */
+function withRequested(listings: Listings, folderId: string): Listings {
+  return listings.get(folderId)?.status === 'ready'
+    ? listings
+    : withListing(listings, folderId, LOADING);
+}
+
 function withoutListing(listings: Listings, folderId: string): Listings {
   const next = new Map(listings);
   next.delete(folderId);
@@ -37,10 +49,14 @@ function withoutListing(listings: Listings, folderId: string): Listings {
 }
 
 /**
- * Carpetas desglosadas de la lista con su primera página (`GET /folders/contents`). Cada petición lleva un turno: la
+ * Carpetas desglosadas de la lista con su primera página (`GET /folders/contents`) en el orden de la tabla y con
+ * `DISCLOSED_PAGE_SIZE` elementos; si cambia el orden, se vuelven a pedir (007 CA-20). Cada petición lleva un turno: la
  * respuesta de una carpeta ya contraída o vuelta a pedir se descarta.
  */
-export function useFolderDisclosure(load: LoadFolderContents): FolderDisclosureState {
+export function useFolderDisclosure(
+  load: LoadFolderContents,
+  order: NodeOrder,
+): FolderDisclosureState {
   const [listings, setListings] = React.useState<Listings>(() => new Map());
   const turns = React.useRef(new Map<string, number>());
   const lastTurn = React.useRef(0);
@@ -50,17 +66,17 @@ export function useFolderDisclosure(load: LoadFolderContents): FolderDisclosureS
       lastTurn.current += 1;
       const turn = lastTurn.current;
       turns.current.set(folderId, turn);
-      setListings((previous) => withListing(previous, folderId, LOADING));
+      setListings((previous) => withRequested(previous, folderId));
       const settle = (listing: DisclosedListing): void => {
         if (turns.current.get(folderId) !== turn) return;
         setListings((previous) => withListing(previous, folderId, listing));
       };
-      load(folderId).then(
+      load(folderId, { ...order, limit: DISCLOSED_PAGE_SIZE }).then(
         (contents) => settle({ status: 'ready', contents }),
         () => settle({ status: 'error' }),
       );
     },
-    [load],
+    [load, order],
   );
 
   const collapse = React.useCallback((folderId: string) => {
@@ -68,11 +84,17 @@ export function useFolderDisclosure(load: LoadFolderContents): FolderDisclosureS
     setListings((previous) => withoutListing(previous, folderId));
   }, []);
 
+  const refreshAll = React.useCallback(
+    () => [...listings.keys()].forEach(fetchLevel),
+    [listings, fetchLevel],
+  );
+  useRefreshWhen(true, refreshAll, `${order.sort} ${order.dir}`);
+
   return {
     listingOf: (folderId) => listings.get(folderId),
     toggle: (folderId) => (listings.has(folderId) ? collapse(folderId) : fetchLevel(folderId)),
     retry: fetchLevel,
-    refreshAll: () => [...listings.keys()].forEach(fetchLevel),
+    refreshAll,
   };
 }
 

@@ -70,7 +70,14 @@ describe('api de la papelera', () => {
 
   it('CA-13: restaura con POST /trash/{files|folders}/:id/restore', async () => {
     const restored = {
-      item: { type: 'folder', id: FOLDER_ID, name: 'Actas', parentId: null, createdAt: AT },
+      item: {
+        type: 'folder',
+        id: FOLDER_ID,
+        name: 'Actas',
+        parentId: null,
+        createdAt: AT,
+        updatedAt: AT,
+      },
       outcome: 'moved_to_root',
       originalName: 'Actas',
     };

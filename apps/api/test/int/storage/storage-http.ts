@@ -35,6 +35,7 @@ export const DEFAULT_TEST_LIMITS: PlanLimits = {
   maxFileBytes: BigInt(64 * MIB),
   storageQuotaBytes: BigInt(256 * MIB),
   trashRetentionDays: 30,
+  planName: 'Plan de prueba',
 };
 /** Bucket propio y **versionado**, como el de `infra/minio/init.sh`: el compartido del arnés no tiene versionado. */
 export const STORAGE_HTTP_BUCKET = 'nimbo-storage-http';
@@ -121,6 +122,9 @@ export interface StorageClient {
   unpin(nodeType: string, nodeId: string): Promise<Response>;
   /** `POST /quick-access/recents/:nodeType/:nodeId`, sin cuerpo. */
   recordOpen(nodeType: string, nodeId: string): Promise<Response>;
+  trashFolder(folderId: string): Promise<Response>;
+  purgeFolder(folderId: string): Promise<Response>;
+  spaceSummary(): Promise<Response>;
   /** Inicia (en `folderId`, por defecto la raíz), sube con la(s) URL(s) firmada(s) y completa; devuelve `complete`. */
   upload(
     name: string,
@@ -264,6 +268,9 @@ export const createStorageHttpApp = async (
         http().delete(`${API_PREFIX}/quick-access/pins/${nodeType}/${nodeId}`).set(auth),
       recordOpen: (nodeType, nodeId) =>
         http().post(`${API_PREFIX}/quick-access/recents/${nodeType}/${nodeId}`).set(auth),
+      trashFolder: (folderId) => http().delete(`${API_PREFIX}/folders/${folderId}`).set(auth),
+      purgeFolder: (folderId) => http().delete(`${API_PREFIX}/trash/folders/${folderId}`).set(auth),
+      spaceSummary: () => http().get(`${API_PREFIX}/storage/summary`).set(auth),
       upload: async (name, bytes, onConflict = 'ask', folderId = null) => {
         const started = await client.init({ name, sizeBytes: bytes.length, onConflict, folderId });
         if (started.status !== 201) return started;

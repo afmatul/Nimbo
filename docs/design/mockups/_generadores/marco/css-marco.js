@@ -145,3 +145,13 @@ exports.MQ600_DIALOGO = `    .dialog { top: 96px; padding: 20px 16px 16px; }
     .dialog-actions { flex-direction: column-reverse; }
     .dialog-actions .btn { width: 100%; }
 `;
+
+// Tramos de QuotaBar (ui-guidelines §4) en la tarjeta de cuota: los usan mis-archivos (005/006), espacio (007) y layout
+exports.TRAMOS = `  /* Cuota en tramos de QuotaBar (§4): 70–89 % warning; 90–100 % destructive-soft */
+  .quota-warn .quota-bar span { background: var(--warning); }
+  .quota-full { border-color: color-mix(in srgb, var(--destructive-soft) 45%, var(--card)); }
+  .quota-full .quota-bar span { background: var(--destructive-soft); }
+  .quota-note { margin: 8px 0 0; font-size: 11.5px; line-height: 1.45; font-weight: 500; }
+  .quota-warn .quota-note { color: var(--warning-foreground); }
+  .quota-full .quota-note { color: var(--destructive); }
+`;

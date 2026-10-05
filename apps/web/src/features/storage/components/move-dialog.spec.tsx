@@ -35,6 +35,7 @@ const NEW_FOLDER: FolderSummary = {
   name: 'Entregables',
   parentId: DOCS.id,
   createdAt: AT,
+  updatedAt: AT,
 };
 
 const FILE: FileSummary = {
@@ -44,9 +45,16 @@ const FILE: FileSummary = {
   kind: 'docx',
   folderId: FASE3.id,
   createdAt: AT,
+  updatedAt: AT,
 };
 const FILE_NODE: NodeSummary = { type: 'file', ...FILE };
-const FASE3_NODE: NodeSummary = { type: 'folder', ...FASE3, parentId: ALPHA.id, createdAt: AT };
+const FASE3_NODE: NodeSummary = {
+  type: 'folder',
+  ...FASE3,
+  parentId: ALPHA.id,
+  createdAt: AT,
+  updatedAt: AT,
+};
 
 const TREE: Readonly<Record<string, readonly FolderRef[]>> = {
   root: [ALPHA, LEGALES],
@@ -69,6 +77,7 @@ function contentsOf(folderId: string | null): Promise<FolderContentsResponse> {
         ...folder,
         parentId: folderId,
         createdAt: AT,
+        updatedAt: AT,
       })),
       {
         type: 'file' as const,
@@ -88,7 +97,9 @@ function renderDialog(overrides: Partial<MoveDialogProps> = {}): MoveDialogProps
     folderContents: jest.fn(contentsOf),
     createFolder: jest.fn(() => Promise.resolve(NEW_FOLDER)),
     moveFile: jest.fn((_id, body) => Promise.resolve({ ...FILE, folderId: body.folderId })),
-    moveFolder: jest.fn(() => Promise.resolve({ ...FASE3, parentId: null, createdAt: AT })),
+    moveFolder: jest.fn(() =>
+      Promise.resolve({ ...FASE3, parentId: null, createdAt: AT, updatedAt: AT }),
+    ),
     onMoved: jest.fn(),
     onFolderCreated: jest.fn(),
     onClose: jest.fn(),

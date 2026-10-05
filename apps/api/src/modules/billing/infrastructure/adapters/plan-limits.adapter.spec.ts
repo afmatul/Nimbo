@@ -8,6 +8,7 @@ import type { PlanOrmEntity } from '../persistence/plan.orm-entity';
 import { PlanLimitsAdapter } from './plan-limits.adapter';
 
 const PERSONAL: PlanLimits = {
+  planName: 'Personal',
   maxFileBytes: 52428800n,
   storageQuotaBytes: 16106127360n,
   trashRetentionDays: 7,
@@ -29,6 +30,7 @@ describe('PlanLimitsAdapter (006a T-08, CA-4, CA-5, RN-4; 006 CA-19)', () => {
       mockRepo.findOneBy.mockResolvedValue({
         id: '10000000-0000-4000-8000-000000000001',
         slug: 'personal',
+        nombre: 'Personal',
         cuotaBytes: 16106127360n,
         maxArchivoBytes: 52428800n,
         diasRetencionPapelera: 7,
@@ -46,6 +48,7 @@ describe('PlanLimitsAdapter (006a T-08, CA-4, CA-5, RN-4; 006 CA-19)', () => {
       mockRepo.findOneBy.mockResolvedValue({
         id: '10000000-0000-4000-8000-000000000001',
         slug: 'personal',
+        nombre: 'Personal',
         cuotaBytes: 16106127360n,
         maxArchivoBytes: 52428800n,
         diasRetencionPapelera: 7,
@@ -71,6 +74,7 @@ describe('PlanLimitsAdapter (006a T-08, CA-4, CA-5, RN-4; 006 CA-19)', () => {
       mockRepo.findOneBy.mockResolvedValue({
         id: '10000000-0000-4000-8000-000000000004',
         slug: 'institucional',
+        nombre: 'Institucional',
         cuotaBytes: 2199023255552n,
         maxArchivoBytes: 5368709120n,
         diasRetencionPapelera: 90,
@@ -81,10 +85,26 @@ describe('PlanLimitsAdapter (006a T-08, CA-4, CA-5, RN-4; 006 CA-19)', () => {
       expect(limits.trashRetentionDays).toBe(90);
     });
 
+    it('CA-1 (007, D-20): el nombre visible del plan sale de `plan.nombre`', async () => {
+      mockRepo.findOneBy.mockResolvedValue({
+        id: '10000000-0000-4000-8000-000000000004',
+        slug: 'institucional',
+        nombre: 'Institucional',
+        cuotaBytes: 2199023255552n,
+        maxArchivoBytes: 5368709120n,
+        diasRetencionPapelera: 90,
+      } as PlanOrmEntity);
+
+      const limits = await adapter.getLimitsByPlanId('10000000-0000-4000-8000-000000000004');
+
+      expect(limits.planName).toBe('Institucional');
+    });
+
     it('CA-2: devuelve los límites del plan cuando existe', async () => {
       mockRepo.findOneBy.mockResolvedValue({
         id: '10000000-0000-4000-8000-000000000002',
         slug: 'pro',
+        nombre: 'Pro',
         cuotaBytes: 107374182400n,
         maxArchivoBytes: 524288000n,
         diasRetencionPapelera: 30,
@@ -93,6 +113,7 @@ describe('PlanLimitsAdapter (006a T-08, CA-4, CA-5, RN-4; 006 CA-19)', () => {
       const limits = await adapter.getLimitsByPlanId('10000000-0000-4000-8000-000000000002');
 
       expect(limits).toEqual({
+        planName: 'Pro',
         maxFileBytes: 524288000n,
         storageQuotaBytes: 107374182400n,
         trashRetentionDays: 30,
@@ -118,6 +139,7 @@ describe('PlanLimitsAdapter (006a T-08, CA-4, CA-5, RN-4; 006 CA-19)', () => {
       mockRepo.findOneBy.mockResolvedValue({
         id: '10000000-0000-4000-8000-000000000003',
         slug: 'equipo',
+        nombre: 'Equipo',
         cuotaBytes: 375809638400n,
         maxArchivoBytes: 1073741824n,
         diasRetencionPapelera: 60,
@@ -126,6 +148,7 @@ describe('PlanLimitsAdapter (006a T-08, CA-4, CA-5, RN-4; 006 CA-19)', () => {
       const limits = await adapter.getLimitsBySlug('equipo');
 
       expect(limits).toEqual({
+        planName: 'Equipo',
         maxFileBytes: 1073741824n,
         storageQuotaBytes: 375809638400n,
         trashRetentionDays: 60,

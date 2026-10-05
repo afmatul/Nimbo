@@ -19,6 +19,8 @@ import { DownloadNoticeBanner, type DownloadNotice } from './file-row-menu';
 import { PurgeConfirmDialog } from './purge-confirm-dialog';
 import { useQuickAccessSidebar } from './quick-access-sidebar';
 import { RestoreResult } from './restore-result';
+import { SidebarQuota } from './sidebar-quota';
+import { useSpace } from './space-provider';
 import { TrashList } from './trash-list';
 import { TrashSelectionBar } from './trash-selection-bar';
 import { EmptyingNotice, PurgeSoonNote, retentionLabel, TrashSummary } from './trash-summary';
@@ -50,7 +52,8 @@ function bytesOf(items: readonly TrashItem[], ids: ReadonlySet<string>): number 
  */
 export function TrashView(): React.JSX.Element {
   const { api } = useUploads();
-  const trash = useTrash(api);
+  const space = useSpace();
+  const trash = useTrash(api, space.refresh);
   const actions = useTrashActions(api, trash);
   const { listing, emptying } = trash;
   const ready = listing.status === 'ready' && listing.items.length > 0 ? listing : null;
@@ -66,6 +69,7 @@ export function TrashView(): React.JSX.Element {
       navItems={TRASH_NAV_ITEMS}
       sidebarSection={sidebar.sidebarSection}
       trashCount={listing.status === 'ready' ? listing.summary.itemCount : undefined}
+      quotaCard={<SidebarQuota state={space.state} />}
     >
       <div className="space-y-4">
         <div className="flex justify-end">

@@ -15,6 +15,7 @@ import { Button, buttonVariants } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { storageMessage } from '../../../lib/error-catalog';
 import { cn } from '../../../lib/utils';
+import { SPACE_PATH } from '../routes';
 import type { UploadPhase, UploadView } from '../upload/upload-manager';
 
 export interface UploadPanelProps {
@@ -31,9 +32,6 @@ export interface UploadPanelProps {
   /** Reloj para medir la velocidad; se inyecta en pruebas. */
   readonly now?: () => number;
 }
-
-/** Resumen de espacio (007); mientras no exista, Mis archivos. «Ver planes» no se muestra hasta 008 (CA-4). */
-const FREE_SPACE_HREF = '/archivos';
 
 const OFFLINE_TITLE = 'Carga en espera';
 const OFFLINE_MESSAGE =
@@ -256,7 +254,7 @@ function NoticeActionControl({
 }: RowProps & { readonly action: NoticeAction }): React.JSX.Element {
   if (action === 'free_space') {
     return (
-      <Link href={FREE_SPACE_HREF} className={cn(buttonVariants({ size: 'sm' }), 'self-start')}>
+      <Link href={SPACE_PATH} className={cn(buttonVariants({ size: 'sm' }), 'self-start')}>
         {ACTION_LABELS[action]}
       </Link>
     );

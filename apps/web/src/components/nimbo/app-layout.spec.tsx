@@ -1,10 +1,41 @@
 import { JSDOM } from 'jsdom';
 import { Folder } from 'lucide-react';
+import type * as React from 'react';
 import { act } from 'react';
-import { createRoot } from 'react-dom/client';
+import { createRoot, type Root } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 
-import { AppLayout, useSidebarSlot } from './app-layout';
+import { AppLayout } from './app-layout';
+import { useSidebarSlot } from './sidebar-slot';
+
+/** Marca estática del layout como documento, para consultar su estructura (jsdom no mide layout). */
+function parse(element: React.ReactElement): Document {
+  return new JSDOM(`<!DOCTYPE html><body>${renderToStaticMarkup(element)}</body>`).window.document;
+}
+
+/** Monta en un jsdom propio, con los globales que React necesita para eventos y foco. */
+function mountDom(): { dom: JSDOM; root: Root; container: HTMLElement } {
+  const dom = new JSDOM('<!DOCTYPE html><html><body><div id="root"></div></body></html>', {
+    pretendToBeVisual: true,
+    url: 'http://localhost',
+  });
+  const g = global as unknown as Record<string, unknown>;
+  for (const name of [
+    'Node',
+    'Element',
+    'HTMLElement',
+    'HTMLButtonElement',
+    'HTMLAnchorElement',
+    'KeyboardEvent',
+  ]) {
+    g[name] = dom.window[name as keyof typeof dom.window];
+  }
+  g['window'] = dom.window;
+  g['document'] = dom.window.document;
+  g['IS_REACT_ACT_ENVIRONMENT'] = true;
+  const container = dom.window.document.getElementById('root') as HTMLElement;
+  return { dom, root: createRoot(container), container };
+}
 
 describe('AppLayout component (CA-5)', () => {
   it('renderiza encabezado, barra lateral de navegación y área de contenido principal', () => {
@@ -28,7 +59,7 @@ describe('AppLayout component (CA-5)', () => {
       </AppLayout>,
     );
 
-    expect(markup).toContain('overflow-x-hidden');
+    expect(markup).toContain('overflow-x-clip');
     expect(markup).toContain('min-w-0');
   });
 
@@ -59,27 +90,7 @@ describe('AppLayout component (CA-5)', () => {
 
   // Test A (B-2a): Foco entra al primer enlace al abrir
   it('mueve automáticamente el foco al primer enlace dentro del drawer al abrir el menú', async () => {
-    const dom = new JSDOM('<!DOCTYPE html><html><body><div id="root"></div></body></html>', {
-      pretendToBeVisual: true,
-      url: 'http://localhost',
-    });
-
-    const g = global as unknown as Record<string, unknown>;
-    g['window'] = dom.window;
-    g['document'] = dom.window.document;
-    g['Node'] = dom.window.Node;
-    g['Element'] = dom.window.Element;
-    g['HTMLElement'] = dom.window.HTMLElement;
-    g['HTMLButtonElement'] = dom.window.HTMLButtonElement;
-    g['HTMLAnchorElement'] = dom.window.HTMLAnchorElement;
-    g['KeyboardEvent'] = dom.window.KeyboardEvent;
-    g['IS_REACT_ACT_ENVIRONMENT'] = true;
-
-    const container = dom.window.document.getElementById('root');
-    if (!container) {
-      throw new Error('Elemento root no encontrado');
-    }
-    const root = createRoot(container);
+    const { dom, root } = mountDom();
 
     await act(async () => {
       root.render(
@@ -113,27 +124,7 @@ describe('AppLayout component (CA-5)', () => {
 
   // Test B (B-2a): Tecla Escape cierra el menú y devuelve el foco
   it('cierra el menú móvil y devuelve el foco al presionar la tecla Escape', async () => {
-    const dom = new JSDOM('<!DOCTYPE html><html><body><div id="root"></div></body></html>', {
-      pretendToBeVisual: true,
-      url: 'http://localhost',
-    });
-
-    const g = global as unknown as Record<string, unknown>;
-    g['window'] = dom.window;
-    g['document'] = dom.window.document;
-    g['Node'] = dom.window.Node;
-    g['Element'] = dom.window.Element;
-    g['HTMLElement'] = dom.window.HTMLElement;
-    g['HTMLButtonElement'] = dom.window.HTMLButtonElement;
-    g['HTMLAnchorElement'] = dom.window.HTMLAnchorElement;
-    g['KeyboardEvent'] = dom.window.KeyboardEvent;
-    g['IS_REACT_ACT_ENVIRONMENT'] = true;
-
-    const container = dom.window.document.getElementById('root');
-    if (!container) {
-      throw new Error('Elemento root no encontrado');
-    }
-    const root = createRoot(container);
+    const { dom, root } = mountDom();
 
     await act(async () => {
       root.render(
@@ -193,6 +184,18 @@ describe('AppLayout component (CA-5)', () => {
     expect(markup).toContain('Archivos Propios');
     expect(markup).toContain('/custom-archivos');
   });
+  it('007 D-18: «Espacio» enlaza a /espacio y ya no hay «Planes y Cuota» (#planes)', () => {
+    const markup = renderToStaticMarkup(
+      <AppLayout>
+        <div>Contenido</div>
+      </AppLayout>,
+    );
+
+    expect(markup).toMatch(/<a[^>]*href="\/espacio"[^>]*>(?:(?!<\/a>).)*Espacio/);
+    expect(markup).not.toContain('#planes');
+    expect(markup).not.toContain('Planes y Cuota');
+  });
+
   it('006: la Papelera enlaza a /papelera', () => {
     const markup = renderToStaticMarkup(
       <AppLayout>
@@ -229,15 +232,103 @@ describe('AppLayout component (CA-5)', () => {
     expect(markup).toContain('>En el cajón<');
   });
 
-  it('006 CA-27: la barra lateral ya no tiene la sección «Carpetas» (la reemplaza «Accesos rápidos»)', () => {
-    const markup = renderToStaticMarkup(
+  it('CA-19: pinta la sección que recibe en la región desplazable, en escritorio y en el menú móvil', () => {
+    const doc = parse(
+      <AppLayout sidebarSection={<p>Sección propia</p>} initialMobileMenuOpen>
+        <div>Contenido</div>
+      </AppLayout>,
+    );
+
+    const regions = [...doc.querySelectorAll('[data-sidebar-section]')];
+    expect(regions).toHaveLength(2);
+    for (const region of regions) {
+      expect(region.textContent).toBe('Sección propia');
+      expect(region.classList.contains('min-h-0')).toBe(true);
+      expect(region.classList.contains('flex-1')).toBe(true);
+      expect(region.classList.contains('overflow-y-auto')).toBe(true);
+    }
+  });
+
+  it('CA-19: la tarjeta de cuota queda al pie, fuera de la región que se desplaza', () => {
+    const doc = parse(
+      <AppLayout
+        sidebarSection={<p>Sección propia</p>}
+        quotaCard={<p>Tarjeta de cuota</p>}
+        initialMobileMenuOpen
+      >
+        <div>Contenido</div>
+      </AppLayout>,
+    );
+
+    const cards = [...doc.querySelectorAll('[data-quota-card]')];
+    expect(cards).toHaveLength(2);
+    for (const card of cards) {
+      expect(card.closest('[data-sidebar-section]')).toBeNull();
+      expect(card.previousElementSibling?.hasAttribute('data-sidebar-section')).toBe(true);
+      expect(card.classList.contains('shrink-0')).toBe(true);
+    }
+  });
+
+  it('CA-19: la barra de escritorio queda fija bajo el encabezado y solo se desplaza el contenido', () => {
+    const doc = parse(
       <AppLayout>
         <div>Contenido</div>
       </AppLayout>,
     );
 
-    expect(markup).not.toContain('>Carpetas<');
+    const root = doc.body.firstElementChild;
+    const header = doc.querySelector('header');
+    const sidebar = doc.querySelector('aside[aria-label="Barra lateral de escritorio"]');
+    expect(root?.className).not.toMatch(/overflow-x-hidden/);
+    expect(header?.classList.contains('h-header')).toBe(true);
+    expect(sidebar?.classList.contains('md:sticky')).toBe(true);
+    expect(sidebar?.classList.contains('md:top-header')).toBe(true);
+    expect(sidebar?.classList.contains('md:h-below-header')).toBe(true);
+    expect(sidebar?.classList.contains('md:self-start')).toBe(true);
+    expect(doc.querySelector('main')?.className).not.toMatch(/overflow-y-auto/);
   });
+
+  it('CA-19: sin sección no deja enlaces en la región ni el título «Carpetas»', () => {
+    const doc = parse(
+      <AppLayout>
+        <div>Contenido</div>
+      </AppLayout>,
+    );
+
+    expect(doc.querySelector('[data-sidebar-section]')?.childElementCount).toBe(0);
+    expect(doc.body.innerHTML).not.toContain('>Carpetas<');
+  });
+
+  it('CA-19: activar un enlace de la sección cierra el menú móvil y devuelve el foco al botón', async () => {
+    const { dom, root, container } = mountDom();
+    await act(async () => {
+      root.render(
+        <AppLayout sidebarSection={<a href="#seccion">Enlace de sección</a>}>
+          <div>Contenido</div>
+        </AppLayout>,
+      );
+    });
+    const menuButton = container.querySelector(
+      'button[aria-label="Abrir menú de navegación"]',
+    ) as HTMLButtonElement;
+    await act(async () => {
+      menuButton.click();
+    });
+
+    const sectionLink = dom.window.document.querySelector(
+      '[role="dialog"] [data-sidebar-section] a',
+    ) as HTMLAnchorElement;
+    await act(async () => {
+      sectionLink.click();
+    });
+
+    expect(dom.window.document.querySelector('[role="dialog"]')).toBeNull();
+    expect(dom.window.document.activeElement).toBe(menuButton);
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
   it('006 CA-12: la Papelera muestra su contador, en escritorio y en el menú móvil', () => {
     const markup = renderToStaticMarkup(
       <AppLayout trashCount={6} initialMobileMenuOpen>
@@ -263,6 +354,27 @@ describe('AppLayout component (CA-5)', () => {
 
       expect(markup).not.toContain('elementos</span>');
     }
+  });
+
+  it('007 CA-5: pinta la tarjeta de cuota que recibe bajo la navegación, en escritorio y en el menú móvil', () => {
+    const markup = renderToStaticMarkup(
+      <AppLayout quotaCard={<p>Tarjeta de cuota</p>} initialMobileMenuOpen>
+        <div>Contenido</div>
+      </AppLayout>,
+    );
+
+    expect(markup.match(/<p>Tarjeta de cuota<\/p>/g)).toHaveLength(2);
+    expect(markup.indexOf('Tarjeta de cuota')).toBeGreaterThan(markup.indexOf('</nav>'));
+  });
+
+  it('007: sin tarjeta de cuota la barra lateral no deja hueco', () => {
+    const markup = renderToStaticMarkup(
+      <AppLayout>
+        <div>Contenido</div>
+      </AppLayout>,
+    );
+
+    expect(markup).not.toContain('data-quota-card');
   });
 
   it('006 CA-10: monta la región de avisos (sonner, ADR-0024)', () => {

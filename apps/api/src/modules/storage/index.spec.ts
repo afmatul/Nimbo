@@ -13,12 +13,13 @@ type Expect<T extends true> = T;
 
 /**
  * ISP (005 plan §6): `PlanLimits` solo lleva límites de almacenamiento: bytes y, desde 006 (plan §7, decisión 1), la
- * retención en papelera en días.
+ * retención en papelera en días y, desde 007 (D-20), el nombre visible del plan que el adaptador lee en la misma fila.
  */
 type _PlanLimitsShape = Expect<
   Equal<
     PlanLimits,
     {
+      readonly planName: string;
       readonly maxFileBytes: bigint;
       readonly storageQuotaBytes: bigint;
       readonly trashRetentionDays: number;

@@ -14,6 +14,7 @@ const FOLDER = {
   name: 'Actas',
   parentId: ALPHA_ID,
   createdAt: AT,
+  updatedAt: AT,
 };
 const FILE = {
   id: '7a8b9c0d-1e2f-4c5d-8e6f-2f0c1d2e3a4b',
@@ -22,6 +23,7 @@ const FILE = {
   kind: 'docx',
   folderId: ALPHA_ID,
   createdAt: AT,
+  updatedAt: AT,
 };
 
 describe('api para renombrar y mover (006 §4)', () => {

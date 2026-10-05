@@ -12,6 +12,7 @@ const folder = (id: string, name: string, parentId: string | null): NodeSummary 
   name,
   parentId,
   createdAt: AT,
+  updatedAt: AT,
 });
 const file = (id: string, name: string, folderId: string | null): NodeSummary => ({
   type: 'file',
@@ -21,6 +22,7 @@ const file = (id: string, name: string, folderId: string | null): NodeSummary =>
   kind: 'pdf',
   folderId,
   createdAt: AT,
+  updatedAt: AT,
 });
 
 describe('withOrganized (006 CA-4, CA-7)', () => {

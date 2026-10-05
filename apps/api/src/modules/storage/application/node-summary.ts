@@ -17,6 +17,7 @@ export function toFolderSummary(folder: Folder): FolderSummary {
     name: folder.name.value,
     parentId: folder.parentId,
     createdAt: folder.createdAt.toISOString(),
+    updatedAt: folder.updatedAt.toISOString(),
   };
 }
 

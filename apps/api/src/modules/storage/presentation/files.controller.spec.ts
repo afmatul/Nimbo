@@ -18,6 +18,7 @@ const SUMMARY = {
   kind: 'pdf',
   folderId: null,
   createdAt: CREATED.toISOString(),
+  updatedAt: CREATED.toISOString(),
 };
 
 function file(): File {

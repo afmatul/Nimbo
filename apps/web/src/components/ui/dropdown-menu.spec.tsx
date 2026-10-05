@@ -8,6 +8,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './dropdown-menu';
 
@@ -78,6 +82,39 @@ describe('DropdownMenu (CA-13, CA-21)', () => {
     const item = document.querySelector('[role="menuitem"]');
     expect(item?.getAttribute('aria-disabled')).toBe('true');
     expect(item?.hasAttribute('data-disabled')).toBe(true);
+  });
+
+  it('grupo de opciones: etiqueta, separador y menuitemradio con aria-checked (007 orden)', async () => {
+    const onValueChange = jest.fn();
+    await mount(
+      <DropdownMenu>
+        <DropdownMenuTrigger aria-label="Ordenar">Ordenar</DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuLabel id="g-campo">Ordenar por</DropdownMenuLabel>
+          <DropdownMenuRadioGroup
+            value="name"
+            onValueChange={onValueChange}
+            aria-labelledby="g-campo"
+          >
+            <DropdownMenuRadioItem value="name">Nombre</DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="size">Tamaño</DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
+          <DropdownMenuSeparator />
+        </DropdownMenuContent>
+      </DropdownMenu>,
+    );
+
+    await press('Enter');
+
+    const radios = Array.from(document.querySelectorAll('[role="menuitemradio"]'));
+    expect(radios.map((radio) => radio.getAttribute('aria-checked'))).toEqual(['true', 'false']);
+    expect(document.querySelector('[role="group"]')?.getAttribute('aria-labelledby')).toBe(
+      'g-campo',
+    );
+    expect(document.querySelector('[role="separator"]')?.className).toContain('bg-border');
+    await act(async () => (radios[1] as HTMLElement).click());
+    expect(onValueChange).toHaveBeenCalledWith('size');
+    expect(document.body.innerHTML).not.toMatch(RAW_COLOR);
   });
 
   it('usa solo tokens de Cielo Sereno, sin colores crudos', async () => {

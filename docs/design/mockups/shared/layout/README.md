@@ -16,14 +16,29 @@
   - menu-cuenta-abierto: menú de la cuenta abierto con el foco en «Seguridad» (`layout--menu-cuenta-abierto.html`)
   - confirmar-cerrar-sesion: «Cerrar sesión» desde el menú pide confirmación (`layout--confirmar-cerrar-sesion.html`)
   - solo-lectura: plan Pro vencido; aviso persistente con «Renovar plan» (`layout--solo-lectura.html`, RF-23)
+  - cuota-70 (spec 007): tarjeta de cuota al 82 % con «Tu cuota está al 82 %.» (ícono de triángulo) y «Liberar espacio»
+    (`layout--cuota-70.html`). A 360 px se ve en el cajón abierto, porque la barra lateral solo existe ahí.
+  - cuota-90 (spec 007): tarjeta al 94 % con «Espacio casi agotado.» (ícono de círculo) y «Liberar espacio»
+    (`layout--cuota-90.html`). A 360 px, en el cajón. Al 100 % la tarjeta dice «Espacio agotado.» (se ve en
+    `storage/resumen-espacio/resumen-espacio--cuota-llena.html`).
   - movil-cajon-abierto: por debajo de 900 px, la barra lateral se abre como cajón (`layout--movil-cajon-abierto.html`).
     Solo existe en móvil y tableta; a 1440 px el archivo muestra el marco de escritorio y no tiene captura.
   - **Accesos rápidos (spec 006, CA-27 y CA-28, Aprobado 2026-10-03)**: nueve estados nuevos, descritos en «Accesos
     rápidos de la barra lateral (006)»: fijados-y-recientes, solo-recientes, solo-fijados, con-ver-mas, sin-accesos,
     tope-de-fijados, fijado-menu-abierto (solo captura a 1440), movil-cajon-con-accesos y
     movil-cajon-fijado-menu-abierto (`layout--<estado>.html`; los dos del cajón solo tienen captura a 360 px).
+  - aviso-arriba-centro (spec 007, CA-18): aviso de éxito «Movimos «Informe.docx» a la papelera.» con «Ver papelera» y
+    la X, arriba y al centro, debajo de la barra superior, con el panel de cargas abierto abajo a la derecha (a 360 px,
+    hoja al pie) y tres cargas terminadas (`layout--aviso-arriba-centro.html`).
+  - barra-fija-lista-larga (spec 007, CA-19): Mis archivos con 20 elementos desplazada hasta «Cargar más»; la barra
+    lateral queda fija, con la tarjeta de cuota al pie y las 12 carpetas desplazándose en su región central
+    (`layout--barra-fija-lista-larga.html`). A 360 px se ve el cajón abierto con los mismos tres bloques.
+  - Los dos estados de 007 usan la barra en tres bloques de `_generadores/layout/barra.js` (ver «Barra lateral en tres
+    bloques»), el ítem «Espacio» de 007 D-18 y una «ventana» de alto fijo (820 px; 720 px por debajo de 900 px) en la
+    que se desplaza solo la columna principal: la hoja no puede desplazar el navegador. Los 7 estados anteriores no
+    cambiaron ni un byte.
 - **Capturas**: `docs/design/capturas/shared/layout/` (`layout--<estado>--<360|1440>.png`; el cajón, solo a 360).
-  axe-core sin violaciones en los 5 estados a 360 y 1440 px y en los recorridos de teclado (menú abierto, diálogo
+  axe-core sin violaciones en los 9 estados a 360 y 1440 px y en los recorridos de teclado (menú abierto, diálogo
   abierto, cajón abierto). Sin desbordamiento horizontal a 360 px, sin errores de consola, objetivos de al menos 24 px
   y de 44 px en la barra superior y el cajón móviles (CA-5 de 000b).
 
@@ -63,6 +78,31 @@
   contenido que la barra lateral (logo, plan, navegación, carpetas y cuota), mide `min(320px, 100% − 40px)` y sus
   ítems tienen 44 px de alto. Al abrir, el foco va al primer enlace; Escape, la X, el velo o un enlace lo cierran y el
   foco vuelve al botón de menú. El resto queda `inert`.
+- **Barra lateral en tres bloques** (007 CA-19; `_generadores/layout/barra.js`): (1) arriba, logo, plan y navegación
+  con su alto natural; (2) región central, que toma el alto restante y tiene **desplazamiento propio**
+  (`overflow-y: auto`, `overscroll-behavior: contain`) para lo que no cabe; (3) pie con la tarjeta de cuota, siempre
+  visible. Cuando la región central tiene más contenido debajo, su borde inferior se difumina hacia `card` (decorativo;
+  el desplazamiento también se ve en la barra de desplazamiento del sistema). Los enlaces de la región son enfocables,
+  así que el teclado la recorre con Tab sin `tabindex` extra. Hoy la región central es «Carpetas» (`nav` «Carpetas»);
+  la spec 006 (CA-27, CA-28) la reemplaza por «Accesos rápidos» sin tocar los bloques 1 y 3.
+- **Barra fija con lista larga** (007 CA-19): al desplazar la página solo se mueve el contenido principal. En
+  escritorio la barra lateral es `sticky` arriba con el alto de la ventana (con el `AppLayout` actual, que tiene una
+  cabecera a todo lo ancho de 64 px, la barra queda `sticky` bajo ella con el alto de la ventana menos la cabecera); la
+  barra superior también queda fija. En el mockup, el lienzo hace de ventana: la columna principal se desplaza dentro
+  y la barra no. **A 360 px** no hay barra lateral: el contenido usa el desplazamiento normal de la página con la barra
+  superior fija, y el cajón usa los mismos tres bloques: la cuota queda al pie del cajón y la región central se
+  desplaza (el cajón ya no se desplaza entero, como en `movil-cajon-abierto`).
+- **Aviso arriba y al centro** (007 CA-18, cambia ADR-0024 de abajo a la derecha a arriba al centro): `Toaster`
+  con `position="top-center"`, centrado en la ventana, 16 px por debajo de la barra superior de 64 px (80 px desde
+  arriba; a 360 px, 8 px: 72 px) para no taparla. Mide hasta 440 px y a 360 px ocupa el ancho disponible (8 px por
+  lado), con «Ver papelera» debajo del texto y la X de 44 px arriba a la derecha. Tokens del `Toaster` real: fondo
+  `card`, texto `foreground`, borde `border`, `radius-md`, `shadow-modal` e ícono de éxito `success-foreground`.
+  El panel de cargas sigue abajo a la derecha (a 360 px, hoja al pie), así que el aviso nunca tapa sus cargas
+  terminadas; puede tapar por unos segundos el encabezado de la página, que no tiene nada que no se pueda leer
+  después. `role="status"`, se retira solo a los 8 s o con la X y se pausa con el puntero o el foco (ADR-0024).
+  Para la implementación: el desplazamiento por defecto de Sonner (24 px; 16 px en móvil) cae **sobre** la barra
+  superior, así que hay que pasarle `offset`/`mobileOffset` arriba; y su X por defecto mide 20 × 20 px en la esquina
+  (pasa por la excepción de espaciado de WCAG 2.5.8, pero el mockup usa 36 px en escritorio y 44 px en móvil).
 - **Contenido central**: un marcador neutro con el `h1` de la página. Cada pantalla dibuja su contenido en su mockup.
 - Los roles internos (Administrador, Soporte, Operador) no usan este marco: tienen el suyo en 011 y 022, sin
   navegación de archivos.
@@ -229,6 +269,9 @@ Este mockup es la referencia para rehacer `AppLayout`. Hoy difiere en lo siguien
 | `muted-foreground` sobre `card` (correo en el menú) | 4.76 |
 | Anillo de foco `ring` sobre `card` / `muted` | 4.97 / 4.58 |
 | `secondary-foreground` sobre `background` (marcador del contenido) | 7.73 |
+| `foreground` sobre `card` (texto del aviso, 007 CA-18) | 13.58 |
+| Ícono de éxito `success-foreground` sobre `card` (no texto) | 5.25 |
+| Borde `input` del botón «Ver papelera» sobre `card` (no texto) | 3.07 |
 
 El borde del aviso (`warning` al 45 %) y el borde discontinuo del marcador son decorativos: el aviso se distingue por
 su ícono, su título y su fondo.
@@ -256,7 +299,13 @@ su ícono, su título y su fondo.
 
 ## Pendiente
 - Velo de los diálogos y del cajón: `agent-bg` al 45 %; falta el token en `globals.css` (TODO #6 de `app-layout.tsx`).
-- Tramos de 70 % y 90 % de la cuota en la barra lateral y su enlace al optimizador: los dibuja 007.
+- Tramos de 70 % y 90 % de la cuota: dibujados por 007 (`cuota-70`, `cuota-90`; tarjeta de
+  `_generadores/espacio/espacio.js`). La acción es «Liberar espacio» y lleva al resumen de espacio (007 CA-5, CA-7); no
+  hay enlace al optimizador (021). En 0–69 % 007 propone «Ver detalle» como entrada al resumen; el `default` de este
+  mockup todavía no lo muestra (pendiente de aprobación en `storage/resumen-espacio/README.md`).
+- Región central de la barra en los estados de 007 CA-18/CA-19 (`aviso-arriba-centro`, `barra-fija-lista-larga`):
+  todavía muestran «Carpetas», que 006 CA-27 reemplazó por «Accesos rápidos»; falta pasar la sección de
+  `accesos/accesos.js` a `barra.js` (`central`) y regenerarlos. Los bloques de navegación y de cuota no cambian.
 - Árbol de carpetas y «Nueva carpeta» en la barra lateral: no se dibujan; 006 los reemplazó por «Accesos rápidos»
   (sin desglose) y el botón «Nueva carpeta» vive en el encabezado del explorador. En solo lectura, «Nueva carpeta» se
   deshabilita.

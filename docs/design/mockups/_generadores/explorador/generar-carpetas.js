@@ -82,54 +82,8 @@ const PROFUNDA = [
 ];
 const RUTA_FASE3 = ['Mis archivos', 'Proyecto Alpha', 'Fase 3 · RAG'];
 
-// ---------- Piezas ----------
-const mi = C.itemMenu;
-// «Mover a la papelera» no va en rojo: es reversible y no pide confirmación; el rojo queda para lo definitivo.
-const MENU_ARCHIVO = [mi('download', 'Descargar'), mi('pencil', 'Renombrar'), mi('folderInput', 'Mover a…'), 'sep', mi('trash', 'Mover a la papelera')];
-const MENU_CARPETA = [mi('pencil', 'Renombrar'), mi('folderInput', 'Mover a…'), 'sep', mi('trash', 'Mover a la papelera')];
-
-function fila([tipo, nombre, tam, fecha], i, menuAbierto) {
-  const carpeta = tipo === 'carpeta';
-  const tile = carpeta ? `<span class="ftile ftile-folder">${icon('folder', 16)}</span>` : S.tile(nombre);
-  const texto = carpeta ? `<a class="fname-link" href="#">${nombre}</a>` : nombre;
-  return `
-            <tr>
-              <td><div class="fname">${tile}<div class="fname-text">${texto}<span class="fmeta-m">${carpeta ? 'Carpeta' : tam} · ${fecha}</span></div></div></td>
-              <td class="c-size">${carpeta ? '<span aria-hidden="true">—</span><span class="sr-only">Carpeta, sin tamaño</span>' : tam}</td>
-              <td class="c-date">${fecha}</td>
-              <td class="c-act">${S.menuFila(i, nombre, i === menuAbierto, carpeta ? MENU_CARPETA : MENU_ARCHIVO)}</td>
-            </tr>`;
-}
-
-function tabla(nodos, lugar, menuAbierto = -1) {
-  return `
-        <div class="files">
-          <table>
-            <caption class="sr-only">Carpetas y archivos en ${lugar}</caption>
-            <thead><tr><th scope="col">Nombre</th><th scope="col" class="c-size">Tamaño</th><th scope="col" class="c-date">Modificado</th><th scope="col" class="c-act"><span class="sr-only">Acciones</span></th></tr></thead>
-            <tbody>${nodos.map((n, i) => fila(n, i, menuAbierto)).join('')}
-            </tbody>
-          </table>
-        </div>`;
-}
-
-const botonNuevaCarpeta = () => `<button class="btn btn-outline" type="button">${icon('folderPlus', 16)}<span>Nueva carpeta</span></button>`;
-
-// ruta: [Mis archivos, …, carpeta abierta]. En móvil (sin migas en la barra superior) se ve «‹ {carpeta anterior}»
-// con el nombre real («‹ Mis archivos» en el primer nivel) y el nombre accesible «Volver a {nombre}».
-function encabezado(ruta) {
-  const actual = ruta[ruta.length - 1];
-  const anterior = ruta[ruta.length - 2];
-  const volver = anterior ? `
-        <a class="back-link" href="#" aria-label="Volver a ${anterior}">${icon('chevronLeft', 18)}<span>${anterior}</span></a>` : '';
-  return `${volver}
-        <div class="page-head">
-          <div>
-            <h1>${actual}</h1>
-          </div>
-          <div class="head-actions">${botonNuevaCarpeta()}${S.botonSubir()}</div>
-        </div>`;
-}
+// ---------- Piezas (filas, tabla y encabezado: carpetas/carpetas.js) ----------
+const { tabla, encabezado } = C;
 
 function carpetaVacia() {
   return `

@@ -39,6 +39,7 @@ function fakeApi(overrides: Partial<StorageApi> = {}): jest.Mocked<StorageApi> {
           kind: 'docx',
           folderId: null,
           createdAt: AT,
+          updatedAt: AT,
         },
       }),
     ),

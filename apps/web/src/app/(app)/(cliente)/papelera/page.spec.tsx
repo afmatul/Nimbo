@@ -15,9 +15,11 @@ import { toast } from 'sonner';
 
 import { SessionProvider } from '../../../../features/identity/session/session-provider';
 import type { StorageApi } from '../../../../features/storage/api';
+import { UploadsSpaceProvider } from '../../../../features/storage/components/space-provider';
 import { UploadsProvider } from '../../../../features/storage/components/uploads-provider';
 import { EMPTY_POLL_INTERVAL_MS } from '../../../../features/storage/hooks/use-trash';
 import { StorageRequestError } from '../../../../features/storage/storage-request-error';
+import { GB, spaceSummaryWith } from '../../../../features/storage/test-space-summary';
 
 import PapeleraPage from './page';
 
@@ -84,6 +86,7 @@ function restoredAs(
       kind: 'docx',
       folderId: outcome === 'moved_to_root' ? null : FASE3.id,
       createdAt: item.deletedAt,
+      updatedAt: item.deletedAt,
     },
     outcome,
     originalName: item.name,
@@ -100,6 +103,7 @@ function fakeApi(overrides: Partial<StorageApi> = {}): jest.Mocked<StorageApi> {
     createFolder: jest.fn(() => never()),
     downloadUrl: jest.fn(() => never()),
     moveToTrash: jest.fn(() => never()),
+    spaceSummary: jest.fn(() => Promise.resolve(spaceSummaryWith(4.8 * GB))),
     listTrash: jest.fn(() => Promise.resolve(page(ITEMS))),
     trashSummary: jest.fn(() => Promise.resolve(SUMMARY)),
     restore: jest.fn(() => never()),
@@ -114,7 +118,9 @@ async function renderPage(api: StorageApi): Promise<HTMLElement> {
   const { container } = render(
     <SessionProvider apiPublicUrl="http://localhost/api/v1">
       <UploadsProvider api={api}>
-        <PapeleraPage />
+        <UploadsSpaceProvider>
+          <PapeleraPage />
+        </UploadsSpaceProvider>
       </UploadsProvider>
     </SessionProvider>,
   );
@@ -327,7 +333,7 @@ describe('página Papelera (/papelera)', () => {
     expect(screen.queryByRole('status', { name: 'Restauramos 2 de 3 elementos' })).toBeNull();
   });
 
-  it('CA-18: «Eliminar definitivamente» desde ⋮ confirma, elimina y quita la fila', async () => {
+  it('CA-18, 007 CA-4: «Eliminar definitivamente» desde ⋮ confirma, elimina, quita la fila y refresca el espacio', async () => {
     const api = fakeApi({ purge: jest.fn(() => Promise.resolve({ freedBytes: 2_100_000 })) });
     await renderPage(api);
     await screen.findByRole('table');
@@ -341,6 +347,7 @@ describe('página Papelera (/papelera)', () => {
     expect(api.purge).toHaveBeenCalledWith('file', ACTA.id);
     await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
     expect(screen.queryByText('Acta_reunion_kickoff.pdf', { selector: 'span[title]' })).toBeNull();
+    expect(api.spaceSummary).toHaveBeenCalledTimes(2);
   });
 
   it('CA-18: «Vaciar papelera» deja las filas en «Vaciando…» y avisa al terminar', async () => {

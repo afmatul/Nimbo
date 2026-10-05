@@ -19,11 +19,14 @@ import { File } from '../domain/file';
 import { FileName } from '../domain/file-name.vo';
 import { Folder } from '../domain/folder';
 import { FolderName } from '../domain/folder-name.vo';
+import { NodeOrder } from '../domain/node-order';
 import { TrashState } from '../domain/trash-state';
 
 import type { FolderConfig } from './folder-config';
 import { FolderService } from './folder.service';
 
+/** El orden de 006 (sin `sort` ni `dir`, 007 D-6). */
+const DEFAULT_ORDER = NodeOrder.of();
 const NOW = new Date('2026-09-30T10:00:00.000Z');
 const EARLIER = new Date('2026-09-29T10:00:00.000Z');
 const MAX_DEPTH = 3;
@@ -326,12 +329,16 @@ describe('FolderService.contents', () => {
     folder('Abajo', top);
     const loose = file('suelto.pdf', null);
 
-    const contents = await service.contents(ANA, { folderId: null, limit: 20 });
+    const contents = await service.contents(ANA, {
+      folderId: null,
+      order: DEFAULT_ORDER,
+      limit: 20,
+    });
 
     expect(contents.folder).toBeNull();
     expect(contents.breadcrumbs).toEqual([]);
     expect(contents.page.items.map((node) => node.id)).toEqual([top.id, loose.id]);
-    expect(nodes.listed).toEqual([{ folderId: null, limit: 20 }]);
+    expect(nodes.listed).toEqual([{ folderId: null, order: DEFAULT_ORDER, limit: 20 }]);
   });
 
   it('CA-5: una carpeta trae sus migas desde la raíz hasta ella y pasa el cursor', async () => {
@@ -340,11 +347,18 @@ describe('FolderService.contents', () => {
     const second = folder('Dos', first);
     const third = folder('Tres', second);
 
-    const contents = await service.contents(ANA, { folderId: third.id, cursor: 'c', limit: 5 });
+    const contents = await service.contents(ANA, {
+      folderId: third.id,
+      order: DEFAULT_ORDER,
+      cursor: 'c',
+      limit: 5,
+    });
 
     expect(contents.folder?.id).toBe(third.id);
     expect(contents.breadcrumbs.map((crumb) => crumb.id)).toEqual([first.id, second.id, third.id]);
-    expect(nodes.listed).toEqual([{ folderId: third.id, cursor: 'c', limit: 5 }]);
+    expect(nodes.listed).toEqual([
+      { folderId: third.id, order: DEFAULT_ORDER, cursor: 'c', limit: 5 },
+    ]);
   });
 
   it('CA-5: una carpeta en la papelera es 404 y no se lista', async () => {
@@ -352,9 +366,9 @@ describe('FolderService.contents', () => {
     const target = folder('Vieja');
     trash(target);
 
-    await expect(service.contents(ANA, { folderId: target.id, limit: 5 })).rejects.toBeInstanceOf(
-      NodeNotFoundError,
-    );
+    await expect(
+      service.contents(ANA, { folderId: target.id, order: DEFAULT_ORDER, limit: 5 }),
+    ).rejects.toBeInstanceOf(NodeNotFoundError);
     expect(nodes.listed).toEqual([]);
   });
 });

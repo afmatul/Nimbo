@@ -15,8 +15,10 @@ import userEvent from '@testing-library/user-event';
 
 import { SessionProvider } from '../../../../../../features/identity/session/session-provider';
 import type { StorageApi } from '../../../../../../features/storage/api';
+import { UploadsSpaceProvider } from '../../../../../../features/storage/components/space-provider';
 import { UploadsProvider } from '../../../../../../features/storage/components/uploads-provider';
 import { StorageRequestError } from '../../../../../../features/storage/storage-request-error';
+import { GB, spaceSummaryWith } from '../../../../../../features/storage/test-space-summary';
 import type { UploadManagerOptions } from '../../../../../../features/storage/upload/upload-manager';
 
 import CarpetaPage from './page';
@@ -30,6 +32,7 @@ const PROMPTS: FolderSummary = {
   name: 'Prompts',
   parentId: FASE3.id,
   createdAt: AT,
+  updatedAt: AT,
 };
 const INFORME: FileSummary = {
   id: '7a8b9c0d-1e2f-4c5d-8e6f-2f0c1d2e3a4b',
@@ -38,14 +41,15 @@ const INFORME: FileSummary = {
   kind: 'docx',
   folderId: FASE3.id,
   createdAt: AT,
+  updatedAt: AT,
 };
 
 const ROOT: FolderContentsResponse = {
   folder: null,
   breadcrumbs: [],
   items: [
-    { type: 'folder', ...ALPHA, parentId: null, createdAt: AT },
-    { type: 'folder', ...FINANZAS, parentId: null, createdAt: AT },
+    { type: 'folder', ...ALPHA, parentId: null, createdAt: AT, updatedAt: AT },
+    { type: 'folder', ...FINANZAS, parentId: null, createdAt: AT, updatedAt: AT },
   ],
   nextCursor: null,
 };
@@ -86,6 +90,7 @@ function fakeApi(overrides: Partial<StorageApi> = {}): jest.Mocked<StorageApi> {
     moveToTrash: jest.fn(() => never()),
     quickAccess: jest.fn(() => Promise.resolve({ pinned: [], recent: [], hasMoreRecent: false })),
     recordRecent: jest.fn(() => Promise.resolve()),
+    spaceSummary: jest.fn(() => Promise.resolve(spaceSummaryWith(4.8 * GB))),
     ...overrides,
   } as jest.Mocked<StorageApi>;
 }
@@ -99,7 +104,7 @@ async function renderFolder(
   render(
     <SessionProvider apiPublicUrl="http://localhost/api/v1">
       <UploadsProvider api={api} {...(managerOptions ? { managerOptions } : {})}>
-        {page}
+        <UploadsSpaceProvider>{page}</UploadsSpaceProvider>
       </UploadsProvider>
     </SessionProvider>,
   );
@@ -123,7 +128,7 @@ describe('página de una carpeta (/archivos/carpeta/[folderId])', () => {
     await renderFolder(api);
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Fase 3 · RAG' })).toBeTruthy();
-    expect(api.folderContents).toHaveBeenCalledWith(FASE3.id);
+    expect(api.folderContents).toHaveBeenCalledWith(FASE3.id, { sort: 'created', dir: 'desc' });
     const rows = within(screen.getByRole('table')).getAllByRole('row').slice(1);
     expect(rows.map((row) => row.textContent)).toEqual([
       expect.stringContaining('Prompts'),
@@ -275,6 +280,7 @@ describe('página de una carpeta (/archivos/carpeta/[folderId])', () => {
       name: 'Resultados finales',
       parentId: FASE3.id,
       createdAt: AT,
+      updatedAt: AT,
     };
     const api = fakeApi({ createFolder: jest.fn(() => Promise.resolve(created)) });
     await renderFolder(api);

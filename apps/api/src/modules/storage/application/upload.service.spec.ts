@@ -53,6 +53,7 @@ const LIMITS: PlanLimits = {
   maxFileBytes: 1_000n * BigInt(MIB),
   storageQuotaBytes: 2_000n * BigInt(MIB),
   trashRetentionDays: 30,
+  planName: 'Plan de prueba',
 };
 const CONFIG: UploadConfig = {
   partSizeBytes: BigInt(8 * MIB),
@@ -609,6 +610,7 @@ describe('UploadService.complete', () => {
         kind: 'docx',
         folderId: null,
         createdAt: NOW.toISOString(),
+        updatedAt: NOW.toISOString(),
       },
     });
     expect(ctx.storage.completed[0]?.parts.map((part) => part.etag)).toEqual([

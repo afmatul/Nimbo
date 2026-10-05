@@ -5,8 +5,8 @@ import { ChevronRight, Clock, EllipsisVertical, Folder, Pin, PinOff } from 'luci
 import Link from 'next/link';
 import * as React from 'react';
 
-import { useSidebarSlot, type SidebarSlot } from '../../../components/nimbo/app-layout';
 import { FileTypeIcon } from '../../../components/nimbo/file-type-chip';
+import { useSidebarSlot, type SidebarSlot } from '../../../components/nimbo/sidebar-slot';
 import { Button } from '../../../components/ui/button';
 import {
   DropdownMenu,
@@ -259,7 +259,7 @@ function ItemLink({
   const content = [<ItemIcon key="icono" item={item} />, <ItemName key="nombre" item={item} />];
   if (item.type === 'folder') {
     return (
-      <Link href={folderPath(item.id)} onClick={slot.onNavigate} {...shared}>
+      <Link href={folderPath(item.id)} {...shared}>
         {content}
       </Link>
     );
@@ -279,7 +279,6 @@ function SeeMoreLink({ slot }: { readonly slot: SidebarSlot }): React.JSX.Elemen
   return (
     <Link
       href={MY_FILES_PATH}
-      onClick={slot.onNavigate}
       className={cn(
         'flex items-center gap-1 rounded-md px-3 font-semibold text-primary hover:bg-muted hover:text-primary-hover',
         FOCUS_RING,

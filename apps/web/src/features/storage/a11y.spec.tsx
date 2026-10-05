@@ -13,6 +13,9 @@ import { axe } from 'jest-axe';
 import { act, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
+import { AppLayout } from '../../components/nimbo/app-layout';
+import { SessionProvider } from '../identity/session/session-provider';
+
 import { CancelUploadDialog } from './components/cancel-upload-dialog';
 import { FileExplorer, type FileExplorerProps } from './components/file-explorer';
 import { DownloadNoticeBanner, FileRowMenu, PREPARING_DELAY_MS } from './components/file-row-menu';
@@ -22,8 +25,14 @@ import { NameConflictDialog } from './components/name-conflict-dialog';
 import { NewFolderDialog } from './components/new-folder-dialog';
 import type { DisclosedLevel, FolderDisclosure } from './components/node-table';
 import { QuickAccessLimitAlert } from './components/quick-access-limit-alert';
+import { SidebarQuota } from './components/sidebar-quota';
+import type { SpaceSummaryState } from './components/space-provider';
+import { SpaceSummaryView } from './components/space-summary-view';
 import { UploadPanel } from './components/upload-panel';
+import type { ListControls } from './hooks/use-folder-contents';
+import { DEFAULT_NODE_ORDER, type NodeOrder } from './node-order';
 import { StorageRequestError, type StorageErrorDetails } from './storage-request-error';
+import { GB, spaceSummaryWith } from './test-space-summary';
 import type { UploadPhase, UploadView } from './upload/upload-manager';
 
 const BLOCKING_IMPACTS = new Set(['serious', 'critical']);
@@ -38,6 +47,7 @@ const FILE: FileSummary = {
   kind: 'docx',
   folderId: null,
   createdAt: '2026-09-01T10:00:00.000Z',
+  updatedAt: '2026-09-01T10:00:00.000Z',
 };
 
 const FILE_NODE: NodeSummary = { type: 'file', ...FILE };
@@ -49,6 +59,7 @@ const PROMPTS: NodeSummary = {
   name: 'Prompts',
   parentId: FASE3.id,
   createdAt: '2026-09-01T10:00:00.000Z',
+  updatedAt: '2026-09-01T10:00:00.000Z',
 };
 
 let root: Root | null = null;
@@ -551,12 +562,14 @@ describe('Accesibilidad de los estados de carga y descarga (CA-21)', () => {
       ...ALPHA,
       parentId: null,
       createdAt: FILE.createdAt,
+      updatedAt: FILE.updatedAt,
     };
     const FASE3_NODE: NodeSummary = {
       type: 'folder',
       ...FASE3,
       parentId: ALPHA.id,
       createdAt: FILE.createdAt,
+      updatedAt: FILE.updatedAt,
     };
     const PROMPTS_IN_FASE3: NodeSummary = { ...PROMPTS, parentId: FASE3.id };
 
@@ -649,5 +662,166 @@ describe('Accesibilidad de los estados de carga y descarga (CA-21)', () => {
       );
       await expectNoBlockingViolations();
     });
+  });
+});
+
+describe('Accesibilidad del resumen de espacio (007 CA-1, CA-2, CA-3, CA-5, CA-8)', () => {
+  const states: ReadonlyArray<readonly [string, SpaceSummaryState, string]> = [
+    [
+      'default',
+      { status: 'ready', summary: spaceSummaryWith(4.8 * GB) },
+      'Tienes espacio de sobra.',
+    ],
+    ['cargando', { status: 'loading' }, 'Calculando tu espacio…'],
+    ['error', { status: 'error' }, 'No pudimos calcular tu espacio.'],
+    [
+      'tramo 70–89 %',
+      { status: 'ready', summary: spaceSummaryWith(12.3 * GB, { trashBytes: 0.5 * GB }) },
+      'Tu cuota está al 82 %.',
+    ],
+    [
+      'tramo 90–100 %',
+      { status: 'ready', summary: spaceSummaryWith(14.1 * GB, { trashBytes: 0.8 * GB }) },
+      'Espacio casi agotado.',
+    ],
+    ['cuota llena', { status: 'ready', summary: spaceSummaryWith(15 * GB) }, 'Espacio agotado.'],
+    [
+      'papelera con espacio y cargas en curso',
+      {
+        status: 'ready',
+        summary: spaceSummaryWith(7 * GB, { trashBytes: 2.6 * GB, reservedBytes: 0.3 * GB }),
+      },
+      'Cargas en curso',
+    ],
+  ];
+
+  beforeEach(() => {
+    global.fetch = jest.fn(() => new Promise<Response>(() => undefined));
+  });
+
+  it.each(states)('%s', async (_name, state, expected) => {
+    await mount(
+      <SessionProvider apiPublicUrl="http://localhost/api/v1">
+        <SpaceSummaryView state={state} onRetry={jest.fn()} />
+      </SessionProvider>,
+    );
+
+    expect(text()).toContain(expected);
+    await expectNoBlockingViolations();
+  });
+});
+
+describe('Accesibilidad de la tarjeta de cuota de la barra lateral (007 CA-5, CA-8)', () => {
+  const states: ReadonlyArray<readonly [string, SpaceSummaryState, string]> = [
+    ['bajo el 70 %', { status: 'ready', summary: spaceSummaryWith(4.8 * GB) }, 'Ver detalle'],
+    [
+      'tramo 70–89 %',
+      { status: 'ready', summary: spaceSummaryWith(12.3 * GB) },
+      'Tu cuota está al 82 %.',
+    ],
+    [
+      'tramo 90–100 %',
+      { status: 'ready', summary: spaceSummaryWith(14.1 * GB) },
+      'Espacio casi agotado.',
+    ],
+    ['cargando', { status: 'loading' }, 'Calculando tu espacio…'],
+    ['error', { status: 'error' }, 'No pudimos calcular tu espacio.'],
+  ];
+
+  it.each(states)('%s', async (_name, state, expected) => {
+    await mount(
+      <AppLayout quotaCard={<SidebarQuota state={state} />}>
+        <h1>Mis archivos</h1>
+      </AppLayout>,
+    );
+
+    expect(text()).toContain(expected);
+    await expectNoBlockingViolations();
+  });
+});
+
+describe('Accesibilidad de la barra lateral con sección y cuota (007 CA-19)', () => {
+  const section = (
+    <ul aria-label="Sección de la página">
+      <li>
+        <a href="/archivos/carpeta/a">Proyecto Alpha</a>
+      </li>
+      <li>
+        <a href="/archivos/carpeta/b">Finanzas</a>
+      </li>
+    </ul>
+  );
+
+  it.each([false, true])('menú móvil abierto: %s', async (menuOpen) => {
+    await mount(
+      <AppLayout
+        sidebarSection={section}
+        quotaCard={
+          <SidebarQuota state={{ status: 'ready', summary: spaceSummaryWith(4.8 * GB) }} />
+        }
+        initialMobileMenuOpen={menuOpen}
+      >
+        <h1>Mis archivos</h1>
+      </AppLayout>,
+    );
+
+    expect(text()).toContain('Proyecto Alpha');
+    await expectNoBlockingViolations();
+  });
+});
+
+describe('Accesibilidad del orden y «Cargar más» del explorador (007 CA-9, CA-10, CA-12)', () => {
+  const BY_SIZE: NodeOrder = { sort: 'size', dir: 'desc' };
+  const ANEXOS: NodeSummary = {
+    ...PROMPTS,
+    id: '4d5e6f7a-8b9c-4d0e-8f1a-2b3c4d5e6f7a',
+    name: 'Anexos',
+  };
+
+  function listControls(overrides: Partial<ListControls>): ListControls {
+    return {
+      order: DEFAULT_NODE_ORDER,
+      shownOrder: DEFAULT_NODE_ORDER,
+      sorting: false,
+      more: 'idle',
+      added: 0,
+      hasMore: true,
+      changeOrder: jest.fn(),
+      loadMore: jest.fn(),
+      dismissMoreError: jest.fn(),
+      ...overrides,
+    };
+  }
+
+  const states: ReadonlyArray<readonly [string, Partial<ListControls>, string]> = [
+    [
+      'ordenado por tamaño, mayor primero',
+      { order: BY_SIZE, shownOrder: BY_SIZE },
+      'Ordenar: Tamaño, mayor primero',
+    ],
+    ['ordenando', { order: BY_SIZE, sorting: true }, 'Ordenando…'],
+    ['más páginas', {}, 'Cargar más'],
+    ['cargando más', { more: 'loading' }, 'Cargando más…'],
+    ['error al cargar más', { more: 'error' }, 'No pudimos cargar más elementos.'],
+  ];
+
+  it.each(states)('%s', async (_name, overrides, expected) => {
+    await renderExplorer({
+      folderId: FASE3.id,
+      breadcrumbs: [ALPHA, FASE3],
+      nodes: [ANEXOS, PROMPTS, FILE_NODE],
+      controls: listControls(overrides),
+    });
+
+    expect(text()).toContain(expected);
+    await expectNoBlockingViolations();
+  });
+
+  it('menú «Ordenar» abierto', async () => {
+    await renderExplorer({ nodes: [PROMPTS, FILE_NODE], controls: listControls({}) });
+    await openMenu();
+
+    expect(document.querySelectorAll('[role="menuitemradio"]')).toHaveLength(6);
+    await expectNoBlockingViolations();
   });
 });

@@ -1,4 +1,8 @@
-import { STORAGE_ERROR_CODES } from '@nimbo/contracts';
+import {
+  STORAGE_ERROR_CODES,
+  STORAGE_FIELD_ISSUE_REASONS,
+  STORAGE_FIELD_MESSAGES,
+} from '@nimbo/contracts';
 
 import type { DomainError } from '../../../shared/domain/errors';
 import {
@@ -64,4 +68,14 @@ describe('contrato de códigos de `storage` (CA-7, CA-19)', () => {
       Object.values(STORAGE_ERROR_CODES).sort(),
     );
   });
+
+  it.each(['INVALID_SORT', 'INVALID_DIRECTION', 'INVALID_CURSOR'])(
+    '007 CA-11: `STORAGE_INVALID_QUERY` admite el motivo `%s` con su mensaje en español',
+    (reason) => {
+      expect(STORAGE_FIELD_ISSUE_REASONS).toContain(reason);
+      expect(STORAGE_FIELD_MESSAGES[reason as keyof typeof STORAGE_FIELD_MESSAGES]).toMatch(
+        /vuelve a intentarlo\.$|inténtalo de nuevo\.$/,
+      );
+    },
+  );
 });

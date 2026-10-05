@@ -14,8 +14,10 @@ import { axe } from 'jest-axe';
 
 import { SessionProvider } from '../../../../features/identity/session/session-provider';
 import type { StorageApi } from '../../../../features/storage/api';
+import { UploadsSpaceProvider } from '../../../../features/storage/components/space-provider';
 import { UploadsProvider } from '../../../../features/storage/components/uploads-provider';
 import { StorageRequestError } from '../../../../features/storage/storage-request-error';
+import { GB, spaceSummaryWith } from '../../../../features/storage/test-space-summary';
 import type { UploadManagerOptions } from '../../../../features/storage/upload/upload-manager';
 
 import ArchivosPage from './page';
@@ -29,6 +31,7 @@ const INFORME: FileSummary = {
   kind: 'docx',
   folderId: null,
   createdAt: AT,
+  updatedAt: AT,
 };
 const NUEVO: FileSummary = {
   ...INFORME,
@@ -64,6 +67,7 @@ function fakeApi(overrides: Partial<StorageApi> = {}): jest.Mocked<StorageApi> {
     moveToTrash: jest.fn(() => never()),
     quickAccess: jest.fn(() => Promise.resolve({ pinned: [], recent: [], hasMoreRecent: false })),
     recordRecent: jest.fn(() => Promise.resolve()),
+    spaceSummary: jest.fn(() => Promise.resolve(spaceSummaryWith(4.8 * GB))),
     ...overrides,
   } as jest.Mocked<StorageApi>;
 }
@@ -75,7 +79,9 @@ async function renderPage(
   const { container } = render(
     <SessionProvider apiPublicUrl="http://localhost/api/v1">
       <UploadsProvider api={api} {...(managerOptions ? { managerOptions } : {})}>
-        <ArchivosPage />
+        <UploadsSpaceProvider>
+          <ArchivosPage />
+        </UploadsSpaceProvider>
       </UploadsProvider>
     </SessionProvider>,
   );
@@ -103,7 +109,7 @@ describe('página Mis archivos (/archivos)', () => {
     expect(screen.queryByText('Tus archivos aparecerán aquí')).toBeNull();
     expect(screen.getByRole('heading', { name: 'Mis archivos' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Cerrar sesión' })).toBeTruthy();
-    expect(api.folderContents).toHaveBeenCalledWith(null);
+    expect(api.folderContents).toHaveBeenCalledWith(null, { sort: 'created', dir: 'desc' });
   });
 
   it('CA-1: lista la raíz con el menú «Acciones de {nombre}» en cada fila', async () => {
@@ -127,7 +133,7 @@ describe('página Mis archivos (/archivos)', () => {
 
     expect(await screen.findByRole('table')).toBeTruthy();
     expect(folderContents).toHaveBeenCalledTimes(2);
-    expect(folderContents).toHaveBeenLastCalledWith(null);
+    expect(folderContents).toHaveBeenLastCalledWith(null, { sort: 'created', dir: 'desc' });
   });
 
   it('CA-1, CA-21: con el listado caído, «Subir archivos» sigue habilitado y el panel sigue vivo', async () => {
@@ -192,7 +198,7 @@ describe('página Mis archivos (/archivos)', () => {
     expect(fireEvent.drop(heading, { dataTransfer: { types: ['text/plain'] } })).toBe(true);
   });
 
-  it('CA-1: un archivo recién subido aparece en la lista sin recargar', async () => {
+  it('CA-1, 007 CA-4: un archivo recién subido aparece en la lista sin recargar y refresca el espacio', async () => {
     const simple: InitUploadResponse = {
       uploadId: UPLOAD_ID,
       mode: 'simple',
@@ -219,6 +225,7 @@ describe('página Mis archivos (/archivos)', () => {
       ).toEqual([expect.stringContaining('nuevo.pdf'), expect.stringContaining('informe.docx')]),
     );
     expect(api.folderContents).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(api.spaceSummary).toHaveBeenCalledTimes(2));
   });
 
   it('CA-13: si la descarga falla con 404, el aviso va arriba de la lista y la fila se queda', async () => {
@@ -254,6 +261,7 @@ describe('página Mis archivos (/archivos)', () => {
       name: 'Actas',
       parentId: null,
       createdAt: AT,
+      updatedAt: AT,
     };
     const api = fakeApi({
       folderContents: jest.fn(() => Promise.resolve(page([INFORME]))),
@@ -312,6 +320,68 @@ describe('página Mis archivos (/archivos)', () => {
     await waitFor(() =>
       expect(within(sidebar).getByRole('link', { name: 'Papelera (1 elemento)' })).toBeTruthy(),
     );
+  });
+
+  it('007 CA-4: mandar algo a la papelera vuelve a pedir el resumen de espacio', async () => {
+    const api = fakeApi({
+      folderContents: jest.fn(() => Promise.resolve(page([INFORME]))),
+      moveToTrash: jest.fn(() =>
+        Promise.resolve({
+          id: INFORME.id,
+          type: 'file' as const,
+          name: INFORME.name,
+          sizeBytes: INFORME.sizeBytes,
+          originalFolder: null,
+          deletedAt: AT,
+          purgeAt: AT,
+        }),
+      ),
+    });
+    await renderPage(api);
+    await screen.findByRole('table');
+    expect(api.spaceSummary).toHaveBeenCalledTimes(1);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Acciones de informe.docx' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Mover a la papelera' }));
+
+    await waitFor(() => expect(api.spaceSummary).toHaveBeenCalledTimes(2));
+  });
+
+  it('007 CA-6: el vacío y la zona de arrastre usan el máximo por archivo del resumen', async () => {
+    await renderPage(fakeApi());
+
+    expect(await screen.findByText(/Tu plan permite hasta 50 MB por archivo\./u)).toBeTruthy();
+  });
+
+  it('007 CA-5: la barra lateral muestra la tarjeta de cuota con «Ver detalle» hacia /espacio', async () => {
+    await renderPage(fakeApi());
+
+    const sidebar = screen.getByRole('complementary', { name: 'Barra lateral de escritorio' });
+    const quota = within(sidebar).getByRole('region', { name: 'Almacenamiento' });
+    expect(within(quota).getByRole('progressbar').getAttribute('aria-valuenow')).toBe('32');
+    expect(within(quota).getByRole('link', { name: 'Ver detalle' }).getAttribute('href')).toBe(
+      '/espacio',
+    );
+  });
+
+  it('007 CA-8: si el resumen falla, la lista y «Subir archivos» siguen usables', async () => {
+    await renderPage(
+      fakeApi({
+        folderContents: jest.fn(() => Promise.resolve(page([INFORME]))),
+        spaceSummary: jest.fn(() => Promise.reject(new TypeError('Failed to fetch'))),
+      }),
+    );
+
+    expect(await screen.findByRole('table')).toBeTruthy();
+    const sidebar = screen.getByRole('complementary', { name: 'Barra lateral de escritorio' });
+    expect(within(sidebar).getByRole('region', { name: 'Almacenamiento' }).textContent).toContain(
+      'No pudimos calcular tu espacio.',
+    );
+    expect(screen.getByRole('button', { name: 'Subir archivos' })).toHaveProperty(
+      'disabled',
+      false,
+    );
+    expect(screen.queryByText(/Tu plan permite hasta/u)).toBeNull();
   });
 
   it('CA-21: la lista no tiene violaciones de accesibilidad', async () => {
