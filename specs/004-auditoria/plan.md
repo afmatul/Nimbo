@@ -1,14 +1,14 @@
 # Plan 004 — Auditoría
 
-> Spec: `./spec.md` · Estado del plan: **Propuesto**
+> Spec: `./spec.md` · Estado del plan: **Aprobado** (Adrián, 2026-10-05, con un cambio: la escritura síncrona entra ya al puerto)
 > Dice qué archivos se tocan y qué se espera de cada uno. Reutiliza lo que 005 dejó en `audit` (puerto, catálogo, módulo) y el
 > patrón de 006/007 (repositorio sobre `TransactionContext`, cursor opaco, `@Roles`, contratos zod).
 
 ## 1. Resumen técnico
-- **Escritura**: `AuditService` (nombre del diagrama T2) sustituye a `LogAuditLogger` detrás de `I_AUDIT_LOGGER`. `record` conserva el
-  contrato de 005 (mejor esfuerzo, posterior al commit, nunca lanza) y se compone de dos pasos: validar contra el catálogo
-  (función pura) y `append` (inserción estricta que lanza). `append` abre `withActor(entry.actor)` o, si ya hay una transacción del
-  mismo actor, se une a ella; así 011 obtiene la escritura síncrona sin interfaz nueva (D-5; §2, «Contrato de escritura»).
+- **Escritura**: `AuditService` (nombre del diagrama T2) sustituye a `LogAuditLogger` detrás de `I_AUDIT_LOGGER`. El puerto tiene dos
+  operaciones (D-5): `record` conserva el contrato de 005 (mejor esfuerzo, posterior al commit, nunca lanza; firma sin cambios) y la nueva
+  `recordInTransaction` (síncrona: lanza y se une a la transacción del llamador). Ambas delegan en `append` (inserción estricta que lanza);
+  `record` solo agrega el `try/catch` y el log (§2, «Contrato de escritura»).
 - **Datos**: tabla `evento_auditoria` (DF-12), solo adición reforzada con `REVOKE UPDATE, DELETE, TRUNCATE` al rol `nimbo_app`
   y RLS por afectado (D-7). Sin FK al recurso: el nombre no se resuelve y el recurso puede haberse purgado (D-3).
 - **Lectura**: `AuditController` con una sola ruta, `GET /audit/my-events`, para cualquier usuario autenticado y siempre sobre
@@ -24,9 +24,9 @@
 | audit/application | `audit-catalog.ts` (nuevo) | `AUDIT_CATALOG: Record<AuditAction, { resourceType, attributes }>`: por acción, `resourceType` (`file`, `folder`, `upload`, `fromAttribute('nodeType')` o `null`) y las claves de atributo **permitidas** con su tipo (`sizeBytes` y `itemCount` números, `nodeType` `file\|folder`, `mode` y `reason` de 005 como texto corto). Declarado con `satisfies` para que una acción nueva sin entrada no compile (RN-3). Lista cerrada: lo que no está, no se guarda |
 | audit/domain | `audit-entry.ts` (nuevo) | `AuditEntry` (nombre del diagrama): VO inmutable con id, acción, `actorId` (nullable por D-8), `actorRole`, `targetUserId`, `resourceType`, `resourceId`, `attributes`, `occurredAt`, `correlationId`. Sin Nest ni TypeORM. **No** lleva `isVisibleTo`: la visibilidad es la consulta con RLS (Art. IX.2, DF-64) |
 | audit/domain | `attribute-sanitizer.ts` (nuevo) | `sanitizeAttributes(action, raw)` → `{ attributes, rejections }`. Descarta claves fuera de la lista del catálogo (cubre nombre, URL, token, contraseña y clave de enlace sin enumerarlos), valores no planos (objeto, arreglo, `null`) y textos de más de `AUDIT_NOTE_MAX_LENGTH` (500). `rejections` lleva códigos (`attribute_not_allowed`, `attribute_not_flat`, `attribute_too_long`) y la **clave**, nunca el valor (CA-4) |
-| audit/application | `audit.service.ts` (nuevo) | `record(entry)`: acción desconocida → `audit.record_failed` y fin (CA-3); sanea (CA-4, anota los rechazos); `append`; cualquier excepción se captura y se anota `audit.record_failed` con `errorName` (CA-5). `append(entry)`: arma el `AuditEntry` (id, reloj, `correlationId`) y lo inserta; lanza si falla; no se exporta. `listForUser(actor, query)`: página del propio actor. Funciones ≤ 30 líneas: el saneo y el armado viven en helpers privados |
+| audit/application | `audit.service.ts` (nuevo) | `record(entry)`: acción desconocida → `audit.record_failed` y fin (CA-3); sanea (CA-4, anota los rechazos); `append`; cualquier excepción se captura y se anota `audit.record_failed` con `errorName` (CA-5). `recordInTransaction(entry)`: acción desconocida lanza `UnknownAuditActionError` (sin rastro no hay acción interna); los atributos prohibidos se descartan y se anotan igual que en `record`; delega en `append` y deja pasar su error. `append(entry)`: arma el `AuditEntry` (id, reloj, `correlationId`) y lo inserta con `withActor(entry.actor)` (se une a la transacción del mismo actor); lanza si falla; privado. `listForUser(actor, query)`: página del propio actor. Funciones ≤ 30 líneas: el saneo y el armado viven en helpers privados |
 | audit/application/ports | `i-audit.repository.port.ts` (nuevo) | `IAuditRepository`: `insert(entry)` y `listForTarget(actor, query)` → `{ entries, nextCursor }`. Regla (b) del Art. V: repositorio, mantiene el dominio libre de TypeORM. Interno a `audit` |
-| audit/application | `i-audit-logger.port.ts` (sin cambios de firma) | Se actualiza solo el comentario del contrato para decir que ya persiste. 005 y 006 no se tocan (CA-2) |
+| audit/application | `i-audit-logger.port.ts` (cambia) | Agrega `recordInTransaction(entry: AuditRecord): Promise<void>` («síncrona: lanza si no puede guardar y se une a la transacción del llamador; si esa transacción se revierte, el evento también», D-5). `record` no cambia de firma ni de contrato; 005 y 006 no se tocan (CA-2). Mismo puerto y módulo: no hay abstracción nueva (Art. V.2) |
 | audit/infrastructure/persistence | `typeorm-audit.repository.ts` (nuevo) | SQL parametrizado sobre `TransactionContext` (como `typeorm-trash.repository.ts`). `insert` sin `RETURNING` (un interno no puede leer el evento que escribe sobre un cliente: `RETURNING` fallaría con la política de lectura). `listForTarget`: `WHERE usuario_afectado_id = :actorId` + rango + origen + teclado `(ocurrido_en, id) < (:fecha, :id)`, `ORDER BY ocurrido_en DESC, id DESC LIMIT 21` |
 | audit/infrastructure/persistence | `audit-cursor.ts` (nuevo) | Codifica y decodifica `[ISO, id]` en base64url; cursor inválido → `InvalidAuditQueryError` (`INVALID_CURSOR`). El instante se guarda con milisegundos (viene de `IClock`), así el ida y vuelta es exacto |
 | audit/domain | `audit-query.ts` (nuevo) | VO `AuditQuery` (`from?`, `to?`, `origin?`, `cursor?`) y `InvalidAuditQueryError`. Valida `from < to` |
@@ -40,21 +40,21 @@
 | api/migrations | `20261005100000-crear-evento-auditoria.ts` (nuevo) | Ver §3 |
 | packages/contracts | `src/audit/` (nuevo: `schemas.ts`, `error-codes.ts`, `parameters.ts`, `index.ts`) y `src/index.ts` (cambia) | `auditEventResponseSchema` (`strict`), `listAuditEventsQuerySchema`, `listAuditEventsResponseSchema`, `AUDIT_PAGE_SIZE = 20`, `AUDIT_NOTE_MAX_LENGTH = 500`, `AUDIT_ORIGINS = ['self','staff']`, `AUDIT_ERROR_CODES` (`AUDIT_INVALID_QUERY`, motivos `INVALID_DATE`, `INVALID_RANGE`, `INVALID_ORIGIN`, `INVALID_CURSOR`) |
 | web | `app/(app)/(cliente)/actividad/page.tsx` (nuevo) | Ruta `/actividad`; monta la vista. Vive en `(cliente)` (el área interna sin página de actividad hasta 011, §7) |
-| web/features/audit | `audit-api.ts`, `routes.ts` (`ACTIVITY_PATH`), `components/activity-view.tsx`, `activity-filters.tsx`, `activity-list.tsx`, `activity-item.tsx`, `hooks/use-activity.ts`, `activity-labels.ts` | `audit-api.ts` usa `StorageHttp`-equivalente (la capa `auth-fetch`) y valida con `parseResponse` (ver nota). `use-activity` guarda filtros, acumula páginas («Cargar más» conserva lo visible, patrón de `use-folder-contents`) y expone `loading\|empty\|error\|filteredEmpty\|data`. `activity-labels.ts`: textos en español por acción y origen (abajo) |
+| web/features/audit | `audit-api.ts`, `routes.ts` (`ACTIVITY_PATH`), `components/activity-view.tsx` (página y estados), `activity-filters.tsx` (`ActivityFilters`: origen y fechas), `activity-event-row.tsx` (`ActivityEventRow`: una fila, con distintivo «Acción interna» y bloque de motivo), `hooks/use-activity.ts`, `activity-labels.ts`; `LoadMoreFooter` (cargar más, cargando, error con «Reintentar» y fin de lista) vive en `features/audit/components/` y solo sube a `components/nimbo/` si `storage` lo adopta (regla de tres, Art. VI.2) | `audit-api.ts` usa `StorageHttp`-equivalente (la capa `auth-fetch`) y valida con `parseResponse` (ver nota). `use-activity` guarda filtros, acumula páginas («Cargar más» conserva lo visible, patrón de `use-folder-contents`) y expone `loading\|empty\|error\|filteredEmpty\|data`. `activity-labels.ts`: textos en español por acción y origen (abajo) |
 | web | entrada «Mi actividad» en el menú de la cuenta | Ver nota de dependencia con 002 |
 
-- **Contrato de escritura mixto (D-5)**. Se mantiene un solo método público, `IAuditLogger.record`. El método síncrono **no entra
-  ahora**: 011 no existe y un método sin consumidor viola el Art. V.1. Lo que 004 deja y prueba es el punto de extensión:
-  `append` estricto, que usa `TransactionContext` y por tanto se une a la transacción vigente del mismo actor (`withActor` dentro de
-  `withActor`, `shared/README.md`) y se revierte con ella. Cuando 011 lo necesite, su plan agrega **una** operación al mismo puerto
-  (p. ej. `recordInTransaction`) que delegue en `append`: cambio de una línea de interfaz y sin tocar a 005/006. Un `int` de 004
-  demuestra la garantía (si la transacción exterior falla, el evento no queda; si `append` falla, lanza).
+- **Contrato de escritura mixto (D-5, decisión de Adrián: la vía síncrona entra ya)**. `IAuditLogger` ofrece `record` (mejor esfuerzo,
+  después del commit, sin lanzar; 005/006) y `recordInTransaction` (síncrona, para 011). `append` usa `TransactionContext` y por tanto se
+  une a la transacción vigente del **mismo actor** (`withActor` dentro de `withActor`, `shared/README.md`): si esa transacción se
+  revierte, el evento no queda; si `append` falla, lanza y el llamador revierte su acción. Fuera de una transacción del llamador abre la
+  suya (sin garantía conjunta): quien exige «sin acción sin rastro» debe llamarla dentro de su `withActor`. 004 no tiene consumidor
+  síncrono real; el consumidor de la prueba de integración es un caso de uso de prueba. La garantía se prueba en `unit` e `int` (§6).
 - **Actor del insert**: `record` corre después del commit del consumidor, así que abre su propia transacción con
   `withActor(entry.actor)`; la política de inserción exige `actor_id = nimbo_actor_id()`. Si alguien llamara `record` dentro de una
   transacción de otro actor, `withActor` lanza (`actor-scope.errors`) y se anota `audit.record_failed`: no se pierde la operación.
 - **Catálogo**: 004 solo trae las siete acciones de 005/006 (D-1). Cada spec agrega su acción y su entrada en `AUDIT_CATALOG` (011, 012…).
-  El motivo de Soporte (D-6) será el atributo `note` que declare 011; el DTO ya lo expone como `note: string \| null` porque RN-6 lo
-  pide visible al cliente (discutible, ver §7).
+  El motivo de Soporte (D-6) será el atributo `note` que declare 011; el DTO ya lo expone como `note` **opcional** (confirmado por Adrián,
+  RN-6): `string` cuando el evento lo tiene, ausente si no.
 - **Textos** (`activity-labels.ts`, español, tuteo, sin nombres): `file.upload_completed` «Subiste 1 archivo (12 MB)»; `file.upload_rejected`
   «Se rechazó una carga»; `file.download_url_issued` «Descargaste 1 archivo»; `node.trashed` «Enviaste N elementos a la papelera»;
   `node.restored` «Restauraste N elementos»; `node.purged` «Eliminaste definitivamente N elementos (X MB)»; `trash.emptied` «Vaciaste la papelera
@@ -69,7 +69,12 @@
 - **Nota web, menú de la cuenta**: en `main` **no existe** el menú de la cuenta ni la página Seguridad; solo `SignOutButton` y el correo en
   `app-layout.tsx`. El menú es 002 T-103 (rama `feat/002-web-pr5`). La ruta y la vista de `/actividad` no dependen de él; el enlace sí.
   PR-B se rebasa sobre 002 y agrega «Mi actividad» a ese menú (un ítem con `ACTIVITY_PATH`); si 002 aún no está, PR-B no agrega el enlace y se
-  anota en `pendientes.md`. Mockup: **en curso (ui-designer)**, `docs/design/mockups/` (no existe aún); PR-B no empieza la maquetación sin él.
+  anota en `pendientes.md` (PD-68). **Mockup**: `docs/design/mockups/audit/mi-actividad/` (README y 11 estados: default, cargando, vacio,
+  vacio-filtros, error, filtrado, rango-invalido, cargando-mas, cargar-mas-error, fin-de-lista, menu-cuenta-abierto) y capturas a 360 y 1440 px en
+  `docs/design/capturas/audit/mi-actividad/`. El menú de la cuenta pone «Mi actividad» entre «Seguridad» y «Plan y facturación».
+- **Decisiones de UI** (README del mockup, preguntas 1 a 3, resueltas por Adrián): «Personal de Nimbo» agrupa Soporte y Administración, **sin subfiltro**
+  (el filtro `origin` es `self\|staff`); en vacío con filtros hay un solo «Limpiar filtros»; sin rango por defecto (todo el historial). El rango
+  inválido (`to <= from`) se muestra con `role="alert"` y **no consulta** (la API también lo rechaza con `INVALID_RANGE`).
 
 ## 3. Datos
 ```sql
@@ -116,7 +121,7 @@ Prefijo `/api/v1`.
 |---|---|---|---|---|
 | GET | `/audit/my-events?from&to&origin&cursor` | `CLIENT`, `ADMIN`, `SUPPORT`, `OPERATOR` (solo su propia cuenta) | `from` (inclusivo) y `to` (exclusivo) en ISO 8601; `origin` ∈ `self\|staff`; `cursor` opaco → `200 { items: AuditEventResponse[], nextCursor: string \| null }` de 20 en 20 (fijo, no hay `limit`) | `401 SHARED_UNAUTHENTICATED` · `400 AUDIT_INVALID_QUERY` (`fields`: `from`/`to` `INVALID_DATE`, `to` `INVALID_RANGE`, `origin` `INVALID_ORIGIN`, `cursor` `INVALID_CURSOR`) |
 
-`AuditEventResponse` = `{ id, occurredAt, action, origin: 'self'\|'staff', actorRole, resourceType: 'file'\|'folder'\|'upload'\|null, itemCount: number\|null, sizeBytes: number\|null, note: string\|null }`,
+`AuditEventResponse` = `{ id, occurredAt, action, origin: 'self'\|'staff', actorRole, resourceType: 'file'\|'folder'\|'upload'\|null, itemCount: number\|null, sizeBytes: number\|null, note?: string }`,
 esquema `strict`. **Fija el contrato para el trabajo en paralelo**: PR-A y PR-B parten del mismo commit de `packages/contracts`.
 - El filtro de fechas es instantáneo, no por día: la web convierte el día local del usuario a `from`/`to` UTC (evita el desfase de zona horaria
   en el servidor, que no conoce la del navegador).
@@ -142,13 +147,13 @@ esquema `strict`. **Fija el contrato para el trabajo en paralelo**: PR-A y PR-B 
 | CA | Nivel | Archivo |
 |---|---|---|
 | CA-3, CA-4 (acción desconocida; clave prohibida, valor no plano, texto largo; el log no repite el valor) | unit | `domain/attribute-sanitizer.spec.ts`, `application/audit.service.spec.ts` |
-| CA-1, CA-5 (arma el evento con reloj y `correlationId`; el fallo no lanza; `append` sí lanza) | unit | `application/audit.service.spec.ts` |
+| CA-1, CA-3, CA-5 (arma el evento con reloj y `correlationId`; `record` no lanza; `recordInTransaction` lanza ante acción desconocida o fallo del repositorio, descarta atributos prohibidos y registra con el mismo actor) | unit | `application/audit.service.spec.ts` |
 | Catálogo completo (toda acción del enum tiene entrada; el tipo de recurso derivado) | unit | `application/audit-catalog.spec.ts` |
 | CA-9 (cursor: ida y vuelta, rechazo de basura) · rango y origen | unit | `infrastructure/persistence/audit-cursor.spec.ts`, `domain/audit-query.spec.ts` |
 | CA-14 (el mapeador no copia `actorId` ni claves ajenas: caso con atributos sembrados con `fileName`) | unit | `presentation/audit-event-response.spec.ts` |
 | Contrato de ruta y códigos; esquema `strict` | unit | `presentation/audit-routes.contract.spec.ts`, `contracts/src/audit/schemas.spec.ts` |
 | CA-1, CA-2, CA-7, CA-9 a CA-11, CA-13 (eventos guardados con columnas correctas; los de 005/006 aparecen sin cambios; orden; 45 eventos → 3 páginas sin duplicados ni omisiones; filtros por fecha y origen; lista vacía; evento interno visible) | int | `test/int/audit/my-events.int-spec.ts` |
-| CA-5 (`append` se une a la transacción y se revierte con ella; `record` con la base caída no lanza) · CA-6 (como `nimbo_app`: `UPDATE`, `DELETE` y `TRUNCATE` dan `permission denied`; no existe ruta mutante) | int | `test/int/audit/audit-write.int-spec.ts`, `audit-immutability.int-spec.ts` |
+| CA-5 (**rollback**: un caso de uso de prueba llama `recordInTransaction` dentro de su `withActor`; si la inserción falla —acción desconocida o base rota— lanza y la operación del llamador se revierte; si la transacción exterior falla, el evento no queda; `record` con la base caída no lanza y no revierte) · CA-6 (como `nimbo_app`: `UPDATE`, `DELETE` y `TRUNCATE` dan `permission denied`; no existe ruta mutante) | int | `test/int/audit/audit-write.int-spec.ts`, `audit-immutability.int-spec.ts` |
 | CA-12 (sin sesión 401; los tres roles internos reciben solo lo suyo) | int | `test/int/audit/my-events.int-spec.ts` |
 | Migración reversible (`up`, `down`, `up`) | int | `test/int/audit/migration.int-spec.ts` |
 | **CA-8, CA-12, CA-13, CA-14 (bloqueante)**: A contra eventos de B por lista y por SQL directo como `nimbo_app` (RLS devuelve 0 filas; `GET /audit/events/<id de B>` es 404); un interno no lee la actividad de un cliente; un cliente no inserta un evento sobre otra cuenta; ningún campo del cuerpo contiene el nombre de archivo sembrado, URL, correo ni id del actor | iso | `test/isolation/audit.iso-spec.ts` (+ `withAuditEvents` en `setup/isolation-world.ts`, que escribe con `AuditService.record` como los demás constructores) |
@@ -160,8 +165,8 @@ No se repite un mismo CA en tres capas: la regla de saneo se prueba en unitarias
 aislamiento solo en `test/isolation`.
 
 ## 7. Riesgos y coherencia con el diseño
-- **R-1 Mejor esfuerzo pierde eventos** si la base cae justo después del commit del consumidor (D-5): aceptado por la spec para 005/006; 011 usa la
-  vía síncrona. Se anota `audit.record_failed`.
+- **R-1 Mejor esfuerzo pierde eventos** si la base cae justo después del commit del consumidor (D-5): aceptado por la spec para 005/006; 011 usa
+  `recordInTransaction`. Se anota `audit.record_failed`.
 - **R-2 `record` dentro de una transacción ajena**: lanzaría por actor distinto y el evento se perdería. Los consumidores actuales lo llaman tras el
   commit; `CA-2` (int) lo comprueba con 005 y 006 reales.
 - **R-3 Fuga por columna nueva**: el mapeador de lista blanca y el esquema `strict` hacen que agregar un atributo no lo exponga sin cambiar el
@@ -171,12 +176,12 @@ aislamiento solo en `test/isolation`.
 - **R-5 Zona horaria** de los filtros: resuelto en la web (días locales → instantes UTC).
 - **R-6 `audit` en el worker**: el controlador va en `AuditHttpModule` para que `storage-worker.module.ts` solo cargue servicio y repositorio.
 - **R-7 Anonimización sin gancho**: ver §2; es un hueco consciente, no una promesa de 004.
-- **Discutible (pedir criterio a Adrián)**: (a) `note` en el DTO antes de que exista 011; (b) `REVOKE` frente a trigger (se eligió `REVOKE`); (c) no agregar
-  el método síncrono al puerto hasta 011; (d) ruta `/audit/my-events` y página `/actividad`; (e) nombres de rol visibles («Administración/Operación de
-  Nimbo») no están en la spec, solo «Soporte de Nimbo»; (f) filtro por instantes `from`/`to` en la API; (g) `actor_id` con `ON DELETE SET NULL`.
+- **Decidido por Adrián (2026-10-05)**: `recordInTransaction` entra ya al puerto; `note` opcional en el DTO; rutas `/audit/my-events` y `/actividad`.
+  **Sigue a la vista**: `REVOKE` frente a trigger (se eligió `REVOKE`); el rótulo «Operación de Nimbo» (rol `OPERATOR`) no está en la spec; filtro por
+  instantes `from`/`to` en la API; `actor_id` con `ON DELETE SET NULL`.
 - **Desviaciones de los diagramas — DF nuevo/actualizados**: **DF-12 → Aceptado** (columnas de §3, más `tipo_recurso`, `atributos`, `ocurrido_en`,
   `correlation_id`; el `architect` actualiza el E-R con las dos relaciones y `rol_actor`, D-9). **DF-15 parcial** (se agrega `AuditController`). **DF-03**
-  ya está aceptado: el binding pasa a `AuditService`. **DF-64 (nuevo, a registrar)**: `AuditEntry` sin `isVisibleTo`; `AuditService.record/append/listForUser`;
+  ya está aceptado: el binding pasa a `AuditService`. **DF-64 (nuevo, a registrar)**: `AuditEntry` sin `isVisibleTo`; `AuditService.record/recordInTransaction/append/listForUser` y `IAuditLogger.recordInTransaction`;
   `IAuditRepository` interno; `AuditHttpModule`; ruta `GET /audit/my-events`; `AuditEntry.actorId` nullable (anonimización); `LogAuditLogger` retirado.
 - **Documentación por actualizar**: `design-model.md` T2 y §245 (mapeo `AuditEntry` ↔ `evento_auditoria`), `architecture.md` §3 (fila `audit`) y §5
   (fila `IAuditLogger`: ya no «provisional»), `audit/README.md`, `features/audit/README.md`, `specs/README.md` (fila 004), `ui-guidelines.md` §7 (fila del mockup).
@@ -188,10 +193,10 @@ aislamiento solo en `test/isolation`.
 
 ### División en PRs (`workflow.md` §6) — dos ramas desde `spec/004-auditoria`
 - **PR-A** `feat/004-auditoria-api` (`contracts` + `api` + migración + pruebas `unit`, `int`, `iso`). Primer commit: `packages/contracts/src/audit/` para fijar el DTO.
-- **PR-B** `feat/004-auditoria-web` (`web`), en paralelo desde ese primer commit; mockup del `ui-designer` antes de la maquetación. Se prueba contra `audit-api` con
+- **PR-B** `feat/004-auditoria-web` (`web`), en paralelo desde ese primer commit; maqueta según `docs/design/mockups/audit/mi-actividad/`. Se prueba contra `audit-api` con
   respuestas del contrato y se verifica contra la API real al integrar. Orden de merge: PR-A, luego PR-B (rebasado sobre 002 por el menú).
 
 ## 8. Aprobación
 - `architect`: **no aprueba** (sin puerto entre módulos, tecnología nueva ni cambio de arquitectura). Se le pide **solo** lo que la spec D-9 ya le asigna: actualizar el E-R
   con DF-12 y registrar DF-64.
-- Adrián: Aprobado | Aprobado con cambios (lista) | Rechazado — AAAA-MM-DD
+- Adrián: Aprobado — Adrián, 2026-10-05 (con un cambio: la escritura síncrona `recordInTransaction` entra ya al puerto `IAuditLogger`; `note` opcional; rutas confirmadas).
