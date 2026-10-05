@@ -17,6 +17,7 @@ los importa.
 | `marco/marco.js` (opciones) | `sidebar`/`navegacion` aceptan `carpetas` y `contadorPapelera`; con los valores por defecto el HTML de Seguridad y del layout no cambia |
 | `marco/css-marco.js` | CSS del marco con los tokens de Cielo Sereno (`ui-guidelines.md` §2–§3), solo Inter; `TRAMOS`: CSS de los tramos de `QuotaBar` en la tarjeta de cuota |
 | `seguridad/generar.js` | Los 15 estados de `identity/seguridad` (spec 002) |
+| `actividad/generar.js` | Los 11 estados de `audit/mi-actividad` (spec 004); usa `marco.topbar({ actividad: 'actual', crumbs: [] })` |
 | `layout/generar.js` | Los 18 estados de `shared/layout`: 5 del marco, 9 de «Accesos rápidos» (CA-27 y CA-28, con el menú ⋮ de los fijados en barra y cajón) y 4 de 007 (`cuota-70`, `cuota-90`, `aviso-arriba-centro` y `barra-fija-lista-larga`) |
 | `carga/generar.js` | Los 8 estados escritos a mano de `storage/carga` (spec 005); `carga--progreso.html` es el paquete de la propuesta y no se genera |
 | `explorador/generar.js` | Los 7 estados de 005 de `storage/explorador` (`vacio`, `cargando`, `arrastre`, `error`, `acciones`, `descarga-preparando`, `descarga-fallida`); `cuadricula` y `lista` son el paquete de la propuesta y no se generan |
@@ -34,6 +35,7 @@ los importa.
 ```bash
 node docs/design/mockups/_generadores/seguridad/generar.js "$(pwd)"
 node docs/design/mockups/_generadores/layout/generar.js "$(pwd)"
+node docs/design/mockups/_generadores/actividad/generar.js "$(pwd)"
 node docs/design/mockups/_generadores/carga/generar.js "$(pwd)"
 node docs/design/mockups/_generadores/explorador/generar.js "$(pwd)"
 node docs/design/mockups/_generadores/explorador/generar-carpetas.js "$(pwd)"

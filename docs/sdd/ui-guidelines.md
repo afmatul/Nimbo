@@ -305,7 +305,7 @@ identificador.
 | Historial de versiones con autoría | editing | 014, 016 | `mockups/storage/ficha-archivo/` (misma pantalla) | `capturas/storage/ficha-archivo/` | default, restaurando | Borrador (cubierto por ficha-archivo) |
 | Panel del agente | intelligence | 020 | `mockups/intelligence/panel-agente/` | `capturas/intelligence/panel-agente/` | vacio, respondiendo, con-citas, cita-incierta, limite-alcanzado | Borrador (con-citas) |
 | Optimizador | optimizer | 021 | `mockups/optimizer/optimizador/` | `capturas/optimizer/optimizador/` | estimacion, no-conviene, procesando, completado | Borrador (estimacion) |
-| Mi bitácora de auditoría | backoffice | 004 | `mockups/backoffice/mi-auditoria/` | … | default, vacio | Pendiente |
+| Mi actividad (bitácora de auditoría del cliente; entrada en el menú de la cuenta) | audit | 004 | `mockups/audit/mi-actividad/` | `capturas/audit/mi-actividad/` | default, cargando, vacio, vacio-filtros, error, fin-de-lista | Borrador (default, cargando, vacio, vacio-filtros, error, filtrado, rango-invalido, cargando-mas, cargar-mas-error, fin-de-lista, menu-cuenta-abierto) |
 | Admin: cuentas y catálogo | backoffice | 011 | `mockups/backoffice/admin/` | `capturas/backoffice/admin/` | default | Borrador (default, vista de cuentas) |
 | Soporte: metadatos y operaciones | backoffice | 011 | `mockups/backoffice/soporte/` | … | default (sin contenido de archivos) | Pendiente |
 | Operador: estado y colas | backoffice | 022 | `mockups/backoffice/operacion/` | … | sano, con-fallos | Pendiente |

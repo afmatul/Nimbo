@@ -29,6 +29,18 @@ const P = {
   chevron: '<path d="m6 9 6 6 6-6"/>',
   shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1Z"/>',
   logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
+  history: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
+  upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/>',
+  download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
+  undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/>',
+  trash2: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/>',
+  circlex: '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>',
+  drive: '<path d="M22 12H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><path d="M6 16h.01"/><path d="M10 16h.01"/>',
+  user: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+  headset: '<path d="M3 11h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5Zm0 0a9 9 0 1 1 18 0m0 0v5a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3Z"/><path d="M21 16v2a4 4 0 0 1-4 4h-5"/>',
+  shieldcheck: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1Z"/><path d="m9 12 2 2 4-4"/>',
+  message: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+  calendar: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>',
   lock: '<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
 };
 const icon = (name, size = 18, cls = '') =>
@@ -130,7 +142,9 @@ function cajon({ activo = '', plan = 'PERSONAL', cuota: q = CUOTA, abierto = fal
   </div>`;
 }
 
-function menuCuenta({ abierto = false } = {}) {
+// actividad: agrega «Mi actividad» (spec 004) entre Seguridad y Plan; 'actual' la marca como página abierta.
+// Sin la opción, el HTML es el aprobado de shared/layout.
+function menuCuenta({ abierto = false, actividad = false } = {}) {
   return `
         <div class="account-pop" id="cuenta-pop"${abierto ? '' : ' hidden'}>
           <div class="account-who">
@@ -138,7 +152,8 @@ function menuCuenta({ abierto = false } = {}) {
             <p class="account-who-mail">${CUENTA.correo}</p>
           </div>
           <ul class="account-menu" id="cuenta-menu" role="menu" aria-labelledby="cuenta-btn">
-            <li role="none"><a role="menuitem" href="#" tabindex="-1">${icon('shield')}<span>Seguridad</span></a></li>
+            <li role="none"><a role="menuitem" href="#" tabindex="-1">${icon('shield')}<span>Seguridad</span></a></li>${actividad ? `
+            <li role="none"><a role="menuitem" href="#" tabindex="-1"${actividad === 'actual' ? ' aria-current="page"' : ''}>${icon('history')}<span>Mi actividad</span></a></li>` : ''}
             <li role="none"><a role="menuitem" href="#" tabindex="-1">${icon('card')}<span>Plan y facturación</span></a></li>
             <li role="separator" class="account-sep"></li>
             <li role="none"><button role="menuitem" type="button" tabindex="-1" data-cerrar-sesion>${icon('logout')}<span>Cerrar sesión</span></button></li>
@@ -148,7 +163,7 @@ function menuCuenta({ abierto = false } = {}) {
 
 // crumbs: [texto, …]; el último es la página actual.
 // conMenu: agrega aria-controls, el id del botón y el menú (layout). Sin él, el HTML es el aprobado de Seguridad.
-function topbar({ crumbs = ['Cuenta', 'Seguridad'], conMenu = false, menuAbierto = false, cajonAbierto = false } = {}) {
+function topbar({ crumbs = ['Cuenta', 'Seguridad'], conMenu = false, menuAbierto = false, cajonAbierto = false, actividad = false } = {}) {
   const items = crumbs.map((c, i) =>
     i === crumbs.length - 1 ? `<li><span aria-current="page">${c}</span></li>` : `<li><a href="#">${c}</a></li>`).join('');
   const menuBtnExtra = conMenu ? ' aria-controls="cajon"' : '';
@@ -158,13 +173,13 @@ function topbar({ crumbs = ['Cuenta', 'Seguridad'], conMenu = false, menuAbierto
         <div class="topbar-left">
           <button class="menu-btn" type="button" aria-label="Abrir menú de navegación" aria-expanded="${cajonAbierto}"${menuBtnExtra}>${icon('menu', 22)}</button>
           ${logo('logo logo-mobile')}
-          <nav class="crumbs" aria-label="Ruta">
+          ${crumbs.length ? `<nav class="crumbs" aria-label="Ruta">
             <ol>${items}</ol>
-          </nav>
+          </nav>` : ''}
         </div>
         ${conMenu ? '<div class="account">\n        ' : ''}<button class="account-btn" type="button"${cuentaExtra} aria-haspopup="menu" aria-expanded="${menuAbierto}" aria-label="Menú de la cuenta de ${CUENTA.nombre}">
           <span class="account-name">${CUENTA.nombre}</span><span class="avatar" aria-hidden="true">${CUENTA.iniciales}</span>
-        </button>${conMenu ? `${menuCuenta({ abierto: menuAbierto })}\n        </div>` : ''}
+        </button>${conMenu ? `${menuCuenta({ abierto: menuAbierto, actividad })}\n        </div>` : ''}
       </header>`;
 }
 

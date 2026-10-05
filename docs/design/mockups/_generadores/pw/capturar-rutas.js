@@ -13,7 +13,7 @@ const WIDTHS = [
 (async () => {
   const browser = await chromium.launch();
   for (const [width, height] of WIDTHS) {
-    const page = await browser.newPage({ viewport: { width, height } });
+    const page = await browser.newPage({ viewport: { width, height }, locale: 'es-GT', timezoneId: 'America/Guatemala' });
     const errores = [];
     page.on('pageerror', (e) => errores.push(e.message));
     for (const [mockup, capture] of SCREENS) {
