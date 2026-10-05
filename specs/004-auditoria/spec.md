@@ -96,3 +96,4 @@ Sin preguntas abiertas. Decisiones de Adrián (2026-10-05):
 | 2026-10-04 | Borrador inicial | Petición de Adrián | — |
 | 2026-10-05 | Preguntas Q-1…Q-11 resueltas como D-1…D-11; UI completa en 004 | Respuestas de Adrián | Adrián |
 | 2026-10-05 | Plan aprobado; spec en `Lista`. La escritura síncrona (D-5) se ofrece ya como `IAuditLogger.recordInTransaction`; mockup enlazado | Aprobación del plan | Adrián |
+| 2026-10-05 | CA-2 se cumple en comportamiento: los dos dobles de 005/006 que implementan `IAuditLogger` (`file.service.spec.ts`, `test/support/storage-fakes.ts`) solo agregan `recordInTransaction` para ajustarse al tipo del puerto ampliado; ninguna prueba ni servicio de storage cambia | T-04: la escritura síncrona entra al puerto | Adrián |

@@ -123,6 +123,10 @@ class FakeAuditLogger implements IAuditLogger {
     this.records.push(entry);
     return this.fails ? Promise.reject(new Error('audit down')) : Promise.resolve();
   }
+
+  recordInTransaction(entry: AuditRecord): Promise<void> {
+    return this.record(entry);
+  }
 }
 
 function fakeObjectStorage(calls: string[]) {

@@ -527,4 +527,8 @@ export class FakeAuditLogger implements IAuditLogger {
     this.records.push(entry);
     return Promise.resolve();
   }
+
+  recordInTransaction(entry: AuditRecord): Promise<void> {
+    return this.record(entry);
+  }
 }
