@@ -1,15 +1,16 @@
-# Tareas NNN — <Título>
+# Tareas 008 — Catálogo y comparador
 
 > Spec: `./spec.md` · Plan: `./plan.md`
-> 5 a 12 tareas verticales, de medio día a un día, un commit cada una (`feat(<modulo>): … [NNN T-xx]`).
-> Cada tarea deja algo probado de punta a punta y lista sus CA. Sin tareas de «cierre»: el PR integrado lo es.
+> 5 a 12 tareas verticales. Un commit cada una (`feat(billing): … [008 T-xx]`).
+> Cada tarea deja algo probado y lista sus CA.
 
-- [ ] **T-01** Contratos y migración de … (con `down`) — CA: CA-1 — Archivos: `packages/contracts/src/…`, `…migrations/…`
-- [ ] **T-02** Regla/política de dominio … con sus pruebas unitarias — CA: CA-1, CA-2
-- [ ] **T-03** Endpoint `…` con prueba de integración (feliz + error principal) — CA: CA-1, CA-3 — Depende: T-01, T-02
-- [ ] **T-04** Aislamiento: otra cuenta no ve ni modifica … — CA: CA-4 — RNF-05 (solo si toca datos de cliente)
-- [ ] **T-05** Pantalla `…` con sus estados (spec §6) y pruebas de componente — CA: CA-1, CA-5
-- [ ] **T-06** **(humana)** Recorrido de la demo en local y nota en el PR — CA: los visibles
+- [ ] **T-01** Contrato `PlanCatalogResponse` en `packages/contracts` — CA: CA-1 — Archivos: `packages/contracts/src/billing/plan-catalog.ts`, `packages/contracts/src/index.ts`
+- [ ] **T-02** `IPlanRepository`, `TypeOrmPlanRepository`, `PlanCatalogService` y `PlanCatalogUnavailableError`, con la prueba unitaria de orden, lista vacía y fallo de lectura — CA: CA-1, CA-3 — Depende: T-01
+- [ ] **T-03** `GET /api/v1/billing/plans` público y prueba de integración contra la semilla de la 006a (anónimo y con sesión; bytes como cadena) — CA: CA-1 — Depende: T-02
+- [ ] **T-04** `format-plan.ts` y el texto de `PLAN_CATALOG_UNAVAILABLE` en el catálogo de errores — CA: CA-2, CA-3 — Depende: T-01
+- [ ] **T-05** Página pública `/planes`, tarjetas, tabla y estados cargando, éxito, error y vacío, con prueba de componente — CA: CA-2, CA-3 — Depende: T-03, T-04
+- [ ] **T-06** **(humana)** Recorrido local: visitante sin sesión y cliente con sesión ven los cuatro planes, los precios en quetzales y la tabla; la recarga tras un fallo muestra el mensaje de CA-3 — CA: CA-1, CA-2, CA-3
 
 ## Notas del developer
-<Desviaciones (con enlace al registro de cambios de la spec), DF o pendientes que surgieron.>
+
+No se toca `apps/web/src/features/identity/plan-catalog.ts`. El DF del diagrama (un `GET` en lugar de `listPlans` / `comparePlans`, sin `IPlanLimitsProvider`) se abre en el mismo PR de la spec.
