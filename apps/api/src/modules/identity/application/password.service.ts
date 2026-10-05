@@ -9,7 +9,7 @@ import {
 import { PinoLogger } from 'nestjs-pino';
 
 import { I_CLOCK, I_RATE_LIMITER, I_TRANSACTION_RUNNER } from '../../../shared';
-import type { FieldIssue, IClock, IRateLimiter, ITransactionRunner } from '../../../shared';
+import type { Actor, FieldIssue, IClock, IRateLimiter, ITransactionRunner } from '../../../shared';
 import { I_MAILER } from '../../notifications';
 import type { IMailer, MailMessage } from '../../notifications';
 import { ClientUser } from '../domain/client-user.entity';
@@ -17,8 +17,10 @@ import { EmailAddress } from '../domain/email-address.vo';
 import {
   IdentityTooManyRequestsError,
   IdentityWeakPasswordError,
+  PasswordChangeLockedError,
   ResetLinkExpiredError,
   ResetLinkInvalidError,
+  WrongPasswordError,
 } from '../domain/errors';
 import { OpaqueToken } from '../domain/opaque-token.vo';
 import type { PasswordHash } from '../domain/password-hash.vo';
@@ -31,6 +33,7 @@ import type { IdentityConfig } from './identity-config';
 import {
   EMAIL_REQUEST_RULES,
   loginLockoutKey,
+  PASSWORD_CHANGE_LOCKOUT_POLICY,
   passwordChangeLockoutKey,
   passwordResetRequestKey,
 } from './identity-limit-keys';
@@ -55,7 +58,7 @@ const RESET_TAG = 'identity.password-reset';
 const CHANGED_TAG = 'identity.password-changed';
 const REQUESTED = 'identity.password_reset.requested';
 const REJECTED = 'identity.password_reset.rejected';
-const PASSWORD_FIELD = 'password';
+const CHANGE_REJECTED = 'identity.password_change.rejected';
 
 /** Pedido de recuperación ya validado por `forgotPasswordRequestSchema`; el correo aún sin normalizar. */
 export interface RequestResetCommand {
@@ -80,10 +83,29 @@ interface RequestOutcome {
 
 type RejectionReason = 'expired' | 'invalid' | 'weak';
 
+/** Cambio de contraseña ya validado por `changePasswordRequestSchema` (sin la regla «igual al correo», CA-22). */
+export interface ChangePasswordCommand {
+  readonly currentPassword: string;
+  readonly newPassword: string;
+}
+
+/** Campo que marca `IdentityWeakPasswordError` y evento que registra el rechazo, según la ruta (plan §5, §7). */
+interface NewPasswordTarget {
+  readonly field: string;
+  readonly rejectedEvent: string;
+}
+
+const RESET_TARGET: NewPasswordTarget = { field: 'password', rejectedEvent: REJECTED };
+const CHANGE_TARGET: NewPasswordTarget = { field: 'newPassword', rejectedEvent: CHANGE_REJECTED };
+
+/** Por qué se revocaron todas las sesiones salvo, quizá, la actual (plan §7, `identity.session.revoked`). */
+type MassRevocationReason = 'password_reset' | 'password_change';
+
 /**
- * Recuperación de contraseña (plan 002 §6.3, design-model M1). Sin `actor`: pedir el enlace, revisarlo y aplicarlo
- * son públicos. El pedido responde igual exista o no la cuenta y aplica el límite antes de buscarla (CA-18). Los
- * correos, las bitácoras y la limpieza de bloqueos van después del commit.
+ * Recuperación y cambio de contraseña (plan 002 §6.3, design-model M1). Pedir el enlace, revisarlo y aplicarlo son
+ * públicos, sin `actor`; el pedido responde igual exista o no la cuenta y aplica el límite antes de buscarla (CA-18).
+ * El cambio recibe el `actor` y solo toca su propia cuenta. Los correos, las bitácoras y la limpieza de bloqueos van
+ * después del commit.
  */
 @Injectable()
 export class PasswordService {
@@ -132,7 +154,7 @@ export class PasswordService {
     if (user === null) {
       return this.reject('invalid', token.userId);
     }
-    this.enforceStrongPassword(command.password, user);
+    this.enforceStrongPassword(command.password, user, RESET_TARGET);
     // Fuera de la transacción: el hash tarda ~100 ms que no deben retener los bloqueos de fila.
     const passwordHash = await this.hasher.hash(command.password);
     const now = this.clock.now();
@@ -143,6 +165,28 @@ export class PasswordService {
       return this.reject('invalid', user.id);
     }
     await this.completeReset(user, revokedCount, now);
+  }
+
+  /**
+   * CA-22, CA-23: cambia la contraseña de la propia cuenta (cualquier rol) y revoca las **demás** sesiones; la actual
+   * sigue abierta. El bloqueo se consulta antes de comprobar la contraseña actual y nunca cierra la sesión (D-7).
+   */
+  async changePassword(
+    actor: Actor,
+    currentSessionId: string,
+    command: ChangePasswordCommand,
+  ): Promise<void> {
+    await this.enforceChangeNotLocked(actor.id);
+    const user = await this.verifyCurrentPassword(actor.id, command.currentPassword);
+    this.enforceStrongPassword(command.newPassword, user, CHANGE_TARGET);
+    // Fuera de la transacción, como al restablecer.
+    const passwordHash = await this.hasher.hash(command.newPassword);
+    const now = this.clock.now();
+    const revokedCount = await this.transactions.run(async () => {
+      await this.users.updatePasswordHash(user.id, passwordHash);
+      return this.sessions.revokeAllExcept(user.id, currentSessionId, now);
+    });
+    await this.completeChange(user, revokedCount, now);
   }
 
   /** El límite va antes de cualquier consulta, así la secuencia 202/429 no delata la cuenta (CA-18). */
@@ -222,19 +266,46 @@ export class PasswordService {
     return this.reject(state === 'expired' ? 'expired' : 'invalid', token.userId);
   }
 
-  /** CA-21: la política D-6 de 001 con el correo de la cuenta, que el esquema no conoce. */
-  private enforceStrongPassword(password: string, user: User): void {
+  /** CA-21, CA-22: la política D-6 de 001 con el correo de la cuenta, que el esquema no conoce. */
+  private enforceStrongPassword(password: string, user: User, target: NewPasswordTarget): void {
     const issues: FieldIssue[] = evaluatePassword(password, user.email.value)
       .filter((result) => !result.passed)
       .map(({ reason }) => ({
-        field: PASSWORD_FIELD,
+        field: target.field,
         reason,
         message: IDENTITY_FIELD_MESSAGES[reason],
       }));
     if (issues.length > 0) {
-      this.logRejection('weak', user.id);
+      this.logRejection(target.rejectedEvent, 'weak', user.id);
       throw new IdentityWeakPasswordError(issues);
     }
+  }
+
+  /** CA-23: bloqueado → rechazo aunque la contraseña actual sea correcta. */
+  private async enforceChangeNotLocked(userId: string): Promise<void> {
+    const state = await this.lockout.check(passwordChangeLockoutKey(userId));
+    if (!state.locked) {
+      return;
+    }
+    this.logRejection(CHANGE_REJECTED, 'locked', userId);
+    throw new PasswordChangeLockedError(state.retryAfterSeconds);
+  }
+
+  /** CA-23: una contraseña actual incorrecta cuenta como fallo; el quinto todavía responde `WrongPasswordError`. */
+  private async verifyCurrentPassword(userId: string, currentPassword: string): Promise<User> {
+    const user = await this.users.findById(userId);
+    if (user !== null && (await this.hasher.verify(user.passwordHash, currentPassword))) {
+      return user;
+    }
+    const state = await this.lockout.recordFailure(
+      passwordChangeLockoutKey(userId),
+      PASSWORD_CHANGE_LOCKOUT_POLICY,
+    );
+    this.logRejection(CHANGE_REJECTED, 'wrong_password', userId);
+    if (state.locked) {
+      this.logger.warn({ event: 'identity.lockout.engaged', scope: 'password_change', userId });
+    }
+    throw new WrongPasswordError();
   }
 
   /** `null` si otro envío consumió el enlace antes (consumo atómico, CA-20); si no, las sesiones revocadas. */
@@ -255,15 +326,26 @@ export class PasswordService {
   private async completeReset(user: User, revokedCount: number, changedAt: Date): Promise<void> {
     await this.lockout.clear(loginLockoutKey(user.email));
     await this.lockout.clear(passwordChangeLockoutKey(user.id));
-    if (revokedCount > 0) {
-      this.logger.info({
-        event: 'identity.session.revoked',
-        userId: user.id,
-        reason: 'password_reset',
-        count: revokedCount,
-      });
-    }
+    this.logSessionsRevoked(user.id, 'password_reset', revokedCount);
     this.logger.info({ event: 'identity.password_reset.completed', userId: user.id, revokedCount });
+    await this.sendPasswordChangedMail(user, changedAt);
+  }
+
+  /** CA-22, después del commit: quita el bloqueo del cambio, registra y avisa «Tu contraseña cambió». */
+  private async completeChange(user: User, revokedCount: number, changedAt: Date): Promise<void> {
+    await this.lockout.clear(passwordChangeLockoutKey(user.id));
+    this.logSessionsRevoked(user.id, 'password_change', revokedCount);
+    this.logger.info({ event: 'identity.password.changed', userId: user.id, revokedCount });
+    await this.sendPasswordChangedMail(user, changedAt);
+  }
+
+  private logSessionsRevoked(userId: string, reason: MassRevocationReason, count: number): void {
+    if (count > 0) {
+      this.logger.info({ event: 'identity.session.revoked', userId, reason, count });
+    }
+  }
+
+  private async sendPasswordChangedMail(user: User, changedAt: Date): Promise<void> {
     await this.mailer.send(
       this.mailTo(
         user,
@@ -278,12 +360,12 @@ export class PasswordService {
   }
 
   private reject(reason: Exclude<RejectionReason, 'weak'>, userId?: string): never {
-    this.logRejection(reason, userId);
+    this.logRejection(REJECTED, reason, userId);
     throw reason === 'expired' ? new ResetLinkExpiredError() : new ResetLinkInvalidError();
   }
 
-  private logRejection(reason: RejectionReason, userId?: string): void {
-    this.logger.info({ event: REJECTED, reason, ...(userId === undefined ? {} : { userId }) });
+  private logRejection(event: string, reason: string, userId?: string): void {
+    this.logger.info({ event, reason, ...(userId === undefined ? {} : { userId }) });
   }
 
   private mailTo(

@@ -2,12 +2,7 @@ import { randomBytes } from 'node:crypto';
 
 import { Inject, Injectable } from '@nestjs/common';
 import type { OnModuleInit } from '@nestjs/common';
-import {
-  LOGIN_FAILURE_WINDOW_MINUTES,
-  LOGIN_LOCK_MINUTES,
-  LOGIN_MAX_FAILURES,
-  SUPPORT_CONTACT_EMAIL,
-} from '@nimbo/contracts';
+import { SUPPORT_CONTACT_EMAIL } from '@nimbo/contracts';
 import { PinoLogger } from 'nestjs-pino';
 
 import { AccountStatus } from '../domain/account-status.enum';
@@ -22,10 +17,10 @@ import type { PasswordHash } from '../domain/password-hash.vo';
 import type { User } from '../domain/user.entity';
 
 import type { ClientContext } from './client-context';
-import { loginLockoutKey } from './identity-limit-keys';
+import { LOGIN_LOCKOUT_POLICY, loginLockoutKey } from './identity-limit-keys';
 import type { IdentityLogger } from './identity-logger';
 import { I_ATTEMPT_LOCKOUT } from './ports/i-attempt-lockout.port';
-import type { IAttemptLockout, LockoutPolicy } from './ports/i-attempt-lockout.port';
+import type { IAttemptLockout } from './ports/i-attempt-lockout.port';
 import { I_PASSWORD_HASHER } from './ports/i-password-hasher.port';
 import type { IPasswordHasher } from './ports/i-password-hasher.port';
 import { I_USER_REPOSITORY } from './ports/i-user-repository.port';
@@ -33,15 +28,7 @@ import type { IUserRepository } from './ports/i-user-repository.port';
 import { SessionService } from './session.service';
 import type { OpenedSession } from './session.service';
 
-const SECONDS_PER_MINUTE = 60;
 const DUMMY_PASSWORD_BYTES = 32;
-
-/** D-5: 5 fallos por correo normalizado en 15 min bloquean 15 min, exista o no la cuenta. */
-const LOGIN_POLICY: LockoutPolicy = {
-  maxFailures: LOGIN_MAX_FAILURES,
-  windowSeconds: LOGIN_FAILURE_WINDOW_MINUTES * SECONDS_PER_MINUTE,
-  lockSeconds: LOGIN_LOCK_MINUTES * SECONDS_PER_MINUTE,
-};
 
 /** Motivo de `identity.login.failed` (plan §7). */
 type LoginFailureReason = 'invalid_credentials' | 'email_not_verified' | 'account_suspended';
@@ -134,7 +121,7 @@ export class AuthService implements OnModuleInit {
 
   /** El quinto fallo todavía responde credenciales inválidas; el sexto intento ya encuentra el bloqueo (CA-5). */
   private async rejectCredentials(key: string, user: User | null): Promise<never> {
-    const state = await this.lockout.recordFailure(key, LOGIN_POLICY);
+    const state = await this.lockout.recordFailure(key, LOGIN_LOCKOUT_POLICY);
     this.logFailure('invalid_credentials', user);
     if (state.locked) {
       this.logger.warn({
