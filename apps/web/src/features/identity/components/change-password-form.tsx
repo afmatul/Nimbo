@@ -39,16 +39,13 @@ function OutcomeAlert({
   if (outcome.kind === 'idle') return null;
   if (outcome.kind === 'changed') {
     return (
-      <div
-        role="status"
-        className="flex items-start gap-2 rounded-md border border-success bg-success/10 px-4 py-3 text-sm text-foreground"
-      >
+      <Alert variant="success" className="flex items-start gap-2">
         <CheckCircle2
           aria-hidden="true"
           className="mt-0.5 h-4 w-4 shrink-0 text-success-foreground"
         />
         <p>{CHANGED_MESSAGE}</p>
-      </div>
+      </Alert>
     );
   }
   const { error } = outcome;

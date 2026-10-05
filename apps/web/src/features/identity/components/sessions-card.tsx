@@ -1,68 +1,28 @@
 'use client';
 
-import type { SessionListResponse, SessionSummary } from '@nimbo/contracts';
+import type { SessionSummary } from '@nimbo/contracts';
 import * as React from 'react';
 
 import { StateView } from '../../../components/nimbo/state-view';
 import { Button } from '../../../components/ui/button';
 import { Card, CardDescription, CardHeader } from '../../../components/ui/card';
-import { genericErrorMessage, toApiClientError } from '../../../lib/api-error';
+import { genericErrorMessage } from '../../../lib/api-error';
+import {
+  useSessionsCard,
+  type SessionsActions,
+  type SessionsCardModel,
+  type SessionsState,
+} from '../hooks/use-sessions-card';
 
 import { SessionRow } from './session-row';
+import { SessionsConfirmDialog, SessionsNoticeAlert } from './sessions-feedback';
 
 const TITLE_ID = 'titulo-sesiones';
 const SKELETON_ROWS = 3;
 const SKELETON_LINE = 'block h-3 animate-pulse rounded-md bg-muted motion-reduce:animate-none';
 
-type SessionsState =
-  | { readonly status: 'loading' }
-  | { readonly status: 'error'; readonly correlationId: string }
-  | {
-      readonly status: 'ready';
-      readonly sessions: readonly SessionSummary[];
-      /** Instante en que llegó la lista: referencia de «hace …». */
-      readonly loadedAt: number;
-    };
-
 export interface SessionsCardProps {
-  /** `GET /sessions` (plan §5); la tarjeta no conoce la API. */
-  readonly loadSessions: () => Promise<SessionListResponse>;
-  readonly onRevoke?: (session: SessionSummary) => void;
-  readonly onRevokeOthers?: () => void;
-}
-
-/** La actual primero; el resto conserva el orden de la API, por última actividad (D-9). */
-function currentFirst(items: readonly SessionSummary[]): readonly SessionSummary[] {
-  return [...items].sort((a, b) => Number(b.current) - Number(a.current));
-}
-
-function useSessions(loadSessions: SessionsCardProps['loadSessions']): {
-  readonly state: SessionsState;
-  readonly retry: () => void;
-} {
-  const [state, setState] = React.useState<SessionsState>({ status: 'loading' });
-  const [attempt, setAttempt] = React.useState(0);
-
-  React.useEffect(() => {
-    let active = true;
-    loadSessions().then(
-      ({ items }) =>
-        active &&
-        setState({ status: 'ready', sessions: currentFirst(items), loadedAt: Date.now() }),
-      (caught: unknown) =>
-        active &&
-        setState({ status: 'error', correlationId: toApiClientError(caught).correlationId }),
-    );
-    return () => {
-      active = false;
-    };
-  }, [loadSessions, attempt]);
-
-  const retry = React.useCallback(() => {
-    setState({ status: 'loading' });
-    setAttempt((previous) => previous + 1);
-  }, []);
-  return { state, retry };
+  readonly actions: SessionsActions;
 }
 
 function openCountLabel(count: number): string {
@@ -90,10 +50,12 @@ function SessionsSkeleton(): React.JSX.Element {
   );
 }
 
+type RevokeOne = (session: SessionSummary) => void;
+
 interface SessionListProps {
   readonly sessions: readonly SessionSummary[];
   readonly loadedAt: number;
-  readonly onRevoke: SessionsCardProps['onRevoke'];
+  readonly onRevoke: RevokeOne;
 }
 
 function SessionList({ sessions, loadedAt, onRevoke }: SessionListProps): React.JSX.Element {
@@ -114,18 +76,12 @@ function SessionList({ sessions, loadedAt, onRevoke }: SessionListProps): React.
   );
 }
 
-function SessionsBody({
-  state,
-  retry,
-  onRevoke,
-}: {
-  readonly state: SessionsState;
-  readonly retry: () => void;
-  readonly onRevoke: SessionsCardProps['onRevoke'];
-}): React.JSX.Element {
+function SessionsBody({ model }: { readonly model: SessionsCardModel }): React.JSX.Element {
+  const { state, retry, ask } = model;
   if (state.status === 'loading') return <SessionsSkeleton />;
   if (state.status === 'ready') {
-    return <SessionList sessions={state.sessions} loadedAt={state.loadedAt} onRevoke={onRevoke} />;
+    const revoke: RevokeOne = (session) => ask({ kind: 'one', session });
+    return <SessionList sessions={state.sessions} loadedAt={state.loadedAt} onRevoke={revoke} />;
   }
   return (
     <StateView
@@ -150,31 +106,53 @@ function SessionsTitle({ state }: { readonly state: SessionsState }): React.JSX.
   );
 }
 
-/** Tarjeta «Sesiones activas» de «Seguridad»: cargando, error, solo la actual y la lista (CA-11, D-9). */
-export function SessionsCard({
-  loadSessions,
-  onRevoke,
-  onRevokeOthers,
-}: SessionsCardProps): React.JSX.Element {
-  const { state, retry } = useSessions(loadSessions);
-  const hasOthers = state.status === 'ready' && state.sessions.length > 1;
+/** «Cerrar las demás sesiones» solo si hay otras (no se deshabilita: README de Seguridad). */
+function RevokeOthersButton({
+  model,
+}: {
+  readonly model: SessionsCardModel;
+}): React.JSX.Element | null {
+  const { state, ask } = model;
+  if (state.status !== 'ready' || state.sessions.length <= 1) return null;
+  const count = state.sessions.length - 1;
   return (
-    <Card role="region" aria-labelledby={TITLE_ID} aria-busy={state.status === 'loading'}>
+    <Button
+      variant="outline"
+      type="button"
+      className="self-start"
+      onClick={() => ask({ kind: 'others', count })}
+    >
+      Cerrar las demás sesiones
+    </Button>
+  );
+}
+
+/**
+ * Tarjeta «Sesiones activas» de «Seguridad» (CA-11 a CA-14, D-8, D-9): la lista, cerrar una (la actual equivale a cerrar
+ * sesión), cerrar las demás y el resultado dentro de la tarjeta. Toda acción pide confirmación.
+ */
+export function SessionsCard({ actions }: SessionsCardProps): React.JSX.Element {
+  const model = useSessionsCard(actions);
+  return (
+    <Card role="region" aria-labelledby={TITLE_ID} aria-busy={model.state.status === 'loading'}>
       <CardHeader>
-        <SessionsTitle state={state} />
+        <SessionsTitle state={model.state} />
         <CardDescription>
           Estos son los navegadores y dispositivos con tu cuenta abierta. Si no reconoces alguno,
           cierra esa sesión y cambia tu contraseña.
         </CardDescription>
-        {hasOthers && (
-          <Button variant="outline" type="button" className="self-start" onClick={onRevokeOthers}>
-            Cerrar las demás sesiones
-          </Button>
-        )}
+        <RevokeOthersButton model={model} />
       </CardHeader>
-      <div className="p-6 pt-0">
-        <SessionsBody state={state} retry={retry} onRevoke={onRevoke} />
+      <div className="flex flex-col gap-3 p-6 pt-0">
+        <SessionsNoticeAlert notice={model.notice} />
+        <SessionsBody model={model} />
       </div>
+      <SessionsConfirmDialog
+        confirmation={model.confirmation}
+        pending={model.pending}
+        onCancel={model.cancel}
+        onConfirm={() => void model.confirm()}
+      />
     </Card>
   );
 }

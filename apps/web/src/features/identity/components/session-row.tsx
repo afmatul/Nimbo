@@ -20,7 +20,7 @@ export interface SessionRowProps {
   readonly session: SessionSummary;
   /** Instante de referencia para «Última actividad: hace …». */
   readonly now: number;
-  readonly onRevoke?: ((session: SessionSummary) => void) | undefined;
+  readonly onRevoke: (session: SessionSummary) => void;
 }
 
 /** «Safari · iOS»: lo que la persona reconoce de la sesión (D-9). */
@@ -73,7 +73,7 @@ export function SessionRow({ session, now, onRevoke }: SessionRowProps): React.J
           <span>{startedOnLabel(session.startedAt)}</span>
         </p>
       </div>
-      <Button variant="outline" type="button" onClick={() => onRevoke?.(session)}>
+      <Button variant="outline" type="button" onClick={() => onRevoke(session)}>
         Cerrar sesión
         <span className="sr-only">
           {session.current ? ' en este dispositivo' : ` en ${deviceLabel(session)}`}
