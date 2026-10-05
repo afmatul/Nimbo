@@ -118,7 +118,7 @@ describe('aislamiento del resumen de espacio y del listado ordenado (CA-16, CA-1
 
   beforeAll(async () => {
     world = await createIsolationWorld();
-    storage = await createStorageHttpApp();
+    storage = await createStorageHttpApp(world.appComposition());
     [a, b] = world.clients;
     [clientA, clientB] = [clientOf(a), clientOf(b)];
     nodesA = await seed(a);

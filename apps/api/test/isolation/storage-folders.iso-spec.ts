@@ -222,7 +222,7 @@ describe('aislamiento de carpetas y papelera (CA-22, CA-23)', () => {
 
   beforeAll(async () => {
     world = await createIsolationWorld();
-    storage = await createStorageHttpApp();
+    storage = await createStorageHttpApp(world.appComposition());
     [a, b] = world.clients;
     nodesA = await seed(a);
     nodesB = await seed(b);
