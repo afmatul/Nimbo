@@ -13,8 +13,9 @@ modules/audit/
 ├─ domain/          # entidades, objetos de valor, errores; sin Nest, TypeORM ni zod
 ├─ application/     # servicios («service» de los diagramas) y puertos (`ports/`)
 ├─ infrastructure/  # persistencia (*.orm-entity.ts), adaptadores, procesadores
-├─ presentation/    # controladores, DTOs, gateways
-├─ audit.module.ts  # `I_AUDIT_LOGGER` → `AuditService` (`useExisting`) e `I_AUDIT_REPOSITORY` (interno)
+├─ presentation/    # `AuditController` (`GET /audit/my-events`) y el mapeador de lista blanca a `AuditEventResponse`
+├─ audit.module.ts  # `I_AUDIT_LOGGER` → `AuditService` (`useExisting`) e `I_AUDIT_REPOSITORY` (interno); sin controladores
+├─ audit-http.module.ts # `AuditController`; solo lo registra `app.module.ts` (el `worker` no carga rutas)
 └─ index.ts         # única API pública
 ```
 
@@ -41,3 +42,11 @@ descartado se anota como `audit.record_failed` con el motivo y las **claves**, n
 - Una acción nueva se agrega a `AuditAction` y a `AUDIT_CATALOG` (tipo de recurso y atributos permitidos): sin entrada
   no compila (RN-3).
 - `AuditService` y el repositorio no salen de `index.ts` (DF-60).
+
+## Consulta (`GET /audit/my-events`, spec 004 §4)
+
+- Los cuatro roles la llaman y cada uno recibe solo los eventos donde **él** es el afectado: `listForUser(actor, query)`
+  filtra `usuario_afectado_id = actor.id` dentro del SQL (RLS es la segunda barrera). No hay ruta por id ni por usuario.
+- `origin` es `self` si el actor es el afectado; cualquier otro, incluido el actor anonimizado (`null`), es `staff`.
+- `toAuditEventResponse` es de lista blanca: no copia `actorId`, `correlationId`, `resourceId` ni atributos fuera de
+  `itemCount`, `sizeBytes` y `note` (que solo sale si existe).

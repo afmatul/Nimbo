@@ -268,3 +268,17 @@ describe('AuditService.recordInTransaction (síncrona)', () => {
     expect(logger.info).not.toHaveBeenCalled();
   });
 });
+
+describe('AuditService.listForUser', () => {
+  it('CA-12: lee dentro de `withActor` del propio actor y le pasa la consulta al repositorio', async () => {
+    const { service, repository, transactions } = buildSut();
+    const page = { entries: [], nextCursor: null };
+    repository.listForTarget.mockResolvedValue(page);
+    const query = { origin: 'staff' } as const;
+
+    await expect(service.listForUser(SUPPORT, query)).resolves.toBe(page);
+
+    expect(transactions.actors).toEqual([SUPPORT]);
+    expect(repository.listForTarget).toHaveBeenCalledWith(SUPPORT, query);
+  });
+});

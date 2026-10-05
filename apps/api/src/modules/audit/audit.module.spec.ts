@@ -1,4 +1,5 @@
 import { Global, Module } from '@nestjs/common';
+import { MODULE_METADATA } from '@nestjs/common/constants';
 import { Test } from '@nestjs/testing';
 import { PinoLogger } from 'nestjs-pino';
 
@@ -33,5 +34,9 @@ describe('AuditModule', () => {
     expect(auditLogger).toBeInstanceOf(AuditService);
     expect(auditLogger).toBe(moduleRef.get(AuditService));
     await moduleRef.close();
+  });
+
+  it('R-6: no declara controladores; las rutas viven en `AuditHttpModule`, que el `worker` no carga', () => {
+    expect(Reflect.getMetadata(MODULE_METADATA.CONTROLLERS, AuditModule)).toBeUndefined();
   });
 });

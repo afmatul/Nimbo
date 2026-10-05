@@ -7,7 +7,8 @@ import { TypeOrmAuditRepository } from './infrastructure/persistence/typeorm-aud
 
 /**
  * Publica `I_AUDIT_LOGGER` sobre `AuditService` (spec 004). `I_CLOCK`, `I_TRANSACTION_RUNNER`, `TransactionContext` y
- * `PinoLogger` son globales en `api` y `worker`. Lo importan `storage` y `storage-worker`.
+ * `PinoLogger` son globales en `api` y `worker`. Lo importan `storage` y `storage-worker`; `AuditService` se exporta
+ * solo para `AuditHttpModule`. Sin controladores: el `worker` lo carga sin rutas (R-6).
  */
 @Module({
   providers: [
@@ -15,6 +16,6 @@ import { TypeOrmAuditRepository } from './infrastructure/persistence/typeorm-aud
     { provide: I_AUDIT_REPOSITORY, useClass: TypeOrmAuditRepository },
     { provide: I_AUDIT_LOGGER, useExisting: AuditService },
   ],
-  exports: [I_AUDIT_LOGGER],
+  exports: [I_AUDIT_LOGGER, AuditService],
 })
 export class AuditModule {}

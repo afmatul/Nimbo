@@ -3,4 +3,5 @@
 export { AuditAction } from './application/audit-action';
 export { I_AUDIT_LOGGER } from './application/i-audit-logger.port';
 export type { AuditRecord, IAuditLogger } from './application/i-audit-logger.port';
+export { AuditHttpModule } from './audit-http.module';
 export { AuditModule } from './audit.module';

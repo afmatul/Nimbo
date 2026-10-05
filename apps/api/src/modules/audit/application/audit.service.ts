@@ -4,18 +4,19 @@ import { Inject, Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
 
 import { CorrelationContext, I_CLOCK, I_TRANSACTION_RUNNER } from '../../../shared';
-import type { IClock, ITransactionRunner } from '../../../shared';
+import type { Actor, IClock, ITransactionRunner } from '../../../shared';
 import { sanitizeAttributes } from '../domain/attribute-sanitizer';
 import type { AttributeRejection } from '../domain/attribute-sanitizer';
 import { createAuditEntry } from '../domain/audit-entry';
 import type { AuditAttributes, AuditEntry, AuditResourceType } from '../domain/audit-entry';
+import type { AuditQuery } from '../domain/audit-query';
 
 import { isAuditAction } from './audit-action';
 import type { AuditAction } from './audit-action';
 import { AUDIT_CATALOG, resourceTypeOf } from './audit-catalog';
 import type { AuditRecord, IAuditLogger } from './i-audit-logger.port';
 import { I_AUDIT_REPOSITORY } from './ports/i-audit.repository.port';
-import type { IAuditRepository } from './ports/i-audit.repository.port';
+import type { AuditPage, IAuditRepository } from './ports/i-audit.repository.port';
 import { UnknownAuditActionError } from './unknown-audit-action.error';
 
 /** Lo mínimo que el servicio necesita del logger (se inyecta `PinoLogger`; permite un doble en las pruebas). */
@@ -64,7 +65,7 @@ const errorNameOf = (error: unknown): string => (error instanceof Error ? error.
 /**
  * `IAuditLogger` persistente (T2, plan 004 §2): `record` (mejor esfuerzo) y `recordInTransaction` (síncrona) delegan
  * en `append`, que sanea con el catálogo, arma el `AuditEntry` y lo inserta dentro de `withActor(entry.actor)`; así se
- * une a la transacción vigente del mismo actor o abre la suya.
+ * une a la transacción vigente del mismo actor o abre la suya. `listForUser` lee la actividad propia.
  */
 @Injectable()
 export class AuditService implements IAuditLogger {
@@ -95,6 +96,11 @@ export class AuditService implements IAuditLogger {
   async recordInTransaction(entry: AuditRecord): Promise<void> {
     if (!isAuditAction(entry.action)) throw new UnknownAuditActionError();
     await this.append(entry);
+  }
+
+  /** Página de los eventos donde `actor` es el afectado (CA-7, CA-12): el filtro va dentro del SQL, nunca después. */
+  listForUser(actor: Actor, query: AuditQuery): Promise<AuditPage> {
+    return this.transactions.withActor(actor, () => this.repository.listForTarget(actor, query));
   }
 
   /** Inserción estricta: lanza si no puede guardar. */
