@@ -3,6 +3,7 @@
 import { CheckCircle2 } from 'lucide-react';
 import type * as React from 'react';
 
+import { SIGN_OUT_CONFIRMATION } from '../../../components/nimbo/account-menu';
 import { ConfirmDestructiveDialog } from '../../../components/nimbo/confirm-destructive-dialog';
 import { Alert } from '../../../components/ui/alert';
 import type { SessionsConfirmation, SessionsNotice } from '../hooks/use-sessions-card';
@@ -16,7 +17,7 @@ interface ConfirmationTexts {
   readonly confirmLabel: string;
 }
 
-const CLOSE_SESSION_LABEL = 'Cerrar sesión';
+const CLOSE_SESSION_LABEL = SIGN_OUT_CONFIRMATION.confirmLabel;
 
 function sessionsCount(count: number): string {
   return count === 1 ? '1 sesión' : `${String(count)} sesiones`;
@@ -33,13 +34,7 @@ function confirmationTexts(confirmation: SessionsConfirmation): ConfirmationText
       confirmLabel: `Cerrar ${sessionsCount(confirmation.count)}`,
     };
   }
-  if (confirmation.session.current) {
-    return {
-      title: '¿Cerrar la sesión en este dispositivo?',
-      description: 'Tendrás que iniciar sesión de nuevo para volver a entrar.',
-      confirmLabel: CLOSE_SESSION_LABEL,
-    };
-  }
+  if (confirmation.session.current) return SIGN_OUT_CONFIRMATION;
   return {
     title: `¿Cerrar la sesión en ${deviceLabel(confirmation.session)}?`,
     description: 'Ese dispositivo tendrá que iniciar sesión de nuevo.',

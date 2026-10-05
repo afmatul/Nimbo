@@ -6,6 +6,7 @@ import type * as React from 'react';
 import { Toaster } from '../ui/sonner';
 
 import { AppSidebar, TRASH_HREF, type NavItem } from './app-sidebar';
+import { useHeaderAccount } from './header-account';
 import { MobileNavDrawer } from './mobile-nav-drawer';
 import { useMobileNav, type MobileNav } from './use-mobile-nav';
 
@@ -73,12 +74,18 @@ function AppHeader({
         {topBar ? <div className="hidden min-w-0 md:ml-6 md:flex">{topBar}</div> : null}
       </div>
       <div className="flex items-center gap-3">
-        {userEmail && (
-          <span className="hidden text-xs text-muted-foreground sm:inline-block">{userEmail}</span>
-        )}
+        <HeaderAccount userEmail={userEmail} />
       </div>
     </header>
   );
+}
+
+/** El menú de la cuenta del grupo con sesión (002 CA-14); fuera de él, solo el correo si lo hay. */
+function HeaderAccount({ userEmail }: { readonly userEmail: string | undefined }): React.ReactNode {
+  const account = useHeaderAccount();
+  if (account) return account;
+  if (!userEmail) return null;
+  return <span className="hidden text-xs text-muted-foreground sm:inline-block">{userEmail}</span>;
 }
 
 function BrandLink(): React.JSX.Element {
