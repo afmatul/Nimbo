@@ -1,10 +1,10 @@
 # Spec 004 — Auditoría
 
-> Qué y por qué. El cómo va en `./plan.md` (obligatorio, aún no existe).
+> Qué y por qué. El cómo va en `./plan.md` (aprobado) y el orden en `./tasks.md`.
 
 | Campo | Valor |
 |---|---|
-| Estado | Borrador |
+| Estado | Lista (plan aprobado por Adrián, 2026-10-05) |
 | Dueño | Adrián |
 | Fase | 1 |
 | Requisitos | RF-07 (principal); aplican RNF-05, RNF-13, RNF-17 |
@@ -64,7 +64,7 @@ acciones internas existen (eso es 011): solo las guarda y las muestra, sin nombr
 ## 6. Experiencia de usuario
 | Pantalla | Mockup | Estados requeridos | Estado del mockup |
 |---|---|---|---|
-| «Mi actividad» (entrada en el menú de la cuenta) | **No existe**: solo se menciona en `docs/design/mockups/shared/layout/README.md` (línea 314) | cargando, vacío, error, con datos, «Cargar más» | Falta: lo crea el `ui-designer` durante el plan (D-4) |
+| «Mi actividad» (entrada en el menú de la cuenta) | `docs/design/mockups/audit/mi-actividad/` (capturas en `docs/design/capturas/audit/mi-actividad/`) | cargando, vacío, error, con datos, «Cargar más», vacío con filtros, rango inválido, fin de lista | Creado por el `ui-designer` (11 estados, 360 y 1440 px) |
 
 - Mensajes clave (tuteo): vacío «Aún no hay actividad en tu cuenta»; error «No pudimos cargar tu actividad. Intenta de nuevo».
 - Sin mockup en la propuesta firmada (p. 03–18): la pantalla, sus filtros y la entrada del menú de la cuenta se diseñan en el plan.
@@ -95,3 +95,4 @@ Sin preguntas abiertas. Decisiones de Adrián (2026-10-05):
 |---|---|---|---|
 | 2026-10-04 | Borrador inicial | Petición de Adrián | — |
 | 2026-10-05 | Preguntas Q-1…Q-11 resueltas como D-1…D-11; UI completa en 004 | Respuestas de Adrián | Adrián |
+| 2026-10-05 | Plan aprobado; spec en `Lista`. La escritura síncrona (D-5) se ofrece ya como `IAuditLogger.recordInTransaction`; mockup enlazado | Aprobación del plan | Adrián |
