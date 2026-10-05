@@ -3,6 +3,7 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import {
   LOGIN_ATTEMPTS_PER_IP,
   LOGIN_MAX_FAILURES,
+  PASSWORD_CHANGE_MAX_FAILURES,
   REFRESH_ROTATION_GRACE_SECONDS,
   SESSION_IDLE_TIMEOUT_DAYS,
 } from '@nimbo/contracts';
@@ -34,6 +35,11 @@ import {
 const REGISTER = '/api/v1/auth/register';
 const VERIFY_EMAIL = '/api/v1/auth/verify-email';
 const WRONG_PASSWORD = 'Otra-Clave-Incorrecta-1';
+const NEW_PASSWORD = 'Nimbo-Nueva-Clave-2026';
+const SESSIONS_PATH = '/api/v1/sessions';
+const CHANGE_PASSWORD_PATH = '/api/v1/auth/change-password';
+/** Sesiones de la cuenta de «Seguridad»: la actual, la que se cierra a mano y dos que cierra el cambio. */
+const SECURITY_LOGINS = 4;
 const USER_AGENT =
   'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.7339.80 Safari/537.36';
 const SHARED_IP = '203.0.113.77';
@@ -60,13 +66,16 @@ const FLOW_ID_KEYS = [
   'suspendedLater',
   'suspendedLaterSessionId',
   'expiringSessionId',
+  'security',
+  'securityClosedSessionId',
 ] as const;
 type FlowIds = Record<(typeof FLOW_ID_KEYS)[number], string>;
 
 /**
  * CA-25: bitácoras de PR-2 (plan 002 §7, R-8, RNF-17). Con `FixedClock` y `api` y `worker` en un solo `LogSink`
  * recorre la sesión al verificar, el inicio de sesión correcto (dispositivo nuevo y conocido) y cada fallo, el bloqueo,
- * el límite por IP, la renovación, cada rechazo, el reúso, el cierre, la cuenta suspendida y la sesión vencida. Las
+ * el límite por IP, la renovación, cada rechazo, el reúso, el cierre, la cuenta suspendida y la sesión vencida. T-79
+ * suma «Seguridad» (PR-4): cerrar una sesión, cerrar las demás y el cambio de contraseña con cada rechazo. Las
  * pruebas inspeccionan las líneas resultantes.
  */
 describe('bitácoras del inicio de sesión y las sesiones (CA-25)', () => {
@@ -74,7 +83,7 @@ describe('bitácoras del inicio de sesión y las sesiones (CA-25)', () => {
   let testApp: TestApp;
   let dataSource: DataSource;
   const ids: FlowIds = Object.fromEntries(FLOW_ID_KEYS.map((key) => [key, ''])) as FlowIds;
-  const secrets = new Set<string>([ACCOUNT_PASSWORD, WRONG_PASSWORD, '$argon2']);
+  const secrets = new Set<string>([ACCOUNT_PASSWORD, WRONG_PASSWORD, NEW_PASSWORD, '$argon2']);
   const emails: string[] = [];
   const usedIps = new Set<string>([SHARED_IP]);
   let lines: LogLine[] = [];
@@ -183,6 +192,52 @@ describe('bitácoras del inicio de sesión y las sesiones (CA-25)', () => {
     }
   };
 
+  /** Token de acceso de la respuesta; se guarda como secreto. */
+  const accessTokenOf = (response: Response): string => {
+    const token = (response.body as { accessToken?: string }).accessToken ?? '';
+    secrets.add(token);
+    return token;
+  };
+
+  const withBearer = (test: request.Test, accessToken: string): request.Test =>
+    test.set('User-Agent', USER_AGENT).set('Authorization', `Bearer ${accessToken}`);
+
+  const changePassword = (accessToken: string, currentPassword: string, newPassword: string) =>
+    withBearer(request(testApp.app.getHttpServer()).post(CHANGE_PASSWORD_PATH), accessToken).send({
+      currentPassword,
+      newPassword,
+    });
+
+  /** «Seguridad» (PR-4): cerrar una sesión de la lista, cambiar la contraseña y cerrar las demás. */
+  const runSecuritySessionFlows = async (): Promise<string> => {
+    const owner = await account();
+    ids.security = owner.id;
+    const logins: Response[] = [];
+    for (let index = 0; index < SECURITY_LOGINS; index += 1) {
+      logins.push(expectStatus(await login(owner.email), 200));
+    }
+    const [current, closed] = logins as [Response, Response];
+    const accessToken = accessTokenOf(current);
+    ids.securityClosedSessionId = sessionIdOf(refreshTokenOf(closed));
+    const server = request(testApp.app.getHttpServer());
+    const closePath = `${SESSIONS_PATH}/${ids.securityClosedSessionId}`;
+    expectStatus(await withBearer(server.delete(closePath), accessToken), 204);
+    expectStatus(await changePassword(accessToken, ACCOUNT_PASSWORD, ''), 422);
+    expectStatus(await changePassword(accessToken, ACCOUNT_PASSWORD, NEW_PASSWORD), 204);
+    const again = accessTokenOf(expectStatus(await login(owner.email, NEW_PASSWORD), 200));
+    const others = withBearer(server.post(`${SESSIONS_PATH}/revoke-others`), again);
+    expectStatus(await others, 200);
+    return again;
+  };
+
+  /** Cinco contraseñas actuales incorrectas activan el bloqueo; el sexto intento, aun correcto, lo encuentra. */
+  const runPasswordChangeLockFlow = async (accessToken: string): Promise<void> => {
+    for (let attempt = 0; attempt < PASSWORD_CHANGE_MAX_FAILURES; attempt += 1) {
+      expectStatus(await changePassword(accessToken, WRONG_PASSWORD, `${NEW_PASSWORD}-x`), 422);
+    }
+    expectStatus(await changePassword(accessToken, NEW_PASSWORD, `${NEW_PASSWORD}-x`), 429);
+  };
+
   /** Cuenta suspendida tras iniciar sesión y, al final, sesión vencida por inactividad. */
   const runSuspendedAndExpiredFlows = async (): Promise<void> => {
     const later = await account();
@@ -251,6 +306,7 @@ describe('bitácoras del inicio de sesión y las sesiones (CA-25)', () => {
     await runMainAccountFlows();
     await runAnonymousRefreshFlows();
     await runRejectedLoginFlows();
+    await runPasswordChangeLockFlow(await runSecuritySessionFlows());
     await runSuspendedAndExpiredFlows();
     await waitForWorker();
     await collectStoredSecrets();
@@ -300,9 +356,10 @@ describe('bitácoras del inicio de sesión y las sesiones (CA-25)', () => {
   });
 
   it('CA-25: el bloqueo registra `identity.lockout.engaged` con `scope: login` e `identity.login.locked` con `retryAfterSeconds`', () => {
-    expect(eventLines('identity.lockout.engaged')).toEqual([
-      expect.objectContaining({ scope: 'login', userId: ids.locked, level: 40 }),
-    ]);
+    const loginLockouts = eventLines('identity.lockout.engaged').filter(
+      (line) => line.scope === 'login',
+    );
+    expect(loginLockouts).toEqual([expect.objectContaining({ userId: ids.locked, level: 40 })]);
     expect(eventLines('identity.login.locked')).toEqual([
       expect.objectContaining({ retryAfterSeconds: expect.any(Number), level: 40 }),
     ]);
@@ -363,6 +420,42 @@ describe('bitácoras del inicio de sesión y las sesiones (CA-25)', () => {
           reason: 'suspended',
         }),
       ]),
+    );
+  });
+
+  it('CA-25: «Seguridad» registra `identity.session.revoked` con `user`, `password_change` y `others`', () => {
+    expect(eventLines('identity.session.revoked')).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          userId: ids.security,
+          sessionId: ids.securityClosedSessionId,
+          reason: 'user',
+          count: 1,
+        }),
+        expect.objectContaining({ userId: ids.security, reason: 'password_change', count: 2 }),
+        expect.objectContaining({ userId: ids.security, reason: 'others', count: 1 }),
+      ]),
+    );
+  });
+
+  it('CA-25: el cambio registra `identity.password.changed` con `revokedCount`', () => {
+    expect(eventLines('identity.password.changed')).toEqual([
+      expect.objectContaining({ userId: ids.security, revokedCount: 2 }),
+    ]);
+  });
+
+  it('CA-25: cada rechazo del cambio con su motivo y el bloqueo con `scope: password_change`', () => {
+    const reasons = eventLines('identity.password_change.rejected')
+      .filter((line) => line.userId === ids.security)
+      .map((line) => line.reason);
+
+    expect(reasons).toEqual([
+      'weak',
+      ...Array<string>(PASSWORD_CHANGE_MAX_FAILURES).fill('wrong_password'),
+      'locked',
+    ]);
+    expect(eventLines('identity.lockout.engaged')).toContainEqual(
+      expect.objectContaining({ scope: 'password_change', userId: ids.security, level: 40 }),
     );
   });
 

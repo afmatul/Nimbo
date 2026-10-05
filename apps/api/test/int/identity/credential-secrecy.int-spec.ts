@@ -32,6 +32,7 @@ const RESET_TAG = 'identity.password-reset';
 const REGISTER = '/api/v1/auth/register';
 const VERIFY_EMAIL = '/api/v1/auth/verify-email';
 const CHANGED_TAG = 'identity.password-changed';
+const CHANGE_PASSWORD_PATH = '/api/v1/auth/change-password';
 
 /** Tablas de `identity` donde podría quedar una credencial (E-R de 002). */
 const IDENTITY_TABLES = ['usuario', 'token_cuenta', 'sesion', 'dispositivo'] as const;
@@ -284,6 +285,31 @@ describe('secreto de las credenciales: recuperación, sesión y dispositivo (CA-
     const logs = JSON.stringify(testApp.logs.lines());
     expect(logs).not.toContain(device);
     expect(logs).not.toContain(sha256Hex(device));
+  });
+
+  it('CA-24: tras cambiar la contraseña en «Seguridad», `hash_clave` sigue siendo `$argon2id$` y ninguna de las dos queda en la base ni en las bitácoras', async () => {
+    const account = await insertAccount(dataSource);
+    const login = await request(server())
+      .post(LOGIN_PATH)
+      .send({ email: account.email, password: ACCOUNT_PASSWORD })
+      .expect(200);
+    const before = await passwordHashOf(account.id);
+
+    await request(server())
+      .post(CHANGE_PASSWORD_PATH)
+      .set('Authorization', `Bearer ${(login.body as { accessToken: string }).accessToken}`)
+      .send({ currentPassword: ACCOUNT_PASSWORD, newPassword: NEW_PASSWORD })
+      .expect(204);
+    await mailDelivered(CHANGED_TAG);
+
+    const after = await passwordHashOf(account.id);
+    expect(after.startsWith(ARGON2ID_PREFIX)).toBe(true);
+    expect(after).not.toBe(before);
+    const logs = JSON.stringify(testApp.logs.lines());
+    for (const password of [ACCOUNT_PASSWORD, NEW_PASSWORD]) {
+      await expect(occurrencesOf(password)).resolves.toEqual(noOccurrences);
+      expect(logs).not.toContain(password);
+    }
   });
 
   it('CA-24: la contraseña del registro queda como `$argon2id$` en `usuario.hash_clave` y en ningún otro lugar de la base', async () => {
