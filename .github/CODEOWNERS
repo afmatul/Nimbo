@@ -1,0 +1,5 @@
+# Adrián revisa cada pull request. GitHub lo pide como revisor al abrir el PR
+# y cada vez que el diff toca estos archivos.
+# Para que el merge espere su aprobación, el ruleset de main debe tener
+# «Require review from code owners».
+* @afmatul
