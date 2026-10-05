@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 import request from 'supertest';
 import { DataSource } from 'typeorm';
@@ -9,18 +9,28 @@ import { waitForLog } from '../setup/wait-for-log';
 
 import {
   ACCOUNT_PASSWORD,
+  cookieHeader,
   FORGOT_PASSWORD_PATH,
   insertAccount,
   LOGIN_PATH,
+  REFRESH_PATH,
   RESET_PASSWORD_CHECK_PATH,
   RESET_PASSWORD_PATH,
+  setCookie,
 } from './accounts';
-import { createIdentityTestApp, resetTokenSentTo } from './identity-test-app';
+import {
+  createIdentityTestApp,
+  resetTokenSentTo,
+  validRegistration,
+  verificationTokenSentTo,
+} from './identity-test-app';
 
 /** Contraseña nueva válida (política de 001) y distinta de la de las cuentas de prueba. */
 const NEW_PASSWORD = 'Recupero-Secreto-2026';
 const ARGON2ID_PREFIX = '$argon2id$';
 const RESET_TAG = 'identity.password-reset';
+const REGISTER = '/api/v1/auth/register';
+const VERIFY_EMAIL = '/api/v1/auth/verify-email';
 const CHANGED_TAG = 'identity.password-changed';
 
 /** Tablas de `identity` donde podría quedar una credencial (E-R de 002). */
@@ -29,13 +39,28 @@ type IdentityTable = (typeof IDENTITY_TABLES)[number];
 
 const sha256Hex = (value: string): string => createHash('sha256').update(value).digest('hex');
 
+/** Secreto de un `nimbo_rt` (`<sid>.<secreto>`): el `sid` es el `id` público de la fila, no una credencial. */
+const refreshSecretOf = (refreshToken: string): string => refreshToken.split('.')[1] ?? '';
+
+/** Cookies de una sesión de `identity` abierta por la prueba. */
+interface SessionCookies {
+  readonly userId: string;
+  readonly email: string;
+  /** `nimbo_rt` de la verificación, del inicio de sesión y de su rotación, en ese orden. */
+  readonly verified: string;
+  readonly loggedIn: string;
+  readonly rotated: string;
+  readonly device: string;
+}
+
 /**
  * CA-24: nada recuperable en la base de datos ni en las bitácoras (RNF-04, R-3, R-8). El token de recuperación sale
  * del correo en Mailpit y la contraseña nueva es la que envía la prueba; ambos se buscan en todas las columnas de
  * `usuario`, `token_cuenta`, `sesion` y `dispositivo` y en el `LogSink`, que captura `api` y `worker` a la vez.
- * La parte de `nimbo_rt` y `nimbo_did` es de T-51.
+ * T-51 suma `nimbo_rt` (antes y después de rotar) y `nimbo_did` (CA-17), con una cuenta creada por la API para
+ * que `hash_clave` sea el del registro real.
  */
-describe('secreto de las credenciales de la recuperación (CA-24)', () => {
+describe('secreto de las credenciales: recuperación, sesión y dispositivo (CA-17, CA-24)', () => {
   let testApp: TestApp;
   let dataSource: DataSource;
 
@@ -96,6 +121,49 @@ describe('secreto de las credenciales de la recuperación (CA-24)', () => {
     const token = await resetTokenSentTo(account.email);
     await mailDelivered(RESET_TAG);
     return { id: account.id, email: account.email, token };
+  };
+
+  /** Filas de `sesion` de la cuenta con sus dos hashes, en orden de creación. */
+  const sessionHashesOf = async (userId: string) =>
+    (await dataSource.query(
+      `SELECT id, refresh_hash, refresh_anterior_hash FROM sesion
+        WHERE usuario_id = $1 ORDER BY creada_en, id`,
+      [userId],
+    )) as { id: string; refresh_hash: string; refresh_anterior_hash: string | null }[];
+
+  /**
+   * Registro y verificación por la API (sesión 1 y `nimbo_did`), inicio de sesión desde ese navegador (sesión 2) y una
+   * renovación de la sesión 2.
+   */
+  const openedSessions = async (): Promise<SessionCookies> => {
+    const email = `secreto-${randomUUID()}@nimbo.me`;
+    await request(server()).post(REGISTER).send(validRegistration(email)).expect(202);
+    const verification = await request(server())
+      .post(VERIFY_EMAIL)
+      .send({ token: await verificationTokenSentTo(email) })
+      .expect(200);
+    const device = setCookie(verification.headers, 'nimbo_did')?.value ?? '';
+    const login = await request(server())
+      .post(LOGIN_PATH)
+      .set('Cookie', cookieHeader({ nimbo_did: device }))
+      .send({ email, password: validRegistration(email).password })
+      .expect(200);
+    const loggedIn = setCookie(login.headers, 'nimbo_rt')?.value ?? '';
+    const refreshed = await request(server())
+      .post(REFRESH_PATH)
+      .set('Cookie', cookieHeader({ nimbo_rt: loggedIn }))
+      .expect(200);
+    const [user] = (await dataSource.query('SELECT id FROM usuario WHERE correo = $1', [
+      email,
+    ])) as { id: string }[];
+    return {
+      userId: user?.id ?? '',
+      email,
+      verified: setCookie(verification.headers, 'nimbo_rt')?.value ?? '',
+      loggedIn,
+      rotated: setCookie(refreshed.headers, 'nimbo_rt')?.value ?? '',
+      device,
+    };
   };
 
   beforeAll(async () => {
@@ -166,5 +234,66 @@ describe('secreto de las credenciales de la recuperación (CA-24)', () => {
     await expect(passwordHashOf(id)).resolves.toBe(before);
     await expect(occurrencesOf(weakPassword)).resolves.toEqual(noOccurrences);
     expect(JSON.stringify(testApp.logs.lines())).not.toContain(weakPassword);
+  });
+
+  it('CA-24: cada `nimbo_rt`, antes y después de rotar, solo está como el SHA-256 de su secreto en `sesion` y nunca en las bitácoras', async () => {
+    const cookies = await openedSessions();
+    const refreshTokens = [cookies.verified, cookies.loggedIn, cookies.rotated];
+    const secrets = refreshTokens.map(refreshSecretOf);
+
+    expect(new Set(secrets).size).toBe(3);
+    for (const value of [...refreshTokens, ...secrets]) {
+      await expect(occurrencesOf(value)).resolves.toEqual(noOccurrences);
+    }
+    const hashes = secrets.map(sha256Hex);
+    await expect(sessionHashesOf(cookies.userId)).resolves.toEqual(
+      expect.arrayContaining([
+        {
+          id: cookies.verified.split('.')[0],
+          refresh_hash: hashes[0],
+          refresh_anterior_hash: null,
+        },
+        {
+          id: cookies.loggedIn.split('.')[0],
+          refresh_hash: hashes[2],
+          refresh_anterior_hash: hashes[1],
+        },
+      ]),
+    );
+    const logs = JSON.stringify(testApp.logs.lines());
+    for (const value of [...secrets, ...secrets.map(sha256Hex)]) {
+      expect(logs).not.toContain(value);
+    }
+  });
+
+  it('CA-17: `nimbo_did` es HttpOnly y su valor solo está como SHA-256 en `dispositivo.huella_hash`, nunca en las bitácoras', async () => {
+    const email = `dispositivo-${randomUUID()}@nimbo.me`;
+    await request(server()).post(REGISTER).send(validRegistration(email)).expect(202);
+
+    const verification = await request(server())
+      .post(VERIFY_EMAIL)
+      .send({ token: await verificationTokenSentTo(email) })
+      .expect(200);
+
+    const cookie = setCookie(verification.headers, 'nimbo_did');
+    expect(cookie?.attributes).toEqual(expect.arrayContaining(['httponly', 'samesite=strict']));
+    const device = cookie?.value ?? '';
+    expect(device).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    await expect(occurrencesOf(device)).resolves.toEqual(noOccurrences);
+    await expect(rowsContaining('dispositivo', sha256Hex(device))).resolves.toBe(1);
+    const logs = JSON.stringify(testApp.logs.lines());
+    expect(logs).not.toContain(device);
+    expect(logs).not.toContain(sha256Hex(device));
+  });
+
+  it('CA-24: la contraseña del registro queda como `$argon2id$` en `usuario.hash_clave` y en ningún otro lugar de la base', async () => {
+    const cookies = await openedSessions();
+    const password = validRegistration(cookies.email).password;
+
+    const hash = await passwordHashOf(cookies.userId);
+
+    expect(hash.startsWith(ARGON2ID_PREFIX)).toBe(true);
+    await expect(occurrencesOf(password)).resolves.toEqual(noOccurrences);
+    expect(JSON.stringify(testApp.logs.lines())).not.toContain(password);
   });
 });
