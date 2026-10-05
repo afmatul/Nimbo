@@ -761,7 +761,7 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   jest-axe. Luego la página.
   Archivos: `apps/web/app/(app)/cuenta/seguridad/page.tsx` y su `*.spec.tsx`.
 
-- [ ] **T-103** `AccountMenu` en el `AppLayout` actual — CA: CA-14, CA-27 — Depende: T-98, T-84, **Q-3** (PD-28), **Q-4** — ~1 h
+- [x] **T-103** `AccountMenu` en el `AppLayout` actual — CA: CA-14, CA-27 — Depende: T-98, T-84, **Q-3** (PD-28), **Q-4** — ~1 h
   Prueba primero `components/nimbo/account-menu.spec.tsx`: patrón *menu button* de WAI-ARIA (flechas, Escape, foco
   devuelto); nombre y correo fuera del `role="menu"`; «Seguridad», «Plan y facturación» solo si existe su ruta, «Cerrar
   sesión» (con `ConfirmDestructiveDialog` si Q-3 dice que sí; directo si no) → `logout` y `/iniciar-sesion`; jest-axe.
