@@ -725,7 +725,8 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
 
 - [x] **T-97** [P] `lib/format-date.ts` — CA: CA-11 — Depende: — — ~0,5 h
   Prueba primero `apps/web/lib/format-date.spec.ts`: «Activa ahora», «Última actividad: hace 2 horas»
-  (`Intl.RelativeTimeFormat('es')`) e «Iniciada el 24 sep 2026» en `America/Guatemala` (D-16), con reloj fijo.
+  (`Intl.RelativeTimeFormat('es')`) e «Iniciada el 24 sept 2026» en `America/Guatemala` (D-16), con reloj fijo.
+  «sept» y no «sep»: es la abreviatura de `Intl` para `es-GT` (Adrián, 2026-10-04).
   Archivos: `apps/web/lib/format-date.ts`, `apps/web/lib/format-date.spec.ts`.
 
 - [x] **T-98** [P] `ConfirmDestructiveDialog` — CA: CA-14, CA-27 — Depende: **Q-4** (token del velo, PD-27) — ~1 h

@@ -101,11 +101,11 @@ describe('SessionsCard: lista', () => {
     expect(first).toContain('Chrome · Windows');
     expect(first).toContain('Este dispositivo');
     expect(first).toContain('Activa ahora');
-    expect(first).toMatch(/Iniciada el 24 sept? 2026/);
+    expect(first).toMatch(/Iniciada el 24 sept 2026/);
     expect(second).toContain('Safari · iOS');
     expect(second).not.toContain('Este dispositivo');
     expect(second).toContain('Última actividad: hace 2 horas');
-    expect(second).toMatch(/Iniciada el 21 sept? 2026/);
+    expect(second).toMatch(/Iniciada el 21 sept 2026/);
     expect(cardTitle()).toContain('2 abiertas');
     expect(screen.getByRole('button', { name: 'Cerrar las demás sesiones' })).toBeTruthy();
   });

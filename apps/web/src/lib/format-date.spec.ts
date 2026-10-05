@@ -26,7 +26,7 @@ describe('fechas de «Seguridad» (CA-11, D-16)', () => {
 
   it('CA-11: «Iniciada el 24 sep 2026» en hora de Guatemala aunque en UTC ya sea otro día', () => {
     // 2026-09-25 03:00 UTC = 2026-09-24 21:00 en Guatemala (UTC−6).
-    expect(startedOnLabel('2026-09-25T03:00:00.000Z')).toMatch(/^Iniciada el 24 sept? 2026$/);
-    expect(startedOnLabel('2026-09-02T15:00:00.000Z')).toMatch(/^Iniciada el 2 sept? 2026$/);
+    expect(startedOnLabel('2026-09-25T03:00:00.000Z')).toMatch(/^Iniciada el 24 sept 2026$/);
+    expect(startedOnLabel('2026-09-02T15:00:00.000Z')).toMatch(/^Iniciada el 2 sept 2026$/);
   });
 });

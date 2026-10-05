@@ -29,8 +29,8 @@
   violaciones en los 15 estados a 360 y 1440 px, sin desplazamiento horizontal a 360 px y objetivos de al menos 24 px.
 
 ## Decisiones de UX
-- Se llega desde el menú de la cuenta (avatar de la barra superior); la ruta dice «Cuenta / Seguridad». No se agrega
-  entrada a la barra lateral.
+- Se llega desde el menú de la cuenta (avatar de la barra superior). Sin migas «Cuenta / Seguridad», porque «Cuenta»
+  no tiene ruta (Adrián, 2026-10-04). No se agrega entrada a la barra lateral.
 - Dos tarjetas: «Sesiones activas» y «Cambiar contraseña». A 1440 px van lado a lado; por debajo de 1180 px se apilan
   y por debajo de 900 px la barra lateral pasa al menú en cajón de `AppLayout`.
 - Cada sesión muestra navegador · sistema, la última actividad y la fecha de inicio (D-9). La actual va primero, con
@@ -102,8 +102,8 @@
    faltan. El botón sigue habilitado; el servidor rechaza hasta que venza el bloqueo.
 5. **Singular en el resultado de «Cerrar las demás»**: con una sola sesión cerrada, «Cerramos 1 sesión. Solo queda
    abierta la de este dispositivo.»; con más, «Cerramos {n} sesiones. Solo queda abierta la de este dispositivo.».
-6. **Formato de fechas**: «Activa ahora», «Última actividad: hace 2 horas» (relativa) e «Iniciada el 24 sep 2026»
-   (absoluta), en hora de Guatemala.
+6. **Formato de fechas**: «Activa ahora», «Última actividad: hace 2 horas» (relativa) e «Iniciada el 24 sept 2026»
+   (absoluta), en hora de Guatemala; «sept» es la abreviatura de `Intl.DateTimeFormat('es-GT')` (Adrián, 2026-10-04).
 7. **Tipografía**: solo Inter (400/500/600/700). Las cifras y los identificadores usan `tabular-nums`; no se usa
    JetBrains Mono.
 
