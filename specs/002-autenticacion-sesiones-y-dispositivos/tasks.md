@@ -703,7 +703,7 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   contraseña…» + «Iniciar sesión»); jest-axe. Luego la página.
   Archivos: `apps/web/features/identity/components/reset-password-view.tsx` y su `*.spec.tsx`, `apps/web/app/(public)/restablecer-contrasena/page.tsx`.
 
-- [ ] **T-94** **(humana)** Recorrido local de sesión y recuperación — CA: CA-1, CA-8, CA-18…CA-21, CA-27, CA-28 — Depende: T-57, T-69, T-90…T-93 — ~1 h
+- [x] **T-94** **(humana)** Recorrido local de sesión y recuperación — CA: CA-1, CA-8, CA-18…CA-21, CA-27, CA-28 — Depende: T-57, T-69, T-90…T-93 — ~1 h
   Con `docker compose up -d` + `pnpm dev`: iniciar sesión (cookies en DevTools: `HttpOnly`, `SameSite`, `Path`),
   **recargar** y seguir con sesión, inspeccionar `localStorage`, `sessionStorage` y `document.cookie` (ningún token),
   recuperar y restablecer con Mailpit, enlace vencido; capturas a 360 y 1440 px para el `ui-designer`. Evidencia para
