@@ -1,14 +1,19 @@
 import {
+  changePassword,
   checkResetLink,
   forgotPassword,
   login,
+  listSessions,
   logout,
   refresh,
   register,
   resendVerification,
   resetPassword,
+  revokeOtherSessions,
+  revokeSession,
   verifyEmail,
 } from './api';
+import { createAuthFetch } from './session/auth-fetch';
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -272,6 +277,126 @@ describe('api de identity', () => {
         code: 'IDENTITY_WEAK_PASSWORD',
         fields: [{ field: 'password', reason: 'PASSWORD_COMMON' }],
       });
+    });
+  });
+
+  describe('Seguridad: sesiones y contraseña por auth-fetch (plan 002 §5)', () => {
+    const API = 'http://localhost/api/v1';
+    const SESSION_ID = '0b7e6c1a-6f0e-4c1b-9d3a-2f5b8e9a1c4d';
+    const authFetch = createAuthFetch({
+      getAccessToken: () => 'token-a',
+      renew: () => Promise.resolve(null),
+    });
+    const summary = {
+      id: SESSION_ID,
+      browser: 'Firefox',
+      os: 'Windows',
+      deviceKind: 'desktop',
+      startedAt: '2026-09-24T10:00:00.000Z',
+      lastActiveAt: '2026-09-30T12:00:00.000Z',
+      current: true,
+    };
+
+    function lastCall(): { url: string; init: RequestInit } {
+      const [url, init] = fetchMock.mock.calls.at(-1) ?? [];
+      return { url: String(url), init: init ?? {} };
+    }
+
+    function bearerOf(init: RequestInit): string | null {
+      return new Headers(init.headers).get('authorization');
+    }
+
+    it('CA-11: listSessions hace GET /sessions con el token y valida la lista', async () => {
+      fetchMock.mockResolvedValue(jsonResponse({ items: [summary] }));
+
+      await expect(listSessions(API, authFetch)).resolves.toEqual({ items: [summary] });
+
+      const { url, init } = lastCall();
+      expect(url).toBe(`${API}/sessions`);
+      expect(init.method).toBe('GET');
+      expect(bearerOf(init)).toBe('Bearer token-a');
+    });
+
+    it('CA-11: listSessions rechaza una sesión con datos fuera del contrato (p. ej., la IP)', async () => {
+      fetchMock.mockResolvedValue(jsonResponse({ items: [{ ...summary, ip: '10.0.0.1' }] }));
+
+      await expect(listSessions(API, authFetch)).rejects.toMatchObject({ code: 'INTERNAL_ERROR' });
+    });
+
+    it('CA-12: revokeSession hace DELETE /sessions/:id con credenciales y acepta el 204', async () => {
+      fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+
+      await expect(revokeSession(API, authFetch, SESSION_ID)).resolves.toBeUndefined();
+
+      const { url, init } = lastCall();
+      expect(url).toBe(`${API}/sessions/${SESSION_ID}`);
+      expect(init.method).toBe('DELETE');
+      expect(init.credentials).toBe('include');
+      expect(bearerOf(init)).toBe('Bearer token-a');
+    });
+
+    it('CA-12: revokeSession propaga IDENTITY_SESSION_NOT_FOUND', async () => {
+      fetchMock.mockResolvedValue(
+        jsonResponse(
+          { code: 'IDENTITY_SESSION_NOT_FOUND', message: 'No', correlationId: 'c-4' },
+          404,
+        ),
+      );
+
+      await expect(revokeSession(API, authFetch, SESSION_ID)).rejects.toMatchObject({
+        code: 'IDENTITY_SESSION_NOT_FOUND',
+      });
+    });
+
+    it('CA-13: revokeOtherSessions hace POST /sessions/revoke-others sin cuerpo y valida el número', async () => {
+      fetchMock.mockResolvedValue(jsonResponse({ revokedCount: 2 }));
+
+      await expect(revokeOtherSessions(API, authFetch)).resolves.toEqual({ revokedCount: 2 });
+
+      const { url, init } = lastCall();
+      expect(url).toBe(`${API}/sessions/revoke-others`);
+      expect(init.method).toBe('POST');
+      expect(init.body).toBeUndefined();
+      expect(bearerOf(init)).toBe('Bearer token-a');
+    });
+
+    it('CA-13: revokeOtherSessions rechaza un número negativo', async () => {
+      fetchMock.mockResolvedValue(jsonResponse({ revokedCount: -1 }));
+
+      await expect(revokeOtherSessions(API, authFetch)).rejects.toMatchObject({
+        code: 'INTERNAL_ERROR',
+      });
+    });
+
+    it('CA-22: changePassword hace POST /auth/change-password con el cuerpo estricto y acepta el 204', async () => {
+      fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+      const input = { currentPassword: 'Vieja-Clave-2025', newPassword: 'Nimbo-Seguro-2026' };
+
+      await expect(changePassword(API, authFetch, input)).resolves.toBeUndefined();
+
+      const { url, init } = lastCall();
+      expect(url).toBe(`${API}/auth/change-password`);
+      expect(init.method).toBe('POST');
+      expect(new Headers(init.headers).get('content-type')).toBe('application/json');
+      expect(bearerOf(init)).toBe('Bearer token-a');
+      expect(JSON.parse(String(init.body))).toEqual(input);
+    });
+
+    it('CA-23: changePassword propaga el bloqueo con su Retry-After', async () => {
+      fetchMock.mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            code: 'IDENTITY_PASSWORD_CHANGE_LOCKED',
+            message: 'No',
+            correlationId: 'c-5',
+          }),
+          { status: 429, headers: { 'content-type': 'application/json', 'retry-after': '540' } },
+        ),
+      );
+
+      await expect(
+        changePassword(API, authFetch, { currentPassword: 'x', newPassword: 'Nimbo-Seguro-2026' }),
+      ).rejects.toMatchObject({ code: 'IDENTITY_PASSWORD_CHANGE_LOCKED', retryAfterSeconds: 540 });
     });
   });
 });

@@ -1,5 +1,6 @@
 import {
   acceptedResponseSchema,
+  changePasswordRequestSchema,
   forgotPasswordRequestSchema,
   loginRequestSchema,
   registerRequestSchema,
@@ -8,10 +9,13 @@ import {
   resetPasswordRequestSchema,
   resetPasswordResponseSchema,
   resetTokenRequestSchema,
+  revokeOthersResponseSchema,
+  sessionListResponseSchema,
   sessionResponseSchema,
   verifyEmailRequestSchema,
   verifyEmailResponseSchema,
   type AcceptedResponse,
+  type ChangePasswordRequest,
   type ForgotPasswordRequest,
   type LoginRequest,
   type RegisterRequest,
@@ -19,6 +23,8 @@ import {
   type ResetLinkCheckResponse,
   type ResetPasswordRequest,
   type ResetPasswordResponse,
+  type RevokeOthersResponse,
+  type SessionListResponse,
   type SessionResponse,
   type VerifyEmailResponse,
 } from '@nimbo/contracts';
@@ -26,6 +32,8 @@ import type { ZodType } from 'zod';
 
 import { requestJson } from '../../lib/api-client';
 import { ApiClientError, genericErrorMessage } from '../../lib/api-error';
+
+import type { AuthFetch } from './session/auth-fetch';
 
 function endpoint(apiPublicUrl: string, path: string): string {
   return `${apiPublicUrl.replace(/\/$/, '')}${path}`;
@@ -149,4 +157,50 @@ export function resetPassword(
     resetPasswordResponseSchema,
     'include',
   );
+}
+
+/** CA-11: sesiones abiertas de la cuenta, la actual primero. */
+export async function listSessions(
+  apiPublicUrl: string,
+  authFetch: AuthFetch,
+): Promise<SessionListResponse> {
+  const raw = await authFetch(endpoint(apiPublicUrl, '/sessions'), { method: 'GET' });
+  return parseOrGeneric(raw, sessionListResponseSchema);
+}
+
+/**
+ * CA-12, CA-14: cierra una sesión (`204`). Con credenciales para que, si es la actual, el navegador acepte el borrado
+ * de la cookie de refresco.
+ */
+export async function revokeSession(
+  apiPublicUrl: string,
+  authFetch: AuthFetch,
+  sessionId: string,
+): Promise<void> {
+  const url = endpoint(apiPublicUrl, `/sessions/${encodeURIComponent(sessionId)}`);
+  await authFetch(url, { method: 'DELETE', credentials: 'include' });
+}
+
+/** CA-13: cierra todas las sesiones salvo la actual y devuelve cuántas cerró. */
+export async function revokeOtherSessions(
+  apiPublicUrl: string,
+  authFetch: AuthFetch,
+): Promise<RevokeOthersResponse> {
+  const raw = await authFetch(endpoint(apiPublicUrl, '/sessions/revoke-others'), {
+    method: 'POST',
+  });
+  return parseOrGeneric(raw, revokeOthersResponseSchema);
+}
+
+/** CA-22: cambia la contraseña (`204`); la API cierra las demás sesiones y conserva la actual. */
+export async function changePassword(
+  apiPublicUrl: string,
+  authFetch: AuthFetch,
+  input: ChangePasswordRequest,
+): Promise<void> {
+  await authFetch(endpoint(apiPublicUrl, '/auth/change-password'), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(changePasswordRequestSchema.parse(input)),
+  });
 }
