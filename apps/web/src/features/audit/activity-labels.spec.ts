@@ -62,6 +62,31 @@ describe('textos de «Mi actividad»', () => {
     expect(activityActionLabel(internal)).toBe('Soporte de Nimbo vació la papelera');
   });
 
+  it.each([
+    ['folder', 3, 'Se eliminaron definitivamente 3 elementos al vencer en la papelera'],
+    ['file', null, 'Se eliminó definitivamente 1 archivo al vencer en la papelera'],
+  ] as const)(
+    'CA-7: la purga programada (%s) no se lee como acción tuya',
+    (resourceType, itemCount, text) => {
+      const scheduled = event({
+        action: 'node.purged',
+        trigger: 'scheduled',
+        resourceType,
+        itemCount,
+      });
+
+      expect(activityActionLabel(scheduled)).toBe(text);
+      expect(activityActorLabel(scheduled)).toBe('Nimbo (automático)');
+    },
+  );
+
+  it('CA-7: la purga pedida por ti (`trigger` manual) sigue en segunda persona', () => {
+    const manual = event({ action: 'node.purged', trigger: 'manual', resourceType: 'file' });
+
+    expect(activityActionLabel(manual)).toBe('Eliminaste definitivamente 1 archivo');
+    expect(activityActorLabel(manual)).toBe('Tú');
+  });
+
   it('CA-7: una acción que la web aún no conoce se muestra como «Actividad en tu cuenta»', () => {
     expect(activityActionLabel(event({ action: 'account.quota_adjusted' }))).toBe(
       UNKNOWN_ACTIVITY_LABEL,

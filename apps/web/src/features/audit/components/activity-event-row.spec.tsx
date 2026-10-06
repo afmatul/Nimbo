@@ -52,4 +52,21 @@ describe('ActivityEventRow', () => {
     expect(within(row).getByText('Acción interna')).toBeTruthy();
     expect(within(row).queryByRole('note')).toBeNull();
   });
+  it('CA-7: la purga programada se atribuye a Nimbo, no a ti, y no es acción interna', () => {
+    const scheduled = auditEvent({
+      action: 'node.purged',
+      trigger: 'scheduled',
+      resourceType: 'folder',
+      itemCount: 3,
+      sizeBytes: null,
+    });
+    const row = renderRow(scheduled);
+
+    expect(
+      within(row).getByText('Se eliminaron definitivamente 3 elementos al vencer en la papelera'),
+    ).toBeTruthy();
+    expect(row.textContent).toContain('Origen: Nimbo (automático)');
+    expect(row.textContent).not.toContain('Tú');
+    expect(row.textContent).not.toContain('Acción interna');
+  });
 });

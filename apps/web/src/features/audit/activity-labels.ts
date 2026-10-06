@@ -17,6 +17,8 @@ export const ORIGIN_FILTER_LABELS: Readonly<Record<ActivityOriginFilter, string>
 };
 
 const SELF_LABEL = 'Tú';
+/** Origen de la purga programada de la papelera: su actor es el dueño, pero no la pidió (CA-7). */
+const SCHEDULED_LABEL = 'Nimbo (automático)';
 /** Origen `staff` con un rol sin rótulo propio. */
 const STAFF_LABEL = ORIGIN_FILTER_LABELS.staff;
 
@@ -26,10 +28,14 @@ const STAFF_ROLE_LABELS: Readonly<Partial<Record<RoleName, string>>> = {
   OPERATOR: 'Operación de Nimbo',
 };
 
-/** Cómo se lee una acción: en segunda persona si la hiciste tú; con el rol como sujeto si fue el personal. */
+/**
+ * Cómo se lee una acción: en segunda persona si la hiciste tú; con el rol como sujeto si fue el personal; impersonal
+ * si la hizo una tarea programada (`trigger: 'scheduled'`, CA-7).
+ */
 interface ActionText {
   readonly self: (what: string) => string;
   readonly staff: (what: string, actor: string) => string;
+  readonly scheduled?: (what: string, plural: boolean) => string;
 }
 
 const REJECTED_UPLOAD = 'Se rechazó una carga';
@@ -49,6 +55,8 @@ const ACTION_TEXTS: Readonly<Record<string, ActionText>> = {
   'node.purged': {
     self: (w) => `Eliminaste definitivamente ${w}`,
     staff: (w, a) => `${a} eliminó definitivamente ${w}`,
+    scheduled: (w, plural) =>
+      `${plural ? 'Se eliminaron' : 'Se eliminó'} definitivamente ${w} al vencer en la papelera`,
   },
   'trash.emptied': {
     self: () => 'Vaciaste la papelera',
@@ -67,23 +75,34 @@ const ACCOUNT_RESOURCE = 'Cuenta';
 /** Objeto de la frase cuando el evento no dice qué ni cuántos. */
 const SOME_ITEM = '1 elemento';
 
-/** «Tú» o el rol del personal, nunca nombre ni correo (D-2). */
+function isScheduled(event: AuditEventResponse): boolean {
+  return event.trigger === 'scheduled';
+}
+
+/** «Tú», «Nimbo (automático)» o el rol del personal, nunca nombre ni correo (D-2). */
 export function activityActorLabel(event: AuditEventResponse): string {
+  if (isScheduled(event)) return SCHEDULED_LABEL;
   if (event.origin === 'self') return SELF_LABEL;
   return STAFF_ROLE_LABELS[event.actorRole] ?? STAFF_LABEL;
 }
 
+function isPlural({ itemCount }: AuditEventResponse): boolean {
+  return itemCount !== null && itemCount !== 1;
+}
+
 /** «3 elementos», «1 archivo» o `null` si el evento no dice qué ni cuántos. */
 function quantityOf(event: AuditEventResponse): string | null {
-  const { itemCount, resourceType } = event;
-  if (itemCount !== null && itemCount !== 1) return `${String(itemCount)} elementos`;
-  return resourceType === null ? null : UNIT_NOUNS[resourceType];
+  if (isPlural(event)) return `${String(event.itemCount)} elementos`;
+  return event.resourceType === null ? null : UNIT_NOUNS[event.resourceType];
 }
 
 export function activityActionLabel(event: AuditEventResponse): string {
   const text = ACTION_TEXTS[event.action];
   if (text === undefined) return UNKNOWN_ACTIVITY_LABEL;
   const what = quantityOf(event) ?? SOME_ITEM;
+  if (isScheduled(event) && text.scheduled !== undefined) {
+    return text.scheduled(what, isPlural(event));
+  }
   return event.origin === 'self' ? text.self(what) : text.staff(what, activityActorLabel(event));
 }
 

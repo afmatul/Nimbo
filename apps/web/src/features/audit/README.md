@@ -19,9 +19,11 @@ La página no muestra nombres de archivo ni del actor: el evento no los trae (D-
 ## Textos (`activity-labels.ts`)
 
 - Actor: «Tú» si el origen es `self`; con `staff`, el rol («Soporte de Nimbo», «Administración de Nimbo», «Operación
-  de Nimbo») o «Personal de Nimbo» si el rol no tiene rótulo.
+  de Nimbo») o «Personal de Nimbo» si el rol no tiene rótulo. La purga programada de la papelera
+  (`trigger: 'scheduled'`) se atribuye a «Nimbo (automático)», aunque su actor sea el dueño (CA-7).
 - Acción: en segunda persona si la hiciste tú («Subiste 1 archivo»), con el rol como sujeto si fue el personal
-  («Soporte de Nimbo restauró 3 elementos»). Una acción que la web no conoce se lee «Actividad en tu cuenta».
+  («Soporte de Nimbo restauró 3 elementos»), impersonal si fue la purga programada («Se eliminaron definitivamente
+  3 elementos al vencer en la papelera»). Una acción que la web no conoce se lee «Actividad en tu cuenta».
 - Recurso: tipo y cantidad («1 archivo», «1 carpeta», «1 carga», «N elementos») y el tamaño si lo trae («1 archivo,
   12 MB»); sin tipo ni cantidad, «Cuenta».
 
