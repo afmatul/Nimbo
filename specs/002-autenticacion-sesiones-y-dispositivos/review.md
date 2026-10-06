@@ -7,7 +7,7 @@
 | Fecha | 2026-10-05 |
 | Rango revisado | `main (8f14d38)..feat/002-backend-pr2-pr4 (570b156)` y `main..feat/002-web-pr5 (9512b26)`; se combinan sin conflictos (merge-tree) |
 | CI | Local: api lint ✅ · typecheck ✅ · test ✅ (1 intermitente ajeno: `redact-deep.spec.ts`, tiempo bajo carga; sola 12/12) · test:int 887/888 (intermitente de 006 `node-tree.repository.int-spec.ts`; sola 16/16) · test:isolation 241/241 ✅ · web lint ✅ · typecheck ✅ · test 1028/1028 ✅. T-94 y T-104 (recorridos humanos) sin hallazgos |
-| Veredicto | ✅ Aprobar (con I-1 a I-3 antes del cierre de fase) |
+| Veredicto | ✅ Aprobar (I-1 a I-3 resueltos el 2026-10-05) |
 
 ## Verificación
 | CA | Prueba | Estado |
@@ -29,7 +29,7 @@
 ## Seguridad
 - Datos de cliente: sí (sesiones). `SessionService.list/revoke/revokeOthers` y `PasswordService.changePassword` reciben `actor`; el `UPDATE` de `revokeIfActive` filtra por dueño y no revocada (sin filtrar después). `:id` no UUID, ajeno, inexistente o ya cerrado → mismo `404 IDENTITY_SESSION_NOT_FOUND` (003 D-6). Aislamiento 241/241 ✅.
 - Respuestas sin IP, agente completo, hashes ni `deviceId` (`toSessionSummary`); bitácoras con `userId`/`sessionId` y sin secretos (CA-25) ✅. `Cache-Control: no-store` también en `SessionsController` ✅.
-- **[SEC-1] Media** · `apps/api/src/modules/identity/application/password.service.ts:285-308` — el bloqueo del cambio es *check-then-act*: N peticiones simultáneas con un token robado pasan todas `enforceChangeNotLocked` antes de que `recordFailure` sume, así que una ráfaga prueba más de 5 contraseñas. El login tiene el mismo patrón pero lo respalda `IdentityIpThrottlerGuard`; `POST /auth/change-password` no tiene throttler. Ver I-1.
+- **[SEC-1] Media** · `apps/api/src/modules/identity/application/password.service.ts:285-308` — el bloqueo del cambio es *check-then-act*: N peticiones simultáneas con un token robado pasan todas `enforceChangeNotLocked` antes de que `recordFailure` sume, así que una ráfaga prueba más de 5 contraseñas. El login tiene el mismo patrón pero lo respalda `IdentityIpThrottlerGuard`; `POST /auth/change-password` no tiene throttler. Ver I-1. **Resuelto** en `d280e7e`: `IAttemptLockout.reserveAttempt` reserva el intento de forma atómica antes de verificar; prueba de 10 envíos en paralelo en `change-password.int-spec.ts`.
 
 ## UI
 - Coincide con el mockup `identity/seguridad` (15 estados) y con el layout aprobado (Q-3, Q-4); sin hex ni valores arbitrarios en el diff; `Alert` `success` con texto `foreground` (AA); axe sin `serious`/`critical` ✅.
@@ -38,16 +38,16 @@
 - Ninguno.
 
 ## Importantes y sugerencias
-- **[I-1]** `password.controller.ts` (`changePassword`) — SEC-1; viola D-7/RNF-07 bajo concurrencia. Corrección: un throttler por usuario en la ruta (p. ej. `@UseGuards(IdentityIpThrottlerGuard)` con un `PASSWORD_CHANGE_THROTTLER` de pocas peticiones por minuto) o reservar el intento antes de verificar (`recordFailure` primero y descontarlo al acertar). Prueba: 10 envíos en paralelo con la contraseña errónea → como máximo 5 `422`.
-- **[I-2]** `docs/sdd/pendientes.md` — PD-27 (velo, Q-4) y PD-28 (confirmación en el menú, Q-3) siguen «Abierto» aunque la spec y `ui-guidelines.md` ya los resolvieron. Marcarlos resueltos en T-105.
-- **[I-3]** `specs/README.md` fila 002 — tras combinar las dos ramas, dejar un único estado («En revisión», 2026-10-05) en T-105; DF-56 y DF-57 siguen «Propuesto, pendiente del `architect`»: pedir su aprobación o dejarlo explícito en PD-07.
+- **[I-1]** `password.controller.ts` (`changePassword`) — SEC-1; viola D-7/RNF-07 bajo concurrencia. Corrección: un throttler por usuario en la ruta (p. ej. `@UseGuards(IdentityIpThrottlerGuard)` con un `PASSWORD_CHANGE_THROTTLER` de pocas peticiones por minuto) o reservar el intento antes de verificar (`recordFailure` primero y descontarlo al acertar). Prueba: 10 envíos en paralelo con la contraseña errónea → como máximo 5 `422`. **Resuelto** (`d280e7e`): reserva antes de verificar; sin throttler extra para no duplicar la fuente de verdad de CA-23.
+- **[I-2]** `docs/sdd/pendientes.md` — PD-27 (velo, Q-4) y PD-28 (confirmación en el menú, Q-3) siguen «Abierto» aunque la spec y `ui-guidelines.md` ya los resolvieron. Marcarlos resueltos en T-105. **Resuelto** (`f6e8162`): PD-27 cerrado; PD-28 (1) resuelto, (2)–(5) siguen abiertos.
+- **[I-3]** `specs/README.md` fila 002 — tras combinar las dos ramas, dejar un único estado («En revisión», 2026-10-05) en T-105; DF-56 y DF-57 siguen «Propuesto, pendiente del `architect`»: pedir su aprobación o dejarlo explícito en PD-07. **Resuelto**: ramas combinadas y fila en «En revisión»; DF-56 y DF-57 aceptados por el `architect` (`593bae7`), redibujo en PD-07.
 - **[S-1]** `session.service.ts:260` — `revokeOthers` registra `identity.session.revoked` con `count: 0`; `PasswordService.logSessionsRevoked` solo registra si `count > 0`. Unificar el criterio.
 - **[S-2]** `apps/web/src/features/identity/hooks/use-sessions-card.ts:60` — `currentFirst` repite el orden que la API ya garantiza (D-9); basta con el de la API.
 - **[S-3]** `apps/web/src/components/nimbo/account-menu.tsx:85` — `<a href>` a Seguridad recarga la página y fuerza una renovación; usar `next/link` con `asChild`.
 - **[S-4]** `session.service.ts:228` — con más de `SESSION_LIST_MAX_ITEMS` sesiones, la actual puede quedar fuera del `LIMIT` y no salir marcada. Caso límite aceptado en DT-13; anotarlo.
 
 ## DF y pendientes
-- DF-56 (clases M1) y DF-57 (E-R `sesion`/`dispositivo`) nuevos, Propuestos; redibujo en PD-07. Sin filas nuevas en `pendientes.md`; actualizar PD-27 y PD-28 (I-2).
+- DF-56 (clases M1) y DF-57 (E-R `sesion`/`dispositivo`) nuevos, Aceptados (2026-10-05); redibujo en PD-07. Sin filas nuevas en `pendientes.md`; actualizar PD-27 y PD-28 (I-2).
 
 ## Lo que está bien hecho
 - Revocación con un solo `UPDATE` filtrado por dueño y respuesta indistinguible, probada en los cuatro roles.
