@@ -81,6 +81,8 @@ decisiones; solo faltan los diagramas.
 | PD-63 | Extraer el patrón «programa repetible + procesador por lotes» de BullMQ: `upload-cleanup`, `trash-purge` y `usage-reconcile` repiten constantes de reintento, `upsertJobScheduler` y el registro de fallos por elemento (regla de tres, Art. VI.2) | `apps/api/src/modules/storage/infrastructure/*.scheduler.ts`, `*.processor.ts` | Plan 007 D-13 | 20 % de refactor de la Fase 2 | Adrián | Abierto |
 | PD-64 | `PUT /quick-access/pins` y `POST /quick-access/recents` no tienen límite de tasa. El efecto queda acotado a la propia cuenta (la poda acota la tabla y `pin` comparte `lockUsage` con las cargas). Resolver con el limitador general o con el RNF de abuso | Revisión 006, adición CA-26 a CA-28 (SEC-3, I-6) | Limitador general / RNF de abuso | Adrián | Abierto |
 | PD-65 | `acceso_rapido.usuario_id` no tiene `ON DELETE CASCADE`: la futura baja de cuentas debe borrar antes estas filas | Revisión 006, adición CA-26 a CA-28 (S-6) | Spec de baja de cuentas | Adrián | Abierto |
+| PD-66 | Baja de cuentas y `evento_auditoria`: no hay gancho de eliminación (`usuario` sin `DELETE` para `nimbo_app`, PD-39). Ejecutar y probar la anonimización del actor (`actor_id ON DELETE SET NULL`, `rol_actor` se conserva) y el borrado de los eventos del afectado; confirmar la política de privacidad con 001; evaluar `idx_evento_actor` | Plan 004 §2 y §3, D-8, DF-64 | Spec de baja de cuentas | Adrián | Abierto |
+| PD-67 | Contador y alerta de `audit.record_failed` (eventos de mejor esfuerzo perdidos) en métricas | Plan 004 §5, R-1 | Spec 022 (observabilidad) | Abel | Abierto |
 | PD-57 | `.prettierignore` ignora `Cambios.md`, un archivo que no existe y que ninguna spec pide (entró con el squash de 006a, PR #8). Quitar la línea o explicar su uso | `.prettierignore` | Revisión 006a (S-1) | Siguiente PR que toque la raíz | Fátima | Abierto |
 
 ## Diseño y UX
@@ -99,6 +101,7 @@ decisiones; solo faltan los diagramas.
 
 | ID | Qué era | Cerrado | Dónde |
 |---|---|---|---|
+| PD-68 | Entrada «Mi actividad» en el menú de la cuenta de 002 T-103: el ítem va en `AccountMenu`, entre «Seguridad» y «Cerrar sesión» (antes de «Plan y facturación» cuando exista) | 2026-10-05 | 004 T-09 (`feat/004-auditoria-web`) |
 | PD-27 | Token del velo de los diálogos: el mockup de «Seguridad» usa `agent-bg` al 45 %. Resuelto con Q-4 de 002: los diálogos se componen sobre `components/ui/alert-dialog` y reutilizan su velo (`bg-foreground/40`), sin token nuevo | 2026-10-04 | Spec 002 (T-98), `ui-guidelines.md` |
 | PD-19 | Trabajos del worker sin actor bajo RLS, sin `BYPASSRLS` (DF-52): opción B con función `SECURITY DEFINER` mínima y `withActor` por dueño, RLS también en `carga`; patrón para la purga de 006 y la conciliación de 007 | 2026-09-28 | Plan 005 D-6 y ADR-0021 (Propuesto) |
 | PD-09 | DF-13, DF-35 y DF-33 (`usuario`) a `Aceptado` por la spec 001 | 2026-09-27 | `chore/adr-fase-1` |

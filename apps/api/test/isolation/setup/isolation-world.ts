@@ -8,6 +8,14 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { LEGAL_DOCUMENTS } from '@nimbo/contracts';
 import type { DataSource, EntityManager } from 'typeorm';
 
+import { I_AUDIT_REPOSITORY } from '../../../src/modules/audit/application/ports/i-audit.repository.port';
+import type { IAuditRepository } from '../../../src/modules/audit/application/ports/i-audit.repository.port';
+import { createAuditEntry } from '../../../src/modules/audit/domain/audit-entry';
+import type {
+  AuditAttributes,
+  AuditEntry,
+  AuditResourceType,
+} from '../../../src/modules/audit/domain/audit-entry';
 import { IDENTITY_THROTTLERS, IdentityModule } from '../../../src/modules/identity';
 import { accessTokenOptionsFrom } from '../../../src/modules/identity/infrastructure/jwt/access-token-options';
 import { JwtTokenService } from '../../../src/modules/identity/infrastructure/jwt/jwt-token.service';
@@ -150,6 +158,24 @@ export interface WorldAppComposition {
   readonly modules: readonly (Type<unknown> | DynamicModule)[];
 }
 
+/**
+ * Evento que `withAuditEvents` siembra: por defecto, `node.trashed` sobre una carpeta, con el propio actor como
+ * afectado. Los atributos no pasan por el saneo de `AuditService` (se escriben con el repositorio): así una prueba puede
+ * sembrar datos prohibidos y comprobar que la respuesta no los copia (004 CA-14).
+ */
+export interface WorldAuditEventRequest {
+  /** Cuenta afectada; por defecto, el propio actor. */
+  readonly target?: WorldAccount;
+  readonly action?: string;
+  readonly resourceType?: AuditResourceType | null;
+  readonly attributes?: AuditAttributes;
+  /** Instante del evento; por defecto, 1 ms después del anterior sembrado en el mundo. */
+  readonly occurredAt?: Date;
+}
+
+/** Evento sembrado tal como quedó en `evento_auditoria`. */
+export type WorldAuditEvent = AuditEntry;
+
 export interface IsolationWorld {
   /** Dos clientes casi idénticos: mismo nombre, estado y fechas; correos que difieren en un carácter. */
   readonly clients: readonly [WorldAccount, WorldAccount];
@@ -190,6 +216,16 @@ export interface IsolationWorld {
     owner: WorldAccount,
     request: WorldQuickAccessRequest,
   ): Promise<void>;
+  /**
+   * Eventos de auditoría a nombre de `actor` (cliente o rol interno), insertados con `IAuditRepository` **como
+   * `nimbo_app` dentro de `withActor(actor)`** (004 T-06): RLS de `evento_auditoria` valida cada alta. `app` debe montar
+   * `AuditModule` (directo o por `AuditHttpModule`).
+   */
+  withAuditEvents(
+    app: TestApp,
+    actor: WorldAccount,
+    requests: readonly WorldAuditEventRequest[],
+  ): Promise<WorldAuditEvent[]>;
   /** Borra las cuentas del mundo (como el dueño) y cierra su conexión. */
   close(): Promise<void>;
 }
@@ -397,6 +433,47 @@ const insertQuickAccess = async (
   });
 };
 
+/** Instantes por defecto de `withAuditEvents`: estrictamente crecientes y con milisegundos (como `IClock`, R-4). */
+const auditTicks = (() => {
+  let last = 0;
+  return (): Date => {
+    last = Math.max(last + 1, Date.now());
+    return new Date(last);
+  };
+})();
+
+const auditEntryOf = (actor: Actor, request: WorldAuditEventRequest): AuditEntry => {
+  const resourceType = request.resourceType === undefined ? 'folder' : request.resourceType;
+  return createAuditEntry({
+    id: randomUUID(),
+    action: request.action ?? 'node.trashed',
+    actorId: actor.id,
+    actorRole: actor.role,
+    targetUserId: request.target?.id ?? actor.id,
+    resourceType,
+    resourceId: resourceType === null ? null : randomUUID(),
+    attributes: request.attributes ?? { nodeType: 'folder', itemCount: 1 },
+    occurredAt: request.occurredAt ?? auditTicks(),
+    correlationId: `corr-${randomUUID()}`,
+  });
+};
+
+const insertAuditEvents = async (
+  testApp: TestApp,
+  account: WorldAccount,
+  requests: readonly WorldAuditEventRequest[],
+): Promise<WorldAuditEvent[]> => {
+  const get = <T>(token: symbol): T => testApp.app.get<unknown, T>(token, { strict: false });
+  const transactions = get<ITransactionRunner>(I_TRANSACTION_RUNNER);
+  const repository = get<IAuditRepository>(I_AUDIT_REPOSITORY);
+  const actor = createActor(account.id, account.role);
+  const entries = requests.map((request) => auditEntryOf(actor, request));
+  await transactions.withActor(actor, async () => {
+    for (const entry of entries) await repository.insert(actor, entry);
+  });
+  return entries;
+};
+
 const insertUploads = async (
   testApp: TestApp,
   owner: WorldAccount,
@@ -468,7 +545,8 @@ const issueTokens = async (
 /**
  * Mundo de aislamiento (003 CA-15, D-3; plan §6.7). Las cuentas se insertan con el rol **dueño**
  * (`DATABASE_MIGRATION_URL`) porque son *fixtures*, no la aplicación; la app corre como `nimbo_app`. 005 agrega
- * `withFiles` y `withUploads`, que sí escriben como `nimbo_app` (con RLS); 006, `withFolders`, `withTrash` y `withQuickAccess`.
+ * `withFiles` y `withUploads`, que sí escriben como `nimbo_app` (con RLS); 006, `withFolders`, `withTrash` y `withQuickAccess`;
+ * 004, `withAuditEvents` (los eventos se van con las cuentas: `usuario_afectado_id` es `ON DELETE CASCADE`).
  */
 export const createIsolationWorld = async (): Promise<IsolationWorld> => {
   const owner = await connectAsOwner();
@@ -511,6 +589,7 @@ export const createIsolationWorld = async (): Promise<IsolationWorld> => {
     withFolders: insertFolders,
     withTrash: insertTrash,
     withQuickAccess: insertQuickAccess,
+    withAuditEvents: insertAuditEvents,
     close: async () => {
       const ids = accounts.map((account) => account.id);
       await owner.transaction(async (manager) => {

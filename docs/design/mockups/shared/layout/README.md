@@ -311,7 +311,7 @@ su ícono, su título y su fondo.
   deshabilita.
 - Herramientas de página en la barra superior (buscador, presencia, «Agente Nimbo»): las definen el explorador y
   018/020. `AppLayout` necesitará un espacio para ellas entre la ruta y la cuenta.
-- «Mi actividad» (bitácora de auditoría, RF-07, spec 004) será probablemente otra entrada del menú de la cuenta; se
-  agrega cuando exista esa spec.
+- «Mi actividad» (bitácora de auditoría, RF-07, spec 004) es una entrada del menú de la cuenta entre «Seguridad» y «Plan y facturación»;
+  se dibuja en `audit/mi-actividad/` (`marco.topbar({ actividad })`). Falta regenerar los estados de este mockup con la opción cuando el equipo apruebe la página.
 - La implementación usa `components/ui` (`Button`, `DropdownMenu`, `Sheet` o `Dialog`) y `components/nimbo`
   (`AppLayout`, `QuotaBar`, `ReadOnlyBanner`, `ConfirmDestructiveDialog`); no se crea otro componente de layout.

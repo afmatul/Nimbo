@@ -124,6 +124,8 @@ export interface StorageClient {
   recordOpen(nodeType: string, nodeId: string): Promise<Response>;
   trashFolder(folderId: string): Promise<Response>;
   purgeFolder(folderId: string): Promise<Response>;
+  restoreFolder(folderId: string): Promise<Response>;
+  emptyTrash(): Promise<Response>;
   spaceSummary(): Promise<Response>;
   /** Inicia (en `folderId`, por defecto la raíz), sube con la(s) URL(s) firmada(s) y completa; devuelve `complete`. */
   upload(
@@ -278,6 +280,9 @@ export const createStorageHttpApp = async (
         http().post(`${API_PREFIX}/quick-access/recents/${nodeType}/${nodeId}`).set(auth),
       trashFolder: (folderId) => http().delete(`${API_PREFIX}/folders/${folderId}`).set(auth),
       purgeFolder: (folderId) => http().delete(`${API_PREFIX}/trash/folders/${folderId}`).set(auth),
+      restoreFolder: (folderId) =>
+        http().post(`${API_PREFIX}/trash/folders/${folderId}/restore`).set(auth),
+      emptyTrash: () => http().delete(`${API_PREFIX}/trash`).set(auth),
       spaceSummary: () => http().get(`${API_PREFIX}/storage/summary`).set(auth),
       upload: async (name, bytes, onConflict = 'ask', folderId = null) => {
         const started = await client.init({ name, sizeBytes: bytes.length, onConflict, folderId });

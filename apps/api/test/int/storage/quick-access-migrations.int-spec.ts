@@ -385,24 +385,31 @@ describe('cierre de la migración de accesos rápidos: `revert` ×3 y `run` ×3 
     await owner.query(`DROP DATABASE IF EXISTS ${databaseName} WITH (FORCE)`);
   });
 
-  it('RNF-10: la migración se revierte y vuelve a correr tres veces con el mismo esquema', async () => {
+  /** La de accesos rápidos y las que vinieron después (auditoría…): para revertirla hay que revertir antes las posteriores. */
+  const fromQuickAccess = (applied: readonly string[]): string[] =>
+    applied.slice(applied.indexOf(QUICK_ACCESS_MIGRATION));
+
+  it('RNF-10: la migración (y las posteriores) se revierte y vuelve a correr tres veces con el mismo esquema', async () => {
     await fresh.runMigrations({ transaction: 'each' });
     const applied = await appliedNames();
+    const reverted = fromQuickAccess(applied);
     const before = await schemaOf();
 
-    expect(applied.at(-1)).toBe(QUICK_ACCESS_MIGRATION);
+    expect(reverted[0]).toBe(QUICK_ACCESS_MIGRATION);
     for (let cycle = 0; cycle < CYCLES; cycle += 1) {
-      await fresh.undoLastMigration({ transaction: 'each' });
+      for (const _ of reverted) {
+        await fresh.undoLastMigration({ transaction: 'each' });
+      }
       const [gone] = (await fresh.query("SELECT to_regclass('acceso_rapido')::text AS tabla")) as {
         tabla: string | null;
       }[];
 
-      expect(await appliedNames()).toEqual(applied.slice(0, -1));
+      expect(await appliedNames()).toEqual(applied.slice(0, -reverted.length));
       expect(gone?.tabla).toBeNull();
 
       const rerun = await fresh.runMigrations({ transaction: 'each' });
 
-      expect(rerun.map((migration) => migration.name)).toEqual([QUICK_ACCESS_MIGRATION]);
+      expect(rerun.map((migration) => migration.name)).toEqual(reverted);
       expect(await schemaOf()).toEqual(before);
     }
   });

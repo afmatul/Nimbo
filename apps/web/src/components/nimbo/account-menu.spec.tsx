@@ -54,6 +54,8 @@ describe('AccountMenu (CA-14, CA-27)', () => {
     expect(button.getAttribute('aria-expanded')).toBe('true');
     expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Seguridad' }));
     await user.keyboard('{ArrowDown}');
+    expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Mi actividad' }));
+    await user.keyboard('{ArrowDown}');
     expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Cerrar sesión' }));
     await user.keyboard('{ArrowDown}');
     expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Seguridad' }));
@@ -80,7 +82,11 @@ describe('AccountMenu (CA-14, CA-27)', () => {
     expect(screen.getAllByText('Ana López').length).toBeGreaterThan(0);
     expect(within(menu).queryByText('Ana López')).toBeNull();
     const items = within(menu).getAllByRole('menuitem');
-    expect(items.map((item) => item.textContent)).toEqual(['Seguridad', 'Cerrar sesión']);
+    expect(items.map((item) => item.textContent)).toEqual([
+      'Seguridad',
+      'Mi actividad',
+      'Cerrar sesión',
+    ]);
   });
 
   it('CA-14: «Seguridad» lleva a /cuenta/seguridad', async () => {
@@ -90,6 +96,16 @@ describe('AccountMenu (CA-14, CA-27)', () => {
 
     expect(screen.getByRole('menuitem', { name: 'Seguridad' }).getAttribute('href')).toBe(
       '/cuenta/seguridad',
+    );
+  });
+
+  it('004 CA-15: «Mi actividad», entre «Seguridad» y «Cerrar sesión», lleva a /actividad', async () => {
+    renderMenu();
+
+    await openWithKeyboard();
+
+    expect(screen.getByRole('menuitem', { name: 'Mi actividad' }).getAttribute('href')).toBe(
+      '/actividad',
     );
   });
 
