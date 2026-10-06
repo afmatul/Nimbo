@@ -22,7 +22,7 @@ import { FakePlanLimitsProvider } from '../../support/fake-plan-limits.provider'
 import { PROBE_CLOCK_START } from '../../support/probe.module';
 import { TestAccessTokens } from '../../support/test-access-tokens';
 import { buildTestEnv, createTestApp } from '../setup/test-app';
-import type { TestApp } from '../setup/test-app';
+import type { TestApp, TestAppOptions } from '../setup/test-app';
 
 import { insertAccount, insertFileWithVersion, removeAccounts } from './storage-test-db';
 import type { FileRowOptions } from './storage-test-db';
@@ -156,6 +156,13 @@ export interface StorageHttpOptions {
   /** Variables que cambian respecto del arnés (p. ej. límites de tasa bajos). */
   readonly env?: Readonly<Record<string, string>>;
   readonly limits?: PlanLimits;
+  /**
+   * `'identity'` usa la `JwtStrategy` real (p. ej. el mundo de aislamiento con `world.appComposition()`, 002 T-55);
+   * entonces `newClient` no sirve, porque firma con `TestAccessTokens`: se usa `clientFor` con un token real.
+   */
+  readonly accessTokenStrategy?: TestAppOptions['accessTokenStrategy'];
+  /** Módulos que se suman a `storage` (p. ej. la composición de `identity` del mundo de aislamiento). */
+  readonly modules?: TestAppOptions['modules'];
 }
 
 interface SignedTarget {
@@ -232,7 +239,8 @@ export const createStorageHttpApp = async (
   const limits = new FakePlanLimitsProvider(options.limits ?? DEFAULT_TEST_LIMITS);
   const testApp = await createTestApp({
     validatedEnv: env,
-    modules: [PlanLimitsBindingModule, StorageModule.forRoot(env)],
+    accessTokenStrategy: options.accessTokenStrategy ?? 'test',
+    modules: [...(options.modules ?? []), PlanLimitsBindingModule, StorageModule.forRoot(env)],
     overrides: [{ provide: I_PLAN_LIMITS_PROVIDER, useValue: limits }],
   });
   const owner = await connectAsOwner();

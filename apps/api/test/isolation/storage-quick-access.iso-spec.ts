@@ -161,7 +161,7 @@ describe('aislamiento de accesos rápidos (CA-28, RNF-05)', () => {
 
   beforeAll(async () => {
     world = await createIsolationWorld();
-    storage = await createStorageHttpApp();
+    storage = await createStorageHttpApp(world.appComposition());
     [a, b] = world.clients;
     nodesA = await seed(a);
     nodesB = await seed(b);

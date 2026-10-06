@@ -4,17 +4,24 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   REFRESH_ROTATION_GRACE_SECONDS,
   SESSION_IDLE_TIMEOUT_DAYS,
+  SESSION_LIST_MAX_ITEMS,
   SESSION_MAX_LIFETIME_DAYS,
 } from '@nimbo/contracts';
+import type { SessionSummary } from '@nimbo/contracts';
 import { PinoLogger } from 'nestjs-pino';
 
 import { I_CLOCK, I_TRANSACTION_RUNNER } from '../../../shared';
-import type { DomainError, IClock, ITransactionRunner, Role } from '../../../shared';
+import type { Actor, DomainError, IClock, ITransactionRunner, Role } from '../../../shared';
 import { I_MAILER } from '../../notifications';
 import type { IMailer, MailMessage } from '../../notifications';
 import { AccountStatus } from '../domain/account-status.enum';
 import { Device } from '../domain/device.entity';
-import { RefreshInvalidError, SessionExpiredError, SessionRevokedError } from '../domain/errors';
+import {
+  RefreshInvalidError,
+  SessionExpiredError,
+  SessionNotFoundError,
+  SessionRevokedError,
+} from '../domain/errors';
 import { OpaqueToken } from '../domain/opaque-token.vo';
 import { RefreshToken } from '../domain/refresh-token.vo';
 import { Session } from '../domain/session.entity';
@@ -30,7 +37,7 @@ import { sessionRevokedMail } from './mail/session-revoked-mail.template';
 import { I_DEVICE_REPOSITORY } from './ports/i-device-repository.port';
 import type { IDeviceRepository } from './ports/i-device-repository.port';
 import { I_SESSION_REPOSITORY } from './ports/i-session-repository.port';
-import type { ISessionRepository } from './ports/i-session-repository.port';
+import type { ActiveSessionRecord, ISessionRepository } from './ports/i-session-repository.port';
 import { I_TOKEN_SERVICE } from './ports/i-token-service.port';
 import type { IssuedAccessToken, ITokenService } from './ports/i-token-service.port';
 import { I_USER_REPOSITORY } from './ports/i-user-repository.port';
@@ -80,8 +87,11 @@ interface OpenDecision {
   readonly isNew: boolean;
 }
 
-/** Motivo de un rechazo de renovación (plan §7, `identity.session.refresh_rejected`). */
-type RefreshRejection = 'unknown' | 'grace' | 'expired' | 'revoked' | 'suspended';
+/** Rechazos de renovación sin escritura; `suspended` revoca y tiene su propia decisión. */
+type RefreshRejection = 'unknown' | 'grace' | 'expired' | 'revoked';
+
+/** Motivo de `identity.session.refresh_rejected` (plan §7). */
+type RefreshRejectionReason = RefreshRejection | 'malformed' | 'suspended';
 
 /** Lo que decide la transacción de renovación; el token, el correo y el error van después del commit. */
 type RefreshDecision =
@@ -92,6 +102,7 @@ type RefreshDecision =
       readonly refreshToken: string;
     }
   | { readonly kind: 'reuse'; readonly user: User | null; readonly session: Session }
+  | { readonly kind: 'suspended'; readonly session: Session }
   | { readonly kind: 'rejected'; readonly reason: RefreshRejection; readonly sessionId?: string };
 
 /** `grace` no revoca ni borra la cookie: en una carrera entre pestañas la del navegador ya es la nueva (CA-9). */
@@ -103,8 +114,39 @@ const REFRESH_REJECTION_ERRORS: Readonly<
   grace: () => new RefreshInvalidError(),
   expired: () => new SessionExpiredError(),
   revoked: () => new SessionRevokedError(),
-  suspended: () => new SessionRevokedError(),
 };
+
+/** Campos de `identity.session.revoked` (plan §7). */
+interface Revocation {
+  readonly reason: 'logout' | 'user' | 'others' | 'reuse' | 'suspended';
+  readonly count: number;
+  readonly sessionId?: string;
+}
+
+/** CA-11: solo el resumen del agente y las fechas; sin IP, agente completo, hashes ni dispositivo. */
+const toSessionSummary = (
+  record: ActiveSessionRecord,
+  currentSessionId: string,
+): SessionSummary => {
+  const { session } = record;
+  const { browser, os, deviceKind } = UserAgentSummary.parse(record.agenteUsuario);
+  return {
+    id: session.id,
+    browser,
+    os,
+    deviceKind,
+    startedAt: session.creadaEn.toISOString(),
+    lastActiveAt: session.ultimoUso.toISOString(),
+    current: session.id === currentSessionId,
+  };
+};
+
+/** D-9: la actual primero y después por última actividad descendente. */
+const currentFirstThenRecent =
+  (currentSessionId: string) =>
+  (a: ActiveSessionRecord, b: ActiveSessionRecord): number =>
+    Number(b.session.id === currentSessionId) - Number(a.session.id === currentSessionId) ||
+    b.session.ultimoUso.getTime() - a.session.ultimoUso.getTime();
 
 const sessionUser = (user: User): SessionUser => ({
   id: user.id,
@@ -178,14 +220,55 @@ export class SessionService {
     const now = this.clock.now();
     const revoked = await this.transactions.run(() => this.logoutInTransaction(parsed, now));
     if (revoked !== null) {
-      this.logger.info({
-        event: 'identity.session.revoked',
-        userId: revoked.userId,
-        sessionId: revoked.id,
-        reason: 'logout',
-        count: 1,
-      });
+      this.logRevoked(revoked.userId, { sessionId: revoked.id, reason: 'logout', count: 1 });
     }
+  }
+
+  /** CA-11: sesiones activas del actor, como máximo `SESSION_LIST_MAX_ITEMS` (DT-13). */
+  async list(actor: Actor, currentSessionId: string): Promise<readonly SessionSummary[]> {
+    const now = this.clock.now();
+    const idleCutoff = new Date(now.getTime() - IDLE_TIMEOUT_MS);
+    const records = await this.sessions.listActive(
+      actor.id,
+      now,
+      idleCutoff,
+      SESSION_LIST_MAX_ITEMS,
+    );
+    return [...records]
+      .sort(currentFirstThenRecent(currentSessionId))
+      .map((record) => toSessionSummary(record, currentSessionId));
+  }
+
+  /**
+   * CA-12, CA-14: el `UPDATE` filtra por dueño y por no revocada. Ajena, inexistente o ya revocada dan el mismo error
+   * (003 D-6). `wasCurrent` le dice al controlador que borre la cookie de refresco.
+   */
+  async revoke(
+    actor: Actor,
+    sessionId: string,
+    currentSessionId: string,
+  ): Promise<{ readonly wasCurrent: boolean }> {
+    const revoked = await this.sessions.revokeIfActive(sessionId, actor.id, this.clock.now());
+    if (!revoked) {
+      throw new SessionNotFoundError();
+    }
+    this.logRevoked(actor.id, { sessionId, reason: 'user', count: 1 });
+    return { wasCurrent: sessionId === currentSessionId };
+  }
+
+  /** CA-13: cierra todas las demás sesiones del actor y conserva la actual. */
+  async revokeOthers(actor: Actor, currentSessionId: string): Promise<number> {
+    const revokedCount = await this.sessions.revokeAllExcept(
+      actor.id,
+      currentSessionId,
+      this.clock.now(),
+    );
+    this.logRevoked(actor.id, { reason: 'others', count: revokedCount });
+    return revokedCount;
+  }
+
+  private logRevoked(userId: string, revocation: Revocation): void {
+    this.logger.info({ event: 'identity.session.revoked', userId, ...revocation });
   }
 
   private async logoutInTransaction(parsed: RefreshToken, now: Date): Promise<Session | null> {
@@ -196,7 +279,7 @@ export class SessionService {
     if (session.matchSecret(parsed.secretHash, now, GRACE_MS) === 'reuse') {
       return null;
     }
-    return this.revoke(session, now);
+    return this.revokeLocked(session, now);
   }
 
   private async refreshInTransaction(parsed: RefreshToken, now: Date): Promise<RefreshDecision> {
@@ -215,7 +298,7 @@ export class SessionService {
     const user = await this.users.findByIdForUpdate(session.userId);
     if (match === 'reuse') {
       // D-3: un token más viejo, el anterior fuera de la gracia o un secreto falsificado revocan la sesión.
-      return { kind: 'reuse', user, session: await this.revoke(session, now) };
+      return { kind: 'reuse', user, session: await this.revokeLocked(session, now) };
     }
     return this.rotateOrRevoke(session, user, now);
   }
@@ -230,8 +313,7 @@ export class SessionService {
       return { kind: 'rejected', reason: 'unknown', sessionId: session.id };
     }
     if (user.status === AccountStatus.SUSPENDED) {
-      await this.revoke(session, now);
-      return { kind: 'rejected', reason: 'suspended', sessionId: session.id };
+      return { kind: 'suspended', session: await this.revokeLocked(session, now) };
     }
     const next = RefreshToken.issue(session.id);
     const rotated = session.rotate(next.secretHash, now);
@@ -239,7 +321,8 @@ export class SessionService {
     return { kind: 'rotated', user, session: rotated, refreshToken: next.value };
   }
 
-  private async revoke(session: Session, now: Date): Promise<Session> {
+  /** Revoca una sesión ya leída con `findByIdForUpdate` dentro de la transacción en curso. */
+  private async revokeLocked(session: Session, now: Date): Promise<Session> {
     const revoked = session.revoke(now);
     await this.sessions.update(revoked);
     return revoked;
@@ -264,6 +347,10 @@ export class SessionService {
       await this.notifyReuse(decision.session, decision.user, client);
       throw new SessionRevokedError();
     }
+    if (decision.kind === 'suspended') {
+      this.logSuspendedRevocation(decision.session);
+      throw new SessionRevokedError();
+    }
     this.logRejection(decision.reason, decision.sessionId);
     throw REFRESH_REJECTION_ERRORS[decision.reason]();
   }
@@ -282,6 +369,7 @@ export class SessionService {
       userId: session.userId,
       sessionId: session.id,
     });
+    this.logRevoked(session.userId, { sessionId: session.id, reason: 'reuse', count: 1 });
     if (user === null) {
       return;
     }
@@ -302,7 +390,13 @@ export class SessionService {
     );
   }
 
-  private logRejection(reason: RefreshRejection | 'malformed', sessionId?: string): void {
+  /** CA-10: la renovación se rechaza y, además, la sesión quedó revocada. */
+  private logSuspendedRevocation(session: Session): void {
+    this.logRejection('suspended', session.id);
+    this.logRevoked(session.userId, { sessionId: session.id, reason: 'suspended', count: 1 });
+  }
+
+  private logRejection(reason: RefreshRejectionReason, sessionId?: string): void {
     this.logger.info({
       event: 'identity.session.refresh_rejected',
       reason,

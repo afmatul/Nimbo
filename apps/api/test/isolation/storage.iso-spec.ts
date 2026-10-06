@@ -56,7 +56,7 @@ describe('aislamiento de cargas y archivos (CA-16, CA-17)', () => {
 
   beforeAll(async () => {
     world = await createIsolationWorld();
-    storage = await createStorageHttpApp();
+    storage = await createStorageHttpApp(world.appComposition());
     [a, b] = world.clients;
     filesA = await world.withFiles(storage.testApp, a, SHARED_NAMES);
     filesB = await world.withFiles(storage.testApp, b, SHARED_NAMES);

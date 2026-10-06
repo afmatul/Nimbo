@@ -30,7 +30,10 @@ modules/identity/
 │  ├─ registration.service.ts               # RegistrationService: register, resendVerification, verifyEmail
 │  ├─ verification-link-issuer.ts           # invalida los vigentes, emite el token y arma el correo del enlace
 │  ├─ registration-attempt-notifier.ts      # aviso al dueño de un correo ya registrado (D-17, 1 cada 24 h)
-│  ├─ password.service.ts                   # PasswordService: requestReset, checkResetLink, resetPassword (002)
+│  ├─ auth.service.ts                       # AuthService: login (002)
+│  ├─ session.service.ts                    # SessionService: open, refresh, logout, list, revoke, revokeOthers (002)
+│  ├─ password.service.ts                   # PasswordService: requestReset, checkResetLink, resetPassword,
+│  │                                        # changePassword (002)
 │  ├─ account-token-lookup.ts               # findAccountToken: valor → token por hash y tipo (verificación y recuperación)
 │  ├─ identity-limit-keys.ts                # claves de límites y bloqueos (SHA-256 del correo o userId) y EMAIL_REQUEST_RULES
 │  ├─ identity-config.ts  web-links.ts      # WEB_PUBLIC_URL y rutas de `web` que usan los correos
@@ -39,19 +42,24 @@ modules/identity/
 │  │                                        # restablecer, contraseña cambiada, dispositivo nuevo y sesión cerrada
 │  └─ testing/                              # dobles en memoria y builder de ClientUser para pruebas unitarias
 ├─ infrastructure/
-│  ├─ persistence/                          # usuario.orm-entity, token-cuenta.orm-entity, mappers y repositorios TypeORM
+│  ├─ persistence/                          # entidades ORM (usuario, token_cuenta, sesion, dispositivo), mappers y
+│  │                                        # repositorios TypeORM
+│  ├─ jwt/                                  # JwtTokenService (emite y verifica) y JwtStrategy (002)
+│  ├─ redis-attempt-lockout.ts              # RedisAttemptLockout: bloqueos de login y cambio de contraseña (002)
 │  ├─ argon2id.hasher.ts                    # Argon2idHasher (m=19456, t=2, p=1; RN-3)
 │  └─ event-emitter-account-events.publisher.ts
 ├─ presentation/
 │  ├─ auth.controller.ts                    # AuthController: register, resend-verification, verify-email (abre sesión),
 │  │                                        # login, session/refresh, session/logout (002)
-│  ├─ password.controller.ts                # PasswordController: forgot-password, reset-password/check, reset-password
+│  ├─ password.controller.ts                # PasswordController: forgot-password, reset-password/check, reset-password,
+│  │                                        # change-password (002)
+│  ├─ sessions.controller.ts                # SessionsController: GET /sessions, DELETE /sessions/:id, revoke-others (002)
 │  ├─ session-cookies.ts                    # SessionCookies (nimbo_rt, nimbo_did) y readCookie (002 DT-2, DT-9)
 │  ├─ client-context.factory.ts             # readClientContext: nimbo_did, User-Agent y req.ip (002 CA-16)
 │  ├─ session-response.ts                   # IssuedSession → SessionResponse del contrato
 │  ├─ identity-ip-throttler.guard.ts        # IdentityIpThrottlerGuard + IDENTITY_THROTTLERS (register-ip, resend-ip, login-ip)
 │  ├─ identity-validation.ts                # fábrica de errores de ZodValidationPipe (INVALID_INPUT o WEAK_PASSWORD)
-│  └─ no-store.middleware.ts                # Cache-Control: no-store en toda respuesta de AuthController
+│  └─ no-store.middleware.ts                # Cache-Control: no-store en toda respuesta de los tres controladores
 ├─ identity.module.ts                       # IdentityModule.forRoot(env)
 └─ index.ts                                 # única API pública
 ```
@@ -60,15 +68,21 @@ modules/identity/
 
 Un puerto nuevo solo existe si cumple una regla del Art. V.2 de la constitución:
 
-| Puerto                         | Adaptador                            | Regla                                            |
-| ------------------------------ | ------------------------------------ | ------------------------------------------------ |
-| `IUserRepository`              | `TypeormUserRepository`              | (b) repositorio; está en el diagrama M1          |
-| `IVerificationTokenRepository` | `TypeormVerificationTokenRepository` | (b) repositorio; 002 lo reutiliza (recuperación) |
-| `IPasswordHasher`              | `Argon2idHasher`                     | (a) aísla Argon2; está en el diagrama M1         |
-| `IAccountEventsPublisher`      | `EventEmitterAccountEventsPublisher` | (a) aísla `@nestjs/event-emitter` (ADR-0019)     |
+| Puerto                         | Adaptador                            | Regla                                              |
+| ------------------------------ | ------------------------------------ | -------------------------------------------------- |
+| `IUserRepository`              | `TypeormUserRepository`              | (b) repositorio; está en el diagrama M1            |
+| `IVerificationTokenRepository` | `TypeormVerificationTokenRepository` | (b) repositorio; 002 lo reutiliza (recuperación)   |
+| `IPasswordHasher`              | `Argon2idHasher`                     | (a) aísla Argon2; está en el diagrama M1           |
+| `IAccountEventsPublisher`      | `EventEmitterAccountEventsPublisher` | (a) aísla `@nestjs/event-emitter` (ADR-0019)       |
+| `ISessionRepository`           | `TypeOrmSessionRepository`           | (b) repositorio; está en el diagrama M1 (002)      |
+| `IDeviceRepository`            | `TypeOrmDeviceRepository`            | (b) repositorio de `dispositivo` (002, DF-11)      |
+| `ITokenService`                | `JwtTokenService`                    | (a) aísla `@nestjs/jwt`; está en el diagrama M1    |
+| `IAttemptLockout`              | `RedisAttemptLockout`                | (a) aísla Redis (bloqueos por fallos, 002 D-5/D-7) |
 
 Consume `IMailer` (`notifications`) e `IRateLimiter`, `ITransactionRunner` e `IClock` (`shared`). La recuperación
-(002) suma a `IUserRepository` `findById` y `updatePasswordHash`.
+(002) suma a `IUserRepository` `findById` y `updatePasswordHash`. `JwtTokenService` implementa además
+`IAccessTokenVerifier`, el puerto de `shared` que declara 003 (`useExisting`): `identity` lo exporta como
+`I_ACCESS_TOKEN_VERIFIER` y nadie importa `identity` para verificar un token.
 
 ## API pública (`index.ts`)
 
@@ -93,8 +107,12 @@ perderse.
 
 - **Rutas** (todas `@Public()`): `POST /auth/login` (`200 SessionResponse`), `POST /auth/session/refresh` (`200
 SessionResponse`, rota `nimbo_rt`) y `POST /auth/session/logout` (`204`). `verify-email` en su apertura `verified`
-  abre sesión con `origin: 'verification'`; si eso falla responde `verified` sin `session` y registra
-  `identity.verification.session_failed`.
+  abre sesión con `origin: 'verification'` y registra `identity.verification.session_opened`; si eso falla responde
+  `verified` sin `session` y registra `identity.verification.session_failed`.
+- **Revocar y después lanzar**: cuando un rechazo también escribe (reúso del token de refresco, cuenta suspendida),
+  la transacción **devuelve** una decisión, se confirma, y recién entonces salen la bitácora, el correo y el error. Un
+  `throw` dentro de la transacción haría _rollback_ de la revocación. Ambos casos registran `identity.session.revoked`
+  (`reason: 'reuse' | 'suspended'`).
 - **Cookies** (`session-cookies.ts`, única fuente): `nimbo_rt` (`HttpOnly`, `SameSite=Strict`,
   `Path=/api/v1/auth/session`, `Max-Age` = `refreshMaxAge`) y `nimbo_did` (`Path=/api/v1/auth`, 365 d, solo si el
   navegador no traía una válida). `Secure` solo con `APP_ENV` `staging` o `production` (`IDENTITY_CONFIG.cookieSecure`).
@@ -128,6 +146,36 @@ SessionResponse`, rota `nimbo_rt`) y `POST /auth/session/logout` (`204`). `verif
   `identity.rate_limited` (`scope: 'password_reset'`).
 - **Pruebas**: `test/isolation/password-reset-enumeration.iso-spec.ts` compara las cuatro clases de cuenta, también
   con el límite agotado y en la secuencia `forgot-password` → `resend-verification`.
+
+## Seguridad: sesiones y cambio de contraseña (002, PR-4)
+
+- **Rutas** (`@Roles(...ALL_ROLES)`: cada cuenta, cliente o interna, gestiona **solo** las suyas; el actor y «esta
+  sesión» salen de `@CurrentActor()` y `@CurrentSessionId()`, nunca de `req.user`):
+  - `GET /sessions` → `200 { items }`: sesiones activas (sin revocar, sin vencer y usadas en los últimos 7 días), la
+    actual primero y después por `lastActiveAt`; como máximo 50. Solo navegador, sistema, tipo de dispositivo y
+    fechas: sin IP, agente completo, hashes ni id del dispositivo (CA-11).
+  - `DELETE /sessions/:id` → `204`; si es la actual, además borra `nimbo_rt`. Ajena, inexistente, ya revocada o `id`
+    mal formado → el mismo `404 IDENTITY_SESSION_NOT_FOUND` (CA-12, 003 D-6). El dueño va en el `WHERE` del `UPDATE`
+    (`revokeIfActive`), no se filtra después. El token de acceso de la sesión cerrada sigue valiendo hasta sus 15 min.
+  - `POST /sessions/revoke-others` → `200 { revokedCount }`; la actual sigue abierta (CA-13).
+  - `POST /auth/change-password` → `204` (CA-22, CA-23).
+- **Cambio de contraseña**: primero se reserva el intento en `passwordChangeLockoutKey(userId)` con
+  `reserveAttempt` (5 fallos en 15 min → 15 min): cuenta como fallo **antes** de verificar, en el mismo script atómico
+  que `recordFailure`, así una ráfaga concurrente con un token robado no prueba más de 5 contraseñas (review I-1).
+  Bloqueado → `429 IDENTITY_PASSWORD_CHANGE_LOCKED` aunque la actual sea correcta. Actual incorrecta → la reserva queda
+  como fallo y `422 IDENTITY_WRONG_PASSWORD` con `fields: currentPassword` (también el quinto, que activa el bloqueo);
+  la sesión nunca se cierra. Actual correcta → `clear` libera la reserva y los fallos previos, como el inicio de
+  sesión. Nueva débil (política D-6 con el correo; también vacía) → `422 IDENTITY_WEAK_PASSWORD` sobre `newPassword`.
+  Éxito: hash fuera de la transacción; en ella, `updatePasswordHash` + `revokeAllExcept(userId, sesiónActual)`;
+  después del commit se envía «Tu contraseña cambió». Las políticas de bloqueo viven en `identity-limit-keys.ts`
+  (`LOGIN_LOCKOUT_POLICY`, `PASSWORD_CHANGE_LOCKOUT_POLICY`).
+- **Bitácoras**: `identity.session.revoked` (`reason`: `user`, `others` o `password_change`, con `count`),
+  `identity.password.changed` (`revokedCount`), `identity.password_change.rejected` (`reason`: `wrong_password`,
+  `weak` o `locked`) e `identity.lockout.engaged` (`scope: 'password_change'`). Nunca las contraseñas.
+- **Pruebas**: `test/int/identity/{sessions,change-password,auth-logs,credential-secrecy}.int-spec.ts` y
+  `test/isolation/sessions-isolation.iso-spec.ts` (tokens reales del mundo de 003: cada cuenta ve y cierra solo las
+  suyas). `test/isolation/login-enumeration.iso-spec.ts` cubre la anti-enumeración del inicio de sesión (CA-2, CA-5).
+  Desde 002 T-55 el mundo de aislamiento emite tokens reales con `JwtTokenService`.
 
 ## Reglas del módulo
 

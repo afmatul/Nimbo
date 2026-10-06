@@ -6,6 +6,7 @@ import type { Redis } from 'ioredis';
 import { I_CLOCK, REDIS_CLIENT } from '../../../shared';
 import type { IClock } from '../../../shared';
 import type {
+  AttemptReservation,
   IAttemptLockout,
   LockoutPolicy,
   LockState,
@@ -22,13 +23,14 @@ const LOCK_CLEANUP_MARGIN_MS = 60 * MS_PER_SECOND;
  * - `KEYS[1]`: fallos (*sorted set* con la hora en ms como puntaje); `KEYS[2]`: bloqueo (hora de fin en ms).
  * - `ARGV`: ahora en ms, miembro único, ventana en ms, máximo de fallos, bloqueo en ms, TTL del bloqueo en ms.
  *
- * Devuelve los ms de bloqueo restantes, o `0` si no quedó bloqueado.
+ * Devuelve `{ activó, ms }`: `{ 0, restantes }` si ya estaba bloqueado (el fallo no cuenta), `{ 1, bloqueo }` si
+ * este fallo activó el bloqueo y `{ 0, 0 }` si no quedó bloqueado.
  */
 const RECORD_FAILURE_SCRIPT = `
 local now = tonumber(ARGV[1])
 local lock_until = tonumber(redis.call('GET', KEYS[2]) or '0')
 if lock_until > now then
-  return lock_until - now
+  return {0, lock_until - now}
 end
 
 local window = tonumber(ARGV[3])
@@ -36,17 +38,23 @@ redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', now - window)
 redis.call('ZADD', KEYS[1], now, ARGV[2])
 redis.call('PEXPIRE', KEYS[1], window)
 if redis.call('ZCARD', KEYS[1]) < tonumber(ARGV[4]) then
-  return 0
+  return {0, 0}
 end
 
 local lock_ms = tonumber(ARGV[5])
 redis.call('SET', KEYS[2], now + lock_ms, 'PX', ARGV[6])
 redis.call('DEL', KEYS[1])
-return lock_ms
+return {1, lock_ms}
 `;
 
 const failuresKey = (key: string): string => `${key}:fails`;
 const lockKey = (key: string): string => `${key}:lock`;
+
+/** Lo que devuelve el script: si este fallo activó el bloqueo y los ms de bloqueo restantes. */
+interface FailureOutcome {
+  readonly engagedLock: boolean;
+  readonly remainingMs: number;
+}
 
 const toLockState = (remainingMs: number): LockState =>
   remainingMs > 0
@@ -71,9 +79,28 @@ export class RedisAttemptLockout implements IAttemptLockout {
   }
 
   async recordFailure(key: string, policy: LockoutPolicy): Promise<LockState> {
+    const { remainingMs } = await this.countFailure(key, policy);
+    return toLockState(remainingMs);
+  }
+
+  /** El mismo recuento que `recordFailure`, antes de verificar: solo se rechaza si el bloqueo ya estaba vigente. */
+  async reserveAttempt(key: string, policy: LockoutPolicy): Promise<AttemptReservation> {
+    const { engagedLock, remainingMs } = await this.countFailure(key, policy);
+    const state = toLockState(remainingMs);
+    if (engagedLock || !state.locked) {
+      return { allowed: true, engagedLock };
+    }
+    return { allowed: false, retryAfterSeconds: state.retryAfterSeconds };
+  }
+
+  async clear(key: string): Promise<void> {
+    await this.redis.del(failuresKey(key), lockKey(key));
+  }
+
+  private async countFailure(key: string, policy: LockoutPolicy): Promise<FailureOutcome> {
     const nowMs = this.clock.now().getTime();
     const lockMs = policy.lockSeconds * MS_PER_SECOND;
-    const remainingMs = await this.redis.eval(
+    const [engaged, remainingMs] = (await this.redis.eval(
       RECORD_FAILURE_SCRIPT,
       2,
       failuresKey(key),
@@ -84,11 +111,7 @@ export class RedisAttemptLockout implements IAttemptLockout {
       policy.maxFailures,
       lockMs,
       lockMs + LOCK_CLEANUP_MARGIN_MS,
-    );
-    return toLockState(Number(remainingMs));
-  }
-
-  async clear(key: string): Promise<void> {
-    await this.redis.del(failuresKey(key), lockKey(key));
+    )) as [number, number];
+    return { engagedLock: engaged === 1, remainingMs };
   }
 }

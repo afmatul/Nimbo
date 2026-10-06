@@ -1,18 +1,28 @@
 import { Body, Controller, HttpCode, HttpStatus, Inject, Post, Res } from '@nestjs/common';
 import {
+  changePasswordRequestSchema,
   forgotPasswordRequestSchema,
   resetPasswordRequestSchema,
   resetTokenRequestSchema,
 } from '@nimbo/contracts';
 import type {
   AcceptedResponse,
+  ChangePasswordRequest,
   ForgotPasswordRequest,
   ResetPasswordRequest,
   ResetTokenRequest,
 } from '@nimbo/contracts';
 import type { Response } from 'express';
 
-import { Public, ZodValidationPipe } from '../../../shared';
+import {
+  ALL_ROLES,
+  CurrentActor,
+  CurrentSessionId,
+  Public,
+  Roles,
+  ZodValidationPipe,
+} from '../../../shared';
+import type { Actor } from '../../../shared';
 import { IDENTITY_CONFIG } from '../application/identity-config';
 import type { IdentityConfig } from '../application/identity-config';
 import { PasswordService } from '../application/password.service';
@@ -24,9 +34,10 @@ import { SessionCookies } from './session-cookies';
 const ACCEPTED: AcceptedResponse = { status: 'accepted' };
 
 /**
- * Rutas públicas de la recuperación de contraseña (plan 002 §5, §6.5). Solo validan con los esquemas de `contracts`,
- * delegan en `PasswordService` y mapean el resultado; sin reglas de negocio. `@Public()` las excluye de los guards
- * globales de 003. `Cache-Control: no-store` lo pone `NoStoreMiddleware` desde `IdentityModule`.
+ * Rutas de la recuperación y el cambio de contraseña (plan 002 §5, §6.5). Solo validan con los esquemas de
+ * `contracts`, delegan en `PasswordService` y mapean el resultado; sin reglas de negocio. `@Public()` excluye las de
+ * recuperación de los guards globales de 003; el cambio exige sesión y lee el actor y la sesión con los decoradores
+ * de 003. `Cache-Control: no-store` lo pone `NoStoreMiddleware` desde `IdentityModule`.
  */
 @Controller('auth')
 export class PasswordController {
@@ -76,5 +87,22 @@ export class PasswordController {
     await this.passwords.resetPassword({ token, password });
     this.cookies.clearRefresh(res);
     return { status: 'password-reset' };
+  }
+
+  /**
+   * CA-22, CA-23: cada rol cambia solo la suya; las demás sesiones se cierran y esta sigue abierta. Una contraseña
+   * nueva vacía pasa el esquema y el servicio la rechaza como débil sobre `newPassword`.
+   */
+  @Roles(...ALL_ROLES)
+  @Post('change-password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async changePassword(
+    @CurrentActor() actor: Actor,
+    @CurrentSessionId() sessionId: string,
+    @Body(new ZodValidationPipe(changePasswordRequestSchema, identityValidationError))
+    body: ChangePasswordRequest,
+  ): Promise<void> {
+    const { currentPassword, newPassword } = body;
+    await this.passwords.changePassword(actor, sessionId, { currentPassword, newPassword });
   }
 }
