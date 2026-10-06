@@ -101,13 +101,13 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
 - Tablas: `comparticion`, `enlace_publico`, `intento_acceso`.
 
 ### M4 `billing`
-- Controlador: `SubscriptionController` (listPlans, comparePlans, subscribe, renew, changePlan, history, invoice).
-- Servicios: `PlanCatalogService`, `SubscriptionService`, `PaymentService`; job `RenewalScheduler` (`@Cron`, usa `IClock`).
-- Puertos → implementaciones: `IPaymentGateway` → `SimulatedPaymentGateway` (failureRate, latencyMs); `IInvoiceGenerator` → `PdfInvoiceGenerator`; repos.
+- Controladores: `PlansController` (`GET /api/v1/billing/plans`, público; spec 008, DF-61); `SubscriptionController` (subscribe, renew, changePlan, history, invoice). `listPlans` y `comparePlans` no se crean: el catálogo es una sola lectura y la comparación se arma en `web`.
+- Servicios: `PlanCatalogService` (`list()`, solo lectura del catálogo; spec 008), `SubscriptionService`, `PaymentService`; job `RenewalScheduler` (`@Cron`, usa `IClock`).
+- Puertos → implementaciones: `IPaymentGateway` → `SimulatedPaymentGateway` (failureRate, latencyMs); `IInvoiceGenerator` → `PdfInvoiceGenerator`; `IPlanRepository` → `TypeOrmPlanRepository` (interno de `billing`, spec 008, Art. V.2(b)); repos.
 - Puertos que consume: `INotifier` (lo declara e implementa T4 `notifications`).
 - Eventos que consume (ADR-0019): `identity.client-account-verified` → crea la suscripción Personal (001 D-4). El oyente es idempotente y se acompaña de una conciliación de las cuentas verificadas sin suscripción. Lo implementa la 009 (PD-40, 2026-09-29); la 006a no lo hace.
 - Dominio: `Plan` con `PlanLimits` (value object); `Subscription` (pendingPlanId, isReadOnly, scheduleChange, applyPendingChange); `Payment`; `Invoice`; `Money`.
-- Implementa hacia fuera: `IPlanLimitsProvider` (declarado por `storage`, DF-51 opción A; lo usan M2 y M5; se importa de `storage/index.ts`) e `IAgentQuota` (M6, lo declara `billing`) → DF-27. El `PlanLimits` de dominio de `Plan` es distinto del tipo `PlanLimits` de `storage`: se mapea al implementar el puerto.
+- Implementa hacia fuera: `IPlanLimitsProvider` (declarado por `storage`, DF-51 opción A; lo usan M2 y M5; se importa de `storage/index.ts`) e `IAgentQuota` (M6, lo declara `billing`) → DF-27. El `PlanLimits` de dominio de `Plan` es distinto del tipo `PlanLimits` de `storage`: se mapea al implementar el puerto. El catálogo público (008) no pasa por este puerto: `PlanCatalogService` lee `plan` por `IPlanRepository` (DF-61).
 - Tablas: `plan`, `suscripcion`, `transaccion`, `factura`.
 
 ### M5 `editing`
