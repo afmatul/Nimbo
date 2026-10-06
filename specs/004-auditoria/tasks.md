@@ -25,7 +25,7 @@
 
 ## Verificación humana
 
-- [ ] **T-10** **(humana)** Recorrido de la demo en local con PR-A y PR-B juntos: un cliente sube, descarga y elimina; abre «Mi actividad» desde el menú de la cuenta, filtra por origen y fechas, carga más, ve el estado vacío; un segundo cliente no ve nada del primero; un rol interno consulta solo lo suyo; nota en el PR — CA: los visibles (CA-7, CA-8, CA-10, CA-12, CA-15) — Depende: T-06, T-09
+- [x] **T-10** **(humana)** Recorrido de la demo en local con PR-A y PR-B juntos: un cliente sube, descarga y elimina; abre «Mi actividad» desde el menú de la cuenta, filtra por origen y fechas, carga más, ve el estado vacío; un segundo cliente no ve nada del primero; un rol interno consulta solo lo suyo; nota en el PR — CA: los visibles (CA-7, CA-8, CA-10, CA-12, CA-15) — Depende: T-06, T-09
 
 ### Qué corre en paralelo
 T-01 primero (lo toman las dos líneas). Luego **T-02 → T-03 → T-04 → T-05 → T-06** (api, en serie) y **T-07 → T-08 → T-09** (web) a la vez. T-10 espera ambas.
