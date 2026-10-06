@@ -768,11 +768,13 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   Luego el componente y su inserción en la cabecera del `AppLayout` actual (sin rediseñarlo: PD-33).
   Archivos: `apps/web/components/nimbo/account-menu.tsx` y su `*.spec.tsx`, el archivo del `AppLayout` actual.
 
-- [ ] **T-104** **(humana)** Recorrido de Seguridad y revisión visual — CA: CA-11…CA-14, CA-22, CA-23, CA-27 — Depende: T-80, T-102, T-103 — ~1 h
+- [x] **T-104** **(humana)** Recorrido de Seguridad y revisión visual — CA: CA-11…CA-14, CA-22, CA-23, CA-27 — Depende: T-80, T-102, T-103 — ~1 h
   Dos navegadores: lista, cerrar una, cerrar las demás, cerrar la actual, cambiar la contraseña (correcta, incorrecta
   y bloqueo); capturas a 360 y 1440 px; pedir al `ui-designer` `ui-review.md` y la corrección del README de Seguridad
   (`IDENTITY_PASSWORD_CHANGE_LOCKED`).
   Archivos: ninguno (evidencia).
+  **Hecha (Adrián, 2026-10-05):** recorrido con tres navegadores sin hallazgos; README de Seguridad corregido. La
+  revisión de UI va en la sección «UI» de `review.md` (`/review 002`, T-105).
 
 - [ ] **T-105** Cierre del PR-5b y de la spec — CA: todos (trazabilidad) — Depende: T-95, T-104 — ~1 h
   Matriz CA → pruebas revisada; `specs/README.md` → 002 `En verificación`; pedir `/verify 002` (`tester`:

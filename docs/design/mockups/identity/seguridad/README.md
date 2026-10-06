@@ -23,7 +23,7 @@
   - contrasena-no-coincide: la confirmación no coincide con la nueva; se valida en el cliente antes de enviar (`seguridad--contrasena-no-coincide.html`)
   - contrasena-incorrecta: `IDENTITY_WRONG_PASSWORD` junto al campo (`seguridad--contrasena-incorrecta.html`, CA-23)
   - contrasena-debil: `IDENTITY_WEAK_PASSWORD` con los requisitos que faltan (`seguridad--contrasena-debil.html`, D-6 de 001)
-  - contrasena-bloqueada: `IDENTITY_TOO_MANY_REQUESTS` tras 5 intentos, con los minutos de espera (`seguridad--contrasena-bloqueada.html`, D-7, CA-23)
+  - contrasena-bloqueada: `IDENTITY_PASSWORD_CHANGE_LOCKED` en el intento siguiente al quinto fallo, con los minutos de espera (`seguridad--contrasena-bloqueada.html`, D-7, CA-23)
   - contrasena-cambiada: éxito; la lista ya muestra solo este dispositivo (`seguridad--contrasena-cambiada.html`, CA-22)
 - **Capturas**: `docs/design/capturas/identity/seguridad/` (`seguridad--<estado>--<360|1440>.png`). axe-core sin
   violaciones en los 15 estados a 360 y 1440 px, sin desplazamiento horizontal a 360 px y objetivos de al menos 24 px.
