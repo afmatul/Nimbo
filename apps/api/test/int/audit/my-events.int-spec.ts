@@ -182,6 +182,20 @@ describe('GET /audit/my-events (CA-7, CA-9 a CA-14)', () => {
     });
   });
 
+  it('CA-7: la purga programada sale con `trigger` `scheduled`, aunque su actor sea el propio cliente', async () => {
+    const carla = await newActor(Role.CLIENT);
+    const purge = createAuditEntry({
+      ...eventOf(carla, carla.id, STAFF_AT),
+      action: 'node.purged',
+      attributes: { nodeType: 'folder', itemCount: 3, trigger: 'scheduled' },
+    });
+    await seed(carla, [purge]);
+
+    const [item] = bodyOf(await myEvents(carla)).items;
+
+    expect(item).toMatchObject({ id: purge.id, origin: 'self', trigger: 'scheduled' });
+  });
+
   it('CA-10: `from` inclusivo y `to` exclusivo filtran por instante', async () => {
     const query = {
       from: minutesAfter(FIRST_SELF_AT, 2).toISOString(),

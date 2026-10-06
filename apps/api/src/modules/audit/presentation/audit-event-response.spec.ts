@@ -79,6 +79,25 @@ describe('toAuditEventResponse (lista blanca, CA-14)', () => {
     expect(withoutNote).not.toHaveProperty('note');
   });
 
+  it.each(['manual', 'scheduled'] as const)('CA-7: la purga copia `trigger` `%s`', (trigger) => {
+    const entry = entryOf({ action: 'node.purged', attributes: { itemCount: 1, trigger } });
+
+    const response = toAuditEventResponse(entry);
+
+    expect(response.trigger).toBe(trigger);
+    expect(auditEventResponseSchema.safeParse(response).success).toBe(true);
+  });
+
+  it.each([
+    ['ausente', {}],
+    ['fuera de los valores cerrados', { trigger: 'system' }],
+    ['no textual', { trigger: 1 }],
+  ])('CA-7: no copia `trigger` %s', (_case, attributes) => {
+    const response = toAuditEventResponse(entryOf({ action: 'node.purged', attributes }));
+
+    expect(response).not.toHaveProperty('trigger');
+  });
+
   it('D-3: conteo y tamaño ausentes o no numéricos son `null`', () => {
     const response = toAuditEventResponse(entryOf({ attributes: { itemCount: '3' } }));
 

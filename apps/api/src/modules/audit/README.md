@@ -49,4 +49,5 @@ descartado se anota como `audit.record_failed` con el motivo y las **claves**, n
   filtra `usuario_afectado_id = actor.id` dentro del SQL (RLS es la segunda barrera). No hay ruta por id ni por usuario.
 - `origin` es `self` si el actor es el afectado; cualquier otro, incluido el actor anonimizado (`null`), es `staff`.
 - `toAuditEventResponse` es de lista blanca: no copia `actorId`, `correlationId`, `resourceId` ni atributos fuera de
-  `itemCount`, `sizeBytes` y `note` (que solo sale si existe).
+  `itemCount`, `sizeBytes`, `note` (que solo sale si existe) y `trigger` (solo `manual` o `scheduled`: distingue la purga
+  programada de la papelera de la que pidió el cliente).
