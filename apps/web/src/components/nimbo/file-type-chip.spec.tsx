@@ -26,4 +26,32 @@ describe('FileTypeChip component (CA-4, DF-44)', () => {
     expect(markup).toContain('--file-pdf');
     expect(markup).toContain('--file-pdf-bg');
   });
+
+  it('007 T-07: las imágenes con firma (png, jpg, jpeg, gif, webp) son del tipo imagen, como `imagen` de la API', () => {
+    for (const ext of ['png', 'jpg', 'jpeg', 'gif', 'webp']) {
+      expect(getFileTypeFromExtension(`foto.${ext}`)).toBe('img');
+    }
+    expect(getFileTypeFromExtension('logo.svg')).toBe('other');
+  });
+
+  it('007 T-07: renderiza el chip de imagen con su ícono y los tokens --file-img', () => {
+    const markup = renderToStaticMarkup(<FileTypeChip fileType="img" />);
+    expect(markup).toContain('IMG');
+    expect(markup).toContain('--file-img');
+    expect(markup).toContain('--file-img-bg');
+    expect(markup).toContain('lucide-image');
+  });
+
+  it('007: .txt y .md son del tipo texto, como `texto` de la API (no «otro»)', () => {
+    expect(getFileTypeFromExtension('notas.txt')).toBe('text');
+    expect(getFileTypeFromExtension('LEEME.MD')).toBe('text');
+  });
+
+  it('007: el chip de texto dice TEXTO y usa los tokens neutros --file-other (sin colores nuevos)', () => {
+    const markup = renderToStaticMarkup(<FileTypeChip fileType="text" />);
+    expect(markup).toContain('TEXTO');
+    expect(markup).toContain('--file-other');
+    expect(markup).toContain('--file-other-bg');
+    expect(markup).not.toContain('OTRO');
+  });
 });

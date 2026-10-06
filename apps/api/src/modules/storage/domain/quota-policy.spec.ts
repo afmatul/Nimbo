@@ -53,3 +53,30 @@ describe('QuotaPolicy.check', () => {
     expect(QuotaPolicy.check(larger, EMPTY, 500n)).toEqual({ ok: true });
   });
 });
+
+describe('QuotaPolicy.available', () => {
+  it('CA-1: disponible es la cuota menos lo usado y lo reservado', () => {
+    const usage: QuotaUsage = { usedBytes: 600n, reservedBytes: 150n };
+
+    expect(QuotaPolicy.available(LIMITS, usage)).toBe(250n);
+  });
+
+  it('CA-1: con la cuota llena el disponible es cero', () => {
+    expect(QuotaPolicy.available(LIMITS, { usedBytes: 900n, reservedBytes: 100n })).toBe(0n);
+  });
+
+  it('CA-1: nunca es negativo aunque lo usado pase de la cuota (plan reducido)', () => {
+    expect(QuotaPolicy.available(LIMITS, { usedBytes: 1_200n, reservedBytes: 50n })).toBe(0n);
+  });
+
+  it('CA-1: misma base que `check`: cabe exactamente lo disponible y un byte más no', () => {
+    const usage: QuotaUsage = { usedBytes: 600n, reservedBytes: 150n };
+    const roomy: QuotaLimits = { ...LIMITS, maxFileBytes: 1_000n };
+    const available = QuotaPolicy.available(roomy, usage);
+
+    expect(QuotaPolicy.check(roomy, usage, available)).toEqual({ ok: true });
+    expect(QuotaPolicy.check(roomy, usage, available + 1n)).toMatchObject({
+      violation: 'QuotaExceeded',
+    });
+  });
+});

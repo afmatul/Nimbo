@@ -1,6 +1,9 @@
 /* apps/web/src/app/globals.css */
 @import 'tailwindcss';
 
+/* Sin puntero que pase por encima (táctil): lo que en escritorio aparece con el puntero se ve siempre. */
+@custom-variant hover-none (@media (hover: none));
+
 :root {
   /* Superficies */
   --background: #f4f7fb; /* color-bg */
@@ -55,6 +58,24 @@
   --file-img-bg: #7ec8d820;
   --file-other: #53677d;
   --file-other-bg: #7a90a820;
+
+  /* Medidas del layout de la app */
+  --header-height: 4rem; /* encabezado de AppLayout; la barra lateral fija se coloca debajo (007 CA-19) */
+  /* Guías y sangría del desglose de carpetas (spec 006, CA-26): 16 px por nivel en móvil y 28 px desde sm. Dejan de
+     crecer en el nivel --tree-max-level para que el nombre conserve ancho. --tree-guide-x es el centro del control de
+     desglose dentro de la celda (44 px con margen de -8 px en móvil; 32 px en escritorio). */
+  --tree-guide: var(--border);
+  --tree-indent: 16px;
+  --tree-guide-x: 25px;
+  --tree-max-level: 3;
+}
+
+@media (width >= 40rem) {
+  :root {
+    --tree-indent: 28px;
+    --tree-guide-x: 31px;
+    --tree-max-level: 6;
+  }
 }
 
 @theme inline {
@@ -88,8 +109,11 @@
   --color-agent-text: var(--agent-text);
   --color-agent-accent: var(--agent-accent);
   --color-agent-tag: var(--agent-tag);
+  --color-tree-guide: var(--tree-guide);
 
   --font-sans: var(--font-inter), system-ui, sans-serif;
+
+  --spacing-header: var(--header-height);
 
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -112,7 +136,30 @@
   }
 }
 
+/* Sangría por nivel del desglose: el nivel viene de la variable --tree-level de la fila (style={{ '--tree-level': n }}). */
+@utility tree-indent {
+  padding-inline-start: calc(min(var(--tree-level, 0), var(--tree-max-level)) * var(--tree-indent));
+}
+
+/* Guías verticales del desglose: una línea de 1 px por ancestro, con el color --tree-guide, en la celda del nombre.
+   Son decorativas (la sangría ya indica el nivel). Se combinan con tree-indent sobre la misma fila. */
+@utility tree-guides {
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--tree-guide) 0 1px,
+    transparent 1px var(--tree-indent)
+  );
+  background-repeat: no-repeat;
+  background-position: var(--tree-guide-x) 0;
+  background-size: calc(min(var(--tree-level, 0), var(--tree-max-level)) * var(--tree-indent)) 100%;
+}
+
 /* Margen inferior del área segura (barra de gestos en móviles); 0 donde no aplica. */
 @utility pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Alto de la ventana bajo el encabezado: la barra lateral fija de escritorio (007 CA-19). */
+@utility h-below-header {
+  height: calc(100dvh - var(--header-height));
 }

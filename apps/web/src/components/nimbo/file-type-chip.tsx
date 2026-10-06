@@ -4,13 +4,14 @@ import {
   Presentation,
   FileType,
   Image as ImageIcon,
+  NotebookText,
   File,
 } from 'lucide-react';
 import * as React from 'react';
 
 import { cn } from '../../lib/utils';
 
-export type FileType = 'docx' | 'xlsx' | 'pptx' | 'pdf' | 'img' | 'other';
+export type FileType = 'docx' | 'xlsx' | 'pptx' | 'pdf' | 'img' | 'text' | 'other';
 
 export interface FileTypeConfig {
   readonly label: string;
@@ -50,6 +51,13 @@ const FILE_TYPE_MAP: Record<FileType, FileTypeConfig> = {
     bgColorVar: 'var(--file-img-bg)',
     icon: ImageIcon,
   },
+  // `.txt` y `.md` (`texto` en la API, Documentos en el resumen de 007): sin token propio, usa los neutros.
+  text: {
+    label: 'TEXTO',
+    textColorVar: 'var(--file-other)',
+    bgColorVar: 'var(--file-other-bg)',
+    icon: NotebookText,
+  },
   other: {
     label: 'OTRO',
     textColorVar: 'var(--file-other)',
@@ -58,8 +66,25 @@ const FILE_TYPE_MAP: Record<FileType, FileTypeConfig> = {
   },
 };
 
+/** Ícono del tipo, el mismo del chip, decorativo (p. ej. junto al nombre en «Accesos rápidos», 006 CA-27). */
+export function FileTypeIcon({
+  fileType,
+  className,
+}: {
+  readonly fileType: FileType;
+  readonly className?: string;
+}): React.JSX.Element {
+  const Icon = FILE_TYPE_MAP[fileType].icon;
+  return (
+    <span aria-hidden="true" className={className}>
+      <Icon className="h-4 w-4" />
+    </span>
+  );
+}
+
 /**
- * Obtiene el tipo de archivo clasificado a partir de un nombre o extensión.
+ * Obtiene el tipo de archivo clasificado a partir de un nombre o extensión. Las imágenes son las mismas que `imagen` en
+ * la API (las que tienen firma que validar); `svg` y el resto son «otro».
  */
 export function getFileTypeFromExtension(filenameOrExt: string): FileType {
   const ext = filenameOrExt.split('.').pop()?.toLowerCase() ?? '';
@@ -81,8 +106,10 @@ export function getFileTypeFromExtension(filenameOrExt: string): FileType {
     case 'png':
     case 'gif':
     case 'webp':
-    case 'svg':
       return 'img';
+    case 'txt':
+    case 'md':
+      return 'text';
     default:
       return 'other';
   }

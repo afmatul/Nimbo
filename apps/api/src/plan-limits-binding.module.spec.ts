@@ -20,8 +20,10 @@ describe('PlanLimitsBindingModule', () => {
         findOneBy: jest.fn().mockResolvedValue({
           id: '10000000-0000-4000-8000-000000000001',
           slug: 'personal',
+          nombre: 'Personal',
           cuotaBytes: 16106127360n,
           maxArchivoBytes: 52428800n,
+          diasRetencionPapelera: 7,
         }),
       })
       .compile();
@@ -29,8 +31,10 @@ describe('PlanLimitsBindingModule', () => {
 
     expect(provider).toBeInstanceOf(PlanLimitsAdapter);
     await expect(provider.limitsFor(ACTOR)).resolves.toEqual({
+      planName: 'Personal',
       maxFileBytes: 52428800n,
       storageQuotaBytes: 16106127360n,
+      trashRetentionDays: 7,
     });
     await moduleRef.close();
   });

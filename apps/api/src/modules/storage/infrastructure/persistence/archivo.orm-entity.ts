@@ -3,7 +3,10 @@ import { Column, Entity, PrimaryColumn } from 'typeorm';
 import { BIGINT_TRANSFORMER } from '../../../../shared';
 import type { FileKind } from '../../domain/file-kind';
 
-/** Fila de `archivo` (migración `CrearArchivoYVersionArchivo…`, plan §4). Los bytes, siempre `bigint`. */
+/**
+ * Fila de `archivo` (migraciones `CrearArchivoYVersionArchivo…` de 005 y `CarpetaYPapeleraEnArchivoYCarga…` de 006).
+ * Los bytes, siempre `bigint`. `carpeta_id` `NULL` es la raíz.
+ */
 @Entity('archivo')
 export class ArchivoOrmEntity {
   @PrimaryColumn('uuid')
@@ -11,6 +14,9 @@ export class ArchivoOrmEntity {
 
   @Column('uuid', { name: 'propietario_id' })
   propietarioId!: string;
+
+  @Column('uuid', { name: 'carpeta_id', nullable: true })
+  carpetaId!: string | null;
 
   @Column('varchar', { length: 255 })
   nombre!: string;
@@ -32,4 +38,10 @@ export class ArchivoOrmEntity {
 
   @Column('timestamptz', { name: 'eliminado_en', nullable: true })
   eliminadoEn!: Date | null;
+
+  @Column('timestamptz', { name: 'purgar_en', nullable: true })
+  purgarEn!: Date | null;
+
+  @Column('uuid', { name: 'eliminado_con_carpeta_id', nullable: true })
+  eliminadoConCarpetaId!: string | null;
 }

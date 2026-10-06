@@ -24,6 +24,11 @@ class FakeQuotaRepository implements IQuotaRepository {
     return Promise.resolve(this.usage.usedBytes);
   }
 
+  readUsage(): Promise<QuotaUsage> {
+    this.calls.push('readUsage');
+    return Promise.resolve(this.usage);
+  }
+
   lockAndReadUsage(actor: Actor, now: Date): Promise<QuotaUsage> {
     this.calls.push(`lockAndReadUsage:${actor.id}`);
     this.readAt.push(now);
@@ -38,7 +43,12 @@ class FakeQuotaRepository implements IQuotaRepository {
 
 async function setup(usage: QuotaUsage) {
   const quotas = new FakeQuotaRepository(usage);
-  const plans = new FakePlanLimitsProvider({ maxFileBytes: MAX_FILE, storageQuotaBytes: QUOTA });
+  const plans = new FakePlanLimitsProvider({
+    maxFileBytes: MAX_FILE,
+    storageQuotaBytes: QUOTA,
+    trashRetentionDays: 30,
+    planName: 'Plan de prueba',
+  });
   const service = new QuotaService(quotas, new FixedClock(NOW));
   const limits = await plans.limitsFor(ACTOR);
   return { quotas, service, limits };

@@ -43,7 +43,12 @@ const MIB = 1024 * 1024;
 const HOUR_MS = 60 * 60 * 1000;
 const MINUTE_MS = 60 * 1000;
 /** Límites del doble de `IPlanLimitsProvider` (R-3): cifras de prueba, no del catálogo de planes (RN-1). */
-const TEST_LIMITS = { maxFileBytes: BigInt(64 * MIB), storageQuotaBytes: BigInt(256 * MIB) };
+const TEST_LIMITS = {
+  maxFileBytes: BigInt(64 * MIB),
+  storageQuotaBytes: BigInt(256 * MIB),
+  trashRetentionDays: 30,
+  planName: 'Plan de prueba',
+};
 /** Un `.pdf` mínimo que el detector acepta: la firma `%PDF-` y relleno. */
 const PDF_BYTES = Buffer.concat([Buffer.from('%PDF-1.7\n'), Buffer.alloc(2048, 0x20)]);
 /** Lo declarado de la carga por partes (dos partes de 8 MiB, las de `insertUpload`) y una primera parte ya subida. */

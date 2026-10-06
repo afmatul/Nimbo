@@ -107,6 +107,9 @@ describe('loadEnv(apiEnvSchema)', () => {
         UPLOAD_COMPLETE_TIMEOUT_SECONDS: 900,
         RATE_LIMIT_UPLOAD_INIT_PER_MINUTE: 300,
         RATE_LIMIT_DOWNLOAD_URL_PER_MINUTE: 120,
+        FOLDER_MAX_DEPTH: 10,
+        QUICK_ACCESS_MAX_PINNED: 5,
+        QUICK_ACCESS_RECENT_VISIBLE: 3,
       },
     });
   });
@@ -183,6 +186,10 @@ describe('loadEnv(workerEnvSchema)', () => {
         MINIO_REGION: 'us-east-1',
         UPLOAD_CLEANUP_INTERVAL_MINUTES: 10,
         UPLOAD_CLEANUP_BATCH_SIZE: 100,
+        TRASH_PURGE_INTERVAL_MINUTES: 60,
+        TRASH_PURGE_BATCH_SIZE: 100,
+        USAGE_RECONCILE_INTERVAL_MINUTES: 1440,
+        USAGE_RECONCILE_BATCH_SIZE: 100,
         SMTP_HOST: 'localhost',
         SMTP_PORT: 1025,
         SMTP_TLS: 'none',

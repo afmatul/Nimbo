@@ -40,4 +40,10 @@ export const QuotaPolicy = Object.freeze({
       usage.usedBytes + usage.reservedBytes + declaredBytes - limits.storageQuotaBytes;
     return missingBytes > 0n ? { ok: false, violation: 'QuotaExceeded', missingBytes } : ALLOWED;
   },
+
+  /** Lo que aún cabe (spec 007 CA-1, D-5): cuota menos usado y reservado, la base de `check`; nunca negativo. */
+  available(limits: QuotaLimits, usage: QuotaUsage): bigint {
+    const free = limits.storageQuotaBytes - usage.usedBytes - usage.reservedBytes;
+    return free > 0n ? free : 0n;
+  },
 });

@@ -1,6 +1,9 @@
 import { FILE_NAME_MAX_LENGTH } from './parameters';
 
-/** Catálogo único de códigos de error de `storage` (plan 005 §5). Las clases de `api` los reutilizan (Art. VI). */
+/**
+ * Catálogo único de códigos de error de `storage` (plan 005 §5 y plan 006 §4 y §9.2). Las clases de `api` los reutilizan
+ * (Art. VI).
+ */
 export const STORAGE_ERROR_CODES = {
   STORAGE_INVALID_UPLOAD_REQUEST: 'STORAGE_INVALID_UPLOAD_REQUEST',
   STORAGE_INVALID_QUERY: 'STORAGE_INVALID_QUERY',
@@ -15,6 +18,10 @@ export const STORAGE_ERROR_CODES = {
   STORAGE_INVALID_FILE_TYPE: 'STORAGE_INVALID_FILE_TYPE',
   STORAGE_NODE_NOT_FOUND: 'STORAGE_NODE_NOT_FOUND',
   STORAGE_TOO_MANY_REQUESTS: 'STORAGE_TOO_MANY_REQUESTS',
+  STORAGE_INVALID_MOVE: 'STORAGE_INVALID_MOVE',
+  STORAGE_FOLDER_DEPTH_EXCEEDED: 'STORAGE_FOLDER_DEPTH_EXCEEDED',
+  STORAGE_INVALID_NODE_REQUEST: 'STORAGE_INVALID_NODE_REQUEST',
+  STORAGE_QUICK_ACCESS_LIMIT: 'STORAGE_QUICK_ACCESS_LIMIT',
 } as const;
 export type StorageErrorCode = (typeof STORAGE_ERROR_CODES)[keyof typeof STORAGE_ERROR_CODES];
 
@@ -29,6 +36,9 @@ export const STORAGE_FIELD_ISSUE_REASONS = [
   'INVALID_SIZE',
   'UNKNOWN_FIELD',
   'INVALID_CURSOR',
+  'INVALID_FOLDER',
+  'INVALID_SORT',
+  'INVALID_DIRECTION',
 ] as const;
 export type StorageFieldIssueReason = (typeof STORAGE_FIELD_ISSUE_REASONS)[number];
 
@@ -42,6 +52,22 @@ export const STORAGE_FIELD_MESSAGES: Readonly<Record<StorageFieldIssueReason, st
   UNKNOWN_FIELD: 'Este campo no se admite. Quítalo y vuelve a intentarlo.',
   INVALID_CURSOR:
     'No pudimos leer esta página de la lista. Actualiza la lista e inténtalo de nuevo.',
+  INVALID_FOLDER: 'Esta carpeta no es válida. Elige otra carpeta y vuelve a intentarlo.',
+  INVALID_SORT:
+    'Este orden no es válido. Ordena por nombre, tamaño, fecha de modificación o fecha de creación y vuelve a intentarlo.',
+  INVALID_DIRECTION:
+    'Esta dirección de orden no es válida. Elige ascendente o descendente y vuelve a intentarlo.',
+};
+
+/**
+ * Mensajes de campo al crear o renombrar carpetas y al renombrar archivos (006): mismos motivos, pero los de nombre no
+ * hablan de «subir».
+ */
+export const STORAGE_NODE_FIELD_MESSAGES: Readonly<Record<StorageFieldIssueReason, string>> = {
+  ...STORAGE_FIELD_MESSAGES,
+  INVALID_NAME:
+    'Este nombre no es válido. Quita «/», «\\» y los caracteres especiales, y vuelve a intentarlo.',
+  NAME_TOO_LONG: `Usa un nombre de ${String(FILE_NAME_MAX_LENGTH)} caracteres o menos y vuelve a intentarlo.`,
 };
 
 /** Motivo con que se registra una carga rechazada (`carga.motivo_rechazo`). Única exportación (cambio 15b). */

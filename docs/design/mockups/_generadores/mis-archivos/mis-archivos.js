@@ -47,6 +47,16 @@ const RAIZ = [
 ];
 
 // ---------- CSS de Mis archivos (tokens de tipo, cuota por tramos, encabezado y tabla) ----------
+// Acciones por fila (DropdownMenu de shadcn, como el menú de la cuenta): botón ⋮ y menú con «Descargar»; también lo usan
+// los fijados de la barra lateral (accesos/accesos.js) en shared/layout
+const CSS_MENU_FILA = `  .row-actions { position: relative; display: inline-flex; }
+  .row-btn { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--secondary-foreground); cursor: pointer; }
+  .row-btn:hover, .row-btn[aria-expanded="true"] { background: var(--muted); color: var(--foreground); }
+  .account-menu [role="menuitem"][aria-disabled="true"] { cursor: progress; color: var(--secondary-foreground); background: transparent; }
+  .account-menu [role="menuitem"][aria-disabled="true"] .ico { color: var(--primary); }
+  .row-menu { position: absolute; z-index: 6; top: calc(100% + 4px); right: 0; width: 208px; text-align: left; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-modal); padding: 6px; }
+`;
+
 const CSS_LISTA = `  :root {
     /* Tipos de archivo (ui-guidelines §3): texto AA; fondo = tono base al 12 % */
     --file-docx: #3F62A8; --file-docx-bg: #6B8DD620;
@@ -59,14 +69,7 @@ const CSS_LISTA = `  :root {
   a.btn-primary, a.btn-primary:hover { color: var(--primary-foreground); }
   a.btn-outline:hover { color: var(--foreground); }
 
-  /* Cuota en tramos de QuotaBar (§4): 70–89 % warning; 90–100 % destructive-soft */
-  .quota-warn .quota-bar span { background: var(--warning); }
-  .quota-full { border-color: color-mix(in srgb, var(--destructive-soft) 45%, var(--card)); }
-  .quota-full .quota-bar span { background: var(--destructive-soft); }
-  .quota-note { margin: 8px 0 0; font-size: 11.5px; line-height: 1.45; font-weight: 500; }
-  .quota-warn .quota-note { color: var(--warning-foreground); }
-  .quota-full .quota-note { color: var(--destructive); }
-
+${M.CSS.TRAMOS}
   /* Encabezado de la página */
   .page-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   .page-head p { margin-top: 4px; }
@@ -91,13 +94,7 @@ const CSS_LISTA = `  :root {
 
   /* Acciones por fila (DropdownMenu de shadcn, como el menú de la cuenta): botón ⋮ y menú con «Descargar» */
   .files .c-act { width: 64px; padding: 6px 14px 6px 0; text-align: right; }
-  .row-actions { position: relative; display: inline-flex; }
-  .row-btn { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--secondary-foreground); cursor: pointer; }
-  .row-btn:hover, .row-btn[aria-expanded="true"] { background: var(--muted); color: var(--foreground); }
-  .account-menu [role="menuitem"][aria-disabled="true"] { cursor: progress; color: var(--secondary-foreground); background: transparent; }
-  .account-menu [role="menuitem"][aria-disabled="true"] .ico { color: var(--primary); }
-  .row-menu { position: absolute; z-index: 6; top: calc(100% + 4px); right: 0; width: 208px; text-align: left; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-modal); padding: 6px; }
-`;
+${CSS_MENU_FILA}`;
 
 // Reglas de la tabla por debajo de 600 px (van dentro del @media de cada generador)
 const CSS_LISTA_MQ600 = `    .app { min-height: 920px; }
@@ -145,7 +142,14 @@ function acciones(i, nombre, abierto, preparando = false) {
     ? `<button role="menuitem" type="button" tabindex="-1" aria-disabled="true">${icon('loader', 18, 'spin')}<span>Preparando…</span></button>`
     : `<button role="menuitem" type="button" tabindex="-1">${icon('download')}<span>Descargar</span></button>`;
   const anuncio = preparando ? `<p class="sr-only" role="status">Preparando la descarga de ${nombre}…</p>` : '';
-  return `<div class="row-actions"><button class="row-btn" type="button" id="acc-btn-${i}" aria-haspopup="menu" aria-expanded="${abierto}" aria-controls="acc-menu-${i}" aria-label="Acciones de ${nombre}">${icon('more', 18)}</button><div class="row-menu" id="acc-menu-${i}"${abierto ? '' : ' hidden'}><ul class="account-menu" role="menu" aria-labelledby="acc-btn-${i}"><li role="none">${item}</li></ul>${anuncio}</div></div>`;
+  return menuFila(i, nombre, abierto, [item], anuncio);
+}
+
+// Botón ⋮ y menú de una fila con varios ítems (HTML de cada <button role="menuitem">; 'sep' dibuja un separador).
+// Lo usan acciones() de 005 y los menús de 006 (carpetas y papelera).
+function menuFila(i, nombre, abierto, items, extra = '') {
+  const lis = items.map((it) => (it === 'sep' ? '<li role="separator" class="account-sep"></li>' : `<li role="none">${it}</li>`)).join('');
+  return `<div class="row-actions"><button class="row-btn" type="button" id="acc-btn-${i}" aria-haspopup="menu" aria-expanded="${abierto}" aria-controls="acc-menu-${i}" aria-label="Acciones de ${nombre}">${icon('more', 18)}</button><div class="row-menu" id="acc-menu-${i}"${abierto ? '' : ' hidden'}><ul class="account-menu" role="menu" aria-labelledby="acc-btn-${i}">${lis}</ul>${extra}</div></div>`;
 }
 
 // nuevos: filas recién subidas (con «NUEVO»); menuAbierto: índice de la fila con el menú ⋮ abierto (o -1);
@@ -170,6 +174,6 @@ function tabla(nuevos, { menuAbierto = -1, preparando = false } = {}) {
 }
 
 module.exports = {
-  P, crearIcon, icon, PLAN, MAX_POR_ARCHIVO, CUOTA_NORMAL, CUOTA_LLENA, RAIZ, tile,
-  CSS_LISTA, CSS_LISTA_MQ600, cuota, sidebar, botonSubir, encabezado, tabla,
+  P, crearIcon, icon, PLAN, MAX_POR_ARCHIVO, CUOTA_NORMAL, CUOTA_LLENA, RAIZ, tile, tipo,
+  CSS_LISTA, CSS_LISTA_MQ600, CSS_MENU_FILA, cuota, sidebar, botonSubir, encabezado, tabla, menuFila,
 };

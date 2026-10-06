@@ -46,8 +46,10 @@ export class PlanLimitsAdapter implements IPlanLimitsProvider {
 
   private toLimits(plan: PlanOrmEntity): PlanLimits {
     return {
+      planName: plan.nombre,
       maxFileBytes: plan.maxArchivoBytes,
       storageQuotaBytes: plan.cuotaBytes,
+      trashRetentionDays: plan.diasRetencionPapelera,
     };
   }
 }

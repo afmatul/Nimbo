@@ -9,6 +9,8 @@ const alertVariants = cva('rounded-md border px-4 py-3 text-sm', {
       error: 'border-destructive bg-card text-destructive',
       info: 'border-border bg-card text-foreground',
       warning: 'border-warning bg-warning/10 text-warning-foreground',
+      /** Tramo 90–100 % de la cuota (mockup `resumen-espacio`): fondo `destructive-soft` al 10 %. */
+      critical: 'border-destructive-soft bg-destructive-soft/10 text-destructive',
     },
   },
   defaultVariants: {
@@ -22,7 +24,7 @@ export interface AlertProps
 export function Alert({ className, variant, ...props }: AlertProps): React.JSX.Element {
   return (
     <div
-      role={variant === 'error' ? 'alert' : 'status'}
+      role={variant === 'error' || variant === 'critical' ? 'alert' : 'status'}
       className={cn(alertVariants({ variant, className }))}
       {...props}
     />

@@ -27,6 +27,8 @@ describe('POST /uploads contra los límites del plan (CA-3, CA-4, CA-23)', () =>
     storage.limits.setLimits({
       maxFileBytes: BigInt(MAX_FILE_BYTES),
       storageQuotaBytes: BigInt(QUOTA_BYTES),
+      trashRetentionDays: 30,
+      planName: 'Plan de prueba',
     });
   });
 
@@ -64,6 +66,8 @@ describe('POST /uploads contra los límites del plan (CA-3, CA-4, CA-23)', () =>
     storage.limits.setLimits({
       maxFileBytes: BigInt(QUOTA_BYTES),
       storageQuotaBytes: BigInt(QUOTA_BYTES),
+      trashRetentionDays: 30,
+      planName: 'Plan de prueba',
     });
     await storage.owner.query('UPDATE usuario SET espacio_usado = $1 WHERE id = $2', [
       6_000,
@@ -85,7 +89,12 @@ describe('POST /uploads contra los límites del plan (CA-3, CA-4, CA-23)', () =>
   it('CA-23: cancelar libera la reserva y la siguiente carga cabe', async () => {
     const client = await storage.newClient();
     const first = await client.init({ name: 'primera.txt', sizeBytes: 1_800 });
-    storage.limits.setLimits({ maxFileBytes: BigInt(MAX_FILE_BYTES), storageQuotaBytes: 3_000n });
+    storage.limits.setLimits({
+      maxFileBytes: BigInt(MAX_FILE_BYTES),
+      storageQuotaBytes: 3_000n,
+      trashRetentionDays: 30,
+      planName: 'Plan de prueba',
+    });
     expect((await client.init({ name: 'segunda.txt', sizeBytes: 1_800 })).status).toBe(422);
 
     expect((await client.cancel((first.body as { uploadId: string }).uploadId)).status).toBe(204);
@@ -95,7 +104,12 @@ describe('POST /uploads contra los límites del plan (CA-3, CA-4, CA-23)', () =>
 
   it('CA-23: completar convierte la reserva en uso real sin contarla dos veces', async () => {
     const client = await storage.newClient();
-    storage.limits.setLimits({ maxFileBytes: BigInt(MAX_FILE_BYTES), storageQuotaBytes: 3_000n });
+    storage.limits.setLimits({
+      maxFileBytes: BigInt(MAX_FILE_BYTES),
+      storageQuotaBytes: 3_000n,
+      trashRetentionDays: 30,
+      planName: 'Plan de prueba',
+    });
 
     expect((await client.upload('uso.txt', textBytes(1_800))).status).toBe(200);
 

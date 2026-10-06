@@ -3,6 +3,7 @@ import type { ZodTypeAny } from 'zod';
 import type { FieldIssueResponse } from '../error';
 import { toFieldIssues } from '../validation';
 
+import { folderContentsQuerySchema } from './folder-schemas';
 import { FILE_NAME_MAX_LENGTH, FILES_PAGE_DEFAULT, FILES_PAGE_MAX } from './parameters';
 import {
   FILE_KINDS,
@@ -11,8 +12,6 @@ import {
   fileSummarySchema,
   initUploadResponseSchema,
   initUploadSchema,
-  listFilesQuerySchema,
-  listFilesResponseSchema,
   resumeUploadResponseSchema,
 } from './schemas';
 
@@ -30,12 +29,19 @@ function reasonsOf(input: unknown): string[] {
 }
 
 describe('initUploadSchema', () => {
-  it('CA-1: acepta `{ name, sizeBytes }` y `onConflict` ausente es `ask`', () => {
+  it('CA-1: acepta `{ name, sizeBytes }`; `onConflict` ausente es `ask` y `folderId` ausente es la raíz', () => {
     expect(initUploadSchema.parse({ name: 'informe.docx', sizeBytes: 1024 })).toEqual({
       name: 'informe.docx',
       sizeBytes: 1024,
       onConflict: 'ask',
+      folderId: null,
     });
+  });
+
+  it('CA-6 (006): acepta la carpeta destino', () => {
+    const parsed = initUploadSchema.parse({ name: 'a.pdf', sizeBytes: 1, folderId: UUID });
+
+    expect(parsed.folderId).toBe(UUID);
   });
 
   it('CA-6: acepta `onConflict: keep_both`', () => {
@@ -65,7 +71,8 @@ describe('initUploadSchema', () => {
     [{ name: 'a.txt', sizeBytes: -1 }, 'sizeBytes:INVALID_SIZE'],
     [{ name: 'a.txt', sizeBytes: '10' }, 'sizeBytes:INVALID_SIZE'],
     [{ name: 'a.txt', sizeBytes: Number.MAX_SAFE_INTEGER + 1 }, 'sizeBytes:INVALID_SIZE'],
-    [{ name: 'a.txt', sizeBytes: 1, folderId: UUID }, 'folderId:UNKNOWN_FIELD'],
+    [{ name: 'a.txt', sizeBytes: 1, folderId: 'no-es-uuid' }, 'folderId:INVALID_FOLDER'],
+    [{ name: 'a.txt', sizeBytes: 1, parentId: UUID }, 'parentId:UNKNOWN_FIELD'],
   ])('CA-7: %j se rechaza con %s', (input, expected) => {
     expect(reasonsOf(input)).toEqual([expected]);
   });
@@ -165,11 +172,25 @@ describe('resumeUploadResponseSchema', () => {
 });
 
 describe('FileSummary, listado y descarga', () => {
-  const file = { id: UUID, name: 'informe.docx', sizeBytes: 1024, kind: 'docx', createdAt: AT };
+  const file = {
+    id: UUID,
+    name: 'informe.docx',
+    sizeBytes: 1024,
+    kind: 'docx',
+    folderId: null,
+    createdAt: AT,
+    updatedAt: AT,
+  };
 
-  it('CA-1: `FileSummary` es `{ id, name, sizeBytes, kind, createdAt }`', () => {
+  it('CA-1: `FileSummary` es `{ id, name, sizeBytes, kind, folderId, createdAt, updatedAt }`', () => {
     expect(fileSummarySchema.parse(file)).toEqual(file);
     expect(fileSummarySchema.safeParse({ ...file, objectKey: 'u/x' }).success).toBe(false);
+    expect(fileSummarySchema.safeParse({ ...file, folderId: 'x' }).success).toBe(false);
+  });
+
+  it('007 CA-10: `FileSummary` exige `updatedAt` (columna «Modificado»)', () => {
+    expect(fileSummarySchema.safeParse({ ...file, updatedAt: undefined }).success).toBe(false);
+    expect(fileSummarySchema.safeParse({ ...file, updatedAt: 'ayer' }).success).toBe(false);
   });
 
   it('CA-12: `kind` sale del catálogo de tipos', () => {
@@ -183,13 +204,6 @@ describe('FileSummary, listado y descarga', () => {
     expect(completeUploadResponseSchema.parse({ file })).toEqual({ file });
   });
 
-  it('CA-1: el listado es `{ items, nextCursor }`', () => {
-    expect(listFilesResponseSchema.parse({ items: [file], nextCursor: null })).toEqual({
-      items: [file],
-      nextCursor: null,
-    });
-  });
-
   it('CA-13: la descarga es `{ url, expiresAt }`', () => {
     const download = { url: URL_A, expiresAt: AT };
 
@@ -198,9 +212,9 @@ describe('FileSummary, listado y descarga', () => {
   });
 });
 
-describe('listFilesQuerySchema', () => {
+describe('paginación de `GET /folders/contents` (la de `GET /files` de 005)', () => {
   it('CA-1: sin parámetros usa la página por defecto', () => {
-    expect(listFilesQuerySchema.parse({})).toEqual({ limit: FILES_PAGE_DEFAULT });
+    expect(folderContentsQuerySchema.parse({})).toEqual({ limit: FILES_PAGE_DEFAULT });
   });
 
   it.each([
@@ -210,15 +224,15 @@ describe('listFilesQuerySchema', () => {
     ['1000', FILES_PAGE_MAX],
     ['abc', FILES_PAGE_DEFAULT],
   ])('CA-1: `limit=%s` se ajusta a %d', (limit, expected) => {
-    expect(listFilesQuerySchema.parse({ limit }).limit).toBe(expected);
+    expect(folderContentsQuerySchema.parse({ limit }).limit).toBe(expected);
   });
 
   it('CA-1: conserva el cursor opaco', () => {
-    expect(listFilesQuerySchema.parse({ cursor: 'abc' }).cursor).toBe('abc');
+    expect(folderContentsQuerySchema.parse({ cursor: 'abc' }).cursor).toBe('abc');
   });
 
   it('CA-7: un cursor vacío es `INVALID_CURSOR`', () => {
-    const issues = issuesOf(listFilesQuerySchema, { cursor: '' });
+    const issues = issuesOf(folderContentsQuerySchema, { cursor: '' });
 
     expect(issues.map((issue) => issue.reason)).toEqual(['INVALID_CURSOR']);
   });

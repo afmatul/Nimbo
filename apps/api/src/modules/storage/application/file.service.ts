@@ -1,21 +1,26 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { DOWNLOAD_URL_TTL_SECONDS, FILES_PAGE_DEFAULT, FILES_PAGE_MAX } from '@nimbo/contracts';
+import { DOWNLOAD_URL_TTL_SECONDS, STORAGE_NODE_FIELD_MESSAGES } from '@nimbo/contracts';
+import type { OnConflict } from '@nimbo/contracts';
 import { PinoLogger } from 'nestjs-pino';
 
 import { I_CLOCK, I_RATE_LIMITER, I_TRANSACTION_RUNNER } from '../../../shared';
 import type { Actor, IClock, IRateLimiter, ITransactionRunner } from '../../../shared';
 import { AuditAction, I_AUDIT_LOGGER } from '../../audit';
 import type { IAuditLogger } from '../../audit';
-import { NodeNotFoundError } from '../domain/errors';
-import type { File } from '../domain/file';
+import { InvalidNodeRequestError, NodeNotFoundError } from '../domain/errors';
+import { File } from '../domain/file';
+import { FileName } from '../domain/file-name.vo';
 import { ObjectKey } from '../domain/object-key';
 
 import { FILE_SERVICE_CONFIG } from './file-service-config';
 import type { FileServiceConfig } from './file-service-config';
+import { freeFileName } from './free-file-name';
 import { I_NODE_REPOSITORY } from './ports/i-node.repository.port';
-import type { FileListPage, FileListQuery, INodeRepository } from './ports/i-node.repository.port';
+import type { INodeRepository } from './ports/i-node.repository.port';
 import { I_OBJECT_STORAGE } from './ports/i-object-storage.port';
 import type { IObjectStorage } from './ports/i-object-storage.port';
+import { I_QUOTA_REPOSITORY } from './ports/i-quota.repository.port';
+import type { IQuotaRepository } from './ports/i-quota.repository.port';
 import { recordAudit } from './record-audit';
 import { rateLimited } from './storage-logger';
 import type { StorageLogger } from './storage-logger';
@@ -30,21 +35,30 @@ export interface DownloadUrl {
   readonly expiresAt: Date;
 }
 
-/** Ajusta el tamaño de página a 1–`FILES_PAGE_MAX`; un valor no numérico toma `FILES_PAGE_DEFAULT`. */
-function clampPageLimit(limit: number): number {
-  if (!Number.isFinite(limit)) return FILES_PAGE_DEFAULT;
-  return Math.min(Math.max(Math.trunc(limit), 1), FILES_PAGE_MAX);
+/** `PATCH /files/:id`: nombre nuevo tal como llegó y qué hacer si está ocupado en su carpeta (CA-4). */
+export interface RenameFileCommand {
+  readonly name: string;
+  readonly onConflict: OnConflict;
+}
+
+/** `POST /files/:id/move`: carpeta destino (`null` = raíz) y qué hacer si el nombre está ocupado allí (CA-7). */
+export interface MoveFileCommand {
+  readonly folderId: string | null;
+  readonly onConflict: OnConflict;
 }
 
 /**
- * Lista los archivos del actor y emite la URL de descarga (plan §6). Cada lectura corre en `withActor(actor)`: el
- * repositorio toma el `EntityManager` de ese ámbito (RLS y `accessibleNodes`, CA-16).
+ * Archivos del actor: renombrar, mover (006 plan §2) y emitir la URL de descarga (005 plan §6). Cada operación corre
+ * en `withActor(actor)`: el repositorio toma el `EntityManager` de ese ámbito (RLS y `accessibleNodes`, CA-16). Las
+ * mutaciones toman primero `lockUsage`, el mismo punto de serialización del árbol que carpetas y cargas. Ajeno,
+ * inexistente o en la papelera es el mismo `NodeNotFoundError` (CA-22). Renombrar y mover no se auditan (CA-24).
  */
 @Injectable()
 export class FileService {
   constructor(
     @Inject(I_TRANSACTION_RUNNER) private readonly transactions: ITransactionRunner,
     @Inject(I_NODE_REPOSITORY) private readonly nodes: INodeRepository,
+    @Inject(I_QUOTA_REPOSITORY) private readonly quotas: IQuotaRepository,
     @Inject(I_OBJECT_STORAGE) private readonly objects: IObjectStorage,
     @Inject(I_RATE_LIMITER) private readonly rateLimiter: IRateLimiter,
     @Inject(I_AUDIT_LOGGER) private readonly audit: IAuditLogger,
@@ -53,10 +67,51 @@ export class FileService {
     @Inject(PinoLogger) private readonly logger: StorageLogger,
   ) {}
 
-  /** Página de la raíz del actor. Lanza `InvalidQueryError` si el cursor no es uno emitido por la API. */
-  list(actor: Actor, query: FileListQuery): Promise<FileListPage> {
-    const page = { ...query, limit: clampPageLimit(query.limit) };
-    return this.transactions.withActor(actor, () => this.nodes.listAccessible(actor, page));
+  /**
+   * CA-4: otro nombre en la misma carpeta, con la regla «(n)» de 005; el tipo, el tamaño y la versión no cambian.
+   * Solo cambiar mayúsculas no choca consigo mismo.
+   */
+  async rename(actor: Actor, fileId: string, command: RenameFileCommand): Promise<File> {
+    const requested = parseFileName(command.name);
+    return this.transactions.withActor(actor, async () => {
+      await this.quotas.lockUsage(actor);
+      const file = await this.requireFile(actor, fileId);
+      const name = await freeFileName(this.nodes, actor, {
+        name: requested,
+        folderId: file.folderId,
+        keepBoth: command.onConflict === 'keep_both',
+        exceptId: file.id,
+      });
+      const renamed = File.rehydrate({ ...file.snapshot(), name, updatedAt: this.clock.now() });
+      await this.nodes.renameFile(actor, renamed);
+      return renamed;
+    });
+  }
+
+  /**
+   * CA-7: el archivo pasa a `folderId` (`null` = raíz) con la regla «(n)» de 005 en el destino; el tamaño, las
+   * versiones y `espacio_usado` no cambian. Un destino que el actor no ve es `NodeNotFoundError`.
+   */
+  move(actor: Actor, fileId: string, command: MoveFileCommand): Promise<File> {
+    return this.transactions.withActor(actor, async () => {
+      await this.quotas.lockUsage(actor);
+      const file = await this.requireFile(actor, fileId);
+      await this.assertFolderAccessible(actor, command.folderId);
+      const name = await freeFileName(this.nodes, actor, {
+        name: file.name,
+        folderId: command.folderId,
+        keepBoth: command.onConflict === 'keep_both',
+        exceptId: file.id,
+      });
+      const moved = File.rehydrate({
+        ...file.snapshot(),
+        folderId: command.folderId,
+        name,
+        updatedAt: this.clock.now(),
+      });
+      await this.nodes.moveFile(actor, moved);
+      return moved;
+    });
   }
 
   /**
@@ -82,6 +137,20 @@ export class FileService {
     return { url, expiresAt };
   }
 
+  private async requireFile(actor: Actor, fileId: string): Promise<File> {
+    const file = await this.nodes.findAccessibleById(actor, fileId);
+    if (file === null) throw new NodeNotFoundError();
+    return file;
+  }
+
+  /** `null` es la raíz, siempre accesible. */
+  private async assertFolderAccessible(actor: Actor, folderId: string | null): Promise<void> {
+    if (folderId === null) return;
+    if ((await this.nodes.findAccessibleFolder(actor, folderId)) === null) {
+      throw new NodeNotFoundError();
+    }
+  }
+
   private async assertWithinRate(actor: Actor): Promise<void> {
     const decision = await this.rateLimiter.consume(DOWNLOAD_RATE_KEY_PREFIX + actor.id, [
       { limit: this.config.downloadUrlPerMinute, windowSeconds: RATE_LIMIT_WINDOW_SECONDS },
@@ -104,4 +173,13 @@ export class FileService {
       { fileId: file.id },
     );
   }
+}
+
+/** El esquema de la petición ya validó la forma; esto normaliza y cubre a quien llame sin pasar por él (CA-4). */
+function parseFileName(raw: string): FileName {
+  const parsed = FileName.parse(raw);
+  if (parsed.ok) return parsed.name;
+  throw new InvalidNodeRequestError([
+    { field: 'name', reason: parsed.reason, message: STORAGE_NODE_FIELD_MESSAGES[parsed.reason] },
+  ]);
 }

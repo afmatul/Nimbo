@@ -167,6 +167,30 @@ Nimbo se agregan aparte (DF-47).
 - Después de `npx shadcn add`, revisar el radio de cada componente: en Cielo Sereno las cards son `rounded-lg` (14 px) y los modales `rounded-xl` (18 px).
 - No hay modo oscuro en el alcance (YAGNI). El panel del agente es una superficie oscura puntual, no un tema.
 
+### Guías y sangría del desglose de carpetas (spec 006, CA-26)
+
+Las filas de una carpeta desglosada llevan sangría por nivel y guías verticales. Las guías necesitan medidas que no
+son de la paleta, así que se definen **una sola vez** en `globals.css` (ya están) y los componentes solo usan las
+utilidades; nada de `pl-[28px]` ni `bg-[linear-gradient(…)]`.
+
+| Token (`:root`) | Móvil (< 640 px) | Desde `sm` (≥ 640 px) | Qué es |
+|---|---|---|---|
+| `--tree-indent` | 16 px | 28 px | Sangría por nivel |
+| `--tree-guide-x` | 25 px | 31 px | Posición de la primera guía dentro de la celda: el centro del control de desglose (44 px con margen de −8 px en móvil; 32 px en escritorio) |
+| `--tree-max-level` | 3 | 6 | Nivel desde el que la sangría y las guías dejan de crecer, para que el nombre conserve ancho |
+| `--tree-guide` | `var(--border)` | igual | Color de la guía (decorativa: la sangría ya dice el nivel) |
+
+| Utilidad | Uso |
+|---|---|
+| `tree-indent` | En el contenedor del nombre (`.fname`) de la fila: `padding-inline-start` = nivel × `--tree-indent`. En las filas de estado (cargando, vacía, error y «Ver más») va en un contenedor y el contenido, dentro, con `pl-9 sm:pl-11` (el ancho del control de desglose más su separación: 36 px en móvil, 44 px desde `sm`) |
+| `tree-guides` | En la celda (`td`) de la fila: una línea de 1 px por ancestro, hasta `--tree-max-level` |
+| `border-tree-guide` / `bg-tree-guide` | El color como utilidad de Tailwind (`--color-tree-guide`) si hace falta fuera de las dos anteriores |
+
+El nivel de cada fila viene de la variable `--tree-level`: `<tr style={{ '--tree-level': nivel }}>` (0 = raíz; con 0 no se
+dibuja nada). Las dos utilidades leen esa variable, así que no hay una clase por nivel. El mockup
+`storage/explorador/explorador--carpeta-desglosada` usa las mismas variables y clases en CSS plano (el mockup cambia a
+móvil a 600 px; la implementación usa `sm`, 640 px, y no es una diferencia que haya que marcar).
+
 ### Tabla de equivalencias para leer el design system
 
 | design-cielo-sereno.md | Utilidad en código |
@@ -185,12 +209,13 @@ Nimbo se agregan aparte (DF-47).
 
 | Componente | Uso | Reglas |
 |---|---|---|
-| `FileTypeChip` | Tipo de archivo en listas y fichas | Mapa único tipo → tokens `--file-*`; muestra la extensión en texto |
-| `QuotaBar` | Medidor de cuota (RF-12) | 0–69 % `success`, 70–89 % `warning` con «Tu cuota está al X %», 90–100 % `destructive-soft` con «Espacio casi agotado»; siempre muestra el porcentaje y los GB en texto; `role="progressbar"` |
+| `FileTypeChip` | Tipo de archivo en listas y fichas | Mapa único tipo → tokens `--file-*`; muestra la extensión en texto. `.txt` y `.md` (`texto` en la API) dicen «TEXTO» con los tokens neutros `--file-other` (007): sin color propio, el rótulo los distingue de «OTRO» |
+| `QuotaBar` | Medidor de cuota (RF-12) | 0–69 % `success`, 70–89 % `warning` con «Tu cuota está al X %», 90–99 % `destructive-soft` con «Espacio casi agotado» y 100 % con «Espacio agotado.» (007 RN-4); siempre muestra el porcentaje y los GB en texto; `role="progressbar"`; pista con borde `input` (≥ 3:1, 007 D-19 a). `quotaStateOf(uso)` da porcentaje, tramo y texto (una sola fuente). `QuotaLink` es su acción de texto con `ChevronRight` («Liberar espacio», «Ver detalle»). `QuotaTrack` es la barra sola, para el medidor grande de `/espacio`, que no repite el texto del tramo porque ya lo dice el `Alert` de la pantalla (`warning` en 70–89 %, `critical` con fondo `destructive-soft` en 90–100 %) |
 | `UploadProgress` | Carga por partes (RF-08) | Porcentaje, bytes, reanudar/cancelar; `aria-live="polite"` |
 | `StatusBadge` | Estados de indexación, sesión, suscripción, trabajo | Ícono + etiqueta; nunca solo color |
 | `EmptyState` / `ErrorState` | Estados de pantalla | El error muestra la acción correctiva que envía la API (RNF-14) |
 | `ReadOnlyBanner` | Suscripción vencida (RF-23) | Visible en todas las vistas de escritura, con enlace a renovar |
+| `Alert` (`components/ui/alert.tsx`) | Avisos dentro de la página, arriba del contenido al que se refieren | Tres variantes con tokens: `info` (`border-border bg-card text-foreground`, `role="status"`), `error` (`border-destructive bg-card text-destructive`, `role="alert"`) y **`warning`** (ver abajo). Con ícono; un botón «Cerrar aviso» si no es persistente. Un límite alcanzado no es un error: usa `warning` y no `error` |
 | `ConfirmDestructiveDialog` | Eliminar definitivamente, revocar accesos | Botón `destructive`, texto explícito de la consecuencia |
 | `ParticipantAvatar` / `PresenceStack` | Presencia en edición (RF-26) e historial (RF-29) | Color de la secuencia de 8 como **anillo**; iniciales en `text-foreground` sobre `bg-card`; nombre en tooltip y para lectores de pantalla |
 | `VersionTimeline` | Historial con autoría (RF-29) | Fecha, participantes, variación de tamaño, origen (carga/edición/restauración/optimización), botón restaurar |
@@ -198,6 +223,23 @@ Nimbo se agregan aparte (DF-47).
 | `AgentPanel` | Agente (RF-32) | Superficie `bg-agent-bg`; streaming con `aria-live`; indicador en vivo `agent-accent` (sin animación si reduced-motion) |
 | `CitationChip` | Cita del agente | «archivo · página 3», etiqueta de `SourceLocation.label()`; navegable; aviso visible si la ubicación no es certera |
 | `PlanCard` / `PlanComparison` | Catálogo y comparador (RF-19) | Precio en quetzales con `tabular-nums`; límites desde la API, nunca escritos en el frontend |
+| `Toaster` (sonner, `components/ui/sonner.tsx`) | Confirmaciones no bloqueantes con acción (papelera, restaurar) | `aria-live="polite"`, ≥ 8 s, pausa con hover y foco, solo tokens; arriba y al centro, debajo del encabezado y nunca sobre el panel de cargas, a todo el ancho disponible en móvil (007 CA-18); los errores van en `Alert`, no en toast (ADR-0024) |
+
+#### Variante `warning` de `Alert`
+Para avisos de un límite o una condición que no es una falla del sistema (p. ej. «Ya fijaste 5 elementos. Quita uno para
+fijar otro.», CA-28 de 006). Usa tokens que ya existen; no hay valores nuevos:
+
+```ts
+warning: 'border-warning bg-warning/10 text-warning-foreground'
+```
+
+- **Rol**: `role="status"` (anuncio educado), no `alert`: no interrumpe al lector de pantalla; el `Alert` ya lo asigna así.
+- **Contraste (WCAG 2.1)**: `warning-foreground` `#8A6424` sobre `warning` al 10 % queda en **4.66:1 como mínimo** (sobre
+  `background`; 4.86 sobre `card`), por encima de 4.5. El texto de cuerpo en `foreground` da 12.2. El borde `warning` es
+  decorativo: el aviso se distingue por su ícono (`alert`), su título en 600 y su fondo.
+- **Estructura**: ícono + título (`warning-foreground`, 600) + texto opcional (`foreground`) + acción opcional + «Cerrar aviso»
+  (botón de ícono de 44 px en móvil). Ya existe en `components/ui/alert.tsx`; el developer solo lo compone, no lo cambia.
+- **Tono**: avisa y dice qué hacer. Nunca `destructive` para un límite alcanzado.
 
 ### Colores de participantes (DF-46)
 La secuencia de 8 colores del design system dice «visor de atribución de párrafo», pero la atribución párrafo a
@@ -230,7 +272,7 @@ identificador.
 > Estado del mockup: `Pendiente` · `Borrador` · `Aprobado`. Rutas relativas a `docs/design/`.
 > Actualicen la columna «Mockup» con lo que ya existe; el `ui-designer` la mantiene al día.
 > Los mockups `Borrador` provienen de Claude Design (`.dc.html`) o están escritos a mano en HTML autocontenido
-> (`.html`), como `mockups/identity/seguridad/`, `mockups/identity/terminos/`, `mockups/identity/privacidad/` y los estados nuevos de `mockups/storage/carga/` y `mockups/storage/explorador/`. Solo
+> (`.html`), como `mockups/identity/seguridad/`, `mockups/identity/terminos/`, `mockups/identity/privacidad/` y los estados nuevos de `mockups/storage/carga/`, `mockups/storage/explorador/` y `mockups/storage/papelera/`. Solo
 > cubren los estados entre paréntesis; el resto de estados mínimos se agregan con `/mockup` antes de aclarar la spec.
 > Cada carpeta tiene un `README.md`.
 
@@ -244,12 +286,12 @@ identificador.
 | Inicio de sesión | identity | 002 | `mockups/identity/inicio-sesion/` | `capturas/identity/inicio-sesion/` | default, error, enviando, bloqueado, no-verificado, suspendida | Borrador (default; los demás estados por decisión explícita, spec 002 §11) |
 | Recuperar / restablecer contraseña | identity | 002 | — (reutiliza pedir-enlace, exito, enlace-expirado, enlace-invalido y ya-verificado de 001) | — | pedir, correo-enviado, contrasena-nueva, enlace-expirado, enlace-invalido, exito | Decisión explícita (spec 002 §11) |
 | Seguridad (sesiones y contraseña) | identity | 002 | `mockups/identity/seguridad/` | `capturas/identity/seguridad/` | default, cargando, error-sesiones, sin-otras-sesiones, confirmar-cierre, confirmar-cierre-actual, sesion-cerrada, cerrar-demas, cerrar-demas-exito, contrasena-enviando, contrasena-no-coincide, contrasena-incorrecta, contrasena-debil, contrasena-bloqueada, contrasena-cambiada | Aprobado (2026-09-26) |
-| Layout de la app (navegación, cuota lateral, menú de la cuenta) | shared | 000b | `mockups/shared/layout/` | `capturas/shared/layout/` | default, menu-cuenta-abierto, confirmar-cerrar-sesion, solo-lectura, movil-cajon-abierto (solo 360) | Borrador |
-| Explorador de archivos | storage | 005–007 | `mockups/storage/explorador/` | `capturas/storage/explorador/` | default, vacio, cargando, arrastre, error, acciones, descarga-preparando, descarga-fallida, seleccion | Borrador (cuadricula, lista, vacio, cargando, arrastre, error, acciones, descarga-preparando, descarga-fallida) |
-| Resumen de espacio (cuota, consultas, renovación) | storage | 007 | `mockups/storage/resumen-espacio/` | `capturas/storage/resumen-espacio/` | default | Borrador (default) |
+| Layout de la app (navegación, cuota lateral, menú de la cuenta). Web: tarjeta de cuota `SidebarQuota` en `AppLayout.quotaCard` (007 T-10) | shared | 000b, 006, 007 | `mockups/shared/layout/` | `capturas/shared/layout/` | default, menu-cuenta-abierto, confirmar-cerrar-sesion, solo-lectura, movil-cajon-abierto (solo 360); 006 (CA-27, CA-28): fijados-y-recientes, solo-recientes, solo-fijados, con-ver-mas, sin-accesos, tope-de-fijados, fijado-menu-abierto (solo 1440), movil-cajon-con-accesos (solo 360), movil-cajon-fijado-menu-abierto (solo 360); 007: cuota-70, cuota-90 (en web también: «Ver detalle» bajo el 70 %, cargando y error sin barra, sin enlaces en `/espacio`); 007 CA-18/19 (2026-10-03): aviso-arriba-centro (sin tapar el panel de cargas), barra-fija-lista-larga (la región central de la barra se desplaza y la cuota queda al pie) | Borrador (marco de 000b; 007: cuota-70, cuota-90, aviso-arriba-centro, barra-fija-lista-larga); **Aprobado (2026-10-03)**: 006 CA-27 y CA-28 (fijados-y-recientes, solo-recientes, solo-fijados, con-ver-mas, sin-accesos, tope-de-fijados, fijado-menu-abierto, movil-cajon-con-accesos, movil-cajon-fijado-menu-abierto) |
+| Explorador de archivos | storage | 005–007 | `mockups/storage/explorador/` | `capturas/storage/explorador/` | default, vacio, cargando, arrastre, error, acciones, descarga-preparando, descarga-fallida; 006: carpeta, migas, carpeta-vacia, carpeta-cargando, carpeta-error, carpeta-no-encontrada, nueva-carpeta, renombrar, mover, mover-nueva-carpeta, error-nombre, error-mover, eliminado; 007: orden, ordenado, mas-paginas, cargando-mas, cargar-mas-error (sin cuadrícula ni selección múltiple, diferidas) | Borrador (cuadricula, lista, vacio, cargando, arrastre, error, acciones, descarga-preparando, descarga-fallida; 006: raiz-carpetas, carpeta, carpeta-vacia, carpeta-cargando, carpeta-error, carpeta-no-encontrada, carpeta-arrastre, acciones-archivo, acciones-carpeta, nueva-carpeta, nombre-invalido, nombre-repetido-carpeta, limite-niveles, renombrar, renombrar-repetido, mover, mover-carpeta, mover-conflicto, mover-nueva-carpeta, mover-nueva-carpeta-error, eliminado, eliminar-fallido; 007: orden-menu, ordenando, ordenado, mas-paginas, cargando-mas, cargar-mas-error; **006 CA-26 a CA-28, Aprobado (2026-10-03)**: carpeta-desglosada, desglosada-ver-mas, desglosando-cargando, desglosada-vacia, desglosada-error, menu-fila-carpeta, menu-fila-archivo, menu-fila-quitar, tope-de-fijados) |
+| Resumen de espacio (medidor, plan, desglose por tipo y papelera). Web: `/espacio` con datos reales de `GET /storage/summary` vía `useSpace()` (007 T-10) | storage | 007 | `mockups/storage/resumen-espacio/` | `capturas/storage/resumen-espacio/` | default, cargando, error, tramo-70, tramo-90, cuota-llena, con-papelera | Borrador (default, cargando, error, tramo-70, tramo-90, cuota-llena, con-papelera) |
 | Vista general (lienzo con todas las pantallas) | shared | 000b | `mockups/shared/vista-general/` | `capturas/shared/vista-general/` | default | Borrador (referencia) |
 | Carga en progreso | storage | 005 | `mockups/storage/carga/` | `capturas/storage/carga/` | progreso, pausa, sin-conexion, rechazo-tamano, rechazo-cuota, tipo-invalido, nombre-repetido, nombre-repetido-varios, confirmar-cancelar | Borrador (progreso, pausa, sin-conexion, rechazo-tamano, rechazo-cuota, tipo-invalido, nombre-repetido, nombre-repetido-varios, confirmar-cancelar) |
-| Papelera | storage | 006 | `mockups/storage/papelera/` | `capturas/storage/papelera/` | default, vacio | Borrador (default) |
+| Papelera | storage | 006 | `mockups/storage/papelera/` | `capturas/storage/papelera/` | default, vacio, cargando, error, seleccion, restaurar-con-aviso, confirmar-eliminar-definitivo, vaciar | Borrador (default de la propuesta; 006: con-elementos, vacia, cargando, error, seleccion, acciones, restaurado, restaurado-con-avisos, confirmar-eliminar, confirmar-vaciar, vaciando, vaciada) |
 | Ficha de archivo (detalles, versiones, estado de indexación) | storage | 014, 019 | `mockups/storage/ficha-archivo/` | `capturas/storage/ficha-archivo/` | default, no-indexable | Borrador (default, con historial) |
 | Vista previa | storage | 017 | `mockups/storage/vista-previa/` | … | pdf, imagen, no-disponible | Pendiente |
 | Búsqueda | storage | 018 | `mockups/storage/busqueda/` | `capturas/storage/busqueda/` | resultados, sin-resultados | Borrador (resultados) |

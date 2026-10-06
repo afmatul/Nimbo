@@ -32,6 +32,11 @@ export default tseslint.config(
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
+      // Constitución Art. VII (código limpio). `max-params` (≤ 3) queda sin automatizar: hay 84 casos previos
+      // y los constructores de Nest inyectan más de 3 dependencias; lo revisan `reviewer` y `architect`.
+      'max-lines-per-function': ['error', { max: 30, skipBlankLines: true, skipComments: true }],
+      'max-depth': ['error', 4],
+      'no-console': 'error',
       'import-x/no-unresolved': 'off',
       'import-x/order': [
         'error',
@@ -77,6 +82,8 @@ export default tseslint.config(
     files: ['**/*.spec.ts', '**/*.spec.tsx', '**/*.int-spec.ts', '**/*.iso-spec.ts'],
     rules: {
       '@typescript-eslint/no-floating-promises': 'off',
+      // Un `describe` agrupa muchos casos; el límite de longitud aplica al código de producción.
+      'max-lines-per-function': 'off',
       '@typescript-eslint/unbound-method': 'off',
       '@typescript-eslint/no-unsafe-assignment': 'off',
     },

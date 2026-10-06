@@ -69,6 +69,8 @@ export interface UploadClient {
     readonly name: string;
     readonly sizeBytes: number;
     readonly onConflict: OnConflict;
+    /** Carpeta destino; `null` es la raíz (006 CA-6). */
+    readonly folderId: string | null;
   }): Promise<InitUploadResponse>;
   resume(uploadId: string): Promise<ResumeUploadResponse>;
   complete(uploadId: string): Promise<CompleteUploadResponse>;
@@ -86,6 +88,8 @@ export interface UploadManagerOptions {
 interface UploadRecord extends UploadView {
   readonly batch: number;
   readonly source: LocalFile;
+  /** Carpeta abierta al encolar; el nombre repetido se evalúa en ella (006 CA-6). */
+  readonly folderId: string | null;
   readonly uploadId: string | null;
   readonly onConflict: OnConflict;
   /** Todos los bytes ya están en el almacenamiento: reanudar vuelve a `complete`, no a `resume`. */
@@ -99,7 +103,9 @@ interface Flow {
   readonly run: number;
 }
 
-type RecordChange = Partial<Omit<UploadRecord, 'id' | 'batch' | 'source' | 'sizeBytes'>>;
+type RecordChange = Partial<
+  Omit<UploadRecord, 'id' | 'batch' | 'source' | 'folderId' | 'sizeBytes'>
+>;
 
 const HTTP_FORBIDDEN = 403;
 const HTTP_GONE = 410;
@@ -207,10 +213,14 @@ export class UploadManager {
     };
   }
 
-  enqueue(files: readonly LocalFile[]): void {
+  /** Encola `files` en la carpeta `folderId` (`null` es la raíz). */
+  enqueue(files: readonly LocalFile[], folderId: string | null = null): void {
     this.batches += 1;
     const batch = this.batches;
-    this.commit([...this.records, ...files.map((file) => this.createRecord(file, batch))]);
+    this.commit([
+      ...this.records,
+      ...files.map((file) => this.createRecord(file, batch, folderId)),
+    ]);
     this.pump();
   }
 
@@ -308,12 +318,13 @@ export class UploadManager {
     }
   }
 
-  private createRecord(source: LocalFile, batch: number): UploadRecord {
+  private createRecord(source: LocalFile, batch: number, folderId: string | null): UploadRecord {
     this.sequence += 1;
     return {
       id: this.options.createId?.() ?? `upload-${this.sequence}`,
       batch,
       source,
+      folderId,
       name: source.name,
       sizeBytes: source.size,
       phase: 'queued',
@@ -350,6 +361,7 @@ export class UploadManager {
         name: record.name,
         sizeBytes: record.sizeBytes,
         onConflict: record.onConflict,
+        folderId: record.folderId,
       });
       if (!this.adoptSession(flow, response)) return;
       await this.sendInitial(flow, response);

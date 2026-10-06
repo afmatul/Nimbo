@@ -26,6 +26,7 @@ const aSession = (owner: Actor, multipart: MultipartUpload | null = null): Uploa
   UploadSession.start({
     id: randomUUID(),
     ownerId: owner.id,
+    folderId: null,
     fileId: randomUUID(),
     versionId: randomUUID(),
     name: FileName.of('Informe anual.pdf'),
