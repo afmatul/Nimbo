@@ -3,7 +3,6 @@
 import { History, LogOut, ShieldCheck } from 'lucide-react';
 import * as React from 'react';
 
-import { ACTIVITY_LABEL, ACTIVITY_PATH } from '../../features/audit/routes';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +14,7 @@ import {
 import { ConfirmDestructiveDialog } from './confirm-destructive-dialog';
 
 const SECURITY_HREF = '/cuenta/seguridad';
+const ACTIVITY_HREF = '/actividad';
 
 /** Confirmación de cerrar la sesión de este dispositivo (spec 002 §11, CA-14): la misma en Seguridad y en el menú. */
 export const SIGN_OUT_CONFIRMATION = {
@@ -89,9 +89,9 @@ function AccountItems({ triggerId, onSignOut }: AccountItemsProps): React.JSX.El
         </a>
       </DropdownMenuItem>
       <DropdownMenuItem asChild>
-        <a href={ACTIVITY_PATH}>
+        <a href={ACTIVITY_HREF}>
           <History aria-hidden="true" className="h-4 w-4 text-secondary-foreground" />
-          {ACTIVITY_LABEL}
+          Mi actividad
         </a>
       </DropdownMenuItem>
       <DropdownMenuSeparator />
