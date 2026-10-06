@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { completeUploadResponseSchema } from '@nimbo/contracts';
+import { completeUploadResponseSchema, initUploadResponseSchema } from '@nimbo/contracts';
 import type { DataSource } from 'typeorm';
 
 import { AuditAction } from '../../../src/modules/audit';
@@ -11,8 +11,8 @@ import { TypeOrmAuditRepository } from '../../../src/modules/audit/infrastructur
 import type { Actor } from '../../../src/shared';
 import { CorrelationContext, createActor, Role, SystemClock } from '../../../src/shared';
 import { connectAsOwner } from '../../support/database-urls';
-import { createStorageHttpApp, textBytes } from '../storage/storage-http';
-import type { StorageHttpApp } from '../storage/storage-http';
+import { createStorageHttpApp, textBytes, uploadBytes } from '../storage/storage-http';
+import type { InitBody, StorageClient, StorageHttpApp } from '../storage/storage-http';
 import type { AppDatabase } from '../storage/storage-test-db';
 import {
   connectAsAppDatabase,
@@ -212,6 +212,19 @@ describe('eventos de 005 y 006 guardados (CA-2)', () => {
     await storage?.close();
   });
 
+  /** Carga cuyo contenido (texto) no es el que dice su extensión: 005 la rechaza con `tipo_invalido`. */
+  const rejectedUpload = async (client: StorageClient): Promise<string> => {
+    const bytes = textBytes(1024);
+    const started = await client.init({ name: 'factura-ca2.pdf', sizeBytes: bytes.length });
+    const init = initUploadResponseSchema.parse(started.body) as InitBody;
+    await uploadBytes(init, bytes);
+    expect((await client.complete(init.uploadId)).status).toBe(422);
+    return init.uploadId;
+  };
+
+  const newFolderId = async (client: StorageClient, name: string): Promise<string> =>
+    ((await client.createFolder({ name, parentId: null })).body as { id: string }).id;
+
   it('CA-2: carga, URL de descarga, papelera y purga quedan en `evento_auditoria` a nombre del cliente', async () => {
     const client = await storage.newClient();
     const uploaded = await client.upload('informe-ca2.txt', textBytes(1024));
@@ -230,6 +243,29 @@ describe('eventos de 005 y 006 guardados (CA-2)', () => {
       ['file.download_url_issued', 'file', fileId],
       ['node.trashed', 'folder', folder.id],
       ['node.purged', 'folder', folder.id],
+    ]);
+    expect(rows.every((row) => row.actor_id === client.id && row.correlation_id !== null)).toBe(
+      true,
+    );
+  });
+
+  it('CA-2: carga rechazada, restauración y vaciado de la papelera quedan en `evento_auditoria`', async () => {
+    const client = await storage.newClient();
+    const uploadId = await rejectedUpload(client);
+    const folderId = await newFolderId(client, 'Archivo');
+    await client.trashFolder(folderId);
+    await client.restoreFolder(folderId);
+    await client.trashFolder(folderId);
+    await client.emptyTrash();
+
+    const rows = await eventsOf(storage.owner, client.id);
+
+    expect(rows.map((row) => [row.accion, row.tipo_recurso, row.recurso_id])).toEqual([
+      ['file.upload_rejected', 'upload', uploadId],
+      ['node.trashed', 'folder', folderId],
+      ['node.restored', 'folder', folderId],
+      ['node.trashed', 'folder', folderId],
+      ['trash.emptied', null, null],
     ]);
     expect(rows.every((row) => row.actor_id === client.id && row.correlation_id !== null)).toBe(
       true,
