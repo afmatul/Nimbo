@@ -7,7 +7,7 @@
 | Fecha | 2026-10-05 |
 | Rango revisado | PR-A `main..430ebed` (`feat/004-auditoria`) · PR-B `main..c70542b` (`feat/004-auditoria-web`) |
 | CI | Local, todo en verde. PR-A: lint ✅, typecheck ✅, unit ✅ (api 1578, web 1028, contracts 313, config 28), int ✅ (98 suites/939), iso ✅ (17/298). PR-B: `web test` ✅ (140/1099), lint raíz ✅ (`--filter web lint` no existe), `web typecheck` ✅ |
-| Veredicto | ✅ Aprobar (sin bloqueantes; I-1…I-4 antes de cerrar la fase; T-10 humana pendiente) |
+| Veredicto | ✅ Aprobar (sin bloqueantes; I-1…I-4 resueltos en T-FIX-1…4; T-10 humana hecha) |
 
 ## Verificación
 | CA | Prueba | Estado |
@@ -19,7 +19,7 @@
 | CA-6 | `audit-immutability` (UPDATE/DELETE/TRUNCATE `permission denied`) · `migration.int-spec` (RLS forzada, 2 políticas) · ISO-7 | ✅ |
 | CA-7, CA-9…CA-11 | `int/audit/my-events` · `audit-repository` (45 eventos mismo ms) · `audit-cursor.spec` | ✅ |
 | CA-8, CA-12, CA-13, CA-14 | `isolation/audit.iso-spec` ISO-1…ISO-12 · `my-events` «CA-12: sin sesión 401» · `audit-event-response.spec` | ✅ |
-| CA-15 | `activity-view.spec`, `use-activity.spec`, `activity-labels.spec`, `a11y.spec` (axe 360/1440, teclado del menú) | ✅ código · T-10 humana pendiente |
+| CA-15 | `activity-view.spec`, `use-activity.spec`, `activity-labels.spec`, `a11y.spec` (axe 360/1440, teclado del menú) | ✅ código · T-10 humana hecha |
 
 ## Seguridad
 - Datos de cliente: sí. Filtro `usuario_afectado_id = :targetUserId` dentro del SQL (`typeorm-audit.repository.ts:62-74`), RLS de lectura por afectado y de alta a nombre propio; sin filtro posterior: ✅.
@@ -45,7 +45,7 @@
 
 ## DF y pendientes
 - DF-12 → Aceptado; DF-64 nuevo. Falta DF-15 parcial (I-2). · PD-66, PD-67, PD-68 nuevas; **PD-68 debe cerrarse en PR-B**, que ya agrega el enlace.
-- **T-10 (humana)**: recorrido de la demo con PR-A + PR-B, en curso por Adrián.
+- **T-10 (humana)**: hecha. Recorrido de la demo con PR-A + PR-B en la rama integrada `feat/004-auditoria-integrada`, marcada en `tasks.md`.
 
 ## Lo que está bien hecho
 - `record` no puede lanzar (validación fuera del `try`, todo lo demás dentro) y `recordInTransaction` se prueba con rollback real en Postgres en ambos sentidos.
