@@ -3,7 +3,12 @@ import { z } from 'zod';
 import { roleSchema } from '../shared';
 
 import { AUDIT_FIELD_MESSAGES, type AuditFieldIssueReason } from './error-codes';
-import { AUDIT_NOTE_MAX_LENGTH, AUDIT_ORIGINS, type AuditOrigin } from './parameters';
+import {
+  AUDIT_NOTE_MAX_LENGTH,
+  AUDIT_ORIGINS,
+  AUDIT_TRIGGERS,
+  type AuditOrigin,
+} from './parameters';
 
 /** Esquemas de la bitácora de auditoría (spec 004, plan §4). */
 
@@ -43,6 +48,7 @@ const isOrigin = (value: string): value is AuditOrigin =>
 /**
  * Evento visible para su afectado. Lista blanca `strict`: no lleva nombres de archivo ni de carpeta, URLs, ni id,
  * correo o nombre del actor (CA-14). `note` es el motivo de Soporte, ausente si el evento no lo tiene (RN-6).
+ * `trigger` distingue la purga programada de la pedida por el cliente; ausente si el evento no lo tiene (CA-7).
  */
 export const auditEventResponseSchema = z
   .object({
@@ -55,6 +61,7 @@ export const auditEventResponseSchema = z
     itemCount: count.nullable(),
     sizeBytes: count.nullable(),
     note: z.string().max(AUDIT_NOTE_MAX_LENGTH).optional(),
+    trigger: z.enum(AUDIT_TRIGGERS).optional(),
   })
   .strict();
 

@@ -11,7 +11,7 @@
 | Depende de | 003 (`Actor`, roles, RLS). Hacia atrás: 005 y 006 ya llaman a `IAuditLogger` con el adaptador provisional; 004 lo sustituye sin tocarlos |
 | Módulo | T2 `audit` (ADR-0010: sin dependencias salvo `shared`). DF: 03 (aceptado), 12 (se decide aquí), 15 (falta `AuditController`) |
 | Lo consume | 011 (Fátima): acciones internas sobre cuentas ajenas; 012 (compartición) y otras specs |
-| Última actualización | 2026-10-05 |
+| Última actualización | 2026-10-05 (correcciones de la revisión) |
 
 ## 1. Contexto y objetivo
 Hoy `IAuditLogger` solo escribe una línea en el log técnico (005 D-11): nadie puede consultarla. La propuesta promete que
@@ -34,7 +34,7 @@ acciones internas existen (eso es 011): solo las guarda y las muestra, sin nombr
 - **CA-6** (HU-3) Dado un evento guardado, cuando cualquiera (incluido el Administrador) intenta modificarlo o borrarlo por la API, entonces no existe ruta que lo permita; y a nivel de base de datos la aplicación no puede actualizarlo ni borrarlo (D-7).
 
 ### Consulta por el cliente afectado
-- **CA-7** (HU-1, RF-07) Dado un cliente con eventos como afectado, cuando consulta su actividad, entonces recibe solo esos eventos, del más reciente al más antiguo, con fecha, acción en español, origen (rol del actor) y, si aplica, tipo y cantidad del recurso (D-1, D-2, D-3).
+- **CA-7** (HU-1, RF-07) Dado un cliente con eventos como afectado, cuando consulta su actividad, entonces recibe solo esos eventos, del más reciente al más antiguo, con fecha, acción en español, origen (rol del actor), si aplica, tipo y cantidad del recurso y, en la purga, si la pidió el cliente o la hizo la purga programada de la papelera (`trigger`: `manual` · `scheduled`) (D-1, D-2, D-3).
 - **CA-8** (HU-1, RNF-05) — error: Dado un cliente A y eventos del cliente B, cuando A consulta, entonces no ve ninguno de B; pedir el evento de B por su id responde `NOT_FOUND`, igual que si no existiera.
 - **CA-9** (HU-1) Dado más eventos de los que caben en una página, cuando consulta, entonces recibe el tamaño de página fijo y un cursor para la siguiente (20 por página, D-8).
 - **CA-10** (HU-1) Dado el filtro por rango de fechas o por origen («Yo» / «Personal de Nimbo»), cuando consulta, entonces solo recibe los que cumplen (D-8).
@@ -97,3 +97,4 @@ Sin preguntas abiertas. Decisiones de Adrián (2026-10-05):
 | 2026-10-05 | Preguntas Q-1…Q-11 resueltas como D-1…D-11; UI completa en 004 | Respuestas de Adrián | Adrián |
 | 2026-10-05 | Plan aprobado; spec en `Lista`. La escritura síncrona (D-5) se ofrece ya como `IAuditLogger.recordInTransaction`; mockup enlazado | Aprobación del plan | Adrián |
 | 2026-10-05 | CA-2 se cumple en comportamiento: los dos dobles de 005/006 que implementan `IAuditLogger` (`file.service.spec.ts`, `test/support/storage-fakes.ts`) solo agregan `recordInTransaction` para ajustarse al tipo del puerto ampliado; ninguna prueba ni servicio de storage cambia | T-04: la escritura síncrona entra al puerto | Adrián |
+| 2026-10-05 | CA-7: el evento expone `trigger` opcional (`manual` · `scheduled`, los valores que 006 emite en `node.purged`), para que la purga programada de la papelera no se lea como una acción del cliente aunque su actor sea el dueño. Contrato: `auditEventResponseSchema.trigger` y `AUDIT_TRIGGERS`; el mapeador lo copia solo si es válido | Decisión de Adrián del 2026-10-05 en la revisión (I-3) | Adrián |

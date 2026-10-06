@@ -1,7 +1,12 @@
 import { toFieldIssues } from '../validation';
 
 import { AUDIT_ERROR_CODES, AUDIT_FIELD_ISSUE_REASONS } from './error-codes';
-import { AUDIT_NOTE_MAX_LENGTH, AUDIT_ORIGINS, AUDIT_PAGE_SIZE } from './parameters';
+import {
+  AUDIT_NOTE_MAX_LENGTH,
+  AUDIT_ORIGINS,
+  AUDIT_PAGE_SIZE,
+  AUDIT_TRIGGERS,
+} from './parameters';
 import {
   auditEventResponseSchema,
   listAuditEventsQuerySchema,
@@ -50,6 +55,10 @@ describe('parámetros de la bitácora de auditoría', () => {
     expect(AUDIT_ORIGINS).toEqual(['self', 'staff']);
   });
 
+  it('CA-7: la purga la pide el cliente (`manual`) o la hace el ciclo programado (`scheduled`)', () => {
+    expect(AUDIT_TRIGGERS).toEqual(['manual', 'scheduled']);
+  });
+
   it('un único código de error con los motivos de campo del plan §4', () => {
     expect(AUDIT_ERROR_CODES).toEqual({ AUDIT_INVALID_QUERY: 'AUDIT_INVALID_QUERY' });
     expect(AUDIT_FIELD_ISSUE_REASONS).toEqual([
@@ -84,6 +93,18 @@ describe('auditEventResponseSchema', () => {
     const note = 'a'.repeat(AUDIT_NOTE_MAX_LENGTH + 1);
 
     expect(auditEventResponseSchema.safeParse({ ...staffEvent, note }).success).toBe(false);
+  });
+
+  it.each(AUDIT_TRIGGERS)('CA-7: una purga admite `trigger` `%s`', (trigger) => {
+    const purge = { ...selfEvent, action: 'node.purged', trigger };
+
+    expect(auditEventResponseSchema.parse(purge)).toEqual(purge);
+  });
+
+  it('CA-7: rechaza un `trigger` fuera de `manual` y `scheduled`', () => {
+    const purge = { ...selfEvent, action: 'node.purged', trigger: 'system' };
+
+    expect(auditEventResponseSchema.safeParse(purge).success).toBe(false);
   });
 
   it('CA-10: rechaza un origen fuera de `self` y `staff`', () => {
