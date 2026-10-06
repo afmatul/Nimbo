@@ -1,6 +1,6 @@
 'use client';
 
-import { LogOut, ShieldCheck } from 'lucide-react';
+import { History, LogOut, ShieldCheck } from 'lucide-react';
 import * as React from 'react';
 
 import {
@@ -14,6 +14,7 @@ import {
 import { ConfirmDestructiveDialog } from './confirm-destructive-dialog';
 
 const SECURITY_HREF = '/cuenta/seguridad';
+const ACTIVITY_HREF = '/actividad';
 
 /** Confirmación de cerrar la sesión de este dispositivo (spec 002 §11, CA-14): la misma en Seguridad y en el menú. */
 export const SIGN_OUT_CONFIRMATION = {
@@ -87,6 +88,12 @@ function AccountItems({ triggerId, onSignOut }: AccountItemsProps): React.JSX.El
           Seguridad
         </a>
       </DropdownMenuItem>
+      <DropdownMenuItem asChild>
+        <a href={ACTIVITY_HREF}>
+          <History aria-hidden="true" className="h-4 w-4 text-secondary-foreground" />
+          Mi actividad
+        </a>
+      </DropdownMenuItem>
       <DropdownMenuSeparator />
       <DropdownMenuItem onSelect={onSignOut}>
         <LogOut aria-hidden="true" className="h-4 w-4 text-secondary-foreground" />
@@ -122,8 +129,9 @@ function useSignOutConfirmation(
 
 /**
  * Menú de la cuenta en la cabecera del `AppLayout` (spec 002, CA-14, CA-27; mockup `shared/layout`): patrón *menu
- * button* de WAI-ARIA sobre el `DropdownMenu` de Radix, con el nombre y el correo arriba, «Seguridad» y «Cerrar sesión»,
- * que pide confirmación (Q-3). «Plan y facturación» se agrega cuando exista su ruta (006a/010).
+ * button* de WAI-ARIA sobre el `DropdownMenu` de Radix, con el nombre y el correo arriba, «Seguridad», «Mi actividad»
+ * (004) y «Cerrar sesión», que pide confirmación (Q-3). «Plan y facturación» se agrega tras «Mi actividad» cuando exista
+ * su ruta (006a/010).
  */
 export function AccountMenu({ fullName, email, onSignOut }: AccountMenuProps): React.JSX.Element {
   const triggerId = React.useId();
