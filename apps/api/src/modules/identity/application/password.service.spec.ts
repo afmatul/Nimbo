@@ -31,7 +31,12 @@ import { Session } from '../domain/session.entity';
 import type { User } from '../domain/user.entity';
 
 import { PasswordService } from './password.service';
-import type { IAttemptLockout, LockoutPolicy, LockState } from './ports/i-attempt-lockout.port';
+import type {
+  AttemptReservation,
+  IAttemptLockout,
+  LockoutPolicy,
+  LockState,
+} from './ports/i-attempt-lockout.port';
 import type { IPasswordHasher } from './ports/i-password-hasher.port';
 import { aClientUser } from './testing/client-user.builder';
 import { InMemorySessionRepository } from './testing/in-memory-session.repository';
@@ -47,6 +52,7 @@ const SECONDS_PER_HOUR = 3600;
 const NEW_PASSWORD = 'Otra-Clave-Segura-2026';
 const ALLOWED: RateLimitDecision = { allowed: true };
 const UNLOCKED: LockState = { locked: false };
+const RESERVED: AttemptReservation = { allowed: true, engagedLock: false };
 const RESET_TAG = 'identity.password-reset';
 const CHANGED_TAG = 'identity.password-changed';
 const VERIFICATION_TAG = 'identity.verification';
@@ -94,6 +100,7 @@ const setup = () => {
   const lockout: jest.Mocked<IAttemptLockout> = {
     check: jest.fn((_key: string) => Promise.resolve(UNLOCKED)),
     recordFailure: jest.fn((_key: string, _policy: LockoutPolicy) => Promise.resolve(UNLOCKED)),
+    reserveAttempt: jest.fn((_key: string, _policy: LockoutPolicy) => Promise.resolve(RESERVED)),
     clear: jest.fn((key: string) => {
       timeline.push(`clear:${key}`);
       return Promise.resolve();
@@ -565,32 +572,32 @@ describe('PasswordService.changePassword (plan 002 §6.3, CA-22, CA-23)', () => 
 
   type SignedIn = Awaited<ReturnType<typeof signedIn>>;
 
-  /** Nada cambió: mismo hash, ninguna sesión revocada, ningún bloqueo quitado ni correo. */
+  /** Nada cambió: mismo hash, ninguna sesión revocada ni correo. */
   const expectNothingChanged = async (ctx: SignedIn): Promise<void> => {
     expect(ctx.hasher.hash).not.toHaveBeenCalled();
     expect((await ctx.users.findById(ctx.user.id))?.passwordHash).toBe(ctx.user.passwordHash);
     expect(ctx.sessions.all().map((session) => session.revocadaEn)).toEqual([null, null, null]);
-    expect(ctx.lockout.clear).not.toHaveBeenCalled();
     expect(ctx.sent).toEqual([]);
   };
 
   it('CA-23: bloqueado → `PasswordChangeLockedError` con los segundos que faltan aunque la actual sea correcta', async () => {
     const ctx = await signedIn();
-    ctx.lockout.check.mockResolvedValueOnce({ locked: true, retryAfterSeconds: 600 });
+    ctx.lockout.reserveAttempt.mockResolvedValueOnce({ allowed: false, retryAfterSeconds: 600 });
 
     const attempt = ctx.service.changePassword(ctx.actor, ctx.current.id, command);
 
     await expect(attempt).rejects.toBeInstanceOf(PasswordChangeLockedError);
     await expect(attempt).rejects.toMatchObject({ retryAfterSeconds: 600 });
-    expect(ctx.lockout.check).toHaveBeenCalledWith(changeKey(ctx.user.id));
+    expect(ctx.lockout.reserveAttempt).toHaveBeenCalledWith(changeKey(ctx.user.id), CHANGE_POLICY);
     expect(ctx.hasher.verify).not.toHaveBeenCalled();
+    expect(ctx.lockout.clear).not.toHaveBeenCalled();
     await expectNothingChanged(ctx);
     expect(loggedEvents(ctx.logger)).toEqual([
       { event: 'identity.password_change.rejected', reason: 'locked', userId: ctx.user.id },
     ]);
   });
 
-  it('CA-23: actual incorrecta → anota el fallo con la política del cambio y `WrongPasswordError`; nada cambia', async () => {
+  it('CA-23, I-1: actual incorrecta → el intento se reservó como fallo antes de verificar, no se libera y `WrongPasswordError`; nada cambia', async () => {
     const ctx = await signedIn();
     ctx.hasher.verify.mockResolvedValue(false);
 
@@ -598,8 +605,13 @@ describe('PasswordService.changePassword (plan 002 §6.3, CA-22, CA-23)', () => 
       ctx.service.changePassword(ctx.actor, ctx.current.id, command),
     ).rejects.toBeInstanceOf(WrongPasswordError);
 
+    expect(ctx.lockout.reserveAttempt).toHaveBeenCalledWith(changeKey(ctx.user.id), CHANGE_POLICY);
+    expect(ctx.lockout.reserveAttempt.mock.invocationCallOrder[0]).toBeLessThan(
+      ctx.hasher.verify.mock.invocationCallOrder[0] ?? 0,
+    );
     expect(ctx.hasher.verify).toHaveBeenCalledWith(ctx.user.passwordHash, CURRENT_PASSWORD);
-    expect(ctx.lockout.recordFailure).toHaveBeenCalledWith(changeKey(ctx.user.id), CHANGE_POLICY);
+    expect(ctx.lockout.recordFailure).not.toHaveBeenCalled();
+    expect(ctx.lockout.clear).not.toHaveBeenCalled();
     await expectNothingChanged(ctx);
     expect(loggedEvents(ctx.logger)).toEqual([
       { event: 'identity.password_change.rejected', reason: 'wrong_password', userId: ctx.user.id },
@@ -609,7 +621,7 @@ describe('PasswordService.changePassword (plan 002 §6.3, CA-22, CA-23)', () => 
   it('CA-23: el fallo que activa el bloqueo todavía responde `WrongPasswordError` y registra `lockout.engaged`', async () => {
     const ctx = await signedIn();
     ctx.hasher.verify.mockResolvedValue(false);
-    ctx.lockout.recordFailure.mockResolvedValueOnce({ locked: true, retryAfterSeconds: 900 });
+    ctx.lockout.reserveAttempt.mockResolvedValueOnce({ allowed: true, engagedLock: true });
 
     await expect(
       ctx.service.changePassword(ctx.actor, ctx.current.id, command),
@@ -627,7 +639,7 @@ describe('PasswordService.changePassword (plan 002 §6.3, CA-22, CA-23)', () => 
     ['débil', 'corta', 'PASSWORD_MISSING_UPPERCASE'],
     ['igual a la parte local del correo', 'ANA', 'PASSWORD_EQUALS_EMAIL'],
   ])(
-    'CA-22: nueva %s → `IdentityWeakPasswordError` sobre `newPassword`, sin hash y nada cambia',
+    'CA-22: nueva %s → `IdentityWeakPasswordError` sobre `newPassword`, libera la reserva, sin hash y nada cambia',
     async (_case, newPassword, reason) => {
       const ctx = await signedIn();
 
@@ -640,7 +652,7 @@ describe('PasswordService.changePassword (plan 002 §6.3, CA-22, CA-23)', () => 
       const error = (await attempt.catch((caught: unknown) => caught)) as IdentityWeakPasswordError;
       expect(error.fields?.every((issue) => issue.field === 'newPassword')).toBe(true);
       expect(error.fields?.map((issue) => issue.reason)).toContain(reason);
-      expect(ctx.lockout.recordFailure).not.toHaveBeenCalled();
+      expect(ctx.lockout.clear).toHaveBeenCalledWith(changeKey(ctx.user.id));
       await expectNothingChanged(ctx);
       expect(loggedEvents(ctx.logger)).toEqual([
         { event: 'identity.password_change.rejected', reason: 'weak', userId: ctx.user.id },
@@ -665,15 +677,15 @@ describe('PasswordService.changePassword (plan 002 §6.3, CA-22, CA-23)', () => 
     expect(ctx.timeline.indexOf('hash')).toBeLessThan(ctx.timeline.indexOf('commit'));
   });
 
-  it('CA-22: después del commit quita el bloqueo del cambio, registra y avisa «Tu contraseña cambió»', async () => {
+  it('CA-22, I-1: la actual correcta libera la reserva antes del hash; después del commit registra y avisa «Tu contraseña cambió»', async () => {
     const ctx = await signedIn();
 
     await ctx.service.changePassword(ctx.actor, ctx.current.id, command);
 
     expect(ctx.timeline).toEqual([
+      `clear:${changeKey(ctx.user.id)}`,
       'hash',
       'commit',
-      `clear:${changeKey(ctx.user.id)}`,
       `mail:${CHANGED_TAG}`,
     ]);
     expect(ctx.sent).toHaveLength(1);

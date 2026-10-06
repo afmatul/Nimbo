@@ -169,14 +169,14 @@ export class PasswordService {
 
   /**
    * CA-22, CA-23: cambia la contraseña de la propia cuenta (cualquier rol) y revoca las **demás** sesiones; la actual
-   * sigue abierta. El bloqueo se consulta antes de comprobar la contraseña actual y nunca cierra la sesión (D-7).
+   * sigue abierta. El intento se reserva en el bloqueo antes de comprobar la contraseña actual y nunca cierra la
+   * sesión (D-7).
    */
   async changePassword(
     actor: Actor,
     currentSessionId: string,
     command: ChangePasswordCommand,
   ): Promise<void> {
-    await this.enforceChangeNotLocked(actor.id);
     const user = await this.verifyCurrentPassword(actor.id, command.currentPassword);
     this.enforceStrongPassword(command.newPassword, user, CHANGE_TARGET);
     // Fuera de la transacción, como al restablecer.
@@ -281,28 +281,33 @@ export class PasswordService {
     }
   }
 
-  /** CA-23: bloqueado → rechazo aunque la contraseña actual sea correcta. */
-  private async enforceChangeNotLocked(userId: string): Promise<void> {
-    const state = await this.lockout.check(passwordChangeLockoutKey(userId));
-    if (!state.locked) {
-      return;
-    }
-    this.logRejection(CHANGE_REJECTED, 'locked', userId);
-    throw new PasswordChangeLockedError(state.retryAfterSeconds);
-  }
-
-  /** CA-23: una contraseña actual incorrecta cuenta como fallo; el quinto todavía responde `WrongPasswordError`. */
-  private async verifyCurrentPassword(userId: string, currentPassword: string): Promise<User> {
-    const user = await this.users.findById(userId);
-    if (user !== null && (await this.hasher.verify(user.passwordHash, currentPassword))) {
-      return user;
-    }
-    const state = await this.lockout.recordFailure(
+  /**
+   * CA-23, I-1: el intento cuenta como fallo **antes** de verificar, en un paso atómico, así una ráfaga concurrente no
+   * prueba más de 5 contraseñas. Bloqueado → rechazo aunque la actual sea correcta. Devuelve si este intento, el
+   * quinto, activó el bloqueo.
+   */
+  private async reserveChangeAttempt(userId: string): Promise<boolean> {
+    const reservation = await this.lockout.reserveAttempt(
       passwordChangeLockoutKey(userId),
       PASSWORD_CHANGE_LOCKOUT_POLICY,
     );
+    if (reservation.allowed) {
+      return reservation.engagedLock;
+    }
+    this.logRejection(CHANGE_REJECTED, 'locked', userId);
+    throw new PasswordChangeLockedError(reservation.retryAfterSeconds);
+  }
+
+  /** CA-23: el quinto fallo todavía responde `WrongPasswordError`; un acierto libera la reserva y los fallos previos. */
+  private async verifyCurrentPassword(userId: string, currentPassword: string): Promise<User> {
+    const engagedLock = await this.reserveChangeAttempt(userId);
+    const user = await this.users.findById(userId);
+    if (user !== null && (await this.hasher.verify(user.passwordHash, currentPassword))) {
+      await this.lockout.clear(passwordChangeLockoutKey(userId));
+      return user;
+    }
     this.logRejection(CHANGE_REJECTED, 'wrong_password', userId);
-    if (state.locked) {
+    if (engagedLock) {
       this.logger.warn({ event: 'identity.lockout.engaged', scope: 'password_change', userId });
     }
     throw new WrongPasswordError();
@@ -331,9 +336,8 @@ export class PasswordService {
     await this.sendPasswordChangedMail(user, changedAt);
   }
 
-  /** CA-22, después del commit: quita el bloqueo del cambio, registra y avisa «Tu contraseña cambió». */
+  /** CA-22, después del commit: registra y avisa «Tu contraseña cambió» (el bloqueo ya se quitó al verificar). */
   private async completeChange(user: User, revokedCount: number, changedAt: Date): Promise<void> {
-    await this.lockout.clear(passwordChangeLockoutKey(user.id));
     this.logSessionsRevoked(user.id, 'password_change', revokedCount);
     this.logger.info({ event: 'identity.password.changed', userId: user.id, revokedCount });
     await this.sendPasswordChangedMail(user, changedAt);

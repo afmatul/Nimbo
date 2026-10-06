@@ -29,6 +29,8 @@ const PASSWORD_CHANGED_SUBJECT = 'Tu contraseña de Nimbo cambió';
 const SECONDS_PER_MINUTE = 60;
 const MS_PER_SECOND = 1000;
 const LOCK_SECONDS = PASSWORD_CHANGE_LOCK_MINUTES * SECONDS_PER_MINUTE;
+/** Ráfaga con un token robado (I-1): el doble del máximo de fallos. */
+const PARALLEL_ATTEMPTS = PASSWORD_CHANGE_MAX_FAILURES * 2;
 
 /** Lo que un navegador guarda de su sesión: el token de acceso en memoria y `nimbo_rt` en la cookie. */
 interface Browser {
@@ -267,6 +269,26 @@ describe('POST /auth/change-password (CA-22, CA-23)', () => {
         newPassword: NEW_PASSWORD,
       }).expect(204);
       await refreshed(later);
+    });
+
+    it('CA-23, I-1: 10 cambios en paralelo con la actual incorrecta → como máximo 5 `422 WRONG_PASSWORD`, el resto `429 PASSWORD_CHANGE_LOCKED`; la contraseña no cambia', async () => {
+      const { account, browser } = await accountSignedIn();
+      const hashBefore = await passwordHashOf(account.id);
+
+      const responses = await Promise.all(
+        Array.from({ length: PARALLEL_ATTEMPTS }, () => wrongAttempt(browser)),
+      );
+
+      const codes = responses.map((response) => errorResponseSchema.parse(response.body).code);
+      const wrong = responses.filter((response) => response.status === 422);
+      const locked = responses.filter((response) => response.status === 429);
+      expect(wrong.length).toBeLessThanOrEqual(PASSWORD_CHANGE_MAX_FAILURES);
+      expect(wrong.length + locked.length).toBe(PARALLEL_ATTEMPTS);
+      expect(codes.filter((code) => code === 'IDENTITY_WRONG_PASSWORD')).toHaveLength(wrong.length);
+      expect(codes.filter((code) => code === 'IDENTITY_PASSWORD_CHANGE_LOCKED')).toHaveLength(
+        locked.length,
+      );
+      expect(await passwordHashOf(account.id)).toBe(hashBefore);
     });
   });
 });

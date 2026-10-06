@@ -159,12 +159,15 @@ SessionResponse`, rota `nimbo_rt`) y `POST /auth/session/logout` (`204`). `verif
     (`revokeIfActive`), no se filtra después. El token de acceso de la sesión cerrada sigue valiendo hasta sus 15 min.
   - `POST /sessions/revoke-others` → `200 { revokedCount }`; la actual sigue abierta (CA-13).
   - `POST /auth/change-password` → `204` (CA-22, CA-23).
-- **Cambio de contraseña**: primero el bloqueo `passwordChangeLockoutKey(userId)` (5 fallos en 15 min → 15 min;
-  bloqueado → `429 IDENTITY_PASSWORD_CHANGE_LOCKED` aunque la actual sea correcta). Actual incorrecta → cuenta el
-  fallo y `422 IDENTITY_WRONG_PASSWORD` con `fields: currentPassword`; la sesión nunca se cierra. Nueva débil (política
-  D-6 con el correo; también vacía) → `422 IDENTITY_WEAK_PASSWORD` sobre `newPassword`. Éxito: hash fuera de la
-  transacción; en ella, `updatePasswordHash` + `revokeAllExcept(userId, sesiónActual)`; después del commit se quita
-  el bloqueo y se envía «Tu contraseña cambió». Las políticas de bloqueo viven en `identity-limit-keys.ts`
+- **Cambio de contraseña**: primero se reserva el intento en `passwordChangeLockoutKey(userId)` con
+  `reserveAttempt` (5 fallos en 15 min → 15 min): cuenta como fallo **antes** de verificar, en el mismo script atómico
+  que `recordFailure`, así una ráfaga concurrente con un token robado no prueba más de 5 contraseñas (review I-1).
+  Bloqueado → `429 IDENTITY_PASSWORD_CHANGE_LOCKED` aunque la actual sea correcta. Actual incorrecta → la reserva queda
+  como fallo y `422 IDENTITY_WRONG_PASSWORD` con `fields: currentPassword` (también el quinto, que activa el bloqueo);
+  la sesión nunca se cierra. Actual correcta → `clear` libera la reserva y los fallos previos, como el inicio de
+  sesión. Nueva débil (política D-6 con el correo; también vacía) → `422 IDENTITY_WEAK_PASSWORD` sobre `newPassword`.
+  Éxito: hash fuera de la transacción; en ella, `updatePasswordHash` + `revokeAllExcept(userId, sesiónActual)`;
+  después del commit se envía «Tu contraseña cambió». Las políticas de bloqueo viven en `identity-limit-keys.ts`
   (`LOGIN_LOCKOUT_POLICY`, `PASSWORD_CHANGE_LOCKOUT_POLICY`).
 - **Bitácoras**: `identity.session.revoked` (`reason`: `user`, `others` o `password_change`, con `count`),
   `identity.password.changed` (`revokedCount`), `identity.password_change.rejected` (`reason`: `wrong_password`,
