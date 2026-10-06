@@ -76,6 +76,13 @@ describe('ActivityView («Mi actividad»)', () => {
     expect(screen.getByRole('group', { name: 'Origen' })).toBeTruthy();
   });
 
+  it('CA-15: como Seguridad, sin migas ni un «Cerrar sesión» propio: la sesión se cierra en el menú de la cuenta', async () => {
+    await renderView(loadOf(activityPage([auditEvent()])));
+
+    expect(screen.queryByRole('button', { name: 'Cerrar sesión' })).toBeNull();
+    expect(screen.queryByRole('navigation', { name: /migas/i })).toBeNull();
+  });
+
   it('CA-7, CA-13: lista del más reciente al más antiguo, con la acción interna visible', async () => {
     await renderView(loadOf(activityPage([SUPPORT_RESTORE, auditEvent(), OLDER])));
 

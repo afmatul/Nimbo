@@ -5,7 +5,6 @@ import * as React from 'react';
 
 import { AppLayout, DEFAULT_NAV_ITEMS } from '../../../components/nimbo/app-layout';
 import { StateView } from '../../../components/nimbo/state-view';
-import { SignOutButton } from '../../identity/components/sign-out-button';
 import { createAuthFetch } from '../../identity/session/auth-fetch';
 import { useSession } from '../../identity/session/session-provider';
 import { SidebarQuota } from '../../storage/components/sidebar-quota';
@@ -194,7 +193,8 @@ function ActivityContent({ activity }: { readonly activity: Activity }): React.J
 
 /**
  * «Mi actividad» (spec 004 D-4, mockup `audit/mi-actividad`): lo que se hizo en la cuenta, por el cliente y por el
- * personal de Nimbo, con filtros, «Cargar más» y sus estados (CA-7, CA-9 a CA-11, CA-13, CA-15). Sin migas.
+ * personal de Nimbo, con filtros, «Cargar más» y sus estados (CA-7, CA-9 a CA-11, CA-13, CA-15). Sin migas y con el
+ * encabezado de Seguridad; la sesión se cierra en el menú de la cuenta, que enlaza esta página.
  */
 export function ActivityView({ load }: { readonly load: LoadActivity }): React.JSX.Element {
   const activity = useActivity(load);
@@ -202,12 +202,9 @@ export function ActivityView({ load }: { readonly load: LoadActivity }): React.J
   return (
     <AppLayout navItems={ACTIVITY_NAV_ITEMS} quotaCard={<SidebarQuota state={space.state} />}>
       <div className="mx-auto w-full max-w-4xl space-y-4">
-        <div className="flex justify-end">
-          <SignOutButton />
-        </div>
-        <header>
-          <h1 className="text-xl font-semibold tracking-tight text-foreground">Mi actividad</h1>
-          <p className="mt-1 text-sm text-secondary-foreground">
+        <header className="space-y-1">
+          <h1 className="text-2xl font-semibold text-foreground">Mi actividad</h1>
+          <p className="text-sm text-secondary-foreground">
             Lo que se hizo en tu cuenta, por ti y por el personal de Nimbo. Solo ves el tipo y la
             cantidad de elementos, nunca sus nombres, y nadie puede modificar ni borrar este
             registro.
