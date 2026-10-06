@@ -5,8 +5,7 @@ import * as React from 'react';
 
 import { AppLayout, DEFAULT_NAV_ITEMS } from '../../../components/nimbo/app-layout';
 import { StateView } from '../../../components/nimbo/state-view';
-import { createAuthFetch } from '../../identity/session/auth-fetch';
-import { useSession } from '../../identity/session/session-provider';
+import { useAuthFetch } from '../../identity/session/use-auth-fetch';
 import { SidebarQuota } from '../../storage/components/sidebar-quota';
 import { useSpace } from '../../storage/components/space-provider';
 import { createAuditApi } from '../audit-api';
@@ -216,31 +215,13 @@ export function ActivityView({ load }: { readonly load: LoadActivity }): React.J
   );
 }
 
-/** `GET /audit/my-events` con el token de la sesión, leído en cada petición: renovarlo no vuelve a pedir la lista. */
-interface TokenHolder {
-  readonly get: () => string | null;
-  readonly set: (token: string | null) => void;
-}
-
-/** Último token de acceso, leído al hacer cada petición (mismo patrón que `SessionUploadsProvider` de `storage`). */
-function createTokenHolder(initial: string | null): TokenHolder {
-  let current = initial;
-  return {
-    get: () => current,
-    set: (token) => {
-      current = token;
-    },
-  };
-}
-
+/** `GET /audit/my-events` con `useAuthFetch` (002): su identidad no cambia al renovar el token, así no repite la carga. */
 function useSessionAuditLoad(apiPublicUrl: string): LoadActivity {
-  const { accessToken, renew } = useSession();
-  const [token] = React.useState(() => createTokenHolder(accessToken));
-  React.useEffect(() => token.set(accessToken), [token, accessToken]);
-  return React.useMemo(() => {
-    const api = createAuditApi(apiPublicUrl, createAuthFetch({ getAccessToken: token.get, renew }));
-    return (query) => api.listMyEvents(query);
-  }, [apiPublicUrl, token, renew]);
+  const authFetch = useAuthFetch();
+  return React.useMemo(
+    () => createAuditApi(apiPublicUrl, authFetch).listMyEvents,
+    [apiPublicUrl, authFetch],
+  );
 }
 
 /** La vista conectada a la API con la sesión en memoria (002). */
