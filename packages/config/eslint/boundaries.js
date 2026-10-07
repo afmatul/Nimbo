@@ -1,23 +1,31 @@
-// Fronteras entre módulos de `apps/api` (ADR-0010, Art. VIII) con el alcance de PD-47 (spec 005). PD-24 sigue
-// abierto: completa este archivo con el resto de los módulos, `import-x/no-cycle` y sus fixtures.
+// Fronteras entre módulos de `apps/api` (ADR-0010, Art. VIII, CA-5): el grafo completo de `architecture.md` §3
+// (PD-24, PD-38, PD-47). Los ciclos los detecta `cycles.js` (CA-7).
 //
 // Cada regla mira el texto del import: un módulo se nombra por su carpeta (`../../identity`,
 // `../../../../modules/identity`), y entrar por dentro de otro (`../../access/infrastructure/…`) es error aunque la
 // arista esté permitida: solo se importa desde su `index.ts` (Art. VIII.3).
-const MODULES = [
-  'identity',
-  'storage',
-  'access',
-  'sharing',
-  'billing',
-  'editing',
-  'intelligence',
-  'optimizer',
-  'backoffice',
-  'audit',
-  'realtime',
-  'notifications',
-];
+
+/** `architecture.md` §3: cada módulo y los módulos cuya fachada puede importar. Cambiarlo exige ADR. */
+const ALLOWED = {
+  audit: [],
+  realtime: [],
+  // Transversales: solo `notifications → realtime` (regla 5).
+  notifications: ['realtime'],
+  identity: ['notifications', 'audit'],
+  // `storage` solo para implementar `IPlanLimitsProvider` (DF-51); `identity` solo por contratos de eventos (ADR-0019).
+  billing: ['notifications', 'audit', 'storage', 'identity'],
+  // `access` lee tablas de `storage` y `sharing` por SQL, sin importarlos (regla 3).
+  access: [],
+  // Sin `billing` (DF-51, opción A) ni `identity` (DF-59).
+  storage: ['access', 'audit', 'realtime'],
+  sharing: ['access', 'storage', 'audit'],
+  editing: ['storage', 'access', 'billing', 'realtime', 'audit'],
+  intelligence: ['storage', 'access', 'billing', 'realtime'],
+  optimizer: ['storage', 'access'],
+  backoffice: ['audit', 'identity', 'billing', 'storage'],
+};
+
+const MODULES = Object.keys(ALLOWED);
 
 const alternatives = (names) => names.join('|');
 
@@ -66,27 +74,7 @@ const onlyImports = (from, allowed) => ({
 });
 
 export default [
-  // `storage` → shared, access, audit, realtime. Sin `billing` (DF-51, opción A) ni `identity` (DF-59).
-  onlyImports('storage', ['access', 'audit', 'realtime']),
-  onlyImports('access', []),
-  onlyImports('audit', []),
-  // `billing` → `storage` solo por la fachada (implementa `IPlanLimitsProvider`). El resto de sus aristas, PD-24.
-  {
-    files: moduleFiles('billing'),
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              regex: deepImport(['storage']),
-              message: '`billing` importa `storage` solo desde `storage/index.ts` (DF-51).',
-            },
-          ],
-        },
-      ],
-    },
-  },
+  ...Object.entries(ALLOWED).map(([from, allowed]) => onlyImports(from, allowed)),
   // Composición del worker: de `storage` solo `StorageWorkerModule`, y solo desde `storage/index.ts` (plan 005 §3b).
   {
     files: ['apps/api/src/worker.module.ts', 'apps/api/src/worker.main.ts', 'apps/worker/**/*.ts'],
