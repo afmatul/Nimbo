@@ -269,7 +269,7 @@
 
 ## Bloque 3 — Compuerta de ADR/DF (plan §9a; humana, bloquea el **merge** del PR-3, no su apertura) — se mueve con el PR-3 (desde el 30/09)
 
-- [ ] **T-27** **(humana)** Reunión del equipo: aceptar ADR y DF — CA: CA-5, CA-6, CA-7 (lista de módulos del lint) — Depende: — — ~1 h de reunión
+- [x] **T-27** **(humana)** Reunión del equipo: aceptar ADR y DF — CA: CA-5, CA-6, CA-7 (lista de módulos del lint) — Depende: — — ~1 h de reunión
   `architect` redacta `docs/adr/0010-separacion-de-modulos.md` con `/adr` antes de la reunión. El equipo (los cuatro)
   pasa a `Aceptado` ADR-0001, 0002, 0008, 0009, 0010 y 0015 en `docs/adr/README.md` y en cada ADR, y marca
   `Aceptado` DF-02, DF-03, DF-30, DF-34, DF-06, DF-23, DF-24 en `docs/sdd/design-findings.md`. Si la lista de módulos
@@ -279,7 +279,7 @@
 
 ## Bloque 4 — PR-3 «CI»: lint de fronteras, seis jobs, gitleaks, protección de `main` (plan §9b paso 4) — **desde el 30/09/2026** (`workflow.md` §7.2)
 
-- [ ] **T-28** Lint de fronteras entre módulos y capas (fixtures primero) — CA: CA-5, CA-6 — Depende: T-05, T-27 (para el merge) — ~4 h
+- [x] **T-28** Lint de fronteras entre módulos y capas (fixtures primero) — CA: CA-5, CA-6 — Depende: T-05, T-27 (para el merge) — ~4 h
   Escribir primero `packages/config/eslint/boundaries.spec.ts` (ejecuta `ESLint.lintFiles` sobre
   `packages/config/eslint/__fixtures__/`, afirma `ruleId` y mensaje) con fixtures `cross-module-internal.ts`
   (falla: «`sharing` solo puede importar de `storage` desde `modules/storage/index.ts`»), `cross-module-index.ts`
@@ -290,7 +290,7 @@
   `eslint/nest.js` para `apps/api/src/**` **y** `apps/worker/src/**`.
   Archivos: `packages/config/eslint/boundaries.js`, `packages/config/eslint/nest.js`, `packages/config/eslint/boundaries.spec.ts`, `packages/config/eslint/__fixtures__/**`, `packages/config/package.json`, `packages/config/jest.config.cjs`.
 
-- [ ] **T-29** Ciclos, worker y mockups en el lint — CA: CA-7, CA-8, CA-5 (worker) — Depende: T-28 — ~2 h
+- [x] **T-29** Ciclos, worker y mockups en el lint — CA: CA-7, CA-8, CA-5 (worker) — Depende: T-28 — ~2 h
   Fixtures primero: `cycle-a/index.ts` ↔ `cycle-b/index.ts` (mensaje con los módulos implicados),
   `worker-imports-internal.ts` (simula `apps/worker/src` importando `@nimbo/api/modules/storage/infrastructure/persistence/archivo.orm-entity`),
   `web-imports-mockup.tsx` (mensaje «Los mockups son solo referencia»). Luego `import-x/no-cycle` (`maxDepth: 6`)
@@ -298,22 +298,21 @@
   `eslint/next.js`.
   Archivos: `packages/config/eslint/nest.js`, `packages/config/eslint/next.js`, `packages/config/eslint/__fixtures__/**`, `packages/config/eslint/boundaries.spec.ts`.
 
-- [ ] **T-30** [P] Regla `typeorm-columns.js` (DF-06/23/24) — CA: n/a (plan §3, spec §13) — Depende: T-27 — ~1 h
+- [x] **T-30** [P] Regla `typeorm-columns.js` (DF-06/23/24) — CA: n/a (plan §3, spec §13) — Depende: T-27 — ~1 h
   Fixture primero `typeorm-int-bytes.ts` (`@Column({ type: 'int' }) sizeBytes` → falla) y `typeorm-numeric-cents.ts`
   (`type: 'numeric'` en `amountCents` → falla). Luego `packages/config/eslint/typeorm-columns.js`
   (`no-restricted-syntax` con selectores) incluido en `eslint/nest.js`.
   Archivos: `packages/config/eslint/typeorm-columns.js`, `packages/config/eslint/nest.js`, `packages/config/eslint/__fixtures__/**`, `packages/config/eslint/boundaries.spec.ts`.
 
-- [ ] **T-31** `.github/workflows/ci.yml` con los seis jobs — CA: CA-24, CA-9, CA-11, CA-2 (config check), CA-19, CA-27 (paso gitleaks) — Depende: T-28, T-29, T-23, T-24 — ~4 h
+- [ ] **T-31** `.github/workflows/ci.yml` con cuatro jobs — CA: CA-24, CA-9, CA-11, CA-12, CA-2 (config check), CA-19, CA-27 (paso gitleaks) — Depende: T-28, T-29, T-23, T-24 — ~4 h
   Jobs con nombres exactos `lint` (checkout `fetch-depth: 0` → `gitleaks/gitleaks-action@v2` → `pnpm lint` →
   `pnpm env:check` → `docker compose config --services` sin perfil no contiene `onlyoffice` y con `--profile
-  onlyoffice` sí), `typecheck`, `unit` (`pnpm test -- --coverage`, artefacto), `int` (`pnpm test:int`, Testcontainers),
-  `isolation` (`pnpm test:isolation`), `migrations` (`services.postgres: pgvector/pgvector:pg17`;
-  `migration:run` → `psql` afirma `pg_extension` y `count(*) FROM migracion = 1` → `migration:revert` → afirma
-  ausencia y 0 → `migration:run` → afirma). `concurrency` con `cancel-in-progress: true` por rama, `timeout-minutes: 15`,
-  caché pnpm, `on: pull_request` y `push: main` **únicamente** (sin `push` de ramas: cuota de 3 000 min/mes de GitHub Pro,
-  spec §12). Medir duración total (< 15 min) y registrar en `verification.md`.
-  Archivos: `.github/workflows/ci.yml`, `.github/pull_request_template.md`.
+  onlyoffice` sí), `typecheck`, `unit` (`pnpm test`) e `integration` (plan §6.6: migraciones de ida y vuelta con
+  `scripts/ci/migrations-roundtrip.sh` sobre el Postgres de `compose.yml`, `pnpm test:int` y `pnpm test:isolation`,
+  cada uno en su paso). `concurrency` con `cancel-in-progress: true` por rama, `timeout-minutes: 15` (30 en
+  `integration`), caché pnpm, `on: pull_request` y `push: main` **únicamente** (sin `push` de ramas: cuota de 3 000
+  min/mes de GitHub Pro, spec §12). Medir duración total (< 30 min) y registrar en `verification.md`.
+  Archivos: `.github/workflows/ci.yml`, `scripts/ci/migrations-roundtrip.sh`, `.github/pull_request_template.md`.
 
 - [ ] **T-32** **(humana)** gitleaks sobre el historial completo y `security.md` — CA: CA-27 — Depende: T-31 — ~1 h
   Ejecutar `gitleaks detect --source . --log-opts=--all` en local al activar el CI (el repositorio es privado, D-2);
@@ -322,8 +321,8 @@
   Archivos: `specs/000-fundaciones/security.md`.
 
 - [ ] **T-33** **(humana)** Protección de `main` en GitHub — CA: CA-26, CA-24 — Depende: T-31 — ~1 h
-  Dos rulesets sobre `main`: (1) PR obligatorio, status checks requeridos `lint`, `typecheck`, `unit`, `int`,
-  `isolation`, `migrations`, sin *force push*, solo *squash merge*, historial lineal, **sin excepciones**; (2) 1
+  Dos rulesets sobre `main`: (1) PR obligatorio, status checks requeridos `lint`, `typecheck`, `unit`,
+  `integration`, sin *force push*, solo *squash merge*, historial lineal, **sin excepciones**; (2) 1
   aprobación de integrante distinto del autor y *dismiss stale reviews*, con Adrián como única excepción
   (`workflow.md` §7.1). Ensayar también que un PR de Adrián sin checks en verde no se puede mergear. Ensayar los cuatro rechazos de CA-26 y capturar pantallas en `verification.md`. Documentar en
   `docs/operations/despliegue.md` §«Protección de main» (archivo lo crea T-40; aquí solo la sección, o dejarla en
@@ -337,7 +336,7 @@
   la rama sin mergear.
   Archivos: `specs/000-fundaciones/verification.md`.
 
-## Bloque 5 — PR-4 «imágenes»: Dockerfiles y publicación en ghcr.io (plan §9b paso 5) — **desde el 30/09/2026** (`workflow.md` §7.2)
+## Bloque 5 — PR-4 «imágenes»: Dockerfiles y publicación en ghcr.io (plan §9b paso 5) — **diferido a una fase posterior** (decisión del 07/10/2026, spec §15)
 
 - [ ] **T-35** `Dockerfile` de `api` y `worker` (multietapa, sin root, `HEALTHCHECK`) — CA: CA-28, CA-23 (HEALTHCHECK), CA-31 (`APP_VERSION`) — Depende: T-22 — ~4 h
   `apps/api/Dockerfile` y `apps/worker/Dockerfile` (etapas `base`/`deps`/`build`/`prod` con `pnpm deploy --prod`/
@@ -363,7 +362,7 @@
   el merge y registrar en `verification.md`.
   Archivos: `.github/workflows/build-publish.yml`.
 
-## Bloque 6 — PR-5 «staging»: compose de staging, Traefik TLS, deploy transaccional, rollback (plan §9b paso 6) — **desde el 30/09/2026** (`workflow.md` §7.2)
+## Bloque 6 — PR-5 «staging»: compose de staging, Traefik TLS, deploy transaccional, rollback (plan §9b paso 6) — **diferido a una fase posterior** (decisión del 07/10/2026, spec §15)
 
 - [ ] **T-38** `compose.staging.yml` + Traefik con Let's Encrypt y cabeceras — CA: CA-3, CA-32, CA-30 (TLS) — Depende: T-09 — ~4 h
   `compose.staging.yml` (sin `build`; imágenes `${IMAGE_TAG}`; sin `ports` en postgres/redis/minio; Traefik `80`/`443`;
@@ -471,6 +470,15 @@ T-24 y T-25 pueden pasar al PR-3, y T-42/T-43 pueden hacerse en la primera seman
 fecha de la entrega de la Fase 1 (`docs/sdd/workflow.md` §7.2).
 
 ## Notas del developer
+
+- **Bloque 4 (2026-10-07, `feat/000-ci`)**:
+  - T-27: ADR-0001, 0002, 0008, 0010 y 0015 ya estaban `Aceptado` (0009 lo reemplazó 0023); no hizo falta otra reunión.
+  - T-28: las fronteras siguen con `no-restricted-imports` (`boundaries.js`, 005 T-29) en vez de `eslint-plugin-boundaries`; ahora cubren el grafo completo de `architecture.md` §3 (PD-24, PD-38). Las capas (CA-6) van en `layers.js` con `@typescript-eslint/no-restricted-imports`, para no reemplazar la regla de fronteras.
+  - `boundaries.js`, `layers.js` y `typeorm-columns.js` se componen en `eslint.config.mjs`, no en `nest.js`, porque la raíz reemplaza los `files` de `nest.js` por el alcance de la app. `cycles.js` sí va en `nest.js`.
+  - CA-7: el mensaje de `import-x/no-cycle` («Dependency cycle detected») no nombra el módulo; lo identifican el archivo y la línea del `import` que cierra el ciclo.
+  - `no-cycle` sube el lint de `api` + `worker` de ~1,5 a ~3,5 min en local.
+  - Los fixtures viven en `packages/config/eslint/fixtures/` (no `__fixtures__/`, como ya los dejó 005).
+
 
 - **Defecto de CA-1 — carga del `.env` (2026-09-21, rama `fix/000-carga-de-env`).** El README manda
   `cp .env.example .env` y luego `pnpm --filter api migration:run` / `pnpm dev`, pero **nada leía el archivo**: ni
