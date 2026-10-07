@@ -1,7 +1,7 @@
 # Tareas 017 — Previsualización
 
-> Spec: `./spec.md` · Plan: `./plan.md` (**Propuesto; aprobación pendiente**, 2026-10-06)
-> **Borrador para revisión conjunta con el plan. No autoriza `/implement`.**
+> Spec: `./spec.md` · Plan: `./plan.md` (**Aprobado por Adrián**, 2026-10-06)
+> **Spec y plan aprobados (G-4). `/implement` queda autorizado tarea por tarea según las compuertas G-1…G-3 que cada una cite.**
 > 11 tareas principales verticales; T-08a/b y T-09a/b son subtareas internas, no tareas principales nuevas. Un commit por tarea (`feat(storage): … [017 T-xx]`); toda tarea de lógica empieza por su prueba.
 > Abel es dueño de `storage/preview`; los cambios fuera de esa frontera se marcan como habilitación de Adrián/compartida y no se asumen como autorizados.
 
@@ -10,7 +10,7 @@
 - **G-1 — ADR-0025 / IX.7:** el equipo acepta `inline` solo para la URL temporal de preview en origen aislado; la descarga de 005 conserva `attachment` y `application/octet-stream`.
 - **G-2 — Ownership:** Adrián acepta las propuestas Q-2, Q-3 y Q-6 del plan: fachada/DI de storage, procedencia MIME e integración de menú/retorno/foco, y entrega el mockup `docs/design/mockups/storage/vista-previa/`.
 - **G-3 — Arquitectura/dependencias:** architect acepta las dependencias de Q-4 (`pdfjs-dist`, `@zip.js/zip.js`, `saxes`) y registra el ADR/hallazgos que correspondan.
-- **G-4 — Aprobación:** Adrián registra aprobación de spec + plan en `plan.md` §8. Hasta entonces este archivo sirve solo para revisión conjunta, como pidió Matul; no autoriza `/implement`.
+- [x] **G-4 — Aprobación:** Adrián aprobó spec + plan, registrado en `plan.md` §8 (2026-10-06).
 
 ## Orden y paralelismo
 

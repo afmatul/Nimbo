@@ -1,10 +1,10 @@
 # Spec 017 — Previsualización
 
-> Qué y por qué. Borrador: no quedan preguntas abiertas. ADR-0025 registrado antes de `/plan 017`, en estado Propuesto; falta el acuerdo del equipo sobre IX.7 (PD-69). La aprobación de Adrián sigue pendiente.
+> Qué y por qué. Lista: no quedan preguntas abiertas. ADR-0025 registrado antes de `/plan 017`, en estado Propuesto; falta el acuerdo del equipo sobre IX.7 (PD-69). Spec aprobada por Adrián (2026-10-06).
 
 | Campo | Valor |
 |---|---|
-| Estado | Borrador |
+| Estado | Lista |
 | Dueño | Abel |
 | Fase | 2 |
 | Requisitos | RF-27 (principal, Debería); RF-05, RF-09 y RNF-05, RNF-06, RNF-07, RNF-09, RNF-13, RNF-14, RNF-17 (restricciones transversales) |
@@ -88,3 +88,4 @@ Fuentes: `product-context.md` §2–4, §6–7; 005 CA-13/14/16/17; constitució
 | 2026-10-04 | Revisión de Matul: se resuelven P-1, P-3, P-4, P-5 y P-6; se fijan CA-11/12, cobertura por formato, rechazos, rate limit, DF-15 y UX | Dejar la spec sin preguntas abiertas; el ADR de IX.7 queda pendiente antes de `/plan 017`, sin crear plan ni código | Pendiente de Adrián |
 | 2026-10-04 | Pendiente para 016: al redactarla debe incluir la apertura DOCX en solo lectura, incluido Personal, mediante ONLYOFFICE | Mantener trazabilidad de la lectura DOCX fuera de 017 | Pendiente de Adrián |
 | 2026-10-06 | Registrar y enlazar ADR-0025 (Propuesto) y PD-69; explicitar la tensión literal con IX.7 y la aceptación pendiente | Documentar `inline` solo para la URL temporal de vista aislada antes de `/plan 017`, preservando descarga de 005 | Pendiente del equipo (IX.7) y de Adrián (spec) |
+| 2026-10-06 | Spec y plan aprobados; estado `Lista` | Aprobación registrada en plan §8 (G-4) | Adrián |

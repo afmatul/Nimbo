@@ -1,8 +1,8 @@
 # Plan 017 — Previsualización
 
-> Spec: [spec.md](./spec.md) · Plan **Propuesto; aprobación pendiente** · 2026-10-06.
+> Spec: [spec.md](./spec.md) · Plan **Aprobado por Adrián** · 2026-10-06.
 > Planner, Modo 2: diseño técnico, sin autorización de implementación. Spec revisada por Matul,
-> sin `[ABIERTA]` en §8; aprobación de Adrián pendiente. Q-1…Q-8 distinguen resolución técnica de aceptación.
+> sin `[ABIERTA]` en §8; spec y plan aprobados por Adrián (2026-10-06). Q-1…Q-8 distinguen resolución técnica de aceptación.
 > Escritura autorizada solo en `specs/**`: H-1/H-2 siguen locales, pendientes de registro oficial DF/PD,
 > sin reservar números ni presumir acuerdos. Los archivos de implementación enumerados son propuestas.
 
@@ -219,8 +219,8 @@ Fuentes técnicas fijadas (investigación de metadata/API/código; no prueba run
 
 ## 8. Aprobación
 - `architect`: **Aprobación pendiente**; la revisión consultiva previa no acepta dependencias, ADR-0025 ni habilitaciones del dueño. Los ajustes de helper único, procedencia interna y retorno acotado se presentan para revisión conjunta; ADR de motores pendiente.
-- Adrián: **Pendiente** para spec y plan; Q-1/2/3/6, aceptación Q-4 y seguimiento DF/PD aplicable deben quedar atendidos. Spec/backlog siguen **Borrador**, no `Lista`.
-- **G-0 — Revisión conjunta:** tasks.md se entrega junto con el plan para la revisión conjunta. No autoriza /implement hasta la aprobación de Adrián registrada en §8.
+- Adrián: **Aprobado** spec y plan (2026-10-06). Spec/backlog pasan a `Lista`; G-4 cumplida. Las compuertas G-1, G-2 y G-3 de `tasks.md` siguen abiertas y bloquean las tareas que las citan.
+- **G-0 — Revisión conjunta:** tasks.md se entrega junto con el plan para la revisión conjunta. Cumplida con la aprobación de Adrián registrada arriba.
 - No se crea una autorización de código ni se declaran cumplidas las compuertas de `tasks.md`; habilitaciones ajenas y verificaciones de despliegue siguen como dependencias de implementación.
 - Se mantiene la aprobación de spec/plan antes del código y del PR antes del merge; el borrador de tareas no sustituye ninguna aprobación.
 
@@ -230,3 +230,4 @@ Fuentes técnicas fijadas (investigación de metadata/API/código; no prueba run
 | 2026-10-06 | Borrador inicial: ocho preguntas, fronteras insuficientes y hallazgos locales H-1/H-2 | Pendiente |
 | 2026-10-06 | Revisión profunda Q-1…Q-8: fachada/DI, procedencia e índice reversible, motores fijados, tasa, retorno, errores y evidencia MinIO; separar decisiones técnicas de aceptación/ownership y documentar G-0 | Pendiente de equipo / architect / Adrián según compuerta |
 | 2026-10-06 | Ajustes documentales de revisión: helper único de bytes; procedencia interna sin ampliar `INodeRepository`; retorno exacto de spec; revisión conjunta con tasks; subtareas T-08a/b y T-09a/b y fallo de memoria CA-2 | Pendiente; no autoriza /implement |
+| 2026-10-06 | Registrar aprobación de spec + plan (G-4) | Adrián |
