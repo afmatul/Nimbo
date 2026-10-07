@@ -28,7 +28,7 @@ function httpCodeOf(method: keyof UploadsController): unknown {
 describe('UploadsController', () => {
   it('CA-1: `POST /uploads` delega el cuerpo validado con el actor y responde 201', async () => {
     const { uploads, controller } = setup();
-    const body = { name: 'a.pdf', sizeBytes: 10, onConflict: 'ask' as const };
+    const body = { name: 'a.pdf', sizeBytes: 10, onConflict: 'ask' as const, folderId: null };
 
     await expect(controller.init(ACTOR, body)).resolves.toEqual({ uploadId: UPLOAD_ID });
 

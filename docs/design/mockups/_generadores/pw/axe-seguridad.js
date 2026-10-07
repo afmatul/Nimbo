@@ -5,7 +5,7 @@ const DIR = process.argv[2];
 (async () => {
   const b = await chromium.launch();
   for (const w of [360, 1440]) {
-    const p = await b.newPage({ viewport: { width: w, height: 900 } });
+    const p = await b.newPage({ viewport: { width: w, height: 900 }, locale: 'es-GT', timezoneId: 'America/Guatemala' });
     const cons = []; p.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') cons.push(m.text()); });
     for (const f of fs.readdirSync(DIR).filter((x) => x.endsWith('.html')).sort()) {
       await p.goto('file:///' + path.posix.join(DIR, f), { waitUntil: 'networkidle' });

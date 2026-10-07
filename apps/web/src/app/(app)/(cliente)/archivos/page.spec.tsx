@@ -4,8 +4,8 @@
 import {
   STORAGE_ERROR_CODES,
   type FileSummary,
+  type FolderContentsResponse,
   type InitUploadResponse,
-  type ListFilesResponse,
   type ResumeUploadResponse,
 } from '@nimbo/contracts';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
@@ -14,8 +14,10 @@ import { axe } from 'jest-axe';
 
 import { SessionProvider } from '../../../../features/identity/session/session-provider';
 import type { StorageApi } from '../../../../features/storage/api';
+import { UploadsSpaceProvider } from '../../../../features/storage/components/space-provider';
 import { UploadsProvider } from '../../../../features/storage/components/uploads-provider';
 import { StorageRequestError } from '../../../../features/storage/storage-request-error';
+import { GB, spaceSummaryWith } from '../../../../features/storage/test-space-summary';
 import type { UploadManagerOptions } from '../../../../features/storage/upload/upload-manager';
 
 import ArchivosPage from './page';
@@ -27,7 +29,9 @@ const INFORME: FileSummary = {
   name: 'informe.docx',
   sizeBytes: 1_500,
   kind: 'docx',
+  folderId: null,
   createdAt: AT,
+  updatedAt: AT,
 };
 const NUEVO: FileSummary = {
   ...INFORME,
@@ -35,8 +39,13 @@ const NUEVO: FileSummary = {
   name: 'nuevo.pdf',
 };
 
-function page(items: readonly FileSummary[]): ListFilesResponse {
-  return { items: [...items], nextCursor: null };
+function page(items: readonly FileSummary[]): FolderContentsResponse {
+  return {
+    folder: null,
+    breadcrumbs: [],
+    items: items.map((file) => ({ type: 'file', ...file })),
+    nextCursor: null,
+  };
 }
 
 function never<T>(): Promise<T> {
@@ -49,8 +58,16 @@ function fakeApi(overrides: Partial<StorageApi> = {}): jest.Mocked<StorageApi> {
     resume: jest.fn(() => never<ResumeUploadResponse>()),
     complete: jest.fn(() => Promise.resolve({ file: NUEVO })),
     cancel: jest.fn(() => Promise.resolve()),
-    listFiles: jest.fn(() => Promise.resolve(page([]))),
+    folderContents: jest.fn(() => Promise.resolve(page([]))),
+    createFolder: jest.fn(() => never()),
     downloadUrl: jest.fn(() => never()),
+    trashSummary: jest.fn(() =>
+      Promise.resolve({ itemCount: 0, totalBytes: 0, retentionDays: 60 }),
+    ),
+    moveToTrash: jest.fn(() => never()),
+    quickAccess: jest.fn(() => Promise.resolve({ pinned: [], recent: [], hasMoreRecent: false })),
+    recordRecent: jest.fn(() => Promise.resolve()),
+    spaceSummary: jest.fn(() => Promise.resolve(spaceSummaryWith(4.8 * GB))),
     ...overrides,
   } as jest.Mocked<StorageApi>;
 }
@@ -62,7 +79,9 @@ async function renderPage(
   const { container } = render(
     <SessionProvider apiPublicUrl="http://localhost/api/v1">
       <UploadsProvider api={api} {...(managerOptions ? { managerOptions } : {})}>
-        <ArchivosPage />
+        <UploadsSpaceProvider>
+          <ArchivosPage />
+        </UploadsSpaceProvider>
       </UploadsProvider>
     </SessionProvider>,
   );
@@ -90,11 +109,11 @@ describe('página Mis archivos (/archivos)', () => {
     expect(screen.queryByText('Tus archivos aparecerán aquí')).toBeNull();
     expect(screen.getByRole('heading', { name: 'Mis archivos' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Cerrar sesión' })).toBeTruthy();
-    expect(api.listFiles).toHaveBeenCalledWith();
+    expect(api.folderContents).toHaveBeenCalledWith(null, { sort: 'created', dir: 'desc' });
   });
 
   it('CA-1: lista la raíz con el menú «Acciones de {nombre}» en cada fila', async () => {
-    await renderPage(fakeApi({ listFiles: jest.fn(() => Promise.resolve(page([INFORME]))) }));
+    await renderPage(fakeApi({ folderContents: jest.fn(() => Promise.resolve(page([INFORME]))) }));
 
     const table = await screen.findByRole('table');
     expect(within(table).getByText('informe.docx')).toBeTruthy();
@@ -102,24 +121,24 @@ describe('página Mis archivos (/archivos)', () => {
   });
 
   it('CA-21: si el listado falla, «Reintentar» repite la petición y muestra la lista', async () => {
-    const listFiles = jest
-      .fn<Promise<ListFilesResponse>, [string?]>()
+    const folderContents = jest
+      .fn<Promise<FolderContentsResponse>, [string | null]>()
       .mockRejectedValueOnce(new TypeError('Failed to fetch'))
       .mockResolvedValueOnce(page([INFORME]));
-    await renderPage(fakeApi({ listFiles }));
+    await renderPage(fakeApi({ folderContents }));
 
     expect(await screen.findByText('No pudimos cargar tus archivos.')).toBeTruthy();
     expect(screen.queryByText(/soporte/)).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
 
     expect(await screen.findByRole('table')).toBeTruthy();
-    expect(listFiles).toHaveBeenCalledTimes(2);
-    expect(listFiles).toHaveBeenLastCalledWith();
+    expect(folderContents).toHaveBeenCalledTimes(2);
+    expect(folderContents).toHaveBeenLastCalledWith(null, { sort: 'created', dir: 'desc' });
   });
 
   it('CA-1, CA-21: con el listado caído, «Subir archivos» sigue habilitado y el panel sigue vivo', async () => {
     const api = fakeApi({
-      listFiles: jest.fn(() => Promise.reject(new StorageRequestError(503, 'INTERNAL_ERROR'))),
+      folderContents: jest.fn(() => Promise.reject(new StorageRequestError(503, 'INTERNAL_ERROR'))),
     });
     await renderPage(api);
     await screen.findByText('No pudimos cargar tus archivos.');
@@ -129,7 +148,12 @@ describe('página Mis archivos (/archivos)', () => {
     await chooseFiles([new File(['hola'], 'nuevo.pdf')]);
 
     expect(await screen.findByRole('region', { name: 'Subiendo 1 archivo' })).toBeTruthy();
-    expect(api.init).toHaveBeenCalledWith({ name: 'nuevo.pdf', sizeBytes: 4, onConflict: 'ask' });
+    expect(api.init).toHaveBeenCalledWith({
+      name: 'nuevo.pdf',
+      sizeBytes: 4,
+      onConflict: 'ask',
+      folderId: null,
+    });
     expect(screen.getByText('No pudimos cargar tus archivos.')).toBeTruthy();
   });
 
@@ -148,6 +172,7 @@ describe('página Mis archivos (/archivos)', () => {
         name: 'nuevo.pdf',
         sizeBytes: 4,
         onConflict: 'ask',
+        folderId: null,
       }),
     );
   });
@@ -173,7 +198,7 @@ describe('página Mis archivos (/archivos)', () => {
     expect(fireEvent.drop(heading, { dataTransfer: { types: ['text/plain'] } })).toBe(true);
   });
 
-  it('CA-1: un archivo recién subido aparece en la lista sin recargar', async () => {
+  it('CA-1, 007 CA-4: un archivo recién subido aparece en la lista sin recargar y refresca el espacio', async () => {
     const simple: InitUploadResponse = {
       uploadId: UPLOAD_ID,
       mode: 'simple',
@@ -182,7 +207,7 @@ describe('página Mis archivos (/archivos)', () => {
       upload: { url: 'https://s3.nimbo.test/u/a', method: 'PUT', expiresAt: AT },
     };
     const api = fakeApi({
-      listFiles: jest.fn(() => Promise.resolve(page([INFORME]))),
+      folderContents: jest.fn(() => Promise.resolve(page([INFORME]))),
       init: jest.fn(() => Promise.resolve(simple)),
     });
     await renderPage(api, { put: () => Promise.resolve() });
@@ -199,12 +224,13 @@ describe('página Mis archivos (/archivos)', () => {
           .map((row) => row.textContent),
       ).toEqual([expect.stringContaining('nuevo.pdf'), expect.stringContaining('informe.docx')]),
     );
-    expect(api.listFiles).toHaveBeenCalledTimes(1);
+    expect(api.folderContents).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(api.spaceSummary).toHaveBeenCalledTimes(2));
   });
 
   it('CA-13: si la descarga falla con 404, el aviso va arriba de la lista y la fila se queda', async () => {
     const api = fakeApi({
-      listFiles: jest.fn(() => Promise.resolve(page([INFORME]))),
+      folderContents: jest.fn(() => Promise.resolve(page([INFORME]))),
       downloadUrl: jest.fn(() =>
         Promise.reject(new StorageRequestError(404, STORAGE_ERROR_CODES.STORAGE_NODE_NOT_FOUND)),
       ),
@@ -225,13 +251,142 @@ describe('página Mis archivos (/archivos)', () => {
     expect(within(screen.getByRole('table')).getByText('informe.docx')).toBeTruthy();
 
     await userEvent.click(screen.getByRole('button', { name: 'Actualizar lista' }));
-    await waitFor(() => expect(api.listFiles).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(api.folderContents).toHaveBeenCalledTimes(2));
     expect(screen.queryByText('No encontramos «informe.docx».')).toBeNull();
+  });
+
+  it('006 CA-1: «Nueva carpeta» en la raíz la crea y la lista primero, sin volver a pedir la raíz', async () => {
+    const created = {
+      id: '5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b',
+      name: 'Actas',
+      parentId: null,
+      createdAt: AT,
+      updatedAt: AT,
+    };
+    const api = fakeApi({
+      folderContents: jest.fn(() => Promise.resolve(page([INFORME]))),
+      createFolder: jest.fn(() => Promise.resolve(created)),
+    });
+    await renderPage(api);
+    await screen.findByRole('table');
+    expect(screen.getByText('Mis archivos', { selector: '[aria-current="page"]' })).toBeTruthy();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Nueva carpeta' }));
+    expect(screen.getByRole('dialog').textContent).toContain('Se creará en Mis archivos.');
+    await userEvent.type(screen.getByLabelText('Nombre de la carpeta'), 'Actas');
+    await userEvent.click(screen.getByRole('button', { name: 'Crear carpeta' }));
+
+    expect(api.createFolder).toHaveBeenCalledWith({ name: 'Actas', parentId: null });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    const [first] = within(screen.getByRole('table')).getAllByRole('row').slice(1);
+    expect(first?.textContent).toContain('Actas');
+    expect(api.folderContents).toHaveBeenCalledTimes(1);
+  });
+
+  it('006 CA-10: «Mover a la papelera» quita la fila sin confirmar, avisa y sube el contador', async () => {
+    const trashSummary = jest
+      .fn()
+      .mockResolvedValueOnce({ itemCount: 0, totalBytes: 0, retentionDays: 60 })
+      .mockResolvedValue({ itemCount: 1, totalBytes: 1_500, retentionDays: 60 });
+    const api = fakeApi({
+      folderContents: jest.fn(() => Promise.resolve(page([INFORME]))),
+      trashSummary,
+      moveToTrash: jest.fn(() =>
+        Promise.resolve({
+          id: INFORME.id,
+          type: 'file' as const,
+          name: INFORME.name,
+          sizeBytes: INFORME.sizeBytes,
+          originalFolder: null,
+          deletedAt: AT,
+          purgeAt: AT,
+        }),
+      ),
+    });
+    await renderPage(api);
+    await screen.findByRole('table');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Acciones de informe.docx' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Mover a la papelera' }));
+
+    expect(api.moveToTrash).toHaveBeenCalledWith('file', INFORME.id);
+    expect(await screen.findByText('Movimos «informe.docx» a la papelera.')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Ver papelera' }).getAttribute('href')).toBe(
+      '/papelera',
+    );
+    expect(screen.queryByRole('table')).toBeNull();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    const sidebar = screen.getByRole('complementary', { name: 'Barra lateral de escritorio' });
+    await waitFor(() =>
+      expect(within(sidebar).getByRole('link', { name: 'Papelera (1 elemento)' })).toBeTruthy(),
+    );
+  });
+
+  it('007 CA-4: mandar algo a la papelera vuelve a pedir el resumen de espacio', async () => {
+    const api = fakeApi({
+      folderContents: jest.fn(() => Promise.resolve(page([INFORME]))),
+      moveToTrash: jest.fn(() =>
+        Promise.resolve({
+          id: INFORME.id,
+          type: 'file' as const,
+          name: INFORME.name,
+          sizeBytes: INFORME.sizeBytes,
+          originalFolder: null,
+          deletedAt: AT,
+          purgeAt: AT,
+        }),
+      ),
+    });
+    await renderPage(api);
+    await screen.findByRole('table');
+    expect(api.spaceSummary).toHaveBeenCalledTimes(1);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Acciones de informe.docx' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Mover a la papelera' }));
+
+    await waitFor(() => expect(api.spaceSummary).toHaveBeenCalledTimes(2));
+  });
+
+  it('007 CA-6: el vacío y la zona de arrastre usan el máximo por archivo del resumen', async () => {
+    await renderPage(fakeApi());
+
+    expect(await screen.findByText(/Tu plan permite hasta 50 MB por archivo\./u)).toBeTruthy();
+  });
+
+  it('007 CA-5: la barra lateral muestra la tarjeta de cuota con «Ver detalle» hacia /espacio', async () => {
+    await renderPage(fakeApi());
+
+    const sidebar = screen.getByRole('complementary', { name: 'Barra lateral de escritorio' });
+    const quota = within(sidebar).getByRole('region', { name: 'Almacenamiento' });
+    expect(within(quota).getByRole('progressbar').getAttribute('aria-valuenow')).toBe('32');
+    expect(within(quota).getByRole('link', { name: 'Ver detalle' }).getAttribute('href')).toBe(
+      '/espacio',
+    );
+  });
+
+  it('007 CA-8: si el resumen falla, la lista y «Subir archivos» siguen usables', async () => {
+    await renderPage(
+      fakeApi({
+        folderContents: jest.fn(() => Promise.resolve(page([INFORME]))),
+        spaceSummary: jest.fn(() => Promise.reject(new TypeError('Failed to fetch'))),
+      }),
+    );
+
+    expect(await screen.findByRole('table')).toBeTruthy();
+    const sidebar = screen.getByRole('complementary', { name: 'Barra lateral de escritorio' });
+    expect(within(sidebar).getByRole('region', { name: 'Almacenamiento' }).textContent).toContain(
+      'No pudimos calcular tu espacio.',
+    );
+    expect(screen.getByRole('button', { name: 'Subir archivos' })).toHaveProperty(
+      'disabled',
+      false,
+    );
+    expect(screen.queryByText(/Tu plan permite hasta/u)).toBeNull();
   });
 
   it('CA-21: la lista no tiene violaciones de accesibilidad', async () => {
     const container = await renderPage(
-      fakeApi({ listFiles: jest.fn(() => Promise.resolve(page([INFORME]))) }),
+      fakeApi({ folderContents: jest.fn(() => Promise.resolve(page([INFORME]))) }),
     );
     await screen.findByRole('table');
 

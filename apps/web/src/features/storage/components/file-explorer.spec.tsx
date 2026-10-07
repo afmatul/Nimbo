@@ -1,9 +1,13 @@
 /**
  * @jest-environment jsdom
  */
-import type { FileSummary } from '@nimbo/contracts';
+import type { FileSummary, FolderRef, NodeSummary } from '@nimbo/contracts';
+import userEvent from '@testing-library/user-event';
 import { act, createRef, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+
+import type { ListControls } from '../hooks/use-folder-contents';
+import { DEFAULT_NODE_ORDER, type NodeOrder } from '../node-order';
 
 import { FileExplorer, type FileExplorerProps } from './file-explorer';
 
@@ -16,23 +20,42 @@ const FILES: readonly FileSummary[] = [
     name: 'Informe final.docx',
     sizeBytes: 1_500,
     kind: 'docx',
+    folderId: null,
     createdAt: '2026-09-01T10:00:00.000Z',
+    updatedAt: '2026-09-01T10:00:00.000Z',
   },
   {
     id: 'f-2',
     name: 'foto.png',
     sizeBytes: 2_400_000,
     kind: 'imagen',
+    folderId: null,
     createdAt: '2026-09-02T10:00:00.000Z',
+    updatedAt: '2026-09-02T10:00:00.000Z',
   },
   {
     id: 'f-3',
     name: 'notas.txt',
     sizeBytes: 12,
     kind: 'texto',
+    folderId: null,
     createdAt: '2026-09-03T10:00:00.000Z',
+    updatedAt: '2026-09-03T10:00:00.000Z',
   },
 ];
+
+const FILE_NODES: readonly NodeSummary[] = FILES.map((file) => ({ type: 'file', ...file }));
+
+const ALPHA: FolderRef = { id: '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d', name: 'Proyecto Alpha' };
+const FASE3: FolderRef = { id: '2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e', name: 'Fase 3 · RAG' };
+const PROMPTS: NodeSummary = {
+  type: 'folder',
+  id: '3c4d5e6f-7a8b-4c9d-8e1f-2a3b4c5d6e7f',
+  name: 'Prompts',
+  parentId: FASE3.id,
+  createdAt: '2026-09-04T10:00:00.000Z',
+  updatedAt: '2026-09-04T10:00:00.000Z',
+};
 
 let root: Root;
 
@@ -47,10 +70,13 @@ async function mount(ui: ReactElement): Promise<void> {
 function renderExplorer(overrides: Partial<FileExplorerProps> = {}): Promise<void> {
   const props: FileExplorerProps = {
     status: 'ready',
-    files: [],
+    folderId: null,
+    breadcrumbs: [],
+    nodes: [],
     maxFileLabel: '25 MB',
     onFiles: jest.fn(),
     onRetry: jest.fn(),
+    onNewFolder: jest.fn(),
     ...overrides,
   };
   return mount(<FileExplorer {...props} />);
@@ -103,7 +129,17 @@ describe('FileExplorer (CA-1, CA-21)', () => {
   });
 
   it('CA-21: vacío sin máximo conocido: invita a subir sin inventar una cifra', async () => {
-    await mount(<FileExplorer status="ready" files={[]} onFiles={jest.fn()} onRetry={jest.fn()} />);
+    await mount(
+      <FileExplorer
+        status="ready"
+        folderId={null}
+        breadcrumbs={[]}
+        nodes={[]}
+        onFiles={jest.fn()}
+        onRetry={jest.fn()}
+        onNewFolder={jest.fn()}
+      />,
+    );
 
     expect(text()).toContain('Sube tus documentos con el botón o arrástralos a esta página.');
     expect(text()).not.toContain('Tu plan permite');
@@ -146,9 +182,11 @@ describe('FileExplorer (CA-1, CA-21)', () => {
   });
 
   it('CA-1: lista de la raíz: nombre, chip de tipo, tamaño legible y fecha', async () => {
-    await renderExplorer({ files: FILES });
+    await renderExplorer({ nodes: FILE_NODES });
 
-    expect(document.querySelector('table caption')?.textContent).toBe('Archivos de Mis archivos');
+    expect(document.querySelector('table caption')?.textContent).toBe(
+      'Carpetas y archivos en Mis archivos',
+    );
     expect(
       Array.from(document.querySelectorAll('thead th')).map((cell) => cell.textContent),
     ).toEqual(['Nombre', 'Tamaño', 'Modificado', 'Acciones']);
@@ -163,7 +201,7 @@ describe('FileExplorer (CA-1, CA-21)', () => {
     expect(docx?.textContent).toContain('1,5 KB');
     expect(image?.textContent).toContain('IMG');
     expect(image?.textContent).toContain('2,4 MB');
-    expect(texto?.textContent).toContain('OTRO');
+    expect(texto?.textContent).toContain('TEXTO');
     expect(texto?.textContent).toContain('12 B');
   });
 
@@ -179,7 +217,7 @@ describe('FileExplorer (CA-1, CA-21)', () => {
   );
 
   it('CA-1 (UI-8): bajo sm el tamaño pasa a una segunda línea bajo el nombre y su columna se oculta', async () => {
-    await renderExplorer({ files: FILES });
+    await renderExplorer({ nodes: FILE_NODES });
 
     const sizeHeader = Array.from(document.querySelectorAll('thead th')).find(
       (cell) => cell.textContent === 'Tamaño',
@@ -191,24 +229,24 @@ describe('FileExplorer (CA-1, CA-21)', () => {
     }
 
     const secondLine = rows()[0]?.querySelector('[data-testid="file-size-mobile"]');
-    expect(secondLine?.textContent).toBe('1,5 KB');
+    expect(secondLine?.textContent).toMatch(/^1,5 KB · /);
     for (const token of ['text-xs', 'text-muted-foreground', 'sm:hidden']) {
       expect(secondLine?.classList.contains(token)).toBe(true);
     }
   });
 
   it('CA-21: sin renderRowActions no hay acciones por fila ni «Descargar»', async () => {
-    await renderExplorer({ files: FILES });
+    await renderExplorer({ nodes: FILE_NODES });
 
     expect(rows()[0]?.querySelector('button')).toBeNull();
     expect(text()).not.toContain('Descargar');
   });
 
   it('CA-21: renderRowActions pinta las acciones de cada fila', async () => {
-    const renderRowActions = jest.fn((file: FileSummary) => (
-      <button type="button">{`Acciones de ${file.name}`}</button>
+    const renderRowActions = jest.fn((node: NodeSummary) => (
+      <button type="button">{`Acciones de ${node.name}`}</button>
     ));
-    await renderExplorer({ files: FILES, renderRowActions });
+    await renderExplorer({ nodes: FILE_NODES, renderRowActions });
 
     expect(renderRowActions).toHaveBeenCalledTimes(3);
     expect(rows()[1]?.textContent).toContain('Acciones de foto.png');
@@ -277,7 +315,7 @@ describe('FileExplorer (CA-1, CA-21)', () => {
 
   it('CA-21: pinta el aviso de descarga arriba de la lista', async () => {
     await renderExplorer({
-      files: FILES,
+      nodes: FILE_NODES,
       notice: <div role="alert">No encontramos «foto.png».</div>,
     });
 
@@ -291,19 +329,334 @@ describe('FileExplorer (CA-1, CA-21)', () => {
   });
 
   it('CA-21: sin aviso no deja un contenedor vacío', async () => {
-    await renderExplorer({ files: FILES });
+    await renderExplorer({ nodes: FILE_NODES });
 
     expect(document.querySelector('[data-testid="explorer-notice"]')).toBeNull();
   });
 
-  it('CA-21: no muestra carpetas, papelera, cuota ni desglose', async () => {
-    await renderExplorer({ files: FILES });
+  it('CA-21: no muestra papelera, cuota ni desglose', async () => {
+    await renderExplorer({ nodes: FILE_NODES });
 
-    expect(text()).not.toMatch(/Carpetas|Papelera|espacio|cuota|desglose/i);
+    expect(text()).not.toMatch(/Papelera|espacio|cuota|desglose/i);
   });
 
   it('CA-21: usa solo tokens de Cielo Sereno, sin colores crudos', async () => {
-    await renderExplorer({ files: FILES });
+    await renderExplorer({ nodes: FILE_NODES });
+
+    expect(document.body.innerHTML).not.toMatch(RAW_COLOR);
+  });
+});
+
+describe('FileExplorer con carpetas (006: CA-1, CA-5, CA-6, CA-25)', () => {
+  const inFase3 = { folderId: FASE3.id, breadcrumbs: [ALPHA, FASE3] } as const;
+
+  it('CA-5: la carpeta abierta es el título y sus carpetas van primero, con «—» en Tamaño', async () => {
+    await renderExplorer({ ...inFase3, nodes: [PROMPTS, ...FILE_NODES] });
+
+    expect(document.querySelector('h1')?.textContent).toBe('Fase 3 · RAG');
+    expect(document.querySelector('table caption')?.textContent).toBe(
+      'Carpetas y archivos en Fase 3 · RAG',
+    );
+    const [folderRow] = rows();
+    const link = folderRow?.querySelector('a');
+    expect(link?.textContent).toBe('Prompts');
+    expect(link?.getAttribute('href')).toBe(`/archivos/carpeta/${PROMPTS.id}`);
+    expect(folderRow?.querySelectorAll('td')[1]?.textContent).toBe('—Carpeta, sin tamaño');
+    expect(folderRow?.textContent).toContain('Carpeta · ');
+  });
+
+  it('CA-5: en móvil vuelve a la carpeta anterior por su nombre', async () => {
+    await renderExplorer(inFase3);
+
+    const back = document.querySelector('a[aria-label="Volver a Proyecto Alpha"]');
+    expect(back?.getAttribute('href')).toBe(`/archivos/carpeta/${ALPHA.id}`);
+    expect(text()).not.toMatch(/carpeta madre/i);
+  });
+
+  it('CA-5: la raíz no tiene enlace de regreso', async () => {
+    await renderExplorer({ nodes: [PROMPTS] });
+
+    expect(document.querySelector('a[aria-label^="Volver a"]')).toBeNull();
+  });
+
+  it('CA-1: «Nueva carpeta» llama onNewFolder', async () => {
+    const onNewFolder = jest.fn();
+    await renderExplorer({ ...inFase3, onNewFolder });
+
+    await act(async () => buttonByText('Nueva carpeta').click());
+
+    expect(onNewFolder).toHaveBeenCalledTimes(1);
+  });
+
+  it('CA-25: carpeta vacía: invita a subir o crear una subcarpeta', async () => {
+    await renderExplorer(inFase3);
+
+    expect(text()).toContain('Esta carpeta está vacía');
+    expect(text()).toContain(
+      'Sube documentos con el botón o arrástralos aquí, o crea una subcarpeta. Tu plan permite hasta 25 MB por archivo.',
+    );
+    expect(text()).not.toContain('Aún no tienes archivos');
+  });
+
+  it('CA-25: carpeta vacía en pantalla táctil no menciona arrastrar', async () => {
+    mockNoDrag(true);
+    await renderExplorer(inFase3);
+
+    expect(text()).toContain('Sube documentos desde tu dispositivo o crea una subcarpeta.');
+  });
+
+  it('CA-25: cargando una carpeta: título en esqueleto y texto de la carpeta', async () => {
+    await renderExplorer({ status: 'loading', folderId: FASE3.id, breadcrumbs: [] });
+
+    expect(document.querySelector('h1')?.textContent).toBe('Cargando carpeta');
+    expect(document.querySelector('[role="status"]')?.textContent).toContain(
+      'Cargando el contenido de la carpeta…',
+    );
+  });
+
+  it('CA-25: falla el listado de una carpeta: «No pudimos abrir esta carpeta.» con «Reintentar»', async () => {
+    const onRetry = jest.fn();
+    await renderExplorer({ status: 'error', folderId: FASE3.id, breadcrumbs: [], onRetry });
+
+    expect(document.querySelector('h1')?.textContent).toBe('Carpeta');
+    expect(document.querySelector('[role="alert"]')?.textContent).toContain(
+      'No pudimos abrir esta carpeta.',
+    );
+    await act(async () => buttonByText('Reintentar').click());
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it('CA-6: el arrastre dice que se guardarán en la carpeta abierta', async () => {
+    await renderExplorer(inFase3);
+    const event = new Event('dragenter', { bubbles: true, cancelable: true });
+    Object.defineProperty(event, 'dataTransfer', { value: { files: [], types: ['Files'] } });
+
+    await act(async () => {
+      document.querySelector('[data-testid="upload-dropzone"]')?.dispatchEvent(event);
+    });
+
+    expect(text()).toContain('Se guardarán en Fase 3 · RAG · hasta 25 MB por archivo');
+  });
+
+  it('CA-25: la fila de carpeta usa solo tokens', async () => {
+    await renderExplorer({ ...inFase3, nodes: [PROMPTS] });
+
+    expect(document.body.innerHTML).not.toMatch(RAW_COLOR);
+  });
+});
+
+function radioByText(label: string): HTMLElement {
+  const found = Array.from(document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')).find(
+    (radio) => radio.textContent === label,
+  );
+  if (!found) throw new Error(`Opción «${label}» no encontrada`);
+  return found;
+}
+
+function sortButton(): HTMLButtonElement {
+  const found = document.querySelector<HTMLButtonElement>('button[aria-haspopup="menu"]');
+  if (!found) throw new Error('Botón «Ordenar» no encontrado');
+  return found;
+}
+
+function statusTexts(): readonly string[] {
+  return Array.from(document.querySelectorAll('[role="status"]')).map(
+    (node) => node.textContent ?? '',
+  );
+}
+
+function controls(overrides: Partial<ListControls> = {}): ListControls {
+  return {
+    order: DEFAULT_NODE_ORDER,
+    shownOrder: DEFAULT_NODE_ORDER,
+    sorting: false,
+    more: 'idle',
+    added: 0,
+    hasMore: true,
+    changeOrder: jest.fn(),
+    loadMore: jest.fn(),
+    dismissMoreError: jest.fn(),
+    ...overrides,
+  };
+}
+
+const BY_SIZE: NodeOrder = { sort: 'size', dir: 'desc' };
+
+describe('FileExplorer: control de orden (007 CA-10, CA-12)', () => {
+  it('CA-10: el control dice el orden por defecto «Fecha de creación, más recientes primero»', async () => {
+    await renderExplorer({ nodes: FILE_NODES, controls: controls() });
+
+    expect(sortButton().textContent).toBe('Ordenar: Fecha de creación, más recientes primero');
+  });
+
+  it('CA-10: el menú lista los cuatro campos y las dos direcciones, con la nota de las carpetas', async () => {
+    await renderExplorer({ nodes: FILE_NODES, controls: controls() });
+
+    await userEvent.click(sortButton());
+
+    const radios = Array.from(document.querySelectorAll('[role="menuitemradio"]'));
+    expect(radios.map((radio) => radio.textContent)).toEqual([
+      'Nombre',
+      'Tamaño',
+      'Fecha de modificación',
+      'Fecha de creación',
+      'Más antiguos primero',
+      'Más recientes primero',
+    ]);
+    const checked = radios.filter((radio) => radio.getAttribute('aria-checked') === 'true');
+    expect(checked.map((radio) => radio.textContent)).toEqual([
+      'Fecha de creación',
+      'Más recientes primero',
+    ]);
+    expect(text()).toContain(
+      'Las carpetas siempre van primero. El tamaño ordena solo los archivos.',
+    );
+  });
+
+  it('CA-10: elegir un campo conserva la dirección; elegir dirección conserva el campo', async () => {
+    const changeOrder = jest.fn();
+    await renderExplorer({ nodes: FILE_NODES, controls: controls({ changeOrder }) });
+
+    await userEvent.click(sortButton());
+    await userEvent.click(radioByText('Tamaño'));
+    await userEvent.click(sortButton());
+    await userEvent.click(radioByText('Más antiguos primero'));
+
+    expect(changeOrder.mock.calls).toEqual([[BY_SIZE], [{ sort: 'created', dir: 'asc' }]]);
+  });
+
+  it('CA-10: los textos de dirección siguen al campo (Tamaño: menor o mayor primero)', async () => {
+    await renderExplorer({
+      nodes: FILE_NODES,
+      controls: controls({ order: BY_SIZE, shownOrder: BY_SIZE }),
+    });
+    expect(sortButton().textContent).toBe('Ordenar: Tamaño, mayor primero');
+
+    await userEvent.click(sortButton());
+
+    expect(text()).toContain('Menor primero');
+    expect(text()).toContain('Mayor primero');
+  });
+
+  it('CA-10: por nombre el control dice «A–Z»', async () => {
+    const byName: NodeOrder = { sort: 'name', dir: 'asc' };
+    await renderExplorer({
+      nodes: FILE_NODES,
+      controls: controls({ order: byName, shownOrder: byName }),
+    });
+
+    expect(sortButton().textContent).toBe('Ordenar: Nombre, A–Z');
+  });
+
+  it('CA-12: mientras llega otro orden dice «Ordenando…», la lista sigue visible y ocupada', async () => {
+    await renderExplorer({
+      nodes: FILE_NODES,
+      controls: controls({ order: BY_SIZE, sorting: true }),
+    });
+
+    expect(sortButton().textContent).toBe('Ordenando…');
+    expect(sortButton().getAttribute('aria-disabled')).toBe('true');
+    expect(rows()).toHaveLength(3);
+    expect(document.querySelector('[aria-busy="true"] table')).not.toBeNull();
+    expect(statusTexts()).toContain('Ordenando por tamaño, mayor primero…');
+
+    await userEvent.click(sortButton());
+    expect(document.querySelector('[role="menu"]')).toBeNull();
+  });
+
+  it('CA-10: la tabla marca con aria-sort el orden que muestra, no el pedido', async () => {
+    await renderExplorer({
+      nodes: FILE_NODES,
+      controls: controls({ order: BY_SIZE, sorting: true }),
+    });
+
+    expect(document.querySelectorAll('th[aria-sort]')).toHaveLength(0);
+  });
+
+  it('CA-10: pulsar el encabezado «Nombre» ordena por nombre', async () => {
+    const changeOrder = jest.fn();
+    await renderExplorer({ nodes: FILE_NODES, controls: controls({ changeOrder }) });
+
+    await userEvent.click(buttonByText('Nombre'));
+
+    expect(changeOrder).toHaveBeenCalledWith({ sort: 'name', dir: 'asc' });
+  });
+
+  it('sin listado (cargando) no hay control de orden ni «Cargar más»', async () => {
+    await renderExplorer({ status: 'loading', controls: controls() });
+
+    expect(document.querySelector('button[aria-haspopup="menu"]')).toBeNull();
+    expect(text()).not.toContain('Cargar más');
+  });
+});
+
+describe('FileExplorer: «Cargar más» (007 CA-9, CA-12)', () => {
+  it('CA-9: «Cargar más» debajo de la lista pide la página siguiente', async () => {
+    const loadMore = jest.fn();
+    await renderExplorer({ nodes: FILE_NODES, controls: controls({ loadMore }) });
+
+    const button = buttonByText('Cargar más');
+    const table = document.querySelector('table');
+    expect(table && button.compareDocumentPosition(table)).toBe(Node.DOCUMENT_POSITION_PRECEDING);
+    await userEvent.click(button);
+
+    expect(loadMore).toHaveBeenCalledTimes(1);
+  });
+
+  it('CA-9: sin más páginas no hay «Cargar más»', async () => {
+    await renderExplorer({ nodes: FILE_NODES, controls: controls({ hasMore: false }) });
+
+    expect(text()).not.toContain('Cargar más');
+  });
+
+  it('CA-9: anuncia cuántos elementos se agregaron, también tras la última página', async () => {
+    await renderExplorer({ nodes: FILE_NODES, controls: controls({ added: 20, hasMore: false }) });
+
+    expect(statusTexts()).toContain('Se cargaron 20 elementos más.');
+  });
+
+  it('CA-12: cargando más: «Cargando más…» con aria-disabled, anuncio y la lista intacta', async () => {
+    const loadMore = jest.fn();
+    await renderExplorer({
+      folderId: FASE3.id,
+      breadcrumbs: [ALPHA, FASE3],
+      nodes: FILE_NODES,
+      controls: controls({ more: 'loading', loadMore }),
+    });
+
+    const button = buttonByText('Cargando más…');
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    expect(statusTexts()).toContain('Cargando más elementos de Fase 3 · RAG…');
+    expect(rows()).toHaveLength(3);
+    await userEvent.click(button);
+    expect(loadMore).not.toHaveBeenCalled();
+  });
+
+  it('CA-12: si falla la página siguiente: aviso con «Reintentar» que conserva lo visible', async () => {
+    const loadMore = jest.fn();
+    const dismissMoreError = jest.fn();
+    await renderExplorer({
+      nodes: FILE_NODES,
+      controls: controls({ more: 'error', loadMore, dismissMoreError }),
+    });
+
+    const alert = document.querySelector('[role="alert"]');
+    expect(alert?.textContent).toContain('No pudimos cargar más elementos.');
+    expect(alert?.textContent).toContain(
+      'Revisa tu conexión e inténtalo de nuevo. Lo que ya ves sigue aquí.',
+    );
+    expect(rows()).toHaveLength(3);
+    expect(text()).not.toContain('Cargar más');
+    await userEvent.click(buttonByText('Reintentar'));
+    const close = document.querySelector<HTMLElement>('button[aria-label="Cerrar aviso"]');
+    if (close) await userEvent.click(close);
+
+    expect(loadMore).toHaveBeenCalledTimes(1);
+    expect(dismissMoreError).toHaveBeenCalledTimes(1);
+  });
+
+  it('CA-12: el control de orden y el aviso usan solo tokens', async () => {
+    await renderExplorer({ nodes: FILE_NODES, controls: controls({ more: 'error' }) });
 
     expect(document.body.innerHTML).not.toMatch(RAW_COLOR);
   });

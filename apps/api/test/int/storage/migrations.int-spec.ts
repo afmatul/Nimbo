@@ -5,6 +5,7 @@ import { AgregarEspacioUsadoAUsuario20260930100000 } from '../../../src/migratio
 import { CrearArchivoYVersionArchivo20260930100100 } from '../../../src/migrations/20260930100100-crear-archivo-y-version-archivo';
 import { CrearCarga20260930100200 } from '../../../src/migrations/20260930100200-crear-carga';
 import { PoliticasRlsArchivoVersionCarga20260930100300 } from '../../../src/migrations/20260930100300-politicas-rls-archivo-version-carga';
+import { CrearAccesoRapido20261003100000 } from '../../../src/migrations/20261003100000-crear-acceso-rapido';
 import type { Actor } from '../../../src/shared';
 import { buildDataSourceOptions, createActor, Role } from '../../../src/shared';
 import { connectAsOwner } from '../../support/database-urls';
@@ -81,13 +82,17 @@ describe('migración crear-archivo-y-version-archivo (CA-1, CA-6)', () => {
       await columnsOf(runner, 'version_archivo'),
     ]);
 
+    // 006 agrega `carpeta_id`, `purgar_en` y `eliminado_con_carpeta_id` (folders-migrations.int-spec.ts).
     expect(Object.keys(file).sort()).toEqual([
       'actualizado_en',
+      'carpeta_id',
       'creado_en',
+      'eliminado_con_carpeta_id',
       'eliminado_en',
       'id',
       'nombre',
       'propietario_id',
+      'purgar_en',
       'tamano_bytes',
       'tipo',
       'version_actual_id',
@@ -128,14 +133,14 @@ describe('migración crear-archivo-y-version-archivo (CA-1, CA-6)', () => {
     ).rejects.toThrow(/fk_archivo_version_actual/);
   });
 
-  it('CA-6: el mismo nombre sin distinguir mayúsculas se rechaza por propietario (`uq_archivo_propietario_nombre`)', async () => {
+  it('CA-6: el mismo nombre sin distinguir mayúsculas se rechaza en la raíz (`uq_archivo_hermanos_nombre` desde 006)', async () => {
     await expect(
       inRolledBackTransaction(owner, async (runner) => {
         const ownerId = await insertAccount(runner);
         await insertFileWithVersion(runner, ownerId, { name: 'Ñandú.pdf' });
         await insertFileWithVersion(runner, ownerId, { name: 'ñandú.PDF' });
       }),
-    ).rejects.toThrow(/uq_archivo_propietario_nombre/);
+    ).rejects.toThrow(/uq_archivo_hermanos_nombre/);
   });
 
   it('CA-6: el nombre se repite si el otro está en la papelera o es de otro propietario', async () => {
@@ -183,6 +188,8 @@ describe('migración crear-archivo-y-version-archivo (CA-1, CA-6)', () => {
     const migration = new CrearArchivoYVersionArchivo20260930100100();
 
     const [afterDown, indexes] = await inRolledBackTransaction(owner, async (runner) => {
+      /** `acceso_rapido` (006 §9.2) referencia `archivo`: se revierte antes, como en un `migration:revert` en orden. */
+      await new CrearAccesoRapido20261003100000().down(runner);
       await migration.down(runner);
       const [tables] = (await runner.query(
         "SELECT to_regclass('archivo')::text AS archivo, to_regclass('version_archivo')::text AS version",
@@ -209,9 +216,11 @@ describe('migración crear-carga (CA-2, CA-9, CA-23)', () => {
   it('CA-2: `carga` tiene las columnas del plan y los bytes en `bigint`', async () => {
     const columns = await inRolledBackTransaction(owner, (runner) => columnsOf(runner, 'carga'));
 
+    // 006 agrega `carpeta_destino_id` (folders-migrations.int-spec.ts).
     expect(Object.keys(columns).sort()).toEqual([
       'actualizada_en',
       'archivo_id',
+      'carpeta_destino_id',
       'clave_objeto',
       'conservar_ambos',
       'creada_en',
@@ -302,6 +311,8 @@ describe('migración crear-carga (CA-2, CA-9, CA-23)', () => {
     const migration = new CrearCarga20260930100200();
 
     const [afterDown, indexes] = await inRolledBackTransaction(owner, async (runner) => {
+      /** `acceso_rapido` (006 §9.2) referencia `archivo`: se revierte antes, como en un `migration:revert` en orden. */
+      await new CrearAccesoRapido20261003100000().down(runner);
       await migration.down(runner);
       const [table] = (await runner.query("SELECT to_regclass('carga')::text AS carga")) as {
         carga: string | null;
@@ -517,9 +528,11 @@ describe('migración politicas-rls-archivo-version-carga (CA-16, CA-17, DF-52)',
 
   it('CA-16: el `down` quita función, políticas y RLS, y el `up` las devuelve', async () => {
     const migration = new PoliticasRlsArchivoVersionCarga20260930100300();
+    // `archivo_mantenimiento` es de 006 y el `down` de 005 no la toca.
     const snapshot = async (runner: QueryRunner) => {
       const [state] = (await runner.query(
-        `SELECT (SELECT count(*)::int FROM pg_policies WHERE tablename IN ('archivo', 'version_archivo', 'carga'))
+        `SELECT (SELECT count(*)::int FROM pg_policies WHERE tablename IN ('archivo', 'version_archivo', 'carga')
+                    AND policyname <> 'archivo_mantenimiento')
                   AS policies,
                 (SELECT count(*)::int FROM pg_class
                   WHERE relname IN ('archivo', 'version_archivo', 'carga') AND (relrowsecurity OR relforcerowsecurity))
@@ -575,7 +588,7 @@ describe('cierre de las migraciones de 005: permisos de `nimbo_app` (RN-10, plan
   });
 });
 
-describe('cierre de las migraciones de 005: `revert` ×4 y `run` ×4 sobre una base vacía (RNF-10)', () => {
+describe('cierre de las migraciones de 005: `revert` y `run` desde 005 sobre una base vacía (RNF-10)', () => {
   const STORAGE_MIGRATIONS = [
     'AgregarEspacioUsadoAUsuario20260930100000',
     'CrearArchivoYVersionArchivo20260930100100',
@@ -625,12 +638,17 @@ describe('cierre de las migraciones de 005: `revert` ×4 y `run` ×4 sobre una b
     await owner.query(`DROP DATABASE IF EXISTS ${databaseName} WITH (FORCE)`);
   });
 
-  it('RNF-10: todas las migraciones corren, las cuatro de 005 se revierten y vuelven a correr con el mismo esquema', async () => {
+  /** Las de 005 y las que vinieron después (006…): para revertir las de 005 hay que revertir antes las posteriores. */
+  const fromStorage = (applied: readonly string[]): string[] =>
+    applied.slice(applied.indexOf(STORAGE_MIGRATIONS[0] ?? ''));
+
+  it('RNF-10: todas las migraciones corren, las de 005 (y las posteriores) se revierten y vuelven a correr con el mismo esquema', async () => {
     await fresh.runMigrations({ transaction: 'each' });
     const applied = await appliedNames();
+    const reverted = fromStorage(applied);
     const before = await schemaOf(fresh);
 
-    for (const _ of STORAGE_MIGRATIONS) {
+    for (const _ of reverted) {
       await fresh.undoLastMigration({ transaction: 'each' });
     }
     const afterRevert = await appliedNames();
@@ -643,8 +661,8 @@ describe('cierre de las migraciones de 005: `revert` ×4 y `run` ×4 sobre una b
     )) as Record<string, unknown>[];
     const rerun = await fresh.runMigrations({ transaction: 'each' });
 
-    expect(applied.slice(-STORAGE_MIGRATIONS.length)).toEqual(STORAGE_MIGRATIONS);
-    expect(afterRevert).toEqual(applied.slice(0, -STORAGE_MIGRATIONS.length));
+    expect(reverted.slice(0, STORAGE_MIGRATIONS.length)).toEqual(STORAGE_MIGRATIONS);
+    expect(afterRevert).toEqual(applied.slice(0, -reverted.length));
     expect(gone).toEqual({
       archivo: null,
       version_archivo: null,
@@ -652,7 +670,7 @@ describe('cierre de las migraciones de 005: `revert` ×4 y `run` ×4 sobre una b
       funcion: null,
       espacio_usado: 0,
     });
-    expect(rerun.map((migration) => migration.name)).toEqual(STORAGE_MIGRATIONS);
+    expect(rerun.map((migration) => migration.name)).toEqual(reverted);
     expect(await schemaOf(fresh)).toEqual(before);
   });
 });

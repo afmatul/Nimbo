@@ -2,16 +2,19 @@ import { File, type CreateFileInput } from './file';
 import { FileName } from './file-name.vo';
 import { FileVersion, type UploadedVersionInput } from './file-version';
 import { ObjectKey } from './object-key';
+import { TrashState } from './trash-state';
 
 const OWNER = '11111111-1111-4111-8111-111111111111';
 const FILE = '22222222-2222-4222-8222-222222222222';
 const VERSION = '33333333-3333-4333-8333-333333333333';
+const FOLDER = '44444444-4444-4444-8444-444444444444';
 const NOW = new Date('2026-09-30T10:00:00.000Z');
 
 function fileInput(overrides: Partial<CreateFileInput> = {}): CreateFileInput {
   return {
     id: FILE,
     ownerId: OWNER,
+    folderId: null,
     name: FileName.of('informe.docx'),
     kind: 'docx',
     sizeBytes: 2048n,
@@ -43,7 +46,25 @@ describe('File', () => {
     expect(file.currentVersionId).toBe(VERSION);
     expect(file.createdAt).toEqual(NOW);
     expect(file.updatedAt).toEqual(NOW);
-    expect(file.deletedAt).toBeNull();
+    expect(file.type).toBe('file');
+    expect(file.folderId).toBeNull();
+    expect(file.trash).toBeNull();
+  });
+
+  it('CA-6 (006): se crea dentro de la carpeta destino', () => {
+    expect(File.create(fileInput({ folderId: FOLDER })).folderId).toBe(FOLDER);
+  });
+
+  it('CA-10 (006): `rehydrate` conserva el estado de papelera', () => {
+    const trash = TrashState.start(NOW, 30).carriedBy(FOLDER);
+    const file = File.rehydrate({
+      ...File.create(fileInput()).snapshot(),
+      folderId: FOLDER,
+      trash,
+    });
+
+    expect(file.trash).toBe(trash);
+    expect(File.rehydrate(file.snapshot()).snapshot()).toEqual(file.snapshot());
   });
 
   it.each([0n, -1n])('CA-7: `tamanoBytes` debe ser > 0 (%s)', (sizeBytes) => {

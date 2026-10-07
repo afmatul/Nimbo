@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { listFilesResponseSchema } from '@nimbo/contracts';
+import { folderContentsResponseSchema } from '@nimbo/contracts';
 import type { Response } from 'supertest';
 import { DataSource } from 'typeorm';
 
@@ -56,7 +56,7 @@ describe('aislamiento de cargas y archivos (CA-16, CA-17)', () => {
 
   beforeAll(async () => {
     world = await createIsolationWorld();
-    storage = await createStorageHttpApp();
+    storage = await createStorageHttpApp(world.appComposition());
     [a, b] = world.clients;
     filesA = await world.withFiles(storage.testApp, a, SHARED_NAMES);
     filesB = await world.withFiles(storage.testApp, b, SHARED_NAMES);
@@ -114,11 +114,12 @@ describe('aislamiento de cargas y archivos (CA-16, CA-17)', () => {
 
   it('003 CA-10: con archivos de igual nombre y tamaño, cada cliente lista solo los suyos', async () => {
     const listed = async (account: WorldAccount): Promise<string[]> => {
-      const response = await routesOf(account).list();
+      const response = await routesOf(account).folderContents();
       expect(response.status).toBe(200);
-      return listFilesResponseSchema
+      return folderContentsResponseSchema
         .parse(response.body)
-        .items.map((item) => item.id)
+        .items.filter((item) => item.type === 'file')
+        .map((item) => item.id)
         .sort();
     };
 
@@ -246,7 +247,7 @@ describe('aislamiento de cargas y archivos (CA-16, CA-17)', () => {
       ['POST /uploads/:id/resume', () => client.resume(uploadId)],
       ['POST /uploads/:id/complete', () => client.complete(uploadId)],
       ['DELETE /uploads/:id', () => client.cancel(uploadId)],
-      ['GET /files', () => client.list()],
+      ['GET /folders/contents', () => client.folderContents()],
       ['POST /files/:id/download-url', () => client.downloadUrl(fileId)],
     ];
 

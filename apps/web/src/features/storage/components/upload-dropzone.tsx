@@ -7,6 +7,8 @@ import { cn } from '../../../lib/utils';
 import { isFileDrag } from '../hooks/use-file-drop-guard';
 
 export interface UploadDropzoneProps {
+  /** Dónde quedan los archivos: «Mis archivos» o la carpeta abierta (006 CA-6). */
+  readonly destinationName: string;
   /** Máximo por archivo formateado; sin él, el aviso de arrastre omite la cifra. */
   readonly maxFileLabel?: string | undefined;
   /** Archivos elegidos o soltados, en orden; nunca se llama con una lista vacía. */
@@ -18,6 +20,7 @@ export interface UploadDropzoneProps {
 
 /** Zona que acepta archivos soltados o elegidos; muestra «Suelta para subir» mientras se arrastra encima. */
 export function UploadDropzone({
+  destinationName,
   maxFileLabel,
   onFiles,
   inputRef,
@@ -54,8 +57,8 @@ export function UploadDropzone({
 
   const destination =
     maxFileLabel === undefined
-      ? 'Se guardarán en Mis archivos'
-      : `Se guardarán en Mis archivos · hasta ${maxFileLabel} por archivo`;
+      ? `Se guardarán en ${destinationName}`
+      : `Se guardarán en ${destinationName} · hasta ${maxFileLabel} por archivo`;
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
     deliver(event.target.files);

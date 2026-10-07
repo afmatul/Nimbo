@@ -8,6 +8,7 @@ const P = {
   folder: '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
   share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4"/><path d="m15.4 6.5-6.8 4"/>',
   clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  pin: '<path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/>',
   star: '<path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8-6.2-3.2-6.2 3.2L7 14.2 2 9.3l6.9-1Z"/>',
   trash: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
   sparkles: '<path d="m12 3-1.9 5.8L4 10.7l6.1 1.9 1.9 5.9 1.9-5.9 6.1-1.9-6.1-1.9Z"/><path d="M5 3v4"/><path d="M3 5h4"/>',
@@ -28,6 +29,18 @@ const P = {
   chevron: '<path d="m6 9 6 6 6-6"/>',
   shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1Z"/>',
   logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
+  history: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
+  upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/>',
+  download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
+  undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/>',
+  trash2: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/>',
+  circlex: '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>',
+  drive: '<path d="M22 12H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><path d="M6 16h.01"/><path d="M10 16h.01"/>',
+  user: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+  headset: '<path d="M3 11h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5Zm0 0a9 9 0 1 1 18 0m0 0v5a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3Z"/><path d="M21 16v2a4 4 0 0 1-4 4h-5"/>',
+  shieldcheck: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1Z"/><path d="m9 12 2 2 4-4"/>',
+  message: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+  calendar: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>',
   lock: '<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
 };
 const icon = (name, size = 18, cls = '') =>
@@ -39,7 +52,7 @@ const NAV_PRINCIPAL = [
   ['folder', 'Mis archivos'],
   ['share', 'Compartidos conmigo'],
   ['clock', 'Recientes'],
-  ['star', 'Favoritos'],
+  ['pin', 'Fijados'],
   ['trash', 'Papelera', '3'],
 ];
 const NAV_CUENTA = [
@@ -63,8 +76,9 @@ const DIALOGO_CERRAR_SESION = {
 
 // ---------- Piezas ----------
 // carpetas: sección «Carpetas» (por defecto, CARPETAS; con [] se omite el título y la lista).
+// accesos: HTML de la sección «Accesos rápidos» de 006 (accesos/accesos.js); con '' no aparece y el marco no cambia.
 // contadorPapelera: por defecto, el de NAV_PRINCIPAL; con '' se omite (005: la papelera llega con 006).
-function navegacion({ activo = '', etiqueta = 'Navegación principal', idPrimerEnlace = '', carpetas = CARPETAS, contadorPapelera } = {}) {
+function navegacion({ activo = '', etiqueta = 'Navegación principal', idPrimerEnlace = '', carpetas = CARPETAS, contadorPapelera, accesos = '' } = {}) {
   const principal = contadorPapelera === undefined ? NAV_PRINCIPAL
     : NAV_PRINCIPAL.map(([ic, label, meta]) => [ic, label, label === 'Papelera' ? contadorPapelera : meta]);
   let primero = !!idPrimerEnlace;
@@ -83,7 +97,7 @@ function navegacion({ activo = '', etiqueta = 'Navegación principal', idPrimerE
         </ul>${carpetas.length ? `
         <p class="nav-title">Carpetas</p>
         <ul class="nav">${lista(carpetas)}
-        </ul>` : ''}
+        </ul>` : ''}${accesos}
       </nav>`;
 }
 
@@ -99,20 +113,20 @@ function cuota({ usado, total, pct } = CUOTA) {
 const logo = (cls = 'logo') =>
   `<a class="${cls}" href="#" aria-label="Nimbo, Mis archivos"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>`;
 
-function sidebar({ activo = '', plan = 'PERSONAL', cuota: q = CUOTA, carpetas = CARPETAS, contadorPapelera } = {}) {
+function sidebar({ activo = '', plan = 'PERSONAL', cuota: q = CUOTA, carpetas = CARPETAS, contadorPapelera, accesos = '' } = {}) {
   return `
     <aside class="sidebar" aria-label="Barra lateral">
       <div class="brand-row">
         ${logo()}
         <span class="plan-chip">${plan}</span>
       </div>
-      ${navegacion({ activo, carpetas, contadorPapelera })}
+      ${navegacion({ activo, carpetas, contadorPapelera, accesos })}
       ${cuota(q)}
     </aside>`;
 }
 
 // Cajón móvil (por debajo de 900 px): mismo contenido que la barra lateral dentro de un diálogo modal.
-function cajon({ activo = '', plan = 'PERSONAL', cuota: q = CUOTA, abierto = false } = {}) {
+function cajon({ activo = '', plan = 'PERSONAL', cuota: q = CUOTA, abierto = false, carpetas = CARPETAS, accesos = '' } = {}) {
   const oculto = abierto ? '' : ' hidden';
   return `
   <div class="drawer-overlay" data-cerrar-cajon aria-hidden="true"${oculto}></div>
@@ -123,12 +137,14 @@ function cajon({ activo = '', plan = 'PERSONAL', cuota: q = CUOTA, abierto = fal
         <h2 id="cajon-t" class="sr-only">Menú de navegación</h2>
         <button class="icon-btn" type="button" data-cerrar-cajon aria-label="Cerrar menú">${icon('x', 22)}</button>
       </div>
-      ${navegacion({ activo, idPrimerEnlace: 'cajon-primero' })}
+      ${navegacion({ activo, idPrimerEnlace: 'cajon-primero', carpetas, accesos })}
       ${cuota(q)}
   </div>`;
 }
 
-function menuCuenta({ abierto = false } = {}) {
+// actividad: agrega «Mi actividad» (spec 004) entre Seguridad y Plan; 'actual' la marca como página abierta.
+// Sin la opción, el HTML es el aprobado de shared/layout.
+function menuCuenta({ abierto = false, actividad = false } = {}) {
   return `
         <div class="account-pop" id="cuenta-pop"${abierto ? '' : ' hidden'}>
           <div class="account-who">
@@ -136,7 +152,8 @@ function menuCuenta({ abierto = false } = {}) {
             <p class="account-who-mail">${CUENTA.correo}</p>
           </div>
           <ul class="account-menu" id="cuenta-menu" role="menu" aria-labelledby="cuenta-btn">
-            <li role="none"><a role="menuitem" href="#" tabindex="-1">${icon('shield')}<span>Seguridad</span></a></li>
+            <li role="none"><a role="menuitem" href="#" tabindex="-1">${icon('shield')}<span>Seguridad</span></a></li>${actividad ? `
+            <li role="none"><a role="menuitem" href="#" tabindex="-1"${actividad === 'actual' ? ' aria-current="page"' : ''}>${icon('history')}<span>Mi actividad</span></a></li>` : ''}
             <li role="none"><a role="menuitem" href="#" tabindex="-1">${icon('card')}<span>Plan y facturación</span></a></li>
             <li role="separator" class="account-sep"></li>
             <li role="none"><button role="menuitem" type="button" tabindex="-1" data-cerrar-sesion>${icon('logout')}<span>Cerrar sesión</span></button></li>
@@ -146,7 +163,7 @@ function menuCuenta({ abierto = false } = {}) {
 
 // crumbs: [texto, …]; el último es la página actual.
 // conMenu: agrega aria-controls, el id del botón y el menú (layout). Sin él, el HTML es el aprobado de Seguridad.
-function topbar({ crumbs = ['Cuenta', 'Seguridad'], conMenu = false, menuAbierto = false, cajonAbierto = false } = {}) {
+function topbar({ crumbs = ['Cuenta', 'Seguridad'], conMenu = false, menuAbierto = false, cajonAbierto = false, actividad = false } = {}) {
   const items = crumbs.map((c, i) =>
     i === crumbs.length - 1 ? `<li><span aria-current="page">${c}</span></li>` : `<li><a href="#">${c}</a></li>`).join('');
   const menuBtnExtra = conMenu ? ' aria-controls="cajon"' : '';
@@ -156,13 +173,13 @@ function topbar({ crumbs = ['Cuenta', 'Seguridad'], conMenu = false, menuAbierto
         <div class="topbar-left">
           <button class="menu-btn" type="button" aria-label="Abrir menú de navegación" aria-expanded="${cajonAbierto}"${menuBtnExtra}>${icon('menu', 22)}</button>
           ${logo('logo logo-mobile')}
-          <nav class="crumbs" aria-label="Ruta">
+          ${crumbs.length ? `<nav class="crumbs" aria-label="Ruta">
             <ol>${items}</ol>
-          </nav>
+          </nav>` : ''}
         </div>
         ${conMenu ? '<div class="account">\n        ' : ''}<button class="account-btn" type="button"${cuentaExtra} aria-haspopup="menu" aria-expanded="${menuAbierto}" aria-label="Menú de la cuenta de ${CUENTA.nombre}">
           <span class="account-name">${CUENTA.nombre}</span><span class="avatar" aria-hidden="true">${CUENTA.iniciales}</span>
-        </button>${conMenu ? `${menuCuenta({ abierto: menuAbierto })}\n        </div>` : ''}
+        </button>${conMenu ? `${menuCuenta({ abierto: menuAbierto, actividad })}\n        </div>` : ''}
       </header>`;
 }
 
@@ -256,5 +273,5 @@ const EXTRA = `
 
 module.exports = {
   CSS, EXTRA, P, icon, CUENTA, CUOTA, DIALOGO_CERRAR_SESION,
-  sidebar, cajon, topbar, dialog, cabecera, navegacion, cuota,
+  sidebar, cajon, topbar, dialog, cabecera, navegacion, cuota, logo,
 };

@@ -7,8 +7,9 @@ import type {
   IFileTypeDetector,
 } from '../../src/modules/storage/application/ports/i-file-type-detector.port';
 import type {
-  FileListPage,
   INodeRepository,
+  NodeListPage,
+  NodeListQuery,
 } from '../../src/modules/storage/application/ports/i-node.repository.port';
 import type {
   IObjectStorage,
@@ -26,6 +27,9 @@ import type {
 import type { File } from '../../src/modules/storage/domain/file';
 import type { FileName } from '../../src/modules/storage/domain/file-name.vo';
 import type { FileVersion } from '../../src/modules/storage/domain/file-version';
+import { Folder } from '../../src/modules/storage/domain/folder';
+import type { FolderName } from '../../src/modules/storage/domain/folder-name.vo';
+import { FolderPath } from '../../src/modules/storage/domain/folder-path';
 import type { QuotaUsage } from '../../src/modules/storage/domain/quota-policy';
 import { UploadSession } from '../../src/modules/storage/domain/upload-session';
 import type { UploadState } from '../../src/modules/storage/domain/upload-session';
@@ -149,6 +153,12 @@ export class FakeQuotaRepository implements IQuotaRepository {
     return this.usage.usedBytes;
   }
 
+  /** Sin bloqueo: no espera a la transacción que tenga la fila (007 D-1). */
+  readUsage(): Promise<QuotaUsage> {
+    this.journal.add('quota:readUsage');
+    return Promise.resolve(this.usage);
+  }
+
   async lockAndReadUsage(actor: Actor): Promise<QuotaUsage> {
     this.journal.add('quota:lockAndReadUsage');
     await this.locks?.lock(actor.id);
@@ -236,30 +246,79 @@ function stateOf(to: UploadState, patch: UploadTransitionPatch) {
   };
 }
 
+/**
+ * Árbol en memoria: archivos y carpetas por id. Ve solo lo propio y vivo, como `accessibleNodes(actor)`; no pagina
+ * (`nextCursor` siempre `null`).
+ */
 export class FakeNodeRepository implements INodeRepository {
   taken: string[] = [];
   readonly namesAsked: string[] = [];
   readonly files = new Map<string, File>();
+  readonly folders = new Map<string, Folder>();
   readonly inserted: { file: File; version: FileVersion }[] = [];
+  readonly listed: NodeListQuery[] = [];
 
   constructor(private readonly journal: Journal) {}
 
   findAccessibleById(actor: Actor, id: string): Promise<File | null> {
     this.journal.add('nodes:findAccessibleById');
     const file = this.files.get(id);
-    return Promise.resolve(file?.ownerId === actor.id ? file : null);
+    return Promise.resolve(isLiveOf(actor, file) ? file : null);
   }
 
-  listAccessible(): Promise<FileListPage> {
-    return Promise.resolve({ items: [...this.files.values()], nextCursor: null });
+  findAccessibleFolder(actor: Actor, id: string): Promise<Folder | null> {
+    this.journal.add('nodes:findAccessibleFolder');
+    const folder = this.folders.get(id);
+    return Promise.resolve(isLiveOf(actor, folder) ? folder : null);
   }
 
-  /** Los nombres que la prueba fija como ocupados más los de los archivos del actor ya insertados. */
-  findTakenNames(actor: Actor, name: FileName): Promise<readonly string[]> {
+  listContents(actor: Actor, query: NodeListQuery): Promise<NodeListPage> {
+    this.journal.add('nodes:listContents');
+    this.listed.push(query);
+    const folders = this.liveFolders(actor).filter((folder) => folder.parentId === query.folderId);
+    const files = this.liveFiles(actor).filter((file) => file.folderId === query.folderId);
+    return Promise.resolve({ items: [...folders, ...files], nextCursor: null });
+  }
+
+  breadcrumbs(_actor: Actor, folder: Folder): Promise<readonly Folder[]> {
+    this.journal.add('nodes:breadcrumbs');
+    const ancestors = folder.path.ancestorIds().map((id) => this.folders.get(id));
+    return Promise.resolve(ancestors.filter((found): found is Folder => found !== undefined));
+  }
+
+  /** Los nombres que la prueba fija como ocupados más los de los archivos vivos del actor en esa carpeta. */
+  findTakenNames(
+    actor: Actor,
+    name: FileName,
+    folderId: string | null,
+    exceptId?: string,
+  ): Promise<readonly string[]> {
     this.journal.add('nodes:findTakenNames');
     this.namesAsked.push(name.value);
-    const owned = [...this.files.values()].filter((file) => file.ownerId === actor.id);
-    return Promise.resolve([...this.taken, ...owned.map((file) => file.name.value)]);
+    const siblings = this.liveFiles(actor).filter(
+      (file) => file.folderId === folderId && file.id !== exceptId,
+    );
+    return Promise.resolve([...this.taken, ...siblings.map((file) => file.name.value)]);
+  }
+
+  findTakenFolderNames(
+    actor: Actor,
+    name: FolderName,
+    parentId: string | null,
+    exceptId?: string,
+  ): Promise<readonly string[]> {
+    this.journal.add('nodes:findTakenFolderNames');
+    this.namesAsked.push(name.value);
+    const siblings = this.liveFolders(actor).filter(
+      (folder) => folder.parentId === parentId && folder.id !== exceptId,
+    );
+    return Promise.resolve(siblings.map((folder) => folder.name.value));
+  }
+
+  maxSubtreeDepth(actor: Actor, folder: Folder): Promise<number> {
+    this.journal.add('nodes:maxSubtreeDepth');
+    const subtree = this.liveFolders(actor).filter((other) => folder.path.contains(other.path));
+    return Promise.resolve(Math.max(folder.depth, ...subtree.map((other) => other.depth)));
   }
 
   insertWithVersion(_actor: Actor, file: File, version: FileVersion): Promise<void> {
@@ -268,6 +327,61 @@ export class FakeNodeRepository implements INodeRepository {
     this.files.set(file.id, file);
     return Promise.resolve();
   }
+
+  insertFolder(_actor: Actor, folder: Folder): Promise<void> {
+    this.journal.add('nodes:insertFolder');
+    this.folders.set(folder.id, folder);
+    return Promise.resolve();
+  }
+
+  renameFolder(_actor: Actor, folder: Folder): Promise<void> {
+    this.journal.add('nodes:renameFolder');
+    this.folders.set(folder.id, folder);
+    return Promise.resolve();
+  }
+
+  renameFile(_actor: Actor, file: File): Promise<void> {
+    this.journal.add('nodes:renameFile');
+    this.files.set(file.id, file);
+    return Promise.resolve();
+  }
+
+  moveFile(_actor: Actor, file: File): Promise<void> {
+    this.journal.add('nodes:moveFile');
+    this.files.set(file.id, file);
+    return Promise.resolve();
+  }
+
+  /** Reubica la ruta de cada carpeta del subárbol de `before`, como el `UPDATE` por prefijo. */
+  moveFolderSubtree(_actor: Actor, before: Folder, moved: Folder): Promise<void> {
+    this.journal.add('nodes:moveFolderSubtree');
+    for (const folder of [...this.folders.values()]) {
+      if (folder.id === before.id || !before.path.contains(folder.path)) continue;
+      const path = folder.path.rebase(before.path, parentPathOf(moved));
+      this.folders.set(folder.id, Folder.rehydrate({ ...folder.snapshot(), path }));
+    }
+    this.folders.set(moved.id, moved);
+    return Promise.resolve();
+  }
+
+  private liveFiles(actor: Actor): File[] {
+    return [...this.files.values()].filter((file) => isLiveOf(actor, file));
+  }
+
+  private liveFolders(actor: Actor): Folder[] {
+    return [...this.folders.values()].filter((folder) => isLiveOf(actor, folder));
+  }
+}
+
+/** Nodo propio del actor y fuera de la papelera (lo que deja ver `accessibleNodes`). */
+function isLiveOf(actor: Actor, node: File | Folder | undefined): node is File | Folder {
+  return node !== undefined && node.ownerId === actor.id && node.trash === null;
+}
+
+/** Ruta del padre de `folder` (`null` en la raíz). */
+function parentPathOf(folder: Folder): FolderPath | null {
+  const ancestors = folder.path.ancestorIds();
+  return ancestors.length === 0 ? null : FolderPath.of(`/${ancestors.join('/')}/`);
 }
 
 /** Almacenamiento en memoria: objetos por clave y cargas por partes con sus partes. */
@@ -412,5 +526,9 @@ export class FakeAuditLogger implements IAuditLogger {
     if (this.fails) return Promise.reject(new Error('auditoría caída'));
     this.records.push(entry);
     return Promise.resolve();
+  }
+
+  recordInTransaction(entry: AuditRecord): Promise<void> {
+    return this.record(entry);
   }
 }

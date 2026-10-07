@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mi actividad · Nimbo — fin de la lista</title>
+<!-- Mockup de referencia (spec 004, RF-07: página «Mi actividad»). Estado: fin-de-lista. -->
+<!-- Colores: valores de ui-guidelines.md §3 (tonos AA de ADR-0014). La implementación usa tokens y components/ui. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Valores de ui-guidelines.md §3 (tonos AA de ADR-0014). La implementación usa las utilidades de Tailwind, nunca hex. */
+    --sheet: #E7EDF5;          /* fondo de la hoja de mockups (no es un token de la app) */
+    --background: #F4F7FB;
+    --card: #FAFCFF;
+    --border: #DDE6F0;
+    --input: #7F93AA;
+    --foreground: #1E2D40;
+    --secondary-foreground: #3A5068;
+    --muted-foreground: #5E7389;
+    --primary: #4A6FA5;
+    --primary-hover: #3B5A8A;
+    --primary-foreground: #FFFFFF;
+    --brand: #6B8DD6;
+    --muted: #EEF3F9;
+    --accent: #DDE6F0;
+    --ring: #4A6FA5;
+    --success: #6DB99A;
+    --success-foreground: #3A7560;
+    --destructive: #A34F4F;
+    --destructive-soft: #C97B7B;
+    --overlay: rgba(44, 58, 82, .45); /* velo de diálogo: agent-bg al 45 %; token pendiente (#6 de app-layout) */
+    --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px; --radius-xl: 18px;
+    --shadow-card: 0 1px 3px rgba(74,111,165,.08), 0 1px 2px rgba(74,111,165,.04);
+    --shadow-modal: 0 8px 24px rgba(44,58,82,.18);
+    --shadow-button: 0 1px 2px rgba(107,141,214,.20);
+    /* Mezclas al 12 % sobre card (fondo de alertas y distintivos) */
+    --success-soft: color-mix(in srgb, var(--success) 12%, var(--card));
+    --destructive-tint: color-mix(in srgb, var(--destructive-soft) 12%, var(--card));
+    --brand-soft: color-mix(in srgb, var(--brand) 12%, var(--card));
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--sheet); color: var(--foreground);
+    font-family: Inter, system-ui, sans-serif; font-size: 14px; line-height: 1.5;
+  }
+  a { color: var(--primary); text-decoration: underline; text-underline-offset: 2px; }
+  a:hover { color: var(--primary-hover); }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+  .ico { flex: none; }
+
+  /* Rótulo de la hoja */
+  .sheet-label {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px;
+    padding: 40px 48px 12px; font-size: 12px; line-height: 1.5; color: var(--secondary-foreground);
+  }
+  .sheet-label .chip { background: var(--border); border-radius: var(--radius-sm); padding: 1px 7px; font-weight: 600; font-size: 11px; }
+  .sheet-label strong { color: var(--foreground); font-size: 13px; font-weight: 600; }
+  .sheet-label .file { font-weight: 500; font-variant-numeric: tabular-nums; color: var(--primary-hover); }
+
+  /* Lienzo y marco de la aplicación (propuesta p. 08 y p. 17) */
+  .canvas {
+    position: relative; margin: 0 48px 48px; background: var(--background); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card); overflow: hidden;
+  }
+  .app { display: grid; grid-template-columns: 236px minmax(0, 1fr); min-height: 860px; }
+  .sidebar { display: flex; flex-direction: column; gap: 14px; background: var(--card); border-right: 1px solid var(--border); padding: 18px 12px 16px; }
+  .brand-row { display: flex; align-items: center; gap: 10px; padding: 4px 8px 10px; border-bottom: 1px solid var(--border); }
+  .logo { display: inline-flex; align-items: center; gap: 10px; color: var(--foreground); text-decoration: none; font-weight: 700; font-size: 17px; letter-spacing: .02em; min-height: 36px; }
+  .logo-mark { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; background: var(--primary); color: var(--primary-foreground); font-size: 15px; font-weight: 700; box-shadow: var(--shadow-button); }
+  .plan-chip { font-size: 10px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: .04em; color: var(--secondary-foreground); background: var(--muted); border-radius: var(--radius-sm); padding: 2px 6px; }
+  .nav { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  .nav a { display: flex; align-items: center; gap: 12px; min-height: 36px; padding: 6px 12px; border-radius: var(--radius-md); color: var(--secondary-foreground); text-decoration: none; font-size: 13.5px; font-weight: 500; }
+  .nav a:hover { background: var(--muted); color: var(--foreground); }
+  .nav .meta { margin-left: auto; font-size: 11px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  .nav-sep { height: 1px; background: var(--border); margin: 2px 8px; }
+  .nav-title { margin: 6px 12px 0; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted-foreground); }
+  .quota { margin-top: auto; border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 12px 14px; background: var(--card); }
+  .quota-head { display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 600; }
+  .quota-bar { height: 6px; border-radius: 999px; background: var(--muted); margin: 8px 0 6px; overflow: hidden; }
+  .quota-bar span { display: block; height: 100%; width: 21%; background: var(--success); border-radius: 999px; }
+  .quota-meta { font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--muted-foreground); }
+
+  .main { min-width: 0; display: flex; flex-direction: column; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 64px; padding: 10px 28px; background: var(--card); border-bottom: 1px solid var(--border); }
+  .topbar .menu-btn, .topbar .logo-mobile { display: none; }
+  .crumbs ol { display: flex; align-items: center; gap: 10px; list-style: none; margin: 0; padding: 0; font-size: 14px; }
+  .crumbs li + li::before { content: "/"; color: var(--muted-foreground); margin-right: 10px; }
+  .crumbs a { color: var(--secondary-foreground); text-decoration: none; }
+  .crumbs a:hover { color: var(--foreground); text-decoration: underline; }
+  .crumbs [aria-current] { font-weight: 600; color: var(--foreground); }
+  .account-btn { display: inline-flex; align-items: center; gap: 10px; min-height: 40px; padding: 4px 6px 4px 12px; border: 0; border-radius: 999px; background: transparent; color: var(--secondary-foreground); font: inherit; font-size: 13px; cursor: pointer; }
+  .account-btn:hover { background: var(--muted); }
+  .avatar { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 999px; background: var(--card); color: var(--foreground); font-size: 11px; font-weight: 700; box-shadow: 0 0 0 2px var(--brand); }
+
+  .content { padding: 28px 28px 40px; }
+  .page-head h1 { margin: 0; font-size: 26px; line-height: 1.25; font-weight: 700; letter-spacing: -.01em; }
+  .page-head p { margin: 6px 0 0; color: var(--secondary-foreground); font-size: 14.5px; }
+  .stack { max-width: 880px; display: grid; gap: 16px; margin-top: 22px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: 18px 20px; }
+
+  /* Botones (components/ui/button) */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 8px 16px; border-radius: var(--radius-md); font: inherit; font-weight: 600; font-size: 13.5px; line-height: 1.2; cursor: pointer; text-decoration: none; white-space: nowrap; }
+  .btn-sm { min-height: 36px; padding: 6px 12px; font-size: 13px; }
+  .btn-outline { color: var(--secondary-foreground); background: var(--card); border: 1px solid var(--input); }
+  .btn-outline:hover { background: var(--muted); color: var(--foreground); }
+  .btn-primary { color: var(--primary-foreground); background: var(--primary); border: 1px solid var(--primary); box-shadow: var(--shadow-button); }
+  .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+  .btn-destructive { color: var(--primary-foreground); background: var(--destructive); border: 1px solid var(--destructive); }
+  .btn[disabled] { opacity: .45; pointer-events: none; }
+  .btn-busy { opacity: 1 !important; }
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin, .skeleton-line { animation: none !important; } }
+
+  /* Filtros: origen (grupo de radios en forma de segmentos) y rango de fechas */
+  .filters { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px 28px; align-items: start; }
+  .filters fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+  .filters legend { display: block; padding: 0; margin: 0 0 6px; font-size: 13px; font-weight: 600; }
+  .segments { display: inline-flex; border: 1px solid var(--input); border-radius: var(--radius-md); background: var(--card); overflow: hidden; }
+  .segments label { position: relative; display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 6px 14px; font-size: 13.5px; font-weight: 500; color: var(--secondary-foreground); cursor: pointer; }
+  .segments label + label { border-left: 1px solid var(--input); }
+  .segments label:hover { background: var(--muted); }
+  .segments input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+  .segments label:has(input:checked) { background: var(--accent); color: var(--foreground); font-weight: 600; box-shadow: inset 0 -3px 0 var(--primary); }
+  .segments label .ico { display: none; }
+  .segments label:has(input:checked) .ico { display: inline-block; color: var(--primary); }
+  .segments label:has(input:focus-visible) { outline: 2px solid var(--ring); outline-offset: -2px; }
+  .segments label:has(input:disabled) { opacity: .45; cursor: default; }
+  .dates { display: flex; flex-wrap: wrap; gap: 12px; }
+  .dates > div { min-width: 0; flex: 1 1 150px; max-width: 220px; }
+  .dates label { display: block; margin: 0 0 4px; font-size: 13px; font-weight: 500; color: var(--secondary-foreground); }
+  .dates input { width: 100%; min-height: 40px; padding: 6px 10px; border: 1px solid var(--input); border-radius: var(--radius-md); background: var(--card); color: var(--foreground); font: inherit; font-size: 14px; font-variant-numeric: tabular-nums; }
+  .dates input:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+  .dates input[aria-invalid="true"] { border-color: var(--destructive); box-shadow: 0 0 0 1px var(--destructive); }
+  .dates input:disabled { background: var(--muted); color: var(--secondary-foreground); }
+  .field-error { display: flex; gap: 6px; align-items: flex-start; margin: 0; font-size: 13px; color: var(--destructive); grid-column: 1 / -1; }
+  .field-error .ico { margin-top: 2px; }
+  .filters-foot { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; min-height: 36px; }
+  .result-count { margin: 0; font-size: 13px; color: var(--secondary-foreground); font-variant-numeric: tabular-nums; }
+  .btn-link { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 4px 8px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--primary); font: inherit; font-size: 13.5px; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+  .btn-link:hover { background: var(--muted); color: var(--primary-hover); }
+
+  /* Lista cronológica */
+  .events { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; background: var(--card); box-shadow: var(--shadow-card); }
+  .event { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 4px 14px; align-items: start; padding: 14px 16px 14px 13px; background: var(--card); border-left: 3px solid transparent; }
+  .event + .event { border-top: 1px solid var(--border); }
+  .event.is-internal { background: var(--background); border-left-color: var(--primary); }
+  .tile { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: var(--radius-md); background: var(--brand-soft); color: var(--primary-hover); }
+  .is-internal .tile { background: var(--primary-hover); color: var(--primary-foreground); }
+  .ev-title { margin: 0; font-size: 14.5px; font-weight: 600; line-height: 1.4; }
+  .ev-meta { margin: 4px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: 13px; color: var(--muted-foreground); }
+  .is-internal .ev-meta { color: var(--secondary-foreground); }
+  .ev-meta .src { display: inline-flex; align-items: center; gap: 6px; }
+  .ev-meta .src b { font-weight: 600; color: var(--secondary-foreground); }
+  .ev-meta .res { font-variant-numeric: tabular-nums; }
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px 2px 6px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 600; line-height: 1.5; background: var(--brand-soft); color: var(--primary-hover); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand) 35%, var(--card)); }
+  .reason { margin: 10px 0 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--card); }
+  .reason .reason-label { display: flex; align-items: center; gap: 6px; margin: 0 0 2px; font-size: 12px; font-weight: 600; color: var(--primary-hover); }
+  .reason p:last-child { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--foreground); overflow-wrap: anywhere; }
+  .when { margin: 0; text-align: right; font-size: 13px; line-height: 1.4; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .when .d { display: block; font-weight: 600; color: var(--foreground); }
+  .when .h { display: block; color: var(--muted-foreground); }
+  .is-internal .when .h { color: var(--secondary-foreground); }
+
+  /* Pie de la lista: Cargar más, cargando, error y fin */
+  .list-foot { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 14px 0 0; text-align: center; }
+  .end-note { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 14px 0 0; font-size: 13.5px; color: var(--secondary-foreground); }
+  .end-note .ico { color: var(--success-foreground); }
+  .alert { display: flex; gap: 10px; padding: 12px 14px; border-radius: var(--radius-md); font-size: 13.5px; line-height: 1.5; border: 1px solid; text-align: left; }
+  .alert .ico { margin-top: 1px; }
+  .alert p { margin: 0; }
+  .alert strong { font-weight: 600; }
+  .alert-error { background: var(--destructive-tint); border-color: color-mix(in srgb, var(--destructive-soft) 55%, var(--card)); color: var(--foreground); }
+  .alert-error .ico, .alert-error strong { color: var(--destructive); }
+  .alert .btn { margin-left: auto; align-self: center; }
+
+  /* Esqueleto y estados de pantalla */
+  .skeleton-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) 90px; gap: 14px; align-items: center; padding: 16px; background: var(--card); }
+  .skeleton-row + .skeleton-row { border-top: 1px solid var(--border); }
+  .skeleton-line { display: block; height: 12px; border-radius: 999px; background: var(--muted); animation: pulse 1.4s ease-in-out infinite; }
+  .skeleton-line.box { height: 40px; border-radius: var(--radius-md); }
+  .skeleton-line.w60 { width: 60%; } .skeleton-line.w40 { width: 40%; margin-top: 8px; height: 10px; }
+  @keyframes pulse { 50% { opacity: .55; } }
+  .loading-text { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 12px 0 0; font-size: 13px; color: var(--secondary-foreground); }
+  .state { padding: 36px 20px; border: 1px dashed var(--input); border-radius: var(--radius-lg); background: var(--card); text-align: center; }
+  .state > .ico { color: var(--brand); }
+  .state h2 { margin: 10px 0 4px; font-size: 16px; font-weight: 600; }
+  .state p { margin: 0 auto 16px; max-width: 52ch; color: var(--secondary-foreground); font-size: 13.5px; }
+  .state p:last-child { margin-bottom: 0; }
+  .state-error { border-color: color-mix(in srgb, var(--destructive-soft) 60%, var(--card)); background: var(--destructive-tint); }
+  .state-error > .ico { color: var(--destructive); }
+  .state-error h2 { color: var(--destructive); }
+  .state-error p { color: var(--foreground); }
+  code { font-family: inherit; font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+
+  /* Menú de la cuenta abierto (DropdownMenu de shadcn); mismo CSS que shared/layout */
+  .topbar { position: relative; }
+  .account { position: relative; }
+  .account-btn[aria-expanded="true"] { background: var(--muted); color: var(--foreground); }
+  .account-pop { position: absolute; z-index: 20; top: calc(100% + 8px); right: 0; width: 272px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-modal); padding: 6px; }
+  .account-who { padding: 10px 12px 12px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
+  .account-who p { margin: 0; }
+  .account-who-name { font-weight: 600; font-size: 14px; }
+  .account-who-mail { font-size: 13px; color: var(--muted-foreground); overflow-wrap: anywhere; }
+  .account-menu { list-style: none; margin: 0; padding: 0; }
+  .account-menu [role="menuitem"] { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 40px; padding: 8px 12px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--foreground); font: inherit; font-size: 14px; font-weight: 500; text-align: left; text-decoration: none; cursor: pointer; }
+  .account-menu [role="menuitem"] .ico { color: var(--secondary-foreground); }
+  .account-menu [role="menuitem"]:hover, .account-menu [role="menuitem"]:focus { background: var(--muted); }
+  .account-menu [role="menuitem"]:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+  .account-sep { height: 1px; background: var(--border); margin: 6px 4px; }
+
+  @media (max-width: 900px) {
+    .app { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+    .sidebar { display: none; }
+    .topbar { padding: 10px 12px; }
+    .topbar .menu-btn { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--foreground); cursor: pointer; }
+    .topbar .logo-mobile { display: inline-flex; }
+    .crumbs { display: none; }
+    .topbar-left { display: flex; align-items: center; gap: 4px; }
+    .account-btn .account-name { display: none; }
+    .account-btn { padding: 4px; min-width: 44px; min-height: 44px; justify-content: center; }
+  }
+
+  @media (max-width: 1180px) { .stack { max-width: 720px; } }
+  @media (max-width: 760px) { .filters { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 600px) {
+    .sheet-label { padding: 16px 12px 10px; }
+    .canvas { margin: 0 8px 16px; border-radius: var(--radius-md); }
+    .content { padding: 18px 12px 28px; }
+    .page-head h1 { font-size: 23px; }
+    .stack { margin-top: 16px; }
+    .card { padding: 14px; }
+    .segments { display: flex; width: 100%; }
+    .segments label { flex: 1 1 0; justify-content: center; text-align: center; padding: 6px 4px; min-height: 44px; font-size: 13px; }
+    .dates > div { flex: 1 1 100%; max-width: none; }
+    .dates input { min-height: 44px; }
+    .event { grid-template-columns: 40px minmax(0, 1fr); padding: 14px 12px 14px 9px; }
+    .event .tile { grid-row: 1 / span 2; }
+    .event .when { grid-column: 2; grid-row: 1; text-align: left; white-space: normal; }
+    .event .when .d, .event .when .h { display: inline; }
+    .event .when .h::before { content: " · "; }
+    .event .body { grid-column: 2; grid-row: 2; }
+    .skeleton-row { grid-template-columns: 40px minmax(0, 1fr); }
+    .skeleton-row .w-date { display: none; }
+    .alert { flex-wrap: wrap; }
+    .alert .btn { margin-left: 28px; }
+    .list-foot .btn, .state .btn { width: 100%; }
+    .account { position: static; }
+    .account-pop { top: calc(100% - 2px); right: 8px; width: min(272px, calc(100% - 16px)); }
+    .account-menu [role="menuitem"] { min-height: 44px; }
+  }
+  .account-menu [aria-current="page"] { background: var(--accent); font-weight: 600; }
+  [hidden] { display: none !important; }
+  @media (prefers-reduced-motion: reduce) { .skeleton-line, .spin { animation: none !important; } }
+</style>
+</head>
+<body>
+
+<aside class="sheet-label" aria-label="Rótulo del mockup"><span class="chip">CA-9</span> <strong>Mi actividad</strong> <span class="file">mi-actividad--fin-de-lista.html</span> <span>en la aplicación · con sesión · estado: fin de la lista</span></aside>
+
+<div class="canvas">
+  <div class="app">
+    
+    <aside class="sidebar" aria-label="Barra lateral">
+      <div class="brand-row">
+        <a class="logo" href="#" aria-label="Nimbo, Mis archivos"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>
+        <span class="plan-chip">PERSONAL</span>
+      </div>
+      <nav aria-label="Navegación principal">
+        <ul class="nav">
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span>Mis archivos</span></a></li>
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4"/><path d="m15.4 6.5-6.8 4"/></svg><span>Compartidos conmigo</span></a></li>
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><span>Recientes</span></a></li>
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg><span>Fijados</span></a></li>
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg><span>Papelera</span><span class="meta">3</span></a></li>
+        </ul>
+        <div class="nav-sep" role="presentation"></div>
+        <ul class="nav">
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m12 3-1.9 5.8L4 10.7l6.1 1.9 1.9 5.9 1.9-5.9 6.1-1.9-6.1-1.9Z"/><path d="M5 3v4"/><path d="M3 5h4"/></svg><span>Optimizador</span></a></li>
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/></svg><span>Plan y facturación</span></a></li>
+        </ul>
+        <p class="nav-title">Carpetas</p>
+        <ul class="nav">
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span>Tesis</span><span class="meta">18</span></a></li>
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span>Trabajo</span><span class="meta">42</span></a></li>
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span>Personales</span><span class="meta">9</span></a></li>
+        </ul>
+      </nav>
+      <div class="quota">
+        <div class="quota-head"><span>Almacenamiento</span><span>21 %</span></div>
+        <div class="quota-bar" role="progressbar" aria-label="Almacenamiento usado" aria-valuemin="0" aria-valuemax="100" aria-valuenow="21" aria-valuetext="3.2 GB de 15 GB (21 %)"><span></span></div>
+        <div class="quota-meta">3.2 GB de 15 GB</div>
+      </div>
+    </aside>
+    <div class="main">
+      
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="menu-btn" type="button" aria-label="Abrir menú de navegación" aria-expanded="false" aria-controls="cajon"><svg class="ico " width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg></button>
+          <a class="logo logo-mobile" href="#" aria-label="Nimbo, Mis archivos"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>
+          
+        </div>
+        <div class="account">
+        <button class="account-btn" type="button" id="cuenta-btn" aria-controls="cuenta-menu" aria-haspopup="menu" aria-expanded="false" aria-label="Menú de la cuenta de Lucía Barrios">
+          <span class="account-name">Lucía Barrios</span><span class="avatar" aria-hidden="true">LB</span>
+        </button>
+        <div class="account-pop" id="cuenta-pop" hidden>
+          <div class="account-who">
+            <p class="account-who-name">Lucía Barrios</p>
+            <p class="account-who-mail">lucia.barrios@gmail.com</p>
+          </div>
+          <ul class="account-menu" id="cuenta-menu" role="menu" aria-labelledby="cuenta-btn">
+            <li role="none"><a role="menuitem" href="#" tabindex="-1"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1Z"/></svg><span>Seguridad</span></a></li>
+            <li role="none"><a role="menuitem" href="#" tabindex="-1" aria-current="page"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg><span>Mi actividad</span></a></li>
+            <li role="none"><a role="menuitem" href="#" tabindex="-1"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/></svg><span>Plan y facturación</span></a></li>
+            <li role="separator" class="account-sep"></li>
+            <li role="none"><button role="menuitem" type="button" tabindex="-1" data-cerrar-sesion><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg><span>Cerrar sesión</span></button></li>
+          </ul>
+        </div>
+        </div>
+      </header>
+      <main class="content" id="contenido">
+        <div class="page-head">
+          <h1>Mi actividad</h1>
+          <p>Lo que se hizo en tu cuenta, por ti y por el personal de Nimbo. Solo ves el tipo y la cantidad de elementos, nunca sus nombres, y nadie puede modificar ni borrar este registro.</p>
+        </div>
+        <div class="stack">
+      <section class="card" aria-labelledby="t-filtros">
+        <h2 id="t-filtros" class="sr-only">Filtros</h2>
+        <form class="filters" novalidate>
+          <fieldset>
+            <legend>Origen</legend>
+            <div class="segments">
+              <label><input type="radio" name="origen" value="todo" checked><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5"/></svg>Todo</label><label><input type="radio" name="origen" value="yo"><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5"/></svg>Yo</label><label><input type="radio" name="origen" value="nimbo"><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5"/></svg>Personal de Nimbo</label>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>Fechas</legend>
+            <div class="dates">
+              <div><label for="desde">Desde</label><input id="desde" name="desde" type="date" value=""></div>
+              <div><label for="hasta">Hasta</label><input id="hasta" name="hasta" type="date" value=""></div>
+            </div>
+          </fieldset>
+          
+          <div class="filters-foot">
+            <p class="result-count" role="status">Mostrando 9 eventos, del más reciente al más antiguo</p>
+          </div>
+        </form>
+      </section>
+      <section aria-labelledby="t-lista">
+        <h2 id="t-lista" class="sr-only">Eventos, del más reciente al más antiguo</h2>
+        <ol class="events">
+          <li class="event is-internal">
+            <span class="tile"><svg class="ico " width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/></svg></span>
+            <div class="body">
+              <p class="ev-title">Soporte de Nimbo restauró 3 elementos</p>
+              <p class="ev-meta"><span class="badge"><svg class="ico " width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1Z"/><path d="m9 12 2 2 4-4"/></svg>Acción interna</span><span class="src"><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 11h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5Zm0 0a9 9 0 1 1 18 0m0 0v5a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3Z"/><path d="M21 16v2a4 4 0 0 1-4 4h-5"/></svg><span>Origen: <b>Soporte de Nimbo</b></span></span><span class="res">3 elementos</span></p>
+              <div class="reason"><p class="reason-label"><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Motivo escrito por Soporte de Nimbo</p><p>Restauración pedida por ti en el caso 4821 después de enviar elementos a la papelera por error.</p></div>
+            </div>
+            <p class="when"><time datetime="2026-10-05T09:15-06:00"><span class="d">5 oct 2026</span><span class="h">09:15</span></time></p>
+          </li>
+          <li class="event">
+            <span class="tile"><svg class="ico " width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></svg></span>
+            <div class="body">
+              <p class="ev-title">Subiste un archivo</p>
+              <p class="ev-meta"><span class="src"><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Origen: <b>Tú</b></span></span><span class="res">1 archivo, 12 MB</span></p>
+              
+            </div>
+            <p class="when"><time datetime="2026-10-05T08:02-06:00"><span class="d">5 oct 2026</span><span class="h">08:02</span></time></p>
+          </li>
+          <li class="event">
+            <span class="tile"><svg class="ico " width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg></span>
+            <div class="body">
+              <p class="ev-title">Descargaste un archivo</p>
+              <p class="ev-meta"><span class="src"><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Origen: <b>Tú</b></span></span><span class="res">1 archivo, 3.4 MB</span></p>
+              
+            </div>
+            <p class="when"><time datetime="2026-10-04T17:40-06:00"><span class="d">4 oct 2026</span><span class="h">17:40</span></time></p>
+          </li>
+          <li class="event">
+            <span class="tile"><svg class="ico " width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></span>
+            <div class="body">
+              <p class="ev-title">Moviste 3 elementos a la papelera</p>
+              <p class="ev-meta"><span class="src"><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Origen: <b>Tú</b></span></span><span class="res">3 elementos</span></p>
+              
+            </div>
+            <p class="when"><time datetime="2026-10-04T11:05-06:00"><span class="d">4 oct 2026</span><span class="h">11:05</span></time></p>
+          </li>
+          <li class="event is-internal">
+            <span class="tile"><svg class="ico " width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M22 12H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><path d="M6 16h.01"/><path d="M10 16h.01"/></svg></span>
+            <div class="body">
+              <p class="ev-title">Administración de Nimbo ajustó la cuota de tu cuenta</p>
+              <p class="ev-meta"><span class="badge"><svg class="ico " width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1Z"/><path d="m9 12 2 2 4-4"/></svg>Acción interna</span><span class="src"><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1Z"/><path d="m9 12 2 2 4-4"/></svg><span>Origen: <b>Administración de Nimbo</b></span></span><span class="res">Cuenta</span></p>
+              <div class="reason"><p class="reason-label"><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Motivo escrito por Administración de Nimbo</p><p>Ampliación temporal de 2 GB aprobada en el caso 4790 para terminar de migrar tus documentos. Se revisará el 30 de octubre.</p></div>
+            </div>
+            <p class="when"><time datetime="2026-10-02T14:30-06:00"><span class="d">2 oct 2026</span><span class="h">14:30</span></time></p>
+          </li>
+          <li class="event">
+            <span class="tile"><svg class="ico " width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></span>
+            <div class="body">
+              <p class="ev-title">Vaciaste la papelera</p>
+              <p class="ev-meta"><span class="src"><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Origen: <b>Tú</b></span></span><span class="res">14 elementos</span></p>
+              
+            </div>
+            <p class="when"><time datetime="2026-10-01T14:12-06:00"><span class="d">1 oct 2026</span><span class="h">14:12</span></time></p>
+          </li>
+          <li class="event is-internal">
+            <span class="tile"><svg class="ico " width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg></span>
+            <div class="body">
+              <p class="ev-title">Soporte de Nimbo cerró tus sesiones abiertas</p>
+              <p class="ev-meta"><span class="badge"><svg class="ico " width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1Z"/><path d="m9 12 2 2 4-4"/></svg>Acción interna</span><span class="src"><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 11h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5Zm0 0a9 9 0 1 1 18 0m0 0v5a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3Z"/><path d="M21 16v2a4 4 0 0 1-4 4h-5"/></svg><span>Origen: <b>Soporte de Nimbo</b></span></span><span class="res">4 sesiones</span></p>
+              <div class="reason"><p class="reason-label"><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Motivo escrito por Soporte de Nimbo</p><p>Reportaste que no reconocías un dispositivo en tu cuenta. Cerramos todas las sesiones y te pedimos cambiar tu contraseña.</p></div>
+            </div>
+            <p class="when"><time datetime="2026-09-30T10:45-06:00"><span class="d">30 sept 2026</span><span class="h">10:45</span></time></p>
+          </li>
+          <li class="event">
+            <span class="tile"><svg class="ico " width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg></span>
+            <div class="body">
+              <p class="ev-title">Eliminaste definitivamente 2 elementos</p>
+              <p class="ev-meta"><span class="src"><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Origen: <b>Tú</b></span></span><span class="res">2 elementos</span></p>
+              
+            </div>
+            <p class="when"><time datetime="2026-09-28T13:20-06:00"><span class="d">28 sept 2026</span><span class="h">13:20</span></time></p>
+          </li>
+          <li class="event">
+            <span class="tile"><svg class="ico " width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/></svg></span>
+            <div class="body">
+              <p class="ev-title">Restauraste 1 archivo</p>
+              <p class="ev-meta"><span class="src"><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Origen: <b>Tú</b></span></span><span class="res">1 archivo, 8 MB</span></p>
+              
+            </div>
+            <p class="when"><time datetime="2026-09-27T15:08-06:00"><span class="d">27 sept 2026</span><span class="h">15:08</span></time></p>
+          </li>
+        </ol><p class="end-note" role="status"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>Llegaste al final: no hay actividad más antigua.</p>
+      </section>
+        </div>
+      </main>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

@@ -17,3 +17,4 @@ export * from './identity';
 export { ROLES, roleSchema, SHARED_ERROR_CODES } from './shared';
 export type { RoleName, SharedErrorCode } from './shared';
 export * from './storage';
+export * from './audit';

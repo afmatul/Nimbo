@@ -30,7 +30,9 @@ const FILE: FileSummary = {
   name: 'Informe final.docx',
   sizeBytes: 1_500,
   kind: 'docx',
+  folderId: null,
   createdAt: '2026-09-01T10:00:00.000Z',
+  updatedAt: '2026-09-01T10:00:00.000Z',
 };
 
 interface Deferred {
@@ -82,6 +84,10 @@ function renderMenu(overrides: Partial<HarnessProps> = {}): Promise<void> {
     requestUrl: jest.fn(() => Promise.resolve(SIGNED)),
     onRefresh: jest.fn(),
     openUrl: jest.fn(),
+    onRename: jest.fn(),
+    onMove: jest.fn(),
+    onMoveToTrash: jest.fn(),
+    pin: { pinned: false, onToggle: jest.fn() },
     ...overrides,
   };
   return mount(<Harness {...props} />);
@@ -131,13 +137,65 @@ afterEach(async () => {
 });
 
 describe('FileRowMenu (CA-13, CA-21)', () => {
-  it('CA-13: el disparador se llama «Acciones de {nombre}» y la única acción es «Descargar»', async () => {
+  it('CA-13: el disparador se llama «Acciones de {nombre}» y «Descargar» es la primera acción', async () => {
     await renderMenu();
 
     expect(trigger().getAttribute('aria-label')).toBe('Acciones de Informe final.docx');
     await press('Enter');
 
-    expect(items().map((item) => item.textContent?.trim())).toEqual(['Descargar']);
+    expect(items()[0]?.textContent?.trim()).toBe('Descargar');
+  });
+
+  it('006 CA-4, CA-7: «Renombrar» y «Mover a…» siguen a «Descargar» y abren su diálogo', async () => {
+    const onRename = jest.fn();
+    const onMove = jest.fn();
+    await renderMenu({ onRename, onMove });
+    await press('Enter');
+
+    const labels = items().map((item) => item.textContent?.trim());
+    expect(labels.slice(0, 3)).toEqual(['Descargar', 'Renombrar', 'Mover a…']);
+    await act(async () => items()[1]?.click());
+    expect(onRename).toHaveBeenCalledTimes(1);
+    await press('Enter');
+    await act(async () => items()[2]?.click());
+    expect(onMove).toHaveBeenCalledTimes(1);
+  });
+
+  it('006 CA-10: «Mover a la papelera» es la última acción, sin color destructivo', async () => {
+    const onMoveToTrash = jest.fn();
+    await renderMenu({ onMoveToTrash });
+    await press('Enter');
+
+    const last = items().at(-1);
+    expect(last?.textContent?.trim()).toBe('Mover a la papelera');
+    expect(last?.className).not.toMatch(/destructive/);
+    await act(async () => last?.click());
+    expect(onMoveToTrash).toHaveBeenCalledTimes(1);
+  });
+
+  it('006 CA-27: «Fijar en la barra lateral» va después de «Mover a…» y fija el archivo', async () => {
+    const onToggle = jest.fn();
+    await renderMenu({ pin: { pinned: false, onToggle } });
+    await press('Enter');
+
+    const labels = items().map((item) => item.textContent?.trim());
+    expect(labels).toEqual([
+      'Descargar',
+      'Renombrar',
+      'Mover a…',
+      'Fijar en la barra lateral',
+      'Mover a la papelera',
+    ]);
+    await act(async () => items()[3]?.click());
+    expect(onToggle).toHaveBeenCalledTimes(1);
+  });
+
+  it('006 CA-27: si ya está fijado, el ítem dice «Quitar de la barra lateral» (mockup menu-fila-quitar)', async () => {
+    await renderMenu({ pin: { pinned: true, onToggle: jest.fn() } });
+    await press('Enter');
+
+    expect(items()[3]?.textContent?.trim()).toBe('Quitar de la barra lateral');
+    expect(items()[3]?.getAttribute('aria-disabled')).toBeNull();
   });
 
   it.each([

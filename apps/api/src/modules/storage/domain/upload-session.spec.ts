@@ -14,6 +14,7 @@ const OWNER = '11111111-1111-4111-8111-111111111111';
 const FILE = '22222222-2222-4222-8222-222222222222';
 const VERSION = '33333333-3333-4333-8333-333333333333';
 const UPLOAD = '44444444-4444-4444-8444-444444444444';
+const FOLDER = '55555555-5555-4555-8555-555555555555';
 
 const clock = new FixedClock(new Date('2026-09-30T10:00:00.000Z'));
 
@@ -23,6 +24,7 @@ function input(overrides: Partial<StartUploadInput> = {}): StartUploadInput {
     ownerId: OWNER,
     fileId: FILE,
     versionId: VERSION,
+    folderId: null,
     name: FileName.of('informe.docx'),
     keepBoth: false,
     declaredBytes: 1024n,
@@ -44,6 +46,12 @@ describe('UploadSession', () => {
     expect(session.objectKey.equals(ObjectKey.of(OWNER, FILE, VERSION))).toBe(true);
     expect(session.rejectionReason).toBeNull();
     expect(session.finishedAt).toBeNull();
+  });
+
+  it('CA-6 (006): guarda la carpeta destino; `null` es la raíz', () => {
+    expect(start().folderId).toBeNull();
+    expect(start({ folderId: FOLDER }).folderId).toBe(FOLDER);
+    expect(start({ folderId: FOLDER }).snapshot().folderId).toBe(FOLDER);
   });
 
   it('CA-2: con datos de multipart es `por_partes`', () => {

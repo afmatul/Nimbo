@@ -1,7 +1,17 @@
 'use client';
 
 import { STORAGE_ERROR_CODES, type DownloadUrlResponse, type FileSummary } from '@nimbo/contracts';
-import { AlertCircle, Download, EllipsisVertical, Loader2, X } from 'lucide-react';
+import {
+  AlertCircle,
+  Download,
+  EllipsisVertical,
+  FolderInput,
+  Loader2,
+  Pencil,
+  Pin,
+  PinOff,
+  X,
+} from 'lucide-react';
 import * as React from 'react';
 
 import { Alert } from '../../../components/ui/alert';
@@ -13,6 +23,8 @@ import {
   DropdownMenuTrigger,
 } from '../../../components/ui/dropdown-menu';
 import { StorageRequestError } from '../storage-request-error';
+
+import { MoveToTrashMenuItem } from './move-to-trash-menu-item';
 
 export interface DownloadNotice {
   readonly title: string;
@@ -31,20 +43,35 @@ export interface FileRowMenuProps {
   readonly onNotice: (notice: DownloadNotice | null) => void;
   readonly onRefresh: () => void;
   readonly openUrl?: (url: string) => void;
+  /** Abre «Renombrar» (006 CA-4). */
+  readonly onRename: () => void;
+  /** Abre «Mover a…» (006 CA-7). */
+  readonly onMove: () => void;
+  /** «Mover a la papelera», sin confirmación (006 CA-10). */
+  readonly onMoveToTrash: () => void;
+  readonly pin: PinToggle;
 }
 
-const openInBrowser = (url: string): void => window.location.assign(url);
+/** Abre la URL firmada en la pestaña: el navegador descarga (005 CA-13). */
+export const openInBrowser = (url: string): void => window.location.assign(url);
 
 function codeOf(error: unknown): string | null {
   return error instanceof StorageRequestError ? error.code : null;
 }
 
-function failureNotice(
+/** Acciones del aviso de descarga fallida: «Reintentar» o, si ya no existe, «Actualizar lista». */
+export interface DownloadFailureActions {
+  readonly retry: () => void;
+  readonly refresh: () => void;
+}
+
+/** Aviso de una descarga fallida (005 CA-21), desde la fila o desde la barra lateral (006 CA-27). */
+export function downloadFailureNotice(
   name: string,
-  code: string | null,
-  retry: () => void,
-  refresh: () => void,
+  error: unknown,
+  { retry, refresh }: DownloadFailureActions,
 ): DownloadNotice {
+  const code = codeOf(error);
   if (code === STORAGE_ERROR_CODES.STORAGE_NODE_NOT_FOUND) {
     return {
       title: `No encontramos «${name}».`,
@@ -72,6 +99,10 @@ export function FileRowMenu({
   onNotice,
   onRefresh,
   openUrl = openInBrowser,
+  onRename,
+  onMove,
+  onMoveToTrash,
+  pin,
 }: FileRowMenuProps): React.JSX.Element {
   const [open, setOpen] = React.useState(false);
   const [preparing, setPreparing] = React.useState(false);
@@ -89,7 +120,12 @@ export function FileRowMenu({
       const { url } = await requestUrl(file.id);
       openUrl(url);
     } catch (error) {
-      onNotice(failureNotice(file.name, codeOf(error), () => void download(), onRefresh));
+      onNotice(
+        downloadFailureNotice(file.name, error, {
+          retry: () => void download(),
+          refresh: onRefresh,
+        }),
+      );
     } finally {
       clearTimeout(preparingTimer.current);
       inFlight.current = false;
@@ -106,17 +142,7 @@ export function FileRowMenu({
   return (
     <>
       <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="shrink-0 text-secondary-foreground"
-            aria-label={`Acciones de ${file.name}`}
-          >
-            <EllipsisVertical className="h-5 w-5" aria-hidden="true" />
-          </Button>
-        </DropdownMenuTrigger>
+        <RowMenuTrigger name={file.name} />
         <DropdownMenuContent align="end">
           <DropdownMenuItem
             aria-disabled={preparing || undefined}
@@ -133,12 +159,73 @@ export function FileRowMenu({
             )}
             {preparing ? 'Preparando…' : 'Descargar'}
           </DropdownMenuItem>
+          <OrganizeMenuItems onRename={onRename} onMove={onMove} />
+          <PinMenuItem pin={pin} />
+          <MoveToTrashMenuItem onSelect={onMoveToTrash} />
         </DropdownMenuContent>
       </DropdownMenu>
       <span role="status" aria-live="polite" className="sr-only">
         {preparing ? `Preparando la descarga de ${file.name}…` : ''}
       </span>
     </>
+  );
+}
+
+/** Botón ⋮ de una fila (mockup `acciones`): «Acciones de {nombre}». */
+export function RowMenuTrigger({ name }: { readonly name: string }): React.JSX.Element {
+  return (
+    <DropdownMenuTrigger asChild>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="shrink-0 text-secondary-foreground"
+        aria-label={`Acciones de ${name}`}
+      >
+        <EllipsisVertical className="h-5 w-5" aria-hidden="true" />
+      </Button>
+    </DropdownMenuTrigger>
+  );
+}
+
+export interface OrganizeMenuItemsProps {
+  readonly onRename: () => void;
+  readonly onMove: () => void;
+}
+
+/** «Renombrar» y «Mover a…», comunes al menú de archivos y al de carpetas (mockups `acciones-*`). */
+export function OrganizeMenuItems({ onRename, onMove }: OrganizeMenuItemsProps): React.JSX.Element {
+  return (
+    <>
+      <DropdownMenuItem onSelect={onRename}>
+        <Pencil className="h-4 w-4 text-secondary-foreground" aria-hidden="true" />
+        Renombrar
+      </DropdownMenuItem>
+      <DropdownMenuItem onSelect={onMove}>
+        <FolderInput className="h-4 w-4 text-secondary-foreground" aria-hidden="true" />
+        Mover a…
+      </DropdownMenuItem>
+    </>
+  );
+}
+
+/** Estado «fijado» (de `GET /quick-access`) y la acción de fijar o quitar (006 CA-27). */
+export interface PinToggle {
+  readonly pinned: boolean;
+  readonly onToggle: () => void;
+}
+
+/**
+ * «Fijar en la barra lateral» o, si ya está fijado, «Quitar de la barra lateral» (mockups `menu-fila-*`). No se
+ * deshabilita en el tope: intentar el sexto muestra el aviso (CA-28).
+ */
+export function PinMenuItem({ pin }: { readonly pin: PinToggle }): React.JSX.Element {
+  const Icon = pin.pinned ? PinOff : Pin;
+  return (
+    <DropdownMenuItem onSelect={pin.onToggle}>
+      <Icon className="h-4 w-4 text-secondary-foreground" aria-hidden="true" />
+      {pin.pinned ? 'Quitar de la barra lateral' : 'Fijar en la barra lateral'}
+    </DropdownMenuItem>
   );
 }
 

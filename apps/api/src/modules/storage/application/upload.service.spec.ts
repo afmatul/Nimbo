@@ -23,6 +23,7 @@ import {
   InvalidFileTypeError,
   InvalidUploadRequestError,
   NameConflictError,
+  NodeNotFoundError,
   QuotaExceededError,
   StorageTooManyRequestsError,
   UploadExpiredError,
@@ -30,6 +31,11 @@ import {
   UploadNotFoundError,
   UploadSizeMismatchError,
 } from '../domain/errors';
+import { File } from '../domain/file';
+import { FileName } from '../domain/file-name.vo';
+import { Folder } from '../domain/folder';
+import { FolderName } from '../domain/folder-name.vo';
+import { TrashState } from '../domain/trash-state';
 import type { UploadSession } from '../domain/upload-session';
 
 import type { PlanLimits } from './plan-limits';
@@ -46,6 +52,8 @@ const ACTOR: Actor = createActor('11111111-1111-4111-8111-111111111111', Role.CL
 const LIMITS: PlanLimits = {
   maxFileBytes: 1_000n * BigInt(MIB),
   storageQuotaBytes: 2_000n * BigInt(MIB),
+  trashRetentionDays: 30,
+  planName: 'Plan de prueba',
 };
 const CONFIG: UploadConfig = {
   partSizeBytes: BigInt(8 * MIB),
@@ -115,7 +123,7 @@ function setup() {
 type Setup = ReturnType<typeof setup>;
 
 function request(overrides: Partial<InitUploadInput> = {}): InitUploadInput {
-  return { name: 'informe.docx', sizeBytes: MIB, onConflict: 'ask', ...overrides };
+  return { name: 'informe.docx', sizeBytes: MIB, onConflict: 'ask', folderId: null, ...overrides };
 }
 
 function loggedPayloads(logger: Setup['logger']): string {
@@ -600,7 +608,9 @@ describe('UploadService.complete', () => {
         name: 'informe.docx',
         sizeBytes: 20 * MIB,
         kind: 'docx',
+        folderId: null,
         createdAt: NOW.toISOString(),
+        updatedAt: NOW.toISOString(),
       },
     });
     expect(ctx.storage.completed[0]?.parts.map((part) => part.etag)).toEqual([
@@ -1086,5 +1096,152 @@ describe('UploadService.complete: registro final', () => {
       action: AuditAction.FILE_UPLOAD_REJECTED,
       cargaId: session.id,
     });
+  });
+});
+
+const BRUNO: Actor = createActor('44444444-4444-4444-8444-444444444444', Role.CLIENT);
+
+/** Carpeta viva de `owner` en la raíz, guardada en el árbol en memoria. */
+function folderOf(ctx: Setup, name: string, owner: Actor = ACTOR): Folder {
+  const created = Folder.create({
+    id: randomId(),
+    ownerId: owner.id,
+    name: FolderName.of(name),
+    parent: null,
+    maxDepth: 10,
+    now: NOW,
+  });
+  ctx.nodes.folders.set(created.id, created);
+  return created;
+}
+
+/** Pasa la carpeta a la papelera, como lo haría `TrashService` en otra petición. */
+function trashFolder(ctx: Setup, folder: Folder): void {
+  ctx.nodes.folders.set(
+    folder.id,
+    Folder.rehydrate({
+      ...folder.snapshot(),
+      trash: TrashState.start(NOW, LIMITS.trashRetentionDays),
+    }),
+  );
+}
+
+/** Archivo vivo de ACTOR en `folderId`. */
+function fileIn(ctx: Setup, name: string, folderId: string | null): void {
+  const created = File.create({
+    id: randomId(),
+    ownerId: ACTOR.id,
+    folderId,
+    name: FileName.of(name),
+    kind: 'docx',
+    sizeBytes: 10n,
+    currentVersionId: randomId(),
+    now: NOW,
+  });
+  ctx.nodes.files.set(created.id, created);
+}
+
+describe('UploadService con carpeta destino (006)', () => {
+  it('CA-6: la sesión guarda la carpeta y el archivo queda en ella al completar', async () => {
+    const ctx = setup();
+    const reports = folderOf(ctx, 'Reportes');
+    const response = await ctx.service.init(ACTOR, request({ folderId: reports.id }));
+    const session = ctx.sessions.sessions.get(response.uploadId);
+    if (session === undefined) throw new Error('la sesión no se guardó');
+    ctx.storage.objects.set(session.objectKey.value, Buffer.alloc(MIB));
+
+    const completed = await ctx.service.complete(ACTOR, session.id);
+
+    expect(session.folderId).toBe(reports.id);
+    expect(completed.file.folderId).toBe(reports.id);
+    expect(ctx.nodes.files.get(session.fileId)?.folderId).toBe(reports.id);
+  });
+
+  it('CA-6: el nombre repetido se evalúa en la carpeta destino, no en la raíz', async () => {
+    const ctx = setup();
+    const reports = folderOf(ctx, 'Reportes');
+    fileIn(ctx, 'informe.docx', null);
+
+    const free = await ctx.service.init(ACTOR, request({ folderId: reports.id }));
+    fileIn(ctx, 'Informe.docx', reports.id);
+    const attempt = ctx.service.init(ACTOR, request({ folderId: reports.id }));
+
+    expect(free.name).toBe('informe.docx');
+    await expect(attempt).rejects.toMatchObject({ suggestedName: 'informe (1).docx' });
+  });
+
+  it('CA-6: un destino ajeno, inexistente o en la papelera es 404 sin sesión ni multipart', async () => {
+    const ctx = setup();
+    const trashed = folderOf(ctx, 'Vieja');
+    trashFolder(ctx, trashed);
+    const destinations = [folderOf(ctx, 'Ajena', BRUNO).id, randomId(), trashed.id];
+
+    for (const folderId of destinations) {
+      await expect(
+        ctx.service.init(ACTOR, request({ folderId, sizeBytes: 20 * MIB })),
+      ).rejects.toBeInstanceOf(NodeNotFoundError);
+    }
+    expect(ctx.sessions.sessions.size).toBe(0);
+    expect(ctx.journal.entries).not.toContain('storage:createMultipart');
+  });
+
+  it('CA-6: valida el destino tras bloquear el uso y antes del nombre', async () => {
+    const ctx = setup();
+    const reports = folderOf(ctx, 'Reportes');
+
+    await ctx.service.init(ACTOR, request({ folderId: reports.id }));
+
+    const entries = ctx.journal.entries;
+    expect(entries.indexOf('quota:lockAndReadUsage')).toBeLessThan(
+      entries.indexOf('nodes:findAccessibleFolder'),
+    );
+    expect(entries.indexOf('nodes:findAccessibleFolder')).toBeLessThan(
+      entries.indexOf('nodes:findTakenNames'),
+    );
+  });
+
+  it('CA-6: si el destino pasó a la papelera durante la carga, `complete` cancela, borra lo subido y responde 404', async () => {
+    const ctx = setup();
+    const reports = folderOf(ctx, 'Reportes');
+    const response = await ctx.service.init(ACTOR, request({ folderId: reports.id }));
+    const session = ctx.sessions.sessions.get(response.uploadId);
+    if (session === undefined) throw new Error('la sesión no se guardó');
+    ctx.storage.objects.set(session.objectKey.value, Buffer.alloc(MIB));
+    trashFolder(ctx, reports);
+
+    await expect(ctx.service.complete(ACTOR, session.id)).rejects.toBeInstanceOf(NodeNotFoundError);
+
+    expect(stateOf(ctx, session).state).toBe('cancelada');
+    expect(ctx.storage.purged).toEqual([session.objectKey.value]);
+    expect(ctx.nodes.inserted).toEqual([]);
+    expect(ctx.quotas.added).toEqual([]);
+    expect(ctx.logger.info).toHaveBeenCalledWith({
+      event: 'upload.destination_gone',
+      cargaId: session.id,
+    });
+    await expect(ctx.service.complete(ACTOR, session.id)).rejects.toBeInstanceOf(
+      UploadNotFoundError,
+    );
+  });
+
+  it('CA-6: la comprobación del destino va tras `lockUsage` y antes del CAS final', async () => {
+    const ctx = setup();
+    const reports = folderOf(ctx, 'Reportes');
+    const response = await ctx.service.init(ACTOR, request({ folderId: reports.id }));
+    const session = ctx.sessions.sessions.get(response.uploadId);
+    if (session === undefined) throw new Error('la sesión no se guardó');
+    ctx.storage.objects.set(session.objectKey.value, Buffer.alloc(MIB));
+
+    await ctx.service.complete(ACTOR, session.id);
+
+    const entries = ctx.journal.entries;
+    expect(
+      entries.slice(entries.lastIndexOf('tx:begin'), entries.lastIndexOf('tx:begin') + 4),
+    ).toEqual([
+      'tx:begin',
+      'quota:lockUsage',
+      'nodes:findAccessibleFolder',
+      'session:transition:completada',
+    ]);
   });
 });

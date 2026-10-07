@@ -79,12 +79,36 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
   - `dispositivo` y `sesion` (002).
 
 ### M2 `storage`
-- Controladores: `FilesController` (list, download, move, trash) y, con 005, `UploadsController` (init, resume, complete, cancel; SRP; `uploadPart` desaparece porque los bytes no pasan por la API, DF-16). Faltan carpetas, renombrar, restaurar, versiones, cuota, búsqueda, vista previa → DF-15.
-- Servicios: `FileService` (con 005: `list`, `getDownloadUrl`), `UploadService` (`init`, `resume`, `complete`, `cancel`, `expire`), `QuotaService` (`assertCanUpload`). Todos con `actor: Actor` primero. Trabajo (worker): `UploadCleanupProcessor` y `UploadCleanupScheduler` (cola `upload-cleanup`).
-- Puertos → implementaciones: `IObjectStorage` → `MinioStorageAdapter` (con 005: `createMultipart`, `presignUploadPart`, `presignUploadObject`, `listParts`, `completeMultipart`, `abortMultipart`, `headObject`, `getRange`, `purgeObject`, `presignDownload`); `IFileTypeDetector` → `MagicBytesDetector`; `INodeRepository` → TypeORM (solo archivos hasta 006); `IPlanLimitsProvider` → lo **declara** `storage` con `PlanLimits` e `I_PLAN_LIMITS_PROVIDER` (`application/plan-limits.ts`, exportados por `storage/index.ts`) y lo implementa `billing` (DF-51, opción A; `storage` no importa `billing`); repositorios nuevos de 005: `IUploadSessionRepository`, `IQuotaRepository` (único punto que escribe `usuario.espacio_usado`: DF-59) e `IExpiredUploadScanner` (único acceso sin actor, ADR-0021).
+- Controladores:
+  - `FilesController` (con 006: renombrar, mover, `download-url`) y, con 005, `UploadsController` (init, resume, complete, cancel; SRP; `uploadPart` desaparece porque los bytes no pasan por la API, DF-16);
+  - con 006 (DF-61): `FoldersController` (`GET /folders/contents`, crear, renombrar, mover; reemplaza `FilesController.list`) y `TrashController` (eliminar a la papelera, listar, resumen, restaurar, eliminar definitivamente, vaciar);
+  - con 006 §9 (DF-63): `QuickAccessController` (`GET /quick-access`, `PUT`/`DELETE /quick-access/pins/:nodeType/:nodeId`, `POST /quick-access/recents/:nodeType/:nodeId`; `:nodeType` ∈ `files|folders`; `@Roles(Role.CLIENT)`).
+  - con 007 (DF-62): `SpaceController` (`GET /storage/summary`, `@Roles(Role.CLIENT)`).
+  - Faltan versiones, búsqueda y vista previa → DF-15.
+- Servicios (todos con `actor: Actor` primero):
+  - `FileService` (`getDownloadUrl`, renombrar, mover), `UploadService` (`init`, `resume`, `complete`, `cancel`, `expire`), `QuotaService` (`assertCanUpload`);
+  - con 006 (DF-61): `FolderService` (`create`, `rename`, `move`, `contents`), `TrashService` (eliminar, listar, restaurar, purgar, vaciar; el `trash` del diagrama sale de `FileService` por SRP) y `TrashPurger` (borrado definitivo de objetos, filas y `espacio_usado` en una transacción con `lockUsage` primero);
+  - con 006 §9 (DF-63): `QuickAccessService` (`list`, `pin`, `unpin`, `recordOpen`; solo `pin` toma `IQuotaRepository.lockUsage` y comprueba el tope). Configuración `QUICK_ACCESS_CONFIG` = `{ maxPinned, recentVisible }` desde `QUICK_ACCESS_MAX_PINNED` (5) y `QUICK_ACCESS_RECENT_VISIBLE` (3, decisión de Adrián del 2026-10-03) y la constante `RECENTS_STORED = 25` (colchón de poda, no configuración).
+  - con 007 (DF-62): `SpaceSummaryService` (`summary`), `SpaceMeasurer` (`measure`, compartido por el resumen y la conciliación) y `UsageReconciler` (`reconcile`).
+  - Trabajos (worker): `UploadCleanupProcessor` y `UploadCleanupScheduler` (cola `upload-cleanup`); con 006, `TrashPurgeScheduler` y `TrashPurgeProcessor` (cola `trash-purge`, repetible con `upsertJobScheduler`, `concurrency: 1`).
+  - con 007 (DF-62): `UsageReconcileProcessor` y `UsageReconcileScheduler` (cola `usage-reconcile`).
+- Puertos → implementaciones:
+  - `IObjectStorage` → `MinioStorageAdapter` (con 005: `createMultipart`, `presignUploadPart`, `presignUploadObject`, `listParts`, `completeMultipart`, `abortMultipart`, `headObject`, `getRange`, `purgeObject`, `presignDownload`); `IFileTypeDetector` → `MagicBytesDetector`;
+  - `INodeRepository` → TypeORM (archivos y, con 006, carpetas);
+  - `IPlanLimitsProvider` → lo **declara** `storage` con `PlanLimits` e `I_PLAN_LIMITS_PROVIDER` (`application/plan-limits.ts`, exportados por `storage/index.ts`) y lo implementa `billing` (DF-51, opción A; `storage` no importa `billing`); con 006, `PlanLimits.trashRetentionDays`;
+  - repositorios de 005: `IUploadSessionRepository`, `IQuotaRepository` (único punto que escribe `usuario.espacio_usado`: DF-59) e `IExpiredUploadScanner` (acceso sin actor de la limpieza, ADR-0021);
+  - repositorios de 006 (internos, DF-61): `ITrashRepository` (incluye `schedulePurgeOfAll`), `IExpiredTrashScanner` (único acceso sin actor de la purga, función `papelera_vencida`) e `ITrashPurgeQueue` → `TrashPurgeQueue`;
+  - repositorio de 006 §9 (interno, DF-63): `IQuickAccessRepository` → `TypeOrmQuickAccessRepository` (`list`, `countPinned`, `findAccessibleNode`, `upsertPin`, `removePin`, `touchRecent`, `pruneRecents`). Toda lectura y escritura une `accessibleNodes(actor)` dentro de la consulta. No hay puerto entre módulos.
+  - con 007 (internos, DF-62): `ISpaceRepository` → `TypeOrmSpaceRepository` (bytes vivos propios por tipo), `IClientAccountScanner` → `SqlClientAccountScanner` (solo ids de cuentas de cliente; único acceso sin actor de la conciliación) e `IQuotaRepository.readUsage` (sin bloqueo).
 - Puertos que consume: `IAuditLogger` (lo declara T2 `audit`); `IRateLimiter` (T1 `shared`).
-- Dominio: `StorageNode` (abstracta) ← `Folder`, `File` (**Composite**); `FileVersion` (composición 1..* de `File`; `DocumentVersion` no hereda de él, ADR-0012); `UploadSession` (máquina `activa → completada | rechazada | cancelada | expirada`); con 005 también `FileName` (VO), `FileKind` + catálogo extensión → tipo/MIME, `ObjectKey` y `QuotaPolicy` (puro).
-- Tablas: `carpeta`, `archivo`, `version_archivo`, `carga`. Con 005: `archivo`, `version_archivo` y `carga` con RLS (`ENABLE` + `FORCE`); función de mantenimiento `carga_expiradas` (ADR-0021). `storage` además escribe la columna `usuario.espacio_usado` (excepción DF-59).
+- Dominio:
+  - `StorageNode` ← `Folder`, `File` (**Composite**). Con 006 es una unión `File | Folder` y no una clase abstracta: no hay comportamiento común que heredar (DF-61);
+  - `FileVersion` (composición 1..* de `File`; `DocumentVersion` no hereda de él, ADR-0012); `UploadSession` (máquina `activa → completada | rechazada | cancelada | expirada`);
+  - con 005: `FileName` (VO), `FileKind` + catálogo extensión → tipo/MIME, `ObjectKey` y `QuotaPolicy` (puro);
+  - con 006: `FolderName` (VO), `FolderPath` y `TrashState`;
+  - con 006 §9: `QuickAccessItem` (modelo de lectura: `type`, `id`, `name`, `kind?`), `QuickAccessList` (`pinned`, `recent`, `hasMoreRecent`) y `QuickAccessLimitError` (422, `STORAGE_QUICK_ACCESS_LIMIT`, `details.maxPinned`).
+  - con 007: `FileCategory`, `SpaceBreakdown`, `NodeOrder` y `QuotaPolicy.available`.
+- Tablas: `carpeta`, `archivo`, `version_archivo`, `carga` y, con 006 §9, `acceso_rapido`. Con 005: `archivo`, `version_archivo` y `carga` con RLS (`ENABLE` + `FORCE`); función de mantenimiento `carga_expiradas` (ADR-0021). Con 006: RLS en `carpeta` y función `papelera_vencida`. Con 006 §9: RLS de cliente en `acceso_rapido`, sin política para roles internos ni de mantenimiento. `storage` además escribe la columna `usuario.espacio_usado` (excepción DF-59). Desde 007, `storage` lee `usuario.id` y `rol` para listar cuentas en la conciliación (extensión de DF-59, DF-62).
 
 ### M3a `access`
 - Servicio: `PermissionResolver` (levelFor, can, inheritedGrants) + `accessibleNodes(actor)`, constructor de la consulta de nodos accesibles (DF-32, spec 003 D-1: 003 entrega la firma; la consulta se completa con 005 y 012).
@@ -166,8 +190,10 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
 - Tablas: ninguna de negocio; tabla de control `migracion` (TypeORM).
 
 ### T2 `audit`
-- `AuditService` (record, listForUser), `AuditEntry` (actorId, actorRole, targetUserId, action, resourceId, occurredAt, `isVisibleTo`). Implementa `IAuditLogger` (llega con 004).
-- Con 005 (004 llega después): módulo mínimo con `IAuditLogger` (`record(entry: AuditRecord)`, donde `AuditRecord = { action: AuditAction; actor: Actor; targetUserId; resourceId?; attributes? }`, de mejor esfuerzo y posterior al commit), su token `I_AUDIT_LOGGER`, el catálogo cerrado `AuditAction` y el adaptador provisional `LogAuditLogger` (Pino, `redactDeep`; `occurredAt` y `correlationId` los pone el adaptador). 004 cambia el binding a `AuditService` sin tocar a los consumidores. `audit/index.ts` no exporta el adaptador (DF-60).
+- `AuditEntry` (id, action, actorId nullable, actorRole, targetUserId, resourceType, resourceId, attributes, occurredAt, correlationId), **sin** `isVisibleTo`: la visibilidad es la consulta con `usuario_afectado_id = actor.id` más RLS (DF-64, Art. IX.2). El catálogo cerrado `AuditAction`/`AUDIT_CATALOG` declara por acción el tipo de recurso y los atributos permitidos; `sanitizeAttributes` descarta los demás.
+- `AuditService` implementa `IAuditLogger` (token `I_AUDIT_LOGGER`): `record(entry: AuditRecord)` de mejor esfuerzo y posterior al commit (005, 006; nunca lanza), `recordInTransaction(entry)` síncrona, que lanza y se une a la transacción del llamador (011, D-5), y `listForUser(actor, query)`; ambas escrituras delegan en un `append` privado. `AuditRecord = { action: AuditAction; actor: Actor; targetUserId; resourceId?; attributes? }`.
+- Puerto interno `IAuditRepository` (`insert(actor, entry)`, `listForTarget`) → `TypeOrmAuditRepository`, dentro de `audit` (no lo exporta `index.ts`).
+- Presentación: `AuditController` con `GET /audit/my-events` (DF-15) en `AuditHttpModule`, que carga solo `api`; el `worker` carga `AuditModule` sin rutas. `LogAuditLogger` (adaptador provisional de 005) se retiró con 004 (DF-64).
 - Tabla: `evento_auditoria` (004).
 
 ### T3 `realtime`
@@ -197,10 +223,12 @@ El mapeo vive solo en las entidades TypeORM (`@Entity('archivo')`, `@Column({ na
 | `Session` | `sesion` | Depende de `dispositivo` |
 | `Device` | `dispositivo` | Clase nueva (DF-11, spec 002 D-4); `huella_hash` guarda el hash del identificador aleatorio de la cookie. Falta en el diagrama |
 | `VerificationToken` | `token_cuenta` | `tipo` = verificación / recuperación; `invalidado_en` y `creado_en` (DF-53) |
-| `Folder` | `carpeta` | `ruta` como camino materializado |
-| `File` | `archivo` | Con 005: solo `id`, `propietario_id`, `nombre`, `tipo`, `tamano_bytes`, `version_actual_id`, fechas y `eliminado_en`; RLS; sin `carpeta_id` (006), `estado_indexacion` (019) ni `tipo_mime` (ningún consumidor de 005 lo lee; 017 lo agrega si lo necesita; DF-60). DF-33 parcial |
+| `Folder` | `carpeta` | `ruta` como camino materializado; con 006: `profundidad`, `purgar_en`, `eliminado_con_carpeta_id`; RLS (DF-61) |
+| `File` | `archivo` | Con 005: solo `id`, `propietario_id`, `nombre`, `tipo`, `tamano_bytes`, `version_actual_id`, fechas y `eliminado_en`; RLS; sin `estado_indexacion` (019) ni `tipo_mime` (ningún consumidor de 005 lo lee; 017 lo agrega si lo necesita; DF-60). Con 006: `carpeta_id`, `purgar_en`, `eliminado_con_carpeta_id` (DF-61). DF-33 parcial |
+| `TrashState` | columnas de `archivo` y `carpeta` | `eliminado_en`, `purgar_en`, `eliminado_con_carpeta_id`; sin tabla propia. La purga lee por la función `papelera_vencida` (ADR-0021, DF-61) |
+| `QuickAccessItem` / `QuickAccessList` | `acceso_rapido` | Con 006 §9 (DF-63). `usuario_id` (FK a `usuario`: la cuenta que fija, no el dueño del nodo); `archivo_id` y `carpeta_id` (FK con `ON DELETE CASCADE` y `CHECK` de exactamente uno, ADR-0011); `fijado_en` y `abierto_en` (`timestamptz`, `CHECK` de al menos uno; fijado ⇔ `fijado_en IS NOT NULL`, sin columna `fijado`); `creado_en`, `actualizado_en`. Únicas `(archivo_id, usuario_id)` y `(carpeta_id, usuario_id)`; índices parciales `(usuario_id, fijado_en DESC, id DESC)` para fijados y `(usuario_id, abierto_en DESC, id DESC)` para recientes. RLS de cliente (`usuario_id` = actor), `ENABLE` + `FORCE`, sin política para roles internos. Los items son modelos de lectura que unen la fila con `archivo`/`carpeta` vía `accessibleNodes` |
 | `FileVersion` / `DocumentVersion` | `version_archivo` | `origen` = carga / edicion / restauracion / optimizacion (ADR-0012). Con 005: `clave_objeto` única (`u/{propietario}/{archivo}/{version}`), `creado_por`; sin `checksum` ni `sesion_edicion_id`; RLS, sin política para roles internos |
-| `UploadSession` | `carga` | Reserva de cuota mientras está `activa`; `upload_id` y `clave_objeto` nunca salen de la API; RLS solo para el propietario; `archivo_id`/`version_id` reservados sin FK; sin `carpeta_destino_id` (006). DF-33 parcial, ADR-0021 |
+| `UploadSession` | `carga` | Reserva de cuota mientras está `activa`; `upload_id` y `clave_objeto` nunca salen de la API; RLS solo para el propietario; `archivo_id`/`version_id` reservados sin FK; con 006, `carpeta_destino_id` sin FK (DF-61). DF-33 parcial, ADR-0021 |
 | (uso de espacio) | `usuario.espacio_usado` | Atributo almacenado (`bigint`, `CHECK >= 0`, DF-38); `storage` lo escribe por excepción (DF-59) |
 | `UserShare` | `comparticion` | |
 | `PublicLink` | `enlace_publico` | |

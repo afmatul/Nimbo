@@ -5,8 +5,9 @@ import type { Actor } from '../../../../shared';
 import type { IQuotaRepository } from '../../application/ports/i-quota.repository.port';
 import type { QuotaUsage } from '../../domain/quota-policy';
 
-/** Excepción D-5 / DF-59: las dos únicas sentencias de `storage` sobre `usuario`, y solo sobre `espacio_usado`. */
-const LOCK_USAGE_SQL = 'SELECT espacio_usado::text AS usado FROM usuario WHERE id = $1 FOR UPDATE';
+/** Excepción D-5 / DF-59: las únicas sentencias de `storage` sobre `usuario`, y solo sobre `espacio_usado`. */
+const READ_USAGE_SQL = 'SELECT espacio_usado::text AS usado FROM usuario WHERE id = $1';
+const LOCK_USAGE_SQL = `${READ_USAGE_SQL} FOR UPDATE`;
 const ADD_USED_BYTES_SQL =
   'UPDATE usuario SET espacio_usado = espacio_usado + $1::bigint WHERE id = $2';
 /** La reserva es la fila `carga` activa y no vencida (D-5): no hay contador que se desincronice. */
@@ -37,12 +38,19 @@ export class TypeOrmQuotaRepository implements IQuotaRepository {
     return toBytes(rows[0]?.usado);
   }
 
+  async readUsage(actor: Actor, now: Date): Promise<QuotaUsage> {
+    const manager = this.context.requireActorScope(actor);
+    const used = (await manager.query(READ_USAGE_SQL, [actor.id])) as { usado: string }[];
+    const reserved = (await manager.query(RESERVED_BYTES_SQL, [actor.id, now])) as {
+      reservado: string;
+    }[];
+    return { usedBytes: toBytes(used[0]?.usado), reservedBytes: toBytes(reserved[0]?.reservado) };
+  }
+
+  /** Con la fila ya bloqueada, la lectura sin bloqueo ve el valor que retiene la transacción. */
   async lockAndReadUsage(actor: Actor, now: Date): Promise<QuotaUsage> {
-    const usedBytes = await this.lockUsage(actor);
-    const rows = (await this.context
-      .requireActorScope(actor)
-      .query(RESERVED_BYTES_SQL, [actor.id, now])) as { reservado: string }[];
-    return { usedBytes, reservedBytes: toBytes(rows[0]?.reservado) };
+    await this.lockUsage(actor);
+    return this.readUsage(actor, now);
   }
 
   async addUsedBytes(actor: Actor, deltaBytes: bigint): Promise<void> {

@@ -124,7 +124,7 @@ cliente (Art. IX, RF-07). Al terminar, Administrador y Soporte tienen su área r
 ## 7. Fuera de alcance
 - **011b**: ajuste de cuota y de vigencia, restauración de papelera por Soporte (P-8). **022b** (RF-37): bitácoras
   técnicas, trabajos y reintentos, una sola pantalla para Admin, Soporte y Operador (P-9).
-- Fuera de la matriz: ver o cerrar sesiones ajenas (PD-60), «cambiar plan» y «cerrar sesiones» sin suspender (P-10).
+- Fuera de la matriz: ver o cerrar sesiones ajenas (PD-70), «cambiar plan» y «cerrar sesiones» sin suspender (P-10).
 - Suplantación, «ver como», vistas previas o descargas para roles internos (Art. IX); limpieza de cuentas nunca
   verificadas (001 D-21, YAGNI); borrar cuentas, roles configurables, organizaciones, prorrateo y dinero real (§9).
 - Comparador y contratación (008, 009), cambio de plan por el cliente (010) y la pantalla de auditoría del cliente (004).
@@ -135,7 +135,7 @@ cliente (Art. IX, RF-07). Al terminar, Administrador y Soporte tienen su área r
   lectura, no aplica a Personal · **P-4** catálogo: crear y desactivar (D); 0 editores permitido, identificador del
   servidor, `desactivado_en` sin reactivar · **P-5** metadatos con nombre (A) · **P-6** enlace de un uso; primer Admin
   por comando · **P-7** mockups con `/mockup` · **P-8** se divide en 011 y 011b · **P-9** bitácoras y trabajos → 022b
-  (PD-59) · **P-10** se respeta la matriz · **P-11** sin autosuspensión ni último Admin; sí internas · **P-12** nombre
+  (PD-69) · **P-10** se respeta la matriz · **P-11** sin autosuspensión ni último Admin; sí internas · **P-12** nombre
   y rol en la auditoría · **P-13** suspensión congela comparticiones y enlaces · **P-14** código de empleado
   obligatorio y único · Operador ve métricas (matriz §2).
 - Van al plan: DF-04 (fachadas), DF-36 (controlador por rol), PD-31/DF-27 (`INodeMetadataReader`), DF-15, `desactivado_en`.

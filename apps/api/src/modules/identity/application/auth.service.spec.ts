@@ -17,7 +17,12 @@ import { PasswordHash } from '../domain/password-hash.vo';
 
 import { AuthService } from './auth.service';
 import type { ClientContext } from './client-context';
-import type { IAttemptLockout, LockoutPolicy, LockState } from './ports/i-attempt-lockout.port';
+import type {
+  AttemptReservation,
+  IAttemptLockout,
+  LockoutPolicy,
+  LockState,
+} from './ports/i-attempt-lockout.port';
 import type { IPasswordHasher } from './ports/i-password-hasher.port';
 import type { OpenedSession } from './session.service';
 import { aClientUser } from './testing/client-user.builder';
@@ -26,6 +31,7 @@ import { InMemoryUserRepository } from './testing/in-memory-user.repository';
 const EMAIL = 'ana@ejemplo.com';
 const PASSWORD = 'Nimbo-Seguro-2026';
 const UNLOCKED: LockState = { locked: false };
+const RESERVED: AttemptReservation = { allowed: true, engagedLock: false };
 const LOGIN_POLICY = {
   maxFailures: LOGIN_MAX_FAILURES,
   windowSeconds: LOGIN_FAILURE_WINDOW_MINUTES * 60,
@@ -48,6 +54,7 @@ const setup = async () => {
   const lockout: jest.Mocked<IAttemptLockout> = {
     check: jest.fn((_key: string) => Promise.resolve(UNLOCKED)),
     recordFailure: jest.fn((_key: string, _policy: LockoutPolicy) => Promise.resolve(UNLOCKED)),
+    reserveAttempt: jest.fn((_key: string, _policy: LockoutPolicy) => Promise.resolve(RESERVED)),
     clear: jest.fn((_key: string) => Promise.resolve()),
   };
   const opened = { sessionId: 'sesion-1', newDevice: true } as OpenedSession;

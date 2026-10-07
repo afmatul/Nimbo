@@ -1,9 +1,10 @@
 import type { ArgumentMetadata } from '@nestjs/common';
-import { initUploadSchema, listFilesQuerySchema } from '@nimbo/contracts';
+import { createFolderSchema, folderContentsQuerySchema, initUploadSchema } from '@nimbo/contracts';
 
 import { ZodValidationPipe } from '../../../shared';
 import type { DomainError } from '../../../shared';
 import {
+  InvalidNodeRequestError,
   InvalidQueryError,
   InvalidUploadRequestError,
   NodeNotFoundError,
@@ -11,7 +12,9 @@ import {
 } from '../domain/errors';
 
 import {
-  fileIdPipe,
+  nodeIdPipe,
+  NodeTypePipe,
+  storageNodeValidationError,
   storageQueryValidationError,
   storageUploadValidationError,
   uploadIdPipe,
@@ -34,7 +37,7 @@ function thrownBy(work: () => unknown): DomainError {
 
 describe('validación de entrada de `storage` (CA-7, CA-16)', () => {
   const initPipe = new ZodValidationPipe(initUploadSchema, storageUploadValidationError);
-  const queryPipe = new ZodValidationPipe(listFilesQuerySchema, storageQueryValidationError);
+  const queryPipe = new ZodValidationPipe(folderContentsQuerySchema, storageQueryValidationError);
 
   it('CA-7: un inicio de carga inválido es 400 `STORAGE_INVALID_UPLOAD_REQUEST` con cada campo en falla', () => {
     const error = thrownBy(() => initPipe.transform({ sizeBytes: -1, extra: true }, BODY));
@@ -50,11 +53,12 @@ describe('validación de entrada de `storage` (CA-7, CA-16)', () => {
     );
   });
 
-  it('CA-7: un inicio válido pasa con `onConflict` por defecto en `ask`', () => {
+  it('CA-7: un inicio válido pasa con `onConflict` en `ask` y `folderId` en la raíz por defecto', () => {
     expect(initPipe.transform({ name: 'a.pdf', sizeBytes: 10 }, BODY)).toEqual({
       name: 'a.pdf',
       sizeBytes: 10,
       onConflict: 'ask',
+      folderId: null,
     });
   });
 
@@ -71,11 +75,40 @@ describe('validación de entrada de `storage` (CA-7, CA-16)', () => {
   );
 
   it('CA-16: el id de archivo malformado responde el mismo 404 que uno inexistente', async () => {
-    await expect(fileIdPipe().transform('x', PARAM)).rejects.toBeInstanceOf(NodeNotFoundError);
+    await expect(nodeIdPipe().transform('x', PARAM)).rejects.toBeInstanceOf(NodeNotFoundError);
   });
 
   it('CA-16: un UUID pasa tal cual', async () => {
     await expect(uploadIdPipe().transform(UUID, PARAM)).resolves.toBe(UUID);
-    await expect(fileIdPipe().transform(UUID, PARAM)).resolves.toBe(UUID);
+    await expect(nodeIdPipe().transform(UUID, PARAM)).resolves.toBe(UUID);
   });
+
+  it('006 CA-2: crear una carpeta con un nombre inválido es 400 `STORAGE_INVALID_NODE_REQUEST` con `fields`', () => {
+    const folderPipe = new ZodValidationPipe(createFolderSchema, storageNodeValidationError);
+
+    const error = thrownBy(() => folderPipe.transform({ name: 'a/b', parentId: 'x' }, BODY));
+
+    expect(error).toBeInstanceOf(InvalidNodeRequestError);
+    expect(error.status).toBe(400);
+    expect((error.fields ?? []).map((issue) => [issue.field, issue.reason])).toEqual(
+      expect.arrayContaining([
+        ['name', 'INVALID_NAME'],
+        ['parentId', 'INVALID_FOLDER'],
+      ]),
+    );
+  });
+
+  it.each([
+    ['files', 'file'],
+    ['folders', 'folder'],
+  ])('006 CA-27, CA-28: `:nodeType` «%s» es el nodo «%s»', (path, type) => {
+    expect(new NodeTypePipe().transform(path)).toBe(type);
+  });
+
+  it.each(['file', 'FILES', 'uploads', ''])(
+    '006 CA-22: `:nodeType` «%s» es el mismo 404 que un nodo inexistente',
+    (path) => {
+      expect(thrownBy(() => new NodeTypePipe().transform(path))).toBeInstanceOf(NodeNotFoundError);
+    },
+  );
 });

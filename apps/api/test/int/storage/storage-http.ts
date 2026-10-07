@@ -22,7 +22,7 @@ import { FakePlanLimitsProvider } from '../../support/fake-plan-limits.provider'
 import { PROBE_CLOCK_START } from '../../support/probe.module';
 import { TestAccessTokens } from '../../support/test-access-tokens';
 import { buildTestEnv, createTestApp } from '../setup/test-app';
-import type { TestApp } from '../setup/test-app';
+import type { TestApp, TestAppOptions } from '../setup/test-app';
 
 import { insertAccount, insertFileWithVersion, removeAccounts } from './storage-test-db';
 import type { FileRowOptions } from './storage-test-db';
@@ -34,6 +34,8 @@ export const TEST_PART_BYTES = 5 * MIB;
 export const DEFAULT_TEST_LIMITS: PlanLimits = {
   maxFileBytes: BigInt(64 * MIB),
   storageQuotaBytes: BigInt(256 * MIB),
+  trashRetentionDays: 30,
+  planName: 'Plan de prueba',
 };
 /** Bucket propio y **versionado**, como el de `infra/minio/init.sh`: el compartido del arnés no tiene versionado. */
 export const STORAGE_HTTP_BUCKET = 'nimbo-storage-http';
@@ -106,10 +108,32 @@ export interface StorageClient {
   resume(uploadId: string): Promise<Response>;
   complete(uploadId: string): Promise<Response>;
   cancel(uploadId: string): Promise<Response>;
-  list(query?: Record<string, string>): Promise<Response>;
   downloadUrl(fileId: string): Promise<Response>;
-  /** Inicia, sube con la(s) URL(s) firmada(s) y completa; devuelve la respuesta de `complete`. */
-  upload(name: string, bytes: Buffer, onConflict?: 'ask' | 'keep_both'): Promise<Response>;
+  renameFile(fileId: string, body: Record<string, unknown>): Promise<Response>;
+  moveFile(fileId: string, body: Record<string, unknown>): Promise<Response>;
+  folderContents(query?: Record<string, string>): Promise<Response>;
+  createFolder(body: Record<string, unknown>): Promise<Response>;
+  renameFolder(folderId: string, body: Record<string, unknown>): Promise<Response>;
+  moveFolder(folderId: string, body: Record<string, unknown>): Promise<Response>;
+  /** `GET /quick-access` (006 §9.2). */
+  quickAccess(): Promise<Response>;
+  /** `PUT /quick-access/pins/:nodeType/:nodeId`; `nodeType` es `files` o `folders` (otro valor prueba el 404). */
+  pin(nodeType: string, nodeId: string): Promise<Response>;
+  unpin(nodeType: string, nodeId: string): Promise<Response>;
+  /** `POST /quick-access/recents/:nodeType/:nodeId`, sin cuerpo. */
+  recordOpen(nodeType: string, nodeId: string): Promise<Response>;
+  trashFolder(folderId: string): Promise<Response>;
+  purgeFolder(folderId: string): Promise<Response>;
+  restoreFolder(folderId: string): Promise<Response>;
+  emptyTrash(): Promise<Response>;
+  spaceSummary(): Promise<Response>;
+  /** Inicia (en `folderId`, por defecto la raíz), sube con la(s) URL(s) firmada(s) y completa; devuelve `complete`. */
+  upload(
+    name: string,
+    bytes: Buffer,
+    onConflict?: 'ask' | 'keep_both',
+    folderId?: string | null,
+  ): Promise<Response>;
 }
 
 export interface StorageHttpApp {
@@ -134,6 +158,13 @@ export interface StorageHttpOptions {
   /** Variables que cambian respecto del arnés (p. ej. límites de tasa bajos). */
   readonly env?: Readonly<Record<string, string>>;
   readonly limits?: PlanLimits;
+  /**
+   * `'identity'` usa la `JwtStrategy` real (p. ej. el mundo de aislamiento con `world.appComposition()`, 002 T-55);
+   * entonces `newClient` no sirve, porque firma con `TestAccessTokens`: se usa `clientFor` con un token real.
+   */
+  readonly accessTokenStrategy?: TestAppOptions['accessTokenStrategy'];
+  /** Módulos que se suman a `storage` (p. ej. la composición de `identity` del mundo de aislamiento). */
+  readonly modules?: TestAppOptions['modules'];
 }
 
 interface SignedTarget {
@@ -210,7 +241,8 @@ export const createStorageHttpApp = async (
   const limits = new FakePlanLimitsProvider(options.limits ?? DEFAULT_TEST_LIMITS);
   const testApp = await createTestApp({
     validatedEnv: env,
-    modules: [PlanLimitsBindingModule, StorageModule.forRoot(env)],
+    accessTokenStrategy: options.accessTokenStrategy ?? 'test',
+    modules: [...(options.modules ?? []), PlanLimitsBindingModule, StorageModule.forRoot(env)],
     overrides: [{ provide: I_PLAN_LIMITS_PROVIDER, useValue: limits }],
   });
   const owner = await connectAsOwner();
@@ -227,10 +259,33 @@ export const createStorageHttpApp = async (
       resume: (uploadId) => http().post(`${API_PREFIX}/uploads/${uploadId}/resume`).set(auth),
       complete: (uploadId) => http().post(`${API_PREFIX}/uploads/${uploadId}/complete`).set(auth),
       cancel: (uploadId) => http().delete(`${API_PREFIX}/uploads/${uploadId}`).set(auth),
-      list: (query = {}) => http().get(`${API_PREFIX}/files`).query(query).set(auth),
       downloadUrl: (fileId) => http().post(`${API_PREFIX}/files/${fileId}/download-url`).set(auth),
-      upload: async (name, bytes, onConflict = 'ask') => {
-        const started = await client.init({ name, sizeBytes: bytes.length, onConflict });
+      renameFile: (fileId, body) =>
+        http().patch(`${API_PREFIX}/files/${fileId}`).set(auth).send(body),
+      moveFile: (fileId, body) =>
+        http().post(`${API_PREFIX}/files/${fileId}/move`).set(auth).send(body),
+      folderContents: (query = {}) =>
+        http().get(`${API_PREFIX}/folders/contents`).query(query).set(auth),
+      createFolder: (body) => http().post(`${API_PREFIX}/folders`).set(auth).send(body),
+      renameFolder: (folderId, body) =>
+        http().patch(`${API_PREFIX}/folders/${folderId}`).set(auth).send(body),
+      moveFolder: (folderId, body) =>
+        http().post(`${API_PREFIX}/folders/${folderId}/move`).set(auth).send(body),
+      quickAccess: () => http().get(`${API_PREFIX}/quick-access`).set(auth),
+      pin: (nodeType, nodeId) =>
+        http().put(`${API_PREFIX}/quick-access/pins/${nodeType}/${nodeId}`).set(auth),
+      unpin: (nodeType, nodeId) =>
+        http().delete(`${API_PREFIX}/quick-access/pins/${nodeType}/${nodeId}`).set(auth),
+      recordOpen: (nodeType, nodeId) =>
+        http().post(`${API_PREFIX}/quick-access/recents/${nodeType}/${nodeId}`).set(auth),
+      trashFolder: (folderId) => http().delete(`${API_PREFIX}/folders/${folderId}`).set(auth),
+      purgeFolder: (folderId) => http().delete(`${API_PREFIX}/trash/folders/${folderId}`).set(auth),
+      restoreFolder: (folderId) =>
+        http().post(`${API_PREFIX}/trash/folders/${folderId}/restore`).set(auth),
+      emptyTrash: () => http().delete(`${API_PREFIX}/trash`).set(auth),
+      spaceSummary: () => http().get(`${API_PREFIX}/storage/summary`).set(auth),
+      upload: async (name, bytes, onConflict = 'ask', folderId = null) => {
+        const started = await client.init({ name, sizeBytes: bytes.length, onConflict, folderId });
         if (started.status !== 201) return started;
         const body = started.body as InitBody;
         await uploadBytes(body, bytes);

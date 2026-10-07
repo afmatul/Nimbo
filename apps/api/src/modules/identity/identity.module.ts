@@ -35,6 +35,7 @@ import { RedisAttemptLockout } from './infrastructure/redis-attempt-lockout';
 import { AuthController } from './presentation/auth.controller';
 import { NoStoreMiddleware } from './presentation/no-store.middleware';
 import { PasswordController } from './presentation/password.controller';
+import { SessionsController } from './presentation/sessions.controller';
 
 /** Lo que `IdentityModule.forRoot` lee del entorno validado. */
 export type IdentityEnv = Pick<Env, 'WEB_PUBLIC_URL' | 'APP_ENV' | 'JWT_ACCESS_SECRET'>;
@@ -47,7 +48,7 @@ export type IdentityEnv = Pick<Env, 'WEB_PUBLIC_URL' | 'APP_ENV' | 'JWT_ACCESS_S
  * `ACCESS_TOKEN_STRATEGY`, que el `JwtAuthGuard` de `shared` encuentra sin importar `identity`. Exporta
  * `I_ACCESS_TOKEN_VERIFIER` (implementado por `JwtTokenService`). Requiere en la raíz `EventEmitterModule.forRoot()` y
  * `ThrottlerModule.forRoot` con `IDENTITY_THROTTLERS`; `shared` aporta reloj, Redis, límites y transacciones (global).
- * Todas las respuestas de `AuthController` y `PasswordController`, también las de error, llevan
+ * Todas las respuestas de `AuthController`, `PasswordController` y `SessionsController`, también las de error, llevan
  * `Cache-Control: no-store` (plan §5).
  */
 @Module({})
@@ -57,7 +58,7 @@ export class IdentityModule implements NestModule {
       module: IdentityModule,
       // El secreto no va en `JwtModule`: `JwtTokenService` lo pasa en cada llamada desde `ACCESS_TOKEN_OPTIONS`.
       imports: [NotificationsModule, JwtModule.register({}), PassportModule],
-      controllers: [AuthController, PasswordController],
+      controllers: [AuthController, PasswordController, SessionsController],
       providers: [
         { provide: IDENTITY_CONFIG, useValue: identityConfigFrom(env) },
         accessTokenOptionsProvider(env),
@@ -84,6 +85,8 @@ export class IdentityModule implements NestModule {
   }
 
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(NoStoreMiddleware).forRoutes(AuthController, PasswordController);
+    consumer
+      .apply(NoStoreMiddleware)
+      .forRoutes(AuthController, PasswordController, SessionsController);
   }
 }
