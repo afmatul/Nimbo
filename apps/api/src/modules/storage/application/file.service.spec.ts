@@ -30,6 +30,7 @@ import { Folder } from '../domain/folder';
 import { FolderName } from '../domain/folder-name.vo';
 import { TrashState } from '../domain/trash-state';
 
+import { AccessibleFileUrlIssuer } from './accessible-file-url-issuer';
 import type { FileServiceConfig } from './file-service-config';
 import { FileService } from './file.service';
 import type { IObjectStorage, PresignDownloadInput } from './ports/i-object-storage.port';
@@ -156,7 +157,7 @@ function setup(options: SetupOptions = {}) {
     transactions,
     nodes,
     new FakeQuotaRepository(new Journal()),
-    storage,
+    new AccessibleFileUrlIssuer(transactions, nodes, storage, new FixedClock(NOW)),
     rateLimiter,
     audit,
     new FixedClock(NOW),
@@ -291,7 +292,7 @@ function organizeSetup() {
     transactions,
     nodes,
     quotas,
-    {} as IObjectStorage,
+    new AccessibleFileUrlIssuer(transactions, nodes, {} as IObjectStorage, new FixedClock(NOW)),
     new FakeRateLimiter([]),
     new FakeAuditLogger(),
     new FixedClock(NOW),

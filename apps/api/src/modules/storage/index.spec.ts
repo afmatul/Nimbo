@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import type { Actor } from '../../shared';
 
 import * as storage from './index';
-import type { IPlanLimitsProvider, PlanLimits } from './index';
+import type { IPlanLimitsProvider, PlanLimits, PreviewDelivery, PreviewFile } from './index';
 
 /** Igualdad estricta de tipos (patrón de `type-challenges`); un fallo aquí lo detecta `pnpm typecheck`. */
 type Equal<X, Y> =
@@ -30,16 +30,54 @@ type _LimitsForSignature = Expect<
   Equal<IPlanLimitsProvider['limitsFor'], (actor: Actor) => Promise<PlanLimits>>
 >;
 
+/** 017 plan §2.3: la vista previa recibe archivo (sin clave, versión ni propietario), URL y vencimiento. */
+type _PreviewFileShape = Expect<
+  Equal<
+    PreviewFile,
+    {
+      readonly id: string;
+      readonly name: string;
+      readonly kind: 'docx' | 'pdf' | 'texto' | 'xlsx' | 'pptx' | 'imagen' | 'otro';
+      readonly folderId: string | null;
+      readonly sizeBytes: bigint;
+      readonly createdAt: Date;
+      readonly updatedAt: Date;
+    }
+  >
+>;
+type _PreviewDeliveryShape = Expect<
+  Equal<
+    PreviewDelivery,
+    { readonly file: PreviewFile; readonly url: string; readonly expiresAt: Date }
+  >
+>;
+type _IssueUrlSignature = Expect<
+  Equal<
+    storage.StoragePreviewFacade['issueUrl'],
+    (actor: Actor, fileId: string) => Promise<PreviewDelivery>
+  >
+>;
+
 /**
  * API pública de `storage` (plan §6, DF-51 opción A): el token del puerto de límites, el módulo que monta la raíz de
- * composición del `api` y el del `worker` (T-51). El detector, el escáner y los repositorios no salen.
+ * composición del `api` y el del `worker` (T-51) y, desde 017 (plan §2.3), la fachada de vista previa. El detector,
+ * el escáner, los repositorios y el emisor interno de URLs no salen.
  */
-const RUNTIME_EXPORTS = ['I_PLAN_LIMITS_PROVIDER', 'StorageModule', 'StorageWorkerModule'] as const;
+const RUNTIME_EXPORTS = [
+  'I_PLAN_LIMITS_PROVIDER',
+  'StorageModule',
+  'StoragePreviewFacade',
+  'StorageWorkerModule',
+] as const;
 
 describe('modules/storage/index.ts', () => {
-  it('CA-3, CA-4, CA-9, RN-1: exporta exactamente el token de límites, `StorageModule` y `StorageWorkerModule`', () => {
+  it('CA-3, CA-4, CA-9, RN-1, 017 CA-11: exporta exactamente el token de límites, los módulos y la fachada de vista previa', () => {
     expect(Object.keys(storage).sort()).toEqual([...RUNTIME_EXPORTS].sort());
     expect(typeof storage.I_PLAN_LIMITS_PROVIDER).toBe('symbol');
+  });
+
+  it('017 plan §2.3: el emisor interno de URLs (sin tasa ni auditoría) no sale del módulo', () => {
+    expect(Object.keys(storage)).not.toContain('AccessibleFileUrlIssuer');
   });
 
   it('CA-9, DF-52: el escáner de cargas vencidas (único acceso sin actor) no sale del módulo', () => {

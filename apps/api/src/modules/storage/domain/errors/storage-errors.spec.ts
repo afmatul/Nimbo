@@ -15,6 +15,7 @@ import {
   InvalidUploadRequestError,
   NameConflictError,
   NodeNotFoundError,
+  PreviewUnsupportedError,
   QuotaExceededError,
   StorageTooManyRequestsError,
   UploadExpiredError,
@@ -163,6 +164,17 @@ describe('errores de `storage` (plan §5)', () => {
     expect(error.code).toBe('STORAGE_TOO_MANY_REQUESTS');
     expect(error.message).toBe(
       'Hiciste demasiadas solicitudes. Espera un momento e inténtalo de nuevo.',
+    );
+  });
+
+  it('017 CA-11: `PreviewUnsupportedError` es un 422 que ofrece descargar el archivo', () => {
+    const error = new PreviewUnsupportedError();
+
+    expect(error).toBeInstanceOf(InvalidInputError);
+    expect(error.status).toBe(422);
+    expect(error.code).toBe('STORAGE_PREVIEW_UNSUPPORTED');
+    expect(error.message).toBe(
+      'Este tipo de archivo no tiene vista previa. Descárgalo para abrirlo.',
     );
   });
 

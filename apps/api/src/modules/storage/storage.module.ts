@@ -6,6 +6,7 @@ import { MINIO_CONFIG } from '../../shared';
 import type { Env, MinioConfig } from '../../shared';
 import { AuditModule } from '../audit';
 
+import { AccessibleFileUrlIssuer } from './application/accessible-file-url-issuer';
 import { FILE_SERVICE_CONFIG } from './application/file-service-config';
 import type { FileServiceConfig } from './application/file-service-config';
 import { FileService } from './application/file.service';
@@ -19,6 +20,7 @@ import { QUICK_ACCESS_CONFIG } from './application/quick-access-config';
 import type { QuickAccessConfig } from './application/quick-access-config';
 import { QuickAccessService } from './application/quick-access.service';
 import { SpaceSummaryService } from './application/space-summary.service';
+import { StoragePreviewFacade } from './application/storage-preview.facade';
 import { UPLOAD_CONFIG } from './application/upload-config';
 import type { UploadConfig } from './application/upload-config';
 import {
@@ -58,7 +60,8 @@ export type StorageEnv = Pick<
  * `bigint`) y une cada puerto con su adaptador. **No** enlaza `I_PLAN_LIMITS_PROVIDER` ni importa `billing`: ese
  * enlace vive en la raíz de composición (DF-51, opción A). `SharedModule` (global) aporta reloj, tasa, transacciones y
  * `TransactionContext`; `MinioConfigModule` (global), `MINIO_CONFIG`. La cola `trash-purge` se registra solo para que
- * «Vaciar papelera» encole: la programa y la procesa el `worker`.
+ * «Vaciar papelera» encole: la programa y la procesa el `worker`. Exporta solo `StoragePreviewFacade` (017 plan §2.3),
+ * que `PreviewModule` consume desde este mismo descriptor.
  */
 @Module({})
 export class StorageModule {
@@ -107,10 +110,13 @@ export class StorageModule {
         ...TRASH_LIFECYCLE_PROVIDERS,
         ...SPACE_PROVIDERS,
         SpaceSummaryService,
+        AccessibleFileUrlIssuer,
         FileService,
         FolderService,
         QuickAccessService,
+        StoragePreviewFacade,
       ],
+      exports: [StoragePreviewFacade],
     };
   }
 }

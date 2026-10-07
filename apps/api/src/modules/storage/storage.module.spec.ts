@@ -3,6 +3,7 @@ import type { DynamicModule, Provider, ValueProvider } from '@nestjs/common';
 
 import { AuditModule } from '../audit';
 
+import { AccessibleFileUrlIssuer } from './application/accessible-file-url-issuer';
 import { FILE_SERVICE_CONFIG } from './application/file-service-config';
 import { FOLDER_CONFIG } from './application/folder-config';
 import { FolderService } from './application/folder.service';
@@ -13,6 +14,7 @@ import { QUICK_ACCESS_CONFIG } from './application/quick-access-config';
 import { QuickAccessService } from './application/quick-access.service';
 import { SpaceMeasurer } from './application/space-measurer';
 import { SpaceSummaryService } from './application/space-summary.service';
+import { StoragePreviewFacade } from './application/storage-preview.facade';
 import { TrashPurger } from './application/trash-purger';
 import { UPLOAD_CONFIG } from './application/upload-config';
 import { TrashPurgeProcessor } from './infrastructure/trash-purge.processor';
@@ -107,5 +109,12 @@ describe('StorageModule', () => {
 
   it('007 CA-1: registra el resumen de espacio con su medición', () => {
     expect(providers).toEqual(expect.arrayContaining([SpaceMeasurer, SpaceSummaryService]));
+  });
+
+  it('017 CA-11: registra el emisor compartido y exporta solo la fachada de vista previa', () => {
+    expect(providers).toEqual(
+      expect.arrayContaining([AccessibleFileUrlIssuer, StoragePreviewFacade]),
+    );
+    expect(module.exports).toEqual([StoragePreviewFacade]);
   });
 });

@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { DOWNLOAD_URL_TTL_SECONDS, STORAGE_NODE_FIELD_MESSAGES } from '@nimbo/contracts';
+import { STORAGE_NODE_FIELD_MESSAGES } from '@nimbo/contracts';
 import type { OnConflict } from '@nimbo/contracts';
 import { PinoLogger } from 'nestjs-pino';
 
@@ -10,15 +10,13 @@ import type { IAuditLogger } from '../../audit';
 import { InvalidNodeRequestError, NodeNotFoundError } from '../domain/errors';
 import { File } from '../domain/file';
 import { FileName } from '../domain/file-name.vo';
-import { ObjectKey } from '../domain/object-key';
 
+import { AccessibleFileUrlIssuer } from './accessible-file-url-issuer';
 import { FILE_SERVICE_CONFIG } from './file-service-config';
 import type { FileServiceConfig } from './file-service-config';
 import { freeFileName } from './free-file-name';
 import { I_NODE_REPOSITORY } from './ports/i-node.repository.port';
 import type { INodeRepository } from './ports/i-node.repository.port';
-import { I_OBJECT_STORAGE } from './ports/i-object-storage.port';
-import type { IObjectStorage } from './ports/i-object-storage.port';
 import { I_QUOTA_REPOSITORY } from './ports/i-quota.repository.port';
 import type { IQuotaRepository } from './ports/i-quota.repository.port';
 import { recordAudit } from './record-audit';
@@ -27,7 +25,6 @@ import type { StorageLogger } from './storage-logger';
 
 const RATE_LIMIT_WINDOW_SECONDS = 60;
 const DOWNLOAD_RATE_KEY_PREFIX = 'storage:download-url:';
-const MS_PER_SECOND = 1000;
 
 /** URL de descarga firmada y el instante en que deja de valer (CA-13). */
 export interface DownloadUrl {
@@ -59,7 +56,7 @@ export class FileService {
     @Inject(I_TRANSACTION_RUNNER) private readonly transactions: ITransactionRunner,
     @Inject(I_NODE_REPOSITORY) private readonly nodes: INodeRepository,
     @Inject(I_QUOTA_REPOSITORY) private readonly quotas: IQuotaRepository,
-    @Inject(I_OBJECT_STORAGE) private readonly objects: IObjectStorage,
+    private readonly urlIssuer: AccessibleFileUrlIssuer,
     @Inject(I_RATE_LIMITER) private readonly rateLimiter: IRateLimiter,
     @Inject(I_AUDIT_LOGGER) private readonly audit: IAuditLogger,
     @Inject(I_CLOCK) private readonly clock: IClock,
@@ -120,18 +117,7 @@ export class FileService {
    */
   async getDownloadUrl(actor: Actor, fileId: string): Promise<DownloadUrl> {
     await this.assertWithinRate(actor);
-    const file = await this.transactions.withActor(actor, () =>
-      this.nodes.findAccessibleById(actor, fileId),
-    );
-    if (file === null) throw new NodeNotFoundError();
-    const url = await this.objects.presignDownload({
-      key: ObjectKey.of(file.ownerId, file.id, file.currentVersionId).value,
-      fileName: file.name.value,
-      expiresInSeconds: DOWNLOAD_URL_TTL_SECONDS,
-    });
-    const expiresAt = new Date(
-      this.clock.now().getTime() + DOWNLOAD_URL_TTL_SECONDS * MS_PER_SECOND,
-    );
+    const { file, url, expiresAt } = await this.urlIssuer.issue(actor, fileId);
     await this.recordIssued(actor, file);
     this.logger.info({ event: 'download.url_issued', fileId: file.id });
     return { url, expiresAt };

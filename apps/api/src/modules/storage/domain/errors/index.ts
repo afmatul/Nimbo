@@ -10,6 +10,7 @@ export {
   InvalidNodeRequestError,
 } from './node.errors';
 export type { FolderDepthOperation } from './node.errors';
+export { PreviewUnsupportedError } from './preview-unsupported.error';
 export {
   EmptyFileError,
   FileTooLargeError,
