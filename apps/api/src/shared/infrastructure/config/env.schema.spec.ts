@@ -189,6 +189,22 @@ describe('accesos rápidos (006 plan §9.2)', () => {
   });
 });
 
+describe('previsualización (017 plan §5)', () => {
+  const previewRate = apiEnvObjectSchema.shape.RATE_LIMIT_PREVIEW_URL_PER_MINUTE;
+
+  it('CA-12: `RATE_LIMIT_PREVIEW_URL_PER_MINUTE` es solo del `api` y vale 120 por defecto', () => {
+    expect(declaredIn('RATE_LIMIT_PREVIEW_URL_PER_MINUTE')).toEqual(['api']);
+    expect(previewRate.parse(undefined)).toBe(120);
+  });
+
+  it.each(['-1', '2.5', 'cien'])(
+    'CA-12: `RATE_LIMIT_PREVIEW_URL_PER_MINUTE=%s` no pasa (entero positivo; `0` en load-env)',
+    (value) => {
+      expect(previewRate.safeParse(value).success).toBe(false);
+    },
+  );
+});
+
 describe('JWT_ACCESS_SECRET (002 plan §6.10, CA-25, CA-26)', () => {
   const issuesFor = (patch: Record<string, string | undefined>): readonly string[] => {
     const result = loadEnv(apiEnvSchema, { ...API_ENV, ...patch });
