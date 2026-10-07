@@ -18,7 +18,7 @@ import { activityPage, auditEvent, SUPPORT_RESTORE } from './test-audit-event';
 const VIEWPORTS = [360, 1440] as const;
 /** Como en `storage/a11y.spec.tsx`: el contenido del menú va en un portal de Radix, fuera de los *landmarks* (`region`, moderada). */
 const BLOCKING_IMPACTS = new Set(['serious', 'critical']);
-const TRIGGER_NAME = 'Menú de la cuenta de Lucía Barrios';
+const TRIGGER_NAME = 'Lucía Barrios (menú de la cuenta)';
 
 function setViewport(width: number): void {
   Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });

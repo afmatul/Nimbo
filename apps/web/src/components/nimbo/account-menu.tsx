@@ -60,10 +60,15 @@ function AccountTrigger({ id, buttonRef, fullName }: AccountTriggerProps): React
     <DropdownMenuTrigger
       ref={buttonRef}
       id={id}
-      aria-label={`Menú de la cuenta de ${fullName}`}
       className="inline-flex min-h-11 items-center gap-2 rounded-md px-2 text-sm font-medium text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-[state=open]:bg-muted"
     >
-      <span className="hidden max-w-48 truncate sm:inline">{fullName}</span>
+      {/* El nombre accesible empieza por el texto visible (WCAG 2.5.3); a 360 px el nombre queda solo para lectores. */}
+      <span className="sr-only sm:not-sr-only">
+        <span className="inline-block max-w-48 truncate align-middle">
+          {fullName}
+          <span className="sr-only"> (menú de la cuenta)</span>
+        </span>
+      </span>
       <span
         aria-hidden="true"
         className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-card text-xs font-bold text-foreground ring-2 ring-primary"
