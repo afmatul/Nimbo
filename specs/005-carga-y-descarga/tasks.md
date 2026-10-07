@@ -559,15 +559,18 @@ salvo la lectura por rango del detector.
 
 ## Correcciones de la revisión (2026-10-07, [review.md](./review.md))
 
-- [ ] **T-FIX-1** (B-1) `sizeBytes` en `file.upload_rejected` y `file.download_url_issued` — CA: CA-20 — ~1 h
+- [x] **T-FIX-1** (B-1) `sizeBytes` en `file.upload_rejected` y `file.download_url_issued` — CA: CA-20 — ~1 h
   Prueba primero en `audit-and-logs.int-spec.ts` («carga rechazada» y «URL de descarga» llevan `sizeBytes`). Luego
   `upload.service.ts` (`Number(session.declaredBytes)`), `file.service.ts` (`Number(file.sizeBytes)`) y
   `sizeBytes: 'number'` en ambas entradas de `AUDIT_CATALOG` (`audit-catalog.ts`).
-- [ ] **T-FIX-2** (I-1) `UPLOAD_COMPLETE_TIMEOUT_SECONDS`: aplicarlo al `requestTimeout` del servidor HTTP de `api`
+- [x] **T-FIX-2** (I-1) `UPLOAD_COMPLETE_TIMEOUT_SECONDS`: aplicarlo al `requestTimeout` del servidor HTTP de `api`
   (prueba primero) o, si se difiere a 023, quitar la variable de `env.schema.ts` y `.env.example` y abrir un PD — ~1 h
-- [ ] **T-FIX-3** (I-2) Prueba de integración de una carga con `PlanLimitsBindingModule` real y la semilla de `plan`
+  Hecho: se quitó. Nada cortaba `complete` (el `requestTimeout` de Node y el `readTimeout` de Traefik v3 solo
+  limitan la recepción; `writeTimeout` = 0; el `fetch` no lleva tiempo máximo), así que no había nada que aplicar.
+  PD-71 lo verifica en staging; plan §6 paso 4 y R-9 actualizados.
+- [x] **T-FIX-3** (I-2) Prueba de integración de una carga con `PlanLimitsBindingModule` real y la semilla de `plan`
   (> 50 MB en Personal → 422); cerrar PD-56 — ~1 h
-- [ ] **T-FIX-4** (I-3, I-4) `spec.md`: cerrar el cambio del 2026-09-29, «Última actualización» y §10;
+- [x] **T-FIX-4** (I-3, I-4) `spec.md`: cerrar el cambio del 2026-09-29, «Última actualización» y §10;
   `pendientes.md`: filas de UI-6, UI-9…UI-15, `viewportFit: 'cover'`, `redact-deep` y el `EXPLAIN` inestable — ~1 h
 
 ## Notas del developer

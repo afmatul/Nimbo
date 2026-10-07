@@ -104,7 +104,6 @@ describe('loadEnv(apiEnvSchema)', () => {
         UPLOAD_PART_SIZE_BYTES: 8_388_608,
         UPLOAD_MULTIPART_THRESHOLD_BYTES: 16_777_216,
         UPLOAD_URL_TTL_SECONDS: 3600,
-        UPLOAD_COMPLETE_TIMEOUT_SECONDS: 900,
         RATE_LIMIT_UPLOAD_INIT_PER_MINUTE: 300,
         RATE_LIMIT_DOWNLOAD_URL_PER_MINUTE: 120,
         FOLDER_MAX_DEPTH: 10,
@@ -392,15 +391,14 @@ describe('loadEnv: carga y descarga de archivos (005 T-20)', () => {
     },
   );
 
-  it.each([
-    'RATE_LIMIT_UPLOAD_INIT_PER_MINUTE',
-    'RATE_LIMIT_DOWNLOAD_URL_PER_MINUTE',
-    'UPLOAD_COMPLETE_TIMEOUT_SECONDS',
-  ])('RN-16: `%s=0` se rechaza', (key) => {
-    const result = loadEnv(apiEnvSchema, { ...VALID_API, [key]: '0' });
+  it.each(['RATE_LIMIT_UPLOAD_INIT_PER_MINUTE', 'RATE_LIMIT_DOWNLOAD_URL_PER_MINUTE'])(
+    'RN-16: `%s=0` se rechaza',
+    (key) => {
+      const result = loadEnv(apiEnvSchema, { ...VALID_API, [key]: '0' });
 
-    expect(result).toEqual({ ok: false, issues: [`\`${key}\` debe ser un entero positivo`] });
-  });
+      expect(result).toEqual({ ok: false, issues: [`\`${key}\` debe ser un entero positivo`] });
+    },
+  );
 
   it('CA-9: `UPLOAD_CLEANUP_BATCH_SIZE` fuera de 1–1000 se rechaza', () => {
     const result = loadEnv(workerEnvSchema, { ...VALID_WORKER, UPLOAD_CLEANUP_BATCH_SIZE: '1001' });

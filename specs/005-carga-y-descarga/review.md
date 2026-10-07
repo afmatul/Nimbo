@@ -5,7 +5,7 @@
 | Fecha | 2026-10-07 |
 | Rango revisado | `9990914^..379395c` (PR-A…PR-F, #36–#41), sobre el árbol de `chore/cierre-fase-1`; lo agregado por 006/007 no se atribuye a 005 |
 | CI | Sin CI todavía; local (Windows 11, Docker 29.4.0): lint ✅ (\*), typecheck ✅, unit ✅ (\*\*), int 940/941 (\*\*\*), iso 298/298 ✅ |
-| Veredicto | 🔁 Cambios requeridos (B-1) |
+| Veredicto | ✅ Aprobar tras el seguimiento del 2026-10-07 (B-1 e I-1…I-4 corregidos en `fix/005-revision`); antes: 🔁 por B-1 |
 
 (\*) `pnpm lint` falla en local solo por `.claude/worktrees/` (S-3); con `--ignore-pattern ".claude/**"` y `prettier --check` queda en verde. (\*\*) Solo fallas de entorno: `packages/contracts/dist` desactualizado (verde al reconstruirlo) y `redact-deep.spec.ts`, intermitente conocido (sola, 12/12). (\*\*\*) `dotenv-bootstrap` necesita `docker compose up` (Redis 6379) y `worker-health` venció su `afterAll` por la carga (sola pasa); ninguna es de 005. `test/int/storage` completo en verde.
 
@@ -62,3 +62,14 @@ Tokens sin colores a mano, textos de §9, «Liberar espacio» lleva a `/espacio`
 ## DF y pendientes
 
 Sin DF nuevos (DF-16, DF-38, DF-51, DF-52, DF-59 y DF-60 cerrados o aceptados). Sigue abierto PD-46 (redibujar M2, T1, T2 y E-R). PD-56 se cierra con I-2. Filas nuevas: las de I-4, y la de I-1 si se difiere.
+
+## Seguimiento de la revisión (2026-10-07, `fix/005-revision`)
+
+- **B-1** corregido: `file.upload_rejected` lleva `sizeBytes` (tamaño declarado) y `file.download_url_issued`, `sizeBytes` del archivo; `AUDIT_CATALOG` los admite. Pruebas: `upload.service.spec`, `file.service.spec`, `audit-catalog.spec` y `audit-and-logs.int-spec`. «Mi actividad» muestra ahora el tamaño también en esos eventos («1 archivo, 12 MB»), como ya hacía con las cargas completadas (004 D-3).
+- **I-1** resuelto quitando `UPLOAD_COMPLETE_TIMEOUT_SECONDS`: nada cortaba `complete` (el `requestTimeout` de Node y el `readTimeout` de Traefik v3 solo limitan la recepción; `writeTimeout` = 0; el `fetch` no lleva tiempo máximo), así que no había nada que aplicar. Plan §6 paso 4 y R-9 actualizados; PD-71 lo verifica en staging.
+- **I-2** corregido: `uploads-real-plan-limits.int-spec.ts` usa `PlanLimitsBindingModule` sin doble (`realPlanLimits`) y lee el máximo de la semilla de `plan`; PD-56 cerrado.
+- **I-3** corregido: «Última actualización», §10 y la propuesta del 2026-09-29 (resuelta por 007) en `spec.md`.
+- **I-4** corregido: PD-69 (`redact-deep`), PD-70 (`EXPLAIN`), PD-72 (UI-9…UI-15; UI-6 ya lo resolvió `node-table.tsx`) y PD-73 (`viewportFit`).
+- S-1 a S-3 quedan como sugerencias (el ignorado de `.claude/**` de S-3 ya está en `feat/017-previsualizacion`).
+- Suites tras el seguimiento (local, Docker): typecheck ✅ · `pnpm test` ✅ (api 1581, web 1103, contracts 317) · `test:int` 942/943, y la única falla, `dotenv-bootstrap`, pasa 3/3 con `docker compose up` (entorno, igual que en la revisión) · `test:isolation` 298/298 ✅ · `env:check` ✅.
+- **Veredicto final: ✅ Aprobar.** 005 pasa a `Hecha` al integrar `fix/005-revision` en `main`.
