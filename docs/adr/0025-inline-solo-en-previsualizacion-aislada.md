@@ -1,10 +1,10 @@
-# ADR-0025 — Permitir `inline` solo en la URL temporal de previsualización aislada
+# ADR-0025 — Permitir `inline` solo en la URL temporal de previsualización aislada (Rechazado)
 
 | Campo | Valor |
 |---|---|
-| Estado | Propuesto |
-| Fecha | 2026-10-06 |
-| Decisores | Equipo Nimbo (cuatro integrantes; acuerdo pendiente) |
+| Estado | Rechazado |
+| Fecha | 2026-10-06 (propuesto y rechazado el mismo día) |
+| Decisores | Adrián (tech lead) |
 | Specs relacionadas | 017 — Previsualización; 005 — Carga y descarga |
 | Proponente | Abel |
 
@@ -44,9 +44,29 @@ son las fronteras existentes. La parte de vista previa de DF-15 sigue abierta.
    Contras: deja CA-11 sin respaldo aceptado y retrasa la definición defendible de 017; no cumple
    el requisito de registrar esta interpretación antes de `/plan 017`.
 
+4. **Lectores por `fetch` con la política de descarga de 005 (elegida).** Todos los lectores de 017
+   obtienen bytes por `fetch` y renderizan en el cliente; el navegador nunca navega a la URL. Pros:
+   respeta IX.7 literalmente, sin excepción, acuerdo de los cuatro ni PD-69; no añade superficie ni
+   costo. Contras: el cliente decodifica (ver ADR-0026).
+
 ## Decisión
 
-**Abel propone la opción 2; el equipo aún no la ha aceptado.** La interpretación propuesta mantiene
+**Decisión del 2026-10-06 (Adrián): se rechaza este ADR y se adopta la opción 4.** Los lectores de 017
+obtienen bytes por `fetch` mediante el helper único `object-bytes.ts` (`credentials: 'omit'`) y
+renderizan en el cliente: PDF.js en canvas, Blob/object URL para imagen, texto escapado y
+zip.js + saxes para XLSX/PPTX. Como el navegador nunca navega a la URL, `inline` y el MIME validado no
+aportan nada y solo añaden superficie (visor nativo del navegador si alguien abre la URL) y costo
+(excepción a IX.7, consulta de procedencia, índice, migración y `presignPreview`). Se emite con un
+endpoint propio, `POST /files/:id/preview-url` (límite de tasa separado, no auditado como descarga),
+que firma con la misma política de 005 (`attachment`, `application/octet-stream`, `no-store`, 300 s,
+un objeto, origen aislado) reutilizando `presignDownload`. IX.7 se respeta literalmente; no se
+requiere acuerdo de los cuatro ni PD-69.
+
+**Por qué se rechaza la opción 2:** su único beneficio era que el navegador mostrara el objeto; 017 no
+lo necesita porque renderiza por su cuenta. Costaría una excepción constitucional, una ruta de firma
+distinta y mantenimiento permanente, a cambio de nada observable.
+
+Texto original de la propuesta (histórico, no vigente): Abel propuso la opción 2; el equipo no la aceptó. La interpretación propuesta mantiene
 la descarga forzada para descargar y permite `inline` únicamente para previsualizar conforme a RF-27,
 con estas condiciones acumulativas:
 
@@ -74,7 +94,7 @@ con estas condiciones acumulativas:
   `429 STORAGE_TOO_MANY_REQUESTS` con `Retry-After` (CA-12), sin fijar nuevas cifras ni alterar
   el límite de descarga de 005 CA-19.
 
-**Aceptación pendiente:** al aclarar el alcance de un principio constitucional, esta propuesta requiere
+**Aceptación pendiente (obsoleta; la propuesta fue rechazada):** al aclarar el alcance de un principio constitucional, esta propuesta requiere
 acuerdo de los cuatro integrantes en una reunión de revisión. Ese acuerdo no sustituye la aprobación
 de la spec y del plan 017 por Adrián. Registrar el ADR antes de `/plan 017` satisface el requisito
 documental de 017 §5; no aprueba la excepción ni autoriza implementación. No reemplaza ADR-0005,

@@ -1,6 +1,6 @@
 # Spec 017 — Previsualización
 
-> Qué y por qué. Lista: no quedan preguntas abiertas. ADR-0025 registrado antes de `/plan 017`, en estado Propuesto; falta el acuerdo del equipo sobre IX.7 (PD-69). Spec aprobada por Adrián (2026-10-06).
+> Qué y por qué. Lista: no quedan preguntas abiertas. ADR-0025 (`inline` solo en vista) queda Rechazado: la vista usa la misma disposición forzada de 005 y se respeta IX.7 literalmente. Spec aprobada por Adrián (2026-10-06).
 
 | Campo | Valor |
 |---|---|
@@ -17,7 +17,7 @@ La descarga de 005 permite recuperar un archivo, pero no consultarlo mediante un
 RF-27 pide previsualizar PDF, XLSX, PPTX, texto e imagen para que el cliente consulte su contenido sin editarlo.
 Esta spec define esa lectura, sus errores y las garantías de privacidad; no amplía permisos ni sustituye la descarga.
 DOCX no forma parte del alcance de 017.
-Fuentes: `product-context.md` §2–4, §6–7; 005 CA-13/14/16/17; constitución IX/XII/XIII, ADR-0005 y [ADR-0025 (Propuesto)](../../docs/adr/0025-inline-solo-en-previsualizacion-aislada.md).
+Fuentes: `product-context.md` §2–4, §6–7; 005 CA-13/14/16/17; constitución IX/XII/XIII, ADR-0005; [ADR-0025 (Rechazado)](../../docs/adr/0025-inline-solo-en-previsualizacion-aislada.md) descartó `inline` en vista.
 
 ## 2. Historias de usuario
 - **HU-1** Como cliente con acceso a un archivo, quiero consultar su vista previa para reconocer su contenido sin modificarlo.
@@ -35,23 +35,23 @@ Fuentes: `product-context.md` §2–4, §6–7; 005 CA-13/14/16/17; constitució
 - **CA-8** (HU-1, RF-09, RNF-06, RNF-07) Dado un archivo descargable, cuando el cliente lo descarga después de introducir la vista previa, entonces se conservan las garantías de 005: original íntegro, enlace de cinco minutos a un objeto, origen aislado y descarga forzada.
 - **CA-9** (HU-2, RNF-13, RNF-14) Dado el visor y sus estados, cuando se usa con teclado a 360 y 1440 px, entonces la interfaz está en español, tiene contraste AA y foco visible, muestra progreso si tarda más de dos segundos y errores con acción correctiva.
 - **CA-10** (HU-3, RNF-17) Dadas solicitudes de vista previa exitosas y fallidas, cuando se inspeccionan sus bitácoras, entonces todas las entradas llevan identificador de correlación y ninguna contiene contenido, nombres de archivo, contraseñas, tokens, claves ni URLs firmadas.
-- **CA-11** (HU-1, RNF-06, RNF-07) Dado un archivo previsualizable del propietario, cuando pide la vista, entonces recibe una URL distinta de la de descarga: 5 minutos, un solo objeto, host de objetos aislado de la web y de la API, `Content-Disposition: inline`, `nosniff` y el MIME del catálogo de la 005. La URL de descarga sigue en `attachment` y `application/octet-stream`, y la vista no la incrusta. Los bytes no pasan por la API ni por el origen de la web. DOCX, `otro` y SVG no reciben URL de vista.
+- **CA-11** (HU-1, RNF-06, RNF-07) Dado un archivo previsualizable del propietario, cuando pide la vista, entonces recibe, por un endpoint propio, una URL distinta de la de descarga: 5 minutos, un solo objeto, host de objetos aislado de la web y de la API y sin cookies de la app, con la misma disposición forzada de 005 (`Content-Disposition: attachment`, `application/octet-stream`, `no-store`). Los bytes no pasan por la API ni por el origen de la web. DOCX, `otro` y SVG no reciben URL de vista.
 - **CA-12** (RNF-07) Dado un cliente que supera el límite de emisión de URLs de vista, cuando repite la solicitud, entonces recibe `429 STORAGE_TOO_MANY_REQUESTS` con `Retry-After` y «Hiciste demasiadas solicitudes. Espera un momento e inténtalo de nuevo.», con clave distinta de la de descarga (`storage:preview-url:`).
 
 ## 4. Reglas de negocio
 - **RN-1** Previsualizar es leer, nunca editar. RF-27 cubre PDF, XLSX, PPTX, TXT, MD e imágenes PNG/JPG/JPEG/GIF/WebP. DOCX y la categoría «otros» quedan fuera del alcance de 017; SVG, BMP y HEIC no tienen vista previa.
 - **RN-2** El acceso nace de la propiedad o de un permiso de lectura ya existente, nunca del rol interno. Esta spec no crea ni modifica mecanismos de compartición.
 - **RN-3** No se introduce una cuota, tarifa o restricción comercial de previsualización: el catálogo no las define.
-- **RN-4** Se respeta el tipo real validado por 005. Ni una extensión alterada ni una falla de visualización permiten cambiar permisos o modificar el original.
+- **RN-4** El lector se elige por el tipo (`archivo.tipo`) validado por 005. Si el contenido no coincide (p. ej. un PDF renombrado a imagen), la vista falla como «corrupto» y ofrece Descargar. Ni una extensión alterada ni una falla de visualización permiten cambiar permisos o modificar el original.
 - **RN-5** La lectura incluye PDF escaneados sin capa de texto; no depende de indexación ni añade OCR. Los límites de carga de 005 no se convierten por suposición en límites nuevos de vista previa.
-- **RN-6** El plan no agrega la columna `tipo_mime`. El tipo sale de `archivo.tipo` y el MIME del catálogo de la 005.
+- **RN-6** El plan no agrega la columna `tipo_mime`. El tipo sale de `archivo.tipo`; la respuesta de vista no lleva MIME.
 
 ## 5. Seguridad y privacidad
 - **Sí toca contenido de clientes:** la vista previa debe impedir acceso entre clientes distintos y acceso de Administrador, Soporte u Operador al contenido de clientes (CA-3 a CA-5).
 - La autorización limita los datos antes de entregarlos, conforme a RF-05, RNF-05 y ADR-0005; ocultar controles o filtrar después no concede acceso.
 - Los roles internos nunca reciben contenido ni vistas previas; el estado «sin permiso» no revela datos del recurso.
-- Se mantiene el origen aislado de la constitución IX y RNF-07. La descarga de 005 conserva `Content-Disposition: attachment` y `Content-Type: application/octet-stream`.
-- [ADR-0025 (Propuesto)](../../docs/adr/0025-inline-solo-en-previsualizacion-aislada.md) registra antes del plan la interpretación de IX.7: `inline` solo en la URL temporal de vista y solo en el origen aislado. IX.7 no distingue literalmente vista de descarga; esta interpretación requiere acuerdo de los cuatro integrantes en revisión (PD-69), antes de aprobar el plan. El registro no autoriza la implementación.
+- Se mantiene el origen aislado de la constitución IX y RNF-07. La descarga y la URL de vista conservan `Content-Disposition: attachment` y `Content-Type: application/octet-stream`.
+- IX.7 se respeta literalmente: el navegador nunca navega a la URL; el visor obtiene los bytes con `fetch` sin credenciales y los renderiza él mismo. [ADR-0025 (Rechazado)](../../docs/adr/0025-inline-solo-en-previsualizacion-aislada.md) (`inline` en vista) queda descartado por esta decisión (opción 4).
 - Las bitácoras excluyen contenido, nombres, credenciales, claves de enlace/objeto y URLs firmadas (CA-10), también en errores.
 
 ## 6. Experiencia de usuario
@@ -70,10 +70,10 @@ Fuentes: `product-context.md` §2–4, §6–7; 005 CA-13/14/16/17; constitució
 - Historial/restauración, búsqueda, indexación, OCR u optimización.
 - Cambiar carga, descarga, cuotas, catálogo comercial, autorización o ciclo de suscripciones existentes.
 - La 010 debe conservar la vista previa cuando la cuenta pase a solo lectura por vencimiento.
-- Elegir tecnología, librerías, contratos, persistencia o procesos; corresponde al plan con ADR-0025 registrado en §5 y su aceptación pendiente explícita.
+- Elegir tecnología, librerías, contratos, persistencia o procesos; corresponde al plan y a su ADR de motores de previsualización.
 
 ## 8. Preguntas
-- **P-1 [RESUELTA] — bloquea: no.** La vista previa usa una URL distinta de descarga, de 5 minutos y un solo objeto, en origen aislado, con `Content-Disposition: inline`, `nosniff` y MIME del catálogo de 005. La descarga de 005 permanece en `attachment` y `application/octet-stream`. La interpretación de IX.7 está registrada en ADR-0025 (Propuesto); su aceptación se sigue en PD-69 y no se da por obtenida al resolver esta pregunta.
+- **P-1 [RESUELTA] — bloquea: no.** La vista previa usa una URL distinta de descarga, de 5 minutos y un solo objeto, en origen aislado, con la misma disposición forzada de 005 (`attachment`, `application/octet-stream`). Reemplazada el 2026-10-06 (opción 4): ya no hay `inline` ni MIME de vista; ADR-0025 queda Rechazado y PD-69 deja de ser necesario.
 - **P-3 [RESUELTA] — bloquea: no.** Se crea el mockup en `docs/design/mockups/storage/vista-previa/`. Lo hace Adrián. No se reutiliza el explorador ni otra pantalla como visor; el layout de la app sí se reutiliza.
 - **P-4 [RESUELTA] — bloquea: no.** «Imágenes» en RF-27 corresponde a PNG, JPG/JPEG, GIF y WebP. SVG, BMP y HEIC quedan como no previsualizables.
 - **P-5 [RESUELTA] — bloquea: no.** Se fija la cobertura y comportamiento observable por formato en CA-1 y CA-2: PDF completo sin JavaScript, imagen tal cual, TXT/MD literal, XLSX por valores de cada hoja sin recalcular, PPTX por texto de cada diapositiva sin animaciones, y tratamiento explícito de vacío/corrupción/protección sin límite adicional de tamaño.
@@ -89,3 +89,4 @@ Fuentes: `product-context.md` §2–4, §6–7; 005 CA-13/14/16/17; constitució
 | 2026-10-04 | Pendiente para 016: al redactarla debe incluir la apertura DOCX en solo lectura, incluido Personal, mediante ONLYOFFICE | Mantener trazabilidad de la lectura DOCX fuera de 017 | Pendiente de Adrián |
 | 2026-10-06 | Registrar y enlazar ADR-0025 (Propuesto) y PD-69; explicitar la tensión literal con IX.7 y la aceptación pendiente | Documentar `inline` solo para la URL temporal de vista aislada antes de `/plan 017`, preservando descarga de 005 | Pendiente del equipo (IX.7) y de Adrián (spec) |
 | 2026-10-06 | Spec y plan aprobados; estado `Lista` | Aprobación registrada en plan §8 (G-4) | Adrián |
+| 2026-10-06 | CA-11 reescrito (opción 4): URL de vista con la misma política de 005 (`attachment`, `application/octet-stream`, `no-store`); sin `inline`, sin MIME, sin excepción a IX.7; ADR-0025 Rechazado; RN-4/RN-6 ajustados | El visor lee con `fetch` y renderiza; el navegador no navega a la URL, así que `inline`/MIME no aportan | Adrián |
