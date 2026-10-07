@@ -45,7 +45,7 @@ Regla madre: **el rol nunca otorga acceso al contenido de los archivos.**
 | Administrar respaldos, llaves, configuración | ✘ | ✘ | ✘ | ✔ |
 | Consultar su propia bitácora de auditoría | ✔ | ✔ | ✔ | ✔ |
 
-¹ «Limitado» (spec 003, D-4): Soporte solo **restaura**, nunca ve ni descarga; siempre con un motivo escrito y siempre en la auditoría visible para el cliente (RF-07). Se implementa en 011.
+¹ «Limitado» (spec 003, D-4): Soporte solo **restaura**, nunca ve ni descarga; siempre con un motivo escrito y siempre en la auditoría visible para el cliente (RF-07). Se implementa en 011b.
 
 ### Niveles de acceso sobre un recurso (dentro del rol Cliente)
 

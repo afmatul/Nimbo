@@ -71,7 +71,7 @@ Todas las tomó Adrián el 2026-09-26. La numeración D-n sigue a la pregunta P-
 | D-1 | **Alcance en Fase 1.** Esta spec entrega los guards, el `Actor`, los decoradores, los contratos de `access` (`PermissionResolver.levelFor` y `can`, `IAccessPolicy` con `OwnerPolicy`, `EditorPolicy` y `ViewerPolicy`, `AccessLevel`, `Action` y la firma de `accessibleNodes`), el ayudante de transacción que fija el actor para RLS y el arnés de la suite de aislamiento. La **consulta** de `accessibleNodes` y las **políticas RLS** se escriben cuando existan las tablas: la parte de propiedad junto con 005 y la de comparticiones con 012. Las escribe el dueño de `access` (Adrián) en esos PR. **Resuelve DF-32.** | P-1 |
 | D-2 | **Guards globales en `shared`**, que **niegan por defecto**: una ruta sin `@Public()` exige un token válido. `JwtAuthGuard` verifica el token con un puerto que define `shared` y que implementa `identity` (D-14 de 002), y `RolesGuard` comprueba `@Roles(...)`. `RolesGuard` sale de `backoffice`: ahí obligaría a todos los módulos a depender de M8. Se registra **DF-50** y se actualizan `architecture.md` §3 y §6 y `design-model.md` (M8, T1). | P-2 |
 | D-3 | **Las cuentas internas se crean solo en 011** (Fase 2), con su administración. En la Fase 1 solo existen en las pruebas, que las insertan directamente. `codigo_empleado` (D-3 de 001) llega con la migración de 011. | P-3 |
-| D-4 | **El «Limitado» de Soporte** al restaurar la papelera de un cliente: solo **restaurar**, nunca ver ni descargar; siempre con un **motivo escrito**, y siempre en la auditoría visible para el cliente (RF-07). Se implementa en 011; aquí se fija la regla y se actualiza la nota ¹ de `product-context.md` §2. | P-4 |
+| D-4 | **El «Limitado» de Soporte** al restaurar la papelera de un cliente: solo **restaurar**, nunca ver ni descargar; siempre con un **motivo escrito**, y siempre en la auditoría visible para el cliente (RF-07). Se implementa en 011b; aquí se fija la regla y se actualiza la nota ¹ de `product-context.md` §2. | P-4 |
 | D-5 | **Mismo formulario de inicio de sesión para todos los roles** (002). Después, la web redirige según el rol: el Cliente a Mis archivos; las cuentas internas a su área, que hasta 011 es una página de marcador con su nombre, su rol y «Cerrar sesión». Esa redirección es solo experiencia de usuario: la barrera es que las rutas de cliente exigen `CLIENT` en el servidor. | P-5 |
 | D-6 | **Respuestas.** Recurso de otra cuenta o inexistente: **404**, idéntico en los dos casos (mismo `status` y cuerpo, con el `code` del módulo, p. ej. `STORAGE_NODE_NOT_FOUND`). Rol insuficiente: **403** `SHARED_FORBIDDEN`. Sin token, o con un token vencido o inválido: **401** `SHARED_UNAUTHENTICATED`; la web intenta una renovación (002) antes de mandar a iniciar sesión. | P-6 |
 | D-7 | **RLS desde la Fase 1** en `archivo` y `version_archivo`, desde las migraciones que las crean (005), con `FORCE ROW LEVEL SECURITY`. La API se conecta con un **rol de base de datos que no es dueño** de las tablas; las migraciones corren con el rol dueño. Esta spec entrega los dos roles en compose y staging, sus variables de entorno y el ayudante `withActor()`, que fija `app.actor_id` y `app.actor_role` en cada transacción con `set_config(…, true)` y parámetros (equivale a `SET LOCAL` sin concatenar valores; ADR-0005). Los roles internos solo ven metadatos de `archivo` y no reciben ninguna fila de `version_archivo`, donde está `clave_objeto` (ADR-0005); las columnas visibles las acota `INodeMetadataReader`, no RLS. Las políticas se escriben en las migraciones de 005. `fragmento` entra con 019. | P-7 |
@@ -230,7 +230,7 @@ No hay parámetros numéricos propios. La vida del token de acceso (15 min) es d
 ## 12. Fuera de alcance
 
 - Crear, suspender y administrar cuentas internas, y su `codigo_empleado`: 011.
-- La auditoría (004) y las acciones internas sobre cuentas ajenas, incluida la restauración de Soporte (011).
+- La auditoría (004) y las acciones internas sobre cuentas ajenas, incluida la restauración de Soporte (011b).
 - La consulta completa de `accessibleNodes` y las políticas RLS: 005 (propiedad) y 012 (comparticiones), según D-1.
   RLS en `fragmento`: 019.
 - Enlaces públicos y su acceso por contraseña: 013.
@@ -260,7 +260,7 @@ No hay parámetros numéricos propios. La vida del token de acceso (15 min) es d
   - **005**: su plan incluye la consulta de propiedad de `accessibleNodes`, las políticas RLS de `archivo` y
     `version_archivo` y qué metadatos ven los roles internos; cierra CA-10, CA-11 y CA-14.
   - **012**: agrega las comparticiones a `accessibleNodes`.
-  - **011**: crea las cuentas internas (D-3) y aplica la regla de Soporte (D-4).
+  - **011**: crea las cuentas internas (D-3); **011b** aplica la regla de Soporte (D-4).
   - **004**: registra las acciones internas visibles para el cliente.
   - **001**: su D-3 dice que `codigo_empleado` llega con «003/011»; con D-3 de esta spec, llega con 011.
 - **Documentos**:
