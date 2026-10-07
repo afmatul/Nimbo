@@ -8,10 +8,10 @@ import { SignOutButton } from '../../identity/components/sign-out-button';
 import {
   maxFileLabelOf,
   useMyFilesState,
-  useReturnFocus,
   type MyFilesState,
   type RowActionHandlers,
 } from '../hooks/use-my-files-state';
+import { useReturnFocus } from '../hooks/use-return-focus';
 
 import { FileExplorer, type FileExplorerStatus } from './file-explorer';
 import { DownloadNoticeBanner, FileRowMenu, type DownloadNotice } from './file-row-menu';

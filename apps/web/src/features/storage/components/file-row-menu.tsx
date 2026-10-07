@@ -50,7 +50,10 @@ export interface FileRowMenuProps {
   /** «Mover a la papelera», sin confirmación (006 CA-10). */
   readonly onMoveToTrash: () => void;
   readonly pin: PinToggle;
-  /** Primer ítem del menú, antes de «Descargar» (017: «Previsualizar»); storage no conoce quién lo provee. */
+  /**
+   * Primer ítem del menú, antes de «Descargar» (017: «Previsualizar»), ya renderizado: `MyFiles` lo crea desde su
+   * `FirstFileAction`. Storage no conoce quién lo provee.
+   */
   readonly firstAction?: React.ReactNode;
 }
 
