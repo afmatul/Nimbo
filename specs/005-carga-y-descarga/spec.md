@@ -2,14 +2,14 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Lista (2026-09-28) — spec aprobada por Adrián; [`plan.md`](./plan.md) aprobado por `architect` (segunda pasada) y confirmado por Adrián |
+| Estado | En revisión (2026-10-07) — [`review.md`](./review.md) sin bloqueantes; falta T-55 (recorrido humano). Plan aprobado por `architect` y confirmado por Adrián |
 | Dueño | Adrián (1) |
 | Fase | 1 |
 | Requisitos | RF-08, RF-09, RF-14, RNF-06, RNF-07 (principales); aplican RF-07, RF-12 (parcial), RNF-05, RNF-13, RNF-14, RNF-17 |
 | Depende de | **003** (`Actor`, guards, `accessibleNodes`, RLS de `archivo`, `version_archivo` y `carga` que se escriben en el PR de 005, D-1 y D-7 de 003); **006a** (solo su implementación de `IPlanLimitsProvider`: 005 declara el puerto y `PlanLimits`, DF-51 opción A; mientras tanto, doble de prueba); **001** (`IRateLimiter`, `TooManyRequestsError`, `ZodValidationPipe`). **004 llega después de 005**: 005 declara el puerto `IAuditLogger` con un adaptador provisional (bitácora técnica sin datos sensibles) que 004 sustituye |
 | Módulo | M2 `storage` |
 | DF | DF-06, DF-16, DF-38, DF-52 (se cierran en el plan); **DF-51 resuelto** (opción A, Fátima, 2026-09-28: `storage` declara `IPlanLimitsProvider`/`PlanLimits`; `billing` lo implementa); DF-17 y DF-33 (resto) no bloquean. La contradicción «progreso en tiempo real» (RF-08 / `architecture.md` §7.1 con `realtime`) quedó **resuelta** (DF-58): el progreso se mide en el cliente |
-| Última actualización | 2026-09-28 |
+| Última actualización | 2026-10-07 |
 
 ## 1. Contexto y problema
 
@@ -335,3 +335,4 @@ Ninguna.
 | 2026-09-28 | §9 final: estados del explorador (vacio, cargando, arrastre, error, acciones, descarga-preparando, descarga-fallida) y mensajes aprobados; plan aprobado por `architect` en segunda pasada | Integración de mockups y aprobación del plan | Adrián |
 | 2026-09-28 | `Borrador` → `Lista` | Plan aprobado por `architect` y confirmado por Adrián | Adrián |
 | 2026-09-29 | **Propuesta (PR-F, pendiente de Adrián)**: §9 pide `{máximo}` en el vacío y el arrastre del explorador, pero ningún contrato expone `PlanLimits.maxFileBytes` a `web` (solo la API lo usa, RN-1). Mientras no exista (p. ej. un `GET` de límites del plan en 006a/007), la página omite la cifra: «Sube tus documentos con el botón o arrástralos a esta página.» y «Se guardarán en Mis archivos». Alternativa: agregar el contrato en 005 | Hueco detectado al montar `/archivos` (T-54) | — |
+| 2026-10-07 | `Lista` → `En revisión`. La cifra `{máximo}` llega por el resumen de 007 (`maxFileLabelOf`), sin contrato nuevo en 005. Revisión sin bloqueantes; T-55 sigue abierta | `/review 005` | — |

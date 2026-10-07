@@ -72,7 +72,7 @@ PR-B + 001-PR-4 + 002-PR-5a + 003-PR-F
 
 ## Bloque 1 — PR-A «contratos y dominio» (plan §4–§6, D-9, D-11 forma de errores) · depende de: `main`
 
-- [ ] **T-01** [P] `contracts/storage`: códigos, motivos, parámetros y `formatBytes` — CA: CA-3, CA-4, CA-7 (códigos), CA-19 — Depende: — — ~2 h
+- [x] **T-01** [P] `contracts/storage`: códigos, motivos, parámetros y `formatBytes` — CA: CA-3, CA-4, CA-7 (códigos), CA-19 — Depende: — — ~2 h
   Prueba primero `packages/contracts/src/storage/constants.spec.ts`: `STORAGE_ERROR_CODES` es exactamente el conjunto
   de plan §5 (`STORAGE_INVALID_UPLOAD_REQUEST`, `STORAGE_INVALID_QUERY`, `STORAGE_EMPTY_FILE`, `STORAGE_FILE_TOO_LARGE`,
   `STORAGE_QUOTA_EXCEEDED`, `STORAGE_NAME_CONFLICT`, `STORAGE_UPLOAD_NOT_FOUND`, `STORAGE_UPLOAD_EXPIRED`,
@@ -158,7 +158,7 @@ PR-B + 001-PR-4 + 002-PR-5a + 003-PR-F
   `{ ok: false, reason }`. Sin dependencia nueva (D-9).
   Archivos: `apps/api/src/modules/storage/application/ports/i-file-type-detector.port.ts`, `apps/api/src/modules/storage/infrastructure/magic-bytes.detector.ts`, `apps/api/src/modules/storage/infrastructure/magic-bytes.detector.spec.ts`.
 
-- [ ] **T-09** Cierre del PR-A — CA: n/a — Depende: T-01…T-08 — ~1 h
+- [x] **T-09** Cierre del PR-A — CA: n/a — Depende: T-01…T-08 — ~1 h
   README de `storage`: la primera spec ya no es un marcador; lista las capas y recuerda que `index.ts` es la única
   puerta (sin `billing`). `pnpm lint`, `pnpm typecheck` y `pnpm test` en verde. Avisar a quien haga PR-B: T-01 y T-02
   ya se pueden consumir.
@@ -169,17 +169,17 @@ PR-B + 001-PR-4 + 002-PR-5a + 003-PR-F
 Los componentes reciben datos por props o por un cliente inyectado. No llaman a la red real. Textos de spec §9 y
 foco según `docs/design/mockups/storage/`. Sin tokens nuevos ni colores a mano (`ui-guidelines.md`). Sin `PLANS_PATH`.
 
-- [ ] **T-10** [P] [P×PR] `alert-dialog`, `checkbox` y `dropdown-menu` — CA: CA-6, CA-21, CA-22 (primitivas) — Depende: — — ~2 h
+- [x] **T-10** [P] [P×PR] `alert-dialog`, `checkbox` y `dropdown-menu` — CA: CA-6, CA-21, CA-22 (primitivas) — Depende: — — ~2 h
   Agregar las tres primitivas shadcn/Radix (adenda de ADR-0015) con los tokens ya existentes. Prueba de render mínima
   por componente: el diálogo atrapa el foco, la casilla se puede marcar, el menú se abre con Enter y Espacio.
   Archivos: `apps/web/src/components/ui/{alert-dialog,checkbox,dropdown-menu}.tsx` y sus `*.spec.tsx`.
 
-- [ ] **T-11** [P] `xhr-put`: progreso y aborto — CA: CA-21 (bytes) — Depende: — — ~2 h
+- [x] **T-11** [P] `xhr-put`: progreso y aborto — CA: CA-21 (bytes) — Depende: — — ~2 h
   Prueba primero `xhr-put.spec.ts` con un `XMLHttpRequest` falso: reporta bytes enviados, se aborta, y un fallo de red
   rechaza la promesa sin reintentar (el reintento es de T-13). No envía `Authorization` ni cookies de la app.
   Archivos: `apps/web/src/features/storage/upload/xhr-put.ts`, `apps/web/src/features/storage/upload/xhr-put.spec.ts`.
 
-- [ ] **T-12** Máquina `UploadManager`: inicio, conflicto y subida — CA: CA-1, CA-2, CA-6, CA-21 — Depende: T-01, T-02, T-11 — ~4 h
+- [x] **T-12** Máquina `UploadManager`: inicio, conflicto y subida — CA: CA-1, CA-2, CA-6, CA-21 — Depende: T-01, T-02, T-11 — ~4 h
   Prueba primero `upload-manager.spec.ts` con cliente HTTP y reloj falsos. Estados:
   `queued → starting → conflict? → uploading → completing → done | rejected`. Concurrencia 2 archivos × 4 partes
   (`upload-config.ts`). Ante `409 STORAGE_NAME_CONFLICT` se detiene en `conflict` con `suggestedName` y no sube hasta
@@ -188,7 +188,7 @@ foco según `docs/design/mockups/storage/`. Sin tokens nuevos ni colores a mano 
   resto de la selección. Si pasa de 4 h, partir en «transiciones» y «conflicto / varios archivos» antes de seguir.
   Archivos: `apps/web/src/features/storage/upload/{upload-manager,upload-config}.ts`, `apps/web/src/features/storage/upload/upload-manager.spec.ts`.
 
-- [ ] **T-13** Pausa, reanudación, corte y cancelación en el manager — CA: CA-8, CA-9, CA-19, CA-22 — Depende: T-12 — ~4 h
+- [x] **T-13** Pausa, reanudación, corte y cancelación en el manager — CA: CA-8, CA-9, CA-19, CA-22 — Depende: T-12 — ~4 h
   Ampliar la misma suite: pausa ↔ `uploading`; una carga `simple` pausada aborta el `PUT` y al reanudar empieza de
   cero, con la marca «Se reiniciará al reanudar»; una `multipart` al reanudar pide `resume` y solo sube `pending`.
   Corte de red → `offline` (título de UI «Carga en espera» lo pinta T-14); al evento `online` llama `resume`.
@@ -199,7 +199,7 @@ foco según `docs/design/mockups/storage/`. Sin tokens nuevos ni colores a mano 
   en `completing`).
   Archivos: `apps/web/src/features/storage/upload/upload-manager.ts`, `apps/web/src/features/storage/upload/upload-manager.spec.ts`.
 
-- [ ] **T-14** Panel de cargas — CA: CA-3, CA-4, CA-8, CA-9, CA-19, CA-21, CA-22 — Depende: T-12 — ~3 h
+- [x] **T-14** Panel de cargas — CA: CA-3, CA-4, CA-8, CA-9, CA-19, CA-21, CA-22 — Depende: T-12 — ~3 h
   Prueba primero `upload-panel.spec.tsx` y `upload-progress.spec.tsx`: progreso (porcentaje, bytes, velocidad como
   media de 5 s, tiempo restante); avisos de tamaño, cuota (acción «Liberar espacio» hacia `/archivos`; **no** existe
   «Ver planes»), tipo, ejecutable, vacío, caducada («Subir de nuevo») y tasa («Reintentar»); corte con título
@@ -208,7 +208,7 @@ foco según `docs/design/mockups/storage/`. Sin tokens nuevos ni colores a mano 
   Reutiliza `FileTypeChip`, `StateView`, `Button`, `Card` y `components/nimbo/upload-progress.tsx`.
   Archivos: `apps/web/src/features/storage/components/upload-panel.tsx`, `apps/web/src/components/nimbo/upload-progress.tsx`, `apps/web/src/features/storage/components/upload-panel.spec.tsx`, `apps/web/src/components/nimbo/upload-progress.spec.tsx`.
 
-- [ ] **T-15** Diálogos de nombre repetido y de cancelar — CA: CA-6, CA-22 — Depende: T-10, T-12 — ~3 h
+- [x] **T-15** Diálogos de nombre repetido y de cancelar — CA: CA-6, CA-22 — Depende: T-10, T-12 — ~3 h
   Prueba primero `name-conflict-dialog.spec.tsx`: título «¿Conservar ambos archivos?», foco inicial en «Conservar ambos»,
   muestra el nombre final, casilla «Aplicar a los demás» con la ayuda en singular o en plural según `n`. Un diálogo
   por archivo. `cancel-upload-dialog.spec.tsx`: solo si ya se subió más de 0 %; texto con `{subido}`, `{total}` y
@@ -217,7 +217,7 @@ foco según `docs/design/mockups/storage/`. Sin tokens nuevos ni colores a mano 
   `onConfirm` / `onDismiss`).
   Archivos: `apps/web/src/features/storage/components/{name-conflict-dialog,cancel-upload-dialog}.tsx` y sus `*.spec.tsx`.
 
-- [ ] **T-16** Explorador mínimo, arrastre y error de listado — CA: CA-1, CA-21 — Depende: T-02 — ~4 h
+- [x] **T-16** Explorador mínimo, arrastre y error de listado — CA: CA-1, CA-21 — Depende: T-02 — ~4 h
   Prueba primero `file-explorer.spec.tsx` y `upload-dropzone.spec.tsx`: estados vacío («Aún no tienes archivos» y el
   máximo por archivo que llega por prop), cargando, arrastre («Suelta para subir»), lista de la raíz, error
   («No pudimos cargar tus archivos.» / «Tus archivos siguen guardados. Inténtalo de nuevo.») con «Reintentar» que
@@ -225,7 +225,7 @@ foco según `docs/design/mockups/storage/`. Sin tokens nuevos ni colores a mano 
   lateral de esta vista **no** renderiza «Carpetas» ni el contador de la Papelera. Sin cuota ni desglose (007).
   Archivos: `apps/web/src/features/storage/components/{file-explorer,upload-dropzone,explorer-error-state}.tsx` y sus `*.spec.tsx`.
 
-- [ ] **T-17** Menú ⋮ y aviso de descarga — CA: CA-13, CA-21 — Depende: T-10, T-16 — ~3 h
+- [x] **T-17** Menú ⋮ y aviso de descarga — CA: CA-13, CA-21 — Depende: T-10, T-16 — ~3 h
   Prueba primero `file-row-menu.spec.tsx`: la única acción es «Descargar» (`aria-label` «Acciones de {nombre}»);
   Enter/Espacio abren el menú. Si la promesa de la URL tarda más de 2 s (temporizadores falsos), el ítem queda
   deshabilitado con «Preparando…» y se anuncia «Preparando la descarga de {nombre}…». Un `429` o un `404` muestra el
@@ -233,13 +233,13 @@ foco según `docs/design/mockups/storage/`. Sin tokens nuevos ni colores a mano 
   la fila no se quita. Red o `5xx`: el texto de conexión y «Reintentar».
   Archivos: `apps/web/src/features/storage/components/file-row-menu.tsx`, `apps/web/src/features/storage/components/file-row-menu.spec.tsx`, `apps/web/src/features/storage/components/file-explorer.tsx`.
 
-- [ ] **T-18** Accesibilidad de los estados de §9 — CA: CA-21 — Depende: T-14, T-15, T-16, T-17 — ~2 h
+- [x] **T-18** Accesibilidad de los estados de §9 — CA: CA-21 — Depende: T-14, T-15, T-16, T-17 — ~2 h
   `a11y.spec.tsx` con jest-axe sobre panel (progreso, pausa, sin conexión, rechazos, nombre repetido, confirmar
   cancelar), explorador (vacío, cargando, arrastre, error, acciones, descarga preparando, descarga fallida) a 360 y
   1440 px. Cero violaciones serias. Sin colores fuera de tokens.
   Archivos: `apps/web/src/features/storage/a11y.spec.tsx`.
 
-- [ ] **T-19** Cierre del PR-B — CA: n/a — Depende: T-10…T-18 — ~1 h
+- [x] **T-19** Cierre del PR-B — CA: n/a — Depende: T-10…T-18 — ~1 h
   `pnpm --filter web lint`, typecheck y test en verde. Los componentes aún no están montados en `/archivos` (eso es
   PR-F). Nota en el README de `features/storage`: el proveedor de la pestaña llega en T-53.
   Archivos: `apps/web/src/features/storage/README.md`.
@@ -551,11 +551,15 @@ salvo la lectura por rango del detector.
   `architecture.md` ni `design-findings.md`.
   Archivos: `docs/operations/ambientes.md`, `apps/api/src/modules/storage/README.md`.
 
-- [ ] **T-57** Cierre del PR-F y de las tareas — CA: todos los de esta spec, como trazabilidad — Depende: T-53…T-56 — ~1 h
+- [x] **T-57** Cierre del PR-F y de las tareas — CA: todos los de esta spec, como trazabilidad — Depende: T-53…T-56 — ~1 h
   Lint, typecheck y unitarias de `web` y `api` en verde. La spec pasa a `En revisión` solo cuando este cierre y los
   PR anteriores están integrados y se pide `/review` (tester, security-auditor, ui-designer). Hasta el primer commit
   `feat/005-*` la spec sigue en `Lista`; ese commit la pasa a `En curso`.
   Archivos: `specs/README.md` (fila 005, al integrar).
+
+## Cierre de la revisión (2026-10-07)
+
+T-01, T-09 y T-10…T-19 quedaron hechas en PR-A y PR-B (#36, #37); las casillas se marcan aquí. T-57 cierra el papeleo: `review.md` sin bloqueantes y la spec en `En revisión`. **T-55 sigue abierta.**
 
 ## Notas del developer
 
