@@ -38,7 +38,8 @@ tiene su área real en la web (003 D-5). Cuota, vigencia y restauración por Sop
 - **CA-5** (HU-2, RF-05, RF-06) Dado un Administrador, cuando crea una cuenta Administrador, Soporte u Operador con nombre,
   correo y código de empleado, entonces la cuenta existe, la persona recibe un enlace de un solo uso para fijar su
   contraseña (el Administrador nunca la conoce) y el alta se audita. El enlace reutiliza el mecanismo de la 001
-  (`token_cuenta`, hash, un solo uso) con un tipo propio: fija la primera contraseña y no invalida sesiones.
+  (`token_cuenta`, hash, un solo uso) con un tipo propio: fija la primera contraseña y no invalida sesiones. La cuenta nace
+  con el correo verificado; si el enlace venció, la página indica usar «¿Olvidaste tu contraseña?» (sin reenvío).
 - **CA-6** (HU-2, RF-05) — error: Dado un correo que ya tiene cuenta, un código de empleado repetido o el rol Cliente,
   cuando se intenta el alta, entonces se rechaza con un `code` de conflicto o de validación y no se crea nada.
 - **CA-7** (HU-2, RF-05) Dado que no existe ningún Administrador activo, cuando alguien con acceso al servidor ejecuta el
@@ -47,7 +48,7 @@ tiene su área real en la web (003 D-5). Cuota, vigencia y restauración por Sop
 
 **Catálogo (HU-3)**
 - **CA-8** (HU-3, RF-06, RF-19) Dado un Administrador, cuando abre el catálogo, entonces ve cada plan (activo o no) con
-  nombre, descripción, precio, todos sus límites y su estado.
+  nombre, descripción, precio, todos sus límites, su estado y cuántas cuentas lo tienen (conteo agregado, sin nombres).
 - **CA-9** (HU-3, RF-06, RF-19) Dado un Administrador, cuando crea un plan con nombre, descripción, precio y límites,
   entonces el plan queda activo, se ofrece a contrataciones nuevas y el alta se audita. La web puede llenar el formulario
   con los valores de un plan activo (que no cambia) y, tras crear, ofrecer desactivar ese plan (CA-10).
@@ -116,6 +117,7 @@ tiene su área real en la web (003 D-5). Cuota, vigencia y restauración por Sop
 | Admin: alta interna | `backoffice/alta-interna/` | default, error-campos, error-conflicto, enviando, exito | Borrador |
 | Admin: catálogo de planes | `backoffice/catalogo/` | default, cargando, error, creando, error-campos, exito, confirmar-desactivar, desactivado | Borrador |
 | Admin y Operador: métricas | `backoffice/metricas/` | default, cargando, error, con-plan-inactivo, operador | Borrador |
+| Invitada: crear tu contraseña | sin mockup: patrón de `restablecer-contrasena` (002), con Cielo Sereno (P-15) | default, enviando, error-campos, enlace-vencido, exito | Decisión explícita |
 | Soporte: metadatos de un cliente | `backoffice/soporte/` | inicial, default, vacio, cargando, no-encontrado, error, desde-admin | Borrador |
 
 - Cielo Sereno (`design-cielo-sereno.md`) con los tonos AA corregidos de `ui-guidelines.md` §2 (Art. XIII.2).
@@ -137,14 +139,12 @@ tiene su área real en la web (003 D-5). Cuota, vigencia y restauración por Sop
   desactivar (RN-4) · **P-5** metadatos con nombre · **P-6** enlace de un uso; primer Admin por comando · **P-7** `/mockup`
   · **P-8** 011 y 011b · **P-9** → 022b (PD-69) · **P-10** la matriz manda · **P-11** sin autosuspensión ni último Admin;
   sí internas · **P-12** nombre y rol · **P-13** suspender congela comparticiones y enlaces (PD-73) · **P-14** código único.
-- Van al plan: DF-04 (fachadas), DF-36 (controlador por rol), PD-31/DF-27 (`INodeMetadataReader`), DF-15, `desactivado_en`.
+- [RESUELTA] (2026-10-07, Fátima) **P-15** «Crear tu contraseña» reutiliza el patrón de `restablecer-contrasena` ·
+  **P-16** búsqueda de cuentas por inicio del correo · **P-17** conteo por plan en el catálogo (CA-8).
 
 ## 9. Registro de cambios
 | Fecha | Cambio | Motivo | Aprobó |
 |---|---|---|---|
-| 2026-10-03 | Creación en estado Borrador | Inicio de la spec 011 (RF-06) | — |
-| 2026-10-03 | P-1…P-14 resueltas; cuota, vigencia y restauración pasan a 011b; 005 en «Depende de» | Respuestas de la dueña | Fátima (pendiente Adrián) |
-| 2026-10-03 | CA-1 con «verificada»; bitácoras y trabajos → 022b; fuera: sesiones ajenas y limpieza de no verificadas | División de 022 (Adrián) y revisión de 001/002 | Fátima (pendiente Adrián) |
-| 2026-10-03 | Operador ve métricas; catálogo (0 editores, identificador, `desactivado_en`); estado de metadatos; CA-17 y §6 con los 5 mockups | Mockups y matriz §2 | Fátima (pendiente Adrián) |
-| 2026-10-06 | 006 y 007 en «Depende de»; `slug` y `desactivado_en` como única fuente; un plan no se edita; auditoría de catálogo sin cliente; tipo propio en `token_cuenta`; internas sin plan ni espacio; espacio total = suma de `espacio_usado` | Revisión de la spec (hallazgos 1–8) | Fátima (pendiente Adrián) |
-| 2026-10-06 | CA-7 sin rol; CA-11 sin edición y con dos errores; CA-13 con su error; CA-17 por pantalla; CA-9 y CA-2 | Revisiones del `reviewer` | Fátima (pendiente Adrián) |
+| 2026-10-03 | Creación; P-1…P-14; 011b y 022b; «verificada»; Operador ve métricas; estados de los 5 mockups | Respuestas de la dueña, división de 022 y mockups | Fátima (pendiente Adrián) |
+| 2026-10-06 | 006 y 007 en «Depende de»; `slug` y `desactivado_en`; un plan no se edita; auditoría de catálogo sin cliente; `token_cuenta` con tipo propio; CA-7 sin rol; CA-11, CA-13, CA-17, CA-9 y CA-2 | Revisiones de Adrián y del `reviewer` | Fátima (pendiente Adrián) |
+| 2026-10-07 | CA-5 nace verificada y enlace vencido; CA-8 con conteo; §6 «Crear tu contraseña»; P-15…P-17 | Preguntas del plan 011 | Fátima (pendiente Adrián) |
