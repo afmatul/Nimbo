@@ -5,6 +5,7 @@ import { STORAGE_ERROR_CODES, type DownloadUrlResponse, type FileSummary } from 
 import { act, useState, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
+import { DropdownMenuItem } from '../../../components/ui/dropdown-menu';
 import { StorageRequestError } from '../storage-request-error';
 
 import {
@@ -143,6 +144,28 @@ describe('FileRowMenu (CA-13, CA-21)', () => {
     expect(trigger().getAttribute('aria-label')).toBe('Acciones de Informe final.docx');
     await press('Enter');
 
+    expect(items()[0]?.textContent?.trim()).toBe('Descargar');
+  });
+
+  it('017 CA-9: el slot `firstAction` va antes de «Descargar» cuando se provee', async () => {
+    await renderMenu({ firstAction: <DropdownMenuItem>Previsualizar</DropdownMenuItem> });
+    await press('Enter');
+
+    expect(items().map((item) => item.textContent?.trim())).toEqual([
+      'Previsualizar',
+      'Descargar',
+      'Renombrar',
+      'Mover a…',
+      'Fijar en la barra lateral',
+      'Mover a la papelera',
+    ]);
+  });
+
+  it('017 CA-7: sin `firstAction` el menú no agrega ítems y «Descargar» sigue primero', async () => {
+    await renderMenu();
+    await press('Enter');
+
+    expect(items()).toHaveLength(5);
     expect(items()[0]?.textContent?.trim()).toBe('Descargar');
   });
 

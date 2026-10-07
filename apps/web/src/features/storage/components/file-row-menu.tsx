@@ -50,6 +50,8 @@ export interface FileRowMenuProps {
   /** «Mover a la papelera», sin confirmación (006 CA-10). */
   readonly onMoveToTrash: () => void;
   readonly pin: PinToggle;
+  /** Primer ítem del menú, antes de «Descargar» (017: «Previsualizar»); storage no conoce quién lo provee. */
+  readonly firstAction?: React.ReactNode;
 }
 
 /** Abre la URL firmada en la pestaña: el navegador descarga (005 CA-13). */
@@ -103,6 +105,7 @@ export function FileRowMenu({
   onMove,
   onMoveToTrash,
   pin,
+  firstAction,
 }: FileRowMenuProps): React.JSX.Element {
   const [open, setOpen] = React.useState(false);
   const [preparing, setPreparing] = React.useState(false);
@@ -144,6 +147,7 @@ export function FileRowMenu({
       <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
         <RowMenuTrigger name={file.name} />
         <DropdownMenuContent align="end">
+          {firstAction}
           <DropdownMenuItem
             aria-disabled={preparing || undefined}
             className={preparing ? 'text-secondary-foreground' : undefined}
@@ -171,6 +175,9 @@ export function FileRowMenu({
   );
 }
 
+/** El botón ⋮ es el control de su fila: lo enfoca la vuelta de la vista previa (017 §6). */
+export const ROW_CONTROL_SELECTOR = '[data-row-control]';
+
 /** Botón ⋮ de una fila (mockup `acciones`): «Acciones de {nombre}». */
 export function RowMenuTrigger({ name }: { readonly name: string }): React.JSX.Element {
   return (
@@ -181,6 +188,7 @@ export function RowMenuTrigger({ name }: { readonly name: string }): React.JSX.E
         size="icon"
         className="shrink-0 text-secondary-foreground"
         aria-label={`Acciones de ${name}`}
+        data-row-control=""
       >
         <EllipsisVertical className="h-5 w-5" aria-hidden="true" />
       </Button>

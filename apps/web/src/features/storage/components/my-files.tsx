@@ -1,6 +1,6 @@
 'use client';
 
-import type { NodeSummary } from '@nimbo/contracts';
+import type { FileSummary, NodeSummary } from '@nimbo/contracts';
 import type * as React from 'react';
 
 import { AppLayout } from '../../../components/nimbo/app-layout';
@@ -8,6 +8,7 @@ import { SignOutButton } from '../../identity/components/sign-out-button';
 import {
   maxFileLabelOf,
   useMyFilesState,
+  useReturnFocus,
   type MyFilesState,
   type RowActionHandlers,
 } from '../hooks/use-my-files-state';
@@ -21,13 +22,21 @@ import { MyFilesDialogs } from './my-files-dialogs';
 import { QuickAccessLimitAlert } from './quick-access-limit-alert';
 import { SidebarQuota } from './sidebar-quota';
 
+/**
+ * Acción que otro módulo agrega como primer ítem del menú de cada archivo (017: «Previsualizar»). Solo recibe el
+ * archivo: no ve el estado del explorador. Es un componente de cliente, así que la provee un envoltorio de cliente.
+ */
+export type FirstFileAction = React.ComponentType<{ readonly file: FileSummary }>;
+
 /** Menú ⋮ de una fila: descargar (archivos), renombrar, mover, fijar en la barra lateral y mandar a la papelera. */
 function RowActions({
   node,
   handlers,
+  FirstAction,
 }: {
   readonly node: NodeSummary;
   readonly handlers: RowActionHandlers;
+  readonly FirstAction: FirstFileAction | undefined;
 }): React.JSX.Element {
   const common = {
     onRename: () => handlers.organize({ action: 'rename', node }),
@@ -42,6 +51,7 @@ function RowActions({
       requestUrl={handlers.requestUrl}
       onNotice={handlers.onNotice}
       onRefresh={handlers.onRefresh}
+      firstAction={FirstAction ? <FirstAction file={node} /> : undefined}
       {...common}
     />
   );
@@ -68,9 +78,11 @@ function explorerNotices(
 function MyFilesExplorer({
   state,
   status,
+  firstAction,
 }: {
   readonly state: MyFilesState;
   readonly status: FileExplorerStatus;
+  readonly firstAction: FirstFileAction | undefined;
 }): React.JSX.Element {
   const { contents, notices, uploads, folderId } = state;
   return (
@@ -86,7 +98,9 @@ function MyFilesExplorer({
       fileInputRef={uploads.fileInputRef}
       disclosure={state.view.disclosure}
       controls={contents.controls}
-      renderRowActions={(node) => <RowActions node={node} handlers={state.rowActions} />}
+      renderRowActions={(node) => (
+        <RowActions node={node} handlers={state.rowActions} FirstAction={firstAction} />
+      )}
       notice={explorerNotices(state.sidebar.quickAccess, notices.notice, () =>
         notices.setNotice(null),
       )}
@@ -97,6 +111,10 @@ function MyFilesExplorer({
 export interface MyFilesProps {
   /** Carpeta de la URL (`/archivos/carpeta/[folderId]`); `null` es la raíz (`/archivos`). */
   readonly folderId: string | null;
+  /** Archivo cuya fila recibe el foco al volver de la vista previa (017 §6); sin él, el foco no se mueve. */
+  readonly returnFocusId?: string | null;
+  /** Primer ítem del menú de cada archivo; sin él, el menú queda como en 005/006. */
+  readonly firstAction?: FirstFileAction;
 }
 
 /**
@@ -104,9 +122,14 @@ export interface MyFilesProps {
  * renombra, mueve y manda a la papelera (con accesos rápidos, el contador de la Papelera y la tarjeta de cuota en la barra
  * lateral).
  */
-export function MyFiles({ folderId }: MyFilesProps): React.JSX.Element {
+export function MyFiles({
+  folderId,
+  returnFocusId = null,
+  firstAction,
+}: MyFilesProps): React.JSX.Element {
   const state = useMyFilesState(folderId);
   const { listing } = state.contents;
+  useReturnFocus(listing.status, returnFocusId);
   return (
     <AppLayout
       topBar={
@@ -125,7 +148,7 @@ export function MyFiles({ folderId }: MyFilesProps): React.JSX.Element {
         {listing.status === 'not_found' ? (
           <FolderNotFoundState />
         ) : (
-          <MyFilesExplorer state={state} status={listing.status} />
+          <MyFilesExplorer state={state} status={listing.status} firstAction={firstAction} />
         )}
       </div>
       <MyFilesDialogs state={state} />

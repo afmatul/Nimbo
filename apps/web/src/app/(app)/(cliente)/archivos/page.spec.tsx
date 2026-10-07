@@ -75,13 +75,13 @@ function fakeApi(overrides: Partial<StorageApi> = {}): jest.Mocked<StorageApi> {
 async function renderPage(
   api: StorageApi,
   managerOptions?: UploadManagerOptions,
+  search: Readonly<Record<string, string>> = {},
 ): Promise<HTMLElement> {
+  const element = await ArchivosPage({ searchParams: Promise.resolve(search) });
   const { container } = render(
     <SessionProvider apiPublicUrl="http://localhost/api/v1">
       <UploadsProvider api={api} {...(managerOptions ? { managerOptions } : {})}>
-        <UploadsSpaceProvider>
-          <ArchivosPage />
-        </UploadsSpaceProvider>
+        <UploadsSpaceProvider>{element}</UploadsSpaceProvider>
       </UploadsProvider>
     </SessionProvider>,
   );
@@ -118,6 +118,14 @@ describe('página Mis archivos (/archivos)', () => {
     const table = await screen.findByRole('table');
     expect(within(table).getByText('informe.docx')).toBeTruthy();
     expect(within(table).getByRole('button', { name: 'Acciones de informe.docx' })).toBeTruthy();
+  });
+
+  it('017 CA-9: al volver de la vista previa (`?foco=`) enfoca el control de la fila del archivo', async () => {
+    const api = fakeApi({ folderContents: jest.fn(() => Promise.resolve(page([INFORME]))) });
+    await renderPage(api, undefined, { foco: INFORME.id });
+
+    const control = await screen.findByRole('button', { name: 'Acciones de informe.docx' });
+    await waitFor(() => expect(document.activeElement).toBe(control));
   });
 
   it('CA-21: si el listado falla, «Reintentar» repite la petición y muestra la lista', async () => {
