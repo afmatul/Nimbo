@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | En revisión (2026-10-05; plan aprobado por Adrián el 2026-10-05) |
+| Estado | Hecha (2026-10-07): integrada en `main` (76a8a8f), revisión ✅ |
 | Dueño | Adrián |
 | Fase | 1 |
 | Requisitos | RF-07 (principal); aplican RNF-05, RNF-13, RNF-17 |

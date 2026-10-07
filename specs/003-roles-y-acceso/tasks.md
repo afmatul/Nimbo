@@ -563,7 +563,7 @@ tablas ni migraciones.
   códigos importados de `contracts`). La renovación ante 401 es de `auth-fetch` de 002; aquí solo el catálogo.
   Archivos: `apps/web/src/lib/error-catalog.{ts,spec.ts}`.
 
-- [ ] **T-55** **(humana)** Recorrido local y revisión visual — CA: CA-17 — Depende: T-48…T-54, 002-PR-5a — ~1 h
+- [x] **T-55** **(humana)** Recorrido local y revisión visual — CA: CA-17 — Depende: T-48…T-54, 002-PR-5a — ~1 h
   Con `docker compose up -d` y `pnpm dev`: iniciar sesión como cliente → `/archivos`; como cuenta interna (insertada a
   mano o con el *seed*) → `/interno`; interno abre `/archivos` → vuelve a `/interno`; ruta inexistente →
   `NotFoundState`. Pedir al `ui-designer` la revisión a 360 y 1440 px (produce `ui-review.md`). Si 002 no llegó al
@@ -571,7 +571,7 @@ tablas ni migraciones.
   §11.6).
   Archivos: ninguno (evidencia en `verification.md`).
 
-- [ ] **T-56** Cierre del PR-F y de la spec — CA: todos (trazabilidad) — Depende: T-01…T-55 — ~1 h
+- [x] **T-56** Cierre del PR-F y de la spec — CA: todos (trazabilidad) — Depende: T-01…T-55 — ~1 h
   `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:int`, `pnpm test:isolation`, `pnpm env:check` en verde.
   Pedir al `tester` `verification.md` (CA-10, CA-14 y la segunda parte de CA-11 enlazados a 005; CA-13 con `\du`/`\dp`
   de T-34), al `security-auditor` `security.md` (diferencias de tiempo del 404, superficie residual de 15 min, secretos

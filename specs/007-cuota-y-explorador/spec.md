@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | En revisión (2026-10-02; plan aprobado por Adrián el 2026-10-01). Aprobada el 2026-10-03 con CA-18 y CA-19 por implementar; CA-20 y CA-21 agregados el 2026-10-04 |
+| Estado | Hecha (2026-10-07): integrada en `main` (8f14d38) con CA-18 a CA-21, revisión ✅ (I-2 cerrado al integrar 006 antes) |
 | Dueño | Adrián (1) |
 | Fase | 1 |
 | Requisitos | RF-12, RNF-14 (principales); aplican RNF-05, RNF-13, RNF-17 |
