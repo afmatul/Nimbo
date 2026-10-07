@@ -10,9 +10,11 @@
 // También viven aquí las piezas que usan dos o más pantallas del área: distintivos de estado, estados de pantalla
 // (vacío, error, esqueleto), diálogo de confirmación con consecuencias, botón destructivo con borde y el formulario
 // (campos, resumen de errores, aviso de auditoría y acciones; CSS_FORM, campo y resumenErrores).
-// Regla: los enlaces no cambian el aspecto; con los valores por defecto, admin, alta-interna, catalogo y metricas se ven
-// como en sus capturas aprobadas (salvo el aviso de privacidad, que incluye «estado» desde el 2026-10-03).
+// Regla: los enlaces no cambian el aspecto de ninguna pantalla.
+const fs = require('node:fs');
+const path = require('node:path');
 const M = require('../marco/marco.js');
+const C = require('./corpus.js');
 
 // ---------- Íconos (trazos de Lucide, 24 × 24) ----------
 const P = {
@@ -29,27 +31,25 @@ const P = {
   chevRight: '<path d="m9 18 6-6-6-6"/>',
   minus: '<path d="M5 12h14"/>',
   fileSearch: '<path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M4.27 21a2 2 0 0 0 1.73 1H18a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v3"/><path d="m9 18-1.5-1.5"/><circle cx="5" cy="14" r="3"/>',
-  pause: '<rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/>',
   link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
   history: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
   database: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/>',
   mail: '<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>',
   key: '<path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/>',
-  badgeId: '<rect width="18" height="14" x="3" y="5" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M6 16c.5-1.2 1.7-2 3-2s2.5.8 3 2"/><path d="M15 10h3"/><path d="M15 14h3"/>',
   server: '<rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6 6h.01"/><path d="M6 18h.01"/>',
   headset: '<path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/>',
   plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
   power: '<path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/>',
   pauseCircle: '<circle cx="12" cy="12" r="10"/><path d="M10 15V9"/><path d="M14 15V9"/>',
-  copy: '<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
-  tag: '<path d="M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4Z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/>',
 };
 const icon = (name, size = 18, cls = '') =>
   `<svg class="ico ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${P[name]}</svg>`;
 
 // ---------- Datos del área (en la app vienen de la API) ----------
-const YO = { nombre: 'Mónica Herrera', iniciales: 'MH', rol: 'Administrador', correo: 'monica.herrera@nimbo.gt' };
-const TOTAL = '1 284';
+const YO = C.MONICA;
+// Ícono de cada rol (persona de la barra lateral, alta interna y ficha de una cuenta).
+const ICONO_ROL = { Administrador: 'shield', Soporte: 'headset', Operador: 'server', Cliente: 'users' };
+const TOTAL = C.miles(C.TOTAL_CUENTAS);
 const AVISO_PRIVACIDAD = 'La administración muestra metadatos de los archivos (nombre, tipo, tamaño, fechas y estado), nunca su contenido.';
 
 // ---------- CSS ----------
@@ -188,8 +188,10 @@ const CSS_FORM = `
 `;
 
 // ---------- CSS de la búsqueda por correo y de la paginación ----------
-// Segundo uso (backoffice/admin y backoffice/soporte): se extraen de admin/generar.js tal cual, sin cambiar un byte; admin
-// los interpola en el mismo lugar de su CSS. Las reglas de 600 px van aparte porque viven dentro del @media de cada pantalla.
+// Se extraen al segundo uso (backoffice/admin y backoffice/soporte) porque son el mismo componente (Input + Button de
+// búsqueda y Pagination de shadcn), no texto parecido (Art. VI.1): cambiar uno debe cambiar el otro. Las tablas de cuentas
+// y de metadatos, en cambio, se parecen pero tienen columnas y anchos propios: se quedan en cada pantalla (Art. VI.2).
+// Las reglas de 600 px van aparte porque viven dentro del @media de cada pantalla.
 const CSS_BUSQUEDA = `  /* Búsqueda por correo (Input + Button) */
   .search { margin-top: 20px; }
   .search label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; }
@@ -239,44 +241,40 @@ const JS = `
 `;
 
 // ---------- Piezas del marco del área ----------
-// Enlaces entre mockups: rutas relativas a los HTML de backoffice/<pantalla>/ (todas las carpetas son hermanas). Lo que
-// no tiene pantalla dibujada queda en «#».
+// Enlaces entre mockups: rutas relativas a los HTML de backoffice/<pantalla>/ (todas las carpetas son hermanas).
 const NAV = [
-  ['users', 'Cuentas', TOTAL, '../admin/admin.html'],
-  ['grid', 'Catálogo de planes', '', '../catalogo/catalogo.html'],
-  ['chart', 'Métricas', '', '../metricas/metricas.html'],
+  { icono: 'users', etiqueta: 'Cuentas', meta: TOTAL, href: '../admin/admin.html' },
+  { icono: 'grid', etiqueta: 'Catálogo de planes', href: '../catalogo/catalogo.html' },
+  { icono: 'chart', etiqueta: 'Métricas', href: '../metricas/metricas.html' },
 ];
 
 // Áreas internas que comparten el marco. etiqueta: nombre del área (logo, navegación y rótulo); chip: distintivo junto al
-// logo; yo: persona de la barra lateral y de la barra superior; iconoRol: ícono junto al rol; nav: [ícono, etiqueta, meta,
-// href]; inicio: destino del logo y de la primera miga (la pantalla de inicio del área).
-const AREA_ADMIN = { etiqueta: 'Administración', chip: 'ADMIN', yo: YO, iconoRol: 'shield', nav: NAV, inicio: '../admin/admin.html' };
+// logo; yo: persona de la barra lateral y de la barra superior (de admin/corpus.js); nav: entradas { icono, etiqueta,
+// meta (opcional), href }; inicio: destino del logo y de la primera miga (la pantalla de inicio del área).
+const AREA_ADMIN = { etiqueta: 'Administración', chip: 'ADMIN', yo: YO, nav: NAV, inicio: '../admin/admin.html' };
 // Soporte (spec 011, HU-5): solo «Metadatos de archivos» (CA-14). Bitácoras y trabajos (022b) y restauración de papelera
-// (011b) no aparecen hasta sus specs. Andrea Ruiz es la cuenta de Soporte de la lista de cuentas de backoffice/admin.
+// (011b) no aparecen hasta sus specs.
 const AREA_SOPORTE = {
-  etiqueta: 'Soporte', chip: 'SOPORTE', iconoRol: 'headset',
-  yo: { nombre: 'Andrea Ruiz', iniciales: 'AR', rol: 'Soporte', correo: 'andrea.ruiz@nimbo.gt' },
-  nav: [['fileSearch', 'Metadatos de archivos', '', '../soporte/soporte--inicial.html']],
+  etiqueta: 'Soporte', chip: 'SOPORTE', yo: C.ANDREA,
+  nav: [{ icono: 'fileSearch', etiqueta: 'Metadatos de archivos', href: '../soporte/soporte--inicial.html' }],
   inicio: '../soporte/soporte--inicial.html',
 };
 // Operador (product-context §2: «Ver métricas agregadas»): solo «Métricas», en solo lectura; sin Cuentas, Catálogo ni
-// Soporte. Sus métricas técnicas (colas, trabajos, bitácoras) llegan con 022b. Pablo Xicará es la cuenta de Operador de
-// la lista de cuentas de backoffice/admin.
+// Soporte. Sus métricas técnicas (colas, trabajos, bitácoras) llegan con 022b.
 const AREA_OPERADOR = {
-  etiqueta: 'Operación', chip: 'OPERADOR', iconoRol: 'server',
-  yo: { nombre: 'Pablo Xicará', iniciales: 'PX', rol: 'Operador', correo: 'pablo.xicara@nimbo.gt' },
-  nav: [['chart', 'Métricas', '', '../metricas/metricas--operador.html']],
+  etiqueta: 'Operación', chip: 'OPERADOR', yo: C.PABLO,
+  nav: [{ icono: 'chart', etiqueta: 'Métricas', href: '../metricas/metricas--operador.html' }],
   inicio: '../metricas/metricas--operador.html',
 };
 
-// actual: entrada marcada con aria-current (por defecto «Cuentas», como en admin y alta-interna).
-function navegacion(idPrimero = '', actual = 'Cuentas', area = AREA_ADMIN) {
+// idPrimero: id del primer enlace (el cajón le pasa el foco); actual: entrada marcada con aria-current.
+function navegacion(idPrimero, actual, area) {
   let primero = !!idPrimero;
-  const items = area.nav.map(([ic, label, meta, href = '#']) => {
+  const items = area.nav.map(({ icono, etiqueta, meta, href }) => {
     const id = primero ? ` id="${idPrimero}"` : '';
     primero = false;
-    const cur = label === actual ? ' aria-current="page"' : '';
-    return `\n          <li><a href="${href}"${id}${cur}>${icon(ic)}<span>${label}</span>${meta ? `<span class="meta">${meta}</span>` : ''}</a></li>`;
+    const cur = etiqueta === actual ? ' aria-current="page"' : '';
+    return `\n          <li><a href="${href}"${id}${cur}>${icon(icono)}<span>${etiqueta}</span>${meta ? `<span class="meta">${meta}</span>` : ''}</a></li>`;
   }).join('');
   return `<nav aria-label="Navegación de ${area.etiqueta.toLowerCase()}">
         <ul class="nav">${items}
@@ -284,15 +282,15 @@ function navegacion(idPrimero = '', actual = 'Cuentas', area = AREA_ADMIN) {
       </nav>`;
 }
 
-const logo = (cls = 'logo', area = AREA_ADMIN) =>
-  `<a class="${cls}" href="${area.inicio || '#'}" aria-label="Nimbo, ${area.etiqueta}"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>`;
+const logo = (cls, area) =>
+  `<a class="${cls}" href="${area.inicio}" aria-label="Nimbo, ${area.etiqueta}"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>`;
 const chip = (area) => `<span class="plan-chip area-chip">${area.chip}</span>`;
 const quien = (area) => `<div class="who">
         <p class="who-name">${area.yo.nombre}</p>
-        <p class="who-role">${icon(area.iconoRol, 14)}<span>${area.yo.rol}</span></p>
+        <p class="who-role">${icon(ICONO_ROL[area.yo.rol], 14)}<span>${area.yo.rol}</span></p>
       </div>`;
 
-const sidebar = (actual, area = AREA_ADMIN) => `
+const sidebar = (actual, area) => `
     <aside class="sidebar" aria-label="Barra lateral">
       <div class="brand-row">
         ${logo('logo', area)}
@@ -302,7 +300,7 @@ const sidebar = (actual, area = AREA_ADMIN) => `
       ${quien(area)}
     </aside>`;
 
-const cajon = (actual, area = AREA_ADMIN) => `
+const cajon = (actual, area) => `
   <div class="drawer-overlay" data-cerrar-cajon aria-hidden="true" hidden></div>
   <div class="drawer" id="cajon" role="dialog" aria-modal="true" aria-labelledby="cajon-t" hidden>
       <div class="drawer-head">
@@ -315,18 +313,18 @@ const cajon = (actual, area = AREA_ADMIN) => `
       ${quien(area)}
   </div>`;
 
-// crumbs: etiquetas o [etiqueta, href]. Sin href, la primera miga va al inicio del área y las demás a la entrada de la
+// crumbs: etiquetas o { etiqueta, href }. Sin href, la primera miga va al inicio del área y las demás a la entrada de la
 // navegación con la misma etiqueta; si no hay ninguna, «#».
 function hrefMiga(c, i, area) {
-  if (Array.isArray(c)) return c[1];
-  if (i === 0) return area.inicio || '#';
-  const n = area.nav.find(([, label]) => label === c);
-  return (n && n[3]) || '#';
+  if (c.href) return c.href;
+  if (i === 0) return area.inicio;
+  const entrada = area.nav.find(({ etiqueta }) => etiqueta === c);
+  return entrada ? entrada.href : '#';
 }
-function topbar(crumbs, area = AREA_ADMIN) {
-  const YO = area.yo;
+function topbar(crumbs, area) {
+  const persona = area.yo;
   const items = crumbs.map((c, i) => {
-    const label = Array.isArray(c) ? c[0] : c;
+    const label = c.etiqueta || c;
     return i === crumbs.length - 1 ? `<li><span aria-current="page">${label}</span></li>` : `<li><a href="${hrefMiga(c, i, area)}">${label}</a></li>`;
   }).join('');
   return `
@@ -338,25 +336,26 @@ function topbar(crumbs, area = AREA_ADMIN) {
             <ol>${items}</ol>
           </nav>
         </div>
-        <button class="account-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Menú de la cuenta de ${YO.nombre}">
-          <span class="account-name">${YO.nombre}</span><span class="avatar" aria-hidden="true">${YO.iniciales}</span>
+        <button class="account-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Menú de la cuenta de ${persona.nombre}">
+          <span class="account-name">${persona.nombre}</span><span class="avatar" aria-hidden="true">${persona.iniciales}</span>
         </button>
       </header>`;
 }
 
-const privacidad = (texto = AVISO_PRIVACIDAD) => `
-        <div class="privacy">${icon('lock', 16)}<p>${texto}</p></div>`;
+// Aviso informativo (Alert de shadcn): por defecto, el de privacidad del área; el catálogo lo usa para su regla.
+const privacidad = (texto = AVISO_PRIVACIDAD, ic = 'lock') => `
+        <div class="privacy">${icon(ic, 16)}<p>${texto}</p></div>`;
 
 // Búsqueda por correo (Input + Button). Sin opciones es exactamente la de backoffice/admin. ayuda: texto bajo el campo
-// (search-hint, enlazado con aria-describedby); boton: variante del botón; tipo: atributos del campo.
+// (search-hint, enlazado con aria-describedby); boton: variante del botón.
 function busqueda({ valor = '', aria = 'Buscar cuentas', etiqueta = 'Buscar por correo', boton = 'btn-outline', ayuda = '',
-  id = 'q', autofocus = false } = {}) {
+  id = 'q' } = {}) {
   const desc = ayuda ? ` aria-describedby="${id}-ayuda"` : '';
   return `
         <form class="search" role="search" aria-label="${aria}" onsubmit="return false">
           <label for="${id}">${etiqueta}</label>
           <div class="search-row">
-            <div class="input-wrap">${icon('search', 16)}<input class="input" id="${id}" name="${id}" type="search" inputmode="email" autocomplete="off" placeholder="nombre@dominio.com" value="${valor}"${desc}${autofocus ? ' autofocus' : ''}></div>
+            <div class="input-wrap">${icon('search', 16)}<input class="input" id="${id}" name="${id}" type="search" inputmode="email" autocomplete="off" placeholder="nombre@dominio.com" value="${valor}"${desc}></div>
             <button class="btn ${boton}" type="submit">Buscar</button>
           </div>${ayuda ? `
           <p class="search-hint" id="${id}-ayuda">${ayuda}</p>` : ''}
@@ -364,12 +363,14 @@ function busqueda({ valor = '', aria = 'Buscar cuentas', etiqueta = 'Buscar por 
 }
 
 // Paginación «Anterior / Página N de M / Siguiente» con el total en texto (primera página: «Anterior» deshabilitado).
-const paginacion = ({ aria, resumen, paginas }) => `
+// total: elementos de la lista; cosas: su nombre en plural («cuentas», «archivos»). Las páginas se calculan del total.
+const POR_PAGINA = 10;
+const paginacion = ({ aria, total, cosas }) => `
         <nav class="pager" aria-label="${aria}">
-          <p class="num">${resumen}</p>
+          <p class="num">Mostrando 1–${POR_PAGINA} de ${C.miles(total)} ${cosas}</p>
           <div class="pager-ctrl">
             <button class="btn btn-outline btn-sm" type="button" disabled>${icon('chevLeft', 16)}Anterior</button>
-            <span class="pager-page num" aria-current="page">Página 1 de ${paginas}</span>
+            <span class="pager-page num" aria-current="page">Página 1 de ${Math.ceil(total / POR_PAGINA)}</span>
             <button class="btn btn-outline btn-sm" type="button">Siguiente${icon('chevRight', 16)}</button>
           </div>
         </nav>`;
@@ -407,10 +408,10 @@ function dialogo({ titulo, quienLinea, items, confirmar, clase, ic, cancelar = '
 }
 
 // Campo de formulario (Input o Textarea + Label). err: mensaje (HTML) o ''; ro: solo lectura mientras se envía.
-// antes/despues: adornos del control (prefijo «Q», sufijo o selector de unidad); multilinea: Textarea; clase: clase
-// extra del contenedor. Sin esas opciones el HTML es exactamente el de alta-interna.
+// antes/despues: adornos del control (prefijo «Q», sufijo o selector de unidad); multilinea: Textarea. Sin esas
+// opciones el HTML es exactamente el de alta-interna.
 function campo({ id, label, help, type = 'text', value = '', err = '', ro = false, extra = '', short = false,
-  antes = '', despues = '', multilinea = false, clase = '' }) {
+  antes = '', despues = '', multilinea = false }) {
   const desc = [`${id}-ayuda`, ...(err ? [`${id}-error`] : [])].join(' ');
   const inv = err ? ' aria-invalid="true"' : '';
   let control = multilinea
@@ -418,7 +419,7 @@ function campo({ id, label, help, type = 'text', value = '', err = '', ro = fals
     : `<input class="text-input${short ? ' short' : ''}" id="${id}" name="${id}" type="${type}" value="${value}" required aria-describedby="${desc}"${inv}${ro ? ' readonly' : ''} ${extra}>`;
   if (antes || despues) control = `<div class="input-group">${antes}${control}${despues}</div>`;
   return `
-          <div class="field${clase ? ` ${clase}` : ''}">
+          <div class="field">
             <label for="${id}">${label}</label>
             <p class="field-help" id="${id}-ayuda">${help}</p>
             ${control}${err ? `
@@ -431,6 +432,27 @@ function resumenErrores({ titulo, texto, items }) {
   return `
           <div class="alert alert-error" role="alert" tabindex="-1" id="errores">${icon('alert', 18)}<div><p class="alert-title">${titulo}</p><p class="alert-text">${texto}</p>
             <ul class="alert-list">${items.map(([id, t]) => `<li><a href="#${id}">${t}</a></li>`).join('')}</ul></div></div>`;
+}
+
+// ---------- Archivos generados ----------
+// Carpeta de salida de una pantalla de backoffice (la crea si no existe). Uso de cada generador: node generar.js <worktree>.
+function carpetaDeSalida(pantalla) {
+  const repo = process.argv[2];
+  if (!repo) throw new Error('Falta la ruta del worktree');
+  const dir = path.join(repo, 'docs/design/mockups/backoffice', pantalla);
+  fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+const archivoDe = (pantalla, estado) => (estado === 'default' ? `${pantalla}.html` : `${pantalla}--${estado}.html`);
+// Cabecera de cada HTML generado. referencia: qué pantalla de la spec 011 es; generador: su carpeta en _generadores.
+const comentariosDe = (referencia, estado, generador) => [
+  `Mockup de referencia (spec 011: ${referencia}). Estado: ${estado}.`,
+  'Colores: valores de ui-guidelines.md §3 (tonos AA). La implementación usa tokens, components/ui y components/nimbo.',
+  `Generado con _generadores/${generador}/generar.js (marco del área en admin/area.js y CSS del marco en marco/marco.js). No editar a mano.`,
+];
+function escribir(dir, file, html) {
+  fs.writeFileSync(path.join(dir, file), html, 'utf8');
+  console.log(file);
 }
 
 // ---------- Página ----------
@@ -461,7 +483,8 @@ function pagina({ titulo, comentarios, css, rotulo, file, estado, crumbs, cuerpo
 }
 
 module.exports = {
-  P, icon, YO, TOTAL, AVISO_PRIVACIDAD, CSS, CSS_FORM, JS, sidebar, cajon, topbar, privacidad, pagina,
+  P, icon, ICONO_ROL, CSS, CSS_FORM, privacidad, pagina,
+  carpetaDeSalida, archivoDe, comentariosDe, escribir,
   estadoError, dialogo, campo, resumenErrores, badgeInactivo,
   AREA_ADMIN, AREA_SOPORTE, AREA_OPERADOR, busqueda, paginacion, CSS_BUSQUEDA, CSS_BUSQUEDA_MQ600, CSS_PAGINACION, CSS_PAGINACION_MQ600,
 };

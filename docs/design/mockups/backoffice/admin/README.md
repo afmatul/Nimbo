@@ -17,7 +17,7 @@
 - **Origen**: HTML autocontenido generado con `../../_generadores/admin/generar.js`; no se edita a mano. El CSS del
   marco (tokens, barra lateral, barra superior, botones, diálogo, cajón y cortes a 900/600 px) sale de
   `_generadores/marco/marco.js`, el mismo de `identity/seguridad`, `shared/layout` y `storage`; la navegación, la persona y
-  la barra superior del área se arman en `_generadores/admin/area.js` (compartido con `backoffice/alta-interna`) con las
+  la barra superior del área se arman en `_generadores/admin/area.js` (compartido por `backoffice/admin`, `alta-interna`, `catalogo`, `metricas` y `soporte`) con las
   mismas clases. Tonos AA de `ui-guidelines.md` §2–§3,
   solo Inter, cifras con `tabular-nums`, versión móvil real a 360 px. Es referencia visual; `apps/web` no lo importa.
 - **Enlaces entre mockups** (rutas relativas): la barra lateral, el cajón, el logo y las migas llevan a Cuentas
@@ -40,8 +40,8 @@
   - confirmar-suspender: la misma ficha con el diálogo de confirmación (`admin--confirmar-suspender.html`)
   - suspendida: ficha tras suspender, con «Esta cuenta quedó suspendida y se cerraron sus sesiones.» y «Reactivar
     cuenta» (`admin--suspendida.html`)
-  - confirmar-reactivar (extra): ficha suspendida con el diálogo de reactivar (`admin--confirmar-reactivar.html`)
-  - propia-cuenta (extra, CA-4): ficha de la propia Administradora, sin «Suspender» y con el motivo (`admin--propia-cuenta.html`)
+  - confirmar-reactivar: ficha suspendida con el diálogo de reactivar (`admin--confirmar-reactivar.html`)
+  - propia-cuenta (CA-4): ficha de la propia Administradora, sin «Suspender» y con el motivo (`admin--propia-cuenta.html`)
 - **Capturas**: `docs/design/capturas/backoffice/admin/` (`admin--<estado>--<360|1440>.png`, con movimiento
   reducido). En los nueve estados:
   axe-core sin violaciones a 360 y 1440 px, sin desbordamiento horizontal a 360 px, sin errores de consola y sin
@@ -49,7 +49,9 @@
 
 ## Datos de ejemplo
 Planes y cuotas del catálogo (`product-context.md` §3). En la app la lista, el total, los planes y el espacio vienen de la
-API; los del mockup son de ejemplo. Las cuentas internas usan `@nimbo.gt` y no tienen plan ni espacio.
+API; los del mockup son de ejemplo. Las cuentas internas usan `@nimbo.gt` y no tienen plan ni espacio. Planes, total de
+cuentas y las personas que aparecen en otras pantallas (Mónica, Andrea, Pablo, Laura y Diego) salen de
+`_generadores/admin/corpus.js`, la misma fuente del catálogo, las métricas, el alta interna y Soporte.
 
 ## Decisiones de UX
 1. **Ficha como página** (`Administración / Cuentas / {nombre}` con «Volver a cuentas»), no como panel lateral: las siete
@@ -92,4 +94,5 @@ API; los del mockup son de ejemplo. Las cuentas internas usan `@nimbo.gt` y no t
   carpeta; sin estado propio.
 - «Sin permiso» (Soporte u Operador abren `/admin`, CA-14/CA-17): pantalla común del marco, fuera de esta carpeta.
 - El plan decide si la búsqueda por correo es exacta o por prefijo, y el tamaño de página (el mockup muestra 10).
-- Vistas aparte de 011: alta interna, catálogo de planes, métricas agregadas y metadatos de Soporte.
+- Token ya emitido: al suspender, el acceso que la cuenta ya tenía caduca en 15 min como máximo (002 D-10; CA-2). El
+  diálogo dice «Se cerrarán sus sesiones…»; el plan decide si se le explica ese margen al Administrador.

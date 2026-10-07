@@ -3,36 +3,39 @@
 // El marco del área de administración (íconos, persona, barra lateral, barra superior, cajón, CSS común y página) viene
 // de admin/area.js, que a su vez usa el CSS del marco de marco/marco.js (el mismo de identity/seguridad, shared/layout
 // y storage). Aquí solo va lo propio de cuentas y ficha.
-const fs = require('node:fs');
-const path = require('node:path');
 const A = require('./area.js');
+const C = require('./corpus.js');
+const { tramoDe } = require('../espacio/espacio.js');
 
-const repo = process.argv[2];
-if (!repo) throw new Error('Falta la ruta del worktree');
-const OUT = path.join(repo, 'docs/design/mockups/backoffice/admin');
-fs.mkdirSync(OUT, { recursive: true });
+const OUT = A.carpetaDeSalida('admin');
 
-const { icon, YO, TOTAL } = A;
+const { icon } = A;
 
-// ---------- Datos de ejemplo (en la app vienen de la API; planes y cuotas del catálogo, product-context §3) ----------
-const PAGINAS = '129';
-
-// [nombre, correo, rol, estado, verificada, plan, usado, total, pct, alta, extra]
-// Ordenadas por fecha de alta, de la más reciente. Las internas no tienen plan ni archivos.
+// ---------- Datos de ejemplo (en la app vienen de la API; planes y cuotas del catálogo, admin/corpus.js) ----------
+// Ordenadas por fecha de alta, de la más reciente. Las internas no tienen plan ni espacio. Las personas que aparecen en
+// otras pantallas (Mónica, Andrea, Pablo, Laura y Diego) vienen del corpus; verificada: correo verificado (sí por defecto).
+const cliente = (datos) => ({ rol: 'Cliente', ...datos });
 const CUENTAS = [
-  ['Diego Coj', 'diego.coj@gmail.com', 'Cliente', 'activa', false, 'Personal', '0 B', '15 GB', 0, '02/10/2026'],
-  ['Andrea Ruiz', 'andrea.ruiz@nimbo.gt', 'Soporte', 'activa', true, null, null, null, null, '28/09/2026'],
-  ['Lucía Barrios', 'lucia.barrios@gmail.com', 'Cliente', 'activa', true, 'Personal', '3.2 GB', '15 GB', 21, '21/09/2026'],
-  ['Juan Cortés', 'jcortes@gmail.com', 'Cliente', 'activa', true, 'Personal', '14.8 GB', '15 GB', 99, '18/09/2026'],
-  ['Pablo Xicará', 'pablo.xicara@nimbo.gt', 'Operador', 'activa', true, null, null, null, null, '10/09/2026'],
-  ['Sofía Marroquín', 'sofia@emarroquin.gt', 'Cliente', 'suspendida', true, 'Pro', '62 GB', '100 GB', 62, '07/09/2026'],
-  ['Ana Gutiérrez', 'agutierrez@alpha.gt', 'Cliente', 'activa', true, 'Pro', '41 GB', '100 GB', 41, '03/09/2026'],
-  ['Laura Barrios', 'laura.barrios@alpha.gt', 'Cliente', 'activa', true, 'Equipo', '304 GB', '350 GB', 87, '01/09/2026'],
-  ['Carlos Méndez', 'ti@uvalle.edu.gt', 'Cliente', 'activa', true, 'Institucional', '1.2 TB', '2 TB', 60, '31/08/2026'],
-  [YO.nombre, YO.correo, 'Administrador', 'activa', true, null, null, null, null, '28/08/2026', 'tu'],
+  C.DIEGO,
+  C.ANDREA,
+  cliente({ nombre: 'Lucía Barrios', correo: 'lucia.barrios@gmail.com', plan: C.PERSONAL,
+    usado: '3.2 GB', pct: 21, alta: '21/09/2026' }),
+  cliente({ nombre: 'Juan Cortés', correo: 'jcortes@gmail.com', plan: C.PERSONAL,
+    usado: '14.8 GB', pct: 99, alta: '18/09/2026' }),
+  C.PABLO,
+  cliente({ nombre: 'Sofía Marroquín', correo: 'sofia@emarroquin.gt', plan: C.PRO,
+    usado: '62 GB', pct: 62, alta: '07/09/2026', estado: 'suspendida' }),
+  cliente({ nombre: 'Ana Gutiérrez', correo: 'agutierrez@alpha.gt', plan: C.PRO,
+    usado: '41 GB', pct: 41, alta: '03/09/2026' }),
+  C.LAURA,
+  cliente({ nombre: 'Carlos Méndez', correo: 'ti@uvalle.edu.gt', plan: C.INSTITUCIONAL,
+    usado: '1.2 TB', pct: 60, alta: '31/08/2026' }),
+  C.MONICA,
 ];
-const LAURA = CUENTAS.find((c) => c[0] === 'Laura Barrios');
-const MONICA = CUENTAS.find((c) => c[0] === YO.nombre);
+const estadoDe = (c) => c.estado || 'activa';
+const verificada = (c) => c.verificada !== false;
+const esInterna = (c) => !c.plan;
+const esPropia = (c) => c === C.MONICA;
 
 // ---------- CSS ----------
 const CSS = A.CSS + `
@@ -106,7 +109,7 @@ ${A.CSS_BUSQUEDA_MQ600}    /* Tabla → filas apiladas: la primera celda resume 
     .accounts td:not(.c-cuenta) { display: none; }
     .accounts td { padding: 14px 12px; }
     .acct-m { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 8px; font-size: 12.5px; color: var(--secondary-foreground); }
-    .acct-m .use { flex-basis: 100%; }
+    .acct-m .use, .acct-m .linea { flex-basis: 100%; }
     .acct-m .use-bar { max-width: 220px; }
 ${A.CSS_PAGINACION_MQ600}    .sk-row { grid-template-columns: minmax(0, 1fr); padding: 14px 12px; }
     .sk-row > .sk-col, .sk-head { display: none; }
@@ -134,33 +137,36 @@ function encabezadoLista() {
 
 const busqueda = (valor = '') => A.busqueda({ valor });
 
-const tramo = (pct) => (pct >= 90 ? 'use-full' : pct >= 70 ? 'use-warn' : 'use-ok');
 const estadoBadge = (e) => (e === 'suspendida'
   ? `<span class="badge badge-off">${icon('ban', 13)}Suspendida</span>`
   : `<span class="badge badge-ok">${icon('ok', 13)}Activa</span>`);
 const verif = (v) => `<span class="yesno">${icon(v ? 'check' : 'minus', 14)}${v ? 'Sí' : 'No'}</span>`;
-const uso = (usado, total, pct) => `<span class="use"><span class="use-text">${usado} de ${total} · ${pct} %</span><span class="use-bar ${tramo(pct)}" aria-hidden="true"><span style="width: ${Math.max(pct, 0)}%"></span></span></span>`;
+// Barra de uso (QuotaBar en miniatura): el tramo 70/90 es el de la spec 007 (espacio/espacio.js), sin repetirlo aquí.
+const barraUso = (pct) => `<span class="use-bar use-${tramoDe(pct)}" aria-hidden="true"><span style="width: ${pct}%"></span></span>`;
+const uso = (usado, total, pct) => `<span class="use"><span class="use-text">${usado} de ${total} · ${pct} %</span>${barraUso(pct)}</span>`;
 const NA = '<span class="na" aria-hidden="true">—</span><span class="sr-only">No aplica: cuenta interna</span>';
 
 // Ficha de cada fila: solo Laura Barrios (ficha) y la propia cuenta (propia-cuenta) tienen una ficha dibujada sin diálogo
-// ni aviso. Las demás quedan en «#»: llevarlas a la ficha de Laura mostraría a otra persona con otros datos.
-const FICHA = { 'Laura Barrios': 'admin--ficha.html', [YO.nombre]: 'admin--propia-cuenta.html' };
+// ni aviso (c.ficha). Las demás quedan en «#»: llevarlas a la ficha de Laura mostraría a otra persona con otros datos.
+
+// Resumen de la fila a 360 px (la tabla oculta las demás columnas): estado, rol, verificación y uso o «cuenta interna».
+function filaMovil(c) {
+  const comun = `${estadoBadge(estadoDe(c))}<span>${c.rol}</span><span aria-hidden="true">·</span><span>${verificada(c) ? 'Correo verificado' : 'Correo sin verificar'}</span>`;
+  if (esInterna(c)) return `${comun}<span class="num linea">Cuenta interna · alta: ${c.alta}</span>`;
+  return `${comun}<span class="use"><span class="use-text">${c.plan.nombre} · ${c.usado} de ${c.plan.espacio} · ${c.pct} %</span>${barraUso(c.pct)}</span><span class="num">Alta: ${c.alta}</span>`;
+}
 
 function fila(c) {
-  const [nombre, correo, rol, estado, verificada, plan, usado, total, pct, alta, extra] = c;
-  const tu = extra === 'tu' ? '<span class="you">TÚ</span>' : '';
-  const movil = plan
-    ? `${estadoBadge(estado)}<span>${rol}</span><span aria-hidden="true">·</span><span>${verificada ? 'Correo verificado' : 'Correo sin verificar'}</span><span class="use"><span class="use-text">${plan} · ${usado} de ${total} · ${pct} %</span><span class="use-bar ${tramo(pct)}" aria-hidden="true"><span style="width: ${pct}%"></span></span></span><span class="num">Alta: ${alta}</span>`
-    : `${estadoBadge(estado)}<span>${rol}</span><span aria-hidden="true">·</span><span>${verificada ? 'Correo verificado' : 'Correo sin verificar'}</span><span class="num" style="flex-basis: 100%">Cuenta interna · alta: ${alta}</span>`;
+  const tu = esPropia(c) ? '<span class="you">TÚ</span>' : '';
   return `
             <tr>
-              <td class="c-cuenta"><div class="acct"><a class="acct-link" href="${FICHA[nombre] || '#'}">${nombre}</a>${tu}<span class="acct-mail">${correo}</span><div class="acct-m">${movil}</div></div></td>
-              <td class="c-rol">${rol}</td>
-              <td class="c-estado">${estadoBadge(estado)}</td>
-              <td class="c-verif">${verif(verificada)}</td>
-              <td class="c-plan">${plan || NA}</td>
-              <td class="c-uso">${plan ? uso(usado, total, pct) : NA}</td>
-              <td class="c-alta">${alta}</td>
+              <td class="c-cuenta"><div class="acct"><a class="acct-link" href="${c.ficha || '#'}">${c.nombre}</a>${tu}<span class="acct-mail">${c.correo}</span><div class="acct-m">${filaMovil(c)}</div></div></td>
+              <td class="c-rol">${c.rol}</td>
+              <td class="c-estado">${estadoBadge(estadoDe(c))}</td>
+              <td class="c-verif">${verif(verificada(c))}</td>
+              <td class="c-plan">${esInterna(c) ? NA : c.plan.nombre}</td>
+              <td class="c-uso">${esInterna(c) ? NA : uso(c.usado, c.plan.espacio, c.pct)}</td>
+              <td class="c-alta">${c.alta}</td>
             </tr>`;
 }
 
@@ -173,7 +179,7 @@ function tabla() {
             <tbody>${CUENTAS.map(fila).join('')}
             </tbody>
           </table>
-        </div>${A.paginacion({ aria: 'Paginación de cuentas', resumen: `Mostrando 1–10 de ${TOTAL} cuentas`, paginas: PAGINAS })}`;
+        </div>${A.paginacion({ aria: 'Paginación de cuentas', total: C.TOTAL_CUENTAS, cosas: 'cuentas' })}`;
 }
 
 function vacio(q) {
@@ -203,66 +209,81 @@ function cargando() {
 
 const error = () => A.estadoError('No pudimos cargar las cuentas.', 'Ninguna cuenta cambió. Revisa tu conexión e inténtalo de nuevo.');
 
-// Ficha de una cuenta. c: fila de CUENTAS; estado puede sobrescribirse (tras suspender).
-function ficha(c, { estado = c[3], exito = '', propia = false } = {}) {
-  const [nombre, correo, rol, , verificada, plan, usado, total, pct, alta] = c;
-  const interna = !plan;
-  const datos = `
+// ---------- Ficha de una cuenta ----------
+// c: cuenta de CUENTAS; estado puede sobrescribirse (tras suspender). Las internas no tienen plan ni archivos.
+function datosPlan(c) {
+  if (esInterna(c)) {
+    return `<dt>Código de empleado</dt><dd class="num">${c.codigo}</dd>
+              <dt>Plan y espacio</dt><dd>No aplica<span class="note">Las cuentas internas no guardan archivos.</span></dd>`;
+  }
+  return `<dt>Plan</dt><dd>${c.plan.nombre}</dd>
+              <dt>Espacio usado</dt><dd><span class="use-text num">${c.usado} de ${c.plan.espacio} (${c.pct} %)</span>${barraUso(c.pct)}</dd>`;
+}
+
+function datosCuenta(c, estado) {
+  return `
           <section class="card" aria-labelledby="datos-t">
             <h2 id="datos-t">Datos de la cuenta</h2>
             <p class="sub">Solo datos de la cuenta y de su uso; sin archivos.</p>
             <dl class="facts">
-              <dt>Rol</dt><dd>${rol}${interna ? '<span class="note">Cuenta interna</span>' : ''}</dd>
+              <dt>Rol</dt><dd>${c.rol}${esInterna(c) ? '<span class="note">Cuenta interna</span>' : ''}</dd>
               <dt>Estado</dt><dd>${estadoBadge(estado)}</dd>
-              <dt>Correo verificado</dt><dd>${verif(verificada)}</dd>
-              ${interna
-    ? `<dt>Código de empleado</dt><dd class="num">EMP-0001</dd>
-              <dt>Plan y espacio</dt><dd>No aplica<span class="note">Las cuentas internas no guardan archivos.</span></dd>`
-    : `<dt>Plan</dt><dd>${plan}</dd>
-              <dt>Espacio usado</dt><dd><span class="use-text num">${usado} de ${total} (${pct} %)</span><span class="use-bar ${tramo(pct)}" aria-hidden="true"><span style="width: ${pct}%"></span></span></dd>`}
-              <dt>Fecha de alta</dt><dd class="num">${alta}</dd>
+              <dt>Correo verificado</dt><dd>${verif(verificada(c))}</dd>
+              ${datosPlan(c)}
+              <dt>Fecha de alta</dt><dd class="num">${c.alta}</dd>
             </dl>
           </section>`;
-  const metadatos = interna ? '' : `
+}
+
+// Bloque de una acción de la ficha: título, explicación y control.
+const accion = (titulo, texto, control) => `
             <div class="action">
-              <h3>Metadatos de archivos</h3>
-              <p>Nombre, tipo, tamaño, fechas y estado de sus archivos. La consulta queda en la auditoría que ve ${nombre.split(' ')[0]}.</p>
-              <a class="btn btn-outline" href="../soporte/soporte--desde-admin.html">${icon('fileSearch', 16)}<span>Ver metadatos de archivos</span></a>
+              <h3>${titulo}</h3>
+              <p>${texto}</p>
+              ${control}
             </div>`;
-  let cambio;
+
+const accionMetadatos = (c) => (esInterna(c) ? '' : accion('Metadatos de archivos',
+  `Nombre, tipo, tamaño, fechas y estado de sus archivos. La consulta queda en la auditoría que ve ${c.nombre.split(' ')[0]}.`,
+  `<a class="btn btn-outline" href="../soporte/soporte--desde-admin.html">${icon('fileSearch', 16)}<span>Ver metadatos de archivos</span></a>`));
+
+// Suspender, reactivar o, en la cuenta propia, el aviso de que no se puede (CA-4).
+function accionCambio(estado, propia) {
   if (propia) {
-    cambio = `
+    return `
             <div class="action">
               <div class="info-box">${icon('info', 16)}<p><strong>No puedes suspender tu propia cuenta.</strong>Si necesitas hacerlo, pídeselo a otro Administrador.</p></div>
             </div>`;
-  } else if (estado === 'suspendida') {
-    cambio = `
-            <div class="action">
-              <h3>Reactivar cuenta</h3>
-              <p>Podrá iniciar sesión de nuevo y sus comparticiones y enlaces vuelven como estaban. Las sesiones cerradas no vuelven.</p>
-              <button class="btn btn-primary" type="button">${icon('userCheck', 16)}Reactivar cuenta</button>
-            </div>`;
-  } else {
-    cambio = `
-            <div class="action">
-              <h3>Suspender cuenta</h3>
-              <p>Cierra sus sesiones y pausa sus comparticiones y enlaces mientras esté suspendida. No borra nada.</p>
-              <a class="btn btn-destructive-outline" href="admin--confirmar-suspender.html">${icon('ban', 16)}Suspender cuenta</a>
-            </div>`;
   }
+  if (estado === 'suspendida') {
+    return accion('Reactivar cuenta',
+      'Podrá iniciar sesión de nuevo y sus comparticiones y enlaces vuelven como estaban. Las sesiones cerradas no vuelven.',
+      `<button class="btn btn-primary" type="button">${icon('userCheck', 16)}Reactivar cuenta</button>`);
+  }
+  return accion('Suspender cuenta',
+    'Cierra sus sesiones y pausa sus comparticiones y enlaces mientras esté suspendida. No borra nada.',
+    `<a class="btn btn-destructive-outline" href="admin--confirmar-suspender.html">${icon('ban', 16)}Suspender cuenta</a>`);
+}
+
+function encabezadoFicha(c, estado, propia) {
   return `
         <a class="back" href="admin.html">${icon('arrowLeft', 16)}Volver a cuentas</a>
         <div class="profile-head">
           <div>
-            <h1>${nombre}${propia ? ' <span class="you">TÚ</span>' : ''}</h1>
-            <p class="mail">${correo}</p>
+            <h1>${c.nombre}${propia ? ' <span class="you">TÚ</span>' : ''}</h1>
+            <p class="mail">${c.correo}</p>
           </div>
-          <div class="badges">${estadoBadge(estado)}<span class="badge badge-role">${icon(interna ? 'shield' : 'users', 13)}${rol}</span></div>
-        </div>${exito}${privacidad()}
-        <div class="ficha-grid">${datos}
+          <div class="badges">${estadoBadge(estado)}<span class="badge badge-role">${icon(A.ICONO_ROL[c.rol], 13)}${c.rol}</span></div>
+        </div>`;
+}
+
+function ficha(c, { estado = estadoDe(c), exito = '', propia = false } = {}) {
+  const nota = propia ? '' : '<p class="sub">Cada acción queda en la auditoría de la cuenta con tu nombre y rol.</p>';
+  return `${encabezadoFicha(c, estado, propia)}${exito}${privacidad()}
+        <div class="ficha-grid">${datosCuenta(c, estado)}
           <section class="card" aria-labelledby="acciones-t">
             <h2 id="acciones-t">Acciones</h2>
-            ${propia ? "" : `<p class="sub">Cada acción queda en la auditoría de la cuenta con tu nombre y rol.</p>`}${metadatos}${cambio}
+            ${nota}${accionMetadatos(c)}${accionCambio(estado, propia)}
           </section>
         </div>`;
 }
@@ -273,20 +294,20 @@ const exitoSuspension = `
 const { dialogo } = A;
 
 const DLG_SUSPENDER = dialogo({
-  titulo: '¿Suspender la cuenta de Laura Barrios?',
-  quienLinea: 'laura.barrios@alpha.gt no podrá iniciar sesión hasta que la reactives.',
+  titulo: `¿Suspender la cuenta de ${C.LAURA.nombre}?`,
+  quienLinea: `${C.LAURA.correo} no podrá iniciar sesión hasta que la reactives.`,
   items: [
     ['logout', 'Se cerrarán sus sesiones abiertas en todos sus dispositivos.'],
     ['link', 'Sus comparticiones y enlaces públicos dejarán de funcionar mientras esté suspendida.'],
     ['database', 'No se borra nada: al reactivarla, sus archivos, comparticiones y enlaces vuelven como estaban.'],
     ['history', 'La acción queda en su auditoría con tu nombre y rol.'],
   ],
-  confirmar: 'Suspender cuenta', clase: 'btn-destructive', ic: 'ban', cancelar: 'admin--ficha.html',
+  confirmar: 'Suspender cuenta', clase: 'btn-destructive', ic: 'ban', cancelar: C.LAURA.ficha,
 });
 
 const DLG_REACTIVAR = dialogo({
-  titulo: '¿Reactivar la cuenta de Laura Barrios?',
-  quienLinea: 'laura.barrios@alpha.gt podrá volver a iniciar sesión.',
+  titulo: `¿Reactivar la cuenta de ${C.LAURA.nombre}?`,
+  quienLinea: `${C.LAURA.correo} podrá volver a iniciar sesión.`,
   items: [
     ['link', 'Sus comparticiones y enlaces públicos vuelven a funcionar como estaban.'],
     ['logout', 'Las sesiones que se cerraron al suspenderla no vuelven: tendrá que iniciar sesión de nuevo.'],
@@ -296,15 +317,10 @@ const DLG_REACTIVAR = dialogo({
 });
 
 // ---------- Página ----------
-function page(v) {
-  const file = v.estado === 'default' ? 'admin.html' : `admin--${v.estado}.html`;
+function page(v, file) {
   return A.pagina({
     titulo: `${v.ficha ? v.ficha : 'Cuentas'} · Administración · Nimbo — ${v.estado}`,
-    comentarios: [
-      `Mockup de referencia (spec 011: administración, cuentas y ficha). Estado: ${v.estado}.`,
-      'Colores: valores de ui-guidelines.md §3 (tonos AA). La implementación usa tokens, components/ui y components/nimbo.',
-      'Generado con _generadores/admin/generar.js (marco del área en admin/area.js y CSS del marco en marco/marco.js). No editar a mano.',
-    ],
+    comentarios: A.comentariosDe('administración, cuentas y ficha', v.estado, 'admin'),
     css: CSS,
     rotulo: v.ficha ? 'Ficha de cuenta' : 'Cuentas',
     file,
@@ -325,20 +341,19 @@ const ESTADOS = [
     cuerpo: () => encabezadoLista() + busqueda() + cargando() },
   { estado: 'error', titulo: 'falló la lista: error con «Reintentar»',
     cuerpo: () => encabezadoLista() + busqueda() + error() },
-  { estado: 'ficha', titulo: 'ficha de una clienta activa, sin diálogo ni aviso', ficha: 'Laura Barrios',
-    cuerpo: () => ficha(LAURA) },
-  { estado: 'confirmar-suspender', titulo: 'ficha de una clienta activa con la confirmación de suspender', ficha: 'Laura Barrios',
-    cuerpo: () => ficha(LAURA), dialogo: DLG_SUSPENDER },
-  { estado: 'suspendida', titulo: 'ficha tras suspender: aviso de éxito y «Reactivar cuenta»', ficha: 'Laura Barrios',
-    cuerpo: () => ficha(LAURA, { estado: 'suspendida', exito: exitoSuspension }) },
-  { estado: 'confirmar-reactivar', titulo: 'ficha suspendida con la confirmación de reactivar', ficha: 'Laura Barrios',
-    cuerpo: () => ficha(LAURA, { estado: 'suspendida' }), dialogo: DLG_REACTIVAR },
-  { estado: 'propia-cuenta', titulo: 'ficha propia: sin «Suspender» (CA-4, RN-7)', ficha: YO.nombre,
-    cuerpo: () => ficha(MONICA, { propia: true }) },
+  { estado: 'ficha', titulo: 'ficha de una clienta activa, sin diálogo ni aviso', ficha: C.LAURA.nombre,
+    cuerpo: () => ficha(C.LAURA) },
+  { estado: 'confirmar-suspender', titulo: 'ficha de una clienta activa con la confirmación de suspender', ficha: C.LAURA.nombre,
+    cuerpo: () => ficha(C.LAURA), dialogo: DLG_SUSPENDER },
+  { estado: 'suspendida', titulo: 'ficha tras suspender: aviso de éxito y «Reactivar cuenta»', ficha: C.LAURA.nombre,
+    cuerpo: () => ficha(C.LAURA, { estado: 'suspendida', exito: exitoSuspension }) },
+  { estado: 'confirmar-reactivar', titulo: 'ficha suspendida con la confirmación de reactivar', ficha: C.LAURA.nombre,
+    cuerpo: () => ficha(C.LAURA, { estado: 'suspendida' }), dialogo: DLG_REACTIVAR },
+  { estado: 'propia-cuenta', titulo: 'ficha propia: sin «Suspender» (CA-4, RN-7)', ficha: C.MONICA.nombre,
+    cuerpo: () => ficha(C.MONICA, { propia: true }) },
 ];
 
 for (const v of ESTADOS) {
-  const file = v.estado === 'default' ? 'admin.html' : `admin--${v.estado}.html`;
-  fs.writeFileSync(path.join(OUT, file), page(v), 'utf8');
-  console.log(file);
+  const file = A.archivoDe('admin', v.estado);
+  A.escribir(OUT, file, page(v, file));
 }

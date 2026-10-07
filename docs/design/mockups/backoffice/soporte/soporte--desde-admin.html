@@ -285,41 +285,6 @@
     .state .btn { width: 100%; }
   }
 
-  /* Formulario del área (Input y Label de shadcn): ayuda bajo la etiqueta y error bajo el control, con ícono y texto */
-  .req-note { margin: 0; font-size: 13px; color: var(--secondary-foreground); }
-  .field { margin-top: 20px; }
-  .field > label, .legend { display: block; margin: 0 0 4px; padding: 0; font-size: 13.5px; font-weight: 600; color: var(--foreground); }
-  .field-help { margin: 0 0 8px; font-size: 13px; color: var(--secondary-foreground); }
-  .text-input { width: 100%; max-width: 440px; min-height: 40px; padding: 8px 12px; border: 1px solid var(--input); border-radius: var(--radius-md); background: var(--card); color: var(--foreground); font: inherit; font-size: 14px; }
-  .text-input.short { max-width: 220px; }
-  .text-input:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
-  .text-input[aria-invalid="true"] { border-color: var(--destructive); box-shadow: 0 0 0 1px var(--destructive); }
-  .text-input[readonly] { background: var(--muted); color: var(--secondary-foreground); }
-  .field-error { display: flex; gap: 6px; align-items: flex-start; margin: 6px 0 0; font-size: 13px; font-weight: 500; color: var(--destructive); }
-  .field-error .ico { margin-top: 2px; }
-  .field-error a { display: inline-flex; align-items: center; min-height: 24px; color: var(--destructive); }
-  .field-error a:hover { color: var(--foreground); }
-
-  /* Aviso de auditoría y acciones del formulario */
-  .audit-note { display: flex; align-items: flex-start; gap: 8px; margin: 12px 0 0; font-size: 13px; color: var(--secondary-foreground); }
-  .audit-note .ico { margin-top: 2px; }
-  .form-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--border); }
-
-  /* Resumen de errores (Alert destructivo): cuántos campos y enlaces a cada uno */
-  .form-card .alert { margin: 0 0 16px; }
-  .alert-error { border: 1px solid color-mix(in srgb, var(--destructive-soft) 60%, var(--card)); background: var(--destructive-tint); }
-  .alert-error > .ico, .alert-error .alert-title { color: var(--destructive); }
-  .alert-list { margin: 6px 0 0; padding-left: 18px; font-size: 13.5px; color: var(--destructive); }
-  .alert-list a { display: inline-flex; align-items: center; min-height: 24px; color: var(--destructive); font-weight: 500; }
-  .alert-list a:hover { color: var(--foreground); }
-
-  @media (max-width: 600px) {
-    .text-input, .text-input.short { max-width: none; min-height: 44px; }
-    .form-actions { flex-direction: column; align-items: stretch; }
-    .form-actions .btn { width: 100%; min-height: 44px; }
-    .alert-list a { min-height: 32px; }
-  }
-
   /* Propio de backoffice/soporte (spec 011: metadatos de los archivos de un cliente) */
   :root {
     /* Tipos de archivo (ui-guidelines §3): texto AA; fondo = tono base al 12 % */
@@ -435,7 +400,7 @@
       </div>
       <nav aria-label="Navegación de administración">
         <ul class="nav">
-          <li><a href="../admin/admin.html" aria-current="page"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Cuentas</span><span class="meta">1 284</span></a></li>
+          <li><a href="../admin/admin.html" aria-current="page"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Cuentas</span><span class="meta">1 284</span></a></li>
           <li><a href="../catalogo/catalogo.html"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg><span>Catálogo de planes</span></a></li>
           <li><a href="../metricas/metricas.html"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span>Métricas</span></a></li>
         </ul>
@@ -587,7 +552,7 @@
       </div>
       <nav aria-label="Navegación de administración">
         <ul class="nav">
-          <li><a href="../admin/admin.html" id="cajon-primero" aria-current="page"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Cuentas</span><span class="meta">1 284</span></a></li>
+          <li><a href="../admin/admin.html" id="cajon-primero" aria-current="page"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Cuentas</span><span class="meta">1 284</span></a></li>
           <li><a href="../catalogo/catalogo.html"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg><span>Catálogo de planes</span></a></li>
           <li><a href="../metricas/metricas.html"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span>Métricas</span></a></li>
         </ul>

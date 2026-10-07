@@ -7,7 +7,7 @@
   lateral. Para el Operador, la misma pantalla en su área (`Operación / Métricas`); la ruta la fija el plan.
 - **Origen**: HTML autocontenido generado con `../../_generadores/metricas/generar.js`; no se edita a mano. El marco del
   área (barra lateral, barra superior, cajón, aviso, distintivos y estados de pantalla) sale de
-  `_generadores/admin/area.js`, el mismo de `backoffice/admin`, `alta-interna` y `catalogo`. Tonos AA de
+  `_generadores/admin/area.js`, el mismo de las cinco pantallas de `backoffice/`. Tonos AA de
   `ui-guidelines.md` §2–§3, solo Inter, cifras con `tabular-nums`, versión móvil real a 360 px. Gráficos en HTML y CSS,
   sin librerías. Es referencia visual; `apps/web` no lo importa.
 - **Enlaces entre mockups** (rutas relativas): en el área de administración, la barra lateral, el cajón, el logo y las migas llevan a Cuentas
@@ -17,10 +17,10 @@
   - default: dos totales y dos tablas con barras; ningún plan inactivo con cuentas (`metricas.html`)
   - cargando: esqueleto de los totales y las tablas, y «Cargando las métricas…» con `role="status"` (`metricas--cargando.html`)
   - error: «No pudimos cargar las métricas.» con «Reintentar» (`metricas--error.html`)
-  - operador (extra, CA-12, CA-17): la misma pantalla y los mismos datos que default, en solo lectura, en el área del
+  - operador (CA-12, CA-17): la misma pantalla y los mismos datos que default, en solo lectura, en el área del
     Operador: persona «Pablo Xicará · Operador» (la cuenta de Operador de la lista de `backoffice/admin`), distintivo
     «OPERADOR» y una sola entrada, «Métricas»; sin Cuentas, Catálogo ni Soporte (`metricas--operador.html`)
-  - con-plan-inactivo (extra): Equipo desactivado aún con 52 cuentas, con su distintivo «Inactivo», y Equipo 2027 activo
+  - con-plan-inactivo: Equipo desactivado aún con 52 cuentas, con su distintivo «Inactivo», y Equipo 2027 activo
     con 0 (`metricas--con-plan-inactivo.html`). Se agrega porque la marca de inactivo tiene que verse para aprobarse;
     es el mismo momento que `catalogo--desactivado`.
 - **Capturas**: `docs/design/capturas/backoffice/metricas/` (`metricas--<estado>--<360|1440>.png`, con movimiento
@@ -28,7 +28,7 @@
   sin errores de consola y sin objetivos menores de 24 px (`_generadores/pw/axe-seguridad.js` sobre la carpeta).
 
 ## Datos de ejemplo
-Cuadran con los mockups aprobados del área:
+Cuadran con los mockups de backoffice del área:
 
 | Dato | Valor | Cuadra con |
 |---|---|---|
@@ -40,7 +40,8 @@ Cuadran con los mockups aprobados del área:
 
 En la app todo viene de la API: conteos agrupados (`count` por `estado` y por plan) y la suma de
 `usuario.espacio_usado` en bytes (`bigint`), que la web formatea en GB o TB (potencias de 1024). Los porcentajes, con un
-decimal, los calcula la web sobre el total de cada tabla. El generador comprueba que las sumas cuadren.
+decimal, los calcula la web sobre el total de cada tabla. Planes y conteos salen de `_generadores/admin/corpus.js`, la
+misma fuente del catálogo y de la navegación: los totales se calculan desde ahí y no pueden desviarse.
 
 ## Decisiones de UX
 1. **Dos totales arriba** («Cuentas en total» y «Espacio total usado») como lista de definiciones: etiqueta con ícono,

@@ -18,13 +18,13 @@
   aviso).
 - **Estados incluidos**:
   - default: metadatos de los archivos de Laura Barrios, con el aviso de auditoría (`soporte.html`)
-  - inicial (extra): antes de buscar; dice qué se verá y que la consulta se audita (`soporte--inicial.html`)
+  - inicial: antes de buscar; dice qué se verá y que la consulta se audita (`soporte--inicial.html`)
   - cargando: esqueleto del encabezado del cliente y de la tabla, y «Buscando la cuenta y sus archivos…» con
     `role="status"` (`soporte--cargando.html`)
   - vacio: cliente sin archivos, ni en la papelera (`soporte--vacio.html`)
   - no-encontrado: el mismo mensaje para un correo que no existe o que no es de un cliente (`soporte--no-encontrado.html`)
-  - error (extra, CA-17): «No pudimos completar la búsqueda.» con «Reintentar» (`soporte--error.html`)
-  - desde-admin (extra): la misma vista para el Administrador, en su área, sin buscador y con «Volver a la ficha»
+  - error (CA-17): «No pudimos completar la búsqueda.» con «Reintentar» (`soporte--error.html`)
+  - desde-admin: la misma vista para el Administrador, en su área, sin buscador y con «Volver a la ficha»
     (`soporte--desde-admin.html`)
 - **Capturas**: `docs/design/capturas/backoffice/soporte/` (`soporte--<estado>--<360|1440>.png`, con movimiento
   reducido). En los siete estados: axe-core sin violaciones a 360 y 1440 px, sin desbordamiento horizontal a 360 px

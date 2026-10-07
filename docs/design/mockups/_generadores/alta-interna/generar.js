@@ -2,27 +2,24 @@
 // Uso: node generar.js <ruta-del-worktree>
 // El marco del área de administración (íconos, persona, barra lateral, barra superior, cajón, CSS común y página) viene
 // de admin/area.js, el mismo de backoffice/admin. Aquí solo va el formulario de alta y sus estados.
-const fs = require('node:fs');
-const path = require('node:path');
 const A = require('../admin/area.js');
+const C = require('../admin/corpus.js');
 
-const repo = process.argv[2];
-if (!repo) throw new Error('Falta la ruta del worktree');
-const OUT = path.join(repo, 'docs/design/mockups/backoffice/alta-interna');
-fs.mkdirSync(OUT, { recursive: true });
+const OUT = A.carpetaDeSalida('alta-interna');
 
 const { icon, campo, resumenErrores } = A;
 
 // ---------- Datos de ejemplo (en la app los roles y los mensajes de conflicto vienen de la API) ----------
-// Roles internos (product-context §2): nunca Cliente. Una línea por rol para ayudar a elegir.
+// Roles internos (product-context §2): nunca Cliente. Una línea por rol para ayudar a elegir; el ícono es el del rol en
+// todo el área (A.ICONO_ROL).
 const ROLES = [
-  ['administrador', 'Administrador', 'shield', 'Gestiona cuentas, el catálogo de planes y las métricas.'],
-  ['soporte', 'Soporte', 'headset', 'Consulta los metadatos de los archivos de los clientes para ayudarles.'],
-  ['operador', 'Operador', 'server', 'Atiende la infraestructura y la operación del servicio.'],
+  { valor: 'administrador', nombre: 'Administrador', descripcion: 'Gestiona cuentas, el catálogo de planes y las métricas.' },
+  { valor: 'soporte', nombre: 'Soporte', descripcion: 'Consulta los metadatos de los archivos de los clientes para ayudarles.' },
+  { valor: 'operador', nombre: 'Operador', descripcion: 'Atiende la infraestructura y la operación del servicio.' },
 ];
 const NUEVO = { nombre: 'Rodrigo Pérez', correo: 'rodrigo.perez@nimbo.gt', codigo: 'EMP-0142', rol: 'soporte' };
-// Andrea Ruiz ya existe en la lista de backoffice/admin (Soporte, alta 28/09/2026).
-const REPETIDO = { nombre: 'Andrea Ruiz', correo: 'andrea.ruiz@nimbo.gt', codigo: 'EMP-0118', rol: 'soporte' };
+// Andrea Ruiz ya existe en la lista de backoffice/admin: su correo y su código chocan (CA-6).
+const REPETIDO = { nombre: C.ANDREA.nombre, correo: C.ANDREA.correo, codigo: C.ANDREA.codigo, rol: 'soporte' };
 
 // ---------- CSS ----------
 const CSS = A.CSS + A.CSS_FORM + `
@@ -92,8 +89,8 @@ const encabezado = `
         </div>`;
 
 function roles({ elegido = '', err = '', ro = false } = {}) {
-  const opciones = ROLES.map(([val, nombre, ic, desc], i) => `
-              <li><label class="role"><input type="radio" name="rol" value="${val}"${i === 0 ? ' required' : ''}${val === elegido ? ' checked' : ''}${ro ? ' disabled' : ''} aria-describedby="rol-${val}-d"><span class="role-body"><span class="role-name">${icon(ic, 16)}${nombre}</span><span class="role-desc" id="rol-${val}-d">${desc}</span></span></label></li>`).join('');
+  const opciones = ROLES.map(({ valor, nombre, descripcion }, i) => `
+              <li><label class="role"><input type="radio" name="rol" value="${valor}"${i === 0 ? ' required' : ''}${valor === elegido ? ' checked' : ''}${ro ? ' disabled' : ''} aria-describedby="rol-${valor}-d"><span class="role-body"><span class="role-name">${icon(A.ICONO_ROL[nombre], 16)}${nombre}</span><span class="role-desc" id="rol-${valor}-d">${descripcion}</span></span></label></li>`).join('');
   const desc = ['rol-ayuda', 'rol-nota', ...(err ? ['rol-error'] : [])].join(' ');
   return `
           <fieldset class="roles${err ? ' is-invalid' : ''}" id="rol" aria-describedby="${desc}">
@@ -138,7 +135,7 @@ function formulario(f = {}) {
 }
 
 function exito(n) {
-  const rol = ROLES.find(([val]) => val === n.rol)[1];
+  const rol = ROLES.find(({ valor }) => valor === n.rol).nombre;
   return `
         <section class="card done" aria-labelledby="ok-t">
           <div class="done-head" role="status">
@@ -203,21 +200,15 @@ const ESTADOS = [
 ];
 
 for (const v of ESTADOS) {
-  const file = v.estado === 'default' ? 'alta-interna.html' : `alta-interna--${v.estado}.html`;
-  const html = A.pagina({
+  const file = A.archivoDe('alta-interna', v.estado);
+  A.escribir(OUT, file, A.pagina({
     titulo: `Nueva cuenta interna · Administración · Nimbo — ${v.estado}`,
-    comentarios: [
-      `Mockup de referencia (spec 011: administración, alta de cuenta interna). Estado: ${v.estado}.`,
-      'Colores: valores de ui-guidelines.md §3 (tonos AA). La implementación usa tokens, components/ui y components/nimbo.',
-      'Generado con _generadores/alta-interna/generar.js (marco del área en admin/area.js y CSS del marco en marco/marco.js). No editar a mano.',
-    ],
+    comentarios: A.comentariosDe('administración, alta de cuenta interna', v.estado, 'alta-interna'),
     css: CSS,
     rotulo: 'Nueva cuenta interna',
     file,
     estado: v.titulo,
     crumbs: ['Administración', 'Cuentas', 'Nueva cuenta interna'],
     cuerpo: v.cuerpo(),
-  });
-  fs.writeFileSync(path.join(OUT, file), html, 'utf8');
-  console.log(file);
+  }));
 }

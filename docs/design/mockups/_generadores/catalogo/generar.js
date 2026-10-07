@@ -3,48 +3,20 @@
 // El marco del área de administración (íconos, persona, barra lateral, barra superior, cajón, CSS común, distintivos,
 // estados de pantalla, diálogo, formulario y página) viene de admin/area.js, el mismo de backoffice/admin y
 // backoffice/alta-interna. Aquí solo van las tarjetas de planes, el formulario de nuevo plan y sus estados.
-const fs = require('node:fs');
-const path = require('node:path');
 const A = require('../admin/area.js');
+const C = require('../admin/corpus.js');
 
-const repo = process.argv[2];
-if (!repo) throw new Error('Falta la ruta del worktree');
-const OUT = path.join(repo, 'docs/design/mockups/backoffice/catalogo');
-fs.mkdirSync(OUT, { recursive: true });
+const OUT = A.carpetaDeSalida('catalogo');
 
 const { icon, campo, resumenErrores, badgeInactivo } = A;
-
-// ---------- Datos de ejemplo ----------
-// Los cuatro planes oficiales con sus valores reales (product-context §3; semilla de 006a, creada el 28/09/2026).
-// En la app todo viene de la API: precios en centavos y tamaños en bytes, formateados en la web (ADR-0016).
-// cuentas: conteo agregado por plan (nunca nombres). 1 012 + 186 + 52 + 22 = 1 272 clientes + 12 internas = 1 284.
-const PERSONAL = { id: 'personal', nombre: 'Personal', desc: 'Plan gratuito para uso individual con almacenamiento básico',
-  precio: 'Q0.00', espacio: '15 GB', archivo: '50 MB', editores: 0, consultas: '20', versiones: '3', papelera: '7',
-  cuentas: '1 012', creado: '28/09/2026', porDefecto: true };
-const PRO = { id: 'pro', nombre: 'Pro', desc: 'Plan profesional para usuarios exigentes con edición colaborativa',
-  precio: 'Q45.00', espacio: '100 GB', archivo: '500 MB', editores: 3, consultas: '500', versiones: '30', papelera: '30',
-  cuentas: '186', creado: '28/09/2026' };
-const EQUIPO = { id: 'equipo', nombre: 'Equipo', desc: 'Plan para equipos de trabajo con colaboración en tiempo real',
-  precio: 'Q110.00', espacio: '350 GB', archivo: '1 GB', editores: 5, consultas: '2 000', versiones: '60', papelera: '60',
-  cuentas: '52', creado: '28/09/2026' };
-const INSTITUCIONAL = { id: 'institucional', nombre: 'Institucional', desc: 'Plan de máxima capacidad para organizaciones e instituciones',
-  precio: 'Q450.00', espacio: '2 TB', archivo: '2 GB', editores: 5, consultas: '10 000', versiones: '100', papelera: '90',
-  cuentas: '22', creado: '28/09/2026' };
-// Plan nuevo de ejemplo: parte de Equipo con más espacio y más consultas (para reemplazarlo).
-const NUEVO = { id: 'equipo-2027', nombre: 'Equipo 2027', desc: 'Para equipos que necesitan más espacio, con colaboración en tiempo real',
-  precio: 'Q125.00', espacio: '500 GB', archivo: '1 GB', editores: 5, consultas: '3 000', versiones: '60', papelera: '60',
-  cuentas: '0', creado: '03/10/2026' };
-const HOY = '03/10/2026';
+const { miles, PERSONAL, PRO, EQUIPO, INSTITUCIONAL, PLAN_NUEVO } = C;
 
 // ---------- CSS ----------
 const CSS = A.CSS + A.CSS_FORM + `
   /* Propio de backoffice/catalogo (spec 011: catálogo de planes) */
 
-  /* Regla del catálogo (Alert informativo) y aviso de auditoría */
-  .rule { display: flex; align-items: flex-start; gap: 10px; margin: 20px 0 0; padding: 12px 16px; border: 1px solid color-mix(in srgb, var(--brand) 35%, var(--card)); border-radius: var(--radius-lg); background: var(--brand-soft); font-size: 13.5px; color: var(--foreground); }
-  .rule .ico { margin-top: 2px; color: var(--primary); }
-  .rule p { margin: 0; }
-  .rule strong { display: block; font-weight: 600; }
+  /* Regla del catálogo (el aviso .privacy de area.js, con título) y aviso de auditoría */
+  .privacy strong { display: block; font-weight: 600; }
   .content > .audit-note { margin-top: 10px; }
 
   /* Secciones: planes activos e inactivos */
@@ -119,7 +91,6 @@ const CSS = A.CSS + A.CSS_FORM + `
   .form-card .info-box .ico { color: var(--primary); }
 
   @media (max-width: 600px) {
-    .rule { padding: 12px; margin-top: 16px; }
     .plans-sec { margin-top: 24px; }
     .plans { grid-template-columns: minmax(0, 1fr); gap: 12px; }
     .plan { padding: 16px; }
@@ -144,58 +115,66 @@ const encabezado = (aviso = '') => `
             <p>Los planes que se ofrecen a los clientes, con su precio y sus límites.</p>
           </div>
           <a class="btn btn-primary" href="catalogo--creando.html">${icon('plus', 16)}<span>Nuevo plan</span></a>
-        </div>${aviso}
-        <div class="rule">${icon('info', 16)}<p><strong>Los planes no se editan: crea uno nuevo y desactiva el anterior.</strong>Así, quien ya tiene un plan conserva su precio y sus límites.</p></div>
+        </div>${aviso}${A.privacidad('<strong>Los planes no se editan: crea uno nuevo y desactiva el anterior.</strong>Así, quien ya tiene un plan conserva su precio y sus límites.', 'info')}
         <p class="audit-note">${icon('history', 15)}<span>Crear o desactivar un plan queda en la auditoría con tu nombre y rol.</span></p>`;
 
 const badgeActivo = `<span class="badge badge-ok">${icon('ok', 13)}Activo</span>`;
 
-// p: plan; off: fecha de desactivación si está inactivo.
-function tarjeta(p, { off = '' } = {}) {
-  const t = `plan-${p.id}-t`;
-  const editores = p.editores
-    ? `${p.editores}`
-    : `Ninguno<span class="sub-dd">Edición solo lectura</span>`;
-  let pie;
-  if (off) {
-    pie = '';
-  } else if (p.porDefecto) {
-    pie = `
-                <div class="plan-foot"><p class="fixed">${icon('lock', 15)}<span><strong>Plan por defecto</strong>Es el plan gratuito: no se puede desactivar.</span></p></div>`;
-  } else {
-    pie = `
-                <div class="plan-foot"><button class="btn btn-destructive-outline btn-sm" type="button">${icon('power', 15)}<span>Desactivar<span class="sr-only"> el plan ${p.nombre}</span></span></button></div>`;
-  }
-  const meta = off
-    ? `<li>${icon('users', 14)}<span>${p.cuentas} cuentas lo conservan</span></li>
-                  <li>${icon('pauseCircle', 14)}<span>Desactivado el ${off}</span></li>`
-    : `<li>${icon('users', 14)}<span>${p.cuentas} cuentas con este plan</span></li>
-                  <li>${icon('clock', 14)}<span>Creado el ${p.creado}</span></li>`;
+// ---------- Tarjeta de un plan (PlanCard) ----------
+function limitesPlan(p) {
+  const editores = p.editores ? `${p.editores}` : `Ninguno<span class="sub-dd">Edición solo lectura</span>`;
   return `
-            <li>
-              <article class="plan${off ? ' is-off' : ''}" aria-labelledby="${t}">
-                <div class="plan-top"><h3 id="${t}">${p.nombre}</h3>${off ? badgeInactivo : badgeActivo}</div>
-                <p class="plan-desc">${p.desc}</p>
-                <p class="plan-price"><span class="amount">${p.precio}</span><span class="per">al mes</span></p>
                 <dl class="limits">
                   <div><dt>Almacenamiento</dt><dd>${p.espacio}</dd></div>
                   <div><dt>Máximo por archivo</dt><dd>${p.archivo}</dd></div>
                   <div><dt>Editores simultáneos</dt><dd>${editores}</dd></div>
-                  <div><dt>Consultas al agente</dt><dd>${p.consultas} al mes</dd></div>
+                  <div><dt>Consultas al agente</dt><dd>${miles(p.consultas)} al mes</dd></div>
                   <div><dt>Versiones retenidas</dt><dd>${p.versiones}</dd></div>
                   <div><dt>Días en papelera</dt><dd>${p.papelera} días</dd></div>
-                </dl>
+                </dl>`;
+}
+
+// Cuentas (conteo agregado, nunca nombres) y fecha de creación o de desactivación.
+function metaPlan(p, off) {
+  const items = off
+    ? `<li>${icon('users', 14)}<span>${miles(p.cuentas)} cuentas lo conservan</span></li>
+                  <li>${icon('pauseCircle', 14)}<span>Desactivado el ${off}</span></li>`
+    : `<li>${icon('users', 14)}<span>${miles(p.cuentas)} cuentas con este plan</span></li>
+                  <li>${icon('clock', 14)}<span>Creado el ${p.creado}</span></li>`;
+  return `
                 <ul class="plan-meta">
-                  ${meta}
-                </ul>${pie}
+                  ${items}
+                </ul>`;
+}
+
+// Inactivo: sin pie. Personal: no se desactiva (RN-4). Los demás: «Desactivar».
+function piePlan(p, off) {
+  if (off) return '';
+  const contenido = p.porDefecto
+    ? `<p class="fixed">${icon('lock', 15)}<span><strong>Plan por defecto</strong>Es el plan gratuito: no se puede desactivar.</span></p>`
+    : `<button class="btn btn-destructive-outline btn-sm" type="button">${icon('power', 15)}<span>Desactivar<span class="sr-only"> el plan ${p.nombre}</span></span></button>`;
+  return `
+                <div class="plan-foot">${contenido}</div>`;
+}
+
+// p: plan; off: fecha de desactivación si está inactivo.
+function tarjeta(p, { off = '' } = {}) {
+  const t = `plan-${p.id}-t`;
+  return `
+            <li>
+              <article class="plan${off ? ' is-off' : ''}" aria-labelledby="${t}">
+                <div class="plan-top"><h3 id="${t}">${p.nombre}</h3>${off ? badgeInactivo : badgeActivo}</div>
+                <p class="plan-desc">${p.descripcion}</p>
+                <p class="plan-price"><span class="amount">${p.precio}</span><span class="per">al mes</span></p>${limitesPlan(p)}${metaPlan(p, off)}${piePlan(p, off)}
               </article>
             </li>`;
 }
 
-function catalogo({ activos, inactivos = [] }) {
+// inactivos: planes desactivados el día desactivadoEl (todos a la vez en el ejemplo).
+function catalogo({ activos, inactivos = [], desactivadoEl = '' }) {
   const listaInactivos = inactivos.length
     ? `
-          <ul class="plans">${inactivos.map(([p, f]) => tarjeta(p, { off: f })).join('')}
+          <ul class="plans">${inactivos.map((p) => tarjeta(p, { off: desactivadoEl })).join('')}
           </ul>`
     : `
           <div class="none">${icon('info', 16)}<p>Ningún plan está inactivo. Cuando desactives uno, aparecerá aquí con las cuentas que lo conservan.</p></div>`;
@@ -224,22 +203,21 @@ function cargando() {
 const error = () => A.estadoError('No pudimos cargar el catálogo.',
   'Ningún plan cambió. Revisa tu conexión e inténtalo de nuevo.');
 
-const ACTIVOS = [PERSONAL, PRO, EQUIPO, INSTITUCIONAL];
-const ACTIVOS_CON_NUEVO = [PERSONAL, PRO, EQUIPO, NUEVO, INSTITUCIONAL];
+const ACTIVOS_CON_NUEVO = [PERSONAL, PRO, EQUIPO, PLAN_NUEVO, INSTITUCIONAL];
 
 const exitoCreado = `
-        <div class="alert alert-ok" role="status">${icon('ok', 18)}<div><p class="alert-title">Creamos el plan ${NUEVO.nombre}. Ya se ofrece a contrataciones nuevas.</p><p class="alert-text">Lo creaste a partir de ${EQUIPO.nombre}. Si lo reemplaza, desactiva ${EQUIPO.nombre} para que deje de ofrecerse; quien lo tiene lo conserva.</p>
+        <div class="alert alert-ok" role="status">${icon('ok', 18)}<div><p class="alert-title">Creamos el plan ${PLAN_NUEVO.nombre}. Ya se ofrece a contrataciones nuevas.</p><p class="alert-text">Lo creaste a partir de ${EQUIPO.nombre}. Si lo reemplaza, desactiva ${EQUIPO.nombre} para que deje de ofrecerse; quien lo tiene lo conserva.</p>
           <button class="btn btn-destructive-outline btn-sm" type="button">${icon('power', 15)}Desactivar ${EQUIPO.nombre}</button></div></div>`;
 
 const exitoDesactivado = `
-        <div class="alert alert-ok" role="status">${icon('ok', 18)}<div><p class="alert-title">Desactivamos el plan ${EQUIPO.nombre}. Ya no se ofrece a contrataciones nuevas.</p><p class="alert-text">Las ${EQUIPO.cuentas} cuentas que lo tienen lo conservan con el mismo precio y los mismos límites.</p></div></div>`;
+        <div class="alert alert-ok" role="status">${icon('ok', 18)}<div><p class="alert-title">Desactivamos el plan ${EQUIPO.nombre}. Ya no se ofrece a contrataciones nuevas.</p><p class="alert-text">Las ${miles(EQUIPO.cuentas)} cuentas que lo tienen lo conservan con el mismo precio y los mismos límites.</p></div></div>`;
 
 const DLG_DESACTIVAR = A.dialogo({
   titulo: `¿Desactivar el plan ${EQUIPO.nombre}?`,
-  quienLinea: `${EQUIPO.precio} al mes · ${EQUIPO.espacio} · ${EQUIPO.cuentas} cuentas lo tienen.`,
+  quienLinea: `${EQUIPO.precio} al mes · ${EQUIPO.espacio} · ${miles(EQUIPO.cuentas)} cuentas lo tienen.`,
   items: [
     ['pauseCircle', 'Deja de ofrecerse: no aparecerá al registrarse ni al cambiar de plan.'],
-    ['users', `Las ${EQUIPO.cuentas} cuentas que lo tienen lo conservan con el mismo precio y los mismos límites.`],
+    ['users', `Las ${miles(EQUIPO.cuentas)} cuentas que lo tienen lo conservan con el mismo precio y los mismos límites.`],
     ['lock', 'No se puede volver a activar. Si lo necesitas otra vez, crea un plan nuevo con sus valores.'],
     ['history', 'La acción queda en la auditoría con tu nombre y rol.'],
   ],
@@ -260,64 +238,76 @@ const encabezadoForm = `
 
 const addonAntes = (t) => `<span class="addon addon-before" aria-hidden="true">${t}</span>`;
 const addonDespues = (t) => `<span class="addon addon-after" aria-hidden="true">${t}</span>`;
-const unidad = (id, nombre, opciones, elegida, ro) =>
-  `<select class="unit" id="${id}-unidad" name="${id}-unidad" aria-label="Unidad de ${nombre}"${ro ? ' disabled' : ''}>${opciones.map((o) => `<option${o === elegida ? ' selected' : ''}>${o}</option>`).join('')}</select>`;
+// Selector de unidad junto al campo (InputGroup).
+const unidad = ({ id, nombre, opciones, elegida }) =>
+  `<select class="unit" id="${id}-unidad" name="${id}-unidad" aria-label="Unidad de ${nombre}">${opciones.map((o) => `<option${o === elegida ? ' selected' : ''}>${o}</option>`).join('')}</select>`;
 
-const OPCIONES_COPIA = [['', 'No, empezar vacío'], ...ACTIVOS.map((p) => [p.id, `${p.nombre} (${p.precio} al mes)`])];
+const OPCIONES_COPIA = [['', 'No, empezar vacío'], ...C.PLANES.map((p) => [p.id, `${p.nombre} (${p.precio} al mes)`])];
+const NUMERICO = 'inputmode="numeric" autocomplete="off"';
+
+// Los seis límites del plan, en el orden de la tarjeta. unidad o sufijo: adorno del control.
+const LIMITES = [
+  { id: 'espacio', label: 'Almacenamiento', help: 'Espacio total de la cuenta.',
+    unidad: { nombre: 'almacenamiento', opciones: ['GB', 'TB'], defecto: 'GB' } },
+  { id: 'archivo', label: 'Máximo por archivo', help: 'Hasta 2 GB y nunca más que el almacenamiento.',
+    unidad: { nombre: 'máximo por archivo', opciones: ['MB', 'GB'], defecto: 'MB' } },
+  { id: 'editores', label: 'Editores simultáneos', help: 'Personas que editan un mismo .docx a la vez.' },
+  { id: 'consultas', label: 'Consultas al agente', help: 'Preguntas al agente por mes.', sufijo: 'al mes' },
+  { id: 'versiones', label: 'Versiones retenidas', help: 'Versiones que se guardan de cada archivo.' },
+  { id: 'papelera', label: 'Días en papelera', help: 'Días antes de borrar para siempre lo eliminado.', sufijo: 'días' },
+];
+
+function adornoLimite(l, v) {
+  if (l.unidad) return unidad({ id: l.id, ...l.unidad, elegida: v[`${l.id}U`] || l.unidad.defecto });
+  return l.sufijo ? addonDespues(l.sufijo) : '';
+}
+
+const campoLimite = (l, v, e) => campo({
+  id: l.id, label: l.label, help: l.help, value: v[l.id] || '', err: e[l.id], extra: NUMERICO, despues: adornoLimite(l, v),
+});
+
+const copiarDe = (copia = '') => `
+          <div class="copy-from">
+            <label for="copiar">Partir de un plan activo (opcional)</label>
+            <p id="copiar-ayuda">Llena el formulario con sus valores y cambia solo lo que necesites. El plan de origen no cambia.</p>
+            <select class="select" id="copiar" name="copiar" aria-describedby="copiar-ayuda">${OPCIONES_COPIA.map(([val, t]) => `<option value="${val}"${val === copia ? ' selected' : ''}>${t}</option>`).join('')}</select>
+          </div>`;
+
+const seccionPlan = (v, e) => `
+          <fieldset class="form-sec">
+            <legend>Plan</legend>${campo({
+  id: 'nombre', label: 'Nombre', help: 'Lo ven los clientes al elegir plan. Usa uno distinto de los planes activos.',
+  value: v.nombre || '', err: e.nombre, extra: 'autocomplete="off" maxlength="40"',
+})}${campo({
+  id: 'descripcion', label: 'Descripción', help: 'Una frase sobre para quién es el plan.', value: v.descripcion || '', err: e.descripcion,
+  multilinea: true, extra: 'maxlength="160"',
+})}
+          </fieldset>`;
+
+const seccionPrecio = (v, e) => `
+          <fieldset class="form-sec">
+            <legend>Precio</legend>${campo({
+  id: 'precio', label: 'Precio al mes, en quetzales', help: 'Con centavos. Escribe 0.00 si el plan es gratuito.',
+  value: v.precio || '', err: e.precio, extra: 'inputmode="decimal" autocomplete="off"', antes: addonAntes('Q'),
+})}
+          </fieldset>`;
+
+const seccionLimites = (v, e) => `
+          <fieldset class="form-sec">
+            <legend>Límites</legend>
+            <p class="sec-help">Cada cuenta con este plan recibe estos límites.</p>
+            <div class="limits-grid">${LIMITES.map((l) => campoLimite(l, v, e)).join('')}
+            </div>
+          </fieldset>`;
 
 // f: valores, errores y resumen del formulario. Los valores van como los escribe la persona.
 function formulario(f = {}) {
   const v = f.valores || {};
   const e = f.errores || {};
-  const num = 'inputmode="numeric" autocomplete="off"';
   return `
         <form class="card form-card" aria-labelledby="form-t" novalidate onsubmit="return false">
-          <h2 id="form-t" class="sr-only">Datos del nuevo plan</h2>${f.resumen ? resumenErrores(f.resumen) : ''}
-          <div class="copy-from">
-            <label for="copiar">Partir de un plan activo (opcional)</label>
-            <p id="copiar-ayuda">Llena el formulario con sus valores y cambia solo lo que necesites. El plan de origen no cambia.</p>
-            <select class="select" id="copiar" name="copiar" aria-describedby="copiar-ayuda">${OPCIONES_COPIA.map(([val, t]) => `<option value="${val}"${val === (v.copia || '') ? ' selected' : ''}>${t}</option>`).join('')}</select>
-          </div>
-          <p class="req-note">Los demás campos son obligatorios.</p>
-          <fieldset class="form-sec">
-            <legend>Plan</legend>${campo({
-    id: 'nombre', label: 'Nombre', help: 'Lo ven los clientes al elegir plan. Usa uno distinto de los planes activos.',
-    value: v.nombre || '', err: e.nombre, extra: 'autocomplete="off" maxlength="40"',
-  })}${campo({
-    id: 'descripcion', label: 'Descripción', help: 'Una frase sobre para quién es el plan.', value: v.desc || '', err: e.desc,
-    multilinea: true, extra: 'maxlength="160"',
-  })}
-          </fieldset>
-          <fieldset class="form-sec">
-            <legend>Precio</legend>${campo({
-    id: 'precio', label: 'Precio al mes, en quetzales', help: 'Con centavos. Escribe 0.00 si el plan es gratuito.',
-    value: v.precio || '', err: e.precio, extra: 'inputmode="decimal" autocomplete="off"', antes: addonAntes('Q'),
-  })}
-          </fieldset>
-          <fieldset class="form-sec">
-            <legend>Límites</legend>
-            <p class="sec-help">Cada cuenta con este plan recibe estos límites.</p>
-            <div class="limits-grid">${campo({
-    id: 'espacio', label: 'Almacenamiento', help: 'Espacio total de la cuenta.', value: v.espacio || '', err: e.espacio,
-    extra: num, despues: unidad('espacio', 'almacenamiento', ['GB', 'TB'], v.espacioU || 'GB'),
-  })}${campo({
-    id: 'archivo', label: 'Máximo por archivo', help: 'Hasta 2 GB y nunca más que el almacenamiento.', value: v.archivo || '',
-    err: e.archivo, extra: num, despues: unidad('archivo', 'máximo por archivo', ['MB', 'GB'], v.archivoU || 'MB'),
-  })}${campo({
-    id: 'editores', label: 'Editores simultáneos', help: 'Personas que editan un mismo .docx a la vez.', value: v.editores || '',
-    err: e.editores, extra: num,
-  })}${campo({
-    id: 'consultas', label: 'Consultas al agente', help: 'Preguntas al agente por mes.', value: v.consultas || '',
-    err: e.consultas, extra: num, despues: addonDespues('al mes'),
-  })}${campo({
-    id: 'versiones', label: 'Versiones retenidas', help: 'Versiones que se guardan de cada archivo.', value: v.versiones || '',
-    err: e.versiones, extra: num,
-  })}${campo({
-    id: 'papelera', label: 'Días en papelera', help: 'Días antes de borrar para siempre lo eliminado.', value: v.papelera || '',
-    err: e.papelera, extra: num, despues: addonDespues('días'),
-  })}
-            </div>
-          </fieldset>
+          <h2 id="form-t" class="sr-only">Datos del nuevo plan</h2>${f.resumen ? resumenErrores(f.resumen) : ''}${copiarDe(v.copia)}
+          <p class="req-note">Los demás campos son obligatorios.</p>${seccionPlan(v, e)}${seccionPrecio(v, e)}${seccionLimites(v, e)}
           <div class="info-box">${icon('lock', 16)}<p><strong>Después de crearlo, el precio y los límites no cambian.</strong>Revísalos bien: para cambiarlos más adelante tendrás que crear otro plan.</p></div>
           <p class="audit-note">${icon('history', 15)}<span>La creación queda en la auditoría con tu nombre y rol.</span></p>
           <div class="form-actions">
@@ -328,13 +318,13 @@ function formulario(f = {}) {
 }
 
 // Valores del nuevo plan tal como se escriben (sin separador de miles en los campos).
-const VALORES_NUEVO = { copia: 'equipo', nombre: NUEVO.nombre, desc: NUEVO.desc, precio: '125.00', espacio: '500', espacioU: 'GB',
+const VALORES_NUEVO = { copia: 'equipo', nombre: PLAN_NUEVO.nombre, descripcion: PLAN_NUEVO.descripcion, precio: '125.00', espacio: '500', espacioU: 'GB',
   archivo: '1', archivoU: 'GB', editores: '5', consultas: '3000', versiones: '60', papelera: '60' };
 
 // ---------- Estados ----------
 const ESTADOS = [
   { estado: 'default', titulo: 'los cuatro planes oficiales activos; ninguno inactivo',
-    cuerpo: () => encabezado() + catalogo({ activos: ACTIVOS }) },
+    cuerpo: () => encabezado() + catalogo({ activos: C.PLANES }) },
   { estado: 'cargando', titulo: 'esqueleto de las tarjetas mientras llega el catálogo',
     cuerpo: () => encabezado() + cargando() },
   { estado: 'error', titulo: 'falló la carga del catálogo: error con «Reintentar»',
@@ -360,18 +350,18 @@ const ESTADOS = [
   { estado: 'confirmar-desactivar', titulo: 'confirmación de desactivar Equipo, con las consecuencias',
     cuerpo: () => encabezado() + catalogo({ activos: ACTIVOS_CON_NUEVO }), dialogo: DLG_DESACTIVAR },
   { estado: 'desactivado', titulo: 'Equipo desactivado: aviso y Equipo entre los inactivos, con las cuentas que lo conservan',
-    cuerpo: () => encabezado(exitoDesactivado) + catalogo({ activos: [PERSONAL, PRO, NUEVO, INSTITUCIONAL], inactivos: [[EQUIPO, HOY]] }) },
+    cuerpo: () => encabezado(exitoDesactivado) + catalogo({
+      activos: C.PLANES_TRAS_DESACTIVAR.activos,
+      inactivos: C.PLANES_TRAS_DESACTIVAR.inactivos,
+      desactivadoEl: C.PLANES_TRAS_DESACTIVAR.fecha,
+    }) },
 ];
 
 for (const v of ESTADOS) {
-  const file = v.estado === 'default' ? 'catalogo.html' : `catalogo--${v.estado}.html`;
-  const html = A.pagina({
+  const file = A.archivoDe('catalogo', v.estado);
+  A.escribir(OUT, file, A.pagina({
     titulo: `${v.form ? 'Nuevo plan' : 'Catálogo de planes'} · Administración · Nimbo — ${v.estado}`,
-    comentarios: [
-      `Mockup de referencia (spec 011: administración, catálogo de planes). Estado: ${v.estado}.`,
-      'Colores: valores de ui-guidelines.md §3 (tonos AA). La implementación usa tokens, components/ui y components/nimbo.',
-      'Generado con _generadores/catalogo/generar.js (marco del área en admin/area.js y CSS del marco en marco/marco.js). No editar a mano.',
-    ],
+    comentarios: A.comentariosDe('administración, catálogo de planes', v.estado, 'catalogo'),
     css: CSS,
     rotulo: v.form ? 'Nuevo plan' : 'Catálogo de planes',
     file,
@@ -380,7 +370,5 @@ for (const v of ESTADOS) {
     cuerpo: v.cuerpo(),
     dialogo: v.dialogo || '',
     actual: 'Catálogo de planes',
-  });
-  fs.writeFileSync(path.join(OUT, file), html, 'utf8');
-  console.log(file);
+  }));
 }

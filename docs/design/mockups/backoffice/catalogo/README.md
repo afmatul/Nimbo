@@ -7,22 +7,23 @@
   `Administración / Catálogo de planes [/ Nuevo plan]`; «Catálogo de planes» marcado en la barra lateral.
 - **Origen**: HTML autocontenido generado con `../../_generadores/catalogo/generar.js`; no se edita a mano. El marco del
   área (barra lateral, barra superior, cajón, avisos, distintivos, estados de pantalla, diálogo y formulario) sale de
-  `_generadores/admin/area.js`, el mismo de `backoffice/admin` y `backoffice/alta-interna`. Tonos AA de
+  `_generadores/admin/area.js`, el mismo de las cinco pantallas de `backoffice/`. Tonos AA de
   `ui-guidelines.md` §2–§3, solo Inter, versión móvil real a 360 px. Es referencia visual; `apps/web` no lo importa.
 - **Enlaces entre mockups** (rutas relativas): la barra lateral, el cajón, el logo y las migas llevan a Cuentas
   (`../admin/admin.html`), Catálogo de planes (`../catalogo/catalogo.html`) y Métricas (`../metricas/metricas.html`); «Nuevo plan» →
   `catalogo--creando.html`; «Volver al catálogo» y «Cancelar» del formulario → `catalogo.html`.
 - **Estados incluidos**:
   - default: los cuatro planes oficiales activos y «Planes inactivos (0)» con su mensaje vacío (`catalogo.html`)
-  - cargando (extra, CA-17): esqueleto de cuatro tarjetas y «Cargando el catálogo…» (`catalogo--cargando.html`)
-  - error (extra, CA-17): «No pudimos cargar el catálogo.» con «Reintentar» (`catalogo--error.html`)
+  - cargando (CA-17): esqueleto de cuatro tarjetas y «Cargando el catálogo…» (`catalogo--cargando.html`)
+  - error (CA-17): «No pudimos cargar el catálogo.» con «Reintentar» (`catalogo--error.html`)
   - creando: formulario «Nuevo plan» lleno a partir de Equipo, listo para crear (`catalogo--creando.html`)
-  - error-campos: precio negativo, máximo por archivo de 3 GB y 0 versiones; resumen y error en cada campo; no se
-    creó nada (`catalogo--error-campos.html`)
+  - error-campos: el `422` del servidor (CA-11) con lo escrito conservado: precio negativo, máximo por archivo de 3 GB y
+    0 versiones; resumen y error en cada campo; no se creó nada (`catalogo--error-campos.html`). El nombre repetido, que
+    solo detecta el servidor, usa el mismo patrón.
   - exito: «Creamos el plan Equipo 2027. Ya se ofrece a contrataciones nuevas.» con «Desactivar Equipo», y el plan
     nuevo entre los activos (`catalogo--exito.html`)
   - confirmar-desactivar: diálogo «¿Desactivar el plan Equipo?» con sus consecuencias (`catalogo--confirmar-desactivar.html`)
-  - desactivado (extra): aviso de éxito y Equipo entre los inactivos con «52 cuentas lo conservan»
+  - desactivado: aviso de éxito y Equipo entre los inactivos con «52 cuentas lo conservan»
     (`catalogo--desactivado.html`)
 - **Capturas**: `docs/design/capturas/backoffice/catalogo/` (`catalogo--<estado>--<360|1440>.png`, con
   movimiento reducido). En los ocho estados:
@@ -34,7 +35,8 @@ Los cuatro planes y todos sus valores son los oficiales (`product-context.md` §
 descripciones). En la app vienen de la API en centavos y bytes y la web los formatea (ADR-0016): Q con dos decimales,
 GB y TB en potencias de 1024 y cifras con `tabular-nums`. «Equipo 2027» (Q125.00, 500 GB, 1 GB, 5 editores,
 3 000 consultas, 60 versiones, 60 días) es un plan nuevo de ejemplo. Los conteos de cuentas por plan
-(1 012 + 186 + 52 + 22 clientes, más 12 internas) suman las 1 284 cuentas de `backoffice/admin`.
+(1 012 + 186 + 52 + 22 clientes, más 12 internas) suman las 1 284 cuentas de `backoffice/admin`. Planes y conteos salen
+de una sola fuente, `_generadores/admin/corpus.js`, que también leen la navegación y las métricas: no se desvían.
 
 ## Decisiones de UX
 1. **Tarjetas (PlanCard) en lugar de tabla**, también en escritorio: 11 columnas (nombre, precio, seis límites,
@@ -51,11 +53,8 @@ GB y TB en potencias de 1024 y cifras con `tabular-nums`. «Equipo 2027» (Q125.
 4. **Mensaje clave fijo arriba**: «Los planes no se editan: crea uno nuevo y desactiva el anterior.» + «Así, quien ya
    tiene un plan conserva su precio y sus límites.», y debajo «Crear o desactivar un plan queda en la auditoría con tu
    nombre y rol.» (RN-2, §5).
-5. **Sin edición de nombre ni descripción**: la spec solo prohíbe editar precio y límites (CA-11), pero un botón
-   «Editar» contradiría el mensaje clave y el nombre es lo que el cliente ve en su suscripción y sus facturas; cambiarlo
-   cambiaría lo que contrató a ojos de quien ya lo tiene. Una errata se corrige creando el plan bien y desactivando el
-   anterior mientras no tenga cuentas. Si el equipo la quiere, va como «Editar nombre y descripción» en la tarjeta y
-   requiere ajustar CA-11.
+5. **Un plan no se edita (RN-4)**: no hay botón «Editar» ni para el nombre ni para la descripción. Un nombre mal escrito
+   se corrige creando el plan bien y desactivando el anterior.
 6. **Personal sin botón**: en su lugar, un recuadro con candado «Plan por defecto · Es el plan gratuito: no se puede
    desactivar.» (texto visible, no un botón deshabilitado que no explica nada). El servidor lo rechaza igual (CA-11).
 7. **Conteo agregado de cuentas por plan** («186 cuentas con este plan»; en inactivos «52 cuentas lo conservan»): sin
@@ -90,16 +89,14 @@ GB y TB en potencias de 1024 y cifras con `tabular-nums`. «Equipo 2027» (Q125.
 15. **A 360 px**: una columna de tarjetas, «Nuevo plan» y «Desactivar» a todo el ancho con 44 px, campos y selectores
     de 44 px, acciones apiladas (la principal arriba) y el menú en el cajón del marco.
 
+## Resuelto en la spec (2026-10-06)
+- **Editores simultáneos = 0**: CA-11 lo admite (edición solo lectura, como Personal).
+- **Nombre repetido y `slug`**: los nombres son únicos y el `slug` de 006a lo deriva el servidor (RN-4). Mensaje del
+  nombre repetido: «Ya existe un plan con este nombre. Usa otro, por ejemplo Equipo 2027.».
+- **Fecha de desactivación**: el estado sale solo de `desactivado_en` (RN-4); la tarjeta muestra esa fecha.
+- **Reactivar un plan**: no se reactiva (CA-10); el diálogo lo dice.
+
 ## Pendiente
-- **Editores simultáneos = 0**: Personal tiene 0 (edición solo lectura) y la tarjeta lo muestra como «Ninguno · Edición
-  solo lectura», pero CA-11 rechaza «límites no positivos», así que un plan nuevo no podría ser de solo lectura. Hay
-  que decidir en la spec si `max_editores` admite 0 (y entonces el error de editores no aplica a 0).
-- **Nombre repetido y `slug`**: la tabla `plan` exige `slug` único (006a RN-2). Propuesta: el servidor lo genera del
-  nombre y rechaza un nombre igual a otro plan con «Ya existe un plan con este nombre. Usa otro, por ejemplo
-  Equipo 2027.». Lo fija el plan.
-- **Fecha de desactivación**: la tarjeta inactiva muestra «Desactivado el …»; si la columna `activo` es solo booleana,
-  hace falta la fecha (columna o lectura de la auditoría). Lo fija el plan.
-- **Reactivar un plan**: no está en la spec; el diálogo dice que no se puede. Si el equipo la quiere, cambia CA-10.
 - **«Sin permiso»** (Soporte u Operador abren `/admin/planes`, CA-14): pantalla común del marco, como en
   `backoffice/admin`; el servidor responde `403` `SHARED_FORBIDDEN`.
 - **«Creando…» y error del servidor sin campos** (red o `500`): mismo patrón que `alta-interna--enviando` y

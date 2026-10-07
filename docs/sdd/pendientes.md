@@ -43,6 +43,7 @@ decisiones; solo faltan los diagramas.
 | ID | Qué falta | Dónde | Origen | Resolver antes de | Responsable | Estado |
 |---|---|---|---|---|---|---|
 | PD-70 | Quitar o corregir «Que Administrador o Soporte vean o cierren sesiones de otra cuenta: 011»: la matriz (§2) no da esa capacidad y la 011 la deja fuera; suspender ya revoca las sesiones (002 D-10) | `specs/002-autenticacion-sesiones-y-dispositivos/spec.md` §fuera de alcance | Spec 011, P-10 | Cierre de 002 | Adrián | Abierto |
+| PD-73 | Al suspender una cuenta de cliente, sus comparticiones (012) y enlaces públicos (013) dejan de funcionar y vuelven como estaban al reactivarla; los datos no se borran (011 RN-6). Cada spec lo incluye en sus criterios y en su suite de aislamiento | `specs/012-…/spec.md` y `specs/013-…/spec.md` (criterios y suite de aislamiento) | Spec 011, RN-6 (revisión, I-7) | Specs de 012 y 013 | Fátima | Abierto |
 
 ## Decisiones abiertas
 
@@ -97,6 +98,8 @@ decisiones; solo faltan los diagramas.
 | PD-35 | El mockup aprobado de «Seguridad» tiene los dos fallos que se corrigieron en el layout: la cifra de un ítem al pasar el puntero da 4.39 (`muted-foreground` sobre `muted`) y el logo mide 36 px en móvil (menos de 44). Se corrige al implementar, sin tocar el mockup aprobado | Mockup del layout | Implementación de 002 | Adrián | Abierto |
 | PD-54 | `StateView` (000b): nivel del título configurable (`titleAs`; hoy siempre `h3`, la 404 queda sin `h1` y `/interno` salta de `h1` a `h3`), foco al título al montar sin contorno (`autoFocusTitle`/`titleRef`, hoy `useFocusTitleOnMount` de 003 busca el `h3`) y `StateAction` con `href` y `loading` (hoy la navegación usa botones con `router.push`) | Revisión 003 PR-F (UI-A, UI-B, UI-C) | Cierre de la Fase 1 | Fátima (000b) | Abierto |
 | PD-59 | Llevar el logo real (nube con destello de `docs/design/logos/`) a `marco.js` de los mockups, regenerar todos los mockups y aplicarlo en `AppLayout`; lo hace Adrián en una rama aparte | Revisión de mockups de 006 (2026-09-30) | — | Adrián | Abierto |
+| PD-72 | Los colores por tipo de archivo de los mockups (`--file-*` y `.ftile-*`) están copiados en cuatro generadores: `mis-archivos/mis-archivos.js` (dentro de `CSS_LISTA`), `resumen-espacio/generar.js`, `explorador/generar-orden.js` (`img`) y `soporte/generar.js` (011, con `img`). Sacarlos a una pieza única (p. ej. `CSS_TIPOS` con `img`) que importen los cuatro, sin cambiar sus capturas; los tres primeros son de storage (Adrián) | Revisión de la spec 011 (I-5) | Cierre de la Fase 2 | Fátima con Adrián | Abierto |
+| PD-74 | Los valores de los planes Personal y Equipo están escritos a mano en `_generadores/espacio/espacio.js`, `mis-archivos/mis-archivos.js` y `carpetas/carpetas.js`; la fuente única de los mockups es `_generadores/admin/corpus.js` (011). Que esos generadores la lean al regenerarse (sin cambiar sus capturas) | Revisión de la spec 011 (mockups) | Próxima regeneración de esos mockups | Adrián | Abierto |
 | PD-53 | Sugerencias del `ui-designer` al validar las plantillas de correo de 002 (T-28, T-29, T-58, T-59; aprobadas sin bloqueantes): (1) unificar el título del cuerpo con el asunto de cada correo; (2) actualizar `docs/design/mockups/identity/correos/README.md` con los correos de 002 (hoy su «Pendiente» los da por futuros) | Validación de T-69 de 002 | — | Adrián | Abierto |
 
 ## Cerrados

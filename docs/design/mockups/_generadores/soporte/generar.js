@@ -4,60 +4,62 @@
 // CA-14); la búsqueda por correo y la paginación son las mismas piezas de backoffice/admin (area.js). Los íconos de tipo
 // salen de mis-archivos/mis-archivos.js. Aquí solo va la vista de metadatos: sin contenido, texto, vista previa,
 // descarga, URL ni clave de objeto (RN-1); ninguna fila ni nombre es un enlace o un botón.
-const fs = require('node:fs');
-const path = require('node:path');
 const A = require('../admin/area.js');
+const C = require('../admin/corpus.js');
 const MA = require('../mis-archivos/mis-archivos.js');
+const E = require('../espacio/espacio.js');
 
-const repo = process.argv[2];
-if (!repo) throw new Error('Falta la ruta del worktree');
-const OUT = path.join(repo, 'docs/design/mockups/backoffice/soporte');
-fs.mkdirSync(OUT, { recursive: true });
+const OUT = A.carpetaDeSalida('soporte');
 
-// Íconos del área + los de tipo de archivo de 005 + imagen (Lucide «image»).
-const icon = MA.crearIcon({
-  ...A.P, ...MA.P,
-  image: '<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
-});
+// Íconos del área + los de tipo de archivo de 005 + imagen (Lucide «image», el mismo de espacio/espacio.js, 007).
+const icon = MA.crearIcon({ ...A.P, ...MA.P, image: E.P.image });
 
 // ---------- Datos de ejemplo (en la app vienen de la API) ----------
-// Laura Barrios: clienta del plan Equipo de la lista de cuentas de backoffice/admin (304 GB de 350 GB), la misma ficha
-// que tiene «Ver metadatos de archivos». Diego Coj: cliente recién registrado, sin archivos (0 B en la lista de cuentas).
-const LAURA = { nombre: 'Laura Barrios', correo: 'laura.barrios@alpha.gt' };
-const DIEGO = { nombre: 'Diego Coj', correo: 'diego.coj@gmail.com' };
-const TOTAL_ARCHIVOS = '214';
-const PAGINAS = '22';
+// Laura Barrios (la ficha que tiene «Ver metadatos de archivos») y Diego Coj (recién registrado, sin archivos) vienen del
+// corpus del área (admin/corpus.js), los mismos de la lista de cuentas de backoffice/admin.
+const { LAURA, DIEGO } = C;
+const TOTAL_ARCHIVOS = 214;
 
 // archivo.tipo (FileKind de 005: docx, pdf, texto, xlsx, pptx, imagen, otro) → ícono, token --file-* y etiqueta.
 const TIPOS = {
-  docx: ['fileText', 'docx', 'Documento Word'],
-  xlsx: ['sheet', 'xlsx', 'Hoja de cálculo'],
-  pptx: ['slides', 'pptx', 'Presentación'],
-  pdf: ['fileText', 'pdf', 'PDF'],
-  texto: ['fileText', 'other', 'Texto'],
-  imagen: ['image', 'img', 'Imagen'],
-  otro: ['file', 'other', 'Otro'],
+  docx: { icono: 'fileText', token: 'docx', etiqueta: 'Documento Word' },
+  xlsx: { icono: 'sheet', token: 'xlsx', etiqueta: 'Hoja de cálculo' },
+  pptx: { icono: 'slides', token: 'pptx', etiqueta: 'Presentación' },
+  pdf: { icono: 'fileText', token: 'pdf', etiqueta: 'PDF' },
+  texto: { icono: 'fileText', token: 'other', etiqueta: 'Texto' },
+  imagen: { icono: 'image', token: 'img', etiqueta: 'Imagen' },
+  otro: { icono: 'file', token: 'other', etiqueta: 'Otro' },
 };
 
-// [nombre, tipo, tamaño, creado, modificado, papelera (fecha de eliminado_en) o null]
-// Ordenados por última modificación, de la más reciente. Dos están en la papelera (eliminado_en, 006).
+// papelera: fecha de eliminado_en (006) si el archivo está en la papelera. Ordenados por última modificación, de la más
+// reciente; dos están en la papelera.
 const ARCHIVOS = [
-  ['Propuesta_Nimbo_v3.docx', 'docx', '2.4 MB', '14/09/2026 10:02', '03/10/2026 10:11', null],
-  ['Matriz_Requisitos_RF.xlsx', 'xlsx', '860 KB', '05/09/2026 16:20', '03/10/2026 09:12', null],
-  ['Demo_Fase3_avance.pptx', 'pptx', '18.7 MB', '01/10/2026 15:47', '03/10/2026 08:05', null],
-  ['Modelo_ER_Nimbo.pdf', 'pdf', '1.1 MB', '02/10/2026 14:03', '02/10/2026 14:03', null],
-  ['Grabacion_reunion_Alpha.mp4', 'otro', '742.3 MB', '30/09/2026 18:22', '30/09/2026 18:22', null],
-  ['Logo_Alpha_final.png', 'imagen', '3.6 MB', '29/09/2026 09:15', '29/09/2026 09:15', null],
-  ['Notas_entrevistas.md', 'texto', '14 KB', '10/09/2026 08:40', '28/09/2026 12:05', null],
-  ['Presupuesto_Q4_borrador.xlsx', 'xlsx', '1.3 MB', '22/09/2026 11:30', '25/09/2026 16:48', '02/10/2026'],
-  ['Contrato_servicios_Alpha.pdf', 'pdf', '412 KB', '08/09/2026 11:26', '08/09/2026 11:26', '01/10/2026'],
-  ['Respaldo_fotos_agosto.zip', 'otro', '980.2 MB', '03/09/2026 20:11', '03/09/2026 20:11', null],
+  { nombre: 'Propuesta_Nimbo_v3.docx', tipo: 'docx', tamano: '2.4 MB',
+    creado: '14/09/2026 10:02', modificado: '03/10/2026 10:11' },
+  { nombre: 'Matriz_Requisitos_RF.xlsx', tipo: 'xlsx', tamano: '860 KB',
+    creado: '05/09/2026 16:20', modificado: '03/10/2026 09:12' },
+  { nombre: 'Demo_Fase3_avance.pptx', tipo: 'pptx', tamano: '18.7 MB',
+    creado: '01/10/2026 15:47', modificado: '03/10/2026 08:05' },
+  { nombre: 'Modelo_ER_Nimbo.pdf', tipo: 'pdf', tamano: '1.1 MB',
+    creado: '02/10/2026 14:03', modificado: '02/10/2026 14:03' },
+  { nombre: 'Grabacion_reunion_Alpha.mp4', tipo: 'otro', tamano: '742.3 MB',
+    creado: '30/09/2026 18:22', modificado: '30/09/2026 18:22' },
+  { nombre: 'Logo_Alpha_final.png', tipo: 'imagen', tamano: '3.6 MB',
+    creado: '29/09/2026 09:15', modificado: '29/09/2026 09:15' },
+  { nombre: 'Notas_entrevistas.md', tipo: 'texto', tamano: '14 KB',
+    creado: '10/09/2026 08:40', modificado: '28/09/2026 12:05' },
+  { nombre: 'Presupuesto_Q4_borrador.xlsx', tipo: 'xlsx', tamano: '1.3 MB',
+    creado: '22/09/2026 11:30', modificado: '25/09/2026 16:48', papelera: '02/10/2026' },
+  { nombre: 'Contrato_servicios_Alpha.pdf', tipo: 'pdf', tamano: '412 KB',
+    creado: '08/09/2026 11:26', modificado: '08/09/2026 11:26', papelera: '01/10/2026' },
+  { nombre: 'Respaldo_fotos_agosto.zip', tipo: 'otro', tamano: '980.2 MB',
+    creado: '03/09/2026 20:11', modificado: '03/09/2026 20:11' },
 ];
 
 const AVISO_SOPORTE = 'Soporte ve metadatos de los archivos (nombre, tipo, tamaño, fechas y estado), nunca su contenido ni vistas previas.';
 
 // ---------- CSS ----------
-const CSS = A.CSS + A.CSS_FORM + `
+const CSS = A.CSS + `
   /* Propio de backoffice/soporte (spec 011: metadatos de los archivos de un cliente) */
   :root {
     /* Tipos de archivo (ui-guidelines §3): texto AA; fondo = tono base al 12 % */
@@ -137,7 +139,7 @@ ${A.CSS_PAGINACION_MQ600}    .sk-row { grid-template-columns: minmax(0, 1fr); pa
 `;
 
 // ---------- Piezas ----------
-const tile = (t) => { const [ic, cls] = TIPOS[t]; return `<span class="ftile ftile-${cls}">${icon(ic, 16)}</span>`; };
+const tile = (t) => `<span class="ftile ftile-${TIPOS[t].token}">${icon(TIPOS[t].icono, 16)}</span>`;
 const badgeEstado = (papelera) => (papelera
   ? `<span class="badge badge-idle">${icon('trash', 13)}En papelera</span>`
   : `<span class="badge badge-ok">${icon('ok', 13)}Disponible</span>`);
@@ -158,7 +160,8 @@ const busqueda = (valor = '') => A.busqueda({
   ayuda: 'Escribe el correo completo con el que el cliente inicia sesión.',
 });
 
-function cliente(c, quien = 'tu nombre y tu rol (Soporte)') {
+// Sección del cliente consultado: encabezado, aviso de auditoría y contenido (la tabla de metadatos o el vacío).
+function cliente(c, contenido, quien = 'tu nombre y tu rol (Soporte)') {
   return `
         <section aria-labelledby="cliente-t">
           <div class="client">
@@ -168,11 +171,12 @@ function cliente(c, quien = 'tu nombre y tu rol (Soporte)') {
             </div>
             <span class="badge badge-role">${icon('users', 13)}Cliente</span>
           </div>
-          <div class="info-box audit-box">${icon('history', 16)}<p><strong>Esta consulta queda en la auditoría de ${c.nombre.split(' ')[0]}.</strong>Verá la fecha, ${quien}.</p></div>`;
+          <div class="info-box audit-box">${icon('history', 16)}<p><strong>Esta consulta queda en la auditoría de ${c.nombre.split(' ')[0]}.</strong>Verá la fecha, ${quien}.</p></div>${contenido}
+        </section>`;
 }
 
-function fila([nombre, t, tam, creado, mod, papelera]) {
-  const tipo = TIPOS[t][2];
+function fila({ nombre, tipo: t, tamano: tam, creado, modificado: mod, papelera }) {
+  const tipo = TIPOS[t].etiqueta;
   return `
                 <tr>
                   <td class="c-nombre"><div class="fname">${tile(t)}<div class="fname-text"><span class="fn">${nombre}</span><span class="t-tipo">${tipo} · ${tam}</span><div class="m-meta"><span>${tipo} · ${tam}</span><span>Modificado: ${mod}</span><span>Creado: ${creado}</span><span>${badgeEstado(papelera)}${desde(papelera)}</span></div></div></div></td>
@@ -193,8 +197,7 @@ function tabla(c) {
               <tbody>${ARCHIVOS.map(fila).join('')}
               </tbody>
             </table>
-          </div>${A.paginacion({ aria: `Paginación de los archivos de ${c.nombre}`, resumen: `Mostrando 1–10 de ${TOTAL_ARCHIVOS} archivos`, paginas: PAGINAS })}
-        </section>`;
+          </div>${A.paginacion({ aria: `Paginación de los archivos de ${c.nombre}`, total: TOTAL_ARCHIVOS, cosas: 'archivos' })}`;
 }
 
 const inicial = () => `
@@ -209,8 +212,7 @@ const vacio = (c) => `
             ${icon('folder', 36)}
             <h2 id="vacio-t">${c.nombre} no tiene archivos.</h2>
             <p>No hay archivos en su cuenta ni en su papelera. Las cargas que no terminaron no aparecen aquí.</p>
-          </div>
-        </section>`;
+          </div>`;
 
 const noEncontrado = (q) => `
         <section class="state state-empty" role="status" aria-labelledby="nf-t">
@@ -243,7 +245,7 @@ const error = () => A.estadoError('No pudimos completar la búsqueda.', 'Revisa 
 
 // Vista del Administrador (desde «Ver metadatos de archivos» de la ficha): mismo contenido, en su área y sin buscador.
 // «Volver a la ficha» y la miga con el nombre llevan a la ficha de Laura Barrios activa (backoffice/admin, estado ficha).
-const FICHA_LAURA = '../admin/admin--ficha.html';
+const FICHA_LAURA = `../admin/${LAURA.ficha}`;
 function desdeAdmin() {
   return `
         <a class="back" href="${FICHA_LAURA}">${icon('arrowLeft', 16)}Volver a la ficha de ${LAURA.nombre}</a>
@@ -252,36 +254,32 @@ function desdeAdmin() {
             <h1>Metadatos de archivos</h1>
             <p>Nombre, tipo, tamaño, fechas y estado de los archivos de esta cuenta.</p>
           </div>
-        </div>${A.privacidad()}${cliente(LAURA, 'tu nombre y tu rol (Administrador)')}${tabla(LAURA)}`;
+        </div>${A.privacidad()}${cliente(LAURA, tabla(LAURA), 'tu nombre y tu rol (Administrador)')}`;
 }
 
 // ---------- Estados ----------
 const VARIANTES = [
   { estado: 'default', titulo: 'metadatos de los archivos de una clienta, con la consulta en su auditoría',
-    cuerpo: () => encabezado() + busqueda(LAURA.correo) + cliente(LAURA) + tabla(LAURA) },
+    cuerpo: () => encabezado() + busqueda(LAURA.correo) + cliente(LAURA, tabla(LAURA)) },
   { estado: 'inicial', titulo: 'antes de buscar: qué se verá y que la consulta se audita',
     cuerpo: () => encabezado() + busqueda() + inicial() },
   { estado: 'cargando', titulo: 'esqueleto mientras se busca la cuenta y llegan sus archivos',
     cuerpo: () => encabezado() + busqueda(LAURA.correo) + cargando() },
   { estado: 'vacio', titulo: 'cliente sin archivos (ni en la papelera)',
-    cuerpo: () => encabezado() + busqueda(DIEGO.correo) + cliente(DIEGO) + vacio(DIEGO) },
+    cuerpo: () => encabezado() + busqueda(DIEGO.correo) + cliente(DIEGO, vacio(DIEGO)) },
   { estado: 'no-encontrado', titulo: 'correo inexistente o que no es de cliente: el mismo mensaje (003 D-6)',
     cuerpo: () => encabezado() + busqueda('lucia.barios@gmail.com') + noEncontrado('lucia.barios@gmail.com') },
   { estado: 'error', titulo: 'falló la búsqueda: error con «Reintentar»',
     cuerpo: () => encabezado() + busqueda(LAURA.correo) + error() },
   { estado: 'desde-admin', titulo: 'la misma vista para el Administrador, desde la ficha de la cuenta', area: A.AREA_ADMIN,
-    actual: 'Cuentas', crumbs: ['Administración', 'Cuentas', [LAURA.nombre, FICHA_LAURA], 'Metadatos de archivos'], cuerpo: desdeAdmin },
+    actual: 'Cuentas', crumbs: ['Administración', 'Cuentas', { etiqueta: LAURA.nombre, href: FICHA_LAURA }, 'Metadatos de archivos'], cuerpo: desdeAdmin },
 ];
 
 for (const v of VARIANTES) {
-  const file = v.estado === 'default' ? 'soporte.html' : `soporte--${v.estado}.html`;
-  const html = A.pagina({
+  const file = A.archivoDe('soporte', v.estado);
+  A.escribir(OUT, file, A.pagina({
     titulo: `Metadatos de archivos · ${v.area ? 'Administración' : 'Soporte'} · Nimbo — ${v.estado}`,
-    comentarios: [
-      `Mockup de referencia (spec 011: metadatos de los archivos de un cliente, HU-5, CA-13). Estado: ${v.estado}.`,
-      'Colores: valores de ui-guidelines.md §3 (tonos AA). La implementación usa tokens, components/ui y components/nimbo.',
-      'Generado con _generadores/soporte/generar.js (marco del área en admin/area.js y CSS del marco en marco/marco.js). No editar a mano.',
-    ],
+    comentarios: A.comentariosDe('metadatos de los archivos de un cliente, HU-5, CA-13', v.estado, 'soporte'),
     css: CSS,
     rotulo: 'Metadatos de archivos',
     file,
@@ -290,7 +288,5 @@ for (const v of VARIANTES) {
     cuerpo: v.cuerpo(),
     actual: v.actual || 'Metadatos de archivos',
     area: v.area || A.AREA_SOPORTE,
-  });
-  fs.writeFileSync(path.join(OUT, file), html, 'utf8');
-  console.log(file);
+  }));
 }

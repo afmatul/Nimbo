@@ -4,52 +4,35 @@
 // estados de pantalla y página) viene de admin/area.js, el mismo de backoffice/admin, alta-interna y catalogo. Aquí solo
 // van los totales, las dos tablas con barras y sus estados. Sin librerías de gráficos: HTML y CSS.
 // El estado «operador» es la misma pantalla en el área del Operador (AREA_OPERADOR de area.js): solo «Métricas».
-const fs = require('node:fs');
-const path = require('node:path');
 const A = require('../admin/area.js');
+const C = require('../admin/corpus.js');
 
-const repo = process.argv[2];
-if (!repo) throw new Error('Falta la ruta del worktree');
-const OUT = path.join(repo, 'docs/design/mockups/backoffice/metricas');
-fs.mkdirSync(OUT, { recursive: true });
+const OUT = A.carpetaDeSalida('metricas');
 
 const { icon, badgeInactivo } = A;
+const { miles, CLIENTES, INTERNAS, TOTAL_CUENTAS } = C;
 
 // ---------- Datos de ejemplo (en la app vienen de la API; solo conteos y una suma, nunca filas) ----------
-// Cuadran con los mockups aprobados: 1 284 cuentas en la navegación (A.TOTAL) = 1 272 clientes + 12 internas, y por plan
-// los conteos del catálogo (1 012 + 186 + 52 + 22 = 1 272). Por estado: 1 275 activas + 9 suspendidas = 1 284.
+// Planes y conteos del corpus del área (admin/corpus.js), los mismos de la navegación y del catálogo: no se desvían.
 // Porcentajes con un decimal, calculados en la web sobre el total de cada tabla.
-const CLIENTES = 1272;
-const INTERNAS = 12;
-const TOTAL = CLIENTES + INTERNAS; // 1 284
 const ESTADOS = [
-  { id: 'activa', nombre: 'Activas', n: 1275, badge: 'badge-ok', ic: 'ok' },
-  { id: 'suspendida', nombre: 'Suspendidas', n: 9, badge: 'badge-off', ic: 'ban' },
+  { nombre: 'Activas', n: TOTAL_CUENTAS - C.SUSPENDIDAS, badge: 'badge-ok', ic: 'ok' },
+  { nombre: 'Suspendidas', n: C.SUSPENDIDAS, badge: 'badge-off', ic: 'ban' },
 ];
 // Planes en el orden del catálogo (por precio). inactivo: ya no se ofrece, pero aún tiene cuentas.
-const PLANES = [
-  { nombre: 'Personal', n: 1012 },
-  { nombre: 'Pro', n: 186 },
-  { nombre: 'Equipo', n: 52 },
-  { nombre: 'Institucional', n: 22 },
-];
-// Mismo momento que catalogo--desactivado: Equipo inactivo con sus 52 cuentas y Equipo 2027 activo, aún sin cuentas.
+const conteo = (p, inactivo = false) => ({ nombre: p.nombre, n: p.cuentas, inactivo });
+const PLANES = C.PLANES.map((p) => conteo(p));
+// Mismo momento que catalogo--desactivado: los activos (con el plan nuevo, aún sin cuentas) y después los inactivos.
 const PLANES_CON_INACTIVO = [
-  { nombre: 'Personal', n: 1012 },
-  { nombre: 'Pro', n: 186 },
-  { nombre: 'Equipo 2027', n: 0 },
-  { nombre: 'Institucional', n: 22 },
-  { nombre: 'Equipo', n: 52, inactivo: true },
+  ...C.PLANES_TRAS_DESACTIVAR.activos.map((p) => conteo(p)),
+  ...C.PLANES_TRAS_DESACTIVAR.inactivos.map((p) => conteo(p, true)),
 ];
 // Suma de usuario.espacio_usado (bytes) de las cuentas de clientes, formateada en la web (potencias de 1024).
 const ESPACIO = '39.4 TB';
 
-if (ESTADOS.reduce((s, e) => s + e.n, 0) !== TOTAL) throw new Error('Los estados no suman el total');
-for (const l of [PLANES, PLANES_CON_INACTIVO]) if (l.reduce((s, p) => s + p.n, 0) !== CLIENTES) throw new Error('Los planes no suman los clientes');
-
-// Formato de la web: miles separados por un espacio que no se parte (como «1 284» de la navegación) y un decimal.
-const miles = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-const pct = (n, total) => `${(Math.round((n / total) * 1000) / 10).toFixed(1)} %`;
+// Porcentaje con un decimal: el mismo valor para el texto y para el ancho de la barra.
+const porcentaje = (n, total) => (Math.round((n / total) * 1000) / 10).toFixed(1);
+const pct = (n, total) => `${porcentaje(n, total)} %`;
 
 // ---------- CSS ----------
 const CSS = A.CSS + `
@@ -105,14 +88,13 @@ const encabezado = `
             <h1>Métricas</h1>
             <p>Cómo se usa Nimbo, en totales.</p>
           </div>
-        </div>
-        <div class="privacy">${icon('lock', 16)}<p>Son datos agregados: solo totales y conteos, sin información de ninguna cuenta ni de sus archivos.</p></div>`;
+        </div>${A.privacidad('Son datos agregados: solo totales y conteos, sin información de ninguna cuenta ni de sus archivos.')}`;
 
 const totales = `
         <dl class="kpis">
           <div class="card kpi">
             <dt>${icon('users', 16)}Cuentas en total</dt>
-            <dd class="kpi-value">${miles(TOTAL)}</dd>
+            <dd class="kpi-value">${miles(TOTAL_CUENTAS)}</dd>
             <dd class="kpi-sub">${miles(CLIENTES)} de clientes y ${miles(INTERNAS)} internas</dd>
           </div>
           <div class="card kpi">
@@ -122,9 +104,9 @@ const totales = `
           </div>
         </dl>`;
 
-const barra = (n, total) => `<span class="bar" aria-hidden="true"><span style="width: ${((n / total) * 100).toFixed(1)}%"></span></span>`;
+const barra = (n, total) => `<span class="bar" aria-hidden="true"><span style="width: ${porcentaje(n, total)}%"></span></span>`;
 
-// filas: [{ nombre (HTML), n, clase }]; columna: encabezado del porcentaje.
+// filas: [{ nombre (HTML), n, clase }]; col: encabezado de la primera columna; colPct: encabezado del porcentaje.
 function tabla({ id, titulo, sub, caption, col, filas, total, totalEtiqueta, colPct, nota = '' }) {
   const cuerpo = filas.map((f) => `
               <tr${f.clase ? ` class="${f.clase}"` : ''}>
@@ -147,10 +129,10 @@ function tabla({ id, titulo, sub, caption, col, filas, total, totalEtiqueta, col
 }
 
 const porEstado = () => tabla({
-  id: 'estado-t', titulo: 'Cuentas por estado', sub: `Las ${miles(TOTAL)} cuentas, de clientes e internas.`,
+  id: 'estado-t', titulo: 'Cuentas por estado', sub: `Las ${miles(TOTAL_CUENTAS)} cuentas, de clientes e internas.`,
   caption: 'Cuentas por estado: número de cuentas y porcentaje del total', col: 'Estado', colPct: '% del total',
   filas: ESTADOS.map((e) => ({ nombre: `<span class="badge ${e.badge}">${icon(e.ic, 13)}${e.nombre}</span>`, n: e.n })),
-  total: TOTAL, totalEtiqueta: 'Total',
+  total: TOTAL_CUENTAS, totalEtiqueta: 'Total',
 });
 
 const porPlan = (planes) => tabla({
@@ -160,7 +142,7 @@ const porPlan = (planes) => tabla({
   filas: planes.map((p) => ({ nombre: p.inactivo ? `${p.nombre}${badgeInactivo}` : p.nombre, n: p.n, clase: p.inactivo ? 'is-off' : '' })),
   total: CLIENTES, totalEtiqueta: 'Total de clientes',
   nota: `
-            <p class="note">${icon('info', 15)}<span>Las ${miles(INTERNAS)} cuentas internas no tienen plan; con ellas suman las ${miles(TOTAL)} cuentas.</span></p>`,
+            <p class="note">${icon('info', 15)}<span>Las ${miles(INTERNAS)} cuentas internas no tienen plan; con ellas suman las ${miles(TOTAL_CUENTAS)} cuentas.</span></p>`,
 });
 
 const tablas = (planes) => `
@@ -194,19 +176,15 @@ const VARIANTES = [
   { estado: 'operador', titulo: 'vista del Operador: las mismas métricas, en solo lectura, en su área (solo «Métricas»)',
     area: A.AREA_OPERADOR, crumbs: ['Operación', 'Métricas'],
     cuerpo: () => encabezado + totales + tablas(PLANES) },
-  { estado: 'con-plan-inactivo', titulo: 'Equipo desactivado con 52 cuentas: aparece con su marca «Inactivo» (como catalogo--desactivado)',
+  { estado: 'con-plan-inactivo', titulo: `${C.EQUIPO.nombre} desactivado con ${C.EQUIPO.cuentas} cuentas: aparece con su marca «Inactivo» (como catalogo--desactivado)`,
     cuerpo: () => encabezado + totales + tablas(PLANES_CON_INACTIVO) },
 ];
 
 for (const v of VARIANTES) {
-  const file = v.estado === 'default' ? 'metricas.html' : `metricas--${v.estado}.html`;
-  const html = A.pagina({
+  const file = A.archivoDe('metricas', v.estado);
+  A.escribir(OUT, file, A.pagina({
     titulo: `Métricas · ${(v.area || A.AREA_ADMIN).etiqueta} · Nimbo — ${v.estado}`,
-    comentarios: [
-      `Mockup de referencia (spec 011: administración, métricas agregadas, CA-12). Estado: ${v.estado}.`,
-      'Colores: valores de ui-guidelines.md §3 (tonos AA). La implementación usa tokens, components/ui y components/nimbo.',
-      'Generado con _generadores/metricas/generar.js (marco del área en admin/area.js y CSS del marco en marco/marco.js). No editar a mano.',
-    ],
+    comentarios: A.comentariosDe('administración, métricas agregadas, CA-12', v.estado, 'metricas'),
     css: CSS,
     rotulo: 'Métricas',
     file,
@@ -215,7 +193,5 @@ for (const v of VARIANTES) {
     cuerpo: v.cuerpo(),
     actual: 'Métricas',
     area: v.area || A.AREA_ADMIN,
-  });
-  fs.writeFileSync(path.join(OUT, file), html, 'utf8');
-  console.log(file);
+  }));
 }

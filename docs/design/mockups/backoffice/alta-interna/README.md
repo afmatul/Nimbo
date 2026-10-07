@@ -15,9 +15,9 @@
   - default: formulario vacío, sin rol elegido (`alta-interna.html`)
   - error-campos: validación en el navegador; nombre vacío, correo inválido y rol sin elegir, con resumen y error en
     cada campo; no se envió nada (`alta-interna--error-campos.html`)
-  - error-conflicto (extra): el servidor rechaza el alta (CA-6) porque el correo ya tiene cuenta y el código de empleado
+  - error-conflicto: el servidor rechaza el alta (CA-6) porque el correo ya tiene cuenta y el código de empleado
     ya existe; nada cambió (`alta-interna--error-conflicto.html`)
-  - enviando (extra): «Creando cuenta…» con el botón ocupado y los campos de solo lectura (`alta-interna--enviando.html`)
+  - enviando: «Creando cuenta…» con el botón ocupado y los campos de solo lectura (`alta-interna--enviando.html`)
   - exito: «Creamos la cuenta de Rodrigo Pérez. Le enviamos un enlace a rodrigo.perez@nimbo.gt para que fije su
     contraseña.», con «Volver a cuentas» y «Crear otra cuenta» (`alta-interna--exito.html`)
 - **Capturas**: `docs/design/capturas/backoffice/alta-interna/` (`alta-interna--<estado>--<360|1440>.png`). En los cinco
