@@ -2,6 +2,7 @@
 
 - **Spec**: 017 — previsualización (CA-1, CA-2, CA-5, CA-6, CA-9, CA-12; §6 Experiencia de usuario). Plan §2.5
   (slot `firstAction`, retorno y foco). Tarea T-05.
+- **Estado**: Aprobado por Adrián (2026-10-07); el texto plano (TXT/MD) se queda en Inter.
 - **Propuesta presentada**: no hay (diseño interno; P-3 de la spec: pantalla propia dentro del layout de la app).
 - **Origen**: HTML autocontenido, un archivo por estado, generado con `generar.js` de esta carpeta; no se edita a mano.
   El generador vive aquí (y no en `_generadores/`) porque T-05 solo toca esta carpeta. Reutiliza sin cambios
@@ -38,9 +39,8 @@ node docs/design/mockups/storage/vista-previa/generar.js "$(pwd)"
 Capturas: `docs/design/capturas/storage/vista-previa/vista-previa--<estado>--<360|1440>.png` (36), con
 `_generadores/pw/capturar-rutas.js` (Playwright instalado aparte, como indica `_generadores/README.md`).
 Verificación con `_generadores/pw/axe-seguridad.js`: sin desbordamiento horizontal a 360 px, objetivos ≥ 24 px (44 px en
-móvil), sin errores de consola y sin violaciones de axe propias de la pantalla. La única violación (`serious`
-`label-content-name-mismatch` en `.account-btn`) es del marco compartido y aparece igual en `resumen-espacio` y demás
-mockups: se corrige en `marco.js`, fuera de 017.
+móvil), sin errores de consola y sin violaciones de axe. La violación `label-content-name-mismatch` del marco compartido
+(botón de la cuenta y logo) se corrigió en `marco.js` el 2026-10-07: el nombre accesible sale del texto visible.
 
 ## Decisiones de UX
 - **Estructura**: «Volver» (botón visible a 360 y 1440 px, nombre accesible «Volver a {carpeta}») → nombre del archivo
