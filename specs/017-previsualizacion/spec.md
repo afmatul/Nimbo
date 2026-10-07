@@ -1,6 +1,6 @@
 # Spec 017 — Previsualización
 
-> Qué y por qué. Borrador: no quedan preguntas abiertas. Antes de `/plan 017` debe registrarse el ADR indicado en §5. La aprobación de Adrián sigue pendiente.
+> Qué y por qué. Borrador: no quedan preguntas abiertas. ADR-0025 registrado antes de `/plan 017`, en estado Propuesto; falta el acuerdo del equipo sobre IX.7 (PD-69). La aprobación de Adrián sigue pendiente.
 
 | Campo | Valor |
 |---|---|
@@ -10,14 +10,14 @@
 | Requisitos | RF-27 (principal, Debería); RF-05, RF-09 y RNF-05, RNF-06, RNF-07, RNF-09, RNF-13, RNF-14, RNF-17 (restricciones transversales) |
 | Depende de | 005 — carga-y-descarga |
 | Hallazgo relacionado | Al integrar la 017, DF-15 queda parcial: se acepta `PreviewService`. El resto del hallazgo sigue abierto |
-| Última actualización | 2026-10-04 |
+| Última actualización | 2026-10-06 |
 
 ## 1. Contexto y objetivo
 La descarga de 005 permite recuperar un archivo, pero no consultarlo mediante una vista previa.
 RF-27 pide previsualizar PDF, XLSX, PPTX, texto e imagen para que el cliente consulte su contenido sin editarlo.
 Esta spec define esa lectura, sus errores y las garantías de privacidad; no amplía permisos ni sustituye la descarga.
 DOCX no forma parte del alcance de 017.
-Fuentes: `product-context.md` §2–4, §6–7; 005 CA-13/14/16/17; constitución IX/XII/XIII y ADR-0005.
+Fuentes: `product-context.md` §2–4, §6–7; 005 CA-13/14/16/17; constitución IX/XII/XIII, ADR-0005 y [ADR-0025 (Propuesto)](../../docs/adr/0025-inline-solo-en-previsualizacion-aislada.md).
 
 ## 2. Historias de usuario
 - **HU-1** Como cliente con acceso a un archivo, quiero consultar su vista previa para reconocer su contenido sin modificarlo.
@@ -50,8 +50,8 @@ Fuentes: `product-context.md` §2–4, §6–7; 005 CA-13/14/16/17; constitució
 - **Sí toca contenido de clientes:** la vista previa debe impedir acceso entre clientes distintos y acceso de Administrador, Soporte u Operador al contenido de clientes (CA-3 a CA-5).
 - La autorización limita los datos antes de entregarlos, conforme a RF-05, RNF-05 y ADR-0005; ocultar controles o filtrar después no concede acceso.
 - Los roles internos nunca reciben contenido ni vistas previas; el estado «sin permiso» no revela datos del recurso.
-- Se mantienen origen aislado y descarga forzada de la constitución IX y RNF-07. La descarga forzada de 005 no cambia.
-- Esta lectura de la constitución IX.7 se registra en un ADR antes del plan: `inline` solo en la URL de vista y solo en el origen aislado.
+- Se mantiene el origen aislado de la constitución IX y RNF-07. La descarga de 005 conserva `Content-Disposition: attachment` y `Content-Type: application/octet-stream`.
+- [ADR-0025 (Propuesto)](../../docs/adr/0025-inline-solo-en-previsualizacion-aislada.md) registra antes del plan la interpretación de IX.7: `inline` solo en la URL temporal de vista y solo en el origen aislado. IX.7 no distingue literalmente vista de descarga; esta interpretación requiere acuerdo de los cuatro integrantes en revisión (PD-69), antes de aprobar el plan. El registro no autoriza la implementación.
 - Las bitácoras excluyen contenido, nombres, credenciales, claves de enlace/objeto y URLs firmadas (CA-10), también en errores.
 
 ## 6. Experiencia de usuario
@@ -70,10 +70,10 @@ Fuentes: `product-context.md` §2–4, §6–7; 005 CA-13/14/16/17; constitució
 - Historial/restauración, búsqueda, indexación, OCR u optimización.
 - Cambiar carga, descarga, cuotas, catálogo comercial, autorización o ciclo de suscripciones existentes.
 - La 010 debe conservar la vista previa cuando la cuenta pase a solo lectura por vencimiento.
-- Elegir tecnología, librerías, contratos, persistencia o procesos; corresponde al plan después de registrar el ADR indicado en §5.
+- Elegir tecnología, librerías, contratos, persistencia o procesos; corresponde al plan con ADR-0025 registrado en §5 y su aceptación pendiente explícita.
 
 ## 8. Preguntas
-- **P-1 [RESUELTA] — bloquea: no.** La vista previa usa una URL distinta de descarga, de 5 minutos y un solo objeto, en origen aislado, con `Content-Disposition: inline`, `nosniff` y MIME del catálogo de 005. La descarga de 005 permanece en `attachment` y `application/octet-stream`. La interpretación de IX.7 se registra en ADR antes del plan.
+- **P-1 [RESUELTA] — bloquea: no.** La vista previa usa una URL distinta de descarga, de 5 minutos y un solo objeto, en origen aislado, con `Content-Disposition: inline`, `nosniff` y MIME del catálogo de 005. La descarga de 005 permanece en `attachment` y `application/octet-stream`. La interpretación de IX.7 está registrada en ADR-0025 (Propuesto); su aceptación se sigue en PD-69 y no se da por obtenida al resolver esta pregunta.
 - **P-3 [RESUELTA] — bloquea: no.** Se crea el mockup en `docs/design/mockups/storage/vista-previa/`. Lo hace Adrián. No se reutiliza el explorador ni otra pantalla como visor; el layout de la app sí se reutiliza.
 - **P-4 [RESUELTA] — bloquea: no.** «Imágenes» en RF-27 corresponde a PNG, JPG/JPEG, GIF y WebP. SVG, BMP y HEIC quedan como no previsualizables.
 - **P-5 [RESUELTA] — bloquea: no.** Se fija la cobertura y comportamiento observable por formato en CA-1 y CA-2: PDF completo sin JavaScript, imagen tal cual, TXT/MD literal, XLSX por valores de cada hoja sin recalcular, PPTX por texto de cada diapositiva sin animaciones, y tratamiento explícito de vacío/corrupción/protección sin límite adicional de tamaño.
@@ -87,3 +87,4 @@ Fuentes: `product-context.md` §2–4, §6–7; 005 CA-13/14/16/17; constitució
 | 2026-10-04 | Revisión de alcance: DOCX sale de 017; se eliminan referencias a specs no dependientes y CA-7 queda limitado a indisponibilidad de preview | Aplicar hallazgos de revisión y mantener solo la dependencia directa 005 | Pendiente de Adrián |
 | 2026-10-04 | Revisión de Matul: se resuelven P-1, P-3, P-4, P-5 y P-6; se fijan CA-11/12, cobertura por formato, rechazos, rate limit, DF-15 y UX | Dejar la spec sin preguntas abiertas; el ADR de IX.7 queda pendiente antes de `/plan 017`, sin crear plan ni código | Pendiente de Adrián |
 | 2026-10-04 | Pendiente para 016: al redactarla debe incluir la apertura DOCX en solo lectura, incluido Personal, mediante ONLYOFFICE | Mantener trazabilidad de la lectura DOCX fuera de 017 | Pendiente de Adrián |
+| 2026-10-06 | Registrar y enlazar ADR-0025 (Propuesto) y PD-69; explicitar la tensión literal con IX.7 y la aceptación pendiente | Documentar `inline` solo para la URL temporal de vista aislada antes de `/plan 017`, preservando descarga de 005 | Pendiente del equipo (IX.7) y de Adrián (spec) |

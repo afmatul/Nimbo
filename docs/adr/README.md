@@ -30,6 +30,7 @@ Son la base para defender la arquitectura en la exposición final (enunciado §6
 | 0022 | [`storage` declara `IPlanLimitsProvider`](0022-storage-declara-iplanlimitsprovider.md) (DF-51, opción A) | Aceptado |
 | 0023 | [SDD express desde la Fase 2: plan obligatorio, artefactos cortos y un PR por spec](0023-sdd-express-desde-la-fase-2.md) (reemplaza 0009; cambia constitución Art. I.2) | Aceptado |
 | 0024 | [Avisos no bloqueantes con `sonner` (toast de shadcn/ui); errores siguen como `Alert`](0024-avisos-no-bloqueantes-con-sonner.md) (menor; spec 006) | Aceptado |
+| 0025 | [Permitir `inline` solo en la URL temporal de previsualización aislada](0025-inline-solo-en-previsualizacion-aislada.md) (interpretación propuesta de constitución IX.7; specs 017 y 005) | Propuesto |
 
 Estados: `Pendiente` (sin redactar) · `Propuesto` (redactado, falta acuerdo del equipo) · `Aceptado` · `Reemplazado por`.
 Los ADR 0001, 0002, 0008, 0009, 0014 y 0015 se aceptaron el 26/09/2026 (Adrián, parte de ADR de la T-27 de la spec 000).
@@ -43,5 +44,6 @@ ADR-0016 se aceptó el 29/09/2026: cierra DF-23 y DF-24. `Money` y `transaccion.
 ADR-0022 se aceptó el 29/09/2026: opción A de DF-51. El 0021 sigue siendo el de mantenimiento sin actor.
 El 0023 lo redactó y lo aceptó Adrián el 30/09/2026 al adoptar SDD express; reemplaza al 0009 y cambia el Art. I.2 de la constitución.
 El 0024 lo redactó el `architect` y lo aprobó Adrián el 30/09/2026 (dependencia `sonner`, spec 006).
+El 0025 se registró el 06/10/2026 a propuesta de Abel, antes de `/plan 017`: falta el acuerdo de los cuatro integrantes sobre IX.7 (PD-69). La descarga de 005 conserva `attachment` y `application/octet-stream`.
 
 Usa `/adr <decisión>` para redactar uno.
