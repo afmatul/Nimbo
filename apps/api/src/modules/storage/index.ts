@@ -4,6 +4,6 @@
 export { I_PLAN_LIMITS_PROVIDER } from './application/plan-limits';
 export type { IPlanLimitsProvider, PlanLimits } from './application/plan-limits';
 export { StoragePreviewFacade } from './application/storage-preview.facade';
-export type { PreviewDelivery, PreviewFile } from './application/storage-preview.facade';
+export type { PreviewDelivery } from './application/storage-preview.facade';
 export { StorageModule } from './storage.module';
 export { StorageWorkerModule } from './storage-worker.module';

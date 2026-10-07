@@ -117,7 +117,8 @@ export class FileService {
    */
   async getDownloadUrl(actor: Actor, fileId: string): Promise<DownloadUrl> {
     await this.assertWithinRate(actor);
-    const { file, url, expiresAt } = await this.urlIssuer.issue(actor, fileId);
+    const file = await this.urlIssuer.resolve(actor, fileId);
+    const { url, expiresAt } = await this.urlIssuer.sign(file);
     await this.recordIssued(actor, file);
     this.logger.info({ event: 'download.url_issued', fileId: file.id });
     return { url, expiresAt };

@@ -1,10 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import type { FileSummary } from '@nimbo/contracts';
+
 import type { Actor } from '../../shared';
 
 import * as storage from './index';
-import type { IPlanLimitsProvider, PlanLimits, PreviewDelivery, PreviewFile } from './index';
+import type { IPlanLimitsProvider, PlanLimits, PreviewDelivery } from './index';
 
 /** Igualdad estricta de tipos (patrón de `type-challenges`); un fallo aquí lo detecta `pnpm typecheck`. */
 type Equal<X, Y> =
@@ -30,25 +32,11 @@ type _LimitsForSignature = Expect<
   Equal<IPlanLimitsProvider['limitsFor'], (actor: Actor) => Promise<PlanLimits>>
 >;
 
-/** 017 plan §2.3: la vista previa recibe archivo (sin clave, versión ni propietario), URL y vencimiento. */
-type _PreviewFileShape = Expect<
-  Equal<
-    PreviewFile,
-    {
-      readonly id: string;
-      readonly name: string;
-      readonly kind: 'docx' | 'pdf' | 'texto' | 'xlsx' | 'pptx' | 'imagen' | 'otro';
-      readonly folderId: string | null;
-      readonly sizeBytes: bigint;
-      readonly createdAt: Date;
-      readonly updatedAt: Date;
-    }
-  >
->;
+/** 017 plan §2.3: la vista previa recibe el `FileSummary` del cliente (D-13), la URL y su vencimiento. */
 type _PreviewDeliveryShape = Expect<
   Equal<
     PreviewDelivery,
-    { readonly file: PreviewFile; readonly url: string; readonly expiresAt: Date }
+    { readonly file: FileSummary; readonly url: string; readonly expiresAt: Date }
   >
 >;
 type _IssueUrlSignature = Expect<

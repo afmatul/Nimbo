@@ -73,7 +73,7 @@ describe('StoragePreviewFacade.issueUrl → GET a MinIO (017 CA-8, CA-11)', () =
     expect(delivery.file).toMatchObject({
       id: file.id,
       kind: 'texto',
-      sizeBytes: BigInt(SMALL_BYTES),
+      sizeBytes: SMALL_BYTES,
     });
   });
 

@@ -66,7 +66,7 @@ describe('StoragePreviewFacade.issueUrl', () => {
     ['texto', 'Notas.md'],
     ['imagen', 'Foto.webp'],
   ])(
-    'CA-1, CA-11: un `%s` recibe la URL de 300 s y la proyección del archivo',
+    'CA-1, CA-11: un `%s` recibe la URL de 300 s y el `FileSummary` del archivo',
     async (kind, name) => {
       const { facade } = setup(fileOf(kind, name));
 
@@ -78,9 +78,9 @@ describe('StoragePreviewFacade.issueUrl', () => {
           name,
           kind,
           folderId: FOLDER_ID,
-          sizeBytes: 4_096n,
-          createdAt: NOW,
-          updatedAt: NOW,
+          sizeBytes: 4_096,
+          createdAt: NOW.toISOString(),
+          updatedAt: NOW.toISOString(),
         },
         url: SIGNED_URL,
         expiresAt: new Date(NOW.getTime() + DOWNLOAD_URL_TTL_SECONDS * MS_PER_SECOND),

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { FileSummary } from '@nimbo/contracts';
 
 import { InsufficientRoleError } from '../../../shared';
 import type { Actor } from '../../../shared';
@@ -7,6 +8,7 @@ import type { File } from '../domain/file';
 import type { FileKind } from '../domain/file-kind';
 
 import { AccessibleFileUrlIssuer } from './accessible-file-url-issuer';
+import { toFileSummary } from './file-summary';
 
 /** Tipos con vista previa (017 RN-1); `docx` y `otro` (SVG, BMP, HEIC…) quedan fuera. */
 const PREVIEWABLE_KINDS: ReadonlySet<FileKind> = new Set([
@@ -17,20 +19,9 @@ const PREVIEWABLE_KINDS: ReadonlySet<FileKind> = new Set([
   'imagen',
 ]);
 
-/** Proyección mínima del archivo para la vista previa, compatible con `FileSummary` (017 plan §2.3). */
-export interface PreviewFile {
-  readonly id: string;
-  readonly name: string;
-  readonly kind: FileKind;
-  readonly folderId: string | null;
-  readonly sizeBytes: bigint;
-  readonly createdAt: Date;
-  readonly updatedAt: Date;
-}
-
-/** Archivo y URL firmada para leer sus bytes desde el origen de objetos (017 CA-11). */
+/** Archivo tal como lo ve el cliente y URL firmada para leer sus bytes desde el origen de objetos (017 CA-11). */
 export interface PreviewDelivery {
-  readonly file: PreviewFile;
+  readonly file: FileSummary;
   readonly url: string;
   readonly expiresAt: Date;
 }
@@ -46,23 +37,13 @@ export class StoragePreviewFacade {
   /** 403 a roles internos (CA-4); ajeno o inexistente, 404 (CA-3); tipo sin vista previa, 422 (CA-11). */
   async issueUrl(actor: Actor, fileId: string): Promise<PreviewDelivery> {
     if (!actor.canReadContent) throw new InsufficientRoleError();
-    const { file, url, expiresAt } = await this.issuer.issue(actor, fileId, assertPreviewable);
-    return { file: toPreviewFile(file), url, expiresAt };
+    const file = await this.issuer.resolve(actor, fileId);
+    assertPreviewable(file);
+    const { url, expiresAt } = await this.issuer.sign(file);
+    return { file: toFileSummary(file), url, expiresAt };
   }
 }
 
 function assertPreviewable(file: File): void {
   if (!PREVIEWABLE_KINDS.has(file.kind)) throw new PreviewUnsupportedError();
-}
-
-function toPreviewFile(file: File): PreviewFile {
-  return {
-    id: file.id,
-    name: file.name.value,
-    kind: file.kind,
-    folderId: file.folderId,
-    sizeBytes: file.sizeBytes,
-    createdAt: file.createdAt,
-    updatedAt: file.updatedAt,
-  };
 }

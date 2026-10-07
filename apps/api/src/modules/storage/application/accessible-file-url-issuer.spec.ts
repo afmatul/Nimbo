@@ -55,24 +55,32 @@ function setup(failure?: Error) {
 }
 
 describe('AccessibleFileUrlIssuer', () => {
-  it('005 CA-16: resuelve el archivo dentro de `withActor` y firma después, fuera de la transacción', async () => {
+  it('005 CA-16: `resolve` busca el archivo dentro de `withActor`, sin firmar', async () => {
     const { issuer, journal } = setup();
 
-    await issuer.issue(OWNER, FILE_ID);
+    const file = await issuer.resolve(OWNER, FILE_ID);
 
-    expect(journal.entries).toEqual([
-      'tx:begin',
-      'nodes:findAccessibleById',
-      'tx:end',
-      'storage:presignDownload',
-    ]);
+    expect(file).toBe(FILE);
+    expect(journal.entries).toEqual(['tx:begin', 'nodes:findAccessibleById', 'tx:end']);
   });
 
-  it('005 CA-13, 017 CA-11: firma la versión actual por 300 s con la política de descarga', async () => {
+  it('005 CA-16: ajeno e inexistente son el mismo `NodeNotFoundError`', async () => {
     const { issuer, presigned } = setup();
+    const stranger = createActor('44444444-4444-4444-8444-444444444444', Role.CLIENT);
 
-    const issued = await issuer.issue(OWNER, FILE_ID);
+    await expect(issuer.resolve(stranger, FILE_ID)).rejects.toThrow(NodeNotFoundError);
+    await expect(issuer.resolve(OWNER, '55555555-5555-4555-8555-555555555555')).rejects.toThrow(
+      NodeNotFoundError,
+    );
+    expect(presigned).toEqual([]);
+  });
 
+  it('005 CA-13, 017 CA-11: `sign` firma la versión actual por 300 s con la política de descarga', async () => {
+    const { issuer, journal, presigned } = setup();
+
+    const signed = await issuer.sign(FILE);
+
+    expect(journal.entries).toEqual(['storage:presignDownload']);
     expect(presigned).toEqual([
       {
         key: `u/${OWNER_ID}/${FILE_ID}/${VERSION_ID}`,
@@ -80,40 +88,16 @@ describe('AccessibleFileUrlIssuer', () => {
         expiresInSeconds: DOWNLOAD_URL_TTL_SECONDS,
       },
     ]);
-    expect(issued).toEqual({
-      file: FILE,
+    expect(signed).toEqual({
       url: SIGNED_URL,
       expiresAt: new Date(NOW.getTime() + DOWNLOAD_URL_TTL_SECONDS * MS_PER_SECOND),
     });
-  });
-
-  it('005 CA-16: ajeno e inexistente son el mismo `NodeNotFoundError`, sin firmar', async () => {
-    const { issuer, presigned } = setup();
-    const stranger = createActor('44444444-4444-4444-8444-444444444444', Role.CLIENT);
-
-    await expect(issuer.issue(stranger, FILE_ID)).rejects.toThrow(NodeNotFoundError);
-    await expect(issuer.issue(OWNER, '55555555-5555-4555-8555-555555555555')).rejects.toThrow(
-      NodeNotFoundError,
-    );
-    expect(presigned).toEqual([]);
-  });
-
-  it('017 CA-11: si la condición del llamador rechaza el archivo, no se firma', async () => {
-    const { issuer, presigned } = setup();
-    const rejection = new Error('no admitido');
-
-    const attempt = issuer.issue(OWNER, FILE_ID, () => {
-      throw rejection;
-    });
-
-    await expect(attempt).rejects.toBe(rejection);
-    expect(presigned).toEqual([]);
   });
 
   it('017 CA-11: un fallo al firmar se propaga tal cual, sin envolverlo', async () => {
     const failure = new Error('minio caído');
     const { issuer } = setup(failure);
 
-    await expect(issuer.issue(OWNER, FILE_ID)).rejects.toBe(failure);
+    await expect(issuer.sign(FILE)).rejects.toBe(failure);
   });
 });

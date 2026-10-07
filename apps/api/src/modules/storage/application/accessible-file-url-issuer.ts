@@ -14,17 +14,11 @@ import type { IObjectStorage } from './ports/i-object-storage.port';
 
 const MS_PER_SECOND = 1000;
 
-/** Archivo accesible y la URL firmada de su versión actual, con el instante en que deja de valer. */
-export interface IssuedFileUrl {
-  readonly file: File;
+/** URL firmada de la versión actual de un archivo y el instante en que deja de valer. */
+export interface SignedFileUrl {
   readonly url: string;
   readonly expiresAt: Date;
 }
-
-/** Condición del llamador sobre el archivo ya resuelto; lanza para impedir la firma (p. ej. tipo sin vista previa). */
-export type IssuableFileCheck = (file: File) => void;
-
-const ANY_FILE: IssuableFileCheck = () => undefined;
 
 /**
  * Resolver el archivo accesible y firmar su versión actual con la política de descarga de 005 (`presignDownload`:
@@ -40,13 +34,16 @@ export class AccessibleFileUrlIssuer {
     @Inject(I_CLOCK) private readonly clock: IClock,
   ) {}
 
-  /** Ajeno o inexistente es `NodeNotFoundError` (005 CA-16); `check` corre antes de firmar. */
-  async issue(actor: Actor, fileId: string, check = ANY_FILE): Promise<IssuedFileUrl> {
+  /** Ajeno o inexistente es `NodeNotFoundError` (005 CA-16). */
+  async resolve(actor: Actor, fileId: string): Promise<File> {
     const file = await this.transactions.withActor(actor, () =>
       this.nodes.findAccessibleById(actor, fileId),
     );
     if (file === null) throw new NodeNotFoundError();
-    check(file);
+    return file;
+  }
+
+  async sign(file: File): Promise<SignedFileUrl> {
     const url = await this.objects.presignDownload({
       key: ObjectKey.of(file.ownerId, file.id, file.currentVersionId).value,
       fileName: file.name.value,
@@ -55,6 +52,6 @@ export class AccessibleFileUrlIssuer {
     const expiresAt = new Date(
       this.clock.now().getTime() + DOWNLOAD_URL_TTL_SECONDS * MS_PER_SECOND,
     );
-    return { file, url, expiresAt };
+    return { url, expiresAt };
   }
 }
