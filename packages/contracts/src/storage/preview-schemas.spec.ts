@@ -1,10 +1,7 @@
 import * as contracts from '../index';
 
-import {
-  STORAGE_PREVIEW_ERROR_CODES,
-  STORAGE_PREVIEW_FAILURE_CODES,
-  previewUrlResponseSchema,
-} from './preview-schemas';
+import { STORAGE_ERROR_CODES } from './error-codes';
+import { STORAGE_PREVIEW_FAILURE_CODES, previewUrlResponseSchema } from './preview-schemas';
 import { downloadUrlSchema } from './schemas';
 
 const ID = '2f0c1d2e-3a4b-4c5d-8e6f-7a8b9c0d1e2f';
@@ -47,10 +44,8 @@ describe('previewUrlResponseSchema (plan 017 §4)', () => {
 });
 
 describe('códigos públicos de previsualización (plan 017 §4)', () => {
-  it('CA-2: el formato excluido responde `STORAGE_PREVIEW_UNSUPPORTED`', () => {
-    expect(STORAGE_PREVIEW_ERROR_CODES).toEqual({
-      STORAGE_PREVIEW_UNSUPPORTED: 'STORAGE_PREVIEW_UNSUPPORTED',
-    });
+  it('CA-2: el formato excluido responde `STORAGE_PREVIEW_UNSUPPORTED` del catálogo único de `storage`', () => {
+    expect(STORAGE_ERROR_CODES.STORAGE_PREVIEW_UNSUPPORTED).toBe('STORAGE_PREVIEW_UNSUPPORTED');
   });
 
   it('CA-2: los fallos del lector en el navegador tienen código propio, no HTTP', () => {
@@ -64,7 +59,6 @@ describe('códigos públicos de previsualización (plan 017 §4)', () => {
 
   it('CA-1: el contrato se exporta desde la raíz del paquete', () => {
     expect(contracts.previewUrlResponseSchema).toBe(previewUrlResponseSchema);
-    expect(contracts.STORAGE_PREVIEW_ERROR_CODES).toBe(STORAGE_PREVIEW_ERROR_CODES);
     expect(contracts.STORAGE_PREVIEW_FAILURE_CODES).toBe(STORAGE_PREVIEW_FAILURE_CODES);
   });
 });

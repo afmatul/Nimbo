@@ -13,13 +13,6 @@ export const previewUrlResponseSchema = z
   .object({ file: fileSummarySchema, url: z.string().url(), expiresAt: timestamp })
   .strict();
 
-/** Códigos que emite la API al emitir la URL de vista; los demás errores reutilizan los de `storage` y `shared`. */
-export const STORAGE_PREVIEW_ERROR_CODES = {
-  STORAGE_PREVIEW_UNSUPPORTED: 'STORAGE_PREVIEW_UNSUPPORTED',
-} as const;
-export type StoragePreviewErrorCode =
-  (typeof STORAGE_PREVIEW_ERROR_CODES)[keyof typeof STORAGE_PREVIEW_ERROR_CODES];
-
 /** Fallos que detecta el lector en el navegador (plan §4, Q-7): códigos del catálogo web, no respuestas HTTP. */
 export const STORAGE_PREVIEW_FAILURE_CODES = {
   STORAGE_PREVIEW_PASSWORD_PROTECTED: 'STORAGE_PREVIEW_PASSWORD_PROTECTED',

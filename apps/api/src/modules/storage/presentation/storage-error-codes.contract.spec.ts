@@ -17,6 +17,7 @@ import {
   InvalidUploadRequestError,
   NameConflictError,
   NodeNotFoundError,
+  PreviewUnsupportedError,
   QuickAccessLimitError,
   QuotaExceededError,
   StorageTooManyRequestsError,
@@ -47,6 +48,7 @@ const ALL_ERRORS: readonly DomainError[] = [
   new InvalidMoveError(),
   new FolderDepthExceededError(1, 'place'),
   new QuickAccessLimitError(5),
+  new PreviewUnsupportedError(),
 ];
 
 /** Errores que comparten código con otro ya listado (mismo contrato, distinto mensaje). */

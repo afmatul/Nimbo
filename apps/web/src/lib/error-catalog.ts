@@ -129,6 +129,11 @@ const STORAGE_MESSAGES: Readonly<Record<string, StorageMessageBuilder>> = {
     cause: `Ya fijaste ${String(details['maxPinned'] ?? '')} elementos.`,
     fix: 'Quita uno para fijar otro.',
   }),
+  // Mismo texto que `PreviewUnsupportedError` de api (017 CA-11, RN-1).
+  [STORAGE_ERROR_CODES.STORAGE_PREVIEW_UNSUPPORTED]: () => ({
+    cause: 'Este tipo de archivo no tiene vista previa.',
+    fix: 'Descárgalo para abrirlo.',
+  }),
 };
 
 /**
