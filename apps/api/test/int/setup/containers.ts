@@ -11,7 +11,8 @@ import type { StartedTestContainer } from 'testcontainers';
 /** Mismas imágenes que `compose.yml` (plan 000 §6.5). */
 export const POSTGRES_IMAGE = 'pgvector/pgvector:pg17';
 export const REDIS_IMAGE = 'redis:7-alpine';
-export const MINIO_IMAGE = 'quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z';
+/** Quay cerró el pull anónimo de `minio/minio` (2026-10). Silo habla la misma API y acepta `server /data`. */
+export const MINIO_IMAGE = 'pgsty/silo:RELEASE.2026-09-16T00-00-00Z';
 /** Versión fijada del correo de pruebas (001 plan §6.8). */
 export const MAILPIT_IMAGE = 'axllent/mailpit:v1.31.3';
 

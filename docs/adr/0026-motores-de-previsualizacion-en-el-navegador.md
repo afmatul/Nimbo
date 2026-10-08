@@ -1,4 +1,4 @@
-# ADR-0026 — Motores de previsualización en el navegador: `pdfjs-dist`, `@zip.js/zip.js` y `saxes`
+md# ADR-0026 — Motores de previsualización en el navegador: `pdfjs-dist`, `@zip.js/zip.js` y `saxes`
 
 | Campo | Valor |
 |---|---|
@@ -6,11 +6,11 @@
 | Fecha | 2026-10-06 |
 | Decisores | Adrián + architect |
 | Specs relacionadas | 017 — Previsualización (RF-27) |
-| Relacionado | [ADR-0025](0025-inline-solo-en-previsualizacion-aislada.md) (Rechazado) |
+| Relacionado | [ADR-0027](0027-inline-solo-en-previsualizacion-aislada.md) (Rechazado) |
 
 ## Contexto
 
-RF-27 exige previsualizar PDF, XLSX, PPTX, texto e imagen. Tras rechazar ADR-0025, el cliente obtiene
+RF-27 exige previsualizar PDF, XLSX, PPTX, texto e imagen. Tras rechazar ADR-0027, el cliente obtiene
 los bytes por `fetch` (helper único `object-bytes.ts`, `credentials: 'omit'`) y los renderiza él mismo;
 hace falta un motor por formato. Ver [plan 017 §2.4](../../specs/017-previsualizacion/plan.md). Equipo de
 4, 10 semanas y servidor de 8 GB con ONLYOFFICE ocupando ~4 GB: no hay margen para servicios nuevos.
@@ -21,7 +21,7 @@ hace falta un motor por formato. Ver [plan 017 §2.4](../../specs/017-previsuali
    licencia particular. Descartada.
 2. **Conversión en backend (LibreOffice/Gotenberg).** Imagen pesada en un servidor de 8 GB y conversores
    fuera de alcance de 017. Descartada.
-3. **Visor nativo del navegador con `inline`.** Rechazada por ADR-0025.
+3. **Visor nativo del navegador con `inline`.** Rechazada por ADR-0027.
 4. **PDF.js + zip.js + saxes en el cliente (elegida).** `pdfjs-dist@6.4.299` (Apache-2.0),
    `@zip.js/zip.js@2.23.0` (BSD-3-Clause) y `saxes@6.0.0` (ISC). Lectura por rangos y XML en streaming.
 5. **Posponer.** Deja RF-27 sin motor; no sostenible para la fecha de la fase.

@@ -114,3 +114,17 @@ Sin acción: **I-5** (el PR no tiene checks de CI; llegan en el PR-3, plan §9b)
 Nota sobre CA-1: la medición de 42 s es del 2026-09-18 y **no** se volvió a cronometrar tras estos cambios.
 El arranque sí se verificó de punta a punta el 2026-09-21 siguiendo el README (`migration:run`, `health/live`
 y `health/ready` en 200, también a través de Traefik).
+
+## Bloque 4 — CI (2026-10-07, local antes de la primera corrida en GitHub)
+
+| Verificación | Resultado |
+|---|---|
+| `packages/config` (`pnpm test`) | 240/240: grafo completo de módulos (CA-5), capas (CA-6), ciclos (CA-7), mockups (CA-8), columnas (DF-06/23) |
+| `pnpm lint` en todo el repositorio | ✅ sin errores; 5 min 51 s en local (el lint de `api` + `worker` pasa de ~1,5 a ~3,5 min por `no-cycle`) |
+| Reglas sobre archivos reales | Un `domain/` que importa `@nestjs/common` y una entidad con `@Column('int') tamanoBytes` fallan con la config raíz |
+| `scripts/ci/migrations-roundtrip.sh` (CA-11) | ✅ 18 migraciones: ida, vuelta hasta 0 filas y ida con esquema idéntico (`pg_dump`); 1 min 32 s |
+| CA-12 con una migración temporal de `down` vacío | ❌ como se espera: «tras revertir todo quedan tablas» y salida 1 |
+| Base no vacía | El script se detiene en «antes» sin revertir nada (se comprobó por accidente contra la base de desarrollo) |
+
+Pendiente: la primera corrida en GitHub (duración < 30 min, CA-24), T-32 (gitleaks del historial), T-33
+(protección de `main` con los cuatro checks) y T-34 (ensayo «CI falla cuando debe»).

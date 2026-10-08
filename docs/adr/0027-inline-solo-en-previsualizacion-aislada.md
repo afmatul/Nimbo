@@ -1,5 +1,4 @@
-# ADR-0025 — Permitir `inline` solo en la URL temporal de previsualización aislada (Rechazado)
-
+# ADR-0027 — Permitir `inline` solo en la URL temporal de previsualización aislada (Rechazado)
 | Campo | Valor |
 |---|---|
 | Estado | Rechazado |

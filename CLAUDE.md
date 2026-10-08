@@ -104,7 +104,8 @@ pnpm seed                                   # corpus sintético (marcador hasta 
   y ≤ 3 parámetros, cobertura de lógica de negocio ≥ 60 %. SOLID, YAGNI (regla de interfaces, Art. V.2) y DRY (regla de tres, Art. VI.2) se aplican en planes, código y revisión.
 
 - Ningún rol interno (Administrador, Soporte, Operador) accede a **contenido** ni vistas previas de archivos. No existe la suplantación.
-- Todo servicio que toca datos de un usuario recibe `actor: Actor`, y la consulta filtra con `accessibleNodes(actor)`. No se filtra después de consultar.
+- Todo servicio que toca datos de un usuario recibe `actor: Actor`, y la consulta filtra con `accessibleNodes(actor)`. No se filtra después de consultar
+  (única excepción: `architecture.md` §6, metadatos propios de la cuenta que no devuelven nodos).
 - Las bitácoras nunca contienen contenido de archivos, nombres de archivo, contraseñas, tokens ni claves de enlaces.
 - La clave del LLM vive en variables de entorno del backend. Nunca llega al navegador.
 - `synchronize: false` siempre. Todo cambio de esquema es una migración versionada y reversible.
@@ -122,7 +123,7 @@ pnpm seed                                   # corpus sintético (marcador hasta 
 |------|----------------|-----------------|-----------------------------------------------------------------------|
 | 0    | 28/08 – 10/09  | 11/09 requisitos| Requisitos, casos de uso, UML, E-R, mockups                           |
 | 1    | 11/09 – 29/09  | 30/09 (30 %)    | Auth, roles, bitácoras, almacenamiento, cuotas (CI/CD y staging desde el 30/09: `workflow.md` §7.2) |
-| 2    | 01/10 – 13/10* | 14/10* (50 %)   | CI/CD y staging (desde el 30/09), planes y pagos, compartición, versionado, tiempo real, edición .docx, búsqueda |
+| 2    | 01/10 – 13/10* | 14/10* (50 %)   | CI (imágenes y staging pasan a una fase posterior), planes y pagos, compartición, versionado, tiempo real, edición .docx, búsqueda |
 | 3    | 09/10 – 22/10  | 23/10 (80 %)    | Indexación, agente con citas, optimizador, métricas, carga y aislamiento |
 | 4    | 23/10 – 06/11  | Exposición final| Pulido, accesibilidad, manuales, E2E, ensayo de demo                  |
 

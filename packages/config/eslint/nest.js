@@ -1,12 +1,13 @@
 // Reglas para las apps NestJS (`apps/api`, `apps/worker`).
-// Las fronteras entre módulos viven en `boundaries.js` (se compone en la raíz); `import-x/no-cycle` y
-// `typeorm-columns.js` siguen pendientes (PD-24).
+// Fronteras (`boundaries.js`), capas (`layers.js`) y tipos de columna (`typeorm-columns.js`) se componen en la raíz:
+// dependen de rutas concretas y la raíz reemplaza los `files` de esta configuración. Aquí, ciclos (CA-7).
 import tseslint from 'typescript-eslint';
 
 import base from './base.js';
+import cycles from './cycles.js';
 import rls from './rls.js';
 
-export default tseslint.config(...base, ...rls, {
+export default tseslint.config(...base, ...rls, ...cycles, {
   files: ['**/*.ts'],
   languageOptions: {
     parserOptions: {

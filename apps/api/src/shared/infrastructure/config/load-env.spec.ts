@@ -1,4 +1,5 @@
 import { apiEnvSchema, migrationEnvSchema, SECRET_KEYS, workerEnvSchema } from './env.schema';
+
 import { loadEnv } from './load-env';
 
 /** Mínimo válido para `api`: solo las variables sin valor por defecto. */
@@ -104,7 +105,6 @@ describe('loadEnv(apiEnvSchema)', () => {
         UPLOAD_PART_SIZE_BYTES: 8_388_608,
         UPLOAD_MULTIPART_THRESHOLD_BYTES: 16_777_216,
         UPLOAD_URL_TTL_SECONDS: 3600,
-        UPLOAD_COMPLETE_TIMEOUT_SECONDS: 900,
         RATE_LIMIT_UPLOAD_INIT_PER_MINUTE: 300,
         RATE_LIMIT_DOWNLOAD_URL_PER_MINUTE: 120,
         RATE_LIMIT_PREVIEW_URL_PER_MINUTE: 120,
@@ -162,6 +162,7 @@ describe('loadEnv(apiEnvSchema)', () => {
     const result = loadEnv(apiEnvSchema, source);
 
     delete process.env.DATABASE_URL;
+
     expect(result).toEqual({ ok: false, issues: ['`DATABASE_URL` es obligatoria'] });
   });
 });
@@ -397,11 +398,13 @@ describe('loadEnv: carga y descarga de archivos (005 T-20)', () => {
     'RATE_LIMIT_UPLOAD_INIT_PER_MINUTE',
     'RATE_LIMIT_DOWNLOAD_URL_PER_MINUTE',
     'RATE_LIMIT_PREVIEW_URL_PER_MINUTE',
-    'UPLOAD_COMPLETE_TIMEOUT_SECONDS',
   ])('RN-16: `%s=0` se rechaza', (key) => {
     const result = loadEnv(apiEnvSchema, { ...VALID_API, [key]: '0' });
 
-    expect(result).toEqual({ ok: false, issues: [`\`${key}\` debe ser un entero positivo`] });
+    expect(result).toEqual({
+      ok: false,
+      issues: [`\`${key}\` debe ser un entero positivo`],
+    });
   });
 
   it('CA-9: `UPLOAD_CLEANUP_BATCH_SIZE` fuera de 1–1000 se rechaza', () => {

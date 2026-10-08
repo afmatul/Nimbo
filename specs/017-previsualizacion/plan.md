@@ -14,7 +14,7 @@ PDF usa PDF.js; XLSX/PPTX, ZIP por rangos y XML incremental en worker; imágenes
 Pantalla propia, solo lectura, todas las unidades navegables, sin OCR, conversión backend ni nueva versión.
 Preview tiene endpoint y tasa propios y no se audita como descarga; la descarga de 005 queda intacta.
 Trazabilidad: RF-27; RF-05/09; RNF-05/06/07/09/13/14/17; 017 CA-1…12; 005 CA-13…17/19; 003 D-1/2/6/7/9; 006 CA-4/12/26; 007.
-Base: ADR-0005/0008/0010/0014/0015/0020/0023 aceptados; ADR-0025 Rechazado (opción 4 lo sustituye); ADR de motores de previsualización (architect).
+Base: ADR-0005/0008/0010/0014/0015/0020/0023 aceptados; ADR-0027 Rechazado (opción 4 lo sustituye); ADR de motores de previsualización (architect).
 
 ## 2. Módulos, archivos y diseño
 ### 2.1 Archivos propios de Abel (nuevos)
@@ -180,11 +180,11 @@ Prefijos: **I** = `apps/api/test/int/storage/`; **A** = `apps/api/test/isolation
 - **Tiempo:** dependencias nuevas y habilitaciones ajenas amenazan ≤3 días; avisar a Adrián según workflow. Un recorte/división requiere decisión y actualización de spec, no reducir CA unilateralmente.
 - DF-15 queda parcial al aceptar `PreviewService`; fachada/controlador deben reflejarse en M2; sin cambio de puertos ni E-R. Architect registra H-1/H-2 y pendientes de habilitación/documentación cuando tenga permisos; ninguna aceptación se inventa aquí.
 - Dueños históricos y posible `tipo_mime` de design-model/DF-60 no prevalecen sobre backlog/RN-6. PD-46 cubre redibujado existente; PD-49/52 son cabeceras transversales, no resueltas por este plan.
-- ADR: [ADR-0025](../../docs/adr/0025-inline-solo-en-previsualizacion-aislada.md) Rechazado (lo actualiza architect); PD-69 ya no es necesario. El ADR de motores de previsualización lo redacta architect. Este plan no escribe ADR.
+- ADR: [ADR-0027](../../docs/adr/0027-inline-solo-en-previsualizacion-aislada.md) Rechazado (lo actualiza architect); PD-74 ya no es necesario. El ADR de motores de previsualización lo redacta architect. Este plan no escribe ADR.
 
 | ID | Estado técnico | Lo pendiente para aprobación / responsable |
 |---|---|---|
-| Q-1 | `[RESUELTA]` por opción 4 (2026-10-06) | IX.7 se respeta literalmente; ADR-0025 Rechazado; sin G-1 ni PD-69 |
+| Q-1 | `[RESUELTA]` por opción 4 (2026-10-06) | IX.7 se respeta literalmente; ADR-0027 Rechazado; sin G-1 ni PD-74 |
 | Q-2 | `[RESUELTA]` aceptada con ajuste DRY | Fachada delgada + `AccessibleFileUrlIssuer` extraído de `FileService`; tasa en `PreviewService`; sin ensanchar `INodeRepository` |
 | Q-3 | Eliminada | Sin procedencia, índice ni migración |
 | Q-4 | `[RESUELTA]` aceptada por Adrián (G-3) | `pdfjs-dist@6.4.299`, `@zip.js/zip.js@2.23.0`, `saxes@6.0.0`; architect redacta el ADR de motores y evalúa el riesgo de memoria |
@@ -202,7 +202,7 @@ Fuentes técnicas fijadas (investigación de metadata/API/código; no prueba run
 - MinIO fijado: [M1 nosniff](https://github.com/minio/minio/blob/RELEASE.2025-09-07T16-13-09Z/cmd/generic-handlers.go), [M2 middleware](https://github.com/minio/minio/blob/RELEASE.2025-09-07T16-13-09Z/cmd/routers.go), [M3 CORS](https://github.com/minio/minio/blob/RELEASE.2025-09-07T16-13-09Z/cmd/api-router.go), [M4 rangos](https://github.com/minio/minio/blob/RELEASE.2025-09-07T16-13-09Z/cmd/api-headers.go).
 
 ## 8. Aprobación
-- `architect`: redacta el ADR de motores de previsualización (Q-4) y actualiza ADR-0025 a Rechazado. No hay puerto nuevo ni cambio de arquitectura.
+- `architect`: redacta el ADR de motores de previsualización (Q-4) y actualiza ADR-0027 a Rechazado. No hay puerto nuevo ni cambio de arquitectura.
 - Adrián: **Aprobado** spec y plan (2026-10-06). El 2026-10-06 aceptó G-1 (opción 4: sin `inline`/MIME, IX.7 literal), G-2 (Q-2/Q-6 con ajustes; Q-3 eliminada) y G-3 (dependencias de Q-4).
 - **G-0 — Revisión conjunta:** cumplida con la aprobación de Adrián. Verificaciones de despliegue (CORS/rangos) siguen como dependencias de implementación (T-04/T-10).
 - Se mantiene la aprobación de PR antes del merge.

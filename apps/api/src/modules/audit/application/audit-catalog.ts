@@ -33,9 +33,12 @@ export const AUDIT_CATALOG = {
   },
   [AuditAction.FILE_UPLOAD_REJECTED]: {
     resourceType: 'upload',
-    attributes: { reason: 'text', mode: 'text' },
+    attributes: { reason: 'text', mode: 'text', sizeBytes: 'number' },
   },
-  [AuditAction.FILE_DOWNLOAD_URL_ISSUED]: { resourceType: 'file', attributes: {} },
+  [AuditAction.FILE_DOWNLOAD_URL_ISSUED]: {
+    resourceType: 'file',
+    attributes: { sizeBytes: 'number' },
+  },
   [AuditAction.NODE_TRASHED]: {
     resourceType: fromAttribute('nodeType'),
     attributes: NODE_ATTRIBUTES,
