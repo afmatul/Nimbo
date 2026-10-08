@@ -20,6 +20,12 @@ export class FakeVersionRepository implements IVersionRepository {
     return Promise.resolve(this.of(fileId).sort((a, b) => b.number - a.number));
   }
 
+  find(_actor: Actor, fileId: string, versionId: string): Promise<FileVersion | null> {
+    this.journal.add('versions:find');
+    const version = this.versions.get(versionId);
+    return Promise.resolve(version?.fileId === fileId ? version : null);
+  }
+
   nextNumber(_actor: Actor, fileId: string): Promise<number> {
     this.journal.add('versions:nextNumber');
     return Promise.resolve(Math.max(0, ...this.of(fileId).map((version) => version.number)) + 1);

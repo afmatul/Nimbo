@@ -239,8 +239,8 @@ Pruebas: `upload-cleanup.processor.spec.ts` y `upload-cleanup.scheduler.spec.ts`
 Rutas (solo `CLIENT`; roles internos → 403, sin token → 401; un id que no es UUID responde el mismo 404 que uno
 inexistente): `POST /uploads`, `POST /uploads/:uploadId/resume`, `POST /uploads/:uploadId/complete`,
 `DELETE /uploads/:uploadId`, `POST /files/:fileId/download-url` (y desde 006 `PATCH /files/:fileId` y
-`POST /files/:fileId/move`). `init` y `download-url` pasan por
-`IRateLimiter`.
+`POST /files/:fileId/move`; desde 014 `GET /files/:fileId/versions` y
+`POST /files/:fileId/versions/:versionId/download-url`). `init` y las dos `download-url` pasan por `IRateLimiter`.
 
 - Pruebas HTTP: `apps/api/test/int/storage/*.int-spec.ts` (`pnpm test:int`); aislamiento:
   `apps/api/test/isolation/storage.iso-spec.ts` (`pnpm test:isolation`).
@@ -271,7 +271,11 @@ la carga es multipart con `UPLOAD_PART_SIZE_BYTES` por parte; en `complete`, `li
 el tamaño real, el tipo se detecta por firmas de bytes (`MagicBytesDetector`) y el registro final es un compare-and-set.
 
 **Descarga**: `POST /files/:fileId/download-url` devuelve una URL firmada de 300 s (`DOWNLOAD_URL_TTL_SECONDS`) para la
-versión actual, con `Content-Disposition: attachment`, `application/octet-stream` y `no-store`.
+versión actual, con `Content-Disposition: attachment`, `application/octet-stream` y `no-store`. Desde 014,
+`POST /files/:fileId/versions/:versionId/download-url` firma una versión retenida por la misma ruta de
+`FileService.getDownloadUrl` (tasa, auditoría `file.download_url_issued` con el tamaño de la versión); una versión
+inexistente, podada o de otro archivo es `404` `STORAGE_VERSION_NOT_FOUND`. `GET /files/:fileId/versions`
+(`VersionHistoryService`) devuelve el historial sin claves de objeto y las versiones que retiene el plan.
 
 `complete` y `expire`/`cancel` compiten por un compare-and-set de estado (`activa → …`): gana uno y el otro no deja un
 `archivo` sin objeto.

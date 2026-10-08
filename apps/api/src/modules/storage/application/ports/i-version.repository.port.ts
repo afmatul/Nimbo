@@ -10,6 +10,8 @@ import type { FileVersion } from '../../domain/file-version';
 export interface IVersionRepository {
   /** Versiones del archivo, de la más reciente a la más antigua (`numero DESC`). */
   list(actor: Actor, fileId: string): Promise<readonly FileVersion[]>;
+  /** La versión `versionId` **de** `fileId`; `null` si no existe, ya se podó o es de otro archivo (CA-11). */
+  find(actor: Actor, fileId: string, versionId: string): Promise<FileVersion | null>;
   /** `MAX(numero) + 1` del archivo: bajo `lockUsage` es consecutivo y nunca reutiliza un número podado (RN-4). */
   nextNumber(actor: Actor, fileId: string): Promise<number>;
   insert(actor: Actor, version: FileVersion): Promise<void>;

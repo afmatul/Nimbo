@@ -39,7 +39,8 @@ const toFileVersion = (row: VersionArchivoOrmEntity): FileVersion =>
  * `IVersionRepository` sobre Postgres (plan 014 §2). Todo método toma el `EntityManager` de
  * `requireActorScope(actor)` y la RLS `version_archivo_cliente` deja ver solo las versiones de archivos propios; el
  * servicio resuelve antes el archivo con `accessibleNodes(actor)`. `uq_version_archivo_numero` sirve a `list` y a
- * `MAX(numero)`. `@Inject` explícito: con `tsx` (esbuild) no hay `design:paramtypes`.
+ * `MAX(numero)`; `find` exige el par (versión, archivo): una versión de otro archivo es `null` (CA-11). `@Inject`
+ * explícito: con `tsx` (esbuild) no hay `design:paramtypes`.
  */
 @Injectable()
 export class TypeOrmVersionRepository implements IVersionRepository {
@@ -51,6 +52,13 @@ export class TypeOrmVersionRepository implements IVersionRepository {
       order: { numero: 'DESC' },
     });
     return rows.map(toFileVersion);
+  }
+
+  async find(actor: Actor, fileId: string, versionId: string): Promise<FileVersion | null> {
+    const row = await this.manager(actor).findOne(VersionArchivoOrmEntity, {
+      where: { id: versionId, archivoId: fileId },
+    });
+    return row === null ? null : toFileVersion(row);
   }
 
   async nextNumber(actor: Actor, fileId: string): Promise<number> {

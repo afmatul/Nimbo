@@ -17,9 +17,11 @@ import { SpaceMeasurer } from './application/space-measurer';
 import { SpaceSummaryService } from './application/space-summary.service';
 import { TrashPurger } from './application/trash-purger';
 import { UPLOAD_CONFIG } from './application/upload-config';
+import { VersionHistoryService } from './application/version-history.service';
 import { VersionPruner } from './application/version-pruner';
 import { TrashPurgeProcessor } from './infrastructure/trash-purge.processor';
 import { TRASH_PURGE_QUEUE, TrashPurgeScheduler } from './infrastructure/trash-purge.scheduler';
+import { FileVersionsController } from './presentation/file-versions.controller';
 import { FilesController } from './presentation/files.controller';
 import { FoldersController } from './presentation/folders.controller';
 import { QuickAccessController } from './presentation/quick-access.controller';
@@ -97,10 +99,11 @@ describe('StorageModule', () => {
     expect(providers.map(tokenOf)).not.toContain(TrashPurgeProcessor);
   });
 
-  it('CA-17: monta los controladores de cargas, archivos, carpetas, papelera, accesos rápidos y espacio', () => {
+  it('CA-17: monta los controladores de cargas, archivos, versiones, carpetas, papelera, accesos rápidos y espacio', () => {
     expect(module.controllers).toEqual([
       UploadsController,
       FilesController,
+      FileVersionsController,
       FoldersController,
       TrashController,
       QuickAccessController,
@@ -112,6 +115,10 @@ describe('StorageModule', () => {
     expect(providers.map(tokenOf)).toEqual(
       expect.arrayContaining([I_VERSION_REPOSITORY, VersionPruner, FileVersionService]),
     );
+  });
+
+  it('014 CA-6: registra la lectura del historial de versiones', () => {
+    expect(providers).toContain(VersionHistoryService);
   });
 
   it('007 CA-1: registra el resumen de espacio con su medición', () => {
