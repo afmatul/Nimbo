@@ -21,28 +21,28 @@ T-02 ─┘         ├─> T-05 ─> T-06 ──┼─> T-08 (web, ficha)
 
 ## Tareas
 
-- [ ] **T-01** Migración `20261008100000-versiones-numero-y-restauracion` (con `down`), entidades ORM, contratos y piezas transversales — CA: habilita CA-4, CA-13, CA-19 (sin CA propio observable)
+- [x] **T-01** Migración `20261008100000-versiones-numero-y-restauracion` (con `down`), entidades ORM, contratos y piezas transversales — CA: habilita CA-4, CA-13, CA-19 (sin CA propio observable)
   - Prueba primero: `test/int/storage/migrations.int-spec.ts` y `orm-entities.int-spec.ts` (columnas `numero`, `restaurada_de_numero`, `carga.reemplaza`, `uq_version_archivo_numero`, `ck_version_numero`, `up` → `down` → `up`; filas existentes quedan con `numero = 1`); `billing/…/plan-limits.adapter.spec.ts` (`versionesRetenidas` → `retainedVersions`); `audit-catalog` spec; `contracts/storage/schemas.spec.ts` (`replace` aceptado solo en `initUploadSchema`, rechazado en rename/move), `storage-error-codes.contract.spec.ts`, `storage-routes.contract.spec.ts`.
   - Archivos: `apps/api/src/migrations/20261008100000-versiones-numero-y-restauracion.ts`; `storage/infrastructure/persistence/version-archivo.orm-entity.ts`, `carga.orm-entity.ts`; `storage/application/plan-limits.ts` (`retainedVersions`); `billing/…/plan-limits.adapter.ts`; `audit/…/audit-action.ts`, `audit-catalog.ts` (`file.version_restored`, `file.version_pruned`); `contracts/storage/version-schemas.ts` (nuevo), `schema-fields.ts`, `schemas.ts`, `error-codes.ts` (`STORAGE_VERSION_NOT_FOUND`, `STORAGE_VERSION_ALREADY_CURRENT`), `index`; esquema de entorno y `.env.example` (`RATE_LIMIT_VERSION_RESTORE_PER_MINUTE`, verifica `pnpm env:check`).
   - Depende: —
 
-- [ ] **T-02** Dominio de versiones: numeración, retención e historial — CA: CA-6 (cálculo de `deltaBytes`, orden, `null` sin anterior retenida), CA-13 (qué sobra, nunca la actual), CA-5 (fábricas por origen), CA-10/CA-11 (errores de dominio)
+- [x] **T-02** Dominio de versiones: numeración, retención e historial — CA: CA-6 (cálculo de `deltaBytes`, orden, `null` sin anterior retenida), CA-13 (qué sobra, nunca la actual), CA-5 (fábricas por origen), CA-10/CA-11 (errores de dominio)
   - Prueba primero: `domain/version-retention.spec.ts`, `domain/version-history.spec.ts`, ampliar la spec de `file-version.ts` y de `upload-session.ts` (`replacesFile`).
   - Archivos: `storage/domain/file-version.ts` (`number`, `restoredFromNumber`, `fromUpload(number)`, `fromRestoration`, `forOrigin`), `version-retention.ts`, `version-history.ts`, `upload-session.ts`, `errors/version.errors.ts`.
   - Depende: — (puede ir en paralelo con T-01; los tests de `upload-session` no necesitan la migración)
 
-- [ ] **T-03** Registro de versiones y poda: `FileVersionService.register`, `VersionPruner`, `IVersionRepository` — CA: CA-5, CA-4 (numeración consecutiva y `UNIQUE`), CA-13, CA-14, CA-19 (evento `file.version_pruned`)
+- [x] **T-03** Registro de versiones y poda: `FileVersionService.register`, `VersionPruner`, `IVersionRepository` — CA: CA-5, CA-4 (numeración consecutiva y `UNIQUE`), CA-13, CA-14, CA-19 (evento `file.version_pruned`)
   - Prueba primero: `application/file-version.service.spec.ts` (misma numeración, cuota y retención para `carga`, `restauracion` y un doble `edicion`/`optimizacion`; sin indexar ni publicar evento), `application/version-pruner.spec.ts` (borra de a una en su transacción; falla de objeto deja fila y espacio intactos y se reintenta; nunca falla al llamador), `test/int/storage/versions-retention.int-spec.ts` (Personal = 3, poda real en MinIO, `espacio_usado` baja, auditoría y bitácoras sin nombres ni claves).
   - Archivos: `storage/application/file-version.service.ts` (`register`, `afterCommit`), `version-pruner.ts`, `ports/i-version.repository.port.ts`, `ports/i-node.repository.port.ts` (`updateCurrentVersion`), `infrastructure/persistence/typeorm-version.repository.ts`, `typeorm-node.repository.ts`; `upload-lifecycle.providers.ts`, `storage.module.ts`, `storage-worker.module.ts`.
   - Documentación del diseño (misma tarea, porque aquí nacen las clases): `docs/sdd/design-findings.md` (DF-65 nuevo para M2, y DF-17, DF-18 parcial, DF-38), `docs/sdd/design-model.md` (tabla de mapeo con `FileVersionService`, `VersionPruner`, `VersionHistoryService`, `VersionRestoreService`, `IVersionRepository` en M2 y las columnas nuevas), `docs/sdd/pendientes.md` (PD-74 nombres de autor y participantes para 016; PD-75 evento `FileVersionCreated` para 019; PD-46 y PD-60 con la nota del plan).
   - Depende: T-01, T-02
 
-- [ ] **T-04** Reemplazar un archivo: `onConflict: 'replace'` de punta a punta — CA: CA-1, CA-2, CA-3, CA-4 (concurrencia), CA-19 (reemplazo), CA-15 (dato `wouldPruneVersion` en el `409`)
+- [x] **T-04** Reemplazar un archivo: `onConflict: 'replace'` de punta a punta — CA: CA-1, CA-2, CA-3, CA-4 (concurrencia), CA-19 (reemplazo), CA-15 (dato `wouldPruneVersion` en el `409`)
   - Prueba primero: ampliar `upload.service.spec.ts` y `upload-registrar.spec.ts` (replace sin archivo → sube como nuevo; `ask` con conflicto calcula `wouldPruneVersion` con `VersionRetention`, `null` si no poda; archivo ausente/en papelera al completar → `destination_gone`, carga `cancelada`, `404`); `test/int/storage/versions-replace.int-spec.ts` (feliz con descarga del contenido nuevo y de la anterior; tipo inválido sin versión nueva; cuota/tamaño `422` sin cambio); `versions-concurrency.int-spec.ts` (dos reemplazos y reemplazo + restauración, esta última se completa en T-06: dejar el caso marcado hasta entonces; números consecutivos únicos y `espacio_usado` exacto).
   - Archivos: `storage/application/upload.service.ts`, `upload-registrar.ts`, `quota.service.ts` (`assertFits`, `assertCanUpload` la reutiliza), `ports/i-node.repository.port.ts` y `typeorm-node.repository.ts` (`findLiveFileByName`), `typeorm-upload-session.repository.ts`, `contracts/storage/schemas.ts` (409 `details.wouldPruneVersion`).
   - Depende: T-03
 
-- [ ] **T-05** Historial y descarga de una versión — CA: CA-6, CA-7, CA-8, CA-11 (descarga), CA-16 (historial conservado al restaurar de la papelera), CA-19 (sin URLs ni claves en bitácoras)
+- [x] **T-05** Historial y descarga de una versión — CA: CA-6, CA-7, CA-8, CA-11 (descarga), CA-16 (historial conservado al restaurar de la papelera), CA-19 (sin URLs ni claves en bitácoras)
   - Prueba primero: `test/int/storage/versions-list.int-spec.ts` (`GET /files/:fileId/versions`: orden, `deltaBytes`, `restoredFromNumber` tras poda, `isCurrent`, `retainedVersions`, autor solo `createdById`, sin `clave_objeto`; `POST …/download-url`: URL de 300 s con nombre; versión ajena/podada → `STORAGE_VERSION_NOT_FOUND`; archivo eliminado y restaurado de la papelera conserva el historial), unit de `VersionHistoryService`.
   - Archivos: `storage/application/version-history.service.ts`, `file.service.ts` (`getDownloadUrl(actor, fileId, versionId?)`, una sola ruta de URL firmada), `presentation/file-versions.controller.ts` (rutas `GET …/versions` y `POST …/download-url`, solo `CLIENT`), registro en módulos.
   - Depende: T-03
@@ -57,7 +57,7 @@ T-02 ─┘         ├─> T-05 ─> T-06 ──┼─> T-08 (web, ficha)
   - Archivos: `test/isolation/storage-versions.iso-spec.ts` (más ajustes mínimos en el código si la prueba revela una fuga).
   - Depende: T-04, T-05, T-06
 
-- [ ] **T-08** Web: ficha de archivo con historial, restaurar y descargar — CA: CA-6, CA-7, CA-15 (aviso de poda al restaurar), CA-20
+- [x] **T-08** Web: ficha de archivo con historial, restaurar y descargar — CA: CA-6, CA-7, CA-15 (aviso de poda al restaurar), CA-20
   - Prueba primero (componentes, con axe): `components/nimbo/version-timeline.spec.tsx`, `features/storage/components/restore-version-dialog.spec.tsx`, `file-detail-view.spec.tsx`. Estados del mockup `storage/ficha-archivo/`: default, una-version, cargando, error con «Reintentar», confirmar-restauracion (con espacio), aviso-de-poda, restaurando (> 2 s), restaurada, error-cuota, error-version-no-encontrada, no-encontrado, descarga-preparando; la versión actual sin «Restaurar»; «Tú» por `createdById`; 360 y 1440 px, español, solo tokens.
   - Archivos: `app/(app)/(cliente)/archivos/archivo/[fileId]/page.tsx`, `components/nimbo/version-timeline.tsx`, `features/storage/versions-api.ts`, `hooks/use-file-versions.ts`, `components/file-detail-view.tsx`, `components/restore-version-dialog.tsx`, `components/node-rows.tsx` (entrada «Ver historial» del menú ⋮).
   - Depende: T-05, T-06 (puede arrancar tras T-01 contra los contratos y cerrarse con las rutas reales)
