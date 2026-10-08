@@ -53,6 +53,7 @@ const LIMITS: PlanLimits = {
   maxFileBytes: 1_000n * BigInt(MIB),
   storageQuotaBytes: 2_000n * BigInt(MIB),
   trashRetentionDays: 30,
+  retainedVersions: 3,
   planName: 'Plan de prueba',
 };
 const CONFIG: UploadConfig = {

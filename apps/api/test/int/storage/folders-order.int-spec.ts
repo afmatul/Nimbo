@@ -159,9 +159,9 @@ const insertFiles = async (
          FROM unnest($3::uuid[], $4::text[], $5::bigint[], $6::timestamptz[], $7::timestamptz[])
               AS r(id, nombre, tamano, creado, actualizado)
        RETURNING id, version_actual_id, tamano_bytes, creado_en)
-     INSERT INTO version_archivo (id, archivo_id, origen, clave_objeto, tamano_bytes, creado_por, creada_en)
+     INSERT INTO version_archivo (id, archivo_id, origen, clave_objeto, tamano_bytes, creado_por, creada_en, numero)
      SELECT a.version_actual_id, a.id, 'carga', 'u/' || $1 || '/' || a.id || '/' || a.version_actual_id,
-            a.tamano_bytes, $1, a.creado_en
+            a.tamano_bytes, $1, a.creado_en, 1
        FROM a`,
     [
       ownerId,

@@ -12,6 +12,7 @@ const PERSONAL: PlanLimits = {
   maxFileBytes: 52428800n,
   storageQuotaBytes: 16106127360n,
   trashRetentionDays: 7,
+  retainedVersions: 3,
 };
 
 describe('PlanLimitsAdapter (006a T-08, CA-4, CA-5, RN-4; 006 CA-19)', () => {
@@ -34,6 +35,7 @@ describe('PlanLimitsAdapter (006a T-08, CA-4, CA-5, RN-4; 006 CA-19)', () => {
         cuotaBytes: 16106127360n,
         maxArchivoBytes: 52428800n,
         diasRetencionPapelera: 7,
+        versionesRetenidas: 3,
       } as PlanOrmEntity);
 
       const limits = await adapter.limitsFor(
@@ -52,6 +54,7 @@ describe('PlanLimitsAdapter (006a T-08, CA-4, CA-5, RN-4; 006 CA-19)', () => {
         cuotaBytes: 16106127360n,
         maxArchivoBytes: 52428800n,
         diasRetencionPapelera: 7,
+        versionesRetenidas: 3,
       } as PlanOrmEntity);
 
       const limits = await adapter.limitsFor(createActor('admin-id', Role.ADMIN));
@@ -78,11 +81,28 @@ describe('PlanLimitsAdapter (006a T-08, CA-4, CA-5, RN-4; 006 CA-19)', () => {
         cuotaBytes: 2199023255552n,
         maxArchivoBytes: 5368709120n,
         diasRetencionPapelera: 90,
+        versionesRetenidas: 100,
       } as PlanOrmEntity);
 
       const limits = await adapter.getLimitsByPlanId('10000000-0000-4000-8000-000000000004');
 
       expect(limits.trashRetentionDays).toBe(90);
+    });
+
+    it('CA-13 (014): las versiones retenidas salen de `versiones_retenidas`, no del código', async () => {
+      mockRepo.findOneBy.mockResolvedValue({
+        id: '10000000-0000-4000-8000-000000000004',
+        slug: 'institucional',
+        nombre: 'Institucional',
+        cuotaBytes: 2199023255552n,
+        maxArchivoBytes: 5368709120n,
+        diasRetencionPapelera: 90,
+        versionesRetenidas: 100,
+      } as PlanOrmEntity);
+
+      const limits = await adapter.getLimitsByPlanId('10000000-0000-4000-8000-000000000004');
+
+      expect(limits.retainedVersions).toBe(100);
     });
 
     it('CA-1 (007, D-20): el nombre visible del plan sale de `plan.nombre`', async () => {
@@ -93,6 +113,7 @@ describe('PlanLimitsAdapter (006a T-08, CA-4, CA-5, RN-4; 006 CA-19)', () => {
         cuotaBytes: 2199023255552n,
         maxArchivoBytes: 5368709120n,
         diasRetencionPapelera: 90,
+        versionesRetenidas: 100,
       } as PlanOrmEntity);
 
       const limits = await adapter.getLimitsByPlanId('10000000-0000-4000-8000-000000000004');
@@ -108,6 +129,7 @@ describe('PlanLimitsAdapter (006a T-08, CA-4, CA-5, RN-4; 006 CA-19)', () => {
         cuotaBytes: 107374182400n,
         maxArchivoBytes: 524288000n,
         diasRetencionPapelera: 30,
+        versionesRetenidas: 30,
       } as PlanOrmEntity);
 
       const limits = await adapter.getLimitsByPlanId('10000000-0000-4000-8000-000000000002');
@@ -117,6 +139,7 @@ describe('PlanLimitsAdapter (006a T-08, CA-4, CA-5, RN-4; 006 CA-19)', () => {
         maxFileBytes: 524288000n,
         storageQuotaBytes: 107374182400n,
         trashRetentionDays: 30,
+        retainedVersions: 30,
       });
       expect(mockRepo.findOneBy).toHaveBeenCalledWith({
         id: '10000000-0000-4000-8000-000000000002',
@@ -143,6 +166,7 @@ describe('PlanLimitsAdapter (006a T-08, CA-4, CA-5, RN-4; 006 CA-19)', () => {
         cuotaBytes: 375809638400n,
         maxArchivoBytes: 1073741824n,
         diasRetencionPapelera: 60,
+        versionesRetenidas: 60,
       } as PlanOrmEntity);
 
       const limits = await adapter.getLimitsBySlug('equipo');
@@ -152,6 +176,7 @@ describe('PlanLimitsAdapter (006a T-08, CA-4, CA-5, RN-4; 006 CA-19)', () => {
         maxFileBytes: 1073741824n,
         storageQuotaBytes: 375809638400n,
         trashRetentionDays: 60,
+        retainedVersions: 60,
       });
       expect(mockRepo.findOneBy).toHaveBeenCalledWith({ slug: 'equipo' });
     });

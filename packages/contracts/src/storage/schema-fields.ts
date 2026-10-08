@@ -10,11 +10,17 @@ type FieldMessages = Readonly<Record<StorageFieldIssueReason, string>>;
 /** Campo validado por `field`: entra y sale como `T`. */
 export type Field<T> = z.ZodEffects<z.ZodType<T>, T, T>;
 
-/** Respuesta ante un nombre repetido (005 CA-6): no existe «Reemplazar». */
+/** Respuesta ante un nombre repetido al renombrar o mover (005 CA-6, 006): no existe «Reemplazar». */
 export const ON_CONFLICT_OPTIONS = ['ask', 'keep_both'] as const;
 export type OnConflict = (typeof ON_CONFLICT_OPTIONS)[number];
 
+/** Al subir, además, «Reemplazar (nueva versión)» del archivo con ese nombre (014 CA-1). */
+export const UPLOAD_ON_CONFLICT_OPTIONS = [...ON_CONFLICT_OPTIONS, 'replace'] as const;
+export type UploadOnConflict = (typeof UPLOAD_ON_CONFLICT_OPTIONS)[number];
+
 const ON_CONFLICT_MESSAGE = 'Elige «Conservar ambos» o «Cancelar» y vuelve a intentarlo.';
+const UPLOAD_ON_CONFLICT_MESSAGE =
+  'Elige «Reemplazar (nueva versión)», «Conservar ambos» o «Cancelar» y vuelve a intentarlo.';
 
 const PATH_SEPARATORS = new Set(['/', '\\']);
 const RESERVED_NAMES = new Set(['.', '..']);
@@ -97,6 +103,11 @@ export const folderField: Field<string | null> = field<string | null>(folderReas
 /** `onConflict` ausente es `ask` (preguntar con «Conservar ambos» / «Cancelar»). */
 export const onConflictField = z
   .enum(ON_CONFLICT_OPTIONS, { message: ON_CONFLICT_MESSAGE })
+  .default('ask');
+
+/** `onConflict` de una carga: el de `onConflictField` más `replace`. */
+export const uploadOnConflictField = z
+  .enum(UPLOAD_ON_CONFLICT_OPTIONS, { message: UPLOAD_ON_CONFLICT_MESSAGE })
   .default('ask');
 
 /** Consulta paginada: `limit` fuera de rango se ajusta; el cursor es opaco y lo decodifica la API. */

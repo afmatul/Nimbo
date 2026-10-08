@@ -35,6 +35,7 @@ export const DEFAULT_TEST_LIMITS: PlanLimits = {
   maxFileBytes: BigInt(64 * MIB),
   storageQuotaBytes: BigInt(256 * MIB),
   trashRetentionDays: 30,
+  retainedVersions: 3,
   planName: 'Plan de prueba',
 };
 /** Bucket propio y **versionado**, como el de `infra/minio/init.sh`: el compartido del arnés no tiene versionado. */

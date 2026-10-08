@@ -31,6 +31,8 @@ import { VersionArchivoOrmEntity } from './version-archivo.orm-entity';
 
 const FILE_ALIAS = 'archivo';
 const FOLDER_ALIAS = 'carpeta';
+/** `insertWithVersion` da de alta un archivo: su versión es la primera (014 CA-4). */
+const FIRST_VERSION_NUMBER = 1;
 /** Comodines de `LIKE` y su carácter de escape: en un nombre son texto, no patrones. */
 const LIKE_SPECIAL_CHARACTERS = /[\\%_]/g;
 
@@ -260,6 +262,7 @@ export class TypeOrmNodeRepository implements INodeRepository {
     await manager.insert(VersionArchivoOrmEntity, {
       id: version.id,
       archivoId: version.fileId,
+      numero: FIRST_VERSION_NUMBER,
       origen: version.origin,
       claveObjeto: version.objectKey.value,
       tamanoBytes: version.sizeBytes,

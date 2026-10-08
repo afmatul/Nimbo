@@ -5,7 +5,7 @@ import { AUDIT_NOTE_MAX_LENGTH, sanitizeAttributes } from '../domain/attribute-s
 import { AuditAction } from './audit-action';
 import { AUDIT_CATALOG, resourceTypeOf } from './audit-catalog';
 
-/** Lo que 005 (`upload.service`, `file.service`) y 006 (`trash.service`) emiten hoy. */
+/** Lo que 005 (`upload.service`, `file.service`) y 006 (`trash.service`) emiten hoy, y lo que 014 emitirá (plan §5). */
 const REAL_ATTRIBUTES: Readonly<Record<AuditAction, Record<string, string | number>>> = {
   [AuditAction.FILE_UPLOAD_COMPLETED]: { sizeBytes: 12_582_912, mode: 'multipart' },
   [AuditAction.FILE_UPLOAD_REJECTED]: { reason: 'TYPE_MISMATCH', mode: 'simple', sizeBytes: 2048 },
@@ -19,6 +19,8 @@ const REAL_ATTRIBUTES: Readonly<Record<AuditAction, Record<string, string | numb
     trigger: 'scheduled',
   },
   [AuditAction.TRASH_EMPTIED]: { itemCount: 4, sizeBytes: 4096 },
+  [AuditAction.FILE_VERSION_RESTORED]: { versionNumber: 4, restoredFromNumber: 2, sizeBytes: 2048 },
+  [AuditAction.FILE_VERSION_PRUNED]: { versionNumber: 1, sizeBytes: 1024 },
 };
 
 describe('AUDIT_CATALOG', () => {
@@ -51,6 +53,8 @@ describe('resourceTypeOf', () => {
     [AuditAction.NODE_RESTORED, { nodeType: 'file' }, 'file'],
     [AuditAction.NODE_PURGED, { nodeType: 'folder' }, 'folder'],
     [AuditAction.TRASH_EMPTIED, {}, null],
+    [AuditAction.FILE_VERSION_RESTORED, {}, 'file'],
+    [AuditAction.FILE_VERSION_PRUNED, {}, 'file'],
   ] as const)('D-3: `%s` con %p es de tipo %p', (action, attributes, expected) => {
     expect(resourceTypeOf(action, attributes)).toBe(expected);
   });

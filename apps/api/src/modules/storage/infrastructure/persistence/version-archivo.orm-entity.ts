@@ -12,6 +12,14 @@ export class VersionArchivoOrmEntity {
   @Column('uuid', { name: 'archivo_id' })
   archivoId!: string;
 
+  /** Consecutivo por archivo (014 CA-4); la versión actual es la de mayor número. */
+  @Column('integer')
+  numero!: number;
+
+  /** Número de la versión de la que se restauró (014 CA-9); sin FK: sobrevive a su poda. */
+  @Column('integer', { name: 'restaurada_de_numero', nullable: true })
+  restauradaDeNumero!: number | null;
+
   @Column('varchar', { length: 12 })
   origen!: FileVersionOrigin;
 

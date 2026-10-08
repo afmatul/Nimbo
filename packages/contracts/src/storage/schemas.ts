@@ -6,8 +6,8 @@ import {
   field,
   folderField,
   nameField,
-  onConflictField,
   timestamp,
+  uploadOnConflictField,
   uuidSchema,
 } from './schema-fields';
 
@@ -19,8 +19,8 @@ export type FileKind = (typeof FILE_KINDS)[number];
 export const UPLOAD_MODES = ['simple', 'multipart'] as const;
 export type UploadMode = (typeof UPLOAD_MODES)[number];
 
-export { ON_CONFLICT_OPTIONS } from './schema-fields';
-export type { OnConflict } from './schema-fields';
+export { ON_CONFLICT_OPTIONS, UPLOAD_ON_CONFLICT_OPTIONS } from './schema-fields';
+export type { OnConflict, UploadOnConflict } from './schema-fields';
 
 function sizeReason(value: unknown): StorageFieldIssueReason | null {
   if (value === undefined) return 'REQUIRED';
@@ -30,15 +30,15 @@ function sizeReason(value: unknown): StorageFieldIssueReason | null {
 }
 
 /**
- * `POST /uploads` (005 plan §5; 006 agrega `folderId`). Estricto: otra clave es `UNKNOWN_FIELD`. `sizeBytes = 0`
- * pasa: el `422 STORAGE_EMPTY_FILE` lo decide el servicio. El nombre se envía tal cual; el servicio lo normaliza
- * (`FileName`). `folderId` ausente o `null` es la raíz.
+ * `POST /uploads` (005 plan §5; 006 agrega `folderId`; 014, `onConflict: replace`). Estricto: otra clave es
+ * `UNKNOWN_FIELD`. `sizeBytes = 0` pasa: el `422 STORAGE_EMPTY_FILE` lo decide el servicio. El nombre se envía tal
+ * cual; el servicio lo normaliza (`FileName`). `folderId` ausente o `null` es la raíz.
  */
 export const initUploadSchema = z
   .object({
     name: nameField(),
     sizeBytes: field<number>(sizeReason),
-    onConflict: onConflictField,
+    onConflict: uploadOnConflictField,
     folderId: folderField.default(null),
   })
   .strict(STORAGE_FIELD_MESSAGES.UNKNOWN_FIELD);

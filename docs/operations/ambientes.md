@@ -43,6 +43,7 @@ Secreto = nunca en el repositorio, vacío en `.env.example` de staging, redactad
 | `UPLOAD_PART_SIZE_BYTES` / `UPLOAD_MULTIPART_THRESHOLD_BYTES` | ✓ | | | | | 8 MiB / 16 MiB | Parte ≥ 5 MiB; umbral ≥ parte (005 D-1) |
 | `UPLOAD_URL_TTL_SECONDS` | ✓ | | | | | `3600` | TTL entre 60 y 86400 s |
 | `RATE_LIMIT_UPLOAD_INIT_PER_MINUTE` / `RATE_LIMIT_DOWNLOAD_URL_PER_MINUTE` | ✓ | | | | | `300` / `120` | Por usuario (005 RN-16) |
+| `RATE_LIMIT_VERSION_RESTORE_PER_MINUTE` | ✓ | | | | | `30` | Restauraciones de versiones por usuario (014 plan §5) |
 | `UPLOAD_CLEANUP_INTERVAL_MINUTES` / `UPLOAD_CLEANUP_BATCH_SIZE` | | ✓ | | | | `10` / `100` | Barrido de cargas vencidas; lote 1–1000 |
 | `WEB_PUBLIC_URL` | ✓ | | | | | — | Base de los enlaces de los correos (`/verificar-correo#token=…`); `https` obligatorio en staging y producción (001 CA-20) |
 | `CORS_ORIGIN` | ✓ | | | ✓ | | — | Orígenes permitidos, separados por comas (local: `http://localhost,http://localhost:3002`); compose los pasa también a `MINIO_API_CORS_ALLOW_ORIGIN` (005, nunca `*`) |

@@ -47,6 +47,7 @@ const toRow = (session: UploadSession): CargaOrmEntity => ({
   nombre: session.name.value,
   carpetaDestinoId: session.folderId,
   conservarAmbos: session.keepBoth,
+  reemplaza: false,
   tamanoBytes: session.declaredBytes,
   modo: session.mode,
   estado: session.state,
