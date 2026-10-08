@@ -59,7 +59,7 @@ services:
 
   # Crea el bucket con versionado (D-7) y termina. Idempotente: `mc mb --ignore-existing`.
   minio-init:
-    image: pgsty/silo:RELEASE.2026-09-16T00-00-00Z
+    image: pgsty/mc:RELEASE.2026-09-16T00-00-00Z
     depends_on:
       minio:
         condition: service_healthy
