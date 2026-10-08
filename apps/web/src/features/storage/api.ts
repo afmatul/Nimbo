@@ -18,12 +18,14 @@ import { createSpaceApi, type SpaceApi } from './space-api';
 import { createStorageHttp, parseResponse } from './storage-http';
 import { createTrashApi, type TrashApi } from './trash-api';
 import type { UploadClient } from './upload/upload-manager';
+import { createVersionsApi, type VersionsApi } from './versions-api';
 
 /**
- * Cliente de la API de `storage` (planes 005 §5, 006 §4 y §9 y 007 §4): cargas, carpetas, papelera, espacio, descarga y
- * accesos rápidos.
+ * Cliente de la API de `storage` (planes 005 §5, 006 §4 y §9, 007 §4 y 014 §4): cargas, carpetas, papelera, espacio,
+ * descarga, accesos rápidos y versiones.
  */
-export interface StorageApi extends UploadClient, FoldersApi, TrashApi, QuickAccessApi, SpaceApi {
+export interface StorageApi
+  extends UploadClient, FoldersApi, TrashApi, QuickAccessApi, SpaceApi, VersionsApi {
   downloadUrl(fileId: string): Promise<DownloadUrlResponse>;
   /** Nombre repetido: `409` con `details.suggestedName` salvo con `onConflict: 'keep_both'` (005 CA-6). */
   renameFile(fileId: string, body: RenameFileRequest): Promise<FileSummary>;
@@ -45,6 +47,7 @@ export function createStorageApi(apiPublicUrl: string, authFetch: AuthFetch): St
     ...createTrashApi(http),
     ...createQuickAccessApi(http),
     ...createSpaceApi(http),
+    ...createVersionsApi(http),
     init: async (body) =>
       parseResponse(await http.post('/uploads', body), initUploadResponseSchema),
     resume: async (uploadId) =>

@@ -91,6 +91,15 @@ const STORAGE_MESSAGES: Readonly<Record<string, StorageMessageBuilder>> = {
     'Ya tienes un archivo con ese nombre.',
     'Elige «Conservar ambos» o cancela la carga.',
   ),
+  // Historial de versiones (014 CA-10, CA-11): el mismo texto que el servidor, en dos partes.
+  [STORAGE_ERROR_CODES.STORAGE_VERSION_NOT_FOUND]: fixed(
+    'No encontramos esta versión.',
+    'Puede que se haya eliminado al superar las versiones que conserva tu plan. Actualiza el historial para ver las disponibles.',
+  ),
+  [STORAGE_ERROR_CODES.STORAGE_VERSION_ALREADY_CURRENT]: fixed(
+    'Esta ya es la versión actual.',
+    'Actualiza el historial para ver los cambios.',
+  ),
   [STORAGE_ERROR_CODES.STORAGE_UPLOAD_NOT_FOUND]: fixed(
     'No encontramos esta carga.',
     'Vuelve a subir el archivo.',

@@ -16,6 +16,7 @@ import {
   AlertDialogTitle,
 } from '../../../components/ui/alert-dialog';
 import { buttonVariants } from '../../../components/ui/button';
+import { PENDING_LABEL_DELAY_MS, usePendingConfirm } from '../hooks/use-pending-confirm';
 import { isStorageNotFound } from '../storage-request-error';
 
 /** Un elemento de la papelera (síncrono) o la papelera completa (diferido, `202`). */
@@ -24,7 +25,7 @@ export type PurgeTarget =
   | { readonly scope: 'all'; readonly itemCount: number; readonly totalBytes: number };
 
 /** Pasado este tiempo sin respuesta, el botón muestra «Eliminando…» (RNF-14, patrón de `descarga-preparando`). */
-export const PURGING_DELAY_MS = 2_000;
+export const PURGING_DELAY_MS = PENDING_LABEL_DELAY_MS;
 
 export interface PurgeConfirmDialogProps {
   /** `null` = cerrado. */
@@ -80,51 +81,6 @@ function failureMessage(target: PurgeTarget, error: unknown): string {
   return `No pudimos eliminar «${name}». Revisa tu conexión e inténtalo de nuevo.`;
 }
 
-/** Estado de la confirmación en curso: enviando, «Eliminando…» pasados 2 s, y el motivo si falló. */
-function usePendingConfirm(
-  target: PurgeTarget | null,
-  onConfirm: () => Promise<void>,
-  onClose: () => void,
-): {
-  pending: boolean;
-  slow: boolean;
-  failure: string | null;
-  confirm: () => Promise<void>;
-  close: () => void;
-} {
-  const [pending, setPending] = React.useState(false);
-  const [slow, setSlow] = React.useState(false);
-  const [failure, setFailure] = React.useState<string | null>(null);
-  const slowTimer = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-
-  React.useEffect(() => () => clearTimeout(slowTimer.current), []);
-
-  /** Al cerrar se olvida el motivo de la falla: la próxima confirmación empieza limpia. */
-  const close = (): void => {
-    setFailure(null);
-    onClose();
-  };
-
-  const confirm = async (): Promise<void> => {
-    if (target === null || pending) return;
-    setPending(true);
-    setFailure(null);
-    slowTimer.current = setTimeout(() => setSlow(true), PURGING_DELAY_MS);
-    try {
-      await onConfirm();
-      close();
-    } catch (error) {
-      setFailure(failureMessage(target, error));
-    } finally {
-      clearTimeout(slowTimer.current);
-      setPending(false);
-      setSlow(false);
-    }
-  };
-
-  return { pending, slow, failure, confirm, close };
-}
-
 /**
  * Confirmación de «Eliminar definitivamente» o «Vaciar papelera» (CA-18): dice la consecuencia y el espacio que se
  * libera; el foco empieza en «Cancelar» (Radix). Sin confirmar no ocurre nada.
@@ -134,7 +90,11 @@ export function PurgeConfirmDialog({
   onConfirm,
   onClose,
 }: PurgeConfirmDialogProps): React.JSX.Element | null {
-  const { pending, slow, failure, confirm, close } = usePendingConfirm(target, onConfirm, onClose);
+  const { pending, slow, failure, confirm, close } = usePendingConfirm(
+    onConfirm,
+    onClose,
+    (error) => (target === null ? null : failureMessage(target, error)),
+  );
   if (target === null) return null;
   const texts = textsFor(target);
 

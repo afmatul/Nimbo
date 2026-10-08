@@ -55,6 +55,10 @@ terminar de vaciar (D-16). Sin empuje en tiempo real (P-2). Si el resumen falla,
 | `quick-access-api.ts`, `hooks/use-quick-access.ts`                                  | `/quick-access`: fijados y recientes, fijar, quitar y registrar aperturas (mejor esfuerzo)               | 006 T-16   |
 | `components/quick-access-section.tsx`, `quick-access-sidebar.tsx`                   | «Accesos rápidos» en la barra y el cajón (⋮ en cada fijado); descarga y menús de fila conectados         | 006 T-16   |
 | `components/quick-access-limit-alert.tsx`                                           | Aviso `warning` del tope de fijados (`STORAGE_QUICK_ACCESS_LIMIT`), arriba de la lista                   | 006 T-16   |
+| `versions-api.ts`, `version-history.ts`                                             | `GET /files/:id/versions`, restaurar y descargar una versión; versión que se podaría y espacio total     | 014 T-08   |
+| `hooks/use-file-versions.ts`, `hooks/use-version-actions.ts`                        | Historial (cargando, error, no encontrado) y acciones: restaurar con toast, descargar, avisos            | 014 T-08   |
+| `hooks/use-version-download.ts`, `hooks/use-pending-confirm.ts`                     | «Preparando…» de una versión; confirmación con «…» pasados 2 s (la comparten purgar y restaurar)         | 014 T-08   |
+| `components/file-detail-view.tsx`, `restore-version-dialog.tsx`                     | Ficha `/archivos/archivo/[fileId]` con `VersionTimeline` y la confirmación de restaurar (aviso de poda)  | 014 T-08   |
 
 Los textos de error de `storage` salen de `lib/error-catalog.ts` (`storageMessage`: causa y acción, con las cifras de
 `details`); el panel los usa tal cual.
@@ -118,3 +122,21 @@ Los textos de error de `storage` salen de `lib/error-catalog.ts` (`storageMessag
   creación, así que las fechas visibles no salen en orden; es esperado. La tabla marca el orden de lo que muestra, no
   el pedido. Con `size` las carpetas no tienen tamaño y la API las ordena por nombre ascendente (D-7).
 - «Modificado» y la segunda línea móvil («{tamaño} · {fecha}», «Carpeta · {fecha}») usan `updatedAt`.
+
+## Ficha de archivo y versiones (014 T-08)
+
+- «Ver historial» del menú ⋮ de un archivo (`FileRowMenu`) abre `/archivos/archivo/[fileId]` (`fileDetailPath`). La
+  ficha pide `GET /files/:fileId/versions` y pinta `components/nimbo/version-timeline.tsx`: «Tú» cuando `createdById` es
+  el usuario de la sesión (la API no envía nombres, D-9), «Primera versión» o «Sin comparación» con `deltaBytes` nulo y
+  «Restauración de la versión k». La versión actual no tiene «Restaurar» (CA-20).
+- Restaurar confirma con el espacio que usará; si el historial ya tiene las versiones que conserva el plan
+  (`retainedVersions`), avisa qué versión se eliminará (la más antigua, `versionToPrune`, CA-15) y el foco pasa a
+  «Cancelar». Al terminar: toast «Restauraste la versión n como versión m.», la nueva lleva «NUEVA», se relee el historial
+  y el resumen de espacio. Un `422` queda en el diálogo con «Liberar espacio»; un `404` de versión o un `409` (otra
+  pestaña) cierran el diálogo y dejan el aviso con «Actualizar historial»; un `404` del archivo lleva a «No encontramos
+  este archivo.».
+- «Descargar» del encabezado y de cada versión usa `POST …/versions/:versionId/download-url` (el del encabezado, con la
+  versión actual).
+- El contrato de 014 no trae los metadatos del archivo (nombre, tipo, carpeta, creación): el encabezado dice «Versiones
+  del archivo» y «Detalles» muestra solo lo que se deriva del historial (tamaño actual, espacio con versiones y
+  modificado). Ver el reporte de T-08.
