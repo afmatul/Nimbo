@@ -375,11 +375,13 @@ describe('Sesiones abiertas (CA-11 a CA-14)', () => {
       await closeSession(closed.sessionId, current).expect(204);
       const foreign = await signInFrom(await insertAccount(dataSource));
 
-      const responses = await Promise.all(
-        ['no-es-un-uuid', UNKNOWN_SESSION_ID, foreign.sessionId, closed.sessionId].map((id) =>
-          closeSession(id, current),
-        ),
-      );
+      // En serie: cuatro DELETE a la vez cortan el socket en CI (`read ECONNRESET`).
+      const responses = [
+        await closeSession('no-es-un-uuid', current),
+        await closeSession(UNKNOWN_SESSION_ID, current),
+        await closeSession(foreign.sessionId, current),
+        await closeSession(closed.sessionId, current),
+      ];
 
       const [malformed, ...rest] = responses.map((response) => ({
         status: response.status,
