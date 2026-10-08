@@ -1,5 +1,4 @@
 import { apiEnvSchema, migrationEnvSchema, SECRET_KEYS, workerEnvSchema } from './env.schema';
-
 import { loadEnv } from './load-env';
 
 /** Mínimo válido para `api`: solo las variables sin valor por defecto. */
