@@ -461,7 +461,11 @@ export class UploadService {
         actor,
         targetUserId: actor.id,
         resourceId: session.id,
-        attributes: { reason, mode: CONTRACT_MODE[session.mode] },
+        attributes: {
+          reason,
+          mode: CONTRACT_MODE[session.mode],
+          sizeBytes: Number(session.declaredBytes),
+        },
       },
       { cargaId: session.id },
     );

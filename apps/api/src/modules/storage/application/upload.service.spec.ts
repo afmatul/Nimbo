@@ -1060,7 +1060,7 @@ describe('UploadService.complete: registro final', () => {
     });
   });
 
-  it('CA-11, CA-20: un rechazo audita `file.upload_rejected` con su motivo y la carga', async () => {
+  it('CA-11, CA-20: un rechazo audita `file.upload_rejected` con su motivo, tamaño y la carga', async () => {
     const ctx = setup();
     const session = await uploadedSimple(ctx);
     ctx.detector.result = { ok: false, reason: 'signature' };
@@ -1075,7 +1075,7 @@ describe('UploadService.complete: registro final', () => {
         actor: ACTOR,
         targetUserId: ACTOR.id,
         resourceId: session.id,
-        attributes: { reason: 'tipo_invalido', mode: 'simple' },
+        attributes: { reason: 'tipo_invalido', mode: 'simple', sizeBytes: MIB },
       },
     ]);
   });
