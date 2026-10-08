@@ -72,7 +72,7 @@ cuentas y las personas que aparecen en otras pantallas (Mónica, Andrea, Pablo, 
 7. **Confirmar suspender** (`ConfirmDestructiveDialog`, foco inicial en «Cancelar», fondo `inert`): quién pierde el
    acceso y cuatro consecuencias con ícono: se cierran sus sesiones en todos sus dispositivos; sus comparticiones y
    enlaces públicos dejan de funcionar mientras esté suspendida; no se borra nada y al reactivar vuelven como estaban
-   (RN-6); queda en su auditoría con tu nombre y rol (RN-2). Botón destructivo «Suspender cuenta».
+   (RN-6); queda en su auditoría, donde el cliente ve tu rol y no tu nombre (RN-2, 004 D-2). Botón destructivo «Suspender cuenta».
 8. **Éxito** con `role="status"`: «Esta cuenta quedó suspendida y se cerraron sus sesiones.» + «Sus comparticiones y
    enlaces públicos están en pausa hasta que la reactives. No se borró nada.» El estado cambia a «Suspendida» y la
    acción pasa a «Reactivar cuenta» (botón primario).
@@ -93,6 +93,6 @@ cuentas y las personas que aparecen en otras pantallas (Mónica, Andrea, Pablo, 
 - Ficha cargando, ficha no encontrada y error de la acción de suspender: siguen el patrón `StateView`/aviso de esta
   carpeta; sin estado propio.
 - «Sin permiso» (Soporte u Operador abren `/admin`, CA-14/CA-17): pantalla común del marco, fuera de esta carpeta.
-- El plan decide si la búsqueda por correo es exacta o por prefijo, y el tamaño de página (el mockup muestra 10).
+- Búsqueda por inicio del correo y 10 por página (resuelto en el plan, P-16/Q-5).
 - Token ya emitido: al suspender, el acceso que la cuenta ya tenía caduca en 15 min como máximo (002 D-10; CA-2). El
   diálogo dice «Se cerrarán sus sesiones…»; el plan decide si se le explica ese margen al Administrador.

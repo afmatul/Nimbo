@@ -115,7 +115,7 @@ function formulario(f = {}) {
         <form class="card form-card" aria-labelledby="form-t" novalidate onsubmit="return false"${ro ? ' aria-busy="true"' : ''}>
           <h2 id="form-t" class="sr-only">Datos de la cuenta interna</h2>${f.resumen ? resumenErrores(f.resumen) : ''}
           <p class="req-note">Todos los campos son obligatorios.</p>${campo({
-    id: 'nombre', label: 'Nombre completo', help: 'Así aparecerá en la auditoría que ven los clientes cuando actúe sobre su cuenta.',
+    id: 'nombre', label: 'Nombre completo', help: 'Nombre y apellido de la persona. Los clientes no lo ven: en su auditoría solo aparece el rol.',
     value: v.nombre || '', err: e.nombre, ro, extra: 'autocomplete="off"',
   })}${campo({
     id: 'correo', label: 'Correo', help: 'Le enviaremos aquí el enlace para fijar su contraseña.', type: 'email',
@@ -125,7 +125,7 @@ function formulario(f = {}) {
     value: v.codigo || '', err: e.codigo, ro, short: true, extra: 'autocomplete="off" autocapitalize="characters" spellcheck="false"',
   })}${roles({ elegido: v.rol, err: e.rol, ro })}
           <div class="info-box">${icon('key', 16)}<p><strong>No hay contraseña que definir.</strong>Le enviaremos un enlace de un solo uso para que la fije. Tú nunca la conoces.</p></div>
-          <p class="audit-note">${icon('history', 15)}<span>El alta queda en la auditoría con tu nombre y rol.</span></p>
+          <p class="audit-note">${icon('history', 15)}<span>El alta queda registrada en la auditoría.</span></p>
           <div class="form-actions">
             ${boton}${ro ? '' : `
             <a class="btn btn-outline" href="../admin/admin.html">Cancelar</a>`}
@@ -153,7 +153,7 @@ function exito(n) {
           </dl>
           <ul class="next">
             <li>${icon('mail', 16)}<span>El enlace es de un solo uso. Podrá iniciar sesión cuando fije su contraseña.</span></li>
-            <li>${icon('history', 16)}<span>El alta quedó en la auditoría con tu nombre y rol.</span></li>
+            <li>${icon('history', 16)}<span>El alta quedó registrada en la auditoría.</span></li>
           </ul>
           <div class="form-actions">
             <a class="btn btn-primary" href="../admin/admin.html">${icon('arrowLeft', 16)}<span>Volver a cuentas</span></a>

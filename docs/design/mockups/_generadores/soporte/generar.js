@@ -161,7 +161,7 @@ const busqueda = (valor = '') => A.busqueda({
 });
 
 // Sección del cliente consultado: encabezado, aviso de auditoría y contenido (la tabla de metadatos o el vacío).
-function cliente(c, contenido, quien = 'tu nombre y tu rol (Soporte)') {
+function cliente(c, contenido, quien = 'tu rol (Soporte)') {
   return `
         <section aria-labelledby="cliente-t">
           <div class="client">
@@ -204,7 +204,7 @@ const inicial = () => `
         <section class="state state-empty" aria-labelledby="inicial-t">
           ${icon('fileSearch', 36)}
           <h2 id="inicial-t">Busca a un cliente para ver sus archivos</h2>
-          <p>Verás el nombre, tipo, tamaño, fechas y estado de cada archivo, nunca su contenido. Cada consulta queda en la auditoría del cliente con tu nombre y rol.</p>
+          <p>Verás el nombre, tipo, tamaño, fechas y estado de cada archivo, nunca su contenido. Cada consulta queda en la auditoría del cliente, que ve tu rol.</p>
         </section>`;
 
 const vacio = (c) => `
@@ -254,7 +254,7 @@ function desdeAdmin() {
             <h1>Metadatos de archivos</h1>
             <p>Nombre, tipo, tamaño, fechas y estado de los archivos de esta cuenta.</p>
           </div>
-        </div>${A.privacidad()}${cliente(LAURA, tabla(LAURA), 'tu nombre y tu rol (Administrador)')}`;
+        </div>${A.privacidad()}${cliente(LAURA, tabla(LAURA), 'tu rol (Administrador)')}`;
 }
 
 // ---------- Estados ----------

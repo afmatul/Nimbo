@@ -17,7 +17,7 @@ un puerto.
 | Abel (3)        | Diseñador-programador           | previsualización (017), `optimizer` (M7), observabilidad (022)                                                                               |
 | Fátima (4)      | Diseñador-programador           | sistema de diseño (000b), `realtime`, `sharing` (M3b), `backoffice` (M8), incluido el tablero de operación (022b)                             |
 
-Excepciones: 006a (`billing`) la construyó Fátima y la integra Adrián. 017 y 018 viven en `storage`, pero en carpetas
+Excepciones: 006a (`billing`) la construyó Fátima y la integra Adrián. En la 011, Adrián autorizó a Fátima a cambiar `identity`, `storage` y `audit` (2026-10-07; `shared` pendiente de su permiso), y la parte de `billing` la escribe Juan Marcos. 017 y 018 viven en `storage`, pero en carpetas
 propias (`storage/preview`, `storage/search`) de Abel y Juan Marcos; los cambios al resto de `storage` los hace Adrián.
 
 ## Estados (SDD express)
@@ -50,7 +50,7 @@ Antes de planificar las specs de Fase 1, el equipo decide en una reunión los ha
 | 008  | catalogo-y-comparador                                                                                                      | M4                  | RF-19                     | 15                         | 2    | Juan Marcos | 006a          | Pendiente |
 | 009  | contratacion-pagos-y-facturas (incluye el PD-40: suscripción Personal, conciliación y catálogo público) | M4 | RF-20, 21 | 23 | 2 | Juan Marcos | 008 | Pendiente |
 | 010  | renovacion-vencimiento-y-cambio-de-plan                                                    | M4                  | RF-22, 23, 24             | 25                         | 2    | Juan Marcos | 009           | Pendiente |
-| 011  | [administracion-y-soporte](011-administracion-y-soporte/spec.md)                           | M8                  | RF-06                     | 04, 36                     | 2    | Fátima | 003, 004, 005, 006, 007, 008 | Borrador (2026-10-06) |
+| 011  | [administracion-y-soporte](011-administracion-y-soporte/spec.md)                           | M8                  | RF-06                     | 04, 36                     | 2    | Fátima | 003, 004, 005, 006, 007, 008 | Borrador (2026-10-07) |
 | 011b | ajustes-de-cuenta-y-restauracion (ajuste de cuota y de vigencia, restauración de papelera por Soporte; separada de 011 por tamaño) | M8                  | RF-06, RF-05, RF-23       | 26                         | 2    | Fátima | 006, 009, 010, 011 | Pendiente |
 | 012  | comparticion-y-accesos                                                                     | M3b                 | RF-16, 18                 | 31                         | 2    | Fátima | 003, 006      | Pendiente |
 | 013  | enlaces-publicos                                                                           | M3b                 | RF-17, RNF-08             | 09, 10                     | 2    | Fátima | 012           | Pendiente |

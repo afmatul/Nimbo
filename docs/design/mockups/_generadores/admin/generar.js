@@ -278,7 +278,7 @@ function encabezadoFicha(c, estado, propia) {
 }
 
 function ficha(c, { estado = estadoDe(c), exito = '', propia = false } = {}) {
-  const nota = propia ? '' : '<p class="sub">Cada acción queda en la auditoría de la cuenta con tu nombre y rol.</p>';
+  const nota = propia ? '' : '<p class="sub">Cada acción queda en la auditoría de la cuenta; el cliente ve la acción y tu rol.</p>';
   return `${encabezadoFicha(c, estado, propia)}${exito}${privacidad()}
         <div class="ficha-grid">${datosCuenta(c, estado)}
           <section class="card" aria-labelledby="acciones-t">
@@ -299,8 +299,8 @@ const DLG_SUSPENDER = dialogo({
   items: [
     ['logout', 'Se cerrarán sus sesiones abiertas en todos sus dispositivos.'],
     ['link', 'Sus comparticiones y enlaces públicos dejarán de funcionar mientras esté suspendida.'],
-    ['database', 'No se borra nada: al reactivarla, sus archivos, comparticiones y enlaces vuelven como estaban.'],
-    ['history', 'La acción queda en su auditoría con tu nombre y rol.'],
+    ['database', 'Suspender no borra nada: al reactivarla, todo vuelve como estaba. Su papelera sigue su retención.'],
+    ['history', 'La acción queda en su auditoría; verá tu rol, no tu nombre.'],
   ],
   confirmar: 'Suspender cuenta', clase: 'btn-destructive', ic: 'ban', cancelar: C.LAURA.ficha,
 });
@@ -311,7 +311,7 @@ const DLG_REACTIVAR = dialogo({
   items: [
     ['link', 'Sus comparticiones y enlaces públicos vuelven a funcionar como estaban.'],
     ['logout', 'Las sesiones que se cerraron al suspenderla no vuelven: tendrá que iniciar sesión de nuevo.'],
-    ['history', 'La acción queda en su auditoría con tu nombre y rol.'],
+    ['history', 'La acción queda en su auditoría; verá tu rol, no tu nombre.'],
   ],
   confirmar: 'Reactivar cuenta', clase: 'btn-primary-dlg', ic: 'userCheck',
 });

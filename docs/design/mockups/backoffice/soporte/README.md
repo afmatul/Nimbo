@@ -49,8 +49,8 @@ horaria de la persona que consulta y el total para la paginación.
 3. **Aviso de privacidad** fijo bajo el título, con candado: «Soporte ve metadatos de los archivos (nombre, tipo, tamaño,
    fechas y estado), nunca su contenido ni vistas previas.» (adaptación del mensaje de §6 de la spec para Soporte).
 4. **Aviso de auditoría** en dos momentos (RN-2, CA-16): antes de buscar («Cada consulta queda en la auditoría del
-   cliente con tu nombre y rol») y junto al resultado («Esta consulta queda en la auditoría de Laura. Verá la fecha, tu
-   nombre y tu rol (Soporte).»). Recuadro informativo con ícono de historial, no alerta: es un hecho, no un error.
+   cliente, que ve tu rol») y junto al resultado («Esta consulta queda en la auditoría de Laura. Verá la fecha y tu rol
+   (Soporte).»); nunca tu nombre (CA-16, 004 D-2). Recuadro informativo con ícono de historial, no alerta: es un hecho, no un error.
 5. **Metadatos y nada más** (CA-13, RN-1): columnas Nombre, Tipo, Tamaño, Creado, Modificado y Estado. Ninguna fila ni
    nombre es enlace o botón, no hay menú ⋮, selección, casillas, miniaturas ni «abrir/descargar/previsualizar»; el
    ícono es solo por tipo (`FileTypeChip`, tokens `--file-*`). Sin hover de fila, para no sugerir que algo se abre.

@@ -51,8 +51,8 @@ de una sola fuente, `_generadores/admin/corpus.js`, que también leen la navegac
    neutro). Inactivo no usa rojo porque no es un error. La tarjeta inactiva pierde la sombra y va sobre el fondo de la
    página, y dice «Desactivado el 03/10/2026»; el estado nunca depende solo del color.
 4. **Mensaje clave fijo arriba**: «Los planes no se editan: crea uno nuevo y desactiva el anterior.» + «Así, quien ya
-   tiene un plan conserva su precio y sus límites.», y debajo «Crear o desactivar un plan queda en la auditoría con tu
-   nombre y rol.» (RN-2, §5).
+   tiene un plan conserva su precio y sus límites.», y debajo «Crear o desactivar un plan queda registrado en la
+   auditoría.» (§5: los cambios de catálogo no tienen cliente afectado).
 5. **Un plan no se edita (RN-4)**: no hay botón «Editar» ni para el nombre ni para la descripción. Un nombre mal escrito
    se corrige creando el plan bien y desactivando el anterior.
 6. **Personal sin botón**: en su lugar, un recuadro con candado «Plan por defecto · Es el plan gratuito: no se puede
@@ -73,14 +73,14 @@ de una sola fuente, `_generadores/admin/corpus.js`, que también leen la navegac
     necesario; «El plan de origen no cambia.». Apoya el flujo «crea uno nuevo y desactiva el anterior» y evita
     reescribir siete cifras. Es solo de la web (los datos ya están cargados).
 11. **Aviso de inmutabilidad antes de crear**: «Después de crearlo, el precio y los límites no cambian. Revísalos bien:
-    para cambiarlos más adelante tendrás que crear otro plan.» + «La creación queda en la auditoría con tu nombre y rol.».
+    para cambiarlos más adelante tendrás que crear otro plan.» + «La creación queda registrada en la auditoría.».
 12. **Errores** (CA-11, mismo patrón que alta-interna): resumen «Revisa 3 campos para crear el plan.» + «Todavía no
     creamos nada.» con enlaces; en cada campo, borde destructivo, ícono y texto con `aria-invalid` y
     `aria-describedby`. El servidor repite la validación y responde `422` con los campos; se muestran igual.
     Mensajes: «El precio no puede ser negativo. Escribe 0.00 si el plan es gratuito.» · «El máximo por archivo no puede
     superar 2 GB. Escribe 2 GB o menos.» · «El máximo por archivo no puede ser mayor que el almacenamiento del plan.» ·
-    «El almacenamiento debe ser mayor que 0.» · «Escribe al menos 1 versión retenida.» (mismo patrón para editores,
-    consultas y días) · «Escribe el nombre del plan.» · «Escribe una descripción.».
+    «El almacenamiento debe ser mayor que 0.» · «Escribe al menos 1 versión retenida.» (mismo patrón para consultas
+    y días; editores admite 0, solo lectura: «Escribe 0 o más editores.») · «Escribe el nombre del plan.» · «Escribe una descripción.».
 13. **Éxito en el catálogo**: tras crear se vuelve al catálogo con «Creamos el plan Equipo 2027. Ya se ofrece a
     contrataciones nuevas.» y, como se creó a partir de Equipo, «Si lo reemplaza, desactiva Equipo…» con el botón
     «Desactivar Equipo» (abre la misma confirmación). Sin «Partir de», el aviso no sugiere desactivar nada.

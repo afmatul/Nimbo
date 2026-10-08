@@ -26,7 +26,7 @@
 
 ## Datos de ejemplo
 Andrea Ruiz (`andrea.ruiz@nimbo.gt`, Soporte) ya está en la lista de `backoffice/admin`; por eso el conflicto la usa.
-Los códigos `EMP-0142` y `EMP-0118` son de ejemplo: el formato lo fija el plan. En la app los roles disponibles y los
+Los códigos `EMP-0142` y `EMP-0118` son de ejemplo del formato del plan (1 a 20 de `A-Z`, `0-9` y guion). En la app los roles disponibles y los
 mensajes de conflicto vienen de la API (`code` de CA-6).
 
 ## Decisiones de UX
@@ -45,8 +45,8 @@ mensajes de conflicto vienen de la API (`code` de CA-6).
    distingue por el punto del radio, el borde doble y el fondo, no solo por color.
 5. **Sin campo de contraseña** (P-6): recuadro con llave «No hay contraseña que definir. Le enviaremos un enlace de un
    solo uso para que la fije. Tú nunca la conoces.» junto al botón de crear.
-6. **Aviso de auditoría** breve, con ícono, antes del botón: «El alta queda en la auditoría con tu nombre y rol.»
-   (RN-2, §5). La ayuda del nombre recuerda que es el que verán los clientes en su auditoría (CA-16).
+6. **Aviso de auditoría** breve, con ícono, antes del botón: «El alta queda registrada en la auditoría.»
+   (§5). La ayuda del nombre aclara que los clientes no lo ven: en su auditoría solo aparece el rol (CA-16, 004 D-2).
 7. **Ayuda bajo cada etiqueta** y «Todos los campos son obligatorios.» al inicio (todos lo son, P-14), en lugar de
    marcar cada uno con asterisco. Sin texto de ejemplo dentro de los campos (el ejemplo va en la ayuda).
 8. **Errores** (Art. XIII.4, RNF-14): resumen arriba (`role="alert"`, «Revisa 3 campos para crear la cuenta.» +
@@ -65,8 +65,8 @@ mensajes de conflicto vienen de la API (`code` de CA-6).
     devolvería un «correo ya registrado» confuso por la propia cuenta recién creada. Mientras se envía no se muestra
     «Cancelar», porque salir de la página no deshace el alta.
 11. **Éxito en la misma página**: la tarjeta reemplaza el formulario con el mensaje pedido, un resumen (nombre, correo,
-    rol, código), «El enlace es de un solo uso. Podrá iniciar sesión cuando fije su contraseña.» y «El alta quedó en
-    la auditoría con tu nombre y rol.». Acción principal «Volver a cuentas»; secundaria «Crear otra cuenta» (formulario
+    rol, código), «El enlace es de un solo uso. Podrá iniciar sesión cuando fije su contraseña.» y «El alta quedó
+    registrada en la auditoría.». Acción principal «Volver a cuentas»; secundaria «Crear otra cuenta» (formulario
     vacío). En la app el foco va al título del mensaje.
 12. **A 360 px**: campos y botones de 44 px, acciones a todo el ancho (la principal arriba), resumen de éxito en una
     columna y el menú lateral en el cajón del marco.
@@ -74,10 +74,9 @@ mensajes de conflicto vienen de la API (`code` de CA-6).
 ## Pendiente
 - **«Sin permiso»** (Soporte u Operador abren `/admin/cuentas/nueva`, CA-14): pantalla común del marco, como en
   `backoffice/admin`; el servidor responde `403` `SHARED_FORBIDDEN`.
-- **Formato del código de empleado** (¿`EMP-` + 4 cifras?, ¿mayúsculas?), **vigencia del enlace** y si el correo debe
-  ser `@nimbo.gt`: los fija el plan; si hay formato, se agrega su mensaje de error al patrón de la decisión 8.
-- **Reenviar el enlace** si vence o se pierde: la spec no lo pide; si el plan lo agrega, va en la ficha de la cuenta
-  interna, no aquí.
+- Resuelto en el plan (Q-4, Q-3): código de empleado de 1 a 20 caracteres (`A-Z`, `0-9` y guion, en mayúsculas), enlace de
+  24 h, correo validado como en el registro (con `@` y dominio, sin restringir el dominio); sin reenvío: con el enlace
+  vencido se usa «¿Olvidaste tu contraseña?» (CA-5).
 - **Error del servidor no relacionado con los campos** (red o `500`): aviso destructivo sobre el formulario con los
   datos conservados y «Reintentar», como `identity/registro--error-servidor`; sin estado propio.
 - Las reglas de campo (`.field-help`, `.field-error`, `aria-invalid`), el resumen de errores y `campo()` se movieron a

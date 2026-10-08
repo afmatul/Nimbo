@@ -116,7 +116,7 @@ const encabezado = (aviso = '') => `
           </div>
           <a class="btn btn-primary" href="catalogo--creando.html">${icon('plus', 16)}<span>Nuevo plan</span></a>
         </div>${aviso}${A.privacidad('<strong>Los planes no se editan: crea uno nuevo y desactiva el anterior.</strong>Así, quien ya tiene un plan conserva su precio y sus límites.', 'info')}
-        <p class="audit-note">${icon('history', 15)}<span>Crear o desactivar un plan queda en la auditoría con tu nombre y rol.</span></p>`;
+        <p class="audit-note">${icon('history', 15)}<span>Crear o desactivar un plan queda registrado en la auditoría.</span></p>`;
 
 const badgeActivo = `<span class="badge badge-ok">${icon('ok', 13)}Activo</span>`;
 
@@ -219,7 +219,7 @@ const DLG_DESACTIVAR = A.dialogo({
     ['pauseCircle', 'Deja de ofrecerse: no aparecerá al registrarse ni al cambiar de plan.'],
     ['users', `Las ${miles(EQUIPO.cuentas)} cuentas que lo tienen lo conservan con el mismo precio y los mismos límites.`],
     ['lock', 'No se puede volver a activar. Si lo necesitas otra vez, crea un plan nuevo con sus valores.'],
-    ['history', 'La acción queda en la auditoría con tu nombre y rol.'],
+    ['history', 'La acción queda registrada en la auditoría.'],
   ],
   confirmar: 'Desactivar plan', clase: 'btn-destructive', ic: 'power',
 });
@@ -309,7 +309,7 @@ function formulario(f = {}) {
           <h2 id="form-t" class="sr-only">Datos del nuevo plan</h2>${f.resumen ? resumenErrores(f.resumen) : ''}${copiarDe(v.copia)}
           <p class="req-note">Los demás campos son obligatorios.</p>${seccionPlan(v, e)}${seccionPrecio(v, e)}${seccionLimites(v, e)}
           <div class="info-box">${icon('lock', 16)}<p><strong>Después de crearlo, el precio y los límites no cambian.</strong>Revísalos bien: para cambiarlos más adelante tendrás que crear otro plan.</p></div>
-          <p class="audit-note">${icon('history', 15)}<span>La creación queda en la auditoría con tu nombre y rol.</span></p>
+          <p class="audit-note">${icon('history', 15)}<span>La creación queda registrada en la auditoría.</span></p>
           <div class="form-actions">
             <button class="btn btn-primary" type="submit">${icon('plus', 16)}Crear plan</button>
             <a class="btn btn-outline" href="catalogo.html">Cancelar</a>

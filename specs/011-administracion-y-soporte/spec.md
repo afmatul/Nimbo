@@ -7,13 +7,12 @@
 | Fase | 2 |
 | Requisitos | RF-06 (principal); RF-05 (matriz), RF-07, RF-19, RF-24, RNF-02, RNF-05, RNF-13, RNF-14 |
 | Depende de | 003, 004, 005 (metadatos de archivos), 006 (papelera), 007 (`espacio_usado`), 008 |
-| Última actualización | 2026-10-06 |
+| Última actualización | 2026-10-07 |
 
 ## 1. Contexto y objetivo
-Operar sin romper la privacidad: el Administrador gestiona cuentas, altas internas y catálogo y ve métricas (RF-06);
-Soporte y Administrador ven solo metadatos y estados de los archivos de un cliente. Ningún rol interno ve contenido, no
-hay suplantación y toda acción sobre una cuenta ajena queda en la auditoría del cliente (Art. IX, RF-07). Cada rol interno
-tiene su área real en la web (003 D-5). Cuota, vigencia y restauración por Soporte quedan en la **011b** (P-8).
+Operar sin romper la privacidad (RF-06): el Administrador gestiona cuentas, altas internas y catálogo y ve métricas; Soporte
+y Administrador ven solo metadatos de los archivos de un cliente; ningún rol interno ve contenido ni suplanta, y toda acción
+sobre una cuenta ajena queda en la auditoría del cliente (Art. IX, RF-07). Cuota, vigencia y restauración: **011b** (P-8).
 
 ## 2. Historias de usuario
 - **HU-1** Como Administrador, quiero listar, suspender y reactivar cuentas, para cortar el acceso ante abuso o una baja.
@@ -33,8 +32,8 @@ tiene su área real en la web (003 D-5). Cuota, vigencia y restauración por Sop
   y la acción se audita; un token de acceso ya emitido sigue valiendo hasta 15 min (002 D-10).
 - **CA-3** (HU-1, RF-06, RF-07) Dado una cuenta suspendida, cuando el Administrador la reactiva, entonces queda
   `activa`, puede volver a iniciar sesión (las sesiones revocadas no vuelven) y la acción se audita.
-- **CA-4** (HU-1, RF-06) — error: Dado un Administrador, cuando intenta suspenderse a sí mismo o suspender al último
-  Administrador activo, entonces se rechaza con un `code` propio y nada cambia.
+- **CA-4** (HU-1, RF-06) — error: Dado un Administrador, cuando intenta suspenderse o reactivarse a sí mismo o suspender
+  al último Administrador activo, entonces se rechaza con un `code` propio y nada cambia.
 - **CA-5** (HU-2, RF-05, RF-06) Dado un Administrador, cuando crea una cuenta Administrador, Soporte u Operador con nombre,
   correo y código de empleado, entonces la cuenta existe, la persona recibe un enlace de un solo uso para fijar su
   contraseña (el Administrador nunca la conoce) y el alta se audita. El enlace reutiliza el mecanismo de la 001
@@ -71,24 +70,25 @@ tiene su área real en la web (003 D-5). Cuota, vigencia y restauración por Sop
   una cuenta interna recibe el mismo `404` (003 D-6), sin auditoría.
 
 **Roles, aislamiento y auditoría (HU-6)**
-- **CA-14** (RF-05, RNF-05) — error: Dado un Cliente, cuando llama a cualquier acción de esta spec, entonces `403`
-  `SHARED_FORBIDDEN`; Soporte y Operador reciben lo mismo en todo lo que la matriz no les da (Operador: solo CA-12).
+- **CA-14** (RF-05, RNF-05) — error: Dado un Cliente o un interno ya no activo (aunque su token siga vigente), cuando llama
+  al backoffice, entonces `403` `SHARED_FORBIDDEN`; Soporte y Operador, en lo que la matriz no les da (Operador: solo CA-12).
 - **CA-15** (RF-05, RNF-05) Dado la suite de aislamiento, cuando recorre cada acción de esta spec con cada rol interno,
   entonces ninguna respuesta contiene contenido, texto, URL firmada, clave de objeto ni filas de versiones.
 - **CA-16** (HU-6, RF-07) Dado acciones internas sobre la cuenta de un cliente, cuando él abre su auditoría (004),
-  entonces ve cada una con fecha, nombre y rol de la persona interna y la acción; las de otra cuenta y los cambios de
-  catálogo no aparecen.
+  entonces ve cada una con fecha, el rol de la persona interna (nunca su nombre ni su correo, 004 D-2) y la acción; las de
+  otra cuenta y los cambios de catálogo no aparecen.
 
 **Web**
 - **CA-17** (RF-06, RNF-13, RNF-14) Dado Administrador, Soporte u Operador, cuando llega a su área, entonces ve sus
   pantallas con los estados de §6 (cargando y error con «Reintentar» donde se cargan datos; en los formularios, error del
   servidor conservando lo escrito; vacío y éxito donde aplican) y la pantalla común «sin permiso» (003 D-8), usables a
-  360 px; el área del Operador solo tiene Métricas hasta la 022b.
+  360 px; el área del Operador solo tiene Métricas hasta la 022b. Desde el menú de su cuenta, cada rol interno abre
+  Seguridad (002) y Mi actividad (004) dentro de su marco (matriz §2: su sesión y su propia bitácora).
 
 ## 4. Reglas de negocio
 - **RN-1** El rol interno nunca da acceso a contenido ni vista previa; no hay suplantación ni «ver como» (Art. IX).
-- **RN-2** Toda acción de un rol interno sobre una cuenta ajena se audita y la ve el cliente con nombre y rol de quien la
-  hizo (RF-07), incluidas las consultas de metadatos (`product-context.md` §5).
+- **RN-2** Toda acción de un rol interno sobre una cuenta ajena se audita y la ve el cliente con el rol de quien la hizo,
+  sin su nombre (RF-07, 004 D-2), incluidas las consultas de metadatos (`product-context.md` §5).
 - **RN-3** El Operador no opera cuentas (matriz §2): aquí solo ve las métricas agregadas (CA-12). El comando de CA-7 lo
   ejecuta quien tiene acceso al servidor; no es un permiso de ningún rol.
 - **RN-4** Un plan no se edita (ni nombre ni descripción) y no existe operación para editarlo: para cambiar la oferta o
@@ -98,16 +98,17 @@ tiene su área real en la web (003 D-5). Cuota, vigencia y restauración por Sop
   semilla no cambian). Bytes y centavos (ADR-0016); el máximo por archivo nunca supera 2 GB (RNF-02).
 - **RN-5** Un correo pertenece a una sola cuenta y un usuario no acumula roles (001 RN-2, Art. IX.5). El código de
   empleado es obligatorio y único solo en cuentas internas.
-- **RN-6** Suspender nunca borra datos. Mientras una cuenta de cliente está suspendida, sus comparticiones y enlaces
-  públicos dejan de funcionar; al reactivarla vuelven como estaban (la regla la aplican 012 y 013).
-- **RN-7** Siempre existe al menos un Administrador activo, y nadie se suspende a sí mismo.
+- **RN-6** Suspender no borra datos (la papelera sigue su retención, 006 CA-19). Con una cuenta de cliente suspendida,
+  sus comparticiones y enlaces públicos dejan de funcionar y al reactivarla vuelven como estaban (lo aplican 012 y 013).
+- **RN-7** Siempre existe al menos un Administrador activo y nadie se suspende ni se reactiva a sí mismo. Un interno
+  suspendido no hace ninguna acción del backoffice aunque su token siga vigente (002 D-10): `403` `SHARED_FORBIDDEN`.
 
 ## 5. Seguridad y privacidad
 - **Toca datos de clientes: sí** (metadatos de cuentas y archivos, estado) → aislamiento bloqueante (CA-15) y matriz (CA-14).
 - **Auditoría (RF-07)**: sobre una cuenta (suspender, reactivar, alta interna, consulta de metadatos) con actor, cuenta
-  afectada y recurso por id (DF-12), visible para ese cliente; cambios de catálogo con actor e id del plan, sin cuenta
-  afectada ni visibles para ningún cliente; el alta inicial (CA-7) como acción del sistema, sin actor persona.
-- **No va a bitácoras** (RNF-17): nombres de archivo, contenido, contraseñas, tokens ni enlaces de alta.
+  afectada y recurso por id (DF-12), visible para la cuenta afectada; catálogo (actor e id del plan) y alta inicial (CA-7,
+  acción del sistema) sin cuenta afectada: no los ve nadie en «Mi actividad».
+- **No va a bitácoras** (RNF-17): correos, nombres de archivo, contenido, contraseñas, tokens ni enlaces de alta.
 - **Roles**: Admin → cuentas, altas, catálogo, métricas y metadatos; Soporte → metadatos; Operador → métricas.
 
 ## 6. Experiencia de usuario
@@ -117,34 +118,33 @@ tiene su área real en la web (003 D-5). Cuota, vigencia y restauración por Sop
 | Admin: alta interna | `backoffice/alta-interna/` | default, error-campos, error-conflicto, enviando, exito | Borrador |
 | Admin: catálogo de planes | `backoffice/catalogo/` | default, cargando, error, creando, error-campos, exito, confirmar-desactivar, desactivado | Borrador |
 | Admin y Operador: métricas | `backoffice/metricas/` | default, cargando, error, con-plan-inactivo, operador | Borrador |
-| Invitada: crear tu contraseña | sin mockup: patrón de `restablecer-contrasena` (002), con Cielo Sereno (P-15) | default, enviando, error-campos, enlace-vencido, exito | Decisión explícita |
+| Invitada: crear tu contraseña | sin mockup: patrón de `restablecer-contrasena` (002), con Cielo Sereno (P-15) | default, enviando, error-campos, enlace-vencido, enlace-invalido, exito | Decisión explícita |
+| Interna: Seguridad y Mi actividad | sin mockup: páginas de 002 y 004 en el marco interno (P-18) | los de 002 y 004 | Decisión explícita |
 | Soporte: metadatos de un cliente | `backoffice/soporte/` | inicial, default, vacio, cargando, no-encontrado, error, desde-admin | Borrador |
 
 - Cielo Sereno (`design-cielo-sereno.md`) con los tonos AA corregidos de `ui-guidelines.md` §2 (Art. XIII.2).
-- Mensajes: «Esta cuenta quedó suspendida y se cerraron sus sesiones.» · «La administración muestra metadatos de los
-  archivos (nombre, tipo, tamaño, fechas y estado), nunca su contenido.» · «Los planes no se editan: crea uno nuevo y
-  desactiva el anterior.»
+- Mensajes clave: «Esta cuenta quedó suspendida y se cerraron sus sesiones.» · «Los planes no se editan: crea uno nuevo y
+  desactiva el anterior.» · el aviso de metadatos de P-5 (los textos completos, en el README de cada mockup).
 
 ## 7. Fuera de alcance
-- **011b**: ajuste de cuota y de vigencia, restauración de papelera por Soporte (P-8). **022b** (RF-37): bitácoras
-  técnicas, trabajos y reintentos, una sola pantalla para Admin, Soporte y Operador (P-9).
-- Fuera de la matriz: ver o cerrar sesiones ajenas (PD-70), «cambiar plan» y «cerrar sesiones» sin suspender (P-10).
-- Suplantación, «ver como», vistas previas o descargas para roles internos (Art. IX); limpieza de cuentas nunca
-  verificadas (001 D-21, YAGNI); borrar cuentas, roles configurables, organizaciones, prorrateo y dinero real (§9).
-- Comparador y contratación (008, 009), cambio de plan por el cliente (010) y la pantalla de auditoría del cliente (004).
+- **011b**: cuota, vigencia y restauración por Soporte con su motivo (004 D-6) (P-8). **022b** (RF-37): bitácoras técnicas,
+  trabajos y reintentos para los tres roles (P-9). Comparador y contratación (008, 009) y cambio de plan (010).
+- Fuera de la matriz: sesiones ajenas (PD-70), «cambiar plan» y «cerrar sesiones» sin suspender (P-10). Suplantación,
+  «ver como», vistas previas o descargas para internos (Art. IX); limpieza de cuentas no verificadas (001 D-21); borrar
+  cuentas, roles configurables, organizaciones, prorrateo y dinero real (§9).
 
 ## 8. Preguntas
-- [RESUELTA] (2026-10-03, Fátima) **P-1** panel propio · **P-2** → 011b: extra sobre el plan, puede quedar bajo lo
-  usado, con fecha de fin · **P-3** → 011b: solo extender, quita la solo lectura, no aplica a Personal · **P-4** crear y
-  desactivar (RN-4) · **P-5** metadatos con nombre · **P-6** enlace de un uso; primer Admin por comando · **P-7** `/mockup`
-  · **P-8** 011 y 011b · **P-9** → 022b (PD-69) · **P-10** la matriz manda · **P-11** sin autosuspensión ni último Admin;
-  sí internas · **P-12** nombre y rol · **P-13** suspender congela comparticiones y enlaces (PD-73) · **P-14** código único.
-- [RESUELTA] (2026-10-07, Fátima) **P-15** «Crear tu contraseña» reutiliza el patrón de `restablecer-contrasena` ·
-  **P-16** búsqueda de cuentas por inicio del correo · **P-17** conteo por plan en el catálogo (CA-8).
+- [RESUELTA] (2026-10-03, Fátima) **P-1** panel propio · **P-2** → 011b: extra sobre el plan, bajo lo usado, con fecha de
+  fin · **P-3** → 011b: solo extender, quita la solo lectura, no aplica a Personal · **P-4** crear y desactivar (RN-4) ·
+  **P-5** metadatos con nombre · **P-6** enlace de un uso; primer Admin por comando · **P-7** `/mockup` · **P-8** 011 y 011b
+  · **P-9** → 022b (PD-69) · **P-10** la matriz manda · **P-11** sin autosuspensión ni último Admin; sí internas · **P-13**
+  suspender congela comparticiones y enlaces (PD-73) · **P-14** código único · (2026-10-07) **P-12** solo el rol (004 D-2)
+  · **P-15** patrón de `restablecer-contrasena` · **P-16** búsqueda por inicio del correo · **P-17** conteo por plan ·
+  **P-18** Seguridad y Mi actividad en el área interna · **P-19** un interno suspendido no actúa.
 
 ## 9. Registro de cambios
 | Fecha | Cambio | Motivo | Aprobó |
 |---|---|---|---|
 | 2026-10-03 | Creación; P-1…P-14; 011b y 022b; «verificada»; Operador ve métricas; estados de los 5 mockups | Respuestas de la dueña, división de 022 y mockups | Fátima (pendiente Adrián) |
 | 2026-10-06 | 006 y 007 en «Depende de»; `slug` y `desactivado_en`; un plan no se edita; auditoría de catálogo sin cliente; `token_cuenta` con tipo propio; CA-7 sin rol; CA-11, CA-13, CA-17, CA-9 y CA-2 | Revisiones de Adrián y del `reviewer` | Fátima (pendiente Adrián) |
-| 2026-10-07 | CA-5 nace verificada y enlace vencido; CA-8 con conteo; §6 «Crear tu contraseña»; P-15…P-17 | Preguntas del plan 011 | Fátima (pendiente Adrián) |
+| 2026-10-07 | CA-5 y CA-8; §6 «Crear tu contraseña» y área interna con Seguridad y Mi actividad; solo el rol (004 D-2); RN-6 con la papelera; RN-7/CA-4 sin autorreactivación ni acciones de un interno suspendido; correos fuera de bitácoras | Preguntas del plan, contradicciones con 002, 004 y 006, y `architect` | Fátima (pendiente Adrián) |
