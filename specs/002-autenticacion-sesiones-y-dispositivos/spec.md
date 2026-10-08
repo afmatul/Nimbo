@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | En revisión (2026-10-05) |
+| Estado | Hecha (2026-10-07): integrada en `main` (cbdd788), revisión ✅ y recorrido de Adrián |
 | Dueño | Adrián (1) |
 | Fase | 1 |
 | Requisitos | RF-02, RF-03, RF-04 (principales); aplican también RNF-04, RNF-05 (cada quien solo ve y revoca sus sesiones), RNF-07 (límite de tasa del inicio de sesión y de la recuperación), RNF-13, RNF-14, RNF-17 |

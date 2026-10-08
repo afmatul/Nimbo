@@ -312,7 +312,7 @@ identificador.
 | Admin: catálogo de planes | backoffice | 011 | `mockups/backoffice/catalogo/` | `capturas/backoffice/catalogo/` | default, cargando, error, creando, error-campos, exito, confirmar-desactivar, desactivado | Borrador (default, cargando, error, creando, error-campos, exito, confirmar-desactivar, desactivado) |
 | Admin y Operador: métricas agregadas | backoffice | 011 | `mockups/backoffice/metricas/` | `capturas/backoffice/metricas/` | default, cargando, error, con-plan-inactivo, operador | Borrador (default, cargando, error, con-plan-inactivo, operador) |
 | Soporte: metadatos de los archivos de un cliente | backoffice | 011 | `mockups/backoffice/soporte/` | `capturas/backoffice/soporte/` | inicial, default, vacio, cargando, no-encontrado, error, desde-admin | Borrador (default, inicial, cargando, vacio, no-encontrado, error, desde-admin) |
-| Bitácoras técnicas y trabajos (Administrador, Soporte y Operador; PD-69) | backoffice | 022b | `mockups/backoffice/operacion/` | … | sano, con-fallos | Pendiente |
+| Bitácoras técnicas y trabajos (Administrador, Soporte y Operador; PD-74) | backoffice | 022b | `mockups/backoffice/operacion/` | … | sano, con-fallos | Pendiente |
 
 ## 8. Verificación de UI
 

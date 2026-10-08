@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Planificada (2026-09-27, Adrián) |
+| Estado | Hecha (2026-10-07): PR-A…PR-F integrados en `main`, revisión de PR-F ✅ y recorrido T-55 de Adrián |
 | Dueño | Adrián (1) |
 | Fase | 1 |
 | Requisitos | RF-05, RNF-05 (principales); aplican también RNF-13, RNF-17 |

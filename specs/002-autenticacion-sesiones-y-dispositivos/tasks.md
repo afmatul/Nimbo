@@ -776,7 +776,7 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   **Hecha (Adrián, 2026-10-05):** recorrido con tres navegadores sin hallazgos; README de Seguridad corregido. La
   revisión de UI va en la sección «UI» de `review.md` (`/review 002`, T-105).
 
-- [ ] **T-105** Cierre del PR-5b y de la spec — CA: todos (trazabilidad) — Depende: T-95, T-104 — ~1 h
+- [x] **T-105** Cierre del PR-5b y de la spec — CA: todos (trazabilidad) — Depende: T-95, T-104 — ~1 h
   Matriz CA → pruebas revisada; `specs/README.md` → 002 `En verificación`; pedir `/verify 002` (`tester`:
   `verification.md` con CA-27/CA-28 manuales y 001 CA-16, CA-26, CA-29 cerrados), `security-auditor` (`security.md`:
   diferencias de tiempo de CA-2, `deviceId` en bitácoras, CSRF de la cookie) y `/review 002`. Si PR-4 o PR-5b se

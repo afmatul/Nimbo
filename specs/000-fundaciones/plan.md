@@ -526,7 +526,7 @@ con las del archivo (CA-19) y verifica que ninguna clave de `SECRET_KEYS` empiec
 
 ### 6.6 CI/CD (CA-24 a CA-31)
 
-`.github/workflows/ci.yml` — `on: pull_request` y `push: main`; `concurrency` por ref; `timeout-minutes: 15`; pasos comunes
+`.github/workflows/ci.yml` — `on: pull_request` y `push: main`; `concurrency` por ref; `timeout-minutes: 15` (30 en `integration`); pasos comunes
 `actions/checkout` (`fetch-depth: 0` solo en `lint`), `pnpm/action-setup`, `actions/setup-node` (`cache: pnpm`),
 `pnpm install --frozen-lockfile`.
 
@@ -535,9 +535,10 @@ con las del archivo (CA-19) y verifica que ninguna clave de `SECRET_KEYS` empiec
 | `lint` | `gitleaks/gitleaks-action@v2` (historial completo, `GITLEAKS_ENABLE_UPLOAD_ARTIFACT: false`) → `pnpm lint` → `pnpm env:check` |
 | `typecheck` | `pnpm typecheck` |
 | `unit` | `pnpm test -- --coverage`; sube `coverage/` como artefacto |
-| `int` | `pnpm test:int` (Testcontainers: `@testcontainers/postgresql` con imagen `pgvector/pgvector:pg17`, `@testcontainers/redis`, `GenericContainer` `minio/minio`; `globalSetup` único en `apps/api/test/int/setup/global-setup.ts`) |
-| `isolation` | `pnpm test:isolation` (misma infraestructura; contiene `apps/api/test/isolation/placeholder.iso-spec.ts` con `it('CA-25: la suite de aislamiento puede forzarse a fallar', …)` que lee `ISOLATION_FORCE_FAIL`) |
-| `migrations` | `services.postgres: pgvector/pgvector:pg17`; `pnpm --filter api migration:run` → `psql` afirma extensión y `SELECT count(*) FROM migracion = 1` → `migration:revert` → afirma ausencia y 0 filas → `migration:run` → afirma de nuevo (CA-11). Una migración con `down` vacío deja la extensión y falla la aserción (CA-12) |
+| `integration` | `timeout-minutes: 30`. Pasos: (1) `cp .env.example .env` y `docker compose up -d --wait postgres` (mismo `10-nimbo-app.sh` que local); (2) `scripts/ci/migrations-roundtrip.sh`: `migration:run` → afirma `vector` y una fila de `migracion` por archivo → `migration:revert` hasta 0 filas → afirma ausencia → `migration:run` → afirma de nuevo (CA-11; un `down` vacío o que lanza falla aquí, CA-12); (3) `pnpm test:int` (Testcontainers: `pgvector/pgvector:pg17`, `redis:7-alpine`, MinIO y Mailpit; `globalSetup` único); (4) `pnpm test:isolation` (misma infraestructura; `placeholder.iso-spec.ts` se fuerza a fallar con `ISOLATION_FORCE_FAIL`) |
+
+Cambio del 2026-10-07 (spec §15): `int`, `isolation` y `migrations` eran tres jobs; se unen en `integration` porque
+cada job repite checkout, `pnpm install` y descarga de imágenes, y la cuota del repositorio privado es de 3 000 min/mes.
 
 `.github/workflows/build-publish.yml` — `on: push: main` y `pull_request` (construye sin publicar). Matriz
 `app: [api, worker, web]`; `docker/setup-buildx-action`, `docker/login-action` (GHCR con `GITHUB_TOKEN`),

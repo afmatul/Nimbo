@@ -236,7 +236,7 @@ describe('FileService', () => {
       });
     });
 
-    it('CA-20: audita file.download_url_issued sin nombre, URL ni clave', async () => {
+    it('CA-20: audita file.download_url_issued con su tamaño, sin nombre, URL ni clave', async () => {
       const { service, audit } = setup();
 
       await service.getDownloadUrl(ACTOR, FILE_ID);
@@ -247,6 +247,7 @@ describe('FileService', () => {
           actor: ACTOR,
           targetUserId: OWNER_ID,
           resourceId: FILE_ID,
+          attributes: { sizeBytes: 1_024 },
         },
       ]);
     });

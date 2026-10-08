@@ -8,8 +8,8 @@ import { AUDIT_CATALOG, resourceTypeOf } from './audit-catalog';
 /** Lo que 005 (`upload.service`, `file.service`) y 006 (`trash.service`) emiten hoy. */
 const REAL_ATTRIBUTES: Readonly<Record<AuditAction, Record<string, string | number>>> = {
   [AuditAction.FILE_UPLOAD_COMPLETED]: { sizeBytes: 12_582_912, mode: 'multipart' },
-  [AuditAction.FILE_UPLOAD_REJECTED]: { reason: 'TYPE_MISMATCH', mode: 'simple' },
-  [AuditAction.FILE_DOWNLOAD_URL_ISSUED]: {},
+  [AuditAction.FILE_UPLOAD_REJECTED]: { reason: 'TYPE_MISMATCH', mode: 'simple', sizeBytes: 2048 },
+  [AuditAction.FILE_DOWNLOAD_URL_ISSUED]: { sizeBytes: 12_582_912 },
   [AuditAction.NODE_TRASHED]: { nodeType: 'folder', itemCount: 3, sizeBytes: 2048 },
   [AuditAction.NODE_RESTORED]: { nodeType: 'file', itemCount: 1, sizeBytes: 1024 },
   [AuditAction.NODE_PURGED]: {

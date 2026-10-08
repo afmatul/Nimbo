@@ -129,7 +129,7 @@ sobre una cuenta ajena queda en la auditoría del cliente (Art. IX, RF-07). Cuot
 ## 7. Fuera de alcance
 - **011b**: cuota, vigencia y restauración por Soporte con su motivo (004 D-6) (P-8). **022b** (RF-37): bitácoras técnicas,
   trabajos y reintentos para los tres roles (P-9). Comparador y contratación (008, 009) y cambio de plan (010).
-- Fuera de la matriz: sesiones ajenas (PD-70), «cambiar plan» y «cerrar sesiones» sin suspender (P-10). Suplantación,
+- Fuera de la matriz: sesiones ajenas (PD-75), «cambiar plan» y «cerrar sesiones» sin suspender (P-10). Suplantación,
   «ver como», vistas previas o descargas para internos (Art. IX); limpieza de cuentas no verificadas (001 D-21); borrar
   cuentas, roles configurables, organizaciones, prorrateo y dinero real (§9).
 
@@ -137,8 +137,8 @@ sobre una cuenta ajena queda en la auditoría del cliente (Art. IX, RF-07). Cuot
 - [RESUELTA] (2026-10-03, Fátima) **P-1** panel propio · **P-2** → 011b: extra sobre el plan, bajo lo usado, con fecha de
   fin · **P-3** → 011b: solo extender, quita la solo lectura, no aplica a Personal · **P-4** crear y desactivar (RN-4) ·
   **P-5** metadatos con nombre · **P-6** enlace de un uso; primer Admin por comando · **P-7** `/mockup` · **P-8** 011 y 011b
-  · **P-9** → 022b (PD-69) · **P-10** la matriz manda · **P-11** sin autosuspensión ni último Admin; sí internas · **P-13**
-  suspender congela comparticiones y enlaces (PD-73) · **P-14** código único · (2026-10-07) **P-12** solo el rol (004 D-2)
+  · **P-9** → 022b (PD-74) · **P-10** la matriz manda · **P-11** sin autosuspensión ni último Admin; sí internas · **P-13**
+  suspender congela comparticiones y enlaces (PD-78) · **P-14** código único · (2026-10-07) **P-12** solo el rol (004 D-2)
   · **P-15** patrón de `restablecer-contrasena` · **P-16** búsqueda por inicio del correo · **P-17** conteo por plan ·
   **P-18** Seguridad y Mi actividad en el área interna · **P-19** un interno suspendido no actúa.
 

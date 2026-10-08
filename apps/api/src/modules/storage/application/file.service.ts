@@ -169,6 +169,7 @@ export class FileService {
         actor,
         targetUserId: actor.id,
         resourceId: file.id,
+        attributes: { sizeBytes: Number(file.sizeBytes) },
       },
       { fileId: file.id },
     );

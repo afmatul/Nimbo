@@ -1,5 +1,6 @@
 /** Catálogo cerrado de acciones auditables. 005 declara las de carga y descarga; cada spec agrega las suyas. */
 export enum AuditAction {
+  /** Carga y descarga (005, CA-20): `attributes` con `sizeBytes` (más `mode` y, si se rechaza, `reason`), nunca nombres. */
   FILE_UPLOAD_COMPLETED = 'file.upload_completed',
   FILE_UPLOAD_REJECTED = 'file.upload_rejected',
   FILE_DOWNLOAD_URL_ISSUED = 'file.download_url_issued',

@@ -43,7 +43,7 @@ Dueño del módulo entre corchetes: lo ajeno se pide a su dueño en su PR (`spec
 | billing/domain [Juan Marcos escribe, Q-7] | `plan.entity.ts`, `plan-limits-set.vo.ts`, `plan-slug.ts`, `plan-rules.ts` (nuevos) | `Plan` (nombre de M4) con `PlanLimitsSet` (no `PlanLimits`: ya es el tipo de `storage` con los dos límites de la carga). `Plan.create` valida CA-11 (precio ≥ 0, límites > 0, editores ≥ 0, máx. por archivo ≤ cuota y ≤ `MAX_FILE_BYTES_CEILING` = 2 GB, RNF-02) y deriva el `slug` (`PlanSlug`); `deactivate(now)` rechaza Personal (`PERSONAL_PLAN_SLUG`) y un plan ya desactivado. Sin `Money` (009) |
 | billing/domain/errors | `plan-invalid`, `plan-not-deactivatable`, `plan-already-deactivated` (nuevos); `plan-not-found` (de 006a, `PLAN_NOT_FOUND`, no cambia) | 422 con `fields` · 409 · 409 · 404 |
 | billing/application | `plan-catalog.service.ts` (lo crea la 008 con `list()`; la 011 lo amplía) | `create(actor, command)` (nombre único → `fields`), `deactivate(actor, id)` (CAS `desactivado_en IS NULL`). `backoffice` no revalida |
-| billing/application | `subscription-administration.ts` (nuevo, fachada) | `planNamesFor(actor, clientIds)` y `clientCountsByPlan(actor, clientCount)`; hasta la 009, la regla vigente de `PlanLimitsAdapter` (sin `suscripcion`, Personal; PD-75) |
+| billing/application | `subscription-administration.ts` (nuevo, fachada) | `planNamesFor(actor, clientIds)` y `clientCountsByPlan(actor, clientCount)`; hasta la 009, la regla vigente de `PlanLimitsAdapter` (sin `suscripcion`, Personal; PD-80) |
 | billing/ports, infrastructure | `i-plan-repository.ts`, `typeorm-plan.repository.ts` (de la 008; la 011 suma `insert`, `deactivate`, conteo), `plan.mapper.ts` (nuevo); `plan.orm-entity.ts`, `plan-limits.adapter.ts` (cambian) | Repositorio sobre `TransactionContext` (con `@InjectRepository` la escritura escaparía de la transacción del evento). La entidad mapea `desactivado_en`; el adaptador usa `PERSONAL_PLAN_SLUG` |
 | storage/application [Adrián autorizó] | `node-metadata-reader.ts` (nuevo, puerto) | `INodeMetadataReader.listForOwner(actor, ownerId, page)` → `{ items: FileMetadata[], total }`; `FileMetadata` = id, nombre, tipo, tamaño, `createdAt`, `updatedAt`, `trashedAt`. Exige `withActor` |
 | storage/infrastructure | `sql-node-metadata.reader.ts` (nuevo) | Solo columnas de `archivo` (nunca `version_archivo`, `clave_objeto`, `carga`); orden `actualizado_en DESC, id DESC` |
@@ -56,8 +56,8 @@ Dueño del módulo entre corchetes: lo ajeno se pide a su dueño en su PR (`spec
 | backoffice/presentation | `accounts.controller.ts`, `plans.controller.ts`, `metrics.controller.ts`, `client-files.controller.ts` + `*-response.ts` (nuevos) | Validan con `contracts`, delegan y mapean por **lista blanca** (esquemas `strict`) |
 | backoffice | `domain/errors/client-not-found.error.ts`, `backoffice.module.ts`, `index.ts`, `README.md` | 404 `BACKOFFICE_CLIENT_NOT_FOUND`; módulo y API pública |
 | api | `app.module.ts`, `scripts/bootstrap-admin.ts`, `bootstrap-admin.module.ts`, `package.json` | Registra `BackofficeModule`; script `admin:bootstrap` |
-| config | `packages/config/eslint/boundaries.js` + *fixtures* | `backoffice → identity, billing, storage, audit`; `identity → notifications`; `audit` sin aristas (PD-77) |
-| contracts | `src/backoffice/` (nuevo), `src/identity/` (cambia); `src/audit/` **no** cambia (N-1) | Esquemas `strict`, `BACKOFFICE_PAGE_SIZE = 10`, códigos; bytes con la forma que fije PD-82 y `timestamp` |
+| config | `packages/config/eslint/boundaries.js` + *fixtures* | `backoffice → identity, billing, storage, audit`; `identity → notifications`; `audit` sin aristas (PD-82) |
+| contracts | `src/backoffice/` (nuevo), `src/identity/` (cambia); `src/audit/` **no** cambia (N-1) | Esquemas `strict`, `BACKOFFICE_PAGE_SIZE = 10`, códigos; bytes con la forma que fije PD-87 y `timestamp` |
 | api/migrations | cinco migraciones (§3) | — |
 
 - **Puertos y regla V.2**: `INodeMetadataReader` (diagrama M8; lo declara **e implementa** `storage` y lo consume `backoffice`:
@@ -76,7 +76,7 @@ Dueño del módulo entre corchetes: lo ajeno se pide a su dueño en su PR (`spec
   exito` (vencido → «¿Olvidaste tu contraseña?», CA-5). `features/backoffice/` (`api.ts`, hooks, componentes por pantalla,
   `page-pager`, `plan-card`, `client-files-table`); `lib/error-catalog.ts`. Reutiliza `StateView`, `ConfirmDestructiveDialog`,
   `FileTypeChip`, `QuotaBar`, `ForbiddenState`, `RequireRole`; crea `StatusBadge` en `components/nimbo/` (`ui-guidelines.md` §4).
-  `PlanCard` vive en `features/backoffice` hasta que exista el único `PlanCard` acordado con la 008 (PD-78, R-5).
+  `PlanCard` vive en `features/backoffice` hasta que exista el único `PlanCard` acordado con la 008 (PD-83, R-5).
 - **Marco interno, «Seguridad» y «Mi actividad»** (B-1; `features/access` es de Adrián, permiso pedido, R-8): `features/access/components/internal-area-layout.tsx` (nuevo; sobre
   `AppLayout`, navegación de `internalNavFor(role)`) y `features/access/home-path.ts` (inicio por rol: `/admin/cuentas`,
   `/soporte/metadatos`, `/operacion/metricas`; `activityPathFor(role)`): un solo lugar para rutas internas, usado por
@@ -213,18 +213,18 @@ Cada CA vive en una capa principal: reglas en unit, contrato y concurrencia en i
 - **R-5 `billing` y la 008** (coordinación con Juan Marcos enviada, H-1/H-2/H-13): `billing` es de Juan Marcos y la 008
   (`Borrador`, rama `feat/008-catalogo-y-comparador`) crea `PlanCatalogService` e `IPlanRepository`; la parte de `billing`
   de la 011 la escribe **él** sobre la 008 integrada (Q-7) y las tareas de catálogo de `backoffice` esperan su PR. Se acuerda:
-  la **spec 008 cambia** para listar solo `desactivado_en IS NULL` (PD-71); **un** esquema de plan en
+  la **spec 008 cambia** para listar solo `desactivado_en IS NULL` (PD-76); **un** esquema de plan en
   `packages/contracts/src/billing/` (en inglés), **una** entidad `Plan`/`PlanLimitsSet` y **un** `PlanCard` en
-  `components/nimbo` (PD-78); el prefijo de errores de `billing` (`BILLING_`) queda **por acordar**. **Dependencia**: la forma
+  `components/nimbo` (PD-83); el prefijo de errores de `billing` (`BILLING_`) queda **por acordar**. **Dependencia**: la forma
   de los bytes en JSON (ADR-0016 o el `number` de 005) la decide Adrián para todo el proyecto; este plan la adopta.
-- **R-6 Antes de la 009** todo cliente cuenta como Personal en CA-1, CA-12 y el catálogo (regla vigente, PD-75).
+- **R-6 Antes de la 009** todo cliente cuenta como Personal en CA-1, CA-12 y el catálogo (regla vigente, PD-80).
 - **R-7 Mockups en `Borrador`** (`ui-guidelines.md` §7): aprobarlos antes de las tareas web.
 - **R-8 Permisos pedidos en el PR**: Adrián autorizó `identity`, `storage` y `audit` (2026-10-07); `shared` (T1) y la web de
   `access` (`features/access`, marco interno) están **pedidos y pendientes**. Sin ellos, Adrián hace esas piezas en su PR.
 - **Desviaciones**: DF-66 (paginación); DF-04, DF-15, DF-27, DF-33 (también con CHECK) y DF-36 en `Propuesto (plan 011)`;
-  **DF-65** con el resto (M8, M1, M4, T1, T2, E-R). **Pendientes**: PD-75, PD-76, PD-77, PD-78; PD-31 resuelto aquí.
+  **DF-65** con el resto (M8, M1, M4, T1, T2, E-R). **Pendientes**: PD-80, PD-81, PD-82, PD-83; PD-31 resuelto aquí.
 - **ADR requeridos**: ninguno (sin tecnología nueva; el contexto Nest del script ya está en la pila).
-- **Fuera**: 011b, 022b, RN-6 en 012/013 (PD-73), comparador 008 (PD-71), reenviar el enlace de alta, sesiones ajenas.
+- **Fuera**: 011b, 022b, RN-6 en 012/013 (PD-78), comparador 008 (PD-76), reenviar el enlace de alta, sesiones ajenas.
 
 ### Preguntas
 - [RESUELTAS] (2026-10-07, Fátima y Adrián) **Q-1** el cliente ve solo el rol (B, 004 D-2) · **Q-2** patrón de

@@ -114,22 +114,23 @@ describe('auditoría y bitácoras de carga y descarga (CA-20)', () => {
     );
   });
 
-  it('CA-20: una carga rechazada audita la carga y su motivo con `correlationId`', () => {
+  it('CA-20: una carga rechazada audita la carga, su motivo y su tamaño con `correlationId`', () => {
     expect(auditRecords('file.upload_rejected')).toEqual([
       expect.objectContaining({
         actorId: client.id,
         resourceId: rejectedUploadId,
-        attributes: { reason: 'tipo_invalido', mode: 'simple' },
+        attributes: { reason: 'tipo_invalido', mode: 'simple', sizeBytes: SMALL_BYTES },
         correlationId: rejectedCorrelation,
       }),
     ]);
   });
 
-  it('CA-20: la emisión de la URL de descarga audita el archivo con `correlationId`', () => {
+  it('CA-20: la emisión de la URL de descarga audita el archivo y su tamaño con `correlationId`', () => {
     expect(auditRecords('file.download_url_issued')).toEqual([
       expect.objectContaining({
         actorId: client.id,
         resourceId: completedFileId,
+        attributes: { sizeBytes: SMALL_BYTES },
         correlationId: downloadCorrelation,
       }),
     ]);
