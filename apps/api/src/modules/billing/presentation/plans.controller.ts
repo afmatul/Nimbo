@@ -1,7 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { PlanCatalogService } from '../application/plan-catalog.service';
 import { Public } from '../../../shared/presentation/auth/public.decorator';
-import { PlanDomain } from '../domain/plan-catalog';
 
 @Controller('billing/plans')
 export class PlansController {
@@ -9,7 +8,15 @@ export class PlansController {
 
   @Get()
   @Public()
-  async getPlans(): Promise<PlanDomain[]> {
-    return await this.planCatalogService.list();
+  async getPlans() {
+    const plans = await this.planCatalogService.list();
+    return {
+      planes: plans.map((plan) => ({
+        ...plan,
+        precioCentavos: plan.precioCentavos?.toString() ?? '0',
+        cuotaBytes: plan.cuotaBytes?.toString() ?? '0',
+        maxArchivoBytes: plan.maxArchivoBytes?.toString() ?? '0',
+      })),
+    };
   }
 }

@@ -1,16 +1,26 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-
-import { PlanLimitsAdapter } from './infrastructure/adapters/plan-limits.adapter';
+import { PlansController } from './presentation/plans.controller';
+import { PlanCatalogService } from './application/plan-catalog.service';
+import { IPlanRepository } from './application/i-plan-repository';
+import { TypeOrmPlanRepository } from './infrastructure/persistence/typeorm-plan.repository';
 import { PlanOrmEntity } from './infrastructure/persistence/plan.orm-entity';
+import { PlanLimitsAdapter } from './infrastructure/adapters/plan-limits.adapter';
+// Importa el token de límites si aplica, por ejemplo:
+// import { I_PLAN_LIMITS_PROVIDER } from ...;
 
-/**
- * M4, spec 006a. Registra el catálogo y exporta el adaptador. El token `I_PLAN_LIMITS_PROVIDER`
- * lo enlaza la raíz de composición (`PlanLimitsBindingModule`), no este módulo: `storage` no conoce a `billing`.
- */
 @Module({
   imports: [TypeOrmModule.forFeature([PlanOrmEntity])],
-  providers: [PlanLimitsAdapter],
-  exports: [PlanLimitsAdapter],
+  controllers: [PlansController],
+  providers: [
+    PlanCatalogService,
+    PlanLimitsAdapter,
+    {
+      provide: IPlanRepository,
+      useClass: TypeOrmPlanRepository,
+    },
+
+  ],
+  exports: [PlanCatalogService, PlanLimitsAdapter], // <--- ¡Asegúrate de exportarlo!
 })
 export class BillingModule {}

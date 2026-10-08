@@ -12,7 +12,7 @@ export class TypeOrmPlanRepository implements IPlanRepository {
     private readonly repository: Repository<PlanOrmEntity>,
   ) {}
 
-async listAll(): Promise<PlanDomain[]> {
+  async listAll(): Promise<PlanDomain[]> {
     const entities = await this.repository.find({
       order: {
         precioCentavos: 'ASC',
@@ -24,7 +24,7 @@ async listAll(): Promise<PlanDomain[]> {
       id: String(entity.id),
       slug: String(entity.slug),
       nombre: String(entity.nombre),
-      descripcion: String(entity.descripcion),
+      descripcion: entity.descripcion ? String(entity.descripcion) : '',
       precioCentavos: Number(entity.precioCentavos),
       cuotaBytes: BigInt(entity.cuotaBytes ?? 0),
       maxArchivoBytes: BigInt(entity.maxArchivoBytes ?? 0),

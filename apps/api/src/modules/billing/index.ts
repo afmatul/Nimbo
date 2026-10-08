@@ -2,3 +2,6 @@
 export { BillingModule } from './billing.module';
 export { PlanLimitsAdapter } from './infrastructure/adapters/plan-limits.adapter';
 export { PlanNotFoundError } from './domain/errors';
+export * from './billing.module';
+export * from './application/plan-catalog.service';
+export * from './domain/plan-catalog';
