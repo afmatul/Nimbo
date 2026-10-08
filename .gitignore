@@ -15,6 +15,9 @@ out/
 coverage/
 *.tsbuildinfo
 
+# Informe que escribe gitleaks-action en el job lint
+results.sarif
+
 # Sistema y editores
 .DS_Store
 Thumbs.db

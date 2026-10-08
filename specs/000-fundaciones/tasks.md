@@ -629,6 +629,7 @@ fecha de la entrega de la Fase 1 (`docs/sdd/workflow.md` §7.2).
 - **T-24**: `test:int` y `test:isolation` pierden `--passWithNoTests`.
 - **T-26**: CA-1 desde cero en 42 s (imágenes en caché); evidencia en `verification.md`. Hallazgo F-1: Docker Hub
   ya no sirve `minio/minio`/`minio/mc`; `compose.yml` y el arnés usan `quay.io/minio/*`.
+  El 2026-10 Quay también dejó de servirlas sin cuenta: pasan a `pgsty/silo:RELEASE.2026-09-16T00-00-00Z`.
 
 ### Correcciones de revisión del PR-2 (2026-09-22)
 
