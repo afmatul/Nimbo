@@ -78,7 +78,8 @@ limitan a lo que CA-3 permite:
 | Extras | Mailpit (correo de desarrollo) | Cabeceras seguras (`secure-headers`), límites de memoria |
 
 Imágenes (idénticas en compose y en Testcontainers): `pgvector/pgvector:pg17`, `redis:7-alpine`,
-`quay.io/minio/minio` + `quay.io/minio/mc` (Docker Hub dejó de servir `minio/minio`), `traefik:v3`,
+`pgsty/silo` + `pgsty/mc` en `RELEASE.2026-09-16T00-00-00Z` (fork compatible de MinIO; Docker Hub dejó de servir
+`minio/minio` y Quay, los tags fijados, ADR-0025), `traefik:v3`,
 `axllent/mailpit:v1.31.3` (compose local y Testcontainers),
 `onlyoffice/documentserver` (perfil `onlyoffice`, apagado por defecto).
 
