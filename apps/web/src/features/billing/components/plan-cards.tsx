@@ -1,55 +1,56 @@
-import React from 'react';
-import { PlanDto } from '@nimbo/contracts';
+import type { PlanDto } from '@nimbo/contracts';
 import { formatQuetzales, formatBytes, formatEditores } from '../format-plan';
 
 interface PlanCardsProps {
-  planes: PlanDto[];
+  readonly planes: PlanDto[];
 }
 
-export const PlanCards: React.FC<PlanCardsProps> = ({ planes }) => {
-  return (
-    <div className="planes__grid">
-      {planes.map((plan, index) => {
-        // Asignamos una clase de color para el punto según el índice o slug
-        const dotClasses = ['plan-card__dot--personal', 'plan-card__dot--pro', 'plan-card__dot--equipo', 'plan-card__dot--institucional'];
-        const dotClass = dotClasses[index % dotClasses.length];
+// El color sale del slug, no del índice. Solo tokens de globals.css (ui-guidelines.md: nada de hex ni colores crudos).
+const DOT_BY_SLUG: Record<string, string> = {
+  personal: 'bg-muted-foreground/50',
+  pro: 'bg-live',
+  equipo: 'bg-brand',
+  institucional: 'bg-primary',
+};
 
-        return (
-          <article key={plan.id} className="plan-card">
-            <div className="plan-card__head">
-              <span className={`plan-card__dot ${dotClass}`}></span>
-              <h2 className="plan-card__name">{plan.nombre}</h2>
+export function PlanCards({ planes }: PlanCardsProps) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {planes.map((plan) => (
+        <div key={plan.id} className="bg-card border border-border rounded-xl p-5 flex flex-col gap-4">
+          <div className="flex items-center gap-2">
+            <span
+              aria-hidden="true"
+              className={`w-2.5 h-2.5 rounded-full ${DOT_BY_SLUG[plan.slug] ?? 'bg-muted-foreground/50'}`}
+            />
+            <h2 className="text-base font-semibold text-foreground">{plan.nombre}</h2>
+          </div>
+
+          <p className="text-xs text-muted-foreground min-h-8">{plan.descripcion}</p>
+
+          <div className="flex items-baseline gap-1">
+            <span className="text-2xl font-bold text-foreground tabular-nums">
+              {formatQuetzales(plan.precioCentavos)}
+            </span>
+            <span className="text-xs text-muted-foreground">al mes</span>
+          </div>
+
+          <div className="flex flex-col gap-2 pt-2 border-t border-border text-xs text-foreground">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Almacenamiento</span>
+              <span className="tabular-nums font-medium">{formatBytes(plan.cuotaBytes)}</span>
             </div>
-            <p className="plan-card__desc">{plan.descripcion}</p>
-            <div className="plan-card__price">
-              <span className="plan-card__amount">{formatQuetzales(plan.precioCentavos)}</span>
-              <span className="plan-card__per">al mes</span>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Archivo máx.</span>
+              <span className="tabular-nums font-medium">{formatBytes(plan.maxArchivoBytes)}</span>
             </div>
-            <hr className="plan-card__divider" />
-            <ul className="plan-card__features">
-              <li className="plan-feature">
-                <svg className="plan-feature__icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                <span className="plan-feature__text">{formatBytes(plan.cuotaBytes)} de almacenamiento</span>
-              </li>
-              <li className="plan-feature">
-                <svg className="plan-feature__icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                <span className="plan-feature__text">Máx. archivo: {formatBytes(plan.maxArchivoBytes)}</span>
-              </li>
-              <li className="plan-feature">
-                <svg className="plan-feature__icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                <span className="plan-feature__text">Edición Docx: {formatEditores(plan.maxEditores)}</span>
-              </li>
-              <li className="plan-feature">
-                <svg className="plan-feature__icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                <span className="plan-feature__text">{plan.consultasAgenteMensual} consultas de IA mensuales</span>
-              </li>
-            </ul>
-            <div className="plan-card__cta">
-              <button className="plan-btn plan-btn--outline">Seleccionar Plan</button>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Edición .docx</span>
+              <span className="font-medium">{formatEditores(plan.maxEditores)}</span>
             </div>
-          </article>
-        );
-      })}
+          </div>
+        </div>
+      ))}
     </div>
   );
-};
+}

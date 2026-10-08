@@ -1,8 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PlanCatalogService } from './plan-catalog.service';
-import { IPlanRepository } from './i-plan-repository';
+import { I_PLAN_REPOSITORY } from './i-plan-repository';
+import type { IPlanRepository } from './i-plan-repository';
 import { PlanCatalogUnavailableError } from '../domain/errors/plan-catalog-unavailable.error';
 import { PlanDomain } from '../domain/plan-catalog';
+import { QueryFailedError } from 'typeorm';
 
 describe('PlanCatalogService', () => {
   let service: PlanCatalogService;
@@ -39,14 +41,14 @@ describe('PlanCatalogService', () => {
 
   beforeEach(async () => {
     repositoryMock = {
-      listAll: jest.fn(),
-    };
+      findAll: jest.fn(),
+    } as unknown as jest.Mocked<IPlanRepository>;
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PlanCatalogService,
         {
-          provide: IPlanRepository,
+          provide: I_PLAN_REPOSITORY,
           useValue: repositoryMock,
         },
       ],
@@ -56,24 +58,26 @@ describe('PlanCatalogService', () => {
   });
 
   it('debe listar los planes correctamente', async () => {
-    repositoryMock.listAll.mockResolvedValue(mockPlans);
+    repositoryMock.findAll.mockResolvedValue(mockPlans);
 
     const result = await service.list();
 
     expect(result).toEqual(mockPlans);
-    expect(repositoryMock.listAll).toHaveBeenCalledTimes(1);
+    expect(repositoryMock.findAll).toHaveBeenCalledTimes(1);
   });
 
   it('debe retornar lista vacía si no hay planes', async () => {
-    repositoryMock.listAll.mockResolvedValue([]);
+    repositoryMock.findAll.mockResolvedValue([]);
 
     const result = await service.list();
 
     expect(result).toEqual([]);
   });
 
-  it('debe lanzar PlanCatalogUnavailableError si falla la lectura del repositorio', async () => {
-    repositoryMock.listAll.mockRejectedValue(new Error('DB Error'));
+  it('debe lanzar PlanCatalogUnavailableError si falla la lectura del repositorio por QueryFailedError', async () => {
+    repositoryMock.findAll.mockRejectedValue(
+      new QueryFailedError('SELECT * FROM plans', [], new Error('DB Error')),
+    );
 
     await expect(service.list()).rejects.toThrow(PlanCatalogUnavailableError);
   });

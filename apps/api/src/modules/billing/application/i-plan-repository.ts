@@ -1,7 +1,7 @@
 import { PlanDomain } from '../domain/plan-catalog';
 
-export interface IPlanRepository {
-  listAll(): Promise<PlanDomain[]>;
-}
+export const I_PLAN_REPOSITORY = Symbol('IPlanRepository');
 
-export const IPlanRepository = Symbol('IPlanRepository');
+export interface IPlanRepository {
+  findAll(): Promise<PlanDomain[]>;
+}

@@ -1,4 +1,5 @@
 import {
+  BILLING_ERROR_CODES,
   EMAIL_REQUEST_COOLDOWN_SECONDS,
   FILE_NAME_MAX_LENGTH,
   IDENTITY_ERROR_CODES,
@@ -180,6 +181,7 @@ const CODE_MESSAGES: Readonly<Record<string, string>> = {
   [IDENTITY_ERROR_CODES.WRONG_PASSWORD]: 'La contraseña actual no es correcta.',
   [SHARED_ERROR_CODES.UNAUTHENTICATED]: 'Tu sesión no es válida o expiró. Inicia sesión de nuevo.',
   [SHARED_ERROR_CODES.FORBIDDEN]: `Tu cuenta no tiene permiso para esta acción. Si crees que es un error, escríbenos a ${SUPPORT_CONTACT_EMAIL}.`,
+  [BILLING_ERROR_CODES.PLAN_CATALOG_UNAVAILABLE]:'No pudimos cargar los planes. Intenta recargar la página.',
 };
 
 interface TimedMessage {

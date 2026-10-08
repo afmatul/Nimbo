@@ -1,57 +1,56 @@
-'use client';
+// apps/web/src/app/planes/page.tsx
+import { PlanCatalogResponseSchema } from '@nimbo/contracts';
+import { PlanCards } from '@/features/billing/components/plan-cards';
+import { PlanComparisonTable } from '@/features/billing/components/plan-comparison-table';
+import { messageForCode } from '@/lib/error-catalog';
 
-import React, { useEffect, useState } from 'react';
-import { PlanDto } from '@nimbo/contracts';
-import { PlanCards, PlanComparisonTable } from '@/features/billing';
+async function getPlans() {
+  try {
+    const baseUrl = process.env.API_PUBLIC_URL;
+    if (!baseUrl) throw new Error('API_PUBLIC_URL no configurada');
 
-export default function PlanesPage() {
-  const [planes, setPlanes] = useState<PlanDto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+    const res = await fetch(`${baseUrl}/api/v1/billing/plans`, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-  useEffect(() => {
-    fetch('http://localhost:3000/api/v1/billing/plans')
-    .then(async (res) => {
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        setPlanes(data.planes || []);
-      })
-      .catch(() => {
-        setError('No pudimos cargar los planes. Intenta recargar la página.');
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, []);
-
-  if (loading) {
-    return <div className="p-12 text-center text-gray-500">Cargando planes...</div>;
+    const data = PlanCatalogResponseSchema.parse(await res.json());
+    return { planes: data.planes, error: null };
+  } catch (e) {
+    console.error('[planes] no se pudo cargar el catálogo:', e);
+    return { planes: null, error: messageForCode('PLAN_CATALOG_UNAVAILABLE') };
   }
+}
+
+export default async function PlanesPage() {
+  const { planes, error } = await getPlans();
 
   if (error) {
     return (
-      <div className="p-12 text-center text-red-600 font-medium">
+      <div role="alert" className="p-12 text-center text-destructive font-medium">
         {error}
       </div>
     );
   }
 
-  if (planes.length === 0) {
+  if (!planes || planes.length === 0) {
     return (
-      <div className="p-12 text-center text-gray-500">
+      <div role="status" className="p-12 text-center text-muted-foreground">
         Ahora no hay planes para mostrar.
       </div>
     );
   }
 
   return (
-    <section className="planes">
-      <header className="planes__header">
+    <section className="flex flex-col gap-4 p-6">
+      <header className="flex items-center justify-between">
         <div>
-          <h1 className="planes__title">Elige el plan de tu equipo</h1>
-          <p className="planes__subtitle">Escoge la opción ideal para potenciar tu flujo de trabajo en Nimbo.</p>
+          <h1 className="text-lg font-bold text-foreground">Elige el plan de tu equipo</h1>
+          <p className="text-xs text-muted-foreground">
+            Todos los planes incluyen indexación, historial con autoría y cifrado en reposo
+          </p>
         </div>
-        <span className="planes__chip">Precios en quetzales · cobro mensual</span>
+        <span className="px-3 py-1.5 text-xs text-muted-foreground bg-muted/20 border border-border rounded-lg">
+          Precios en quetzales · cobro mensual
+        </span>
       </header>
 
       <PlanCards planes={planes} />

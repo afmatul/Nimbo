@@ -1,41 +1,84 @@
-    import { Test, TestingModule } from '@nestjs/testing';
 import { PlansController } from './plans.controller';
-import { PlanCatalogService } from '../application/plan-catalog.service';
+import type { PlanCatalogService } from '../application/plan-catalog.service';
+import type { PlanDomain } from '../domain/plan-catalog';
+import { PlanCatalogUnavailableError } from '../domain/errors/plan-catalog-unavailable.error';
 
 describe('PlansController', () => {
   let controller: PlansController;
-  let service: PlanCatalogService;
+  let service: jest.Mocked<Pick<PlanCatalogService, 'list'>>;
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      controllers: [PlansController],
-      providers: [
-        {
-          provide: PlanCatalogService,
-          useValue: {
-            list: jest.fn().mockResolvedValue([{ id: '1', slug: 'pro' }]),
-          },
-        },
-      ],
-    }).compile();
+  const personal: PlanDomain = {
+    id: '10000000-0000-4000-8000-000000000001',
+    slug: 'personal',
+    nombre: 'Personal',
+    descripcion: 'Para uso individual',
+    precioCentavos: 0,
+    cuotaBytes: 16106127360n,
+    maxArchivoBytes: 52428800n,
+    maxEditores: 0,
+    consultasAgenteMensual: 20,
+    versionesRetenidas: 5,
+    diasRetencionPapelera: 7,
+  };
 
-    controller = module.get<PlansController>(PlansController);
-    service = module.get<PlanCatalogService>(PlanCatalogService);
+  beforeEach(() => {
+    service = { list: jest.fn() };
+    controller = new PlansController(service as unknown as PlanCatalogService);
   });
 
-  it('debe retornar la lista de planes', async () => {
-      const result = await controller.getPlans();
-      expect(result).toEqual({
-        planes: [
-          {
-            id: '1',
-            slug: 'pro',
-            cuotaBytes: '0',
-            maxArchivoBytes: '0',
-            precioCentavos: '0',
-          },
-        ],
-      });
-      expect(service.list).toHaveBeenCalled();
+  it('CA-1: devuelve { planes } con el precio entero y los bytes como cadena decimal', async () => {
+    service.list.mockResolvedValue([personal]);
+
+    const result = await controller.getPlans();
+
+    // toEqual ya verifica los tipos: precioCentavos número, bytes cadena
+    expect(result).toEqual({
+      planes: [
+        {
+          id: personal.id,
+          slug: 'personal',
+          nombre: 'Personal',
+          descripcion: 'Para uso individual',
+          precioCentavos: 0,
+          cuotaBytes: '16106127360',
+          maxArchivoBytes: '52428800',
+          maxEditores: 0,
+          consultasAgenteMensual: 20,
+          versionesRetenidas: 5,
+          diasRetencionPapelera: 7,
+        },
+      ],
     });
+  });
+
+  it('CA-1: conserva el orden que entrega el servicio', async () => {
+    const pro: PlanDomain = {
+      ...personal,
+      id: '10000000-0000-4000-8000-000000000002',
+      slug: 'pro',
+      nombre: 'Pro',
+      precioCentavos: 4500,
+      cuotaBytes: 107374182400n,
+      maxArchivoBytes: 524288000n,
+      maxEditores: 5,
+    };
+    service.list.mockResolvedValue([personal, pro]);
+
+    const result = await controller.getPlans();
+
+    expect(result.planes.map((p) => p.slug)).toEqual(['personal', 'pro']);
+    expect(result.planes.map((p) => p.precioCentavos)).toEqual([0, 4500]);
+  });
+
+  it('CA-1: con el catálogo vacío responde { planes: [] }', async () => {
+    service.list.mockResolvedValue([]);
+
+    await expect(controller.getPlans()).resolves.toEqual({ planes: [] });
+  });
+
+  it('CA-3: propaga PlanCatalogUnavailableError sin transformarlo', async () => {
+    service.list.mockRejectedValue(new PlanCatalogUnavailableError());
+
+    await expect(controller.getPlans()).rejects.toBeInstanceOf(PlanCatalogUnavailableError);
+  });
 });

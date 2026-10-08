@@ -1,4 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
+import { PlanCatalogResponseSchema } from '@nimbo/contracts';
+import type { PlanCatalogResponse } from '@nimbo/contracts';
 import { PlanCatalogService } from '../application/plan-catalog.service';
 import { Public } from '../../../shared/presentation/auth/public.decorator';
 
@@ -8,15 +10,23 @@ export class PlansController {
 
   @Get()
   @Public()
-  async getPlans() {
+  async getPlans(): Promise<PlanCatalogResponse> {
     const plans = await this.planCatalogService.list();
-    return {
+
+    return PlanCatalogResponseSchema.parse({
       planes: plans.map((plan) => ({
-        ...plan,
-        precioCentavos: plan.precioCentavos?.toString() ?? '0',
-        cuotaBytes: plan.cuotaBytes?.toString() ?? '0',
-        maxArchivoBytes: plan.maxArchivoBytes?.toString() ?? '0',
+        id: plan.id,
+        slug: plan.slug,
+        nombre: plan.nombre,
+        descripcion: plan.descripcion,
+        precioCentavos: Number(plan.precioCentavos), // entero (ADR-0016)
+        cuotaBytes: plan.cuotaBytes.toString(), // bytes como cadena decimal
+        maxArchivoBytes: plan.maxArchivoBytes.toString(),
+        maxEditores: plan.maxEditores,
+        consultasAgenteMensual: plan.consultasAgenteMensual,
+        versionesRetenidas: plan.versionesRetenidas,
+        diasRetencionPapelera: plan.diasRetencionPapelera,
       })),
-    };
+    });
   }
 }
