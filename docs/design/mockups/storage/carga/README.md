@@ -1,6 +1,7 @@
 # Mockup: Carga de archivos (panel de carga)
 
-- **Spec**: 005 (§9; CA-3, CA-4, CA-6, CA-7, CA-8, CA-9, CA-11, CA-19, CA-21, CA-22, CA-24; RN-4, RN-5, RN-7)
+- **Spec**: 005 (§9; CA-3, CA-4, CA-6, CA-7, CA-8, CA-9, CA-11, CA-19, CA-21, CA-22, CA-24; RN-4, RN-5, RN-7) y 014
+  (D-4, CA-1, CA-15: «Reemplazar (nueva versión)» en el diálogo de nombre repetido)
 - **Propuesta presentada**: p. 10 (`progreso`). Los demás estados no se presentaron.
 - **Origen**: dos tecnologías en la misma carpeta.
   - `carga--progreso.html`: HTML empaquetado de la propuesta (Cielo Sereno original, lienzo de escritorio de ≈ 1490 px
@@ -26,15 +27,17 @@
     (`carga--rechazo-cuota.html`, CA-4)
   - tipo-invalido: tres rechazos con su motivo: el contenido no es el de la extensión, un ejecutable y un archivo de 0
     bytes (`carga--tipo-invalido.html`, CA-11, CA-24, CA-7)
-  - nombre-repetido: un solo archivo repetido; diálogo «¿Conservar ambos archivos?» con «Conservar ambos» y «Cancelar»,
-    sin «Reemplazar» ni casilla (`carga--nombre-repetido.html`, CA-6)
-  - nombre-repetido-varios: varios repetidos en la misma selección; un diálogo por archivo con la casilla «Aplicar a los
-    demás». El primero ya se resolvió y el panel lo muestra con su nombre final
+  - nombre-repetido: un solo archivo repetido; diálogo «Ya tienes un archivo con este nombre» con «Conservar ambos»,
+    «Reemplazar (nueva versión)» (014) y «Cancelar», sin casilla (`carga--nombre-repetido.html`, CA-6; 014 CA-1)
+  - nombre-repetido-poda: lo mismo con el archivo existente en el límite de versiones de su plan (Personal, 3); el
+    diálogo avisa qué versión se eliminará si se reemplaza (`carga--nombre-repetido-poda.html`, 014 CA-15)
+  - nombre-repetido-varios: varios repetidos en la misma selección; un diálogo por archivo (con las tres acciones) y la
+    casilla «Aplicar a los demás». El primero ya se resolvió y el panel lo muestra con su nombre final
     (`carga--nombre-repetido-varios.html`, CA-6)
   - confirmar-cancelar: «Cancelar» sobre una carga que ya pasó del 0 % pide confirmación
     (`carga--confirmar-cancelar.html`, CA-22)
 - **Capturas**: `docs/design/capturas/storage/carga/` (`carga--<estado>--<360|1440>.png`). axe-core sin violaciones en
-  los 8 estados escritos a mano, a 360 y 1440 px; sin desbordamiento horizontal a 360 px, sin errores de consola y con
+  los 9 estados escritos a mano, a 360 y 1440 px; sin desbordamiento horizontal a 360 px, sin errores de consola y con
   objetivos de al menos 24 px (36 px en escritorio y 44 px en móvil; la casilla, 24 px más su etiqueta). La captura de
   360 px de `progreso` muestra el lienzo de escritorio (el paquete no tiene versión móvil).
 
@@ -91,10 +94,19 @@ lateral al 87 % (304 GB de 350 GB) salvo en `rechazo-cuota` (349.4 GB, 99.8 %). 
   a Mis archivos. Cuando exista 008, «Ver planes» volverá a los dos rechazos y llevará a Plan y facturación.
 - **Rechazos por contenido** (CA-11, CA-24): se detectan al completar, después de subir los bytes. La fila queda
   «rechazado» con su motivo; no aparece en el explorador ni suma espacio.
-- **Nombre repetido** (CA-6, RN-5): `alertdialog` con título «¿Conservar ambos archivos?», el mensaje de la spec y la
-  nota «Si conservas ambos, el nuevo se guardará como «…».». Botones «Cancelar» (`outline`) y «Conservar ambos»
-  (`primary`, foco inicial). Escape equivale a «Cancelar». A 360 px los botones se apilan con «Conservar ambos» arriba.
+- **Nombre repetido** (CA-6, RN-5; 014 D-4): `alertdialog` con título «Ya tienes un archivo con este nombre», el
+  mensaje «Ya tienes un archivo llamado «…». ¿Quieres reemplazarlo o conservar ambos?» y una nota sobre `muted` que
+  explica las dos opciones: «**Reemplazar:** el archivo conserva su nombre y la versión actual queda en su historial.» y
+  «**Conservar ambos:** el nuevo se guardará como «…».». Botones «Cancelar» y «Reemplazar (nueva versión)» (`outline`)
+  y «Conservar ambos» (`primary`, foco inicial: la opción que no cambia nada existente, decisión 4). Escape equivale a
+  «Cancelar». A 360 px los botones se apilan: «Conservar ambos», «Reemplazar (nueva versión)» y «Cancelar».
   Mientras tanto, la fila dice «nombre repetido».
+  - **Aviso de poda** (014 CA-15): si el archivo existente ya tiene las versiones que conserva su plan, `Alert`
+    `warning` dentro del diálogo (`role="status"`, en `aria-describedby`): «**Si reemplazas, se eliminará la versión
+    3.** Tu plan conserva 3 versiones. Al reemplazar se eliminará la versión 3, la más antigua.» «Conservar ambos» no
+    poda nada, por eso el texto dice «Al reemplazar» y no «Al continuar».
+  - Con «Aplicar a los demás» y «Reemplazar», un archivo que esté en su límite **vuelve a preguntar** con su propio aviso
+    (propuesta: la casilla no debe saltarse un aviso de pérdida).
   - Con varios repetidos en la misma selección se abre un diálogo por archivo. La casilla «Aplicar a los demás» solo
     aparece si quedan más repetidos; aplica la respuesta elegida a los que faltan y no vuelve a preguntar.
   - El formato del sufijo «(n)» lo decide el `/plan`: el diálogo muestra el nombre que devuelva la API («se guardará
@@ -114,6 +126,7 @@ lateral al 87 % (304 GB de 350 GB) salvo en `rechazo-cuota` (349.4 GB, 99.8 %). 
 | `success-foreground` sobre `success` al 12 % (distintivo NUEVO, ícono «Subido») | 4.80 |
 | `muted-foreground` sobre `card` (datos de la fila) | 4.76 |
 | `secondary-foreground` sobre `muted` (nota de los diálogos) | 7.45 |
+| `warning-foreground` sobre `warning` al 10 % sobre `card` (aviso de poda, 014) | 4.86 |
 | Blanco sobre `destructive` («Cancelar carga») | 5.54 |
 | Barra `primary` sobre `muted` (no texto) | 4.58 |
 | Borde `input` de los botones de ícono sobre `card` (no texto) | 3.07 |
@@ -127,8 +140,8 @@ blanco); «Ver planes», con borde `input` (2.74 sobre el aviso), se oculta hast
 1. Mientras haya cargas activas el panel solo se contrae; «Cerrar el panel de cargas» aparece cuando no queda ninguna.
 2. Las filas terminadas (subido, rechazado, cancelada) se quedan en el panel hasta cerrarlo.
 3. Textos: «Carga en espera», «No cierres ni recargues esta pestaña.», «Cancelaste esta carga. Liberamos el espacio que
-   tenía reservado.», «¿Conservar ambos archivos?», «Si conservas ambos, el nuevo se guardará como «…».» y los estados de
-   cada fila («en pausa», «sin conexión», «rechazado», «cancelada», «subido», «nombre repetido»).
+   tenía reservado.», «¿Conservar ambos archivos?» (014 lo cambia por «Ya tienes un archivo con este nombre», pendiente
+   de aprobar), «Si conservas ambos, el nuevo se guardará como «…».» y los estados de cada fila («en pausa», «sin conexión», «rechazado», «cancelada», «subido», «nombre repetido»).
 4. Foco inicial del diálogo de nombre repetido en «Conservar ambos».
 5. Pausa en todas las cargas; la simple se reinicia al reanudar («Se reiniciará al reanudar.»).
 6. Cancelar pide confirmación solo por encima del 0 %; en 0 % cancela directo.
