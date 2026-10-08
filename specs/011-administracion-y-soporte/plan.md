@@ -1,7 +1,7 @@
 # Plan 011 — Administración y soporte
 
-> Spec: `./spec.md` · Estado del plan: **Propuesto** (2026-10-07, Fátima). Lo aprueba Adrián; `architect` lo aprobó con
-> cambios (§8), ya aplicados en §1–§7. Dice qué archivos se tocan y qué hace cada uno; no es el código en prosa.
+> Spec: `./spec.md` · Estado del plan: **Aprobado** (Adrián, 2026-10-08; decisiones en §8). `architect` lo aprobó
+> con cambios (§8), ya aplicados en §1–§7. Dice qué archivos se tocan y qué hace cada uno; no es el código en prosa.
 > Reutiliza `identity`, `billing`, `storage` y `audit` con fachadas pequeñas en el módulo dueño (hallazgos 10–12 de Adrián).
 
 ## 1. Resumen técnico
@@ -26,7 +26,7 @@ Dueño del módulo entre corchetes: lo ajeno se pide a su dueño en su PR (`spec
 
 | Módulo / capa | Archivo (nuevo o cambiado) | Responsabilidad |
 |---|---|---|
-| shared [Adrián; permiso pedido, R-8] | `typeorm-transaction-runner.ts`, `i-transaction-runner.port.ts` (cambian) | `run` se une a **cualquier** transacción en curso (con o sin actor), no solo a un `withActor`; así CA-7 es atómico (T1, DF-65). `withActor` no cambia |
+| shared [Adrián autorizó, R-8] | `typeorm-transaction-runner.ts`, `i-transaction-runner.port.ts` (cambian) | `run` se une a **cualquier** transacción en curso (con o sin actor), no solo a un `withActor`; así CA-7 es atómico (T1, DF-65). `withActor` no cambia |
 | identity/domain [Adrián autorizó] | `internal-user.entity.ts`, `client-user.entity.ts` (cambian) | `InternalUser.enroll(props)` (rol ≠ CLIENT, `employeeCode` obligatorio, correo verificado), `suspend()`, `reactivate()`, `setFirstPassword(hash)`; `ClientUser.suspend()`/`reactivate()` |
 | identity/domain | `employee-code.vo.ts` (nuevo) | `EmployeeCode`: recorta, pasa a mayúsculas y valida `^[A-Z0-9-]{1,20}$` (Q-4) |
 | identity/domain | `verification-token.entity.ts` (cambia) | `VerificationTokenType` suma `'alta_interna'` |
@@ -57,7 +57,7 @@ Dueño del módulo entre corchetes: lo ajeno se pide a su dueño en su PR (`spec
 | backoffice | `domain/errors/client-not-found.error.ts`, `backoffice.module.ts`, `index.ts`, `README.md` | 404 `BACKOFFICE_CLIENT_NOT_FOUND`; módulo y API pública |
 | api | `app.module.ts`, `scripts/bootstrap-admin.ts`, `bootstrap-admin.module.ts`, `package.json` | Registra `BackofficeModule`; script `admin:bootstrap` |
 | config | `packages/config/eslint/boundaries.js` + *fixtures* | `backoffice → identity, billing, storage, audit`; `identity → notifications`; `audit` sin aristas (PD-82) |
-| contracts | `src/backoffice/` (nuevo), `src/identity/` (cambia); `src/audit/` **no** cambia (N-1) | Esquemas `strict`, `BACKOFFICE_PAGE_SIZE = 10`, códigos; bytes con la forma que fije PD-87 y `timestamp` |
+| contracts | `src/backoffice/` (nuevo), `src/identity/` (cambia); `src/audit/` **no** cambia (N-1) | Esquemas `strict`, `BACKOFFICE_PAGE_SIZE = 10`, códigos; bytes como texto decimal (ADR-0016, PD-87) y `timestamp` |
 | api/migrations | cinco migraciones (§3) | — |
 
 - **Puertos y regla V.2**: `INodeMetadataReader` (diagrama M8; lo declara **e implementa** `storage` y lo consume `backoffice`:
@@ -77,7 +77,7 @@ Dueño del módulo entre corchetes: lo ajeno se pide a su dueño en su PR (`spec
   `page-pager`, `plan-card`, `client-files-table`); `lib/error-catalog.ts`. Reutiliza `StateView`, `ConfirmDestructiveDialog`,
   `FileTypeChip`, `QuotaBar`, `ForbiddenState`, `RequireRole`; crea `StatusBadge` en `components/nimbo/` (`ui-guidelines.md` §4).
   `PlanCard` vive en `features/backoffice` hasta que exista el único `PlanCard` acordado con la 008 (PD-83, R-5).
-- **Marco interno, «Seguridad» y «Mi actividad»** (B-1; `features/access` es de Adrián, permiso pedido, R-8): `features/access/components/internal-area-layout.tsx` (nuevo; sobre
+- **Marco interno, «Seguridad» y «Mi actividad»** (B-1; `features/access` es de Adrián, que lo autorizó, R-8): `features/access/components/internal-area-layout.tsx` (nuevo; sobre
   `AppLayout`, navegación de `internalNavFor(role)`) y `features/access/home-path.ts` (inicio por rol: `/admin/cuentas`,
   `/soporte/metadatos`, `/operacion/metricas`; `activityPathFor(role)`): un solo lugar para rutas internas, usado por
   `backoffice`, `identity` y `audit`. `security-view.tsx`: la rama interna usa `InternalAreaLayout` (la URL `/cuenta/seguridad`
@@ -139,7 +139,7 @@ CREATE INDEX idx_archivo_propietario_actualizado ON archivo (propietario_id, act
 
 ## 4. Contratos
 Prefijo `/api/v1`. Errores comunes de `/backoffice/*`: `401 SHARED_UNAUTHENTICATED`; `403 SHARED_FORBIDDEN` (rol fuera de
-`@Roles`, CA-14, o actor interno ya no `activa`, RN-7). Los campos de bytes usan la forma que Adrián fije (R-5).
+`@Roles`, CA-14, o actor interno ya no `activa`, RN-7). Los campos de bytes van como texto decimal (ADR-0016, PD-87).
 
 | Método | Ruta | Rol | Request → Respuesta | Errores (`code`) |
 |---|---|---|---|---|
@@ -180,7 +180,8 @@ Prefijo `/api/v1`. Errores comunes de `/backoffice/*`: `401 SHARED_UNAUTHENTICAT
   `backoffice.client_files.viewed`, `backoffice.actor.inactive`, `identity.session.revoked` (`reason: account_suspended`),
   `identity.invitation.mail_failed`, `admin.bootstrap.completed|refused`. Nunca correo, nombre de archivo, token ni enlace (el
   correo de búsqueda va en la cadena de consulta, que `http.request` ya descarta).
-- `/auth/account-setup*` reutilizan el modelo de 002: token de 256 bits, solo hash, consumo atómico; sin límite de tasa propio.
+- `/auth/account-setup*` reutilizan el modelo de 002: token de 256 bits, solo hash, consumo atómico; sin límite de tasa propio,
+  como `reset-password` (adivinar 256 bits no es viable; Fátima, 2026-10-08). La saturación por IP queda en PD-88.
 
 ## 6. Estrategia de pruebas (por riesgo)
 | CA | Nivel | Archivo |
@@ -211,18 +212,18 @@ Cada CA vive en una capa principal: reglas en unit, contrato y concurrencia en i
 - **R-4 Correo del alta**: se encola después del commit; si falla, la cuenta queda creada y auditada, se anota
   `identity.invitation.mail_failed` y la persona usa «¿Olvidaste tu contraseña?» (nace verificada, Q-3).
 - **R-5 `billing` y la 008** (coordinación con Juan Marcos enviada, H-1/H-2/H-13): `billing` es de Juan Marcos y la 008
-  (`Borrador`, rama `feat/008-catalogo-y-comparador`) crea `PlanCatalogService` e `IPlanRepository`; la parte de `billing`
+  (`Lista`, rama `feat/008-catalogo-y-comparador`) crea `PlanCatalogService` e `IPlanRepository`; la parte de `billing`
   de la 011 la escribe **él** sobre la 008 integrada (Q-7) y las tareas de catálogo de `backoffice` esperan su PR. Se acuerda:
   la **spec 008 cambia** para listar solo `desactivado_en IS NULL` (PD-76); **un** esquema de plan en
   `packages/contracts/src/billing/` (en inglés), **una** entidad `Plan`/`PlanLimitsSet` y **un** `PlanCard` en
-  `components/nimbo` (PD-83); el prefijo de errores de `billing` (`BILLING_`) queda **por acordar**. **Dependencia**: la forma
-  de los bytes en JSON (ADR-0016 o el `number` de 005) la decide Adrián para todo el proyecto; este plan la adopta.
+  `components/nimbo` (PD-83); el prefijo de errores de `billing` (`BILLING_`) queda **por acordar**. Bytes en JSON: texto
+  decimal (ADR-0016; Adrián, 2026-10-08); la 005 se alinea después (PD-87).
 - **R-6 Antes de la 009** todo cliente cuenta como Personal en CA-1, CA-12 y el catálogo (regla vigente, PD-80).
-- **R-7 Mockups en `Borrador`** (`ui-guidelines.md` §7): aprobarlos antes de las tareas web.
-- **R-8 Permisos pedidos en el PR**: Adrián autorizó `identity`, `storage` y `audit` (2026-10-07); `shared` (T1) y la web de
-  `access` (`features/access`, marco interno) están **pedidos y pendientes**. Sin ellos, Adrián hace esas piezas en su PR.
-- **Desviaciones**: DF-66 (paginación); DF-04, DF-15, DF-27, DF-33 (también con CHECK) y DF-36 en `Propuesto (plan 011)`;
-  **DF-65** con el resto (M8, M1, M4, T1, T2, E-R). **Pendientes**: PD-80, PD-81, PD-82, PD-83; PD-31 resuelto aquí.
+- **R-7 Mockups**: `Aprobado` (Adrián, 2026-10-08; `ui-guidelines.md` §7).
+- **R-8 Permisos**: Adrián autorizó `identity`, `storage` y `audit` (2026-10-07), y `shared` (T1) y la web de `access`
+  (`features/access`, marco interno) el 2026-10-08, **solo** en los archivos que nombra este plan.
+- **Desviaciones** (`Aceptado`, Adrián, 2026-10-08): DF-66 (paginación); DF-04, DF-36, la parte de 011 de DF-15, DF-27
+  (`INodeMetadataReader`) y DF-33 (`codigo_empleado`, también con CHECK); **DF-65** con el resto (M8, M1, M4, T1, T2, E-R). **Pendientes**: PD-80, PD-81, PD-82, PD-83; PD-31 resuelto aquí.
 - **ADR requeridos**: ninguno (sin tecnología nueva; el contexto Nest del script ya está en la pila).
 - **Fuera**: 011b, 022b, RN-6 en 012/013 (PD-78), comparador 008 (PD-76), reenviar el enlace de alta, sesiones ajenas.
 
@@ -239,5 +240,7 @@ Cada CA vive en una capa principal: reglas en unit, contrato y concurrencia en i
 - `architect` (ciclo 2): **Aprobado** (2026-10-07). Cambios 1–4 y 6–8 del ciclo 1 aplicados en §1–§7; el 5 queda sin efecto
   (Q-1 = B: sin `IAuditActorDirectory` ni `identity → audit`). DAG intacto; RLS, `ck_evento_destino`, política de sistema, T1 y
   `down` revisados; `architecture.md` §5–§6 ya reflejan T1, el actor de sistema y CA-7. En `/tasks`: el `run` de CA-7 es
-  `ITransactionRunner.run`, no `InternalActionService.run` (§2); T1 espera el permiso de `shared` (R-8). DF de §7 → `Aceptado` con Adrián.
-- Adrián: pendiente.
+  `ITransactionRunner.run`, no `InternalActionService.run` (§2); T1 tiene el permiso de `shared` (R-8). DF de §7 → `Aceptado` con Adrián.
+- Adrián: **Aprobado** (2026-10-08, comentarios del PR): spec, plan y mockups; permiso de `shared` y `access` solo en los
+  archivos nombrados (R-8); DF-66 aceptado; bytes como texto decimal (ADR-0016, PD-87); la 004 no se reabre; PD-85 y los dos
+  PD-51 los corrige él en otro PR. `/auth/account-setup*` sin límite propio (A, §5); unificarlo con 002 queda en PD-88.

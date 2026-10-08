@@ -2,12 +2,12 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Borrador |
+| Estado | Lista |
 | Dueño | Fátima |
 | Fase | 2 |
 | Requisitos | RF-06 (principal); RF-05 (matriz), RF-07, RF-19, RF-24, RNF-02, RNF-05, RNF-13, RNF-14 |
 | Depende de | 003, 004, 005 (metadatos de archivos), 006 (papelera), 007 (`espacio_usado`), 008 |
-| Última actualización | 2026-10-07 |
+| Última actualización | 2026-10-08 |
 
 ## 1. Contexto y objetivo
 Operar sin romper la privacidad (RF-06): el Administrador gestiona cuentas, altas internas y catálogo y ve métricas; Soporte
@@ -114,13 +114,13 @@ sobre una cuenta ajena queda en la auditoría del cliente (Art. IX, RF-07). Cuot
 ## 6. Experiencia de usuario
 | Pantalla | Mockup (`docs/design/mockups/…`) | Estados requeridos | Estado del mockup |
 |---|---|---|---|
-| Admin: cuentas y ficha | `backoffice/admin/` | default, ficha, vacio, cargando, error, confirmar-suspender, suspendida, confirmar-reactivar, propia-cuenta | Borrador |
-| Admin: alta interna | `backoffice/alta-interna/` | default, error-campos, error-conflicto, enviando, exito | Borrador |
-| Admin: catálogo de planes | `backoffice/catalogo/` | default, cargando, error, creando, error-campos, exito, confirmar-desactivar, desactivado | Borrador |
-| Admin y Operador: métricas | `backoffice/metricas/` | default, cargando, error, con-plan-inactivo, operador | Borrador |
+| Admin: cuentas y ficha | `backoffice/admin/` | default, ficha, vacio, cargando, error, confirmar-suspender, suspendida, confirmar-reactivar, propia-cuenta | Aprobado |
+| Admin: alta interna | `backoffice/alta-interna/` | default, error-campos, error-conflicto, enviando, exito | Aprobado |
+| Admin: catálogo de planes | `backoffice/catalogo/` | default, cargando, error, creando, error-campos, exito, confirmar-desactivar, desactivado | Aprobado |
+| Admin y Operador: métricas | `backoffice/metricas/` | default, cargando, error, con-plan-inactivo, operador | Aprobado |
 | Invitada: crear tu contraseña | sin mockup: patrón de `restablecer-contrasena` (002), con Cielo Sereno (P-15) | default, enviando, error-campos, enlace-vencido, enlace-invalido, exito | Decisión explícita |
 | Interna: Seguridad y Mi actividad | sin mockup: páginas de 002 y 004 en el marco interno (P-18) | los de 002 y 004 | Decisión explícita |
-| Soporte: metadatos de un cliente | `backoffice/soporte/` | inicial, default, vacio, cargando, no-encontrado, error, desde-admin | Borrador |
+| Soporte: metadatos de un cliente | `backoffice/soporte/` | inicial, default, vacio, cargando, no-encontrado, error, desde-admin | Aprobado |
 
 - Cielo Sereno (`design-cielo-sereno.md`) con los tonos AA corregidos de `ui-guidelines.md` §2 (Art. XIII.2).
 - Mensajes clave: «Esta cuenta quedó suspendida y se cerraron sus sesiones.» · «Los planes no se editan: crea uno nuevo y
@@ -145,6 +145,6 @@ sobre una cuenta ajena queda en la auditoría del cliente (Art. IX, RF-07). Cuot
 ## 9. Registro de cambios
 | Fecha | Cambio | Motivo | Aprobó |
 |---|---|---|---|
-| 2026-10-03 | Creación; P-1…P-14; 011b y 022b; «verificada»; Operador ve métricas; estados de los 5 mockups | Respuestas de la dueña, división de 022 y mockups | Fátima (pendiente Adrián) |
-| 2026-10-06 | 006 y 007 en «Depende de»; `slug` y `desactivado_en`; un plan no se edita; auditoría de catálogo sin cliente; `token_cuenta` con tipo propio; CA-7 sin rol; CA-11, CA-13, CA-17, CA-9 y CA-2 | Revisiones de Adrián y del `reviewer` | Fátima (pendiente Adrián) |
-| 2026-10-07 | CA-5 y CA-8; §6 «Crear tu contraseña» y área interna con Seguridad y Mi actividad; solo el rol (004 D-2); RN-6 con la papelera; RN-7/CA-4 sin autorreactivación ni acciones de un interno suspendido; correos fuera de bitácoras | Preguntas del plan, contradicciones con 002, 004 y 006, y `architect` | Fátima (pendiente Adrián) |
+| 2026-10-03 | Creación; P-1…P-14; 011b y 022b; «verificada»; Operador ve métricas; estados de los 5 mockups | Respuestas de la dueña, división de 022 y mockups | Fátima; aprobado por Adrián (2026-10-08) |
+| 2026-10-06 | 006 y 007 en «Depende de»; `slug` y `desactivado_en`; un plan no se edita; auditoría de catálogo sin cliente; `token_cuenta` con tipo propio; CA-7 sin rol; CA-11, CA-13, CA-17, CA-9 y CA-2 | Revisiones de Adrián y del `reviewer` | Fátima; aprobado por Adrián (2026-10-08) |
+| 2026-10-07 | CA-5 y CA-8; §6 «Crear tu contraseña» y área interna con Seguridad y Mi actividad; solo el rol (004 D-2); RN-6 con la papelera; RN-7/CA-4 sin autorreactivación ni acciones de un interno suspendido; correos fuera de bitácoras | Preguntas del plan, contradicciones con 002, 004 y 006, y `architect` | Fátima; aprobado por Adrián (2026-10-08) |

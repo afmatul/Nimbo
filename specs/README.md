@@ -17,7 +17,7 @@ un puerto.
 | Abel (3)        | Diseñador-programador           | previsualización (017), `optimizer` (M7), observabilidad (022)                                                                               |
 | Fátima (4)      | Diseñador-programador           | sistema de diseño (000b), `realtime`, `sharing` (M3b), `backoffice` (M8), incluido el tablero de operación (022b)                             |
 
-Excepciones: 006a (`billing`) la construyó Fátima y la integra Adrián. En la 011, Adrián autorizó a Fátima a cambiar `identity`, `storage` y `audit` (2026-10-07; `shared` pendiente de su permiso), y la parte de `billing` la escribe Juan Marcos. 017 y 018 viven en `storage`, pero en carpetas
+Excepciones: 006a (`billing`) la construyó Fátima y la integra Adrián. En la 011, Adrián autorizó a Fátima a cambiar `identity`, `storage` y `audit` (2026-10-07), y `shared` y `features/access` solo en los archivos que nombra el plan (2026-10-08), y la parte de `billing` la escribe Juan Marcos. 017 y 018 viven en `storage`, pero en carpetas
 propias (`storage/preview`, `storage/search`) de Abel y Juan Marcos; los cambios al resto de `storage` los hace Adrián.
 
 ## Estados (SDD express)
@@ -50,7 +50,7 @@ Antes de planificar las specs de Fase 1, el equipo decide en una reunión los ha
 | 008  | catalogo-y-comparador                                                                                                      | M4                  | RF-19                     | 15                         | 2    | Juan Marcos | 006a          | Lista (2026-10-07): spec, plan y tareas en `feat/008-catalogo-y-comparador`; plan aprobado por Adrián (por escrito fuera del repo, falta registrarlo en `plan.md` §8) |
 | 009  | contratacion-pagos-y-facturas (incluye el PD-40: suscripción Personal, conciliación y catálogo público) | M4 | RF-20, 21 | 23 | 2 | Juan Marcos | 008 | Pendiente |
 | 010  | renovacion-vencimiento-y-cambio-de-plan                                                    | M4                  | RF-22, 23, 24             | 25                         | 2    | Juan Marcos | 009           | Pendiente |
-| 011  | [administracion-y-soporte](011-administracion-y-soporte/spec.md)                           | M8                  | RF-06                     | 04, 36                     | 2    | Fátima | 003, 004, 005, 006, 007, 008 | Borrador (2026-10-07) |
+| 011  | [administracion-y-soporte](011-administracion-y-soporte/spec.md)                           | M8                  | RF-06                     | 04, 36                     | 2    | Fátima | 003, 004, 005, 006, 007, 008 | Lista (2026-10-08) |
 | 011b | ajustes-de-cuenta-y-restauracion (ajuste de cuota y de vigencia, restauración de papelera por Soporte; separada de 011 por tamaño) | M8                  | RF-06, RF-05, RF-23       | 26                         | 2    | Fátima | 006, 009, 010, 011 | Pendiente |
 | 012  | comparticion-y-accesos                                                                     | M3b                 | RF-16, 18                 | 31                         | 2    | Fátima | 003, 006      | Pendiente |
 | 013  | enlaces-publicos                                                                           | M3b                 | RF-17, RNF-08             | 09, 10                     | 2    | Fátima | 012           | Pendiente |
@@ -80,7 +80,7 @@ Ningún plan de Juan Marcos, Abel o Fátima pasa a código sin la aprobación de
 | Adrián      | Integrar `chore/cierre-fase-1`, `fix/005-revision` y `feat/000-ci` → CI de 000 (lint de ciclos, `ci.yml`, protección de `main`) → imágenes y staging → `/spec 014`. Revisa planes y PRs del equipo | 014 → 016 → 019 → 020 → 023        |
 | Juan Marcos | Registrar la aprobación en `plan.md` §8 de 008 y `/implement 008` (desbloquea 009 y 011)                                             | 009 → 010 → 018                    |
 | Abel        | `/implement 017` desde T-03 (T-01, T-02 y T-05 de habilitación ya hechas por Adrián en `feat/017-previsualizacion`)                  | 022 → 021 (021 depende de 014)     |
-| Fátima      | `/plan 011` (spec en `spec/011-administracion-y-soporte`); `/spec 015` y `/plan 015` tiempo real (la necesita 016)                  | 012 → 013 → 011b → 022b            |
+| Fátima      | `/tasks 011` y `/implement 011` (plan aprobado, rama `spec/011-administracion-y-soporte`); `/spec 015` y `/plan 015` tiempo real (la necesita 016)                  | 012 → 013 → 011b → 022b            |
 
 Reglas de convivencia: PRs pequeños y rebase frecuente sobre `main`. Los únicos archivos compartidos que se tocan
 son:
