@@ -22,14 +22,17 @@ export class QuotaService {
     @Inject(I_CLOCK) private readonly clock: IClock,
   ) {}
 
-  /** Lanza `FileTooLargeError` (primero) o `QuotaExceededError`. */
+  /** Lanza `FileTooLargeError` (primero, sin tocar la fila) o `QuotaExceededError` (CA-3, CA-4). */
   async assertCanUpload(actor: Actor, declaredBytes: bigint, limits: PlanLimits): Promise<void> {
+    const size = QuotaPolicy.checkFileSize(limits, declaredBytes);
+    if (!size.ok) throw new FileTooLargeError(size.sizeBytes, size.maxBytes, formatBytes);
+    await this.assertFits(actor, declaredBytes, limits);
+  }
+
+  /** Solo la cuota, sin el máximo por archivo (014 RN-9: restaurar). Lanza `QuotaExceededError`. */
+  async assertFits(actor: Actor, bytes: bigint, limits: PlanLimits): Promise<void> {
     const usage = await this.quotas.lockAndReadUsage(actor, this.clock.now());
-    const decision = QuotaPolicy.check(limits, usage, declaredBytes);
-    if (decision.ok) return;
-    if (decision.violation === 'FileTooLarge') {
-      throw new FileTooLargeError(decision.sizeBytes, decision.maxBytes, formatBytes);
-    }
-    throw new QuotaExceededError(decision.missingBytes, formatBytes);
+    const decision = QuotaPolicy.checkQuota(limits, usage, bytes);
+    if (!decision.ok) throw new QuotaExceededError(decision.missingBytes, formatBytes);
   }
 }

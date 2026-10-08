@@ -7,6 +7,7 @@ import type {
   InitUploadInput,
   InitUploadResponse,
   ResumeUploadResponse,
+  UploadOnConflict,
   UploadPartUrl,
 } from '@nimbo/contracts';
 import { PinoLogger } from 'nestjs-pino';
@@ -26,7 +27,6 @@ import {
   UploadNotFoundError,
   UploadSizeMismatchError,
 } from '../domain/errors';
-import type { File } from '../domain/file';
 import type { FileKind } from '../domain/file-kind';
 import { FileName } from '../domain/file-name.vo';
 import { expectedPartBytes, planParts } from '../domain/multipart-layout';
@@ -37,7 +37,6 @@ import { assessObjectSize, assessParts } from '../domain/uploaded-size';
 import type { SizeVerdict } from '../domain/uploaded-size';
 
 import { toFileSummary } from './file-summary';
-import { freeFileName } from './free-file-name';
 import { I_PLAN_LIMITS_PROVIDER } from './plan-limits';
 import type { IPlanLimitsProvider, PlanLimits } from './plan-limits';
 import { I_FILE_TYPE_DETECTOR } from './ports/i-file-type-detector.port';
@@ -52,6 +51,8 @@ import { I_OBJECT_STORAGE } from './ports/i-object-storage.port';
 import type { IObjectStorage } from './ports/i-object-storage.port';
 import { I_UPLOAD_SESSION_REPOSITORY } from './ports/i-upload-session.repository.port';
 import type { IUploadSessionRepository } from './ports/i-upload-session.repository.port';
+import { I_VERSION_REPOSITORY } from './ports/i-version.repository.port';
+import type { IVersionRepository } from './ports/i-version.repository.port';
 import { QuotaService } from './quota.service';
 import { recordAudit } from './record-audit';
 import { rateLimited } from './storage-logger';
@@ -59,7 +60,9 @@ import type { StorageLogger } from './storage-logger';
 import { UPLOAD_CONFIG } from './upload-config';
 import type { UploadConfig } from './upload-config';
 import { UploadRegistrar } from './upload-registrar';
-import type { VerifiedUpload } from './upload-registrar';
+import type { Registration, VerifiedUpload } from './upload-registrar';
+import { resolveUploadTarget } from './upload-target';
+import type { UploadTarget } from './upload-target';
 
 /** Ventana del límite de inicios de carga por actor (plan D-3); el tope sale de la configuración. */
 const RATE_WINDOW_SECONDS = 60;
@@ -80,6 +83,9 @@ interface StartedUpload {
   readonly response: InitUploadResponse;
 }
 
+/** Lo que `complete` registró: el archivo y su versión nueva. */
+type Registered = Extract<Registration, { outcome: 'registered' }>;
+
 /**
  * Ciclo de vida de una carga (plan §6): iniciar, reanudar, completar, cancelar y vencer. Los bytes no pasan por la
  * API (DF-16): emite URLs prefirmadas tras validar plan, cuota y nombre. Cada método abre `withActor` donde toca
@@ -95,6 +101,7 @@ export class UploadService {
     private readonly quota: QuotaService,
     @Inject(I_UPLOAD_SESSION_REPOSITORY) private readonly sessions: IUploadSessionRepository,
     @Inject(I_NODE_REPOSITORY) private readonly nodes: INodeRepository,
+    @Inject(I_VERSION_REPOSITORY) private readonly versions: IVersionRepository,
     @Inject(I_OBJECT_STORAGE) private readonly storage: IObjectStorage,
     @Inject(I_FILE_TYPE_DETECTOR) private readonly detector: IFileTypeDetector,
     private readonly registrar: UploadRegistrar,
@@ -106,8 +113,8 @@ export class UploadService {
   /**
    * Inicia una carga (CA-1, CA-2, CA-3, CA-4, CA-6, CA-7, CA-19, CA-23). Orden de plan §6: tasa → nombre → tamaño 0
    * → límites del plan (fuera de la transacción) → en `withActor`: cuota con la fila del actor bloqueada, carpeta
-   * destino viva (006 CA-6), nombre repetido en ella, modo, multipart, fila `carga` (la reserva) y firmas. Si algo
-   * falla tras crear el multipart, lo aborta.
+   * destino viva (006 CA-6), nombre repetido en ella (o el archivo que reemplaza, 014 CA-1), modo, multipart, fila
+   * `carga` (la reserva) y firmas. Si algo falla tras crear el multipart, lo aborta.
    */
   async init(actor: Actor, request: InitUploadInput): Promise<InitUploadResponse> {
     await this.assertInitRate(actor);
@@ -115,12 +122,11 @@ export class UploadService {
     const declaredBytes = BigInt(request.sizeBytes);
     if (declaredBytes === 0n) throw new EmptyFileError();
     const limits = await this.plans.limitsFor(actor);
-    const keepBoth = request.onConflict === 'keep_both';
     const started = await this.reserve(actor, {
       name,
       folderId: request.folderId,
       declaredBytes,
-      keepBoth,
+      onConflict: request.onConflict,
       limits,
     });
     this.logger.info({
@@ -209,24 +215,27 @@ export class UploadService {
       return await this.transactions.withActor(actor, async () => {
         await this.quota.assertCanUpload(actor, input.declaredBytes, input.limits);
         await this.assertDestinationAccessible(actor, input.folderId);
-        const plannedName = await freeFileName(this.nodes, actor, input);
-        const ids = { id: randomUUID(), fileId: randomUUID(), versionId: randomUUID() };
+        const target = await resolveUploadTarget(
+          { nodes: this.nodes, versions: this.versions },
+          actor,
+          {
+            ...input,
+            retainedVersions: input.limits.retainedVersions,
+          },
+        );
+        const ids = newIds(target);
         const key = ObjectKey.of(actor.id, ids.fileId, ids.versionId).value;
         const multipart = await this.openMultipartIfLarge(key, input.declaredBytes);
         if (multipart !== null) created.push({ key, uploadId: multipart.uploadId });
+        const fields = sessionFields(actor, input, target);
         const session = UploadSession.start({
           ...ids,
-          ownerId: actor.id,
-          folderId: input.folderId,
-          name: input.name,
-          keepBoth: input.keepBoth,
-          replacesFile: false,
-          declaredBytes: input.declaredBytes,
+          ...fields,
           multipart,
           now: this.clock.now(),
         });
         await this.sessions.insert(actor, session);
-        return { session, response: await this.initResponse(session, plannedName) };
+        return { session, response: await this.initResponse(session, target.name) };
       });
     } catch (error) {
       await Promise.all(created.map(({ key, uploadId }) => this.abortQuietly(key, uploadId)));
@@ -489,7 +498,7 @@ export class UploadService {
     const { file } = registration;
     const sizeBytes = Number(file.sizeBytes);
     this.logger.info({ event: 'upload.completed', fileId: file.id, sizeBytes });
-    await this.recordCompleted(actor, session, file);
+    await this.recordCompleted(actor, session, registration);
     return { file: toFileSummary(file) };
   }
 
@@ -500,7 +509,15 @@ export class UploadService {
     throw new NodeNotFoundError();
   }
 
-  private recordCompleted(actor: Actor, session: UploadSession, file: File): Promise<void> {
+  /** Un reemplazo (014 CA-19) suma `replaced`, el UUID de la versión y su número. */
+  private recordCompleted(
+    actor: Actor,
+    session: UploadSession,
+    { file, version }: Registered,
+  ): Promise<void> {
+    const replacement = session.replacesFile
+      ? { replaced: true, versionId: version.id, versionNumber: version.number }
+      : {};
     return recordAudit(
       this.audit,
       this.logger,
@@ -509,7 +526,11 @@ export class UploadService {
         actor,
         targetUserId: actor.id,
         resourceId: file.id,
-        attributes: { sizeBytes: Number(file.sizeBytes), mode: CONTRACT_MODE[session.mode] },
+        attributes: {
+          sizeBytes: Number(file.sizeBytes),
+          mode: CONTRACT_MODE[session.mode],
+          ...replacement,
+        },
       },
       { fileId: file.id },
     );
@@ -654,8 +675,25 @@ interface ReserveInput {
   /** Carpeta destino (`null` = raíz, 006 CA-6). */
   readonly folderId: string | null;
   readonly declaredBytes: bigint;
-  readonly keepBoth: boolean;
+  readonly onConflict: UploadOnConflict;
   readonly limits: PlanLimits;
+}
+
+/** Ids de la carga: el archivo es el que reemplaza (014 CA-1) o uno reservado; la versión siempre es nueva. */
+function newIds(target: UploadTarget): { id: string; fileId: string; versionId: string } {
+  return { id: randomUUID(), fileId: target.replaces?.id ?? randomUUID(), versionId: randomUUID() };
+}
+
+/** Campos de la sesión que salen de lo pedido y del destino resuelto. */
+function sessionFields(actor: Actor, input: ReserveInput, target: UploadTarget) {
+  return {
+    ownerId: actor.id,
+    folderId: input.folderId,
+    name: input.name,
+    keepBoth: input.onConflict === 'keep_both',
+    replacesFile: target.replaces !== null,
+    declaredBytes: input.declaredBytes,
+  };
 }
 
 /** El esquema zod ya validó la forma; `FileName` es la regla de dominio (NFC, recorte) y responde el mismo 400. */

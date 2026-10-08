@@ -23,13 +23,19 @@ const NODE_ATTRIBUTES = { nodeType: NODE_TYPES, itemCount: 'number', sizeBytes: 
 
 /**
  * Catálogo cerrado (RN-3): por acción, su tipo de recurso y la lista blanca de atributos con su tipo. Son las siete
- * acciones de 005 y 006 (D-1) con los atributos que emiten hoy y las dos de versiones de 014 (plan §5); cada spec
- * agrega las suyas. Una acción del enum sin entrada no compila.
+ * acciones de 005 y 006 (D-1) con los atributos que emiten hoy y las dos de versiones de 014 (plan §5); un reemplazo
+ * (014) reutiliza `file.upload_completed` con `replaced`, `versionId` y `versionNumber`. Cada spec agrega las suyas. Una acción del enum sin entrada no compila.
  */
 export const AUDIT_CATALOG = {
   [AuditAction.FILE_UPLOAD_COMPLETED]: {
     resourceType: 'file',
-    attributes: { sizeBytes: 'number', mode: 'text' },
+    attributes: {
+      sizeBytes: 'number',
+      mode: 'text',
+      replaced: 'boolean',
+      versionId: 'uuid',
+      versionNumber: 'number',
+    },
   },
   [AuditAction.FILE_UPLOAD_REJECTED]: {
     resourceType: 'upload',
@@ -57,11 +63,16 @@ export const AUDIT_CATALOG = {
   },
   [AuditAction.FILE_VERSION_RESTORED]: {
     resourceType: 'file',
-    attributes: { versionNumber: 'number', restoredFromNumber: 'number', sizeBytes: 'number' },
+    attributes: {
+      versionId: 'uuid',
+      versionNumber: 'number',
+      restoredFromNumber: 'number',
+      sizeBytes: 'number',
+    },
   },
   [AuditAction.FILE_VERSION_PRUNED]: {
     resourceType: 'file',
-    attributes: { versionNumber: 'number', sizeBytes: 'number' },
+    attributes: { versionId: 'uuid', versionNumber: 'number', sizeBytes: 'number' },
   },
 } as const satisfies Record<AuditAction, AuditActionSpec>;
 

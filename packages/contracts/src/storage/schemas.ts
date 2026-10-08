@@ -43,6 +43,17 @@ export const initUploadSchema = z
   })
   .strict(STORAGE_FIELD_MESSAGES.UNKNOWN_FIELD);
 
+/**
+ * `details` del `409 STORAGE_NAME_CONFLICT` de `POST /uploads` con `onConflict: 'ask'` (005 CA-6, 014 CA-15).
+ * `wouldPruneVersion` es **opcional**: el número de la versión que podaría «Reemplazar» si el archivo que choca está
+ * en el límite de retención de su plan; si reemplazar no poda nada, la clave no viene (`details` no admite `null`).
+ * Renombrar y mover nunca la envían.
+ */
+export interface UploadNameConflictDetails {
+  readonly suggestedName: string;
+  readonly wouldPruneVersion?: number;
+}
+
 const uploadPartUrlSchema = z
   .object({ partNumber: z.number().int().positive(), url: z.string().url() })
   .strict();

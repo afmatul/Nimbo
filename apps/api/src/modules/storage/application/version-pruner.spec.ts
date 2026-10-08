@@ -105,9 +105,10 @@ describe('VersionPruner (plan 014 §1, CA-13, CA-14, CA-19)', () => {
     expect(quotas.added).toEqual([]);
   });
 
-  it('CA-19: audita `file.version_pruned` con el UUID del archivo, número y bytes, sin nombres ni claves', async () => {
-    const { pruner, audit, logger, seed } = setup();
+  it('CA-19: audita `file.version_pruned` con el UUID del archivo y de la versión, número y bytes, sin nombres ni claves', async () => {
+    const { pruner, audit, logger, seed, versions } = setup();
     const file = seed([100n, 200n, 300n, 400n]);
+    const oldest = [...versions.versions.values()].find((version) => version.number === 1);
 
     await pruner.prune(ANA, file.id);
 
@@ -117,7 +118,7 @@ describe('VersionPruner (plan 014 §1, CA-13, CA-14, CA-19)', () => {
         actor: ANA,
         targetUserId: ANA.id,
         resourceId: file.id,
-        attributes: { versionNumber: 1, sizeBytes: 100 },
+        attributes: { versionId: oldest?.id, versionNumber: 1, sizeBytes: 100 },
       },
     ]);
     expect(logger.info).toHaveBeenCalledWith(

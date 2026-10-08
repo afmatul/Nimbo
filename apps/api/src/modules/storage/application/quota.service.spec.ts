@@ -97,3 +97,22 @@ describe('QuotaService', () => {
     expect(quotas.calls).not.toContain('lockUsage');
   });
 });
+
+describe('QuotaService.assertFits (014 RN-9)', () => {
+  it('CA-11: valida solo la cuota: un tamaño sobre el máximo por archivo que cabe pasa', async () => {
+    const { quotas, service, limits } = await setup({ usedBytes: 0n, reservedBytes: 0n });
+
+    await expect(service.assertFits(ACTOR, MAX_FILE + 1n, limits)).resolves.toBeUndefined();
+
+    expect(quotas.calls).toEqual([`lockAndReadUsage:${ACTOR.id}`]);
+  });
+
+  it('CA-11: lo usado más lo reservado más los bytes no cabe: 422 con lo que falta', async () => {
+    const { service, limits } = await setup({ usedBytes: 90_000_000n, reservedBytes: 5_000_000n });
+
+    const attempt = service.assertFits(ACTOR, 6_000_000n, limits);
+
+    await expect(attempt).rejects.toBeInstanceOf(QuotaExceededError);
+    await expect(attempt).rejects.toMatchObject({ details: { missingBytes: 1_000_000 } });
+  });
+});

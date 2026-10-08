@@ -33,6 +33,11 @@ export interface NodeListPage {
 export interface INodeRepository {
   /** El archivo si el actor tiene acceso y no está en la papelera; `null` en otro caso (CA-16: ajeno = inexistente). */
   findAccessibleById(actor: Actor, id: string): Promise<File | null>;
+  /**
+   * El archivo vivo y accesible llamado `name` en la carpeta `folderId` (`null` = raíz), sin distinguir mayúsculas
+   * (005 CA-6); `null` si no hay. Es el archivo que reemplaza una carga con `onConflict: 'replace'` (014 CA-1).
+   */
+  findLiveFileByName(actor: Actor, name: FileName, folderId: string | null): Promise<File | null>;
   /** La carpeta si el actor tiene acceso y no está en la papelera; `null` en otro caso (CA-5). */
   findAccessibleFolder(actor: Actor, id: string): Promise<Folder | null>;
   /** Subcarpetas y archivos directos de una carpeta o de la raíz (CA-5). Lanza `InvalidQueryError` si el cursor no es válido o es de otro orden. */

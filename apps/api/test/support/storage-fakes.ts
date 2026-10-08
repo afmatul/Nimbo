@@ -266,6 +266,15 @@ export class FakeNodeRepository implements INodeRepository {
     return Promise.resolve(isLiveOf(actor, file) ? file : null);
   }
 
+  findLiveFileByName(actor: Actor, name: FileName, folderId: string | null): Promise<File | null> {
+    this.journal.add('nodes:findLiveFileByName');
+    const lower = name.value.toLowerCase();
+    const found = this.liveFiles(actor).find(
+      (file) => file.folderId === folderId && file.name.value.toLowerCase() === lower,
+    );
+    return Promise.resolve(found ?? null);
+  }
+
   findAccessibleFolder(actor: Actor, id: string): Promise<Folder | null> {
     this.journal.add('nodes:findAccessibleFolder');
     const folder = this.folders.get(id);

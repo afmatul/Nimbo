@@ -99,7 +99,11 @@ export class VersionPruner {
         actor,
         targetUserId: actor.id,
         resourceId: version.fileId,
-        attributes: { versionNumber: version.number, sizeBytes: Number(version.sizeBytes) },
+        attributes: {
+          versionId: version.id,
+          versionNumber: version.number,
+          sizeBytes: Number(version.sizeBytes),
+        },
       },
       ids,
     );

@@ -14,6 +14,7 @@ import {
   FakeUploadSessionRepository,
   Journal,
 } from '../../../../test/support/storage-fakes';
+import { FakeVersionRepository, seedVersionedFile } from '../../../../test/support/version-fakes';
 import { createActor, FixedClock, Role } from '../../../shared';
 import type { Actor } from '../../../shared';
 import { AuditAction } from '../../audit';
@@ -38,11 +39,13 @@ import { FolderName } from '../domain/folder-name.vo';
 import { TrashState } from '../domain/trash-state';
 import type { UploadSession } from '../domain/upload-session';
 
+import { FileVersionService } from './file-version.service';
 import type { PlanLimits } from './plan-limits';
 import { QuotaService } from './quota.service';
 import type { UploadConfig } from './upload-config';
 import { UploadRegistrar } from './upload-registrar';
 import { UploadService } from './upload.service';
+import { VersionPruner } from './version-pruner';
 
 const MIB = 1_048_576;
 const NOW = new Date('2026-09-30T10:00:00.000Z');
@@ -89,6 +92,18 @@ function setup() {
   const plans = new JournaledPlanLimits(journal);
   const audit = new FakeAuditLogger(journal);
   const logger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() };
+  const versions = new FakeVersionRepository(journal);
+  const pruner = new VersionPruner(
+    transactions,
+    nodes,
+    versions,
+    quotas,
+    storage,
+    new FakePlanLimitsProvider(LIMITS),
+    audit,
+    logger,
+  );
+  const fileVersions = new FileVersionService(quotas, versions, nodes, pruner, logger);
   const service = new UploadService(
     transactions,
     rateLimiter,
@@ -97,14 +112,16 @@ function setup() {
     new QuotaService(quotas, clock),
     sessions,
     nodes,
+    versions,
     storage,
     detector,
-    new UploadRegistrar(transactions, quotas, sessions, nodes, clock),
+    new UploadRegistrar(transactions, quotas, sessions, nodes, fileVersions, clock),
     audit,
     CONFIG,
     logger,
   );
   return {
+    versions,
     audit,
     journal,
     clock,
@@ -1244,5 +1261,187 @@ describe('UploadService con carpeta destino (006)', () => {
       'nodes:findAccessibleFolder',
       'session:transition:completada',
     ]);
+  });
+});
+
+const REPLACED_NAME = 'secreto-7f3a.docx';
+
+/** Archivo vivo de ACTOR en la raíz con versiones de `sizes` (la última es la actual). */
+function versionedFile(ctx: Setup, sizes: readonly bigint[]): File {
+  return seedVersionedFile(
+    { nodes: ctx.nodes, versions: ctx.versions, objects: ctx.storage },
+    ACTOR,
+    sizes,
+  );
+}
+
+/** Inicia el reemplazo de `REPLACED_NAME` y sube su objeto de 1 MiB. */
+async function uploadedReplacement(ctx: Setup): Promise<UploadSession> {
+  const response = await ctx.service.init(
+    ACTOR,
+    request({ name: REPLACED_NAME, onConflict: 'replace' }),
+  );
+  const session = ctx.sessions.sessions.get(response.uploadId);
+  if (session === undefined) throw new Error('la sesión no se guardó');
+  ctx.storage.objects.set(session.objectKey.value, Buffer.alloc(MIB));
+  return session;
+}
+
+describe('UploadService con reemplazo (014)', () => {
+  it('CA-1: `replace` con un archivo del mismo nombre reserva su id y responde con su nombre', async () => {
+    const ctx = setup();
+    const file = versionedFile(ctx, [100n]);
+
+    const response = await ctx.service.init(
+      ACTOR,
+      request({ name: 'SECRETO-7f3a.docx', onConflict: 'replace' }),
+    );
+
+    const session = ctx.sessions.sessions.get(response.uploadId);
+    expect(response.name).toBe(REPLACED_NAME);
+    expect(session?.replacesFile).toBe(true);
+    expect(session?.fileId).toBe(file.id);
+    expect(session?.versionId).not.toBe(file.currentVersionId);
+  });
+
+  it('CA-1: `replace` sin archivo con ese nombre sube uno nuevo', async () => {
+    const ctx = setup();
+    const file = versionedFile(ctx, [100n]);
+
+    const response = await ctx.service.init(ACTOR, request({ onConflict: 'replace' }));
+
+    const session = ctx.sessions.sessions.get(response.uploadId);
+    expect(response.name).toBe('informe.docx');
+    expect(session?.replacesFile).toBe(false);
+    expect(session?.fileId).not.toBe(file.id);
+  });
+
+  it('CA-1: al completar registra una versión nueva actual del mismo archivo, sin crear otro', async () => {
+    const ctx = setup();
+    const file = versionedFile(ctx, [100n]);
+    const session = await uploadedReplacement(ctx);
+
+    const response = await ctx.service.complete(ACTOR, session.id);
+
+    expect(response.file).toMatchObject({ id: file.id, name: REPLACED_NAME, sizeBytes: MIB });
+    expect(ctx.nodes.files.get(file.id)?.currentVersionId).toBe(session.versionId);
+    expect(ctx.versions.numbersOf(file.id)).toEqual([1, 2]);
+    expect(ctx.versions.versions.get(session.versionId)?.origin).toBe('carga');
+    expect(ctx.nodes.inserted).toEqual([]);
+    expect(ctx.quotas.added).toEqual([BigInt(MIB)]);
+    expect(stateOf(ctx, session).state).toBe('completada');
+  });
+
+  it('CA-19: audita `file.upload_completed` con `replaced`, la versión y su número, sin nombre ni clave', async () => {
+    const ctx = setup();
+    const file = versionedFile(ctx, [100n]);
+    const session = await uploadedReplacement(ctx);
+
+    await ctx.service.complete(ACTOR, session.id);
+
+    expect(ctx.audit.records).toEqual([
+      {
+        action: AuditAction.FILE_UPLOAD_COMPLETED,
+        actor: ACTOR,
+        targetUserId: ACTOR.id,
+        resourceId: file.id,
+        attributes: {
+          sizeBytes: MIB,
+          mode: 'simple',
+          replaced: true,
+          versionId: session.versionId,
+          versionNumber: 2,
+        },
+      },
+    ]);
+    const logged = JSON.stringify([ctx.audit.records, ctx.logger.info.mock.calls]);
+    expect(logged).not.toContain('secreto');
+    expect(logged).not.toContain(session.objectKey.value);
+  });
+
+  it('CA-13: tras el commit poda lo que excede la retención del plan', async () => {
+    const ctx = setup();
+    const file = versionedFile(ctx, [100n, 200n, 300n]);
+    const session = await uploadedReplacement(ctx);
+
+    await ctx.service.complete(ACTOR, session.id);
+
+    expect(ctx.versions.numbersOf(file.id)).toEqual([2, 3, 4]);
+    expect(ctx.quotas.added).toEqual([BigInt(MIB), -100n]);
+  });
+
+  it('CA-2: un reemplazo que supera el máximo del plan es 422 sin sesión y la versión actual no cambia', async () => {
+    const ctx = setup();
+    const file = versionedFile(ctx, [100n]);
+
+    const attempt = ctx.service.init(
+      ACTOR,
+      request({ name: REPLACED_NAME, onConflict: 'replace', sizeBytes: 1_001 * MIB }),
+    );
+
+    await expect(attempt).rejects.toBeInstanceOf(FileTooLargeError);
+    expect(ctx.sessions.sessions.size).toBe(0);
+    expect(ctx.nodes.files.get(file.id)?.currentVersionId).toBe(file.currentVersionId);
+  });
+
+  it('CA-3: un reemplazo cuyo contenido contradice su extensión es 422 sin versión nueva', async () => {
+    const ctx = setup();
+    const file = versionedFile(ctx, [100n]);
+    const session = await uploadedReplacement(ctx);
+    ctx.detector.result = { ok: false, reason: 'signature' };
+
+    await expect(ctx.service.complete(ACTOR, session.id)).rejects.toBeInstanceOf(
+      InvalidFileTypeError,
+    );
+
+    expect(ctx.versions.numbersOf(file.id)).toEqual([1]);
+    expect(ctx.nodes.files.get(file.id)?.currentVersionId).toBe(file.currentVersionId);
+    expect(ctx.quotas.added).toEqual([]);
+  });
+
+  it('CA-1: si el archivo pasó a la papelera durante la carga, cancela, borra lo subido y responde 404', async () => {
+    const ctx = setup();
+    const file = versionedFile(ctx, [100n]);
+    const session = await uploadedReplacement(ctx);
+    ctx.nodes.files.set(
+      file.id,
+      File.rehydrate({
+        ...file.snapshot(),
+        trash: TrashState.start(NOW, LIMITS.trashRetentionDays),
+      }),
+    );
+
+    await expect(ctx.service.complete(ACTOR, session.id)).rejects.toBeInstanceOf(NodeNotFoundError);
+
+    expect(stateOf(ctx, session).state).toBe('cancelada');
+    expect(ctx.storage.purged).toEqual([session.objectKey.value]);
+    expect(ctx.versions.numbersOf(file.id)).toEqual([1]);
+    expect(ctx.quotas.added).toEqual([]);
+  });
+
+  it('CA-15: con `ask` y el archivo en su límite, el 409 dice qué versión podaría «Reemplazar»', async () => {
+    const ctx = setup();
+    versionedFile(ctx, [100n, 200n, 300n]);
+
+    const attempt = ctx.service.init(ACTOR, request({ name: REPLACED_NAME }));
+
+    await expect(attempt).rejects.toBeInstanceOf(NameConflictError);
+    await expect(attempt).rejects.toMatchObject({
+      details: { suggestedName: 'secreto-7f3a (1).docx', wouldPruneVersion: 1 },
+    });
+  });
+
+  it('CA-15: con `ask` y espacio para otra versión, el 409 no trae `wouldPruneVersion`', async () => {
+    const ctx = setup();
+    versionedFile(ctx, [100n, 200n]);
+
+    const error: unknown = await ctx.service
+      .init(ACTOR, request({ name: REPLACED_NAME }))
+      .catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(NameConflictError);
+    expect((error as NameConflictError).details).toEqual({
+      suggestedName: 'secreto-7f3a (1).docx',
+    });
   });
 });

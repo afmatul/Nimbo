@@ -13,6 +13,7 @@ import type { StorageClient, StorageHttpApp } from './storage-http';
 
 /** Lo que queda de una versión en `version_archivo`, visto por el dueño de las tablas. */
 interface VersionRow {
+  readonly id: string;
   readonly numero: number;
   readonly clave_objeto: string;
 }
@@ -20,8 +21,8 @@ interface VersionRow {
 /**
  * Registro y poda de versiones de punta a punta (014 CA-13, CA-19): `FileVersionService` real dentro de una
  * transacción con actor, Postgres como `nimbo_app` (RLS), el MinIO real del arnés (bucket versionado) y los límites
- * reales de Personal (la cifra se lee de la semilla, RN-1). El reemplazo por HTTP llega con T-04: aquí el camino de
- * escritura se llama como lo hará `UploadRegistrar`.
+ * reales de Personal (la cifra se lee de la semilla, RN-1). El reemplazo por HTTP se prueba en
+ * `versions-replace.int-spec.ts`; aquí el camino de escritura se llama como lo hace `UploadRegistrar`.
  */
 describe('registro y poda de versiones con el plan Personal (014 CA-13, CA-19)', () => {
   let storage: StorageHttpApp;
@@ -42,7 +43,7 @@ describe('registro y poda de versiones con el plan Personal (014 CA-13, CA-19)',
 
   const versionRows = (fileId: string): Promise<VersionRow[]> =>
     storage.owner.query<VersionRow[]>(
-      'SELECT numero, clave_objeto FROM version_archivo WHERE archivo_id = $1 ORDER BY numero',
+      'SELECT id, numero, clave_objeto FROM version_archivo WHERE archivo_id = $1 ORDER BY numero',
       [fileId],
     );
 
@@ -119,7 +120,7 @@ describe('registro y poda de versiones con el plan Personal (014 CA-13, CA-19)',
       expect.objectContaining({
         actorId: ana.id,
         resourceId: fileId,
-        attributes: { versionNumber: 1, sizeBytes: 1000 },
+        attributes: { versionId: first?.id, versionNumber: 1, sizeBytes: 1000 },
       }),
     ]);
     expect(lines.filter((line) => line.event === 'version.registered')).toHaveLength(retained);

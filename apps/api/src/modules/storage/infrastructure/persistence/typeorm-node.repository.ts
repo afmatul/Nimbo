@@ -171,6 +171,19 @@ export class TypeOrmNodeRepository implements INodeRepository {
     return row === null ? null : toFile(row);
   }
 
+  async findLiveFileByName(
+    actor: Actor,
+    name: FileName,
+    folderId: string | null,
+  ): Promise<File | null> {
+    const sibling = childOf(`${FILE_ALIAS}.carpetaId`, folderId);
+    const row = await this.liveFiles(actor)
+      .andWhere(sibling.sql, sibling.parameters)
+      .andWhere(`lower(${FILE_ALIAS}.nombre) = lower(:name)`, { name: name.value })
+      .getOne();
+    return row === null ? null : toFile(row);
+  }
+
   async findAccessibleFolder(actor: Actor, id: string): Promise<Folder | null> {
     const row = await this.liveFolders(actor).andWhere(`${FOLDER_ALIAS}.id = :id`, { id }).getOne();
     return row === null ? null : toFolder(row);

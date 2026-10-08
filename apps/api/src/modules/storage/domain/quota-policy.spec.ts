@@ -80,3 +80,24 @@ describe('QuotaPolicy.available', () => {
     });
   });
 });
+
+describe('QuotaPolicy.checkFileSize y checkQuota', () => {
+  it('CA-3: `checkFileSize` mira solo el máximo por archivo', () => {
+    expect(QuotaPolicy.checkFileSize(LIMITS, 100n)).toEqual({ ok: true });
+    expect(QuotaPolicy.checkFileSize(LIMITS, 101n)).toEqual({
+      ok: false,
+      violation: 'FileTooLarge',
+      sizeBytes: 101n,
+      maxBytes: 100n,
+    });
+  });
+
+  it('014 RN-9: `checkQuota` mira solo la cuota, aunque los bytes superen el máximo por archivo', () => {
+    expect(QuotaPolicy.checkQuota(LIMITS, EMPTY, 500n)).toEqual({ ok: true });
+    expect(QuotaPolicy.checkQuota(LIMITS, { usedBytes: 900n, reservedBytes: 0n }, 500n)).toEqual({
+      ok: false,
+      violation: 'QuotaExceeded',
+      missingBytes: 400n,
+    });
+  });
+});

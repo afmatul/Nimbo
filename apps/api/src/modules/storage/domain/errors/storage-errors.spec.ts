@@ -129,6 +129,12 @@ describe('errores de `storage` (plan §5)', () => {
     expect(error.message).not.toContain('informe');
   });
 
+  it('014 CA-15: con la versión que podaría un reemplazo, la suma a `details` como `wouldPruneVersion`', () => {
+    const error = new NameConflictError('informe (1).docx', 2);
+
+    expect(error.details).toEqual({ suggestedName: 'informe (1).docx', wouldPruneVersion: 2 });
+  });
+
   it('CA-10: `UploadIncompleteError` es un 409', () => {
     const error = new UploadIncompleteError();
 

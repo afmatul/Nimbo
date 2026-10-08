@@ -132,7 +132,7 @@ export interface StorageClient {
   upload(
     name: string,
     bytes: Buffer,
-    onConflict?: 'ask' | 'keep_both',
+    onConflict?: 'ask' | 'keep_both' | 'replace',
     folderId?: string | null,
   ): Promise<Response>;
 }

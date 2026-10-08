@@ -5,8 +5,10 @@ import { AUDIT_NOTE_MAX_LENGTH, sanitizeAttributes } from '../domain/attribute-s
 import { AuditAction } from './audit-action';
 import { AUDIT_CATALOG, resourceTypeOf } from './audit-catalog';
 
+const VERSION_ID = '7c9e6679-7425-40de-944b-e07fc1f90ae7';
+
 /** Lo que 005 (`upload.service`, `file.service`) y 006 (`trash.service`) emiten hoy, y lo que 014 emitirá (plan §5). */
-const REAL_ATTRIBUTES: Readonly<Record<AuditAction, Record<string, string | number>>> = {
+const REAL_ATTRIBUTES: Readonly<Record<AuditAction, Record<string, string | number | boolean>>> = {
   [AuditAction.FILE_UPLOAD_COMPLETED]: { sizeBytes: 12_582_912, mode: 'multipart' },
   [AuditAction.FILE_UPLOAD_REJECTED]: { reason: 'TYPE_MISMATCH', mode: 'simple', sizeBytes: 2048 },
   [AuditAction.FILE_DOWNLOAD_URL_ISSUED]: { sizeBytes: 12_582_912 },
@@ -19,8 +21,13 @@ const REAL_ATTRIBUTES: Readonly<Record<AuditAction, Record<string, string | numb
     trigger: 'scheduled',
   },
   [AuditAction.TRASH_EMPTIED]: { itemCount: 4, sizeBytes: 4096 },
-  [AuditAction.FILE_VERSION_RESTORED]: { versionNumber: 4, restoredFromNumber: 2, sizeBytes: 2048 },
-  [AuditAction.FILE_VERSION_PRUNED]: { versionNumber: 1, sizeBytes: 1024 },
+  [AuditAction.FILE_VERSION_RESTORED]: {
+    versionId: VERSION_ID,
+    versionNumber: 4,
+    restoredFromNumber: 2,
+    sizeBytes: 2048,
+  },
+  [AuditAction.FILE_VERSION_PRUNED]: { versionId: VERSION_ID, versionNumber: 1, sizeBytes: 1024 },
 };
 
 describe('AUDIT_CATALOG', () => {
@@ -38,6 +45,23 @@ describe('AUDIT_CATALOG', () => {
       expect(result).toEqual({ attributes: raw, rejections: [] });
     },
   );
+
+  it('014 CA-19: un reemplazo guarda en `file.upload_completed` que reemplazó, la versión y su número', () => {
+    const raw = {
+      sizeBytes: 2048,
+      mode: 'simple',
+      replaced: true,
+      versionId: VERSION_ID,
+      versionNumber: 2,
+    };
+
+    const result = sanitizeAttributes(
+      AUDIT_CATALOG[AuditAction.FILE_UPLOAD_COMPLETED].attributes,
+      raw,
+    );
+
+    expect(result).toEqual({ attributes: raw, rejections: [] });
+  });
 
   it('CA-4: el tope de texto del saneo es el del motivo en el contrato', () => {
     expect(AUDIT_NOTE_MAX_LENGTH).toBe(CONTRACT_NOTE_MAX_LENGTH);

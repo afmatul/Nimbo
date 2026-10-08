@@ -6,8 +6,11 @@ import type { AuditAttributes, AuditAttributeValue } from './audit-entry';
  */
 export const AUDIT_NOTE_MAX_LENGTH = 500;
 
-/** Tipo permitido de un atributo: número finito, texto corto o uno de una lista cerrada de textos. */
-export type AttributeKind = 'number' | 'text' | readonly [string, ...string[]];
+/**
+ * Tipo permitido de un atributo: número finito, texto corto, booleano, UUID (id de un recurso, nunca un nombre) o uno
+ * de una lista cerrada de textos.
+ */
+export type AttributeKind = 'number' | 'text' | 'boolean' | 'uuid' | readonly [string, ...string[]];
 
 /** Claves permitidas de una acción y su tipo. Lo que no está aquí no se guarda (lista blanca, CA-4). */
 export type AttributeRules = Readonly<Record<string, AttributeKind>>;
@@ -62,11 +65,15 @@ function rejectionOf(
   return null;
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const isFlat = (value: unknown): value is AuditAttributeValue =>
   typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
 
 function matchesKind(kind: AttributeKind, value: AuditAttributeValue): boolean {
   if (kind === 'number') return typeof value === 'number' && Number.isFinite(value);
   if (kind === 'text') return typeof value === 'string';
+  if (kind === 'boolean') return typeof value === 'boolean';
+  if (kind === 'uuid') return typeof value === 'string' && UUID_PATTERN.test(value);
   return typeof value === 'string' && kind.includes(value);
 }
