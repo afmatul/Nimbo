@@ -30,6 +30,7 @@ const toSession = (row: CargaOrmEntity): UploadSession =>
     folderId: row.carpetaDestinoId,
     name: FileName.of(row.nombre),
     keepBoth: row.conservarAmbos,
+    replacesFile: false,
     declaredBytes: row.tamanoBytes,
     multipart: toMultipart(row),
     state: row.estado,

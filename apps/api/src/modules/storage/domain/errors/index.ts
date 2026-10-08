@@ -23,3 +23,4 @@ export {
   UploadIncompleteError,
   UploadNotFoundError,
 } from './upload-state.errors';
+export { VersionAlreadyCurrentError, VersionNotFoundError } from './version.errors';

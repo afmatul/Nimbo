@@ -110,6 +110,7 @@ function versionOf(
     objectKey: session.objectKey,
     sizeBytes: verified.sizeBytes,
     createdBy: actor.id,
+    number: 1,
     now,
   });
 }

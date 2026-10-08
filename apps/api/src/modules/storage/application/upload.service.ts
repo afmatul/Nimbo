@@ -220,6 +220,7 @@ export class UploadService {
           folderId: input.folderId,
           name: input.name,
           keepBoth: input.keepBoth,
+          replacesFile: false,
           declaredBytes: input.declaredBytes,
           multipart,
           now: this.clock.now(),

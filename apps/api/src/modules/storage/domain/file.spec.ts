@@ -1,6 +1,6 @@
 import { File, type CreateFileInput } from './file';
 import { FileName } from './file-name.vo';
-import { FileVersion, type UploadedVersionInput } from './file-version';
+import { FileVersion, type NewVersionInput } from './file-version';
 import { ObjectKey } from './object-key';
 import { TrashState } from './trash-state';
 
@@ -24,13 +24,14 @@ function fileInput(overrides: Partial<CreateFileInput> = {}): CreateFileInput {
   };
 }
 
-function versionInput(overrides: Partial<UploadedVersionInput> = {}): UploadedVersionInput {
+function versionInput(overrides: Partial<NewVersionInput> = {}): NewVersionInput {
   return {
     id: VERSION,
     fileId: FILE,
     objectKey: ObjectKey.of(OWNER, FILE, VERSION),
     sizeBytes: 2048n,
     createdBy: OWNER,
+    number: 1,
     now: NOW,
     ...overrides,
   };
@@ -106,5 +107,73 @@ describe('FileVersion', () => {
 
   it('es inmutable', () => {
     expect(Object.isFrozen(FileVersion.fromUpload(versionInput()))).toBe(true);
+  });
+
+  it('CA-5: una carga guarda su número y no viene de una restauración', () => {
+    const version = FileVersion.fromUpload(versionInput({ number: 4 }));
+
+    expect(version.number).toBe(4);
+    expect(version.restoredFromNumber).toBeNull();
+    expect(version.snapshot()).toMatchObject({ number: 4, restoredFromNumber: null });
+  });
+
+  it.each([0, -1, 1.5])('RN-4: el número debe ser un entero positivo (%s)', (number) => {
+    expect(() => FileVersion.fromUpload(versionInput({ number }))).toThrow(TypeError);
+  });
+
+  it('CA-9: restaurar crea una versión nueva `restauracion` con el contenido y el número de la de origen', () => {
+    const source = FileVersion.fromUpload(versionInput({ number: 2, sizeBytes: 900n }));
+    const restoredId = '55555555-5555-4555-8555-555555555555';
+    const objectKey = ObjectKey.of(OWNER, FILE, restoredId);
+
+    const restored = FileVersion.fromRestoration(source, {
+      id: restoredId,
+      objectKey,
+      createdBy: OWNER,
+      number: 5,
+      now: NOW,
+    });
+
+    expect(restored.origin).toBe('restauracion');
+    expect(restored.fileId).toBe(FILE);
+    expect(restored.sizeBytes).toBe(900n);
+    expect(restored.number).toBe(5);
+    expect(restored.restoredFromNumber).toBe(2);
+    expect(restored.objectKey.equals(objectKey)).toBe(true);
+    expect(source.number).toBe(2);
+  });
+
+  it('ck_version_numero: la versión de origen debe tener un número menor', () => {
+    const source = FileVersion.fromUpload(versionInput({ number: 3 }));
+    const restoration = {
+      id: VERSION,
+      objectKey: ObjectKey.of(OWNER, FILE, VERSION),
+      createdBy: OWNER,
+      number: 3,
+      now: NOW,
+    };
+
+    expect(() => FileVersion.fromRestoration(source, restoration)).toThrow(TypeError);
+  });
+
+  it.each(['edicion', 'optimizacion'] as const)(
+    'CA-5: `forOrigin` registra una versión `%s` con la misma forma que una carga',
+    (origin) => {
+      const version = FileVersion.forOrigin(origin, versionInput({ number: 7 }));
+
+      expect(version.origin).toBe(origin);
+      expect(version.number).toBe(7);
+      expect(version.restoredFromNumber).toBeNull();
+    },
+  );
+
+  it('`rehydrate` reconstruye el número y la versión de origen', () => {
+    const snapshot = {
+      ...FileVersion.fromUpload(versionInput({ number: 6 })).snapshot(),
+      origin: 'restauracion' as const,
+      restoredFromNumber: 2,
+    };
+
+    expect(FileVersion.rehydrate(snapshot).snapshot()).toEqual(snapshot);
   });
 });
