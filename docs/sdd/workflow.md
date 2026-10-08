@@ -126,7 +126,8 @@ llegue a producción. En los PRs del diseñador principal esa aprobación se sus
 
 La entrega de la Fase 1 se movió al **miércoles 30/09/2026**. Los bloques 4 (CI), 5 (imágenes en ghcr.io) y 6
 (staging) de la spec 000 se implementan **a partir de esa fecha**, empezando por el CI. Las imágenes van con ellos
-porque las publica el CI y solo las consume staging. Mientras tanto:
+porque las publica el CI y solo las consume staging. El 07/10/2026 se decidió entregar en la Fase 2 solo el CI
+(bloque 4); imágenes y staging (bloques 5 y 6) pasan a una fase posterior y la Fase 2 se demuestra en local. Mientras tanto:
 
 - **«CI verde»** se sustituye por las verificaciones locales de §7.1, con su resumen pegado en el PR.
 - **`Hecha`** significa integrada en `main` y demostrable en local (`docker compose up -d` + `pnpm dev`). La

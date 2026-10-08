@@ -7,7 +7,7 @@
 <!-- 2–5 líneas: comportamiento nuevo desde el punto de vista del usuario u operador -->
 
 ## Cómo probarlo en staging
-<!-- Fase 1: sin staging; pasos en local (`docker compose up -d` + `pnpm dev`), `workflow.md` §7.2 -->
+<!-- Sin staging hasta el bloque 6 de 000: pasos en local (`docker compose up -d` + `pnpm dev`), `workflow.md` §7.2 -->
 1.
 2.
 
@@ -15,8 +15,7 @@
 <!-- no mostrar en la evidencia lo que no aplica -->
 - [ ] **PR parcial** (`workflow.md` §4.8): bloque(s) … de N; `review.md` se entrega en el último PR
 - [ ] `review.md` sin bloqueantes — Verificación (CA cubiertos: n/m) · Seguridad (o no aplica) · UI (o no aplica)
-- [ ] CI verde: lint · typecheck · unit · int · isolation · migraciones
-  <!-- Fase 1: sin CI; pegar el resumen de lint, typecheck, test y test:int corridos en local (`workflow.md` §7.2) -->
+- [ ] CI verde: lint · typecheck · unit · integration (migraciones, int, isolation)
 - [ ] Cobertura de lógica de negocio ≥ 60 %
 - [ ] Constitución Art. IV–VII: SOLID (una razón de cambio, puertos pequeños), YAGNI (nada sin CA que lo pida) y DRY (fuentes únicas, sin números mágicos)
 

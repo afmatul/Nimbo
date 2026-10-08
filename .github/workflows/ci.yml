@@ -1,0 +1,102 @@
+# CI de Nimbo (spec 000, CA-24 a CA-27; plan §6.6). Cuatro checks requeridos en `main`: lint, typecheck, unit e
+# integration. Los que usan contenedores van en un solo job para no repetir instalación y descargas (spec §15,
+# 2026-10-07: cuota de 3 000 min/mes del repositorio privado). Sin `push` de ramas: solo PR y `main`.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks (historial del PR o del push)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: false
+      - name: quitar el informe de gitleaks
+        run: rm -f results.sarif
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm env:check
+      - name: ONLYOFFICE solo con su perfil (CA-2)
+        run: |
+          cp .env.example .env
+          if docker compose config --services | grep -qx onlyoffice; then
+            echo "::error::onlyoffice no debe levantarse sin --profile onlyoffice"
+            exit 1
+          fi
+          docker compose --profile onlyoffice config --services | grep -qx onlyoffice
+
+  typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Postgres de compose.yml (con el rol nimbo_app)
+        run: |
+          cp .env.example .env
+          docker compose up -d --wait postgres
+      - name: Migraciones run → revert → run (CA-11, CA-12)
+        run: bash scripts/ci/migrations-roundtrip.sh
+      - name: Pruebas de integración
+        run: pnpm test:int
+      - name: Pruebas de aislamiento
+        run: pnpm test:isolation
+      - name: Apagar compose
+        if: always()
+        run: docker compose down -v

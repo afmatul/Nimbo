@@ -7,7 +7,7 @@
 | Fase | 1 |
 | Requisitos | RNF-10, RNF-12, RNF-15, RNF-16, RNF-17, RNF-19; RNF-18 (parcial: solo health checks) |
 | Depende de | — (bloquea a todas las demás) |
-| Última actualización | 2026-09-26 |
+| Última actualización | 2026-10-07 |
 
 ## 1. Contexto y problema
 
@@ -153,16 +153,17 @@ Estas decisiones son entrada de la spec, no preguntas. Cambiarlas requiere ADR o
 
 - **CA-11** (HU-5, RNF-10) — migración inicial reversible
   - **Dado** una base Postgres vacía (Testcontainers en CI),
-  - **Cuando** se ejecuta `migration:run`, después `migration:revert` y de nuevo `migration:run`,
-  - **Entonces** las tres operaciones terminan con `0`; tras el primer `run` existe la extensión `vector`
-    (`SELECT 1 FROM pg_extension WHERE extname = 'vector'`) y la tabla de control de migraciones tiene 1 fila; tras el
-    `revert` la extensión no existe y la tabla tiene 0 filas; tras el segundo `run` el estado es idéntico al del primero.
-    Este flujo es el job `migrations` de CI.
+  - **Cuando** se ejecuta `migration:run`, después `migration:revert` tantas veces como migraciones haya y de nuevo
+    `migration:run`,
+  - **Entonces** todas las operaciones terminan con `0`; tras el primer `run` existe la extensión `vector`
+    (`SELECT 1 FROM pg_extension WHERE extname = 'vector'`) y la tabla de control de migraciones tiene una fila por
+    archivo de `apps/api/src/migrations/`; tras revertir todas, la extensión no existe y la tabla tiene 0 filas; tras el
+    segundo `run` el estado es idéntico al del primero. Este flujo es el primer paso del job `integration` de CI.
 
 - **CA-12** (HU-5, RNF-10) — caso de error: migración sin `down`
   - **Dado** un archivo de migración cuyo método `down` está vacío o lanza,
-  - **Cuando** corre el job `migrations`,
-  - **Entonces** el job falla en el paso `revert` (y el PR queda bloqueado por D-2).
+  - **Cuando** corre el job `integration`,
+  - **Entonces** el job falla en el paso de migraciones, al revertir (y el PR queda bloqueado por D-2).
 
 ### Módulo `shared` (HU-3)
 
@@ -246,30 +247,30 @@ Estas decisiones son entrada de la spec, no preguntas. Cambiarlas requiere ADR o
 
 ### CI y protección de `main` (HU-6)
 
-- **CA-24** (HU-6, RNF-19) — seis checks por PR
+- **CA-24** (HU-6, RNF-19) — cuatro checks por PR
   - **Dado** un PR abierto contra `main`,
   - **Cuando** GitHub Actions corre,
-  - **Entonces** se ejecutan seis jobs con nombres exactos `lint` (incluye gitleaks), `typecheck`, `unit`, `int`,
-    `isolation`, `migrations`; `int`, `isolation` y `migrations` usan Postgres (+pgvector), Redis y MinIO reales
-    (Testcontainers o servicios del workflow, nunca mocks), y el resultado de cada job es visible como *status check*.
-    El tiempo total del workflow en el esqueleto es menor a 15 min.
+  - **Entonces** se ejecutan cuatro jobs con nombres exactos `lint` (incluye gitleaks), `typecheck`, `unit` e
+    `integration`; `integration` corre, en pasos separados y visibles, las migraciones (CA-11), `test:int` y
+    `test:isolation` contra Postgres (+pgvector), Redis y MinIO reales (Testcontainers o contenedores del job, nunca
+    mocks), y el resultado de cada job es visible como *status check*. El workflow completo termina en menos de 30 min.
 
 - **CA-25** (HU-6, RNF-19) — CI falla cuando debe
   - **Dado** un PR que introduce, respectivamente: una violación de fronteras (CA-5), un error de tipos, una prueba
     unitaria roja, una prueba de integración roja, una prueba de aislamiento roja (la suite `isolation` del esqueleto
     contiene una prueba marcador que se puede forzar a fallar) o una migración sin `down` (CA-12),
   - **Cuando** corre el workflow,
-  - **Entonces** el job correspondiente falla y el botón de merge queda deshabilitado. Se ensaya una vez por job y se
-    registra la evidencia (enlace a la corrida) en `verification.md`.
+  - **Entonces** el job (o, dentro de `integration`, el paso) correspondiente falla y el botón de merge queda
+    deshabilitado. Se ensaya una vez por caso y se registra la evidencia (enlace a la corrida) en `verification.md`.
 
 - **CA-26** (HU-6, RNF-19) — protección de `main` (manual, evidencia por captura)
   - **Dado** la configuración del repositorio,
-  - **Cuando** se intenta hacer `git push` directo a `main`, mergear un PR sin los seis checks en verde, mergear con
+  - **Cuando** se intenta hacer `git push` directo a `main`, mergear un PR sin los cuatro checks en verde, mergear con
     aprobación solo del autor, o `push --force`,
   - **Entonces** GitHub rechaza cada acción. Un nuevo commit en la rama descarta aprobaciones previas (*dismiss stale*).
     El merge disponible es únicamente *squash*.
   - **Excepción** (`workflow.md` §7.1): un PR del diseñador principal se puede mergear sin aprobación ajena, pero
-    nunca sin los seis checks en verde ni con `push` directo o `--force`.
+    nunca sin los cuatro checks en verde ni con `push` directo o `--force`.
 
 - **CA-27** (HU-6, D-10) — secretos en el historial
   - **Dado** el historial completo del repositorio,
@@ -432,3 +433,4 @@ No hay reglas de negocio de producto en esta spec. Reglas técnicas transversale
 | 2026-09-22 | Calendario: los bloques 3 (compuerta ADR/DF), 4 (CI), 5 (imágenes) y 6 (staging) pasan a la primera semana de Fase 2; D-4 dice «desde el inicio de Fase 2». Sin cambio de criterios de aceptación, reglas ni diseño. Mientras tanto rigen las excepciones temporales de `docs/sdd/workflow.md` §7 (verificación local en lugar del CI; `Hecha` = integrada y demostrable en local) | Calendario de la Fase 1 | Adrián |
 | 2026-09-26 | Calendario: la entrega de Fase 1 pasa al 30/09/2026 y los bloques 3 a 6 se implementan desde esa fecha (D-4 dice «desde el 30/09/2026»). CA-26 agrega la excepción permanente del diseñador principal (`workflow.md` §7.1): puede mergear sin aprobación ajena, nunca sin los checks. T-33 se configura con dos rulesets | Decisión del diseñador principal | Adrián |
 | 2026-09-26 | D-9, §9 («¿Qué operaciones requieren límite de tasa?») y §11: el `ThrottlerModule` entra con la **001** (límite por IP del registro, 001 D-15) y la 002 lo reutiliza. Sin cambio de criterios de aceptación ni del alcance de esta spec | Spec 002 D-11 | Adrián |
+| 2026-10-07 | CA-24, CA-11, CA-12, CA-25 y CA-26: los jobs `int`, `isolation` y `migrations` se unen en un solo job `integration` (cuatro checks en lugar de seis) para no agotar los 3 000 min/mes de Actions del repositorio privado: cada job paga su propia instalación y sus contenedores. CA-11 recorre toda la cadena de migraciones, no solo la primera. Límite del workflow: 30 min. Los bloques 5 y 6 (imágenes, staging; CA-28 a CA-32) se difieren a una fase posterior: la Fase 2 se demuestra en local (`workflow.md` §7.2) | Cuota de Actions y calendario del Avance 2 | Adrián |
