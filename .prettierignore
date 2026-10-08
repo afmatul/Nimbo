@@ -16,3 +16,4 @@ dist-int/
 coverage/
 pnpm-lock.yaml
 *.tsbuildinfo
+results.sarif

@@ -159,6 +159,11 @@ export interface StorageHttpOptions {
   readonly env?: Readonly<Record<string, string>>;
   readonly limits?: PlanLimits;
   /**
+   * Usa el enlace real de `PlanLimitsBindingModule` (`billing` leyendo la tabla `plan` sembrada) en lugar del doble
+   * (PD-56). Con esto, `limits` del resultado no gobierna nada.
+   */
+  readonly realPlanLimits?: boolean;
+  /**
    * `'identity'` usa la `JwtStrategy` real (p. ej. el mundo de aislamiento con `world.appComposition()`, 002 T-55);
    * entonces `newClient` no sirve, porque firma con `TestAccessTokens`: se usa `clientFor` con un token real.
    */
@@ -222,7 +227,7 @@ const expectOk = async (pending: Promise<globalThis.Response>): Promise<void> =>
 
 /**
  * App HTTP de `storage` para las suites de integración de 005 (T-43, T-44): `StorageModule` real, la raíz de
- * `PlanLimitsBindingModule` con el doble de límites (R-3), Postgres como `nimbo_app`, Redis real para la tasa y
+ * `PlanLimitsBindingModule` con el doble de límites (R-3; `realPlanLimits` lo quita), Postgres como `nimbo_app`, Redis real para la tasa y
  * MinIO real con un bucket versionado. Las cuentas se insertan como el dueño (*fixtures*) y se borran al cerrar.
  */
 export const createStorageHttpApp = async (
@@ -243,7 +248,10 @@ export const createStorageHttpApp = async (
     validatedEnv: env,
     accessTokenStrategy: options.accessTokenStrategy ?? 'test',
     modules: [...(options.modules ?? []), PlanLimitsBindingModule, StorageModule.forRoot(env)],
-    overrides: [{ provide: I_PLAN_LIMITS_PROVIDER, useValue: limits }],
+    overrides:
+      options.realPlanLimits === true
+        ? []
+        : [{ provide: I_PLAN_LIMITS_PROVIDER, useValue: limits }],
   });
   const owner = await connectAsOwner();
   const tokens = new TestAccessTokens(new FixedClock(PROBE_CLOCK_START));
