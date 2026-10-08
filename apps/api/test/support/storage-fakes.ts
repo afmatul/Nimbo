@@ -328,6 +328,12 @@ export class FakeNodeRepository implements INodeRepository {
     return Promise.resolve();
   }
 
+  updateCurrentVersion(_actor: Actor, file: File): Promise<void> {
+    this.journal.add('nodes:updateCurrentVersion');
+    this.files.set(file.id, file);
+    return Promise.resolve();
+  }
+
   insertFolder(_actor: Actor, folder: Folder): Promise<void> {
     this.journal.add('nodes:insertFolder');
     this.folders.set(folder.id, folder);

@@ -4,17 +4,20 @@ import type { DynamicModule, Provider, ValueProvider } from '@nestjs/common';
 import { AuditModule } from '../audit';
 
 import { FILE_SERVICE_CONFIG } from './application/file-service-config';
+import { FileVersionService } from './application/file-version.service';
 import { FOLDER_CONFIG } from './application/folder-config';
 import { FolderService } from './application/folder.service';
 import { I_PLAN_LIMITS_PROVIDER } from './application/plan-limits';
 import { I_QUICK_ACCESS_REPOSITORY } from './application/ports/i-quick-access.repository.port';
 import { I_TRASH_PURGE_QUEUE } from './application/ports/i-trash-purge-queue.port';
+import { I_VERSION_REPOSITORY } from './application/ports/i-version.repository.port';
 import { QUICK_ACCESS_CONFIG } from './application/quick-access-config';
 import { QuickAccessService } from './application/quick-access.service';
 import { SpaceMeasurer } from './application/space-measurer';
 import { SpaceSummaryService } from './application/space-summary.service';
 import { TrashPurger } from './application/trash-purger';
 import { UPLOAD_CONFIG } from './application/upload-config';
+import { VersionPruner } from './application/version-pruner';
 import { TrashPurgeProcessor } from './infrastructure/trash-purge.processor';
 import { TRASH_PURGE_QUEUE, TrashPurgeScheduler } from './infrastructure/trash-purge.scheduler';
 import { FilesController } from './presentation/files.controller';
@@ -103,6 +106,12 @@ describe('StorageModule', () => {
       QuickAccessController,
       SpaceController,
     ]);
+  });
+
+  it('014 CA-5, CA-13: registra el registro y la poda de versiones con su repositorio', () => {
+    expect(providers.map(tokenOf)).toEqual(
+      expect.arrayContaining([I_VERSION_REPOSITORY, VersionPruner, FileVersionService]),
+    );
   });
 
   it('007 CA-1: registra el resumen de espacio con su medición', () => {

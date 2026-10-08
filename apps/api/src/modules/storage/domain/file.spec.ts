@@ -81,6 +81,32 @@ describe('File', () => {
   it('es inmutable', () => {
     expect(Object.isFrozen(File.create(fileInput()))).toBe(true);
   });
+
+  it('014 CA-5: `withCurrentVersion` apunta a la versión nueva con su tamaño y fecha; el original no cambia', () => {
+    const file = File.create(fileInput());
+    const later = new Date('2026-10-08T10:00:00.000Z');
+    const newId = '55555555-5555-4555-8555-555555555555';
+    const version = FileVersion.fromUpload(
+      versionInput({ id: newId, number: 2, sizeBytes: 4096n, now: later }),
+    );
+
+    const moved = file.withCurrentVersion(version);
+
+    expect(moved.currentVersionId).toBe(newId);
+    expect(moved.sizeBytes).toBe(4096n);
+    expect(moved.updatedAt).toEqual(later);
+    expect(moved.createdAt).toEqual(NOW);
+    expect(moved.name).toBe(file.name);
+    expect(file.currentVersionId).toBe(VERSION);
+  });
+
+  it('014 CA-5: `withCurrentVersion` rechaza una versión de otro archivo', () => {
+    const other = FileVersion.fromUpload(
+      versionInput({ fileId: FOLDER, objectKey: ObjectKey.of(OWNER, FOLDER, VERSION) }),
+    );
+
+    expect(() => File.create(fileInput()).withCurrentVersion(other)).toThrow(TypeError);
+  });
 });
 
 describe('FileVersion', () => {

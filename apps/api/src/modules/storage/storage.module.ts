@@ -54,7 +54,8 @@ export type StorageEnv = Pick<
 >;
 
 /**
- * Módulo `storage` (M2, plan §6): carga, descarga, carpetas, papelera y accesos rápidos (006) y resumen de espacio (007). `forRoot(env)` publica la configuración técnica (bytes como
+ * Módulo `storage` (M2, plan §6): carga, descarga, carpetas, papelera y accesos rápidos (006), resumen de espacio (007) y
+ * versiones (014, registro y poda en `UPLOAD_LIFECYCLE_PROVIDERS`). `forRoot(env)` publica la configuración técnica (bytes como
  * `bigint`) y une cada puerto con su adaptador. **No** enlaza `I_PLAN_LIMITS_PROVIDER` ni importa `billing`: ese
  * enlace vive en la raíz de composición (DF-51, opción A). `SharedModule` (global) aporta reloj, tasa, transacciones y
  * `TransactionContext`; `MinioConfigModule` (global), `MINIO_CONFIG`. La cola `trash-purge` se registra solo para que

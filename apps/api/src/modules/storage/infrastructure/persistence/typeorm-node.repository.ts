@@ -27,12 +27,11 @@ import { afterCondition, orderByOf } from './node-order-sql';
 import { nodesIn, rebaseSubtree } from './node-sql';
 import type { Condition, NodeTable } from './node-sql';
 import { toTrashState, trashColumns } from './trash-columns';
+import { toVersionRow } from './typeorm-version.repository';
 import { VersionArchivoOrmEntity } from './version-archivo.orm-entity';
 
 const FILE_ALIAS = 'archivo';
 const FOLDER_ALIAS = 'carpeta';
-/** `insertWithVersion` da de alta un archivo: su versión es la primera (014 CA-4). */
-const FIRST_VERSION_NUMBER = 1;
 /** Comodines de `LIKE` y su carácter de escape: en un nombre son texto, no patrones. */
 const LIKE_SPECIAL_CHARACTERS = /[\\%_]/g;
 
@@ -259,20 +258,19 @@ export class TypeOrmNodeRepository implements INodeRepository {
       actualizadoEn: file.updatedAt,
       ...trashColumns(file.trash),
     });
-    await manager.insert(VersionArchivoOrmEntity, {
-      id: version.id,
-      archivoId: version.fileId,
-      numero: FIRST_VERSION_NUMBER,
-      origen: version.origin,
-      claveObjeto: version.objectKey.value,
-      tamanoBytes: version.sizeBytes,
-      creadoPor: version.createdBy,
-      creadaEn: version.createdAt,
-    });
+    await manager.insert(VersionArchivoOrmEntity, toVersionRow(version));
   }
 
   async insertFolder(actor: Actor, folder: Folder): Promise<void> {
     await this.context.requireActorScope(actor).insert(CarpetaOrmEntity, toFolderRow(folder));
+  }
+
+  updateCurrentVersion(actor: Actor, file: File): Promise<void> {
+    return this.updateAccessible(actor, ArchivoOrmEntity, 'archivo', file.id, {
+      versionActualId: file.currentVersionId,
+      tamanoBytes: file.sizeBytes,
+      actualizadoEn: file.updatedAt,
+    });
   }
 
   renameFolder(actor: Actor, folder: Folder): Promise<void> {

@@ -62,6 +62,8 @@ export interface INodeRepository {
   /** Inserta el archivo y su versión actual en la transacción del actor (la FK `version_actual_id` es diferida). */
   insertWithVersion(actor: Actor, file: File, version: FileVersion): Promise<void>;
   insertFolder(actor: Actor, folder: Folder): Promise<void>;
+  /** Guarda la versión actual, el tamaño y `actualizado_en` de `file` (014: lo llama solo `FileVersionService`). */
+  updateCurrentVersion(actor: Actor, file: File): Promise<void>;
   /** Guarda el nombre y `actualizado_en` de `folder`. */
   renameFolder(actor: Actor, folder: Folder): Promise<void>;
   /** Guarda el nombre y `actualizado_en` de `file`. */
