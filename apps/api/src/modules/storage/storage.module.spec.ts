@@ -19,6 +19,8 @@ import { TrashPurger } from './application/trash-purger';
 import { UPLOAD_CONFIG } from './application/upload-config';
 import { VersionHistoryService } from './application/version-history.service';
 import { VersionPruner } from './application/version-pruner';
+import { VERSION_RESTORE_CONFIG } from './application/version-restore-config';
+import { VersionRestoreService } from './application/version-restore.service';
 import { TrashPurgeProcessor } from './infrastructure/trash-purge.processor';
 import { TRASH_PURGE_QUEUE, TrashPurgeScheduler } from './infrastructure/trash-purge.scheduler';
 import { FileVersionsController } from './presentation/file-versions.controller';
@@ -37,6 +39,7 @@ const ENV = {
   UPLOAD_URL_TTL_SECONDS: 3600,
   RATE_LIMIT_UPLOAD_INIT_PER_MINUTE: 300,
   RATE_LIMIT_DOWNLOAD_URL_PER_MINUTE: 120,
+  RATE_LIMIT_VERSION_RESTORE_PER_MINUTE: 30,
   FOLDER_MAX_DEPTH: 7,
   QUICK_ACCESS_MAX_PINNED: 4,
   QUICK_ACCESS_RECENT_VISIBLE: 2,
@@ -115,6 +118,11 @@ describe('StorageModule', () => {
     expect(providers.map(tokenOf)).toEqual(
       expect.arrayContaining([I_VERSION_REPOSITORY, VersionPruner, FileVersionService]),
     );
+  });
+
+  it('014 CA-9: registra la restauración con su límite de tasa del entorno', () => {
+    expect(providers).toContain(VersionRestoreService);
+    expect(valueOf(providers, VERSION_RESTORE_CONFIG)).toEqual({ restorePerMinute: 30 });
   });
 
   it('014 CA-6: registra la lectura del historial de versiones', () => {

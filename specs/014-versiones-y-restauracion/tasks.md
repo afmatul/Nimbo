@@ -47,7 +47,7 @@ T-02 ─┘         ├─> T-05 ─> T-06 ──┼─> T-08 (web, ficha)
   - Archivos: `storage/application/version-history.service.ts`, `file.service.ts` (`getDownloadUrl(actor, fileId, versionId?)`, una sola ruta de URL firmada), `presentation/file-versions.controller.ts` (rutas `GET …/versions` y `POST …/download-url`, solo `CLIENT`), registro en módulos.
   - Depende: T-03
 
-- [ ] **T-06** Restaurar una versión — CA: CA-9, CA-10, CA-11, CA-12, CA-19 (restauración), CA-4 (reemplazo + restauración simultáneos)
+- [x] **T-06** Restaurar una versión — CA: CA-9, CA-10, CA-11, CA-12, CA-19 (restauración), CA-4 (reemplazo + restauración simultáneos)
   - Prueba primero: `application/version-restore.service.spec.ts` (orden: tasa → archivo → versión 404/409 → cuota → `copyObject` → transacción con revalidación y `register` → `afterCommit`; purga de la copia si falla la transacción; 429), `test/int/storage/versions-restore.int-spec.ts` (feliz con copia real en MinIO, versión nueva `restauracion` con `restoredFromNumber`, ninguna versión existente cambia, `espacio_usado` sube; `409` ya actual; `422` con mensaje de bytes faltantes; `404` versión de otro archivo), completar el caso de concurrencia de T-04.
   - Archivos: `storage/application/version-restore.service.ts`, `ports/i-object-storage.port.ts` (`copyObject`, idempotente), `infrastructure/minio-storage.adapter.ts` (`CopyObjectCommand`), `presentation/file-versions.controller.ts` (ruta `POST …/restore`), registro en módulos.
   - Depende: T-04, T-05

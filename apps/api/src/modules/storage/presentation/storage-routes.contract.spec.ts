@@ -14,6 +14,7 @@ import { FileService } from '../application/file.service';
 import { SpaceSummaryService } from '../application/space-summary.service';
 import { UploadService } from '../application/upload.service';
 import { VersionHistoryService } from '../application/version-history.service';
+import { VersionRestoreService } from '../application/version-restore.service';
 import { InvalidQueryError, NodeNotFoundError, VersionNotFoundError } from '../domain/errors';
 import { NODE_SORTS, SORT_DIRECTIONS } from '../domain/node-order';
 
@@ -44,6 +45,7 @@ describe('rutas de `storage` (CA-17)', () => {
         { provide: UploadService, useValue: {} },
         { provide: FileService, useValue: {} },
         { provide: VersionHistoryService, useValue: {} },
+        { provide: VersionRestoreService, useValue: {} },
       ],
     }).compile();
   });
@@ -65,6 +67,7 @@ describe('rutas de `storage` (CA-17)', () => {
         'PATCH /api/v1/files/:fileId',
         'POST /api/v1/files/:fileId/move',
         'GET /api/v1/files/:fileId/versions',
+        'POST /api/v1/files/:fileId/versions/:versionId/restore',
         'POST /api/v1/files/:fileId/versions/:versionId/download-url',
       ].sort(),
     );
@@ -84,6 +87,7 @@ describe('rutas de `storage` (CA-17)', () => {
   it.each([
     [FileVersionsController, 'list', [NodeNotFoundError]],
     [FileVersionsController, 'downloadUrl', [NodeNotFoundError, VersionNotFoundError]],
+    [FileVersionsController, 'restore', [NodeNotFoundError, VersionNotFoundError]],
   ] as const)(
     '014 CA-11, CA-16: %p.%s valida cada id como UUID con el mismo 404 que uno inexistente',
     async (controller, method, errors) => {

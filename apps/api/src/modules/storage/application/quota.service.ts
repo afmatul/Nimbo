@@ -4,11 +4,18 @@ import { formatBytes } from '@nimbo/contracts';
 import { I_CLOCK } from '../../../shared';
 import type { Actor, IClock } from '../../../shared';
 import { FileTooLargeError, QuotaExceededError } from '../domain/errors';
+import type { QuotaPurpose } from '../domain/errors';
 import { QuotaPolicy } from '../domain/quota-policy';
 
 import type { PlanLimits } from './plan-limits';
 import { I_QUOTA_REPOSITORY } from './ports/i-quota.repository.port';
 import type { IQuotaRepository } from './ports/i-quota.repository.port';
+
+/** Bytes que se piden y para qué (el mensaje del `422` lo nombra). */
+export interface QuotaDemand {
+  readonly bytes: bigint;
+  readonly purpose: QuotaPurpose;
+}
 
 /**
  * Responde si cabe una carga (plan §6, CA-3, CA-4, CA-23). Corre **dentro** de la transacción `withActor` que el
@@ -26,13 +33,15 @@ export class QuotaService {
   async assertCanUpload(actor: Actor, declaredBytes: bigint, limits: PlanLimits): Promise<void> {
     const size = QuotaPolicy.checkFileSize(limits, declaredBytes);
     if (!size.ok) throw new FileTooLargeError(size.sizeBytes, size.maxBytes, formatBytes);
-    await this.assertFits(actor, declaredBytes, limits);
+    await this.assertFits(actor, { bytes: declaredBytes, purpose: 'upload' }, limits);
   }
 
   /** Solo la cuota, sin el máximo por archivo (014 RN-9: restaurar). Lanza `QuotaExceededError`. */
-  async assertFits(actor: Actor, bytes: bigint, limits: PlanLimits): Promise<void> {
+  async assertFits(actor: Actor, demand: QuotaDemand, limits: PlanLimits): Promise<void> {
     const usage = await this.quotas.lockAndReadUsage(actor, this.clock.now());
-    const decision = QuotaPolicy.checkQuota(limits, usage, bytes);
-    if (!decision.ok) throw new QuotaExceededError(decision.missingBytes, formatBytes);
+    const decision = QuotaPolicy.checkQuota(limits, usage, demand.bytes);
+    if (!decision.ok) {
+      throw new QuotaExceededError(decision.missingBytes, formatBytes, demand.purpose);
+    }
   }
 }

@@ -88,6 +88,16 @@ describe('errores de `storage` (plan §5)', () => {
     expect(error.details).toEqual({ missingBytes: 30 });
   });
 
+  it('014 CA-12: al restaurar, `QuotaExceededError` habla de la versión con el mismo código y `details`', () => {
+    const error = new QuotaExceededError(30n, format, 'restore');
+
+    expect(error.code).toBe('STORAGE_QUOTA_EXCEEDED');
+    expect(error.message).toBe(
+      'Te faltan 30 B de espacio para restaurar esta versión. Libera espacio o cambia de plan.',
+    );
+    expect(error.details).toEqual({ missingBytes: 30 });
+  });
+
   it('CA-5: `UploadSizeMismatchError` es un 422 sin parámetros con el texto aprobado', () => {
     const error = new UploadSizeMismatchError();
 

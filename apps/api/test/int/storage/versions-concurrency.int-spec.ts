@@ -1,10 +1,18 @@
 import { initUploadResponseSchema } from '@nimbo/contracts';
 
-import { createStorageHttpApp, textBytes, uploadBytes, usedBytesOf } from './storage-http';
+import {
+  createStorageHttpApp,
+  DEFAULT_TEST_LIMITS,
+  textBytes,
+  uploadBytes,
+  usedBytesOf,
+} from './storage-http';
 import type { InitBody, StorageClient, StorageHttpApp } from './storage-http';
 
 const SMALL_BYTES = 4096;
 const NAME = 'informe.txt';
+/** Retención amplia: ninguna poda cambia filas ni espacio mientras se cuentan. */
+const LIMITS = { ...DEFAULT_TEST_LIMITS, retainedVersions: 10 };
 
 interface VersionRow {
   readonly id: string;
@@ -13,14 +21,14 @@ interface VersionRow {
 
 /**
  * Versiones concurrentes del mismo archivo (014 CA-4) con Postgres real: `lockUsage` serializa por propietario la
- * numeración y `uq_version_archivo_numero` es la red de seguridad. Dos reemplazos completados a la vez dejan números
- * consecutivos únicos, la de mayor número como actual y `espacio_usado` exacto.
+ * numeración y `uq_version_archivo_numero` es la red de seguridad. Dos reemplazos, o un reemplazo y una restauración,
+ * a la vez dejan números consecutivos únicos, la de mayor número como actual y `espacio_usado` exacto.
  */
 describe('versiones concurrentes (014 CA-4)', () => {
   let storage: StorageHttpApp;
 
   beforeAll(async () => {
-    storage = await createStorageHttpApp();
+    storage = await createStorageHttpApp({ limits: LIMITS });
   });
 
   afterAll(async () => {
@@ -46,6 +54,14 @@ describe('versiones concurrentes (014 CA-4)', () => {
     return init.uploadId;
   };
 
+  const currentVersionOf = async (fileId: string): Promise<string | undefined> => {
+    const [row] = await storage.owner.query<{ version_actual_id: string }[]>(
+      'SELECT version_actual_id FROM archivo WHERE id = $1',
+      [fileId],
+    );
+    return row?.version_actual_id;
+  };
+
   it('CA-4: dos reemplazos simultáneos producen dos versiones con números consecutivos distintos', async () => {
     const client = await storage.newClient();
     const original = await client.upload(NAME, textBytes(SMALL_BYTES));
@@ -58,13 +74,27 @@ describe('versiones concurrentes (014 CA-4)', () => {
     expect(responses.map((response) => response.status)).toEqual([200, 200]);
     const rows = await versionRows(fileId);
     expect(rows.map((row) => row.numero)).toEqual([1, 2, 3]);
-    const [current] = await storage.owner.query<{ version_actual_id: string }[]>(
-      'SELECT version_actual_id FROM archivo WHERE id = $1',
-      [fileId],
-    );
-    expect(current?.version_actual_id).toBe(rows[2]?.id);
+    expect(await currentVersionOf(fileId)).toBe(rows[2]?.id);
     expect(await usedBytesOf(storage.owner, client.id)).toBe(BigInt(6 * SMALL_BYTES));
   });
 
-  it.todo('CA-4: un reemplazo y una restauración simultáneos (se completa en T-06)');
+  it('CA-4: un reemplazo y una restauración simultáneos producen dos versiones con números consecutivos distintos', async () => {
+    const client = await storage.newClient();
+    const original = await client.upload(NAME, textBytes(SMALL_BYTES));
+    const fileId = (original.body as { file: { id: string } }).file.id;
+    expect((await client.upload(NAME, textBytes(2 * SMALL_BYTES), 'replace')).status).toBe(200);
+    const [first] = await versionRows(fileId);
+    const replacement = await uploadedReplacement(client, textBytes(3 * SMALL_BYTES));
+
+    const responses = await Promise.all([
+      client.complete(replacement),
+      client.restoreVersion(fileId, first?.id ?? ''),
+    ]);
+
+    expect(responses.map((response) => response.status)).toEqual([200, 201]);
+    const rows = await versionRows(fileId);
+    expect(rows.map((row) => row.numero)).toEqual([1, 2, 3, 4]);
+    expect(await currentVersionOf(fileId)).toBe(rows[3]?.id);
+    expect(await usedBytesOf(storage.owner, client.id)).toBe(BigInt(7 * SMALL_BYTES));
+  });
 });

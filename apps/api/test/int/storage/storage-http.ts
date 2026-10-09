@@ -128,6 +128,10 @@ export interface StorageClient {
   restoreFolder(folderId: string): Promise<Response>;
   emptyTrash(): Promise<Response>;
   spaceSummary(): Promise<Response>;
+  /** `GET /files/:fileId/versions` (014). */
+  fileVersions(fileId: string): Promise<Response>;
+  /** `POST /files/:fileId/versions/:versionId/restore` (014). */
+  restoreVersion(fileId: string, versionId: string): Promise<Response>;
   /** Inicia (en `folderId`, por defecto la raíz), sube con la(s) URL(s) firmada(s) y completa; devuelve `complete`. */
   upload(
     name: string,
@@ -293,6 +297,9 @@ export const createStorageHttpApp = async (
         http().post(`${API_PREFIX}/trash/folders/${folderId}/restore`).set(auth),
       emptyTrash: () => http().delete(`${API_PREFIX}/trash`).set(auth),
       spaceSummary: () => http().get(`${API_PREFIX}/storage/summary`).set(auth),
+      fileVersions: (fileId) => http().get(`${API_PREFIX}/files/${fileId}/versions`).set(auth),
+      restoreVersion: (fileId, versionId) =>
+        http().post(`${API_PREFIX}/files/${fileId}/versions/${versionId}/restore`).set(auth),
       upload: async (name, bytes, onConflict = 'ask', folderId = null) => {
         const started = await client.init({ name, sizeBytes: bytes.length, onConflict, folderId });
         if (started.status !== 201) return started;

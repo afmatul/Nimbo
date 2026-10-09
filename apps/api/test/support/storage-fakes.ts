@@ -410,6 +410,7 @@ export class FakeObjectStorage implements IObjectStorage {
   readonly signedObjects: PresignUploadObjectInput[] = [];
   failCreateMultipart = false;
   failSigning = false;
+  failCopy = false;
   /** Cuántas veces más fallará el próximo borrado (`abortMultipart` o `purgeObject`). */
   deleteFailures = 0;
   private nextMultipart = 0;
@@ -479,6 +480,18 @@ export class FakeObjectStorage implements IObjectStorage {
       return Promise.reject(Object.assign(new Error('NoSuchKey'), { name: 'NoSuchKey' }));
     }
     return Promise.resolve(object.subarray(start, endInclusive + 1));
+  }
+
+  /** Como el adaptador real: un origen ausente rechaza (`NoSuchKey`); repetir la copia la sobrescribe igual. */
+  copyObject(sourceKey: string, targetKey: string): Promise<void> {
+    this.journal.add('storage:copyObject');
+    const source = this.objects.get(sourceKey);
+    if (this.failCopy) return Promise.reject(new Error('minio caído'));
+    if (source === undefined) {
+      return Promise.reject(Object.assign(new Error('NoSuchKey'), { name: 'NoSuchKey' }));
+    }
+    this.objects.set(targetKey, Buffer.from(source));
+    return Promise.resolve();
   }
 
   purgeObject(key: string): Promise<void> {

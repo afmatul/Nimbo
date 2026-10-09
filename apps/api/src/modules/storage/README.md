@@ -233,14 +233,15 @@ Pruebas: `upload-cleanup.processor.spec.ts` y `upload-cleanup.scheduler.spec.ts`
 | `FileService`                              | Renombrar y mover archivos (006) y URL de descarga de 300 s                                        |
 | `FolderService` (006)                      | Crear, renombrar, mover y abrir carpetas, con migas                                                |
 | `TrashService` (006)                       | Mandar a la papelera, listar, resumir y restaurar                                                  |
-| `IObjectStorage` → `MinioStorageAdapter`   | Multipart, URLs prefirmadas (`Content-Length` firmado), `headObject`, `getRange`, purga real       |
+| `IObjectStorage` → `MinioStorageAdapter`   | Multipart, URLs prefirmadas (`Content-Length` firmado), `headObject`, `getRange`, copia, purga     |
 | `IFileTypeDetector` → `MagicBytesDetector` | Tipo real por firma; rechaza ejecutables y texto disfrazado                                        |
 
 Rutas (solo `CLIENT`; roles internos → 403, sin token → 401; un id que no es UUID responde el mismo 404 que uno
 inexistente): `POST /uploads`, `POST /uploads/:uploadId/resume`, `POST /uploads/:uploadId/complete`,
 `DELETE /uploads/:uploadId`, `POST /files/:fileId/download-url` (y desde 006 `PATCH /files/:fileId` y
-`POST /files/:fileId/move`; desde 014 `GET /files/:fileId/versions` y
-`POST /files/:fileId/versions/:versionId/download-url`). `init` y las dos `download-url` pasan por `IRateLimiter`.
+`POST /files/:fileId/move`; desde 014 `GET /files/:fileId/versions`,
+`POST /files/:fileId/versions/:versionId/download-url` y `POST /files/:fileId/versions/:versionId/restore`). `init`, las
+dos `download-url` y `restore` (con su propio `RATE_LIMIT_VERSION_RESTORE_PER_MINUTE`) pasan por `IRateLimiter`.
 
 - Pruebas HTTP: `apps/api/test/int/storage/*.int-spec.ts` (`pnpm test:int`); aislamiento:
   `apps/api/test/isolation/storage.iso-spec.ts` (`pnpm test:isolation`).
@@ -276,6 +277,12 @@ versión actual, con `Content-Disposition: attachment`, `application/octet-strea
 `FileService.getDownloadUrl` (tasa, auditoría `file.download_url_issued` con el tamaño de la versión); una versión
 inexistente, podada o de otro archivo es `404` `STORAGE_VERSION_NOT_FOUND`. `GET /files/:fileId/versions`
 (`VersionHistoryService`) devuelve el historial sin claves de objeto y las versiones que retiene el plan.
+
+**Restaurar (014)**: `POST /files/:fileId/versions/:versionId/restore` (`VersionRestoreService`, 201) valida tasa,
+archivo, versión (`404` si no es del archivo, `409` `STORAGE_VERSION_ALREADY_CURRENT` si es la actual) y cuota (sin
+máximo por archivo); copia el objeto en el servidor (`IObjectStorage.copyObject`) fuera de la transacción y luego,
+bajo `lockUsage`, revalida y registra una versión nueva `restauracion` con `FileVersionService.register`. Si esa
+transacción falla, purga la copia. Tras el commit poda por retención y audita `file.version_restored`.
 
 `complete` y `expire`/`cancel` compiten por un compare-and-set de estado (`activa → …`): gana uno y el otro no deja un
 `archivo` sin objeto.

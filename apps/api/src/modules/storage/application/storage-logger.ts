@@ -12,7 +12,7 @@ export interface StorageLogger {
 }
 
 /** Operación limitada por tasa (RN-16), tal como la nombra la bitácora `upload.rate_limited`. */
-export type RateLimitedOperation = 'upload_init' | 'download_url';
+export type RateLimitedOperation = 'upload_init' | 'download_url' | 'version_restore';
 
 /** Anota el 429 en la bitácora (plan §7) y devuelve el error que el servicio lanza. */
 export function rateLimited(

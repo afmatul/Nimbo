@@ -16,6 +16,7 @@ export {
   QuotaExceededError,
   UploadSizeMismatchError,
 } from './limit.errors';
+export type { QuotaPurpose } from './limit.errors';
 export { QuickAccessLimitError } from './quick-access.errors';
 export { StorageTooManyRequestsError } from './storage-too-many-requests.error';
 export {

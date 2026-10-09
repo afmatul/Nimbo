@@ -1,6 +1,7 @@
 import {
   AbortMultipartUploadCommand,
   CompleteMultipartUploadCommand,
+  CopyObjectCommand,
   CreateMultipartUploadCommand,
   DeleteObjectsCommand,
   GetObjectCommand,
@@ -223,6 +224,20 @@ export class MinioStorageAdapter implements IObjectStorage {
       return Buffer.alloc(0);
     }
     return Buffer.from(await output.Body.transformToByteArray());
+  }
+
+  /**
+   * Copia en el servidor (los bytes no pasan por la API). `CopyObject` admite hasta 5 GB, más que el máximo por archivo
+   * del plan más alto (plan 014 §7). Repetirla sobrescribe el destino con el mismo contenido (idempotente).
+   */
+  async copyObject(sourceKey: string, targetKey: string): Promise<void> {
+    await this.clients.operations.send(
+      new CopyObjectCommand({
+        Bucket: this.bucket,
+        Key: targetKey,
+        CopySource: `${this.bucket}/${sourceKey}`,
+      }),
+    );
   }
 
   async purgeObject(key: string): Promise<void> {

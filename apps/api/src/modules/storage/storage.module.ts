@@ -22,6 +22,9 @@ import { SpaceSummaryService } from './application/space-summary.service';
 import { UPLOAD_CONFIG } from './application/upload-config';
 import type { UploadConfig } from './application/upload-config';
 import { VersionHistoryService } from './application/version-history.service';
+import { VERSION_RESTORE_CONFIG } from './application/version-restore-config';
+import type { VersionRestoreConfig } from './application/version-restore-config';
+import { VersionRestoreService } from './application/version-restore.service';
 import {
   buildMinioStorageClients,
   MinioStorageAdapter,
@@ -50,6 +53,7 @@ export type StorageEnv = Pick<
   | 'UPLOAD_URL_TTL_SECONDS'
   | 'RATE_LIMIT_UPLOAD_INIT_PER_MINUTE'
   | 'RATE_LIMIT_DOWNLOAD_URL_PER_MINUTE'
+  | 'RATE_LIMIT_VERSION_RESTORE_PER_MINUTE'
   | 'FOLDER_MAX_DEPTH'
   | 'QUICK_ACCESS_MAX_PINNED'
   | 'QUICK_ACCESS_RECENT_VISIBLE'
@@ -57,7 +61,7 @@ export type StorageEnv = Pick<
 
 /**
  * Módulo `storage` (M2, plan §6): carga, descarga, carpetas, papelera y accesos rápidos (006), resumen de espacio (007) y
- * versiones (014: registro y poda en `UPLOAD_LIFECYCLE_PROVIDERS`; historial y descarga solo en el `api`).
+ * versiones (014: registro y poda en `UPLOAD_LIFECYCLE_PROVIDERS`; historial, descarga y restauración solo en el `api`).
  * `forRoot(env)` publica la configuración técnica (bytes como `bigint`) y une cada puerto con su adaptador. **No**
  * enlaza `I_PLAN_LIMITS_PROVIDER` ni importa `billing`: ese enlace vive en la raíz de composición (DF-51, opción A). `SharedModule` (global) aporta reloj, tasa, transacciones y
  * `TransactionContext`; `MinioConfigModule` (global), `MINIO_CONFIG`. La cola `trash-purge` se registra solo para que
@@ -74,6 +78,9 @@ export class StorageModule {
     };
     const fileServiceConfig: FileServiceConfig = {
       downloadUrlPerMinute: env.RATE_LIMIT_DOWNLOAD_URL_PER_MINUTE,
+    };
+    const versionRestoreConfig: VersionRestoreConfig = {
+      restorePerMinute: env.RATE_LIMIT_VERSION_RESTORE_PER_MINUTE,
     };
     const folderConfig: FolderConfig = { maxDepth: env.FOLDER_MAX_DEPTH };
     const quickAccessConfig: QuickAccessConfig = {
@@ -95,6 +102,7 @@ export class StorageModule {
       providers: [
         { provide: UPLOAD_CONFIG, useValue: uploadConfig },
         { provide: FILE_SERVICE_CONFIG, useValue: fileServiceConfig },
+        { provide: VERSION_RESTORE_CONFIG, useValue: versionRestoreConfig },
         { provide: FOLDER_CONFIG, useValue: folderConfig },
         { provide: QUICK_ACCESS_CONFIG, useValue: quickAccessConfig },
         { provide: I_QUICK_ACCESS_REPOSITORY, useClass: TypeOrmQuickAccessRepository },
@@ -113,6 +121,7 @@ export class StorageModule {
         SpaceSummaryService,
         FileService,
         VersionHistoryService,
+        VersionRestoreService,
         FolderService,
         QuickAccessService,
       ],
