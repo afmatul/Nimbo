@@ -1,4 +1,4 @@
-import { PlanDomain } from '../domain/plan-catalog';
+import type { PlanDomain } from '../domain/plan-catalog';
 
 export const I_PLAN_REPOSITORY = Symbol('IPlanRepository');
 

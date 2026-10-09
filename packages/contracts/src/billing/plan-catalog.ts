@@ -8,9 +8,9 @@ export type BillingErrorCode = (typeof BILLING_ERROR_CODES)[keyof typeof BILLING
 
 export const PlanDtoSchema = z.object({
   id: z.string(),
-  slug: z.enum(['personal', 'pro', 'equipo', 'institucional']),
+  slug: z.string().min(1),
   nombre: z.string(),
-  descripcion: z.string(),
+  descripcion: z.string().nullable(),
   precioCentavos: z.number().int(),
   cuotaBytes: z.string().regex(/^\d+$/),
   maxArchivoBytes: z.string().regex(/^\d+$/),

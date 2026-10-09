@@ -1,12 +1,13 @@
-// apps/web/src/features/billing/components/plan-comparison-table.tsx
 import type { PlanDto } from '@nimbo/contracts';
+import type { ReactNode } from 'react';
+
 import { formatQuetzales, formatBytes, formatEditores, formatCount } from '../format-plan';
 
 interface PlanComparisonTableProps {
   readonly planes: PlanDto[];
 }
 
-export function PlanComparisonTable({ planes }: PlanComparisonTableProps) {
+export function PlanComparisonTable({ planes }: PlanComparisonTableProps): ReactNode {
   const rows = [
     {
       label: 'Precio mensual',

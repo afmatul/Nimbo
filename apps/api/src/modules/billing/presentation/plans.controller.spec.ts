@@ -1,7 +1,8 @@
-import { PlansController } from './plans.controller';
 import type { PlanCatalogService } from '../application/plan-catalog.service';
-import type { PlanDomain } from '../domain/plan-catalog';
 import { PlanCatalogUnavailableError } from '../domain/errors/plan-catalog-unavailable.error';
+import type { PlanDomain } from '../domain/plan-catalog';
+
+import { PlansController } from './plans.controller';
 
 describe('PlansController', () => {
   let controller: PlansController;
@@ -74,6 +75,14 @@ describe('PlansController', () => {
     service.list.mockResolvedValue([]);
 
     await expect(controller.getPlans()).resolves.toEqual({ planes: [] });
+  });
+
+  it('CA-1: entrega una descripción nula y un slug fuera de la semilla tal como vienen de la tabla', async () => {
+    service.list.mockResolvedValue([{ ...personal, slug: 'empresarial', descripcion: null }]);
+
+    const result = await controller.getPlans();
+
+    expect(result.planes[0]).toMatchObject({ slug: 'empresarial', descripcion: null });
   });
 
   it('CA-3: propaga PlanCatalogUnavailableError sin transformarlo', async () => {

@@ -1,10 +1,14 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { PlanCatalogService } from './plan-catalog.service';
+import { Logger } from '@nestjs/common';
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
+import { QueryFailedError } from 'typeorm';
+
+import { PlanCatalogUnavailableError } from '../domain/errors/plan-catalog-unavailable.error';
+import type { PlanDomain } from '../domain/plan-catalog';
+
 import { I_PLAN_REPOSITORY } from './i-plan-repository';
 import type { IPlanRepository } from './i-plan-repository';
-import { PlanCatalogUnavailableError } from '../domain/errors/plan-catalog-unavailable.error';
-import { PlanDomain } from '../domain/plan-catalog';
-import { QueryFailedError } from 'typeorm';
+import { PlanCatalogService } from './plan-catalog.service';
 
 describe('PlanCatalogService', () => {
   let service: PlanCatalogService;
@@ -74,11 +78,33 @@ describe('PlanCatalogService', () => {
     expect(result).toEqual([]);
   });
 
-  it('debe lanzar PlanCatalogUnavailableError si falla la lectura del repositorio por QueryFailedError', async () => {
+  it('CA-3: una consulta fallida se traduce a PlanCatalogUnavailableError', async () => {
     repositoryMock.findAll.mockRejectedValue(
-      new QueryFailedError('SELECT * FROM plans', [], new Error('DB Error')),
+      new QueryFailedError('SELECT * FROM plan', [], new Error('DB Error')),
     );
 
     await expect(service.list()).rejects.toThrow(PlanCatalogUnavailableError);
+  });
+
+  it('CA-3: con la base caída también responde PlanCatalogUnavailableError', async () => {
+    repositoryMock.findAll.mockRejectedValue(new Error('connect ECONNREFUSED 127.0.0.1:5432'));
+
+    await expect(service.list()).rejects.toThrow(PlanCatalogUnavailableError);
+  });
+
+  it('CA-3: la bitácora solo lleva el evento y el tipo de error, sin el mensaje ni el SQL', async () => {
+    const logError = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+    repositoryMock.findAll.mockRejectedValue(
+      new QueryFailedError('SELECT * FROM plan', [], new Error('DB Error')),
+    );
+
+    await expect(service.list()).rejects.toThrow(PlanCatalogUnavailableError);
+
+    expect(logError).toHaveBeenCalledWith({
+      event: 'billing.plan_catalog_unavailable',
+      code: 'PLAN_CATALOG_UNAVAILABLE',
+      errorName: 'QueryFailedError',
+    });
+    logError.mockRestore();
   });
 });

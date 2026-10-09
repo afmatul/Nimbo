@@ -1,5 +1,3 @@
-// apps/web/src/features/billing/format-plan.ts
-
 /** Enteros con espacio de no separación como separador de miles: 2 000, 10 000 (como el mockup). */
 export function formatCount(value: number): string {
   return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');

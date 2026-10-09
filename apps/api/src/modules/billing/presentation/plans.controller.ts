@@ -1,8 +1,24 @@
 import { Controller, Get } from '@nestjs/common';
-import { PlanCatalogResponseSchema } from '@nimbo/contracts';
-import type { PlanCatalogResponse } from '@nimbo/contracts';
+import type { PlanCatalogResponse, PlanDto } from '@nimbo/contracts';
+
+import { Public } from '../../../shared';
 import { PlanCatalogService } from '../application/plan-catalog.service';
-import { Public } from '../../../shared/presentation/auth/public.decorator';
+import type { PlanDomain } from '../domain/plan-catalog';
+
+/** Precio entero (ADR-0016); bytes como cadena decimal para no perder precisión en JSON (CA-1). */
+const toPlanDto = (plan: PlanDomain): PlanDto => ({
+  id: plan.id,
+  slug: plan.slug,
+  nombre: plan.nombre,
+  descripcion: plan.descripcion,
+  precioCentavos: plan.precioCentavos,
+  cuotaBytes: plan.cuotaBytes.toString(),
+  maxArchivoBytes: plan.maxArchivoBytes.toString(),
+  maxEditores: plan.maxEditores,
+  consultasAgenteMensual: plan.consultasAgenteMensual,
+  versionesRetenidas: plan.versionesRetenidas,
+  diasRetencionPapelera: plan.diasRetencionPapelera,
+});
 
 @Controller('billing/plans')
 export class PlansController {
@@ -12,21 +28,6 @@ export class PlansController {
   @Public()
   async getPlans(): Promise<PlanCatalogResponse> {
     const plans = await this.planCatalogService.list();
-
-    return PlanCatalogResponseSchema.parse({
-      planes: plans.map((plan) => ({
-        id: plan.id,
-        slug: plan.slug,
-        nombre: plan.nombre,
-        descripcion: plan.descripcion,
-        precioCentavos: Number(plan.precioCentavos), // entero (ADR-0016)
-        cuotaBytes: plan.cuotaBytes.toString(), // bytes como cadena decimal
-        maxArchivoBytes: plan.maxArchivoBytes.toString(),
-        maxEditores: plan.maxEditores,
-        consultasAgenteMensual: plan.consultasAgenteMensual,
-        versionesRetenidas: plan.versionesRetenidas,
-        diasRetencionPapelera: plan.diasRetencionPapelera,
-      })),
-    });
+    return { planes: plans.map(toPlanDto) };
   }
 }

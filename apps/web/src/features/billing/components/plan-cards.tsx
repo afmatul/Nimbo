@@ -1,4 +1,6 @@
 import type { PlanDto } from '@nimbo/contracts';
+import type { ReactNode } from 'react';
+
 import { formatQuetzales, formatBytes, formatEditores } from '../format-plan';
 
 interface PlanCardsProps {
@@ -13,11 +15,14 @@ const DOT_BY_SLUG: Record<string, string> = {
   institucional: 'bg-primary',
 };
 
-export function PlanCards({ planes }: PlanCardsProps) {
+export function PlanCards({ planes }: PlanCardsProps): ReactNode {
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
       {planes.map((plan) => (
-        <div key={plan.id} className="bg-card border border-border rounded-xl p-5 flex flex-col gap-4">
+        <div
+          key={plan.id}
+          className="bg-card border border-border rounded-xl p-5 flex flex-col gap-4"
+        >
           <div className="flex items-center gap-2">
             <span
               aria-hidden="true"

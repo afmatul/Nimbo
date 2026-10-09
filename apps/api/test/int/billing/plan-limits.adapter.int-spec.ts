@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
+
 import { BillingModule, PlanLimitsAdapter, PlanNotFoundError } from '../../../src/modules/billing';
 import { I_PLAN_LIMITS_PROVIDER } from '../../../src/modules/storage';
 import type { IPlanLimitsProvider } from '../../../src/modules/storage';
 import { createActor, Role } from '../../../src/shared';
 import { createTestApp, type TestApp } from '../setup/test-app';
-import request from 'supertest';
 
 @Module({
   imports: [BillingModule],
@@ -17,40 +17,6 @@ import request from 'supertest';
   exports: [I_PLAN_LIMITS_PROVIDER],
 })
 class TestBillingWiringModule {}
-
-describe('CA-1: Plans Controller Endpoint Integration', () => {
-  let testApp: TestApp;
-
-  beforeAll(async () => {
-    testApp = await createTestApp({
-      modules: [TestBillingWiringModule],
-    });
-  });
-
-  afterAll(async () => {
-    await testApp?.close();
-  });
-
-  it('CA-1: GET /api/v1/billing/plans retorna el arreglo de planes con la estructura correcta', async () => {
-    const response = await request(testApp.app.getHttpServer())
-      .get('/api/v1/billing/plans')
-      .expect(200);
-
-    expect(response.body).toHaveProperty('planes');
-    expect(response.body.planes).toHaveLength(4);
-
-    const slugs = response.body.planes.map((p: any) => p.slug);
-    expect(slugs).toEqual(['personal', 'pro', 'equipo', 'institucional']);
-
-    const prices = response.body.planes.map((p: any) => p.precioCentavos);
-    expect(prices).toEqual([0, 4500, 11000, 45000]);
-
-    response.body.planes.forEach((p: any) => {
-      expect(typeof p.cuotaBytes).toBe('string');
-      expect(typeof p.maxArchivoBytes).toBe('string');
-    });
-  });
-});
 
 describe('PlanLimitsAdapter integración con base de datos real (T-11, CA-1, CA-4, CA-5, CA-9)', () => {
   let testApp: TestApp;

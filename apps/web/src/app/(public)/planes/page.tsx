@@ -1,43 +1,12 @@
-// apps/web/src/app/planes/page.tsx
-import { PlanCatalogResponseSchema } from '@nimbo/contracts';
-import { PlanCards } from '@/features/billing/components/plan-cards';
-import { PlanComparisonTable } from '@/features/billing/components/plan-comparison-table';
-import { messageForCode } from '@/lib/error-catalog';
+import type { ReactNode } from 'react';
 
-async function getPlans() {
-  try {
-    const baseUrl = process.env.API_PUBLIC_URL;
-    if (!baseUrl) throw new Error('API_PUBLIC_URL no configurada');
+import { StateView } from '../../../components/nimbo/state-view';
+import { getEnv } from '../../../env';
+import { fetchPlanCatalog, PlanCards, PlanComparisonTable } from '../../../features/billing';
 
-    const res = await fetch(`${baseUrl}/api/v1/billing/plans`, { cache: 'no-store' });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-    const data = PlanCatalogResponseSchema.parse(await res.json());
-    return { planes: data.planes, error: null };
-  } catch (e) {
-    console.error('[planes] no se pudo cargar el catálogo:', e);
-    return { planes: null, error: messageForCode('PLAN_CATALOG_UNAVAILABLE') };
-  }
-}
-
-export default async function PlanesPage() {
-  const { planes, error } = await getPlans();
-
-  if (error) {
-    return (
-      <div role="alert" className="p-12 text-center text-destructive font-medium">
-        {error}
-      </div>
-    );
-  }
-
-  if (!planes || planes.length === 0) {
-    return (
-      <div role="status" className="p-12 text-center text-muted-foreground">
-        Ahora no hay planes para mostrar.
-      </div>
-    );
-  }
+/** Catálogo público (008): se lee en el servidor; la carga y el error los muestran `loading.tsx` y `error.tsx`. */
+export default async function PlanesPage(): Promise<ReactNode> {
+  const { planes } = await fetchPlanCatalog(getEnv().API_INTERNAL_URL);
 
   return (
     <section className="flex flex-col gap-4 p-6">
@@ -53,8 +22,14 @@ export default async function PlanesPage() {
         </span>
       </header>
 
-      <PlanCards planes={planes} />
-      <PlanComparisonTable planes={planes} />
+      {planes.length === 0 ? (
+        <StateView type="empty" title="Ahora no hay planes para mostrar." headingLevel="h2" />
+      ) : (
+        <>
+          <PlanCards planes={planes} />
+          <PlanComparisonTable planes={planes} />
+        </>
+      )}
     </section>
   );
 }
