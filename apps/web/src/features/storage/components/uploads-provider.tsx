@@ -83,8 +83,12 @@ function UploadCenter(): React.JSX.Element | null {
           fileName={conflict.name}
           finalName={conflict.suggestedName ?? conflict.name}
           othersCount={manager.pendingConflictsInBatch(conflict.id)}
+          wouldPruneVersion={conflict.wouldPruneVersion}
           onKeepBoth={({ applyToRest }) =>
             manager.resolveConflict(conflict.id, 'keep_both', applyToRest)
+          }
+          onReplace={({ applyToRest }) =>
+            manager.resolveConflict(conflict.id, 'replace', applyToRest)
           }
           onDiscard={({ applyToRest }) =>
             manager.resolveConflict(conflict.id, 'discard', applyToRest)

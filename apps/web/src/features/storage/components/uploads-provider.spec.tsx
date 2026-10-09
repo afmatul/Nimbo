@@ -104,7 +104,9 @@ describe('UploadsProvider', () => {
     );
 
     await userEvent.click(screen.getByRole('button', { name: 'Encolar' }));
-    const dialog = await screen.findByRole('alertdialog', { name: '¿Conservar ambos archivos?' });
+    const dialog = await screen.findByRole('alertdialog', {
+      name: 'Ya tienes un archivo con este nombre',
+    });
     expect(dialog.textContent).toContain('informe (1).docx');
 
     await userEvent.click(screen.getByRole('button', { name: 'Conservar ambos' }));
@@ -114,6 +116,44 @@ describe('UploadsProvider', () => {
         name: 'informe.docx',
         sizeBytes: 4,
         onConflict: 'keep_both',
+        folderId: null,
+      }),
+    );
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+
+  it('014 CA-1, CA-15: el diálogo avisa la poda y «Reemplazar (nueva versión)» reenvía replace', async () => {
+    const api = fakeApi({
+      init: jest.fn((body) =>
+        body.onConflict === 'ask'
+          ? Promise.reject(
+              new StorageRequestError(409, 'STORAGE_NAME_CONFLICT', {
+                suggestedName: 'informe (1).docx',
+                wouldPruneVersion: 3,
+              }),
+            )
+          : new Promise<InitUploadResponse>(() => undefined),
+      ),
+    });
+    render(
+      <UploadsProvider api={api}>
+        <Enqueue files={[localFile('informe.docx')]} />
+      </UploadsProvider>,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Encolar' }));
+    const dialog = await screen.findByRole('alertdialog', {
+      name: 'Ya tienes un archivo con este nombre',
+    });
+    expect(dialog.textContent).toContain('Si reemplazas, se eliminará la versión 3.');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Reemplazar (nueva versión)' }));
+
+    await waitFor(() =>
+      expect(api.init).toHaveBeenLastCalledWith({
+        name: 'informe.docx',
+        sizeBytes: 4,
+        onConflict: 'replace',
         folderId: null,
       }),
     );

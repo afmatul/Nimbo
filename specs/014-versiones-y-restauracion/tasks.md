@@ -62,7 +62,7 @@ T-02 ─┘         ├─> T-05 ─> T-06 ──┼─> T-08 (web, ficha)
   - Archivos: `app/(app)/(cliente)/archivos/archivo/[fileId]/page.tsx`, `components/nimbo/version-timeline.tsx`, `features/storage/versions-api.ts`, `hooks/use-file-versions.ts`, `components/file-detail-view.tsx`, `components/restore-version-dialog.tsx`, `components/node-rows.tsx` (entrada «Ver historial» del menú ⋮).
   - Depende: T-05, T-06 (puede arrancar tras T-01 contra los contratos y cerrarse con las rutas reales)
 
-- [ ] **T-09** Web: «Reemplazar (nueva versión)» en el diálogo de nombre repetido — CA: CA-1, CA-15
+- [x] **T-09** Web: «Reemplazar (nueva versión)» en el diálogo de nombre repetido — CA: CA-1, CA-15
   - Prueba primero: ampliar `name-conflict-dialog.spec.tsx` (tres acciones, foco inicial en «Conservar ambos», título «Ya tienes un archivo con este nombre», aviso con `wouldPruneVersion`, estados `nombre-repetido`, `nombre-repetido-varios`, `nombre-repetido-poda`) y `upload-manager.spec.ts` (reenvía `onConflict: 'replace'`; con «Aplicar a los demás» + «Reemplazar», cada archivo en su límite vuelve a preguntar con su aviso).
   - Archivos: `features/storage/components/name-conflict-dialog.tsx`, `upload/upload-manager.ts`, `components/uploads-provider.tsx`.
   - Depende: T-04
@@ -89,4 +89,9 @@ T-02 ─┘         ├─> T-05 ─> T-06 ──┼─> T-08 (web, ficha)
 ## Notas del developer
 
 1. DF-64 era de 004: el hallazgo de 014 es **DF-65** (ya corregido en `plan.md`). PD nuevos: PD-74 (016) y PD-75 (019); el PD de «mockups completos» no se crea porque ya están completos.
-2. <Desviaciones, DF o pendientes que surjan, con enlace al registro de cambios de la spec.>
+2. T-09: el aviso de poda del diálogo de nombre repetido dice «Si reemplazas, se eliminará la versión {k}. Al reemplazar
+   se eliminará la versión {k}, la más antigua.» (texto de la spec §6) sin la frase del mockup «Tu plan conserva {n}
+   versiones»: el `409` solo trae `wouldPruneVersion`, no `retainedVersions`. Si Adrián quiere la frase, el `409` debe
+   sumar `retainedVersions` (cambio de contrato en `apps/api`).
+3. T-09: «Reemplazar», el título «Ya tienes un archivo con este nombre» y el aviso solo aparecen en cargas (`onReplace`).
+   Renombrar y mover (006) siguen con «¿Conservar ambos archivos?» y dos acciones, porque su API no acepta `replace`.
