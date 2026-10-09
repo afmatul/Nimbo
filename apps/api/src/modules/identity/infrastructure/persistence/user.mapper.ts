@@ -45,6 +45,23 @@ export function toUsuarioRow(user: ClientUser): UsuarioRow {
   };
 }
 
+/** Fila completa de una interna (011 CA-5): sin aceptación legal y con su código de empleado. */
+export function toInternalUsuarioRow(user: InternalUser): UsuarioRow {
+  return {
+    id: user.id,
+    nombre: user.fullName,
+    correo: user.email.value,
+    hashClave: user.passwordHash.reveal(),
+    rol: user.role,
+    estado: user.status,
+    correoVerificado: user.emailVerified,
+    versionTerminos: null,
+    versionPrivacidad: null,
+    terminosAceptadosEn: null,
+    codigoEmpleado: user.employeeCode.value,
+  };
+}
+
 /** `ck_usuario_codigo_empleado_interna` impide una interna sin código; si aparece, es un dato corrupto. */
 function toEmployeeCode(row: UsuarioRow): EmployeeCode {
   if (row.codigoEmpleado === null) {

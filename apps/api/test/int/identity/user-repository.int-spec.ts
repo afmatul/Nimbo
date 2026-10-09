@@ -4,8 +4,10 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { DataSource } from 'typeorm';
 
 import { aClientUser } from '../../../src/modules/identity/application/testing/client-user.builder';
+import { AccountStatus } from '../../../src/modules/identity/domain/account-status.enum';
 import { ClientUser } from '../../../src/modules/identity/domain/client-user.entity';
 import { EmailAddress } from '../../../src/modules/identity/domain/email-address.vo';
+import { EmployeeCode } from '../../../src/modules/identity/domain/employee-code.vo';
 import { InternalUser } from '../../../src/modules/identity/domain/internal-user.entity';
 import { LegalAcceptance } from '../../../src/modules/identity/domain/legal-acceptance.vo';
 import { PasswordHash } from '../../../src/modules/identity/domain/password-hash.vo';
@@ -241,5 +243,116 @@ describe('TypeormUserRepository (CA-3, CA-19)', () => {
     const found = await repository.findByEmail(user.email);
 
     expect(JSON.stringify(found)).not.toContain(user.passwordHash.reveal());
+  });
+
+  describe('cuentas internas (011 plan §2)', () => {
+    const anInternal = (patch: { email?: string; code?: string; role?: Role } = {}): InternalUser =>
+      InternalUser.enroll({
+        id: randomUUID(),
+        fullName: 'Marta Ruiz',
+        email: EmailAddress.of(patch.email ?? uniqueEmail()),
+        employeeCode: EmployeeCode.of(patch.code ?? uniqueEmployeeCode()),
+        role: patch.role ?? Role.SUPPORT,
+        passwordHash: PasswordHash.fromPhc(INTERNAL_PHC),
+      });
+
+    const insertInternalUser = (user: InternalUser): Promise<boolean> =>
+      runner.run(() => repository.insertInternalIfAbsent(user));
+
+    it('CA-5: `insertInternalIfAbsent` guarda la interna activa, verificada y con su código', async () => {
+      const user = anInternal({ code: ` ${uniqueEmployeeCode().toLowerCase()} ` });
+
+      await expect(insertInternalUser(user)).resolves.toBe(true);
+      const found = await repository.findById(user.id);
+
+      expect(found).toBeInstanceOf(InternalUser);
+      expect(found).toMatchObject({
+        role: Role.SUPPORT,
+        status: AccountStatus.ACTIVE,
+        emailVerified: true,
+      });
+      expect((found as InternalUser).employeeCode).toEqual(user.employeeCode);
+    });
+
+    it('CA-6: con un correo o un código ya usados devuelve `false` y no inserta', async () => {
+      const first = anInternal();
+      await insertInternalUser(first);
+      const sameEmail = anInternal({ email: first.email.value });
+      const sameCode = anInternal({ code: first.employeeCode.value });
+
+      await expect(insertInternalUser(sameEmail)).resolves.toBe(false);
+      await expect(insertInternalUser(sameCode)).resolves.toBe(false);
+      await expect(repository.findById(sameEmail.id)).resolves.toBeNull();
+      await expect(repository.findById(sameCode.id)).resolves.toBeNull();
+    });
+
+    it('CA-6: `findByEmployeeCode` encuentra la interna por su código, o `null`', async () => {
+      const user = anInternal();
+      await insertInternalUser(user);
+
+      const found = await repository.findByEmployeeCode(user.employeeCode);
+      const missing = await repository.findByEmployeeCode(EmployeeCode.of(uniqueEmployeeCode()));
+
+      expect(found?.id).toBe(user.id);
+      expect(missing).toBeNull();
+    });
+
+    it('CA-2, CA-3: `updateStatus` cambia solo el estado y `statusOf` lo lee (o `null` si no existe)', async () => {
+      const user = anInternal();
+      await insertInternalUser(user);
+
+      await runner.run(() => repository.updateStatus(user.id, AccountStatus.SUSPENDED));
+
+      await expect(repository.statusOf(user.id)).resolves.toBe(AccountStatus.SUSPENDED);
+      await expect(repository.statusOf(randomUUID())).resolves.toBeNull();
+      await expect(repository.findById(user.id)).resolves.toMatchObject({
+        fullName: user.fullName,
+        employeeCode: user.employeeCode,
+      });
+    });
+
+    it('RN-7: `countActiveAdmins` cuenta solo Administradores activos', async () => {
+      const before = await repository.countActiveAdmins();
+      const active = anInternal({ role: Role.ADMIN });
+      const suspended = anInternal({ role: Role.ADMIN });
+      await insertInternalUser(active);
+      await insertInternalUser(suspended);
+      await insertInternalUser(anInternal({ role: Role.SUPPORT }));
+      await runner.run(() => repository.updateStatus(suspended.id, AccountStatus.SUSPENDED));
+
+      await expect(repository.countActiveAdmins()).resolves.toBe(before + 1);
+    });
+
+    it('RN-7: `lockAdminRoster` serializa: una segunda transacción espera al commit de la primera', async () => {
+      const timeline: string[] = [];
+      const locked = signal();
+
+      const first = runner.run(async () => {
+        await repository.lockAdminRoster();
+        timeline.push('first:locked');
+        locked.fire();
+        await sleep(HOLD_MS);
+        timeline.push('first:commit');
+      });
+      await locked.fired;
+      const second = runner.run(async () => {
+        await repository.lockAdminRoster();
+        timeline.push('second:locked');
+      });
+      await Promise.all([first, second]);
+
+      expect(timeline).toEqual(['first:locked', 'first:commit', 'second:locked']);
+    });
+
+    it('RN-7: `lockAdminRoster` es reentrante en la misma transacción y exige una transacción', async () => {
+      await expect(
+        runner.run(async () => {
+          await repository.lockAdminRoster();
+          await repository.lockAdminRoster();
+          return 'ok';
+        }),
+      ).resolves.toBe('ok');
+      await expect(repository.lockAdminRoster()).rejects.toThrow(/transacción/);
+    });
   });
 });
