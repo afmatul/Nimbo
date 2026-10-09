@@ -98,7 +98,7 @@ CREATE UNIQUE INDEX uq_usuario_codigo_empleado ON usuario (codigo_empleado) WHER
 -- 20261007100100-agregar-alta-interna-a-token-cuenta.ts (identity)
 ALTER TABLE token_cuenta DROP CONSTRAINT ck_token_cuenta_tipo,
   ADD CONSTRAINT ck_token_cuenta_tipo CHECK (tipo IN ('verificacion', 'recuperacion', 'alta_interna'));
--- 20261007100200-agregar-desactivado-en-a-plan.ts (billing; sin RLS: catálogo)
+-- <fecha del día>-agregar-desactivado-en-a-plan.ts (billing; sin RLS: catálogo; fecha posterior a las de T-01 y T-02, acordado 2026-10-08)
 ALTER TABLE plan ADD COLUMN desactivado_en timestamptz NULL,
   ADD CONSTRAINT ck_plan_personal_activo CHECK (slug <> 'personal' OR desactivado_en IS NULL),
   ADD CONSTRAINT ck_plan_max_archivo CHECK (max_archivo_bytes <= cuota_bytes AND max_archivo_bytes <= 2147483648);
@@ -216,8 +216,8 @@ Cada CA vive en una capa principal: reglas en unit, contrato y concurrencia en i
   de la 011 la escribe **él** sobre la 008 integrada (Q-7) y las tareas de catálogo de `backoffice` esperan su PR. Se acuerda:
   la **spec 008 cambia** para listar solo `desactivado_en IS NULL` (PD-76); **un** esquema de plan en
   `packages/contracts/src/billing/` (en inglés), **una** entidad `Plan`/`PlanLimitsSet` y **un** `PlanCard` en
-  `components/nimbo` (PD-83); el prefijo de errores de `billing` (`BILLING_`) queda **por acordar**. Bytes en JSON: texto
-  decimal (ADR-0016; Adrián, 2026-10-08); la 005 se alinea después (PD-87).
+  `components/nimbo` (PD-83); prefijo de errores acordado con Juan Marcos (2026-10-08): `BILLING_PLAN_*` en la 011;
+  `PLAN_NOT_FOUND` no cambia. Bytes en JSON: texto decimal (ADR-0016; Adrián, 2026-10-08); la 005 se alinea después (PD-87).
 - **R-6 Antes de la 009** todo cliente cuenta como Personal en CA-1, CA-12 y el catálogo (regla vigente, PD-80).
 - **R-7 Mockups**: `Aprobado` (Adrián, 2026-10-08; `ui-guidelines.md` §7).
 - **R-8 Permisos**: Adrián autorizó `identity`, `storage` y `audit` (2026-10-07), y `shared` (T1) y la web de `access`
