@@ -9,6 +9,7 @@ import { AuditHttpModule } from './modules/audit';
 import { IDENTITY_THROTTLERS, IdentityModule } from './modules/identity';
 import { NotificationsModule } from './modules/notifications';
 import { StorageModule } from './modules/storage';
+import { PreviewModule } from './modules/storage/preview';
 import { PlanLimitsBindingModule } from './plan-limits-binding.module';
 import {
   AuthGuardsModule,
@@ -35,6 +36,8 @@ import type { Env } from './shared';
 @Module({})
 export class AppModule {
   static forRoot(env: Env): DynamicModule {
+    const storageModule = StorageModule.forRoot(env);
+
     return {
       module: AppModule,
       imports: [
@@ -52,7 +55,12 @@ export class AppModule {
         IdentityModule.forRoot(env),
         AccessModule,
         PlanLimitsBindingModule,
-        StorageModule.forRoot(env),
+        PreviewModule.register({
+          storageModule,
+          config: {
+            previewUrlPerMinute: env.RATE_LIMIT_PREVIEW_URL_PER_MINUTE,
+          },
+        }),
         AuditHttpModule,
       ],
       providers: [PingQueue],
