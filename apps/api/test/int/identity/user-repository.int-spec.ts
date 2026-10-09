@@ -15,6 +15,7 @@ import { buildDataSourceOptions } from '../../../src/shared';
 import { Role } from '../../../src/shared/domain/role.enum';
 import { TransactionContext } from '../../../src/shared/infrastructure/persistence/transaction-context';
 import { TypeOrmTransactionRunner } from '../../../src/shared/infrastructure/persistence/typeorm-transaction-runner';
+import { uniqueEmployeeCode } from '../../support/employee-codes';
 
 /** Tiempo que una transacción retiene el bloqueo para que la otra tenga que esperarla. */
 const HOLD_MS = 300;
@@ -58,8 +59,9 @@ describe('TypeormUserRepository (CA-3, CA-19)', () => {
   const insertInternal = async (email: string): Promise<string> => {
     const id = randomUUID();
     await dataSource.query(
-      `INSERT INTO usuario (id, nombre, correo, hash_clave, rol) VALUES ($1, 'Soporte Nimbo', $2, $3, 'SUPPORT')`,
-      [id, email, INTERNAL_PHC],
+      `INSERT INTO usuario (id, nombre, correo, hash_clave, rol, codigo_empleado)
+       VALUES ($1, 'Soporte Nimbo', $2, $3, 'SUPPORT', $4)`,
+      [id, email, INTERNAL_PHC, uniqueEmployeeCode()],
     );
     return id;
   };

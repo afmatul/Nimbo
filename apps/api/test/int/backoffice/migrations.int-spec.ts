@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import type { DataSource } from 'typeorm';
+import type { DataSource, QueryRunner } from 'typeorm';
 
 import { AuditAction, SYSTEM_ACTOR } from '../../../src/modules/audit';
 import type { AuditRecord } from '../../../src/modules/audit';
@@ -13,9 +13,17 @@ import { TypeOrmTransactionRunner } from '../../../src/shared/infrastructure/per
 import { startRestrictedOwnerDatabase } from '../../isolation/setup/nosuperuser-postgres';
 import type { RestrictedOwnerDatabase } from '../../isolation/setup/nosuperuser-postgres';
 import { connectAsOwner, connectTo } from '../../support/database-urls';
+import { aClient, insertUser, violatedConstraint } from '../identity/identity-rows';
 import { inRolledBackTransaction, insertAccount } from '../storage/storage-test-db';
 
-const AUDIT_MIGRATION = 'AmpliarEventoAuditoriaParaAccionesInternas20261007100300';
+/** La primera migración de 011 (plan §3): el ciclo revierte desde ella (y todas las posteriores). */
+const FIRST_011_MIGRATION = 'AgregarCodigoEmpleadoAUsuario20261007100000';
+const ELEVEN_MIGRATIONS = [
+  FIRST_011_MIGRATION,
+  'AgregarAltaInternaATokenCuenta20261007100100',
+  'AmpliarEventoAuditoriaParaAccionesInternas20261007100300',
+  'IndiceMetadatosDeArchivo20261007100400',
+];
 
 /** Restricciones, políticas, nulabilidad del afectado y RLS de `evento_auditoria`: lo que cambia la migración de 011. */
 const AUDIT_SCHEMA_SQL = `SELECT
@@ -28,6 +36,15 @@ const AUDIT_SCHEMA_SQL = `SELECT
   (SELECT json_build_array(relrowsecurity, relforcerowsecurity) FROM pg_class
     WHERE oid = 'evento_auditoria'::regclass) AS rls`;
 
+/** Lo que las migraciones de 011 cambian en `usuario`, `token_cuenta` y `archivo`. */
+const ACCOUNT_SCHEMA_SQL = `SELECT
+  (SELECT json_agg(json_build_array(k.conname, pg_get_constraintdef(k.oid)) ORDER BY k.conname) FROM pg_constraint k
+    WHERE k.conrelid IN ('usuario'::regclass, 'token_cuenta'::regclass) AND k.contype = 'c') AS restricciones,
+  (SELECT json_agg(i.indexdef ORDER BY i.indexname) FROM pg_indexes i
+    WHERE i.tablename IN ('usuario', 'archivo')) AS indices,
+  (SELECT json_agg(c.column_name ORDER BY c.column_name) FROM information_schema.columns c
+    WHERE c.table_name = 'usuario') AS columnas_usuario`;
+
 interface AuditSchema {
   readonly restricciones: [string, string][];
   readonly politicas: [string, string, string][];
@@ -35,8 +52,20 @@ interface AuditSchema {
   readonly rls: [boolean, boolean];
 }
 
-const auditSchemaOf = async (dataSource: DataSource): Promise<AuditSchema> =>
-  ((await dataSource.query(AUDIT_SCHEMA_SQL)) as AuditSchema[])[0] as AuditSchema;
+interface AccountSchema {
+  readonly restricciones: [string, string][];
+  readonly indices: string[];
+  readonly columnas_usuario: string[];
+}
+
+const firstRow = async <T>(dataSource: DataSource, sql: string): Promise<T> =>
+  ((await dataSource.query(sql)) as T[])[0] as T;
+
+const auditSchemaOf = (dataSource: DataSource): Promise<AuditSchema> =>
+  firstRow<AuditSchema>(dataSource, AUDIT_SCHEMA_SQL);
+
+const accountSchemaOf = (dataSource: DataSource): Promise<AccountSchema> =>
+  firstRow<AccountSchema>(dataSource, ACCOUNT_SCHEMA_SQL);
 
 const appliedNames = async (dataSource: DataSource): Promise<string[]> =>
   ((await dataSource.query('SELECT name FROM migracion ORDER BY id')) as { name: string }[]).map(
@@ -55,7 +84,7 @@ const onAccount = (action: AuditAction, actor: Actor, targetUserId: string): Aud
  * ADR-0021): con `FORCE` RLS, un `down` que borrara sin quitar antes `FORCE` no borraría nada y el `SET NOT NULL`
  * fallaría. Las restricciones se comprueban en la base del arnés, en una transacción que se revierte.
  */
-describe('migración ampliar-evento-auditoria con dueño NOSUPERUSER (011 plan §3)', () => {
+describe('migraciones de 011 con dueño NOSUPERUSER (plan §3)', () => {
   let database: RestrictedOwnerDatabase;
   let owner: DataSource;
   let app: DataSource;
@@ -94,6 +123,14 @@ describe('migración ampliar-evento-auditoria con dueño NOSUPERUSER (011 plan �
     );
   };
 
+  /** Un enlace de alta interna vigente: el `down` lo borra antes de restaurar el CHECK de 001. */
+  const seedSetupToken = (userId: string): Promise<unknown> =>
+    owner.query(
+      `INSERT INTO token_cuenta (usuario_id, tipo, token_hash, expira_en, creado_en)
+       VALUES ($1, 'alta_interna', $2, now() + interval '1 day', now())`,
+      [userId, 'c'.repeat(64)],
+    );
+
   /** Lo que `client` lee de su actividad como `nimbo_app` (el dueño, con `FORCE` y sin política, no ve filas). */
   const clientActions = async (): Promise<string[]> => {
     const actions = (await runner.withActor(client, () =>
@@ -102,6 +139,13 @@ describe('migración ampliar-evento-auditoria con dueño NOSUPERUSER (011 plan �
         .query('SELECT accion FROM evento_auditoria ORDER BY accion'),
     )) as { accion: string }[];
     return actions.map((row) => row.accion);
+  };
+
+  const revertFrom011 = async (): Promise<string[]> => {
+    const applied = await appliedNames(owner);
+    const reverted = applied.slice(applied.indexOf(FIRST_011_MIGRATION));
+    for (const _ of reverted) await owner.undoLastMigration({ transaction: 'each' });
+    return reverted;
   };
 
   beforeAll(async () => {
@@ -132,23 +176,35 @@ describe('migración ampliar-evento-auditoria con dueño NOSUPERUSER (011 plan �
     expect(role).toEqual({ rolsuper: false, rolbypassrls: false });
   });
 
-  it('up → down → up: el `down` borra solo lo que 004 no admite, restaura su esquema y el `up` vuelve al de 011', async () => {
-    await seedEvents();
+  it('las cuatro migraciones de 011 corren en el orden de su fecha', async () => {
     const applied = await appliedNames(owner);
-    const reverted = applied.slice(applied.indexOf(AUDIT_MIGRATION));
-    const schemaOf011 = await auditSchemaOf(owner);
 
-    for (const _ of reverted) await owner.undoLastMigration({ transaction: 'each' });
+    expect(applied.slice(applied.indexOf(FIRST_011_MIGRATION))).toEqual(ELEVEN_MIGRATIONS);
+  });
 
-    const schemaOf004 = await auditSchemaOf(owner);
+  it('up → down → up: el `down` borra solo lo que el esquema anterior no admite y el `up` vuelve al de 011', async () => {
+    await seedEvents();
+    await seedSetupToken(admin.id);
+    const before = { audit: await auditSchemaOf(owner), accounts: await accountSchemaOf(owner) };
+
+    const reverted = await revertFrom011();
+
+    const accounts = await accountSchemaOf(owner);
     expect(await clientActions()).toEqual(['trash.emptied']);
-    expect(schemaOf004.afectado_nulo).toBe('NO');
-    expect(schemaOf004.rls).toEqual([true, true]);
-    expect(schemaOf004.politicas.map(([name]) => name)).toEqual([
+    expect(accounts.columnas_usuario).not.toContain('codigo_empleado');
+    expect(accounts.indices.join()).not.toContain('idx_archivo_propietario_actualizado');
+    expect(accounts.restricciones).toContainEqual([
+      'ck_token_cuenta_tipo',
+      "CHECK (((tipo)::text = ANY ((ARRAY['verificacion'::character varying, 'recuperacion'::character varying])::text[])))",
+    ]);
+    const audit004 = await auditSchemaOf(owner);
+    expect(audit004.afectado_nulo).toBe('NO');
+    expect(audit004.rls).toEqual([true, true]);
+    expect(audit004.politicas.map(([name]) => name)).toEqual([
       'evento_auditoria_alta',
       'evento_auditoria_lectura',
     ]);
-    expect(schemaOf004.restricciones).toEqual(
+    expect(audit004.restricciones).toEqual(
       expect.arrayContaining([
         [
           'evento_auditoria_rol_actor_check',
@@ -161,10 +217,109 @@ describe('migración ampliar-evento-auditoria con dueño NOSUPERUSER (011 plan �
       ]),
     );
 
+    await expect(owner.runMigrations({ transaction: 'each' })).rejects.toThrow(
+      /cuentas internas sin código de empleado/,
+    );
+    await owner.query("DELETE FROM usuario WHERE rol <> 'CLIENT'");
     const rerun = await owner.runMigrations({ transaction: 'each' });
 
     expect(rerun.map((migration) => migration.name)).toEqual(reverted);
-    expect(await auditSchemaOf(owner)).toEqual(schemaOf011);
+    expect({ audit: await auditSchemaOf(owner), accounts: await accountSchemaOf(owner) }).toEqual(
+      before,
+    );
+  });
+});
+
+describe('restricciones de `usuario` y `token_cuenta` de 011 (plan §3, RN-5)', () => {
+  let harnessOwner: DataSource;
+
+  beforeAll(async () => {
+    harnessOwner = await connectAsOwner();
+  });
+
+  afterAll(async () => {
+    await harnessOwner.destroy();
+  });
+
+  const internal = (codigo: string | null) =>
+    aClient({
+      rol: 'SUPPORT',
+      version_terminos: null,
+      version_privacidad: null,
+      terminos_aceptados_en: null,
+      codigo_empleado: codigo,
+    });
+
+  const violationOf = (work: (runner: QueryRunner) => Promise<unknown>) =>
+    inRolledBackTransaction(harnessOwner, (runner) => violatedConstraint(work(runner)));
+
+  it.each([
+    ['un cliente con código', aClient({ codigo_empleado: 'CLI-1' }), /_cliente$/],
+    ['una interna sin código', internal(null), /_interna$/],
+    ['un código con espacios', internal('SOP 014'), /_(formato|normalizado)$/],
+    ['un código en minúsculas', internal('sop-014'), /_(formato|normalizado)$/],
+  ])('RN-5: rechaza %s', async (_case, row, constraint) => {
+    const violated = await violationOf((runner) => insertUser(runner, row));
+
+    expect(violated).toMatch(/^ck_usuario_codigo_empleado/);
+    expect(violated).toMatch(constraint);
+  });
+
+  it('RN-5: un código de 21 caracteres no cabe en la columna (`varchar(20)`)', async () => {
+    await expect(
+      inRolledBackTransaction(harnessOwner, (runner) =>
+        insertUser(runner, internal('A'.repeat(21))),
+      ),
+    ).rejects.toThrow(/value too long/);
+  });
+
+  it('RN-5: el código de empleado es único entre las internas', async () => {
+    const violated = await violationOf(async (runner) => {
+      await insertUser(runner, internal('SOP-014'));
+      await insertUser(runner, internal('SOP-014'));
+    });
+
+    expect(violated).toBe('uq_usuario_codigo_empleado');
+  });
+
+  it('RN-5: admite una interna con un código de 1 a 20 caracteres y un cliente sin código', async () => {
+    const violated = await violationOf(async (runner) => {
+      await insertUser(runner, internal('A'));
+      await insertUser(runner, internal('OPS-2026-0001-ABCDEF'));
+      await insertUser(runner, aClient());
+    });
+
+    expect(violated).toBeUndefined();
+  });
+
+  it('CA-5: `token_cuenta` admite el tipo `alta_interna` y sigue rechazando uno desconocido', async () => {
+    const insertToken = (runner: QueryRunner, userId: string, tipo: string) =>
+      runner.query(
+        `INSERT INTO token_cuenta (usuario_id, tipo, token_hash, expira_en, creado_en)
+         VALUES ($1, $2, encode(sha256(gen_random_uuid()::text::bytea), 'hex'), now() + interval '1 day', now())`,
+        [userId, tipo],
+      );
+    const row = internal('SOP-777');
+
+    const accepted = await violationOf(async (runner) => {
+      await insertUser(runner, row);
+      await insertToken(runner, row.id, 'alta_interna');
+    });
+    const rejected = await violationOf(async (runner) => {
+      await insertUser(runner, row);
+      await insertToken(runner, row.id, 'invitacion');
+    });
+
+    expect(accepted).toBeUndefined();
+    expect(rejected).toBe('ck_token_cuenta_tipo');
+  });
+
+  it('CA-13: `archivo` tiene el índice de la lista de metadatos por dueño', async () => {
+    const [row] = (await harnessOwner.query(
+      "SELECT indexdef FROM pg_indexes WHERE indexname = 'idx_archivo_propietario_actualizado'",
+    )) as { indexdef: string }[];
+
+    expect(row?.indexdef).toContain('(propietario_id, actualizado_en DESC, id DESC)');
   });
 });
 
