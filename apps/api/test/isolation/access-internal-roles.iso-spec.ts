@@ -10,10 +10,10 @@ import { createActor, I_TRANSACTION_RUNNER, Role, TransactionContext } from '../
 import type { Actor, ITransactionRunner } from '../../src/shared';
 import type { TestApp } from '../int/setup/test-app';
 
+import { INTERNAL_ROLES } from './setup/isolation-assertions';
 import { createIsolationWorld } from './setup/isolation-world';
 import type { InternalRole, IsolationWorld } from './setup/isolation-world';
 
-const INTERNAL_ROLES: readonly InternalRole[] = [Role.ADMIN, Role.SUPPORT, Role.OPERATOR];
 /** Todas las acciones de `access` son sobre el contenido de un nodo. */
 const CONTENT_ACTIONS = Object.values(Action);
 

@@ -52,7 +52,7 @@ T-02 ─┘         ├─> T-05 ─> T-06 ──┼─> T-08 (web, ficha)
   - Archivos: `storage/application/version-restore.service.ts`, `ports/i-object-storage.port.ts` (`copyObject`, idempotente), `infrastructure/minio-storage.adapter.ts` (`CopyObjectCommand`), `presentation/file-versions.controller.ts` (ruta `POST …/restore`), registro en módulos.
   - Depende: T-04, T-05
 
-- [ ] **T-07** Aislamiento y roles de las rutas de versiones — CA: CA-16, CA-17, CA-18 (RNF-05, bloqueante en `pnpm test:isolation`)
+- [x] **T-07** Aislamiento y roles de las rutas de versiones — CA: CA-16, CA-17, CA-18 (RNF-05, bloqueante en `pnpm test:isolation`)
   - Prueba primero: `test/isolation/storage-versions.iso-spec.ts`: B lista, descarga, restaura y reemplaza un archivo de A ⇒ `404` idénticos salvo `correlationId` (comparado contra un id inexistente); archivo de A en la papelera ⇒ `404` `STORAGE_NODE_NOT_FOUND` en historial, descarga y restauración; Administrador, Soporte y Operador ⇒ `403` `SHARED_FORBIDDEN` en las tres rutas y en el reemplazo; sin token ⇒ `401` `SHARED_UNAUTHENTICATED`; sin filas de `version_archivo` visibles para roles internos. Si falla, se corrige el código de T-04 a T-06 (la tarea no cambia las reglas).
   - Archivos: `test/isolation/storage-versions.iso-spec.ts` (más ajustes mínimos en el código si la prueba revela una fuga).
   - Depende: T-04, T-05, T-06
