@@ -38,7 +38,7 @@ y `notifications` no cambian: los cuatro correos nuevos son plantillas de `ident
 | Artículo | Cumple | Nota |
 |---|---|---|
 | I Spec manda | ☑ | Cada decisión cita su D-n o CA. Lo que la spec no fija está en §10.2 (DT-n) o §10.3 (preguntas). |
-| IV SOLID | ☑ | S: `AuthService` (credenciales), `SessionService` (ciclo de vida de sesión y dispositivo), `PasswordService` (recuperar y cambiar); `JwtTokenService`, `RedisAttemptLockout` y los repositorios con una razón de cambio cada uno. I: `IAccessTokenVerifier` solo con `verify`; `ITokenService` solo con `issueAccessToken`; `IAttemptLockout` con `check`/`recordFailure`/`clear`. D: la aplicación depende de puertos; `@nestjs/jwt`, Passport, ioredis y TypeORM quedan en `infrastructure`. L: pruebas de contrato de `IAttemptLockout` (Redis real) y de `IAccessTokenVerifier` (la suite de contrato de 003, con su tramo por HTTP, corrida con el verificador real; ADR-0017 c.2). |
+| IV SOLID | ☑ | S: `AuthService` (credenciales), `SessionService` (ciclo de vida de sesión y dispositivo), `PasswordService` (recuperar y cambiar); `JwtTokenService`, `RedisAttemptLockout` y los repositorios con una razón de cambio cada uno. I: `IAccessTokenVerifier` solo con `verify`; `ITokenService` solo con `issueAccessToken`; `IAttemptLockout` con `check`/`recordFailure`/`reserveAttempt`/`clear`. D: la aplicación depende de puertos; `@nestjs/jwt`, Passport, ioredis y TypeORM quedan en `infrastructure`. L: pruebas de contrato de `IAttemptLockout` (Redis real) y de `IAccessTokenVerifier` (la suite de contrato de 003, con su tramo por HTTP, corrida con el verificador real; ADR-0017 c.2). |
 | V YAGNI — abstracciones nuevas | ☑ | `IAccessTokenVerifier` lo crea 003-PR-A (regla d: `shared`, 003 y `realtime` verifican sin depender de `identity`; además a: JWT); 002 solo lo implementa. `IAttemptLockout` (regla a: Redis). `IDeviceRepository` (regla b). `ISessionRepository` e `ITokenService` ya están en el diagrama. **No** se crean: tabla de historial de tokens de refresco (DT-1), puerto para el analizador de agente de usuario (función pura, DT-9), librería de cookies (DT-9), endpoint `/me` (DT-11), ni «revocar al suspender» para 011 (lo pide 011 cuando exista). |
 | VI DRY | ☑ | Parámetros de §6 de la spec en `contracts/identity/parameters.ts` (los límites de recuperación **reutilizan** las constantes de 001, porque D-6 los iguala a D-8). Un `OpaqueToken` para refresco, dispositivo y recuperación. `VerificationLinkIssuer` para D-15. `evaluatePassword` y `PasswordRequirements` para restablecer y cambiar. Un solo guard por IP (`IdentityIpThrottlerGuard`, que ya nace así en 001; DT-8). Una sola constante de verificación del JWT (`ACCESS_TOKEN_OPTIONS`) y una sola verificación (el puerto; la estrategia delega). Una sola suite de contrato del puerto (la de 003). `SUPPORT_CONTACT_EMAIL` y `homePathFor` compartidos con 003. Un formateador de fecha de Guatemala en `identity/application/mail/` (tercer uso: aviso de intento de 001, dispositivo nuevo y contraseña cambiada; regla de tres). |
 | VIII Fronteras | ☑ | Aristas: `identity → shared, notifications` (ya permitidas). `shared` declara `IAccessTokenVerifier` y `ACCESS_TOKEN_STRATEGY` y **no** importa `identity`; `IdentityModule` registra la `JwtStrategy` y exporta `I_ACCESS_TOKEN_VERIFIER`; el `JwtAuthGuard` de 003 encuentra la estrategia por su nombre (§6.8). Ninguna arista nueva entre módulos. |
@@ -346,7 +346,7 @@ Puertos de `identity` (Art. V):
 | `ISessionRepository` (diagrama) | `insert(session)`, `findByIdForUpdate(id)`, `update(session)`, `listActive(userId, now, idleCutoff, limit)` (con `agente_usuario` del dispositivo), `revokeIfActive(id, userId, now): Promise<boolean>`, `revokeAllExcept(userId, exceptId \| null, now): Promise<number>` | (b) |
 | `IDeviceRepository` (nuevo) | `upsertSeen(device): Promise<{ deviceId; isNew }>` con `INSERT … ON CONFLICT (usuario_id, huella_hash) DO UPDATE … RETURNING id, (xmax = 0) AS inserted` | (b) |
 | `ITokenService` (diagrama) | `issueAccessToken({ userId, role, sessionId }): Promise<{ token; expiresAt }>` | (a) JWT |
-| `IAttemptLockout` (nuevo) | `check(key): Promise<LockState>`, `recordFailure(key, policy): Promise<LockState>`, `clear(key): Promise<void>`; `LockState = { locked: false } \| { locked: true; retryAfterSeconds }`; `policy = { maxFailures, windowSeconds, lockSeconds }` | (a) Redis |
+| `IAttemptLockout` (nuevo) | `check(key): Promise<LockState>`, `recordFailure(key, policy): Promise<LockState>`, `reserveAttempt(key, policy): Promise<AttemptReservation>` (review I-1), `clear(key): Promise<void>`; `LockState = { locked: false } \| { locked: true; retryAfterSeconds }`; `AttemptReservation = { allowed: true; engagedLock } \| { allowed: false; retryAfterSeconds }`; `policy = { maxFailures, windowSeconds, lockSeconds }` | (a) Redis |
 
 Puerto de `shared` que implementa (lo crea 003-PR-A en `shared/application/auth/i-access-token-verifier.port.ts`):
 `IAccessTokenVerifier.verify(token): Promise<AccessTokenVerification>`, con
@@ -444,13 +444,14 @@ No consume (CA-20, «al abrirse»).
 
 **`PasswordService.changePassword(actor, currentSessionId, command)`**:
 
-1. `key = 'identity:lockout:password-change:' + actor.id`; `check` → bloqueado → `PasswordChangeLockedError` (aunque la
-   actual sea correcta, CA-23).
-2. `user = findById(actor.id)`; `hasher.verify(...)` falso → `recordFailure(key, PASSWORD_CHANGE_POLICY)` →
-   `WrongPasswordError`. La sesión nunca se cierra (D-7).
+1. `key = 'identity:lockout:password-change:' + actor.id`; `reserveAttempt(key, PASSWORD_CHANGE_POLICY)` cuenta el
+   intento como fallo **antes** de verificar, atómico (review I-1: una ráfaga concurrente no prueba más de 5
+   contraseñas); bloqueo vigente → `PasswordChangeLockedError` (aunque la actual sea correcta, CA-23).
+2. `user = findById(actor.id)`; `hasher.verify(...)` falso → la reserva queda como fallo → `WrongPasswordError` (también
+   el quinto, que activa el bloqueo). Verdadero → `lockout.clear(key)` libera la reserva. La sesión nunca se cierra (D-7).
 3. `evaluatePassword(newPassword, user.email)` → `IdentityWeakPasswordError`.
 4. Hash fuera de la transacción; en transacción: `update` + `revokeAllExcept(actor.id, currentSessionId, now)`.
-5. Después del commit: `lockout.clear(key)`, correo «Tu contraseña cambió», `identity.password.changed` con
+5. Después del commit: correo «Tu contraseña cambió», `identity.password.changed` con
    `revokedCount` (CA-22).
 
 Métodos de ≤ 30 líneas: cada rama es un método privado. `AuthService` tiene 1 método público, `SessionService` 6 y
@@ -483,6 +484,8 @@ Métodos de ≤ 30 líneas: cada rama es un método privado. `AuthService` tiene
 - **`RedisAttemptLockout`** (usa `REDIS_CLIENT` de `shared`): un script Lua por operación, con `now` de `IClock`:
   - `recordFailure`: `ZADD <key>:fails now`, `ZREMRANGEBYSCORE` fuera de la ventana, `ZCARD`; si llega a
     `maxFailures`, `SET <key>:lock <now + lockSeconds> PX (lockSeconds + 60) * 1000` y `DEL <key>:fails`;
+  - `reserveAttempt`: el mismo script que `recordFailure`, antes de verificar; rechaza solo si el bloqueo ya estaba
+    vigente (el intento que lo activa se permite y se verifica) (review I-1);
   - `check`: `GET <key>:lock`; si el valor es mayor que `now`, `locked` con `ceil((valor − now) / 1000)`;
   - `clear`: `DEL` de las dos claves.
   - El vencimiento real lo decide el valor guardado frente a `now` (no el TTL de Redis, que solo limpia), así las
@@ -1100,3 +1103,4 @@ Qué cambia cada plan:
 | Fecha | Cambio | Motivo | Aprobó |
 |---|---|---|---|
 | 2026-09-29 | DT-7, §6.3 (`requestReset`), §7 y §7b: la rama D-15 deja de consultar y de gastar el límite de 001; desaparece `kind: 'verification_suppressed'`. CA-20 de la spec: el enlace vence «con 1 hora o más» (SEC-4, sin cambio de código) | Auditoría de seguridad T-67, SEC-1 | — (orquestador; pendiente de Adrián en el PR) |
+| 2026-10-05 | §6.3 (`changePassword`) y §6.4: `IAttemptLockout.reserveAttempt` cuenta el intento del cambio de contraseña antes de verificarlo (atómico); la actual correcta lo libera con `clear`, que ya no va después del commit. CA-23 sin cambios | Review 002 I-1 / SEC-1: el `check` previo era *check-then-act* y una ráfaga concurrente probaba más de 5 contraseñas | — (orquestador; pendiente de Adrián en el PR) |

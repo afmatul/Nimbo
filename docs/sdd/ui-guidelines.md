@@ -216,7 +216,7 @@ móvil a 600 px; la implementación usa `sm`, 640 px, y no es una diferencia que
 | `EmptyState` / `ErrorState` | Estados de pantalla | El error muestra la acción correctiva que envía la API (RNF-14) |
 | `ReadOnlyBanner` | Suscripción vencida (RF-23) | Visible en todas las vistas de escritura, con enlace a renovar |
 | `Alert` (`components/ui/alert.tsx`) | Avisos dentro de la página, arriba del contenido al que se refieren | Tres variantes con tokens: `info` (`border-border bg-card text-foreground`, `role="status"`), `error` (`border-destructive bg-card text-destructive`, `role="alert"`) y **`warning`** (ver abajo). Con ícono; un botón «Cerrar aviso» si no es persistente. Un límite alcanzado no es un error: usa `warning` y no `error` |
-| `ConfirmDestructiveDialog` | Eliminar definitivamente, revocar accesos | Botón `destructive`, texto explícito de la consecuencia |
+| `ConfirmDestructiveDialog` | Eliminar definitivamente, revocar accesos, cerrar sesiones (002 CA-14) | Compuesto sobre `AlertDialog` (`components/ui/alert-dialog.tsx`): `role="alertdialog"` con título y descripción, foco inicial en «Cancelar», Escape cancela. Botón `destructive`, texto explícito de la consecuencia; a 360 px los botones se apilan con el destructivo arriba. Con `pending`, ambos botones deshabilitados, el de confirmar con indicador y `pendingLabel`, y Escape no cierra. **Velo**: el del `AlertDialog` (`bg-foreground/40`), sin token nuevo, por decisión de Adrián (PD-27, 2026-10-04) |
 | `ParticipantAvatar` / `PresenceStack` | Presencia en edición (RF-26) e historial (RF-29) | Color de la secuencia de 8 como **anillo**; iniciales en `text-foreground` sobre `bg-card`; nombre en tooltip y para lectores de pantalla |
 | `VersionTimeline` | Historial con autoría (RF-29) | Fecha, participantes, variación de tamaño, origen (carga/edición/restauración/optimización), botón restaurar |
 | `AccessList` | Accesos vigentes (RF-18) | Nivel en texto; revocar con confirmación |
@@ -305,7 +305,7 @@ identificador.
 | Historial de versiones con autoría | editing | 014, 016 | `mockups/storage/ficha-archivo/` (misma pantalla) | `capturas/storage/ficha-archivo/` | default, restaurando | Borrador (cubierto por ficha-archivo) |
 | Panel del agente | intelligence | 020 | `mockups/intelligence/panel-agente/` | `capturas/intelligence/panel-agente/` | vacio, respondiendo, con-citas, cita-incierta, limite-alcanzado | Borrador (con-citas) |
 | Optimizador | optimizer | 021 | `mockups/optimizer/optimizador/` | `capturas/optimizer/optimizador/` | estimacion, no-conviene, procesando, completado | Borrador (estimacion) |
-| Mi bitácora de auditoría | backoffice | 004 | `mockups/backoffice/mi-auditoria/` | … | default, vacio | Pendiente |
+| Mi actividad (bitácora de auditoría del cliente; entrada en el menú de la cuenta) | audit | 004 | `mockups/audit/mi-actividad/` | `capturas/audit/mi-actividad/` | default, cargando, vacio, vacio-filtros, error, fin-de-lista | Borrador (default, cargando, vacio, vacio-filtros, error, filtrado, rango-invalido, cargando-mas, cargar-mas-error, fin-de-lista, menu-cuenta-abierto) |
 | Admin: cuentas y catálogo | backoffice | 011 | `mockups/backoffice/admin/` | `capturas/backoffice/admin/` | default | Borrador (default, vista de cuentas) |
 | Soporte: metadatos y operaciones | backoffice | 011 | `mockups/backoffice/soporte/` | … | default (sin contenido de archivos) | Pendiente |
 | Operador: estado y colas | backoffice | 022 | `mockups/backoffice/operacion/` | … | sano, con-fallos | Pendiente |

@@ -6,6 +6,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import { AppLayout } from './app-layout';
+import { HeaderAccountProvider } from './header-account';
 import { useSidebarSlot } from './sidebar-slot';
 
 /** Marca estática del layout como documento, para consultar su estructura (jsdom no mide layout). */
@@ -385,5 +386,19 @@ describe('AppLayout component (CA-5)', () => {
     );
 
     expect(markup).toMatch(/<section[^>]*aria-label="Avisos"[^>]*aria-live="polite"/);
+  });
+
+  it('CA-14: con sesión, la cabecera muestra el menú de la cuenta en lugar del correo', () => {
+    const doc = parse(
+      <HeaderAccountProvider account={<button type="button">Menú de la cuenta</button>}>
+        <AppLayout userEmail="ana@ejemplo.com">
+          <div>Contenido</div>
+        </AppLayout>
+      </HeaderAccountProvider>,
+    );
+
+    const header = doc.querySelector('header');
+    expect(header?.textContent).toContain('Menú de la cuenta');
+    expect(header?.textContent).not.toContain('ana@ejemplo.com');
   });
 });

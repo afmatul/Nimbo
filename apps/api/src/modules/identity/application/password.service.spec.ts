@@ -3,9 +3,13 @@ import { createHash, randomUUID } from 'node:crypto';
 import {
   EMAIL_REQUEST_COOLDOWN_SECONDS,
   EMAIL_REQUESTS_PER_HOUR,
+  PASSWORD_CHANGE_LOCK_MINUTES,
+  PASSWORD_CHANGE_MAX_FAILURES,
+  PASSWORD_CHANGE_WINDOW_MINUTES,
   RESET_LINK_TTL_MINUTES,
 } from '@nimbo/contracts';
 
+import { createActor } from '../../../shared';
 import type { RateLimitDecision } from '../../../shared';
 import { FixedClock } from '../../../shared/domain/fixed.clock';
 import { Role } from '../../../shared/domain/role.enum';
@@ -15,8 +19,10 @@ import { EmailAddress } from '../domain/email-address.vo';
 import {
   IdentityTooManyRequestsError,
   IdentityWeakPasswordError,
+  PasswordChangeLockedError,
   ResetLinkExpiredError,
   ResetLinkInvalidError,
+  WrongPasswordError,
 } from '../domain/errors';
 import { InternalUser } from '../domain/internal-user.entity';
 import { OpaqueToken } from '../domain/opaque-token.vo';
@@ -25,7 +31,12 @@ import { Session } from '../domain/session.entity';
 import type { User } from '../domain/user.entity';
 
 import { PasswordService } from './password.service';
-import type { IAttemptLockout, LockoutPolicy, LockState } from './ports/i-attempt-lockout.port';
+import type {
+  AttemptReservation,
+  IAttemptLockout,
+  LockoutPolicy,
+  LockState,
+} from './ports/i-attempt-lockout.port';
 import type { IPasswordHasher } from './ports/i-password-hasher.port';
 import { aClientUser } from './testing/client-user.builder';
 import { InMemorySessionRepository } from './testing/in-memory-session.repository';
@@ -41,6 +52,7 @@ const SECONDS_PER_HOUR = 3600;
 const NEW_PASSWORD = 'Otra-Clave-Segura-2026';
 const ALLOWED: RateLimitDecision = { allowed: true };
 const UNLOCKED: LockState = { locked: false };
+const RESERVED: AttemptReservation = { allowed: true, engagedLock: false };
 const RESET_TAG = 'identity.password-reset';
 const CHANGED_TAG = 'identity.password-changed';
 const VERIFICATION_TAG = 'identity.verification';
@@ -88,6 +100,7 @@ const setup = () => {
   const lockout: jest.Mocked<IAttemptLockout> = {
     check: jest.fn((_key: string) => Promise.resolve(UNLOCKED)),
     recordFailure: jest.fn((_key: string, _policy: LockoutPolicy) => Promise.resolve(UNLOCKED)),
+    reserveAttempt: jest.fn((_key: string, _policy: LockoutPolicy) => Promise.resolve(RESERVED)),
     clear: jest.fn((key: string) => {
       timeline.push(`clear:${key}`);
       return Promise.resolve();
@@ -527,6 +540,193 @@ describe('PasswordService.resetPassword (plan 002 §6.3, CA-19 a CA-21)', () => 
     const value = await requestLinkFor(ctx, internal);
 
     await ctx.service.resetPassword({ token: value, password: NEW_PASSWORD });
+
+    const updated = await ctx.users.findById(internal.id);
+    expect(updated).toBeInstanceOf(InternalUser);
+    expect(updated?.passwordHash.reveal()).toBe(`fake$${NEW_PASSWORD}`);
+  });
+});
+
+describe('PasswordService.changePassword (plan 002 §6.3, CA-22, CA-23)', () => {
+  const SECONDS_PER_MINUTE = 60;
+  const CHANGE_POLICY: LockoutPolicy = {
+    maxFailures: PASSWORD_CHANGE_MAX_FAILURES,
+    windowSeconds: PASSWORD_CHANGE_WINDOW_MINUTES * SECONDS_PER_MINUTE,
+    lockSeconds: PASSWORD_CHANGE_LOCK_MINUTES * SECONDS_PER_MINUTE,
+  };
+  const CURRENT_PASSWORD = 'Nimbo-Seguro-2026';
+  const changeKey = (userId: string): string => `identity:lockout:password-change:${userId}`;
+  const command = { currentPassword: CURRENT_PASSWORD, newPassword: NEW_PASSWORD };
+
+  /** Cliente con la sesión actual y otras dos abiertas en otros navegadores; la contraseña actual es correcta. */
+  const signedIn = async () => {
+    const ctx = setup();
+    ctx.hasher.verify.mockResolvedValue(true);
+    const current = await openSessionFor(ctx.sessions, ctx.user.id);
+    const others = [
+      await openSessionFor(ctx.sessions, ctx.user.id),
+      await openSessionFor(ctx.sessions, ctx.user.id),
+    ];
+    return { ...ctx, actor: createActor(ctx.user.id, Role.CLIENT), current, others };
+  };
+
+  type SignedIn = Awaited<ReturnType<typeof signedIn>>;
+
+  /** Nada cambió: mismo hash, ninguna sesión revocada ni correo. */
+  const expectNothingChanged = async (ctx: SignedIn): Promise<void> => {
+    expect(ctx.hasher.hash).not.toHaveBeenCalled();
+    expect((await ctx.users.findById(ctx.user.id))?.passwordHash).toBe(ctx.user.passwordHash);
+    expect(ctx.sessions.all().map((session) => session.revocadaEn)).toEqual([null, null, null]);
+    expect(ctx.sent).toEqual([]);
+  };
+
+  it('CA-23: bloqueado → `PasswordChangeLockedError` con los segundos que faltan aunque la actual sea correcta', async () => {
+    const ctx = await signedIn();
+    ctx.lockout.reserveAttempt.mockResolvedValueOnce({ allowed: false, retryAfterSeconds: 600 });
+
+    const attempt = ctx.service.changePassword(ctx.actor, ctx.current.id, command);
+
+    await expect(attempt).rejects.toBeInstanceOf(PasswordChangeLockedError);
+    await expect(attempt).rejects.toMatchObject({ retryAfterSeconds: 600 });
+    expect(ctx.lockout.reserveAttempt).toHaveBeenCalledWith(changeKey(ctx.user.id), CHANGE_POLICY);
+    expect(ctx.hasher.verify).not.toHaveBeenCalled();
+    expect(ctx.lockout.clear).not.toHaveBeenCalled();
+    await expectNothingChanged(ctx);
+    expect(loggedEvents(ctx.logger)).toEqual([
+      { event: 'identity.password_change.rejected', reason: 'locked', userId: ctx.user.id },
+    ]);
+  });
+
+  it('CA-23, I-1: actual incorrecta → el intento se reservó como fallo antes de verificar, no se libera y `WrongPasswordError`; nada cambia', async () => {
+    const ctx = await signedIn();
+    ctx.hasher.verify.mockResolvedValue(false);
+
+    await expect(
+      ctx.service.changePassword(ctx.actor, ctx.current.id, command),
+    ).rejects.toBeInstanceOf(WrongPasswordError);
+
+    expect(ctx.lockout.reserveAttempt).toHaveBeenCalledWith(changeKey(ctx.user.id), CHANGE_POLICY);
+    expect(ctx.lockout.reserveAttempt.mock.invocationCallOrder[0]).toBeLessThan(
+      ctx.hasher.verify.mock.invocationCallOrder[0] ?? 0,
+    );
+    expect(ctx.hasher.verify).toHaveBeenCalledWith(ctx.user.passwordHash, CURRENT_PASSWORD);
+    expect(ctx.lockout.recordFailure).not.toHaveBeenCalled();
+    expect(ctx.lockout.clear).not.toHaveBeenCalled();
+    await expectNothingChanged(ctx);
+    expect(loggedEvents(ctx.logger)).toEqual([
+      { event: 'identity.password_change.rejected', reason: 'wrong_password', userId: ctx.user.id },
+    ]);
+  });
+
+  it('CA-23: el fallo que activa el bloqueo todavía responde `WrongPasswordError` y registra `lockout.engaged`', async () => {
+    const ctx = await signedIn();
+    ctx.hasher.verify.mockResolvedValue(false);
+    ctx.lockout.reserveAttempt.mockResolvedValueOnce({ allowed: true, engagedLock: true });
+
+    await expect(
+      ctx.service.changePassword(ctx.actor, ctx.current.id, command),
+    ).rejects.toBeInstanceOf(WrongPasswordError);
+
+    expect(ctx.logger.warn).toHaveBeenCalledWith({
+      event: 'identity.lockout.engaged',
+      scope: 'password_change',
+      userId: ctx.user.id,
+    });
+  });
+
+  it.each([
+    ['vacía', '', 'PASSWORD_TOO_SHORT'],
+    ['débil', 'corta', 'PASSWORD_MISSING_UPPERCASE'],
+    ['igual a la parte local del correo', 'ANA', 'PASSWORD_EQUALS_EMAIL'],
+  ])(
+    'CA-22: nueva %s → `IdentityWeakPasswordError` sobre `newPassword`, libera la reserva, sin hash y nada cambia',
+    async (_case, newPassword, reason) => {
+      const ctx = await signedIn();
+
+      const attempt = ctx.service.changePassword(ctx.actor, ctx.current.id, {
+        currentPassword: CURRENT_PASSWORD,
+        newPassword,
+      });
+
+      await expect(attempt).rejects.toBeInstanceOf(IdentityWeakPasswordError);
+      const error = (await attempt.catch((caught: unknown) => caught)) as IdentityWeakPasswordError;
+      expect(error.fields?.every((issue) => issue.field === 'newPassword')).toBe(true);
+      expect(error.fields?.map((issue) => issue.reason)).toContain(reason);
+      expect(ctx.lockout.clear).toHaveBeenCalledWith(changeKey(ctx.user.id));
+      await expectNothingChanged(ctx);
+      expect(loggedEvents(ctx.logger)).toEqual([
+        { event: 'identity.password_change.rejected', reason: 'weak', userId: ctx.user.id },
+      ]);
+    },
+  );
+
+  it('CA-22: cambia el hash (calculado fuera de la transacción) y revoca las otras sesiones, nunca la actual', async () => {
+    const ctx = await signedIn();
+
+    await expect(
+      ctx.service.changePassword(ctx.actor, ctx.current.id, command),
+    ).resolves.toBeUndefined();
+
+    expect((await ctx.users.findById(ctx.user.id))?.passwordHash.reveal()).toBe(
+      `fake$${NEW_PASSWORD}`,
+    );
+    expect((await ctx.sessions.findByIdForUpdate(ctx.current.id))?.revocadaEn).toBeNull();
+    for (const session of ctx.others) {
+      expect((await ctx.sessions.findByIdForUpdate(session.id))?.revocadaEn).toEqual(NOW);
+    }
+    expect(ctx.timeline.indexOf('hash')).toBeLessThan(ctx.timeline.indexOf('commit'));
+  });
+
+  it('CA-22, I-1: la actual correcta libera la reserva antes del hash; después del commit registra y avisa «Tu contraseña cambió»', async () => {
+    const ctx = await signedIn();
+
+    await ctx.service.changePassword(ctx.actor, ctx.current.id, command);
+
+    expect(ctx.timeline).toEqual([
+      `clear:${changeKey(ctx.user.id)}`,
+      'hash',
+      'commit',
+      `mail:${CHANGED_TAG}`,
+    ]);
+    expect(ctx.sent).toHaveLength(1);
+    expect(ctx.sent[0]).toMatchObject({
+      to: ctx.user.email.value,
+      subject: 'Tu contraseña de Nimbo cambió',
+      tag: CHANGED_TAG,
+      recipientId: ctx.user.id,
+    });
+    expect(ctx.sent[0]?.idempotencyKey).toMatch(new RegExp(`^${CHANGED_TAG}\\.[0-9a-f-]{36}$`));
+    expect(loggedEvents(ctx.logger)).toEqual([
+      {
+        event: 'identity.session.revoked',
+        userId: ctx.user.id,
+        reason: 'password_change',
+        count: 2,
+      },
+      { event: 'identity.password.changed', userId: ctx.user.id, revokedCount: 2 },
+    ]);
+  });
+
+  it('CA-22: sin otras sesiones no registra revocaciones y `revokedCount` es 0', async () => {
+    const ctx = setup();
+    ctx.hasher.verify.mockResolvedValue(true);
+    const current = await openSessionFor(ctx.sessions, ctx.user.id);
+
+    await ctx.service.changePassword(createActor(ctx.user.id, Role.CLIENT), current.id, command);
+
+    expect(loggedEvents(ctx.logger)).toEqual([
+      { event: 'identity.password.changed', userId: ctx.user.id, revokedCount: 0 },
+    ]);
+  });
+
+  it('CA-22: un rol interno también cambia la suya', async () => {
+    const ctx = setup();
+    ctx.hasher.verify.mockResolvedValue(true);
+    const internal = anInternalUser();
+    ctx.users.seed(internal);
+    const current = await openSessionFor(ctx.sessions, internal.id);
+
+    await ctx.service.changePassword(createActor(internal.id, Role.SUPPORT), current.id, command);
 
     const updated = await ctx.users.findById(internal.id);
     expect(updated).toBeInstanceOf(InternalUser);

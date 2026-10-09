@@ -1,17 +1,27 @@
+import { randomUUID } from 'node:crypto';
+
 import {
   ACCESS_TOKEN_TTL_SECONDS,
   REFRESH_ROTATION_GRACE_SECONDS,
   SESSION_IDLE_TIMEOUT_DAYS,
+  SESSION_LIST_MAX_ITEMS,
   SESSION_MAX_LIFETIME_DAYS,
+  sessionSummarySchema,
 } from '@nimbo/contracts';
 
+import { createActor } from '../../../shared/domain/actor';
 import { FixedClock } from '../../../shared/domain/fixed.clock';
 import { Role } from '../../../shared/domain/role.enum';
 import type { MailMessage } from '../../notifications';
-import { RefreshInvalidError, SessionExpiredError, SessionRevokedError } from '../domain/errors';
+import {
+  RefreshInvalidError,
+  SessionExpiredError,
+  SessionNotFoundError,
+  SessionRevokedError,
+} from '../domain/errors';
 import { OpaqueToken } from '../domain/opaque-token.vo';
 import { RefreshToken } from '../domain/refresh-token.vo';
-import type { Session } from '../domain/session.entity';
+import { Session } from '../domain/session.entity';
 
 import type { ClientContext } from './client-context';
 import type { IssueAccessTokenInput } from './ports/i-token-service.port';
@@ -235,6 +245,13 @@ const rotateStored = async (ctx: Setup, sessionId: string, at: Date): Promise<st
   return next.value;
 };
 
+/** Línea `identity.session.revoked` del dueño de la prueba (plan §7). */
+const revokedBy = (ctx: Setup, fields: Record<string, unknown>) => ({
+  event: 'identity.session.revoked',
+  userId: ctx.user.id,
+  ...fields,
+});
+
 const rejection = (reason: string, sessionId?: string) => ({
   event: 'identity.session.refresh_rejected',
   reason,
@@ -389,6 +406,9 @@ describe('SessionService.refresh: rotación, reúso y cuenta suspendida (plan 00
       userId: ctx.user.id,
       sessionId: opened.sessionId,
     });
+    expect(ctx.logger.info).toHaveBeenCalledWith(
+      revokedBy(ctx, { sessionId: opened.sessionId, reason: 'reuse', count: 1 }),
+    );
     expect(ctx.tokens.issueAccessToken).not.toHaveBeenCalled();
   });
 
@@ -415,17 +435,15 @@ describe('SessionService.refresh: rotación, reúso y cuenta suspendida (plan 00
     expect(ctx.timeline).toEqual(['commit']);
     expect(ctx.sent).toHaveLength(0);
     expect(loggedEvents(ctx.logger)).toContainEqual(rejection('suspended', opened.sessionId));
+    expect(loggedEvents(ctx.logger)).toContainEqual(
+      revokedBy(ctx, { sessionId: opened.sessionId, reason: 'suspended', count: 1 }),
+    );
   });
 });
 
 describe('SessionService.logout (plan 002 §6.3)', () => {
-  const revokedLog = (ctx: Setup, sessionId: string) => ({
-    event: 'identity.session.revoked',
-    userId: ctx.user.id,
-    sessionId,
-    reason: 'logout',
-    count: 1,
-  });
+  const revokedLog = (ctx: Setup, sessionId: string) =>
+    revokedBy(ctx, { sessionId, reason: 'logout', count: 1 });
 
   it('CA-14: con el token vigente revoca la sesión', async () => {
     const ctx = setup();
@@ -467,5 +485,151 @@ describe('SessionService.logout (plan 002 §6.3)', () => {
     expect(ctx.sent).toHaveLength(0);
     expect(ctx.logger.info).not.toHaveBeenCalled();
     expect(ctx.logger.warn).not.toHaveBeenCalled();
+  });
+});
+
+const OTHER_USER_ID = '5b0e7c2d-9a41-4c6e-8f3b-2d1a0e9c8b7a';
+const CHROME_WINDOWS =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36';
+const SAFARI_IPHONE =
+  'Mozilla/5.0 (iPhone; CPU iPhone OS 17_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.6 Mobile/15E148 Safari/604.1';
+
+interface SeededSession {
+  readonly userId: string;
+  readonly userAgent: string;
+  /** Minutos antes de `NOW` del último uso. */
+  readonly idleMinutes: number;
+}
+
+/** Deja una sesión abierta hace un día y usada por última vez `idleMinutes` antes de `NOW`. */
+const seedSession = (ctx: Setup, seeded: SeededSession): Session => {
+  const opened = Session.open({
+    id: randomUUID(),
+    userId: seeded.userId,
+    deviceId: randomUUID(),
+    secretHash: RefreshToken.issue(randomUUID()).secretHash,
+    now: new Date(NOW.getTime() - MS_PER_DAY),
+    maxLifetime: MAX_LIFETIME_MS,
+  });
+  const session = opened.rotate(
+    RefreshToken.issue(opened.id).secretHash,
+    new Date(NOW.getTime() - seeded.idleMinutes * 60_000),
+  );
+  ctx.sessions.seed(session, seeded.userAgent);
+  return session;
+};
+
+const actorOf = (ctx: Setup) => createActor(ctx.user.id, ctx.user.role);
+
+describe('SessionService.list (plan 002 §6.3)', () => {
+  const seedThree = (ctx: Setup) => ({
+    older: seedSession(ctx, { userId: ctx.user.id, userAgent: CHROME_WINDOWS, idleMinutes: 90 }),
+    current: seedSession(ctx, { userId: ctx.user.id, userAgent: FIREFOX_LINUX, idleMinutes: 60 }),
+    newer: seedSession(ctx, { userId: ctx.user.id, userAgent: SAFARI_IPHONE, idleMinutes: 5 }),
+  });
+
+  it('CA-11: consulta las activas del actor con el corte de inactividad y el máximo de la lista', async () => {
+    const ctx = setup();
+    const listActive = jest.spyOn(ctx.sessions, 'listActive');
+
+    await ctx.service.list(actorOf(ctx), UNKNOWN_SESSION_ID);
+
+    expect(listActive).toHaveBeenCalledWith(
+      ctx.user.id,
+      NOW,
+      new Date(NOW.getTime() - IDLE_MS),
+      SESSION_LIST_MAX_ITEMS,
+    );
+  });
+
+  it('CA-11: la actual primero y marcada; las demás por última actividad descendente', async () => {
+    const ctx = setup();
+    const { older, current, newer } = seedThree(ctx);
+
+    const items = await ctx.service.list(actorOf(ctx), current.id);
+
+    expect(items.map((item) => [item.id, item.current])).toEqual([
+      [current.id, true],
+      [newer.id, false],
+      [older.id, false],
+    ]);
+  });
+
+  it('CA-11: resume el agente y no expone IP, agente completo, hashes ni dispositivo', async () => {
+    const ctx = setup();
+    const { current, newer } = seedThree(ctx);
+    seedSession(ctx, { userId: OTHER_USER_ID, userAgent: CHROME_WINDOWS, idleMinutes: 1 });
+
+    const items = await ctx.service.list(actorOf(ctx), current.id);
+
+    expect(items).toHaveLength(3);
+    items.forEach((item) => expect(sessionSummarySchema.parse(item)).toEqual(item));
+    expect(items[1]).toEqual({
+      id: newer.id,
+      browser: 'Safari',
+      os: 'iOS',
+      deviceKind: 'mobile',
+      startedAt: newer.creadaEn.toISOString(),
+      lastActiveAt: newer.ultimoUso.toISOString(),
+      current: false,
+    });
+    const serialized = JSON.stringify(items);
+    expect(serialized).not.toContain(newer.deviceId);
+    expect(serialized).not.toContain(newer.refreshHash);
+    expect(serialized).not.toContain('Mozilla');
+  });
+});
+
+describe('SessionService.revoke y revokeOthers (plan 002 §6.3)', () => {
+  it('CA-12: ajena, inexistente o ya revocada dan el mismo `SessionNotFoundError` y no cambian nada', async () => {
+    const ctx = setup();
+    const foreign = seedSession(ctx, { userId: OTHER_USER_ID, userAgent: '', idleMinutes: 1 });
+    const own = seedSession(ctx, { userId: ctx.user.id, userAgent: '', idleMinutes: 1 });
+    await ctx.sessions.update(own.revoke(new Date(NOW.getTime() - 60_000)));
+    const before = ctx.sessions.all();
+
+    for (const id of [foreign.id, UNKNOWN_SESSION_ID, own.id]) {
+      await expect(ctx.service.revoke(actorOf(ctx), id, UNKNOWN_SESSION_ID)).rejects.toBeInstanceOf(
+        SessionNotFoundError,
+      );
+    }
+
+    expect(ctx.sessions.all()).toEqual(before);
+    expect(ctx.logger.info).not.toHaveBeenCalled();
+  });
+
+  it('CA-12: cierra una sesión propia, avisa si era la actual y lo registra', async () => {
+    const ctx = setup();
+    const current = seedSession(ctx, { userId: ctx.user.id, userAgent: '', idleMinutes: 1 });
+    const other = seedSession(ctx, { userId: ctx.user.id, userAgent: '', idleMinutes: 2 });
+
+    const closedOther = await ctx.service.revoke(actorOf(ctx), other.id, current.id);
+    const closedCurrent = await ctx.service.revoke(actorOf(ctx), current.id, current.id);
+
+    expect(closedOther).toEqual({ wasCurrent: false });
+    expect(closedCurrent).toEqual({ wasCurrent: true });
+    expect(stored(ctx, other.id).revocadaEn).toEqual(NOW);
+    expect(stored(ctx, current.id).revocadaEn).toEqual(NOW);
+    expect(loggedEvents(ctx.logger)).toEqual([
+      revokedBy(ctx, { sessionId: other.id, reason: 'user', count: 1 }),
+      revokedBy(ctx, { sessionId: current.id, reason: 'user', count: 1 }),
+    ]);
+  });
+
+  it('CA-13: `revokeOthers` cierra las demás del actor, conserva la actual y devuelve cuántas', async () => {
+    const ctx = setup();
+    const current = seedSession(ctx, { userId: ctx.user.id, userAgent: '', idleMinutes: 1 });
+    const others = [2, 3, 4].map((idleMinutes) =>
+      seedSession(ctx, { userId: ctx.user.id, userAgent: '', idleMinutes }),
+    );
+    const foreign = seedSession(ctx, { userId: OTHER_USER_ID, userAgent: '', idleMinutes: 1 });
+
+    const revokedCount = await ctx.service.revokeOthers(actorOf(ctx), current.id);
+
+    expect(revokedCount).toBe(3);
+    others.forEach((session) => expect(stored(ctx, session.id).revocadaEn).toEqual(NOW));
+    expect(stored(ctx, current.id).revocadaEn).toBeNull();
+    expect(stored(ctx, foreign.id).revocadaEn).toBeNull();
+    expect(loggedEvents(ctx.logger)).toEqual([revokedBy(ctx, { reason: 'others', count: 3 })]);
   });
 });

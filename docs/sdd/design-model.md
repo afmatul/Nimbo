@@ -125,13 +125,13 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
 - Tablas: `comparticion`, `enlace_publico`, `intento_acceso`.
 
 ### M4 `billing`
-- Controladores: `PlansController` (`GET /api/v1/billing/plans`, público; spec 008, DF-64); `SubscriptionController` (subscribe, renew, changePlan, history, invoice). `listPlans` y `comparePlans` no se crean: el catálogo es una sola lectura y la comparación se arma en `web`.
+- Controladores: `PlansController` (`GET /api/v1/billing/plans`, público; spec 008, DF-67); `SubscriptionController` (subscribe, renew, changePlan, history, invoice). `listPlans` y `comparePlans` no se crean: el catálogo es una sola lectura y la comparación se arma en `web`.
 - Servicios: `PlanCatalogService` (`list()`, solo lectura del catálogo; spec 008), `SubscriptionService`, `PaymentService`; job `RenewalScheduler` (`@Cron`, usa `IClock`).
 - Puertos → implementaciones: `IPaymentGateway` → `SimulatedPaymentGateway` (failureRate, latencyMs); `IInvoiceGenerator` → `PdfInvoiceGenerator`; `IPlanRepository` → `TypeOrmPlanRepository` (interno de `billing`, spec 008, Art. V.2(b)); repos.
 - Puertos que consume: `INotifier` (lo declara e implementa T4 `notifications`).
 - Eventos que consume (ADR-0019): `identity.client-account-verified` → crea la suscripción Personal (001 D-4). El oyente es idempotente y se acompaña de una conciliación de las cuentas verificadas sin suscripción. Lo implementa la 009 (PD-40, 2026-09-29); la 006a no lo hace.
 - Dominio: `Plan` con `PlanLimits` (value object); `Subscription` (pendingPlanId, isReadOnly, scheduleChange, applyPendingChange); `Payment`; `Invoice`; `Money`.
-- Implementa hacia fuera: `IPlanLimitsProvider` (declarado por `storage`, DF-51 opción A; lo usan M2 y M5; se importa de `storage/index.ts`) e `IAgentQuota` (M6, lo declara `billing`) → DF-27. El `PlanLimits` de dominio de `Plan` es distinto del tipo `PlanLimits` de `storage`: se mapea al implementar el puerto. El catálogo público (008) no pasa por este puerto: `PlanCatalogService` lee `plan` por `IPlanRepository` (DF-64).
+- Implementa hacia fuera: `IPlanLimitsProvider` (declarado por `storage`, DF-51 opción A; lo usan M2 y M5; se importa de `storage/index.ts`) e `IAgentQuota` (M6, lo declara `billing`) → DF-27. El `PlanLimits` de dominio de `Plan` es distinto del tipo `PlanLimits` de `storage`: se mapea al implementar el puerto. El catálogo público (008) no pasa por este puerto: `PlanCatalogService` lee `plan` por `IPlanRepository` (DF-67).
 - Tablas: `plan`, `suscripcion`, `transaccion`, `factura`.
 
 ### M5 `editing`
@@ -190,8 +190,10 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
 - Tablas: ninguna de negocio; tabla de control `migracion` (TypeORM).
 
 ### T2 `audit`
-- `AuditService` (record, listForUser), `AuditEntry` (actorId, actorRole, targetUserId, action, resourceId, occurredAt, `isVisibleTo`). Implementa `IAuditLogger` (llega con 004).
-- Con 005 (004 llega después): módulo mínimo con `IAuditLogger` (`record(entry: AuditRecord)`, donde `AuditRecord = { action: AuditAction; actor: Actor; targetUserId; resourceId?; attributes? }`, de mejor esfuerzo y posterior al commit), su token `I_AUDIT_LOGGER`, el catálogo cerrado `AuditAction` y el adaptador provisional `LogAuditLogger` (Pino, `redactDeep`; `occurredAt` y `correlationId` los pone el adaptador). 004 cambia el binding a `AuditService` sin tocar a los consumidores. `audit/index.ts` no exporta el adaptador (DF-60).
+- `AuditEntry` (id, action, actorId nullable, actorRole, targetUserId, resourceType, resourceId, attributes, occurredAt, correlationId), **sin** `isVisibleTo`: la visibilidad es la consulta con `usuario_afectado_id = actor.id` más RLS (DF-64, Art. IX.2). El catálogo cerrado `AuditAction`/`AUDIT_CATALOG` declara por acción el tipo de recurso y los atributos permitidos; `sanitizeAttributes` descarta los demás.
+- `AuditService` implementa `IAuditLogger` (token `I_AUDIT_LOGGER`): `record(entry: AuditRecord)` de mejor esfuerzo y posterior al commit (005, 006; nunca lanza), `recordInTransaction(entry)` síncrona, que lanza y se une a la transacción del llamador (011, D-5), y `listForUser(actor, query)`; ambas escrituras delegan en un `append` privado. `AuditRecord = { action: AuditAction; actor: Actor; targetUserId; resourceId?; attributes? }`.
+- Puerto interno `IAuditRepository` (`insert(actor, entry)`, `listForTarget`) → `TypeOrmAuditRepository`, dentro de `audit` (no lo exporta `index.ts`).
+- Presentación: `AuditController` con `GET /audit/my-events` (DF-15) en `AuditHttpModule`, que carga solo `api`; el `worker` carga `AuditModule` sin rutas. `LogAuditLogger` (adaptador provisional de 005) se retiró con 004 (DF-64).
 - Tabla: `evento_auditoria` (004).
 
 ### T3 `realtime`

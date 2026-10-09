@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | En curso (plan y plan §9 aprobados por Adrián; CA-1 a CA-25 implementados; CA-26 a CA-28 en implementación en `feat/006-carpetas-y-papelera`) |
+| Estado | Hecha (2026-10-07): integrada en `main` (e766e3f), revisión ✅ (I-7 cerrado en `CLAUDE.md`), recorridos T-11 y T-17 de Adrián |
 | Dueño | Adrián (1) |
 | Fase | 1 |
 | Requisitos | RF-10, RF-11 (principales); aplican RF-07, RF-12 (parcial), RNF-05, RNF-13, RNF-14, RNF-17 |

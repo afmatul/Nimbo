@@ -1,10 +1,22 @@
 import { createHash } from 'node:crypto';
 
-import { EMAIL_REQUEST_COOLDOWN_SECONDS, EMAIL_REQUESTS_PER_HOUR } from '@nimbo/contracts';
+import {
+  EMAIL_REQUEST_COOLDOWN_SECONDS,
+  EMAIL_REQUESTS_PER_HOUR,
+  LOGIN_FAILURE_WINDOW_MINUTES,
+  LOGIN_LOCK_MINUTES,
+  LOGIN_MAX_FAILURES,
+  PASSWORD_CHANGE_LOCK_MINUTES,
+  PASSWORD_CHANGE_MAX_FAILURES,
+  PASSWORD_CHANGE_WINDOW_MINUTES,
+} from '@nimbo/contracts';
 
 import type { RateLimitRule } from '../../../shared';
 import type { EmailAddress } from '../domain/email-address.vo';
 
+import type { LockoutPolicy } from './ports/i-attempt-lockout.port';
+
+const SECONDS_PER_MINUTE = 60;
 const SECONDS_PER_HOUR = 3600;
 
 /**
@@ -15,6 +27,20 @@ export const EMAIL_REQUEST_RULES: readonly RateLimitRule[] = [
   { limit: 1, windowSeconds: EMAIL_REQUEST_COOLDOWN_SECONDS },
   { limit: EMAIL_REQUESTS_PER_HOUR, windowSeconds: SECONDS_PER_HOUR },
 ];
+
+/** 002 D-5: 5 fallos por correo normalizado en 15 min bloquean el inicio de sesión 15 min, exista o no la cuenta. */
+export const LOGIN_LOCKOUT_POLICY: LockoutPolicy = {
+  maxFailures: LOGIN_MAX_FAILURES,
+  windowSeconds: LOGIN_FAILURE_WINDOW_MINUTES * SECONDS_PER_MINUTE,
+  lockSeconds: LOGIN_LOCK_MINUTES * SECONDS_PER_MINUTE,
+};
+
+/** 002 D-7: 5 contraseñas actuales incorrectas en 15 min bloquean el cambio 15 min, sin cerrar la sesión. */
+export const PASSWORD_CHANGE_LOCKOUT_POLICY: LockoutPolicy = {
+  maxFailures: PASSWORD_CHANGE_MAX_FAILURES,
+  windowSeconds: PASSWORD_CHANGE_WINDOW_MINUTES * SECONDS_PER_MINUTE,
+  lockSeconds: PASSWORD_CHANGE_LOCK_MINUTES * SECONDS_PER_MINUTE,
+};
 
 const sha256Of = (email: EmailAddress): string =>
   createHash('sha256').update(email.value).digest('hex');

@@ -33,6 +33,14 @@ describe('Alert', () => {
     expect(renderToStaticMarkup(<Alert variant="error">x</Alert>)).toContain('bg-card');
   });
 
+  it('anuncia un éxito con role status y tokens de éxito', () => {
+    const markup = renderToStaticMarkup(<Alert variant="success">Listo.</Alert>);
+    expect(markup).toContain('role="status"');
+    expect(markup).toContain('border-success');
+    expect(markup).toContain('bg-success/10');
+    expect(markup).toContain('text-foreground');
+  });
+
   it('no tiene violaciones de accesibilidad', async () => {
     await expectNoA11yViolations(
       <div>
@@ -40,6 +48,7 @@ describe('Alert', () => {
         <Alert>Revisa tu correo.</Alert>
         <Alert variant="warning">Espera un momento.</Alert>
         <Alert variant="critical">Espacio casi agotado.</Alert>
+        <Alert variant="success">Listo.</Alert>
       </div>,
     );
   });

@@ -22,7 +22,7 @@ import { FakePlanLimitsProvider } from '../../support/fake-plan-limits.provider'
 import { PROBE_CLOCK_START } from '../../support/probe.module';
 import { TestAccessTokens } from '../../support/test-access-tokens';
 import { buildTestEnv, createTestApp } from '../setup/test-app';
-import type { TestApp } from '../setup/test-app';
+import type { TestApp, TestAppOptions } from '../setup/test-app';
 
 import { insertAccount, insertFileWithVersion, removeAccounts } from './storage-test-db';
 import type { FileRowOptions } from './storage-test-db';
@@ -124,6 +124,8 @@ export interface StorageClient {
   recordOpen(nodeType: string, nodeId: string): Promise<Response>;
   trashFolder(folderId: string): Promise<Response>;
   purgeFolder(folderId: string): Promise<Response>;
+  restoreFolder(folderId: string): Promise<Response>;
+  emptyTrash(): Promise<Response>;
   spaceSummary(): Promise<Response>;
   /** Inicia (en `folderId`, por defecto la raíz), sube con la(s) URL(s) firmada(s) y completa; devuelve `complete`. */
   upload(
@@ -156,6 +158,18 @@ export interface StorageHttpOptions {
   /** Variables que cambian respecto del arnés (p. ej. límites de tasa bajos). */
   readonly env?: Readonly<Record<string, string>>;
   readonly limits?: PlanLimits;
+  /**
+   * Usa el enlace real de `PlanLimitsBindingModule` (`billing` leyendo la tabla `plan` sembrada) en lugar del doble
+   * (PD-56). Con esto, `limits` del resultado no gobierna nada.
+   */
+  readonly realPlanLimits?: boolean;
+  /**
+   * `'identity'` usa la `JwtStrategy` real (p. ej. el mundo de aislamiento con `world.appComposition()`, 002 T-55);
+   * entonces `newClient` no sirve, porque firma con `TestAccessTokens`: se usa `clientFor` con un token real.
+   */
+  readonly accessTokenStrategy?: TestAppOptions['accessTokenStrategy'];
+  /** Módulos que se suman a `storage` (p. ej. la composición de `identity` del mundo de aislamiento). */
+  readonly modules?: TestAppOptions['modules'];
 }
 
 interface SignedTarget {
@@ -213,7 +227,7 @@ const expectOk = async (pending: Promise<globalThis.Response>): Promise<void> =>
 
 /**
  * App HTTP de `storage` para las suites de integración de 005 (T-43, T-44): `StorageModule` real, la raíz de
- * `PlanLimitsBindingModule` con el doble de límites (R-3), Postgres como `nimbo_app`, Redis real para la tasa y
+ * `PlanLimitsBindingModule` con el doble de límites (R-3; `realPlanLimits` lo quita), Postgres como `nimbo_app`, Redis real para la tasa y
  * MinIO real con un bucket versionado. Las cuentas se insertan como el dueño (*fixtures*) y se borran al cerrar.
  */
 export const createStorageHttpApp = async (
@@ -232,8 +246,12 @@ export const createStorageHttpApp = async (
   const limits = new FakePlanLimitsProvider(options.limits ?? DEFAULT_TEST_LIMITS);
   const testApp = await createTestApp({
     validatedEnv: env,
-    modules: [PlanLimitsBindingModule, StorageModule.forRoot(env)],
-    overrides: [{ provide: I_PLAN_LIMITS_PROVIDER, useValue: limits }],
+    accessTokenStrategy: options.accessTokenStrategy ?? 'test',
+    modules: [...(options.modules ?? []), PlanLimitsBindingModule, StorageModule.forRoot(env)],
+    overrides:
+      options.realPlanLimits === true
+        ? []
+        : [{ provide: I_PLAN_LIMITS_PROVIDER, useValue: limits }],
   });
   const owner = await connectAsOwner();
   const tokens = new TestAccessTokens(new FixedClock(PROBE_CLOCK_START));
@@ -270,6 +288,9 @@ export const createStorageHttpApp = async (
         http().post(`${API_PREFIX}/quick-access/recents/${nodeType}/${nodeId}`).set(auth),
       trashFolder: (folderId) => http().delete(`${API_PREFIX}/folders/${folderId}`).set(auth),
       purgeFolder: (folderId) => http().delete(`${API_PREFIX}/trash/folders/${folderId}`).set(auth),
+      restoreFolder: (folderId) =>
+        http().post(`${API_PREFIX}/trash/folders/${folderId}/restore`).set(auth),
+      emptyTrash: () => http().delete(`${API_PREFIX}/trash`).set(auth),
       spaceSummary: () => http().get(`${API_PREFIX}/storage/summary`).set(auth),
       upload: async (name, bytes, onConflict = 'ask', folderId = null) => {
         const started = await client.init({ name, sizeBytes: bytes.length, onConflict, folderId });

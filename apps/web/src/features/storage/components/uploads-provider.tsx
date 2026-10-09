@@ -3,8 +3,7 @@
 import { formatBytes } from '@nimbo/contracts';
 import * as React from 'react';
 
-import { createAuthFetch } from '../../identity/session/auth-fetch';
-import { useSession } from '../../identity/session/session-provider';
+import { useAuthFetch } from '../../identity/session/use-auth-fetch';
 import { createStorageApi, type StorageApi } from '../api';
 import { useFileDropGuard } from '../hooks/use-file-drop-guard';
 import { UploadsContext, useUploadManager, useUploads } from '../hooks/use-upload-manager';
@@ -37,22 +36,6 @@ export function UploadsProvider({
   );
 }
 
-interface TokenHolder {
-  readonly get: () => string | null;
-  readonly set: (token: string | null) => void;
-}
-
-/** Último token de acceso, leído en el momento de cada petición (no durante el render). */
-function createTokenHolder(initial: string | null): TokenHolder {
-  let current = initial;
-  return {
-    get: () => current,
-    set: (token) => {
-      current = token;
-    },
-  };
-}
-
 /**
  * Proveedor del layout de `(cliente)`: arma el cliente de `storage` con `auth-fetch` y el token en memoria de la
  * sesión (002). El token se lee en cada petición, así una renovación no recrea el manager ni pierde cargas.
@@ -64,12 +47,10 @@ export function SessionUploadsProvider({
   readonly apiPublicUrl: string;
   readonly children: React.ReactNode;
 }): React.JSX.Element {
-  const { accessToken, renew } = useSession();
-  const [token] = React.useState(() => createTokenHolder(accessToken));
-  React.useEffect(() => token.set(accessToken), [token, accessToken]);
+  const authFetch = useAuthFetch();
   const api = React.useMemo(
-    () => createStorageApi(apiPublicUrl, createAuthFetch({ getAccessToken: token.get, renew })),
-    [apiPublicUrl, token, renew],
+    () => createStorageApi(apiPublicUrl, authFetch),
+    [apiPublicUrl, authFetch],
   );
   return <UploadsProvider api={api}>{children}</UploadsProvider>;
 }

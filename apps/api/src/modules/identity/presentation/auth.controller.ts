@@ -174,7 +174,13 @@ export class AuthController {
     req: Request,
   ): Promise<OpenedSession | null> {
     try {
-      return await this.sessions.open(result.user, readClientContext(req), 'verification');
+      const opened = await this.sessions.open(result.user, readClientContext(req), 'verification');
+      this.logger.info({
+        event: 'identity.verification.session_opened',
+        userId: result.userId,
+        sessionId: opened.sessionId,
+      });
+      return opened;
     } catch {
       this.logger.warn({ event: 'identity.verification.session_failed', userId: result.userId });
       return null;

@@ -415,25 +415,25 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   sesión ya revocada → `204`. El caso `DELETE /sessions/:id` de la actual va en T-76.
   Archivos: `apps/api/test/int/identity/logout.int-spec.ts`.
 
-- [ ] **T-49** [P] CA-15 y ampliación de la concurrencia de 001 — CA: CA-15; cierra 001 CA-26 y CA-29 — Depende: T-42, 001 T-48 — ~1 h
+- [x] **T-49** [P] CA-15 y ampliación de la concurrencia de 001 — CA: CA-15; cierra 001 CA-26 y CA-29 — Depende: T-42, 001 T-48 — ~1 h
   En `verify-email-session.int-spec.ts`: credenciales de CA-1, dispositivo conocido y sin correo de dispositivo nuevo
   en un inicio posterior desde ese navegador. En `verify-email-concurrency.int-spec.ts` de 001: casos (a)–(d) sin
   sesión salvo la apertura ganadora de (d). (La aparición en la lista y el cierre se comprueban en T-75.)
   Archivos: `apps/api/test/int/identity/{verify-email-session,verify-email-concurrency}.int-spec.ts`.
 
-- [ ] **T-50** [P] CA-16 (dispositivo nuevo) — CA: CA-16 — Depende: T-40, T-42 — ~1 h
+- [x] **T-50** [P] CA-16 (dispositivo nuevo) — CA: CA-16 — Depende: T-40, T-42 — ~1 h
   `apps/api/test/int/identity/new-device.int-spec.ts`: navegador nuevo → correo en Mailpit con navegador, sistema,
   fecha y hora de Guatemala y enlace a Seguridad; mismo navegador → nada; el de la verificación → nada; dos inicios
   simultáneos desde un navegador nuevo → un correo.
   Archivos: `apps/api/test/int/identity/new-device.int-spec.ts`.
 
-- [ ] **T-51** [P] CA-17 y CA-24 (sesión y dispositivo) — CA: CA-17, CA-24 — Depende: T-41 — ~1 h
+- [x] **T-51** [P] CA-17 y CA-24 (sesión y dispositivo) — CA: CA-17, CA-24 — Depende: T-41 — ~1 h
   `apps/api/test/int/identity/credential-secrecy.int-spec.ts`: los valores de `nimbo_rt` (antes y después de rotar) y
   `nimbo_did` se buscan en todas las columnas de texto de `usuario`, `token_cuenta`, `dispositivo` y `sesion` y en el
   `LogSink`: solo aparecen sus SHA-256; `hash_clave` empieza por `$argon2id$`. El token de recuperación se suma en T-68.
   Archivos: `apps/api/test/int/identity/credential-secrecy.int-spec.ts`.
 
-- [ ] **T-52** [P] CA-25 (bitácoras de PR-2) — CA: CA-25 — Depende: T-41, T-42 — ~1 h
+- [x] **T-52** [P] CA-25 (bitácoras de PR-2) — CA: CA-25 — Depende: T-41, T-42 — ~1 h
   `apps/api/test/int/identity/auth-logs.int-spec.ts`: inicio correcto y cada fallo, bloqueo, límite por IP, renovación,
   rechazo, reúso, cierre, dispositivo nuevo y sesión al verificar → eventos de plan §7 con `correlationId` y `userId`;
   ninguna línea contiene correo, contraseña, token, valor de cookie, `huella_hash`, IP ni agente completo.
@@ -456,20 +456,20 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   real con la clave de pruebas; `TestJwtStrategy` queda para módulos de sonda sin `IdentityModule` (regla de 003 §11).
   Archivos: `apps/api/test/int/identity/access-token-verifier.jwt.int-spec.ts`, `apps/api/test/support/create-test-app.ts`.
 
-- [ ] **T-55** Tokens reales en el arnés de aislamiento de 003 — CA: CA-26; 003 CA-15 — Depende: T-54, **003-PR-D** (`isolation-world.ts`; ver notas) — ~1 h
+- [x] **T-55** Tokens reales en el arnés de aislamiento de 003 — CA: CA-26; 003 CA-15 — Depende: T-54, **003-PR-D** (`isolation-world.ts`; ver notas) — ~1 h
   Prueba: `pnpm test:isolation` completo en verde tras cambiar `tokenFor(cuenta)` en
   `apps/api/test/isolation/setup/isolation-world.ts` para emitir con `JwtTokenService.issueAccessToken` (rol real de
   la cuenta, `sid` uuid) en lugar de `TestAccessTokens`; el marcador `ISOLATION_FORCE_FAIL` sigue haciendo fallar la
   suite; un token de `TestAccessTokens` ya **no** autentica en `appAs`.
   Archivos: `apps/api/test/isolation/setup/isolation-world.ts`.
 
-- [ ] **T-56** Aislamiento: anti-enumeración del inicio de sesión — CA: CA-2, CA-5 — Depende: T-43, T-44 — ~1 h
+- [x] **T-56** Aislamiento: anti-enumeración del inicio de sesión — CA: CA-2, CA-5 — Depende: T-43, T-44 — ~1 h
   `apps/api/test/isolation/login-enumeration.iso-spec.ts`: sobre el mundo de 003, correo inexistente, cliente con
   contraseña incorrecta, cuenta interna con contraseña incorrecta y correo bloqueado con y sin cuenta → respuestas
   idénticas por pares (status, cuerpo, cabeceras salvo `x-correlation-id`); ningún `Set-Cookie`.
   Archivos: `apps/api/test/isolation/login-enumeration.iso-spec.ts`.
 
-- [ ] **T-57** README de `identity`, hallazgos y cierre del PR-2 — CA: n/a — Depende: T-11…T-56 — ~0,5 h
+- [x] **T-57** README de `identity`, hallazgos y cierre del PR-2 — CA: n/a — Depende: T-11…T-56 — ~0,5 h
   README de `identity`: sesiones, cookies (`nimbo_rt`, `nimbo_did`), puerto implementado, bloqueo y regla «revocar y
   después lanzar». Pedir al `architect` registrar **DF-56**, **DF-57** y **PD-45** (provisionales, plan §10.4) y el
   estado de DF-11/DF-15. Suites en verde, incluida `pnpm test:isolation`. Avisar a 003 (T-55) y a 015 (T-39).
@@ -554,19 +554,19 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
 
 ## Bloque 4 — PR-4 «Seguridad (backend)» (plan §6.3, §6.5) · depende de 002-PR-2 (y por él 003-PR-A) · **recortable a Fase 2 si no llega el 30/09 (decisión de Adrián pendiente)**
 
-- [ ] **T-70** [P×PR] `SessionService.list` — CA: CA-11 — Depende: T-30, T-15 — ~1 h
+- [x] **T-70** [P×PR] `SessionService.list` — CA: CA-11 — Depende: T-30, T-15 — ~1 h
   Prueba primero (en `session.service.spec.ts`): `listActive(actor.id, now, now − 7 d, 50)`; la actual primero y marcada
   `current`, las demás por `lastActiveAt` descendente; navegador, sistema y `deviceKind` de `UserAgentSummary`; la
   salida no tiene IP, agente completo, hashes ni `deviceId` (valida contra `sessionSummarySchema`).
   Archivos: `apps/api/src/modules/identity/application/session.service.ts`, `apps/api/src/modules/identity/application/session.service.spec.ts`.
 
-- [ ] **T-71** [P×PR] `SessionService.revoke` y `revokeOthers` — CA: CA-12, CA-13, CA-14 — Depende: T-70 — ~1 h
+- [x] **T-71** [P×PR] `SessionService.revoke` y `revokeOthers` — CA: CA-12, CA-13, CA-14 — Depende: T-70 — ~1 h
   Prueba primero (mismo archivo): `revoke` ajena, inexistente o ya revocada → `SessionNotFoundError` (mismo error);
   propia → `{ wasCurrent }`; `revokeOthers` → `revokedCount` sin tocar la actual; bitácora `identity.session.revoked`
   con `reason: 'user' | 'others'` y `count`.
   Archivos: `apps/api/src/modules/identity/application/session.service.ts`, `apps/api/src/modules/identity/application/session.service.spec.ts`.
 
-- [ ] **T-72** [P×PR] `PasswordService.changePassword` — CA: CA-22, CA-23 — Depende: T-62, T-59, T-18 (puerto) — ~1 h
+- [x] **T-72** [P×PR] `PasswordService.changePassword` — CA: CA-22, CA-23 — Depende: T-62, T-59, T-18 (puerto) — ~1 h
   Prueba primero (en `password.service.spec.ts`): bloqueado → `PasswordChangeLockedError` aunque la actual sea correcta;
   incorrecta → `recordFailure(identity:lockout:password-change:<userId>)` y `WrongPasswordError`, la sesión no se toca;
   débil → `IdentityWeakPasswordError`; éxito → hash fuera de la transacción, `update` +
@@ -574,50 +574,50 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   `revokedCount`; rechazos con `identity.password_change.rejected`.
   Archivos: `apps/api/src/modules/identity/application/password.service.ts`, `apps/api/src/modules/identity/application/password.service.spec.ts`.
 
-- [ ] **T-73** `SessionsController` — CA: CA-11, CA-12, CA-13, CA-14 — Depende: T-71, **003-PR-A** (`@Roles`, `@CurrentActor()`, `@CurrentSessionId()`) — ~1 h
+- [x] **T-73** `SessionsController` — CA: CA-11, CA-12, CA-13, CA-14 — Depende: T-71, **003-PR-A** (`@Roles`, `@CurrentActor()`, `@CurrentSessionId()`) — ~1 h
   Prueba primero `apps/api/test/int/identity/sessions.int-spec.ts` (caminos felices de `GET`, `DELETE :id` y
   `POST revoke-others`; sin token → `401 SHARED_UNAUTHENTICATED`). Luego `sessions.controller.ts` con
   `@Roles(CLIENT, ADMIN, SUPPORT, OPERATOR)`; `:id` validado con `z.string().uuid()` (mal formado →
   `SessionNotFoundError`); `DELETE` de la actual borra `nimbo_rt`; nadie lee `req.user`. Registro en `IdentityModule`.
   Archivos: `apps/api/src/modules/identity/presentation/sessions.controller.ts`, `apps/api/src/modules/identity/identity.module.ts`, `apps/api/test/int/identity/sessions.int-spec.ts`.
 
-- [ ] **T-74** `POST /auth/change-password` — CA: CA-22, CA-23 — Depende: T-72, T-63, **003-PR-A** — ~0,5 h
+- [x] **T-74** `POST /auth/change-password` — CA: CA-22, CA-23 — Depende: T-72, T-63, **003-PR-A** — ~0,5 h
   Prueba primero `apps/api/test/int/identity/change-password.int-spec.ts` (camino feliz `204`; sin token → `401`).
   Luego la ruta en `password.controller.ts` con `@Roles(...)` de los cuatro roles, `@CurrentActor()` y
   `@CurrentSessionId()`.
   Archivos: `apps/api/src/modules/identity/presentation/password.controller.ts`, `apps/api/test/int/identity/change-password.int-spec.ts`.
 
-- [ ] **T-75** [P] CA-11, CA-13 y la parte de lista de CA-15 — CA: CA-11, CA-13, CA-15 — Depende: T-73 — ~1 h
+- [x] **T-75** [P] CA-11, CA-13 y la parte de lista de CA-15 — CA: CA-11, CA-13, CA-15 — Depende: T-73 — ~1 h
   En `sessions.int-spec.ts`: tres navegadores + otra cuenta; sin revocadas ni vencidas; orden; forma exacta del JSON
   sin IP, hashes ni ids de dispositivo; cuatro sesiones → `revokedCount = 3` y la actual sigue renovando; la sesión
   abierta al verificar aparece y se puede cerrar.
   Archivos: `apps/api/test/int/identity/sessions.int-spec.ts`.
 
-- [ ] **T-76** [P] CA-12 y CA-14 (desde la lista) — CA: CA-12, CA-14 — Depende: T-73 — ~1 h
+- [x] **T-76** [P] CA-12 y CA-14 (desde la lista) — CA: CA-12, CA-14 — Depende: T-73 — ~1 h
   En `sessions.int-spec.ts`: el refresco de la sesión cerrada falla al instante; su token de acceso verifica con el
   puerto hasta `FixedClock` + 15 min y después no; `DELETE` de la actual → `204` y `nimbo_rt` borrada; `id` mal formado
   → `404` idéntico a inexistente.
   Archivos: `apps/api/test/int/identity/sessions.int-spec.ts`.
 
-- [ ] **T-77** [P] CA-22 y CA-23 — CA: CA-22, CA-23 — Depende: T-74 — ~1 h
+- [x] **T-77** [P] CA-22 y CA-23 — CA: CA-22, CA-23 — Depende: T-74 — ~1 h
   En `change-password.int-spec.ts`: tres sesiones → dos revocadas y la actual renueva; correo en Mailpit;
   `WRONG_PASSWORD` con `fields` y sin cambios; 5 fallos → el 6.º, incluso correcto, `PASSWORD_CHANGE_LOCKED` con
   `Retry-After`; `FixedClock` + 15 min → permitido; la sesión sigue viva en todo momento; un rol interno cambia la suya.
   Archivos: `apps/api/test/int/identity/change-password.int-spec.ts`.
 
-- [ ] **T-78** Aislamiento de sesiones — CA: CA-11, CA-12; RNF-05 — Depende: T-73, T-55 — ~1 h
+- [x] **T-78** Aislamiento de sesiones — CA: CA-11, CA-12; RNF-05 — Depende: T-73, T-55 — ~1 h
   `apps/api/test/isolation/sessions-isolation.iso-spec.ts` (mundo de 003, tokens reales): cada cliente ve solo sus
   sesiones; cerrar una sesión del otro cliente → `404` idéntico a inexistente y la BD sin cambios; `revoke-others` no
   toca la otra cuenta; cada rol interno solo ve y cierra las suyas.
   Archivos: `apps/api/test/isolation/sessions-isolation.iso-spec.ts`.
 
-- [ ] **T-79** CA-24 y CA-25 de Seguridad — CA: CA-24, CA-25 — Depende: T-75…T-77 — ~0,5 h
+- [x] **T-79** CA-24 y CA-25 de Seguridad — CA: CA-24, CA-25 — Depende: T-75…T-77 — ~0,5 h
   Ampliar `auth-logs.int-spec.ts` (`session.revoked` con `user`, `others`, `password_change`; `password.changed`;
   `password_change.rejected` con cada `reason`; sin `currentPassword`/`newPassword`) y `credential-secrecy.int-spec.ts`
   (tras cambiar la contraseña, `hash_clave` sigue siendo Argon2id).
   Archivos: `apps/api/test/int/identity/{auth-logs,credential-secrecy}.int-spec.ts`.
 
-- [ ] **T-80** Cierre del PR-4 — CA: n/a — Depende: T-70…T-79 — ~0,5 h
+- [x] **T-80** Cierre del PR-4 — CA: n/a — Depende: T-70…T-79 — ~0,5 h
   README de `identity` (lista y revocación, cambio de contraseña). Suites en verde, incluida `pnpm test:isolation`.
   Archivos: `apps/api/src/modules/identity/README.md`.
 
@@ -635,52 +635,52 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   `session/*` y `login` mandan `credentials: 'include'`; errores tipados por `code`. Luego las funciones.
   Archivos: `apps/web/features/identity/api.ts`, `apps/web/features/identity/api.spec.ts`.
 
-- [ ] **T-83** [P] [P×PR] `refresh-coordinator.ts` — CA: CA-7, CA-8, CA-9 — Depende: T-02 — ~1 h
+- [x] **T-83** [P] [P×PR] `refresh-coordinator.ts` — CA: CA-7, CA-8, CA-9 — Depende: T-02 — ~1 h
   Prueba primero `features/identity/session/refresh-coordinator.spec.ts` (`refresh` inyectado, `navigator.locks`
   simulado): dos llamadas simultáneas en la pestaña → una sola petición; entre pestañas se serializa con el candado
   `nimbo-refresh`; `IDENTITY_REFRESH_INVALID` → un solo reintento; `SESSION_EXPIRED`/`SESSION_REVOKED` → limpia y
   navega a `/iniciar-sesion?sesion=terminada`; sin `navigator.locks` sigue funcionando (DT-16).
   Archivos: `apps/web/features/identity/session/refresh-coordinator.ts` y su `*.spec.ts`.
 
-- [ ] **T-84** `SessionProvider` (token solo en memoria) — CA: CA-28, CA-7 — Depende: T-82, T-83 — ~1 h
+- [x] **T-84** `SessionProvider` (token solo en memoria) — CA: CA-28, CA-7 — Depende: T-82, T-83 — ~1 h
   Prueba primero `features/identity/session/session-provider.spec.tsx`: espías en `Storage.prototype.setItem` y
   `document.cookie`: ningún token escrito; expone `{ status, user, accessToken }`; programa la renovación un minuto antes
   de `accessTokenExpiresAt` (temporizadores falsos); recarga simulada (montaje sin token) → renueva y recupera `user`.
   Archivos: `apps/web/features/identity/session/session-provider.tsx` y su `*.spec.tsx`.
 
-- [ ] **T-85** `auth-fetch.ts` — CA: CA-28, CA-7 — Depende: T-84, 001 T-57 — ~1 h
+- [x] **T-85** `auth-fetch.ts` — CA: CA-28, CA-7 — Depende: T-84, 001 T-57 — ~1 h
   Prueba primero `features/identity/session/auth-fetch.spec.ts`: agrega `Authorization: Bearer`; ante `401
   SHARED_UNAUTHENTICATED` renueva una vez y repite; ante un `401 IDENTITY_*` **no** renueva (plan §5); si la renovación
   falla, propaga el cierre de sesión.
   Archivos: `apps/web/features/identity/session/auth-fetch.ts` y su `*.spec.ts`.
 
-- [ ] **T-86** `SessionGate` y grupo exterior `(app)` — CA: CA-28, CA-8 — Depende: T-84 — ~1 h
+- [x] **T-86** `SessionGate` y grupo exterior `(app)` — CA: CA-28, CA-8 — Depende: T-84 — ~1 h
   Prueba primero `features/identity/session/session-gate.spec.tsx`: sin token → `StateView` de carga mientras renueva;
   éxito → hijos; fallo → `router.replace('/iniciar-sesion')`. Luego `app/(app)/layout.tsx` con `SessionProvider` +
   `SessionGate`; si 003-PR-F ya creó `(cliente)`/`(interno)`, quedan anidados dentro sin cambiar sus rutas.
   Archivos: `apps/web/features/identity/session/session-gate.tsx` y su `*.spec.tsx`, `apps/web/app/(app)/layout.tsx`.
 
-- [ ] **T-87** [P] `homePathFor` y marcador de `/archivos` (solo si faltan) — CA: CA-1 — Depende: — (003-PR-F si ya existe) — ~0,5 h
+- [x] **T-87** [P] `homePathFor` y marcador de `/archivos` (solo si faltan) — CA: CA-1 — Depende: — (003-PR-F si ya existe) — ~0,5 h
   Si 003-PR-F no lo integró: prueba primero `features/access/home-path.spec.ts` (`CLIENT` → `/archivos`; `ADMIN`,
   `SUPPORT`, `OPERATOR` → `/interno`) y luego `home-path.ts` **tal como lo define 003** §6.9. Si no existe
   `app/(app)/(cliente)/archivos/page.tsx` (005/006), marcador con `StateView` «Tus archivos aparecerán aquí». Si ambos
   existen, la tarea se cierra sin cambios.
   Archivos: `apps/web/features/access/home-path.ts` y su `*.spec.ts`, `apps/web/app/(app)/(cliente)/archivos/page.tsx`.
 
-- [ ] **T-88** `LoginForm`: envío y éxito — CA: CA-1, CA-2, CA-27 — Depende: T-81, T-82, T-84, T-87 — ~1 h
+- [x] **T-88** `LoginForm`: envío y éxito — CA: CA-1, CA-2, CA-27 — Depende: T-81, T-82, T-84, T-87 — ~1 h
   Prueba primero `features/identity/components/login-form.spec.tsx`: estados default, enviando (botón deshabilitado y
   con texto de carga), error de credenciales (alerta con acción «restablece tu contraseña»); éxito → guarda la sesión
   en el proveedor y `router.replace(homePathFor(role))`; `react-hook-form` + `zodResolver(loginRequestSchema)`;
   jest-axe sin `serious`/`critical`.
   Archivos: `apps/web/features/identity/components/login-form.tsx`, `apps/web/features/identity/components/login-form.spec.tsx`.
 
-- [ ] **T-89** `LoginForm`: estados de rechazo — CA: CA-3…CA-6, CA-8, CA-27 — Depende: T-88 — ~1 h
+- [x] **T-89** `LoginForm`: estados de rechazo — CA: CA-3…CA-6, CA-8, CA-27 — Depende: T-88 — ~1 h
   Prueba primero (mismo archivo): bloqueado (minutos de `Retry-After`), límite por IP, no verificado (alerta con «Pedir
   un enlace nuevo» → `/registro/pedir-enlace` con el correo en `sessionStorage` como acordó 001), suspendida (correo de
   contacto) y `?sesion=terminada` («Tu sesión terminó. Inicia sesión de nuevo.»); textos exactos de spec §11.
   Archivos: `apps/web/features/identity/components/login-form.tsx`, `apps/web/features/identity/components/login-form.spec.tsx`.
 
-- [ ] **T-90** Página `/iniciar-sesion` — CA: CA-1, CA-27 — Depende: T-89, 001 T-58 — ~0,5 h
+- [x] **T-90** Página `/iniciar-sesion` — CA: CA-1, CA-27 — Depende: T-89, 001 T-58 — ~0,5 h
   Prueba primero `app/(public)/iniciar-sesion/page.spec.tsx`: reemplaza el marcador de 001; esquema de dos columnas del
   mockup (p. 07) dentro del `PublicHeader`; enlaces a registro y a recuperar; jest-axe. Luego la página.
   Archivos: `apps/web/app/(public)/iniciar-sesion/page.tsx` y su `*.spec.tsx`.
@@ -703,14 +703,14 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
   contraseña…» + «Iniciar sesión»); jest-axe. Luego la página.
   Archivos: `apps/web/features/identity/components/reset-password-view.tsx` y su `*.spec.tsx`, `apps/web/app/(public)/restablecer-contrasena/page.tsx`.
 
-- [ ] **T-94** **(humana)** Recorrido local de sesión y recuperación — CA: CA-1, CA-8, CA-18…CA-21, CA-27, CA-28 — Depende: T-57, T-69, T-90…T-93 — ~1 h
+- [x] **T-94** **(humana)** Recorrido local de sesión y recuperación — CA: CA-1, CA-8, CA-18…CA-21, CA-27, CA-28 — Depende: T-57, T-69, T-90…T-93 — ~1 h
   Con `docker compose up -d` + `pnpm dev`: iniciar sesión (cookies en DevTools: `HttpOnly`, `SameSite`, `Path`),
   **recargar** y seguir con sesión, inspeccionar `localStorage`, `sessionStorage` y `document.cookie` (ningún token),
   recuperar y restablecer con Mailpit, enlace vencido; capturas a 360 y 1440 px para el `ui-designer`. Evidencia para
   `verification.md`.
   Archivos: ninguno (evidencia).
 
-- [ ] **T-95** Cierre del PR-5a — CA: n/a — Depende: T-81…T-94 — ~0,5 h
+- [x] **T-95** Cierre del PR-5a — CA: n/a — Depende: T-81…T-94 — ~0,5 h
   README de `features/identity` (sesión en memoria, renovación, `auth-fetch`). Suites en verde. Avisar a 003-PR-F
   (grupo `(app)`, sesión con `role` y `fullName`, `homePathFor`). Si PR-4 y PR-5b se recortan, T-105 se ejecuta aquí
   con lo que exista.
@@ -718,60 +718,65 @@ hoy       ─► PR-2  T-11…T-17 [P×PR] (dominio puro y puertos)
 
 ## Bloque 6 — PR-5b «web: Seguridad» (plan §6.9) · depende de 002-PR-5a; Q-3 y Q-4 · **recortable a Fase 2 si no llega el 30/09 (decisión de Adrián pendiente)**
 
-- [ ] **T-96** [P] `api.ts`: sesiones y cambio de contraseña — CA: CA-11…CA-13, CA-22 — Depende: T-82, T-85 — ~0,5 h
+- [x] **T-96** [P] `api.ts`: sesiones y cambio de contraseña — CA: CA-11…CA-13, CA-22 — Depende: T-82, T-85 — ~0,5 h
   Prueba primero (en `api.spec.ts`): `listSessions`, `revokeSession`, `revokeOtherSessions`, `changePassword` por
   `auth-fetch` con la ruta y el método de plan §5 y respuesta validada. Luego las funciones.
   Archivos: `apps/web/features/identity/api.ts`, `apps/web/features/identity/api.spec.ts`.
 
-- [ ] **T-97** [P] `lib/format-date.ts` — CA: CA-11 — Depende: — — ~0,5 h
+- [x] **T-97** [P] `lib/format-date.ts` — CA: CA-11 — Depende: — — ~0,5 h
   Prueba primero `apps/web/lib/format-date.spec.ts`: «Activa ahora», «Última actividad: hace 2 horas»
-  (`Intl.RelativeTimeFormat('es')`) e «Iniciada el 24 sep 2026» en `America/Guatemala` (D-16), con reloj fijo.
+  (`Intl.RelativeTimeFormat('es')`) e «Iniciada el 24 sept 2026» en `America/Guatemala` (D-16), con reloj fijo.
+  «sept» y no «sep»: es la abreviatura de `Intl` para `es-GT` (Adrián, 2026-10-04).
   Archivos: `apps/web/lib/format-date.ts`, `apps/web/lib/format-date.spec.ts`.
 
-- [ ] **T-98** [P] `ConfirmDestructiveDialog` — CA: CA-14, CA-27 — Depende: **Q-4** (token del velo, PD-27) — ~1 h
+- [x] **T-98** [P] `ConfirmDestructiveDialog` — CA: CA-14, CA-27 — Depende: **Q-4** (token del velo, PD-27) — ~1 h
   Prueba primero `components/nimbo/confirm-destructive-dialog.spec.tsx`: `<dialog>` con `showModal()`,
   `role="alertdialog"`, foco inicial en «Cancelar», Escape cancela, confirmar con variante `destructive`, botones
   apilados a 360 px con el destructivo arriba; solo tokens; jest-axe.
   Archivos: `apps/web/components/nimbo/confirm-destructive-dialog.tsx` y su `*.spec.tsx`.
+  **Q-4 resuelta (Adrián, 2026-10-04):** por consistencia visual el diálogo se compone sobre `components/ui/alert-dialog`
+  (Radix) en lugar de `<dialog>`/`showModal()`, y el velo reutiliza el suyo (`bg-foreground/40`), sin token nuevo (PD-27).
 
-- [ ] **T-99** `SessionRow` y `SessionsCard`: lista — CA: CA-11, CA-27 — Depende: T-96, T-97 — ~1 h
+- [x] **T-99** `SessionRow` y `SessionsCard`: lista — CA: CA-11, CA-27 — Depende: T-96, T-97 — ~1 h
   Prueba primero `features/identity/components/sessions-card.spec.tsx`: cargando, vacío-salvo-actual, error; la actual
   primero con «Este dispositivo»; navegador · sistema, inicio y última actividad; ícono por `deviceKind` decorativo;
   nombres accesibles completos («Cerrar sesión en Safari · iOS»); jest-axe.
   Archivos: `apps/web/features/identity/components/{sessions-card,session-row}.tsx`, `apps/web/features/identity/components/sessions-card.spec.tsx`.
 
-- [ ] **T-100** `SessionsCard`: acciones — CA: CA-12, CA-13, CA-14, CA-27 — Depende: T-99, T-98 — ~1 h
+- [x] **T-100** `SessionsCard`: acciones — CA: CA-12, CA-13, CA-14, CA-27 — Depende: T-99, T-98 — ~1 h
   Prueba primero (mismo archivo): cerrar una pide confirmación y la quita de la lista con `role="status"`; «Cerrar las
   demás sesiones» confirma el número (singular y plural); cerrar la actual lleva a `/iniciar-sesion`;
   `IDENTITY_SESSION_NOT_FOUND` muestra su mensaje y recarga la lista.
   Archivos: `apps/web/features/identity/components/sessions-card.tsx`, `apps/web/features/identity/components/sessions-card.spec.tsx`.
 
-- [ ] **T-101** `ChangePasswordForm` — CA: CA-22, CA-23, CA-27 — Depende: T-96, 001 T-61 — ~1 h
+- [x] **T-101** `ChangePasswordForm` — CA: CA-22, CA-23, CA-27 — Depende: T-96, 001 T-61 — ~1 h
   Prueba primero `features/identity/components/change-password-form.spec.tsx`: contrasena-no-coincide no envía;
   enviando; éxito con `role="status"`; `WRONG_PASSWORD` vacía el campo actual y le da el foco conservando los otros;
   bloqueada con minutos (`IDENTITY_PASSWORD_CHANGE_LOCKED`); débil con `fields`; jest-axe.
   Archivos: `apps/web/features/identity/components/change-password-form.tsx` y su `*.spec.tsx`.
 
-- [ ] **T-102** Página `(app)/cuenta/seguridad` — CA: CA-11…CA-14, CA-22, CA-23, CA-27 — Depende: T-100, T-101, T-86 — ~1 h
+- [x] **T-102** Página `(app)/cuenta/seguridad` — CA: CA-11…CA-14, CA-22, CA-23, CA-27 — Depende: T-100, T-101, T-86 — ~1 h
   Prueba primero `app/(app)/cuenta/seguridad/page.spec.tsx`: dos tarjetas; los 15 estados del mockup de Seguridad
   presentes en las pruebas de T-99…T-101 (tabla en la prueba que los enumera); accesible para los cuatro roles;
   jest-axe. Luego la página.
   Archivos: `apps/web/app/(app)/cuenta/seguridad/page.tsx` y su `*.spec.tsx`.
 
-- [ ] **T-103** `AccountMenu` en el `AppLayout` actual — CA: CA-14, CA-27 — Depende: T-98, T-84, **Q-3** (PD-28), **Q-4** — ~1 h
+- [x] **T-103** `AccountMenu` en el `AppLayout` actual — CA: CA-14, CA-27 — Depende: T-98, T-84, **Q-3** (PD-28), **Q-4** — ~1 h
   Prueba primero `components/nimbo/account-menu.spec.tsx`: patrón *menu button* de WAI-ARIA (flechas, Escape, foco
   devuelto); nombre y correo fuera del `role="menu"`; «Seguridad», «Plan y facturación» solo si existe su ruta, «Cerrar
   sesión» (con `ConfirmDestructiveDialog` si Q-3 dice que sí; directo si no) → `logout` y `/iniciar-sesion`; jest-axe.
   Luego el componente y su inserción en la cabecera del `AppLayout` actual (sin rediseñarlo: PD-33).
   Archivos: `apps/web/components/nimbo/account-menu.tsx` y su `*.spec.tsx`, el archivo del `AppLayout` actual.
 
-- [ ] **T-104** **(humana)** Recorrido de Seguridad y revisión visual — CA: CA-11…CA-14, CA-22, CA-23, CA-27 — Depende: T-80, T-102, T-103 — ~1 h
+- [x] **T-104** **(humana)** Recorrido de Seguridad y revisión visual — CA: CA-11…CA-14, CA-22, CA-23, CA-27 — Depende: T-80, T-102, T-103 — ~1 h
   Dos navegadores: lista, cerrar una, cerrar las demás, cerrar la actual, cambiar la contraseña (correcta, incorrecta
   y bloqueo); capturas a 360 y 1440 px; pedir al `ui-designer` `ui-review.md` y la corrección del README de Seguridad
   (`IDENTITY_PASSWORD_CHANGE_LOCKED`).
   Archivos: ninguno (evidencia).
+  **Hecha (Adrián, 2026-10-05):** recorrido con tres navegadores sin hallazgos; README de Seguridad corregido. La
+  revisión de UI va en la sección «UI» de `review.md` (`/review 002`, T-105).
 
-- [ ] **T-105** Cierre del PR-5b y de la spec — CA: todos (trazabilidad) — Depende: T-95, T-104 — ~1 h
+- [x] **T-105** Cierre del PR-5b y de la spec — CA: todos (trazabilidad) — Depende: T-95, T-104 — ~1 h
   Matriz CA → pruebas revisada; `specs/README.md` → 002 `En verificación`; pedir `/verify 002` (`tester`:
   `verification.md` con CA-27/CA-28 manuales y 001 CA-16, CA-26, CA-29 cerrados), `security-auditor` (`security.md`:
   diferencias de tiempo de CA-2, `deviceId` en bitácoras, CSRF de la cookie) y `/review 002`. Si PR-4 o PR-5b se

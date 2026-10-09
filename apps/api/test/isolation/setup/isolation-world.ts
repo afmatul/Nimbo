@@ -1,8 +1,24 @@
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 
+import { Module } from '@nestjs/common';
+import type { DynamicModule, Type } from '@nestjs/common';
+import { EventEmitterModule } from '@nestjs/event-emitter';
+import { JwtService } from '@nestjs/jwt';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { LEGAL_DOCUMENTS } from '@nimbo/contracts';
 import type { DataSource, EntityManager } from 'typeorm';
 
+import { I_AUDIT_REPOSITORY } from '../../../src/modules/audit/application/ports/i-audit.repository.port';
+import type { IAuditRepository } from '../../../src/modules/audit/application/ports/i-audit.repository.port';
+import { createAuditEntry } from '../../../src/modules/audit/domain/audit-entry';
+import type {
+  AuditAttributes,
+  AuditEntry,
+  AuditResourceType,
+} from '../../../src/modules/audit/domain/audit-entry';
+import { IDENTITY_THROTTLERS, IdentityModule } from '../../../src/modules/identity';
+import { accessTokenOptionsFrom } from '../../../src/modules/identity/infrastructure/jwt/access-token-options';
+import { JwtTokenService } from '../../../src/modules/identity/infrastructure/jwt/jwt-token.service';
 import { FOLDER_CONFIG } from '../../../src/modules/storage/application/folder-config';
 import type { FolderConfig } from '../../../src/modules/storage/application/folder-config';
 import { I_NODE_REPOSITORY } from '../../../src/modules/storage/application/ports/i-node.repository.port';
@@ -26,13 +42,12 @@ import { FolderName } from '../../../src/modules/storage/domain/folder-name.vo';
 import { ObjectKey } from '../../../src/modules/storage/domain/object-key';
 import { TrashState } from '../../../src/modules/storage/domain/trash-state';
 import { UploadSession } from '../../../src/modules/storage/domain/upload-session';
-import { createActor, FixedClock, I_TRANSACTION_RUNNER, Role } from '../../../src/shared';
+import { createActor, I_TRANSACTION_RUNNER, Role, SystemClock } from '../../../src/shared';
 import type { Actor, ITransactionRunner } from '../../../src/shared';
-import { createTestApp } from '../../int/setup/test-app';
+import { buildTestEnv, createTestApp } from '../../int/setup/test-app';
 import type { TestApp, TestAppOptions } from '../../int/setup/test-app';
 import { connectAsOwner, requiredEnv } from '../../support/database-urls';
-import { PROBE_CLOCK_START } from '../../support/probe.module';
-import { TestAccessTokens } from '../../support/test-access-tokens';
+import { ProbeCalls, ProbeController, ProbeResources } from '../../support/probe.controller';
 
 /** Nombre visible por defecto; los dos clientes del mundo lo comparten (plan 003 §6.7). */
 const DEFAULT_NAME = 'Ana López';
@@ -40,6 +55,8 @@ const DEFAULT_NAME = 'Ana López';
 const WORLD_CREATED_AT = new Date('2026-09-01T09:00:00.000Z');
 /** PHC de relleno: nadie inicia sesión con estas cuentas; `tokenFor` emite sus tokens. */
 const PLACEHOLDER_PHC = '$argon2id$v=19$m=19456,t=2,p=1$c2FsdGVuaXNv$aXNvbGF0aW9u';
+/** Bytes de la clave de firma propia de cada mundo: 43 caracteres base64url, como exige un ambiente publicado. */
+const WORLD_SECRET_BYTES = 32;
 
 export type InternalRole = Exclude<Role, Role.CLIENT>;
 
@@ -129,14 +146,53 @@ export interface WorldQuickAccessRequest {
   readonly opened?: readonly WorldNodeRef[];
 }
 
+/**
+ * Lo que una app necesita para aceptar los tokens del mundo (002 T-55): la `JwtStrategy` real de `IdentityModule`
+ * (`accessTokenStrategy: 'identity'`), la composición de `identity` de `AppModule` y la clave de firma del mundo en
+ * `JWT_ACCESS_SECRET`. Sus campos se llaman como en `TestAppOptions`, así un arnés (p. ej. `createStorageHttpApp`)
+ * los suma a los suyos.
+ */
+export interface WorldAppComposition {
+  readonly env: Readonly<Record<string, string>>;
+  readonly accessTokenStrategy: 'identity';
+  readonly modules: readonly (Type<unknown> | DynamicModule)[];
+}
+
+/**
+ * Evento que `withAuditEvents` siembra: por defecto, `node.trashed` sobre una carpeta, con el propio actor como
+ * afectado. Los atributos no pasan por el saneo de `AuditService` (se escriben con el repositorio): así una prueba puede
+ * sembrar datos prohibidos y comprobar que la respuesta no los copia (004 CA-14).
+ */
+export interface WorldAuditEventRequest {
+  /** Cuenta afectada; por defecto, el propio actor. */
+  readonly target?: WorldAccount;
+  readonly action?: string;
+  readonly resourceType?: AuditResourceType | null;
+  readonly attributes?: AuditAttributes;
+  /** Instante del evento; por defecto, 1 ms después del anterior sembrado en el mundo. */
+  readonly occurredAt?: Date;
+}
+
+/** Evento sembrado tal como quedó en `evento_auditoria`. */
+export type WorldAuditEvent = AuditEntry;
+
 export interface IsolationWorld {
   /** Dos clientes casi idénticos: mismo nombre, estado y fechas; correos que difieren en un carácter. */
   readonly clients: readonly [WorldAccount, WorldAccount];
   readonly internals: Readonly<Record<InternalRole, WorldAccount>>;
-  /** Token de acceso de prueba de la cuenta (002-PR-2 lo cambia por uno real). */
+  /**
+   * Token de acceso **real** de la cuenta (002 T-55): `JwtTokenService.issueAccessToken` con el rol de la cuenta, un
+   * `sid` uuid y la clave del mundo, emitido al crear el mundo con el reloj del sistema (vale 15 min, como en
+   * producción). Solo lo acepta una app con `appComposition()` (o `appAs`); un token de `TestAccessTokens`, no.
+   */
   tokenFor(account: WorldAccount): string;
-  /** App de Nest conectada como `nimbo_app`, nunca como el dueño (`DatabaseRoleCheck` lo impide). */
-  appAs(options?: Omit<TestAppOptions, 'env'>): Promise<TestApp>;
+  /** Estrategia real, composición de `identity` y clave del mundo, para sumar a otra app de prueba. */
+  appComposition(): WorldAppComposition;
+  /**
+   * App de Nest conectada como `nimbo_app`, nunca como el dueño (`DatabaseRoleCheck` lo impide), con
+   * `appComposition()` y las rutas sonda de 003 (`/__probe/...`) sin `TestJwtStrategy`.
+   */
+  appAs(options?: Omit<TestAppOptions, 'env' | 'accessTokenStrategy'>): Promise<TestApp>;
   /**
    * Archivos del cliente con esos nombres, insertados **como `nimbo_app` dentro de `withActor`** con los
    * repositorios de `storage` de `app` (que debe montar `StorageModule`): RLS los valida al escribir (005 T-45).
@@ -160,6 +216,16 @@ export interface IsolationWorld {
     owner: WorldAccount,
     request: WorldQuickAccessRequest,
   ): Promise<void>;
+  /**
+   * Eventos de auditoría a nombre de `actor` (cliente o rol interno), insertados con `IAuditRepository` **como
+   * `nimbo_app` dentro de `withActor(actor)`** (004 T-06): RLS de `evento_auditoria` valida cada alta. `app` debe montar
+   * `AuditModule` (directo o por `AuditHttpModule`).
+   */
+  withAuditEvents(
+    app: TestApp,
+    actor: WorldAccount,
+    requests: readonly WorldAuditEventRequest[],
+  ): Promise<WorldAuditEvent[]>;
   /** Borra las cuentas del mundo (como el dueño) y cierra su conexión. */
   close(): Promise<void>;
 }
@@ -367,6 +433,47 @@ const insertQuickAccess = async (
   });
 };
 
+/** Instantes por defecto de `withAuditEvents`: estrictamente crecientes y con milisegundos (como `IClock`, R-4). */
+const auditTicks = (() => {
+  let last = 0;
+  return (): Date => {
+    last = Math.max(last + 1, Date.now());
+    return new Date(last);
+  };
+})();
+
+const auditEntryOf = (actor: Actor, request: WorldAuditEventRequest): AuditEntry => {
+  const resourceType = request.resourceType === undefined ? 'folder' : request.resourceType;
+  return createAuditEntry({
+    id: randomUUID(),
+    action: request.action ?? 'node.trashed',
+    actorId: actor.id,
+    actorRole: actor.role,
+    targetUserId: request.target?.id ?? actor.id,
+    resourceType,
+    resourceId: resourceType === null ? null : randomUUID(),
+    attributes: request.attributes ?? { nodeType: 'folder', itemCount: 1 },
+    occurredAt: request.occurredAt ?? auditTicks(),
+    correlationId: `corr-${randomUUID()}`,
+  });
+};
+
+const insertAuditEvents = async (
+  testApp: TestApp,
+  account: WorldAccount,
+  requests: readonly WorldAuditEventRequest[],
+): Promise<WorldAuditEvent[]> => {
+  const get = <T>(token: symbol): T => testApp.app.get<unknown, T>(token, { strict: false });
+  const transactions = get<ITransactionRunner>(I_TRANSACTION_RUNNER);
+  const repository = get<IAuditRepository>(I_AUDIT_REPOSITORY);
+  const actor = createActor(account.id, account.role);
+  const entries = requests.map((request) => auditEntryOf(actor, request));
+  await transactions.withActor(actor, async () => {
+    for (const entry of entries) await repository.insert(actor, entry);
+  });
+  return entries;
+};
+
 const insertUploads = async (
   testApp: TestApp,
   owner: WorldAccount,
@@ -397,10 +504,49 @@ const insertUploads = async (
   });
 };
 
+/** Solo las rutas sonda de 003, sin `TestJwtStrategy` ni su verificador: la estrategia es la real de `identity`. */
+@Module({ controllers: [ProbeController], providers: [ProbeCalls, ProbeResources] })
+class WorldProbeRoutesModule {}
+
+/** Composición de `identity` de `AppModule` (eventos, *throttlers*, `IdentityModule`) con la clave del mundo. */
+const appCompositionFor = (secret: string): WorldAppComposition => ({
+  env: { JWT_ACCESS_SECRET: secret },
+  accessTokenStrategy: 'identity',
+  modules: [
+    EventEmitterModule.forRoot(),
+    ThrottlerModule.forRoot({ throttlers: [...IDENTITY_THROTTLERS] }),
+    IdentityModule.forRoot(buildTestEnv({ JWT_ACCESS_SECRET: secret })),
+  ],
+});
+
+/** Un token real por cuenta, cada uno con su `sid`, del mismo emisor que usa la app (`JwtTokenService`). */
+const issueTokens = async (
+  secret: string,
+  accounts: readonly WorldAccount[],
+): Promise<ReadonlyMap<string, string>> => {
+  const issuer = new JwtTokenService(
+    new JwtService(),
+    accessTokenOptionsFrom({ JWT_ACCESS_SECRET: secret }),
+    new SystemClock(),
+  );
+  const issued = await Promise.all(
+    accounts.map(async (account) => {
+      const { token } = await issuer.issueAccessToken({
+        userId: account.id,
+        role: account.role,
+        sessionId: randomUUID(),
+      });
+      return [account.id, token] as const;
+    }),
+  );
+  return new Map(issued);
+};
+
 /**
  * Mundo de aislamiento (003 CA-15, D-3; plan §6.7). Las cuentas se insertan con el rol **dueño**
  * (`DATABASE_MIGRATION_URL`) porque son *fixtures*, no la aplicación; la app corre como `nimbo_app`. 005 agrega
- * `withFiles` y `withUploads`, que sí escriben como `nimbo_app` (con RLS); 006, `withFolders`, `withTrash` y `withQuickAccess`.
+ * `withFiles` y `withUploads`, que sí escriben como `nimbo_app` (con RLS); 006, `withFolders`, `withTrash` y `withQuickAccess`;
+ * 004, `withAuditEvents` (los eventos se van con las cuentas: `usuario_afectado_id` es `ON DELETE CASCADE`).
  */
 export const createIsolationWorld = async (): Promise<IsolationWorld> => {
   const owner = await connectAsOwner();
@@ -416,20 +562,34 @@ export const createIsolationWorld = async (): Promise<IsolationWorld> => {
   };
   const accounts = [...clients, ...Object.values(internals)];
   await insertAll(owner, accounts);
-  const tokens = new TestAccessTokens(new FixedClock(PROBE_CLOCK_START));
+  // Clave propia del mundo: ni la de `TestAccessTokens` ni la del entorno del arnés firman un token que `appAs` acepte.
+  const secret = randomBytes(WORLD_SECRET_BYTES).toString('base64url');
+  const tokens = await issueTokens(secret, accounts);
 
   return {
     clients,
     internals,
-    tokenFor: (account) =>
-      tokens.valid({ userId: account.id, role: account.role, sessionId: randomUUID() }),
-    appAs: (options = {}) =>
-      createTestApp({ ...options, env: { DATABASE_URL: requiredEnv('DATABASE_URL') } }),
+    tokenFor: (account) => {
+      const token = tokens.get(account.id);
+      if (token === undefined) throw new Error('tokenFor: la cuenta no es del mundo');
+      return token;
+    },
+    appComposition: () => appCompositionFor(secret),
+    appAs: (options = {}) => {
+      const composition = appCompositionFor(secret);
+      return createTestApp({
+        ...options,
+        accessTokenStrategy: composition.accessTokenStrategy,
+        modules: [...composition.modules, WorldProbeRoutesModule, ...(options.modules ?? [])],
+        env: { ...composition.env, DATABASE_URL: requiredEnv('DATABASE_URL') },
+      });
+    },
     withFiles: insertFiles,
     withUploads: insertUploads,
     withFolders: insertFolders,
     withTrash: insertTrash,
     withQuickAccess: insertQuickAccess,
+    withAuditEvents: insertAuditEvents,
     close: async () => {
       const ids = accounts.map((account) => account.id);
       await owner.transaction(async (manager) => {

@@ -2,9 +2,11 @@
 // `docs/**` (incluidos los mockups) queda fuera del lint (CA-4, CA-8).
 import base from '@nimbo/config/eslint/base.js';
 import boundaries from '@nimbo/config/eslint/boundaries.js';
+import layers from '@nimbo/config/eslint/layers.js';
 import nest from '@nimbo/config/eslint/nest.js';
 import next from '@nimbo/config/eslint/next.js';
 import sharedBoundaries from '@nimbo/config/eslint/shared-boundaries.js';
+import typeormColumns from '@nimbo/config/eslint/typeorm-columns.js';
 import tseslint from 'typescript-eslint';
 
 const withRoot = (config) => ({
@@ -40,4 +42,7 @@ export default tseslint.config(
   ...scoped(next, ['apps/web/**/*.{ts,tsx}']),
   ...sharedBoundaries,
   ...boundaries,
+  ...layers,
+  // Después de `nest` (que incluye `rls.js`): repite sus selectores en las entidades.
+  ...typeormColumns,
 );

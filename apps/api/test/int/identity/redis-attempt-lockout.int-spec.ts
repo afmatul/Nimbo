@@ -122,6 +122,42 @@ describe('RedisAttemptLockout (CA-5, CA-19, CA-23)', () => {
     await expect(lockout.check(key)).resolves.toEqual({ locked: true, retryAfterSeconds: 900 });
   });
 
+  it('CA-23, I-1: `reserveAttempt` cuenta el intento; el 5.º activa el bloqueo y todavía se permite, el 6.º se rechaza', async () => {
+    for (let attempt = 1; attempt < POLICY.maxFailures; attempt += 1) {
+      await expect(lockout.reserveAttempt(key, POLICY)).resolves.toEqual({
+        allowed: true,
+        engagedLock: false,
+      });
+    }
+
+    await expect(lockout.reserveAttempt(key, POLICY)).resolves.toEqual({
+      allowed: true,
+      engagedLock: true,
+    });
+    clock.advance(MINUTE_MS);
+    await expect(lockout.reserveAttempt(key, POLICY)).resolves.toEqual({
+      allowed: false,
+      retryAfterSeconds: 840,
+    });
+  });
+
+  it('CA-23, I-1: 10 reservas simultáneas con máximo 5 permiten solo 5 y dejan un solo bloqueo', async () => {
+    const reservations = await Promise.all(
+      Array.from({ length: CONCURRENT_FAILURES }, () => lockout.reserveAttempt(key, POLICY)),
+    );
+
+    expect(reservations.filter((reservation) => reservation.allowed)).toHaveLength(
+      POLICY.maxFailures,
+    );
+    expect(reservations.filter((reservation) => !reservation.allowed)).toEqual(
+      Array.from({ length: CONCURRENT_FAILURES - POLICY.maxFailures }, () => ({
+        allowed: false,
+        retryAfterSeconds: 900,
+      })),
+    );
+    await expect(redis.keys(`${key}*`)).resolves.toEqual([`${key}:lock`]);
+  });
+
   it('CA-5: con Redis caído, `check` lanza (falla cerrado)', async () => {
     const down = new Redis('redis://127.0.0.1:1', {
       lazyConnect: true,
