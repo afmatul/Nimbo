@@ -13,6 +13,7 @@ export const webEnvObjectSchema = z.object({
   APP_ENV: z.enum(['local', 'test', 'staging', 'production'], {
     errorMap: () => ({ message: 'debe ser uno de: local, test, staging, production' }),
   }),
+  /** Origen de la API para el servidor, sin prefijo (`http://api:3000`): cada cliente agrega `/api/v1`. */
   API_INTERNAL_URL: z.string().url({ message: 'debe ser una URL válida' }),
   API_PUBLIC_URL: z.string().url({ message: 'debe ser una URL válida' }),
   PORT: z.coerce

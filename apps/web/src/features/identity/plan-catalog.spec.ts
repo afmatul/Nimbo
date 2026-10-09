@@ -1,6 +1,24 @@
+import type { PlanDto } from '@nimbo/contracts';
+
 import { loadPlanCatalog } from './plan-catalog';
 
-const PERSONAL = { id: 'personal', name: 'Personal', priceCents: 0, free: true };
+const PLAN: Omit<PlanDto, 'id' | 'slug' | 'nombre' | 'precioCentavos'> = {
+  descripcion: null,
+  cuotaBytes: '1',
+  maxArchivoBytes: '1',
+  maxEditores: 0,
+  consultasAgenteMensual: 0,
+  versionesRetenidas: 0,
+  diasRetencionPapelera: 0,
+};
+const PERSONAL: PlanDto = {
+  ...PLAN,
+  id: 'p-1',
+  slug: 'personal',
+  nombre: 'Personal',
+  precioCentavos: 0,
+};
+const PRO: PlanDto = { ...PLAN, id: 'p-2', slug: 'pro', nombre: 'Pro', precioCentavos: 4500 };
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -9,58 +27,50 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
-describe('plan-catalog', () => {
+describe('plan-catalog (PD-48: lee el catálogo de la 008)', () => {
   const fetchMock = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>();
 
   beforeEach(() => {
     fetchMock.mockReset();
+    global.fetch = fetchMock;
   });
 
-  it('lee los planes activos de la ruta provisional de 006a', async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ plans: [PERSONAL] }));
+  it('lee GET /api/v1/billing/plans y lo adapta al selector de planes', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ planes: [PERSONAL, PRO] }));
 
-    await expect(loadPlanCatalog('http://internal.test/api/v1/', fetchMock)).resolves.toEqual({
-      plans: [PERSONAL],
+    await expect(loadPlanCatalog('http://internal.test')).resolves.toEqual({
+      plans: [
+        { id: 'p-1', name: 'Personal', priceCents: 0, free: true },
+        { id: 'p-2', name: 'Pro', priceCents: 4500, free: false },
+      ],
       unavailable: false,
     });
-    expect(String(fetchMock.mock.calls[0]?.[0])).toBe('http://internal.test/api/v1/plans');
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe('http://internal.test/api/v1/billing/plans');
   });
 
-  it('un 404, un cuerpo inválido o un fallo de red dejan el catálogo no disponible', async () => {
-    fetchMock.mockResolvedValueOnce(jsonResponse({ message: 'no' }, 404));
-    await expect(loadPlanCatalog('http://internal.test/api/v1', fetchMock)).resolves.toEqual({
-      plans: [],
-      unavailable: true,
-    });
+  it('corta la espera a los 2 s con una señal de tiempo', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ planes: [] }));
 
-    fetchMock.mockResolvedValueOnce(jsonResponse({ plans: [{ id: 'x' }] }));
-    await expect(loadPlanCatalog('http://internal.test/api/v1', fetchMock)).resolves.toEqual({
-      plans: [],
-      unavailable: true,
-    });
+    await loadPlanCatalog('http://internal.test');
 
-    fetchMock.mockRejectedValueOnce(new Error('red'));
-    await expect(loadPlanCatalog('http://internal.test/api/v1', fetchMock)).resolves.toEqual({
-      plans: [],
-      unavailable: true,
-    });
+    expect(fetchMock.mock.calls[0]?.[1]?.signal).toBeInstanceOf(AbortSignal);
   });
 
-  it('a los 2 s corta la espera y deja el catálogo no disponible', async () => {
-    jest.useFakeTimers({ doNotFake: ['nextTick', 'queueMicrotask', 'setImmediate'] });
-    fetchMock.mockImplementation(
-      (_input, init) =>
-        new Promise((_resolve, reject) => {
-          init?.signal?.addEventListener('abort', () => {
-            reject(new Error('aborted'));
-          });
-        }),
+  it('un 500, un cuerpo inválido, la red caída o el tiempo agotado dejan el catálogo no disponible', async () => {
+    const unavailable = { plans: [], unavailable: true };
+
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ code: 'PLAN_CATALOG_UNAVAILABLE', message: 'x', correlationId: 'c' }, 500),
     );
+    await expect(loadPlanCatalog('http://internal.test')).resolves.toEqual(unavailable);
 
-    const pending = loadPlanCatalog('http://internal.test/api/v1', fetchMock);
-    await jest.advanceTimersByTimeAsync(2_000);
+    fetchMock.mockResolvedValueOnce(jsonResponse({ planes: [{ id: 'x' }] }));
+    await expect(loadPlanCatalog('http://internal.test')).resolves.toEqual(unavailable);
 
-    await expect(pending).resolves.toEqual({ plans: [], unavailable: true });
-    jest.useRealTimers();
+    fetchMock.mockRejectedValueOnce(new TypeError('fetch failed'));
+    await expect(loadPlanCatalog('http://internal.test')).resolves.toEqual(unavailable);
+
+    fetchMock.mockRejectedValueOnce(new DOMException('timeout', 'TimeoutError'));
+    await expect(loadPlanCatalog('http://internal.test')).resolves.toEqual(unavailable);
   });
 });
