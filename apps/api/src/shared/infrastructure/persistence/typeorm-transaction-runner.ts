@@ -35,7 +35,7 @@ export class TypeOrmTransactionRunner implements ITransactionRunner {
   ) {}
 
   run<T>(work: () => Promise<T>): Promise<T> {
-    if (this.context.current()?.actor !== undefined) {
+    if (this.context.current() !== undefined) {
       return work();
     }
     return this.dataSource.transaction((manager) => this.context.runWith({ manager }, work));

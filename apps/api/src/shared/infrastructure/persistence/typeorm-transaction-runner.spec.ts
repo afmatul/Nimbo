@@ -126,6 +126,19 @@ describe('TypeOrmTransactionRunner.withActor (003 CA-12)', () => {
     expect(inner).toEqual({ manager: managers[0], actor });
   });
 
+  it('T1 (011 CA-7): `run` dentro de un `run` sin actor se une a esa transacción (sin abrir otra)', async () => {
+    const { runner, context, transaction, managers } = setup();
+
+    const [outer, inner] = await runner.run(async () => {
+      const own = context.current();
+      return [own, await runner.run(() => Promise.resolve(context.current()))];
+    });
+
+    expect(transaction).toHaveBeenCalledTimes(1);
+    expect(inner).toBe(outer);
+    expect(inner).toEqual({ manager: managers[0] });
+  });
+
   it('CA-12: `run` fuera de `withActor` sigue abriendo su transacción sin actor (001)', async () => {
     const { runner, context, transaction, managers } = setup();
 
