@@ -253,10 +253,7 @@ describe('NameConflictDialog con «Reemplazar» (014 CA-1, CA-15)', () => {
     await renderUpload({ wouldPruneVersion: 3 });
 
     const alert = pruneAlert();
-    expect(alert?.textContent).toContain('Si reemplazas, se eliminará la versión 3.');
-    expect(alert?.textContent).toContain(
-      'Al reemplazar se eliminará la versión 3, la más antigua.',
-    );
+    expect(alert?.textContent).toBe('Al reemplazar se eliminará la versión 3, la más antigua.');
     const describedBy = document
       .querySelector('[role="alertdialog"]')
       ?.getAttribute('aria-describedby');

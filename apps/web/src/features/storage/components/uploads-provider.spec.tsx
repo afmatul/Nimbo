@@ -145,7 +145,9 @@ describe('UploadsProvider', () => {
     const dialog = await screen.findByRole('alertdialog', {
       name: 'Ya tienes un archivo con este nombre',
     });
-    expect(dialog.textContent).toContain('Si reemplazas, se eliminará la versión 3.');
+    expect(dialog.textContent).toContain(
+      'Al reemplazar se eliminará la versión 3, la más antigua.',
+    );
 
     await userEvent.click(screen.getByRole('button', { name: 'Reemplazar (nueva versión)' }));
 

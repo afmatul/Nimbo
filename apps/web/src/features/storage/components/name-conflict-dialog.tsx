@@ -125,14 +125,10 @@ function PruneWarning({
   readonly id: string;
   readonly version: number;
 }): React.JSX.Element {
-  const pruned = String(version);
   return (
     <Alert id={id} variant="warning" className="flex gap-2.5">
       <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-      <p>
-        <strong className="block font-semibold">{`Si reemplazas, se eliminará la versión ${pruned}.`}</strong>{' '}
-        <span className="text-foreground">{`Al reemplazar se eliminará la versión ${pruned}, la más antigua.`}</span>
-      </p>
+      <p className="text-foreground">{`Al reemplazar se eliminará la versión ${String(version)}, la más antigua.`}</p>
     </Alert>
   );
 }

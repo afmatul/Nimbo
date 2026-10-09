@@ -89,9 +89,9 @@ T-02 ─┘         ├─> T-05 ─> T-06 ──┼─> T-08 (web, ficha)
 ## Notas del developer
 
 1. DF-64 era de 004: el hallazgo de 014 es **DF-65** (ya corregido en `plan.md`). PD nuevos: PD-74 (016) y PD-75 (019); el PD de «mockups completos» no se crea porque ya están completos.
-2. T-09: el aviso de poda del diálogo de nombre repetido dice «Si reemplazas, se eliminará la versión {k}. Al reemplazar
-   se eliminará la versión {k}, la más antigua.» (texto de la spec §6) sin la frase del mockup «Tu plan conserva {n}
-   versiones»: el `409` solo trae `wouldPruneVersion`, no `retainedVersions`. Si Adrián quiere la frase, el `409` debe
-   sumar `retainedVersions` (cambio de contrato en `apps/api`).
+2. T-09: el aviso de poda del diálogo de nombre repetido dice solo «Al reemplazar se eliminará la versión {k}, la más
+   antigua.» (texto de la spec §6, decisión de Adrián). El mockup suma un titular redundante («Si reemplazas, se eliminará
+   la versión {k}.») y «Tu plan conserva {n} versiones», que el `409` no permite (solo trae `wouldPruneVersion`); ambos
+   se omiten.
 3. T-09: «Reemplazar», el título «Ya tienes un archivo con este nombre» y el aviso solo aparecen en cargas (`onReplace`).
    Renombrar y mover (006) siguen con «¿Conservar ambos archivos?» y dos acciones, porque su API no acepta `replace`.
