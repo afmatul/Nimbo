@@ -14,9 +14,9 @@ const withPasswordHash = (user: User, passwordHash: PasswordHash): User => {
     status: user.status,
     emailVerified: user.emailVerified,
   };
-  return user instanceof ClientUser
-    ? ClientUser.rehydrate({ ...common, acceptance: user.acceptance })
-    : InternalUser.rehydrate({ ...common, role: user.role });
+  return user instanceof InternalUser
+    ? InternalUser.rehydrate({ ...common, role: user.role, employeeCode: user.employeeCode })
+    : ClientUser.rehydrate({ ...common, acceptance: (user as ClientUser).acceptance });
 };
 
 /** Doble en memoria de `IUserRepository` para las pruebas de aplicación: el correo es único, como `uq_usuario_correo`. */

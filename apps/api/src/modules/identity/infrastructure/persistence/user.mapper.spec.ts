@@ -20,6 +20,7 @@ const anInternalRow = (): UsuarioRow => ({
   versionTerminos: null,
   versionPrivacidad: null,
   terminosAceptadosEn: null,
+  codigoEmpleado: 'SOP-001',
 });
 
 describe('user.mapper', () => {
@@ -46,6 +47,7 @@ describe('user.mapper', () => {
       versionTerminos: '1.0',
       versionPrivacidad: '1.0',
       terminosAceptadosEn: user.acceptance.acceptedAt,
+      codigoEmpleado: null,
     });
   });
 
@@ -56,8 +58,15 @@ describe('user.mapper', () => {
     expect(user).toMatchObject({ role: Role.SUPPORT, emailVerified: true });
   });
 
+  it('011 RN-5: una fila interna trae su código de empleado; sin código es un dato corrupto y lanza', () => {
+    const user = toUserDomain(anInternalRow()) as InternalUser;
+
+    expect(user.employeeCode.value).toBe('SOP-001');
+    expect(() => toUserDomain({ ...anInternalRow(), codigoEmpleado: null })).toThrow(TypeError);
+  });
+
   it('CA-3: una fila de cliente sin aceptación es un dato corrupto y lanza', () => {
-    const row = { ...anInternalRow(), rol: Role.CLIENT };
+    const row = { ...anInternalRow(), rol: Role.CLIENT, codigoEmpleado: null };
 
     expect(() => toUserDomain(row)).toThrow(TypeError);
   });

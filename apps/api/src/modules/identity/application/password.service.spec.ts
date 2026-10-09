@@ -16,6 +16,7 @@ import { Role } from '../../../shared/domain/role.enum';
 import type { MailMessage } from '../../notifications';
 import { AccountStatus } from '../domain/account-status.enum';
 import { EmailAddress } from '../domain/email-address.vo';
+import { EmployeeCode } from '../domain/employee-code.vo';
 import {
   IdentityTooManyRequestsError,
   IdentityWeakPasswordError,
@@ -73,6 +74,7 @@ const anInternalUser = (): InternalUser =>
     role: Role.SUPPORT,
     status: AccountStatus.ACTIVE,
     emailVerified: true,
+    employeeCode: EmployeeCode.of('SOP-001'),
   });
 
 const setup = () => {
