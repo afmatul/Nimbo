@@ -62,6 +62,23 @@ const ACTION_TEXTS: Readonly<Record<string, ActionText>> = {
     self: () => 'Vaciaste la papelera',
     staff: (_w, a) => `${a} vació la papelera`,
   },
+  /** Acciones internas sobre tu cuenta (011, CA-16): el sujeto es solo el rol. */
+  'account.suspended': {
+    self: () => 'Suspendiste tu cuenta',
+    staff: (_w, a) => `${a} suspendió tu cuenta`,
+  },
+  'account.reactivated': {
+    self: () => 'Reactivaste tu cuenta',
+    staff: (_w, a) => `${a} reactivó tu cuenta`,
+  },
+  'account.internal_created': {
+    self: () => 'Creaste tu cuenta',
+    staff: (_w, a) => `${a} creó tu cuenta`,
+  },
+  'client.files_viewed': {
+    self: () => 'Consultaste la lista de tus archivos',
+    staff: (_w, a) => `${a} consultó la lista de tus archivos (sin abrir su contenido)`,
+  },
 };
 
 const UNIT_NOUNS: Readonly<Record<NonNullable<AuditEventResponse['resourceType']>, string>> = {

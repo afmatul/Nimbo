@@ -9,6 +9,17 @@ export enum AuditAction {
   NODE_RESTORED = 'node.restored',
   NODE_PURGED = 'node.purged',
   TRASH_EMPTIED = 'trash.emptied',
+  /** Cuentas (011): recurso y afectado son la cuenta; el alta interna guarda solo `role`, nunca nombre ni correo. */
+  ACCOUNT_SUSPENDED = 'account.suspended',
+  ACCOUNT_REACTIVATED = 'account.reactivated',
+  ACCOUNT_INTERNAL_CREATED = 'account.internal_created',
+  /** Alta inicial por comando (011 CA-7): actor de sistema y sin afectado. */
+  ACCOUNT_BOOTSTRAP_ADMIN = 'account.bootstrap_admin',
+  /** Soporte o Administración consultó los metadatos de un cliente (011 CA-13): recurso y afectado, la cuenta. */
+  CLIENT_FILES_VIEWED = 'client.files_viewed',
+  /** Catálogo (011): recurso `plan`, sin afectado (ningún cliente los ve). */
+  PLAN_CREATED = 'plan.created',
+  PLAN_DEACTIVATED = 'plan.deactivated',
 }
 
 const AUDIT_ACTIONS: ReadonlySet<string> = new Set(Object.values(AuditAction));

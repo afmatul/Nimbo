@@ -111,4 +111,30 @@ describe('toAuditEventResponse (lista blanca, CA-14)', () => {
   ] as const)('CA-10: si %s, el origen es `%s`', (_case, actorId, origin) => {
     expect(toAuditEventResponse(entryOf({ actorId })).origin).toBe(origin);
   });
+
+  it('CA-16 (011): una acción sobre la cuenta sale con `resourceType: null` y el rol del actor', () => {
+    const entry = entryOf({
+      action: 'client.files_viewed',
+      actorId: SUPPORT_ID,
+      actorRole: Role.SUPPORT,
+      resourceType: 'account',
+      resourceId: CLIENT_ID,
+      attributes: {},
+    });
+
+    const response = toAuditEventResponse(entry);
+
+    expect(response).toMatchObject({
+      origin: 'staff',
+      actorRole: Role.SUPPORT,
+      resourceType: null,
+    });
+    expect(auditEventResponseSchema.safeParse(response).success).toBe(true);
+  });
+
+  it('011 §2: un evento del actor de sistema nunca se mapea (no tiene afectado): lanza un error interno', () => {
+    const entry = entryOf({ actorId: null, actorRole: 'SYSTEM', resourceType: 'account' });
+
+    expect(() => toAuditEventResponse(entry)).toThrow(/sistema/);
+  });
 });

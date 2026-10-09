@@ -1,7 +1,9 @@
 import { AUDIT_TRIGGERS } from '@nimbo/contracts';
 import type { AuditEventResponse, AuditTrigger } from '@nimbo/contracts';
 
-import type { AuditAttributeValue, AuditEntry } from '../domain/audit-entry';
+import { SYSTEM_ROLE } from '../domain/audit-actor';
+import type { AuditActorRole } from '../domain/audit-actor';
+import type { AuditAttributeValue, AuditEntry, AuditResourceType } from '../domain/audit-entry';
 import type { AuditOrigin } from '../domain/audit-query';
 
 const numberOrNull = (value: AuditAttributeValue | undefined): number | null =>
@@ -9,6 +11,25 @@ const numberOrNull = (value: AuditAttributeValue | undefined): number | null =>
 
 const isTrigger = (value: AuditAttributeValue | undefined): value is AuditTrigger =>
   (AUDIT_TRIGGERS as readonly unknown[]).includes(value);
+
+type ResponseResourceType = AuditEventResponse['resourceType'];
+
+/** Sobre la cuenta o un plan, el texto de la acción ya dice qué se afectó: el contrato de 004 no tiene esos tipos. */
+const responseResourceTypeOf = (type: AuditResourceType | null): ResponseResourceType =>
+  type === 'account' || type === 'plan' ? null : type;
+
+/**
+ * Un evento del sistema no tiene afectado, así que ninguna consulta de «Mi actividad» lo alcanza (011 plan §3). Si
+ * llega aquí, es un error de programación: no se inventa un rol que el contrato de 004 no tiene.
+ */
+function personRoleOf(role: AuditActorRole): AuditEventResponse['actorRole'] {
+  if (role === SYSTEM_ROLE) {
+    throw new Error(
+      'Un evento del actor de sistema no se muestra en «Mi actividad»: revisa la consulta.',
+    );
+  }
+  return role;
+}
 
 /** «Yo» solo si el actor es el afectado; cualquier otro, incluido el actor anonimizado (`null`, D-8), es personal. */
 const originOf = (entry: AuditEntry): AuditOrigin =>
@@ -26,8 +47,8 @@ export function toAuditEventResponse(entry: AuditEntry): AuditEventResponse {
     occurredAt: entry.occurredAt.toISOString(),
     action: entry.action,
     origin: originOf(entry),
-    actorRole: entry.actorRole,
-    resourceType: entry.resourceType,
+    actorRole: personRoleOf(entry.actorRole),
+    resourceType: responseResourceTypeOf(entry.resourceType),
     itemCount: numberOrNull(itemCount),
     sizeBytes: numberOrNull(sizeBytes),
     ...(typeof note === 'string' && { note }),
