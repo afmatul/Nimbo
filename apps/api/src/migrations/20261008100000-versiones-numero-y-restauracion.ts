@@ -2,7 +2,7 @@ import type { MigrationInterface, QueryRunner } from 'typeorm';
 
 /**
  * Número de versión, versión de origen de una restauración y cargas que reemplazan un archivo (spec 014 CA-1, CA-4,
- * CA-9; plan §3; DF-65). Antes de 014 cada archivo tiene exactamente una versión, así que `DEFAULT 1` numera bien las
+ * CA-9; plan §3; DF-68). Antes de 014 cada archivo tiene exactamente una versión, así que `DEFAULT 1` numera bien las
  * filas existentes sin un `UPDATE` bajo RLS; después se quita para que todo alta diga su número.
  * `restaurada_de_numero` es un número y no una FK: sobrevive a la poda de su versión (los números no se reutilizan).
  * `uq_version_archivo_numero` es la red de seguridad de la numeración y sirve también para listar por `numero DESC`.

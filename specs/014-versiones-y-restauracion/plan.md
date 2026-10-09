@@ -63,7 +63,7 @@ existente, `UploadRegistrar`) y **restaurar** (copia del objeto + `register`). 0
   `VersionRestoreService` son clases concretas (SRP: registrar / podar / leer / restaurar).
 - **Nombres de los diagramas:** el diagrama pone `VersionHistoryService` e `IVersionRepository` en M5 y duplica la
   restauración en `FileService.restoreVersion`. Aquí quedan en M2 (DF-17) y `FileService` no restaura; 016 solo aportará
-  la autoría. Se registra en DF-65.
+  la autoría. Se registra en DF-68.
 - **Dependencias nuevas entre módulos:** ninguna. `storage` no importa `editing`; 016 consumirá `FileVersionService` (su plan
   decide cómo se exporta). Hoy `storage/index.ts` no exporta nada nuevo (YAGNI).
 - **Frontend (`apps/web`, tokens de `ui-guidelines.md`, sin colores a mano):**
@@ -172,7 +172,7 @@ feliz y su error principal; el aislamiento va solo en `test/isolation`.
 - **Decidido por Adrián (08/10):** el evento `FileVersionCreated` se difiere a 019 (YAGNI); se mantiene la tasa propia de
   restaurar; nombres de autor con 016; historial sin paginar; el reemplazo reutiliza `file.upload_completed`; la poda por
   bajar de plan es de 010. `copyObject` en el servidor tiene tope de 5 GB en S3, que cubre el máximo de 2 GB.
-- **Desviaciones de los diagramas:** DF-65 (nuevo): `FileVersionService`, `VersionPruner`, `VersionHistoryService`,
+- **Desviaciones de los diagramas:** DF-68 (nuevo): `FileVersionService`, `VersionPruner`, `VersionHistoryService`,
   `VersionRestoreService` e `IVersionRepository` en M2; columnas `version_archivo.numero`, `restaurada_de_numero` y
   `carga.reemplaza`. Se actualizan DF-17, DF-18 (parcial: sin `sesion_edicion_id`, que trae 016) y DF-38 (014 ajusta
   `espacio_usado`) y la tabla de mapeo de `design-model.md`.

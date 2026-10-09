@@ -34,7 +34,7 @@ T-02 ─┘         ├─> T-05 ─> T-06 ──┼─> T-08 (web, ficha)
 - [x] **T-03** Registro de versiones y poda: `FileVersionService.register`, `VersionPruner`, `IVersionRepository` — CA: CA-5, CA-4 (numeración consecutiva y `UNIQUE`), CA-13, CA-14, CA-19 (evento `file.version_pruned`)
   - Prueba primero: `application/file-version.service.spec.ts` (misma numeración, cuota y retención para `carga`, `restauracion` y un doble `edicion`/`optimizacion`; sin indexar ni publicar evento), `application/version-pruner.spec.ts` (borra de a una en su transacción; falla de objeto deja fila y espacio intactos y se reintenta; nunca falla al llamador), `test/int/storage/versions-retention.int-spec.ts` (Personal = 3, poda real en MinIO, `espacio_usado` baja, auditoría y bitácoras sin nombres ni claves).
   - Archivos: `storage/application/file-version.service.ts` (`register`, `afterCommit`), `version-pruner.ts`, `ports/i-version.repository.port.ts`, `ports/i-node.repository.port.ts` (`updateCurrentVersion`), `infrastructure/persistence/typeorm-version.repository.ts`, `typeorm-node.repository.ts`; `upload-lifecycle.providers.ts`, `storage.module.ts`, `storage-worker.module.ts`.
-  - Documentación del diseño (misma tarea, porque aquí nacen las clases): `docs/sdd/design-findings.md` (DF-65 nuevo para M2, y DF-17, DF-18 parcial, DF-38), `docs/sdd/design-model.md` (tabla de mapeo con `FileVersionService`, `VersionPruner`, `VersionHistoryService`, `VersionRestoreService`, `IVersionRepository` en M2 y las columnas nuevas), `docs/sdd/pendientes.md` (PD-74 nombres de autor y participantes para 016; PD-75 evento `FileVersionCreated` para 019; PD-46 y PD-60 con la nota del plan).
+  - Documentación del diseño (misma tarea, porque aquí nacen las clases): `docs/sdd/design-findings.md` (DF-68 nuevo para M2, y DF-17, DF-18 parcial, DF-38), `docs/sdd/design-model.md` (tabla de mapeo con `FileVersionService`, `VersionPruner`, `VersionHistoryService`, `VersionRestoreService`, `IVersionRepository` en M2 y las columnas nuevas), `docs/sdd/pendientes.md` (PD-89 nombres de autor y participantes para 016; PD-90 evento `FileVersionCreated` para 019; PD-46 y PD-60 con la nota del plan).
   - Depende: T-01, T-02
 
 - [x] **T-04** Reemplazar un archivo: `onConflict: 'replace'` de punta a punta — CA: CA-1, CA-2, CA-3, CA-4 (concurrencia), CA-19 (reemplazo), CA-15 (dato `wouldPruneVersion` en el `409`)
@@ -88,7 +88,7 @@ T-02 ─┘         ├─> T-05 ─> T-06 ──┼─> T-08 (web, ficha)
 
 ## Notas del developer
 
-1. DF-64 era de 004: el hallazgo de 014 es **DF-65** (ya corregido en `plan.md`). PD nuevos: PD-74 (016) y PD-75 (019); el PD de «mockups completos» no se crea porque ya están completos.
+1. Numeración (2026-10-09): DF-64 es de 004, DF-65 y DF-66 de la 011 y DF-67 de la 008, así que el hallazgo de 014 es **DF-68**; los PD-74 a PD-88 los usa la 011, así que los PD nuevos de 014 son PD-89 (016) y PD-90 (019); el PD de «mockups completos» no se crea porque ya están completos.
 2. T-09: el aviso de poda del diálogo de nombre repetido dice solo «Al reemplazar se eliminará la versión {k}, la más
    antigua.» (texto de la spec §6, decisión de Adrián). El mockup suma un titular redundante («Si reemplazas, se eliminará
    la versión {k}.») y «Tu plan conserva {n} versiones», que el `409` no permite (solo trae `wouldPruneVersion`); ambos
