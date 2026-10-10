@@ -1,24 +1,24 @@
-import type { PlanDto } from '@nimbo/contracts';
+import type { Plan } from '@nimbo/contracts';
 
 import { loadPlanCatalog } from './plan-catalog';
 
-const PLAN: Omit<PlanDto, 'id' | 'slug' | 'nombre' | 'precioCentavos'> = {
-  descripcion: null,
-  cuotaBytes: '1',
-  maxArchivoBytes: '1',
-  maxEditores: 0,
-  consultasAgenteMensual: 0,
-  versionesRetenidas: 0,
-  diasRetencionPapelera: 0,
+const PLAN: Omit<Plan, 'id' | 'slug' | 'name' | 'priceCents'> = {
+  description: null,
+  quotaBytes: '1',
+  maxFileBytes: '1',
+  maxEditors: 0,
+  agentQueriesPerMonth: 0,
+  retainedVersions: 0,
+  trashRetentionDays: 0,
 };
-const PERSONAL: PlanDto = {
+const PERSONAL: Plan = {
   ...PLAN,
   id: 'p-1',
   slug: 'personal',
-  nombre: 'Personal',
-  precioCentavos: 0,
+  name: 'Personal',
+  priceCents: 0,
 };
-const PRO: PlanDto = { ...PLAN, id: 'p-2', slug: 'pro', nombre: 'Pro', precioCentavos: 4500 };
+const PRO: Plan = { ...PLAN, id: 'p-2', slug: 'pro', name: 'Pro', priceCents: 4500 };
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -36,7 +36,7 @@ describe('plan-catalog (PD-48: lee el catálogo de la 008)', () => {
   });
 
   it('lee GET /api/v1/billing/plans y lo adapta al selector de planes', async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ planes: [PERSONAL, PRO] }));
+    fetchMock.mockResolvedValue(jsonResponse({ plans: [PERSONAL, PRO] }));
 
     await expect(loadPlanCatalog('http://internal.test')).resolves.toEqual({
       plans: [
@@ -49,7 +49,7 @@ describe('plan-catalog (PD-48: lee el catálogo de la 008)', () => {
   });
 
   it('corta la espera a los 2 s con una señal de tiempo', async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ planes: [] }));
+    fetchMock.mockResolvedValue(jsonResponse({ plans: [] }));
 
     await loadPlanCatalog('http://internal.test');
 
@@ -60,11 +60,14 @@ describe('plan-catalog (PD-48: lee el catálogo de la 008)', () => {
     const unavailable = { plans: [], unavailable: true };
 
     fetchMock.mockResolvedValueOnce(
-      jsonResponse({ code: 'PLAN_CATALOG_UNAVAILABLE', message: 'x', correlationId: 'c' }, 500),
+      jsonResponse(
+        { code: 'BILLING_PLAN_CATALOG_UNAVAILABLE', message: 'x', correlationId: 'c' },
+        500,
+      ),
     );
     await expect(loadPlanCatalog('http://internal.test')).resolves.toEqual(unavailable);
 
-    fetchMock.mockResolvedValueOnce(jsonResponse({ planes: [{ id: 'x' }] }));
+    fetchMock.mockResolvedValueOnce(jsonResponse({ plans: [{ id: 'x' }] }));
     await expect(loadPlanCatalog('http://internal.test')).resolves.toEqual(unavailable);
 
     fetchMock.mockRejectedValueOnce(new TypeError('fetch failed'));

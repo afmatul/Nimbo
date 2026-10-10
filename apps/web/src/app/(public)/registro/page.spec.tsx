@@ -1,24 +1,24 @@
 /**
  * @jest-environment jsdom
  */
-import type { PlanDto } from '@nimbo/contracts';
+import type { Plan } from '@nimbo/contracts';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import RegistroPage, { revalidate } from './page';
 
-const PERSONAL: PlanDto = {
+const PERSONAL: Plan = {
   id: '10000000-0000-4000-8000-000000000001',
   slug: 'personal',
-  nombre: 'Personal',
-  descripcion: null,
-  precioCentavos: 0,
-  cuotaBytes: '16106127360',
-  maxArchivoBytes: '52428800',
-  maxEditores: 0,
-  consultasAgenteMensual: 20,
-  versionesRetenidas: 3,
-  diasRetencionPapelera: 7,
+  name: 'Personal',
+  description: null,
+  priceCents: 0,
+  quotaBytes: '16106127360',
+  maxFileBytes: '52428800',
+  maxEditors: 0,
+  agentQueriesPerMonth: 20,
+  retainedVersions: 3,
+  trashRetentionDays: 7,
 };
 
 function jsonResponse(body: unknown, status: number): Response {
@@ -50,7 +50,7 @@ describe('página /registro', () => {
     fetchMock.mockImplementation((input) => {
       const url = String(input);
       if (url.endsWith('/billing/plans')) {
-        return Promise.resolve(jsonResponse({ planes: [PERSONAL] }, 200));
+        return Promise.resolve(jsonResponse({ plans: [PERSONAL] }, 200));
       }
       return Promise.resolve(jsonResponse({ status: 'accepted' }, 202));
     });

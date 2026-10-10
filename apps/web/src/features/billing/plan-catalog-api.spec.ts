@@ -1,21 +1,21 @@
-import type { PlanDto } from '@nimbo/contracts';
+import type { Plan } from '@nimbo/contracts';
 
 import { ApiClientError } from '../../lib/api-error';
 
 import { fetchPlanCatalog } from './plan-catalog-api';
 
-const PERSONAL: PlanDto = {
+const PERSONAL: Plan = {
   id: '10000000-0000-4000-8000-000000000001',
   slug: 'personal',
-  nombre: 'Personal',
-  descripcion: null,
-  precioCentavos: 0,
-  cuotaBytes: '16106127360',
-  maxArchivoBytes: '52428800',
-  maxEditores: 0,
-  consultasAgenteMensual: 20,
-  versionesRetenidas: 3,
-  diasRetencionPapelera: 7,
+  name: 'Personal',
+  description: null,
+  priceCents: 0,
+  quotaBytes: '16106127360',
+  maxFileBytes: '52428800',
+  maxEditors: 0,
+  agentQueriesPerMonth: 20,
+  retainedVersions: 3,
+  trashRetentionDays: 7,
 };
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -34,10 +34,10 @@ describe('fetchPlanCatalog (008 CA-1, CA-3)', () => {
   });
 
   it('CA-1: consulta el catálogo con el prefijo de la API sobre la URL interna', async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ planes: [PERSONAL] }));
+    fetchMock.mockResolvedValue(jsonResponse({ plans: [PERSONAL] }));
 
     await expect(fetchPlanCatalog('http://api.internal:3000')).resolves.toEqual({
-      planes: [PERSONAL],
+      plans: [PERSONAL],
     });
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
       'http://api.internal:3000/api/v1/billing/plans',
@@ -46,16 +46,19 @@ describe('fetchPlanCatalog (008 CA-1, CA-3)', () => {
 
   it('CA-3: un 500 de la API se rechaza con su código', async () => {
     fetchMock.mockResolvedValue(
-      jsonResponse({ code: 'PLAN_CATALOG_UNAVAILABLE', message: 'x', correlationId: 'c-1' }, 500),
+      jsonResponse(
+        { code: 'BILLING_PLAN_CATALOG_UNAVAILABLE', message: 'x', correlationId: 'c-1' },
+        500,
+      ),
     );
 
     await expect(fetchPlanCatalog('http://api.internal:3000')).rejects.toMatchObject({
-      code: 'PLAN_CATALOG_UNAVAILABLE',
+      code: 'BILLING_PLAN_CATALOG_UNAVAILABLE',
     });
   });
 
   it('CA-3: un cuerpo fuera del contrato se rechaza', async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ planes: [{ id: 'x' }] }));
+    fetchMock.mockResolvedValue(jsonResponse({ plans: [{ id: 'x' }] }));
 
     await expect(fetchPlanCatalog('http://api.internal:3000')).rejects.toThrow();
   });

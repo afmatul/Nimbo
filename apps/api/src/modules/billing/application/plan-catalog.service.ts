@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { PlanCatalogUnavailableError } from '../domain/errors/plan-catalog-unavailable.error';
-import type { PlanDomain } from '../domain/plan-catalog';
+import type { PlanSummary } from '../domain/plan-summary';
 
 import { I_PLAN_REPOSITORY } from './i-plan-repository';
 import type { IPlanRepository } from './i-plan-repository';
@@ -16,7 +16,7 @@ export class PlanCatalogService {
   ) {}
 
   /** Cualquier fallo de lectura de `plan` es CA-3. La bitácora solo lleva el tipo de error, sin SQL ni mensaje (spec 008 §5). */
-  async list(): Promise<PlanDomain[]> {
+  async list(): Promise<PlanSummary[]> {
     try {
       return await this.planRepository.findAll();
     } catch (error) {

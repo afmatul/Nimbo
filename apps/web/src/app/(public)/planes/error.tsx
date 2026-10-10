@@ -29,7 +29,7 @@ export default function PlanesError({ reset }: PlanesErrorProps): ReactNode {
     <div className="p-6">
       <StateView
         type="error"
-        title={messageForCode(BILLING_ERROR_CODES.PLAN_CATALOG_UNAVAILABLE)}
+        title={messageForCode(BILLING_ERROR_CODES.BILLING_PLAN_CATALOG_UNAVAILABLE)}
         headingLevel="h2"
         action={{ label: 'Recargar', onClick: retry }}
       />

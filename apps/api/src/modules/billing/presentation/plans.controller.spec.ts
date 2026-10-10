@@ -1,6 +1,6 @@
 import type { PlanCatalogService } from '../application/plan-catalog.service';
 import { PlanCatalogUnavailableError } from '../domain/errors/plan-catalog-unavailable.error';
-import type { PlanDomain } from '../domain/plan-catalog';
+import type { PlanSummary } from '../domain/plan-summary';
 
 import { PlansController } from './plans.controller';
 
@@ -8,18 +8,18 @@ describe('PlansController', () => {
   let controller: PlansController;
   let service: jest.Mocked<Pick<PlanCatalogService, 'list'>>;
 
-  const personal: PlanDomain = {
+  const personal: PlanSummary = {
     id: '10000000-0000-4000-8000-000000000001',
     slug: 'personal',
-    nombre: 'Personal',
-    descripcion: 'Para uso individual',
-    precioCentavos: 0,
-    cuotaBytes: 16106127360n,
-    maxArchivoBytes: 52428800n,
-    maxEditores: 0,
-    consultasAgenteMensual: 20,
-    versionesRetenidas: 5,
-    diasRetencionPapelera: 7,
+    name: 'Personal',
+    description: 'Para uso individual',
+    priceCents: 0,
+    quotaBytes: 16106127360n,
+    maxFileBytes: 52428800n,
+    maxEditors: 0,
+    agentQueriesPerMonth: 20,
+    retainedVersions: 5,
+    trashRetentionDays: 7,
   };
 
   beforeEach(() => {
@@ -27,62 +27,62 @@ describe('PlansController', () => {
     controller = new PlansController(service as unknown as PlanCatalogService);
   });
 
-  it('CA-1: devuelve { planes } con el precio entero y los bytes como cadena decimal', async () => {
+  it('CA-1: devuelve { plans } con el precio entero y los bytes como cadena decimal', async () => {
     service.list.mockResolvedValue([personal]);
 
     const result = await controller.getPlans();
 
-    // toEqual ya verifica los tipos: precioCentavos número, bytes cadena
+    // toEqual ya verifica los tipos: priceCents número, bytes cadena
     expect(result).toEqual({
-      planes: [
+      plans: [
         {
           id: personal.id,
           slug: 'personal',
-          nombre: 'Personal',
-          descripcion: 'Para uso individual',
-          precioCentavos: 0,
-          cuotaBytes: '16106127360',
-          maxArchivoBytes: '52428800',
-          maxEditores: 0,
-          consultasAgenteMensual: 20,
-          versionesRetenidas: 5,
-          diasRetencionPapelera: 7,
+          name: 'Personal',
+          description: 'Para uso individual',
+          priceCents: 0,
+          quotaBytes: '16106127360',
+          maxFileBytes: '52428800',
+          maxEditors: 0,
+          agentQueriesPerMonth: 20,
+          retainedVersions: 5,
+          trashRetentionDays: 7,
         },
       ],
     });
   });
 
   it('CA-1: conserva el orden que entrega el servicio', async () => {
-    const pro: PlanDomain = {
+    const pro: PlanSummary = {
       ...personal,
       id: '10000000-0000-4000-8000-000000000002',
       slug: 'pro',
-      nombre: 'Pro',
-      precioCentavos: 4500,
-      cuotaBytes: 107374182400n,
-      maxArchivoBytes: 524288000n,
-      maxEditores: 5,
+      name: 'Pro',
+      priceCents: 4500,
+      quotaBytes: 107374182400n,
+      maxFileBytes: 524288000n,
+      maxEditors: 5,
     };
     service.list.mockResolvedValue([personal, pro]);
 
     const result = await controller.getPlans();
 
-    expect(result.planes.map((p) => p.slug)).toEqual(['personal', 'pro']);
-    expect(result.planes.map((p) => p.precioCentavos)).toEqual([0, 4500]);
+    expect(result.plans.map((p) => p.slug)).toEqual(['personal', 'pro']);
+    expect(result.plans.map((p) => p.priceCents)).toEqual([0, 4500]);
   });
 
-  it('CA-1: con el catálogo vacío responde { planes: [] }', async () => {
+  it('CA-1: con el catálogo vacío responde { plans: [] }', async () => {
     service.list.mockResolvedValue([]);
 
-    await expect(controller.getPlans()).resolves.toEqual({ planes: [] });
+    await expect(controller.getPlans()).resolves.toEqual({ plans: [] });
   });
 
   it('CA-1: entrega una descripción nula y un slug fuera de la semilla tal como vienen de la tabla', async () => {
-    service.list.mockResolvedValue([{ ...personal, slug: 'empresarial', descripcion: null }]);
+    service.list.mockResolvedValue([{ ...personal, slug: 'empresarial', description: null }]);
 
     const result = await controller.getPlans();
 
-    expect(result.planes[0]).toMatchObject({ slug: 'empresarial', descripcion: null });
+    expect(result.plans[0]).toMatchObject({ slug: 'empresarial', description: null });
   });
 
   it('CA-3: propaga PlanCatalogUnavailableError sin transformarlo', async () => {

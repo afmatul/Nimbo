@@ -1,25 +1,25 @@
-import type { PlanDto } from '@nimbo/contracts';
+import type { Plan } from '@nimbo/contracts';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import PlanesPage from './page';
 
-const PRO: PlanDto = {
+const PRO: Plan = {
   id: '10000000-0000-4000-8000-000000000002',
   slug: 'pro',
-  nombre: 'Pro',
-  descripcion: 'Plan profesional',
-  precioCentavos: 4500,
-  cuotaBytes: '107374182400',
-  maxArchivoBytes: '524288000',
-  maxEditores: 3,
-  consultasAgenteMensual: 500,
-  versionesRetenidas: 30,
-  diasRetencionPapelera: 30,
+  name: 'Pro',
+  description: 'Plan profesional',
+  priceCents: 4500,
+  quotaBytes: '107374182400',
+  maxFileBytes: '524288000',
+  maxEditors: 3,
+  agentQueriesPerMonth: 500,
+  retainedVersions: 30,
+  trashRetentionDays: 30,
 };
 
-function respondWith(planes: readonly PlanDto[]): void {
+function respondWith(plans: readonly Plan[]): void {
   global.fetch = jest.fn().mockResolvedValue(
-    new Response(JSON.stringify({ planes }), {
+    new Response(JSON.stringify({ plans }), {
       status: 200,
       headers: { 'content-type': 'application/json' },
     }),

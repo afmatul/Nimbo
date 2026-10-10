@@ -4,7 +4,7 @@ import { Test } from '@nestjs/testing';
 import { QueryFailedError } from 'typeorm';
 
 import { PlanCatalogUnavailableError } from '../domain/errors/plan-catalog-unavailable.error';
-import type { PlanDomain } from '../domain/plan-catalog';
+import type { PlanSummary } from '../domain/plan-summary';
 
 import { I_PLAN_REPOSITORY } from './i-plan-repository';
 import type { IPlanRepository } from './i-plan-repository';
@@ -14,32 +14,32 @@ describe('PlanCatalogService', () => {
   let service: PlanCatalogService;
   let repositoryMock: jest.Mocked<IPlanRepository>;
 
-  const mockPlans: PlanDomain[] = [
+  const mockPlans: PlanSummary[] = [
     {
       id: '1',
       slug: 'personal',
-      nombre: 'Personal',
-      descripcion: 'Plan personal',
-      precioCentavos: 0,
-      cuotaBytes: 1000n,
-      maxArchivoBytes: 500n,
-      maxEditores: 0,
-      consultasAgenteMensual: 10,
-      versionesRetenidas: 5,
-      diasRetencionPapelera: 30,
+      name: 'Personal',
+      description: 'Plan personal',
+      priceCents: 0,
+      quotaBytes: 1000n,
+      maxFileBytes: 500n,
+      maxEditors: 0,
+      agentQueriesPerMonth: 10,
+      retainedVersions: 5,
+      trashRetentionDays: 30,
     },
     {
       id: '2',
       slug: 'pro',
-      nombre: 'Pro',
-      descripcion: 'Plan pro',
-      precioCentavos: 4500,
-      cuotaBytes: 5000n,
-      maxArchivoBytes: 2000n,
-      maxEditores: 3,
-      consultasAgenteMensual: 100,
-      versionesRetenidas: 30,
-      diasRetencionPapelera: 60,
+      name: 'Pro',
+      description: 'Plan pro',
+      priceCents: 4500,
+      quotaBytes: 5000n,
+      maxFileBytes: 2000n,
+      maxEditors: 3,
+      agentQueriesPerMonth: 100,
+      retainedVersions: 30,
+      trashRetentionDays: 60,
     },
   ];
 
@@ -61,7 +61,7 @@ describe('PlanCatalogService', () => {
     service = module.get<PlanCatalogService>(PlanCatalogService);
   });
 
-  it('debe listar los planes correctamente', async () => {
+  it('CA-1: entrega los planes en el orden del repositorio', async () => {
     repositoryMock.findAll.mockResolvedValue(mockPlans);
 
     const result = await service.list();
@@ -70,7 +70,7 @@ describe('PlanCatalogService', () => {
     expect(repositoryMock.findAll).toHaveBeenCalledTimes(1);
   });
 
-  it('debe retornar lista vacía si no hay planes', async () => {
+  it('CA-1: sin filas devuelve una lista vacía', async () => {
     repositoryMock.findAll.mockResolvedValue([]);
 
     const result = await service.list();
@@ -102,7 +102,7 @@ describe('PlanCatalogService', () => {
 
     expect(logError).toHaveBeenCalledWith({
       event: 'billing.plan_catalog_unavailable',
-      code: 'PLAN_CATALOG_UNAVAILABLE',
+      code: 'BILLING_PLAN_CATALOG_UNAVAILABLE',
       errorName: 'QueryFailedError',
     });
     logError.mockRestore();

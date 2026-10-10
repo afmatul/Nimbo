@@ -18,4 +18,4 @@ export { ROLES, roleSchema, SHARED_ERROR_CODES } from './shared';
 export type { RoleName, SharedErrorCode } from './shared';
 export * from './storage';
 export * from './audit';
-export * from './billing/plan-catalog';
+export * from './billing';

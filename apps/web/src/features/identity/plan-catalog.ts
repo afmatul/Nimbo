@@ -1,4 +1,4 @@
-import type { PlanDto } from '@nimbo/contracts';
+import type { Plan } from '@nimbo/contracts';
 
 import { fetchPlanCatalog } from '../billing';
 
@@ -12,20 +12,20 @@ export interface PlanCatalog {
   readonly unavailable: boolean;
 }
 
-const toCatalogPlan = (plan: PlanDto): CatalogPlan => ({
+const toCatalogPlan = (plan: Plan): CatalogPlan => ({
   id: plan.id,
-  name: plan.nombre,
-  priceCents: plan.precioCentavos,
-  free: plan.precioCentavos === 0,
+  name: plan.name,
+  priceCents: plan.priceCents,
+  free: plan.priceCents === 0,
 });
 
 /** Catálogo público de la 008 adaptado al selector del registro (PD-48). Cualquier fallo deja el catálogo no disponible. */
 export async function loadPlanCatalog(apiInternalUrl: string): Promise<PlanCatalog> {
   try {
-    const { planes } = await fetchPlanCatalog(apiInternalUrl, {
+    const { plans } = await fetchPlanCatalog(apiInternalUrl, {
       signal: AbortSignal.timeout(CATALOG_TIMEOUT_MS),
     });
-    return { plans: planes.map(toCatalogPlan), unavailable: false };
+    return { plans: plans.map(toCatalogPlan), unavailable: false };
   } catch {
     return { plans: [], unavailable: true };
   }

@@ -1,4 +1,4 @@
-import { PlanCatalogResponseSchema } from '@nimbo/contracts';
+import { planCatalogResponseSchema } from '@nimbo/contracts';
 import type { PlanCatalogResponse } from '@nimbo/contracts';
 import request from 'supertest';
 
@@ -12,19 +12,19 @@ const PLANS_PATH = '/api/v1/billing/plans';
 
 /** Semilla de la 006a (RN-1): orden por precio ascendente, bytes como cadena decimal. */
 const SEEDED_CATALOG = [
-  { slug: 'personal', precioCentavos: 0, cuotaBytes: '16106127360', maxArchivoBytes: '52428800' },
-  { slug: 'pro', precioCentavos: 4500, cuotaBytes: '107374182400', maxArchivoBytes: '524288000' },
+  { slug: 'personal', priceCents: 0, quotaBytes: '16106127360', maxFileBytes: '52428800' },
+  { slug: 'pro', priceCents: 4500, quotaBytes: '107374182400', maxFileBytes: '524288000' },
   {
     slug: 'equipo',
-    precioCentavos: 11000,
-    cuotaBytes: '375809638400',
-    maxArchivoBytes: '1073741824',
+    priceCents: 11000,
+    quotaBytes: '375809638400',
+    maxFileBytes: '1073741824',
   },
   {
     slug: 'institucional',
-    precioCentavos: 45000,
-    cuotaBytes: '2199023255552',
-    maxArchivoBytes: '2147483648',
+    priceCents: 45000,
+    quotaBytes: '2199023255552',
+    maxFileBytes: '2147483648',
   },
 ];
 
@@ -46,18 +46,18 @@ describe('GET /api/v1/billing/plans contra la semilla de la 006a (008 CA-1)', ()
     const response = await (
       authorization === undefined ? call : call.set('Authorization', authorization)
     ).expect(200);
-    return PlanCatalogResponseSchema.parse(response.body);
+    return planCatalogResponseSchema.parse(response.body);
   };
 
   it('CA-1: un visitante anónimo recibe los cuatro planes ordenados por precio con bytes como cadena', async () => {
-    const { planes } = await fetchCatalog();
+    const { plans } = await fetchCatalog();
 
     expect(
-      planes.map(({ slug, precioCentavos, cuotaBytes, maxArchivoBytes }) => ({
+      plans.map(({ slug, priceCents, quotaBytes, maxFileBytes }) => ({
         slug,
-        precioCentavos,
-        cuotaBytes,
-        maxArchivoBytes,
+        priceCents,
+        quotaBytes,
+        maxFileBytes,
       })),
     ).toEqual(SEEDED_CATALOG);
   });

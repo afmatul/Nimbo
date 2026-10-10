@@ -1,23 +1,23 @@
 import { Controller, Get } from '@nestjs/common';
-import type { PlanCatalogResponse, PlanDto } from '@nimbo/contracts';
+import type { Plan, PlanCatalogResponse } from '@nimbo/contracts';
 
 import { Public } from '../../../shared';
 import { PlanCatalogService } from '../application/plan-catalog.service';
-import type { PlanDomain } from '../domain/plan-catalog';
+import type { PlanSummary } from '../domain/plan-summary';
 
-/** Precio entero (ADR-0016); bytes como cadena decimal para no perder precisión en JSON (CA-1). */
-const toPlanDto = (plan: PlanDomain): PlanDto => ({
+/** Lista blanca del contrato: precio entero (ADR-0016) y bytes como cadena decimal para no perder precisión (CA-1). */
+const toPlanResponse = (plan: PlanSummary): Plan => ({
   id: plan.id,
   slug: plan.slug,
-  nombre: plan.nombre,
-  descripcion: plan.descripcion,
-  precioCentavos: plan.precioCentavos,
-  cuotaBytes: plan.cuotaBytes.toString(),
-  maxArchivoBytes: plan.maxArchivoBytes.toString(),
-  maxEditores: plan.maxEditores,
-  consultasAgenteMensual: plan.consultasAgenteMensual,
-  versionesRetenidas: plan.versionesRetenidas,
-  diasRetencionPapelera: plan.diasRetencionPapelera,
+  name: plan.name,
+  description: plan.description,
+  priceCents: plan.priceCents,
+  quotaBytes: plan.quotaBytes.toString(),
+  maxFileBytes: plan.maxFileBytes.toString(),
+  maxEditors: plan.maxEditors,
+  agentQueriesPerMonth: plan.agentQueriesPerMonth,
+  retainedVersions: plan.retainedVersions,
+  trashRetentionDays: plan.trashRetentionDays,
 });
 
 @Controller('billing/plans')
@@ -28,6 +28,6 @@ export class PlansController {
   @Public()
   async getPlans(): Promise<PlanCatalogResponse> {
     const plans = await this.planCatalogService.list();
-    return { planes: plans.map(toPlanDto) };
+    return { plans: plans.map(toPlanResponse) };
   }
 }

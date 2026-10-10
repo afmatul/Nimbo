@@ -1,4 +1,4 @@
-import { PlanCatalogResponseSchema, type PlanCatalogResponse } from '@nimbo/contracts';
+import { planCatalogResponseSchema, type PlanCatalogResponse } from '@nimbo/contracts';
 
 import { requestJson } from '../../lib/api-client';
 
@@ -13,5 +13,5 @@ export async function fetchPlanCatalog(
   init: Pick<RequestInit, 'signal'> = {},
 ): Promise<PlanCatalogResponse> {
   const body = await requestJson(`${apiInternalUrl}${PLAN_CATALOG_PATH}`, init);
-  return PlanCatalogResponseSchema.parse(body);
+  return planCatalogResponseSchema.parse(body);
 }
