@@ -28,7 +28,7 @@
 - Prefijo `/api/v1`. Recursos en plural e inglés: `/files`, `/folders`, `/shares`, `/subscriptions`.
 - Validación con esquemas zod de `packages/contracts` y `ZodValidationPipe` de `shared` (ADR-0020); contratos públicos
   en `packages/contracts`.
-- Paginación por cursor en listados. Fechas ISO-8601 UTC.
+- Paginación por cursor en listados; única excepción, los listados internos de `backoffice` (número de página con `total`, DF-66). Fechas ISO-8601 UTC.
 - OpenAPI generado por `@nestjs/swagger`; el PR que cambia un endpoint actualiza el contrato.
 - Operaciones sensibles con `@Throttle` (login, recuperación, enlaces con contraseña, agente).
 

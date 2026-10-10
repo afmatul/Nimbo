@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Catálogo de planes · Administración · Nimbo — exito</title>
+<!-- Mockup de referencia (spec 011: administración, catálogo de planes). Estado: exito. -->
+<!-- Colores: valores de ui-guidelines.md §3 (tonos AA). La implementación usa tokens, components/ui y components/nimbo. -->
+<!-- Generado con _generadores/catalogo/generar.js (marco del área en admin/area.js y CSS del marco en marco/marco.js). No editar a mano. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Valores de ui-guidelines.md §3 (tonos AA de ADR-0014). La implementación usa las utilidades de Tailwind, nunca hex. */
+    --sheet: #E7EDF5;          /* fondo de la hoja de mockups (no es un token de la app) */
+    --background: #F4F7FB;
+    --card: #FAFCFF;
+    --border: #DDE6F0;
+    --input: #7F93AA;
+    --foreground: #1E2D40;
+    --secondary-foreground: #3A5068;
+    --muted-foreground: #5E7389;
+    --primary: #4A6FA5;
+    --primary-hover: #3B5A8A;
+    --primary-foreground: #FFFFFF;
+    --brand: #6B8DD6;
+    --muted: #EEF3F9;
+    --accent: #DDE6F0;
+    --ring: #4A6FA5;
+    --success: #6DB99A;
+    --success-foreground: #3A7560;
+    --destructive: #A34F4F;
+    --destructive-soft: #C97B7B;
+    --overlay: rgba(44, 58, 82, .45); /* velo de diálogo: agent-bg al 45 %; token pendiente (#6 de app-layout) */
+    --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px; --radius-xl: 18px;
+    --shadow-card: 0 1px 3px rgba(74,111,165,.08), 0 1px 2px rgba(74,111,165,.04);
+    --shadow-modal: 0 8px 24px rgba(44,58,82,.18);
+    --shadow-button: 0 1px 2px rgba(107,141,214,.20);
+    /* Mezclas al 12 % sobre card (fondo de alertas y distintivos) */
+    --success-soft: color-mix(in srgb, var(--success) 12%, var(--card));
+    --destructive-tint: color-mix(in srgb, var(--destructive-soft) 12%, var(--card));
+    --brand-soft: color-mix(in srgb, var(--brand) 12%, var(--card));
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--sheet); color: var(--foreground);
+    font-family: Inter, system-ui, sans-serif; font-size: 14px; line-height: 1.5;
+  }
+  a { color: var(--primary); text-decoration: underline; text-underline-offset: 2px; }
+  a:hover { color: var(--primary-hover); }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+  .ico { flex: none; }
+
+  /* Rótulo de la hoja */
+  .sheet-label {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px;
+    padding: 40px 48px 12px; font-size: 12px; line-height: 1.5; color: var(--secondary-foreground);
+  }
+  .sheet-label .chip { background: var(--border); border-radius: var(--radius-sm); padding: 1px 7px; font-weight: 600; font-size: 11px; }
+  .sheet-label strong { color: var(--foreground); font-size: 13px; font-weight: 600; }
+  .sheet-label .file { font-weight: 500; font-variant-numeric: tabular-nums; color: var(--primary-hover); }
+
+  /* Lienzo y marco de la aplicación (propuesta p. 08 y p. 17) */
+  .canvas {
+    position: relative; margin: 0 48px 48px; background: var(--background); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card); overflow: hidden;
+  }
+  .app { display: grid; grid-template-columns: 236px minmax(0, 1fr); min-height: 860px; }
+  .sidebar { display: flex; flex-direction: column; gap: 14px; background: var(--card); border-right: 1px solid var(--border); padding: 18px 12px 16px; }
+  .brand-row { display: flex; align-items: center; gap: 10px; padding: 4px 8px 10px; border-bottom: 1px solid var(--border); }
+  .logo { display: inline-flex; align-items: center; gap: 10px; color: var(--foreground); text-decoration: none; font-weight: 700; font-size: 17px; letter-spacing: .02em; min-height: 36px; }
+  .logo-mark { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; background: var(--primary); color: var(--primary-foreground); font-size: 15px; font-weight: 700; box-shadow: var(--shadow-button); }
+  .plan-chip { font-size: 10px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: .04em; color: var(--secondary-foreground); background: var(--muted); border-radius: var(--radius-sm); padding: 2px 6px; }
+  .nav { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  .nav a { display: flex; align-items: center; gap: 12px; min-height: 36px; padding: 6px 12px; border-radius: var(--radius-md); color: var(--secondary-foreground); text-decoration: none; font-size: 13.5px; font-weight: 500; }
+  .nav a:hover { background: var(--muted); color: var(--foreground); }
+  .nav .meta { margin-left: auto; font-size: 11px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  .nav-sep { height: 1px; background: var(--border); margin: 2px 8px; }
+  .nav-title { margin: 6px 12px 0; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted-foreground); }
+  .quota { margin-top: auto; border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 12px 14px; background: var(--card); }
+  .quota-head { display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 600; }
+  .quota-bar { height: 6px; border-radius: 999px; background: var(--muted); margin: 8px 0 6px; overflow: hidden; }
+  .quota-bar span { display: block; height: 100%; width: 21%; background: var(--success); border-radius: 999px; }
+  .quota-meta { font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--muted-foreground); }
+
+  .main { min-width: 0; display: flex; flex-direction: column; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 64px; padding: 10px 28px; background: var(--card); border-bottom: 1px solid var(--border); }
+  .topbar .menu-btn, .topbar .logo-mobile { display: none; }
+  .crumbs ol { display: flex; align-items: center; gap: 10px; list-style: none; margin: 0; padding: 0; font-size: 14px; }
+  .crumbs li + li::before { content: "/"; color: var(--muted-foreground); margin-right: 10px; }
+  .crumbs a { color: var(--secondary-foreground); text-decoration: none; }
+  .crumbs a:hover { color: var(--foreground); text-decoration: underline; }
+  .crumbs [aria-current] { font-weight: 600; color: var(--foreground); }
+  .account-btn { display: inline-flex; align-items: center; gap: 10px; min-height: 40px; padding: 4px 6px 4px 12px; border: 0; border-radius: 999px; background: transparent; color: var(--secondary-foreground); font: inherit; font-size: 13px; cursor: pointer; }
+  .account-btn:hover { background: var(--muted); }
+  .avatar { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 999px; background: var(--card); color: var(--foreground); font-size: 11px; font-weight: 700; box-shadow: 0 0 0 2px var(--brand); }
+
+  .content { padding: 28px 28px 40px; }
+  .page-head h1 { margin: 0; font-size: 26px; line-height: 1.25; font-weight: 700; letter-spacing: -.01em; }
+  .page-head p { margin: 6px 0 0; color: var(--secondary-foreground); font-size: 14.5px; }
+  /* Botones (components/ui/button) */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 8px 16px; border-radius: var(--radius-md); font: inherit; font-weight: 600; font-size: 13.5px; line-height: 1.2; cursor: pointer; text-decoration: none; white-space: nowrap; }
+  .btn-sm { min-height: 36px; padding: 6px 12px; font-size: 13px; }
+  .btn-outline { color: var(--secondary-foreground); background: var(--card); border: 1px solid var(--input); }
+  .btn-outline:hover { background: var(--muted); color: var(--foreground); }
+  .btn-primary { color: var(--primary-foreground); background: var(--primary); border: 1px solid var(--primary); box-shadow: var(--shadow-button); }
+  .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+  .btn-destructive { color: var(--primary-foreground); background: var(--destructive); border: 1px solid var(--destructive); }
+  .btn[disabled] { opacity: .45; pointer-events: none; }
+  .btn-busy { opacity: 1 !important; }
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin, .skeleton-line { animation: none !important; } }
+  /* Diálogo de confirmación (ConfirmDestructiveDialog) */
+  .overlay { position: absolute; inset: 0; background: var(--overlay); z-index: 10; }
+  .dialog { position: absolute; z-index: 11; top: 150px; left: 50%; transform: translateX(-50%); width: min(460px, calc(100% - 32px)); background: var(--card); border-radius: var(--radius-xl); box-shadow: var(--shadow-modal); padding: 24px; }
+  .dialog h2 { margin: 0; font-size: 18px; line-height: 1.35; font-weight: 700; }
+  .dialog p { margin: 8px 0 0; color: var(--secondary-foreground); font-size: 14px; }
+  .dialog-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+  @media (max-width: 900px) {
+    .app { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+    .sidebar { display: none; }
+    .topbar { padding: 10px 12px; }
+    .topbar .menu-btn { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--foreground); cursor: pointer; }
+    .topbar .logo-mobile { display: inline-flex; }
+    .crumbs { display: none; }
+    .topbar-left { display: flex; align-items: center; gap: 4px; }
+    .account-btn .account-name { display: none; }
+    .account-btn { padding: 4px; min-width: 44px; min-height: 44px; justify-content: center; }
+  }
+  @media (max-width: 600px) {
+    .sheet-label { padding: 16px 12px 10px; }
+    .canvas { margin: 0 8px 16px; border-radius: var(--radius-md); }
+    .content { padding: 18px 12px 28px; }
+    .page-head h1 { font-size: 23px; }
+    .dialog { top: 96px; padding: 20px 16px 16px; }
+    .dialog-actions { flex-direction: column-reverse; }
+    .dialog-actions .btn { width: 100%; }
+  }
+
+  /* Extensiones del marco (shared/layout) */
+  :root {
+    --warning: #D4A96A;
+    --warning-foreground: #8A6424;
+    --warning-soft: color-mix(in srgb, var(--warning) 12%, var(--card));
+  }
+  [hidden] { display: none !important; }
+
+  /* Ítem activo: fondo accent, texto foreground en 600 y barra de 3 px (no solo color) */
+  .nav a[aria-current="page"] { background: var(--accent); color: var(--foreground); font-weight: 600; border-left: 3px solid var(--primary); padding-left: 9px; }
+  .nav a[aria-current="page"] .meta, .nav a:hover .meta { color: var(--secondary-foreground); } /* muted-foreground sobre muted da 4.39 */
+  @media (max-width: 900px) { .logo { min-height: 44px; } } /* CA-5 de 000b: 44 px en móvil */
+
+  /* Menú de la cuenta (DropdownMenu de shadcn) */
+  .topbar { position: relative; }
+  .account { position: relative; }
+  .account-btn[aria-expanded="true"] { background: var(--muted); color: var(--foreground); }
+  .account-pop { position: absolute; z-index: 20; top: calc(100% + 8px); right: 0; width: 272px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-modal); padding: 6px; }
+  .account-who { padding: 10px 12px 12px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
+  .account-who p { margin: 0; }
+  .account-who-name { font-weight: 600; font-size: 14px; }
+  .account-who-mail { font-size: 13px; color: var(--muted-foreground); overflow-wrap: anywhere; }
+  .account-menu { list-style: none; margin: 0; padding: 0; }
+  .account-menu [role="menuitem"] { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 40px; padding: 8px 12px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--foreground); font: inherit; font-size: 14px; font-weight: 500; text-align: left; text-decoration: none; cursor: pointer; }
+  .account-menu [role="menuitem"] .ico { color: var(--secondary-foreground); }
+  .account-menu [role="menuitem"]:hover, .account-menu [role="menuitem"]:focus { background: var(--muted); }
+  .account-menu [role="menuitem"]:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+  .account-sep { height: 1px; background: var(--border); margin: 6px 4px; }
+
+  /* Cajón móvil (AppLayout, por debajo de 900 px) */
+  .drawer-overlay { position: absolute; inset: 0; z-index: 10; background: var(--overlay); }
+  .drawer { position: absolute; z-index: 11; top: 0; bottom: 0; left: 0; width: min(320px, calc(100% - 40px)); display: flex; flex-direction: column; gap: 14px; overflow-y: auto; background: var(--card); box-shadow: var(--shadow-modal); padding: 12px 12px 16px; }
+  .drawer-head { display: flex; align-items: center; gap: 10px; padding: 0 0 10px 8px; border-bottom: 1px solid var(--border); }
+  .drawer-head .icon-btn { margin-left: auto; }
+  .drawer .nav a { min-height: 44px; font-size: 15px; }
+  .icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--foreground); cursor: pointer; }
+  .icon-btn:hover { background: var(--muted); }
+  @media (min-width: 901px) { .drawer, .drawer-overlay { display: none !important; } }
+
+  /* Aviso de solo lectura (ReadOnlyBanner, RF-23) */
+  .readonly { display: flex; align-items: center; gap: 12px 16px; margin: 0 0 22px; padding: 14px 16px; border: 1px solid color-mix(in srgb, var(--warning) 45%, var(--card)); border-radius: var(--radius-lg); background: var(--warning-soft); color: var(--foreground); }
+  .readonly > .ico { color: var(--warning-foreground); flex: none; }
+  .readonly-text { flex: 1; min-width: 0; margin: 0; font-size: 14px; line-height: 1.5; }
+  .readonly-text strong { display: block; color: var(--warning-foreground); font-weight: 600; }
+  .readonly .btn { flex: none; }
+
+  @media (max-width: 600px) {
+    .account { position: static; }
+    .account-pop { top: calc(100% - 2px); right: 8px; width: min(272px, calc(100% - 16px)); }
+    .account-menu [role="menuitem"] { min-height: 44px; }
+    .readonly { flex-wrap: wrap; align-items: flex-start; padding: 14px; }
+    .readonly .btn { width: 100%; }
+  }
+
+  /* Común del área de administración (spec 011) */
+  .app { min-height: 900px; }
+  a.btn-primary, a.btn-primary:hover { color: var(--primary-foreground); }
+  a.btn-outline:hover { color: var(--foreground); }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* Barra lateral del área de administración: persona abajo en lugar de la cuota */
+  .area-chip { color: var(--primary-foreground); background: var(--secondary-foreground); }
+  .who { margin-top: auto; border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 12px 14px; background: var(--card); }
+  .who p { margin: 0; }
+  .who-name { font-size: 13.5px; font-weight: 600; }
+  .who-role { display: flex; align-items: center; gap: 6px; margin-top: 2px; font-size: 12px; color: var(--secondary-foreground); }
+  .who-role .ico { color: var(--primary); }
+
+  /* Encabezado de página */
+  .page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px 16px; flex-wrap: wrap; }
+  .page-head p { margin-top: 4px; }
+
+  /* Aviso de privacidad (Alert de shadcn, variante informativa): ícono + texto, nunca solo color */
+  .privacy { display: flex; align-items: flex-start; gap: 10px; margin: 20px 0 0; padding: 12px 16px; border: 1px solid color-mix(in srgb, var(--brand) 35%, var(--card)); border-radius: var(--radius-lg); background: var(--brand-soft); font-size: 13.5px; color: var(--foreground); }
+  .privacy .ico { margin-top: 2px; color: var(--primary); }
+  .privacy p { margin: 0; }
+
+  /* Volver, tarjeta, recuadro informativo y avisos (Alert de shadcn) */
+  .crumbs a { display: inline-flex; align-items: center; min-height: 24px; } /* objetivo táctil de 24 px (WCAG 2.5.8) */
+  .back { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; font-size: 13.5px; font-weight: 500; text-decoration: none; }
+  .back:hover { text-decoration: underline; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: 20px; }
+  .card h2 { margin: 0 0 4px; font-size: 16px; font-weight: 600; }
+  .card > .sub { margin: 0 0 12px; font-size: 13px; color: var(--muted-foreground); }
+  .info-box { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--muted); font-size: 13.5px; color: var(--secondary-foreground); }
+  .info-box .ico { margin-top: 2px; color: var(--secondary-foreground); }
+  .info-box p { margin: 0; }
+  .info-box strong { display: block; color: var(--foreground); font-weight: 600; }
+  .alert { display: flex; align-items: flex-start; gap: 12px; margin: 20px 0 0; padding: 14px 16px; border-radius: var(--radius-lg); }
+  .alert > .ico { margin-top: 2px; flex: none; }
+  .alert p { margin: 0; }
+  .alert-title { font-size: 14px; font-weight: 600; }
+  .alert-text { margin-top: 2px !important; font-size: 13.5px; color: var(--foreground); }
+  .alert-ok { border: 1px solid color-mix(in srgb, var(--success) 45%, var(--card)); background: var(--success-soft); }
+  .alert-ok > .ico, .alert-ok .alert-title { color: var(--success-foreground); }
+
+  /* StatusBadge: ícono + etiqueta (Art. XIII.4) */
+  .badge { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 600; line-height: 1.5; white-space: nowrap; border: 1px solid transparent; }
+  .badge-ok { color: var(--success-foreground); background: var(--success-soft); border-color: color-mix(in srgb, var(--success) 40%, var(--card)); }
+  .badge-off { color: var(--destructive); background: var(--destructive-tint); border-color: color-mix(in srgb, var(--destructive-soft) 45%, var(--card)); }
+  .badge-role { color: var(--secondary-foreground); background: var(--muted); border-color: var(--border); }
+  /* Plan inactivo (catálogo y métricas): contorno neutro, nunca rojo (no es un error) */
+  .badge-idle { color: var(--secondary-foreground); background: var(--card); border-color: var(--input); }
+
+  /* Estados de pantalla (StateView): vacío, cargando y error */
+  .state { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 260px; margin-top: 16px; padding: 32px; text-align: center; border-radius: var(--radius-lg); }
+  .state h2 { margin: 12px 0 6px; font-size: 16px; line-height: 1.5; font-weight: 600; }
+  .state p { margin: 0 0 20px; max-width: 48ch; font-size: 14px; }
+  .state-empty { background: var(--card); border: 1px dashed var(--input); box-shadow: var(--shadow-card); }
+  .state-empty > .ico { color: var(--muted-foreground); }
+  .state-empty p { color: var(--secondary-foreground); }
+  .state-error { border: 1px dashed color-mix(in srgb, var(--destructive-soft) 60%, var(--card)); background: var(--destructive-tint); }
+  .state-error > .ico, .state-error h2 { color: var(--destructive); }
+  .state-error p { color: var(--foreground); }
+  .skeleton-line { display: block; height: 12px; border-radius: 999px; background: var(--muted); animation: pulse 1.4s ease-in-out infinite; }
+  .w30 { width: 30%; } .w40 { width: 40%; } .w50 { width: 50%; } .w60 { width: 60%; } .w70 { width: 70%; } .w80 { width: 80%; }
+  @keyframes pulse { 50% { opacity: .55; } }
+  .loading-text { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; font-size: 13px; color: var(--secondary-foreground); }
+
+  /* Botón destructivo con borde (acción que abre una confirmación) */
+  .btn-destructive-outline { color: var(--destructive); background: var(--card); border: 1px solid var(--destructive); }
+  .btn-destructive-outline:hover { background: var(--destructive-tint); }
+
+  /* Diálogo de confirmación con lista de consecuencias */
+  .dialog { top: 120px; width: min(500px, calc(100% - 32px)); }
+  .dialog .who-line { margin-top: 6px; font-weight: 500; color: var(--foreground); overflow-wrap: anywhere; }
+  .conseq { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 10px; }
+  .conseq li { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: var(--secondary-foreground); }
+  .conseq .ico { margin-top: 2px; color: var(--secondary-foreground); }
+  .btn-primary-dlg { color: var(--primary-foreground); background: var(--primary); border: 1px solid var(--primary); box-shadow: var(--shadow-button); }
+
+  @media (max-width: 900px) {
+    .who { margin-top: 8px; }
+  }
+  @media (max-width: 600px) {
+    .app { min-height: 0; }
+    .privacy { padding: 12px; margin-top: 16px; }
+    .card { padding: 16px; }
+    .back { min-height: 44px; }
+    .alert { padding: 12px; }
+    .state { padding: 28px 16px; }
+    .state .btn { width: 100%; }
+  }
+
+  /* Formulario del área (Input y Label de shadcn): ayuda bajo la etiqueta y error bajo el control, con ícono y texto */
+  .req-note { margin: 0; font-size: 13px; color: var(--secondary-foreground); }
+  .field { margin-top: 20px; }
+  .field > label, .legend { display: block; margin: 0 0 4px; padding: 0; font-size: 13.5px; font-weight: 600; color: var(--foreground); }
+  .field-help { margin: 0 0 8px; font-size: 13px; color: var(--secondary-foreground); }
+  .text-input { width: 100%; max-width: 440px; min-height: 40px; padding: 8px 12px; border: 1px solid var(--input); border-radius: var(--radius-md); background: var(--card); color: var(--foreground); font: inherit; font-size: 14px; }
+  .text-input.short { max-width: 220px; }
+  .text-input:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+  .text-input[aria-invalid="true"] { border-color: var(--destructive); box-shadow: 0 0 0 1px var(--destructive); }
+  .text-input[readonly] { background: var(--muted); color: var(--secondary-foreground); }
+  .field-error { display: flex; gap: 6px; align-items: flex-start; margin: 6px 0 0; font-size: 13px; font-weight: 500; color: var(--destructive); }
+  .field-error .ico { margin-top: 2px; }
+  .field-error a { display: inline-flex; align-items: center; min-height: 24px; color: var(--destructive); }
+  .field-error a:hover { color: var(--foreground); }
+
+  /* Aviso de auditoría y acciones del formulario */
+  .audit-note { display: flex; align-items: flex-start; gap: 8px; margin: 12px 0 0; font-size: 13px; color: var(--secondary-foreground); }
+  .audit-note .ico { margin-top: 2px; }
+  .form-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--border); }
+
+  /* Resumen de errores (Alert destructivo): cuántos campos y enlaces a cada uno */
+  .form-card .alert { margin: 0 0 16px; }
+  .alert-error { border: 1px solid color-mix(in srgb, var(--destructive-soft) 60%, var(--card)); background: var(--destructive-tint); }
+  .alert-error > .ico, .alert-error .alert-title { color: var(--destructive); }
+  .alert-list { margin: 6px 0 0; padding-left: 18px; font-size: 13.5px; color: var(--destructive); }
+  .alert-list a { display: inline-flex; align-items: center; min-height: 24px; color: var(--destructive); font-weight: 500; }
+  .alert-list a:hover { color: var(--foreground); }
+
+  @media (max-width: 600px) {
+    .text-input, .text-input.short { max-width: none; min-height: 44px; }
+    .form-actions { flex-direction: column; align-items: stretch; }
+    .form-actions .btn { width: 100%; min-height: 44px; }
+    .alert-list a { min-height: 32px; }
+  }
+
+  /* Propio de backoffice/catalogo (spec 011: catálogo de planes) */
+
+  /* Regla del catálogo (el aviso .privacy de area.js, con título) y aviso de auditoría */
+  .privacy strong { display: block; font-weight: 600; }
+  .content > .audit-note { margin-top: 10px; }
+
+  /* Secciones: planes activos e inactivos */
+  .plans-sec { margin-top: 28px; }
+  .sec-head { display: flex; align-items: baseline; gap: 4px 12px; flex-wrap: wrap; }
+  .sec-head h2 { margin: 0; font-size: 17px; line-height: 1.4; font-weight: 700; }
+  .sec-head p { margin: 0; font-size: 13.5px; color: var(--secondary-foreground); }
+  .plans { list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: 16px; margin: 14px 0 0; padding: 0; }
+  .none { display: flex; align-items: flex-start; gap: 10px; margin: 14px 0 0; padding: 16px; border: 1px dashed var(--input); border-radius: var(--radius-lg); background: var(--card); font-size: 13.5px; color: var(--secondary-foreground); }
+  .none .ico { margin-top: 2px; }
+  .none p { margin: 0; }
+
+  /* PlanCard (vista de administración): nombre, estado, descripción, precio, todos los límites, cuentas y acción */
+  .plan { display: flex; flex-direction: column; height: 100%; padding: 18px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }
+  .plan-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .plan h3 { margin: 0; font-size: 17px; line-height: 1.35; font-weight: 700; overflow-wrap: anywhere; }
+  .plan-desc { margin: 6px 0 0; font-size: 13px; color: var(--secondary-foreground); }
+  @media (min-width: 601px) { .plan-desc { min-height: 4.5em; } } /* tres líneas: los precios quedan alineados entre tarjetas */
+  .plan-price { display: flex; align-items: baseline; gap: 6px; margin: 14px 0 0; }
+  .amount { font-size: 26px; line-height: 1.2; font-weight: 700; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+  .per { font-size: 13px; color: var(--secondary-foreground); }
+  .limits { margin: 12px 0 0; }
+  .limits div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 7px 0; border-top: 1px solid var(--border); font-size: 13px; }
+  .limits dt { color: var(--secondary-foreground); }
+  .limits dd { margin: 0; font-weight: 600; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .limits .sub-dd { display: block; font-size: 12px; font-weight: 500; color: var(--secondary-foreground); }
+  .plan-meta { list-style: none; display: grid; gap: 4px; margin: 4px 0 0; padding: 10px 0 0; border-top: 1px solid var(--border); }
+  .plan-meta li { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--secondary-foreground); font-variant-numeric: tabular-nums; }
+  .plan-foot { margin-top: auto; padding-top: 14px; }
+  .plan-foot .btn { width: 100%; }
+  .fixed { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--muted); font-size: 12.5px; color: var(--secondary-foreground); }
+  .fixed .ico { margin-top: 1px; color: var(--primary); }
+  .fixed strong { display: block; color: var(--foreground); font-weight: 600; }
+  /* Inactivo: sin sombra, sobre el fondo de la página, distintivo con ícono y texto (.badge-idle, en area.js); nunca solo color */
+  .plan.is-off { background: var(--background); box-shadow: none; }
+
+  /* Esqueleto de tarjetas */
+  .plan.sk { gap: 10px; }
+  .sk-amount { height: 22px; width: 45%; margin: 8px 0 6px; }
+
+  /* Éxito / desactivado (Alert de éxito) con acción */
+  .alert .btn { margin-top: 10px; }
+
+  /* Nuevo plan (formulario) */
+  .page-head.form-head { margin-top: 8px; }
+  .form-card { max-width: 760px; margin-top: 20px; }
+  .copy-from { margin: 0 0 18px; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--muted); }
+  .copy-from label { display: block; margin: 0 0 4px; font-size: 13.5px; font-weight: 600; }
+  .copy-from p { margin: 0 0 8px; font-size: 13px; color: var(--secondary-foreground); }
+  .select { min-height: 40px; max-width: 100%; padding: 6px 12px; border: 1px solid var(--input); border-radius: var(--radius-md); background: var(--card); color: var(--foreground); font: inherit; font-size: 14px; }
+  .select:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+  .form-sec { margin: 22px 0 0; padding: 18px 0 0; border: 0; border-top: 1px solid var(--border); min-width: 0; }
+  .form-sec > legend { float: left; width: 100%; margin: 0 0 12px; padding: 0; font-size: 15px; font-weight: 700; color: var(--foreground); }
+  .form-sec > legend + * { clear: both; }
+  /* La leyenda flota para quedar dentro del fieldset; su margen inferior separa el primer campo (el margen de este se pierde con clear) */
+  .form-sec .sec-help { clear: both; margin: 0; font-size: 13px; color: var(--secondary-foreground); }
+  .text-area { max-width: none; min-height: 64px; resize: vertical; line-height: 1.5; field-sizing: content; } /* crece con el texto: no se corta a 360 px */
+  .limits-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 24px; }
+  .limits-grid .field { margin-top: 16px; }
+  .limits-grid .text-input { max-width: 260px; }
+  /* Control con prefijo o unidad (InputGroup): el borde y el foco son los del campo */
+  .input-group { display: flex; align-items: stretch; width: 100%; max-width: 260px; }
+  .input-group .text-input { flex: 1; min-width: 0; border-radius: 0; }
+  .input-group > :first-child { border-top-left-radius: var(--radius-md); border-bottom-left-radius: var(--radius-md); }
+  .input-group > :last-child { border-top-right-radius: var(--radius-md); border-bottom-right-radius: var(--radius-md); }
+  .addon { display: inline-flex; align-items: center; padding: 0 12px; border: 1px solid var(--input); background: var(--muted); color: var(--secondary-foreground); font-size: 14px; font-weight: 600; white-space: nowrap; }
+  .addon-before { border-right: 0; }
+  .addon-after { border-left: 0; }
+  .unit { min-height: 40px; padding: 0 10px; border: 1px solid var(--input); border-left: 0; background: var(--muted); color: var(--foreground); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .unit:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; position: relative; }
+  .form-card .info-box { margin-top: 22px; }
+  .form-card .info-box .ico { color: var(--primary); }
+
+  @media (max-width: 600px) {
+    .plans-sec { margin-top: 24px; }
+    .plans { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+    .plan { padding: 16px; }
+    .plan-foot .btn, .alert .btn { width: 100%; min-height: 44px; }
+    .page-head .btn { width: 100%; min-height: 44px; }
+    .page-head.form-head { margin-top: 4px; }
+    .form-card { margin-top: 16px; }
+    .select, .unit { min-height: 44px; }
+    .select { width: 100%; }
+    .limits-grid { grid-template-columns: minmax(0, 1fr); }
+    .input-group { max-width: none; }
+    .limits-grid .text-input { max-width: none; }
+    .input-group .text-input { min-height: 44px; }
+  }
+</style>
+</head>
+<body>
+
+<aside class="sheet-label" aria-label="Rótulo del mockup"><span class="chip">011</span> <strong>Administración · Catálogo de planes</strong> <span class="file">catalogo--exito.html</span> <span>sin acceso al contenido de los archivos · estado: plan creado: aviso con «Desactivar Equipo» y el plan nuevo entre los activos</span></aside>
+
+<div class="canvas">
+  <div class="app">
+    
+    <aside class="sidebar" aria-label="Barra lateral">
+      <div class="brand-row">
+        <a class="logo" href="../admin/admin.html" aria-label="Nimbo, Administración"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>
+        <span class="plan-chip area-chip">ADMIN</span>
+      </div>
+      <nav aria-label="Navegación de administración">
+        <ul class="nav">
+          <li><a href="../admin/admin.html"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Cuentas</span><span class="meta">1 284</span></a></li>
+          <li><a href="../catalogo/catalogo.html" aria-current="page"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg><span>Catálogo de planes</span></a></li>
+          <li><a href="../metricas/metricas.html"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span>Métricas</span></a></li>
+        </ul>
+      </nav>
+      <div class="who">
+        <p class="who-name">Mónica Herrera</p>
+        <p class="who-role"><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1Z"/></svg><span>Administrador</span></p>
+      </div>
+    </aside>
+    <div class="main">
+      
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="menu-btn" type="button" aria-label="Abrir menú de navegación" aria-expanded="false" aria-controls="cajon"><svg class="ico " width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg></button>
+          <a class="logo logo-mobile" href="../admin/admin.html" aria-label="Nimbo, Administración"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>
+          <nav class="crumbs" aria-label="Ruta">
+            <ol><li><a href="../admin/admin.html">Administración</a></li><li><span aria-current="page">Catálogo de planes</span></li></ol>
+          </nav>
+        </div>
+        <button class="account-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Menú de la cuenta de Mónica Herrera">
+          <span class="account-name">Mónica Herrera</span><span class="avatar" aria-hidden="true">MH</span>
+        </button>
+      </header>
+      <main class="content" id="contenido">
+        <div class="page-head">
+          <div>
+            <h1>Catálogo de planes</h1>
+            <p>Los planes que se ofrecen a los clientes, con su precio y sus límites.</p>
+          </div>
+          <a class="btn btn-primary" href="catalogo--creando.html"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="M12 5v14"/></svg><span>Nuevo plan</span></a>
+        </div>
+        <div class="alert alert-ok" role="status"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg><div><p class="alert-title">Creamos el plan Equipo 2027. Ya se ofrece a contrataciones nuevas.</p><p class="alert-text">Lo creaste a partir de Equipo. Si lo reemplaza, desactiva Equipo para que deje de ofrecerse; quien lo tiene lo conserva.</p>
+          <button class="btn btn-destructive-outline btn-sm" type="button"><svg class="ico " width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/></svg>Desactivar Equipo</button></div></div>
+        <div class="privacy"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg><p><strong>Los planes no se editan: crea uno nuevo y desactiva el anterior.</strong>Así, quien ya tiene un plan conserva su precio y sus límites.</p></div>
+        <p class="audit-note"><svg class="ico " width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg><span>Crear o desactivar un plan queda registrado en la auditoría.</span></p>
+        <section class="plans-sec" aria-labelledby="activos-t">
+          <div class="sec-head"><h2 id="activos-t">Planes activos (5)</h2><p>Se ofrecen a quien se registra o cambia de plan.</p></div>
+          <ul class="plans">
+            <li>
+              <article class="plan" aria-labelledby="plan-personal-t">
+                <div class="plan-top"><h3 id="plan-personal-t">Personal</h3><span class="badge badge-ok"><svg class="ico " width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>Activo</span></div>
+                <p class="plan-desc">Plan gratuito para uso individual con almacenamiento básico</p>
+                <p class="plan-price"><span class="amount">Q0.00</span><span class="per">al mes</span></p>
+                <dl class="limits">
+                  <div><dt>Almacenamiento</dt><dd>15 GB</dd></div>
+                  <div><dt>Máximo por archivo</dt><dd>50 MB</dd></div>
+                  <div><dt>Editores simultáneos</dt><dd>Ninguno<span class="sub-dd">Edición solo lectura</span></dd></div>
+                  <div><dt>Consultas al agente</dt><dd>20 al mes</dd></div>
+                  <div><dt>Versiones retenidas</dt><dd>3</dd></div>
+                  <div><dt>Días en papelera</dt><dd>7 días</dd></div>
+                </dl>
+                <ul class="plan-meta">
+                  <li><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>1 012 cuentas con este plan</span></li>
+                  <li><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><span>Creado el 28/09/2026</span></li>
+                </ul>
+                <div class="plan-foot"><p class="fixed"><svg class="ico " width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span><strong>Plan por defecto</strong>Es el plan gratuito: no se puede desactivar.</span></p></div>
+              </article>
+            </li>
+            <li>
+              <article class="plan" aria-labelledby="plan-pro-t">
+                <div class="plan-top"><h3 id="plan-pro-t">Pro</h3><span class="badge badge-ok"><svg class="ico " width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>Activo</span></div>
+                <p class="plan-desc">Plan profesional para usuarios exigentes con edición colaborativa</p>
+                <p class="plan-price"><span class="amount">Q45.00</span><span class="per">al mes</span></p>
+                <dl class="limits">
+                  <div><dt>Almacenamiento</dt><dd>100 GB</dd></div>
+                  <div><dt>Máximo por archivo</dt><dd>500 MB</dd></div>
+                  <div><dt>Editores simultáneos</dt><dd>3</dd></div>
+                  <div><dt>Consultas al agente</dt><dd>500 al mes</dd></div>
+                  <div><dt>Versiones retenidas</dt><dd>30</dd></div>
+                  <div><dt>Días en papelera</dt><dd>30 días</dd></div>
+                </dl>
+                <ul class="plan-meta">
+                  <li><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>186 cuentas con este plan</span></li>
+                  <li><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><span>Creado el 28/09/2026</span></li>
+                </ul>
+                <div class="plan-foot"><button class="btn btn-destructive-outline btn-sm" type="button"><svg class="ico " width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/></svg><span>Desactivar<span class="sr-only"> el plan Pro</span></span></button></div>
+              </article>
+            </li>
+            <li>
+              <article class="plan" aria-labelledby="plan-equipo-t">
+                <div class="plan-top"><h3 id="plan-equipo-t">Equipo</h3><span class="badge badge-ok"><svg class="ico " width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>Activo</span></div>
+                <p class="plan-desc">Plan para equipos de trabajo con colaboración en tiempo real</p>
+                <p class="plan-price"><span class="amount">Q110.00</span><span class="per">al mes</span></p>
+                <dl class="limits">
+                  <div><dt>Almacenamiento</dt><dd>350 GB</dd></div>
+                  <div><dt>Máximo por archivo</dt><dd>1 GB</dd></div>
+                  <div><dt>Editores simultáneos</dt><dd>5</dd></div>
+                  <div><dt>Consultas al agente</dt><dd>2 000 al mes</dd></div>
+                  <div><dt>Versiones retenidas</dt><dd>60</dd></div>
+                  <div><dt>Días en papelera</dt><dd>60 días</dd></div>
+                </dl>
+                <ul class="plan-meta">
+                  <li><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>52 cuentas con este plan</span></li>
+                  <li><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><span>Creado el 28/09/2026</span></li>
+                </ul>
+                <div class="plan-foot"><button class="btn btn-destructive-outline btn-sm" type="button"><svg class="ico " width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/></svg><span>Desactivar<span class="sr-only"> el plan Equipo</span></span></button></div>
+              </article>
+            </li>
+            <li>
+              <article class="plan" aria-labelledby="plan-equipo-2027-t">
+                <div class="plan-top"><h3 id="plan-equipo-2027-t">Equipo 2027</h3><span class="badge badge-ok"><svg class="ico " width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>Activo</span></div>
+                <p class="plan-desc">Para equipos que necesitan más espacio, con colaboración en tiempo real</p>
+                <p class="plan-price"><span class="amount">Q125.00</span><span class="per">al mes</span></p>
+                <dl class="limits">
+                  <div><dt>Almacenamiento</dt><dd>500 GB</dd></div>
+                  <div><dt>Máximo por archivo</dt><dd>1 GB</dd></div>
+                  <div><dt>Editores simultáneos</dt><dd>5</dd></div>
+                  <div><dt>Consultas al agente</dt><dd>3 000 al mes</dd></div>
+                  <div><dt>Versiones retenidas</dt><dd>60</dd></div>
+                  <div><dt>Días en papelera</dt><dd>60 días</dd></div>
+                </dl>
+                <ul class="plan-meta">
+                  <li><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>0 cuentas con este plan</span></li>
+                  <li><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><span>Creado el 03/10/2026</span></li>
+                </ul>
+                <div class="plan-foot"><button class="btn btn-destructive-outline btn-sm" type="button"><svg class="ico " width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/></svg><span>Desactivar<span class="sr-only"> el plan Equipo 2027</span></span></button></div>
+              </article>
+            </li>
+            <li>
+              <article class="plan" aria-labelledby="plan-institucional-t">
+                <div class="plan-top"><h3 id="plan-institucional-t">Institucional</h3><span class="badge badge-ok"><svg class="ico " width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>Activo</span></div>
+                <p class="plan-desc">Plan de máxima capacidad para organizaciones e instituciones</p>
+                <p class="plan-price"><span class="amount">Q450.00</span><span class="per">al mes</span></p>
+                <dl class="limits">
+                  <div><dt>Almacenamiento</dt><dd>2 TB</dd></div>
+                  <div><dt>Máximo por archivo</dt><dd>2 GB</dd></div>
+                  <div><dt>Editores simultáneos</dt><dd>5</dd></div>
+                  <div><dt>Consultas al agente</dt><dd>10 000 al mes</dd></div>
+                  <div><dt>Versiones retenidas</dt><dd>100</dd></div>
+                  <div><dt>Días en papelera</dt><dd>90 días</dd></div>
+                </dl>
+                <ul class="plan-meta">
+                  <li><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>22 cuentas con este plan</span></li>
+                  <li><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><span>Creado el 28/09/2026</span></li>
+                </ul>
+                <div class="plan-foot"><button class="btn btn-destructive-outline btn-sm" type="button"><svg class="ico " width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/></svg><span>Desactivar<span class="sr-only"> el plan Institucional</span></span></button></div>
+              </article>
+            </li>
+          </ul>
+        </section>
+        <section class="plans-sec" aria-labelledby="inactivos-t">
+          <div class="sec-head"><h2 id="inactivos-t">Planes inactivos (0)</h2><p>Ya no se ofrecen; quien los tiene los conserva.</p></div>
+          <div class="none"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg><p>Ningún plan está inactivo. Cuando desactives uno, aparecerá aquí con las cuentas que lo conservan.</p></div>
+        </section>
+      </main>
+    </div>
+  </div>
+  <div class="drawer-overlay" data-cerrar-cajon aria-hidden="true" hidden></div>
+  <div class="drawer" id="cajon" role="dialog" aria-modal="true" aria-labelledby="cajon-t" hidden>
+      <div class="drawer-head">
+        <a class="logo" href="../admin/admin.html" aria-label="Nimbo, Administración"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>
+        <span class="plan-chip area-chip">ADMIN</span>
+        <h2 id="cajon-t" class="sr-only">Menú de navegación</h2>
+        <button class="icon-btn" type="button" data-cerrar-cajon aria-label="Cerrar menú"><svg class="ico " width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+      </div>
+      <nav aria-label="Navegación de administración">
+        <ul class="nav">
+          <li><a href="../admin/admin.html" id="cajon-primero"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Cuentas</span><span class="meta">1 284</span></a></li>
+          <li><a href="../catalogo/catalogo.html" aria-current="page"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg><span>Catálogo de planes</span></a></li>
+          <li><a href="../metricas/metricas.html"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span>Métricas</span></a></li>
+        </ul>
+      </nav>
+      <div class="who">
+        <p class="who-name">Mónica Herrera</p>
+        <p class="who-role"><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1Z"/></svg><span>Administrador</span></p>
+      </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var app = document.querySelector('.app');
+  var btn = document.querySelector('.menu-btn');
+  var cajon = document.getElementById('cajon');
+  var velo = document.querySelector('.drawer-overlay');
+  var primero = document.getElementById('cajon-primero');
+  var conDialogo = !!document.querySelector('.dialog');
+  function abrir() { cajon.hidden = false; velo.hidden = false; btn.setAttribute('aria-expanded', 'true'); app.inert = true; primero.focus(); }
+  function cerrar() { cajon.hidden = true; velo.hidden = true; btn.setAttribute('aria-expanded', 'false'); app.inert = conDialogo; btn.focus(); }
+  btn.addEventListener('click', abrir);
+  Array.prototype.forEach.call(document.querySelectorAll('[data-cerrar-cajon]'), function (el) { el.addEventListener('click', cerrar); });
+  cajon.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.preventDefault(); cerrar(); } });
+  // Diálogo: el foco empieza en «Cancelar» (autofocus); en la app, Escape o «Cancelar» lo cierran sin cambiar nada.
+  var dlg = document.querySelector('.dialog');
+  if (dlg) dlg.querySelector('[autofocus]').focus();
+})();
+</script>
+</body>
+</html>
