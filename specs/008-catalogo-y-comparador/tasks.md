@@ -4,10 +4,10 @@
 > 5 a 12 tareas verticales. Un commit cada una (`feat(billing): … [008 T-xx]`).
 > Cada tarea deja algo probado y lista sus CA.
 
-- [x] **T-01** Contrato `PlanCatalogResponse` en `packages/contracts` — CA: CA-1 — Archivos: `packages/contracts/src/billing/plan-catalog.ts`, `packages/contracts/src/index.ts`
+- [x] **T-01** Contrato `PlanCatalogResponse` en `packages/contracts` — CA: CA-1 — Archivos: `packages/contracts/src/billing/{schemas,error-codes,index}.ts`, `packages/contracts/src/index.ts`
 - [x] **T-02** `IPlanRepository`, `TypeOrmPlanRepository`, `PlanCatalogService` y `PlanCatalogUnavailableError`, con la prueba unitaria de orden, lista vacía y fallo de lectura — CA: CA-1, CA-3 — Depende: T-01
 - [x] **T-03** `GET /api/v1/billing/plans` público y prueba de integración contra la semilla de la 006a (anónimo y con sesión; bytes como cadena) — CA: CA-1 — Depende: T-02
-- [x] **T-04** `format-plan.ts` y el texto de `PLAN_CATALOG_UNAVAILABLE` en el catálogo de errores — CA: CA-2, CA-3 — Depende: T-01
+- [x] **T-04** `format-plan.ts` y el texto de `BILLING_PLAN_CATALOG_UNAVAILABLE` en el catálogo de errores — CA: CA-2, CA-3 — Depende: T-01
 - [x] **T-05** Página pública `/planes`, tarjetas, tabla y estados cargando, éxito, error y vacío, con prueba de componente — CA: CA-2, CA-3 — Depende: T-03, T-04
 - [ ] **T-06** **(humana)** Recorrido local: visitante sin sesión y cliente con sesión ven los planes activos, los precios en quetzales y la tabla; la recarga tras un fallo muestra el mensaje de CA-3 — CA: CA-1, CA-2, CA-3
 

@@ -14,7 +14,7 @@ export default async function PlanesPage(): Promise<ReactNode> {
     <section className="flex flex-col gap-4 p-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-bold text-foreground">Elige el plan de tu equipo</h1>
+          <h1 className="text-lg font-bold text-foreground">Elige tu plan</h1>
           <p className="text-xs text-muted-foreground">
             Todos los planes incluyen indexación, historial con autoría y cifrado en reposo
           </p>

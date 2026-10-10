@@ -16,7 +16,8 @@ export function formatQuetzales(priceCents: number): string {
   return `Q${formatCount(quetzales)}.${cents}`;
 }
 
-/** Bytes del plan en potencias de 1024, como el catálogo de la 006a (RN-1): «15 GB», «1.5 GB». */
+/** Bytes del plan en potencias de 1024, como el catálogo de la 006a (RN-1): «15 GB», «1.5 GB».
+ * Difiere del `formatBytes` de `contracts` (base 1000): una sola base para toda la UI queda en PD-91. */
 export function formatPlanBytes(bytes: string): string {
   let size = Number(bytes);
   let unitIndex = 0;

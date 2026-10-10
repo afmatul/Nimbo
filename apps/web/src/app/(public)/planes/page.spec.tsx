@@ -52,7 +52,7 @@ describe('página de planes (008 CA-1, CA-2)', () => {
 
     const markup = await renderPage();
 
-    expect(markup).toContain('Elige el plan de tu equipo');
+    expect(markup).toContain('Elige tu plan');
     expect(markup).toContain('Pro');
     expect(markup).toContain('Plan profesional');
   });
