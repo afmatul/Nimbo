@@ -11,6 +11,7 @@ import { AccountAdministration } from './application/account-administration';
 import { AccountDirectory } from './application/account-directory';
 import { AuthService } from './application/auth.service';
 import { IDENTITY_CONFIG, identityConfigFrom } from './application/identity-config';
+import { InternalAccountEnrollment } from './application/internal-account-enrollment';
 import { PasswordService } from './application/password.service';
 import { I_ACCOUNT_DIRECTORY_REPOSITORY } from './application/ports/i-account-directory.repository.port';
 import { I_ACCOUNT_EVENTS_PUBLISHER } from './application/ports/i-account-events-publisher.port';
@@ -87,8 +88,14 @@ export class IdentityModule implements NestModule {
         { provide: I_ACCOUNT_DIRECTORY_REPOSITORY, useClass: TypeOrmAccountDirectoryRepository },
         AccountDirectory,
         AccountAdministration,
+        InternalAccountEnrollment,
       ],
-      exports: [I_ACCESS_TOKEN_VERIFIER, AccountDirectory, AccountAdministration],
+      exports: [
+        I_ACCESS_TOKEN_VERIFIER,
+        AccountDirectory,
+        AccountAdministration,
+        InternalAccountEnrollment,
+      ],
     };
   }
 

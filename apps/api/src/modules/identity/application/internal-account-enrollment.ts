@@ -1,0 +1,161 @@
+import { randomUUID } from 'node:crypto';
+
+import { Inject, Injectable } from '@nestjs/common';
+import { ACCOUNT_SETUP_LINK_TTL_HOURS, IDENTITY_FIELD_MESSAGES } from '@nimbo/contracts';
+import type { FieldIssueReason } from '@nimbo/contracts';
+import { PinoLogger } from 'nestjs-pino';
+
+import { I_CLOCK, Role } from '../../../shared';
+import type { Actor, FieldIssue, IClock } from '../../../shared';
+import { I_MAILER } from '../../notifications';
+import type { IMailer, MailMessage } from '../../notifications';
+import { EmailAddress } from '../domain/email-address.vo';
+import { EmployeeCode } from '../domain/employee-code.vo';
+import {
+  AdminAlreadyExistsError,
+  EnrollmentConflictError,
+  IdentityInvalidInputError,
+} from '../domain/errors';
+import { InternalUser } from '../domain/internal-user.entity';
+import { OpaqueToken } from '../domain/opaque-token.vo';
+
+import { issueAccountToken } from './account-token-issuer';
+import { IDENTITY_CONFIG } from './identity-config';
+import type { IdentityConfig } from './identity-config';
+import type { IdentityLogger } from './identity-logger';
+import { internalInvitationMail } from './mail/internal-invitation-mail.template';
+import { I_PASSWORD_HASHER } from './ports/i-password-hasher.port';
+import type { IPasswordHasher } from './ports/i-password-hasher.port';
+import { I_USER_REPOSITORY } from './ports/i-user-repository.port';
+import type { IUserRepository } from './ports/i-user-repository.port';
+import { I_VERIFICATION_TOKEN_REPOSITORY } from './ports/i-verification-token-repository.port';
+import type { IVerificationTokenRepository } from './ports/i-verification-token-repository.port';
+import { tokenLink, WEB_PATHS } from './web-links';
+
+const MS_PER_HOUR = 3_600_000;
+const INVITATION_TAG = 'identity.internal-invitation';
+
+/** Alta interna ya validada por `enrollInternalAccountRequestSchema`; correo y código aún sin normalizar. */
+export interface EnrollInternalCommand {
+  readonly fullName: string;
+  readonly email: string;
+  readonly employeeCode: string;
+  readonly role: Role;
+}
+
+/** Alta del primer Administrador (CA-7): el rol lo fija el comando. */
+export type InitialAdminCommand = Omit<EnrollInternalCommand, 'role'>;
+
+/** Lo que el llamador necesita para auditar el alta: el id y el rol, sin datos personales. */
+export interface EnrolledAccount {
+  readonly id: string;
+  readonly role: Role;
+}
+
+/** La cuenta creada y el envío del correo, que el llamador hace **después** del commit (plan R-4). */
+export interface Enrollment {
+  readonly account: EnrolledAccount;
+  deliverInvitation(): Promise<void>;
+}
+
+/**
+ * Fachada de altas internas (011 plan §2; clase sin interfaz, Art. V.2). Corre dentro de la transacción del llamador:
+ * inserta la cuenta con el hash de un secreto aleatorio que nadie conoce y emite el enlace `alta_interna` de un solo
+ * uso. Si el correo falla, la cuenta queda creada y la persona usa «¿Olvidaste tu contraseña?» (Q-3).
+ */
+@Injectable()
+export class InternalAccountEnrollment {
+  constructor(
+    @Inject(I_USER_REPOSITORY) private readonly users: IUserRepository,
+    @Inject(I_VERIFICATION_TOKEN_REPOSITORY) private readonly tokens: IVerificationTokenRepository,
+    @Inject(I_PASSWORD_HASHER) private readonly hasher: IPasswordHasher,
+    @Inject(I_MAILER) private readonly mailer: IMailer,
+    @Inject(I_CLOCK) private readonly clock: IClock,
+    @Inject(IDENTITY_CONFIG) private readonly config: IdentityConfig,
+    @Inject(PinoLogger) private readonly logger: IdentityLogger,
+  ) {}
+
+  /** CA-5, CA-6: Administrador, Soporte u Operador; nunca `CLIENT` (RN-5). */
+  async enroll(_actor: Actor, command: EnrollInternalCommand): Promise<Enrollment> {
+    if (command.role === Role.CLIENT) {
+      throw new IdentityInvalidInputError([issue('role', 'INVALID_ROLE')]);
+    }
+    return this.enrollAccount(command);
+  }
+
+  /** CA-7: con el candado del padrón; si ya hay un Administrador activo, `AdminAlreadyExistsError`. */
+  async enrollInitialAdmin(command: InitialAdminCommand): Promise<Enrollment> {
+    await this.users.lockAdminRoster();
+    if ((await this.users.countActiveAdmins()) > 0) {
+      throw new AdminAlreadyExistsError();
+    }
+    return this.enrollAccount({ ...command, role: Role.ADMIN });
+  }
+
+  private async enrollAccount(command: EnrollInternalCommand): Promise<Enrollment> {
+    const user = InternalUser.enroll({
+      id: randomUUID(),
+      fullName: command.fullName.trim(),
+      email: EmailAddress.of(command.email),
+      employeeCode: EmployeeCode.of(command.employeeCode),
+      role: command.role,
+      passwordHash: await this.hasher.hash(OpaqueToken.generate().toString()),
+    });
+    if (!(await this.users.insertInternalIfAbsent(user))) {
+      throw await this.conflictOf(user);
+    }
+    const invitation = await this.invitationFor(user);
+    return {
+      account: { id: user.id, role: user.role },
+      deliverInvitation: () => this.deliver(invitation),
+    };
+  }
+
+  /** CA-6: marca el correo, el código o ambos; el `ON CONFLICT` no dice cuál chocó. */
+  private async conflictOf(user: InternalUser): Promise<EnrollmentConflictError> {
+    const fields: FieldIssue[] = [];
+    if ((await this.users.findByEmail(user.email)) !== null) {
+      fields.push(issue('email', 'EMAIL_IN_USE'));
+    }
+    if ((await this.users.findByEmployeeCode(user.employeeCode)) !== null) {
+      fields.push(issue('employeeCode', 'EMPLOYEE_CODE_IN_USE'));
+    }
+    return new EnrollmentConflictError(fields);
+  }
+
+  /** Guarda solo el hash del token; el valor en claro va únicamente en el fragmento del enlace del correo. */
+  private async invitationFor(user: InternalUser): Promise<MailMessage> {
+    const issued = await issueAccountToken(this.tokens, {
+      userId: user.id,
+      type: 'alta_interna',
+      issuedAt: this.clock.now(),
+      ttlMs: ACCOUNT_SETUP_LINK_TTL_HOURS * MS_PER_HOUR,
+    });
+    const setupUrl = tokenLink(this.config, WEB_PATHS.accountSetup, issued.value);
+    return {
+      to: user.email.value,
+      ...internalInvitationMail({ setupUrl }),
+      idempotencyKey: `${INVITATION_TAG}.${issued.id}`,
+      tag: INVITATION_TAG,
+      recipientId: user.id,
+    };
+  }
+
+  /** Plan R-4: un fallo al encolar no deshace el alta; queda en la bitácora sin correo ni enlace. */
+  private async deliver(invitation: MailMessage): Promise<void> {
+    try {
+      await this.mailer.send(invitation);
+    } catch {
+      this.logger.warn({
+        event: 'identity.invitation.mail_failed',
+        userId: invitation.recipientId,
+      });
+    }
+  }
+}
+
+const issue = (field: string, reason: FieldIssueReason): FieldIssue => ({
+  field,
+  reason,
+  message: IDENTITY_FIELD_MESSAGES[reason],
+});

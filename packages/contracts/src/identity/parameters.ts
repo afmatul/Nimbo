@@ -12,6 +12,8 @@ export const REGISTRATIONS_PER_IP_PER_HOUR = 10;
 export const RESENDS_PER_IP_PER_HOUR = 10;
 /** Intentos sobre un correo ya verificado que generan aviso a su dueño en 24 h (D-17). */
 export const MAX_AVISOS_INTENTO_24H = 1;
+/** Vigencia del enlace de alta interna para crear la primera contraseña (011 Q-4, CA-5). */
+export const ACCOUNT_SETUP_LINK_TTL_HOURS = 24;
 /** Longitud máxima del código de empleado de una cuenta interna (011 Q-4, RN-5). */
 export const EMPLOYEE_CODE_MAX_LENGTH = 20;
 /** Longitud máxima del nombre completo (D-5). */

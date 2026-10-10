@@ -10,6 +10,13 @@ export type {
   AccountView,
   AccountViewPage,
 } from './application/account-directory';
+export { InternalAccountEnrollment } from './application/internal-account-enrollment';
+export type {
+  EnrolledAccount,
+  EnrollInternalCommand,
+  Enrollment,
+  InitialAdminCommand,
+} from './application/internal-account-enrollment';
 export type {
   AccountStatistics,
   ClientIdentity,

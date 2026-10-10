@@ -9,6 +9,7 @@ describe('API pública de `identity`', () => {
       'CLIENT_ACCOUNT_VERIFIED',
       'IDENTITY_THROTTLERS',
       'IdentityModule',
+      'InternalAccountEnrollment',
     ]);
     expect(identity.CLIENT_ACCOUNT_VERIFIED).toBe('identity.client-account-verified');
   });

@@ -22,11 +22,11 @@ import {
   ResetLinkInvalidError,
   WrongPasswordError,
 } from '../domain/errors';
-import { OpaqueToken } from '../domain/opaque-token.vo';
 import type { PasswordHash } from '../domain/password-hash.vo';
 import type { User } from '../domain/user.entity';
-import { VerificationToken } from '../domain/verification-token.entity';
+import type { VerificationToken } from '../domain/verification-token.entity';
 
+import { issueAccountToken } from './account-token-issuer';
 import { findAccountToken } from './account-token-lookup';
 import { IDENTITY_CONFIG } from './identity-config';
 import type { IdentityConfig } from './identity-config';
@@ -51,7 +51,7 @@ import type { IUserRepository } from './ports/i-user-repository.port';
 import { I_VERIFICATION_TOKEN_REPOSITORY } from './ports/i-verification-token-repository.port';
 import type { IVerificationTokenRepository } from './ports/i-verification-token-repository.port';
 import { VerificationLinkIssuer } from './verification-link-issuer';
-import { WEB_PATHS, webUrl } from './web-links';
+import { tokenLink, WEB_PATHS, webUrl } from './web-links';
 
 const MS_PER_MINUTE = 60_000;
 const RESET_TAG = 'identity.password-reset';
@@ -232,22 +232,16 @@ export class PasswordService {
 
   /** Invalida los enlaces vigentes y guarda solo el hash del nuevo; el valor en claro solo va en el correo (D-6). */
   private async issueResetLink(user: User): Promise<MailMessage> {
-    const now = this.clock.now();
-    await this.tokens.invalidateActive(user.id, 'recuperacion', now);
-    const value = OpaqueToken.generate();
-    const token = VerificationToken.issue({
-      id: randomUUID(),
+    const issued = await issueAccountToken(this.tokens, {
       userId: user.id,
       type: 'recuperacion',
-      tokenHash: value.hash(),
-      createdAt: now,
-      expiresAt: new Date(now.getTime() + RESET_LINK_TTL_MINUTES * MS_PER_MINUTE),
+      issuedAt: this.clock.now(),
+      ttlMs: RESET_LINK_TTL_MINUTES * MS_PER_MINUTE,
     });
-    await this.tokens.insert(token);
-    const resetUrl = webUrl(this.config, `${WEB_PATHS.passwordReset}#token=${value.toString()}`);
+    const resetUrl = tokenLink(this.config, WEB_PATHS.passwordReset, issued.value);
     return this.mailTo(
       user,
-      `${RESET_TAG}.${token.id}`,
+      `${RESET_TAG}.${issued.id}`,
       RESET_TAG,
       passwordResetMail({ resetUrl }),
     );
