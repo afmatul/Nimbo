@@ -93,7 +93,8 @@ export class VersionRestoreService {
     );
     const id = randomUUID();
     const copy = { id, objectKey: ObjectKey.of(file.ownerId, file.id, id) };
-    await this.objects.copyObject(source.objectKey.value, copy.objectKey.value);
+    const copied = await this.objects.copyObject(source.objectKey.value, copy.objectKey.value);
+    if (!copied) await this.rejectMissingSource(actor, request);
     const entry = await this.registerCopy(actor, request, copy);
     await this.fileVersions.afterCommit(actor, file.id);
     await this.recordRestored(actor, entry.version, source.number);
@@ -110,6 +111,15 @@ export class VersionRestoreService {
     const demand = { bytes: source.sizeBytes, purpose: 'restore' } as const;
     await this.quota.assertFits(actor, demand, request.limits);
     return { file, source };
+  }
+
+  /**
+   * El objeto de origen desapareció entre resolver y copiar (una poda, plan §7): revalida para responder lo que
+   * corresponda (archivo en la papelera, versión podada) y, si la fila sigue (poda sin confirmar), `404` de versión.
+   */
+  private async rejectMissingSource(actor: Actor, request: RestoreRequest): Promise<never> {
+    await this.transactions.withActor(actor, () => this.resolveRestorable(actor, request));
+    throw new VersionNotFoundError();
   }
 
   private async registerCopy(

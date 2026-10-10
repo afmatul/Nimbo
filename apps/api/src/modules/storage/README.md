@@ -281,8 +281,9 @@ inexistente, podada o de otro archivo es `404` `STORAGE_VERSION_NOT_FOUND`. `GET
 **Restaurar (014)**: `POST /files/:fileId/versions/:versionId/restore` (`VersionRestoreService`, 201) valida tasa,
 archivo, versión (`404` si no es del archivo, `409` `STORAGE_VERSION_ALREADY_CURRENT` si es la actual) y cuota (sin
 máximo por archivo); copia el objeto en el servidor (`IObjectStorage.copyObject`) fuera de la transacción y luego,
-bajo `lockUsage`, revalida y registra una versión nueva `restauracion` con `FileVersionService.register`. Si esa
-transacción falla, purga la copia. Tras el commit poda por retención y audita `file.version_restored`.
+bajo `lockUsage`, revalida y registra una versión nueva `restauracion` con `FileVersionService.register`. Si el
+origen ya no existe al copiar (`copyObject` devuelve `false` porque una poda llegó antes), revalida y responde `404`
+`STORAGE_VERSION_NOT_FOUND`. Si esa transacción falla, purga la copia. Tras el commit poda por retención y audita `file.version_restored`.
 
 `complete` y `expire`/`cancel` compiten por un compare-and-set de estado (`activa → …`): gana uno y el otro no deja un
 `archivo` sin objeto.

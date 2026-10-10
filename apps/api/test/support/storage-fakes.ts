@@ -482,16 +482,14 @@ export class FakeObjectStorage implements IObjectStorage {
     return Promise.resolve(object.subarray(start, endInclusive + 1));
   }
 
-  /** Como el adaptador real: un origen ausente rechaza (`NoSuchKey`); repetir la copia la sobrescribe igual. */
-  copyObject(sourceKey: string, targetKey: string): Promise<void> {
+  /** Como el adaptador real: un origen ausente devuelve `false`; repetir la copia la sobrescribe igual. */
+  copyObject(sourceKey: string, targetKey: string): Promise<boolean> {
     this.journal.add('storage:copyObject');
     const source = this.objects.get(sourceKey);
     if (this.failCopy) return Promise.reject(new Error('minio caído'));
-    if (source === undefined) {
-      return Promise.reject(Object.assign(new Error('NoSuchKey'), { name: 'NoSuchKey' }));
-    }
+    if (source === undefined) return Promise.resolve(false);
     this.objects.set(targetKey, Buffer.from(source));
-    return Promise.resolve();
+    return Promise.resolve(true);
   }
 
   purgeObject(key: string): Promise<void> {

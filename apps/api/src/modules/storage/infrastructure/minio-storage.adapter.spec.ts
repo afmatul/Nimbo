@@ -170,8 +170,7 @@ describe('MinioStorageAdapter (operaciones, cliente falso)', () => {
     const target = 'u/owner-1/file-1/version-2';
     const { adapter, calls } = buildAdapter({ [CopyObjectCommand.name]: () => ({}) });
 
-    await adapter.copyObject(KEY, target);
-
+    await expect(adapter.copyObject(KEY, target)).resolves.toBe(true);
     expect(calls).toEqual([
       {
         command: CopyObjectCommand.name,
@@ -180,11 +179,17 @@ describe('MinioStorageAdapter (operaciones, cliente falso)', () => {
     ]);
   });
 
-  it('014 CA-9: `copyObject` propaga el fallo del almacenamiento', async () => {
+  it('014 plan §7: `copyObject` devuelve `false` si el origen ya no existe (`NoSuchKey`)', async () => {
     const { adapter } = buildAdapter({ [CopyObjectCommand.name]: throwing('NoSuchKey', 404) });
 
+    await expect(adapter.copyObject(KEY, 'u/owner-1/file-1/version-2')).resolves.toBe(false);
+  });
+
+  it('014 CA-9: `copyObject` propaga un fallo que no es «no existe»', async () => {
+    const { adapter } = buildAdapter({ [CopyObjectCommand.name]: throwing('InternalError', 500) });
+
     await expect(adapter.copyObject(KEY, 'u/owner-1/file-1/version-2')).rejects.toThrow(
-      'NoSuchKey',
+      'InternalError',
     );
   });
 

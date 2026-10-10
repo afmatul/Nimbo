@@ -278,14 +278,44 @@ describe('VersionRestoreService (plan 014 §1, CA-9 a CA-12, CA-19)', () => {
     const source = versionNumbered(versions, file, 1);
     const copy = objects.copyObject.bind(objects);
     jest.spyOn(objects, 'copyObject').mockImplementationOnce(async (from, to) => {
-      await copy(from, to);
+      const copied = await copy(from, to);
       versions.versions.delete(source.id);
+      return copied;
     });
 
     await expect(service.restore(ANA, file.id, source.id)).rejects.toThrow(VersionNotFoundError);
 
     expect(objects.purged).toHaveLength(1);
     expect(versions.numbersOf(file.id)).toEqual([2, 3]);
+  });
+
+  it('plan §7: si la versión se poda antes de copiar, revalida y responde `404` de versión sin registrar nada', async () => {
+    const context = setup();
+    const { service, file, versions, objects, quotas } = context;
+    const source = versionNumbered(versions, file, 1);
+    const copy = objects.copyObject.bind(objects);
+    jest.spyOn(objects, 'copyObject').mockImplementationOnce((from, to) => {
+      versions.versions.delete(source.id);
+      objects.objects.delete(source.objectKey.value);
+      return copy(from, to);
+    });
+
+    await expect(service.restore(ANA, file.id, source.id)).rejects.toThrow(VersionNotFoundError);
+
+    expect(quotas.added).toEqual([]);
+    expect(objects.purged).toEqual([]);
+    expect(versions.numbersOf(file.id)).toEqual([2, 3]);
+  });
+
+  it('plan §7: sin el objeto de origen es `404` de versión aunque la fila siga (poda sin confirmar)', async () => {
+    const { service, file, versions, objects, quotas } = setup();
+    const source = versionNumbered(versions, file, 1);
+    objects.objects.delete(source.objectKey.value);
+
+    await expect(service.restore(ANA, file.id, source.id)).rejects.toThrow(VersionNotFoundError);
+
+    expect(quotas.added).toEqual([]);
+    expect(versions.numbersOf(file.id)).toEqual([1, 2, 3]);
   });
 
   it('Art. XI: una purga fallida de la copia se registra sin clave y no tapa el error original', async () => {
