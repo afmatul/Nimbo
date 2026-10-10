@@ -261,6 +261,29 @@ describe('UploadsProvider', () => {
     expect(await screen.findByText(FILE_ID, { selector: 'output' })).toBeTruthy();
   });
 
+  it('014 CA-1: reemplazar un archivo ya subido expone un solo archivo con ese id', async () => {
+    const put = jest.fn(() => Promise.resolve());
+    const api = fakeApi({ init: jest.fn(() => Promise.resolve(simple('informe.docx'))) });
+    function Uploaded(): React.JSX.Element {
+      const { uploadedFiles } = useUploads();
+      return <output data-testid="uploaded">{uploadedFiles.map((file) => file.id).join(',')}</output>;
+    }
+    render(
+      <UploadsProvider api={api} managerOptions={{ put }}>
+        <Enqueue files={[localFile('informe.docx')]} />
+        <Uploaded />
+      </UploadsProvider>,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Encolar' }));
+    await screen.findByText(FILE_ID, { selector: 'output' });
+    await userEvent.click(screen.getByRole('button', { name: 'Encolar' }));
+    await waitFor(() => expect(api.init).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(put).toHaveBeenCalledTimes(2));
+
+    await waitFor(() => expect(screen.getByTestId('uploaded').textContent).toBe(FILE_ID));
+  });
+
   it('006 CA-7: un archivo subido que se renombra o mueve se expone con su último estado', async () => {
     const put = jest.fn(() => Promise.resolve());
     const api = fakeApi({ init: jest.fn(() => Promise.resolve(simple('informe.docx'))) });
