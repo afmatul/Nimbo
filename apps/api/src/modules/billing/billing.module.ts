@@ -8,6 +8,11 @@ import { PlanOrmEntity } from './infrastructure/persistence/plan.orm-entity';
 import { TypeOrmPlanRepository } from './infrastructure/persistence/typeorm-plan.repository';
 import { PlansController } from './presentation/plans.controller';
 
+/**
+ * M4, specs 006a y 008. Registra el catálogo (`PlansController`, `PlanCatalogService` sobre `IPlanRepository`) y exporta
+ * el adaptador. El token `I_PLAN_LIMITS_PROVIDER` lo enlaza la raíz de composición (`PlanLimitsBindingModule`), no este
+ * módulo: `storage` no conoce a `billing`.
+ */
 @Module({
   imports: [TypeOrmModule.forFeature([PlanOrmEntity])],
   controllers: [PlansController],
