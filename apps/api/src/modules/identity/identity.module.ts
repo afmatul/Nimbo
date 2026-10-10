@@ -9,6 +9,7 @@ import { NotificationsModule } from '../notifications';
 
 import { AccountAdministration } from './application/account-administration';
 import { AccountDirectory } from './application/account-directory';
+import { AccountSetupService } from './application/account-setup.service';
 import { AuthService } from './application/auth.service';
 import { IDENTITY_CONFIG, identityConfigFrom } from './application/identity-config';
 import { InternalAccountEnrollment } from './application/internal-account-enrollment';
@@ -89,6 +90,7 @@ export class IdentityModule implements NestModule {
         AccountDirectory,
         AccountAdministration,
         InternalAccountEnrollment,
+        AccountSetupService,
       ],
       exports: [
         I_ACCESS_TOKEN_VERIFIER,

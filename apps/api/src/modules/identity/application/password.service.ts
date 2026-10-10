@@ -1,15 +1,11 @@
 import { randomUUID } from 'node:crypto';
 
 import { Inject, Injectable } from '@nestjs/common';
-import {
-  evaluatePassword,
-  IDENTITY_FIELD_MESSAGES,
-  RESET_LINK_TTL_MINUTES,
-} from '@nimbo/contracts';
+import { RESET_LINK_TTL_MINUTES } from '@nimbo/contracts';
 import { PinoLogger } from 'nestjs-pino';
 
 import { I_CLOCK, I_RATE_LIMITER, I_TRANSACTION_RUNNER } from '../../../shared';
-import type { Actor, FieldIssue, IClock, IRateLimiter, ITransactionRunner } from '../../../shared';
+import type { Actor, IClock, IRateLimiter, ITransactionRunner } from '../../../shared';
 import { I_MAILER } from '../../notifications';
 import type { IMailer, MailMessage } from '../../notifications';
 import { ClientUser } from '../domain/client-user.entity';
@@ -40,6 +36,7 @@ import {
 import type { IdentityLogger } from './identity-logger';
 import { passwordChangedMail } from './mail/password-changed-mail.template';
 import { passwordResetMail } from './mail/password-reset-mail.template';
+import { weakPasswordIssues } from './password-policy-issues';
 import { I_ATTEMPT_LOCKOUT } from './ports/i-attempt-lockout.port';
 import type { IAttemptLockout } from './ports/i-attempt-lockout.port';
 import { I_PASSWORD_HASHER } from './ports/i-password-hasher.port';
@@ -262,13 +259,7 @@ export class PasswordService {
 
   /** CA-21, CA-22: la política D-6 de 001 con el correo de la cuenta, que el esquema no conoce. */
   private enforceStrongPassword(password: string, user: User, target: NewPasswordTarget): void {
-    const issues: FieldIssue[] = evaluatePassword(password, user.email.value)
-      .filter((result) => !result.passed)
-      .map(({ reason }) => ({
-        field: target.field,
-        reason,
-        message: IDENTITY_FIELD_MESSAGES[reason],
-      }));
+    const issues = weakPasswordIssues(password, user.email, target.field);
     if (issues.length > 0) {
       this.logRejection(target.rejectedEvent, 'weak', user.id);
       throw new IdentityWeakPasswordError(issues);

@@ -4,7 +4,8 @@
 - **Diagrama de origen**: M1 en `docs/sdd/design-model.md` §3 y `docs/design/diagramas/`.
 - **Responsabilidad**: Registro, verificación, login, refresh, sesiones y dispositivos.
 - **Puede depender de**: shared, notifications, audit (`docs/sdd/architecture.md` §3; el lint de fronteras lo hace cumplir).
-- **Specs que lo construyen**: 001 (registro y verificación del correo), 002 (autenticación, sesiones y dispositivos).
+- **Specs que lo construyen**: 001 (registro y verificación del correo), 002 (autenticación, sesiones y dispositivos),
+  011 (fachadas de cuentas para el backoffice y enlace de alta interna).
 - **Decisiones**: ADR-0017 (`argon2` y `@nestjs/throttler`), ADR-0019 (eventos en proceso), ADR-0020 (validación con
   la fábrica de errores de cada módulo).
 
@@ -15,7 +16,7 @@ modules/identity/
 ├─ domain/                                  # sin Nest, TypeORM, zod ni @nimbo/contracts (ADR-0008, regla 3)
 │  ├─ user.entity.ts                        # User (abstracta)
 │  ├─ client-user.entity.ts                 # ClientUser: register, replacePendingRegistration, verifyEmail (inmutable)
-│  ├─ internal-user.entity.ts               # InternalUser: solo lectura en 001 (las crea 011)
+│  ├─ internal-user.entity.ts               # InternalUser: enroll, suspend, reactivate, setFirstPassword (011)
 │  ├─ verification-token.entity.ts          # VerificationToken: issue, stateAt, isValid, consume, invalidate
 │  ├─ email-address.vo.ts                   # EmailAddress.of: recorta y pasa a minúsculas (D-16)
 │  ├─ opaque-token.vo.ts                    # OpaqueToken: 32 bytes base64url, SHA-256, comparación en tiempo constante
@@ -34,7 +35,14 @@ modules/identity/
 │  ├─ session.service.ts                    # SessionService: open, refresh, logout, list, revoke, revokeOthers (002)
 │  ├─ password.service.ts                   # PasswordService: requestReset, checkResetLink, resetPassword,
 │  │                                        # changePassword (002)
-│  ├─ account-token-lookup.ts               # findAccountToken: valor → token por hash y tipo (verificación y recuperación)
+│  ├─ account-token-lookup.ts               # findAccountToken: valor → token por hash y tipo (verificación, recuperación, alta)
+│  ├─ account-token-issuer.ts               # issueAccountToken: invalida los vigentes y guarda solo el hash del nuevo
+│  ├─ password-policy-issues.ts             # weakPasswordIssues: política D-6 con el correo de la cuenta → `fields`
+│  ├─ account-directory.ts                  # AccountDirectory: list, get, findClientByEmail, statistics (011)
+│  ├─ account-administration.ts             # AccountAdministration: lockAdminRoster, assertActorActive, suspend,
+│  │                                        # reactivate (011)
+│  ├─ internal-account-enrollment.ts        # InternalAccountEnrollment: enroll, enrollInitialAdmin (011)
+│  ├─ account-setup.service.ts              # AccountSetupService: checkLink, setFirstPassword (011)
 │  ├─ identity-limit-keys.ts                # claves de límites y bloqueos (SHA-256 del correo o userId) y EMAIL_REQUEST_RULES
 │  ├─ identity-config.ts  web-links.ts      # WEB_PUBLIC_URL y rutas de `web` que usan los correos
 │  ├─ identity-logger.ts                    # interfaz mínima info/warn del logger (dobles en pruebas)
@@ -52,7 +60,7 @@ modules/identity/
 │  ├─ auth.controller.ts                    # AuthController: register, resend-verification, verify-email (abre sesión),
 │  │                                        # login, session/refresh, session/logout (002)
 │  ├─ password.controller.ts                # PasswordController: forgot-password, reset-password/check, reset-password,
-│  │                                        # change-password (002)
+│  │                                        # change-password (002), account-setup/check, account-setup (011)
 │  ├─ sessions.controller.ts                # SessionsController: GET /sessions, DELETE /sessions/:id, revoke-others (002)
 │  ├─ session-cookies.ts                    # SessionCookies (nimbo_rt, nimbo_did) y readCookie (002 DT-2, DT-9)
 │  ├─ client-context.factory.ts             # readClientContext: nimbo_did, User-Agent y req.ip (002 CA-16)
@@ -91,6 +99,9 @@ Consume `IMailer` (`notifications`) e `IRateLimiter`, `ITransactionRunner` e `IC
 - `IDENTITY_THROTTLERS`: la lista de _throttlers_ de `identity` vive junto al guard y su tabla de ámbitos, así
   `AppModule` no repite nombres.
 - `CLIENT_ACCOUNT_VERIFIED` y `ClientAccountVerifiedEvent`: el evento de cuenta de cliente verificada.
+- Fachadas del backoffice (011 plan §2; clases sin interfaz, Art. V.2): `AccountDirectory`, `AccountAdministration` e
+  `InternalAccountEnrollment`, con sus tipos. Corren dentro de la transacción del llamador; ni repositorios ni entidades
+  salen del módulo.
 
 ### Evento `CLIENT_ACCOUNT_VERIFIED` (ADR-0019)
 
@@ -146,6 +157,21 @@ SessionResponse`, rota `nimbo_rt`) y `POST /auth/session/logout` (`204`). `verif
   `identity.rate_limited` (`scope: 'password_reset'`).
 - **Pruebas**: `test/isolation/password-reset-enumeration.iso-spec.ts` compara las cuatro clases de cuenta, también
   con el límite agotado y en la secuencia `forgot-password` → `resend-verification`.
+
+## Administración y alta interna (011)
+
+- **Suspender y reactivar** (`AccountAdministration`): candado del padrón (`pg_advisory_xact_lock`) → fila
+  `FOR UPDATE` → no a sí mismo → no al último Administrador activo → `suspendida` y **todas** sus sesiones revocadas
+  (002 D-10). Reactivar no devuelve sesiones. `assertActorActive` lee el estado del actor en la transacción (RN-7).
+- **Alta interna** (`InternalAccountEnrollment`): cuenta activa y verificada con el hash de un secreto aleatorio que
+  nadie conoce, enlace `alta_interna` de 24 h (`ACCOUNT_SETUP_LINK_TTL_HOURS`) y `deliverInvitation()`, que el llamador
+  invoca **después** del commit. Si el correo falla, la cuenta queda y se registra `identity.invitation.mail_failed`
+  (solo `userId`); la persona usa «¿Olvidaste tu contraseña?». Correo o código repetido → `IDENTITY_ENROLLMENT_CONFLICT`
+  con uno o ambos `fields`. `enrollInitialAdmin` (CA-7) toma el candado y niega si ya hay un Administrador activo.
+- **Primera contraseña** (`AccountSetupService`, `@Public()`): `POST /auth/account-setup/check` (`200`, sin consumir) y
+  `POST /auth/account-setup` (`200 { status: 'password-set' }`): política D-6 con el correo de la cuenta, hash fuera de
+  la transacción y consumo atómico del token; no crea ni revoca sesiones. Errores `IDENTITY_SETUP_LINK_INVALID`,
+  `IDENTITY_SETUP_LINK_EXPIRED` e `IDENTITY_WEAK_PASSWORD`. Sin límite de tasa propio, como `reset-password` (PD-88).
 
 ## Seguridad: sesiones y cambio de contraseña (002, PR-4)
 
