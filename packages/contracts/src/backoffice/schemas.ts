@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { EMAIL_MAX_LENGTH, isValidEmail } from '../identity';
 import { roleSchema } from '../shared';
 import { FILE_KINDS } from '../storage';
 
@@ -8,12 +9,9 @@ import { BACKOFFICE_PAGE_SIZE } from './parameters';
 
 /** Esquemas del backoffice (spec 011, plan §4): cuentas, métricas y metadatos de archivos; respuestas estrictas. */
 
-/** Largo máximo de un correo (RFC 5321; `usuario.correo varchar(254)`). */
-const EMAIL_MAX_LENGTH = 254;
 const PAGE_PATTERN = /^[1-9][0-9]*$/;
 const FIRST_PAGE = 1;
 
-const emailFormat = z.string().email().max(EMAIL_MAX_LENGTH);
 const timestamp = z.string().datetime();
 const count = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
 
@@ -54,7 +52,7 @@ const emailPrefixField = z.unknown().transform((value, ctx): string | undefined 
 const exactEmailField = z.unknown().transform((value, ctx): string => {
   const email = typeof value === 'string' ? normalizeEmail(value) : '';
   if (email === '') return addReason(ctx, 'REQUIRED');
-  return emailFormat.safeParse(email).success ? email : addReason(ctx, 'INVALID_EMAIL');
+  return isValidEmail(email) ? email : addReason(ctx, 'INVALID_EMAIL');
 });
 
 /** `GET /backoffice/accounts?email&page` (CA-1). Responde `400 BACKOFFICE_INVALID_QUERY` con `fields`. */

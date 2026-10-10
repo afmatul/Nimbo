@@ -6,8 +6,9 @@ import type { MigrationInterface, QueryRunner } from 'typeorm';
  * - `usuario_afectado_id` admite `NULL`, pero **solo** en los cambios de catálogo (recurso `plan`) y en el alta inicial
  *   (`account.bootstrap_admin`): `ck_evento_destino` lo exige en ambos sentidos, sin hueco por `NULL`. Ninguna
  *   política de lectura alcanza esos eventos, así que «Mi actividad» nunca muestra un actor de sistema.
- * - `rol_actor` suma `SYSTEM` (el comando de alta inicial), siempre sin `actor_id` (`ck_evento_sistema`), y
- *   `tipo_recurso` suma `account` y `plan`. Los CHECK de 004 se reemplazan por otros con nombre propio.
+ * - `rol_actor` suma `SYSTEM` (el comando de alta inicial), siempre sin `actor_id` (`ck_evento_sistema`), el alta
+ *   inicial solo la registra `SYSTEM` (`ck_evento_bootstrap_sistema`), y `tipo_recurso` suma `account` y `plan`. Los
+ *   CHECK de 004 se reemplazan por otros con nombre propio.
  * - `evento_auditoria_alta_sistema`: fuera de todo `withActor` (sin `app.actor_id`), `nimbo_app` solo puede insertar el
  *   evento del alta inicial; un `run` sin actor no inserta ningún otro evento `SYSTEM`.
  *
@@ -25,6 +26,7 @@ export class AmpliarEventoAuditoriaParaAccionesInternas20261007100300 implements
         ADD CONSTRAINT ck_evento_rol_actor CHECK (rol_actor IN ('CLIENT', 'ADMIN', 'SUPPORT', 'OPERATOR', 'SYSTEM')),
         ADD CONSTRAINT ck_evento_tipo_recurso CHECK (tipo_recurso IN ('file', 'folder', 'upload', 'account', 'plan')),
         ADD CONSTRAINT ck_evento_sistema CHECK (rol_actor <> 'SYSTEM' OR actor_id IS NULL),
+        ADD CONSTRAINT ck_evento_bootstrap_sistema CHECK (accion <> 'account.bootstrap_admin' OR rol_actor = 'SYSTEM'),
         ADD CONSTRAINT ck_evento_destino CHECK ((usuario_afectado_id IS NULL)
           = (tipo_recurso IS NOT DISTINCT FROM 'plan' OR accion = 'account.bootstrap_admin'))
     `);
@@ -46,6 +48,7 @@ export class AmpliarEventoAuditoriaParaAccionesInternas20261007100300 implements
     await queryRunner.query('DROP POLICY evento_auditoria_alta_sistema ON evento_auditoria');
     await queryRunner.query(`
       ALTER TABLE evento_auditoria DROP CONSTRAINT ck_evento_destino,
+        DROP CONSTRAINT ck_evento_bootstrap_sistema,
         DROP CONSTRAINT ck_evento_sistema,
         DROP CONSTRAINT ck_evento_tipo_recurso,
         DROP CONSTRAINT ck_evento_rol_actor,

@@ -106,6 +106,18 @@ describe('textos de «Mi actividad»', () => {
     },
   );
 
+  it.each([
+    ['account.suspended', 'Tú suspendió tu cuenta'],
+    ['client.files_viewed', 'Tú consultó la lista de tus archivos (sin abrir su contenido)'],
+  ] as const)(
+    'CA-16 (011): %s no tiene texto en segunda persona; con origen self cae al texto del personal',
+    (action, text) => {
+      const unexpected = event({ action, origin: 'self', actorRole: 'ADMIN', resourceType: null });
+
+      expect(activityActionLabel(unexpected)).toBe(text);
+    },
+  );
+
   it.each(['account.bootstrap_admin', 'plan.created', 'plan.deactivated'])(
     'CA-16 (011): %s no tiene afectado y conserva el texto genérico',
     (action) => {

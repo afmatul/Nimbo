@@ -4,16 +4,19 @@ import { INTERNAL_ROLES, roleSchema, type InternalRoleName } from '../shared';
 
 import { IDENTITY_FIELD_MESSAGES, type FieldIssueReason } from './error-codes';
 import {
+  EMAIL_MAX_LENGTH,
   EMPLOYEE_CODE_MAX_LENGTH,
   FULL_NAME_MAX_LENGTH,
   SESSION_LIST_MAX_ITEMS,
 } from './parameters';
 import { evaluatePassword } from './password-policy';
 
-/** Largo máximo de una dirección de correo (RFC 5321; columna `usuario.correo varchar(254)`). */
-const EMAIL_MAX_LENGTH = 254;
-
 const emailFormat = z.string().email().max(EMAIL_MAX_LENGTH);
+
+/** Única regla de formato de correo (Q-4b): la usan `identity` y `backoffice`. Recibe el correo ya recortado. */
+export function isValidEmail(value: string): boolean {
+  return emailFormat.safeParse(value).success;
+}
 
 type Refinement = z.RefinementCtx;
 
@@ -51,7 +54,7 @@ function fullNameReasons(value: string): FieldIssueReason[] {
 
 /** El correo se valida sin espacios alrededor; la normalización la hace el servicio (D-16). */
 function emailReasons(value: string): FieldIssueReason[] {
-  return emailFormat.safeParse(value.trim()).success ? [] : ['INVALID_EMAIL'];
+  return isValidEmail(value.trim()) ? [] : ['INVALID_EMAIL'];
 }
 
 /** Mismas reglas que `EmployeeCode` del dominio de `api` (que no importa este paquete, ADR-0008). */

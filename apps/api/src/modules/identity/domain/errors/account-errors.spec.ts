@@ -29,31 +29,64 @@ const EMAIL_IN_USE: FieldIssue = {
 
 describe('errores de cuentas internas (011 plan §2, §4)', () => {
   it.each([
-    [new AccountNotFoundError(), IDENTITY_ERROR_CODES.ACCOUNT_NOT_FOUND, 404, NotFoundError],
-    [
-      new CannotChangeOwnStatusError(),
-      IDENTITY_ERROR_CODES.CANNOT_CHANGE_OWN_STATUS,
-      409,
-      ConflictError,
-    ],
-    [new LastActiveAdminError(), IDENTITY_ERROR_CODES.LAST_ACTIVE_ADMIN, 409, ConflictError],
-    [
-      new AccountStateConflictError(),
-      IDENTITY_ERROR_CODES.ACCOUNT_STATE_CONFLICT,
-      409,
-      ConflictError,
-    ],
-    [new AdminAlreadyExistsError(), IDENTITY_ERROR_CODES.ADMIN_ALREADY_EXISTS, 409, ConflictError],
-    [new SetupLinkInvalidError(), IDENTITY_ERROR_CODES.SETUP_LINK_INVALID, 422, InvalidInputError],
-    [new SetupLinkExpiredError(), IDENTITY_ERROR_CODES.SETUP_LINK_EXPIRED, 422, InvalidInputError],
-    [new ActorNotActiveError(), SHARED_ERROR_CODES.FORBIDDEN, 403, ForbiddenError],
-  ] as const)('%p usa el código %s y el status %i', (error, code, status, base) => {
-    expect(error).toBeInstanceOf(DomainError);
-    expect(error).toBeInstanceOf(base);
-    expect(error.code).toBe(code);
-    expect(error.status).toBe(status);
-    expect(error.message.length).toBeGreaterThan(0);
-  });
+    {
+      error: new AccountNotFoundError(),
+      code: IDENTITY_ERROR_CODES.ACCOUNT_NOT_FOUND,
+      status: 404,
+      base: NotFoundError,
+    },
+    {
+      error: new CannotChangeOwnStatusError(),
+      code: IDENTITY_ERROR_CODES.CANNOT_CHANGE_OWN_STATUS,
+      status: 409,
+      base: ConflictError,
+    },
+    {
+      error: new LastActiveAdminError(),
+      code: IDENTITY_ERROR_CODES.LAST_ACTIVE_ADMIN,
+      status: 409,
+      base: ConflictError,
+    },
+    {
+      error: new AccountStateConflictError(),
+      code: IDENTITY_ERROR_CODES.ACCOUNT_STATE_CONFLICT,
+      status: 409,
+      base: ConflictError,
+    },
+    {
+      error: new AdminAlreadyExistsError(),
+      code: IDENTITY_ERROR_CODES.ADMIN_ALREADY_EXISTS,
+      status: 409,
+      base: ConflictError,
+    },
+    {
+      error: new SetupLinkInvalidError(),
+      code: IDENTITY_ERROR_CODES.SETUP_LINK_INVALID,
+      status: 422,
+      base: InvalidInputError,
+    },
+    {
+      error: new SetupLinkExpiredError(),
+      code: IDENTITY_ERROR_CODES.SETUP_LINK_EXPIRED,
+      status: 422,
+      base: InvalidInputError,
+    },
+    {
+      error: new ActorNotActiveError(),
+      code: SHARED_ERROR_CODES.FORBIDDEN,
+      status: 403,
+      base: ForbiddenError,
+    },
+  ] as const)(
+    '$error.name usa el código $code y el status $status',
+    ({ error, code, status, base }) => {
+      expect(error).toBeInstanceOf(DomainError);
+      expect(error).toBeInstanceOf(base);
+      expect(error.code).toBe(code);
+      expect(error.status).toBe(status);
+      expect(error.message.length).toBeGreaterThan(0);
+    },
+  );
 
   it('CA-6: `EnrollmentConflictError` lleva los campos en conflicto', () => {
     const error = new EnrollmentConflictError([EMAIL_IN_USE]);

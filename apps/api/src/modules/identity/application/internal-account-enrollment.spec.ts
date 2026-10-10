@@ -63,7 +63,7 @@ const setup = () => {
     { webPublicUrl: 'http://localhost/', cookieSecure: false },
     logger,
   );
-  return { users, tokens, hashed, mailer, sent, logger, enrollment };
+  return { users, tokens, hasher, hashed, mailer, sent, logger, enrollment };
 };
 
 const tokenOf = (mail: MailMessage | undefined): string => {
@@ -134,7 +134,23 @@ describe('InternalAccountEnrollment (011 CA-5 a CA-7)', () => {
       expect(logger.warn).toHaveBeenCalledWith({
         event: 'identity.invitation.mail_failed',
         userId: users.all()[0]?.id,
+        reason: 'Error',
       });
+    });
+
+    it('plan R-4: la bitácora del fallo lleva solo el nombre del error, nunca correo, nombre ni enlace', async () => {
+      const { enrollment, mailer, logger } = setup();
+      class QueueUnavailableError extends Error {
+        override readonly name = 'QueueUnavailableError';
+      }
+      mailer.send.mockRejectedValueOnce(new QueueUnavailableError('sofia.ramirez@nimbo.me'));
+
+      const { deliverInvitation } = await enrollment.enroll(ADMIN, aCommand());
+      await deliverInvitation();
+
+      const [[entry]] = logger.warn.mock.calls as [[Record<string, unknown>]];
+      expect(entry.reason).toBe('QueueUnavailableError');
+      expect(JSON.stringify(entry)).not.toMatch(/sofia|Sofía|token|crear-contrasena/i);
     });
 
     it('CA-6: el rol Cliente → `IDENTITY_INVALID_INPUT` en `role` y no crea nada', async () => {
@@ -180,6 +196,17 @@ describe('InternalAccountEnrollment (011 CA-5 a CA-7)', () => {
       },
     );
 
+    it('CA-6: si el alta choca pero el correo y el código ya no existen (borrado concurrente), no inventa un 409 sin campos', async () => {
+      const { enrollment, users, tokens } = setup();
+      jest.spyOn(users, 'insertInternalIfAbsent').mockResolvedValueOnce(false);
+
+      const error = await enrollment.enroll(ADMIN, aCommand()).catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(Error);
+      expect(error).not.toBeInstanceOf(EnrollmentConflictError);
+      expect(tokens.all()).toEqual([]);
+    });
+
     it('CA-6: el correo de un cliente también choca', async () => {
       const { enrollment, users } = setup();
       users.seed(aClientUser().withId(randomUUID()).withEmail('sofia.ramirez@nimbo.me').build());
@@ -203,6 +230,17 @@ describe('InternalAccountEnrollment (011 CA-5 a CA-7)', () => {
       expect(lock).toHaveBeenCalledTimes(1);
       expect(account.role).toBe(Role.ADMIN);
       expect(await users.countActiveAdmins()).toBe(1);
+    });
+
+    it('CA-7: el hash Argon2 del secreto descartado se calcula antes de tomar el candado', async () => {
+      const { enrollment, users, hasher } = setup();
+      const lock = jest.spyOn(users, 'lockAdminRoster');
+
+      await enrollment.enrollInitialAdmin(initial);
+
+      const [hashOrder] = (hasher.hash as jest.Mock).mock.invocationCallOrder;
+      const [lockOrder] = lock.mock.invocationCallOrder;
+      expect(hashOrder).toBeLessThan(lockOrder ?? 0);
     });
 
     it('CA-7: con un Administrador activo → `AdminAlreadyExistsError` y no crea nada', async () => {

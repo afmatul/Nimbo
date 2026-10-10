@@ -377,6 +377,11 @@ describe('restricciones de `evento_auditoria` de 011 (plan §3)', () => {
       'un evento `SYSTEM` con actor',
       { rol_actor: "'SYSTEM'", actor_id: '$1::uuid' },
     ],
+    [
+      'ck_evento_bootstrap_sistema',
+      'el alta inicial registrada por un interno',
+      { accion: "'account.bootstrap_admin'", afectado: 'NULL::uuid' },
+    ],
     ['ck_evento_rol_actor', 'un rol fuera de la lista', { rol_actor: "'ROOT'" }],
     ['ck_evento_tipo_recurso', 'un tipo de recurso fuera de la lista', { tipo_recurso: "'link'" }],
   ])('`%s` rechaza %s', async (constraint, _case, overrides) => {

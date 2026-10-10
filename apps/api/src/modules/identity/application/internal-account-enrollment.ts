@@ -18,6 +18,7 @@ import {
 } from '../domain/errors';
 import { InternalUser } from '../domain/internal-user.entity';
 import { OpaqueToken } from '../domain/opaque-token.vo';
+import type { PasswordHash } from '../domain/password-hash.vo';
 
 import { issueAccountToken } from './account-token-issuer';
 import { IDENTITY_CONFIG } from './identity-config';
@@ -80,26 +81,38 @@ export class InternalAccountEnrollment {
     if (command.role === Role.CLIENT) {
       throw new IdentityInvalidInputError([issue('role', 'INVALID_ROLE')]);
     }
-    return this.enrollAccount(command);
+    return this.enrollAccount(command, await this.discardedSecretHash());
   }
 
-  /** CA-7: con el candado del padrón; si ya hay un Administrador activo, `AdminAlreadyExistsError`. */
+  /**
+   * CA-7: con el candado del padrón; si ya hay un Administrador activo, `AdminAlreadyExistsError`. El hash (Argon2,
+   * lento) se calcula antes del candado para no retenerlo, como `AccountSetupService` lo hace fuera de la transacción.
+   */
   async enrollInitialAdmin(command: InitialAdminCommand): Promise<Enrollment> {
+    const passwordHash = await this.discardedSecretHash();
     await this.users.lockAdminRoster();
     if ((await this.users.countActiveAdmins()) > 0) {
       throw new AdminAlreadyExistsError();
     }
-    return this.enrollAccount({ ...command, role: Role.ADMIN });
+    return this.enrollAccount({ ...command, role: Role.ADMIN }, passwordHash);
   }
 
-  private async enrollAccount(command: EnrollInternalCommand): Promise<Enrollment> {
+  /** Hash de un secreto aleatorio que nadie conoce: la persona crea su contraseña con el enlace. */
+  private discardedSecretHash(): Promise<PasswordHash> {
+    return this.hasher.hash(OpaqueToken.generate().toString());
+  }
+
+  private async enrollAccount(
+    command: EnrollInternalCommand,
+    passwordHash: PasswordHash,
+  ): Promise<Enrollment> {
     const user = InternalUser.enroll({
       id: randomUUID(),
       fullName: command.fullName.trim(),
       email: EmailAddress.of(command.email),
       employeeCode: EmployeeCode.of(command.employeeCode),
       role: command.role,
-      passwordHash: await this.hasher.hash(OpaqueToken.generate().toString()),
+      passwordHash,
     });
     if (!(await this.users.insertInternalIfAbsent(user))) {
       throw await this.conflictOf(user);
@@ -111,14 +124,22 @@ export class InternalAccountEnrollment {
     };
   }
 
-  /** CA-6: marca el correo, el código o ambos; el `ON CONFLICT` no dice cuál chocó. */
-  private async conflictOf(user: InternalUser): Promise<EnrollmentConflictError> {
+  /**
+   * CA-6: marca el correo, el código o ambos; el `ON CONFLICT` no dice cuál chocó. Si ninguno se encuentra (la cuenta
+   * que chocó se borró entre el `INSERT` y la lectura), no hay campo que marcar: es un fallo inesperado, no un 409.
+   */
+  private async conflictOf(user: InternalUser): Promise<Error> {
     const fields: FieldIssue[] = [];
     if ((await this.users.findByEmail(user.email)) !== null) {
       fields.push(issue('email', 'EMAIL_IN_USE'));
     }
     if ((await this.users.findByEmployeeCode(user.employeeCode)) !== null) {
       fields.push(issue('employeeCode', 'EMPLOYEE_CODE_IN_USE'));
+    }
+    if (fields.length === 0) {
+      return new Error(
+        'El alta interna chocó con una cuenta que ya no existe; vuelve a intentarlo.',
+      );
     }
     return new EnrollmentConflictError(fields);
   }
@@ -145,14 +166,18 @@ export class InternalAccountEnrollment {
   private async deliver(invitation: MailMessage): Promise<void> {
     try {
       await this.mailer.send(invitation);
-    } catch {
+    } catch (error: unknown) {
       this.logger.warn({
         event: 'identity.invitation.mail_failed',
         userId: invitation.recipientId,
+        reason: errorNameOf(error),
       });
     }
   }
 }
+
+/** Solo el nombre de la clase del error: su mensaje podría traer el correo del destinatario. */
+const errorNameOf = (error: unknown): string => (error instanceof Error ? error.name : 'unknown');
 
 const issue = (field: string, reason: FieldIssueReason): FieldIssue => ({
   field,

@@ -1,3 +1,5 @@
+import { INTERNAL_ROLES } from '@nimbo/contracts';
+
 import type { AttributeRules } from '../domain/attribute-sanitizer';
 import type { AuditAttributes, AuditResourceType } from '../domain/audit-entry';
 
@@ -20,7 +22,6 @@ const fromAttribute = (key: string): ResourceTypeFromAttribute => ({ fromAttribu
 
 const NODE_TYPES = ['file', 'folder'] as const;
 const NODE_ATTRIBUTES = { nodeType: NODE_TYPES, itemCount: 'number', sizeBytes: 'number' } as const;
-const INTERNAL_ROLES = ['ADMIN', 'SUPPORT', 'OPERATOR'] as const;
 const ON_ACCOUNT = { resourceType: 'account', attributes: {} } as const;
 const ON_PLAN = { resourceType: 'plan', attributes: {} } as const;
 
