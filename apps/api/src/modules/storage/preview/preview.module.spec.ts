@@ -1,4 +1,4 @@
-﻿import type { DynamicModule } from '@nestjs/common';
+import type { DynamicModule } from '@nestjs/common';
 
 import { StorageModule } from '..';
 

@@ -13,7 +13,8 @@ import type { IPlanLimitsProvider } from '../../../src/modules/storage';
 import { PreviewModule } from '../../../src/modules/storage/preview';
 import { PreviewService } from '../../../src/modules/storage/preview/application/preview.service';
 import { PlanLimitsBindingModule } from '../../../src/plan-limits-binding.module';
-import { createActor, FixedClock, Role } from '../../../src/shared';
+import { createActor, FixedClock, I_RATE_LIMITER, Role } from '../../../src/shared';
+import type { IRateLimiter } from '../../../src/shared';
 import { connectAsOwner } from '../../support/database-urls';
 import { PROBE_CLOCK_START } from '../../support/probe.module';
 import { TestAccessTokens } from '../../support/test-access-tokens';
@@ -191,33 +192,66 @@ describe('POST /api/v1/files/:fileId/preview-url (017 T-03)', () => {
     );
   });
 
-  it('CA-10: un fallo privado no llega a logs globales ni a la respuesta HTTP', async () => {
-    const failure = new Error('https://example.test/file?X-Amz-Signature=SECRETO_MESSAGE', {
-      cause: new Error('SECRETO_CAUSE'),
-    });
-    failure.stack = 'SECRETO_STACK';
-    // Inyección de fallo en la frontera de aplicación; no sustituye DB, Redis ni MinIO por mocks.
-    jest.spyOn(facade, 'issueUrl').mockRejectedValueOnce(failure);
+  it.each(['facade', 'rateLimiter'] as const)(
+    'CA-10: un fallo privado de %s usa el 500 canónico sin secretos en ningún log',
+    async (source) => {
+      const signedUrl =
+        'https://example.test/PRIVATE_OBJECT_KEY?X-Amz-Signature=PRIVATE_SIGNATURE&token=PRIVATE_TOKEN';
+      const failure = new Error(`PRIVATE_MESSAGE ${signedUrl}`, {
+        cause: new Error('PRIVATE_CAUSE'),
+      });
+      failure.stack = 'PRIVATE_STACK';
+      Object.assign(failure, { objectKey: 'PRIVATE_OBJECT_KEY', privateName: 'privado.pdf' });
+      const facadeCall = jest.spyOn(facade, 'issueUrl');
+      // Fallo inyectado en aplicación: no acredita Redis/MinIO realmente detenidos (T-04).
+      if (source === 'facade') facadeCall.mockRejectedValueOnce(failure);
+      else
+        jest
+          .spyOn(testApp.app.get<IRateLimiter>(I_RATE_LIMITER), 'consume')
+          .mockRejectedValueOnce(failure);
 
-    const response = await issue({ correlationId: 'preview-failed' });
+      const response = await issue({ correlationId: 'preview-failed' });
 
-    expect(response.status).toBe(500);
-    expect(errorResponseSchema.parse(response.body)).toMatchObject({
-      code: 'INTERNAL_ERROR',
-      correlationId: 'preview-failed',
-    });
-    const lines = testApp.logs.withCorrelationId('preview-failed');
-    expect(lines).toContainEqual(
-      expect.objectContaining({ event: 'preview.url_failed', fileId, reason: 'unexpected_error' }),
-    );
-    expect(lines).toContainEqual(
-      expect.objectContaining({ event: 'http.domain_error', code: 'INTERNAL_ERROR', status: 500 }),
-    );
-    expect(lines.some((line) => line.event === 'http.unhandled_error')).toBe(false);
-    const serialized = JSON.stringify({ logs: testApp.logs.lines(), response: response.body });
-    for (const forbidden of ['SECRETO', 'example.test', 'X-Amz-Signature', 'privado.pdf']) {
-      expect(serialized).not.toContain(forbidden);
-    }
-    for (const line of lines) expect(line).not.toHaveProperty('err');
-  });
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({
+        code: 'INTERNAL_ERROR',
+        message:
+          'Ocurrió un error inesperado. Inténtalo de nuevo más tarde; si persiste, contacta a soporte con el identificador de correlación.',
+        correlationId: 'preview-failed',
+      });
+      const lines = testApp.logs.withCorrelationId('preview-failed');
+      expect(lines).toContainEqual(
+        expect.objectContaining({
+          event: 'preview.url_failed',
+          fileId,
+          reason: 'unexpected_error',
+        }),
+      );
+      expect(lines).toContainEqual(expect.objectContaining({ event: 'http.unhandled_error' }));
+      expect(lines).toContainEqual(
+        expect.objectContaining({
+          event: 'http.request',
+          res: expect.objectContaining({ statusCode: 500 }),
+        }),
+      );
+      expect(lines.some((line) => line.event === 'http.domain_error')).toBe(false);
+      expect(lines.some((line) => line.event === 'preview.url_issued')).toBe(false);
+      const serialized = JSON.stringify({ logs: testApp.logs.lines(), response: response.body });
+      for (const forbidden of [
+        signedUrl,
+        'PRIVATE_MESSAGE',
+        'PRIVATE_STACK',
+        'PRIVATE_CAUSE',
+        'PRIVATE_TOKEN',
+        'PRIVATE_SIGNATURE',
+        'PRIVATE_OBJECT_KEY',
+        'X-Amz-Signature',
+        'example.test',
+        'privado.pdf',
+      ])
+        expect(serialized).not.toContain(forbidden);
+      for (const line of lines) expect(line.correlationId).toBe('preview-failed');
+      if (source === 'rateLimiter') expect(facadeCall).not.toHaveBeenCalled();
+    },
+  );
 });

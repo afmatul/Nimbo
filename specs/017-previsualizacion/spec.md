@@ -1,16 +1,16 @@
 # Spec 017 — Previsualización
 
-> Qué y por qué. Lista: no quedan preguntas abiertas. ADR-0027 (`inline` solo en vista) queda Rechazado: la vista usa la misma disposición forzada de 005 y se respeta IX.7 literalmente. Spec aprobada por Adrián (2026-10-06).
+> Qué y por qué. En curso: no quedan preguntas abiertas. ADR-0027 (`inline` solo en vista) queda Rechazado: la vista usa la misma disposición forzada de 005 y se respeta IX.7 literalmente. Spec aprobada por Adrián (2026-10-06).
 
 | Campo | Valor |
 |---|---|
-| Estado | Lista |
+| Estado | En curso |
 | Dueño | Abel |
 | Fase | 2 |
 | Requisitos | RF-27 (principal, Debería); RF-05, RF-09 y RNF-05, RNF-06, RNF-07, RNF-09, RNF-13, RNF-14, RNF-17 (restricciones transversales) |
 | Depende de | 005 — carga-y-descarga |
 | Hallazgo relacionado | Al integrar la 017, DF-15 queda parcial: se acepta `PreviewService`. El resto del hallazgo sigue abierto |
-| Última actualización | 2026-10-06 |
+| Última actualización | 2026-10-09 |
 
 ## 1. Contexto y objetivo
 La descarga de 005 permite recuperar un archivo, pero no consultarlo mediante una vista previa.
@@ -90,3 +90,4 @@ Fuentes: `product-context.md` §2–4, §6–7; 005 CA-13/14/16/17; constitució
 | 2026-10-06 | Registrar y enlazar ADR-0027 (Propuesto) y PD-74; explicitar la tensión literal con IX.7 y la aceptación pendiente | Documentar `inline` solo para la URL temporal de vista aislada antes de `/plan 017`, preservando descarga de 005 | Pendiente del equipo (IX.7) y de Adrián (spec) |
 | 2026-10-06 | Spec y plan aprobados; estado `Lista` | Aprobación registrada en plan §8 (G-4) | Adrián |
 | 2026-10-06 | CA-11 reescrito (opción 4): URL de vista con la misma política de 005 (`attachment`, `application/octet-stream`, `no-store`); sin `inline`, sin MIME, sin excepción a IX.7; ADR-0027 Rechazado; RN-4/RN-6 ajustados | El visor lee con `fetch` y renderiza; el navegador no navega a la URL, así que `inline`/MIME no aportan | Adrián |
+| 2026-10-09 | Estado `En curso`; T-03 completada y validada con evidencia en tasks | Corrección autorizada por Abel; integraciones focalizadas y completas ejecutadas y aportadas por Abel en verde; T-04 y tareas posteriores pendientes | Abel (cierre de T-03; no cierre de spec) |

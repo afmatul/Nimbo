@@ -1,11 +1,11 @@
-﻿import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
 
 import { StoragePreviewFacade } from '../..';
 import type { PreviewDelivery } from '../..';
 import { DomainError, I_RATE_LIMITER, InsufficientRoleError, Role } from '../../../../shared';
 import type { Actor, IRateLimiter } from '../../../../shared';
-import { PreviewTooManyRequestsError, PreviewUrlIssuanceError } from '../domain/preview-errors';
+import { PreviewTooManyRequestsError } from '../domain/preview-errors';
 
 import { PREVIEW_CONFIG } from './preview-config';
 import type { PreviewConfig } from './preview-config';
@@ -24,7 +24,9 @@ export class PreviewService {
 
   async issueUrl(actor: Actor, fileId: string): Promise<PreviewDelivery> {
     try {
-      if (actor.role !== Role.CLIENT) throw new InsufficientRoleError();
+      if (actor.role !== Role.CLIENT || actor.canReadContent !== true) {
+        throw new InsufficientRoleError();
+      }
       await this.assertWithinRate(actor, fileId);
       const delivery = await this.facade.issueUrl(actor, fileId);
       this.logger.info({ event: 'preview.url_issued', fileId });
@@ -45,13 +47,14 @@ export class PreviewService {
     }
   }
 
-  private loggedFailure(fileId: string, error: unknown): DomainError {
+  private loggedFailure(fileId: string, error: unknown): Error {
     if (error instanceof PreviewTooManyRequestsError) return error;
     if (error instanceof DomainError) {
       this.logger.warn({ event: 'preview.url_failed', fileId, code: error.code });
       return error;
     }
     this.logger.error({ event: 'preview.url_failed', fileId, reason: 'unexpected_error' });
-    return new PreviewUrlIssuanceError();
+    // El filtro registra el Error recibido: jamás transportar message, stack, cause ni datos del SDK.
+    return new Error('No se pudo emitir la URL de previsualización.');
   }
 }

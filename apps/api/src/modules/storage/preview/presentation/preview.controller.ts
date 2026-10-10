@@ -1,4 +1,4 @@
-﻿import { Controller, HttpCode, HttpStatus, Param, Post } from '@nestjs/common';
+import { Controller, HttpCode, HttpStatus, Param, Post } from '@nestjs/common';
 import type { PreviewUrlResponse } from '@nimbo/contracts';
 
 import { CurrentActor, Role, Roles } from '../../../../shared';

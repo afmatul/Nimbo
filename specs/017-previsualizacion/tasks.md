@@ -29,7 +29,7 @@
 
 - [x] **T-02** **(Adrián; habilitación storage)** Fachada delgada y extracción DRY. Extraer de `FileService.getDownloadUrl` (:121) el colaborador interno `AccessibleFileUrlIssuer` («resolver archivo accesible y firmar» con `presignDownload`, sin tasa ni auditoría) y hacer que la descarga y `StoragePreviewFacade.issueUrl(actor, fileId)` → `{ file, url, expiresAt }` lo reutilicen; `PreviewUnsupportedError` (422) para `docx`/`otro`; exports/DI públicos. Sin migración, índice, `presignPreview`, MIME ni consulta de procedencia; no ensanchar `INodeRepository`; ajeno/inexistente → 404; fallo al firmar → error operativo saneado. Pruebas primero: autorización (internos 403), ajeno=404, TTL 300, firma idéntica a la de descarga (`attachment`/`octet-stream`/`no-store`), descarga 005 intacta (regresión) y sin auditoría de descarga en la ruta de preview. — CA: CA-3, CA-4, CA-5, CA-8, CA-11 — Archivos: `apps/api/src/modules/storage/application/{storage-preview.facade,accessible-file-url-issuer,file.service}.ts` y specs, `domain/errors/preview-unsupported.error.ts`, `domain/errors/index.ts`, `storage.module.ts`, `index.ts`, `index.spec.ts`, `apps/api/test/int/storage/{preview-delivery,preview-composition}.int-spec.ts` — Depende: T-01
 
-- [ ] **T-03** **(Abel; backend preview)** API de emisión de URL. Con pruebas primero, crear `PreviewModule`, `PreviewService`, configuración, errores propios y `PreviewController` para `POST /api/v1/files/:fileId/preview-url`: solo `CLIENT`, UUID por Zod, tasa `storage:preview-url:${actor.id}` independiente de descarga, 429 con `Retry-After`, defensa contra roles internos también en invocación directa y mapeo estricto a `PreviewUrlResponse`. La tasa vive aquí, no en la fachada. No capturar mensajes/stacks/URLs del firmador ni auditar como descarga. — CA: CA-3, CA-4, CA-6, CA-10, CA-11, CA-12 — Archivos: `apps/api/src/modules/storage/preview/{index.ts,preview.module.ts,application/preview.service.ts,application/preview-config.ts,presentation/preview.controller.ts,presentation/preview-validation.ts,domain/preview-errors.ts}` y specs; `apps/api/src/app.module.ts` solo mediante el descriptor acordado — Depende: T-01, T-02
+- [x] **T-03** **(Abel; backend preview)** API de emisión de URL. Con pruebas primero, crear `PreviewModule`, `PreviewService`, configuración, errores propios y `PreviewController` para `POST /api/v1/files/:fileId/preview-url`: solo `CLIENT`, UUID por Zod, tasa `storage:preview-url:${actor.id}` independiente de descarga, 429 con `Retry-After`, defensa contra roles internos también en invocación directa y mapeo estricto a `PreviewUrlResponse`. La tasa vive aquí, no en la fachada. No capturar mensajes/stacks/URLs del firmador ni auditar como descarga. — CA: CA-3, CA-4, CA-6, CA-10, CA-11, CA-12 — Archivos: `apps/api/src/modules/storage/preview/{index.ts,preview.module.ts,application/preview.service.ts,application/preview-config.ts,presentation/preview.controller.ts,presentation/preview-validation.ts,domain/preview-errors.ts}` y specs; `apps/api/src/app.module.ts` solo mediante el descriptor acordado — Depende: T-01, T-02
 
 - [ ] **T-04** Aislamiento y operación real de preview. Integración con Postgres/Redis/MinIO reales: sin sesión 401, roles internos 403, ajeno e inexistente indistinguibles, RLS también sobre carga/versión, tasa por actor y contador separado, Redis caído falla cerrado, logs saneados, URL de 300 s para un objeto con `attachment`, `application/octet-stream`, `no-store` y `nosniff` también en preview (igual que descarga 005) y regresión de `presignDownload`. Probar CORS con allowlist `CORS_ORIGIN`, rangos/206, cabeceras expuestas (`Content-Range`, `Content-Length`) y ausencia de Cookie/Bearer en el origen efectivo. — CA: CA-3, CA-4, CA-5, CA-8, CA-10, CA-11, CA-12 — Archivos: `apps/api/test/isolation/storage-preview.iso-spec.ts`, `apps/api/test/int/storage/{preview-delivery,preview-operation,preview-composition}.int-spec.ts`, regresiones `download.int-spec.ts` y `minio-storage.adapter.int-spec.ts` — Depende: T-02, T-03
 
@@ -78,3 +78,61 @@ CA sin cubrir: ninguno.
 - Revisado el 2026-10-06 tras la decisión de Adrián (opción 4): sin `inline`/MIME/procedencia/migración; ADR-0027 Rechazado.
 - Si Adrián/architect cambian fachada, retorno/foco o motores, actualizar primero `plan.md` y después las tareas afectadas antes de `/implement`.
 - Mantener ownership: Abel trabaja en `storage/preview`; T-01, T-02 y T-05 contienen cambios compartidos/ajenos explícitos.
+
+## Corrección de T-03 — evidencia local (2026-10-09)
+
+Fase de corrección autorizada por Abel. RED y checks observados durante la corrección; evidencia posterior de integración ejecutada y aportada por Abel con Docker disponible. No acredita TDD anterior ni presenta esas integraciones como ejecutadas por el agente.
+
+### RED observado antes de cambiar producción
+
+Comando: `pnpm --filter api test --runInBand --runTestsByPath src/modules/storage/preview/application/preview.service.spec.ts src/shared/infrastructure/logging/logger.options.spec.ts src/modules/storage/index.spec.ts`.
+
+La primera ejecución excedió 120 s sin resultado; al reintentar con 300 s se observaron 5 fallos / 29 pases en 3 suites. Tras precisar los fixtures, la última corrida RED confirmó los mismos 5 fallos por estas razones:
+
+- Defensa directa: `CLIENT` con `canReadContent=false` resolvió con una entrega en vez de rechazar con 403.
+- Fallos de fachada y limiter (2 pruebas): salió `PreviewUrlIssuanceError extends DomainError`, contrario a la rama operativa canónica del filtro.
+- Logging histórico: `http.request` de un 500 no tenía `err.message = "failed with status code 500"`.
+- Frontera pública: faltaba `NodeNotFoundError` entre los exports de storage.
+
+Intento inicial de integración durante RED: `pnpm --filter api test:int --runInBand --runTestsByPath test/int/storage/preview.int-spec.ts`. Falló antes de las pruebas, en `globalSetup`: `Could not find a working container runtime strategy`. No es RED funcional ni evidencia HTTP. Ese impedimento inicial quedó resuelto con las ejecuciones posteriores de Abel registradas abajo.
+
+### GREEN observado y checks
+
+Comando focalizado: `pnpm --filter api test --runInBand --runTestsByPath src/modules/storage/preview/application/preview.service.spec.ts src/modules/storage/preview/presentation/preview-validation.spec.ts src/modules/storage/preview/presentation/preview.controller.spec.ts src/modules/storage/preview/preview.module.spec.ts src/app.module.spec.ts src/shared/infrastructure/logging/logger.options.spec.ts src/shared/presentation/domain-exception.filter.spec.ts src/modules/storage/index.spec.ts src/modules/storage/application/storage-preview.facade.spec.ts src/modules/storage/application/accessible-file-url-issuer.spec.ts src/modules/storage/application/file.service.spec.ts`.
+
+- 11 suites / 90 pruebas en verde. Incluye las regresiones unitarias de descarga, fachada, issuer, composición y filtro sin modificar su producción.
+- `pnpm --filter api typecheck`: pasa.
+- `pnpm exec eslint "apps/api/src/modules/storage/preview/**/*.ts" "apps/api/src/modules/storage/index.ts" "apps/api/src/modules/storage/index.spec.ts" "apps/api/src/shared/infrastructure/logging/logger.options.ts" "apps/api/src/shared/infrastructure/logging/logger.options.spec.ts" "apps/api/test/int/storage/preview.int-spec.ts" --max-warnings 0`: pasa sin warnings.
+- `pnpm exec prettier --check "apps/api/src/modules/storage/preview/**/*.ts" "apps/api/src/modules/storage/index.ts" "apps/api/src/modules/storage/index.spec.ts" "apps/api/src/shared/infrastructure/logging/logger.options.ts" "apps/api/src/shared/infrastructure/logging/logger.options.spec.ts" "apps/api/test/int/storage/preview.int-spec.ts"`: pasa.
+- `git diff --check`: pasa.
+- `pnpm test`: pasa. Raíz 3 suites / 34 pruebas; config 7 / 240; contracts 17 / 328; API 171 / 1633; web 143 / 1122; worker sin pruebas. `file-row-menu` pasó; web emitió un aviso de React `act(...)` en la ruta de vista previa, sin fallo.
+- Integración focalizada ejecutada por Abel: 6 suites / 42 pruebas en verde, con el comando siguiente.
+- `pnpm test:int` completo ejecutado por Abel: 102 suites / 961 pruebas en verde; 0 snapshots; todas las suites ejecutadas.
+
+Comando de integración focalizada aportado por Abel:
+
+```powershell
+pnpm --filter api test:int --runInBand --runTestsByPath `
+  test/int/storage/preview.int-spec.ts `
+  test/int/storage/preview-composition.int-spec.ts `
+  test/int/shared/domain-exception-filter.int-spec.ts `
+  test/int/shared/auth-logs.int-spec.ts `
+  test/int/shared/correlation-id.int-spec.ts `
+  test/int/storage/download.int-spec.ts
+```
+
+Resultado: `Test Suites: 6 passed, 6 total`; `Tests: 42 passed, 42 total`.
+
+Después, `pnpm test:int`: `Test Suites: 102 passed, 102 total`; `Tests: 961 passed, 961 total`; `Snapshots: 0`; `Ran all test suites.`
+
+### Corrección y frontera
+
+`PreviewService` exige rol CLIENT y lectura de contenido antes del limiter. Conserva los DomainError esperados y el 429; fallos desconocidos se descartan y se reemplazan por un Error local nuevo de mensaje fijo, sin cause ni datos originales. `preview.url_failed` registra solo campos cerrados. Se restaura el logging global previo a T-03, sin cambiar el filtro. `setup()` local usa dobles tipados y la DI existente de Nest; decisiones, entregas, errores y orden quedan en cada prueba. Los 11 archivos indicados de preview quedan UTF-8 sin BOM.
+
+Habilitación pública mínima provocada por la revisión: export TS de `NodeNotFoundError` desde storage y consumo en la validación UUID. No se agrega export Nest ni otra implementación del 404. El constructor de cuatro dependencias de PreviewService queda como punto de revisión manual.
+
+### Cierre de T-03 y alcance pendiente
+
+T-03 queda `[x]`: unitarias focalizadas (11 suites / 90 pruebas), integración focalizada (6 / 42), `pnpm test` completo, `pnpm test:int` completo (102 / 961) y typecheck/lint/prettier/`git diff --check` en verde. Docker ya está disponible y no constituye un bloqueo de T-03. La integración de preview incluye el 500 canónico, `http.unhandled_error`, ausencia de `http.domain_error` para fallos inesperados y ningún secreto en respuestas/logs, incluido fallo del limiter inyectado en aplicación.
+
+T-04 permanece `[ ]`: sus verificaciones específicas de Redis/MinIO realmente detenidos, RLS/aislamiento completo, CORS, Range/206, cookies/Bearer y entrega real completa siguen pendientes y no fueron absorbidas por T-03 ni acreditadas por el verde de la suite existente. La inyección en aplicación no sustituye esas verificaciones. T-06…T-11 siguen pendientes; la spec 017 permanece `En curso`. No se ejecutó E2E (sigue siendo placeholder). Sin commit, amend, push ni cambios de rama.

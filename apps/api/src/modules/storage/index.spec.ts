@@ -48,18 +48,19 @@ type _IssueUrlSignature = Expect<
 
 /**
  * API pública de `storage` (plan §6, DF-51 opción A): el token del puerto de límites, el módulo que monta la raíz de
- * composición del `api` y el del `worker` (T-51) y, desde 017 (plan §2.3), la fachada de vista previa. El detector,
+ * composición del `api` y el del `worker` (T-51) y, desde 017 (plan §2.3), la fachada de vista previa y su 404. El detector,
  * el escáner, los repositorios y el emisor interno de URLs no salen.
  */
 const RUNTIME_EXPORTS = [
   'I_PLAN_LIMITS_PROVIDER',
+  'NodeNotFoundError',
   'StorageModule',
   'StoragePreviewFacade',
   'StorageWorkerModule',
 ] as const;
 
 describe('modules/storage/index.ts', () => {
-  it('CA-3, CA-4, CA-9, RN-1, 017 CA-11: exporta exactamente el token de límites, los módulos y la fachada de vista previa', () => {
+  it('CA-3, CA-4, CA-9, RN-1, 017 CA-11: exporta exactamente el token de límites, los módulos, la fachada y el 404 público', () => {
     expect(Object.keys(storage).sort()).toEqual([...RUNTIME_EXPORTS].sort());
     expect(typeof storage.I_PLAN_LIMITS_PROVIDER).toBe('symbol');
   });

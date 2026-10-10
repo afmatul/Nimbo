@@ -1,7 +1,7 @@
-﻿import type { ArgumentMetadata } from '@nestjs/common';
+import type { ArgumentMetadata } from '@nestjs/common';
 import { fileSummarySchema } from '@nimbo/contracts';
 
-import { NodeNotFoundError } from '../../domain/errors';
+import { NodeNotFoundError } from '../..';
 
 import { previewFileIdPipe } from './preview-validation';
 

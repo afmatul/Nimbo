@@ -1,7 +1,7 @@
-﻿import { fileSummarySchema } from '@nimbo/contracts';
+import { fileSummarySchema } from '@nimbo/contracts';
 
+import { NodeNotFoundError } from '../..';
 import { ZodValidationPipe } from '../../../../shared';
-import { NodeNotFoundError } from '../../domain/errors';
 
 export const previewFileIdPipe = (): ZodValidationPipe<string> =>
   new ZodValidationPipe(fileSummarySchema.shape.id, () => new NodeNotFoundError());

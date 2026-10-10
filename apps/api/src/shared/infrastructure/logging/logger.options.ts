@@ -71,11 +71,7 @@ const buildPinoHttpOptions = (input: LoggerOptionsInput): PinoHttpOptions => ({
   quietReqLogger: true,
   quietResLogger: true,
   customSuccessObject: withRequest,
-  customErrorObject: (req, res, _error, loggable): object => {
-    // pino-http agrega `err` incluso por un 500 saneado; el cierre solo necesita estado y duración, no stacks.
-    const { err: _err, ...safeFields } = loggable as Record<string, unknown>;
-    return withRequest(req, res, safeFields);
-  },
+  customErrorObject: (req, res, _error, loggable): object => withRequest(req, res, loggable),
   genReqId: (): string => CorrelationContext.get()?.correlationId ?? randomUUID(),
   // El `correlationId` ya lo pone el `mixin` en todas las líneas, incluida esta.
   customProps: (): Record<string, unknown> => ({ event: 'http.request' }),
