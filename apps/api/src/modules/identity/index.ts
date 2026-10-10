@@ -3,6 +3,7 @@ export { IdentityModule } from './identity.module';
 export { IDENTITY_THROTTLERS } from './presentation/identity-ip-throttler.guard';
 export { CLIENT_ACCOUNT_VERIFIED } from './domain/client-account-verified.event';
 export type { ClientAccountVerifiedEvent } from './domain/client-account-verified.event';
+export { AccountAdministration } from './application/account-administration';
 export { AccountDirectory } from './application/account-directory';
 export type {
   AccountListRequest,

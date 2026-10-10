@@ -7,6 +7,7 @@ import { I_ACCESS_TOKEN_VERIFIER } from '../../shared';
 import type { Env } from '../../shared';
 import { NotificationsModule } from '../notifications';
 
+import { AccountAdministration } from './application/account-administration';
 import { AccountDirectory } from './application/account-directory';
 import { AuthService } from './application/auth.service';
 import { IDENTITY_CONFIG, identityConfigFrom } from './application/identity-config';
@@ -85,8 +86,9 @@ export class IdentityModule implements NestModule {
         PasswordService,
         { provide: I_ACCOUNT_DIRECTORY_REPOSITORY, useClass: TypeOrmAccountDirectoryRepository },
         AccountDirectory,
+        AccountAdministration,
       ],
-      exports: [I_ACCESS_TOKEN_VERIFIER, AccountDirectory],
+      exports: [I_ACCESS_TOKEN_VERIFIER, AccountDirectory, AccountAdministration],
     };
   }
 

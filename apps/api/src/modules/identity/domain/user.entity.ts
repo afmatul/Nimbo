@@ -35,6 +35,12 @@ export abstract class User {
     this.emailVerified = props.emailVerified;
   }
 
+  /** Lanza `AccountStateConflictError` si ya estaba suspendida (011 CA-2). */
+  abstract suspend(): User;
+
+  /** Lanza `AccountStateConflictError` si ya estaba activa (011 CA-3). */
+  abstract reactivate(): User;
+
   /** Estado al que pasa la cuenta al suspenderla o reactivarla; ya estar en él es un conflicto (011 CA-2, CA-3). */
   protected transitionTo(target: AccountStatus): AccountStatus {
     if (this.status === target) {
