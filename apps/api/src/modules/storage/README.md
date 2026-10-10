@@ -276,7 +276,8 @@ versión actual, con `Content-Disposition: attachment`, `application/octet-strea
 `POST /files/:fileId/versions/:versionId/download-url` firma una versión retenida por la misma ruta de
 `FileService.getDownloadUrl` (tasa, auditoría `file.download_url_issued` con el tamaño de la versión); una versión
 inexistente, podada o de otro archivo es `404` `STORAGE_VERSION_NOT_FOUND`. `GET /files/:fileId/versions`
-(`VersionHistoryService`) devuelve el historial sin claves de objeto y las versiones que retiene el plan.
+(`VersionHistoryService`) devuelve el archivo (`name`, `kind`, `folderId`), el historial sin claves de objeto y las
+versiones que retiene el plan.
 
 **Restaurar (014)**: `POST /files/:fileId/versions/:versionId/restore` (`VersionRestoreService`, 201) valida tasa,
 archivo, versión (`404` si no es del archivo, `409` `STORAGE_VERSION_ALREADY_CURRENT` si es la actual) y cuota (sin

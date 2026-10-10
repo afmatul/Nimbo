@@ -173,13 +173,14 @@ describe('GET /files/:fileId/versions y POST …/versions/:versionId/download-ur
     return file;
   };
 
-  it('CA-6, CA-7: de la más reciente a la más antigua, con cambio, origen, autor por id, la actual y las retenidas', async () => {
+  it('CA-6, CA-7, CA-20: el archivo (nombre, tipo, carpeta) y, de la más reciente a la más antigua, cambio, origen, autor por id, la actual y las retenidas', async () => {
     const file = await prunedHistory();
 
     const response = await anaVersions.list(file.fileId);
 
     expect(response.status).toBe(200);
     expect(fileVersionsResponseSchema.parse(response.body)).toEqual({
+      file: { name: file.name, kind: 'pdf', folderId: null },
       retainedVersions: DEFAULT_TEST_LIMITS.retainedVersions,
       items: [
         expect.objectContaining({
@@ -205,7 +206,6 @@ describe('GET /files/:fileId/versions y POST …/versions/:versionId/download-ur
     const body = JSON.stringify(response.body);
     expect(body).not.toContain('u/');
     expect(body).not.toContain('clave');
-    expect(body).not.toContain(file.name);
   });
 
   it('CA-6: un archivo con una sola versión la muestra como actual, sin comparación', async () => {

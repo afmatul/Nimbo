@@ -47,7 +47,16 @@ describe('VersionHistoryService (plan 014 §2, CA-6, CA-16)', () => {
 
     expect(history.entries.map((entry) => entry.version.number)).toEqual([3, 2, 1]);
     expect(history.entries.map((entry) => entry.deltaBytes)).toEqual([-50n, 150n, null]);
-    expect(history.currentVersionId).toBe(file.currentVersionId);
+    expect(history.file.currentVersionId).toBe(file.currentVersionId);
+  });
+
+  it('CA-20: devuelve el archivo resuelto, para que la ficha muestre su nombre, tipo y carpeta', async () => {
+    const { service, seed } = setup();
+    const file = seed([100n]);
+
+    const history = await service.list(ANA, file.id);
+
+    expect(history.file.snapshot()).toEqual(file.snapshot());
   });
 
   it('CA-6: informa las versiones que conserva el plan del actor', async () => {

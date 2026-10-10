@@ -9,6 +9,7 @@ import { createAuthFetch } from '../identity/session/auth-fetch';
 
 import { createStorageHttp } from './storage-http';
 import { StorageRequestError } from './storage-request-error';
+import { VERSIONED_FILE } from './test-versions';
 import { createVersionsApi } from './versions-api';
 
 const API = 'http://localhost/api/v1';
@@ -46,7 +47,11 @@ describe('api de versiones (014 plan §4)', () => {
   });
 
   it('CA-6: el historial es GET /files/:id/versions con las retenidas del plan', async () => {
-    const history: FileVersionsResponse = { items: [VERSION], retainedVersions: 3 };
+    const history: FileVersionsResponse = {
+      file: VERSIONED_FILE,
+      items: [VERSION],
+      retainedVersions: 3,
+    };
     fetchMock.mockResolvedValue(jsonResponse(history));
 
     await expect(api.fileVersions(FILE_ID)).resolves.toEqual(history);

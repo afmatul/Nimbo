@@ -6,20 +6,23 @@ import Link from 'next/link';
 import * as React from 'react';
 
 import { AppLayout } from '../../../components/nimbo/app-layout';
+import { FileTypeChip } from '../../../components/nimbo/file-type-chip';
 import { StateView } from '../../../components/nimbo/state-view';
 import { VersionTimeline, versionByline } from '../../../components/nimbo/version-timeline';
 import { Button, buttonVariants } from '../../../components/ui/button';
 import { dateTimeLabel } from '../../../lib/format-date';
 import { SignOutButton } from '../../identity/components/sign-out-button';
 import { useSession } from '../../identity/session/session-provider';
+import { FILE_KIND_LABELS } from '../file-kind-label';
 import { useFileVersions, type VersionsListing } from '../hooks/use-file-versions';
 import { useTrashCount } from '../hooks/use-trash-count';
 import { useUploads } from '../hooks/use-upload-manager';
 import { useVersionActions, type VersionActions } from '../hooks/use-version-actions';
-import { MY_FILES_LABEL, MY_FILES_PATH } from '../routes';
+import { locationPath, MY_FILES_LABEL, MY_FILES_PATH } from '../routes';
 import { historySummary, totalVersionBytes, versionToPrune } from '../version-history';
 
 import { DownloadNoticeBanner, openInBrowser, type DownloadNotice } from './file-row-menu';
+import { CHIP_TYPE_BY_KIND } from './node-rows';
 import { useQuickAccessSidebar } from './quick-access-sidebar';
 import { RestoreVersionDialog, type RestoreTarget } from './restore-version-dialog';
 import { SidebarQuota } from './sidebar-quota';
@@ -28,6 +31,10 @@ import { useSpace } from './space-provider';
 type ReadyListing = Extract<VersionsListing, { status: 'ready' }>;
 
 const HISTORY_TITLE_ID = 'historial-versiones';
+/** Título mientras el archivo no llegó (cargando o error). */
+const GENERIC_TITLE = 'Versiones del archivo';
+const BACK_TO_FOLDER_LABEL = 'Volver a la carpeta';
+const OPEN_FOLDER_LABEL = 'Abrir la carpeta';
 
 export interface FileDetailViewProps {
   readonly fileId: string;
@@ -119,7 +126,7 @@ function FileDetailContent(props: FileDetailContentProps): React.JSX.Element {
         <FileNotFoundState />
       ) : (
         <>
-          <BackLink />
+          <BackLink folderId={ready?.file.folderId ?? null} />
           <FileHeader ready={ready} actions={actions} />
           <HistoryCard listing={listing} actions={actions} onRetry={props.onRetry}>
             {notice ? <DownloadNoticeBanner notice={notice} onDismiss={dismiss} /> : null}
@@ -131,19 +138,20 @@ function FileDetailContent(props: FileDetailContentProps): React.JSX.Element {
   );
 }
 
-function BackLink(): React.JSX.Element {
+/** Vuelve a donde está el archivo: la raíz o su carpeta (mockup: «‹ {carpeta}»). */
+function BackLink({ folderId }: { readonly folderId: string | null }): React.JSX.Element {
   return (
     <Link
-      href={MY_FILES_PATH}
+      href={locationPath(folderId)}
       className="inline-flex min-h-11 items-center gap-1 rounded-sm text-sm text-secondary-foreground hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-6"
     >
       <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-      {MY_FILES_LABEL}
+      {folderId === null ? MY_FILES_LABEL : BACK_TO_FOLDER_LABEL}
     </Link>
   );
 }
 
-/** Título, versión actual y «Descargar» de la versión actual. */
+/** Tipo, nombre (CA-20), versión actual y «Descargar» de la versión actual. */
 function FileHeader({
   ready,
   actions,
@@ -154,15 +162,11 @@ function FileHeader({
   const current = ready ? currentOf(ready) : undefined;
   return (
     <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="min-w-0">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          Versiones del archivo
-        </h1>
-        {current ? (
-          <p className="text-sm tabular-nums text-secondary-foreground">
-            {`${formatBytes(current.sizeBytes)} · versión ${String(current.number)}`}
-          </p>
+      <div className="flex min-w-0 items-start gap-3">
+        {ready ? (
+          <FileTypeChip fileType={CHIP_TYPE_BY_KIND[ready.file.kind]} className="mt-1 shrink-0" />
         ) : null}
+        <FileTitle ready={ready} current={current} />
       </div>
       {current ? (
         <Button
@@ -176,6 +180,27 @@ function FileHeader({
         </Button>
       ) : null}
     </header>
+  );
+}
+
+function FileTitle({
+  ready,
+  current,
+}: {
+  readonly ready: ReadyListing | null;
+  readonly current: FileVersionSummary | undefined;
+}): React.JSX.Element {
+  return (
+    <div className="min-w-0">
+      <h1 className="wrap-anywhere text-xl font-semibold tracking-tight text-foreground">
+        {ready?.file.name ?? GENERIC_TITLE}
+      </h1>
+      {current ? (
+        <p className="text-sm tabular-nums text-secondary-foreground">
+          {`${formatBytes(current.sizeBytes)} · versión ${String(current.number)}`}
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -348,12 +373,30 @@ function NoPreviousVersions(): React.JSX.Element {
   );
 }
 
-/** Tamaño de la actual, espacio de todas las versiones (D-1: todas cuentan) y cuándo cambió por última vez. */
+/** «Mis archivos» en la raíz; si no, enlace a la carpeta (la API da su id, no su nombre). */
+function LocationLink({ folderId }: { readonly folderId: string | null }): React.JSX.Element {
+  return (
+    <Link
+      href={locationPath(folderId)}
+      className="rounded-sm text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      {folderId === null ? MY_FILES_LABEL : OPEN_FOLDER_LABEL}
+    </Link>
+  );
+}
+
+/**
+ * Tipo y ubicación (CA-20), tamaño de la actual, espacio de todas las versiones (D-1: todas cuentan) y cuándo cambió
+ * por última vez.
+ */
 function DetailsCard({ listing }: { readonly listing: ReadyListing }): React.JSX.Element {
   const current = currentOf(listing);
-  const rows: readonly (readonly [string, string])[] = [
+  const { file } = listing;
+  const rows: readonly (readonly [string, React.ReactNode])[] = [
+    ['Tipo', FILE_KIND_LABELS[file.kind]],
     ['Tamaño', current ? `${formatBytes(current.sizeBytes)} (versión actual)` : '—'],
     ['Con versiones', `${formatBytes(totalVersionBytes(listing.items))} de tu espacio`],
+    ['Ubicación', <LocationLink key="ubicacion" folderId={file.folderId} />],
     ['Modificado', current ? dateTimeLabel(current.createdAt, listing.loadedAt) : '—'],
   ];
   return (

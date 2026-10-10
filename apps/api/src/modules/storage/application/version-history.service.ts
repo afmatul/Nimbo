@@ -3,6 +3,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { I_TRANSACTION_RUNNER } from '../../../shared';
 import type { Actor, ITransactionRunner } from '../../../shared';
 import { NodeNotFoundError } from '../domain/errors';
+import type { File } from '../domain/file';
 import type { FileVersion } from '../domain/file-version';
 import { VersionHistory } from '../domain/version-history';
 import type { VersionEntry } from '../domain/version-history';
@@ -14,15 +15,18 @@ import type { INodeRepository } from './ports/i-node.repository.port';
 import { I_VERSION_REPOSITORY } from './ports/i-version.repository.port';
 import type { IVersionRepository } from './ports/i-version.repository.port';
 
-/** Historial de un archivo (CA-6): sus versiones retenidas, cuál es la actual y cuántas conserva el plan. */
+/**
+ * Historial de un archivo (CA-6, CA-20): el archivo (nombre, tipo, carpeta y versión actual), sus versiones retenidas
+ * y cuántas conserva el plan.
+ */
 export interface FileVersionHistory {
+  readonly file: File;
   readonly entries: readonly VersionEntry[];
-  readonly currentVersionId: string;
   readonly retainedVersions: number;
 }
 
 interface FileVersions {
-  readonly currentVersionId: string;
+  readonly file: File;
   readonly versions: readonly FileVersion[];
 }
 
@@ -41,17 +45,17 @@ export class VersionHistoryService {
   ) {}
 
   async list(actor: Actor, fileId: string): Promise<FileVersionHistory> {
-    const { currentVersionId, versions } = await this.transactions.withActor(actor, () =>
+    const { file, versions } = await this.transactions.withActor(actor, () =>
       this.readVersions(actor, fileId),
     );
     const { retainedVersions } = await this.planLimits.limitsFor(actor);
-    return { entries: VersionHistory.of(versions), currentVersionId, retainedVersions };
+    return { file, entries: VersionHistory.of(versions), retainedVersions };
   }
 
   private async readVersions(actor: Actor, fileId: string): Promise<FileVersions> {
     const file = await this.nodes.findAccessibleById(actor, fileId);
     if (file === null) throw new NodeNotFoundError();
     const versions = await this.versions.list(actor, file.id);
-    return { currentVersionId: file.currentVersionId, versions };
+    return { file, versions };
   }
 }

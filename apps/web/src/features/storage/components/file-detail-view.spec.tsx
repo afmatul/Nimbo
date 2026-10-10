@@ -16,7 +16,7 @@ import { sessionFixture } from '../../identity/session/test-session';
 import type { StorageApi } from '../api';
 import { StorageRequestError } from '../storage-request-error';
 import { GB, spaceSummaryWith } from '../test-space-summary';
-import { pruneWarning, versionFixture } from '../test-versions';
+import { pruneWarning, versionFixture, VERSIONED_FILE } from '../test-versions';
 
 import { FileDetailView } from './file-detail-view';
 import { PREPARING_DELAY_MS } from './file-row-menu';
@@ -44,9 +44,16 @@ const V6 = version({
   isCurrent: true,
 });
 
-const AT_LIMIT: FileVersionsResponse = { items: [V5, V4, V3], retainedVersions: 3 };
-const WITH_ROOM: FileVersionsResponse = { items: [V5, V4], retainedVersions: 3 };
+const FOLDER_ID = '9c0d1e2f-2f0c-4c5d-8e6f-3a4b4c5d8e6f';
+const historyOf = (items: FileVersionsResponse['items']): FileVersionsResponse => ({
+  file: VERSIONED_FILE,
+  items,
+  retainedVersions: 3,
+});
+const AT_LIMIT = historyOf([V5, V4, V3]);
+const WITH_ROOM = historyOf([V5, V4]);
 const AFTER_RESTORE: FileVersionsResponse = {
+  file: VERSIONED_FILE,
   items: [V6, { ...V5, isCurrent: false }, V4],
   retainedVersions: 3,
 };
@@ -119,7 +126,7 @@ describe('FileDetailView: ficha de archivo con historial (014 CA-6, CA-7, CA-15,
     await renderView(api);
 
     expect(api.fileVersions).toHaveBeenCalledWith(FILE_ID);
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Versiones del archivo');
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Informe_avance_sep.docx');
     expect(screen.getByText('2,6 MB · versión 5')).toBeTruthy();
     expect(
       await screen.findByText('3 versiones · tu plan Personal conserva 3, contando la actual'),
@@ -136,11 +143,43 @@ describe('FileDetailView: ficha de archivo con historial (014 CA-6, CA-7, CA-15,
     expect(screen.getByText('7,5 MB de tu espacio')).toBeTruthy();
   });
 
+  it('CA-20: el encabezado y los detalles dicen el nombre, el tipo y la ubicación del archivo', async () => {
+    await renderView(fakeApi());
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Informe_avance_sep.docx' })).toBeTruthy();
+    expect(screen.getByText('DOCX')).toBeTruthy();
+    const details = screen.getByRole('region', { name: 'Detalles' });
+    expect(within(details).getByText('Documento de Word (.docx)')).toBeTruthy();
+    expect(within(details).getByRole('link', { name: 'Mis archivos' }).getAttribute('href')).toBe(
+      '/archivos',
+    );
+  });
+
+  it('CA-20: un archivo en una carpeta enlaza a ella desde «Volver» y desde «Ubicación»', async () => {
+    const inFolder = { ...AT_LIMIT, file: { ...VERSIONED_FILE, folderId: FOLDER_ID } };
+    await renderView(fakeApi({ fileVersions: jest.fn(() => Promise.resolve(inFolder)) }));
+
+    const folderHref = `/archivos/carpeta/${FOLDER_ID}`;
+    expect(screen.getByRole('link', { name: 'Volver a la carpeta' }).getAttribute('href')).toBe(
+      folderHref,
+    );
+    const details = screen.getByRole('region', { name: 'Detalles' });
+    expect(
+      within(details).getByRole('link', { name: 'Abrir la carpeta' }).getAttribute('href'),
+    ).toBe(folderHref);
+  });
+
+  it('CA-20 (cargando): sin el archivo aún, el título es genérico', async () => {
+    await renderView(fakeApi({ fileVersions: jest.fn(() => never()) }));
+
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Versiones del archivo');
+  });
+
   it('CA-20 (una-version): solo «Descargar» y cómo nacen las versiones', async () => {
     const single = { ...version({ number: 1, isCurrent: true }) };
     await renderView(
       fakeApi({
-        fileVersions: jest.fn(() => Promise.resolve({ items: [single], retainedVersions: 3 })),
+        fileVersions: jest.fn(() => Promise.resolve(historyOf([single]))),
       }),
     );
 

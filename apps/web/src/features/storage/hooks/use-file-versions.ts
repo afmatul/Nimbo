@@ -1,6 +1,6 @@
 'use client';
 
-import type { FileVersionSummary } from '@nimbo/contracts';
+import type { FileVersionSummary, VersionedFile } from '@nimbo/contracts';
 import * as React from 'react';
 
 import { isStorageNotFound } from '../storage-request-error';
@@ -13,6 +13,8 @@ export type VersionsListing =
   | { readonly status: 'not_found' }
   | {
       readonly status: 'ready';
+      /** Nombre, tipo y carpeta del archivo (CA-20). */
+      readonly file: VersionedFile;
       readonly items: readonly FileVersionSummary[];
       readonly retainedVersions: number;
       /** Momento de la lectura: referencia de «hoy» y «ayer». */

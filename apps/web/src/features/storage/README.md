@@ -129,7 +129,9 @@ confirmación de restaurar los usan tal cual.
 - «Ver historial» del menú ⋮ de un archivo (`FileRowMenu`) abre `/archivos/archivo/[fileId]` (`fileDetailPath`). La
   ficha pide `GET /files/:fileId/versions` y pinta `components/nimbo/version-timeline.tsx`: «Tú» cuando `createdById` es
   el usuario de la sesión (la API no envía nombres, D-9), «Primera versión» o «Sin comparación» con `deltaBytes` nulo y
-  «Restauración de la versión k». La versión actual no tiene «Restaurar» (CA-20).
+  «Restauración de la versión k». La versión actual no tiene «Restaurar» (CA-20). El encabezado lleva el tipo
+  (`FileTypeChip`) y el nombre del archivo; «Detalles», el tipo (`FILE_KIND_LABELS`) y la ubicación, que enlaza a la
+  raíz o a la carpeta (`locationPath`; la API da el id de la carpeta, no su nombre), igual que el enlace de volver.
 - Restaurar confirma con el espacio que usará; si el historial ya tiene las versiones que conserva el plan
   (`retainedVersions`), avisa qué versión se eliminará (la más antigua, `versionToPrune`, CA-15) y el foco pasa a
   «Cancelar». Al terminar: toast «Restauraste la versión n como versión m.», la nueva lleva «NUEVA», se relee el historial

@@ -15,9 +15,9 @@ import { VersionRestoreService } from '../application/version-restore.service';
 import { nodeIdPipe, versionIdPipe } from './storage-validation';
 
 /**
- * Versiones de un archivo (plan 014 §4): el historial, la restauración y la URL de descarga de 300 s de una versión
- * retenida. Solo
- * `CLIENT` (CA-18). Mapea a `FileVersionSummary`, sin clave de objeto ni nombres de usuario (CA-6, CA-19).
+ * Versiones de un archivo (plan 014 §4): el historial (con nombre, tipo y carpeta del archivo para la ficha, CA-20),
+ * la restauración y la URL de descarga de 300 s de una versión retenida. Solo `CLIENT` (CA-18). Mapea a
+ * `FileVersionSummary`, sin clave de objeto ni nombres de usuario (CA-6, CA-19).
  */
 @Roles(Role.CLIENT)
 @Controller('files/:fileId/versions')
@@ -33,9 +33,10 @@ export class FileVersionsController {
     @CurrentActor() actor: Actor,
     @Param('fileId', nodeIdPipe()) fileId: string,
   ): Promise<FileVersionsResponse> {
-    const { entries, currentVersionId, retainedVersions } = await this.history.list(actor, fileId);
+    const { file, entries, retainedVersions } = await this.history.list(actor, fileId);
     return {
-      items: entries.map((entry) => toFileVersionSummary(entry, currentVersionId)),
+      file: { name: file.name.value, kind: file.kind, folderId: file.folderId },
+      items: entries.map((entry) => toFileVersionSummary(entry, file.currentVersionId)),
       retainedVersions,
     };
   }

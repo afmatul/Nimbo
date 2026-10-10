@@ -22,17 +22,34 @@ const FIRST = {
   isCurrent: false,
 };
 
+const FILE = { name: 'Informe_avance_sep.docx', kind: 'docx', folderId: null };
+
+const historyWith = (items: readonly unknown[]) => ({ file: FILE, items, retainedVersions: 3 });
+
 describe('fileVersionsResponseSchema (014 plan §4)', () => {
-  it('CA-6: el historial lleva las versiones y las retenidas del plan', () => {
-    const response = { items: [VERSION, FIRST], retainedVersions: 3 };
+  it('CA-6: el historial lleva el archivo, las versiones y las retenidas del plan', () => {
+    const response = historyWith([VERSION, FIRST]);
 
     expect(fileVersionsResponseSchema.parse(response)).toEqual(response);
+  });
+
+  it('CA-20: el archivo trae nombre, tipo y carpeta, y nada más', () => {
+    const inFolder = { ...FILE, folderId: '9c0d1e2f-2f0c-4c5d-8e6f-3a4b4c5d8e6f' };
+    const withKey = { ...FILE, objectKey: 'u/a/b/c' };
+
+    expect(fileVersionsResponseSchema.parse({ ...historyWith([]), file: inFolder })).toBeTruthy();
+    expect(
+      fileVersionsResponseSchema.safeParse({ ...historyWith([]), file: withKey }).success,
+    ).toBe(false);
+    expect(fileVersionsResponseSchema.safeParse({ items: [], retainedVersions: 3 }).success).toBe(
+      false,
+    );
   });
 
   it('CA-6: el cambio de tamaño es un entero con signo en texto, o `null` sin anterior retenida', () => {
     const grown = { ...VERSION, deltaBytes: '9007199254740993' };
 
-    expect(fileVersionsResponseSchema.parse({ items: [grown], retainedVersions: 3 })).toBeTruthy();
+    expect(fileVersionsResponseSchema.parse(historyWith([grown]))).toBeTruthy();
   });
 
   it('CA-5: los orígenes son los de `version_archivo.origen`', () => {
@@ -51,14 +68,12 @@ describe('fileVersionsResponseSchema (014 plan §4)', () => {
     ['clave de objeto', { ...VERSION, objectKey: 'u/a/b/c' }],
     ['nombre del autor', { ...VERSION, createdByName: 'Ana López' }],
   ])('CA-7: rechaza una versión con %s', (_case, version) => {
-    expect(
-      fileVersionsResponseSchema.safeParse({ items: [version], retainedVersions: 3 }).success,
-    ).toBe(false);
+    expect(fileVersionsResponseSchema.safeParse(historyWith([version])).success).toBe(false);
   });
 
   it('CA-6: rechaza unas versiones retenidas en cero', () => {
-    expect(fileVersionsResponseSchema.safeParse({ items: [], retainedVersions: 0 }).success).toBe(
-      false,
-    );
+    expect(
+      fileVersionsResponseSchema.safeParse({ ...historyWith([]), retainedVersions: 0 }).success,
+    ).toBe(false);
   });
 });

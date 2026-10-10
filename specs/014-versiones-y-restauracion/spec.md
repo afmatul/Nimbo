@@ -140,3 +140,4 @@ Sin preguntas abiertas. Decisiones de Adrián (2026-10-07), con la razón y la f
 | 2026-10-07 | Las 10 preguntas pasan a decisiones D-1 a D-10 (se aceptan las opciones recomendadas); se agregan RN-9 y RN-10; el pendiente del mockup queda como tarea previa a `Lista` (§6) | Respuesta de Adrián | Adrián |
 | 2026-10-08 | CA-5 sin el evento `FileVersionCreated` (D-11, se difiere a 019); plan aprobado | Revisión del plan | Adrián |
 | 2026-10-08 | Ajustes tras los mockups (D-12): CA-6, CA-9, CA-20 y §6 (estados completos, textos, título del diálogo, «Aplicar a los demás»); estado → `Lista` | Revisión de mockups | Adrián |
+| 2026-10-10 | La ficha muestra nombre, tipo y ubicación del archivo: `GET /files/:fileId/versions` suma `file: { name, kind, folderId }` (la ubicación es un enlace a la carpeta, sin su nombre) | Revisión I-1 (T-FIX-4) | Adrián |

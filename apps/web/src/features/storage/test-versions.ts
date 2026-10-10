@@ -1,10 +1,17 @@
-import type { FileVersionSummary } from '@nimbo/contracts';
+import type { FileVersionSummary, VersionedFile } from '@nimbo/contracts';
 import { within } from '@testing-library/react';
 
 import { sessionFixture } from '../identity/session/test-session';
 
 /** Propietario de las versiones de prueba: el usuario de `sessionFixture`, así su autoría dice «Tú». */
 export const VERSION_OWNER_ID = sessionFixture().user.id;
+
+/** Archivo de prueba del historial (014 CA-20): un `.docx` en la raíz. */
+export const VERSIONED_FILE: VersionedFile = {
+  name: 'Informe_avance_sep.docx',
+  kind: 'docx',
+  folderId: null,
+};
 
 /** Versión de prueba (014): una carga del propietario, sin cambio de tamaño; el id sale del número. */
 export function versionFixture(

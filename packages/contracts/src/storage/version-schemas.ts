@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { byteCount, timestamp, uuidSchema } from './schema-fields';
+import { fileSummarySchema } from './schemas';
 
 /** Esquemas del historial de versiones (spec 014, plan §4). Nunca llevan clave de objeto ni nombres de usuario. */
 
@@ -31,13 +32,23 @@ export const fileVersionSummarySchema = z
   })
   .strict();
 
-/** `GET /files/:fileId/versions`: de la más nueva a la más antigua, sin paginar, y las retenidas del plan (CA-6). */
+/** El archivo del historial, para el encabezado y los detalles de la ficha (CA-20): nombre, tipo y carpeta. */
+export const versionedFileSchema = fileSummarySchema
+  .pick({ name: true, kind: true, folderId: true })
+  .strict();
+
+/**
+ * `GET /files/:fileId/versions`: el archivo, sus versiones de la más nueva a la más antigua, sin paginar, y las
+ * retenidas del plan (CA-6).
+ */
 export const fileVersionsResponseSchema = z
   .object({
+    file: versionedFileSchema,
     items: z.array(fileVersionSummarySchema),
     retainedVersions: versionNumber,
   })
   .strict();
 
 export type FileVersionSummary = z.infer<typeof fileVersionSummarySchema>;
+export type VersionedFile = z.infer<typeof versionedFileSchema>;
 export type FileVersionsResponse = z.infer<typeof fileVersionsResponseSchema>;
