@@ -61,7 +61,8 @@ terminar de vaciar (D-16). Sin empuje en tiempo real (P-2). Si el resumen falla,
 | `components/file-detail-view.tsx`, `restore-version-dialog.tsx`                     | Ficha `/archivos/archivo/[fileId]` con `VersionTimeline` y la confirmación de restaurar (aviso de poda)  | 014 T-08   |
 
 Los textos de error de `storage` salen de `lib/error-catalog.ts` (`storageMessage`: causa y acción, con las cifras de
-`details`); el panel los usa tal cual.
+`details` y, en el contexto, el nombre del archivo o el propósito de la cuota, `upload` o `restore`); el panel y la
+confirmación de restaurar los usan tal cual.
 
 ## Cómo se conectan
 

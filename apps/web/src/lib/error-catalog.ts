@@ -38,13 +38,30 @@ export interface StorageMessage {
   readonly fix: string;
 }
 
-type StorageMessageBuilder = (details: ApiErrorDetails, fileName: string) => StorageMessage;
+/** Para qué se pidió espacio: subir un archivo (005) o restaurar una versión (014 CA-12). */
+export type QuotaPurpose = 'upload' | 'restore';
+
+/** Lo que el servidor no envía y la pantalla sí sabe: el nombre del archivo y para qué se pidió espacio. */
+export interface StorageMessageContext {
+  readonly fileName?: string;
+  readonly purpose?: QuotaPurpose;
+}
+
+type StorageMessageBuilder = (
+  details: ApiErrorDetails,
+  context: StorageMessageContext,
+) => StorageMessage;
+
+const QUOTA_PURPOSE_TEXT: Readonly<Record<QuotaPurpose, string>> = {
+  upload: 'subir este archivo',
+  restore: 'restaurar esta versión',
+};
 
 function bytesOf(details: ApiErrorDetails, key: string): string {
   return formatBytes(Number(details[key] ?? 0));
 }
 
-function extensionOf(details: ApiErrorDetails, fileName: string): string {
+function extensionOf(details: ApiErrorDetails, fileName = ''): string {
   const fromServer = details['extension'];
   if (typeof fromServer === 'string' && fromServer !== '') return fromServer;
   return fileName.split('.').pop() ?? '';
@@ -60,11 +77,11 @@ const STORAGE_MESSAGES: Readonly<Record<string, StorageMessageBuilder>> = {
     cause: `Este archivo pesa ${bytesOf(details, 'sizeBytes')} y tu plan permite hasta ${bytesOf(details, 'maxBytes')} por archivo.`,
     fix: 'Reduce su tamaño o cambia de plan.',
   }),
-  [STORAGE_ERROR_CODES.STORAGE_QUOTA_EXCEEDED]: (details) => ({
-    cause: `Te faltan ${bytesOf(details, 'missingBytes')} de espacio para subir este archivo.`,
+  [STORAGE_ERROR_CODES.STORAGE_QUOTA_EXCEEDED]: (details, { purpose = 'upload' }) => ({
+    cause: `Te faltan ${bytesOf(details, 'missingBytes')} de espacio para ${QUOTA_PURPOSE_TEXT[purpose]}.`,
     fix: 'Libera espacio o cambia de plan.',
   }),
-  [STORAGE_ERROR_CODES.STORAGE_INVALID_FILE_TYPE]: (details, fileName) =>
+  [STORAGE_ERROR_CODES.STORAGE_INVALID_FILE_TYPE]: (details, { fileName }) =>
     details['reason'] === 'executable'
       ? { cause: 'No se permiten archivos ejecutables.', fix: 'Sube otro archivo.' }
       : {
@@ -231,9 +248,9 @@ function minutesFrom(seconds: number): string {
 export function storageMessage(
   code: string,
   details: ApiErrorDetails = {},
-  fileName = '',
+  context: StorageMessageContext = {},
 ): StorageMessage | null {
-  return STORAGE_MESSAGES[code]?.(details, fileName) ?? null;
+  return STORAGE_MESSAGES[code]?.(details, context) ?? null;
 }
 
 /** Mensaje de un `reason` de `fields`. Uno desconocido cae en el genérico de 000 §10. */
@@ -247,7 +264,7 @@ export function messageForReason(reason: string, correlationId = ''): string {
  * `details`. Un código desconocido es el genérico de 000 §10.
  */
 export function messageForCode(code: string, options: MessageOptions = {}): string {
-  const storage = storageMessage(code, options.details, options.fileName);
+  const storage = storageMessage(code, options.details, { fileName: options.fileName ?? '' });
   if (storage !== null) return `${storage.cause} ${storage.fix}`;
   if (code === IDENTITY_ERROR_CODES.TOO_MANY_REQUESTS && options.screen === 'login') {
     return LOGIN_RATE_LIMIT_MESSAGE;

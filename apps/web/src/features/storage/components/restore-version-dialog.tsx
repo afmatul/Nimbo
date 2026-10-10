@@ -17,6 +17,7 @@ import {
   AlertDialogTitle,
 } from '../../../components/ui/alert-dialog';
 import { Button, buttonVariants } from '../../../components/ui/button';
+import { storageMessage } from '../../../lib/error-catalog';
 import { PENDING_LABEL_DELAY_MS, usePendingConfirm } from '../hooks/use-pending-confirm';
 import { SPACE_PATH } from '../routes';
 import { StorageRequestError } from '../storage-request-error';
@@ -52,17 +53,13 @@ interface RestoreFailure {
 }
 
 function failureOf(error: unknown): RestoreFailure {
-  if (
+  const quota =
     error instanceof StorageRequestError &&
     error.code === STORAGE_ERROR_CODES.STORAGE_QUOTA_EXCEEDED
-  ) {
-    const missing = formatBytes(Number(error.details['missingBytes'] ?? 0));
-    return {
-      kind: 'quota',
-      description: `Te faltan ${missing} de espacio para restaurar esta versión. Libera espacio o cambia de plan.`,
-    };
-  }
-  return { kind: 'retry', description: retryAdvice(error) };
+      ? storageMessage(error.code, error.details, { purpose: 'restore' })
+      : null;
+  if (quota === null) return { kind: 'retry', description: retryAdvice(error) };
+  return { kind: 'quota', description: `${quota.cause} ${quota.fix}` };
 }
 
 function numberOf(target: RestoreTarget): string {

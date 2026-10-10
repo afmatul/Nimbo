@@ -99,7 +99,7 @@ T-02 ─┘         ├─> T-05 ─> T-06 ──┼─> T-08 (web, ficha)
 ## Correcciones de la revisión (`review.md`)
 
 - [x] **T-FIX-1** (B-1) `prettier --write` sobre `uploads-provider.spec.tsx`; `pnpm lint` en verde.
-- [ ] **T-FIX-2** (B-2) El mensaje del `422` de restaurar sale de `lib/error-catalog.ts` (`STORAGE_QUOTA_EXCEEDED` con propósito `upload | restore`), no del componente; prueba primero.
+- [x] **T-FIX-2** (B-2) El mensaje del `422` de restaurar sale de `lib/error-catalog.ts` (`STORAGE_QUOTA_EXCEEDED` con propósito `upload | restore`), no del componente; prueba primero.
 - [ ] **T-FIX-3** (I-2) Restaurar: si `copyObject` falla por `NoSuchKey`, revalidar y responder `STORAGE_VERSION_NOT_FOUND` (404); prueba de la carrera primero.
 - [ ] **T-FIX-4** (I-1) La ficha muestra nombre, tipo y carpeta del archivo (`file` en `FileVersionsResponse`), con prueba; o desviación registrada con aprobación de Adrián.
 - [ ] **T-FIX-5** (I-3) ADR-0012 a «Aceptado» y estado de 014 en `specs/README.md`.
