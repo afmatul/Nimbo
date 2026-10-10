@@ -17,7 +17,7 @@ Son la base para defender la arquitectura en la exposición final (enunciado §6
 | 0009 | [Crystal Clear + SDD como proceso](0009-crystal-clear-y-sdd-como-proceso.md) | Reemplazado por 0023 |
 | 0010 | [Separar M3 en `access`/`sharing` y extraer `audit`, `realtime`, `notifications`](0010-separacion-de-modulos.md) (DF-02, 03, 30, 34) | Aceptado |
 | 0011 | [Modelo de nodos: tablas separadas `archivo` y `carpeta` con `CHECK` de exclusividad](0011-modelo-de-nodos-dos-tablas-con-check.md) (DF-40) | Propuesto |
-| 0012 | [Versiones por composición con `origen`; `storage` dueño del ciclo de vida](0012-versiones-por-composicion-con-origen.md) (DF-17, 18) | Propuesto |
+| 0012 | [Versiones por composición con `origen`; `storage` dueño del ciclo de vida](0012-versiones-por-composicion-con-origen.md) (DF-17, 18) | Aceptado |
 | 0013 | Política del original en el optimizador (DF-21) | Pendiente |
 | 0014 | [Tokens de Cielo Sereno ajustados a AA y mapeados a shadcn; axe en E2E](0014-tokens-cielo-sereno-shadcn-axe.md) (DF-41–48) | Aceptado |
 | 0015 | [Dependencias de fundaciones: gitleaks, zod, nestjs-pino, Testcontainers](0015-dependencias-de-fundaciones.md) (menor) | Aceptado |
@@ -39,6 +39,7 @@ Los ADR 0017 a 0020 los redactó el `architect` con el plan de la spec 001 y los
 (ADR-0017 con Passport, opción c.2). ADR-0020 enmienda la parte b de ADR-0015.
 
 Los ADR 0011, 0012 y 0021 los redactó el `architect` con el plan de la spec 005 (2026-09-28) como `Propuesto`; 0011 y 0012 siguen el E-R vigente y 0021 enmienda ADR-0005.
+ADR-0012 se aceptó el 10/10/2026 (Adrián) con la spec 014, que lo implementa.
 La dependencia `@aws-sdk/s3-request-presigner` (plan 005) se registró como adenda de ADR-0015, sin ADR aparte.
 ADR-0016 se aceptó el 29/09/2026: cierra DF-23 y DF-24. `Money` y `transaccion.monto` se implementan en la 009.
 ADR-0022 se aceptó el 29/09/2026: opción A de DF-51. El 0021 sigue siendo el de mantenimiento sin actor.
