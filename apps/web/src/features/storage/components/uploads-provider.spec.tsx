@@ -266,7 +266,9 @@ describe('UploadsProvider', () => {
     const api = fakeApi({ init: jest.fn(() => Promise.resolve(simple('informe.docx'))) });
     function Uploaded(): React.JSX.Element {
       const { uploadedFiles } = useUploads();
-      return <output data-testid="uploaded">{uploadedFiles.map((file) => file.id).join(',')}</output>;
+      return (
+        <output data-testid="uploaded">{uploadedFiles.map((file) => file.id).join(',')}</output>
+      );
     }
     render(
       <UploadsProvider api={api} managerOptions={{ put }}>
