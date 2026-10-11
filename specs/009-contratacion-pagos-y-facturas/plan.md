@@ -1,22 +1,174 @@
-# Tareas 009 — Contratación, pagos y facturas
+# Plan 009 — Contratación, pagos y facturas
 
-> Spec: `./spec.md` · Plan: `./plan.md`
-> 5 a 12 tareas verticales, de medio día a un día. Un commit cada una (`feat(billing): … [009 T-xx]`).
-> Cada tarea deja algo probado de punta a punta, lista sus CA y sus archivos, y actualiza `design-model.md` si crea una clase de M4.
-> Sin tareas de «cierre»: el PR integrado lo es.
+> Spec: `./spec.md` · Estado del plan: Propuesto
+> Obligatorio y ≤ 250 líneas. Dice **qué** archivos se tocan y **qué** se espera de cada uno; no es el código en
+> prosa (sin cuerpos de funciones ni pseudocódigo). Lo aprueba Adrián antes de escribir código.
 
-- [ ] **T-01** Suscripción Personal al verificar: migración `suscripcion` con RLS, `Subscription`, `ISubscriptionRepository` con su repositorio TypeORM sobre `TransactionContext`, `PersonalSubscriptionService` (alta idempotente con `withActor`) y oyente de `identity.client-account-verified` en `presentation/`. Abre el DF de la 009 en `design-findings.md` y suma las clases a `design-model.md` M4 — CA: CA-1 — Archivos: `apps/api/src/migrations/*-crear-suscripcion.ts`, `billing/domain/entities/subscription.entity.ts`, `billing/application/{i-subscription-repository,personal-subscription.service}.ts`, `billing/infrastructure/persistence/{suscripcion.orm-entity,typeorm-subscription.repository}.ts`, `billing/presentation/account-verified.listener.ts`, `billing/billing.module.ts`, `docs/sdd/design-model.md`, `docs/sdd/design-findings.md`; `personal-subscription.service.spec.ts`, `test/int/billing/account-verified.listener.int-spec.ts`
-- [ ] **T-02** Conciliación: fachada `VerifiedClientLister` en `identity` (paginada por id, sin repositorios ni entidades), `SubscriptionReconcilerService`, cola `billing`, trabajo `subscription-reconcile` (al arrancar el `worker` y cada hora) y procesador que solo delega, con `boundaries.js` y sus *fixtures* — CA: CA-2 — Archivos: `identity/application/verified-client-lister.ts`, `identity/{identity.module,index}.ts`, `billing/application/subscription-reconciler.service.ts`, `billing/infrastructure/queue/billing-queue.ts`, `billing/presentation/billing-jobs.processor.ts`, `packages/config/eslint/boundaries.js` y *fixtures*; `subscription-reconciler.service.spec.ts`, `test/int/billing/{subscription-reconciler,billing-jobs}.int-spec.ts` — Depende: T-01
-- [ ] **T-03** Lectura de la suscripción: migración con `nombres_de_plan_por_cliente` y `conteo_de_clientes_por_plan` (`SECURITY DEFINER`, solo lectura, rol comprobado dentro), `PlanLimitsAdapter` y `SubscriptionAdministration` leyendo la suscripción (T-09 de la 011 la crea; esta tarea la crea solo si integra antes), con pruebas de integración (con fila, sin fila, repetida; `accounts` y `metrics` de la 011 verdes) y de aislamiento de las funciones — CA: CA-2 — Archivos: `apps/api/src/migrations/*-funciones-de-lectura-de-billing.ts`, `billing/application/subscription-administration.ts`, `billing/infrastructure/adapters/plan-limits.adapter.ts`; `test/int/billing/{plan-limits.adapter,subscription-administration}.int-spec.ts`, `test/isolation/billing-subscription.iso-spec.ts` — Depende: T-01, T-09 de la 011 (`SubscriptionAdministration`, PD-80)
-- [ ] **T-04** Pago simulado: `breakdown` en `packages/contracts`, `Money`, migración `transaccion` con índice, `Payment`, `IPaymentRepository` con su repositorio, `IPaymentGateway` con `SimulatedPaymentGateway` determinista y `PaymentService` (vencimiento con `IClock`; persiste aprobada o rechazada), con pruebas unitarias — CA: CA-3, CA-4 (unidad), RN-2 — Archivos: `packages/contracts/src/billing/{breakdown,index}.ts`, `billing/domain/value-objects/money.ts`, `billing/domain/entities/payment.entity.ts`, `billing/domain/errors/payment-rejected.error.ts`, `apps/api/src/migrations/*-crear-transaccion.ts`, `billing/application/{i-payment-repository,i-payment-gateway,payment.service}.ts`, `billing/infrastructure/adapters/simulated-payment-gateway.ts`, `billing/infrastructure/persistence/{transaccion.orm-entity,typeorm-payment.repository}.ts`; `breakdown.spec.ts`, `money.spec.ts`, `simulated-payment-gateway.spec.ts`, `payment.service.spec.ts` — Depende: T-01
-- [ ] **T-05** Suscribir: contrato `subscription.ts` (`SubscribeRequest`, `SubscribeResponse` sin `receiptEmail` todavía) y códigos `BILLING_*`; `IPlanRepository.findActiveBySlug`; `SubscriptionService` con la transacción de cobro (fila Personal garantizada, `FOR UPDATE`, rechazo guardado y `402` después del commit); `POST /api/v1/billing/subscribe` con límite de tasa y `SHARED_TOO_MANY_REQUESTS`; `REDACTED_FIELDS` con `card`, `cardNumber`, `cvc` y `nit`; mensajes en `error-catalog.ts` — CA: CA-3, CA-4, CA-5 — Archivos: `packages/contracts/src/billing/{subscription,error-codes,index}.ts`, `packages/contracts/src/shared/error-codes.ts`, `apps/api/src/shared/infrastructure/logging/{redacted-fields.ts,redact-deep.spec.ts}`, `billing/domain/errors/plan-not-available.error.ts`, `billing/application/{i-plan-repository,subscription.service}.ts`, `billing/infrastructure/persistence/typeorm-plan.repository.ts`, `billing/presentation/subscription.controller.ts`, `apps/web/src/lib/error-catalog.ts`; `subscription.service.spec.ts`, `test/int/billing/subscribe.int-spec.ts` (aprobado, rechazado, plan no disponible, plan de pago vigente, datos inválidos, `429`, cliente sin fila y dos pagos simultáneos con y sin fila) — Depende: T-04, T-09 de la 011 (`plan.desactivado_en`, `PERSONAL_PLAN_SLUG`)
-- [ ] **T-06** Factura al aprobar: ADR menor con la librería del PDF, migración `factura` (`clave_objeto` y `aviso_encolado_en` nulos, `CHECK` de totales, índice, secuencia) con la función `facturas_pendientes_de_emitir`, `Invoice`, `IInvoiceRepository` con su repositorio, la fila `factura` dentro de la transacción del cobro, `IInvoiceGenerator` con `PdfInvoiceGenerator`, export de `IObjectStorage` en `storage/index.ts`, `InvoiceService` (`issue` y `retryPending`) y trabajo `invoice-retry` cada minuto — CA: CA-6 (factura y PDF) — Archivos: `docs/adr/*-dependencias-de-billing.md`, `apps/api/src/migrations/*-crear-factura.ts`, `billing/domain/entities/invoice.entity.ts`, `billing/application/{i-invoice-repository,i-invoice-generator,invoice.service}.ts`, `billing/infrastructure/adapters/pdf-invoice-generator.ts`, `billing/infrastructure/persistence/{factura.orm-entity,typeorm-invoice.repository}.ts`, `billing/presentation/billing-jobs.processor.ts`, `apps/api/src/modules/storage/index.ts`; `invoice.service.spec.ts`, `test/int/billing/{subscribe-invoice,billing-jobs}.int-spec.ts` (con fallo del PDF, el reintento lo repone) — Depende: T-05, T-02 (cola y procesador)
-- [ ] **T-07** Aviso de comprobante: puerto `INotifier` en `notifications` (`notify` con destinatario, asunto, texto, HTML y clave de idempotencia; su implementación encola en la cola `mail`), fachada `AccountContactReader` en `identity`, llamada desde `InvoiceService` después del commit solo si el pago se aprueba, marca `aviso_encolado_en` y `receiptEmail` en `SubscribeResponse` — CA: CA-6 (correo) — Archivos: `apps/api/src/modules/notifications/application/ports/i-notifier.port.ts` y su implementación, `notifications/index.ts`, `identity/application/account-contact-reader.ts`, `identity/{identity.module,index}.ts`, `packages/contracts/src/billing/subscription.ts`, `billing/application/invoice.service.ts`; prueba de `INotifier` en `notifications`, `test/int/billing/subscribe-invoice.int-spec.ts` (aviso solo si se aprueba; reintento sin duplicar el correo) — Depende: T-06
-- [ ] **T-08** Historial y descarga: `BillingHistoryService`, `GET /api/v1/billing/history` y `GET /api/v1/billing/invoices/:id/download` (factura sin PDF, ajena o inexistente → `404 BILLING_INVOICE_NOT_FOUND`), con pruebas de integración y de aislamiento entre clientes — CA: CA-7, CA-8 — Archivos: `packages/contracts/src/billing/subscription.ts`, `billing/application/billing-history.service.ts`, `billing/domain/errors/invoice-not-found.error.ts`, `billing/presentation/subscription.controller.ts`; `test/int/billing/billing-history.int-spec.ts`, `test/isolation/billing.iso-spec.ts` (ningún rol interno lee `transaccion` ni `factura`) — Depende: T-06
-- [ ] **T-09** Web, pago: botón «Contratar» en `PlanCard` y en `/planes` para los planes con precio mayor que 0, y pantalla `/planes/contratar?slug=` con formulario de tarjeta de prueba, resumen con `breakdown` y los estados cargando, formulario, procesando (con indicador de progreso, RNF-14), rechazado, aprobado y error con acción correctiva; cada estado con su prueba de componente — CA: CA-3, CA-4, CA-5, CA-9 — Archivos: `apps/web/src/components/nimbo/plan-card.tsx`, `apps/web/src/app/(public)/planes/page.tsx`, `apps/web/src/app/(app)/(cliente)/planes/contratar/page.tsx`, `apps/web/src/features/billing/{subscribe-api.ts,components/payment-form.tsx,components/payment-summary.tsx}`; `plan-card.spec.tsx`, `(public)/planes/page.spec.tsx`, `payment-form.spec.tsx` — Depende: T-05; el mensaje de éxito con el correo, T-07
-- [ ] **T-10** Web, `/suscripcion`: plan actual e historial de facturas con descarga y los estados cargando, con facturas, vacío y error con «Reintentar», cada uno con su prueba de componente — CA: CA-7, CA-8 — Archivos: `apps/web/src/app/(app)/(cliente)/suscripcion/page.tsx`, `apps/web/src/features/billing/{billing-history-api.ts,components/invoice-history.tsx}`; `subscription-page.spec.tsx` — Depende: T-08
-- [ ] **T-11** **(humana)** Recorrido local: cuenta nueva con Personal, `/planes` con «Contratar» en los planes de pago, pago aprobado con factura descargable y correo, pago rechazado sin cambios, segundo pago con un plan de pago vigente rechazado, PDF repuesto tras un fallo de MinIO, y la cuenta de otro cliente sin acceso — CA: CA-1 a CA-9 — Depende: T-03, T-07, T-09, T-10
+## 1. Resumen técnico
+`billing` (M4) añade suscripción, pago simulado, factura PDF e historial, y reemplaza las reglas temporales de PD-80. El catálogo público, también el del registro, ya lo sirve la 008 (`GET /api/v1/billing/plans`, RN-8): esta spec no crea otra ruta de planes.
+- **Alta Personal** (CA-1): un oyente de `identity.client-account-verified` (ADR-0019), en `presentation/`, delega en `PersonalSubscriptionService`, que con `withActor` inserta la suscripción Personal; si la fila ya existe no cambia nada (`uq_suscripcion_usuario`).
+- **Conciliación** (CA-2, PD-40): un trabajo del `worker` en la cola `billing` pagina los ids de clientes verificados con la fachada `VerifiedClientLister` de `identity` y, por cada id, inserta Personal con `withActor`. `billing` no lee la tabla `usuario`.
+- **Cobro** (CA-3 a CA-5): `POST /api/v1/billing/subscribe` corre en una transacción (Art. XI.2–3): garantiza la fila Personal, la bloquea con `FOR UPDATE`, valida el plan, cobra con `PaymentService`, guarda la transacción, mueve la suscripción 30 días y registra la factura. El rechazo se guarda y responde `402` después del commit.
+- **Comprobante** (CA-6): `InvoiceService` genera el PDF (`IObjectStorage`) y avisa por `INotifier` después del commit. Si falla, un trabajo de reintento de la cola `billing` lo repone.
+- **Desglose de IVA**: función pura `breakdown(priceCents)` en `packages/contracts`; la usan `Money` y el formulario web.
+- **Lectura** (PD-80): `PlanLimitsAdapter` y `SubscriptionAdministration` (que crea T-09 de la 011, con `planNamesFor` y `clientCountsByPlan`) leen la suscripción en vez de devolver Personal fijo.
+- Alcance: nada de `estado`, `plan_pendiente_id`, `uso_agente` ni `cuota_extra_bytes` (010 y 011b).
 
-## Notas del developer
+## 2. Módulos, archivos y diseño
+| Módulo / capa | Archivo (nuevo o cambiado) | Responsabilidad |
+|---|---|---|
+| Contracts | `packages/contracts/src/billing/subscription.ts`, `breakdown.ts`, `error-codes.ts`, `index.ts` | Esquemas Zod (ADR-0020): `SubscribeRequest` (`planSlug`, `card`, `nit`; constantes de las dos tarjetas de prueba), `SubscribeResponse` (referencia, plan, vencimiento, montos, `receiptEmail`), `BillingHistoryResponse`, `InvoiceDownloadResponse`. `breakdown`: función pura, sin Nest ni DOM, con subtotal e IVA de RN-2. `BILLING_ERROR_CODES` (de la 008) suma `BILLING_PLAN_NOT_AVAILABLE`, `BILLING_PAYMENT_REJECTED` y `BILLING_INVOICE_NOT_FOUND`. |
+| Contracts | `packages/contracts/src/shared/error-codes.ts` | `SHARED_TOO_MANY_REQUESTS`: sería el tercer código de límite de tasa tras `identity` y `storage` (Art. VI.2). Migrar los otros dos queda en un pendiente nuevo. |
+| Shared [Adrián] | `apps/api/src/shared/infrastructure/logging/redacted-fields.ts` y `redact-deep.spec.ts` | `REDACTED_FIELDS` suma `card`, `cardNumber`, `cvc` y `nit`, que llegan en el cuerpo de `POST /subscribe`. |
+| Storage [Adrián] | `apps/api/src/modules/storage/index.ts` | Exporta `IObjectStorage` y su token `I_OBJECT_STORAGE` para `billing` (visto bueno del `architect`, §8). |
+| Notifications [Adrián] | `apps/api/src/modules/notifications/application/ports/i-notifier.port.ts` e `index.ts` | Puerto `INotifier` (`I_NOTIFIER`), previsto en `architecture.md` §5 y ADR-0010. El primer canal es solo correo: `notify` con destinatario, asunto, texto, HTML y clave de idempotencia (sin `:`, p. ej. `billing.receipt.<transaccion_id>`, ADR-0018). Su implementación, dentro de `notifications`, encola en la cola `mail`. |
+| Identity [Adrián] | `identity/application/account-contact-reader.ts`, `verified-client-lister.ts`, `identity.module.ts`, `index.ts` | Dos fachadas de lectura, sin interfaz (DF-04): `AccountContactReader.contactOf(actor)` devuelve el correo de la propia cuenta (metadatos propios, `architecture.md` §6) y `VerifiedClientLister.listIds(afterId, limit)` pagina los ids de clientes verificados. Resuelven quién da el destinatario del aviso, porque `Actor` no trae el correo y `notifications` no depende de `identity`. No exportan repositorios ni entidades. |
+| Fronteras | `packages/config/eslint/boundaries.js` y *fixtures* | `billing → storage`, `notifications` e `identity` (en `identity`, solo el evento y las dos fachadas); `storage → billing` queda rechazado (ADR-0019, ADR-0022). |
+| Billing · dominio | `domain/value-objects/money.ts` | `Money` en centavos enteros; delega el desglose en `breakdown` y no crece más (YAGNI). |
+| Billing · dominio | `domain/entities/subscription.entity.ts`, `payment.entity.ts`, `invoice.entity.ts` | Entidades `Subscription`, `Payment`, `Invoice`. |
+| Billing · dominio | `domain/errors/payment-rejected.error.ts`, `plan-not-available.error.ts`, `invoice-not-found.error.ts` | Un error por archivo, como `plan-not-found.error.ts`. |
+| Billing · aplicación | `application/i-subscription-repository.ts`, `i-payment-repository.ts`, `i-invoice-repository.ts` | Un repositorio por agregado, junto a `i-plan-repository.ts` de la 008 (Art. V.2 b; ISP). |
+| Billing · aplicación | `application/i-payment-gateway.ts`, `i-invoice-generator.ts` | Puertos internos de `billing` (V.2 c y a): los dos ya figuran en `architecture.md` §5. |
+| Billing · aplicación | `application/i-plan-repository.ts` (cambia) | Suma `findActiveBySlug(slug)` (`desactivado_en` nulo, de la 011). |
+| Billing · aplicación | `application/payment.service.ts` | Habla con `IPaymentGateway`, valida el vencimiento con `IClock` y persiste `Payment`. La 010 lo reutiliza al renovar (`PaymentService.charge`, `architecture.md` §8). |
+| Billing · aplicación | `application/subscription.service.ts` | Orquesta la transacción de cobro: fila Personal, candado, validación del plan, `PaymentService`, cambio de suscripción y fila de factura. Después del commit llama a `InvoiceService`. |
+| Billing · aplicación | `application/invoice.service.ts` | Emisión del comprobante: `issue(transaccionId)` genera el PDF, lo guarda y avisa por `INotifier`; `retryPending()` repone los que fallaron. Idempotente por `transaccion_id`. |
+| Billing · aplicación | `application/personal-subscription.service.ts` | Alta Personal con `withActor`, idempotente; la usan el oyente, la conciliación y el cobro. |
+| Billing · aplicación | `application/subscription-reconciler.service.ts` | Pagina `VerifiedClientLister` y delega cada alta en `personal-subscription.service.ts`. |
+| Billing · aplicación | `application/subscription-administration.ts` | PD-80. Lo crea T-09 de la 011 con `planNamesFor(actor, clientIds)` y `clientCountsByPlan(actor, clientCount)` y la regla «todo cliente es Personal»; T-03 la reemplaza por las funciones de lectura de §3. Si esta spec integra antes, T-03 crea la lectura: con fila, el plan de la suscripción; sin fila, límites de Personal. |
+| Billing · aplicación | `application/billing-history.service.ts` | Historial y enlace de descarga del cliente. |
+| Billing · infra | `infrastructure/adapters/simulated-payment-gateway.ts`, `pdf-invoice-generator.ts` | Implementan `IPaymentGateway` (RN-3, determinista, sin `failureRate` ni `latencyMs`) e `IInvoiceGenerator`. |
+| Billing · infra | `infrastructure/adapters/plan-limits.adapter.ts` | Modificado (PD-80): lee la suscripción; sin fila devuelve Personal. |
+| Billing · infra | `infrastructure/persistence/*.orm-entity.ts`, `typeorm-subscription.repository.ts`, `typeorm-payment.repository.ts`, `typeorm-invoice.repository.ts` | Entidades y repositorios bajo RLS, sobre `TransactionContext` como el de plan de la 011 (con `@InjectRepository` la escritura escaparía de `withActor`). |
+| Billing · infra | `infrastructure/queue/billing-queue.ts` | Cola `billing` y registro de sus dos trabajos repetibles (§2, «Trabajos»). |
+| Billing · presentación | `presentation/subscription.controller.ts` | `POST /subscribe`, `GET /history` y `GET /invoices/:id/download`. |
+| Billing · presentación | `presentation/account-verified.listener.ts` | `@OnEvent(CLIENT_ACCOUNT_VERIFIED, { async: true })`, con la constante y el tipo de `identity/index.ts` (ADR-0019); solo delega. |
+| Billing · presentación | `presentation/billing-jobs.processor.ts` | Procesador de la cola `billing`: `subscription-reconcile` e `invoice-retry`; solo delega en aplicación. |
+| Migraciones | `apps/api/src/migrations/*-crear-suscripcion.ts`, `*-crear-transaccion.ts`, `*-crear-factura.ts`, `*-funciones-de-lectura-de-billing.ts` | Una por tabla y una para las funciones de lectura (§3), cada una con su `down`; las tablas, con RLS. Con fecha posterior a la de `agregar-desactivado-en-a-plan` de la 011 (T-09). |
+| Diseño | `docs/sdd/design-model.md`, `docs/sdd/design-findings.md` | Las clases nuevas de M4 (`PersonalSubscriptionService`, `SubscriptionReconcilerService`, `InvoiceService`, `BillingHistoryService`, `AccountVerifiedListener`, `BillingJobsProcessor`) y las dos fachadas de `identity` entran al diagrama, con su DF (Art. VIII.6); cada tarea lo actualiza al crear su clase. |
+| Web · errores | `apps/web/src/lib/error-catalog.ts` | Mensajes de los códigos `BILLING_*` y de `SHARED_TOO_MANY_REQUESTS`. |
+| Web · billing | `apps/web/src/components/nimbo/plan-card.tsx` (008, PD-83) | Único `PlanCard`: suma una acción opcional «Contratar» hacia `/planes/contratar?slug=`; `(public)/planes/page.tsx` la pasa a los planes con `priceCents` mayor que 0. |
+| Web · billing | `apps/web/src/app/(app)/(cliente)/planes/contratar/page.tsx`, `features/billing/subscribe-api.ts`, `components/payment-form.tsx`, `payment-summary.tsx` | Pantalla de pago: lee el plan por `slug` con `fetchPlanCatalog` (008); el resumen usa `breakdown` y `lib/format-plan.ts`; estados cargando, formulario, procesando, rechazado, aprobado y error. |
+| Web · billing | `apps/web/src/app/(app)/(cliente)/suscripcion/page.tsx`, `features/billing/billing-history-api.ts`, `components/invoice-history.tsx` | Plan actual e historial; estados cargando, con facturas, vacío y error; base para 010. |
 
-T-05 y T-06 no se integran sin el visto bueno del `architect` sobre `storage/index.ts` y el ADR de la librería del PDF; T-02, T-03 y T-07 tampoco sin su visto bueno sobre las fachadas de `identity`, las funciones de lectura (ADR-0021 sigue Propuesto) y el registro del procesador en el `worker` (plan §8). El oyente de T-01, la conciliación de T-02 y el reintento de T-06 escriben con el actor del dueño (`withActor`). T-07 depende de T-06 porque ambas tocan `InvoiceService` y el mismo CA-6. T-02, T-05, T-06 y T-07 tocan módulos ajenos (`identity`, `shared`, `storage`, `notifications`, `boundaries.js`): Adrián los autoriza en plan §8. T-03, T-04 y T-05 dependen de T-09 de la 011 (billing, Juan Marcos): `plan.desactivado_en` (DF-65), `Plan`, `PERSONAL_PLAN_SLUG` y `SubscriptionAdministration`; no se integran antes, y las migraciones de esta spec llevan fecha posterior a la de `agregar-desactivado-en-a-plan`. T-10 y T-11 de la 011 (Fátima) esperan a T-09 y deben seguir verdes con suscripciones reales. Los estados de las pantallas se implementan aunque el mockup solo traiga `default` y `vigente` (Art. XIII.3). Al integrar el PR se actualizan `pendientes.md` (PD-40 y PD-80 cerrados; PD-48 lo cierra la 008; PD-86 referenciado, sigue en 010; pendiente nuevo para migrar los códigos `*_TOO_MANY_REQUESTS` a `SHARED_`), `design-findings.md` y la fila 009 de `specs/README.md` (de Pendiente a Borrador, con «Depende de» 008 y la 011).
+- **Puertos (Art. V.2):** `IPaymentGateway` e `IInvoiceGenerator` son internos de `billing` y están en los diagramas; `INotifier` es de `notifications` (ADR-0010); los tres repositorios cumplen V.2 b. `VerifiedClientLister`, `AccountContactReader`, `PaymentService`, `SubscriptionService` e `InvoiceService` son clases, sin segunda implementación.
+- **Dependencias:** `billing → storage` (`IObjectStorage`), `billing → notifications` (`INotifier`) y `billing → identity` (el evento y las dos fachadas). Las dos primeras ya figuran en `architecture.md` §3; la de las fachadas la decide el `architect` (§8). `billing` no importa `IMailer`, que declara `notifications` para `identity`, ni crea la tabla `notificacion` (ADR-0018).
+- **Reutiliza** de T-09 de la 011 `Plan`, `PERSONAL_PLAN_SLUG` y `plan.desactivado_en`: `billing` no redeclara el slug de Personal (Art. VI).
+- **Cobro (Art. XI.2–3), una sola transacción** con `withActor`: 1) `INSERT … ON CONFLICT DO NOTHING` de la fila Personal, porque `FOR UPDATE` no bloquea nada si la fila no existe (evento perdido, conciliación pendiente) y dos pagos simultáneos pasarían; quien tiene sesión ya verificó su correo, así que es seguro. 2) `SELECT … FOR UPDATE` de la suscripción. 3) Validar el plan. 4) Cobrar. 5) Insertar `transaccion`, actualizar `suscripcion` y registrar `factura` sin PDF. Un segundo pago simultáneo espera el candado y, si la cuenta ya no está en Personal, responde `400 BILLING_PLAN_NOT_AVAILABLE` sin otra transacción: así el pago simulado es idempotente.
+- **Rechazo:** el trabajo de la transacción devuelve el resultado; se inserta la `transaccion` `rechazada`, se confirma y el `402` se lanza fuera, después del commit. La suscripción no cambia.
+- **Después del commit** (RN-8): `InvoiceService.issue` genera el PDF, guarda `clave_objeto`, resuelve el correo con `AccountContactReader`, avisa con `INotifier` y marca `aviso_encolado_en`. Si lanza, `SubscriptionService` lo registra y responde igual: el pago ya está confirmado.
+- **Trabajos** (cola `billing`, BullMQ; el procesador corre en el `worker`): `invoice-retry`, repetible cada minuto, repone hasta 50 facturas pendientes por corrida con `InvoiceService.retryPending`; `subscription-reconcile`, al arrancar el `worker` y luego cada hora, con `SubscriptionReconcilerService`. Ambos son idempotentes (Art. XI.2) y observables por su bitácora técnica (Art. X.3).
+- **Decisión registrada:** `breakdown` vive en `packages/contracts` porque es lo único que ven `api` y `web` sin importarse entre sí (Art. VI.1); `Money` solo delega.
+
+## 3. Datos
+```sql
+-- 1.ª migración
+CREATE TABLE suscripcion (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  usuario_id UUID NOT NULL REFERENCES usuario(id) ON DELETE CASCADE,
+  plan_id UUID NOT NULL REFERENCES plan(id),
+  iniciado_en TIMESTAMPTZ NOT NULL DEFAULT now(),
+  vence_en TIMESTAMPTZ,
+  creado_en TIMESTAMPTZ NOT NULL DEFAULT now(),
+  actualizado_en TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT uq_suscripcion_usuario UNIQUE (usuario_id)
+);
+-- 2.ª migración
+CREATE SEQUENCE transaccion_referencia_seq;
+CREATE TABLE transaccion (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  usuario_id UUID NOT NULL REFERENCES usuario(id) ON DELETE RESTRICT,
+  plan_id UUID NOT NULL REFERENCES plan(id),
+  monto_centavos INTEGER NOT NULL CHECK (monto_centavos > 0),
+  estado VARCHAR(20) NOT NULL CHECK (estado IN ('aprobada', 'rechazada')),
+  marca_tarjeta VARCHAR(20) NOT NULL,
+  tarjeta_ultimos4 CHAR(4) NOT NULL,
+  referencia VARCHAR(20) NOT NULL UNIQUE,
+  creado_en TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX ix_transaccion_usuario_creado ON transaccion (usuario_id, creado_en DESC);
+-- 3.ª migración
+CREATE SEQUENCE factura_numero_seq;
+CREATE TABLE factura (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  transaccion_id UUID NOT NULL UNIQUE REFERENCES transaccion(id) ON DELETE RESTRICT,
+  usuario_id UUID NOT NULL REFERENCES usuario(id) ON DELETE RESTRICT,
+  numero VARCHAR(20) NOT NULL UNIQUE,
+  subtotal_centavos INTEGER NOT NULL CHECK (subtotal_centavos >= 0),
+  iva_centavos INTEGER NOT NULL CHECK (iva_centavos >= 0),
+  total_centavos INTEGER NOT NULL CHECK (total_centavos > 0),
+  CONSTRAINT ck_factura_total CHECK (subtotal_centavos + iva_centavos = total_centavos),
+  nit VARCHAR(20) NOT NULL DEFAULT 'CF',
+  clave_objeto VARCHAR(255),
+  aviso_encolado_en TIMESTAMPTZ,
+  creado_en TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX ix_factura_usuario_creado ON factura (usuario_id, creado_en DESC);
+-- Cada tabla: ENABLE + FORCE ROW LEVEL SECURITY y política por propietario (usuario_id = actor); ningún rol interno lee filas.
+-- 4.ª migración: tres funciones SECURITY DEFINER de solo lectura (patrón de ADR-0021):
+--   nombres_de_plan_por_cliente(ids uuid[])  -> (usuario_id, nombre); solo ADMIN, máximo 100 ids
+--   conteo_de_clientes_por_plan()            -> (plan_id, total);     ADMIN y OPERATOR
+--   facturas_pendientes_de_emitir()          -> (factura_id, usuario_id); sin rol, antigüedad mínima y tope fijos en la función
+```
+- Numeración, propuesta para que Adrián solo confirme: el año del texto es el año del pago y la secuencia no se reinicia al cambiar de año. `referencia` = `SIM-{año}-{secuencia a 6 dígitos}` y `numero` = `NB-{año}-{secuencia a 4 dígitos}`, tomadas de las secuencias (sin carreras). `NB-` admite 9 999 facturas, suficiente para la demo; `numero` es `VARCHAR(20)`, así que el formato puede crecer sin migrar.
+- `transaccion` y `factura` usan `RESTRICT`: RN-7 exige conservarlas 7 años. `suscripcion` usa `CASCADE`.
+- `clave_objeto` es nulo hasta que el PDF exista, y `aviso_encolado_en` hasta que el aviso se entregó a `INotifier`; el reintento busca las facturas con alguno nulo.
+- `uq_suscripcion_usuario` asume una fila por cliente (DF-25, DF-35). La 010 añade `estado` y `plan_pendiente_id` en su propia migración.
+- Las políticas copian el patrón de las migraciones de 005 (nombre de la variable de sesión incluido). El oyente, la conciliación y el reintento escriben y leen con el actor del dueño (`withActor`).
+- **Funciones de lectura** (ADR-0021, aún Propuesto): `STABLE`, `search_path` cerrado, propiedad del rol que migra, `REVOKE … FROM PUBLIC` y `EXECUTE` solo para `nimbo_app`; devuelven nombres, conteos o identificadores, nunca filas completas, y las dos primeras comprueban el rol del actor dentro. Como `FORCE` somete también al dueño, las tablas que leen llevan una política de lectura `FOR SELECT TO CURRENT_USER` para ellas. Leen solo tablas de `billing`.
+- `down` de cada migración: elimina su tabla y su secuencia (o sus funciones y su política). Orden inverso: funciones, factura, transacción, suscripción.
+
+## 4. Contratos
+| Método | Ruta | Rol | Request → Respuesta | Errores (`code`) |
+|---|---|---|---|---|
+| POST | `/api/v1/billing/subscribe` | `@Roles('CLIENT')` | `{ planSlug, card, nit }` → `SubscribeResponse` (referencia, plan, vencimiento, montos, `receiptEmail`) | `400 BILLING_PLAN_NOT_AVAILABLE`, `402 BILLING_PAYMENT_REJECTED`, `422` con los campos, `429 SHARED_TOO_MANY_REQUESTS` |
+| GET | `/api/v1/billing/history` | `@Roles('CLIENT')` | — → `BillingHistoryResponse` | `401 SHARED_UNAUTHENTICATED` |
+| GET | `/api/v1/billing/invoices/:id/download` | `@Roles('CLIENT')` | — → `{ downloadUrl, expiresInSeconds }` | `404 BILLING_INVOICE_NOT_FOUND` |
+
+- Los montos viajan como enteros en centavos (RN-1). Los roles internos reciben `403 SHARED_FORBIDDEN`.
+- No hay `GET /plans`: el catálogo es `GET /api/v1/billing/plans` de la 008, que ya trae el `slug` que pide el cobro y deriva «gratuito» de `priceCents = 0`.
+
+## 5. Seguridad y operación
+- Servicios de cliente con `actor: Actor`; RLS forzado y filtro por `usuario_id` (RNF-05). Ningún rol interno lee `suscripcion`, `transaccion` ni `factura`: la 011 solo obtiene nombres y conteos por las funciones de §3.
+- No se guardan el número de tarjeta ni el CVC. El NIT se guarda solo en `factura`. `card`, `cardNumber`, `cvc` y `nit` se redactan en las bitácoras (§2, `shared`).
+- Límite de tasa `billing:subscribe:{actor}` en `POST /subscribe` con `IRateLimiter` (Art. IX.7); la cifra la confirma Adrián.
+- PDF en `invoices/{usuario_id}/{factura_id}.pdf`, privado, con enlace prefirmado de 5 minutos.
+- Bitácora técnica: `billing.payment_approved` y `billing.payment_rejected` con `correlationId`, sin datos personales; `billing.invoice_issued`, `billing.invoice_retry_failed`, `billing.reconcile_completed`. No hay auditoría RF-07 (spec §8).
+
+## 6. Estrategia de pruebas (por riesgo)
+Integración en `apps/api/test/int/billing/` (`*.int-spec.ts`) y aislamiento en `apps/api/test/isolation/` (`*.iso-spec.ts`).
+
+| CA | Nivel | Archivo |
+|---|---|---|
+| CA-1 | int | `account-verified.listener.int-spec.ts`: alta con el actor del dueño y repetición sin duplicar. |
+| CA-2 | int | `subscription-reconciler.int-spec.ts`: conciliación y repetición; `billing-jobs.int-spec.ts`: el trabajo `subscription-reconcile`. |
+| CA-2 | int | `plan-limits.adapter.int-spec.ts`, `subscription-administration.int-spec.ts`: con fila, sin fila; `accounts.int-spec.ts` y `metrics.int-spec.ts` de la 011 siguen verdes con suscripciones reales. |
+| CA-2 | iso | `billing-subscription.iso-spec.ts`: `nimbo_app` sin actor ve 0 filas de `suscripcion`; Soporte no ejecuta las funciones; Operador solo el conteo; las funciones devuelven nombres, conteos o ids y `PUBLIC` no las ejecuta; corre con un dueño sin `SUPERUSER`. |
+| RN-2 | unit | `packages/contracts/src/billing/breakdown.spec.ts` (9 821 y 1 179 para 11 000, mitades). |
+| CA-3, CA-4 | unit | `money.spec.ts`, `simulated-payment-gateway.spec.ts`, `payment.service.spec.ts` (vencimiento con `IClock`). |
+| CA-3 a CA-5 | int | `subscribe.int-spec.ts`: aprobado, rechazado (suscripción intacta), plan no disponible, plan de pago vigente, datos inválidos, `429`, cliente sin fila de suscripción y dos pagos simultáneos con y sin fila (solo uno se aprueba). |
+| CA-6 | int | `subscribe-invoice.int-spec.ts`: factura, PDF en MinIO y aviso por `INotifier` solo si se aprueba; con fallo del PDF o del aviso, el trabajo `invoice-retry` los repone sin duplicar el correo. |
+| CA-7, CA-8 | int | `billing-history.int-spec.ts`: historial, vacío, factura sin PDF y enlace de descarga. |
+| CA-7, CA-8 | iso | `billing.iso-spec.ts`: el cliente A no ve ni descarga lo del B; ningún rol interno lee `transaccion` ni `factura`. |
+| — | unit | `redact-deep.spec.ts` (`card`, `cardNumber`, `cvc`, `nit`); prueba del `notifications` de `INotifier`. |
+| CA-3 a CA-5 | web | `payment-form.spec.tsx`: un caso por estado (cargando, formulario, procesando con indicador, rechazado, aprobado, error con «Reintentar») y el resumen con IVA. |
+| CA-9 | web | `plan-card.spec.tsx` y `(public)/planes/page.spec.tsx`: «Contratar» con el `slug` en planes de pago y sin botón en los gratuitos. |
+| CA-7, CA-8 | web | `subscription-page.spec.tsx`: un caso por estado (cargando, con facturas, vacío, error con «Reintentar») y la descarga. |
+
+## 7. Riesgos y coherencia con el diseño
+- **Falla de MinIO o del aviso tras un cobro aprobado**: la transacción y la suscripción ya están confirmadas. Mitigación: el trabajo `invoice-retry`; el historial muestra el pago aunque falte el PDF.
+- **Fachadas de `identity`** (`AccountContactReader`, `VerifiedClientLister`): `architecture.md` §3 deja a `billing` solo los eventos de `identity`; se agregan dos fachadas de lectura como hizo la 011 (DF-04). La alternativa descartada es una función `SECURITY DEFINER` que lea `usuario` desde `billing`: acopla a `billing` con el esquema de `identity` y depende de ADR-0021. Lo decide el `architect`.
+- **ADR-0021 sigue Propuesto**: las tres funciones de lectura de §3 dependen de él. Si el equipo no lo acepta, el `architect` define otra salida para los nombres, los conteos y las facturas pendientes.
+- **Worker sin precedente**: `apps/worker/src` solo trae `healthcheck.ts` y aún no hay procesadores de `billing` ni de otros módulos. El procesador se registra en el módulo de arranque del `worker` (el que ya carga `AuditModule`, DF-64); el `architect` confirma el patrón.
+- **Orden con la 011**: T-09 de la 011 (billing, Juan Marcos, sobre la 008 integrada) entrega `plan.desactivado_en` (DF-65), `Plan`, `PERSONAL_PLAN_SLUG` y `SubscriptionAdministration`. T-03, T-04 y T-05 de esta spec no se integran antes de T-09, y sus migraciones llevan fecha posterior a la suya. T-10 y T-11 de la 011 (Fátima) esperan a T-09 y deben seguir verdes con suscripciones reales.
+- **Pagos simultáneos y cuenta sin fila**: el candado solo sirve si la fila existe; por eso el cobro la garantiza antes de bloquear (§2).
+- **PDF pesado en memoria**: plantilla ligera sin imágenes externas.
+- **Vencimiento sin 010**: pasada `vence_en`, los límites no cambian hasta que 010 lo defina.
+- **Desviaciones de los diagramas**: DF-23 resuelto con centavos y `Money`. DF-25 y DF-26 no se adelantan. PD-80 se cumple en los dos lugares; DF-65 fija `desactivado_en`, `SubscriptionAdministration` e `IPlanRepository`. Se abren DF en `design-findings.md` en el mismo PR por: la separación factura/comprobante; el simulador determinista (4242… aprueba, 4000…0002 rechaza) en lugar del `failureRate` y `latencyMs` del diagrama; los nombres `vence_en` y `monto_centavos` frente a `fin` y `monto` del E-R; y las clases y fachadas nuevas de M4 e `identity`.
+- **Pendientes**: el PR cierra PD-40 (puntos 1 y 2; el 3 y PD-48 los cierra la 008) y PD-80. PD-86 se referencia y sigue abierto por 010. Se abre un pendiente para migrar `IDENTITY_` y `STORAGE_TOO_MANY_REQUESTS` a `SHARED_TOO_MANY_REQUESTS`.
+- **Mockups**: la 009 usa los de `billing/pago/` (solo `default`) y `billing/suscripcion/` (solo `vigente`); los demás estados siguen `ui-guidelines.md`. Quedan fuera «Descargar todas» y la edición de datos de facturación.
+- **ADR**: rigen ADR-0016, ADR-0018, ADR-0019, ADR-0020, ADR-0021 y ADR-0022. ADR-0022 dejó abierta la exportación de `IObjectStorage`: si el `architect` confirma la arista que `architecture.md` §3 ya nombra, se cierra en `design-findings.md`; si pide otra salida, se escribe un ADR. La librería que genere el PDF es una dependencia nueva y exige un ADR menor de dependencias de `billing` (como ADR-0015 y ADR-0017), antes del código de T-06.
+
+## 8. Aprobación
+- `architect`: pendiente. Debe aprobar (1) exportar `IObjectStorage` desde `storage/index.ts` hacia `billing` sin ciclos; (2) las dos fachadas de `identity` y la arista `billing → identity` (quién resuelve el destinatario de `INotifier`, B-2, y quién da los ids de la conciliación); (3) las tres funciones `SECURITY DEFINER` de lectura y la dependencia de ADR-0021; (4) la forma de `INotifier`; (5) dónde se registra el procesador de la cola `billing` en el `worker`.
+- Adrián: pendiente. Además de la aprobación, confirma la numeración de §3, la cifra del límite de tasa de §5 y la cadencia de los trabajos (`invoice-retry` cada minuto; `subscription-reconcile` al arrancar y cada hora), y autoriza los cambios de esta spec en módulos ajenos (`specs/README.md`: un módulo, un dueño): `notifications` (`INotifier`), `storage/index.ts`, `identity` (dos fachadas), `shared` (`redacted-fields.ts` y `SHARED_TOO_MANY_REQUESTS`) y `boundaries.js`. Las tres preguntas abiertas de spec §8 no bloquean.
