@@ -8,7 +8,7 @@
 | Dueño | Juan Marcos |
 | Fase | 2 |
 | Requisitos | RF-20, RF-21, RNF-05, RNF-06, RNF-13, RNF-14 |
-| Depende de | 008 y la parte de `billing` de la 011 (T-09: `plan.desactivado_en`, DF-65, y `SubscriptionAdministration`, PD-80) |
+| Depende de | 008 y la parte de `billing` de la 011 (T-09: `plan.desactivado_en`, DF-65, y `SubscriptionAdministration`, PD-80) y la de `identity` (`IAccountDirectoryRepository`) |
 | Última actualización | 2026-10-11 |
 
 ## 1. Contexto y objetivo
@@ -86,3 +86,4 @@ Permitir a los clientes contratar un plan con pago simulado, recibir su comproba
 | 2026-10-09 | Criterios separados por flujo, factura `NB-` vs comprobante `SIM-`, IVA en enteros, sin auditoría, sin `estado` ni CA-28; seis preguntas abiertas | Revisión de coherencia con plan, mockups y YAGNI | Pendiente Adrián |
 | 2026-10-10 | Tres preguntas cerradas; pagos simultáneos en CA-5; reintento en CA-6; NIT solo en `factura`; RN-8; depende de la parte de `billing` de la 011 | Primera revisión de la 009 y contraste con la 011 | Pendiente Adrián |
 | 2026-10-11 | Se elimina el catálogo propio (CA-3, HU-2, `GET /plans`) y se renumeran HU y CA; RF-19 sale de los requisitos; CA-5 suma `429`; CA-7 y CA-8 cubren la factura sin PDF; estados de carga y error en §6; privacidad de Administrador y Operador en §5 | Segunda revisión de la 009 (B-1, I-7, I-10) y 008 final | Pendiente Adrián |
+| 2026-10-11 | Depende también de la parte de `identity` de la 011 (`IAccountDirectoryRepository`) | Tercera revisión de la 009 (N-3) | Pendiente Adrián |
