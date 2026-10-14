@@ -1,0 +1,144 @@
+import { DataSource } from 'typeorm';
+
+import type { Actor } from '../../../src/shared';
+import { buildDataSourceOptions, createActor, Role } from '../../../src/shared';
+import { connectAsOwner, requiredEnv } from '../../support/database-urls';
+import type { AppDatabase } from '../storage/storage-test-db';
+import { connectAsAppDatabase, insertAccount, removeAccounts } from '../storage/storage-test-db';
+
+const SUBSCRIPTION_MIGRATION = 'CrearSuscripcion20261014100000';
+
+const insertPersonal = (database: AppDatabase, actor: Actor, userId: string): Promise<unknown> =>
+  database.asActor(actor, (manager) =>
+    manager.query(
+      `INSERT INTO suscripcion (usuario_id, plan_id) SELECT $1, id FROM plan WHERE slug = 'personal'`,
+      [userId],
+    ),
+  );
+
+const visibleOwners = (database: AppDatabase, actor: Actor): Promise<string[]> =>
+  database.asActor(actor, async (manager) =>
+    ((await manager.query('SELECT usuario_id FROM suscripcion')) as { usuario_id: string }[]).map(
+      (row) => row.usuario_id,
+    ),
+  );
+
+describe('migración crear-suscripcion: RLS del dueño (spec 009 CA-1, RNF-05)', () => {
+  let owner: DataSource;
+  let app: AppDatabase;
+  let ana: Actor;
+  let bruno: Actor;
+  const created: string[] = [];
+
+  beforeAll(async () => {
+    owner = await connectAsOwner();
+    app = await connectAsAppDatabase();
+    ana = createActor(await insertAccount(owner), Role.CLIENT);
+    bruno = createActor(await insertAccount(owner), Role.CLIENT);
+    created.push(ana.id, bruno.id);
+    await insertPersonal(app, ana, ana.id);
+    await insertPersonal(app, bruno, bruno.id);
+  });
+
+  afterAll(async () => {
+    await app?.dataSource.destroy();
+    await removeAccounts(owner, created);
+    await owner?.destroy();
+  });
+
+  it('CA-1: `suscripcion` tiene RLS habilitada y forzada con una sola política, la del cliente', async () => {
+    const [rls] = (await owner.query(
+      "SELECT relrowsecurity AS enabled, relforcerowsecurity AS forced FROM pg_class WHERE oid = 'suscripcion'::regclass",
+    )) as { enabled: boolean; forced: boolean }[];
+    const policies = (await owner.query(
+      "SELECT policyname FROM pg_policies WHERE tablename = 'suscripcion'",
+    )) as { policyname: string }[];
+
+    expect(rls).toEqual({ enabled: true, forced: true });
+    expect(policies).toEqual([{ policyname: 'suscripcion_cliente' }]);
+  });
+
+  it('RNF-05: un cliente solo ve su suscripción', async () => {
+    await expect(visibleOwners(app, ana)).resolves.toEqual([ana.id]);
+    await expect(visibleOwners(app, bruno)).resolves.toEqual([bruno.id]);
+  });
+
+  it('RNF-05: un cliente no puede crear una suscripción a nombre de otro (WITH CHECK)', async () => {
+    const carla = await insertAccount(owner);
+    created.push(carla);
+
+    await expect(insertPersonal(app, bruno, carla)).rejects.toThrow(/row-level security/);
+  });
+
+  it.each([Role.ADMIN, Role.SUPPORT, Role.OPERATOR] as const)(
+    'RNF-05: %s no lee filas de `suscripcion`',
+    async (role) => {
+      const internal = createActor(await insertAccount(owner, role), role);
+      created.push(internal.id);
+
+      await expect(visibleOwners(app, internal)).resolves.toEqual([]);
+    },
+  );
+
+  it('RNF-05: `nimbo_app` sin actor no ve filas de `suscripcion`', async () => {
+    const [row] = (await app.dataSource.query('SELECT count(*)::int AS n FROM suscripcion')) as {
+      n: number;
+    }[];
+
+    expect(row?.n).toBe(0);
+  });
+});
+
+describe('cierre de la migración de suscripción: `revert` y `run` sobre una base vacía (RNF-10)', () => {
+  const databaseName = `nimbo_suscripcion_${String(process.pid)}_${String(Date.now())}`;
+  let owner: DataSource;
+  let fresh: DataSource;
+
+  const tableExists = async (): Promise<boolean> => {
+    const [row] = (await fresh.query("SELECT to_regclass('suscripcion')::text AS tabla")) as {
+      tabla: string | null;
+    }[];
+    return row?.tabla !== null;
+  };
+
+  beforeAll(async () => {
+    owner = await connectAsOwner();
+    await owner.query(`CREATE DATABASE ${databaseName}`);
+    const url = new URL(requiredEnv('DATABASE_MIGRATION_URL'));
+    url.pathname = `/${databaseName}`;
+    fresh = await new DataSource(
+      buildDataSourceOptions({ DATABASE_URL: url.toString() }),
+    ).initialize();
+    await fresh.runMigrations({ transaction: 'each' });
+  });
+
+  afterAll(async () => {
+    await fresh?.destroy();
+    await owner?.query(`DROP DATABASE IF EXISTS ${databaseName} WITH (FORCE)`);
+    await owner?.destroy();
+  });
+
+  /** La de suscripción y las posteriores: para revertirla hay que revertir antes las que vinieron después. */
+  const fromSubscription = async (): Promise<string[]> => {
+    const applied = (
+      (await fresh.query('SELECT name FROM migracion ORDER BY id')) as {
+        name: string;
+      }[]
+    ).map((row) => row.name);
+    return applied.slice(applied.indexOf(SUBSCRIPTION_MIGRATION));
+  };
+
+  it('RNF-10: `down` elimina la tabla y su política, y `up` la vuelve a crear', async () => {
+    const reverted = await fromSubscription();
+    expect(reverted[0]).toBe(SUBSCRIPTION_MIGRATION);
+
+    for (const _ of reverted) {
+      await fresh.undoLastMigration({ transaction: 'each' });
+    }
+    expect(await tableExists()).toBe(false);
+
+    const rerun = await fresh.runMigrations({ transaction: 'each' });
+    expect(rerun.map((migration) => migration.name)).toEqual(reverted);
+    expect(await tableExists()).toBe(true);
+  });
+});

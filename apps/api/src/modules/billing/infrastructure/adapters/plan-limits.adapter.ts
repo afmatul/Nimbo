@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import type { Actor } from '../../../../shared';
 import type { IPlanLimitsProvider, PlanLimits } from '../../../storage';
 import { PlanNotFoundError } from '../../domain/errors';
+import { PERSONAL_PLAN_SLUG } from '../../domain/plan-slug';
 import { PlanOrmEntity } from '../persistence/plan.orm-entity';
 
 /**
@@ -23,7 +24,7 @@ export class PlanLimitsAdapter implements IPlanLimitsProvider {
    * Consulta la fila `personal` de la tabla `plan`. No consulta `usuario` ni `identity`.
    */
   async limitsFor(_actor: Actor): Promise<PlanLimits> {
-    return this.getLimitsBySlug('personal');
+    return this.getLimitsBySlug(PERSONAL_PLAN_SLUG);
   }
 
   /** CA-2 y CA-4. No está en el puerto de `storage`: 005 fijó `limitsFor` como único método (ISP). */

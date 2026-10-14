@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Borrador |
+| Estado | En curso (T-01 iniciada antes de la aprobación final del plan) |
 | Dueño | Juan Marcos |
 | Fase | 2 |
 | Requisitos | RF-20, RF-21, RNF-05, RNF-06, RNF-13, RNF-14 |
