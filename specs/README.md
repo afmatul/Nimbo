@@ -15,9 +15,9 @@ un puerto.
 | Adrián (1)      | Diseñador principal (Tech Lead) | fundaciones, `shared`, `identity` (M1), `notifications`, `storage` (M2), `access` (M3a), `audit`, `editing` (M5), `intelligence` (M6), CI/CD, infraestructura, guardián de diagramas; revisor de planes y PRs |
 | Juan Marcos (2) | Diseñador-programador           | `billing` (M4) y búsqueda (018)                                                                                                              |
 | Abel (3)        | Diseñador-programador           | previsualización (017), `optimizer` (M7), observabilidad (022)                                                                               |
-| Fátima (4)      | Diseñador-programador           | sistema de diseño (000b), `realtime`, `sharing` (M3b), `backoffice` (M8)                                                                     |
+| Fátima (4)      | Diseñador-programador           | sistema de diseño (000b), `realtime`, `sharing` (M3b), `backoffice` (M8), incluido el tablero de operación (022b)                             |
 
-Excepciones: 006a (`billing`) la construyó Fátima y la integra Adrián. 017 y 018 viven en `storage`, pero en carpetas
+Excepciones: 006a (`billing`) la construyó Fátima y la integra Adrián. En la 011, Adrián autorizó a Fátima a cambiar `identity`, `storage` y `audit` (2026-10-07), y `shared` y `features/access` solo en los archivos que nombra el plan (2026-10-08), y la parte de `billing` la escribe Juan Marcos. 017 y 018 viven en `storage`, pero en carpetas
 propias (`storage/preview`, `storage/search`) de Abel y Juan Marcos; los cambios al resto de `storage` los hace Adrián.
 
 ## Estados (SDD express)
@@ -50,7 +50,8 @@ Antes de planificar las specs de Fase 1, el equipo decide en una reunión los ha
 | 008  | catalogo-y-comparador                                                                                                      | M4                  | RF-19                     | 15                         | 2    | Juan Marcos | 006a          | Lista (2026-10-07): spec, plan y tareas en `feat/008-catalogo-y-comparador`; plan aprobado por Adrián (por escrito fuera del repo, falta registrarlo en `plan.md` §8) |
 | 009  | contratacion-pagos-y-facturas (incluye el PD-40: suscripción Personal, conciliación y catálogo público) | M4 | RF-20, 21 | 23 | 2 | Juan Marcos | 008 | Pendiente |
 | 010  | renovacion-vencimiento-y-cambio-de-plan                                                    | M4                  | RF-22, 23, 24             | 25                         | 2    | Juan Marcos | 009           | Pendiente |
-| 011  | administracion-y-soporte                                                                   | M8                  | RF-06                     | 04, 26, 36                 | 2    | Fátima | 003, 004, 008 | Pendiente |
+| 011  | [administracion-y-soporte](011-administracion-y-soporte/spec.md)                           | M8                  | RF-06                     | 04, 36                     | 2    | Fátima | 003, 004, 005, 006, 007, 008 | Lista (2026-10-08) |
+| 011b | ajustes-de-cuenta-y-restauracion (ajuste de cuota y de vigencia, restauración de papelera por Soporte; separada de 011 por tamaño) | M8                  | RF-06, RF-05, RF-23       | 26                         | 2    | Fátima | 006, 009, 010, 011 | Pendiente |
 | 012  | comparticion-y-accesos                                                                     | M3b                 | RF-16, 18                 | 31                         | 2    | Fátima | 003, 006      | Pendiente |
 | 013  | enlaces-publicos                                                                           | M3b                 | RF-17, RNF-08             | 09, 10                     | 2    | Fátima | 012           | Pendiente |
 | 014  | versiones-y-restauracion                                                                   | M2 (+ M5 autoría)   | RF-13, 29                 | 17, 18                     | 2    | Adrián | 005           | En revisión (2026-10-10): T-01…T-10 en `feat/014-versiones-y-restauracion`; [revisión](014-versiones-y-restauracion/review.md) con B-1, B-2 e I-1…I-3 corregidos (T-FIX-1…5); pasa a `Hecha` al integrarla. [spec](014-versiones-y-restauracion/spec.md), [plan](014-versiones-y-restauracion/plan.md) y [tareas](014-versiones-y-restauracion/tasks.md) |
@@ -61,7 +62,8 @@ Antes de planificar las specs de Fase 1, el equipo decide en una reunión los ha
 | 019  | indexacion                                                                                 | M6                  | RF-30, 31, RNF-03         | 07, 14, 37                 | 3    | Adrián | 005, 014      | Pendiente |
 | 020  | agente-con-citas                                                                           | M6                  | RF-32, 33, 34, RNF-03     | 08, 14, 15, 25             | 3    | Adrián | 019, 010      | Pendiente |
 | 021  | optimizador                                                                                | M7                  | RF-35, 36                 | 21, 22                     | 3    | Abel | 014           | Pendiente |
-| 022  | operacion-metricas-y-alertas                                                               | M8                  | RF-37, RNF-18, 20, 21     | 22, 28, 29                 | 3    | Abel | 000           | Pendiente |
+| 022  | operacion-metricas-y-alertas (observabilidad: Prometheus, Grafana, alertas y respaldos; RF-37 pasó a 022b) | transversal         | RNF-18, 20, 21            | 28, 29                     | 3    | Abel | 000           | Pendiente |
+| 022b | tablero-de-operacion (trabajos con reintento y una sola pantalla de bitácoras técnicas y trabajos para Admin, Soporte y Operador; separada de 022 el 2026-10-03, decisión de Adrián) | M8 | RF-37 | 22 | 3 | Fátima | 000, 011 | Pendiente |
 | 023  | pruebas-de-carga-y-aislamiento-global                                                      | transversal         | RNF-01, 02, 05, 09        | —                          | 3    | Adrián | 020           | Pendiente |
 | 024  | pulido-accesibilidad-manuales-y-diagramas-finales                                          | todos               | RNF-13, 14                | todos los abiertos         | 4    | Todos | —             | Pendiente |
 
@@ -78,7 +80,7 @@ Ningún plan de Juan Marcos, Abel o Fátima pasa a código sin la aprobación de
 | Adrián      | Integrar `chore/cierre-fase-1`, `fix/005-revision` y `feat/000-ci` → CI de 000 (lint de ciclos, `ci.yml`, protección de `main`) → imágenes y staging → `/spec 014`. Revisa planes y PRs del equipo | 014 → 016 → 019 → 020 → 023        |
 | Juan Marcos | Registrar la aprobación en `plan.md` §8 de 008 y `/implement 008` (desbloquea 009 y 011)                                             | 009 → 010 → 018                    |
 | Abel        | `/implement 017` desde T-03 (T-01, T-02 y T-05 de habilitación ya hechas por Adrián en `feat/017-previsualizacion`)                  | 022 → 021 (021 depende de 014)     |
-| Fátima      | `/plan 011` (spec en `spec/011-administracion-y-soporte`); `/spec 015` y `/plan 015` tiempo real (la necesita 016)                  | 012 → 013 → 011b → 022b            |
+| Fátima      | `/tasks 011` y `/implement 011` (plan aprobado, rama `spec/011-administracion-y-soporte`); `/spec 015` y `/plan 015` tiempo real (la necesita 016)                  | 012 → 013 → 011b → 022b            |
 
 Reglas de convivencia: PRs pequeños y rebase frecuente sobre `main`. Los únicos archivos compartidos que se tocan
 son:
