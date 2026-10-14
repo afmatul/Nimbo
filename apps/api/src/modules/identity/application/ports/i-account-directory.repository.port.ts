@@ -55,6 +55,8 @@ export interface IAccountDirectoryRepository {
   /** Solo cuentas `CLIENT`: una interna o un correo sin cuenta dan `null` (011 CA-13, 003 D-6). */
   findClientByEmail(email: EmailAddress): Promise<ClientIdentity | null>;
   statistics(): Promise<AccountStatistics>;
+  /** Ids de clientes con el correo verificado, por orden de `id` y después de `afterId` (009 CA-2, `VerifiedClientLister`). */
+  listVerifiedClientIds(afterId: string | null, limit: number): Promise<readonly string[]>;
 }
 
 export const I_ACCOUNT_DIRECTORY_REPOSITORY = Symbol('IAccountDirectoryRepository');

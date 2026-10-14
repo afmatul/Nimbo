@@ -31,6 +31,7 @@ const setup = () => {
     findById: jest.fn(),
     findClientByEmail: jest.fn(),
     statistics: jest.fn(),
+    listVerifiedClientIds: jest.fn(),
   };
   return { repository, directory: new AccountDirectory(repository) };
 };

@@ -101,7 +101,7 @@ describe('bootstrap del worker (CA-18, CA-21)', () => {
     ]);
   });
 
-  it('CA-21, 005 CA-9, 006 CA-19, 007 CA-13: `worker.started` lista las colas `ping`, `mail`, `upload-cleanup`, `trash-purge` y `usage-reconcile`', async () => {
+  it('CA-21, 005 CA-9, 006 CA-19, 007 CA-13, 009 CA-2: `worker.started` lista las colas `ping`, `mail`, `upload-cleanup`, `trash-purge`, `usage-reconcile` y `subscription-reconcile`', async () => {
     const env = { ...process.env, WORKER_PORT: String(await freePort()) };
 
     const started = await waitForWorkerStarted(env);
@@ -112,6 +112,7 @@ describe('bootstrap del worker (CA-18, CA-21)', () => {
       'upload-cleanup',
       'trash-purge',
       'usage-reconcile',
+      'subscription-reconcile',
     ]);
   });
 });

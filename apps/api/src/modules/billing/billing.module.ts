@@ -11,8 +11,8 @@ import { AccountVerifiedListener } from './presentation/account-verified.listene
 /**
  * M4, spec 006a. Registra el catálogo y exporta el adaptador. El token `I_PLAN_LIMITS_PROVIDER`
  * lo enlaza la raíz de composición (`PlanLimitsBindingModule`), no este módulo: `storage` no conoce a `billing`.
- * 009 suma el alta Personal al verificar la cuenta; el oyente solo se activa donde la raíz monta
- * `EventEmitterModule` (`api`).
+ * 009 suma el alta Personal al verificar la cuenta y la exporta para la conciliación (`BillingWorkerModule`); el
+ * oyente solo se activa donde la raíz monta `EventEmitterModule` (`api`).
  */
 @Module({
   imports: [TypeOrmModule.forFeature([PlanOrmEntity])],
@@ -22,6 +22,6 @@ import { AccountVerifiedListener } from './presentation/account-verified.listene
     { provide: I_SUBSCRIPTION_REPOSITORY, useClass: TypeOrmSubscriptionRepository },
     AccountVerifiedListener,
   ],
-  exports: [PlanLimitsAdapter],
+  exports: [PlanLimitsAdapter, PersonalSubscriptionService],
 })
 export class BillingModule {}

@@ -57,6 +57,11 @@ const DEFAULT_USAGE_RECONCILE_INTERVAL_MINUTES = 1440;
 const DEFAULT_USAGE_RECONCILE_BATCH_SIZE = 100;
 /** Ids de cuenta por página de la conciliación, con el mismo tope que los otros barridos. */
 const MAX_USAGE_RECONCILE_BATCH_SIZE = 1000;
+/** Una hora: el evento en proceso casi nunca se pierde; la conciliación lo repone (009 plan §2, decisión 7). */
+const DEFAULT_SUBSCRIPTION_RECONCILE_INTERVAL_MINUTES = 60;
+/** El mismo lote y tope que los otros barridos (009 plan §2, decisión 7). */
+const DEFAULT_SUBSCRIPTION_RECONCILE_BATCH_SIZE = 100;
+const MAX_SUBSCRIPTION_RECONCILE_BATCH_SIZE = 1000;
 
 /**
  * Valor de desarrollo de `JWT_ACCESS_SECRET` que trae `.env.example` (plan 002 §6.10). Público a propósito: en
@@ -214,9 +219,21 @@ const usageReconcileShape = {
   ),
 };
 
+/** Conciliación programada de suscripciones en el `worker` (009 plan §2, CA-2). */
+const subscriptionReconcileShape = {
+  SUBSCRIPTION_RECONCILE_INTERVAL_MINUTES: positiveInt(
+    DEFAULT_SUBSCRIPTION_RECONCILE_INTERVAL_MINUTES,
+  ),
+  SUBSCRIPTION_RECONCILE_BATCH_SIZE: intBetween(
+    1,
+    MAX_SUBSCRIPTION_RECONCILE_BATCH_SIZE,
+    DEFAULT_SUBSCRIPTION_RECONCILE_BATCH_SIZE,
+  ),
+};
+
 /**
  * Forma del entorno del `worker`: el contrato común, su puerto de salud, MinIO, el barrido de cargas (005), la purga
- * de la papelera (006), la conciliación de espacio (007) y el SMTP (001 plan §6.10); sin `PORT` ni `MINIO_PUBLIC_ENDPOINT`. `SMTP_PASSWORD` se declara **solo** aquí.
+ * de la papelera (006), la conciliación de espacio (007), la de suscripciones (009) y el SMTP (001 plan §6.10); sin `PORT` ni `MINIO_PUBLIC_ENDPOINT`. `SMTP_PASSWORD` se declara **solo** aquí.
  */
 export const workerEnvObjectSchema = sharedEnvBaseSchema.extend({
   ...workerPortShape,
@@ -224,6 +241,7 @@ export const workerEnvObjectSchema = sharedEnvBaseSchema.extend({
   ...uploadCleanupShape,
   ...trashPurgeShape,
   ...usageReconcileShape,
+  ...subscriptionReconcileShape,
   SMTP_HOST: nonEmpty(),
   SMTP_PORT: requiredPort(),
   SMTP_TLS: oneOf(['none', 'starttls', 'implicit']),
