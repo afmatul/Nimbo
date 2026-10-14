@@ -1,5 +1,7 @@
 import { CorrelationContext, createActor, FixedClock, Role } from '../../../shared';
 import type { Actor, ITransactionRunner } from '../../../shared';
+import { SYSTEM_ACTOR } from '../domain/audit-actor';
+import type { AuditActor } from '../domain/audit-actor';
 import type { AuditEntry } from '../domain/audit-entry';
 
 import { AuditAction } from './audit-action';
@@ -15,23 +17,27 @@ const FILE_ID = '0b8f7c1e-3333-4a4a-9c9c-000000000003';
 const FILE_NAME = 'informe secreto.docx';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
-/** Ejecutor que corre `work` sin base y recuerda con qué actor se abrió cada transacción. */
+/** Ejecutor que corre `work` sin base y recuerda con qué actor se abrió cada transacción y cuántos `run` hubo. */
 const fakeTransactions = () => {
   const actors: Actor[] = [];
+  const runs = { count: 0 };
   const runner: ITransactionRunner = {
-    run: (work) => work(),
+    run: (work) => {
+      runs.count += 1;
+      return work();
+    },
     withActor: (actor, work) => {
       actors.push(actor);
       return work();
     },
   };
-  return { runner, actors };
+  return { runner, actors, runs };
 };
 
 const buildSut = () => {
-  const inserted: { actor: Actor; entry: AuditEntry }[] = [];
+  const inserted: { actor: AuditActor; entry: AuditEntry }[] = [];
   const repository: jest.Mocked<IAuditRepository> = {
-    insert: jest.fn((actor: Actor, entry: AuditEntry) => {
+    insert: jest.fn((actor: AuditActor, entry: AuditEntry) => {
       inserted.push({ actor, entry });
       return Promise.resolve();
     }),
@@ -266,6 +272,50 @@ describe('AuditService.recordInTransaction (síncrona)', () => {
     await service.recordInTransaction(uploadCompleted());
 
     expect(logger.info).not.toHaveBeenCalled();
+  });
+});
+
+describe('AuditService con el actor de sistema (011 CA-7)', () => {
+  const ADMIN_ID = '0b8f7c1e-5555-4a4a-9c9c-000000000005';
+  const bootstrap = (): AuditRecord => ({
+    action: AuditAction.ACCOUNT_BOOTSTRAP_ADMIN,
+    actor: SYSTEM_ACTOR,
+    targetUserId: null,
+    resourceId: ADMIN_ID,
+  });
+
+  it('CA-7: `recordInTransaction` escribe con `run` (se une al del llamador), nunca con `withActor`', async () => {
+    const { service, inserted, transactions } = buildSut();
+
+    await service.recordInTransaction(bootstrap());
+
+    expect(transactions.runs.count).toBe(1);
+    expect(transactions.actors).toEqual([]);
+    expect(inserted[0]?.actor).toBe(SYSTEM_ACTOR);
+  });
+
+  it('CA-7: el evento no tiene actor ni afectado, su rol es `SYSTEM` y su recurso es la cuenta creada', async () => {
+    const { service, inserted } = buildSut();
+
+    await service.recordInTransaction(bootstrap());
+
+    expect(inserted[0]?.entry).toMatchObject({
+      action: 'account.bootstrap_admin',
+      actorId: null,
+      actorRole: 'SYSTEM',
+      targetUserId: null,
+      resourceType: 'account',
+      resourceId: ADMIN_ID,
+    });
+  });
+
+  it('CA-7: con un actor de persona sigue usando `withActor` y no `run`', async () => {
+    const { service, transactions } = buildSut();
+
+    await service.recordInTransaction(uploadCompleted({ actor: SUPPORT }));
+
+    expect(transactions.runs.count).toBe(0);
+    expect(transactions.actors).toEqual([SUPPORT]);
   });
 });
 

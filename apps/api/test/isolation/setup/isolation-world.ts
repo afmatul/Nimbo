@@ -47,6 +47,7 @@ import type { Actor, ITransactionRunner } from '../../../src/shared';
 import { buildTestEnv, createTestApp } from '../../int/setup/test-app';
 import type { TestApp, TestAppOptions } from '../../int/setup/test-app';
 import { connectAsOwner, requiredEnv } from '../../support/database-urls';
+import { employeeCodeFor } from '../../support/employee-codes';
 import { ProbeCalls, ProbeController, ProbeResources } from '../../support/probe.controller';
 
 /** Nombre visible por defecto; los dos clientes del mundo lo comparten (plan 003 §6.7). */
@@ -234,8 +235,8 @@ const insertAccount = async (owner: EntityManager, account: WorldAccount): Promi
   const isClient = account.role === Role.CLIENT;
   await owner.query(
     `INSERT INTO usuario (id, nombre, correo, hash_clave, rol, correo_verificado, version_terminos,
-                          version_privacidad, terminos_aceptados_en, creado_en)
-     VALUES ($1, $2, $3, $4, $5, true, $6, $7, $8, $9)`,
+                          version_privacidad, terminos_aceptados_en, creado_en, codigo_empleado)
+     VALUES ($1, $2, $3, $4, $5, true, $6, $7, $8, $9, $10)`,
     [
       account.id,
       account.name,
@@ -246,6 +247,7 @@ const insertAccount = async (owner: EntityManager, account: WorldAccount): Promi
       isClient ? LEGAL_DOCUMENTS.privacy.version : null,
       isClient ? WORLD_CREATED_AT : null,
       WORLD_CREATED_AT,
+      employeeCodeFor(account.role),
     ],
   );
 };

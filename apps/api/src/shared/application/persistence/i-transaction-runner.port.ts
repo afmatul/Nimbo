@@ -7,8 +7,9 @@ import type { Actor } from '../../domain/actor';
  */
 export interface ITransactionRunner {
   /**
-   * Transacción sin actor, para tablas sin datos de cliente (`usuario`, `token_cuenta`). Dentro de `withActor` se
-   * une a esa transacción y conserva el actor.
+   * Transacción sin actor, para tablas sin datos de cliente (`usuario`, `token_cuenta`). Dentro de cualquier
+   * transacción en curso (otro `run` o un `withActor`) se une a ella y conserva su actor, si lo tiene (011 T1): así
+   * varias escrituras sin actor se confirman o revierten juntas.
    */
   run<T>(work: () => Promise<T>): Promise<T>;
 

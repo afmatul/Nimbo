@@ -109,6 +109,7 @@ ALTER TABLE evento_auditoria ALTER COLUMN usuario_afectado_id DROP NOT NULL,
   ADD CONSTRAINT ck_evento_rol_actor CHECK (rol_actor IN ('CLIENT','ADMIN','SUPPORT','OPERATOR','SYSTEM')),
   ADD CONSTRAINT ck_evento_tipo_recurso CHECK (tipo_recurso IN ('file','folder','upload','account','plan')),
   ADD CONSTRAINT ck_evento_sistema CHECK (rol_actor <> 'SYSTEM' OR actor_id IS NULL),
+  ADD CONSTRAINT ck_evento_bootstrap_sistema CHECK (accion <> 'account.bootstrap_admin' OR rol_actor = 'SYSTEM'),
   ADD CONSTRAINT ck_evento_destino CHECK ((usuario_afectado_id IS NULL)
     = (tipo_recurso IS NOT DISTINCT FROM 'plan' OR accion = 'account.bootstrap_admin'));
 CREATE POLICY evento_auditoria_alta_sistema ON evento_auditoria FOR INSERT TO nimbo_app

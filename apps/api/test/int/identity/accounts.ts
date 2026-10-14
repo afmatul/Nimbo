@@ -5,6 +5,7 @@ import type { App } from 'supertest/types';
 import type { DataSource } from 'typeorm';
 
 import { Argon2idHasher } from '../../../src/modules/identity/infrastructure/argon2id.hasher';
+import { employeeCodeFor } from '../../support/employee-codes';
 
 export const LOGIN_PATH = '/api/v1/auth/login';
 export const REFRESH_PATH = '/api/v1/auth/session/refresh';
@@ -39,7 +40,7 @@ const accountPasswordPhc = (): Promise<string> => {
 
 /**
  * Cuenta lista para iniciar sesión, insertada con SQL (plan 001 §4): verificada y activa salvo que se pida otra cosa.
- * Los clientes llevan la aceptación legal que exige el esquema; las internas no.
+ * Los clientes llevan la aceptación legal que exige el esquema; las internas, un código de empleado único (011 RN-5).
  */
 export const insertAccount = async (
   dataSource: DataSource,
@@ -53,8 +54,8 @@ export const insertAccount = async (
   const isClient = role === 'CLIENT';
   await dataSource.query(
     `INSERT INTO usuario (id, nombre, correo, hash_clave, rol, estado, correo_verificado, version_terminos,
-       version_privacidad, terminos_aceptados_en)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+       version_privacidad, terminos_aceptados_en, codigo_empleado)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
     [
       account.id,
       account.fullName,
@@ -66,6 +67,7 @@ export const insertAccount = async (
       isClient ? '1.0' : null,
       isClient ? '1.0' : null,
       isClient ? new Date() : null,
+      employeeCodeFor(role),
     ],
   );
   return account;

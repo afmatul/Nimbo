@@ -1,6 +1,7 @@
 import { Role } from '../../../../shared';
 import { ClientUser } from '../../domain/client-user.entity';
 import { EmailAddress } from '../../domain/email-address.vo';
+import { EmployeeCode } from '../../domain/employee-code.vo';
 import { InternalUser } from '../../domain/internal-user.entity';
 import { LegalAcceptance } from '../../domain/legal-acceptance.vo';
 import { PasswordHash } from '../../domain/password-hash.vo';
@@ -22,12 +23,12 @@ export function toUserDomain(row: UsuarioRow): User {
     emailVerified: row.correoVerificado,
   };
   if (row.rol !== Role.CLIENT) {
-    return InternalUser.rehydrate({ ...common, role: row.rol });
+    return InternalUser.rehydrate({ ...common, role: row.rol, employeeCode: toEmployeeCode(row) });
   }
   return ClientUser.rehydrate({ ...common, acceptance: toAcceptance(row) });
 }
 
-/** Fila completa de un cliente; `identity` nunca escribe cuentas internas (las crea 011). */
+/** Fila completa de un cliente: sin código de empleado, que solo tienen las internas (011 RN-5). */
 export function toUsuarioRow(user: ClientUser): UsuarioRow {
   return {
     id: user.id,
@@ -40,7 +41,33 @@ export function toUsuarioRow(user: ClientUser): UsuarioRow {
     versionTerminos: user.acceptance.termsVersion,
     versionPrivacidad: user.acceptance.privacyVersion,
     terminosAceptadosEn: user.acceptance.acceptedAt,
+    codigoEmpleado: null,
   };
+}
+
+/** Fila completa de una interna (011 CA-5): sin aceptación legal y con su código de empleado. */
+export function toInternalUsuarioRow(user: InternalUser): UsuarioRow {
+  return {
+    id: user.id,
+    nombre: user.fullName,
+    correo: user.email.value,
+    hashClave: user.passwordHash.reveal(),
+    rol: user.role,
+    estado: user.status,
+    correoVerificado: user.emailVerified,
+    versionTerminos: null,
+    versionPrivacidad: null,
+    terminosAceptadosEn: null,
+    codigoEmpleado: user.employeeCode.value,
+  };
+}
+
+/** `ck_usuario_codigo_empleado_interna` impide una interna sin código; si aparece, es un dato corrupto. */
+function toEmployeeCode(row: UsuarioRow): EmployeeCode {
+  if (row.codigoEmpleado === null) {
+    throw new TypeError(`La cuenta interna ${row.id} no tiene código de empleado.`);
+  }
+  return EmployeeCode.of(row.codigoEmpleado);
 }
 
 /** `ck_usuario_aceptacion_cliente` impide un cliente sin aceptación; si aparece, es un dato corrupto. */
