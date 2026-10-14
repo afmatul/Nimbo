@@ -2,10 +2,10 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Propuesto (2026-09-28); falta el acuerdo del equipo. **Enmienda ADR-0005** (barrera 2: tablas con RLS y trabajos de mantenimiento) |
+| Estado | Aceptado (2026-10-14, Adrián, revisión de la 009); propuesto el 2026-09-28. **Enmienda ADR-0005** (barrera 2: tablas con RLS y trabajos de mantenimiento) |
 | Fecha | 2026-09-28 |
 | Decisores | Adrián (architect), equipo Nimbo. Opción B decidida por el usuario el 2026-09-28 |
-| Specs relacionadas | 005 (D-6, CA-9, CA-16), 006 (purga de la papelera), 007 (conciliación de `espacio_usado`); DF-52, DF-38; PD-19 |
+| Specs relacionadas | 005 (D-6, CA-9, CA-16), 006 (purga de la papelera), 007 (conciliación de `espacio_usado`), 009 (lectura de suscripciones y facturas pendientes); DF-52, DF-38; PD-19 |
 
 ## Contexto
 
@@ -94,3 +94,11 @@ que la política y la función pertenecen al dueño de la tabla.
   superusuario, lo que exige una prueba con dueño restringido; enumeración de UUID descrita arriba; las migraciones deben usar siempre el mismo rol.
 - Cómo sabremos si fue un error: si 006 o 007 necesitan una función que devuelva algo más que identificadores, o si aparece la tentación de dar `BYPASSRLS` para que un
   trabajo funcione; si `storage-maintenance.iso-spec.ts` deja de fallar al quitar la política en staging; o si la enumeración de UUID resulta inaceptable en la auditoría de seguridad.
+
+## Aceptación (2026-10-14)
+
+Adrián acepta el ADR en la revisión del plan de la 009. La opción B está elegida desde el 2026-09-28 y `storage` ya la usa
+(`carga_expiradas`, `papelera_vencida`). Autoriza además las tres funciones de la 009 (`nombres_de_plan_por_cliente`,
+`conteo_de_clientes_por_plan` y `facturas_pendientes_de_emitir`) con la misma lista: solo lectura, `search_path` cerrado,
+`REVOKE … FROM PUBLIC` y `EXECUTE` solo para `nimbo_app`, y devuelven nombres, conteos o ids, nunca filas completas. Las dos
+primeras comprueban `nimbo_actor_role()` dentro (Administrador y Operador); la tercera exige que no haya actor en la sesión.

@@ -9,7 +9,7 @@
 | Fase | 2 |
 | Requisitos | RF-20, RF-21, RNF-05, RNF-06, RNF-13, RNF-14 |
 | Depende de | 008 y la parte de `billing` de la 011 (T-09: `plan.desactivado_en`, DF-65, y `SubscriptionAdministration`, PD-80) y la de `identity` (`IAccountDirectoryRepository`) |
-| Última actualización | 2026-10-11 |
+| Última actualización | 2026-10-14 |
 
 ## 1. Contexto y objetivo
 Permitir a los clientes contratar un plan con pago simulado, recibir su comprobante y una factura PDF descargable, y consultar su historial. Además cierra pendientes de integración de `billing`: suscripción Personal al verificar la cuenta y conciliación (PD-40, puntos 1 y 2) y límites y administración leídos de la suscripción (PD-80). El catálogo público, también el del registro, lo sirve la 008 (RN-8, PD-48): esta spec no crea otra ruta de planes. Los planes desactivados quedan fuera de la contratación (PD-86), que sigue abierto por la 010.
@@ -21,10 +21,10 @@ Permitir a los clientes contratar un plan con pago simulado, recibir su comproba
 
 ## 3. Criterios de aceptación
 - **CA-1** (HU-1, RF-20, PD-40) Dado el evento `identity.client-account-verified`, cuando `billing` lo procesa, entonces crea una suscripción al plan `personal` sin vencimiento (`vence_en` nulo). Si el cliente ya tiene suscripción, no cambia nada (idempotente).
-- **CA-2** (HU-1, RF-20, PD-40, PD-80) Dado un cliente verificado sin suscripción, cuando corre la conciliación, entonces recibe la suscripción `personal`; repetirla no duplica. `IPlanLimitsProvider.limitsFor` y `SubscriptionAdministration` leen la suscripción del cliente. Si no hay fila, `limitsFor` conserva el comportamiento actual (límites de Personal, PD-40).
+- **CA-2** (HU-1, RF-20, PD-40, PD-80) Dado un cliente verificado sin suscripción, cuando corre la conciliación, entonces recibe la suscripción `personal`; repetirla no duplica. `IPlanLimitsProvider.limitsFor` y `SubscriptionAdministration` leen la suscripción del cliente. Si no hay fila, `limitsFor` conserva el comportamiento actual (límites de Personal, PD-40) y administración muestra «—» (`planName` nulo).
 - **CA-3** (HU-2, RF-20, PD-86) Dado un cliente con sesión que contrata un plan de pago con la tarjeta `4242 4242 4242 4242` vigente, CVC y NIT (o «CF»), cuando envía el pago, entonces se registra una transacción `aprobada` con referencia `SIM-AAAA-NNNNNN`, su suscripción pasa al plan contratado por 30 días y la pantalla muestra «Pago aprobado» con la referencia.
 - **CA-4** (HU-2, RF-20) — error: Dado el pago con `4000 0000 0000 0002`, cuando se procesa, entonces la transacción queda `rechazada`, la suscripción no cambia, no hay factura ni correo y la respuesta es `402 BILLING_PAYMENT_REJECTED`.
-- **CA-5** (HU-2, RF-20, PD-86) — error: Dado un plan desactivado, inexistente o `personal`, o un cliente cuya cuenta ya no está en Personal (tiene un plan de pago, o un segundo pago simultáneo llega después de uno aprobado), cuando se envía el pago, entonces `400 BILLING_PLAN_NOT_AVAILABLE` sin transacción ni cargo; el cambio de plan es de la 010. Dados una tarjeta distinta de las dos de prueba, un vencimiento pasado o un NIT mal formado, entonces `422` con los campos y sin transacción. Si el cliente hace demasiados intentos seguidos, `429` sin transacción.
+- **CA-5** (HU-2, RF-20, PD-86) — error: Dado un plan desactivado, inexistente o `personal`, o un cliente cuya cuenta ya no está en Personal (tiene un plan de pago, o un segundo pago simultáneo llega después de uno aprobado), cuando se envía el pago, entonces `400 BILLING_PLAN_NOT_AVAILABLE` sin transacción ni cargo; el cambio de plan es de la 010. Dados datos de pago fuera de RN-9 (forma de la tarjeta, número que no sea de 16 dígitos o distinto de las dos tarjetas de prueba, vencimiento pasado, NIT mal formado), entonces `422` con `fields` y sin transacción. Si el cliente hace demasiados intentos seguidos, `429` sin transacción.
 - **CA-6** (HU-2, RF-21) Dado un pago aprobado, cuando termina, entonces se emite la factura `NB-AAAA-NNNN` con subtotal, IVA y total, el PDF queda guardado y el cliente recibe un correo de comprobante. Un pago rechazado no emite ninguno. Si el PDF o el correo fallan después del cobro, el pago y la suscripción se conservan, el historial muestra el pago y un reintento automático repone el PDF y el correo.
 - **CA-7** (HU-3, RF-20, RNF-05) Dado un cliente con sesión, cuando consulta su historial (API o `/suscripcion`), entonces ve sus transacciones y facturas (fecha, referencia, número de factura, monto, plan, estado) y ninguna de otra cuenta; una factura cuyo PDF aún no existe se muestra sin enlace de descarga. Sin pagos, ve el estado vacío.
 - **CA-8** (HU-3, RF-21, RNF-06) Dado el dueño de una factura con PDF, cuando pide descargarla, entonces recibe un enlace temporal de 5 minutos al PDF. Si la factura no es suya, no existe o aún no tiene PDF, `404 BILLING_INVOICE_NOT_FOUND`.
@@ -39,11 +39,12 @@ Permitir a los clientes contratar un plan con pago simulado, recibir su comproba
 - **RN-6** Solo se contratan planes con `desactivado_en` nulo (PD-86, 011 CA-10).
 - **RN-7** Las facturas y transacciones no se borran: el histórico se conserva 7 años.
 - **RN-8** El cobro y el cambio de suscripción se confirman juntos o no se confirman. El PDF y el correo se generan después y no revierten el cobro.
+- **RN-9** Los datos de pago son `card: { number, expMonth, expYear, cvc }` y `nit`. `number` son 16 dígitos (el formulario puede mostrarlos con espacios, pero no se envían); `expMonth` va de 1 a 12 y el mes de `expYear` no ha pasado; `cvc` son 3 dígitos; `nit` es `CF` o de 5 a 12 dígitos. Cualquier otra cosa es `422` con `fields`.
 
 ## 5. Seguridad y privacidad
 - `suscripcion`, `transaccion` y `factura` son datos de cliente: RLS forzado por `usuario_id` y pruebas de aislamiento (RNF-05).
 - No se guardan el número de tarjeta ni el CVC. El NIT se guarda solo en `factura`.
-- Las bitácoras técnicas registran el intento y el resultado con `correlationId`, nunca el número de tarjeta, el CVC ni el NIT.
+- Las bitácoras técnicas registran el intento y el resultado con `correlationId`, nunca el número de tarjeta, el CVC ni el NIT (se redactan `card`, `number`, `cvc` y `nit`).
 - Los roles internos reciben `403 SHARED_FORBIDDEN` en las rutas de cobro y no pagan por un cliente.
 - Administrador y Operador conocen del plan de un cliente solo su nombre y conteos agregados (011 CA-1, CA-8 y CA-12); ningún rol interno lee filas de suscripción, transacciones ni facturas.
 - Los PDF no contienen datos de archivos del cliente. La descarga usa enlace temporal; no hay URL pública.
@@ -68,7 +69,6 @@ Permitir a los clientes contratar un plan con pago simulado, recibir su comproba
 - Pasarelas reales y administración del catálogo (011).
 
 ## 8. Preguntas
-- [ABIERTA] ¿Qué plan muestra administración para un cliente sin verificar (PD-80)? — bloquea: no. Propuesta: «Personal» solo si tiene fila; sin fila, «—» (`planName` de 011 admite `null`).
 - [ABIERTA] ¿Cómo se retoma el plan de pago elegido en el registro (001 CA-28, en suspenso)? — bloquea: no. Propuesta: sin aviso propio; el cliente contrata desde `/planes`.
 - [ABIERTA] ¿Pagos y altas de suscripción generan eventos de auditoría (RF-07)? — bloquea: no. Propuesta: no en esta spec (como 008); solo bitácora técnica.
 - [RESUELTA] ¿Dónde se guardan las facturas PDF? → MinIO vía `IObjectStorage`, descarga con enlace temporal (2026-10-09, usuario)
@@ -77,6 +77,7 @@ Permitir a los clientes contratar un plan con pago simulado, recibir su comproba
 - [RESUELTA] ¿Desde dónde se llega a `/planes/contratar`? → Botón «Contratar» en las tarjetas de pago de `/planes` (CA-9) (2026-10-10, revisión)
 - [RESUELTA] ¿Qué pasa si un cliente con plan de pago contrata otro? → `400 BILLING_PLAN_NOT_AVAILABLE` sin transacción; el cambio de plan es de la 010 (CA-5) (2026-10-10, revisión)
 - [RESUELTA] ¿Dónde se calcula el desglose de IVA? → `breakdown(priceCents)`, función pura en `packages/contracts` (RN-2) (2026-10-10, revisión)
+- [RESUELTA] ¿Qué plan muestran límites y administración para un cliente sin fila de suscripción (PD-80)? → Con fila, el plan de la suscripción; sin fila, `limitsFor` devuelve Personal y administración muestra «—» (`planName` nulo) (2026-10-14, revisión I-7)
 - [RESUELTA] ¿Hay un catálogo público propio de la 009 para el registro? → No: `GET /api/v1/billing/plans` de la 008 es el único (008 RN-8) (2026-10-11, revisión)
 
 ## 9. Registro de cambios
@@ -87,3 +88,4 @@ Permitir a los clientes contratar un plan con pago simulado, recibir su comproba
 | 2026-10-10 | Tres preguntas cerradas; pagos simultáneos en CA-5; reintento en CA-6; NIT solo en `factura`; RN-8; depende de la parte de `billing` de la 011 | Primera revisión de la 009 y contraste con la 011 | Pendiente Adrián |
 | 2026-10-11 | Se elimina el catálogo propio (CA-3, HU-2, `GET /plans`) y se renumeran HU y CA; RF-19 sale de los requisitos; CA-5 suma `429`; CA-7 y CA-8 cubren la factura sin PDF; estados de carga y error en §6; privacidad de Administrador y Operador en §5 | Segunda revisión de la 009 (B-1, I-7, I-10) y 008 final | Pendiente Adrián |
 | 2026-10-11 | Depende también de la parte de `identity` de la 011 (`IAccountDirectoryRepository`) | Tercera revisión de la 009 (N-3) | Pendiente Adrián |
+| 2026-10-14 | RN-9 fija la forma de los datos de pago (tarjeta de 16 dígitos, NIT `CF` o de 5 a 12 dígitos) y CA-5 la usa; se cierra la pregunta de PD-80; se redacta `number` | Cuarta revisión de la 009 (I-7, I-8) | Pendiente Adrián |
