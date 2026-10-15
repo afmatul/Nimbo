@@ -3,8 +3,10 @@ import type { ReactNode } from 'react';
 
 import { PlanCard } from '../../../components/nimbo/plan-card';
 import { StateView } from '../../../components/nimbo/state-view';
+import { buttonVariants } from '../../../components/ui/button';
 import { getEnv } from '../../../env';
-import { fetchPlanCatalog, PlanComparisonTable } from '../../../features/billing';
+import { fetchPlanCatalog, PlanComparisonTable, subscribeHref } from '../../../features/billing';
+import { cn } from '../../../lib/utils';
 
 /** Catálogo público (008): se lee en el servidor; la carga y el error los muestran `loading.tsx` y `error.tsx`. */
 export default async function PlanesPage(): Promise<ReactNode> {
@@ -38,10 +40,24 @@ function PlanCatalog({ plans }: { readonly plans: readonly Plan[] }): ReactNode 
     <>
       <div className="flex flex-wrap gap-4">
         {plans.map((plan) => (
-          <PlanCard key={plan.id} plan={plan} className="min-w-0 flex-1 basis-56" />
+          <PlanCard
+            key={plan.id}
+            plan={plan}
+            className="min-w-0 flex-1 basis-56"
+            action={plan.priceCents > 0 ? <SubscribeLink slug={plan.slug} /> : undefined}
+          />
         ))}
       </div>
       <PlanComparisonTable plans={plans} />
     </>
+  );
+}
+
+/** 009 CA-9: solo los planes de pago se contratan; Personal ya lo tiene toda cuenta verificada. */
+function SubscribeLink({ slug }: { readonly slug: string }): ReactNode {
+  return (
+    <a href={subscribeHref(slug)} className={cn(buttonVariants(), 'w-full')}>
+      Contratar
+    </a>
   );
 }

@@ -38,7 +38,12 @@ export function lastActivityLabel(lastActiveAt: string, now: number): string {
   return elapsedMs < MINUTE_MS ? ACTIVE_NOW_LABEL : `Última actividad: ${timeAgo(elapsedMs)}`;
 }
 
+/** «24 sep 2026», con el día de Guatemala. */
+export function dayLabel(isoDate: string): string {
+  return startedOnFormatter.format(new Date(isoDate));
+}
+
 /** «Iniciada el 24 sep 2026», con el día de Guatemala. */
 export function startedOnLabel(startedAt: string): string {
-  return `Iniciada el ${startedOnFormatter.format(new Date(startedAt))}`;
+  return `Iniciada el ${dayLabel(startedAt)}`;
 }

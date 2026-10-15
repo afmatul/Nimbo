@@ -60,11 +60,12 @@
   - Prueba: `test/int/billing/billing-history.int-spec.ts` (historial, vacío, factura sin PDF, enlace); `test/isolation/billing.iso-spec.ts` (el cliente A no ve ni descarga lo del B; ningún rol interno lee `transaccion` ni `factura`).
   - Depende: T-06.
 
-- [ ] **T-10** Web, pago
+- [x] **T-10** Web, pago
   - Criterio: CA-9 y los estados de la pantalla de pago (spec §6). Botón «Contratar» en `PlanCard` y `/planes` para planes con precio mayor que 0; pantalla `/planes/contratar?slug=` con formulario según RN-9, resumen con `breakdown` y los estados cargando, formulario, procesando (indicador de progreso, RNF-14), rechazado, aprobado y error con acción correctiva.
   - Archivos: `apps/web/src/components/nimbo/plan-card.tsx`, `apps/web/src/app/(public)/planes/page.tsx`, `apps/web/src/app/(app)/(cliente)/planes/contratar/{page,loading,error}.tsx`, `apps/web/src/features/billing/{subscribe-api.ts,components/payment-form.tsx,components/payment-summary.tsx}`.
   - Prueba: `plan-card.spec.tsx` y `(public)/planes/page.spec.tsx` (CA-9); `payment-form.spec.tsx` (un caso por estado y el resumen con IVA); `contratar/error.spec.tsx`.
   - Depende: T-05; el mensaje de éxito con el correo, T-08.
+  - Hecha (2026-10-14). Desviaciones frente al mockup: sin «Nombre en la tarjeta» (RN-9 no lo tiene y el contrato es estricto) y sin «Se renueva el… Puedes cancelar» (renovación y cancelación son de la 010); el vencimiento se escribe `MM/AA` y se convierte a `expMonth`/`expYear`; el resumen no calcula la fecha de vencimiento (la da la respuesta al aprobar); el éxito no lleva el correo hasta T-08. DRY: `PlanCatalogError` (`features/billing/components/plan-catalog-error.tsx`) sirve a `/planes` y a `/planes/contratar`; los mensajes salen del catálogo (`BILLING_FIELD_MESSAGES` en `contracts` para `CARD_EXPIRED`); `dayLabel` en `lib/format-date.ts`; `subscribeHref` en `features/billing/routes.ts`. Pruebas: `plan-card.spec.tsx`, `(public)/planes/page.spec.tsx`, `payment-form-values.spec.ts`, `payment-form.spec.tsx` (formulario, validación, procesando, rechazado, vencida, aprobado, error y axe), `contratar/{page,error}.spec.tsx`. `next build` compila las rutas; falla al pre-renderizar `/planes` (008) sin API en la compilación.
 
 - [ ] **T-11** Web, `/suscripcion`
   - Criterio: CA-7 y CA-8. Plan actual e historial con descarga y los estados cargando, con facturas, vacío y error con «Reintentar».

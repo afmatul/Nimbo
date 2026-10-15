@@ -73,4 +73,18 @@ describe('PlanCard (008 CA-2)', () => {
     expect(screen.getByText('Q123.45')).toBeTruthy();
     expect(factOf('Almacenamiento')).toBe('2 TB');
   });
+
+  it('009 CA-9: muestra la acción que le pasa la página debajo de los límites', () => {
+    render(<PlanCard plan={PRO} action={<a href="/planes/contratar?slug=pro">Contratar</a>} />);
+
+    expect(screen.getByRole('link', { name: 'Contratar' }).getAttribute('href')).toBe(
+      '/planes/contratar?slug=pro',
+    );
+  });
+
+  it('009 CA-9: sin acción no muestra ningún enlace', () => {
+    render(<PlanCard plan={PERSONAL} />);
+
+    expect(screen.queryByRole('link')).toBeNull();
+  });
 });

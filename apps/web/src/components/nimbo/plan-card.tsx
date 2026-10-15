@@ -8,10 +8,12 @@ import { Card } from '../ui/card';
 export interface PlanCardProps {
   readonly plan: Plan;
   readonly className?: string;
+  /** Acción al pie (009 CA-9: «Contratar» en los planes de pago); la decide la página. */
+  readonly action?: ReactNode;
 }
 
 /** Tarjeta de un plan del catálogo (008 CA-2, RF-19): nombre, precio y límites salen del contrato, nunca del frontend. */
-export function PlanCard({ plan, className }: PlanCardProps): ReactNode {
+export function PlanCard({ plan, className, action }: PlanCardProps): ReactNode {
   return (
     <Card className={cn('flex flex-col gap-4 p-5', className)}>
       <h2 className="text-base font-semibold text-foreground">{plan.name}</h2>
@@ -27,6 +29,7 @@ export function PlanCard({ plan, className }: PlanCardProps): ReactNode {
         <PlanFact label="Archivo máx." value={formatPlanBytes(plan.maxFileBytes)} />
         <PlanFact label="Edición .docx" value={formatDocxEditing(plan.maxEditors)} />
       </dl>
+      {action === undefined ? null : <div className="mt-auto pt-2">{action}</div>}
     </Card>
   );
 }
