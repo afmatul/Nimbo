@@ -2,5 +2,6 @@
 export * from './breakdown';
 export * from './error-codes';
 export * from './format-gtq';
+export * from './history';
 export * from './schemas';
 export * from './subscription';

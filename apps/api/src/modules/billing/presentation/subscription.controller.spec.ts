@@ -1,4 +1,5 @@
 import { createActor, Role } from '../../../shared';
+import type { BillingHistoryService } from '../application/billing-history.service';
 import type { SubscribeOutcome } from '../application/subscription-checkout';
 import type { SubscriptionService } from '../application/subscription.service';
 import { aPlan } from '../application/testing/plans';
@@ -37,7 +38,10 @@ const outcome = (status: Payment['status']): SubscribeOutcome => ({
 
 const setup = (status: Payment['status']) => {
   const subscribe = jest.fn().mockResolvedValue(outcome(status));
-  const controller = new SubscriptionController({ subscribe } as unknown as SubscriptionService);
+  const controller = new SubscriptionController(
+    { subscribe } as unknown as SubscriptionService,
+    {} as BillingHistoryService,
+  );
   return { controller, subscribe };
 };
 
@@ -70,5 +74,21 @@ describe('SubscriptionController (spec 009 CA-3, CA-4)', () => {
     const { controller } = setup('rechazada');
 
     await expect(controller.subscribe(ANA, BODY)).rejects.toBeInstanceOf(PaymentRejectedError);
+  });
+
+  it('CA-8: la descarga responde el enlace firmado y su vigencia', async () => {
+    const download = jest
+      .fn()
+      .mockResolvedValue({ url: 'https://minio.local/firmado', expiresInSeconds: 300 });
+    const controller = new SubscriptionController(
+      {} as SubscriptionService,
+      { download } as unknown as BillingHistoryService,
+    );
+
+    await expect(controller.download(ANA, 'factura-1')).resolves.toEqual({
+      downloadUrl: 'https://minio.local/firmado',
+      expiresInSeconds: 300,
+    });
+    expect(download).toHaveBeenCalledWith(ANA, 'factura-1');
   });
 });

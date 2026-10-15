@@ -13,6 +13,8 @@ export const BILLING_ERROR_CODES = {
   BILLING_PLAN_NOT_AVAILABLE: 'BILLING_PLAN_NOT_AVAILABLE',
   /** 009 CA-4: la pasarela rechazó la tarjeta; no hubo cargo. */
   BILLING_PAYMENT_REJECTED: 'BILLING_PAYMENT_REJECTED',
+  /** 009 CA-8: la factura no existe, no es del cliente o aún no tiene PDF (sin oráculo). */
+  BILLING_INVOICE_NOT_FOUND: 'BILLING_INVOICE_NOT_FOUND',
 } as const;
 export type BillingErrorCode = (typeof BILLING_ERROR_CODES)[keyof typeof BILLING_ERROR_CODES];
 
