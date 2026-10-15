@@ -1,6 +1,8 @@
 import type { Plan } from '@nimbo/contracts';
 import { renderToStaticMarkup } from 'react-dom/server';
 
+import { expectNoA11yViolations } from '../../../components/test-a11y';
+
 import PlanesPage from './page';
 
 const PRO: Plan = {
@@ -64,6 +66,15 @@ describe('página de planes (008 CA-1, CA-2)', () => {
 
     expect(markup).toContain('Ahora no hay planes para mostrar.');
     expect(markup).not.toContain('<table');
+  });
+
+  it.each([
+    ['con planes', [PRO]],
+    ['vacía', []],
+  ])('no tiene violaciones de accesibilidad (%s)', async (_state, plans: readonly Plan[]) => {
+    respondWith(plans);
+
+    await expectNoA11yViolations(await PlanesPage());
   });
 
   it('CA-3: si la API falla, la página lanza para que la muestre su error.tsx', async () => {

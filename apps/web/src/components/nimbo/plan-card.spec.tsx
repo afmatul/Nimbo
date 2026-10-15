@@ -3,6 +3,7 @@
  */
 import type { Plan } from '@nimbo/contracts';
 import { render, screen } from '@testing-library/react';
+import { axe, toHaveNoViolations } from 'jest-axe';
 
 import { PlanCard } from './plan-card';
 
@@ -31,6 +32,8 @@ const PRO: Plan = {
   maxFileBytes: '524288000',
   maxEditors: 5,
 };
+
+expect.extend(toHaveNoViolations);
 
 function factOf(label: string): string | null | undefined {
   return screen.getByText(label).nextElementSibling?.textContent;
@@ -72,5 +75,11 @@ describe('PlanCard (008 CA-2)', () => {
     expect(screen.getByRole('heading', { name: 'Empresarial' })).toBeTruthy();
     expect(screen.getByText('Q123.45')).toBeTruthy();
     expect(factOf('Almacenamiento')).toBe('2 TB');
+  });
+
+  it('no tiene violaciones de accesibilidad', async () => {
+    const { container } = render(<PlanCard plan={PERSONAL} />);
+
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

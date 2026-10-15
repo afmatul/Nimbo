@@ -41,7 +41,7 @@ describe('BillingModule (T-10, CA-5, RN-3)', () => {
 });
 
 describe('BillingHttpModule (008)', () => {
-  it('publica `PlansController` con `PlanCatalogService` sobre el repositorio de `BillingModule`', async () => {
+  it('publica `PlansController` con `PlanCatalogService` sobre su propio repositorio de `plan`', async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [GlobalTestLoggerModule, BillingHttpModule],
     })

@@ -59,7 +59,7 @@ function ComparisonRowView({
   plans,
 }: PlanComparisonTableProps & { readonly row: ComparisonRow }): ReactNode {
   return (
-    <tr className="border-b border-border/50 hover:bg-muted/5">
+    <tr className="border-b border-border/50">
       <th scope="row" className="p-4 text-left font-medium text-muted-foreground">
         {row.label}
       </th>

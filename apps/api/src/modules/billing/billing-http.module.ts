@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { I_PLAN_REPOSITORY } from './application/i-plan-repository';
 import { PlanCatalogService } from './application/plan-catalog.service';
-import { BillingModule } from './billing.module';
+import { PlanOrmEntity } from './infrastructure/persistence/plan.orm-entity';
 import { TypeOrmPlanRepository } from './infrastructure/persistence/typeorm-plan.repository';
 import { PlansController } from './presentation/plans.controller';
 
@@ -12,7 +13,7 @@ import { PlansController } from './presentation/plans.controller';
  * `GET /billing/plans` (mismo criterio que `AuditHttpModule`).
  */
 @Module({
-  imports: [BillingModule],
+  imports: [TypeOrmModule.forFeature([PlanOrmEntity])],
   controllers: [PlansController],
   providers: [PlanCatalogService, { provide: I_PLAN_REPOSITORY, useClass: TypeOrmPlanRepository }],
 })

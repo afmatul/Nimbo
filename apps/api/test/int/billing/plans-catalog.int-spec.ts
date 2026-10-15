@@ -1,8 +1,10 @@
+import { getRepositoryToken } from '@nestjs/typeorm';
 import { planCatalogResponseSchema } from '@nimbo/contracts';
 import type { PlanCatalogResponse } from '@nimbo/contracts';
 import request from 'supertest';
 
 import { BillingHttpModule } from '../../../src/modules/billing';
+import { PlanOrmEntity } from '../../../src/modules/billing/infrastructure/persistence/plan.orm-entity';
 import { I_CLOCK, Role } from '../../../src/shared';
 import type { FixedClock } from '../../../src/shared';
 import { TestAccessTokens } from '../../support/test-access-tokens';
@@ -67,5 +69,31 @@ describe('GET /api/v1/billing/plans contra la semilla de la 006a (008 CA-1)', ()
     const authenticated = await fetchCatalog(`Bearer ${tokens.forRole(Role.CLIENT)}`);
 
     expect(authenticated).toEqual(anonymous);
+  });
+});
+
+describe('GET /api/v1/billing/plans cuando la lectura de `plan` falla (008 CA-3)', () => {
+  let testApp: TestApp;
+
+  beforeAll(async () => {
+    const failingRepository = { find: jest.fn().mockRejectedValue(new Error('connection lost')) };
+    testApp = await createTestApp({
+      modules: [BillingHttpModule],
+      overrides: [{ provide: getRepositoryToken(PlanOrmEntity), useValue: failingRepository }],
+    });
+  });
+
+  afterAll(async () => {
+    await testApp?.close();
+  });
+
+  it('CA-3: responde 500 con `BILLING_PLAN_CATALOG_UNAVAILABLE`, mensaje y `correlationId`, sin detalle técnico', async () => {
+    const response = await request(testApp.app.getHttpServer()).get(PLANS_PATH).expect(500);
+
+    expect(response.body).toEqual({
+      code: 'BILLING_PLAN_CATALOG_UNAVAILABLE',
+      message: 'No pudimos cargar los planes. Intenta recargar la página.',
+      correlationId: expect.any(String),
+    });
   });
 });
