@@ -17,7 +17,7 @@
 | 4 | Métricas: los clientes sin suscripción no cuentan en ningún plan | `plan.md` (R-6), `spec.md` CA-12 | Fátima (Adrián confirma) | **Aceptado** por Fátima |
 | 5 | Pasar las pruebas `accounts` y `metrics` con suscripciones reales a la T-10 | `tasks.md` (T-10) | Fátima | Pendiente |
 | 6 | `PERSONAL_PLAN_SLUG` en un solo archivo | `billing/domain/plan-slug.ts` | Juan Marcos | **Aceptado**: lo crea la 009 T-01 y la T-09 de la 011, que depende de ella, le suma `slugFromName` |
-| 7 | `IAccountDirectoryRepository` tiene un método nuevo | — | Adrián | Hecho en la 009 T-02; `listVerifiedClientIds` queda nombrado solo en el plan de la 009 (la 011 no lo usa). `IdentityWorkerModule` lo autoriza Adrián (dueño de `identity`) |
+| 7 | `IAccountDirectoryRepository` tiene un método nuevo | — | Adrián | Hecho en la 009 T-02; `listVerifiedClientIds` queda nombrado solo en el plan de la 009 (la 011 no lo usa). `IdentityReadersModule` (antes `IdentityWorkerModule`; desde la T-06 también publica `AccountContactReader` en el `api`) lo autoriza Adrián (dueño de `identity`) |
 | 8 | Pruebas de la 011 ajustadas por la 009 | varias | Fátima | **Aceptado** |
 | 9 | `i-plan-repository.ts` se mueve a `application/ports/` | `tasks.md` (T-09) | Juan Marcos | **Aceptado** y hecho en la T-09 |
 | 10 | Método de `billing` que liste **todos** los planes (activos o no) para CA-8 | `plan.md` §2 | Juan Marcos, a pedido de Fátima (T-11) | Pendiente: la T-09 no lo agregó (YAGNI, sin consumidor) |
@@ -76,8 +76,8 @@
 ## 7. `IAccountDirectoryRepository` tiene un método nuevo (hecho)
 
 - La 009 T-02 agregó `listVerifiedClientIds(afterId, limit)` al puerto de la 011, su implementación SQL y la fachada
-  `VerifiedClientLister`, más `IdentityWorkerModule` para publicarla en el `worker`.
-- **Arreglo:** que el plan de la 011 §2 mencione el método nuevo. `IdentityWorkerModule` está pendiente del visto bueno de
+  `VerifiedClientLister`, más `IdentityReadersModule` para publicarla en el `worker`.
+- **Arreglo:** que el plan de la 011 §2 mencione el método nuevo. `IdentityReadersModule` está pendiente del visto bueno de
   Adrián (no estaba en la lista de módulos ajenos autorizados).
 
 ## 8. Pruebas de la 011 ajustadas por la 009 (hecho)
@@ -86,7 +86,7 @@
 |---|---|---|
 | `apps/api/test/int/backoffice/migrations.int-spec.ts` | Comprueba que las 4 migraciones de la 011 van juntas y en orden, sin exigir que sean las últimas | La migración `crear-suscripcion` (009) va después |
 | `apps/api/src/modules/identity/application/account-directory.spec.ts` | El doble del repositorio suma `listVerifiedClientIds` | Método nuevo del puerto (punto 7) |
-| `apps/api/src/modules/identity/index.spec.ts` | La API pública suma `IdentityWorkerModule` y `VerifiedClientLister` | Exportaciones nuevas de la 009 T-02 |
+| `apps/api/src/modules/identity/index.spec.ts` | La API pública suma `IdentityReadersModule` y `VerifiedClientLister` | Exportaciones nuevas de la 009 T-02 |
 
 Fátima debe revisar estos cambios al fusionar su rama con la 009 (o la 009 con `main`).
 
@@ -112,7 +112,7 @@ Fátima debe revisar estos cambios al fusionar su rama con la 009 (o la 009 con 
 
 ## Orden sugerido
 
-1. Adrián decide los puntos 1, 2 y 4 y confirma `IdentityWorkerModule` (punto 7).
+1. Adrián decide los puntos 1, 2 y 4 y confirma `IdentityReadersModule` (punto 7).
 2. Juan Marcos y Fátima acuerdan los tipos del punto 3.
 3. Se actualizan `plan.md` y `tasks.md` de la 011 (puntos 1 a 7 y 9) en un solo commit `docs(backoffice): …`.
 4. La 009 T-03 se escribe con lo acordado.

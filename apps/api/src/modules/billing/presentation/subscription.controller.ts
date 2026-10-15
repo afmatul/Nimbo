@@ -4,8 +4,8 @@ import type { SubscribeRequest, SubscribeResponse } from '@nimbo/contracts';
 
 import { CurrentActor, Role, Roles, ZodValidationPipe } from '../../../shared';
 import type { Actor } from '../../../shared';
+import type { SubscribeOutcome } from '../application/subscription-checkout';
 import { SubscriptionService } from '../application/subscription.service';
-import type { SubscribeOutcome } from '../application/subscription.service';
 import { PaymentRejectedError } from '../domain/errors/payment-rejected.error';
 
 import { billingValidationError } from './billing-validation';
@@ -27,8 +27,8 @@ const toSubscribeResponse = ({
 
 /**
  * Cobro del plan de pago (spec 009 CA-3 a CA-5). Solo `CLIENT`: los roles internos reciben `403` y no pagan por un
- * cliente. Valida RN-9, delega y, si la pasarela rechazó, lanza el `402` ya fuera de la transacción (B-3). El NIT se
- * guarda en la factura (T-06).
+ * cliente. Valida RN-9, delega y, si la pasarela rechazó, lanza el `402` ya fuera de la transacción (B-3). El CVC no
+ * pasa de aquí; el NIT va a la factura (T-06).
  */
 @Roles(Role.CLIENT)
 @Controller('billing')
@@ -45,6 +45,7 @@ export class SubscriptionController {
     const outcome = await this.subscriptions.subscribe(actor, {
       planSlug: body.planSlug,
       card: { number, expMonth, expYear },
+      nit: body.nit,
     });
     if (outcome.payment.status === 'rechazada') throw new PaymentRejectedError();
     return toSubscribeResponse(outcome);

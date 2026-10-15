@@ -4,7 +4,7 @@ import type { DynamicModule } from '@nestjs/common';
 import type { z } from 'zod';
 
 import type { workerEnvSchema } from '../../shared';
-import { IdentityWorkerModule } from '../identity';
+import { IdentityReadersModule } from '../identity';
 
 import { SUBSCRIPTION_RECONCILE_CONFIG } from './application/subscription-reconcile-config';
 import type { SubscriptionReconcileConfig } from './application/subscription-reconcile-config';
@@ -25,7 +25,7 @@ export type BillingWorkerEnv = Pick<
 /**
  * Parte de `billing` que corre en el `worker` (spec 009 CA-2): la cola `subscription-reconcile`, su programa repetible
  * y su procesador. El alta Personal viene de `BillingModule` y la lista de clientes verificados de `identity`
- * (`IdentityWorkerModule`). `apps/worker` la importa solo desde `billing/index.ts`.
+ * (`IdentityReadersModule`). `apps/worker` la importa solo desde `billing/index.ts`.
  */
 @Module({})
 export class BillingWorkerModule {
@@ -38,7 +38,7 @@ export class BillingWorkerModule {
       module: BillingWorkerModule,
       imports: [
         BillingModule,
-        IdentityWorkerModule,
+        IdentityReadersModule,
         BullModule.registerQueue({ name: SUBSCRIPTION_RECONCILE_QUEUE }),
       ],
       providers: [

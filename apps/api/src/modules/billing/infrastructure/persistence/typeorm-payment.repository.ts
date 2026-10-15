@@ -4,7 +4,7 @@ import { TransactionContext } from '../../../../shared';
 import type { Actor } from '../../../../shared';
 import type { IPaymentRepository } from '../../application/ports/i-payment-repository.port';
 import type { Payment, PaymentDraft } from '../../domain/entities/payment.entity';
-import { formatPaymentReference } from '../../domain/payment-reference';
+import { formatPaymentReference } from '../../domain/sequence-number';
 
 const NEXT_REFERENCE_SQL = `SELECT nextval('transaccion_referencia_seq')::int AS sequence`;
 const INSERT_SQL = `INSERT INTO transaccion (usuario_id, plan_id, monto_centavos, estado, marca_tarjeta,

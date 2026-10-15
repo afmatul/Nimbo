@@ -1,5 +1,6 @@
 import { createActor, Role } from '../../../shared';
-import type { SubscriptionService, SubscribeOutcome } from '../application/subscription.service';
+import type { SubscribeOutcome } from '../application/subscription-checkout';
+import type { SubscriptionService } from '../application/subscription.service';
 import { aPlan } from '../application/testing/plans';
 import type { Payment } from '../domain/entities/payment.entity';
 import { PaymentRejectedError } from '../domain/errors/payment-rejected.error';
@@ -50,7 +51,7 @@ describe('SubscriptionController (spec 009 CA-3, CA-4)', () => {
     });
   });
 
-  it('RN-9: el CVC y el NIT no pasan del controlador (el dominio solo recibe número y vencimiento)', async () => {
+  it('RN-9: el CVC no pasa del controlador; el NIT sí, para la factura', async () => {
     const { controller, subscribe } = setup('aprobada');
 
     await controller.subscribe(ANA, BODY);
@@ -58,6 +59,7 @@ describe('SubscriptionController (spec 009 CA-3, CA-4)', () => {
     expect(subscribe).toHaveBeenCalledWith(ANA, {
       planSlug: 'equipo',
       card: { number: '4242424242424242', expMonth: 12, expYear: 2030 },
+      nit: 'CF',
     });
   });
 

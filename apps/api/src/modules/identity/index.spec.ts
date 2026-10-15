@@ -5,11 +5,12 @@ describe('API pública de `identity`', () => {
   it('CA-8: exporta el módulo, los *throttlers* para `AppModule`, el nombre del evento de cuenta verificada (plan §5) las fachadas del backoffice (011 plan §2) y la fachada y el módulo del `worker` para la conciliación de `billing` (009 CA-2)', () => {
     expect(Object.keys(identity).sort()).toEqual([
       'AccountAdministration',
+      'AccountContactReader',
       'AccountDirectory',
       'CLIENT_ACCOUNT_VERIFIED',
       'IDENTITY_THROTTLERS',
       'IdentityModule',
-      'IdentityWorkerModule',
+      'IdentityReadersModule',
       'InternalAccountEnrollment',
       'VerifiedClientLister',
     ]);

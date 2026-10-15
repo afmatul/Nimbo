@@ -66,7 +66,7 @@ export const rlsOf = async (
 };
 
 /**
- * Borra (como el dueño) las transacciones y las cuentas de una suite. `transaccion` va primero: su `usuario_id` es
+ * Borra (como el dueño) las facturas, las transacciones y las cuentas de una suite, en ese orden: las dos tablas son
  * `RESTRICT` (RN-7), así que una cuenta con pagos no se borra sin quitarlos antes.
  */
 export const removeBillingAccounts = async (
@@ -74,6 +74,7 @@ export const removeBillingAccounts = async (
   accountIds: readonly string[],
 ): Promise<void> => {
   if (accountIds.length === 0) return;
+  await owner.query('DELETE FROM factura WHERE usuario_id = ANY($1)', [accountIds]);
   await owner.query('DELETE FROM transaccion WHERE usuario_id = ANY($1)', [accountIds]);
   await removeAccounts(owner, accountIds);
 };
