@@ -1,6 +1,6 @@
 import type { PlanCatalogService } from '../application/plan-catalog.service';
+import { aPlan, PERSONAL_PLAN } from '../application/testing/plans';
 import { PlanCatalogUnavailableError } from '../domain/errors/plan-catalog-unavailable.error';
-import type { PlanSummary } from '../domain/plan-summary';
 
 import { PlansController } from './plans.controller';
 
@@ -8,19 +8,7 @@ describe('PlansController', () => {
   let controller: PlansController;
   let service: jest.Mocked<Pick<PlanCatalogService, 'list'>>;
 
-  const personal: PlanSummary = {
-    id: '10000000-0000-4000-8000-000000000001',
-    slug: 'personal',
-    name: 'Personal',
-    description: 'Para uso individual',
-    priceCents: 0,
-    quotaBytes: 16106127360n,
-    maxFileBytes: 52428800n,
-    maxEditors: 0,
-    agentQueriesPerMonth: 20,
-    retainedVersions: 5,
-    trashRetentionDays: 7,
-  };
+  const personal = aPlan({ description: 'Para uso individual' });
 
   beforeEach(() => {
     service = { list: jest.fn() };
@@ -45,7 +33,7 @@ describe('PlansController', () => {
           maxFileBytes: '52428800',
           maxEditors: 0,
           agentQueriesPerMonth: 20,
-          retainedVersions: 5,
+          retainedVersions: 3,
           trashRetentionDays: 7,
         },
       ],
@@ -53,16 +41,18 @@ describe('PlansController', () => {
   });
 
   it('CA-1: conserva el orden que entrega el servicio', async () => {
-    const pro: PlanSummary = {
-      ...personal,
+    const pro = aPlan({
       id: '10000000-0000-4000-8000-000000000002',
       slug: 'pro',
       name: 'Pro',
       priceCents: 4500,
-      quotaBytes: 107374182400n,
-      maxFileBytes: 524288000n,
-      maxEditors: 5,
-    };
+      limits: {
+        ...PERSONAL_PLAN.limits,
+        quotaBytes: 107374182400n,
+        maxFileBytes: 524288000n,
+        maxEditors: 5,
+      },
+    });
     service.list.mockResolvedValue([personal, pro]);
 
     const result = await controller.getPlans();
@@ -78,7 +68,7 @@ describe('PlansController', () => {
   });
 
   it('CA-1: entrega una descripción nula y un slug fuera de la semilla tal como vienen de la tabla', async () => {
-    service.list.mockResolvedValue([{ ...personal, slug: 'empresarial', description: null }]);
+    service.list.mockResolvedValue([aPlan({ slug: 'empresarial', description: null })]);
 
     const result = await controller.getPlans();
 

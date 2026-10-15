@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { PlanLimitsAdapter } from './modules/billing';
+import { SharedStubModule } from './modules/billing/application/testing/shared-stub.module';
 import { PlanOrmEntity } from './modules/billing/infrastructure/persistence/plan.orm-entity';
 import { I_PLAN_LIMITS_PROVIDER } from './modules/storage';
 import type { IPlanLimitsProvider } from './modules/storage';
@@ -13,7 +14,7 @@ const ACTOR = createActor('11111111-1111-4111-8111-111111111111', Role.CLIENT);
 describe('PlanLimitsBindingModule', () => {
   it('CA-5: enlaza I_PLAN_LIMITS_PROVIDER con PlanLimitsAdapter', async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [PlanLimitsBindingModule],
+      imports: [SharedStubModule, PlanLimitsBindingModule],
     })
       .overrideProvider(getRepositoryToken(PlanOrmEntity))
       .useValue({
