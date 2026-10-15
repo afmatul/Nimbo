@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | En revisión |
+| Estado | Hecha |
 | Dueño | Juan Marcos |
 | Fase | 2 |
 | Requisitos | RF-19 |
@@ -71,3 +71,4 @@ Decisión: se usa ese mockup solo como referencia de tarjetas, precios en quetza
 | 2026-10-03 | Creación inicial de la spec | Arranque de la Fase 2 | Borrador (pendiente Adrián) |
 | 2026-10-04 | Se unifican las dos copias. RF-19 queda con nombre, descripción, precio y vigencia mensual. Se fijan las filas de la tabla y la pantalla pública | La spec estaba duplicada y se contradecía con el plan | Pendiente Adrián |
 | 2026-10-09 | CA-1 lista los planes activos sin fijar cuatro filas (filtro `desactivado_en IS NULL` desde la T-09 de la 011); claves del contrato en inglés; RN-8: el registro lee este catálogo (PD-48); código `BILLING_PLAN_CATALOG_UNAVAILABLE`; §7: un plan no se edita y la 008 no agrega columnas | Revisión del PR #49 (06/10), PD-76 y PD-83 (alineación con la 011) | Adrián |
+| 2026-10-14 | Estado `Hecha`: revisión sin bloqueantes y PD-92 decidido («Ver planes» espera a la 009) | Cierre de la spec | Adrián |

@@ -31,7 +31,7 @@ Ninguno.
 
 ## Importantes y sugerencias
 - **[I-1]** `plan-card.spec.tsx`, `plan-comparison-table.spec.tsx`, `planes/page.spec.tsx`: sin `expectNoA11yViolations` (constitución, lista de cierre: axe). Agregarlo a la tarjeta, la tabla y la página (éxito y vacío). ✅ Atendido.
-- **[I-2]** Hacer commit de `spec.md` («En revisión») y `specs/README.md`. Antes de `Hecha`, Adrián decide PD-92. ✅ Commit hecho; PD-92 pendiente.
+- **[I-2]** Hacer commit de `spec.md` («En revisión») y `specs/README.md`. Antes de `Hecha`, Adrián decide PD-92. ✅ Commit hecho; PD-92 decidido por Adrián (2026-10-14): «Ver planes» espera a la 009.
 - **[S-1]** `plans-catalog.int-spec.ts`: caso con el repositorio sustituido para que falle → `500` `{ code: 'BILLING_PLAN_CATALOG_UNAVAILABLE', message, correlationId }`. ✅ Atendido.
 - **[S-2]** `billing.module.ts:16` exporta `TypeOrmModule`: que `BillingHttpModule` importe `TypeOrmModule.forFeature([PlanOrmEntity])` y `BillingModule` exporte solo `PlanLimitsAdapter`. ✅ Atendido.
 - **[S-3]** `plan-comparison-table.tsx:62`: quitar `hover:bg-muted/5` de filas que no se pueden pulsar. ✅ Atendido.
@@ -44,4 +44,4 @@ Ninguno.
 - Las pruebas nombran su CA y cubren límites: `slug` fuera de la semilla, descripción nula, empate de precio.
 
 ## DF y pendientes
-- DF-67 nuevo y reflejado en `design-model.md` (M4). PD-48 cerrado; PD-76 resuelto; PD-91 y PD-92 nuevos y abiertos (PD-92 tiene como compuerta el cierre de la 008).
+- DF-67 nuevo y reflejado en `design-model.md` (M4). PD-48 cerrado; PD-76 resuelto; PD-91 nuevo y abierto; PD-92 cerrado (espera a la 009).
