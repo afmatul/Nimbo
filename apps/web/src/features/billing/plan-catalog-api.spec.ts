@@ -36,12 +36,10 @@ describe('fetchPlanCatalog (008 CA-1, CA-3)', () => {
   it('CA-1: consulta el catálogo con el prefijo de la API sobre la URL interna', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ plans: [PERSONAL] }));
 
-    await expect(fetchPlanCatalog('http://api.internal:3000')).resolves.toEqual({
+    await expect(fetchPlanCatalog('http://internal.test')).resolves.toEqual({
       plans: [PERSONAL],
     });
-    expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
-      'http://api.internal:3000/api/v1/billing/plans',
-    );
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe('http://internal.test/api/v1/billing/plans');
   });
 
   it('CA-3: un 500 de la API se rechaza con su código', async () => {
@@ -52,7 +50,7 @@ describe('fetchPlanCatalog (008 CA-1, CA-3)', () => {
       ),
     );
 
-    await expect(fetchPlanCatalog('http://api.internal:3000')).rejects.toMatchObject({
+    await expect(fetchPlanCatalog('http://internal.test')).rejects.toMatchObject({
       code: 'BILLING_PLAN_CATALOG_UNAVAILABLE',
     });
   });
@@ -60,14 +58,12 @@ describe('fetchPlanCatalog (008 CA-1, CA-3)', () => {
   it('CA-3: un cuerpo fuera del contrato se rechaza', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ plans: [{ id: 'x' }] }));
 
-    await expect(fetchPlanCatalog('http://api.internal:3000')).rejects.toThrow();
+    await expect(fetchPlanCatalog('http://internal.test')).rejects.toThrow();
   });
 
   it('CA-3: la red caída se rechaza con el error genérico del cliente', async () => {
     fetchMock.mockRejectedValue(new TypeError('fetch failed'));
 
-    await expect(fetchPlanCatalog('http://api.internal:3000')).rejects.toBeInstanceOf(
-      ApiClientError,
-    );
+    await expect(fetchPlanCatalog('http://internal.test')).rejects.toBeInstanceOf(ApiClientError);
   });
 });

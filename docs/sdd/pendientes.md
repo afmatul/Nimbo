@@ -16,7 +16,7 @@ de eso se pierda entre ramas.
 - «Resolver antes de» es la compuerta que se bloquea si el pendiente sigue abierto. «—» significa que no bloquea nada.
 - `/status` y el `architect` revisan esta lista al cerrar cada fase.
 
-Última actualización: 2026-10-07.
+Última actualización: 2026-10-14.
 
 ## Diagramas por redibujar
 
@@ -67,6 +67,7 @@ decisiones; solo faltan los diagramas.
 | PD-80 | `SubscriptionAdministration` (billing, plan 011) cuenta a todo cliente como Personal y da «Personal» como plan de cada cliente, igual que `PlanLimitsAdapter.limitsFor`, porque aún no existe `suscripcion`. La 009 reemplaza esa regla en los dos lugares por la suscripción vigente (y decide qué plan muestra una cuenta sin verificar) | `apps/api/src/modules/billing/application/subscription-administration.ts`, `plan-limits.adapter.ts` | Plan 011, R-6 | Plan de 009 | Juan Marcos | Abierto |
 | PD-88 | Límite de tasa en las rutas públicas que consumen un token (`reset-password/check` y `reset-password` de 002, `account-setup/check` y `account-setup` de 011): hoy ninguna lo tiene (adivinar 256 bits no es viable), pero nada frena la saturación. Decidir si las cuatro usan juntas `IdentityIpThrottlerGuard`; la 011 no lo agrega sola para no apartarse de la 002 | Comentario de Adrián en el PR de la 011 (2026-10-08) | Spec 023 (carga y aislamiento) | Adrián | Abierto |
 | PD-91 | Una sola forma de mostrar bytes en la UI: `formatPlanBytes` (`apps/web/src/lib/format-plan.ts`, base 1024 como 006a RN-1, punto decimal) muestra la cuota de Personal como «15 GB» en `/planes`, y `formatBytes` de `packages/contracts/src/storage/format-bytes.ts` (base 1000, coma, `QuotaBar`) la muestra como «16,1 GB». Elegir base y separador y dejar un único formateador en `contracts` | Revisión de la 008 (I-3) | Cierre de la Fase 2 | Adrián con Juan Marcos | Abierto |
+| PD-92 | «Ver planes» sigue oculto en el aviso de cuota de la carga (005 CA-4, `upload-panel.tsx`, `error-catalog.ts`) y en «Tu plan» del Resumen de espacio (007 §6, `space-summary-view.tsx`, `sidebar-quota`): ambas specs lo dejaron oculto «hasta que exista la 008» y la 008 no lo enciende porque no es uno de sus CA. Decidir si se muestra ya hacia `/planes` (catálogo público de solo lectura) o espera a la 009, donde el usuario puede contratar; actualizar 005 CA-4 y 007 §6 y las pruebas que hoy afirman que no aparece | Revisión de la 008 (I-5) | Cierre de la 008 (`Hecha`) | Adrián (dueño de 005 y 007) con Juan Marcos (008, 009) | Abierto |
 
 ## Código y configuración
 

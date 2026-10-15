@@ -33,7 +33,7 @@ async function renderPage(): Promise<string> {
 describe('página de planes (008 CA-1, CA-2)', () => {
   beforeEach(() => {
     process.env['APP_ENV'] = 'test';
-    process.env['API_INTERNAL_URL'] = 'http://api.internal:3000';
+    process.env['API_INTERNAL_URL'] = 'http://internal.test';
     process.env['API_PUBLIC_URL'] = 'http://localhost/api/v1';
   });
 
@@ -43,7 +43,7 @@ describe('página de planes (008 CA-1, CA-2)', () => {
     await renderPage();
 
     expect(String(jest.mocked(global.fetch).mock.calls[0]?.[0])).toBe(
-      'http://api.internal:3000/api/v1/billing/plans',
+      'http://internal.test/api/v1/billing/plans',
     );
   });
 

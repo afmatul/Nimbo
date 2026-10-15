@@ -1,6 +1,6 @@
-import { Logger } from '@nestjs/common';
 import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
+import { PinoLogger } from 'nestjs-pino';
 import { QueryFailedError } from 'typeorm';
 
 import { PlanCatalogUnavailableError } from '../domain/errors/plan-catalog-unavailable.error';
@@ -13,6 +13,7 @@ import { PlanCatalogService } from './plan-catalog.service';
 describe('PlanCatalogService', () => {
   let service: PlanCatalogService;
   let repositoryMock: jest.Mocked<IPlanRepository>;
+  let loggerMock: { error: jest.Mock };
 
   const mockPlans: PlanSummary[] = [
     {
@@ -47,6 +48,7 @@ describe('PlanCatalogService', () => {
     repositoryMock = {
       findAll: jest.fn(),
     } as unknown as jest.Mocked<IPlanRepository>;
+    loggerMock = { error: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -55,6 +57,7 @@ describe('PlanCatalogService', () => {
           provide: I_PLAN_REPOSITORY,
           useValue: repositoryMock,
         },
+        { provide: PinoLogger, useValue: loggerMock },
       ],
     }).compile();
 
@@ -78,33 +81,28 @@ describe('PlanCatalogService', () => {
     expect(result).toEqual([]);
   });
 
-  it('CA-3: una consulta fallida se traduce a PlanCatalogUnavailableError', async () => {
+  it('CA-3: propaga PlanCatalogUnavailableError y la bitácora solo lleva el evento y el tipo de error', async () => {
     repositoryMock.findAll.mockRejectedValue(
-      new QueryFailedError('SELECT * FROM plan', [], new Error('DB Error')),
-    );
-
-    await expect(service.list()).rejects.toThrow(PlanCatalogUnavailableError);
-  });
-
-  it('CA-3: con la base caída también responde PlanCatalogUnavailableError', async () => {
-    repositoryMock.findAll.mockRejectedValue(new Error('connect ECONNREFUSED 127.0.0.1:5432'));
-
-    await expect(service.list()).rejects.toThrow(PlanCatalogUnavailableError);
-  });
-
-  it('CA-3: la bitácora solo lleva el evento y el tipo de error, sin el mensaje ni el SQL', async () => {
-    const logError = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
-    repositoryMock.findAll.mockRejectedValue(
-      new QueryFailedError('SELECT * FROM plan', [], new Error('DB Error')),
+      new PlanCatalogUnavailableError(
+        new QueryFailedError('SELECT * FROM plan', [], new Error('DB Error')),
+      ),
     );
 
     await expect(service.list()).rejects.toThrow(PlanCatalogUnavailableError);
 
-    expect(logError).toHaveBeenCalledWith({
+    expect(loggerMock.error).toHaveBeenCalledWith({
       event: 'billing.plan_catalog_unavailable',
       code: 'BILLING_PLAN_CATALOG_UNAVAILABLE',
       errorName: 'QueryFailedError',
     });
-    logError.mockRestore();
+  });
+
+  it('plan §5: un error de programación sigue intacto al filtro global y no se registra como CA-3', async () => {
+    const defect = new TypeError("Cannot read properties of undefined (reading 'slug')");
+    repositoryMock.findAll.mockRejectedValue(defect);
+
+    await expect(service.list()).rejects.toBe(defect);
+
+    expect(loggerMock.error).not.toHaveBeenCalled();
   });
 });

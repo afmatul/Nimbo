@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import type { IPlanRepository } from '../../application/i-plan-repository';
+import { PlanCatalogUnavailableError } from '../../domain/errors/plan-catalog-unavailable.error';
 import type { PlanSummary } from '../../domain/plan-summary';
 
 import { PlanOrmEntity } from './plan.orm-entity';
@@ -28,9 +29,16 @@ export class TypeOrmPlanRepository implements IPlanRepository {
     private readonly repository: Repository<PlanOrmEntity>,
   ) {}
 
-  /** Orden de RN-2: precio ascendente y, en empate, `slug`. */
+  /**
+   * Orden de RN-2: precio ascendente y, en empate, `slug`. Solo la consulta se traduce a CA-3; un fallo del mapeo es
+   * un defecto y sigue como está (plan 008 §5).
+   */
   async findAll(): Promise<PlanSummary[]> {
-    const entities = await this.repository.find({ order: { precioCentavos: 'ASC', slug: 'ASC' } });
+    const entities = await this.repository
+      .find({ order: { precioCentavos: 'ASC', slug: 'ASC' } })
+      .catch((error: unknown) => {
+        throw new PlanCatalogUnavailableError(error);
+      });
     return entities.map(toSummary);
   }
 }

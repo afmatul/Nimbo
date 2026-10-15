@@ -2,7 +2,7 @@ import { planCatalogResponseSchema } from '@nimbo/contracts';
 import type { PlanCatalogResponse } from '@nimbo/contracts';
 import request from 'supertest';
 
-import { BillingModule } from '../../../src/modules/billing';
+import { BillingHttpModule } from '../../../src/modules/billing';
 import { I_CLOCK, Role } from '../../../src/shared';
 import type { FixedClock } from '../../../src/shared';
 import { TestAccessTokens } from '../../support/test-access-tokens';
@@ -33,7 +33,7 @@ describe('GET /api/v1/billing/plans contra la semilla de la 006a (008 CA-1)', ()
   let tokens: TestAccessTokens;
 
   beforeAll(async () => {
-    testApp = await createTestApp({ modules: [BillingModule] });
+    testApp = await createTestApp({ modules: [BillingHttpModule] });
     tokens = new TestAccessTokens(testApp.app.get<FixedClock>(I_CLOCK));
   });
 

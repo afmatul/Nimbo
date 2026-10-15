@@ -86,7 +86,7 @@ describe('PlansController', () => {
   });
 
   it('CA-3: propaga PlanCatalogUnavailableError sin transformarlo', async () => {
-    service.list.mockRejectedValue(new PlanCatalogUnavailableError());
+    service.list.mockRejectedValue(new PlanCatalogUnavailableError(new Error('db down')));
 
     await expect(controller.getPlans()).rejects.toBeInstanceOf(PlanCatalogUnavailableError);
   });
