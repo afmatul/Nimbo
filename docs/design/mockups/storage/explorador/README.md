@@ -61,7 +61,7 @@ la app los límites vienen de `PlanLimits` por la API; los del mockup son de eje
 - **Pantalla de 005**: «Mis archivos» es la raíz (RN-4). Solo vista de lista con Nombre, Tamaño, Modificado y una
   columna de acciones sin título visible («Acciones» para lectores de pantalla): sin carpetas en el contenido, sin
   migas de carpeta, sin columna «Autor», «Personas» ni «Indexación», sin selector Tarjetas/Lista, sin búsqueda y sin
-  «Ver planes» (se oculta hasta 008). Las entradas de la carga son el botón «Subir archivos» del encabezado y
+  «Ver planes» (se oculta hasta 009). Las entradas de la carga son el botón «Subir archivos» del encabezado y
   arrastrar y soltar.
 - **vacio**: reproduce `StateView type="empty"` de 000b (borde discontinuo `border`, fondo `card`, alto mínimo de
   224 px, ícono `FolderOpen` de 40 px en `muted-foreground`, título, descripción de 384 px como máximo y un botón
@@ -379,7 +379,7 @@ los 6 estados: axe-core sin violaciones a 360 y 1440 px, sin desbordamiento a 36
   La web (T-11) ya la implementa: el primer clic ordena «Nombre» de la A a la Z y «Tamaño» y «Modificado» de mayor o
   más reciente a menor; un segundo clic en la columna activa invierte la dirección.
 - **Navegación**: en los estados de 007 el ítem «Espacio» reemplaza a «Plan y facturación» (decisión e del resumen de
-  espacio, hasta 008).
+  espacio, hasta 009).
 - **Cuatro campos de orden** (CA-10): Nombre, Tamaño, Fecha de modificación y Fecha de creación (`created`), cada uno
   ascendente o descendente.
 - **Textos de la dirección según el campo**: Nombre «A–Z» / «Z–A»; Tamaño «Menor primero» / «Mayor primero»; las dos

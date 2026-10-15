@@ -1,16 +1,13 @@
 import type { JSX } from 'react';
 
 import { RadioGroup } from '../../../components/ui/radio-group';
+import { formatQuetzales } from '../../../lib/format-plan';
 
 export interface CatalogPlan {
   readonly id: string;
   readonly name: string;
   readonly priceCents: number;
   readonly free: boolean;
-}
-
-function formatPrice(priceCents: number): string {
-  return `Q${(priceCents / 100).toFixed(2)}`;
 }
 
 const UNAVAILABLE = 'No pudimos cargar los planes; tu cuenta empezará en Personal.';
@@ -39,7 +36,7 @@ export function PlanPicker({
       legend="Plan"
       options={plans.map((plan) => ({
         value: plan.id,
-        label: `${plan.name} · ${formatPrice(plan.priceCents)}`,
+        label: `${plan.name} · ${formatQuetzales(plan.priceCents)}`,
       }))}
       value={selected ?? ''}
       onValueChange={onChange}

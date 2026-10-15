@@ -22,7 +22,7 @@ function respond(url: string): Promise<Response> {
 describe('página Mi actividad (/actividad)', () => {
   beforeEach(() => {
     process.env['APP_ENV'] = 'test';
-    process.env['API_INTERNAL_URL'] = 'http://localhost:3000/api/v1';
+    process.env['API_INTERNAL_URL'] = 'http://localhost:3000';
     process.env['API_PUBLIC_URL'] = API;
     global.fetch = jest.fn((input: Parameters<typeof fetch>[0]) => respond(String(input)));
   });

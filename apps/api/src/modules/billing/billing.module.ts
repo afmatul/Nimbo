@@ -5,8 +5,9 @@ import { PlanLimitsAdapter } from './infrastructure/adapters/plan-limits.adapter
 import { PlanOrmEntity } from './infrastructure/persistence/plan.orm-entity';
 
 /**
- * M4, spec 006a. Registra el catálogo y exporta el adaptador. El token `I_PLAN_LIMITS_PROVIDER`
- * lo enlaza la raíz de composición (`PlanLimitsBindingModule`), no este módulo: `storage` no conoce a `billing`.
+ * M4, spec 006a. Exporta solo `PlanLimitsAdapter`.
+ * Sin catálogo ni controladores: el `worker` lo carga y no publica rutas. El token `I_PLAN_LIMITS_PROVIDER` lo enlaza
+ * la raíz de composición (`PlanLimitsBindingModule`): `storage` no conoce a `billing`.
  */
 @Module({
   imports: [TypeOrmModule.forFeature([PlanOrmEntity])],

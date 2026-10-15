@@ -9,7 +9,7 @@ jest.mock('next/navigation', () => ({
 describe('layout del grupo (app)', () => {
   beforeEach(() => {
     process.env['APP_ENV'] = 'test';
-    process.env['API_INTERNAL_URL'] = 'http://localhost:3000/api/v1';
+    process.env['API_INTERNAL_URL'] = 'http://localhost:3000';
     process.env['API_PUBLIC_URL'] = 'http://localhost/api/v1';
   });
 

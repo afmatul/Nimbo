@@ -171,7 +171,7 @@ function sessionsCard(): HTMLElement {
 
 beforeEach(() => {
   process.env['APP_ENV'] = 'test';
-  process.env['API_INTERNAL_URL'] = 'http://localhost:3000/api/v1';
+  process.env['API_INTERNAL_URL'] = 'http://localhost:3000';
   process.env['API_PUBLIC_URL'] = API;
   fetchMock.mockReset();
   replace.mockReset();
