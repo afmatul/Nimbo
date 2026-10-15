@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | En curso (T-01 iniciada antes de la aprobación final del plan) |
+| Estado | En curso (plan aprobado por Adrián el 2026-10-15) |
 | Dueño | Juan Marcos |
 | Fase | 2 |
 | Requisitos | RF-20, RF-21, RNF-05, RNF-06, RNF-13, RNF-14 |
@@ -31,7 +31,7 @@ Permitir a los clientes contratar un plan con pago simulado, recibir su comproba
 - **CA-9** (HU-2, RF-20) Dadas las tarjetas de plan de pago de `/planes` (008), cuando se muestran, entonces cada una trae el botón «Contratar», que lleva a `/planes/contratar?slug={slug}` con el `slug` de la respuesta de la 008. Las tarjetas de un plan gratuito no lo traen.
 
 ## 4. Reglas de negocio
-- **RN-1** Dinero en centavos enteros (`integer`, GTQ) y tamaños en bytes (`bigint`, texto decimal en JSON) (ADR-0016). El formato `Qxx.xx` es solo de `web`.
+- **RN-1** Dinero en centavos enteros (`integer`, GTQ) y tamaños en bytes (`bigint`, texto decimal en JSON) (ADR-0016). El formato `Qxx.xx` lo da una sola función, `formatGtq(cents)` en `packages/contracts`, que usan la factura PDF y `web` (ADR-0028).
 - **RN-2** El precio de catálogo ya incluye IVA (12 %). El subtotal es `precio × 100 / 112` en aritmética entera, redondeado al centavo (mitades hacia arriba); el IVA es `precio − subtotal`. Equipo: 11 000 → subtotal 9 821, IVA 1 179, total 11 000. Personal no cobra ni factura. El desglose se calcula en una sola función pura, `breakdown(priceCents)`, en `packages/contracts`, que usan la API y el formulario.
 - **RN-3** `4242 4242 4242 4242` aprueba siempre y `4000 0000 0000 0002` rechaza siempre: el simulador es determinista. Solo se guarda la marca y los últimos 4 dígitos.
 - **RN-4** Un plan de pago dura 30 días desde el pago (`vence_en`). Personal no vence.
@@ -91,3 +91,4 @@ Permitir a los clientes contratar un plan con pago simulado, recibir su comproba
 | 2026-10-14 | RN-9 fija la forma de los datos de pago (tarjeta de 16 dígitos, NIT `CF` o de 5 a 12 dígitos) y CA-5 la usa; se cierra la pregunta de PD-80; se redacta `number` | Cuarta revisión de la 009 (I-7, I-8) | Pendiente Adrián |
 | 2026-10-14 | §5: solo el Administrador conoce el nombre del plan de un cliente; el Operador, solo conteos (como plan §3 y ADR-0021) | Quinta revisión de la 009 (N-1) | Pendiente Adrián |
 | 2026-10-14 | `SubscriptionAdministration` la crea esta spec (T-03) sin `clientCount`; la T-09 de la 011 solo aporta el catálogo y depende de la T-01 (`plan-slug.ts`) | Acuerdo con Fátima sobre `arreglos-011.md` (puntos 1–6, 8 y 9) | Pendiente Adrián |
+| 2026-10-15 | RN-1: el formato `Qxx.xx` sale de `formatGtq` en `contracts` (PDF y `web`) | Aprobación de Adrián sobre `propose.md` y ADR-0028 | Adrián |

@@ -14,10 +14,10 @@
 | 1 | Sacar `SubscriptionAdministration` de la T-09 | `tasks.md` (T-09) | Fátima | **Aceptado**; la T-09 ya no la crea, la crea la 009 T-03 |
 | 2 | Quitar `clientCount` de `clientCountsByPlan` | `plan.md` §2 | Fátima | **Aceptado**: `clientCountsByPlan(actor)` |
 | 3 | Fijar los tipos de retorno de `SubscriptionAdministration` | `plan.md` §2 | Juan Marcos y Fátima | **Aceptado**; se implementan en la 009 T-03 |
-| 4 | Métricas: los clientes sin suscripción no cuentan en ningún plan | `plan.md` (R-6), `spec.md` CA-12 | Fátima (Adrián confirma) | **Aceptado** por Fátima |
+| 4 | Métricas: los clientes sin suscripción no cuentan en ningún plan | `plan.md` (R-6), `spec.md` CA-12 | Fátima y Adrián | **Aceptado** por Fátima y confirmado por Adrián (2026-10-15) |
 | 5 | Pasar las pruebas `accounts` y `metrics` con suscripciones reales a la T-10 | `tasks.md` (T-10) | Fátima | Pendiente |
 | 6 | `PERSONAL_PLAN_SLUG` en un solo archivo | `billing/domain/plan-slug.ts` | Juan Marcos | **Aceptado**: lo crea la 009 T-01 y la T-09 de la 011, que depende de ella, le suma `slugFromName` |
-| 7 | `IAccountDirectoryRepository` tiene un método nuevo | — | Adrián | Hecho en la 009 T-02; `listVerifiedClientIds` queda nombrado solo en el plan de la 009 (la 011 no lo usa). `IdentityReadersModule` (antes `IdentityWorkerModule`; desde la T-06 también publica `AccountContactReader` en el `api`) lo autoriza Adrián (dueño de `identity`) |
+| 7 | `IAccountDirectoryRepository` tiene un método nuevo | — | Adrián | Hecho en la 009 T-02; `listVerifiedClientIds` queda nombrado solo en el plan de la 009 (la 011 no lo usa). `IdentityReadersModule` (antes `IdentityWorkerModule`; desde la T-06 también publica `AccountContactReader` en el `api`) **autorizado por Adrián** (2026-10-15) |
 | 8 | Pruebas de la 011 ajustadas por la 009 | varias | Fátima | **Aceptado** |
 | 9 | `i-plan-repository.ts` se mueve a `application/ports/` | `tasks.md` (T-09) | Juan Marcos | **Aceptado** y hecho en la T-09 |
 | 10 | Método de `billing` que liste **todos** los planes (activos o no) para CA-8 | `plan.md` §2 | Juan Marcos, a pedido de Fátima (T-11) | Pendiente: la T-09 no lo agregó (YAGNI, sin consumidor) |

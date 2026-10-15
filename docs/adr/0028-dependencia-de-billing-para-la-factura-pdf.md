@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Propuesto (2026-10-14) |
+| Estado | Aceptado (2026-10-15, Adrián); propuesto el 2026-10-14 |
 | Fecha | 2026-10-14 |
 | Decisores | Adrián (architect), Juan Marcos (dueño de la 009) |
 | Specs relacionadas | 009 (T-07, CA-6; plan §7 «PDF pesado en memoria») |
@@ -161,3 +161,10 @@ Aislamiento (Art. IV D, Art. VIII):
 
   En los primeros cuatro casos se pasa a `pdfmake` (opción 3), que reutiliza el mismo motor, cambiando solo el
   adaptador. Si `pdfkit` deja de mantenerse, se vuelve a evaluar `pdf-lib`.
+
+## Aceptación (2026-10-15)
+
+Adrián acepta `pdfkit` para generar la factura de `billing`, que no estaba contemplada en las dependencias de las
+fundaciones: es el único uso autorizado, detrás de `IInvoiceGenerator` y solo en `pdf-invoice-generator.ts`. Acepta
+también una sola función `formatGtq(cents)` en `packages/contracts`, junto a `breakdown`, para los montos del PDF y de
+`web`; la spec 009 corrige RN-1 en consecuencia antes del código de la T-07.

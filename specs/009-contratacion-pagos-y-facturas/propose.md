@@ -1,5 +1,9 @@
 # Propuesta para Adrián — Spec 009 (contratación, pagos y facturas)
 
+> **Respuesta de Adrián (15/10/2026): aprueba los seis puntos.** Punto 2: `pdfkit` solo para la factura, con su ADR
+> (ADR-0028, ya Aceptado). Punto 3: solo `exports: [I_OBJECT_STORAGE]` en `StorageModule.forRoot`, **sin** `global: true`;
+> `billing` importa `StorageModule.forRoot(env)` de forma explícita. Registrado en `plan.md` §8.
+
 > De: Juan Marcos · Fecha: 14/10/2026 · Rama: `feat/009-contratacion-pagos-y-facturas` (último commit `b28e8b7`).
 > Pido tu decisión sobre seis puntos. Cada uno dice qué propongo, por qué y qué desbloquea. Si respondes «sí» a la
 > recomendación, lo aplico tal cual y lo registro en `plan.md` §8.
