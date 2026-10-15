@@ -184,7 +184,7 @@ function medidor(d) {
           </section>`;
 }
 
-// Plan: nombre y límites (CA-6). Sin precio, sin «Ampliar» y sin «Ver planes» (oculto hasta 008, spec 007 §6).
+// Plan: nombre y límites (CA-6). Sin precio, sin «Ampliar» y sin «Ver planes» (oculto hasta 009, spec 007 §6).
 function plan() {
   return `
           <section class="card" aria-labelledby="plan-t">
