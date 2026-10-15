@@ -1,10 +1,13 @@
-import { DataSource } from 'typeorm';
+import type { DataSource } from 'typeorm';
 
 import type { Actor } from '../../../src/shared';
-import { buildDataSourceOptions, createActor, Role } from '../../../src/shared';
-import { connectAsOwner, requiredEnv } from '../../support/database-urls';
+import { createActor, Role } from '../../../src/shared';
+import { connectAsOwner } from '../../support/database-urls';
 import type { AppDatabase } from '../storage/storage-test-db';
 import { connectAsAppDatabase, insertAccount, removeAccounts } from '../storage/storage-test-db';
+
+import { createFreshDatabase, revertFrom, rlsOf, tableExists } from './billing-test-db';
+import type { FreshDatabase } from './billing-test-db';
 
 const SUBSCRIPTION_MIGRATION = 'CrearSuscripcion20261014100000';
 
@@ -47,15 +50,10 @@ describe('migración crear-suscripcion: RLS del dueño (spec 009 CA-1, RNF-05)',
   });
 
   it('CA-1: `suscripcion` tiene RLS habilitada y forzada con una sola política, la del cliente', async () => {
-    const [rls] = (await owner.query(
-      "SELECT relrowsecurity AS enabled, relforcerowsecurity AS forced FROM pg_class WHERE oid = 'suscripcion'::regclass",
-    )) as { enabled: boolean; forced: boolean }[];
-    const policies = (await owner.query(
-      "SELECT policyname FROM pg_policies WHERE tablename = 'suscripcion'",
-    )) as { policyname: string }[];
-
-    expect(rls).toEqual({ enabled: true, forced: true });
-    expect(policies).toEqual([{ policyname: 'suscripcion_cliente' }]);
+    await expect(rlsOf(owner, 'suscripcion')).resolves.toEqual({
+      forced: true,
+      policies: [{ policyname: 'suscripcion_cliente', cmd: 'ALL' }],
+    });
   });
 
   it('RNF-05: un cliente solo ve su suscripción', async () => {
@@ -90,55 +88,24 @@ describe('migración crear-suscripcion: RLS del dueño (spec 009 CA-1, RNF-05)',
 });
 
 describe('cierre de la migración de suscripción: `revert` y `run` sobre una base vacía (RNF-10)', () => {
-  const databaseName = `nimbo_suscripcion_${String(process.pid)}_${String(Date.now())}`;
-  let owner: DataSource;
-  let fresh: DataSource;
-
-  const tableExists = async (): Promise<boolean> => {
-    const [row] = (await fresh.query("SELECT to_regclass('suscripcion')::text AS tabla")) as {
-      tabla: string | null;
-    }[];
-    return row?.tabla !== null;
-  };
+  let fresh: FreshDatabase;
 
   beforeAll(async () => {
-    owner = await connectAsOwner();
-    await owner.query(`CREATE DATABASE ${databaseName}`);
-    const url = new URL(requiredEnv('DATABASE_MIGRATION_URL'));
-    url.pathname = `/${databaseName}`;
-    fresh = await new DataSource(
-      buildDataSourceOptions({ DATABASE_URL: url.toString() }),
-    ).initialize();
-    await fresh.runMigrations({ transaction: 'each' });
+    fresh = await createFreshDatabase('nimbo_suscripcion');
   });
 
   afterAll(async () => {
-    await fresh?.destroy();
-    await owner?.query(`DROP DATABASE IF EXISTS ${databaseName} WITH (FORCE)`);
-    await owner?.destroy();
+    await fresh?.drop();
   });
 
-  /** La de suscripción y las posteriores: para revertirla hay que revertir antes las que vinieron después. */
-  const fromSubscription = async (): Promise<string[]> => {
-    const applied = (
-      (await fresh.query('SELECT name FROM migracion ORDER BY id')) as {
-        name: string;
-      }[]
-    ).map((row) => row.name);
-    return applied.slice(applied.indexOf(SUBSCRIPTION_MIGRATION));
-  };
-
   it('RNF-10: `down` elimina la tabla y su política, y `up` la vuelve a crear', async () => {
-    const reverted = await fromSubscription();
+    const reverted = await revertFrom(fresh.dataSource, SUBSCRIPTION_MIGRATION);
+
     expect(reverted[0]).toBe(SUBSCRIPTION_MIGRATION);
+    expect(await tableExists(fresh.dataSource, 'suscripcion')).toBe(false);
 
-    for (const _ of reverted) {
-      await fresh.undoLastMigration({ transaction: 'each' });
-    }
-    expect(await tableExists()).toBe(false);
-
-    const rerun = await fresh.runMigrations({ transaction: 'each' });
+    const rerun = await fresh.dataSource.runMigrations({ transaction: 'each' });
     expect(rerun.map((migration) => migration.name)).toEqual(reverted);
-    expect(await tableExists()).toBe(true);
+    expect(await tableExists(fresh.dataSource, 'suscripcion')).toBe(true);
   });
 });

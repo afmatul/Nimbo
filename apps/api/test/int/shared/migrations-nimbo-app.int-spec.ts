@@ -8,6 +8,7 @@ import { RlsCarpetaYPurgaDePapelera20261001100200 } from '../../../src/migration
 import { CrearAccesoRapido20261003100000 } from '../../../src/migrations/20261003100000-crear-acceso-rapido';
 import { CrearEventoAuditoria20261005100000 } from '../../../src/migrations/20261005100000-crear-evento-auditoria';
 import { CrearSuscripcion20261014100000 } from '../../../src/migrations/20261014100000-crear-suscripcion';
+import { CrearTransaccion20261014100100 } from '../../../src/migrations/20261014100100-crear-transaccion';
 import { buildDataSourceOptions } from '../../../src/shared';
 
 const APP_ROLE = 'nimbo_app';
@@ -160,6 +161,7 @@ describe('migración crear-funciones-de-actor (CA-12)', () => {
     const migration = new CrearFuncionesDeActor20260928110100();
     /** Las políticas RLS de 009, 004, 006 y 005 usan las funciones: se revierten antes, como en un `migration:revert` en orden. */
     const dependents = [
+      new CrearTransaccion20261014100100(),
       new CrearSuscripcion20261014100000(),
       new CrearEventoAuditoria20261005100000(),
       new CrearAccesoRapido20261003100000(),

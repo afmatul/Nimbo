@@ -19,3 +19,4 @@ export type { InternalRoleName, RoleName, SharedErrorCode } from './shared';
 export * from './storage';
 export * from './audit';
 export * from './backoffice';
+export * from './billing';
