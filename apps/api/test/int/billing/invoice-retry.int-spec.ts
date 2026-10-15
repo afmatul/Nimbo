@@ -30,7 +30,7 @@ const RETRY_INTERVAL_MINUTES = '1440';
  * la factura queda sin PDF; el `worker` (`BillingWorkerModule` con la misma instancia de `StorageWorkerModule`) la
  * repone con `facturas_pendientes_de_emitir` y la sube a MinIO.
  */
-describe('reintento de facturas sin PDF (spec 009 CA-6, T-07)', () => {
+describe('reintento de facturas sin PDF ni aviso (spec 009 CA-6, T-07 y T-08)', () => {
   let api: TestApp;
   let worker: TestApp;
   let owner: DataSource;
@@ -126,5 +126,30 @@ describe('reintento de facturas sin PDF (spec 009 CA-6, T-07)', () => {
     await worker.app.get(InvoiceRetrier).retryPending();
 
     await expect(objectKeyOf(carla)).resolves.toBeNull();
+  });
+
+  it('CA-6, T-08: el reintento también entrega el aviso pendiente, una sola vez', async () => {
+    const dana = await subscribeWithoutPdf();
+    await owner.query(
+      `UPDATE factura SET creado_en = now() - interval '2 minutes' WHERE usuario_id = $1`,
+      [dana],
+    );
+    const retrier = worker.app.get(InvoiceRetrier);
+    const noticeOf = async (): Promise<Date | null> => {
+      const [row] = (await owner.query(
+        'SELECT aviso_encolado_en FROM factura WHERE usuario_id = $1',
+        [dana],
+      )) as {
+        aviso_encolado_en: Date | null;
+      }[];
+      return row?.aviso_encolado_en ?? null;
+    };
+
+    await retrier.retryPending();
+    const first = await noticeOf();
+    await retrier.retryPending();
+
+    expect(first).toBeInstanceOf(Date);
+    await expect(noticeOf()).resolves.toEqual(first);
   });
 });

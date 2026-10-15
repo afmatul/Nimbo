@@ -5,6 +5,7 @@ import type { z } from 'zod';
 
 import type { workerEnvSchema } from '../../shared';
 import { IdentityReadersModule } from '../identity';
+import { NotificationsWorkerModule } from '../notifications';
 
 import { InvoiceIssuer } from './application/invoice-issuer';
 import { InvoiceRetrier } from './application/invoice-retrier';
@@ -60,6 +61,7 @@ export class BillingWorkerModule {
       imports: [
         BillingModule,
         IdentityReadersModule,
+        NotificationsWorkerModule,
         storage,
         BullModule.registerQueue(
           { name: SUBSCRIPTION_RECONCILE_QUEUE },

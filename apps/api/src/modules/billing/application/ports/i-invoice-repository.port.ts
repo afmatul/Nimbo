@@ -3,10 +3,12 @@ import type { Invoice, InvoiceDraft } from '../../domain/entities/invoice.entity
 
 import type { InvoiceDocument } from './i-invoice-generator.port';
 
-/** Una factura lista para emitir: su clave de objeto (nula hasta que el PDF exista) y lo que imprime. */
+/** Una factura lista para emitir: su pago, su PDF y su aviso (nulos hasta que existan) y lo que imprime. */
 export interface IssuableInvoice {
   readonly id: string;
+  readonly paymentId: string;
   readonly objectKey: string | null;
+  readonly noticeQueuedAt: Date | null;
   readonly document: InvoiceDocument;
 }
 
@@ -21,6 +23,8 @@ export interface IInvoiceRepository {
   findForIssue(actor: Actor, invoiceId: string): Promise<IssuableInvoice | null>;
   /** T-07: guarda la clave del PDF solo si aún no tenía (idempotente). */
   markStored(actor: Actor, invoiceId: string, objectKey: string): Promise<void>;
+  /** T-08: marca que el aviso se entregó a `INotifier`, solo si aún no estaba (idempotente). */
+  markNoticeQueued(actor: Actor, invoiceId: string): Promise<void>;
 }
 
 export const I_INVOICE_REPOSITORY = Symbol('IInvoiceRepository');

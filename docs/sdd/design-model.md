@@ -208,7 +208,7 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
   - `MailProcessor` («processor», en el `worker») entrega con `SmtpTransport`, un envoltorio de nodemailer, y aplica la idempotencia: marca en Redis y `Message-ID` determinista (ADR-0018);
   - `MailMessage` = `{ to, subject, text, html, idempotencyKey, tag, recipientId? }`;
   - el destino SMTP es Mailpit en local y el SMTP de Resend en staging (001 D-12). Solo el `worker` tiene las credenciales SMTP;
-  - `INotifier` → implementación de `notifications`; nombre y canales en el plan de la spec de `billing` que la use primero.
+  - `INotifier` → `MailNotifier` (spec 009): único canal el correo, delega en `IMailer` con el mismo `MailMessage` y la clave `billing.receipt.<transaccion_id>`.
 - Módulos NestJS: `NotificationsModule` (`api`: registra la cola y provee `I_MAILER`) y `NotificationsWorkerModule` (`worker`: procesador y transporte).
 - Depende de: `shared` y `realtime` (para publicar en la sala del usuario). Es la única arista entre transversales (ADR-0010).
 - Tabla: `notificacion`. La crea la primera spec con notificaciones dentro de la aplicación: la 001 no la crea (su §12) y la cola `mail` no la usa (ADR-0018).

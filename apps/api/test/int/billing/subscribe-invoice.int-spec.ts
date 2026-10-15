@@ -1,10 +1,13 @@
 import { randomUUID } from 'node:crypto';
 
 import { GetObjectCommand } from '@aws-sdk/client-s3';
+import { getQueueToken } from '@nestjs/bullmq';
 import { TEST_CARDS } from '@nimbo/contracts';
+import type { Queue } from 'bullmq';
 import request from 'supertest';
 import type { DataSource } from 'typeorm';
 
+import { MAIL_QUEUE } from '../../../src/modules/notifications';
 import { createActor, FixedClock, Role } from '../../../src/shared';
 import { connectAsOwner, requiredEnv } from '../../support/database-urls';
 import { PROBE_CLOCK_START } from '../../support/probe.module';
@@ -93,7 +96,7 @@ describe('factura dentro del cobro (spec 009 CA-6)', () => {
     return row.id;
   };
 
-  it('CA-6, RN-2: un pago aprobado deja su factura NB- con el desglose, el NIT, el correo y su PDF, sin aviso todavía', async () => {
+  it('CA-6, RN-2: un pago aprobado deja su factura NB- con el desglose, el NIT, el correo, su PDF y el aviso entregado', async () => {
     const ana = await subscribe(TEST_CARDS.approved);
 
     const [invoice] = await invoicesOf(ana);
@@ -108,7 +111,21 @@ describe('factura dentro del cobro (spec 009 CA-6)', () => {
       clave_objeto: expect.stringMatching(
         new RegExp(`^invoices/${ana}/[0-9a-f-]{36}\\.pdf$`),
       ) as unknown,
-      aviso_encolado_en: null,
+      aviso_encolado_en: expect.any(Date) as unknown,
+    });
+  });
+
+  it('CA-6, T-08: el comprobante queda en la cola `mail` con la clave `billing.receipt.<transacción>`', async () => {
+    const ana = await subscribe(TEST_CARDS.approved);
+    const paymentId = await paymentOf(ana);
+    const mail = testApp.app.get<Queue>(getQueueToken(MAIL_QUEUE));
+
+    const job = await mail.getJob(`billing.receipt.${paymentId}`);
+
+    expect(job?.data).toMatchObject({
+      to: `storage.${ana}@ejemplo.com`,
+      tag: 'billing.receipt',
+      recipientId: ana,
     });
   });
 

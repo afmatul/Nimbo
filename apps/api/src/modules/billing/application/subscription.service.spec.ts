@@ -38,7 +38,7 @@ const setup = (
   const outcome = {
     payment: { id: 'pago-1', status } as Payment,
     plan: TEAM,
-    invoiceId: status === 'aprobada' ? 'factura-1' : null,
+    invoice: status === 'aprobada' ? { id: 'factura-1' } : null,
   } as SubscribeOutcome;
   const checkout = {
     checkout: jest.fn(() => {
@@ -114,7 +114,7 @@ describe('SubscriptionService.subscribe (spec 009 CA-5, RN-8; plan §2 y §5)', 
     const { service, logger } = setup({ issueFails: true });
 
     await expect(service.subscribe(ANA, COMMAND)).resolves.toMatchObject({
-      invoiceId: 'factura-1',
+      invoice: { id: 'factura-1' },
     });
     expect(logger.error).toHaveBeenCalledWith({
       event: 'billing.invoice_issue_failed',

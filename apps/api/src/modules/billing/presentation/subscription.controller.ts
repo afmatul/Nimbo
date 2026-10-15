@@ -10,18 +10,22 @@ import { PaymentRejectedError } from '../domain/errors/payment-rejected.error';
 
 import { billingValidationError } from './billing-validation';
 
-/** Lista blanca del contrato (CA-3): referencia, plan, vencimiento y el desglose de RN-2 en centavos. */
+/** Lista blanca del contrato (CA-3, CA-6): referencia, plan, vencimiento, desglose de RN-2 y correo del comprobante. */
 const toSubscribeResponse = ({
   payment,
   plan,
   subscription,
+  invoice,
 }: SubscribeOutcome): SubscribeResponse => {
-  if (subscription.expiresAt === null) throw new Error('Un plan de pago siempre vence (RN-4).');
+  if (subscription.expiresAt === null || invoice === null) {
+    throw new Error('Un pago aprobado siempre vence (RN-4) y tiene factura (CA-6).');
+  }
   return {
     reference: payment.reference,
     plan: { slug: plan.slug, name: plan.name },
     expiresAt: subscription.expiresAt.toISOString(),
     amounts: breakdown(plan.priceCents),
+    receiptEmail: invoice.receiptEmail,
   };
 };
 

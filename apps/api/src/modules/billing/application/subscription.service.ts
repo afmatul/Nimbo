@@ -42,7 +42,7 @@ export class SubscriptionService {
       paymentId: outcome.payment.id,
       planId: outcome.plan.id,
     });
-    if (outcome.invoiceId !== null) await this.issueAfterCommit(actor, outcome.invoiceId);
+    if (outcome.invoice !== null) await this.issueAfterCommit(actor, outcome.invoice.id);
     return outcome;
   }
 

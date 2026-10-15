@@ -77,7 +77,7 @@ describe('SubscriptionCheckout (spec 009 CA-3 a CA-6, RN-8; plan §2)', () => {
       planId: TEAM.id,
       expiresAt: new Date('2026-11-13T12:00:00.000Z'),
     });
-    expect(outcome.invoiceId).toBe('factura-1');
+    expect(outcome.invoice).toMatchObject({ id: 'factura-1' });
   });
 
   it('CA-6: la factura lleva el pago y el NIT del cobro', async () => {
@@ -99,7 +99,7 @@ describe('SubscriptionCheckout (spec 009 CA-3 a CA-6, RN-8; plan §2)', () => {
 
     expect(journal).toEqual(['personal', 'lock', 'charge:rechazada']);
     expect(outcome.subscription.planSlug).toBe('personal');
-    expect(outcome.invoiceId).toBeNull();
+    expect(outcome.invoice).toBeNull();
   });
 
   it('CA-5: un plan inexistente es `BILLING_PLAN_NOT_AVAILABLE` sin cobrar', async () => {

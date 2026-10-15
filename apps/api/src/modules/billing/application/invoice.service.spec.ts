@@ -31,6 +31,7 @@ const setup = () => {
     }),
     findForIssue: jest.fn(),
     markStored: jest.fn(),
+    markNoticeQueued: jest.fn(),
   };
   const contacts = {
     contactOf: jest.fn().mockResolvedValue('ana@ejemplo.com'),

@@ -148,13 +148,16 @@ function OutcomeAlert({ state }: { readonly state: PaymentFormState }): JSX.Elem
   );
 }
 
-/** Aprobado (CA-3): referencia `SIM-`, plan activo y vencimiento. El correo del comprobante llega con la T-08. */
+/** Aprobado (CA-3, CA-6): referencia `SIM-`, plan activo, vencimiento y a dónde se envió el comprobante (spec §6). */
 function ApprovedCard({ payment }: { readonly payment: SubscribeResponse }): JSX.Element {
   return (
     <Card className="flex flex-col items-start gap-4 p-6" data-state="aprobado">
       <CheckCircle2 aria-hidden="true" className="h-8 w-8 text-success-foreground" />
       <h1 className="text-xl font-bold text-foreground">Pago aprobado</h1>
-      <p className="text-sm text-foreground">Tu plan {payment.plan.name} ya está activo.</p>
+      <p className="text-sm text-foreground">
+        Tu plan {payment.plan.name} ya está activo. Te enviamos el comprobante a{' '}
+        {payment.receiptEmail}.
+      </p>
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
         <dt className="text-muted-foreground">Referencia</dt>
         <dd className="font-medium tabular-nums text-foreground">{payment.reference}</dd>

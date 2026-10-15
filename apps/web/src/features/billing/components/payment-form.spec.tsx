@@ -30,6 +30,7 @@ const APPROVED = {
   plan: { slug: 'equipo', name: 'Equipo' },
   expiresAt: '2026-11-13T12:00:00.000Z',
   amounts: { subtotalCents: 9821, vatCents: 1179, totalCents: 11_000 },
+  receiptEmail: 'lucia@ejemplo.com',
 };
 
 function seriousViolations(results: Awaited<ReturnType<typeof axe>>): unknown[] {
@@ -130,7 +131,7 @@ describe('PaymentForm (spec 009 §6: formulario, procesando, rechazado, aprobado
     ).toBeTruthy();
   });
 
-  it('aprobado: muestra «Pago aprobado», la referencia, el plan activo y su vencimiento', async () => {
+  it('aprobado: muestra «Pago aprobado», la referencia, el plan activo, su vencimiento y el correo del comprobante', async () => {
     fetchMock.mockResolvedValue(jsonResponse(APPROVED, 201));
     renderForm();
 
@@ -138,7 +139,11 @@ describe('PaymentForm (spec 009 §6: formulario, procesando, rechazado, aprobado
 
     expect(await screen.findByRole('heading', { name: 'Pago aprobado' })).toBeTruthy();
     expect(screen.getByText('SIM-2026-000007')).toBeTruthy();
-    expect(screen.getByText(/Tu plan Equipo ya está activo/)).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Tu plan Equipo ya está activo. Te enviamos el comprobante a lucia@ejemplo.com.',
+      ),
+    ).toBeTruthy();
     const [request] = fetchMock.mock.calls;
     expect(String(request?.[0])).toBe(`${API}/billing/subscribe`);
     expect(JSON.parse(String(request?.[1]?.body))).toEqual({

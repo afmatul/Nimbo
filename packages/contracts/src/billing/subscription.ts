@@ -64,6 +64,8 @@ export const subscribeResponseSchema = z
     plan: z.object({ slug: z.string(), name: z.string() }).strict(),
     expiresAt: z.string().datetime(),
     amounts: z.object({ subtotalCents: cents, vatCents: cents, totalCents: cents }).strict(),
+    /** CA-6: a dónde se envió el comprobante. */
+    receiptEmail: z.string().email(),
   })
   .strict();
 

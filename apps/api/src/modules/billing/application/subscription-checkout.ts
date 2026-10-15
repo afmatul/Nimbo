@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 
 import { I_CLOCK } from '../../../shared';
 import type { Actor, IClock } from '../../../shared';
+import type { Invoice } from '../domain/entities/invoice.entity';
 import { PlanNotAvailableError } from '../domain/errors/plan-not-available.error';
 import type { PaymentCard } from '../domain/payment-card';
 import type { Plan } from '../domain/plan.entity';
@@ -28,7 +29,7 @@ export interface SubscribeOutcome {
   readonly payment: ChargeResult;
   readonly plan: Plan;
   readonly subscription: Subscription;
-  readonly invoiceId: string | null;
+  readonly invoice: Invoice | null;
 }
 
 /**
@@ -59,10 +60,10 @@ export class SubscriptionCheckout {
       card: command.card,
     });
     if (payment.status === 'rechazada') {
-      return { payment, plan, subscription: current, invoiceId: null };
+      return { payment, plan, subscription: current, invoice: null };
     }
     await this.subscriptions.save(actor, next);
     const invoice = await this.invoices.register(actor, payment, command.nit);
-    return { payment, plan, subscription: next, invoiceId: invoice.id };
+    return { payment, plan, subscription: next, invoice };
   }
 }

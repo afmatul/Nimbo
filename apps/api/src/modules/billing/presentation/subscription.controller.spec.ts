@@ -2,6 +2,7 @@ import { createActor, Role } from '../../../shared';
 import type { SubscribeOutcome } from '../application/subscription-checkout';
 import type { SubscriptionService } from '../application/subscription.service';
 import { aPlan } from '../application/testing/plans';
+import type { Invoice } from '../domain/entities/invoice.entity';
 import type { Payment } from '../domain/entities/payment.entity';
 import { PaymentRejectedError } from '../domain/errors/payment-rejected.error';
 import { Subscription } from '../domain/subscription.entity';
@@ -24,7 +25,7 @@ const BODY = {
 const outcome = (status: Payment['status']): SubscribeOutcome => ({
   payment: { id: 'pago-1', status, reference: 'SIM-2026-000007' } as Payment,
   plan: TEAM,
-  invoiceId: 'factura-1',
+  invoice: { id: 'factura-1', receiptEmail: 'ana@ejemplo.com' } as Invoice,
   subscription: Subscription.rehydrate({
     userId: ANA.id,
     planId: TEAM.id,
@@ -49,6 +50,7 @@ describe('SubscriptionController (spec 009 CA-3, CA-4)', () => {
       plan: { slug: 'equipo', name: 'Equipo' },
       expiresAt: '2026-11-13T12:00:00.000Z',
       amounts: { subtotalCents: 9821, vatCents: 1179, totalCents: 11_000 },
+      receiptEmail: 'ana@ejemplo.com',
     });
   });
 

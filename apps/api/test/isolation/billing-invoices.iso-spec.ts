@@ -19,7 +19,7 @@ const OLD = new Date(Date.now() - 10 * 60_000);
  * `factura` sin actor es `facturas_pendientes_de_emitir`, que falla con actor, devuelve solo ids y `PUBLIC` no ejecuta;
  * `nimbo_app` solo cambia `clave_objeto` y `aviso_encolado_en` de su propia factura.
  */
-describe('emisión de facturas bajo RLS con dueño NOSUPERUSER (009 T-07, ADR-0021)', () => {
+describe('emisión de facturas y avisos bajo RLS con dueño NOSUPERUSER (009 T-07 y T-08, ADR-0021)', () => {
   let database: RestrictedOwnerDatabase;
   let owner: DataSource;
   let app: DataSource;
@@ -62,7 +62,7 @@ describe('emisión de facturas bajo RLS con dueño NOSUPERUSER (009 T-07, ADR-00
     await database?.stop();
   });
 
-  it('ADR-0021: sin actor, la función devuelve solo `(factura_id, usuario_id)` de las facturas sin PDF', async () => {
+  it('ADR-0021: sin actor, la función devuelve solo `(factura_id, usuario_id)` de las facturas sin PDF o sin aviso', async () => {
     const rows = (await app.query(
       'SELECT * FROM facturas_pendientes_de_emitir($1)',
       [100],
@@ -118,5 +118,45 @@ describe('emisión de facturas bajo RLS con dueño NOSUPERUSER (009 T-07, ADR-00
       factura_id: string;
     }[];
     expect(row?.factura_id).toBe(invoiceId);
+  });
+
+  it('RNF-05, T-08: otro cliente no puede marcar el aviso de una factura ajena', async () => {
+    const intruder = createActor(await insertAccount(owner), Role.CLIENT);
+
+    await transactions.withActor(intruder, () =>
+      context
+        .requireActorScope(intruder)
+        .query('UPDATE factura SET aviso_encolado_en = now() WHERE id = $1', [invoiceId]),
+    );
+
+    const [row] = (await owner.query('SELECT aviso_encolado_en FROM factura WHERE id = $1', [
+      invoiceId,
+    ])) as {
+      aviso_encolado_en: Date | null;
+    }[];
+    expect(row?.aviso_encolado_en).toBeNull();
+  });
+
+  it('T-08: la función sigue devolviendo la factura con PDF pero sin aviso, y la suelta al marcarlo', async () => {
+    const bea = createActor(await insertAccount(owner), Role.CLIENT);
+    const beaInvoice = await insertPendingInvoice(bea);
+    const mark = (column: string) =>
+      transactions.withActor(bea, () =>
+        context
+          .requireActorScope(bea)
+          .query(`UPDATE factura SET ${column} WHERE id = $1`, [beaInvoice]),
+      );
+    const pendingIds = async (): Promise<string[]> =>
+      (
+        (await app.query('SELECT factura_id FROM facturas_pendientes_de_emitir(100)')) as {
+          factura_id: string;
+        }[]
+      ).map((row) => row.factura_id);
+
+    await mark(`clave_objeto = 'invoices/${bea.id}/${beaInvoice}.pdf'`);
+    expect(await pendingIds()).toContain(beaInvoice);
+
+    await mark('aviso_encolado_en = now()');
+    expect(await pendingIds()).not.toContain(beaInvoice);
   });
 });
