@@ -2,12 +2,12 @@
 
 | Campo | Valor |
 |---|---|
-| Fecha | 2026-10-10 |
-| Rango revisado | `main...4c55e6d` (17 commits) |
-| CI local | typecheck ✅ · unit ✅ (api 1706, web 1165, contracts 331, config 240) · isolation ✅ (18 suites, 316 pruebas) · int ⚠️ 972/973 · lint ❌ (B-1) |
-| Veredicto | 🔁 Cambios requeridos (2 bloqueantes, ambos baratos) |
+| Fecha | 2026-10-15 |
+| Rango revisado | `origin/main...ec63456` (25 commits; incluye los merges 404e7cb y 174f4aa, que trae la 008) |
+| CI local | lint ✅ (sin `.claude/worktrees/**`) · typecheck ✅ · env:check ✅ · unit ✅ (api 1724, web 1203, contracts 337, config 240, raíz 34) · int ✅ (107 suites, 979 pruebas) · isolation ✅ (18 suites, 316 pruebas) |
+| Veredicto | ✅ Aprobar (sin bloqueantes) |
 
-> Entorno: `pnpm lint` da 435 errores en `.claude/worktrees/**` (worktrees viejos que ESLint lee aunque Git los excluya); sin esa carpeta, solo falla prettier en un archivo de la rama (B-1). El fallo de int es `test/int/shared/dotenv-bootstrap.int-spec.ts:89` (`ECONNREFUSED 6379`, compose de Nimbo no levantado en esa corrida): ajeno a la 014.
+> Historial: la primera revisión (2026-10-10, `main...4c55e6d`) dio 🔁 con B-1, B-2 e I-1…I-3, corregidos en T-FIX-1…T-FIX-5 (65df387, a113615, c66ff16, 685a8d6, 7f73021). Entorno: `pnpm lint` da 22 075 errores en `.claude/worktrees/**` (worktrees viejos de agentes), ajenos a la rama. La primera corrida de unit falló en api porque `packages/contracts/dist` estaba desactualizado (construido por la 008); tras `pnpm --filter @nimbo/contracts build`, todo en verde.
 
 ## Verificación (CA → prueba)
 | CA | Prueba | |
@@ -16,33 +16,36 @@
 | 2, 3 | `versions-replace.int-spec` CA-2, CA-3 | ✅ |
 | 4 | `versions-concurrency.int-spec`; `versions-migrations.int-spec` (UNIQUE) | ✅ |
 | 5 | `file-version.service.spec` (`it.each` por origen) | ✅ |
-| 6, 7 | `versions-list.int-spec`; `version-history.spec`; `version-timeline.spec` (participantes llegan con 016, PD-89) | ✅ (7 parcial por diseño) |
+| 6, 7 | `versions-list.int-spec`; `version-schemas.spec`; `version-timeline.spec` (participantes con 016, PD-89) | ✅ (7 parcial por diseño) |
 | 8 | `versions-list.int-spec` CA-8, CA-19 | ✅ |
-| 9–12 | `versions-restore.int-spec` | ✅ |
+| 9–12 | `versions-restore.int-spec`; `version-restore.service.spec` (poda antes y durante la copia → 404); `error-catalog.spec` 014 CA-12 | ✅ |
 | 13 | `versions-retention.int-spec`; `version-pruner.spec`; `version-retention.spec` | ✅ |
-| 14 | `version-pruner.spec` (solo unitaria; ver S-3) | ✅ |
+| 14 | `version-pruner.spec` (solo unitaria; S-3) | ✅ |
 | 15 | `versions-replace.int-spec`; `upload-manager.spec`; `restore-version-dialog.spec` | ✅ |
 | 16–18 | `storage-versions.iso-spec` ISO-1 a ISO-8; `versions-list.int-spec` CA-16 | ✅ |
 | 19 | `upload.service.spec`; `versions-restore/retention.int-spec` | ✅ |
-| 20 | `file-detail-view.spec` (12 estados, axe 360 y 1440); `restore-version-dialog.spec` | ✅ |
+| 20 | `file-detail-view.spec` (estados, nombre/tipo/ubicación, axe 360 y 1440); `restore-version-dialog.spec` | ✅ |
 
 ## Seguridad
-Toca datos de cliente. Aislamiento en verde; todo servicio resuelve el archivo con `findAccessibleById` y el repositorio usa `requireActorScope`. La tasa de restaurar se aplica antes de resolver el archivo (no es oráculo). Roles internos: `403` y sin filas. Bitácoras sin nombres, URLs ni claves. **No hace falta `security-auditor`.**
+Toca datos de cliente; aislamiento en verde. `VersionHistoryService` y `VersionRestoreService` (incluido el nuevo `rejectMissingSource`) resuelven el archivo con `findAccessibleById` dentro de `withActor`. El `file` de `GET …/versions` sale de ese mismo archivo resuelto y `versionedFileSchema` es `.strict()` (rechaza `objectKey`, prueba CA-20). Bitácoras sin nombres ni claves: `copyObject` devuelve `false` sin registrar. Sin riesgos nuevos; **no hace falta `security-auditor`.**
 
 ## UI
-Solo tokens (`border-l-[3px]` es excepción permitida), español, axe sin violaciones, 12 estados del mockup. Única desviación: I-1.
+La ficha muestra chip de tipo, nombre como `h1`, «Tipo» y «Ubicación», como el mockup; la ubicación es un enlace sin el nombre de la carpeta (desviación aprobada en el registro de cambios, 2026-10-10). Solo tokens, español, axe sin violaciones. El `422` de restaurar sale de `storageMessage(…, { purpose: 'restore' })`.
 
 ## Bloqueantes
-- **B-1** `apps/web/src/features/storage/components/uploads-provider.spec.tsx:269`: no cumple prettier (entró en 4c55e6d); falla `pnpm lint`/CI (Art. XIV). Corregir con `prettier --write`.
-- **B-2** `apps/web/src/features/storage/components/restore-version-dialog.tsx:59-63`: el texto del `422` está escrito en el componente, fuera del catálogo (Art. VI.3). Reutilizar `lib/error-catalog.ts` (`STORAGE_QUOTA_EXCEEDED` con propósito `upload | restore`) y `storageMessage`.
+Ninguno (B-1 y B-2 cerrados).
 
 ## Importantes y sugerencias
-- **I-1** `file-detail-view.tsx:158-160`: la ficha no muestra nombre, tipo ni carpeta del archivo (el mockup sí). Agregar `file: { name, kind, folderId }` a `FileVersionsResponse` (`VersionHistoryService.readVersions` ya tiene el `File`), o registrar la desviación en la spec §6 y un PD con aprobación de Adrián.
-- **I-2** `version-restore.service.ts:281`: si la versión se poda entre `resolveRestorable` y `copyObject`, `NoSuchKey` sin mapear da `500`; el plan §7 prometía `STORAGE_VERSION_NOT_FOUND`. Revalidar tras el fallo y lanzar `VersionNotFoundError`.
-- **I-3** Documentación del PR: commitear `spec.md`/`tasks.md`; ADR-0012 a «Aceptado»; estado de 014 en `specs/README.md`.
-- **S-1** `version-history.ts:12-18` repite la regla de `VersionRetention` en la web y avisa de una sola versión; devolver `wouldPruneVersions` desde `GET …/versions`.
-- **S-2** `upload.service.ts:212` (`reserve`) y `use-version-actions.ts:89` (`useRestoreFlow`) tienen 33 líneas (> 30, Art. VII.2).
-- **S-3** CA-14 sin prueba de integración (el plan la pedía en `versions-retention.int-spec.ts`).
+- **I-1 cerrado**: `FileVersionsResponse.file` (`versionedFileSchema` = `fileSummarySchema.pick`), con pruebas en contracts, api, int y web.
+- **I-2 cerrado**: `IObjectStorage.copyObject` devuelve `false` ante `NoSuchKey` (unitaria y contra MinIO); el servicio revalida y lanza `VersionNotFoundError`.
+- **I-3 cerrado**: ADR-0012 «Aceptado» (ADR, `docs/adr/README.md` y cabecera de la spec); 014 «En revisión» en `specs/README.md`.
+- **S-1 (abierta)** `apps/web/src/features/storage/version-history.ts:12` (`versionToPrune`) repite la regla de `VersionRetention` que el servidor ya calcula (`upload-target.ts:61-79`); exponer `wouldPruneVersion` en `GET …/versions`.
+- **S-2 (abierta)** `upload.service.ts:212` (`reserve`) y `use-version-actions.ts:89` (`useRestoreFlow`) pasan de 30 líneas físicas (el linter no cuenta blancos ni comentarios); extraer el retorno de `useRestoreFlow`.
+- **S-3 (abierta)** CA-14 sin prueba de integración en `versions-retention.int-spec.ts` (fallo de `purgeObject` que deje fila y espacio intactos y reintente).
+- **S-4 cerrada**: fila del 2026-10-15 en el registro de cambios de la spec.
 
 ## DF y pendientes
-DF-68 coherente con plan y `design-model.md`; DF-17, DF-18 y DF-38 actualizados; PD-89 y PD-90 correctos; PD-46 y PD-60 con nota. Falta el PD o nota de spec para I-1 y ADR-0012 en Aceptado.
+DF-17 y DF-18 (parcial) en Aceptado; DF-68 vigente. Sin choque de numeración tras la 008 (PD-89/90 de 014, PD-91/92 de 008; el PD-51 duplicado viene de `main`). `RATE_LIMIT_VERSION_RESTORE_PER_MINUTE` en `.env.example` y `ambientes.md`. PD-91 (base única de bytes) alcanzará a la 014 al cierre de fase; el 422 de restaurar sin enlace a planes es coherente con PD-92.
+
+## Veredicto
+✅ **Aprobar.** S-1 a S-3 son opcionales (PD o 20 % de refactor de la fase). Adrián aprueba el PR según `workflow.md` §7.1.
