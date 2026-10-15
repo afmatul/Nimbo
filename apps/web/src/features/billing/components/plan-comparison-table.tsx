@@ -75,7 +75,7 @@ function ComparisonRowView({
 /** Tabla comparativa de CA-2: una columna por plan, con los mismos datos que las tarjetas. */
 export function PlanComparisonTable({ plans }: PlanComparisonTableProps): ReactNode {
   return (
-    <div className="mt-6 w-full min-w-0 overflow-x-auto rounded-xl border border-border bg-card">
+    <div className="mt-6 w-full min-w-0 overflow-x-auto rounded-lg border border-border bg-card">
       <table className="w-full border-collapse text-left text-xs">
         <caption className="sr-only">Comparación de planes</caption>
         <ComparisonHeader plans={plans} />

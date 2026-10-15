@@ -13,12 +13,12 @@ const PLAN: Omit<Plan, 'id' | 'slug' | 'name' | 'priceCents'> = {
 };
 const PERSONAL: Plan = {
   ...PLAN,
-  id: 'p-1',
+  id: '00000000-0000-4000-8000-000000000001',
   slug: 'personal',
   name: 'Personal',
   priceCents: 0,
 };
-const PRO: Plan = { ...PLAN, id: 'p-2', slug: 'pro', name: 'Pro', priceCents: 4500 };
+const PRO: Plan = { ...PLAN, id: '00000000-0000-4000-8000-000000000002', slug: 'pro', name: 'Pro', priceCents: 4500 };
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -40,8 +40,8 @@ describe('plan-catalog (PD-48: lee el catálogo de la 008)', () => {
 
     await expect(loadPlanCatalog('http://internal.test')).resolves.toEqual({
       plans: [
-        { id: 'p-1', name: 'Personal', priceCents: 0, free: true },
-        { id: 'p-2', name: 'Pro', priceCents: 4500, free: false },
+        { id: '00000000-0000-4000-8000-000000000001', name: 'Personal', priceCents: 0, free: true },
+        { id: '00000000-0000-4000-8000-000000000002', name: 'Pro', priceCents: 4500, free: false },
       ],
       unavailable: false,
     });

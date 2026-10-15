@@ -8,24 +8,28 @@ const count = z.number().int().nonnegative();
 const decimalBytes = z.string().regex(/^\d+$/);
 
 /** Un plan del catálogo: dinero en centavos enteros y bytes como texto decimal. Base de las vistas de plan de otras specs. */
-export const planSchema = z.object({
-  id: z.string(),
-  slug: z.string().min(1),
-  name: z.string(),
-  description: z.string().nullable(),
-  priceCents: count,
-  quotaBytes: decimalBytes,
-  maxFileBytes: decimalBytes,
-  maxEditors: count,
-  agentQueriesPerMonth: count,
-  retainedVersions: count,
-  trashRetentionDays: count,
-});
+export const planSchema = z
+  .object({
+    id: z.string().uuid(),
+    slug: z.string().min(1),
+    name: z.string(),
+    description: z.string().nullable(),
+    priceCents: count,
+    quotaBytes: decimalBytes,
+    maxFileBytes: decimalBytes,
+    maxEditors: count,
+    agentQueriesPerMonth: count,
+    retainedVersions: count,
+    trashRetentionDays: count,
+  })
+  .strict();
 
 /** `GET /billing/plans` (008 CA-1): planes activos en el orden de RN-2. */
-export const planCatalogResponseSchema = z.object({
-  plans: z.array(planSchema),
-});
+export const planCatalogResponseSchema = z
+  .object({
+    plans: z.array(planSchema),
+  })
+  .strict();
 
 export type Plan = z.infer<typeof planSchema>;
 export type PlanCatalogResponse = z.infer<typeof planCatalogResponseSchema>;
