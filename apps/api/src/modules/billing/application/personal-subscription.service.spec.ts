@@ -25,6 +25,8 @@ const setup = () => {
       scopes.push(actorInScope === actor ? actor : null);
       return Promise.resolve();
     }),
+    lockCurrent: jest.fn(),
+    save: jest.fn(),
   };
   const service = new PersonalSubscriptionService(transactions, subscriptions);
   return { service, subscriptions, scopes };

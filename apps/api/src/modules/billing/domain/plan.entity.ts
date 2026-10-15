@@ -58,6 +58,11 @@ export class Plan implements PlanProps {
     return this.deactivatedAt === null;
   }
 
+  /** 009 RN-6 y CA-5: se contrata solo si se ofrece y cobra algo (Personal y los gratuitos no se pagan). */
+  get isForSale(): boolean {
+    return this.isActive && this.priceCents > 0;
+  }
+
   /** CA-10 y CA-11: Personal no se desactiva y un plan desactivado no se reactiva ni se vuelve a desactivar. */
   deactivate(now: Date): Plan {
     if (this.slug === PERSONAL_PLAN_SLUG) throw new PlanNotDeactivatableError();
