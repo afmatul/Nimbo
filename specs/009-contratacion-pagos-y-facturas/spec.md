@@ -8,7 +8,7 @@
 | Dueño | Juan Marcos |
 | Fase | 2 |
 | Requisitos | RF-20, RF-21, RNF-05, RNF-06, RNF-13, RNF-14 |
-| Depende de | 008 y la parte de `billing` de la 011 (T-09: `plan.desactivado_en`, DF-65, y `SubscriptionAdministration`, PD-80) y la de `identity` (`IAccountDirectoryRepository`) |
+| Depende de | 008, la parte de `billing` de la 011 (T-09: `plan.desactivado_en`, `Plan` y el catálogo del Administrador, DF-65) y la de `identity` (`IAccountDirectoryRepository`). La T-09 de la 011 depende a su vez de la T-01 de esta spec (`domain/plan-slug.ts`). `SubscriptionAdministration` la crea esta spec (T-03, PD-80) |
 | Última actualización | 2026-10-14 |
 
 ## 1. Contexto y objetivo
@@ -90,3 +90,4 @@ Permitir a los clientes contratar un plan con pago simulado, recibir su comproba
 | 2026-10-11 | Depende también de la parte de `identity` de la 011 (`IAccountDirectoryRepository`) | Tercera revisión de la 009 (N-3) | Pendiente Adrián |
 | 2026-10-14 | RN-9 fija la forma de los datos de pago (tarjeta de 16 dígitos, NIT `CF` o de 5 a 12 dígitos) y CA-5 la usa; se cierra la pregunta de PD-80; se redacta `number` | Cuarta revisión de la 009 (I-7, I-8) | Pendiente Adrián |
 | 2026-10-14 | §5: solo el Administrador conoce el nombre del plan de un cliente; el Operador, solo conteos (como plan §3 y ADR-0021) | Quinta revisión de la 009 (N-1) | Pendiente Adrián |
+| 2026-10-14 | `SubscriptionAdministration` la crea esta spec (T-03) sin `clientCount`; la T-09 de la 011 solo aporta el catálogo y depende de la T-01 (`plan-slug.ts`) | Acuerdo con Fátima sobre `arreglos-011.md` (puntos 1–6, 8 y 9) | Pendiente Adrián |
