@@ -1,5 +1,7 @@
 import { Body, Controller, HttpCode, HttpStatus, Inject, Post, Res } from '@nestjs/common';
 import {
+  accountSetupCheckRequestSchema,
+  accountSetupRequestSchema,
   changePasswordRequestSchema,
   forgotPasswordRequestSchema,
   resetPasswordRequestSchema,
@@ -7,6 +9,10 @@ import {
 } from '@nimbo/contracts';
 import type {
   AcceptedResponse,
+  AccountSetupCheckRequest,
+  AccountSetupCheckResponse,
+  AccountSetupRequest,
+  AccountSetupResponse,
   ChangePasswordRequest,
   ForgotPasswordRequest,
   ResetPasswordRequest,
@@ -23,6 +29,7 @@ import {
   ZodValidationPipe,
 } from '../../../shared';
 import type { Actor } from '../../../shared';
+import { AccountSetupService } from '../application/account-setup.service';
 import { IDENTITY_CONFIG } from '../application/identity-config';
 import type { IdentityConfig } from '../application/identity-config';
 import { PasswordService } from '../application/password.service';
@@ -34,8 +41,9 @@ import { SessionCookies } from './session-cookies';
 const ACCEPTED: AcceptedResponse = { status: 'accepted' };
 
 /**
- * Rutas de la recuperación y el cambio de contraseña (plan 002 §5, §6.5). Solo validan con los esquemas de
- * `contracts`, delegan en `PasswordService` y mapean el resultado; sin reglas de negocio. `@Public()` excluye las de
+ * Rutas de la recuperación y el cambio de contraseña (plan 002 §5, §6.5) y de la primera contraseña de una cuenta
+ * interna (011 plan §4). Solo validan con los esquemas de `contracts`, delegan en `PasswordService` o
+ * `AccountSetupService` y mapean el resultado; sin reglas de negocio. `@Public()` excluye las de
  * recuperación de los guards globales de 003; el cambio exige sesión y lee el actor y la sesión con los decoradores
  * de 003. `Cache-Control: no-store` lo pone `NoStoreMiddleware` desde `IdentityModule`.
  */
@@ -45,6 +53,7 @@ export class PasswordController {
 
   constructor(
     private readonly passwords: PasswordService,
+    private readonly accountSetup: AccountSetupService,
     @Inject(IDENTITY_CONFIG) config: IdentityConfig,
   ) {
     this.cookies = new SessionCookies(config.cookieSecure);
@@ -104,5 +113,30 @@ export class PasswordController {
   ): Promise<void> {
     const { currentPassword, newPassword } = body;
     await this.passwords.changePassword(actor, sessionId, { currentPassword, newPassword });
+  }
+
+  /** 011 CA-5: revisa el enlace de alta al abrirlo, sin consumirlo. Sin límite de tasa propio (PD-88). */
+  @Public()
+  @Post('account-setup/check')
+  @HttpCode(HttpStatus.OK)
+  async checkAccountSetupLink(
+    @Body(new ZodValidationPipe(accountSetupCheckRequestSchema, identityValidationError))
+    body: AccountSetupCheckRequest,
+  ): Promise<AccountSetupCheckResponse> {
+    await this.accountSetup.checkLink(body.token);
+    return { status: 'valid' };
+  }
+
+  /** 011 CA-5: fija la primera contraseña con el enlace de alta; no crea ni revoca sesiones (PD-88). */
+  @Public()
+  @Post('account-setup')
+  @HttpCode(HttpStatus.OK)
+  async setFirstPassword(
+    @Body(new ZodValidationPipe(accountSetupRequestSchema, identityValidationError))
+    body: AccountSetupRequest,
+  ): Promise<AccountSetupResponse> {
+    const { token, password } = body;
+    await this.accountSetup.setFirstPassword({ token, password });
+    return { status: 'password-set' };
   }
 }

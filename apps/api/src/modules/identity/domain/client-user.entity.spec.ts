@@ -3,6 +3,7 @@ import { Role } from '../../../shared/domain/role.enum';
 import { AccountStatus } from './account-status.enum';
 import { ClientUser, VerifiedAccountReplacementError } from './client-user.entity';
 import { EmailAddress } from './email-address.vo';
+import { AccountStateConflictError } from './errors';
 import { LegalAcceptance } from './legal-acceptance.vo';
 import { PasswordHash } from './password-hash.vo';
 
@@ -76,5 +77,21 @@ describe('ClientUser', () => {
     expect(verified).not.toBe(original);
     expect(verified.emailVerified).toBe(true);
     expect(original.emailVerified).toBe(false);
+  });
+
+  it('011 CA-2, CA-3: se suspende y se reactiva en instancias nuevas', () => {
+    const active = register();
+    const suspended = active.suspend();
+    const reactivated = suspended.reactivate();
+
+    expect(suspended.status).toBe(AccountStatus.SUSPENDED);
+    expect(reactivated.status).toBe(AccountStatus.ACTIVE);
+    expect(active.status).toBe(AccountStatus.ACTIVE);
+    expect(reactivated.acceptance).toBe(active.acceptance);
+  });
+
+  it('011 CA-2, CA-3: suspender una suspendida o reactivar una activa es un conflicto de estado', () => {
+    expect(() => register().reactivate()).toThrow(AccountStateConflictError);
+    expect(() => register().suspend().suspend()).toThrow(AccountStateConflictError);
   });
 });

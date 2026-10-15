@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Lista |
+| Estado | En curso |
 | Dueño | Fátima |
 | Fase | 2 |
 | Requisitos | RF-06 (principal); RF-05 (matriz), RF-07, RF-19, RF-24, RNF-02, RNF-05, RNF-13, RNF-14 |

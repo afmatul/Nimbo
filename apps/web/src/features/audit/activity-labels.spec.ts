@@ -87,6 +87,46 @@ describe('textos de «Mi actividad»', () => {
     expect(activityActorLabel(manual)).toBe('Tú');
   });
 
+  it.each([
+    ['account.suspended', 'ADMIN', 'Administración de Nimbo suspendió tu cuenta'],
+    ['account.reactivated', 'ADMIN', 'Administración de Nimbo reactivó tu cuenta'],
+    ['account.internal_created', 'ADMIN', 'Administración de Nimbo creó tu cuenta'],
+    [
+      'client.files_viewed',
+      'SUPPORT',
+      'Soporte de Nimbo consultó la lista de tus archivos (sin abrir su contenido)',
+    ],
+  ] as const)(
+    'CA-16 (011): %s sobre tu cuenta lleva el rol como sujeto y se describe como «Cuenta»',
+    (action, actorRole, text) => {
+      const internal = event({ action, actorRole, origin: 'staff', resourceType: null });
+
+      expect(activityActionLabel(internal)).toBe(text);
+      expect(activityResourceLabel(internal)).toBe('Cuenta');
+    },
+  );
+
+  it.each([
+    ['account.suspended', 'Tú suspendió tu cuenta'],
+    ['client.files_viewed', 'Tú consultó la lista de tus archivos (sin abrir su contenido)'],
+  ] as const)(
+    'CA-16 (011): %s no tiene texto en segunda persona; con origen self cae al texto del personal',
+    (action, text) => {
+      const unexpected = event({ action, origin: 'self', actorRole: 'ADMIN', resourceType: null });
+
+      expect(activityActionLabel(unexpected)).toBe(text);
+    },
+  );
+
+  it.each(['account.bootstrap_admin', 'plan.created', 'plan.deactivated'])(
+    'CA-16 (011): %s no tiene afectado y conserva el texto genérico',
+    (action) => {
+      expect(activityActionLabel(event({ action, origin: 'staff', actorRole: 'ADMIN' }))).toBe(
+        UNKNOWN_ACTIVITY_LABEL,
+      );
+    },
+  );
+
   it('CA-7: una acción que la web aún no conoce se muestra como «Actividad en tu cuenta»', () => {
     expect(activityActionLabel(event({ action: 'account.quota_adjusted' }))).toBe(
       UNKNOWN_ACTIVITY_LABEL,

@@ -4,7 +4,7 @@ import { AccountStatus } from '../../domain/account-status.enum';
 import { ClientUser } from '../../domain/client-user.entity';
 import { InternalUser } from '../../domain/internal-user.entity';
 
-import { toUserDomain, toUsuarioRow } from './user.mapper';
+import { toInternalUsuarioRow, toUserDomain, toUsuarioRow } from './user.mapper';
 import type { UsuarioRow } from './user.mapper';
 
 const PHC = '$argon2id$v=19$m=19456,t=2,p=1$c2FsdA$aW50ZXJuYQ';
@@ -20,6 +20,7 @@ const anInternalRow = (): UsuarioRow => ({
   versionTerminos: null,
   versionPrivacidad: null,
   terminosAceptadosEn: null,
+  codigoEmpleado: 'SOP-001',
 });
 
 describe('user.mapper', () => {
@@ -46,6 +47,7 @@ describe('user.mapper', () => {
       versionTerminos: '1.0',
       versionPrivacidad: '1.0',
       terminosAceptadosEn: user.acceptance.acceptedAt,
+      codigoEmpleado: null,
     });
   });
 
@@ -56,8 +58,21 @@ describe('user.mapper', () => {
     expect(user).toMatchObject({ role: Role.SUPPORT, emailVerified: true });
   });
 
+  it('011 RN-5: una fila interna trae su código de empleado; sin código es un dato corrupto y lanza', () => {
+    const user = toUserDomain(anInternalRow()) as InternalUser;
+
+    expect(user.employeeCode.value).toBe('SOP-001');
+    expect(() => toUserDomain({ ...anInternalRow(), codigoEmpleado: null })).toThrow(TypeError);
+  });
+
+  it('011 CA-5: una interna va y vuelve de la fila sin perder datos (sin aceptación, con código)', () => {
+    const user = toUserDomain(anInternalRow()) as InternalUser;
+
+    expect(toInternalUsuarioRow(user)).toEqual(anInternalRow());
+  });
+
   it('CA-3: una fila de cliente sin aceptación es un dato corrupto y lanza', () => {
-    const row = { ...anInternalRow(), rol: Role.CLIENT };
+    const row = { ...anInternalRow(), rol: Role.CLIENT, codigoEmpleado: null };
 
     expect(() => toUserDomain(row)).toThrow(TypeError);
   });

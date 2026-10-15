@@ -8,6 +8,7 @@ import { Role } from '../../../src/shared';
 import { TransactionContext } from '../../../src/shared/infrastructure/persistence/transaction-context';
 import { TypeOrmTransactionRunner } from '../../../src/shared/infrastructure/persistence/typeorm-transaction-runner';
 import { connectTo, requiredEnv } from '../../support/database-urls';
+import { employeeCodeFor } from '../../support/employee-codes';
 
 /** Lo único que las *fixtures* necesitan: un `QueryRunner` del dueño o el `EntityManager` de `withActor`. */
 export interface Queryable {
@@ -36,7 +37,7 @@ export const inRolledBackTransaction = async <T>(
   }
 };
 
-/** Inserta una cuenta (como el dueño: `usuario` es un *fixture* aquí) y devuelve su id. */
+/** Inserta una cuenta (como el dueño: `usuario` es un *fixture* aquí) y devuelve su id. Las internas llevan código. */
 export const insertAccount = async (
   runner: Queryable,
   role: Role = Role.CLIENT,
@@ -45,8 +46,8 @@ export const insertAccount = async (
   const isClient = role === Role.CLIENT;
   await runner.query(
     `INSERT INTO usuario (id, nombre, correo, hash_clave, rol, correo_verificado, version_terminos,
-                          version_privacidad, terminos_aceptados_en)
-     VALUES ($1, 'Ana López', $2, $3, $4, true, $5, $6, $7)`,
+                          version_privacidad, terminos_aceptados_en, codigo_empleado)
+     VALUES ($1, 'Ana López', $2, $3, $4, true, $5, $6, $7, $8)`,
     [
       id,
       `storage.${id}@ejemplo.com`,
@@ -55,6 +56,7 @@ export const insertAccount = async (
       isClient ? LEGAL_DOCUMENTS.terms.version : null,
       isClient ? LEGAL_DOCUMENTS.privacy.version : null,
       isClient ? ACCEPTED_AT : null,
+      employeeCodeFor(role),
     ],
   );
   return id;

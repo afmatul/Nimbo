@@ -5,7 +5,7 @@ import { AUDIT_NOTE_MAX_LENGTH, sanitizeAttributes } from '../domain/attribute-s
 import { AuditAction } from './audit-action';
 import { AUDIT_CATALOG, resourceTypeOf } from './audit-catalog';
 
-/** Lo que 005 (`upload.service`, `file.service`) y 006 (`trash.service`) emiten hoy. */
+/** Lo que 005 (`upload.service`, `file.service`), 006 (`trash.service`) y 011 (`backoffice`) emiten. */
 const REAL_ATTRIBUTES: Readonly<Record<AuditAction, Record<string, string | number>>> = {
   [AuditAction.FILE_UPLOAD_COMPLETED]: { sizeBytes: 12_582_912, mode: 'multipart' },
   [AuditAction.FILE_UPLOAD_REJECTED]: { reason: 'TYPE_MISMATCH', mode: 'simple', sizeBytes: 2048 },
@@ -19,6 +19,13 @@ const REAL_ATTRIBUTES: Readonly<Record<AuditAction, Record<string, string | numb
     trigger: 'scheduled',
   },
   [AuditAction.TRASH_EMPTIED]: { itemCount: 4, sizeBytes: 4096 },
+  [AuditAction.ACCOUNT_SUSPENDED]: {},
+  [AuditAction.ACCOUNT_REACTIVATED]: {},
+  [AuditAction.ACCOUNT_INTERNAL_CREATED]: { role: 'SUPPORT' },
+  [AuditAction.ACCOUNT_BOOTSTRAP_ADMIN]: {},
+  [AuditAction.CLIENT_FILES_VIEWED]: {},
+  [AuditAction.PLAN_CREATED]: {},
+  [AuditAction.PLAN_DEACTIVATED]: {},
 };
 
 describe('AUDIT_CATALOG', () => {
@@ -37,6 +44,15 @@ describe('AUDIT_CATALOG', () => {
     },
   );
 
+  it('011 §5: el alta interna guarda solo el rol, uno de los tres internos', () => {
+    const rules = AUDIT_CATALOG[AuditAction.ACCOUNT_INTERNAL_CREATED].attributes;
+
+    const result = sanitizeAttributes(rules, { role: 'CLIENT', email: 'ana@nimbo.me' });
+
+    expect(result.attributes).toEqual({});
+    expect(result.rejections.map((rejection) => rejection.key).sort()).toEqual(['email', 'role']);
+  });
+
   it('CA-4: el tope de texto del saneo es el del motivo en el contrato', () => {
     expect(AUDIT_NOTE_MAX_LENGTH).toBe(CONTRACT_NOTE_MAX_LENGTH);
   });
@@ -51,6 +67,13 @@ describe('resourceTypeOf', () => {
     [AuditAction.NODE_RESTORED, { nodeType: 'file' }, 'file'],
     [AuditAction.NODE_PURGED, { nodeType: 'folder' }, 'folder'],
     [AuditAction.TRASH_EMPTIED, {}, null],
+    [AuditAction.ACCOUNT_SUSPENDED, {}, 'account'],
+    [AuditAction.ACCOUNT_REACTIVATED, {}, 'account'],
+    [AuditAction.ACCOUNT_INTERNAL_CREATED, {}, 'account'],
+    [AuditAction.ACCOUNT_BOOTSTRAP_ADMIN, {}, 'account'],
+    [AuditAction.CLIENT_FILES_VIEWED, {}, 'account'],
+    [AuditAction.PLAN_CREATED, {}, 'plan'],
+    [AuditAction.PLAN_DEACTIVATED, {}, 'plan'],
   ] as const)('D-3: `%s` con %p es de tipo %p', (action, attributes, expected) => {
     expect(resourceTypeOf(action, attributes)).toBe(expected);
   });

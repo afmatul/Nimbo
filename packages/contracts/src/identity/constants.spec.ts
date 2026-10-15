@@ -4,6 +4,7 @@ import { FIELD_ISSUE_REASONS, IDENTITY_FIELD_MESSAGES, type FieldIssueReason } f
 import { LEGAL_DOCUMENTS, SUPPORT_CONTACT_EMAIL } from './legal';
 import {
   ACCESS_TOKEN_TTL_SECONDS,
+  ACCOUNT_SETUP_LINK_TTL_HOURS,
   DEVICE_COOKIE_MAX_AGE_DAYS,
   EMAIL_REQUEST_COOLDOWN_SECONDS,
   EMAIL_REQUESTS_PER_HOUR,
@@ -96,6 +97,12 @@ describe('parámetros de sesión y recuperación (spec 002 §6)', () => {
     );
 
     expect(recoveryLimits).toEqual(['RESET_LINK_TTL_MINUTES']);
+  });
+});
+
+describe('parámetros del alta interna (spec 011)', () => {
+  it('Q-4: el enlace de alta vence a las 24 horas', () => {
+    expect(ACCOUNT_SETUP_LINK_TTL_HOURS).toBe(24);
   });
 });
 

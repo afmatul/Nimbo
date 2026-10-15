@@ -1,5 +1,5 @@
-// Los tipos del E-R (`token_cuenta.tipo`); `recuperacion` lo usa 002.
-export type VerificationTokenType = 'verificacion' | 'recuperacion';
+// Los tipos del E-R (`token_cuenta.tipo`); `recuperacion` lo usa 002 y `alta_interna`, 011 (CA-5).
+export type VerificationTokenType = 'verificacion' | 'recuperacion' | 'alta_interna';
 
 export type VerificationTokenState = 'valid' | 'used' | 'expired' | 'invalidated';
 

@@ -8,6 +8,7 @@ import { DataSource } from 'typeorm';
 import { FixedClock, I_CLOCK } from '../../src/shared';
 import { createIdentityTestApp, validRegistration } from '../int/identity/identity-test-app';
 import type { TestApp } from '../int/setup/test-app';
+import { uniqueEmployeeCode } from '../support/employee-codes';
 
 const REGISTER = '/api/v1/auth/register';
 const RESEND = '/api/v1/auth/resend-verification';
@@ -80,8 +81,8 @@ describe('anti-enumeración de registro y reenvío (CA-14, CA-15, CA-5, CA-6)', 
     const isInternal = kind === 'interna';
     await dataSource.query(
       `INSERT INTO usuario (id, nombre, correo, hash_clave, rol, correo_verificado,
-                            version_terminos, version_privacidad, terminos_aceptados_en)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+                            version_terminos, version_privacidad, terminos_aceptados_en, codigo_empleado)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
       [
         id,
         EXISTING_NAME,
@@ -92,6 +93,7 @@ describe('anti-enumeración de registro y reenvío (CA-14, CA-15, CA-5, CA-6)', 
         isInternal ? null : LEGAL_DOCUMENTS.terms.version,
         isInternal ? null : LEGAL_DOCUMENTS.privacy.version,
         isInternal ? null : clock.now(),
+        isInternal ? uniqueEmployeeCode() : null,
       ],
     );
     return { email, id };

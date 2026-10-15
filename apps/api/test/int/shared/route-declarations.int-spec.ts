@@ -21,6 +21,8 @@ const EXPECTED_PUBLIC_ROUTES = [
   'GET /api/v1/billing/plans',
   'GET /api/v1/health/live',
   'GET /api/v1/health/ready',
+  'POST /api/v1/auth/account-setup',
+  'POST /api/v1/auth/account-setup/check',
   'POST /api/v1/auth/forgot-password',
   'POST /api/v1/auth/login',
   'POST /api/v1/auth/register',

@@ -43,6 +43,17 @@ descartado se anota como `audit.record_failed` con el motivo y las **claves**, n
   no compila (RN-3).
 - `AuditService` y el repositorio no salen de `index.ts` (DF-60).
 
+## Actor de sistema (spec 011, plan §2–§3)
+
+- `AuditRecord.actor` es un `AuditActor = Actor | SystemActor`. `SYSTEM_ACTOR` (exportado en `index.ts`) es el del
+  comando de alta inicial (CA-7): vive solo en `audit`, no es un `Role` y `withActor` ni `RolesGuard` lo aceptan.
+- Con `SYSTEM_ACTOR`, `AuditService` inserta dentro de `run`, que se une al `run` del llamador (T1): la cuenta y el
+  evento se confirman juntos. El evento se guarda con `rol_actor = 'SYSTEM'`, sin `actor_id` ni afectado.
+- La base solo admite ese evento sin actor (política `evento_auditoria_alta_sistema`): un `run` sin actor no puede
+  insertar otro evento `SYSTEM`.
+- Sin afectado (`targetUserId: null`) solo los cambios de catálogo (`plan.*`) y el alta inicial (`ck_evento_destino`):
+  ninguna lectura de «Mi actividad» los alcanza.
+
 ## Consulta (`GET /audit/my-events`, spec 004 §4)
 
 - Los cuatro roles la llaman y cada uno recibe solo los eventos donde **él** es el afectado: `listForUser(actor, query)`
@@ -51,3 +62,6 @@ descartado se anota como `audit.record_failed` con el motivo y las **claves**, n
 - `toAuditEventResponse` es de lista blanca: no copia `actorId`, `correlationId`, `resourceId` ni atributos fuera de
   `itemCount`, `sizeBytes`, `note` (que solo sale si existe) y `trigger` (solo `manual` o `scheduled`: distingue la purga
   programada de la papelera de la que pidió el cliente).
+- Las acciones internas sobre la cuenta (recurso `account`) salen con `resourceType: null` (el texto de la acción ya
+  lo dice) y el cliente ve solo el rol de quien actuó (CA-16). Un evento `SYSTEM` nunca llega al mapeador; si llegara,
+  lanza un error interno en lugar de inventar un rol que el contrato de 004 no tiene.

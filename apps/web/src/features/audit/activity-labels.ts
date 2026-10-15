@@ -33,7 +33,8 @@ const STAFF_ROLE_LABELS: Readonly<Partial<Record<RoleName, string>>> = {
  * si la hizo una tarea programada (`trigger: 'scheduled'`, CA-7).
  */
 interface ActionText {
-  readonly self: (what: string) => string;
+  /** Ausente si la acción solo la hace el personal (011): nunca se lee en segunda persona. */
+  readonly self?: (what: string) => string;
   readonly staff: (what: string, actor: string) => string;
   readonly scheduled?: (what: string, plural: boolean) => string;
 }
@@ -61,6 +62,19 @@ const ACTION_TEXTS: Readonly<Record<string, ActionText>> = {
   'trash.emptied': {
     self: () => 'Vaciaste la papelera',
     staff: (_w, a) => `${a} vació la papelera`,
+  },
+  /** Acciones internas sobre tu cuenta (011, CA-16): el sujeto es solo el rol. */
+  'account.suspended': {
+    staff: (_w, a) => `${a} suspendió tu cuenta`,
+  },
+  'account.reactivated': {
+    staff: (_w, a) => `${a} reactivó tu cuenta`,
+  },
+  'account.internal_created': {
+    staff: (_w, a) => `${a} creó tu cuenta`,
+  },
+  'client.files_viewed': {
+    staff: (_w, a) => `${a} consultó la lista de tus archivos (sin abrir su contenido)`,
   },
 };
 
@@ -103,7 +117,8 @@ export function activityActionLabel(event: AuditEventResponse): string {
   if (isScheduled(event) && text.scheduled !== undefined) {
     return text.scheduled(what, isPlural(event));
   }
-  return event.origin === 'self' ? text.self(what) : text.staff(what, activityActorLabel(event));
+  if (event.origin === 'self' && text.self !== undefined) return text.self(what);
+  return text.staff(what, activityActorLabel(event));
 }
 
 /** Tipo y cantidad del recurso, con su tamaño si lo trae: «1 archivo, 12 MB» (D-3). */
