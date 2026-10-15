@@ -101,4 +101,6 @@ Adrián acepta el ADR en la revisión del plan de la 009. La opción B está ele
 (`carga_expiradas`, `papelera_vencida`). Autoriza además las tres funciones de la 009 (`nombres_de_plan_por_cliente`,
 `conteo_de_clientes_por_plan` y `facturas_pendientes_de_emitir`) con la misma lista: solo lectura, `search_path` cerrado,
 `REVOKE … FROM PUBLIC` y `EXECUTE` solo para `nimbo_app`, y devuelven nombres, conteos o ids, nunca filas completas. Las dos
-primeras comprueban `nimbo_actor_role()` dentro (Administrador y Operador); la tercera exige que no haya actor en la sesión.
+primeras comprueban `nimbo_actor_role()` dentro: `nombres_de_plan_por_cliente` solo para el Administrador (el nombre del
+plan de cada cliente, 011 CA-1) y `conteo_de_clientes_por_plan` para el Administrador y el Operador (solo conteos, 011 CA-12);
+el Operador nunca recibe el plan de un cliente. La tercera exige que no haya actor en la sesión.

@@ -46,7 +46,7 @@ Permitir a los clientes contratar un plan con pago simulado, recibir su comproba
 - No se guardan el número de tarjeta ni el CVC. El NIT se guarda solo en `factura`.
 - Las bitácoras técnicas registran el intento y el resultado con `correlationId`, nunca el número de tarjeta, el CVC ni el NIT (se redactan `card`, `number`, `cvc` y `nit`).
 - Los roles internos reciben `403 SHARED_FORBIDDEN` en las rutas de cobro y no pagan por un cliente.
-- Administrador y Operador conocen del plan de un cliente solo su nombre y conteos agregados (011 CA-1, CA-8 y CA-12); ningún rol interno lee filas de suscripción, transacciones ni facturas.
+- El Administrador conoce del plan de un cliente solo su nombre (011 CA-1); el Administrador y el Operador, solo conteos agregados por plan (011 CA-8 y CA-12). El Operador nunca recibe el plan de un cliente. Ningún rol interno lee filas de suscripción, transacciones ni facturas.
 - Los PDF no contienen datos de archivos del cliente. La descarga usa enlace temporal; no hay URL pública.
 
 ## 6. Experiencia de usuario
@@ -89,3 +89,4 @@ Permitir a los clientes contratar un plan con pago simulado, recibir su comproba
 | 2026-10-11 | Se elimina el catálogo propio (CA-3, HU-2, `GET /plans`) y se renumeran HU y CA; RF-19 sale de los requisitos; CA-5 suma `429`; CA-7 y CA-8 cubren la factura sin PDF; estados de carga y error en §6; privacidad de Administrador y Operador en §5 | Segunda revisión de la 009 (B-1, I-7, I-10) y 008 final | Pendiente Adrián |
 | 2026-10-11 | Depende también de la parte de `identity` de la 011 (`IAccountDirectoryRepository`) | Tercera revisión de la 009 (N-3) | Pendiente Adrián |
 | 2026-10-14 | RN-9 fija la forma de los datos de pago (tarjeta de 16 dígitos, NIT `CF` o de 5 a 12 dígitos) y CA-5 la usa; se cierra la pregunta de PD-80; se redacta `number` | Cuarta revisión de la 009 (I-7, I-8) | Pendiente Adrián |
+| 2026-10-14 | §5: solo el Administrador conoce el nombre del plan de un cliente; el Operador, solo conteos (como plan §3 y ADR-0021) | Quinta revisión de la 009 (N-1) | Pendiente Adrián |

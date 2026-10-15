@@ -2,23 +2,28 @@
 
 > Origen: implementación de la 009 (T-01 y T-02) y el informe de choques de T-03 (`informe-t03-choques.pdf`).
 > Rama: `feat/009-contratacion-pagos-y-facturas` · 14/10/2026 · Juan Marcos.
+> **Actualizado tras la 011 T-09** (rama `feat/011-billing`, commit `402464e`, sin push): ver la columna «Estado».
 > Los cambios en archivos de la spec 011 los aprueba Adrián; Fátima los aplica o los confirma en su rama.
 
 ## Resumen
 
 | # | Arreglo | Archivo de la 011 | Quién | Estado |
 |---|---|---|---|---|
-| 1 | Sacar `SubscriptionAdministration` de la T-09 | `tasks.md` (T-09) | Adrián aprueba, Juan Marcos edita | Pendiente |
-| 2 | Quitar `clientCount` de `clientCountsByPlan` | `plan.md` §2 | Adrián | Pendiente (por ahora se mantiene) |
-| 3 | Fijar los tipos de retorno de `SubscriptionAdministration` | `plan.md` §2 | Juan Marcos y Fátima | Pendiente |
+| 1 | ~~Sacar `SubscriptionAdministration` de la T-09~~ | `tasks.md` (T-09) | — | **No aplica**: la T-09 la creó como dice el plan aprobado; la 009 T-03 cambia su regla |
+| 2 | Quitar `clientCount` de `clientCountsByPlan` | `plan.md` §2 | Adrián | Pendiente: la T-09 lo usa (regla Personal); queda sin uso desde la 009 T-03 |
+| 3 | Fijar los tipos de retorno de `SubscriptionAdministration` | `plan.md` §2 | Juan Marcos y Fátima | Implementados en la T-09 como la propuesta; falta que Fátima los confirme |
 | 4 | Métricas: los clientes sin suscripción no cuentan en ningún plan | `plan.md` (R-6), `spec.md` CA-12 | Adrián | Pendiente |
 | 5 | Pasar las pruebas `accounts` y `metrics` con suscripciones reales a la T-10 | `tasks.md` (T-10) | Fátima | Pendiente |
-| 6 | `PERSONAL_PLAN_SLUG` ya existe: la T-09 lo reutiliza | `tasks.md` (T-09) | Juan Marcos | Pendiente |
+| 6 | `PERSONAL_PLAN_SLUG` en un solo archivo | `billing/domain/plan-slug.ts` | Juan Marcos | Hecho en las dos ramas; al fusionar `feat/011-billing` en la 009 se queda la versión de la T-09 (también trae `slugFromName`) |
 | 7 | `IAccountDirectoryRepository` tiene un método nuevo | `plan.md` §2 | Fátima (aviso) | Hecho en la 009 T-02 |
 | 8 | Pruebas de la 011 ajustadas por la 009 | varias | Fátima (aviso) | Hecho en la 009 |
-| 9 | `i-plan-repository.ts` se mueve a `application/ports/` | `tasks.md` (T-09) | Juan Marcos | Pendiente (decisión 9 de Adrián) |
+| 9 | `i-plan-repository.ts` se mueve a `application/ports/` | `tasks.md` (T-09) | Juan Marcos | Hecho en la T-09 |
+| 10 | Método de `billing` que liste **todos** los planes (activos o no) para CA-8 | `plan.md` §2 | Juan Marcos, a pedido de Fátima (T-11) | Pendiente: la T-09 no lo agregó (YAGNI, sin consumidor) |
 
-## 1. Sacar `SubscriptionAdministration` de la T-09
+## 1. Sacar `SubscriptionAdministration` de la T-09 (no aplica)
+
+> **Actualización:** la T-09 la creó tal como dice el plan aprobado de la 011, con la regla «todo cliente es Personal».
+> La 009 T-03 cambia esa regla por la lectura de la suscripción; no hay dos dueños. Lo que sigue queda como historia.
 
 - **Problema:** la T-09 de la 011 crea `SubscriptionAdministration` con la regla «todo cliente es Personal» (PD-80) y su prueba
   `subscription-administration.spec.ts`. La 009 T-03 la crea ya leyendo la suscripción real. Si las dos la crean, hay
@@ -91,6 +96,20 @@ Fátima debe revisar estos cambios al fusionar su rama con la 009 (o la 009 con 
 - **Decisión 9 de Adrián:** los puertos van en `application/ports/*.port.ts` (ya está en `conventions.md`).
 - **Arreglo:** la T-09 de la 011 mueve `billing/application/i-plan-repository.ts` (de la 008) a
   `billing/application/ports/i-plan-repository.port.ts` al integrar.
+
+## 10. Lista de todos los planes para CA-8
+
+- **Problema:** CA-8 pide que el Administrador vea cada plan, activo o no. `PlanCatalogService.list()` solo da los activos
+  (008 CA-1, PD-76) y la T-09 no agregó otra lectura porque nadie la usaba todavía.
+- **Arreglo:** cuando Fátima la necesite en la T-11, Juan Marcos suma en `billing` un método de solo lectura con todos
+  los planes (`IPlanRepository` y `PlanCatalogService`).
+
+## Archivos de la 011 que tocó la T-09 (para revisar con Fátima)
+
+- `specs/011-administracion-y-soporte/tasks.md`: T-09 marcada como hecha, con una nota de lo que entregó.
+- `apps/api/test/int/backoffice/migrations.int-spec.ts`: la lista de migraciones de la 011 suma la de `billing` (son cinco)
+  y el ciclo `up → down → up` comprueba también el esquema de `plan`. Sin este cambio, la prueba falla: suponía que las
+  migraciones de la 011 eran las últimas.
 
 ## Orden sugerido
 

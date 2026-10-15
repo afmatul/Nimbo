@@ -96,6 +96,17 @@ describe('lint boundaries.js: fronteras de storage, access, audit y billing (Art
     expect(boundaryErrors(deep)).toHaveLength(1);
   });
 
+  it('009: `billing` importa `identity` solo desde `identity/index.ts` (evento y fachadas, no repositorios)', async () => {
+    const viaIndex = await lint(importOf('../../identity', 'VerifiedClientLister'), BILLING_FILE);
+    const deep = await lint(
+      importOf('../../identity/application/ports/i-account-directory.repository.port'),
+      BILLING_FILE,
+    );
+
+    expect(boundaryErrors(viaIndex)).toEqual([]);
+    expect(boundaryErrors(deep)).toHaveLength(1);
+  });
+
   it.each([
     ['access', ACCESS_FILE, '../../../storage'],
     ['access', ACCESS_FILE, '../../../identity'],
