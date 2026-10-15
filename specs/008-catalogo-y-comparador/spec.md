@@ -4,12 +4,12 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | En curso |
+| Estado | En revisión |
 | Dueño | Juan Marcos |
 | Fase | 2 |
 | Requisitos | RF-19 |
 | Depende de | 006a |
-| Última actualización | 2026-10-09 |
+| Última actualización | 2026-10-14 |
 
 ## 1. Contexto y objetivo
 Permitir a los visitantes ver los planes de suscripción disponibles y compararlos lado a lado antes de contratar. El resultado observable es una vista pública de catálogo y tabla comparativa, alimentada por la tabla `plan` que `billing` ya tiene desde la spec 006a.
