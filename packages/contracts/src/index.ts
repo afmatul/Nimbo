@@ -18,5 +18,5 @@ export { INTERNAL_ROLES, ROLES, roleSchema, SHARED_ERROR_CODES } from './shared'
 export type { InternalRoleName, RoleName, SharedErrorCode } from './shared';
 export * from './storage';
 export * from './audit';
-export * from './backoffice';
 export * from './billing';
+export * from './backoffice';

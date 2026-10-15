@@ -3,7 +3,7 @@ import { Column, CreateDateColumn, Entity, PrimaryColumn, UpdateDateColumn } fro
 import { BIGINT_TRANSFORMER } from '../../../../shared';
 
 /**
- * Fila de `plan` (spec 006a, RN-2). Propiedades en inglés; columnas en español.
+ * Fila de `plan` (spec 006a, RN-2; 011 suma `desactivado_en`). Propiedades en inglés; columnas en español.
  * Los bytes usan el transformador compartido: `pg` entrega `bigint` como texto.
  */
 @Entity('plan')
@@ -40,6 +40,10 @@ export class PlanOrmEntity {
 
   @Column('integer', { name: 'dias_retencion_papelera' })
   diasRetencionPapelera!: number;
+
+  /** Nulo: el plan se ofrece; con fecha: desactivado (011 RN-4). */
+  @Column('timestamptz', { name: 'desactivado_en', nullable: true })
+  desactivadoEn!: Date | null;
 
   @CreateDateColumn({ name: 'creado_en', type: 'timestamptz' })
   creadoEn!: Date;
