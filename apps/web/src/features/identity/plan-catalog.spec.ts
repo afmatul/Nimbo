@@ -18,7 +18,13 @@ const PERSONAL: Plan = {
   name: 'Personal',
   priceCents: 0,
 };
-const PRO: Plan = { ...PLAN, id: '00000000-0000-4000-8000-000000000002', slug: 'pro', name: 'Pro', priceCents: 4500 };
+const PRO: Plan = {
+  ...PLAN,
+  id: '00000000-0000-4000-8000-000000000002',
+  slug: 'pro',
+  name: 'Pro',
+  priceCents: 4500,
+};
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
