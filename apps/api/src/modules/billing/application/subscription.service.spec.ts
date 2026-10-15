@@ -4,6 +4,7 @@ import { RateLimitExceededError } from '../../../shared/domain/errors';
 import type { Payment } from '../domain/entities/payment.entity';
 
 import type { BillingLogger } from './billing-logger';
+import type { InvoiceIssuer } from './invoice-issuer';
 import type { SubscriptionCheckout, SubscribeOutcome } from './subscription-checkout';
 import { SubscriptionService } from './subscription.service';
 import { aPlan } from './testing/plans';
@@ -20,7 +21,9 @@ const COMMAND = {
   nit: 'CF',
 };
 
-const setup = (options: { status?: Payment['status']; allowed?: boolean } = {}) => {
+const setup = (
+  options: { status?: Payment['status']; allowed?: boolean; issueFails?: boolean } = {},
+) => {
   const journal: string[] = [];
   const transactions: ITransactionRunner = {
     run: () => Promise.reject(new Error('el cobro corre con actor')),
@@ -31,9 +34,11 @@ const setup = (options: { status?: Payment['status']; allowed?: boolean } = {}) 
       return result;
     },
   };
+  const status = options.status ?? 'aprobada';
   const outcome = {
-    payment: { id: 'pago-1', status: options.status ?? 'aprobada' } as Payment,
+    payment: { id: 'pago-1', status } as Payment,
     plan: TEAM,
+    invoiceId: status === 'aprobada' ? 'factura-1' : null,
   } as SubscribeOutcome;
   const checkout = {
     checkout: jest.fn(() => {
@@ -51,8 +56,16 @@ const setup = (options: { status?: Payment['status']; allowed?: boolean } = {}) 
     ),
   };
   const logger: BillingLogger = { info: jest.fn(), error: jest.fn() };
-  const service = new SubscriptionService(transactions, checkout, limiter, logger);
-  return { service, journal, limiter, logger };
+  const issuer = {
+    issue: jest.fn(() => {
+      journal.push('issue');
+      return options.issueFails === true
+        ? Promise.reject(new TypeError('minio caído'))
+        : Promise.resolve();
+    }),
+  } as unknown as InvoiceIssuer;
+  const service = new SubscriptionService(transactions, checkout, limiter, logger, issuer);
+  return { service, journal, limiter, logger, issuer };
 };
 
 describe('SubscriptionService.subscribe (spec 009 CA-5, RN-8; plan §2 y §5)', () => {
@@ -61,7 +74,7 @@ describe('SubscriptionService.subscribe (spec 009 CA-5, RN-8; plan §2 y §5)', 
 
     await service.subscribe(ANA, COMMAND);
 
-    expect(journal).toEqual([`begin:${ANA.id}`, 'checkout', 'commit']);
+    expect(journal.slice(0, 3)).toEqual([`begin:${ANA.id}`, 'checkout', 'commit']);
   });
 
   it('CA-5: el intento 11 en 15 minutos es 429 sin abrir la transacción (`billing:subscribe:{actor}`)', async () => {
@@ -87,4 +100,34 @@ describe('SubscriptionService.subscribe (spec 009 CA-5, RN-8; plan §2 y §5)', 
       expect(logger.info).toHaveBeenCalledWith({ event, paymentId: 'pago-1', planId: TEAM.id });
     },
   );
+
+  it('CA-6, RN-8: emite el PDF de la factura después del commit', async () => {
+    const { service, journal, issuer } = setup();
+
+    await service.subscribe(ANA, COMMAND);
+
+    expect(journal).toEqual([`begin:${ANA.id}`, 'checkout', 'commit', 'issue']);
+    expect(issuer.issue).toHaveBeenCalledWith(ANA, 'factura-1');
+  });
+
+  it('CA-6, RN-8: si el PDF falla, el cobro se responde igual y queda en la bitácora para `invoice-retry`', async () => {
+    const { service, logger } = setup({ issueFails: true });
+
+    await expect(service.subscribe(ANA, COMMAND)).resolves.toMatchObject({
+      invoiceId: 'factura-1',
+    });
+    expect(logger.error).toHaveBeenCalledWith({
+      event: 'billing.invoice_issue_failed',
+      invoiceId: 'factura-1',
+      errorName: 'TypeError',
+    });
+  });
+
+  it('CA-6: un rechazo no tiene factura que emitir', async () => {
+    const { service, issuer } = setup({ status: 'rechazada' });
+
+    await service.subscribe(ANA, COMMAND);
+
+    expect(issuer.issue).not.toHaveBeenCalled();
+  });
 });

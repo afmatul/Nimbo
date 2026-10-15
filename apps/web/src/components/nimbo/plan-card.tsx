@@ -1,7 +1,7 @@
-import type { Plan } from '@nimbo/contracts';
+import { formatGtq, type Plan } from '@nimbo/contracts';
 import type { ReactNode } from 'react';
 
-import { formatDocxEditing, formatPlanBytes, formatQuetzales } from '../../lib/format-plan';
+import { formatDocxEditing, formatPlanBytes } from '../../lib/format-plan';
 import { cn } from '../../lib/utils';
 import { Card } from '../ui/card';
 
@@ -20,7 +20,7 @@ export function PlanCard({ plan, className, action }: PlanCardProps): ReactNode 
       <p className="min-h-8 text-xs text-muted-foreground">{plan.description}</p>
       <p className="flex items-baseline gap-1">
         <span className="text-2xl font-bold tabular-nums text-foreground">
-          {formatQuetzales(plan.priceCents)}
+          {formatGtq(plan.priceCents)}
         </span>
         <span className="text-xs text-muted-foreground">al mes</span>
       </p>

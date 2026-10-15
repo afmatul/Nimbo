@@ -53,7 +53,9 @@ const setup = (options: { status?: Payment['status']; plan?: typeof TEAM | null 
   const payments = {
     charge: jest.fn(step(`charge:${status}`, payment)),
   } as unknown as PaymentService;
-  const invoices = { register: jest.fn(step('invoice', {})) } as unknown as InvoiceService;
+  const invoices = {
+    register: jest.fn(step('invoice', { id: 'factura-1' })),
+  } as unknown as InvoiceService;
   const checkout = new SubscriptionCheckout(
     subscriptions,
     plans,
@@ -75,6 +77,7 @@ describe('SubscriptionCheckout (spec 009 CA-3 a CA-6, RN-8; plan §2)', () => {
       planId: TEAM.id,
       expiresAt: new Date('2026-11-13T12:00:00.000Z'),
     });
+    expect(outcome.invoiceId).toBe('factura-1');
   });
 
   it('CA-6: la factura lleva el pago y el NIT del cobro', async () => {
@@ -96,6 +99,7 @@ describe('SubscriptionCheckout (spec 009 CA-3 a CA-6, RN-8; plan §2)', () => {
 
     expect(journal).toEqual(['personal', 'lock', 'charge:rechazada']);
     expect(outcome.subscription.planSlug).toBe('personal');
+    expect(outcome.invoiceId).toBeNull();
   });
 
   it('CA-5: un plan inexistente es `BILLING_PLAN_NOT_AVAILABLE` sin cobrar', async () => {

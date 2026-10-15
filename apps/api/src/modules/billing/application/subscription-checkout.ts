@@ -23,11 +23,12 @@ export interface SubscribeCommand {
   readonly nit: string;
 }
 
-/** Lo que quedó confirmado: el pago (aprobado o rechazado), el plan y la suscripción vigente. */
+/** Lo que quedó confirmado: el pago (aprobado o rechazado), el plan, la suscripción vigente y la factura (si se aprobó). */
 export interface SubscribeOutcome {
   readonly payment: ChargeResult;
   readonly plan: Plan;
   readonly subscription: Subscription;
+  readonly invoiceId: string | null;
 }
 
 /**
@@ -57,9 +58,11 @@ export class SubscriptionCheckout {
       amount: Money.ofCents(plan.priceCents),
       card: command.card,
     });
-    if (payment.status === 'rechazada') return { payment, plan, subscription: current };
+    if (payment.status === 'rechazada') {
+      return { payment, plan, subscription: current, invoiceId: null };
+    }
     await this.subscriptions.save(actor, next);
-    await this.invoices.register(actor, payment, command.nit);
-    return { payment, plan, subscription: next };
+    const invoice = await this.invoices.register(actor, payment, command.nit);
+    return { payment, plan, subscription: next, invoiceId: invoice.id };
   }
 }

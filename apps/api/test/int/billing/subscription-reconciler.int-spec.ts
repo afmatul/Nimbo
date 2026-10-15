@@ -2,6 +2,8 @@ import type { DataSource } from 'typeorm';
 
 import { BillingWorkerModule } from '../../../src/modules/billing';
 import { SubscriptionReconcilerService } from '../../../src/modules/billing/application/subscription-reconciler.service';
+import { StorageWorkerModule } from '../../../src/modules/storage';
+import { PlanLimitsBindingModule } from '../../../src/plan-limits-binding.module';
 import { connectAsOwner } from '../../support/database-urls';
 import { buildTestEnv, createTestApp } from '../setup/test-app';
 import type { TestApp } from '../setup/test-app';
@@ -32,7 +34,10 @@ describe('conciliación de suscripciones (spec 009 CA-2)', () => {
     );
     worker = await createTestApp({
       validatedEnv: env,
-      modules: [BillingWorkerModule.forRoot(env)],
+      modules: [
+        PlanLimitsBindingModule,
+        BillingWorkerModule.forRoot(env, StorageWorkerModule.forRoot(env)),
+      ],
       prefix: '',
     });
     reconciler = worker.app.get(SubscriptionReconcilerService);

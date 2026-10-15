@@ -3,4 +3,7 @@
 export { I_PLAN_LIMITS_PROVIDER } from './application/plan-limits';
 export type { IPlanLimitsProvider, PlanLimits } from './application/plan-limits';
 export { StorageModule } from './storage.module';
+// 009 (decisión 1): `billing` sube la factura PDF y firma su descarga; el puerto y su token, nada más.
+export { I_OBJECT_STORAGE } from './application/ports/i-object-storage.port';
+export type { IObjectStorage, PutObjectInput } from './application/ports/i-object-storage.port';
 export { StorageWorkerModule } from './storage-worker.module';

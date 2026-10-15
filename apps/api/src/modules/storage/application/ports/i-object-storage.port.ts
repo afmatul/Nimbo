@@ -33,6 +33,13 @@ export interface PresignDownloadInput {
   readonly expiresInSeconds: number;
 }
 
+/** Un objeto que sube el propio servidor (009: la factura PDF). */
+export interface PutObjectInput {
+  readonly key: string;
+  readonly body: Buffer;
+  readonly contentType: string;
+}
+
 /**
  * Almacenamiento de objetos (plan 005 §6, regla a). Las claves son `u/{propietario}/{archivo}/{version}` y nunca
  * salen de la API ni entran en una bitácora. Firmar es cómputo local (no hay red) contra el endpoint público;
@@ -61,6 +68,11 @@ export interface IObjectStorage {
   purgeObject(key: string): Promise<void>;
   /** URL de descarga con `attachment`, `application/octet-stream` y `no-store`, válida solo para esa clave. */
   presignDownload(input: PresignDownloadInput): Promise<string>;
+  /**
+   * Sube un objeto que genera el servidor (009 CA-6, decisión 1). Solo acepta claves
+   * `invoices/{usuario_id}/{factura_id}.pdf`: cualquier otra, también las `u/` de los archivos de cliente, se rechaza.
+   */
+  putObject(input: PutObjectInput): Promise<void>;
 }
 
 export const I_OBJECT_STORAGE: unique symbol = Symbol('IObjectStorage');

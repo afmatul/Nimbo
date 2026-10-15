@@ -5,15 +5,14 @@ import request from 'supertest';
 import type { Response } from 'supertest';
 import type { DataSource } from 'typeorm';
 
-import { BillingModule } from '../../../src/modules/billing';
 import { FixedClock, Role } from '../../../src/shared';
 import { connectAsOwner } from '../../support/database-urls';
 import { PROBE_CLOCK_START } from '../../support/probe.module';
 import { TestAccessTokens } from '../../support/test-access-tokens';
-import { createTestApp } from '../setup/test-app';
 import type { TestApp } from '../setup/test-app';
 import { insertAccount } from '../storage/storage-test-db';
 
+import { createBillingHttpApp } from './billing-http';
 import { removeBillingAccounts } from './billing-test-db';
 
 const SUBSCRIBE = '/api/v1/billing/subscribe';
@@ -41,7 +40,7 @@ describe('POST /api/v1/billing/subscribe (spec 009 CA-3 a CA-5)', () => {
   const accounts: string[] = [];
 
   beforeAll(async () => {
-    testApp = await createTestApp({ modules: [BillingModule] });
+    testApp = await createBillingHttpApp();
     owner = await connectAsOwner();
   });
 

@@ -5,6 +5,7 @@ import { I_RATE_LIMITER, I_TRANSACTION_RUNNER, RateLimitExceededError } from '..
 import type { Actor, IRateLimiter, ITransactionRunner, RateLimitRule } from '../../../shared';
 
 import type { BillingLogger } from './billing-logger';
+import { InvoiceIssuer } from './invoice-issuer';
 import { SubscriptionCheckout } from './subscription-checkout';
 import type { SubscribeCommand, SubscribeOutcome } from './subscription-checkout';
 
@@ -14,7 +15,8 @@ const SUBSCRIBE_RATE_RULES: readonly RateLimitRule[] = [{ limit: 10, windowSecon
 
 /**
  * Contratación de un plan de pago (spec 009 CA-3 a CA-6, RN-8; plan §2): limita los intentos, corre los pasos de
- * `SubscriptionCheckout` en una sola transacción con `withActor` y registra el resultado después del commit. El `402`
+ * `SubscriptionCheckout` en una sola transacción con `withActor`, registra el resultado y, después del commit, emite el
+ * PDF de la factura (T-07). Si la emisión falla, el pago ya está confirmado (RN-8) y `invoice-retry` la repone. El `402`
  * de un rechazo lo lanza el controlador, también después del commit (B-3).
  */
 @Injectable()
@@ -24,6 +26,7 @@ export class SubscriptionService {
     @Inject(SubscriptionCheckout) private readonly checkout: SubscriptionCheckout,
     @Inject(I_RATE_LIMITER) private readonly rateLimiter: IRateLimiter,
     @Inject(PinoLogger) private readonly logger: BillingLogger,
+    @Inject(InvoiceIssuer) private readonly issuer: InvoiceIssuer,
   ) {}
 
   async subscribe(actor: Actor, command: SubscribeCommand): Promise<SubscribeOutcome> {
@@ -39,7 +42,21 @@ export class SubscriptionService {
       paymentId: outcome.payment.id,
       planId: outcome.plan.id,
     });
+    if (outcome.invoiceId !== null) await this.issueAfterCommit(actor, outcome.invoiceId);
     return outcome;
+  }
+
+  /** RN-8: un fallo del PDF no revierte ni falla el cobro; solo deja su nombre (el mensaje podría traer datos). */
+  private async issueAfterCommit(actor: Actor, invoiceId: string): Promise<void> {
+    try {
+      await this.issuer.issue(actor, invoiceId);
+    } catch (error) {
+      this.logger.error({
+        event: 'billing.invoice_issue_failed',
+        invoiceId,
+        errorName: error instanceof Error ? error.name : 'unknown',
+      });
+    }
   }
 
   /** CA-5: el intento que supera el límite es 429 sin abrir la transacción ni cobrar. */

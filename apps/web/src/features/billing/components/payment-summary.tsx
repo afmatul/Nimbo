@@ -1,8 +1,8 @@
-import { breakdown, type Plan } from '@nimbo/contracts';
+import { breakdown, formatGtq, type Plan } from '@nimbo/contracts';
 import type { JSX } from 'react';
 
 import { Card } from '../../../components/ui/card';
-import { formatCount, formatPlanBytes, formatQuetzales } from '../../../lib/format-plan';
+import { formatCount, formatPlanBytes } from '../../../lib/format-plan';
 
 /** Resumen del plan que se contrata (mockup de pago, spec 009 RN-2): límites y desglose con el IVA incluido. */
 export function PaymentSummary({ plan }: { readonly plan: Plan }): JSX.Element {
@@ -29,7 +29,7 @@ export function PaymentSummary({ plan }: { readonly plan: Plan }): JSX.Element {
       <p className="flex items-baseline justify-between border-t border-border pt-3">
         <span className="text-sm font-semibold text-foreground">Total hoy</span>
         <span className="text-2xl font-bold tabular-nums text-foreground">
-          {formatQuetzales(totalCents)}
+          {formatGtq(totalCents)}
         </span>
       </p>
     </Card>
@@ -46,7 +46,7 @@ function AmountRow({
   return (
     <div className="flex justify-between">
       <dt className="text-muted-foreground">{label}</dt>
-      <dd className="tabular-nums text-foreground">{formatQuetzales(cents)}</dd>
+      <dd className="tabular-nums text-foreground">{formatGtq(cents)}</dd>
     </div>
   );
 }

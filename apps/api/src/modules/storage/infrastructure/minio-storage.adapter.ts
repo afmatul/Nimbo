@@ -19,6 +19,7 @@ import type {
   IObjectStorage,
   ObjectHead,
   PresignDownloadInput,
+  PutObjectInput,
   PresignUploadObjectInput,
   PresignUploadPartInput,
   UploadedPart,
@@ -67,6 +68,8 @@ export const buildMinioStorageClients = (
 
 /** Cabeceras que la URL de carga fija en la firma: un `PUT` con otro tamaño se rechaza. */
 const SIGNED_UPLOAD_HEADERS: ReadonlySet<string> = new Set(['content-length']);
+/** Único prefijo que el servidor escribe por su cuenta: la factura PDF de la 009 (decisión 1, revisión I-1). */
+const INVOICE_KEY = /^invoices\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.pdf$/;
 const DOWNLOAD_CONTENT_TYPE = 'application/octet-stream';
 const DOWNLOAD_CACHE_CONTROL = 'no-store';
 
@@ -247,6 +250,20 @@ export class MinioStorageAdapter implements IObjectStorage {
       keyMarker = page.NextKeyMarker;
       versionIdMarker = page.NextVersionIdMarker;
     }
+  }
+
+  async putObject(input: PutObjectInput): Promise<void> {
+    if (!INVOICE_KEY.test(input.key)) {
+      throw new Error('putObject solo acepta claves invoices/{usuario}/{factura}.pdf.');
+    }
+    await this.clients.operations.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: input.key,
+        Body: input.body,
+        ContentType: input.contentType,
+      }),
+    );
   }
 
   private async collectParts(key: string, uploadId: string): Promise<UploadedPart[]> {

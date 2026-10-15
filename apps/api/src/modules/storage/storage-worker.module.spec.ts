@@ -125,9 +125,9 @@ describe('StorageWorkerModule', () => {
     expect(() => config.maxDepth).toThrow(/worker/);
   });
 
-  it('CA-9: es solo de trabajo: sin controladores y sin exportar nada', () => {
+  it('CA-9, 009 decisión 1: es solo de trabajo: sin controladores y solo exporta `I_OBJECT_STORAGE` (factura PDF)', () => {
     expect(module.controllers ?? []).toEqual([]);
-    expect(module.exports ?? []).toEqual([]);
+    expect(module.exports ?? []).toEqual([I_OBJECT_STORAGE]);
   });
 
   it('RN-1, DF-51: no enlaza `I_PLAN_LIMITS_PROVIDER` (lo hace la raíz de composición del `worker`)', () => {

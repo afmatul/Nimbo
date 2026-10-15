@@ -1,6 +1,11 @@
 'use client';
 
-import { BILLING_ERROR_CODES, type Plan, type SubscribeResponse } from '@nimbo/contracts';
+import {
+  BILLING_ERROR_CODES,
+  formatGtq,
+  type Plan,
+  type SubscribeResponse,
+} from '@nimbo/contracts';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import type { JSX } from 'react';
 
@@ -12,7 +17,6 @@ import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { messageForCode } from '../../../lib/error-catalog';
 import { dayLabel } from '../../../lib/format-date';
-import { formatQuetzales } from '../../../lib/format-plan';
 import { cn } from '../../../lib/utils';
 import { ServerErrorAlert } from '../../identity/components/server-error-alert';
 import type { AuthFetch } from '../../identity/session/auth-fetch';
@@ -58,7 +62,7 @@ function PaymentCard({
   readonly plan: Plan;
   readonly state: PaymentFormState;
 }): JSX.Element {
-  const price = formatQuetzales(plan.priceCents);
+  const price = formatGtq(plan.priceCents);
   return (
     <Card className="flex flex-col gap-4 p-6">
       <header className="space-y-1">

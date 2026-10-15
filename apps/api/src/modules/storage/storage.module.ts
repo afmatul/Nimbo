@@ -111,6 +111,8 @@ export class StorageModule {
         FolderService,
         QuickAccessService,
       ],
+      // 009 (ampliación de la decisión 1, 2026-10-15): `billing` lo importa de forma explícita, sin módulo global.
+      exports: [I_OBJECT_STORAGE],
     };
   }
 }

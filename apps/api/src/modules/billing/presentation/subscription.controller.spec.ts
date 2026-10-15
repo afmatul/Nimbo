@@ -24,6 +24,7 @@ const BODY = {
 const outcome = (status: Payment['status']): SubscribeOutcome => ({
   payment: { id: 'pago-1', status, reference: 'SIM-2026-000007' } as Payment,
   plan: TEAM,
+  invoiceId: 'factura-1',
   subscription: Subscription.rehydrate({
     userId: ANA.id,
     planId: TEAM.id,

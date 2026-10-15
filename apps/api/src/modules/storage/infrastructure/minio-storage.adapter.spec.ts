@@ -236,6 +236,38 @@ describe('MinioStorageAdapter (operaciones, cliente falso)', () => {
 
     await expect(adapter.purgeObject(KEY)).rejects.toThrow();
   });
+
+  it('009 CA-6: `putObject` sube la factura con su tipo de contenido', async () => {
+    const { adapter, calls } = buildAdapter({ PutObjectCommand: () => ({}) });
+    const key =
+      'invoices/11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222.pdf';
+
+    await adapter.putObject({ key, body: Buffer.from('%PDF-'), contentType: 'application/pdf' });
+
+    expect(calls).toEqual([
+      {
+        command: 'PutObjectCommand',
+        input: {
+          Bucket: BUCKET,
+          Key: key,
+          Body: Buffer.from('%PDF-'),
+          ContentType: 'application/pdf',
+        },
+      },
+    ]);
+  });
+
+  it.each([KEY, 'invoices/otra-cosa.pdf', 'invoices/11111111-1111-4111-8111-111111111111/x.exe'])(
+    '009 I-1: `putObject` rechaza la clave %s sin llamar al almacenamiento (solo facturas)',
+    async (key) => {
+      const { adapter, calls } = buildAdapter({});
+
+      await expect(
+        adapter.putObject({ key, body: Buffer.from('x'), contentType: 'application/pdf' }),
+      ).rejects.toThrow(/invoices\//);
+      expect(calls).toEqual([]);
+    },
+  );
 });
 
 describe('MinioStorageAdapter (firmas, cómputo local)', () => {

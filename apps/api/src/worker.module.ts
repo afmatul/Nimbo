@@ -33,6 +33,7 @@ export const WORKER_QUEUES = [
   'trash-purge',
   'usage-reconcile',
   'subscription-reconcile',
+  'invoice-retry',
 ] as const;
 
 /**
@@ -45,6 +46,8 @@ export const WORKER_QUEUES = [
 @Module({})
 export class WorkerModule {
   static forRoot(env: WorkerEnv): DynamicModule {
+    // Una sola instancia de `storage` en el `worker`: `billing` la recibe para subir el PDF (009 T-07).
+    const storage = StorageWorkerModule.forRoot(env);
     return {
       module: WorkerModule,
       imports: [
@@ -55,8 +58,8 @@ export class WorkerModule {
         BullModule.registerQueue({ name: PING_QUEUE }),
         NotificationsWorkerModule,
         PlanLimitsBindingModule,
-        StorageWorkerModule.forRoot(env),
-        BillingWorkerModule.forRoot(env),
+        storage,
+        BillingWorkerModule.forRoot(env, storage),
       ],
       providers: [PingProcessor],
     };

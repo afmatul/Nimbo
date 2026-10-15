@@ -6,6 +6,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 
 import { AccessModule } from './modules/access';
 import { AuditHttpModule } from './modules/audit';
+import { BillingHttpModule } from './modules/billing';
 import { IDENTITY_THROTTLERS, IdentityModule } from './modules/identity';
 import { NotificationsModule } from './modules/notifications';
 import { StorageModule } from './modules/storage';
@@ -35,6 +36,8 @@ import type { Env } from './shared';
 @Module({})
 export class AppModule {
   static forRoot(env: Env): DynamicModule {
+    // Una sola instancia de `storage`: `billing` la importa de forma explícita (009, ampliación de la decisión 1).
+    const storage = StorageModule.forRoot(env);
     return {
       module: AppModule,
       imports: [
@@ -52,7 +55,8 @@ export class AppModule {
         IdentityModule.forRoot(env),
         AccessModule,
         PlanLimitsBindingModule,
-        StorageModule.forRoot(env),
+        storage,
+        BillingHttpModule.forRoot(storage),
         AuditHttpModule,
       ],
       providers: [PingQueue],

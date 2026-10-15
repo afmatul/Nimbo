@@ -1,16 +1,16 @@
 import { randomUUID } from 'node:crypto';
 
+import { GetObjectCommand } from '@aws-sdk/client-s3';
 import { TEST_CARDS } from '@nimbo/contracts';
 import request from 'supertest';
 import type { DataSource } from 'typeorm';
 
-import { BillingModule } from '../../../src/modules/billing';
 import { createActor, FixedClock, Role } from '../../../src/shared';
-import { connectAsOwner } from '../../support/database-urls';
+import { connectAsOwner, requiredEnv } from '../../support/database-urls';
 import { PROBE_CLOCK_START } from '../../support/probe.module';
 import { TestAccessTokens } from '../../support/test-access-tokens';
-import { createTestApp } from '../setup/test-app';
 import type { TestApp } from '../setup/test-app';
+import { harnessS3 } from '../storage/storage-http';
 import type { AppDatabase } from '../storage/storage-test-db';
 import {
   connectAsAppDatabase,
@@ -18,6 +18,7 @@ import {
   insertAccount,
 } from '../storage/storage-test-db';
 
+import { createBillingHttpApp } from './billing-http';
 import {
   createFreshDatabase,
   removeBillingAccounts,
@@ -50,7 +51,7 @@ describe('factura dentro del cobro (spec 009 CA-6)', () => {
   const accounts: string[] = [];
 
   beforeAll(async () => {
-    testApp = await createTestApp({ modules: [BillingModule] });
+    testApp = await createBillingHttpApp();
     owner = await connectAsOwner();
     app = await connectAsAppDatabase();
   });
@@ -92,7 +93,7 @@ describe('factura dentro del cobro (spec 009 CA-6)', () => {
     return row.id;
   };
 
-  it('CA-6, RN-2: un pago aprobado deja su factura NB- con el desglose, el NIT y el correo, sin PDF ni aviso', async () => {
+  it('CA-6, RN-2: un pago aprobado deja su factura NB- con el desglose, el NIT, el correo y su PDF, sin aviso todavía', async () => {
     const ana = await subscribe(TEST_CARDS.approved);
 
     const [invoice] = await invoicesOf(ana);
@@ -104,9 +105,30 @@ describe('factura dentro del cobro (spec 009 CA-6)', () => {
       total_centavos: 11_000,
       nit: '12345678',
       correo_comprobante: `storage.${ana}@ejemplo.com`,
-      clave_objeto: null,
+      clave_objeto: expect.stringMatching(
+        new RegExp(`^invoices/${ana}/[0-9a-f-]{36}\\.pdf$`),
+      ) as unknown,
       aviso_encolado_en: null,
     });
+  });
+
+  it('CA-6, T-07: el PDF queda en MinIO, después del commit, como `application/pdf`', async () => {
+    const ana = await subscribe(TEST_CARDS.approved);
+    const [invoice] = await invoicesOf(ana);
+    const s3 = harnessS3();
+
+    const object = await s3.send(
+      new GetObjectCommand({
+        Bucket: requiredEnv('MINIO_BUCKET'),
+        Key: invoice?.clave_objeto ?? '',
+      }),
+    );
+    if (object.Body === undefined) throw new Error('MinIO no devolvió el PDF');
+    const bytes = Buffer.from(await object.Body.transformToByteArray());
+
+    expect(object.ContentType).toBe('application/pdf');
+    expect(bytes.subarray(0, 5).toString('latin1')).toBe('%PDF-');
+    s3.destroy();
   });
 
   it('CA-6: un pago rechazado no tiene factura', async () => {
@@ -139,7 +161,7 @@ describe('factura dentro del cobro (spec 009 CA-6)', () => {
     );
   });
 
-  it('RNF-05, RN-7: RLS forzada con solo lectura y alta del dueño; otro cliente no ve la factura', async () => {
+  it('RNF-05, RN-7: RLS forzada: lectura, alta y emisión del dueño, y la lectura de mantenimiento (T-07); otro cliente no ve la factura', async () => {
     const ana = await subscribe(TEST_CARDS.approved);
     const intruder = createActor(await insertAccount(owner), Role.CLIENT);
     accounts.push(intruder.id);
@@ -153,7 +175,9 @@ describe('factura dentro del cobro (spec 009 CA-6)', () => {
       forced: true,
       policies: [
         { policyname: 'factura_cliente_alta', cmd: 'INSERT' },
+        { policyname: 'factura_cliente_emision', cmd: 'UPDATE' },
         { policyname: 'factura_cliente_lectura', cmd: 'SELECT' },
+        { policyname: 'factura_mantenimiento', cmd: 'SELECT' },
       ],
     });
   });

@@ -1,21 +1,6 @@
-import {
-  formatCount,
-  formatDocxEditing,
-  formatMaxEditors,
-  formatPlanBytes,
-  formatQuetzales,
-} from './format-plan';
+import { formatCount, formatDocxEditing, formatMaxEditors, formatPlanBytes } from './format-plan';
 
 describe('format-plan (008 RN-1, CA-2)', () => {
-  it.each([
-    [0, 'Q0.00'],
-    [4500, 'Q45.00'],
-    [11000, 'Q110.00'],
-    [123456, 'Q1 234.56'],
-  ])('RN-1: %d centavos se muestran como «%s»', (cents, expected) => {
-    expect(formatQuetzales(cents)).toBe(expected);
-  });
-
   it.each([
     ['512', '512 B'],
     ['52428800', '50 MB'],

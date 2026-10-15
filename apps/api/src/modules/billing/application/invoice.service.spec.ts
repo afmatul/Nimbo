@@ -29,6 +29,8 @@ const setup = () => {
       drafts.push(draft);
       return Promise.resolve({ ...draft, id: 'factura-1', userId: ANA.id, number: 'NB-2026-0001' });
     }),
+    findForIssue: jest.fn(),
+    markStored: jest.fn(),
   };
   const contacts = {
     contactOf: jest.fn().mockResolvedValue('ana@ejemplo.com'),

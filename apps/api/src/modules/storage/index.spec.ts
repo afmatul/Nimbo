@@ -32,12 +32,18 @@ type _LimitsForSignature = Expect<
 
 /**
  * API pública de `storage` (plan §6, DF-51 opción A): el token del puerto de límites, el módulo que monta la raíz de
- * composición del `api` y el del `worker` (T-51). El detector, el escáner y los repositorios no salen.
+ * composición del `api` y el del `worker` (T-51), y el token de `IObjectStorage` para la factura PDF de `billing` (009,
+ * decisión 1). El detector, el escáner y los repositorios no salen.
  */
-const RUNTIME_EXPORTS = ['I_PLAN_LIMITS_PROVIDER', 'StorageModule', 'StorageWorkerModule'] as const;
+const RUNTIME_EXPORTS = [
+  'I_OBJECT_STORAGE',
+  'I_PLAN_LIMITS_PROVIDER',
+  'StorageModule',
+  'StorageWorkerModule',
+] as const;
 
 describe('modules/storage/index.ts', () => {
-  it('CA-3, CA-4, CA-9, RN-1: exporta exactamente el token de límites, `StorageModule` y `StorageWorkerModule`', () => {
+  it('CA-3, CA-4, CA-9, RN-1, 009: exporta exactamente los tokens de límites y de objetos, `StorageModule` y `StorageWorkerModule`', () => {
     expect(Object.keys(storage).sort()).toEqual([...RUNTIME_EXPORTS].sort());
     expect(typeof storage.I_PLAN_LIMITS_PROVIDER).toBe('symbol');
   });
