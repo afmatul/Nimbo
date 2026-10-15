@@ -10,8 +10,8 @@
 | Requisitos | RF-13, RF-29 (principales); aplican RF-07, RF-09, RF-12, RNF-05, RNF-06, RNF-07, RNF-13, RNF-14, RNF-17 |
 | Depende de | 005 (`archivo`, `version_archivo`, cuota, descarga firmada), 003 (`Actor`, `accessibleNodes`, RLS), 006a (`versiones_retenidas` vía `IPlanLimitsProvider`), 004 (`IAuditLogger`). Conviven con 006 (papelera) y 007 (conciliación de cuota) |
 | Módulo | M2 `storage` (dueño del ciclo de vida de versiones; la autoría por sesión llega de M5 en 016) |
-| DF | DF-17 y DF-18 (ADR-0012, Propuesto: composición con `origen`), DF-38 (014 ajusta `espacio_usado`); DF-05 y DF-39 son de 016 |
-| Última actualización | 2026-10-07 |
+| DF | DF-17 y DF-18 (ADR-0012, Aceptado el 2026-10-10: composición con `origen`), DF-38 (014 ajusta `espacio_usado`); DF-05 y DF-39 son de 016 |
+| Última actualización | 2026-10-15 |
 
 ## 1. Contexto y objetivo
 
