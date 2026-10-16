@@ -169,7 +169,7 @@ const ESTADOS = [
       anuncio: 'No se subió Grabacion_sesion_14.mp4. Este archivo pesa 1.2 GB y tu plan permite hasta 1 GB por archivo.',
       items: [
         { nombre: 'Grabacion_sesion_14.mp4', meta: '1.2 GB', st: 'rechazado', stCls: 'st-err',
-          msg: '<span><strong>Este archivo pesa 1.2 GB y tu plan permite hasta 1 GB por archivo.</strong> Reduce su tamaño o cambia de plan.</span>' }, // «Ver planes» se oculta hasta 008 (CA-4)
+          msg: '<span><strong>Este archivo pesa 1.2 GB y tu plan permite hasta 1 GB por archivo.</strong> Reduce su tamaño o cambia de plan.</span>' }, // «Ver planes» se oculta hasta 009 (CA-4)
         ANEXO,
       ],
     },
@@ -185,7 +185,7 @@ const ESTADOS = [
       items: [
         { nombre: 'Respaldo_fotos_campo.zip', meta: '920 MB', st: 'rechazado', stCls: 'st-err',
           msg: '<span><strong>Te faltan 320 MB de espacio para subir este archivo.</strong> Libera espacio o cambia de plan.</span>',
-          msgAcciones: '<a class="btn btn-primary btn-sm" href="#">Liberar espacio</a>' }, // «Ver planes» se oculta hasta 008 (CA-4)
+          msgAcciones: '<a class="btn btn-primary btn-sm" href="#">Liberar espacio</a>' }, // «Ver planes» se oculta hasta 009 (CA-4)
         { nombre: 'Entrevistas_ronda2.docx', meta: '820 KB', st: 'subido', stCls: 'st-ok', done: true },
       ],
     },

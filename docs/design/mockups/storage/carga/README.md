@@ -85,10 +85,10 @@ lateral al 87 % (304 GB de 350 GB) salvo en `rechazo-cuota` (349.4 GB, 99.8 %). 
   La última frase explica RN-7: tras cerrar o recargar, la carga no se recupera.
 - **Rechazos antes de subir** (CA-3, CA-4, CA-7): la fila queda «rechazado», sin barra, con el mensaje de la spec en un
   aviso `destructive` (qué pasó en negrita + qué hacer). En cuota, el botón «Liberar espacio»; en tamaño, sin botón.
-  «Ver planes» **se oculta hasta 008** en los dos (CA-4; decisión de Adrián, 2026-09-28). Los demás archivos de la
+  «Ver planes» **se oculta hasta 009** en los dos (CA-4; decisiones de Adrián, 2026-09-28 y PD-92, 2026-10-14). Los demás archivos de la
   misma selección siguen su curso.
 - **Destinos de los botones**: «Liberar espacio» lleva al Resumen de espacio (spec 007); mientras 007 no exista, lleva
-  a Mis archivos. Cuando exista 008, «Ver planes» volverá a los dos rechazos y llevará a Plan y facturación.
+  a Mis archivos. Cuando exista 009, «Ver planes» volverá a los dos rechazos y llevará a Plan y facturación.
 - **Rechazos por contenido** (CA-11, CA-24): se detectan al completar, después de subir los bytes. La fila queda
   «rechazado» con su motivo; no aparece en el explorador ni suma espacio.
 - **Nombre repetido** (CA-6, RN-5): `alertdialog` con título «¿Conservar ambos archivos?», el mensaje de la spec y la
@@ -121,7 +121,7 @@ lateral al 87 % (304 GB de 350 GB) salvo en `rechazo-cuota` (349.4 GB, 99.8 %). 
 
 La barra en pausa (`warning` sobre `muted`, 1.94) y la de la cuota llena (`destructive-soft`, 2.85) son decorativas: el
 estado y el porcentaje van en texto. El botón «Liberar espacio» del aviso de rechazo es `primary` (5.11 con
-blanco); «Ver planes», con borde `input` (2.74 sobre el aviso), se oculta hasta 008.
+blanco); «Ver planes», con borde `input` (2.74 sobre el aviso), se oculta hasta 009.
 
 ## Decisiones aprobadas (2026-09-28, usuario)
 1. Mientras haya cargas activas el panel solo se contrae; «Cerrar el panel de cargas» aparece cuando no queda ninguna.

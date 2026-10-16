@@ -12,7 +12,7 @@ import { useMobileNav, type MobileNav } from './use-mobile-nav';
 
 export type { NavItem };
 
-/** «Espacio» reemplaza a «Planes y Cuota» hasta 008 (007 D-18). */
+/** «Espacio» reemplaza a «Planes y Cuota» hasta 009 (007 D-18, PD-92). */
 export const DEFAULT_NAV_ITEMS: readonly NavItem[] = [
   { label: 'Mis Archivos', icon: Folder, href: '/archivos', active: true },
   { label: 'Compartidos', icon: Share2, href: '#compartidos' },

@@ -7,6 +7,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { AccessModule } from './modules/access';
 import { AuditHttpModule } from './modules/audit';
 import { BackofficeModule } from './modules/backoffice';
+import { BillingHttpModule } from './modules/billing';
 import { IDENTITY_THROTTLERS, IdentityModule } from './modules/identity';
 import { NotificationsModule } from './modules/notifications';
 import { StorageModule } from './modules/storage';
@@ -31,8 +32,9 @@ import type { Env } from './shared';
  * con los tres indicadores y la cola `ping`; los eventos en proceso (ADR-0019), los *throttlers* en memoria
  * (ADR-0017), `notifications`, `identity`, `AccessModule` (`PermissionResolver`, 003) y `storage` (005) con el
  * enlace de `I_PLAN_LIMITS_PROVIDER` en `PlanLimitsBindingModule` (DF-51: `storage` no conoce a `billing`;
- * 006a aporta `PlanLimitsAdapter`), la consulta de la actividad propia de `audit` (004; el `worker` no la carga) y
- * `backoffice` (011), que recibe el mismo módulo de `identity` para no instanciarlo dos veces.
+ * 006a aporta `PlanLimitsAdapter`), la consulta de la actividad propia de `audit` (004), el catálogo de planes de
+ * `billing` (008) —el `worker` no carga ninguna de las dos rutas— y `backoffice` (011), que recibe el mismo módulo de
+ * `identity` para no instanciarlo dos veces.
  */
 @Module({})
 export class AppModule {
@@ -57,6 +59,7 @@ export class AppModule {
         PlanLimitsBindingModule,
         StorageModule.forRoot(env),
         AuditHttpModule,
+        BillingHttpModule,
         BackofficeModule.forRoot(identity),
       ],
       providers: [PingQueue],

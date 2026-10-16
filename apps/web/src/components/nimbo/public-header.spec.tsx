@@ -5,6 +5,13 @@ import { expectNoA11yViolations } from '../test-a11y';
 import { PublicHeader } from './public-header';
 
 describe('PublicHeader', () => {
+  it('008: enlaza el catálogo de planes para que la ruta no dependa de conocer la URL', () => {
+    const markup = renderToStaticMarkup(<PublicHeader />);
+
+    expect(markup).toContain('href="/planes"');
+    expect(markup).toContain('>Planes</a>');
+  });
+
   it('muestra el logo y el enlace a iniciar sesión, sin datos de cuenta', () => {
     const markup = renderToStaticMarkup(<PublicHeader />);
 

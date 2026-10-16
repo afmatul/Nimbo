@@ -15,9 +15,10 @@ import type { TestApp } from '../setup/test-app';
 const API_PREFIX = 'api/v1';
 
 /**
- * Lista cerrada de rutas públicas (CA-3). Las de 006a (catálogo) se agregan con su PR.
+ * Lista cerrada de rutas públicas (CA-3). El catálogo de planes es público desde la 008 (CA-1).
  */
 const EXPECTED_PUBLIC_ROUTES = [
+  'GET /api/v1/billing/plans',
   'GET /api/v1/health/live',
   'GET /api/v1/health/ready',
   'POST /api/v1/auth/account-setup',

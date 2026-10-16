@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { expectNoA11yViolations } from '../../../components/test-a11y';
 import { RadioGroup, type RadioGroupProps } from '../../../components/ui/radio-group';
 import type * as RadioGroupModule from '../../../components/ui/radio-group';
+import { formatQuetzales } from '../../../lib/format-plan';
 
 import { PlanPicker, type CatalogPlan } from './plan-picker';
 
@@ -25,6 +26,17 @@ describe('PlanPicker', () => {
     expect(markup).toContain('Q0.00');
     expect(markup).toContain('Q450.00');
     expect(markup).toContain('checked');
+  });
+
+  it('I-4: formatea el precio igual que el catálogo de /planes, con separador de miles', () => {
+    const markup = renderToStaticMarkup(
+      <PlanPicker
+        plans={[{ id: 'empresa', name: 'Empresa', priceCents: 1_250_000, free: false }]}
+      />,
+    );
+
+    expect(markup).toContain(`Empresa · ${formatQuetzales(1_250_000)}`);
+    expect(markup).toContain('Q12 500.00');
   });
 
   it('sin catálogo explica que la cuenta empieza en Personal', () => {
