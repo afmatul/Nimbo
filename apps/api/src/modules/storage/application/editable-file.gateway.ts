@@ -15,10 +15,14 @@ import type { IObjectStorage } from './ports/i-object-storage.port';
 import { I_VERSION_REPOSITORY } from './ports/i-version.repository.port';
 import type { IVersionRepository } from './ports/i-version.repository.port';
 
-/** Lo que `editing` necesita de un archivo para decidir el modo (plan 016 §2). Sin nombre ni clave de objeto. */
+/**
+ * Lo que `editing` necesita de un archivo para decidir el modo y abrir el editor (plan 016 §2). Sin clave de objeto;
+ * el nombre es el título del documento en el editor y nunca entra en una bitácora.
+ */
 export interface EditableFile {
   readonly id: string;
   readonly ownerId: string;
+  readonly name: string;
   /** `archivo.tipo`: solo `docx` se edita (RN-1). */
   readonly kind: string;
   readonly sizeBytes: bigint;
@@ -28,6 +32,7 @@ export interface EditableFile {
 const toEditableFile = (file: File): EditableFile => ({
   id: file.id,
   ownerId: file.ownerId,
+  name: file.name.value,
   kind: file.kind,
   sizeBytes: file.sizeBytes,
   currentVersionId: file.currentVersionId,

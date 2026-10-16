@@ -126,3 +126,4 @@ Sin preguntas abiertas.
 | 2026-10-16 | P-1…P-10 resueltas; abrir responde siempre con modo (CA-3, 5, 7, 21 pasan a solo lectura con motivo); CA-11, CA-20, CA-21, RN-2 (nota 012), RN-3, RN-8, RN-10, RN-11; depende de 005, 003, 015 | Respuestas de Adrián | Adrián |
 | 2026-10-16 | Pasa a `Lista` | Spec y plan aprobados | Adrián |
 | 2026-10-16 | Pasa a `En curso` | Inicio de la implementación en `feat/016-edicion-colaborativa-docx` | Adrián |
+| 2026-10-16 | **Propuesta (developer, T-03)**: no registrar `OnlyOfficeHealthIndicator` en `/health/ready` del `api` (con ONLYOFFICE opcional, el `api` dejaría de estar listo cuando el editor cae, contra CA-15/RNF-09); CA-15 se cumple con la comprobación de disponibilidad al abrir. Ver PD-100 | Contradicción plan §2 ↔ CA-15 | — (pendiente de Adrián) |

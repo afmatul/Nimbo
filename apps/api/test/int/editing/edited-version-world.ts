@@ -15,11 +15,11 @@ export interface EditedDocument {
   readonly sessionId: string;
 }
 
-/** Sube un `.docx` de `client` y abre una sesión sobre su versión vigente. */
-export const uploadEditedDocument = async (
+/** Sube un `.docx` de `client` por HTTP y devuelve el archivo y su versión vigente. */
+export const uploadDocx = async (
   storage: StorageHttpApp,
   client: StorageClient,
-): Promise<EditedDocument> => {
+): Promise<{ fileId: string; versionId: string }> => {
   const uploaded = await client.upload(`informe-${randomUUID()}.docx`, docxBytes());
   if (uploaded.status !== 200) throw new Error(`Carga rechazada: ${String(uploaded.status)}`);
   const fileId = (uploaded.body as { file: { id: string } }).file.id;
@@ -27,7 +27,16 @@ export const uploadEditedDocument = async (
     'SELECT version_actual_id FROM archivo WHERE id = $1',
     [fileId],
   );
-  const file = { ownerId: client.id, fileId, versionId: row?.version_actual_id ?? '' };
+  return { fileId, versionId: row?.version_actual_id ?? '' };
+};
+
+/** Sube un `.docx` de `client` y abre una sesión sobre su versión vigente. */
+export const uploadEditedDocument = async (
+  storage: StorageHttpApp,
+  client: StorageClient,
+): Promise<EditedDocument> => {
+  const { fileId, versionId } = await uploadDocx(storage, client);
+  const file = { ownerId: client.id, fileId, versionId };
   return { fileId, sessionId: await insertEditSession(storage.owner, file) };
 };
 

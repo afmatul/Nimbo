@@ -73,14 +73,16 @@ type _ListForOwnerSignature = Expect<
 /**
  * API pública de `storage` (plan §6, DF-51 opción A): el token del puerto de límites, el módulo que monta la raíz de
  * composición del `api` y el del `worker` (T-51), desde 011 (PD-31) el token del lector de metadatos que consume
- * `backoffice` y el token de `IObjectStorage` para la factura PDF de `billing` (009, decisión 1) y, desde 016, la fachada
- * `EditableFileGateway` para `editing`. El detector, el escáner y los repositorios no salen.
+ * `backoffice`, el token de `IObjectStorage` para la factura PDF de `billing` (009, decisión 1) y, desde 016, la
+ * fachada `EditableFileGateway` para `editing` con el 404 uniforme de un nodo (`NodeNotFoundError`, 005 CA-16:
+ * `editing` responde igual que `storage`). El detector, el escáner y los repositorios no salen.
  */
 const RUNTIME_EXPORTS = [
   'EditableFileGateway',
   'I_NODE_METADATA_READER',
   'I_OBJECT_STORAGE',
   'I_PLAN_LIMITS_PROVIDER',
+  'NodeNotFoundError',
   'StorageModule',
   'StorageWorkerModule',
   'invoiceObjectKey',

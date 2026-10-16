@@ -86,4 +86,9 @@ describe('EditModePolicy.decide (plan 016 §2)', () => {
 
     expect(() => EditModePolicy.decide(reader)).toThrow(EditingUnsupportedFormatError);
   });
+
+  it('CA-4: `assertEditable` acepta solo `docx`', () => {
+    expect(() => EditModePolicy.assertEditable('docx')).not.toThrow();
+    expect(() => EditModePolicy.assertEditable('xlsx')).toThrow(EditingUnsupportedFormatError);
+  });
 });

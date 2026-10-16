@@ -19,6 +19,8 @@ const API_PREFIX = 'api/v1';
  */
 const EXPECTED_PUBLIC_ROUTES = [
   'GET /api/v1/billing/plans',
+  // 016 plan §4: ONLYOFFICE lee el documento sin token de usuario, con un enlace firmado de minutos.
+  'GET /api/v1/editing/content/:token',
   'GET /api/v1/health/live',
   'GET /api/v1/health/ready',
   'POST /api/v1/auth/account-setup',

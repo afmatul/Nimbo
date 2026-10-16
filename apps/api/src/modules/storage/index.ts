@@ -8,6 +8,7 @@ export type {
   EditedVersionOutcome,
 } from './application/edited-version.registrar';
 export { I_PLAN_LIMITS_PROVIDER } from './application/plan-limits';
+export { NodeNotFoundError } from './domain/errors';
 export type { IPlanLimitsProvider, PlanLimits } from './application/plan-limits';
 export { I_NODE_METADATA_READER } from './application/ports/i-node-metadata-reader.port';
 export type {

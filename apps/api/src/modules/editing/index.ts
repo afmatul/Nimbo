@@ -1,3 +1,5 @@
 // API pública del módulo `editing`. Otros módulos importan solo desde aquí (Art. VIII.3, CA-5).
-// La primera spec del módulo (016) agrega `editing.module.ts` y sus exportaciones.
-export {};
+export { EditingModule } from './editing.module';
+export type { EditableFilesModule, EditingEnv } from './editing.module';
+export { I_USER_DIRECTORY } from './application/ports/i-user-directory.port';
+export type { IUserDirectory } from './application/ports/i-user-directory.port';

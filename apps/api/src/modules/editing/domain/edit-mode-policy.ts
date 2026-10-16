@@ -46,8 +46,13 @@ const planReason = (input: EditModeInput): ReadOnlyReason =>
  * motivo nunca invita a esperar algo que no cambiaría el resultado.
  */
 export const EditModePolicy = Object.freeze({
+  /** Solo `.docx` se abre en el editor, ni siquiera en solo lectura (CA-4). */
+  assertEditable(kind: string): void {
+    if (kind !== EDITABLE_KIND) throw new EditingUnsupportedFormatError();
+  },
+
   decide(input: EditModeInput): EditModeDecision {
-    if (input.kind !== EDITABLE_KIND) throw new EditingUnsupportedFormatError();
+    EditModePolicy.assertEditable(input.kind);
     if (!input.canEdit) return viewOnly('EDITING_VIEW_ONLY');
     if (input.ownerMaxEditors === 0) return viewOnly(planReason(input));
     if (input.sizeBytes > input.maxDocBytes) return viewOnly('EDITING_FILE_TOO_LARGE');

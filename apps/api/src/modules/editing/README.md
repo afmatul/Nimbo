@@ -6,6 +6,8 @@
 - **Puede depender de**: shared, storage, access, realtime, audit (`docs/sdd/architecture.md` §3; el lint de fronteras lo hace cumplir).
   **No** depende de `billing`: el plan de la cuenta propietaria sale de `IPlanLimitsProvider` de `storage` (DF-51), y
   `identity → editing` (para implementar `IUserDirectory`, DF-74) cerraría el ciclo `editing → billing → identity → editing`.
+- **Declara**: `IUserDirectory` (nombres visibles de los participantes; lo implementa `identity` con
+  `UserDirectoryAdapter` y lo enlaza la raíz con `UserDirectoryBindingModule`, DF-74).
 - **Specs que lo construyen**: 016.
 
 ## Capas (`docs/sdd/architecture.md` §4)

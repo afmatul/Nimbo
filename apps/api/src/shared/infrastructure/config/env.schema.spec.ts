@@ -256,3 +256,83 @@ describe('JWT_ACCESS_SECRET (002 plan §6.10, CA-25, CA-26)', () => {
     expect(declaredIn('JWT_ACCESS_SECRET')).toEqual(['api']);
   });
 });
+
+describe('edición con ONLYOFFICE (016 plan §5)', () => {
+  const issuesFor = (patch: Record<string, string | undefined>): readonly string[] => {
+    const result = loadEnv(apiEnvSchema, { ...API_ENV, ...patch });
+    return result.ok ? [] : result.issues;
+  };
+
+  it.each([
+    'ONLYOFFICE_JWT_SECRET',
+    'ONLYOFFICE_PUBLIC_URL',
+    'ONLYOFFICE_INTERNAL_URL',
+    'EDITING_CALLBACK_BASE_URL',
+    'EDITING_MAX_DOC_BYTES',
+    'DEV_FORCE_PAID_PLAN',
+  ])('CA-15: `%s` es solo del `api` y opcional (sin ONLYOFFICE el `api` arranca igual)', (key) => {
+    expect(declaredIn(key)).toEqual(['api']);
+    expect(issuesFor({ [key]: undefined })).toEqual([]);
+  });
+
+  it('RN-10: `EDITING_MAX_DOC_BYTES` vale 50 MB por defecto y es positiva', () => {
+    const maxBytes = apiEnvObjectSchema.shape.EDITING_MAX_DOC_BYTES;
+
+    expect(maxBytes.parse(undefined)).toBe(50 * 1024 * 1024);
+    expect(maxBytes.safeParse('0').success).toBe(false);
+  });
+
+  it.each(['ONLYOFFICE_PUBLIC_URL', 'ONLYOFFICE_INTERNAL_URL', 'EDITING_CALLBACK_BASE_URL'])(
+    'CA-15: `%s` debe ser una URL',
+    (key) => {
+      expect(issuesFor({ [key]: 'no-es-url' })).toEqual([`\`${key}\` debe ser una URL válida`]);
+    },
+  );
+
+  it('plan §5: `ONLYOFFICE_JWT_SECRET` es secreta y solo la declara el `api`', () => {
+    expect(SECRET_KEYS).toContain('ONLYOFFICE_JWT_SECRET');
+  });
+
+  it.each(['staging', 'production'])(
+    'plan §5: con `APP_ENV=%s`, `ONLYOFFICE_JWT_SECRET` no es el valor de ejemplo ni corta',
+    (appEnv) => {
+      const env = { APP_ENV: appEnv, JWT_ACCESS_SECRET: STAGING_SECRET };
+
+      expect(issuesFor({ ...env, ONLYOFFICE_JWT_SECRET: 'cambia-este-secreto-local' })).toEqual([
+        '`ONLYOFFICE_JWT_SECRET` no puede ser el valor de desarrollo de .env.example',
+      ]);
+      expect(issuesFor({ ...env, ONLYOFFICE_JWT_SECRET: 'x'.repeat(31) })).toEqual([
+        '`ONLYOFFICE_JWT_SECRET` debe tener al menos 32 caracteres en staging y en producción',
+      ]);
+      expect(issuesFor({ ...env, ONLYOFFICE_JWT_SECRET: STAGING_SECRET })).toEqual([]);
+    },
+  );
+
+  it.each(['local', 'test'])(
+    'RN-13: `DEV_FORCE_PAID_PLAN` solo se acepta con `APP_ENV=%s`',
+    (appEnv) => {
+      expect(issuesFor({ APP_ENV: appEnv, DEV_FORCE_PAID_PLAN: 'pro' })).toEqual([]);
+    },
+  );
+
+  it.each(['staging', 'production'])(
+    'RN-13: `DEV_FORCE_PAID_PLAN` se rechaza con `APP_ENV=%s` (prohibido fuera de desarrollo)',
+    (appEnv) => {
+      const env = {
+        APP_ENV: appEnv,
+        JWT_ACCESS_SECRET: STAGING_SECRET,
+        DEV_FORCE_PAID_PLAN: 'pro',
+      };
+
+      expect(issuesFor(env)).toEqual([
+        '`DEV_FORCE_PAID_PLAN` solo se admite con `APP_ENV` local o test',
+      ]);
+    },
+  );
+
+  it('RN-13: `DEV_FORCE_PAID_PLAN` solo admite planes de pago', () => {
+    expect(issuesFor({ DEV_FORCE_PAID_PLAN: 'personal' })).toEqual([
+      '`DEV_FORCE_PAID_PLAN` debe ser uno de: pro, equipo, institucional',
+    ]);
+  });
+});

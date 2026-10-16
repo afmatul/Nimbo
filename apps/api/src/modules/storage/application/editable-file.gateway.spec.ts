@@ -41,12 +41,13 @@ function setup() {
 }
 
 describe('EditableFileGateway (fachada de `storage` para `editing`, plan 016 §2)', () => {
-  it('CA-1: `find` da tipo, tamaño, propietaria y versión vigente del archivo vivo, sin nombre ni clave', async () => {
+  it('CA-1: `find` da nombre, tipo, tamaño, propietaria y versión vigente del archivo vivo, sin clave', async () => {
     const { gateway, file } = setup();
 
     await expect(gateway.find(ANA, file.id)).resolves.toEqual({
       id: file.id,
       ownerId: ANA.id,
+      name: 'secreto-7f3a.docx',
       kind: 'docx',
       sizeBytes: 250n,
       currentVersionId: file.currentVersionId,
