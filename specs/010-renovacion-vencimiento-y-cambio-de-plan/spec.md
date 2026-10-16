@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Borrador |
+| Estado | Borrador (preguntas resueltas; plan en curso) |
 | Dueño | Juan Marcos |
 | Fase | 2 |
 | Requisitos | RF-22, RF-23, RF-24 (y RF-07 y RNF-05 de forma transversal) |
@@ -45,7 +45,7 @@ programar un cambio de plan (subir, bajar o volver a Personal) que se aplica en 
 
 **Solo lectura**
 - **CA-12** (HU-4, RF-23) Dado una cuenta en solo lectura, cuando lista, navega, busca, previsualiza o descarga archivos y versiones, entonces funciona igual que vigente; ningún archivo, carpeta ni versión se borra por el vencimiento y los límites del plan de pago se mantienen.
-- **CA-13** (HU-4, RF-23) — error: Dado una cuenta en solo lectura, cuando intenta iniciar una carga, completar una en curso, crear una carpeta, renombrar, mover o restaurar una versión, entonces se responde `403` `STORAGE_ACCOUNT_READ_ONLY` con «Tu suscripción venció y tu cuenta está en solo lectura. Renueva tu plan para volver a subir y editar.» y nada cambia. Lo que diga la pregunta 2 se agrega aquí.
+- **CA-13** (HU-4, RF-23) — error: Dado una cuenta en solo lectura, cuando intenta iniciar una carga, completar una en curso, crear una carpeta, renombrar, mover, restaurar una versión o restaurar desde la papelera, entonces se responde `403` `STORAGE_ACCOUNT_READ_ONLY` con «Tu suscripción venció y tu cuenta está en solo lectura. Renueva tu plan para volver a subir y editar.» y nada cambia.
 - **CA-14** (HU-4, RF-23) Dado una cuenta en solo lectura, cuando abre el explorador o una vista de escritura, entonces ve el aviso de solo lectura con el enlace «Renovar plan»; las acciones bloqueadas por CA-13 se muestran deshabilitadas con su explicación en texto y, si aun así intenta (p. ej., arrastrar un archivo), ve el mensaje de CA-13.
 - **CA-15** (HU-4, RF-23) Dado una suscripción Personal, entonces nunca vence ni entra en solo lectura.
 
@@ -62,6 +62,10 @@ programar un cambio de plan (subir, bajar o volver a Personal) que se aplica en 
 - **CA-23** (HU-6, RF-05, RNF-05) Dado un Administrador, Soporte u Operador, cuando llama a cualquier operación de esta spec, entonces recibe `403` y nada cambia. El Operador solo ve conteos agregados (renovaciones aprobadas y rechazadas, cuentas en solo lectura, cambios programados), sin identificadores de cuenta.
 - **CA-24** (RNF-05) Dado dos clientes A y B, cuando A consulta o cambia su suscripción, renovación o cambio de plan, entonces solo opera sobre la suya: no hay forma de leer ni alterar la de B.
 - **CA-25** (HU-2, HU-5, RF-22, RF-24) Dado un plan de pago, cuando abre «Plan y facturación», entonces ve «Próximo cobro» (fecha, monto, marca y últimos 4), el interruptor de renovación automática, «Cambiar de plan» y el estado que corresponda de §6.
+- **CA-26** (HU-3, RF-22) — error: Dado un cliente que ya pagó por adelantado el siguiente periodo, cuando intenta pagar otro, entonces se responde `409` `BILLING_ALREADY_RENEWED` y no hay cobro.
+- **CA-27** (HU-5, RF-24, RF-23) Dado una cuenta en solo lectura, cuando programa el cambio a Personal, entonces se aplica de inmediato, sin cobro, y termina la solo lectura (si el uso supera la cuota de Personal, aplica CA-21).
+- **CA-28** (HU-3, RF-24) Dado un cambio a Personal programado, cuando el cliente intenta renovar por adelantado, entonces se responde `409` `BILLING_PLAN_CHANGE_PENDING` hasta que cancele el cambio; la pantalla no ofrece «Renovar ahora».
+- **CA-29** (HU-5, RF-24) Dado un cambio programado a un plan que se desactiva antes de `vence_en` (011), cuando llega la renovación, entonces el cambio se descarta, se renueva con el plan actual y el cliente recibe un correo que lo explica.
 
 ## 4. Reglas de negocio
 - **RN-1** El periodo de un plan de pago es de 30 días (009). El periodo nuevo empieza en el `vence_en` anterior si se paga antes o al vencer, y en el momento del pago si la cuenta ya estaba en solo lectura. No se pierden días pagados.
@@ -69,10 +73,12 @@ programar un cambio de plan (subir, bajar o volver a Personal) que se aplica en 
 - **RN-3** La renovación automática está activada al contratar; el cliente puede apagarla y volver a encenderla mientras su plan esté vigente. Apagarla no cancela el periodo pagado.
 - **RN-4** Cada renovación cobra el precio completo, en centavos, del plan del siguiente ciclo: el programado si hay uno, si no el actual. No hay prorrateo ni reembolsos. Los impuestos y la factura siguen las reglas de la 009.
 - **RN-5** Solo lectura = plan de pago con `vence_en` pasado y sin pago. La cuenta conserva su plan y sus límites, no baja a Personal y no pierde contenido; termina al pagar la renovación. Personal nunca entra en solo lectura.
-- **RN-6** En solo lectura se permite ver, navegar, buscar, previsualizar y descargar (glosario «Degradación a solo lectura»); se rechaza todo lo que crea o modifica contenido (CA-13). La edición `.docx` (016) y el optimizador (021) heredan esta regla cuando existan.
+- **RN-6** En solo lectura se permite ver, navegar, buscar, previsualizar y descargar (glosario «Degradación a solo lectura»); se rechaza todo lo que crea o modifica contenido (CA-13). Para liberar espacio se permite mandar a la papelera, eliminar definitivamente y vaciarla; también fijar accesos rápidos y consultar al agente, que no cambian contenido. Compartir y crear enlaces públicos (012, 013) se rechazan cuando existan. La edición `.docx` (016) y el optimizador (021) heredan esta regla cuando existan.
 - **RN-7** El cambio de plan es solo programado: uno a la vez, a un plan activo distinto del actual, cancelable hasta `vence_en` y efectivo al renovar. Bajar a Personal es un cambio programado sin cobro. Desde Personal no hay cambio: se contrata (009).
 - **RN-8** El aviso previo se envía N días antes de `vence_en`; N es configurable sin cambiar código y vale 3 por defecto. Un aviso por periodo.
 - **RN-9** Un cobro como máximo por suscripción y periodo, sea automático o manual (Art. XI.2).
+- **RN-10** El cobro automático se intenta una sola vez por periodo; si se rechaza, la cuenta sigue con la renovación manual (CA-9, CA-10).
+- **RN-11** En archivos compartidos manda la cuenta propietaria del archivo: un archivo de una cuenta en solo lectura no se edita, aunque lo abra un editor con cuenta vigente (lo aplican 012 y 016).
 
 ## 5. Seguridad y privacidad
 - Toca datos de un cliente (suscripción, pagos, facturas y el estado que limita sus archivos): lleva pruebas de aislamiento (CA-24).
@@ -101,16 +107,17 @@ programar un cambio de plan (subir, bajar o volver a Personal) que se aplica en 
 - Las alertas y tableros mismos (022): aquí solo se deja observable el fallo del proceso.
 
 ## 8. Preguntas
-- [ABIERTA] ¿Se crean con `/mockup` los estados por-vencer, vencida, cambio-programado y renovación-desactivada de «Plan y facturación», la elección de plan y el aviso de solo lectura, o se usan patrones existentes (`Alert`, `ReadOnlyBanner`, tarjetas de `planes--plan-actual`, `pago`)? — bloquea: sí
-- [ABIERTA] En solo lectura, ¿qué pasa con las acciones que el glosario no menciona: enviar a la papelera, restaurar desde ella, eliminar definitivamente o vaciarla (liberan espacio), compartir y enlaces públicos (012, 013), fijar accesos rápidos (RF-38) y consultar al agente (020)? — bloquea: sí (define CA-13)
-- [ABIERTA] Tras un cobro automático rechazado, ¿se reintenta? Propuesta: un solo intento; después, renovación manual. — bloquea: no
-- [ABIERTA] ¿Se puede pagar por adelantado más de un periodo? Propuesta: no; con el siguiente ya pagado, `409` `BILLING_ALREADY_RENEWED`. — bloquea: no
-- [ABIERTA] Con la cuenta ya en solo lectura, ¿bajar a Personal se aplica de inmediato y sin cobro? Propuesta: sí. — bloquea: no
-- [ABIERTA] Con un cambio a Personal programado, ¿se ofrece la renovación manual anticipada? Propuesta: no, hasta cancelar el cambio. — bloquea: no
-- [ABIERTA] Si el plan programado se desactiva (011) antes de aplicarse, ¿qué hace la renovación? Propuesta: lo descarta, renueva con el plan actual y lo avisa por correo. — bloquea: no
-- [ABIERTA] Archivos compartidos: ¿un editor puede editar el `.docx` de un propietario en solo lectura, y un cliente en solo lectura puede editar como editor archivos de una cuenta vigente? Propuesta: manda la cuenta propietaria del archivo. — bloquea: no (bloquea a la 016)
+- [RESUELTA] Mockups → se crean con `/mockup` (estados de «Plan y facturación», elección de plan y aviso de solo lectura) antes de las tareas de UI; no frenan el plan (Juan Marcos, 2026-10-16).
+- [RESUELTA] Acciones en solo lectura → se permiten papelera (mandar, eliminar definitivamente, vaciar), accesos rápidos y agente; se bloquean restaurar desde la papelera, compartir y enlaces públicos (RN-6, CA-13).
+- [RESUELTA] Reintento del cobro automático → un solo intento (RN-10).
+- [RESUELTA] Pagar más de un periodo por adelantado → no, `409 BILLING_ALREADY_RENEWED` (CA-26).
+- [RESUELTA] Bajar a Personal en solo lectura → inmediato y sin cobro (CA-27).
+- [RESUELTA] Renovación anticipada con cambio a Personal programado → no, hasta cancelar el cambio (CA-28).
+- [RESUELTA] Plan programado desactivado → se descarta, se renueva con el actual y se avisa por correo (CA-29).
+- [RESUELTA] Archivos compartidos → manda la cuenta propietaria del archivo (RN-11; lo aplican 012 y 016).
 
 ## 9. Registro de cambios
 | Fecha | Cambio | Motivo | Aprobó |
 |---|---|---|---|
 | 2026-10-16 | Creación inicial con las decisiones acordadas con Juan Marcos (tarjeta del último pago, solo lectura sin bajar a Personal, aviso a 3 días, cambio solo programado, renovación anticipada sin perder días) | Arranque de la 010 | Borrador (pendiente Adrián) |
+| 2026-10-16 | Preguntas resueltas con las recomendaciones: solo lectura (RN-6, CA-13), un intento de cobro (RN-10), propietario en compartidos (RN-11), CA-26 a CA-29; mockups con `/mockup` antes de la UI | Respuestas de Juan Marcos | Borrador (pendiente Adrián) |
