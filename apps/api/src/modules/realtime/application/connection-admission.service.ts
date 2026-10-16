@@ -17,6 +17,7 @@ import {
 } from '../../../shared';
 import { RealtimeTooManyRequestsError } from '../domain/errors';
 
+import { errorClassOf } from './error-class';
 import { REALTIME_CONFIG, type RealtimeConfig } from './realtime-config';
 
 /** Ventana del límite de intentos de conexión: la variable de entorno los fija «por minuto» (CA-14). */
@@ -93,8 +94,9 @@ export class ConnectionAdmission {
         },
       ]);
     } catch (error) {
-      const errorClass = error instanceof Error ? error.constructor.name : typeof error;
-      throw this.reject('limiter_failed', new UnauthenticatedError(), { errorClass });
+      throw this.reject('limiter_failed', new UnauthenticatedError(), {
+        errorClass: errorClassOf(error),
+      });
     }
   }
 

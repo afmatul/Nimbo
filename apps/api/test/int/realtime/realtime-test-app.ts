@@ -16,7 +16,7 @@ import {
 } from '../../../src/modules/realtime/application/realtime-config';
 import type { RealtimeConfig } from '../../../src/modules/realtime/application/realtime-config';
 import { RealtimeGateway } from '../../../src/modules/realtime/presentation/realtime.gateway';
-import { I_ACCESS_TOKEN_VERIFIER, I_CLOCK, SystemClock } from '../../../src/shared';
+import { I_ACCESS_TOKEN_VERIFIER, I_CLOCK, Role, SystemClock } from '../../../src/shared';
 import type { IClock } from '../../../src/shared';
 import { TestAccessTokenVerifier } from '../../support/test-access-token-verifier';
 import { TestAccessTokens } from '../../support/test-access-tokens';
@@ -148,3 +148,39 @@ export const waitForConnectError = (socket: ClientSocket): Promise<ConnectError>
     socket.once('connect_error', (error) => resolve(error as ConnectError));
     socket.once('connect', () => reject(new Error('La conexión se aceptó y debía rechazarse')));
   });
+
+/** Margen para afirmar que un aviso no llega (o no llega dos veces): el servidor emite en el mismo ciclo. */
+export const SETTLE_MS = 200;
+
+export const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, SETTLE_MS));
+
+/** Cargas de cada `event` que recibe el cliente, en orden, desde que se llama. */
+export const collectEvents = (socket: ClientSocket, event: string): unknown[] => {
+  const received: unknown[] = [];
+  socket.on(event, (payload: unknown) => received.push(payload));
+  return received;
+};
+
+/** Conexiones abiertas por una suite: `open` las registra y `closeAll` las cierra en `afterEach`. */
+export class OpenClients {
+  private readonly clients: ClientSocket[] = [];
+
+  constructor(private readonly testApp: () => RealtimeTestApp) {}
+
+  open(options: ClientOptions): ClientSocket {
+    const client = connectClient(this.testApp().url, options);
+    this.clients.push(client);
+    return client;
+  }
+
+  /** Abre una conexión aceptada del cliente `userId`. */
+  async connectAs(userId: string): Promise<ClientSocket> {
+    const client = this.open({ token: this.testApp().tokens.forRole(Role.CLIENT, userId) });
+    await waitForConnect(client);
+    return client;
+  }
+
+  closeAll(): void {
+    this.clients.splice(0).forEach((client) => client.disconnect());
+  }
+}

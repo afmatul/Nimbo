@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { Inject } from '@nestjs/common';
 import {
+  SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
   type OnGatewayConnection,
@@ -10,7 +11,12 @@ import {
 import { PinoLogger } from 'nestjs-pino';
 import type { DisconnectReason } from 'socket.io';
 
-import { CorrelationContext, DomainError, UnauthenticatedError } from '../../../shared';
+import {
+  CorrelationContext,
+  DomainError,
+  InsufficientRoleError,
+  UnauthenticatedError,
+} from '../../../shared';
 import {
   ConnectionAdmission,
   type ConnectionAttempt,
@@ -18,6 +24,7 @@ import {
 import { userRoom } from '../domain/room-names';
 import { ConnectionLifetime } from '../infrastructure/connection-lifetime';
 import type { RealtimeServer, RealtimeSocket } from '../infrastructure/realtime-socket';
+import { SocketIoHub } from '../infrastructure/socket-io-hub';
 
 import { connectionOrigin } from './connection-origin';
 import { toHandshakeError } from './handshake-error';
@@ -32,6 +39,13 @@ const attemptOf = (socket: RealtimeSocket): ConnectionAttempt => {
     token: typeof token === 'string' ? token : undefined,
   };
 };
+
+/** Respuesta (*ack*) a `room.join`: el cliente nunca elige sus salas (CA-7, RN-2). */
+export interface RoomJoinDenied {
+  readonly error: { readonly code: string };
+}
+
+const ROOM_JOIN_DENIED: RoomJoinDenied = { error: { code: new InsufficientRoleError().code } };
 
 const withCorrelation = <T>(socket: RealtimeSocket, callback: () => T): T =>
   CorrelationContext.run({ correlationId: socket.data.correlationId }, callback);
@@ -49,11 +63,19 @@ export class RealtimeGateway implements OnGatewayInit<RealtimeServer>, OnGateway
   constructor(
     private readonly admission: ConnectionAdmission,
     private readonly lifetime: ConnectionLifetime,
+    private readonly hub: SocketIoHub,
     @Inject(PinoLogger) private readonly logger: PinoLogger,
   ) {}
 
   afterInit(server: RealtimeServer): void {
+    this.hub.attach(server);
     server.use((socket, next) => void this.authenticate(socket, next));
+  }
+
+  /** Único mensaje del cliente con manejador, y siempre se deniega: las salas las decide el servidor (CA-7, RN-4). */
+  @SubscribeMessage('room.join')
+  denyRoomJoin(): RoomJoinDenied {
+    return ROOM_JOIN_DENIED;
   }
 
   handleConnection(socket: RealtimeSocket): void {

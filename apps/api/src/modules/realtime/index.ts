@@ -2,3 +2,8 @@
 export { RealtimeModule } from './realtime.module';
 export type { AccessTokenVerifierModule, RealtimeEnv } from './realtime.module';
 export { configureRealtime } from './realtime-app';
+export { I_REALTIME_PUBLISHER } from './application/ports/i-realtime-publisher.port';
+export type {
+  IRealtimePublisher,
+  RealtimeNotice,
+} from './application/ports/i-realtime-publisher.port';

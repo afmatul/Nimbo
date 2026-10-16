@@ -4,6 +4,7 @@ import type { DynamicModule, Type } from '@nestjs/common';
 import type { Env } from '../../shared';
 
 import { ConnectionAdmission } from './application/connection-admission.service';
+import { I_REALTIME_PUBLISHER } from './application/ports/i-realtime-publisher.port';
 import {
   REALTIME_CONFIG,
   REALTIME_PING_INTERVAL_MS,
@@ -11,6 +12,7 @@ import {
   type RealtimeConfig,
 } from './application/realtime-config';
 import { ConnectionLifetime } from './infrastructure/connection-lifetime';
+import { SocketIoHub } from './infrastructure/socket-io-hub';
 import { RealtimeGateway } from './presentation/realtime.gateway';
 
 /** Variables del `api` que `realtime` usa (plan §2); ruta y latido son constantes (YAGNI). */
@@ -20,7 +22,8 @@ export type RealtimeEnv = Pick<Env, 'CORS_ORIGIN' | 'REALTIME_CONNECT_ATTEMPTS_P
 export type AccessTokenVerifierModule = Type<unknown> | DynamicModule;
 
 /**
- * Módulo `realtime` (T3, plan 015 §2): configuración del canal, `ConnectionAdmission`, `ConnectionLifetime` y el gateway único. El verificador
+ * Módulo `realtime` (T3, plan 015 §2): configuración del canal, `ConnectionAdmission`, `ConnectionLifetime`, el
+ * gateway único y `SocketIoHub`, que exporta como `I_REALTIME_PUBLISHER` para los módulos productores. El verificador
  * de tokens lo aporta la raíz de composición con `accessTokenVerifierModule`: `realtime` no importa `identity`
  * (`architecture.md` §3), como `storage` no conoce a `billing` (DF-51). `SharedModule` (global) aporta el limitador.
  * El adaptador (ruta, CORS, latido) lo instala `configureRealtime(app)`.
@@ -44,8 +47,11 @@ export class RealtimeModule {
         { provide: REALTIME_CONFIG, useValue: config },
         ConnectionAdmission,
         ConnectionLifetime,
+        SocketIoHub,
+        { provide: I_REALTIME_PUBLISHER, useExisting: SocketIoHub },
         RealtimeGateway,
       ],
+      exports: [I_REALTIME_PUBLISHER],
     };
   }
 }

@@ -24,12 +24,19 @@
   `{ code: 'SHARED_UNAUTHENTICATED' }` y desconecta (el cliente ve `io server disconnect` y reabre con un token
   renovado). Si la conexión se cierra antes, cancela el temporizador.
 - **Salas**: `user:<userId>` (el gateway la une al conectar) y `doc:<documentId>`; nombres solo con `room-names.ts`.
+  El cliente no elige salas: `room.join` responde siempre el _ack_ `{ error: { code: 'SHARED_FORBIDDEN' } }` y ningún
+  otro mensaje del cliente tiene manejador (CA-7, RN-4).
+- **Avisos** (`IRealtimePublisher`, token `I_REALTIME_PUBLISHER`, exportado por `index.ts`): `toUser(userId, notice)`
+  y `toDocument(documentId, notice)` con `RealtimeNotice { event, payload }`. Síncronos, nunca lanzan: sin servidor
+  adjunto no hacen nada y un fallo se registra (RN-7, CA-12). Lo implementa `SocketIoHub`, que el gateway adjunta en
+  `afterInit`.
 - **Bitácoras** (sin token, origen, nombre de archivo ni contenido, CA-13), todas con `correlationId` de la conexión:
   - `realtime.rejected` con `reason` la emite `ConnectionAdmission` (`missing_token`, `invalid_token`, `expired_token`,
     `forbidden_role`, `rate_limited`, `limiter_failed`); `RealtimeIoAdapter` emite `reason: 'origin'`, y el gateway
     `reason: 'unexpected_error'` (con `errorClass`) si algo no previsto lanza en el _handshake_.
   - `realtime.connected` (`userId`, `connectionId`) y `realtime.disconnected` (`userId`, `connectionId`, `reason` de
     Socket.IO) las emite el gateway.
+  - `realtime.publish_failed` (solo `errorClass`) la emite `SocketIoHub` si el servidor falla al avisar.
 
 ## Capas (`docs/sdd/architecture.md` §4)
 
