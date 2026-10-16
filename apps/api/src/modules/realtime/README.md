@@ -1,6 +1,6 @@
 # `realtime` — T3 · transversal (generalizado desde M5)
 
-- **Dueño**: Fátima (`specs/README.md`).
+- **Dueño**: Adrián (`specs/README.md`).
 - **Diagrama de origen**: T3 en `docs/sdd/design-model.md` §3 y `docs/design/diagramas/`.
 - **Responsabilidad**: Único gateway Socket.IO, salas por usuario y documento. Valida el token del handshake con el puerto token→`Actor` que define `shared` (lo implementa `identity`, sin que `realtime` lo importe) y declara su puerto de publicación (ADR-0010).
 - **Puede depender de**: shared (`docs/sdd/architecture.md` §3; el lint de fronteras lo hace cumplir).

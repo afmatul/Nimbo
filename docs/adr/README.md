@@ -32,6 +32,7 @@ Son la base para defender la arquitectura en la exposición final (enunciado §6
 | 0024 | [Avisos no bloqueantes con `sonner` (toast de shadcn/ui); errores siguen como `Alert`](0024-avisos-no-bloqueantes-con-sonner.md) (menor; spec 006) | Aceptado |
 | 0025 | [Imágenes de MinIO desde el fork de Pigsty (`pgsty/silo` y `pgsty/mc`)](0025-imagenes-de-minio-desde-el-fork-de-pigsty.md) (enmienda ADR-0015; Quay dejó de servir los tags) | Propuesto |
 | 0028 | [Dependencia de `billing` para la factura PDF: `pdfkit` detrás de `IInvoiceGenerator`](0028-dependencia-de-billing-para-la-factura-pdf.md) (menor; spec 009 T-07) | Aceptado |
+| 0028 | [Socket.IO en el `api` con los paquetes oficiales de Nest y sin adaptador de Redis](0028-socketio-en-el-api-sin-adaptador-de-redis.md) (spec 015) | Aceptado |
 
 Estados: `Pendiente` (sin redactar) · `Propuesto` (redactado, falta acuerdo del equipo) · `Aceptado` · `Reemplazado por`.
 Los ADR 0001, 0002, 0008, 0009, 0014 y 0015 se aceptaron el 26/09/2026 (Adrián, parte de ADR de la T-27 de la spec 000).
