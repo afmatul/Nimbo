@@ -189,6 +189,16 @@ describe('accesos rápidos (006 plan §9.2)', () => {
   });
 });
 
+describe('canal en vivo (015 plan §5)', () => {
+  it('CA-14: `REALTIME_CONNECT_ATTEMPTS_PER_MINUTE` es solo del `api`, vale 60 por defecto y es positiva', () => {
+    const attempts = apiEnvObjectSchema.shape.REALTIME_CONNECT_ATTEMPTS_PER_MINUTE;
+
+    expect(declaredIn('REALTIME_CONNECT_ATTEMPTS_PER_MINUTE')).toEqual(['api']);
+    expect(attempts.parse(undefined)).toBe(60);
+    expect(attempts.safeParse('0').success).toBe(false);
+  });
+});
+
 describe('JWT_ACCESS_SECRET (002 plan §6.10, CA-25, CA-26)', () => {
   const issuesFor = (patch: Record<string, string | undefined>): readonly string[] => {
     const result = loadEnv(apiEnvSchema, { ...API_ENV, ...patch });

@@ -352,6 +352,7 @@ describe('Sesiones abiertas (CA-11 a CA-14)', () => {
       expect(beforeExpiry).toEqual({
         valid: true,
         claims: expect.objectContaining({ sessionId: other.sessionId }) as AccessTokenClaims,
+        expiresAt: expect.any(Date) as Date,
       });
       expect(afterExpiry).toEqual({ valid: false, reason: 'expired' });
     });
