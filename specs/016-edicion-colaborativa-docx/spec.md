@@ -127,3 +127,5 @@ Sin preguntas abiertas.
 | 2026-10-16 | Pasa a `Lista` | Spec y plan aprobados | Adrián |
 | 2026-10-16 | Pasa a `En curso` | Inicio de la implementación en `feat/016-edicion-colaborativa-docx` | Adrián |
 | 2026-10-16 | **Propuesta (developer, T-03)**: no registrar `OnlyOfficeHealthIndicator` en `/health/ready` del `api` (con ONLYOFFICE opcional, el `api` dejaría de estar listo cuando el editor cae, contra CA-15/RNF-09); CA-15 se cumple con la comprobación de disponibilidad al abrir. Ver PD-100 | Contradicción plan §2 ↔ CA-15 | — (pendiente de Adrián) |
+| 2026-10-16 | PD-99 resuelta: **RN-11 queda como está escrita** («guardar igual»): si el archivo pasa a la papelera con la sesión abierta, el guardado se registra igual sobre el mismo archivo. `file_missing` / `fallida/archivo_purgado` queda solo para el archivo purgado de verdad (CA-14) | Decisión de Adrián sobre PD-99 | Adrián |
+| 2026-10-16 | PD-100 resuelta: se acepta la propuesta de T-03; `OnlyOfficeHealthIndicator` no se registra en `/health/ready` y la disponibilidad se revisa con `isAvailable` en cada apertura (CA-15) | Decisión de Adrián sobre PD-100 | Adrián |

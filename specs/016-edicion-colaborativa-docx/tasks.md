@@ -66,8 +66,9 @@
   `forOrigin` queda solo para `optimizacion`. La FK de `sesion_edicion_id` lleva nombre (`fk_version_archivo_sesion_edicion`).
   El registrador devuelve `registered | duplicate | corrupt | file_missing`; si la transacción falla borra el objeto subido y
   propaga el error (el trabajo reintenta con la misma clave). Sin cambios de CA ni de contrato.
-- **RN-11 sin camino (PD-99)**: un archivo en la papelera con la sesión abierta hoy termina en `file_missing` (sesión
-  `fallida`), porque la fachada resuelve con `accessibleNodes(actor)`. Necesita decisión de Adrián antes de T-05/T-06.
+- **RN-11 (PD-99, resuelta 2026-10-16)**: Adrián decide «guardar igual» (RN-11 sin cambios). El registro de la versión
+  editada resuelve el archivo con `ownedFiles(actor)` de `access` (propio, vivo o en la papelera); `file_missing` queda
+  solo para el archivo purgado. PD-100 también resuelta: sin `OnlyOfficeHealthIndicator` (plan §2 y §5 corregidos).
 - **Pruebas en este worktree**: Jest no casa `testMatch` con `<rootDir>` bajo `.claude/` (carpeta con punto), así que
   `pnpm test`/`pnpm test:int` aquí se corren con `--testMatch '**/…'`; en el repositorio normal no cambia nada.
 - **T-03, clases de aplicación no nombradas en el plan**: `EditorAvailability` (puerta de CA-15: variables y salud),
