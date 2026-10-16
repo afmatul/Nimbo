@@ -1,3 +1,4 @@
-// API pública del módulo `realtime`. Otros módulos importan solo desde aquí (Art. VIII.3, CA-5).
-// La primera spec del módulo (015) agrega `realtime.module.ts` y sus exportaciones.
-export {};
+// API pública del módulo `realtime`. Otros módulos importan solo desde aquí (Art. VIII.3).
+export { RealtimeModule } from './realtime.module';
+export type { AccessTokenVerifierModule, RealtimeEnv } from './realtime.module';
+export { configureRealtime } from './realtime-app';

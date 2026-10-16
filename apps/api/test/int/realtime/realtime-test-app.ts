@@ -1,0 +1,150 @@
+import { randomInt } from 'node:crypto';
+import type { AddressInfo } from 'node:net';
+
+import { Module } from '@nestjs/common';
+import type { DynamicModule } from '@nestjs/common';
+import type { Server } from 'socket.io';
+import { io } from 'socket.io-client';
+import type { Socket as ClientSocket } from 'socket.io-client';
+
+import { RealtimeModule } from '../../../src/modules/realtime';
+import {
+  REALTIME_CONFIG,
+  REALTIME_PATH,
+  REALTIME_PING_INTERVAL_MS,
+  REALTIME_PING_TIMEOUT_MS,
+} from '../../../src/modules/realtime/application/realtime-config';
+import type { RealtimeConfig } from '../../../src/modules/realtime/application/realtime-config';
+import { RealtimeGateway } from '../../../src/modules/realtime/presentation/realtime.gateway';
+import { I_ACCESS_TOKEN_VERIFIER, I_CLOCK, SystemClock } from '../../../src/shared';
+import type { IClock } from '../../../src/shared';
+import { TestAccessTokenVerifier } from '../../support/test-access-token-verifier';
+import { TestAccessTokens } from '../../support/test-access-tokens';
+import { buildTestEnv, createTestApp } from '../setup/test-app';
+import type { TestApp, ProviderOverride } from '../setup/test-app';
+
+/** Origen de navegador permitido en el entorno de integración (`CORS_ORIGIN` de `global-setup.ts`). */
+export const ALLOWED_ORIGIN = 'http://localhost';
+
+/** Umbral corto para agotar el límite de intentos en pocas conexiones (CA-14). */
+export const TEST_CONNECT_ATTEMPTS_PER_MINUTE = 3;
+
+/**
+ * Verificador de prueba detrás de `I_ACCESS_TOKEN_VERIFIER`, exportado para `RealtimeModule` como lo hace
+ * `IdentityModule` en `AppModule`. Lleva su propio reloj: el mismo con que la prueba emite los tokens.
+ */
+@Module({})
+class TestAccessTokenVerifierModule {
+  static withClock(clock: IClock): DynamicModule {
+    return {
+      module: TestAccessTokenVerifierModule,
+      providers: [
+        { provide: I_CLOCK, useValue: clock },
+        { provide: I_ACCESS_TOKEN_VERIFIER, useClass: TestAccessTokenVerifier },
+      ],
+      exports: [I_ACCESS_TOKEN_VERIFIER],
+    };
+  }
+}
+
+export interface RealtimeTestApp extends TestApp {
+  /** URL base del `api` escuchando en un puerto efímero. */
+  readonly url: string;
+  /** Emisor de tokens con el mismo reloj que el verificador. */
+  readonly tokens: TestAccessTokens;
+  /** Servidor Socket.IO del gateway, para mirar salas y conexiones desde la prueba. */
+  readonly server: Server;
+}
+
+export interface RealtimeTestAppOptions {
+  /** Cambia campos de `RealtimeConfig` (p. ej. latido corto en T-06). */
+  readonly config?: Partial<RealtimeConfig>;
+  /** Reloj del verificador y del emisor de tokens (p. ej. un `FixedClock` para vencer el token en T-04). */
+  readonly clock?: IClock;
+  readonly overrides?: readonly ProviderOverride[];
+}
+
+const testConfig = (config: Partial<RealtimeConfig> = {}): RealtimeConfig => ({
+  origins: [ALLOWED_ORIGIN],
+  connectAttemptsPerMinute: TEST_CONNECT_ATTEMPTS_PER_MINUTE,
+  pingIntervalMs: REALTIME_PING_INTERVAL_MS,
+  pingTimeoutMs: REALTIME_PING_TIMEOUT_MS,
+  ...config,
+});
+
+/**
+ * App de integración con `RealtimeModule` montado por `configureRealtime` (plan 015 §6), Redis real para el límite de
+ * intentos y `TestAccessTokenVerifier`. Escucha en un puerto efímero para que `socket.io-client` se conecte de verdad.
+ */
+export const createRealtimeTestApp = async (
+  options: RealtimeTestAppOptions = {},
+): Promise<RealtimeTestApp> => {
+  const env = buildTestEnv();
+  const clock = options.clock ?? new SystemClock();
+  const testApp = await createTestApp({
+    validatedEnv: env,
+    modules: [RealtimeModule.forRoot(env, TestAccessTokenVerifierModule.withClock(clock))],
+    overrides: [
+      { provide: REALTIME_CONFIG, useValue: testConfig(options.config) },
+      ...(options.overrides ?? []),
+    ],
+    withRealtime: true,
+  });
+  await testApp.app.listen(0);
+  const { port } = testApp.app.getHttpServer().address() as AddressInfo;
+  return {
+    ...testApp,
+    url: `http://127.0.0.1:${String(port)}`,
+    tokens: new TestAccessTokens(clock),
+    server: testApp.app.get(RealtimeGateway).server,
+  };
+};
+
+/** Dirección de documentación (RFC 5737) distinta por llamada: cada prueba tiene su propia clave del límite. */
+export const uniqueForwardedFor = (): string =>
+  `198.51.${String(randomInt(256))}.${String(randomInt(256))}`;
+
+export interface ClientOptions {
+  /** Valor de `auth.token`; si se omite, el intento va sin `auth`. */
+  readonly token?: unknown;
+  /** Cabecera `Origin` del navegador simulado. */
+  readonly origin?: string;
+  /** Cabecera `x-forwarded-for` (Traefik); por defecto una distinta por conexión. */
+  readonly forwardedFor?: string;
+  /** Parámetros en la URL del *handshake* (el token nunca se lee de ahí). */
+  readonly query?: Record<string, string>;
+}
+
+/** Cliente real de Socket.IO por WebSocket, sin reconexión automática, para afirmar cada intento por separado. */
+export const connectClient = (url: string, options: ClientOptions = {}): ClientSocket =>
+  io(url, {
+    path: REALTIME_PATH,
+    transports: ['websocket'],
+    reconnection: false,
+    forceNew: true,
+    auth: options.token === undefined ? {} : { token: options.token },
+    query: options.query ?? {},
+    extraHeaders: {
+      'x-forwarded-for': options.forwardedFor ?? uniqueForwardedFor(),
+      ...(options.origin === undefined ? {} : { origin: options.origin }),
+    },
+  });
+
+/** Error de `connect_error` con los datos del rechazo del *handshake* (plan §4). */
+export type ConnectError = Error & {
+  readonly data?: { code: string; status: number; retryAfterSeconds?: number };
+};
+
+/** Espera la conexión aceptada; falla si el *handshake* se rechaza. */
+export const waitForConnect = (socket: ClientSocket): Promise<void> =>
+  new Promise((resolve, reject) => {
+    socket.once('connect', () => resolve());
+    socket.once('connect_error', (error) => reject(error));
+  });
+
+/** Espera el rechazo del *handshake*; falla si la conexión se acepta. */
+export const waitForConnectError = (socket: ClientSocket): Promise<ConnectError> =>
+  new Promise((resolve, reject) => {
+    socket.once('connect_error', (error) => resolve(error as ConnectError));
+    socket.once('connect', () => reject(new Error('La conexión se aceptó y debía rechazarse')));
+  });
