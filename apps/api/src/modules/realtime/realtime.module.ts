@@ -10,6 +10,7 @@ import {
   REALTIME_PING_TIMEOUT_MS,
   type RealtimeConfig,
 } from './application/realtime-config';
+import { ConnectionLifetime } from './infrastructure/connection-lifetime';
 import { RealtimeGateway } from './presentation/realtime.gateway';
 
 /** Variables del `api` que `realtime` usa (plan §2); ruta y latido son constantes (YAGNI). */
@@ -19,7 +20,7 @@ export type RealtimeEnv = Pick<Env, 'CORS_ORIGIN' | 'REALTIME_CONNECT_ATTEMPTS_P
 export type AccessTokenVerifierModule = Type<unknown> | DynamicModule;
 
 /**
- * Módulo `realtime` (T3, plan 015 §2): configuración del canal, `ConnectionAdmission` y el gateway único. El verificador
+ * Módulo `realtime` (T3, plan 015 §2): configuración del canal, `ConnectionAdmission`, `ConnectionLifetime` y el gateway único. El verificador
  * de tokens lo aporta la raíz de composición con `accessTokenVerifierModule`: `realtime` no importa `identity`
  * (`architecture.md` §3), como `storage` no conoce a `billing` (DF-51). `SharedModule` (global) aporta el limitador.
  * El adaptador (ruta, CORS, latido) lo instala `configureRealtime(app)`.
@@ -42,6 +43,7 @@ export class RealtimeModule {
       providers: [
         { provide: REALTIME_CONFIG, useValue: config },
         ConnectionAdmission,
+        ConnectionLifetime,
         RealtimeGateway,
       ],
     };

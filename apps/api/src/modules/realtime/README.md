@@ -20,6 +20,9 @@
   (`SHARED_UNAUTHENTICATED`, `SHARED_FORBIDDEN`, `REALTIME_TOO_MANY_REQUESTS`). El origen del intento es el último
   valor de `x-forwarded-for` o la dirección de la conexión.
 - **Datos de la conexión**: `socket.data` = `{ correlationId, actor, expiresAt }` (`ConnectionData`).
+- **Vigencia** (CA-4): `ConnectionLifetime` programa el cierre en `expiresAt`: emite `realtime.session-expired`
+  `{ code: 'SHARED_UNAUTHENTICATED' }` y desconecta (el cliente ve `io server disconnect` y reabre con un token
+  renovado). Si la conexión se cierra antes, cancela el temporizador.
 - **Salas**: `user:<userId>` (el gateway la une al conectar) y `doc:<documentId>`; nombres solo con `room-names.ts`.
 - **Bitácoras** (sin token, origen, nombre de archivo ni contenido, CA-13), todas con `correlationId` de la conexión:
   - `realtime.rejected` con `reason` la emite `ConnectionAdmission` (`missing_token`, `invalid_token`, `expired_token`,

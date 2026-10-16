@@ -16,6 +16,7 @@ import {
   type ConnectionAttempt,
 } from '../application/connection-admission.service';
 import { userRoom } from '../domain/room-names';
+import { ConnectionLifetime } from '../infrastructure/connection-lifetime';
 import type { RealtimeServer, RealtimeSocket } from '../infrastructure/realtime-socket';
 
 import { connectionOrigin } from './connection-origin';
@@ -47,6 +48,7 @@ export class RealtimeGateway implements OnGatewayInit<RealtimeServer>, OnGateway
 
   constructor(
     private readonly admission: ConnectionAdmission,
+    private readonly lifetime: ConnectionLifetime,
     @Inject(PinoLogger) private readonly logger: PinoLogger,
   ) {}
 
@@ -58,6 +60,7 @@ export class RealtimeGateway implements OnGatewayInit<RealtimeServer>, OnGateway
     const { actor } = socket.data;
     void socket.join(userRoom(actor.id));
     socket.on('disconnect', (reason) => this.logDisconnected(socket, reason));
+    this.lifetime.watch(socket);
     withCorrelation(socket, () =>
       this.logger.info({ event: 'realtime.connected', userId: actor.id, connectionId: socket.id }),
     );
