@@ -121,6 +121,29 @@ describe('POST /api/v1/billing/subscribe (spec 009 CA-3 a CA-5)', () => {
     expect((await stateOf(carla.id)).payments).toEqual([]);
   });
 
+  it('CA-5, RN-6: un plan de pago desactivado es 400 sin transacción', async () => {
+    const slug = `retirado-${randomUUID().slice(0, 8)}`;
+    await owner.query(
+      `INSERT INTO plan (id, nombre, slug, descripcion, precio_centavos, cuota_bytes, max_archivo_bytes, max_editores,
+                         consultas_agente_mensual, versiones_retenidas, dias_retencion_papelera, desactivado_en)
+       SELECT gen_random_uuid(), $1, $1, descripcion, precio_centavos, cuota_bytes, max_archivo_bytes, max_editores,
+              consultas_agente_mensual, versiones_retenidas, dias_retencion_papelera, now()
+         FROM plan WHERE slug = 'equipo'`,
+      [slug],
+    );
+    const elena = await newAccount();
+
+    try {
+      const response = await elena.subscribe(body(slug));
+
+      expect(response.status).toBe(400);
+      expect(response.body).toMatchObject({ code: 'BILLING_PLAN_NOT_AVAILABLE' });
+      expect((await stateOf(elena.id)).payments).toEqual([]);
+    } finally {
+      await owner.query('DELETE FROM plan WHERE slug = $1', [slug]);
+    }
+  });
+
   it('CA-5: con un plan de pago vigente, otro pago es 400 sin transacción (el cambio es de la 010)', async () => {
     const diego = await newAccount();
     await diego.subscribe(body('pro'));

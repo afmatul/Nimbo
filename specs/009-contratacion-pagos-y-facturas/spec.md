@@ -4,12 +4,12 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | En curso (plan aprobado por Adrián el 2026-10-15) |
+| Estado | En revisión (2026-10-15; plan aprobado por Adrián el 2026-10-15) |
 | Dueño | Juan Marcos |
 | Fase | 2 |
 | Requisitos | RF-20, RF-21, RNF-05, RNF-06, RNF-13, RNF-14 |
 | Depende de | 008, la parte de `billing` de la 011 (T-09: `plan.desactivado_en`, `Plan` y el catálogo del Administrador, DF-65) y la de `identity` (`IAccountDirectoryRepository`). La T-09 de la 011 depende a su vez de la T-01 de esta spec (`domain/plan-slug.ts`). `SubscriptionAdministration` la crea esta spec (T-03, PD-80) |
-| Última actualización | 2026-10-14 |
+| Última actualización | 2026-10-15 |
 
 ## 1. Contexto y objetivo
 Permitir a los clientes contratar un plan con pago simulado, recibir su comprobante y una factura PDF descargable, y consultar su historial. Además cierra pendientes de integración de `billing`: suscripción Personal al verificar la cuenta y conciliación (PD-40, puntos 1 y 2) y límites y administración leídos de la suscripción (PD-80). El catálogo público, también el del registro, lo sirve la 008 (RN-8, PD-48): esta spec no crea otra ruta de planes. Los planes desactivados quedan fuera de la contratación (PD-86), que sigue abierto por la 010.
@@ -26,7 +26,7 @@ Permitir a los clientes contratar un plan con pago simulado, recibir su comproba
 - **CA-4** (HU-2, RF-20) — error: Dado el pago con `4000 0000 0000 0002`, cuando se procesa, entonces la transacción queda `rechazada`, la suscripción no cambia, no hay factura ni correo y la respuesta es `402 BILLING_PAYMENT_REJECTED`.
 - **CA-5** (HU-2, RF-20, PD-86) — error: Dado un plan desactivado, inexistente o `personal`, o un cliente cuya cuenta ya no está en Personal (tiene un plan de pago, o un segundo pago simultáneo llega después de uno aprobado), cuando se envía el pago, entonces `400 BILLING_PLAN_NOT_AVAILABLE` sin transacción ni cargo; el cambio de plan es de la 010. Dados datos de pago fuera de RN-9 (forma de la tarjeta, número que no sea de 16 dígitos o distinto de las dos tarjetas de prueba, vencimiento pasado, NIT mal formado), entonces `422` con `fields` y sin transacción. Si el cliente hace demasiados intentos seguidos, `429` sin transacción.
 - **CA-6** (HU-2, RF-21) Dado un pago aprobado, cuando termina, entonces se emite la factura `NB-AAAA-NNNN` con subtotal, IVA y total, el PDF queda guardado y el cliente recibe un correo de comprobante. Un pago rechazado no emite ninguno. Si el PDF o el correo fallan después del cobro, el pago y la suscripción se conservan, el historial muestra el pago y un reintento automático repone el PDF y el correo.
-- **CA-7** (HU-3, RF-20, RNF-05) Dado un cliente con sesión, cuando consulta su historial (API o `/suscripcion`), entonces ve sus transacciones y facturas (fecha, referencia, número de factura, monto, plan, estado) y ninguna de otra cuenta; una factura cuyo PDF aún no existe se muestra sin enlace de descarga. Sin pagos, ve el estado vacío.
+- **CA-7** (HU-3, RF-20, RNF-05) Dado un cliente con sesión, cuando consulta su historial (API o `/suscripcion`), entonces ve su plan actual con sus límites y su vigencia, la tarjeta de su último pago aprobado (solo marca y últimos 4), el NIT y el correo de su última factura, y sus transacciones y facturas (fecha, referencia, número de factura, monto, plan, estado), y nada de otra cuenta; una factura cuyo PDF aún no existe se muestra sin enlace de descarga. Sin pagos, ve el estado vacío.
 - **CA-8** (HU-3, RF-21, RNF-06) Dado el dueño de una factura con PDF, cuando pide descargarla, entonces recibe un enlace temporal de 5 minutos al PDF. Si la factura no es suya, no existe o aún no tiene PDF, `404 BILLING_INVOICE_NOT_FOUND`.
 - **CA-9** (HU-2, RF-20) Dadas las tarjetas de plan de pago de `/planes` (008), cuando se muestran, entonces cada una trae el botón «Contratar», que lleva a `/planes/contratar?slug={slug}` con el `slug` de la respuesta de la 008. Las tarjetas de un plan gratuito no lo traen.
 
@@ -90,5 +90,6 @@ Permitir a los clientes contratar un plan con pago simulado, recibir su comproba
 | 2026-10-11 | Depende también de la parte de `identity` de la 011 (`IAccountDirectoryRepository`) | Tercera revisión de la 009 (N-3) | Pendiente Adrián |
 | 2026-10-14 | RN-9 fija la forma de los datos de pago (tarjeta de 16 dígitos, NIT `CF` o de 5 a 12 dígitos) y CA-5 la usa; se cierra la pregunta de PD-80; se redacta `number` | Cuarta revisión de la 009 (I-7, I-8) | Pendiente Adrián |
 | 2026-10-14 | §5: solo el Administrador conoce el nombre del plan de un cliente; el Operador, solo conteos (como plan §3 y ADR-0021) | Quinta revisión de la 009 (N-1) | Pendiente Adrián |
+| 2026-10-15 | CA-7 suma lo que muestra «Plan y facturación» según su mockup: plan actual con límites y vigencia, tarjeta del último pago aprobado (marca y últimos 4) y NIT y correo de la última factura | Revisión de la 009 (I-4) y mockup `billing/suscripcion/` | Pendiente Adrián |
 | 2026-10-14 | `SubscriptionAdministration` la crea esta spec (T-03) sin `clientCount`; la T-09 de la 011 solo aporta el catálogo y depende de la T-01 (`plan-slug.ts`) | Acuerdo con Fátima sobre `arreglos-011.md` (puntos 1–6, 8 y 9) | Pendiente Adrián |
 | 2026-10-15 | RN-1: el formato `Qxx.xx` sale de `formatGtq` en `contracts` (PDF y `web`) | Aprobación de Adrián sobre `propose.md` y ADR-0028 | Adrián |

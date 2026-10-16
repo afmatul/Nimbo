@@ -22,7 +22,7 @@ const receiptLines = ({ document }: IssuableInvoice): readonly string[] => [
   `Factura: ${document.number}`,
   `Referencia del pago: ${document.paymentReference}`,
   `Total: ${formatGtq(document.totalCents)}`,
-  'Puedes descargar la factura en PDF desde Mi suscripción.',
+  'Puedes descargar la factura en PDF desde Plan y facturación.',
 ];
 
 /**

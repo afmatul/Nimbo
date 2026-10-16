@@ -1,7 +1,8 @@
 import { BILLING_ERROR_CODES, type Plan } from '@nimbo/contracts';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, CircleAlert } from 'lucide-react';
 import type { ReactNode } from 'react';
 
+import { StateView } from '../../../../../components/nimbo/state-view';
 import { TextLink } from '../../../../../components/nimbo/text-link';
 import { getEnv } from '../../../../../env';
 import { fetchPlanCatalog } from '../../../../../features/billing';
@@ -37,9 +38,15 @@ export default async function ContratarPage({
         Volver a planes
       </TextLink>
       {plan === undefined ? (
-        <p className="text-sm text-foreground">
-          {messageForCode(BILLING_ERROR_CODES.BILLING_PLAN_NOT_AVAILABLE)}
-        </p>
+        <>
+          <h1 className="sr-only">Contratar un plan</h1>
+          <StateView
+            type="empty"
+            headingLevel="h2"
+            icon={CircleAlert}
+            title={messageForCode(BILLING_ERROR_CODES.BILLING_PLAN_NOT_AVAILABLE)}
+          />
+        </>
       ) : (
         <SessionPaymentForm plan={plan} apiPublicUrl={getEnv().API_PUBLIC_URL} />
       )}

@@ -7,6 +7,7 @@ import type { Invoice } from '../domain/entities/invoice.entity';
 import type { Payment } from '../domain/entities/payment.entity';
 import { PaymentRejectedError } from '../domain/errors/payment-rejected.error';
 import { Subscription } from '../domain/subscription.entity';
+import { Money } from '../domain/value-objects/money';
 
 import { SubscriptionController } from './subscription.controller';
 
@@ -26,7 +27,13 @@ const BODY = {
 const outcome = (status: Payment['status']): SubscribeOutcome => ({
   payment: { id: 'pago-1', status, reference: 'SIM-2026-000007' } as Payment,
   plan: TEAM,
-  invoice: { id: 'factura-1', receiptEmail: 'ana@ejemplo.com' } as Invoice,
+  invoice: {
+    id: 'factura-1',
+    receiptEmail: 'ana@ejemplo.com',
+    subtotal: Money.ofCents(9821),
+    vat: Money.ofCents(1179),
+    total: Money.ofCents(11_000),
+  } as Invoice,
   subscription: Subscription.rehydrate({
     userId: ANA.id,
     planId: TEAM.id,

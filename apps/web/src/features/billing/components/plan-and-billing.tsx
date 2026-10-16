@@ -47,7 +47,6 @@ function Breadcrumbs(): React.JSX.Element {
   );
 }
 
-/** Plan, consumo, método y datos (izquierda) y pagos con facturas (derecha), como el mockup. */
 /** Columna izquierda del mockup: plan y consumo (con suscripción), método de pago y datos de facturación. */
 function AccountColumn({
   history,

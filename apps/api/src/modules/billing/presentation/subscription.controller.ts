@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
-import { breakdown, subscribeRequestSchema } from '@nimbo/contracts';
+import { subscribeRequestSchema } from '@nimbo/contracts';
 import type {
   BillingHistoryResponse,
   InvoiceDownloadResponse,
@@ -17,7 +17,7 @@ import { PaymentRejectedError } from '../domain/errors/payment-rejected.error';
 import { toBillingHistoryResponse } from './billing-history.response';
 import { billingValidationError, invoiceIdPipe } from './billing-validation';
 
-/** Lista blanca del contrato (CA-3, CA-6): referencia, plan, vencimiento, desglose de RN-2 y correo del comprobante. */
+/** Lista blanca del contrato (CA-3, CA-6): referencia, plan, vencimiento, el desglose de RN-2 de la factura y su correo. */
 const toSubscribeResponse = ({
   payment,
   plan,
@@ -31,7 +31,11 @@ const toSubscribeResponse = ({
     reference: payment.reference,
     plan: { slug: plan.slug, name: plan.name },
     expiresAt: subscription.expiresAt.toISOString(),
-    amounts: breakdown(plan.priceCents),
+    amounts: {
+      subtotalCents: invoice.subtotal.cents,
+      vatCents: invoice.vat.cents,
+      totalCents: invoice.total.cents,
+    },
     receiptEmail: invoice.receiptEmail,
   };
 };

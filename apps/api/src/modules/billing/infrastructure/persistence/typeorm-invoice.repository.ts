@@ -15,14 +15,16 @@ const INSERT_SQL = `INSERT INTO factura (transaccion_id, usuario_id, numero, sub
   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`;
 
 /** La factura con la referencia del pago y el nombre del plan, para imprimirla (T-07). */
-const FOR_ISSUE_SQL = `SELECT f.id, f.transaccion_id, f.aviso_encolado_en, f.numero, f.creado_en, f.subtotal_centavos, f.iva_centavos, f.total_centavos,
+/** Las tres consultas filtran también por `usuario_id` (el actor), además de la RLS: defensa en profundidad (RNF-05). */
+const FOR_ISSUE_SQL = `SELECT f.id, f.transaccion_id, f.aviso_encolado_en, f.numero, f.creado_en,
+    f.subtotal_centavos, f.iva_centavos, f.total_centavos,
     f.nit, f.correo_comprobante, f.clave_objeto, t.referencia, p.nombre AS plan
   FROM factura f JOIN transaccion t ON t.id = f.transaccion_id JOIN plan p ON p.id = t.plan_id
-  WHERE f.id = $1`;
+  WHERE f.id = $1 AND f.usuario_id = $2`;
 const MARK_STORED_SQL =
-  'UPDATE factura SET clave_objeto = $2 WHERE id = $1 AND clave_objeto IS NULL';
+  'UPDATE factura SET clave_objeto = $3 WHERE id = $1 AND usuario_id = $2 AND clave_objeto IS NULL';
 const MARK_NOTICE_SQL =
-  'UPDATE factura SET aviso_encolado_en = now() WHERE id = $1 AND aviso_encolado_en IS NULL';
+  'UPDATE factura SET aviso_encolado_en = now() WHERE id = $1 AND usuario_id = $2 AND aviso_encolado_en IS NULL';
 
 interface IssuableRow {
   readonly id: string;
@@ -95,15 +97,17 @@ export class TypeOrmInvoiceRepository implements IInvoiceRepository {
 
   async findForIssue(actor: Actor, invoiceId: string): Promise<IssuableInvoice | null> {
     const manager = this.context.requireActorScope(actor);
-    const [row] = (await manager.query(FOR_ISSUE_SQL, [invoiceId])) as IssuableRow[];
+    const [row] = (await manager.query(FOR_ISSUE_SQL, [invoiceId, actor.id])) as IssuableRow[];
     return row === undefined ? null : toIssuable(row);
   }
 
   async markStored(actor: Actor, invoiceId: string, objectKey: string): Promise<void> {
-    await this.context.requireActorScope(actor).query(MARK_STORED_SQL, [invoiceId, objectKey]);
+    await this.context
+      .requireActorScope(actor)
+      .query(MARK_STORED_SQL, [invoiceId, actor.id, objectKey]);
   }
 
   async markNoticeQueued(actor: Actor, invoiceId: string): Promise<void> {
-    await this.context.requireActorScope(actor).query(MARK_NOTICE_SQL, [invoiceId]);
+    await this.context.requireActorScope(actor).query(MARK_NOTICE_SQL, [invoiceId, actor.id]);
   }
 }

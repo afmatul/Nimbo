@@ -14,10 +14,12 @@ import type {
   PendingInvoice,
 } from './ports/i-pending-invoice.scanner.port';
 
-/** Quedaron facturas sin PDF (CA-6): la pasada falla para que BullMQ la reintente. Sin ids ni cifras de cuentas. */
+/** Quedaron facturas sin PDF o sin aviso (CA-6): la pasada falla para que BullMQ la reintente. Sin ids ni cuentas. */
 export class InvoiceRetryIncompleteError extends Error {
   constructor(readonly failed: number) {
-    super(`El reintento de facturas dejó ${String(failed)} factura(s) sin PDF; se reintentará.`);
+    super(
+      `El reintento de facturas dejó ${String(failed)} factura(s) sin PDF o sin aviso; se reintentará.`,
+    );
     this.name = 'InvoiceRetryIncompleteError';
   }
 }
