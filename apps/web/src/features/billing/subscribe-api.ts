@@ -7,6 +7,8 @@ import {
 
 import type { AuthFetch } from '../identity/session/auth-fetch';
 
+import { billingEndpoint } from './billing-endpoint';
+
 const SUBSCRIBE_PATH = '/billing/subscribe';
 
 /**
@@ -18,7 +20,7 @@ export async function subscribe(
   authFetch: AuthFetch,
   request: SubscribeRequest,
 ): Promise<SubscribeResponse> {
-  const raw = await authFetch(`${apiPublicUrl.replace(/\/$/, '')}${SUBSCRIBE_PATH}`, {
+  const raw = await authFetch(billingEndpoint(apiPublicUrl, SUBSCRIBE_PATH), {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(subscribeRequestSchema.parse(request)),

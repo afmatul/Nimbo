@@ -189,6 +189,8 @@ const CODE_MESSAGES: Readonly<Record<string, string>> = {
     'Este plan no está disponible para contratar. Elige otro plan en Planes.',
   [BILLING_ERROR_CODES.BILLING_PAYMENT_REJECTED]:
     'La tarjeta fue rechazada. No se hizo ningún cargo. Prueba con otra tarjeta.',
+  [BILLING_ERROR_CODES.BILLING_INVOICE_NOT_FOUND]:
+    'No encontramos esa factura o su PDF aún no está listo. Actualiza la página e inténtalo de nuevo.',
 };
 
 interface TimedMessage {
