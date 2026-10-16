@@ -179,7 +179,8 @@ describe('migraciones de 011 con dueño NOSUPERUSER (plan §3)', () => {
   it('las cuatro migraciones de 011 corren en el orden de su fecha', async () => {
     const applied = await appliedNames(owner);
 
-    expect(applied.slice(applied.indexOf(FIRST_011_MIGRATION))).toEqual(ELEVEN_MIGRATIONS);
+    // Otras specs (014, 009) intercalan migraciones con fecha entre las de 011: aquí solo importa el orden de las de 011.
+    expect(applied.filter((name) => ELEVEN_MIGRATIONS.includes(name))).toEqual(ELEVEN_MIGRATIONS);
   });
 
   it('up → down → up: el `down` borra solo lo que el esquema anterior no admite y el `up` vuelve al de 011', async () => {
