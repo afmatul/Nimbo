@@ -1,5 +1,4 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { BACKOFFICE_PAGE_SIZE } from '@nimbo/contracts';
 
 import { TransactionContext } from '../../../../shared';
 import type { Actor } from '../../../../shared';
@@ -48,14 +47,14 @@ const toMetadata = (row: MetadataRow): FileMetadata => ({
 export class SqlNodeMetadataReader implements INodeMetadataReader {
   constructor(@Inject(TransactionContext) private readonly context: TransactionContext) {}
 
-  async listForOwner(actor: Actor, ownerId: string, page: number): Promise<FileMetadataPage> {
+  async listForOwner(
+    actor: Actor,
+    ownerId: string,
+    { page, pageSize }: Parameters<INodeMetadataReader['listForOwner']>[2],
+  ): Promise<FileMetadataPage> {
     const manager = this.context.requireActorScope(actor);
-    const offset = (page - 1) * BACKOFFICE_PAGE_SIZE;
-    const rows = (await manager.query(PAGE_SQL, [
-      ownerId,
-      BACKOFFICE_PAGE_SIZE,
-      offset,
-    ])) as MetadataRow[];
+    const offset = (page - 1) * pageSize;
+    const rows = (await manager.query(PAGE_SQL, [ownerId, pageSize, offset])) as MetadataRow[];
     const [count] = (await manager.query(TOTAL_SQL, [ownerId])) as { total: number }[];
     return { items: rows.map(toMetadata), total: count?.total ?? 0 };
   }

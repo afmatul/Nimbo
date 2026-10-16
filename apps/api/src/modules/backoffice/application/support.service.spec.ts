@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { BACKOFFICE_ERROR_CODES } from '@nimbo/contracts';
+import { BACKOFFICE_ERROR_CODES, BACKOFFICE_PAGE_SIZE } from '@nimbo/contracts';
 
 import { createActor, Role } from '../../../shared';
 import type { Actor } from '../../../shared';
@@ -68,7 +68,10 @@ describe('SupportService (011 CA-13, RN-2)', () => {
 
     const result = await service.listClientFiles(actor, { email: CLIENT.email, page: 2 });
 
-    expect(reader.listForOwner).toHaveBeenCalledWith(actor, CLIENT.id, 2);
+    expect(reader.listForOwner).toHaveBeenCalledWith(actor, CLIENT.id, {
+      page: 2,
+      pageSize: BACKOFFICE_PAGE_SIZE,
+    });
     expect(result).toEqual({
       client: CLIENT,
       items: files.items,

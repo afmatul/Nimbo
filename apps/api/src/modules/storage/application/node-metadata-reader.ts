@@ -24,11 +24,15 @@ export interface FileMetadataPage {
 /**
  * Puerto que `storage` declara **e implementa** y consume `backoffice` (diagrama M8; 011 plan §2, cierra PD-31): sin
  * ciclo, porque `storage` no importa a quien lo usa. Exige la transacción de `withActor(actor)`: la política
- * `archivo_metadatos_internos` solo deja leer a `ADMIN` y `SUPPORT` (architecture §6). `page` empieza en 1 y cada
- * página trae `BACKOFFICE_PAGE_SIZE` archivos, del más reciente al más viejo; incluye los de la papelera.
+ * `archivo_metadatos_internos` solo deja leer a `ADMIN` y `SUPPORT` (architecture §6). `page` empieza en 1 y el
+ * tamaño de página lo fija quien consume; del más reciente al más viejo; incluye los de la papelera.
  */
 export interface INodeMetadataReader {
-  listForOwner(actor: Actor, ownerId: string, page: number): Promise<FileMetadataPage>;
+  listForOwner(
+    actor: Actor,
+    ownerId: string,
+    request: { readonly page: number; readonly pageSize: number },
+  ): Promise<FileMetadataPage>;
 }
 
 export const I_NODE_METADATA_READER = Symbol('INodeMetadataReader');

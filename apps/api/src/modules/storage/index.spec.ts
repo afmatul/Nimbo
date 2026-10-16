@@ -59,7 +59,11 @@ type _FileMetadataShape = Expect<
 type _ListForOwnerSignature = Expect<
   Equal<
     INodeMetadataReader['listForOwner'],
-    (actor: Actor, ownerId: string, page: number) => Promise<FileMetadataPage>
+    (
+      actor: Actor,
+      ownerId: string,
+      request: { readonly page: number; readonly pageSize: number },
+    ) => Promise<FileMetadataPage>
   >
 >;
 

@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { BACKOFFICE_PAGE_SIZE } from '@nimbo/contracts';
 import type { ClientFilesQuery } from '@nimbo/contracts';
 import { PinoLogger } from 'nestjs-pino';
 
@@ -70,7 +71,10 @@ export class SupportService {
     if (client === null) {
       throw new ClientNotFoundError();
     }
-    const { items, total } = await this.reader.listForOwner(actor, client.id, query.page);
+    const { items, total } = await this.reader.listForOwner(actor, client.id, {
+      page: query.page,
+      pageSize: BACKOFFICE_PAGE_SIZE,
+    });
     return { client, items, page: query.page, total };
   }
 }
