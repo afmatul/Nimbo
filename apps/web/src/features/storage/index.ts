@@ -3,5 +3,6 @@
  * Lo demás es interno.
  */
 export { MyFiles, type FirstFileAction, type MyFilesProps } from './components/my-files';
+export { StorageAppLayout } from './components/storage-app-layout';
 export { useFileDownload } from './hooks/use-file-download';
 export { locationPath, returnFocusOf, returnPathOf, type RouteSearch } from './routes';

@@ -23,6 +23,9 @@ import type { UploadManagerOptions } from '../../../../../../features/storage/up
 
 import CarpetaPage from './page';
 
+const push = jest.fn();
+jest.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
+
 const AT = '2026-09-30T10:00:00.000Z';
 const ALPHA: FolderRef = { id: '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d', name: 'Proyecto Alpha' };
 const FASE3: FolderRef = { id: '2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e', name: 'Fase 3 · RAG' };
@@ -147,6 +150,26 @@ describe('página de una carpeta (/archivos/carpeta/[folderId])', () => {
       '/archivos',
     );
     expect(crumbs.getByRole('link', { name: 'Proyecto Alpha' })).toBeTruthy();
+  });
+
+  it('017 CA-6: en una carpeta, «Previsualizar» es el primer ítem de un PDF y abre su vista previa', async () => {
+    const plan: FileSummary = {
+      ...INFORME,
+      id: '8b9c0d1e-2f3a-4d5e-8f6a-0c1d2e3f4a5b',
+      name: 'Plan.pdf',
+      kind: 'pdf',
+    };
+    await renderFolder(
+      fakeApi({
+        folderContents: contentsBy(() => Promise.resolve(fase3([{ type: 'file', ...plan }]))),
+      }),
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Acciones de Plan.pdf' }));
+    expect(screen.getAllByRole('menuitem')[0]?.textContent).toBe('Previsualizar');
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Previsualizar' }));
+
+    expect(push).toHaveBeenCalledWith(`/archivos/vista-previa/${plan.id}`);
   });
 
   it('017 CA-9: al volver de la vista previa (`?foco=`) enfoca la fila del archivo en su carpeta', async () => {

@@ -22,6 +22,9 @@ import type { UploadManagerOptions } from '../../../../features/storage/upload/u
 
 import ArchivosPage from './page';
 
+const push = jest.fn();
+jest.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
+
 const AT = '2026-09-30T10:00:00.000Z';
 const UPLOAD_ID = '2f0c1d2e-3a4b-4c5d-8e6f-7a8b9c0d1e2f';
 const INFORME: FileSummary = {
@@ -118,6 +121,29 @@ describe('página Mis archivos (/archivos)', () => {
     const table = await screen.findByRole('table');
     expect(within(table).getByText('informe.docx')).toBeTruthy();
     expect(within(table).getByRole('button', { name: 'Acciones de informe.docx' })).toBeTruthy();
+  });
+
+  it('017 CA-6: en la raíz, «Previsualizar» es el primer ítem de un PDF y abre su vista previa', async () => {
+    const plan: FileSummary = { ...NUEVO, name: 'plan.pdf', kind: 'pdf' };
+    const api = fakeApi({ folderContents: jest.fn(() => Promise.resolve(page([plan]))) });
+    await renderPage(api);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Acciones de plan.pdf' }));
+    const [first] = screen.getAllByRole('menuitem');
+    expect(first?.textContent).toBe('Previsualizar');
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Previsualizar' }));
+
+    expect(push).toHaveBeenCalledWith(`/archivos/vista-previa/${plan.id}`);
+    expect(api.downloadUrl).not.toHaveBeenCalled();
+  });
+
+  it('017 CA-6: un .docx no ofrece «Previsualizar»: «Descargar» sigue primero', async () => {
+    await renderPage(fakeApi({ folderContents: jest.fn(() => Promise.resolve(page([INFORME]))) }));
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Acciones de informe.docx' }));
+
+    expect(screen.queryByRole('menuitem', { name: 'Previsualizar' })).toBeNull();
+    expect(screen.getAllByRole('menuitem')[0]?.textContent).toBe('Descargar');
   });
 
   it('017 CA-9: al volver de la vista previa (`?foco=`) enfoca el control de la fila del archivo', async () => {
