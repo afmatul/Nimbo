@@ -23,7 +23,7 @@ programar un cambio de plan (subir, bajar o volver a Personal) que se aplica en 
 - **HU-3** Como cliente, quiero renovar a mano antes de vencer (o después, si quedé en solo lectura), sin perder días pagados.
 - **HU-4** Como cliente con la suscripción vencida, quiero seguir viendo y descargando mis archivos, para no perder mi trabajo mientras pago.
 - **HU-5** Como cliente, quiero programar un cambio de plan para el siguiente ciclo y cancelarlo antes de que se aplique.
-- **HU-6** Como Operador, quiero conteos de renovaciones y saber si el proceso falla, sin ver datos de ningún cliente.
+- **HU-6** Como Operador, quiero que cada pasada de renovación deje conteos agregados en la bitácora y saber si el proceso falla, sin ver datos de ningún cliente (el tablero llega con la 022).
 
 ## 3. Criterios de aceptación
 > Dado/Cuando/Entonces en una o dos líneas. Cada criterio es verificable por una prueba y rastrea a un requisito.
@@ -59,7 +59,7 @@ programar un cambio de plan (subir, bajar o volver a Personal) que se aplica en 
 - **CA-22** (HU-5, RF-24) Dado un cambio programado, cuando cambia el estado, entonces la auditoría del cliente registra programar, cancelar y aplicar el cambio (RF-07).
 
 **Privacidad, aislamiento y pantalla**
-- **CA-23** (HU-6, RF-05, RNF-05) Dado un Administrador, Soporte u Operador, cuando llama a cualquier operación de esta spec, entonces recibe `403` y nada cambia. El Operador solo ve conteos agregados (renovaciones aprobadas y rechazadas, cuentas en solo lectura, cambios programados), sin identificadores de cuenta.
+- **CA-23** (HU-6, RF-05, RNF-05) Dado un Administrador, Soporte u Operador, cuando llama a cualquier operación de esta spec, entonces recibe `403` y nada cambia. Cada pasada del proceso deja en la bitácora estructurada solo conteos agregados (renovadas, rechazadas, pasadas a solo lectura, avisos enviados, fallos), sin identificadores ni datos de clientes; no hay endpoint para el Operador en esta spec (el tablero llega con la 022).
 - **CA-24** (RNF-05) Dado dos clientes A y B, cuando A consulta o cambia su suscripción, renovación o cambio de plan, entonces solo opera sobre la suya: no hay forma de leer ni alterar la de B.
 - **CA-25** (HU-2, HU-5, RF-22, RF-24) Dado un plan de pago, cuando abre «Plan y facturación», entonces ve «Próximo cobro» (fecha, monto, marca y últimos 4), el interruptor de renovación automática, «Cambiar de plan» y el estado que corresponda de §6.
 - **CA-26** (HU-3, RF-22) — error: Dado un cliente que ya pagó por adelantado el siguiente periodo, cuando intenta pagar otro, entonces se responde `409` `BILLING_ALREADY_RENEWED` y no hay cobro.
@@ -71,7 +71,7 @@ programar un cambio de plan (subir, bajar o volver a Personal) que se aplica en 
 - **RN-1** El periodo de un plan de pago es de 30 días (009). El periodo nuevo empieza en el `vence_en` anterior si se paga antes o al vencer, y en el momento del pago si la cuenta ya estaba en solo lectura. No se pierden días pagados.
 - **RN-2** La renovación automática cobra con la marca y los últimos 4 de la tarjeta del último pago aprobado. Nunca se guardan el número completo ni el CVC (RN-9 de la 009). En el simulador deciden los últimos 4: `4242` aprueba y `0002` rechaza.
 - **RN-3** La renovación automática está activada al contratar; el cliente puede apagarla y volver a encenderla mientras su plan esté vigente. Apagarla no cancela el periodo pagado.
-- **RN-4** Cada renovación cobra el precio completo, en centavos, del plan del siguiente ciclo: el programado si hay uno, si no el actual. No hay prorrateo ni reembolsos. Los impuestos y la factura siguen las reglas de la 009.
+- **RN-4** Cada renovación cobra el precio completo, en centavos, del plan del siguiente ciclo: el programado si hay uno, si no el actual. No hay prorrateo ni reembolsos. Los impuestos y la factura siguen las reglas de la 009; la factura de la renovación automática lleva el NIT de la última factura del cliente, o `CF` si no tiene.
 - **RN-5** Solo lectura = plan de pago con `vence_en` pasado y sin pago. La cuenta conserva su plan y sus límites, no baja a Personal y no pierde contenido; termina al pagar la renovación. Personal nunca entra en solo lectura.
 - **RN-6** En solo lectura se permite ver, navegar, buscar, previsualizar y descargar (glosario «Degradación a solo lectura»); se rechaza todo lo que crea o modifica contenido (CA-13). Para liberar espacio se permite mandar a la papelera, eliminar definitivamente y vaciarla; también fijar accesos rápidos y consultar al agente, que no cambian contenido. Compartir y crear enlaces públicos (012, 013) se rechazan cuando existan. La edición `.docx` (016) y el optimizador (021) heredan esta regla cuando existan.
 - **RN-7** El cambio de plan es solo programado: uno a la vez, a un plan activo distinto del actual, cancelable hasta `vence_en` y efectivo al renovar. Bajar a Personal es un cambio programado sin cobro. Desde Personal no hay cambio: se contrata (009).
@@ -121,3 +121,4 @@ programar un cambio de plan (subir, bajar o volver a Personal) que se aplica en 
 |---|---|---|---|
 | 2026-10-16 | Creación inicial con las decisiones acordadas con Juan Marcos (tarjeta del último pago, solo lectura sin bajar a Personal, aviso a 3 días, cambio solo programado, renovación anticipada sin perder días) | Arranque de la 010 | Borrador (pendiente Adrián) |
 | 2026-10-16 | Preguntas resueltas con las recomendaciones: solo lectura (RN-6, CA-13), un intento de cobro (RN-10), propietario en compartidos (RN-11), CA-26 a CA-29; mockups con `/mockup` antes de la UI | Respuestas de Juan Marcos | Borrador (pendiente Adrián) |
+| 2026-10-16 | HU-6 y CA-23: los conteos del Operador quedan en la bitácora estructurada de cada pasada, sin datos de clientes y sin endpoint (tablero en la 022). RN-4: NIT de la renovación automática = el de la última factura, o `CF` | Revisión del plan por el `architect` (YAGNI: aún no hay Prometheus en la API) | Borrador (pendiente Adrián) |
