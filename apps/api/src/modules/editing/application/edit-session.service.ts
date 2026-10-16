@@ -17,21 +17,24 @@ import { EditingSaveInProgressError } from '../domain/errors';
 
 import { EDITING_CONFIG } from './editing-config';
 import type { EditingConfig } from './editing-config';
+import type { EditingLogger } from './editing-logger';
 import { EditorAvailability } from './editor-availability';
 import type { EditorLaunch } from './editor-config.factory';
+import { nameOf, toParticipants } from './participants';
+import type { Participant } from './participants';
+import { I_DOCUMENT_EDITOR } from './ports/i-document-editor.port';
+import type { IDocumentEditor } from './ports/i-document-editor.port';
 import { I_EDIT_SESSION_REPOSITORY } from './ports/i-edit-session.repository.port';
 import type { IEditSessionRepository } from './ports/i-edit-session.repository.port';
 import { I_USER_DIRECTORY } from './ports/i-user-directory.port';
 import type { IUserDirectory } from './ports/i-user-directory.port';
+import { PresenceService } from './presence.service';
+import type { Departure } from './presence.service';
 
-/** Bitácora técnica de `editing`: solo identificadores, nunca nombres de archivo, tokens ni URLs (RNF-17). */
-export type EditingLogger = Pick<PinoLogger, 'info' | 'warn' | 'error'>;
-
-/** Si una cuenta ya no tiene nombre (borrada a mitad de sesión), se muestra igual sin inventar uno ajeno (RN-12). */
-const UNNAMED_PARTICIPANT = 'Persona sin nombre';
-
-const nameOf = (names: ReadonlyMap<string, string>, userId: string): string =>
-  names.get(userId) ?? UNNAMED_PARTICIPANT;
+/** Cuerpo de la apertura (contrato `OpenEditSessionRequest`): la conexión del canal en vivo que entra a la sala. */
+export interface OpenSessionInput {
+  readonly connectionId?: string | undefined;
+}
 
 /** Lo que decide la apertura: el archivo, si quien abre puede editar y el máximo de editores de la propietaria. */
 interface OpenContext {
@@ -56,7 +59,7 @@ export type OpenedMode =
 /** Respuesta de `POST /files/:fileId/edit-session` (contrato `OpenEditSessionResponse`). */
 export type OpenedEditor = EditorLaunch &
   OpenedMode & {
-    readonly participants: readonly { readonly userId: string; readonly displayName: string }[];
+    readonly participants: readonly Participant[];
     readonly editors: number;
     readonly maxEditors: number;
     readonly lastSaveFailed: boolean;
@@ -73,7 +76,9 @@ const modeOf = ({ decision, session }: Admission): OpenedMode => {
  * resuelve el archivo con `accessibleNodes(actor)` (ajeno, en la papelera o inexistente = 404, CA-2), exige `.docx`
  * (CA-4) y el servicio disponible (CA-15), y decide con el nivel del actor y el plan de la **cuenta propietaria**
  * (RN-3). En edición reutiliza la sesión abierta o la crea (`uq_sesion_edicion_abierta` resuelve la carrera) y da de
- * alta la participación bajo `FOR UPDATE` de la sesión, para que dos aperturas no pasen el límite (CA-7).
+ * alta la participación bajo `FOR UPDATE` de la sesión, para que dos aperturas no pasen el límite (CA-7). Con
+ * `connectionId`, la conexión del canal en vivo entra a la sala del documento y, en edición, todos ven la lista nueva
+ * (CA-6). `revokeAccess` saca a una cuenta de la sesión en curso (CA-16).
  */
 @Injectable()
 export class EditSessionService {
@@ -89,11 +94,15 @@ export class EditSessionService {
     @Inject(I_AUDIT_LOGGER) private readonly audit: IAuditLogger,
     @Inject(I_CLOCK) private readonly clock: IClock,
     @Inject(PinoLogger) private readonly logger: EditingLogger,
+    @Inject(PresenceService) private readonly presence: PresenceService,
+    @Inject(I_DOCUMENT_EDITOR) private readonly editor: IDocumentEditor,
   ) {}
 
-  async open(actor: Actor, fileId: string): Promise<OpenedEditor> {
+  async open(actor: Actor, fileId: string, input: OpenSessionInput): Promise<OpenedEditor> {
     const context = await this.contextFor(actor, fileId);
     const factory = await this.availability.factory();
+    if (input.connectionId !== undefined)
+      await this.presence.admit(actor, input.connectionId, context.file.id);
     const admission = await this.admit(context);
     const names = await this.users.displayNames([actor.id, ...admission.participants]);
     const launch = factory.build({
@@ -102,8 +111,24 @@ export class EditSessionService {
       sessionId: admission.session?.id ?? null,
       user: { id: actor.id, name: nameOf(names, actor.id) },
     });
-    if (admission.session !== null) await this.recordOpened(actor, admission.session);
-    return this.toOpened(context, admission, { launch, names });
+    const opened = this.toOpened(context, admission, { launch, names });
+    if (admission.session !== null) await this.announceOpened(actor, admission.session, opened);
+    return opened;
+  }
+
+  /**
+   * Saca a `userId` de la sesión en curso del archivo (CA-16, 015 CA-8): fuera de la sala, desconectado del editor y
+   * con su plaza libre. Lo ya escrito queda en la sesión; lo posterior el editor ya no lo acepta. Lo invoca quien
+   * detecta la revocación (aviso de estado 1 en T-05; `sharing` desde 012, PD-96) con el actor de la propietaria.
+   */
+  async revokeAccess(actor: Actor, departure: Departure): Promise<void> {
+    await this.presence.retire(departure);
+    const session = await this.presence.leave(actor, departure);
+    if (session === null) return;
+    const ids = { sessionId: session.id, fileId: session.fileId, userId: departure.userId };
+    this.logger.info({ event: 'editing.access_revoked', ...ids });
+    if (!(await this.editor.dropUser(session.id, departure.userId)))
+      this.logger.warn({ event: 'editing.drop_user_failed', ...ids });
   }
 
   private async contextFor(actor: Actor, fileId: string): Promise<OpenContext> {
@@ -171,6 +196,16 @@ export class EditSessionService {
     return (await this.sessions.insertIfNoneOpen(actor, session)) ? session : null;
   }
 
+  private async announceOpened(
+    actor: Actor,
+    session: EditSession,
+    opened: OpenedEditor,
+  ): Promise<void> {
+    await this.recordOpened(actor, session);
+    const { participants, maxEditors } = opened;
+    this.presence.announce({ fileId: session.fileId, participants, maxEditors });
+  }
+
   private async recordOpened(actor: Actor, session: EditSession): Promise<void> {
     const ids = { sessionId: session.id, fileId: session.fileId, userId: actor.id };
     this.logger.info({ event: 'editing.session_opened', ...ids });
@@ -188,10 +223,7 @@ export class EditSessionService {
     admission: Admission,
     shown: { launch: EditorLaunch; names: ReadonlyMap<string, string> },
   ): OpenedEditor {
-    const participants = admission.participants.map((userId) => ({
-      userId,
-      displayName: nameOf(shown.names, userId),
-    }));
+    const participants = toParticipants(admission.participants, shown.names);
     return {
       ...shown.launch,
       ...modeOf(admission),

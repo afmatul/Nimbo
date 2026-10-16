@@ -39,7 +39,8 @@ import { UserDirectoryBindingModule } from './user-directory-binding.module';
  * `billing` (008) —el `worker` no carga ninguna de las dos rutas—, `backoffice` (011), que recibe los mismos módulos de
  * `identity` y `storage` para no instanciarlos dos veces, el canal en vivo (015), al que se le pasa la misma instancia
  * de `IdentityModule` para resolver `I_ACCESS_TOKEN_VERIFIER` sin que `realtime` importe `identity` (Nest deduplica el
- * módulo dinámico por referencia) y la edición (016), que recibe así la misma instancia de `StorageModule`;
+ * módulo dinámico por referencia) y la edición (016), que recibe así las mismas instancias de `StorageModule` y de
+ * `RealtimeModule`;
  * `IUserDirectory` lo enlaza `UserDirectoryBindingModule` con la de `IdentityModule`. `planLimitsBinding(env)` es
  * `PlanLimitsBindingModule` salvo el andamiaje temporal de plan de pago de 016 (`DEV_FORCE_PAID_PLAN`, se borra en T-11).
  */
@@ -50,6 +51,7 @@ export class AppModule {
     // Una sola instancia de `storage`: `billing`, `backoffice` y `editing` la importan de forma explícita (009,
     // ampliación de la decisión 1; 011; 016).
     const storage = StorageModule.forRoot(env);
+    const realtime = RealtimeModule.forRoot(env, identity);
     return {
       module: AppModule,
       imports: [
@@ -72,8 +74,8 @@ export class AppModule {
         AuditHttpModule,
         BillingHttpModule.forRoot(storage),
         BackofficeModule.forRoot(identity, storage),
-        RealtimeModule.forRoot(env, identity),
-        EditingModule.forRoot(env, storage),
+        realtime,
+        EditingModule.forRoot(env, { storage, realtime }),
       ],
       providers: [PingQueue],
     };

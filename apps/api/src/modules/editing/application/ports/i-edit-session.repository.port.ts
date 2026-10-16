@@ -1,6 +1,13 @@
 import type { Actor } from '../../../../shared';
 import type { EditSession } from '../../domain/edit-session';
 
+/** Entrada o salida de una cuenta en una sesión, con su hora. */
+export interface ParticipationChange {
+  readonly sessionId: string;
+  readonly userId: string;
+  readonly now: Date;
+}
+
 /**
  * Sesiones de edición y participantes (`sesion_edicion`, `participacion`; plan 016 §2, DF-19: no es el
  * `ISessionRepository` de `identity`). Todo método toma el `EntityManager` de `requireActorScope(actor)`: la RLS de
@@ -20,10 +27,12 @@ export interface IEditSessionRepository {
   /** Cuentas conectadas como editoras a la sesión (`salio_en IS NULL`), por orden de entrada. */
   activeParticipants(actor: Actor, sessionId: string): Promise<readonly string[]>;
   /** Alta de `userId` como participante conectado; si ya participó, vuelve a contar como conectado. */
-  join(
-    actor: Actor,
-    participation: { sessionId: string; userId: string; now: Date },
-  ): Promise<void>;
+  join(actor: Actor, participation: ParticipationChange): Promise<void>;
+  /**
+   * Marca la salida de `userId` (`salio_en`) si seguía conectado: libera su plaza (CA-7, CA-8) y conserva que participó
+   * (autoría, RN-5). `false` si ya había salido o nunca entró (idempotente, ADR-0019).
+   */
+  leave(actor: Actor, participation: ParticipationChange): Promise<boolean>;
 }
 
 export const I_EDIT_SESSION_REPOSITORY = Symbol('IEditSessionRepository');

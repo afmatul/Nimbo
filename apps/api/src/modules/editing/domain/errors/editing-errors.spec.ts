@@ -1,7 +1,9 @@
 import { ConflictError, DomainError, InvalidInputError } from '../../../../shared/domain/errors';
+import type { FieldIssue } from '../../../../shared/domain/errors';
 
 import {
   EditingSaveInProgressError,
+  EditingInvalidRequestError,
   EditingUnavailableError,
   EditingUnsupportedFormatError,
 } from './index';
@@ -32,5 +34,21 @@ describe('errores de `editing` (plan 016 §2 y §4)', () => {
     expect(error.status).toBe(409);
     expect(error.code).toBe('EDITING_SAVE_IN_PROGRESS');
     expect(error.message).toMatch(/vuelve a abrirlo\.$/);
+  });
+
+  it('CA-6: `EditingInvalidRequestError` es un 400 con `fields` que pide revisar la petición', () => {
+    const issue: FieldIssue = {
+      field: 'connectionId',
+      reason: 'TOO_SHORT',
+      message: 'Revisa el valor.',
+    };
+
+    const error = new EditingInvalidRequestError([issue]);
+
+    expect(error).toBeInstanceOf(DomainError);
+    expect(error).not.toBeInstanceOf(InvalidInputError);
+    expect(error.status).toBe(400);
+    expect(error.code).toBe('EDITING_INVALID_REQUEST');
+    expect(error.fields).toEqual([issue]);
   });
 });

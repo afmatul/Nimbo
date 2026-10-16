@@ -1,4 +1,8 @@
+import type { AddressInfo } from 'node:net';
+
 import { Global, Module } from '@nestjs/common';
+import { EventEmitterModule } from '@nestjs/event-emitter';
+import type { Socket as ClientSocket } from 'socket.io-client';
 import request from 'supertest';
 import type { Response, Test } from 'supertest';
 
@@ -7,7 +11,23 @@ import { EditingModule, I_USER_DIRECTORY } from '../../../src/modules/editing';
 import { I_DOCUMENT_EDITOR } from '../../../src/modules/editing/application/ports/i-document-editor.port';
 import type { IDocumentEditor } from '../../../src/modules/editing/application/ports/i-document-editor.port';
 import { UserDirectoryAdapter } from '../../../src/modules/identity';
+import { RealtimeModule } from '../../../src/modules/realtime';
+import {
+  REALTIME_CONFIG,
+  REALTIME_PING_INTERVAL_MS,
+  REALTIME_PING_TIMEOUT_MS,
+} from '../../../src/modules/realtime/application/realtime-config';
+import type { RealtimeConfig } from '../../../src/modules/realtime/application/realtime-config';
 import type { PlanLimits } from '../../../src/modules/storage';
+import { Role, SystemClock } from '../../../src/shared';
+import { TestAccessTokens } from '../../support/test-access-tokens';
+import {
+  ALLOWED_ORIGIN,
+  connectClient,
+  TEST_CONNECT_ATTEMPTS_PER_MINUTE,
+  TestAccessTokenVerifierModule,
+  waitForConnect,
+} from '../realtime/realtime-test-app';
 import { createStorageHttpApp, DEFAULT_TEST_LIMITS } from '../storage/storage-http';
 import type { StorageHttpApp } from '../storage/storage-http';
 
@@ -22,9 +42,16 @@ export const ONLYOFFICE_TEST_ENV = {
 /** Plan de pago de prueba con 3 editores (cifras del doble, no del catálogo, RN-3). */
 export const PAID_TEST_LIMITS: PlanLimits = { ...DEFAULT_TEST_LIMITS, maxEditors: 3 };
 
-/** Doble de `IDocumentEditor`: firma con una marca fija y la disponibilidad la decide la prueba (CA-15). */
+/** Expulsión pedida al editor (CA-16): la clave del documento y la cuenta. */
+export interface DroppedUser {
+  readonly documentKey: string;
+  readonly userId: string;
+}
+
+/** Doble de `IDocumentEditor`: firma con una marca fija; la disponibilidad la decide la prueba (CA-15). */
 export class FakeDocumentEditor implements IDocumentEditor {
   available = true;
+  readonly dropped: DroppedUser[] = [];
 
   signConfig(config: Readonly<Record<string, unknown>>): Readonly<Record<string, unknown>> {
     return { ...config, token: 'firma-de-prueba' };
@@ -32,6 +59,11 @@ export class FakeDocumentEditor implements IDocumentEditor {
 
   isAvailable(): Promise<boolean> {
     return Promise.resolve(this.available);
+  }
+
+  dropUser(documentKey: string, userId: string): Promise<boolean> {
+    this.dropped.push({ documentKey, userId });
+    return Promise.resolve(true);
   }
 }
 
@@ -49,10 +81,12 @@ class TestUserDirectoryModule {}
 export interface EditingHttpApp {
   readonly storage: StorageHttpApp;
   readonly editor: FakeDocumentEditor;
-  /** `POST /files/:fileId/edit-session` con el token de `client`. */
-  open(client: { id: string }, fileId: string): Promise<Response>;
+  /** `POST /files/:fileId/edit-session` con el token de `client` y el cuerpo dado (por defecto, ninguno). */
+  open(client: { id: string }, fileId: string, body?: Record<string, unknown>): Promise<Response>;
   /** `GET /editing/content/:token`, sin token de usuario (como ONLYOFFICE). */
   content(token: string): Test;
+  /** Abre una conexión aceptada del canal en vivo (015) de la cuenta `userId`. */
+  connect(userId: string): Promise<ClientSocket>;
   close(): Promise<void>;
 }
 
@@ -61,39 +95,70 @@ export interface EditingHttpOptions {
   readonly limits?: PlanLimits;
   /** Sin el doble de `IDocumentEditor`: el real, para probar el `api` sin variables de ONLYOFFICE. */
   readonly realEditor?: boolean;
+  /** Cambia campos de `RealtimeConfig` (p. ej. latido corto para CA-8). */
+  readonly realtime?: Partial<RealtimeConfig>;
 }
 
-/** Tokens de los clientes de `storage.newClient`, para llamar rutas que `StorageClient` no conoce. */
-const authOf = (storage: StorageHttpApp, clientId: string): string | undefined =>
-  storage.tokenOf(clientId);
+const realtimeConfig = (config: Partial<RealtimeConfig> = {}): RealtimeConfig => ({
+  origins: [ALLOWED_ORIGIN],
+  connectAttemptsPerMinute: TEST_CONNECT_ATTEMPTS_PER_MINUTE,
+  pingIntervalMs: REALTIME_PING_INTERVAL_MS,
+  pingTimeoutMs: REALTIME_PING_TIMEOUT_MS,
+  ...config,
+});
 
 /**
- * App de integración de `editing` (016 T-03): `StorageModule` real con su misma instancia en `EditingModule`,
- * `AccessModule`, `IUserDirectory` real, Postgres como `nimbo_app`, MinIO real y dobles de límites y de ONLYOFFICE.
+ * App de integración de `editing` (016 T-03, T-04): `StorageModule` real con su misma instancia en `EditingModule`,
+ * `AccessModule`, `IUserDirectory` real, el canal en vivo de 015 escuchando en un puerto efímero, Postgres como
+ * `nimbo_app`, MinIO real y dobles de límites y de ONLYOFFICE. Los tokens del canal usan el reloj del sistema (el de
+ * `ConnectionLifetime`); los de HTTP, el de `ProbeModule`.
  */
 export const createEditingHttpApp = async (
   options: EditingHttpOptions = {},
 ): Promise<EditingHttpApp> => {
   const editor = new FakeDocumentEditor();
+  const clock = new SystemClock();
   const storage = await createStorageHttpApp({
     env: { ...ONLYOFFICE_TEST_ENV, ...options.env },
     limits: options.limits ?? PAID_TEST_LIMITS,
-    modules: [AccessModule, TestUserDirectoryModule],
-    withStorage: (storageModule, env) => [EditingModule.forRoot(env, storageModule)],
-    overrides:
-      options.realEditor === true ? [] : [{ provide: I_DOCUMENT_EDITOR, useValue: editor }],
+    modules: [AccessModule, TestUserDirectoryModule, EventEmitterModule.forRoot()],
+    withStorage: (storageModule, env) => {
+      const realtime = RealtimeModule.forRoot(env, TestAccessTokenVerifierModule.withClock(clock));
+      return [realtime, EditingModule.forRoot(env, { storage: storageModule, realtime })];
+    },
+    overrides: [
+      { provide: REALTIME_CONFIG, useValue: realtimeConfig(options.realtime) },
+      ...(options.realEditor === true ? [] : [{ provide: I_DOCUMENT_EDITOR, useValue: editor }]),
+    ],
+    withRealtime: true,
   });
-  const http = () => request(storage.testApp.app.getHttpServer());
+  const { app } = storage.testApp;
+  await app.listen(0);
+  const { port } = app.getHttpServer().address() as AddressInfo;
+  const url = `http://127.0.0.1:${String(port)}`;
+  const socketTokens = new TestAccessTokens(clock);
+  const http = () => request(app.getHttpServer());
+  const sockets: ClientSocket[] = [];
   return {
     storage,
     editor,
-    open: (client, fileId) => {
-      const token = authOf(storage, client.id);
+    open: (client, fileId, body) => {
+      const token = storage.tokenOf(client.id);
       const call = http().post(`/api/v1/files/${fileId}/edit-session`);
-      return token === undefined ? call : call.set('Authorization', `Bearer ${token}`);
+      const authorized = token === undefined ? call : call.set('Authorization', `Bearer ${token}`);
+      return body === undefined ? authorized : authorized.send(body);
     },
     content: (token) => http().get(`/api/v1/editing/content/${token}`),
-    close: () => storage.close(),
+    connect: async (userId) => {
+      const socket = connectClient(url, { token: socketTokens.forRole(Role.CLIENT, userId) });
+      sockets.push(socket);
+      await waitForConnect(socket);
+      return socket;
+    },
+    close: async () => {
+      sockets.splice(0).forEach((socket) => socket.disconnect());
+      await storage.close();
+    },
   };
 };
 

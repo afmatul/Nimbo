@@ -1,5 +1,10 @@
 import { EDITING_ERROR_CODES, READ_ONLY_REASONS } from './error-codes';
-import { openEditSessionRequestSchema, openEditSessionResponseSchema } from './schemas';
+import {
+  EDITING_EVENTS,
+  editingPresenceSchema,
+  openEditSessionRequestSchema,
+  openEditSessionResponseSchema,
+} from './schemas';
 
 const PARTICIPANT = { userId: '7a8b9c0d-1e2f-4c5d-8e6f-2f0c1d2e3a4b', displayName: 'Ana López' };
 
@@ -64,9 +69,14 @@ describe('contratos de `editing` (plan 016 §4)', () => {
     );
   });
 
-  it('CA-4, CA-15: los códigos de error de la apertura', () => {
+  it('CA-4, CA-6, CA-15: los códigos de error de la apertura', () => {
     expect(Object.values(EDITING_ERROR_CODES).sort()).toEqual(
-      ['EDITING_SAVE_IN_PROGRESS', 'EDITING_UNAVAILABLE', 'EDITING_UNSUPPORTED_FORMAT'].sort(),
+      [
+        'EDITING_INVALID_REQUEST',
+        'EDITING_SAVE_IN_PROGRESS',
+        'EDITING_UNAVAILABLE',
+        'EDITING_UNSUPPORTED_FORMAT',
+      ].sort(),
     );
   });
 
@@ -91,6 +101,16 @@ describe('contratos de `editing` (plan 016 §4)', () => {
 
   it('CA-6, RN-12: el cliente no puede enviar su nombre visible al abrir', () => {
     expect(openEditSessionRequestSchema.safeParse({ displayName: 'Otra persona' }).success).toBe(
+      false,
+    );
+  });
+
+  it('CA-6: el aviso de presencia lleva participantes con nombre, editores y máximo, y nada más', () => {
+    const presence = { participants: [PARTICIPANT], editors: 1, maxEditors: 3 };
+
+    expect(EDITING_EVENTS.PRESENCE).toBe('editing.presence');
+    expect(editingPresenceSchema.parse(presence)).toEqual(presence);
+    expect(editingPresenceSchema.safeParse({ ...presence, fileName: 'informe.docx' }).success).toBe(
       false,
     );
   });

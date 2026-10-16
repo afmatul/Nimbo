@@ -4,7 +4,10 @@ import type { EntityManager } from 'typeorm';
 
 import { TransactionContext } from '../../../../shared';
 import type { Actor } from '../../../../shared';
-import type { IEditSessionRepository } from '../../application/ports/i-edit-session.repository.port';
+import type {
+  IEditSessionRepository,
+  ParticipationChange,
+} from '../../application/ports/i-edit-session.repository.port';
 import { EditSession } from '../../domain/edit-session';
 import type { EditSessionState } from '../../domain/edit-session';
 
@@ -27,6 +30,17 @@ const JOIN_SQL = `
   INSERT INTO participacion (sesion_edicion_id, usuario_id, entro_en, salio_en)
   VALUES ($1, $2, $3, NULL)
   ON CONFLICT (sesion_edicion_id, usuario_id) DO UPDATE SET salio_en = NULL`;
+
+/** Salida de un participante conectado; si ya había salido no toca la fila (idempotente). */
+const LEAVE_SQL = `
+  UPDATE participacion SET salio_en = $3
+  WHERE sesion_edicion_id = $1 AND usuario_id = $2 AND salio_en IS NULL`;
+
+const parametersOf = ({ sessionId, userId, now }: ParticipationChange): unknown[] => [
+  sessionId,
+  userId,
+  now,
+];
 
 const toSession = (row: SesionEdicionOrmEntity): EditSession =>
   EditSession.rehydrate({
@@ -89,15 +103,17 @@ export class TypeOrmEditSessionRepository implements IEditSessionRepository {
     return rows.map((row) => row.usuarioId);
   }
 
-  async join(
-    actor: Actor,
-    participation: { sessionId: string; userId: string; now: Date },
-  ): Promise<void> {
-    await this.manager(actor).query(JOIN_SQL, [
-      participation.sessionId,
-      participation.userId,
-      participation.now,
-    ]);
+  async join(actor: Actor, participation: ParticipationChange): Promise<void> {
+    await this.manager(actor).query(JOIN_SQL, parametersOf(participation));
+  }
+
+  async leave(actor: Actor, participation: ParticipationChange): Promise<boolean> {
+    // En Postgres, TypeORM responde a un `UPDATE` con `[filas, filas afectadas]`.
+    const [, affected] = (await this.manager(actor).query(
+      LEAVE_SQL,
+      parametersOf(participation),
+    )) as [unknown[], number];
+    return affected > 0;
   }
 
   private manager(actor: Actor): EntityManager {

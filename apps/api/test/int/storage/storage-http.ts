@@ -183,8 +183,8 @@ export interface StorageHttpOptions {
   /** Módulos que se suman a `storage` (p. ej. la composición de `identity` del mundo de aislamiento). */
   readonly modules?: TestAppOptions['modules'];
   /**
-   * Módulos que necesitan **la misma** instancia de `StorageModule` (p. ej. `EditingModule.forRoot(env, storage)` de
-   * 016) y el entorno validado.
+   * Módulos que necesitan **la misma** instancia de `StorageModule` (p. ej. `EditingModule.forRoot(env, { storage,
+   * realtime })` de 016) y el entorno validado.
    */
   readonly withStorage?: (
     storage: DynamicModule,
@@ -192,6 +192,8 @@ export interface StorageHttpOptions {
   ) => NonNullable<TestAppOptions['modules']>;
   /** Proveedores sustituidos además del doble de límites (p. ej. el editor de 016). */
   readonly overrides?: TestAppOptions['overrides'];
+  /** Instala el canal en vivo (015) como `main.ts`; exige `RealtimeModule` entre los módulos (p. ej. `editing`, 016). */
+  readonly withRealtime?: boolean;
 }
 
 interface SignedTarget {
@@ -282,6 +284,7 @@ export const createStorageHttpApp = async (
         : [{ provide: I_PLAN_LIMITS_PROVIDER, useValue: limits }]),
       ...(options.overrides ?? []),
     ],
+    withRealtime: options.withRealtime ?? false,
   });
   const owner = await connectAsOwner();
   const tokens = new TestAccessTokens(new FixedClock(PROBE_CLOCK_START));

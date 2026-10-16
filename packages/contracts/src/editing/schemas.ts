@@ -55,7 +55,20 @@ export const openEditSessionResponseSchema = z.discriminatedUnion('mode', [
   viewModeSchema,
 ]);
 
+/** Avisos de `editing` por el canal en vivo (015 RN-10): sin contenido, nombres de archivo ni tokens (RN-9). */
+export const EDITING_EVENTS = { PRESENCE: 'editing.presence' } as const;
+
+/** `editing.presence`, a la sala del documento: quiénes editan, cuántos y el máximo del plan de la propietaria (CA-6, CA-7). */
+export const editingPresenceSchema = z
+  .object({
+    participants: z.array(participantSchema),
+    editors: editorCount,
+    maxEditors: editorCount,
+  })
+  .strict();
+
 export type OpenEditSessionRequest = z.infer<typeof openEditSessionRequestSchema>;
 export type Participant = z.infer<typeof participantSchema>;
 export type OpenEditSessionResponse = z.infer<typeof openEditSessionResponseSchema>;
+export type EditingPresence = z.infer<typeof editingPresenceSchema>;
 export type EditMode = OpenEditSessionResponse['mode'];

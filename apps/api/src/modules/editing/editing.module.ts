@@ -15,6 +15,7 @@ import type { EditingConfig, OnlyOfficeConnection } from './application/editing-
 import { EditorAvailability } from './application/editor-availability';
 import { I_DOCUMENT_EDITOR } from './application/ports/i-document-editor.port';
 import { I_EDIT_SESSION_REPOSITORY } from './application/ports/i-edit-session.repository.port';
+import { PresenceService } from './application/presence.service';
 import { OnlyOfficeEditor } from './infrastructure/onlyoffice-editor';
 import { TypeOrmEditSessionRepository } from './infrastructure/persistence/typeorm-edit-session.repository';
 import { EditorController } from './presentation/editor.controller';
@@ -40,22 +41,30 @@ const connectionFrom = (env: EditingEnv): OnlyOfficeConnection | null => {
   return { jwtSecret, publicUrl, internalUrl, callbackBaseUrl };
 };
 
-/** Módulo que da la fachada `EditableFileGateway` (`StorageModule.forRoot(env)` en la app; la misma instancia). */
-export type EditableFilesModule = DynamicModule;
+/**
+ * Módulos de la raíz que `editing` usa, con **la misma** instancia: `storage` da la fachada `EditableFileGateway`
+ * (`StorageModule.forRoot(env)`) y `realtime` los puertos `IDocumentRooms` e `IRealtimePublisher`
+ * (`RealtimeModule.forRoot(env, identity)`).
+ */
+export interface EditingDependencies {
+  readonly storage: DynamicModule;
+  readonly realtime: DynamicModule;
+}
 
 /**
- * Módulo `editing` (M5, plan 016 §2). `forRoot(env, storage)` recibe la **misma** instancia de `StorageModule` que la
+ * Módulo `editing` (M5, plan 016 §2). `forRoot(env, { storage, realtime })` recibe las **mismas** instancias que la
  * raíz, como `realtime` con `identity`. `I_PLAN_LIMITS_PROVIDER` e `I_USER_DIRECTORY` los enlaza la raíz (globales);
- * `SharedModule` (global) aporta reloj y transacciones. Sin `billing` (DF-74, plan §2).
+ * `SharedModule` (global) aporta reloj y transacciones, y la raíz `EventEmitterModule.forRoot()` para
+ * `realtime.document-left` (ADR-0019). Sin `billing` (DF-74, plan §2).
  */
 @Module({})
 export class EditingModule {
-  static forRoot(env: EditingEnv, storage: EditableFilesModule): DynamicModule {
+  static forRoot(env: EditingEnv, { storage, realtime }: EditingDependencies): DynamicModule {
     const onlyOffice = connectionFrom(env);
     const config: EditingConfig = { onlyOffice, maxDocBytes: BigInt(env.EDITING_MAX_DOC_BYTES) };
     return {
       module: EditingModule,
-      imports: [storage, AccessModule, AuditModule, JwtModule.register({})],
+      imports: [storage, realtime, AccessModule, AuditModule, JwtModule.register({})],
       controllers: [EditorController, OnlyOfficeController],
       providers: [
         { provide: EDITING_CONFIG, useValue: config },
@@ -72,6 +81,7 @@ export class EditingModule {
             onlyOffice === null ? null : new ContentLinkSigner(jwt, clock, onlyOffice.jwtSecret),
         },
         EditorAvailability,
+        PresenceService,
         EditSessionService,
         DocumentContentService,
       ],

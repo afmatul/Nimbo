@@ -10,11 +10,16 @@ const HEALTHCHECK_PATH = '/healthcheck';
 const HEALTHY_BODY = 'true';
 /** Abrir no espera más que esto a un ONLYOFFICE caído (CA-15). */
 const HEALTHCHECK_TIMEOUT_MS = 2_000;
+/** Servicio de comandos de ONLYOFFICE: `drop` desconecta cuentas de un documento abierto (CA-16). */
+const COMMAND_PATH = '/command';
+const COMMAND_TIMEOUT_MS = 5_000;
+/** `error: 0` es el único acuse de éxito del servicio de comandos. */
+const COMMAND_OK = 0;
 
 /**
  * `IDocumentEditor` sobre ONLYOFFICE Docs (ADR-0004). Firma la configuración del editor con el JWT compartido
- * (`ONLYOFFICE_JWT_SECRET`, `@nestjs/jwt`) y comprueba la salud en la URL interna. Sin conexión configurada nunca está
- * disponible y no firma nada. Nunca registra la configuración ni el token.
+ * (`ONLYOFFICE_JWT_SECRET`, `@nestjs/jwt`), comprueba la salud y manda comandos firmados a la URL interna. Sin
+ * conexión configurada nunca está disponible y no firma nada. Nunca registra la configuración ni el token.
  */
 export class OnlyOfficeEditor implements IDocumentEditor {
   constructor(
@@ -24,14 +29,7 @@ export class OnlyOfficeEditor implements IDocumentEditor {
 
   signConfig(config: Readonly<Record<string, unknown>>): Readonly<Record<string, unknown>> {
     if (this.connection === null) throw new Error('ONLYOFFICE no está configurado.');
-    const token = this.jwt.sign(
-      { ...config },
-      {
-        secret: this.connection.jwtSecret,
-        algorithm: ALGORITHM,
-      },
-    );
-    return { ...config, token };
+    return { ...config, token: this.sign(this.connection, config) };
   }
 
   async isAvailable(): Promise<boolean> {
@@ -45,5 +43,29 @@ export class OnlyOfficeEditor implements IDocumentEditor {
     } catch {
       return false;
     }
+  }
+
+  async dropUser(documentKey: string, userId: string): Promise<boolean> {
+    if (this.connection === null) return false;
+    const command = { c: 'drop', key: documentKey, users: [userId] };
+    try {
+      const response = await fetch(`${this.connection.internalUrl}${COMMAND_PATH}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ token: this.sign(this.connection, command) }),
+        signal: AbortSignal.timeout(COMMAND_TIMEOUT_MS),
+        redirect: 'error',
+      });
+      return response.ok && ((await response.json()) as { error?: unknown }).error === COMMAND_OK;
+    } catch {
+      return false;
+    }
+  }
+
+  private sign(
+    connection: OnlyOfficeConnection,
+    payload: Readonly<Record<string, unknown>>,
+  ): string {
+    return this.jwt.sign({ ...payload }, { secret: connection.jwtSecret, algorithm: ALGORITHM });
   }
 }
