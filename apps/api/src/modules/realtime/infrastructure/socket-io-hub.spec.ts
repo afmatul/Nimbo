@@ -1,3 +1,6 @@
+import { EventEmitter2 } from '@nestjs/event-emitter';
+
+import { createActor, ForbiddenError, Role } from '../../../shared';
 import type { RealtimeNotice } from '../application/ports/i-realtime-publisher.port';
 import { documentRoom, userRoom } from '../domain/room-names';
 
@@ -11,8 +14,8 @@ const NOTICE: RealtimeNotice = { event: 'prueba.aviso', payload: { secreto: 'con
 const setup = (emit: jest.Mock = jest.fn()) => {
   const to = jest.fn().mockReturnValue({ emit });
   const logger = { warn: jest.fn() };
-  const hub = new SocketIoHub(logger);
-  return { hub, to, emit, logger, server: { to } as unknown as RealtimeServer };
+  const hub = new SocketIoHub(logger, new EventEmitter2());
+  return { hub, to, emit, logger, server: { to, on: jest.fn() } as unknown as RealtimeServer };
 };
 
 describe('SocketIoHub como IRealtimePublisher (plan §2)', () => {
@@ -59,5 +62,21 @@ describe('SocketIoHub como IRealtimePublisher (plan §2)', () => {
       event: 'realtime.publish_failed',
       errorClass: 'TypeError',
     });
+  });
+});
+
+describe('SocketIoHub como IDocumentRooms sin servidor adjunto (plan §2)', () => {
+  it('`admit` lanza ForbiddenError: la conexión no existe', async () => {
+    const { hub } = setup();
+
+    await expect(
+      hub.admit(createActor(USER_ID, Role.CLIENT), 'conexion', DOCUMENT_ID),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  it('`retire` no falla: no hay conexiones que retirar', async () => {
+    const { hub } = setup();
+
+    await expect(hub.retire(USER_ID, DOCUMENT_ID)).resolves.toBeUndefined();
   });
 });

@@ -3,11 +3,13 @@ import type { AddressInfo } from 'node:net';
 
 import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
+import { EventEmitter2, EventEmitterModule } from '@nestjs/event-emitter';
 import type { Server } from 'socket.io';
 import { io } from 'socket.io-client';
 import type { Socket as ClientSocket } from 'socket.io-client';
 
-import { RealtimeModule } from '../../../src/modules/realtime';
+import { REALTIME_DOCUMENT_LEFT, RealtimeModule } from '../../../src/modules/realtime';
+import type { DocumentLeftEvent } from '../../../src/modules/realtime';
 import {
   REALTIME_CONFIG,
   REALTIME_PATH,
@@ -74,7 +76,7 @@ const testConfig = (config: Partial<RealtimeConfig> = {}): RealtimeConfig => ({
 
 /**
  * App de integración con `RealtimeModule` montado por `configureRealtime` (plan 015 §6), Redis real para el límite de
- * intentos y `TestAccessTokenVerifier`. Escucha en un puerto efímero para que `socket.io-client` se conecte de verdad.
+ * intentos, `EventEmitterModule` como en `AppModule` (`realtime.document-left`, ADR-0019) y `TestAccessTokenVerifier`. Escucha en un puerto efímero para que `socket.io-client` se conecte de verdad.
  */
 export const createRealtimeTestApp = async (
   options: RealtimeTestAppOptions = {},
@@ -83,7 +85,10 @@ export const createRealtimeTestApp = async (
   const clock = options.clock ?? new SystemClock();
   const testApp = await createTestApp({
     validatedEnv: env,
-    modules: [RealtimeModule.forRoot(env, TestAccessTokenVerifierModule.withClock(clock))],
+    modules: [
+      EventEmitterModule.forRoot(),
+      RealtimeModule.forRoot(env, TestAccessTokenVerifierModule.withClock(clock)),
+    ],
     overrides: [
       { provide: REALTIME_CONFIG, useValue: testConfig(options.config) },
       ...(options.overrides ?? []),
@@ -113,14 +118,19 @@ export interface ClientOptions {
   readonly forwardedFor?: string;
   /** Parámetros en la URL del *handshake* (el token nunca se lee de ahí). */
   readonly query?: Record<string, string>;
+  /** Reconexión automática de `socket.io-client`, como en la web (CA-11); por defecto apagada. */
+  readonly reconnection?: boolean;
 }
 
-/** Cliente real de Socket.IO por WebSocket, sin reconexión automática, para afirmar cada intento por separado. */
+/**
+ * Cliente real de Socket.IO por WebSocket. Sin reconexión automática salvo que se pida, para afirmar cada intento por
+ * separado.
+ */
 export const connectClient = (url: string, options: ClientOptions = {}): ClientSocket =>
   io(url, {
     path: REALTIME_PATH,
     transports: ['websocket'],
-    reconnection: false,
+    reconnection: options.reconnection ?? false,
     forceNew: true,
     auth: options.token === undefined ? {} : { token: options.token },
     query: options.query ?? {},
@@ -184,3 +194,38 @@ export class OpenClients {
     this.clients.splice(0).forEach((client) => client.disconnect());
   }
 }
+
+/** Salidas de salas de documento (`realtime.document-left`) que emite la app, en orden, desde que se llama. */
+export const collectDepartures = (testApp: RealtimeTestApp): DocumentLeftEvent[] => {
+  const departures: DocumentLeftEvent[] = [];
+  testApp.app
+    .get(EventEmitter2)
+    .on(REALTIME_DOCUMENT_LEFT, (event: DocumentLeftEvent) => departures.push(event));
+  return departures;
+};
+
+/** Espera la próxima salida de una sala de documento, o falla pasado `timeoutMs`. */
+export const nextDeparture = (
+  testApp: RealtimeTestApp,
+  timeoutMs: number,
+): Promise<DocumentLeftEvent> =>
+  testApp.app
+    .get(EventEmitter2)
+    .waitFor(REALTIME_DOCUMENT_LEFT, timeoutMs)
+    .then(([event]) => event as DocumentLeftEvent);
+
+/**
+ * Simula un cliente que se cae sin cerrar (red cortada): sigue recibiendo los pings pero deja de responderlos, y solo el
+ * latido del servidor puede detectar la salida (RN-9). Toca un método interno de `engine.io-client` 6.
+ */
+export const stopAnsweringPings = (client: ClientSocket): void => {
+  const engine = client.io.engine as unknown as {
+    _sendPacket: (type: string, ...rest: unknown[]) => void;
+  };
+  const send = engine._sendPacket.bind(engine);
+  engine._sendPacket = (type, ...rest) => {
+    if (type !== 'pong') {
+      send(type, ...rest);
+    }
+  };
+};

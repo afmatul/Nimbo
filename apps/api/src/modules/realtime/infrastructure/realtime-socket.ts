@@ -1,5 +1,6 @@
 import type { DefaultEventsMap, Server, Socket } from 'socket.io';
 
+import { CorrelationContext } from '../../../shared';
 import type { Actor } from '../../../shared';
 
 /**
@@ -27,3 +28,7 @@ export type RealtimeServer = Server<
   DefaultEventsMap,
   ConnectionData
 >;
+
+/** Corre `callback` con el `correlationId` de la conexión, para que sus bitácoras y las de los oyentes lo lleven (CA-13). */
+export const inConnectionContext = <T>(socket: RealtimeSocket, callback: () => T): T =>
+  CorrelationContext.run({ correlationId: socket.data.correlationId }, callback);

@@ -7,3 +7,8 @@ export type {
   IRealtimePublisher,
   RealtimeNotice,
 } from './application/ports/i-realtime-publisher.port';
+export {
+  I_DOCUMENT_ROOMS,
+  REALTIME_DOCUMENT_LEFT,
+} from './application/ports/i-document-rooms.port';
+export type { DocumentLeftEvent, IDocumentRooms } from './application/ports/i-document-rooms.port';

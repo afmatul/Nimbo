@@ -2,7 +2,7 @@
 
 - **Dueño**: Adrián (`specs/README.md`).
 - **Diagrama de origen**: T3 en `docs/sdd/design-model.md` §3 y `docs/design/diagramas/`.
-- **Responsabilidad**: Único gateway Socket.IO, salas por usuario y documento. Valida el token del handshake con el puerto token→`Actor` que define `shared` (lo implementa `identity`, sin que `realtime` lo importe) y declara su puerto de publicación (ADR-0010).
+- **Responsabilidad**: Único gateway Socket.IO, salas por usuario y documento. Valida el token del handshake con el puerto token→`Actor` que define `shared` (lo implementa `identity`, sin que `realtime` lo importe) y declara sus puertos `IRealtimePublisher` e `IDocumentRooms` (ADR-0010).
 - **Puede depender de**: shared (`docs/sdd/architecture.md` §3; el lint de fronteras lo hace cumplir).
 - **Specs que lo construyen**: 015.
 
@@ -30,6 +30,18 @@
   y `toDocument(documentId, notice)` con `RealtimeNotice { event, payload }`. Síncronos, nunca lanzan: sin servidor
   adjunto no hacen nada y un fallo se registra (RN-7, CA-12). Lo implementa `SocketIoHub`, que el gateway adjunta en
   `afterInit`.
+- **Salas de documento** (`IDocumentRooms`, token `I_DOCUMENT_ROOMS`, exportado por `index.ts`; solo el módulo dueño de
+  la sala, `editing` en 016): `admit(actor, connectionId, documentId)` une la conexión a `doc:<documentId>` después de
+  que el dueño verificó el acceso (RN-2); lanza `InsufficientRoleError` (`ForbiddenError`, `SHARED_FORBIDDEN`) si la
+  conexión no existe o no es de `actor.id`. `retire(userId, documentId)` saca a todas las conexiones del usuario. Lo
+  implementa el mismo `SocketIoHub` que publica (ISP: dos puertos, un adaptador).
+- **Salida de una sala de documento** (CA-9): `SocketIoHub` escucha `disconnecting` de cada conexión (lo registra en
+  `attach`) y emite con `EventEmitter2` (ADR-0019) `realtime.document-left` (`REALTIME_DOCUMENT_LEFT`)
+  `DocumentLeftEvent { userId, connectionId, documentId }` por cada sala `doc:` en que estaba: cierre del cliente,
+  cierre por vencimiento del token (`ConnectionLifetime`) o caída detectada por el latido (≤ 35 s con los valores por
+  defecto, RN-9). `retire` no lo emite (lo pidió el dueño). Un oyente que lanza se atrapa y se registra; el cierre
+  sigue. La app debe montar `EventEmitterModule.forRoot()`. Tras reconectar, la conexión nueva vuelve solo a
+  `user:<id>` y no recibe lo emitido durante el corte (CA-11, RN-6): el dueño la readmite.
 - **Bitácoras** (sin token, origen, nombre de archivo ni contenido, CA-13), todas con `correlationId` de la conexión:
   - `realtime.rejected` con `reason` la emite `ConnectionAdmission` (`missing_token`, `invalid_token`, `expired_token`,
     `forbidden_role`, `rate_limited`, `limiter_failed`); `RealtimeIoAdapter` emite `reason: 'origin'`, y el gateway
@@ -37,6 +49,8 @@
   - `realtime.connected` (`userId`, `connectionId`) y `realtime.disconnected` (`userId`, `connectionId`, `reason` de
     Socket.IO) las emite el gateway.
   - `realtime.publish_failed` (solo `errorClass`) la emite `SocketIoHub` si el servidor falla al avisar.
+  - `realtime.document_left_failed` (solo `errorClass`) la emite `SocketIoHub` si un oyente de
+    `realtime.document-left` lanza.
 
 ## Capas (`docs/sdd/architecture.md` §4)
 

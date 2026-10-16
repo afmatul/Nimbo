@@ -21,9 +21,14 @@ import {
   ConnectionAdmission,
   type ConnectionAttempt,
 } from '../application/connection-admission.service';
+import { errorClassOf } from '../application/error-class';
 import { userRoom } from '../domain/room-names';
 import { ConnectionLifetime } from '../infrastructure/connection-lifetime';
-import type { RealtimeServer, RealtimeSocket } from '../infrastructure/realtime-socket';
+import {
+  inConnectionContext,
+  type RealtimeServer,
+  type RealtimeSocket,
+} from '../infrastructure/realtime-socket';
 import { SocketIoHub } from '../infrastructure/socket-io-hub';
 
 import { connectionOrigin } from './connection-origin';
@@ -46,9 +51,6 @@ export interface RoomJoinDenied {
 }
 
 const ROOM_JOIN_DENIED: RoomJoinDenied = { error: { code: new InsufficientRoleError().code } };
-
-const withCorrelation = <T>(socket: RealtimeSocket, callback: () => T): T =>
-  CorrelationContext.run({ correlationId: socket.data.correlationId }, callback);
 
 /**
  * Único gateway del canal en vivo (ADR-0010, ADR-0028). `afterInit` registra el *middleware* de *handshake*, que
@@ -83,7 +85,7 @@ export class RealtimeGateway implements OnGatewayInit<RealtimeServer>, OnGateway
     void socket.join(userRoom(actor.id));
     socket.on('disconnect', (reason) => this.logDisconnected(socket, reason));
     this.lifetime.watch(socket);
-    withCorrelation(socket, () =>
+    inConnectionContext(socket, () =>
       this.logger.info({ event: 'realtime.connected', userId: actor.id, connectionId: socket.id }),
     );
   }
@@ -106,15 +108,18 @@ export class RealtimeGateway implements OnGatewayInit<RealtimeServer>, OnGateway
     if (error instanceof DomainError) {
       return error;
     }
-    const errorClass = error instanceof Error ? error.constructor.name : typeof error;
     CorrelationContext.run({ correlationId }, () =>
-      this.logger.error({ event: 'realtime.rejected', reason: 'unexpected_error', errorClass }),
+      this.logger.error({
+        event: 'realtime.rejected',
+        reason: 'unexpected_error',
+        errorClass: errorClassOf(error),
+      }),
     );
     return new UnauthenticatedError();
   }
 
   private logDisconnected(socket: RealtimeSocket, reason: DisconnectReason): void {
-    withCorrelation(socket, () =>
+    inConnectionContext(socket, () =>
       this.logger.info({
         event: 'realtime.disconnected',
         userId: socket.data.actor.id,
