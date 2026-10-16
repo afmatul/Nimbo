@@ -120,6 +120,16 @@ async function press(key: string): Promise<void> {
   });
 }
 
+/**
+ * Al cerrarse, Radix devuelve el foco al ⋮ en una macrotarea. Reabrir antes deja ese foco pendiente: llega con el menú
+ * nuevo abierto, cuenta como foco fuera y lo cierra (fallo intermitente bajo carga). La persona reabre con el foco ya
+ * de vuelta en el ⋮, así que la prueba espera lo mismo.
+ */
+async function settleClose(): Promise<void> {
+  await act(() => new Promise<void>((resolve) => setTimeout(resolve, 0)));
+  expect(document.activeElement).toBe(trigger());
+}
+
 async function chooseDownload(): Promise<void> {
   await press('Enter');
   const item = items()[0];
@@ -179,6 +189,7 @@ describe('FileRowMenu (CA-13, CA-21)', () => {
     expect(labels.slice(0, 3)).toEqual(['Descargar', 'Renombrar', 'Mover a…']);
     await act(async () => items()[1]?.click());
     expect(onRename).toHaveBeenCalledTimes(1);
+    await settleClose();
     await press('Enter');
     await act(async () => items()[2]?.click());
     expect(onMove).toHaveBeenCalledTimes(1);
@@ -360,6 +371,8 @@ describe('FileRowMenu (CA-13, CA-21)', () => {
     await renderMenu({ requestUrl: () => Promise.reject(TOO_MANY) });
 
     await chooseDownload();
+    expect(document.querySelector('[role="menu"]')).toBeNull();
+    await settleClose();
     await press('Enter');
 
     expect(alertBox()?.className).toContain('border-destructive/40');
