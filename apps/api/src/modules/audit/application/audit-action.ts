@@ -9,6 +9,9 @@ export enum AuditAction {
   NODE_RESTORED = 'node.restored',
   NODE_PURGED = 'node.purged',
   TRASH_EMPTIED = 'trash.emptied',
+  /** Versiones (014, CA-19): `attributes { versionNumber, sizeBytes }` y, al restaurar, `restoredFromNumber`. */
+  FILE_VERSION_RESTORED = 'file.version_restored',
+  FILE_VERSION_PRUNED = 'file.version_pruned',
   /** Cuentas (011): recurso y afectado son la cuenta; el alta interna guarda solo `role`, nunca nombre ni correo. */
   ACCOUNT_SUSPENDED = 'account.suspended',
   ACCOUNT_REACTIVATED = 'account.reactivated',

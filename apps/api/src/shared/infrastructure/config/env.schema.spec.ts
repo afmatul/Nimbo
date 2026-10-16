@@ -102,6 +102,7 @@ describe('MinIO compartido por `api` y `worker` (005 T-20)', () => {
     'UPLOAD_URL_TTL_SECONDS',
     'RATE_LIMIT_UPLOAD_INIT_PER_MINUTE',
     'RATE_LIMIT_DOWNLOAD_URL_PER_MINUTE',
+    'RATE_LIMIT_VERSION_RESTORE_PER_MINUTE',
   ])('RN-16: `%s` es solo del `api`', (key) => {
     expect(declaredIn(key)).toEqual(['api']);
   });

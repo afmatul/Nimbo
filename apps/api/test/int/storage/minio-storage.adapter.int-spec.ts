@@ -125,6 +125,29 @@ describe('MinioStorageAdapter contra MinIO real (CA-2, CA-5, CA-11, CA-13, CA-14
     await expect(adapter.purgeObject(newKey())).resolves.toBeUndefined();
   });
 
+  it('014 CA-9: `copyObject` copia los bytes en el servidor, deja el origen intacto y repetirla es idempotente', async () => {
+    const source = newKey();
+    const target = newKey();
+    await putObject(source, Buffer.from('contenido de la versión 1'));
+
+    await expect(adapter.copyObject(source, target)).resolves.toBe(true);
+    await expect(adapter.copyObject(source, target)).resolves.toBe(true);
+
+    await expect(adapter.getRange(target, 0, 24)).resolves.toEqual(
+      Buffer.from('contenido de la versión 1').subarray(0, 25),
+    );
+    await expect(adapter.headObject(source)).resolves.toEqual(await adapter.headObject(target));
+    await adapter.purgeObject(source);
+    await adapter.purgeObject(target);
+  });
+
+  it('014 plan §7: `copyObject` de un origen inexistente devuelve `false` y no crea el destino', async () => {
+    const target = newKey();
+
+    await expect(adapter.copyObject(newKey(), target)).resolves.toBe(false);
+    await expect(adapter.headObject(target)).resolves.toBeNull();
+  });
+
   it('CA-5: `headObject` devuelve el tamaño y `getRange` el rango inclusivo; ausente → `null`', async () => {
     const key = newKey();
     await putObject(key, Buffer.from('0123456789'));

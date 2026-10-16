@@ -25,6 +25,10 @@ export class CargaOrmEntity {
   @Column('boolean', { name: 'conservar_ambos' })
   conservarAmbos!: boolean;
 
+  /** La carga es una versión nueva del archivo `archivoId`, que ya existe (014 CA-1). */
+  @Column('boolean')
+  reemplaza!: boolean;
+
   @Column('bigint', { name: 'tamano_bytes', transformer: BIGINT_TRANSFORMER })
   tamanoBytes!: bigint;
 

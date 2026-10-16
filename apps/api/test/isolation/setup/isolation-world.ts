@@ -319,6 +319,7 @@ const insertFileAs = async (
     objectKey: ObjectKey.of(actor.id, ids.fileId, ids.versionId),
     sizeBytes: WORLD_FILE_BYTES,
     createdBy: actor.id,
+    number: 1,
     now,
   });
   await nodes.insertWithVersion(actor, file, version);
@@ -492,6 +493,7 @@ const insertUploads = async (
         versionId: randomUUID(),
         name: FileName.of(`carga-${String(index + 1)}.txt`),
         keepBoth: false,
+        replacesFile: false,
         declaredBytes: WORLD_FILE_BYTES,
         multipart: null,
         /** Reloj real, como el `UploadService` de la app: la carga vence a las 24 h de ahora. */

@@ -53,6 +53,7 @@ const aFile = (owner: Actor, name: string, minute: number): [File, FileVersion] 
     objectKey: ObjectKey.of(owner.id, id, versionId),
     sizeBytes: HUGE_SIZE,
     createdBy: owner.id,
+    number: 1,
     now,
   });
   return [file, version];

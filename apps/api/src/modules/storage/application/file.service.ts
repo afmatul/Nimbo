@@ -7,7 +7,7 @@ import { I_CLOCK, I_RATE_LIMITER, I_TRANSACTION_RUNNER } from '../../../shared';
 import type { Actor, IClock, IRateLimiter, ITransactionRunner } from '../../../shared';
 import { AuditAction, I_AUDIT_LOGGER } from '../../audit';
 import type { IAuditLogger } from '../../audit';
-import { InvalidNodeRequestError, NodeNotFoundError } from '../domain/errors';
+import { InvalidNodeRequestError, NodeNotFoundError, VersionNotFoundError } from '../domain/errors';
 import { File } from '../domain/file';
 import { FileName } from '../domain/file-name.vo';
 import { ObjectKey } from '../domain/object-key';
@@ -21,6 +21,8 @@ import { I_OBJECT_STORAGE } from './ports/i-object-storage.port';
 import type { IObjectStorage } from './ports/i-object-storage.port';
 import { I_QUOTA_REPOSITORY } from './ports/i-quota.repository.port';
 import type { IQuotaRepository } from './ports/i-quota.repository.port';
+import { I_VERSION_REPOSITORY } from './ports/i-version.repository.port';
+import type { IVersionRepository } from './ports/i-version.repository.port';
 import { recordAudit } from './record-audit';
 import { rateLimited } from './storage-logger';
 import type { StorageLogger } from './storage-logger';
@@ -33,6 +35,14 @@ const MS_PER_SECOND = 1000;
 export interface DownloadUrl {
   readonly url: string;
   readonly expiresAt: Date;
+}
+
+/** Lo que se firma al descargar: un solo objeto, el nombre del archivo y el tamaño que se audita (sin la clave). */
+interface DownloadTarget {
+  readonly fileId: string;
+  readonly fileName: string;
+  readonly objectKey: string;
+  readonly sizeBytes: bigint;
 }
 
 /** `PATCH /files/:id`: nombre nuevo tal como llegó y qué hacer si está ocupado en su carpeta (CA-4). */
@@ -48,7 +58,8 @@ export interface MoveFileCommand {
 }
 
 /**
- * Archivos del actor: renombrar, mover (006 plan §2) y emitir la URL de descarga (005 plan §6). Cada operación corre
+ * Archivos del actor: renombrar, mover (006 plan §2) y emitir la URL de descarga de la versión actual (005 plan §6) o
+ * de una versión retenida (014 CA-8), por la misma ruta de firma, tasa y auditoría. Cada operación corre
  * en `withActor(actor)`: el repositorio toma el `EntityManager` de ese ámbito (RLS y `accessibleNodes`, CA-16). Las
  * mutaciones toman primero `lockUsage`, el mismo punto de serialización del árbol que carpetas y cargas. Ajeno,
  * inexistente o en la papelera es el mismo `NodeNotFoundError` (CA-22). Renombrar y mover no se auditan (CA-24).
@@ -59,6 +70,7 @@ export class FileService {
     @Inject(I_TRANSACTION_RUNNER) private readonly transactions: ITransactionRunner,
     @Inject(I_NODE_REPOSITORY) private readonly nodes: INodeRepository,
     @Inject(I_QUOTA_REPOSITORY) private readonly quotas: IQuotaRepository,
+    @Inject(I_VERSION_REPOSITORY) private readonly versions: IVersionRepository,
     @Inject(I_OBJECT_STORAGE) private readonly objects: IObjectStorage,
     @Inject(I_RATE_LIMITER) private readonly rateLimiter: IRateLimiter,
     @Inject(I_AUDIT_LOGGER) private readonly audit: IAuditLogger,
@@ -115,26 +127,43 @@ export class FileService {
   }
 
   /**
-   * La tasa corre antes de resolver el archivo (sin oráculo, CA-19); ajeno o inexistente es `NodeNotFoundError`
-   * (CA-16). La auditoría es de mejor esfuerzo: si falla, se registra y la URL se entrega igual.
+   * La tasa corre antes de resolver el archivo (sin oráculo, CA-19); ajeno, inexistente o en la papelera es
+   * `NodeNotFoundError` (CA-16). Con `versionId` firma esa versión del archivo; si no es suya (inexistente, podada o de
+   * otro archivo) es `VersionNotFoundError` (014 CA-11). La auditoría es de mejor esfuerzo: si falla, se registra y la
+   * URL se entrega igual.
    */
-  async getDownloadUrl(actor: Actor, fileId: string): Promise<DownloadUrl> {
+  async getDownloadUrl(actor: Actor, fileId: string, versionId?: string): Promise<DownloadUrl> {
     await this.assertWithinRate(actor);
-    const file = await this.transactions.withActor(actor, () =>
-      this.nodes.findAccessibleById(actor, fileId),
+    const target = await this.transactions.withActor(actor, () =>
+      this.resolveDownload(actor, fileId, versionId),
     );
-    if (file === null) throw new NodeNotFoundError();
     const url = await this.objects.presignDownload({
-      key: ObjectKey.of(file.ownerId, file.id, file.currentVersionId).value,
-      fileName: file.name.value,
+      key: target.objectKey,
+      fileName: target.fileName,
       expiresInSeconds: DOWNLOAD_URL_TTL_SECONDS,
     });
     const expiresAt = new Date(
       this.clock.now().getTime() + DOWNLOAD_URL_TTL_SECONDS * MS_PER_SECOND,
     );
-    await this.recordIssued(actor, file);
-    this.logger.info({ event: 'download.url_issued', fileId: file.id });
+    await this.recordIssued(actor, target);
+    this.logger.info({ event: 'download.url_issued', fileId: target.fileId });
     return { url, expiresAt };
+  }
+
+  private async resolveDownload(
+    actor: Actor,
+    fileId: string,
+    versionId: string | undefined,
+  ): Promise<DownloadTarget> {
+    const file = await this.requireFile(actor, fileId);
+    const target = { fileId: file.id, fileName: file.name.value };
+    if (versionId === undefined) {
+      const objectKey = ObjectKey.of(file.ownerId, file.id, file.currentVersionId).value;
+      return { ...target, objectKey, sizeBytes: file.sizeBytes };
+    }
+    const version = await this.versions.find(actor, file.id, versionId);
+    if (version === null) throw new VersionNotFoundError();
+    return { ...target, objectKey: version.objectKey.value, sizeBytes: version.sizeBytes };
   }
 
   private async requireFile(actor: Actor, fileId: string): Promise<File> {
@@ -160,7 +189,7 @@ export class FileService {
     }
   }
 
-  private recordIssued(actor: Actor, file: File): Promise<void> {
+  private recordIssued(actor: Actor, target: DownloadTarget): Promise<void> {
     return recordAudit(
       this.audit,
       this.logger,
@@ -168,10 +197,10 @@ export class FileService {
         action: AuditAction.FILE_DOWNLOAD_URL_ISSUED,
         actor,
         targetUserId: actor.id,
-        resourceId: file.id,
-        attributes: { sizeBytes: Number(file.sizeBytes) },
+        resourceId: target.fileId,
+        attributes: { sizeBytes: Number(target.sizeBytes) },
       },
-      { fileId: file.id },
+      { fileId: target.fileId },
     );
   }
 }

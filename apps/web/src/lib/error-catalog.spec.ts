@@ -149,6 +149,19 @@ describe('error-catalog', () => {
       expect(message).not.toContain('Ver planes');
     });
 
+    it('014 CA-12: cuota al restaurar una versión, con el mismo texto que el servidor', () => {
+      expect(
+        storageMessage(
+          STORAGE_ERROR_CODES.STORAGE_QUOTA_EXCEEDED,
+          { missingBytes: 1_600_000 },
+          { purpose: 'restore' },
+        ),
+      ).toEqual({
+        cause: 'Te faltan 1,6 MB de espacio para restaurar esta versión.',
+        fix: 'Libera espacio o cambia de plan.',
+      });
+    });
+
     it('CA-5: tamaño distinto al declarado, sin parámetros e idéntico al del servidor', () => {
       expect(messageForCode(STORAGE_ERROR_CODES.STORAGE_UPLOAD_SIZE_MISMATCH)).toBe(
         'El archivo cambió durante la carga. Vuelve a subirlo.',
@@ -173,7 +186,7 @@ describe('error-catalog', () => {
         storageMessage(
           STORAGE_ERROR_CODES.STORAGE_INVALID_FILE_TYPE,
           { reason: 'text' },
-          'notas.md',
+          { fileName: 'notas.md' },
         ),
       ).toEqual({
         cause: 'Este archivo no es un .md válido.',

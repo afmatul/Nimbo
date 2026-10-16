@@ -24,6 +24,8 @@ import {
   UploadIncompleteError,
   UploadNotFoundError,
   UploadSizeMismatchError,
+  VersionAlreadyCurrentError,
+  VersionNotFoundError,
 } from '../domain/errors';
 
 const format = (bytes: number): string => String(bytes);
@@ -47,6 +49,8 @@ const ALL_ERRORS: readonly DomainError[] = [
   new InvalidMoveError(),
   new FolderDepthExceededError(1, 'place'),
   new QuickAccessLimitError(5),
+  new VersionNotFoundError(),
+  new VersionAlreadyCurrentError(),
 ];
 
 /** Errores que comparten código con otro ya listado (mismo contrato, distinto mensaje). */
