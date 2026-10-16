@@ -67,7 +67,7 @@ describe('historial y descarga de facturas (spec 009 CA-7, CA-8)', () => {
     expect(response.body).toEqual({
       subscription: null,
       paymentMethod: null,
-      receiptEmail: null,
+      billingDetails: null,
       payments: [],
     });
   });
@@ -89,7 +89,10 @@ describe('historial y descarga de facturas (spec 009 CA-7, CA-8)', () => {
       expiresAt: expect.any(String) as unknown,
     });
     expect(history.paymentMethod).toEqual({ brand: expect.any(String) as unknown, last4: '4242' });
-    expect(history.receiptEmail).toBe(`storage.${bruno}@ejemplo.com`);
+    expect(history.billingDetails).toEqual({
+      nit: 'CF',
+      receiptEmail: `storage.${bruno}@ejemplo.com`,
+    });
     expect(
       history.payments.map((payment) => [payment.status, payment.planName, payment.amountCents]),
     ).toEqual([

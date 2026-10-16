@@ -27,11 +27,17 @@ export interface PaymentRecord {
   } | null;
 }
 
-/** Lo que lee el adaptador: la fila de suscripción, la tarjeta, el correo de la última factura y los pagos. */
+/** NIT y correo de la última factura (CA-7, «Datos de facturación» del mockup). */
+export interface BillingDetails {
+  readonly nit: string;
+  readonly receiptEmail: string;
+}
+
+/** Lo que lee el adaptador: la fila de suscripción, la tarjeta, los datos de la última factura y los pagos. */
 export interface BillingHistoryRows {
   readonly subscription: CurrentSubscription | null;
   readonly paymentMethod: PaymentMethod | null;
-  readonly receiptEmail: string | null;
+  readonly billingDetails: BillingDetails | null;
   readonly payments: readonly PaymentRecord[];
 }
 
@@ -46,7 +52,7 @@ export interface DownloadableInvoice {
  * `requireActorScope(actor)`, así que se llama dentro de `withActor` y solo ve lo del propio cliente.
  */
 export interface IBillingHistoryReader {
-  /** Suscripción, tarjeta, correo y pagos del actor (los pagos del más reciente al más antiguo). */
+  /** Suscripción, tarjeta, datos de facturación y pagos del actor (los pagos del más reciente al más antiguo). */
   read(actor: Actor): Promise<BillingHistoryRows>;
   /** La factura del actor con PDF; `null` si no existe, es ajena o aún no tiene PDF. */
   findDownloadable(actor: Actor, invoiceId: string): Promise<DownloadableInvoice | null>;

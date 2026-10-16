@@ -21,7 +21,7 @@ const toPayment = ({ invoice, createdAt, ...payment }: PaymentRecord): BillingHi
 export const toBillingHistoryResponse = ({
   subscription,
   paymentMethod,
-  receiptEmail,
+  billingDetails,
   payments,
 }: BillingHistory): BillingHistoryResponse => ({
   subscription:
@@ -33,6 +33,9 @@ export const toBillingHistoryResponse = ({
         },
   paymentMethod:
     paymentMethod === null ? null : { brand: paymentMethod.brand, last4: paymentMethod.last4 },
-  receiptEmail,
+  billingDetails:
+    billingDetails === null
+      ? null
+      : { nit: billingDetails.nit, receiptEmail: billingDetails.receiptEmail },
   payments: payments.map(toPayment),
 });

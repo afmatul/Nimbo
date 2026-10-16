@@ -29,17 +29,17 @@ const PAYMENT = {
 const HISTORY = {
   subscription: { plan: TEAM, expiresAt: '2026-11-13T18:00:00.000Z' },
   paymentMethod: { brand: 'visa', last4: '4242' },
-  receiptEmail: 'ana@ejemplo.com',
+  billingDetails: { nit: '12345678', receiptEmail: 'ana@ejemplo.com' },
   payments: [PAYMENT],
 };
 
 describe('billingHistoryResponseSchema (spec 009 CA-7)', () => {
-  it('CA-7: acepta el plan actual con el esquema del catálogo, la tarjeta, el correo y un pago con factura', () => {
+  it('CA-7: acepta el plan actual con el esquema del catálogo, la tarjeta, NIT y correo, y un pago con factura', () => {
     expect(billingHistoryResponseSchema.parse(HISTORY)).toEqual(HISTORY);
   });
 
   it('CA-7: acepta el historial vacío y un rechazo sin factura', () => {
-    const empty = { subscription: null, paymentMethod: null, receiptEmail: null, payments: [] };
+    const empty = { subscription: null, paymentMethod: null, billingDetails: null, payments: [] };
     const rejected = { ...HISTORY, payments: [{ ...PAYMENT, status: 'rechazada', invoice: null }] };
 
     expect(billingHistoryResponseSchema.safeParse(empty).success).toBe(true);

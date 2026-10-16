@@ -15,7 +15,7 @@ const CURRENT_SUBSCRIPTION_SQL = 'SELECT plan_id, vence_en FROM suscripcion WHER
 const PAYMENT_METHOD_SQL = `SELECT marca_tarjeta, tarjeta_ultimos4 FROM transaccion
   WHERE usuario_id = $1 AND estado = 'aprobada'
   ORDER BY creado_en DESC, id DESC LIMIT 1`;
-const RECEIPT_EMAIL_SQL = `SELECT correo_comprobante FROM factura
+const BILLING_DETAILS_SQL = `SELECT nit, correo_comprobante FROM factura
   WHERE usuario_id = $1 ORDER BY creado_en DESC, id DESC LIMIT 1`;
 const PAYMENTS_SQL = `SELECT t.id, t.creado_en, t.referencia, p.nombre AS plan, t.monto_centavos, t.estado,
     f.id AS factura_id, f.numero, f.clave_objeto
@@ -85,12 +85,15 @@ export class SqlBillingHistoryReader implements IBillingHistoryReader {
       ((await manager.query(sql, [actor.id])) as T[])[0];
     const subscription = await first<CurrentSubscriptionRow>(CURRENT_SUBSCRIPTION_SQL);
     const method = await first<PaymentMethodRow>(PAYMENT_METHOD_SQL);
-    const receipt = await first<{ correo_comprobante: string }>(RECEIPT_EMAIL_SQL);
+    const details = await first<{ nit: string; correo_comprobante: string }>(BILLING_DETAILS_SQL);
     const payments = (await manager.query(PAYMENTS_SQL, [actor.id])) as PaymentRow[];
     return {
       subscription: subscription === undefined ? null : toSubscription(subscription),
       paymentMethod: method === undefined ? null : toPaymentMethod(method),
-      receiptEmail: receipt?.correo_comprobante ?? null,
+      billingDetails:
+        details === undefined
+          ? null
+          : { nit: details.nit, receiptEmail: details.correo_comprobante },
       payments: payments.map(toPaymentRecord),
     };
   }

@@ -31,10 +31,15 @@ const paymentMethodSchema = z
   .object({ brand: z.string().min(1), last4: z.string().regex(/^\d{4}$/) })
   .strict();
 
+/** Datos de la última factura (CA-7): el NIT (`CF` o dígitos, RN-9) y el correo donde llegan las facturas. */
+const billingDetailsSchema = z
+  .object({ nit: z.string().min(1), receiptEmail: z.string().email() })
+  .strict();
+
 /**
  * `GET /billing/history` (spec 009 CA-7; mockup `billing/suscripcion/`): plan actual del cliente con el esquema del
  * catálogo de la 008 (nulo si aún no tiene fila de suscripción; `expiresAt` nulo en Personal), la tarjeta del último
- * pago aprobado, el correo de la última factura y los pagos, del más reciente al más antiguo. Nunca datos de otra cuenta.
+ * pago aprobado, el NIT y el correo de la última factura y los pagos, del más reciente al más antiguo. Nunca datos de otra cuenta.
  */
 export const billingHistoryResponseSchema = z
   .object({
@@ -43,7 +48,7 @@ export const billingHistoryResponseSchema = z
       .strict()
       .nullable(),
     paymentMethod: paymentMethodSchema.nullable(),
-    receiptEmail: z.string().email().nullable(),
+    billingDetails: billingDetailsSchema.nullable(),
     payments: z.array(historyPaymentSchema),
   })
   .strict();

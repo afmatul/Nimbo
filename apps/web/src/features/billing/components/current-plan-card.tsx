@@ -103,17 +103,6 @@ export function CurrentPlanCard({
         <Fact label="Importe" value={priceLabel(plan.priceCents)} />
         <Fact label="Método" value={paymentMethodLabel(paymentMethod)} />
       </dl>
-      <dl className="grid gap-4 border-t border-border pt-4 sm:grid-cols-3">
-        <Fact label="Tamaño máximo por archivo" value={formatPlanBytes(plan.maxFileBytes)} />
-        <Fact
-          label="Retención en papelera"
-          value={`${formatCount(plan.trashRetentionDays)} días`}
-        />
-        <Fact
-          label="Edición colaborativa de .docx"
-          value={plan.maxEditors > 0 ? 'Activa' : 'Solo lectura'}
-        />
-      </dl>
     </Card>
   );
 }

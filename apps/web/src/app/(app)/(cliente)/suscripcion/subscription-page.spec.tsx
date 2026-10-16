@@ -8,6 +8,7 @@ import { axe } from 'jest-axe';
 
 import { PlanAndBilling } from '../../../../features/billing/components/plan-and-billing';
 import { createAuthFetch } from '../../../../features/identity/session/auth-fetch';
+import { GB, spaceSummaryWith } from '../../../../features/storage/test-space-summary';
 import { errorResponse, jsonResponse } from '../../../../lib/test-http';
 
 const API = 'http://localhost/api/v1';
@@ -53,7 +54,7 @@ const REJECTED = {
 const HISTORY: BillingHistoryResponse = {
   subscription: { plan: TEAM, expiresAt: '2026-11-13T18:00:00.000Z' },
   paymentMethod: { brand: 'visa', last4: '4242' },
-  receiptEmail: 'ana@ejemplo.com',
+  billingDetails: { nit: '12345678', receiptEmail: 'ana@ejemplo.com' },
   payments: [APPROVED, REJECTED],
 };
 
@@ -78,7 +79,14 @@ describe('Plan y facturación, /suscripcion (spec 009 CA-7, CA-8, §6; mockup `b
   });
 
   const renderPage = (): ReturnType<typeof render> =>
-    render(<PlanAndBilling apiPublicUrl={API} authFetch={authFetch} openUrl={openUrl} />);
+    render(
+      <PlanAndBilling
+        apiPublicUrl={API}
+        authFetch={authFetch}
+        openUrl={openUrl}
+        space={{ status: 'ready', summary: spaceSummaryWith(4.8 * GB) }}
+      />,
+    );
   const plan = () => screen.getByRole('region', { name: /Nimbo/ });
   const invoices = () => screen.getByRole('region', { name: 'Pagos y facturas' });
 
@@ -129,6 +137,25 @@ describe('Plan y facturación, /suscripcion (spec 009 CA-7, CA-8, §6; mockup `b
     expect(within(invoices()).getByText('Las facturas se envían a ana@ejemplo.com.')).toBeTruthy();
   });
 
+  it('mockup: consumo del plan, método de pago y datos de facturación con datos reales', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse(HISTORY));
+
+    renderPage();
+    await screen.findByRole('heading', { name: 'Nimbo Equipo' });
+    const usage = screen.getByRole('region', { name: 'Consumo del plan' });
+    const method = screen.getByRole('region', { name: 'Método de pago' });
+    const details = screen.getByRole('region', { name: 'Datos de facturación' });
+
+    expect(within(usage).getByRole('progressbar', { name: 'Almacenamiento' })).toBeTruthy();
+    expect(within(usage).getByText('1 GB')).toBeTruthy();
+    expect(within(usage).getByText('60 días')).toBeTruthy();
+    expect(within(usage).getByText('Activa')).toBeTruthy();
+    expect(within(method).getByText('visa')).toBeTruthy();
+    expect(within(method).getByText('···· ···· ···· 4242')).toBeTruthy();
+    expect(within(details).getByText('NIT 12345678')).toBeTruthy();
+    expect(within(details).getByText('ana@ejemplo.com')).toBeTruthy();
+  });
+
   it('CA-7: una factura sin PDF dice «PDF en preparación» y no tiene descarga', async () => {
     fetchMock.mockResolvedValueOnce(
       jsonResponse({
@@ -148,7 +175,7 @@ describe('Plan y facturación, /suscripcion (spec 009 CA-7, CA-8, §6; mockup `b
       jsonResponse({
         subscription: { plan: PERSONAL, expiresAt: null },
         paymentMethod: null,
-        receiptEmail: null,
+        billingDetails: null,
         payments: [],
       }),
     );
@@ -159,12 +186,14 @@ describe('Plan y facturación, /suscripcion (spec 009 CA-7, CA-8, §6; mockup `b
     expect(within(plan()).getByText('Sin vencimiento')).toBeTruthy();
     expect(within(plan()).getAllByText('Gratis')).toHaveLength(2);
     expect(within(plan()).getByText('—')).toBeTruthy();
+    expect(screen.getByText('Aún no has pagado con tarjeta.')).toBeTruthy();
+    expect(screen.getByText('Se guardan con tu primer pago.')).toBeTruthy();
   });
 
   it('error: «Reintentar» vuelve a pedir el historial', async () => {
     fetchMock.mockResolvedValueOnce(errorResponse('INTERNAL_ERROR', 500));
     fetchMock.mockResolvedValueOnce(
-      jsonResponse({ subscription: null, paymentMethod: null, receiptEmail: null, payments: [] }),
+      jsonResponse({ subscription: null, paymentMethod: null, billingDetails: null, payments: [] }),
     );
 
     renderPage();

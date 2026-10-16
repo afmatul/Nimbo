@@ -23,14 +23,14 @@ const APPROVED: PaymentRecord = {
   status: 'aprobada',
   invoice: INVOICE,
 };
-const EMPTY = { subscription: null, paymentMethod: null, receiptEmail: null, payments: [] };
+const EMPTY = { subscription: null, paymentMethod: null, billingDetails: null, payments: [] };
 
 describe('toBillingHistoryResponse (spec 009 CA-7)', () => {
   it('CA-7: el plan con el contrato del catálogo, la tarjeta, el correo y la factura descargable, sin la clave', () => {
     const response = toBillingHistoryResponse({
       subscription: { plan: TEAM, expiresAt: new Date('2026-11-13T18:00:00.000Z') },
       paymentMethod: { brand: 'visa', last4: '4242' },
-      receiptEmail: 'ana@ejemplo.com',
+      billingDetails: { nit: '12345678', receiptEmail: 'ana@ejemplo.com' },
       payments: [APPROVED],
     });
 
@@ -43,7 +43,7 @@ describe('toBillingHistoryResponse (spec 009 CA-7)', () => {
       expiresAt: '2026-11-13T18:00:00.000Z',
     });
     expect(response.paymentMethod).toEqual({ brand: 'visa', last4: '4242' });
-    expect(response.receiptEmail).toBe('ana@ejemplo.com');
+    expect(response.billingDetails).toEqual({ nit: '12345678', receiptEmail: 'ana@ejemplo.com' });
     expect(response.payments).toEqual([
       {
         id: APPROVED.id,

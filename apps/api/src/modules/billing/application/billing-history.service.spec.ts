@@ -18,7 +18,7 @@ const TEAM = aPlan({ id: '10000000-0000-4000-8000-000000000003', name: 'Equipo' 
 const ROWS: BillingHistoryRows = {
   subscription: { planId: TEAM.id, expiresAt: null },
   paymentMethod: { brand: 'visa', last4: '4242' },
-  receiptEmail: 'ana@ejemplo.com',
+  billingDetails: { nit: 'CF', receiptEmail: 'ana@ejemplo.com' },
   payments: [],
 };
 
