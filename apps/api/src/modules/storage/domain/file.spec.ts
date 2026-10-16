@@ -8,6 +8,7 @@ const OWNER = '11111111-1111-4111-8111-111111111111';
 const FILE = '22222222-2222-4222-8222-222222222222';
 const VERSION = '33333333-3333-4333-8333-333333333333';
 const FOLDER = '44444444-4444-4444-8444-444444444444';
+const SESSION = '55555555-5555-4555-8555-666666666666';
 const NOW = new Date('2026-09-30T10:00:00.000Z');
 
 function fileInput(overrides: Partial<CreateFileInput> = {}): CreateFileInput {
@@ -126,9 +127,11 @@ describe('FileVersion', () => {
   it('`rehydrate` admite los cuatro orígenes del CHECK', () => {
     const base = FileVersion.fromUpload(versionInput()).snapshot();
 
-    for (const origin of ['carga', 'edicion', 'restauracion', 'optimizacion'] as const) {
+    for (const origin of ['carga', 'restauracion', 'optimizacion'] as const) {
       expect(FileVersion.rehydrate({ ...base, origin }).origin).toBe(origin);
     }
+    const edited = { ...base, origin: 'edicion' as const, editSessionId: SESSION };
+    expect(FileVersion.rehydrate(edited).origin).toBe('edicion');
   });
 
   it('es inmutable', () => {
@@ -182,16 +185,34 @@ describe('FileVersion', () => {
     expect(() => FileVersion.fromRestoration(source, restoration)).toThrow(TypeError);
   });
 
-  it.each(['edicion', 'optimizacion'] as const)(
-    'CA-5: `forOrigin` registra una versión `%s` con la misma forma que una carga',
-    (origin) => {
-      const version = FileVersion.forOrigin(origin, versionInput({ number: 7 }));
+  it('CA-5: `forOrigin` registra una versión `optimizacion` con la misma forma que una carga', () => {
+    const version = FileVersion.forOrigin('optimizacion', versionInput({ number: 7 }));
 
-      expect(version.origin).toBe(origin);
-      expect(version.number).toBe(7);
-      expect(version.restoredFromNumber).toBeNull();
-    },
-  );
+    expect(version.origin).toBe('optimizacion');
+    expect(version.number).toBe(7);
+    expect(version.restoredFromNumber).toBeNull();
+    expect(version.editSessionId).toBeNull();
+  });
+
+  it('016 CA-9: `fromEdit` registra una versión `edicion` enlazada a su sesión', () => {
+    const version = FileVersion.fromEdit({
+      ...versionInput({ number: 7 }),
+      editSessionId: SESSION,
+    });
+
+    expect(version.origin).toBe('edicion');
+    expect(version.number).toBe(7);
+    expect(version.editSessionId).toBe(SESSION);
+    expect(version.snapshot()).toMatchObject({ origin: 'edicion', editSessionId: SESSION });
+  });
+
+  it('016 CA-9: como `ck_version_archivo_sesion_origen`, solo una versión de edición tiene sesión', () => {
+    const upload = FileVersion.fromUpload(versionInput()).snapshot();
+
+    expect(upload.editSessionId).toBeNull();
+    expect(() => FileVersion.rehydrate({ ...upload, editSessionId: SESSION })).toThrow(TypeError);
+    expect(() => FileVersion.rehydrate({ ...upload, origin: 'edicion' })).toThrow(TypeError);
+  });
 
   it('`rehydrate` reconstruye el número y la versión de origen', () => {
     const snapshot = {

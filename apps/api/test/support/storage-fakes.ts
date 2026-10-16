@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { Readable } from 'node:stream';
 
 import type { AuditRecord, IAuditLogger } from '../../src/modules/audit';
 import type {
@@ -491,6 +492,22 @@ export class FakeObjectStorage implements IObjectStorage {
     if (source === undefined) return Promise.resolve(false);
     this.objects.set(targetKey, Buffer.from(source));
     return Promise.resolve(true);
+  }
+
+  getObjectStream(key: string): Promise<Readable | null> {
+    this.journal.add('storage:getObjectStream');
+    const object = this.objects.get(key);
+    return Promise.resolve(object === undefined ? null : Readable.from([Buffer.from(object)]));
+  }
+
+  /** Como el adaptador real, lee el flujo entero; con otro tamaño que el declarado, S3 rechaza. */
+  async putObject(key: string, body: Readable, sizeBytes: bigint): Promise<void> {
+    this.journal.add('storage:putObject');
+    const chunks: Buffer[] = [];
+    for await (const chunk of body) chunks.push(Buffer.from(chunk as Uint8Array));
+    const content = Buffer.concat(chunks);
+    if (BigInt(content.length) !== sizeBytes) throw new Error('IncompleteBody');
+    this.objects.set(key, content);
   }
 
   purgeObject(key: string): Promise<void> {

@@ -23,6 +23,7 @@ const LIMITS = {
   storageQuotaBytes: 10_000_000n,
   trashRetentionDays: 30,
   retainedVersions: RETAINED,
+  maxEditors: 0,
 };
 
 function setup() {

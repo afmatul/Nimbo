@@ -1,3 +1,5 @@
+import { Readable } from 'node:stream';
+
 import {
   AbortMultipartUploadCommand,
   CompleteMultipartUploadCommand,
@@ -249,6 +251,31 @@ export class MinioStorageAdapter implements IObjectStorage {
       }
       throw error;
     }
+  }
+
+  async getObjectStream(key: string): Promise<Readable | null> {
+    try {
+      const output = await this.clients.operations.send(
+        new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+      );
+      return output.Body instanceof Readable ? output.Body : Readable.from([]);
+    } catch (error: unknown) {
+      if (isMissingObject(error)) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  async putObject(key: string, body: Readable, sizeBytes: bigint): Promise<void> {
+    await this.clients.operations.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        Body: body,
+        ContentLength: Number(sizeBytes),
+      }),
+    );
   }
 
   async purgeObject(key: string): Promise<void> {

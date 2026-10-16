@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { Readable } from 'node:stream';
 
 import {
   CreateBucketCommand,
@@ -59,6 +60,12 @@ const sleep = (ms: number): Promise<void> =>
   });
 
 const newKey = (): string => `u/${randomUUID()}/${randomUUID()}/${randomUUID()}`;
+
+const readAll = async (stream: Readable): Promise<Buffer> => {
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) chunks.push(Buffer.from(chunk as Uint8Array));
+  return Buffer.concat(chunks);
+};
 
 describe('MinioStorageAdapter contra MinIO real (CA-2, CA-5, CA-11, CA-13, CA-14)', () => {
   let clients: MinioStorageClients;
@@ -146,6 +153,23 @@ describe('MinioStorageAdapter contra MinIO real (CA-2, CA-5, CA-11, CA-13, CA-14
 
     await expect(adapter.copyObject(newKey(), target)).resolves.toBe(false);
     await expect(adapter.headObject(target)).resolves.toBeNull();
+  });
+
+  it('016 CA-9: `putObject` sube un flujo con su tamaño y `getObjectStream` lo devuelve completo', async () => {
+    const key = newKey();
+    const content = Buffer.alloc(3 * 1024 * 1024 + 7, 'documento editado ');
+
+    await adapter.putObject(key, Readable.from([content]), BigInt(content.length));
+    const stream = await adapter.getObjectStream(key);
+
+    expect(stream).not.toBeNull();
+    await expect(readAll(stream as Readable)).resolves.toEqual(content);
+    await expect(adapter.headObject(key)).resolves.toEqual({ sizeBytes: BigInt(content.length) });
+    await adapter.purgeObject(key);
+  });
+
+  it('016 CA-2: `getObjectStream` de un objeto ausente devuelve `null`', async () => {
+    await expect(adapter.getObjectStream(newKey())).resolves.toBeNull();
   });
 
   it('CA-5: `headObject` devuelve el tamaño y `getRange` el rango inclusivo; ausente → `null`', async () => {
