@@ -20,6 +20,8 @@ const LOCK_CURRENT_SQL = `SELECT plan_id, iniciado_en, vence_en FROM suscripcion
 
 const PLAN_SLUG_SQL = 'SELECT slug FROM plan WHERE id = $1';
 
+const CURRENT_PLAN_SQL = 'SELECT plan_id FROM suscripcion WHERE usuario_id = $1';
+
 const SAVE_SQL = `UPDATE suscripcion SET plan_id = $2, iniciado_en = $3, vence_en = $4, actualizado_en = now()
   WHERE usuario_id = $1`;
 
@@ -36,6 +38,13 @@ interface CurrentRow {
 @Injectable()
 export class TypeOrmSubscriptionRepository implements ISubscriptionRepository {
   constructor(@Inject(TransactionContext) private readonly context: TransactionContext) {}
+
+  async findCurrentPlanId(actor: Actor): Promise<string | null> {
+    const [row] = (await this.context
+      .requireActorScope(actor)
+      .query(CURRENT_PLAN_SQL, [actor.id])) as { plan_id: string }[];
+    return row?.plan_id ?? null;
+  }
 
   async insertPersonalIfAbsent(actor: Actor): Promise<void> {
     await this.context

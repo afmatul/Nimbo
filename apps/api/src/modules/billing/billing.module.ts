@@ -11,10 +11,13 @@ import { I_INVOICE_REPOSITORY } from './application/ports/i-invoice-repository.p
 import { I_PAYMENT_GATEWAY } from './application/ports/i-payment-gateway.port';
 import { I_PAYMENT_REPOSITORY } from './application/ports/i-payment-repository.port';
 import { I_PLAN_REPOSITORY } from './application/ports/i-plan-repository.port';
+import { I_SUBSCRIPTION_ADMINISTRATION_READER } from './application/ports/i-subscription-administration.reader.port';
 import { I_SUBSCRIPTION_REPOSITORY } from './application/ports/i-subscription-repository.port';
+import { SubscriptionAdministration } from './application/subscription-administration';
 import { PlanLimitsAdapter } from './infrastructure/adapters/plan-limits.adapter';
 import { SimulatedPaymentGateway } from './infrastructure/adapters/simulated-payment-gateway';
 import { PlanOrmEntity } from './infrastructure/persistence/plan.orm-entity';
+import { SqlSubscriptionAdministrationReader } from './infrastructure/persistence/sql-subscription-administration.reader';
 import { TypeOrmInvoiceRepository } from './infrastructure/persistence/typeorm-invoice.repository';
 import { TypeOrmPaymentRepository } from './infrastructure/persistence/typeorm-payment.repository';
 import { TypeOrmPlanRepository } from './infrastructure/persistence/typeorm-plan.repository';
@@ -27,7 +30,7 @@ import { PlansController } from './presentation/plans.controller';
  * `PlanCatalogService`), límites, alta Personal (oyente y conciliación), cobro simulado y registro de la factura. No
  * conoce `storage`: lo que sube o firma objetos vive en `BillingHttpModule` (`api`) y `BillingWorkerModule` (`worker`),
  * que reciben la instancia de `storage` de su raíz. Exporta a `backoffice` el adaptador de límites y `PlanCatalogService`,
- * y a esos dos módulos los servicios y repositorios internos que usan. `I_PLAN_LIMITS_PROVIDER` lo enlaza
+ * `SubscriptionAdministration` (009 T-03), y a esos dos módulos los servicios y repositorios internos que usan. `I_PLAN_LIMITS_PROVIDER` lo enlaza
  * `PlanLimitsBindingModule`: `storage` no conoce a `billing`.
  */
 @Module({
@@ -45,10 +48,16 @@ import { PlansController } from './presentation/plans.controller';
     PaymentService,
     { provide: I_INVOICE_REPOSITORY, useClass: TypeOrmInvoiceRepository },
     InvoiceService,
+    {
+      provide: I_SUBSCRIPTION_ADMINISTRATION_READER,
+      useClass: SqlSubscriptionAdministrationReader,
+    },
+    SubscriptionAdministration,
   ],
   exports: [
     PlanLimitsAdapter,
     PlanCatalogService,
+    SubscriptionAdministration,
     PersonalSubscriptionService,
     PaymentService,
     InvoiceService,

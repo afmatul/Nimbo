@@ -49,10 +49,13 @@ describe('migración crear-suscripcion: RLS del dueño (spec 009 CA-1, RNF-05)',
     await owner?.destroy();
   });
 
-  it('CA-1: `suscripcion` tiene RLS habilitada y forzada con una sola política, la del cliente', async () => {
+  it('CA-1, T-03: `suscripcion` tiene RLS forzada: la política del cliente y la lectura de administración del dueño', async () => {
     await expect(rlsOf(owner, 'suscripcion')).resolves.toEqual({
       forced: true,
-      policies: [{ policyname: 'suscripcion_cliente', cmd: 'ALL' }],
+      policies: [
+        { policyname: 'suscripcion_administracion', cmd: 'SELECT' },
+        { policyname: 'suscripcion_cliente', cmd: 'ALL' },
+      ],
     });
   });
 

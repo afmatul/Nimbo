@@ -1,10 +1,13 @@
 import { Module } from '@nestjs/common';
+import type { DataSource } from 'typeorm';
 
 import { BillingModule, PlanLimitsAdapter, PlanNotFoundError } from '../../../src/modules/billing';
 import { I_PLAN_LIMITS_PROVIDER } from '../../../src/modules/storage';
 import type { IPlanLimitsProvider } from '../../../src/modules/storage';
 import { createActor, Role } from '../../../src/shared';
+import { connectAsOwner } from '../../support/database-urls';
 import { createTestApp, type TestApp } from '../setup/test-app';
+import { insertAccount, removeAccounts } from '../storage/storage-test-db';
 
 @Module({
   imports: [BillingModule],
@@ -149,6 +152,64 @@ describe('PlanLimitsAdapter integración con base de datos real (T-11, CA-1, CA-
         code: 'PLAN_NOT_FOUND',
         status: 404,
       });
+    });
+  });
+
+  describe('limitsFor con la suscripción real (spec 009 T-03, PD-80; RLS forzada)', () => {
+    let owner: DataSource;
+    const accounts: string[] = [];
+
+    beforeAll(async () => {
+      owner = await connectAsOwner();
+    });
+
+    afterAll(async () => {
+      await removeAccounts(owner, accounts);
+      await owner?.destroy();
+    });
+
+    const newClient = async (): Promise<string> => {
+      const id = await insertAccount(owner);
+      accounts.push(id);
+      return id;
+    };
+
+    it('T-03: con fila en Equipo, los límites de Equipo', async () => {
+      const ana = await newClient();
+      await owner.query(
+        "INSERT INTO suscripcion (usuario_id, plan_id) SELECT $1, id FROM plan WHERE slug = 'equipo'",
+        [ana],
+      );
+
+      await expect(limitsProvider.limitsFor(createActor(ana, Role.CLIENT))).resolves.toMatchObject({
+        planName: 'Equipo',
+        trashRetentionDays: 60,
+      });
+    });
+
+    it('T-03: sin fila, los límites de Personal', async () => {
+      const bruno = await newClient();
+
+      await expect(
+        limitsProvider.limitsFor(createActor(bruno, Role.CLIENT)),
+      ).resolves.toMatchObject({
+        planName: 'Personal',
+      });
+    });
+
+    it('RNF-05: la lectura va bajo RLS: el plan de otro cliente no se filtra a quien no tiene fila', async () => {
+      const carla = await newClient();
+      await owner.query(
+        "INSERT INTO suscripcion (usuario_id, plan_id) SELECT $1, id FROM plan WHERE slug = 'pro'",
+        [carla],
+      );
+      const dana = await newClient();
+
+      await expect(limitsProvider.limitsFor(createActor(dana, Role.CLIENT))).resolves.toMatchObject(
+        {
+          planName: 'Personal',
+        },
+      );
     });
   });
 });

@@ -42,6 +42,7 @@ const setup = (options: { status?: Payment['status']; plan?: typeof TEAM | null 
   });
   const subscriptions: ISubscriptionRepository = {
     insertPersonalIfAbsent: jest.fn(step('personal', undefined)),
+    findCurrentPlanId: jest.fn(),
     lockCurrent: jest.fn(step('lock', current)),
     save: jest.fn(step('save', undefined)),
   };

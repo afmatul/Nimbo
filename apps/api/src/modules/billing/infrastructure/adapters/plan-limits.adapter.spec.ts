@@ -1,169 +1,94 @@
-import type { Repository } from 'typeorm';
-
 import { createActor, Role } from '../../../../shared';
-import type { PlanLimits } from '../../../storage';
+import type { Actor, ITransactionRunner } from '../../../../shared';
+import type { IPlanRepository } from '../../application/ports/i-plan-repository.port';
+import type { ISubscriptionRepository } from '../../application/ports/i-subscription-repository.port';
+import { aPlan, PERSONAL_PLAN } from '../../application/testing/plans';
 import { PlanNotFoundError } from '../../domain/errors';
-import type { PlanOrmEntity } from '../persistence/plan.orm-entity';
+import type { Plan } from '../../domain/plan.entity';
 
 import { PlanLimitsAdapter } from './plan-limits.adapter';
 
-const PERSONAL: PlanLimits = {
-  planName: 'Personal',
-  maxFileBytes: 52428800n,
-  storageQuotaBytes: 16106127360n,
-  trashRetentionDays: 7,
+const ANA: Actor = createActor('11111111-1111-4111-8111-111111111111', Role.CLIENT);
+const TEAM = aPlan({
+  id: '10000000-0000-4000-8000-000000000003',
+  slug: 'equipo',
+  name: 'Equipo',
+  priceCents: 11_000,
+  limits: {
+    ...PERSONAL_PLAN.limits,
+    quotaBytes: 375_809_638_400n,
+    maxFileBytes: 1_073_741_824n,
+    trashRetentionDays: 60,
+  },
+});
+const CATALOG: readonly Plan[] = [PERSONAL_PLAN, TEAM];
+
+const setup = (currentPlanId: string | null, catalog: readonly Plan[] = CATALOG) => {
+  const scopes: string[] = [];
+  const transactions: ITransactionRunner = {
+    run: () => Promise.reject(new Error('los límites se leen con el actor')),
+    withActor: (actor, work) => {
+      scopes.push(actor.id);
+      return work();
+    },
+  };
+  const subscriptions = {
+    findCurrentPlanId: jest.fn().mockResolvedValue(currentPlanId),
+  } as unknown as ISubscriptionRepository;
+  const plans = {
+    findById: jest.fn((id: string) =>
+      Promise.resolve(catalog.find((plan) => plan.id === id) ?? null),
+    ),
+    findBySlug: jest.fn((slug: string) =>
+      Promise.resolve(catalog.find((plan) => plan.slug === slug) ?? null),
+    ),
+  } as unknown as IPlanRepository;
+  return {
+    adapter: new PlanLimitsAdapter(transactions, subscriptions, plans),
+    scopes,
+    subscriptions,
+  };
 };
 
-describe('PlanLimitsAdapter (006a T-08, CA-4, CA-5, RN-4; 006 CA-19)', () => {
-  let adapter: PlanLimitsAdapter;
-  let mockRepo: jest.Mocked<Pick<Repository<PlanOrmEntity>, 'findOneBy'>>;
+describe('PlanLimitsAdapter (006a CA-2 a CA-5; 009 T-03, PD-80)', () => {
+  it('T-03: con fila de suscripción, los límites del plan contratado, leídos con withActor del cliente', async () => {
+    const { adapter, scopes, subscriptions } = setup(TEAM.id);
 
-  beforeEach(() => {
-    mockRepo = {
-      findOneBy: jest.fn(),
-    };
-    adapter = new PlanLimitsAdapter(mockRepo as unknown as Repository<PlanOrmEntity>);
+    await expect(adapter.limitsFor(ANA)).resolves.toEqual({
+      planName: 'Equipo',
+      maxFileBytes: 1_073_741_824n,
+      storageQuotaBytes: 375_809_638_400n,
+      trashRetentionDays: 60,
+    });
+    expect(scopes).toEqual([ANA.id]);
+    expect(subscriptions.findCurrentPlanId).toHaveBeenCalledWith(ANA);
   });
 
-  describe('limitsFor(actor) (CA-5, Art. VI)', () => {
-    it('CA-5: devuelve Personal leyendo la fila de la tabla plan sin consultar identity', async () => {
-      mockRepo.findOneBy.mockResolvedValue({
-        id: '10000000-0000-4000-8000-000000000001',
-        slug: 'personal',
-        nombre: 'Personal',
-        cuotaBytes: 16106127360n,
-        maxArchivoBytes: 52428800n,
-        diasRetencionPapelera: 7,
-      } as PlanOrmEntity);
+  it('T-03, CA-5: sin fila (sin verificar o rol interno), los límites de Personal', async () => {
+    const { adapter } = setup(null);
 
-      const limits = await adapter.limitsFor(
-        createActor('123e4567-e89b-12d3-a456-426614174000', Role.CLIENT),
-      );
-
-      expect(limits).toEqual(PERSONAL);
-      expect(mockRepo.findOneBy).toHaveBeenCalledWith({ slug: 'personal' });
-    });
-
-    it('CA-5: devuelve los mismos límites para cualquier rol', async () => {
-      mockRepo.findOneBy.mockResolvedValue({
-        id: '10000000-0000-4000-8000-000000000001',
-        slug: 'personal',
-        nombre: 'Personal',
-        cuotaBytes: 16106127360n,
-        maxArchivoBytes: 52428800n,
-        diasRetencionPapelera: 7,
-      } as PlanOrmEntity);
-
-      const limits = await adapter.limitsFor(createActor('admin-id', Role.ADMIN));
-
-      expect(limits).toEqual(PERSONAL);
-      expect(mockRepo.findOneBy).toHaveBeenCalledWith({ slug: 'personal' });
-    });
-
-    it('lanza PlanNotFoundError si no existe la fila personal en la tabla plan', async () => {
-      mockRepo.findOneBy.mockResolvedValue(null);
-
-      await expect(
-        adapter.limitsFor(createActor('123e4567-e89b-12d3-a456-426614174000', Role.CLIENT)),
-      ).rejects.toThrow(PlanNotFoundError);
+    await expect(adapter.limitsFor(createActor(ANA.id, Role.SUPPORT))).resolves.toEqual({
+      planName: 'Personal',
+      maxFileBytes: 52_428_800n,
+      storageQuotaBytes: 16_106_127_360n,
+      trashRetentionDays: 7,
     });
   });
 
-  describe('getLimitsByPlanId(planId) (CA-2, CA-4)', () => {
-    it('CA-19 (006): la retención en papelera sale de `dias_retencion_papelera`, no del código', async () => {
-      mockRepo.findOneBy.mockResolvedValue({
-        id: '10000000-0000-4000-8000-000000000004',
-        slug: 'institucional',
-        nombre: 'Institucional',
-        cuotaBytes: 2199023255552n,
-        maxArchivoBytes: 5368709120n,
-        diasRetencionPapelera: 90,
-      } as PlanOrmEntity);
+  it('CA-4: sin la fila `personal` en `plan`, PlanNotFoundError', async () => {
+    const { adapter } = setup(null, [TEAM]);
 
-      const limits = await adapter.getLimitsByPlanId('10000000-0000-4000-8000-000000000004');
-
-      expect(limits.trashRetentionDays).toBe(90);
-    });
-
-    it('CA-1 (007, D-20): el nombre visible del plan sale de `plan.nombre`', async () => {
-      mockRepo.findOneBy.mockResolvedValue({
-        id: '10000000-0000-4000-8000-000000000004',
-        slug: 'institucional',
-        nombre: 'Institucional',
-        cuotaBytes: 2199023255552n,
-        maxArchivoBytes: 5368709120n,
-        diasRetencionPapelera: 90,
-      } as PlanOrmEntity);
-
-      const limits = await adapter.getLimitsByPlanId('10000000-0000-4000-8000-000000000004');
-
-      expect(limits.planName).toBe('Institucional');
-    });
-
-    it('CA-2: devuelve los límites del plan cuando existe', async () => {
-      mockRepo.findOneBy.mockResolvedValue({
-        id: '10000000-0000-4000-8000-000000000002',
-        slug: 'pro',
-        nombre: 'Pro',
-        cuotaBytes: 107374182400n,
-        maxArchivoBytes: 524288000n,
-        diasRetencionPapelera: 30,
-      } as PlanOrmEntity);
-
-      const limits = await adapter.getLimitsByPlanId('10000000-0000-4000-8000-000000000002');
-
-      expect(limits).toEqual({
-        planName: 'Pro',
-        maxFileBytes: 524288000n,
-        storageQuotaBytes: 107374182400n,
-        trashRetentionDays: 30,
-      });
-      expect(mockRepo.findOneBy).toHaveBeenCalledWith({
-        id: '10000000-0000-4000-8000-000000000002',
-      });
-    });
-
-    it('CA-4: lanza PlanNotFoundError cuando el id no existe', async () => {
-      mockRepo.findOneBy.mockResolvedValue(null);
-
-      await expect(adapter.getLimitsByPlanId('inexistente')).rejects.toThrow(PlanNotFoundError);
-      await expect(adapter.getLimitsByPlanId('inexistente')).rejects.toMatchObject({
-        code: 'PLAN_NOT_FOUND',
-        status: 404,
-      });
-    });
+    await expect(adapter.limitsFor(ANA)).rejects.toBeInstanceOf(PlanNotFoundError);
   });
 
-  describe('getLimitsBySlug(slug) (CA-3, CA-4)', () => {
-    it('CA-3: devuelve los límites del plan cuando el slug existe', async () => {
-      mockRepo.findOneBy.mockResolvedValue({
-        id: '10000000-0000-4000-8000-000000000003',
-        slug: 'equipo',
-        nombre: 'Equipo',
-        cuotaBytes: 375809638400n,
-        maxArchivoBytes: 1073741824n,
-        diasRetencionPapelera: 60,
-      } as PlanOrmEntity);
+  it('CA-2 y CA-3: por id y por slug; CA-4: inexistente es PlanNotFoundError', async () => {
+    const { adapter } = setup(null);
 
-      const limits = await adapter.getLimitsBySlug('equipo');
-
-      expect(limits).toEqual({
-        planName: 'Equipo',
-        maxFileBytes: 1073741824n,
-        storageQuotaBytes: 375809638400n,
-        trashRetentionDays: 60,
-      });
-      expect(mockRepo.findOneBy).toHaveBeenCalledWith({ slug: 'equipo' });
+    await expect(adapter.getLimitsByPlanId(TEAM.id)).resolves.toMatchObject({ planName: 'Equipo' });
+    await expect(adapter.getLimitsBySlug('personal')).resolves.toMatchObject({
+      planName: 'Personal',
     });
-
-    it('CA-4: lanza PlanNotFoundError cuando el slug no existe', async () => {
-      mockRepo.findOneBy.mockResolvedValue(null);
-
-      await expect(adapter.getLimitsBySlug('plan-falso')).rejects.toThrow(PlanNotFoundError);
-      await expect(adapter.getLimitsBySlug('plan-falso')).rejects.toMatchObject({
-        code: 'PLAN_NOT_FOUND',
-        status: 404,
-      });
-    });
+    await expect(adapter.getLimitsByPlanId('no-existe')).rejects.toBeInstanceOf(PlanNotFoundError);
+    await expect(adapter.getLimitsBySlug('no-existe')).rejects.toBeInstanceOf(PlanNotFoundError);
   });
 });
