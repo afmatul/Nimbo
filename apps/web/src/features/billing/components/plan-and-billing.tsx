@@ -48,6 +48,31 @@ function Breadcrumbs(): React.JSX.Element {
 }
 
 /** Plan, consumo, método y datos (izquierda) y pagos con facturas (derecha), como el mockup. */
+/** Columna izquierda del mockup: plan y consumo (con suscripción), método de pago y datos de facturación. */
+function AccountColumn({
+  history,
+  space,
+}: {
+  readonly history: BillingHistoryResponse;
+  readonly space: SpaceSummaryState;
+}): React.JSX.Element {
+  const { subscription, paymentMethod } = history;
+  return (
+    <div className="flex min-w-0 flex-col gap-4">
+      {subscription === null ? null : (
+        <>
+          <CurrentPlanCard subscription={subscription} paymentMethod={paymentMethod} />
+          <UsageCard plan={subscription.plan} space={space} />
+        </>
+      )}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <PaymentMethodCard method={paymentMethod} />
+        <BillingDetailsCard details={history.billingDetails} />
+      </div>
+    </div>
+  );
+}
+
 function ReadyBody({
   history,
   space,
@@ -57,21 +82,9 @@ function ReadyBody({
   readonly space: SpaceSummaryState;
   readonly onDownload: DownloadInvoice;
 }): React.JSX.Element {
-  const { subscription } = history;
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] lg:items-start">
-      <div className="flex min-w-0 flex-col gap-4">
-        {subscription === null ? null : (
-          <>
-            <CurrentPlanCard subscription={subscription} paymentMethod={history.paymentMethod} />
-            <UsageCard plan={subscription.plan} space={space} />
-          </>
-        )}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <PaymentMethodCard method={history.paymentMethod} />
-          <BillingDetailsCard details={history.billingDetails} />
-        </div>
-      </div>
+      <AccountColumn history={history} space={space} />
       <InvoiceHistory
         payments={history.payments}
         receiptEmail={history.billingDetails?.receiptEmail ?? null}

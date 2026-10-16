@@ -4,6 +4,27 @@ import type { JSX } from 'react';
 import { Card } from '../../../components/ui/card';
 import { formatCount, formatPlanBytes } from '../../../lib/format-plan';
 
+/** «● Plan Equipo · mensual» y sus límites (mockup de pago). */
+function PlanLines({ plan }: { readonly plan: Plan }): JSX.Element {
+  return (
+    <>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
+          <span aria-hidden="true" className="h-2 w-2 rounded-full bg-primary" />
+          Plan {plan.name}
+        </h2>
+        <span className="text-xs text-muted-foreground">mensual</span>
+      </div>
+      <ul className="flex flex-col gap-1 text-sm text-foreground">
+        <li>{formatPlanBytes(plan.quotaBytes)} de almacenamiento</li>
+        <li>{formatPlanBytes(plan.maxFileBytes)} por archivo</li>
+        <li>{formatCount(plan.retainedVersions)} versiones por archivo</li>
+        <li>{formatCount(plan.agentQueriesPerMonth)} consultas al agente al mes</li>
+      </ul>
+    </>
+  );
+}
+
 /** Resumen del plan que se contrata (mockup de pago, spec 009 RN-2): límites y desglose con el IVA incluido. */
 export function PaymentSummary({ plan }: { readonly plan: Plan }): JSX.Element {
   const { subtotalCents, vatCents, totalCents } = breakdown(plan.priceCents);
@@ -15,13 +36,7 @@ export function PaymentSummary({ plan }: { readonly plan: Plan }): JSX.Element {
       >
         Resumen
       </p>
-      <h2 className="text-base font-semibold text-foreground">Plan {plan.name}</h2>
-      <ul className="flex flex-col gap-1 text-sm text-foreground">
-        <li>{formatPlanBytes(plan.quotaBytes)} de almacenamiento</li>
-        <li>{formatPlanBytes(plan.maxFileBytes)} por archivo</li>
-        <li>{formatCount(plan.retainedVersions)} versiones por archivo</li>
-        <li>{formatCount(plan.agentQueriesPerMonth)} consultas al agente al mes</li>
-      </ul>
+      <PlanLines plan={plan} />
       <dl className="flex flex-col gap-1 border-t border-border pt-3 text-sm">
         <AmountRow label="Subtotal" cents={subtotalCents} />
         <AmountRow label="IVA (12 %)" cents={vatCents} />

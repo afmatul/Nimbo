@@ -7,6 +7,7 @@ import {
   type SubscribeResponse,
 } from '@nimbo/contracts';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import type * as React from 'react';
 import type { JSX } from 'react';
 
 import { Alert } from '../../../components/ui/alert';
@@ -22,7 +23,7 @@ import { ServerErrorAlert } from '../../identity/components/server-error-alert';
 import type { AuthFetch } from '../../identity/session/auth-fetch';
 import { useAuthFetch } from '../../identity/session/use-auth-fetch';
 import { usePaymentForm, type PaymentFormState } from '../hooks/use-payment-form';
-import type { PaymentField } from '../payment-form-values';
+import { cardBrandOf, groupCardNumber, type PaymentField } from '../payment-form-values';
 
 import { PaymentSummary } from './payment-summary';
 
@@ -55,6 +56,49 @@ export function SessionPaymentForm(props: Omit<PaymentFormProps, 'authFetch'>): 
   return <PaymentForm {...props} authFetch={authFetch} />;
 }
 
+function PaymentHeader(): JSX.Element {
+  return (
+    <header className="space-y-1">
+      <h1 className="flex items-center gap-2 text-xl font-bold text-foreground">
+        Pago <Badge variant="warning">Simulado</Badge>
+      </h1>
+      <p className="text-sm text-muted-foreground">
+        Es un pago de prueba. No se hace ningún cargo real.
+      </p>
+    </header>
+  );
+}
+
+/** Número, vencimiento, CVC y NIT (RN-9) y «Pagar», como el mockup. */
+function PaymentFields({
+  plan,
+  state,
+}: {
+  readonly plan: Plan;
+  readonly state: PaymentFormState;
+}): JSX.Element {
+  return (
+    <form noValidate onSubmit={(event) => void state.submit(event)} className="flex flex-col gap-4">
+      <CardNumberInput state={state} />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <PaymentInput
+          state={state}
+          field="expiry"
+          label="Vencimiento"
+          autoComplete="cc-exp"
+          placeholder="MM/AA"
+          hint="Mes y año, como 12/28."
+        />
+        <PaymentInput state={state} field="cvc" label="CVC" autoComplete="cc-csc" type="password" />
+      </div>
+      <PaymentInput state={state} field="nit" label="NIT para la factura" autoComplete="off" />
+      <Button type="submit" loading={state.submitting} className="w-full">
+        {state.submitting ? 'Procesando pago…' : `Pagar ${formatGtq(plan.priceCents)}`}
+      </Button>
+    </form>
+  );
+}
+
 function PaymentCard({
   plan,
   state,
@@ -62,43 +106,11 @@ function PaymentCard({
   readonly plan: Plan;
   readonly state: PaymentFormState;
 }): JSX.Element {
-  const price = formatGtq(plan.priceCents);
   return (
     <Card className="flex flex-col gap-4 p-6">
-      <header className="space-y-1">
-        <h1 className="flex items-center gap-2 text-xl font-bold text-foreground">
-          Pago <Badge variant="warning">Simulado</Badge>
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Es un pago de prueba. No se hace ningún cargo real.
-        </p>
-      </header>
+      <PaymentHeader />
       <OutcomeAlert state={state} />
-      <form
-        noValidate
-        onSubmit={(event) => void state.submit(event)}
-        className="flex flex-col gap-4"
-      >
-        <PaymentInput
-          state={state}
-          field="number"
-          label="Número de tarjeta"
-          autoComplete="cc-number"
-        />
-        <div className="grid gap-4 sm:grid-cols-2">
-          <PaymentInput
-            state={state}
-            field="expiry"
-            label="Vencimiento (MM/AA)"
-            autoComplete="cc-exp"
-          />
-          <PaymentInput state={state} field="cvc" label="CVC" autoComplete="cc-csc" />
-        </div>
-        <PaymentInput state={state} field="nit" label="NIT para la factura" autoComplete="off" />
-        <Button type="submit" loading={state.submitting} className="w-full">
-          {state.submitting ? 'Procesando pago…' : `Pagar ${price}`}
-        </Button>
-      </form>
+      <PaymentFields plan={plan} state={state} />
       <p className="rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
         Tarjetas de prueba: 4242 4242 4242 4242 aprueba · 4000 0000 0000 0002 rechaza.
       </p>
@@ -106,31 +118,110 @@ function PaymentCard({
   );
 }
 
-function PaymentInput({
-  state,
-  field,
-  label,
-  autoComplete,
-}: {
+interface PaymentInputProps {
   readonly state: PaymentFormState;
   readonly field: PaymentField;
   readonly label: string;
   readonly autoComplete: string;
-}): JSX.Element {
+  readonly type?: 'text' | 'password';
+  readonly placeholder?: string;
+  /** Ayuda bajo el campo, ligada con `aria-describedby` junto al error (el formato no queda solo en el placeholder). */
+  readonly hint?: string;
+  /** Algo que se pinta dentro del campo, a la derecha (la marca de la tarjeta). */
+  readonly adornment?: React.ReactNode;
+  readonly onValueChange?: (value: string) => void;
+}
+
+/** La ayuda y el error del campo, en ese orden, para `aria-describedby` (el `Input` nombra el error `{id}-error`). */
+const describedByOf = (id: string, hasHint: boolean, hasError: boolean): string | undefined => {
+  const ids = [hasHint ? `${id}-ayuda` : null, hasError ? `${id}-error` : null].filter(Boolean);
+  return ids.length === 0 ? undefined : ids.join(' ');
+};
+
+/** `register` de react-hook-form; con `onValueChange`, además reescribe el valor (el número agrupado). */
+const registerField = (
+  state: PaymentFormState,
+  field: PaymentField,
+  onValueChange: PaymentInputProps['onValueChange'],
+) =>
+  state.form.register(
+    field,
+    onValueChange === undefined
+      ? {}
+      : {
+          onChange: (event: React.ChangeEvent<HTMLInputElement>) =>
+            onValueChange(event.target.value),
+        },
+  );
+
+function Adornment({ children }: { readonly children: React.ReactNode }): JSX.Element {
+  return (
+    <span className="pointer-events-none absolute right-3 top-0 flex h-11 items-center">
+      {children}
+    </span>
+  );
+}
+
+/** El `Input` del campo con su error, su ayuda en `aria-describedby` y, si hay, el adorno a la derecha. */
+function FieldControl({
+  state,
+  field,
+  hint,
+  adornment,
+  onValueChange,
+  ...input
+}: PaymentInputProps): JSX.Element {
   const id = `pago-${field}`;
   const message = state.form.formState.errors[field]?.message;
+  const describedBy = describedByOf(id, hint !== undefined, message !== undefined);
   return (
-    <div className="space-y-1.5">
-      <Label htmlFor={id}>{label}</Label>
+    <div className="relative">
       <Input
         id={id}
+        type={input.type ?? 'text'}
         inputMode={field === 'nit' ? 'text' : 'numeric'}
-        autoComplete={autoComplete}
+        autoComplete={input.autoComplete}
+        placeholder={input.placeholder}
         readOnly={state.submitting}
+        className={adornment === undefined ? undefined : 'pr-16'}
         {...(message === undefined ? {} : { errorMessage: message })}
-        {...state.form.register(field)}
+        {...(describedBy === undefined ? {} : { 'aria-describedby': describedBy })}
+        {...registerField(state, field, onValueChange)}
       />
+      {adornment === undefined ? null : <Adornment>{adornment}</Adornment>}
     </div>
+  );
+}
+
+function PaymentInput(props: PaymentInputProps): JSX.Element {
+  const id = `pago-${props.field}`;
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{props.label}</Label>
+      <FieldControl {...props} />
+      {props.hint === undefined ? null : (
+        <p id={`${id}-ayuda`} className="text-xs text-muted-foreground">
+          {props.hint}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Número de tarjeta como el mockup: se agrupa de 4 en 4 al escribir y muestra la marca dentro del campo. */
+function CardNumberInput({ state }: { readonly state: PaymentFormState }): JSX.Element {
+  const brand = cardBrandOf(state.form.watch('number'));
+  return (
+    <PaymentInput
+      state={state}
+      field="number"
+      label="Número de tarjeta"
+      autoComplete="cc-number"
+      onValueChange={(value) => state.form.setValue('number', groupCardNumber(value))}
+      adornment={
+        brand === null ? undefined : <Badge variant="secondary">{brand.toUpperCase()}</Badge>
+      }
+    />
   );
 }
 

@@ -26,6 +26,20 @@ const CENTURY = 2000;
 const EXPIRY_FORMAT_MESSAGE = 'Escribe el vencimiento como MM/AA.';
 const SPACES = /\s+/g;
 
+const CARD_DIGITS = 16;
+const CARD_GROUP = /(\d{4})(?=\d)/g;
+const NON_DIGITS = /\D/g;
+
+/** «4242424242» → «4242 4242 42» (mockup): solo dígitos, como máximo 16, en grupos de 4 mientras se escribe. */
+export function groupCardNumber(raw: string): string {
+  return raw.replace(NON_DIGITS, '').slice(0, CARD_DIGITS).replace(CARD_GROUP, '$1 ');
+}
+
+/** Marca visible de la tarjeta (mockup): las dos de prueba (RN-3) empiezan con 4, que es Visa; otra, ninguna. */
+export function cardBrandOf(number: string): 'Visa' | null {
+  return number.trimStart().startsWith('4') ? 'Visa' : null;
+}
+
 /** Campo del formulario de cada campo del contrato (RN-9); los que no se escriben aquí no tienen campo. */
 const FORM_FIELDS: Readonly<Record<string, PaymentField>> = {
   'card.number': 'number',

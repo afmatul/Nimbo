@@ -63,6 +63,22 @@ function apiFieldIssues(error: ApiClientError): PaymentFieldIssue[] {
   });
 }
 
+/**
+ * Rechazo (CA-4) → «rechazado»; errores de campo (`422`) → se marcan en el formulario y no hay resultado (`null`);
+ * cualquier otro → «error» con el código para soporte.
+ */
+function failureOutcome(
+  form: UseFormReturn<PaymentFormValues>,
+  caught: unknown,
+): PaymentOutcome | null {
+  const error = toApiClientError(caught);
+  if (error.code === BILLING_ERROR_CODES.BILLING_PAYMENT_REJECTED) return REJECTED;
+  const issues = apiFieldIssues(error);
+  if (issues.length === 0) return { kind: 'failed', error };
+  markFields(form, issues);
+  return null;
+}
+
 /** Estado y envío del pago simulado (spec 009 CA-3 a CA-5, §6): valida RN-9 antes de llamar y traduce cada respuesta. */
 export function usePaymentForm(deps: PaymentFormDeps): PaymentFormState {
   const [submitting, setSubmitting] = useState(false);
@@ -78,11 +94,8 @@ export function usePaymentForm(deps: PaymentFormDeps): PaymentFormState {
         payment: await subscribe(deps.apiPublicUrl, deps.authFetch, parsed.request),
       });
     } catch (caught) {
-      const error = toApiClientError(caught);
-      if (error.code === BILLING_ERROR_CODES.BILLING_PAYMENT_REJECTED) return setOutcome(REJECTED);
-      const issues = apiFieldIssues(error);
-      if (issues.length > 0) return markFields(form, issues);
-      setOutcome({ kind: 'failed', error });
+      const failure = failureOutcome(form, caught);
+      if (failure !== null) setOutcome(failure);
     }
   }
 

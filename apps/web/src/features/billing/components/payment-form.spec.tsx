@@ -57,7 +57,7 @@ describe('PaymentForm (spec 009 §6: formulario, procesando, rechazado, aprobado
   async function pay(number = '4242 4242 4242 4242', expiry = '12/30'): Promise<void> {
     const user = userEvent.setup();
     await user.type(screen.getByLabelText('Número de tarjeta'), number);
-    await user.type(screen.getByLabelText('Vencimiento (MM/AA)'), expiry);
+    await user.type(screen.getByLabelText('Vencimiento'), expiry);
     await user.type(screen.getByLabelText('CVC'), '123');
     await user.click(screen.getByRole('button', { name: 'Pagar Q110.00' }));
   }
@@ -72,6 +72,36 @@ describe('PaymentForm (spec 009 §6: formulario, procesando, rechazado, aprobado
     expect(screen.getAllByText('Q110.00').length).toBeGreaterThan(0);
     expect((screen.getByLabelText('NIT para la factura') as HTMLInputElement).value).toBe('CF');
     expect(seriousViolations(await axe(container))).toEqual([]);
+  });
+
+  it('mockup: agrupa el número, muestra VISA, oculta el CVC, explica el vencimiento y dice «mensual»', async () => {
+    const { container } = renderForm();
+    const user = userEvent.setup();
+    const number = screen.getByLabelText('Número de tarjeta') as HTMLInputElement;
+    const expiry = screen.getByLabelText('Vencimiento');
+
+    await user.type(number, '4242424242424242');
+
+    expect(number.value).toBe('4242 4242 4242 4242');
+    expect(screen.getByText('VISA')).toBeTruthy();
+    expect((screen.getByLabelText('CVC') as HTMLInputElement).type).toBe('password');
+    expect(expiry.getAttribute('placeholder')).toBe('MM/AA');
+    expect(screen.getByText('Mes y año, como 12/28.').id).toBe(
+      expiry.getAttribute('aria-describedby'),
+    );
+    expect(screen.getByText('mensual')).toBeTruthy();
+    expect(seriousViolations(await axe(container))).toEqual([]);
+  });
+
+  it('mockup: sin número no hay marca; un vencimiento inválido conserva la ayuda y suma el error', async () => {
+    renderForm();
+
+    expect(screen.queryByText('VISA')).toBeNull();
+    await pay('4242 4242 4242 4242', '13/2');
+
+    const expiry = screen.getByLabelText('Vencimiento');
+    expect(expiry.getAttribute('aria-describedby')).toBe('pago-expiry-ayuda pago-expiry-error');
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('formulario: un dato inválido se marca en su campo y no llama a la API', async () => {
