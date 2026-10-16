@@ -76,7 +76,10 @@ export class InternalAccountEnrollment {
     @Inject(PinoLogger) private readonly logger: IdentityLogger,
   ) {}
 
-  /** CA-5, CA-6: Administrador, Soporte u Operador; nunca `CLIENT` (RN-5). */
+  /**
+   * CA-5, CA-6: Administrador, Soporte u Operador; nunca `CLIENT` (RN-5). El hash (Argon2) se calcula dentro de la
+   * transacción del llamador: las altas son raras y tardan décimas de segundo, y sacarlo agrandaría la API (YAGNI).
+   */
   async enroll(_actor: Actor, command: EnrollInternalCommand): Promise<Enrollment> {
     if (command.role === Role.CLIENT) {
       throw new IdentityInvalidInputError([issue('role', 'INVALID_ROLE')]);
