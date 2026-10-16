@@ -15,7 +15,14 @@ const OUT = path.join(repo, 'docs/design/mockups/storage/carga');
 fs.mkdirSync(OUT, { recursive: true });
 
 // Íconos (los del panel más los de la lista) y piezas del panel de cargas: carga/panel.js
-const { icon, btnIcon, panel } = U;
+const { btnIcon, panel } = U;
+// Ícono de advertencia del aviso de poda (014); el resto, los del panel
+const icon = S.crearIcon({ ...U.P, warn: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>' });
+
+// Plan Personal (014: estado con aviso de poda; conserva 3 versiones). Cuota de ejemplo de espacio/espacio.js.
+const CUOTA_PERSONAL = { usado: '4.8 GB', total: '15 GB', pct: 32 };
+const sidebarPersonal = () => M.sidebar({ activo: 'Mis archivos', plan: 'PERSONAL', cuota: CUOTA_PERSONAL, carpetas: [], contadorPapelera: '' })
+  .replace(M.cuota(CUOTA_PERSONAL), S.cuota(CUOTA_PERSONAL, 'ok'));
 
 // Datos de ejemplo, tipos de archivo, cuota por tramos y tabla de la raíz: mis-archivos/mis-archivos.js
 const { CUOTA_NORMAL, CUOTA_LLENA, sidebar, tabla } = S;
@@ -33,6 +40,13 @@ const CSS = '\n' + M.CSS.MARCO + M.CSS.BOTONES + M.CSS.DIALOGO + M.CSS.MQ_900 +
   .dialog-check label { display: inline-flex; align-items: center; min-height: 24px; font-size: 14px; font-weight: 600; color: var(--foreground); cursor: pointer; }
   .dialog-check p { margin: 0 !important; font-size: 13px !important; color: var(--secondary-foreground) !important; }
   .dialog .dialog-check + .dialog-actions { margin-top: 18px; }
+  /* Spec 014: tres acciones y aviso de poda (Alert warning de ui-guidelines §4) */
+  .dialog.dialog-conflict { width: min(540px, calc(100% - 32px)); }
+  .dialog-options { list-style: none; margin: 12px 0 0; display: grid; gap: 4px; }
+  .dlg-warn { display: flex; gap: 10px; align-items: flex-start; margin-top: 12px; padding: 10px 12px; border: 1px solid var(--warning); border-radius: var(--radius-md); background: color-mix(in srgb, var(--warning) 10%, var(--card)); }
+  .dlg-warn .ico { margin-top: 1px; color: var(--warning-foreground); }
+  .dlg-warn p { margin: 0 !important; font-size: 13.5px !important; color: var(--foreground) !important; }
+  .dlg-warn strong { display: block; color: var(--warning-foreground); font-weight: 600; }
 
   @media (max-width: 900px) {
 ` + U.CSS_PANEL_MQ900 + `  }
@@ -66,14 +80,23 @@ function dialogo(d) {
     </div>
   </div>`;
   }
+  // Spec 014 (D-4, CA-1, CA-15): tercera acción «Reemplazar (nueva versión)». El foco inicial sigue en «Conservar
+  // ambos» (decisión 4 de 005). Si el archivo existente ya tiene las versiones que conserva el plan, avisa cuál se
+  // eliminará al reemplazar (warning, role="status").
+  const poda = d.poda ? `
+    <div id="dlg-p" class="dlg-warn" role="status">${icon('warn', 18)}<p><strong>Si reemplazas, se eliminará la versión ${d.poda.version}.</strong>Tu plan conserva ${d.poda.retenidas} versiones. Al reemplazar se eliminará la versión ${d.poda.version}, la más antigua.</p></div>` : '';
   return `
   <div class="overlay" aria-hidden="true"></div>
-  <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dlg-t" aria-describedby="dlg-d dlg-n">
-    <h2 id="dlg-t">¿Conservar ambos archivos?</h2>
-    <p id="dlg-d">Ya tienes un archivo llamado «${d.nombre}». ¿Quieres conservar ambos o cancelar?</p>
-    <p id="dlg-n" class="dialog-note">Si conservas ambos, el nuevo se guardará como <strong>«${d.nuevo}»</strong>.</p>${casilla}
+  <div class="dialog dialog-conflict" role="alertdialog" aria-modal="true" aria-labelledby="dlg-t" aria-describedby="dlg-d dlg-n${d.poda ? ' dlg-p' : ''}">
+    <h2 id="dlg-t">Ya tienes un archivo con este nombre</h2>
+    <p id="dlg-d">Ya tienes un archivo llamado «${d.nombre}». ¿Quieres reemplazarlo o conservar ambos?</p>
+    <ul id="dlg-n" class="dialog-note dialog-options">
+      <li><strong>Reemplazar:</strong> el archivo conserva su nombre y la versión actual queda en su historial.</li>
+      <li><strong>Conservar ambos:</strong> el nuevo se guardará como <strong>«${d.nuevo}»</strong>.</li>
+    </ul>${poda}${casilla}
     <div class="dialog-actions">
       <button class="btn btn-outline" type="button">Cancelar</button>
+      <button class="btn btn-outline" type="button">Reemplazar (nueva versión)</button>
       <button class="btn btn-primary" type="button" autofocus>Conservar ambos</button>
     </div>
   </div>`;
@@ -94,11 +117,11 @@ function page(v) {
   })}
 <body>
 
-<aside class="sheet-label" aria-label="Rótulo del mockup"><span class="chip">005</span> <strong>Carga de archivos</strong> <span class="file">${file}</span> <span>panel de carga sobre Mis archivos · plan Equipo · estado: ${v.titulo}</span></aside>
+<aside class="sheet-label" aria-label="Rótulo del mockup"><span class="chip">${v.personal ? '014' : '005'}</span> <strong>Carga de archivos</strong> <span class="file">${file}</span> <span>panel de carga sobre Mis archivos · plan ${v.personal ? 'Personal' : 'Equipo'} · estado: ${v.titulo}</span></aside>
 
 <div class="canvas">
   <div class="app"${v.dialogo ? ' inert' : ''}>
-    ${sidebar(q, tramo)}
+    ${v.personal ? sidebarPersonal() : sidebar(q, tramo)}
     <div class="main">
       ${M.topbar({ crumbs: ['Mis archivos'] })}
       <main class="content" id="contenido">${S.encabezado()}${tabla(v.nuevos || [])}${panel(v.panel)}
@@ -210,13 +233,27 @@ const ESTADOS = [
   },
   {
     estado: 'nombre-repetido',
-    titulo: 'ya existe un archivo con ese nombre en la raíz: conservar ambos o cancelar (CA-6)',
+    titulo: 'ya existe un archivo con ese nombre en la raíz: reemplazar (014), conservar ambos o cancelar (CA-6)',
     dialogo: { nombre: 'Propuesta_Nimbo_v3.docx', nuevo: 'Propuesta_Nimbo_v3 (1).docx' },
     panel: {
       titulo: 'Subiendo 1 archivo', sub: 'esperando tu respuesta', activas: true,
       anuncio: 'Ya tienes un archivo llamado Propuesta_Nimbo_v3.docx.',
       items: [
         { nombre: 'Propuesta_Nimbo_v3.docx', meta: '2.4 MB', st: 'nombre repetido', stCls: 'st-warn',
+          acciones: cancelar('Propuesta_Nimbo_v3.docx') },
+      ],
+    },
+  },
+  {
+    estado: 'nombre-repetido-poda',
+    titulo: 'nombre repetido con el archivo existente en el límite de versiones del plan: «Reemplazar» avisa qué versión se eliminará (014 CA-15)',
+    personal: true,
+    dialogo: { nombre: 'Propuesta_Nimbo_v3.docx', nuevo: 'Propuesta_Nimbo_v3 (1).docx', poda: { version: 3, retenidas: 3 } },
+    panel: {
+      titulo: 'Subiendo 1 archivo', sub: 'esperando tu respuesta', activas: true,
+      anuncio: 'Ya tienes un archivo llamado Propuesta_Nimbo_v3.docx.',
+      items: [
+        { nombre: 'Propuesta_Nimbo_v3.docx', meta: '2.7 MB', st: 'nombre repetido', stCls: 'st-warn',
           acciones: cancelar('Propuesta_Nimbo_v3.docx') },
       ],
     },

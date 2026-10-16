@@ -294,6 +294,13 @@
   .dialog-check label { display: inline-flex; align-items: center; min-height: 24px; font-size: 14px; font-weight: 600; color: var(--foreground); cursor: pointer; }
   .dialog-check p { margin: 0 !important; font-size: 13px !important; color: var(--secondary-foreground) !important; }
   .dialog .dialog-check + .dialog-actions { margin-top: 18px; }
+  /* Spec 014: tres acciones y aviso de poda (Alert warning de ui-guidelines §4) */
+  .dialog.dialog-conflict { width: min(540px, calc(100% - 32px)); }
+  .dialog-options { list-style: none; margin: 12px 0 0; display: grid; gap: 4px; }
+  .dlg-warn { display: flex; gap: 10px; align-items: flex-start; margin-top: 12px; padding: 10px 12px; border: 1px solid var(--warning); border-radius: var(--radius-md); background: color-mix(in srgb, var(--warning) 10%, var(--card)); }
+  .dlg-warn .ico { margin-top: 1px; color: var(--warning-foreground); }
+  .dlg-warn p { margin: 0 !important; font-size: 13.5px !important; color: var(--foreground) !important; }
+  .dlg-warn strong { display: block; color: var(--warning-foreground); font-weight: 600; }
 
   @media (max-width: 900px) {
     .up { right: 16px; bottom: 16px; }
@@ -451,10 +458,13 @@
     </div>
   </div>
   <div class="overlay" aria-hidden="true"></div>
-  <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dlg-t" aria-describedby="dlg-d dlg-n">
-    <h2 id="dlg-t">¿Conservar ambos archivos?</h2>
-    <p id="dlg-d">Ya tienes un archivo llamado «Matriz_Requisitos_RF.xlsx». ¿Quieres conservar ambos o cancelar?</p>
-    <p id="dlg-n" class="dialog-note">Si conservas ambos, el nuevo se guardará como <strong>«Matriz_Requisitos_RF (1).xlsx»</strong>.</p>
+  <div class="dialog dialog-conflict" role="alertdialog" aria-modal="true" aria-labelledby="dlg-t" aria-describedby="dlg-d dlg-n">
+    <h2 id="dlg-t">Ya tienes un archivo con este nombre</h2>
+    <p id="dlg-d">Ya tienes un archivo llamado «Matriz_Requisitos_RF.xlsx». ¿Quieres reemplazarlo o conservar ambos?</p>
+    <ul id="dlg-n" class="dialog-note dialog-options">
+      <li><strong>Reemplazar:</strong> el archivo conserva su nombre y la versión actual queda en su historial.</li>
+      <li><strong>Conservar ambos:</strong> el nuevo se guardará como <strong>«Matriz_Requisitos_RF (1).xlsx»</strong>.</li>
+    </ul>
     <div class="dialog-check">
       <input type="checkbox" id="dlg-todos" aria-describedby="dlg-todos-d">
       <div>
@@ -464,6 +474,7 @@
     </div>
     <div class="dialog-actions">
       <button class="btn btn-outline" type="button">Cancelar</button>
+      <button class="btn btn-outline" type="button">Reemplazar (nueva versión)</button>
       <button class="btn btn-primary" type="button" autofocus>Conservar ambos</button>
     </div>
   </div>

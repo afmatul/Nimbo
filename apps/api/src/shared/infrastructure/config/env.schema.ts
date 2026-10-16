@@ -37,6 +37,8 @@ const MAX_UPLOAD_URL_TTL_SECONDS = 86_400;
 const DEFAULT_UPLOAD_URL_TTL_SECONDS = 3600;
 const DEFAULT_RATE_LIMIT_UPLOAD_INIT_PER_MINUTE = 300;
 const DEFAULT_RATE_LIMIT_DOWNLOAD_URL_PER_MINUTE = 120;
+/** Restaurar copia hasta el máximo por archivo en el servidor (014 plan §5): tasa propia, más baja que la descarga. */
+const DEFAULT_RATE_LIMIT_VERSION_RESTORE_PER_MINUTE = 30;
 const DEFAULT_UPLOAD_CLEANUP_INTERVAL_MINUTES = 10;
 const DEFAULT_UPLOAD_CLEANUP_BATCH_SIZE = 100;
 /** Tope de filas que devuelve `carga_expiradas` (005 plan §4): un lote mayor no tendría efecto. */
@@ -153,7 +155,7 @@ const minioShape = {
   MINIO_REGION: nonEmpty().default(DEFAULT_MINIO_REGION),
 };
 
-/** Carga y descarga de archivos en el `api` (005 plan §5, RN-2, RN-16). */
+/** Carga y descarga de archivos en el `api` (005 plan §5, RN-2, RN-16) y restauración de versiones (014 plan §5). */
 const uploadApiShape = {
   /** Host contra el que se firman las URLs; distinto de `MINIO_ENDPOINT` (interno) y nunca un prefijo de ruta. */
   MINIO_PUBLIC_ENDPOINT: url().default(DEFAULT_MINIO_PUBLIC_ENDPOINT),
@@ -171,6 +173,7 @@ const uploadApiShape = {
   ),
   RATE_LIMIT_UPLOAD_INIT_PER_MINUTE: positiveInt(DEFAULT_RATE_LIMIT_UPLOAD_INIT_PER_MINUTE),
   RATE_LIMIT_DOWNLOAD_URL_PER_MINUTE: positiveInt(DEFAULT_RATE_LIMIT_DOWNLOAD_URL_PER_MINUTE),
+  RATE_LIMIT_VERSION_RESTORE_PER_MINUTE: positiveInt(DEFAULT_RATE_LIMIT_VERSION_RESTORE_PER_MINUTE),
 };
 
 /** Barrido de cargas vencidas en el `worker` (005 plan §5). */

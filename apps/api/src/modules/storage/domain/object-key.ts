@@ -26,6 +26,15 @@ export class ObjectKey {
     return new ObjectKey([PREFIX, ...segments].join(SEPARATOR));
   }
 
+  /** La clave tal como se guardó en `version_archivo.clave_objeto` (014): debe tener la forma de `of`. */
+  static parse(value: string): ObjectKey {
+    const [prefix, owner, file, version, ...rest] = value.split(SEPARATOR);
+    if (prefix !== PREFIX || version === undefined || rest.length > 0) {
+      throw new Error('Clave de objeto guardada con una forma inválida.');
+    }
+    return ObjectKey.of(owner ?? '', file ?? '', version);
+  }
+
   equals(other: ObjectKey): boolean {
     return this.value === other.value;
   }

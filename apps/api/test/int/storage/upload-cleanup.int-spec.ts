@@ -47,6 +47,7 @@ const TEST_LIMITS = {
   maxFileBytes: BigInt(64 * MIB),
   storageQuotaBytes: BigInt(256 * MIB),
   trashRetentionDays: 30,
+  retainedVersions: 3,
   planName: 'Plan de prueba',
 };
 /** Un `.pdf` mínimo que el detector acepta: la firma `%PDF-` y relleno. */

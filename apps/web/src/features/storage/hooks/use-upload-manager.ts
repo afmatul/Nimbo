@@ -37,10 +37,14 @@ export function useUploads(): UploadsContextValue {
   return value;
 }
 
+/** Los archivos subidos, el más reciente primero; un reemplazo (014) repite el `id` y cuenta una sola vez. */
 function uploadedFilesOf(rows: readonly UploadView[]): readonly FileSummary[] {
-  return rows
+  const newestFirst = rows
     .flatMap((row) => (row.phase === 'done' && row.file !== null ? [row.file] : []))
     .reverse();
+  return newestFirst.filter(
+    (file, index) => newestFirst.findIndex((other) => other.id === file.id) === index,
+  );
 }
 
 /** Los eventos `online`/`offline` del navegador reanudan o ponen en espera las cargas (CA-8). */

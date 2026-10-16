@@ -27,14 +27,23 @@ export class FileTooLargeError extends InvalidInputError {
   }
 }
 
-/** Lo usado más lo reservado más lo declarado supera la cuota (CA-4, CA-23). HTTP 422 con `missingBytes`. */
+/** Para qué se pide espacio: subir un archivo (005) o restaurar una versión (014 CA-12). */
+export type QuotaPurpose = 'upload' | 'restore';
+
+const QUOTA_PURPOSE_TEXT: Readonly<Record<QuotaPurpose, string>> = {
+  upload: 'subir este archivo',
+  restore: 'restaurar esta versión',
+};
+
+/** Lo usado más lo reservado más lo pedido supera la cuota (CA-4, CA-23; 014 CA-12). HTTP 422 con `missingBytes`. */
 export class QuotaExceededError extends InvalidInputError {
   readonly code = 'STORAGE_QUOTA_EXCEEDED';
 
-  constructor(missingBytes: bigint, format: BytesFormatter) {
+  constructor(missingBytes: bigint, format: BytesFormatter, purpose: QuotaPurpose = 'upload') {
     const missing = Number(missingBytes);
     super(
-      `Te faltan ${format(missing)} de espacio para subir este archivo. Libera espacio o cambia de plan.`,
+      `Te faltan ${format(missing)} de espacio para ${QUOTA_PURPOSE_TEXT[purpose]}. ` +
+        'Libera espacio o cambia de plan.',
       undefined,
       { missingBytes: missing },
     );

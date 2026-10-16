@@ -3,7 +3,7 @@ import type { Actor } from '../../../shared';
 /**
  * Límites de almacenamiento del plan del actor (DF-51, opción A): bytes y, desde 006, la retención en papelera
  * (plan 006 §7, decisión 1: es un límite de almacenamiento que consume `storage` mismo) y, desde 007, el nombre
- * visible del plan que el adaptador ya lee en la misma fila (D-20). Si otro módulo necesita
+ * visible del plan que el adaptador ya lee en la misma fila (D-20) y, desde 014, las versiones retenidas por archivo (mismo precedente). Si otro módulo necesita
  * otros límites, los pide por un puerto de `billing` en lugar de ensanchar este tipo (ISP).
  */
 export interface PlanLimits {
@@ -13,6 +13,8 @@ export interface PlanLimits {
   readonly storageQuotaBytes: bigint;
   /** Días que un elemento eliminado espera en la papelera antes de la purga (RN-1, CA-19). */
   readonly trashRetentionDays: number;
+  /** Versiones que se conservan por archivo, contando la actual (014 RN-4, CA-13). */
+  readonly retainedVersions: number;
 }
 
 /**

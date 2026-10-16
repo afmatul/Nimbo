@@ -82,7 +82,8 @@ describe('migración crear-archivo-y-version-archivo (CA-1, CA-6)', () => {
       await columnsOf(runner, 'version_archivo'),
     ]);
 
-    // 006 agrega `carpeta_id`, `purgar_en` y `eliminado_con_carpeta_id` (folders-migrations.int-spec.ts).
+    // 006 agrega `carpeta_id`, `purgar_en` y `eliminado_con_carpeta_id` (folders-migrations.int-spec.ts); 014,
+    // `numero` y `restaurada_de_numero` (versions-migrations.int-spec.ts).
     expect(Object.keys(file).sort()).toEqual([
       'actualizado_en',
       'carpeta_id',
@@ -103,7 +104,9 @@ describe('migración crear-archivo-y-version-archivo (CA-1, CA-6)', () => {
       'creada_en',
       'creado_por',
       'id',
+      'numero',
       'origen',
+      'restaurada_de_numero',
       'tamano_bytes',
     ]);
     expect(file['tamano_bytes']?.type).toBe('bigint');
@@ -216,7 +219,7 @@ describe('migración crear-carga (CA-2, CA-9, CA-23)', () => {
   it('CA-2: `carga` tiene las columnas del plan y los bytes en `bigint`', async () => {
     const columns = await inRolledBackTransaction(owner, (runner) => columnsOf(runner, 'carga'));
 
-    // 006 agrega `carpeta_destino_id` (folders-migrations.int-spec.ts).
+    // 006 agrega `carpeta_destino_id` (folders-migrations.int-spec.ts); 014, `reemplaza` (versions-migrations.int-spec.ts).
     expect(Object.keys(columns).sort()).toEqual([
       'actualizada_en',
       'archivo_id',
@@ -233,6 +236,7 @@ describe('migración crear-carga (CA-2, CA-9, CA-23)', () => {
       'nombre',
       'partes_totales',
       'propietario_id',
+      'reemplaza',
       'tamano_bytes',
       'tamano_parte_bytes',
       'upload_id',

@@ -10,6 +10,7 @@ import {
   InvalidUploadRequestError,
   NodeNotFoundError,
   UploadNotFoundError,
+  VersionNotFoundError,
 } from '../domain/errors';
 import type { StorageNode } from '../domain/storage-node';
 
@@ -38,6 +39,10 @@ export const uploadIdPipe = (): ParseUUIDPipe =>
 /** `:fileId` o `:folderId` que no es UUID: el mismo 404 que un nodo inexistente o ajeno (CA-16, 006 CA-5). */
 export const nodeIdPipe = (): ParseUUIDPipe =>
   new ParseUUIDPipe({ exceptionFactory: () => new NodeNotFoundError() });
+
+/** `:versionId` que no es UUID: el mismo 404 que una versión inexistente, podada o de otro archivo (014 CA-11). */
+export const versionIdPipe = (): ParseUUIDPipe =>
+  new ParseUUIDPipe({ exceptionFactory: () => new VersionNotFoundError() });
 
 const NODE_TYPE_BY_PATH: Readonly<Record<QuickAccessNodePath, StorageNode['type']>> = {
   files: 'file',

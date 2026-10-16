@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Propuesto (2026-09-28); falta el acuerdo del equipo. Alineado con el E-R vigente; cierra DF-17 y DF-18 al aceptarse |
+| Estado | Aceptado (2026-10-10, Adrián) con la spec 014 (propuesto el 2026-09-28). Alineado con el E-R vigente; cierra DF-17 y la parte de DF-18 que toca a 014 (el resto, `sesion_edicion_id` y autores, llega con 016) |
 | Fecha | 2026-09-28 |
 | Decisores | Adrián (architect), equipo Nimbo. El usuario decidió el 2026-09-28 seguir el E-R vigente |
 | Specs relacionadas | 005 (`origen = carga`), 014 (restaurar y podar), 016 (`origen = edicion`), 021 (`origen = optimizacion`); DF-05, DF-17, DF-18, DF-21 |

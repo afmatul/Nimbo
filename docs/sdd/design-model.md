@@ -84,12 +84,14 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
   - con 006 (DF-61): `FoldersController` (`GET /folders/contents`, crear, renombrar, mover; reemplaza `FilesController.list`) y `TrashController` (eliminar a la papelera, listar, resumen, restaurar, eliminar definitivamente, vaciar);
   - con 006 §9 (DF-63): `QuickAccessController` (`GET /quick-access`, `PUT`/`DELETE /quick-access/pins/:nodeType/:nodeId`, `POST /quick-access/recents/:nodeType/:nodeId`; `:nodeType` ∈ `files|folders`; `@Roles(Role.CLIENT)`).
   - con 007 (DF-62): `SpaceController` (`GET /storage/summary`, `@Roles(Role.CLIENT)`).
-  - Faltan versiones, búsqueda y vista previa → DF-15.
+  - con 014 (DF-68): `FileVersionsController` (`GET /files/:fileId/versions`, `POST …/versions/:versionId/restore` y `…/download-url`, `@Roles(Role.CLIENT)`).
+  - Faltan búsqueda y vista previa → DF-15.
 - Servicios (todos con `actor: Actor` primero):
   - `FileService` (`getDownloadUrl`, renombrar, mover), `UploadService` (`init`, `resume`, `complete`, `cancel`, `expire`), `QuotaService` (`assertCanUpload`);
   - con 006 (DF-61): `FolderService` (`create`, `rename`, `move`, `contents`), `TrashService` (eliminar, listar, restaurar, purgar, vaciar; el `trash` del diagrama sale de `FileService` por SRP) y `TrashPurger` (borrado definitivo de objetos, filas y `espacio_usado` en una transacción con `lockUsage` primero);
   - con 006 §9 (DF-63): `QuickAccessService` (`list`, `pin`, `unpin`, `recordOpen`; solo `pin` toma `IQuotaRepository.lockUsage` y comprueba el tope). Configuración `QUICK_ACCESS_CONFIG` = `{ maxPinned, recentVisible }` desde `QUICK_ACCESS_MAX_PINNED` (5) y `QUICK_ACCESS_RECENT_VISIBLE` (3, decisión de Adrián del 2026-10-03) y la constante `RECENTS_STORED = 25` (colchón de poda, no configuración).
   - con 007 (DF-62): `SpaceSummaryService` (`summary`), `SpaceMeasurer` (`measure`, compartido por el resumen y la conciliación) y `UsageReconciler` (`reconcile`).
+  - con 014 (DF-68; `storage` es el dueño del ciclo de vida de versiones, DF-17, ADR-0012): `FileVersionService` (`register` en la transacción del llamador bajo `lockUsage`, con `buildVersion(number)` que decide el origen; `afterCommit` dispara la poda), `VersionPruner` (`prune`: una versión por transacción, nunca lanza), `VersionHistoryService` (`list`) y `VersionRestoreService` (`restore`). Se registran en `UPLOAD_LIFECYCLE_PROVIDERS` (api y worker).
   - Trabajos (worker): `UploadCleanupProcessor` y `UploadCleanupScheduler` (cola `upload-cleanup`); con 006, `TrashPurgeScheduler` y `TrashPurgeProcessor` (cola `trash-purge`, repetible con `upsertJobScheduler`, `concurrency: 1`).
   - con 007 (DF-62): `UsageReconcileProcessor` y `UsageReconcileScheduler` (cola `usage-reconcile`).
 - Puertos → implementaciones:
@@ -100,6 +102,7 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
   - repositorios de 006 (internos, DF-61): `ITrashRepository` (incluye `schedulePurgeOfAll`), `IExpiredTrashScanner` (único acceso sin actor de la purga, función `papelera_vencida`) e `ITrashPurgeQueue` → `TrashPurgeQueue`;
   - repositorio de 006 §9 (interno, DF-63): `IQuickAccessRepository` → `TypeOrmQuickAccessRepository` (`list`, `countPinned`, `findAccessibleNode`, `upsertPin`, `removePin`, `touchRecent`, `pruneRecents`). Toda lectura y escritura une `accessibleNodes(actor)` dentro de la consulta. No hay puerto entre módulos.
   - con 007 (internos, DF-62): `ISpaceRepository` → `TypeOrmSpaceRepository` (bytes vivos propios por tipo), `IClientAccountScanner` → `SqlClientAccountScanner` (solo ids de cuentas de cliente; único acceso sin actor de la conciliación) e `IQuotaRepository.readUsage` (sin bloqueo).
+  - con 014 (interno, DF-68): `IVersionRepository` → `TypeOrmVersionRepository` (`list` por `numero DESC`, `nextNumber` = `MAX + 1`, `insert`, `delete`; `find` con la lectura y la restauración; todo con `requireActorScope`); `INodeRepository.updateCurrentVersion` y `findLiveFileByName`; `IObjectStorage.copyObject`; `PlanLimits.retainedVersions`.
 - Puertos que consume: `IAuditLogger` (lo declara T2 `audit`); `IRateLimiter` (T1 `shared`).
 - Dominio:
   - `StorageNode` ← `Folder`, `File` (**Composite**). Con 006 es una unión `File | Folder` y no una clase abstracta: no hay comportamiento común que heredar (DF-61);
@@ -108,6 +111,7 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
   - con 006: `FolderName` (VO), `FolderPath` y `TrashState`;
   - con 006 §9: `QuickAccessItem` (modelo de lectura: `type`, `id`, `name`, `kind?`), `QuickAccessList` (`pinned`, `recent`, `hasMoreRecent`) y `QuickAccessLimitError` (422, `STORAGE_QUICK_ACCESS_LIMIT`, `details.maxPinned`).
   - con 007: `FileCategory`, `SpaceBreakdown`, `NodeOrder` y `QuotaPolicy.available`.
+  - con 014: `FileVersion` con `number` y `restoredFromNumber` y las fábricas `fromUpload`, `fromRestoration` y `forOrigin`; `VersionRetention` (puro), `VersionHistory`/`VersionEntry` (lectura), `File.withCurrentVersion`, `ObjectKey.parse`, `VersionNotFoundError` y `VersionAlreadyCurrentError`.
 - Tablas: `carpeta`, `archivo`, `version_archivo`, `carga` y, con 006 §9, `acceso_rapido`. Con 005: `archivo`, `version_archivo` y `carga` con RLS (`ENABLE` + `FORCE`); función de mantenimiento `carga_expiradas` (ADR-0021). Con 006: RLS en `carpeta` y función `papelera_vencida`. Con 006 §9: RLS de cliente en `acceso_rapido`, sin política para roles internos ni de mantenimiento. `storage` además escribe la columna `usuario.espacio_usado` (excepción DF-59). Desde 007, `storage` lee `usuario.id` y `rol` para listar cuentas en la conciliación (extensión de DF-59, DF-62).
 
 ### M3a `access`
@@ -136,9 +140,9 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
 
 ### M5 `editing`
 - Controlador: `EditorController` (open, callback, versions, restore).
-- Servicios: `EditSessionService`, `SaveCallbackHandler`, `VersionHistoryService`. Sin gateway propio: el diagrama tiene `PresenceGateway`, pero la presencia se publica por el gateway único de T3 `realtime`, y `editing` autoriza la unión a la sala del documento consultando `access` (DF-30, ADR-0010).
-- Puertos → implementaciones: `IDocumentEditor` → `OnlyOfficeEditor`; `IIdempotencyStore` → `RedisIdempotencyStore`; `ISessionRepository` (renombrar, DF-19); `IVersionRepository`; `IIndexQueue` → `intelligence`.
-- Dominio: `EditSession` (composición 1..* `Participant`); `DocumentVersion` (hoy hereda de `FileVersion`, ver DF-18).
+- Servicios: `EditSessionService`, `SaveCallbackHandler`. El `VersionHistoryService` del diagrama vive en M2 desde 014 (DF-17, DF-68); 016 registra sus versiones con `FileVersionService` y solo aporta la autoría. Sin gateway propio: el diagrama tiene `PresenceGateway`, pero la presencia se publica por el gateway único de T3 `realtime`, y `editing` autoriza la unión a la sala del documento consultando `access` (DF-30, ADR-0010).
+- Puertos → implementaciones: `IDocumentEditor` → `OnlyOfficeEditor`; `IIdempotencyStore` → `RedisIdempotencyStore`; `ISessionRepository` (renombrar, DF-19); `IIndexQueue` → `intelligence`. `IVersionRepository` vive en M2 desde 014 (DF-68).
+- Dominio: `EditSession` (composición 1..* `Participant`); `DocumentVersion` (en el diagrama hereda de `FileVersion`; se reemplaza por composición con `origen = 'edicion'`, DF-18, ADR-0012).
 - Tablas: `sesion_edicion`, `participacion` (N:M `participa`).
 
 ### M6 `intelligence`
@@ -227,8 +231,8 @@ El mapeo vive solo en las entidades TypeORM (`@Entity('archivo')`, `@Column({ na
 | `File` | `archivo` | Con 005: solo `id`, `propietario_id`, `nombre`, `tipo`, `tamano_bytes`, `version_actual_id`, fechas y `eliminado_en`; RLS; sin `estado_indexacion` (019) ni `tipo_mime` (ningún consumidor de 005 lo lee; 017 lo agrega si lo necesita; DF-60). Con 006: `carpeta_id`, `purgar_en`, `eliminado_con_carpeta_id` (DF-61). DF-33 parcial |
 | `TrashState` | columnas de `archivo` y `carpeta` | `eliminado_en`, `purgar_en`, `eliminado_con_carpeta_id`; sin tabla propia. La purga lee por la función `papelera_vencida` (ADR-0021, DF-61) |
 | `QuickAccessItem` / `QuickAccessList` | `acceso_rapido` | Con 006 §9 (DF-63). `usuario_id` (FK a `usuario`: la cuenta que fija, no el dueño del nodo); `archivo_id` y `carpeta_id` (FK con `ON DELETE CASCADE` y `CHECK` de exactamente uno, ADR-0011); `fijado_en` y `abierto_en` (`timestamptz`, `CHECK` de al menos uno; fijado ⇔ `fijado_en IS NOT NULL`, sin columna `fijado`); `creado_en`, `actualizado_en`. Únicas `(archivo_id, usuario_id)` y `(carpeta_id, usuario_id)`; índices parciales `(usuario_id, fijado_en DESC, id DESC)` para fijados y `(usuario_id, abierto_en DESC, id DESC)` para recientes. RLS de cliente (`usuario_id` = actor), `ENABLE` + `FORCE`, sin política para roles internos. Los items son modelos de lectura que unen la fila con `archivo`/`carpeta` vía `accessibleNodes` |
-| `FileVersion` / `DocumentVersion` | `version_archivo` | `origen` = carga / edicion / restauracion / optimizacion (ADR-0012). Con 005: `clave_objeto` única (`u/{propietario}/{archivo}/{version}`), `creado_por`; sin `checksum` ni `sesion_edicion_id`; RLS, sin política para roles internos |
-| `UploadSession` | `carga` | Reserva de cuota mientras está `activa`; `upload_id` y `clave_objeto` nunca salen de la API; RLS solo para el propietario; `archivo_id`/`version_id` reservados sin FK; con 006, `carpeta_destino_id` sin FK (DF-61). DF-33 parcial, ADR-0021 |
+| `FileVersion` / `DocumentVersion` | `version_archivo` | `origen` = carga / edicion / restauracion / optimizacion (ADR-0012). Con 005: `clave_objeto` única (`u/{propietario}/{archivo}/{version}`), `creado_por`; sin `checksum` ni `sesion_edicion_id`; RLS, sin política para roles internos. Con 014 (DF-68): `numero` (consecutivo por archivo, `UNIQUE (archivo_id, numero)` y `CHECK > 0`; la actual es la de mayor número y no se reutiliza tras una poda) y `restaurada_de_numero` (sin FK, entre 1 y `numero - 1`) |
+| `UploadSession` | `carga` | Reserva de cuota mientras está `activa`; `upload_id` y `clave_objeto` nunca salen de la API; RLS solo para el propietario; `archivo_id`/`version_id` reservados sin FK; con 006, `carpeta_destino_id` sin FK (DF-61); con 014, `reemplaza` (la carga crea una versión nueva de un archivo existente, DF-68). DF-33 parcial, ADR-0021 |
 | (uso de espacio) | `usuario.espacio_usado` | Atributo almacenado (`bigint`, `CHECK >= 0`, DF-38); `storage` lo escribe por excepción (DF-59) |
 | `UserShare` | `comparticion` | |
 | `PublicLink` | `enlace_publico` | |

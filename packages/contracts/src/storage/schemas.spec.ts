@@ -92,9 +92,15 @@ describe('initUploadSchema', () => {
     for (const issue of issues) expect(issue.message).toMatch(/\.$/);
   });
 
-  it('CA-6: rechaza un `onConflict` fuera de `ask` | `keep_both` (no existe «Reemplazar»)', () => {
+  it('014 CA-1: acepta `onConflict: replace` (subir como versión nueva del archivo con ese nombre)', () => {
+    const parsed = initUploadSchema.parse({ name: 'a.txt', sizeBytes: 1, onConflict: 'replace' });
+
+    expect(parsed.onConflict).toBe('replace');
+  });
+
+  it('CA-6: rechaza un `onConflict` fuera de `ask` | `keep_both` | `replace`', () => {
     expect(
-      initUploadSchema.safeParse({ name: 'a.txt', sizeBytes: 1, onConflict: 'replace' }).success,
+      initUploadSchema.safeParse({ name: 'a.txt', sizeBytes: 1, onConflict: 'overwrite' }).success,
     ).toBe(false);
   });
 });

@@ -5,11 +5,20 @@ const RULES: AttributeRules = {
   itemCount: 'number',
   mode: 'text',
   nodeType: ['file', 'folder'],
+  replaced: 'boolean',
+  versionId: 'uuid',
 };
+const VERSION_ID = '7c9e6679-7425-40de-944b-e07fc1f90ae7';
 
 describe('sanitizeAttributes', () => {
   it('CA-4: conserva los atributos permitidos y planos, sin rechazos', () => {
     const raw = { itemCount: 3, mode: 'multipart', nodeType: 'folder' };
+
+    expect(sanitizeAttributes(RULES, raw)).toEqual({ attributes: raw, rejections: [] });
+  });
+
+  it('014 CA-19: conserva un booleano y un UUID donde el catálogo los declara', () => {
+    const raw = { replaced: true, versionId: VERSION_ID };
 
     expect(sanitizeAttributes(RULES, raw)).toEqual({ attributes: raw, rejections: [] });
   });
@@ -61,6 +70,9 @@ describe('sanitizeAttributes', () => {
     ['número no finito', { itemCount: Number.NaN }, 'itemCount'],
     ['número donde va texto', { mode: 1 }, 'mode'],
     ['valor fuera de la lista', { nodeType: 'usuario' }, 'nodeType'],
+    ['texto donde va un booleano', { replaced: 'true' }, 'replaced'],
+    ['booleano donde va un número', { itemCount: true }, 'itemCount'],
+    ['texto que no es UUID donde va un UUID', { versionId: 'informe-secreto.docx' }, 'versionId'],
   ])('CA-4: descarta un valor de otro tipo (%s)', (_, raw, key) => {
     const result = sanitizeAttributes(RULES, raw);
 

@@ -31,6 +31,7 @@ const aSession = (owner: Actor, multipart: MultipartUpload | null = null): Uploa
     versionId: randomUUID(),
     name: FileName.of('Informe anual.pdf'),
     keepBoth: true,
+    replacesFile: false,
     declaredBytes: 9_007_199_254_740_993n,
     multipart,
     now: STARTED_AT,

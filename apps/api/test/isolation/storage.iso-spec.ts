@@ -17,25 +17,13 @@ import { createStorageHttpApp } from '../int/storage/storage-http';
 import type { StorageClient, StorageHttpApp } from '../int/storage/storage-http';
 import { requiredEnv } from '../support/database-urls';
 
+import { comparable, INTERNAL_ROLES } from './setup/isolation-assertions';
 import { createIsolationWorld } from './setup/isolation-world';
-import type {
-  InternalRole,
-  IsolationWorld,
-  WorldAccount,
-  WorldFile,
-  WorldUpload,
-} from './setup/isolation-world';
+import type { IsolationWorld, WorldAccount, WorldFile, WorldUpload } from './setup/isolation-world';
 
-const INTERNAL_ROLES: readonly InternalRole[] = [Role.ADMIN, Role.SUPPORT, Role.OPERATOR];
 /** Los dos clientes tienen archivos con los mismos nombres y tamaños (003 CA-10). */
 const SHARED_NAMES = ['Informe anual.txt', 'Notas.txt'];
 const VALID_INIT = { name: 'nuevo.txt', sizeBytes: 10 };
-
-/** Lo que un cliente distingue de una respuesta: todo menos el `correlationId` (003 CA-11). */
-const comparable = (response: Response) => {
-  const { correlationId: _ignored, ...body } = response.body as Record<string, unknown>;
-  return { status: response.status, contentType: response.headers['content-type'], body };
-};
 
 /**
  * Aislamiento de `storage` como `nimbo_app` (CA-16, CA-17; cierra 003 CA-10, CA-11 y CA-14 con archivos reales): lo
