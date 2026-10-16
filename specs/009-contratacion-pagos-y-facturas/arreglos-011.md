@@ -129,6 +129,9 @@ la marca en su PR-B. Cuando el PR-A esté en `main`, en `feat/009`:
    - `app.module.ts` (T-04 registra `BackofficeModule`; la 009 T-07 crea la única instancia de `storage`),
      `lib/error-catalog.ts` (T-07 de la 011 suma mensajes; la 009, `BILLING_INVOICE_NOT_FOUND`) y los archivos de
      `identity` de la 009 T-02 (`listVerifiedClientIds`, `IdentityReadersModule`): los dos lados.
+   - `docs/sdd/design-findings.md`: en `main`, **DF-68 ya es de la 014** (versiones). El hallazgo de la 009 (M4 y E-R de
+     suscripciones) se renumera al siguiente libre y se actualizan sus referencias (`tasks.md`, `review.md`,
+     `pendientes.md` PD-96, `design-model.md`).
    - Después, suites completas (sobre todo `migrations-nimbo-app` y `backoffice/migrations`).
 2. **Ítem «Plan y facturación» → `/suscripcion` en `AccountMenu`** (lo hace la 009; en el PR-A sería un enlace a una
    página que no existe): con el mismo patrón que la T-07 de la 011 usa para `activityHref` según el rol, **solo para
