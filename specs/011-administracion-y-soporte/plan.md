@@ -17,7 +17,7 @@
   (`pnpm --filter api admin:bootstrap`) con contexto Nest sin HTTP, como `migrate.ts`, y su evento es del actor de sistema,
   que solo existe en `audit` (`SYSTEM` no entra en `Role` ni en `Actor`).
 - Métricas (CA-12): conteos y `SUM(usuario.espacio_usado)` en una lectura agregada de `identity` (dueño de la tabla); los
-  conteos por plan los da `billing` (sin `suscripcion` hasta la 009: todo cliente es Personal).
+  conteos por plan los da `billing` desde la `suscripcion` de la 009 (sin suscripción, en ningún plan; R-6).
 - Web: área real por rol en `(app)/(interno)` según los cinco mockups de `backoffice/`; «Seguridad» (002) y «Mi actividad»
   (004) se muestran también dentro del marco interno, reutilizando sus componentes (B-1, decisión explícita, sin mockups nuevos).
 
@@ -40,11 +40,11 @@ Dueño del módulo entre corchetes: lo ajeno se pide a su dueño en su PR (`spec
 | identity/infrastructure | `typeorm-user.repository.ts` (cambia), `typeorm-account-directory.repository.ts` (nuevo) | SQL sobre `TransactionContext` (se une a la transacción del llamador) |
 | identity/presentation | `password.controller.ts` (cambia) | `POST /auth/account-setup/check` y `POST /auth/account-setup`, `@Public()`, delegan en `AccountSetupService` |
 | identity | `identity.module.ts`, `index.ts` (cambian) | Exporta las tres fachadas; nada de repositorios ni entidades |
-| billing/domain [Juan Marcos escribe, Q-7] | `plan.entity.ts`, `plan-limits-set.vo.ts`, `plan-slug.ts`, `plan-rules.ts` (nuevos) | `Plan` (nombre de M4) con `PlanLimitsSet` (no `PlanLimits`: ya es el tipo de `storage` con los dos límites de la carga). `Plan.create` valida CA-11 (precio ≥ 0, límites > 0, editores ≥ 0, máx. por archivo ≤ cuota y ≤ `MAX_FILE_BYTES_CEILING` = 2 GB, RNF-02) y deriva el `slug` (`PlanSlug`); `deactivate(now)` rechaza Personal (`PERSONAL_PLAN_SLUG`) y un plan ya desactivado. Sin `Money` (009) |
+| billing/domain [Juan Marcos escribe, Q-7] | `plan.entity.ts`, `plan-limits-set.vo.ts`, `plan-rules.ts` (nuevos); `plan-slug.ts` (amplía el de la 009 T-01 con `PlanSlug`; un solo `PERSONAL_PLAN_SLUG`) | `Plan` (nombre de M4) con `PlanLimitsSet` (no `PlanLimits`: ya es el tipo de `storage` con los dos límites de la carga). `Plan.create` valida CA-11 (precio ≥ 0, límites > 0, editores ≥ 0, máx. por archivo ≤ cuota y ≤ `MAX_FILE_BYTES_CEILING` = 2 GB, RNF-02) y deriva el `slug` (`PlanSlug`); `deactivate(now)` rechaza Personal (`PERSONAL_PLAN_SLUG`) y un plan ya desactivado. Sin `Money` (009) |
 | billing/domain/errors | `plan-invalid`, `plan-not-deactivatable`, `plan-already-deactivated` (nuevos); `plan-not-found` (de 006a, `PLAN_NOT_FOUND`, no cambia) | 422 con `fields` · 409 · 409 · 404 |
 | billing/application | `plan-catalog.service.ts` (lo crea la 008 con `list()`; la 011 lo amplía) | `create(actor, command)` (nombre único → `fields`), `deactivate(actor, id)` (CAS `desactivado_en IS NULL`). `backoffice` no revalida |
-| billing/application | `subscription-administration.ts` (nuevo, fachada) | `planNamesFor(actor, clientIds)` y `clientCountsByPlan(actor, clientCount)`; hasta la 009, la regla vigente de `PlanLimitsAdapter` (sin `suscripcion`, Personal; PD-80) |
-| billing/ports, infrastructure | `i-plan-repository.ts`, `typeorm-plan.repository.ts` (de la 008; la 011 suma `insert`, `deactivate`, conteo), `plan.mapper.ts` (nuevo); `plan.orm-entity.ts`, `plan-limits.adapter.ts` (cambian) | Repositorio sobre `TransactionContext` (con `@InjectRepository` la escritura escaparía de la transacción del evento). La entidad mapea `desactivado_en`; el adaptador usa `PERSONAL_PLAN_SLUG` |
+| billing/application [009 T-03, Juan Marcos] | `subscription-administration.ts` (lo crea la 009, fachada) | `planNamesFor(actor, clientIds)` → mapa id → nombre (máx. 100 ids; el backoffice pide 10); sin suscripción no aparece y la ficha muestra «—». `clientCountsByPlan(actor)` → solo planes con ≥ 1 cliente; el backoffice suma nombre, `deactivatedAt` y los activos en cero desde el catálogo |
+| billing/ports, infrastructure | `i-plan-repository.ts` (T-09 lo mueve a `application/ports/i-plan-repository.port.ts`), `typeorm-plan.repository.ts` (de la 008; la 011 suma `insert`, `deactivate`, conteo), `plan.mapper.ts` (nuevo); `plan.orm-entity.ts`, `plan-limits.adapter.ts` (cambian) | Repositorio sobre `TransactionContext` (con `@InjectRepository` la escritura escaparía de la transacción del evento). La entidad mapea `desactivado_en`; el adaptador usa `PERSONAL_PLAN_SLUG` |
 | storage/application [Adrián autorizó] | `node-metadata-reader.ts` (nuevo, puerto) | `INodeMetadataReader.listForOwner(actor, ownerId, page)` → `{ items: FileMetadata[], total }`; `FileMetadata` = id, nombre, tipo, tamaño, `createdAt`, `updatedAt`, `trashedAt`. Exige `withActor` |
 | storage/infrastructure | `sql-node-metadata.reader.ts` (nuevo) | Solo columnas de `archivo` (nunca `version_archivo`, `clave_objeto`, `carga`); orden `actualizado_en DESC, id DESC` |
 | storage | `index.ts`, `storage.module.ts` (cambian) | Exporta el puerto, el token y el tipo; provee el adaptador |
@@ -191,11 +191,11 @@ Prefijo `/api/v1`. Errores comunes de `/backoffice/*`: `401 SHARED_UNAUTHENTICAT
 | CA-2 a CA-6 (a sí mismo al suspender y reactivar, último Admin, estado; dominio y fachadas con dobles en memoria) | unit | `identity/application/account-administration.spec.ts`, `internal-account-enrollment.spec.ts`, `account-setup.service.spec.ts`, `domain/employee-code.vo.spec.ts` |
 | Acción + evento en una transacción; evento fallido revierte; 404 sin evento; actor inactivo → `403` antes de la acción y de la lectura; candado antes de la comprobación | unit | `backoffice/application/internal-action.service.spec.ts`, `support.service.spec.ts` |
 | T1: `run` dentro de `run` se une a la misma transacción (y revierte junta); `withActor` dentro de `run` sigue lanzando | unit + int | `shared/.../typeorm-transaction-runner.spec.ts`, `test/int/shared/transaction-runner.int-spec.ts` |
-| CA-1 a CA-6 por HTTP (lista, búsqueda, ficha, suspender revoca sesiones y el login da `IDENTITY_ACCOUNT_SUSPENDED`, reactivar, alta + correo en Mailpit + fijar contraseña + login; Admin suspendido con token vigente → `403`) | int | `test/int/backoffice/accounts.int-spec.ts`, `test/int/identity/account-setup.int-spec.ts` |
+| CA-1 a CA-6 por HTTP (lista, búsqueda, ficha con y sin `suscripcion`, suspender revoca sesiones y el login da `IDENTITY_ACCOUNT_SUSPENDED`, reactivar, alta + correo en Mailpit + fijar contraseña + login; Admin suspendido con token vigente → `403`) | int | `test/int/backoffice/accounts.int-spec.ts`, `test/int/identity/account-setup.int-spec.ts` |
 | **RN-7**: dos suspensiones cruzadas simultáneas entre los dos únicos Admin → exactamente una gana y la otra recibe `403`; CA-7 doble en paralelo → un solo Admin | int | `test/int/backoffice/admin-roster-concurrency.int-spec.ts` |
 | CA-7 (script: crea, niega si ya hay Admin; cuenta y evento de sistema en la misma transacción; el evento no tiene afectado; un evento `SYSTEM` distinto lo rechaza la política) | int | `test/int/backoffice/bootstrap-admin.int-spec.ts` |
 | CA-8 a CA-11 por HTTP (CAS de desactivar, nombre repetido, escritura y evento en la misma transacción) | int | `test/int/backoffice/plans.int-spec.ts` |
-| CA-12, CA-13 (conteos y suma; metadatos con papelera; 404 uniforme) | int | `test/int/backoffice/metrics.int-spec.ts`, `client-files.int-spec.ts` |
+| CA-12, CA-13 (conteos con y sin `suscripcion` y suma; metadatos con papelera; 404 uniforme) | int | `test/int/backoffice/metrics.int-spec.ts`, `client-files.int-spec.ts` |
 | CA-14 (matriz rol × ruta, tabla) | int | `test/int/backoffice/roles-matrix.int-spec.ts` |
 | CA-16 (el cliente ve fecha y rol, nunca el nombre; no ve los de otra cuenta ni los del catálogo) | int | `test/int/audit/internal-events.int-spec.ts` |
 | Migraciones `up → down → up` con dueño sin `SUPERUSER`; CHECK de código normalizado | int | `test/int/backoffice/migrations.int-spec.ts` |
@@ -219,12 +219,13 @@ Cada CA vive en una capa principal: reglas en unit, contrato y concurrencia en i
   `packages/contracts/src/billing/` (en inglés), **una** entidad `Plan`/`PlanLimitsSet` y **un** `PlanCard` en
   `components/nimbo` (PD-83); prefijo de errores acordado con Juan Marcos (2026-10-08): `BILLING_PLAN_*` en la 011;
   `PLAN_NOT_FOUND` no cambia. Bytes en JSON: texto decimal (ADR-0016; Adrián, 2026-10-08); la 005 se alinea después (PD-87).
-- **R-6 Antes de la 009** todo cliente cuenta como Personal en CA-1, CA-12 y el catálogo (regla vigente, PD-80).
+- **R-6 Plan de cada cliente**: sale de la `suscripcion` de la 009 (T-03). Sin fila, «—» en CA-1 y en ningún plan en CA-12,
+  cuya suma por plan puede quedar bajo el total de clientes (CA-12 pide conteos, no que cuadren). Sustituye la regla PD-80.
 - **R-7 Mockups**: `Aprobado` (Adrián, 2026-10-08; `ui-guidelines.md` §7).
 - **R-8 Permisos**: Adrián autorizó `identity`, `storage` y `audit` (2026-10-07), y `shared` (T1) y la web de `access`
   (`features/access`, marco interno) el 2026-10-08, **solo** en los archivos que nombra este plan.
 - **Desviaciones** (`Aceptado`, Adrián, 2026-10-08): DF-66 (paginación); DF-04, DF-36, la parte de 011 de DF-15, DF-27
-  (`INodeMetadataReader`) y DF-33 (`codigo_empleado`, también con CHECK); **DF-65** con el resto (M8, M1, M4, T1, T2, E-R). **Pendientes**: PD-80, PD-81, PD-82, PD-83; PD-31 resuelto aquí.
+  (`INodeMetadataReader`) y DF-33 (`codigo_empleado`, también con CHECK); **DF-65** con el resto (M8, M1, M4, T1, T2, E-R). **Pendientes**: PD-81, PD-82, PD-83; PD-80 pasa a la 009 (R-6); PD-31 resuelto aquí.
 - **ADR requeridos**: ninguno (sin tecnología nueva; el contexto Nest del script ya está en la pila).
 - **Fuera**: 011b, 022b, RN-6 en 012/013 (PD-78), comparador 008 (PD-76), reenviar el enlace de alta, sesiones ajenas.
 
@@ -245,3 +246,5 @@ Cada CA vive en una capa principal: reglas en unit, contrato y concurrencia en i
 - Adrián: **Aprobado** (2026-10-08, comentarios del PR): spec, plan y mockups; permiso de `shared` y `access` solo en los
   archivos nombrados (R-8); DF-66 aceptado; bytes como texto decimal (ADR-0016, PD-87); la 004 no se reabre; PD-85 y los dos
   PD-51 los corrige él en otro PR. `/auth/account-setup*` sin límite propio (A, §5); unificarlo con 002 queda en PD-88.
+- Cambio (Fátima, 2026-10-14, acuerdo con Juan Marcos por la 009): `SubscriptionAdministration` sale de T-09 a la 009 T-03,
+  sin `clientCount` (YAGNI) y con retornos fijos; R-6; `i-plan-repository` a `ports/`. **Pendiente de aprobación de Adrián.**
