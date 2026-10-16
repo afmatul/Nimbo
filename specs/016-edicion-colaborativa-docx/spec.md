@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Lista |
+| Estado | En curso |
 | Dueño | Adrián |
 | Fase | 2 |
 | Requisitos | RF-25, RF-26, RF-28; RNF-02 (5 editores por documento), RNF-05, RNF-09. Casos de uso 05, 19, 20, 39 |
@@ -125,3 +125,4 @@ Sin preguntas abiertas.
 | 2026-10-16 | P-11…P-15: andamiaje de plan (RN-13), nombres del servidor (RN-12, CA-6), CA-14 reescrito, CA-22 y RN-3 (plan de la propietaria), §6 con 10 estados, depende de `identity` | Respuestas de Adrián | Adrián |
 | 2026-10-16 | P-1…P-10 resueltas; abrir responde siempre con modo (CA-3, 5, 7, 21 pasan a solo lectura con motivo); CA-11, CA-20, CA-21, RN-2 (nota 012), RN-3, RN-8, RN-10, RN-11; depende de 005, 003, 015 | Respuestas de Adrián | Adrián |
 | 2026-10-16 | Pasa a `Lista` | Spec y plan aprobados | Adrián |
+| 2026-10-16 | Pasa a `En curso` | Inicio de la implementación en `feat/016-edicion-colaborativa-docx` | Adrián |
