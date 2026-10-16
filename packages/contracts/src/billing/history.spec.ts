@@ -1,5 +1,18 @@
 import { billingHistoryResponseSchema, invoiceDownloadResponseSchema } from './history';
 
+const TEAM = {
+  id: '10000000-0000-4000-8000-000000000003',
+  slug: 'equipo',
+  name: 'Equipo',
+  description: 'Para equipos',
+  priceCents: 11_000,
+  quotaBytes: '375809638400',
+  maxFileBytes: '1073741824',
+  maxEditors: 5,
+  agentQueriesPerMonth: 2000,
+  retainedVersions: 60,
+  trashRetentionDays: 60,
+};
 const PAYMENT = {
   id: '11111111-1111-4111-8111-111111111111',
   createdAt: '2026-10-14T18:00:00.000Z',
@@ -13,36 +26,38 @@ const PAYMENT = {
     downloadable: true,
   },
 };
+const HISTORY = {
+  subscription: { plan: TEAM, expiresAt: '2026-11-13T18:00:00.000Z' },
+  paymentMethod: { brand: 'visa', last4: '4242' },
+  receiptEmail: 'ana@ejemplo.com',
+  payments: [PAYMENT],
+};
 
 describe('billingHistoryResponseSchema (spec 009 CA-7)', () => {
-  it('CA-7: acepta el plan actual y un pago aprobado con su factura', () => {
-    const history = {
-      subscription: { planName: 'Equipo', expiresAt: '2026-11-13T18:00:00.000Z' },
-      payments: [PAYMENT],
-    };
-
-    expect(billingHistoryResponseSchema.parse(history)).toEqual(history);
+  it('CA-7: acepta el plan actual con el esquema del catálogo, la tarjeta, el correo y un pago con factura', () => {
+    expect(billingHistoryResponseSchema.parse(HISTORY)).toEqual(HISTORY);
   });
 
-  it('CA-7: acepta el historial vacío, Personal sin vencimiento y un rechazo sin factura', () => {
-    const history = {
-      subscription: { planName: 'Personal', expiresAt: null },
-      payments: [{ ...PAYMENT, status: 'rechazada', invoice: null }],
-    };
+  it('CA-7: acepta el historial vacío y un rechazo sin factura', () => {
+    const empty = { subscription: null, paymentMethod: null, receiptEmail: null, payments: [] };
+    const rejected = { ...HISTORY, payments: [{ ...PAYMENT, status: 'rechazada', invoice: null }] };
 
-    expect(billingHistoryResponseSchema.safeParse(history).success).toBe(true);
-    expect(
-      billingHistoryResponseSchema.safeParse({ subscription: null, payments: [] }).success,
-    ).toBe(true);
+    expect(billingHistoryResponseSchema.safeParse(empty).success).toBe(true);
+    expect(billingHistoryResponseSchema.safeParse(rejected).success).toBe(true);
   });
 
-  it('RNF-05: es lista blanca: un campo de más (p. ej. la clave del objeto) se rechaza', () => {
-    const history = {
-      subscription: null,
+  it('RNF-05, RN-9: es lista blanca: ni la clave del objeto ni el número de tarjeta pasan', () => {
+    const withKey = {
+      ...HISTORY,
       payments: [{ ...PAYMENT, invoice: { ...PAYMENT.invoice, objectKey: 'invoices/x/y.pdf' } }],
     };
+    const withCard = {
+      ...HISTORY,
+      paymentMethod: { brand: 'visa', last4: '4242', number: '4242424242424242' },
+    };
 
-    expect(billingHistoryResponseSchema.safeParse(history).success).toBe(false);
+    expect(billingHistoryResponseSchema.safeParse(withKey).success).toBe(false);
+    expect(billingHistoryResponseSchema.safeParse(withCard).success).toBe(false);
   });
 });
 

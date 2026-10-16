@@ -6,34 +6,55 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 
-import { InvoiceHistory } from '../../../../features/billing/components/invoice-history';
+import { PlanAndBilling } from '../../../../features/billing/components/plan-and-billing';
 import { createAuthFetch } from '../../../../features/identity/session/auth-fetch';
 import { errorResponse, jsonResponse } from '../../../../lib/test-http';
 
 const API = 'http://localhost/api/v1';
 const INVOICE_ID = '22222222-2222-4222-8222-222222222222';
+const TEAM = {
+  id: '10000000-0000-4000-8000-000000000003',
+  slug: 'equipo',
+  name: 'Equipo',
+  description: 'Para equipos',
+  priceCents: 11_000,
+  quotaBytes: '375809638400',
+  maxFileBytes: '1073741824',
+  maxEditors: 5,
+  agentQueriesPerMonth: 2000,
+  retainedVersions: 60,
+  trashRetentionDays: 60,
+};
+const PERSONAL = {
+  ...TEAM,
+  id: '10000000-0000-4000-8000-000000000001',
+  slug: 'personal',
+  name: 'Personal',
+  priceCents: 0,
+  maxEditors: 0,
+};
+const APPROVED = {
+  id: '11111111-1111-4111-8111-111111111111',
+  createdAt: '2026-10-14T18:00:00.000Z',
+  reference: 'SIM-2026-000008',
+  planName: 'Equipo',
+  amountCents: 11_000,
+  status: 'aprobada' as const,
+  invoice: { id: INVOICE_ID, number: 'NB-2026-0042', downloadable: true },
+};
+const REJECTED = {
+  ...APPROVED,
+  id: '33333333-3333-4333-8333-333333333333',
+  createdAt: '2026-10-14T17:00:00.000Z',
+  reference: 'SIM-2026-000007',
+  status: 'rechazada' as const,
+  invoice: null,
+};
 const HISTORY: BillingHistoryResponse = {
-  subscription: { planName: 'Equipo', expiresAt: '2026-11-13T18:00:00.000Z' },
-  payments: [
-    {
-      id: '11111111-1111-4111-8111-111111111111',
-      createdAt: '2026-10-14T18:00:00.000Z',
-      reference: 'SIM-2026-000008',
-      planName: 'Equipo',
-      amountCents: 11_000,
-      status: 'aprobada',
-      invoice: { id: INVOICE_ID, number: 'NB-2026-0042', downloadable: true },
-    },
-    {
-      id: '33333333-3333-4333-8333-333333333333',
-      createdAt: '2026-10-14T17:00:00.000Z',
-      reference: 'SIM-2026-000007',
-      planName: 'Equipo',
-      amountCents: 11_000,
-      status: 'rechazada',
-      invoice: null,
-    },
-  ],
+  subscription: { plan: TEAM, expiresAt: '2026-11-13T18:00:00.000Z' },
+  paymentMethod: { brand: 'visa', last4: '4242' },
+  receiptEmail: 'ana@ejemplo.com',
+  payments: [APPROVED, REJECTED],
 };
 
 function seriousViolations(results: Awaited<ReturnType<typeof axe>>): unknown[] {
@@ -42,7 +63,7 @@ function seriousViolations(results: Awaited<ReturnType<typeof axe>>): unknown[] 
   );
 }
 
-describe('/suscripcion (spec 009 CA-7, CA-8, §6: cargando, con facturas, vacío, error)', () => {
+describe('Plan y facturación, /suscripcion (spec 009 CA-7, CA-8, §6; mockup `billing/suscripcion/`)', () => {
   const fetchMock = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>();
   const authFetch = createAuthFetch({
     getAccessToken: () => 'token-a',
@@ -57,39 +78,62 @@ describe('/suscripcion (spec 009 CA-7, CA-8, §6: cargando, con facturas, vacío
   });
 
   const renderPage = (): ReturnType<typeof render> =>
-    render(<InvoiceHistory apiPublicUrl={API} authFetch={authFetch} openUrl={openUrl} />);
+    render(<PlanAndBilling apiPublicUrl={API} authFetch={authFetch} openUrl={openUrl} />);
+  const plan = () => screen.getByRole('region', { name: /Nimbo/ });
+  const invoices = () => screen.getByRole('region', { name: 'Pagos y facturas' });
 
   it('cargando: muestra el estado de carga mientras llega el historial', () => {
     fetchMock.mockReturnValue(new Promise(() => undefined));
 
     renderPage();
 
-    expect(screen.getByText('Cargando tu historial…')).toBeTruthy();
+    expect(screen.getByText('Cargando tu plan y tus facturas…')).toBeTruthy();
   });
 
-  it('CA-7, con facturas: plan actual y una fila por pago con referencia, factura, monto y estado', async () => {
+  it('CA-7, con facturas: el plan con precio, límites, vencimiento y tarjeta, como el mockup', async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse(HISTORY));
 
     const { container } = renderPage();
 
-    expect(await screen.findByText('Activo hasta el 13 nov 2026.')).toBeTruthy();
-    const rows = screen.getAllByRole('row').slice(1);
-    expect(within(rows[0] as HTMLElement).getByText('NB-2026-0042')).toBeTruthy();
-    expect(within(rows[0] as HTMLElement).getByText('Q110.00')).toBeTruthy();
-    expect(within(rows[0] as HTMLElement).getByText('Aprobado')).toBeTruthy();
-    expect(within(rows[1] as HTMLElement).getByText('Rechazado')).toBeTruthy();
-    expect(within(rows[1] as HTMLElement).queryByRole('button')).toBeNull();
+    expect(await screen.findByRole('heading', { name: 'Nimbo Equipo' })).toBeTruthy();
+    expect(within(plan()).getByText('Plan actual')).toBeTruthy();
+    expect(within(plan()).getAllByText('Q110.00')).toHaveLength(2);
+    expect(
+      within(plan()).getByText('350 GB · 1 GB por archivo · 5 editores simultáneos por documento'),
+    ).toBeTruthy();
+    expect(within(plan()).getByText('13 de noviembre de 2026')).toBeTruthy();
+    expect(within(plan()).getByText('Visa ···· 4242')).toBeTruthy();
+    expect(within(plan()).getByRole('link', { name: 'Ver comparativa' }).getAttribute('href')).toBe(
+      '/planes',
+    );
+    expect(screen.getByRole('navigation', { name: 'Ruta' }).textContent).toContain(
+      'Plan y facturación',
+    );
     expect(fetchMock.mock.calls[0]?.[0]).toBe(`${API}/billing/history`);
     expect(seriousViolations(await axe(container))).toEqual([]);
   });
 
-  it('CA-7: una factura sin PDF se muestra sin botón de descarga', async () => {
-    const first = HISTORY.payments[0];
-    if (first?.invoice == null) throw new Error('sin factura');
+  it('CA-7: cada pago con fecha, factura y estado, plan, referencia y monto; el rechazo sin descarga', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse(HISTORY));
+
+    renderPage();
+    await screen.findByRole('heading', { name: 'Nimbo Equipo' });
+    const [approved, rejected] = within(invoices()).getAllByRole('listitem');
+
+    expect(within(approved as HTMLElement).getByText('14 de octubre de 2026')).toBeTruthy();
+    expect(within(approved as HTMLElement).getByText('NB-2026-0042 · Pagada')).toBeTruthy();
+    expect(within(approved as HTMLElement).getByText('Equipo · SIM-2026-000008')).toBeTruthy();
+    expect(within(approved as HTMLElement).getByText('Q110.00')).toBeTruthy();
+    expect(within(rejected as HTMLElement).getByText('Pago rechazado')).toBeTruthy();
+    expect(within(rejected as HTMLElement).queryByRole('button')).toBeNull();
+    expect(within(invoices()).getByText('Las facturas se envían a ana@ejemplo.com.')).toBeTruthy();
+  });
+
+  it('CA-7: una factura sin PDF dice «PDF en preparación» y no tiene descarga', async () => {
     fetchMock.mockResolvedValueOnce(
       jsonResponse({
         ...HISTORY,
-        payments: [{ ...first, invoice: { ...first.invoice, downloadable: false } }],
+        payments: [{ ...APPROVED, invoice: { ...APPROVED.invoice, downloadable: false } }],
       }),
     );
 
@@ -99,20 +143,29 @@ describe('/suscripcion (spec 009 CA-7, CA-8, §6: cargando, con facturas, vacío
     expect(screen.queryByRole('button', { name: /Descargar/ })).toBeNull();
   });
 
-  it('vacío: «Aún no tienes facturas ni pagos registrados.» y el plan Personal sin vencimiento', async () => {
+  it('vacío: Personal gratis y sin vencimiento, y «Aún no tienes facturas ni pagos registrados.»', async () => {
     fetchMock.mockResolvedValueOnce(
-      jsonResponse({ subscription: { planName: 'Personal', expiresAt: null }, payments: [] }),
+      jsonResponse({
+        subscription: { plan: PERSONAL, expiresAt: null },
+        paymentMethod: null,
+        receiptEmail: null,
+        payments: [],
+      }),
     );
 
     renderPage();
 
     expect(await screen.findByText('Aún no tienes facturas ni pagos registrados.')).toBeTruthy();
-    expect(screen.getByText('Sin vencimiento.')).toBeTruthy();
+    expect(within(plan()).getByText('Sin vencimiento')).toBeTruthy();
+    expect(within(plan()).getAllByText('Gratis')).toHaveLength(2);
+    expect(within(plan()).getByText('—')).toBeTruthy();
   });
 
   it('error: «Reintentar» vuelve a pedir el historial', async () => {
     fetchMock.mockResolvedValueOnce(errorResponse('INTERNAL_ERROR', 500));
-    fetchMock.mockResolvedValueOnce(jsonResponse({ subscription: null, payments: [] }));
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ subscription: null, paymentMethod: null, receiptEmail: null, payments: [] }),
+    );
 
     renderPage();
     await userEvent.setup().click(await screen.findByRole('button', { name: 'Reintentar' }));
@@ -121,7 +174,7 @@ describe('/suscripcion (spec 009 CA-7, CA-8, §6: cargando, con facturas, vacío
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it('CA-8: «Descargar» pide el enlace firmado y lo abre', async () => {
+  it('CA-8: el botón de descarga pide el enlace firmado y lo abre', async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse(HISTORY));
     fetchMock.mockResolvedValueOnce(
       jsonResponse({ downloadUrl: 'https://minio.local/factura.pdf', expiresInSeconds: 300 }),
@@ -130,7 +183,7 @@ describe('/suscripcion (spec 009 CA-7, CA-8, §6: cargando, con facturas, vacío
     renderPage();
     await userEvent
       .setup()
-      .click(await screen.findByRole('button', { name: /Descargar factura NB-2026-0042/ }));
+      .click(await screen.findByRole('button', { name: 'Descargar factura NB-2026-0042' }));
 
     expect(fetchMock.mock.calls[1]?.[0]).toBe(`${API}/billing/invoices/${INVOICE_ID}/download`);
     expect(openUrl).toHaveBeenCalledWith('https://minio.local/factura.pdf');
@@ -141,7 +194,7 @@ describe('/suscripcion (spec 009 CA-7, CA-8, §6: cargando, con facturas, vacío
     fetchMock.mockResolvedValueOnce(errorResponse('BILLING_INVOICE_NOT_FOUND', 404));
 
     renderPage();
-    await userEvent.setup().click(await screen.findByRole('button', { name: /Descargar/ }));
+    await userEvent.setup().click(await screen.findByRole('button', { name: /Descargar factura/ }));
 
     expect(await screen.findByText(/No encontramos esa factura/)).toBeTruthy();
     expect(openUrl).not.toHaveBeenCalled();

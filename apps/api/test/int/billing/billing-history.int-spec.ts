@@ -64,10 +64,15 @@ describe('historial y descarga de facturas (spec 009 CA-7, CA-8)', () => {
     const response = await historyOf(ana);
 
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ subscription: null, payments: [] });
+    expect(response.body).toEqual({
+      subscription: null,
+      paymentMethod: null,
+      receiptEmail: null,
+      payments: [],
+    });
   });
 
-  it('CA-7: muestra el plan actual y los pagos del más reciente al más antiguo, con su factura si se aprobó', async () => {
+  it('CA-7: muestra el plan actual (catálogo), la tarjeta del pago aprobado, el correo y los pagos del más reciente al más antiguo, con su factura si se aprobó', async () => {
     const bruno = await newAccount();
     await subscribe(bruno, TEST_CARDS.rejected);
     await subscribe(bruno, TEST_CARDS.approved);
@@ -76,9 +81,15 @@ describe('historial y descarga de facturas (spec 009 CA-7, CA-8)', () => {
     const history = billingHistoryResponseSchema.parse(response.body);
 
     expect(history.subscription).toEqual({
-      planName: 'Equipo',
+      plan: expect.objectContaining({
+        slug: 'equipo',
+        name: 'Equipo',
+        priceCents: 11_000,
+      }) as unknown,
       expiresAt: expect.any(String) as unknown,
     });
+    expect(history.paymentMethod).toEqual({ brand: expect.any(String) as unknown, last4: '4242' });
+    expect(history.receiptEmail).toBe(`storage.${bruno}@ejemplo.com`);
     expect(
       history.payments.map((payment) => [payment.status, payment.planName, payment.amountCents]),
     ).toEqual([

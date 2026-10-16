@@ -1,4 +1,4 @@
-import { ACTIVE_NOW_LABEL, lastActivityLabel, startedOnLabel } from './format-date';
+import { ACTIVE_NOW_LABEL, lastActivityLabel, longDayLabel, startedOnLabel } from './format-date';
 
 const MINUTE_MS = 60_000;
 const HOUR_MS = 60 * MINUTE_MS;
@@ -28,5 +28,12 @@ describe('fechas de «Seguridad» (CA-11, D-16)', () => {
     // 2026-09-25 03:00 UTC = 2026-09-24 21:00 en Guatemala (UTC−6).
     expect(startedOnLabel('2026-09-25T03:00:00.000Z')).toMatch(/^Iniciada el 24 sept 2026$/);
     expect(startedOnLabel('2026-09-02T15:00:00.000Z')).toMatch(/^Iniciada el 2 sept 2026$/);
+  });
+});
+
+describe('longDayLabel (009, mockup `billing/suscripcion/`)', () => {
+  it('escribe el mes completo y usa el día de Guatemala', () => {
+    expect(longDayLabel('2026-09-01T12:00:00.000Z')).toBe('1 de septiembre de 2026');
+    expect(longDayLabel('2026-10-01T03:00:00.000Z')).toBe('30 de septiembre de 2026');
   });
 });

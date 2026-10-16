@@ -1,9 +1,15 @@
 import type { Actor } from '../../../../shared';
 
-/** Plan actual del cliente (CA-7): `expiresAt` nulo en Personal. */
-export interface CurrentPlan {
-  readonly planName: string;
+/** Fila de suscripción del cliente (CA-7): `expiresAt` nulo en Personal. */
+export interface CurrentSubscription {
+  readonly planId: string;
   readonly expiresAt: Date | null;
+}
+
+/** Tarjeta del último pago aprobado: solo marca y últimos 4 (RN-9). */
+export interface PaymentMethod {
+  readonly brand: string;
+  readonly last4: string;
 }
 
 /** Un pago del historial con su factura, si se aprobó (CA-7). */
@@ -21,8 +27,11 @@ export interface PaymentRecord {
   } | null;
 }
 
-export interface BillingHistory {
-  readonly subscription: CurrentPlan | null;
+/** Lo que lee el adaptador: la fila de suscripción, la tarjeta, el correo de la última factura y los pagos. */
+export interface BillingHistoryRows {
+  readonly subscription: CurrentSubscription | null;
+  readonly paymentMethod: PaymentMethod | null;
+  readonly receiptEmail: string | null;
   readonly payments: readonly PaymentRecord[];
 }
 
@@ -37,8 +46,8 @@ export interface DownloadableInvoice {
  * `requireActorScope(actor)`, así que se llama dentro de `withActor` y solo ve lo del propio cliente.
  */
 export interface IBillingHistoryReader {
-  /** Plan actual y pagos del actor, del más reciente al más antiguo. */
-  read(actor: Actor): Promise<BillingHistory>;
+  /** Suscripción, tarjeta, correo y pagos del actor (los pagos del más reciente al más antiguo). */
+  read(actor: Actor): Promise<BillingHistoryRows>;
   /** La factura del actor con PDF; `null` si no existe, es ajena o aún no tiene PDF. */
   findDownloadable(actor: Actor, invoiceId: string): Promise<DownloadableInvoice | null>;
 }

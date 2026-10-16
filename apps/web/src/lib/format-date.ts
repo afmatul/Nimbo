@@ -38,6 +38,18 @@ export function lastActivityLabel(lastActiveAt: string, now: number): string {
   return elapsedMs < MINUTE_MS ? ACTIVE_NOW_LABEL : `Última actividad: ${timeAgo(elapsedMs)}`;
 }
 
+const longDayFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
+  timeZone: DISPLAY_TIME_ZONE,
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+});
+
+/** «1 de septiembre de 2026», con el día de Guatemala (mockup `billing/suscripcion/`). */
+export function longDayLabel(isoDate: string): string {
+  return longDayFormatter.format(new Date(isoDate));
+}
+
 /** «24 sep 2026», con el día de Guatemala. */
 export function dayLabel(isoDate: string): string {
   return startedOnFormatter.format(new Date(isoDate));
