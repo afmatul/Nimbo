@@ -1,0 +1,148 @@
+# Plan 010 — Renovación, vencimiento y cambio de plan
+
+> Spec: `./spec.md` · Estado del plan: **Propuesto** (pendiente de Adrián y del `architect`, §8)
+> Obligatorio y ≤ 250 líneas. Dice **qué** archivos se tocan y **qué** se espera de cada uno; no es el código en
+> prosa (sin cuerpos de funciones ni pseudocódigo). Lo aprueba Adrián antes de escribir código.
+
+## 1. Resumen técnico
+`billing` (M4) cierra el ciclo de la suscripción de la 009 sin puerto nuevo entre módulos y sin dependencia nueva.
+- **Estado explícito**: `suscripcion.estado` (`vigente` | `solo_lectura`) es la única fuente de la solo lectura (RN-5). Solo la cambian la renovación (entra) y un pago o la bajada a Personal (sale). Personal nunca vence (`CHECK`, CA-15).
+- **Renovación automática** (CA-1 a CA-4, CA-7, CA-20, CA-21, CA-29): una cola `subscription-renewal` con el patrón de `invoice-retry` (planificador + procesador, BullMQ, concurrencia 1). Lista sin actor con una función ADR-0021 y procesa cada cuenta con `withActor` del dueño y `FOR UPDATE` sobre su fila: un intento por periodo (RN-10), porque tras el intento la fila o cambió de `vence_en` o quedó en `solo_lectura`, y la función no la vuelve a listar.
+- **Renovación manual** (CA-8 a CA-11, CA-26, CA-28): `POST /billing/renew` con el mismo cobro y la misma emisión de la 009 (`PaymentService.charge`, `InvoiceService.register`, `InvoiceIssuer`). El cliente envía el `vence_en` que vio (`expectedExpiresAt`): si cambió (otra renovación ganó el candado), `409 BILLING_ALREADY_RENEWED` y no hay cobro (RN-9).
+- **Aviso previo** (CA-5) en la misma pasada: marca `aviso_previo_para = vence_en`, un aviso por periodo sin reiniciar nada.
+- **Solo lectura en `storage`** (CA-13): `PlanLimits` suma `readOnly`; los servicios de escritura de `storage` lo comprueban y lanzan `403 STORAGE_ACCOUNT_READ_ONLY`. El explorador lo lee del resumen de espacio que ya carga (CA-14).
+- **Cambio de plan** (CA-16 a CA-19, CA-27): `plan_pendiente_id` (DF-25), uno a la vez, aplicado al renovar; a Personal desde solo lectura, de inmediato.
+- Auditoría RF-07 con `IAuditLogger.recordInTransaction` dentro de la misma transacción (CA-6, CA-22).
+
+## 2. Módulos, archivos y diseño
+Entre corchetes, el dueño del módulo ajeno: **cambio en módulo ajeno, a autorizar por Adrián** (`specs/README.md`).
+
+| Módulo / capa | Archivo (nuevo o cambiado) | Responsabilidad |
+|---|---|---|
+| Contracts | `packages/contracts/src/billing/subscription.ts` | Exporta `cardSchema` (009) para reutilizarlo; `renewRequestSchema` (`card`, `nit`, `expectedExpiresAt`); `RenewResponse` = misma forma que `SubscribeResponse` (un solo esquema `paymentReceiptSchema`, alias de los dos); `autoRenewRequestSchema` (`enabled`); `planChangeRequestSchema` (`planSlug`). |
+| Contracts | `billing/history.ts` | `subscriptionViewSchema`, que usan el historial y las respuestas de las mutaciones: `plan`, `expiresAt`, `status` (`active` \| `expiring` \| `readOnly`), `autoRenew`, `pendingPlan` (`slug`, `name`) o nulo, `nextCharge` (`date`, `amountCents`, `planName`, `card` con marca y últimos 4 o nulo) y `renewal` (`available`, `unavailableReason` `ALREADY_RENEWED` \| `PLAN_CHANGE_PENDING` \| nulo, `expectedExpiresAt`, `periodStartsAt`, `periodEndsAt`, `amountCents`, `planName`). En Personal, todo lo de pago es nulo. |
+| Contracts | `billing/error-codes.ts` | `BILLING_NO_PAID_SUBSCRIPTION`, `BILLING_PLAN_CHANGE_INVALID`, `BILLING_NO_PENDING_PLAN_CHANGE`, `BILLING_ALREADY_RENEWED`, `BILLING_PLAN_CHANGE_PENDING`. |
+| Contracts [Adrián] | `storage/error-codes.ts`, `storage/space-schemas.ts` | `STORAGE_ACCOUNT_READ_ONLY`; el resumen de espacio suma `readOnly: boolean` (lo trae `limitsFor`, sin otra lectura). |
+| Storage [Adrián] | `storage/application/plan-limits.ts` | `PlanLimits.readOnly` (RN-5). Decisión fijada: mismo puerto, sin otro entre módulos (§7, DF nuevo). |
+| Storage [Adrián] | `storage/domain/errors/account-read-only.error.ts`, `storage/application/account-write-guard.ts`, `index.ts` | Error 403 con el mensaje de CA-13. `AccountWriteGuard` (clase concreta, sin interfaz): `assertWritable(actor)` pide `limitsFor` y lanza; la función pura `assertWritableLimits(limits)` la usan los servicios que ya tienen los límites (evita una segunda lectura en la carga). Nueve puntos de uso: se extrae (Art. VI.2). |
+| Storage [Adrián] | `upload.service.ts` (`init`, `complete`), `folder.service.ts` (`create`, `rename`, `move`), `file.service.ts` (`rename`, `move`), `version-restore.service.ts` (`restore`), `trash.service.ts` (`restoreFile`, `restoreFolder`), `space-summary.service.ts` | Comprueban antes de abrir su transacción. No se tocan: listar, buscar, descargar, vista previa, versiones (lectura), mandar a la papelera, purgar, vaciar, accesos rápidos, `resume` y `cancel` de cargas (RN-6). |
+| Storage · pruebas [Adrián] | `apps/api/test/support/fake-plan-limits.provider.ts` | El doble suma `readOnly` (por defecto `false`) y un modo de solo lectura. |
+| Audit [Adrián] | `audit/application/audit-action.ts`, `audit-catalog.ts` | Acciones `subscription.auto_renew_changed` (`enabled`), `subscription.renewed` (`trigger` `automatic`\|`manual`, `planSlug`, `amountCents`), `subscription.renewal_rejected` (`trigger`, `planSlug`), `subscription.read_only_entered`, `subscription.read_only_exited`, `subscription.plan_change_scheduled` (`planSlug`), `subscription.plan_change_cancelled`, `subscription.plan_change_applied` (`planSlug`) y `subscription.plan_change_discarded` (`planSlug`, CA-29). `resourceType: null`; nunca datos de tarjeta. |
+| Shared [Adrián] | `apiEnvSchema`, `workerEnvSchema`, `.env.example`; `apps/api/src/worker.module.ts` | `SUBSCRIPTION_RENEWAL_INTERVAL_MINUTES=15`, `SUBSCRIPTION_RENEWAL_BATCH_SIZE=100` (`worker`) y `RENEWAL_REMINDER_DAYS=3` (`api` para el estado «por vencer», `worker` para el aviso; RN-8) (`pnpm env:check`). `WORKER_QUEUES` suma `subscription-renewal`. |
+| Billing · dominio | `domain/subscription.entity.ts` | `Subscription` suma `status`, `autoRenew`, `pendingPlanId`, `reminderSentFor`, `expiredNoticeFor` y los métodos del diagrama: `isReadOnly`, `scheduleChange(plan)` (activo, distinto del actual, solo de pago; CA-17, CA-18), `cancelChange()` (CA-19), `applyPendingChange(...)`; además `setAutoRenew`, `renewWith(plan, now)` (RN-1: desde `vence_en` si vigente, desde `now` si solo lectura; sale de solo lectura), `expire()`, `renewalQuote(now)` (CA-8, CA-26, CA-28: la misma regla para la API y para `renewal` del contrato) y `isDue(now)`. `subscribeTo` (009) deja `autoRenew` activo y `vigente` (RN-3). |
+| Billing · dominio | `domain/errors/no-paid-subscription.error.ts`, `plan-change-invalid.error.ts`, `no-pending-plan-change.error.ts`, `already-renewed.error.ts`, `plan-change-pending.error.ts` | Un error por archivo, como la 009 (400, 400, 404, 409, 409). |
+| Billing · dominio | `domain/payment-card.ts` | `SavedCard` (marca y últimos 4 del último pago aprobado; RN-2). |
+| Billing · puertos | `ports/i-subscription-repository.port.ts` | `findCurrentPlanId` pasa a `findStanding(actor)` → `{ planId, readOnly }` o nulo; `lockCurrent` y `save` cubren las columnas nuevas. |
+| Billing · puertos | `ports/i-payment-repository.port.ts`, `ports/i-invoice-repository.port.ts` | `findLastApprovedCard(actor)` y `findLatestNit(actor)` (`CF` si no hay): la tarjeta y el NIT de la renovación automática. |
+| Billing · puertos | `ports/i-payment-gateway.port.ts` | `authorize` recibe `ChargeableCard` (`last4`, `brand`): el simulador decide por últimos 4 (`4242` aprueba, el resto rechaza; RN-2). |
+| Billing · puertos | `ports/i-due-subscription.scanner.port.ts` | **Nuevo, interno** (V.2 b, como `IPendingInvoiceScanner`): `listDueForRenewal(limit)` y `listDueForReminder(days, limit)`, solo ids de usuario, sin actor. No sale de `billing`. |
+| Billing · aplicación | `payment.service.ts` | `charge` acepta `PaymentCard` (valida vencimiento, 009) o `SavedCard`; el resto igual. Un solo dueño del cobro. |
+| Billing · aplicación | `renewal-checkout.ts` | Pasos dentro de la transacción, comunes a la renovación manual y la automática: plan del siguiente ciclo (programado activo, o el actual; si el programado se desactivó, lo descarta, CA-29), cobro, `renewWith` + `InvoiceService.register` si se aprueba, `expire()` si una automática se rechaza, y la auditoría. Devuelve un resultado (renovada, rechazada, vencida, bajada a Personal) sin lanzar por un rechazo (B-3 de la 009). |
+| Billing · aplicación | `manual-renewal.service.ts` | `POST /renew`: límite de intentos, `withActor` + candado, validaciones de CA-11, CA-26, CA-28, `RenewalCheckout`, bitácora y emisión después del commit. |
+| Billing · aplicación | `payment-attempt-limiter.ts` | Extrae de `SubscriptionService` (009) el límite de 10 intentos cada 15 minutos con **una** clave `billing:payment:{actor}` para contratar y renovar (un presupuesto de tarjeta por cliente). |
+| Billing · aplicación | `subscription-settings.service.ts` | Renovación automática, programar y cancelar cambio (CA-6, CA-16 a CA-19, CA-27): `withActor`, candado, método de dominio, `save`, auditoría; devuelve la vista. |
+| Billing · aplicación | `subscription-renewer.ts`, `renewal-reminder.service.ts`, `renewal-runner.ts`, `renewal-config.ts` | Worker: `SubscriptionRenewer.renew(actor)` procesa una cuenta (transacción con `RenewalCheckout`; después del commit, factura o aviso de vencida o de cambio descartado); `RenewalReminderService.remind(actor)` envía el aviso previo y lo marca; `RenewalRunner.runOnce()` lista con el escáner, delega por cuenta, cuenta resultados y falla al final si alguna cuenta falló (como `InvoiceRetrier`). |
+| Billing · aplicación | `invoice-issuer.ts`, `subscription.service.ts` | `issueAfterCommit` (nunca lanza) sale de `SubscriptionService` a `InvoiceIssuer`: lo usan contratar, renovar a mano y renovar solo (tercera copia, Art. VI.2). |
+| Billing · aplicación | `mail-message.ts`, `receipt-message.ts`, `renewal-messages.ts` | `escapeHtml` y el armado de `MailMessage` salen de `receipt-message.ts` (tres mensajes nuevos: aviso previo, vencida, cambio descartado). Claves `billing.renewal-reminder.<suscripcion>.<vence_en>`, `billing.expired.<…>.<…>`, `billing.plan-discarded.<…>.<…>` (sin `:`, ADR-0018). Solo marca y últimos 4. |
+| Billing · aplicación | `billing-history.service.ts` | Arma `subscriptionViewSchema` con `renewalQuote`, la tarjeta del último pago y `RENEWAL_REMINDER_DAYS`. |
+| Billing · infra | `persistence/typeorm-subscription.repository.ts`, `typeorm-payment.repository.ts`, `typeorm-invoice.repository.ts`, `sql-billing-history.reader.ts`, `sql-due-subscription.scanner.ts` | SQL de las columnas nuevas; el escáner llama a las funciones de §3 dentro de `ITransactionRunner.run` (sin actor). `PlanLimitsAdapter` usa `findStanding`. |
+| Billing · infra | `adapters/simulated-payment-gateway.ts`, `adapters/plan-limits.adapter.ts` | Decide por `last4`; `readOnly` en `PlanLimits` (sin fila o rol interno: `false`). |
+| Billing · trabajos | `infrastructure/renewal.scheduler.ts`, `renewal.processor.ts` | `RenewalScheduler` (nombre del diagrama) con `upsertJobScheduler` e id fijo, tres intentos exponenciales, datos solo `correlationId`; procesador con concurrencia 1 que solo delega. Séptima copia del patrón: se suma a PD-63. |
+| Billing · módulos | `billing.module.ts`, `billing-http.module.ts`, `billing-worker.module.ts` | Núcleo: `AuditModule`, `RenewalCheckout`, `SubscriptionSettingsService`. `api`: `ManualRenewalService`, controlador. `worker`: cola, escáner, renovador, aviso, `InvoiceIssuer` (ya está). |
+| Billing · presentación | `presentation/subscription.controller.ts`, `subscription-view.response.ts` | Rutas de §4, `@Roles(CLIENT)`; el `402` se lanza después del commit (como la 009). |
+| Migraciones | `apps/api/src/migrations/*-renovacion-de-suscripcion.ts`, `*-funciones-de-renovacion.ts` | §3, fechas posteriores a las de la 009. |
+| Web · errores | `apps/web/src/lib/error-catalog.ts` | Mensajes de los seis códigos nuevos; el de CA-13, literal. |
+| Web · billing | `features/billing/components/plan-and-billing.tsx`, `current-plan-card.tsx`; nuevos `next-charge-card.tsx`, `auto-renew-switch.tsx`, `subscription-status-notice.tsx`, `pending-change-notice.tsx` | Los cinco estados de §6 con los textos literales de la spec, «Próximo cobro», interruptor (con confirmación al apagar), «Renovar ahora» solo si `renewal.available`, «Cambiar de plan» y «Cancelar cambio». `StateView` para cargando y error. |
+| Web · billing | `app/(app)/(cliente)/suscripcion/cambiar-plan/{page,loading,error}.tsx`, `components/plan-change-list.tsx` | Planes del catálogo público (008, solo activos, PD-86) con el actual marcado (`PlanCard` de 008), confirmación y error; desde Personal, un plan de pago lleva a `/planes/contratar` (CA-18). |
+| Web · billing | `app/(app)/(cliente)/suscripcion/renovar/{page,loading,error}.tsx`; `payment-form.tsx`, `payment-summary.tsx`, `hooks/use-payment-form.ts`, `subscription-api.ts` | El formulario de la 009 recibe la acción de envío y el resumen (periodo nuevo de `renewal`, CA-8); estados default, rechazado y éxito. `subscription-api.ts`: las cuatro mutaciones con `authFetch`. |
+| Web · base | `apps/web/src/components/nimbo/read-only-banner.tsx` | `ReadOnlyBanner` de `ui-guidelines.md` §4 con «Renovar plan» → `/suscripcion/renovar`; solo tokens. |
+| Web · storage [Adrián] | `features/storage/components/space-provider.tsx`, explorador (`my-files`, barra de acciones, papelera, historial de versiones) | Muestra `ReadOnlyBanner` y deshabilita con explicación en texto las acciones de CA-13 cuando `readOnly`; el arrastre muestra el mensaje del catálogo (CA-14). |
+| Web · audit [Adrián] | `features/audit/activity-labels.ts` | Etiquetas en español de las nueve acciones. |
+| Diseño | `design-model.md`, `design-findings.md`, `architecture.md` §7.5 y §8 | DF nuevo (§7); `architecture.md` lo edita el `architect`. |
+
+- **Puertos nuevos**: solo `IDueSubscriptionScanner`, interno de `billing` (V.2 b). Entre módulos, ninguno: `IPlanLimitsProvider` se ensancha (decisión fijada, §7).
+- **Dependencias nuevas entre módulos**: `billing → audit` (ya permitida en `architecture.md` §3; se verifica en `boundaries.js`). `storage` sigue sin importar `billing`.
+- **Clases sin interfaz** (una implementación): `RenewalCheckout`, `ManualRenewalService`, `SubscriptionSettingsService`, `SubscriptionRenewer`, `RenewalReminderService`, `RenewalRunner`, `PaymentAttemptLimiter`, `AccountWriteGuard`. `SubscriptionService.renew` del diagrama se reparte entre ellas (SRP: juntas pasarían de ocho dependencias, como en la 009).
+- **Worker**: el renovador necesita el correo del cliente para la factura (`InvoiceService.register` → `AccountContactReader`). `IdentityReadersModule` ya entra al `worker` (009); si no exporta `AccountContactReader` allí, es un cambio en `identity` [Adrián].
+
+## 3. Datos
+```sql
+-- 1.ª migración: renovacion-de-suscripcion
+ALTER TABLE suscripcion
+  ADD COLUMN estado varchar(20) NOT NULL DEFAULT 'vigente',
+  ADD COLUMN renovacion_automatica boolean NOT NULL DEFAULT true,          -- RN-3
+  ADD COLUMN plan_pendiente_id uuid REFERENCES plan(id),                    -- DF-25, RN-7 (uno a la vez)
+  ADD COLUMN aviso_previo_para timestamptz,                                 -- vence_en avisado (CA-5)
+  ADD COLUMN aviso_vencida_para timestamptz,                                -- vence_en del correo de vencida (CA-2, CA-7)
+  ADD CONSTRAINT ck_suscripcion_estado CHECK (estado IN ('vigente', 'solo_lectura')),
+  ADD CONSTRAINT ck_suscripcion_solo_lectura CHECK (estado = 'vigente' OR vence_en IS NOT NULL),   -- CA-15
+  ADD CONSTRAINT ck_suscripcion_plan_pendiente CHECK (plan_pendiente_id IS DISTINCT FROM plan_id);
+CREATE INDEX idx_suscripcion_vence_en ON suscripcion (vence_en) WHERE vence_en IS NOT NULL;
+-- 2.ª migración: funciones-de-renovacion (ADR-0021: STABLE, SECURITY DEFINER, search_path cerrado, solo ids,
+--   REVOKE … FROM PUBLIC, EXECUTE solo para nimbo_app, fallan si hay actor en la sesión, tope 1000)
+--   suscripciones_por_renovar(p_limite)           -> (usuario_id): de pago con vence_en <= now() y
+--        (estado = 'vigente' OR aviso_vencida_para IS DISTINCT FROM vence_en), por vence_en
+--   suscripciones_por_avisar(p_dias, p_limite)    -> (usuario_id): de pago, vigentes, vence_en entre now() y
+--        now() + p_dias, aviso_previo_para IS DISTINCT FROM vence_en
+-- Política suscripcion_mantenimiento FOR SELECT TO CURRENT_USER USING (nimbo_actor_id() IS NULL AND vence_en IS NOT NULL)
+```
+- **RLS**: se mantiene `suscripcion_cliente` (FORCE, solo el dueño `CLIENT`); ningún rol interno ve filas nuevas. Las dos funciones de la 009 (`nombres_de_plan_por_cliente`, `conteo_de_clientes_por_plan`) no cambian.
+- **Idempotencia (RN-9, RN-10)**: todo cambio pasa por `lockCurrent` (`FOR UPDATE`) y vuelve a evaluar la fila bloqueada. Tras un intento automático, o `vence_en` avanzó o `estado = 'solo_lectura'`: la función no la lista otra vez. El cobro, la suscripción y la factura van en la misma transacción (Art. XI.3); una caída antes del commit no deja cobro.
+- `aviso_previo_para` y `aviso_vencida_para` guardan **para qué `vence_en`** se envió el aviso: un aviso por periodo sin columna que reiniciar. Se marcan después de `INotifier` (como `aviso_encolado_en` de la 009); la clave del correo evita duplicados si la marca falla.
+- Las filas existentes quedan `vigente` con renovación automática (RN-3). `plan_pendiente_id` sin `ON DELETE`: los planes no se borran (011).
+- `down` (orden inverso): elimina las funciones y la política; después el índice, las restricciones y las cinco columnas.
+
+## 4. Contratos
+| Método | Ruta | Rol | Request → Respuesta | Errores (`code`) |
+|---|---|---|---|---|
+| GET | `/api/v1/billing/history` | `CLIENT` | — → `BillingHistoryResponse` con `subscription: SubscriptionView` | `401 SHARED_UNAUTHENTICATED` |
+| PUT | `/api/v1/billing/subscription/auto-renew` | `CLIENT` | `{ enabled }` → `SubscriptionView` | `400 BILLING_NO_PAID_SUBSCRIPTION`, `422 BILLING_INVALID_INPUT` |
+| POST | `/api/v1/billing/renew` | `CLIENT` | `{ card, nit, expectedExpiresAt }` → `RenewResponse` (referencia, plan, vencimiento, montos, `receiptEmail`) | `400 BILLING_NO_PAID_SUBSCRIPTION`, `402 BILLING_PAYMENT_REJECTED`, `409 BILLING_ALREADY_RENEWED`, `409 BILLING_PLAN_CHANGE_PENDING`, `422` con `fields`, `429 SHARED_TOO_MANY_REQUESTS` |
+| PUT | `/api/v1/billing/subscription/plan-change` | `CLIENT` | `{ planSlug }` → `SubscriptionView` (programado; o ya en Personal, CA-27) | `400 BILLING_NO_PAID_SUBSCRIPTION`, `400 BILLING_PLAN_CHANGE_INVALID`, `422` |
+| DELETE | `/api/v1/billing/subscription/plan-change` | `CLIENT` | — → `SubscriptionView` | `400 BILLING_NO_PAID_SUBSCRIPTION`, `404 BILLING_NO_PENDING_PLAN_CHANGE` |
+| (escrituras de `storage`) | carga, carpeta, renombrar, mover, restaurar versión o papelera | `CLIENT` | sin cambio | `403 STORAGE_ACCOUNT_READ_ONLY` (CA-13) |
+
+- Roles internos: `403 SHARED_FORBIDDEN` en todas (CA-23). Montos en centavos. La lista de planes del cambio es `GET /billing/plans` (008); no hay ruta nueva.
+- `expectedExpiresAt` hace la renovación manual segura ante la automática: si ya no coincide, `409 BILLING_ALREADY_RENEWED`.
+- Sin eventos de dominio: `SubscriptionExpired` (§3 regla 2) no se emite porque nadie lo consume (YAGNI; DF nuevo).
+
+## 5. Seguridad y operación
+- Todo servicio de cliente recibe `actor` y opera con `withActor` sobre su propia fila (RLS forzada + `WHERE usuario_id`); no hay ids de suscripción en las rutas. El `worker` lista solo ids sin actor (ADR-0021) y escribe como el dueño (`createActor(id, CLIENT)`).
+- La tarjeta automática es solo marca y últimos 4 de `transaccion` (RN-2); nunca número ni CVC. `card`, `number` y `cvc` ya se redactan (009).
+- Auditoría (§2, `recordInTransaction`, con el actor dueño y `trigger: automatic` en el `worker`, como la purga de la 006): se revierte con la operación.
+- Bitácora técnica sin ids de cuenta (CA-23): `billing.renewal_run` con conteos (`scanned`, `renewed`, `rejected`, `readOnly`, `downgraded`, `reminded`, `failed`), `billing.renewal_failed` con `errorName` y `code`; si una cuenta falla, la pasada falla al final (`RenewalRunIncompleteError`) y BullMQ la reintenta y la conserva un día: así es observable para la alerta de 022 (CA-4). El Operador no tiene endpoint aquí (§7).
+- Límite de tasa compartido de 10 intentos de pago cada 15 minutos por actor (009, decisión 6).
+
+## 6. Estrategia de pruebas (por riesgo)
+Integración en `apps/api/test/int/billing/` y aislamiento en `apps/api/test/isolation/`; nombres `'CA-n: …'`.
+
+| CA | Nivel | Archivo |
+|---|---|---|
+| RN-1, RN-4, RN-7, CA-15, CA-26, CA-28 | unit | `subscription.entity.spec.ts`: inicio del periodo (vigente o solo lectura), plan del siguiente ciclo, `scheduleChange` (inactivo, mismo, Personal), `renewalQuote`, Personal nunca vence. |
+| RN-2, RN-10 | unit | `simulated-payment-gateway.spec.ts` (por últimos 4), `payment.service.spec.ts` (`SavedCard` sin validar vencimiento), `renewal-checkout.spec.ts` (aprobada, rechazada, sin renovación, a Personal, plan descartado). |
+| CA-1, CA-2, CA-7, CA-20, CA-21, CA-29 | int | `subscription-renewal.int-spec.ts`: con `FixedClock` y la pasada real; transacción, factura y correo (Mailpit/doble de `INotifier`), solo lectura con el mismo plan, cambio aplicado o descartado, bajada a Personal con uso mayor que su cuota (la carga siguiente da `STORAGE_QUOTA_EXCEEDED`). |
+| CA-3, CA-4 | int + unit | La misma suite: dos pasadas y una manual simultánea → un cobro y una factura; `renewal-runner.spec.ts`: un fallo no frena a las demás y la pasada falla al final con su `code`. |
+| CA-5 | int | `renewal-reminder.int-spec.ts`: un correo por periodo (dos pasadas), con tarjeta o con aviso de solo lectura. |
+| CA-6, CA-16 a CA-19, CA-22, CA-27 | int | `subscription-settings.int-spec.ts`: un caso feliz y el error principal por ruta, con la auditoría. |
+| CA-8 a CA-11, CA-26, CA-28 | int | `renew.int-spec.ts`: aprobada (periodo desde `vence_en`), rechazada (`402`, nada cambia), desde solo lectura (desde `now`, vuelve a subir), Personal, `409` por adelantado, por `expectedExpiresAt` y con Personal programado. |
+| CA-12, CA-13 | int [Adrián] | `storage/read-only.int-spec.ts`: lecturas, papelera y vaciar siguen; las nueve escrituras dan `403` sin cambios; `account-write-guard.spec.ts`. |
+| CA-23 | int | `billing-internal-roles.int-spec.ts`: las cuatro rutas, tres roles internos → `403` y nada cambia. |
+| CA-24 | iso | `billing-renewal.iso-spec.ts`: A cambia solo su fila (y no ve la de B); `nimbo_app` sin actor ve 0 filas; con actor `CLIENT` o interno, las dos funciones fallan; `PUBLIC` no las ejecuta; la solo lectura de A no afecta las cargas de B; corre con un dueño sin `SUPERUSER`. |
+| CA-14, CA-25 y estados de §6 | web | `plan-and-billing.spec.tsx` (un caso por estado + axe), `plan-change-list.spec.tsx`, `renovar/page.spec.tsx` (default, rechazado, éxito), `read-only-banner.spec.tsx`, `my-files.spec.tsx` [Adrián] (acciones deshabilitadas con texto y mensaje al arrastrar). |
+| Migraciones | int | `migrations.int-spec.ts`: `up → down → up` y los `CHECK`. |
+
+## 7. Riesgos y coherencia con el diseño
+- **`PlanLimits.readOnly` choca con la nota de DF-51** («`PlanLimits` solo lleva límites de almacenamiento… ISP») y con `architecture.md` §7.5 («un guard global bloquea escrituras»). La decisión está fijada: el estado viaja por el puerto que `storage` ya consume y cada servicio lo comprueba. 012, 013, 016 y 021 lo heredan por el mismo campo (RN-6, RN-11). Lo ratifica el `architect`.
+- **Ventana hasta la pasada**: entre `vence_en` y la siguiente pasada (≤ 15 minutos) la cuenta sigue vigente. Si el `worker` cae, la ventana crece (lo cubre la alerta de CA-4). Se prefiere a calcular la solo lectura desde `vence_en`, porque eso la activaría antes del cobro automático de CA-1.
+- **Pasarela real**: el cobro va dentro de la transacción porque el simulador no tiene efectos fuera; con una pasarela real haría falta otra estrategia (fuera de alcance, ADR-0006).
+- **NIT de la renovación automática**: el de la última factura (`CF` si no hay); la factura sigue la 009. Discutible: lo confirma Adrián.
+- **Conteos del Operador (HU-6, CA-23)**: aquí solo en la bitácora de cada pasada. Los conteos al momento (cuentas en solo lectura, cambios programados) necesitan una función de conteo con su primer consumidor en las métricas de `backoffice`/022b: pendiente nuevo, no se crea sin pantalla (YAGNI).
+- **Orden**: se implementa sobre la 009 ya integrada en `main` (cambia `Subscription`, `PaymentService`, `IPaymentGateway`, `SubscriptionService` y `InvoiceIssuer`); sus pruebas se ajustan en el mismo PR.
+- **DF nuevo (DF-70 si la 009 toma DF-69 al renumerar su DF-68, `arreglos-011.md` §11; si no, el siguiente libre)**: columnas de `suscripcion` contra el E-R (`estado`, `renovacion_automatica` en lugar de `renov_auto`, `plan_pendiente_id`, `aviso_previo_para`, `aviso_vencida_para`); `RenewalScheduler` con BullMQ en lugar de `@Cron`; `SubscriptionService.renew` repartido (§2); sin evento `SubscriptionExpired`; solo lectura por `PlanLimits.readOnly` en lugar de guard global; pasarela por últimos 4. **DF-25** queda en parte resuelto (`plan_pendiente_id`); `uso_agente` sigue para la 020.
+- **Pendientes**: cierra **PD-86** (la 009 su parte; aquí el cambio solo ofrece planes activos y rechaza los desactivados). **PD-63** suma `subscription-renewal`. **PD-96** (redibujo de M4 y E-R de la 009) se amplía con lo de la 010 en lugar de abrir otro. Nuevos: conteos al momento para el Operador (022b/011 métricas) y que 012, 013, 016 y 021 comprueben `readOnly` del propietario (RN-6, RN-11).
+- **Mockups**: `/mockup` de los cinco estados de `billing/suscripcion/`, `billing/planes/` (`plan-actual`) y `billing/pago/` (renovación) y del aviso de solo lectura, **antes** de las tareas de UI (compuerta).
+- **ADR**: ninguno nuevo; las dos funciones de §3 se suman a la lista de ADR-0021 (adenda que firma el `architect`).
+
+## 8. Aprobación
+- `architect` (aplica: cambio de arquitectura en `architecture.md` §7.5, contrato de `IPlanLimitsProvider`/`PlanLimits` frente a DF-51 y dos funciones nuevas bajo ADR-0021): pendiente.
+- Adrián: pendiente. Debe autorizar los cambios en módulos ajenos de §2 (`storage` y su web, `audit` y su web, `shared`, `worker.module.ts`, `fake-plan-limits.provider.ts` e `identity` si hiciera falta) y decidir el NIT de la renovación automática y el intervalo de 15 minutos.
