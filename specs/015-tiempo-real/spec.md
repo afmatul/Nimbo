@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Lista |
+| Estado | En curso |
 | Dueño | Adrián (desde 2026-10-15; su plan y su PR siguen `workflow.md` §7.1) |
 | Fase | 2 |
 | Requisitos | RF-26 (canal para la presencia de 016); RNF-05, RNF-07, RNF-09, RNF-17. RF-08 no: lo cubre solo 005 (DF-58, P-7) |
