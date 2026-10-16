@@ -14,7 +14,7 @@ modules/backoffice/
 ├─ application/     # servicios («service» de los diagramas) y puertos (`ports/`)
 ├─ infrastructure/  # persistencia (*.orm-entity.ts), adaptadores, procesadores
 ├─ presentation/    # controladores, DTOs, gateways
-├─ backoffice.module.ts # `forRoot(identity)`: recibe el mismo módulo de `identity` que la raíz (Nest los distingue por referencia)
+├─ backoffice.module.ts # `forRoot(identity, storage)`: recibe los mismos módulos de `identity` y `storage` que la raíz (Nest los distingue por referencia)
 └─ index.ts         # única API pública
 ```
 
@@ -38,6 +38,21 @@ eventos y tipos públicos). Nada de `infrastructure/**` cruza la frontera. Nombr
 Un actor que ya no está `activa` recibe `403 SHARED_FORBIDDEN` antes de la acción o de la lectura, aunque su token siga
 vigente (RN-7, CA-14). No autoriza por rol (`@Roles` + `RolesGuard`) ni valida: eso lo hacen el controlador y el módulo
 dueño.
+
+## Metadatos de un cliente (011 CA-13)
+
+`GET /api/v1/backoffice/client-files?email&page` (`ClientFilesController`, `@Roles(ADMIN, SUPPORT)`) valida con
+`clientFilesQuerySchema` (`400 BACKOFFICE_INVALID_QUERY` con `fields`) y delega en `SupportService.listClientFiles`, que
+corre en `InternalActionService.run`:
+
+- El correo exacto se resuelve con `AccountDirectory.findClientByEmail` (`identity`). Un correo inexistente o de una
+  cuenta interna da el mismo `404 BACKOFFICE_CLIENT_NOT_FOUND` (`ClientNotFoundError`), que revierte sin evento.
+- Los metadatos los lee `INodeMetadataReader` (`storage`, PD-31): solo columnas de `archivo` del dueño, papelera
+  incluida, de la más reciente a la más vieja, 10 por página; nunca `version_archivo`, `clave_objeto` ni `carga`.
+- La consulta se audita (`client.files_viewed`, sobre la cuenta del cliente) aunque la página venga vacía; la bitácora
+  `backoffice.client_files.viewed` lleva solo `actorId` y `clientId`, nunca el correo ni nombres de archivo.
+- La respuesta sale por lista blanca (`client-files-response.ts`): id, nombre, tipo, tamaño (texto decimal), fechas y
+  `trashedAt`.
 
 ## Alta inicial por comando (011 CA-7)
 

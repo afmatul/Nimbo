@@ -6,6 +6,7 @@ import { AuditModule } from '../audit';
 import { FILE_SERVICE_CONFIG } from './application/file-service-config';
 import { FOLDER_CONFIG } from './application/folder-config';
 import { FolderService } from './application/folder.service';
+import { I_NODE_METADATA_READER } from './application/node-metadata-reader';
 import { I_PLAN_LIMITS_PROVIDER } from './application/plan-limits';
 import { I_QUICK_ACCESS_REPOSITORY } from './application/ports/i-quick-access.repository.port';
 import { I_TRASH_PURGE_QUEUE } from './application/ports/i-trash-purge-queue.port';
@@ -15,6 +16,7 @@ import { SpaceMeasurer } from './application/space-measurer';
 import { SpaceSummaryService } from './application/space-summary.service';
 import { TrashPurger } from './application/trash-purger';
 import { UPLOAD_CONFIG } from './application/upload-config';
+import { SqlNodeMetadataReader } from './infrastructure/persistence/sql-node-metadata.reader';
 import { TrashPurgeProcessor } from './infrastructure/trash-purge.processor';
 import { TRASH_PURGE_QUEUE, TrashPurgeScheduler } from './infrastructure/trash-purge.scheduler';
 import { FilesController } from './presentation/files.controller';
@@ -107,5 +109,12 @@ describe('StorageModule', () => {
 
   it('007 CA-1: registra el resumen de espacio con su medición', () => {
     expect(providers).toEqual(expect.arrayContaining([SpaceMeasurer, SpaceSummaryService]));
+  });
+
+  it('011 PD-31: provee el lector de metadatos con su adaptador SQL y exporta solo su token', () => {
+    const reader = providers.find((provider) => tokenOf(provider) === I_NODE_METADATA_READER);
+
+    expect(reader).toEqual({ provide: I_NODE_METADATA_READER, useClass: SqlNodeMetadataReader });
+    expect(module.exports).toEqual([I_NODE_METADATA_READER]);
   });
 });

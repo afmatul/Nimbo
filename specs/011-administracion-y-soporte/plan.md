@@ -247,4 +247,4 @@ Cada CA vive en una capa principal: reglas en unit, contrato y concurrencia en i
   archivos nombrados (R-8); DF-66 aceptado; bytes como texto decimal (ADR-0016, PD-87); la 004 no se reabre; PD-85 y los dos
   PD-51 los corrige él en otro PR. `/auth/account-setup*` sin límite propio (A, §5); unificarlo con 002 queda en PD-88.
 - Cambio (Fátima, 2026-10-14, acuerdo con Juan Marcos por la 009): `SubscriptionAdministration` sale de T-09 a la 009 T-03,
-  sin `clientCount` (YAGNI) y con retornos fijos; R-6; `i-plan-repository` a `ports/`. **Pendiente de aprobación de Adrián.**
+  sin `clientCount` (YAGNI) y con retornos fijos; R-6; `i-plan-repository` a `ports/`. Aprobado por Adrián (2026-10-15), con dos PR: A (T-01–T-08) y B (T-09–T-12).

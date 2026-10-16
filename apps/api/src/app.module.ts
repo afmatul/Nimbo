@@ -33,13 +33,14 @@ import type { Env } from './shared';
  * (ADR-0017), `notifications`, `identity`, `AccessModule` (`PermissionResolver`, 003) y `storage` (005) con el
  * enlace de `I_PLAN_LIMITS_PROVIDER` en `PlanLimitsBindingModule` (DF-51: `storage` no conoce a `billing`;
  * 006a aporta `PlanLimitsAdapter`), la consulta de la actividad propia de `audit` (004), el catálogo de planes de
- * `billing` (008) —el `worker` no carga ninguna de las dos rutas— y `backoffice` (011), que recibe el mismo módulo de
- * `identity` para no instanciarlo dos veces.
+ * `billing` (008) —el `worker` no carga ninguna de las dos rutas— y `backoffice` (011), que recibe los mismos módulos de
+ * `identity` y `storage` para no instanciarlos dos veces.
  */
 @Module({})
 export class AppModule {
   static forRoot(env: Env): DynamicModule {
     const identity = IdentityModule.forRoot(env);
+    const storage = StorageModule.forRoot(env);
     return {
       module: AppModule,
       imports: [
@@ -57,10 +58,10 @@ export class AppModule {
         identity,
         AccessModule,
         PlanLimitsBindingModule,
-        StorageModule.forRoot(env),
+        storage,
         AuditHttpModule,
         BillingHttpModule,
-        BackofficeModule.forRoot(identity),
+        BackofficeModule.forRoot(identity, storage),
       ],
       providers: [PingQueue],
     };
