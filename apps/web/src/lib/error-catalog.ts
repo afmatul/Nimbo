@@ -8,6 +8,7 @@ import {
   SHARED_ERROR_CODES,
   STORAGE_ERROR_CODES,
   STORAGE_NODE_FIELD_MESSAGES,
+  STORAGE_PREVIEW_FAILURE_CODES,
   SUPPORT_CONTACT_EMAIL,
   formatBytes,
   type FieldIssueReason,
@@ -134,6 +135,22 @@ const STORAGE_MESSAGES: Readonly<Record<string, StorageMessageBuilder>> = {
     cause: 'Este tipo de archivo no tiene vista previa.',
     fix: 'Descárgalo para abrirlo.',
   }),
+  [STORAGE_PREVIEW_FAILURE_CODES.STORAGE_PREVIEW_PASSWORD_PROTECTED]: fixed(
+    'Este archivo está protegido con contraseña.',
+    'La vista previa no abre archivos con contraseña y Nimbo no te la pedirá. Descárgalo y ábrelo en tu equipo con su contraseña.',
+  ),
+  [STORAGE_PREVIEW_FAILURE_CODES.STORAGE_PREVIEW_CORRUPT]: fixed(
+    'No pudimos leer este archivo.',
+    'Puede estar dañado o su contenido no corresponde a su tipo. El original no cambió: descárgalo para revisarlo en tu equipo.',
+  ),
+  [STORAGE_PREVIEW_FAILURE_CODES.STORAGE_PREVIEW_UNAVAILABLE]: fixed(
+    'La vista previa no está disponible para este archivo.',
+    'Tu navegador no pudo abrirlo; puede ser demasiado grande para mostrarlo aquí. El archivo no cambió: descárgalo para abrirlo en tu equipo.',
+  ),
+  [STORAGE_PREVIEW_FAILURE_CODES.STORAGE_PREVIEW_EXPIRED]: fixed(
+    'La vista previa caducó.',
+    'Por seguridad, el acceso a la vista previa dura unos minutos. Reintenta para abrirla de nuevo.',
+  ),
 };
 
 /**

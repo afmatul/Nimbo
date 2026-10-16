@@ -5,6 +5,7 @@ import {
   SHARED_ERROR_CODES,
   STORAGE_ERROR_CODES,
   STORAGE_NODE_FIELD_MESSAGES,
+  STORAGE_PREVIEW_FAILURE_CODES,
   SUPPORT_CONTACT_EMAIL,
   quickAccessLimitMessage,
 } from '@nimbo/contracts';
@@ -204,6 +205,36 @@ describe('error-catalog', () => {
 
     it('un código ajeno a storage no tiene mensaje estructurado', () => {
       expect(storageMessage('NO_EXISTE')).toBeNull();
+    });
+  });
+
+  describe('razones locales de lectores (017 CA-2)', () => {
+    it.each([
+      [
+        STORAGE_PREVIEW_FAILURE_CODES.STORAGE_PREVIEW_PASSWORD_PROTECTED,
+        'Este archivo está protegido con contraseña.',
+        'La vista previa no abre archivos con contraseña y Nimbo no te la pedirá. Descárgalo y ábrelo en tu equipo con su contraseña.',
+      ],
+      [
+        STORAGE_PREVIEW_FAILURE_CODES.STORAGE_PREVIEW_CORRUPT,
+        'No pudimos leer este archivo.',
+        'Puede estar dañado o su contenido no corresponde a su tipo. El original no cambió: descárgalo para revisarlo en tu equipo.',
+      ],
+      [
+        STORAGE_PREVIEW_FAILURE_CODES.STORAGE_PREVIEW_UNAVAILABLE,
+        'La vista previa no está disponible para este archivo.',
+        'Tu navegador no pudo abrirlo; puede ser demasiado grande para mostrarlo aquí. El archivo no cambió: descárgalo para abrirlo en tu equipo.',
+      ],
+      [
+        STORAGE_PREVIEW_FAILURE_CODES.STORAGE_PREVIEW_EXPIRED,
+        'La vista previa caducó.',
+        'Por seguridad, el acceso a la vista previa dura unos minutos. Reintenta para abrirla de nuevo.',
+      ],
+    ])('CA-2: %s tiene causa y solución propias, sin fallback genérico', (code, cause, fix) => {
+      expect(storageMessage(code)).toEqual({ cause, fix });
+      expect(messageForCode(code, { correlationId: 'request-17' })).toBe(`${cause} ${fix}`);
+      const httpCodes: readonly string[] = Object.values(STORAGE_ERROR_CODES);
+      expect(httpCodes.includes(code)).toBe(false);
     });
   });
 
