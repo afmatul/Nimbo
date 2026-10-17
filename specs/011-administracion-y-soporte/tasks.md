@@ -96,7 +96,7 @@ y en `pendientes.md` (PD-31 resuelto, PD-94) prevalece lo de `main` (aviso a Jua
   `SupportService` (`484c20c`; plan §2 ajustado). Lo mismo en `AccountDirectory.list` (encontrado en la revisión de la
   rama, 2026-10-16): recibe `pageSize` y devuelve `{ items, total }`; en T-10 lo pasa `AdminService`. Respuesta de Adrián (2026-10-16) al resto: H-1, el backend de cuentas
   se queda en el PR-A (nota en el PR) y T-08 se divide (T-13 al PR-B); H-2, la invitación sale a `AccountSetupLinkIssuer`
-  (el `MailMessage` común lo hace Adrián aparte); H-4, `IAdminRosterRepository` con `useExisting: TypeormUserRepository`;
+  (el `MailMessage` común lo hace Adrián aparte, PD-99); H-4, `IAdminRosterRepository` con `useExisting: TypeormUserRepository`;
   `AccountSetupController` propio dentro de `NoStoreMiddleware`; `IdentityModule.forRoot` ≤ 30 líneas;
   `INodeMetadataReader` a `ports/` con `FileMetadataPageRequest`; DRY de `shared` (PD-97) y `StorageModule.forRoot`
   (PD-98) para Adrián. Por eso, en «Archivos» de T-02, T-03 y T-05 (ya cerradas) léase: los 6 métodos del padrón en

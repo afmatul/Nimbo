@@ -20,7 +20,8 @@ export interface AccountView extends AccountSummary {
 
 /**
  * Página pedida desde 1 (DF-66) con el tamaño que fija quien llama, como `INodeMetadataReader` (011 H-3);
- * `emailPrefix` ya recortado y en minúsculas por el contrato (Q-5). Es la misma forma que pide el repositorio.
+ * `emailPrefix` ya recortado y en minúsculas por el contrato (Q-5). Hoy tiene la misma forma que pide el repositorio,
+ * pero se separa a propósito: es el tipo público de la fachada y `AccountListQuery` no sale del puerto interno.
  */
 export type AccountListRequest = AccountListQuery;
 
