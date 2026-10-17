@@ -8,11 +8,13 @@ import {
   type RoleName,
 } from '@nimbo/contracts';
 import { act, render, screen } from '@testing-library/react';
+import { useEffect, type JSX } from 'react';
 import { io } from 'socket.io-client';
 
 import { useSession, type SessionContextValue } from '../identity/session/session-provider';
 
 import { RealtimeProvider } from './realtime-provider';
+import { useRealtime } from './use-realtime';
 
 jest.mock('socket.io-client', () => ({ io: jest.fn() }));
 jest.mock('../identity/session/session-provider', () => ({ useSession: jest.fn() }));
@@ -22,6 +24,7 @@ type AuthCallback = (send: (data: object) => void) => void;
 
 /** Doble del `Socket` de `socket.io-client`: guarda los manejadores para dispararlos desde la prueba. */
 class FakeSocket {
+  id: string | undefined = undefined;
   readonly handlers = new Map<string, Handler>();
   readonly connect = jest.fn(() => this);
   readonly disconnect = jest.fn(() => this);
@@ -62,6 +65,13 @@ function renderProvider(): ReturnType<typeof render> {
       <p>Contenido</p>
     </RealtimeProvider>,
   );
+}
+
+/** Consumidor de `useRealtime()`: muestra el id de conexión y se suscribe a `evento.prueba` mientras está montado. */
+function ChannelProbe({ onEvent }: { readonly onEvent: (payload: unknown) => void }): JSX.Element {
+  const channel = useRealtime();
+  useEffect(() => channel.on('evento.prueba', onEvent), [channel, onEvent]);
+  return <p>{`conexión: ${channel.connectionId ?? 'ninguna'}`}</p>;
 }
 
 function openOptions(): Record<string, unknown> {
@@ -303,5 +313,50 @@ describe('RealtimeProvider', () => {
     expect(socket.disconnect).toHaveBeenCalledTimes(1);
     expect(socket.connect).not.toHaveBeenCalled();
     expect(nextHandshakeAuth()).toEqual({ token: 'token-inicial' });
+  });
+
+  describe('useRealtime() (016)', () => {
+    it('CA-6: expone el id de la conexión vigente y lo cambia al reconectar', () => {
+      render(
+        <RealtimeProvider apiPublicUrl={API_PUBLIC_URL}>
+          <ChannelProbe onEvent={jest.fn()} />
+        </RealtimeProvider>,
+      );
+      expect(screen.getByText('conexión: ninguna')).toBeTruthy();
+
+      socket.id = 'conexion-1';
+      act(() => socket.fire('connect'));
+      expect(screen.getByText('conexión: conexion-1')).toBeTruthy();
+
+      act(() => socket.fire('disconnect'));
+      expect(screen.getByText('conexión: ninguna')).toBeTruthy();
+    });
+
+    it('CA-6: entrega los avisos del canal al suscriptor y lo da de baja al desmontar', () => {
+      const onEvent = jest.fn();
+      const { unmount } = render(
+        <RealtimeProvider apiPublicUrl={API_PUBLIC_URL}>
+          <ChannelProbe onEvent={onEvent} />
+        </RealtimeProvider>,
+      );
+
+      socket.fire('evento.prueba', { participants: [] });
+      unmount();
+
+      expect(onEvent).toHaveBeenCalledWith({ participants: [] });
+      expect(socket.off).toHaveBeenCalledWith('evento.prueba', onEvent);
+    });
+
+    it('fuera del proveedor, o para un rol interno, no hay conexión ni avisos', () => {
+      useSessionMock.mockReturnValue(sessionWith('token-inicial', 'SUPPORT'));
+      render(
+        <RealtimeProvider apiPublicUrl={API_PUBLIC_URL}>
+          <ChannelProbe onEvent={jest.fn()} />
+        </RealtimeProvider>,
+      );
+      render(<ChannelProbe onEvent={jest.fn()} />);
+
+      expect(screen.getAllByText('conexión: ninguna')).toHaveLength(2);
+    });
   });
 });

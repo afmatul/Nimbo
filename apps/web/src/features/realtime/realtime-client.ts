@@ -44,7 +44,7 @@ function errorData(error: Error): unknown {
  * reintenta un rechazo del *handshake*; si la espera falta o no es válida, no lo reabre.
  */
 class RealtimeChannel {
-  private readonly socket: Socket;
+  readonly socket: Socket;
   private presentedToken: string | null;
   private retryTimer: ReturnType<typeof setTimeout> | undefined;
   private stopped = false;
@@ -119,8 +119,14 @@ class RealtimeChannel {
   }
 }
 
-/** Abre el canal en vivo de la pestaña. Devuelve la función que lo cierra. */
-export function startRealtime(connection: RealtimeConnection): () => void {
+/** Canal abierto: el `Socket` para escuchar avisos y la función que lo cierra. */
+export interface StartedRealtime {
+  readonly socket: Socket;
+  readonly stop: () => void;
+}
+
+/** Abre el canal en vivo de la pestaña. */
+export function startRealtime(connection: RealtimeConnection): StartedRealtime {
   const channel = new RealtimeChannel(connection);
-  return () => channel.stop();
+  return { socket: channel.socket, stop: () => channel.stop() };
 }

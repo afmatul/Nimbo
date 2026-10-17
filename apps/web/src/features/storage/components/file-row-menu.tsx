@@ -5,6 +5,7 @@ import {
   AlertCircle,
   Download,
   EllipsisVertical,
+  FilePen,
   FolderInput,
   History,
   Loader2,
@@ -24,6 +25,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../../../components/ui/dropdown-menu';
+import { editorPath } from '../../editing/routes';
 import { fileDetailPath } from '../routes';
 import { StorageRequestError } from '../storage-request-error';
 
@@ -172,6 +174,7 @@ export function FileRowMenu({
           <HistoryMenuItem fileId={file.id} />
           <OrganizeMenuItems onRename={onRename} onMove={onMove} />
           <PinMenuItem pin={pin} />
+          {file.kind === 'docx' ? <EditMenuItem fileId={file.id} /> : null}
           <MoveToTrashMenuItem onSelect={onMoveToTrash} />
         </DropdownMenuContent>
       </DropdownMenu>
@@ -189,6 +192,18 @@ function HistoryMenuItem({ fileId }: { readonly fileId: string }): React.JSX.Ele
       <Link href={fileDetailPath(fileId)}>
         <History className="h-4 w-4 text-secondary-foreground" aria-hidden="true" />
         Ver historial
+      </Link>
+    </DropdownMenuItem>
+  );
+}
+
+/** «Editar»: solo para `.docx`, el único formato que se edita en línea (016 CA-1, CA-4; ADR-0004). */
+function EditMenuItem({ fileId }: { readonly fileId: string }): React.JSX.Element {
+  return (
+    <DropdownMenuItem asChild>
+      <Link href={editorPath(fileId)}>
+        <FilePen className="h-4 w-4 text-secondary-foreground" aria-hidden="true" />
+        Editar
       </Link>
     </DropdownMenuItem>
   );
