@@ -19,8 +19,8 @@ export const BILLING_ERROR_CODES = {
 export type BillingErrorCode = (typeof BILLING_ERROR_CODES)[keyof typeof BILLING_ERROR_CODES];
 
 /**
- * Motivos de campo del cobro que solo la API detecta (009 CA-5), con su mensaje para `web`. El dominio de `api` repite
- * el texto (no importa `contracts`, ADR-0008).
+ * Motivos de campo del cobro que solo la API detecta (009 CA-5), con su mensaje. Fuente única: la capa de aplicación de
+ * `billing` (`PaymentService`) y `web` lo leen de aquí; el dominio no lo necesita (ADR-0008).
  */
 export const BILLING_FIELD_MESSAGES = {
   CARD_EXPIRED: 'La tarjeta está vencida. Usa una tarjeta con fecha de vencimiento vigente.',

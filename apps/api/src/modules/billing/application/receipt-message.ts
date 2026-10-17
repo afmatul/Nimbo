@@ -26,8 +26,10 @@ const receiptLines = ({ document }: IssuableInvoice): readonly string[] => [
 ];
 
 /**
- * Correo del comprobante (spec 009 CA-6, decisión 4): la clave `billing.receipt.<transaccion_id>` hace que el reintento
- * no duplique el correo (es el `jobId` de la cola `mail`). Va al correo guardado en la factura.
+ * Correo del comprobante (spec 009 CA-6, decisión 4) con la clave `billing.receipt.<transaccion_id>` (el `jobId` de la
+ * cola `mail`). No se duplica aunque el reintento lo vuelva a encolar (p. ej. si se encoló y falló marcar el aviso):
+ * `MailProcessor` guarda la marca `mail:sent:<jobId>` 7 días al entregar y salta un trabajo con la misma clave
+ * (`mail.duplicate_skipped`; `test/int/notifications/mailer-contract.int-spec.ts`). Va al correo guardado en la factura.
  */
 export function receiptMessage(invoice: IssuableInvoice, userId: string): MailMessage {
   const lines = receiptLines(invoice);

@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { BILLING_FIELD_MESSAGES } from '@nimbo/contracts';
 
 import { I_CLOCK } from '../../../shared';
 import type { Actor, IClock } from '../../../shared';
@@ -23,10 +24,11 @@ export interface ChargeOrder {
 /** Contrato único del cobro (revisión B-3): el pago registrado, `aprobada` o `rechazada`. */
 export type ChargeResult = Payment;
 
+/** El texto sale del catálogo de `contracts`, el mismo que muestra `web` (DRY; revisión de Adrián del PR #62, #2). */
 const CARD_EXPIRED_ISSUE = Object.freeze({
   field: 'card.expMonth',
   reason: 'CARD_EXPIRED',
-  message: 'La tarjeta está vencida. Usa una tarjeta con fecha de vencimiento vigente.',
+  message: BILLING_FIELD_MESSAGES.CARD_EXPIRED,
 });
 
 /**
