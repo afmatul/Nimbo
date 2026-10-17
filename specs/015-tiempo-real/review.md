@@ -54,3 +54,5 @@
 ## DF y pendientes
 - DF-65 aceptado y reflejado en `design-model.md` T3/T1 y `architecture.md` §5; falta redibujar T3 (PD-46). DF-58 actualizado (RF-08 sale de 015).
 - `pendientes.md`: PD-74 (adaptador de Redis y origen tras Traefik) y PD-75 (`/socket.io` en el Traefik de staging) ya registradas. Si I-2 se pospone, agregar su fila.
+
+> T-FIX-1 (2026-10-17): B-1, I-1, I-2 y S-1 corregidos en `21a3769` y `aa4ced5`; queda para la re-revisión.
