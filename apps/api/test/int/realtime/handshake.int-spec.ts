@@ -1,3 +1,4 @@
+import { REALTIME_ERROR_CODES } from '@nimbo/contracts';
 import type { Socket as ClientSocket } from 'socket.io-client';
 
 import { userRoom } from '../../../src/modules/realtime/domain/room-names';
@@ -83,6 +84,12 @@ describe('Canal en vivo: handshake autenticado (015 T-03)', () => {
     expect(error.message).toBe('SHARED_FORBIDDEN');
     expect(error.data).toEqual({ code: 'SHARED_FORBIDDEN', status: 403 });
     expect(await testApp.server.fetchSockets()).toHaveLength(0);
+    const rejected = await waitForLog(testApp.logs, (line) => line.event === 'realtime.rejected');
+    expect(rejected).toMatchObject({
+      reason: 'forbidden_role',
+      userId: USER_ID,
+      correlationId: expect.any(String),
+    });
   });
 
   it('RN-3: un `Origin` no listado se rechaza antes del handshake y queda en la bitácora', async () => {
@@ -105,8 +112,11 @@ describe('Canal en vivo: handshake autenticado (015 T-03)', () => {
     }
     const error = await waitForConnectError(attemptFrom(uniqueForwardedFor()));
 
-    expect(error.message).toBe('REALTIME_TOO_MANY_REQUESTS');
-    expect(error.data).toMatchObject({ code: 'REALTIME_TOO_MANY_REQUESTS', status: 429 });
+    expect(error.message).toBe(REALTIME_ERROR_CODES.TOO_MANY_REQUESTS);
+    expect(error.data).toMatchObject({
+      code: REALTIME_ERROR_CODES.TOO_MANY_REQUESTS,
+      status: 429,
+    });
     expect(error.data?.retryAfterSeconds).toBeGreaterThan(0);
   });
 

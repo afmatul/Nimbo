@@ -1,6 +1,3 @@
-/** Ruta fija del canal (plan §4): constante, no variable de entorno (YAGNI). */
-export const REALTIME_PATH = '/socket.io';
-
 /** Una conexión que se cae sin cerrar se da por salida en este plazo como máximo (RN-9, CA-9). */
 export const DEPARTURE_DETECTION_LIMIT_MS = 60_000;
 

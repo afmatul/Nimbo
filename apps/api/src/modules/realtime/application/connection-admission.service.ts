@@ -114,7 +114,7 @@ export class ConnectionAdmission {
     }
     const { userId, role } = verification.claims;
     if (role !== Role.CLIENT) {
-      throw this.reject('forbidden_role', new InsufficientRoleError());
+      throw this.reject('forbidden_role', new InsufficientRoleError(), { userId });
     }
     return { actor: createActor(userId, role), expiresAt: verification.expiresAt };
   }

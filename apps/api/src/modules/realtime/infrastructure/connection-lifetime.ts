@@ -1,16 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { SHARED_ERROR_CODES } from '@nimbo/contracts';
+import { REALTIME_EVENTS, SHARED_ERROR_CODES } from '@nimbo/contracts';
 
 import { I_CLOCK } from '../../../shared';
 import type { IClock } from '../../../shared';
 
 import type { RealtimeSocket } from './realtime-socket';
 
-/** Único aviso propio del canal (plan §4, RN-10): el servidor lo cierra porque venció el token con que se abrió. */
-export const SESSION_EXPIRED_EVENT = 'realtime.session-expired';
-
 const expire = (socket: RealtimeSocket): void => {
-  socket.emit(SESSION_EXPIRED_EVENT, { code: SHARED_ERROR_CODES.UNAUTHENTICATED });
+  socket.emit(REALTIME_EVENTS.SESSION_EXPIRED, { code: SHARED_ERROR_CODES.UNAUTHENTICATED });
   socket.disconnect();
 };
 

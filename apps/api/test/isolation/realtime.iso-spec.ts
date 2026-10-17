@@ -1,3 +1,4 @@
+import { REALTIME_EVENTS } from '@nimbo/contracts';
 import type { Socket as ClientSocket } from 'socket.io-client';
 
 import { I_DOCUMENT_ROOMS, I_REALTIME_PUBLISHER } from '../../src/modules/realtime';
@@ -48,7 +49,7 @@ describe('aislamiento del canal en vivo (015 CA-10)', () => {
     Promise.all(
       connections.flatMap((connection) =>
         [userRoom(USER_A), documentRoom(DOCUMENT_D)].map((room) =>
-          connection.timeout(SETTLE_MS).emitWithAck('room.join', { room }),
+          connection.timeout(SETTLE_MS).emitWithAck(REALTIME_EVENTS.ROOM_JOIN, { room }),
         ),
       ),
     );

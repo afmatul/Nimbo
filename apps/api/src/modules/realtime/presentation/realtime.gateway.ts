@@ -8,6 +8,7 @@ import {
   type OnGatewayConnection,
   type OnGatewayInit,
 } from '@nestjs/websockets';
+import { REALTIME_EVENTS } from '@nimbo/contracts';
 import { PinoLogger } from 'nestjs-pino';
 import type { DisconnectReason } from 'socket.io';
 
@@ -75,7 +76,7 @@ export class RealtimeGateway implements OnGatewayInit<RealtimeServer>, OnGateway
   }
 
   /** Único mensaje del cliente con manejador, y siempre se deniega: las salas las decide el servidor (CA-7, RN-4). */
-  @SubscribeMessage('room.join')
+  @SubscribeMessage(REALTIME_EVENTS.ROOM_JOIN)
   denyRoomJoin(): RoomJoinDenied {
     return ROOM_JOIN_DENIED;
   }

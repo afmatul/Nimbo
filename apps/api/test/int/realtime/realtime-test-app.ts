@@ -4,6 +4,7 @@ import type { AddressInfo } from 'node:net';
 import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 import { EventEmitter2, EventEmitterModule } from '@nestjs/event-emitter';
+import { REALTIME_PATH } from '@nimbo/contracts';
 import type { Server } from 'socket.io';
 import { io } from 'socket.io-client';
 import type { Socket as ClientSocket } from 'socket.io-client';
@@ -12,7 +13,6 @@ import { REALTIME_DOCUMENT_LEFT, RealtimeModule } from '../../../src/modules/rea
 import type { DocumentLeftEvent } from '../../../src/modules/realtime';
 import {
   REALTIME_CONFIG,
-  REALTIME_PATH,
   REALTIME_PING_INTERVAL_MS,
   REALTIME_PING_TIMEOUT_MS,
 } from '../../../src/modules/realtime/application/realtime-config';

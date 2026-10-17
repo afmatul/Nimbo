@@ -1,10 +1,10 @@
 import { EventEmitter } from 'node:events';
 
-import { SHARED_ERROR_CODES } from '@nimbo/contracts';
+import { REALTIME_EVENTS, SHARED_ERROR_CODES } from '@nimbo/contracts';
 
 import { FixedClock, Role } from '../../../shared';
 
-import { ConnectionLifetime, SESSION_EXPIRED_EVENT } from './connection-lifetime';
+import { ConnectionLifetime } from './connection-lifetime';
 import type { RealtimeSocket } from './realtime-socket';
 
 const NOW = new Date('2026-10-16T12:00:00.000Z');
@@ -73,9 +73,8 @@ describe('ConnectionLifetime (015 T-04)', () => {
     lifetime.watch(asRealtimeSocket(socket));
     jest.advanceTimersByTime(REMAINING_MS);
 
-    expect(SESSION_EXPIRED_EVENT).toBe('realtime.session-expired');
     expect(socket.sent).toEqual([
-      [SESSION_EXPIRED_EVENT, { code: SHARED_ERROR_CODES.UNAUTHENTICATED }],
+      [REALTIME_EVENTS.SESSION_EXPIRED, { code: SHARED_ERROR_CODES.UNAUTHENTICATED }],
     ]);
     expect(socket.disconnect).toHaveBeenCalledTimes(1);
     expect(jest.getTimerCount()).toBe(0);

@@ -3,10 +3,11 @@ import type { IncomingMessage } from 'node:http';
 
 import type { INestApplicationContext } from '@nestjs/common';
 import { IoAdapter } from '@nestjs/platform-socket.io';
+import { REALTIME_PATH } from '@nimbo/contracts';
 import type { Server, ServerOptions } from 'socket.io';
 
 import { CorrelationContext } from '../../../shared';
-import { REALTIME_PATH, type RealtimeConfig } from '../application/realtime-config';
+import type { RealtimeConfig } from '../application/realtime-config';
 
 /** Lo mínimo del logger que usa el adaptador. Nunca registra el `Origin` ni el token (CA-13). */
 export interface OriginRejectionLogger {

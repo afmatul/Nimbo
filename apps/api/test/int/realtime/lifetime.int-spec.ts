@@ -1,7 +1,6 @@
-import { SHARED_ERROR_CODES } from '@nimbo/contracts';
+import { REALTIME_EVENTS, SHARED_ERROR_CODES } from '@nimbo/contracts';
 import type { Socket as ClientSocket } from 'socket.io-client';
 
-import { SESSION_EXPIRED_EVENT } from '../../../src/modules/realtime/infrastructure/connection-lifetime';
 import { FixedClock } from '../../../src/shared';
 
 import {
@@ -25,7 +24,7 @@ interface ExpiredClose {
 
 const waitForExpiredClose = (client: ClientSocket): Promise<ExpiredClose> =>
   new Promise((resolve) => {
-    client.once(SESSION_EXPIRED_EVENT, (payload: unknown) => {
+    client.once(REALTIME_EVENTS.SESSION_EXPIRED, (payload: unknown) => {
       client.once('disconnect', (reason) => resolve({ payload, reason }));
     });
   });

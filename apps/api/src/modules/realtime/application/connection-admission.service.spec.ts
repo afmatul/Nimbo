@@ -84,7 +84,11 @@ describe('ConnectionAdmission (plan §2)', () => {
       const rejection = admission.admit({ origin: ORIGIN, token: TOKEN });
 
       await expect(rejection).rejects.toThrow(InsufficientRoleError);
-      expect(loggedReasons(logger)).toEqual(['forbidden_role']);
+      expect(logger.warn).toHaveBeenCalledWith({
+        event: 'realtime.rejected',
+        reason: 'forbidden_role',
+        userId: USER_ID,
+      });
     },
   );
 

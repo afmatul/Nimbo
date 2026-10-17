@@ -8,7 +8,9 @@
 
 ## Canal en vivo (015)
 
-- **Ruta**: `GET /socket.io/` (`REALTIME_PATH`, constante), WebSocket con _polling_ de respaldo, en el mismo puerto que
+- **Contrato** (`@nimbo/contracts`, compartido con `web`): `REALTIME_PATH`, `REALTIME_EVENTS` (`SESSION_EXPIRED`,
+  `ROOM_JOIN`) y `REALTIME_ERROR_CODES`. El dominio no importa el paquete (ADR-0008): su prueba ata el código.
+- **Ruta**: `GET /socket.io/` (`REALTIME_PATH`), WebSocket con _polling_ de respaldo, en el mismo puerto que
   la API HTTP. Traefik la enruta al `api` (`infra/traefik/local-routes.yml`, etiquetas de `compose.override.yml`).
 - **Montaje**: `RealtimeModule.forRoot(env, accessTokenVerifierModule)` en `AppModule`, que le pasa la misma instancia
   de `IdentityModule` para resolver `I_ACCESS_TOKEN_VERIFIER` sin que `realtime` importe `identity`.

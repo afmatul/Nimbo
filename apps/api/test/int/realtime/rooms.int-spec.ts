@@ -1,4 +1,5 @@
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { REALTIME_EVENTS } from '@nimbo/contracts';
 import type { Socket as ClientSocket } from 'socket.io-client';
 
 import {
@@ -80,7 +81,9 @@ describe('Canal en vivo: el cliente no elige sus salas (015 T-05)', () => {
       const intruder = await clients.connectAs(USER_B);
       const received = collectEvents(intruder, NOTICE.event);
 
-      const ack: unknown = await intruder.timeout(SETTLE_MS).emitWithAck('room.join', { room });
+      const ack: unknown = await intruder
+        .timeout(SETTLE_MS)
+        .emitWithAck(REALTIME_EVENTS.ROOM_JOIN, { room });
       notify();
       await settle();
 
