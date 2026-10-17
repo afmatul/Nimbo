@@ -15,7 +15,6 @@ const POSITIVE_INT_MESSAGE = 'debe ser un entero positivo';
 const LOCAL_ONLYOFFICE_SECRET_MESSAGE = 'no puede ser el valor de desarrollo de .env.example';
 const PUBLISHED_ONLYOFFICE_SECRET_LENGTH_MESSAGE =
   'debe tener al menos 32 caracteres en staging y en producción';
-const DEV_SCAFFOLD_MESSAGE = 'solo se admite con `APP_ENV` local o test';
 const MULTIPART_THRESHOLD_MESSAGE = 'debe ser mayor o igual que `UPLOAD_PART_SIZE_BYTES`';
 const JWT_SECRET_MIN_LENGTH = 32;
 /** 32 bytes aleatorios en base64url: el mínimo en ambientes publicados (plan 002 §6.10). */
@@ -80,8 +79,6 @@ const DEFAULT_EDITING_MAX_DOC_BYTES = 50 * 1024 * 1024;
 /** Valor de ejemplo de `ONLYOFFICE_JWT_SECRET` en `.env.example`: en staging y producción se rechaza (016 plan §5). */
 const EXAMPLE_ONLYOFFICE_JWT_SECRET = 'cambia-este-secreto-local';
 const ONLYOFFICE_SECRET_MIN_LENGTH = 32;
-/** Ambientes donde vale el andamiaje de plan de pago (016 RN-13, plan §2.1); se borra al terminar la spec. */
-const DEV_SCAFFOLD_ENVIRONMENTS: readonly string[] = ['local', 'test'];
 
 /**
  * Valor de desarrollo de `JWT_ACCESS_SECRET` que trae `.env.example` (plan 002 §6.10). Público a propósito: en
@@ -235,7 +232,7 @@ const realtimeApiShape = {
 
 /**
  * Edición con ONLYOFFICE en el `api` (016 plan §5). Todas opcionales: sin ellas el editor responde
- * `EDITING_UNAVAILABLE` y el resto sigue (RNF-09). `DEV_FORCE_PAID_PLAN` es del andamiaje temporal (RN-13, plan §2.1).
+ * `EDITING_UNAVAILABLE` y el resto sigue (RNF-09).
  */
 const editingApiShape = {
   ONLYOFFICE_JWT_SECRET: optionalText(),
@@ -243,10 +240,6 @@ const editingApiShape = {
   ONLYOFFICE_INTERNAL_URL: optionalUrl(),
   EDITING_CALLBACK_BASE_URL: optionalUrl(),
   EDITING_MAX_DOC_BYTES: positiveInt(DEFAULT_EDITING_MAX_DOC_BYTES),
-  DEV_FORCE_PAID_PLAN: z.preprocess(
-    (value) => (value === '' ? undefined : value),
-    oneOf(['pro', 'equipo', 'institucional']).optional(),
-  ),
 };
 
 /** Purga programada de la papelera en el `worker` (006 plan §4, CA-19). */
@@ -360,16 +353,6 @@ const refinePublishedOnlyOfficeSecret = (
   }
 };
 
-/** El andamiaje de plan de pago nunca llega a un ambiente publicado (016 RN-13). */
-const refineDevScaffold = (
-  env: { APP_ENV: string; DEV_FORCE_PAID_PLAN?: string | undefined },
-  ctx: z.RefinementCtx,
-): void => {
-  if (env.DEV_FORCE_PAID_PLAN !== undefined && !DEV_SCAFFOLD_ENVIRONMENTS.includes(env.APP_ENV)) {
-    addEnvIssue(ctx, 'DEV_FORCE_PAID_PLAN', DEV_SCAFFOLD_MESSAGE);
-  }
-};
-
 /**
  * Reglas entre variables del `api`: toda carga por partes tiene al menos dos partes (005 plan §5) y, en ambientes
  * publicados, el enlace del correo nunca viaja por http (001 CA-20) y la clave de firma no es la de desarrollo
@@ -383,14 +366,12 @@ const refineApiEnv = (
     UPLOAD_PART_SIZE_BYTES: number;
     UPLOAD_MULTIPART_THRESHOLD_BYTES: number;
     ONLYOFFICE_JWT_SECRET?: string | undefined;
-    DEV_FORCE_PAID_PLAN?: string | undefined;
   },
   ctx: z.RefinementCtx,
 ): void => {
   if (env.UPLOAD_MULTIPART_THRESHOLD_BYTES < env.UPLOAD_PART_SIZE_BYTES) {
     addEnvIssue(ctx, 'UPLOAD_MULTIPART_THRESHOLD_BYTES', MULTIPART_THRESHOLD_MESSAGE);
   }
-  refineDevScaffold(env, ctx);
   if (!isPublished(env.APP_ENV)) return;
   if (!env.WEB_PUBLIC_URL.startsWith('https://')) {
     addEnvIssue(ctx, 'WEB_PUBLIC_URL', HTTPS_MESSAGE);

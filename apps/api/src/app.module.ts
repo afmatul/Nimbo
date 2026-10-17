@@ -4,7 +4,6 @@ import type { DynamicModule } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerModule } from '@nestjs/throttler';
 
-import { planLimitsBinding } from './dev-scaffold/dev-paid-plan.module';
 import { AccessModule } from './modules/access';
 import { AuditHttpModule } from './modules/audit';
 import { BackofficeModule } from './modules/backoffice';
@@ -14,6 +13,7 @@ import { IDENTITY_THROTTLERS, IdentityModule } from './modules/identity';
 import { NotificationsModule } from './modules/notifications';
 import { RealtimeModule } from './modules/realtime';
 import { StorageModule } from './modules/storage';
+import { PlanLimitsBindingModule } from './plan-limits-binding.module';
 import {
   AuthGuardsModule,
   EnvModule,
@@ -41,8 +41,7 @@ import { UserDirectoryBindingModule } from './user-directory-binding.module';
  * de `IdentityModule` para resolver `I_ACCESS_TOKEN_VERIFIER` sin que `realtime` importe `identity` (Nest deduplica el
  * módulo dinámico por referencia) y la edición (016), que recibe así las mismas instancias de `StorageModule` y de
  * `RealtimeModule`;
- * `IUserDirectory` lo enlaza `UserDirectoryBindingModule` con la de `IdentityModule`. `planLimitsBinding(env)` es
- * `PlanLimitsBindingModule` salvo el andamiaje temporal de plan de pago de 016 (`DEV_FORCE_PAID_PLAN`, se borra en T-11).
+ * `IUserDirectory` lo enlaza `UserDirectoryBindingModule` con la de `IdentityModule`.
  */
 @Module({})
 export class AppModule {
@@ -68,7 +67,7 @@ export class AppModule {
         NotificationsModule,
         identity,
         AccessModule,
-        planLimitsBinding(env),
+        PlanLimitsBindingModule,
         UserDirectoryBindingModule.forRoot(identity),
         storage,
         AuditHttpModule,

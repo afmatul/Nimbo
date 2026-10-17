@@ -269,7 +269,6 @@ describe('edición con ONLYOFFICE (016 plan §5)', () => {
     'ONLYOFFICE_INTERNAL_URL',
     'EDITING_CALLBACK_BASE_URL',
     'EDITING_MAX_DOC_BYTES',
-    'DEV_FORCE_PAID_PLAN',
   ])('CA-15: `%s` es solo del `api` y opcional (sin ONLYOFFICE el `api` arranca igual)', (key) => {
     expect(declaredIn(key)).toEqual(['api']);
     expect(issuesFor({ [key]: undefined })).toEqual([]);
@@ -307,32 +306,4 @@ describe('edición con ONLYOFFICE (016 plan §5)', () => {
       expect(issuesFor({ ...env, ONLYOFFICE_JWT_SECRET: STAGING_SECRET })).toEqual([]);
     },
   );
-
-  it.each(['local', 'test'])(
-    'RN-13: `DEV_FORCE_PAID_PLAN` solo se acepta con `APP_ENV=%s`',
-    (appEnv) => {
-      expect(issuesFor({ APP_ENV: appEnv, DEV_FORCE_PAID_PLAN: 'pro' })).toEqual([]);
-    },
-  );
-
-  it.each(['staging', 'production'])(
-    'RN-13: `DEV_FORCE_PAID_PLAN` se rechaza con `APP_ENV=%s` (prohibido fuera de desarrollo)',
-    (appEnv) => {
-      const env = {
-        APP_ENV: appEnv,
-        JWT_ACCESS_SECRET: STAGING_SECRET,
-        DEV_FORCE_PAID_PLAN: 'pro',
-      };
-
-      expect(issuesFor(env)).toEqual([
-        '`DEV_FORCE_PAID_PLAN` solo se admite con `APP_ENV` local o test',
-      ]);
-    },
-  );
-
-  it('RN-13: `DEV_FORCE_PAID_PLAN` solo admite planes de pago', () => {
-    expect(issuesFor({ DEV_FORCE_PAID_PLAN: 'personal' })).toEqual([
-      '`DEV_FORCE_PAID_PLAN` debe ser uno de: pro, equipo, institucional',
-    ]);
-  });
 });
