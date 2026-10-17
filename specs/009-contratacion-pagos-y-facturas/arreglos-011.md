@@ -122,7 +122,7 @@ Fátima debe revisar estos cambios al fusionar su rama con la 009 (o la 009 con 
 Adrián aprobó dividir la 011: el PR-A (T-01 a T-08) entra a `main` antes que la 009; la T-09 entra con la 009 y Fátima
 la marca en su PR-B. Cuando el PR-A esté en `main`, en `feat/009`:
 
-1. **Traer `main`** para que el PR de la 009 quede solo con lo suyo, y resolver los choques así:
+1. **Hecho (2026-10-17, merge `ac9c437`).** **Traer `main`** para que el PR de la 009 quede solo con lo suyo, y resolver los choques así:
    - `specs/011-administracion-y-soporte/{spec,plan,tasks}.md`: la versión de `main` (la del PR-A ya tiene lo acordado;
      la copia de esta rama trae la T-09 vieja).
    - `docs/sdd/pendientes.md`: conservar PD-31 resuelto, PD-94 y PD-80 en «Cerrados».
@@ -133,7 +133,7 @@ la marca en su PR-B. Cuando el PR-A esté en `main`, en `feat/009`:
      la 009 pasó a **DF-69** y sus citas se actualizaron; en `pendientes.md`, el PD-92 de la 009 (ayudantes de prueba de
      migraciones) pasó a **PD-105**, porque en `main` PD-92 es la decisión de «Ver planes» de la 008.
    - Después, suites completas (sobre todo `migrations-nimbo-app` y `backoffice/migrations`).
-2. **Ítem «Plan y facturación» → `/suscripcion` en `AccountMenu`** (lo hace la 009; en el PR-A sería un enlace a una
+2. **Hecho (2026-10-17).** **Ítem «Plan y facturación» → `/suscripcion` en `AccountMenu`** (lo hace la 009; en el PR-A sería un enlace a una
    página que no existe): con el mismo patrón que la T-07 de la 011 usa para `activityHref` según el rol, **solo para
    clientes** (las cuentas internas no tienen suscripción). Cierra el acceso pendiente de la T-11 (PD-68).
 3. **`SubscriptionAdministration` desde `read`**: Fátima lo anota en su T-10 (métricas solo con conteos, `planNamesFor`

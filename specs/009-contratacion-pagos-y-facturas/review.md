@@ -49,7 +49,7 @@
 
 ## Estado de los hallazgos (2026-10-15)
 - **Resueltos en esta revisión:** I-3 (PD-40 cerrado; PD-95 y PD-96 abiertos), I-4 (CA-7 y plan §4; el cambio de la spec queda «Pendiente Adrián» en su registro), I-5 (`.Rhistory` eliminado), S-1 (`subscribe.int-spec.ts` › plan desactivado), S-2 (`usuario_id` en las tres consultas de `typeorm-invoice.repository.ts`), S-3 (montos de la factura), S-4, S-5 (`StateView` y `h1` en `contratar/page.tsx`) y S-6.
-- **Al integrar el PR-A de la 011** (`arreglos-011.md` §11): I-1 e I-2.
+- **Al integrar el PR-A de la 011** (`arreglos-011.md` §11), resueltos el 2026-10-17: I-1 (merge `ac9c437` de `main` con 008, 014 y el PR-A; DF de la 009 → DF-69 y su PD-92 → PD-105) e I-2 («Plan y facturación» en `AccountMenu` solo para clientes, con sus pruebas). Suites repetidas después del merge (abajo).
 
 ## DF y pendientes
 - DF-69 abierto y actualizado (S-6; redibujo en PD-96). Pendientes: PD-40 y PD-80 cerrados; PD-63, PD-105 y PD-93 actualizados; PD-95 y PD-96 abiertos.
