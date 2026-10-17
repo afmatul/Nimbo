@@ -68,7 +68,7 @@ y en `pendientes.md` (PD-31 resuelto, PD-94) prevalece lo de `main` (aviso a Jua
   CA-7); `desde-admin` pasa a T-13 (el correo en `?email=` quedaba en el historial y en la bitácora de Traefik, RNF-17);
   guardia en `soporte/layout.tsx` como el plan. Decisiones de Fátima (2026-10-16).
 - Auditoría de seguridad del PR-A (2026-10-17): SEC-1 (la invitación servía tras suspender) y SEC-3/SEC-4 (bitácoras)
-  corregidos en el PR-A; restablecer debe invalidar la invitación (`password.service.ts`, se pide a Adrián). Para el
+  corregidos en el PR-A; restablecer también invalida la invitación (`password.service.ts`, autorizado por Adrián). Para el
   PR-B: `AccountsController` solo `@Roles(Role.ADMIN)` (los servicios de cuentas no autorizan por sí mismos), filas de
   cuentas y métricas en la tabla de `backoffice.iso-spec.ts` (Operador `403` en cuentas; lista blanca por clave),
   límite de tasa (PD-103; el `no-store` ya va en el PR-A) y `desde-admin` por id del cliente, no por correo (PD-101).

@@ -14,11 +14,12 @@ import type { TestApp } from '../setup/test-app';
 
 import {
   ACCOUNT_PASSWORD,
+  FORGOT_PASSWORD_PATH,
   LOGIN_PATH,
   RESET_PASSWORD_CHECK_PATH,
   RESET_PASSWORD_PATH,
 } from './accounts';
-import { createIdentityTestApp, setupTokenSentTo } from './identity-test-app';
+import { createIdentityTestApp, resetTokenSentTo, setupTokenSentTo } from './identity-test-app';
 
 const CHECK_PATH = '/api/v1/auth/account-setup/check';
 const SETUP_PATH = '/api/v1/auth/account-setup';
@@ -232,6 +233,19 @@ describe('enlace de alta interna (011 CA-5)', () => {
 
     await expectRejected(token, 'IDENTITY_SETUP_LINK_INVALID');
     expect(await hashOf(id)).toBe(before);
+  });
+
+  it('RN-7: restablecer la contraseña con «¿Olvidaste tu contraseña?» invalida la invitación pendiente', async () => {
+    const { email, token } = await enrolled();
+    await request(server()).post(FORGOT_PASSWORD_PATH).send({ email }).expect(202);
+    const resetToken = await resetTokenSentTo(email);
+
+    await request(server())
+      .post(RESET_PASSWORD_PATH)
+      .send({ token: resetToken, password: ACCOUNT_PASSWORD })
+      .expect(200);
+
+    await expectRejected(token, 'IDENTITY_SETUP_LINK_INVALID');
   });
 
   it.each(['recuperacion', 'verificacion'] as const)(
