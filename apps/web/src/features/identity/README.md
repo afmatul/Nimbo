@@ -1,8 +1,9 @@
 # Identity en la web
 
-Registro y verificación (spec 001), inicio de sesión, sesión y recuperación de contraseña (spec 002, PR-5a). Solo
-`api.ts` habla con la API de `identity`; valida cada respuesta con `@nimbo/contracts` y lanza `ApiClientError` con el
-`code` estable. Los textos de error salen de `lib/error-catalog.ts` (`messageForCode`).
+Registro y verificación (spec 001), inicio de sesión, sesión y recuperación de contraseña (spec 002, PR-5a) y la
+primera contraseña de una cuenta interna (011). Solo `api.ts` y `account-setup/api.ts` hablan con la API de
+`identity`; validan cada respuesta con `@nimbo/contracts` y lanzan `ApiClientError` con el `code` estable. Los textos
+de error salen de `lib/error-catalog.ts` (`messageForCode`).
 
 **Sesión en memoria (D-1, CA-28)**: el token de acceso vive solo en la memoria de la pestaña; nunca en
 `localStorage`, `sessionStorage` ni `document.cookie`. El refresco viaja en una cookie `HttpOnly` que el navegador
@@ -22,6 +23,7 @@ recupera con esa cookie.
 | `components/login-form.tsx`, `login-alert.tsx` | Formulario de inicio de sesión y alerta de cada rechazo encima del botón (spec §11)                            | T-88, T-89 |
 | `components/request-reset-form.tsx`            | `/recuperar-contrasena`: pedir el enlace y «revisa tu correo» neutro                                           | T-91       |
 | `components/reset-password-view.tsx`           | `/restablecer-contrasena`: lee y borra `#token`, comprueba el enlace y elige la contraseña nueva               | T-92, T-93 |
+| `account-setup/`                               | `/crear-contrasena` (011 CA-5): igual que restablecer, con `checkAccountSetupLink` y `setFirstPassword`        | 011 T-08   |
 
 ## Renovación
 
@@ -52,3 +54,8 @@ que muestra «Tu sesión terminó. Inicia sesión de nuevo.».
 
 `homePathFor(role)` vive en `features/access/home-path.ts` (003 §6.9): `CLIENT` → `/archivos`; `ADMIN`, `SUPPORT` y
 `OPERATOR` → `/interno`. Lo usan `useEnterSession` y las áreas por rol (`RequireRole`).
+
+En el mismo archivo (011 CA-17): `areaHomePathFor(role)` es la pantalla a la que `/interno` lleva al rol que ya tiene
+área (Soporte: `/soporte/metadatos`; Admin y Operador, `null` y el marcador hasta T-13 y T-11) y
+`activityPathFor(role)` es «Mi actividad» del menú de la cuenta (cliente: `/actividad`; internos:
+`/interno/actividad`).
