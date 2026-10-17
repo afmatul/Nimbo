@@ -97,6 +97,22 @@ describe('enlace de alta interna (011 CA-5)', () => {
     expect((await login(email, FIRST_PASSWORD)).status).toBe(200);
   });
 
+  it('plan §5: las dos rutas responden `Cache-Control: no-store`, también con un error (reciben el token del enlace)', async () => {
+    const { token } = await enrolled();
+
+    const responses = [
+      await check(token),
+      await setUp(token, FIRST_PASSWORD),
+      await check('no-es-un-token'),
+      await setUp('no-es-un-token', FIRST_PASSWORD),
+    ];
+
+    expect(responses.map((response) => response.status)).toEqual([200, 200, 422, 422]);
+    expect(responses.map((response) => response.headers['cache-control'])).toEqual(
+      Array(4).fill('no-store'),
+    );
+  });
+
   it('CA-5: el enlace queda guardado solo como hash y es de tipo `alta_interna`', async () => {
     const { id, token } = await enrolled();
 

@@ -132,6 +132,19 @@ describe('AccountAdministration (011 CA-2 a CA-4, RN-7)', () => {
     });
   });
 
+  it.each(['suspend', 'reactivate'] as const)(
+    'CA-4: `%s` sobre sí mismo se rechaza antes de bloquear la fila de la cuenta',
+    async (operation) => {
+      const { administration, actor, admin, users } = setup();
+      const findForUpdate = jest.spyOn(users, 'findByIdForUpdate');
+
+      await expect(administration[operation](actor, admin.id)).rejects.toBeInstanceOf(
+        CannotChangeOwnStatusError,
+      );
+      expect(findForUpdate).not.toHaveBeenCalled();
+    },
+  );
+
   describe('reactivate', () => {
     it('CA-3: reactiva una cuenta suspendida sin devolverle sesiones', async () => {
       const { administration, actor, seed, statusOf, sessions } = setup();

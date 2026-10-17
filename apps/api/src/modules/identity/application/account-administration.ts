@@ -11,10 +11,10 @@ import {
 } from '../domain/errors';
 import type { User } from '../domain/user.entity';
 
+import { I_ADMIN_ROSTER_REPOSITORY } from './ports/i-admin-roster.repository.port';
+import type { IAdminRosterRepository } from './ports/i-admin-roster.repository.port';
 import { I_SESSION_REPOSITORY } from './ports/i-session-repository.port';
 import type { ISessionRepository } from './ports/i-session-repository.port';
-import { I_USER_REPOSITORY } from './ports/i-user-repository.port';
-import type { IUserRepository } from './ports/i-user-repository.port';
 
 /** Mínimo de Administradores activos que debe quedar tras una suspensión (011 RN-7). */
 const MIN_ACTIVE_ADMINS = 1;
@@ -27,7 +27,7 @@ const MIN_ACTIVE_ADMINS = 1;
 @Injectable()
 export class AccountAdministration {
   constructor(
-    @Inject(I_USER_REPOSITORY) private readonly users: IUserRepository,
+    @Inject(I_ADMIN_ROSTER_REPOSITORY) private readonly users: IAdminRosterRepository,
     @Inject(I_SESSION_REPOSITORY) private readonly sessions: ISessionRepository,
     @Inject(I_CLOCK) private readonly clock: IClock,
   ) {}
@@ -45,13 +45,15 @@ export class AccountAdministration {
   }
 
   /**
-   * CA-2, CA-4: candado → fila `FOR UPDATE` → no a sí mismo → no al último Administrador activo → `suspendida` y
+   * CA-2, CA-4: candado → no a sí mismo → fila `FOR UPDATE` → no al último Administrador activo → `suspendida` y
    * revoca todas sus sesiones (002 D-10). Devuelve cuántas sesiones revocó, para la bitácora del llamador.
+   * «No a sí mismo» va antes de leer la fila (igual que en `reactivate`): solo compara ids, y así un pedido que se
+   * rechazará no bloquea ninguna fila.
    */
   async suspend(actor: Actor, id: string): Promise<number> {
     await this.users.lockAdminRoster();
-    const target = await this.lockedAccount(id);
     assertNotSelf(actor, id);
+    const target = await this.lockedAccount(id);
     await this.assertNotLastActiveAdmin(target);
     await this.users.updateStatus(id, target.suspend().status);
     return this.sessions.revokeAllExcept(id, null, this.clock.now());

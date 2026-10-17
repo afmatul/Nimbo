@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { Repository } from 'typeorm';
 
 import { Role, TransactionContext } from '../../../../shared';
+import type { IAdminRosterRepository } from '../../application/ports/i-admin-roster.repository.port';
 import type { IUserRepository } from '../../application/ports/i-user-repository.port';
 import { AccountStatus } from '../../domain/account-status.enum';
 import type { ClientUser } from '../../domain/client-user.entity';
@@ -43,11 +44,12 @@ const insertParameters = (row: UsuarioRow): unknown[] => [
 ];
 
 /**
- * `IUserRepository` sobre `usuario` (plan §6.4). Usa el `EntityManager` de `TransactionContext`: el de la
- * transacción de `ITransactionRunner.run` o, fuera de ella, el del `DataSource`. Los `…ForUpdate` exigen transacción.
+ * `IUserRepository` e `IAdminRosterRepository` (011) sobre `usuario` (plan §6.4). Usa el `EntityManager` de
+ * `TransactionContext`: el de la transacción de `ITransactionRunner.run` o, fuera de ella, el del `DataSource`. Los
+ * `…ForUpdate` exigen transacción.
  */
 @Injectable()
-export class TypeormUserRepository implements IUserRepository {
+export class TypeormUserRepository implements IUserRepository, IAdminRosterRepository {
   constructor(private readonly context: TransactionContext) {}
 
   async findByEmail(email: EmailAddress): Promise<User | null> {
