@@ -4,14 +4,14 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | En curso |
+| Estado | En revisión |
 | Dueño | Adrián (desde 2026-10-15; su plan y su PR siguen `workflow.md` §7.1) |
 | Fase | 2 |
 | Requisitos | RF-26 (canal para la presencia de 016); RNF-05, RNF-07, RNF-09, RNF-17. RF-08 no: lo cubre solo 005 (DF-58, P-7) |
 | Depende de | 002 (token de acceso, D-1 y D-14), 003 (`Actor`, códigos `SHARED_*`) |
 | La necesita | 016 (presencia y avisos de edición, `architecture.md` §7.2 pasos 2 y 6) |
 | DF / PD | DF-30 y ADR-0010 (gateway único, salas por usuario y por documento, `realtime` no conoce permisos); DF-58; PD-03 |
-| Última actualización | 2026-10-15 |
+| Última actualización | 2026-10-17 |
 
 ## 1. Contexto y objetivo
 Nimbo necesita avisar al navegador de cambios que ocurren en el servidor sin que el usuario recargue: primero la
@@ -104,3 +104,4 @@ Sin preguntas abiertas.
 | 2026-10-15 | Creación en `Borrador` | `/spec 015` | — |
 | 2026-10-15 | CA-2 sin «cuenta suspendida» (P-2: el token vigente sirve hasta vencer); CA-14 y RN-8 cuentan todos los intentos por origen | Revisión de `architect` del plan (`IRateLimiter` no distingue fallidos) | Adrián (2026-10-15) |
 | 2026-10-15 | P-1…P-9 resueltas; CA-9 con plazo de 60 s, CA-14, RN-9, RN-10; RF-08 sale de 015; dueño pasa a Adrián | Respuestas de Adrián | Adrián |
+| 2026-10-17 | Pasa a `En revisión` | `/review 015` | — |
