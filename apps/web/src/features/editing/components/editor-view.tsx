@@ -15,6 +15,7 @@ import { EditorFailedState, EditorUnavailableState } from './editor-failure';
 import { EditorHeader, type PresenceToggle } from './editor-header';
 import { editorCountLabel, PresencePanel, type Viewer } from './presence-panel';
 import { ReadOnlyNotice } from './read-only-notice';
+import { SaveFailedBanner } from './save-failed-banner';
 
 type Ready = Extract<EditorState, { status: 'ready' }>;
 
@@ -55,14 +56,15 @@ export function EditorView({ fileId, api }: EditorViewProps): React.JSX.Element 
     reopen();
   }, [reopen]);
   const shown: EditorState = unavailable ? { status: 'unavailable' } : state;
-  const toggle = shown.status === 'ready' ? presenceToggle(shown, expanded, setExpanded) : null;
+  const open = openEditor(shown);
+  const toggle = open ? presenceToggle(open, expanded, setExpanded) : null;
 
   return (
     <main className="flex min-h-dvh flex-col bg-background sm:p-4 lg:h-dvh">
       <div className="flex min-h-0 flex-1 flex-col rounded-lg border border-border bg-card shadow-card">
         <EditorHeader
           title={titleOf(shown)}
-          mode={shown.status === 'ready' ? shown.session.mode : null}
+          mode={open ? open.session.mode : null}
           presence={toggle}
         />
         <EditorBody
@@ -74,6 +76,14 @@ export function EditorView({ fileId, api }: EditorViewProps): React.JSX.Element 
       </div>
     </main>
   );
+}
+
+/**
+ * La sesión con el editor montado. Tras un guardado fallido (CA-14) primero se ve el banner: sin editor, modo ni
+ * presencia hasta «Abrir el editor de nuevo».
+ */
+function openEditor(state: EditorState): Ready | null {
+  return state.status === 'ready' && !state.session.lastSaveFailed ? state : null;
 }
 
 function presenceToggle(
@@ -134,7 +144,11 @@ function EditorBody({
         </div>
       );
     case 'ready':
-      return (
+      return state.session.lastSaveFailed ? (
+        <div className="p-4">
+          <SaveFailedBanner onReopen={onRetry} />
+        </div>
+      ) : (
         <ReadyEditor
           ready={state}
           expanded={expanded}
