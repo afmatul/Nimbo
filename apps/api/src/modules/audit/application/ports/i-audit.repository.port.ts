@@ -1,4 +1,5 @@
 import type { Actor } from '../../../../shared';
+import type { AuditActor } from '../../domain/audit-actor';
 import type { AuditEntry } from '../../domain/audit-entry';
 import type { AuditQuery } from '../../domain/audit-query';
 
@@ -10,11 +11,12 @@ export interface AuditPage {
 
 /**
  * Persistencia de `evento_auditoria` (plan 004 §2; Art. V, regla b). Interno a `audit`. Todo método toma el
- * `EntityManager` de `requireActorScope(actor)`: se une a la transacción vigente de ese actor.
+ * `EntityManager` de `requireActorScope(actor)`: se une a la transacción vigente de ese actor. Con `SYSTEM_ACTOR`,
+ * `insert` usa la transacción vigente sin actor (`run`, 011 CA-7).
  */
 export interface IAuditRepository {
   /** Inserta el evento a nombre de `actor` sin leerlo de vuelta (un interno no puede leer lo que escribe sobre otro). */
-  insert(actor: Actor, entry: AuditEntry): Promise<void>;
+  insert(actor: AuditActor, entry: AuditEntry): Promise<void>;
   /**
    * Eventos donde `actor` es el afectado, del más reciente al más antiguo, con los filtros de `query` dentro del SQL.
    * Lanza `InvalidAuditQueryError` (`INVALID_CURSOR`) si el cursor no es válido.

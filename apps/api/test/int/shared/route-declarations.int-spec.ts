@@ -1,14 +1,14 @@
 import { SHARED_ERROR_CODES } from '@nimbo/contracts';
 import request from 'supertest';
 
-import { AppModule } from '../../../src/app.module';
+import { createFullApiTestApp } from '../../support/full-api-test-app';
 import {
   describeRoute,
   listRouteDeclarations,
   routeDeclarationProblems,
 } from '../../support/route-declarations';
 import type { RouteDeclaration } from '../../support/route-declarations';
-import { buildTestEnv, createTestApp } from '../setup/test-app';
+import { buildTestEnv } from '../setup/test-app';
 import type { TestApp } from '../setup/test-app';
 
 /** Prefijo global de `configureHttpApp` (Nest no lo expone desde la app). */
@@ -21,6 +21,8 @@ const EXPECTED_PUBLIC_ROUTES = [
   'GET /api/v1/billing/plans',
   'GET /api/v1/health/live',
   'GET /api/v1/health/ready',
+  'POST /api/v1/auth/account-setup',
+  'POST /api/v1/auth/account-setup/check',
   'POST /api/v1/auth/forgot-password',
   'POST /api/v1/auth/login',
   'POST /api/v1/auth/register',
@@ -42,12 +44,7 @@ describe('declaración de rutas de la API completa (CA-3, CA-7)', () => {
   let routes: RouteDeclaration[];
 
   beforeAll(async () => {
-    const env = buildTestEnv();
-    testApp = await createTestApp({
-      modules: [AppModule.forRoot(env)],
-      validatedEnv: env,
-      accessTokenStrategy: 'identity',
-    });
+    testApp = await createFullApiTestApp(buildTestEnv());
     routes = listRouteDeclarations(testApp.app, API_PREFIX);
   });
 

@@ -2,12 +2,12 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Lista |
+| Estado | En curso |
 | Dueño | Fátima |
 | Fase | 2 |
 | Requisitos | RF-06 (principal); RF-05 (matriz), RF-07, RF-19, RF-24, RNF-02, RNF-05, RNF-13, RNF-14 |
 | Depende de | 003, 004, 005 (metadatos de archivos), 006 (papelera), 007 (`espacio_usado`), 008 |
-| Última actualización | 2026-10-08 |
+| Última actualización | 2026-10-17 |
 
 ## 1. Contexto y objetivo
 Operar sin romper la privacidad (RF-06): el Administrador gestiona cuentas, altas internas y catálogo y ve métricas; Soporte
@@ -26,7 +26,7 @@ sobre una cuenta ajena queda en la auditoría del cliente (Art. IX, RF-07). Cuot
 **Cuentas (HU-1, HU-2)**
 - **CA-1** (HU-1, RF-06) Dado un Administrador, cuando lista cuentas o busca por correo, entonces recibe una lista
   paginada con correo, nombre, rol, estado, verificada (sí/no), plan, espacio usado y fecha de alta, sin datos de archivos;
-  en cuentas internas plan y espacio no aplican («—»): no tienen suscripción ni cuota.
+  «—» en plan y espacio de una interna (sin suscripción ni cuota) y en el plan de un cliente sin suscripción (009).
 - **CA-2** (HU-1, RF-06, RF-07) Dado una cuenta activa ajena (cliente o interna), cuando el Administrador la suspende,
   entonces queda `suspendida`, se revocan sus sesiones (002 D-10), su inicio de sesión recibe `IDENTITY_ACCOUNT_SUSPENDED`
   y la acción se audita; un token de acceso ya emitido sigue valiendo hasta 15 min (002 D-10).
@@ -37,7 +37,7 @@ sobre una cuenta ajena queda en la auditoría del cliente (Art. IX, RF-07). Cuot
 - **CA-5** (HU-2, RF-05, RF-06) Dado un Administrador, cuando crea una cuenta Administrador, Soporte u Operador con nombre,
   correo y código de empleado, entonces la cuenta existe, la persona recibe un enlace de un solo uso para fijar su
   contraseña (el Administrador nunca la conoce) y el alta se audita. El enlace reutiliza el mecanismo de la 001
-  (`token_cuenta`, hash, un solo uso) con un tipo propio: fija la primera contraseña y no invalida sesiones. La cuenta nace
+  (`token_cuenta`, hash, un solo uso) con un tipo propio: fija la primera contraseña (solo con la cuenta activa) y no invalida sesiones. La cuenta nace
   con el correo verificado; si el enlace venció, la página indica usar «¿Olvidaste tu contraseña?» (sin reenvío).
 - **CA-6** (HU-2, RF-05) — error: Dado un correo que ya tiene cuenta, un código de empleado repetido o el rol Cliente,
   cuando se intenta el alta, entonces se rechaza con un `code` de conflicto o de validación y no se crea nada.
@@ -60,8 +60,8 @@ sobre una cuenta ajena queda en la auditoría del cliente (Art. IX, RF-07). Cuot
 
 **Métricas (HU-4)**
 - **CA-12** (HU-4, RF-05, RF-06) Dado un Administrador u Operador, cuando abre el panel de métricas en la app, entonces
-  ve solo totales y conteos (cuentas por estado y por plan; espacio total usado = suma de `usuario.espacio_usado`, el
-  contador de 005/007, sin recalcular desde los archivos), nunca filas de una cuenta.
+  ve solo totales y conteos (cuentas por estado; por plan, solo clientes con suscripción, que pueden sumar menos que el
+  total; espacio = suma de `usuario.espacio_usado` de 005/007, sin recalcular desde archivos), nunca filas de una cuenta.
 
 **Metadatos (HU-5)**
 - **CA-13** (HU-5, RF-05, RF-07) Dado Soporte o un Administrador, cuando consulta los archivos de un cliente, entonces
@@ -75,8 +75,7 @@ sobre una cuenta ajena queda en la auditoría del cliente (Art. IX, RF-07). Cuot
 - **CA-15** (RF-05, RNF-05) Dado la suite de aislamiento, cuando recorre cada acción de esta spec con cada rol interno,
   entonces ninguna respuesta contiene contenido, texto, URL firmada, clave de objeto ni filas de versiones.
 - **CA-16** (HU-6, RF-07) Dado acciones internas sobre la cuenta de un cliente, cuando él abre su auditoría (004),
-  entonces ve cada una con fecha, el rol de la persona interna (nunca su nombre ni su correo, 004 D-2) y la acción; las de
-  otra cuenta y los cambios de catálogo no aparecen.
+  entonces ve cada una con fecha, el rol de la persona interna (nunca su nombre ni su correo, 004 D-2) y la acción; las de otra cuenta y los cambios de catálogo no aparecen.
 
 **Web**
 - **CA-17** (RF-06, RNF-13, RNF-14) Dado Administrador, Soporte u Operador, cuando llega a su área, entonces ve sus
@@ -96,12 +95,11 @@ sobre una cuenta ajena queda en la auditoría del cliente (Art. IX, RF-07). Cuot
   solo de `desactivado_en` (nulo: se ofrece; con fecha: desactivado), sin reactivación ni booleano aparte. Personal no se
   desactiva. Nombres únicos; el identificador corto es el `slug` de 006a, que deriva el servidor (los cuatro de la
   semilla no cambian). Bytes y centavos (ADR-0016); el máximo por archivo nunca supera 2 GB (RNF-02).
-- **RN-5** Un correo pertenece a una sola cuenta y un usuario no acumula roles (001 RN-2, Art. IX.5). El código de
-  empleado es obligatorio y único solo en cuentas internas.
+- **RN-5** Una cuenta por correo y sin roles acumulados (001 RN-2, Art. IX.5); código de empleado obligatorio y único en internas.
 - **RN-6** Suspender no borra datos (la papelera sigue su retención, 006 CA-19). Con una cuenta de cliente suspendida,
   sus comparticiones y enlaces públicos dejan de funcionar y al reactivarla vuelven como estaban (lo aplican 012 y 013).
 - **RN-7** Siempre existe al menos un Administrador activo y nadie se suspende ni se reactiva a sí mismo. Un interno
-  suspendido no hace ninguna acción del backoffice aunque su token siga vigente (002 D-10): `403` `SHARED_FORBIDDEN`.
+  suspendido no hace ninguna acción del backoffice (`403` `SHARED_FORBIDDEN`, CA-14); suspenderlo o restablecer su contraseña invalida su enlace de alta pendiente y reactivarlo no lo revive («¿Olvidaste tu contraseña?»).
 
 ## 5. Seguridad y privacidad
 - **Toca datos de clientes: sí** (metadatos de cuentas y archivos, estado) → aislamiento bloqueante (CA-15) y matriz (CA-14).
@@ -148,3 +146,5 @@ sobre una cuenta ajena queda en la auditoría del cliente (Art. IX, RF-07). Cuot
 | 2026-10-03 | Creación; P-1…P-14; 011b y 022b; «verificada»; Operador ve métricas; estados de los 5 mockups | Respuestas de la dueña, división de 022 y mockups | Fátima; aprobado por Adrián (2026-10-08) |
 | 2026-10-06 | 006 y 007 en «Depende de»; `slug` y `desactivado_en`; un plan no se edita; auditoría de catálogo sin cliente; `token_cuenta` con tipo propio; CA-7 sin rol; CA-11, CA-13, CA-17, CA-9 y CA-2 | Revisiones de Adrián y del `reviewer` | Fátima; aprobado por Adrián (2026-10-08) |
 | 2026-10-07 | CA-5 y CA-8; §6 «Crear tu contraseña» y área interna con Seguridad y Mi actividad; solo el rol (004 D-2); RN-6 con la papelera; RN-7/CA-4 sin autorreactivación ni acciones de un interno suspendido; correos fuera de bitácoras | Preguntas del plan, contradicciones con 002, 004 y 006, y `architect` | Fátima; aprobado por Adrián (2026-10-08) |
+| 2026-10-14 | CA-1 y CA-12: un cliente sin suscripción muestra «—» y no cuenta en ningún plan; RN-5 más corta (sin cambio) | Acuerdo con Juan Marcos al planificar la 009 | Fátima; aprobado por Adrián (2026-10-15) |
+| 2026-10-17 | CA-5 y RN-7: el enlace de alta solo sirve con la cuenta activa; suspender o restablecer la contraseña lo invalida (plan §2 y §5, bitácoras) | Auditoría de seguridad del PR-A (SEC-1, SEC-3, SEC-4) | Fátima; aprobado por Adrián (PR-A, 2026-10-17) |

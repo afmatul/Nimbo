@@ -1,4 +1,4 @@
-import type { Actor } from '../../../shared';
+import type { AuditActor } from '../domain/audit-actor';
 
 import type { AuditAction } from './audit-action';
 
@@ -9,8 +9,9 @@ import type { AuditAction } from './audit-action';
  */
 export interface AuditRecord {
   readonly action: AuditAction;
-  readonly actor: Actor;
-  readonly targetUserId: string;
+  readonly actor: AuditActor;
+  /** `null` solo en los cambios de catálogo y en el alta inicial (011 plan §3, `ck_evento_destino`). */
+  readonly targetUserId: string | null;
   readonly resourceId?: string;
   readonly attributes?: Readonly<Record<string, string | number | boolean>>;
 }
@@ -26,7 +27,7 @@ export interface IAuditLogger {
    * Síncrona (011): se une a la transacción vigente del **mismo** actor (`withActor` reentrante) y lanza si no puede
    * guardar (`UnknownAuditActionError` ante una acción fuera del catálogo), así el llamador revierte su acción; si esa
    * transacción se revierte, el evento también. Fuera de un `withActor` del llamador abre la suya, sin garantía
-   * conjunta.
+   * conjunta. Con `SYSTEM_ACTOR` escribe con `run`, que se une al `run` del llamador (011 CA-7, T1).
    */
   recordInTransaction(entry: AuditRecord): Promise<void>;
 }

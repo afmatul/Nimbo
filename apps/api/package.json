@@ -13,7 +13,8 @@
     "test:isolation": "jest -c jest.isolation.config.cjs",
     "migration:generate": "node scripts/migration-generate.mjs",
     "migration:run": "tsx src/scripts/migrate.ts run",
-    "migration:revert": "tsx src/scripts/migrate.ts revert"
+    "migration:revert": "tsx src/scripts/migrate.ts revert",
+    "admin:bootstrap": "tsc -p tsconfig.build.json --outDir dist-scripts && node dist-scripts/scripts/bootstrap-admin.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1136.0",

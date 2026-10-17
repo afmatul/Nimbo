@@ -18,6 +18,8 @@ import type { TestApp, TestAppOptions } from '../setup/test-app';
 const LINK_TOKEN = /\/verificar-correo#token=([A-Za-z0-9_-]{43})/;
 /** Token del enlace de recuperación (002 CA-18), también en el fragmento. */
 const RESET_LINK_TOKEN = /\/restablecer-contrasena#token=([A-Za-z0-9_-]{43})/;
+/** Token del enlace de alta interna (011 CA-5), también en el fragmento. */
+const SETUP_LINK_TOKEN = /\/crear-contrasena#token=([A-Za-z0-9_-]{43})/;
 /** Asunto del correo de recuperación (002 §11); lo distingue de otros correos al mismo buzón. */
 export const RESET_MAIL_SUBJECT = 'Restablece tu contraseña de Nimbo';
 
@@ -122,3 +124,7 @@ export const verificationTokenSentTo = (email: string): Promise<string> =>
 /** Espera el correo de recuperación dirigido a `email` y devuelve el token de su enlace (002 CA-18). */
 export const resetTokenSentTo = (email: string): Promise<string> =>
   linkTokenSentTo(email, RESET_LINK_TOKEN, RESET_MAIL_SUBJECT);
+
+/** Espera el correo de alta interna dirigido a `email` y devuelve el token de su enlace (011 CA-5). */
+export const setupTokenSentTo = (email: string): Promise<string> =>
+  linkTokenSentTo(email, SETUP_LINK_TOKEN);

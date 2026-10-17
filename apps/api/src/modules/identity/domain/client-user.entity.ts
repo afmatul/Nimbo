@@ -80,6 +80,19 @@ export class ClientUser extends User {
     return new ClientUser({ ...this.snapshot(), emailVerified: true });
   }
 
+  /** Lanza `AccountStateConflictError` si ya estaba suspendida (011 CA-2). No borra datos (RN-6). */
+  suspend(): ClientUser {
+    return new ClientUser({
+      ...this.snapshot(),
+      status: this.transitionTo(AccountStatus.SUSPENDED),
+    });
+  }
+
+  /** Lanza `AccountStateConflictError` si ya estaba activa (011 CA-3). */
+  reactivate(): ClientUser {
+    return new ClientUser({ ...this.snapshot(), status: this.transitionTo(AccountStatus.ACTIVE) });
+  }
+
   private snapshot(): ClientUserSnapshot {
     return {
       id: this.id,
