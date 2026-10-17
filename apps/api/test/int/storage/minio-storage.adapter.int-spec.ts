@@ -163,7 +163,8 @@ describe('MinioStorageAdapter contra MinIO real (CA-2, CA-5, CA-11, CA-13, CA-14
     const stream = await adapter.getObjectStream(key);
 
     expect(stream).not.toBeNull();
-    await expect(readAll(stream as Readable)).resolves.toEqual(content);
+    const read = await readAll(stream as Readable);
+    expect(Buffer.compare(read, content)).toBe(0);
     await expect(adapter.headObject(key)).resolves.toEqual({ sizeBytes: BigInt(content.length) });
     await adapter.purgeObject(key);
   });
