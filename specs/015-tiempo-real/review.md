@@ -1,58 +1,46 @@
-# Revisión 015 — Tiempo real
+# Revisión 015 — Tiempo real (re-revisión tras T-FIX-1)
 
 > Una página. La escribe `reviewer` (sin `security-auditor`: 015 no es 011/012/013/020 y no se marcó riesgo, `workflow.md` §4) y la aprueba Adrián.
 
 | Campo | Valor |
 |---|---|
 | Fecha | 2026-10-17 |
-| Rango revisado | `main...feat/015-tiempo-real` (`331149e..4dc6b93`, 10 commits, 68 archivos) |
-| CI | — (sin PR aún). Local: `pnpm lint` ✅ · `pnpm typecheck` ✅ · unitarias ✅ (scripts 34, config 240, contracts 317, api 1611, web 1112; worker sin pruebas) · `test:int` ✅ 103 suites / 969 · `test:isolation` ✅ 18 suites / 301 (incluye `realtime.iso-spec.ts`) |
-| Veredicto | 🔁 Cambios requeridos (B-1) |
+| Rango revisado | `main...feat/015-tiempo-real` (`331149e..76693d5`, 13 commits, 73 archivos); foco en `9b1a3b3..76693d5` (`21a3769`, `aa4ced5`, `76693d5`) |
+| CI | — (sin PR aún). Local: `pnpm lint` ✅ · `pnpm typecheck` ✅ · unitarias: scripts 34/34, config 240/240, contracts 320/320, web 1116/1116, api 1610/1611 (1 fallo intermitente, ver abajo), worker sin pruebas · `test:int` ✅ 103 suites / 969 · `test:isolation` ✅ 18 suites / 301 (incluye `realtime.iso-spec.ts`) |
+| Veredicto | ✅ Aprobar (sin bloqueantes; I-3 antes del cierre de fase) |
 
-> Nota de entorno: en un worktree bajo `.claude/`, los `testMatch` con `<rootDir>` no encuentran archivos (`pnpm test` sale con «No tests found»). Las suites se corrieron con el mismo patrón en forma `**/…` (`--testMatch`); no es un defecto de la rama (S-2).
+> Entorno: en un worktree bajo `.claude/` los `testMatch` con `<rootDir>` no encuentran pruebas; se corrieron completas con el mismo patrón en forma `**/…` (S-2). El fallo de api es `src/shared/infrastructure/logging/redact-deep.spec.ts › CA-15 (R-8)` (203 µs frente a < 150 µs con todas las suites en paralelo; sola pasa): es de 005, no lo toca esta rama y ya está registrado como PD-69.
+
+## Hallazgos previos
+- **B-1 resuelto.** `packages/contracts/src/realtime/` publica `REALTIME_PATH`, `REALTIME_EVENTS` y `REALTIME_ERROR_CODES` con su prueba (`constants.spec.ts`) y su exportación en `index.ts`; `api` (adaptador, *gateway*, `connection-lifetime`) y `web` (`realtime-client.ts`) los importan y las constantes locales se borraron. Fuera de `packages/contracts` el único literal es `realtime-too-many-requests.error.ts:8`: ADR-0008 §3 prohíbe a `layer:domain` importar `@nimbo/contracts`, y `realtime-errors.spec.ts` lo ata a `REALTIME_ERROR_CODES.TOO_MANY_REQUESTS` (mismo patrón que identity con `session-errors.spec.ts`). Los demás aciertos de búsqueda son títulos de pruebas. `packages/contracts/dist` está en `.gitignore` y ningún commit de la rama lo incluye.
+- **I-1 resuelto.** `connection-admission.service.ts:117` registra `{ userId }` en `forbidden_role`; lo afirman la unitaria y `handshake.int-spec.ts › CA-3` (con `correlationId`).
+- **I-2 resuelto.** `RealtimeChannel` reabre tras `retryAfterSeconds` ante `REALTIME_TOO_MANY_REQUESTS`, con tres pruebas: espera exacta, espera por defecto y cancelación al desmontar (`getTimerCount() === 0`).
+- **S-1 resuelto.** Si el token ya no es el que se presentó, reabre sin `renew()` (`realtime-provider.spec.tsx › CA-4: si la sesión ya renovó…`). **S-2** sigue abierta (fuera de 015).
+- Clase `RealtimeChannel`: no hay fugas. Hay un solo socket por montaje, un solo temporizador que se reemplaza (`clearTimeout` antes de programar), y `stop()` limpia temporizador, *listeners* y socket. Un 429 repetido se reintenta como mucho una vez por ventana. CA-11 sigue en pie: `auth` es una función que lee el token vigente y la reconexión automática sigue activa.
 
 ## Verificación
-| CA | Prueba | Estado |
-|---|---|---|
-| CA-1 | `test/int/realtime/handshake.int-spec.ts › CA-1` | ✅ |
-| CA-2 | `connection-admission.service.spec.ts` + `handshake.int-spec.ts › CA-2` (sin token, no texto, en la URL, inválido, vencido) | ✅ |
-| CA-3 | `connection-admission.service.spec.ts` + `handshake.int-spec.ts › CA-3`; web: `realtime-provider.spec.tsx › rol interno no abre` | ✅ |
-| CA-4 | `connection-lifetime.spec.ts`, `lifetime.int-spec.ts › CA-4`; cliente: `realtime-provider.spec.tsx › CA-4` (×3) | ✅ |
-| CA-5 | `publish.int-spec.ts › CA-5`, `socket-io-hub.spec.ts › CA-5` | ✅ |
-| CA-6 | `publish.int-spec.ts › CA-6`, `rooms.int-spec.ts › CA-6` | ✅ |
-| CA-7 | `rooms.int-spec.ts › CA-7` (sala de otro usuario y de documento) | ✅ |
-| CA-8 | `rooms.int-spec.ts › CA-8` | ✅ |
-| CA-9 | `rooms.int-spec.ts › CA-9` (limpio, servidor, sin salas, latido), `realtime-config.spec.ts › CA-9` | ✅ |
-| CA-10 | `test/isolation/realtime.iso-spec.ts › CA-10` (×3) | ✅ |
-| CA-11 | `rooms.int-spec.ts › CA-11`; cliente: `realtime-provider.spec.tsx › CA-11` | ✅ |
-| CA-12 | `socket-io-hub.spec.ts › CA-12` (×2) + recorrido T-09 | ✅ |
-| CA-13 | `handshake.int-spec.ts › CA-13`, `connection-admission.service.spec.ts › CA-13` | ✅ (ver I-1) |
-| CA-14 | `connection-admission.service.spec.ts › CA-14` (×3), `handshake.int-spec.ts › CA-14` (Redis real), `realtime-errors.spec.ts` | ✅ |
+Sin cambios frente a la revisión anterior: CA-1…CA-14 ✅ con las mismas pruebas. Además, CA-4 cliente ×2 (incluye S-1), CA-14 cliente ×3 (I-2), CA-13 `forbidden_role` con `userId` (I-1), y contrato `constants.spec.ts` (CA-4, CA-7, CA-14).
 
 ## Seguridad
-- Datos de cliente: sí (avisos por cuenta y documento). Aislamiento: `realtime.iso-spec.ts` en verde dentro del `test:isolation` bloqueante. `actor`: `IDocumentRooms.admit` recibe `Actor` y comprueba pertenencia de la conexión; `realtime` no consulta permisos (RN-2, la admisión por `accessibleNodes` se prueba en 016): ✅.
-- Bitácoras sin token, `Origin`, nombre de archivo ni contenido del aviso; errores solo con `errorClass`: ✅. Token solo en `auth.token` (el de la URL se ignora, probado). Roles internos rechazados en el *handshake* y sin canal en la web: ✅.
-- Observación (sin hallazgo nuevo): `connectionOrigin` toma el último `x-forwarded-for`, igual que `trust proxy = 1` en HTTP. Si el `api` queda alcanzable sin Traefik, un cliente puede falsear la cabecera y esquivar CA-14. Ya cubierto por PD-74 (verificar en staging); el puerto del `api` no debe publicarse fuera del proxy.
+- Datos de cliente: sí. Aislamiento: `realtime.iso-spec.ts` en verde dentro de `test:isolation`. `actor` en `IDocumentRooms.admit`: ✅. Bitácoras: `userId` está permitido; siguen sin token, `Origin` ni contenido: ✅.
+- Sin riesgo nuevo que pida `security-auditor`. La observación de `x-forwarded-for` sigue cubierta por PD-74.
 
 ## UI (si aplica)
-- Sin pantalla propia (P-1). `RealtimeProvider` no pinta nada; sin colores ni textos nuevos: ✅.
+- Sin pantalla ni textos nuevos (P-1): ✅.
 
 ## Bloqueantes
-- **[B-1]** `apps/web/src/features/realtime/realtime-client.ts:5,8` y `apps/api/src/modules/realtime/application/realtime-config.ts:2`, `infrastructure/connection-lifetime.ts:10`, `domain/errors/realtime-too-many-requests.error.ts:5` — el contrato del canal (ruta `/socket.io`, evento `realtime.session-expired`, código `REALTIME_TOO_MANY_REQUESTS`, mensaje `room.join`) está escrito dos veces, en `api` y en `web`, y no figura en `packages/contracts` (identity y storage sí publican allí sus catálogos de códigos). Si uno cambia, el web deja de renovar el canal sin que ninguna prueba falle. Viola: Art. VI.3 («contratos y tipos compartidos → `packages/contracts`») y `conventions.md` («contratos públicos en `packages/contracts`»). Corrección: `packages/contracts/src/realtime/` con `REALTIME_PATH`, `REALTIME_EVENTS = { SESSION_EXPIRED: 'realtime.session-expired', ROOM_JOIN: 'room.join' }` y `REALTIME_ERROR_CODES = { TOO_MANY_REQUESTS: 'REALTIME_TOO_MANY_REQUESTS' }` (con su spec, como `storage/constants.spec.ts`), exportados en `index.ts`; `api` y `web` los importan y se borran las constantes locales.
+- Ninguno.
 
 ## Importantes y sugerencias
-- **[I-1]** `apps/api/src/modules/realtime/application/connection-admission.service.ts:117` — el rechazo `forbidden_role` ya conoce el usuario pero no lo registra; CA-13 pide «id de usuario y motivo» y un intento de un rol interno es justo el que conviene rastrear. Corrección: `this.reject('forbidden_role', new InsufficientRoleError(), { userId })` y afirmarlo en `handshake.int-spec.ts › CA-3`.
-- **[I-2]** `apps/web/src/features/realtime/realtime-client.ts:53-62` — ante `REALTIME_TOO_MANY_REQUESTS` (p. ej., 25 usuarios tras una misma IP en la demo y un reinicio del `api`) `socket.io-client` no reintenta un rechazo de *middleware* y la pestaña queda sin canal hasta recargar. 016 lo sufriría como presencia muda. Corrección: reabrir tras `data.retryAfterSeconds`; si se pospone, fila en `pendientes.md` ligada a 016.
-- **[S-1]** `realtime-client.ts:55` — tras `realtime.session-expired` siempre llama a `renew()`, aunque la sesión ya renovó el token antes de vencer (`RENEW_BEFORE_EXPIRY_MS`): un refresco extra cada 15 min por pestaña. Si `token.current` ya es otro, basta `socket.connect()`.
-- **[S-2]** `jest.config.cjs`, `packages/config/jest/base.cjs` y configs de `api`/`web` — `<rootDir>/…` en `testMatch` falla bajo rutas con carpetas que empiezan por punto (worktrees en `.claude/`); fuera de 015, candidato a `chore`.
+- **[I-3]** `apps/web/src/features/realtime/realtime-client.ts:10,32` — `DEFAULT_RETRY_AFTER_SECONDS = 60` copia la ventana del límite del `api` (`connection-admission.service.ts:24`, `CONNECT_ATTEMPT_WINDOW_SECONDS`), y su comentario lo dice. Además, `typeof seconds === 'number'` acepta `NaN`, valores negativos y 0, que terminan en reintento inmediato. Viola Art. VI (límite duplicado), aunque hoy no cambia el comportamiento porque `toHandshakeError` siempre manda la espera en un 429. Corrección: valida con `Number.isFinite(seconds) && seconds > 0` y, si falta, publica la ventana en `REALTIME_*` de `packages/contracts` (y que la use el `api`) o no reabras sin espera.
+- **[S-3]** `specs/015-tiempo-real/spec.md` — el reintento del cliente tras un 429 (I-2) y la reapertura sin renovar (S-1) no figuran en CA-14/CA-4. Agrega una fila a la bitácora de cambios o una cláusula al CA.
+- **[S-4]** `realtime-client.ts:86-95` — si `renew()` termina después de `stop()`, se escribe `token.current`. Es inocuo hoy, pero antes no pasaba. Corrección: `if (this.stopped || renewed === null) return;`.
+- **[S-5]** `realtime-client.ts:82` — si el servidor rechaza con `SHARED_UNAUTHENTICATED` también el token recién renovado (desfase de reloj, verificador mal configurado), el cliente entra en un ciclo renovar → reabrir sin pausa. El problema ya venía de T-08; conviene una pausa mínima o un tope de intentos.
 
 ## Lo que está bien hecho
-- Frontera limpia: `realtime` no importa `identity` (el verificador llega por la raíz de composición, misma instancia), dos puertos segregados por consumidor y un solo adaptador; funciones cortas y ≤ 3 parámetros.
-- Falla cerrado en todos los caminos (limitador caído, error inesperado del *handshake*), y la publicación nunca lanza ni espera.
-- Pruebas reales de lo difícil: Redis real para CA-14, latido sin respuesta para CA-9, reconexión sin reenvío para CA-11 y aislamiento con documentos casi idénticos.
+- B-1 se corrigió en el lugar correcto: el contrato en `packages/contracts` y la excepción de dominio justificada por ADR-0008, con una prueba que impide que se desvíe en silencio.
+- `RealtimeChannel`: métodos cortos, una sola responsabilidad (mantener el canal abierto), `stop()` idempotente y pruebas de temporizadores falsos que comprueban que no queda nada pendiente.
 
 ## DF y pendientes
-- DF-65 aceptado y reflejado en `design-model.md` T3/T1 y `architecture.md` §5; falta redibujar T3 (PD-46). DF-58 actualizado (RF-08 sale de 015).
-- `pendientes.md`: PD-74 (adaptador de Redis y origen tras Traefik) y PD-75 (`/socket.io` en el Traefik de staging) ya registradas. Si I-2 se pospone, agregar su fila.
-
-> T-FIX-1 (2026-10-17): B-1, I-1, I-2 y S-1 corregidos en `21a3769` y `aa4ced5`; queda para la re-revisión.
+- Sin DF nuevos. DF-65 y DF-58 como en la revisión anterior (falta redibujar T3, PD-46).
+- `pendientes.md`: PD-74 y PD-75 siguen vigentes; PD-69 (guarda intermitente de `redact-deep`) volvió a fallar en esta corrida. Si I-3 se pospone al cierre de fase, agrega su fila.
