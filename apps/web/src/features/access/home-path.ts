@@ -1,4 +1,4 @@
-import { ROLES, type RoleName } from '@nimbo/contracts';
+import type { RoleName } from '@nimbo/contracts';
 
 import { ACTIVITY_PATH } from '../audit/routes';
 
@@ -11,13 +11,8 @@ export const INTERNAL_PATHS = {
   supportFiles: '/soporte/metadatos',
 } as const;
 
-/** Roles del grupo `(cliente)` (003 §6.9). */
+/** Roles del grupo `(cliente)` (003 §6.9); los del grupo `(interno)` son `INTERNAL_ROLES` de `contracts`. */
 export const CLIENT_ROLES: readonly RoleName[] = ['CLIENT'];
-
-/** Roles del grupo `(interno)`: todo rol que no es de cliente, para que un rol nuevo no quede sin área. */
-export const INTERNAL_ROLES: readonly RoleName[] = ROLES.filter(
-  (role) => !CLIENT_ROLES.includes(role),
-);
 
 /**
  * Primera pantalla del área de los roles que ya la tienen (011 CA-17). Admin y Operador se suman con sus páginas en

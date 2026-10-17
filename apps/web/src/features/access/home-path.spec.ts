@@ -1,12 +1,6 @@
-import { ROLES } from '@nimbo/contracts';
+import { INTERNAL_ROLES, ROLES } from '@nimbo/contracts';
 
-import {
-  activityPathFor,
-  areaHomePathFor,
-  CLIENT_ROLES,
-  homePathFor,
-  INTERNAL_ROLES,
-} from './home-path';
+import { activityPathFor, areaHomePathFor, CLIENT_ROLES, homePathFor } from './home-path';
 
 describe('homePathFor (003 §6.9)', () => {
   it('CA-1: CLIENT va a Mis archivos', () => {
