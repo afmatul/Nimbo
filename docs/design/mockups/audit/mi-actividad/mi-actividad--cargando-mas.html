@@ -167,17 +167,21 @@
   .when .h { display: block; color: var(--muted-foreground); }
   .is-internal .when .h { color: var(--secondary-foreground); }
 
-  /* Pie de la lista: Cargar más, cargando, error y fin */
-  .list-foot { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 14px 0 0; text-align: center; }
-  .end-note { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 14px 0 0; font-size: 13.5px; color: var(--secondary-foreground); }
+  /* Pie de una lista paginada: «Cargar más» y cargando (el error es un Alert) */
+  .more { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 16px; }
+  .more .btn[aria-disabled="true"] { cursor: progress; }
+  .end-note { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 16px 0 0; font-size: 13.5px; color: var(--secondary-foreground); }
   .end-note .ico { color: var(--success-foreground); }
-  .alert { display: flex; gap: 10px; padding: 12px 14px; border-radius: var(--radius-md); font-size: 13.5px; line-height: 1.5; border: 1px solid; text-align: left; }
-  .alert .ico { margin-top: 1px; }
-  .alert p { margin: 0; }
-  .alert strong { font-weight: 600; }
-  .alert-error { background: var(--destructive-tint); border-color: color-mix(in srgb, var(--destructive-soft) 55%, var(--card)); color: var(--foreground); }
-  .alert-error .ico, .alert-error strong { color: var(--destructive); }
-  .alert .btn { margin-left: auto; align-self: center; }
+  /* Aviso de descarga fallida (Alert de shadcn, variante destructiva), arriba de la lista */
+  .alert { display: flex; align-items: flex-start; gap: 12px; margin: 20px 0 0; padding: 12px 8px 12px 16px; border: 1px solid color-mix(in srgb, var(--destructive-soft) 45%, var(--card)); border-radius: var(--radius-lg); background: var(--destructive-tint); }
+  .alert > .ico { margin-top: 2px; color: var(--destructive); }
+  .alert-body { flex: 1; min-width: 0; }
+  .alert-title { margin: 0; font-size: 14px; font-weight: 600; color: var(--destructive); overflow-wrap: anywhere; }
+  .alert-text { margin: 2px 0 0; font-size: 13.5px; color: var(--foreground); }
+  .alert-actions { display: flex; align-items: center; gap: 4px; flex: none; }
+  .alert .icon-btn { width: 36px; height: 36px; color: var(--secondary-foreground); }
+  .alert + .files { margin-top: 16px; }
+
 
   /* Esqueleto y estados de pantalla */
   .skeleton-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) 90px; gap: 14px; align-items: center; padding: 16px; background: var(--card); }
@@ -247,9 +251,15 @@
     .event .body { grid-column: 2; grid-row: 2; }
     .skeleton-row { grid-template-columns: 40px minmax(0, 1fr); }
     .skeleton-row .w-date { display: none; }
-    .alert { flex-wrap: wrap; }
-    .alert .btn { margin-left: 28px; }
-    .list-foot .btn, .state .btn { width: 100%; }
+    /* Aviso en móvil: la X arriba a la derecha (44 px) y «Reintentar» a todo el ancho debajo del texto */
+    .alert { position: relative; flex-wrap: wrap; margin-top: 16px; padding: 12px 52px 12px 12px; }
+    .alert-actions { width: calc(100% + 40px); padding-left: 30px; }
+    .alert-actions .btn { flex: 1; min-height: 44px; }
+    .alert .icon-btn { position: absolute; top: 4px; right: 4px; width: 44px; height: 44px; }
+    .alert:not(:has(.icon-btn)) { padding-right: 12px; }
+    .alert:not(:has(.icon-btn)) .alert-actions { width: 100%; }
+    .more .btn { width: 100%; min-height: 44px; }
+    .state .btn { width: 100%; }
     .account { position: static; }
     .account-pop { top: calc(100% - 2px); right: 8px; width: min(272px, calc(100% - 16px)); }
     .account-menu [role="menuitem"] { min-height: 44px; }
@@ -436,7 +446,11 @@
             </div>
             <p class="when"><time datetime="2026-09-27T15:08-06:00"><span class="d">27 sept 2026</span><span class="h">15:08</span></time></p>
           </li>
-        </ol><div class="list-foot"><button class="btn btn-outline btn-busy" type="button" disabled aria-disabled="true"><svg class="ico spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 12a9 9 0 1 1-6.22-8.56"/></svg>Cargando más…</button><span class="sr-only" role="status">Cargando más actividad…</span></div>
+        </ol>
+        <div class="more">
+          <button class="btn btn-outline" type="button" aria-disabled="true"><svg class="ico spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 12a9 9 0 1 1-6.22-8.56"/></svg><span>Cargando más…</span></button>
+          <p class="sr-only" role="status">Cargando más actividad…</p>
+        </div>
       </section>
         </div>
       </main>

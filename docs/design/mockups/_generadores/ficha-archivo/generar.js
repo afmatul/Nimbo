@@ -92,11 +92,7 @@ const CSS = '\n' + M.CSS.MARCO + M.CSS.BOTONES + M.CSS.DIALOGO + M.CSS.MQ_900 +
   .vt-empty strong { display: block; color: var(--foreground); font-weight: 600; }
 
   /* Aviso de poda y error dentro del diálogo (Alert warning / error de ui-guidelines §4) */
-  .dlg-warn { display: flex; gap: 10px; align-items: flex-start; margin-top: 14px; padding: 10px 12px; border: 1px solid var(--warning); border-radius: var(--radius-md); background: color-mix(in srgb, var(--warning) 10%, var(--card)); }
-  .dlg-warn .ico { margin-top: 1px; color: var(--warning-foreground); }
-  .dlg-warn p { margin: 0 !important; font-size: 13.5px !important; color: var(--foreground) !important; }
-  .dlg-warn strong { display: block; color: var(--warning-foreground) !important; font-weight: 600; }
-  .dlg-alert strong { display: block; color: var(--destructive) !important; font-weight: 600; }
+` + E.CSS_DLG_WARN + `  .dlg-alert strong { display: block; color: var(--destructive) !important; font-weight: 600; }
   .dialog-summary { margin: 14px 0 0; padding: 10px 12px; border-radius: var(--radius-md); background: var(--muted); }
   .dialog-summary div { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; font-size: 13px; }
   .dialog-summary dt { color: var(--secondary-foreground); }
@@ -291,8 +287,10 @@ function ficha(versiones, opciones = {}) {
 // ---------- Diálogo de restaurar (AlertDialog de shadcn) ----------
 // d: { v, tam, poda, pendiente, error }
 function dialogoRestaurar(d) {
-  const poda = d.poda ? `
-    <div id="dlg-p" class="dlg-warn" role="status">${icon('warn', 18)}<p><strong>Se eliminará la versión ${d.poda}.</strong>Tu plan conserva ${RETENIDAS} versiones. Al continuar se eliminará la versión ${d.poda}, la más antigua.</p></div>` : '';
+  const poda = d.poda ? E.avisoDialogo({
+    titulo: `Se eliminará la versión ${d.poda}.`,
+    texto: `Tu plan conserva ${RETENIDAS} versiones. Al continuar se eliminará la versión ${d.poda}, la más antigua.`,
+  }) : '';
   const error = d.error ? `
     <div class="dlg-alert" role="alert">${icon('alert', 18)}<p><strong>No pudimos restaurar la versión ${d.v}.</strong>${d.error}</p></div>` : '';
   const ids = ['dlg-d', 'dlg-n', d.poda ? 'dlg-p' : ''].filter(Boolean).join(' ');

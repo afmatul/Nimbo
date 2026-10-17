@@ -297,10 +297,10 @@
   /* Spec 014: tres acciones y aviso de poda (Alert warning de ui-guidelines §4) */
   .dialog.dialog-conflict { width: min(540px, calc(100% - 32px)); }
   .dialog-options { list-style: none; margin: 12px 0 0; display: grid; gap: 4px; }
-  .dlg-warn { display: flex; gap: 10px; align-items: flex-start; margin-top: 12px; padding: 10px 12px; border: 1px solid var(--warning); border-radius: var(--radius-md); background: color-mix(in srgb, var(--warning) 10%, var(--card)); }
+  .dlg-warn { display: flex; gap: 10px; align-items: flex-start; margin-top: 14px; padding: 10px 12px; border: 1px solid var(--warning); border-radius: var(--radius-md); background: color-mix(in srgb, var(--warning) 10%, var(--card)); }
   .dlg-warn .ico { margin-top: 1px; color: var(--warning-foreground); }
   .dlg-warn p { margin: 0 !important; font-size: 13.5px !important; color: var(--foreground) !important; }
-  .dlg-warn strong { display: block; color: var(--warning-foreground); font-weight: 600; }
+  .dlg-warn strong { display: block; color: var(--warning-foreground) !important; font-weight: 600; }
 
   @media (max-width: 900px) {
     .up { right: 16px; bottom: 16px; }

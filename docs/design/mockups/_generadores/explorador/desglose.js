@@ -54,7 +54,7 @@ function filaVerMas({ id, padre, nivel, nombre }) {
             <tr id="${id}" data-padre="${padre}" ${nivelDe(nivel)}><td colspan="4" class="tree-guides"><div class="sub-state sub-more"><a class="more-link" href="#"><span>Ver más<span class="sr-only"> en ${nombre}</span></span>${icon('chevronRight', 14)}</a></div></td></tr>`;
 }
 
-// Devuelve el HTML de las filas del nodo y de sus descendientes. `ctx`: { n: contador de ids, menuEn }
+// Devuelve el HTML de las filas del nodo y de sus descendientes. `ctx`: { n: contador de ids, menuEn, menu }
 function filas(n, ctx, nivel = 0, padre = '', nombrePadre = '') {
   const id = `r-${ctx.n++}`;
   const i = ctx.n; // índice único del menú ⋮ de la fila
@@ -69,7 +69,7 @@ function filas(n, ctx, nivel = 0, padre = '', nombrePadre = '') {
               <td class="tree-guides">${celdaNombre(dato, ctl)}</td>
               <td class="c-size">${carpeta ? '<span aria-hidden="true">—</span><span class="sr-only">Carpeta, sin tamaño</span>' : n.tam}</td>
               <td class="c-date">${n.fecha}</td>
-              <td class="c-act">${S.menuFila(i, n.nombre, ctx.menuEn === n.nombre, menuDe(n))}</td>
+              <td class="c-act">${S.menuFila(i, n.nombre, ctx.menuEn === n.nombre, ctx.menu(n))}</td>
             </tr>${hijos.html}`;
 }
 
@@ -97,8 +97,9 @@ function hijasDe(n, ctx, nivel, padreId) {
 }
 
 // Tabla de «Mis archivos» con filas desglosables. menuEn: nombre de la fila con el menú ⋮ abierto.
-function tabla(nodos, { lugar = 'Mis archivos', menuEn = '' } = {}) {
-  const ctx = { n: 1, menuEn };
+// menu: ítems del menú ⋮ de un nodo (por defecto, los de 006; 012 suma «Compartir»).
+function tabla(nodos, { lugar = 'Mis archivos', menuEn = '', menu = menuDe } = {}) {
+  const ctx = { n: 1, menuEn, menu };
   return `
         <div class="files">
           <table>

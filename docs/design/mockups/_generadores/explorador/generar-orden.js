@@ -48,10 +48,7 @@ const CSS = '\n' + M.CSS.MARCO + M.CSS.BOTONES + M.CSS.MQ_900 +
   .th-sort { display: inline-flex; align-items: center; gap: 4px; color: var(--secondary-foreground); }
   .th-sort .ico { color: var(--primary); }
 
-  /* Paginación por cursor: «Cargar más» debajo de la lista */
-  .more { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 16px; }
-  .more .btn[aria-disabled="true"] { cursor: progress; }
-  .files + .alert { margin-top: 16px; }
+` + E.CSS_CARGAR_MAS + `  .files + .alert { margin-top: 16px; }
   .files[aria-busy="true"] tbody { pointer-events: none; }
 
   @media (max-width: 600px) {
@@ -60,8 +57,7 @@ const CSS = '\n' + M.CSS.MARCO + M.CSS.BOTONES + M.CSS.MQ_900 +
     .sort-btn { width: 100%; min-height: 44px; justify-content: space-between; }
     .sort-pop { left: 0; right: 0; width: auto; }
     .account-menu [role="menuitemradio"] { min-height: 44px; }
-    .more .btn { width: 100%; min-height: 44px; }
-  }
+` + E.CSS_CARGAR_MAS_MQ600 + `  }
 `;
 
 // ---------- Datos de ejemplo (plan Personal: ningún archivo pasa de 50 MB) ----------
@@ -175,23 +171,12 @@ const JS_ORDEN = `
 })();
 `;
 
-// ---------- «Cargar más» (cursor: no hay total; el botón desaparece cuando no hay nextCursor) ----------
-function cargarMas(estado = 'listo') {
-  if (estado === 'error') {
-    return E.aviso({ titulo: 'No pudimos cargar más elementos.', texto: 'Revisa tu conexión e inténtalo de nuevo. Lo que ya ves sigue aquí.', accion: 'Reintentar' });
-  }
-  if (estado === 'cargando') {
-    return `
-        <div class="more">
-          <button class="btn btn-outline" type="button" aria-disabled="true">${icon('loader', 16, 'spin')}<span>Cargando más…</span></button>
-          <p class="sr-only" role="status">Cargando más elementos de Documentación…</p>
-        </div>`;
-  }
-  return `
-        <div class="more">
-          <button class="btn btn-outline" type="button">Cargar más</button>
-        </div>`;
-}
+// ---------- «Cargar más» (cursor: no hay total; el botón desaparece cuando no hay nextCursor): mis-archivos/estados.js ----------
+const TEXTOS_MAS = {
+  anuncio: 'Cargando más elementos de Documentación…',
+  error: { titulo: 'No pudimos cargar más elementos.', texto: 'Revisa tu conexión e inténtalo de nuevo. Lo que ya ves sigue aquí.' },
+};
+const cargarMas = (estado) => E.cargarMas(estado, TEXTOS_MAS);
 
 // ---------- Página ----------
 function page(v) {

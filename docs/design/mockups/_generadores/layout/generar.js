@@ -202,8 +202,7 @@ const CSS_007 = CSS + S.CSS_LISTA + C.CSS_006 + Q.CSS_TARJETA + U.CSS_PANEL + B.
   .ventana .app { height: 100%; min-height: 0; }
   .ventana .main { min-height: 0; overflow-y: auto; }
   .ventana .topbar { position: sticky; top: 0; z-index: 4; }
-  .more { display: flex; justify-content: center; margin-top: 16px; }
-
+` + E.CSS_CARGAR_MAS + `
   /* Aviso (Toaster, ADR-0024; 007 CA-18): arriba y al centro, debajo de la barra superior (64 px + 16 px) y nunca
      sobre el panel de cargas, que sigue abajo a la derecha. Tokens del Toaster real: card, foreground, border,
      radius-md, shadow-modal; ícono de éxito en success-foreground. */
@@ -216,8 +215,7 @@ const CSS_007 = CSS + S.CSS_LISTA + C.CSS_006 + Q.CSS_TARJETA + U.CSS_PANEL + B.
 ` + S.CSS_LISTA_MQ600 + C.CSS_006_MQ600 + U.CSS_PANEL_MQ600_HOJA + U.CSS_PANEL_MQ600_FILAS + `    .ventana .app { min-height: 0; }
     /* A 360 px el aviso ocupa el ancho disponible, debajo de la barra superior (64 px + 8 px) */
     .toast { top: 72px; bottom: auto; left: 8px; right: 8px; transform: none; }
-    .more .btn { width: 100%; min-height: 44px; }
-  }
+` + E.CSS_CARGAR_MAS_MQ600 + `  }
 `;
 
 // En la app el aviso se retira solo a los 8 s y se pausa con el puntero o el foco (ADR-0024); aquí, solo con la X.
@@ -231,10 +229,6 @@ const JS_007 = `
 ` + B.JS;
 
 const tablaRaiz = (nodos) => C.encabezado(['Mis archivos']) + C.tabla(nodos, 'Mis archivos');
-const cargarMas = () => `
-        <div class="more">
-          <button class="btn btn-outline" type="button">Cargar más</button>
-        </div>`;
 
 function pagina007(v) {
   const file = `layout--${v.estado}.html`;
@@ -257,7 +251,7 @@ function pagina007(v) {
     ${B.sidebar(barra)}
     <div class="main"${v.desplazar ? ' data-desplazar="fin"' : ''}>
       ${M.topbar({ crumbs: ['Mis archivos'], conMenu: true, cajonAbierto: !!v.cajon })}
-      <main class="content" id="contenido">${tablaRaiz(v.nodos)}${v.desplazar ? cargarMas() : ''}
+      <main class="content" id="contenido">${tablaRaiz(v.nodos)}${v.desplazar ? E.cargarMas() : ''}
       </main>
     </div>
   </div>${v.panel ? U.panel(v.panel) : ''}${v.aviso ? C.toast(v.aviso) : ''}${B.cajon({ ...barra, abierto: !!v.cajon })}${M.dialog(M.DIALOGO_CERRAR_SESION, { oculto: true })}

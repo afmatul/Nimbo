@@ -126,7 +126,8 @@ function sidebar({ activo = '', plan = 'PERSONAL', cuota: q = CUOTA, carpetas = 
 }
 
 // Cajón móvil (por debajo de 900 px): mismo contenido que la barra lateral dentro de un diálogo modal.
-function cajon({ activo = '', plan = 'PERSONAL', cuota: q = CUOTA, abierto = false, carpetas = CARPETAS, accesos = '' } = {}) {
+// contadorPapelera: como en sidebar (por defecto, el de NAV_PRINCIPAL).
+function cajon({ activo = '', plan = 'PERSONAL', cuota: q = CUOTA, abierto = false, carpetas = CARPETAS, contadorPapelera, accesos = '' } = {}) {
   const oculto = abierto ? '' : ' hidden';
   return `
   <div class="drawer-overlay" data-cerrar-cajon aria-hidden="true"${oculto}></div>
@@ -137,7 +138,7 @@ function cajon({ activo = '', plan = 'PERSONAL', cuota: q = CUOTA, abierto = fal
         <h2 id="cajon-t" class="sr-only">Menú de navegación</h2>
         <button class="icon-btn" type="button" data-cerrar-cajon aria-label="Cerrar menú">${icon('x', 22)}</button>
       </div>
-      ${navegacion({ activo, idPrimerEnlace: 'cajon-primero', carpetas, accesos })}
+      ${navegacion({ activo, idPrimerEnlace: 'cajon-primero', carpetas, contadorPapelera, accesos })}
       ${cuota(q)}
   </div>`;
 }
@@ -251,9 +252,7 @@ const EXTRA = `
   .drawer-head { display: flex; align-items: center; gap: 10px; padding: 0 0 10px 8px; border-bottom: 1px solid var(--border); }
   .drawer-head .icon-btn { margin-left: auto; }
   .drawer .nav a { min-height: 44px; font-size: 15px; }
-  .icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--foreground); cursor: pointer; }
-  .icon-btn:hover { background: var(--muted); }
-  @media (min-width: 901px) { .drawer, .drawer-overlay { display: none !important; } }
+` + CSS.ICON_BTN + `  @media (min-width: 901px) { .drawer, .drawer-overlay { display: none !important; } }
 
   /* Aviso de solo lectura (ReadOnlyBanner, RF-23) */
   .readonly { display: flex; align-items: center; gap: 12px 16px; margin: 0 0 22px; padding: 14px 16px; border: 1px solid color-mix(in srgb, var(--warning) 45%, var(--card)); border-radius: var(--radius-lg); background: var(--warning-soft); color: var(--foreground); }

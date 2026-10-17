@@ -8,6 +8,7 @@ const path = require('node:path');
 const M = require('../marco/marco.js');
 const S = require('../mis-archivos/mis-archivos.js');
 const U = require('./panel.js');
+const E = require('../mis-archivos/estados.js');
 
 const repo = process.argv[2];
 if (!repo) throw new Error('Falta la ruta del worktree');
@@ -16,8 +17,8 @@ fs.mkdirSync(OUT, { recursive: true });
 
 // Íconos (los del panel más los de la lista) y piezas del panel de cargas: carga/panel.js
 const { btnIcon, panel } = U;
-// Ícono de advertencia del aviso de poda (014); el resto, los del panel
-const icon = S.crearIcon({ ...U.P, warn: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>' });
+// Íconos: los del panel (el aviso de poda de 014 trae el suyo, mis-archivos/estados.js)
+const { icon } = U;
 
 // Plan Personal (014: estado con aviso de poda; conserva 3 versiones). Cuota de ejemplo de espacio/espacio.js.
 const CUOTA_PERSONAL = { usado: '4.8 GB', total: '15 GB', pct: 32 };
@@ -43,11 +44,7 @@ const CSS = '\n' + M.CSS.MARCO + M.CSS.BOTONES + M.CSS.DIALOGO + M.CSS.MQ_900 +
   /* Spec 014: tres acciones y aviso de poda (Alert warning de ui-guidelines §4) */
   .dialog.dialog-conflict { width: min(540px, calc(100% - 32px)); }
   .dialog-options { list-style: none; margin: 12px 0 0; display: grid; gap: 4px; }
-  .dlg-warn { display: flex; gap: 10px; align-items: flex-start; margin-top: 12px; padding: 10px 12px; border: 1px solid var(--warning); border-radius: var(--radius-md); background: color-mix(in srgb, var(--warning) 10%, var(--card)); }
-  .dlg-warn .ico { margin-top: 1px; color: var(--warning-foreground); }
-  .dlg-warn p { margin: 0 !important; font-size: 13.5px !important; color: var(--foreground) !important; }
-  .dlg-warn strong { display: block; color: var(--warning-foreground); font-weight: 600; }
-
+` + E.CSS_DLG_WARN + `
   @media (max-width: 900px) {
 ` + U.CSS_PANEL_MQ900 + `  }
   @media (max-width: 600px) {
@@ -83,8 +80,10 @@ function dialogo(d) {
   // Spec 014 (D-4, CA-1, CA-15): tercera acción «Reemplazar (nueva versión)». El foco inicial sigue en «Conservar
   // ambos» (decisión 4 de 005). Si el archivo existente ya tiene las versiones que conserva el plan, avisa cuál se
   // eliminará al reemplazar (warning, role="status").
-  const poda = d.poda ? `
-    <div id="dlg-p" class="dlg-warn" role="status">${icon('warn', 18)}<p><strong>Si reemplazas, se eliminará la versión ${d.poda.version}.</strong>Tu plan conserva ${d.poda.retenidas} versiones. Al reemplazar se eliminará la versión ${d.poda.version}, la más antigua.</p></div>` : '';
+  const poda = d.poda ? E.avisoDialogo({
+    titulo: `Si reemplazas, se eliminará la versión ${d.poda.version}.`,
+    texto: `Tu plan conserva ${d.poda.retenidas} versiones. Al reemplazar se eliminará la versión ${d.poda.version}, la más antigua.`,
+  }) : '';
   return `
   <div class="overlay" aria-hidden="true"></div>
   <div class="dialog dialog-conflict" role="alertdialog" aria-modal="true" aria-labelledby="dlg-t" aria-describedby="dlg-d dlg-n${d.poda ? ' dlg-p' : ''}">

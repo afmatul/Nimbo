@@ -5,6 +5,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const M = require('../marco/marco.js');
+const E = require('../mis-archivos/estados.js');
 const { icon } = M;
 
 const repo = process.argv[2];
@@ -90,18 +91,7 @@ const CSS = '\n' + M.CSS.MARCO + `  .stack { max-width: 880px; display: grid; ga
   .when .h { display: block; color: var(--muted-foreground); }
   .is-internal .when .h { color: var(--secondary-foreground); }
 
-  /* Pie de la lista: Cargar más, cargando, error y fin */
-  .list-foot { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 14px 0 0; text-align: center; }
-  .end-note { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 14px 0 0; font-size: 13.5px; color: var(--secondary-foreground); }
-  .end-note .ico { color: var(--success-foreground); }
-  .alert { display: flex; gap: 10px; padding: 12px 14px; border-radius: var(--radius-md); font-size: 13.5px; line-height: 1.5; border: 1px solid; text-align: left; }
-  .alert .ico { margin-top: 1px; }
-  .alert p { margin: 0; }
-  .alert strong { font-weight: 600; }
-  .alert-error { background: var(--destructive-tint); border-color: color-mix(in srgb, var(--destructive-soft) 55%, var(--card)); color: var(--foreground); }
-  .alert-error .ico, .alert-error strong { color: var(--destructive); }
-  .alert .btn { margin-left: auto; align-self: center; }
-
+` + E.CSS_CARGAR_MAS + E.CSS_CARGAR_MAS_FIN + E.CSS_ALERT + `
   /* Esqueleto y estados de pantalla */
   .skeleton-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) 90px; gap: 14px; align-items: center; padding: 16px; background: var(--card); }
   .skeleton-row + .skeleton-row { border-top: 1px solid var(--border); }
@@ -140,9 +130,7 @@ const CSS = '\n' + M.CSS.MARCO + `  .stack { max-width: 880px; display: grid; ga
     .event .body { grid-column: 2; grid-row: 2; }
     .skeleton-row { grid-template-columns: 40px minmax(0, 1fr); }
     .skeleton-row .w-date { display: none; }
-    .alert { flex-wrap: wrap; }
-    .alert .btn { margin-left: 28px; }
-    .list-foot .btn, .state .btn { width: 100%; }
+` + E.CSS_ALERT_MQ600 + E.CSS_ALERT_SIN_CERRAR_MQ600 + E.CSS_CARGAR_MAS_MQ600 + `    .state .btn { width: 100%; }
     .account { position: static; }
     .account-pop { top: calc(100% - 2px); right: 8px; width: min(272px, calc(100% - 16px)); }
     .account-menu [role="menuitem"] { min-height: 44px; }
@@ -202,19 +190,21 @@ function filtros(f, { conteo = '', deshabilitado = false } = {}) {
       </section>`;
 }
 
-const PIES = {
-  'cargar-mas': '<div class="list-foot"><button class="btn btn-outline" type="button">Cargar más</button></div>',
-  'cargando-mas': `<div class="list-foot"><button class="btn btn-outline btn-busy" type="button" disabled aria-disabled="true">${icon('loader', 16, 'spin')}Cargando más…</button><span class="sr-only" role="status">Cargando más actividad…</span></div>`,
-  'cargar-mas-error': `<div class="list-foot" style="align-items:stretch"><div class="alert alert-error" role="alert">${icon('alert', 18)}<p><strong>No pudimos cargar más actividad.</strong> Intenta de nuevo; lo que ya ves no cambió.</p><button class="btn btn-outline btn-sm" type="button">${icon('retry', 16)}Reintentar</button></div></div>`,
-  fin: `<p class="end-note" role="status">${icon('ok', 18)}Llegaste al final: no hay actividad más antigua.</p>`,
+// Pie de la lista: «Cargar más» de mis-archivos/estados.js con los textos de Mi actividad
+const TEXTOS_MAS = {
+  anuncio: 'Cargando más actividad…',
+  error: { titulo: 'No pudimos cargar más actividad.', texto: 'Intenta de nuevo; lo que ya ves no cambió.', cerrar: false },
+  fin: 'Llegaste al final: no hay actividad más antigua.',
 };
+const PIES = { 'cargar-mas': 'listo', 'cargando-mas': 'cargando', 'cargar-mas-error': 'error', fin: 'fin' };
+const pieDe = (pie) => (PIES[pie] ? E.cargarMas(PIES[pie], TEXTOS_MAS) : '');
 
 function lista(eventos, pie) {
   return `
       <section aria-labelledby="t-lista"${pie === 'cargando-mas' ? ' aria-busy="true"' : ''}>
         <h2 id="t-lista" class="sr-only">Eventos, del más reciente al más antiguo</h2>
         <ol class="events">${eventos.map(eventRow).join('')}
-        </ol>${PIES[pie] || ''}
+        </ol>${pieDe(pie)}
       </section>`;
 }
 

@@ -155,3 +155,8 @@ exports.TRAMOS = `  /* Cuota en tramos de QuotaBar (§4): 70–89 % warning; 90�
   .quota-warn .quota-note { color: var(--warning-foreground); }
   .quota-full .quota-note { color: var(--destructive); }
 `;
+
+// Botón de ícono (cerrar el cajón, «Cerrar aviso»…): lo usan marco.EXTRA y las pantallas que no incluyen todo EXTRA
+exports.ICON_BTN = `  .icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--foreground); cursor: pointer; }
+  .icon-btn:hover { background: var(--muted); }
+`;
