@@ -31,6 +31,7 @@ const createRedisClient = (env: SharedEnvBase, logger: RedisErrorLogger): Redis 
   const client = new Redis(env.REDIS_URL, {
     lazyConnect: true,
     connectTimeout: CONNECT_TIMEOUT_MS,
+    commandTimeout: 1000,
     maxRetriesPerRequest: MAX_RETRIES_PER_REQUEST,
   });
   client.on('error', (error: unknown) => {

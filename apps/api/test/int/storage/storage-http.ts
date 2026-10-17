@@ -15,6 +15,7 @@ import type { DataSource } from 'typeorm';
 
 import { I_PLAN_LIMITS_PROVIDER, StorageModule } from '../../../src/modules/storage';
 import type { PlanLimits } from '../../../src/modules/storage';
+import { PreviewModule } from '../../../src/modules/storage/preview';
 import { PlanLimitsBindingModule } from '../../../src/plan-limits-binding.module';
 import { FixedClock, Role } from '../../../src/shared';
 import { connectAsOwner, requiredEnv } from '../../support/database-urls';
@@ -109,6 +110,7 @@ export interface StorageClient {
   complete(uploadId: string): Promise<Response>;
   cancel(uploadId: string): Promise<Response>;
   downloadUrl(fileId: string): Promise<Response>;
+  previewUrl(fileId: string): Promise<Response>;
   renameFile(fileId: string, body: Record<string, unknown>): Promise<Response>;
   moveFile(fileId: string, body: Record<string, unknown>): Promise<Response>;
   folderContents(query?: Record<string, string>): Promise<Response>;
@@ -155,6 +157,8 @@ export interface StorageHttpApp {
 }
 
 export interface StorageHttpOptions {
+  /** Compone preview con el mismo descriptor de storage, sin duplicar proveedores (017 T-04). */
+  readonly preview?: boolean;
   /** Variables que cambian respecto del arnés (p. ej. límites de tasa bajos). */
   readonly env?: Readonly<Record<string, string>>;
   readonly limits?: PlanLimits;
@@ -244,10 +248,18 @@ export const createStorageHttpApp = async (
     ...options.env,
   });
   const limits = new FakePlanLimitsProvider(options.limits ?? DEFAULT_TEST_LIMITS);
+  const storageModule = StorageModule.forRoot(env);
+  const entryModule =
+    options.preview === true
+      ? PreviewModule.register({
+          storageModule,
+          config: { previewUrlPerMinute: env.RATE_LIMIT_PREVIEW_URL_PER_MINUTE },
+        })
+      : storageModule;
   const testApp = await createTestApp({
     validatedEnv: env,
     accessTokenStrategy: options.accessTokenStrategy ?? 'test',
-    modules: [...(options.modules ?? []), PlanLimitsBindingModule, StorageModule.forRoot(env)],
+    modules: [...(options.modules ?? []), PlanLimitsBindingModule, entryModule],
     overrides:
       options.realPlanLimits === true
         ? []
@@ -268,6 +280,7 @@ export const createStorageHttpApp = async (
       complete: (uploadId) => http().post(`${API_PREFIX}/uploads/${uploadId}/complete`).set(auth),
       cancel: (uploadId) => http().delete(`${API_PREFIX}/uploads/${uploadId}`).set(auth),
       downloadUrl: (fileId) => http().post(`${API_PREFIX}/files/${fileId}/download-url`).set(auth),
+      previewUrl: (fileId) => http().post(`${API_PREFIX}/files/${fileId}/preview-url`).set(auth),
       renameFile: (fileId, body) =>
         http().patch(`${API_PREFIX}/files/${fileId}`).set(auth).send(body),
       moveFile: (fileId, body) =>

@@ -34,6 +34,9 @@ const DELIVERY: PreviewDelivery = {
   expiresAt: new Date('2026-10-08T20:05:00.000Z'),
 };
 
+const logWasCalledWith = (calls: readonly unknown[][], payload: Record<string, unknown>): boolean =>
+  expect.arrayContaining([[payload]]).asymmetricMatch(calls);
+
 async function setup() {
   const facade: jest.Mocked<Pick<StoragePreviewFacade, 'issueUrl'>> = { issueUrl: jest.fn() };
   const rateLimiter: jest.Mocked<IRateLimiter> = { consume: jest.fn() };
@@ -78,10 +81,11 @@ describe('PreviewService', () => {
     rateLimiter.consume.mockResolvedValue({ allowed: true });
     facade.issueUrl.mockResolvedValue(DELIVERY);
 
-    await expect(service.issueUrl(actor, FILE_ID)).rejects.toMatchObject({
-      status: 403,
-      code: 'SHARED_FORBIDDEN',
-    });
+    const failure: unknown = await service.issueUrl(actor, FILE_ID).then(
+      () => undefined,
+      (error: unknown) => error,
+    );
+    expect(failure).toMatchObject({ status: 403, code: 'SHARED_FORBIDDEN' });
 
     expect(rateLimiter.consume).not.toHaveBeenCalled();
     expect(facade.issueUrl).not.toHaveBeenCalled();
@@ -112,9 +116,10 @@ describe('PreviewService', () => {
     const { service, facade, rateLimiter, logger } = await setup();
     rateLimiter.consume.mockResolvedValue({ allowed: false, retryAfterSeconds: 17 });
 
-    const error: unknown = await service
-      .issueUrl(CLIENT, FILE_ID)
-      .catch((caught: unknown) => caught);
+    const error: unknown = await service.issueUrl(CLIENT, FILE_ID).then(
+      () => undefined,
+      (caught: unknown) => caught,
+    );
 
     expect(error).toBeInstanceOf(PreviewTooManyRequestsError);
     expect(error).toMatchObject({
@@ -125,13 +130,15 @@ describe('PreviewService', () => {
     });
     expect(facade.issueUrl).not.toHaveBeenCalled();
     expect(logger.warn).toHaveBeenCalledTimes(1);
-    expect(logger.warn).toHaveBeenCalledWith({
-      event: 'preview.rate_limited',
-      fileId: FILE_ID,
-      code: 'STORAGE_TOO_MANY_REQUESTS',
-    });
-    expect(logger.error).not.toHaveBeenCalled();
-    expect(logger.info).not.toHaveBeenCalled();
+    expect(
+      logWasCalledWith(logger.warn.mock.calls, {
+        event: 'preview.rate_limited',
+        fileId: FILE_ID,
+        code: 'STORAGE_TOO_MANY_REQUESTS',
+      }),
+    ).toBe(true);
+    expect(logger.error).toHaveBeenCalledTimes(0);
+    expect(logger.info).toHaveBeenCalledTimes(0);
   });
 
   it('CA-12: conserva la instancia 429 sin duplicar preview.url_failed', async () => {
@@ -142,9 +149,9 @@ describe('PreviewService', () => {
     await expect(service.issueUrl(CLIENT, FILE_ID)).rejects.toBe(failure);
 
     expect(facade.issueUrl).not.toHaveBeenCalled();
-    expect(logger.warn).not.toHaveBeenCalled();
-    expect(logger.error).not.toHaveBeenCalled();
-    expect(logger.info).not.toHaveBeenCalled();
+    expect(logger.warn).toHaveBeenCalledTimes(0);
+    expect(logger.error).toHaveBeenCalledTimes(0);
+    expect(logger.info).toHaveBeenCalledTimes(0);
   });
 
   it('CA-10, CA-11: devuelve la entrega intacta y registra solo preview.url_issued y fileId', async () => {
@@ -154,12 +161,14 @@ describe('PreviewService', () => {
 
     const result = await service.issueUrl(CLIENT, FILE_ID);
 
-    expect(result).toBe(DELIVERY);
+    expect(result === DELIVERY).toBe(true);
     expect(facade.issueUrl).toHaveBeenCalledWith(CLIENT, FILE_ID);
     expect(logger.info).toHaveBeenCalledTimes(1);
-    expect(logger.info).toHaveBeenCalledWith({ event: 'preview.url_issued', fileId: FILE_ID });
-    expect(logger.warn).not.toHaveBeenCalled();
-    expect(logger.error).not.toHaveBeenCalled();
+    expect(
+      logWasCalledWith(logger.info.mock.calls, { event: 'preview.url_issued', fileId: FILE_ID }),
+    ).toBe(true);
+    expect(logger.warn).toHaveBeenCalledTimes(0);
+    expect(logger.error).toHaveBeenCalledTimes(0);
   });
 
   it.each([new InsufficientRoleError(), new NodeNotFoundError(), new PreviewUnsupportedError()])(
@@ -170,16 +179,22 @@ describe('PreviewService', () => {
       rateLimiter.consume.mockResolvedValue({ allowed: true });
       facade.issueUrl.mockRejectedValue(failure);
 
-      await expect(service.issueUrl(CLIENT, FILE_ID)).rejects.toBe(failure);
+      const caught: unknown = await service.issueUrl(CLIENT, FILE_ID).then(
+        () => undefined,
+        (error: unknown) => error,
+      );
+      expect(caught === failure).toBe(true);
 
       expect(logger.warn).toHaveBeenCalledTimes(1);
-      expect(logger.warn).toHaveBeenCalledWith({
-        event: 'preview.url_failed',
-        fileId: FILE_ID,
-        code: failure.code,
-      });
-      expect(logger.error).not.toHaveBeenCalled();
-      expect(logger.info).not.toHaveBeenCalled();
+      expect(
+        logWasCalledWith(logger.warn.mock.calls, {
+          event: 'preview.url_failed',
+          fileId: FILE_ID,
+          code: failure.code,
+        }),
+      ).toBe(true);
+      expect(logger.error).toHaveBeenCalledTimes(0);
+      expect(logger.info).toHaveBeenCalledTimes(0);
     },
   );
 
@@ -200,35 +215,41 @@ describe('PreviewService', () => {
       facade.issueUrl.mockRejectedValue(failure);
       if (source === 'rateLimiter') rateLimiter.consume.mockRejectedValue(failure);
 
-      const error: unknown = await service
-        .issueUrl(CLIENT, FILE_ID)
-        .catch((caught: unknown) => caught);
+      const error: unknown = await service.issueUrl(CLIENT, FILE_ID).then(
+        () => undefined,
+        (caught: unknown) => caught,
+      );
 
-      expect(error).toBeInstanceOf(Error);
-      expect(error).not.toBe(failure);
-      expect(error).not.toBeInstanceOf(DomainError);
-      expect(error).not.toHaveProperty('cause');
-      expect(error).not.toHaveProperty('code');
-      expect(error).not.toHaveProperty('status');
+      expect(error instanceof Error).toBe(true);
+      expect(error === failure).toBe(false);
+      expect(error instanceof DomainError).toBe(false);
+      for (const property of ['cause', 'code', 'status']) {
+        expect(typeof error === 'object' && error !== null && property in error).toBe(false);
+      }
       if (!(error instanceof Error)) throw new Error('Se esperaba un Error operativo saneado');
       expect(error.name).not.toBe('PreviewUrlIssuanceError');
-      expect(Object.getOwnPropertyNames(error).sort()).toEqual(['message', 'stack']);
+      // Revisar valores privados no exige una lista fija de propiedades internas del runtime.
       const serialized = JSON.stringify({
+        properties: Object.getOwnPropertyNames(error).map((property): unknown =>
+          Reflect.get(error, property),
+        ),
         message: error.message,
         stack: error.stack,
         logs: [logger.info.mock.calls, logger.warn.mock.calls, logger.error.mock.calls],
       });
       for (const secret of [DELIVERY.url, 'PRIVATE_', 'X-Amz-Signature', 'privado.pdf'])
-        expect(serialized).not.toContain(secret);
+        expect(serialized.includes(secret)).toBe(false);
       if (source === 'rateLimiter') expect(facade.issueUrl).not.toHaveBeenCalled();
       expect(logger.error).toHaveBeenCalledTimes(1);
-      expect(logger.error).toHaveBeenCalledWith({
-        event: 'preview.url_failed',
-        fileId: FILE_ID,
-        reason: 'unexpected_error',
-      });
-      expect(logger.warn).not.toHaveBeenCalled();
-      expect(logger.info).not.toHaveBeenCalled();
+      expect(
+        logWasCalledWith(logger.error.mock.calls, {
+          event: 'preview.url_failed',
+          fileId: FILE_ID,
+          reason: 'unexpected_error',
+        }),
+      ).toBe(true);
+      expect(logger.warn).toHaveBeenCalledTimes(0);
+      expect(logger.info).toHaveBeenCalledTimes(0);
     },
   );
 });

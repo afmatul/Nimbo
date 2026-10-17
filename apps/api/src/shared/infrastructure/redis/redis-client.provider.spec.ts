@@ -19,6 +19,22 @@ const compile = async (logger: { warn: jest.Mock }) =>
   }).compile();
 
 describe('REDIS_CLIENT (001 CA-15)', () => {
+  it('CA-15: acota cada comando a 1000 ms y conserva conexión perezosa y reintentos', async () => {
+    const moduleRef = await compile({ warn: jest.fn() });
+    const { commandTimeout, connectTimeout, maxRetriesPerRequest, lazyConnect } =
+      moduleRef.get<Redis>(REDIS_CLIENT).options;
+    try {
+      expect({ commandTimeout, connectTimeout, maxRetriesPerRequest, lazyConnect }).toEqual({
+        commandTimeout: 1000,
+        connectTimeout: 1000,
+        maxRetriesPerRequest: 1,
+        lazyConnect: true,
+      });
+    } finally {
+      await moduleRef.close();
+    }
+  });
+
   it('CA-15: registra un oyente de `error` que no escribe la URL ni el mensaje del error', async () => {
     const logger = { warn: jest.fn() };
     const moduleRef = await compile(logger);

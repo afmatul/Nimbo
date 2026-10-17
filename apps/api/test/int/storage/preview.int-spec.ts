@@ -18,11 +18,16 @@ import type { IRateLimiter } from '../../../src/shared';
 import { connectAsOwner } from '../../support/database-urls';
 import { PROBE_CLOCK_START } from '../../support/probe.module';
 import { TestAccessTokens } from '../../support/test-access-tokens';
+import type { LogLine } from '../setup/log-sink';
 import { buildTestEnv, createTestApp } from '../setup/test-app';
 import type { TestApp } from '../setup/test-app';
 
 import { insertCommittedFile } from './storage-http';
 import { insertAccount, removeAccounts } from './storage-test-db';
+
+/** Evaluar el matcher a boolean evita imprimir el log que falló la comprobación. */
+const hasLog = (lines: readonly LogLine[], fields: Record<string, unknown>): boolean =>
+  lines.some((line) => expect.objectContaining(fields).asymmetricMatch(line));
 
 /** T-03: HTTP, DI, filtro y logging reales; Postgres/Redis/firmador existentes, sin infraestructura duplicada. */
 describe('POST /api/v1/files/:fileId/preview-url (017 T-03)', () => {
@@ -86,9 +91,12 @@ describe('POST /api/v1/files/:fileId/preview-url (017 T-03)', () => {
     expect(new Date(delivery.expiresAt).toISOString()).toBe(delivery.expiresAt);
     expect(facadeCall).toHaveBeenCalledWith(createActor(actorId, Role.CLIENT), fileId);
     expect(limitsCall).not.toHaveBeenCalled();
-    expect(testApp.logs.withCorrelationId('preview-issued')).toContainEqual(
-      expect.objectContaining({ event: 'preview.url_issued', fileId }),
-    );
+    expect(
+      hasLog(testApp.logs.withCorrelationId('preview-issued'), {
+        event: 'preview.url_issued',
+        fileId,
+      }),
+    ).toBe(true);
     const logs = JSON.stringify(testApp.logs.lines());
     for (const forbidden of [
       delivery.url,
@@ -97,7 +105,7 @@ describe('POST /api/v1/files/:fileId/preview-url (017 T-03)', () => {
       'download.url_issued',
       'audit.record',
     ]) {
-      expect(logs).not.toContain(forbidden);
+      expect(logs.includes(forbidden)).toBe(false);
     }
   });
 
@@ -147,9 +155,12 @@ describe('POST /api/v1/files/:fileId/preview-url (017 T-03)', () => {
     const { correlationId: _missingId, ...missingBody } = errorResponseSchema.parse(missing.body);
     expect(malformedBody).toEqual(missingBody);
     expect(missingBody.code).toBe('STORAGE_NODE_NOT_FOUND');
-    expect(testApp.logs.withCorrelationId('preview-missing')).toContainEqual(
-      expect.objectContaining({ event: 'preview.url_failed', code: missingBody.code }),
-    );
+    expect(
+      hasLog(testApp.logs.withCorrelationId('preview-missing'), {
+        event: 'preview.url_failed',
+        code: missingBody.code,
+      }),
+    ).toBe(true);
   });
 
   it('CA-11: un formato excluido responde 422 STORAGE_PREVIEW_UNSUPPORTED', async () => {
@@ -159,13 +170,13 @@ describe('POST /api/v1/files/:fileId/preview-url (017 T-03)', () => {
 
     expect(response.status).toBe(422);
     expect(errorResponseSchema.parse(response.body).code).toBe('STORAGE_PREVIEW_UNSUPPORTED');
-    expect(testApp.logs.withCorrelationId('preview-unsupported')).toContainEqual(
-      expect.objectContaining({
+    expect(
+      hasLog(testApp.logs.withCorrelationId('preview-unsupported'), {
         event: 'preview.url_failed',
         fileId,
         code: 'STORAGE_PREVIEW_UNSUPPORTED',
       }),
-    );
+    ).toBe(true);
   });
 
   it('CA-12: la tasa se evalúa antes del archivo y responde 429 con mensaje y Retry-After', async () => {
@@ -183,13 +194,13 @@ describe('POST /api/v1/files/:fileId/preview-url (017 T-03)', () => {
     expect(Number(response.headers['retry-after'])).toBeGreaterThan(0);
     expect(Number(response.headers['retry-after'])).toBeLessThanOrEqual(60);
     expect(facadeCall).not.toHaveBeenCalled();
-    expect(testApp.logs.withCorrelationId('preview-limited')).toContainEqual(
-      expect.objectContaining({
+    expect(
+      hasLog(testApp.logs.withCorrelationId('preview-limited'), {
         event: 'preview.rate_limited',
         fileId: missingId,
         code: 'STORAGE_TOO_MANY_REQUESTS',
       }),
-    );
+    ).toBe(true);
   });
 
   it.each(['facade', 'rateLimiter'] as const)(
@@ -213,27 +224,33 @@ describe('POST /api/v1/files/:fileId/preview-url (017 T-03)', () => {
       const response = await issue({ correlationId: 'preview-failed' });
 
       expect(response.status).toBe(500);
-      expect(response.body).toEqual({
-        code: 'INTERNAL_ERROR',
-        message:
-          'Ocurrió un error inesperado. Inténtalo de nuevo más tarde; si persiste, contacta a soporte con el identificador de correlación.',
-        correlationId: 'preview-failed',
-      });
+      expect(
+        expect
+          .arrayContaining([
+            {
+              code: 'INTERNAL_ERROR',
+              message:
+                'Ocurrió un error inesperado. Inténtalo de nuevo más tarde; si persiste, contacta a soporte con el identificador de correlación.',
+              correlationId: 'preview-failed',
+            },
+          ])
+          .asymmetricMatch([response.body]),
+      ).toBe(true);
       const lines = testApp.logs.withCorrelationId('preview-failed');
-      expect(lines).toContainEqual(
-        expect.objectContaining({
+      expect(
+        hasLog(lines, {
           event: 'preview.url_failed',
           fileId,
           reason: 'unexpected_error',
         }),
-      );
-      expect(lines).toContainEqual(expect.objectContaining({ event: 'http.unhandled_error' }));
-      expect(lines).toContainEqual(
-        expect.objectContaining({
+      ).toBe(true);
+      expect(hasLog(lines, { event: 'http.unhandled_error' })).toBe(true);
+      expect(
+        hasLog(lines, {
           event: 'http.request',
           res: expect.objectContaining({ statusCode: 500 }),
         }),
-      );
+      ).toBe(true);
       expect(lines.some((line) => line.event === 'http.domain_error')).toBe(false);
       expect(lines.some((line) => line.event === 'preview.url_issued')).toBe(false);
       const serialized = JSON.stringify({ logs: testApp.logs.lines(), response: response.body });
@@ -249,7 +266,7 @@ describe('POST /api/v1/files/:fileId/preview-url (017 T-03)', () => {
         'example.test',
         'privado.pdf',
       ])
-        expect(serialized).not.toContain(forbidden);
+        expect(serialized.includes(forbidden)).toBe(false);
       for (const line of lines) expect(line.correlationId).toBe('preview-failed');
       if (source === 'rateLimiter') expect(facadeCall).not.toHaveBeenCalled();
     },

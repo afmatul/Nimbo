@@ -36,6 +36,7 @@ const appDatabaseUrl = (ownerUrl: string): string => {
 const MINIO_PORT = 9000;
 const MINIO_USER = 'nimbo';
 const MINIO_PASSWORD = 'nimbo-secret';
+const TEST_CORS_ORIGIN = 'http://localhost';
 export const TEST_BUCKET = 'nimbo-test';
 
 const MAILPIT_SMTP_PORT = 1025;
@@ -74,7 +75,11 @@ const startPostgres = async (): Promise<StartedPostgreSqlContainer> =>
 const startMinio = async (): Promise<StartedTestContainer> =>
   new GenericContainer(MINIO_IMAGE)
     .withCommand(['server', '/data'])
-    .withEnvironment({ MINIO_ROOT_USER: MINIO_USER, MINIO_ROOT_PASSWORD: MINIO_PASSWORD })
+    .withEnvironment({
+      MINIO_ROOT_USER: MINIO_USER,
+      MINIO_ROOT_PASSWORD: MINIO_PASSWORD,
+      MINIO_API_CORS_ALLOW_ORIGIN: TEST_CORS_ORIGIN,
+    })
     .withExposedPorts(MINIO_PORT)
     .withWaitStrategy(Wait.forHttp('/minio/health/live', MINIO_PORT))
     .start();
@@ -139,6 +144,7 @@ export const startTestInfra = async (): Promise<TestInfra> => {
     minio,
     mailpit,
     env: () => ({
+      CORS_ORIGIN: TEST_CORS_ORIGIN,
       DATABASE_URL: appDatabaseUrl(postgres.getConnectionUri()),
       DATABASE_MIGRATION_URL: postgres.getConnectionUri(),
       REDIS_URL: redis.getConnectionUrl(),
