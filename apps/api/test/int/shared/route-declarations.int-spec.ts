@@ -34,6 +34,8 @@ const EXPECTED_PUBLIC_ROUTES = [
   'POST /api/v1/auth/session/logout',
   'POST /api/v1/auth/session/refresh',
   'POST /api/v1/auth/verify-email',
+  // 016 plan §4: aviso de guardado de ONLYOFFICE, autenticado por su JWT y el enlace firmado de `callbackUrl`.
+  'POST /api/v1/editing/callback',
 ];
 
 /**
