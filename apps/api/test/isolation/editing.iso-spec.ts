@@ -249,9 +249,9 @@ describe('aislamiento de la edición colaborativa (016 CA-18, CA-19)', () => {
       );
 
       const secondTab = await editing.connect(a.client.id);
-      expect(
-        (await editing.open(a.client, a.fileId, { connectionId: secondTab.id })).status,
-      ).toBe(200);
+      expect((await editing.open(a.client, a.fileId, { connectionId: secondTab.id })).status).toBe(
+        200,
+      );
       await editing.callback(a.callbackUrl, {
         key: a.sessionId,
         status: READY_FOR_SAVING,
@@ -481,10 +481,9 @@ describe('aislamiento de la edición colaborativa (016 CA-18, CA-19)', () => {
     const visibleRows = (actor: Actor, document: OpenedDocument) =>
       runner.withActor(actor, async () => {
         const scope = context.requireActorScope(actor);
-        const sessions = (await scope.query(
-          'SELECT id FROM sesion_edicion WHERE archivo_id = $1',
-          [document.fileId],
-        )) as { id: string }[];
+        const sessions = (await scope.query('SELECT id FROM sesion_edicion WHERE archivo_id = $1', [
+          document.fileId,
+        ])) as { id: string }[];
         const participations = (await scope.query(
           'SELECT usuario_id FROM participacion WHERE sesion_edicion_id = $1',
           [document.sessionId],
