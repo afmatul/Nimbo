@@ -59,6 +59,7 @@ export const openEditSessionResponseSchema = z.discriminatedUnion('mode', [
 export const EDITING_EVENTS = {
   PRESENCE: 'editing.presence',
   VERSION_SAVED: 'editing.version-saved',
+  SAVE_FAILED: 'editing.save-failed',
 } as const;
 
 /** `editing.presence`, a la sala del documento: quiénes editan, cuántos y el máximo del plan de la propietaria (CA-6, CA-7). */
@@ -73,9 +74,18 @@ export const editingPresenceSchema = z
 /** `editing.version-saved`, a la sala del documento: la sesión dejó una versión nueva (CA-9). */
 export const editingVersionSavedSchema = z.object({ sessionId: z.string().uuid() }).strict();
 
+/**
+ * `editing.save-failed`, **a cada usuario** (participantes y propietaria) en cualquier pantalla: la sesión no dejó
+ * versión y la vigente está intacta (CA-14). El shell lo muestra como aviso persistente, sin toast (ADR-0024).
+ */
+export const editingSaveFailedSchema = z
+  .object({ sessionId: z.string().uuid(), fileId: z.string().uuid() })
+  .strict();
+
 export type OpenEditSessionRequest = z.infer<typeof openEditSessionRequestSchema>;
 export type Participant = z.infer<typeof participantSchema>;
 export type OpenEditSessionResponse = z.infer<typeof openEditSessionResponseSchema>;
 export type EditingPresence = z.infer<typeof editingPresenceSchema>;
 export type EditMode = OpenEditSessionResponse['mode'];
 export type EditingVersionSaved = z.infer<typeof editingVersionSavedSchema>;
+export type EditingSaveFailed = z.infer<typeof editingSaveFailedSchema>;

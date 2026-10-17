@@ -6,10 +6,16 @@ import type { AddressInfo } from 'node:net';
 const FILES_PATH = '/cache/files/';
 const REDIRECT_PATH = '/redirect/';
 
-/** Un documento servido: sus bytes y, si la prueba lo pide, una espera hasta que lo libere. */
+const UNAVAILABLE_STATUS = 503;
+
+/**
+ * Un documento servido: sus bytes, si la prueba lo pide una espera hasta que lo libere, y cuántas descargas más
+ * responden 503 antes de servirlo (fallo transitorio, CA-14).
+ */
 interface ServedFile {
   readonly bytes: Buffer;
   readonly gate: Promise<void> | null;
+  failuresLeft: number;
 }
 
 /** Una descarga «retenida»: la prueba la libera cuando ya comprobó que la petición del aviso terminó antes. */
@@ -49,7 +55,14 @@ export class FakeOnlyOfficeServer {
   /** URL de descarga de `bytes`, como la que trae el aviso de estado 2. */
   serve(bytes: Buffer): string {
     const name = randomUUID();
-    this.files.set(name, { bytes, gate: null });
+    this.files.set(name, { bytes, gate: null, failuresLeft: 0 });
+    return `${this.origin}${FILES_PATH}${name}`;
+  }
+
+  /** Como `serve`, pero las primeras `failures` descargas responden 503 (el servidor de documentos no responde). */
+  serveAfterFailures(bytes: Buffer, failures: number): string {
+    const name = randomUUID();
+    this.files.set(name, { bytes, gate: null, failuresLeft: failures });
     return `${this.origin}${FILES_PATH}${name}`;
   }
 
@@ -60,7 +73,7 @@ export class FakeOnlyOfficeServer {
       release = resolve;
     });
     const name = randomUUID();
-    this.files.set(name, { bytes, gate });
+    this.files.set(name, { bytes, gate, failuresLeft: 0 });
     return { url: `${this.origin}${FILES_PATH}${name}`, release: () => release() };
   }
 
@@ -99,6 +112,11 @@ export class FakeOnlyOfficeServer {
     this.downloads.push(pathname);
     if (file === undefined) {
       response.writeHead(404);
+      return void response.end();
+    }
+    if (file.failuresLeft > 0) {
+      file.failuresLeft -= 1;
+      response.writeHead(UNAVAILABLE_STATUS);
       return void response.end();
     }
     if (file.gate !== null) await file.gate;

@@ -24,8 +24,12 @@ export interface IEditSessionRepository {
    * (`uq_sesion_edicion_abierta`), sin abortar la transacción.
    */
   insertIfNoneOpen(actor: Actor, session: EditSession): Promise<boolean>;
+  /** La sesión más reciente del archivo, en cualquier estado (banner de guardado fallido, CA-14); `null` si no hubo. */
+  findLatestFor(actor: Actor, fileId: string): Promise<EditSession | null>;
   /** Cuentas conectadas como editoras a la sesión (`salio_en IS NULL`), por orden de entrada. */
   activeParticipants(actor: Actor, sessionId: string): Promise<readonly string[]>;
+  /** Cuentas que entraron como editoras a la sesión, sigan conectadas o no (autoría, RN-5; avisos de CA-14). */
+  allParticipants(actor: Actor, sessionId: string): Promise<readonly string[]>;
   /** Alta de `userId` como participante conectado; si ya participó, vuelve a contar como conectado. */
   join(actor: Actor, participation: ParticipationChange): Promise<void>;
   /**

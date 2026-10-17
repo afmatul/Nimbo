@@ -100,6 +100,22 @@ export class TypeOrmEditSessionRepository implements IEditSessionRepository {
     return inserted.length > 0;
   }
 
+  async findLatestFor(actor: Actor, fileId: string): Promise<EditSession | null> {
+    const row = await this.manager(actor).findOne(SesionEdicionOrmEntity, {
+      where: { archivoId: fileId },
+      order: { iniciadaEn: 'DESC' },
+    });
+    return row === null ? null : toSession(row);
+  }
+
+  async allParticipants(actor: Actor, sessionId: string): Promise<readonly string[]> {
+    const rows = await this.manager(actor).find(ParticipacionOrmEntity, {
+      where: { sesionEdicionId: sessionId },
+      order: { entroEn: 'ASC' },
+    });
+    return rows.map((row) => row.usuarioId);
+  }
+
   async activeParticipants(actor: Actor, sessionId: string): Promise<readonly string[]> {
     const rows = await this.manager(actor).find(ParticipacionOrmEntity, {
       where: { sesionEdicionId: sessionId, salioEn: IsNull() },

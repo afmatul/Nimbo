@@ -44,11 +44,15 @@ interface OpenContext {
   readonly ownerMaxEditors: number;
 }
 
-/** El modo decidido dentro de la transacción y la sesión (en edición) con sus participantes conectados. */
+/**
+ * El modo decidido dentro de la transacción y la sesión (en edición) con sus participantes conectados; y si la
+ * sesión anterior del archivo falló y quien abre participó en ella (banner de CA-14).
+ */
 interface Admission {
   readonly decision: EditModeDecision;
   readonly session: EditSession | null;
   readonly participants: readonly string[];
+  readonly lastSaveFailed: boolean;
 }
 
 /** El modo con su sesión: en edición siempre hay sesión; en solo lectura, motivo y ninguna sesión (plan §4). */
@@ -171,8 +175,10 @@ export class EditSessionService {
     const open = await this.sessions.findOpenForUpdate(actor, file.id);
     if (open?.state === 'guardando') throw new EditingSaveInProgressError();
     const connected = open === null ? [] : await this.sessions.activeParticipants(actor, open.id);
+    const lastSaveFailed = open === null && (await this.previousSaveFailed(actor, file.id));
     const decision = this.decide(context, connected);
-    if (decision.mode === 'view') return { decision, session: null, participants: connected };
+    if (decision.mode === 'view')
+      return { decision, session: null, participants: connected, lastSaveFailed };
     const session = open ?? (await this.createSession(context));
     if (session === null) return null;
     await this.sessions.join(actor, {
@@ -181,7 +187,18 @@ export class EditSessionService {
       now: this.clock.now(),
     });
     const participants = connected.includes(actor.id) ? connected : [...connected, actor.id];
-    return { decision, session, participants };
+    return { decision, session, participants, lastSaveFailed };
+  }
+
+  /**
+   * La sesión más reciente del archivo falló y el actor es la propietaria o participó en ella (plan §4). Con una
+   * sesión abierta no se mira: la fallida ya no es la última, así que el banner se va solo al abrir la nueva.
+   */
+  private async previousSaveFailed(actor: Actor, fileId: string): Promise<boolean> {
+    const latest = await this.sessions.findLatestFor(actor, fileId);
+    if (latest?.state !== 'fallida') return false;
+    if (latest.ownerId === actor.id) return true;
+    return (await this.sessions.allParticipants(actor, latest.id)).includes(actor.id);
   }
 
   private decide(context: OpenContext, connected: readonly string[]): EditModeDecision {
@@ -242,7 +259,7 @@ export class EditSessionService {
       participants,
       editors: participants.length,
       maxEditors: context.ownerMaxEditors,
-      lastSaveFailed: false,
+      lastSaveFailed: admission.lastSaveFailed,
     };
   }
 }

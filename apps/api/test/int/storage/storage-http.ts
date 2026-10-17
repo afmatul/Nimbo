@@ -126,6 +126,9 @@ export interface StorageClient {
   unpin(nodeType: string, nodeId: string): Promise<Response>;
   /** `POST /quick-access/recents/:nodeType/:nodeId`, sin cuerpo. */
   recordOpen(nodeType: string, nodeId: string): Promise<Response>;
+  /** `DELETE /files/:fileId` (a la papelera) y `DELETE /trash/files/:fileId` (purga definitiva). */
+  trashFile(fileId: string): Promise<Response>;
+  purgeFile(fileId: string): Promise<Response>;
   trashFolder(folderId: string): Promise<Response>;
   purgeFolder(folderId: string): Promise<Response>;
   restoreFolder(folderId: string): Promise<Response>;
@@ -319,6 +322,8 @@ export const createStorageHttpApp = async (
         http().delete(`${API_PREFIX}/quick-access/pins/${nodeType}/${nodeId}`).set(auth),
       recordOpen: (nodeType, nodeId) =>
         http().post(`${API_PREFIX}/quick-access/recents/${nodeType}/${nodeId}`).set(auth),
+      trashFile: (fileId) => http().delete(`${API_PREFIX}/files/${fileId}`).set(auth),
+      purgeFile: (fileId) => http().delete(`${API_PREFIX}/trash/files/${fileId}`).set(auth),
       trashFolder: (folderId) => http().delete(`${API_PREFIX}/folders/${folderId}`).set(auth),
       purgeFolder: (folderId) => http().delete(`${API_PREFIX}/trash/folders/${folderId}`).set(auth),
       restoreFolder: (folderId) =>

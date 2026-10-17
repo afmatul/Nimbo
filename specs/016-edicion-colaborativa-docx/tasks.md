@@ -17,7 +17,7 @@
 
 - [x] **T-05** Guardado firmado: callback → cola → versión. Primero `test/int/editing/save-version.int-spec.ts` (callback estado 2 con JWT válido responde `{"error":0}` sin procesar en la petición y encola; el procesador crea **una** versión vigente `origen='edicion'` con `creado_por` = quien abrió y autores = todos los que entraron como editor aunque salieran; mismo aviso dos veces = una versión; estado 4 y guardado forzado (6) = sin versión; reindexación encolada por `IIndexQueue` aun sin consumidor; poda según plan; el estado 1 reconcilia presencia y revalida acceso) y `callback-security.int-spec.ts` en lo de firma (JWT inválido o `alg` ≠ HS256 → `{"error":1}`, URL de otro origen u origen parecido, redirección y sesión no activa → nada descargado ni cambiado). Luego `SaveCallbackHandler`, cola `editing-save` (`SaveVersionQueue`, 3 intentos, espera exponencial, `jobId` = sesión), `SaveVersionProcessor` en el `api` (concurrencia 1), `SaveVersionService` (relee la sesión con `withActor(createActor(oid))`, `versionId` uuid v5 de `sessionId`, UNIQUE violado = éxito, cierra sesión, publica `editing.version-saved`, audita sin URLs ni nombres), `OnlyOfficeEditor.verifyCallback/download` (lista blanca por origen, sin redirecciones, tope `2 × EDITING_MAX_DOC_BYTES`), `POST /editing/callback` con `callbackUrl` firmado. — CA: CA-9, CA-10, CA-11, CA-12, CA-13, CA-19, CA-20 — Archivos: `editing/application/{save-callback.handler,save-version.service}.ts`, `editing/infrastructure/{save-version.queue,save-version.processor,onlyoffice-editor}.ts`, `editing/presentation/onlyoffice.controller.ts`, `editing/editing.module.ts`, `test/int/editing/{save-version,callback-security}.int-spec.ts` — Depende: T-02, T-04 — Verificar: `pnpm test:int`, `pnpm lint && pnpm typecheck`
 
-- [ ] **T-06** Guardado fallido: archivo íntegro o nada, aviso y banner. Primero ampliar `callback-security.int-spec.ts` (archivo corrupto o incompleto → sesión `fallida/integridad` y versión vigente intacta; archivo purgado en sesión → `fallida/archivo_purgado`; estado 3 → `fallida/editor`; fallo transitorio que se recupera al reintentar no marca `fallida`; solo tras el 3.er intento; cada participante y la propietaria reciben `editing.save-failed {sessionId, fileId}` por `toUser`; al reabrir, `lastSaveFailed: true` y «Abrir el editor de nuevo» abre sesión nueva sobre la versión vigente sin reprocesar; con archivo purgado no hay banner y la apertura responde 404). Luego `SaveFailedNotifier` (reutilizado por el estado 3 y el procesador), manejo de agotamiento de intentos en el procesador, `findLatestFor(actor, fileId)` y `lastSaveFailed` en la respuesta de apertura, auditoría `edit.save_failed` con `reason`. — CA: CA-14 (servidor) — Archivos: `editing/application/{save-failed-notifier,save-version.service,edit-session.service}.ts`, `editing/infrastructure/{save-version.processor,typeorm-edit-session.repository}.ts`, `test/int/editing/callback-security.int-spec.ts` — Depende: T-05 — Verificar: `pnpm test:int`, `pnpm lint && pnpm typecheck`
+- [x] **T-06** Guardado fallido: archivo íntegro o nada, aviso y banner. Primero ampliar `callback-security.int-spec.ts` (archivo corrupto o incompleto → sesión `fallida/integridad` y versión vigente intacta; archivo purgado en sesión → `fallida/archivo_purgado`; estado 3 → `fallida/editor`; fallo transitorio que se recupera al reintentar no marca `fallida`; solo tras el 3.er intento; cada participante y la propietaria reciben `editing.save-failed {sessionId, fileId}` por `toUser`; al reabrir, `lastSaveFailed: true` y «Abrir el editor de nuevo» abre sesión nueva sobre la versión vigente sin reprocesar; con archivo purgado no hay banner y la apertura responde 404). Luego `SaveFailedNotifier` (reutilizado por el estado 3 y el procesador), manejo de agotamiento de intentos en el procesador, `findLatestFor(actor, fileId)` y `lastSaveFailed` en la respuesta de apertura, auditoría `edit.save_failed` con `reason`. — CA: CA-14 (servidor) — Archivos: `editing/application/{save-failed-notifier,save-version.service,edit-session.service}.ts`, `editing/infrastructure/{save-version.processor,typeorm-edit-session.repository}.ts`, `test/int/editing/callback-security.int-spec.ts` — Depende: T-05 — Verificar: `pnpm test:int`, `pnpm lint && pnpm typecheck`
 
 - [ ] **T-07** Aislamiento (bloqueante; lo revisa `security-auditor`). `test/isolation/editing.iso-spec.ts`: A y B con documentos distintos y casi idénticos; A edita y B, con varias conexiones, pidiendo `room.join` a `doc:` de A, abriendo la sesión de A, solicitando el contenido con un token de otro documento y enviando **callbacks falsificados** (firma inválida, firma válida de otra clave `sid`, URL fuera de la lista blanca, `oid` ajeno), no recibe presencia, avisos ni versión de A, y el archivo y la versión vigente de A no cambian; roles internos no ven filas de `sesion_edicion` ni `participacion`. Entra a `pnpm test:isolation`. — CA: CA-18, CA-19 (con avisos falsificados) — RNF-05 — Archivos: `test/isolation/editing.iso-spec.ts` (+ soporte en `test/support/*` si hace falta) — Depende: T-06 — Verificar: `pnpm test:isolation`
 
@@ -112,7 +112,8 @@
   `callbackUrl` durante toda la sesión (estado 1 en cada entrada o salida, estado 2 al cerrar), y la sesión no tiene
   plazo propio (RN-4); con un TTL de minutos se perderían los guardados. El enlace (`typ` `nimbo.edit-callback`, HS256,
   `{sid, oid}`) no lleva `exp`; vale solo junto con el JWT de ONLYOFFICE con `key === sid` y mientras la sesión esté
-  `activa`/`guardando`. Los enlaces de contenido siguen con 5 min. Pide visto de Adrián.
+  `activa`/`guardando`. Los enlaces de contenido siguen con 5 min. **Aceptado por Adrián (2026-10-16)**; plan §2, §5 y §9
+  corregidos en T-06.
 - **T-05, `IDocumentEditor`**: `verifyCallback(token)` devuelve una señal neutral (`editing | ready | failed | closed |
   ignored`, sin los números de ONLYOFFICE en `application`) y `download(url, maxBytes)` lanza
   `EditorDownloadRejectedError` (`untrusted_url | redirect | too_large | no_length`) sin reintento; otro error es
@@ -128,3 +129,27 @@
   cuenta queda fuera hasta el siguiente estado 1. Cerrarlo del todo pide la consulta de conexiones en `IDocumentRooms`.
 - **Pruebas de guardado**: `FakeOnlyOfficeServer` (HTTP en `127.0.0.1`) con el `OnlyOfficeEditor` real (JWT, lista
   blanca, descarga por flujo); `editing-http.ts` suma `onlyOffice`, `callback`, `rawCallback` y `queue`.
+- **T-06, `SaveFailedNotifier.fail(owner, session, reason)`**: además de avisar, hace la transición a `fallida` (comparar y
+  asignar desde el estado leído) y la auditoría `edit.save_failed` `{sessionId, reason}`; solo avisa si la transición se hizo
+  (dos fallos a la vez avisan una vez). Así los tres caminos (estado 3 → `editor`; `corrupt` o descarga rechazada →
+  `integridad`, decisión de Adrián; `file_missing` → `archivo_purgado`; último intento → `almacenamiento`) comparten un
+  solo punto. Destinatarios: la propietaria y todo el que entró como editor aunque saliera. La bitácora `editing.save_rejected`
+  pasa a `editing.save_failed` (`sessionId`, `fileId`, `userId`, `reason`).
+- **T-06, agotamiento de intentos**: lo decide `SaveVersionProcessor` dentro de `process` (`attemptsMade + 1 >= attempts`),
+  antes de relanzar el error, con `SaveVersionService.giveUp(job)`; así queda esperado y con su `correlationId` (un
+  `@OnWorkerEvent('failed')` no se espera). Si `giveUp` mismo falla, la sesión queda en `guardando`: PD-102.
+  «Incompleto» con `Content-Length` correcto (documento cortado) da `integridad`; un flujo que se corta antes del
+  `Content-Length` es un error de red: se reintenta y, agotado, da `almacenamiento`.
+- **T-06, `IEditSessionRepository`**: suma `findLatestFor(actor, fileId)` (plan §2) y `allParticipants(actor, sessionId)`
+  (no nombrado en el plan): los destinatarios del aviso y la participación que pide `lastSaveFailed` (plan §4).
+- **T-06, `lastSaveFailed` (contrato para T-08/T-09)**: se calcula dentro de la transacción de la apertura y solo si el
+  archivo no tiene sesión abierta, antes de crear la nueva. La **primera** apertura tras el fallo ya responde `mode:'edit'`
+  con una sesión nueva sobre la versión vigente y `lastSaveFailed: true`; «Abrir el editor de nuevo» repite el `POST` y
+  reutiliza esa sesión con `lastSaveFailed: false`. En `view` no se crea sesión, así que sigue en `true` hasta que alguien
+  abra en edición. Hasta 012 solo la propietaria ve sesiones (PD-95): el coeditor recibe el aviso en vivo, no el banner.
+  Con el archivo purgado la apertura responde 404 (`STORAGE_NODE_NOT_FOUND`) antes de mirar sesiones.
+- **T-06, contratos**: `EDITING_EVENTS.SAVE_FAILED = 'editing.save-failed'`, `editingSaveFailedSchema` `{sessionId, fileId}`
+  (`.strict()`) y `EditingSaveFailed`. En este worktree las pruebas del `api` leen `@nimbo/contracts` desde `dist`:
+  tras cambiar contratos hay que correr `pnpm --filter @nimbo/contracts build`.
+- **T-06, soporte de pruebas**: `StorageClient.trashFile/purgeFile` (`storage-http.ts`) y
+  `FakeOnlyOfficeServer.serveAfterFailures(bytes, n)` (503 las primeras `n` descargas).

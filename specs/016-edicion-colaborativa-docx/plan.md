@@ -30,7 +30,7 @@
 | editing/application | `presence.service.ts` | Admisión a la sala, lista de participantes (nombres desde `IUserDirectory`), `@OnEvent(REALTIME_DOCUMENT_LEFT)` idempotente |
 | editing/application | `save-callback.handler.ts` | Enruta el estado del callback: 1 reconcilia presencia y revalida acceso; 2 encola; 4 sin cambios; 3 falla; 6 y 7 se ignoran |
 | editing/application | `save-version.service.ts` | Lo que hace el trabajo `editing-save`: relee la sesión con `withActor(createActor(oid))` (no confía en el trabajo), descarga, registra con `storage`, cierra la sesión, avisa, audita, encola reindexación. `versionId` = uuid v5 de `sessionId`; `uq_version_archivo_sesion_edicion` violado en un reintento = éxito; `fallida` y aviso solo al agotar los 3 intentos |
-| editing/application | `content-link.signer.ts` | Firma y verifica (HS256 fijo, claim `typ` propio, TTL de minutos) el token de contenido `{sid, oid, exp}` (también como parámetro firmado de `callbackUrl`, cuya consulta ONLYOFFICE no firma) y el de modo `view` `{fid, vid, oid, exp}` (sin sesión) |
+| editing/application | `content-link.signer.ts` | Firma y verifica (HS256 fijo, claim `typ` propio) el token de contenido `{sid, oid, exp}` (5 min), el de modo `view` `{fid, vid, oid, exp}` (sin sesión) y el parámetro firmado de `callbackUrl` `{sid, oid}` (cuya consulta ONLYOFFICE no firma; **sin vencimiento**: vale solo con el JWT de ONLYOFFICE de la misma sesión y mientras esté `activa`/`guardando`) |
 | editing/application | `ports/i-document-editor.port.ts` | `IDocumentEditor` (`signConfig`, `verifyCallback`, `download`, `dropUser`, `isAvailable`) |
 | editing/application | `ports/i-edit-session.repository.port.ts` | `IEditSessionRepository` (renombra `ISessionRepository`, DF-19): sesiones y `participacion`, siempre con actor; `findLatestFor(actor, fileId)` para el banner (CA-14) |
 | editing/application | `ports/i-user-directory.port.ts` | **Puerto nuevo** `IUserDirectory` (`I_USER_DIRECTORY`): `displayNames(userIds)` → mapa id→nombre visible; nada más (ISP). Lo declara `editing` |
@@ -165,7 +165,7 @@ ALTER TABLE version_archivo ADD CONSTRAINT ck_version_archivo_sesion_origen
 ## 5. Seguridad y operación
 - `actor` en todos los servicios; la lectura del archivo y la sesión pasan por `withActor` y `accessibleNodes` (`INodeRepository.findAccessibleById`).
   Excepción acotada: el enlace de contenido, el callback y el procesador no traen token de usuario y usan `createActor(oid, CLIENT)` con el `oid` firmado
-  (TTL de minutos, HS256 fijo, claim `typ` propio para que un token de ONLYOFFICE no valga como enlace). Nunca se confía en un `ownerId` del cuerpo o del trabajo.
+  (HS256 fijo, claim `typ` propio para que un token de ONLYOFFICE no valga como enlace; contenido con 5 min, `callbackUrl` sin vencimiento y atado a la sesión abierta). Nunca se confía en un `ownerId` del cuerpo o del trabajo.
 - Roles internos: `@Roles(CLIENT)` + `canReadContent` en `PermissionResolver`; no tienen filas visibles por RLS.
 - Bitácora técnica: `editing.session_opened`, `editing.saved`, `editing.save_failed` con `correlationId`, `sessionId`, `userId`, `reason`
   (nunca nombres de archivo, tokens, URLs de descarga ni claves de objeto). Los trabajos no registran su `url`.
@@ -238,3 +238,4 @@ ALTER TABLE version_archivo ADD CONSTRAINT ck_version_archivo_sesion_origen
 | 2026-10-16 | Plan aprobado; ADR-0004/0029 y DF aceptados | Revisión de Adrián | Adrián |
 | 2026-10-16 | PD-99: RN-11 sin cambios («guardar igual»); `access` suma el fragmento `ownedFiles(actor)` (archivos propios, incluida la papelera) y `storage` lo usa solo en el registro de la versión editada (`findOwnedFile`), con actor y filtrando en la consulta; sin puerto nuevo | Decisión de Adrián | Adrián |
 | 2026-10-16 | PD-100: se omite `OnlyOfficeHealthIndicator` (§2 y §5); CA-15 se cumple con `isAvailable` en cada apertura | Decisión de Adrián | Adrián |
+| 2026-10-16 | El enlace firmado de `callbackUrl` **no vence** (corrige el «TTL de minutos» de §2 y §5): vale solo junto con el JWT de ONLYOFFICE de la misma sesión (`key === sid`) y mientras la sesión esté `activa` o `guardando`; los enlaces de contenido siguen en 5 min. Una descarga rechazada (URL no confiable, redirección, tamaño, sin `Content-Length`) deja la sesión `fallida` con `motivo_fallo = 'integridad'`, sin cambio de esquema | Decisiones de Adrián (T-05/T-06) | Adrián |

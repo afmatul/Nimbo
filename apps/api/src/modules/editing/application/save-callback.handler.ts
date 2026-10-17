@@ -17,6 +17,7 @@ import type { IEditSessionRepository } from './ports/i-edit-session.repository.p
 import { I_SAVE_VERSION_QUEUE } from './ports/i-save-version-queue.port';
 import type { ISaveVersionQueue } from './ports/i-save-version-queue.port';
 import { PresenceService } from './presence.service';
+import { SaveFailedNotifier } from './save-failed-notifier';
 
 /** Lo que llega al `callbackUrl`: el enlace firmado por Nimbo (`link`) y el token firmado por el editor. */
 export interface CallbackInput {
@@ -44,8 +45,8 @@ interface VerifiedCallback {
  * Nimbo) y el JWT del editor con la misma clave de documento; si no, `{"error":1}` sin tocar nada (CA-19). Con la
  * propietaria como actor relee la sesión y enruta: `editing` revalida el acceso y reconcilia la presencia (CA-16,
  * PD-101); `ready` pasa la sesión a `guardando` y encola `editing-save` sin procesar en la petición (RN-7, DF-20);
- * `closed` la termina sin versión (CA-11); el resto se ignora (RN-4). Una sesión desconocida o cerrada se acusa y se
- * anota, sin tormenta de reintentos.
+ * `closed` la termina sin versión (CA-11); `failed` (estado 3) la deja `fallida/editor` y avisa (CA-14); el resto se
+ * ignora (RN-4). Una sesión desconocida o cerrada se acusa y se anota, sin tormenta de reintentos.
  */
 @Injectable()
 export class SaveCallbackHandler {
@@ -59,6 +60,7 @@ export class SaveCallbackHandler {
     @Inject(EditSessionService) private readonly editSessions: EditSessionService,
     @Inject(I_SAVE_VERSION_QUEUE) private readonly saveQueue: ISaveVersionQueue,
     @Inject(PinoLogger) private readonly logger: EditingLogger,
+    @Inject(SaveFailedNotifier) private readonly failures: SaveFailedNotifier,
   ) {}
 
   async handle(input: CallbackInput): Promise<CallbackAck> {
@@ -94,6 +96,7 @@ export class SaveCallbackHandler {
     if (signal.kind === 'editing') return this.reconcile(owner, session, signal.users);
     if (signal.kind === 'ready') return this.startSaving(owner, session, signal.downloadUrl);
     if (signal.kind === 'closed') return this.editSessions.closeWithoutChanges(owner, session);
+    if (signal.kind === 'failed') return this.failures.fail(owner, session, 'editor');
     this.logger.info({
       event: 'editing.callback_ignored',
       sessionId: session.id,

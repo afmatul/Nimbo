@@ -20,6 +20,7 @@ import { I_INDEX_QUEUE } from './application/ports/i-index-queue.port';
 import { I_SAVE_VERSION_QUEUE } from './application/ports/i-save-version-queue.port';
 import { PresenceService } from './application/presence.service';
 import { SaveCallbackHandler } from './application/save-callback.handler';
+import { SaveFailedNotifier } from './application/save-failed-notifier';
 import { SaveVersionService } from './application/save-version.service';
 import { INDEX_QUEUE, IndexQueue } from './infrastructure/index.queue';
 import { OnlyOfficeEditor } from './infrastructure/onlyoffice-editor';
@@ -102,6 +103,7 @@ export class EditingModule {
         DocumentContentService,
         { provide: I_SAVE_VERSION_QUEUE, useClass: SaveVersionQueue },
         { provide: I_INDEX_QUEUE, useClass: IndexQueue },
+        SaveFailedNotifier,
         SaveCallbackHandler,
         SaveVersionService,
         SaveVersionProcessor,
