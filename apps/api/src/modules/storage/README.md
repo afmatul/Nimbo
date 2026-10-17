@@ -45,12 +45,13 @@ tipos, `IExpiredUploadScanner`, el adaptador de auditoría ni los repositorios. 
 Tablas (migraciones `20260930100000`…`100300`, plan §4): `archivo`, `version_archivo` y `carga`, con RLS `ENABLE` +
 `FORCE`; `usuario.espacio_usado` es la única columna de otra tabla que `storage` escribe (D-5, DF-59).
 
-| Puerto (`application/ports/`)                                                                           | Token                         | Implementación (`infrastructure/persistence/`) |
-| ------------------------------------------------------------------------------------------------------- | ----------------------------- | ---------------------------------------------- |
-| `INodeRepository`: `findAccessibleById`, `findTakenNames`, `insertWithVersion` (y los de carpetas, 006) | `I_NODE_REPOSITORY`           | `TypeOrmNodeRepository`                        |
-| `IUploadSessionRepository`: `insert`, `findOwned`, `transition` (compare-and-set)                       | `I_UPLOAD_SESSION_REPOSITORY` | `TypeOrmUploadSessionRepository`               |
-| `IQuotaRepository`: `lockUsage`, `readUsage` (007), `lockAndReadUsage`, `addUsedBytes`                  | `I_QUOTA_REPOSITORY`          | `TypeOrmQuotaRepository`                       |
-| `IExpiredUploadScanner`: `listExpiredIds(now, limit)` → `{ id, propietarioId }[]` (sin actor)           | `I_EXPIRED_UPLOAD_SCANNER`    | `SqlExpiredUploadScanner`                      |
+| Puerto (`application/ports/`)                                                                            | Token                         | Implementación (`infrastructure/persistence/`) |
+| -------------------------------------------------------------------------------------------------------- | ----------------------------- | ---------------------------------------------- |
+| `INodeRepository`: `findAccessibleById`, `findTakenNames`, `insertWithVersion` (y los de carpetas, 006)  | `I_NODE_REPOSITORY`           | `TypeOrmNodeRepository`                        |
+| `IUploadSessionRepository`: `insert`, `findOwned`, `transition` (compare-and-set)                        | `I_UPLOAD_SESSION_REPOSITORY` | `TypeOrmUploadSessionRepository`               |
+| `IQuotaRepository`: `lockUsage`, `readUsage` (007), `lockAndReadUsage`, `addUsedBytes`                   | `I_QUOTA_REPOSITORY`          | `TypeOrmQuotaRepository`                       |
+| `IExpiredUploadScanner`: `listExpiredIds(now, limit)` → `{ id, propietarioId }[]` (sin actor)            | `I_EXPIRED_UPLOAD_SCANNER`    | `SqlExpiredUploadScanner`                      |
+| `INodeMetadataReader` (011, lo consume `backoffice`): `listForOwner(actor, ownerId, { page, pageSize })` | `I_NODE_METADATA_READER`      | `SqlNodeMetadataReader`                        |
 
 - Todo método recibe `actor` y toma el `EntityManager` de `TransactionContext.requireActorScope(actor)`: se llama
   dentro de `ITransactionRunner.withActor(actor, …)` o lanza `ActorScopeMissingError`.

@@ -1,5 +1,5 @@
-import type { Actor } from '../../../shared';
-import type { FileKind } from '../domain/file-kind';
+import type { Actor } from '../../../../shared';
+import type { FileKind } from '../../domain/file-kind';
 
 /**
  * Metadatos de un archivo de un cliente para Soporte y Administración (011 CA-13): solo columnas de `archivo`, nunca
@@ -21,17 +21,23 @@ export interface FileMetadataPage {
   readonly total: number;
 }
 
+/** Qué página pedir: `page` desde 1 y `pageSize`, que fija quien consume (011 H-3). */
+export interface FileMetadataPageRequest {
+  readonly page: number;
+  readonly pageSize: number;
+}
+
 /**
  * Puerto que `storage` declara **e implementa** y consume `backoffice` (diagrama M8; 011 plan §2, cierra PD-31): sin
  * ciclo, porque `storage` no importa a quien lo usa. Exige la transacción de `withActor(actor)`: la política
- * `archivo_metadatos_internos` solo deja leer a `ADMIN` y `SUPPORT` (architecture §6). `page` empieza en 1 y el
- * tamaño de página lo fija quien consume; del más reciente al más viejo; incluye los de la papelera.
+ * `archivo_metadatos_internos` solo deja leer a `ADMIN` y `SUPPORT` (architecture §6). Del más reciente al más viejo;
+ * incluye los de la papelera.
  */
 export interface INodeMetadataReader {
   listForOwner(
     actor: Actor,
     ownerId: string,
-    request: { readonly page: number; readonly pageSize: number },
+    request: FileMetadataPageRequest,
   ): Promise<FileMetadataPage>;
 }
 

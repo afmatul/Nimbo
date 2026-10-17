@@ -5,8 +5,9 @@ import type { Actor } from '../../../../shared';
 import type {
   FileMetadata,
   FileMetadataPage,
+  FileMetadataPageRequest,
   INodeMetadataReader,
-} from '../../application/node-metadata-reader';
+} from '../../application/ports/i-node-metadata-reader.port';
 import type { FileKind } from '../../domain/file-kind';
 
 interface MetadataRow {
@@ -50,7 +51,7 @@ export class SqlNodeMetadataReader implements INodeMetadataReader {
   async listForOwner(
     actor: Actor,
     ownerId: string,
-    { page, pageSize }: Parameters<INodeMetadataReader['listForOwner']>[2],
+    { page, pageSize }: FileMetadataPageRequest,
   ): Promise<FileMetadataPage> {
     const manager = this.context.requireActorScope(actor);
     const offset = (page - 1) * pageSize;
