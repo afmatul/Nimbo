@@ -53,15 +53,17 @@ spec 003 D-9). Los diagramas de clases todavía no lo muestran en las firmas.
 declara y los implementa. El módulo de negocio no los declara (ADR-0010, `architecture.md` §3, regla 5).
 
 ### M1 `identity`
-- Controladores: `AuthController` (register, verifyEmail, resendVerification, login, refresh, forgotPassword, resetPassword; `resendVerification` es nuevo, plan 001, DF-54); `SessionsController` (listar y revocar sesiones, RF-04; DF-15 parcial, spec 002 D-8).
+- Controladores: `AuthController` (register, verifyEmail, resendVerification, login, refresh, forgotPassword, resetPassword; `resendVerification` es nuevo, plan 001, DF-54); `SessionsController` (listar y revocar sesiones, RF-04; DF-15 parcial, spec 002 D-8); con 011, `AccountSetupController` (`POST /auth/account-setup/check` y `POST /auth/account-setup`, primera contraseña de una cuenta interna, `@Public()` y `no-store`).
 - Servicios:
   - `RegistrationService` (register, resendVerification, verifyEmail), separado de `AuthService` por SRP (plan 001 DT-1, DF-54). Sus colaboradores: `VerificationLinkIssuer`, que invalida los enlaces vigentes y emite uno nuevo (lo reutiliza 002 D-15), y `RegistrationAttemptNotifier`, que envía el aviso de intento de registro (001 D-17);
-  - `AuthService` (login, refresh, logout, recuperación; 002) y `SessionService`.
+  - `AuthService` (login, refresh, logout, recuperación; 002) y `SessionService`;
+  - con 011, fachadas que consume `backoffice` (clases sin interfaz, Art. V.2; DF-04, DF-65): `AccountDirectory` (`list`, `get`, `findClientByEmail`, `statistics`), `AccountAdministration` (`lockAdminRoster`, `assertActorActive`, `suspend`, `reactivate`) e `InternalAccountEnrollment` (`enroll`, `enrollInitialAdmin`), que delega el enlace «Crear tu contraseña» en `AccountSetupLinkIssuer` (con la forma de `VerificationLinkIssuer`); `AccountSetupService` (`checkLink`, `setFirstPassword`).
 - Guard: `IdentityIpThrottlerGuard`, subclase de `ThrottlerGuard` para el límite por IP del registro y del reenvío (001 D-8, D-15, ADR-0017).
 - Puertos → implementaciones:
   - `IPasswordHasher` → `Argon2idHasher` (`argon2`, ADR-0017);
   - `ITokenService` → `JwtTokenService`;
   - `IUserRepository`, `IVerificationTokenRepository` (nuevo, DF-54) e `ISessionRepository` → TypeORM;
+  - con 011: `IAdminRosterRepository` (padrón interno: alta, estado, conteo de Administradores activos y candado `pg_advisory_xact_lock`; toma de `IUserRepository` solo `findByIdForUpdate` y `findByEmail`, ISP) → `TypeormUserRepository` (`useExisting`, el mismo adaptador); `IAccountDirectoryRepository` (modelo de lectura paginado) → `TypeOrmAccountDirectoryRepository`;
   - `IAccountEventsPublisher` (nuevo, DF-54) → `EventEmitterAccountEventsPublisher` (ADR-0019).
   - Implementa hacia fuera el puerto token→`Actor` que declara T1 `shared` (002 D-14).
 - Puertos que consume: `IMailer` (lo declara e implementa T4 `notifications`); `IRateLimiter`, `ITransactionRunner` e `IClock` (T1 `shared`; el límite por correo es de 001 D-15).
@@ -69,13 +71,13 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
   - `User` (abstracta) ← `ClientUser` (sin `subscriptionId`: la relación vive solo en `suscripcion.usuario_id`, DF-35), `InternalUser`;
   - `Session`; `Device` (DF-11, spec 002 D-4);
   - `VerificationToken` (`issue`, `stateAt(now)`, `isValid`, `consume`, `invalidate`; DF-53);
-  - objetos de valor `EmailAddress`, `OpaqueToken`, `PasswordHash` y `LegalAcceptance` (DF-54);
+  - objetos de valor `EmailAddress`, `OpaqueToken`, `PasswordHash` y `LegalAcceptance` (DF-54); con 011, `EmployeeCode` (DF-33);
   - `AccountStatus` = `ACTIVE | SUSPENDED`; `Role` = `CLIENT | ADMIN | SUPPORT | OPERATOR` (vive en `shared`).
 - Eventos que publica (ADR-0019): `identity.client-account-verified` (`ClientAccountVerifiedEvent { userId }`), después del commit y una vez por cuenta. Lo exporta `index.ts` y lo consume `billing` en la 009 (PD-40); la 006a no lo escucha.
 - Patrones: Herencia de tabla única para `User`; Strategy implícita en hasher/tokens.
 - Tablas:
   - `usuario`: `rol` con `CHECK`, sin tabla `rol` (DF-13); `correo_verificado`, `version_terminos`, `version_privacidad` y `terminos_aceptados_en` (DF-33 parcial, 001 D-14);
-  - `token_cuenta`: `usuario_id`, `invalidado_en` y `creado_en`, con un solo enlace vigente por cuenta y tipo (DF-53);
+  - `token_cuenta`: `usuario_id`, `invalidado_en` y `creado_en`, con un solo enlace vigente por cuenta y tipo (DF-53); con 011, `tipo = 'alta_interna'` y `usuario.codigo_empleado` (DF-33);
   - `dispositivo` y `sesion` (002).
 
 ### M2 `storage`
@@ -103,6 +105,7 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
   - repositorio de 006 §9 (interno, DF-63): `IQuickAccessRepository` → `TypeOrmQuickAccessRepository` (`list`, `countPinned`, `findAccessibleNode`, `upsertPin`, `removePin`, `touchRecent`, `pruneRecents`). Toda lectura y escritura une `accessibleNodes(actor)` dentro de la consulta. No hay puerto entre módulos.
   - con 007 (internos, DF-62): `ISpaceRepository` → `TypeOrmSpaceRepository` (bytes vivos propios por tipo), `IClientAccountScanner` → `SqlClientAccountScanner` (solo ids de cuentas de cliente; único acceso sin actor de la conciliación) e `IQuotaRepository.readUsage` (sin bloqueo).
   - con 014 (interno, DF-68): `IVersionRepository` → `TypeOrmVersionRepository` (`list` por `numero DESC`, `nextNumber` = `MAX + 1`, `insert`, `delete`; `find` con la lectura y la restauración; todo con `requireActorScope`); `INodeRepository.updateCurrentVersion` y `findLiveFileByName`; `IObjectStorage.copyObject`; `PlanLimits.retainedVersions`.
+  - con 011 (entre módulos, PD-31): `INodeMetadataReader` (`application/ports/i-node-metadata-reader.port.ts`; `listForOwner(actor, ownerId, FileMetadataPageRequest)`) → `SqlNodeMetadataReader`: lo declara e implementa `storage` y lo consume `backoffice`; solo columnas de `archivo`, dentro de `withActor` y con RLS.
 - Puertos que consume: `IAuditLogger` (lo declara T2 `audit`); `IRateLimiter` (T1 `shared`).
 - Dominio:
   - `StorageNode` ← `Folder`, `File` (**Composite**). Con 006 es una unión `File | Folder` y no una clase abstracta: no hay comportamiento común que heredar (DF-61);
@@ -159,10 +162,10 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
 - Tablas: `optimizacion` (+ `trabajo`, ver DF-22).
 
 ### M8 `backoffice`
-- Controladores: `BackofficeController` (listAccounts, suspend, adjustQuota, fileMetadata, retryJob, dashboard). `HealthController` se movió a T1 `shared` (DF-49).
-- Servicios: `AdminService`, `SupportService` ← `InternalActionService` (abstracta: `recordAction`, `assertInternal` — **Template Method**), `MetricsService`, `JobMonitorService`. Sin guards: el diagrama tiene `RolesGuard`, pero se movió a T1 `shared` con los guards globales (DF-50, spec 003 D-2); los controladores de M8 declaran `@Roles(...)`.
-- Puertos → implementaciones: `IQueueInspector` → `BullMqInspector`; `INodeMetadataReader` → `storage`. `IHealthIndicator` y sus indicadores se movieron a T1 (DF-49); `OnlyOfficeHealthIndicator` (DF-29) lo aporta `editing` y se registra en la raíz de composición.
-- Tipos: `Actor` (actor que ejecuta; vive en `shared`).
+- Controladores (DF-36): con 011, `ClientFilesController` (`GET /backoffice/client-files`); en el PR-B de 011, `AccountsController`, `MetricsController` y `PlansController`. El diagrama tiene un solo `BackofficeController` (DF-65). `HealthController` se movió a T1 `shared` (DF-49).
+- Servicios (011, DF-65): `InternalActionService` por **composición**, no clase abstracta: `read(actor, work)` y `run(actor, action)` ponen transacción, actor interno activo y evento de auditoría en la misma transacción; `SupportService` (metadatos de un cliente) e `InitialAdminBootstrapper` (primer Administrador por comando, CA-7); en el PR-B, `AdminService`, `MetricsService` y `CatalogAdminService`. `JobMonitorService` llega con su spec. Sin guards: el diagrama tiene `RolesGuard`, pero se movió a T1 `shared` con los guards globales (DF-50, spec 003 D-2); los controladores de M8 declaran `@Roles(...)`.
+- Puertos → implementaciones: `IQueueInspector` → `BullMqInspector`; `INodeMetadataReader` → `SqlNodeMetadataReader` (lo declara e implementa `storage`, M2). `IHealthIndicator` y sus indicadores se movieron a T1 (DF-49); `OnlyOfficeHealthIndicator` (DF-29) lo aporta `editing` y se registra en la raíz de composición.
+- Tipos: `Actor` (actor que ejecuta; vive en `shared`). Error: `ClientNotFoundError` (404) e `InvalidBackofficeQueryError` (400).
 
 ### T1 `shared` (spec 000; guards con 003)
 - Controlador: `HealthController` (live, ready) — `@Public()`, sin autenticación; nunca expone topología.
@@ -195,7 +198,7 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
 
 ### T2 `audit`
 - `AuditEntry` (id, action, actorId nullable, actorRole, targetUserId, resourceType, resourceId, attributes, occurredAt, correlationId), **sin** `isVisibleTo`: la visibilidad es la consulta con `usuario_afectado_id = actor.id` más RLS (DF-64, Art. IX.2). El catálogo cerrado `AuditAction`/`AUDIT_CATALOG` declara por acción el tipo de recurso y los atributos permitidos; `sanitizeAttributes` descarta los demás.
-- `AuditService` implementa `IAuditLogger` (token `I_AUDIT_LOGGER`): `record(entry: AuditRecord)` de mejor esfuerzo y posterior al commit (005, 006; nunca lanza), `recordInTransaction(entry)` síncrona, que lanza y se une a la transacción del llamador (011, D-5), y `listForUser(actor, query)`; ambas escrituras delegan en un `append` privado. `AuditRecord = { action: AuditAction; actor: Actor; targetUserId; resourceId?; attributes? }`.
+- `AuditService` implementa `IAuditLogger` (token `I_AUDIT_LOGGER`): `record(entry: AuditRecord)` de mejor esfuerzo y posterior al commit (005, 006; nunca lanza), `recordInTransaction(entry)` síncrona, que lanza y se une a la transacción del llamador (011, D-5), y `listForUser(actor, query)`; ambas escrituras delegan en un `append` privado. `AuditRecord = { action: AuditAction; actor: AuditActor; targetUserId; resourceId?; attributes? }`, con `AuditActor = Actor | SystemActor` (011: `SYSTEM_ACTOR` solo para el alta inicial por comando, sin `actorId`).
 - Puerto interno `IAuditRepository` (`insert(actor, entry)`, `listForTarget`) → `TypeOrmAuditRepository`, dentro de `audit` (no lo exporta `index.ts`).
 - Presentación: `AuditController` con `GET /audit/my-events` (DF-15) en `AuditHttpModule`, que carga solo `api`; el `worker` carga `AuditModule` sin rutas. `LogAuditLogger` (adaptador provisional de 005) se retiró con 004 (DF-64).
 - Tabla: `evento_auditoria` (004).

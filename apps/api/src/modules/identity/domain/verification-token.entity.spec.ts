@@ -63,4 +63,20 @@ describe('VerificationToken', () => {
     expect(() => invalidated.invalidate(createdAt)).toThrow(InvalidTokenTransitionError);
     expect(() => original.consume(expiresAt)).toThrow(InvalidTokenTransitionError);
   });
+
+  it.each(['verificacion', 'recuperacion', 'alta_interna'] as const)(
+    '011 CA-5: emite un token de tipo %s',
+    (type) => {
+      const token = VerificationToken.issue({
+        id: '11111111-2222-4333-8444-555555555555',
+        userId: '66666666-7777-4888-8999-aaaaaaaaaaaa',
+        type,
+        tokenHash: 'a'.repeat(64),
+        createdAt,
+        expiresAt,
+      });
+
+      expect(token.type).toBe(type);
+    },
+  );
 });

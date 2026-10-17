@@ -29,11 +29,12 @@ const CORS_EXPOSED_HEADERS = [CORRELATION_ID_HEADER, 'retry-after'];
 const NO_CORS: CorsOptions = { origin: false };
 
 /**
- * Rutas cuyas respuestas nunca se guardan en caché (plan 001 §5): las de `auth`. Se fija aquí, antes del analizador,
- * para cubrir también su `400` de JSON mal formado; `identity` la vuelve a fijar en su controlador. En minúsculas:
- * el enrutador de Express no distingue mayúsculas.
+ * Rutas cuyas respuestas nunca se guardan en caché: las de `auth` (plan 001 §5) y las del backoffice, que devuelven
+ * correos y nombres de archivo de clientes (011 CA-13). Se fija aquí, antes del analizador, para cubrir también su
+ * `400` de JSON mal formado; para `auth`, `identity` la vuelve a fijar en sus controladores. En minúsculas: el
+ * enrutador de Express no distingue mayúsculas.
  */
-const NO_STORE_PATH_PREFIX = `/${API_PREFIX}/auth/`;
+const NO_STORE_PATH_PREFIXES = [`/${API_PREFIX}/auth/`, `/${API_PREFIX}/backoffice/`];
 
 /** Lo único del entorno que la configuración HTTP necesita. */
 export type HttpAppEnv = Pick<Env, 'APP_VERSION' | 'CORS_ORIGIN'>;
@@ -87,8 +88,13 @@ const corsForOrigins =
     });
   };
 
-const noStoreForAuth = (request: Request, response: Response, next: NextFunction): void => {
-  if (request.path.toLowerCase().startsWith(NO_STORE_PATH_PREFIX)) {
+const noStoreForSensitiveRoutes = (
+  request: Request,
+  response: Response,
+  next: NextFunction,
+): void => {
+  const path = request.path.toLowerCase();
+  if (NO_STORE_PATH_PREFIXES.some((prefix) => path.startsWith(prefix))) {
     response.setHeader('Cache-Control', 'no-store');
   }
   next();
@@ -97,7 +103,7 @@ const noStoreForAuth = (request: Request, response: Response, next: NextFunction
 /**
  * Configuración HTTP común de `main.ts` y del arnés de integración (plan 001 §6.7). La app debe crearse con
  * `bodyParser: false`: aquí se instala **solo** el analizador JSON, así un cuerpo `text/plain` o de formulario llega
- * vacío (001 CA-6). El orden importa: correlación, versión y `no-store` de `auth` antes del analizador, para que sus
+ * vacío (001 CA-6). El orden importa: correlación, versión y `no-store` antes del analizador, para que sus
  * errores también lleven `x-correlation-id` y `Cache-Control`.
  */
 export const configureHttpApp = (app: NestExpressApplication, env: HttpAppEnv): void => {
@@ -105,7 +111,7 @@ export const configureHttpApp = (app: NestExpressApplication, env: HttpAppEnv): 
   const version = new VersionHeaderMiddleware(env.APP_VERSION);
   app.use(correlation.use.bind(correlation));
   app.use(version.use.bind(version));
-  app.use(noStoreForAuth);
+  app.use(noStoreForSensitiveRoutes);
   app.set('trust proxy', TRUSTED_PROXY_HOPS);
   app.enableCors(corsForOrigins(env.CORS_ORIGIN));
   app.useBodyParser('json', { limit: JSON_BODY_LIMIT });

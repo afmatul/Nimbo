@@ -1,86 +1,113 @@
 /**
  * @jest-environment jsdom
  */
-import { render, screen, waitFor } from '@testing-library/react';
+import type { RoleName } from '@nimbo/contracts';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 
+import { HeaderAccountProvider } from '../../../../components/nimbo/header-account';
+import { SessionAccountMenu } from '../../../../features/identity/components/session-account-menu';
 import {
   forgetSession,
-  recallSession,
   rememberSession,
 } from '../../../../features/identity/session/session-memory';
 import { SessionProvider } from '../../../../features/identity/session/session-provider';
 import { sessionFixture } from '../../../../features/identity/session/test-session';
-import { jsonResponse } from '../../../../lib/test-http';
 
 import InternoPage from './page';
 
-function renderPage(): void {
-  render(
+const replace = jest.fn();
+
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ replace }),
+}));
+
+const MENU_NAME = 'Menú de la cuenta de Ana López';
+
+/** La página como la arma `(app)/layout`: el menú de la cuenta en la cabecera del marco. */
+async function renderPage(role?: RoleName): Promise<HTMLElement> {
+  if (role !== undefined) rememberSession(sessionFixture({ role }));
+  const { container } = render(
     <SessionProvider apiPublicUrl="http://localhost/api/v1">
-      <InternoPage />
+      <HeaderAccountProvider account={<SessionAccountMenu />}>
+        <InternoPage />
+      </HeaderAccountProvider>
     </SessionProvider>,
   );
+  await act(async () => undefined);
+  return container;
 }
 
 describe('área interna (/interno)', () => {
-  const fetchMock = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>();
-
   beforeEach(() => {
-    fetchMock.mockReset();
-    global.fetch = fetchMock;
+    replace.mockReset();
+    global.fetch = jest.fn(() => new Promise<Response>(() => undefined));
     forgetSession();
-    rememberSession(sessionFixture({ role: 'SUPPORT' }));
   });
 
-  it('CA-17: con una sesión de SUPPORT saluda por fullName y anuncia el área de soporte', () => {
-    renderPage();
+  it('011 CA-17: Soporte va al inicio de su área, /soporte/metadatos, sin ver el marcador', async () => {
+    const container = await renderPage('SUPPORT');
 
-    expect(screen.getByRole('heading', { name: 'Hola, Ana López.' })).toBeTruthy();
-    expect(screen.getByText('Tu área de soporte estará disponible pronto.')).toBeTruthy();
+    expect(replace).toHaveBeenCalledWith('/soporte/metadatos');
+    expect(container.textContent).toBe('');
   });
 
-  it('CA-17: «Cerrar sesión» usa la acción de cierre de 002', async () => {
-    fetchMock.mockResolvedValue(jsonResponse(undefined, 204));
-    const user = userEvent.setup();
-    renderPage();
+  it.each([
+    ['ADMIN', 'administrador'],
+    ['OPERATOR', 'operador'],
+  ] as const)(
+    'CA-17: %s ve el marcador de su área dentro del marco interno, sin redirección',
+    async (role, label) => {
+      await renderPage(role);
 
-    await user.click(screen.getByRole('button', { name: 'Cerrar sesión' }));
+      const main = screen.getByRole('main');
+      expect(within(main).getByRole('heading', { level: 1, name: 'Área interna' })).toBeTruthy();
+      expect(within(main).getByRole('heading', { name: 'Hola, Ana López.' })).toBeTruthy();
+      expect(within(main).getByText(`Tu área de ${label} estará disponible pronto.`)).toBeTruthy();
+      expect(within(main).queryByRole('button', { name: 'Cerrar sesión' })).toBeNull();
+      expect(replace).not.toHaveBeenCalled();
+    },
+  );
 
-    await waitFor(() => {
-      expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
-        'http://localhost/api/v1/auth/session/logout',
-      );
-    });
-    expect(recallSession(Date.now())).toBeNull();
+  it.each(['ADMIN', 'OPERATOR'] as const)(
+    '011 CA-17: %s llega desde el menú de la cuenta a Seguridad, Mi actividad y Cerrar sesión',
+    async (role) => {
+      await renderPage(role);
+
+      await userEvent.click(screen.getByRole('button', { name: MENU_NAME }));
+
+      const menu = screen.getByRole('menu');
+      const items = within(menu).getAllByRole('menuitem');
+      expect(items.map((item) => item.textContent)).toEqual([
+        'Seguridad',
+        'Mi actividad',
+        'Cerrar sesión',
+      ]);
+      expect(
+        within(menu).getByRole('menuitem', { name: 'Mi actividad' }).getAttribute('href'),
+      ).toBe('/interno/actividad');
+    },
+  );
+
+  it('CA-17: sin sesión no redirige ni dibuja nada (de eso se encarga SessionGate)', async () => {
+    const container = await renderPage();
+
+    expect(replace).not.toHaveBeenCalled();
+    expect(container.textContent).toBe('');
   });
 
-  it('CA-17: mientras cierra, «Cerrar sesión» muestra carga y no repite el cierre', async () => {
-    fetchMock.mockReturnValue(new Promise(() => undefined));
-    const user = userEvent.setup();
-    renderPage();
-    const button = screen.getByRole('button', { name: 'Cerrar sesión' });
+  it.each(['ADMIN', 'OPERATOR'] as const)(
+    'CA-17: el marcador de %s en el marco, sin violaciones de axe a 360 y 1440 px',
+    async (role) => {
+      const container = await renderPage(role);
 
-    await user.click(button);
-    await user.click(button);
-
-    expect(button.hasAttribute('disabled')).toBe(true);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-  });
-
-  it('CA-17: la página no tiene violaciones serias ni críticas de axe', async () => {
-    const view = render(
-      <SessionProvider apiPublicUrl="http://localhost/api/v1">
-        <InternoPage />
-      </SessionProvider>,
-    );
-
-    const results = await axe(view.container);
-    expect(
-      results.violations.filter(
-        (violation) => violation.impact === 'serious' || violation.impact === 'critical',
-      ),
-    ).toEqual([]);
-  });
+      for (const width of [360, 1440]) {
+        Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+        window.dispatchEvent(new Event('resize'));
+        const results = await act(async () => axe(container));
+        expect({ width, violations: results.violations }).toEqual({ width, violations: [] });
+      }
+    },
+  );
 });

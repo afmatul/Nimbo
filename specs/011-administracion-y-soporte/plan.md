@@ -17,7 +17,7 @@
   (`pnpm --filter api admin:bootstrap`) con contexto Nest sin HTTP, como `migrate.ts`, y su evento es del actor de sistema,
   que solo existe en `audit` (`SYSTEM` no entra en `Role` ni en `Actor`).
 - Métricas (CA-12): conteos y `SUM(usuario.espacio_usado)` en una lectura agregada de `identity` (dueño de la tabla); los
-  conteos por plan los da `billing` (sin `suscripcion` hasta la 009: todo cliente es Personal).
+  conteos por plan los da `billing` desde la `suscripcion` de la 009 (sin suscripción, en ningún plan; R-6).
 - Web: área real por rol en `(app)/(interno)` según los cinco mockups de `backoffice/`; «Seguridad» (002) y «Mi actividad»
   (004) se muestran también dentro del marco interno, reutilizando sus componentes (B-1, decisión explícita, sin mockups nuevos).
 
@@ -31,21 +31,21 @@ Dueño del módulo entre corchetes: lo ajeno se pide a su dueño en su PR (`spec
 | identity/domain | `employee-code.vo.ts` (nuevo) | `EmployeeCode`: recorta, pasa a mayúsculas y valida `^[A-Z0-9-]{1,20}$` (Q-4) |
 | identity/domain | `verification-token.entity.ts` (cambia) | `VerificationTokenType` suma `'alta_interna'` |
 | identity/domain/errors | `account-not-found`, `cannot-change-own-status`, `last-active-admin`, `account-state-conflict`, `enrollment-conflict`, `admin-already-exists`, `actor-not-active`, `setup-link-invalid`, `setup-link-expired` (nuevos) | Errores tipados con `code` (§4); `actor-not-active` se traduce a `403 SHARED_FORBIDDEN` |
-| identity/application | `account-directory.ts` (nuevo, fachada) | Lecturas: `list(actor, query)`, `get(actor, id)`, `findClientByEmail(actor, email)` (solo `CLIENT`; interna o inexistente → `null`), `statistics(actor)` |
-| identity/application | `account-administration.ts` (nuevo, fachada) | `lockAdminRoster()` (reentrante en la transacción) y `assertActorActive(actor)` (lee `usuario.estado` del actor en la transacción vigente). `suspend(actor, id)`: candado → fila `FOR UPDATE` → no a sí mismo → no al último Admin activo → `suspendida` + `revokeAllExcept(id, null, now)` (002 D-10). `reactivate(actor, id)`: candado → no a sí mismo → `activa` |
-| identity/application | `internal-account-enrollment.ts` (nuevo, fachada) | `enroll(actor, command)` y `enrollInitialAdmin(command)` (candado; con un Admin activo, `AdminAlreadyExistsError`): insertan la cuenta con el hash de un secreto aleatorio descartado, emiten el enlace `alta_interna` y devuelven `{ account, deliverInvitation() }` para enviar el correo **después** del commit |
-| identity/application | `account-setup.service.ts` (nuevo) | `checkLink(token)` y `setFirstPassword(command)`: reutiliza `findAccountToken`, `evaluatePassword` e `IPasswordHasher`; consume el token, fija la contraseña, no toca sesiones (CA-5) |
+| identity/application | `account-directory.ts` (nuevo, fachada) | Lecturas: `list(actor, { emailPrefix?, page, pageSize })` → `{ items, total }` (el tamaño lo fija `backoffice`), `get(actor, id)`, `findClientByEmail(actor, email)` (solo `CLIENT`; interna o inexistente → `null`), `statistics(actor)` |
+| identity/application | `account-administration.ts` (nuevo, fachada) | `lockAdminRoster()` (reentrante en la transacción) y `assertActorActive(actor)` (lee `usuario.estado` del actor en la transacción vigente). `suspend(actor, id)`: candado → no a sí mismo → fila `FOR UPDATE` → no al último Admin activo → `suspendida` + `revokeAllExcept(id, null, now)` (002 D-10) + `invalidateActive(id, 'alta_interna', now)` (RN-7). `reactivate(actor, id)`: candado → no a sí mismo → `activa` |
+| identity/application | `internal-account-enrollment.ts` (nuevo, fachada) | `enroll(actor, command)` y `enrollInitialAdmin(command)` (candado; con un Admin activo, `AdminAlreadyExistsError`): insertan la cuenta con el hash de un secreto aleatorio descartado, emiten el enlace `alta_interna` con `AccountSetupLinkIssuer` (nuevo, como `VerificationLinkIssuer`; SRP, 2026-10-16) y devuelven `{ account, deliverInvitation() }` para enviar el correo **después** del commit |
+| identity/application | `account-setup.service.ts` (nuevo); `password.service.ts` (cambia, Adrián autorizó, 2026-10-17) | `checkLink(token)` y `setFirstPassword(command)`: reutiliza `findAccountToken`, `evaluatePassword` e `IPasswordHasher`; consume el token, fija la contraseña, no toca sesiones (CA-5). Restablecer la contraseña invalida en su transacción la invitación pendiente (`invalidateActive(id, 'alta_interna', now)`, RN-7) |
 | identity/application/mail | `internal-invitation-mail.template.ts` (nuevo) | Correo con el enlace (token solo en el fragmento); `web-links.ts` suma `accountSetup: '/crear-contrasena'` |
-| identity/application/ports | `i-user-repository.port.ts` (cambia) · `i-account-directory.repository.port.ts` (nuevo) | Repositorio (V.2 b): `insertInternalIfAbsent`, `updateStatus`, `lockAdminRoster`, `countActiveAdmins`, `findByEmployeeCode`, `statusOf`. El nuevo es un modelo de lectura paginado (lista, ficha, estadísticas) |
+| identity/application/ports | `i-admin-roster.repository.port.ts` · `i-account-directory.repository.port.ts` (nuevos) | `IAdminRosterRepository` (V.2 b; ISP, 2026-10-16: `IUserRepository` no crece): `insertInternalIfAbsent`, `updateStatus`, `lockAdminRoster`, `countActiveAdmins`, `findByEmployeeCode`, `statusOf`; lo implementa `TypeormUserRepository` (`useExisting`). El otro es un modelo de lectura paginado (lista, ficha, estadísticas) |
 | identity/infrastructure | `typeorm-user.repository.ts` (cambia), `typeorm-account-directory.repository.ts` (nuevo) | SQL sobre `TransactionContext` (se une a la transacción del llamador) |
-| identity/presentation | `password.controller.ts` (cambia) | `POST /auth/account-setup/check` y `POST /auth/account-setup`, `@Public()`, delegan en `AccountSetupService` |
+| identity/presentation | `account-setup.controller.ts` (nuevo, 2026-10-16) | `POST /auth/account-setup/check` y `POST /auth/account-setup`, `@Public()`, delegan en `AccountSetupService`; dentro de `NoStoreMiddleware` (reciben el token del enlace) |
 | identity | `identity.module.ts`, `index.ts` (cambian) | Exporta las tres fachadas; nada de repositorios ni entidades |
-| billing/domain [Juan Marcos escribe, Q-7] | `plan.entity.ts`, `plan-limits-set.vo.ts`, `plan-slug.ts`, `plan-rules.ts` (nuevos) | `Plan` (nombre de M4) con `PlanLimitsSet` (no `PlanLimits`: ya es el tipo de `storage` con los dos límites de la carga). `Plan.create` valida CA-11 (precio ≥ 0, límites > 0, editores ≥ 0, máx. por archivo ≤ cuota y ≤ `MAX_FILE_BYTES_CEILING` = 2 GB, RNF-02) y deriva el `slug` (`PlanSlug`); `deactivate(now)` rechaza Personal (`PERSONAL_PLAN_SLUG`) y un plan ya desactivado. Sin `Money` (009) |
+| billing/domain [Juan Marcos escribe, Q-7] | `plan.entity.ts`, `plan-limits-set.vo.ts`, `plan-rules.ts` (nuevos); `plan-slug.ts` (amplía el de la 009 T-01 con `PlanSlug`; un solo `PERSONAL_PLAN_SLUG`) | `Plan` (nombre de M4) con `PlanLimitsSet` (no `PlanLimits`: ya es el tipo de `storage` con los dos límites de la carga). `Plan.create` valida CA-11 (precio ≥ 0, límites > 0, editores ≥ 0, máx. por archivo ≤ cuota y ≤ `MAX_FILE_BYTES_CEILING` = 2 GB, RNF-02) y deriva el `slug` (`PlanSlug`); `deactivate(now)` rechaza Personal (`PERSONAL_PLAN_SLUG`) y un plan ya desactivado. Sin `Money` (009) |
 | billing/domain/errors | `plan-invalid`, `plan-not-deactivatable`, `plan-already-deactivated` (nuevos); `plan-not-found` (de 006a, `PLAN_NOT_FOUND`, no cambia) | 422 con `fields` · 409 · 409 · 404 |
 | billing/application | `plan-catalog.service.ts` (lo crea la 008 con `list()`; la 011 lo amplía) | `create(actor, command)` (nombre único → `fields`), `deactivate(actor, id)` (CAS `desactivado_en IS NULL`). `backoffice` no revalida |
-| billing/application | `subscription-administration.ts` (nuevo, fachada) | `planNamesFor(actor, clientIds)` y `clientCountsByPlan(actor, clientCount)`; hasta la 009, la regla vigente de `PlanLimitsAdapter` (sin `suscripcion`, Personal; PD-80) |
-| billing/ports, infrastructure | `i-plan-repository.ts`, `typeorm-plan.repository.ts` (de la 008; la 011 suma `insert`, `deactivate`, conteo), `plan.mapper.ts` (nuevo); `plan.orm-entity.ts`, `plan-limits.adapter.ts` (cambian) | Repositorio sobre `TransactionContext` (con `@InjectRepository` la escritura escaparía de la transacción del evento). La entidad mapea `desactivado_en`; el adaptador usa `PERSONAL_PLAN_SLUG` |
-| storage/application [Adrián autorizó] | `node-metadata-reader.ts` (nuevo, puerto) | `INodeMetadataReader.listForOwner(actor, ownerId, page)` → `{ items: FileMetadata[], total }`; `FileMetadata` = id, nombre, tipo, tamaño, `createdAt`, `updatedAt`, `trashedAt`. Exige `withActor` |
+| billing/application [009 T-03, Juan Marcos] | `subscription-administration.ts` (lo crea la 009, fachada) | `planNamesFor(actor, clientIds)` → mapa id → nombre (máx. 100 ids; el backoffice pide 10); sin suscripción no aparece y la ficha muestra «—». `clientCountsByPlan(actor)` → solo planes con ≥ 1 cliente; el backoffice suma nombre, `deactivatedAt` y los activos en cero desde el catálogo |
+| billing/ports, infrastructure | `i-plan-repository.ts` (T-09 lo mueve a `application/ports/i-plan-repository.port.ts`), `typeorm-plan.repository.ts` (de la 008; la 011 suma `insert`, `deactivate`, conteo), `plan.mapper.ts` (nuevo); `plan.orm-entity.ts`, `plan-limits.adapter.ts` (cambian) | Repositorio sobre `TransactionContext` (con `@InjectRepository` la escritura escaparía de la transacción del evento). La entidad mapea `desactivado_en`; el adaptador usa `PERSONAL_PLAN_SLUG` |
+| storage/application/ports [Adrián autorizó] | `i-node-metadata-reader.port.ts` (nuevo, puerto) | `INodeMetadataReader.listForOwner(actor, ownerId, request: FileMetadataPageRequest)` (`{ page, pageSize }`; el tamaño lo fija `backoffice`, como en `identity`) → `{ items: FileMetadata[], total }`; `FileMetadata` = id, nombre, tipo, tamaño, `createdAt`, `updatedAt`, `trashedAt`. Exige `withActor` |
 | storage/infrastructure | `sql-node-metadata.reader.ts` (nuevo) | Solo columnas de `archivo` (nunca `version_archivo`, `clave_objeto`, `carga`); orden `actualizado_en DESC, id DESC` |
 | storage | `index.ts`, `storage.module.ts` (cambian) | Exporta el puerto, el token y el tipo; provee el adaptador |
 | audit [Adrián autorizó] | `audit-action.ts`, `audit-catalog.ts` (cambian) | `account.suspended`, `account.reactivated`, `account.internal_created` (`role`), `account.bootstrap_admin` (sistema), `client.files_viewed` (recurso y afectado: la cuenta), `plan.created`, `plan.deactivated` (recurso `plan`); sin afectado solo los de catálogo y `account.bootstrap_admin` (nadie los ve en «Mi actividad») |
@@ -71,7 +71,7 @@ Dueño del módulo entre corchetes: lo ajeno se pide a su dueño en su PR (`spec
   no depende de `identity` (el cliente ve solo el rol, que ya guarda `evento_auditoria`).
 - **Frontend** (`apps/web/src`): `app/(app)/(interno)/admin/{cuentas,cuentas/[id],cuentas/[id]/metadatos,cuentas/nueva,
   planes,planes/nuevo,metricas}`, `soporte/metadatos`, `operacion/metricas`, cada grupo con `RequireRole` de un rol;
-  `interno/page.tsx` redirige al inicio del rol y se retira `internal-area-placeholder`. `(public)/crear-contrasena` con el
+  `interno/page.tsx` redirige al inicio del rol y se retira `internal-area-placeholder` (PR-A: solo Soporte; tasks, T-07). `(public)/crear-contrasena` con el
   patrón de `restablecer-contrasena` (002, P-15) y estados `default, enviando, error-campos, enlace-vencido, enlace-invalido,
   exito` (vencido → «¿Olvidaste tu contraseña?», CA-5). `features/backoffice/` (`api.ts`, hooks, componentes por pantalla,
   `page-pager`, `plan-card`, `client-files-table`); `lib/error-catalog.ts`. Reutiliza `StateView`, `ConfirmDestructiveDialog`,
@@ -109,6 +109,7 @@ ALTER TABLE evento_auditoria ALTER COLUMN usuario_afectado_id DROP NOT NULL,
   ADD CONSTRAINT ck_evento_rol_actor CHECK (rol_actor IN ('CLIENT','ADMIN','SUPPORT','OPERATOR','SYSTEM')),
   ADD CONSTRAINT ck_evento_tipo_recurso CHECK (tipo_recurso IN ('file','folder','upload','account','plan')),
   ADD CONSTRAINT ck_evento_sistema CHECK (rol_actor <> 'SYSTEM' OR actor_id IS NULL),
+  ADD CONSTRAINT ck_evento_bootstrap_sistema CHECK (accion <> 'account.bootstrap_admin' OR rol_actor = 'SYSTEM'),
   ADD CONSTRAINT ck_evento_destino CHECK ((usuario_afectado_id IS NULL)
     = (tipo_recurso IS NOT DISTINCT FROM 'plan' OR accion = 'account.bootstrap_admin'));
 CREATE POLICY evento_auditoria_alta_sistema ON evento_auditoria FOR INSERT TO nimbo_app
@@ -177,7 +178,7 @@ Prefijo `/api/v1`. Errores comunes de `/backoffice/*`: `401 SHARED_UNAUTHENTICAT
   se audita aunque la página venga vacía; el 404 no. El cliente ve solo el rol del actor (004 D-2, CA-16). El actor de sistema
   vive solo en `audit` (`withActor` y `RolesGuard` nunca lo aceptan) y solo inserta el evento que admite su política.
 - **Bitácoras** (Pino, ids): `backoffice.account.suspended|reactivated|enrolled`, `backoffice.plan.created|deactivated`,
-  `backoffice.client_files.viewed`, `backoffice.actor.inactive`, `identity.session.revoked` (`reason: account_suspended`),
+  `backoffice.client_files.viewed|not_found`, `backoffice.actor.inactive`, `identity.account_setup.rejected|completed`, `identity.session.revoked` (`reason: account_suspended`),
   `identity.invitation.mail_failed`, `admin.bootstrap.completed|refused`. Nunca correo, nombre de archivo, token ni enlace (el
   correo de búsqueda va en la cadena de consulta, que `http.request` ya descarta).
 - `/auth/account-setup*` reutilizan el modelo de 002: token de 256 bits, solo hash, consumo atómico; sin límite de tasa propio,
@@ -190,15 +191,15 @@ Prefijo `/api/v1`. Errores comunes de `/backoffice/*`: `401 SHARED_UNAUTHENTICAT
 | CA-2 a CA-6 (a sí mismo al suspender y reactivar, último Admin, estado; dominio y fachadas con dobles en memoria) | unit | `identity/application/account-administration.spec.ts`, `internal-account-enrollment.spec.ts`, `account-setup.service.spec.ts`, `domain/employee-code.vo.spec.ts` |
 | Acción + evento en una transacción; evento fallido revierte; 404 sin evento; actor inactivo → `403` antes de la acción y de la lectura; candado antes de la comprobación | unit | `backoffice/application/internal-action.service.spec.ts`, `support.service.spec.ts` |
 | T1: `run` dentro de `run` se une a la misma transacción (y revierte junta); `withActor` dentro de `run` sigue lanzando | unit + int | `shared/.../typeorm-transaction-runner.spec.ts`, `test/int/shared/transaction-runner.int-spec.ts` |
-| CA-1 a CA-6 por HTTP (lista, búsqueda, ficha, suspender revoca sesiones y el login da `IDENTITY_ACCOUNT_SUSPENDED`, reactivar, alta + correo en Mailpit + fijar contraseña + login; Admin suspendido con token vigente → `403`) | int | `test/int/backoffice/accounts.int-spec.ts`, `test/int/identity/account-setup.int-spec.ts` |
+| CA-1 a CA-6 por HTTP (lista, búsqueda, ficha con y sin `suscripcion`, suspender revoca sesiones y el login da `IDENTITY_ACCOUNT_SUSPENDED`, reactivar, alta + correo en Mailpit + fijar contraseña + login; Admin suspendido con token vigente → `403`) | int | `test/int/backoffice/accounts.int-spec.ts`, `test/int/identity/account-setup.int-spec.ts` |
 | **RN-7**: dos suspensiones cruzadas simultáneas entre los dos únicos Admin → exactamente una gana y la otra recibe `403`; CA-7 doble en paralelo → un solo Admin | int | `test/int/backoffice/admin-roster-concurrency.int-spec.ts` |
 | CA-7 (script: crea, niega si ya hay Admin; cuenta y evento de sistema en la misma transacción; el evento no tiene afectado; un evento `SYSTEM` distinto lo rechaza la política) | int | `test/int/backoffice/bootstrap-admin.int-spec.ts` |
 | CA-8 a CA-11 por HTTP (CAS de desactivar, nombre repetido, escritura y evento en la misma transacción) | int | `test/int/backoffice/plans.int-spec.ts` |
-| CA-12, CA-13 (conteos y suma; metadatos con papelera; 404 uniforme) | int | `test/int/backoffice/metrics.int-spec.ts`, `client-files.int-spec.ts` |
+| CA-12, CA-13 (conteos con y sin `suscripcion` y suma; metadatos con papelera; 404 uniforme) | int | `test/int/backoffice/metrics.int-spec.ts`, `client-files.int-spec.ts` |
 | CA-14 (matriz rol × ruta, tabla) | int | `test/int/backoffice/roles-matrix.int-spec.ts` |
 | CA-16 (el cliente ve fecha y rol, nunca el nombre; no ve los de otra cuenta ni los del catálogo) | int | `test/int/audit/internal-events.int-spec.ts` |
 | Migraciones `up → down → up` con dueño sin `SUPERUSER`; CHECK de código normalizado | int | `test/int/backoffice/migrations.int-spec.ts` |
-| **CA-15 (bloqueante)**: cada rol interno por cada ruta: sin contenido, texto, URL, `clave_objeto` ni filas de versiones (nombres sembrados casi idénticos entre A y B); Operador y Soporte por SQL como `nimbo_app` (0 filas de `version_archivo`; Operador 0 de `archivo`); Soporte no lee la auditoría del cliente; un cliente no ve eventos internos de otro | iso | `test/isolation/backoffice.iso-spec.ts` (+ `withInternalAccounts` en `setup/isolation-world.ts`) |
+| **CA-15 (bloqueante)**: cada rol interno por cada ruta: sin contenido, texto, URL, `clave_objeto` ni filas de versiones (nombres sembrados casi idénticos entre A y B); Operador y Soporte por SQL como `nimbo_app` (0 filas de `version_archivo`; Operador 0 de `archivo`); Soporte no lee la auditoría del cliente; un cliente no ve eventos internos de otro | iso | `test/isolation/backoffice.iso-spec.ts` (internas de `world.internals`; versiones y auditoría sembrada ya en 014 y 004) |
 | CA-17 (estados de cada pantalla, foco, formulario conserva lo escrito, «sin permiso», 360 px y axe; «Seguridad» y «Mi actividad» en el marco interno; enlace de actividad por rol) | web | `features/backoffice/**/*.spec.tsx`, `features/backoffice/a11y.spec.tsx`, `features/access/home-path.spec.ts`, `internal-area-layout.spec.tsx`, `identity/.../security-view.spec.tsx`, `session-account-menu.spec.tsx`, `(interno)/interno/actividad/page.spec.tsx` |
 | Recorrido de punta a punta | humano | tarea de demo (sin E2E: Playwright sigue de marcador, PD-41) |
 
@@ -218,12 +219,13 @@ Cada CA vive en una capa principal: reglas en unit, contrato y concurrencia en i
   `packages/contracts/src/billing/` (en inglés), **una** entidad `Plan`/`PlanLimitsSet` y **un** `PlanCard` en
   `components/nimbo` (PD-83); prefijo de errores acordado con Juan Marcos (2026-10-08): `BILLING_PLAN_*` en la 011;
   `PLAN_NOT_FOUND` no cambia. Bytes en JSON: texto decimal (ADR-0016; Adrián, 2026-10-08); la 005 se alinea después (PD-87).
-- **R-6 Antes de la 009** todo cliente cuenta como Personal en CA-1, CA-12 y el catálogo (regla vigente, PD-80).
+- **R-6 Plan de cada cliente**: sale de la `suscripcion` de la 009 (T-03). Sin fila, «—» en CA-1 y en ningún plan en CA-12,
+  cuya suma por plan puede quedar bajo el total de clientes (CA-12 pide conteos, no que cuadren). Sustituye la regla PD-80.
 - **R-7 Mockups**: `Aprobado` (Adrián, 2026-10-08; `ui-guidelines.md` §7).
 - **R-8 Permisos**: Adrián autorizó `identity`, `storage` y `audit` (2026-10-07), y `shared` (T1) y la web de `access`
   (`features/access`, marco interno) el 2026-10-08, **solo** en los archivos que nombra este plan.
 - **Desviaciones** (`Aceptado`, Adrián, 2026-10-08): DF-66 (paginación); DF-04, DF-36, la parte de 011 de DF-15, DF-27
-  (`INodeMetadataReader`) y DF-33 (`codigo_empleado`, también con CHECK); **DF-65** con el resto (M8, M1, M4, T1, T2, E-R). **Pendientes**: PD-80, PD-81, PD-82, PD-83; PD-31 resuelto aquí.
+  (`INodeMetadataReader`) y DF-33 (`codigo_empleado`, también con CHECK); **DF-65** con el resto (M8, M1, M4, T1, T2, E-R). **Pendientes**: PD-81, PD-82, PD-83; PD-80 pasa a la 009 (R-6); PD-31 resuelto aquí.
 - **ADR requeridos**: ninguno (sin tecnología nueva; el contexto Nest del script ya está en la pila).
 - **Fuera**: 011b, 022b, RN-6 en 012/013 (PD-78), comparador 008 (PD-76), reenviar el enlace de alta, sesiones ajenas.
 
@@ -244,3 +246,5 @@ Cada CA vive en una capa principal: reglas en unit, contrato y concurrencia en i
 - Adrián: **Aprobado** (2026-10-08, comentarios del PR): spec, plan y mockups; permiso de `shared` y `access` solo en los
   archivos nombrados (R-8); DF-66 aceptado; bytes como texto decimal (ADR-0016, PD-87); la 004 no se reabre; PD-85 y los dos
   PD-51 los corrige él en otro PR. `/auth/account-setup*` sin límite propio (A, §5); unificarlo con 002 queda en PD-88.
+- Cambio (2026-10-14, con Juan Marcos por la 009): `SubscriptionAdministration` a la 009 T-03, sin `clientCount`, R-6, `i-plan-repository` a `ports/`; Adrián lo aprobó (2026-10-15) con dos PR.
+- Cambio (Adrián, 2026-10-16, revisión de la rama): PR-A = T-01–T-08 (T-08 solo «Crear tu contraseña»); PR-B = T-10–T-13; §2 con `IAdminRosterRepository`, `AccountSetupLinkIssuer`, `AccountSetupController` y el puerto en `ports/`; PD-97 y PD-98.

@@ -29,6 +29,7 @@ export default tseslint.config(
       '**/dist/**',
       '**/dist-worker/**',
       '**/dist-int/**',
+      '**/dist-scripts/**',
       '**/.next/**',
       '**/next-env.d.ts',
       '**/coverage/**',

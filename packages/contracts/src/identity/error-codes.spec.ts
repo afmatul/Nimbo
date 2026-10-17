@@ -1,7 +1,7 @@
 import { FIELD_ISSUE_REASONS, IDENTITY_ERROR_CODES } from './error-codes';
 
 describe('IDENTITY_ERROR_CODES', () => {
-  it('CA-2…CA-6, CA-8…CA-10, CA-12, CA-20, CA-23: declara los códigos de 001 y de 002 (plan §5)', () => {
+  it('CA-2…CA-6, CA-8…CA-10, CA-12, CA-20, CA-23: declara los códigos de 001, de 002 (plan §5) y de 011 (plan §4)', () => {
     expect(Object.values(IDENTITY_ERROR_CODES).sort()).toEqual(
       [
         'IDENTITY_INVALID_INPUT',
@@ -21,6 +21,14 @@ describe('IDENTITY_ERROR_CODES', () => {
         'IDENTITY_RESET_LINK_INVALID',
         'IDENTITY_WRONG_PASSWORD',
         'IDENTITY_PASSWORD_CHANGE_LOCKED',
+        'IDENTITY_ACCOUNT_NOT_FOUND',
+        'IDENTITY_CANNOT_CHANGE_OWN_STATUS',
+        'IDENTITY_LAST_ACTIVE_ADMIN',
+        'IDENTITY_ACCOUNT_STATE_CONFLICT',
+        'IDENTITY_ENROLLMENT_CONFLICT',
+        'IDENTITY_ADMIN_ALREADY_EXISTS',
+        'IDENTITY_SETUP_LINK_INVALID',
+        'IDENTITY_SETUP_LINK_EXPIRED',
       ].sort(),
     );
   });
@@ -33,9 +41,13 @@ describe('IDENTITY_ERROR_CODES', () => {
 });
 
 describe('FIELD_ISSUE_REASONS', () => {
-  it('CA-5/CA-6 (001) y CA-23: declara los `reason` de identity', () => {
+  it('CA-5/CA-6 (001), CA-23 y 011 CA-6: declara los `reason` de identity', () => {
     expect([...FIELD_ISSUE_REASONS].sort()).toEqual([
+      'EMAIL_IN_USE',
+      'EMPLOYEE_CODE_IN_USE',
       'INVALID_EMAIL',
+      'INVALID_EMPLOYEE_CODE',
+      'INVALID_ROLE',
       'PASSWORD_COMMON',
       'PASSWORD_EQUALS_EMAIL',
       'PASSWORD_MISSING_NUMBER',

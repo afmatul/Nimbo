@@ -1,4 +1,5 @@
 import {
+  BACKOFFICE_FIELD_MESSAGES,
   BILLING_ERROR_CODES,
   EMAIL_REQUEST_COOLDOWN_SECONDS,
   FILE_NAME_MAX_LENGTH,
@@ -204,6 +205,11 @@ const CODE_MESSAGES: Readonly<Record<string, string>> = {
     'Este enlace venció. Pide uno nuevo y úsalo en la próxima hora.',
   [IDENTITY_ERROR_CODES.RESET_LINK_INVALID]:
     'Este enlace no es válido. Usa el enlace del correo más reciente o pide uno nuevo.',
+  // Enlace de alta interna (011 CA-5): el mismo texto que el servidor. Sin reenvío del alta: orienta a recuperar.
+  [IDENTITY_ERROR_CODES.SETUP_LINK_EXPIRED]:
+    'Este enlace venció. Usa «¿Olvidaste tu contraseña?» en el inicio de sesión para crear tu contraseña.',
+  [IDENTITY_ERROR_CODES.SETUP_LINK_INVALID]:
+    'Este enlace no es válido o ya se usó. Si ya creaste tu contraseña, inicia sesión; si no, usa «¿Olvidaste tu contraseña?».',
   [IDENTITY_ERROR_CODES.WRONG_PASSWORD]: 'La contraseña actual no es correcta.',
   [SHARED_ERROR_CODES.UNAUTHENTICATED]: 'Tu sesión no es válida o expiró. Inicia sesión de nuevo.',
   [SHARED_ERROR_CODES.FORBIDDEN]: `Tu cuenta no tiene permiso para esta acción. Si crees que es un error, escríbenos a ${SUPPORT_CONTACT_EMAIL}.`,
@@ -254,6 +260,17 @@ export function storageMessage(
   context: StorageMessageContext = {},
 ): StorageMessage | null {
   return STORAGE_MESSAGES[code]?.(details, context) ?? null;
+}
+
+function isBackofficeReason(value: string): value is keyof typeof BACKOFFICE_FIELD_MESSAGES {
+  return Object.prototype.hasOwnProperty.call(BACKOFFICE_FIELD_MESSAGES, value);
+}
+
+/** Mensaje de un `reason` de la búsqueda del backoffice (011 CA-13). Uno desconocido cae en el genérico de 000 §10. */
+export function backofficeFieldMessage(reason: string, correlationId = ''): string {
+  return isBackofficeReason(reason)
+    ? BACKOFFICE_FIELD_MESSAGES[reason]
+    : genericErrorMessage(correlationId);
 }
 
 /** Mensaje de un `reason` de `fields`. Uno desconocido cae en el genérico de 000 §10. */

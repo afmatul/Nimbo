@@ -12,6 +12,7 @@ import request from 'supertest';
 import { DataSource } from 'typeorm';
 
 import { FixedClock, I_CLOCK } from '../../../src/shared';
+import { employeeCodeFor } from '../../support/employee-codes';
 import { deleteAll } from '../setup/mailpit';
 import type { TestApp } from '../setup/test-app';
 
@@ -95,8 +96,8 @@ describe('POST /auth/resend-verification (CA-13, CA-14)', () => {
   const insertAccount = async (email: string, role: 'CLIENT' | 'SUPPORT'): Promise<void> => {
     await dataSource.query(
       `INSERT INTO usuario (id, nombre, correo, hash_clave, rol, correo_verificado, version_terminos,
-         version_privacidad, terminos_aceptados_en)
-       VALUES ($1, 'Cuenta Existente', $2, $3, $4, true, $5, $6, $7)`,
+         version_privacidad, terminos_aceptados_en, codigo_empleado)
+       VALUES ($1, 'Cuenta Existente', $2, $3, $4, true, $5, $6, $7, $8)`,
       [
         randomUUID(),
         email,
@@ -105,6 +106,7 @@ describe('POST /auth/resend-verification (CA-13, CA-14)', () => {
         LEGAL_DOCUMENTS.terms.version,
         LEGAL_DOCUMENTS.privacy.version,
         clock.now(),
+        employeeCodeFor(role),
       ],
     );
   };

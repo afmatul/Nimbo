@@ -30,7 +30,7 @@ class DiscardLogsModule {}
 
 @Controller()
 class EchoController {
-  @Post(['auth/register', 'echo'])
+  @Post(['auth/register', 'backoffice/echo', 'echo'])
   @HttpCode(200)
   echo(@Body() body: unknown): unknown {
     return body ?? null;
@@ -38,8 +38,9 @@ class EchoController {
 }
 
 /**
- * `configureHttpApp` sin contenedores (plan 001 §5): las rutas de `auth` responden `Cache-Control: no-store` también
- * cuando el analizador JSON rechaza el cuerpo, antes de que corran los *middlewares* de módulo.
+ * `configureHttpApp` sin contenedores (plan 001 §5, 011 CA-13): las rutas de `auth` y del backoffice responden
+ * `Cache-Control: no-store` también cuando el analizador JSON rechaza el cuerpo, antes de que corran los *middlewares*
+ * de módulo.
  */
 describe('configureHttpApp: `no-store` antes del analizador (001 CA-6)', () => {
   let app: NestExpressApplication;
@@ -72,6 +73,13 @@ describe('configureHttpApp: `no-store` antes del analizador (001 CA-6)', () => {
     expect(response.headers['cache-control']).toBe('no-store');
   });
 
+  it('011 CA-13: el `400` de un JSON mal formado en `/api/v1/backoffice/*` también lleva `no-store`', async () => {
+    const response = await postRaw('/api/v1/backoffice/echo', MALFORMED_JSON);
+
+    expect(response.status).toBe(400);
+    expect(response.headers['cache-control']).toBe('no-store');
+  });
+
   it('CA-6: la ruta se compara sin distinguir mayúsculas, como el enrutador de Express', async () => {
     const response = await postRaw('/API/v1/Auth/register', MALFORMED_JSON);
 
@@ -86,7 +94,7 @@ describe('configureHttpApp: `no-store` antes del analizador (001 CA-6)', () => {
     expect(response.headers['cache-control']).toBe('no-store');
   });
 
-  it('CA-6: fuera de `/api/v1/auth/` no se fija `no-store`', async () => {
+  it('CA-6: fuera de `/api/v1/auth/` y `/api/v1/backoffice/` no se fija `no-store`', async () => {
     const response = await postRaw('/api/v1/echo', MALFORMED_JSON);
 
     expect(response.status).toBe(400);

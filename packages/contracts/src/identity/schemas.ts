@@ -1,15 +1,22 @@
 import { z } from 'zod';
 
-import { roleSchema } from '../shared';
+import { INTERNAL_ROLES, roleSchema, type InternalRoleName } from '../shared';
 
 import { IDENTITY_FIELD_MESSAGES, type FieldIssueReason } from './error-codes';
-import { FULL_NAME_MAX_LENGTH, SESSION_LIST_MAX_ITEMS } from './parameters';
+import {
+  EMAIL_MAX_LENGTH,
+  EMPLOYEE_CODE_MAX_LENGTH,
+  FULL_NAME_MAX_LENGTH,
+  SESSION_LIST_MAX_ITEMS,
+} from './parameters';
 import { evaluatePassword } from './password-policy';
 
-/** Largo máximo de una dirección de correo (RFC 5321; columna `usuario.correo varchar(254)`). */
-const EMAIL_MAX_LENGTH = 254;
-
 const emailFormat = z.string().email().max(EMAIL_MAX_LENGTH);
+
+/** Única regla de formato de correo (Q-4b): la usan `identity` y `backoffice`. Recibe el correo ya recortado. */
+export function isValidEmail(value: string): boolean {
+  return emailFormat.safeParse(value).success;
+}
 
 type Refinement = z.RefinementCtx;
 
@@ -47,8 +54,26 @@ function fullNameReasons(value: string): FieldIssueReason[] {
 
 /** El correo se valida sin espacios alrededor; la normalización la hace el servicio (D-16). */
 function emailReasons(value: string): FieldIssueReason[] {
-  return emailFormat.safeParse(value.trim()).success ? [] : ['INVALID_EMAIL'];
+  return isValidEmail(value.trim()) ? [] : ['INVALID_EMAIL'];
 }
+
+/** Mismas reglas que `EmployeeCode` del dominio de `api` (que no importa este paquete, ADR-0008). */
+const EMPLOYEE_CODE_PATTERN = new RegExp(`^[A-Z0-9-]{1,${String(EMPLOYEE_CODE_MAX_LENGTH)}}$`);
+
+/** El código se valida recortado y en mayúsculas, como lo guarda el servicio (RN-5, Q-4). */
+function employeeCodeReasons(value: string): FieldIssueReason[] {
+  const code = value.trim().toUpperCase();
+  if (code === '') return ['REQUIRED'];
+  return EMPLOYEE_CODE_PATTERN.test(code) ? [] : ['INVALID_EMPLOYEE_CODE'];
+}
+
+const INTERNAL_ROLE_SET: ReadonlySet<unknown> = new Set(INTERNAL_ROLES);
+
+/** Solo un rol interno: `CLIENT` u otro valor es `INVALID_ROLE` (CA-6); ausente, `REQUIRED`. */
+const internalRoleField = z.custom<InternalRoleName>().superRefine((value: unknown, ctx) => {
+  if (value === undefined) addIssue(ctx, 'REQUIRED');
+  else if (!INTERNAL_ROLE_SET.has(value)) addIssue(ctx, 'INVALID_ROLE');
+});
 
 const acceptTermsField = z.custom<true>().superRefine((value: unknown, ctx) => {
   if (value !== true) addIssue(ctx, 'TERMS_NOT_ACCEPTED');
@@ -133,6 +158,27 @@ export const changePasswordRequestSchema = z
   .object({ currentPassword: textField(nonEmptyReasons), newPassword: textField() })
   .strict(UNKNOWN_FIELD_MESSAGE);
 
+/**
+ * `POST /backoffice/accounts` (011 plan §4): alta interna. Nombre y correo con las reglas del registro (Q-4b); el
+ * código y el correo los normaliza el servicio. Responde `422 IDENTITY_INVALID_INPUT` con `fields` (CA-6).
+ */
+export const enrollInternalAccountRequestSchema = z
+  .object({
+    fullName: textField(fullNameReasons),
+    email: textField(emailReasons),
+    employeeCode: textField(employeeCodeReasons),
+    role: internalRoleField,
+  })
+  .strict(UNKNOWN_FIELD_MESSAGE);
+
+/**
+ * `POST /auth/account-setup/check` y `POST /auth/account-setup` (011 CA-5): mismas formas que la recuperación de 002.
+ * Un `token` mal formado lo rechaza el servicio con `IDENTITY_SETUP_LINK_INVALID`; «igual al correo» lo completa el
+ * servicio, que conoce el correo.
+ */
+export const accountSetupCheckRequestSchema = resetTokenRequestSchema;
+export const accountSetupRequestSchema = resetPasswordRequestSchema;
+
 /** Respuesta neutra de `register` y `resend-verification` (spec §7). */
 export const acceptedResponseSchema = z.object({ status: z.literal('accepted') }).strict();
 
@@ -172,6 +218,12 @@ export const verifyEmailResponseSchema = z.discriminatedUnion('status', [
 /** `POST /auth/reset-password/check`: el enlace sirve; no lo consume (CA-20). */
 export const resetLinkCheckResponseSchema = z.object({ status: z.literal('valid') }).strict();
 
+/** `POST /auth/account-setup/check`: el enlace de alta sirve; no lo consume (011 CA-5). */
+export const accountSetupCheckResponseSchema = resetLinkCheckResponseSchema;
+
+/** `POST /auth/account-setup`: la primera contraseña quedó fijada; no abre sesión ni toca otras (011 CA-5). */
+export const accountSetupResponseSchema = z.object({ status: z.literal('password-set') }).strict();
+
 /** `POST /auth/reset-password`: la contraseña cambió; no abre sesión (CA-19). */
 export const resetPasswordResponseSchema = z
   .object({ status: z.literal('password-reset') })
@@ -210,6 +262,11 @@ export type ForgotPasswordRequest = z.infer<typeof forgotPasswordRequestSchema>;
 export type ResetTokenRequest = z.infer<typeof resetTokenRequestSchema>;
 export type ResetPasswordRequest = z.infer<typeof resetPasswordRequestSchema>;
 export type ChangePasswordRequest = z.infer<typeof changePasswordRequestSchema>;
+export type EnrollInternalAccountRequest = z.infer<typeof enrollInternalAccountRequestSchema>;
+export type AccountSetupCheckRequest = z.infer<typeof accountSetupCheckRequestSchema>;
+export type AccountSetupRequest = z.infer<typeof accountSetupRequestSchema>;
+export type AccountSetupCheckResponse = z.infer<typeof accountSetupCheckResponseSchema>;
+export type AccountSetupResponse = z.infer<typeof accountSetupResponseSchema>;
 export type AcceptedResponse = z.infer<typeof acceptedResponseSchema>;
 export type VerifyEmailResponse = z.infer<typeof verifyEmailResponseSchema>;
 export type VerifyEmailStatus = VerifyEmailResponse['status'];

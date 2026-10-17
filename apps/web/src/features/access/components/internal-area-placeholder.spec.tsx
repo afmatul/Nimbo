@@ -23,7 +23,7 @@ describe('InternalAreaPlaceholder', () => {
     expect(screen.getByText(`Tu área de ${label} estará disponible pronto.`)).toBeTruthy();
   });
 
-  it('CA-17: no trae acción propia: «Cerrar sesión» lo pone la página', () => {
+  it('CA-17: no trae acción propia: «Cerrar sesión» está en el menú de la cuenta', () => {
     render(<InternalAreaPlaceholder fullName="Ana López" role="ADMIN" />);
 
     expect(screen.queryByRole('button')).toBeNull();
