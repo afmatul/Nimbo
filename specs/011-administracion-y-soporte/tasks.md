@@ -71,7 +71,7 @@ y en `pendientes.md` (PD-31 resuelto, PD-94) prevalece lo de `main` (aviso a Jua
   corregidos en el PR-A; restablecer debe invalidar la invitación (`password.service.ts`, se pide a Adrián). Para el
   PR-B: `AccountsController` solo `@Roles(Role.ADMIN)` (los servicios de cuentas no autorizan por sí mismos), filas de
   cuentas y métricas en la tabla de `backoffice.iso-spec.ts` (Operador `403` en cuentas; lista blanca por clave),
-  `no-store` y límite de tasa (PD-103) y `desde-admin` por id del cliente, no por correo (PD-101).
+  límite de tasa (PD-103; el `no-store` ya va en el PR-A) y `desde-admin` por id del cliente, no por correo (PD-101).
 - T-04: `admin:bootstrap` es `tsc -p tsconfig.build.json --outDir dist-scripts && node dist-scripts/scripts/bootstrap-admin.js`,
   no `tsx` como `migration:run`: con `tsx` (esbuild, sin `design:paramtypes`) la inyección por tipo de Nest falla
   (`test/int/setup/compiled-api.ts`). `dist-scripts/` es propio (como `dist-int/`) para no pisar `dist/` de `nest build`

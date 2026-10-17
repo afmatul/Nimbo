@@ -159,6 +159,24 @@ describe('`GET /backoffice/client-files` (011 CA-13)', () => {
     expect(await viewedEventsOn(ids.client)).toBe(before + 1);
   });
 
+  it('CA-13 (Art. IX): toda respuesta, también las de error, lleva `Cache-Control: no-store`', async () => {
+    const get = await asUser(ids.support, Role.SUPPORT);
+
+    const responses = await Promise.all([
+      get({ email: await emailOf(ids.client) }),
+      get({ email: 'ana@' }),
+      get({ email: `nadie-${randomUUID()}@nimbo.me` }),
+    ]);
+
+    expect(
+      responses.map((response) => [response.status, response.headers['cache-control']]),
+    ).toEqual([
+      [200, 'no-store'],
+      [400, 'no-store'],
+      [404, 'no-store'],
+    ]);
+  });
+
   it.each([
     ['sin correo', {}, 'email:REQUIRED'],
     ['con un correo inválido', { email: 'ana@' }, 'email:INVALID_EMAIL'],
