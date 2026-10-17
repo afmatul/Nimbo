@@ -4,12 +4,12 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Borrador (preguntas resueltas; plan en curso) |
+| Estado | Borrador (spec y plan listos para la revisión de Adrián) |
 | Dueño | Juan Marcos |
 | Fase | 2 |
 | Requisitos | RF-22, RF-23, RF-24 (y RF-07 y RNF-05 de forma transversal) |
 | Depende de | 009 (suscripción, pago simulado, facturas); 005, 006 y 007 (acciones de `storage` que se bloquean) |
-| Última actualización | 2026-10-16 |
+| Última actualización | 2026-10-17 |
 
 ## 1. Contexto y objetivo
 La 009 deja a un cliente con un plan de pago por 30 días, pero nada pasa cuando ese periodo termina. Esta spec cierra
@@ -35,7 +35,7 @@ programar un cambio de plan (subir, bajar o volver a Personal) que se aplica en 
 - **CA-4** (HU-6, RF-22) — error: Dado un fallo del proceso de renovación (p. ej., base de datos no disponible), cuando corre, entonces el fallo queda en la bitácora técnica con su `code` y es observable para la alerta «fallo del proceso de renovación»; las suscripciones pendientes se procesan en la siguiente corrida con su `vence_en` original.
 - **CA-5** (HU-2, RF-22) Dado un plan de pago que vence dentro de N días (RN-8, 3 por defecto), cuando corre el proceso diario, entonces el cliente recibe **un** correo por periodo con la fecha de vencimiento, el plan y el monto del siguiente ciclo y, según el caso, la tarjeta (marca y últimos 4) que se cobrará o el aviso de que su cuenta quedará en solo lectura si no renueva.
 - **CA-6** (HU-2, RF-22) Dado un plan de pago, cuando el cliente desactiva o reactiva la renovación automática, entonces se responde `200`, la pantalla lo refleja, el periodo pagado no cambia y queda en su auditoría (RF-07). Con Personal se responde `400` `BILLING_NO_PAID_SUBSCRIPTION` y nada cambia.
-- **CA-7** (HU-2, RF-22, RF-23) Dado un plan de pago con la renovación automática desactivada y sin cambio programado, cuando llega `vence_en`, entonces no se cobra, la cuenta queda en solo lectura y se envía el correo de CA-2.
+- **CA-7** (HU-2, RF-22, RF-23) Dado un plan de pago con la renovación automática desactivada (con o sin un cambio programado a otro plan de pago), cuando llega `vence_en`, entonces no se cobra, la cuenta queda en solo lectura y se envía el correo de CA-2; un cambio programado sigue programado y se aplica cuando el cliente renueva a mano (CA-10, CA-20).
 
 **Renovación manual**
 - **CA-8** (HU-3, RF-22) Dado un plan de pago vigente, cuando el cliente paga la renovación con `4242 4242 4242 4242`, entonces hay transacción, factura y correo, y `vence_en` pasa a 30 días después del `vence_en` vigente; el resumen del pago muestra el periodo nuevo antes de pagar.
@@ -55,7 +55,7 @@ programar un cambio de plan (subir, bajar o volver a Personal) que se aplica en 
 - **CA-18** (HU-5, RF-24) — error: Dado una suscripción Personal, cuando intenta programar un cambio, entonces se responde `400` `BILLING_NO_PAID_SUBSCRIPTION`; en la pantalla, elegir un plan de pago lleva a la contratación de la 009.
 - **CA-19** (HU-5, RF-24) Dado un cambio programado, cuando el cliente lo cancela antes de `vence_en`, entonces se responde `200` y la renovación sigue con el plan actual. Sin cambio programado se responde `404` `BILLING_NO_PENDING_PLAN_CHANGE`.
 - **CA-20** (HU-5, RF-24, RF-22) Dado un cambio programado a otro plan de pago, cuando se renueva (automática o manual), entonces se cobra el precio completo del plan nuevo (sin prorrateo) y, si se aprueba, el periodo nuevo usa ese plan y sus límites. Si se rechaza, aplica CA-2 con el plan anterior y el cambio sigue programado.
-- **CA-21** (HU-5, RF-24) Dado un cambio programado a Personal, cuando llega `vence_en`, entonces no se cobra, la cuenta pasa a Personal sin vencimiento ni solo lectura y no pierde contenido; si su uso supera la cuota de Personal, las cargas se rechazan por cuota (RF-12, 007) hasta liberar espacio.
+- **CA-21** (HU-5, RF-24) Dado un cambio programado a Personal, cuando llega `vence_en`, entonces no se cobra, la cuenta pasa a Personal sin vencimiento ni solo lectura y no pierde archivos ni carpetas; si su uso supera la cuota de Personal, las cargas se rechazan por cuota (RF-12, 007) hasta liberar espacio. Las versiones anteriores que excedan las que guarda el plan nuevo se recortan al subir la siguiente versión de cada archivo (014 CA-13); la versión actual nunca se borra, y la confirmación del cambio lo avisa antes de programarlo.
 - **CA-22** (HU-5, RF-24) Dado un cambio programado, cuando cambia el estado, entonces la auditoría del cliente registra programar, cancelar y aplicar el cambio (RF-07).
 
 **Privacidad, aislamiento y pantalla**
@@ -123,3 +123,4 @@ programar un cambio de plan (subir, bajar o volver a Personal) que se aplica en 
 | 2026-10-16 | Preguntas resueltas con las recomendaciones: solo lectura (RN-6, CA-13), un intento de cobro (RN-10), propietario en compartidos (RN-11), CA-26 a CA-29; mockups con `/mockup` antes de la UI | Respuestas de Juan Marcos | Borrador (pendiente Adrián) |
 | 2026-10-16 | HU-6 y CA-23: los conteos del Operador quedan en la bitácora estructurada de cada pasada, sin datos de clientes y sin endpoint (tablero en la 022). RN-4: NIT de la renovación automática = el de la última factura, o `CF` | Revisión del plan por el `architect` (YAGNI: aún no hay Prometheus en la API) | Borrador (pendiente Adrián) |
 | 2026-10-16 | RN-4: Juan Marcos confirma el NIT de la renovación automática (el de la última factura del cliente o `CF`) | Confirmación de Juan Marcos | Borrador (pendiente Adrián) |
+| 2026-10-17 | CA-7: renovación apagada con un cambio programado a un plan de pago (no se cobra, solo lectura, el cambio sigue para la renovación manual). CA-21: al bajar de plan no se pierden archivos ni carpetas; las versiones que excedan el límite nuevo se recortan al subir la siguiente versión (014 CA-13) y la confirmación lo avisa | Revisión de la spec antes de mandarla a Adrián (huecos con CA-20 y con la poda de versiones de la 014) | Borrador (pendiente Adrián) |
