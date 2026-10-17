@@ -9,13 +9,16 @@ import {
   CannotChangeOwnStatusError,
   LastActiveAdminError,
 } from '../domain/errors';
+import { OpaqueToken } from '../domain/opaque-token.vo';
 import { Session } from '../domain/session.entity';
 import type { User } from '../domain/user.entity';
+import { VerificationToken } from '../domain/verification-token.entity';
 
 import { AccountAdministration } from './account-administration';
 import { aClientUser } from './testing/client-user.builder';
 import { InMemorySessionRepository } from './testing/in-memory-session.repository';
 import { InMemoryUserRepository } from './testing/in-memory-user.repository';
+import { InMemoryVerificationTokenRepository } from './testing/in-memory-verification-token.repository';
 import { anInternalUser } from './testing/internal-user.builder';
 
 const NOW = new Date('2026-10-09T15:00:00.000Z');
@@ -31,10 +34,22 @@ const anOpenSession = (userId: string): Session =>
     maxLifetime: 30 * DAY_MS,
   });
 
+/** Enlace de alta vigente para `userId`, emitido hace una hora. */
+const aSetupToken = (userId: string): VerificationToken =>
+  VerificationToken.issue({
+    id: randomUUID(),
+    userId,
+    type: 'alta_interna',
+    tokenHash: OpaqueToken.generate().hash(),
+    createdAt: new Date(NOW.getTime() - DAY_MS / 24),
+    expiresAt: new Date(NOW.getTime() + DAY_MS),
+  });
+
 const setup = () => {
   const users = new InMemoryUserRepository();
   const sessions = new InMemorySessionRepository();
-  const administration = new AccountAdministration(users, sessions, new FixedClock(NOW));
+  const tokens = new InMemoryVerificationTokenRepository();
+  const administration = new AccountAdministration(users, sessions, tokens, new FixedClock(NOW));
   const admin = anInternalUser().build();
   users.seed(admin);
   const actor = createActor(admin.id, Role.ADMIN);
@@ -43,7 +58,7 @@ const setup = () => {
     return user;
   };
   const statusOf = async (id: string) => (await users.findById(id))?.status;
-  return { users, sessions, administration, admin, actor, seed, statusOf };
+  return { users, sessions, tokens, administration, admin, actor, seed, statusOf };
 };
 
 describe('AccountAdministration (011 CA-2 a CA-4, RN-7)', () => {
@@ -61,6 +76,28 @@ describe('AccountAdministration (011 CA-2 a CA-4, RN-7)', () => {
       expect(
         sessions.all().every((session) => session.revocadaEn?.getTime() === NOW.getTime()),
       ).toBe(true);
+    });
+
+    it('CA-2, CA-5: suspender invalida el enlace de alta vigente; tras reactivar sigue sin servir', async () => {
+      const { administration, actor, tokens, seed } = setup();
+      const support = seed(anInternalUser().withRole(Role.SUPPORT).build());
+      await tokens.insert(aSetupToken(support.id));
+
+      await administration.suspend(actor, support.id);
+      await administration.reactivate(actor, support.id);
+
+      expect(tokens.all()[0]?.invalidatedAt).toEqual(NOW);
+      expect(tokens.all()[0]?.isValid(NOW)).toBe(false);
+    });
+
+    it('CA-2: una suspensión rechazada no toca el enlace de alta', async () => {
+      const { administration, actor, admin, tokens } = setup();
+      await tokens.insert(aSetupToken(admin.id));
+
+      await expect(administration.suspend(actor, admin.id)).rejects.toBeInstanceOf(
+        CannotChangeOwnStatusError,
+      );
+      expect(tokens.all()[0]?.invalidatedAt).toBeNull();
     });
 
     it('CA-2: suspende a otro Administrador si queda uno activo', async () => {
