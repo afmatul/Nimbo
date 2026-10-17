@@ -4,13 +4,13 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | En curso |
+| Estado | En revisión |
 | Dueño | Adrián |
 | Fase | 2 |
 | Requisitos | RF-25, RF-26, RF-28; RNF-02 (5 editores por documento), RNF-05, RNF-09. Casos de uso 05, 19, 20, 39 |
 | Depende de | 005 (archivo, `version_archivo`, cuota), 003 (`Actor`, permiso de edición), 015 (canal, salas y avisos a un usuario), `identity` (nombre visible). **No** espera a 014 (P-1) ni a 009 (RN-13) |
-| DF / ADR | DF-05, DF-20, DF-30, DF-39, DF-70; ADR-0004, ADR-0010, ADR-0012, ADR-0024, ADR-0028, ADR-0029 |
-| Última actualización | 2026-10-16 |
+| DF / ADR | DF-05, DF-20, DF-30, DF-39, DF-74; ADR-0004, ADR-0010, ADR-0012, ADR-0024, ADR-0028, ADR-0029 |
+| Última actualización | 2026-10-17 |
 
 ## 1. Contexto y objetivo
 El cliente abre un `.docx` de su nube y lo edita en el navegador, solo o con otras personas a la vez, sin convertirlo ni
@@ -129,3 +129,4 @@ Sin preguntas abiertas.
 | 2026-10-16 | **Propuesta (developer, T-03)**: no registrar `OnlyOfficeHealthIndicator` en `/health/ready` del `api` (con ONLYOFFICE opcional, el `api` dejaría de estar listo cuando el editor cae, contra CA-15/RNF-09); CA-15 se cumple con la comprobación de disponibilidad al abrir. Ver PD-100 | Contradicción plan §2 ↔ CA-15 | — (pendiente de Adrián) |
 | 2026-10-16 | PD-99 resuelta: **RN-11 queda como está escrita** («guardar igual»): si el archivo pasa a la papelera con la sesión abierta, el guardado se registra igual sobre el mismo archivo. `file_missing` / `fallida/archivo_purgado` queda solo para el archivo purgado de verdad (CA-14) | Decisión de Adrián sobre PD-99 | Adrián |
 | 2026-10-16 | PD-100 resuelta: se acepta la propuesta de T-03; `OnlyOfficeHealthIndicator` no se registra en `/health/ready` y la disponibilidad se revisa con `isAvailable` en cada apertura (CA-15) | Decisión de Adrián sobre PD-100 | Adrián |
+| 2026-10-17 | Pasa a `En revisión` | T-01…T-11 hechas; `/review 016` | Adrián |
