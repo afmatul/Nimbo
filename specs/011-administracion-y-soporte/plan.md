@@ -71,7 +71,7 @@ Dueño del módulo entre corchetes: lo ajeno se pide a su dueño en su PR (`spec
   no depende de `identity` (el cliente ve solo el rol, que ya guarda `evento_auditoria`).
 - **Frontend** (`apps/web/src`): `app/(app)/(interno)/admin/{cuentas,cuentas/[id],cuentas/[id]/metadatos,cuentas/nueva,
   planes,planes/nuevo,metricas}`, `soporte/metadatos`, `operacion/metricas`, cada grupo con `RequireRole` de un rol;
-  `interno/page.tsx` redirige al inicio del rol y se retira `internal-area-placeholder`. `(public)/crear-contrasena` con el
+  `interno/page.tsx` redirige al inicio del rol y se retira `internal-area-placeholder` (PR-A: solo Soporte; tasks, T-07). `(public)/crear-contrasena` con el
   patrón de `restablecer-contrasena` (002, P-15) y estados `default, enviando, error-campos, enlace-vencido, enlace-invalido,
   exito` (vencido → «¿Olvidaste tu contraseña?», CA-5). `features/backoffice/` (`api.ts`, hooks, componentes por pantalla,
   `page-pager`, `plan-card`, `client-files-table`); `lib/error-catalog.ts`. Reutiliza `StateView`, `ConfirmDestructiveDialog`,
@@ -199,7 +199,7 @@ Prefijo `/api/v1`. Errores comunes de `/backoffice/*`: `401 SHARED_UNAUTHENTICAT
 | CA-14 (matriz rol × ruta, tabla) | int | `test/int/backoffice/roles-matrix.int-spec.ts` |
 | CA-16 (el cliente ve fecha y rol, nunca el nombre; no ve los de otra cuenta ni los del catálogo) | int | `test/int/audit/internal-events.int-spec.ts` |
 | Migraciones `up → down → up` con dueño sin `SUPERUSER`; CHECK de código normalizado | int | `test/int/backoffice/migrations.int-spec.ts` |
-| **CA-15 (bloqueante)**: cada rol interno por cada ruta: sin contenido, texto, URL, `clave_objeto` ni filas de versiones (nombres sembrados casi idénticos entre A y B); Operador y Soporte por SQL como `nimbo_app` (0 filas de `version_archivo`; Operador 0 de `archivo`); Soporte no lee la auditoría del cliente; un cliente no ve eventos internos de otro | iso | `test/isolation/backoffice.iso-spec.ts` (+ `withInternalAccounts` en `setup/isolation-world.ts`) |
+| **CA-15 (bloqueante)**: cada rol interno por cada ruta: sin contenido, texto, URL, `clave_objeto` ni filas de versiones (nombres sembrados casi idénticos entre A y B); Operador y Soporte por SQL como `nimbo_app` (0 filas de `version_archivo`; Operador 0 de `archivo`); Soporte no lee la auditoría del cliente; un cliente no ve eventos internos de otro | iso | `test/isolation/backoffice.iso-spec.ts` (internas de `world.internals`; versiones y auditoría sembrada ya en 014 y 004) |
 | CA-17 (estados de cada pantalla, foco, formulario conserva lo escrito, «sin permiso», 360 px y axe; «Seguridad» y «Mi actividad» en el marco interno; enlace de actividad por rol) | web | `features/backoffice/**/*.spec.tsx`, `features/backoffice/a11y.spec.tsx`, `features/access/home-path.spec.ts`, `internal-area-layout.spec.tsx`, `identity/.../security-view.spec.tsx`, `session-account-menu.spec.tsx`, `(interno)/interno/actividad/page.spec.tsx` |
 | Recorrido de punta a punta | humano | tarea de demo (sin E2E: Playwright sigue de marcador, PD-41) |
 
