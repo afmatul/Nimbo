@@ -11,8 +11,8 @@ export interface InternalAreaPlaceholderProps {
 }
 
 /**
- * Marcador del inicio de las cuentas internas (003 §6.9, CA-17) hasta que su área exista. «Cerrar sesión» lo pone la
- * página con el `SignOutButton` de 002, que muestra la carga y no repite el cierre.
+ * Marcador del inicio de las cuentas internas (003 §6.9, CA-17) hasta que su área exista (Admin y Operador, hasta el
+ * PR-B de 011). «Cerrar sesión» lo ofrece el menú de la cuenta del marco interno.
  */
 export function InternalAreaPlaceholder({
   fullName,
@@ -21,6 +21,7 @@ export function InternalAreaPlaceholder({
   return (
     <StateView
       type="empty"
+      headingLevel="h2"
       icon={ShieldCheck}
       title={`Hola, ${fullName}.`}
       description={`Tu área de ${ROLE_LABELS[role].toLowerCase()} estará disponible pronto.`}

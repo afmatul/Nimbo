@@ -38,6 +38,8 @@ export interface AccountMenuProps {
   readonly email: string;
   /** Cierra la sesión; quien lo provee decide adónde se va después. */
   readonly onSignOut: () => Promise<void>;
+  /** Ruta de «Mi actividad» del rol de la sesión (011 CA-17); opcional: por omisión, la del cliente (004). */
+  readonly activityHref?: string;
 }
 
 function initialsOf(fullName: string): string {
@@ -76,10 +78,15 @@ function AccountTrigger({ id, buttonRef, fullName }: AccountTriggerProps): React
 
 interface AccountItemsProps {
   readonly triggerId: string;
+  readonly activityHref: string;
   readonly onSignOut: () => void;
 }
 
-function AccountItems({ triggerId, onSignOut }: AccountItemsProps): React.JSX.Element {
+function AccountItems({
+  triggerId,
+  activityHref,
+  onSignOut,
+}: AccountItemsProps): React.JSX.Element {
   return (
     <div role="menu" aria-orientation="vertical" aria-labelledby={triggerId}>
       <DropdownMenuItem asChild>
@@ -89,7 +96,7 @@ function AccountItems({ triggerId, onSignOut }: AccountItemsProps): React.JSX.El
         </a>
       </DropdownMenuItem>
       <DropdownMenuItem asChild>
-        <a href={ACTIVITY_HREF}>
+        <a href={activityHref}>
           <History aria-hidden="true" className="h-4 w-4 text-secondary-foreground" />
           Mi actividad
         </a>
@@ -133,7 +140,12 @@ function useSignOutConfirmation(
  * (004) y «Cerrar sesión», que pide confirmación (Q-3). «Plan y facturación» se agrega tras «Mi actividad» cuando exista
  * su ruta (006a/010).
  */
-export function AccountMenu({ fullName, email, onSignOut }: AccountMenuProps): React.JSX.Element {
+export function AccountMenu({
+  fullName,
+  email,
+  onSignOut,
+  activityHref = ACTIVITY_HREF,
+}: AccountMenuProps): React.JSX.Element {
   const triggerId = React.useId();
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const confirmation = useSignOutConfirmation(onSignOut, triggerRef);
@@ -146,7 +158,11 @@ export function AccountMenu({ fullName, email, onSignOut }: AccountMenuProps): R
             <p className="text-sm font-semibold text-foreground">{fullName}</p>
             <p className="break-all text-sm text-muted-foreground">{email}</p>
           </div>
-          <AccountItems triggerId={triggerId} onSignOut={() => confirmation.setOpen(true)} />
+          <AccountItems
+            triggerId={triggerId}
+            activityHref={activityHref}
+            onSignOut={() => confirmation.setOpen(true)}
+          />
         </DropdownMenuContent>
       </DropdownMenu>
       <ConfirmDestructiveDialog

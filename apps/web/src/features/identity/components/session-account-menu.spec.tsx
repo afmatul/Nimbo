@@ -52,4 +52,26 @@ describe('SessionAccountMenu (CA-14)', () => {
     );
     expect(recallSession(Date.now())).toBeNull();
   });
+
+  it.each([
+    ['CLIENT', '/actividad'],
+    ['SUPPORT', '/interno/actividad'],
+    ['ADMIN', '/interno/actividad'],
+    ['OPERATOR', '/interno/actividad'],
+  ] as const)('011 CA-17: con el rol %s, «Mi actividad» lleva a %s', async (role, path) => {
+    rememberSession(sessionFixture({ role }));
+    const user = userEvent.setup();
+    render(
+      <SessionProvider apiPublicUrl="http://localhost/api/v1">
+        <SessionAccountMenu />
+      </SessionProvider>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Menú de la cuenta de Ana López' }));
+
+    expect(screen.getByRole('menuitem', { name: 'Mi actividad' }).getAttribute('href')).toBe(path);
+    expect(screen.getByRole('menuitem', { name: 'Seguridad' }).getAttribute('href')).toBe(
+      '/cuenta/seguridad',
+    );
+  });
 });

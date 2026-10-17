@@ -1,4 +1,6 @@
 import {
+  BACKOFFICE_FIELD_ISSUE_REASONS,
+  BACKOFFICE_FIELD_MESSAGES,
   IDENTITY_ERROR_CODES,
   IDENTITY_FIELD_MESSAGES,
   LOGIN_LOCK_MINUTES,
@@ -12,6 +14,7 @@ import {
 import { ApiClientError } from './api-error';
 import {
   IDENTITY_FIELD_MESSAGES as reexported,
+  backofficeFieldMessage,
   folderNameConflictMessage,
   folderNameFieldMessage,
   messageForCode,
@@ -106,6 +109,15 @@ describe('error-catalog', () => {
       );
       expect(messageForCode(IDENTITY_ERROR_CODES.RESET_LINK_INVALID)).toBe(
         'Este enlace no es válido. Usa el enlace del correo más reciente o pide uno nuevo.',
+      );
+    });
+
+    it('011 CA-5: enlaces de alta interna, con el mismo texto que el servidor y sin pedir un enlace nuevo', () => {
+      expect(messageForCode(IDENTITY_ERROR_CODES.SETUP_LINK_EXPIRED)).toBe(
+        'Este enlace venció. Usa «¿Olvidaste tu contraseña?» en el inicio de sesión para crear tu contraseña.',
+      );
+      expect(messageForCode(IDENTITY_ERROR_CODES.SETUP_LINK_INVALID)).toBe(
+        'Este enlace no es válido o ya se usó. Si ya creaste tu contraseña, inicia sesión; si no, usa «¿Olvidaste tu contraseña?».',
       );
     });
 
@@ -262,6 +274,19 @@ describe('error-catalog', () => {
         cause: 'No encontramos la carpeta de destino.',
         fix: 'Puede que la hayas movido a la papelera. Elige otra carpeta y vuelve a intentarlo.',
       });
+    });
+  });
+
+  describe('backoffice (spec 011)', () => {
+    it.each(BACKOFFICE_FIELD_ISSUE_REASONS)(
+      'CA-13: el motivo %s del campo de búsqueda usa el texto de contracts',
+      (reason) => {
+        expect(backofficeFieldMessage(reason)).toBe(BACKOFFICE_FIELD_MESSAGES[reason]);
+      },
+    );
+
+    it('CA-13: un motivo desconocido cae en el genérico de 000 §10', () => {
+      expect(backofficeFieldMessage('OTRO', 'abc')).toContain('abc');
     });
   });
 
