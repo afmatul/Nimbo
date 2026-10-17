@@ -3,9 +3,9 @@ import {
   type CompleteUploadResponse,
   type FileSummary,
   type InitUploadResponse,
-  type OnConflict,
   type ResumeUploadResponse,
   type UploadMode,
+  type UploadOnConflict,
   type UploadPartUrl,
 } from '@nimbo/contracts';
 
@@ -36,8 +36,8 @@ export const UPLOAD_PHASES = [
 
 export type UploadPhase = (typeof UPLOAD_PHASES)[number];
 
-/** Respuesta al diálogo de nombre repetido (CA-6): «Conservar ambos» o «Cancelar». */
-export type ConflictDecision = 'keep_both' | 'discard';
+/** Respuesta al diálogo de nombre repetido (CA-6; 014 CA-1): «Conservar ambos», «Reemplazar» o «Cancelar». */
+export type ConflictDecision = 'keep_both' | 'replace' | 'discard';
 
 /** Lo que el manager necesita de un `File` del navegador: se lee por trozos, nunca entero en memoria. */
 export interface LocalFile {
@@ -54,6 +54,8 @@ export interface UploadView {
   readonly loadedBytes: number;
   readonly mode: UploadMode | null;
   readonly suggestedName: string | null;
+  /** `details.wouldPruneVersion` del `409`: versión que «Reemplazar» eliminaría; `null` si no poda (014 CA-15). */
+  readonly wouldPruneVersion: number | null;
   /** Carga simple detenida: al reanudar empieza de cero («Se reiniciará al reanudar», D-2). */
   readonly restartsOnResume: boolean;
   /** El diálogo «¿Cancelar esta carga?» está abierto; mientras tanto la carga sigue en pausa (CA-22). */
@@ -68,7 +70,7 @@ export interface UploadClient {
   init(body: {
     readonly name: string;
     readonly sizeBytes: number;
-    readonly onConflict: OnConflict;
+    readonly onConflict: UploadOnConflict;
     /** Carpeta destino; `null` es la raíz (006 CA-6). */
     readonly folderId: string | null;
   }): Promise<InitUploadResponse>;
@@ -91,7 +93,7 @@ interface UploadRecord extends UploadView {
   /** Carpeta abierta al encolar; el nombre repetido se evalúa en ella (006 CA-6). */
   readonly folderId: string | null;
   readonly uploadId: string | null;
-  readonly onConflict: OnConflict;
+  readonly onConflict: UploadOnConflict;
   /** Todos los bytes ya están en el almacenamiento: reanudar vuelve a `complete`, no a `resume`. */
   readonly transferred: boolean;
   /** «Seguir subiendo» reanuda solo si la carga iba en curso al pedir cancelar. */
@@ -150,6 +152,7 @@ function toView(record: UploadRecord): UploadView {
     loadedBytes: record.loadedBytes,
     mode: record.mode,
     suggestedName: record.suggestedName,
+    wouldPruneVersion: record.wouldPruneVersion,
     restartsOnResume: record.restartsOnResume,
     awaitingCancel: record.awaitingCancel,
     errorCode: record.errorCode,
@@ -235,13 +238,12 @@ export class UploadManager {
   resolveConflict(id: string, decision: ConflictDecision, applyToRest = false): void {
     const record = this.require(id);
     if (record.phase !== 'conflict') return;
+    this.applyDecision(id, decision);
     if (applyToRest) {
       this.batchDecisions.set(record.batch, decision);
       this.records
         .filter((other) => other.batch === record.batch && other.phase === 'conflict')
-        .forEach((other) => this.applyDecision(other.id, decision));
-    } else {
-      this.applyDecision(id, decision);
+        .forEach((other) => this.applyBatchDecision(other));
     }
     this.pump();
   }
@@ -333,6 +335,7 @@ export class UploadManager {
       uploadId: null,
       onConflict: 'ask',
       suggestedName: null,
+      wouldPruneVersion: null,
       restartsOnResume: false,
       awaitingCancel: false,
       resumeOnDismiss: false,
@@ -581,13 +584,21 @@ export class UploadManager {
   }
 
   private onNameConflict(id: string, error: StorageRequestError): void {
-    const suggested = error.details['suggestedName'];
+    const { suggestedName, wouldPruneVersion } = error.details;
     this.patch(id, {
       phase: 'conflict',
-      suggestedName: typeof suggested === 'string' ? suggested : null,
+      suggestedName: typeof suggestedName === 'string' ? suggestedName : null,
+      wouldPruneVersion: typeof wouldPruneVersion === 'number' ? wouldPruneVersion : null,
     });
-    const decided = this.batchDecisions.get(this.require(id).batch);
-    if (decided) this.applyDecision(id, decided);
+    this.applyBatchDecision(this.require(id));
+  }
+
+  /** «Aplicar a los demás» no se salta un aviso de pérdida: si reemplazar podaría, vuelve a preguntar (014 CA-15). */
+  private applyBatchDecision(record: UploadRecord): void {
+    const decided = this.batchDecisions.get(record.batch);
+    if (!decided) return;
+    if (decided === 'replace' && record.wouldPruneVersion !== null) return;
+    this.applyDecision(record.id, decided);
   }
 
   private applyDecision(id: string, decision: ConflictDecision): void {
@@ -595,7 +606,7 @@ export class UploadManager {
       this.patch(id, { phase: 'cancelled' });
       return;
     }
-    this.patch(id, { phase: 'queued', onConflict: 'keep_both' });
+    this.patch(id, { phase: 'queued', onConflict: decision });
   }
 
   private reject(id: string, failure: Pick<UploadView, 'errorCode' | 'errorDetails'>): void {

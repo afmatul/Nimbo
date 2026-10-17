@@ -96,7 +96,7 @@ export interface FileRowOptions {
 }
 
 /**
- * Inserta `archivo` y su `version_archivo` en la misma transacción (la FK `version_actual_id` es diferida) y devuelve
+ * Inserta `archivo` y su `version_archivo` número 1 en la misma transacción (la FK `version_actual_id` es diferida) y devuelve
  * ambos ids. La clave de objeto sigue el formato `u/{propietario}/{archivo}/{version}`.
  */
 export const insertFileWithVersion = async (
@@ -127,8 +127,8 @@ export const insertFileWithVersion = async (
     ],
   );
   await runner.query(
-    `INSERT INTO version_archivo (id, archivo_id, origen, clave_objeto, tamano_bytes, creado_por, creada_en)
-     VALUES ($1, $2, 'carga', $3, $4, $5, $6)`,
+    `INSERT INTO version_archivo (id, archivo_id, origen, clave_objeto, tamano_bytes, creado_por, creada_en, numero)
+     VALUES ($1, $2, 'carga', $3, $4, $5, $6, 1)`,
     [versionId, fileId, `u/${ownerId}/${fileId}/${versionId}`, size, ownerId, now],
   );
   return { fileId, versionId };

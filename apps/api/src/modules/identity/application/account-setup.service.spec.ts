@@ -31,12 +31,14 @@ const setup = () => {
     hash: jest.fn((plain: string) => Promise.resolve(PasswordHash.fromPhc(`fake$${plain}`))),
     verify: jest.fn(() => Promise.resolve(false)),
   };
+  const logger = { info: jest.fn(), warn: jest.fn() };
   const service = new AccountSetupService(
     users,
     tokens,
     hasher,
     new RecordingTransactionRunner([]),
     clock,
+    logger,
   );
   const user = anInternalUser().build();
   users.seed(user);
@@ -59,7 +61,7 @@ const setup = () => {
     return value.toString();
   };
   const hashOf = async (id = user.id) => (await users.findById(id))?.passwordHash.reveal();
-  return { clock, users, tokens, hasher, service, user, issue, hashOf };
+  return { clock, users, tokens, hasher, logger, service, user, issue, hashOf };
 };
 
 describe('AccountSetupService (011 CA-5)', () => {
@@ -147,6 +149,38 @@ describe('AccountSetupService (011 CA-5)', () => {
     ).rejects.toBeInstanceOf(IdentityWeakPasswordError);
   });
 
+  it('CA-5, RN-7: una interna suspendida no revisa ni usa su enlace, que sigue sin consumirse', async () => {
+    const { service, issue, users, tokens, hashOf } = setup();
+    const suspended = anInternalUser().suspended().build();
+    users.seed(suspended);
+    const value = await issue(suspended.id);
+    const before = await hashOf(suspended.id);
+
+    await expect(service.checkLink(value)).rejects.toBeInstanceOf(SetupLinkInvalidError);
+    await expect(
+      service.setFirstPassword({ token: value, password: PASSWORD }),
+    ).rejects.toBeInstanceOf(SetupLinkInvalidError);
+    expect(await hashOf(suspended.id)).toBe(before);
+    expect(tokens.all()[0]?.usedAt).toBeNull();
+  });
+
+  it('CA-5, RN-7: suspendida entre la revisión y la transacción → inválido y nada cambia', async () => {
+    const { service, issue, users, user, tokens, hashOf } = setup();
+    const value = await issue();
+    const before = await hashOf();
+    const findForUpdate = users.findByIdForUpdate.bind(users);
+    jest.spyOn(users, 'findByIdForUpdate').mockImplementation((id) => {
+      users.seed(user.suspend());
+      return findForUpdate(id);
+    });
+
+    await expect(
+      service.setFirstPassword({ token: value, password: PASSWORD }),
+    ).rejects.toBeInstanceOf(SetupLinkInvalidError);
+    expect(await hashOf()).toBe(before);
+    expect(tokens.all()[0]?.usedAt).toBeNull();
+  });
+
   it('CA-5: un enlace que apunta a una cuenta de cliente es inválido', async () => {
     const { service, issue, users } = setup();
     const client = aClientUser().withId(randomUUID()).verified().build();
@@ -155,5 +189,48 @@ describe('AccountSetupService (011 CA-5)', () => {
     await expect(
       service.setFirstPassword({ token: await issue(client.id), password: PASSWORD }),
     ).rejects.toBeInstanceOf(SetupLinkInvalidError);
+  });
+
+  describe('bitácoras (SEC-3)', () => {
+    const loggedEvents = (logger: { info: jest.Mock }): unknown[] =>
+      logger.info.mock.calls.map(([payload]) => payload);
+
+    it('`identity.account_setup.completed` solo con el `userId`', async () => {
+      const { service, issue, logger, user } = setup();
+
+      await service.setFirstPassword({ token: await issue(), password: PASSWORD });
+
+      expect(loggedEvents(logger)).toEqual([
+        { event: 'identity.account_setup.completed', userId: user.id },
+      ]);
+    });
+
+    it('`identity.account_setup.rejected` con `invalid` (sin `userId` si no hay cuenta), `expired` y `weak`', async () => {
+      const { service, issue, logger, user, clock } = setup();
+      const value = await issue();
+
+      await service.checkLink('no-es-un-token').catch(() => undefined);
+      await service.setFirstPassword({ token: value, password: 'corta' }).catch(() => undefined);
+      clock.set(new Date(NOW.getTime() + 24 * HOUR_MS));
+      await service.checkLink(value).catch(() => undefined);
+
+      expect(loggedEvents(logger)).toEqual([
+        { event: 'identity.account_setup.rejected', reason: 'invalid' },
+        { event: 'identity.account_setup.rejected', reason: 'weak', userId: user.id },
+        { event: 'identity.account_setup.rejected', reason: 'expired', userId: user.id },
+      ]);
+    });
+
+    it('una cuenta suspendida → `rejected` con `invalid` y su `userId`', async () => {
+      const { service, issue, logger, users } = setup();
+      const suspended = anInternalUser().suspended().build();
+      users.seed(suspended);
+
+      await service.checkLink(await issue(suspended.id)).catch(() => undefined);
+
+      expect(loggedEvents(logger)).toEqual([
+        { event: 'identity.account_setup.rejected', reason: 'invalid', userId: suspended.id },
+      ]);
+    });
   });
 });

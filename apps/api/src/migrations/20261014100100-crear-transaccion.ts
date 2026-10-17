@@ -1,7 +1,7 @@
 import type { MigrationInterface, QueryRunner } from 'typeorm';
 
 /**
- * Transacciones del pago simulado (spec 009 CA-3, CA-4, plan §3; DF-68). Una fila por intento cobrado, `aprobada` o
+ * Transacciones del pago simulado (spec 009 CA-3, CA-4, plan §3; DF-69). Una fila por intento cobrado, `aprobada` o
  * `rechazada`; nunca se borra ni cambia (RN-7): `RESTRICT` hacia `usuario` y RLS solo con `SELECT` e `INSERT` del
  * cliente dueño. Del número de tarjeta solo se guardan la marca y los últimos 4 dígitos (RN-3). La referencia
  * `SIM-{año}-{secuencia}` la arma la aplicación con `transaccion_referencia_seq` (RN-5).

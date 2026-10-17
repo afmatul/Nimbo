@@ -197,7 +197,7 @@ describe('migraciones de 011 con dueño NOSUPERUSER (plan §3)', () => {
   it('las cinco migraciones de 011 corren en el orden de su fecha', async () => {
     const applied = await appliedNames(owner);
 
-    // Otras specs (009) intercalan migraciones con fecha entre las de 011: aquí solo importa el orden de las de 011.
+    // Otras specs (014, 009) intercalan migraciones con fecha entre las de 011: aquí solo importa el orden de las de 011.
     expect(applied.filter((name) => ELEVEN_MIGRATIONS.includes(name))).toEqual(ELEVEN_MIGRATIONS);
   });
 

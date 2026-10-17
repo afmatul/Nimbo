@@ -153,12 +153,21 @@ describe('FileRowMenu (CA-13, CA-21)', () => {
     await press('Enter');
 
     const labels = items().map((item) => item.textContent?.trim());
-    expect(labels.slice(0, 3)).toEqual(['Descargar', 'Renombrar', 'Mover a…']);
-    await act(async () => items()[1]?.click());
+    expect(labels.slice(0, 4)).toEqual(['Descargar', 'Ver historial', 'Renombrar', 'Mover a…']);
+    await act(async () => items()[2]?.click());
     expect(onRename).toHaveBeenCalledTimes(1);
     await press('Enter');
-    await act(async () => items()[2]?.click());
+    await act(async () => items()[3]?.click());
     expect(onMove).toHaveBeenCalledTimes(1);
+  });
+
+  it('014 CA-20: «Ver historial» sigue a «Descargar» y lleva a la ficha del archivo', async () => {
+    await renderMenu();
+    await press('Enter');
+
+    const history = items()[1];
+    expect(history?.textContent?.trim()).toBe('Ver historial');
+    expect(history?.getAttribute('href')).toBe(`/archivos/archivo/${FILE.id}`);
   });
 
   it('006 CA-10: «Mover a la papelera» es la última acción, sin color destructivo', async () => {
@@ -181,12 +190,13 @@ describe('FileRowMenu (CA-13, CA-21)', () => {
     const labels = items().map((item) => item.textContent?.trim());
     expect(labels).toEqual([
       'Descargar',
+      'Ver historial',
       'Renombrar',
       'Mover a…',
       'Fijar en la barra lateral',
       'Mover a la papelera',
     ]);
-    await act(async () => items()[3]?.click());
+    await act(async () => items()[4]?.click());
     expect(onToggle).toHaveBeenCalledTimes(1);
   });
 
@@ -194,8 +204,8 @@ describe('FileRowMenu (CA-13, CA-21)', () => {
     await renderMenu({ pin: { pinned: true, onToggle: jest.fn() } });
     await press('Enter');
 
-    expect(items()[3]?.textContent?.trim()).toBe('Quitar de la barra lateral');
-    expect(items()[3]?.getAttribute('aria-disabled')).toBeNull();
+    expect(items()[4]?.textContent?.trim()).toBe('Quitar de la barra lateral');
+    expect(items()[4]?.getAttribute('aria-disabled')).toBeNull();
   });
 
   it.each([

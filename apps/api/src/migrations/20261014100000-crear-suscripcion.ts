@@ -1,7 +1,7 @@
 import type { MigrationInterface, QueryRunner } from 'typeorm';
 
 /**
- * Suscripción de cada cliente (spec 009 CA-1, plan §3; DF-68). Una fila por cliente (`uq_suscripcion_usuario`, DF-25 y
+ * Suscripción de cada cliente (spec 009 CA-1, plan §3; DF-69). Una fila por cliente (`uq_suscripcion_usuario`, DF-25 y
  * DF-35): Personal sin vencimiento (`vence_en` nulo) o un plan de pago de 30 días. Las columnas `estado` y
  * `plan_pendiente_id` las agrega la 010.
  *

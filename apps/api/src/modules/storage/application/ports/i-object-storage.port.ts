@@ -64,6 +64,12 @@ export interface IObjectStorage {
   headObject(key: string): Promise<ObjectHead | null>;
   /** Bytes `[start, endInclusive]` del objeto (posiciones enteras seguras). */
   getRange(key: string, start: number, endInclusive: number): Promise<Buffer>;
+  /**
+   * Copia en el servidor el objeto de `sourceKey` a `targetKey` (014, restaurar): los bytes no pasan por la API.
+   * Idempotente: repetirla con las mismas claves deja el mismo contenido en `targetKey`. `false` si el origen ya no
+   * existe (una poda lo borró mientras tanto) y no crea el destino.
+   */
+  copyObject(sourceKey: string, targetKey: string): Promise<boolean>;
   /** Borra todas las versiones y marcas de borrado de la clave (el bucket está versionado). Idempotente. */
   purgeObject(key: string): Promise<void>;
   /** URL de descarga con `attachment`, `application/octet-stream` y `no-store`, válida solo para esa clave. */

@@ -948,3 +948,90 @@ describe('UploadManager: pausa, reanudación, corte y cancelación', () => {
     });
   });
 });
+
+/** `409` que trae `wouldPruneVersion` para los nombres de `atLimit` (archivo en su límite de versiones, 014 CA-15). */
+function conflictWithPrune(
+  atLimit: Readonly<Record<string, number>>,
+): (body: InitBody) => Promise<InitUploadResponse> {
+  return (body) => {
+    if (body.onConflict !== 'ask') return Promise.resolve(simpleResponse(body.name));
+    const prune = atLimit[body.name];
+    const details = {
+      suggestedName: `(1) ${body.name}`,
+      ...(prune === undefined ? {} : { wouldPruneVersion: prune }),
+    };
+    return Promise.reject(new StorageRequestError(409, 'STORAGE_NAME_CONFLICT', details));
+  };
+}
+
+describe('UploadManager: reemplazar desde el nombre repetido (014)', () => {
+  it('CA-1: «Reemplazar» reenvía el inicio con onConflict replace y sube', async () => {
+    const client = new FakeClient();
+    client.initResult = conflictWithPrune({});
+    const manager = managerWith(client);
+
+    manager.enqueue([local('nota.txt')]);
+    await manager.idle();
+    manager.resolveConflict(onlyRow(manager).id, 'replace');
+    await manager.idle();
+
+    expect(client.inits.map((call) => call.onConflict)).toEqual(['ask', 'replace']);
+    expect(onlyRow(manager)).toMatchObject({ phase: 'done', wouldPruneVersion: null });
+  });
+
+  it('CA-15: la fila en conflicto expone la versión que se podaría', async () => {
+    const client = new FakeClient();
+    client.initResult = conflictWithPrune({ 'nota.txt': 3 });
+    const manager = managerWith(client);
+
+    manager.enqueue([local('nota.txt')]);
+    await manager.idle();
+
+    expect(onlyRow(manager)).toMatchObject({ phase: 'conflict', wouldPruneVersion: 3 });
+  });
+
+  it('CA-15: con «Aplicar a los demás» y «Reemplazar», cada archivo en su límite vuelve a preguntar', async () => {
+    const client = new FakeClient();
+    client.initResult = conflictWithPrune({ 'b.txt': 4, 'c.txt': 7 });
+    const manager = managerWith(client);
+
+    manager.enqueue([local('a.txt'), local('b.txt'), local('c.txt'), local('d.txt')]);
+    await manager.idle();
+    manager.resolveConflict(manager.snapshot()[0]?.id ?? '', 'replace', true);
+    await manager.idle();
+
+    expect(manager.snapshot().map((row) => [row.phase, row.wouldPruneVersion])).toEqual([
+      ['done', null],
+      ['conflict', 4],
+      ['conflict', 7],
+      ['done', null],
+    ]);
+    expect(
+      client.inits.filter((call) => call.onConflict === 'replace').map((call) => call.name),
+    ).toEqual(['a.txt', 'd.txt']);
+  });
+
+  it('CA-15: un repetido en su límite que responde tarde también vuelve a preguntar', async () => {
+    const client = new FakeClient();
+    const ask = conflictWithPrune({ 'c.txt': 2 });
+    let answerLate = (): void => undefined;
+    client.initResult = (body) => {
+      if (body.name !== 'c.txt' || body.onConflict !== 'ask') return ask(body);
+      return new Promise((_resolve, reject) => {
+        answerLate = () => void ask(body).catch(reject);
+      });
+    };
+    const manager = managerWith(client);
+
+    manager.enqueue([local('a.txt'), local('c.txt')]);
+    await flush();
+    manager.resolveConflict(manager.snapshot()[0]?.id ?? '', 'replace', true);
+    answerLate();
+    await manager.idle();
+
+    expect(manager.snapshot().map((row) => [row.phase, row.wouldPruneVersion])).toEqual([
+      ['done', null],
+      ['conflict', 2],
+    ]);
+  });
+});

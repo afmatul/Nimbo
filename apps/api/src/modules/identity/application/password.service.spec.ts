@@ -30,6 +30,7 @@ import { OpaqueToken } from '../domain/opaque-token.vo';
 import { PasswordHash } from '../domain/password-hash.vo';
 import { Session } from '../domain/session.entity';
 import type { User } from '../domain/user.entity';
+import { VerificationToken } from '../domain/verification-token.entity';
 
 import { PasswordService } from './password.service';
 import type {
@@ -75,6 +76,17 @@ const anInternalUser = (): InternalUser =>
     status: AccountStatus.ACTIVE,
     emailVerified: true,
     employeeCode: EmployeeCode.of('SOP-001'),
+  });
+
+/** Invitación de alta (011) todavía vigente para `userId`: la cuenta interna nunca fijó su primera contraseña. */
+const aPendingInvitation = (userId: string): VerificationToken =>
+  VerificationToken.issue({
+    id: randomUUID(),
+    userId,
+    type: 'alta_interna',
+    tokenHash: OpaqueToken.generate().hash(),
+    createdAt: NOW,
+    expiresAt: new Date(NOW.getTime() + 60 * 60 * 1000),
   });
 
 const setup = () => {
@@ -546,6 +558,36 @@ describe('PasswordService.resetPassword (plan 002 §6.3, CA-19 a CA-21)', () => 
     const updated = await ctx.users.findById(internal.id);
     expect(updated).toBeInstanceOf(InternalUser);
     expect(updated?.passwordHash.reveal()).toBe(`fake$${NEW_PASSWORD}`);
+  });
+
+  it('011 RN-7: restablecer invalida la invitación de alta pendiente de la cuenta interna', async () => {
+    const ctx = setup();
+    const internal = anInternalUser();
+    ctx.users.seed(internal);
+    const invitation = aPendingInvitation(internal.id);
+    await ctx.tokens.insert(invitation);
+    const value = await requestLinkFor(ctx, internal);
+
+    await ctx.service.resetPassword({ token: value, password: NEW_PASSWORD });
+
+    const stored = ctx.tokens.all().find((token) => token.id === invitation.id);
+    expect(stored?.invalidatedAt).toEqual(NOW);
+  });
+
+  it('011 RN-7: si otro envío consumió el enlace antes, la invitación de alta sigue intacta', async () => {
+    const ctx = setup();
+    const internal = anInternalUser();
+    ctx.users.seed(internal);
+    const invitation = aPendingInvitation(internal.id);
+    await ctx.tokens.insert(invitation);
+    const value = await requestLinkFor(ctx, internal);
+    jest.spyOn(ctx.tokens, 'consume').mockResolvedValueOnce(false);
+
+    await expect(
+      ctx.service.resetPassword({ token: value, password: NEW_PASSWORD }),
+    ).rejects.toBeInstanceOf(ResetLinkInvalidError);
+    const stored = ctx.tokens.all().find((token) => token.id === invitation.id);
+    expect(stored?.invalidatedAt).toBeNull();
   });
 });
 

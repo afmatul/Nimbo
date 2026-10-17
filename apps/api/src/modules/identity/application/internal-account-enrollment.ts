@@ -1,12 +1,12 @@
 import { randomUUID } from 'node:crypto';
 
 import { Inject, Injectable } from '@nestjs/common';
-import { ACCOUNT_SETUP_LINK_TTL_HOURS, IDENTITY_FIELD_MESSAGES } from '@nimbo/contracts';
+import { IDENTITY_FIELD_MESSAGES } from '@nimbo/contracts';
 import type { FieldIssueReason } from '@nimbo/contracts';
 import { PinoLogger } from 'nestjs-pino';
 
-import { I_CLOCK, Role } from '../../../shared';
-import type { Actor, FieldIssue, IClock } from '../../../shared';
+import { Role } from '../../../shared';
+import type { Actor, FieldIssue } from '../../../shared';
 import { I_MAILER } from '../../notifications';
 import type { IMailer, MailMessage } from '../../notifications';
 import { EmailAddress } from '../domain/email-address.vo';
@@ -20,21 +20,12 @@ import { InternalUser } from '../domain/internal-user.entity';
 import { OpaqueToken } from '../domain/opaque-token.vo';
 import type { PasswordHash } from '../domain/password-hash.vo';
 
-import { issueAccountToken } from './account-token-issuer';
-import { IDENTITY_CONFIG } from './identity-config';
-import type { IdentityConfig } from './identity-config';
+import { AccountSetupLinkIssuer } from './account-setup-link-issuer';
 import type { IdentityLogger } from './identity-logger';
-import { internalInvitationMail } from './mail/internal-invitation-mail.template';
+import { I_ADMIN_ROSTER_REPOSITORY } from './ports/i-admin-roster.repository.port';
+import type { IAdminRosterRepository } from './ports/i-admin-roster.repository.port';
 import { I_PASSWORD_HASHER } from './ports/i-password-hasher.port';
 import type { IPasswordHasher } from './ports/i-password-hasher.port';
-import { I_USER_REPOSITORY } from './ports/i-user-repository.port';
-import type { IUserRepository } from './ports/i-user-repository.port';
-import { I_VERIFICATION_TOKEN_REPOSITORY } from './ports/i-verification-token-repository.port';
-import type { IVerificationTokenRepository } from './ports/i-verification-token-repository.port';
-import { tokenLink, WEB_PATHS } from './web-links';
-
-const MS_PER_HOUR = 3_600_000;
-const INVITATION_TAG = 'identity.internal-invitation';
 
 /** Alta interna ya validada por `enrollInternalAccountRequestSchema`; correo y código aún sin normalizar. */
 export interface EnrollInternalCommand {
@@ -67,16 +58,19 @@ export interface Enrollment {
 @Injectable()
 export class InternalAccountEnrollment {
   constructor(
-    @Inject(I_USER_REPOSITORY) private readonly users: IUserRepository,
-    @Inject(I_VERIFICATION_TOKEN_REPOSITORY) private readonly tokens: IVerificationTokenRepository,
+    @Inject(I_ADMIN_ROSTER_REPOSITORY) private readonly users: IAdminRosterRepository,
     @Inject(I_PASSWORD_HASHER) private readonly hasher: IPasswordHasher,
+    @Inject(AccountSetupLinkIssuer) private readonly setupLinks: AccountSetupLinkIssuer,
     @Inject(I_MAILER) private readonly mailer: IMailer,
-    @Inject(I_CLOCK) private readonly clock: IClock,
-    @Inject(IDENTITY_CONFIG) private readonly config: IdentityConfig,
     @Inject(PinoLogger) private readonly logger: IdentityLogger,
   ) {}
 
-  /** CA-5, CA-6: Administrador, Soporte u Operador; nunca `CLIENT` (RN-5). */
+  /**
+   * CA-5, CA-6: Administrador, Soporte u Operador; nunca `CLIENT` (RN-5). El hash (Argon2) se calcula dentro de la
+   * transacción del llamador: las altas son raras y tardan décimas de segundo, y sacarlo agrandaría la API (YAGNI).
+   * `_actor` no se usa aquí: lo exige la regla «todo servicio que toca datos de un usuario recibe `actor`»;
+   * autoriza `backoffice`.
+   */
   async enroll(_actor: Actor, command: EnrollInternalCommand): Promise<Enrollment> {
     if (command.role === Role.CLIENT) {
       throw new IdentityInvalidInputError([issue('role', 'INVALID_ROLE')]);
@@ -117,7 +111,7 @@ export class InternalAccountEnrollment {
     if (!(await this.users.insertInternalIfAbsent(user))) {
       throw await this.conflictOf(user);
     }
-    const invitation = await this.invitationFor(user);
+    const invitation = await this.setupLinks.issue(user);
     return {
       account: { id: user.id, role: user.role },
       deliverInvitation: () => this.deliver(invitation),
@@ -142,24 +136,6 @@ export class InternalAccountEnrollment {
       );
     }
     return new EnrollmentConflictError(fields);
-  }
-
-  /** Guarda solo el hash del token; el valor en claro va únicamente en el fragmento del enlace del correo. */
-  private async invitationFor(user: InternalUser): Promise<MailMessage> {
-    const issued = await issueAccountToken(this.tokens, {
-      userId: user.id,
-      type: 'alta_interna',
-      issuedAt: this.clock.now(),
-      ttlMs: ACCOUNT_SETUP_LINK_TTL_HOURS * MS_PER_HOUR,
-    });
-    const setupUrl = tokenLink(this.config, WEB_PATHS.accountSetup, issued.value);
-    return {
-      to: user.email.value,
-      ...internalInvitationMail({ setupUrl }),
-      idempotencyKey: `${INVITATION_TAG}.${issued.id}`,
-      tag: INVITATION_TAG,
-      recipientId: user.id,
-    };
   }
 
   /** Plan R-4: un fallo al encolar no deshace el alta; queda en la bitácora sin correo ni enlace. */

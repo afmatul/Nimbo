@@ -1,7 +1,5 @@
 import { randomUUID } from 'node:crypto';
 
-import { ACCOUNT_SETUP_LINK_TTL_HOURS } from '@nimbo/contracts';
-
 import { createActor, FixedClock, Role } from '../../../shared';
 import type { MailMessage } from '../../notifications';
 import { AccountStatus } from '../domain/account-status.enum';
@@ -14,6 +12,7 @@ import { InternalUser } from '../domain/internal-user.entity';
 import { OpaqueToken } from '../domain/opaque-token.vo';
 import { PasswordHash } from '../domain/password-hash.vo';
 
+import { AccountSetupLinkIssuer } from './account-setup-link-issuer';
 import type { EnrollInternalCommand } from './internal-account-enrollment';
 import { InternalAccountEnrollment } from './internal-account-enrollment';
 import type { IPasswordHasher } from './ports/i-password-hasher.port';
@@ -23,8 +22,6 @@ import { InMemoryVerificationTokenRepository } from './testing/in-memory-verific
 import { anInternalUser } from './testing/internal-user.builder';
 
 const NOW = new Date('2026-10-09T15:00:00.000Z');
-const MS_PER_HOUR = 3_600_000;
-const SETUP_LINK = /^http:\/\/localhost\/crear-contrasena#token=([A-Za-z0-9_-]{43})$/;
 const ADMIN = createActor(randomUUID(), Role.ADMIN);
 
 const aCommand = (patch: Partial<EnrollInternalCommand> = {}): EnrollInternalCommand => ({
@@ -54,22 +51,12 @@ const setup = () => {
     }),
   };
   const logger = { info: jest.fn(), warn: jest.fn() };
-  const enrollment = new InternalAccountEnrollment(
-    users,
-    tokens,
-    hasher,
-    mailer,
-    new FixedClock(NOW),
-    { webPublicUrl: 'http://localhost/', cookieSecure: false },
-    logger,
-  );
+  const setupLinks = new AccountSetupLinkIssuer(tokens, new FixedClock(NOW), {
+    webPublicUrl: 'http://localhost/',
+    cookieSecure: false,
+  });
+  const enrollment = new InternalAccountEnrollment(users, hasher, setupLinks, mailer, logger);
   return { users, tokens, hasher, hashed, mailer, sent, logger, enrollment };
-};
-
-const tokenOf = (mail: MailMessage | undefined): string => {
-  const token = SETUP_LINK.exec(mail?.text.split('\n')[2] ?? '')?.[1];
-  if (token === undefined) throw new Error('El correo no trae el enlace de alta.');
-  return token;
 };
 
 describe('InternalAccountEnrollment (011 CA-5 a CA-7)', () => {
@@ -93,18 +80,14 @@ describe('InternalAccountEnrollment (011 CA-5 a CA-7)', () => {
       expect(OpaqueToken.isWellFormed(hashed[0] ?? '')).toBe(true);
     });
 
-    it('CA-5: emite un enlace `alta_interna` de 24 h guardado solo como hash', async () => {
-      const { enrollment, tokens, sent } = setup();
+    it('CA-5: emite un enlace `alta_interna` para la cuenta creada', async () => {
+      const { enrollment, tokens, users } = setup();
 
-      const { deliverInvitation } = await enrollment.enroll(ADMIN, aCommand());
-      await deliverInvitation();
+      await enrollment.enroll(ADMIN, aCommand());
 
-      const [token] = tokens.all();
-      const value = tokenOf(sent[0]);
-      expect(token).toMatchObject({ type: 'alta_interna', tokenHash: OpaqueToken.hashOf(value) });
-      expect(token?.expiresAt.getTime()).toBe(
-        NOW.getTime() + ACCOUNT_SETUP_LINK_TTL_HOURS * MS_PER_HOUR,
-      );
+      expect(tokens.all()).toEqual([
+        expect.objectContaining({ type: 'alta_interna', userId: users.all()[0]?.id }),
+      ]);
     });
 
     it('CA-5: el correo sale solo cuando el llamador lo pide (después del commit)', async () => {
@@ -221,7 +204,7 @@ describe('InternalAccountEnrollment (011 CA-5 a CA-7)', () => {
     const initial = { fullName: 'Primera Admin', email: 'admin@nimbo.me', employeeCode: 'ADM-001' };
 
     it('CA-7: sin Administrador activo, toma el candado y crea el primero con su enlace', async () => {
-      const { enrollment, users } = setup();
+      const { enrollment, users, tokens } = setup();
       const lock = jest.spyOn(users, 'lockAdminRoster');
       users.seed(anInternalUser().suspended().build());
 
@@ -230,6 +213,9 @@ describe('InternalAccountEnrollment (011 CA-5 a CA-7)', () => {
       expect(lock).toHaveBeenCalledTimes(1);
       expect(account.role).toBe(Role.ADMIN);
       expect(await users.countActiveAdmins()).toBe(1);
+      expect(tokens.all()).toEqual([
+        expect.objectContaining({ type: 'alta_interna', userId: account.id }),
+      ]);
     });
 
     it('CA-7: el hash Argon2 del secreto descartado se calcula antes de tomar el candado', async () => {

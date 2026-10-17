@@ -13,9 +13,12 @@ import { Role, ZodValidationPipe } from '../../../shared';
 import { FileService } from '../application/file.service';
 import { SpaceSummaryService } from '../application/space-summary.service';
 import { UploadService } from '../application/upload.service';
-import { InvalidQueryError } from '../domain/errors';
+import { VersionHistoryService } from '../application/version-history.service';
+import { VersionRestoreService } from '../application/version-restore.service';
+import { InvalidQueryError, NodeNotFoundError, VersionNotFoundError } from '../domain/errors';
 import { NODE_SORTS, SORT_DIRECTIONS } from '../domain/node-order';
 
+import { FileVersionsController } from './file-versions.controller';
 import { FilesController } from './files.controller';
 import { FoldersController } from './folders.controller';
 import { SpaceController } from './space.controller';
@@ -37,10 +40,12 @@ describe('rutas de `storage` (CA-17)', () => {
 
   beforeAll(async () => {
     moduleRef = await Test.createTestingModule({
-      controllers: [UploadsController, FilesController],
+      controllers: [UploadsController, FilesController, FileVersionsController],
       providers: [
         { provide: UploadService, useValue: {} },
         { provide: FileService, useValue: {} },
+        { provide: VersionHistoryService, useValue: {} },
+        { provide: VersionRestoreService, useValue: {} },
       ],
     }).compile();
   });
@@ -49,7 +54,7 @@ describe('rutas de `storage` (CA-17)', () => {
     await moduleRef.close();
   });
 
-  it('CA-17, 006 CA-23: expone exactamente las rutas de cargas y archivos (005 §5 y 006 §4), todas solo para CLIENT', () => {
+  it('CA-17, 006 CA-23, 014 CA-18: expone exactamente las rutas de cargas, archivos y versiones (005 §5, 006 §4, 014 §4), todas solo para CLIENT', () => {
     const routes = listRouteDeclarations(moduleRef, PREFIX);
 
     expect(routes.map(describeRoute).sort()).toEqual(
@@ -61,6 +66,9 @@ describe('rutas de `storage` (CA-17)', () => {
         'POST /api/v1/files/:fileId/download-url',
         'PATCH /api/v1/files/:fileId',
         'POST /api/v1/files/:fileId/move',
+        'GET /api/v1/files/:fileId/versions',
+        'POST /api/v1/files/:fileId/versions/:versionId/restore',
+        'POST /api/v1/files/:fileId/versions/:versionId/download-url',
       ].sort(),
     );
     expect(routes.every((route) => !route.public)).toBe(true);
@@ -75,6 +83,28 @@ describe('rutas de `storage` (CA-17)', () => {
   ] as const)('CA-16: %p.%s valida el id como UUID antes del servicio', (controller, method) => {
     expect(pipesOf(controller, method)).toEqual([expect.any(ParseUUIDPipe)]);
   });
+
+  it.each([
+    [FileVersionsController, 'list', [NodeNotFoundError]],
+    [FileVersionsController, 'downloadUrl', [NodeNotFoundError, VersionNotFoundError]],
+    [FileVersionsController, 'restore', [NodeNotFoundError, VersionNotFoundError]],
+  ] as const)(
+    '014 CA-11, CA-16: %p.%s valida cada id como UUID con el mismo 404 que uno inexistente',
+    async (controller, method, errors) => {
+      const pipes = pipesOf(controller, method) as ParseUUIDPipe[];
+
+      const thrown = await Promise.all(
+        pipes.map((pipe) =>
+          pipe.transform('no-es-uuid', { type: 'param' }).catch((error: unknown) => error),
+        ),
+      );
+
+      expect(pipes).toEqual(errors.map(() => expect.any(ParseUUIDPipe)));
+      expect(thrown.map((error) => (error as Error).constructor).sort()).toEqual(
+        [...errors].sort(),
+      );
+    },
+  );
 
   it.each([[UploadsController, 'init']] as const)(
     'CA-7: %p.%s valida la entrada con `ZodValidationPipe`',

@@ -1,6 +1,8 @@
 import type { Plan } from '@nimbo/contracts';
 import { renderToStaticMarkup } from 'react-dom/server';
 
+import { expectNoA11yViolations } from '../../../components/test-a11y';
+
 import PlanesPage from './page';
 
 const PRO: Plan = {
@@ -33,7 +35,7 @@ async function renderPage(): Promise<string> {
 describe('página de planes (008 CA-1, CA-2)', () => {
   beforeEach(() => {
     process.env['APP_ENV'] = 'test';
-    process.env['API_INTERNAL_URL'] = 'http://api.internal:3000';
+    process.env['API_INTERNAL_URL'] = 'http://internal.test';
     process.env['API_PUBLIC_URL'] = 'http://localhost/api/v1';
   });
 
@@ -43,7 +45,7 @@ describe('página de planes (008 CA-1, CA-2)', () => {
     await renderPage();
 
     expect(String(jest.mocked(global.fetch).mock.calls[0]?.[0])).toBe(
-      'http://api.internal:3000/api/v1/billing/plans',
+      'http://internal.test/api/v1/billing/plans',
     );
   });
 
@@ -64,6 +66,15 @@ describe('página de planes (008 CA-1, CA-2)', () => {
 
     expect(markup).toContain('Ahora no hay planes para mostrar.');
     expect(markup).not.toContain('<table');
+  });
+
+  it.each([
+    ['con planes', [PRO]],
+    ['vacía', []],
+  ])('no tiene violaciones de accesibilidad (%s)', async (_state, plans: readonly Plan[]) => {
+    respondWith(plans);
+
+    await expectNoA11yViolations(await PlanesPage());
   });
 
   it('CA-3: si la API falla, la página lanza para que la muestre su error.tsx', async () => {

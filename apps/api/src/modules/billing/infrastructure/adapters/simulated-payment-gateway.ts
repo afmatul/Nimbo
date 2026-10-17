@@ -11,7 +11,7 @@ import type { PaymentCard } from '../../domain/payment-card';
 const TEST_CARD_BRAND = 'visa';
 
 /**
- * Pasarela simulada y determinista (spec 009 RN-3; DF-68: sin `failureRate` ni `latencyMs` del diagrama). Aprueba solo
+ * Pasarela simulada y determinista (spec 009 RN-3; DF-69: sin `failureRate` ni `latencyMs` del diagrama). Aprueba solo
  * la tarjeta de prueba `4242…`; cualquier otra, incluida `4000…0002`, se rechaza. La validación del cobro ya descarta
  * números que no sean de prueba (RN-9), así que aquí no llegan.
  */

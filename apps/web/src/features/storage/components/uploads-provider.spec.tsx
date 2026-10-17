@@ -104,7 +104,9 @@ describe('UploadsProvider', () => {
     );
 
     await userEvent.click(screen.getByRole('button', { name: 'Encolar' }));
-    const dialog = await screen.findByRole('alertdialog', { name: '¿Conservar ambos archivos?' });
+    const dialog = await screen.findByRole('alertdialog', {
+      name: 'Ya tienes un archivo con este nombre',
+    });
     expect(dialog.textContent).toContain('informe (1).docx');
 
     await userEvent.click(screen.getByRole('button', { name: 'Conservar ambos' }));
@@ -114,6 +116,46 @@ describe('UploadsProvider', () => {
         name: 'informe.docx',
         sizeBytes: 4,
         onConflict: 'keep_both',
+        folderId: null,
+      }),
+    );
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+
+  it('014 CA-1, CA-15: el diálogo avisa la poda y «Reemplazar (nueva versión)» reenvía replace', async () => {
+    const api = fakeApi({
+      init: jest.fn((body) =>
+        body.onConflict === 'ask'
+          ? Promise.reject(
+              new StorageRequestError(409, 'STORAGE_NAME_CONFLICT', {
+                suggestedName: 'informe (1).docx',
+                wouldPruneVersion: 3,
+              }),
+            )
+          : new Promise<InitUploadResponse>(() => undefined),
+      ),
+    });
+    render(
+      <UploadsProvider api={api}>
+        <Enqueue files={[localFile('informe.docx')]} />
+      </UploadsProvider>,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Encolar' }));
+    const dialog = await screen.findByRole('alertdialog', {
+      name: 'Ya tienes un archivo con este nombre',
+    });
+    expect(dialog.textContent).toContain(
+      'Al reemplazar se eliminará la versión 3, la más antigua.',
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Reemplazar (nueva versión)' }));
+
+    await waitFor(() =>
+      expect(api.init).toHaveBeenLastCalledWith({
+        name: 'informe.docx',
+        sizeBytes: 4,
+        onConflict: 'replace',
         folderId: null,
       }),
     );
@@ -217,6 +259,31 @@ describe('UploadsProvider', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Encolar' }));
 
     expect(await screen.findByText(FILE_ID, { selector: 'output' })).toBeTruthy();
+  });
+
+  it('014 CA-1: reemplazar un archivo ya subido expone un solo archivo con ese id', async () => {
+    const put = jest.fn(() => Promise.resolve());
+    const api = fakeApi({ init: jest.fn(() => Promise.resolve(simple('informe.docx'))) });
+    function Uploaded(): React.JSX.Element {
+      const { uploadedFiles } = useUploads();
+      return (
+        <output data-testid="uploaded">{uploadedFiles.map((file) => file.id).join(',')}</output>
+      );
+    }
+    render(
+      <UploadsProvider api={api} managerOptions={{ put }}>
+        <Enqueue files={[localFile('informe.docx')]} />
+        <Uploaded />
+      </UploadsProvider>,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Encolar' }));
+    await screen.findByText(FILE_ID, { selector: 'output' });
+    await userEvent.click(screen.getByRole('button', { name: 'Encolar' }));
+    await waitFor(() => expect(api.init).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(put).toHaveBeenCalledTimes(2));
+
+    await waitFor(() => expect(screen.getByTestId('uploaded').textContent).toBe(FILE_ID));
   });
 
   it('006 CA-7: un archivo subido que se renombra o mueve se expone con su último estado', async () => {

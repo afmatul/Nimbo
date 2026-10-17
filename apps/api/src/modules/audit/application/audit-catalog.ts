@@ -26,14 +26,21 @@ const ON_ACCOUNT = { resourceType: 'account', attributes: {} } as const;
 const ON_PLAN = { resourceType: 'plan', attributes: {} } as const;
 
 /**
- * Catálogo cerrado (RN-3): por acción, su tipo de recurso y la lista blanca de atributos con su tipo. Las siete
- * acciones de 005 y 006 (D-1) con los atributos que emiten hoy y las siete internas de 011 (plan §2), que no guardan
- * nombres ni correos. Una acción del enum sin entrada no compila.
+ * Catálogo cerrado (RN-3): por acción, su tipo de recurso y la lista blanca de atributos con su tipo. Son las siete
+ * acciones de 005 y 006 (D-1) con los atributos que emiten hoy, las dos de versiones de 014 (plan §5; un reemplazo
+ * reutiliza `file.upload_completed` con `replaced`, `versionId` y `versionNumber`) y las siete internas de 011 (plan
+ * §2), que no guardan nombres ni correos. Cada spec agrega las suyas. Una acción del enum sin entrada no compila.
  */
 export const AUDIT_CATALOG = {
   [AuditAction.FILE_UPLOAD_COMPLETED]: {
     resourceType: 'file',
-    attributes: { sizeBytes: 'number', mode: 'text' },
+    attributes: {
+      sizeBytes: 'number',
+      mode: 'text',
+      replaced: 'boolean',
+      versionId: 'uuid',
+      versionNumber: 'number',
+    },
   },
   [AuditAction.FILE_UPLOAD_REJECTED]: {
     resourceType: 'upload',
@@ -58,6 +65,19 @@ export const AUDIT_CATALOG = {
   [AuditAction.TRASH_EMPTIED]: {
     resourceType: null,
     attributes: { itemCount: 'number', sizeBytes: 'number' },
+  },
+  [AuditAction.FILE_VERSION_RESTORED]: {
+    resourceType: 'file',
+    attributes: {
+      versionId: 'uuid',
+      versionNumber: 'number',
+      restoredFromNumber: 'number',
+      sizeBytes: 'number',
+    },
+  },
+  [AuditAction.FILE_VERSION_PRUNED]: {
+    resourceType: 'file',
+    attributes: { versionId: 'uuid', versionNumber: 'number', sizeBytes: 'number' },
   },
   [AuditAction.ACCOUNT_SUSPENDED]: ON_ACCOUNT,
   [AuditAction.ACCOUNT_REACTIVATED]: ON_ACCOUNT,

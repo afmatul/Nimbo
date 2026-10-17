@@ -1,7 +1,7 @@
 import type { MigrationInterface, QueryRunner } from 'typeorm';
 
 /**
- * Facturas de los pagos aprobados (spec 009 CA-6, plan §3; DF-68). Una por transacción (`UNIQUE`), con el desglose de
+ * Facturas de los pagos aprobados (spec 009 CA-6, plan §3; DF-69). Una por transacción (`UNIQUE`), con el desglose de
  * RN-2 (`ck_factura_total`), el NIT (solo aquí) y el correo del comprobante. `clave_objeto` y `aviso_encolado_en` son
  * nulos hasta que el PDF exista y el aviso se entregue (T-07, T-08). Nunca se borra (RN-7): `RESTRICT` y RLS solo con
  * lectura y alta del dueño.

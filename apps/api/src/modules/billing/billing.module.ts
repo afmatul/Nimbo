@@ -23,19 +23,18 @@ import { TypeOrmPaymentRepository } from './infrastructure/persistence/typeorm-p
 import { TypeOrmPlanRepository } from './infrastructure/persistence/typeorm-plan.repository';
 import { TypeOrmSubscriptionRepository } from './infrastructure/persistence/typeorm-subscription.repository';
 import { AccountVerifiedListener } from './presentation/account-verified.listener';
-import { PlansController } from './presentation/plans.controller';
 
 /**
- * Núcleo de M4 (specs 006a, 008, 009 y 011), común al `api` y al `worker`: catálogo (`PlansController`,
- * `PlanCatalogService`), límites, alta Personal (oyente y conciliación), cobro simulado y registro de la factura. No
- * conoce `storage`: lo que sube o firma objetos vive en `BillingHttpModule` (`api`) y `BillingWorkerModule` (`worker`),
- * que reciben la instancia de `storage` de su raíz. Exporta a `backoffice` el adaptador de límites y `PlanCatalogService`,
- * `SubscriptionAdministration` (009 T-03), y a esos dos módulos los servicios y repositorios internos que usan. `I_PLAN_LIMITS_PROVIDER` lo enlaza
- * `PlanLimitsBindingModule`: `storage` no conoce a `billing`.
+ * Núcleo de M4 (specs 006a, 008, 009 y 011), común al `api` y al `worker`: catálogo (`PlanCatalogService`), límites,
+ * alta Personal (oyente y conciliación), cobro simulado y registro de la factura. Sin controladores: el `worker` lo
+ * carga y no publica rutas; `GET /billing/plans` y el cobro viven en `BillingHttpModule` (solo `api`, 008 y 009). No
+ * conoce `storage`: lo que sube o firma objetos vive en `BillingHttpModule` y `BillingWorkerModule`, que reciben la
+ * instancia de `storage` de su raíz. Exporta a `backoffice` el adaptador de límites, `PlanCatalogService` y
+ * `SubscriptionAdministration` (009 T-03), y a esos dos módulos los servicios y repositorios internos que usan.
+ * `I_PLAN_LIMITS_PROVIDER` lo enlaza `PlanLimitsBindingModule`: `storage` no conoce a `billing`.
  */
 @Module({
   imports: [TypeOrmModule.forFeature([PlanOrmEntity]), IdentityReadersModule],
-  controllers: [PlansController],
   providers: [
     PlanCatalogService,
     PlanLimitsAdapter,

@@ -27,6 +27,7 @@ function input(overrides: Partial<StartUploadInput> = {}): StartUploadInput {
     folderId: null,
     name: FileName.of('informe.docx'),
     keepBoth: false,
+    replacesFile: false,
     declaredBytes: 1024n,
     multipart: null,
     now: clock.now(),
@@ -46,6 +47,24 @@ describe('UploadSession', () => {
     expect(session.objectKey.equals(ObjectKey.of(OWNER, FILE, VERSION))).toBe(true);
     expect(session.rejectionReason).toBeNull();
     expect(session.finishedAt).toBeNull();
+  });
+
+  it('CA-1 (014): una carga nueva no reemplaza ningún archivo', () => {
+    expect(start().replacesFile).toBe(false);
+    expect(start().snapshot().replacesFile).toBe(false);
+  });
+
+  it('CA-1 (014): un reemplazo guarda `replacesFile` y apunta al archivo existente', () => {
+    const session = start({ replacesFile: true });
+
+    expect(session.replacesFile).toBe(true);
+    expect(session.fileId).toBe(FILE);
+    expect(session.snapshot().replacesFile).toBe(true);
+    expect(UploadSession.rehydrate(session.snapshot()).replacesFile).toBe(true);
+  });
+
+  it('CA-1 (014): `replacesFile` se conserva al terminar la carga', () => {
+    expect(start({ replacesFile: true }).complete(clock.now()).replacesFile).toBe(true);
   });
 
   it('CA-6 (006): guarda la carpeta destino; `null` es la raíz', () => {

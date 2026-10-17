@@ -298,7 +298,10 @@ export class PasswordService {
     throw new WrongPasswordError();
   }
 
-  /** `null` si otro envío consumió el enlace antes (consumo atómico, CA-20); si no, las sesiones revocadas. */
+  /**
+   * `null` si otro envío consumió el enlace antes (consumo atómico, CA-20); si no, las sesiones revocadas. También
+   * invalida la invitación de alta pendiente de una cuenta interna (011 RN-7): ya tiene contraseña.
+   */
   private async resetInTransaction(
     token: VerificationToken,
     passwordHash: PasswordHash,
@@ -309,6 +312,7 @@ export class PasswordService {
       return null;
     }
     await this.users.updatePasswordHash(user.id, passwordHash);
+    await this.tokens.invalidateActive(user.id, 'alta_interna', now);
     return this.sessions.revokeAllExcept(user.id, null, now);
   }
 

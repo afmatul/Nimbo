@@ -1,12 +1,14 @@
 import { AuditAction, isAuditAction } from './audit-action';
 
 describe('AuditAction', () => {
-  it('CA-20 (005), CA-24 (006), 011 §2: el catálogo `AuditAction` es carga, descarga, papelera y acciones internas', () => {
+  it('CA-20 (005), CA-24 (006), CA-19 (014), 011 §2: carga, descarga, papelera, versiones y acciones internas', () => {
     expect(Object.values(AuditAction).sort()).toEqual(
       [
         'file.download_url_issued',
         'file.upload_completed',
         'file.upload_rejected',
+        'file.version_restored',
+        'file.version_pruned',
         'node.trashed',
         'node.restored',
         'node.purged',

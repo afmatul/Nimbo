@@ -4,6 +4,7 @@ import type { Repository } from 'typeorm';
 
 import { TransactionContext } from '../../../../shared';
 import type { IPlanRepository } from '../../application/ports/i-plan-repository.port';
+import { PlanCatalogUnavailableError } from '../../domain/errors/plan-catalog-unavailable.error';
 import type { Plan } from '../../domain/plan.entity';
 
 import { toPlan, toPlanRow } from './plan.mapper';
@@ -17,12 +18,16 @@ import { PlanOrmEntity } from './plan.orm-entity';
 export class TypeOrmPlanRepository implements IPlanRepository {
   constructor(@Inject(TransactionContext) private readonly context: TransactionContext) {}
 
-  /** 008 RN-2: precio ascendente y, en empate, `slug`; solo los activos (PD-76). */
+  /**
+   * 008 RN-2: precio ascendente y, en empate, `slug`; solo los activos (PD-76). Solo la consulta se traduce a CA-3; un
+   * fallo del mapeo es un defecto y sigue como está (plan 008 §5).
+   */
   async findActive(): Promise<Plan[]> {
-    const rows = await this.plans().find({
-      where: { desactivadoEn: IsNull() },
-      order: { precioCentavos: 'ASC', slug: 'ASC' },
-    });
+    const rows = await this.plans()
+      .find({ where: { desactivadoEn: IsNull() }, order: { precioCentavos: 'ASC', slug: 'ASC' } })
+      .catch((error: unknown) => {
+        throw new PlanCatalogUnavailableError(error);
+      });
     return rows.map(toPlan);
   }
 

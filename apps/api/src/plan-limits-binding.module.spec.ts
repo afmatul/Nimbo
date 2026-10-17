@@ -36,6 +36,7 @@ describe('PlanLimitsBindingModule', () => {
       maxFileBytes: 52428800n,
       storageQuotaBytes: 16106127360n,
       trashRetentionDays: 7,
+      retainedVersions: 3,
     });
     await moduleRef.close();
   });

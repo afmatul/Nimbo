@@ -42,6 +42,7 @@ modules/identity/
 │  ├─ account-administration.ts             # AccountAdministration: lockAdminRoster, assertActorActive, suspend,
 │  │                                        # reactivate (011)
 │  ├─ internal-account-enrollment.ts        # InternalAccountEnrollment: enroll, enrollInitialAdmin (011)
+│  ├─ account-setup-link-issuer.ts          # AccountSetupLinkIssuer: enlace `alta_interna` y su correo (011)
 │  ├─ account-setup.service.ts              # AccountSetupService: checkLink, setFirstPassword (011)
 │  ├─ identity-limit-keys.ts                # claves de límites y bloqueos (SHA-256 del correo o userId) y EMAIL_REQUEST_RULES
 │  ├─ identity-config.ts  web-links.ts      # WEB_PUBLIC_URL y rutas de `web` que usan los correos
@@ -60,14 +61,15 @@ modules/identity/
 │  ├─ auth.controller.ts                    # AuthController: register, resend-verification, verify-email (abre sesión),
 │  │                                        # login, session/refresh, session/logout (002)
 │  ├─ password.controller.ts                # PasswordController: forgot-password, reset-password/check, reset-password,
-│  │                                        # change-password (002), account-setup/check, account-setup (011)
+│  │                                        # change-password (002)
+│  ├─ account-setup.controller.ts           # AccountSetupController: account-setup/check, account-setup (011)
 │  ├─ sessions.controller.ts                # SessionsController: GET /sessions, DELETE /sessions/:id, revoke-others (002)
 │  ├─ session-cookies.ts                    # SessionCookies (nimbo_rt, nimbo_did) y readCookie (002 DT-2, DT-9)
 │  ├─ client-context.factory.ts             # readClientContext: nimbo_did, User-Agent y req.ip (002 CA-16)
 │  ├─ session-response.ts                   # IssuedSession → SessionResponse del contrato
 │  ├─ identity-ip-throttler.guard.ts        # IdentityIpThrottlerGuard + IDENTITY_THROTTLERS (register-ip, resend-ip, login-ip)
 │  ├─ identity-validation.ts                # fábrica de errores de ZodValidationPipe (INVALID_INPUT o WEAK_PASSWORD)
-│  └─ no-store.middleware.ts                # Cache-Control: no-store en toda respuesta de los tres controladores
+│  └─ no-store.middleware.ts                # Cache-Control: no-store en toda respuesta de los cuatro controladores
 ├─ identity.module.ts                       # IdentityModule.forRoot(env)
 └─ index.ts                                 # única API pública
 ```
@@ -76,16 +78,18 @@ modules/identity/
 
 Un puerto nuevo solo existe si cumple una regla del Art. V.2 de la constitución:
 
-| Puerto                         | Adaptador                            | Regla                                              |
-| ------------------------------ | ------------------------------------ | -------------------------------------------------- |
-| `IUserRepository`              | `TypeormUserRepository`              | (b) repositorio; está en el diagrama M1            |
-| `IVerificationTokenRepository` | `TypeormVerificationTokenRepository` | (b) repositorio; 002 lo reutiliza (recuperación)   |
-| `IPasswordHasher`              | `Argon2idHasher`                     | (a) aísla Argon2; está en el diagrama M1           |
-| `IAccountEventsPublisher`      | `EventEmitterAccountEventsPublisher` | (a) aísla `@nestjs/event-emitter` (ADR-0019)       |
-| `ISessionRepository`           | `TypeOrmSessionRepository`           | (b) repositorio; está en el diagrama M1 (002)      |
-| `IDeviceRepository`            | `TypeOrmDeviceRepository`            | (b) repositorio de `dispositivo` (002, DF-11)      |
-| `ITokenService`                | `JwtTokenService`                    | (a) aísla `@nestjs/jwt`; está en el diagrama M1    |
-| `IAttemptLockout`              | `RedisAttemptLockout`                | (a) aísla Redis (bloqueos por fallos, 002 D-5/D-7) |
+| Puerto                         | Adaptador                               | Regla                                                     |
+| ------------------------------ | --------------------------------------- | --------------------------------------------------------- |
+| `IUserRepository`              | `TypeormUserRepository`                 | (b) repositorio; está en el diagrama M1                   |
+| `IVerificationTokenRepository` | `TypeormVerificationTokenRepository`    | (b) repositorio; 002 lo reutiliza (recuperación)          |
+| `IPasswordHasher`              | `Argon2idHasher`                        | (a) aísla Argon2; está en el diagrama M1                  |
+| `IAccountEventsPublisher`      | `EventEmitterAccountEventsPublisher`    | (a) aísla `@nestjs/event-emitter` (ADR-0019)              |
+| `ISessionRepository`           | `TypeOrmSessionRepository`              | (b) repositorio; está en el diagrama M1 (002)             |
+| `IDeviceRepository`            | `TypeOrmDeviceRepository`               | (b) repositorio de `dispositivo` (002, DF-11)             |
+| `ITokenService`                | `JwtTokenService`                       | (a) aísla `@nestjs/jwt`; está en el diagrama M1           |
+| `IAttemptLockout`              | `RedisAttemptLockout`                   | (a) aísla Redis (bloqueos por fallos, 002 D-5/D-7)        |
+| `IAdminRosterRepository`       | `TypeormUserRepository` (`useExisting`) | (b) repositorio; padrón interno del backoffice (011, ISP) |
+| `IAccountDirectoryRepository`  | `TypeOrmAccountDirectoryRepository`     | (b) modelo de lectura de cuentas del backoffice (011)     |
 
 Consume `IMailer` (`notifications`) e `IRateLimiter`, `ITransactionRunner` e `IClock` (`shared`). La recuperación
 (002) suma a `IUserRepository` `findById` y `updatePasswordHash`. `JwtTokenService` implementa además
@@ -160,15 +164,16 @@ SessionResponse`, rota `nimbo_rt`) y `POST /auth/session/logout` (`204`). `verif
 
 ## Administración y alta interna (011)
 
-- **Suspender y reactivar** (`AccountAdministration`): candado del padrón (`pg_advisory_xact_lock`) → fila
-  `FOR UPDATE` → no a sí mismo → no al último Administrador activo → `suspendida` y **todas** sus sesiones revocadas
+- **Suspender y reactivar** (`AccountAdministration`): candado del padrón (`pg_advisory_xact_lock`) → no a
+  sí mismo → fila `FOR UPDATE` → no al último Administrador activo → `suspendida` y **todas** sus sesiones revocadas
   (002 D-10). Reactivar no devuelve sesiones. `assertActorActive` lee el estado del actor en la transacción (RN-7).
 - **Alta interna** (`InternalAccountEnrollment`): cuenta activa y verificada con el hash de un secreto aleatorio que
-  nadie conoce, enlace `alta_interna` de 24 h (`ACCOUNT_SETUP_LINK_TTL_HOURS`) y `deliverInvitation()`, que el llamador
+  nadie conoce, enlace `alta_interna` de 24 h (`ACCOUNT_SETUP_LINK_TTL_HOURS`, lo emite `AccountSetupLinkIssuer`, con
+  la forma de `VerificationLinkIssuer`) y `deliverInvitation()`, que el llamador
   invoca **después** del commit. Si el correo falla, la cuenta queda y se registra `identity.invitation.mail_failed`
   (solo `userId`); la persona usa «¿Olvidaste tu contraseña?». Correo o código repetido → `IDENTITY_ENROLLMENT_CONFLICT`
   con uno o ambos `fields`. `enrollInitialAdmin` (CA-7) toma el candado y niega si ya hay un Administrador activo.
-- **Primera contraseña** (`AccountSetupService`, `@Public()`): `POST /auth/account-setup/check` (`200`, sin consumir) y
+- **Primera contraseña** (`AccountSetupController` → `AccountSetupService`, `@Public()`, `no-store`): `POST /auth/account-setup/check` (`200`, sin consumir) y
   `POST /auth/account-setup` (`200 { status: 'password-set' }`): política D-6 con el correo de la cuenta, hash fuera de
   la transacción y consumo atómico del token; no crea ni revoca sesiones. Errores `IDENTITY_SETUP_LINK_INVALID`,
   `IDENTITY_SETUP_LINK_EXPIRED` e `IDENTITY_WEAK_PASSWORD`. Sin límite de tasa propio, como `reset-password` (PD-88).

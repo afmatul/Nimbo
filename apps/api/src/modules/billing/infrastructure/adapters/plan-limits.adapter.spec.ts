@@ -19,6 +19,7 @@ const TEAM = aPlan({
     quotaBytes: 375_809_638_400n,
     maxFileBytes: 1_073_741_824n,
     trashRetentionDays: 60,
+    retainedVersions: 60,
   },
 });
 const CATALOG: readonly Plan[] = [PERSONAL_PLAN, TEAM];
@@ -59,6 +60,7 @@ describe('PlanLimitsAdapter (006a CA-2 a CA-5; 009 T-03, PD-80)', () => {
       maxFileBytes: 1_073_741_824n,
       storageQuotaBytes: 375_809_638_400n,
       trashRetentionDays: 60,
+      retainedVersions: 60,
     });
     expect(scopes).toEqual([ANA.id]);
     expect(subscriptions.findCurrentPlanId).toHaveBeenCalledWith(ANA);
@@ -72,6 +74,7 @@ describe('PlanLimitsAdapter (006a CA-2 a CA-5; 009 T-03, PD-80)', () => {
       maxFileBytes: 52_428_800n,
       storageQuotaBytes: 16_106_127_360n,
       trashRetentionDays: 7,
+      retainedVersions: 3,
     });
   });
 

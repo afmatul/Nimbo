@@ -23,15 +23,19 @@ modules/storage/
 
 ## Regla
 
-Otros módulos importan **solo** desde `modules/storage/index.ts`. Hoy exporta `StorageModule`, `StorageWorkerModule`, `I_PLAN_LIMITS_PROVIDER` y los tipos
-`IPlanLimitsProvider` y `PlanLimits`. No exporta `MagicBytesDetector`, `IExpiredUploadScanner`, el adaptador de
+Otros módulos importan **solo** desde `modules/storage/index.ts`. Hoy exporta `StorageModule`, `StorageWorkerModule`, `I_PLAN_LIMITS_PROVIDER`,
+`I_NODE_METADATA_READER` y los tipos `IPlanLimitsProvider`, `PlanLimits`, `INodeMetadataReader`, `FileMetadata` y
+`FileMetadataPage`. No exporta `MagicBytesDetector`, `IExpiredUploadScanner`, el adaptador de
 auditoría ni los repositorios. Nada de `infrastructure/**` cruza la frontera. Nombres de clases y puertos: los de
 `docs/sdd/design-model.md`.
 
 ## API pública
 
 `index.ts` exporta solo: `StorageModule` (API), `StorageWorkerModule` (`worker`), el token `I_PLAN_LIMITS_PROVIDER` y los
-tipos `IPlanLimitsProvider` y `PlanLimits`. `index.spec.ts` fija esa lista (`RUNTIME_EXPORTS`). No salen el detector de
+tipos `IPlanLimitsProvider` y `PlanLimits` y, desde 011 (PD-31), el token `I_NODE_METADATA_READER` y los tipos
+`INodeMetadataReader`, `FileMetadata` y `FileMetadataPage` (metadatos de `archivo` para `backoffice`, sin contenido ni
+versiones). `index.spec.ts` fija esa lista (`RUNTIME_EXPORTS`). `StorageModule` exporta solo `I_NODE_METADATA_READER`
+(adaptador `SqlNodeMetadataReader`); `backoffice` importa el mismo `DynamicModule` que la raíz. No salen el detector de
 tipos, `IExpiredUploadScanner`, el adaptador de auditoría ni los repositorios. Ni `StorageModule` ni
 `StorageWorkerModule` enlazan `I_PLAN_LIMITS_PROVIDER` (DF-51): lo hace la raíz de composición (`AppModule`,
 `WorkerModule`).
@@ -41,12 +45,13 @@ tipos, `IExpiredUploadScanner`, el adaptador de auditoría ni los repositorios. 
 Tablas (migraciones `20260930100000`…`100300`, plan §4): `archivo`, `version_archivo` y `carga`, con RLS `ENABLE` +
 `FORCE`; `usuario.espacio_usado` es la única columna de otra tabla que `storage` escribe (D-5, DF-59).
 
-| Puerto (`application/ports/`)                                                                           | Token                         | Implementación (`infrastructure/persistence/`) |
-| ------------------------------------------------------------------------------------------------------- | ----------------------------- | ---------------------------------------------- |
-| `INodeRepository`: `findAccessibleById`, `findTakenNames`, `insertWithVersion` (y los de carpetas, 006) | `I_NODE_REPOSITORY`           | `TypeOrmNodeRepository`                        |
-| `IUploadSessionRepository`: `insert`, `findOwned`, `transition` (compare-and-set)                       | `I_UPLOAD_SESSION_REPOSITORY` | `TypeOrmUploadSessionRepository`               |
-| `IQuotaRepository`: `lockUsage`, `readUsage` (007), `lockAndReadUsage`, `addUsedBytes`                  | `I_QUOTA_REPOSITORY`          | `TypeOrmQuotaRepository`                       |
-| `IExpiredUploadScanner`: `listExpiredIds(now, limit)` → `{ id, propietarioId }[]` (sin actor)           | `I_EXPIRED_UPLOAD_SCANNER`    | `SqlExpiredUploadScanner`                      |
+| Puerto (`application/ports/`)                                                                            | Token                         | Implementación (`infrastructure/persistence/`) |
+| -------------------------------------------------------------------------------------------------------- | ----------------------------- | ---------------------------------------------- |
+| `INodeRepository`: `findAccessibleById`, `findTakenNames`, `insertWithVersion` (y los de carpetas, 006)  | `I_NODE_REPOSITORY`           | `TypeOrmNodeRepository`                        |
+| `IUploadSessionRepository`: `insert`, `findOwned`, `transition` (compare-and-set)                        | `I_UPLOAD_SESSION_REPOSITORY` | `TypeOrmUploadSessionRepository`               |
+| `IQuotaRepository`: `lockUsage`, `readUsage` (007), `lockAndReadUsage`, `addUsedBytes`                   | `I_QUOTA_REPOSITORY`          | `TypeOrmQuotaRepository`                       |
+| `IExpiredUploadScanner`: `listExpiredIds(now, limit)` → `{ id, propietarioId }[]` (sin actor)            | `I_EXPIRED_UPLOAD_SCANNER`    | `SqlExpiredUploadScanner`                      |
+| `INodeMetadataReader` (011, lo consume `backoffice`): `listForOwner(actor, ownerId, { page, pageSize })` | `I_NODE_METADATA_READER`      | `SqlNodeMetadataReader`                        |
 
 - Todo método recibe `actor` y toma el `EntityManager` de `TransactionContext.requireActorScope(actor)`: se llama
   dentro de `ITransactionRunner.withActor(actor, …)` o lanza `ActorScopeMissingError`.
@@ -233,14 +238,15 @@ Pruebas: `upload-cleanup.processor.spec.ts` y `upload-cleanup.scheduler.spec.ts`
 | `FileService`                              | Renombrar y mover archivos (006) y URL de descarga de 300 s                                        |
 | `FolderService` (006)                      | Crear, renombrar, mover y abrir carpetas, con migas                                                |
 | `TrashService` (006)                       | Mandar a la papelera, listar, resumir y restaurar                                                  |
-| `IObjectStorage` → `MinioStorageAdapter`   | Multipart, URLs prefirmadas (`Content-Length` firmado), `headObject`, `getRange`, purga real       |
+| `IObjectStorage` → `MinioStorageAdapter`   | Multipart, URLs prefirmadas (`Content-Length` firmado), `headObject`, `getRange`, copia, purga     |
 | `IFileTypeDetector` → `MagicBytesDetector` | Tipo real por firma; rechaza ejecutables y texto disfrazado                                        |
 
 Rutas (solo `CLIENT`; roles internos → 403, sin token → 401; un id que no es UUID responde el mismo 404 que uno
 inexistente): `POST /uploads`, `POST /uploads/:uploadId/resume`, `POST /uploads/:uploadId/complete`,
 `DELETE /uploads/:uploadId`, `POST /files/:fileId/download-url` (y desde 006 `PATCH /files/:fileId` y
-`POST /files/:fileId/move`). `init` y `download-url` pasan por
-`IRateLimiter`.
+`POST /files/:fileId/move`; desde 014 `GET /files/:fileId/versions`,
+`POST /files/:fileId/versions/:versionId/download-url` y `POST /files/:fileId/versions/:versionId/restore`). `init`, las
+dos `download-url` y `restore` (con su propio `RATE_LIMIT_VERSION_RESTORE_PER_MINUTE`) pasan por `IRateLimiter`.
 
 - Pruebas HTTP: `apps/api/test/int/storage/*.int-spec.ts` (`pnpm test:int`); aislamiento:
   `apps/api/test/isolation/storage.iso-spec.ts` (`pnpm test:isolation`).
@@ -271,7 +277,19 @@ la carga es multipart con `UPLOAD_PART_SIZE_BYTES` por parte; en `complete`, `li
 el tamaño real, el tipo se detecta por firmas de bytes (`MagicBytesDetector`) y el registro final es un compare-and-set.
 
 **Descarga**: `POST /files/:fileId/download-url` devuelve una URL firmada de 300 s (`DOWNLOAD_URL_TTL_SECONDS`) para la
-versión actual, con `Content-Disposition: attachment`, `application/octet-stream` y `no-store`.
+versión actual, con `Content-Disposition: attachment`, `application/octet-stream` y `no-store`. Desde 014,
+`POST /files/:fileId/versions/:versionId/download-url` firma una versión retenida por la misma ruta de
+`FileService.getDownloadUrl` (tasa, auditoría `file.download_url_issued` con el tamaño de la versión); una versión
+inexistente, podada o de otro archivo es `404` `STORAGE_VERSION_NOT_FOUND`. `GET /files/:fileId/versions`
+(`VersionHistoryService`) devuelve el archivo (`name`, `kind`, `folderId`), el historial sin claves de objeto y las
+versiones que retiene el plan.
+
+**Restaurar (014)**: `POST /files/:fileId/versions/:versionId/restore` (`VersionRestoreService`, 201) valida tasa,
+archivo, versión (`404` si no es del archivo, `409` `STORAGE_VERSION_ALREADY_CURRENT` si es la actual) y cuota (sin
+máximo por archivo); copia el objeto en el servidor (`IObjectStorage.copyObject`) fuera de la transacción y luego,
+bajo `lockUsage`, revalida y registra una versión nueva `restauracion` con `FileVersionService.register`. Si el
+origen ya no existe al copiar (`copyObject` devuelve `false` porque una poda llegó antes), revalida y responde `404`
+`STORAGE_VERSION_NOT_FOUND`. Si esa transacción falla, purga la copia. Tras el commit poda por retención y audita `file.version_restored`.
 
 `complete` y `expire`/`cancel` compiten por un compare-and-set de estado (`activa → …`): gana uno y el otro no deja un
 `archivo` sin objeto.

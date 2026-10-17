@@ -29,7 +29,8 @@ const MAX_DEPTH = 10;
 const LATER = new Date('2026-10-02T09:00:00.000Z');
 /** Fragmento de `accessibleNodes` filtrado por tipo, tal como llega a Postgres. */
 const TYPED_ACCESS = /nodos\.tipo_nodo = '(archivo|carpeta)'/;
-const ROOT_INDEXES = /idx_(carpeta|archivo)_raiz_creado/;
+/** Desde la 011 vale también `idx_archivo_propietario_actualizado`: filtra por propietario, no da el orden (PD-102). */
+const ROOT_INDEXES = /idx_(carpeta|archivo)_raiz_creado|idx_archivo_propietario_actualizado/;
 
 const idsOf = (nodes: readonly StorageNode[]): string[] => nodes.map((node) => node.id);
 
@@ -210,7 +211,7 @@ describe('TypeOrmNodeRepository · carpetas (006 CA-1, CA-3, CA-5, CA-7, CA-9)',
       ).rejects.toBeInstanceOf(InvalidQueryError);
     });
 
-    it('R-2: en la raíz usa los índices parciales de raíz y filtra el fragmento por `tipo_nodo`', async () => {
+    it('R-2: en la raíz usa índices de propietario, sin `Seq Scan`, y filtra el fragmento por `tipo_nodo`', async () => {
       const plans = await app.asActor(ana, async (manager) => {
         const runner = manager.queryRunner;
         if (runner === undefined) throw new Error('withActor no abrió un QueryRunner');
@@ -228,6 +229,7 @@ describe('TypeOrmNodeRepository · carpetas (006 CA-1, CA-3, CA-5, CA-7, CA-9)',
 
       expect(plans).toHaveLength(2);
       plans.forEach((plan) => expect(plan).toMatch(ROOT_INDEXES));
+      plans.forEach((plan) => expect(plan).not.toMatch(/Seq Scan on (archivo|carpeta)/));
     });
   });
 

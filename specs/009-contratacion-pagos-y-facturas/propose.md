@@ -87,7 +87,7 @@ integración 1040 de 1041 (solo falla `dotenv-bootstrap` en mi máquina, por la 
 - **Desbloquea:** T-03 y, para Fátima, las T-10 y T-11 de la 011.
 
 ### Punto 6 — Pendientes nuevos a tu cargo
-- **PD-92:** extraer los ayudantes de prueba repetidos (ciclo `revert` → `run` de migraciones en cinco suites, los
+- **PD-105** (antes PD-92, renumerado al integrar `main`): extraer los ayudantes de prueba repetidos (ciclo `revert` → `run` de migraciones en cinco suites, los
   *stub* de `SharedModule` y la lista a mano de procesadores de `worker-health.int-spec.ts`).
 - **PD-93:** unificar `IDENTITY_` y `STORAGE_TOO_MANY_REQUESTS` en `SHARED_TOO_MANY_REQUESTS` (la 009 ya estrena el
   compartido con `RateLimitExceededError`, S-2).

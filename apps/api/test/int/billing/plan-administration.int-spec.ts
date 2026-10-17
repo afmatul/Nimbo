@@ -43,7 +43,9 @@ describe('catálogo de planes con la base real (spec 011 CA-9 a CA-11)', () => {
   beforeAll(async () => {
     owner = await connectAsOwner();
     app = await connectAsAppDatabase();
-    catalog = new PlanCatalogService(new TypeOrmPlanRepository(app.context), new SystemClock());
+    catalog = new PlanCatalogService(new TypeOrmPlanRepository(app.context), new SystemClock(), {
+      error: () => undefined,
+    });
   });
 
   afterAll(async () => {

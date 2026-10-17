@@ -1,5 +1,7 @@
 import {
   BILLING_ERROR_CODES,
+  BACKOFFICE_FIELD_ISSUE_REASONS,
+  BACKOFFICE_FIELD_MESSAGES,
   IDENTITY_ERROR_CODES,
   IDENTITY_FIELD_MESSAGES,
   LOGIN_LOCK_MINUTES,
@@ -13,6 +15,7 @@ import {
 import { ApiClientError } from './api-error';
 import {
   IDENTITY_FIELD_MESSAGES as reexported,
+  backofficeFieldMessage,
   folderNameConflictMessage,
   folderNameFieldMessage,
   messageForCode,
@@ -110,6 +113,15 @@ describe('error-catalog', () => {
       );
     });
 
+    it('011 CA-5: enlaces de alta interna, con el mismo texto que el servidor y sin pedir un enlace nuevo', () => {
+      expect(messageForCode(IDENTITY_ERROR_CODES.SETUP_LINK_EXPIRED)).toBe(
+        'Este enlace venció. Usa «¿Olvidaste tu contraseña?» en el inicio de sesión para crear tu contraseña.',
+      );
+      expect(messageForCode(IDENTITY_ERROR_CODES.SETUP_LINK_INVALID)).toBe(
+        'Este enlace no es válido o ya se usó. Si ya creaste tu contraseña, inicia sesión; si no, usa «¿Olvidaste tu contraseña?».',
+      );
+    });
+
     it('CA-23: contraseña actual incorrecta y cambio bloqueado', () => {
       expect(messageForCode(IDENTITY_ERROR_CODES.WRONG_PASSWORD)).toBe(
         'La contraseña actual no es correcta.',
@@ -150,6 +162,19 @@ describe('error-catalog', () => {
       expect(message).not.toContain('Ver planes');
     });
 
+    it('014 CA-12: cuota al restaurar una versión, con el mismo texto que el servidor', () => {
+      expect(
+        storageMessage(
+          STORAGE_ERROR_CODES.STORAGE_QUOTA_EXCEEDED,
+          { missingBytes: 1_600_000 },
+          { purpose: 'restore' },
+        ),
+      ).toEqual({
+        cause: 'Te faltan 1,6 MB de espacio para restaurar esta versión.',
+        fix: 'Libera espacio o cambia de plan.',
+      });
+    });
+
     it('CA-5: tamaño distinto al declarado, sin parámetros e idéntico al del servidor', () => {
       expect(messageForCode(STORAGE_ERROR_CODES.STORAGE_UPLOAD_SIZE_MISMATCH)).toBe(
         'El archivo cambió durante la carga. Vuelve a subirlo.',
@@ -174,7 +199,7 @@ describe('error-catalog', () => {
         storageMessage(
           STORAGE_ERROR_CODES.STORAGE_INVALID_FILE_TYPE,
           { reason: 'text' },
-          'notas.md',
+          { fileName: 'notas.md' },
         ),
       ).toEqual({
         cause: 'Este archivo no es un .md válido.',
@@ -275,6 +300,19 @@ describe('error-catalog', () => {
       expect(messageForCode(SHARED_ERROR_CODES.TOO_MANY_REQUESTS, { retryAfterSeconds: 840 })).toBe(
         'Hiciste demasiados intentos. Espera 14 minutos e inténtalo de nuevo.',
       );
+    });
+  });
+
+  describe('backoffice (spec 011)', () => {
+    it.each(BACKOFFICE_FIELD_ISSUE_REASONS)(
+      'CA-13: el motivo %s del campo de búsqueda usa el texto de contracts',
+      (reason) => {
+        expect(backofficeFieldMessage(reason)).toBe(BACKOFFICE_FIELD_MESSAGES[reason]);
+      },
+    );
+
+    it('CA-13: un motivo desconocido cae en el genérico de 000 §10', () => {
+      expect(backofficeFieldMessage('OTRO', 'abc')).toContain('abc');
     });
   });
 

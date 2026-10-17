@@ -1,7 +1,5 @@
 import { randomUUID } from 'node:crypto';
 
-import { BACKOFFICE_PAGE_SIZE } from '@nimbo/contracts';
-
 import { createActor, Role } from '../../../shared';
 import { AccountStatus } from '../domain/account-status.enum';
 import { AccountNotFoundError } from '../domain/errors';
@@ -37,18 +35,14 @@ const setup = () => {
 };
 
 describe('AccountDirectory (011 CA-1, CA-4, CA-13)', () => {
-  it('CA-1: pide la página con el tamaño del backoffice y marca la cuenta del actor', async () => {
+  it('CA-1: pide la página con el tamaño que fija quien llama y marca la cuenta del actor', async () => {
     const { repository, directory } = setup();
     repository.list.mockResolvedValue({ items: [aSummary(ADMIN.id), aSummary('otra')], total: 12 });
 
-    const page = await directory.list(ADMIN, { emailPrefix: 'ana', page: 2 });
+    const page = await directory.list(ADMIN, { emailPrefix: 'ana', page: 2, pageSize: 7 });
 
-    expect(repository.list).toHaveBeenCalledWith({
-      emailPrefix: 'ana',
-      page: 2,
-      pageSize: BACKOFFICE_PAGE_SIZE,
-    });
-    expect(page).toMatchObject({ page: 2, pageSize: BACKOFFICE_PAGE_SIZE, total: 12 });
+    expect(repository.list).toHaveBeenCalledWith({ emailPrefix: 'ana', page: 2, pageSize: 7 });
+    expect(page).toEqual({ items: expect.any(Array) as unknown, total: 12 });
     expect(page.items.map((item) => item.isSelf)).toEqual([true, false]);
   });
 

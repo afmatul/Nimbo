@@ -3,8 +3,16 @@ import { join } from 'node:path';
 
 import type { Actor } from '../../shared';
 
+import type { FileKind } from './domain/file-kind';
+
 import * as storage from './index';
-import type { IPlanLimitsProvider, PlanLimits } from './index';
+import type {
+  FileMetadata,
+  FileMetadataPage,
+  INodeMetadataReader,
+  IPlanLimitsProvider,
+  PlanLimits,
+} from './index';
 
 /** Igualdad estricta de tipos (patrón de `type-challenges`); un fallo aquí lo detecta `pnpm typecheck`. */
 type Equal<X, Y> =
@@ -13,7 +21,8 @@ type Expect<T extends true> = T;
 
 /**
  * ISP (005 plan §6): `PlanLimits` solo lleva límites de almacenamiento: bytes y, desde 006 (plan §7, decisión 1), la
- * retención en papelera en días y, desde 007 (D-20), el nombre visible del plan que el adaptador lee en la misma fila.
+ * retención en papelera en días, desde 007 (D-20) el nombre visible del plan que el adaptador lee en la misma fila y,
+ * desde 014, las versiones retenidas por archivo.
  */
 type _PlanLimitsShape = Expect<
   Equal<
@@ -23,6 +32,7 @@ type _PlanLimitsShape = Expect<
       readonly maxFileBytes: bigint;
       readonly storageQuotaBytes: bigint;
       readonly trashRetentionDays: number;
+      readonly retainedVersions: number;
     }
   >
 >;
@@ -31,11 +41,42 @@ type _LimitsForSignature = Expect<
 >;
 
 /**
+ * 011 plan §2, RN-1: los metadatos que lee el backoffice son solo columnas de `archivo` (sin clave de objeto, versiones
+ * ni contenido); `trashedAt` es `null` si el archivo está disponible.
+ */
+type _FileMetadataShape = Expect<
+  Equal<
+    FileMetadata,
+    {
+      readonly id: string;
+      readonly name: string;
+      readonly kind: FileKind;
+      readonly sizeBytes: bigint;
+      readonly createdAt: Date;
+      readonly updatedAt: Date;
+      readonly trashedAt: Date | null;
+    }
+  >
+>;
+type _ListForOwnerSignature = Expect<
+  Equal<
+    INodeMetadataReader['listForOwner'],
+    (
+      actor: Actor,
+      ownerId: string,
+      request: { readonly page: number; readonly pageSize: number },
+    ) => Promise<FileMetadataPage>
+  >
+>;
+
+/**
  * API pública de `storage` (plan §6, DF-51 opción A): el token del puerto de límites, el módulo que monta la raíz de
- * composición del `api` y el del `worker` (T-51), y el token de `IObjectStorage` para la factura PDF de `billing` (009,
- * decisión 1). El detector, el escáner y los repositorios no salen.
+ * composición del `api` y el del `worker` (T-51), desde 011 (PD-31) el token del lector de metadatos que consume
+ * `backoffice` y el token de `IObjectStorage` para la factura PDF de `billing` (009, decisión 1). El detector, el escáner
+ * y los repositorios no salen.
  */
 const RUNTIME_EXPORTS = [
+  'I_NODE_METADATA_READER',
   'I_OBJECT_STORAGE',
   'I_PLAN_LIMITS_PROVIDER',
   'StorageModule',
@@ -43,9 +84,10 @@ const RUNTIME_EXPORTS = [
 ] as const;
 
 describe('modules/storage/index.ts', () => {
-  it('CA-3, CA-4, CA-9, RN-1, 009: exporta exactamente los tokens de límites y de objetos, `StorageModule` y `StorageWorkerModule`', () => {
+  it('CA-3, CA-4, CA-9, RN-1, 011 PD-31, 009: exporta exactamente los tokens de límites, de metadatos y de objetos y los dos módulos', () => {
     expect(Object.keys(storage).sort()).toEqual([...RUNTIME_EXPORTS].sort());
     expect(typeof storage.I_PLAN_LIMITS_PROVIDER).toBe('symbol');
+    expect(typeof storage.I_NODE_METADATA_READER).toBe('symbol');
   });
 
   it('CA-9, DF-52: el escáner de cargas vencidas (único acceso sin actor) no sale del módulo', () => {

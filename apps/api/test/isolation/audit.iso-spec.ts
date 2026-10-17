@@ -20,6 +20,7 @@ import type { Actor, ITransactionRunner } from '../../src/shared';
 import type { TestApp } from '../int/setup/test-app';
 import { connectAsOwner, requiredEnv } from '../support/database-urls';
 
+import { INTERNAL_ROLES } from './setup/isolation-assertions';
 import { createIsolationWorld } from './setup/isolation-world';
 import type {
   InternalRole,
@@ -29,7 +30,6 @@ import type {
 } from './setup/isolation-world';
 
 const MY_EVENTS = '/api/v1/audit/my-events';
-const INTERNAL_ROLES: readonly InternalRole[] = [Role.ADMIN, Role.SUPPORT, Role.OPERATOR];
 const MINUTE_MS = 60_000;
 /** Los dos clientes tienen la misma cantidad de eventos, en los mismos instantes y con los mismos atributos. */
 const TWIN_EVENTS = 3;

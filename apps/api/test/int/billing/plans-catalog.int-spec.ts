@@ -2,11 +2,14 @@ import { planCatalogResponseSchema } from '@nimbo/contracts';
 import type { PlanCatalogResponse } from '@nimbo/contracts';
 import request from 'supertest';
 
-import { BillingModule } from '../../../src/modules/billing';
+import { I_PLAN_REPOSITORY } from '../../../src/modules/billing/application/ports/i-plan-repository.port';
+import { PlanCatalogUnavailableError } from '../../../src/modules/billing/domain/errors/plan-catalog-unavailable.error';
 import { I_CLOCK, Role } from '../../../src/shared';
 import type { FixedClock } from '../../../src/shared';
 import { TestAccessTokens } from '../../support/test-access-tokens';
-import { createTestApp, type TestApp } from '../setup/test-app';
+import type { TestApp } from '../setup/test-app';
+
+import { createBillingHttpApp } from './billing-http';
 
 const PLANS_PATH = '/api/v1/billing/plans';
 
@@ -33,7 +36,7 @@ describe('GET /api/v1/billing/plans contra la semilla de la 006a (008 CA-1)', ()
   let tokens: TestAccessTokens;
 
   beforeAll(async () => {
-    testApp = await createTestApp({ modules: [BillingModule] });
+    testApp = await createBillingHttpApp();
     tokens = new TestAccessTokens(testApp.app.get<FixedClock>(I_CLOCK));
   });
 
@@ -67,5 +70,35 @@ describe('GET /api/v1/billing/plans contra la semilla de la 006a (008 CA-1)', ()
     const authenticated = await fetchCatalog(`Bearer ${tokens.forRole(Role.CLIENT)}`);
 
     expect(authenticated).toEqual(anonymous);
+  });
+});
+
+describe('GET /api/v1/billing/plans cuando la lectura de `plan` falla (008 CA-3)', () => {
+  let testApp: TestApp;
+
+  beforeAll(async () => {
+    // El repositorio traduce el fallo de la consulta (unidad en `typeorm-plan.repository`); aquí, la respuesta HTTP.
+    const failingRepository = {
+      findActive: jest
+        .fn()
+        .mockRejectedValue(new PlanCatalogUnavailableError(new Error('connection lost'))),
+    };
+    testApp = await createBillingHttpApp([
+      { provide: I_PLAN_REPOSITORY, useValue: failingRepository },
+    ]);
+  });
+
+  afterAll(async () => {
+    await testApp?.close();
+  });
+
+  it('CA-3: responde 500 con `BILLING_PLAN_CATALOG_UNAVAILABLE`, mensaje y `correlationId`, sin detalle técnico', async () => {
+    const response = await request(testApp.app.getHttpServer()).get(PLANS_PATH).expect(500);
+
+    expect(response.body).toEqual({
+      code: 'BILLING_PLAN_CATALOG_UNAVAILABLE',
+      message: 'No pudimos cargar los planes. Intenta recargar la página.',
+      correlationId: expect.any(String),
+    });
   });
 });

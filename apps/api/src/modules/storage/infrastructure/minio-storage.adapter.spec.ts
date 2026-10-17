@@ -1,6 +1,7 @@
 import {
   AbortMultipartUploadCommand,
   CompleteMultipartUploadCommand,
+  CopyObjectCommand,
   CreateMultipartUploadCommand,
   DeleteObjectsCommand,
   GetObjectCommand,
@@ -163,6 +164,33 @@ describe('MinioStorageAdapter (operaciones, cliente falso)', () => {
     const { adapter } = buildAdapter({ [HeadObjectCommand.name]: throwing('InternalError', 500) });
 
     await expect(adapter.headObject(KEY)).rejects.toThrow('InternalError');
+  });
+
+  it('014 CA-9: `copyObject` copia en el servidor del origen al destino dentro del mismo bucket', async () => {
+    const target = 'u/owner-1/file-1/version-2';
+    const { adapter, calls } = buildAdapter({ [CopyObjectCommand.name]: () => ({}) });
+
+    await expect(adapter.copyObject(KEY, target)).resolves.toBe(true);
+    expect(calls).toEqual([
+      {
+        command: CopyObjectCommand.name,
+        input: { Bucket: BUCKET, Key: target, CopySource: `${BUCKET}/${KEY}` },
+      },
+    ]);
+  });
+
+  it('014 plan §7: `copyObject` devuelve `false` si el origen ya no existe (`NoSuchKey`)', async () => {
+    const { adapter } = buildAdapter({ [CopyObjectCommand.name]: throwing('NoSuchKey', 404) });
+
+    await expect(adapter.copyObject(KEY, 'u/owner-1/file-1/version-2')).resolves.toBe(false);
+  });
+
+  it('014 CA-9: `copyObject` propaga un fallo que no es «no existe»', async () => {
+    const { adapter } = buildAdapter({ [CopyObjectCommand.name]: throwing('InternalError', 500) });
+
+    await expect(adapter.copyObject(KEY, 'u/owner-1/file-1/version-2')).rejects.toThrow(
+      'InternalError',
+    );
   });
 
   it('CA-12: `getRange` pide el rango inclusivo y devuelve los bytes', async () => {

@@ -1,7 +1,10 @@
 import { IDENTITY_CONFIG } from '../../../src/modules/identity/application/identity-config';
 import type { IdentityConfig } from '../../../src/modules/identity/application/identity-config';
+import { I_ADMIN_ROSTER_REPOSITORY } from '../../../src/modules/identity/application/ports/i-admin-roster.repository.port';
 import { I_TOKEN_SERVICE } from '../../../src/modules/identity/application/ports/i-token-service.port';
+import { I_USER_REPOSITORY } from '../../../src/modules/identity/application/ports/i-user-repository.port';
 import { JwtTokenService } from '../../../src/modules/identity/infrastructure/jwt/jwt-token.service';
+import { TypeormUserRepository } from '../../../src/modules/identity/infrastructure/persistence/typeorm-user.repository';
 import { I_ACCESS_TOKEN_VERIFIER } from '../../../src/shared';
 import { accessTokenStrategiesIn } from '../setup/test-app';
 import type { TestApp } from '../setup/test-app';
@@ -25,6 +28,16 @@ describe('IdentityModule: composición (CA-26)', () => {
     expect(service).toBeInstanceOf(JwtTokenService);
     expect(app.get(I_ACCESS_TOKEN_VERIFIER)).toBe(service);
     expect(app.get(I_TOKEN_SERVICE)).toBe(service);
+  });
+
+  it('011 H-4: `IUserRepository` e `IAdminRosterRepository` son la misma instancia de `TypeormUserRepository`', async () => {
+    testApp = await createIdentityTestApp();
+    const { app } = testApp;
+    const repository = app.get(TypeormUserRepository);
+
+    expect(repository).toBeInstanceOf(TypeormUserRepository);
+    expect(app.get(I_USER_REPOSITORY)).toBe(repository);
+    expect(app.get(I_ADMIN_ROSTER_REPOSITORY)).toBe(repository);
   });
 
   it('CA-26: registra una sola estrategia con el nombre `ACCESS_TOKEN_STRATEGY`', async () => {

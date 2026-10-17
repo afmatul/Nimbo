@@ -1,5 +1,4 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { BACKOFFICE_PAGE_SIZE } from '@nimbo/contracts';
 
 import type { Actor } from '../../../shared';
 import { EmailAddress } from '../domain/email-address.vo';
@@ -7,6 +6,7 @@ import { AccountNotFoundError } from '../domain/errors';
 
 import { I_ACCOUNT_DIRECTORY_REPOSITORY } from './ports/i-account-directory.repository.port';
 import type {
+  AccountListQuery,
   AccountStatistics,
   AccountSummary,
   ClientIdentity,
@@ -18,16 +18,16 @@ export interface AccountView extends AccountSummary {
   readonly isSelf: boolean;
 }
 
-/** Página pedida desde 1 (DF-66); `emailPrefix` ya recortado y en minúsculas por el contrato (Q-5). */
-export interface AccountListRequest {
-  readonly emailPrefix?: string;
-  readonly page: number;
-}
+/**
+ * Página pedida desde 1 (DF-66) con el tamaño que fija quien llama, como `INodeMetadataReader` (011 H-3);
+ * `emailPrefix` ya recortado y en minúsculas por el contrato (Q-5). Hoy tiene la misma forma que pide el repositorio,
+ * pero se separa a propósito: es el tipo público de la fachada y `AccountListQuery` no sale del puerto interno.
+ */
+export type AccountListRequest = AccountListQuery;
 
+/** Una página de cuentas con el total que coincide con la búsqueda (DF-66). */
 export interface AccountViewPage {
   readonly items: readonly AccountView[];
-  readonly page: number;
-  readonly pageSize: number;
   readonly total: number;
 }
 
@@ -42,16 +42,10 @@ export class AccountDirectory {
     @Inject(I_ACCOUNT_DIRECTORY_REPOSITORY) private readonly accounts: IAccountDirectoryRepository,
   ) {}
 
-  /** CA-1: de la más nueva a la más vieja, `BACKOFFICE_PAGE_SIZE` por página. */
+  /** CA-1: de la más nueva a la más vieja, `request.pageSize` por página. */
   async list(actor: Actor, request: AccountListRequest): Promise<AccountViewPage> {
-    const pageSize = BACKOFFICE_PAGE_SIZE;
-    const { items, total } = await this.accounts.list({ ...request, pageSize });
-    return {
-      items: items.map((item) => viewFor(actor, item)),
-      page: request.page,
-      pageSize,
-      total,
-    };
+    const { items, total } = await this.accounts.list(request);
+    return { items: items.map((item) => viewFor(actor, item)), total };
   }
 
   /** CA-2 a CA-4: la ficha, o `AccountNotFoundError`. */
@@ -63,12 +57,20 @@ export class AccountDirectory {
     return viewFor(actor, account);
   }
 
-  /** CA-13: solo un cliente; una cuenta interna o un correo sin cuenta dan `null` (003 D-6). */
+  /**
+   * CA-13: solo un cliente; una cuenta interna o un correo sin cuenta dan `null` (003 D-6).
+   * `_actor` no se usa aquí: lo exige la regla «todo servicio que toca datos de un usuario recibe `actor`»;
+   * autoriza `backoffice`.
+   */
   findClientByEmail(_actor: Actor, email: string): Promise<ClientIdentity | null> {
     return this.accounts.findClientByEmail(EmailAddress.of(email));
   }
 
-  /** CA-12: totales agregados, nunca filas de una cuenta. */
+  /**
+   * CA-12: totales agregados, nunca filas de una cuenta.
+   * `_actor` no se usa aquí: lo exige la regla «todo servicio que toca datos de un usuario recibe `actor`»;
+   * autoriza `backoffice`.
+   */
   statistics(_actor: Actor): Promise<AccountStatistics> {
     return this.accounts.statistics();
   }

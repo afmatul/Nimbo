@@ -119,6 +119,7 @@ function uploadRow(overrides: Partial<UploadView> & { phase: UploadPhase }): Upl
     loadedBytes: 0,
     mode: 'multipart',
     suggestedName: null,
+    wouldPruneVersion: null,
     restartsOnResume: false,
     awaitingCancel: false,
     errorCode: null,

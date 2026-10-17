@@ -37,7 +37,7 @@
 ## Importantes y sugerencias
 - **[I-1]** Rama — está detrás de `main` (`b6475be` 008 squash y `3d8216c` 014) y `git merge-tree` da 43 conflictos (`billing`, `minio-storage.adapter.ts`, `storage.module.ts`, `error-catalog.ts`, `pendientes.md`, `design-findings.md`…). Traer `main` (y el PR-A de la 011, `arreglos-011.md` §11) y repetir las cinco suites antes del merge; esta revisión vale para `3f2aa98`.
 - **[I-2]** `apps/web/src/components/nimbo/account-menu.tsx:133` — `/suscripcion` no tiene entrada en la UI (CA-7 «o `/suscripcion`»; el correo de `receipt-message.ts:25` manda allí). Agregar el ítem «Plan y facturación» solo para clientes al integrar el PR-A, como fija `arreglos-011.md` §11.2, con su prueba.
-- **[I-3]** `docs/sdd/pendientes.md:61` — PD-40 sigue «Diferido a 009» y faltan las filas que promete el plan §7 (`IClientAccountScanner` de `storage` → fachada de `identity`; redibujo de M4 y E-R de DF-68). Cerrar PD-40 (puntos 1 y 2) y abrir las dos filas.
+- **[I-3]** `docs/sdd/pendientes.md:61` — PD-40 sigue «Diferido a 009» y faltan las filas que promete el plan §7 (`IClientAccountScanner` de `storage` → fachada de `identity`; redibujo de M4 y E-R de DF-69). Cerrar PD-40 (puntos 1 y 2) y abrir las dos filas.
 - **[I-4]** `spec.md` CA-7 / plan §4 — `BillingHistoryResponse` suma `subscription`, `paymentMethod` y `billingDetails` (NIT, correo) por el mockup (T-09/T-11). Registrarlo en la spec (§6 o registro de cambios) y en el contrato del plan: la spec es la fuente de verdad.
 - **[I-5]** `specs/009-contratacion-pagos-y-facturas/.Rhistory` — archivo vacío ajeno al proyecto, entró en `3da131b`. Eliminarlo.
 - **[S-1]** `apps/api/test/int/billing/subscribe.int-spec.ts:114` — sumar un plan desactivado al `it.each` (CA-5, RN-6), hoy solo probado en dominio.
@@ -45,14 +45,14 @@
 - **[S-3]** `subscription.controller.ts:34` — `amounts` recalcula `breakdown(plan.priceCents)`; usar los montos de `invoice` (una sola fuente).
 - **[S-4]** `receipt-message.ts:25` — «Mi suscripción» → «Plan y facturación»; `invoice-retrier.ts:20` dice «sin PDF» aunque también reintenta avisos.
 - **[S-5]** `plan-and-billing.tsx:50` — JSDoc duplicado sobre `AccountColumn`; `contratar/page.tsx:39` — el plan no disponible es un `<p>` suelto: usar `StateView` con su `h1`.
-- **[S-6]** `docs/sdd/design-findings.md:95` — el estado de DF-68 no cita T-03, T-08 ni T-09 (`ISubscriptionAdministrationReader`, `MailNotifier`, `IBillingHistoryReader`); `spec.md:12` sigue con fecha 2026-10-14.
+- **[S-6]** `docs/sdd/design-findings.md:95` — el estado de DF-69 no cita T-03, T-08 ni T-09 (`ISubscriptionAdministrationReader`, `MailNotifier`, `IBillingHistoryReader`); `spec.md:12` sigue con fecha 2026-10-14.
 
 ## Estado de los hallazgos (2026-10-15)
 - **Resueltos en esta revisión:** I-3 (PD-40 cerrado; PD-95 y PD-96 abiertos), I-4 (CA-7 y plan §4; el cambio de la spec queda «Pendiente Adrián» en su registro), I-5 (`.Rhistory` eliminado), S-1 (`subscribe.int-spec.ts` › plan desactivado), S-2 (`usuario_id` en las tres consultas de `typeorm-invoice.repository.ts`), S-3 (montos de la factura), S-4, S-5 (`StateView` y `h1` en `contratar/page.tsx`) y S-6.
 - **Al integrar el PR-A de la 011** (`arreglos-011.md` §11): I-1 e I-2.
 
 ## DF y pendientes
-- DF-68 abierto y actualizado (S-6; redibujo en PD-96). Pendientes: PD-40 y PD-80 cerrados; PD-63, PD-92 y PD-93 actualizados; PD-95 y PD-96 abiertos.
+- DF-69 abierto y actualizado (S-6; redibujo en PD-96). Pendientes: PD-40 y PD-80 cerrados; PD-63, PD-105 y PD-93 actualizados; PD-95 y PD-96 abiertos.
 
 ## Lo que está bien hecho
 - Cobro en una sola transacción con fila Personal garantizada, `FOR UPDATE` sin `JOIN` (bug real encontrado por la prueba de concurrencia) y `ChargeResult` sin excepciones: el rechazo queda confirmado y el `402` sale después del commit.

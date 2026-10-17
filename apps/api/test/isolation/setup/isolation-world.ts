@@ -3,7 +3,6 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { Module } from '@nestjs/common';
 import type { DynamicModule, Type } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
-import { JwtService } from '@nestjs/jwt';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { LEGAL_DOCUMENTS } from '@nimbo/contracts';
 import type { DataSource, EntityManager } from 'typeorm';
@@ -17,8 +16,6 @@ import type {
   AuditResourceType,
 } from '../../../src/modules/audit/domain/audit-entry';
 import { IDENTITY_THROTTLERS, IdentityModule } from '../../../src/modules/identity';
-import { accessTokenOptionsFrom } from '../../../src/modules/identity/infrastructure/jwt/access-token-options';
-import { JwtTokenService } from '../../../src/modules/identity/infrastructure/jwt/jwt-token.service';
 import { FOLDER_CONFIG } from '../../../src/modules/storage/application/folder-config';
 import type { FolderConfig } from '../../../src/modules/storage/application/folder-config';
 import { I_NODE_REPOSITORY } from '../../../src/modules/storage/application/ports/i-node.repository.port';
@@ -42,13 +39,14 @@ import { FolderName } from '../../../src/modules/storage/domain/folder-name.vo';
 import { ObjectKey } from '../../../src/modules/storage/domain/object-key';
 import { TrashState } from '../../../src/modules/storage/domain/trash-state';
 import { UploadSession } from '../../../src/modules/storage/domain/upload-session';
-import { createActor, I_TRANSACTION_RUNNER, Role, SystemClock } from '../../../src/shared';
+import { createActor, I_TRANSACTION_RUNNER, Role } from '../../../src/shared';
 import type { Actor, ITransactionRunner } from '../../../src/shared';
 import { buildTestEnv, createTestApp } from '../../int/setup/test-app';
 import type { TestApp, TestAppOptions } from '../../int/setup/test-app';
 import { connectAsOwner, requiredEnv } from '../../support/database-urls';
 import { employeeCodeFor } from '../../support/employee-codes';
 import { ProbeCalls, ProbeController, ProbeResources } from '../../support/probe.controller';
+import { realAccessTokenIssuer } from '../../support/real-access-tokens';
 
 /** Nombre visible por defecto; los dos clientes del mundo lo comparten (plan 003 §6.7). */
 const DEFAULT_NAME = 'Ana López';
@@ -321,6 +319,7 @@ const insertFileAs = async (
     objectKey: ObjectKey.of(actor.id, ids.fileId, ids.versionId),
     sizeBytes: WORLD_FILE_BYTES,
     createdBy: actor.id,
+    number: 1,
     now,
   });
   await nodes.insertWithVersion(actor, file, version);
@@ -494,6 +493,7 @@ const insertUploads = async (
         versionId: randomUUID(),
         name: FileName.of(`carga-${String(index + 1)}.txt`),
         keepBoth: false,
+        replacesFile: false,
         declaredBytes: WORLD_FILE_BYTES,
         multipart: null,
         /** Reloj real, como el `UploadService` de la app: la carga vence a las 24 h de ahora. */
@@ -526,11 +526,7 @@ const issueTokens = async (
   secret: string,
   accounts: readonly WorldAccount[],
 ): Promise<ReadonlyMap<string, string>> => {
-  const issuer = new JwtTokenService(
-    new JwtService(),
-    accessTokenOptionsFrom({ JWT_ACCESS_SECRET: secret }),
-    new SystemClock(),
-  );
+  const issuer = realAccessTokenIssuer({ JWT_ACCESS_SECRET: secret });
   const issued = await Promise.all(
     accounts.map(async (account) => {
       const { token } = await issuer.issueAccessToken({

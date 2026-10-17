@@ -34,4 +34,20 @@ describe('planCatalogResponseSchema', () => {
 
     expect(result.success).toBe(false);
   });
+
+  it('CA-1: rechaza un id que no es UUID', () => {
+    const result = planCatalogResponseSchema.safeParse({ plans: [{ ...proPlan, id: 'pro' }] });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('CA-1: rechaza campos de más en el plan y en la respuesta', () => {
+    const extraInPlan = planCatalogResponseSchema.safeParse({
+      plans: [{ ...proPlan, isCurrent: true }],
+    });
+    const extraInResponse = planCatalogResponseSchema.safeParse({ plans: [proPlan], total: 1 });
+
+    expect(extraInPlan.success).toBe(false);
+    expect(extraInResponse.success).toBe(false);
+  });
 });

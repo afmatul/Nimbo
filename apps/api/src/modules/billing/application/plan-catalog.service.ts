@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { PinoLogger } from 'nestjs-pino';
 
 import { I_CLOCK } from '../../../shared';
 import type { Actor, IClock } from '../../../shared';
@@ -14,6 +15,11 @@ import type { NewPlan } from '../domain/plan.entity';
 import { I_PLAN_REPOSITORY } from './ports/i-plan-repository.port';
 import type { IPlanRepository } from './ports/i-plan-repository.port';
 
+/** Lo mínimo que el servicio necesita del logger (se inyecta `PinoLogger`; permite un doble en las pruebas). */
+interface PlanCatalogLogger {
+  error(payload: Record<string, unknown>): void;
+}
+
 /**
  * Catálogo de planes (M4): la lista pública de la 008 y el alta y la baja del Administrador de la 011 (CA-9 a CA-11).
  * `backoffice` autoriza y audita antes de llamar y no revalida; estos métodos corren dentro de su transacción. Un plan
@@ -21,25 +27,29 @@ import type { IPlanRepository } from './ports/i-plan-repository.port';
  */
 @Injectable()
 export class PlanCatalogService {
-  private readonly logger = new Logger(PlanCatalogService.name);
-
   constructor(
     @Inject(I_PLAN_REPOSITORY) private readonly plans: IPlanRepository,
     @Inject(I_CLOCK) private readonly clock: IClock,
+    @Inject(PinoLogger) private readonly logger: PlanCatalogLogger,
   ) {}
 
-  /** 008 CA-1, CA-3: cualquier fallo de lectura es CA-3; la bitácora solo lleva el tipo de error (008 §5). */
+  /**
+   * 008 CA-1, CA-3: solo el fallo de lectura del repositorio se registra como catálogo no disponible; cualquier otra
+   * excepción sigue intacta al filtro global como `INTERNAL_ERROR` (plan 008 §5). La bitácora lleva el tipo, sin SQL ni
+   * mensaje.
+   */
   async list(): Promise<Plan[]> {
     try {
       return await this.plans.findActive();
     } catch (error) {
-      const unavailable = new PlanCatalogUnavailableError();
-      this.logger.error({
-        event: 'billing.plan_catalog_unavailable',
-        code: unavailable.code,
-        errorName: error instanceof Error ? error.name : 'unknown',
-      });
-      throw unavailable;
+      if (error instanceof PlanCatalogUnavailableError) {
+        this.logger.error({
+          event: 'billing.plan_catalog_unavailable',
+          code: error.code,
+          errorName: error.causeName,
+        });
+      }
+      throw error;
     }
   }
 

@@ -6,6 +6,7 @@ import type { EmployeeCode } from '../../domain/employee-code.vo';
 import { InternalUser } from '../../domain/internal-user.entity';
 import type { PasswordHash } from '../../domain/password-hash.vo';
 import type { User } from '../../domain/user.entity';
+import type { IAdminRosterRepository } from '../ports/i-admin-roster.repository.port';
 import type { IUserRepository } from '../ports/i-user-repository.port';
 
 /** Columnas que el repositorio actualiza sueltas: `hash_clave` y `estado`. */
@@ -30,10 +31,11 @@ const withPatch = (user: User, patch: RowPatch): User => {
 };
 
 /**
- * Doble en memoria de `IUserRepository` para las pruebas de aplicación: correo y código de empleado únicos, como
- * `uq_usuario_correo` y `uq_usuario_codigo_empleado`. Sin transacciones, `lockAdminRoster` no tiene nada que serializar.
+ * Doble en memoria de `IUserRepository` e `IAdminRosterRepository` para las pruebas de aplicación: correo y código de
+ * empleado únicos, como `uq_usuario_correo` y `uq_usuario_codigo_empleado`. Sin transacciones, `lockAdminRoster` no
+ * tiene nada que serializar.
  */
-export class InMemoryUserRepository implements IUserRepository {
+export class InMemoryUserRepository implements IUserRepository, IAdminRosterRepository {
   private readonly users = new Map<string, User>();
 
   all(): readonly User[] {

@@ -11,9 +11,9 @@ import type { Actor, ITransactionRunner } from '../../src/shared';
 import { createStorageHttpApp } from '../int/storage/storage-http';
 import type { StorageHttpApp } from '../int/storage/storage-http';
 
+import { comparable, INTERNAL_ROLES } from './setup/isolation-assertions';
 import { createIsolationWorld } from './setup/isolation-world';
 import type {
-  InternalRole,
   IsolationWorld,
   WorldAccount,
   WorldFile,
@@ -22,7 +22,6 @@ import type {
 } from './setup/isolation-world';
 
 const API_PREFIX = '/api/v1';
-const INTERNAL_ROLES: readonly InternalRole[] = [Role.ADMIN, Role.SUPPORT, Role.OPERATOR];
 /** Los dos clientes tienen carpetas, archivos y papelera con los mismos nombres (003 CA-10). */
 const FOLDER_NAMES = ['Proyectos', 'Facturas'];
 const FILE_NAMES = ['Informe anual.txt'];
@@ -42,12 +41,6 @@ interface ClientNodes {
   readonly files: readonly WorldFile[];
   readonly trash: WorldTrash;
 }
-
-/** Lo que un cliente distingue de una respuesta: todo menos el `correlationId` (003 CA-11). */
-const comparable = (response: Response) => {
-  const { correlationId: _ignored, ...body } = response.body as Record<string, unknown>;
-  return { status: response.status, contentType: response.headers['content-type'], body };
-};
 
 const first = <T>(items: readonly T[]): T => {
   const [item] = items;

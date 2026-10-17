@@ -3,6 +3,7 @@ import type { DynamicModule, Provider, ValueProvider } from '@nestjs/common';
 
 import { AuditModule } from '../audit';
 
+import { FileVersionService } from './application/file-version.service';
 import { FOLDER_CONFIG } from './application/folder-config';
 import type { FolderConfig } from './application/folder-config';
 import { I_PLAN_LIMITS_PROVIDER } from './application/plan-limits';
@@ -11,12 +12,14 @@ import { I_EXPIRED_TRASH_SCANNER } from './application/ports/i-expired-trash.sca
 import { I_EXPIRED_UPLOAD_SCANNER } from './application/ports/i-expired-upload.scanner.port';
 import { I_OBJECT_STORAGE } from './application/ports/i-object-storage.port';
 import { I_SPACE_REPOSITORY } from './application/ports/i-space.repository.port';
+import { I_VERSION_REPOSITORY } from './application/ports/i-version.repository.port';
 import { SpaceMeasurer } from './application/space-measurer';
 import { TrashService } from './application/trash.service';
 import { UPLOAD_CONFIG } from './application/upload-config';
 import type { UploadConfig } from './application/upload-config';
 import { UploadService } from './application/upload.service';
 import { UsageReconciler } from './application/usage-reconciler';
+import { VersionPruner } from './application/version-pruner';
 import { TrashPurgeProcessor } from './infrastructure/trash-purge.processor';
 import {
   TRASH_PURGE_CONFIG,
@@ -116,6 +119,12 @@ describe('StorageWorkerModule', () => {
         I_SPACE_REPOSITORY,
         SpaceMeasurer,
       ]),
+    );
+  });
+
+  it('014 CA-5, CA-13: registra el registro y la poda de versiones con su repositorio', () => {
+    expect(providers.map(tokenOf)).toEqual(
+      expect.arrayContaining([I_VERSION_REPOSITORY, VersionPruner, FileVersionService]),
     );
   });
 

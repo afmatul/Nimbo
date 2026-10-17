@@ -16,6 +16,7 @@ const toLimits = (plan: Plan): PlanLimits => ({
   maxFileBytes: plan.limits.maxFileBytes,
   storageQuotaBytes: plan.limits.quotaBytes,
   trashRetentionDays: plan.limits.trashRetentionDays,
+  retainedVersions: plan.limits.retainedVersions,
 });
 
 /**

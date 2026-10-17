@@ -3,6 +3,7 @@
  */
 import type { Plan } from '@nimbo/contracts';
 import { render, screen, within } from '@testing-library/react';
+import { axe, toHaveNoViolations } from 'jest-axe';
 
 import { PlanComparisonTable } from './plan-comparison-table';
 
@@ -46,6 +47,8 @@ const CA2_ROWS = [
   'Retención en papelera',
 ];
 
+expect.extend(toHaveNoViolations);
+
 function cellsOf(rowLabel: string): string[] {
   const row = screen.getByRole('rowheader', { name: rowLabel }).closest('tr');
   if (row === null) throw new Error(`Falta la fila ${rowLabel}`);
@@ -84,5 +87,9 @@ describe('PlanComparisonTable (008 CA-2)', () => {
     expect(cellsOf('Versiones retenidas')).toEqual(['5', '30']);
     expect(cellsOf('Retención en papelera')).toEqual(['7 días', '30 días']);
     expect(cellsOf('Historial de versiones con autoría')).toEqual(['Sí', 'Sí']);
+  });
+
+  it('no tiene violaciones de accesibilidad', async () => {
+    expect(await axe(screen.getByRole('table'))).toHaveNoViolations();
   });
 });

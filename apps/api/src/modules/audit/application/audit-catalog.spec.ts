@@ -5,8 +5,10 @@ import { AUDIT_NOTE_MAX_LENGTH, sanitizeAttributes } from '../domain/attribute-s
 import { AuditAction } from './audit-action';
 import { AUDIT_CATALOG, resourceTypeOf } from './audit-catalog';
 
-/** Lo que 005 (`upload.service`, `file.service`), 006 (`trash.service`) y 011 (`backoffice`) emiten. */
-const REAL_ATTRIBUTES: Readonly<Record<AuditAction, Record<string, string | number>>> = {
+const VERSION_ID = '7c9e6679-7425-40de-944b-e07fc1f90ae7';
+
+/** Lo que emiten 005 (`upload.service`, `file.service`), 006 (`trash.service`), 014 (plan §5) y 011 (`backoffice`). */
+const REAL_ATTRIBUTES: Readonly<Record<AuditAction, Record<string, string | number | boolean>>> = {
   [AuditAction.FILE_UPLOAD_COMPLETED]: { sizeBytes: 12_582_912, mode: 'multipart' },
   [AuditAction.FILE_UPLOAD_REJECTED]: { reason: 'TYPE_MISMATCH', mode: 'simple', sizeBytes: 2048 },
   [AuditAction.FILE_DOWNLOAD_URL_ISSUED]: { sizeBytes: 12_582_912 },
@@ -19,6 +21,13 @@ const REAL_ATTRIBUTES: Readonly<Record<AuditAction, Record<string, string | numb
     trigger: 'scheduled',
   },
   [AuditAction.TRASH_EMPTIED]: { itemCount: 4, sizeBytes: 4096 },
+  [AuditAction.FILE_VERSION_RESTORED]: {
+    versionId: VERSION_ID,
+    versionNumber: 4,
+    restoredFromNumber: 2,
+    sizeBytes: 2048,
+  },
+  [AuditAction.FILE_VERSION_PRUNED]: { versionId: VERSION_ID, versionNumber: 1, sizeBytes: 1024 },
   [AuditAction.ACCOUNT_SUSPENDED]: {},
   [AuditAction.ACCOUNT_REACTIVATED]: {},
   [AuditAction.ACCOUNT_INTERNAL_CREATED]: { role: 'SUPPORT' },
@@ -53,6 +62,23 @@ describe('AUDIT_CATALOG', () => {
     expect(result.rejections.map((rejection) => rejection.key).sort()).toEqual(['email', 'role']);
   });
 
+  it('014 CA-19: un reemplazo guarda en `file.upload_completed` que reemplazó, la versión y su número', () => {
+    const raw = {
+      sizeBytes: 2048,
+      mode: 'simple',
+      replaced: true,
+      versionId: VERSION_ID,
+      versionNumber: 2,
+    };
+
+    const result = sanitizeAttributes(
+      AUDIT_CATALOG[AuditAction.FILE_UPLOAD_COMPLETED].attributes,
+      raw,
+    );
+
+    expect(result).toEqual({ attributes: raw, rejections: [] });
+  });
+
   it('CA-4: el tope de texto del saneo es el del motivo en el contrato', () => {
     expect(AUDIT_NOTE_MAX_LENGTH).toBe(CONTRACT_NOTE_MAX_LENGTH);
   });
@@ -67,6 +93,8 @@ describe('resourceTypeOf', () => {
     [AuditAction.NODE_RESTORED, { nodeType: 'file' }, 'file'],
     [AuditAction.NODE_PURGED, { nodeType: 'folder' }, 'folder'],
     [AuditAction.TRASH_EMPTIED, {}, null],
+    [AuditAction.FILE_VERSION_RESTORED, {}, 'file'],
+    [AuditAction.FILE_VERSION_PRUNED, {}, 'file'],
     [AuditAction.ACCOUNT_SUSPENDED, {}, 'account'],
     [AuditAction.ACCOUNT_REACTIVATED, {}, 'account'],
     [AuditAction.ACCOUNT_INTERNAL_CREATED, {}, 'account'],

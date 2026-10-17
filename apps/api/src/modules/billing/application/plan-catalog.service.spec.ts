@@ -1,4 +1,3 @@
-import { Logger } from '@nestjs/common';
 import { QueryFailedError } from 'typeorm';
 
 import { createActor, FixedClock, Role } from '../../../shared';
@@ -35,8 +34,9 @@ const setup = () => {
     insert: jest.fn(),
     deactivate: jest.fn(),
   };
-  const service = new PlanCatalogService(repository, new FixedClock(NOW));
-  return { service, repository };
+  const logger = { error: jest.fn() };
+  const service = new PlanCatalogService(repository, new FixedClock(NOW), logger);
+  return { service, repository, logger };
 };
 
 describe('PlanCatalogService.list (spec 008 CA-1, CA-3)', () => {
@@ -47,21 +47,31 @@ describe('PlanCatalogService.list (spec 008 CA-1, CA-3)', () => {
     await expect(service.list()).resolves.toEqual([PERSONAL_PLAN, PRO]);
   });
 
-  it('CA-3: cualquier fallo de lectura es PlanCatalogUnavailableError y la bitácora solo lleva el tipo de error', async () => {
-    const { service, repository } = setup();
-    const logError = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+  it('CA-3: propaga PlanCatalogUnavailableError y la bitácora solo lleva el evento y el tipo de error', async () => {
+    const { service, repository, logger } = setup();
     repository.findActive.mockRejectedValue(
-      new QueryFailedError('SELECT * FROM plan', [], new Error('DB Error')),
+      new PlanCatalogUnavailableError(
+        new QueryFailedError('SELECT * FROM plan', [], new Error('DB Error')),
+      ),
     );
 
     await expect(service.list()).rejects.toThrow(PlanCatalogUnavailableError);
 
-    expect(logError).toHaveBeenCalledWith({
+    expect(logger.error).toHaveBeenCalledWith({
       event: 'billing.plan_catalog_unavailable',
       code: 'BILLING_PLAN_CATALOG_UNAVAILABLE',
       errorName: 'QueryFailedError',
     });
-    logError.mockRestore();
+  });
+
+  it('plan 008 §5: un error de programación sigue intacto al filtro global y no se registra como CA-3', async () => {
+    const { service, repository, logger } = setup();
+    const defect = new TypeError("Cannot read properties of undefined (reading 'slug')");
+    repository.findActive.mockRejectedValue(defect);
+
+    await expect(service.list()).rejects.toBe(defect);
+
+    expect(logger.error).not.toHaveBeenCalled();
   });
 });
 
