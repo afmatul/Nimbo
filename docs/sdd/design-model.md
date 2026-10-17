@@ -30,7 +30,7 @@
 | M1 | Identidad y Acceso | `identity` | Juan Marcos | 01–04 |
 | M2 | Motor de Almacenamiento | `storage` | Abel | 08–15, 27 |
 | M3a | Compartición y Control de Acceso (lectura de permisos) | `access` | Adrián | 05, 16–18, 33 |
-| M3b | Compartición y Control de Acceso (comparticiones y enlaces) | `sharing` | Abel | 16–18 |
+| M3b | Compartición y Control de Acceso (comparticiones y enlaces) | `sharing` | Fátima | 16–18 |
 | M4 | Suscripciones y Pago | `billing` | Juan Marcos | 19–24, 34 (contador) |
 | M5 | Edición Colaborativa .docx e Historial con Autoría | `editing` | Fátima | 25, 26, 28, 29 |
 | M6 | Inteligencia Documental | `intelligence` | Fátima | 15 (contenido), 30–34 |

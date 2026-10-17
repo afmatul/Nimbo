@@ -1,6 +1,6 @@
 # `sharing` — M3b · Compartición y Control de Acceso (comparticiones y enlaces)
 
-- **Dueño**: Abel (`specs/README.md`).
+- **Dueño**: Fátima (`specs/README.md`).
 - **Diagrama de origen**: M3b en `docs/sdd/design-model.md` §3 y `docs/design/diagramas/`.
 - **Responsabilidad**: Comparticiones, enlaces públicos, límite de intentos.
 - **Puede depender de**: shared, access, storage, audit (`docs/sdd/architecture.md` §3; el lint de fronteras lo hace cumplir).

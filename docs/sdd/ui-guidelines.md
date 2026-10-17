@@ -272,7 +272,7 @@ identificador.
 > Estado del mockup: `Pendiente` · `Borrador` · `Aprobado`. Rutas relativas a `docs/design/`.
 > Actualicen la columna «Mockup» con lo que ya existe; el `ui-designer` la mantiene al día.
 > Los mockups `Borrador` provienen de Claude Design (`.dc.html`) o están escritos a mano en HTML autocontenido
-> (`.html`), como `mockups/identity/seguridad/`, `mockups/identity/terminos/`, `mockups/identity/privacidad/`, los mockups de `mockups/backoffice/` (`admin/`, `alta-interna/`, `catalogo/`, `metricas/`, `soporte/`) y los estados nuevos de `mockups/storage/carga/`, `mockups/storage/explorador/` y `mockups/storage/papelera/`. Solo
+> (`.html`), como `mockups/identity/seguridad/`, `mockups/identity/terminos/`, `mockups/identity/privacidad/`, los mockups de `mockups/backoffice/` (`admin/`, `alta-interna/`, `catalogo/`, `metricas/`, `soporte/`) y los estados nuevos de `mockups/storage/carga/`, `mockups/storage/explorador/`, `mockups/storage/papelera/`, `mockups/sharing/compartir/` y `mockups/sharing/compartido-conmigo/`. Solo
 > cubren los estados entre paréntesis; el resto de estados mínimos se agregan con `/mockup` antes de aclarar la spec.
 > Cada carpeta tiene un `README.md`.
 
@@ -296,7 +296,8 @@ identificador.
 | Ficha de archivo (detalles, versiones, estado de indexación) | storage | 014, 019 | `mockups/storage/ficha-archivo/` | `capturas/storage/ficha-archivo/` | 014: default, una-version, cargando, error, confirmar-restauracion, aviso-de-poda, restaurando, restaurada, error-cuota, error-version-no-encontrada, no-encontrado, descarga-preparando; 019: no-indexable | Borrador (014: los 12 estados; vision, paquete de diseño interno) |
 | Vista previa | storage | 017 | `mockups/storage/vista-previa/` | … | pdf, imagen, no-disponible | Pendiente |
 | Búsqueda | storage | 018 | `mockups/storage/busqueda/` | `capturas/storage/busqueda/` | resultados, sin-resultados | Borrador (resultados) |
-| Compartir y accesos | sharing | 012 | `mockups/sharing/compartir/` | `capturas/sharing/compartir/` | default, lista-accesos | Borrador (default) |
+| Compartir y accesos (diálogo «Compartir» y `AccessList` desde el menú ⋮ de Mis archivos) | sharing | 012 | `mockups/sharing/compartir/` | `capturas/sharing/compartir/` | menu-fila, sin-accesos, cargando, con-accesos, con-accesos-carpeta, agregando, compartido, error-correo-generico, error-propio, ya-tiene-acceso, cambiando-nivel, confirmar-revocar, demasiados-intentos, error | Borrador (012: menu-fila, sin-accesos, cargando, con-accesos, con-accesos-carpeta, agregando, compartido, error-correo-generico, error-propio, ya-tiene-acceso, cambiando-nivel, confirmar-revocar, demasiados-intentos, error; propuesta, paquete histórico con «externos» y enlace público, no se implementa) |
+| Compartido conmigo (entrada en la barra lateral y página) | sharing | 012 | `mockups/sharing/compartido-conmigo/` | `capturas/sharing/compartido-conmigo/` | lista, cargando-mas, carpeta-abierta, vacio, cargando, error, ya-no-disponible, menu-fila-lector, menu-fila-editor, aviso-de-poda, subiendo-version, version-subida, error-espacio-propietario, confirmar-salir, cajon-abierto | Borrador (012: los 15 estados) |
 | Enlace público (creación y página pública) | sharing | 013 | `mockups/sharing/enlace-publico/` | `capturas/sharing/enlace-publico/` | con-contrasena, expirado, revocado | Borrador (con-contrasena) |
 | Planes y comparador | billing | 008 | `mockups/billing/planes/` | `capturas/billing/planes/` | default, plan-actual | Borrador (plan-actual) |
 | Pago simulado | billing | 009 | `mockups/billing/pago/` | `capturas/billing/pago/` | default, rechazado, exito | Borrador (default) |
