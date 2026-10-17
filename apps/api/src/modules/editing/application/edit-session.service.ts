@@ -42,6 +42,7 @@ interface OpenContext {
   readonly file: EditableFile;
   readonly canEdit: boolean;
   readonly ownerMaxEditors: number;
+  readonly connectionId?: string | undefined;
 }
 
 /**
@@ -81,9 +82,9 @@ const modeOf = ({ decision, session }: Admission): OpenedMode => {
  * (CA-4) y el servicio disponible (CA-15), y decide con el nivel del actor y el plan de la **cuenta propietaria**
  * (RN-3). En edición reutiliza la sesión abierta o la crea (`uq_sesion_edicion_abierta` resuelve la carrera) y da de
  * alta la participación bajo `FOR UPDATE` de la sesión, para que dos aperturas no pasen el límite (CA-7). Con
- * `connectionId`, la conexión del canal en vivo entra a la sala del documento y, en edición, todos ven la lista nueva
- * (CA-6). `revokeAccess` saca a una cuenta de la sesión en curso (CA-16) y `closeWithoutChanges` la termina sin
- * versión (CA-11).
+ * `connectionId`, descartado el guardado en curso, la conexión del canal en vivo entra a la sala del documento y, en
+ * edición, todos ven la lista nueva (CA-6). `revokeAccess` saca a una cuenta de la sesión en curso (CA-16) y
+ * `closeWithoutChanges` la termina sin versión (CA-11).
  */
 @Injectable()
 export class EditSessionService {
@@ -106,9 +107,7 @@ export class EditSessionService {
   async open(actor: Actor, fileId: string, input: OpenSessionInput): Promise<OpenedEditor> {
     const context = await this.contextFor(actor, fileId);
     const factory = await this.availability.factory();
-    if (input.connectionId !== undefined)
-      await this.presence.admit(actor, input.connectionId, context.file.id);
-    const admission = await this.admit(context);
+    const admission = await this.admit({ ...context, connectionId: input.connectionId });
     const names = await this.users.displayNames([actor.id, ...admission.participants]);
     const launch = factory.build({
       file: context.file,
@@ -169,11 +168,17 @@ export class EditSessionService {
     return second;
   }
 
-  /** `null` si perdió la carrera por crear la sesión del archivo. */
+  /**
+   * `null` si perdió la carrera por crear la sesión del archivo. La conexión entra a la sala ya descartado el 409 y
+   * antes de escribir la sesión o la participación: ni un guardado en curso la deja en la sala ni una conexión ajena
+   * (`SHARED_FORBIDDEN`) deja filas. Unirse otra vez en el reintento no cambia nada.
+   */
   private async tryAdmit(context: OpenContext): Promise<Admission | null> {
     const { actor, file } = context;
     const open = await this.sessions.findOpenForUpdate(actor, file.id);
     if (open?.state === 'guardando') throw new EditingSaveInProgressError();
+    if (context.connectionId !== undefined)
+      await this.presence.admit(actor, context.connectionId, file.id);
     const connected = open === null ? [] : await this.sessions.activeParticipants(actor, open.id);
     const lastSaveFailed = open === null && (await this.previousSaveFailed(actor, file.id));
     const decision = this.decide(context, connected);
