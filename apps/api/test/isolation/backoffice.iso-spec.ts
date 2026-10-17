@@ -31,8 +31,17 @@ const URL_MARKERS = ['http', 'X-Amz-'];
 const UPLOADS_PER_CLIENT = 1;
 const FILES_SQL = 'SELECT id FROM archivo WHERE id = ANY($1) ORDER BY id';
 const UPLOADS_SQL = 'SELECT id FROM carga WHERE propietario_id = ANY($1) ORDER BY id';
+/** Eventos en los que una cuenta del mundo es la afectada o quien actúa. */
+const WORLD_EVENTS_SQL = `SELECT id, usuario_afectado_id AS "targetUserId", actor_id AS "actorId"
+  FROM evento_auditoria WHERE usuario_afectado_id = ANY($1) OR actor_id = ANY($1)`;
 
 type Http = ReturnType<typeof request>;
+
+interface WorldEventRow {
+  readonly id: string;
+  readonly targetUserId: string;
+  readonly actorId: string;
+}
 
 /** Una acción del backoffice: quién la usa, qué claves puede traer su respuesta y la petición sobre la cuenta de A. */
 interface BackofficeRoute {
@@ -102,6 +111,11 @@ describe('aislamiento del backoffice (011 CA-15, CA-16)', () => {
     return forbidden.filter((value) => serialized.includes(value));
   };
 
+  const worldEvents = async (): Promise<WorldEventRow[]> =>
+    (await owner.query(WORLD_EVENTS_SQL, [
+      [...world.clients, ...Object.values(world.internals)].map((account) => account.id),
+    ])) as WorldEventRow[];
+
   const forbiddenValues = async (): Promise<string[]> => {
     const rows = (await owner.query(
       'SELECT id, clave_objeto FROM version_archivo WHERE archivo_id = ANY($1)',
@@ -154,6 +168,20 @@ describe('aislamiento del backoffice (011 CA-15, CA-16)', () => {
         });
       },
     );
+
+    it('ISO-2 (CA-14, RN-2): el 403 de OPERATOR no puede dejar ningún evento de auditoría sobre A ni sobre nadie del mundo', async () => {
+      const before = sortedIds(await worldEvents());
+
+      expect((await send(world.internals[Role.OPERATOR], CLIENT_FILES_ROUTE)).status).toBe(403);
+      expect(sortedIds(await worldEvents())).toEqual(before);
+
+      // Centinela: la consulta de Soporte sí suma su evento sobre A; si no, lo anterior pasaría en vacío.
+      expect((await send(world.internals[Role.SUPPORT], CLIENT_FILES_ROUTE)).status).toBe(200);
+      const added = (await worldEvents()).filter((event) => !before.includes(event.id));
+      expect(added).toMatchObject([
+        { targetUserId: a.id, actorId: world.internals[Role.SUPPORT].id },
+      ]);
+    });
 
     it.each(CLIENT_FILES_ROUTE.allowed)(
       'ISO-3 (CA-13, CA-15): %s no puede ver archivos de B consultando por A: solo los ids de A',

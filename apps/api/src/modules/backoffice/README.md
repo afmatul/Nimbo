@@ -51,6 +51,8 @@ corre en `InternalActionService.run`:
   incluida, de la más reciente a la más vieja, 10 por página; nunca `version_archivo`, `clave_objeto` ni `carga`.
 - La consulta se audita (`client.files_viewed`, sobre la cuenta del cliente) aunque la página venga vacía; la bitácora
   `backoffice.client_files.viewed` lleva solo `actorId` y `clientId`, nunca el correo ni nombres de archivo.
+- Un `404` no se audita, pero deja la bitácora `backoffice.client_files.not_found` con `actorId` y `actorRole` (nunca el
+  correo buscado): un sondeo de correos en masa queda a la vista.
 - La respuesta sale por lista blanca (`client-files-response.ts`): id, nombre, tipo, tamaño (texto decimal), fechas y
   `trashedAt`.
 
@@ -74,3 +76,6 @@ actor; el correo sale después del commit. No pasa por `InternalActionService`: 
 - Sale con `1` y `reason: unknown_option` ante una opción desconocida o un valor suelto, sin repetir lo escrito.
 - Nunca imprime el correo, el nombre ni el token: el enlace llega solo por correo. Sin `-s`, `pnpm` repite la línea de
   comando con lo que escribiste antes de correrla; por eso el comando de arriba lleva `pnpm -s`.
+- El correo y el nombre sí quedan en el historial del shell y, mientras corre, en la lista de procesos: córrelo en una
+  sesión que no guarde historial (p. ej. con un espacio delante si `HISTCONTROL=ignorespace`) o limpia el historial
+  después.

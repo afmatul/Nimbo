@@ -95,15 +95,27 @@ describe('SupportService (011 CA-13, RN-2)', () => {
     ]);
   });
 
-  it('CA-13: un correo inexistente o de una cuenta interna da `404 BACKOFFICE_CLIENT_NOT_FOUND`, sin evento ni lectura', async () => {
-    const { service, recorded, reader, logs, actor } = setup({ client: null });
+  it('CA-13: un correo inexistente o de una cuenta interna da `404 BACKOFFICE_CLIENT_NOT_FOUND`, sin evento de auditoría ni lectura', async () => {
+    const { service, recorded, reader, actor } = setup({ client: null });
 
     await expect(
       service.listClientFiles(actor, { email: 'nadie@nimbo.me', page: 1 }),
     ).rejects.toMatchObject({ status: 404, code: BACKOFFICE_ERROR_CODES.CLIENT_NOT_FOUND });
     expect(recorded).toEqual([]);
     expect(reader.listForOwner).not.toHaveBeenCalled();
-    expect(logs).toEqual([]);
+  });
+
+  it('RNF-17: un `404` deja la bitácora `backoffice.client_files.not_found` con el actor, nunca el correo', async () => {
+    const { service, logs, actor } = setup({ client: null });
+
+    await expect(
+      service.listClientFiles(actor, { email: 'nadie@nimbo.me', page: 1 }),
+    ).rejects.toMatchObject({ status: 404 });
+
+    expect(logs).toEqual([
+      { event: 'backoffice.client_files.not_found', actorId: actor.id, actorRole: Role.SUPPORT },
+    ]);
+    expect(JSON.stringify(logs)).not.toContain('nadie');
   });
 
   it('RNF-17: la bitácora `backoffice.client_files.viewed` lleva solo ids, nunca el correo ni nombres de archivo', async () => {

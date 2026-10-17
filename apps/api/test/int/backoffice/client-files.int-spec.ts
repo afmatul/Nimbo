@@ -196,6 +196,26 @@ describe('`GET /backoffice/client-files` (011 CA-13)', () => {
     expect(await allViewedEvents()).toBe(eventsBefore);
   });
 
+  it('RNF-17: un `404` deja la bitácora `backoffice.client_files.not_found` con el actor y sin el correo', async () => {
+    const get = await asUser(ids.support, Role.SUPPORT);
+    const correlationId = randomUUID();
+    const email = `nadie-${randomUUID()}@nimbo.me`;
+
+    expect((await get({ email }, correlationId)).status).toBe(404);
+
+    const lines = testApp.logs.withCorrelationId(correlationId);
+    expect(lines).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'backoffice.client_files.not_found',
+          actorId: ids.support,
+          actorRole: Role.SUPPORT,
+        }),
+      ]),
+    );
+    expect(JSON.stringify(lines)).not.toContain(email);
+  });
+
   it('RNF-17: la bitácora `backoffice.client_files.viewed` no lleva el correo ni nombres de archivo', async () => {
     const get = await asUser(ids.support, Role.SUPPORT);
     const correlationId = randomUUID();

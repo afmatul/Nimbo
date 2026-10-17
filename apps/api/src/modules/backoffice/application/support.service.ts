@@ -69,6 +69,12 @@ export class SupportService {
   private async readClientFiles(actor: Actor, query: ClientFilesQuery): Promise<ClientFilesView> {
     const client = await this.directory.findClientByEmail(actor, query.email);
     if (client === null) {
+      // Rastro de un posible sondeo de correos, sin el correo (RNF-17); sin evento: CA-13.
+      this.logger.info({
+        event: 'backoffice.client_files.not_found',
+        actorId: actor.id,
+        actorRole: actor.role,
+      });
       throw new ClientNotFoundError();
     }
     const { items, total } = await this.reader.listForOwner(actor, client.id, {
