@@ -22,9 +22,6 @@ import type { UploadManagerOptions } from '../../../../features/storage/upload/u
 
 import ArchivosPage from './page';
 
-const push = jest.fn();
-jest.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
-
 const AT = '2026-09-30T10:00:00.000Z';
 const UPLOAD_ID = '2f0c1d2e-3a4b-4c5d-8e6f-7a8b9c0d1e2f';
 const INFORME: FileSummary = {
@@ -131,9 +128,9 @@ describe('página Mis archivos (/archivos)', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Acciones de plan.pdf' }));
     const [first] = screen.getAllByRole('menuitem');
     expect(first?.textContent).toBe('Previsualizar');
-    await userEvent.click(screen.getByRole('menuitem', { name: 'Previsualizar' }));
-
-    expect(push).toHaveBeenCalledWith(`/archivos/vista-previa/${plan.id}`);
+    const preview = screen.getByRole('menuitem', { name: 'Previsualizar' });
+    expect(preview.tagName).toBe('A');
+    expect(preview.getAttribute('href')).toBe(`/archivos/vista-previa/${plan.id}`);
     expect(api.downloadUrl).not.toHaveBeenCalled();
   });
 

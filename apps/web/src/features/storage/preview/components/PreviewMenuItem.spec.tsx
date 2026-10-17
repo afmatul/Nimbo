@@ -1,19 +1,15 @@
 /** @jest-environment jsdom */
 import type { FileKind, FileSummary } from '@nimbo/contracts';
-import { act, render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 
-import { MyFiles } from '../..';
 import { FileRowMenu } from '../../components/file-row-menu';
 import * as api from '../api';
 import { previewPathOf } from '../routes';
 
-import { PreviewFiles, PreviewMenuItem } from './PreviewMenuItem';
+import { PreviewMenuItem } from './PreviewMenuItem';
 
-const push = jest.fn();
-jest.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
-jest.mock('../..', () => ({ ...jest.requireActual('../..'), MyFiles: jest.fn(() => null) }));
 jest.mock('../api', () => ({ ...jest.requireActual('../api'), requestPreviewUrl: jest.fn() }));
 
 const file = (kind: FileKind): FileSummary => ({
@@ -26,7 +22,7 @@ const file = (kind: FileKind): FileSummary => ({
   updatedAt: '2026-10-10T10:00:00.000Z',
 });
 
-async function openMenu(kind: FileKind) {
+function renderMenu(kind: FileKind) {
   const selected = file(kind);
   const requestUrl = jest.fn();
   const { container } = render(
@@ -42,8 +38,13 @@ async function openMenu(kind: FileKind) {
       firstAction={<PreviewMenuItem file={selected} />}
     />,
   );
-  await userEvent.click(screen.getByRole('button', { name: 'Acciones de Archivo.docx' }));
   return { container, requestUrl };
+}
+
+async function openMenu(kind: FileKind) {
+  const rendered = renderMenu(kind);
+  await userEvent.click(screen.getByRole('button', { name: 'Acciones de Archivo.docx' }));
+  return rendered;
 }
 
 describe('menú T-06 sobre firstAction real de T-05', () => {
@@ -54,6 +55,9 @@ describe('menú T-06 sobre firstAction real de T-05', () => {
     async (kind) => {
       await openMenu(kind);
       expect(screen.getAllByRole('menuitem')[0]?.textContent).toBe('Previsualizar');
+      const preview = screen.getByRole('menuitem', { name: 'Previsualizar' });
+      expect(preview.tagName).toBe('A');
+      expect(preview.getAttribute('href')).toBe(previewPathOf(file(kind).id));
       expect(screen.getByRole('menuitem', { name: 'Descargar' })).toBeTruthy();
     },
   );
@@ -67,21 +71,42 @@ describe('menú T-06 sobre firstAction real de T-05', () => {
     },
   );
 
-  it('CA-9: el teclado navega por la ruta aprobada sin iniciar la descarga', async () => {
-    const { requestUrl } = await openMenu('pdf');
-    act(() => screen.getByRole('menuitem', { name: 'Previsualizar' }).focus());
-    await userEvent.keyboard('{Enter}');
-    expect(push).toHaveBeenCalledWith(previewPathOf(file('pdf').id));
-    expect(requestUrl).toHaveBeenCalledTimes(0);
-  });
-
-  it('CA-7: el wrapper cliente conecta solo props públicas y firstAction', () => {
-    render(<PreviewFiles folderId={null} returnFocusId="archivo-17" />);
-    expect(MyFiles).toHaveBeenCalledWith(
-      { folderId: null, returnFocusId: 'archivo-17', firstAction: PreviewMenuItem },
-      undefined,
-    );
-  });
+  it.each([
+    ['Enter', '{Enter}'],
+    ['Espacio', ' '],
+  ])(
+    'CA-9: abre y recorre el menú con teclado y activa Previsualizar con %s',
+    async (_name, key) => {
+      const { requestUrl } = renderMenu('pdf');
+      await userEvent.tab();
+      expect(document.activeElement).toBe(
+        screen.getByRole('button', { name: 'Acciones de Archivo.docx' }),
+      );
+      await userEvent.keyboard('{ArrowDown}');
+      const preview = screen.getByRole('menuitem', { name: 'Previsualizar' });
+      await waitFor(() => expect(document.activeElement).toBe(preview));
+      await userEvent.keyboard('{ArrowDown}');
+      await waitFor(() =>
+        expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Descargar' })),
+      );
+      await userEvent.keyboard('{ArrowUp}');
+      await waitFor(() => expect(document.activeElement).toBe(preview));
+      expect(api.requestPreviewUrl).toHaveBeenCalledTimes(0);
+      const activate = jest.fn((event: MouseEvent) => event.preventDefault());
+      document.addEventListener('click', activate, { once: true });
+      try {
+        await userEvent.keyboard(key);
+      } finally {
+        document.removeEventListener('click', activate);
+      }
+      expect(activate).toHaveBeenCalledTimes(1);
+      expect(activate.mock.calls[0]?.[0].target).toBe(preview);
+      expect(preview.getAttribute('href')).toBe(previewPathOf(file('pdf').id));
+      expect(screen.queryByRole('menu')).toBeNull();
+      expect(requestUrl).toHaveBeenCalledTimes(0);
+      expect(api.requestPreviewUrl).toHaveBeenCalledTimes(0);
+    },
+  );
 
   it('Guardia transversal: abrir el menú no emite una URL de preview anticipadamente', async () => {
     await openMenu('pdf');

@@ -21,10 +21,9 @@ describe('clasificación estructural T-06', () => {
     ['SHARED_FORBIDDEN', 403, 'forbidden'],
     ['SHARED_UNAUTHENTICATED', 401, 'unauthenticated'],
   ] as const)('CA-2: clasifica %s sin copiar el mensaje del servidor', (code, status, reason) => {
-    expect(classifyPreviewFailure(apiError(code, status))).toMatchObject({
+    expect(classifyPreviewFailure(apiError(code, status))).toEqual({
       reason,
       correlationId: 'request-17',
-      retryAfterSeconds: 17,
     });
   });
 

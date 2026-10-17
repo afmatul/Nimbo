@@ -4,5 +4,6 @@
  */
 export { MyFiles, type FirstFileAction, type MyFilesProps } from './components/my-files';
 export { StorageAppLayout } from './components/storage-app-layout';
+export { CHIP_TYPE_BY_KIND } from './file-type';
 export { useFileDownload } from './hooks/use-file-download';
 export { locationPath, returnFocusOf, returnPathOf, type RouteSearch } from './routes';

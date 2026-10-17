@@ -19,7 +19,6 @@ export type PreviewFailureReason =
 export type PreviewFailure = {
   readonly reason: PreviewFailureReason;
   readonly correlationId: string;
-  readonly retryAfterSeconds?: number | undefined;
 };
 
 const API_REASONS: Readonly<Record<string, PreviewFailureReason>> = {
@@ -39,9 +38,5 @@ export function classifyPreviewFailure(caught: unknown): PreviewFailure {
   return {
     reason: caught.status === undefined ? 'network' : (apiReason ?? 'unexpected'),
     correlationId: /^[\w-]+$/.test(caught.correlationId) ? caught.correlationId : '',
-    retryAfterSeconds:
-      Number.isFinite(caught.retryAfterSeconds) && (caught.retryAfterSeconds ?? -1) >= 0
-        ? caught.retryAfterSeconds
-        : undefined,
   };
 }

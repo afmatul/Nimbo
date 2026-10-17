@@ -1,20 +1,16 @@
 'use client';
 
-import {
-  formatBytes,
-  type DownloadUrlResponse,
-  type FileKind,
-  type FileSummary,
-} from '@nimbo/contracts';
+import { formatBytes, type DownloadUrlResponse, type FileSummary } from '@nimbo/contracts';
 import { ArrowLeft, Download, Eye, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
 
-import { returnPathOf, useFileDownload } from '../..';
-import { FileTypeChip, type FileType } from '../../../../components/nimbo/file-type-chip';
+import { CHIP_TYPE_BY_KIND, returnPathOf, useFileDownload } from '../..';
+import { FileTypeChip } from '../../../../components/nimbo/file-type-chip';
 import { Alert } from '../../../../components/ui/alert';
 import { Button, buttonVariants } from '../../../../components/ui/button';
 import { messageForCode } from '../../../../lib/error-catalog';
+import { DATE_LOCALE } from '../../../../lib/format-date';
 import { useAuthFetch } from '../../../identity/session/use-auth-fetch';
 import { requestPreviewUrl, type PreviewUrlRequester } from '../api';
 import { usePreview } from '../hooks/use-preview';
@@ -25,16 +21,6 @@ export type PreviewPageProps = {
   readonly fileId: string;
   readonly apiPublicUrl: string;
   readonly openDownloadUrl?: (url: string) => void;
-};
-
-const FILE_TYPES: Readonly<Record<FileKind, FileType>> = {
-  pdf: 'pdf',
-  texto: 'text',
-  imagen: 'img',
-  xlsx: 'xlsx',
-  pptx: 'pptx',
-  docx: 'docx',
-  otro: 'other',
 };
 
 const openInBrowser = (url: string): void => window.location.assign(url);
@@ -91,12 +77,12 @@ function usePreviewDownload(fileId: string, open: (url: string) => void) {
 }
 
 function PreviewMetadata({ file }: { readonly file: FileSummary }): React.JSX.Element {
-  const date = new Intl.DateTimeFormat('es', { dateStyle: 'medium' }).format(
+  const date = new Intl.DateTimeFormat(DATE_LOCALE, { dateStyle: 'medium' }).format(
     new Date(file.updatedAt),
   );
   return (
     <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-      <FileTypeChip fileType={FILE_TYPES[file.kind]} />
+      <FileTypeChip fileType={CHIP_TYPE_BY_KIND[file.kind]} />
       <span className="tabular-nums">{formatBytes(file.sizeBytes)}</span>
       <time dateTime={file.updatedAt} className="tabular-nums">
         {date}

@@ -6,6 +6,7 @@ import { axe } from 'jest-axe';
 import type { ComponentProps, ReactNode } from 'react';
 
 import { ApiClientError } from '../../../../lib/api-error';
+import { DATE_LOCALE } from '../../../../lib/format-date';
 
 import { PreviewPage } from './PreviewPage';
 
@@ -104,6 +105,11 @@ describe('shell T-06', () => {
     expect(authFetch).toHaveBeenCalledTimes(1);
     expect(screen.getByText('100 B')).toBeTruthy();
     expect(container.querySelector('time')?.getAttribute('dateTime')).toBe(DELIVERY.file.updatedAt);
+    expect(container.querySelector('time')?.textContent).toBe(
+      new Intl.DateTimeFormat(DATE_LOCALE, { dateStyle: 'medium' }).format(
+        new Date(DELIVERY.file.updatedAt),
+      ),
+    );
     expect(authFetch.mock.calls[0]?.[0]).toBe(`https://api.test/api/v1/files/${ID}/preview-url`);
     expect(authFetch.mock.calls[0]?.[1]).toMatchObject({
       method: 'POST',
