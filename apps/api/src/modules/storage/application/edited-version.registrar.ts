@@ -37,7 +37,7 @@ export interface EditedVersionInput {
 
 /**
  * Resultado del registro: `duplicate` si la versión ya existía (reintento, CA-10); `corrupt` si el documento no es un
- * `.docx` íntegro y `file_missing` si el actor ya no ve el archivo vivo (CA-14): en ambos la vigente no cambia.
+ * `.docx` íntegro y `file_missing` si el archivo ya no es del actor o se purgó (CA-14): en ambos la vigente no cambia.
  */
 export type EditedVersionOutcome =
   | {
@@ -86,9 +86,12 @@ export class EditedVersionRegistrar {
     return outcome;
   }
 
-  /** El archivo vivo y visible para el actor, salvo que la versión ya exista. */
+  /**
+   * El archivo del actor, vivo o en la papelera (RN-11: la sesión sigue aunque se elimine), salvo que la versión ya
+   * exista; `file_missing` solo si es ajeno o se purgó (CA-14).
+   */
   private async resolve(actor: Actor, input: EditedVersionInput): Promise<Target> {
-    const file = await this.nodes.findAccessibleById(actor, input.fileId);
+    const file = await this.nodes.findOwnedFile(actor, input.fileId);
     if (file === null) return { status: 'file_missing' };
     const existing = await this.versions.find(actor, file.id, input.versionId);
     return existing === null ? { file } : { status: 'duplicate', versionId: existing.id };

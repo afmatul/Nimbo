@@ -32,6 +32,12 @@ export interface Departure {
   readonly userId: string;
 }
 
+/** Quiénes siguen conectados al editor en la sesión, según el servidor de documentos (estado 1). */
+export interface Roster {
+  readonly session: EditSession;
+  readonly connected: readonly string[];
+}
+
 /** Lo que dejó la salida: la sesión abierta (si había) y la lista nueva (si la salida cambió algo). */
 interface DepartureOutcome {
   readonly session: EditSession;
@@ -91,6 +97,17 @@ export class PresenceService {
     return outcome?.session ?? null;
   }
 
+  /**
+   * Ajusta la participación a quienes siguen en el editor (estado 1, plan §4): quien sigue conectado vuelve a contar
+   * (otra pestaña cerrada, PD-101) y quien ya no está libera su plaza. Si cambió algo, avisa la lista nueva (CA-6).
+   */
+  async reconcile(actor: Actor, roster: Roster): Promise<void> {
+    const presence = await this.transactions.withActor(actor, () =>
+      this.applyRoster(actor, roster),
+    );
+    if (presence !== null) this.announce(presence);
+  }
+
   /** Una conexión salió de la sala (pestaña cerrada, red cortada, token vencido; 015 CA-9): libera su plaza. */
   @OnEvent(REALTIME_DOCUMENT_LEFT)
   async onDocumentLeft(event: DocumentLeftEvent): Promise<void> {
@@ -112,6 +129,24 @@ export class PresenceService {
     if (!(await this.sessions.leave(actor, change))) return { session, presence: null };
     this.logger.info({ event: 'editing.participant_left', sessionId: session.id, fileId, userId });
     return { session, presence: await this.presenceOf(actor, session) };
+  }
+
+  /** Bajo `FOR UPDATE` de la sesión, como la apertura: el conteo no se cruza con otra entrada (CA-7). */
+  private async applyRoster(
+    actor: Actor,
+    { session, connected }: Roster,
+  ): Promise<Presence | null> {
+    const open = await this.sessions.findOpenForUpdate(actor, session.fileId);
+    if (open?.id !== session.id) return null;
+    const active = await this.sessions.activeParticipants(actor, session.id);
+    const gone = active.filter((userId) => !connected.includes(userId));
+    const back = connected.filter((userId) => !active.includes(userId));
+    const now = this.clock.now();
+    for (const userId of gone)
+      await this.sessions.leave(actor, { sessionId: session.id, userId, now });
+    for (const userId of back)
+      await this.sessions.join(actor, { sessionId: session.id, userId, now });
+    return gone.length + back.length === 0 ? null : this.presenceOf(actor, session);
   }
 
   private async presenceOf(actor: Actor, session: EditSession): Promise<Presence> {

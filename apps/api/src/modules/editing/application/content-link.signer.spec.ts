@@ -70,3 +70,34 @@ describe('ContentLinkSigner (plan 016 §4: enlace de contenido de minutos)', () 
     expect(signerAt(NOW).verify(tokenOf())).toBeNull();
   });
 });
+
+describe('ContentLinkSigner: enlace del aviso de guardado (`callbackUrl`, plan 016 §4)', () => {
+  it('CA-9: lleva sesión y propietaria y vale mientras la sesión siga abierta, sin vencer a los minutos', () => {
+    const token = signerAt(NOW).forCallback({ sessionId: SESSION, ownerId: OWNER });
+    const muchLater = new Date(NOW.getTime() + 7 * 24 * 3_600_000);
+
+    expect(signerAt(muchLater).verifyCallback(token)).toEqual({
+      sessionId: SESSION,
+      ownerId: OWNER,
+    });
+  });
+
+  it('CA-19: un enlace de contenido no sirve como enlace de aviso, ni al revés', () => {
+    const signer = signerAt(NOW);
+    const content = signer.forSession({ sessionId: SESSION, ownerId: OWNER });
+    const callback = signer.forCallback({ sessionId: SESSION, ownerId: OWNER });
+
+    expect(signer.verifyCallback(content)).toBeNull();
+    expect(signer.verify(callback)).toBeNull();
+  });
+
+  it('CA-19: firmado con otra clave o con otro algoritmo no vale', () => {
+    const claims = { typ: 'nimbo.edit-callback', sid: SESSION, oid: OWNER };
+    const otherKey = jwt.sign(claims, { secret: `${SECRET}-otra`, algorithm: 'HS256' });
+    const otherAlgorithm = jwt.sign(claims, { secret: SECRET, algorithm: 'HS512' });
+
+    expect(signerAt(NOW).verifyCallback(otherKey)).toBeNull();
+    expect(signerAt(NOW).verifyCallback(otherAlgorithm)).toBeNull();
+    expect(signerAt(NOW).verifyCallback('no-es-un-jwt')).toBeNull();
+  });
+});

@@ -2,7 +2,7 @@ import type { EditableFile } from '../../storage';
 import type { EditModeDecision } from '../domain/edit-mode-policy';
 
 import type { ContentLinkSigner } from './content-link.signer';
-import { CONTENT_PATH } from './editing-config';
+import { CALLBACK_LINK_PARAMETER, CALLBACK_PATH, CONTENT_PATH } from './editing-config';
 import type { OnlyOfficeConnection } from './editing-config';
 import type { IDocumentEditor } from './ports/i-document-editor.port';
 
@@ -25,9 +25,9 @@ export interface EditorLaunch {
 }
 
 /**
- * Configuración del editor ONLYOFFICE (plan 016 §4), firmada por `IDocumentEditor`: en edición la clave es la sesión
- * y el contenido se lee con un enlace de sesión; en solo lectura, la clave y el enlace son de la versión vigente. El
- * contenido sale del `api` (nunca una URL de MinIO, plan §1).
+ * Configuración del editor ONLYOFFICE (plan 016 §4), firmada por `IDocumentEditor`: en edición la clave es la sesión,
+ * el contenido se lee con un enlace de sesión y los avisos llegan a `callbackUrl`; en solo lectura, la clave y el
+ * enlace son de la versión vigente y no hay avisos. El contenido sale del `api` (nunca una URL de MinIO, plan §1).
  */
 export class EditorConfigFactory {
   constructor(
@@ -50,9 +50,21 @@ export class EditorConfigFactory {
         mode: input.decision.mode,
         lang: EDITOR_LANGUAGE,
         user: { id: input.user.id, name: input.user.name },
+        ...this.callbackOf(input),
       },
     };
     return { documentServerUrl: this.connection.publicUrl, config: this.editor.signConfig(config) };
+  }
+
+  /** Solo en edición hay aviso de guardado: lleva su enlace firmado con la sesión y la propietaria (plan §4). */
+  private callbackOf({ file, sessionId }: EditorConfigInput): { callbackUrl?: string } {
+    if (sessionId === null) return {};
+    const url = new URL(`${this.connection.callbackBaseUrl}${CALLBACK_PATH}`);
+    url.searchParams.set(
+      CALLBACK_LINK_PARAMETER,
+      this.links.forCallback({ sessionId, ownerId: file.ownerId }),
+    );
+    return { callbackUrl: url.toString() };
   }
 
   private keyOf(input: EditorConfigInput): string {

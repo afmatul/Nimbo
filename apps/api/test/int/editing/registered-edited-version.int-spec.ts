@@ -143,6 +143,45 @@ describe('versión de edición registrada por `storage` (016 CA-9, CA-10, CA-13,
     await expect(storage.versionsOf(key)).resolves.toBe(0);
   });
 
+  it('RN-11: un archivo enviado a la papelera con la sesión abierta registra igual la versión, y su espacio', async () => {
+    const ana = await storage.newClient();
+    const document = await uploadEditedDocument(storage, ana);
+    await storage.owner.query(
+      "UPDATE archivo SET eliminado_en = now(), purgar_en = now() + interval '30 days' WHERE id = $1",
+      [document.fileId],
+    );
+    const used = await usedBytesOf(storage.owner, ana.id);
+    const content = docxBytes(2048);
+    const input = editedInput(document, ana.id, content);
+
+    const outcome = await registerAsOwner(storage, ana.id, input);
+
+    expect(outcome).toMatchObject({ status: 'registered', versionId: input.versionId });
+    const [file] = await storage.owner.query<{ version_actual_id: string; eliminado_en: Date }[]>(
+      'SELECT version_actual_id, eliminado_en FROM archivo WHERE id = $1',
+      [document.fileId],
+    );
+    expect(file?.version_actual_id).toBe(input.versionId);
+    expect(file?.eliminado_en).not.toBeNull();
+    await expect(usedBytesOf(storage.owner, ana.id)).resolves.toBe(used + BigInt(content.length));
+  });
+
+  it('CA-14: un archivo purgado en plena sesión no registra nada (`file_missing`)', async () => {
+    const ana = await storage.newClient();
+    const document = await uploadEditedDocument(storage, ana);
+    const input = editedInput(document, ana.id);
+    await storage.owner.transaction(async (manager) => {
+      await manager.query('DELETE FROM version_archivo WHERE archivo_id = $1', [document.fileId]);
+      await manager.query('DELETE FROM archivo WHERE id = $1', [document.fileId]);
+    });
+
+    const outcome = await registerAsOwner(storage, ana.id, input);
+
+    expect(outcome).toEqual({ status: 'file_missing' });
+    const key = ObjectKey.of(ana.id, document.fileId, input.versionId).value;
+    await expect(storage.versionsOf(key)).resolves.toBe(0);
+  });
+
   it('CA-14, CA-2: con otra cuenta como actor el archivo no existe: nada se sube ni cambia', async () => {
     const ana = await storage.newClient();
     const bruno = await storage.newClient();

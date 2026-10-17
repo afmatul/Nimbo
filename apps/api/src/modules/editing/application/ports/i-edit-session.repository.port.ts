@@ -1,5 +1,5 @@
 import type { Actor } from '../../../../shared';
-import type { EditSession } from '../../domain/edit-session';
+import type { EditSession, EditSessionState } from '../../domain/edit-session';
 
 /** Entrada o salida de una cuenta en una sesión, con su hora. */
 export interface ParticipationChange {
@@ -33,6 +33,11 @@ export interface IEditSessionRepository {
    * (autoría, RN-5). `false` si ya había salido o nunca entró (idempotente, ADR-0019).
    */
   leave(actor: Actor, participation: ParticipationChange): Promise<boolean>;
+  /**
+   * Guarda el estado, el motivo y el fin de `session` solo si en la BD sigue en `expected` (comparar y asignar): dos
+   * avisos simultáneos no hacen la misma transición dos veces (RN-7). `false` si otro llegó antes.
+   */
+  compareAndSet(actor: Actor, session: EditSession, expected: EditSessionState): Promise<boolean>;
 }
 
 export const I_EDIT_SESSION_REPOSITORY = Symbol('IEditSessionRepository');

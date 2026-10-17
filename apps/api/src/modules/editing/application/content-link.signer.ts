@@ -9,6 +9,12 @@ const ALGORITHM = 'HS256';
 /** `typ` propio: un JWT de ONLYOFFICE firmado con la misma clave no vale como enlace (plan §5). */
 const SESSION_TYPE = 'nimbo.edit-content';
 const VERSION_TYPE = 'nimbo.view-content';
+/**
+ * Enlace del aviso de guardado (`callbackUrl`): ONLYOFFICE lo usa durante toda la sesión, que no tiene plazo propio
+ * (RN-4), así que no vence a los minutos. Vale solo junto con un aviso firmado por ONLYOFFICE de la misma sesión y
+ * mientras la sesión siga abierta (plan §4).
+ */
+const CALLBACK_TYPE = 'nimbo.edit-callback';
 const MS_PER_SECOND = 1000;
 
 export type ContentLink =
@@ -19,6 +25,12 @@ export type ContentLink =
       readonly versionId: string;
       readonly ownerId: string;
     };
+
+/** La sesión y la cuenta propietaria del aviso de guardado. */
+export interface CallbackLink {
+  readonly sessionId: string;
+  readonly ownerId: string;
+}
 
 interface ContentClaims {
   readonly typ?: unknown;
@@ -66,15 +78,33 @@ export class ContentLinkSigner {
     });
   }
 
+  forCallback(link: CallbackLink): string {
+    return this.jwt.sign(
+      { typ: CALLBACK_TYPE, sid: link.sessionId, oid: link.ownerId },
+      { secret: this.secret, algorithm: ALGORITHM },
+    );
+  }
+
   /** El enlace que el token describe; `null` si la firma, el tipo, el algoritmo o el plazo no valen. */
   verify(token: string): ContentLink | null {
+    const claims = this.claimsOf(token);
+    return claims === null ? null : toLink(claims);
+  }
+
+  /** La sesión del enlace de `callbackUrl`; `null` si la firma, el tipo o el algoritmo no valen. */
+  verifyCallback(token: string): CallbackLink | null {
+    const claims = this.claimsOf(token);
+    if (claims?.typ !== CALLBACK_TYPE || !isText(claims.sid) || !isText(claims.oid)) return null;
+    return { sessionId: claims.sid, ownerId: claims.oid };
+  }
+
+  private claimsOf(token: string): ContentClaims | null {
     try {
-      const claims = this.jwt.verify<ContentClaims & object>(token, {
+      return this.jwt.verify<ContentClaims & object>(token, {
         secret: this.secret,
         algorithms: [ALGORITHM],
         clockTimestamp: this.nowSeconds(),
       });
-      return toLink(claims);
     } catch {
       return null;
     }

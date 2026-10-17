@@ -1,15 +1,25 @@
 import type { AddressInfo } from 'node:net';
 
+import { getQueueToken } from '@nestjs/bullmq';
 import { Global, Module } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { JwtService } from '@nestjs/jwt';
+import type { Queue } from 'bullmq';
 import type { Socket as ClientSocket } from 'socket.io-client';
 import request from 'supertest';
 import type { Response, Test } from 'supertest';
 
 import { AccessModule } from '../../../src/modules/access';
 import { EditingModule, I_USER_DIRECTORY } from '../../../src/modules/editing';
-import { I_DOCUMENT_EDITOR } from '../../../src/modules/editing/application/ports/i-document-editor.port';
-import type { IDocumentEditor } from '../../../src/modules/editing/application/ports/i-document-editor.port';
+import {
+  EditorDownloadRejectedError,
+  I_DOCUMENT_EDITOR,
+} from '../../../src/modules/editing/application/ports/i-document-editor.port';
+import type {
+  DownloadedDocument,
+  EditorSignal,
+  IDocumentEditor,
+} from '../../../src/modules/editing/application/ports/i-document-editor.port';
 import { UserDirectoryAdapter } from '../../../src/modules/identity';
 import { RealtimeModule } from '../../../src/modules/realtime';
 import {
@@ -30,6 +40,8 @@ import {
 } from '../realtime/realtime-test-app';
 import { createStorageHttpApp, DEFAULT_TEST_LIMITS } from '../storage/storage-http';
 import type { StorageHttpApp } from '../storage/storage-http';
+
+import type { FakeOnlyOfficeServer } from './fake-onlyoffice-server';
 
 /** Conexión de prueba con ONLYOFFICE: nadie la llama, el doble de `IDocumentEditor` responde por el servidor. */
 export const ONLYOFFICE_TEST_ENV = {
@@ -65,7 +77,27 @@ export class FakeDocumentEditor implements IDocumentEditor {
     this.dropped.push({ documentKey, userId });
     return Promise.resolve(true);
   }
+
+  /** Las suites de guardado usan el editor real contra `FakeOnlyOfficeServer`; este doble no acepta avisos. */
+  verifyCallback(): EditorSignal | null {
+    return null;
+  }
+
+  download(): Promise<DownloadedDocument> {
+    return Promise.reject(new EditorDownloadRejectedError('untrusted_url'));
+  }
 }
+
+/** Cómo firma la prueba un aviso de ONLYOFFICE: por defecto, con el secreto del arnés, HS256 y en el cuerpo. */
+export interface CallbackSigning {
+  readonly secret?: string;
+  readonly algorithm?: 'HS256' | 'HS512';
+  /** En la cabecera `Authorization` (`{ payload }`), como ONLYOFFICE sin `token` en el cuerpo. */
+  readonly inHeader?: boolean;
+}
+
+/** El aviso de ONLYOFFICE que la prueba envía (estado, clave, usuarios y URL de descarga). */
+export type CallbackBody = Readonly<Record<string, unknown>>;
 
 /** `IUserDirectory` real de `identity`, sin montar todo `IdentityModule` (lo enlaza la raíz en la app). */
 @Global()
@@ -87,6 +119,12 @@ export interface EditingHttpApp {
   content(token: string): Test;
   /** Abre una conexión aceptada del canal en vivo (015) de la cuenta `userId`. */
   connect(userId: string): Promise<ClientSocket>;
+  /** `POST` a la `callbackUrl` de una configuración de editor con el aviso firmado (como ONLYOFFICE). */
+  callback(callbackUrl: string, body: CallbackBody, signing?: CallbackSigning): Promise<Response>;
+  /** `POST` a la `callbackUrl` con el cuerpo tal cual, sin firmar nada (avisos falsificados). */
+  rawCallback(callbackUrl: string, body: CallbackBody): Promise<Response>;
+  /** Una cola BullMQ de la app (`editing-save`, `indexing`). */
+  queue(name: string): Queue;
   close(): Promise<void>;
 }
 
@@ -97,7 +135,32 @@ export interface EditingHttpOptions {
   readonly realEditor?: boolean;
   /** Cambia campos de `RealtimeConfig` (p. ej. latido corto para CA-8). */
   readonly realtime?: Partial<RealtimeConfig>;
+  /** `OnlyOfficeEditor` real contra este doble HTTP de ONLYOFFICE (URL interna = su origen). */
+  readonly onlyOffice?: FakeOnlyOfficeServer;
 }
+
+const jwt = new JwtService({});
+
+/** El aviso firmado como lo manda ONLYOFFICE: `token` en el cuerpo o `Bearer` con `{ payload }` en la cabecera. */
+const signedCallback = (call: Test, body: CallbackBody, signing: CallbackSigning = {}): Test => {
+  const options = {
+    secret: signing.secret ?? ONLYOFFICE_TEST_ENV.ONLYOFFICE_JWT_SECRET,
+    algorithm: signing.algorithm ?? 'HS256',
+  };
+  if (signing.inHeader === true) {
+    return call.set('Authorization', `Bearer ${jwt.sign({ payload: body }, options)}`).send(body);
+  }
+  return call.send({ ...body, token: jwt.sign({ ...body }, options) });
+};
+
+/** Ruta y consulta de la `callbackUrl` absoluta de la configuración. */
+const pathOf = (callbackUrl: string): string => {
+  const url = new URL(callbackUrl);
+  return `${url.pathname}${url.search}`;
+};
+
+const editorEnvOf = (options: EditingHttpOptions): Readonly<Record<string, string>> =>
+  options.onlyOffice === undefined ? {} : { ONLYOFFICE_INTERNAL_URL: options.onlyOffice.origin };
 
 const realtimeConfig = (config: Partial<RealtimeConfig> = {}): RealtimeConfig => ({
   origins: [ALLOWED_ORIGIN],
@@ -119,7 +182,7 @@ export const createEditingHttpApp = async (
   const editor = new FakeDocumentEditor();
   const clock = new SystemClock();
   const storage = await createStorageHttpApp({
-    env: { ...ONLYOFFICE_TEST_ENV, ...options.env },
+    env: { ...ONLYOFFICE_TEST_ENV, ...editorEnvOf(options), ...options.env },
     limits: options.limits ?? PAID_TEST_LIMITS,
     modules: [AccessModule, TestUserDirectoryModule, EventEmitterModule.forRoot()],
     withStorage: (storageModule, env) => {
@@ -128,7 +191,9 @@ export const createEditingHttpApp = async (
     },
     overrides: [
       { provide: REALTIME_CONFIG, useValue: realtimeConfig(options.realtime) },
-      ...(options.realEditor === true ? [] : [{ provide: I_DOCUMENT_EDITOR, useValue: editor }]),
+      ...(options.realEditor === true || options.onlyOffice !== undefined
+        ? []
+        : [{ provide: I_DOCUMENT_EDITOR, useValue: editor }]),
     ],
     withRealtime: true,
   });
@@ -155,6 +220,10 @@ export const createEditingHttpApp = async (
       await waitForConnect(socket);
       return socket;
     },
+    callback: (callbackUrl, body, signing) =>
+      signedCallback(http().post(pathOf(callbackUrl)), body, signing),
+    rawCallback: (callbackUrl, body) => http().post(pathOf(callbackUrl)).send(body),
+    queue: (name) => app.get<Queue>(getQueueToken(name)),
     close: async () => {
       sockets.splice(0).forEach((socket) => socket.disconnect());
       await storage.close();
@@ -167,3 +236,7 @@ export const contentTokenOf = (config: unknown): string => {
   const url = (config as { document: { url: string } }).document.url;
   return url.slice(url.lastIndexOf('/') + 1);
 };
+
+/** La `callbackUrl` de una configuración de editor en modo edición. */
+export const callbackUrlOf = (config: unknown): string =>
+  (config as { editorConfig: { callbackUrl: string } }).editorConfig.callbackUrl;

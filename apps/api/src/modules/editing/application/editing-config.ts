@@ -4,6 +4,10 @@ export const CONTENT_LINK_TTL_SECONDS = 300;
 /** Ruta del contenido firmado, relativa a `EDITING_CALLBACK_BASE_URL` (prefijo `api/v1` incluido). */
 export const CONTENT_PATH = '/api/v1/editing/content';
 
+/** Ruta del aviso de guardado (`callbackUrl`), relativa a `EDITING_CALLBACK_BASE_URL`; lleva el enlace en `link`. */
+export const CALLBACK_PATH = '/api/v1/editing/callback';
+export const CALLBACK_LINK_PARAMETER = 'link';
+
 /**
  * Conexión con ONLYOFFICE ya validada (plan §5). Las cuatro variables son opcionales: si falta alguna, `editing` no
  * está configurado y abrir responde `EDITING_UNAVAILABLE` (RNF-09, CA-15) sin afectar al resto del `api`.

@@ -36,6 +36,11 @@ const LEAVE_SQL = `
   UPDATE participacion SET salio_en = $3
   WHERE sesion_edicion_id = $1 AND usuario_id = $2 AND salio_en IS NULL`;
 
+/** Transición con comparar y asignar: solo si la sesión sigue en el estado esperado. */
+const COMPARE_AND_SET_SQL = `
+  UPDATE sesion_edicion SET estado = $2, motivo_fallo = $3, finalizada_en = $4
+  WHERE id = $1 AND estado = $5`;
+
 const parametersOf = ({ sessionId, userId, now }: ParticipationChange): unknown[] => [
   sessionId,
   userId,
@@ -107,12 +112,18 @@ export class TypeOrmEditSessionRepository implements IEditSessionRepository {
     await this.manager(actor).query(JOIN_SQL, parametersOf(participation));
   }
 
-  async leave(actor: Actor, participation: ParticipationChange): Promise<boolean> {
-    // En Postgres, TypeORM responde a un `UPDATE` con `[filas, filas afectadas]`.
-    const [, affected] = (await this.manager(actor).query(
-      LEAVE_SQL,
-      parametersOf(participation),
-    )) as [unknown[], number];
+  leave(actor: Actor, participation: ParticipationChange): Promise<boolean> {
+    return this.updates(actor, LEAVE_SQL, parametersOf(participation));
+  }
+
+  compareAndSet(actor: Actor, session: EditSession, expected: EditSessionState): Promise<boolean> {
+    const { id, state, failureReason, endedAt } = session.snapshot();
+    return this.updates(actor, COMPARE_AND_SET_SQL, [id, state, failureReason, endedAt, expected]);
+  }
+
+  /** `true` si el `UPDATE` cambió alguna fila (en Postgres, TypeORM responde `[filas, filas afectadas]`). */
+  private async updates(actor: Actor, sql: string, parameters: unknown[]): Promise<boolean> {
+    const [, affected] = (await this.manager(actor).query(sql, parameters)) as [unknown[], number];
     return affected > 0;
   }
 

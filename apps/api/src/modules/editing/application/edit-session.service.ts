@@ -78,7 +78,8 @@ const modeOf = ({ decision, session }: Admission): OpenedMode => {
  * (RN-3). En edición reutiliza la sesión abierta o la crea (`uq_sesion_edicion_abierta` resuelve la carrera) y da de
  * alta la participación bajo `FOR UPDATE` de la sesión, para que dos aperturas no pasen el límite (CA-7). Con
  * `connectionId`, la conexión del canal en vivo entra a la sala del documento y, en edición, todos ven la lista nueva
- * (CA-6). `revokeAccess` saca a una cuenta de la sesión en curso (CA-16).
+ * (CA-6). `revokeAccess` saca a una cuenta de la sesión en curso (CA-16) y `closeWithoutChanges` la termina sin
+ * versión (CA-11).
  */
 @Injectable()
 export class EditSessionService {
@@ -129,6 +130,17 @@ export class EditSessionService {
     this.logger.info({ event: 'editing.access_revoked', ...ids });
     if (!(await this.editor.dropUser(session.id, departure.userId)))
       this.logger.warn({ event: 'editing.drop_user_failed', ...ids });
+  }
+
+  /** Estado 4: todos salieron sin cambios. La sesión termina sin versión (CA-11); si ya no estaba activa, nada. */
+  async closeWithoutChanges(actor: Actor, session: EditSession): Promise<void> {
+    if (session.state !== 'activa') return;
+    const closed = session.closeWithoutChanges(this.clock.now());
+    const changed = await this.transactions.withActor(actor, () =>
+      this.sessions.compareAndSet(actor, closed, 'activa'),
+    );
+    const ids = { sessionId: session.id, fileId: session.fileId };
+    if (changed) this.logger.info({ event: 'editing.closed_without_changes', ...ids });
   }
 
   private async contextFor(actor: Actor, fileId: string): Promise<OpenContext> {

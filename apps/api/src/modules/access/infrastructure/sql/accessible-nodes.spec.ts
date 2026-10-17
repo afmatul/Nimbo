@@ -1,6 +1,6 @@
 import { ALL_ROLES, createActor, Role } from '../../../../shared';
 
-import { accessibleNodes, ownedTrashedNodes } from './accessible-nodes';
+import { accessibleNodes, ownedFiles, ownedTrashedNodes } from './accessible-nodes';
 
 const ACTOR_ID = '7d0e1c9a-3b2f-4c5d-8e6f-1a2b3c4d5e6f';
 const EMPTY_TYPED_SET =
@@ -88,6 +88,42 @@ describe('ownedTrashedNodes', () => {
         Object.keys(fragment.parameters).every((key) => key.startsWith(PARAMETER_PREFIX)),
       ).toBe(true);
       expect(ownedTrashedNodes(actor)).toEqual(fragment);
+    },
+  );
+});
+
+describe('ownedFiles', () => {
+  it.each(INTERNAL_ROLES)(
+    'RN-11 (016): para %s devuelve el conjunto vacío tipado (los roles internos no guardan versiones)',
+    (role) => {
+      const fragment = ownedFiles(createActor(ACTOR_ID, role));
+
+      expect(fragment.sql).toBe(EMPTY_TYPED_SET);
+      expect(fragment.parameters).toEqual({});
+    },
+  );
+
+  it('RN-11 (016): para `CLIENT` devuelve sus archivos, vivos o en la papelera, y ninguna carpeta', () => {
+    const fragment = ownedFiles(createActor(ACTOR_ID, Role.CLIENT));
+
+    expect(fragment.sql).toBe(
+      "SELECT a.id AS nodo_id, 'archivo'::text AS tipo_nodo, 'OWNER'::text AS nivel FROM archivo a " +
+        'WHERE a.propietario_id = :access_actor_id',
+    );
+    expect(fragment.parameters).toEqual({ access_actor_id: ACTOR_ID });
+  });
+
+  it.each(ALL_ROLES)(
+    'RN-11 (016): para %s es puro, inmutable y con parámetros `access_`',
+    (role) => {
+      const actor = createActor(ACTOR_ID, role);
+      const fragment = ownedFiles(actor);
+
+      expect(Object.isFrozen(fragment)).toBe(true);
+      expect(
+        Object.keys(fragment.parameters).every((key) => key.startsWith(PARAMETER_PREFIX)),
+      ).toBe(true);
+      expect(ownedFiles(actor)).toEqual(fragment);
     },
   );
 });

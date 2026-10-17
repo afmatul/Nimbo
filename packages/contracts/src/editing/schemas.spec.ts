@@ -2,6 +2,7 @@ import { EDITING_ERROR_CODES, READ_ONLY_REASONS } from './error-codes';
 import {
   EDITING_EVENTS,
   editingPresenceSchema,
+  editingVersionSavedSchema,
   openEditSessionRequestSchema,
   openEditSessionResponseSchema,
 } from './schemas';
@@ -113,5 +114,15 @@ describe('contratos de `editing` (plan 016 §4)', () => {
     expect(editingPresenceSchema.safeParse({ ...presence, fileName: 'informe.docx' }).success).toBe(
       false,
     );
+  });
+
+  it('CA-9: el aviso de versión guardada lleva solo la sesión, sin contenido ni nombre de archivo', () => {
+    const saved = { sessionId: EDITING.sessionId };
+
+    expect(EDITING_EVENTS.VERSION_SAVED).toBe('editing.version-saved');
+    expect(editingVersionSavedSchema.parse(saved)).toEqual(saved);
+    expect(
+      editingVersionSavedSchema.safeParse({ ...saved, fileName: 'informe.docx' }).success,
+    ).toBe(false);
   });
 });
