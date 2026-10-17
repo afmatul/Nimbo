@@ -25,7 +25,9 @@ const HUGE_SIZE = 9_007_199_254_740_993n;
 /** Rama de propiedad de `accessibleNodes` tal como llega a Postgres (parámetro ya numerado). */
 const OWNERSHIP_BRANCH =
   /FROM archivo a WHERE a\.propietario_id = \$\d+ AND a\.eliminado_en IS NULL/;
-const OWNER_INDEXES = /idx_archivo_(carpeta|raiz)_creado|uq_archivo_hermanos_nombre/;
+/** Desde la 011 también vale `idx_archivo_propietario_actualizado`, que filtra por propietario (PD-102). */
+const OWNER_INDEXES =
+  /idx_archivo_(carpeta|raiz)_creado|uq_archivo_hermanos_nombre|idx_archivo_propietario_actualizado/;
 
 interface CapturedQuery {
   readonly sql: string;
