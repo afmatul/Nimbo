@@ -1,12 +1,18 @@
 /**
  * @jest-environment jsdom
  */
-import type { RoleName } from '@nimbo/contracts';
+import {
+  REALTIME_ERROR_CODES,
+  REALTIME_EVENTS,
+  REALTIME_PATH,
+  type RoleName,
+} from '@nimbo/contracts';
 import { act, render, screen } from '@testing-library/react';
 import { io } from 'socket.io-client';
 
 import { useSession, type SessionContextValue } from '../identity/session/session-provider';
 
+import { DEFAULT_RETRY_AFTER_SECONDS } from './realtime-client';
 import { RealtimeProvider } from './realtime-provider';
 
 jest.mock('socket.io-client', () => ({ io: jest.fn() }));
@@ -33,6 +39,8 @@ class FakeSocket {
 }
 
 const API_PUBLIC_URL = 'http://localhost/api/v1';
+const MS_PER_SECOND = 1_000;
+const RETRY_AFTER_SECONDS = 7;
 const ioMock = jest.mocked(io);
 const useSessionMock = jest.mocked(useSession);
 
@@ -77,6 +85,22 @@ function unauthenticatedError(): Error & { data: unknown } {
   });
 }
 
+function tooManyRequestsError(retryAfterSeconds?: number): Error & { data: unknown } {
+  const retry = retryAfterSeconds === undefined ? {} : { retryAfterSeconds };
+  return Object.assign(new Error(REALTIME_ERROR_CODES.TOO_MANY_REQUESTS), {
+    data: { code: REALTIME_ERROR_CODES.TOO_MANY_REQUESTS, status: 429, ...retry },
+  });
+}
+
+function rerenderWithToken(rerender: ReturnType<typeof render>['rerender'], token: string): void {
+  useSessionMock.mockReturnValue(sessionWith(token));
+  rerender(
+    <RealtimeProvider apiPublicUrl={API_PUBLIC_URL}>
+      <p>Contenido</p>
+    </RealtimeProvider>,
+  );
+}
+
 async function flushRenewal(): Promise<void> {
   await act(async () => {
     await Promise.resolve();
@@ -84,6 +108,10 @@ async function flushRenewal(): Promise<void> {
 }
 
 describe('RealtimeProvider', () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   beforeEach(() => {
     socket = new FakeSocket();
     ioMock.mockReturnValue(socket as never);
@@ -102,19 +130,14 @@ describe('RealtimeProvider', () => {
 
     expect(ioMock).toHaveBeenCalledTimes(1);
     expect(ioMock.mock.calls[0]?.[0]).toBe('http://localhost');
-    expect(openOptions()['path']).toBe('/socket.io');
+    expect(openOptions()['path']).toBe(REALTIME_PATH);
     expect(nextHandshakeAuth()).toEqual({ token: 'token-inicial' });
   });
 
   it('CA-11: cada intento de reconexión lee el token vigente de la sesión, sin desactivar la reconexión automática', () => {
     const { rerender } = renderProvider();
 
-    useSessionMock.mockReturnValue(sessionWith('token-renovado-por-la-sesion'));
-    rerender(
-      <RealtimeProvider apiPublicUrl={API_PUBLIC_URL}>
-        <p>Contenido</p>
-      </RealtimeProvider>,
-    );
+    rerenderWithToken(rerender, 'token-renovado-por-la-sesion');
 
     expect(ioMock).toHaveBeenCalledTimes(1);
     expect(openOptions()['reconnection']).not.toBe(false);
@@ -135,7 +158,7 @@ describe('RealtimeProvider', () => {
   it('CA-4: ante `realtime.session-expired` renueva la sesión y reabre con el token nuevo', async () => {
     renderProvider();
 
-    socket.fire('realtime.session-expired', { code: 'SHARED_UNAUTHENTICATED' });
+    socket.fire(REALTIME_EVENTS.SESSION_EXPIRED, { code: 'SHARED_UNAUTHENTICATED' });
     await flushRenewal();
 
     expect(renew).toHaveBeenCalledTimes(1);
@@ -144,7 +167,7 @@ describe('RealtimeProvider', () => {
     expect(nextHandshakeAuth()).toEqual({ token: 'token-nuevo' });
   });
 
-  it('un rechazo por otro motivo (rol, límite de intentos) no renueva la sesión', async () => {
+  it('un rechazo por otro motivo (rol, red) no renueva la sesión ni reabre', async () => {
     renderProvider();
 
     socket.fire(
@@ -156,6 +179,55 @@ describe('RealtimeProvider', () => {
 
     expect(renew).not.toHaveBeenCalled();
     expect(socket.connect).not.toHaveBeenCalled();
+  });
+
+  it('CA-4: si la sesión ya renovó el token, ante `realtime.session-expired` reabre con él sin renovar otra vez', async () => {
+    const { rerender } = renderProvider();
+    rerenderWithToken(rerender, 'token-renovado-por-la-sesion');
+
+    socket.fire(REALTIME_EVENTS.SESSION_EXPIRED, { code: 'SHARED_UNAUTHENTICATED' });
+    await flushRenewal();
+
+    expect(renew).not.toHaveBeenCalled();
+    expect(socket.connect).toHaveBeenCalledTimes(1);
+    expect(nextHandshakeAuth()).toEqual({ token: 'token-renovado-por-la-sesion' });
+  });
+
+  it('CA-14: ante REALTIME_TOO_MANY_REQUESTS reabre el canal tras la espera indicada, sin renovar la sesión', () => {
+    jest.useFakeTimers();
+    renderProvider();
+
+    socket.fire('connect_error', tooManyRequestsError(RETRY_AFTER_SECONDS));
+    jest.advanceTimersByTime(RETRY_AFTER_SECONDS * MS_PER_SECOND - 1);
+    expect(socket.connect).not.toHaveBeenCalled();
+
+    jest.advanceTimersByTime(1);
+    expect(socket.connect).toHaveBeenCalledTimes(1);
+    expect(renew).not.toHaveBeenCalled();
+  });
+
+  it('CA-14: si el rechazo no trae la espera, reabre tras la espera por defecto', () => {
+    jest.useFakeTimers();
+    renderProvider();
+
+    socket.fire('connect_error', tooManyRequestsError());
+    jest.advanceTimersByTime(DEFAULT_RETRY_AFTER_SECONDS * MS_PER_SECOND - 1);
+    expect(socket.connect).not.toHaveBeenCalled();
+
+    jest.advanceTimersByTime(1);
+    expect(socket.connect).toHaveBeenCalledTimes(1);
+  });
+
+  it('CA-14: al desmontar durante la espera cancela el reintento', () => {
+    jest.useFakeTimers();
+    const { unmount } = renderProvider();
+    socket.fire('connect_error', tooManyRequestsError(RETRY_AFTER_SECONDS));
+
+    unmount();
+    jest.advanceTimersByTime(RETRY_AFTER_SECONDS * MS_PER_SECOND);
+
+    expect(socket.connect).not.toHaveBeenCalled();
+    expect(jest.getTimerCount()).toBe(0);
   });
 
   it('si la sesión ya no se puede renovar, no reabre el canal', async () => {

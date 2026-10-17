@@ -1,11 +1,14 @@
-import { SHARED_ERROR_CODES } from '@nimbo/contracts';
+import {
+  REALTIME_ERROR_CODES,
+  REALTIME_EVENTS,
+  REALTIME_PATH,
+  SHARED_ERROR_CODES,
+} from '@nimbo/contracts';
 import { io, type Socket } from 'socket.io-client';
 
-/** Ruta fija del canal en el `api` (plan 015 §4). */
-export const REALTIME_PATH = '/socket.io';
-
-/** Único aviso propio del canal: el servidor lo cierra porque venció el token con que se abrió (CA-4). */
-export const SESSION_EXPIRED_EVENT = 'realtime.session-expired';
+/** Espera ante un 429 que no trae `retryAfterSeconds`: la ventana del límite de intentos del `api` (CA-14). */
+export const DEFAULT_RETRY_AFTER_SECONDS = 60;
+const MS_PER_SECOND = 1_000;
 
 /** Token que el canal presenta en cada intento; lo actualizan la sesión y la propia renovación del canal. */
 export interface TokenHolder {
@@ -18,13 +21,15 @@ export interface RealtimeConnection {
   readonly renew: () => Promise<string | null>;
 }
 
-function hasUnauthenticatedCode(value: unknown): boolean {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'code' in value &&
-    value.code === SHARED_ERROR_CODES.UNAUTHENTICATED
-  );
+function field(value: unknown, key: string): unknown {
+  return typeof value === 'object' && value !== null && key in value
+    ? (value as Record<string, unknown>)[key]
+    : undefined;
+}
+
+function retryDelayMs(data: unknown): number {
+  const seconds = field(data, 'retryAfterSeconds');
+  return (typeof seconds === 'number' ? seconds : DEFAULT_RETRY_AFTER_SECONDS) * MS_PER_SECOND;
 }
 
 function errorData(error: Error): unknown {
@@ -32,38 +37,75 @@ function errorData(error: Error): unknown {
 }
 
 /**
- * Abre el canal en el origen de la API (la ruta de la API no es un *namespace*). `auth` es una función: cada intento,
- * también las reconexiones automáticas tras un corte de red (CA-11), lee el token vigente y nunca lo pone en la URL.
+ * Canal abierto mientras haya sesión. Si el servidor lo rechaza o lo cierra por token vencido, lo reabre con el token
+ * que la sesión ya renovó o, si sigue siendo el mismo, renueva primero (CA-4). Si lo rechaza por exceso de intentos,
+ * lo reabre tras la espera indicada (CA-14): `socket.io-client` no reintenta un rechazo del *handshake*.
  */
-function openSocket({ apiPublicUrl, token }: RealtimeConnection): Socket {
-  return io(new URL(apiPublicUrl).origin, {
-    path: REALTIME_PATH,
-    auth: (send) => send({ token: token.current }),
-  });
+class RealtimeChannel {
+  private readonly socket: Socket;
+  private presentedToken: string | null;
+  private retryTimer: ReturnType<typeof setTimeout> | undefined;
+  private stopped = false;
+
+  constructor(private readonly connection: RealtimeConnection) {
+    this.presentedToken = connection.token.current;
+    this.socket = this.open();
+    this.socket.on('connect_error', (error: Error) => this.onRejected(errorData(error)));
+    this.socket.on(REALTIME_EVENTS.SESSION_EXPIRED, (payload: unknown) => this.onRejected(payload));
+  }
+
+  stop(): void {
+    this.stopped = true;
+    clearTimeout(this.retryTimer);
+    this.socket.off();
+    this.socket.disconnect();
+  }
+
+  /**
+   * Abre el canal en el origen de la API (la ruta de la API no es un *namespace*). `auth` es una función: cada
+   * intento, también las reconexiones automáticas tras un corte de red (CA-11), lee el token vigente y nunca lo pone
+   * en la URL.
+   */
+  private open(): Socket {
+    const { apiPublicUrl, token } = this.connection;
+    return io(new URL(apiPublicUrl).origin, {
+      path: REALTIME_PATH,
+      auth: (send) => {
+        this.presentedToken = token.current;
+        send({ token: token.current });
+      },
+    });
+  }
+
+  private onRejected(data: unknown): void {
+    const code = field(data, 'code');
+    if (code === SHARED_ERROR_CODES.UNAUTHENTICATED) void this.reopenWithFreshToken();
+    if (code === REALTIME_ERROR_CODES.TOO_MANY_REQUESTS) this.reopenAfter(retryDelayMs(data));
+  }
+
+  private async reopenWithFreshToken(): Promise<void> {
+    const { token, renew } = this.connection;
+    if (token.current === this.presentedToken) {
+      const renewed = await renew();
+      if (renewed === null) return;
+      token.current = renewed;
+    }
+    this.reopen();
+  }
+
+  private reopenAfter(delayMs: number): void {
+    clearTimeout(this.retryTimer);
+    this.retryTimer = setTimeout(() => this.reopen(), delayMs);
+  }
+
+  private reopen(): void {
+    if (this.stopped) return;
+    this.socket.disconnect().connect();
+  }
 }
 
-/**
- * Mantiene el canal abierto mientras haya sesión: si el servidor lo rechaza o lo cierra por token vencido, renueva la
- * sesión y lo reabre con el token nuevo (CA-4). Devuelve la función que lo cierra.
- */
+/** Abre el canal en vivo de la pestaña. Devuelve la función que lo cierra. */
 export function startRealtime(connection: RealtimeConnection): () => void {
-  const socket = openSocket(connection);
-  let stopped = false;
-
-  const reopenIfUnauthenticated = async (payload: unknown): Promise<void> => {
-    if (!hasUnauthenticatedCode(payload)) return;
-    const renewed = await connection.renew();
-    if (stopped || renewed === null) return;
-    connection.token.current = renewed;
-    socket.disconnect().connect();
-  };
-
-  socket.on('connect_error', (error: Error) => void reopenIfUnauthenticated(errorData(error)));
-  socket.on(SESSION_EXPIRED_EVENT, (payload: unknown) => void reopenIfUnauthenticated(payload));
-
-  return () => {
-    stopped = true;
-    socket.off();
-    socket.disconnect();
-  };
+  const channel = new RealtimeChannel(connection);
+  return () => channel.stop();
 }
