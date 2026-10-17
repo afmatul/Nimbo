@@ -2,6 +2,8 @@
 
 - **Spec**: 016 (edición colaborativa de `.docx`): CA-1, CA-3, CA-5, CA-6, CA-7, CA-14, CA-15; RF-25, RF-26, RF-28, RF-23.
 - **Propuesta presentada**: No presentada (diseño interno).
+- **Estado**: Aprobado (2026-10-17, Adrián, al aprobar el recorrido de 016 T-10) en los 10 estados generados;
+  `editor--editando.html` sigue en `Borrador` como referencia histórica.
 - **Origen**:
   - `editor--editando.html`: paquete de Claude Design (lienzo de ≈ 1490 px). Es la propuesta original y **no se genera**.
     Trae atribución por párrafo, firma y sugerencias del agente, que están fuera de alcance; no pasa axe (contraste, `lang`,

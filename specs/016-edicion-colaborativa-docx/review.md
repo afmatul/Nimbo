@@ -50,3 +50,5 @@
 
 ## DF y pendientes
 - DF-05, 19, 20, 39, 70–75 registrados y aceptados; PD-95…PD-103 abiertos o resueltos con su decisión. Sin DF nuevos. Filas nuevas sugeridas: SEC-1/SEC-2 (S-2) e I-2 si no se resuelve en la rama.
+
+> 2026-10-17 (developer): corregidos B-1 (T-FIX-1: `Buffer.compare`; `pnpm test:int` 120/120 suites, 1092/1092), S-1 (la conexión entra a la sala dentro de la admisión, tras descartar el 409 y antes de escribir sesión o participación; `edit-session.service.spec.ts`), I-2 (mockups del editor `Aprobado`) y S-2 (PD-104 = SEC-1, PD-105 = SEC-2). Queda I-1 (integrar 015 y rebasar). El veredicto no cambia hasta la nueva pasada de `reviewer`.

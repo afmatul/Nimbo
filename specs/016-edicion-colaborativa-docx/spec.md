@@ -76,7 +76,7 @@ Abrir un documento responde siempre con un modo: **edición** o **solo lectura**
 Rutas relativas a `docs/design/`: mockups `mockups/editing/editor/editor--<estado>.html`; capturas `capturas/editing/editor/editor--<estado>--{360,1440}.png`.
 | Pantalla | Estados requeridos (`<estado>`) | CA | Estado del mockup |
 |---|---|---|---|
-| Editor .docx con presencia | `coeditando` | 1, 6 | Borrador: 10 estados (016); `editor--editando.html` es la propuesta original y solo queda como referencia |
+| Editor .docx con presencia | `coeditando` | 1, 6 | Aprobado (2026-10-17, Adrián, recorrido de T-10): 10 estados (016); `editor--editando.html` es la propuesta original y solo queda como referencia |
 | | `cargando` | — | ídem |
 | | `limite-editores` | 7 | ídem |
 | | `guardado-fallido` | 14 | ídem |
@@ -130,3 +130,4 @@ Sin preguntas abiertas.
 | 2026-10-16 | PD-99 resuelta: **RN-11 queda como está escrita** («guardar igual»): si el archivo pasa a la papelera con la sesión abierta, el guardado se registra igual sobre el mismo archivo. `file_missing` / `fallida/archivo_purgado` queda solo para el archivo purgado de verdad (CA-14) | Decisión de Adrián sobre PD-99 | Adrián |
 | 2026-10-16 | PD-100 resuelta: se acepta la propuesta de T-03; `OnlyOfficeHealthIndicator` no se registra en `/health/ready` y la disponibilidad se revisa con `isAvailable` en cada apertura (CA-15) | Decisión de Adrián sobre PD-100 | Adrián |
 | 2026-10-17 | Pasa a `En revisión` | T-01…T-11 hechas; `/review 016` | Adrián |
+| 2026-10-17 | §6: los 10 mockups del editor pasan de `Borrador` a `Aprobado` | Recorrido de T-10 aprobado (review I-2) | Adrián |
