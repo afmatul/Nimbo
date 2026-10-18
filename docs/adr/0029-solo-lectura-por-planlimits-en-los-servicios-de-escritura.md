@@ -53,7 +53,7 @@ justificación: los consume `storage` mismo. Juan Marcos acordó en la spec 010 
 1. `PlanLimits` pasa a describirse como **condiciones de almacenamiento de la cuenta del actor** que consume `storage` mismo:
    límites del plan, retención, nombre visible y `readOnly`. La regla ISP de DF-51 se mantiene para **otros** módulos: si
    `editing`, `intelligence` u otro necesitan algo que no consume `storage`, lo piden por un puerto que declara `billing`.
-2. Un único colaborador de `storage` (`AccountWriteGuard` en el plan 010; nombre a confirmar para no confundirlo con un guard de
+2. Un único colaborador de `storage` (`WritableAccountPolicy` en el plan 010; no es un guard de
    Nest) ofrece `assertWritable(actor)` y la función pura `assertWritableLimits(limits)` para los servicios que ya tienen los
    límites. Nadie más interpreta `readOnly`.
 3. La comprobación va en la capa de aplicación, antes de la transacción del servicio, nunca en el controlador. Una prueba de
