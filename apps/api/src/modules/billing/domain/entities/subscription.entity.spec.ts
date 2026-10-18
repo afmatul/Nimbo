@@ -6,7 +6,7 @@ import { PlanChangeInvalidError } from '../errors/plan-change-invalid.error';
 import { PlanNotAvailableError } from '../errors/plan-not-available.error';
 
 import { PAID_PLAN_PERIOD_DAYS } from './subscription.entity';
-import type { SubscriptionProps , Subscription } from './subscription.entity';
+import type { SubscriptionProps, Subscription } from './subscription.entity';
 
 const NOW = new Date('2026-10-14T12:00:00.000Z');
 const EXPIRES = new Date('2026-10-20T12:00:00.000Z');

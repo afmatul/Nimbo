@@ -1,13 +1,17 @@
 import { z } from 'zod';
 
 /**
- * Las dos tarjetas del simulador de pagos (spec 009 RN-3), sin espacios: la primera aprueba siempre y la segunda
- * rechaza siempre. Las usan el simulador de `api`, la validación del cobro y el formulario de `web`.
+ * Las tres tarjetas del simulador de pagos, sin espacios: la primera aprueba siempre, la segunda rechaza siempre (spec
+ * 009 RN-3) y la tercera aprueba con el cliente presente y se rechaza en la renovación automática (spec 010 RN-2, B-2).
+ * Las usan el simulador de `api`, la validación del cobro y el formulario de `web`.
  */
 export const TEST_CARDS = Object.freeze({
   approved: '4242424242424242',
   rejected: '4000000000000002',
+  recurringDeclined: '4000000000000341',
 });
+
+const TEST_CARD_NUMBERS: ReadonlySet<string> = new Set(Object.values(TEST_CARDS));
 
 const CARD_NUMBER = /^\d{16}$/;
 const CVC = /^\d{3}$/;
@@ -19,8 +23,7 @@ const MIN_EXP_YEAR = 2000;
 const MAX_EXP_YEAR = 2100;
 const SLUG_MAX_LENGTH = 50;
 
-const isTestCard = (number: string): boolean =>
-  number === TEST_CARDS.approved || number === TEST_CARDS.rejected;
+const isTestCard = (number: string): boolean => TEST_CARD_NUMBERS.has(number);
 
 /** RN-9: la tarjeta de prueba; el vencimiento pasado lo rechaza la API con su reloj. */
 const cardSchema = z
@@ -29,7 +32,8 @@ const cardSchema = z
       .string()
       .regex(CARD_NUMBER, 'Escribe los 16 dígitos de la tarjeta, sin espacios.')
       .refine(isTestCard, {
-        message: 'Usa una tarjeta de prueba: 4242 4242 4242 4242 o 4000 0000 0000 0002.',
+        message:
+          'Usa una tarjeta de prueba: 4242 4242 4242 4242, 4000 0000 0000 0002 o 4000 0000 0000 0341.',
         params: { reason: 'CARD_NOT_ACCEPTED' },
       }),
     expMonth: z

@@ -12,15 +12,19 @@ const reasonsOf = (input: unknown): { field: string; code: string }[] => {
   return result.error.issues.map((issue) => ({ field: issue.path.join('.'), code: issue.code }));
 };
 
-describe('tarjetas de prueba (spec 009 RN-3)', () => {
-  it('RN-3: 4242… aprueba y 4000…0002 rechaza, sin espacios', () => {
-    expect(TEST_CARDS).toEqual({ approved: '4242424242424242', rejected: '4000000000000002' });
+describe('tarjetas de prueba (spec 009 RN-3; 010 RN-2, B-2)', () => {
+  it('RN-3 y RN-2: 4242… aprueba, 4000…0002 rechaza y 4000…0341 solo falla en el cobro recurrente', () => {
+    expect(TEST_CARDS).toEqual({
+      approved: '4242424242424242',
+      rejected: '4000000000000002',
+      recurringDeclined: '4000000000000341',
+    });
   });
 });
 
 describe('subscribeRequestSchema (spec 009 RN-9, CA-5)', () => {
-  it('RN-9: acepta las dos tarjetas de prueba y un NIT `CF` o de 5 a 12 dígitos', () => {
-    for (const number of [TEST_CARDS.approved, TEST_CARDS.rejected]) {
+  it('RN-9: acepta las tres tarjetas de prueba y un NIT `CF` o de 5 a 12 dígitos', () => {
+    for (const number of Object.values(TEST_CARDS)) {
       for (const nit of ['CF', '12345', '123456789012']) {
         expect(
           subscribeRequestSchema.safeParse({ ...VALID, nit, card: { ...VALID.card, number } })

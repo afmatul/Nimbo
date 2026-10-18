@@ -66,11 +66,15 @@ const setup = (options: { status?: Payment['status']; plan?: typeof TEAM | null 
 
 describe('SubscriptionCheckout (spec 009 CA-3 a CA-6, RN-8; plan §2)', () => {
   it('RN-8: fila Personal, candado, cobro, suscripción de 30 días y factura, en ese orden', async () => {
-    const { checkout, journal } = setup();
+    const { checkout, journal, payments } = setup();
 
     const outcome = await checkout.checkout(ANA, COMMAND);
 
     expect(journal).toEqual(['personal', 'lock', 'charge:aprobada', 'save', 'invoice']);
+    expect(payments.charge).toHaveBeenCalledWith(
+      ANA,
+      expect.objectContaining({ instrument: COMMAND.card }),
+    );
     expect(outcome.subscription).toMatchObject({
       planId: TEAM.id,
       expiresAt: new Date('2026-11-13T12:00:00.000Z'),

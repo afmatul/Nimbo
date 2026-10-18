@@ -57,7 +57,7 @@ export class SubscriptionCheckout {
     const payment = await this.payments.charge(actor, {
       planId: plan.id,
       amount: Money.ofCents(plan.priceCents),
-      card: command.card,
+      instrument: command.card,
     });
     if (payment.status === 'rechazada') {
       return { payment, plan, subscription: current, invoice: null };

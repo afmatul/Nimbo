@@ -100,14 +100,15 @@ describe('migración renovacion-de-suscripcion (spec 010 CA-15, RN-3, RN-5, RN-7
   it('plan §3: el repositorio guarda y lee estado, renovación automática y cambio programado como el cliente', async () => {
     await setPaid();
     const paid = await app.runner.withActor(ana, () => repository.lockCurrent(ana));
-    const changed = paid.setAutoRenew(false).scheduleChange(
-      { ...paid, id: PRO_ID, slug: 'pro', isForSale: true } as never,
-      new Date(),
-    );
+    const changed = paid
+      .setAutoRenew(false)
+      .scheduleChange({ ...paid, id: PRO_ID, slug: 'pro', isForSale: true } as never, new Date());
 
     await app.runner.withActor(ana, () => repository.save(ana, changed.expire()));
 
-    await expect(app.runner.withActor(ana, () => repository.lockCurrent(ana))).resolves.toMatchObject({
+    await expect(
+      app.runner.withActor(ana, () => repository.lockCurrent(ana)),
+    ).resolves.toMatchObject({
       planId: TEAM_ID,
       expiresAt: EXPIRES,
       status: 'solo_lectura',
