@@ -2,8 +2,12 @@ import { Inject, Injectable } from '@nestjs/common';
 
 import { TransactionContext } from '../../../../shared';
 import type { Actor } from '../../../../shared';
-import type { ISubscriptionRepository } from '../../application/ports/i-subscription-repository.port';
+import type {
+  ISubscriptionRepository,
+  SubscriptionStanding,
+} from '../../application/ports/i-subscription-repository.port';
 import { Subscription } from '../../domain/entities/subscription.entity';
+import type { SubscriptionStatus } from '../../domain/entities/subscription.entity';
 import { PERSONAL_PLAN_SLUG } from '../../domain/plan-slug';
 
 const INSERT_PERSONAL_SQL = `INSERT INTO suscripcion (usuario_id, plan_id)
@@ -15,20 +19,27 @@ const INSERT_PERSONAL_SQL = `INSERT INTO suscripcion (usuario_id, plan_id)
  * Postgres vuelve a evaluar la fila nueva contra la fila de `plan` vieja, el `JOIN` deja de coincidir y la fila
  * desaparece del resultado. El `slug` se lee después, ya con el candado.
  */
-const LOCK_CURRENT_SQL = `SELECT plan_id, iniciado_en, vence_en FROM suscripcion
-  WHERE usuario_id = $1 FOR UPDATE`;
+const LOCK_CURRENT_SQL = `SELECT plan_id, iniciado_en, vence_en, estado, renovacion_automatica, plan_pendiente_id
+  FROM suscripcion WHERE usuario_id = $1 FOR UPDATE`;
 
 const PLAN_SLUG_SQL = 'SELECT slug FROM plan WHERE id = $1';
 
-const CURRENT_PLAN_SQL = 'SELECT plan_id FROM suscripcion WHERE usuario_id = $1';
+const STANDING_SQL = 'SELECT plan_id, estado FROM suscripcion WHERE usuario_id = $1';
 
-const SAVE_SQL = `UPDATE suscripcion SET plan_id = $2, iniciado_en = $3, vence_en = $4, actualizado_en = now()
+const SAVE_SQL = `UPDATE suscripcion SET plan_id = $2, iniciado_en = $3, vence_en = $4, estado = $5,
+    renovacion_automatica = $6, plan_pendiente_id = $7, actualizado_en = now()
   WHERE usuario_id = $1`;
 
-interface CurrentRow {
+interface StandingRow {
   readonly plan_id: string;
+  readonly estado: SubscriptionStatus;
+}
+
+interface CurrentRow extends StandingRow {
   readonly iniciado_en: Date;
   readonly vence_en: Date | null;
+  readonly renovacion_automatica: boolean;
+  readonly plan_pendiente_id: string | null;
 }
 
 /**
@@ -39,11 +50,13 @@ interface CurrentRow {
 export class TypeOrmSubscriptionRepository implements ISubscriptionRepository {
   constructor(@Inject(TransactionContext) private readonly context: TransactionContext) {}
 
-  async findCurrentPlanId(actor: Actor): Promise<string | null> {
+  async findStanding(actor: Actor): Promise<SubscriptionStanding | null> {
     const [row] = (await this.context
       .requireActorScope(actor)
-      .query(CURRENT_PLAN_SQL, [actor.id])) as { plan_id: string }[];
-    return row?.plan_id ?? null;
+      .query(STANDING_SQL, [actor.id])) as StandingRow[];
+    return row === undefined
+      ? null
+      : { planId: row.plan_id, readOnly: row.estado === 'solo_lectura' };
   }
 
   async insertPersonalIfAbsent(actor: Actor): Promise<void> {
@@ -66,6 +79,9 @@ export class TypeOrmSubscriptionRepository implements ISubscriptionRepository {
       planSlug: plan.slug,
       startedAt: row.iniciado_en,
       expiresAt: row.vence_en,
+      status: row.estado,
+      autoRenew: row.renovacion_automatica,
+      pendingPlanId: row.plan_pendiente_id,
     });
   }
 
@@ -77,6 +93,9 @@ export class TypeOrmSubscriptionRepository implements ISubscriptionRepository {
         subscription.planId,
         subscription.startedAt,
         subscription.expiresAt,
+        subscription.status,
+        subscription.autoRenew,
+        subscription.pendingPlanId,
       ]);
   }
 }

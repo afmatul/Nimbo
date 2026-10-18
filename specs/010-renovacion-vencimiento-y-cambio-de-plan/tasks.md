@@ -18,7 +18,7 @@
 **Compuerta del bloque**: plan aprobado por Adrián; **PD-63 hecho** (planificador + procesador, bucle de reintento y
 `errorName` extraídos; T-05 los reutiliza); **M-2 revisado por el `architect`** antes de T-02.
 
-- [ ] **T-01** Datos y dominio de la suscripción: estado, renovación automática y cambio programado
+- [x] **T-01** Datos y dominio de la suscripción: estado, renovación automática y cambio programado
   - Criterio: CA-15; RN-1, RN-3, RN-5, RN-7 y la regla de `renewalQuote` de CA-26 y CA-28 (cualquier cambio programado).
   - Archivos: `apps/api/src/migrations/*-renovacion-de-suscripcion.ts` (plan §3, con `down`); `billing/domain/entities/subscription.entity.ts`;
     `billing/domain/errors/{no-paid-subscription,plan-change-invalid,no-pending-plan-change,already-renewed,plan-change-pending}.error.ts`;
@@ -164,3 +164,8 @@ Antes de cada pantalla se leen sus capturas en `docs/design/capturas/`; las desv
 `design-findings.md` (plan §7, incluye M-2 y M-5), PD-86 se cierra, PD-96 se amplía con lo de la 010, PD-63 suma el renombre de
 `PlanLimits` y se registran los pendientes nuevos de plan §7 (conteos al momento para el Operador; `readOnly` del propietario en 012,
 013, 016 y 021).>
+
+- **T-01** (2026-10-18): `markReminderSent` y `markExpiredNoticeSent` (plan §2) se agregan en T-05, que es quien los usa (YAGNI,
+  Art. V); la migración ya trae `aviso_previo_para` y `aviso_vencida_para` porque el esquema es uno solo (plan §3).
+  `SubscriptionStanding.readOnly` se lee desde ahora y lo consume T-06 en este mismo PR. Las pruebas de `billing` arman la
+  suscripción con `application/testing/subscriptions.ts` (`aSubscription`), como `aPlan` (DRY, Art. VI).

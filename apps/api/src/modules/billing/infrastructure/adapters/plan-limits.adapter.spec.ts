@@ -34,7 +34,11 @@ const setup = (currentPlanId: string | null, catalog: readonly Plan[] = CATALOG)
     },
   };
   const subscriptions = {
-    findCurrentPlanId: jest.fn().mockResolvedValue(currentPlanId),
+    findStanding: jest
+      .fn()
+      .mockResolvedValue(
+        currentPlanId === null ? null : { planId: currentPlanId, readOnly: false },
+      ),
   } as unknown as ISubscriptionRepository;
   const plans = {
     findById: jest.fn((id: string) =>
@@ -63,7 +67,7 @@ describe('PlanLimitsAdapter (006a CA-2 a CA-5; 009 T-03, PD-80)', () => {
       retainedVersions: 60,
     });
     expect(scopes).toEqual([ANA.id]);
-    expect(subscriptions.findCurrentPlanId).toHaveBeenCalledWith(ANA);
+    expect(subscriptions.findStanding).toHaveBeenCalledWith(ANA);
   });
 
   it('T-03, CA-5: sin fila (sin verificar o rol interno), los límites de Personal', async () => {

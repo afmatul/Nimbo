@@ -35,6 +35,15 @@ const REAL_ATTRIBUTES: Readonly<Record<AuditAction, Record<string, string | numb
   [AuditAction.CLIENT_FILES_VIEWED]: {},
   [AuditAction.PLAN_CREATED]: {},
   [AuditAction.PLAN_DEACTIVATED]: {},
+  [AuditAction.SUBSCRIPTION_AUTO_RENEW_CHANGED]: { enabled: false },
+  [AuditAction.SUBSCRIPTION_RENEWED]: { trigger: 'automatic', planSlug: 'equipo', amountCents: 11_000 },
+  [AuditAction.SUBSCRIPTION_RENEWAL_REJECTED]: { trigger: 'manual', planSlug: 'equipo' },
+  [AuditAction.SUBSCRIPTION_READ_ONLY_ENTERED]: {},
+  [AuditAction.SUBSCRIPTION_READ_ONLY_EXITED]: {},
+  [AuditAction.SUBSCRIPTION_PLAN_CHANGE_SCHEDULED]: { planSlug: 'pro' },
+  [AuditAction.SUBSCRIPTION_PLAN_CHANGE_CANCELLED]: {},
+  [AuditAction.SUBSCRIPTION_PLAN_CHANGE_APPLIED]: { planSlug: 'pro' },
+  [AuditAction.SUBSCRIPTION_PLAN_CHANGE_DISCARDED]: { planSlug: 'pro' },
 };
 
 describe('AUDIT_CATALOG', () => {
@@ -77,6 +86,24 @@ describe('AUDIT_CATALOG', () => {
     );
 
     expect(result).toEqual({ attributes: raw, rejections: [] });
+  });
+
+  it('010 §5: la suscripción no guarda datos de tarjeta ni la referencia del instrumento', () => {
+    const rules = AUDIT_CATALOG[AuditAction.SUBSCRIPTION_RENEWED].attributes;
+
+    const result = sanitizeAttributes(rules, {
+      trigger: 'automatic',
+      planSlug: 'equipo',
+      amountCents: 11_000,
+      cardLast4: '4242',
+      instrumentRef: 'SIM-TOK-x',
+    });
+
+    expect(result.attributes).toEqual({ trigger: 'automatic', planSlug: 'equipo', amountCents: 11_000 });
+    expect(result.rejections.map((rejection) => rejection.key).sort()).toEqual([
+      'cardLast4',
+      'instrumentRef',
+    ]);
   });
 
   it('CA-4: el tope de texto del saneo es el del motivo en el contrato', () => {

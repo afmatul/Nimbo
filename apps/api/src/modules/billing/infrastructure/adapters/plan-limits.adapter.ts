@@ -22,7 +22,8 @@ const toLimits = (plan: Plan): PlanLimits => ({
 /**
  * Implementación de `IPlanLimitsProvider` (spec 006a, RN-4; 009 T-03, PD-80). `storage` declara el puerto; este
  * adaptador no importa entidades de `storage`. Los límites son los del plan de la `suscripcion` del actor, leída bajo
- * RLS con `withActor`; sin fila (cuenta sin verificar o interna), los de Personal. Ignora `vence_en` hasta la 010.
+ * RLS con `withActor`; sin fila (cuenta sin verificar o interna), los de Personal. Una cuenta en solo lectura conserva
+ * los límites de su plan (010 RN-5).
  */
 @Injectable()
 export class PlanLimitsAdapter implements IPlanLimitsProvider {
@@ -33,12 +34,12 @@ export class PlanLimitsAdapter implements IPlanLimitsProvider {
   ) {}
 
   async limitsFor(actor: Actor): Promise<PlanLimits> {
-    const planId = await this.transactions.withActor(actor, () =>
-      this.subscriptions.findCurrentPlanId(actor),
+    const standing = await this.transactions.withActor(actor, () =>
+      this.subscriptions.findStanding(actor),
     );
-    return planId === null
+    return standing === null
       ? this.getLimitsBySlug(PERSONAL_PLAN_SLUG)
-      : this.getLimitsByPlanId(planId);
+      : this.getLimitsByPlanId(standing.planId);
   }
 
   /** CA-2 y CA-4. No está en el puerto de `storage`: 005 fijó `limitsFor` como único método (ISP). */

@@ -3,9 +3,9 @@ import type { BillingHistoryService } from '../application/billing-history.servi
 import type { SubscribeOutcome } from '../application/subscription-checkout';
 import type { SubscriptionService } from '../application/subscription.service';
 import { aPlan } from '../application/testing/plans';
+import { aSubscription } from '../application/testing/subscriptions';
 import type { Invoice } from '../domain/entities/invoice.entity';
 import type { Payment } from '../domain/entities/payment.entity';
-import { Subscription } from '../domain/entities/subscription.entity';
 import { PaymentRejectedError } from '../domain/errors/payment-rejected.error';
 import { Money } from '../domain/value-objects/money';
 
@@ -34,7 +34,7 @@ const outcome = (status: Payment['status']): SubscribeOutcome => ({
     vat: Money.ofCents(1179),
     total: Money.ofCents(11_000),
   } as Invoice,
-  subscription: Subscription.rehydrate({
+  subscription: aSubscription({
     userId: ANA.id,
     planId: TEAM.id,
     planSlug: 'equipo',
