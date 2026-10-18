@@ -64,7 +64,7 @@ export class TrashPurgeProcessor extends WorkerHost {
           event: 'trash.purge_item_failed',
           nodeType: item.type,
           nodeId: item.id,
-          errorName: failure,
+          errorName: failure.errorName,
         }),
     );
     this.logger.info({

@@ -11,6 +11,7 @@ import { createFreshDatabase, revertFrom } from './billing-test-db';
 import type { FreshDatabase } from './billing-test-db';
 
 const RENEWAL_MIGRATION = 'RenovacionDeSuscripcion20261018100000';
+const FUNCTIONS_MIGRATION = 'FuncionesDeRenovacion20261018100200';
 const PERSONAL_ID = '10000000-0000-4000-8000-000000000001';
 const TEAM_ID = '10000000-0000-4000-8000-000000000003';
 const PRO_ID = '10000000-0000-4000-8000-000000000002';
@@ -151,5 +152,22 @@ describe('cierre de la migración renovacion-de-suscripcion: `revert` y `run` (R
     const rerun = await fresh.dataSource.runMigrations({ transaction: 'each' });
     expect(rerun.map((migration) => migration.name)).toEqual(reverted);
     await expect(subscriptionColumns(fresh.dataSource)).resolves.toEqual(NEW_COLUMNS);
+  });
+
+  it('RNF-10 (plan §3): `down` quita las funciones de la pasada y su política, y `up` las vuelve a crear', async () => {
+    const functionsLeft = async (): Promise<number> =>
+      (
+        (await fresh.dataSource.query(
+          `SELECT count(*)::int AS total FROM pg_proc
+            WHERE proname IN ('suscripciones_por_renovar', 'suscripciones_por_avisar')`,
+        )) as { total: number }[]
+      )[0]?.total ?? 0;
+
+    const reverted = await revertFrom(fresh.dataSource, FUNCTIONS_MIGRATION);
+
+    expect(reverted[0]).toBe(FUNCTIONS_MIGRATION);
+    expect(await functionsLeft()).toBe(0);
+    await fresh.dataSource.runMigrations({ transaction: 'each' });
+    expect(await functionsLeft()).toBe(2);
   });
 });

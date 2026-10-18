@@ -70,7 +70,7 @@ export class UploadCleanupProcessor extends WorkerHost {
         this.logger.error({
           event: 'upload.cleanup_failed',
           cargaId: upload.id,
-          errorName: failure,
+          errorName: failure.errorName,
         }),
     );
     this.logger.info({

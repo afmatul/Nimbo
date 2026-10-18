@@ -69,6 +69,11 @@ const DEFAULT_INVOICE_RETRY_INTERVAL_MINUTES = 1;
 /** El mismo lote que los otros barridos; la función de facturas pendientes no devuelve más de 1000. */
 const DEFAULT_INVOICE_RETRY_BATCH_SIZE = 100;
 const MAX_INVOICE_RETRY_BATCH_SIZE = 1000;
+/** Cada 15 minutos (010 plan §1): un vencimiento se procesa a más tardar un cuarto de hora después. */
+const DEFAULT_SUBSCRIPTION_RENEWAL_INTERVAL_MINUTES = 15;
+/** El mismo lote y tope que los otros barridos (las funciones de la 010 no devuelven más de 1000). */
+const DEFAULT_SUBSCRIPTION_RENEWAL_BATCH_SIZE = 100;
+const MAX_SUBSCRIPTION_RENEWAL_BATCH_SIZE = 1000;
 /** RN-8 de la 010: el aviso previo sale 3 días antes de `vence_en`, configurable de 1 a 7. */
 const DEFAULT_RENEWAL_REMINDER_DAYS = 3;
 const MAX_RENEWAL_REMINDER_DAYS = 7;
@@ -259,6 +264,16 @@ const invoiceRetryShape = {
   ),
 };
 
+/** Pasada de renovación, vencimiento y aviso previo en el `worker` (010 plan §2, CA-1 a CA-5). */
+const subscriptionRenewalShape = {
+  SUBSCRIPTION_RENEWAL_INTERVAL_MINUTES: positiveInt(DEFAULT_SUBSCRIPTION_RENEWAL_INTERVAL_MINUTES),
+  SUBSCRIPTION_RENEWAL_BATCH_SIZE: intBetween(
+    1,
+    MAX_SUBSCRIPTION_RENEWAL_BATCH_SIZE,
+    DEFAULT_SUBSCRIPTION_RENEWAL_BATCH_SIZE,
+  ),
+};
+
 /**
  * Días del aviso previo a `vence_en` (010 RN-8): el `api` marca la suscripción «por vencer» y el `worker` envía el
  * correo, con el mismo valor.
@@ -279,6 +294,7 @@ export const workerEnvObjectSchema = sharedEnvBaseSchema.extend({
   ...usageReconcileShape,
   ...subscriptionReconcileShape,
   ...invoiceRetryShape,
+  ...subscriptionRenewalShape,
   ...renewalReminderShape,
   SMTP_HOST: nonEmpty(),
   SMTP_PORT: requiredPort(),

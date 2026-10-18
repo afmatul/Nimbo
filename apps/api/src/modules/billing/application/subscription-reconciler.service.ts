@@ -66,7 +66,11 @@ export class SubscriptionReconcilerService {
       ids,
       (userId) => this.personal.subscribe(createActor(userId, Role.CLIENT)),
       (userId, failure) =>
-        this.logger.error({ event: 'billing.reconcile_failed', userId, errorName: failure }),
+        this.logger.error({
+          event: 'billing.reconcile_failed',
+          userId,
+          errorName: failure.errorName,
+        }),
     );
   }
 }

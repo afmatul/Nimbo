@@ -131,6 +131,28 @@ describe('RenewalCheckout.renew (spec 010 RN-1, RN-4, CA-8 a CA-10, CA-20, CA-29
     ]);
   });
 
+  it('CA-2, CA-20: automática rechazada, solo lectura con el mismo plan y el cambio programado se conserva', async () => {
+    const { checkout, journal, audits } = setup('rechazada');
+
+    const outcome = await checkout.renew(ANA, team({ pendingPlanId: PRO.id }), {
+      ...ORDER,
+      instrument: 'SIM-TOK-decline-1',
+      trigger: 'automatic',
+    });
+
+    expect(journal).toEqual(['charge', 'save']);
+    expect(outcome.subscription).toMatchObject({
+      planId: TEAM.id,
+      status: 'solo_lectura',
+      pendingPlanId: PRO.id,
+      expiresAt: EXPIRES,
+    });
+    expect(actionsOf(audits)).toEqual([
+      'subscription.renewal_rejected',
+      'subscription.read_only_entered',
+    ]);
+  });
+
   it('CA-10, CA-20: desde solo lectura empieza ahora, aplica el cambio programado y sale de solo lectura', async () => {
     const { checkout, audits } = setup();
 

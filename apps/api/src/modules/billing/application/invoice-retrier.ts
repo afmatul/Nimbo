@@ -50,7 +50,11 @@ export class InvoiceRetrier {
       pending,
       ({ invoiceId, userId }) => this.issuer.issue(createActor(userId, Role.CLIENT), invoiceId),
       ({ invoiceId }, failure) =>
-        this.logger.error({ event: 'billing.invoice_retry_failed', invoiceId, errorName: failure }),
+        this.logger.error({
+          event: 'billing.invoice_retry_failed',
+          invoiceId,
+          errorName: failure.errorName,
+        }),
     );
     this.logger.info({ event: 'billing.invoice_retry_run', scanned: pending.length, failed });
     if (failed > 0) throw new InvoiceRetryIncompleteError(failed);

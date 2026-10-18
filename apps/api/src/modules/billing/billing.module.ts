@@ -19,9 +19,9 @@ import { AccountVerifiedListener } from './presentation/account-verified.listene
 /**
  * Núcleo de M4 (specs 006a, 008, 009 y 011), común al `api` y al `worker`: catálogo (`PlanCatalogService`), límites,
  * alta Personal (oyente y conciliación), repositorios de plan, suscripción y factura, y `SubscriptionAdministration`
- * para `backoffice`. Sin controladores ni cobro: `GET /billing/plans`, el cobro (`PaymentService`, la pasarela) y el
- * registro de la factura (`InvoiceService`, que lee el contacto de `identity`) viven en `BillingHttpModule` (solo
- * `api`); el `worker` (`BillingWorkerModule`) no los instancia. Exporta a `backoffice` el adaptador de límites,
+ * para `backoffice`. Sin controladores ni cobro: `GET /billing/plans` vive en `BillingHttpModule` (solo `api`), y el
+ * cobro (`PaymentService`, la pasarela), el registro de la factura (`InvoiceService`, que lee el contacto de `identity`)
+ * y `RenewalCheckout` en `BillingChargingModule`, que importan el `api` y el `worker` (010). Exporta a `backoffice` el adaptador de límites,
  * `PlanCatalogService` y `SubscriptionAdministration`, y a esos dos módulos de `billing` sus repositorios (los tokens
  * no salen de `index.ts`). `I_PLAN_LIMITS_PROVIDER` lo enlaza `PlanLimitsBindingModule`: `storage` no conoce a
  * `billing`.

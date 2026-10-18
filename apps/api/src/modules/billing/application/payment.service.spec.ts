@@ -29,6 +29,7 @@ const setup = (status: 'aprobada' | 'rechazada') => {
   };
   const recorded: PaymentDraft[] = [];
   const payments: IPaymentRepository = {
+    findLastApprovedCard: jest.fn(),
     record: jest.fn((_actor: Actor, draft: PaymentDraft): Promise<Payment> => {
       recorded.push(draft);
       return Promise.resolve({

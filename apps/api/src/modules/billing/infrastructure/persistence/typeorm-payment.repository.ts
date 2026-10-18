@@ -4,14 +4,26 @@ import { TransactionContext } from '../../../../shared';
 import type { Actor } from '../../../../shared';
 import type { IPaymentRepository } from '../../application/ports/i-payment-repository.port';
 import type { Payment, PaymentDraft } from '../../domain/entities/payment.entity';
+import type { CardOnFile } from '../../domain/payment-instrument';
 import { formatPaymentReference } from '../../domain/sequence-number';
 
+import { lastApprovedPaymentSql } from './latest-rows.sql';
 import { onlyRow } from './only-row';
 
 const NEXT_REFERENCE_SQL = `SELECT nextval('transaccion_referencia_seq')::int AS sequence`;
 const INSERT_SQL = `INSERT INTO transaccion (usuario_id, plan_id, monto_centavos, estado, marca_tarjeta,
     tarjeta_ultimos4, referencia, referencia_instrumento, creado_en)
   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`;
+
+const LAST_APPROVED_CARD_SQL = lastApprovedPaymentSql(
+  'marca_tarjeta, tarjeta_ultimos4, referencia_instrumento',
+);
+
+interface CardRow {
+  readonly marca_tarjeta: string;
+  readonly tarjeta_ultimos4: string;
+  readonly referencia_instrumento: string | null;
+}
 
 /**
  * `IPaymentRepository` sobre `transaccion` (plan 009 §3) con el `EntityManager` de `TransactionContext`: la fila entra
@@ -40,5 +52,18 @@ export class TypeOrmPaymentRepository implements IPaymentRepository {
       ])) as { id: string }[],
     );
     return { ...draft, id: row.id, userId: actor.id, reference };
+  }
+
+  async findLastApprovedCard(actor: Actor): Promise<CardOnFile | null> {
+    const [row] = (await this.context
+      .requireActorScope(actor)
+      .query(LAST_APPROVED_CARD_SQL, [actor.id])) as CardRow[];
+    return row === undefined
+      ? null
+      : {
+          brand: row.marca_tarjeta,
+          last4: row.tarjeta_ultimos4,
+          instrumentRef: row.referencia_instrumento,
+        };
   }
 }

@@ -41,6 +41,8 @@ const setup = (options: { status?: Payment['status']; plan?: typeof TEAM | null 
     insertPersonalIfAbsent: jest.fn(step('personal', undefined)),
     findStanding: jest.fn(),
     findCurrent: jest.fn(),
+    markReminderSent: jest.fn(),
+    markExpiredNoticeSent: jest.fn(),
     lockCurrent: jest.fn(step('lock', current)),
     save: jest.fn(step('save', undefined)),
   };

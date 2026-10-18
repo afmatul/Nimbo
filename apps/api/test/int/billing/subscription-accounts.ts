@@ -38,7 +38,7 @@ export interface SubscriptionRow {
 
 type HttpMethod = 'get' | 'post' | 'put' | 'delete';
 
-/** Una cuenta de prueba y su cliente HTTP sobre `/api/v1/billing/…`. */
+/** Una cuenta de prueba y su cliente HTTP: rutas relativas van a `/api/v1/billing/…`; con `/` inicial, a `/api/v1/…`. */
 export interface SubscriptionAccount {
   readonly id: string;
   call(method: HttpMethod, path: string, payload?: object): Promise<Response>;
@@ -79,7 +79,7 @@ export const subscriptionAccounts = (
     const token = tokens.valid({ userId: id, role: Role.CLIENT, sessionId: randomUUID() });
     const call = (method: HttpMethod, path: string, payload?: object): Promise<Response> =>
       request(app().app.getHttpServer())
-        [method](`/api/v1/billing/${path}`)
+        [method](path.startsWith('/') ? `/api/v1${path}` : `/api/v1/billing/${path}`)
         .set({ Authorization: `Bearer ${token}` })
         .send(payload) as unknown as Promise<Response>;
     return { id, call };

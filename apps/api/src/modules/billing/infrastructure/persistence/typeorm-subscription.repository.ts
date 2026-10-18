@@ -32,6 +32,12 @@ const SAVE_SQL = `UPDATE suscripcion SET plan_id = $2, iniciado_en = $3, vence_e
     renovacion_automatica = $6, plan_pendiente_id = $7, actualizado_en = now()
   WHERE usuario_id = $1`;
 
+/** Las marcas de correo (m-5) solo valen para el `vence_en` que el aviso nombró. */
+const MARK_REMINDER_SQL =
+  'UPDATE suscripcion SET aviso_previo_para = $2 WHERE usuario_id = $1 AND vence_en = $2';
+const MARK_EXPIRED_NOTICE_SQL =
+  'UPDATE suscripcion SET aviso_vencida_para = $2 WHERE usuario_id = $1 AND vence_en = $2';
+
 interface StandingRow {
   readonly plan_id: string;
   readonly estado: SubscriptionStatus;
@@ -116,5 +122,15 @@ export class TypeOrmSubscriptionRepository implements ISubscriptionRepository {
         subscription.autoRenew,
         subscription.pendingPlanId,
       ]);
+  }
+
+  async markReminderSent(actor: Actor, expiresAt: Date): Promise<void> {
+    await this.context.requireActorScope(actor).query(MARK_REMINDER_SQL, [actor.id, expiresAt]);
+  }
+
+  async markExpiredNoticeSent(actor: Actor, expiresAt: Date): Promise<void> {
+    await this.context
+      .requireActorScope(actor)
+      .query(MARK_EXPIRED_NOTICE_SQL, [actor.id, expiresAt]);
   }
 }

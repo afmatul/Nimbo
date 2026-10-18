@@ -27,6 +27,8 @@ const setup = () => {
     }),
     findStanding: jest.fn(),
     findCurrent: jest.fn(),
+    markReminderSent: jest.fn(),
+    markExpiredNoticeSent: jest.fn(),
     lockCurrent: jest.fn(),
     save: jest.fn(),
   };

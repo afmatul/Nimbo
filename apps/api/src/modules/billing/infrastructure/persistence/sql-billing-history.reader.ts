@@ -10,11 +10,11 @@ import type {
   PaymentRecord,
 } from '../../application/ports/i-billing-history.reader.port';
 
-const PAYMENT_METHOD_SQL = `SELECT marca_tarjeta, tarjeta_ultimos4 FROM transaccion
-  WHERE usuario_id = $1 AND estado = 'aprobada'
-  ORDER BY creado_en DESC, id DESC LIMIT 1`;
-const BILLING_DETAILS_SQL = `SELECT nit, correo_comprobante FROM factura
-  WHERE usuario_id = $1 ORDER BY creado_en DESC, id DESC LIMIT 1`;
+import { lastApprovedPaymentSql, latestInvoiceSql } from './latest-rows.sql';
+
+/** Sin `referencia_instrumento` (ADR-0031): la vista nunca la lee. */
+const PAYMENT_METHOD_SQL = lastApprovedPaymentSql('marca_tarjeta, tarjeta_ultimos4');
+const BILLING_DETAILS_SQL = latestInvoiceSql('nit, correo_comprobante');
 const PAYMENTS_SQL = `SELECT t.id, t.creado_en, t.referencia, p.nombre AS plan, t.monto_centavos, t.estado,
     f.id AS factura_id, f.numero, f.clave_objeto
   FROM transaccion t JOIN plan p ON p.id = t.plan_id LEFT JOIN factura f ON f.transaccion_id = t.id

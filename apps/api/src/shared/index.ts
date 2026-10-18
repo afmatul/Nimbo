@@ -39,6 +39,7 @@ export type {
   RateLimitRule,
 } from './application/rate-limit/i-rate-limiter.port';
 export { attemptEach } from './application/batch/attempt-each';
+export type { BatchFailure } from './application/batch/attempt-each';
 export { IncompleteBatchError } from './application/batch/incomplete-batch.error';
 export { HealthModule } from './health.module';
 export { SystemClock } from './infrastructure/clock/system.clock';

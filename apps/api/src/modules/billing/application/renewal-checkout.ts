@@ -50,7 +50,8 @@ interface NextCycle {
 /**
  * Pasos de la renovación dentro de la transacción del cobro, con la fila ya bloqueada (spec 010 plan §2; RN-1, RN-4,
  * CA-20, CA-29): resuelve el plan del siguiente ciclo, cobra su precio completo y, si se aprueba, renueva, registra la
- * factura y audita. Un rechazo se devuelve sin lanzar ni cambiar la suscripción (009 B-3; 010 CA-9). Comparte con
+ * factura y audita. Un rechazo se devuelve sin lanzar (009 B-3): a mano no cambia nada (CA-9); en la automática la
+ * cuenta queda en solo lectura (CA-2). Comparte con
  * `SubscriptionCheckout` los colaboradores, no la secuencia (m-6).
  */
 @Injectable()
@@ -71,19 +72,8 @@ export class RenewalCheckout {
       amount: Money.ofCents(cycle.plan.priceCents),
       instrument: order.instrument,
     });
-    if (payment.status === 'rechazada') {
-      await this.record(actor, AuditAction.SUBSCRIPTION_RENEWAL_REJECTED, {
-        trigger: order.trigger,
-        planSlug: cycle.plan.slug,
-      });
-      return {
-        payment,
-        plan: cycle.plan,
-        subscription: current,
-        invoice: null,
-        discardedPlan: null,
-      };
-    }
+    if (payment.status === 'rechazada')
+      return this.rejected(actor, current, { payment, cycle, order });
     const next = cycle.from.renewWith(cycle.plan, this.clock.now());
     await this.subscriptions.save(actor, next);
     const invoice = await this.invoices.register(actor, payment, order.nit);
@@ -95,6 +85,36 @@ export class RenewalCheckout {
       invoice,
       discardedPlan: cycle.discardedPlan,
     };
+  }
+
+  /**
+   * CA-2, CA-7 (RN-5): vence sin pago y queda en solo lectura con su plan; un cambio programado sigue programado
+   * (CA-20). Lo usa también la pasada cuando no hay renovación automática o no hay con qué cobrar.
+   */
+  async expire(actor: Actor, current: Subscription): Promise<Subscription> {
+    const expired = current.expire();
+    await this.subscriptions.save(actor, expired);
+    await this.record(actor, AuditAction.SUBSCRIPTION_READ_ONLY_ENTERED, {});
+    return expired;
+  }
+
+  private async rejected(
+    actor: Actor,
+    current: Subscription,
+    attempt: {
+      readonly payment: ChargeResult;
+      readonly cycle: NextCycle;
+      readonly order: RenewalOrder;
+    },
+  ): Promise<RenewalOutcome> {
+    const { payment, cycle, order } = attempt;
+    await this.record(actor, AuditAction.SUBSCRIPTION_RENEWAL_REJECTED, {
+      trigger: order.trigger,
+      planSlug: cycle.plan.slug,
+    });
+    const subscription =
+      order.trigger === 'automatic' ? await this.expire(actor, current) : current;
+    return { payment, plan: cycle.plan, subscription, invoice: null, discardedPlan: null };
   }
 
   /** RN-4: el programado si sigue activo; si se desactivó, se descarta y cobra el actual (CA-29). */

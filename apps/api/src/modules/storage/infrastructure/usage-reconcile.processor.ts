@@ -68,7 +68,11 @@ export class UsageReconcileProcessor extends WorkerHost {
       ids,
       (userId) => this.reconciler.reconcile(createActor(userId, Role.CLIENT)),
       (userId, failure) =>
-        this.logger.error({ event: 'quota.reconcile_failed', userId, errorName: failure }),
+        this.logger.error({
+          event: 'quota.reconcile_failed',
+          userId,
+          errorName: failure.errorName,
+        }),
     );
   }
 }

@@ -22,6 +22,10 @@ export interface ISubscriptionRepository {
   lockCurrent(actor: Actor): Promise<Subscription>;
   /** Guarda plan, periodo, estado, renovación automática y cambio programado de la suscripción del actor. */
   save(actor: Actor, subscription: Subscription): Promise<void>;
+  /** 010 CA-5 (m-5): se envió el aviso previo del periodo que vence en `expiresAt`. */
+  markReminderSent(actor: Actor, expiresAt: Date): Promise<void>;
+  /** 010 CA-2, CA-7 (m-5): se envió el correo de vencida de `expiresAt`; la pasada deja de listarla (M-3). */
+  markExpiredNoticeSent(actor: Actor, expiresAt: Date): Promise<void>;
 }
 
 export const I_SUBSCRIPTION_REPOSITORY = Symbol('ISubscriptionRepository');

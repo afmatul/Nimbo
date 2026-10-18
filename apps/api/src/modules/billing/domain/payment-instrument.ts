@@ -13,6 +13,13 @@ export type InstrumentReference = string;
  */
 export type PaymentInstrument = PaymentCard | InstrumentReference;
 
+/** Lo que guarda el último pago aprobado (010 RN-2): marca y últimos 4 para mostrar, y su referencia o nulo (009). */
+export interface CardOnFile {
+  readonly brand: string;
+  readonly last4: string;
+  readonly instrumentRef: InstrumentReference | null;
+}
+
 export const isPresentCard = (instrument: PaymentInstrument): instrument is PaymentCard =>
   typeof instrument !== 'string';
 
