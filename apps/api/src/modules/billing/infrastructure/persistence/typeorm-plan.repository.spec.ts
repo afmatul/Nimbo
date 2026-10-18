@@ -38,4 +38,12 @@ describe('TypeOrmPlanRepository.findActive (008 CA-3, plan §5)', () => {
 
     await expect(repository.findActive()).rejects.toBeInstanceOf(TypeError);
   });
+
+  it('011 CA-8: `findAll` usa el mismo orden y no filtra por `desactivado_en`', async () => {
+    const find = jest.fn().mockResolvedValue([]);
+
+    await repositoryWith(find).findAll();
+
+    expect(find).toHaveBeenCalledWith({ where: {}, order: { precioCentavos: 'ASC', slug: 'ASC' } });
+  });
 });

@@ -103,6 +103,9 @@ Fátima debe revisar estos cambios al fusionar su rama con la 009 (o la 009 con 
   (008 CA-1, PD-76) y la T-09 no agregó otra lectura porque nadie la usaba todavía.
 - **Arreglo:** cuando Fátima la necesite en la T-11, Juan Marcos suma en `billing` un método de solo lectura con todos
   los planes (`IPlanRepository` y `PlanCatalogService`).
+- **Hecho (2026-10-18, rama `feat/011-lista-de-todos-los-planes`):** `PlanCatalogService.listAll(actor)` →
+  `IPlanRepository.findAll()`: todos los planes, activos y desactivados (con `deactivatedAt`), en el orden de RN-2 de la
+  008. Fátima lo pidió antes para las métricas de la T-10 (CA-12); la T-11 lo reutiliza para el catálogo (CA-8).
 
 ## Archivos de la 011 que tocó la T-09 (para revisar con Fátima)
 

@@ -29,6 +29,7 @@ const NEW_PLAN: NewPlan = {
 const setup = () => {
   const repository: jest.Mocked<IPlanRepository> = {
     findActive: jest.fn(),
+    findAll: jest.fn(),
     findById: jest.fn(),
     findBySlug: jest.fn(),
     insert: jest.fn(),
@@ -72,6 +73,17 @@ describe('PlanCatalogService.list (spec 008 CA-1, CA-3)', () => {
     await expect(service.list()).rejects.toBe(defect);
 
     expect(logger.error).not.toHaveBeenCalled();
+  });
+});
+
+describe('PlanCatalogService.listAll (spec 011 CA-8, CA-12)', () => {
+  it('CA-8: entrega todos los planes, también los desactivados con su fecha, en el orden del repositorio', async () => {
+    const { service, repository } = setup();
+    const retired = aPlan({ ...PRO, deactivatedAt: NOW });
+    repository.findAll.mockResolvedValue([PERSONAL_PLAN, retired]);
+
+    await expect(service.listAll(ADMIN)).resolves.toEqual([PERSONAL_PLAN, retired]);
+    expect(repository.findActive).not.toHaveBeenCalled();
   });
 });
 
