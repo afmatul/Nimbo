@@ -38,6 +38,7 @@ import { recordAudit } from './record-audit';
 import type { StorageLogger } from './storage-logger';
 import { TrashPurgeIncompleteError, TrashPurger } from './trash-purger';
 import type { PurgeReport } from './trash-purger';
+import { WritableAccountPolicy } from './writable-account.policy';
 
 /** Cómo volvió un elemento de la papelera (CA-13 a CA-15), con el nombre que tenía al eliminarse. */
 export interface RestoreResult {
@@ -97,6 +98,7 @@ export class TrashService {
     @Inject(PinoLogger) private readonly logger: StorageLogger,
     @Inject(TrashPurger) private readonly purger: TrashPurger,
     @Inject(I_TRASH_PURGE_QUEUE) private readonly purgeQueue: ITrashPurgeQueue,
+    @Inject(WritableAccountPolicy) private readonly writable: WritableAccountPolicy,
   ) {}
 
   /** CA-10, CA-19: el archivo sale del explorador con la purga a la retención del plan vigente. */
@@ -141,6 +143,7 @@ export class TrashService {
 
   /** CA-13 a CA-15: a su carpeta si sigue viva, si no a la raíz; con «nombre (n)» si el suyo está ocupado. */
   async restoreFile(actor: Actor, fileId: string): Promise<RestoreResult> {
+    await this.writable.assertWritable(actor);
     const restored = await this.transactions.withActor(actor, async () => {
       await this.quotas.lockUsage(actor);
       const file = await this.trash.findTrashedFile(actor, fileId);
@@ -174,6 +177,7 @@ export class TrashService {
    * que el subárbol supere `FOLDER_MAX_DEPTH`, `422` y nada cambia.
    */
   async restoreFolder(actor: Actor, folderId: string): Promise<RestoreResult> {
+    await this.writable.assertWritable(actor);
     const { result, itemCount, sizeBytes } = await this.transactions.withActor(actor, async () => {
       await this.quotas.lockUsage(actor);
       const trashed = await this.trash.findTrashedFolder(actor, folderId);

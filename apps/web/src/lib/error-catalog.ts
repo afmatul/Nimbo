@@ -119,6 +119,10 @@ const STORAGE_MESSAGES: Readonly<Record<string, StorageMessageBuilder>> = {
     'Esta ya es la versión actual.',
     'Actualiza el historial para ver los cambios.',
   ),
+  [STORAGE_ERROR_CODES.STORAGE_ACCOUNT_READ_ONLY]: fixed(
+    'Tu suscripción venció y tu cuenta está en solo lectura.',
+    'Renueva tu plan para volver a subir, editar y compartir.',
+  ),
   [STORAGE_ERROR_CODES.STORAGE_UPLOAD_NOT_FOUND]: fixed(
     'No encontramos esta carga.',
     'Vuelve a subir el archivo.',

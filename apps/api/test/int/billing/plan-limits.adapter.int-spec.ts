@@ -56,6 +56,7 @@ describe('PlanLimitsAdapter integración con base de datos real (T-11, CA-1, CA-
         storageQuotaBytes: 16106127360n,
         trashRetentionDays: 7,
         retainedVersions: 3,
+        readOnly: false,
       });
     });
 
@@ -70,6 +71,7 @@ describe('PlanLimitsAdapter integración con base de datos real (T-11, CA-1, CA-
         storageQuotaBytes: 16106127360n,
         trashRetentionDays: 7,
         retainedVersions: 3,
+        readOnly: false,
       });
     });
   });

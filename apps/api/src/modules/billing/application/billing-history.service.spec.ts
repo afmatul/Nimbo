@@ -1,5 +1,5 @@
 import type { Actor, ITransactionRunner } from '../../../shared';
-import { createActor, Role, FixedClock  } from '../../../shared';
+import { createActor, Role, FixedClock } from '../../../shared';
 import type { IObjectStorage } from '../../storage';
 import type { Subscription } from '../domain/entities/subscription.entity';
 import { InvoiceNotFoundError } from '../domain/errors/invoice-not-found.error';

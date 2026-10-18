@@ -48,6 +48,7 @@ async function setup(usage: QuotaUsage) {
     storageQuotaBytes: QUOTA,
     trashRetentionDays: 30,
     retainedVersions: 3,
+    readOnly: false,
     planName: 'Plan de prueba',
   });
   const service = new QuotaService(quotas, new FixedClock(NOW));

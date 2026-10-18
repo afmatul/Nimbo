@@ -31,6 +31,7 @@ import {
   UploadIncompleteError,
   UploadNotFoundError,
   UploadSizeMismatchError,
+  AccountReadOnlyError,
 } from '../domain/errors';
 import { File } from '../domain/file';
 import { FileName } from '../domain/file-name.vo';
@@ -57,6 +58,7 @@ const LIMITS: PlanLimits = {
   storageQuotaBytes: 2_000n * BigInt(MIB),
   trashRetentionDays: 30,
   retainedVersions: 3,
+  readOnly: false,
   planName: 'Plan de prueba',
 };
 const CONFIG: UploadConfig = {
@@ -611,6 +613,28 @@ function stateOf(ctx: Setup, session: UploadSession) {
   const current = ctx.sessions.sessions.get(session.id);
   return { state: current?.state, reason: current?.rejectionReason };
 }
+
+describe('UploadService en solo lectura (spec 010 CA-13, ADR-0029)', () => {
+  it('CA-13: iniciar una carga es 403 STORAGE_ACCOUNT_READ_ONLY sin abrir la transacción ni reservar', async () => {
+    const ctx = setup();
+    ctx.plans.setReadOnly(true);
+
+    await expect(ctx.service.init(ACTOR, request())).rejects.toBeInstanceOf(AccountReadOnlyError);
+    expect(ctx.journal.entries).not.toContain('tx:begin');
+  });
+
+  it('CA-13: completar una carga en curso también es 403 y no registra el archivo', async () => {
+    const ctx = setup();
+    const session = await started(ctx);
+    uploadAllParts(ctx, session);
+    ctx.plans.setReadOnly(true);
+
+    await expect(ctx.service.complete(ACTOR, session.id)).rejects.toBeInstanceOf(
+      AccountReadOnlyError,
+    );
+    expect(ctx.storage.completed).toEqual([]);
+  });
+});
 
 describe('UploadService.complete', () => {
   it('CA-12: por partes: lista las partes él mismo, completa, valida el tipo y devuelve el archivo', async () => {

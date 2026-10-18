@@ -26,6 +26,7 @@ export function spaceSummaryWith(used: number, extras: SpaceExtras = {}): SpaceS
     availableBytes: Math.max(0, TEST_QUOTA_BYTES - usedBytes - reservedBytes),
     maxFileBytes: 50_000_000,
     trashRetentionDays: 7,
+    readOnly: false,
     breakdown: {
       documentsBytes,
       imagesBytes,

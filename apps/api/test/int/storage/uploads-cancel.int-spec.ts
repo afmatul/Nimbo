@@ -111,6 +111,7 @@ describe('DELETE /uploads/:id y la carrera con complete (CA-22)', () => {
       storageQuotaBytes: BigInt(SMALL_BYTES + SMALL_BYTES / 2),
       trashRetentionDays: 30,
       retainedVersions: 3,
+      readOnly: false,
       planName: 'Plan de prueba',
     });
     const client = await storage.newClient();

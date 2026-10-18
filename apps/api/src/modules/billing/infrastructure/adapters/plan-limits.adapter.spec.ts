@@ -24,7 +24,11 @@ const TEAM = aPlan({
 });
 const CATALOG: readonly Plan[] = [PERSONAL_PLAN, TEAM];
 
-const setup = (currentPlanId: string | null, catalog: readonly Plan[] = CATALOG) => {
+const setup = (
+  currentPlanId: string | null,
+  catalog: readonly Plan[] = CATALOG,
+  readOnly = false,
+) => {
   const scopes: string[] = [];
   const transactions: ITransactionRunner = {
     run: () => Promise.reject(new Error('los límites se leen con el actor')),
@@ -36,9 +40,7 @@ const setup = (currentPlanId: string | null, catalog: readonly Plan[] = CATALOG)
   const subscriptions = {
     findStanding: jest
       .fn()
-      .mockResolvedValue(
-        currentPlanId === null ? null : { planId: currentPlanId, readOnly: false },
-      ),
+      .mockResolvedValue(currentPlanId === null ? null : { planId: currentPlanId, readOnly }),
   } as unknown as ISubscriptionRepository;
   const plans = {
     findById: jest.fn((id: string) =>
@@ -55,7 +57,7 @@ const setup = (currentPlanId: string | null, catalog: readonly Plan[] = CATALOG)
   };
 };
 
-describe('PlanLimitsAdapter (006a CA-2 a CA-5; 009 T-03, PD-80)', () => {
+describe('PlanLimitsAdapter (006a CA-2 a CA-5; 009 T-03, PD-80; 010 ADR-0029)', () => {
   it('T-03: con fila de suscripción, los límites del plan contratado, leídos con withActor del cliente', async () => {
     const { adapter, scopes, subscriptions } = setup(TEAM.id);
 
@@ -65,6 +67,7 @@ describe('PlanLimitsAdapter (006a CA-2 a CA-5; 009 T-03, PD-80)', () => {
       storageQuotaBytes: 375_809_638_400n,
       trashRetentionDays: 60,
       retainedVersions: 60,
+      readOnly: false,
     });
     expect(scopes).toEqual([ANA.id]);
     expect(subscriptions.findStanding).toHaveBeenCalledWith(ANA);
@@ -79,6 +82,17 @@ describe('PlanLimitsAdapter (006a CA-2 a CA-5; 009 T-03, PD-80)', () => {
       storageQuotaBytes: 16_106_127_360n,
       trashRetentionDays: 7,
       retainedVersions: 3,
+      readOnly: false,
+    });
+  });
+
+  it('010 RN-5, CA-12: en solo lectura conserva los límites de su plan y lo dice `readOnly`', async () => {
+    const { adapter } = setup(TEAM.id, CATALOG, true);
+
+    await expect(adapter.limitsFor(ANA)).resolves.toMatchObject({
+      planName: 'Equipo',
+      storageQuotaBytes: 375_809_638_400n,
+      readOnly: true,
     });
   });
 
