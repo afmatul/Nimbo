@@ -38,19 +38,24 @@ function errorData(error: Error): unknown {
 
 /**
  * Canal abierto mientras haya sesión. Si el servidor lo rechaza o lo cierra por token vencido, lo reabre con el token
- * que la sesión ya renovó o, si sigue siendo el mismo, renueva primero (CA-4). Si lo rechaza por exceso de intentos,
- * lo reabre tras la espera que indica el servidor (CA-14), porque `socket.io-client` no reintenta un rechazo del
- * *handshake*; si la espera falta o no es válida, no lo reabre.
+ * que la sesión ya renovó o, si sigue siendo el mismo, renueva primero (CA-4). Renueva como mucho una vez por conexión
+ * lograda: si el servidor rechaza también el token recién renovado, no renueva ni reabre hasta que conecte. Si lo
+ * rechaza por exceso de intentos, lo reabre tras la espera que indica el servidor (CA-14), porque `socket.io-client` no
+ * reintenta un rechazo del *handshake*; si la espera falta o no es válida, no lo reabre.
  */
 class RealtimeChannel {
   private readonly socket: Socket;
   private presentedToken: string | null;
   private retryTimer: ReturnType<typeof setTimeout> | undefined;
   private stopped = false;
+  private renewedSinceConnect = false;
 
   constructor(private readonly connection: RealtimeConnection) {
     this.presentedToken = connection.token.current;
     this.socket = this.open();
+    this.socket.on('connect', () => {
+      this.renewedSinceConnect = false;
+    });
     this.socket.on('connect_error', (error: Error) => this.onRejected(errorData(error)));
     this.socket.on(REALTIME_EVENTS.SESSION_EXPIRED, (payload: unknown) => this.onRejected(payload));
   }
@@ -85,13 +90,20 @@ class RealtimeChannel {
   }
 
   private async reopenWithFreshToken(): Promise<void> {
-    const { token, renew } = this.connection;
+    const { token } = this.connection;
     if (token.current === this.presentedToken) {
-      const renewed = await renew();
+      const renewed = await this.renewOncePerConnection();
       if (this.stopped || renewed === null) return;
       token.current = renewed;
     }
     this.reopen();
+  }
+
+  /** Renueva la sesión si el canal no lo hizo desde la última conexión lograda; si ya lo hizo, devuelve `null`. */
+  private renewOncePerConnection(): Promise<string | null> {
+    if (this.renewedSinceConnect) return Promise.resolve(null);
+    this.renewedSinceConnect = true;
+    return this.connection.renew();
   }
 
   private reopenAfterRetryDelay(data: unknown): void {

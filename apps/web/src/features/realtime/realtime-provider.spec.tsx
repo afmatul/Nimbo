@@ -192,6 +192,48 @@ describe('RealtimeProvider', () => {
     expect(nextHandshakeAuth()).toEqual({ token: 'token-renovado-por-la-sesion' });
   });
 
+  it('CA-4: si el token recién renovado también se rechaza, no vuelve a renovar ni reabre hasta conectar', async () => {
+    renderProvider();
+    socket.fire('connect_error', unauthenticatedError());
+    await flushRenewal();
+    nextHandshakeAuth();
+
+    socket.fire('connect_error', unauthenticatedError());
+    await flushRenewal();
+
+    expect(renew).toHaveBeenCalledTimes(1);
+    expect(socket.connect).toHaveBeenCalledTimes(1);
+  });
+
+  it('CA-4: tras conectar con el token renovado, un nuevo vencimiento vuelve a renovar', async () => {
+    renderProvider();
+    socket.fire('connect_error', unauthenticatedError());
+    await flushRenewal();
+    nextHandshakeAuth();
+    socket.fire('connect');
+
+    socket.fire(REALTIME_EVENTS.SESSION_EXPIRED, { code: 'SHARED_UNAUTHENTICATED' });
+    await flushRenewal();
+
+    expect(renew).toHaveBeenCalledTimes(2);
+    expect(socket.connect).toHaveBeenCalledTimes(2);
+  });
+
+  it('CA-4: si la sesión trae otro token, reabre con él aunque el canal ya haya renovado', async () => {
+    const { rerender } = renderProvider();
+    socket.fire('connect_error', unauthenticatedError());
+    await flushRenewal();
+    nextHandshakeAuth();
+    rerenderWithToken(rerender, 'token-renovado-por-la-sesion');
+
+    socket.fire('connect_error', unauthenticatedError());
+    await flushRenewal();
+
+    expect(renew).toHaveBeenCalledTimes(1);
+    expect(socket.connect).toHaveBeenCalledTimes(2);
+    expect(nextHandshakeAuth()).toEqual({ token: 'token-renovado-por-la-sesion' });
+  });
+
   it('CA-14: ante REALTIME_TOO_MANY_REQUESTS reabre el canal tras la espera indicada, sin renovar la sesión', () => {
     jest.useFakeTimers();
     renderProvider();
