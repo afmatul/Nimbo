@@ -12,7 +12,6 @@ import { io } from 'socket.io-client';
 
 import { useSession, type SessionContextValue } from '../identity/session/session-provider';
 
-import { DEFAULT_RETRY_AFTER_SECONDS } from './realtime-client';
 import { RealtimeProvider } from './realtime-provider';
 
 jest.mock('socket.io-client', () => ({ io: jest.fn() }));
@@ -206,16 +205,20 @@ describe('RealtimeProvider', () => {
     expect(renew).not.toHaveBeenCalled();
   });
 
-  it('CA-14: si el rechazo no trae la espera, reabre tras la espera por defecto', () => {
+  it.each([
+    ['ausente', undefined],
+    ['NaN', Number.NaN],
+    ['negativa', -RETRY_AFTER_SECONDS],
+    ['cero', 0],
+  ])('CA-14: si la espera del rechazo es %s, no reabre el canal', (_caso, retryAfterSeconds) => {
     jest.useFakeTimers();
     renderProvider();
 
-    socket.fire('connect_error', tooManyRequestsError());
-    jest.advanceTimersByTime(DEFAULT_RETRY_AFTER_SECONDS * MS_PER_SECOND - 1);
-    expect(socket.connect).not.toHaveBeenCalled();
+    socket.fire('connect_error', tooManyRequestsError(retryAfterSeconds));
+    jest.runAllTimers();
 
-    jest.advanceTimersByTime(1);
-    expect(socket.connect).toHaveBeenCalledTimes(1);
+    expect(socket.connect).not.toHaveBeenCalled();
+    expect(jest.getTimerCount()).toBe(0);
   });
 
   it('CA-14: al desmontar durante la espera cancela el reintento', () => {
@@ -248,7 +251,7 @@ describe('RealtimeProvider', () => {
     expect(ioMock).not.toHaveBeenCalled();
   });
 
-  it('al desmontar cierra el canal y no lo reabre aunque la renovación termine después', async () => {
+  it('al desmontar cierra el canal y, aunque la renovación termine después, no escribe el token ni lo reabre', async () => {
     const { unmount } = renderProvider();
     socket.fire('connect_error', unauthenticatedError());
 
@@ -257,5 +260,6 @@ describe('RealtimeProvider', () => {
 
     expect(socket.disconnect).toHaveBeenCalledTimes(1);
     expect(socket.connect).not.toHaveBeenCalled();
+    expect(nextHandshakeAuth()).toEqual({ token: 'token-inicial' });
   });
 });

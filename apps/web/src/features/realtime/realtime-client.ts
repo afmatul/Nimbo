@@ -6,8 +6,6 @@ import {
 } from '@nimbo/contracts';
 import { io, type Socket } from 'socket.io-client';
 
-/** Espera ante un 429 que no trae `retryAfterSeconds`: la ventana del límite de intentos del `api` (CA-14). */
-export const DEFAULT_RETRY_AFTER_SECONDS = 60;
 const MS_PER_SECOND = 1_000;
 
 /** Token que el canal presenta en cada intento; lo actualizan la sesión y la propia renovación del canal. */
@@ -27,9 +25,11 @@ function field(value: unknown, key: string): unknown {
     : undefined;
 }
 
-function retryDelayMs(data: unknown): number {
+/** Espera en milisegundos que pide el servidor en un 429, o `null` si falta o no es un número positivo. */
+function retryDelayMs(data: unknown): number | null {
   const seconds = field(data, 'retryAfterSeconds');
-  return (typeof seconds === 'number' ? seconds : DEFAULT_RETRY_AFTER_SECONDS) * MS_PER_SECOND;
+  const isValid = typeof seconds === 'number' && Number.isFinite(seconds) && seconds > 0;
+  return isValid ? seconds * MS_PER_SECOND : null;
 }
 
 function errorData(error: Error): unknown {
@@ -39,7 +39,8 @@ function errorData(error: Error): unknown {
 /**
  * Canal abierto mientras haya sesión. Si el servidor lo rechaza o lo cierra por token vencido, lo reabre con el token
  * que la sesión ya renovó o, si sigue siendo el mismo, renueva primero (CA-4). Si lo rechaza por exceso de intentos,
- * lo reabre tras la espera indicada (CA-14): `socket.io-client` no reintenta un rechazo del *handshake*.
+ * lo reabre tras la espera que indica el servidor (CA-14), porque `socket.io-client` no reintenta un rechazo del
+ * *handshake*; si la espera falta o no es válida, no lo reabre.
  */
 class RealtimeChannel {
   private readonly socket: Socket;
@@ -80,20 +81,22 @@ class RealtimeChannel {
   private onRejected(data: unknown): void {
     const code = field(data, 'code');
     if (code === SHARED_ERROR_CODES.UNAUTHENTICATED) void this.reopenWithFreshToken();
-    if (code === REALTIME_ERROR_CODES.TOO_MANY_REQUESTS) this.reopenAfter(retryDelayMs(data));
+    if (code === REALTIME_ERROR_CODES.TOO_MANY_REQUESTS) this.reopenAfterRetryDelay(data);
   }
 
   private async reopenWithFreshToken(): Promise<void> {
     const { token, renew } = this.connection;
     if (token.current === this.presentedToken) {
       const renewed = await renew();
-      if (renewed === null) return;
+      if (this.stopped || renewed === null) return;
       token.current = renewed;
     }
     this.reopen();
   }
 
-  private reopenAfter(delayMs: number): void {
+  private reopenAfterRetryDelay(data: unknown): void {
+    const delayMs = retryDelayMs(data);
+    if (delayMs === null) return;
     clearTimeout(this.retryTimer);
     this.retryTimer = setTimeout(() => this.reopen(), delayMs);
   }
