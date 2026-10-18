@@ -60,7 +60,7 @@ y podar las que excedan lo que el plan retiene. Es la base de 016 (versión al c
 ### Retención (HU-5)
 - **CA-13** (HU-5, RF-13) Dado un archivo que ya tiene las versiones retenidas de su plan (Personal 3, Pro 30, Equipo 60, Institucional 100), cuando se registra una nueva, entonces se elimina la más antigua (objeto y registro), nunca la actual, y `espacio_usado` baja en sus bytes.
 - **CA-14** (HU-5) — error: Dado que falla el borrado del objeto de una versión podada, entonces su registro y el espacio no cambian, el error se registra sin nombres y el siguiente intento lo reintenta (patrón de 006 CA-20); nunca queda un registro sin objeto.
-- **CA-15** (HU-5) Dado un archivo en el límite de retención, cuando el cliente va a reemplazar o restaurar, entonces la interfaz avisa qué versión se eliminará antes de confirmar.
+- **CA-15** (HU-5) Dado un archivo en el límite de retención, cuando el cliente va a reemplazar o restaurar, entonces la interfaz avisa qué versión se eliminará antes de confirmar. Para el Editor de un archivo compartido el aviso es «Se eliminará la versión más antigua para guardar esta.», sin número ni datos del plan del propietario (012 CA-13).
 
 ### Papelera, aislamiento y roles (HU-6)
 - **CA-16** (HU-6, RF-11) Dado un archivo en la papelera, cuando se pide su historial, descarga o restauración de versión, entonces `404` `STORAGE_NODE_NOT_FOUND`; al restaurarlo de la papelera conserva su historial completo.
@@ -79,7 +79,7 @@ y podar las que excedan lo que el plan retiene. Es la base de 016 (versión al c
 - **RN-4** Número de versión consecutivo por archivo (1, 2, 3…), sin reutilizarse tras una poda.
 - **RN-5** Autoría: toda versión guarda quién ejecutó la acción; los participantes de edición los aporta 016.
 - **RN-6** El historial muestra el cambio de **tamaño**; no hay comparación de contenido ni atribución párrafo a párrafo (§9).
-- **RN-7** Solo el propietario ve, descarga, restaura y reemplaza (nivel Propietario; D-5). Sin suplantación.
+- **RN-7** Solo el propietario ve el historial, descarga versiones anteriores, restaura y reemplaza (nivel Propietario; D-5). Sin suplantación. Excepción (012 CA-13, CA-14): el Editor de un archivo compartido sube nuevas versiones (reemplazo) con la cuota, el máximo por archivo y la retención del plan del propietario.
 - **RN-8** Tamaños en `bigint`, identificadores UUID, `clave_objeto` nunca sale de la API.
 - **RN-9** Restaurar valida solo la cuota, no el máximo por archivo: el contenido ya estaba guardado (D-8). Reemplazar valida ambos (CA-2).
 - **RN-10** Las versiones solo las elimina la poda por retención o la purga del archivo; no hay borrado manual (D-6).
@@ -109,7 +109,7 @@ y podar las que excedan lo que el plan retiene. Es la base de 016 (versión al c
 - Indexar o reindexar versiones (019); optimizar y conservar el original (021); vista previa de versiones (017).
 - Comparar contenido entre versiones, atribución párrafo a párrafo y reportes de contribución (`product-context.md` §9).
 - Borrar versiones sueltas a mano; fijar o «proteger» versiones; nombrar versiones.
-- Roles de editor y lector sobre versiones (llegan con 012; hoy solo existe el propietario).
+- Lector y el resto del Editor sobre versiones (016); la nueva versión del Editor la añade 012 (RN-7).
 - Bloqueo de reemplazo y restauración en cuenta vencida (solo lectura): lo añade 010 (RF-23), como pasó con 005.
 - Cambiar los valores del catálogo o aplicar la poda de inmediato al bajar de plan (010).
 
@@ -142,3 +142,4 @@ Sin preguntas abiertas. Decisiones de Adrián (2026-10-07), con la razón y la f
 | 2026-10-08 | Ajustes tras los mockups (D-12): CA-6, CA-9, CA-20 y §6 (estados completos, textos, título del diálogo, «Aplicar a los demás»); estado → `Lista` | Revisión de mockups | Adrián |
 | 2026-10-10 | La ficha muestra nombre, tipo y ubicación del archivo: `GET /files/:fileId/versions` suma `file: { name, kind, folderId }` (la ubicación es un enlace a la carpeta, sin su nombre) | Revisión I-1 (T-FIX-4) | Adrián |
 | 2026-10-15 | ADR-0012 pasa a «Aceptado» en la cabecera (se aceptó el 2026-10-10 con la spec); sin cambio de comportamiento | Segunda revisión (S-4) | Adrián |
+| 2026-10-17 | RN-7: el Editor de un archivo compartido sube nuevas versiones con el plan del propietario; historial, versiones anteriores y restauración siguen solo del propietario. CA-15: aviso de poda del Editor sin número ni datos del plan | Enmienda pedida por 012, PD-114; aprobada por Adrián 2026-10-17 | Adrián |

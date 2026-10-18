@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Propuesto (2026-09-28); falta el acuerdo del equipo. Alineado con el E-R vigente; cierra DF-40 al aceptarse |
+| Estado | Aceptado (Adrián, 2026-10-17, con la aprobación de la spec 012); propuesto el 2026-09-28. Alineado con el E-R vigente; cierra DF-40 |
 | Fecha | 2026-09-28 |
 | Decisores | Adrián (architect), equipo Nimbo. El usuario decidió el 2026-09-28 seguir el E-R vigente |
 | Specs relacionadas | 005 (crea `archivo`), 006 (crea `carpeta`), 012 y 013 (`comparticion`, `enlace_publico`); DF-40, DF-32; ADR-0005 |
