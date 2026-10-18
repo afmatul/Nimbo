@@ -1,9 +1,9 @@
 # Tareas 010 — Renovación, vencimiento y cambio de plan
 
 > Spec: `./spec.md` · Plan: `./plan.md`
-> Estado: **Borrador — pendiente de la aprobación del plan por Adrián (`plan.md` §8), de ADR-0029 y de la revisión de M-2
-> por el `architect`.** Corregidas tras la auditoría de Adrián en el PR #63; si Adrián o el `architect` cambian el plan,
-> estas tareas se ajustan antes de `/implement`.
+> Estado: **En curso — avance de la 010a autorizado por Adrián mientras revisa (`plan.md` §8); falta aprobar el plan y
+> aceptar ADR-0029 y ADR-0031.** El `architect` ya revisó M-2 (plan §8). Si Adrián cambia el plan, las tareas se ajustan en
+> el camino.
 > Dos bloques, un PR cada uno (`workflow.md` §4.6): **010a** (`api`, `worker`, `storage`) y **010b** (`web`). 12 tareas
 > verticales, de medio día a un día, un commit cada una (`feat(billing): … [010 T-xx]`). Sin tareas de «cierre».
 > **Tamaño (M-1)**: 010a ≈ 7 días y 010b ≈ 4 días; los dos superan los 3 días de `workflow.md` §4.1 (plan §7).
@@ -16,7 +16,7 @@
 
 ## Bloque 010a — API, worker y `storage` (PR 1)
 **Compuerta del bloque**: plan aprobado por Adrián; **PD-63 hecho** (planificador + procesador, bucle de reintento y
-`errorName` extraídos; T-05 los reutiliza); **M-2 revisado por el `architect`** antes de T-02.
+`errorName` extraídos; T-05 los reutiliza); M-2 revisado por el `architect` antes de T-02 (hecho, plan §8).
 
 - [x] **T-01** Datos y dominio de la suscripción: estado, renovación automática y cambio programado
   - Criterio: CA-15; RN-1, RN-3, RN-5, RN-7 y la regla de `renewalQuote` de CA-26 y CA-28 (cualquier cambio programado).
@@ -83,7 +83,7 @@
     y una manual → un cobro); int `renewal-reminder.int-spec.ts` (un correo por periodo).
   - Depende: T-01, T-02, T-03 (`RenewalCheckout`, `InvoiceIssuer`); PD-63.
 
-- [ ] **T-06** Solo lectura en `storage` con `PlanLimits.readOnly` [Adrián]
+- [x] **T-06** Solo lectura en `storage` con `PlanLimits.readOnly` [Adrián]
   - **Compuerta**: ADR-0029 aceptado y cambios en `storage` autorizados.
   - Criterio: CA-12, CA-13, CA-10 (vuelve a poder subir); RN-6.
   - Archivos: `packages/contracts/src/storage/{error-codes,space-schemas}.ts`; `storage/application/plan-limits.ts`,
@@ -103,8 +103,8 @@
   - Depende: T-03, T-04, T-05, T-06.
 
 ## Bloque 010b — Web (PR 2)
-**Compuerta del bloque**: 010a integrado en `main` (contratos y rutas disponibles); mockups creados con `/mockup` (cuatro estados de
-`billing/suscripcion/`, confirmación del cambio de plan con el aviso de versiones, variante de renovación del pago con las tres tarjetas).
+**Compuerta del bloque**: 010a integrado en `main` (contratos y rutas disponibles); mockups creados con `/mockup` (hecho en
+`358d87c`: estados de `billing/suscripcion/`, confirmación del cambio de plan con el aviso de versiones, variante de renovación del pago).
 Antes de cada pantalla se leen sus capturas en `docs/design/capturas/`; las desviaciones van a «Notas del developer».
 
 - [ ] **T-08** Pantalla «Plan y facturación» con sus cinco estados
@@ -197,3 +197,9 @@ Antes de cada pantalla se leen sus capturas en `docs/design/capturas/`; las desv
   (capturas `renovacion-desactivada` y `cambio-a-personal`: el texto lo arma la web). `pendingPlan` usa `planSchema`
   (la confirmación de la bajada necesita su cuota). Los fixtures de `subscription-page.spec.tsx` (009) suman los campos
   nuevos; la pantalla los usa en T-08.
+- **T-06** (2026-10-18): implementada **antes** de aceptar ADR-0029, por la misma decisión que T-02. `getLimitsByPlanId` y
+  `getLimitsBySlug` devuelven `PlanStorageLimits` (sin `readOnly`); solo `limitsFor` compone el estado. `WritableAccountPolicy`
+  va en `TRASH_LIFECYCLE_PROVIDERS` (`api` y `worker`) y no se exporta de `storage/index.ts` hasta que otro módulo la use
+  (YAGNI). `read-only.int-spec.ts` vuelve a vigente cambiando `suscripcion` como dueño (la renovación misma la prueba
+  `renew.int-spec.ts`). La web suma el texto de `STORAGE_ACCOUNT_READ_ONLY` a su catálogo de errores.
+- **Fuente única (N-2 del PR #63)**: spec, plan y tareas solo se editan en `spec/010-…`; la 010a trae esta rama y lleva solo código.

@@ -16,8 +16,12 @@ export interface AccessTokenClaims {
   readonly sessionId: string;
 }
 
+/**
+ * Resultado de `verify`. Si es válido, `expiresAt` es el `exp` del token: el canal en vivo lo cierra a esa hora
+ * (015 CA-4) sin volver a leer el JWT.
+ */
 export type AccessTokenVerification =
-  | { readonly valid: true; readonly claims: AccessTokenClaims }
+  | { readonly valid: true; readonly claims: AccessTokenClaims; readonly expiresAt: Date }
   | { readonly valid: false; readonly reason: 'expired' | 'invalid' };
 
 /**

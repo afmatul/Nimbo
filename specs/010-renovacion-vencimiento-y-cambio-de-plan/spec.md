@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | En curso (2026-10-18; avance autorizado por Adrián antes de aprobar el plan, plan §8) |
+| Estado | En curso (2026-10-18; avance de la 010a autorizado por Adrián antes de aprobar el plan, plan §8) |
 | Dueño | Juan Marcos |
 | Fase | 2 |
 | Requisitos | RF-22, RF-23, RF-24 (y RF-07 y RNF-05 de forma transversal) |
@@ -51,7 +51,7 @@ programar un cambio de plan (subir, bajar o volver a Personal) que se aplica en 
 
 **Cambio de plan**
 - **CA-16** (HU-5, RF-24) Dado un plan de pago vigente, cuando el cliente elige otro plan activo (de pago o Personal), entonces se responde `200`, el cambio queda programado para `vence_en` y la pantalla dice «Tu plan cambiará a <plan> el <fecha>»; no se cobra nada ahora y el plan, sus límites y el periodo vigente no cambian. Programar otro plan reemplaza al anterior.
-- **CA-17** (HU-5, RF-24) — error: Dado un plan de pago, cuando intenta programar un plan desactivado, inexistente o el mismo que tiene, entonces se responde `400` `BILLING_PLAN_CHANGE_INVALID` y nada cambia. La lista de opciones no muestra planes desactivados (PD-86).
+- **CA-17** (HU-5, RF-24) — error: Dado un plan de pago, cuando intenta programar un plan desactivado, inexistente o el mismo que tiene, entonces se responde `400` `BILLING_PLAN_CHANGE_INVALID` («No pudimos programar el cambio. Ese plan ya no está disponible. Cierra este aviso y elige otro plan de la lista.») y nada cambia. La lista de opciones no muestra planes desactivados (PD-86).
 - **CA-18** (HU-5, RF-24) — error: Dado una suscripción Personal, cuando intenta programar un cambio, entonces se responde `400` `BILLING_NO_PAID_SUBSCRIPTION`; en la pantalla, elegir un plan de pago lleva a la contratación de la 009.
 - **CA-19** (HU-5, RF-24) Dado un cambio programado, cuando el cliente lo cancela antes de `vence_en`, entonces se responde `200` y la renovación sigue con el plan actual. Sin cambio programado se responde `404` `BILLING_NO_PENDING_PLAN_CHANGE`.
 - **CA-20** (HU-5, RF-24, RF-22) Dado un cambio programado a otro plan de pago, cuando se renueva al vencer (automática) o desde solo lectura (CA-10), nunca por adelantado (CA-28), entonces se cobra el precio completo del plan nuevo (sin prorrateo) y, si se aprueba, el periodo nuevo usa ese plan y sus límites. Si se rechaza, aplica CA-2 con el plan anterior y el cambio sigue programado.
@@ -89,12 +89,13 @@ programar un cambio de plan (subir, bajar o volver a Personal) que se aplica en 
 ## 6. Experiencia de usuario
 | Pantalla | Mockup (`docs/design/mockups/…`) | Estados requeridos | Estado del mockup |
 |---|---|---|---|
-| Plan y facturación (`/suscripcion`) | `billing/suscripcion/suscripcion--vigente.html` | vigente (con próximo cobro), por-vencer, vencida/solo lectura, cambio-programado, renovación-desactivada | Existe `vigente`; faltan los otros cuatro |
-| Elegir plan para el cambio | `billing/planes/planes--plan-actual.html` | lista de planes activos, plan actual marcado, confirmación (con el aviso de versiones de CA-21; referencia: `storage/ficha-archivo/ficha-archivo--aviso-de-poda.html`), error | Existe `plan-actual`; falta la confirmación |
-| Pago de la renovación manual | `billing/pago/pago.html` | default con el periodo nuevo, rechazado, éxito | Existe `default` (009); falta la variante de renovación |
+| Plan y facturación (`/suscripcion`) | `billing/suscripcion/suscripcion--{vigente,por-vencer,renovacion-desactivada,cambio-programado,cambio-a-personal,vencida,confirmar-desactivar,error-renovacion}.html` | vigente (con próximo cobro), por-vencer, vencida/solo lectura, cambio-programado (a plan de pago y a Personal), renovación-desactivada (también con un cambio programado, nota del README), confirmación al apagar, error | Existe (010) |
+| Elegir plan para el cambio | `billing/planes/planes--{cambiar-plan,confirmar-cambio,confirmar-personal,confirmar-personal-solo-lectura,cambio-error}.html` | lista de planes activos, plan actual marcado, confirmación (con el aviso de versiones de CA-21), bajada a Personal (también en solo lectura, CA-27), error | Existe (010) |
+| Pago de la renovación manual | `billing/pago/pago--{renovacion,renovacion-rechazado,renovacion-exito,renovacion-solo-lectura}.html` | default con el periodo nuevo, rechazado, éxito, desde solo lectura | Existe (010) |
 | Aviso de solo lectura (explorador y vistas de escritura) | `shared/layout/layout--solo-lectura.html` (`ReadOnlyBanner`, RF-23) | visible con «Renovar plan», acción bloqueada | Existe (000b) |
 
-- Por vencer: «Tu plan <plan> vence el <fecha>. Se renovará con <marca> •••• <últimos 4>.» o, sin renovación automática, «Tu plan vence el <fecha> y no se renovará. Renueva ahora para no quedar en solo lectura.»
+- Por vencer: «Tu plan <plan> vence el <fecha>. Se renovará con <marca> ···· <últimos 4>.» o, sin renovación automática, «Tu plan vence el <fecha> y no se renovará. Renueva ahora para no quedar en solo lectura.»
+- Sin renovación automática y con un cambio programado (CA-7, CA-28): «Tu plan vence el <fecha> y no se renovará. Para renovar ahora, primero cancela el cambio a <plan>.», con «Cancelar cambio» y sin «Renovar ahora».
 - Vencida: «Tu suscripción venció. Puedes ver y descargar tus archivos, pero no subir ni editar. Renueva tu plan.»
 - Cambio programado: «Tu plan cambiará a <plan> el <fecha>.» con la acción «Cancelar cambio».
 
@@ -107,7 +108,7 @@ programar un cambio de plan (subir, bajar o volver a Personal) que se aplica en 
 - Las alertas y tableros mismos (022): aquí solo se deja observable el fallo del proceso.
 
 ## 8. Preguntas
-- [RESUELTA] Mockups → se crean con `/mockup` antes de las tareas de UI y no frenan el plan (Juan Marcos, 2026-10-16). Inventario (2026-10-17): el aviso de solo lectura ya existe (`shared/layout/layout--solo-lectura.html`) y la lista de planes también (`billing/planes/planes--plan-actual.html`); faltan los cuatro estados de «Plan y facturación», la confirmación del cambio de plan y la variante de renovación del pago.
+- [RESUELTA] Mockups → se crearon con `/mockup` (2026-10-18, `358d87c`; aprobados por Juan Marcos): ocho estados de «Plan y facturación», cinco del cambio de plan y cuatro del pago de la renovación (tabla de §6). El aviso de solo lectura ya existía (`shared/layout/layout--solo-lectura.html`).
 - [RESUELTA] Acciones en solo lectura → se permiten papelera (mandar, eliminar definitivamente, vaciar), accesos rápidos y agente; se bloquean restaurar desde la papelera, compartir y enlaces públicos (RN-6, CA-13).
 - [RESUELTA] Reintento del cobro automático → un solo intento (RN-10).
 - [RESUELTA] Pagar más de un periodo por adelantado → no, `409 BILLING_ALREADY_RENEWED` (CA-26).
@@ -132,3 +133,5 @@ programar un cambio de plan (subir, bajar o volver a Personal) que se aplica en 
 | 2026-10-18 | M-3: RN-10 suma que una cuenta en solo lectura nunca se cobra en automático. m-2: CA-5 ya no dice «proceso diario» (la pasada es periódica, plan §1) | Auditoría de Adrián, PR #63 | Borrador (pendiente Adrián) |
 | 2026-10-18 | Sin cambio de comportamiento en la spec: M-1 dos PR (010a `api`/`worker`/`storage`, 010b `web`) en `tasks.md`; M-5, m-1, m-3, m-5 y m-6 en el plan (§2, §6, §7) y en ADR-0029 (regla 3 con los `POST` que no escriben; consecuencia del nombre de `PlanLimits`) | Auditoría de Adrián, PR #63 | Borrador (pendiente Adrián) |
 | 2026-10-18 | RN-6: excepciones de solo lectura en lo compartido y código neutro para el Editor (012); CA-13: el mensaje cubre compartir | Acuerdo con Fátima (plan 012 D-4) | Borrador (pendiente Adrián) |
+| 2026-10-18 | §6: tarjeta como «···· <últimos 4>» (como la 009); CA-17: mensaje de `BILLING_PLAN_CHANGE_INVALID` del mockup `planes--cambio-error`. Mockups de la 010 aprobados por Juan Marcos (14 decisiones de UX) | Mockups de `billing/suscripcion`, `planes` y `pago` | Borrador (pendiente Adrián) |
+| 2026-10-18 | §6: la tabla nombra los mockups que ya existen y suma el texto de la renovación apagada con un cambio programado (sin «Renovar ahora», CA-28); §8: inventario de mockups al día; estado «En curso» por el avance autorizado de la 010a | Re-verificación de Adrián, PR #63 (N-3, N-4) | Borrador (pendiente Adrián) |

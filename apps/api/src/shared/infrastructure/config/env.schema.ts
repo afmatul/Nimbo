@@ -72,6 +72,8 @@ const MAX_INVOICE_RETRY_BATCH_SIZE = 1000;
 /** RN-8 de la 010: el aviso previo sale 3 días antes de `vence_en`, configurable de 1 a 7. */
 const DEFAULT_RENEWAL_REMINDER_DAYS = 3;
 const MAX_RENEWAL_REMINDER_DAYS = 7;
+/** Intentos de abrir el canal en vivo por origen y minuto (015 CA-14): holgado para 25 usuarios (RNF-02). */
+const DEFAULT_REALTIME_CONNECT_ATTEMPTS_PER_MINUTE = 60;
 
 /**
  * Valor de desarrollo de `JWT_ACCESS_SECRET` que trae `.env.example` (plan 002 §6.10). Público a propósito: en
@@ -214,6 +216,11 @@ const quickAccessApiShape = {
   ),
 };
 
+/** Canal en vivo en el `api` (015 plan §5, CA-14). Ruta y latido son constantes de `realtime`, no variables. */
+const realtimeApiShape = {
+  REALTIME_CONNECT_ATTEMPTS_PER_MINUTE: positiveInt(DEFAULT_REALTIME_CONNECT_ATTEMPTS_PER_MINUTE),
+};
+
 /** Purga programada de la papelera en el `worker` (006 plan §4, CA-19). */
 const trashPurgeShape = {
   TRASH_PURGE_INTERVAL_MINUTES: positiveInt(DEFAULT_TRASH_PURGE_INTERVAL_MINUTES),
@@ -283,7 +290,7 @@ export const workerEnvObjectSchema = sharedEnvBaseSchema.extend({
 
 /**
  * Forma del entorno del `api`: además el puerto HTTP público, MinIO, la carga de archivos (005), las carpetas y los
- * accesos rápidos (006), la URL pública de `web`, CORS y la clave que firma los tokens de acceso (002), que se declara
+ * accesos rápidos (006), el límite de intentos del canal en vivo (015), la URL pública de `web`, CORS y la clave que firma los tokens de acceso (002), que se declara
  * **solo** aquí.
  */
 export const apiEnvObjectSchema = sharedEnvBaseSchema.extend({
@@ -294,6 +301,7 @@ export const apiEnvObjectSchema = sharedEnvBaseSchema.extend({
   ...foldersApiShape,
   ...quickAccessApiShape,
   ...renewalReminderShape,
+  ...realtimeApiShape,
   WEB_PUBLIC_URL: url(),
   CORS_ORIGIN: urlList(),
   JWT_ACCESS_SECRET: z.string().min(JWT_SECRET_MIN_LENGTH, JWT_SECRET_LENGTH_MESSAGE),

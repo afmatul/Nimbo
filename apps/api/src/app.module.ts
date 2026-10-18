@@ -10,6 +10,7 @@ import { BackofficeModule } from './modules/backoffice';
 import { BillingHttpModule } from './modules/billing';
 import { IDENTITY_THROTTLERS, IdentityModule } from './modules/identity';
 import { NotificationsModule } from './modules/notifications';
+import { RealtimeModule } from './modules/realtime';
 import { StorageModule } from './modules/storage';
 import { PlanLimitsBindingModule } from './plan-limits-binding.module';
 import {
@@ -33,8 +34,10 @@ import type { Env } from './shared';
  * (ADR-0017), `notifications`, `identity`, `AccessModule` (`PermissionResolver`, 003) y `storage` (005) con el
  * enlace de `I_PLAN_LIMITS_PROVIDER` en `PlanLimitsBindingModule` (DF-51: `storage` no conoce a `billing`;
  * 006a aporta `PlanLimitsAdapter`), la consulta de la actividad propia de `audit` (004), el catálogo de planes de
- * `billing` (008) —el `worker` no carga ninguna de las dos rutas— y `backoffice` (011), que recibe los mismos módulos de
- * `identity` y `storage` para no instanciarlos dos veces.
+ * `billing` (008) —el `worker` no carga ninguna de las dos rutas—, `backoffice` (011), que recibe los mismos módulos de
+ * `identity` y `storage` para no instanciarlos dos veces, y el canal en vivo (015), al que se le pasa la misma instancia
+ * de `IdentityModule` para resolver `I_ACCESS_TOKEN_VERIFIER` sin que `realtime` importe `identity` (Nest deduplica el
+ * módulo dinámico por referencia).
  */
 @Module({})
 export class AppModule {
@@ -64,6 +67,7 @@ export class AppModule {
         AuditHttpModule,
         BillingHttpModule.forRoot(env, storage),
         BackofficeModule.forRoot(identity, storage),
+        RealtimeModule.forRoot(env, identity),
       ],
       providers: [PingQueue],
     };
