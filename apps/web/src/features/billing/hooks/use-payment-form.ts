@@ -79,32 +79,41 @@ function failureOutcome(
   return null;
 }
 
+/** Valida y cobra: el resultado a mostrar, o `null` si los errores quedaron marcados en sus campos. */
+async function paymentOutcome(
+  deps: PaymentFormDeps,
+  form: UseFormReturn<PaymentFormValues>,
+  values: PaymentFormValues,
+): Promise<PaymentOutcome | null> {
+  const parsed = toSubscribeRequest(deps.planSlug, values);
+  if (!parsed.ok) {
+    markFields(form, parsed.issues);
+    return null;
+  }
+  try {
+    const payment = await subscribe(deps.apiPublicUrl, deps.authFetch, parsed.request);
+    return { kind: 'approved', payment };
+  } catch (caught) {
+    return failureOutcome(form, caught);
+  }
+}
+
 /** Estado y envío del pago simulado (spec 009 CA-3 a CA-5, §6): valida RN-9 antes de llamar y traduce cada respuesta. */
 export function usePaymentForm(deps: PaymentFormDeps): PaymentFormState {
   const [submitting, setSubmitting] = useState(false);
   const [outcome, setOutcome] = useState<PaymentOutcome>(IDLE);
   const form = useForm<PaymentFormValues>({ defaultValues: EMPTY_PAYMENT_FORM });
 
-  async function send(values: PaymentFormValues): Promise<void> {
-    const parsed = toSubscribeRequest(deps.planSlug, values);
-    if (!parsed.ok) return markFields(form, parsed.issues);
-    try {
-      setOutcome({
-        kind: 'approved',
-        payment: await subscribe(deps.apiPublicUrl, deps.authFetch, parsed.request),
-      });
-    } catch (caught) {
-      const failure = failureOutcome(form, caught);
-      if (failure !== null) setOutcome(failure);
-    }
-  }
-
   const submit = form.handleSubmit(async (values) => {
     if (submitting) return;
     setSubmitting(true);
     setOutcome(IDLE);
-    await send(values);
-    setSubmitting(false);
+    try {
+      const result = await paymentOutcome(deps, form, values);
+      if (result !== null) setOutcome(result);
+    } finally {
+      setSubmitting(false);
+    }
   });
 
   return { form, submitting, outcome, submit };

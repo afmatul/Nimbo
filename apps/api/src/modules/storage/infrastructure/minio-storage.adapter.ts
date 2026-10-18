@@ -25,6 +25,7 @@ import type {
   PresignUploadPartInput,
   UploadedPart,
 } from '../application/ports/i-object-storage.port';
+import { isInvoiceObjectKey } from '../domain/invoice-object-key';
 
 /**
  * El cliente interno corre dentro de la transacción de `init` (con `FOR UPDATE` sobre `usuario`) al crear un
@@ -69,8 +70,6 @@ export const buildMinioStorageClients = (
 
 /** Cabeceras que la URL de carga fija en la firma: un `PUT` con otro tamaño se rechaza. */
 const SIGNED_UPLOAD_HEADERS: ReadonlySet<string> = new Set(['content-length']);
-/** Único prefijo que el servidor escribe por su cuenta: la factura PDF de la 009 (decisión 1, revisión I-1). */
-const INVOICE_KEY = /^invoices\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.pdf$/;
 const DOWNLOAD_CONTENT_TYPE = 'application/octet-stream';
 const DOWNLOAD_CACHE_CONTROL = 'no-store';
 
@@ -277,7 +276,7 @@ export class MinioStorageAdapter implements IObjectStorage {
   }
 
   async putObject(input: PutObjectInput): Promise<void> {
-    if (!INVOICE_KEY.test(input.key)) {
+    if (!isInvoiceObjectKey(input.key)) {
       throw new Error('putObject solo acepta claves invoices/{usuario}/{factura}.pdf.');
     }
     await this.clients.operations.send(

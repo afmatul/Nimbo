@@ -1,6 +1,6 @@
 import type { Plan as PlanResponse } from '@nimbo/contracts';
 
-import type { Plan } from '../domain/plan.entity';
+import type { Plan } from '../domain/entities/plan.entity';
 
 /**
  * Lista blanca del contrato de plan: precio entero (ADR-0016) y bytes como cadena decimal para no perder precisión

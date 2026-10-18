@@ -3,8 +3,8 @@ import { Inject, Injectable } from '@nestjs/common';
 import { TransactionContext } from '../../../../shared';
 import type { Actor } from '../../../../shared';
 import type { ISubscriptionRepository } from '../../application/ports/i-subscription-repository.port';
+import { Subscription } from '../../domain/entities/subscription.entity';
 import { PERSONAL_PLAN_SLUG } from '../../domain/plan-slug';
-import { Subscription } from '../../domain/subscription.entity';
 
 const INSERT_PERSONAL_SQL = `INSERT INTO suscripcion (usuario_id, plan_id)
   SELECT $1, p.id FROM plan p WHERE p.slug = $2

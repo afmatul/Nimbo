@@ -1,6 +1,7 @@
 # Arreglos que la 009 le pide a la 011
 
-> Origen: implementación de la 009 (T-01 y T-02) y el informe de choques de T-03 (`informe-t03-choques.pdf`).
+> Origen: implementación de la 009 (T-01 y T-02) y el informe de choques de T-03 (lo que decía queda resumido aquí; el PDF
+> salió del repositorio en la revisión del PR #62, #11).
 > Rama: `feat/009-contratacion-pagos-y-facturas` · 14/10/2026 · Juan Marcos.
 > **Respuesta de Fátima (14/10/2026):** acepta los puntos 1 a 6, 8 y 9 y ya ajustó spec, plan, tareas y PD-80 de la 011
 > (aún sin subir). El 7 lo decide Adrián. La 009 quedó alineada en la misma rama: la T-09 de la 011 ya no crea

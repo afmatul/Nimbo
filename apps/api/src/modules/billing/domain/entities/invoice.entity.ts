@@ -19,7 +19,3 @@ export interface Invoice extends InvoiceDraft {
   readonly userId: string;
   readonly number: string;
 }
-
-/** Clave del PDF en el almacenamiento (decisión 1): fuera del prefijo `u/` de los archivos de cliente. */
-export const invoiceObjectKey = (userId: string, invoiceId: string): string =>
-  `invoices/${userId}/${invoiceId}.pdf`;

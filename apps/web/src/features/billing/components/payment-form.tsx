@@ -7,6 +7,7 @@ import {
   type SubscribeResponse,
 } from '@nimbo/contracts';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import Link from 'next/link';
 import type * as React from 'react';
 import type { JSX } from 'react';
 
@@ -22,12 +23,11 @@ import { cn } from '../../../lib/utils';
 import { ServerErrorAlert } from '../../identity/components/server-error-alert';
 import type { AuthFetch } from '../../identity/session/auth-fetch';
 import { useAuthFetch } from '../../identity/session/use-auth-fetch';
+import { MY_FILES_PATH } from '../../storage/routes';
 import { usePaymentForm, type PaymentFormState } from '../hooks/use-payment-form';
 import { cardBrandOf, groupCardNumber, type PaymentField } from '../payment-form-values';
 
 import { PaymentSummary } from './payment-summary';
-
-const FILES_HREF = '/archivos';
 
 export interface PaymentFormProps {
   readonly plan: Plan;
@@ -255,9 +255,9 @@ function ApprovedCard({ payment }: { readonly payment: SubscribeResponse }): JSX
         <dt className="text-muted-foreground">Vence el</dt>
         <dd className="text-foreground">{dayLabel(payment.expiresAt)}</dd>
       </dl>
-      <a href={FILES_HREF} className={cn(buttonVariants())}>
+      <Link href={MY_FILES_PATH} className={cn(buttonVariants())}>
         Ir a Mis archivos
-      </a>
+      </Link>
     </Card>
   );
 }

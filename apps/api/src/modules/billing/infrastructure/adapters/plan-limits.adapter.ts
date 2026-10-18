@@ -7,9 +7,9 @@ import { I_PLAN_REPOSITORY } from '../../application/ports/i-plan-repository.por
 import type { IPlanRepository } from '../../application/ports/i-plan-repository.port';
 import { I_SUBSCRIPTION_REPOSITORY } from '../../application/ports/i-subscription-repository.port';
 import type { ISubscriptionRepository } from '../../application/ports/i-subscription-repository.port';
+import type { Plan } from '../../domain/entities/plan.entity';
 import { PlanNotFoundError } from '../../domain/errors';
 import { PERSONAL_PLAN_SLUG } from '../../domain/plan-slug';
-import type { Plan } from '../../domain/plan.entity';
 
 const toLimits = (plan: Plan): PlanLimits => ({
   planName: plan.name,

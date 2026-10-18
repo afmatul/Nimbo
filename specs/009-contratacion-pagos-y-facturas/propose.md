@@ -107,8 +107,8 @@ integración 1040 de 1041 (solo falla `dotenv-bootstrap` en mi máquina, por la 
     (N-2), dentro de lo que autorizaste.
 - **Prueba intermitente:** `storage/usage-reconcile.int-spec.ts` falló una vez en la corrida completa por agotar la espera
   de su cola en Redis; sola pasa siempre. No toqué ese código.
-- **Documentos de seguimiento:** `arreglos-011.md` (acuerdos con Fátima) e `informe-t03-choques.pdf` están en esta misma
-  carpeta.
+- **Documentos de seguimiento:** `arreglos-011.md` (acuerdos con Fátima) está en esta misma carpeta; el PDF del informe
+  de choques de T-03 salió del repositorio (PR #62, #11) y su contenido quedó en ese archivo.
 
 ## 4. Respuesta corta sugerida
 

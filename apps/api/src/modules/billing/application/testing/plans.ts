@@ -1,5 +1,5 @@
-import { Plan } from '../../domain/plan.entity';
-import type { PlanProps } from '../../domain/plan.entity';
+import { Plan } from '../../domain/entities/plan.entity';
+import type { PlanProps } from '../../domain/entities/plan.entity';
 
 /** Personal de la semilla de 006a, para las pruebas de unidad de `billing`. */
 export const PERSONAL_PLAN: Plan = Plan.rehydrate({

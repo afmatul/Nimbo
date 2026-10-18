@@ -13,6 +13,7 @@ import { CrearFactura20261014170000 } from '../../../src/migrations/202610141700
 import { EmisionDeFacturas20261015090000 } from '../../../src/migrations/20261015090000-emision-de-facturas';
 import { AvisoDeFactura20261015100000 } from '../../../src/migrations/20261015100000-aviso-de-factura';
 import { FuncionesDeLecturaDeSuscripcion20261015110000 } from '../../../src/migrations/20261015110000-funciones-de-lectura-de-suscripcion';
+import { SuscripcionMenorPrivilegio20261017100000 } from '../../../src/migrations/20261017100000-suscripcion-menor-privilegio';
 import { buildDataSourceOptions } from '../../../src/shared';
 
 const APP_ROLE = 'nimbo_app';
@@ -165,6 +166,7 @@ describe('migración crear-funciones-de-actor (CA-12)', () => {
     const migration = new CrearFuncionesDeActor20260928110100();
     /** Las políticas RLS de 009, 004, 006 y 005 usan las funciones: se revierten antes, como en un `migration:revert` en orden. */
     const dependents = [
+      new SuscripcionMenorPrivilegio20261017100000(),
       new FuncionesDeLecturaDeSuscripcion20261015110000(),
       new AvisoDeFactura20261015100000(),
       new EmisionDeFacturas20261015090000(),

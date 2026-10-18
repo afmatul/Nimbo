@@ -5,8 +5,8 @@ import type { SubscriptionService } from '../application/subscription.service';
 import { aPlan } from '../application/testing/plans';
 import type { Invoice } from '../domain/entities/invoice.entity';
 import type { Payment } from '../domain/entities/payment.entity';
+import { Subscription } from '../domain/entities/subscription.entity';
 import { PaymentRejectedError } from '../domain/errors/payment-rejected.error';
-import { Subscription } from '../domain/subscription.entity';
 import { Money } from '../domain/value-objects/money';
 
 import { SubscriptionController } from './subscription.controller';

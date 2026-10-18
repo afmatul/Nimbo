@@ -5,20 +5,16 @@ import { PinoLogger } from 'nestjs-pino';
 
 import { I_CLOCK } from '../../../shared';
 import type { Actor, IClock } from '../../../shared';
+import { Plan } from '../domain/entities/plan.entity';
+import type { NewPlan } from '../domain/entities/plan.entity';
 import { PlanNotFoundError } from '../domain/errors';
 import { PlanAlreadyDeactivatedError } from '../domain/errors/plan-already-deactivated.error';
 import { PlanCatalogUnavailableError } from '../domain/errors/plan-catalog-unavailable.error';
 import { NAME_TAKEN_ISSUE, PlanInvalidError } from '../domain/errors/plan-invalid.error';
-import { Plan } from '../domain/plan.entity';
-import type { NewPlan } from '../domain/plan.entity';
 
+import type { BillingLogger } from './billing-logger';
 import { I_PLAN_REPOSITORY } from './ports/i-plan-repository.port';
 import type { IPlanRepository } from './ports/i-plan-repository.port';
-
-/** Lo mínimo que el servicio necesita del logger (se inyecta `PinoLogger`; permite un doble en las pruebas). */
-interface PlanCatalogLogger {
-  error(payload: Record<string, unknown>): void;
-}
 
 /**
  * Catálogo de planes (M4): la lista pública de la 008 y el alta y la baja del Administrador de la 011 (CA-9 a CA-11).
@@ -30,7 +26,7 @@ export class PlanCatalogService {
   constructor(
     @Inject(I_PLAN_REPOSITORY) private readonly plans: IPlanRepository,
     @Inject(I_CLOCK) private readonly clock: IClock,
-    @Inject(PinoLogger) private readonly logger: PlanCatalogLogger,
+    @Inject(PinoLogger) private readonly logger: BillingLogger,
   ) {}
 
   /**

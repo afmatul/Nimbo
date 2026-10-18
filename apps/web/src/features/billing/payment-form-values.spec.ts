@@ -59,8 +59,8 @@ describe('formato del número de tarjeta (mockup de pago)', () => {
     expect(groupCardNumber('4242')).toBe('4242');
   });
 
-  it('la marca es Visa cuando empieza con 4; si no, ninguna', () => {
-    expect(cardBrandOf('4000 0000 0000 0002')).toBe('Visa');
+  it('la marca es `visa` (como la API) cuando empieza con 4; si no, ninguna', () => {
+    expect(cardBrandOf('4000 0000 0000 0002')).toBe('visa');
     expect(cardBrandOf('5555')).toBeNull();
     expect(cardBrandOf('')).toBeNull();
   });

@@ -4,8 +4,8 @@ import type { Repository } from 'typeorm';
 
 import { TransactionContext } from '../../../../shared';
 import type { IPlanRepository } from '../../application/ports/i-plan-repository.port';
+import type { Plan } from '../../domain/entities/plan.entity';
 import { PlanCatalogUnavailableError } from '../../domain/errors/plan-catalog-unavailable.error';
-import type { Plan } from '../../domain/plan.entity';
 
 import { toPlan, toPlanRow } from './plan.mapper';
 import { PlanOrmEntity } from './plan.orm-entity';

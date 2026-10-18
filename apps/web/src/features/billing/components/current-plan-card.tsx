@@ -7,8 +7,7 @@ import { buttonVariants } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { longDayLabel } from '../../../lib/format-date';
 import { formatCount, formatPlanBytes } from '../../../lib/format-plan';
-
-const PLANS_HREF = '/planes';
+import { PLANS_PATH } from '../routes';
 
 type Subscription = NonNullable<BillingHistoryResponse['subscription']>;
 type PaymentMethod = BillingHistoryResponse['paymentMethod'];
@@ -89,7 +88,7 @@ export function CurrentPlanCard({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <PlanHeading plan={plan} />
         <Link
-          href={PLANS_HREF}
+          href={PLANS_PATH}
           className={buttonVariants({ variant: 'outline', className: 'w-full sm:w-auto' })}
         >
           Ver comparativa

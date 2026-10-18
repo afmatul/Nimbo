@@ -9,13 +9,17 @@ import type {
 import type { Invoice, InvoiceDraft } from '../../domain/entities/invoice.entity';
 import { formatInvoiceNumber } from '../../domain/sequence-number';
 
+import { onlyRow } from './only-row';
+
 const NEXT_NUMBER_SQL = `SELECT nextval('factura_numero_seq')::int AS sequence`;
 const INSERT_SQL = `INSERT INTO factura (transaccion_id, usuario_id, numero, subtotal_centavos, iva_centavos,
     total_centavos, nit, correo_comprobante, creado_en)
   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`;
 
-/** La factura con la referencia del pago y el nombre del plan, para imprimirla (T-07). */
-/** Las tres consultas filtran también por `usuario_id` (el actor), además de la RLS: defensa en profundidad (RNF-05). */
+/**
+ * La factura con la referencia del pago y el nombre del plan, para imprimirla (T-07). Esta consulta y los dos `UPDATE`
+ * filtran también por `usuario_id` (el actor), además de la RLS: defensa en profundidad (RNF-05).
+ */
 const FOR_ISSUE_SQL = `SELECT f.id, f.transaccion_id, f.aviso_encolado_en, f.numero, f.creado_en,
     f.subtotal_centavos, f.iva_centavos, f.total_centavos,
     f.nit, f.correo_comprobante, f.clave_objeto, t.referencia, p.nombre AS plan
@@ -59,13 +63,6 @@ const toIssuable = (row: IssuableRow): IssuableInvoice => ({
     receiptEmail: row.correo_comprobante,
   },
 });
-
-/** `nextval` e `INSERT … RETURNING` siempre devuelven una fila; si no, falla el cobro entero. */
-const onlyRow = <T>(rows: readonly T[]): T => {
-  const [row] = rows;
-  if (row === undefined) throw new Error('La base no devolvió la fila de la factura.');
-  return row;
-};
 
 /**
  * `IInvoiceRepository` sobre `factura` (plan 009 §3) con el `EntityManager` de `TransactionContext`: la fila entra en

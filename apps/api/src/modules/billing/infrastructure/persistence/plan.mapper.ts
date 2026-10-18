@@ -1,4 +1,4 @@
-import { Plan } from '../../domain/plan.entity';
+import { Plan } from '../../domain/entities/plan.entity';
 
 import type { PlanOrmEntity } from './plan.orm-entity';
 

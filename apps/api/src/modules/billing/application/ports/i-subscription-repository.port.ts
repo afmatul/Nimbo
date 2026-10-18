@@ -1,5 +1,5 @@
 import type { Actor } from '../../../../shared';
-import type { Subscription } from '../../domain/subscription.entity';
+import type { Subscription } from '../../domain/entities/subscription.entity';
 
 /**
  * `suscripcion` bajo RLS forzado (plan 009 §3): todo método toma el `EntityManager` de `requireActorScope(actor)`, así

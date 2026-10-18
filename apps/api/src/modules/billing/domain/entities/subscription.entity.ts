@@ -1,5 +1,6 @@
-import { PlanNotAvailableError } from './errors/plan-not-available.error';
-import { PERSONAL_PLAN_SLUG } from './plan-slug';
+import { PlanNotAvailableError } from '../errors/plan-not-available.error';
+import { PERSONAL_PLAN_SLUG } from '../plan-slug';
+
 import type { Plan } from './plan.entity';
 
 /** RN-4: un plan de pago dura 30 días desde el pago. Una columna en `plan` espera a que dos planes duren distinto (S-1). */

@@ -81,6 +81,7 @@ const RUNTIME_EXPORTS = [
   'I_PLAN_LIMITS_PROVIDER',
   'StorageModule',
   'StorageWorkerModule',
+  'invoiceObjectKey',
 ] as const;
 
 describe('modules/storage/index.ts', () => {

@@ -1,11 +1,11 @@
 import { QueryFailedError } from 'typeorm';
 
 import { createActor, FixedClock, Role } from '../../../shared';
+import type { NewPlan } from '../domain/entities/plan.entity';
 import { PlanNotFoundError } from '../domain/errors';
 import { PlanAlreadyDeactivatedError } from '../domain/errors/plan-already-deactivated.error';
 import { PlanCatalogUnavailableError } from '../domain/errors/plan-catalog-unavailable.error';
 import { PlanInvalidError } from '../domain/errors/plan-invalid.error';
-import type { NewPlan } from '../domain/plan.entity';
 
 import { PlanCatalogService } from './plan-catalog.service';
 import type { IPlanRepository } from './ports/i-plan-repository.port';
@@ -34,7 +34,7 @@ const setup = () => {
     insert: jest.fn(),
     deactivate: jest.fn(),
   };
-  const logger = { error: jest.fn() };
+  const logger = { info: jest.fn(), error: jest.fn() };
   const service = new PlanCatalogService(repository, new FixedClock(NOW), logger);
   return { service, repository, logger };
 };

@@ -1,6 +1,6 @@
-import { aPlan, PERSONAL_PLAN } from '../application/testing/plans';
+import { aPlan, PERSONAL_PLAN } from '../../application/testing/plans';
+import { PlanNotAvailableError } from '../errors/plan-not-available.error';
 
-import { PlanNotAvailableError } from './errors/plan-not-available.error';
 import { PAID_PLAN_PERIOD_DAYS, Subscription } from './subscription.entity';
 
 const NOW = new Date('2026-10-14T12:00:00.000Z');

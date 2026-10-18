@@ -25,8 +25,9 @@ export class InvoiceRetryIncompleteError extends Error {
 }
 
 /**
- * Reintento de facturas sin PDF (spec 009 CA-6, T-07; revisión N-3: método aparte de `issue`). Lista un lote sin actor
- * con `IPendingInvoiceScanner` y emite cada una como su dueño con `InvoiceIssuer`. El fallo de una no frena las demás.
+ * Reintento de facturas sin PDF o sin aviso (spec 009 CA-6, T-07 y T-08; revisión N-3: método aparte de `issue`). Lista
+ * un lote sin actor con `IPendingInvoiceScanner` y completa cada una como su dueño con `InvoiceIssuer`, que sube el PDF
+ * y entrega el aviso que falten. El fallo de una no frena las demás.
  */
 @Injectable()
 export class InvoiceRetrier {
@@ -50,7 +51,7 @@ export class InvoiceRetrier {
     if (failed > 0) throw new InvoiceRetryIncompleteError(failed);
   }
 
-  /** `true` si la factura quedó con PDF. El error solo deja su nombre: el mensaje podría traer datos. */
+  /** `true` si la factura quedó con PDF y aviso. El error solo deja su nombre: el mensaje podría traer datos. */
   private async issueAsOwner({ invoiceId, userId }: PendingInvoice): Promise<boolean> {
     try {
       await this.issuer.issue(createActor(userId, Role.CLIENT), invoiceId);

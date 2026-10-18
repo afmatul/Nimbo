@@ -10,35 +10,12 @@ import type {
 import { CurrentActor, Role, Roles, ZodValidationPipe } from '../../../shared';
 import type { Actor } from '../../../shared';
 import { BillingHistoryService } from '../application/billing-history.service';
-import type { SubscribeOutcome } from '../application/subscription-checkout';
 import { SubscriptionService } from '../application/subscription.service';
 import { PaymentRejectedError } from '../domain/errors/payment-rejected.error';
 
 import { toBillingHistoryResponse } from './billing-history.response';
 import { billingValidationError, invoiceIdPipe } from './billing-validation';
-
-/** Lista blanca del contrato (CA-3, CA-6): referencia, plan, vencimiento, el desglose de RN-2 de la factura y su correo. */
-const toSubscribeResponse = ({
-  payment,
-  plan,
-  subscription,
-  invoice,
-}: SubscribeOutcome): SubscribeResponse => {
-  if (subscription.expiresAt === null || invoice === null) {
-    throw new Error('Un pago aprobado siempre vence (RN-4) y tiene factura (CA-6).');
-  }
-  return {
-    reference: payment.reference,
-    plan: { slug: plan.slug, name: plan.name },
-    expiresAt: subscription.expiresAt.toISOString(),
-    amounts: {
-      subtotalCents: invoice.subtotal.cents,
-      vatCents: invoice.vat.cents,
-      totalCents: invoice.total.cents,
-    },
-    receiptEmail: invoice.receiptEmail,
-  };
-};
+import { toSubscribeResponse } from './subscribe.response';
 
 /**
  * Cobro, historial y descarga de facturas del cliente (spec 009 CA-3 a CA-5, CA-7 y CA-8). Solo `CLIENT`: los roles
@@ -68,6 +45,7 @@ export class SubscriptionController {
     if (outcome.payment.status === 'rechazada') throw new PaymentRejectedError();
     return toSubscribeResponse(outcome);
   }
+
   @Get('history')
   async getHistory(@CurrentActor() actor: Actor): Promise<BillingHistoryResponse> {
     return toBillingHistoryResponse(await this.history.history(actor));

@@ -1,4 +1,4 @@
-import type { Plan } from '../../domain/plan.entity';
+import type { Plan } from '../../domain/entities/plan.entity';
 
 /**
  * Catálogo `plan` (specs 006a, 008 y 011). Usa el `EntityManager` de `TransactionContext`: se une a la transacción del

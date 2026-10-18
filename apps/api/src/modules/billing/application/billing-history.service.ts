@@ -4,8 +4,8 @@ import { I_TRANSACTION_RUNNER } from '../../../shared';
 import type { Actor, ITransactionRunner } from '../../../shared';
 import { I_OBJECT_STORAGE } from '../../storage';
 import type { IObjectStorage } from '../../storage';
+import type { Plan } from '../domain/entities/plan.entity';
 import { InvoiceNotFoundError } from '../domain/errors/invoice-not-found.error';
-import type { Plan } from '../domain/plan.entity';
 
 import { I_BILLING_HISTORY_READER } from './ports/i-billing-history.reader.port';
 import type {

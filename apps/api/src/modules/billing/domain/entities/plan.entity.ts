@@ -1,10 +1,10 @@
-import { PlanAlreadyDeactivatedError } from './errors/plan-already-deactivated.error';
-import { PlanInvalidError } from './errors/plan-invalid.error';
-import { PlanNotDeactivatableError } from './errors/plan-not-deactivatable.error';
-import type { PlanLimitsSet } from './plan-limits-set.vo';
-import { planTermIssues } from './plan-rules';
-import type { PlanTerms } from './plan-rules';
-import { PERSONAL_PLAN_SLUG, slugFromName } from './plan-slug';
+import { PlanAlreadyDeactivatedError } from '../errors/plan-already-deactivated.error';
+import { PlanInvalidError } from '../errors/plan-invalid.error';
+import { PlanNotDeactivatableError } from '../errors/plan-not-deactivatable.error';
+import { planTermIssues } from '../plan-rules';
+import type { PlanTerms } from '../plan-rules';
+import { PERSONAL_PLAN_SLUG, slugFromName } from '../plan-slug';
+import type { PlanLimitsSet } from '../value-objects/plan-limits-set.vo';
 
 /** Lo que el Administrador declara al crear un plan (spec 011 CA-9). */
 export interface NewPlan extends PlanTerms {

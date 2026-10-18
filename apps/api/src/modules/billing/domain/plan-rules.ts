@@ -1,6 +1,6 @@
 import type { FieldIssue } from '../../../shared/domain/errors';
 
-import type { PlanLimitsSet } from './plan-limits-set.vo';
+import type { PlanLimitsSet } from './value-objects/plan-limits-set.vo';
 
 /** Máximo por archivo de cualquier plan: 2 GB (RNF-02; CHECK `ck_plan_max_archivo`). */
 export const MAX_FILE_BYTES_CEILING = 2_147_483_648n;

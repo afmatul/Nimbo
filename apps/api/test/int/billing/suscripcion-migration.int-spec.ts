@@ -49,14 +49,29 @@ describe('migración crear-suscripcion: RLS del dueño (spec 009 CA-1, RNF-05)',
     await owner?.destroy();
   });
 
-  it('CA-1, T-03: `suscripcion` tiene RLS forzada: la política del cliente y la lectura de administración del dueño', async () => {
+  it('CA-1, T-03, PR #62 #10: RLS forzada con lectura, alta y cambio del cliente (sin borrado) y la lectura de administración', async () => {
     await expect(rlsOf(owner, 'suscripcion')).resolves.toEqual({
       forced: true,
       policies: [
         { policyname: 'suscripcion_administracion', cmd: 'SELECT' },
-        { policyname: 'suscripcion_cliente', cmd: 'ALL' },
+        { policyname: 'suscripcion_cliente_alta', cmd: 'INSERT' },
+        { policyname: 'suscripcion_cliente_cambio', cmd: 'UPDATE' },
+        { policyname: 'suscripcion_cliente_lectura', cmd: 'SELECT' },
       ],
     });
+  });
+
+  it('PR #62 #10: el cliente no puede borrar su suscripción ni pasarla a otro usuario', async () => {
+    const asAna = (sql: string, params: unknown[] = []): Promise<unknown> =>
+      app.asActor(ana, (manager) => manager.query(sql, params));
+
+    await expect(asAna('DELETE FROM suscripcion WHERE usuario_id = $1', [ana.id])).rejects.toThrow(
+      /permission denied/,
+    );
+    await expect(
+      asAna('UPDATE suscripcion SET usuario_id = $2 WHERE usuario_id = $1', [ana.id, bruno.id]),
+    ).rejects.toThrow(/permission denied/);
+    await expect(visibleOwners(app, ana)).resolves.toEqual([ana.id]);
   });
 
   it('RNF-05: un cliente solo ve su suscripción', async () => {

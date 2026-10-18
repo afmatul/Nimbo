@@ -4,9 +4,8 @@ import { I_TRANSACTION_RUNNER } from '../../../shared';
 import type { Actor, ITransactionRunner } from '../../../shared';
 import { I_NOTIFIER } from '../../notifications';
 import type { INotifier } from '../../notifications';
-import { I_OBJECT_STORAGE } from '../../storage';
+import { I_OBJECT_STORAGE, invoiceObjectKey } from '../../storage';
 import type { IObjectStorage } from '../../storage';
-import { invoiceObjectKey } from '../domain/entities/invoice.entity';
 
 import { I_INVOICE_GENERATOR } from './ports/i-invoice-generator.port';
 import type { IInvoiceGenerator } from './ports/i-invoice-generator.port';

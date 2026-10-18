@@ -35,9 +35,12 @@ export function groupCardNumber(raw: string): string {
   return raw.replace(NON_DIGITS, '').slice(0, CARD_DIGITS).replace(CARD_GROUP, '$1 ');
 }
 
-/** Marca visible de la tarjeta (mockup): las dos de prueba (RN-3) empiezan con 4, que es Visa; otra, ninguna. */
-export function cardBrandOf(number: string): 'Visa' | null {
-  return number.trimStart().startsWith('4') ? 'Visa' : null;
+/**
+ * Marca de la tarjeta (mockup), con el mismo vocabulario que la API (`visa`, `transaccion.marca_tarjeta`): las dos de
+ * prueba (RN-3) empiezan con 4; otra, ninguna. La pantalla decide cómo escribirla.
+ */
+export function cardBrandOf(number: string): 'visa' | null {
+  return number.trimStart().startsWith('4') ? 'visa' : null;
 }
 
 /** Campo del formulario de cada campo del contrato (RN-9); los que no se escriben aquí no tienen campo. */

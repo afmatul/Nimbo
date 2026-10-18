@@ -1,8 +1,8 @@
 import { createActor, FixedClock, Role } from '../../../shared';
 import type { Actor } from '../../../shared';
 import type { Payment } from '../domain/entities/payment.entity';
+import { Subscription } from '../domain/entities/subscription.entity';
 import { PlanNotAvailableError } from '../domain/errors/plan-not-available.error';
-import { Subscription } from '../domain/subscription.entity';
 
 import type { InvoiceService } from './invoice.service';
 import type { PaymentService } from './payment.service';

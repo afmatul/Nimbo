@@ -7,5 +7,5 @@ export { PlanNotFoundError } from './domain/errors';
 export { PlanCatalogService } from './application/plan-catalog.service';
 export { SubscriptionAdministration } from './application/subscription-administration';
 export type { PlanClientCount } from './application/ports/i-subscription-administration.reader.port';
-export type { NewPlan, Plan } from './domain/plan.entity';
-export type { PlanLimitsSet } from './domain/plan-limits-set.vo';
+export type { NewPlan, Plan } from './domain/entities/plan.entity';
+export type { PlanLimitsSet } from './domain/value-objects/plan-limits-set.vo';

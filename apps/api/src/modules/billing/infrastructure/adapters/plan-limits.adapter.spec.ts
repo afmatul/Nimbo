@@ -3,8 +3,8 @@ import type { Actor, ITransactionRunner } from '../../../../shared';
 import type { IPlanRepository } from '../../application/ports/i-plan-repository.port';
 import type { ISubscriptionRepository } from '../../application/ports/i-subscription-repository.port';
 import { aPlan, PERSONAL_PLAN } from '../../application/testing/plans';
+import type { Plan } from '../../domain/entities/plan.entity';
 import { PlanNotFoundError } from '../../domain/errors';
-import type { Plan } from '../../domain/plan.entity';
 
 import { PlanLimitsAdapter } from './plan-limits.adapter';
 

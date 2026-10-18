@@ -1,4 +1,5 @@
 import type { Plan } from '@nimbo/contracts';
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 import { PlanCard } from '../../../components/nimbo/plan-card';
@@ -56,8 +57,8 @@ function PlanCatalog({ plans }: { readonly plans: readonly Plan[] }): ReactNode 
 /** 009 CA-9: solo los planes de pago se contratan; Personal ya lo tiene toda cuenta verificada. */
 function SubscribeLink({ slug }: { readonly slug: string }): ReactNode {
   return (
-    <a href={subscribeHref(slug)} className={cn(buttonVariants(), 'w-full')}>
+    <Link href={subscribeHref(slug)} className={cn(buttonVariants(), 'w-full')}>
       Contratar
-    </a>
+    </Link>
   );
 }

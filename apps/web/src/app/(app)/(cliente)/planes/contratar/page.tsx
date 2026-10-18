@@ -5,11 +5,9 @@ import type { ReactNode } from 'react';
 import { StateView } from '../../../../../components/nimbo/state-view';
 import { TextLink } from '../../../../../components/nimbo/text-link';
 import { getEnv } from '../../../../../env';
-import { fetchPlanCatalog } from '../../../../../features/billing';
+import { fetchPlanCatalog, PLANS_PATH } from '../../../../../features/billing';
 import { SessionPaymentForm } from '../../../../../features/billing/components/payment-form';
 import { messageForCode } from '../../../../../lib/error-catalog';
-
-const PLANS_HREF = '/planes';
 
 interface ContratarPageProps {
   readonly searchParams: Promise<Readonly<Record<string, string | string[] | undefined>>>;
@@ -33,7 +31,7 @@ export default async function ContratarPage({
 
   return (
     <section className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-6">
-      <TextLink href={PLANS_HREF} className="inline-flex items-center gap-1 text-sm">
+      <TextLink href={PLANS_PATH} className="inline-flex items-center gap-1 text-sm">
         <ArrowLeft aria-hidden="true" className="h-4 w-4" />
         Volver a planes
       </TextLink>

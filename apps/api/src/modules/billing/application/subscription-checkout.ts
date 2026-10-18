@@ -3,10 +3,10 @@ import { Inject, Injectable } from '@nestjs/common';
 import { I_CLOCK } from '../../../shared';
 import type { Actor, IClock } from '../../../shared';
 import type { Invoice } from '../domain/entities/invoice.entity';
+import type { Plan } from '../domain/entities/plan.entity';
+import type { Subscription } from '../domain/entities/subscription.entity';
 import { PlanNotAvailableError } from '../domain/errors/plan-not-available.error';
 import type { PaymentCard } from '../domain/payment-card';
-import type { Plan } from '../domain/plan.entity';
-import type { Subscription } from '../domain/subscription.entity';
 import { Money } from '../domain/value-objects/money';
 
 import { InvoiceService } from './invoice.service';
