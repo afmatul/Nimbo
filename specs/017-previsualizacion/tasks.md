@@ -7,9 +7,9 @@
 
 ## Estado vigente (2026-10-18)
 
-- Spec 017 permanece **En curso**. T-01/T-02/T-03/T-05/T-06/T-07 completas; cierre y evidencia de T-06/T-07 en [el registro final](#cierre-técnico-t-06-y-t-07-2026-10-18).
+- Spec 017 permanece **En curso**. T-01/T-02/T-03/T-05/T-06/T-07/T-08 completas; cierre y evidencia de T-06/T-07 en [su registro final](#cierre-técnico-t-06-y-t-07-2026-10-18) y de T-08 en [su cierre técnico](#cierre-técnico-t-08-2026-10-18).
 - T-04 permanece `[ ]` por evidencia efectiva en navegador real, consolidada en T-10 y la demo T-11; no presenta un bloqueo abierto de Redis/CORS en backend/Node.
-- T-08, T-09, T-10 y T-11 permanecen `[ ]`, con sus requisitos y dependencias originales.
+- T-09, T-10 y T-11 permanecen `[ ]`, con sus requisitos y dependencias originales.
 
 ### T-04 — resumen vigente
 
@@ -53,9 +53,9 @@ Redis detenido, rechazo acotado y recuperación real ya están acreditados; tamb
 
 - [x] **T-07** **(Abel; helper único + lectores nativos)** Obtener bytes e imagen/TXT/MD. Crear y probar primero `readers/object-bytes.ts`: GET con `credentials: 'omit'`, sin Authorization, Cookie ni cabeceras de Nimbo; propagar AbortSignal; para rangos exigir 206 y Content-Range válido y cancelar respuestas inválidas. Ese único helper centraliza la política para PDF, ZIP e imagen: los consumidores no la reimplementan. Imagen usa sus bytes, Blob/object URL y decodificador nativo PNG/JPG/JPEG/GIF/WebP, sin proxy/optimización; liberar recursos. TXT/MD con UTF-8 incremental y texto escapado, nunca Markdown→HTML ni `dangerouslySetInnerHTML`; no truncar ni imponer límite nuevo; fallos saneados. — CA: CA-1, CA-2, CA-11 — Archivos: `apps/web/src/features/storage/preview/readers/object-bytes.ts`, `readers/object-bytes.spec.ts`, `components/{ImagePreview,TextPreview}.tsx`, lectores nativos y specs — Depende: T-06
 
-- [ ] **T-08** **(Abel; PDF, una tarea principal con dos subtareas)** Lector con PDF.js fijado; ambas partes deben quedar completas. — CA: CA-1, CA-2, CA-9, CA-11 — Depende: T-01, T-06, T-07
-  - [ ] **T-08a:** transporte por rangos mediante el helper único de T-07, worker local de la misma versión y una página en canvas, sin scripting ni recursos remotos. El adaptador PDF.js no repite GET/credenciales/validación de rango/cancelación; sin viewer, acciones, formularios interactivos ni XFA; errores de transporte saneados y liberación. Pruebas de consumo del helper y página real primero. — CA: CA-1, CA-2, CA-11 — Archivos: `apps/web/src/features/storage/preview/components/PdfPreview.tsx`, `readers/{pdfjs-adapter,pdf-range-transport}.ts`, `workers/pdfjs.worker.ts`, specs/fixtures — Depende: T-01, T-06, T-07
-  - [ ] **T-08b:** resto de páginas navegables bajo demanda, capa de texto y bloques accesibles, PDF escaneado visible sin OCR, contraseña y corrupción. `onPassword` informa protegido sin pedir contraseña; cancelar/liberar y tratar fallo de memoria con causa saneada y Descargar, sin límite distinto de 005. Pruebas multipágina, escaneado, protegido/corrupto y con JavaScript, sin depender de mocks para la garantía browser. — CA: CA-1, CA-2, CA-9 — Archivos: `components/PdfPreview.tsx`, `readers/{pdfjs-adapter,pdf-text-reader}.ts`, specs/fixtures, bajo `apps/web/src/features/storage/preview/` — Depende: T-08a
+- [x] **T-08** **(Abel; PDF, una tarea principal con dos subtareas)** Lector con PDF.js fijado; ambas partes deben quedar completas. — CA: CA-1, CA-2, CA-9, CA-11 — Depende: T-01, T-06, T-07
+  - [x] **T-08a:** transporte por rangos mediante el helper único de T-07, worker local de la misma versión y una página en canvas, sin scripting ni recursos remotos. El adaptador PDF.js no repite GET/credenciales/validación de rango/cancelación; sin viewer, acciones, formularios interactivos ni XFA; errores de transporte saneados y liberación. Pruebas de consumo del helper y página real primero. — CA: CA-1, CA-2, CA-11 — Archivos: `apps/web/src/features/storage/preview/components/PdfPreview.tsx`, `readers/{pdfjs-adapter,pdf-range-transport}.ts`, `workers/pdfjs.worker.ts`, specs/fixtures — Depende: T-01, T-06, T-07
+  - [x] **T-08b:** resto de páginas navegables bajo demanda, capa de texto y bloques accesibles, PDF escaneado visible sin OCR, contraseña y corrupción. `onPassword` informa protegido sin pedir contraseña; cancelar/liberar y tratar fallo de memoria con causa saneada y Descargar, sin límite distinto de 005. Pruebas multipágina, escaneado, protegido/corrupto y con JavaScript, sin depender de mocks para la garantía browser. — CA: CA-1, CA-2, CA-9 — Archivos: `components/PdfPreview.tsx`, `readers/{pdfjs-adapter,pdf-text-reader}.ts`, specs/fixtures, bajo `apps/web/src/features/storage/preview/` — Depende: T-08a
 
 - [ ] **T-09** **(Abel; XLSX/PPTX, una tarea principal con dos subtareas)** Lector OOXML incremental con zip.js + saxes en worker propio; ambas partes deben quedar completas. — CA: CA-1, CA-2, CA-9, CA-11 — Depende: T-01, T-06, T-07
   - [ ] **T-09a:** paquete ZIP por rangos usando el helper único de T-07, CRC y SAX secuencial UTF-8/UTF-16, namespaces Strict/Transitional y relaciones OPC internas. Rechazar DTD, entidades no admitidas, rutas/partes ambiguas y recursos externos. El fetch de zip.js consume el helper sin repetir su política; cancelar/liberar worker y buffers. Pruebas de paquete/CRC/XML hostil y consumo del helper primero. — CA: CA-2, CA-11 — Archivos: `apps/web/src/features/storage/preview/readers/{ooxml-package-reader,ooxml-xml-reader,ooxml-relations}.ts`, `workers/{ooxml.worker,ooxml-protocol}.ts`, specs/fixtures — Depende: T-01, T-06, T-07
@@ -606,3 +606,56 @@ Ejecuciones posteriores a ambos commits técnicos, acreditadas en la ronda técn
 | `git diff --check` | PASS |
 
 La spec permanece **En curso**; T-04 `[ ]`, T-08 `[ ]`, T-09 `[ ]`, T-10 `[ ]` y T-11 `[ ]`. Sus requisitos no cambian. Esta ronda es exclusivamente documental y no implementa lectores adicionales.
+
+> Estado de la ronda del cierre T-06/T-07; T-08 quedó cerrada después, en el bloque siguiente.
+
+## Cierre técnico T-08 (2026-10-18)
+
+- **Commit:** `3e591627`, `feat(storage): implementar lector PDF con PDF.js por rangos [017 T-08]`. 25 archivos, todos bajo `apps/web/src/features/storage/preview/`: 6 existentes modificados y 19 nuevos. Sin cambios en `package.json`, `pnpm-lock.yaml`, contracts, API ni otras fronteras.
+- Las extensiones de `readers/object-bytes.ts` (`totalLength` del `Content-Range` ya validado; el GET completo conserva su contrato) y de `hooks/use-preview-content.ts` (`pdf` como lector gestionado y razones cerradas `protected`/`corrupt`/`unavailable`/`memory`/`expired`) son habilitación de T-08, no reapertura de T-06/T-07.
+
+### T-08a — transporte, worker y página
+
+- `readers/pdf-range-transport.ts`: `PDFDataRangeTransport` público que delega cada rango en `fetchObjectBytes`; la longitud se obtiene con `Range: bytes=0-0` validado por el helper, sin HEAD. No repite GET/credenciales/validación de rango/cancelación. Detecta un objeto que cambia de longitud durante la lectura y comunica solo `unavailable`.
+- `readers/pdfjs-runtime.ts` + `workers/pdfjs.worker.ts`: motor y `pdf.worker.mjs` del mismo paquete fijado (`6.4.299`, comprobado en ejecución), cargados solo en el cliente. cMaps, fuentes estándar y WASM locales mediante `require.context` y `pdf-asset-loader.cjs`; se leen con `fetch` de mismo origen y `credentials: 'omit'`, sin pasar por el helper de objetos firmados, que queda reservado al PDF privado. `iccUrl` termina en `?profile=/` porque PDF.js exige `/` final y el worker concatena el nombre del perfil: el nombre queda en la query y se sirve el asset ICC local con hash.
+- `readers/pdfjs-adapter.ts`: `getDocument` solo con `range` (la URL firmada nunca llega al motor ni a `httpHeaders`), `disableStream`, `disableAutoFetch`, `stopAtErrors`, `enableXfa: false`, `useWorkerFetch: false` y `VerbosityLevel.ERRORS`. `AnnotationMode.ENABLE` solo pinta apariencias estáticas en el canvas; no hay AnnotationLayer, scripting manager/sandbox, viewer, formularios ni acciones. Errores de transporte saneados; destruye task, rangos, página y runtime de forma idempotente.
+
+### T-08b — páginas, texto y estados
+
+- `components/PdfPreview.tsx`: todas las páginas navegables bajo demanda con Anterior/Siguiente, un solo canvas, ready solo tras representar la página y progreso >2 s del shell. Registra cleanup esperable para retry/unmount; descarta aperturas y eventos tardíos.
+- `readers/pdf-text-reader.ts`: TextLayer transparente `aria-hidden` para selección y bloque literal `sr-only` desde `streamTextContent`, completo aunque TextLayer limite sus textDivs; sin duplicación visual ni HTML.
+- Escaneado visible en canvas sin OCR. `onPassword` informa `protected` sin pedir contraseña; `InvalidPDFException` → `corrupt`; PDF de 0 páginas → «Este archivo no tiene contenido para mostrar.».
+- Memoria: `memory` solo para el texto exacto de asignación fallida de V8 (`RangeError: Array buffer allocation failed`), SpiderMonkey (`InternalError: out of memory`) y JavaScriptCore (`RangeError: Out of memory`), ya sea directo o como `details` de `UnknownErrorException` del worker. Un `RangeError` genérico, otro mensaje o un `TypeError` con el mismo texto siguen siendo `unavailable`; el mensaje original nunca se propaga. Causa saneada con Descargar primero y Reintentar, sin límite distinto de 005. Una imposibilidad de crear un canvas muy grande no tiene señal fiable y queda como `unavailable`, con la misma presentación al usuario.
+
+### Evidencia
+
+| Verificación | Resultado |
+|---|---|
+| Lifecycle focal (`PreviewPage.pdf.spec.tsx` + `PdfPreview.spec.tsx`), revalidación inicial | 15/15 PASS |
+| `readers/pdfjs-adapter.real.spec.ts` — **PDF.js real + canvas nativo en Node, no navegador real**: válido, multipágina con texto, escaneado, protegido, corrupto, fallo de transporte, fallo de rango, JavaScript detectable no ejecutado y retry con la misma URL | 9/9 PASS |
+| `pnpm --filter web test --runInBand src/features/storage/preview` | 22/22 suites, 328/328 tests PASS |
+| `pnpm --filter web test --runInBand` | 165/165 suites, 1459/1459 tests PASS; 0 warnings; exit code 0 |
+| `pnpm --filter web typecheck` | PASS |
+| `pnpm exec eslint "apps/web/src/features/storage/preview/**/*.{ts,tsx,mjs,cjs}" --max-warnings 0` | PASS, 0 warnings |
+| `pnpm exec prettier --check "apps/web/src/features/storage/preview/**/*.{ts,tsx,mjs,cjs,css}"` | PASS |
+| `git diff --check` | PASS |
+| `readers/testing/pdf-build-check.mjs` (webpack interno de Next) | 3 WASM, 168 CMaps, 14 fuentes, 1 ICC, 1 worker local, 0 referencias a CDN, 0 assets de scripting |
+
+- El build check fija invariantes, no el número incidental de chunks JS; crea su directorio temporal directamente bajo `tmpdir()`. `next build` no se ejecutó en esta ronda (EPERM conocido de symlinks standalone en Windows/OneDrive).
+- Las suites de componentes y de integración con el shell usan jsdom con el motor sustituido; la garantía del motor proviene de la suite real en Node. Ninguna de ellas es evidencia de navegador real.
+- Privacidad: URL firmada fuera de DOM, `href`/`src`, logs, `localStorage`/`sessionStorage`, cookies y mensajes de error; el objeto se lee solo con `fetchObjectBytes`, `credentials: 'omit'` y `Range` como única cabecera.
+
+### Diferencias de UX a revisar en T-10
+
+No son defectos funcionales ni cambios obligatorios de T-10; se registran para revisarlas contra el mockup `docs/design/mockups/storage/vista-previa/`:
+
+1. El visor navega una página a la vez con Anterior/Siguiente; el mockup muestra páginas apiladas con campo de página.
+2. En un PDF de 0 páginas, Descargar se ofrece en el encabezado del shell; el mockup lo ubica dentro del estado vacío y lo retira del encabezado.
+
+### Nota no bloqueante de reproducibilidad del tooling
+
+La suite real utiliza `@napi-rs/canvas`, actualmente disponible como dependencia opcional/transitiva de `pdfjs-dist` y presente en el lockfile; declararlo directamente puede evaluarse como endurecimiento compartido posterior.
+
+### Estado
+
+**T-08 queda `[x]`**, con T-08a y T-08b `[x]`. La evidencia en navegador real (GET/Range, CORS, ausencia efectiva de Cookie/Bearer/cabeceras Nimbo, origen de objetos, axe 360/1440 y E2E) queda para T-10/T-11. T-04 permanece `[ ]`; T-06 y T-07 permanecen `[x]`; T-09, T-10 y T-11 permanecen `[ ]`. La spec permanece **En curso**.
