@@ -37,7 +37,7 @@
 | identity/infrastructure | `adapters/user-directory.adapter.ts` | `UserDirectoryAdapter implements IUserDirectory` (importa el puerto de `editing`, como `PlanLimitsAdapter` con `storage`); lee `usuario.nombre` y no devuelve ningún otro dato |
 | raíz (`apps/api/src`) | `user-directory-binding.module.ts` | `UserDirectoryBindingModule`: `useExisting: UserDirectoryAdapter` para `I_USER_DIRECTORY`; mismo patrón que `PlanLimitsBindingModule` |
 | editing/application | `save-failed-notifier.ts` | Al fallar una sesión: `IRealtimePublisher.toUser` a cada participante (y a la propietaria) con `editing.save-failed`; reutilizado por el estado 3 y por el procesador |
-| **andamiaje temporal** | ver §2.1 | Plan de pago de prueba hasta la 009; **se borra al terminar la spec** |
+| ~~**andamiaje temporal**~~ | ~~ver §2.1~~ | **Superado por 009**: borrado en T-11; el plan sale de la suscripción |
 | editing/application | `editing-config.ts` | `EDITING_CONFIG`: URLs, secreto, tope editable, enlace de contenido (TTL constante) |
 | editing/infrastructure | `onlyoffice-editor.ts` | `OnlyOfficeEditor`: JWT con `@nestjs/jwt` (ya instalado), algoritmo fijo HS256; descarga comparando el **origen** de la URL analizada (no `startsWith`) con la lista blanca, sin seguir redirecciones, con tope de bytes; comando `drop` |
 | ~~editing/infrastructure~~ | ~~`onlyoffice.health-indicator.ts`~~ | **Se omite (PD-113, Adrián, 2026-10-16)**: en `/health/ready` dejaría al `api` «no listo» con ONLYOFFICE caído u opcional sin configurar (contra CA-15/RNF-09). La disponibilidad se revisa con `IDocumentEditor.isAvailable` en cada apertura |
@@ -77,6 +77,8 @@
   acotada al «todo servicio recibe `actor`» (`architecture.md` §6): el puerto solo recibe ids de participantes de la sesión y devuelve nombre visible, nunca nodos.
 
 ### 2.1 Andamiaje temporal: plan de pago hasta la 009 (se borra al terminar)
+> **Superado por 009** (2026-10-18): el andamiaje se borró en T-11 y `PlanLimitsAdapter` lee la suscripción real; lo que sigue queda como historia.
+
 `PlanLimitsAdapter.limitsFor` devuelve siempre `personal` hasta 009/010 y no se toca billing. Archivos, todos bajo `apps/api/src/dev-scaffold/`:
 | Archivo | Responsabilidad |
 |---|---|
@@ -89,7 +91,7 @@
 
 ## 3. Datos
 ```sql
--- 20261016100000-crear-sesion-edicion-y-participacion
+-- 20261018100000-crear-sesion-edicion-y-participacion
 CREATE TABLE sesion_edicion (
   id uuid PRIMARY KEY,
   archivo_id uuid NOT NULL,                    -- sin FK: la purga no borra la evidencia de una sesión fallida (DF-70)
@@ -118,7 +120,7 @@ CREATE POLICY participacion_cliente ON participacion TO nimbo_app
   USING (nimbo_actor_role() = 'CLIENT' AND EXISTS (SELECT 1 FROM sesion_edicion s WHERE s.id = sesion_edicion_id))
   WITH CHECK (nimbo_actor_role() = 'CLIENT' AND EXISTS (SELECT 1 FROM sesion_edicion s WHERE s.id = sesion_edicion_id));
 
--- 20261016100100-agregar-sesion-edicion-a-version-archivo
+-- 20261018100100-agregar-sesion-edicion-a-version-archivo
 ALTER TABLE version_archivo ADD COLUMN sesion_edicion_id uuid REFERENCES sesion_edicion(id);
 ALTER TABLE version_archivo ADD CONSTRAINT uq_version_archivo_sesion_edicion UNIQUE (sesion_edicion_id);
 ALTER TABLE version_archivo ADD CONSTRAINT ck_version_archivo_sesion_origen
@@ -200,7 +202,7 @@ ALTER TABLE version_archivo ADD CONSTRAINT ck_version_archivo_sesion_origen
 - Cobertura: lógica de negocio ≥ 60 %. Sin repetir un CA en tres capas.
 
 ## 7. Riesgos y coherencia con el diseño
-1. **Hoy todas las cuentas son «Personal»** (`limitsFor` fija `personal` hasta 009/010). Decidido por Adrián: andamiaje temporal de §2.1 para la demo,
+1. **Superado por 009** (2026-10-18): el plan sale de la suscripción; solo «vencida» espera a 010 (`vence_en` se ignora). ~~**Hoy todas las cuentas son «Personal»** (`limitsFor` fija `personal` hasta 009/010).~~ Decidido por Adrián: andamiaje temporal de §2.1 para la demo,
    sin condicionar a la 009 y sin tocar billing; se borra en la última tarea. Riesgo: que quede rastro; lo cubre el `grep` de cierre.
 8. **`usuario` sin RLS** (confirmado por `architect`): `UserDirectoryAdapter` lee solo `id, nombre`; no se toca ninguna política.
 2. **Edición antes de 012**: las políticas RLS dejan ver `archivo`, `sesion_edicion` y `participacion` solo al propietario; el nivel Editor es
@@ -239,3 +241,4 @@ ALTER TABLE version_archivo ADD CONSTRAINT ck_version_archivo_sesion_origen
 | 2026-10-16 | PD-112: RN-11 sin cambios («guardar igual»); `access` suma el fragmento `ownedFiles(actor)` (archivos propios, incluida la papelera) y `storage` lo usa solo en el registro de la versión editada (`findOwnedFile`), con actor y filtrando en la consulta; sin puerto nuevo | Decisión de Adrián | Adrián |
 | 2026-10-16 | PD-113: se omite `OnlyOfficeHealthIndicator` (§2 y §5); CA-15 se cumple con `isAvailable` en cada apertura | Decisión de Adrián | Adrián |
 | 2026-10-16 | El enlace firmado de `callbackUrl` **no vence** (corrige el «TTL de minutos» de §2 y §5): vale solo junto con el JWT de ONLYOFFICE de la misma sesión (`key === sid`) y mientras la sesión esté `activa` o `guardando`; los enlaces de contenido siguen en 5 min. Una descarga rechazada (URL no confiable, redirección, tamaño, sin `Content-Length`) deja la sesión `fallida` con `motivo_fallo = 'integridad'`, sin cambio de esquema | Decisiones de Adrián (T-05/T-06) | Adrián |
+| 2026-10-18 | §2 (andamiaje), §2.1 y §7.1 marcados como superados por 009: el plan de la propietaria sale de su suscripción; «vencida» queda para 010 | Revisión 2.ª pasada, I-2 | — (pendiente de Adrián) |

@@ -13,8 +13,8 @@ import type { MigrationInterface, QueryRunner } from 'typeorm';
  * - RLS como `archivo_cliente`: solo el cliente propietario (hasta 012, PD-108). Sin política para roles internos ni
  *   de mantenimiento (CA-17, Art. IX.1): `nimbo_app` sin actor no ve filas.
  */
-export class CrearSesionEdicionYParticipacion20261016100000 implements MigrationInterface {
-  name = 'CrearSesionEdicionYParticipacion20261016100000';
+export class CrearSesionEdicionYParticipacion20261018100000 implements MigrationInterface {
+  name = 'CrearSesionEdicionYParticipacion20261018100000';
 
   async up(queryRunner: QueryRunner): Promise<void> {
     await this.createSessions(queryRunner);

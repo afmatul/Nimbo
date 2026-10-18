@@ -10,8 +10,8 @@ import type { MigrationInterface, QueryRunner } from 'typeorm';
  *   existentes son de carga o restauración, sin sesión: el `CHECK` se valida sin cambiar datos.
  * - Los autores no se copian: salen de `participacion` de la sesión (RN-5, DF-18).
  */
-export class AgregarSesionEdicionAVersionArchivo20261016100100 implements MigrationInterface {
-  name = 'AgregarSesionEdicionAVersionArchivo20261016100100';
+export class AgregarSesionEdicionAVersionArchivo20261018100100 implements MigrationInterface {
+  name = 'AgregarSesionEdicionAVersionArchivo20261018100100';
 
   async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`

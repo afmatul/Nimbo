@@ -13,9 +13,9 @@ import { CrearFactura20261014170000 } from '../../../src/migrations/202610141700
 import { EmisionDeFacturas20261015090000 } from '../../../src/migrations/20261015090000-emision-de-facturas';
 import { AvisoDeFactura20261015100000 } from '../../../src/migrations/20261015100000-aviso-de-factura';
 import { FuncionesDeLecturaDeSuscripcion20261015110000 } from '../../../src/migrations/20261015110000-funciones-de-lectura-de-suscripcion';
-import { CrearSesionEdicionYParticipacion20261016100000 } from '../../../src/migrations/20261016100000-crear-sesion-edicion-y-participacion';
-import { AgregarSesionEdicionAVersionArchivo20261016100100 } from '../../../src/migrations/20261016100100-agregar-sesion-edicion-a-version-archivo';
 import { SuscripcionMenorPrivilegio20261017100000 } from '../../../src/migrations/20261017100000-suscripcion-menor-privilegio';
+import { CrearSesionEdicionYParticipacion20261018100000 } from '../../../src/migrations/20261018100000-crear-sesion-edicion-y-participacion';
+import { AgregarSesionEdicionAVersionArchivo20261018100100 } from '../../../src/migrations/20261018100100-agregar-sesion-edicion-a-version-archivo';
 import { buildDataSourceOptions } from '../../../src/shared';
 
 const APP_ROLE = 'nimbo_app';
@@ -166,11 +166,11 @@ describe('migración crear-funciones-de-actor (CA-12)', () => {
 
   it('CA-12: el `down` elimina las dos funciones', async () => {
     const migration = new CrearFuncionesDeActor20260928110100();
-    /** Las políticas RLS de 009, 016, 004, 006 y 005 usan las funciones: se revierten antes, como en un `migration:revert` en orden. */
+    /** Las políticas RLS de 016, 009, 004, 006 y 005 usan las funciones: se revierten antes, como en un `migration:revert` en orden. */
     const dependents = [
+      new AgregarSesionEdicionAVersionArchivo20261018100100(),
+      new CrearSesionEdicionYParticipacion20261018100000(),
       new SuscripcionMenorPrivilegio20261017100000(),
-      new AgregarSesionEdicionAVersionArchivo20261016100100(),
-      new CrearSesionEdicionYParticipacion20261016100000(),
       new FuncionesDeLecturaDeSuscripcion20261015110000(),
       new AvisoDeFactura20261015100000(),
       new EmisionDeFacturas20261015090000(),

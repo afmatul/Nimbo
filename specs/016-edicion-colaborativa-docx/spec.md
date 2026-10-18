@@ -8,9 +8,9 @@
 | Dueño | Adrián |
 | Fase | 2 |
 | Requisitos | RF-25, RF-26, RF-28; RNF-02 (5 editores por documento), RNF-05, RNF-09. Casos de uso 05, 19, 20, 39 |
-| Depende de | 005 (archivo, `version_archivo`, cuota), 003 (`Actor`, permiso de edición), 015 (canal, salas y avisos a un usuario), `identity` (nombre visible). **No** espera a 014 (P-1) ni a 009 (RN-13) |
+| Depende de | 005 (archivo, `version_archivo`, cuota), 003 (`Actor`, permiso de edición), 015 (canal, salas y avisos a un usuario), `identity` (nombre visible). 014 (P-1) y 009 (RN-13) ya están en `main`: el plan de la propietaria sale de su suscripción |
 | DF / ADR | DF-05, DF-20, DF-30, DF-39, DF-74; ADR-0004, ADR-0010, ADR-0012, ADR-0024, ADR-0030, ADR-0029 |
-| Última actualización | 2026-10-17 |
+| Última actualización | 2026-10-18 |
 
 ## 1. Contexto y objetivo
 El cliente abre un `.docx` de su nube y lo edita en el navegador, solo o con otras personas a la vez, sin convertirlo ni
@@ -31,7 +31,7 @@ Abrir un documento responde siempre con un modo: **edición** o **solo lectura**
 - **CA-2** (HU-1, RNF-05) — error: Dado un archivo ajeno sin acceso, en la papelera o inexistente, cuando intento abrirlo, entonces se responde como inexistente (igual que 005 CA-16) y no se crea sesión.
 - **CA-3** (HU-1, RF-25) Dado un lector (solo ver), cuando abro el `.docx`, entonces se muestra en solo lectura (`EDITING_VIEW_ONLY`) y nada de lo que escriba se guarda.
 - **CA-4** (HU-1, RF-25) — error: Dado un archivo que no es `.docx` (p. ej. `.xlsx`, `.pdf`), cuando pido editarlo, entonces se responde `EDITING_UNSUPPORTED_FORMAT` (422) y no se abre el editor.
-- **CA-5** (HU-1, RF-25) Dado una cuenta Personal o con suscripción vencida, cuando abre un `.docx`, entonces se abre en solo lectura con motivo `EDITING_PLAN_READ_ONLY` y «Tu plan no incluye edición».
+- **CA-5** (HU-1, RF-25) Dado una cuenta Personal o con suscripción vencida, cuando abre un `.docx`, entonces se abre en solo lectura con motivo `EDITING_PLAN_READ_ONLY` y «Tu plan no incluye edición». La suscripción vencida solo es alcanzable al llegar 010 (`PlanLimitsAdapter` aún ignora `vence_en`).
 - **CA-6** (HU-2, RF-26) Dado un documento abierto por otros, cuando entro al editor, entonces veo la lista de participantes conectados con su nombre real de cuenta, que se actualiza cuando alguien entra o sale; nadie puede mostrarse con el nombre de otro (RN-12).
 - **CA-7** (HU-2, RF-26, RNF-02) Dado un documento con el máximo de editores del plan (Pro 3, Equipo 5, Institucional 5), cuando otra persona lo abre, entonces se abre en solo lectura con motivo `EDITING_LIMIT_REACHED`; la solo lectura no cuenta para el límite.
 - **CA-8** (HU-2, RF-26) Dado un participante que cierra la pestaña o pierde la red, cuando pasa el plazo de 015 (≤ 60 s), entonces los demás dejan de verlo y su lugar queda libre para el límite.
@@ -64,7 +64,7 @@ Abrir un documento responde siempre con un modo: **edición** o **solo lectura**
 - **RN-10** Tope editable configurable por variable de entorno, inicial 50 MB (**cifra a validar en staging** con ONLYOFFICE y 4 GB). Los 2 GB de RNF-02 son de carga y descarga, no de edición.
 - **RN-11** Si el archivo va a la papelera o se renombra con la sesión abierta, la sesión sigue y la versión se registra sobre el mismo archivo. Si se purga definitivamente, la sesión queda `fallida` y se avisa (CA-14).
 - **RN-12** El nombre visible de cada participante lo determina el servidor a partir de su cuenta; el cliente no lo envía. Sirve para la lista en vivo y para el nombre en el editor; el historial con autoría de 014 lo reutilizará.
-- **RN-13** Restricción de trabajo: hasta que exista 009, las cuentas son Personal y no podrían editar. Esta spec usa un andamiaje de prueba solo para desarrollo, prohibido en producción, que **se elimina al terminar la spec**; las pruebas automáticas no dependen de él.
+- **RN-13** ~~Restricción de trabajo: hasta que exista 009, las cuentas son Personal y no podrían editar; andamiaje de prueba solo para desarrollo que se elimina al terminar la spec.~~ **Cumplida**: andamiaje borrado en T-11; desde 009 el plan sale de la suscripción.
 
 ## 5. Seguridad y privacidad
 - ¿Toca datos de un cliente? **Sí** → pruebas de aislamiento bloqueantes (CA-18) más la admisión a la sala por `accessibleNodes` (015 §5 la delega aquí).
@@ -82,7 +82,7 @@ Rutas relativas a `docs/design/`: mockups `mockups/editing/editor/editor--<estad
 | | `guardado-fallido` | 14 | ídem |
 | | `solo-lectura-lector` | 3 | ídem |
 | | `solo-lectura-plan` | 5 | ídem |
-| | `solo-lectura-vencida` | 5 (RF-23) | ídem |
+| | `solo-lectura-vencida` (alcanzable con 010) | 5 (RF-23) | ídem; su texto propio («Renovar plan») queda para 010 (PD-119) |
 | | `solo-lectura-tamano` | 21 (P-5) | ídem |
 | | `solo-lectura-plan-propietario` (coeditor, 012) | 22 | ídem |
 | | `no-disponible` | 15 | ídem |
@@ -131,3 +131,4 @@ Sin preguntas abiertas.
 | 2026-10-16 | PD-113 resuelta: se acepta la propuesta de T-03; `OnlyOfficeHealthIndicator` no se registra en `/health/ready` y la disponibilidad se revisa con `isAvailable` en cada apertura (CA-15) | Decisión de Adrián sobre PD-113 | Adrián |
 | 2026-10-17 | Pasa a `En revisión` | T-01…T-11 hechas; `/review 016` | Adrián |
 | 2026-10-17 | §6: los 10 mockups del editor pasan de `Borrador` a `Aprobado` | Recorrido de T-10 aprobado (review I-2) | Adrián |
+| 2026-10-18 | Tras el rebase sobre 009 y 014: «Depende de» al día, RN-13 cumplida, CA-5 y §6 con «vencida» alcanzable con 010 (PD-119) | Revisión 2.ª pasada, I-2 e I-3 | — (pendiente de Adrián) |

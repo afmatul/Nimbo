@@ -47,3 +47,5 @@
 
 ## DF y pendientes
 - Renumeración verificada: PD-108…118, DF-70…76 y ADR-0030 existen; DF-69 y ADR-0028 restantes son de 009. Sin DF nuevos. Filas nuevas: estado «vencida» del editor con 010 (I-3).
+
+> 2026-10-18 (developer): corregidos I-1/SEC-3 (`putObjectStream` solo acepta `u/{propietario}/{archivo}/{versión}` vía `ObjectKey.parse`, sin llamar a S3; unit + int, JSDoc del puerto), I-2 (spec «Depende de», RN-13 cumplida, CA-5 «vencida» con 010; plan §2, §2.1 y §7.1 superados por 009; §9 de ambos), I-3 (`it.each` sin `solo-lectura-vencida`, spec §6 «alcanzable con 010», PD-119 para 010), I-4 (`OnlyOfficeHealthIndicator` tachado «omitido (PD-113)» en `architecture.md`, `design-model.md`, README de `editing` y ADR-0004), S-2 (`getObjectStream` lanza si el cuerpo no es flujo), S-3 (`SocketChannel`) y migraciones de 016 renombradas a `20261018100000/100100` (016 se revierte antes que `SuscripcionMenorPrivilegio20261017100000`). Pendientes: S-1 y S-4 (`editing.version-saved`). lint ✅ typecheck ✅ unit ✅ (api 2117, web 1423); int e isolation los corre el orquestador.

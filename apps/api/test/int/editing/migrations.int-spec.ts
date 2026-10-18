@@ -2,8 +2,8 @@ import { randomUUID } from 'node:crypto';
 
 import type { DataSource, QueryRunner } from 'typeorm';
 
-import { CrearSesionEdicionYParticipacion20261016100000 } from '../../../src/migrations/20261016100000-crear-sesion-edicion-y-participacion';
-import { AgregarSesionEdicionAVersionArchivo20261016100100 } from '../../../src/migrations/20261016100100-agregar-sesion-edicion-a-version-archivo';
+import { CrearSesionEdicionYParticipacion20261018100000 } from '../../../src/migrations/20261018100000-crear-sesion-edicion-y-participacion';
+import { AgregarSesionEdicionAVersionArchivo20261018100100 } from '../../../src/migrations/20261018100100-agregar-sesion-edicion-a-version-archivo';
 import type { Actor } from '../../../src/shared';
 import { createActor, Role } from '../../../src/shared';
 import { connectAsOwner } from '../../support/database-urls';
@@ -24,8 +24,8 @@ import type { EditedFileRow, EditSessionRowOptions } from './editing-test-db';
  * Migraciones de 016 (plan §3) sobre el Postgres del arnés, como el dueño de las tablas. Los casos de esquema corren
  * en una transacción que se revierte; los de RLS confirman *fixtures* como `nimbo_app` dentro de `withActor`.
  */
-const sessions = new CrearSesionEdicionYParticipacion20261016100000();
-const versionLink = new AgregarSesionEdicionAVersionArchivo20261016100100();
+const sessions = new CrearSesionEdicionYParticipacion20261018100000();
+const versionLink = new AgregarSesionEdicionAVersionArchivo20261018100100();
 
 let owner: DataSource;
 

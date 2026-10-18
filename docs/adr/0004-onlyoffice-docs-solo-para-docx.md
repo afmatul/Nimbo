@@ -46,7 +46,7 @@ integración: la configuración del editor y el cuerpo del `callback` se firman 
 `@nestjs/jwt`, ya instalado: no se agrega ninguna dependencia npm); solo el estado 2 crea versión (016 RN-4); el servidor nunca
 expone URLs de MinIO al editor: ONLYOFFICE lee el documento desde un endpoint del `api` con enlace firmado y de vida corta; el
 servicio es opcional (sin sus variables, abrir responde `EDITING_UNAVAILABLE`, y el resto del producto no se entera:
-`OnlyOfficeHealthIndicator`, DF-29). El procesamiento del guardado queda fijado por ADR-0029. Es defendible porque obtiene
+la disponibilidad se revisa con `IDocumentEditor.isAvailable` en cada apertura; ~~`OnlyOfficeHealthIndicator`, DF-29~~ omitido (PD-113)). El procesamiento del guardado queda fijado por ADR-0029. Es defendible porque obtiene
 coedición `.docx` nativa por una integración de un solo contrato, con la sustitución del editor aislada en un puerto.
 
 ## Consecuencias

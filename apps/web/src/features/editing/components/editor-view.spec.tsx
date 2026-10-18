@@ -261,17 +261,14 @@ describe('EditorView (016)', () => {
     await expectAccessible();
   });
 
-  it.each(['solo-lectura-plan', 'solo-lectura-vencida'])(
-    '%s, CA-5: «Tu plan no incluye edición» con «Ver planes»',
-    async () => {
-      await renderEditor(fakeApi(viewingSession('EDITING_PLAN_READ_ONLY', [], 0)));
+  it('solo-lectura-plan, CA-5: «Tu plan no incluye edición» con «Ver planes»', async () => {
+    await renderEditor(fakeApi(viewingSession('EDITING_PLAN_READ_ONLY', [], 0)));
 
-      expect(screen.getAllByText('Tu plan no incluye edición').length).toBeGreaterThan(0);
-      expect(screen.getByRole('link', { name: 'Ver planes' }).getAttribute('href')).toBe('/planes');
-      expect(screen.queryByText(/de 0 editores/)).toBeNull();
-      await expectAccessible();
-    },
-  );
+    expect(screen.getAllByText('Tu plan no incluye edición').length).toBeGreaterThan(0);
+    expect(screen.getByRole('link', { name: 'Ver planes' }).getAttribute('href')).toBe('/planes');
+    expect(screen.queryByText(/de 0 editores/)).toBeNull();
+    await expectAccessible();
+  });
 
   it('solo-lectura-tamano, CA-21: el documento supera el tope editable', async () => {
     await renderEditor(fakeApi(viewingSession('EDITING_FILE_TOO_LARGE')));

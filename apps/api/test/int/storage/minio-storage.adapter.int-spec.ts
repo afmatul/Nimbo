@@ -169,6 +169,15 @@ describe('MinioStorageAdapter contra MinIO real (CA-2, CA-5, CA-11, CA-13, CA-14
     await adapter.purgeObject(key);
   });
 
+  it('016 SEC-3: `putObjectStream` rechaza una clave `invoices/` y no crea el objeto', async () => {
+    const key = `invoices/${randomUUID()}/${randomUUID()}.pdf`;
+
+    await expect(
+      adapter.putObjectStream(key, Readable.from([Buffer.from('x')]), 1n),
+    ).rejects.toThrow(/u\/\{propietario\}/);
+    await expect(adapter.headObject(key)).resolves.toBeNull();
+  });
+
   it('016 CA-2: `getObjectStream` de un objeto ausente devuelve `null`', async () => {
     await expect(adapter.getObjectStream(newKey())).resolves.toBeNull();
   });
