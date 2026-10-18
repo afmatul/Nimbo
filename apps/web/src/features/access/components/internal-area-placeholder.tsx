@@ -11,8 +11,8 @@ export interface InternalAreaPlaceholderProps {
 }
 
 /**
- * Marcador del inicio de las cuentas internas (003 §6.9, CA-17) hasta que su área exista (Admin y Operador, hasta el
- * PR-B de 011). «Cerrar sesión» lo ofrece el menú de la cuenta del marco interno.
+ * Marcador del inicio de las cuentas internas (003 §6.9, CA-17) hasta que su área exista: hoy solo el Operador; se
+ * retira en T-11 de 011, con /operacion/metricas. «Cerrar sesión» lo ofrece el menú de la cuenta del marco interno.
  */
 export function InternalAreaPlaceholder({
   fullName,

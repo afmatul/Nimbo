@@ -1,7 +1,7 @@
 'use client';
 
 import type { RoleName } from '@nimbo/contracts';
-import { FileSearch } from 'lucide-react';
+import { FileSearch, Users } from 'lucide-react';
 import type { JSX, ReactNode } from 'react';
 
 import { AppLayout, type NavItem } from '../../../components/nimbo/app-layout';
@@ -12,12 +12,12 @@ import { ROLE_LABELS } from '../role-labels';
 type NavEntry = Omit<NavItem, 'active'>;
 
 /**
- * Lo que cada rol puede abrir en su área (matriz §2 de 011, CA-14). Cada entrada llega con su página: las del
- * Administrador (Cuentas, Catálogo de planes, Métricas) en T-13 y T-11, y la del Operador (Métricas) en T-11.
+ * Lo que cada rol puede abrir en su área (matriz §2 de 011, CA-14). Cada entrada llega con su página: Catálogo de
+ * planes y Métricas del Administrador y Métricas del Operador, en T-11.
  */
 const INTERNAL_NAV: Readonly<Record<RoleName, readonly NavEntry[]>> = {
   CLIENT: [],
-  ADMIN: [],
+  ADMIN: [{ label: 'Cuentas', icon: Users, href: INTERNAL_PATHS.adminAccounts }],
   SUPPORT: [
     { label: 'Metadatos de archivos', icon: FileSearch, href: INTERNAL_PATHS.supportFiles },
   ],

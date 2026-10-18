@@ -1,14 +1,16 @@
 'use client';
 
-import {
-  BACKOFFICE_ERROR_CODES,
-  SHARED_ERROR_CODES,
-  type ClientFilesResponse,
-} from '@nimbo/contracts';
+import { BACKOFFICE_ERROR_CODES, type ClientFilesResponse } from '@nimbo/contracts';
 import * as React from 'react';
 
-import { ApiClientError } from '../../../lib/api-error';
 import type { ClientFilesRequest } from '../api';
+
+import {
+  hasErrorCode,
+  isForbidden,
+  useLatestRequest,
+  type RequestOutcome,
+} from './use-latest-request';
 
 export type { ClientFilesRequest };
 
@@ -38,42 +40,32 @@ export interface ClientFiles {
 const FIRST_PAGE = 1;
 
 function failureOf(caught: unknown, email: string): ClientFilesState {
-  if (!(caught instanceof ApiClientError)) return { status: 'error' };
-  if (caught.code === BACKOFFICE_ERROR_CODES.CLIENT_NOT_FOUND) return { status: 'notFound', email };
-  if (caught.code === SHARED_ERROR_CODES.FORBIDDEN) return { status: 'forbidden' };
-  return { status: 'error' };
+  if (hasErrorCode(caught, BACKOFFICE_ERROR_CODES.CLIENT_NOT_FOUND))
+    return { status: 'notFound', email };
+  return isForbidden(caught) ? { status: 'forbidden' } : { status: 'error' };
 }
 
-/** Pide cada consulta nueva; la respuesta de una consulta anterior (o ya limpiada) se descarta. */
-function useRequest(
-  load: LoadClientFiles,
-  request: ClientFilesRequest | null,
-  setState: React.Dispatch<React.SetStateAction<ClientFilesState>>,
-): void {
-  React.useEffect(() => {
-    if (request === null) return undefined;
-    let current = true;
-    const settle = (next: ClientFilesState): void => {
-      if (current) setState(next);
-    };
-    load(request).then(
-      (result) => settle({ status: 'found', result, paging: false }),
-      (caught: unknown) => settle(failureOf(caught, request.email)),
-    );
-    return () => {
-      current = false;
-    };
-  }, [load, request, setState]);
+function toClientFilesState(
+  outcome: RequestOutcome<ClientFilesResponse>,
+  request: ClientFilesRequest,
+): ClientFilesState {
+  if (outcome.ok) return { status: 'found', result: outcome.value, paging: false };
+  return failureOf(outcome.error, request.email);
 }
 
 /**
  * Metadatos de los archivos de un cliente (011 CA-13, CA-14, CA-17): búsqueda por correo exacto, páginas por número
- * (DF-66) y sus estados. Empieza en el estado inicial, sin pedir nada.
+ * (DF-66) y sus estados. Sin `initialEmail` empieza en el estado inicial, sin pedir nada; con él (el Administrador
+ * llega desde la ficha, `desde-admin`), pide la primera página de ese cliente al montar.
  */
-export function useClientFiles(load: LoadClientFiles): ClientFiles {
-  const [request, setRequest] = React.useState<ClientFilesRequest | null>(null);
-  const [state, setState] = React.useState<ClientFilesState>({ status: 'idle' });
-  useRequest(load, request, setState);
+export function useClientFiles(load: LoadClientFiles, initialEmail?: string): ClientFiles {
+  const [request, setRequest] = React.useState<ClientFilesRequest | null>(() =>
+    initialEmail === undefined ? null : { email: initialEmail, page: FIRST_PAGE },
+  );
+  const [state, setState] = React.useState<ClientFilesState>(() =>
+    initialEmail === undefined ? { status: 'idle' } : { status: 'loading' },
+  );
+  useLatestRequest({ load, request, toState: toClientFilesState, setState });
   const restart = (next: ClientFilesRequest | null, nextState: ClientFilesState): void => {
     setRequest(next);
     setState(nextState);

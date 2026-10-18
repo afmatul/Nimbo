@@ -39,8 +39,12 @@ describe('internalNavFor (011 CA-17)', () => {
     expect(navOf('SUPPORT')).toEqual([['Metadatos de archivos', '/soporte/metadatos']]);
   });
 
-  it.each(['ADMIN', 'OPERATOR', 'CLIENT'] as const)(
-    'CA-17: %s no tiene entradas mientras no existan sus páginas (llegan en T-11/T-13)',
+  it('CA-14, CA-17: el Administrador ve Cuentas (Catálogo y Métricas llegan con sus páginas en T-11)', () => {
+    expect(navOf('ADMIN')).toEqual([['Cuentas', '/admin/cuentas']]);
+  });
+
+  it.each(['OPERATOR', 'CLIENT'] as const)(
+    'CA-17: %s no tiene entradas mientras no existan sus páginas (las del Operador llegan en T-11)',
     (role) => {
       expect(navOf(role)).toEqual([]);
     },

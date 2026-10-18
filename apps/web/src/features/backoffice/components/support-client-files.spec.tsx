@@ -10,9 +10,9 @@ import {
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-import { ApiClientError } from '../../../lib/api-error';
 import type { ClientFilesRequest } from '../hooks/use-client-files';
 import { clientFile, clientFilesPage, LAURA, TRASHED_PDF } from '../test-client-files';
+import { apiError, loadOf as loadInOrder } from '../test-loads';
 
 import { SupportClientFiles } from './support-client-files';
 
@@ -24,21 +24,8 @@ jest.mock('next/navigation', () => ({
 
 type LoadMock = jest.Mock<Promise<ClientFilesResponse>, [ClientFilesRequest]>;
 
-function loadOf(...results: readonly (ClientFilesResponse | Error)[]): LoadMock {
-  const load: LoadMock = jest.fn(
-    (_request: ClientFilesRequest) => new Promise<ClientFilesResponse>(() => undefined),
-  );
-  for (const result of results) {
-    load.mockImplementationOnce(() =>
-      result instanceof Error ? Promise.reject(result) : Promise.resolve(result),
-    );
-  }
-  return load;
-}
-
-function apiError(status: number, code: string): ApiClientError {
-  return new ApiClientError({ status, code, message: code, correlationId: 'corr-1' });
-}
+const loadOf = (...results: readonly (ClientFilesResponse | Error)[]): LoadMock =>
+  loadInOrder<ClientFilesRequest, ClientFilesResponse>(...results);
 
 async function searchFor(email: string, load: LoadMock): Promise<void> {
   render(<SupportClientFiles load={load} />);

@@ -6,20 +6,35 @@ const CLIENT_HOME = '/archivos';
 const INTERNAL_HOME = '/interno';
 const INTERNAL_ACTIVITY = '/interno/actividad';
 
+const ADMIN_ACCOUNTS = '/admin/cuentas';
+
 /** Rutas del área interna (011 plan §2): un solo lugar para `backoffice`, `identity` y `audit`. */
 export const INTERNAL_PATHS = {
   supportFiles: '/soporte/metadatos',
+  adminAccounts: ADMIN_ACCOUNTS,
+  adminNewAccount: `${ADMIN_ACCOUNTS}/nueva`,
 } as const;
+
+/** Ficha de una cuenta (011 CA-1 a CA-4): la URL lleva solo el id, nunca el correo (RNF-17, PD-101). */
+export function adminAccountPath(accountId: string): string {
+  return `${ADMIN_ACCOUNTS}/${encodeURIComponent(accountId)}`;
+}
+
+/** Metadatos de los archivos de un cliente desde su ficha (011 CA-13, estado `desde-admin`), también por id. */
+export function adminAccountFilesPath(accountId: string): string {
+  return `${adminAccountPath(accountId)}/metadatos`;
+}
 
 /** Roles del grupo `(cliente)` (003 §6.9); los del grupo `(interno)` son `INTERNAL_ROLES` de `contracts`. */
 export const CLIENT_ROLES: readonly RoleName[] = ['CLIENT'];
 
 /**
- * Primera pantalla del área de los roles que ya la tienen (011 CA-17). Admin y Operador se suman con sus páginas en
- * T-13 y T-11; mientras tanto, `/interno` les muestra el marcador.
+ * Primera pantalla del área de los roles que ya la tienen (011 CA-17). El Operador se suma con su página en T-11;
+ * mientras tanto, `/interno` le muestra el marcador.
  */
 const AREA_HOME: Partial<Readonly<Record<RoleName, string>>> = {
   SUPPORT: INTERNAL_PATHS.supportFiles,
+  ADMIN: INTERNAL_PATHS.adminAccounts,
 };
 
 /** Inicio de cada rol (003 §6.9, D-5): Mis archivos para el cliente y `/interno` (que lleva a su área) para los internos. */

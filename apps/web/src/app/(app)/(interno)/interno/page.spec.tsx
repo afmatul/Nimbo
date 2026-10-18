@@ -46,49 +46,46 @@ describe('área interna (/interno)', () => {
     forgetSession();
   });
 
-  it('011 CA-17: Soporte va al inicio de su área, /soporte/metadatos, sin ver el marcador', async () => {
-    const container = await renderPage('SUPPORT');
+  it.each([
+    ['SUPPORT', '/soporte/metadatos'],
+    ['ADMIN', '/admin/cuentas'],
+  ] as const)(
+    '011 CA-17: %s va al inicio de su área, %s, sin ver el marcador',
+    async (role, path) => {
+      const container = await renderPage(role);
 
-    expect(replace).toHaveBeenCalledWith('/soporte/metadatos');
-    expect(container.textContent).toBe('');
+      expect(replace).toHaveBeenCalledWith(path);
+      expect(container.textContent).toBe('');
+    },
+  );
+
+  it('CA-17: el Operador ve el marcador de su área dentro del marco interno, sin redirección (hasta T-11)', async () => {
+    await renderPage('OPERATOR');
+
+    const main = screen.getByRole('main');
+    expect(within(main).getByRole('heading', { level: 1, name: 'Área interna' })).toBeTruthy();
+    expect(within(main).getByRole('heading', { name: 'Hola, Ana López.' })).toBeTruthy();
+    expect(within(main).getByText('Tu área de operador estará disponible pronto.')).toBeTruthy();
+    expect(within(main).queryByRole('button', { name: 'Cerrar sesión' })).toBeNull();
+    expect(replace).not.toHaveBeenCalled();
   });
 
-  it.each([
-    ['ADMIN', 'administrador'],
-    ['OPERATOR', 'operador'],
-  ] as const)(
-    'CA-17: %s ve el marcador de su área dentro del marco interno, sin redirección',
-    async (role, label) => {
-      await renderPage(role);
+  it('011 CA-17: el Operador llega desde el menú de la cuenta a Seguridad, Mi actividad y Cerrar sesión', async () => {
+    await renderPage('OPERATOR');
 
-      const main = screen.getByRole('main');
-      expect(within(main).getByRole('heading', { level: 1, name: 'Área interna' })).toBeTruthy();
-      expect(within(main).getByRole('heading', { name: 'Hola, Ana López.' })).toBeTruthy();
-      expect(within(main).getByText(`Tu área de ${label} estará disponible pronto.`)).toBeTruthy();
-      expect(within(main).queryByRole('button', { name: 'Cerrar sesión' })).toBeNull();
-      expect(replace).not.toHaveBeenCalled();
-    },
-  );
+    await userEvent.click(screen.getByRole('button', { name: MENU_NAME }));
 
-  it.each(['ADMIN', 'OPERATOR'] as const)(
-    '011 CA-17: %s llega desde el menú de la cuenta a Seguridad, Mi actividad y Cerrar sesión',
-    async (role) => {
-      await renderPage(role);
-
-      await userEvent.click(screen.getByRole('button', { name: MENU_NAME }));
-
-      const menu = screen.getByRole('menu');
-      const items = within(menu).getAllByRole('menuitem');
-      expect(items.map((item) => item.textContent)).toEqual([
-        'Seguridad',
-        'Mi actividad',
-        'Cerrar sesión',
-      ]);
-      expect(
-        within(menu).getByRole('menuitem', { name: 'Mi actividad' }).getAttribute('href'),
-      ).toBe('/interno/actividad');
-    },
-  );
+    const menu = screen.getByRole('menu');
+    const items = within(menu).getAllByRole('menuitem');
+    expect(items.map((item) => item.textContent)).toEqual([
+      'Seguridad',
+      'Mi actividad',
+      'Cerrar sesión',
+    ]);
+    expect(within(menu).getByRole('menuitem', { name: 'Mi actividad' }).getAttribute('href')).toBe(
+      '/interno/actividad',
+    );
+  });
 
   it('CA-17: sin sesión no redirige ni dibuja nada (de eso se encarga SessionGate)', async () => {
     const container = await renderPage();
@@ -97,17 +94,14 @@ describe('área interna (/interno)', () => {
     expect(container.textContent).toBe('');
   });
 
-  it.each(['ADMIN', 'OPERATOR'] as const)(
-    'CA-17: el marcador de %s en el marco, sin violaciones de axe a 360 y 1440 px',
-    async (role) => {
-      const container = await renderPage(role);
+  it('CA-17: el marcador del Operador en el marco, sin violaciones de axe a 360 y 1440 px', async () => {
+    const container = await renderPage('OPERATOR');
 
-      for (const width of [360, 1440]) {
-        Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
-        window.dispatchEvent(new Event('resize'));
-        const results = await act(async () => axe(container));
-        expect({ width, violations: results.violations }).toEqual({ width, violations: [] });
-      }
-    },
-  );
+    for (const width of [360, 1440]) {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+      window.dispatchEvent(new Event('resize'));
+      const results = await act(async () => axe(container));
+      expect({ width, violations: results.violations }).toEqual({ width, violations: [] });
+    }
+  });
 });
