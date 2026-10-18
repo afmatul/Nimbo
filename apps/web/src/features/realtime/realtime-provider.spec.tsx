@@ -22,21 +22,24 @@ jest.mock('../identity/session/session-provider', () => ({ useSession: jest.fn()
 type Handler = (...args: unknown[]) => void;
 type AuthCallback = (send: (data: object) => void) => void;
 
-/** Doble del `Socket` de `socket.io-client`: guarda los manejadores para dispararlos desde la prueba. */
+/**
+ * Doble del `Socket` de `socket.io-client`: guarda los manejadores (varios por evento, como el real: el canal y el
+ * proveedor escuchan `connect`) para dispararlos desde la prueba.
+ */
 class FakeSocket {
   id: string | undefined = undefined;
-  readonly handlers = new Map<string, Handler>();
+  readonly handlers = new Map<string, Handler[]>();
   readonly connect = jest.fn(() => this);
   readonly disconnect = jest.fn(() => this);
   readonly off = jest.fn(() => this);
 
   on(event: string, handler: Handler): this {
-    this.handlers.set(event, handler);
+    this.handlers.set(event, [...(this.handlers.get(event) ?? []), handler]);
     return this;
   }
 
   fire(event: string, ...args: unknown[]): void {
-    this.handlers.get(event)?.(...args);
+    for (const handler of this.handlers.get(event) ?? []) handler(...args);
   }
 }
 

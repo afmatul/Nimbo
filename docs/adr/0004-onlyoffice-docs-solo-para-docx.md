@@ -5,7 +5,7 @@
 | Estado | Aceptado (2026-10-16, Adrián) |
 | Fecha | 2026-10-16 |
 | Decisores | Adrián (architect), equipo Nimbo |
-| Specs relacionadas | 016 (consumidora), 014 (historial), 022 (salud y alertas); ADR-0012, ADR-0028, ADR-0029; DF-05, DF-20, DF-29 |
+| Specs relacionadas | 016 (consumidora), 014 (historial), 022 (salud y alertas); ADR-0012, ADR-0030, ADR-0029; DF-05, DF-20, DF-29 |
 
 ## Contexto
 

@@ -99,7 +99,7 @@ export class PresenceService {
 
   /**
    * Ajusta la participación a quienes siguen en el editor (estado 1, plan §4): quien sigue conectado vuelve a contar
-   * (otra pestaña cerrada, PD-101) y quien ya no está libera su plaza. Si cambió algo, avisa la lista nueva (CA-6).
+   * (otra pestaña cerrada, PD-114) y quien ya no está libera su plaza. Si cambió algo, avisa la lista nueva (CA-6).
    */
   async reconcile(actor: Actor, roster: Roster): Promise<void> {
     const presence = await this.transactions.withActor(actor, () =>

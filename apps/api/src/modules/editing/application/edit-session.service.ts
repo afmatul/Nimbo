@@ -123,7 +123,7 @@ export class EditSessionService {
   /**
    * Saca a `userId` de la sesión en curso del archivo (CA-16, 015 CA-8): fuera de la sala, desconectado del editor y
    * con su plaza libre. Lo ya escrito queda en la sesión; lo posterior el editor ya no lo acepta. Lo invoca quien
-   * detecta la revocación (aviso de estado 1 en T-05; `sharing` desde 012, PD-96) con el actor de la propietaria.
+   * detecta la revocación (aviso de estado 1 en T-05; `sharing` desde 012, PD-109) con el actor de la propietaria.
    */
   async revokeAccess(actor: Actor, departure: Departure): Promise<void> {
     await this.presence.retire(departure);

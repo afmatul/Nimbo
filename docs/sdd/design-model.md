@@ -143,11 +143,12 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
 - Tablas: `plan`, `suscripcion`, `transaccion`, `factura`.
 
 ### M5 `editing`
-- Controlador: `EditorController` (open, callback, versions, restore).
-- Servicios: `EditSessionService`, `SaveCallbackHandler`. El `VersionHistoryService` del diagrama vive en M2 desde 014 (DF-17, DF-68); 016 registra sus versiones con `FileVersionService` y solo aporta la autoría. Sin gateway propio: el diagrama tiene `PresenceGateway`, pero la presencia se publica por el gateway único de T3 `realtime`, y `editing` autoriza la unión a la sala del documento consultando `access` (DF-30, ADR-0010).
-- Puertos → implementaciones: `IDocumentEditor` → `OnlyOfficeEditor`; `IIdempotencyStore` → `RedisIdempotencyStore`; `ISessionRepository` (renombrar, DF-19); `IIndexQueue` → `intelligence`. `IVersionRepository` vive en M2 desde 014 (DF-68).
-- Dominio: `EditSession` (composición 1..* `Participant`); `DocumentVersion` (en el diagrama hereda de `FileVersion`; se reemplaza por composición con `origen = 'edicion'`, DF-18, ADR-0012).
-- Tablas: `sesion_edicion`, `participacion` (N:M `participa`).
+- Controladores (plan 016, DF-70 a DF-74): `EditorController` (`POST /files/:fileId/edit-session`) y `OnlyOfficeController` (contenido y `callback`, públicos y autenticados por JWT). `versions` y `restore` son de la 014.
+- Servicios: `EditSessionService` (abrir, cerrar sin cambios, revocar acceso), `PresenceService`, `SaveCallbackHandler`, `SaveVersionService` (trabajo `editing-save`, procesado en el `api`, ADR-0029) y `SaveFailedNotifier`. El `VersionHistoryService` del diagrama vive en M2 desde 014 (DF-17, DF-68); 016 registra sus versiones con `FileVersionService` y solo aporta la autoría. Sin gateway propio: la presencia se publica por el gateway único de T3 `realtime`, y `editing` autoriza la unión a la sala consultando `access` (DF-30, ADR-0010).
+- Dominio: `EditSession` (estados `activa → guardando → cerrada | fallida`, `activa → sin_cambios`), `EditModePolicy` y `Participant`. `DocumentVersion` desaparece (ADR-0012, DF-18): la autoría sale de `participacion`.
+- Puertos → implementaciones: `IDocumentEditor` → `OnlyOfficeEditor` (ADR-0004); `IEditSessionRepository` (renombre de `ISessionRepository`, DF-19); `IUserDirectory` → `UserDirectoryAdapter` de `identity` (DF-74; lo declara `editing`). `IIdempotencyStore` se descarta (DF-72). `IIndexQueue` → `intelligence` (PD-18). `IVersionRepository` vive en M2 desde 014, interno de `storage` (la versión es de `storage`, ADR-0012, DF-68).
+- Fachada que `editing` consume de `storage`: `EditableFileGateway` (`find`, `openContent`, `registerEditedVersion`); `IObjectStorage` suma `getObjectStream` y `putObjectStream`; `PlanLimits` suma `maxEditors` (DF-73; `retainedVersions` llegó con 014, DF-68).
+- Tablas: `sesion_edicion` (`archivo_id` sin FK, DF-70) y `participacion` (N:M `participa`); `version_archivo` gana `sesion_edicion_id` `UNIQUE` con `CHECK` contra `origen` (DF-05).
 
 ### M6 `intelligence`
 - Servicios: `AgentService`, `HybridRetriever` (keyword + vector + fuse), processor `IndexingService`, `Chunker`, `ExtractorRegistry` (**Registry**). Falta `AgentController` y entidades de conversación → DF-15.

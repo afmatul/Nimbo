@@ -507,8 +507,8 @@ export class FakeObjectStorage implements IObjectStorage {
   }
 
   /** Como el adaptador real, lee el flujo entero; con otro tamaño que el declarado, S3 rechaza. */
-  async putObject(key: string, body: Readable, sizeBytes: bigint): Promise<void> {
-    this.journal.add('storage:putObject');
+  async putObjectStream(key: string, body: Readable, sizeBytes: bigint): Promise<void> {
+    this.journal.add('storage:putObjectStream');
     const chunks: Buffer[] = [];
     for await (const chunk of body) chunks.push(Buffer.from(chunk as Uint8Array));
     const content = Buffer.concat(chunks);

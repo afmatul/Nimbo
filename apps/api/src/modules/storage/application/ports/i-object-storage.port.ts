@@ -81,7 +81,7 @@ export interface IObjectStorage {
    * Sube `body` a `key` en una sola petición (016: el documento que entrega el editor, acotado por
    * `EDITING_MAX_DOC_BYTES`). `sizeBytes` es obligatorio: S3 no acepta un flujo sin longitud.
    */
-  putObject(key: string, body: Readable, sizeBytes: bigint): Promise<void>;
+  putObjectStream(key: string, body: Readable, sizeBytes: bigint): Promise<void>;
   /** Borra todas las versiones y marcas de borrado de la clave (el bucket está versionado). Idempotente. */
   purgeObject(key: string): Promise<void>;
   /** URL de descarga con `attachment`, `application/octet-stream` y `no-store`, válida solo para esa clave. */

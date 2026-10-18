@@ -282,7 +282,7 @@ describe('guardado firmado: aviso → cola → versión (016 CA-9 a CA-13, CA-16
     expect(await stateOf(session.sessionId)).toBe('activa');
   });
 
-  it('PD-101: el aviso de estado 1 vuelve a contar a quien sigue en el editor y suelta a quien ya no está', async () => {
+  it('PD-114: el aviso de estado 1 vuelve a contar a quien sigue en el editor y suelta a quien ya no está', async () => {
     const ana = await storage().newClient();
     const session = await openedDocument(ana);
     await storage().owner.query(

@@ -123,7 +123,7 @@ describe('EditedVersionRegistrar (plan 016 §2, ADR-0012)', () => {
 
     expect(again).toEqual({ status: 'duplicate', versionId: input.versionId });
     expect(versions.numbersOf(file.id)).toEqual([1, 2, 3]);
-    expect(journal.entries).not.toContain('storage:putObject');
+    expect(journal.entries).not.toContain('storage:putObjectStream');
   });
 
   it('CA-14: un documento que no es un `.docx` íntegro no se registra y su objeto se borra', async () => {
@@ -146,7 +146,7 @@ describe('EditedVersionRegistrar (plan 016 §2, ADR-0012)', () => {
     const outcome = await registrar.register(ANA, inputFor(randomUUID()));
 
     expect(outcome).toEqual({ status: 'file_missing' });
-    expect(journal.entries).not.toContain('storage:putObject');
+    expect(journal.entries).not.toContain('storage:putObjectStream');
   });
 
   it('CA-13: tras el commit poda lo que excede las versiones retenidas del plan', async () => {

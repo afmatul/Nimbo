@@ -13,9 +13,9 @@ import { CrearFactura20261014170000 } from '../../../src/migrations/202610141700
 import { EmisionDeFacturas20261015090000 } from '../../../src/migrations/20261015090000-emision-de-facturas';
 import { AvisoDeFactura20261015100000 } from '../../../src/migrations/20261015100000-aviso-de-factura';
 import { FuncionesDeLecturaDeSuscripcion20261015110000 } from '../../../src/migrations/20261015110000-funciones-de-lectura-de-suscripcion';
-import { SuscripcionMenorPrivilegio20261017100000 } from '../../../src/migrations/20261017100000-suscripcion-menor-privilegio';
 import { CrearSesionEdicionYParticipacion20261016100000 } from '../../../src/migrations/20261016100000-crear-sesion-edicion-y-participacion';
 import { AgregarSesionEdicionAVersionArchivo20261016100100 } from '../../../src/migrations/20261016100100-agregar-sesion-edicion-a-version-archivo';
+import { SuscripcionMenorPrivilegio20261017100000 } from '../../../src/migrations/20261017100000-suscripcion-menor-privilegio';
 import { buildDataSourceOptions } from '../../../src/shared';
 
 const APP_ROLE = 'nimbo_app';

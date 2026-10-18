@@ -44,7 +44,7 @@ interface VerifiedCallback {
  * Aviso del servidor de documentos (plan 016 §4). Exige el enlace de `callbackUrl` (sesión y propietaria firmadas por
  * Nimbo) y el JWT del editor con la misma clave de documento; si no, `{"error":1}` sin tocar nada (CA-19). Con la
  * propietaria como actor relee la sesión y enruta: `editing` revalida el acceso y reconcilia la presencia (CA-16,
- * PD-101); `ready` pasa la sesión a `guardando` y encola `editing-save` sin procesar en la petición (RN-7, DF-20);
+ * PD-114); `ready` pasa la sesión a `guardando` y encola `editing-save` sin procesar en la petición (RN-7, DF-20);
  * `closed` la termina sin versión (CA-11); `failed` (estado 3) la deja `fallida/editor` y avisa (CA-14); el resto se
  * ignora (RN-4). Una sesión desconocida o cerrada se acusa y se anota, sin tormenta de reintentos.
  */

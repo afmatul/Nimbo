@@ -155,11 +155,11 @@ describe('MinioStorageAdapter contra MinIO real (CA-2, CA-5, CA-11, CA-13, CA-14
     await expect(adapter.headObject(target)).resolves.toBeNull();
   });
 
-  it('016 CA-9: `putObject` sube un flujo con su tamaño y `getObjectStream` lo devuelve completo', async () => {
+  it('016 CA-9: `putObjectStream` sube un flujo con su tamaño y `getObjectStream` lo devuelve completo', async () => {
     const key = newKey();
     const content = Buffer.alloc(3 * 1024 * 1024 + 7, 'documento editado ');
 
-    await adapter.putObject(key, Readable.from([content]), BigInt(content.length));
+    await adapter.putObjectStream(key, Readable.from([content]), BigInt(content.length));
     const stream = await adapter.getObjectStream(key);
 
     expect(stream).not.toBeNull();

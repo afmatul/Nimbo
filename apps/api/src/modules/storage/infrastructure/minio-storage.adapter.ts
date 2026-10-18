@@ -267,7 +267,7 @@ export class MinioStorageAdapter implements IObjectStorage {
     }
   }
 
-  async putObject(key: string, body: Readable, sizeBytes: bigint): Promise<void> {
+  async putObjectStream(key: string, body: Readable, sizeBytes: bigint): Promise<void> {
     await this.clients.operations.send(
       new PutObjectCommand({
         Bucket: this.bucket,

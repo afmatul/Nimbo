@@ -1,6 +1,6 @@
 # Tareas 016 — Edición colaborativa de .docx
 
-> Spec: `./spec.md` · Plan: `./plan.md` (aprobado por Adrián 2026-10-16; ADR-0004/0029 y DF-05, 19, 20, 39, 66–70 aceptados)
+> Spec: `./spec.md` · Plan: `./plan.md` (aprobado por Adrián 2026-10-16; ADR-0004/0029 y DF-05, 19, 20, 39, 70–74 aceptados)
 > 11 tareas verticales, un commit cada una (`feat(editing): … [016 T-xx]`). Toda tarea de lógica empieza por su prueba.
 > Prefijos abreviados: `editing/` = `apps/api/src/modules/editing/`; `storage/` = `apps/api/src/modules/storage/`; `test/` = `apps/api/test/`.
 > Constitución, siempre: funciones ≤ 30 líneas y ≤ 3 parámetros (entradas con objetos nombrados: `OpenSessionInput`, `EditedVersionInput`).
@@ -61,15 +61,17 @@
 
 - **Merge de `main` (014 y 008)**: los DF y PD de 015/016 se renumeraron porque `main` ya usaba esos números:
   DF-65…70 → DF-69…74 y PD-74…79 → PD-93…98 (referencias actualizadas en `specs/015`, `specs/016`, ADR-0028 y ADR-0029).
+- **Rebase sobre `main` (2026-10-18, con 009, 011 y 015 ya integradas)**: `main` ya usaba PD-93…PD-105 y DF-69, así que los de 015/016
+  se renumeraron otra vez: PD-93/94 (015) → PD-106/107, PD-95…105 (016) → PD-108…118, DF-69 (015) → DF-76 y ADR-0028 (Socket.IO) → ADR-0030.
 - **T-02 sobre 014 (DF-75)**: no se crea `IFileVersionRepository`; `EditedVersionRegistrar` reutiliza `IVersionRepository`,
   `FileVersionService.register` (bajo `lockUsage`, sin validar cuota) y la poda de 014 tras el commit (`VersionPruner`, una
   versión por transacción), en lugar de podar dentro de la misma transacción. `FileVersion.fromEdit` agrega `editSessionId`;
   `forOrigin` queda solo para `optimizacion`. La FK de `sesion_edicion_id` lleva nombre (`fk_version_archivo_sesion_edicion`).
   El registrador devuelve `registered | duplicate | corrupt | file_missing`; si la transacción falla borra el objeto subido y
   propaga el error (el trabajo reintenta con la misma clave). Sin cambios de CA ni de contrato.
-- **RN-11 (PD-99, resuelta 2026-10-16)**: Adrián decide «guardar igual» (RN-11 sin cambios). El registro de la versión
+- **RN-11 (PD-112, resuelta 2026-10-16)**: Adrián decide «guardar igual» (RN-11 sin cambios). El registro de la versión
   editada resuelve el archivo con `ownedFiles(actor)` de `access` (propio, vivo o en la papelera); `file_missing` queda
-  solo para el archivo purgado. PD-100 también resuelta: sin `OnlyOfficeHealthIndicator` (plan §2 y §5 corregidos).
+  solo para el archivo purgado. PD-113 también resuelta: sin `OnlyOfficeHealthIndicator` (plan §2 y §5 corregidos).
 - **Pruebas en este worktree**: Jest no casa `testMatch` con `<rootDir>` bajo `.claude/` (carpeta con punto), así que
   `pnpm test`/`pnpm test:int` aquí se corren con `--testMatch '**/…'`; en el repositorio normal no cambia nada.
 - **T-03, clases de aplicación no nombradas en el plan**: `EditorAvailability` (puerta de CA-15: variables y salud),
@@ -82,7 +84,7 @@
   `HealthModule.forRoot` haría que `/health/ready` del `api` responda 503 cuando ONLYOFFICE está apagado o sin
   configurar (las variables son opcionales), lo que contradice CA-15/RNF-09 y rompe `health.int-spec.ts` y el contrato
   `HEALTH_CHECK_NAMES`. CA-15 queda cubierto por `OnlyOfficeEditor.isAvailable` en cada apertura. Pendiente de decisión
-  de Adrián (PD-100): indicador no bloqueante con 022 o fuera de `ready`.
+  de Adrián (PD-113): indicador no bloqueante con 022 o fuera de `ready`.
 - **Pruebas de integración de T-03**: lector (CA-3) y coeditor (CA-22) no son alcanzables antes de 012; los cubre
   `edit-mode-policy.spec.ts`. CA-7 se prueba con una participación sembrada de otra cuenta y `maxEditors = 1`.
 - **T-04, `revokeAccess(actor, { fileId, userId })`**: el plan la nombra `revokeAccess(fileId, userId)`; lleva además el
@@ -99,12 +101,12 @@
   dar de alta la participación (una conexión ajena o inexistente responde `SHARED_FORBIDDEN` sin crear nada) y también en
   solo lectura (quien ve el documento recibe la lista); `editing.presence` se publica solo cuando cambia la lista de una
   sesión (apertura en edición, salida, revocación). La salida usa el actor de quien sale: hasta 012 solo la propietaria ve
-  la sesión (PD-95), así que la salida de un coeditor no es alcanzable todavía; en las pruebas, Bea entra con su
-  participación sembrada y `IDocumentRooms.admit`. Salir con otra pestaña abierta: PD-101.
+  la sesión (PD-108), así que la salida de un coeditor no es alcanzable todavía; en las pruebas, Bea entra con su
+  participación sembrada y `IDocumentRooms.admit`. Salir con otra pestaña abierta: PD-114.
 - **T-04, composición**: `EditingModule.forRoot(env, { storage, realtime })` recibe también la misma instancia de
   `RealtimeModule` (antes `forRoot(env, storage)`). El arnés `editing-http.ts` monta el canal en vivo (puerto efímero,
   `TestAccessTokenVerifierModule` de `test/int/realtime`, ahora exportado) y `createStorageHttpApp` acepta `withRealtime`.
-- **T-05, PD-99 en código**: `access` exporta `ownedFiles(actor)` (función pura, como `ownedTrashedNodes`; sin puerto nuevo).
+- **T-05, PD-112 en código**: `access` exporta `ownedFiles(actor)` (función pura, como `ownedTrashedNodes`; sin puerto nuevo).
   `INodeRepository.findOwnedFile` (interno de `storage`) lo usa en `EditedVersionRegistrar.resolve`, y
   `updateCurrentVersion` filtra por `accessibleNodes ∪ ownedFiles` en la misma consulta para mover el puntero de un
   archivo propio en la papelera. La poda (`VersionPruner`) sigue saltando archivos en la papelera: se poda al restaurar
@@ -124,7 +126,7 @@
   `removeOnComplete`) e `IIndexQueue` (`indexing`, `jobId` = versión). `IIndexQueue` vive en `editing` hasta que 019
   decida quién lo declara (PD-18). «UNIQUE violado = éxito» lo da el `duplicate` del registrador (revalida bajo
   `lockUsage`), sin capturar la violación aparte. `closeWithoutChanges(actor, session)` lleva el actor de la propietaria.
-- **T-05, PD-101 (mitigado, no cerrado)**: el estado 1 reconcilia `participacion` con `users` (vuelve a contar a quien
+- **T-05, PD-114 (mitigado, no cerrado)**: el estado 1 reconcilia `participacion` con `users` (vuelve a contar a quien
   sigue en el editor, suelta a quien no está) y revalida el permiso de cada uno (la propietaria siempre conserva lo
   suyo, RN-11). Queda una carrera: si `realtime.document-left` llega **después** del estado 1 de la misma salida, la
   cuenta queda fuera hasta el siguiente estado 1. Cerrarlo del todo pide la consulta de conexiones en `IDocumentRooms`.
@@ -138,7 +140,7 @@
   pasa a `editing.save_failed` (`sessionId`, `fileId`, `userId`, `reason`).
 - **T-06, agotamiento de intentos**: lo decide `SaveVersionProcessor` dentro de `process` (`attemptsMade + 1 >= attempts`),
   antes de relanzar el error, con `SaveVersionService.giveUp(job)`; así queda esperado y con su `correlationId` (un
-  `@OnWorkerEvent('failed')` no se espera). Si `giveUp` mismo falla, la sesión queda en `guardando`: PD-102.
+  `@OnWorkerEvent('failed')` no se espera). Si `giveUp` mismo falla, la sesión queda en `guardando`: PD-115.
   «Incompleto» con `Content-Length` correcto (documento cortado) da `integridad`; un flujo que se corta antes del
   `Content-Length` es un error de red: se reintenta y, agotado, da `almacenamiento`.
 - **T-06, `IEditSessionRepository`**: suma `findLatestFor(actor, fileId)` (plan §2) y `allParticipants(actor, sessionId)`
@@ -147,7 +149,7 @@
   archivo no tiene sesión abierta, antes de crear la nueva. La **primera** apertura tras el fallo ya responde `mode:'edit'`
   con una sesión nueva sobre la versión vigente y `lastSaveFailed: true`; «Abrir el editor de nuevo» repite el `POST` y
   reutiliza esa sesión con `lastSaveFailed: false`. En `view` no se crea sesión, así que sigue en `true` hasta que alguien
-  abra en edición. Hasta 012 solo la propietaria ve sesiones (PD-95): el coeditor recibe el aviso en vivo, no el banner.
+  abra en edición. Hasta 012 solo la propietaria ve sesiones (PD-108): el coeditor recibe el aviso en vivo, no el banner.
   Con el archivo purgado la apertura responde 404 (`STORAGE_NODE_NOT_FOUND`) antes de mirar sesiones.
 - **T-06, contratos**: `EDITING_EVENTS.SAVE_FAILED = 'editing.save-failed'`, `editingSaveFailedSchema` `{sessionId, fileId}`
   (`.strict()`) y `EditingSaveFailed`. En este worktree las pruebas del `api` leen `@nimbo/contracts` desde `dist`:

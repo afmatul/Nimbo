@@ -12,8 +12,8 @@ describe('API pública de `identity`', () => {
       'IdentityModule',
       'IdentityReadersModule',
       'InternalAccountEnrollment',
-      'VerifiedClientLister',
       'UserDirectoryAdapter',
+      'VerifiedClientLister',
     ]);
     expect(identity.CLIENT_ACCOUNT_VERIFIED).toBe('identity.client-account-verified');
   });

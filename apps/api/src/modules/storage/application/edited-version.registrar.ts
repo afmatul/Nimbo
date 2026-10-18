@@ -76,7 +76,7 @@ export class EditedVersionRegistrar {
     const target = await this.transactions.withActor(actor, () => this.resolve(actor, input));
     if (!('file' in target)) return target;
     const key = ObjectKey.of(target.file.ownerId, target.file.id, input.versionId);
-    await this.objects.putObject(key.value, input.content, input.sizeBytes);
+    await this.objects.putObjectStream(key.value, input.content, input.sizeBytes);
     if (!(await this.isIntactDocument(key, input.sizeBytes))) {
       await this.objects.purgeObject(key.value);
       return { status: 'corrupt' };

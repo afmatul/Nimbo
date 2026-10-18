@@ -35,7 +35,7 @@ export interface INodeRepository {
   findAccessibleById(actor: Actor, id: string): Promise<File | null>;
   /**
    * El archivo si es del actor, **vivo o en la papelera** (`ownedFiles` de `access`); `null` si es ajeno o se purgó.
-   * Solo para registrar la versión de una sesión de edición (016 RN-11, PD-99).
+   * Solo para registrar la versión de una sesión de edición (016 RN-11, PD-112).
    */
   findOwnedFile(actor: Actor, id: string): Promise<File | null>;
   /**

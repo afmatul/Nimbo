@@ -40,7 +40,7 @@ const OWNED_TRASH_ROOTS_SQL =
   `${ownedSelect('carpeta', 'c')} AND c.eliminado_en IS NOT NULL AND c.eliminado_con_carpeta_id IS NULL`;
 
 /**
- * Archivos del actor, vivos o en la papelera (plan 016 §2, PD-99): RN-11 registra la versión de una sesión de edición
+ * Archivos del actor, vivos o en la papelera (plan 016 §2, PD-112): RN-11 registra la versión de una sesión de edición
  * aunque el archivo haya ido a la papelera mientras estaba abierta. Solo propiedad: guarda la cuenta propietaria.
  */
 const OWNED_FILES_SQL = ownedSelect('archivo', 'a');
@@ -66,7 +66,7 @@ export const ownedTrashedNodes = (actor: Actor): AccessibleNodesFragment =>
   clientFragment(actor, OWNED_TRASH_ROOTS_SQL);
 
 /**
- * Archivos del actor incluida la papelera, con las mismas columnas que `accessibleNodes` (plan 016 §2, PD-99). Solo
+ * Archivos del actor incluida la papelera, con las mismas columnas que `accessibleNodes` (plan 016 §2, PD-112). Solo
  * para el registro de la versión editada en `storage` (RN-11); vacío para los roles internos.
  */
 export const ownedFiles = (actor: Actor): AccessibleNodesFragment =>

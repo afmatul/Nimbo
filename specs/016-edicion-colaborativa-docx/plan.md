@@ -15,7 +15,7 @@
   registrar una versión `origen='edicion'`. La idempotencia es de BD: `version_archivo.sesion_edicion_id UNIQUE` (DF-05).
 - `storage` es dueño de la versión (ADR-0012): suma su tamaño con `IQuotaRepository.addUsedBytes` **sin validar cuota** (sobregiro,
   CA-20), mueve el puntero de versión vigente y poda por retención. La reindexación se encola por `IIndexQueue` (sin consumidor hasta 019).
-- **El procesador corre en el `api`, no en el `worker`**: las salas de 015 viven en memoria del `api` (ADR-0028) y el aviso de
+- **El procesador corre en el `api`, no en el `worker`**: las salas de 015 viven en memoria del `api` (ADR-0030) y el aviso de
   guardado fallido debe emitirse desde ahí. La cola sigue siendo BullMQ/Redis (durable, con reintentos).
 - Frontend: página del editor que carga el script de ONLYOFFICE, abre el canal de 015 (`useRealtime()`) y muestra la presencia. Un oyente del shell
   recibe `editing.save-failed` (aviso a un usuario, 015) en cualquier pantalla; al reabrir, `lastSaveFailed` muestra el banner con «Abrir el editor de nuevo».
@@ -40,21 +40,21 @@
 | **andamiaje temporal** | ver §2.1 | Plan de pago de prueba hasta la 009; **se borra al terminar la spec** |
 | editing/application | `editing-config.ts` | `EDITING_CONFIG`: URLs, secreto, tope editable, enlace de contenido (TTL constante) |
 | editing/infrastructure | `onlyoffice-editor.ts` | `OnlyOfficeEditor`: JWT con `@nestjs/jwt` (ya instalado), algoritmo fijo HS256; descarga comparando el **origen** de la URL analizada (no `startsWith`) con la lista blanca, sin seguir redirecciones, con tope de bytes; comando `drop` |
-| ~~editing/infrastructure~~ | ~~`onlyoffice.health-indicator.ts`~~ | **Se omite (PD-100, Adrián, 2026-10-16)**: en `/health/ready` dejaría al `api` «no listo» con ONLYOFFICE caído u opcional sin configurar (contra CA-15/RNF-09). La disponibilidad se revisa con `IDocumentEditor.isAvailable` en cada apertura |
+| ~~editing/infrastructure~~ | ~~`onlyoffice.health-indicator.ts`~~ | **Se omite (PD-113, Adrián, 2026-10-16)**: en `/health/ready` dejaría al `api` «no listo» con ONLYOFFICE caído u opcional sin configurar (contra CA-15/RNF-09). La disponibilidad se revisa con `IDocumentEditor.isAvailable` en cada apertura |
 | editing/infrastructure | `typeorm-edit-session.repository.ts`, `edit-session.orm-entity.ts`, `participation.orm-entity.ts` | Persistencia con `TransactionContext.requireActorScope(actor)` |
 | editing/infrastructure | `save-version.queue.ts`, `save-version.processor.ts` | Cola `editing-save` (3 intentos, espera exponencial) y su procesador en el `api` |
 | editing/presentation | `editor.controller.ts` | `POST /files/:fileId/edit-session` (CLIENT) |
 | editing/presentation | `onlyoffice.controller.ts` | `GET /editing/content/:token` y `POST /editing/callback`, ambos `@Public()` y autenticados por JWT |
 | editing | `editing.module.ts`, `index.ts` | Composición y API pública del módulo; registra los oyentes y la cola |
 | storage/application | `editable-file.gateway.ts` (**exportado**) | Fachada para `editing`: `find(actor, fileId)`, `openContent(actor, fileId)`, `registerEditedVersion(actor, input)`; `EditedVersionInput` lleva `versionId` y `createdBy` (= `abierta_por`, distinto del actor propietario) |
-| storage/application | `edited-version.registrar.ts` | Transacción con actor: `lockUsage` → valida `docx` con `IFileTypeDetector` → inserta versión → mueve puntero → `addUsedBytes` → poda. Resuelve el archivo con `INodeRepository.findOwnedFile` (archivo propio, **vivo o en la papelera**; PD-99, RN-11), no con `findAccessibleById`: solo un archivo purgado da `file_missing` |
-| access/infrastructure | `sql/accessible-nodes.ts` (+1 fragmento) | `ownedFiles(actor)`: archivos de la cuenta, vivos o en la papelera, mismas columnas que `accessibleNodes` (función pura, sin puerto nuevo; vacío para roles internos). Solo lo usa el camino de guardado de `storage` (PD-99) |
+| storage/application | `edited-version.registrar.ts` | Transacción con actor: `lockUsage` → valida `docx` con `IFileTypeDetector` → inserta versión → mueve puntero → `addUsedBytes` → poda. Resuelve el archivo con `INodeRepository.findOwnedFile` (archivo propio, **vivo o en la papelera**; PD-112, RN-11), no con `findAccessibleById`: solo un archivo purgado da `file_missing` |
+| access/infrastructure | `sql/accessible-nodes.ts` (+1 fragmento) | `ownedFiles(actor)`: archivos de la cuenta, vivos o en la papelera, mismas columnas que `accessibleNodes` (función pura, sin puerto nuevo; vacío para roles internos). Solo lo usa el camino de guardado de `storage` (PD-112) |
 | storage/application | `ports/i-file-version.repository.port.ts` (interno) | `findCurrent`, `insertEdited`, `setCurrent`, `trimBeyond(keep)`; sin puerto entre módulos |
-| storage/application | `ports/i-object-storage.port.ts` (+2 métodos) | `getObjectStream(key)` y `putObject(key, stream, length)` (flujo, sin cargar el `.docx` en memoria; el adaptador MinIO ya usa `client-s3`) |
+| storage/application | `ports/i-object-storage.port.ts` (+2 métodos) | `getObjectStream(key)` y `putObjectStream(key, stream, length)` (flujo, sin cargar el `.docx` en memoria; el adaptador MinIO ya usa `client-s3`) |
 | storage/domain | `file-version.ts` | `FileVersion.fromEdit(...)` con `origin='edicion'` |
 | storage | `plan-limits.ts` (+2 campos) | `PlanLimits.maxEditors` y `retainedVersions`; los llena `billing` (`PlanLimitsAdapter.toLimits`, ya lee ambas columnas) |
 | audit | `audit-action.ts`, `audit-catalog.ts` | Acciones `edit.session_opened`, `file.version_created`, `edit.save_failed` (recurso `file`, atributos numéricos y `reason`) |
-| shared / raíz | `env.schema.ts`, `app.module.ts` | Variables nuevas (§5), importa `EditingModule` (sin indicador de salud de ONLYOFFICE, PD-100) |
+| shared / raíz | `env.schema.ts`, `app.module.ts` | Variables nuevas (§5), importa `EditingModule` (sin indicador de salud de ONLYOFFICE, PD-113) |
 | contracts | `packages/contracts/src/editing/*` | Esquemas zod (ADR-0020), `EDITING_ERROR_CODES` y constantes de eventos |
 | web | `app/(app)/(cliente)/editor/[fileId]/page.tsx`, `features/editing/*` | Página del editor, `useRealtime()`, panel de presencia, 10 estados del mockup (§6 de la spec), banner de guardado fallido y oyente de `editing.save-failed` |
 | web | `features/editing/use-realtime.ts` | Cliente `socket.io-client` (ya en `web`) que reabre con token renovado (015 CA-4) |
@@ -64,7 +64,7 @@
   `editing` importe `identity`; igual que `IPlanLimitsProvider`). Lo declara `editing`, lo implementa `identity`, se enlaza en la raíz. Se usa
   para la lista en vivo y para `user.name` de la config de ONLYOFFICE; la 014 lo reutilizará para el historial con autoría. `IDocumentEditor`
   ya figura en `architecture.md` §5 (infraestructura externa); `IEditSessionRepository` y `IFileVersionRepository` son internos.
-- **Se descarta** `IIdempotencyStore`/`RedisIdempotencyStore` (YAGNI, una sola garantía suficiente): `UNIQUE` en BD + `jobId` de la cola (DF-68).
+- **Se descarta** `IIdempotencyStore`/`RedisIdempotencyStore` (YAGNI, una sola garantía suficiente): `UNIQUE` en BD + `jobId` de la cola (DF-72).
 - **Dependencias entre módulos**: **arista nueva `identity → editing`** (solo para implementar el puerto, patrón `billing → storage`); `editing`
   sigue sin importar `identity`. `architecture.md` §3 ya la recoge. **`editing` no depende de `billing`** (con `identity → editing` cerraría
   el ciclo `editing → billing → identity → editing`): sus dependencias son `storage, access, realtime, audit`. El plan sale de
@@ -73,7 +73,7 @@
   `editing: ['storage','access','realtime','audit']`; mismo grafo en `module-graph.spec.ts`; `apps/api/src/modules/editing/README.md`; fixture
   negativo `editing-imports-billing.ts`; `cycles.js` sigue verde.
 - Funciones ≤ 30 líneas y ≤ 3 parámetros: las entradas llevan objetos de entrada nombrados (`OpenSessionInput`, `EditedVersionInput`).
-- Nombres visibles: **los pone el servidor** con `IUserDirectory.displayNames`; el cliente no envía nombre (se descarta DF-70 original). Excepción
+- Nombres visibles: **los pone el servidor** con `IUserDirectory.displayNames`; el cliente no envía nombre (se descarta DF-74 original). Excepción
   acotada al «todo servicio recibe `actor`» (`architecture.md` §6): el puerto solo recibe ids de participantes de la sesión y devuelve nombre visible, nunca nodos.
 
 ### 2.1 Andamiaje temporal: plan de pago hasta la 009 (se borra al terminar)
@@ -92,7 +92,7 @@
 -- 20261016100000-crear-sesion-edicion-y-participacion
 CREATE TABLE sesion_edicion (
   id uuid PRIMARY KEY,
-  archivo_id uuid NOT NULL,                    -- sin FK: la purga no borra la evidencia de una sesión fallida (DF-66)
+  archivo_id uuid NOT NULL,                    -- sin FK: la purga no borra la evidencia de una sesión fallida (DF-70)
   propietario_id uuid NOT NULL REFERENCES usuario(id),
   abierta_por uuid NOT NULL REFERENCES usuario(id),
   version_base_id uuid NOT NULL,               -- versión vigente al abrir
@@ -176,7 +176,7 @@ ALTER TABLE version_archivo ADD CONSTRAINT ck_version_archivo_sesion_origen
   `DEV_FORCE_PAID_PLAN` es del andamiaje (§2.1), vive solo hasta el fin de la spec y solo se acepta con `APP_ENV` local o test. Se agregan a
   `.env.example`, `apiEnvSchema` y `ambientes.md`; `pnpm env:check` debe pasar. El `worker` no cambia.
 - ONLYOFFICE bloquea llamadas a IP privadas: el servicio de compose lleva `ALLOW_PRIVATE_IP_ADDRESS=true` solo en local/staging.
-- Métricas/alertas (022): sin `OnlyOfficeHealthIndicator` en `/health/ready` (PD-100); la alerta de caída de ONLYOFFICE (`product-context` §8) la define 022 con su propia sonda, sin afectar la disponibilidad del `api`.
+- Métricas/alertas (022): sin `OnlyOfficeHealthIndicator` en `/health/ready` (PD-113); la alerta de caída de ONLYOFFICE (`product-context` §8) la define 022 con su propia sonda, sin afectar la disponibilidad del `api`.
 
 ## 6. Estrategia de pruebas (por riesgo)
 | CA | Nivel | Archivo |
@@ -208,13 +208,13 @@ ALTER TABLE version_archivo ADD CONSTRAINT ck_version_archivo_sesion_origen
 3. **Edición sobre versión vieja**: una carga o restauración (014) durante la sesión crea otra versión vigente; el guardado se registra como
    versión nueva encima (inmutable, nada se pierde). Una sesión `guardando` bloquea nuevas aperturas (CA del contrato).
 4. **Alcanzabilidad ONLYOFFICE ↔ api** en Docker (api en el host): `host.docker.internal`, `ALLOW_PRIVATE_IP_ADDRESS` y que la URL de descarga del callback traiga un origen de la lista blanca; se valida en el smoke.
-5. **Memoria** (`api` 768 MB junto a ONLYOFFICE): descarga y subida van por flujo (`putObject(key, stream, length)`), sin cargar el `.docx`; el tope editable y la concurrencia 1 siguen acotando el trabajo. El límite se registra en 023.
+5. **Memoria** (`api` 768 MB junto a ONLYOFFICE): descarga y subida van por flujo (`putObjectStream(key, stream, length)`), sin cargar el `.docx`; el tope editable y la concurrencia 1 siguen acotando el trabajo. El límite se registra en 023.
 6. **Poda y `CHECK espacio_usado >= 0`** (`ck_usuario_espacio_usado`, migración `20260930100000`, sobre `usuario`): `registerEditedVersion` suma la versión nueva y después resta solo los bytes de las versiones podadas, ambos con `addUsedBytes` bajo `lockUsage` y en la misma transacción. Como el contador ya incluía esas versiones, nunca baja de cero; si una deriva lo violara, la transacción revierte y el trabajo reintenta (la conciliación de 007 corrige la deriva). Prueba de borde incluida. Los objetos podados se borran tras el commit, mejor esfuerzo.
 7. **Revocación** (CA-16) se detecta en los avisos de estado 1 y por `revokeAccess`; hasta 012 nadie la invoca. Sin corte inmediato (015 P-2).
-- **DF**: nuevos DF-66 (`archivo_id` sin FK), DF-67 (procesamiento de `editing-save` en el `api`, corrige `architecture.md` §7.2 paso 5 y la tabla de colas), DF-68
-  (se descarta `IIdempotencyStore`; actualiza DF-05), DF-69 (`PlanLimits` suma `maxEditors` y `retainedVersions`, consistente con `architecture.md` §5 y DF-51),
-  DF-70 (reescrito: el nombre visible viene de `identity` por `IUserDirectory`, arista `identity → editing`; el `displayName` del cliente se descarta). Se actualizan DF-05, DF-17, DF-18, DF-19, DF-20, DF-30, DF-39 al cerrar la spec.
-- **Pendientes** (`pendientes.md`): PD-76 `access`/RLS para Editor (012); PD-77 `sharing.access-revoked` hacia `editing.revokeAccess`; PD-78 ruta del procesador si hay >1 réplica (con PD-74).
+- **DF**: nuevos DF-70 (`archivo_id` sin FK), DF-71 (procesamiento de `editing-save` en el `api`, corrige `architecture.md` §7.2 paso 5 y la tabla de colas), DF-72
+  (se descarta `IIdempotencyStore`; actualiza DF-05), DF-73 (`PlanLimits` suma `maxEditors` y `retainedVersions`, consistente con `architecture.md` §5 y DF-51),
+  DF-74 (reescrito: el nombre visible viene de `identity` por `IUserDirectory`, arista `identity → editing`; el `displayName` del cliente se descarta). Se actualizan DF-05, DF-17, DF-18, DF-19, DF-20, DF-30, DF-39 al cerrar la spec.
+- **Pendientes** (`pendientes.md`): PD-108 `access`/RLS para Editor (012); PD-109 `sharing.access-revoked` hacia `editing.revokeAccess`; PD-110 ruta del procesador si hay >1 réplica (con PD-106).
 - **ADR** (los redacta `architect` en estado Propuesto): ADR-0029 «`editing-save` se procesa en el `api`» (cambia ADR-0001/`architecture.md` §7.2) y
   ADR-0004 «ONLYOFFICE, solo `.docx`» (figura «Pendiente» en el índice). Ambos se aceptan antes de implementar.
 
@@ -223,19 +223,19 @@ ALTER TABLE version_archivo ADD CONSTRAINT ck_version_archivo_sesion_origen
   `EditableFileGateway` es una fachada concreta. ¿Tecnología nueva? **No** (ONLYOFFICE en ADR-0004; sin dependencias npm nuevas). ¿Cambio de arquitectura?
   **Sí, menor**: `editing-save` en el `api` y ampliación de `PlanLimits`/`IObjectStorage`. `architect` revisa el puerto, la arista y ADR-0004/0029.
 - Sin preguntas abiertas: plan hasta 009 → andamiaje §2.1; nombres → `IUserDirectory`; guardado en el `api` → ADR-0029 (todas de Adrián, 2026-10-16).
-- `architect`: **Visto bueno del architect** (2026-10-16, ciclo 2). Los 9 cambios del ciclo 1 están aplicados y comprobados: sin `editing → billing` (DAG intacto con `identity → editing`; el developer cambia `boundaries.js`, `module-graph.spec.ts` y el README de `editing`, con el fixture `editing-imports-billing.ts`); tokens `{sid,oid,exp}` y `{fid,vid,oid,exp}` con `withActor(createActor(oid))` y `payload.key === sid`; `versionId` uuid v5 de `sessionId` y `UNIQUE` = éxito; `worker` sin andamiaje ni `EditingModule`; poda con `addUsedBytes` bajo `lockUsage` en la misma transacción. ADR-0004 y ADR-0029 siguen `Propuesto` hasta que Adrián los acepte; `architecture.md`, `design-model.md` y DF-66 a DF-70 ya están al día. Vigilar: `editing-save` en el `api` (memoria, ADR-0029) y la excepción de `IUserDirectory` sin `actor` (`architecture.md` §6.9).
-- **Ciclo 1: cambios aplicados (puntos 1–9).** Lo que Adrián acepta al aprobar el plan: DF-05, DF-19, DF-20, DF-39 y DF-66 a DF-70 pasan a `Aceptado`;
+- `architect`: **Visto bueno del architect** (2026-10-16, ciclo 2). Los 9 cambios del ciclo 1 están aplicados y comprobados: sin `editing → billing` (DAG intacto con `identity → editing`; el developer cambia `boundaries.js`, `module-graph.spec.ts` y el README de `editing`, con el fixture `editing-imports-billing.ts`); tokens `{sid,oid,exp}` y `{fid,vid,oid,exp}` con `withActor(createActor(oid))` y `payload.key === sid`; `versionId` uuid v5 de `sessionId` y `UNIQUE` = éxito; `worker` sin andamiaje ni `EditingModule`; poda con `addUsedBytes` bajo `lockUsage` en la misma transacción. ADR-0004 y ADR-0029 siguen `Propuesto` hasta que Adrián los acepte; `architecture.md`, `design-model.md` y DF-70 a DF-74 ya están al día. Vigilar: `editing-save` en el `api` (memoria, ADR-0029) y la excepción de `IUserDirectory` sin `actor` (`architecture.md` §6.9).
+- **Ciclo 1: cambios aplicados (puntos 1–9).** Lo que Adrián acepta al aprobar el plan: DF-05, DF-19, DF-20, DF-39 y DF-70 a DF-74 pasan a `Aceptado`;
   ADR-0004 y ADR-0029 (excepción a ADR-0001) se aceptan antes de la primera tarea; `IUserDirectory` y la arista `identity → editing` (sin `editing → billing`);
-  el `worker` sigue con Personal en la demo. Redibujo de los diagramas de arquitectura y E-R anotado en `pendientes.md` (PD-79, junto con PD-76 a PD-78).
-- Adrián: **Aprobado** — 2026-10-16 (acepta ADR-0004, ADR-0029 y DF-05, 19, 20, 39, 66–70)
+  el `worker` sigue con Personal en la demo. Redibujo de los diagramas de arquitectura y E-R anotado en `pendientes.md` (PD-111, junto con PD-108 a PD-110).
+- Adrián: **Aprobado** — 2026-10-16 (acepta ADR-0004, ADR-0029 y DF-05, 19, 20, 39, 70–74)
 
 ## 9. Registro de cambios
 | Fecha | Cambio | Motivo | Aprobó |
 |---|---|---|---|
 | 2026-10-16 | Plan inicial con P-1…P-10 | Respuestas de Adrián | — |
 | 2026-10-16 | Ciclo 1 con `architect` (9 puntos): sin `editing → billing`; tokens `{sid, oid}` para contenido y `callbackUrl`; idempotencia (uuid v5, UNIQUE = éxito, 3 intentos, `creado_por`); sin `nombre_visible`; `maxEditors === 0`; endurecimiento de contenido y callback; andamiaje con `APP_ENV` y worker intacto; `putObject` con flujo; poda vs `CHECK` | Revisión de `architect` | — |
-| 2026-10-16 | Andamiaje temporal de plan de pago (§2.1); `IUserDirectory` y arista `identity → editing` (DF-70 reescrito); ADR-0004 y 0029 referenciados; CA-14 con aviso por `toUser` y `lastSaveFailed`; `EDITING_OWNER_PLAN_READ_ONLY`; 10 estados de UI | Decisiones de Adrián | Adrián |
+| 2026-10-16 | Andamiaje temporal de plan de pago (§2.1); `IUserDirectory` y arista `identity → editing` (DF-74 reescrito); ADR-0004 y 0029 referenciados; CA-14 con aviso por `toUser` y `lastSaveFailed`; `EDITING_OWNER_PLAN_READ_ONLY`; 10 estados de UI | Decisiones de Adrián | Adrián |
 | 2026-10-16 | Plan aprobado; ADR-0004/0029 y DF aceptados | Revisión de Adrián | Adrián |
-| 2026-10-16 | PD-99: RN-11 sin cambios («guardar igual»); `access` suma el fragmento `ownedFiles(actor)` (archivos propios, incluida la papelera) y `storage` lo usa solo en el registro de la versión editada (`findOwnedFile`), con actor y filtrando en la consulta; sin puerto nuevo | Decisión de Adrián | Adrián |
-| 2026-10-16 | PD-100: se omite `OnlyOfficeHealthIndicator` (§2 y §5); CA-15 se cumple con `isAvailable` en cada apertura | Decisión de Adrián | Adrián |
+| 2026-10-16 | PD-112: RN-11 sin cambios («guardar igual»); `access` suma el fragmento `ownedFiles(actor)` (archivos propios, incluida la papelera) y `storage` lo usa solo en el registro de la versión editada (`findOwnedFile`), con actor y filtrando en la consulta; sin puerto nuevo | Decisión de Adrián | Adrián |
+| 2026-10-16 | PD-113: se omite `OnlyOfficeHealthIndicator` (§2 y §5); CA-15 se cumple con `isAvailable` en cada apertura | Decisión de Adrián | Adrián |
 | 2026-10-16 | El enlace firmado de `callbackUrl` **no vence** (corrige el «TTL de minutos» de §2 y §5): vale solo junto con el JWT de ONLYOFFICE de la misma sesión (`key === sid`) y mientras la sesión esté `activa` o `guardando`; los enlaces de contenido siguen en 5 min. Una descarga rechazada (URL no confiable, redirección, tamaño, sin `Content-Length`) deja la sesión `fallida` con `motivo_fallo = 'integridad'`, sin cambio de esquema | Decisiones de Adrián (T-05/T-06) | Adrián |

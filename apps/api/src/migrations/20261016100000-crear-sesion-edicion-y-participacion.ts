@@ -10,7 +10,7 @@ import type { MigrationInterface, QueryRunner } from 'typeorm';
  *   abierta (`activa` o `guardando`) por archivo y resuelve la carrera de dos aperturas simultáneas.
  * - `participacion` (N:M `participa`) cae en cascada con su sesión; `idx_participacion_activa` sirve al conteo de
  *   editores conectados frente al límite del plan (CA-7).
- * - RLS como `archivo_cliente`: solo el cliente propietario (hasta 012, PD-95). Sin política para roles internos ni
+ * - RLS como `archivo_cliente`: solo el cliente propietario (hasta 012, PD-108). Sin política para roles internos ni
  *   de mantenimiento (CA-17, Art. IX.1): `nimbo_app` sin actor no ve filas.
  */
 export class CrearSesionEdicionYParticipacion20261016100000 implements MigrationInterface {
