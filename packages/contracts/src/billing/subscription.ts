@@ -25,7 +25,7 @@ const SLUG_MAX_LENGTH = 50;
 
 const isTestCard = (number: string): boolean => TEST_CARD_NUMBERS.has(number);
 
-/** RN-9: la tarjeta de prueba; el vencimiento pasado lo rechaza la API con su reloj. */
+/** RN-9: la tarjeta de prueba; el vencimiento pasado lo rechaza la API con su reloj. Contratar y renovar la usan. */
 const cardSchema = z
   .object({
     number: z
@@ -50,19 +50,36 @@ const cardSchema = z
   })
   .strict();
 
+const nitSchema = z.string().regex(NIT, 'Escribe CF o un NIT de 5 a 12 dígitos, sin guiones.');
+
 /** `POST /billing/subscribe` (spec 009 CA-3 a CA-5, RN-9). Cualquier otra forma es `422` con `fields`. */
 export const subscribeRequestSchema = z
   .object({
     planSlug: z.string().min(1).max(SLUG_MAX_LENGTH),
     card: cardSchema,
-    nit: z.string().regex(NIT, 'Escribe CF o un NIT de 5 a 12 dígitos, sin guiones.'),
+    nit: nitSchema,
+  })
+  .strict();
+
+/**
+ * `POST /billing/renew` (spec 010 CA-8 a CA-11, CA-26): la tarjeta y el NIT como al contratar, y el `vence_en` que vio
+ * el cliente; si cambió mientras pagaba, `409 BILLING_ALREADY_RENEWED` sin cobro (RN-9).
+ */
+export const renewRequestSchema = z
+  .object({
+    card: cardSchema,
+    nit: nitSchema,
+    expectedExpiresAt: z.string().datetime(),
   })
   .strict();
 
 const cents = z.number().int().nonnegative();
 
-/** Pago aprobado (CA-3): referencia `SIM-`, plan contratado, vencimiento y desglose de RN-2, en centavos. */
-export const subscribeResponseSchema = z
+/**
+ * Pago aprobado al contratar (009 CA-3) o al renovar (010 CA-8, CA-10): referencia `SIM-`, plan del periodo,
+ * vencimiento nuevo y desglose de RN-2, en centavos.
+ */
+export const paymentReceiptSchema = z
   .object({
     reference: z.string(),
     plan: z.object({ slug: z.string(), name: z.string() }).strict(),
@@ -74,4 +91,7 @@ export const subscribeResponseSchema = z
   .strict();
 
 export type SubscribeRequest = z.infer<typeof subscribeRequestSchema>;
-export type SubscribeResponse = z.infer<typeof subscribeResponseSchema>;
+export type RenewRequest = z.infer<typeof renewRequestSchema>;
+export type PaymentReceipt = z.infer<typeof paymentReceiptSchema>;
+export type SubscribeResponse = PaymentReceipt;
+export type RenewResponse = PaymentReceipt;

@@ -1,0 +1,149 @@
+import { Inject, Injectable } from '@nestjs/common';
+
+import { I_CLOCK } from '../../../shared';
+import type { Actor, IClock } from '../../../shared';
+import { AuditAction, I_AUDIT_LOGGER } from '../../audit';
+import type { IAuditLogger } from '../../audit';
+import type { Invoice } from '../domain/entities/invoice.entity';
+import type { Plan } from '../domain/entities/plan.entity';
+import type { Subscription } from '../domain/entities/subscription.entity';
+import { PlanNotFoundError } from '../domain/errors';
+import type { PaymentInstrument } from '../domain/payment-instrument';
+import { Money } from '../domain/value-objects/money';
+
+import { InvoiceService } from './invoice.service';
+import { PaymentService } from './payment.service';
+import type { ChargeResult } from './payment.service';
+import { I_PLAN_REPOSITORY } from './ports/i-plan-repository.port';
+import type { IPlanRepository } from './ports/i-plan-repository.port';
+import { I_SUBSCRIPTION_REPOSITORY } from './ports/i-subscription-repository.port';
+import type { ISubscriptionRepository } from './ports/i-subscription-repository.port';
+
+/** Quién pidió la renovación (atributo `trigger` de la auditoría, 010 plan §2). */
+export type RenewalTrigger = 'manual' | 'automatic';
+
+/** Con qué se renueva: la tarjeta presente (manual) o la referencia del último pago (automática), y el NIT. */
+export interface RenewalOrder {
+  readonly instrument: PaymentInstrument;
+  readonly nit: string;
+  readonly trigger: RenewalTrigger;
+}
+
+/** Lo que quedó confirmado; `discardedPlan` es el plan programado que se desactivó (CA-29), para avisar al cliente. */
+export interface RenewalOutcome {
+  readonly payment: ChargeResult;
+  readonly plan: Plan;
+  readonly subscription: Subscription;
+  readonly invoice: Invoice | null;
+  readonly discardedPlan: Plan | null;
+}
+
+/** El plan que cobra el siguiente ciclo y la suscripción de la que parte (sin el cambio, si se descartó). */
+interface NextCycle {
+  readonly from: Subscription;
+  readonly plan: Plan;
+  readonly discardedPlan: Plan | null;
+}
+
+/**
+ * Pasos de la renovación dentro de la transacción del cobro, con la fila ya bloqueada (spec 010 plan §2; RN-1, RN-4,
+ * CA-20, CA-29): resuelve el plan del siguiente ciclo, cobra su precio completo y, si se aprueba, renueva, registra la
+ * factura y audita. Un rechazo se devuelve sin lanzar ni cambiar la suscripción (009 B-3; 010 CA-9). Comparte con
+ * `SubscriptionCheckout` los colaboradores, no la secuencia (m-6).
+ */
+@Injectable()
+export class RenewalCheckout {
+  constructor(
+    @Inject(I_SUBSCRIPTION_REPOSITORY) private readonly subscriptions: ISubscriptionRepository,
+    @Inject(I_PLAN_REPOSITORY) private readonly plans: IPlanRepository,
+    @Inject(PaymentService) private readonly payments: PaymentService,
+    @Inject(InvoiceService) private readonly invoices: InvoiceService,
+    @Inject(I_AUDIT_LOGGER) private readonly audit: IAuditLogger,
+    @Inject(I_CLOCK) private readonly clock: IClock,
+  ) {}
+
+  async renew(actor: Actor, current: Subscription, order: RenewalOrder): Promise<RenewalOutcome> {
+    const cycle = await this.nextCycle(current);
+    const payment = await this.payments.charge(actor, {
+      planId: cycle.plan.id,
+      amount: Money.ofCents(cycle.plan.priceCents),
+      instrument: order.instrument,
+    });
+    if (payment.status === 'rechazada') {
+      await this.record(actor, AuditAction.SUBSCRIPTION_RENEWAL_REJECTED, {
+        trigger: order.trigger,
+        planSlug: cycle.plan.slug,
+      });
+      return {
+        payment,
+        plan: cycle.plan,
+        subscription: current,
+        invoice: null,
+        discardedPlan: null,
+      };
+    }
+    const next = cycle.from.renewWith(cycle.plan, this.clock.now());
+    await this.subscriptions.save(actor, next);
+    const invoice = await this.invoices.register(actor, payment, order.nit);
+    await this.auditRenewal(actor, current, cycle, order.trigger);
+    return {
+      payment,
+      plan: cycle.plan,
+      subscription: next,
+      invoice,
+      discardedPlan: cycle.discardedPlan,
+    };
+  }
+
+  /** RN-4: el programado si sigue activo; si se desactivó, se descarta y cobra el actual (CA-29). */
+  private async nextCycle(current: Subscription): Promise<NextCycle> {
+    if (current.pendingPlanId !== null) {
+      const pending = await this.requirePlan(current.pendingPlanId);
+      if (pending.isActive) return { from: current, plan: pending, discardedPlan: null };
+      const from = current.cancelChange();
+      return { from, plan: await this.requirePlan(from.planId), discardedPlan: pending };
+    }
+    return { from: current, plan: await this.requirePlan(current.planId), discardedPlan: null };
+  }
+
+  private async requirePlan(planId: string): Promise<Plan> {
+    const plan = await this.plans.findById(planId);
+    if (plan === null) throw new PlanNotFoundError(planId);
+    return plan;
+  }
+
+  /** CA-6, CA-22 (plan §2): renovada, salida de solo lectura y cambio aplicado o descartado; nunca datos de tarjeta. */
+  private async auditRenewal(
+    actor: Actor,
+    before: Subscription,
+    cycle: NextCycle,
+    trigger: RenewalTrigger,
+  ): Promise<void> {
+    const { plan, discardedPlan } = cycle;
+    await this.record(actor, AuditAction.SUBSCRIPTION_RENEWED, {
+      trigger,
+      planSlug: plan.slug,
+      amountCents: plan.priceCents,
+    });
+    if (before.isReadOnly) await this.record(actor, AuditAction.SUBSCRIPTION_READ_ONLY_EXITED, {});
+    if (plan.id !== before.planId) {
+      await this.record(actor, AuditAction.SUBSCRIPTION_PLAN_CHANGE_APPLIED, {
+        planSlug: plan.slug,
+      });
+    }
+    if (discardedPlan !== null) {
+      await this.record(actor, AuditAction.SUBSCRIPTION_PLAN_CHANGE_DISCARDED, {
+        planSlug: discardedPlan.slug,
+      });
+    }
+  }
+
+  /** En la misma transacción del cobro (011 `recordInTransaction`): si no se audita, no se renueva. */
+  private record(
+    actor: Actor,
+    action: AuditAction,
+    attributes: Readonly<Record<string, string | number>>,
+  ): Promise<void> {
+    return this.audit.recordInTransaction({ action, actor, targetUserId: actor.id, attributes });
+  }
+}

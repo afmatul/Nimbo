@@ -45,7 +45,7 @@
     int `subscribe.int-spec.ts` (`0341` aprobada, la transacción guarda referencia; rechazada sin referencia) y `migrations.int-spec.ts`.
   - Depende: — (paralela a T-01).
 
-- [ ] **T-03** Renovación manual `POST /api/v1/billing/renew`
+- [x] **T-03** Renovación manual `POST /api/v1/billing/renew`
   - Criterio: CA-8, CA-9, CA-10 (periodo desde el pago, salida de solo lectura y cambio programado aplicado), CA-11, CA-20 (desde solo
     lectura), CA-26, CA-28, CA-29 (descarte en la manual); RN-4, RN-9.
   - Archivos: `packages/contracts/src/billing/subscription.ts` (`renewRequestSchema`, `paymentReceiptSchema` con los alias);
@@ -179,3 +179,11 @@ Antes de cada pantalla se leen sus capturas en `docs/design/capturas/`; las desv
     (única consulta que selecciona la columna) se prueba ahí.
   - `cardSchema` se exporta en T-03, cuando lo reutiliza `renewRequestSchema`.
   - `lastFourOf` pasa al simulador (único usuario); `isCardExpired` queda en `payment-card.ts`.
+- **T-03** (2026-10-18): `RenewalCheckout`, `ManualRenewalService` y `PaymentAttemptLimiter` viven en `BillingHttpModule` porque
+  `PaymentService` e `InvoiceService` solo existen en el `api`; T-05 los lleva a un módulo que también cargue el `worker`.
+  La clave del límite pasa de `billing:subscribe:` a `billing:payment:` (una para contratar y renovar). DRY: `issueAfterCommit`
+  pasa a `InvoiceIssuer` y la bitácora del pago a `logPaymentOutcome` (`billing-logger.ts`), que usan contratar y renovar;
+  `subscribe.response.ts` pasa a `payment-receipt.response.ts` (`toPaymentReceipt`) y `subscribeResponseSchema` a
+  `paymentReceiptSchema` (también en `web/subscribe-api.ts`). CA-29 en la manual descarta el plan y lo audita;
+  `RenewalOutcome.discardedPlan` queda para el correo de T-05 (`renewal-messages.ts`). Un rechazo no guarda el descarte
+  (CA-9: no cambia nada).

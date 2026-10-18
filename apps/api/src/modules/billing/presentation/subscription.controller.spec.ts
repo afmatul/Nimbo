@@ -1,5 +1,6 @@
 import { createActor, Role } from '../../../shared';
 import type { BillingHistoryService } from '../application/billing-history.service';
+import type { ManualRenewalService } from '../application/manual-renewal.service';
 import type { SubscribeOutcome } from '../application/subscription-checkout';
 import type { SubscriptionService } from '../application/subscription.service';
 import { aPlan } from '../application/testing/plans';
@@ -45,11 +46,13 @@ const outcome = (status: Payment['status']): SubscribeOutcome => ({
 
 const setup = (status: Payment['status']) => {
   const subscribe = jest.fn().mockResolvedValue(outcome(status));
+  const renew = jest.fn().mockResolvedValue({ ...outcome(status), discardedPlan: null });
   const controller = new SubscriptionController(
     { subscribe } as unknown as SubscriptionService,
     {} as BillingHistoryService,
+    { renew } as unknown as ManualRenewalService,
   );
-  return { controller, subscribe };
+  return { controller, subscribe, renew };
 };
 
 describe('SubscriptionController (spec 009 CA-3, CA-4)', () => {
@@ -90,6 +93,7 @@ describe('SubscriptionController (spec 009 CA-3, CA-4)', () => {
     const controller = new SubscriptionController(
       {} as SubscriptionService,
       { download } as unknown as BillingHistoryService,
+      {} as ManualRenewalService,
     );
 
     await expect(controller.download(ANA, 'factura-1')).resolves.toEqual({
@@ -97,5 +101,29 @@ describe('SubscriptionController (spec 009 CA-3, CA-4)', () => {
       expiresInSeconds: 300,
     });
     expect(download).toHaveBeenCalledWith(ANA, 'factura-1');
+  });
+});
+
+describe('SubscriptionController.renew (spec 010 CA-8, CA-9, CA-26)', () => {
+  const RENEW = { card: BODY.card, nit: 'CF', expectedExpiresAt: '2026-11-13T12:00:00.000Z' };
+
+  it('CA-8: responde el mismo recibo que contratar; el CVC no pasa y la fecha llega como `Date`', async () => {
+    const { controller, renew } = setup('aprobada');
+
+    await expect(controller.renew(ANA, RENEW)).resolves.toMatchObject({
+      reference: 'SIM-2026-000007',
+      expiresAt: '2026-11-13T12:00:00.000Z',
+    });
+    expect(renew).toHaveBeenCalledWith(ANA, {
+      card: { number: '4242424242424242', expMonth: 12, expYear: 2030 },
+      nit: 'CF',
+      expectedExpiresAt: new Date('2026-11-13T12:00:00.000Z'),
+    });
+  });
+
+  it('CA-9: un rechazo ya confirmado es `402 BILLING_PAYMENT_REJECTED`', async () => {
+    const { controller } = setup('rechazada');
+
+    await expect(controller.renew(ANA, RENEW)).rejects.toBeInstanceOf(PaymentRejectedError);
   });
 });

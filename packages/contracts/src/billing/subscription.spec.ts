@@ -1,4 +1,4 @@
-import { subscribeRequestSchema, TEST_CARDS } from './subscription';
+import { renewRequestSchema, subscribeRequestSchema, TEST_CARDS } from './subscription';
 
 const VALID = {
   planSlug: 'equipo',
@@ -69,5 +69,32 @@ describe('subscribeRequestSchema (spec 009 RN-9, CA-5)', () => {
     expect(reasonsOf({ ...VALID, card: { ...VALID.card, holder: 'Ana' } })).toEqual([
       { field: 'card', code: 'unrecognized_keys' },
     ]);
+  });
+});
+
+describe('renewRequestSchema (spec 010 CA-8, CA-26)', () => {
+  const RENEW = {
+    card: VALID.card,
+    nit: 'CF',
+    expectedExpiresAt: '2026-11-13T12:00:00.000Z',
+  };
+
+  it('CA-8: acepta la tarjeta, el NIT y el `vence_en` que vio el cliente', () => {
+    expect(renewRequestSchema.safeParse(RENEW).success).toBe(true);
+  });
+
+  it('CA-26: sin `expectedExpiresAt` o con un texto que no es fecha, se rechaza', () => {
+    const { expectedExpiresAt: _omitted, ...withoutDate } = RENEW;
+    expect(renewRequestSchema.safeParse(withoutDate).success).toBe(false);
+    expect(renewRequestSchema.safeParse({ ...RENEW, expectedExpiresAt: 'mañana' }).success).toBe(
+      false,
+    );
+  });
+
+  it('RN-9: valida la tarjeta como al contratar y no admite campos extra', () => {
+    expect(
+      renewRequestSchema.safeParse({ ...RENEW, card: { ...RENEW.card, number: '1234' } }).success,
+    ).toBe(false);
+    expect(renewRequestSchema.safeParse({ ...RENEW, planSlug: 'pro' }).success).toBe(false);
   });
 });
