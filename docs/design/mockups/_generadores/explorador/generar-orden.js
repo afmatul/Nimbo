@@ -2,13 +2,15 @@
 // creación; ascendente o descendente; por defecto, fecha de creación, más recientes primero: RN-6, D-6) y paginación por cursor con «Cargar más». Las carpetas van siempre primero.
 // Uso: node generar-orden.js <ruta-del-worktree>
 // Los estados de 005 (generar.js) y 006 (generar-carpetas.js) no cambian. Marco: marco/marco.js; tabla y encabezado:
-// carpetas/carpetas.js; estados comunes: mis-archivos/estados.js; barra lateral de 007 (plan Personal, tarjeta de
-// cuota con su acción): espacio/espacio.js. Sin cuadrícula, filtros ni selección múltiple (spec 007 §7).
+// carpetas/carpetas.js; estados comunes y «Cargar más»: mis-archivos/estados.js y cargar-mas.js; barra lateral de
+// 007 (plan Personal, tarjeta de cuota con su acción): espacio/espacio.js. Sin cuadrícula, filtros ni selección múltiple (spec 007 §7).
 const fs = require('node:fs');
 const path = require('node:path');
 const M = require('../marco/marco.js');
 const S = require('../mis-archivos/mis-archivos.js');
 const E = require('../mis-archivos/estados.js');
+const CM = require('../mis-archivos/cargar-mas.js');
+const MF = require('../mis-archivos/menu-fila.js');
 const C = require('../carpetas/carpetas.js');
 const Q = require('../espacio/espacio.js');
 
@@ -48,7 +50,7 @@ const CSS = '\n' + M.CSS.MARCO + M.CSS.BOTONES + M.CSS.MQ_900 +
   .th-sort { display: inline-flex; align-items: center; gap: 4px; color: var(--secondary-foreground); }
   .th-sort .ico { color: var(--primary); }
 
-` + E.CSS_CARGAR_MAS + `  .files + .alert { margin-top: 16px; }
+` + CM.CSS_CARGAR_MAS + CM.CSS_CARGAR_MAS_ERROR_EN_PIE + `
   .files[aria-busy="true"] tbody { pointer-events: none; }
 
   @media (max-width: 600px) {
@@ -57,7 +59,7 @@ const CSS = '\n' + M.CSS.MARCO + M.CSS.BOTONES + M.CSS.MQ_900 +
     .sort-btn { width: 100%; min-height: 44px; justify-content: space-between; }
     .sort-pop { left: 0; right: 0; width: auto; }
     .account-menu [role="menuitemradio"] { min-height: 44px; }
-` + E.CSS_CARGAR_MAS_MQ600 + `  }
+` + CM.CSS_CARGAR_MAS_MQ600 + `  }
 `;
 
 // ---------- Datos de ejemplo (plan Personal: ningún archivo pasa de 50 MB) ----------
@@ -171,12 +173,13 @@ const JS_ORDEN = `
 })();
 `;
 
-// ---------- «Cargar más» (cursor: no hay total; el botón desaparece cuando no hay nextCursor): mis-archivos/estados.js ----------
+// ---------- «Cargar más» (cursor: no hay total; el botón desaparece cuando no hay nextCursor): mis-archivos/cargar-mas.js ----------
 const TEXTOS_MAS = {
   anuncio: 'Cargando más elementos de Documentación…',
-  error: { titulo: 'No pudimos cargar más elementos.', texto: 'Revisa tu conexión e inténtalo de nuevo. Lo que ya ves sigue aquí.' },
+  // enPie: el Alert va dentro del pie, como LoadMore de apps/web (load-more.tsx)
+  error: { titulo: 'No pudimos cargar más elementos.', texto: 'Revisa tu conexión e inténtalo de nuevo. Lo que ya ves sigue aquí.', enPie: true },
 };
-const cargarMas = (estado) => E.cargarMas(estado, TEXTOS_MAS);
+const cargarMas = (estado) => CM.cargarMas(estado, TEXTOS_MAS);
 
 // ---------- Página ----------
 function page(v) {
@@ -205,7 +208,7 @@ function page(v) {
   </div>
 </div>
 
-<script>${JS_ORDEN}${E.JS_MENU}</script>
+<script>${JS_ORDEN}${MF.JS_MENU}</script>
 </body>
 </html>
 `);

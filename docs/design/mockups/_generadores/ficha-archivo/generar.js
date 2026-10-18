@@ -3,13 +3,14 @@
 // errores (cuota, versión no encontrada, archivo no encontrado, historial que no carga) y descarga de una versión.
 // Uso: node generar.js <ruta-del-worktree>
 // Marco: marco/marco.js; barra lateral y cuota del plan Personal: espacio/espacio.js; logo, toast y CSS de 006:
-// carpetas/carpetas.js; esqueleto, error y Alert: mis-archivos/estados.js.
+// carpetas/carpetas.js; esqueleto y error: mis-archivos/estados.js; Alert: mis-archivos/avisos.js.
 // ficha-archivo--vision.html (paquete de diseño interno con autoría, indexación y accesos) NO se genera aquí.
 const fs = require('node:fs');
 const path = require('node:path');
 const M = require('../marco/marco.js');
 const S = require('../mis-archivos/mis-archivos.js');
 const E = require('../mis-archivos/estados.js');
+const AV = require('../mis-archivos/avisos.js');
 const C = require('../carpetas/carpetas.js');
 const Q = require('../espacio/espacio.js');
 
@@ -92,8 +93,7 @@ const CSS = '\n' + M.CSS.MARCO + M.CSS.BOTONES + M.CSS.DIALOGO + M.CSS.MQ_900 +
   .vt-empty strong { display: block; color: var(--foreground); font-weight: 600; }
 
   /* Aviso de poda y error dentro del diálogo (Alert warning / error de ui-guidelines §4) */
-` + E.CSS_DLG_WARN + `  .dlg-alert strong { display: block; color: var(--destructive) !important; font-weight: 600; }
-  .dialog-summary { margin: 14px 0 0; padding: 10px 12px; border-radius: var(--radius-md); background: var(--muted); }
+` + AV.CSS_DLG_WARN + `  .dialog-summary { margin: 14px 0 0; padding: 10px 12px; border-radius: var(--radius-md); background: var(--muted); }
   .dialog-summary div { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; font-size: 13px; }
   .dialog-summary dt { color: var(--secondary-foreground); }
   .dialog-summary dd { margin: 0; color: var(--foreground); font-weight: 500; text-align: right; font-variant-numeric: tabular-nums; }
@@ -266,8 +266,7 @@ function detalles(versiones) {
 function encabezado(versiones) {
   const actual = versiones && versiones[0];
   const sub = actual ? `${actual.tam} · versión ${actual.numero} · en ${CARPETA}` : `en ${CARPETA}`;
-  return `
-        <a class="back-link" href="#" aria-label="Volver a ${CARPETA}">${icon('chevronLeft', 18)}<span>${CARPETA}</span></a>
+  return `${C.volverA(CARPETA)}
         <div class="file-head">
           <span class="ftile ftile-docx">${icon('fileText', 20)}</span>
           <div class="file-head-text">
@@ -287,12 +286,11 @@ function ficha(versiones, opciones = {}) {
 // ---------- Diálogo de restaurar (AlertDialog de shadcn) ----------
 // d: { v, tam, poda, pendiente, error }
 function dialogoRestaurar(d) {
-  const poda = d.poda ? E.avisoDialogo({
+  const poda = d.poda ? AV.avisoDialogo({
     titulo: `Se eliminará la versión ${d.poda}.`,
     texto: `Tu plan conserva ${RETENIDAS} versiones. Al continuar se eliminará la versión ${d.poda}, la más antigua.`,
   }) : '';
-  const error = d.error ? `
-    <div class="dlg-alert" role="alert">${icon('alert', 18)}<p><strong>No pudimos restaurar la versión ${d.v}.</strong>${d.error}</p></div>` : '';
+  const error = d.error ? C.alertaDialogo({ titulo: `No pudimos restaurar la versión ${d.v}.`, texto: d.error }) : '';
   const ids = ['dlg-d', 'dlg-n', d.poda ? 'dlg-p' : ''].filter(Boolean).join(' ');
   const pendiente = d.pendiente ? ' disabled' : '';
   const confirmar = d.pendiente
@@ -383,7 +381,7 @@ const noEncontrado = () => `
           <a class="btn btn-primary" href="#">Ir a Mis archivos</a>
         </div>`;
 
-const alertaNoEncontrada = E.aviso({
+const alertaNoEncontrada = AV.aviso({
   titulo: 'No encontramos la versión 3.',
   texto: 'Puede que se haya eliminado al superar las versiones que conserva tu plan. Actualiza el historial para ver las disponibles.',
   accion: 'Actualizar historial',

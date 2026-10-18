@@ -9,7 +9,7 @@ const C = require('../admin/corpus.js');
 const MA = require('../mis-archivos/mis-archivos.js');
 const E = require('../espacio/espacio.js');
 
-const OUT = A.carpetaDeSalida('soporte');
+const OUT = A.carpetaDeSalida('backoffice', 'soporte');
 
 // Íconos del área + los de tipo de archivo de 005 + imagen (Lucide «image», el mismo de espacio/espacio.js, 007).
 const icon = MA.crearIcon({ ...A.P, ...MA.P, image: E.P.image });

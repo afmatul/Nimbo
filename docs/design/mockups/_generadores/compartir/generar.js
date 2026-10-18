@@ -2,9 +2,11 @@
 // abierto desde el menú ⋮ de una fila de Mis archivos. Solo Lector y Editor (RN-1); sin enlace público ni «externos»
 // (013 y fuera de alcance). Uso: node generar.js <ruta-del-worktree>
 // Piezas de 012: comparticion/ (corpus y página); explorador de fondo: explorador/desglose.js y carpetas/carpetas.js;
-// confirmación destructiva: carpetas/carpetas.js (marco/marco.js); aviso warning en diálogo: mis-archivos/estados.js.
-const S = require('../mis-archivos/mis-archivos.js');
-const E = require('../mis-archivos/estados.js');
+// confirmación destructiva y error en diálogo: carpetas/carpetas.js (marco/marco.js); aviso warning en diálogo:
+// mis-archivos/avisos.js; script del menú ⋮: mis-archivos/menu-fila.js.
+const M = require('../marco/marco.js');
+const AV = require('../mis-archivos/avisos.js');
+const MF = require('../mis-archivos/menu-fila.js');
 const C = require('../carpetas/carpetas.js');
 const D = require('../explorador/desglose.js');
 const K = require('../comparticion/corpus.js');
@@ -15,7 +17,7 @@ const T = K.TEXTOS;
 
 // ---------- CSS propio ----------
 const CSS = X.css({
-  escritorio: D.CSS + E.CSS_DLG_WARN + `
+  escritorio: D.CSS + AV.CSS_DLG_WARN + `
   /* Diálogo «Compartir» (Dialog de shadcn). En la app se desplaza dentro de la ventana; aquí la hoja crece con él:
      el diálogo y la app comparten la celda de una rejilla, así la captura lo muestra completo a cualquier ancho. */
   .canvas:has(.dialog-share) { display: grid; }
@@ -36,7 +38,6 @@ const CSS = X.css({
   .dialog .share-help { margin: 8px 0 0; font-size: 13px; color: var(--secondary-foreground); }
   .dialog .share-ok { display: flex; align-items: flex-start; gap: 8px; margin: 12px 0 0; font-size: 13.5px; color: var(--success-foreground); font-weight: 500; }
   .share-ok .ico { margin-top: 1px; }
-  .dlg-alert strong { display: block; color: var(--destructive) !important; font-weight: 600; }
   .dlg-alert .btn { margin-top: 10px; }
 
   /* Lista de accesos (AccessList) */
@@ -92,7 +93,8 @@ const fondoRaiz = (menuEn = '') => () => C.encabezado(['Mis archivos']) + D.tabl
 const fondoAlpha = () => C.encabezado(['Mis archivos', K.ALPHA]) + D.tabla(K.EN_ALPHA, { lugar: K.ALPHA, menu: menuPropietario });
 
 // ---------- Formulario: correo, nivel y «Compartir» ----------
-// f: { correo, nivel, error, enviando, bloqueado }
+// f: { correo, nivel, error, enviando, bloqueado, exito, autofocus }. error: el foco va al correo en falla; exito: mensaje
+// bajo el formulario (role="status"); autofocus: foco inicial en el correo (al abrir el diálogo y tras el éxito).
 function campoCorreo(f) {
   const describe = ['sh-ayuda', f.error ? 'sh-error' : '', f.bloqueado ? 'sh-lim' : ''].filter(Boolean).join(' ');
   return `
@@ -116,7 +118,7 @@ function formulario(f) {
       <p class="field-error" id="sh-error" role="alert">${icon('alert', 15)}<span>${f.error}</span></p>` : '';
   const anuncio = f.enviando ? `<p class="sr-only" role="status">Compartiendo con ${f.correo}…</p>` : '';
   const ayuda = `Lector: ${K.NIVELES.Lector.puede}. Editor: ${K.NIVELES.Editor.puede}.`;
-  return `${f.bloqueado ? E.avisoDialogo({ id: 'sh-lim', titulo: T.intentos(5), texto: 'Mientras tanto, puedes cambiar niveles o quitar accesos en la lista.' }) : ''}
+  return `${f.bloqueado ? AV.avisoDialogo({ id: 'sh-lim', titulo: T.intentos(K.ESPERA_MIN), texto: 'Mientras tanto, puedes cambiar niveles o quitar accesos en la lista.' }) : ''}
     <form class="share-form" novalidate${f.enviando ? ' aria-busy="true"' : ''}>
       <div class="share-row">${campoCorreo(f)}${campoNivel(f)}
         ${botonCompartir(f)}
@@ -135,12 +137,13 @@ const filaPropietario = () => `
           <div class="acl-ctl">${X.nivel('Propietario')}</div>
         </li>`;
 
-// l: { resaltar, cambiando: { nombre, a }, nuevo }. El nivel se cambia al elegirlo (sin «Guardar»); revocar confirma.
+// l: { resaltar, cambiando: { id, a }, nuevo }: resaltar y nuevo son el id de la persona (nunca su nombre, que puede
+// repetirse). El nivel se cambia al elegirlo (sin «Guardar»); revocar confirma.
 function controles(a, l) {
-  const c = l.cambiando && l.cambiando.nombre === a.nombre ? l.cambiando : null;
+  const c = l.cambiando && l.cambiando.id === a.id ? l.cambiando : null;
   const nivel = c ? c.a : a.nivel;
   const ocupado = c ? `<span class="acl-busy" aria-hidden="true">${icon('loader', 14, 'spin')}Guardando…</span><span class="sr-only" role="status">Cambiando el nivel de ${a.nombre} a ${c.a}…</span>` : '';
-  const id = `nivel-${a.iniciales}`;
+  const id = `nivel-${a.id}`;
   return `
           <div class="acl-ctl">
             <label class="sr-only" for="${id}">Nivel de ${a.nombre}</label>
@@ -149,29 +152,34 @@ function controles(a, l) {
           </div>`;
 }
 function filaDirecta(a, l) {
-  const nuevo = l.nuevo === a.nombre ? '<span class="badge-new">NUEVO</span>' : '';
-  const hit = l.resaltar === a.nombre ? ' is-hit' : '';
+  const nuevo = l.nuevo === a.id ? '<span class="badge-new">NUEVO</span>' : '';
+  const hit = l.resaltar === a.id ? ' is-hit' : '';
   return `
         <li class="acl-item${hit}">${quien({ ...a, nombre: `${a.nombre}${nuevo}` }, `${a.correo} · ${desde(a)}`)}${controles(a, l)}
         </li>`;
 }
 
 // Heredados de una carpeta: sin controles; se gestionan en la carpeta de origen (CA-6). Si la persona también tiene
-// acceso directo, rige el mayor (CA-20, RN-6) y se dice en texto.
-function filaHeredada(a, directos) {
-  const directo = directos.find((d) => d.nombre === a.nombre);
-  const rige = directo && directo.nivel !== a.nivel ? `<p class="acl-meta acl-rige">Rige su acceso directo: ${directo.nivel}</p>` : '';
-  return `
-          <li class="acl-item">${quien(a, `${a.correo} · ${desde(a)}`, rige)}
+// acceso directo con otro nivel, rige el mayor (CA-20, RN-6) y la fila heredada dice cuál: sin la nota, quien comparte
+// podría creer que bajar el directo a Lector le quita la edición. Con el mismo nivel no hay nada que aclarar.
+function notaRige(a, directos) {
+  const directo = directos.find((d) => d.id === a.id);
+  if (!directo || directo.nivel === a.nivel) return '';
+  const rigeDirecto = K.NIVELES[directo.nivel].rango > K.NIVELES[a.nivel].rango;
+  const texto = rigeDirecto ? `Rige su acceso directo: ${directo.nivel}` : `Rige este acceso: es mayor que el directo (${directo.nivel})`;
+  return `<p class="acl-meta acl-rige">${texto}</p>`;
+}
+const filaHeredada = (a, directos) => `
+          <li class="acl-item">${quien(a, `${a.correo} · ${desde(a)}`, notaRige(a, directos))}
             <div class="acl-ctl">${X.nivel(a.nivel)}</div>
           </li>`;
-}
-function grupoHeredado({ origen, accesos }, directos) {
+// g: { origen, accesos, gestionar (enlace a la lista de la carpeta de origen) }; i: posición del grupo (id único)
+function grupoHeredado(g, i, directos) {
   return `
-      <div class="acl-group" role="group" aria-labelledby="acl-h">
-        <h4 id="acl-h">${icon('folder', 16)}<span>Heredado de «${origen}»</span></h4>
-        <p class="acl-note">Estos accesos se cambian o se quitan en esa carpeta. <a href="compartir--con-accesos-carpeta.html">Gestionar en «${origen}»</a></p>
-        <ul class="acl-list">${accesos.map((a) => filaHeredada(a, directos)).join('')}
+      <div class="acl-group" role="group" aria-labelledby="acl-h-${i}">
+        <h4 id="acl-h-${i}">${icon('folder', 16)}<span>Heredado de «${g.origen}»</span></h4>
+        <p class="acl-note">Estos accesos se cambian o se quitan en esa carpeta. <a href="${g.gestionar}">Gestionar en «${g.origen}»</a></p>
+        <ul class="acl-list">${g.accesos.map((a) => filaHeredada(a, directos)).join('')}
         </ul>
       </div>`;
 }
@@ -182,11 +190,12 @@ const esqueleto = () => {
       <div aria-hidden="true">${['w55', 'w40', 'w45'].map(fila).join('')}</div>
       <p class="loading-text" role="status">${icon('loader', 16, 'spin')}Cargando quién tiene acceso…</p>`;
 };
-const errorLista = () => `
-      <div class="dlg-alert" role="alert">${icon('alert', 18)}<div><p><strong>No pudimos cargar quién tiene acceso.</strong>Tus accesos siguen igual. Inténtalo de nuevo en unos segundos.</p>
-        <button class="btn btn-outline btn-sm" type="button">${icon('retry', 14)}<span>Reintentar</span></button></div></div>`;
+const errorLista = () => C.alertaDialogo({
+  titulo: 'No pudimos cargar quién tiene acceso.', texto: 'Tus accesos siguen igual. Inténtalo de nuevo en unos segundos.',
+  accion: `<button class="btn btn-outline btn-sm" type="button">${icon('retry', 14)}<span>Reintentar</span></button>`,
+});
 
-// l: { estado: 'cargando' | 'error', directos, heredado: { origen, accesos }, vacio, … }
+// l: { estado: 'cargando' | 'error', directos, heredados: [{ origen, accesos, gestionar }], … } (un grupo por carpeta)
 function contenidoLista(l, nombre) {
   if (l.estado === 'cargando') return esqueleto();
   if (l.estado === 'error') return errorLista();
@@ -195,7 +204,7 @@ function contenidoLista(l, nombre) {
       <p class="acl-empty">Aún no compartes «${nombre}» con nadie.</p>`;
   return `
       <ul class="acl-list" aria-labelledby="acl-t">${filaPropietario()}${directos.map((a) => filaDirecta(a, l)).join('')}
-      </ul>${vacio}${l.heredado ? grupoHeredado(l.heredado, directos) : ''}`;
+      </ul>${vacio}${(l.heredados || []).map((g, i) => grupoHeredado(g, i, directos)).join('')}`;
 }
 const lista = (l, nombre) => `
     <section class="acl" aria-labelledby="acl-t"${l.estado === 'cargando' ? ' aria-busy="true"' : ''}>
@@ -206,15 +215,15 @@ const lista = (l, nombre) => `
 // d: { recurso: { tipo, nombre, lugar }, form, lista }. debajo: hay un diálogo de confirmación encima (inert).
 function dialogoCompartir(d, debajo = false) {
   const { tipo, nombre, lugar } = d.recurso;
-  const tile = tipo === 'carpeta' ? `<span class="ftile ftile-folder">${icon('folder', 16)}</span>` : S.tile(nombre);
+  const tile = C.tileNodo(tipo, nombre);
   return `
   <div class="overlay" aria-hidden="true"></div>
   <div class="dialog dialog-share" role="dialog" aria-modal="true" aria-labelledby="sh-t" aria-describedby="sh-d"${debajo ? ' inert' : ''}>
     <div class="share-head">
       ${tile}
       <div>
-        <h2 id="sh-t">Compartir «${X.partible(nombre)}»</h2>
-        <p id="sh-d">${tipo === 'carpeta' ? 'Carpeta' : 'Archivo'} en ${lugar}. Comparte con cuentas de Nimbo; no enviamos aviso por correo: lo verán en «Compartido conmigo».</p>
+        <h2 id="sh-t">Compartir «${C.partible(nombre)}»</h2>
+        <p id="sh-d">${tipo === 'carpeta' ? 'Carpeta' : 'Archivo'} en ${lugar}. Comparte con cuentas de Nimbo; no enviamos aviso por correo: lo verán en «${M.COMPARTIDO}».</p>
       </div>
       <button class="icon-btn" type="button" aria-label="Cerrar">${icon('x', 20)}</button>
     </div>${formulario(d.form || { autofocus: true })}${lista(d.lista, nombre)}
@@ -248,13 +257,13 @@ const PANTALLA = {
 const ESTADOS = [
   {
     estado: 'menu-fila', titulo: 'entrada: menú ⋮ de una carpeta propia con «Compartir» (RN-1)', activo: 'Mis archivos',
-    crumbs: ['Mis archivos'], cuerpo: fondoRaiz(K.ALPHA), js: D.JS_MENU,
+    crumbs: ['Mis archivos'], cuerpo: fondoRaiz(K.ALPHA), js: MF.JS_MENU,
   },
   estado({ estado: 'sin-accesos', titulo: 'nadie más tiene acceso: solo la propietaria y el formulario', lista: { directos: [] } }),
   estado({ estado: 'cargando', titulo: 'cargando la lista de accesos (esqueleto)', lista: { estado: 'cargando' } }),
   estado({
     estado: 'con-accesos', titulo: 'archivo con accesos directos y heredados de su carpeta; los heredados sin controles (CA-6, CA-20)',
-    recurso: PLAN, lista: { directos: K.DIRECTOS_PLAN, heredado: { origen: K.ALPHA, accesos: K.ACCESOS_ALPHA } },
+    recurso: PLAN, lista: { directos: K.DIRECTOS_PLAN, heredados: [{ origen: K.ALPHA, accesos: K.ACCESOS_ALPHA, gestionar: 'compartir--con-accesos-carpeta.html' }] },
   }),
   estado({ estado: 'con-accesos-carpeta', titulo: 'carpeta con tres accesos directos: nivel y «Quitar» por persona (CA-6)', lista: CON_TRES }),
   estado({
@@ -263,8 +272,8 @@ const ESTADOS = [
   }),
   estado({
     estado: 'compartido', titulo: 'éxito: la persona aparece arriba con «NUEVO» y el campo queda listo para otra (CA-1, RN-11)',
-    form: { autofocus: true, exito: `Compartiste «${K.ALPHA}» con ${LAURA.nombre} como ${LAURA.nivel}. Ya lo ve en «Compartido conmigo».` },
-    lista: { ...CON_TRES, nuevo: LAURA.nombre },
+    form: { autofocus: true, exito: `Compartiste «${K.ALPHA}» con ${LAURA.nombre} como ${LAURA.nivel}. Ya lo ve en «${M.COMPARTIDO}».` },
+    lista: { ...CON_TRES, nuevo: LAURA.id },
   }),
   estado({
     estado: 'error-correo-generico', titulo: 'correo sin cuenta, sin verificar, suspendida o interna: el mismo mensaje en los cuatro casos (CA-2)',
@@ -276,11 +285,11 @@ const ESTADOS = [
   }),
   estado({
     estado: 'ya-tiene-acceso', titulo: 'ya tiene acceso directo: no se duplica y se resalta su fila (CA-4)',
-    form: { correo: SOFIA.correo, nivel: 'Editor', error: T.yaTiene(SOFIA.nombre) }, lista: { ...CON_TRES, resaltar: SOFIA.nombre },
+    form: { correo: SOFIA.correo, nivel: 'Editor', error: T.yaTiene(SOFIA.nombre) }, lista: { ...CON_TRES, resaltar: SOFIA.id },
   }),
   estado({
     estado: 'cambiando-nivel', titulo: 'cambiando Lector → Editor: la fila muestra «Guardando…» y se anuncia (CA-7)',
-    lista: { ...CON_TRES, cambiando: { nombre: SOFIA.nombre, a: 'Editor' } },
+    lista: { ...CON_TRES, cambiando: { id: SOFIA.id, a: 'Editor' } },
   }),
   estado({
     estado: 'confirmar-revocar', titulo: 'confirmar «Quitar»: consecuencia explícita y foco en «Cancelar» (CA-8)', lista: CON_TRES,

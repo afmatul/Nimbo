@@ -8,6 +8,8 @@ const path = require('node:path');
 const M = require('../marco/marco.js');
 const S = require('../mis-archivos/mis-archivos.js');
 const E = require('../mis-archivos/estados.js');
+const AV = require('../mis-archivos/avisos.js');
+const MF = require('../mis-archivos/menu-fila.js');
 
 const repo = process.argv[2];
 if (!repo) throw new Error('Falta la ruta del worktree');
@@ -39,7 +41,7 @@ const CSS = '\n' + M.CSS.MARCO + M.CSS.BOTONES + M.CSS.MQ_900 +
 // ---------- Menú ⋮ por fila: mismo comportamiento de teclado que el menú de la cuenta (shared/layout) ----------
 // Enter, Espacio o flecha abajo abren en el primer ítem; flechas, Inicio y Fin recorren; Escape cierra y devuelve el
 // foco al botón; Tab cierra. En el estado «acciones» el menú de la primera fila empieza abierto y con el foco.
-const JS = E.JS_MENU;
+const JS = MF.JS_MENU;
 
 // ---------- Piezas ----------
 function vacio() {
@@ -61,7 +63,7 @@ const AVISOS_DESCARGA = {
   429: (n) => ({ titulo: `No pudimos preparar la descarga de «${n}».`, texto: 'Hiciste demasiadas solicitudes. Espera un momento e inténtalo de nuevo.', accion: 'Reintentar' }),
   404: (n) => ({ titulo: `No encontramos «${n}».`, texto: 'Puede que ya no esté en Mis archivos. Actualiza la lista para ver tus archivos.', accion: 'Actualizar lista' }),
 };
-const avisoDescarga = (codigo, nombre) => E.aviso(AVISOS_DESCARGA[codigo](nombre));
+const avisoDescarga = (codigo, nombre) => AV.aviso(AVISOS_DESCARGA[codigo](nombre));
 
 const arrastre = () => E.arrastre('Mis archivos', MAX);
 

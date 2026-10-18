@@ -7,7 +7,6 @@
 // antes del ícono; el nombre de la carpeta sigue siendo el enlace que la abre (CA-5). Las acciones de la fila valen en
 // cualquier nivel.
 const S = require('../mis-archivos/mis-archivos.js');
-const E = require('../mis-archivos/estados.js');
 const C = require('../carpetas/carpetas.js');
 
 const { icon } = C;
@@ -28,9 +27,8 @@ function menuDe({ tipo, fijado }) {
 //   estado (solo carpeta abierta): 'cargando' | 'vacia' | 'error'; sin él, se dibujan `hijos`.
 function celdaNombre(n, control) {
   const carpeta = n.tipo === 'carpeta';
-  const tile = carpeta ? `<span class="ftile ftile-folder">${icon('folder', 16)}</span>` : S.tile(n.nombre);
-  // <wbr> tras cada «_»: a 360 px el nombre se parte en los guiones bajos antes que en medio de una palabra
-  const visible = n.nombre.replace(/_/g, '_<wbr>');
+  const tile = C.tileNodo(n.tipo, n.nombre);
+  const visible = C.partible(n.nombre);
   const texto = carpeta ? `<a class="fname-link" href="#">${visible}</a>` : visible;
   const contexto = n.padre ? `<span class="sr-only">, dentro de ${n.padre}</span>` : '';
   return `<div class="fname tree-indent">${control}${tile}<div class="fname-text">${texto}${contexto}<span class="fmeta-m">${carpeta ? 'Carpeta' : n.tam} · ${n.fecha}</span></div></div>`;
@@ -67,7 +65,7 @@ function filas(n, ctx, nivel = 0, padre = '', nombrePadre = '') {
   return `
             <tr ${attrs}>
               <td class="tree-guides">${celdaNombre(dato, ctl)}</td>
-              <td class="c-size">${carpeta ? '<span aria-hidden="true">—</span><span class="sr-only">Carpeta, sin tamaño</span>' : n.tam}</td>
+              <td class="c-size">${carpeta ? C.SIN_TAMANO : n.tam}</td>
               <td class="c-date">${n.fecha}</td>
               <td class="c-act">${S.menuFila(i, n.nombre, ctx.menuEn === n.nombre, ctx.menu(n))}</td>
             </tr>${hijos.html}`;
@@ -179,4 +177,4 @@ const JS = `
 })();
 `;
 
-module.exports = { FIJAR, QUITAR, menuDe, tabla, CSS, JS, JS_MENU: E.JS_MENU };
+module.exports = { FIJAR, QUITAR, menuDe, tabla, CSS, JS };

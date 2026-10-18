@@ -44,7 +44,7 @@
 
 ## Decisiones de UX
 - **Barra lateral** (escritorio, 236 px): logo «N · NIMBO» con el distintivo del plan, navegación principal (Mis
-  archivos, Compartidos conmigo, Recientes, Fijados, Papelera con su contador), separador, Optimizador y Plan y
+  archivos, Compartido conmigo, Recientes, Fijados, Papelera con su contador), separador, Optimizador y Plan y
   facturación, «Carpetas» con las carpetas de primer nivel y su número de elementos, y la tarjeta de cuota abajo.
 - **Ítem activo**: fondo `accent`, texto `foreground` en 600, barra izquierda de 3 px `primary` y
   `aria-current="page"`. La página actual no depende solo del color. Su contador pasa a `secondary-foreground`, y
@@ -237,8 +237,8 @@ Este mockup es la referencia para rehacer `AppLayout`. Hoy difiere en lo siguien
    barra lateral. La propuesta y este mockup llevan la barra lateral a toda la altura, con el logo «N · NIMBO» y el
    plan arriba, y la barra superior dentro de la columna de contenido, con la ruta y la cuenta.
 2. **Navegación**: `AppLayout` tiene «Mis Archivos», «Compartidos», «Papelera», «Planes y Cuota» y «Agente Nimbo»,
-   con mayúsculas de título. El mockup sigue la propuesta: «Mis archivos», «Compartidos conmigo», «Recientes»,
-   «Fijados», «Papelera», «Optimizador», «Plan y facturación» y las carpetas. El agente se abre desde el explorador
+   con mayúsculas de título. El mockup sigue la propuesta: «Mis archivos», «Compartido conmigo» (rótulo de la spec
+   012 §6), «Recientes», «Fijados», «Papelera», «Optimizador», «Plan y facturación» y las carpetas. El agente se abre desde el explorador
    (p. 08), no desde la navegación.
 3. **Contraste del ítem activo**: `text-primary` sobre `bg-accent` da **4.05**, por debajo de AA (1.4.3; texto de
    14 px). El mockup usa `text-foreground` en 600 (11.07) y conserva la barra `border-l-primary` (S-2 de 000b).

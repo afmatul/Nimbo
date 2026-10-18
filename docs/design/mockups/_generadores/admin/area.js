@@ -435,11 +435,12 @@ function resumenErrores({ titulo, texto, items }) {
 }
 
 // ---------- Archivos generados ----------
-// Carpeta de salida de una pantalla de backoffice (la crea si no existe). Uso de cada generador: node generar.js <worktree>.
-function carpetaDeSalida(pantalla) {
+// Carpeta de salida docs/design/mockups/<modulo>/<pantalla> (la crea si no existe): backoffice (011) y sharing (012).
+// Uso de cada generador: node generar.js <worktree>.
+function carpetaDeSalida(modulo, pantalla) {
   const repo = process.argv[2];
   if (!repo) throw new Error('Falta la ruta del worktree');
-  const dir = path.join(repo, 'docs/design/mockups/backoffice', pantalla);
+  const dir = path.join(repo, 'docs/design/mockups', modulo, pantalla);
   fs.mkdirSync(dir, { recursive: true });
   return dir;
 }

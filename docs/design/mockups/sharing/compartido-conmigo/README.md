@@ -7,7 +7,9 @@
   [`_generadores/README.md`](../../_generadores/README.md)); no se edita a mano. Corpus y página de 012 en
   `_generadores/comparticion/` (los mismos que `../compartir/`); barra lateral con Accesos rápidos de 006
   (`carpetas/carpetas.js`, `accesos/accesos.js`); tabla, menú ⋮, esqueleto y error de `mis-archivos/`; panel de cargas de
-  `carga/panel.js`; «Cargar más» de `mis-archivos/estados.js` (el de 007); confirmación de `carpetas/carpetas.js`; aviso `warning` en diálogo de `mis-archivos/estados.js`.
+  `carga/panel.js`; «Cargar más» de `mis-archivos/cargar-mas.js` (el de 007); confirmación de `carpetas/carpetas.js`;
+  aviso `warning` en diálogo de `mis-archivos/avisos.js`. La entrada «Compartido conmigo» la rotula el marco
+  (`marco/marco.js`, una sola fuente para todas las pantallas).
   Tokens AA de `ui-guidelines.md` §2–§3, solo Inter, `tabular-nums`. Versión móvil real a 360 px. Es referencia;
   `apps/web` no lo importa.
 - **Estados incluidos** (`compartido-conmigo--<estado>.html`; la cuenta es Lucía Barrios como destinataria):
@@ -24,19 +26,23 @@
   - menu-fila-lector: «Descargar», «Fijar en la barra lateral» y «Salir de la compartición» (RN-4, CA-16, CA-17)
   - menu-fila-editor: además, «Subir nueva versión» (CA-13)
   - aviso-de-poda: confirmar la versión nueva con el archivo elegido, el espacio de la propietaria que usará y el aviso
-    de que se eliminará la versión más antigua (CA-13; 014 CA-15)
+    exacto «Se eliminará la versión más antigua para guardar esta.» (CA-13; 014 CA-15)
   - subiendo-version: panel de cargas con progreso y anuncio (CA-13)
   - version-subida: éxito en el panel; el archivo conserva su nombre (CA-13)
   - error-espacio-propietario: el mensaje de CA-14 en el panel, sin el espacio libre de la propietaria, y «La versión
     actual no cambió.»
+  - error-tamano-propietario: «El archivo supera el máximo por archivo del plan de quien lo compartió.», sin la cifra
+    (CA-14); el tamaño que se ve es el del archivo que eligió la Editora
+  - error-tipo: «Este archivo no es un .docx válido. Comprueba que sea el archivo correcto.», el de 005 CA-11 tal cual,
+    como 014 CA-3 (CA-14)
   - confirmar-salir: «¿Salir de la compartición?» con el texto de la spec (CA-16)
   - cajon-abierto: la entrada «Compartido conmigo» activa en el cajón (solo por debajo de 900 px)
 - **Capturas**: `docs/design/capturas/sharing/compartido-conmigo/compartido-conmigo--<estado>--<360|1440>.png`
-  (15 estados × 2 anchos).
+  (17 estados × 2 anchos).
 - **Verificación** (axe-core 4.14 con `pw/axe-seguridad.js`): sin desbordamiento a 360 px y sin objetivos de menos de
   24 px (44 px en móvil). La única violación es la del marco (`label-content-name-mismatch` en el botón de la cuenta),
-  común a todos los mockups generados y corregida en `marco/marco.js` por la rama de 017; con esa corrección los 15
-  estados quedan sin violaciones.
+  común a todos los mockups generados y corregida en `marco/marco.js` por la rama de 017; con esa corrección los 17
+  estados quedan sin violaciones a 360 y 1440 px (comprobado aplicando el parche de 017 en una copia, 2026-10-17).
 
 ## Decisiones de UX
 - **Entrada**: «Compartido conmigo» en la navegación principal, debajo de «Mis archivos», con `aria-current="page"`;
@@ -48,7 +54,7 @@
   botón desaparece). Los estados de error y fin de la pieza no se dibujan aquí: son los de 007.
 - **Lista**: columnas Nombre (ícono de tipo y extensión en el nombre), Propietario (avatar con iniciales y nombre),
   Nivel (texto con ícono, nunca solo color) y Compartido. A 360 px las columnas se ocultan y van en texto bajo el nombre
-  («Laura Barrios · Editor · hoy · 09:40»). Las carpetas se abren con su nombre; no hay desglose en esta página.
+  («Rebeca Sicán · Editor · hoy · 09:40»). Las carpetas se abren con su nombre; no hay desglose en esta página.
 - **Carpeta abierta**: título de la carpeta, «Compartida por {propietario} · Tu nivel: Editor» y la nota «Solo
   {propietario} puede subir archivos nuevos, crear carpetas, renombrar, mover o eliminar aquí.», que explica por qué no
   hay esos botones. Columnas Nivel (efectivo), Tamaño y Modificado. En móvil, «‹ {carpeta anterior}» vuelve atrás.
@@ -58,11 +64,15 @@
 - **Subir nueva versión** (CA-13): «Subir nueva versión» abre el selector de archivos (solo la misma extensión) y luego
   un `AlertDialog`: «¿Subir una nueva versión de «{archivo}»?», «Pasará a ser la versión actual y el archivo conservará
   su nombre. Usará {tamaño} del espacio de {propietario}, a quien pertenece el archivo.», el archivo elegido y, si el plan
-  de la propietaria está en su límite, el `Alert` `warning` de 014. Como el Editor no ve el historial (CA-15), el aviso
-  no da número de versión: «Se eliminará la versión más antigua.». Foco inicial en «Cancelar». Sin poda, el mismo
-  diálogo sin el aviso. Después, el panel de cargas de 005 (progreso, éxito o error).
-- **Sin espacio de la propietaria** (CA-14): error en el panel con el texto de la spec; nunca cuánto le falta ni su
-  espacio libre. Sin acción: Nimbo no avisa a la propietaria (RN-11).
+  de la propietaria está en su límite, el `Alert` `warning` de 014 con el texto exacto de CA-13: «Se eliminará la
+  versión más antigua para guardar esta.». Como el Editor no ve el historial (CA-15) ni datos del plan de la propietaria
+  (§5), el aviso no da número de versión, ni su nombre, ni cuántas versiones conserva su plan. Foco inicial en
+  «Cancelar». Sin poda, el mismo diálogo sin el aviso. Después, el panel de cargas de 005 (progreso, éxito o error).
+- **Rechazos de la versión** (CA-14): un mensaje por causa en el panel de cargas, con el texto de la spec y «La versión
+  actual no cambió.». Ninguno revela el plan de la propietaria, su retención, su máximo por archivo ni su espacio libre
+  (§5): sin espacio, nunca cuánto le falta; demasiado grande, sin la cifra del máximo; tipo inválido, el mensaje de 005
+  CA-11 (un ejecutable usaría el de 005 CA-24, «No se permiten archivos ejecutables. Sube otro archivo.»). Sin acción
+  hacia la propietaria: Nimbo no le avisa (RN-11).
 - **Salir** (CA-16): `ConfirmDestructiveDialog` con el texto de la spec, foco en «Cancelar» y «Salir de la compartición».
 - **Ya no disponible**: un solo mensaje para todos los `404` (revocado, papelera del propietario, suspensión,
   inexistente): no revela la causa (CA-8, CA-21, CA-23).
@@ -81,4 +91,10 @@
 
 ## Pendiente
 - Vista previa (017), edición `.docx` (016) y agente (020) suman sus acciones al menú cuando lleguen; aquí no se dibujan.
-- P-5 (010): con el plan de la propietaria vencido, ¿«Subir nueva versión» se oculta? No se dibuja.
+
+## Notas
+- Solo lectura por plan vencido (RF-23, P-5): resuelto. La spec 010 (Borrador) dice que en solo lectura el Editor no
+  sube versiones; decisión de Fátima: «Salir de la compartición» sí se permite, «Subir nueva versión» no. El estado de
+  solo lectura se dibuja con la 010/plan de 012 (PD-108); aquí no se dibuja.
+- La dueña de «Proyecto Beta · Diseño» es Rebeca Sicán (RS) y no Laura Barrios: sus iniciales (LB) eran las mismas que
+  las de Lucía Barrios, la cuenta del marco.

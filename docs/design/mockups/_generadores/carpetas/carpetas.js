@@ -49,8 +49,18 @@ function sidebar({ activo = 'Mis archivos', papelera = '6', cuota = S.CUOTA_NORM
   }).replace(M.cuota(cuota), S.cuota(cuota, tramo));
 }
 
-// Ítem de un menú ⋮ (DropdownMenu): ícono y texto; 'sep' lo dibuja menuFila
-const itemMenu = (ic, label) => `<button role="menuitem" type="button" tabindex="-1">${icon(ic)}<span>${label}</span></button>`;
+// Ítem de un menú ⋮ (DropdownMenu): ícono y texto; 'sep' lo dibuja menuFila. cls 'menu-danger': acción definitiva (rojo
+// con ícono, CSS_006). crearItemMenu recibe el `icon` de quien lo usa (012 suma íconos de personas); una sola plantilla
+// para 006, la papelera y 012 (Art. VI.2).
+const crearItemMenu = (iconoDe) => (icono, label, cls = '') =>
+  `<button role="menuitem" type="button" tabindex="-1"${cls ? ` class="${cls}"` : ''}>${iconoDe(icono)}<span>${label}</span></button>`;
+const itemMenu = crearItemMenu(icon);
+
+// <wbr> tras cada «_»: a 360 px un nombre largo se parte en los guiones bajos antes que en medio de una palabra
+const partible = (nombre) => nombre.replace(/_/g, '_<wbr>');
+
+// Celda «Tamaño» de una carpeta: raya visible y texto para lectores de pantalla (tablas de 006, desglose y 012)
+const SIN_TAMANO = '<span aria-hidden="true">—</span><span class="sr-only">Carpeta, sin tamaño</span>';
 
 // ---------- Aviso flotante (toast; Sonner de shadcn si se aprueba su ADR) ----------
 // role="status": lo anuncian los lectores de pantalla sin mover el foco. La acción es un enlace o botón real.
@@ -82,7 +92,7 @@ function dialogoNombre(d) {
           <input id="nombre" name="nombre" type="text" autocomplete="off" maxlength="255" value="${d.valor}" autofocus${describedby ? ` aria-describedby="${describedby}"` : ''}${d.error ? ' aria-invalid="true"' : ''}>${sufijo}
         </div>
         ${d.error ? `<p class="field-error" id="nombre-error" role="alert">${icon('alert', 15)}<span>${d.error}</span></p>` : ''}
-      </div>${d.alerta ? alertaDialogo(d.alerta) : ''}
+      </div>${d.alerta ? alertaDialogo({ texto: d.alerta }) : ''}
       <div class="dialog-actions">
         <button class="btn btn-outline" type="button">Cancelar</button>
         <button class="btn btn-primary" type="submit">${d.confirmar}</button>
@@ -91,10 +101,14 @@ function dialogoNombre(d) {
   </div>`;
 }
 
-// Error del servidor que no corresponde a un campo (profundidad máxima, mover inválido, conflicto al mover)
-function alertaDialogo(texto) {
+// Error dentro de un diálogo (Alert destructive) que no corresponde a un campo: profundidad máxima, mover inválido o
+// conflicto al mover (006), restaurar sin espacio (014) y la lista de accesos que no cargó (012).
+// a: { titulo (opcional, en negrita y destructive), texto, accion (opcional: HTML de un botón, p. ej. «Reintentar») }
+function alertaDialogo({ titulo = '', texto, accion = '' }) {
+  const p = `<p>${titulo ? `<strong>${titulo}</strong>` : ''}${texto}</p>`;
+  const cuerpo = accion ? `<div>${p}\n        ${accion}</div>` : p;
   return `
-      <div class="dlg-alert" role="alert">${icon('alert', 18)}<p>${texto}</p></div>`;
+      <div class="dlg-alert" role="alert">${icon('alert', 18)}${cuerpo}</div>`;
 }
 
 // ---------- Diálogo de confirmación destructiva (ConfirmDestructiveDialog, AlertDialog de shadcn) ----------
@@ -105,6 +119,9 @@ const confirmar = ({ titulo, cuerpo, boton }) => M.dialog({ title: titulo, body:
 const IMAGENES = ['png', 'jpg', 'jpeg', 'webp'];
 const tileArchivo = (nombre) => (IMAGENES.includes(nombre.split('.').pop().toLowerCase())
   ? `<span class="ftile ftile-img">${icon('image', 16)}</span>` : S.tile(nombre));
+// Ícono de un nodo de cualquier lista (carpeta con los tokens brand o el tipo de archivo): una sola pieza para las
+// tablas de 006 y 007, el desglose, la papelera y las dos pantallas de 012 (Art. VI.2).
+const tileNodo = (tipo, nombre) => (tipo === 'carpeta' ? `<span class="ftile ftile-folder">${icon('folder', 16)}</span>` : tileArchivo(nombre));
 
 // Encabezado de columna. orden: { campo, dir } (007); la columna activa lleva aria-sort y una flecha. Sin orden, el
 // HTML es el de 006.
@@ -123,12 +140,12 @@ const MENU_CARPETA = [mi('pencil', 'Renombrar'), mi('folderInput', 'Mover a…')
 
 function fila([tipo, nombre, tam, fecha], i, menuAbierto) {
   const carpeta = tipo === 'carpeta';
-  const tile = carpeta ? `<span class="ftile ftile-folder">${icon('folder', 16)}</span>` : tileArchivo(nombre);
+  const tile = tileNodo(tipo, nombre);
   const texto = carpeta ? `<a class="fname-link" href="#">${nombre}</a>` : nombre;
   return `
             <tr>
               <td><div class="fname">${tile}<div class="fname-text">${texto}<span class="fmeta-m">${carpeta ? 'Carpeta' : tam} · ${fecha}</span></div></div></td>
-              <td class="c-size">${carpeta ? '<span aria-hidden="true">—</span><span class="sr-only">Carpeta, sin tamaño</span>' : tam}</td>
+              <td class="c-size">${carpeta ? SIN_TAMANO : tam}</td>
               <td class="c-date">${fecha}</td>
               <td class="c-act">${S.menuFila(i, nombre, i === menuAbierto, carpeta ? MENU_CARPETA : MENU_ARCHIVO)}</td>
             </tr>`;
@@ -148,19 +165,23 @@ function tabla(nodos, lugar, menuAbierto = -1, { orden = null } = {}) {
 
 const botonNuevaCarpeta = () => `<button class="btn btn-outline" type="button">${icon('folderPlus', 16)}<span>Nueva carpeta</span></button>`;
 
-// ruta: [Mis archivos, …, carpeta abierta]. En móvil (sin migas en la barra superior) se ve «‹ {carpeta anterior}»
-// con el nombre real («‹ Mis archivos» en el primer nivel) y el nombre accesible «Volver a {nombre}».
-function encabezado(ruta) {
-  const actual = ruta[ruta.length - 1];
+// En móvil (sin migas en la barra superior) se ve «‹ {anterior}» con el nombre real y el nombre accesible
+// «Volver a {anterior}»: carpetas (006), ficha de un archivo (014) y carpeta compartida (012).
+const volverA = (anterior) => `
+        <a class="back-link" href="#" aria-label="Volver a ${anterior}">${icon('chevronLeft', 18)}<span>${anterior}</span></a>`;
+
+// ruta: [Mis archivos, …, carpeta abierta] («‹ Mis archivos» en el primer nivel). o: { acciones (HTML; por defecto
+// «Nueva carpeta» y «Subir archivos»; '' sin acciones, como en 012), sub (línea bajo el título) }.
+function encabezado(ruta, { acciones = botonNuevaCarpeta() + S.botonSubir(), sub = '' } = {}) {
   const anterior = ruta[ruta.length - 2];
-  const volver = anterior ? `
-        <a class="back-link" href="#" aria-label="Volver a ${anterior}">${icon('chevronLeft', 18)}<span>${anterior}</span></a>` : '';
-  return `${volver}
+  const linea = sub ? `
+            <p class="page-sub">${sub}</p>` : '';
+  return `${anterior ? volverA(anterior) : ''}
         <div class="page-head">
           <div>
-            <h1>${actual}</h1>
-          </div>
-          <div class="head-actions">${botonNuevaCarpeta()}${S.botonSubir()}</div>
+            <h1>${ruta[ruta.length - 1]}</h1>${linea}
+          </div>${acciones ? `
+          <div class="head-actions">${acciones}</div>` : ''}
         </div>`;
 }
 
@@ -207,6 +228,7 @@ const CSS_006 = `
   .dlg-alert { display: flex; gap: 10px; align-items: flex-start; margin-top: 16px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--destructive-soft) 45%, var(--card)); border-radius: var(--radius-md); background: var(--destructive-tint); }
   .dlg-alert .ico { margin-top: 1px; color: var(--destructive); }
   .dlg-alert p { margin: 0 !important; color: var(--foreground) !important; font-size: 13.5px !important; }
+  .dlg-alert strong { display: block; color: var(--destructive) !important; font-weight: 600; }
   .dlg-hint { display: flex; gap: 8px; align-items: flex-start; font-size: 13px !important; }
   .dlg-hint .ico { margin-top: 2px; color: var(--primary); }
   .dialog-note { margin-top: 14px !important; padding: 10px 12px; border-radius: var(--radius-md); background: var(--muted); color: var(--secondary-foreground) !important; font-size: 13px !important; overflow-wrap: anywhere; }
@@ -261,6 +283,6 @@ const CSS_006_MQ600 = `    .page-head { align-items: flex-start; }
 
 module.exports = {
   P, icon, LOGO_NUBE, conLogo, RETENCION, MAX_NIVELES, CARPETAS_RAIZ,
-  sidebar, itemMenu, toast, dialogoNombre, alertaDialogo, confirmar, CSS_006, CSS_006_MQ600,
-  MENU_ARCHIVO, MENU_CARPETA, fila, tabla, botonNuevaCarpeta, encabezado,
+  sidebar, crearItemMenu, itemMenu, partible, SIN_TAMANO, tileNodo, toast, dialogoNombre, alertaDialogo, confirmar, CSS_006, CSS_006_MQ600,
+  MENU_ARCHIVO, MENU_CARPETA, fila, tabla, botonNuevaCarpeta, volverA, encabezado,
 };

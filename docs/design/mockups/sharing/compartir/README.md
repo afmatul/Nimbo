@@ -7,7 +7,7 @@
   - Estados de 012: HTML autocontenido generado con `../../_generadores/compartir/generar.js` (ver
     [`_generadores/README.md`](../../_generadores/README.md)); no se edita a mano. Corpus y página de 012 en
     `_generadores/comparticion/`; explorador de fondo de `explorador/desglose.js` y `carpetas/carpetas.js` (006);
-    confirmación destructiva de `carpetas/carpetas.js`; aviso `warning` en diálogo de `mis-archivos/estados.js`. Tokens AA
+    confirmación destructiva de `carpetas/carpetas.js`; aviso `warning` en diálogo de `mis-archivos/avisos.js`. Tokens AA
     de `ui-guidelines.md` §2–§3, solo Inter, cifras con `tabular-nums`. Versión móvil real a 360 px.
   - `compartir--propuesta.html`: el HTML empaquetado de la propuesta (antes `compartir.html`, con sus capturas
     renombradas). **Se pasó al patrón vigente** (un HTML generado por estado) porque contradice la spec: tiene
@@ -19,7 +19,9 @@
   - sin-accesos: solo la propietaria; «Aún no compartes «Proyecto Alpha» con nadie.»
   - cargando: esqueleto de la lista con «Cargando quién tiene acceso…»
   - con-accesos: archivo con accesos directos (nivel y «Quitar») y heredados de «Proyecto Alpha» sin controles, con
-    «Gestionar en «Proyecto Alpha»» y «Rige su acceso directo: Editor» cuando la persona tiene ambos (CA-6, CA-20)
+    «Gestionar en «Proyecto Alpha»»; rige el mayor (CA-6, CA-20, RN-6): Sofía (directo Editor, heredado Lector) muestra
+    «Rige su acceso directo: Editor» y Laura (heredado Editor, directo Lector) «Rige este acceso: es mayor que el
+    directo (Lector)»
   - con-accesos-carpeta: la carpeta de origen con tres accesos directos (destino de «Gestionar en…»)
   - agregando: «Compartiendo…» con campos y botón deshabilitados y anuncio (CA-1)
   - compartido: éxito; la persona aparece arriba con «NUEVO» y un mensaje `role="status"` (CA-1, RN-11)
@@ -57,7 +59,10 @@
   «Quitar» con nombre accesible completo («Quitar el acceso de …»).
 - **Heredados** (CA-6): grupo «Heredado de «{carpeta}»» con el nivel en texto y sin controles, la nota «Estos accesos
   se cambian o se quitan en esa carpeta.» y «Gestionar en «{carpeta}»», que abre este mismo diálogo para la carpeta de
-  origen. Si la persona tiene también acceso directo de otro nivel, la fila heredada dice cuál rige (CA-20, RN-6).
+  origen. Si la persona tiene también acceso directo de otro nivel, rige el mayor (CA-20, RN-6) y la fila heredada lo
+  dice en texto: «Rige su acceso directo: {nivel}» si gana el directo, o «Rige este acceso: es mayor que el directo
+  ({nivel})» si gana el heredado, para que nadie crea que bajar el directo a Lector le quita la edición. Con el mismo
+  nivel no hay nota. Un grupo por carpeta de origen, cada uno con su id y su enlace «Gestionar en…».
 - **Cambiar nivel** (CA-7): sin confirmación (es reversible); mientras se guarda, el `select` y «Quitar» de esa fila
   quedan deshabilitados con «Guardando…» y un anuncio `role="status"`.
 - **Quitar** (CA-8): `ConfirmDestructiveDialog` sobre el diálogo, con el texto de la spec, foco inicial en «Cancelar» y
@@ -79,6 +84,8 @@
 | `input` sobre `card` (borde del `select`, no texto) | 3.07 |
 | `warning-foreground` sobre `warning` al 10 % (aviso de intentos) | 4.86 |
 
-## Pendiente
-- Solo lectura por plan vencido (RF-23): ¿la propietaria puede compartir o cambiar niveles? Lo fija 010 (no se dibuja).
+## Notas
+- Solo lectura por plan vencido (RF-23): resuelto. La spec 010 (Borrador) dice que en solo lectura no se comparte;
+  decisión de Fátima: la propietaria sí puede quitar accesos y bajar a Lector, pero no compartir ni subir a Editor. El
+  estado de solo lectura se dibuja con la 010/plan de 012 (PD-108); aquí no se dibuja.
 - La rejilla del mockup que hace crecer la hoja (`.canvas:has(.dialog-share)`) es del mockup, no del componente.

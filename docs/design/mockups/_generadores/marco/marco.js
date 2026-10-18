@@ -48,9 +48,11 @@ const icon = (name, size = 18, cls = '') =>
 
 // ---------- Datos del marco (vienen de la API en la implementación) ----------
 const CUENTA = { nombre: 'Lucía Barrios', iniciales: 'LB', correo: 'lucia.barrios@gmail.com' };
+// Rótulo de la entrada de lo compartido (spec 012 §6): una sola fuente para la navegación y las pantallas de sharing
+const COMPARTIDO = 'Compartido conmigo';
 const NAV_PRINCIPAL = [
   ['folder', 'Mis archivos'],
-  ['share', 'Compartidos conmigo'],
+  ['share', COMPARTIDO],
   ['clock', 'Recientes'],
   ['pin', 'Fijados'],
   ['trash', 'Papelera', '3'],
@@ -126,8 +128,9 @@ function sidebar({ activo = '', plan = 'PERSONAL', cuota: q = CUOTA, carpetas = 
 }
 
 // Cajón móvil (por debajo de 900 px): mismo contenido que la barra lateral dentro de un diálogo modal.
-// contadorPapelera: como en sidebar (por defecto, el de NAV_PRINCIPAL).
-function cajon({ activo = '', plan = 'PERSONAL', cuota: q = CUOTA, abierto = false, carpetas = CARPETAS, contadorPapelera, accesos = '' } = {}) {
+// contadorPapelera: como en sidebar (por defecto, el de NAV_PRINCIPAL). tarjetaCuota: HTML de la tarjeta de cuota con
+// su tramo (mis-archivos.js `cuota(q, tramo)`); sin ella, la de `cuota(q)`.
+function cajon({ activo = '', plan = 'PERSONAL', cuota: q = CUOTA, abierto = false, carpetas = CARPETAS, contadorPapelera, accesos = '', tarjetaCuota = '' } = {}) {
   const oculto = abierto ? '' : ' hidden';
   return `
   <div class="drawer-overlay" data-cerrar-cajon aria-hidden="true"${oculto}></div>
@@ -139,7 +142,7 @@ function cajon({ activo = '', plan = 'PERSONAL', cuota: q = CUOTA, abierto = fal
         <button class="icon-btn" type="button" data-cerrar-cajon aria-label="Cerrar menú">${icon('x', 22)}</button>
       </div>
       ${navegacion({ activo, idPrimerEnlace: 'cajon-primero', carpetas, contadorPapelera, accesos })}
-      ${cuota(q)}
+      ${tarjetaCuota || cuota(q)}
   </div>`;
 }
 
@@ -271,6 +274,6 @@ const EXTRA = `
 `;
 
 module.exports = {
-  CSS, EXTRA, P, icon, CUENTA, CUOTA, DIALOGO_CERRAR_SESION,
+  CSS, EXTRA, P, icon, CUENTA, CUOTA, COMPARTIDO, DIALOGO_CERRAR_SESION,
   sidebar, cajon, topbar, dialog, cabecera, navegacion, cuota, logo,
 };

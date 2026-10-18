@@ -8,7 +8,7 @@ const path = require('node:path');
 const M = require('../marco/marco.js');
 const S = require('../mis-archivos/mis-archivos.js');
 const U = require('./panel.js');
-const E = require('../mis-archivos/estados.js');
+const AV = require('../mis-archivos/avisos.js');
 
 const repo = process.argv[2];
 if (!repo) throw new Error('Falta la ruta del worktree');
@@ -17,7 +17,7 @@ fs.mkdirSync(OUT, { recursive: true });
 
 // Íconos (los del panel más los de la lista) y piezas del panel de cargas: carga/panel.js
 const { btnIcon, panel } = U;
-// Íconos: los del panel (el aviso de poda de 014 trae el suyo, mis-archivos/estados.js)
+// Íconos: los del panel (el aviso de poda de 014 trae el suyo, mis-archivos/avisos.js)
 const { icon } = U;
 
 // Plan Personal (014: estado con aviso de poda; conserva 3 versiones). Cuota de ejemplo de espacio/espacio.js.
@@ -44,7 +44,7 @@ const CSS = '\n' + M.CSS.MARCO + M.CSS.BOTONES + M.CSS.DIALOGO + M.CSS.MQ_900 +
   /* Spec 014: tres acciones y aviso de poda (Alert warning de ui-guidelines §4) */
   .dialog.dialog-conflict { width: min(540px, calc(100% - 32px)); }
   .dialog-options { list-style: none; margin: 12px 0 0; display: grid; gap: 4px; }
-` + E.CSS_DLG_WARN + `
+` + AV.CSS_DLG_WARN + `
   @media (max-width: 900px) {
 ` + U.CSS_PANEL_MQ900 + `  }
   @media (max-width: 600px) {
@@ -80,7 +80,7 @@ function dialogo(d) {
   // Spec 014 (D-4, CA-1, CA-15): tercera acción «Reemplazar (nueva versión)». El foco inicial sigue en «Conservar
   // ambos» (decisión 4 de 005). Si el archivo existente ya tiene las versiones que conserva el plan, avisa cuál se
   // eliminará al reemplazar (warning, role="status").
-  const poda = d.poda ? E.avisoDialogo({
+  const poda = d.poda ? AV.avisoDialogo({
     titulo: `Si reemplazas, se eliminará la versión ${d.poda.version}.`,
     texto: `Tu plan conserva ${d.poda.retenidas} versiones. Al reemplazar se eliminará la versión ${d.poda.version}, la más antigua.`,
   }) : '';

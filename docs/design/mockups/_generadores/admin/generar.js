@@ -7,7 +7,7 @@ const A = require('./area.js');
 const C = require('./corpus.js');
 const { tramoDe } = require('../espacio/espacio.js');
 
-const OUT = A.carpetaDeSalida('admin');
+const OUT = A.carpetaDeSalida('backoffice', 'admin');
 
 const { icon } = A;
 

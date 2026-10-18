@@ -7,8 +7,8 @@
   - Estados de 014: HTML autocontenido generado con `../../_generadores/ficha-archivo/generar.js` (ver
     [`_generadores/README.md`](../../_generadores/README.md)); no se edita a mano. Marco de `marco/marco.js`, barra
     lateral y cuota del plan Personal de `espacio/espacio.js` (la de 007), logo y toast de `carpetas/carpetas.js`, y
-    esqueleto, error y `Alert` de `mis-archivos/estados.js`. Tokens AA de `ui-guidelines.md` §2–§3, solo Inter, cifras
-    con `tabular-nums`. Versión móvil real a 360 px.
+    esqueleto y error de `mis-archivos/estados.js` y `Alert` de `mis-archivos/avisos.js`. Tokens AA de
+    `ui-guidelines.md` §2–§3, solo Inter, cifras con `tabular-nums`. Versión móvil real a 360 px.
   - `ficha-archivo--vision.html`: el paquete de diseño interno anterior (antes `ficha-archivo.html`), con autoría por
     porcentaje, cambios por párrafo, indexación, accesos y enlace público. **No se implementa tal cual** (ver
     «Diferencias»). Solo se corrigió su texto de restaurar.

@@ -5,7 +5,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const M = require('../marco/marco.js');
-const E = require('../mis-archivos/estados.js');
+const AV = require('../mis-archivos/avisos.js');
+const CM = require('../mis-archivos/cargar-mas.js');
 const { icon } = M;
 
 const repo = process.argv[2];
@@ -91,7 +92,7 @@ const CSS = '\n' + M.CSS.MARCO + `  .stack { max-width: 880px; display: grid; ga
   .when .h { display: block; color: var(--muted-foreground); }
   .is-internal .when .h { color: var(--secondary-foreground); }
 
-` + E.CSS_CARGAR_MAS + E.CSS_CARGAR_MAS_FIN + E.CSS_ALERT + `
+` + CM.CSS_CARGAR_MAS + CM.CSS_CARGAR_MAS_FIN + CM.CSS_CARGAR_MAS_ERROR_EN_PIE + AV.CSS_ALERT + `
   /* Esqueleto y estados de pantalla */
   .skeleton-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) 90px; gap: 14px; align-items: center; padding: 16px; background: var(--card); }
   .skeleton-row + .skeleton-row { border-top: 1px solid var(--border); }
@@ -130,7 +131,7 @@ const CSS = '\n' + M.CSS.MARCO + `  .stack { max-width: 880px; display: grid; ga
     .event .body { grid-column: 2; grid-row: 2; }
     .skeleton-row { grid-template-columns: 40px minmax(0, 1fr); }
     .skeleton-row .w-date { display: none; }
-` + E.CSS_ALERT_MQ600 + E.CSS_ALERT_SIN_CERRAR_MQ600 + E.CSS_CARGAR_MAS_MQ600 + `    .state .btn { width: 100%; }
+` + AV.CSS_ALERT_MQ600 + AV.CSS_ALERT_SIN_CERRAR_MQ600 + CM.CSS_CARGAR_MAS_MQ600 + `    .state .btn { width: 100%; }
     .account { position: static; }
     .account-pop { top: calc(100% - 2px); right: 8px; width: min(272px, calc(100% - 16px)); }
     .account-menu [role="menuitem"] { min-height: 44px; }
@@ -190,14 +191,14 @@ function filtros(f, { conteo = '', deshabilitado = false } = {}) {
       </section>`;
 }
 
-// Pie de la lista: «Cargar más» de mis-archivos/estados.js con los textos de Mi actividad
+// Pie de la lista: «Cargar más» de mis-archivos/cargar-mas.js con los textos de Mi actividad
 const TEXTOS_MAS = {
   anuncio: 'Cargando más actividad…',
-  error: { titulo: 'No pudimos cargar más actividad.', texto: 'Intenta de nuevo; lo que ya ves no cambió.', cerrar: false },
+  error: { titulo: 'No pudimos cargar más actividad.', texto: 'Intenta de nuevo; lo que ya ves no cambió.', cerrar: false, enPie: true },
   fin: 'Llegaste al final: no hay actividad más antigua.',
 };
 const PIES = { 'cargar-mas': 'listo', 'cargando-mas': 'cargando', 'cargar-mas-error': 'error', fin: 'fin' };
-const pieDe = (pie) => (PIES[pie] ? E.cargarMas(PIES[pie], TEXTOS_MAS) : '');
+const pieDe = (pie) => (PIES[pie] ? CM.cargarMas(PIES[pie], TEXTOS_MAS) : '');
 
 function lista(eventos, pie) {
   return `
@@ -241,6 +242,7 @@ const ESTADO = {
       </section>`,
 };
 
+// El cajón va cerrado (hidden): es el destino del aria-controls="cajon" del botón de menú de la barra superior.
 function page(v) {
   const file = v.estado === 'default' ? 'mi-actividad.html' : `mi-actividad--${v.estado}.html`;
   return `${M.cabecera({
@@ -269,7 +271,7 @@ function page(v) {
         </div>
       </main>
     </div>
-  </div>
+  </div>${M.cajon()}
 </div>
 
 </body>

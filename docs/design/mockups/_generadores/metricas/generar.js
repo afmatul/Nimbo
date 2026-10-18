@@ -7,7 +7,7 @@
 const A = require('../admin/area.js');
 const C = require('../admin/corpus.js');
 
-const OUT = A.carpetaDeSalida('metricas');
+const OUT = A.carpetaDeSalida('backoffice', 'metricas');
 
 const { icon, badgeInactivo } = A;
 const { miles, CLIENTES, INTERNAS, TOTAL_CUENTAS } = C;

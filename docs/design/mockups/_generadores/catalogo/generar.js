@@ -6,7 +6,7 @@
 const A = require('../admin/area.js');
 const C = require('../admin/corpus.js');
 
-const OUT = A.carpetaDeSalida('catalogo');
+const OUT = A.carpetaDeSalida('backoffice', 'catalogo');
 
 const { icon, campo, resumenErrores, badgeInactivo } = A;
 const { miles, PERSONAL, PRO, EQUIPO, INSTITUCIONAL, PLAN_NUEVO } = C;

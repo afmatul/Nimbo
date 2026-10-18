@@ -6,7 +6,9 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const M = require('../marco/marco.js');
-const E = require('../mis-archivos/estados.js');
+const AV = require('../mis-archivos/avisos.js');
+const CM = require('../mis-archivos/cargar-mas.js');
+const MF = require('../mis-archivos/menu-fila.js');
 const A = require('../accesos/accesos.js');
 const S = require('../mis-archivos/mis-archivos.js');
 const Q = require('../espacio/espacio.js');
@@ -149,8 +151,8 @@ function page(v) {
   const sinMenu = { ...v.accesos, menuEn: '' };
   const barra = v.accesos ? { ...acc, accesos: A.seccion(v.cajon ? sinMenu : v.accesos, 'barra') } : {};
   const cajonAcc = v.accesos ? { ...acc, accesos: A.seccion(v.cajon ? v.accesos : sinMenu, 'cajon') } : {};
-  const cssAccesos = v.accesos ? `${S.CSS_MENU_FILA}${A.CSS}${E.CSS_ALERT}  @media (max-width: 600px) {
-${E.CSS_ALERT_MQ600}  }
+  const cssAccesos = v.accesos ? `${S.CSS_MENU_FILA}${A.CSS}${AV.CSS_ALERT}  @media (max-width: 600px) {
+${AV.CSS_ALERT_MQ600}  }
 ` : '';
   const aviso = v.aviso ? A.avisoTope() : '';
   // El cajón real se desplaza dentro del alto de la pantalla; aquí el lienzo crece para dibujarlo completo en la captura
@@ -186,7 +188,7 @@ ${E.CSS_ALERT_MQ600}  }
   </div>${conTarjeta(M.cajon({ activo, plan, cuota, abierto: !!v.cajon, ...cajonAcc }), v)}${M.dialog(M.DIALOGO_CERRAR_SESION, { oculto: !v.dialogo })}
 </div>
 
-<script>${JS}${v.accesos ? E.JS_MENU + A.JS_QUITAR : ''}</script>
+<script>${JS}${v.accesos ? MF.JS_MENU + A.JS_QUITAR : ''}</script>
 </body>
 </html>
 `;
@@ -202,7 +204,7 @@ const CSS_007 = CSS + S.CSS_LISTA + C.CSS_006 + Q.CSS_TARJETA + U.CSS_PANEL + B.
   .ventana .app { height: 100%; min-height: 0; }
   .ventana .main { min-height: 0; overflow-y: auto; }
   .ventana .topbar { position: sticky; top: 0; z-index: 4; }
-` + E.CSS_CARGAR_MAS + `
+` + CM.CSS_CARGAR_MAS + `
   /* Aviso (Toaster, ADR-0024; 007 CA-18): arriba y al centro, debajo de la barra superior (64 px + 16 px) y nunca
      sobre el panel de cargas, que sigue abajo a la derecha. Tokens del Toaster real: card, foreground, border,
      radius-md, shadow-modal; ícono de éxito en success-foreground. */
@@ -215,7 +217,7 @@ const CSS_007 = CSS + S.CSS_LISTA + C.CSS_006 + Q.CSS_TARJETA + U.CSS_PANEL + B.
 ` + S.CSS_LISTA_MQ600 + C.CSS_006_MQ600 + U.CSS_PANEL_MQ600_HOJA + U.CSS_PANEL_MQ600_FILAS + `    .ventana .app { min-height: 0; }
     /* A 360 px el aviso ocupa el ancho disponible, debajo de la barra superior (64 px + 8 px) */
     .toast { top: 72px; bottom: auto; left: 8px; right: 8px; transform: none; }
-` + E.CSS_CARGAR_MAS_MQ600 + `  }
+` + CM.CSS_CARGAR_MAS_MQ600 + `  }
 `;
 
 // En la app el aviso se retira solo a los 8 s y se pausa con el puntero o el foco (ADR-0024); aquí, solo con la X.
@@ -251,7 +253,7 @@ function pagina007(v) {
     ${B.sidebar(barra)}
     <div class="main"${v.desplazar ? ' data-desplazar="fin"' : ''}>
       ${M.topbar({ crumbs: ['Mis archivos'], conMenu: true, cajonAbierto: !!v.cajon })}
-      <main class="content" id="contenido">${tablaRaiz(v.nodos)}${v.desplazar ? E.cargarMas() : ''}
+      <main class="content" id="contenido">${tablaRaiz(v.nodos)}${v.desplazar ? CM.cargarMas() : ''}
       </main>
     </div>
   </div>${v.panel ? U.panel(v.panel) : ''}${v.aviso ? C.toast(v.aviso) : ''}${B.cajon({ ...barra, abierto: !!v.cajon })}${M.dialog(M.DIALOGO_CERRAR_SESION, { oculto: true })}

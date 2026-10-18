@@ -5,7 +5,7 @@
 const A = require('../admin/area.js');
 const C = require('../admin/corpus.js');
 
-const OUT = A.carpetaDeSalida('alta-interna');
+const OUT = A.carpetaDeSalida('backoffice', 'alta-interna');
 
 const { icon, campo, resumenErrores } = A;
 

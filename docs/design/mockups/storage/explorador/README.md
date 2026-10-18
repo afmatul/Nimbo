@@ -368,7 +368,7 @@ los 6 estados: axe-core sin violaciones a 360 y 1440 px, sin desbordamiento a 36
 | ordenado | `explorador--ordenado.html` | Ordenado por tamaño, mayor primero: carpetas primero (por nombre) y luego archivos de mayor a menor; la columna lleva `aria-sort` y flecha |
 | mas-paginas | `explorador--mas-paginas.html` | Primera página con el orden inicial (fecha de creación, más recientes primero) y «Cargar más» debajo de la lista |
 | cargando-mas | `explorador--cargando-mas.html` | «Cargar más» en curso: «Cargando más…» deshabilitado con `aria-disabled` y anuncio `role="status"`; la lista se conserva |
-| cargar-mas-error | `explorador--cargar-mas-error.html` | Falló la página siguiente: `Alert` destructivo debajo de la lista, «No pudimos cargar más elementos.» con «Reintentar» |
+| cargar-mas-error | `explorador--cargar-mas-error.html` | Falló la página siguiente: `Alert` destructivo dentro del pie, a todo el ancho y a 16 px de la lista (como `LoadMore` de `apps/web`), «No pudimos cargar más elementos.» con «Reintentar» |
 
 ### Decisiones de UX de 007
 - **Un solo control de orden** para todos los anchos: `DropdownMenu` con dos grupos de `menuitemradio`, a la derecha
@@ -395,7 +395,8 @@ los 6 estados: axe-core sin violaciones a 360 y 1440 px, sin desbordamiento a 36
 - **Paginación por cursor con «Cargar más»** (CA-9; `nextCursor` de `GET /folders/contents`): no hay total ni números
   de página. El botón desaparece cuando no hay `nextCursor`. Al cargar, las filas nuevas se agregan al final, el foco
   se queda en «Cargar más» y un `role="status"` anuncia «Se cargaron N elementos más.». Si falla, el botón se
-  reemplaza por el `Alert` con «Reintentar» y lo ya cargado sigue visible.
+  reemplaza por el `Alert` con «Reintentar» dentro del mismo pie (la estructura de `load-more.tsx`) y lo ya cargado
+  sigue visible.
 - **Imágenes** en la lista: ícono de imagen con `--file-img` (antes caían en «otro»).
 - Sin cuadrícula, filtros ni selección múltiple (spec 007 §7).
 - **Plan de los datos**: los estados de 005 y 006 usan plan Equipo (350 GB, 87 %); los de 007, plan Personal como el

@@ -9,6 +9,8 @@ const path = require('node:path');
 const M = require('../marco/marco.js');
 const S = require('../mis-archivos/mis-archivos.js');
 const E = require('../mis-archivos/estados.js');
+const AV = require('../mis-archivos/avisos.js');
+const MF = require('../mis-archivos/menu-fila.js');
 const C = require('../carpetas/carpetas.js');
 const A = require('../accesos/accesos.js');
 const D = require('./desglose.js');
@@ -151,7 +153,7 @@ function dialogoMover({ titulo, arbol, destino, hint = '', alerta = '' }) {
     <p class="dlg-hint">${icon('info', 16)}<span>${hint}</span></p>` : ''}
     <ul class="tree" role="tree" aria-label="Carpetas de destino">${arbol.map(nodo).join('')}
     </ul>
-    <p class="dialog-note" aria-live="polite">Se moverá a <strong>${destino}</strong>.</p>${alerta ? C.alertaDialogo(alerta) : ''}
+    <p class="dialog-note" aria-live="polite">Se moverá a <strong>${destino}</strong>.</p>${alerta ? C.alertaDialogo({ texto: alerta }) : ''}
     <div class="dialog-actions dialog-actions-move">
       <button class="btn btn-outline btn-new-folder" type="button">${icon('folderPlus', 16)}<span>Nueva carpeta</span></button>
       <button class="btn btn-outline" type="button">Cancelar</button>
@@ -395,12 +397,12 @@ const ESTADOS = [
   },
   {
     estado: 'acciones-archivo', titulo: 'menú ⋮ de un archivo: descargar, renombrar, mover a… y mover a la papelera',
-    ruta: RUTA_FASE3, js: E.JS_MENU,
+    ruta: RUTA_FASE3, js: MF.JS_MENU,
     cuerpo: enFase3((n) => tabla(n, 'Fase 3 · RAG', 2)),
   },
   {
     estado: 'acciones-carpeta', titulo: 'menú ⋮ de una carpeta: renombrar, mover a… y mover a la papelera',
-    ruta: RUTA_FASE3, js: E.JS_MENU,
+    ruta: RUTA_FASE3, js: MF.JS_MENU,
     cuerpo: enFase3((n) => tabla(n, 'Fase 3 · RAG', 1)),
   },
   {
@@ -472,51 +474,51 @@ const ESTADOS = [
   {
     estado: 'eliminar-fallido', titulo: 'no se pudo mover a la papelera: aviso arriba de la lista con «Reintentar»',
     ruta: RUTA_FASE3,
-    cuerpo: () => encabezado(RUTA_FASE3) + E.aviso({ titulo: 'No pudimos mover «Resultados_evaluacion.xlsx» a la papelera.', texto: 'Revisa tu conexión e inténtalo de nuevo. El archivo sigue en esta carpeta.', accion: 'Reintentar' }) + listaFase3(FASE3),
+    cuerpo: () => encabezado(RUTA_FASE3) + AV.aviso({ titulo: 'No pudimos mover «Resultados_evaluacion.xlsx» a la papelera.', texto: 'Revisa tu conexión e inténtalo de nuevo. El archivo sigue en esta carpeta.', accion: 'Reintentar' }) + listaFase3(FASE3),
   },
   // Desglose de carpetas (CA-26) y accesos rápidos (CA-27, CA-28)
   {
     estado: 'carpeta-desglosada', titulo: 'carpeta desglosada a dos niveles, con sangría, sin salir de Mis archivos (CA-26)',
-    ruta: ['Mis archivos'], nuevo: true, js: D.JS_MENU + D.JS, cuerpo: desglosada(),
+    ruta: ['Mis archivos'], nuevo: true, js: MF.JS_MENU + D.JS, cuerpo: desglosada(),
   },
   {
     estado: 'desglosada-ver-mas', titulo: 'carpetas con más de una página: «Ver más» al final de su nivel, lleva a la carpeta (Q-2)',
-    ruta: ['Mis archivos'], nuevo: true, js: D.JS_MENU + D.JS,
+    ruta: ['Mis archivos'], nuevo: true, js: MF.JS_MENU + D.JS,
     cuerpo: desglosada({ 'Proyecto Alpha': { verMas: true }, 'Fase 3 · RAG': { verMas: true } }),
   },
   {
     estado: 'desglosando-cargando', titulo: 'se desglosa «Documentación»: cargando en su fila (CA-26)',
-    ruta: ['Mis archivos'], nuevo: true, js: D.JS_MENU + D.JS,
+    ruta: ['Mis archivos'], nuevo: true, js: MF.JS_MENU + D.JS,
     cuerpo: desglosada({ 'Documentación': { abierto: true, estado: 'cargando' }, 'Fase 3 · RAG': { abierto: false } }),
   },
   {
     estado: 'desglosada-vacia', titulo: 'carpeta desglosada sin contenido: fila «Esta carpeta está vacía» (CA-26)',
-    ruta: ['Mis archivos'], nuevo: true, js: D.JS_MENU + D.JS,
+    ruta: ['Mis archivos'], nuevo: true, js: MF.JS_MENU + D.JS,
     cuerpo: desglosada({ Actas: { abierto: true, estado: 'vacia' }, 'Fase 3 · RAG': { abierto: false } }),
   },
   {
     estado: 'desglosada-error', titulo: 'falló el contenido de «Documentación»: error con «Reintentar» solo en su fila (CA-26)',
-    ruta: ['Mis archivos'], nuevo: true, js: D.JS_MENU + D.JS,
+    ruta: ['Mis archivos'], nuevo: true, js: MF.JS_MENU + D.JS,
     cuerpo: desglosada({ 'Documentación': { abierto: true, estado: 'error' }, 'Fase 3 · RAG': { abierto: false } }),
   },
   {
     estado: 'menu-fila-carpeta', titulo: 'menú ⋮ de una subcarpeta (nivel 2): «Fijar en la barra lateral» (CA-27)',
-    ruta: ['Mis archivos'], nuevo: true, js: D.JS_MENU + D.JS,
+    ruta: ['Mis archivos'], nuevo: true, js: MF.JS_MENU + D.JS,
     cuerpo: desglosada({ 'Fase 3 · RAG': { abierto: false } }, { menuEn: 'Fase 3 · RAG' }),
   },
   {
     estado: 'menu-fila-archivo', titulo: 'menú ⋮ de un archivo anidado (nivel 3): «Fijar en la barra lateral» (CA-27)',
-    ruta: ['Mis archivos'], nuevo: true, js: D.JS_MENU + D.JS,
+    ruta: ['Mis archivos'], nuevo: true, js: MF.JS_MENU + D.JS,
     cuerpo: desglosada({}, { menuEn: 'Informe_avance_RAG.docx' }),
   },
   {
     estado: 'menu-fila-quitar', titulo: 'menú ⋮ de un elemento ya fijado: «Quitar de la barra lateral» (CA-27)',
-    ruta: ['Mis archivos'], nuevo: true, js: D.JS_MENU + D.JS,
+    ruta: ['Mis archivos'], nuevo: true, js: MF.JS_MENU + D.JS,
     cuerpo: desglosada({ 'Proyecto Alpha': { abierto: false } }, { menuEn: 'Propuesta_Nimbo_v3.docx' }),
   },
   {
     estado: 'tope-de-fijados', titulo: 'sexto fijado: aviso «Ya fijaste 5 elementos…» y no cambia nada (CA-28)',
-    ruta: ['Mis archivos'], nuevo: true, js: D.JS_MENU + D.JS, accesos: ACCESOS_TOPE,
+    ruta: ['Mis archivos'], nuevo: true, js: MF.JS_MENU + D.JS, accesos: ACCESOS_TOPE,
     cuerpo: () => encabezado(['Mis archivos']) + A.avisoTope() + D.tabla(raizDesglosada({ 'Proyecto Alpha': { abierto: false } })),
   },
 ];

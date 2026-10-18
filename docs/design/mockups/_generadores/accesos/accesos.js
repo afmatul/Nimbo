@@ -5,7 +5,7 @@
 // marco por la opción `accesos` de marco/marco.js; con '' la barra queda como la de 005.
 const C = require('../carpetas/carpetas.js');
 const S = require('../mis-archivos/mis-archivos.js');
-const E = require('../mis-archivos/estados.js');
+const AV = require('../mis-archivos/avisos.js');
 
 const { icon } = C;
 
@@ -44,11 +44,12 @@ function fijado(n, idp, i, menuEn) {
   return `<li class="quick-item">${contenido(n)}${menu}</li>`;
 }
 
-// La lista se nombra con la sección y el grupo («Accesos rápidos Fijados»); `idp` evita ids repetidos entre la barra y el cajón.
+// La lista se nombra con la sección y el grupo («Accesos rápidos Fijados»); `idp` evita ids repetidos entre la barra y el cajón;
+// el título es `${idp}-accesos` (no `-t`: `cajon-t` ya es el título del cajón del marco).
 function grupo(idp, id, titulo, ic, nodos) {
   return `
         <p class="nav-title quick-group" id="${idp}-${id}">${icon(ic, 13)}<span>${titulo}</span></p>
-        <ul class="nav quick-list" aria-labelledby="${idp}-t ${idp}-${id}">${nodos.map((n) => `\n          ${n}`).join('')}
+        <ul class="nav quick-list" aria-labelledby="${idp}-accesos ${idp}-${id}">${nodos.map((n) => `\n          ${n}`).join('')}
         </ul>`;
 }
 
@@ -64,13 +65,13 @@ function seccion({ fijados = [], recientes = [], verMas = false, menuEn = '' } =
         <p class="sr-only" role="status" id="${idp}-vivo"></p>`;
   return `
         <div class="quick">
-        <p class="nav-title" id="${idp}-t">Accesos rápidos</p>${fijados.length ? grupo(idp, 'f', 'Fijados', 'pin', fijados.map((n, i) => fijado(n, idp, i, menuEn))) : ''}${visibles.length ? grupo(idp, 'r', 'Recientes', 'clock', visibles.map(enlace)) : ''}${verMasHtml}${vivo}
+        <p class="nav-title" id="${idp}-accesos">Accesos rápidos</p>${fijados.length ? grupo(idp, 'f', 'Fijados', 'pin', fijados.map((n, i) => fijado(n, idp, i, menuEn))) : ''}${visibles.length ? grupo(idp, 'r', 'Recientes', 'clock', visibles.map(enlace)) : ''}${verMasHtml}${vivo}
         </div>`;
 }
 
 // Aviso del tope (CA-28): `Alert` variante `warning` (ui-guidelines.md §4) arriba de la lista; no es una falla del
 // sistema ni una confirmación, así que no va en toast (ADR-0024). El texto es el de la spec.
-const avisoTope = () => E.aviso({ titulo: TOPE_MENSAJE, tono: 'warn' });
+const avisoTope = () => AV.aviso({ titulo: TOPE_MENSAJE, tono: 'warn' });
 
 // ---------- CSS ----------
 const CSS = `
@@ -103,7 +104,7 @@ const CSS = `
   .drawer .quick-item > a { padding-right: 48px; }
   .drawer .quick-item .row-btn { top: 0; right: 0; width: 44px; height: 44px; transform: none; opacity: 1; }
   .drawer .quick-item .row-menu { max-width: 100%; }
-` + E.CSS_ALERT_WARN;
+` + AV.CSS_ALERT_WARN;
 
 // Quitar un fijado (demo): el elemento sale de la lista, el foco pasa al ítem siguiente (o al anterior) y un mensaje
 // role="status" lo anuncia. En la app, el elemento sigue en Mis archivos y el acceso se borra en el servidor.

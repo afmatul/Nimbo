@@ -7,6 +7,7 @@ const path = require('node:path');
 const M = require('../marco/marco.js');
 const S = require('../mis-archivos/mis-archivos.js');
 const E = require('../mis-archivos/estados.js');
+const MF = require('../mis-archivos/menu-fila.js');
 const C = require('../carpetas/carpetas.js');
 
 const repo = process.argv[2];
@@ -126,13 +127,13 @@ const VACIANDO = `<span class="vaciando">${icon('loader', 14)}Vaciando…</span>
 const diasTexto = (n) => { const t = n === 1 ? 'queda 1 día' : `quedan ${n} días`; return n <= PRONTO ? `<span class="dias-pronto">${icon('clock', 13)}${t}</span>` : t; };
 
 // ---------- Piezas ----------
-const mi = (ic, label, cls = '') => `<button role="menuitem" type="button" tabindex="-1"${cls ? ` class="${cls}"` : ''}>${icon(ic)}<span>${label}</span></button>`;
+const mi = C.itemMenu;
 const MENU = [mi('undo', 'Restaurar'), 'sep', mi('trash', 'Eliminar definitivamente', 'menu-danger')];
 
 function fila([tipo, nombre, loc, tam, del, d], i, { sel = [], menu = -1, vaciando = false } = {}) {
   const carpeta = tipo === 'carpeta';
   const elegido = sel.includes(nombre);
-  const tile = carpeta ? `<span class="ftile ftile-folder">${icon('folder', 16)}</span>` : S.tile(nombre);
+  const tile = C.tileNodo(tipo, nombre);
   const sub = carpeta ? '<span class="fsub">Carpeta</span>' : '';
   return `
             <tr${elegido ? ' class="is-selected"' : ''}>
@@ -298,7 +299,7 @@ const ESTADOS = [
   },
   {
     estado: 'acciones', titulo: 'menú ⋮ de una fila: restaurar o eliminar definitivamente',
-    js: E.JS_MENU,
+    js: MF.JS_MENU,
     cuerpo: () => contenido(ITEMS, { menu: 4 }),
   },
   {
