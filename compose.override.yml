@@ -42,7 +42,8 @@ services:
       dockerfile: apps/api/Dockerfile
     labels:
       traefik.enable: 'true'
-      traefik.http.routers.api.rule: PathPrefix(`/api`)
+      # `/socket.io`: canal en vivo del `api` (spec 015); el WebSocket pasa sin configuración extra.
+      traefik.http.routers.api.rule: PathPrefix(`/api`) || PathPrefix(`/socket.io`)
       traefik.http.routers.api.entrypoints: web
       traefik.http.services.api.loadbalancer.server.port: '3000'
 
