@@ -17,6 +17,9 @@
   - vigente: «Próximo cobro» (fecha, monto, marca y últimos 4), interruptor activado, «Renovar ahora» y «Cambiar de plan» (`suscripcion--vigente.html`, CA-25)
   - por-vencer: vence en 2 días; `Alert` informativo «Tu plan Equipo vence el 19 de octubre de 2026. Se renovará con Visa •••• 4242.» (`suscripcion--por-vencer.html`, §6, CA-5)
   - renovacion-desactivada: interruptor apagado, «No habrá cobro automático», `Alert` `warning` «Tu plan vence el … y no se renovará. Renueva ahora para no quedar en solo lectura.» con «Renovar ahora» (`suscripcion--renovacion-desactivada.html`, §6, CA-6, CA-7)
+  - renovación apagada **con** un cambio programado (sin mockup propio, N-4 del PR #63): como `renovacion-desactivada`, pero
+    el `Alert` `warning` dice «Tu plan vence el … y no se renovará. Para renovar ahora, primero cancela el cambio a Pro.» y
+    su acción es «Cancelar cambio» (no hay «Renovar ahora», CA-28); el aviso del cambio programado no se repite.
   - cambio-programado: a Pro; `Alert` «Tu plan cambiará a Pro el 4 de noviembre de 2026.» con «Cancelar cambio»; el próximo cobro es Q45.00 (precio completo de Pro) y **no hay «Renovar ahora»** (`suscripcion--cambio-programado.html`, CA-16, CA-19, CA-20, CA-28)
   - cambio-a-personal: sin cobro, aviso de cuota de Personal, «Cancelar cambio», sin «Renovar ahora» ni interruptor (`suscripcion--cambio-a-personal.html`, CA-21, CA-28)
   - vencida: aviso de solo lectura (la pieza `ReadOnlyBanner` de `shared/layout`) con el texto de §6 y «Renovar plan»; distintivo «Vencida» con candado; el cobro automático con VISA ···· 0341 aparece como «Pago rechazado»; interruptor deshabilitado con su explicación (`suscripcion--vencida.html`, §6, CA-2, CA-14)
@@ -52,7 +55,7 @@
 - Las acciones que llevan a otro mockup están enlazadas (Cambiar de plan → `planes--cambiar-plan`, Renovar → `pago--renovacion`).
 
 ## Pendiente
-- Aprobación de Juan Marcos de las decisiones de arriba (ver la lista numerada del informe de `/mockup` de la 010).
+- Las decisiones de arriba las aprobó Juan Marcos (2026-10-18).
 - `label-content-name-mismatch` del botón de la cuenta en el marco compartido (aria-label «Menú de la cuenta de …»
   frente al nombre visible): corregirlo en `marco/marco.js` cambiaría los mockups aprobados; se propone usar el nombre
   visible más un texto solo para lectores, como el pago de la renovación.
