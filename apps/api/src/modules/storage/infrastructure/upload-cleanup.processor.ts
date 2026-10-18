@@ -1,37 +1,36 @@
-import { randomUUID } from 'node:crypto';
-
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Inject } from '@nestjs/common';
 import type { Job } from 'bullmq';
 import { PinoLogger } from 'nestjs-pino';
 
+import type { CorrelatedJobData, IClock, ITransactionRunner } from '../../../shared';
 import {
-  CorrelationContext,
+  attemptEach,
   createActor,
   I_CLOCK,
   I_TRANSACTION_RUNNER,
   Role,
+  runWithJobCorrelation,
+  IncompleteBatchError,
 } from '../../../shared';
-import type { IClock, ITransactionRunner } from '../../../shared';
 import { I_EXPIRED_UPLOAD_SCANNER } from '../application/ports/i-expired-upload.scanner.port';
-import type {
-  ExpiredUpload,
-  IExpiredUploadScanner,
-} from '../application/ports/i-expired-upload.scanner.port';
+import type { IExpiredUploadScanner } from '../application/ports/i-expired-upload.scanner.port';
 import type { StorageLogger } from '../application/storage-logger';
 import { UploadService } from '../application/upload.service';
 
 import { UPLOAD_CLEANUP_CONFIG, UPLOAD_CLEANUP_QUEUE } from './upload-cleanup.scheduler';
-import type { UploadCleanupConfig, UploadCleanupJobData } from './upload-cleanup.scheduler';
+import type { UploadCleanupConfig } from './upload-cleanup.scheduler';
 
 /** Un barrido a la vez (plan cambio 14): el lote ya está acotado y así no compite por el pool. */
 const WORKER_OPTIONS = { concurrency: 1 } as const;
 
 /** El barrido terminó con filas sin vencer: el trabajo falla para que BullMQ lo reintente (ADR-0021). */
-export class UploadCleanupIncompleteError extends Error {
-  constructor(readonly failed: number) {
-    super(`El barrido de cargas vencidas dejó ${String(failed)} sin limpiar; se reintentará.`);
-    this.name = 'UploadCleanupIncompleteError';
+export class UploadCleanupIncompleteError extends IncompleteBatchError {
+  constructor(failed: number) {
+    super(
+      failed,
+      `El barrido de cargas vencidas dejó ${String(failed)} sin limpiar; se reintentará.`,
+    );
   }
 }
 
@@ -55,12 +54,8 @@ export class UploadCleanupProcessor extends WorkerHost {
     super();
   }
 
-  process(job: Job<Partial<UploadCleanupJobData>>): Promise<void> {
-    const store = {
-      correlationId: job.data.correlationId ?? randomUUID(),
-      jobId: String(job.id),
-    };
-    return CorrelationContext.run(store, () => this.sweep());
+  process(job: Job<Partial<CorrelatedJobData>>): Promise<void> {
+    return runWithJobCorrelation(job, () => this.sweep());
   }
 
   private async sweep(): Promise<void> {
@@ -68,10 +63,16 @@ export class UploadCleanupProcessor extends WorkerHost {
     const expired = await this.transactions.run(() =>
       this.scanner.listExpiredIds(now, this.config.batchSize),
     );
-    let failed = 0;
-    for (const upload of expired) {
-      if (!(await this.expireAsOwner(upload))) failed += 1;
-    }
+    const failed = await attemptEach(
+      expired,
+      (upload) => this.uploads.expire(createActor(upload.propietarioId, Role.CLIENT), upload.id),
+      (upload, failure) =>
+        this.logger.error({
+          event: 'upload.cleanup_failed',
+          cargaId: upload.id,
+          errorName: failure,
+        }),
+    );
     this.logger.info({
       event: 'upload.cleanup_run',
       scanned: expired.length,
@@ -79,21 +80,5 @@ export class UploadCleanupProcessor extends WorkerHost {
       failed,
     });
     if (failed > 0) throw new UploadCleanupIncompleteError(failed);
-  }
-
-  /** `true` si la fila quedó procesada. El error solo deja su nombre: su mensaje podría traer una clave (CA-20). */
-  private async expireAsOwner(upload: ExpiredUpload): Promise<boolean> {
-    const owner = createActor(upload.propietarioId, Role.CLIENT);
-    try {
-      await this.uploads.expire(owner, upload.id);
-      return true;
-    } catch (error) {
-      this.logger.error({
-        event: 'upload.cleanup_failed',
-        cargaId: upload.id,
-        errorName: error instanceof Error ? error.name : 'unknown',
-      });
-      return false;
-    }
   }
 }

@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { RestoreOutcome } from '@nimbo/contracts';
 import { PinoLogger } from 'nestjs-pino';
 
-import { I_CLOCK, I_TRANSACTION_RUNNER } from '../../../shared';
+import { errorName, I_CLOCK, I_TRANSACTION_RUNNER } from '../../../shared';
 import type { Actor, IClock, ITransactionRunner } from '../../../shared';
 import { AuditAction, I_AUDIT_LOGGER } from '../../audit';
 import type { IAuditLogger } from '../../audit';
@@ -335,7 +335,7 @@ export class TrashService {
     } catch (error) {
       this.logger.error({
         event: 'trash.empty_enqueue_failed',
-        errorName: error instanceof Error ? error.name : 'unknown',
+        errorName: errorName(error),
       });
     }
   }

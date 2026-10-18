@@ -1,8 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
 
-import { I_TRANSACTION_RUNNER } from '../../../shared';
 import type { Actor, ITransactionRunner } from '../../../shared';
+import { errorName, I_TRANSACTION_RUNNER, IncompleteBatchError } from '../../../shared';
 
 import { I_OBJECT_STORAGE } from './ports/i-object-storage.port';
 import type { IObjectStorage } from './ports/i-object-storage.port';
@@ -20,12 +20,12 @@ export interface PurgeReport {
 }
 
 /** Quedaron archivos sin purgar (CA-20): se reintenta (el trabajo de BullMQ o el cliente). Sin nombres ni claves. */
-export class TrashPurgeIncompleteError extends Error {
-  constructor(readonly failed: number) {
+export class TrashPurgeIncompleteError extends IncompleteBatchError {
+  constructor(failed: number) {
     super(
+      failed,
       `La purga de la papelera dejó ${String(failed)} elemento(s) sin eliminar; se reintentará.`,
     );
-    this.name = 'TrashPurgeIncompleteError';
   }
 }
 
@@ -80,7 +80,7 @@ export class TrashPurger {
       this.logger.error({
         event: 'trash.purge_failed',
         nodeId: file.id,
-        errorName: error instanceof Error ? error.name : 'unknown',
+        errorName: errorName(error),
       });
       return false;
     }

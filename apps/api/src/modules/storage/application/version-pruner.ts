@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
 
-import { I_TRANSACTION_RUNNER } from '../../../shared';
+import { errorName, I_TRANSACTION_RUNNER } from '../../../shared';
 import type { Actor, ITransactionRunner } from '../../../shared';
 import { AuditAction, I_AUDIT_LOGGER } from '../../audit';
 import type { IAuditLogger } from '../../audit';
@@ -21,7 +21,7 @@ import type { IVersionRepository } from './ports/i-version.repository.port';
 import { recordAudit } from './record-audit';
 import type { StorageLogger } from './storage-logger';
 
-const errorNameOf = (error: unknown): string => (error instanceof Error ? error.name : 'unknown');
+const errorNameOf = (error: unknown): string => errorName(error);
 
 /**
  * Poda por retención (plan 014 §1, CA-13, CA-14): después del commit de una versión nueva, borra las que exceden

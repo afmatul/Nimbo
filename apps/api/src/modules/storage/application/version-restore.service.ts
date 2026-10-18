@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
 
-import { I_CLOCK, I_RATE_LIMITER, I_TRANSACTION_RUNNER } from '../../../shared';
+import { errorName, I_CLOCK, I_RATE_LIMITER, I_TRANSACTION_RUNNER } from '../../../shared';
 import type { Actor, IClock, IRateLimiter, ITransactionRunner } from '../../../shared';
 import { AuditAction, I_AUDIT_LOGGER } from '../../audit';
 import type { IAuditLogger } from '../../audit';
@@ -39,7 +39,7 @@ import { assertWritableLimits } from './writable-account.policy';
 const RATE_LIMIT_WINDOW_SECONDS = 60;
 const RESTORE_RATE_KEY_PREFIX = 'storage:version-restore:';
 
-const errorNameOf = (error: unknown): string => (error instanceof Error ? error.name : 'unknown');
+const errorNameOf = (error: unknown): string => errorName(error);
 
 /** Qué se pide restaurar y con qué límites del plan (pedidos fuera de la transacción). */
 interface RestoreRequest {

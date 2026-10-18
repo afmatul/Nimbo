@@ -15,6 +15,7 @@ export {
   UnauthorizedError,
 } from './domain/errors';
 export type { ErrorDetails, FieldIssue } from './domain/errors';
+export { errorName } from './domain/error-name';
 export { FixedClock } from './domain/fixed.clock';
 export { I_CLOCK } from './domain/i-clock.port';
 export type { IClock } from './domain/i-clock.port';
@@ -37,6 +38,8 @@ export type {
   RateLimitDecision,
   RateLimitRule,
 } from './application/rate-limit/i-rate-limiter.port';
+export { attemptEach } from './application/batch/attempt-each';
+export { IncompleteBatchError } from './application/batch/incomplete-batch.error';
 export { HealthModule } from './health.module';
 export { SystemClock } from './infrastructure/clock/system.clock';
 export { apiEnvSchema, workerEnvSchema } from './infrastructure/config/env.schema';
@@ -58,6 +61,13 @@ export { buildDataSourceOptions } from './infrastructure/persistence/data-source
 export { TransactionContext } from './infrastructure/persistence/transaction-context';
 export { REDIS_CLIENT } from './infrastructure/redis/redis-client.provider';
 export { enqueueWithCorrelation } from './infrastructure/queue/enqueue-with-correlation';
+export type { CorrelatedJobData } from './infrastructure/queue/enqueue-with-correlation';
+export {
+  REPEATABLE_JOB_OPTIONS,
+  runWithJobCorrelation,
+  scheduleRepeatableJob,
+} from './infrastructure/queue/repeatable-job';
+export type { RepeatableSchedule } from './infrastructure/queue/repeatable-job';
 export { PingProcessor } from './infrastructure/queue/ping.processor';
 export { PING_QUEUE, PingQueue } from './infrastructure/queue/ping.queue';
 export type { PingJobData } from './infrastructure/queue/ping.queue';

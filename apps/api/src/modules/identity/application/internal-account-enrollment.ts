@@ -5,7 +5,7 @@ import { IDENTITY_FIELD_MESSAGES } from '@nimbo/contracts';
 import type { FieldIssueReason } from '@nimbo/contracts';
 import { PinoLogger } from 'nestjs-pino';
 
-import { Role } from '../../../shared';
+import { errorName, Role } from '../../../shared';
 import type { Actor, FieldIssue } from '../../../shared';
 import { I_MAILER } from '../../notifications';
 import type { IMailer, MailMessage } from '../../notifications';
@@ -153,7 +153,7 @@ export class InternalAccountEnrollment {
 }
 
 /** Solo el nombre de la clase del error: su mensaje podría traer el correo del destinatario. */
-const errorNameOf = (error: unknown): string => (error instanceof Error ? error.name : 'unknown');
+const errorNameOf = (error: unknown): string => errorName(error);
 
 const issue = (field: string, reason: FieldIssueReason): FieldIssue => ({
   field,

@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
 
-import { I_TRANSACTION_RUNNER } from '../../../shared';
+import { errorName, I_TRANSACTION_RUNNER } from '../../../shared';
 import type { Actor, ITransactionRunner } from '../../../shared';
 import { I_NOTIFIER } from '../../notifications';
 import type { INotifier } from '../../notifications';
@@ -45,7 +45,7 @@ export class InvoiceIssuer {
       this.logger.error({
         event: 'billing.invoice_issue_failed',
         invoiceId,
-        errorName: error instanceof Error ? error.name : 'unknown',
+        errorName: errorName(error),
       });
     }
   }

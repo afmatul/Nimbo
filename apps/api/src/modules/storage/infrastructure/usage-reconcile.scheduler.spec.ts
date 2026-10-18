@@ -1,11 +1,10 @@
 import type { Queue } from 'bullmq';
 
-import { CorrelationContext } from '../../../shared';
+import { CorrelationContext, REPEATABLE_JOB_OPTIONS } from '../../../shared';
 import type { StorageLogger } from '../application/storage-logger';
 
 import {
   USAGE_RECONCILE_JOB_NAME,
-  USAGE_RECONCILE_JOB_OPTIONS,
   USAGE_RECONCILE_QUEUE,
   USAGE_RECONCILE_SCHEDULER_ID,
   UsageReconcileScheduler,
@@ -41,13 +40,13 @@ describe('UsageReconcileScheduler (spec 007 CA-13, CA-15; plan §4)', () => {
       {
         name: USAGE_RECONCILE_JOB_NAME,
         data: { correlationId: CORRELATION_ID },
-        opts: USAGE_RECONCILE_JOB_OPTIONS,
+        opts: REPEATABLE_JOB_OPTIONS,
       },
     );
   });
 
   it('CA-15: cada ejecución tiene 3 intentos con espera exponencial', () => {
-    expect(USAGE_RECONCILE_JOB_OPTIONS).toMatchObject({
+    expect(REPEATABLE_JOB_OPTIONS).toMatchObject({
       attempts: 3,
       backoff: { type: 'exponential' },
     });

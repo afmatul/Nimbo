@@ -1,18 +1,17 @@
-import { randomUUID } from 'node:crypto';
-
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Inject } from '@nestjs/common';
 import type { Job } from 'bullmq';
 import { PinoLogger } from 'nestjs-pino';
 
 import {
-  CorrelationContext,
+  attemptEach,
   createActor,
   I_CLOCK,
   I_TRANSACTION_RUNNER,
   Role,
+  runWithJobCorrelation,
 } from '../../../shared';
-import type { IClock, ITransactionRunner } from '../../../shared';
+import type { CorrelatedJobData, IClock, ITransactionRunner } from '../../../shared';
 import { I_EXPIRED_TRASH_SCANNER } from '../application/ports/i-expired-trash.scanner.port';
 import type {
   ExpiredTrashItem,
@@ -23,7 +22,7 @@ import { TrashPurgeIncompleteError } from '../application/trash-purger';
 import { TrashService } from '../application/trash.service';
 
 import { TRASH_PURGE_CONFIG, TRASH_PURGE_QUEUE } from './trash-purge.scheduler';
-import type { TrashPurgeConfig, TrashPurgeJobData } from './trash-purge.scheduler';
+import type { TrashPurgeConfig } from './trash-purge.scheduler';
 
 /** Una purga a la vez: el lote ya está acotado y así no compite por el pool. */
 const WORKER_OPTIONS = { concurrency: 1 } as const;
@@ -48,12 +47,8 @@ export class TrashPurgeProcessor extends WorkerHost {
     super();
   }
 
-  process(job: Job<Partial<TrashPurgeJobData>>): Promise<void> {
-    const store = {
-      correlationId: job.data.correlationId ?? randomUUID(),
-      jobId: String(job.id),
-    };
-    return CorrelationContext.run(store, () => this.purgeDue());
+  process(job: Job<Partial<CorrelatedJobData>>): Promise<void> {
+    return runWithJobCorrelation(job, () => this.purgeDue());
   }
 
   private async purgeDue(): Promise<void> {
@@ -61,10 +56,17 @@ export class TrashPurgeProcessor extends WorkerHost {
     const expired = await this.transactions.run(() =>
       this.scanner.listExpired(now, this.config.batchSize),
     );
-    let failed = 0;
-    for (const item of expired) {
-      if (!(await this.purgeAsOwner(item))) failed += 1;
-    }
+    const failed = await attemptEach(
+      expired,
+      (item) => this.purgeAsOwner(item),
+      (item, failure) =>
+        this.logger.error({
+          event: 'trash.purge_item_failed',
+          nodeType: item.type,
+          nodeId: item.id,
+          errorName: failure,
+        }),
+    );
     this.logger.info({
       event: 'trash.purge_run',
       scanned: expired.length,
@@ -74,20 +76,9 @@ export class TrashPurgeProcessor extends WorkerHost {
     if (failed > 0) throw new TrashPurgeIncompleteError(failed);
   }
 
-  /** `true` si la raíz quedó purgada (o ya no estaba). El error solo deja su nombre: el mensaje podría traer una clave. */
-  private async purgeAsOwner(item: ExpiredTrashItem): Promise<boolean> {
+  /** Como el dueño; el error solo deja su nombre (`attemptEach`): el mensaje podría traer una clave. */
+  private purgeAsOwner(item: ExpiredTrashItem): Promise<unknown> {
     const owner = createActor(item.propietarioId, Role.CLIENT);
-    try {
-      await this.trash.purgeExpired(owner, { type: item.type, id: item.id });
-      return true;
-    } catch (error) {
-      this.logger.error({
-        event: 'trash.purge_item_failed',
-        nodeType: item.type,
-        nodeId: item.id,
-        errorName: error instanceof Error ? error.name : 'unknown',
-      });
-      return false;
-    }
+    return this.trash.purgeExpired(owner, { type: item.type, id: item.id });
   }
 }

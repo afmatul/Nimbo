@@ -1,14 +1,13 @@
 import type { Job } from 'bullmq';
 
 import { CorrelationContext, createActor, Role } from '../../../shared';
-import type { Actor, ITransactionRunner } from '../../../shared';
+import type { Actor, CorrelatedJobData, ITransactionRunner } from '../../../shared';
 import type { IClientAccountScanner } from '../application/ports/i-client-account.scanner.port';
 import type { StorageLogger } from '../application/storage-logger';
 import { UsageReconcileIncompleteError } from '../application/usage-reconciler';
 import type { UsageReconciler } from '../application/usage-reconciler';
 
 import { UsageReconcileProcessor } from './usage-reconcile.processor';
-import type { UsageReconcileJobData } from './usage-reconcile.scheduler';
 
 const BATCH_SIZE = 2;
 const CORRELATION_ID = '6f1c2a8e-3b1d-4c6e-9a7f-2d4b8e1c0f93';
@@ -26,8 +25,8 @@ interface LoggedLine {
   readonly jobId: string | undefined;
 }
 
-const job = (data: Partial<UsageReconcileJobData> = { correlationId: CORRELATION_ID }) =>
-  ({ id: JOB_ID, data, attemptsMade: 0 }) as unknown as Job<UsageReconcileJobData>;
+const job = (data: Partial<CorrelatedJobData> = { correlationId: CORRELATION_ID }) =>
+  ({ id: JOB_ID, data, attemptsMade: 0 }) as unknown as Job<CorrelatedJobData>;
 
 /** Simula `SELECT id … WHERE id > $after ORDER BY id LIMIT $limit` sobre `accounts`. */
 const pageOf = (accounts: readonly string[], afterId: string | null, limit: number) =>
