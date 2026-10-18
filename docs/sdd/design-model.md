@@ -38,7 +38,7 @@
 | M8 | Administración, Soporte y Operación | `backoffice` | Adrián | 06, 37 |
 | T1 | (transversal; recibe de M8 la salud, DF-49, y `RolesGuard`, DF-50) | `shared` | Adrián | `Actor`, `IClock`, errores, logger, `correlationId`, entorno, salud, guards globales (003) |
 | T2 | (transversal, extraído de M8) | `audit` | Adrián | 07 |
-| T3 | (transversal) | `realtime` | Fátima | 26, 32 (streaming); 08 (progreso) solo si 015 lo difunde (DF-58: en 005 es local del cliente) |
+| T3 | (transversal) | `realtime` | Adrián | 26, 32 (streaming); no 08: el progreso es local del cliente y no se difunde (DF-58, 015 P-7) |
 | T4 | (transversal) | `notifications` | Juan Marcos | declara e implementa `IMailer` e `INotifier` |
 
 M3 se divide en `access` y `sharing`, y `audit`/`realtime`/`notifications` salen como transversales, para evitar
@@ -170,7 +170,7 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
 
 ### T1 `shared` (spec 000; guards con 003)
 - Controlador: `HealthController` (live, ready) — `@Public()`, sin autenticación; nunca expone topología.
-- Guards globales (spec 003 D-2, DF-50): `JwtAuthGuard` y `RolesGuard` (`CanActivate`), registrados para toda la API y que **niegan por defecto**. `JwtAuthGuard` verifica el token con el puerto token→`Actor` que declara `shared` y que implementa `identity` (002 D-14; nombre en el plan 003) y construye el `Actor`; `RolesGuard` comprueba `@Roles(...)`. Decoradores `@Public()` y `@Roles(...)`: toda ruta declara uno de los dos (003 D-10). El handshake de T3 `realtime` usa el mismo puerto.
+- Guards globales (spec 003 D-2, DF-50): `JwtAuthGuard` y `RolesGuard` (`CanActivate`), registrados para toda la API y que **niegan por defecto**. `JwtAuthGuard` verifica el token con el puerto token→`Actor` que declara `shared` y que implementa `identity` (002 D-14; nombre en el plan 003) y construye el `Actor`; `RolesGuard` comprueba `@Roles(...)`. Decoradores `@Public()` y `@Roles(...)`: toda ruta declara uno de los dos (003 D-10). El handshake de T3 `realtime` usa el mismo puerto, que desde 015 devuelve también `expiresAt` en una verificación válida (DF-76).
 - Persistencia con actor: `withActor()` fija `app.actor_id` y `app.actor_role` por transacción para RLS (ADR-0005, 003 D-7).
 - Servicio: `HealthService` (`ready()`: ejecuta los `IHealthIndicator` en paralelo con tiempo límite; agrega `up`/`down`).
 - Puertos → implementaciones:
@@ -204,8 +204,15 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
 - Presentación: `AuditController` con `GET /audit/my-events` (DF-15) en `AuditHttpModule`, que carga solo `api`; el `worker` carga `AuditModule` sin rutas. `LogAuditLogger` (adaptador provisional de 005) se retiró con 004 (DF-64).
 - Tabla: `evento_auditoria` (004).
 
-### T3 `realtime`
-- Único gateway Socket.IO: handshake autenticado con el puerto token→`Actor` de `shared` (sin depender de `identity`), salas por usuario y por documento. Declara el puerto de publicación (nombre en el plan 015) que usan `storage`, `editing`, `intelligence` y `notifications`. No conoce permisos (ADR-0010).
+### T3 `realtime` (spec 015; DF-76 recoge lo que el diagrama no trae)
+- Único gateway Socket.IO (ADR-0030, sin adaptador de Redis: PD-106): handshake autenticado con el puerto token→`Actor` de `shared` (sin depender de `identity`), salas por usuario (`user:<id>`) y por documento (`doc:<id>`). No conoce permisos (ADR-0010): el módulo dueño del documento decide quién entra.
+- Presentación: `RealtimeGateway` (registra el *middleware* de *handshake*, une a la sala del usuario, programa el cierre y responde `room.join` siempre con `SHARED_FORBIDDEN`). Sin `PresenceGateway` (DF-30).
+- Aplicación: `ConnectionAdmission` (límite de intentos por origen con `IRateLimiter` → verificación del token → solo `CLIENT`; produce `Actor` y `expiresAt`) y `RealtimeConfig`.
+- Puertos de frontera que declara y exporta en su `index.ts`, segregados por consumidor (ISP):
+  - `IRealtimePublisher` (`toUser(userId, notice)`, `toDocument(documentId, notice)`, con `RealtimeNotice { event, payload }`; síncronos, nunca lanzan): lo usan `storage`, `editing`, `intelligence` y `notifications`;
+  - `IDocumentRooms` (`admit(actor, connectionId, documentId)`, que lanza `ForbiddenError` si la conexión no es del actor o no existe, y `retire(userId, documentId)`): solo el dueño de la sala (`editing`, 016).
+- Infraestructura: `SocketIoHub` implementa los dos puertos (un solo adaptador) y emite el evento en proceso `realtime.document-left` (`DocumentLeftEvent { userId, connectionId, documentId }`, ADR-0019) por cada sala de documento que deja una conexión, sea cierre limpio, vencimiento del token o caída detectada por el latido (≤ 60 s, RN-9); un oyente que lanza se registra y no corta el cierre. `ConnectionLifetime` cierra la conexión al llegar el `expiresAt` del token (lo devuelve el puerto token→`Actor` de T1 desde 015). `RealtimeIoAdapter` aplica ruta, CORS por origen exacto y latido.
+- Tablas: ninguna (salas en memoria del proceso `api`).
 
 ### T4 `notifications`
 - Responsabilidad: correo transaccional y notificaciones al usuario (DF-34, ADR-0010). No conoce las reglas de negocio de quien lo usa: recibe qué enviar y a quién. Dueño de la tabla `notificacion` y de la cola `mail` del `worker`.

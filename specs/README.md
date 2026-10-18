@@ -12,10 +12,10 @@ un puerto.
 
 | Integrante      | Rol Crystal Clear               | Módulos                                                                                                                                      |
 | --------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Adrián (1)      | Diseñador principal (Tech Lead) | fundaciones, `shared`, `identity` (M1), `notifications`, `storage` (M2), `access` (M3a), `audit`, `editing` (M5), `intelligence` (M6), CI/CD, infraestructura, guardián de diagramas; revisor de planes y PRs |
+| Adrián (1)      | Diseñador principal (Tech Lead) | fundaciones, `shared`, `identity` (M1), `notifications`, `storage` (M2), `access` (M3a), `audit`, `realtime`, `editing` (M5), `intelligence` (M6), CI/CD, infraestructura, guardián de diagramas; revisor de planes y PRs |
 | Juan Marcos (2) | Diseñador-programador           | `billing` (M4) y búsqueda (018)                                                                                                              |
 | Abel (3)        | Diseñador-programador           | previsualización (017), `optimizer` (M7), observabilidad (022)                                                                               |
-| Fátima (4)      | Diseñador-programador           | sistema de diseño (000b), `realtime`, `sharing` (M3b), `backoffice` (M8), incluido el tablero de operación (022b)                             |
+| Fátima (4)      | Diseñador-programador           | sistema de diseño (000b), `sharing` (M3b), `backoffice` (M8), incluido el tablero de operación (022b)                             |
 
 Excepciones: 006a (`billing`) la construyó Fátima y la integra Adrián. En la 011, Adrián autorizó a Fátima a cambiar `identity`, `storage` y `audit` (2026-10-07), y `shared` y `features/access` solo en los archivos que nombra el plan (2026-10-08), y la parte de `billing` la escribe Juan Marcos. 017 y 018 viven en `storage`, pero en carpetas
 propias (`storage/preview`, `storage/search`) de Abel y Juan Marcos; los cambios al resto de `storage` los hace Adrián.
@@ -55,7 +55,7 @@ Antes de planificar las specs de Fase 1, el equipo decide en una reunión los ha
 | 012  | comparticion-y-accesos                                                                     | M3b                 | RF-16, 18                 | 31                         | 2    | Fátima | 003, 006      | Pendiente |
 | 013  | enlaces-publicos                                                                           | M3b                 | RF-17, RNF-08             | 09, 10                     | 2    | Fátima | 012           | Pendiente |
 | 014  | versiones-y-restauracion                                                                   | M2 (+ M5 autoría)   | RF-13, 29                 | 17, 18                     | 2    | Adrián | 005           | En revisión (2026-10-10): T-01…T-10 en `feat/014-versiones-y-restauracion`; [revisión](014-versiones-y-restauracion/review.md) con B-1, B-2 e I-1…I-3 corregidos (T-FIX-1…5); pasa a `Hecha` al integrarla. [spec](014-versiones-y-restauracion/spec.md), [plan](014-versiones-y-restauracion/plan.md) y [tareas](014-versiones-y-restauracion/tasks.md) |
-| 015  | tiempo-real                                                                                | transversal         | RF-08, 26                 | 30                         | 2    | Fátima | 002           | Pendiente |
+| 015  | [tiempo-real](015-tiempo-real/spec.md)                                                     | transversal         | RF-26                     | 30                         | 2    | Adrián | 002           | En revisión (2026-10-17): `feat/015-tiempo-real`, [review](015-tiempo-real/review.md) 🔁 con T-FIX-1 ([plan](015-tiempo-real/plan.md) aprobado; ADR-0030 y DF-76 aceptados) |
 | 016  | edicion-colaborativa-docx                                                                  | M5                  | RF-25, 26, 28, RNF-02, 09 | 05, 19, 20, 39             | 2    | Adrián | 014, 015      | Pendiente |
 | 017  | previsualizacion                                                                           | M2                  | RF-27                     | 15                         | 2    | Abel | 005           | Pendiente |
 | 018  | busqueda                                                                                   | M2 (+ M6 contenido) | RF-15                     | 15, 32                     | 2    | Juan Marcos | 005           | Pendiente |
@@ -77,10 +77,10 @@ Ningún plan de Juan Marcos, Abel o Fátima pasa a código sin la aprobación de
 
 | Integrante  | Ahora (Fase 2)                                                                                                                       | Después (Fase 2 → Fase 3)          |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------- |
-| Adrián      | Integrar `chore/cierre-fase-1`, `fix/005-revision` y `feat/000-ci` → CI de 000 (lint de ciclos, `ci.yml`, protección de `main`) → imágenes y staging → `/spec 014`. Revisa planes y PRs del equipo | 014 → 016 → 019 → 020 → 023        |
+| Adrián      | Integrar `chore/cierre-fase-1`, `fix/005-revision` y `feat/000-ci` → CI de 000 (lint de ciclos, `ci.yml`, protección de `main`) → imágenes y staging → `/spec 014`; `/plan 015` tiempo real (la necesita 016; plan y PR por `workflow.md` §7.1). Revisa planes y PRs del equipo | 014 → 015 → 016 → 019 → 020 → 023 |
 | Juan Marcos | 009 en revisión: traer `main` (hecho), ítem «Plan y facturación» y PR; 010 con spec y plan para Adrián | 009 → 010 → 018 |
 | Abel        | `/implement 017` desde T-03 (T-01, T-02 y T-05 de habilitación ya hechas por Adrián en `feat/017-previsualizacion`)                  | 022 → 021 (021 depende de 014)     |
-| Fátima      | `/tasks 011` y `/implement 011` (plan aprobado, rama `spec/011-administracion-y-soporte`); `/spec 015` y `/plan 015` tiempo real (la necesita 016)                  | 012 → 013 → 011b → 022b            |
+| Fátima      | `/tasks 011` y `/implement 011` (plan aprobado, rama `spec/011-administracion-y-soporte`)                  | 012 → 013 → 011b → 022b            |
 
 Reglas de convivencia: PRs pequeños y rebase frecuente sobre `main`. Los únicos archivos compartidos que se tocan
 son:
