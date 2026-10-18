@@ -49,6 +49,14 @@ export class PlanCatalogService {
     }
   }
 
+  /**
+   * 011 CA-8, CA-12: todos los planes, activos y desactivados (con `deactivatedAt`), para el catálogo y las métricas del
+   * Administrador (`arreglos-011.md` §10). Solo lectura; `backoffice` autoriza antes de llamar.
+   */
+  listAll(_actor: Actor): Promise<Plan[]> {
+    return this.plans.findAll();
+  }
+
   /** 011 CA-9, CA-11: el plan nace activo; un nombre repetido es 422 con `NAME_TAKEN`. */
   async create(_actor: Actor, newPlan: NewPlan): Promise<Plan> {
     const plan = Plan.create(randomUUID(), newPlan);
