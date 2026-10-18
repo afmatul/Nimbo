@@ -69,7 +69,7 @@
     (marca y últimos 4) y `renewal`; `pnpm env:check`.
   - Depende: T-01, T-02; comparte controlador con T-03. La vista reutiliza la consulta de marca y últimos 4 de `sql-billing-history.reader.ts` (`PAYMENT_METHOD_SQL`), no `findLastApprovedCard`: la referencia no entra en el camino HTTP (ADR-0031).
 
-- [ ] **T-05** Pasada del `worker`: renovación automática, vencimiento y aviso previo
+- [x] **T-05** Pasada del `worker`: renovación automática, vencimiento y aviso previo
   - Criterio: CA-1, CA-2, CA-3, CA-4, CA-5, CA-7, CA-20 (automática), CA-21, CA-29, CA-23 (conteos); RN-2, RN-8, RN-10 (M-3).
   - Archivos: `apps/api/src/migrations/*-funciones-de-renovacion.ts` (ADR-0021, con `down`); `i-invoice-repository.port.ts` y
     `typeorm-invoice.repository.ts` (`findLatestNit`); `i-payment-repository.port.ts` y `typeorm-payment.repository.ts` (`findLastApprovedCard`,
@@ -96,7 +96,7 @@
     (diez bloqueadas; permitidas, incluidos los `POST` de `download-url` y `recents`) y renovar → la carga vuelve a aceptarse.
   - Depende: T-01, T-03.
 
-- [ ] **T-07** Aislamiento y roles internos de la 010
+- [x] **T-07** Aislamiento y roles internos de la 010
   - Criterio: CA-23 (`403` y nada cambia), CA-24; RNF-05.
   - Archivos: `apps/api/test/isolation/billing-renewal.iso-spec.ts`; `apps/api/test/int/billing/billing-internal-roles.int-spec.ts`.
   - Prueba: iso (A solo su fila, sin ver la de B ni su referencia; `nimbo_app` sin actor ve 0 filas; con actor las funciones fallan; `PUBLIC`
@@ -206,3 +206,13 @@ Antes de cada pantalla se leen sus capturas en `docs/design/capturas/`; las desv
   (YAGNI). `read-only.int-spec.ts` vuelve a vigente cambiando `suscripcion` como dueño (la renovación misma la prueba
   `renew.int-spec.ts`). La web suma el texto de `STORAGE_ACCOUNT_READ_ONLY` a su catálogo de errores.
 - **Fuente única (N-2 del PR #63)**: spec, plan y tareas solo se editan en `spec/010-…`; la 010a trae esta rama y lleva solo código.
+- **T-05** (2026-10-18, `b676bef`): el aviso previo se prueba dentro de `subscription-renewal.int-spec.ts` (no hay
+  `renewal-reminder.int-spec.ts` aparte: mismo arnés). Los correos y sus marcas van en `RenewalNotices` (SRP), aparte del
+  renovador. `attemptEach` (PD-63) pasa a entregar `{ errorName, code }` para que `billing.renewal_failed` lleve el `code`
+  (CA-4). El SQL de «último pago aprobado» y «última factura» se comparte con el historial (`latest-rows.sql.ts`) y la
+  fecha larga con el PDF (`billing-date.ts`). `worker-health.int-spec.ts` cierra a la fuerza el procesador nuevo (con
+  Redis caído BullMQ reintenta para siempre y la suite no terminaba).
+- **T-07** (2026-10-18, `3e6d9bf`): los `403` de los tres roles internos en las cuatro rutas van en
+  `billing-renewal.iso-spec.ts` con los tokens reales del mundo de aislamiento, no en un `billing-internal-roles.int-spec.ts`
+  aparte. Las funciones de la pasada se prueban con el dueño NOSUPERUSER (sin él pasarían en vacío). La regla de ADR-0031
+  (010a-4) es un recorrido del código sin comentarios.
