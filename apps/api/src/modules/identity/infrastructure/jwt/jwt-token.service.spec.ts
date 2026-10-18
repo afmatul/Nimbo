@@ -106,10 +106,14 @@ describe('JwtTokenService', () => {
       return rest;
     };
 
-    it('CA-26: un token emitido es válido y da `userId`, `role` y `sessionId`', async () => {
-      const { token } = await service.issueAccessToken(INPUT);
+    it('CA-26: un token emitido es válido y da `userId`, `role`, `sessionId` y su `expiresAt`', async () => {
+      const { token, expiresAt } = await service.issueAccessToken(INPUT);
 
-      await expect(service.verify(token)).resolves.toEqual({ valid: true, claims: CLAIMS });
+      await expect(service.verify(token)).resolves.toEqual({
+        valid: true,
+        claims: CLAIMS,
+        expiresAt,
+      });
     });
 
     it('CA-12: a los 899 s sigue válido y a los 900 s según el reloj vence', async () => {

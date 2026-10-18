@@ -17,6 +17,11 @@ const CLAIMS: AccessTokenClaims = {
   role: Role.ADMIN,
   sessionId: '9d8c7b6a-5f4e-4d3c-8b2a-1f0e9d8c7b6a',
 };
+const VALID: AccessTokenVerification = {
+  valid: true,
+  claims: CLAIMS,
+  expiresAt: new Date('2026-09-30T14:15:00.000Z'),
+};
 /** Muy en el pasado: solo pasa si la estrategia ignora el vencimiento y lo deja al puerto. */
 const LONG_EXPIRED = { iat: 1_000_000_000, exp: 1_000_000_900 };
 
@@ -66,13 +71,11 @@ const strategyWith = (verifier: IAccessTokenVerifier): JwtStrategy =>
 
 describe('JwtStrategy (T-26, CA-26)', () => {
   it('CA-26: se registra con el nombre `ACCESS_TOKEN_STRATEGY`', () => {
-    expect(strategyWith(new FakeVerifier({ valid: true, claims: CLAIMS })).name).toBe(
-      ACCESS_TOKEN_STRATEGY,
-    );
+    expect(strategyWith(new FakeVerifier(VALID)).name).toBe(ACCESS_TOKEN_STRATEGY);
   });
 
   it('CA-26: con el puerto `valid` entrega los *claims* tal cual y le pasa el token Bearer', async () => {
-    const verifier = new FakeVerifier({ valid: true, claims: CLAIMS });
+    const verifier = new FakeVerifier(VALID);
     const token = sign();
 
     const outcome = await authenticate(strategyWith(verifier), requestWith(`Bearer ${token}`));
@@ -83,7 +86,7 @@ describe('JwtStrategy (T-26, CA-26)', () => {
 
   it('CA-26: ignora `exp`: el vencimiento lo decide solo el puerto', async () => {
     const outcome = await authenticate(
-      strategyWith(new FakeVerifier({ valid: true, claims: CLAIMS })),
+      strategyWith(new FakeVerifier(VALID)),
       requestWith(`Bearer ${sign()}`),
     );
 
@@ -110,7 +113,7 @@ describe('JwtStrategy (T-26, CA-26)', () => {
     ['firmado con HS512', `Bearer ${sign(SECRET, 'HS512')}`],
     ['sin el esquema Bearer', sign()],
   ])('CA-26: un token %s no llega al puerto', async (_case, authorization) => {
-    const verifier = new FakeVerifier({ valid: true, claims: CLAIMS });
+    const verifier = new FakeVerifier(VALID);
 
     const outcome = await authenticate(strategyWith(verifier), requestWith(authorization));
 

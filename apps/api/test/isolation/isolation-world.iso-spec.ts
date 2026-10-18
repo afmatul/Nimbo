@@ -140,6 +140,7 @@ describe('mundo de aislamiento (CA-15)', () => {
           role: Role.SUPPORT,
           sessionId: expect.any(String) as unknown,
         },
+        expiresAt: expect.any(Date) as unknown,
       });
       if (!verification.valid) return;
       expect(verification.claims.sessionId).toMatch(

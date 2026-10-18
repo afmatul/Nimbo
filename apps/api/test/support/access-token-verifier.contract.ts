@@ -32,6 +32,13 @@ const CLAIMS: AccessTokenClaims = {
   sessionId: '9d8c7b6a-5f4e-4d3c-8b2a-1f0e9d8c7b6a',
 };
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+const MS_PER_SECOND = 1000;
+
+/** `exp` del JWT tal como viene en el token: lo que el verificador debe devolver como `expiresAt` (015 CA-4). */
+const expirationSecondsOf = (token: string): number => {
+  const payload = token.split('.')[1] ?? '';
+  return (JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as { exp: number }).exp;
+};
 
 type InvalidCase = readonly [string, (tokens: AccessTokenVariants) => string];
 
@@ -55,12 +62,14 @@ export const describeAccessTokenVerifierContract = (
   subject: () => AccessTokenContractSubject,
 ): void => {
   describe('contrato de IAccessTokenVerifier (puerto)', () => {
-    it('CA-2: token válido → `valid: true` con `userId`, `role` y `sessionId`', async () => {
+    it('CA-2: token válido → `valid: true` con `userId`, `role`, `sessionId` y `expiresAt` desde `exp`', async () => {
       const { verifier, tokens } = subject();
+      const token = tokens.valid(CLAIMS);
 
-      await expect(verifier.verify(tokens.valid(CLAIMS))).resolves.toEqual({
+      await expect(verifier.verify(token)).resolves.toEqual({
         valid: true,
         claims: CLAIMS,
+        expiresAt: new Date(expirationSecondsOf(token) * MS_PER_SECOND),
       });
     });
 
