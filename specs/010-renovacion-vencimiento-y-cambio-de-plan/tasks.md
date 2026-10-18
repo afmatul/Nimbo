@@ -36,10 +36,10 @@
     contratación de la 009 sigue verde y acepta `0341`.
   - Archivos: `packages/contracts/src/billing/subscription.ts` (`TEST_CARDS.recurringDeclined`, `cardSchema` con tres tarjetas y exportado);
     `apps/api/src/migrations/*-referencia-de-instrumento.ts` (con `down`); `billing/domain/payment-instrument.ts` (`PaymentInstrument`,
-    `InstrumentReference`, `CardOnFile`, `assertChargeable`); `billing/domain/entities/payment.entity.ts` (`instrumentRef`);
+    `InstrumentReference`, `isPresentCard`, `isChargeable`; `CardOnFile` llega con T-05); `billing/domain/entities/payment.entity.ts` (`instrumentRef`);
     `billing/application/ports/i-payment-gateway.port.ts` y `billing/infrastructure/adapters/simulated-payment-gateway.ts`;
     `billing/application/payment.service.ts`, `subscription-checkout.ts`; `i-payment-repository.port.ts` y `typeorm-payment.repository.ts`
-    (`record` con referencia, `findLastApprovedCard`); `apps/api/src/shared/infrastructure/logging/redacted-fields.ts` [Adrián] (redacta `instrumentRef`, `instrument` y `referencia_instrumento`). `findLastApprovedCard` es la única consulta que selecciona la columna (ADR-0031).
+    (`record` con referencia; `findLastApprovedCard` y `CardOnFile` pasaron a T-05, su único usuario); `apps/api/src/shared/infrastructure/logging/redacted-fields.ts` [Adrián] (redacta `instrumentRef`, `instrument` y `referencia_instrumento`). La regla «`findLastApprovedCard` es la única consulta que selecciona la columna» (ADR-0031) se prueba en T-05 y T-07.
   - Prueba: unit `simulated-payment-gateway.spec.ts` (tres tarjetas presentes; referencia de `4242` aprueba y de `0341` rechaza; sin número),
     `payment.service.spec.ts` (guarda lo que da la pasarela; vencimiento solo con tarjeta presente), `subscription.spec.ts` de contracts;
     int `subscribe.int-spec.ts` (`0341` aprobada, la transacción guarda referencia; rechazada sin referencia) y `migrations.int-spec.ts`.
@@ -72,7 +72,9 @@
 - [ ] **T-05** Pasada del `worker`: renovación automática, vencimiento y aviso previo
   - Criterio: CA-1, CA-2, CA-3, CA-4, CA-5, CA-7, CA-20 (automática), CA-21, CA-29, CA-23 (conteos); RN-2, RN-8, RN-10 (M-3).
   - Archivos: `apps/api/src/migrations/*-funciones-de-renovacion.ts` (ADR-0021, con `down`); `i-invoice-repository.port.ts` y
-    `typeorm-invoice.repository.ts` (`findLatestNit`); `billing/application/ports/i-due-subscription.scanner.port.ts` y
+    `typeorm-invoice.repository.ts` (`findLatestNit`); `i-payment-repository.port.ts` y `typeorm-payment.repository.ts` (`findLastApprovedCard`,
+    `CardOnFile`, desde T-02); `i-subscription-repository.port.ts` (`markReminderSent`, `markExpiredNoticeSent`, desde T-01);
+    `billing-charging.module.ts` (cobro común de `api` y `worker`, 010a-1); `billing/application/ports/i-due-subscription.scanner.port.ts` y
     `billing/infrastructure/persistence/sql-due-subscription.scanner.ts`; `billing/application/{subscription-renewer,renewal-reminder.service,
     renewal-runner,renewal-config}.ts`; `{mail-message,receipt-message,renewal-messages}.ts`; `billing/infrastructure/{renewal.scheduler,
     renewal.processor}.ts` sobre PD-63; `billing-worker.module.ts`; `env.schema.ts`, `.env.example`, `apps/api/src/worker.module.ts` [Adrián].
@@ -99,7 +101,8 @@
   - Archivos: `apps/api/test/isolation/billing-renewal.iso-spec.ts`; `apps/api/test/int/billing/billing-internal-roles.int-spec.ts`.
   - Prueba: iso (A solo su fila, sin ver la de B ni su referencia; `nimbo_app` sin actor ve 0 filas; con actor las funciones fallan; `PUBLIC`
     no las ejecuta; la solo lectura de A no afecta las cargas de B; dueño sin `SUPERUSER`; `referencia_instrumento` no aparece en
-    `GET /billing/history` ni en ninguna respuesta, ADR-0031); int (cuatro rutas × tres roles → `403`).
+    `GET /billing/history` ni en ninguna respuesta, y ninguna consulta del código salvo `findLastApprovedCard` la selecciona, ADR-0031,
+    010a-4); int (cuatro rutas × tres roles → `403`).
   - Depende: T-03, T-04, T-05, T-06.
 
 ## Bloque 010b — Web (PR 2)
