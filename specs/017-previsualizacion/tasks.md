@@ -5,6 +5,20 @@
 > 11 tareas principales verticales; T-08a/b y T-09a/b son subtareas internas, no tareas principales nuevas. Un commit por tarea (`feat(storage): … [017 T-xx]`); toda tarea de lógica empieza por su prueba.
 > Abel es dueño de `storage/preview`; los cambios fuera de esa frontera se marcan como habilitación de Adrián/compartida y no se asumen como autorizados.
 
+## Estado vigente (2026-10-18)
+
+- Spec 017 permanece **En curso**. T-01/T-02/T-03/T-05/T-06/T-07 completas; cierre y evidencia de T-06/T-07 en [el registro final](#cierre-técnico-t-06-y-t-07-2026-10-18).
+- T-04 permanece `[ ]` por evidencia efectiva en navegador real, consolidada en T-10 y la demo T-11; no presenta un bloqueo abierto de Redis/CORS en backend/Node.
+- T-08, T-09, T-10 y T-11 permanecen `[ ]`, con sus requisitos y dependencias originales.
+
+### T-04 — resumen vigente
+
+Redis detenido, rechazo acotado y recuperación real ya están acreditados; también CORS/configuración del arnés, GET/Range/206, cabeceras de entrega y expuestas, firma y regresión de descarga. Se conserva abajo la evidencia histórica de aislamiento y operación. La diferencia Silo/MinIO quedó delimitada como una diferencia documentada, no como un bloqueo funcional.
+
+`readers/object-bytes.ts` ya existe en T-07: el helper único usa `credentials: 'omit'`, sin Authorization, Cookie ni cabeceras Nimbo; sus pruebas y la integración Image/Text acreditan la política de código. No equivalen a inspeccionar el tráfico de un navegador real.
+
+**Pendiente único de T-04: evidencia efectiva en navegador real**, consolidada en **T-10 y demo T-11**: GET desde el reader real, ausencia efectiva de cookies/Bearer/cabeceras Nimbo, CORS aplicado por el navegador, rangos reales y origen de objetos aislado. T-04 no se presenta como fallida ni se marca completa.
+
 ## Compuertas antes de implementación
 
 - [x] **G-1 — IX.7 (opción 4):** Adrián decidió el 2026-10-06 firmar la URL de vista con la política de 005 (`attachment`, `application/octet-stream`); sin `inline`, MIME ni excepción. ADR-0027 Rechazado; PD-74 innecesario.
@@ -35,9 +49,9 @@
 
 - [x] **T-05** **(Adrián; habilitación web + mockup)** Costura del explorador y retorno acotado. Entregar mockup 360/1440 con todos los estados de spec §6; agregar un solo slot `firstAction` en `file-row-menu.tsx` (sin `renderFirstFileAction`), exports públicos `MyFiles`/`locationPath`/`useFileDownload` y wrappers. Volver abre `file.folderId` o raíz y enfoca el control de esa fila si sigue en la lista; si no, el encabezado del explorador. Esperar el listado y no guardar orden, paginación, desgloses ni overlays de carga; no persistir URL firmada ni contenido. Sin provider persistente nuevo ni recuperación de páginas previas. Pruebas de foco primero. — CA: CA-7, CA-9 — Archivos: `apps/web/src/features/storage/{index.ts,routes.ts,components/file-row-menu.tsx,components/my-files.tsx,components/file-explorer.tsx,hooks/use-my-files-state.ts,hooks/use-return-focus.ts,hooks/use-file-download.ts}`, `apps/web/src/app/(app)/(cliente)/archivos/{page.tsx,carpeta/[folderId]/page.tsx,vista-previa/[fileId]/page.tsx}`, `docs/design/mockups/storage/vista-previa/`
 
-- [ ] **T-06** **(Abel; web base)** Shell del visor y estados. Crear cliente de preview, rutas, `usePreview`, `PreviewPage`, `PreviewMenuItem` y `PreviewStates`; `Previsualizar` es primer ítem solo para kinds admitidos. Manejar cargando con espera >2 s, éxito, vacío válido, no disponible, protegido, corrupto, expirado, cancelación silenciosa, 404 sin nombre y acciones Reintentar/Descargar, incluido fallo de memoria como CA-2. Volver entrega a los wrappers solo `file.folderId`/raíz e ID de fila, con foco de fila o encabezado según T-05, sin capturar estado del explorador. Reintento manual destruye la lectura previa y reemite; URL/contenido solo en memoria, sin persistencia. Pruebas de componente y `jest-axe` primero. — CA: CA-2, CA-6, CA-7, CA-9 — Archivos: `apps/web/src/features/storage/preview/{index.ts,routes.ts,api.ts,hooks/use-preview.ts,preview-failure.ts,components/PreviewPage.tsx,components/PreviewMenuItem.tsx,components/PreviewStates.tsx}` y specs; `apps/web/src/lib/error-catalog.ts` mediante habilitación acordada — Depende: T-01, T-05
+- [x] **T-06** **(Abel; web base)** Shell del visor y estados. Crear cliente de preview, rutas, `usePreview`, `PreviewPage`, `PreviewMenuItem` y `PreviewStates`; `Previsualizar` es primer ítem solo para kinds admitidos. Manejar cargando con espera >2 s, éxito, vacío válido, no disponible, protegido, corrupto, expirado, cancelación silenciosa, 404 sin nombre y acciones Reintentar/Descargar, incluido fallo de memoria como CA-2. Volver entrega a los wrappers solo `file.folderId`/raíz e ID de fila, con foco de fila o encabezado según T-05, sin capturar estado del explorador. Reintento manual destruye la lectura previa y reemite; URL/contenido solo en memoria, sin persistencia. Pruebas de componente y `jest-axe` primero. — CA: CA-2, CA-6, CA-7, CA-9 — Archivos: `apps/web/src/features/storage/preview/{index.ts,routes.ts,api.ts,hooks/use-preview.ts,preview-failure.ts,components/PreviewPage.tsx,components/PreviewMenuItem.tsx,components/PreviewStates.tsx}` y specs; `apps/web/src/lib/error-catalog.ts` mediante habilitación acordada — Depende: T-01, T-05
 
-- [ ] **T-07** **(Abel; helper único + lectores nativos)** Obtener bytes e imagen/TXT/MD. Crear y probar primero `readers/object-bytes.ts`: GET con `credentials: 'omit'`, sin Authorization, Cookie ni cabeceras de Nimbo; propagar AbortSignal; para rangos exigir 206 y Content-Range válido y cancelar respuestas inválidas. Ese único helper centraliza la política para PDF, ZIP e imagen: los consumidores no la reimplementan. Imagen usa sus bytes, Blob/object URL y decodificador nativo PNG/JPG/JPEG/GIF/WebP, sin proxy/optimización; liberar recursos. TXT/MD con UTF-8 incremental y texto escapado, nunca Markdown→HTML ni `dangerouslySetInnerHTML`; no truncar ni imponer límite nuevo; fallos saneados. — CA: CA-1, CA-2, CA-11 — Archivos: `apps/web/src/features/storage/preview/readers/object-bytes.ts`, `readers/object-bytes.spec.ts`, `components/{ImagePreview,TextPreview}.tsx`, lectores nativos y specs — Depende: T-06
+- [x] **T-07** **(Abel; helper único + lectores nativos)** Obtener bytes e imagen/TXT/MD. Crear y probar primero `readers/object-bytes.ts`: GET con `credentials: 'omit'`, sin Authorization, Cookie ni cabeceras de Nimbo; propagar AbortSignal; para rangos exigir 206 y Content-Range válido y cancelar respuestas inválidas. Ese único helper centraliza la política para PDF, ZIP e imagen: los consumidores no la reimplementan. Imagen usa sus bytes, Blob/object URL y decodificador nativo PNG/JPG/JPEG/GIF/WebP, sin proxy/optimización; liberar recursos. TXT/MD con UTF-8 incremental y texto escapado, nunca Markdown→HTML ni `dangerouslySetInnerHTML`; no truncar ni imponer límite nuevo; fallos saneados. — CA: CA-1, CA-2, CA-11 — Archivos: `apps/web/src/features/storage/preview/readers/object-bytes.ts`, `readers/object-bytes.spec.ts`, `components/{ImagePreview,TextPreview}.tsx`, lectores nativos y specs — Depende: T-06
 
 - [ ] **T-08** **(Abel; PDF, una tarea principal con dos subtareas)** Lector con PDF.js fijado; ambas partes deben quedar completas. — CA: CA-1, CA-2, CA-9, CA-11 — Depende: T-01, T-06, T-07
   - [ ] **T-08a:** transporte por rangos mediante el helper único de T-07, worker local de la misma versión y una página en canvas, sin scripting ni recursos remotos. El adaptador PDF.js no repite GET/credenciales/validación de rango/cancelación; sin viewer, acciones, formularios interactivos ni XFA; errores de transporte saneados y liberación. Pruebas de consumo del helper y página real primero. — CA: CA-1, CA-2, CA-11 — Archivos: `apps/web/src/features/storage/preview/components/PdfPreview.tsx`, `readers/{pdfjs-adapter,pdf-range-transport}.ts`, `workers/pdfjs.worker.ts`, specs/fixtures — Depende: T-01, T-06, T-07
@@ -78,6 +92,12 @@ CA sin cubrir: ninguno.
 - Revisado el 2026-10-06 tras la decisión de Adrián (opción 4): sin `inline`/MIME/procedencia/migración; ADR-0027 Rechazado.
 - Si Adrián/architect cambian fachada, retorno/foco o motores, actualizar primero `plan.md` y después las tareas afectadas antes de `/implement`.
 - Mantener ownership: Abel trabaja en `storage/preview`; T-01, T-02 y T-05 contienen cambios compartidos/ajenos explícitos.
+
+## Lectura de la evidencia histórica
+
+Los bloques fechados del 2026-10-09 al 2026-10-16 que siguen conservan sus resultados, RED/GREEN, límites y decisiones originales. Sus expresiones «actual», «vigente», «pendiente» o «sin commit» describen exclusivamente aquella ronda. No sustituyen el [estado vigente del 2026-10-18](#estado-vigente-2026-10-18) ni el [cierre técnico final](#cierre-técnico-t-06-y-t-07-2026-10-18).
+
+En particular, los bloqueos históricos Redis/CORS fueron resueltos en las rondas posteriores aquí registradas. Las afirmaciones de ausencia de `object-bytes`, shell sin lectores y T-06/T-07 pendientes quedaron superadas por los commits del cierre técnico. Se conserva la historia sin presentar esos pendientes como abiertos hoy.
 
 ## Corrección de T-03 — evidencia local (2026-10-09)
 
@@ -136,3 +156,453 @@ Habilitación pública mínima provocada por la revisión: export TS de `NodeNot
 T-03 queda `[x]`: unitarias focalizadas (11 suites / 90 pruebas), integración focalizada (6 / 42), `pnpm test` completo, `pnpm test:int` completo (102 / 961) y typecheck/lint/prettier/`git diff --check` en verde. Docker ya está disponible y no constituye un bloqueo de T-03. La integración de preview incluye el 500 canónico, `http.unhandled_error`, ausencia de `http.domain_error` para fallos inesperados y ningún secreto en respuestas/logs, incluido fallo del limiter inyectado en aplicación.
 
 T-04 permanece `[ ]`: sus verificaciones específicas de Redis/MinIO realmente detenidos, RLS/aislamiento completo, CORS, Range/206, cookies/Bearer y entrega real completa siguen pendientes y no fueron absorbidas por T-03 ni acreditadas por el verde de la suite existente. La inyección en aplicación no sustituye esas verificaciones. T-06…T-11 siguen pendientes; la spec 017 permanece `En curso`. No se ejecutó E2E (sigue siendo placeholder). Sin commit, amend, push ni cambios de rama.
+
+## T-04 — evidencia parcial y bloqueo (2026-10-10)
+
+> Evidencia histórica: los bloqueos de esta ronda no representan el estado actual. Ver [resumen vigente de T-04](#t-04--resumen-vigente).
+
+T-03 sigue cerrada; T-04 permanece `[ ]`. Trabajo observado en esta sesión, sin cambios de producción, contratos, infraestructura compartida ni frontend. La spec permanece `En curso`.
+
+### Mapa inicial y pruebas agregadas
+
+- Existentes: `preview.int-spec.ts` cubre 401/403, contrato, 429, correlación y saneamiento de fallos inyectados; `preview-composition` cubre DI única; `preview-delivery` cubre fachada → objeto real, TTL 300, bytes, disposición forzada y auditoría; download/adapter cubren regresiones, firma sobre otro objeto y caducidad del firmador. Storage y `rls-context` ya cubren RLS y contexto, sin el flujo HTTP de preview completo.
+- Nuevas: `storage-preview.iso-spec.ts` (Postgres/JWT reales, una conexión) y `preview-operation.int-spec.ts` (Redis Testcontainer propio, contadores, 429 y parada real).
+- Helper reutilizado: `storage-http.ts` agrega la opción `preview` y `StorageClient.previewUrl`; compone un único descriptor de storage. Se reutilizan `createIsolationWorld`, sus fixtures escritos como `nimbo_app`, `world.appAs`, tokens de identity, `createStorageHttpApp`, uploads y `LogSink`; no hay repositorios simulados ni infraestructura de aislamiento nueva.
+- No se modificaron `preview-delivery`, download ni el adapter. La ampliación de entrega/Range/CORS se detuvo ante el bloqueo operativo que alcanza una frontera compartida.
+
+### Aislamiento acreditado sin cambio de lógica
+
+`pnpm --filter api test:isolation --runInBand --runTestsByPath test/isolation/storage-preview.iso-spec.ts`: 1 suite / 10 pruebas en verde desde la primera corrida; no se fabricó RED.
+
+Comprueba `nimbo_app` sin SUPERUSER/BYPASSRLS y no dueño, ENABLE/FORCE RLS en archivo/versión/carga, dueño permitido, sin sesión 401, tres roles internos 403 por HTTP y fachada, ajeno=inexistente 404, SQL sin contexto sin filas y repositorio sin ámbito rechazado. Tras A → B → A, la misma conexión (`pg_backend_pid`, pool máximo 1) no conserva actor ni permisos. RLS niega versiones/cargas ajenas incluso sin `accessibleNodes`. En el fixture adversarial que cruza `version_actual_id`, la consulta bajo RLS no devuelve la clave real ajena y la URL firmada no la utiliza: conserva el namespace del archivo autorizado, aunque el UUID de la versión referenciada sí es visible en el path. El fixture se restaura. Este test de filas no acredita existencia ni entrega de bytes de esa referencia incoherente.
+
+`pnpm test:isolation`: 18 suites / 308 pruebas en verde, incluida la suite nueva y la regresión de limpieza de cargas.
+
+### Redis real: resultados y RED conservado
+
+`pnpm --filter api test:int --runInBand --runTestsByPath test/int/storage/preview-operation.int-spec.ts`: última corrida, 4 pases / 1 fallo. Pasan independencia por actor, separación preview/download en ambos sentidos, código/mensaje/Retry-After del 429 y ausencia de lookup después del rechazo.
+
+Reproducción aislada: `pnpm --filter api test:int --runInBand --runTestsByPath test/int/storage/preview-operation.int-spec.ts --testNamePattern 'Redis realmente detenido'`: falla. Tras `redis.stop()` del contenedor propio, la solicitud no recibe respuesta en 5 s; el Promise de `consume` real sigue pendiente y el cliente está en estado `connect`. Facade, repositorio y firmador no se ejecutan. El primer intento agotó 120 s; se agregó un deadline HTTP de diagnóstico y limpieza de conexiones/cola para que el RED no retenga el arnés. No hay `mockRejectedValue` ni se detiene el Redis global.
+
+La corrida focalizada amplia sí pasó una vez: 12 suites / 94 pruebas. El fallo volvió a reproducirse al ejecutar el caso aislado y la suite de operación sola; ese verde no acredita estabilidad ni cierra el bloqueo. No se atribuye una causa definitiva a PreviewService: investigar cliente Redis compartido, ready-check/reconexión y transporte del arnés Docker antes de decidir una corrección. Fronteras de coordinación con Adrián: `src/shared/infrastructure/redis/redis-client.provider.ts`, `src/shared/infrastructure/rate-limit/redis-rate-limiter.ts` o el arnés compartido si se demuestra un problema de transporte. No se editaron esas fronteras ni se relajó la expectativa del 500 canónico.
+
+Comando focalizado amplio: `pnpm --filter api test:int --runInBand --runTestsByPath test/int/storage/preview-operation.int-spec.ts test/int/storage/preview-delivery.int-spec.ts test/int/storage/preview-composition.int-spec.ts test/int/storage/preview.int-spec.ts test/int/storage/download.int-spec.ts test/int/storage/rate-limit.int-spec.ts test/int/storage/minio-storage.adapter.int-spec.ts test/int/shared/redis-rate-limiter.int-spec.ts test/int/shared/auth-logs.int-spec.ts test/int/identity/auth-logs.int-spec.ts test/int/shared/correlation-id.int-spec.ts test/int/shared/domain-exception-filter.int-spec.ts`.
+
+### Privacidad, entrega pendiente y tensión de secuenciación
+
+Las inspecciones de logs de los casos por actor y 429 comprueban ausencia de URL firmada, firma, token, object key y nombre privado; en 429 hay correlación y `preview.rate_limited` sin fallo duplicado, y Authorization/Cookie se redactan. En el RED no hay emisión ni lookup y los logs capturados hasta el timeout no contienen los secretos del fixture. El caso preparado exige 500 canónico, `preview.url_failed`, `http.unhandled_error` y descarte del message/stack original de Redis; no se declara acreditado de forma estable porque la respuesta no llega en las reproducciones. Se permite `err` seguro, conforme a T-03.
+
+Las regresiones existentes de MinIO/descarga pasaron en la corrida focalizada amplia: objeto real, GET 200, bytes, TTL 300, attachment/octet-stream/no-store, auditoría y firma/caducidad del adapter. No se acredita todavía GET/Range/206/CORS/`nosniff` desde el endpoint preview ni el consumo sin auditoría. Discrepancia detectada por lectura, no por probe CORS: el plan cita MinIO 2025, el arnés usa Silo 2026 y `startMinio` no fija `MINIO_API_CORS_ALLOW_ORIGIN`; Compose sí lo configura. No se cambió configuración ni se inventaron respuestas/headers CORS.
+
+`object-bytes.ts` no existe. Ausencia efectiva de Cookie/Bearer/correlationId/headers Nimbo y uso de `credentials: 'omit'` en navegador dependen de T-07 y de verificación browser en T-10. T-04 exige literalmente esa ausencia, aunque se programa antes: tensión de secuenciación documentada, sin absorber T-06+ ni simular evidencia browser. T-04 permanece abierta también por esa comprobación y por la entrega pendiente. E2E placeholder no ejecutado.
+
+### Checks y condición de cierre
+
+- `pnpm --filter api typecheck`: verde.
+- `pnpm exec eslint "apps/api/test/isolation/storage-preview.iso-spec.ts" "apps/api/test/int/storage/preview-operation.int-spec.ts" "apps/api/test/int/storage/storage-http.ts" --max-warnings 0`: verde (se corrigió un orden de imports señalado por lint).
+- `pnpm exec prettier --check "apps/api/test/isolation/storage-preview.iso-spec.ts" "apps/api/test/int/storage/preview-operation.int-spec.ts" "apps/api/test/int/storage/storage-http.ts"`: verde.
+- `git diff --check`: verde.
+- `pnpm test` y `pnpm test:int` completos no se ejecutaron en esta fase: persiste RED focalizado y la instrucción condiciona esas corridas a todo focalizado verde. Los 102/961 de T-03 no se presentan como validación nueva de T-04.
+- Jest emitió avisos de salida tardía en algunas corridas; las últimas reproducciones aisladas terminaron sin timeout del cierre. El lifecycle dedicado se cierra sin modificar contenedores globales.
+
+Recomendación: mantener T-04 `[ ]`, coordinar el bloqueo Redis compartido y luego completar entrega/CORS y la verificación web correspondiente. Sin commit, amend, push ni cambios de rama.
+
+## T-04 — ronda MinIO/HTTP y RED CORS (2026-10-10)
+
+T-04 permanece `[ ]`. Esta ronda deja explícitamente aparte el bloqueo Redis anterior, pendiente de coordinación con Adrián: no se investigaron ni modificaron sus proveedores, limiter, BullMQ, Redis compartido ni el caso de Redis detenido; tampoco se ejecutó `preview-operation`. Solo se amplió `preview-delivery.int-spec.ts` y se actualizó esta evidencia y la fila 017 del backlog. Sin cambios de producción, frontend, infraestructura ni configuración compartida.
+
+### Cobertura previa y ampliación
+
+- Previa: fachada → MinIO, TTL 300, bytes y política de 005, emisión sin auditoría; download acredita su endpoint y GET simple/multipart; adapter acredita firma válida, caducidad y rechazo de la misma firma sobre otra clave. Esa cobertura del adapter se reutiliza para la restricción a un solo objeto.
+- `preview-delivery` ahora usa `createStorageHttpApp({ preview: true })`, ya disponible, y encadena carga real → `POST /api/v1/files/:fileId/preview-url` → GET directo a MinIO. Valida 200, `PreviewUrlResponse`, URL absoluta, host distinto de web/API, `X-Amz-Expires=300` y `expiresAt` con TTL 300 y holgura de reloj de 30 s.
+- GET devuelve los 2048 bytes exactos; Range sobre la misma URL/objeto comprueba `bytes=0-9` y `bytes=37-63`: 206, segmentos exactos, `Content-Range` respectivamente `bytes 0-9/2048` y `bytes 37-63/2048`, y longitudes 10/27. MinIO expone `Accept-Ranges: bytes`.
+- GET/Range conservan `Content-Disposition: attachment`, `Content-Type: application/octet-stream`, `Cache-Control: no-store`, `X-Content-Type-Options: nosniff` y ausencia de `Set-Cookie`. Funcionan con peticiones Node directas sin Authorization Nimbo ni Cookie. Esto no acredita `credentials: 'omit'` ni política del navegador.
+- Firma válida acreditada por GET/Range; alterar `response-content-type` de la URL de preview se rechaza sin entregar los bytes. El caso nuevo exige rechazo 4xx, sin fijar un código exacto de MinIO. La suite del adapter sigue verde, incluido rechazo sobre otro objeto y caducidad.
+- Emitir preview no genera `audit.record`/`download.url_issued`; consumir la URL tampoco. Emitir download posteriormente conserva `file.download_url_issued` para ese archivo. La suite download completa focalizada sigue verde.
+- Privacidad: se comprueba ausencia de URL, firma, object key y nombre del fixture en logs; tampoco aparecen Bearer/Cookie. Comparaciones sensibles se reducen a booleanos; los errores de transporte descartan la causa original. El diagnóstico CORS imprime solo Origin, método, status y headers de una lista segura, sin URL, clave, firma, contenido, nombre ni credenciales. No se cambió logging global.
+
+### Probes CORS reales: permitido pasa; denegado falla
+
+Peticiones directas al origen de objetos. GET usa `Range: bytes=0-9`; OPTIONS envía `Access-Control-Request-Method: GET` y `Access-Control-Request-Headers: range`.
+
+| Origin enviado | Método | Status | Access-Control-Allow-Origin real | Otros headers CORS reales |
+|---|---|---|---|---|
+| `http://localhost` (allowlist de la API de test) | GET | 206 | `http://localhost` | Allow-Credentials `true`; Expose-Headers incluye Content-Range, Content-Length y Accept-Ranges; Vary `Origin, Accept-Encoding` |
+| `http://localhost` | OPTIONS | 204 | `http://localhost` | Allow-Methods `GET`; Allow-Headers `range`; Allow-Credentials `true`; Vary `Origin, Access-Control-Request-Method, Access-Control-Request-Headers` |
+| `https://not-allowed.example` (fuera de allowlist) | GET | 206 | `https://not-allowed.example` | Allow-Credentials `true`; misma exposición de headers y Vary que GET permitido |
+| `https://not-allowed.example` | OPTIONS | 204 | `https://not-allowed.example` | Allow-Methods `GET`; Allow-Headers `range`; Allow-Credentials `true`; mismo Vary que OPTIONS permitido |
+
+`Access-Control-Expose-Headers` real en ambos GET: `Date, Etag, Server, Connection, Accept-Ranges, Content-Range, Content-Encoding, Content-Length, Content-Type, Content-Disposition, Last-Modified, Content-Language, Cache-Control, Retry-After, X-Amz-Bucket-Region, Expires, X-Amz*, X-Amz*, *`. En OPTIONS no se devuelve Expose-Headers; en GET no se devuelven Allow-Methods/Allow-Headers. Los GET también devuelven Accept-Ranges `bytes`, Content-Range `bytes 0-9/2048`, Content-Length `10`, octet-stream/no-store/nosniff.
+
+**RED funcional conservado:** el origen denegado recibe autorización CORS válida. Aunque ACAO no es literalmente `*`, el servidor refleja también el origen no permitido. No se relajó la expectativa ni se corrigió infraestructura. La primera corrida tuvo un error del test (`CORS_ORIGIN` validado es un array, no string); se corrigió antes de los probes efectivos. Ese error no se atribuye a producción ni se presenta como RED funcional.
+
+### Configuración efectiva y frontera de coordinación
+
+- `apps/api/test/int/setup/global-setup.ts` fija `CORS_ORIGIN=http://localhost` para la API. `containers.ts` → `startMinio()` arranca `pgsty/silo:RELEASE.2026-09-16T00-00-00Z`, `server /data`, puerto 9000 mapeado, solo variables raíz; **no configura `MINIO_API_CORS_ALLOW_ORIGIN`**. El comportamiento observado acepta ambos orígenes.
+- El archivo exacto a coordinar con Adrián es `apps/api/test/int/setup/containers.ts`, `startMinio()`: alinear la allowlist del contenedor de objetos con la configuración del arnés. La API valida su allowlist, pero no la transmite automáticamente a MinIO. No se editó este archivo.
+- Corrección de la discrepancia histórica por lectura actual: `compose.yml` base también usa Silo 2026 y sí fija `MINIO_API_CORS_ALLOW_ORIGIN=${CORS_ORIGIN:-http://localhost,http://localhost:3002}`. Por tanto, base y tests coinciden en imagen, no en configuración CORS.
+- `compose.override.yml`, cargado en local, sustituye la imagen por `nimbo-minio-local:2025-09-07` y usa `infra/minio/Dockerfile.local`, que compila MinIO 2025, como el plan aprobado. El arnés difiere del Compose **local efectivo** también en versión. Estos probes no acreditan el runtime local ni staging/producción. Ningún Compose/Dockerfile/init fue editado.
+
+### Ejecución focalizada y condición de cierre
+
+Docker Desktop estaba detenido y se arrancó para esta verificación. Comando ejecutado sin incluir el caso Redis detenido:
+
+```powershell
+pnpm --filter api test:int --runInBand --runTestsByPath test/int/storage/preview-delivery.int-spec.ts test/int/storage/preview-composition.int-spec.ts test/int/storage/preview.int-spec.ts test/int/storage/download.int-spec.ts test/int/storage/minio-storage.adapter.int-spec.ts
+```
+
+Última corrida funcional: **5 suites: 4 verdes / 1 roja; 42 pruebas: 41 pases / 1 fallo**. `preview-delivery`: 8 pases / 1 fallo CORS; las otras cuatro suites pasan. El RED CORS se reprodujo en corridas efectivas sucesivas; no hay RED nuevo de lógica propia de preview ni modificación de producción. No se ejecutaron suites completas: la condición de todas las partes MinIO verdes no se cumple.
+
+Checks estáticos de esta ronda:
+
+- `pnpm --filter api typecheck`: verde.
+- `pnpm exec eslint "apps/api/test/int/storage/preview-delivery.int-spec.ts" "apps/api/test/int/storage/preview-composition.int-spec.ts" "apps/api/test/int/storage/preview.int-spec.ts" "apps/api/test/int/storage/download.int-spec.ts" "apps/api/test/int/storage/minio-storage.adapter.int-spec.ts" "apps/api/test/int/storage/storage-http.ts" --max-warnings 0`: verde, sin warnings.
+- `pnpm exec prettier --check "apps/api/test/int/storage/preview-delivery.int-spec.ts" "apps/api/test/int/storage/preview-composition.int-spec.ts" "apps/api/test/int/storage/preview.int-spec.ts" "apps/api/test/int/storage/download.int-spec.ts" "apps/api/test/int/storage/minio-storage.adapter.int-spec.ts" "apps/api/test/int/storage/storage-http.ts"`: verde tras corregir formato del test ampliado.
+- `git diff --check`: verde. Sin commit, amend, push, merge, rebase, reset ni cambio de rama.
+
+Para cerrar T-04 faltan: (1) resolver y volver a verificar el bloqueo Redis ya documentado con Adrián; (2) coordinar la allowlist del MinIO del arnés y conseguir verde CORS permitido/denegado; (3) alinear/acreditar la versión/configuración de objetos respecto del plan y del entorno local efectivo; (4) acreditar en T-07/T-10 el helper `object-bytes.ts` y el navegador sin Cookie/Bearer/cabeceras Nimbo, `credentials: 'omit'` y CORS/rangos efectivos. E2E placeholder no ejecutado. T-06…T-11 y la spec permanecen en su estado anterior.
+
+## 017 — pulido de tests y evidencia antes de T-06 (2026-10-10)
+
+Correcciones autorizadas por Abel, limitadas a cuatro suites de integración/aislamiento, `preview.service.spec.ts` y este archivo. T-04 permanece `[ ]`. Producción, contratos funcionales, fronteras públicas, shared, configuración de contenedores y frontend no cambiaron.
+
+### Correcciones acreditadas
+
+- **Privacidad de diagnósticos:** comprobaciones sensibles de logs, paths, errores y cuerpos se evalúan a booleanos; los matchers se conservan sin imprimir el valor inspeccionado. Los spies sensibles se verifican por cantidad de llamadas. Una resolución inesperada de la fachada no vuelca la entrega firmada mediante el diagnóstico de `.rejects`. El test de Redis usa errores de transporte de categoría fija, sin propagar la petición/cabeceras originales. No se cambió logging global ni se retiró cobertura.
+- **Lifecycle Redis:** el caso destructivo tiene su propio `describe`, contenedor y app, con cleanup dedicado. Está situado antes de los casos no destructivos, que crean otro Redis. Escenario, request con deadline, diagnóstico de Promise pendiente, comprobación del 500 y comprobación de logs están separados en helpers locales específicos. Se conservan el consume real y los spies de observación, la expectativa de 500 canónico, ausencia de lookup/firma, correlación y descarte de secretos.
+- **Referencia cruzada:** nombre, comentario y assertions describen namespace del archivo permitido y no utilización de la object key real ajena. El UUID referenciado puede ser visible. El fixture de filas no acredita entrega de bytes; la evidencia anterior de aislamiento quedó precisada arriba.
+- **Error operacional:** se retiró únicamente la exigencia de la lista exacta `['message', 'stack']`. Se mantiene Error seguro, distinto del original y de DomainError, sin cause/code/status inesperados ni valores privados en propiedades, message, stack o logs. Inspeccionar valores de propiedades no fija la representación interna de Error.
+- **TTL:** el helper toma `before` inmediatamente antes del POST y `after` inmediatamente después de su respuesta, antes de parsearla. `expiresAt` debe estar entre `before + 300 s` y `after + 300 s`, inclusive; no se necesita tolerancia adicional. Se mantiene `X-Amz-Expires=300`, sin fake clock sobre MinIO. Esto sustituye la holgura de 30 s de la ronda anterior.
+- **CORS:** se separaron permitido/denegado en dos casos para validar el permitido en verde y ejecutar el RED denegado por separado, con las mismas expectativas y los probes GET/OPTIONS reales.
+
+### A. Pruebas verdes
+
+- `pnpm --filter api test --runInBand --runTestsByPath src/modules/storage/preview/application/preview.service.spec.ts`: **1 suite / 16 pruebas verdes**.
+- `pnpm --filter api test:int --runInBand --runTestsByPath test/int/storage/preview.int-spec.ts test/int/storage/preview-operation.int-spec.ts test/int/storage/preview-delivery.int-spec.ts --testNamePattern '^(?!.*(?:Redis realmente detenido|origen denegado)).*$'`: **3 suites / 23 pruebas verdes**, incluidos CORS permitido, GET/Range y TTL acotado. Jest muestra 2 casos omitidos solo por este filtro de ejecución; ambos se ejecutaron en las corridas siguientes, sin `.skip` ni cambios de expectativa.
+- `pnpm --filter api test:isolation --runInBand --runTestsByPath test/isolation/storage-preview.iso-spec.ts`: **1 suite / 10 pruebas verdes**, incluida la precisión del caso cruzado y RLS/roles/contexto.
+
+Total de pruebas distintas verdes afectadas: **49**, sin contar dos veces los casos de operación ejecutados de nuevo.
+
+### B. RED Redis externo conservado
+
+`pnpm --filter api test:int --runInBand --runTestsByPath test/int/storage/preview-operation.int-spec.ts --verbose`: **4 pases / 1 fallo**. El caso de Redis detenido falla primero: no recibe respuesta en 5 s y el consume real sigue pendiente, sin lookup ni firma. El diagnóstico es de categoría fija. Los **cuatro casos posteriores pasan** usando su propio Redis, acreditando que no heredan el contenedor detenido. La corrida y el cleanup terminan sin timeout del arnés. No es una regresión nueva ni se investigó/corrigió shared.
+
+### C. RED CORS externo conservado
+
+`pnpm --filter api test:int --runInBand --runTestsByPath test/int/storage/preview-delivery.int-spec.ts --testNamePattern 'origen denegado'`: **1 fallo esperado**. Para `https://not-allowed.example`, GET devuelve 206 y OPTIONS 204, ambos con ACAO igual al origen enviado y Allow-Credentials `true`. No se tocó `startMinio` ni se relajó la allowlist. Los otros 9 casos quedan fuera de esta selección; pasaron en la corrida verde anterior.
+
+### Checks y estado
+
+- `pnpm --filter api typecheck`: verde.
+- ESLint focalizado en las cinco suites modificadas, `--max-warnings 0`: verde, sin warnings.
+- Prettier focalizado en las mismas cinco suites: verde tras corregir formato.
+- `git diff --check`: verde.
+- El único archivo modificado bajo `apps/api/src` es `preview.service.spec.ts`; no hay cambio de producción. Los dos RED externos siguen pendientes de coordinación y browser sigue diferido a T-07/T-10. No se resolvieron decisiones de contrato, DI ni lint compartido en esta ronda. Sin commit, push ni otras operaciones de escritura Git.
+
+## T-04 — CORS del arnés resuelto y diagnóstico Redis (2026-10-16)
+
+> Evidencia histórica: el diagnóstico inicial y sus opciones preceden al ajuste Redis autorizado registrado a continuación. El pendiente vigente está en [el resumen T-04](#t-04--resumen-vigente).
+
+Continuación autorizada sobre `feat/017-previsualizacion`, HEAD `92b6bf0`. Precheck: solo cambios locales API T-04 y documentación; ningún cambio web pendiente. T-04 permanece `[ ]`. Esta evidencia se agrega sin reescribir las rondas históricas ni editar T-06 o `specs/README.md`.
+
+### CORS: causa, RED y corrección mínima
+
+- Lectura de ambos caminos: `compose.yml:48` entrega a MinIO `MINIO_API_CORS_ALLOW_ORIGIN=${CORS_ORIGIN:-http://localhost,http://localhost:3002}`; el override local conserva ese environment, aunque sustituye la imagen por MinIO local 2025. `test/int/setup/containers.ts` arrancaba Silo 2026 sin allowlist. `global-setup.ts` fijaba `CORS_ORIGIN=http://localhost` para la API después de arrancar los contenedores; no configuraba el servidor de objetos.
+- RED nuevo antes del cambio: `pnpm --filter api test:int --runInBand --runTestsByPath test/int/storage/preview-delivery.int-spec.ts --testNamePattern 'probes CORS'`: **1 suite FAIL; 1 prueba PASS / 1 FAIL / 8 fuera del filtro**. Permitido pasa; denegado GET 206 y OPTIONS 204 reflejan `https://not-allowed.example` con `Access-Control-Allow-Credentials: true`. El diagnóstico solo imprimió Origin/status/cabeceras seguras, sin URL firmada ni contenido.
+- Corrección: el valor existente `http://localhost` pasa de `global-setup.ts` a la constante del arnés `TEST_CORS_ORIGIN` en `containers.ts`. `startMinio()` lo entrega como `MINIO_API_CORS_ALLOW_ORIGIN` y `TestInfra.env()` como `CORS_ORIGIN`; globalSetup consume el mismo `infraEnv`, sin duplicar el literal. No se inventó otra política ni se cambió Compose, imagen, bucket CORS, API de preview o firma.
+- `preview-delivery` refuerza el GET completo con Content-Length y los probes con credenciales, rango/longitud exactos y cabeceras de entrega. Para el origen denegado exige ausencia tanto de ACAO como de Allow-Credentials, conservando GET/OPTIONS reales.
+
+### GREEN CORS, entrega y regresiones
+
+```powershell
+pnpm --filter api test:int --runInBand --runTestsByPath test/int/storage/preview-delivery.int-spec.ts test/int/storage/download.int-spec.ts test/int/storage/minio-storage.adapter.int-spec.ts test/int/shared/health.int-spec.ts test/int/worker/worker-health.int-spec.ts
+```
+
+**5 suites PASS / 39 pruebas PASS / 0 FAIL; 0 snapshots.** Las dos suites de salud son los consumidores adicionales de `startTestInfra()`; no existe una suite separada del helper. Preview-delivery completo: sus 10 casos pasan, incluidos ambos probes antes separados por filtro.
+
+- Origen permitido `http://localhost`: ACAO exactamente ese origen y Allow-Credentials `true`; OPTIONS exitoso admite GET/Range; GET con rango devuelve 206 y expone explícitamente Content-Range, Content-Length y Accept-Ranges.
+- Origen denegado `https://not-allowed.example`: GET y OPTIONS sin ACAO ni Allow-Credentials. CORS deja de ser pendiente **en el arnés de integración**.
+- GET normal: 200, 2048 bytes exactos y Content-Length 2048. Rangos 0–9 y 37–63: 206, Content-Range `bytes 0-9/2048` / `bytes 37-63/2048`, longitudes 10 / 27 y bytes exactos. GET/Range mantienen attachment, application/octet-stream, no-store, nosniff y ausencia de Set-Cookie. Los probes permitidos también comprueban las cabeceras de entrega.
+- Peticiones Node directas con `fetch` al host de objetos, sin Authorization/Cookie en sus opciones ni reutilización de las cabeceras autenticadas de Supertest; Node no aporta el cookie jar del navegador. No se acredita con ello el navegador, `credentials: 'omit'` ni el futuro helper de bytes. Browser continúa en T-10/T-11.
+- Download y adapter MinIO conservan sus regresiones, incluida firma/caducidad y descarga de 005. La suite de salud del worker pasó, pero emitió `console.error` con `write ECONNABORTED` desde BullMQ al detener su Redis dedicado. No se ocultaron esos mensajes ni se modificaron la suite o la infraestructura de colas.
+
+### Redis detenido: RED conservado, intermitencia y diagnóstico concreto
+
+1. Con CORS ya corregido, `pnpm --filter api test:int --runInBand --runTestsByPath test/int/storage/preview-operation.int-spec.ts --verbose`: **1 suite FAIL; 4 pruebas PASS / 1 FAIL**. El caso destructivo tardó **5736 ms en total**, incluido fixture/parada. El POST agotó el límite diagnóstico de respuesta de **5000 ms**; el Promise del consume real seguía pendiente. Spies de observación: consume 1, fachada 0, lookup 0, firma 0. La inspección de logs hasta ese límite no encontró secretos; el 500 canónico y sus eventos finales no llegaron a acreditarse en esa ejecución.
+2. Se amplió únicamente el diagnóstico de `preview-operation.int-spec.ts`: tiempo del POST, opciones/estado, eventos de conexión y nombres de comandos pendientes; nunca argumentos, claves, URLs ni excepciones originales. Se conservan las implementaciones reales, la expectativa de 500 y el RED ante timeout. No es un timeout de producción ni convierte el timeout del test en GREEN.
+3. La siguiente corrida completa de la misma suite pasó **5/5**, caso destructivo **1062 ms totales**. La selección posterior `--testNamePattern 'Redis realmente detenido'` pasó **1/1**, caso **1284 ms totales** (los otros cuatro casos quedaron fuera del filtro). Esas duraciones incluyen fixture/parada: no son medidas aisladas de latencia HTTP. Los verdes comprobaron 500 canónico, cero lookup/firma, correlación y saneamiento. No sustituyen el RED anterior ni demuestran una corrección: no cambió producción y el comportamiento es intermitente.
+4. Diagnóstico independiente ejecutado con `node -e` en `apps/api`, sin crear archivos: un RedisContainer propio, factory real `redisClientProviders` de `dist-int` (compilación de la corrida), RedisRateLimiter real y reloj de sistema. Primero consume permitido/status ready; luego se detuvo únicamente ese Redis. El siguiente consume permanecía **pending a los 6017 ms**. Estado `connect`, cola offline de **2** comandos, dos comandos en vuelo llamados **client**, socket escribible/no destruido. Traza: close→reconnecting→connecting→connect repetido, sin nuevo ready; el último connect quedó esperando respuestas. El plazo de observación solo clasificó pending, no declaró éxito; el cliente y su contenedor se limpiaron al terminar.
+
+Configuración efectiva confirmada en el cliente real y en ioredis **5.11.1**:
+
+| Opción | Valor actual |
+|---|---|
+| maxRetriesPerRequest | 1, explícito en el provider |
+| enableOfflineQueue | true, default |
+| connectTimeout | 1000 ms, explícito |
+| commandTimeout | sin configurar |
+| socketTimeout | sin configurar |
+| lazyConnect | true, explícito; después del primer consume ya estaba ready |
+| retryStrategy | default `min(intento * 50, 2000)` ms: 50, 100, …, 2000; sin corte por número de intentos |
+| enableReadyCheck | true, default |
+| autoResendUnfulfilledCommands | true, default |
+
+Causa sustentada por traza y lectura del driver instalado: después del TCP connect se espera el handshake `CLIENT SETINFO` antes del ready check. En el caso observado el transporte del puerto publicado permanece conectado/escribible tras la parada, pero no devuelve las respuestas. connectTimeout se cancela al establecer TCP; maxRetriesPerRequest limita los comandos al procesar cierres/reconexiones, no el tiempo en ese handshake. Mientras no llega otro cierre, no vence un comando por elapsed time y el eval queda en espera offline. RedisRateLimiter está esperando ese eval; PreviewService todavía no recibe un rechazo que pueda traducir. Esto precisa la hipótesis de reencolado: se observó además un bloqueo concreto durante handshake, no solo reintentos ilimitados.
+
+### Frontera Redis pendiente, checks y estado
+
+- Archivo exacto a coordinar: `apps/api/src/shared/infrastructure/redis/redis-client.provider.ts`, opciones de `createRedisClient` (líneas 30–35). **No se modificó**, ni tampoco `redis-rate-limiter.ts` o PreviewService/fachada/controller/autorización/logging.
+- Cambio mínimo recomendado, **sin aplicar**: configurar un `commandTimeout` finito para este cliente no BullMQ, con presupuesto técnico acordado (1000 ms sería el candidato inicial coherente con connectTimeout). El driver arma ese timeout también antes de encolar offline; limita la espera de cada comando/handshake sin agregar Promise.race a preview. No basta asumir que maxRetriesPerRequest=1 ya establece un deadline. Desactivar solo offlineQueue rompería la primera operación con lazyConnect y no es la propuesta.
+- Impacto a revisar: tasa de registro/contraseña/login/carga/descarga/preview, lockout y marcadores idempotentes de correo usan el cliente compartido. Un timeout puede rechazar operaciones bajo latencia legítima y no prueba que una escritura no se ejecutó; no agregar reintentos de negocio por suposición. BullMQ tiene otra configuración (`buildBullConnection`, maxRetriesPerRequest=null) y sus comandos bloqueantes requieren tratamiento separado.
+- Tras autorizar el cambio compartido: unitarias de redis-client.provider, redis-rate-limiter y shared.module; integraciones shared/redis-rate-limiter, identity/redis-attempt-lockout y límites/login/password, storage/rate-limit, preview-operation y notificaciones/degradación/idempotencia. Es necesaria una prueba del cliente real ya conectado con servidor detenido/TCP sin respuesta y recuperación, además del caso actual de puerto cerrado que usa opciones distintas al provider. No se declararon ejecutadas esas regresiones futuras.
+- Checks nuevos: `pnpm --filter api typecheck` PASS; ESLint sobre `test/int/setup/{containers,global-setup}.ts` y `test/int/storage/{preview-delivery,preview-operation}.int-spec.ts` con `--max-warnings 0` PASS; Prettier en esos cuatro TS PASS; `git diff --check` PASS.
+- T-04 sigue `[ ]`: quedan corregir/acreditar el deadline Redis en la frontera compartida, alinear/acreditar la diferencia de runtime Silo 2026 de integración frente al MinIO local 2025 del plan y la comprobación efectiva browser/helper sin Cookie/Bearer/cabeceras Nimbo. Esta ronda cierra el pendiente CORS del arnés; no acredita el runtime local ni staging. La evidencia de aislamiento previa se conserva, sin presentarla como una corrida nueva.
+
+Sin commit, push, staging ni cambios de rama. No se editaron archivos web/T-06, `specs/README.md`, configuración Redis compartida ni producción de preview.
+
+### Ajuste Redis compartido autorizado — deadline y recuperación (2026-10-16)
+
+Adrián autorizó el ajuste compartido, según confirmación de Abel. Precheck: `feat/017-previsualizacion`, HEAD `92b6bf0`, index vacío y cambios locales T-04 intactos. Esta evidencia nueva sustituye el pendiente Redis de la ronda anterior; su tabla/opciones y resultados RED se conservan como históricos. T-04 permanece `[ ]`; no se modifica T-06 ni `specs/README.md`.
+
+#### RED → GREEN del provider
+
+- Antes de producción se agregó la prueba de `commandTimeout: 1000` a `redis-client.provider.spec.ts`, seleccionando solo cuatro opciones para no imprimir credenciales. `pnpm --filter api test --runInBand --runTestsByPath src/shared/infrastructure/redis/redis-client.provider.spec.ts`: **1 FAIL / 3 PASS**. Única diferencia: commandTimeout era undefined; connectTimeout=1000, maxRetriesPerRequest=1 y lazyConnect=true ya coincidían.
+- Único cambio de producción: una línea `commandTimeout: 1000` en `apps/api/src/shared/infrastructure/redis/redis-client.provider.ts`. Sin cambios de retryStrategy, offlineQueue, autoResend, RedisRateLimiter, PreviewService, claves o configuración BullMQ.
+- `pnpm --filter api test --runInBand --runTestsByPath src/shared/infrastructure/redis/redis-client.provider.spec.ts src/shared/infrastructure/rate-limit/redis-rate-limiter.spec.ts src/shared/shared.module.spec.ts`: **3 suites / 11 pruebas PASS**, incluido el provider 4/4, composición/DI y limiter.
+
+#### Caída real y tres repeticiones explícitas
+
+`preview-operation.int-spec.ts` conserva su Redis/app dedicados, preview exitoso antes de parar Redis, POST real, 500 canónico, spies sin sustitución y comprobaciones de correlación/logs/secretos. Se agregó medida del POST y cota de respuesta de 2500 ms (margen de scheduling sobre el deadline de comando de 1000 ms), por debajo de la guardia diagnóstica HTTP existente de 5000 ms. El límite del test nunca sustituye un rechazo Redis ni produce GREEN.
+
+Primera ejecución de preview-operation completo con el cambio: **5/5 PASS**, POST 500 en **1084 ms**, rechazo real `Command timed out`. Esa corrida incluyó además la prueba nueva de recuperación, que falló por el endpoint del arnés descrito abajo: total conjunto **1 suite PASS / 1 FAIL; 5 pruebas PASS / 1 FAIL**. No se oculta ese fallo.
+
+Se ejecutó **tres veces como comandos separados**, sin reintento automático:
+
+```powershell
+pnpm --filter api test:int --runInBand --runTestsByPath test/int/storage/preview-operation.int-spec.ts --testNamePattern 'Redis realmente detenido' --verbose
+```
+
+| Ejecución | Resultado del caso seleccionado | POST hasta 500 | Rechazo real |
+|---|---|---|---|
+| 1 | PASS | 1033 ms | command-timeout |
+| 2 | PASS | 1026 ms | command-timeout |
+| 3 | PASS | 1042 ms | command-timeout |
+
+En cada ejecución quedaron cuatro casos fuera del filtro (sin `.skip`); esos cuatro pasan en las corridas completas. Cada repetición acredita consume real rechazado, **fachada 0 / lookup 0 / firma 0**, cuerpo 500 exacto, correlación, eventos saneados y ausencia de secretos, incluido message/stack originales. Las primeras dos emitieron el aviso de Jest de salida posterior a un segundo; la tercera no. Todas terminaron, sin forceExit ni ocultar avisos. La evidencia temporal se imprime solo con event/status/milisegundos y categoría cerrada de rechazo, sin datos privados.
+
+#### Recuperación real sobre el mismo endpoint
+
+Nueva suite `test/int/shared/redis-client.int-spec.ts`: RedisContainer propio, factory Nest real `redisClientProviders`, RedisRateLimiter real y solo el logger como doble. Tras un consume permitido/status ready, `redis-cli CLIENT PAUSE 5000 ALL` hace que el servidor real deje de procesar comandos sin cerrar TCP. El siguiente consume debe rechazar con **`Command timed out`**, entre 900 y 2500 ms; no se reemplaza la dependencia ni se simula un rechazo. Después se reinicia ese contenedor y se espera un nuevo evento ready sin reconectar manualmente el cliente ni cambiar sus opciones; un consume con clave nueva vuelve a funcionar.
+
+- Primer intento: el comando sí venció, pero no llegó ready en la guardia de recuperación de 10 s. Diagnóstico independiente con Testcontainers confirmó que un reinicio con puerto Docker aleatorio cambia el endpoint: **32826 → 32827**, sameEndpoint=false. No se atribuyó ese fallo de recuperación al provider ni se relajó la expectativa.
+- Corrección solo del arnés nuevo: elegir un puerto efímero libre y fijarlo como binding desde el arranque. Testcontainers puede reiniciar entonces el mismo contenedor/puerto. La prueba exige que el endpoint completo antes/después sea igual.
+- Corrida de recuperación sola: **1 suite / 1 prueba PASS**, rechazo a los **1002 ms**, nuevo ready y consume permitido en el mismo endpoint. Corrida de regresión final: el mismo caso pasa con rechazo a los **1015 ms**. La guardia de 10 s solo hace fallar si no llega ready; no declara recuperación por tiempo transcurrido. El cleanup desconecta el cliente y detiene su contenedor dedicado.
+
+#### Regresiones focales del cliente compartido y CORS
+
+```powershell
+pnpm --filter api test:int --runInBand --runTestsByPath test/int/shared/redis-client.int-spec.ts test/int/shared/redis-rate-limiter.int-spec.ts test/int/identity/redis-attempt-lockout.int-spec.ts test/int/identity/login-rate-limit.int-spec.ts test/int/identity/login-lockout.int-spec.ts test/int/identity/rate-limits.int-spec.ts test/int/identity/password-reset.int-spec.ts test/int/identity/change-password.int-spec.ts test/int/storage/rate-limit.int-spec.ts test/int/storage/preview-operation.int-spec.ts test/int/storage/preview-delivery.int-spec.ts test/int/notifications/mailer-contract.int-spec.ts test/int/notifications/mail-degradation.int-spec.ts
+```
+
+**13 suites PASS / 85 pruebas PASS / 0 FAIL; 0 snapshots.** Incluye registro/reenvío, login por IP/correo, recuperación/cambio de contraseña y lockout, límites storage, emisión preview, recuperación del cliente y entrega/idempotencia/degradación de correo. No hubo fallo de un comando legítimo por exceder 1000 ms ni se aumentó el deadline. La duración de 140 s de mail-degradation corresponde a los backoffs SMTP deliberados, no a una operación Redis pendiente.
+
+- Preview-operation completo vuelve a pasar **5/5**. En esa corrida el POST recibió 500 en **494 ms**, clasificado por el diagnóstico como `redis-error` (otro rechazo real Redis, anterior al timeout), con los mismos controles de cero lookup/firma y saneamiento. No se obliga a esperar 1000 ms cuando la conexión falla antes; la ruta commandTimeout quedó acreditada por las tres repeticiones y la pausa real.
+- Preview-delivery conserva **10/10 PASS**: CORS permitido/denegado, Range/206, exposición de Content-Range/Content-Length y política attachment/octet-stream/no-store/nosniff/sin Set-Cookie. CORS del arnés sigue resuelto.
+- La corrida final emitió el aviso de salida tardía de Jest, aunque concluyó correctamente; no hubo console.error de BullMQ en esa corrida. No se cambió BullMQ ni se silenció el aviso. No se ejecutó toda la API a ciegas ni se presenta una suite completa como acreditada.
+
+#### Checks y estado vigente
+
+- `pnpm --filter api typecheck`: PASS.
+- `pnpm exec eslint "apps/api/src/shared/infrastructure/redis/redis-client.provider.ts" "apps/api/src/shared/infrastructure/redis/redis-client.provider.spec.ts" "apps/api/test/int/shared/redis-client.int-spec.ts" "apps/api/test/int/storage/preview-operation.int-spec.ts" --max-warnings 0`: PASS, sin warnings.
+- Prettier focalizado en esos cuatro TS: PASS tras ajustar únicamente formato de la suite nueva.
+- `git diff --check`: PASS; index vacío.
+- Archivos de esta ronda: provider y su spec, nueva integración `shared/redis-client.int-spec.ts`, medición/evidencia del test `storage/preview-operation.int-spec.ts` y esta evidencia T-04. Los cambios CORS y demás locales anteriores se conservaron.
+
+**Redis deja de ser el bloqueo de espera indefinida en los escenarios acreditados:** deadline compartido, tres paradas HTTP y recuperación real están verdes. T-04 sigue `[ ]` por la alineación/acreditación pendiente del runtime de objetos (Silo 2026 de integración frente a MinIO local 2025 del plan) y la verificación efectiva de browser/helper con `credentials: 'omit'`, sin Cookie/Bearer/cabeceras Nimbo, en T-07/T-10/T-11. Los avisos de salida tardía quedan registrados, sin ocultarlos. No se cierra la spec ni se modifica T-06. Sin staging, commit, push ni cambio de rama.
+
+### Delimitación T-04: runtime de objetos y evidencia browser diferida (2026-10-16)
+
+Ronda de lectura y documentación sobre `feat/017-previsualizacion`, HEAD `92b6bf0`, index vacío. Redis/CORS y el diagnóstico del timer transitorio de ioredis se conservan; no se modificó código, teardown, imágenes ni versiones, ni se descargaron imágenes. Solo se agrega esta evidencia T-04; T-06 y `specs/README.md` permanecen intactos.
+
+#### Runtime: diferencia deliberada, no defecto por nombre/tag
+
+- **Spec 017 CA-11/§5:** exige el comportamiento de entrega (origen aislado, URL de 300 s, un objeto, attachment/octet-stream/no-store y lectura sin credenciales de la app), sin fijar una imagen o tag. El plan usa MinIO y en §5, línea 142, describe `compose.yml` como MinIO `RELEASE.2025-09-07T16-13-09Z`; esa descripción de la fuente quedó desactualizada, aunque el Dockerfile local sí compila ese tag.
+- **Testcontainers:** `test/int/setup/containers.ts:14–15` fija `pgsty/silo:RELEASE.2026-09-16T00-00-00Z`. `startMinio()` usa `server /data`, puerto 9000 publicado en puerto efímero y allowlist `TEST_CORS_ORIGIN`, entregada también a la API por `infra.env()`. El arnés de storage firma con el alias público de ese mismo endpoint y lo distingue de web/API.
+- **Compose base:** `compose.yml:40–48` fija el mismo Silo 2026 y transmite `CORS_ORIGIN` a `MINIO_API_CORS_ALLOW_ORIGIN`; `minio-init` usa `pgsty/mc` del mismo tag. No hay divergencia de imagen entre Compose base y Testcontainers.
+- **Override local de este worktree:** selecciona `nimbo-minio-local:2025-09-07`, construido mediante `infra/minio/Dockerfile.local` con MinIO `RELEASE.2025-09-07T16-13-09Z` y mc `RELEASE.2025-08-13T08-35-41Z`; conserva el environment CORS heredado del base y publica 9000/9001. Se verificó además `git show HEAD:compose.override.yml`: la versión registrada en HEAD solo publica puertos de MinIO y hereda Silo; no contiene ese build/image local. El Dockerfile local está ignorado. Estos archivos locales se preservan; la configuración leída no se presenta como una inspección de un contenedor actualmente ejecutándose.
+- **Intención documentada:** el commit integrado de Adrián `10c7b8e` (#58, 2026-10-07), `docs/adr/0025-imagenes-de-minio-desde-el-fork-de-pigsty.md`, `docs/operations/ambientes.md:80–84` y las notas T-26 de fundaciones documentan el reemplazo por el fork compatible debido a la indisponibilidad de las imágenes originales. El adaptador mantiene S3/SigV4. ADR-0025 todavía muestra **Propuesto**: esta ronda no inventa su aceptación formal ni modifica ADR/plan.
+- **Clasificación principal B:** diferencia deliberada/documentada y compatible con el contrato de entrega ya verificado, no un defecto de T-04 que obligue a sustituir Silo por MinIO. La atribución de MinIO 2025 al Compose base en el plan es una referencia documental obsoleta (C para esa afirmación concreta). Se retira como pendiente funcional de T-04 «hacer coincidir Silo 2026 / MinIO 2025». Las pruebas sobre Silo no se presentan como evidencia browser o de un despliegue local/staging diferente; esos recorridos posteriores deben comprobar su runtime efectivo.
+
+#### Recorrido actual: emisión autenticada separada de lectura del objeto
+
+> Recorrido observado en esa ronda, antes de T-07 y de la integración final T-06; la ausencia de helper/lectores descrita aquí quedó superada.
+
+1. `PreviewPage.tsx:144–160` compone `useAuthFetch`, `requestPreviewUrl` y `usePreview`. `preview/api.ts:18–21` hace únicamente `POST /files/:fileId/preview-url` contra `apiPublicUrl`; authFetch añade Bearer y requestJson añade cabeceras de API como x-correlation-id/Accept. Esas cabeceras pertenecen a la petición autenticada a Nimbo.
+2. `usePreview` conserva `{ file, url, expiresAt }` en el estado RAM del intento vigente. PreviewPage muestra metadata/estados, pero no hace GET de `delivery.url`, no monta lectores ni obtiene bytes. Descargar usa el flujo público separado de 005 y abre una URL nueva de descarga; no consume la URL de preview como fallback.
+3. La búsqueda en web no encontró `preview/readers/object-bytes.ts`, lectores PDF/imagen/texto/OOXML ni un helper GET de bytes presignados. `upload/xhr-put.ts` es un PUT de carga existente, con `withCredentials=false`; no es el helper GET de preview y no acredita ese recorrido. El `objectRequest` de preview-delivery es solo un helper de pruebas Node, no un lector web.
+4. Por tanto, **no hay hoy un helper web de preview al que corregirle credentials**. `credentials: 'omit'` está definido como requisito del helper único de T-07 (plan §2.4 y tarea T-07), no como una propiedad ya implementada. No se crea ese helper en T-04 ni se utiliza authFetch para leer objetos.
+
+#### Qué está acreditado y qué queda diferido
+
+- Se conserva la última evidencia ejecutada de preview-delivery **10/10 PASS**, incluida en las 13 suites / 85 pruebas verdes: endpoint autenticado → URL al host de objetos distinto de web/API → GET Node directo, TTL 300, CORS permitido/denegado con GET/OPTIONS reales, Range/206, Content-Range, Content-Length, exposición de headers, attachment/octet-stream/no-store/nosniff y ausencia de Set-Cookie. Las peticiones Node no copian Authorization/Cookie ni cabeceras privadas de Supertest. Esta lectura no repite la suite porque no cambió código/configuración ni apareció una regresión.
+- **Ningún GET de preview desde navegador real está acreditado todavía.** Los tests de componentes/jsdom acreditan el shell y la emisión, no el envío de cookies de un navegador, su aplicación de CORS ni las cabeceras del lector. Node no tiene el cookie jar de la app; su resultado no demuestra `credentials: 'omit'` en web.
+- **T-07:** implementar/probar el helper GET/rangos con `credentials: 'omit'`, sin authFetch, Bearer, Cookie ni cabeceras Nimbo, y con cancelación. **T-08/T-09:** consumidores reales PDF/OOXML del mismo helper, sin duplicar la política. **T-10:** acreditar el GET/Range desde navegador y el tráfico efectivo del lector integrado, ausencia de credenciales y aplicación de CORS en el runtime/origen utilizado. **T-11:** comprobar el recorrido humano y DevTools correspondiente. Nada de ello se adelanta en esta ronda.
+- **Estado T-04:** se mantiene `[ ]`, sin un nuevo RED ni un fallo abierto de Redis/CORS/backend. La salvedad que sigue sin acreditarse con la aplicación real es la frase literal «ausencia de Cookie/Bearer en el origen efectivo» para el GET del lector en navegador (spec CA-11/§5); queda explícitamente como **evidencia transversal diferida** a T-07/T-10/T-11, no como una implementación de lector a cargo de T-04. La tensión de secuenciación ya documentada no se resuelve cambiando tareas/criterios para marcar la casilla. La diferencia de nombres/tags deja de ser un bloqueo funcional separado; la trazabilidad/estado documental de ADR-0025 y la referencia antigua del plan se señalan sin corregir documentos ajenos a esta autorización.
+
+Verificación de esta ronda documental: `git diff --check`. Sin commit, push, staging ni cambio de rama.
+
+## T-06 — continuación del worktree y evidencia web (2026-10-12)
+
+> Evidencia histórica: el stub, los fallos y los pendientes de esta continuación fueron atendidos en las revisiones posteriores. El cierre vigente está [al final](#cierre-técnico-t-06-y-t-07-2026-10-18).
+
+T-06 permanece `[ ]`; T-04 permanece `[ ]`. Continuación autorizada por Abel sobre `feat/017-previsualizacion`, sin reiniciar el trabajo. La habilitación explícita del catálogo permite exclusivamente las cuatro entradas de `STORAGE_PREVIEW_FAILURE_CODES` y sus pruebas; no se agregaron códigos a `STORAGE_ERROR_CODES`. Redis y CORS son pendientes de T-04/infra compartida y no bloquean esta implementación web.
+
+### Estado recuperado y revalidación
+
+- Precheck read-only: `git status --short`, `git diff --stat` y lectura del código actual, spec/plan/tasks y APIs públicas T-05. La rama se verificó con `git branch --show-current`. Existían 14 archivos de preview: siete piezas y siete suites. `PreviewPage.tsx` era un stub `null`; sus pruebas ya existían. Faltaba el index público y `PreviewStates` todavía omitía los fallos locales de lectores.
+- Se conservaron los cambios previos de T-04 en las seis suites/helpers API señalados por Abel, así como los cambios previos de este archivo y de `specs/README.md`. Ninguno de esos archivos API ni el backlog fue editado en esta continuación.
+- Revalidación inicial de `PreviewMenuItem.spec.tsx` + `PreviewStates.spec.tsx`: **2 suites / 25 pruebas PASS**, incluido axe, sin warnings `act` ni `next/link`.
+- Después, `routes.spec.ts`, `api.spec.ts`, `preview-failure.spec.ts` y `hooks/use-preview.spec.tsx`: **4 suites / 23 pruebas PASS**. No se recrearon los RED históricos aportados por Abel.
+
+### RED → GREEN observado en esta continuación
+
+- Catálogo: `pnpm --filter web test --runInBand --runTestsByPath src/lib/error-catalog.spec.ts`. Antes de producción: **4 fallos / 29 pases**; `storageMessage` devolvía `null` para las cuatro entradas ausentes. Después: **33/33 PASS**, incluyendo el texto completo exacto de `messageForCode` y causa/solución separadas. Corrupción usa «su tipo»; `unsupported` conserva su entrada HTTP distinta.
+- Estados: **6 fallos / 34 pases** en la corrida de `PreviewStates` + `preview-failure`: faltaban las cinco presentaciones locales y el vacío válido. Tras conectarlas: **40/40 PASS**. `protected`, `corrupt`, `unavailable` y `expired` consumen el catálogo; `memory` reutiliza unavailable. Descargar es primario/primero salvo en expiración. Solo hay callbacks manuales. Corrupto usa alert; protegido/indisponibilidad/expiración usan status. Los códigos de lector sintéticos siguen clasificándose como unexpected si se introducen indebidamente como errores HTTP; no se atribuyen al POST.
+- `PreviewPage.spec.tsx` se ejecutó intacto contra el stub antes de editarlo: **7 fallos / 6 pases**, sin región, encabezado ni acciones. Los seis pases sobre DOM vacío no acreditaban privacidad/axe del shell. Se corrigió el harness para aportar el único `main` desde el layout de prueba y exigir región/h1 antes de axe; las firmas de T-05 usadas por la suite eran reales. Implementación y pruebas ampliadas: **19/19 PASS** en la validación final.
+- Comprobación nueva del borde temporal exacto: **2 fallos / 28 pases** en `PreviewPage` + `usePreview` al exigir que a 2000 ms aún no haya espera prolongada y que retry/cambio de archivo reinicien el timer. Se ajustó el umbral a 2001 ms: **30/30 PASS**. No reemite ni mueve el foco al vencer.
+- Revisión de calidad posterior: `classifyPreviewFailure` consultaba propiedades heredadas de `API_REASONS`. Con códigos desconocidos `constructor`, `toString` y `__proto__`, `reason` recibía funciones/objetos en vez de `unexpected`. Regresión mínima observada en `preview-failure.spec.ts`: **RED de 3 fallos / 11 pases**. La corrección funcional ya realizada exige propiedad propia del mapa, sin alterar los códigos HTTP admitidos ni las razones locales. **GREEN final de preview-failure: 14/14 PASS**. Las tres guardias nuevas elevan el focal de 120 a 123 pruebas.
+
+### Comportamiento acreditado de la base T-06
+
+- `PreviewPage` adapta `useAuthFetch` + `apiPublicUrl` a `requestPreviewUrl`, valida la entrega por contracts y usa `usePreview`. Solo después de entrega válida muestra nombre, kind mediante `FileTypeChip`, tamaño, fecha de modificación y «Solo lectura». El área de éxito es el shell sin lector; no realiza GET de objetos ni crea bytes, Blob/object URLs, canvas, iframe, workers o motores.
+- Loading anuncia «Abriendo la vista previa…»; después de >2 s, «Preparando la vista previa…», con progressbar indeterminado sin porcentaje. No usa metadata recordada ni supone archivo grande. Se prueban limpieza del timer al resolver/rechazar, retry, cambio de fileId y unmount.
+- Retry manual elimina la entrega anterior, reautoriza y devuelve foco a la región estable antes de retirar el control. AbortSignal e identidad del intento descartan respuesta/error tardíos, incluso si el transporte ignora el aborto. El shell está keyed por fileId para retirar inmediatamente también metadata y lifecycle de descarga anteriores.
+- Descargar solicita una URL nueva mediante el `useFileDownload` público de 005. Nunca usa `delivery.url` como enlace ni fallback. Se prueban descarga por teclado, petición no duplicada, reintento de descarga con nueva URL, fallo saneado sin excepción original y descarte tras unmount/cambio de archivo/retry de preview. El puerto 005 no ofrece cancelación: se invalida la continuación, sin fingir aborto del transporte de descarga.
+- Privacidad: pruebas de DOM, atributos, storage, cookies y consola; URL firmada/clave/firma/`expiresAt` no llegan al DOM. Producción no persiste ni registra delivery, contenido o errores crudos. La entrega vive en el estado RAM del intento vigente.
+- Foco/accesibilidad: entrada a región estable con nombre «Vista previa», h1 seguro, `aria-busy`, controles con nombres accesibles, foco visible, timer sin movimiento de foco y axe del shell/estados. El shell no agrega `main`; AppLayout lo aporta.
+- Vacío válido se presenta únicamente como éxito explícito sin unidades (`PreviewStates.empty`), con «Este archivo no tiene contenido para mostrar.», status y Descargar; no se infiere del tamaño ni de la URL. Los estados locales y el vacío están probados a nivel presentacional. Detectarlos sobre documentos reales y conectarlos a sus productores corresponde a T-07/T-08/T-09; no se simuló un reader.
+- `PreviewMenuItem` usa kind, no extensión: pdf/texto/imagen/xlsx/pptx primero en el slot real `firstAction`; docx/otro excluidos. Abrir el menú no emite URL de preview. Teclado y axe pasan.
+- Retorno por `returnPathOf({ id, folderId })`: solo id/carpeta de la entrega vigente; sin entrega/404, raíz con el fileId de ruta para foco. No hay captura de orden/páginas/filtros/overlays/breadcrumbs/nombre de carpeta. Las pruebas existentes de MyFiles acreditan el `useReturnFocus` real: fila o encabezado y espera del listado.
+- `preview/index.ts` publica `PreviewPage`/props, `PreviewMenuItem` y el puente cliente existente `PreviewFiles`. No publica cliente HTTP, clasificación ni estado/helpers internos.
+
+### Validación focal final y checks
+
+```powershell
+pnpm --filter web test --runInBand --runTestsByPath src/features/storage/preview/routes.spec.ts src/features/storage/preview/api.spec.ts src/features/storage/preview/preview-failure.spec.ts src/features/storage/preview/hooks/use-preview.spec.tsx src/features/storage/preview/components/PreviewMenuItem.spec.tsx src/features/storage/preview/components/PreviewStates.spec.tsx src/features/storage/preview/components/PreviewPage.spec.tsx src/lib/error-catalog.spec.ts
+```
+
+**8 suites focales / 123 pruebas PASS**, 0 snapshots, sin warnings del harness T-06. Los 120 pases anteriores se conservan como evidencia histórica previa a las tres regresiones de códigos heredados.
+
+- `pnpm --filter web typecheck`: PASS. Se corrigió el paso de `signal: undefined` del cliente recuperado para respetar `exactOptionalPropertyTypes`; si no hay señal, se omite esa propiedad.
+- `pnpm exec eslint "apps/web/src/features/storage/preview/**/*.{ts,tsx}" "apps/web/src/lib/error-catalog.ts" "apps/web/src/lib/error-catalog.spec.ts" --max-warnings 0`: PASS, sin warnings. Sin excepciones ni cambios de reglas.
+- `pnpm exec prettier --check "apps/web/src/features/storage/preview/**/*.{ts,tsx}" "apps/web/src/lib/error-catalog.ts" "apps/web/src/lib/error-catalog.spec.ts"`: PASS.
+- `git diff --check`: PASS. No se formatearon archivos ajenos a T-06.
+
+Pulido de cierre autorizado: solo se ajustaron dos títulos de pruebas, sin cambiar comportamiento, fixtures ni assertions. El caso de tasa en `PreviewStates.spec.tsx` se identifica como guardia complementaria de **017 CA-12**, sin ampliar las CA oficiales de T-06 (**CA-2, CA-6, CA-7, CA-9**). El título de persistencia/consola de `PreviewPage.spec.tsx` describe únicamente la entrega exitosa que ejecuta; los fallos se cubren en otras pruebas. Esta pasada no modifica producción ni repite la suite web completa.
+
+### Regresiones, suite completa y pendientes de cierre
+
+```powershell
+pnpm --filter web test --runInBand --runTestsByPath src/features/storage/components/my-files.spec.tsx src/features/storage/components/file-row-menu.spec.tsx src/features/storage/hooks/use-file-download.spec.tsx src/features/storage/routes.spec.ts "src/app/(app)/(cliente)/archivos/page.spec.tsx" "src/app/(app)/(cliente)/archivos/carpeta/[folderId]/page.spec.tsx" "src/app/(app)/(cliente)/archivos/vista-previa/[fileId]/page.spec.tsx"
+```
+
+- Regresiones: **6 suites PASS / 1 FAIL; 75 pruebas PASS / 1 FAIL**. MyFiles incluye las cinco pruebas de retorno/foco de `useReturnFocus`; no existe una suite separada de ese hook. Download público, rutas y los tres wrappers pasan.
+- `FileRowMenu`: falla `CA-21: usa solo tokens de Cielo Sereno, sin colores crudos`, línea 366: tras descargar con 429 y volver a pulsar Enter, `[role="menu"]` es `null`. Reproducción sola mediante `pnpm --filter web test --runInBand --runTestsByPath src/features/storage/components/file-row-menu.spec.tsx`: **18 pases / 1 fallo**. Test y producción no tienen diff; esa suite no importa preview ni el catálogo modificado. No se atribuyó una causa definitiva ni se modificó su expectativa/producción fuera de ownership.
+- El wrapper marcador de vista previa pasa, pero conserva el warning `act` de `ForwardRef(LinkComponent)`/`next/link`; no es un warning de las suites nuevas de T-06.
+- Última suite web completa ejecutada mediante `pnpm --filter web test --runInBand`, después del ajuste de composición y antes de la revisión de códigos heredados/pulido de títulos: **149 suites PASS / 1 FAIL (150); 1212 pruebas PASS / 1 FAIL (1213)**; 0 snapshots. Único fallo: el mismo FileRowMenu. No se declara la suite completa verde ni una nueva corrida completa en esta pasada.
+- Ownership actual: plan §2.2/§2.5 y T-05 mantienen los tres wrappers en Adrián; no hay habilitación explícita de T-06 para editarlos. Integración mínima pendiente: raíz/carpeta deben usar `PreviewFiles` público conservando ubicación/key/`returnFocusOf`; vista-previa debe reemplazar el marcador por `PreviewPage fileId={fileId} apiPublicUrl={getEnv().API_PUBLIC_URL}`, dentro del layout existente, sin otro `main`. Los wrappers y sus suites no se tocaron.
+- Para proponer el cierre T-06 faltan esa integración autorizada y resolver/revalidar la regresión FileRowMenu en su frontera; al sustituir el marcador, revalidar también su harness sin warning. No es correcto afirmar que solo queda un wrapper mientras la regresión está roja. Las garantías browser/360–1440 y lectura real continúan en T-07+/T-10/T-11 y no se acreditan con jsdom.
+
+Archivos de esta continuación: cambios sobre piezas/tests existentes dentro de `apps/web/src/features/storage/preview/`, nuevo `preview/index.ts`, los dos archivos autorizados `apps/web/src/lib/error-catalog.{ts,spec.ts}` y este registro agregado al final de tasks. No se ejecutaron Redis/CORS de T-04, commits, push, amend, merge, rebase, reset ni cambios de rama. No se marcó T-06 `[x]` ni se cerró la spec.
+
+### Revisión T-06 sobre integración actual — evidencia nueva (2026-10-16)
+
+Base verificada mediante precheck read-only: rama `feat/017-previsualizacion`, HEAD `150e76b` (`test(storage): FileRowMenu reabre el menú tras el cierre de foco de Radix [017 T-06]`), precedido por `8de5dec` (`feat(storage): conecta PreviewFiles y PreviewPage en las rutas [017 T-06]`). Ambos cambios de Matul ya estaban incorporados antes de editar. Esta evidencia sustituye los pendientes históricos de wrappers/FileRowMenu descritos arriba; no eran trabajo faltante en esta ronda. Los cambios locales API de T-04, `specs/README.md` y los bloques documentales ajenos a T-06 se conservaron.
+
+#### Observaciones atendidas y cobertura
+
+- **DRY:** `FILE_TYPES` y `CHIP_TYPE_BY_KIND` tenían los mismos siete pares: docx→docx, pdf→pdf, xlsx→xlsx, pptx→pptx, imagen→img, texto→text, otro→other; solo difería el orden. Fuente neutral única en `features/storage/file-type.ts`, `Readonly<Record<FileKind, FileType>>`, exportada por `storage/index.ts`. NodeRows, QuickAccessSection, PreviewPage y el consumidor adicional TrashList usan ese mapa; preview no importa NodeRows. La extracción conserva comportamiento y usa la cobertura existente de chips/listas, sin fabricar RED para mover una constante.
+- **Fecha:** no existe en `lib/format-date.ts` un helper con el formato de modificación requerido. PreviewPage reutiliza `DATE_LOCALE` (`es-GT`) con `dateStyle: 'medium'`. Se amplió la prueba de metadata autorizada: RED real `10 oct 2026` frente a `10/10/2026`; GREEN con la convención compartida.
+- **YAGNI:** las vistas T-06 no consumían `PreviewFailure.retryAfterSeconds`; solo el clasificador y su test lo transportaban. Se retiraron la propiedad y su propagación/validación locales. Se ajustaron las cinco expectativas de clasificación al modelo reducido; conservan `STORAGE_TOO_MANY_REQUESTS`→`rate-limited`. El 429 mantiene mensaje y acciones manuales existentes, sin segundos ni countdown. `ApiClientError`, cliente HTTP y contratos siguen intactos: identity sí consume Retry-After, y `preview/api.spec.ts` conserva la prueba de propagación del error compartido.
+- **SRP:** `PreviewFiles` y su prueba de composición viven en archivos propios `components/PreviewFiles.{tsx,spec.tsx}`. El export público `preview/index.ts` conserva `PreviewFiles`, `PreviewMenuItem`, `PreviewPage` y sus props existentes. La prueba movida consume ese export público y verifica las mismas props + `firstAction`, sin estado adicional; no se fabricó RED para el movimiento.
+- **Enlace:** PreviewMenuItem usa Radix `DropdownMenuItem asChild` con el `Link` real, `href={previewPathOf(file.id)}` y `prefetch={false}`. Se retiraron useRouter/router.push y los mocks de next/navigation en su suite y en las specs de raíz/carpeta. Solo se sustituyeron las expectativas de push por anchor/href; las demás expectativas de Matul se conservaron. Las cinco categorías admitidas siguen primero aunque el nombre termine en docx; docx/otro siguen excluidos por kind. Se verifican activación con Enter, foco del ítem, cierre del menú, ruta, ausencia de descarga/emisión anticipada y axe. El listener de la prueba cancela únicamente la navegación nativa de jsdom, sin simular next/link ni next/navigation.
+- **Regla de tres:** openInBrowser conserva sus dos implementaciones sin extracción. `quick-access-sidebar.tsx` ya reutiliza la de FileRowMenu; es un consumidor adicional, no una tercera implementación duplicada.
+
+RED observado antes de cambiar producción: `pnpm --filter web test --runInBand --runTestsByPath src/features/storage/preview/preview-failure.spec.ts src/features/storage/preview/components/PreviewMenuItem.spec.tsx src/features/storage/preview/components/PreviewPage.spec.tsx`: **3 suites FAIL; 12 pruebas FAIL / 32 PASS (44)**. Fallos: seis de semántica/ruta del enlace, uno de fecha y cinco por la propiedad local retirada. GREEN posterior con toda la cobertura focal siguiente.
+
+#### Integración de Matul revalidada
+
+- Raíz: PreviewFiles público, `folderId={null}` y `returnFocusOf(await searchParams)`, sin estado adicional.
+- Carpeta: PreviewFiles público con `folderId`, `key={folderId}` y `returnFocusOf(search)` conservados.
+- Vista previa: PreviewPage público con `fileId` y `getEnv().API_PUBLIC_URL` dentro de StorageAppLayout. AppLayout aporta el único main; no se agregaron breadcrumbs ni estado del explorador. El wrapper y su spec no precisaron cambios; pruebas de POST, retorno, layout/cuota y axe pasan sin el warning act histórico.
+- FileRowMenu: producción y spec sin modificaciones en esta ronda. Su suite completa de **19 pruebas PASS**, incluido `CA-21: usa solo tokens de Cielo Sereno, sin colores crudos`, pasó en regresión focalizada y nuevamente dentro de la suite web completa, usando la corrección de foco ya incorporada en HEAD.
+
+#### Validación final ejecutada
+
+```powershell
+pnpm --filter web test --runInBand --runTestsByPath src/features/storage/preview/routes.spec.ts src/features/storage/preview/api.spec.ts src/features/storage/preview/preview-failure.spec.ts src/features/storage/preview/hooks/use-preview.spec.tsx src/features/storage/preview/components/PreviewMenuItem.spec.tsx src/features/storage/preview/components/PreviewStates.spec.tsx src/features/storage/preview/components/PreviewPage.spec.tsx src/lib/error-catalog.spec.ts src/features/storage/preview/components/PreviewFiles.spec.tsx
+```
+
+**9 suites PASS / 0 FAIL; 123 pruebas PASS / 0 FAIL; 0 snapshots; sin warnings.** La prueba de composición se movió a su propia suite: no se perdió cobertura ni se incrementó artificialmente el número de pruebas.
+
+```powershell
+pnpm --filter web test --runInBand --runTestsByPath src/features/storage/components/my-files.spec.tsx src/features/storage/components/file-row-menu.spec.tsx src/features/storage/hooks/use-file-download.spec.tsx src/features/storage/routes.spec.ts src/features/storage/components/node-table.spec.tsx src/features/storage/components/file-explorer.spec.tsx src/features/storage/components/folder-disclosure.spec.tsx src/features/storage/components/quick-access-section.spec.tsx "src/app/(app)/(cliente)/papelera/page.spec.tsx" "src/app/(app)/(cliente)/archivos/page.spec.tsx" "src/app/(app)/(cliente)/archivos/carpeta/[folderId]/page.spec.tsx" "src/app/(app)/(cliente)/archivos/vista-previa/[fileId]/page.spec.tsx"
+```
+
+**12 suites PASS / 0 FAIL; 180 pruebas PASS / 0 FAIL; 0 snapshots; sin warnings.** Incluye NodeRows mediante NodeTable/FileExplorer/FolderDisclosure, QuickAccessSection, TrashList mediante papelera, MyFiles/retorno/foco, descarga pública, rutas y los tres wrappers. Total focal + regresiones, sin solapamiento: **21 suites / 303 pruebas PASS**.
+
+- `pnpm --filter web typecheck`: PASS.
+- `pnpm exec eslint "apps/web/src/features/storage/preview/**/*.{ts,tsx}" "apps/web/src/features/storage/file-type.ts" "apps/web/src/features/storage/index.ts" "apps/web/src/features/storage/components/node-rows.tsx" "apps/web/src/features/storage/components/quick-access-section.tsx" "apps/web/src/features/storage/components/trash-list.tsx" "apps/web/src/app/(app)/(cliente)/archivos/page.spec.tsx" "apps/web/src/app/(app)/(cliente)/archivos/carpeta/[folderId]/page.spec.tsx" --max-warnings 0`: PASS, 0 warnings. Primera ejecución: un error import-x/order en PreviewFiles.spec.tsx; se corrigió únicamente el orden y se repitió con éxito antes de la suite completa.
+- `pnpm exec prettier --check "apps/web/src/features/storage/preview/**/*.{ts,tsx}" "apps/web/src/features/storage/file-type.ts" "apps/web/src/features/storage/index.ts" "apps/web/src/features/storage/components/node-rows.tsx" "apps/web/src/features/storage/components/quick-access-section.tsx" "apps/web/src/features/storage/components/trash-list.tsx" "apps/web/src/app/(app)/(cliente)/archivos/page.spec.tsx" "apps/web/src/app/(app)/(cliente)/archivos/carpeta/[folderId]/page.spec.tsx"`: PASS.
+- `git diff --check`: PASS.
+- **Suite web completa final:** `pnpm --filter web test --runInBand`: **151 suites PASS / 0 FAIL; 1221 pruebas PASS / 0 FAIL; 0 snapshots; 172.065 s; sin warnings**, incluidos FileRowMenu y todos los wrappers. Sustituye como validación actual el resultado histórico rojo de 150 suites.
+
+#### Comparación literal de T-06 y decisión de cierre
+
+> Decisión histórica del 2026-10-16: la ausencia de lifecycle real que impedía cerrar T-06 quedó superada por el cierre técnico del 2026-10-18.
+
+El wording oficial de T-06 (fila de tareas) se conserva y la casilla permanece `[ ]`. Shell/cliente/rutas/usePreview, kinds y primer ítem, progreso >2 s, estados presentacionales (incluidos vacío y memoria), acciones, cancelación/descarte, privacidad en memoria, retorno/foco y pruebas de componente/axe están acreditados por las suites citadas. Los wrappers ya están integrados y FileRowMenu está verde; ninguno sigue siendo pendiente.
+
+La frase literal **«Reintento manual destruye la lectura previa y reemite»** solo está acreditada en su parte de emisión: el shell retira delivery, aborta/descarta el intento previo y reemite. Todavía no existe un lector montado ni su lifecycle de destrucción; no se puede presentar la prueba de aborto del POST como prueba de liberación de una lectura real. **Pendiente exacto para proponer cierre literal:** conectar y acreditar la destrucción/liberación de la lectura previa al reintentar cuando T-07/T-08/T-09 incorporen sus lectores. Los estados locales/vacío/memoria están cubiertos presentacionalmente; su detección en documentos reales corresponde a esas tareas. No se implementaron lectores en esta revisión ni se modificaron requisitos para cerrar la casilla. Browser 360/1440 y demo continúan en T-10/T-11; mostrar Retry-After continúa en T-11.
+
+Archivos de esta revisión: fuente neutral `storage/file-type.ts`, export `storage/index.ts`, imports en `components/{node-rows,quick-access-section,trash-list}.tsx`; `preview/components/PreviewFiles.{tsx,spec.tsx}` nuevos; ajustes en `PreviewMenuItem.{tsx,spec.tsx}`, `PreviewPage.{tsx,spec.tsx}`, `preview/index.ts` y `preview-failure.{ts,spec.ts}`; specs de raíz/carpeta y únicamente este bloque T-06. Sin staging, commit, amend, push ni otras operaciones de escritura Git. T-04 y la spec conservan su estado.
+
+## Cierre técnico T-06 y T-07 (2026-10-18)
+
+### T-06 — evidencia final de cierre
+
+- **Commit:** `88a55ad47b7fc33d3c7e52c5c1dfb199f9f0c351`.
+- **Mensaje:** `feat(storage): integrar lectores en shell de previsualización [017 T-06]`.
+- `PreviewReader` integrado en `PreviewPage`, seleccionado por `kind`; `usePreview` crea una generación nueva por retry, aunque la URL reemitida sea la misma, y se inicia otra lectura de bytes.
+- **«Reintento manual destruye la lectura previa y reemite» ya está acreditado con lectores reales Image/Text:** `usePreviewContent.retire()` invalida callbacks y espera cleanup antes de reemitir. Las pruebas comprueban cancel/release y revoke de A antes del POST siguiente, sin confundir aborto de emisión con liberación del lector.
+- `ready`/`failure` obsoletos no afectan a la generación vigente; unmount aborta/libera y salir durante cleanup impide una reemisión posterior. Progreso de lectura después de >2 s, sin reemisión automática ni movimiento de foco.
+- Fallos del lector saneados, con Descargar/Volver conservados cuando corresponde; la descarga mantiene el flujo público 005. Un 403/404 posterior de la API retira metadata y contenido previos.
+- Lifecycle real de `ImagePreview`/`TextPreview`, pruebas de componentes y `jest-axe`; URL firmada fuera del DOM y URL/contenido solo en memoria, sin persistencia ni logs privados.
+
+**T-06 queda `[x]`**. Se conserva íntegro el wording oficial. La integración usa lectores y helper reales con red y eventos gráficos controlados; browser real/360–1440 y demo se consolidan en T-10/T-11.
+
+### T-07 — evidencia final de cierre
+
+- **Commit:** `3b12c55fff76e9ac4fbce51d315b858158f84181`.
+- **Mensaje:** `feat(storage): implementar lectores nativos de previsualización [017 T-07]`.
+- **`object-bytes`:** helper único de GET con `credentials: 'omit'`, sin Authorization/Cookie/cabeceras Nimbo, propagación de AbortSignal y cancelación. Range exige 206 y Content-Range compatible; valida Content-Length cuando existe y la longitud real al consumir el stream. Admite ajuste legítimo al EOF, rechaza rangos/respuestas inválidos sin fallback automático a GET completo y sanea errores incluso tardíos.
+- **Imagen:** PNG/JPG/JPEG/GIF/WebP mediante detección MIME local, bytes del helper, Blob/object URL e `img` nativo, sin proxy/optimización. Cleanup idempotente, abort/cancel/release, revoke y protección frente a resultados obsoletos. Firmas y eventos gráficos controlados en tests; la decodificación gráfica en navegador real corresponde a T-10.
+- **TXT/MD:** TextDecoder UTF-8 incremental con `fatal: true`; preserva caracteres multibyte partidos entre chunks y muestra texto literal escapado, sin Markdown→HTML ni `dangerouslySetInnerHTML`. Sin truncamiento ni límite nuevo; texto vacío o blanco válido; UTF-8 inválido retira el parcial. Cancelación/liberación y protección frente a entregas/lecturas obsoletas.
+- `ReaderEvents` pertenece a T-07 porque los lectores consumen directamente `onReady` y `registerCleanup`. T-07 no depende de las piezas nuevas T-06; T-06 consume el transporte y los lectores de T-07.
+
+**T-07 queda `[x]`**. Se conserva íntegro el wording oficial; los consumidores PDF/OOXML siguen pendientes en T-08/T-09.
+
+### Regresión vigente consolidada
+
+Ejecuciones posteriores a ambos commits técnicos, acreditadas en la ronda técnica anterior. Esta actualización documental registra sus resultados sin presentarlos como pruebas reejecutadas ahora.
+
+| Verificación | Resultado |
+|---|---|
+| `pnpm --filter web test --runInBand src/features/storage/preview` | 15 suites / 269 tests PASS |
+| `pnpm --filter web test --runInBand` | 158 suites / 1400 tests PASS; 0 fallos, sin warnings observados, exit code 0 |
+| `pnpm --filter web typecheck` | PASS |
+| `pnpm exec eslint "apps/web/src/features/storage/preview/**/*.{ts,tsx}" --max-warnings 0` | PASS / 0 warnings |
+| `pnpm exec prettier --check "apps/web/src/features/storage/preview/**/*.{ts,tsx}"` | PASS |
+| `git diff --check` | PASS |
+
+La spec permanece **En curso**; T-04 `[ ]`, T-08 `[ ]`, T-09 `[ ]`, T-10 `[ ]` y T-11 `[ ]`. Sus requisitos no cambian. Esta ronda es exclusivamente documental y no implementa lectores adicionales.
