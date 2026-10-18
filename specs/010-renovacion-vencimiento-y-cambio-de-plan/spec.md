@@ -89,10 +89,10 @@ programar un cambio de plan (subir, bajar o volver a Personal) que se aplica en 
 ## 6. Experiencia de usuario
 | Pantalla | Mockup (`docs/design/mockups/…`) | Estados requeridos | Estado del mockup |
 |---|---|---|---|
-| Plan y facturación (`/suscripcion`) | `billing/suscripcion/` | vigente (con próximo cobro), por-vencer, vencida/solo lectura, cambio-programado, renovación-desactivada | Borrador (solo `vigente`) |
-| Elegir plan para el cambio | `billing/planes/` (`plan-actual`) | lista de planes activos, plan actual marcado, confirmación, error | Borrador (`plan-actual`) |
-| Pago de la renovación manual | `billing/pago/` | default con el periodo nuevo, rechazado, éxito | Borrador (`default`) |
-| Aviso de solo lectura (explorador y vistas de escritura) | sin mockup (`ReadOnlyBanner` de `ui-guidelines.md` §4) | visible con «Renovar plan», acción bloqueada | Falta |
+| Plan y facturación (`/suscripcion`) | `billing/suscripcion/suscripcion--vigente.html` | vigente (con próximo cobro), por-vencer, vencida/solo lectura, cambio-programado, renovación-desactivada | Existe `vigente`; faltan los otros cuatro |
+| Elegir plan para el cambio | `billing/planes/planes--plan-actual.html` | lista de planes activos, plan actual marcado, confirmación (con el aviso de versiones de CA-21; referencia: `storage/ficha-archivo/ficha-archivo--aviso-de-poda.html`), error | Existe `plan-actual`; falta la confirmación |
+| Pago de la renovación manual | `billing/pago/pago.html` | default con el periodo nuevo, rechazado, éxito | Existe `default` (009); falta la variante de renovación |
+| Aviso de solo lectura (explorador y vistas de escritura) | `shared/layout/layout--solo-lectura.html` (`ReadOnlyBanner`, RF-23) | visible con «Renovar plan», acción bloqueada | Existe (000b) |
 
 - Por vencer: «Tu plan <plan> vence el <fecha>. Se renovará con <marca> •••• <últimos 4>.» o, sin renovación automática, «Tu plan vence el <fecha> y no se renovará. Renueva ahora para no quedar en solo lectura.»
 - Vencida: «Tu suscripción venció. Puedes ver y descargar tus archivos, pero no subir ni editar. Renueva tu plan.»
@@ -107,7 +107,7 @@ programar un cambio de plan (subir, bajar o volver a Personal) que se aplica en 
 - Las alertas y tableros mismos (022): aquí solo se deja observable el fallo del proceso.
 
 ## 8. Preguntas
-- [RESUELTA] Mockups → se crean con `/mockup` (estados de «Plan y facturación», elección de plan y aviso de solo lectura) antes de las tareas de UI; no frenan el plan (Juan Marcos, 2026-10-16).
+- [RESUELTA] Mockups → se crean con `/mockup` antes de las tareas de UI y no frenan el plan (Juan Marcos, 2026-10-16). Inventario (2026-10-17): el aviso de solo lectura ya existe (`shared/layout/layout--solo-lectura.html`) y la lista de planes también (`billing/planes/planes--plan-actual.html`); faltan los cuatro estados de «Plan y facturación», la confirmación del cambio de plan y la variante de renovación del pago.
 - [RESUELTA] Acciones en solo lectura → se permiten papelera (mandar, eliminar definitivamente, vaciar), accesos rápidos y agente; se bloquean restaurar desde la papelera, compartir y enlaces públicos (RN-6, CA-13).
 - [RESUELTA] Reintento del cobro automático → un solo intento (RN-10).
 - [RESUELTA] Pagar más de un periodo por adelantado → no, `409 BILLING_ALREADY_RENEWED` (CA-26).
@@ -124,3 +124,4 @@ programar un cambio de plan (subir, bajar o volver a Personal) que se aplica en 
 | 2026-10-16 | HU-6 y CA-23: los conteos del Operador quedan en la bitácora estructurada de cada pasada, sin datos de clientes y sin endpoint (tablero en la 022). RN-4: NIT de la renovación automática = el de la última factura, o `CF` | Revisión del plan por el `architect` (YAGNI: aún no hay Prometheus en la API) | Borrador (pendiente Adrián) |
 | 2026-10-16 | RN-4: Juan Marcos confirma el NIT de la renovación automática (el de la última factura del cliente o `CF`) | Confirmación de Juan Marcos | Borrador (pendiente Adrián) |
 | 2026-10-17 | CA-7: renovación apagada con un cambio programado a un plan de pago (no se cobra, solo lectura, el cambio sigue para la renovación manual). CA-21: al bajar de plan no se pierden archivos ni carpetas; las versiones que excedan el límite nuevo se recortan al subir la siguiente versión (014 CA-13) y la confirmación lo avisa | Revisión de la spec antes de mandarla a Adrián (huecos con CA-20 y con la poda de versiones de la 014) | Borrador (pendiente Adrián) |
+| 2026-10-17 | §6: inventario de mockups corregido (el aviso de solo lectura ya existe en `shared/layout/layout--solo-lectura.html`; se nombran los archivos de cada pantalla y lo que falta) | Revisión de mockups antes de `/mockup` | Borrador (pendiente Adrián) |

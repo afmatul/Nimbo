@@ -12,9 +12,11 @@
 - **PD-63 hecho antes** (refactor que pidió Adrián): el patrón planificador + procesador, el bucle de reintento por elemento y
   `errorName` ya están extraídos. T-04 los reutiliza; no crea una séptima copia.
 - Módulos ajenos (`[Adrián]`): solo con su autorización del plan §8. `storage` y su web, además, con **ADR-0029 aceptado** (T-06, T-11).
-- UI: los mockups de `/mockup` (cinco estados de `billing/suscripcion/`, `billing/planes/` `plan-actual` con el aviso de versiones
-  de CA-21, `billing/pago/` para la renovación y el aviso de solo lectura) existen antes de T-08 a T-11. Antes de cada pantalla se
-  leen sus capturas en `docs/design/capturas/`; las desviaciones van a «Notas del developer».
+- UI: antes de T-08 a T-11 existen los mockups. Ya están el aviso de solo lectura (`shared/layout/layout--solo-lectura.html`),
+  la lista de planes (`billing/planes/planes--plan-actual.html`) y el pago (`billing/pago/pago.html`); `/mockup` crea los cuatro
+  estados que faltan de `billing/suscripcion/`, la confirmación del cambio de plan con el aviso de versiones de CA-21
+  (referencia: `storage/ficha-archivo/ficha-archivo--aviso-de-poda.html`) y la variante de renovación del pago. Antes de cada
+  pantalla se leen sus capturas en `docs/design/capturas/`; las desviaciones van a «Notas del developer».
 - Funciones ≤ 30 líneas y ≤ 3 parámetros; cada tarea de lógica empieza por su prueba en rojo; nombres de prueba `'CA-n: …'`.
 
 - [ ] **T-01** Datos y dominio de la suscripción: estado, renovación automática y cambio programado
@@ -131,7 +133,7 @@
   - Depende: T-07; mockup.
 
 - [ ] **T-10** Pago de la renovación manual (`/suscripcion/renovar`) y `ReadOnlyBanner`
-  - **Compuerta**: mockups de `billing/pago/` (renovación: default con el periodo nuevo, rechazado, éxito) y del aviso de solo lectura.
+  - **Compuerta**: variante de renovación de `billing/pago/` (default con el periodo nuevo, rechazado, éxito). El aviso de solo lectura ya tiene mockup: `shared/layout/layout--solo-lectura.html`.
   - Criterio: CA-8 (resumen con el periodo nuevo antes de pagar), CA-9 (rechazo `402` visible, nada cambia), CA-10 (éxito desde solo
     lectura), CA-26 (mensaje de `409`); el componente del aviso de CA-14.
   - Archivos: `app/(app)/(cliente)/suscripcion/renovar/{page,loading,error}.tsx`; `features/billing/components/{payment-form,payment-summary}.tsx`
@@ -142,7 +144,7 @@
   - Depende: T-07; mockups.
 
 - [ ] **T-11** Explorador en solo lectura [Adrián]
-  - **Compuerta**: ADR-0029 aceptado y cambios en la web de `storage` autorizados; mockup del aviso de solo lectura.
+  - **Compuerta**: ADR-0029 aceptado y cambios en la web de `storage` autorizados. Mockup: `shared/layout/layout--solo-lectura.html` (ya existe).
   - Criterio: CA-14 (aviso con «Renovar plan», acciones de CA-13 deshabilitadas con explicación en texto, arrastre con el mensaje de CA-13);
     las acciones permitidas por RN-6 (papelera, vaciar, accesos rápidos) siguen activas.
   - Archivos: `apps/web/src/lib/error-catalog.ts` (`STORAGE_ACCOUNT_READ_ONLY`, literal); `features/storage/components/space-provider.tsx`
