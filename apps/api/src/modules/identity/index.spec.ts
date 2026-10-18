@@ -2,13 +2,16 @@ import * as identity from './index';
 import type { ClientAccountVerifiedEvent } from './index';
 
 describe('API pública de `identity`', () => {
-  it('CA-8: exporta el módulo, los *throttlers* para `AppModule`, el nombre del evento de cuenta verificada (plan §5) las fachadas del backoffice (011 plan §2) y la fachada y el módulo del `worker` para la conciliación de `billing` (009 CA-2)', () => {
+  it('CA-8: exporta el módulo, los *throttlers* para `AppModule`, el nombre del evento de cuenta verificada (plan §5) las fachadas del backoffice (011 plan §2) y la fachada y el módulo del `worker` para la conciliación de `billing` (009 CA-2), y los errores que el backoffice necesita en su borde HTTP y en su bitácora (011 T-10)', () => {
     expect(Object.keys(identity).sort()).toEqual([
       'AccountAdministration',
       'AccountContactReader',
       'AccountDirectory',
+      'AccountNotFoundError',
+      'ActorNotActiveError',
       'CLIENT_ACCOUNT_VERIFIED',
       'IDENTITY_THROTTLERS',
+      'IdentityInvalidInputError',
       'IdentityModule',
       'IdentityReadersModule',
       'InternalAccountEnrollment',

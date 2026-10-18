@@ -1,10 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { PinoLogger } from 'nestjs-pino';
 
 import { I_TRANSACTION_RUNNER } from '../../../shared';
 import type { Actor, ITransactionRunner } from '../../../shared';
 import { I_AUDIT_LOGGER } from '../../audit';
 import type { AuditRecord, IAuditLogger } from '../../audit';
-import { AccountAdministration } from '../../identity';
+import { AccountAdministration, ActorNotActiveError } from '../../identity';
+
+import type { BackofficeLogger } from './backoffice-logger';
 
 /** Una acción del backoffice y el evento que la deja en la auditoría del cliente (RN-2). */
 export interface InternalAction<T> {
@@ -30,12 +33,13 @@ export class InternalActionService {
     @Inject(I_TRANSACTION_RUNNER) private readonly transactions: ITransactionRunner,
     @Inject(AccountAdministration) private readonly accounts: ActorGate,
     @Inject(I_AUDIT_LOGGER) private readonly audit: Pick<IAuditLogger, 'recordInTransaction'>,
+    @Inject(PinoLogger) private readonly logger: Pick<BackofficeLogger, 'warn'>,
   ) {}
 
   /** Lectura sin evento: comprueba al actor y lee en su transacción. */
   read<T>(actor: Actor, work: () => Promise<T>): Promise<T> {
     return this.transactions.withActor(actor, async () => {
-      await this.accounts.assertActorActive(actor);
+      await this.assertActive(actor);
       return work();
     });
   }
@@ -49,10 +53,26 @@ export class InternalActionService {
       if (action.locksAdminRoster) {
         await this.accounts.lockAdminRoster();
       }
-      await this.accounts.assertActorActive(actor);
+      await this.assertActive(actor);
       const result = await action.work();
       await this.audit.recordInTransaction(action.event(result));
       return result;
     });
+  }
+
+  /** Un interno suspendido que aún usa su token deja rastro (RN-7), solo con su id y su rol (RNF-17). */
+  private async assertActive(actor: Actor): Promise<void> {
+    try {
+      await this.accounts.assertActorActive(actor);
+    } catch (error: unknown) {
+      if (error instanceof ActorNotActiveError) {
+        this.logger.warn({
+          event: 'backoffice.actor.inactive',
+          actorId: actor.id,
+          actorRole: actor.role,
+        });
+      }
+      throw error;
+    }
   }
 }

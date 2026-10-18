@@ -106,6 +106,9 @@ Consume `IMailer` (`notifications`) e `IRateLimiter`, `ITransactionRunner` e `IC
 - Fachadas del backoffice (011 plan §2; clases sin interfaz, Art. V.2): `AccountDirectory`, `AccountAdministration` e
   `InternalAccountEnrollment`, con sus tipos. Corren dentro de la transacción del llamador; ni repositorios ni entidades
   salen del módulo.
+- Errores que reutiliza el borde HTTP del backoffice (011 T-10): `ActorNotActiveError` (bitácora
+  `backoffice.actor.inactive`), `AccountNotFoundError` (un `:id` que no es UUID da el mismo `404`) e
+  `IdentityInvalidInputError` (`422` del alta). Así `backoffice` no repite los códigos de `identity`.
 
 ### Evento `CLIENT_ACCOUNT_VERIFIED` (ADR-0019)
 

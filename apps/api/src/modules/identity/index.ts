@@ -24,3 +24,10 @@ export type {
   AccountStatistics,
   ClientIdentity,
 } from './application/ports/i-account-directory.repository.port';
+// Para el backoffice (011 T-10): `ParseUUIDPipe` de `:id` y validación del alta con los códigos de `identity` (plan §4),
+// y la bitácora `backoffice.actor.inactive`.
+export {
+  AccountNotFoundError,
+  ActorNotActiveError,
+  IdentityInvalidInputError,
+} from './domain/errors';
