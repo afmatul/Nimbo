@@ -119,6 +119,36 @@ describe('PdfPreview T-08: representación, navegación y lifecycle', () => {
     expect((await axe(container)).violations).toEqual([]);
   });
 
+  it('CA-9: al llegar a un extremo el foco pasa al control opuesto, nunca a uno deshabilitado', async () => {
+    jest.mocked(openPdfSession).mockResolvedValueOnce({ numPages: 2, renderPage, dispose });
+    render(<PdfPreview url={SIGNED} onFailure={jest.fn()} />);
+    await screen.findByRole('img', { name: 'Página 1 del PDF' });
+    const previous = screen.getByRole('button', { name: 'Anterior' });
+    const next = screen.getByRole('button', { name: 'Siguiente' });
+    next.focus();
+    await userEvent.keyboard('{Enter}');
+    await screen.findByRole('img', { name: 'Página 2 del PDF' });
+    expect((next as HTMLButtonElement).disabled).toBe(true);
+    expect(document.activeElement).toBe(previous);
+    await userEvent.keyboard('{Enter}');
+    await screen.findByRole('img', { name: 'Página 1 del PDF' });
+    expect((previous as HTMLButtonElement).disabled).toBe(true);
+    expect(document.activeElement).toBe(next);
+  });
+
+  it('CA-9: PDF de una página deshabilita ambos controles sin mover el foco a ninguno', async () => {
+    const outside = document.createElement('button');
+    document.body.append(outside);
+    outside.focus();
+    render(<PdfPreview url={SIGNED} onFailure={jest.fn()} />);
+    await screen.findByRole('img', { name: 'Página 1 del PDF' });
+    expect(screen.getByText('Página 1 de 1')).toBeTruthy();
+    for (const name of ['Anterior', 'Siguiente'])
+      expect((screen.getByRole('button', { name }) as HTMLButtonElement).disabled).toBe(true);
+    expect(document.activeElement).toBe(outside);
+    outside.remove();
+  });
+
   it.each(['protected', 'corrupt', 'unavailable', 'memory'] as const)(
     'CA-2: apertura %s conserva razón sin detalles ni password UI',
     async (reason) => {

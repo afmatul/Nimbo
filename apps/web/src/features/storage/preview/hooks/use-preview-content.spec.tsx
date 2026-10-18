@@ -19,6 +19,9 @@ const delivery: PreviewUrlResponse = {
   expiresAt: '2026-10-10T10:05:00.000Z',
 };
 const success: PreviewState = { status: 'success', delivery };
+const BEFORE_EXPIRY = new Date('2026-10-10T10:04:59.999Z');
+const AT_EXPIRY = new Date('2026-10-10T10:05:00.000Z');
+const AFTER_EXPIRY = new Date('2026-10-10T10:06:00.000Z');
 
 describe('estado de lectura acotado del shell', () => {
   beforeEach(() => jest.useFakeTimers());
@@ -128,6 +131,7 @@ describe('estado de lectura acotado del shell', () => {
   it.each(['protected', 'corrupt', 'unavailable', 'memory', 'expired'] as const)(
     'CA-2/T-08: conserva categoría cerrada %s sin datos privados',
     (reason) => {
+      jest.setSystemTime(BEFORE_EXPIRY);
       const { result } = renderHook(() => usePreviewContent(success, 1));
       act(() => result.current.onFailure({ reason, correlationId: delivery.url }));
       expect(result.current.state).toEqual({
@@ -136,4 +140,52 @@ describe('estado de lectura acotado del shell', () => {
       });
     },
   );
+
+  it.each([
+    ['vencida', AT_EXPIRY, 'expired'],
+    ['vencida hace rato', AFTER_EXPIRY, 'expired'],
+    ['vigente', BEFORE_EXPIRY, 'unavailable'],
+  ] as const)('CA-2: unavailable con la URL %s (%s) se presenta como %s', (_label, now, reason) => {
+    jest.setSystemTime(now);
+    const { result } = renderHook(() => usePreviewContent(success, 1));
+    act(() => result.current.onFailure({ reason: 'unavailable', correlationId: delivery.url }));
+    expect(result.current.state).toEqual({
+      status: 'failure',
+      failure: { reason, correlationId: '' },
+    });
+  });
+
+  it.each(['protected', 'corrupt', 'memory'] as const)(
+    'CA-2: %s conserva su causa aunque la URL ya haya vencido',
+    (reason) => {
+      jest.setSystemTime(AFTER_EXPIRY);
+      const { result } = renderHook(() => usePreviewContent(success, 1));
+      act(() => result.current.onFailure({ reason, correlationId: '' }));
+      expect(result.current.state).toEqual({
+        status: 'failure',
+        failure: { reason, correlationId: '' },
+      });
+    },
+  );
+
+  it('CA-2: fallo tardío de A vencida no clasifica ni rompe la entrega vigente B', () => {
+    const fresh: PreviewState = {
+      status: 'success',
+      delivery: { ...delivery, expiresAt: '2026-10-10T10:12:00.000Z' },
+    };
+    jest.setSystemTime(AFTER_EXPIRY);
+    const { result, rerender } = renderHook(
+      ({ state, generation }) => usePreviewContent(state, generation),
+      { initialProps: { state: success, generation: 1 } },
+    );
+    const previous = result.current;
+    rerender({ state: fresh, generation: 2 });
+    act(() => previous.onFailure({ reason: 'unavailable', correlationId: '' }));
+    expect(result.current.state.status).toBe('loading');
+    act(() => result.current.onFailure({ reason: 'unavailable', correlationId: '' }));
+    expect(result.current.state).toEqual({
+      status: 'failure',
+      failure: { reason: 'unavailable', correlationId: '' },
+    });
+  });
 });

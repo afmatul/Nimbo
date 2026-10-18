@@ -47,6 +47,7 @@ const disposeRuntime = jest.fn();
 let logs: jest.SpyInstance[];
 let storage: jest.SpyInstance;
 let cookie: jest.SpyInstance;
+let clock: jest.SpyInstance<number, []>;
 const WAIT = { onTimeout: () => new Error('No se observó el estado PDF esperado') };
 
 function show() {
@@ -68,6 +69,8 @@ function privateDom(container: HTMLElement): void {
 
 describe('T-08: shell, PdfPreview y lifecycle integrados; motor se verifica en suite real', () => {
   beforeEach(() => {
+    // Reloj fijo en la emisión: la entrega del fixture sigue vigente (un fallo vencido sería `expired`).
+    clock = jest.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-10-10T10:00:00.000Z'));
     authFetch.mockReset().mockResolvedValue(DELIVERY);
     download
       .mockReset()
@@ -245,6 +248,39 @@ describe('T-08: shell, PdfPreview y lifecycle integrados; motor se verifica en s
     expect(dispose).toHaveBeenCalledTimes(1);
     expect(renderPage).not.toHaveBeenCalled();
     expect(container.innerHTML).toBe('');
+  });
+
+  it('CA-2: URL vencida se presenta como caducada y Reintentar emite una entrega nueva', async () => {
+    const fresh = { ...DELIVERY, expiresAt: '2026-10-10T10:11:00.000Z' };
+    authFetch.mockReset().mockResolvedValueOnce(DELIVERY).mockResolvedValueOnce(fresh);
+    const { container } = show();
+    await waitFor(() => expect(renderPage).toHaveBeenCalledTimes(1), WAIT);
+    const a = jest.mocked(openPdfSession).mock.calls[0]?.[0];
+    if (a === undefined) throw new Error('Falta PDF A');
+    clock.mockReturnValue(Date.parse('2026-10-10T10:06:00.000Z'));
+    act(() => a.onFailure({ reason: 'unavailable', correlationId: '' }));
+    expect(screen.getByRole('heading', { name: 'La vista previa caducó.' })).toBeTruthy();
+    const actions = [
+      ...container.querySelectorAll('[role="alert"] button, [role="status"] button'),
+    ];
+    expect(actions.map((button) => button.textContent)).toEqual(['Reintentar', 'Descargar']);
+    privateDom(container);
+    expect(container.innerHTML.includes(DELIVERY.expiresAt)).toBe(false);
+    await userEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
+    await waitFor(() => expect(openPdfSession).toHaveBeenCalledTimes(2), WAIT);
+    expect(authFetch).toHaveBeenCalledTimes(2);
+    act(() => a.onFailure({ reason: 'unavailable', correlationId: '' }));
+    expect(screen.queryByRole('heading', { name: 'La vista previa caducó.' })).toBeNull();
+    act(() =>
+      jest
+        .mocked(openPdfSession)
+        .mock.calls[1]?.[0].onFailure({ reason: 'unavailable', correlationId: '' }),
+    );
+    expect(
+      screen.getByRole('heading', {
+        name: 'La vista previa no está disponible para este archivo.',
+      }),
+    ).toBeTruthy();
   });
 
   it('CA-2: memoria agotada muestra causa saneada con Descargar primero y Reintentar', async () => {

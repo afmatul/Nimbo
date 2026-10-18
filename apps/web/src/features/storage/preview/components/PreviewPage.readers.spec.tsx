@@ -134,6 +134,8 @@ function privateDom(container: HTMLElement): void {
 
 describe('PreviewPage con lectores y transporte reales, red y decoder gráfico controlados', () => {
   beforeEach(() => {
+    // Reloj fijo en la emisión: la entrega del fixture sigue vigente (un fallo vencido sería `expired`).
+    jest.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-10-10T10:00:00.000Z'));
     for (const [target, key, value] of [
       [globalThis, 'ReadableStream', NativeReadableStream],
       [globalThis, 'TextDecoder', NativeTextDecoder],

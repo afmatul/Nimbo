@@ -18,8 +18,17 @@ type ReadingControl = {
 type ReadingSession = {
   readonly generation: number;
   readonly managedReader: boolean;
+  /** Vencimiento de la entrega de esta sesión, en ms; no el de otra emisión. */
+  readonly expiresAt: number | undefined;
   readonly control: React.RefObject<ReadingControl | null>;
 };
+const READER_REASONS: readonly PreviewFailure['reason'][] = [
+  'protected',
+  'corrupt',
+  'unavailable',
+  'memory',
+  'expired',
+];
 type CurrentReading = { readonly session: ReadingSession; readonly view: ReadingView };
 type PreviewContent = Required<ReaderEvents> & {
   readonly state: PreviewState;
@@ -83,6 +92,16 @@ function useRetireReading(session: ReadingSession): () => Promise<boolean> {
   }, [session]);
 }
 
+/**
+ * El lector solo ve una lectura saneada: si falló sin causa propia cuando su URL ya había vencido,
+ * la acción útil es reemitir. Las causas del documento (protegido, corrupto, memoria) se conservan.
+ */
+function readerReason(failure: PreviewFailure, expiresAt: number | undefined) {
+  const reason = READER_REASONS.includes(failure.reason) ? failure.reason : 'unavailable';
+  const expired = expiresAt !== undefined && Date.now() >= expiresAt;
+  return reason === 'unavailable' && expired ? 'expired' : reason;
+}
+
 function useReaderCallbacks(session: ReadingSession, publish: (value: CurrentReading) => void) {
   const onReady = React.useCallback(() => {
     const control = readingControl(session.control);
@@ -96,11 +115,7 @@ function useReaderCallbacks(session: ReadingSession, publish: (value: CurrentRea
       const control = readingControl(session.control);
       if (!control.active) return;
       stopWaiting(control);
-      const reason = ['protected', 'corrupt', 'unavailable', 'memory', 'expired'].includes(
-        failure.reason,
-      )
-        ? failure.reason
-        : 'unavailable';
+      const reason = readerReason(failure, session.expiresAt);
       publish({ session, view: { status: 'failure', failure: { reason, correlationId: '' } } });
     },
     [session, publish],
@@ -122,15 +137,18 @@ function useReaderCleanup(session: ReadingSession): NonNullable<ReaderEvents['re
 }
 
 export function usePreviewContent(state: PreviewState, generation: number): PreviewContent {
-  const kind = state.status === 'success' ? state.delivery.file.kind : undefined;
+  const delivery = state.status === 'success' ? state.delivery : undefined;
+  const kind = delivery?.file.kind;
   const managedReader = kind === 'imagen' || kind === 'texto' || kind === 'pdf';
+  const expiresAt = delivery === undefined ? undefined : Date.parse(delivery.expiresAt);
   const session = React.useMemo<ReadingSession>(
     () => ({
       generation,
       managedReader,
+      expiresAt,
       control: React.createRef<ReadingControl>(),
     }),
-    [generation, managedReader],
+    [generation, managedReader, expiresAt],
   );
   const [current, setCurrent] = React.useState<CurrentReading>();
   useReadingWait(session, setCurrent);

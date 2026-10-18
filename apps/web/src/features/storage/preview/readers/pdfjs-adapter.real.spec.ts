@@ -7,6 +7,7 @@ type RealResult = {
   readonly ok: boolean;
   readonly reason?: string;
   readonly pages: Array<{ number: number; width: number; rendered: boolean; text?: string }>;
+  readonly failures: readonly unknown[];
   readonly scriptExecuted: boolean;
   readonly containsJavaScript: boolean;
   readonly firstPageBytes: number;
@@ -40,8 +41,10 @@ describe('PDF.js real + canvas nativo + object-bytes real (red controlada)', () 
       ok: boolean;
       pages: object[];
       requests: Array<{ start: number; end: number; omit: boolean; headers: string[] }>;
+      failures: unknown[];
     };
     expect(result.ok).toBe(true);
+    expect(result.failures).toEqual([]);
     expect(result.pages).toEqual([{ number: 1, width: 200, rendered: true, text: 'Pagina 1' }]);
     expect(result.requests[0]).toEqual({ start: 0, end: 0, omit: true, headers: ['range'] });
     expect(result.requests.length).toBeGreaterThan(1);
@@ -52,6 +55,7 @@ describe('PDF.js real + canvas nativo + object-bytes real (red controlada)', () 
   it('CA-1: multipágina real conserva texto y permite representar las tres páginas', async () => {
     const result = await inspectPdf('multi');
     expect(result.ok).toBe(true);
+    expect(result.failures).toEqual([]);
     expect(result.pages.map((page) => page.number)).toEqual([1, 2, 3]);
     expect(result.pages.map((page) => page.text)).toEqual(['Pagina 1', 'Pagina 2', 'Pagina 3']);
     expect(result.pages.every((page) => page.rendered)).toBe(true);
@@ -67,6 +71,7 @@ describe('PDF.js real + canvas nativo + object-bytes real (red controlada)', () 
   it('CA-1: PDF escaneado real representa imagen sin inventar texto ni exigir OCR', async () => {
     const result = await inspectPdf('scan');
     expect(result.ok).toBe(true);
+    expect(result.failures).toEqual([]);
     expect(result.pages[0]?.rendered).toBe(true);
     expect(result.pages[0]?.text).toBe('');
   });
@@ -85,6 +90,7 @@ describe('PDF.js real + canvas nativo + object-bytes real (red controlada)', () 
   it('CA-1: fixture tiene JavaScript detectable por parser real, pero render no lo ejecuta', async () => {
     const result = await inspectPdf('script');
     expect(result.ok).toBe(true);
+    expect(result.failures).toEqual([]);
     expect(result.containsJavaScript).toBe(true);
     expect(result.scriptExecuted).toBe(false);
     expect(result.pages[0]?.rendered).toBe(true);
@@ -93,6 +99,7 @@ describe('PDF.js real + canvas nativo + object-bytes real (red controlada)', () 
   it('CA-2/11: retry real misma URL destruye A y crea otro bootstrap/GET para B', async () => {
     const result = await inspectPdf('retry');
     expect(result.ok).toBe(true);
+    expect(result.failures).toEqual([]);
     expect(result.retry).toEqual({ previousDestroyed: true, sameUrl: true, bootstraps: 2 });
     expect(result.cleanup).toEqual({
       taskDestroyed: true,

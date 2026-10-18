@@ -184,16 +184,41 @@ type PdfNavigationProps = {
   readonly next: () => void;
 };
 
+/** Un control que se deshabilita con el foco lo perdería: el foco pasa al control opuesto. */
+function useEdgeFocus(page: number, total: number) {
+  const previousButton = React.useRef<HTMLButtonElement>(null);
+  const nextButton = React.useRef<HTMLButtonElement>(null);
+  React.useLayoutEffect(() => {
+    const focused = document.activeElement;
+    if (page === total && focused === nextButton.current) previousButton.current?.focus();
+    if (page === 1 && focused === previousButton.current) nextButton.current?.focus();
+  }, [page, total]);
+  return { previousButton, nextButton };
+}
+
 function PdfNavigation({ page, total, previous, next }: PdfNavigationProps): React.JSX.Element {
+  const { previousButton, nextButton } = useEdgeFocus(page, total);
   return (
     <nav aria-label="Páginas del PDF" className="flex flex-wrap items-center justify-between gap-3">
-      <Button type="button" variant="outline" disabled={page === 1} onClick={previous}>
+      <Button
+        ref={previousButton}
+        type="button"
+        variant="outline"
+        disabled={page === 1}
+        onClick={previous}
+      >
         Anterior
       </Button>
       <p role="status" className="tabular-nums">
         Página {page} de {total}
       </p>
-      <Button type="button" variant="outline" disabled={page === total} onClick={next}>
+      <Button
+        ref={nextButton}
+        type="button"
+        variant="outline"
+        disabled={page === total}
+        onClick={next}
+      >
         Siguiente
       </Button>
     </nav>

@@ -79,6 +79,8 @@ function expectPrivateDom(container: HTMLElement): void {
 
 describe('shell T-06', () => {
   beforeEach(() => {
+    // Reloj fijo en la emisión: la entrega del fixture sigue vigente (un fallo vencido sería `expired`).
+    jest.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-10-10T10:00:00.000Z'));
     authFetch.mockReset();
     jest.mocked(PreviewReader).mockClear();
     mockAutoReady = true;
