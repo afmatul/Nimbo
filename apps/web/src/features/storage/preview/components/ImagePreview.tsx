@@ -1,0 +1,182 @@
+'use client';
+
+import * as React from 'react';
+
+import type { PreviewFailure } from '../preview-failure';
+import type { ReaderEvents } from '../reader-events';
+import { detectImageMime } from '../readers/image-mime';
+import { fetchObjectBytes } from '../readers/object-bytes';
+
+type ImagePreviewProps = ReaderEvents & {
+  readonly url: string;
+  readonly onFailure: (failure: PreviewFailure) => void;
+};
+
+type ImageResource = {
+  readonly attempt: ImageAttempt;
+  readonly objectUrl: string;
+};
+
+type ImageAttempt = {
+  readonly controller: AbortController;
+  readonly onFailure: ImagePreviewProps['onFailure'];
+  readonly publish: (image: ImageResource | null) => void;
+  readonly onReady: () => void;
+  active: boolean;
+  reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+  objectUrl: string | undefined;
+  cleanup?: Promise<void>;
+};
+
+async function releaseReader(attempt: ImageAttempt, cancel: boolean): Promise<void> {
+  const reader = attempt.reader;
+  attempt.reader = undefined;
+  if (reader === undefined) return;
+  try {
+    if (cancel) await reader.cancel();
+  } catch {
+    // Cancelar un reader fallido puede devolver la excepción privada del transporte.
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+function revokeImageUrl(attempt: ImageAttempt): void {
+  const objectUrl = attempt.objectUrl;
+  attempt.objectUrl = undefined;
+  if (objectUrl === undefined) return;
+  try {
+    URL.revokeObjectURL(objectUrl);
+  } catch {
+    // Una falla de liberación no debe exponer datos ni duplicar la notificación.
+  }
+}
+
+function disposeAttempt(attempt: ImageAttempt): Promise<void> {
+  if (!attempt.active) return attempt.cleanup ?? Promise.resolve();
+  attempt.active = false;
+  attempt.controller.abort();
+  revokeImageUrl(attempt);
+  attempt.cleanup = releaseReader(attempt, true);
+  return attempt.cleanup;
+}
+
+function failAttempt(attempt: ImageAttempt, reason: 'corrupt' | 'unavailable'): void {
+  if (!attempt.active) return;
+  void disposeAttempt(attempt);
+  attempt.publish(null);
+  attempt.onFailure({ reason, correlationId: '' });
+}
+
+function concatenateChunks(chunks: readonly Uint8Array[]): Uint8Array<ArrayBuffer> {
+  const bytes = new Uint8Array(chunks.reduce((length, chunk) => length + chunk.byteLength, 0));
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes;
+}
+
+async function readImageBody(
+  attempt: ImageAttempt,
+  body: ReadableStream<Uint8Array>,
+): Promise<Uint8Array<ArrayBuffer> | undefined> {
+  const reader = body.getReader();
+  attempt.reader = reader;
+  const chunks: Uint8Array[] = [];
+  try {
+    for (;;) {
+      const chunk = await reader.read();
+      if (!attempt.active) return undefined;
+      if (chunk.done) return concatenateChunks(chunks);
+      chunks.push(chunk.value);
+    }
+  } finally {
+    chunks.length = 0;
+    await releaseReader(attempt, false);
+  }
+}
+
+async function discardLateBody(body: ReadableStream<Uint8Array>): Promise<void> {
+  try {
+    await body.cancel();
+  } catch {
+    // El intento ya no existe: tanto la entrega como su eventual error se descartan.
+  }
+}
+
+async function loadImage(url: string, attempt: ImageAttempt): Promise<void> {
+  try {
+    const { body } = await fetchObjectBytes({ url, signal: attempt.controller.signal });
+    if (!attempt.active) {
+      await discardLateBody(body);
+      return;
+    }
+    const bytes = await readImageBody(attempt, body);
+    if (!attempt.active || bytes === undefined) return;
+    const mime = detectImageMime(bytes);
+    if (mime === null) {
+      failAttempt(attempt, 'corrupt');
+      return;
+    }
+    const blob = new Blob([bytes], { type: mime });
+    attempt.objectUrl = URL.createObjectURL(blob);
+    attempt.publish({ attempt, objectUrl: attempt.objectUrl });
+  } catch {
+    failAttempt(attempt, 'unavailable');
+  }
+}
+
+function useImageReading({
+  url,
+  onFailure,
+  onReady,
+  registerCleanup,
+}: ImagePreviewProps): ImageResource | null {
+  const [image, setImage] = React.useState<ImageResource | null>(null);
+  const callbacks = React.useRef({ onFailure, onReady });
+  React.useEffect(() => {
+    callbacks.current = { onFailure, onReady };
+  }, [onFailure, onReady]);
+  React.useEffect(() => {
+    const attempt: ImageAttempt = {
+      controller: new AbortController(),
+      onFailure: (failure) => callbacks.current.onFailure(failure),
+      onReady: () => callbacks.current.onReady?.(),
+      publish: setImage,
+      active: true,
+      reader: undefined,
+      objectUrl: undefined,
+    };
+    const unregister = registerCleanup?.(() => disposeAttempt(attempt));
+    void loadImage(url, attempt);
+    return () => {
+      unregister?.();
+      void disposeAttempt(attempt);
+    };
+  }, [url, registerCleanup]);
+  return image;
+}
+
+function ImageReading(props: ImagePreviewProps): React.JSX.Element | null {
+  const image = useImageReading(props);
+  if (image === null || !image.attempt.active) return null;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- Preview usa blob: local y decoder nativo.
+    <img
+      key={image.objectUrl}
+      src={image.objectUrl}
+      alt="Vista previa de imagen"
+      className="mx-auto block h-auto max-w-full"
+      onLoad={() => {
+        if (image.attempt.active) image.attempt.onReady();
+      }}
+      onError={() => failAttempt(image.attempt, 'corrupt')}
+    />
+  );
+}
+
+export function ImagePreview(props: ImagePreviewProps): React.JSX.Element {
+  return <ImageReading key={props.url} {...props} />;
+}
