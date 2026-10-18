@@ -67,6 +67,22 @@ describe('REDACTED_FIELDS', () => {
     }
   });
 
+  it('010 plan §2 (ADR-0031): redacta el instrumento del cobro y su referencia', () => {
+    expect(
+      redactDeep({
+        instrument: 'SIM-TOK-ok-1',
+        instrumentRef: 'SIM-TOK-ok-1',
+        referencia_instrumento: 'SIM-TOK-ok-1',
+        status: 'aprobada',
+      }),
+    ).toEqual({
+      instrument: '[REDACTED]',
+      instrumentRef: '[REDACTED]',
+      referencia_instrumento: '[REDACTED]',
+      status: 'aprobada',
+    });
+  });
+
   it('CA-16: redacta `DATABASE_MIGRATION_URL` como URL de conexión (lleva la contraseña del dueño)', () => {
     expect(
       redactDeep({ DATABASE_MIGRATION_URL: 'postgres://nimbo:nimbo@localhost:5432/nimbo' }),

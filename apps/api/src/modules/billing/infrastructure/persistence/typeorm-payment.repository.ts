@@ -10,8 +10,8 @@ import { onlyRow } from './only-row';
 
 const NEXT_REFERENCE_SQL = `SELECT nextval('transaccion_referencia_seq')::int AS sequence`;
 const INSERT_SQL = `INSERT INTO transaccion (usuario_id, plan_id, monto_centavos, estado, marca_tarjeta,
-    tarjeta_ultimos4, referencia, creado_en)
-  VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`;
+    tarjeta_ultimos4, referencia, referencia_instrumento, creado_en)
+  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`;
 
 /**
  * `IPaymentRepository` sobre `transaccion` (plan 009 §3) con el `EntityManager` de `TransactionContext`: la fila entra
@@ -35,6 +35,7 @@ export class TypeOrmPaymentRepository implements IPaymentRepository {
         draft.cardBrand,
         draft.cardLast4,
         reference,
+        draft.instrumentRef,
         draft.createdAt,
       ])) as { id: string }[],
     );

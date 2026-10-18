@@ -36,7 +36,11 @@ const REAL_ATTRIBUTES: Readonly<Record<AuditAction, Record<string, string | numb
   [AuditAction.PLAN_CREATED]: {},
   [AuditAction.PLAN_DEACTIVATED]: {},
   [AuditAction.SUBSCRIPTION_AUTO_RENEW_CHANGED]: { enabled: false },
-  [AuditAction.SUBSCRIPTION_RENEWED]: { trigger: 'automatic', planSlug: 'equipo', amountCents: 11_000 },
+  [AuditAction.SUBSCRIPTION_RENEWED]: {
+    trigger: 'automatic',
+    planSlug: 'equipo',
+    amountCents: 11_000,
+  },
   [AuditAction.SUBSCRIPTION_RENEWAL_REJECTED]: { trigger: 'manual', planSlug: 'equipo' },
   [AuditAction.SUBSCRIPTION_READ_ONLY_ENTERED]: {},
   [AuditAction.SUBSCRIPTION_READ_ONLY_EXITED]: {},
@@ -99,7 +103,11 @@ describe('AUDIT_CATALOG', () => {
       instrumentRef: 'SIM-TOK-x',
     });
 
-    expect(result.attributes).toEqual({ trigger: 'automatic', planSlug: 'equipo', amountCents: 11_000 });
+    expect(result.attributes).toEqual({
+      trigger: 'automatic',
+      planSlug: 'equipo',
+      amountCents: 11_000,
+    });
     expect(result.rejections.map((rejection) => rejection.key).sort()).toEqual([
       'cardLast4',
       'instrumentRef',

@@ -30,7 +30,7 @@
     `renewalQuote` no disponible con cambio a Personal y a plan de pago, Personal nunca vence); int `migrations.int-spec.ts`.
   - Depende: 009 en `main`.
 
-- [ ] **T-02** Instrumento de pago y tarjeta de prueba `0341` (M-2, B-2)
+- [x] **T-02** Instrumento de pago y tarjeta de prueba `0341` (M-2, B-2)
   - **Compuerta**: ADR-0031 aceptado por Adrián (`referencia_instrumento` en claro bajo RLS; la columna va en esta migración).
   - Criterio: RN-2 (referencia sin número; marca y últimos 4 solo para mostrar; `0341` aprobada con el cliente presente); la
     contratación de la 009 sigue verde y acepta `0341`.
@@ -169,3 +169,13 @@ Antes de cada pantalla se leen sus capturas en `docs/design/capturas/`; las desv
   Art. V); la migración ya trae `aviso_previo_para` y `aviso_vencida_para` porque el esquema es uno solo (plan §3).
   `SubscriptionStanding.readOnly` se lee desde ahora y lo consume T-06 en este mismo PR. Las pruebas de `billing` arman la
   suscripción con `application/testing/subscriptions.ts` (`aSubscription`), como `aPlan` (DRY, Art. VI).
+- **T-02** (2026-10-18): se implementó **antes** de que Adrián acepte ADR-0031, por decisión de Juan Marcos para no
+  frenar la 010a (avance autorizado del plan §8); si el ADR cambia, se ajusta la migración `20261018100100` y el
+  simulador. Desviaciones del plan §2:
+  - `assertChargeable` queda como `isChargeable` (booleano puro) en `domain/payment-instrument.ts` y el issue
+    `CARD_EXPIRED` sigue en `PaymentService`: el plan suponía que el dominio ya importa `@nimbo/contracts` en `money.ts`,
+    pero no lo hace (ADR-0008). `PaymentService` sigue sin ramificar por tipo.
+  - `CardOnFile` y `findLastApprovedCard` se agregan en T-05, su único usuario (YAGNI, Art. V); la regla de ADR-0031
+    (única consulta que selecciona la columna) se prueba ahí.
+  - `cardSchema` se exporta en T-03, cuando lo reutiliza `renewRequestSchema`.
+  - `lastFourOf` pasa al simulador (único usuario); `isCardExpired` queda en `payment-card.ts`.
