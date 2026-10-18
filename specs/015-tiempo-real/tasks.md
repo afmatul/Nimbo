@@ -64,7 +64,7 @@
 - T-03 (pedido del coordinador): el web conecta a `<origen de API_PUBLIC_URL>/socket.io`, y el Traefik local solo
   enrutaba `/api`. Se suma el prefijo `/socket.io` al enrutador del `api` en `infra/traefik/local-routes.yml` y en
   las etiquetas de `compose.override.yml` (Traefik v3 pasa el WebSocket sin configuración extra); `REALTIME_PATH` no
-  cambia. Staging aún no tiene archivos de Traefik: queda en **PD-75**.
+  cambia. Staging aún no tiene archivos de Traefik: queda en **PD-107**.
 - T-04: `ConnectionLifetime` toma la hora de `I_CLOCK` (global) y cierra con `socket.disconnect()` sin cerrar el
   transporte: el cliente recibe primero el aviso y luego `io server disconnect` (no reconecta solo; T-08 reabre con el
   token renovado). La int-spec usa reloj real en el servidor y un `FixedClock` atrasado 15 min menos 3 s en el

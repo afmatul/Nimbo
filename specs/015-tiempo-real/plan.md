@@ -134,17 +134,17 @@ Integración con Testcontainers (Redis real para `RedisRateLimiter`), `TestAcces
 ## 7. Riesgos y coherencia con el diseño
 - **Una sola instancia de `api`**: las salas son de memoria, así que un aviso emitido desde otro proceso (p. ej. el
   `worker`) no llega. Hoy no hay productor en el `worker` (`editing-save` se confirma por HTTP en el `api`). Se descarta
-  el adaptador de Redis de Socket.IO por YAGNI (un `api`, 25 usuarios, RNF-02) y se registra PD-74 para decidirlo cuando haya
+  el adaptador de Redis de Socket.IO por YAGNI (un `api`, 25 usuarios, RNF-02) y se registra PD-106 para decidirlo cuando haya
   más de una réplica o un productor en el `worker`. **No exige ADR ahora**; sumarlo sí (dependencia significativa).
 - **Conexión de otro usuario con `connectionId` adivinado**: mitigado por la comprobación de pertenencia en `admit` y por
   ids aleatorios no publicados.
 - **Detrás de Traefik**: el origen del intento sale de `x-forwarded-for`; si el proxy se cambia, la clave del límite
-  cambia (se verifica en staging, PD-74).
+  cambia (se verifica en staging, PD-106).
 - **Tormenta de reconexiones** tras reiniciar el `api`: el cliente usa el retraso exponencial por defecto de
   `socket.io-client`; el límite cuenta todos los intentos por origen (60/min; suficiente para 25 usuarios, ajustable por entorno).
 - **Desviaciones de los diagramas**: DF-76 nuevo (puertos, evento y `expiresAt`; el diagrama T3 no los trae). DF-30 y PD-03
   siguen aplicando: sin `PresenceGateway` propio.
-- **Pendientes que deja fuera**: PD-74 (adaptador de Redis y verificación del origen tras el proxy). Presencia, límite de
+- **Pendientes que deja fuera**: PD-106 (adaptador de Redis y verificación del origen tras el proxy). Presencia, límite de
   editores y avisos de guardado: 016.
 - **ADR requerido**: **ADR-0030** «Socket.IO en el `api` sin adaptador de Redis» (redactado, `Propuesto`; dependencia
   significativa nueva, no cubierta por ADR-0010). Paquetes fijados a versión exacta: `@nestjs/websockets` y

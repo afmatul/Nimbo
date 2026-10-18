@@ -23,7 +23,7 @@ Sin cambios frente a la revisión anterior: CA-1…CA-14 ✅ con las mismas prue
 
 ## Seguridad
 - Datos de cliente: sí. Aislamiento: `realtime.iso-spec.ts` en verde dentro de `test:isolation`. `actor` en `IDocumentRooms.admit`: ✅. Bitácoras: `userId` está permitido; siguen sin token, `Origin` ni contenido: ✅.
-- Sin riesgo nuevo que pida `security-auditor`. La observación de `x-forwarded-for` sigue cubierta por PD-74.
+- Sin riesgo nuevo que pida `security-auditor`. La observación de `x-forwarded-for` sigue cubierta por PD-106.
 
 ## UI (si aplica)
 - Sin pantalla ni textos nuevos (P-1): ✅.
@@ -43,4 +43,4 @@ Sin cambios frente a la revisión anterior: CA-1…CA-14 ✅ con las mismas prue
 
 ## DF y pendientes
 - Sin DF nuevos. DF-76 y DF-58 como en la revisión anterior (falta redibujar T3, PD-46).
-- `pendientes.md`: PD-74 y PD-75 siguen vigentes; PD-69 (guarda intermitente de `redact-deep`) volvió a fallar en esta corrida. Si I-3 se pospone al cierre de fase, agrega su fila.
+- `pendientes.md`: PD-106 y PD-107 siguen vigentes; PD-69 (guarda intermitente de `redact-deep`) volvió a fallar en esta corrida. Si I-3 se pospone al cierre de fase, agrega su fila.

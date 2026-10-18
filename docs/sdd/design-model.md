@@ -205,7 +205,7 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
 - Tabla: `evento_auditoria` (004).
 
 ### T3 `realtime` (spec 015; DF-76 recoge lo que el diagrama no trae)
-- Único gateway Socket.IO (ADR-0030, sin adaptador de Redis: PD-74): handshake autenticado con el puerto token→`Actor` de `shared` (sin depender de `identity`), salas por usuario (`user:<id>`) y por documento (`doc:<id>`). No conoce permisos (ADR-0010): el módulo dueño del documento decide quién entra.
+- Único gateway Socket.IO (ADR-0030, sin adaptador de Redis: PD-106): handshake autenticado con el puerto token→`Actor` de `shared` (sin depender de `identity`), salas por usuario (`user:<id>`) y por documento (`doc:<id>`). No conoce permisos (ADR-0010): el módulo dueño del documento decide quién entra.
 - Presentación: `RealtimeGateway` (registra el *middleware* de *handshake*, une a la sala del usuario, programa el cierre y responde `room.join` siempre con `SHARED_FORBIDDEN`). Sin `PresenceGateway` (DF-30).
 - Aplicación: `ConnectionAdmission` (límite de intentos por origen con `IRateLimiter` → verificación del token → solo `CLIENT`; produce `Actor` y `expiresAt`) y `RealtimeConfig`.
 - Puertos de frontera que declara y exporta en su `index.ts`, segregados por consumidor (ISP):
