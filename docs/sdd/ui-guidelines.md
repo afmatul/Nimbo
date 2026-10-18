@@ -275,6 +275,11 @@ identificador.
 > (`.html`), como `mockups/identity/seguridad/`, `mockups/identity/terminos/`, `mockups/identity/privacidad/`, los mockups de `mockups/backoffice/` (`admin/`, `alta-interna/`, `catalogo/`, `metricas/`, `soporte/`) y los estados nuevos de `mockups/storage/carga/`, `mockups/storage/explorador/`, `mockups/storage/papelera/`, `mockups/sharing/compartir/` y `mockups/sharing/compartido-conmigo/`. Solo
 > cubren los estados entre paréntesis; el resto de estados mínimos se agregan con `/mockup` antes de aclarar la spec.
 > Cada carpeta tiene un `README.md`.
+> Los mockups escritos a mano y los paquetes de la propuesta conservan «Compartidos conmigo»; el rótulo vigente es
+> «Compartido conmigo» (012 §6, `marco.COMPARTIDO`) y se corrige al regenerarlos o rehacerlos. Hoy lo conservan
+> `billing/planes`, `billing/suscripcion`, `intelligence/panel-agente`, `optimizer/optimizador`, `storage/busqueda`,
+> `shared/vista-general` y los paquetes de la propuesta de `sharing/compartir`, `storage/carga`, `storage/explorador`,
+> `storage/ficha-archivo` y `storage/papelera`.
 
 | Pantalla | Módulo | Spec | Mockup | Capturas | Estados mínimos | Mockup |
 |---|---|---|---|---|---|---|
@@ -297,7 +302,7 @@ identificador.
 | Vista previa | storage | 017 | `mockups/storage/vista-previa/` | … | pdf, imagen, no-disponible | Pendiente |
 | Búsqueda | storage | 018 | `mockups/storage/busqueda/` | `capturas/storage/busqueda/` | resultados, sin-resultados | Borrador (resultados) |
 | Compartir y accesos (diálogo «Compartir» y `AccessList` desde el menú ⋮ de Mis archivos) | sharing | 012 | `mockups/sharing/compartir/` | `capturas/sharing/compartir/` | menu-fila, sin-accesos, cargando, con-accesos, con-accesos-carpeta, agregando, compartido, error-correo-generico, error-propio, ya-tiene-acceso, cambiando-nivel, confirmar-revocar, demasiados-intentos, error | Borrador (012: menu-fila, sin-accesos, cargando, con-accesos, con-accesos-carpeta, agregando, compartido, error-correo-generico, error-propio, ya-tiene-acceso, cambiando-nivel, confirmar-revocar, demasiados-intentos, error; propuesta, paquete histórico con «externos» y enlace público, no se implementa) |
-| Compartido conmigo (entrada en la barra lateral y página) | sharing | 012 | `mockups/sharing/compartido-conmigo/` | `capturas/sharing/compartido-conmigo/` | lista, cargando-mas, carpeta-abierta, vacio, cargando, error, ya-no-disponible, menu-fila-lector, menu-fila-editor, aviso-de-poda, subiendo-version, version-subida, error-espacio-propietario, confirmar-salir, cajon-abierto | Borrador (012: los 15 estados) |
+| Compartido conmigo (entrada en la barra lateral y página) | sharing | 012 | `mockups/sharing/compartido-conmigo/` | `capturas/sharing/compartido-conmigo/` | lista, cargando-mas, carpeta-abierta, vacio, cargando, error, ya-no-disponible, menu-fila-lector, menu-fila-editor, aviso-de-poda, subiendo-version, version-subida, error-espacio-propietario, error-tamano-propietario, error-tipo, confirmar-salir, cajon-abierto | Borrador (012: los 17 estados) |
 | Enlace público (creación y página pública) | sharing | 013 | `mockups/sharing/enlace-publico/` | `capturas/sharing/enlace-publico/` | con-contrasena, expirado, revocado | Borrador (con-contrasena) |
 | Planes y comparador | billing | 008 | `mockups/billing/planes/` | `capturas/billing/planes/` | default, plan-actual | Borrador (plan-actual) |
 | Pago simulado | billing | 009 | `mockups/billing/pago/` | `capturas/billing/pago/` | default, rechazado, exito | Borrador (default) |
