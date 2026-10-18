@@ -56,6 +56,7 @@ describe('PlanLimitsAdapter integración con base de datos real (T-11, CA-1, CA-
         storageQuotaBytes: 16106127360n,
         trashRetentionDays: 7,
         retainedVersions: 3,
+        maxEditors: 0,
       });
     });
 
@@ -70,6 +71,7 @@ describe('PlanLimitsAdapter integración con base de datos real (T-11, CA-1, CA-
         storageQuotaBytes: 16106127360n,
         trashRetentionDays: 7,
         retainedVersions: 3,
+        maxEditors: 0,
       });
     });
   });
@@ -83,6 +85,7 @@ describe('PlanLimitsAdapter integración con base de datos real (T-11, CA-1, CA-
         storageQuotaBytes: 16106127360n,
         trashRetentionDays: 7,
         retainedVersions: 3,
+        maxEditors: 0,
       });
 
       const pro = await adapter.getLimitsByPlanId('10000000-0000-4000-8000-000000000002');
@@ -92,6 +95,7 @@ describe('PlanLimitsAdapter integración con base de datos real (T-11, CA-1, CA-
         storageQuotaBytes: 107374182400n,
         trashRetentionDays: 30,
         retainedVersions: 30,
+        maxEditors: 3,
       });
 
       const equipo = await adapter.getLimitsByPlanId('10000000-0000-4000-8000-000000000003');
@@ -101,6 +105,7 @@ describe('PlanLimitsAdapter integración con base de datos real (T-11, CA-1, CA-
         storageQuotaBytes: 375809638400n,
         trashRetentionDays: 60,
         retainedVersions: 60,
+        maxEditors: 5,
       });
 
       const institucional = await adapter.getLimitsByPlanId('10000000-0000-4000-8000-000000000004');
@@ -110,6 +115,7 @@ describe('PlanLimitsAdapter integración con base de datos real (T-11, CA-1, CA-
         storageQuotaBytes: 2199023255552n,
         trashRetentionDays: 90,
         retainedVersions: 100,
+        maxEditors: 5,
       });
     });
 
@@ -132,6 +138,7 @@ describe('PlanLimitsAdapter integración con base de datos real (T-11, CA-1, CA-
         storageQuotaBytes: 16106127360n,
         trashRetentionDays: 7,
         retainedVersions: 3,
+        maxEditors: 0,
       });
       await expect(adapter.getLimitsBySlug('pro')).resolves.toEqual({
         planName: 'Pro',
@@ -139,6 +146,7 @@ describe('PlanLimitsAdapter integración con base de datos real (T-11, CA-1, CA-
         storageQuotaBytes: 107374182400n,
         trashRetentionDays: 30,
         retainedVersions: 30,
+        maxEditors: 3,
       });
       await expect(adapter.getLimitsBySlug('equipo')).resolves.toEqual({
         planName: 'Equipo',
@@ -146,6 +154,7 @@ describe('PlanLimitsAdapter integración con base de datos real (T-11, CA-1, CA-
         storageQuotaBytes: 375809638400n,
         trashRetentionDays: 60,
         retainedVersions: 60,
+        maxEditors: 5,
       });
       await expect(adapter.getLimitsBySlug('institucional')).resolves.toEqual({
         planName: 'Institucional',
@@ -153,6 +162,7 @@ describe('PlanLimitsAdapter integración con base de datos real (T-11, CA-1, CA-
         storageQuotaBytes: 2199023255552n,
         trashRetentionDays: 90,
         retainedVersions: 100,
+        maxEditors: 5,
       });
     });
 

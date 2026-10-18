@@ -1,3 +1,5 @@
+import type { Readable } from 'node:stream';
+
 /** Una parte ya recibida por el almacenamiento en una carga por partes. `listParts` es la fuente de verdad. */
 export interface UploadedPart {
   readonly partNumber: number;
@@ -70,6 +72,17 @@ export interface IObjectStorage {
    * existe (una poda lo borró mientras tanto) y no crea el destino.
    */
   copyObject(sourceKey: string, targetKey: string): Promise<boolean>;
+  /**
+   * Contenido completo del objeto como flujo, sin cargarlo en memoria (016: el editor lee el documento); `null` si no
+   * existe.
+   */
+  getObjectStream(key: string): Promise<Readable | null>;
+  /**
+   * Sube `body` a `key` en una sola petición (016: el documento que entrega el editor, acotado por
+   * `EDITING_MAX_DOC_BYTES`). `sizeBytes` es obligatorio: S3 no acepta un flujo sin longitud. Solo acepta claves
+   * `u/{propietario}/{archivo}/{versión}` (`ObjectKey`): cualquier otra, también las `invoices/` de 009, se rechaza.
+   */
+  putObjectStream(key: string, body: Readable, sizeBytes: bigint): Promise<void>;
   /** Borra todas las versiones y marcas de borrado de la clave (el bucket está versionado). Idempotente. */
   purgeObject(key: string): Promise<void>;
   /** URL de descarga con `attachment`, `application/octet-stream` y `no-store`, válida solo para esa clave. */

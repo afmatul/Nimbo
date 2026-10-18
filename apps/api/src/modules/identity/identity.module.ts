@@ -29,6 +29,7 @@ import { RegistrationAttemptNotifier } from './application/registration-attempt-
 import { RegistrationService } from './application/registration.service';
 import { SessionService } from './application/session.service';
 import { VerificationLinkIssuer } from './application/verification-link-issuer';
+import { UserDirectoryAdapter } from './infrastructure/adapters/user-directory.adapter';
 import { Argon2idHasher } from './infrastructure/argon2id.hasher';
 import { EventEmitterAccountEventsPublisher } from './infrastructure/event-emitter-account-events.publisher';
 import { accessTokenOptionsProvider } from './infrastructure/jwt/access-token-options';
@@ -97,8 +98,9 @@ const APPLICATION_SERVICES: Provider[] = [
  * `forRoot(env)` publica `IDENTITY_CONFIG` (`WEB_PUBLIC_URL` y `cookieSecure` desde `APP_ENV`) y
  * `ACCESS_TOKEN_OPTIONS`, une cada puerto con su adaptador y registra la `JwtStrategy` con el nombre
  * `ACCESS_TOKEN_STRATEGY`, que el `JwtAuthGuard` de `shared` encuentra sin importar `identity`. Exporta
- * `I_ACCESS_TOKEN_VERIFIER` (implementado por `JwtTokenService`) y las fachadas del backoffice (011 plan §2), sin
- * repositorios ni entidades. Requiere en la raíz `EventEmitterModule.forRoot()` y
+ * `I_ACCESS_TOKEN_VERIFIER` (implementado por `JwtTokenService`), las fachadas del backoffice (011 plan §2), sin
+ * repositorios ni entidades, y `UserDirectoryAdapter` (`IUserDirectory` de `editing`, que la raíz enlaza, 016).
+ * Requiere en la raíz `EventEmitterModule.forRoot()` y
  * `ThrottlerModule.forRoot` con `IDENTITY_THROTTLERS`; `shared` aporta reloj, Redis, límites y transacciones (global).
  * Todas las respuestas de `AuthController`, `PasswordController`, `AccountSetupController` (011) y
  * `SessionsController`, también las de error, llevan `Cache-Control: no-store` (plan §5).
@@ -116,8 +118,9 @@ export class IdentityModule implements NestModule {
         accessTokenOptionsProvider(env),
         ...PORT_ADAPTERS,
         ...APPLICATION_SERVICES,
+        UserDirectoryAdapter,
       ],
-      exports: [I_ACCESS_TOKEN_VERIFIER, ...BACKOFFICE_FACADES],
+      exports: [I_ACCESS_TOKEN_VERIFIER, ...BACKOFFICE_FACADES, UserDirectoryAdapter],
     };
   }
 

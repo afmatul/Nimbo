@@ -6,6 +6,8 @@ import { MINIO_CONFIG } from '../../shared';
 import type { Env, MinioConfig } from '../../shared';
 import { AuditModule } from '../audit';
 
+import { EditableFileGateway } from './application/editable-file.gateway';
+import { EditedVersionRegistrar } from './application/edited-version.registrar';
 import { FILE_SERVICE_CONFIG } from './application/file-service-config';
 import type { FileServiceConfig } from './application/file-service-config';
 import { FileService } from './application/file.service';
@@ -63,7 +65,8 @@ export type StorageEnv = Pick<
 
 /**
  * Módulo `storage` (M2, plan §6): carga, descarga, carpetas, papelera y accesos rápidos (006), resumen de espacio (007) y
- * versiones (014: registro y poda en `UPLOAD_LIFECYCLE_PROVIDERS`; historial, descarga y restauración solo en el `api`).
+ * versiones (014: registro y poda en `UPLOAD_LIFECYCLE_PROVIDERS`; historial, descarga y restauración solo en el `api`)
+ * y, desde 016, `EditableFileGateway` (exportado) con el registro de versiones de edición, solo en el `api`.
  * `forRoot(env)` publica la configuración técnica (bytes como `bigint`) y une cada puerto con su adaptador. **No**
  * enlaza `I_PLAN_LIMITS_PROVIDER` ni importa `billing`: ese enlace vive en la raíz de composición (DF-51, opción A). `SharedModule` (global) aporta reloj, tasa, transacciones y
  * `TransactionContext`; `MinioConfigModule` (global), `MINIO_CONFIG`. La cola `trash-purge` se registra solo para que
@@ -128,10 +131,12 @@ export class StorageModule {
         FolderService,
         QuickAccessService,
         { provide: I_NODE_METADATA_READER, useClass: SqlNodeMetadataReader },
+        EditedVersionRegistrar,
+        EditableFileGateway,
       ],
       // 011 (PD-31): el lector de metadatos para `backoffice`. 009 (ampliación de la decisión 1, 2026-10-15): `billing`
-      // importa `I_OBJECT_STORAGE` de forma explícita, sin módulo global.
-      exports: [I_NODE_METADATA_READER, I_OBJECT_STORAGE],
+      // importa `I_OBJECT_STORAGE` de forma explícita, sin módulo global. 016: la fachada de edición para `editing`.
+      exports: [I_NODE_METADATA_READER, I_OBJECT_STORAGE, EditableFileGateway],
     };
   }
 }

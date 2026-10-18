@@ -3,5 +3,9 @@ export { AccessModule } from './access.module';
 export { PermissionResolver } from './application/permission-resolver';
 export { AccessLevel } from './domain/access-level.enum';
 export { Action } from './domain/action.enum';
-export { accessibleNodes, ownedTrashedNodes } from './infrastructure/sql/accessible-nodes';
+export {
+  accessibleNodes,
+  ownedFiles,
+  ownedTrashedNodes,
+} from './infrastructure/sql/accessible-nodes';
 export type { AccessibleNodesFragment } from './infrastructure/sql/accessible-nodes';
