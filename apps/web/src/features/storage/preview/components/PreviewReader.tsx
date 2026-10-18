@@ -7,6 +7,7 @@ import type { PreviewFailure } from '../preview-failure';
 import type { ReaderEvents } from '../reader-events';
 
 import { ImagePreview } from './ImagePreview';
+import { PdfPreview } from './PdfPreview';
 import { TextPreview } from './TextPreview';
 
 type PreviewReaderProps = ReaderEvents & {
@@ -22,6 +23,7 @@ export function PreviewReader({ kind, ...reader }: PreviewReaderProps): React.JS
     case 'texto':
       return <TextPreview {...reader} />;
     case 'pdf':
+      return <PdfPreview {...reader} />;
     case 'xlsx':
     case 'pptx':
       return <p role="status">El lector de este formato está pendiente de integración.</p>;

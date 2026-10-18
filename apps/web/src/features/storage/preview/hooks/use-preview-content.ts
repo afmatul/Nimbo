@@ -17,7 +17,7 @@ type ReadingControl = {
 };
 type ReadingSession = {
   readonly generation: number;
-  readonly native: boolean;
+  readonly managedReader: boolean;
   readonly control: React.RefObject<ReadingControl | null>;
 };
 type CurrentReading = { readonly session: ReadingSession; readonly view: ReadingView };
@@ -40,7 +40,7 @@ function stopWaiting(control: ReadingControl): void {
 
 function useReadingWait(session: ReadingSession, publish: (value: CurrentReading) => void): void {
   React.useEffect(() => {
-    if (!session.native) return;
+    if (!session.managedReader) return;
     const control = readingControl(session.control);
     control.active = true;
     if (control.pending) {
@@ -96,7 +96,11 @@ function useReaderCallbacks(session: ReadingSession, publish: (value: CurrentRea
       const control = readingControl(session.control);
       if (!control.active) return;
       stopWaiting(control);
-      const reason = failure.reason === 'corrupt' ? 'corrupt' : 'unavailable';
+      const reason = ['protected', 'corrupt', 'unavailable', 'memory', 'expired'].includes(
+        failure.reason,
+      )
+        ? failure.reason
+        : 'unavailable';
       publish({ session, view: { status: 'failure', failure: { reason, correlationId: '' } } });
     },
     [session, publish],
@@ -119,14 +123,14 @@ function useReaderCleanup(session: ReadingSession): NonNullable<ReaderEvents['re
 
 export function usePreviewContent(state: PreviewState, generation: number): PreviewContent {
   const kind = state.status === 'success' ? state.delivery.file.kind : undefined;
-  const native = kind === 'imagen' || kind === 'texto';
+  const managedReader = kind === 'imagen' || kind === 'texto' || kind === 'pdf';
   const session = React.useMemo<ReadingSession>(
     () => ({
       generation,
-      native,
+      managedReader,
       control: React.createRef<ReadingControl>(),
     }),
-    [generation, native],
+    [generation, managedReader],
   );
   const [current, setCurrent] = React.useState<CurrentReading>();
   useReadingWait(session, setCurrent);
@@ -135,7 +139,7 @@ export function usePreviewContent(state: PreviewState, generation: number): Prev
   const registerCleanup = useReaderCleanup(session);
   const view = current?.session === session ? current.view : LOADING;
   return {
-    state: !native || view.status === 'ready' ? state : view,
+    state: !managedReader || view.status === 'ready' ? state : view,
     ...callbacks,
     registerCleanup,
     retire,

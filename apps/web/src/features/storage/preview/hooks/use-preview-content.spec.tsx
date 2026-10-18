@@ -106,4 +106,34 @@ describe('estado de lectura acotado del shell', () => {
     expect(await pending).toBe(false);
     expect(jest.getTimerCount()).toBe(0);
   });
+
+  it('CA-9/T-08: PDF espera representación y muestra progreso hasta ready', () => {
+    const pdf: PreviewState = {
+      status: 'success',
+      delivery: {
+        ...delivery,
+        file: { ...delivery.file, kind: 'pdf' },
+      },
+    };
+    const { result } = renderHook(() => usePreviewContent(pdf, 1));
+    expect(result.current.state.status).toBe('loading');
+    expect(result.current.state.status === 'loading' && !result.current.state.prolonged).toBe(true);
+    act(() => jest.advanceTimersByTime(2001));
+    expect(result.current.state).toEqual({ status: 'loading', prolonged: true });
+    act(() => result.current.onReady());
+    expect(result.current.state.status).toBe('success');
+    expect(jest.getTimerCount()).toBe(0);
+  });
+
+  it.each(['protected', 'corrupt', 'unavailable', 'memory', 'expired'] as const)(
+    'CA-2/T-08: conserva categoría cerrada %s sin datos privados',
+    (reason) => {
+      const { result } = renderHook(() => usePreviewContent(success, 1));
+      act(() => result.current.onFailure({ reason, correlationId: delivery.url }));
+      expect(result.current.state).toEqual({
+        status: 'failure',
+        failure: { reason, correlationId: '' },
+      });
+    },
+  );
 });

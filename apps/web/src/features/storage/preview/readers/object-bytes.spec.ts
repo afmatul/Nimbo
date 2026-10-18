@@ -242,6 +242,29 @@ describe('object-bytes T-07: contrato inicial de transporte', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it.each([
+    [{ start: 0, end: 0 }, 'bytes 0-0/2048', 1],
+    [RANGE, CONTENT_RANGE, 10],
+    [{ start: 2038, end: 2099 }, 'bytes 2038-2047/2048', 10],
+  ])('CA-11/T-08: expone solo el total validado del rango %j', async (range, header, length) => {
+    fetchMock.mockResolvedValue(
+      new Response(new Uint8Array(length), {
+        status: 206,
+        headers: { 'Content-Range': header },
+      }),
+    );
+    const result = await readObject(range);
+    expect(result.totalLength).toBe(2048);
+    expect(Object.keys(result).sort()).toEqual(['body', 'totalLength']);
+    expect(await consumeBody(result.body)).toBe(length);
+  });
+
+  it('CA-11/T-08: GET completo conserva el contrato sin inventar totalLength', async () => {
+    const result = await readObject();
+    expect(Object.keys(result)).toEqual(['body']);
+    expect(await consumeBody(result.body)).toBe(10);
+  });
+
   it('CA-11: rechaza Content-Range ausente en una respuesta Range', async () => {
     fetchMock.mockResolvedValue(rangeResponse(null));
     expect(await succeeded(readObject(RANGE))).toBe(false);

@@ -11,6 +11,12 @@ type ObjectBytesRequest = {
 
 export type ObjectBytes = {
   readonly body: ReadableStream<Uint8Array>;
+  readonly totalLength?: number;
+};
+
+type ResponseLengths = {
+  readonly expectedLength: number | undefined;
+  readonly totalLength?: number;
 };
 
 type BodySource = ObjectBytes & {
@@ -40,7 +46,7 @@ function isValidRange(range: ObjectByteRange): boolean {
   );
 }
 
-function rangeLength(header: string | null, range: ObjectByteRange): number {
+function rangeLengths(header: string | null, range: ObjectByteRange): ResponseLengths {
   if (header === null) throw new Error(FAILURE_MESSAGE);
   const match = /^bytes ([0-9]+)-([0-9]+)\/([0-9]+)$/.exec(header);
   if (match === null || match[0] !== header) throw new Error(FAILURE_MESSAGE);
@@ -55,16 +61,13 @@ function rangeLength(header: string | null, range: ObjectByteRange): number {
     end !== Math.min(range.end, total - 1)
   )
     throw new Error(FAILURE_MESSAGE);
-  return end - start + 1;
+  return { expectedLength: end - start + 1, totalLength: total };
 }
 
-function responseLength(
-  response: Response,
-  range: ObjectByteRange | undefined,
-): number | undefined {
+function responseLengths(response: Response, range: ObjectByteRange | undefined): ResponseLengths {
   if (response.status !== (range === undefined ? 200 : 206)) throw new Error(FAILURE_MESSAGE);
-  if (range === undefined) return undefined;
-  const expected = rangeLength(response.headers.get('Content-Range'), range);
+  if (range === undefined) return { expectedLength: undefined };
+  const lengths = rangeLengths(response.headers.get('Content-Range'), range);
   const header = response.headers.get('Content-Length');
   if (header !== null) {
     const value = Number(header);
@@ -73,11 +76,11 @@ function responseLength(
       digits === null ||
       digits[0] !== header ||
       !Number.isSafeInteger(value) ||
-      value !== expected
+      value !== lengths.expectedLength
     )
       throw new Error(FAILURE_MESSAGE);
   }
-  return expected;
+  return lengths;
 }
 
 async function discardBody(response: Response): Promise<void> {
@@ -185,11 +188,14 @@ export async function fetchObjectBytes({
       signal,
       ...(range === undefined ? {} : { headers: { Range: `bytes=${range.start}-${range.end}` } }),
     });
-    const expectedLength = responseLength(response, range);
+    const { expectedLength, totalLength } = responseLengths(response, range);
     const body = response.body;
     if (signal.aborted || body === null || response.bodyUsed || body.locked)
       throw new Error(FAILURE_MESSAGE);
-    return { body: protectedBody({ body, signal, expectedLength }) };
+    return {
+      body: protectedBody({ body, signal, expectedLength }),
+      ...(totalLength === undefined ? {} : { totalLength }),
+    };
   } catch {
     if (response !== undefined) await discardBody(response);
     throw new Error(FAILURE_MESSAGE);

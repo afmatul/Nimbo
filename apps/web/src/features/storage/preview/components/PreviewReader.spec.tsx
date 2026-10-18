@@ -2,33 +2,38 @@
 import { render, screen } from '@testing-library/react';
 
 import { ImagePreview } from './ImagePreview';
+import { PdfPreview } from './PdfPreview';
 import { PreviewReader } from './PreviewReader';
 import { TextPreview } from './TextPreview';
 
 jest.mock('./ImagePreview', () => ({ ImagePreview: jest.fn(() => null) }));
+jest.mock('./PdfPreview', () => ({ PdfPreview: jest.fn(() => null) }));
 jest.mock('./TextPreview', () => ({ TextPreview: jest.fn(() => null) }));
 
 const URL = 'https://objects.test/private-object?X-Amz-Signature=PRIVATE_SIGNATURE';
 
 describe('selección por kind vigente', () => {
-  it.each(['imagen', 'texto'] as const)(
+  it.each(['imagen', 'texto', 'pdf'] as const)(
     'CA-1: selecciona el lector de %s sin nombre ni extensión',
     (kind) => {
       const onFailure = jest.fn();
       const onReady = jest.fn();
       render(<PreviewReader kind={kind} url={URL} onFailure={onFailure} onReady={onReady} />);
-      const selected = jest.mocked(kind === 'imagen' ? ImagePreview : TextPreview);
+      const selected = jest.mocked(
+        kind === 'imagen' ? ImagePreview : kind === 'pdf' ? PdfPreview : TextPreview,
+      );
       expect(selected).toHaveBeenCalledTimes(1);
       const props = selected.mock.calls[0]?.[0];
       expect(props?.url === URL).toBe(true);
       expect(props?.onFailure === onFailure).toBe(true);
       expect(props?.onReady === onReady).toBe(true);
       expect(Object.keys(props ?? {}).sort()).toEqual(['onFailure', 'onReady', 'url']);
-      expect(kind === 'imagen' ? TextPreview : ImagePreview).toHaveBeenCalledTimes(0);
+      for (const reader of [ImagePreview, TextPreview, PdfPreview])
+        if (reader !== selected) expect(reader).toHaveBeenCalledTimes(0);
     },
   );
 
-  it.each(['pdf', 'xlsx', 'pptx'] as const)(
+  it.each(['xlsx', 'pptx'] as const)(
     'CA-1: %s queda pendiente de su motor, sin falso unsupported',
     (kind) => {
       const onFailure = jest.fn();
