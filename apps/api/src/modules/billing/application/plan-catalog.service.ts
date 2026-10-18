@@ -51,7 +51,9 @@ export class PlanCatalogService {
 
   /**
    * 011 CA-8, CA-12: todos los planes, activos y desactivados (con `deactivatedAt`), para el catálogo y las métricas del
-   * Administrador (`arreglos-011.md` §10). Solo lectura; `backoffice` autoriza antes de llamar.
+   * Administrador (`arreglos-011.md` §10). Solo lectura; `backoffice` autoriza antes de llamar. Sin la bitácora
+   * `billing.plan_catalog_unavailable` de `list`: esa es solo del catálogo público (008 CA-3); en el backoffice el
+   * `PlanCatalogUnavailableError` (500) sigue igual hasta el filtro global (Adrián, revisión del 18/10).
    */
   listAll(_actor: Actor): Promise<Plan[]> {
     return this.plans.findAll();

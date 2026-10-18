@@ -38,7 +38,9 @@ describe('TypeOrmPlanRepository.findActive (008 CA-3, plan §5)', () => {
 
     await expect(repository.findActive()).rejects.toBeInstanceOf(TypeError);
   });
+});
 
+describe('TypeOrmPlanRepository.findAll (011 CA-8, CA-12)', () => {
   it('011 CA-8: `findAll` usa el mismo orden y no filtra por `desactivado_en`', async () => {
     const find = jest.fn().mockResolvedValue([]);
 
