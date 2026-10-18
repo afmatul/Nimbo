@@ -3,6 +3,7 @@ import type * as PdfJs from 'pdfjs-dist';
 import type { PreviewFailure } from '../preview-failure';
 
 import { fetchObjectBytes } from './object-bytes';
+import { readStreamBytes } from './stream-bytes';
 
 type RangeOptions = {
   readonly engine: typeof PdfJs;
@@ -19,30 +20,6 @@ type RangeReading = RangeOptions & {
   readonly pending: Set<Promise<void>>;
   readonly length: number;
 };
-
-/** Consumir un rango ya validado no repite ninguna política HTTP del helper. */
-async function readPdfBody(body: ReadableStream<Uint8Array>): Promise<Uint8Array<ArrayBuffer>> {
-  const reader = body.getReader();
-  const chunks: Uint8Array[] = [];
-  try {
-    for (;;) {
-      const chunk = await reader.read();
-      if (chunk.done) break;
-      chunks.push(chunk.value);
-    }
-    const result = new Uint8Array(chunks.reduce((size, chunk) => size + chunk.length, 0));
-    let offset = 0;
-    for (const chunk of chunks) {
-      result.set(chunk, offset);
-      offset += chunk.length;
-    }
-    return result;
-  } finally {
-    await reader.cancel().catch(() => undefined);
-    reader.releaseLock();
-    chunks.length = 0;
-  }
-}
 
 async function deliverRange(
   reading: RangeReading,
@@ -63,7 +40,7 @@ async function deliverRange(
       await result.body.cancel();
       throw new Error('El objeto cambió durante la lectura.');
     }
-    const chunk = await readPdfBody(result.body);
+    const chunk = await readStreamBytes(result.body);
     if (!reading.controller.signal.aborted) transport.onDataRange(range.begin, chunk);
   } catch {
     if (reading.controller.signal.aborted) return;
@@ -103,7 +80,7 @@ export async function openPdfRangeTransport(options: RangeOptions): Promise<PdfR
       signal: controller.signal,
       range: { start: 0, end: 0 },
     });
-    const initial = await readPdfBody(result.body);
+    const initial = await readStreamBytes(result.body);
     if (result.totalLength === undefined || controller.signal.aborted)
       throw new Error('Lectura cancelada.');
     const reading: RangeReading = {
