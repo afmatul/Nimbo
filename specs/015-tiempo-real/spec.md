@@ -30,7 +30,7 @@ los suyos y quién puede entrar a la sala de un documento.
 - **CA-1** (HU-1, RF-26) Dado un cliente con token de acceso vigente, cuando abre el canal con ese token, entonces queda conectado y unido solo a su propia sala de usuario.
 - **CA-2** (HU-1, RNF-05) — error: Dado un intento sin token, con token inválido o vencido, cuando abre el canal, entonces se rechaza con `SHARED_UNAUTHENTICATED` y no queda unido a ninguna sala.
 - **CA-3** (HU-1, RF-05) — error: Dado un Administrador, Soporte u Operador con token vigente, cuando abre el canal, entonces se rechaza con `SHARED_FORBIDDEN`.
-- **CA-4** (HU-1, RNF-05) Dado un canal abierto, cuando vence el token con que se abrió, entonces el servidor lo cierra con `SHARED_UNAUTHENTICATED`; el cliente lo reabre con un token renovado sin intervención del usuario.
+- **CA-4** (HU-1, RNF-05) Dado un canal abierto, cuando vence el token con que se abrió, entonces el servidor lo cierra con `SHARED_UNAUTHENTICATED`; el cliente lo reabre con un token renovado sin intervención del usuario: si la sesión ya renovó el token (el vigente difiere del presentado), reabre con el vigente sin pedir otra renovación; si no, renueva primero; una renovación que termina después de cerrar el canal no tiene efecto.
 - **CA-5** (HU-4, RF-26) Dado un cliente con el canal abierto en dos pestañas o dispositivos, cuando el servidor emite un aviso a ese usuario, entonces cada conexión lo recibe una vez.
 - **CA-6** (HU-2, HU-4, RF-26) Dado que el módulo dueño admitió la conexión de A en la sala del documento D, cuando se emite un aviso a D, entonces lo reciben todas las conexiones admitidas en D y ninguna otra.
 - **CA-7** (HU-2, RNF-05) — error: Dado un cliente conectado, cuando pide por su cuenta entrar a la sala de otro usuario o a la de un documento, entonces se responde `SHARED_FORBIDDEN`, no se une y no recibe avisos de esa sala.
@@ -40,7 +40,7 @@ los suyos y quién puede entrar a la sala de un documento.
 - **CA-11** (HU-3, RF-26) Dado un canal abierto, cuando la red se corta y vuelve, entonces el cliente reconecta solo, vuelve a su sala de usuario y queda fuera de las salas de documento hasta que el módulo dueño lo readmita; los avisos emitidos durante el corte no se reenvían.
 - **CA-12** (RNF-09) Dado que el canal en vivo no está disponible, cuando un cliente carga, descarga o navega, entonces la operación responde igual que sin canal y no espera al aviso.
 - **CA-13** (RNF-17) Dada una conexión aceptada, rechazada o cerrada, cuando se consulta la bitácora, entonces hay una línea con `correlationId`, id de usuario y motivo, y ninguna contiene token, nombre de archivo ni el contenido del aviso.
-- **CA-14** (RNF-07) — error: Dado un origen que acumula intentos de conexión (todos, válidos o no) por encima del umbral configurado, cuando vuelve a intentar, entonces se rechaza con `REALTIME_TOO_MANY_REQUESTS` (429) y el tiempo de espera, sin verificar el token.
+- **CA-14** (RNF-07) — error: Dado un origen que acumula intentos de conexión (todos, válidos o no) por encima del umbral configurado, cuando vuelve a intentar, entonces se rechaza con `REALTIME_TOO_MANY_REQUESTS` (429) y el tiempo de espera, sin verificar el token; tras ese rechazo el cliente reabre el canal una sola vez pasados `retryAfterSeconds`, y si la espera falta o no es un número finito positivo, no reabre.
 
 ## 4. Reglas de negocio
 - **RN-1** Hay un solo canal por pestaña y solo dos tipos de sala: la del usuario (todas sus conexiones) y la de un documento.
@@ -105,3 +105,4 @@ Sin preguntas abiertas.
 | 2026-10-15 | CA-2 sin «cuenta suspendida» (P-2: el token vigente sirve hasta vencer); CA-14 y RN-8 cuentan todos los intentos por origen | Revisión de `architect` del plan (`IRateLimiter` no distingue fallidos) | Adrián (2026-10-15) |
 | 2026-10-15 | P-1…P-9 resueltas; CA-9 con plazo de 60 s, CA-14, RN-9, RN-10; RF-08 sale de 015; dueño pasa a Adrián | Respuestas de Adrián | Adrián |
 | 2026-10-17 | Pasa a `En revisión` | `/review 015` | — |
+| 2026-10-17 | CA-4 y CA-14 precisan el comportamiento del cliente web (reapertura con token vigente; reintento único tras `retryAfterSeconds`) | Hallazgo S-3 del review (recoge también I-2, S-1, I-3 y S-4) | — |
