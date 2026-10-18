@@ -13,7 +13,11 @@ export type PreviewState =
   | { readonly status: 'success'; readonly delivery: PreviewUrlResponse }
   | { readonly status: 'failure'; readonly failure: PreviewFailure };
 
-type CurrentPreview = { readonly fileId: string; readonly state: PreviewState };
+type CurrentPreview = {
+  readonly fileId: string;
+  readonly state: PreviewState;
+  readonly generation: number;
+};
 type Attempt = {
   readonly fileId: string;
   readonly controller: AbortController;
@@ -26,7 +30,7 @@ type Emission = {
   readonly setCurrent: Dispatch<SetStateAction<CurrentPreview>>;
 };
 const LOADING: PreviewState = { status: 'loading', prolonged: false };
-const WAIT_DELAY_MS = 2001;
+export const PREVIEW_WAIT_DELAY_MS = 2001;
 
 function stopAttempt(active: Emission['active']): void {
   const previous = active.current;
@@ -41,7 +45,11 @@ async function emitPreview(emission: Emission, attempt: Attempt): Promise<void> 
     if (emission.active.current !== attempt || attempt.controller.signal.aborted) return;
     clearTimeout(attempt.timer);
     emission.active.current = undefined;
-    emission.setCurrent({ fileId: attempt.fileId, state });
+    emission.setCurrent((current) => ({
+      fileId: attempt.fileId,
+      state,
+      generation: current.generation,
+    }));
   };
   try {
     const delivery = await emission.requestUrl(attempt.fileId, attempt.controller.signal);
@@ -53,17 +61,22 @@ async function emitPreview(emission: Emission, attempt: Attempt): Promise<void> 
 
 function beginEmission(emission: Emission): void {
   stopAttempt(emission.active);
-  emission.setCurrent({ fileId: emission.fileId, state: LOADING });
+  emission.setCurrent((current) => ({
+    fileId: emission.fileId,
+    state: LOADING,
+    generation: current.generation + 1,
+  }));
   const attempt: Attempt = {
     fileId: emission.fileId,
     controller: new AbortController(),
     timer: setTimeout(() => {
       if (emission.active.current !== attempt) return;
-      emission.setCurrent({
+      emission.setCurrent((current) => ({
         fileId: attempt.fileId,
         state: { status: 'loading', prolonged: true },
-      });
-    }, WAIT_DELAY_MS),
+        generation: current.generation,
+      }));
+    }, PREVIEW_WAIT_DELAY_MS),
   };
   emission.active.current = attempt;
   void emitPreview(emission, attempt);
@@ -76,8 +89,13 @@ export function usePreview(
 ): {
   readonly state: PreviewState;
   readonly retry: () => void;
+  readonly generation: number;
 } {
-  const [current, setCurrent] = useState<CurrentPreview>({ fileId, state: { status: 'idle' } });
+  const [current, setCurrent] = useState<CurrentPreview>({
+    fileId,
+    state: { status: 'idle' },
+    generation: 0,
+  });
   const active = useRef<Attempt | undefined>(undefined);
   const retry = useCallback(
     () => beginEmission({ fileId, requestUrl, active, setCurrent }),
@@ -87,5 +105,9 @@ export function usePreview(
     retry();
     return () => stopAttempt(active);
   }, [retry]);
-  return { state: current.fileId === fileId ? current.state : LOADING, retry };
+  return {
+    state: current.fileId === fileId ? current.state : LOADING,
+    retry,
+    generation: current.generation,
+  };
 }

@@ -180,6 +180,17 @@ describe('usePreview T-06', () => {
     expect(request).toHaveBeenCalledTimes(1);
   });
 
+  it('CA-2: retry crea otra generación aunque la URL reemitida sea la misma', async () => {
+    const request = requester().mockResolvedValue(delivery());
+    const { result } = renderHook(() => usePreview(FILE_ID, request));
+    await act(async () => undefined);
+    const previous = result.current.generation;
+    await act(async () => result.current.retry());
+    expect(result.current.generation > previous).toBe(true);
+    expect(request).toHaveBeenCalledTimes(2);
+    expect(result.current.state.status).toBe('success');
+  });
+
   it('Guardia transversal: no usa persistencia ni conserva datos privados en failures', async () => {
     const storage = jest.spyOn(Storage.prototype, 'setItem');
     const request = requester().mockRejectedValue(new Error(delivery().url));

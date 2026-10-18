@@ -14,7 +14,9 @@ import { DATE_LOCALE } from '../../../../lib/format-date';
 import { useAuthFetch } from '../../../identity/session/use-auth-fetch';
 import { requestPreviewUrl, type PreviewUrlRequester } from '../api';
 import { usePreview } from '../hooks/use-preview';
+import { usePreviewContent } from '../hooks/use-preview-content';
 
+import { PreviewReader } from './PreviewReader';
 import { PreviewStates } from './PreviewStates';
 
 export type PreviewPageProps = {
@@ -100,6 +102,7 @@ type PreviewHeaderProps = {
   readonly returnHref: string;
   readonly onDownload: () => void;
   readonly pending: boolean;
+  readonly showDownload: boolean;
 };
 
 function PreviewHeader(props: PreviewHeaderProps): React.JSX.Element {
@@ -117,7 +120,7 @@ function PreviewHeader(props: PreviewHeaderProps): React.JSX.Element {
           </h1>
           {file === undefined ? null : <PreviewMetadata file={file} />}
         </div>
-        {file === undefined ? null : (
+        {file === undefined || !props.showDownload ? null : (
           <Button type="button" variant="outline" onClick={onDownload} disabled={pending}>
             <Download className="h-4 w-4" aria-hidden="true" />
             Descargar
@@ -156,7 +159,9 @@ function usePreviewShell({
   openDownloadUrl = openInBrowser,
 }: PreviewPageProps) {
   const request = usePreviewRequest(apiPublicUrl);
-  const { state, retry } = usePreview(fileId, request);
+  const { state: emission, retry, generation } = usePreview(fileId, request);
+  const content = usePreviewContent(emission, generation);
+  const state = content.state;
   const download = usePreviewDownload(fileId, openDownloadUrl);
   const region = React.useRef<HTMLElement>(null);
   const attachRegion = React.useCallback((element: HTMLElement | null): void => {
@@ -165,18 +170,31 @@ function usePreviewShell({
   React.useEffect(() => {
     region.current?.focus();
   }, []);
-  const file = state.status === 'success' ? state.delivery.file : undefined;
+  const delivery = emission.status === 'success' ? emission.delivery : undefined;
+  const file = delivery?.file;
   const returnHref = returnPathOf({ id: file?.id ?? fileId, folderId: file?.folderId ?? null });
   const onRetry = (): void => {
     region.current?.focus();
     download.reset();
-    retry();
+    void content.retire().then((mounted) => {
+      if (mounted) retry();
+    });
   };
   const onDownload = (): void => {
     region.current?.focus();
     download.start();
   };
-  return { state, download, attachRegion, file, returnHref, actions: { onRetry, onDownload } };
+  return {
+    state,
+    delivery,
+    generation,
+    content,
+    download,
+    attachRegion,
+    file,
+    returnHref,
+    actions: { onRetry, onDownload },
+  };
 }
 
 type PreviewView = ReturnType<typeof usePreviewShell>;
@@ -198,6 +216,18 @@ function PreviewBody({ view }: { readonly view: PreviewView }): React.JSX.Elemen
         onDownload={actions.onDownload}
         downloadPending={download.pending}
       />
+      {view.delivery === undefined ? null : (
+        <div hidden={state.status === 'failure'}>
+          <PreviewReader
+            key={view.generation}
+            kind={view.delivery.file.kind}
+            url={view.delivery.url}
+            onFailure={view.content.onFailure}
+            onReady={view.content.onReady}
+            registerCleanup={view.content.registerCleanup}
+          />
+        </div>
+      )}
       {download.failed ? <DownloadFailure onRetry={actions.onDownload} /> : null}
     </section>
   );
@@ -212,6 +242,7 @@ function PreviewShell(props: PreviewPageProps): React.JSX.Element {
         returnHref={view.returnHref}
         onDownload={view.actions.onDownload}
         pending={view.download.pending}
+        showDownload={view.state.status !== 'failure'}
       />
       <PreviewBody view={view} />
     </div>

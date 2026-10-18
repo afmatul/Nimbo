@@ -1,17 +1,34 @@
 /** @jest-environment jsdom */
 import type { DownloadUrlResponse, PreviewUrlResponse } from '@nimbo/contracts';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
-import type { ComponentProps, ReactNode } from 'react';
+import type * as React from 'react';
 
 import { ApiClientError } from '../../../../lib/api-error';
 import { DATE_LOCALE } from '../../../../lib/format-date';
 
 import { PreviewPage } from './PreviewPage';
+import { PreviewReader } from './PreviewReader';
 
 const authFetch = jest.fn();
 const requestDownload = jest.fn();
+let mockAutoReady = true;
+const mockDisposeReader = jest.fn<Promise<void>, []>();
+jest.mock('./PreviewReader', () => {
+  const { useEffect } = jest.requireActual<typeof React>('react');
+  return {
+    PreviewReader: jest.fn(
+      ({ registerCleanup, onReady }: React.ComponentProps<typeof PreviewReader>) => {
+        useEffect(() => registerCleanup?.(mockDisposeReader), [registerCleanup]);
+        useEffect(() => {
+          if (mockAutoReady) onReady?.();
+        }, [onReady]);
+        return null;
+      },
+    ),
+  };
+});
 jest.mock('../../../identity/session/use-auth-fetch', () => ({ useAuthFetch: () => authFetch }));
 jest.mock('../..', () => ({
   ...jest.requireActual('../..'),
@@ -19,9 +36,10 @@ jest.mock('../..', () => ({
 }));
 jest.mock('next/link', () => ({
   __esModule: true,
-  default: ({ prefetch: _prefetch, ...props }: ComponentProps<'a'> & { prefetch?: boolean }) => (
-    <a {...props} />
-  ),
+  default: ({
+    prefetch: _prefetch,
+    ...props
+  }: React.ComponentProps<'a'> & { prefetch?: boolean }) => <a {...props} />,
 }));
 
 const ID = '11111111-1111-4111-8111-111111111111';
@@ -47,7 +65,7 @@ function renderPage() {
     <PreviewPage fileId={ID} apiPublicUrl="https://api.test/api/v1" openDownloadUrl={open} />,
     {
       // AppLayout ya aporta main en producción.
-      wrapper: ({ children }: { readonly children: ReactNode }) => <main>{children}</main>,
+      wrapper: ({ children }: { readonly children: React.ReactNode }) => <main>{children}</main>,
     },
   );
   return { ...rendered, open };
@@ -62,6 +80,9 @@ function expectPrivateDom(container: HTMLElement): void {
 describe('shell T-06', () => {
   beforeEach(() => {
     authFetch.mockReset();
+    jest.mocked(PreviewReader).mockClear();
+    mockAutoReady = true;
+    mockDisposeReader.mockReset().mockResolvedValue(undefined);
     requestDownload.mockReset();
     authFetch.mockReturnValue(new Promise(() => undefined));
   });
@@ -87,7 +108,7 @@ describe('shell T-06', () => {
     expect(screen.queryByRole('button', { name: 'Descargar' })).toBeNull();
   });
 
-  it('CA-6: success muestra solo metadata autorizada, Solo lectura y área sin lector', async () => {
+  it('CA-6: success muestra metadata autorizada y delega el contenido al lector', async () => {
     authFetch.mockResolvedValue(DELIVERY);
     const { container } = renderPage();
     await act(async () => undefined);
@@ -115,6 +136,127 @@ describe('shell T-06', () => {
       method: 'POST',
       signal: expect.any(AbortSignal),
     });
+  });
+
+  it.each(['imagen', 'texto'] as const)(
+    'CA-1: entrega kind %s al lector sin usar la extensión',
+    async (kind) => {
+      authFetch.mockResolvedValue({
+        ...DELIVERY,
+        file: { ...DELIVERY.file, kind, name: 'Renombrado.pdf' },
+      });
+      renderPage();
+      await act(async () => undefined);
+      const props = jest.mocked(PreviewReader).mock.calls[0]?.[0];
+      expect(props?.kind).toBe(kind);
+      expect(props?.url === DELIVERY.url).toBe(true);
+      expect(Object.keys(props ?? {}).sort()).toEqual([
+        'kind',
+        'onFailure',
+        'onReady',
+        'registerCleanup',
+        'url',
+      ]);
+    },
+  );
+
+  it('CA-2: fallo del lector conserva metadata y ofrece una sola pareja Reintentar/Descargar', async () => {
+    mockAutoReady = false;
+    authFetch.mockResolvedValue(DELIVERY);
+    const { container } = renderPage();
+    await act(async () => undefined);
+    const reader = jest.mocked(PreviewReader).mock.calls[0]?.[0];
+    if (reader === undefined) throw new Error('Falta lector');
+    act(() => reader.onFailure({ reason: 'corrupt', correlationId: DELIVERY.url }));
+    expect(screen.getByRole('heading', { level: 1, name: 'Notas.md' })).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: 'Descargar' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Reintentar' })).toHaveLength(1);
+    expect(screen.getByRole('alert').textContent).toContain('El original no cambió');
+    expectPrivateDom(container);
+    expect((await axe(container)).violations).toEqual([]);
+  });
+
+  it('CA-2: retry espera la destrucción, reemite la misma URL y rechaza failure/ready de A', async () => {
+    mockAutoReady = false;
+    authFetch.mockResolvedValue(DELIVERY);
+    let finish = (): void => {
+      throw new Error('Falta cleanup');
+    };
+    mockDisposeReader.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    renderPage();
+    await act(async () => undefined);
+    const a = jest.mocked(PreviewReader).mock.calls[0]?.[0];
+    if (a === undefined) throw new Error('Falta lector A');
+    act(() => a.onFailure({ reason: 'unavailable', correlationId: '' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
+    expect(authFetch).toHaveBeenCalledTimes(1);
+    expect(mockDisposeReader).toHaveBeenCalledTimes(1);
+    await act(async () => finish());
+    expect(authFetch).toHaveBeenCalledTimes(2);
+    const calls = jest.mocked(PreviewReader).mock.calls;
+    const b = calls[calls.length - 1]?.[0];
+    if (b === undefined) throw new Error('Falta lector B');
+    expect(b.url === a.url).toBe(true);
+    expect(b.onFailure === a.onFailure).toBe(false);
+    act(() => b.onReady?.());
+    act(() => {
+      a.onFailure({ reason: 'corrupt', correlationId: '' });
+      a.onReady?.();
+    });
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Reintentar' })).toBeNull();
+  });
+
+  it.each([
+    ['SHARED_FORBIDDEN', 403],
+    ['STORAGE_NODE_NOT_FOUND', 404],
+  ] as const)(
+    'CA-7: retry del lector con API %s borra metadata y contenido del mismo archivo',
+    async (code, status) => {
+      mockAutoReady = false;
+      authFetch
+        .mockResolvedValueOnce(DELIVERY)
+        .mockRejectedValueOnce(
+          new ApiClientError({ code, status, message: DELIVERY.url, correlationId: '' }),
+        );
+      const { container } = renderPage();
+      await act(async () => undefined);
+      const reader = jest.mocked(PreviewReader).mock.calls[0]?.[0];
+      if (reader === undefined) throw new Error('Falta lector');
+      act(() => reader.onFailure({ reason: 'corrupt', correlationId: '' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
+      await waitFor(() => expect(authFetch).toHaveBeenCalledTimes(2));
+      expect(container.textContent?.includes('Notas.md')).toBe(false);
+      expect(screen.queryByRole('button', { name: 'Descargar' })).toBeNull();
+      expect(screen.getByRole('link', { name: 'Volver' }).getAttribute('href')).toBe(
+        `/archivos?foco=${ID}`,
+      );
+      expectPrivateDom(container);
+    },
+  );
+
+  it('CA-9: lectura lenta mantiene progreso tras emisión rápida, sin cambiar foco ni reemitir', async () => {
+    jest.useFakeTimers();
+    mockAutoReady = false;
+    authFetch.mockResolvedValue(DELIVERY);
+    renderPage();
+    await act(async () => undefined);
+    const region = screen.getByRole('region', { name: 'Vista previa' });
+    expect(region.getAttribute('aria-busy')).toBe('true');
+    act(() => jest.advanceTimersByTime(2000));
+    expect(screen.queryByRole('progressbar')).toBeNull();
+    act(() => jest.advanceTimersByTime(1));
+    expect(screen.getByRole('progressbar')).toBeTruthy();
+    expect(document.activeElement).toBe(region);
+    const reader = jest.mocked(PreviewReader).mock.calls[0]?.[0];
+    act(() => reader?.onReady?.());
+    expect(screen.queryByRole('progressbar')).toBeNull();
+    expect(authFetch).toHaveBeenCalledTimes(1);
   });
 
   it('CA-2: retry devuelve foco al visor, retira el error y no reutiliza una emisión', async () => {
