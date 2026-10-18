@@ -1,13 +1,13 @@
 # Generadores de los mockups escritos a mano
 
-Los mockups HTML autocontenidos de `identity/seguridad`, `backoffice/admin`, `backoffice/alta-interna`, `backoffice/catalogo`, `backoffice/metricas`, `backoffice/soporte`, `shared/layout`, `storage/carga` (salvo `carga--progreso.html`), los estados de 005, 006 y 007 de `storage/explorador`, `storage/resumen-espacio`, los de 006 de `storage/papelera` y los de 014 de `storage/ficha-archivo` no se editan a mano: se generan con estos
+Los mockups HTML autocontenidos de `identity/seguridad`, `backoffice/admin`, `backoffice/alta-interna`, `backoffice/catalogo`, `backoffice/metricas`, `backoffice/soporte`, `shared/layout`, `storage/carga` (salvo `carga--progreso.html`), los estados de 005, 006 y 007 de `storage/explorador`, `storage/resumen-espacio`, los de 006 de `storage/papelera`, los de 014 de `storage/ficha-archivo` y los de 010 de `billing/suscripcion`, `billing/planes` y `billing/pago` no se editan a mano: se generan con estos
 scripts para que el marco de la aplicación (barra lateral, barra superior, menú de la cuenta, cajón móvil y diálogo)
 salga de **un solo lugar**. Así no se copia el marco en cada archivo (DRY). Son referencia visual; `apps/web` no
 los importa.
 
 | Archivo | Qué hace |
 |---|---|
-| `marco/marco.js` | Piezas comunes del marco (navegación con «Mis archivos», «Compartidos conmigo», «Recientes», «Fijados» y «Papelera») y el diálogo de «Cerrar sesión» (`DIALOGO_CERRAR_SESION`); exporta `logo`, que usa `layout/barra.js` |
+| `marco/marco.js` | Piezas comunes del marco (también `avisoSoloLectura`, el `ReadOnlyBanner` que usan `layout/generar.js` y `billing/`) (navegación con «Mis archivos», «Compartidos conmigo», «Recientes», «Fijados» y «Papelera») y el diálogo de «Cerrar sesión» (`DIALOGO_CERRAR_SESION`); exporta `logo`, que usa `layout/barra.js` |
 | `mis-archivos/mis-archivos.js` | Página «Mis archivos» de 005: íconos de tipo, datos de ejemplo, cuota por tramos, barra lateral de 005 (sin «Carpetas» ni contador de la Papelera), encabezado y tabla de la raíz con el menú ⋮ (comunes a `carga` y `explorador`) |
 | `mis-archivos/estados.js` | CSS y HTML de los estados comunes de una lista (vacío, esqueleto, error, `Alert`, zona de soltar) y el script del menú ⋮; los usan los estados de 005 y 006 |
 | `carpetas/carpetas.js` | Piezas de 006: logo del proyecto (nube de `docs/design/logos/` con tokens), barra lateral con «Carpetas» y contador de la Papelera, toast, diálogo con un campo, `ConfirmDestructiveDialog` con progreso y su CSS; fila, tabla (con `aria-sort` opcional de 007) y encabezado de una carpeta |
@@ -35,6 +35,10 @@ los importa.
 | `catalogo/generar.js` | Los 8 estados de `backoffice/catalogo` (spec 011: catálogo de planes y nuevo plan) sobre `admin/area.js` |
 | `metricas/generar.js` | Los 5 estados de `backoffice/metricas` (spec 011: métricas agregadas, CA-12) sobre `admin/area.js`; tablas con barras en HTML y CSS, sin librerías de gráficos; el estado `operador` usa `AREA_OPERADOR` |
 | `soporte/generar.js` | Los 7 estados de `backoffice/soporte` (spec 011: metadatos de los archivos de un cliente, CA-13) sobre `admin/area.js` con `AREA_SOPORTE`; íconos de tipo de `mis-archivos/mis-archivos.js`; el estado `desde-admin` usa `AREA_ADMIN` |
+| `billing/billing.js` | Piezas de billing (spec 010): datos de ejemplo (catálogo de product-context §3, tarjeta guardada, uso de 64.2 GB), íconos, CSS de tarjetas, `Alert` info/warning/error, interruptor, diálogo con resumen y aviso (estilo del aviso de poda), barra superior sin barra lateral, `pagina` y `escribir`; `CSS_PLANES` para la lista de planes |
+| `billing/generar-suscripcion.js` | Los 8 estados de 010 de `billing/suscripcion` (incluido `vigente`); `suscripcion--propuesta.html` es el paquete de la propuesta y no se genera |
+| `billing/generar-planes.js` | Los 5 estados de 010 de `billing/planes` (cambiar de plan y confirmaciones); `planes--plan-actual.html` es el paquete de 008 y no se genera |
+| `billing/generar-pago.js` | Los 4 estados de 010 de `billing/pago` (renovación); `pago.html` es el paquete de 009 y no se genera |
 | `pw/capturar-rutas.js` | Capturas a 360 y 1440 px de los HTML indicados, en `es-GT` y hora de Guatemala, con movimiento reducido (`reducedMotion: 'reduce'`: esqueletos e indicadores de carga quietos) |
 | `pw/axe-seguridad.js`, `pw/axe-layout.js` | axe-core, desbordamiento a 360 px, objetivos táctiles y consola sobre todos los `.html` de una carpeta (sirve para cualquier pantalla); el de layout recorre además el teclado |
 
@@ -56,6 +60,9 @@ node docs/design/mockups/_generadores/catalogo/generar.js "$(pwd)"
 node docs/design/mockups/_generadores/metricas/generar.js "$(pwd)"
 node docs/design/mockups/_generadores/soporte/generar.js "$(pwd)"
 node docs/design/mockups/_generadores/ficha-archivo/generar.js "$(pwd)"
+node docs/design/mockups/_generadores/billing/generar-suscripcion.js "$(pwd)"
+node docs/design/mockups/_generadores/billing/generar-planes.js "$(pwd)"
+node docs/design/mockups/_generadores/billing/generar-pago.js "$(pwd)"
 node docs/design/mockups/_generadores/pw/capturar-rutas.js "$(pwd)" \
   identity/seguridad/seguridad.html=identity/seguridad/seguridad--default
 node docs/design/mockups/_generadores/pw/axe-layout.js "$(pwd)"
@@ -66,3 +73,6 @@ del monorepo: se instalan aparte (por ejemplo, en una carpeta temporal con `npm 
 spec de E2E (000b/023) defina las del proyecto con su ADR.
 
 Después de cambiar un generador, vuelve a generar, compara con `git diff` y regenera las capturas del mockup afectado.
+
+Ojo: `seguridad/generar.js` formatea fechas con `Intl`; con otra versión de ICU (otro sistema) el mes abreviado puede
+cambiar («sept» o «sep») sin que cambie el generador. Esa diferencia no es intencional: descártala con `git checkout`.

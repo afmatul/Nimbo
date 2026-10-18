@@ -51,7 +51,7 @@ programar un cambio de plan (subir, bajar o volver a Personal) que se aplica en 
 
 **Cambio de plan**
 - **CA-16** (HU-5, RF-24) Dado un plan de pago vigente, cuando el cliente elige otro plan activo (de pago o Personal), entonces se responde `200`, el cambio queda programado para `vence_en` y la pantalla dice «Tu plan cambiará a <plan> el <fecha>»; no se cobra nada ahora y el plan, sus límites y el periodo vigente no cambian. Programar otro plan reemplaza al anterior.
-- **CA-17** (HU-5, RF-24) — error: Dado un plan de pago, cuando intenta programar un plan desactivado, inexistente o el mismo que tiene, entonces se responde `400` `BILLING_PLAN_CHANGE_INVALID` y nada cambia. La lista de opciones no muestra planes desactivados (PD-86).
+- **CA-17** (HU-5, RF-24) — error: Dado un plan de pago, cuando intenta programar un plan desactivado, inexistente o el mismo que tiene, entonces se responde `400` `BILLING_PLAN_CHANGE_INVALID` («No pudimos programar el cambio. Ese plan ya no está disponible. Cierra este aviso y elige otro plan de la lista.») y nada cambia. La lista de opciones no muestra planes desactivados (PD-86).
 - **CA-18** (HU-5, RF-24) — error: Dado una suscripción Personal, cuando intenta programar un cambio, entonces se responde `400` `BILLING_NO_PAID_SUBSCRIPTION`; en la pantalla, elegir un plan de pago lleva a la contratación de la 009.
 - **CA-19** (HU-5, RF-24) Dado un cambio programado, cuando el cliente lo cancela antes de `vence_en`, entonces se responde `200` y la renovación sigue con el plan actual. Sin cambio programado se responde `404` `BILLING_NO_PENDING_PLAN_CHANGE`.
 - **CA-20** (HU-5, RF-24, RF-22) Dado un cambio programado a otro plan de pago, cuando se renueva al vencer (automática) o desde solo lectura (CA-10), nunca por adelantado (CA-28), entonces se cobra el precio completo del plan nuevo (sin prorrateo) y, si se aprueba, el periodo nuevo usa ese plan y sus límites. Si se rechaza, aplica CA-2 con el plan anterior y el cambio sigue programado.
@@ -94,7 +94,7 @@ programar un cambio de plan (subir, bajar o volver a Personal) que se aplica en 
 | Pago de la renovación manual | `billing/pago/pago.html` | default con el periodo nuevo, rechazado, éxito | Existe `default` (009); falta la variante de renovación |
 | Aviso de solo lectura (explorador y vistas de escritura) | `shared/layout/layout--solo-lectura.html` (`ReadOnlyBanner`, RF-23) | visible con «Renovar plan», acción bloqueada | Existe (000b) |
 
-- Por vencer: «Tu plan <plan> vence el <fecha>. Se renovará con <marca> •••• <últimos 4>.» o, sin renovación automática, «Tu plan vence el <fecha> y no se renovará. Renueva ahora para no quedar en solo lectura.»
+- Por vencer: «Tu plan <plan> vence el <fecha>. Se renovará con <marca> ···· <últimos 4>.» o, sin renovación automática, «Tu plan vence el <fecha> y no se renovará. Renueva ahora para no quedar en solo lectura.»
 - Vencida: «Tu suscripción venció. Puedes ver y descargar tus archivos, pero no subir ni editar. Renueva tu plan.»
 - Cambio programado: «Tu plan cambiará a <plan> el <fecha>.» con la acción «Cancelar cambio».
 
@@ -132,3 +132,4 @@ programar un cambio de plan (subir, bajar o volver a Personal) que se aplica en 
 | 2026-10-18 | M-3: RN-10 suma que una cuenta en solo lectura nunca se cobra en automático. m-2: CA-5 ya no dice «proceso diario» (la pasada es periódica, plan §1) | Auditoría de Adrián, PR #63 | Borrador (pendiente Adrián) |
 | 2026-10-18 | Sin cambio de comportamiento en la spec: M-1 dos PR (010a `api`/`worker`/`storage`, 010b `web`) en `tasks.md`; M-5, m-1, m-3, m-5 y m-6 en el plan (§2, §6, §7) y en ADR-0029 (regla 3 con los `POST` que no escriben; consecuencia del nombre de `PlanLimits`) | Auditoría de Adrián, PR #63 | Borrador (pendiente Adrián) |
 | 2026-10-18 | RN-6: excepciones de solo lectura en lo compartido y código neutro para el Editor (012); CA-13: el mensaje cubre compartir | Acuerdo con Fátima (plan 012 D-4) | Borrador (pendiente Adrián) |
+| 2026-10-18 | §6: tarjeta como «···· <últimos 4>» (como la 009); CA-17: mensaje de `BILLING_PLAN_CHANGE_INVALID` del mockup `planes--cambio-error`. Mockups de la 010 aprobados por Juan Marcos (14 decisiones de UX) | Mockups de `billing/suscripcion`, `planes` y `pago` | Borrador (pendiente Adrián) |

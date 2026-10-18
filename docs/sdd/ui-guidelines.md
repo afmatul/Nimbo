@@ -272,7 +272,7 @@ identificador.
 > Estado del mockup: `Pendiente` · `Borrador` · `Aprobado`. Rutas relativas a `docs/design/`.
 > Actualicen la columna «Mockup» con lo que ya existe; el `ui-designer` la mantiene al día.
 > Los mockups `Borrador` provienen de Claude Design (`.dc.html`) o están escritos a mano en HTML autocontenido
-> (`.html`), como `mockups/identity/seguridad/`, `mockups/identity/terminos/`, `mockups/identity/privacidad/`, los mockups de `mockups/backoffice/` (`admin/`, `alta-interna/`, `catalogo/`, `metricas/`, `soporte/`) y los estados nuevos de `mockups/storage/carga/`, `mockups/storage/explorador/` y `mockups/storage/papelera/`. Solo
+> (`.html`), como `mockups/identity/seguridad/`, `mockups/identity/terminos/`, `mockups/identity/privacidad/`, los mockups de `mockups/backoffice/` (`admin/`, `alta-interna/`, `catalogo/`, `metricas/`, `soporte/`) y los estados nuevos de `mockups/storage/carga/`, `mockups/storage/explorador/`, `mockups/storage/papelera/` y de 010 en `mockups/billing/`. Solo
 > cubren los estados entre paréntesis; el resto de estados mínimos se agregan con `/mockup` antes de aclarar la spec.
 > Cada carpeta tiene un `README.md`.
 
@@ -298,10 +298,10 @@ identificador.
 | Búsqueda | storage | 018 | `mockups/storage/busqueda/` | `capturas/storage/busqueda/` | resultados, sin-resultados | Borrador (resultados) |
 | Compartir y accesos | sharing | 012 | `mockups/sharing/compartir/` | `capturas/sharing/compartir/` | default, lista-accesos | Borrador (default) |
 | Enlace público (creación y página pública) | sharing | 013 | `mockups/sharing/enlace-publico/` | `capturas/sharing/enlace-publico/` | con-contrasena, expirado, revocado | Borrador (con-contrasena) |
-| Planes y comparador | billing | 008 | `mockups/billing/planes/` | `capturas/billing/planes/` | default, plan-actual | Borrador (plan-actual) |
-| Pago simulado | billing | 009 | `mockups/billing/pago/` | `capturas/billing/pago/` | default, rechazado, exito | Borrador (default) |
+| Planes y comparador; cambiar de plan (`/suscripcion/cambiar-plan`) | billing | 008, 010 | `mockups/billing/planes/` | `capturas/billing/planes/` | default, plan-actual; 010: cambiar-plan, confirmar-cambio (aviso de versiones, CA-21), confirmar-personal, error | Borrador (plan-actual; 010: cambiar-plan, confirmar-cambio, confirmar-personal, confirmar-personal-solo-lectura, cambio-error) |
+| Pago simulado; pago de la renovación (`/suscripcion/renovar`) | billing | 009, 010 | `mockups/billing/pago/` | `capturas/billing/pago/` | default, rechazado, exito; 010: renovacion, renovacion-rechazado, renovacion-exito | Borrador (default; 010: renovacion, renovacion-rechazado, renovacion-exito, renovacion-solo-lectura) |
 | Historial de pagos y facturas | billing | 009 | `mockups/billing/suscripcion/` (misma pantalla) | `capturas/billing/suscripcion/` | default, vacio | Borrador (cubierto por suscripcion) |
-| Mi suscripción (renovación, cambio de plan) | billing | 010 | `mockups/billing/suscripcion/` | `capturas/billing/suscripcion/` | vigente, por-vencer, vencida, cambio-programado | Borrador (vigente) |
+| Mi suscripción (renovación, cambio de plan) | billing | 010 | `mockups/billing/suscripcion/` | `capturas/billing/suscripcion/` | vigente, por-vencer, vencida, cambio-programado, renovacion-desactivada | Borrador (010: vigente, por-vencer, renovacion-desactivada, cambio-programado, cambio-a-personal, vencida, confirmar-desactivar, error-renovacion; propuesta, paquete histórico) |
 | Editor .docx con presencia | editing | 016 | `mockups/editing/editor/` | `capturas/editing/editor/` | editando, limite-editores, guardado-fallido, solo-lectura | Borrador (editando) |
 | Historial de versiones con autoría | editing | 014, 016 | `mockups/storage/ficha-archivo/` (misma pantalla) | `capturas/storage/ficha-archivo/` | default, restaurando; 016: participantes | Borrador (cubierto por ficha-archivo; participantes con 016) |
 | Panel del agente | intelligence | 020 | `mockups/intelligence/panel-agente/` | `capturas/intelligence/panel-agente/` | vacio, respondiendo, con-citas, cita-incierta, limite-alcanzado | Borrador (con-citas) |
