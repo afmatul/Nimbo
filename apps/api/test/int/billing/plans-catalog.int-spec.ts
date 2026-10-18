@@ -1,14 +1,15 @@
-import { getRepositoryToken } from '@nestjs/typeorm';
 import { planCatalogResponseSchema } from '@nimbo/contracts';
 import type { PlanCatalogResponse } from '@nimbo/contracts';
 import request from 'supertest';
 
-import { BillingHttpModule } from '../../../src/modules/billing';
-import { PlanOrmEntity } from '../../../src/modules/billing/infrastructure/persistence/plan.orm-entity';
+import { I_PLAN_REPOSITORY } from '../../../src/modules/billing/application/ports/i-plan-repository.port';
+import { PlanCatalogUnavailableError } from '../../../src/modules/billing/domain/errors/plan-catalog-unavailable.error';
 import { I_CLOCK, Role } from '../../../src/shared';
 import type { FixedClock } from '../../../src/shared';
 import { TestAccessTokens } from '../../support/test-access-tokens';
-import { createTestApp, type TestApp } from '../setup/test-app';
+import type { TestApp } from '../setup/test-app';
+
+import { createBillingHttpApp } from './billing-http';
 
 const PLANS_PATH = '/api/v1/billing/plans';
 
@@ -35,7 +36,7 @@ describe('GET /api/v1/billing/plans contra la semilla de la 006a (008 CA-1)', ()
   let tokens: TestAccessTokens;
 
   beforeAll(async () => {
-    testApp = await createTestApp({ modules: [BillingHttpModule] });
+    testApp = await createBillingHttpApp();
     tokens = new TestAccessTokens(testApp.app.get<FixedClock>(I_CLOCK));
   });
 
@@ -76,11 +77,15 @@ describe('GET /api/v1/billing/plans cuando la lectura de `plan` falla (008 CA-3)
   let testApp: TestApp;
 
   beforeAll(async () => {
-    const failingRepository = { find: jest.fn().mockRejectedValue(new Error('connection lost')) };
-    testApp = await createTestApp({
-      modules: [BillingHttpModule],
-      overrides: [{ provide: getRepositoryToken(PlanOrmEntity), useValue: failingRepository }],
-    });
+    // El repositorio traduce el fallo de la consulta (unidad en `typeorm-plan.repository`); aquí, la respuesta HTTP.
+    const failingRepository = {
+      findActive: jest
+        .fn()
+        .mockRejectedValue(new PlanCatalogUnavailableError(new Error('connection lost'))),
+    };
+    testApp = await createBillingHttpApp([
+      { provide: I_PLAN_REPOSITORY, useValue: failingRepository },
+    ]);
   });
 
   afterAll(async () => {

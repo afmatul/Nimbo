@@ -1,4 +1,7 @@
 import {
+  BILLING_ERROR_CODES,
+  BACKOFFICE_FIELD_ISSUE_REASONS,
+  BACKOFFICE_FIELD_MESSAGES,
   IDENTITY_ERROR_CODES,
   IDENTITY_FIELD_MESSAGES,
   LOGIN_LOCK_MINUTES,
@@ -12,6 +15,7 @@ import {
 import { ApiClientError } from './api-error';
 import {
   IDENTITY_FIELD_MESSAGES as reexported,
+  backofficeFieldMessage,
   folderNameConflictMessage,
   folderNameFieldMessage,
   messageForCode,
@@ -106,6 +110,15 @@ describe('error-catalog', () => {
       );
       expect(messageForCode(IDENTITY_ERROR_CODES.RESET_LINK_INVALID)).toBe(
         'Este enlace no es válido. Usa el enlace del correo más reciente o pide uno nuevo.',
+      );
+    });
+
+    it('011 CA-5: enlaces de alta interna, con el mismo texto que el servidor y sin pedir un enlace nuevo', () => {
+      expect(messageForCode(IDENTITY_ERROR_CODES.SETUP_LINK_EXPIRED)).toBe(
+        'Este enlace venció. Usa «¿Olvidaste tu contraseña?» en el inicio de sesión para crear tu contraseña.',
+      );
+      expect(messageForCode(IDENTITY_ERROR_CODES.SETUP_LINK_INVALID)).toBe(
+        'Este enlace no es válido o ya se usó. Si ya creaste tu contraseña, inicia sesión; si no, usa «¿Olvidaste tu contraseña?».',
       );
     });
 
@@ -262,6 +275,44 @@ describe('error-catalog', () => {
         cause: 'No encontramos la carpeta de destino.',
         fix: 'Puede que la hayas movido a la papelera. Elige otra carpeta y vuelve a intentarlo.',
       });
+    });
+  });
+
+  describe('códigos del cobro (spec 009 §6)', () => {
+    it.each([
+      [
+        BILLING_ERROR_CODES.BILLING_PAYMENT_REJECTED,
+        'La tarjeta fue rechazada. No se hizo ningún cargo. Prueba con otra tarjeta.',
+      ],
+      [
+        BILLING_ERROR_CODES.BILLING_PLAN_NOT_AVAILABLE,
+        'Este plan no está disponible para contratar. Elige otro plan en Planes.',
+      ],
+      [
+        BILLING_ERROR_CODES.BILLING_INVALID_INPUT,
+        'Revisa los datos de pago marcados y corrígelos para continuar.',
+      ],
+    ])('CA-4, CA-5: %s tiene su mensaje con acción correctiva', (code, message) => {
+      expect(messageForCode(code)).toBe(message);
+    });
+
+    it('CA-5: el 429 compartido dice cuántos minutos esperar según `Retry-After`', () => {
+      expect(messageForCode(SHARED_ERROR_CODES.TOO_MANY_REQUESTS, { retryAfterSeconds: 840 })).toBe(
+        'Hiciste demasiados intentos. Espera 14 minutos e inténtalo de nuevo.',
+      );
+    });
+  });
+
+  describe('backoffice (spec 011)', () => {
+    it.each(BACKOFFICE_FIELD_ISSUE_REASONS)(
+      'CA-13: el motivo %s del campo de búsqueda usa el texto de contracts',
+      (reason) => {
+        expect(backofficeFieldMessage(reason)).toBe(BACKOFFICE_FIELD_MESSAGES[reason]);
+      },
+    );
+
+    it('CA-13: un motivo desconocido cae en el genérico de 000 §10', () => {
+      expect(backofficeFieldMessage('OTRO', 'abc')).toContain('abc');
     });
   });
 

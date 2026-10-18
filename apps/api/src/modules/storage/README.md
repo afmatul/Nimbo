@@ -23,15 +23,19 @@ modules/storage/
 
 ## Regla
 
-Otros módulos importan **solo** desde `modules/storage/index.ts`. Hoy exporta `StorageModule`, `StorageWorkerModule`, `I_PLAN_LIMITS_PROVIDER` y los tipos
-`IPlanLimitsProvider` y `PlanLimits`. No exporta `MagicBytesDetector`, `IExpiredUploadScanner`, el adaptador de
+Otros módulos importan **solo** desde `modules/storage/index.ts`. Hoy exporta `StorageModule`, `StorageWorkerModule`, `I_PLAN_LIMITS_PROVIDER`,
+`I_NODE_METADATA_READER` y los tipos `IPlanLimitsProvider`, `PlanLimits`, `INodeMetadataReader`, `FileMetadata` y
+`FileMetadataPage`. No exporta `MagicBytesDetector`, `IExpiredUploadScanner`, el adaptador de
 auditoría ni los repositorios. Nada de `infrastructure/**` cruza la frontera. Nombres de clases y puertos: los de
 `docs/sdd/design-model.md`.
 
 ## API pública
 
 `index.ts` exporta solo: `StorageModule` (API), `StorageWorkerModule` (`worker`), el token `I_PLAN_LIMITS_PROVIDER` y los
-tipos `IPlanLimitsProvider` y `PlanLimits`. `index.spec.ts` fija esa lista (`RUNTIME_EXPORTS`). No salen el detector de
+tipos `IPlanLimitsProvider` y `PlanLimits` y, desde 011 (PD-31), el token `I_NODE_METADATA_READER` y los tipos
+`INodeMetadataReader`, `FileMetadata` y `FileMetadataPage` (metadatos de `archivo` para `backoffice`, sin contenido ni
+versiones). `index.spec.ts` fija esa lista (`RUNTIME_EXPORTS`). `StorageModule` exporta solo `I_NODE_METADATA_READER`
+(adaptador `SqlNodeMetadataReader`); `backoffice` importa el mismo `DynamicModule` que la raíz. No salen el detector de
 tipos, `IExpiredUploadScanner`, el adaptador de auditoría ni los repositorios. Ni `StorageModule` ni
 `StorageWorkerModule` enlazan `I_PLAN_LIMITS_PROVIDER` (DF-51): lo hace la raíz de composición (`AppModule`,
 `WorkerModule`).
@@ -41,12 +45,13 @@ tipos, `IExpiredUploadScanner`, el adaptador de auditoría ni los repositorios. 
 Tablas (migraciones `20260930100000`…`100300`, plan §4): `archivo`, `version_archivo` y `carga`, con RLS `ENABLE` +
 `FORCE`; `usuario.espacio_usado` es la única columna de otra tabla que `storage` escribe (D-5, DF-59).
 
-| Puerto (`application/ports/`)                                                                           | Token                         | Implementación (`infrastructure/persistence/`) |
-| ------------------------------------------------------------------------------------------------------- | ----------------------------- | ---------------------------------------------- |
-| `INodeRepository`: `findAccessibleById`, `findTakenNames`, `insertWithVersion` (y los de carpetas, 006) | `I_NODE_REPOSITORY`           | `TypeOrmNodeRepository`                        |
-| `IUploadSessionRepository`: `insert`, `findOwned`, `transition` (compare-and-set)                       | `I_UPLOAD_SESSION_REPOSITORY` | `TypeOrmUploadSessionRepository`               |
-| `IQuotaRepository`: `lockUsage`, `readUsage` (007), `lockAndReadUsage`, `addUsedBytes`                  | `I_QUOTA_REPOSITORY`          | `TypeOrmQuotaRepository`                       |
-| `IExpiredUploadScanner`: `listExpiredIds(now, limit)` → `{ id, propietarioId }[]` (sin actor)           | `I_EXPIRED_UPLOAD_SCANNER`    | `SqlExpiredUploadScanner`                      |
+| Puerto (`application/ports/`)                                                                            | Token                         | Implementación (`infrastructure/persistence/`) |
+| -------------------------------------------------------------------------------------------------------- | ----------------------------- | ---------------------------------------------- |
+| `INodeRepository`: `findAccessibleById`, `findTakenNames`, `insertWithVersion` (y los de carpetas, 006)  | `I_NODE_REPOSITORY`           | `TypeOrmNodeRepository`                        |
+| `IUploadSessionRepository`: `insert`, `findOwned`, `transition` (compare-and-set)                        | `I_UPLOAD_SESSION_REPOSITORY` | `TypeOrmUploadSessionRepository`               |
+| `IQuotaRepository`: `lockUsage`, `readUsage` (007), `lockAndReadUsage`, `addUsedBytes`                   | `I_QUOTA_REPOSITORY`          | `TypeOrmQuotaRepository`                       |
+| `IExpiredUploadScanner`: `listExpiredIds(now, limit)` → `{ id, propietarioId }[]` (sin actor)            | `I_EXPIRED_UPLOAD_SCANNER`    | `SqlExpiredUploadScanner`                      |
+| `INodeMetadataReader` (011, lo consume `backoffice`): `listForOwner(actor, ownerId, { page, pageSize })` | `I_NODE_METADATA_READER`      | `SqlNodeMetadataReader`                        |
 
 - Todo método recibe `actor` y toma el `EntityManager` de `TransactionContext.requireActorScope(actor)`: se llama
   dentro de `ITransactionRunner.withActor(actor, …)` o lanza `ActorScopeMissingError`.

@@ -1,7 +1,7 @@
+import { formatGtq } from '@nimbo/contracts';
 import type { JSX } from 'react';
 
 import { RadioGroup } from '../../../components/ui/radio-group';
-import { formatQuetzales } from '../../../lib/format-plan';
 
 export interface CatalogPlan {
   readonly id: string;
@@ -36,7 +36,7 @@ export function PlanPicker({
       legend="Plan"
       options={plans.map((plan) => ({
         value: plan.id,
-        label: `${plan.name} · ${formatQuetzales(plan.priceCents)}`,
+        label: `${plan.name} · ${formatGtq(plan.priceCents)}`,
       }))}
       value={selected ?? ''}
       onValueChange={onChange}

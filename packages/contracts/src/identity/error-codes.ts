@@ -1,4 +1,9 @@
-import { FULL_NAME_MAX_LENGTH, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from './parameters';
+import {
+  EMPLOYEE_CODE_MAX_LENGTH,
+  FULL_NAME_MAX_LENGTH,
+  PASSWORD_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
+} from './parameters';
 
 /** Códigos de error de `identity` (planes 001 y 002, §5). Las clases de `api` los reutilizan (Art. VI). */
 export const IDENTITY_ERROR_CODES = {
@@ -19,6 +24,15 @@ export const IDENTITY_ERROR_CODES = {
   RESET_LINK_INVALID: 'IDENTITY_RESET_LINK_INVALID',
   WRONG_PASSWORD: 'IDENTITY_WRONG_PASSWORD',
   PASSWORD_CHANGE_LOCKED: 'IDENTITY_PASSWORD_CHANGE_LOCKED',
+  /** Cuentas y altas internas (011 plan §4). */
+  ACCOUNT_NOT_FOUND: 'IDENTITY_ACCOUNT_NOT_FOUND',
+  CANNOT_CHANGE_OWN_STATUS: 'IDENTITY_CANNOT_CHANGE_OWN_STATUS',
+  LAST_ACTIVE_ADMIN: 'IDENTITY_LAST_ACTIVE_ADMIN',
+  ACCOUNT_STATE_CONFLICT: 'IDENTITY_ACCOUNT_STATE_CONFLICT',
+  ENROLLMENT_CONFLICT: 'IDENTITY_ENROLLMENT_CONFLICT',
+  ADMIN_ALREADY_EXISTS: 'IDENTITY_ADMIN_ALREADY_EXISTS',
+  SETUP_LINK_INVALID: 'IDENTITY_SETUP_LINK_INVALID',
+  SETUP_LINK_EXPIRED: 'IDENTITY_SETUP_LINK_EXPIRED',
 } as const;
 
 export type IdentityErrorCode = (typeof IDENTITY_ERROR_CODES)[keyof typeof IDENTITY_ERROR_CODES];
@@ -38,6 +52,10 @@ export const FIELD_ISSUE_REASONS = [
   'PASSWORD_COMMON',
   'PASSWORD_EQUALS_EMAIL',
   'WRONG_PASSWORD',
+  'INVALID_EMPLOYEE_CODE',
+  'INVALID_ROLE',
+  'EMAIL_IN_USE',
+  'EMPLOYEE_CODE_IN_USE',
 ] as const;
 
 export type FieldIssueReason = (typeof FIELD_ISSUE_REASONS)[number];
@@ -60,4 +78,8 @@ export const IDENTITY_FIELD_MESSAGES: Readonly<Record<FieldIssueReason, string>>
   PASSWORD_COMMON: 'Esta contraseña es muy común y fácil de adivinar.',
   PASSWORD_EQUALS_EMAIL: 'Tu contraseña no puede ser tu correo.',
   WRONG_PASSWORD: 'La contraseña actual no es correcta.',
+  INVALID_EMPLOYEE_CODE: `Usa de 1 a ${String(EMPLOYEE_CODE_MAX_LENGTH)} letras, números o guiones, por ejemplo SOP-014.`,
+  INVALID_ROLE: 'Elige Administrador, Soporte u Operador.',
+  EMAIL_IN_USE: 'Este correo ya tiene una cuenta. Usa otro correo.',
+  EMPLOYEE_CODE_IN_USE: 'Este código de empleado ya está en uso. Revísalo y vuelve a intentarlo.',
 };

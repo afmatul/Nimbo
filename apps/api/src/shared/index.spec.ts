@@ -74,6 +74,7 @@ const RUNTIME_EXPORTS_BY_TASK = {
     'InsufficientRoleError',
   ],
   '005 T-25': ['BIGINT_TRANSFORMER'],
+  '009 T-05': ['RateLimitExceededError'],
 } as const;
 
 const ALL_RUNTIME_EXPORTS: readonly string[] = Object.values(RUNTIME_EXPORTS_BY_TASK).flat();

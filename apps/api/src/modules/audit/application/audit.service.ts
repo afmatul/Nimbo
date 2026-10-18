@@ -7,6 +7,8 @@ import { CorrelationContext, I_CLOCK, I_TRANSACTION_RUNNER } from '../../../shar
 import type { Actor, IClock, ITransactionRunner } from '../../../shared';
 import { sanitizeAttributes } from '../domain/attribute-sanitizer';
 import type { AttributeRejection } from '../domain/attribute-sanitizer';
+import { isSystemActor } from '../domain/audit-actor';
+import type { AuditActor } from '../domain/audit-actor';
 import { createAuditEntry } from '../domain/audit-entry';
 import type { AuditAttributes, AuditEntry, AuditResourceType } from '../domain/audit-entry';
 import type { AuditQuery } from '../domain/audit-query';
@@ -62,10 +64,14 @@ const recordLine = (entry: AuditEntry): Record<string, unknown> => ({
 
 const errorNameOf = (error: unknown): string => (error instanceof Error ? error.name : 'unknown');
 
+/** El sistema no tiene `actor_id` (`ck_evento_sistema`, 011 plan §3). */
+const actorIdOf = (actor: AuditActor): string | null => (isSystemActor(actor) ? null : actor.id);
+
 /**
  * `IAuditLogger` persistente (T2, plan 004 §2): `record` (mejor esfuerzo) y `recordInTransaction` (síncrona) delegan
  * en `append`, que sanea con el catálogo, arma el `AuditEntry` y lo inserta dentro de `withActor(entry.actor)`; así se
- * une a la transacción vigente del mismo actor o abre la suya. `listForUser` lee la actividad propia.
+ * une a la transacción vigente del mismo actor o abre la suya. Con `SYSTEM_ACTOR` inserta dentro de `run`, que se une
+ * al `run` del llamador (011 CA-7, T1). `listForUser` lee la actividad propia.
  */
 @Injectable()
 export class AuditService implements IAuditLogger {
@@ -106,10 +112,14 @@ export class AuditService implements IAuditLogger {
   /** Inserción estricta: lanza si no puede guardar. */
   private async append(entry: AuditRecord): Promise<AuditEntry> {
     const auditEntry = this.toEntry(entry);
-    await this.transactions.withActor(entry.actor, () =>
-      this.repository.insert(entry.actor, auditEntry),
-    );
+    await this.inTransactionOf(entry.actor, () => this.repository.insert(entry.actor, auditEntry));
     return auditEntry;
+  }
+
+  /** Una persona escribe con su actor fijado en la base; el sistema, en la transacción sin actor (`run`). */
+  private inTransactionOf(actor: AuditActor, work: () => Promise<void>): Promise<void> {
+    if (isSystemActor(actor)) return this.transactions.run(work);
+    return this.transactions.withActor(actor, work);
   }
 
   private toEntry(entry: AuditRecord): AuditEntry {
@@ -119,7 +129,7 @@ export class AuditService implements IAuditLogger {
     return createAuditEntry({
       id: randomUUID(),
       action: entry.action,
-      actorId: entry.actor.id,
+      actorId: actorIdOf(entry.actor),
       actorRole: entry.actor.role,
       targetUserId: entry.targetUserId,
       ...resourceOf(entry, attributes),

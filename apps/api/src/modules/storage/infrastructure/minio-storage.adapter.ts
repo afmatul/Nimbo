@@ -20,10 +20,12 @@ import type {
   IObjectStorage,
   ObjectHead,
   PresignDownloadInput,
+  PutObjectInput,
   PresignUploadObjectInput,
   PresignUploadPartInput,
   UploadedPart,
 } from '../application/ports/i-object-storage.port';
+import { isInvoiceObjectKey } from '../domain/invoice-object-key';
 
 /**
  * El cliente interno corre dentro de la transacción de `init` (con `FOR UPDATE` sobre `usuario`) al crear un
@@ -271,6 +273,20 @@ export class MinioStorageAdapter implements IObjectStorage {
       keyMarker = page.NextKeyMarker;
       versionIdMarker = page.NextVersionIdMarker;
     }
+  }
+
+  async putObject(input: PutObjectInput): Promise<void> {
+    if (!isInvoiceObjectKey(input.key)) {
+      throw new Error('putObject solo acepta claves invoices/{usuario}/{factura}.pdf.');
+    }
+    await this.clients.operations.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: input.key,
+        Body: input.body,
+        ContentType: input.contentType,
+      }),
+    );
   }
 
   private async collectParts(key: string, uploadId: string): Promise<UploadedPart[]> {

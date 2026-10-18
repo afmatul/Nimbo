@@ -7,6 +7,7 @@ import {
 } from '../../../src/modules/notifications';
 import type { IMailer, MailMessage } from '../../../src/modules/notifications';
 import { CorrelationContext } from '../../../src/shared';
+import { clearMailQueue } from '../../support/mail-queue';
 import { deleteAll, getMessage, waitForMessages } from '../setup/mailpit';
 import { createTestApp } from '../setup/test-app';
 import type { TestApp } from '../setup/test-app';
@@ -31,6 +32,8 @@ describe('contrato de IMailer contra Mailpit (CA-21, CA-18)', () => {
   let mailer: IMailer;
 
   beforeAll(async () => {
+    // Antes de levantar el `worker`: un correo que otra suite dejó encolado no debe llegar a Mailpit (PR #62).
+    await clearMailQueue();
     testApp = await createTestApp({
       withWorkerEnv: true,
       modules: [NotificationsModule, NotificationsWorkerModule],

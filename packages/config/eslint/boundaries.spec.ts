@@ -17,6 +17,7 @@ const STORAGE_REPOSITORY =
 const BILLING_FILE = 'apps/api/src/modules/billing/infrastructure/plan-limits.provider.ts';
 const ACCESS_FILE = 'apps/api/src/modules/access/infrastructure/sql/accessible-nodes.ts';
 const AUDIT_FILE = 'apps/api/src/modules/audit/application/audit-logger.port.ts';
+const BACKOFFICE_FILE = 'apps/api/src/modules/backoffice/application/internal-action.service.ts';
 const WORKER_MODULE = 'apps/api/src/worker.module.ts';
 
 const fixture = (name: string): string => readFileSync(join(here, 'fixtures', name), 'utf8');
@@ -43,7 +44,7 @@ const boundaryErrors = (result: ESLint.LintResult): readonly string[] =>
 const importOf = (specifier: string, name = 'Algo'): string =>
   `export { ${name} } from '${specifier}';\n`;
 
-describe('lint boundaries.js: fronteras de storage, access, audit y billing (Art. VIII, PD-47)', () => {
+describe('lint boundaries.js: fronteras de storage, access, audit, billing y backoffice (Art. VIII, PD-47, PD-82)', () => {
   it('Art. VIII: el fixture `storage-imports-identity.ts` es error (DF-59 no es una arista)', async () => {
     const errors = boundaryErrors(await lint(fixture('storage-imports-identity.ts'), STORAGE_PORT));
 
@@ -96,6 +97,17 @@ describe('lint boundaries.js: fronteras de storage, access, audit y billing (Art
     expect(boundaryErrors(deep)).toHaveLength(1);
   });
 
+  it('009: `billing` importa `identity` solo desde `identity/index.ts` (evento y fachadas, no repositorios)', async () => {
+    const viaIndex = await lint(importOf('../../identity', 'VerifiedClientLister'), BILLING_FILE);
+    const deep = await lint(
+      importOf('../../identity/application/ports/i-account-directory.repository.port'),
+      BILLING_FILE,
+    );
+
+    expect(boundaryErrors(viaIndex)).toEqual([]);
+    expect(boundaryErrors(deep)).toHaveLength(1);
+  });
+
   it.each([
     ['access', ACCESS_FILE, '../../../storage'],
     ['access', ACCESS_FILE, '../../../identity'],
@@ -110,6 +122,22 @@ describe('lint boundaries.js: fronteras de storage, access, audit y billing (Art
     ['audit', AUDIT_FILE, '../../../shared'],
   ])('Art. VIII: `%s` sí importa `shared`', async (_, file, specifier) => {
     expect(boundaryErrors(await lint(importOf(specifier), file))).toEqual([]);
+  });
+
+  it('PD-82: el fixture `backoffice-imports-identity-internals.ts` es error: `identity` solo por su `index.ts`', async () => {
+    const errors = boundaryErrors(
+      await lint(fixture('backoffice-imports-identity-internals.ts'), BACKOFFICE_FILE),
+    );
+
+    expect(errors).toHaveLength(2);
+    expect(errors.every((message) => message.includes('index.ts'))).toBe(true);
+  });
+
+  it('PD-82: el fixture `audit-imports-identity.ts` es error: `audit` no tiene aristas', async () => {
+    const errors = boundaryErrors(await lint(fixture('audit-imports-identity.ts'), AUDIT_FILE));
+
+    expect(errors).toHaveLength(2);
+    expect(errors.every((message) => message.includes('`audit`'))).toBe(true);
   });
 
   it('plan §3b: el worker importa de `storage` solo `StorageWorkerModule` desde `storage/index.ts`', async () => {

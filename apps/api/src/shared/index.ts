@@ -8,6 +8,7 @@ export {
   ForbiddenError,
   InvalidInputError,
   NotFoundError,
+  RateLimitExceededError,
   TooManyRequestsError,
   InsufficientRoleError,
   UnauthenticatedError,

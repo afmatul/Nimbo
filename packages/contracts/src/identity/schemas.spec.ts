@@ -6,6 +6,11 @@ import { IDENTITY_FIELD_MESSAGES } from './error-codes';
 import { SESSION_LIST_MAX_ITEMS } from './parameters';
 import {
   acceptedResponseSchema,
+  accountSetupCheckRequestSchema,
+  accountSetupCheckResponseSchema,
+  accountSetupRequestSchema,
+  accountSetupResponseSchema,
+  enrollInternalAccountRequestSchema,
   changePasswordRequestSchema,
   forgotPasswordRequestSchema,
   loginRequestSchema,
@@ -478,5 +483,93 @@ describe('revokeOthersResponseSchema', () => {
 
   it.each([-1, 1.5, '2'])('CA-13: rechaza `revokedCount` %p', (revokedCount) => {
     expect(revokeOthersResponseSchema.safeParse({ revokedCount }).success).toBe(false);
+  });
+});
+
+const VALID_ENROLLMENT = {
+  fullName: 'Marta Ruiz',
+  email: 'marta@nimbo.me',
+  employeeCode: 'SOP-014',
+  role: 'SUPPORT',
+};
+
+describe('enrollInternalAccountRequestSchema (011 CA-5, CA-6)', () => {
+  it('CA-5: acepta un alta válida', () => {
+    expect(enrollInternalAccountRequestSchema.parse(VALID_ENROLLMENT)).toEqual(VALID_ENROLLMENT);
+  });
+
+  it.each(['ADMIN', 'SUPPORT', 'OPERATOR'])('CA-5: acepta el rol interno %s', (role) => {
+    expect(reasonsOf(enrollInternalAccountRequestSchema, { ...VALID_ENROLLMENT, role })).toEqual(
+      [],
+    );
+  });
+
+  it.each([
+    ['CLIENT', 'role:INVALID_ROLE'],
+    ['ROOT', 'role:INVALID_ROLE'],
+    [undefined, 'role:REQUIRED'],
+  ])('CA-6: el rol %p es %s', (role, reason) => {
+    expect(reasonsOf(enrollInternalAccountRequestSchema, { ...VALID_ENROLLMENT, role })).toEqual([
+      reason,
+    ]);
+  });
+
+  it.each([
+    ['  sop-014  ', []],
+    ['A', []],
+    ['A'.repeat(20), []],
+    ['A'.repeat(21), ['employeeCode:INVALID_EMPLOYEE_CODE']],
+    ['SOP 014', ['employeeCode:INVALID_EMPLOYEE_CODE']],
+    ['SOP_014', ['employeeCode:INVALID_EMPLOYEE_CODE']],
+    ['   ', ['employeeCode:REQUIRED']],
+    [undefined, ['employeeCode:REQUIRED']],
+  ])('RN-5: el código de empleado %p da %p', (employeeCode, reasons) => {
+    expect(
+      reasonsOf(enrollInternalAccountRequestSchema, { ...VALID_ENROLLMENT, employeeCode }),
+    ).toEqual(reasons);
+  });
+
+  it('CA-6: valida nombre y correo como el registro (Q-4b)', () => {
+    expect(
+      reasonsOf(enrollInternalAccountRequestSchema, {
+        ...VALID_ENROLLMENT,
+        fullName: ' ',
+        email: 'sin-arroba',
+      }),
+    ).toEqual(['fullName:REQUIRED', 'email:INVALID_EMAIL']);
+  });
+
+  it('CA-6: un campo extra es `UNKNOWN_FIELD`', () => {
+    expect(
+      reasonsOf(enrollInternalAccountRequestSchema, { ...VALID_ENROLLMENT, password: 'x' }),
+    ).toEqual(['password:UNKNOWN_FIELD']);
+  });
+});
+
+describe('enlace de alta interna (011 CA-5)', () => {
+  it('CA-5: la comprobación pide solo el `token`', () => {
+    expect(reasonsOf(accountSetupCheckRequestSchema, { token: 'abc' })).toEqual([]);
+    expect(reasonsOf(accountSetupCheckRequestSchema, { token: 'abc', extra: 1 })).toEqual([
+      'extra:UNKNOWN_FIELD',
+    ]);
+  });
+
+  it('CA-5: fijar la contraseña aplica la política de 001 (sin el correo, que completa el servicio)', () => {
+    expect(
+      reasonsOf(accountSetupRequestSchema, { token: 'abc', password: 'Nimbo-Seguro-2026' }),
+    ).toEqual([]);
+    expect(reasonsOf(accountSetupRequestSchema, { token: 'abc', password: 'corta' })).toContain(
+      'password:PASSWORD_TOO_SHORT',
+    );
+  });
+
+  it('CA-5: las respuestas son `valid` y `password-set`, estrictas', () => {
+    expect(accountSetupCheckResponseSchema.parse({ status: 'valid' })).toEqual({ status: 'valid' });
+    expect(accountSetupResponseSchema.parse({ status: 'password-set' })).toEqual({
+      status: 'password-set',
+    });
+    expect(accountSetupResponseSchema.safeParse({ status: 'password-set', x: 1 }).success).toBe(
+      false,
+    );
   });
 });

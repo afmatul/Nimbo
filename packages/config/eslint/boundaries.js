@@ -12,7 +12,8 @@ const ALLOWED = {
   // Transversales: solo `notifications → realtime` (regla 5).
   notifications: ['realtime'],
   identity: ['notifications', 'audit'],
-  // `storage` solo para implementar `IPlanLimitsProvider` (DF-51); `identity` solo por contratos de eventos (ADR-0019).
+  // `storage` para implementar `IPlanLimitsProvider` (DF-51) y subir facturas (`IObjectStorage`); `identity` por el evento
+  // de cuenta verificada (ADR-0019) y las fachadas de lectura de la 009 (`VerifiedClientLister`, `AccountContactReader`).
   billing: ['notifications', 'audit', 'storage', 'identity'],
   // `access` lee tablas de `storage` y `sharing` por SQL, sin importarlos (regla 3).
   access: [],

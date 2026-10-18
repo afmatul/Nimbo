@@ -7,6 +7,13 @@ import { PoliticasRlsArchivoVersionCarga20260930100300 } from '../../../src/migr
 import { RlsCarpetaYPurgaDePapelera20261001100200 } from '../../../src/migrations/20261001100200-rls-carpeta-y-purga-de-papelera';
 import { CrearAccesoRapido20261003100000 } from '../../../src/migrations/20261003100000-crear-acceso-rapido';
 import { CrearEventoAuditoria20261005100000 } from '../../../src/migrations/20261005100000-crear-evento-auditoria';
+import { CrearSuscripcion20261014100000 } from '../../../src/migrations/20261014100000-crear-suscripcion';
+import { CrearTransaccion20261014100100 } from '../../../src/migrations/20261014100100-crear-transaccion';
+import { CrearFactura20261014170000 } from '../../../src/migrations/20261014170000-crear-factura';
+import { EmisionDeFacturas20261015090000 } from '../../../src/migrations/20261015090000-emision-de-facturas';
+import { AvisoDeFactura20261015100000 } from '../../../src/migrations/20261015100000-aviso-de-factura';
+import { FuncionesDeLecturaDeSuscripcion20261015110000 } from '../../../src/migrations/20261015110000-funciones-de-lectura-de-suscripcion';
+import { SuscripcionMenorPrivilegio20261017100000 } from '../../../src/migrations/20261017100000-suscripcion-menor-privilegio';
 import { buildDataSourceOptions } from '../../../src/shared';
 
 const APP_ROLE = 'nimbo_app';
@@ -157,8 +164,15 @@ describe('migración crear-funciones-de-actor (CA-12)', () => {
 
   it('CA-12: el `down` elimina las dos funciones', async () => {
     const migration = new CrearFuncionesDeActor20260928110100();
-    /** Las políticas RLS de 004, 006 y 005 usan las funciones: se revierten antes, como en un `migration:revert` en orden. */
+    /** Las políticas RLS de 009, 004, 006 y 005 usan las funciones: se revierten antes, como en un `migration:revert` en orden. */
     const dependents = [
+      new SuscripcionMenorPrivilegio20261017100000(),
+      new FuncionesDeLecturaDeSuscripcion20261015110000(),
+      new AvisoDeFactura20261015100000(),
+      new EmisionDeFacturas20261015090000(),
+      new CrearFactura20261014170000(),
+      new CrearTransaccion20261014100100(),
+      new CrearSuscripcion20261014100000(),
       new CrearEventoAuditoria20261005100000(),
       new CrearAccesoRapido20261003100000(),
       new RlsCarpetaYPurgaDePapelera20261001100200(),

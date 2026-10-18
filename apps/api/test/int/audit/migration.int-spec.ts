@@ -7,6 +7,9 @@ import { columnsOf, inRolledBackTransaction, insertAccount } from '../storage/st
 /**
  * Migración de `evento_auditoria` (spec 004 D-7, D-9; plan §3) sobre el Postgres del arnés, como el dueño de las
  * tablas. Los casos de esquema corren en una transacción que se revierte; el ciclo `up/down/up` usa una base nueva.
+ * El esquema que se comprueba es el vigente: 011 (plan §3) admite afectado nulo, renombra los CHECK de rol y tipo de
+ * recurso y suma la política `evento_auditoria_alta_sistema`; el detalle de 011 está en
+ * `test/int/backoffice/migrations.int-spec.ts`.
  */
 const AUDIT_MIGRATION = 'CrearEventoAuditoria20261005100000';
 
@@ -41,7 +44,7 @@ describe('migración crear-evento-auditoria: esquema (DF-12)', () => {
     expect(columns['actor_id']?.nullable).toBe(true);
     expect(columns['usuario_afectado_id']).toEqual({
       type: 'uuid',
-      nullable: false,
+      nullable: true,
       default: null,
     });
     expect(columns['atributos']).toEqual({
@@ -68,7 +71,7 @@ describe('migración crear-evento-auditoria: esquema (DF-12)', () => {
     expect(rows[1]?.indexdef).toContain('(usuario_afectado_id, ocurrido_en DESC, id DESC)');
   });
 
-  it('CA-6: tiene RLS habilitada y forzada, con solo las políticas de lectura y alta', async () => {
+  it('CA-6: tiene RLS habilitada y forzada, con solo las políticas de lectura y alta (más la del sistema, 011)', async () => {
     const [rls] = (await owner.query(
       "SELECT relrowsecurity AS enabled, relforcerowsecurity AS forced FROM pg_class WHERE oid = 'evento_auditoria'::regclass",
     )) as { enabled: boolean; forced: boolean }[];
@@ -79,17 +82,15 @@ describe('migración crear-evento-auditoria: esquema (DF-12)', () => {
     expect(rls).toEqual({ enabled: true, forced: true });
     expect(policies).toEqual([
       { policyname: 'evento_auditoria_alta', cmd: 'INSERT' },
+      { policyname: 'evento_auditoria_alta_sistema', cmd: 'INSERT' },
       { policyname: 'evento_auditoria_lectura', cmd: 'SELECT' },
     ]);
   });
 
   it.each([
     ['ck_evento_recurso', "tipo_recurso = 'file', recurso_id = NULL"],
-    ['evento_auditoria_rol_actor_check', "rol_actor = 'ROOT'"],
-    [
-      'evento_auditoria_tipo_recurso_check',
-      "tipo_recurso = 'link', recurso_id = gen_random_uuid()",
-    ],
+    ['ck_evento_rol_actor', "rol_actor = 'ROOT'"],
+    ['ck_evento_tipo_recurso', "tipo_recurso = 'link', recurso_id = gen_random_uuid()"],
     ['evento_auditoria_atributos_check', "atributos = '[]'::jsonb"],
   ])('CA-4: `%s` rechaza una fila con %s', async (constraint, assignment) => {
     await expect(

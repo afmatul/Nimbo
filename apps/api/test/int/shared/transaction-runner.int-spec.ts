@@ -2,8 +2,10 @@ import { randomUUID } from 'node:crypto';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 import { DataSource } from 'typeorm';
+import type { EntityManager } from 'typeorm';
 
-import { buildDataSourceOptions } from '../../../src/shared';
+import { buildDataSourceOptions, createActor, Role } from '../../../src/shared';
+import { ActorScopeConflictError } from '../../../src/shared/infrastructure/persistence/actor-scope.errors';
 import { TransactionContext } from '../../../src/shared/infrastructure/persistence/transaction-context';
 import { TypeOrmTransactionRunner } from '../../../src/shared/infrastructure/persistence/typeorm-transaction-runner';
 
@@ -97,6 +99,53 @@ describe('TypeOrmTransactionRunner (CA-3, CA-29)', () => {
 
   it('CA-3: fuera de `run`, `manager()` es el del `DataSource`', () => {
     expect(context.manager()).toBe(dataSource.manager);
+  });
+
+  it('T1 (011 CA-7): `run` dentro de `run` comparte la transacción y confirma junto', async () => {
+    const [outer, inner] = [randomUUID(), randomUUID()];
+
+    const insertAndGetManager = async (id: string): Promise<EntityManager> => {
+      await insert(id);
+      return context.manager();
+    };
+
+    const managers = await runner.run(async () => [
+      await insertAndGetManager(outer),
+      await runner.run(() => insertAndGetManager(inner)),
+    ]);
+
+    expect(managers[1]).toBe(managers[0]);
+    await expect(exists(outer)).resolves.toBe(true);
+    await expect(exists(inner)).resolves.toBe(true);
+  });
+
+  it('T1 (011 CA-7): si el trabajo exterior lanza después del `run` interior, se revierten los dos', async () => {
+    const [outer, inner] = [randomUUID(), randomUUID()];
+
+    await expect(
+      runner.run(async () => {
+        await insert(outer);
+        await runner.run(() => insert(inner));
+        throw new Error('fallo a propósito');
+      }),
+    ).rejects.toThrow('fallo a propósito');
+
+    await expect(exists(outer)).resolves.toBe(false);
+    await expect(exists(inner)).resolves.toBe(false);
+  });
+
+  it('T1 (011 CA-7): `withActor` dentro de un `run` sin actor sigue lanzando y no escribe', async () => {
+    const id = randomUUID();
+    const actor = createActor(randomUUID(), Role.ADMIN);
+
+    await expect(
+      runner.run(async () => {
+        await insert(id);
+        await runner.withActor(actor, () => Promise.resolve());
+      }),
+    ).rejects.toThrow(ActorScopeConflictError);
+
+    await expect(exists(id)).resolves.toBe(false);
   });
 
   it('CA-29: dos `run` concurrentes no comparten contexto ni ven lo no confirmado del otro', async () => {

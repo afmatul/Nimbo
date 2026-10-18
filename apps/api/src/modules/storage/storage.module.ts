@@ -12,6 +12,7 @@ import { FileService } from './application/file.service';
 import { FOLDER_CONFIG } from './application/folder-config';
 import type { FolderConfig } from './application/folder-config';
 import { FolderService } from './application/folder.service';
+import { I_NODE_METADATA_READER } from './application/ports/i-node-metadata-reader.port';
 import { I_OBJECT_STORAGE } from './application/ports/i-object-storage.port';
 import type { IObjectStorage } from './application/ports/i-object-storage.port';
 import { I_QUICK_ACCESS_REPOSITORY } from './application/ports/i-quick-access.repository.port';
@@ -29,6 +30,7 @@ import {
   buildMinioStorageClients,
   MinioStorageAdapter,
 } from './infrastructure/minio-storage.adapter';
+import { SqlNodeMetadataReader } from './infrastructure/persistence/sql-node-metadata.reader';
 import { TypeOrmQuickAccessRepository } from './infrastructure/persistence/typeorm-quick-access.repository';
 import { TRASH_PURGE_QUEUE } from './infrastructure/trash-purge.scheduler';
 import { FileVersionsController } from './presentation/file-versions.controller';
@@ -65,7 +67,8 @@ export type StorageEnv = Pick<
  * `forRoot(env)` publica la configuración técnica (bytes como `bigint`) y une cada puerto con su adaptador. **No**
  * enlaza `I_PLAN_LIMITS_PROVIDER` ni importa `billing`: ese enlace vive en la raíz de composición (DF-51, opción A). `SharedModule` (global) aporta reloj, tasa, transacciones y
  * `TransactionContext`; `MinioConfigModule` (global), `MINIO_CONFIG`. La cola `trash-purge` se registra solo para que
- * «Vaciar papelera» encole: la programa y la procesa el `worker`.
+ * «Vaciar papelera» encole: la programa y la procesa el `worker`. Exporta solo `I_NODE_METADATA_READER`, que consume
+ * `backoffice` (011, PD-31) importando **este mismo** `DynamicModule` que la raíz (Nest los distingue por referencia).
  */
 @Module({})
 export class StorageModule {
@@ -124,7 +127,11 @@ export class StorageModule {
         VersionRestoreService,
         FolderService,
         QuickAccessService,
+        { provide: I_NODE_METADATA_READER, useClass: SqlNodeMetadataReader },
       ],
+      // 011 (PD-31): el lector de metadatos para `backoffice`. 009 (ampliación de la decisión 1, 2026-10-15): `billing`
+      // importa `I_OBJECT_STORAGE` de forma explícita, sin módulo global.
+      exports: [I_NODE_METADATA_READER, I_OBJECT_STORAGE],
     };
   }
 }
