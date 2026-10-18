@@ -164,6 +164,8 @@ export class StorageWorkerModule {
         UsageReconcileScheduler,
         UsageReconcileProcessor,
       ],
+      // 009 (decisión 1): `invoice-retry` sube la factura PDF desde el `worker`.
+      exports: [I_OBJECT_STORAGE],
     };
   }
 }

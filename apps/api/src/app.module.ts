@@ -40,6 +40,8 @@ import type { Env } from './shared';
 export class AppModule {
   static forRoot(env: Env): DynamicModule {
     const identity = IdentityModule.forRoot(env);
+    // Una sola instancia de `storage`: `billing` y `backoffice` la importan de forma explícita (009, ampliación de la
+    // decisión 1; 011).
     const storage = StorageModule.forRoot(env);
     return {
       module: AppModule,
@@ -60,7 +62,7 @@ export class AppModule {
         PlanLimitsBindingModule,
         storage,
         AuditHttpModule,
-        BillingHttpModule,
+        BillingHttpModule.forRoot(storage),
         BackofficeModule.forRoot(identity, storage),
       ],
       providers: [PingQueue],

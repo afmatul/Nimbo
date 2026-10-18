@@ -1,6 +1,6 @@
 'use client';
 
-import { History, LogOut, ShieldCheck } from 'lucide-react';
+import { CreditCard, History, LogOut, ShieldCheck } from 'lucide-react';
 import * as React from 'react';
 
 import {
@@ -40,6 +40,8 @@ export interface AccountMenuProps {
   readonly onSignOut: () => Promise<void>;
   /** Ruta de «Mi actividad» del rol de la sesión (011 CA-17); opcional: por omisión, la del cliente (004). */
   readonly activityHref?: string;
+  /** Ruta de «Plan y facturación» (009); solo la recibe un cliente: sin ella, el ítem no se ofrece. */
+  readonly billingHref?: string;
 }
 
 function initialsOf(fullName: string): string {
@@ -79,12 +81,26 @@ function AccountTrigger({ id, buttonRef, fullName }: AccountTriggerProps): React
 interface AccountItemsProps {
   readonly triggerId: string;
   readonly activityHref: string;
+  readonly billingHref: string | undefined;
   readonly onSignOut: () => void;
+}
+
+function BillingItem({ href }: { readonly href: string | undefined }): React.JSX.Element | null {
+  if (href === undefined) return null;
+  return (
+    <DropdownMenuItem asChild>
+      <a href={href}>
+        <CreditCard aria-hidden="true" className="h-4 w-4 text-secondary-foreground" />
+        Plan y facturación
+      </a>
+    </DropdownMenuItem>
+  );
 }
 
 function AccountItems({
   triggerId,
   activityHref,
+  billingHref,
   onSignOut,
 }: AccountItemsProps): React.JSX.Element {
   return (
@@ -101,6 +117,7 @@ function AccountItems({
           Mi actividad
         </a>
       </DropdownMenuItem>
+      <BillingItem href={billingHref} />
       <DropdownMenuSeparator />
       <DropdownMenuItem onSelect={onSignOut}>
         <LogOut aria-hidden="true" className="h-4 w-4 text-secondary-foreground" />
@@ -137,14 +154,14 @@ function useSignOutConfirmation(
 /**
  * Menú de la cuenta en la cabecera del `AppLayout` (spec 002, CA-14, CA-27; mockup `shared/layout`): patrón *menu
  * button* de WAI-ARIA sobre el `DropdownMenu` de Radix, con el nombre y el correo arriba, «Seguridad», «Mi actividad»
- * (004) y «Cerrar sesión», que pide confirmación (Q-3). «Plan y facturación» se agrega tras «Mi actividad» cuando exista
- * su ruta (006a/010).
+ * (004), «Plan y facturación» solo si llega su ruta (009, para clientes) y «Cerrar sesión», que pide confirmación (Q-3).
  */
 export function AccountMenu({
   fullName,
   email,
   onSignOut,
   activityHref = ACTIVITY_HREF,
+  billingHref,
 }: AccountMenuProps): React.JSX.Element {
   const triggerId = React.useId();
   const triggerRef = React.useRef<HTMLButtonElement>(null);
@@ -161,6 +178,7 @@ export function AccountMenu({
           <AccountItems
             triggerId={triggerId}
             activityHref={activityHref}
+            billingHref={billingHref}
             onSignOut={() => confirmation.setOpen(true)}
           />
         </DropdownMenuContent>

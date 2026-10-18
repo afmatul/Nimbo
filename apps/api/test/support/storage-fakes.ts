@@ -15,6 +15,7 @@ import type {
   IObjectStorage,
   ObjectHead,
   PresignDownloadInput,
+  PutObjectInput,
   PresignUploadObjectInput,
   PresignUploadPartInput,
   UploadedPart,
@@ -497,6 +498,13 @@ export class FakeObjectStorage implements IObjectStorage {
     if (this.consumeDeleteFailure()) return Promise.reject(new Error('minio caído'));
     this.purged.push(key);
     this.objects.delete(key);
+    return Promise.resolve();
+  }
+
+  /** 009: la factura PDF; en memoria, como el resto de objetos del doble. */
+  putObject(input: PutObjectInput): Promise<void> {
+    this.journal.add('storage:putObject');
+    this.objects.set(input.key, input.body);
     return Promise.resolve();
   }
 

@@ -129,7 +129,9 @@ export class StorageModule {
         QuickAccessService,
         { provide: I_NODE_METADATA_READER, useClass: SqlNodeMetadataReader },
       ],
-      exports: [I_NODE_METADATA_READER],
+      // 011 (PD-31): el lector de metadatos para `backoffice`. 009 (ampliación de la decisión 1, 2026-10-15): `billing`
+      // importa `I_OBJECT_STORAGE` de forma explícita, sin módulo global.
+      exports: [I_NODE_METADATA_READER, I_OBJECT_STORAGE],
     };
   }
 }

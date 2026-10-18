@@ -215,6 +215,14 @@ const CODE_MESSAGES: Readonly<Record<string, string>> = {
   [SHARED_ERROR_CODES.FORBIDDEN]: `Tu cuenta no tiene permiso para esta acción. Si crees que es un error, escríbenos a ${SUPPORT_CONTACT_EMAIL}.`,
   [BILLING_ERROR_CODES.BILLING_PLAN_CATALOG_UNAVAILABLE]:
     'No pudimos cargar los planes. Intenta recargar la página.',
+  [BILLING_ERROR_CODES.BILLING_INVALID_INPUT]:
+    'Revisa los datos de pago marcados y corrígelos para continuar.',
+  [BILLING_ERROR_CODES.BILLING_PLAN_NOT_AVAILABLE]:
+    'Este plan no está disponible para contratar. Elige otro plan en Planes.',
+  [BILLING_ERROR_CODES.BILLING_PAYMENT_REJECTED]:
+    'La tarjeta fue rechazada. No se hizo ningún cargo. Prueba con otra tarjeta.',
+  [BILLING_ERROR_CODES.BILLING_INVOICE_NOT_FOUND]:
+    'No encontramos esa factura o su PDF aún no está listo. Actualiza la página e inténtalo de nuevo.',
 };
 
 interface TimedMessage {
@@ -239,6 +247,11 @@ const TIMED_MESSAGES: Readonly<Record<string, TimedMessage>> = {
     defaultSeconds: EMAIL_REQUEST_COOLDOWN_SECONDS,
     text: (minutes) =>
       `Ya te enviamos un enlace hace poco. Revisa tu bandeja y la carpeta de spam, o inténtalo de nuevo en ${minutes} minutos.`,
+  },
+  [SHARED_ERROR_CODES.TOO_MANY_REQUESTS]: {
+    defaultSeconds: SECONDS_PER_MINUTE,
+    text: (minutes) =>
+      `Hiciste demasiados intentos. Espera ${minutes} minutos e inténtalo de nuevo.`,
   },
 };
 

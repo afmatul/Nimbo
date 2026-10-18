@@ -23,6 +23,7 @@ const ELEVEN_MIGRATIONS = [
   'AgregarAltaInternaATokenCuenta20261007100100',
   'AmpliarEventoAuditoriaParaAccionesInternas20261007100300',
   'IndiceMetadatosDeArchivo20261007100400',
+  'AgregarDesactivadoEnAPlan20261014160000',
 ];
 
 /** Restricciones, políticas, nulabilidad del afectado y RLS de `evento_auditoria`: lo que cambia la migración de 011. */
@@ -66,6 +67,23 @@ const auditSchemaOf = (dataSource: DataSource): Promise<AuditSchema> =>
 
 const accountSchemaOf = (dataSource: DataSource): Promise<AccountSchema> =>
   firstRow<AccountSchema>(dataSource, ACCOUNT_SCHEMA_SQL);
+
+/** Lo que la migración de `billing` de 011 (T-09) agrega a `plan`: columna, CHECK e índice único. */
+const PLAN_SCHEMA_SQL = `SELECT
+  (SELECT json_agg(c.column_name ORDER BY c.column_name) FROM information_schema.columns c
+    WHERE c.table_schema = 'public' AND c.table_name = 'plan') AS columnas,
+  (SELECT json_agg(k.conname ORDER BY k.conname) FROM pg_constraint k
+    WHERE k.conrelid = 'plan'::regclass AND k.contype = 'c' AND k.conname LIKE 'ck_plan_%') AS restricciones,
+  (SELECT json_agg(i.indexname ORDER BY i.indexname) FROM pg_indexes i WHERE i.tablename = 'plan') AS indices`;
+
+interface PlanSchema {
+  readonly columnas: string[];
+  readonly restricciones: string[] | null;
+  readonly indices: string[];
+}
+
+const planSchemaOf = (dataSource: DataSource): Promise<PlanSchema> =>
+  firstRow<PlanSchema>(dataSource, PLAN_SCHEMA_SQL);
 
 const appliedNames = async (dataSource: DataSource): Promise<string[]> =>
   ((await dataSource.query('SELECT name FROM migracion ORDER BY id')) as { name: string }[]).map(
@@ -176,7 +194,7 @@ describe('migraciones de 011 con dueño NOSUPERUSER (plan §3)', () => {
     expect(role).toEqual({ rolsuper: false, rolbypassrls: false });
   });
 
-  it('las cuatro migraciones de 011 corren en el orden de su fecha', async () => {
+  it('las cinco migraciones de 011 corren en el orden de su fecha', async () => {
     const applied = await appliedNames(owner);
 
     // Otras specs (014, 009) intercalan migraciones con fecha entre las de 011: aquí solo importa el orden de las de 011.
@@ -187,10 +205,16 @@ describe('migraciones de 011 con dueño NOSUPERUSER (plan §3)', () => {
     await seedEvents();
     await seedSetupToken(admin.id);
     const before = { audit: await auditSchemaOf(owner), accounts: await accountSchemaOf(owner) };
+    const planBefore = await planSchemaOf(owner);
+    expect(planBefore.columnas).toContain('desactivado_en');
 
     const reverted = await revertFrom011();
 
     const accounts = await accountSchemaOf(owner);
+    const plan006a = await planSchemaOf(owner);
+    expect(plan006a.columnas).not.toContain('desactivado_en');
+    expect(plan006a.restricciones).toBeNull();
+    expect(plan006a.indices).not.toContain('uq_plan_nombre');
     expect(await clientActions()).toEqual(['trash.emptied']);
     expect(accounts.columnas_usuario).not.toContain('codigo_empleado');
     expect(accounts.indices.join()).not.toContain('idx_archivo_propietario_actualizado');
@@ -228,6 +252,7 @@ describe('migraciones de 011 con dueño NOSUPERUSER (plan §3)', () => {
     expect({ audit: await auditSchemaOf(owner), accounts: await accountSchemaOf(owner) }).toEqual(
       before,
     );
+    expect(await planSchemaOf(owner)).toEqual(planBefore);
   });
 });
 

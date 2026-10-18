@@ -56,6 +56,17 @@ describe('REDACTED_FIELDS', () => {
     });
   });
 
+  it('009 §5: redacta la tarjeta, el número, el CVC y el NIT del cobro', () => {
+    expect(
+      redactDeep({
+        body: { card: { number: '4242424242424242', cvc: '123' }, cardNumber: '4242', nit: 'CF' },
+      }),
+    ).toEqual({ body: { card: '[REDACTED]', cardNumber: '[REDACTED]', nit: '[REDACTED]' } });
+    for (const field of ['card', 'cardnumber', 'number', 'cvc', 'nit']) {
+      expect(REDACTED_FIELDS.has(field)).toBe(true);
+    }
+  });
+
   it('CA-16: redacta `DATABASE_MIGRATION_URL` como URL de conexión (lleva la contraseña del dueño)', () => {
     expect(
       redactDeep({ DATABASE_MIGRATION_URL: 'postgres://nimbo:nimbo@localhost:5432/nimbo' }),

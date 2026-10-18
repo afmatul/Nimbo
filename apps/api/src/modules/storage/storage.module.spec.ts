@@ -9,6 +9,7 @@ import { FOLDER_CONFIG } from './application/folder-config';
 import { FolderService } from './application/folder.service';
 import { I_PLAN_LIMITS_PROVIDER } from './application/plan-limits';
 import { I_NODE_METADATA_READER } from './application/ports/i-node-metadata-reader.port';
+import { I_OBJECT_STORAGE } from './application/ports/i-object-storage.port';
 import { I_QUICK_ACCESS_REPOSITORY } from './application/ports/i-quick-access.repository.port';
 import { I_TRASH_PURGE_QUEUE } from './application/ports/i-trash-purge-queue.port';
 import { I_VERSION_REPOSITORY } from './application/ports/i-version.repository.port';
@@ -135,10 +136,10 @@ describe('StorageModule', () => {
     expect(providers).toEqual(expect.arrayContaining([SpaceMeasurer, SpaceSummaryService]));
   });
 
-  it('011 PD-31: provee el lector de metadatos con su adaptador SQL y exporta solo su token', () => {
+  it('011 PD-31: provee el lector de metadatos con su adaptador SQL y exporta su token y el de objetos (009)', () => {
     const reader = providers.find((provider) => tokenOf(provider) === I_NODE_METADATA_READER);
 
     expect(reader).toEqual({ provide: I_NODE_METADATA_READER, useClass: SqlNodeMetadataReader });
-    expect(module.exports).toEqual([I_NODE_METADATA_READER]);
+    expect(module.exports).toEqual([I_NODE_METADATA_READER, I_OBJECT_STORAGE]);
   });
 });

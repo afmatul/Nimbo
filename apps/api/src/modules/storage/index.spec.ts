@@ -71,18 +71,21 @@ type _ListForOwnerSignature = Expect<
 
 /**
  * API pública de `storage` (plan §6, DF-51 opción A): el token del puerto de límites, el módulo que monta la raíz de
- * composición del `api` y el del `worker` (T-51) y, desde 011 (PD-31), el token del lector de metadatos que consume
- * `backoffice`. El detector, el escáner y los repositorios no salen.
+ * composición del `api` y el del `worker` (T-51), desde 011 (PD-31) el token del lector de metadatos que consume
+ * `backoffice` y el token de `IObjectStorage` para la factura PDF de `billing` (009, decisión 1). El detector, el escáner
+ * y los repositorios no salen.
  */
 const RUNTIME_EXPORTS = [
   'I_NODE_METADATA_READER',
+  'I_OBJECT_STORAGE',
   'I_PLAN_LIMITS_PROVIDER',
   'StorageModule',
   'StorageWorkerModule',
+  'invoiceObjectKey',
 ] as const;
 
 describe('modules/storage/index.ts', () => {
-  it('CA-3, CA-4, CA-9, RN-1, 011 PD-31: exporta exactamente los tokens de límites y de metadatos y los dos módulos', () => {
+  it('CA-3, CA-4, CA-9, RN-1, 011 PD-31, 009: exporta exactamente los tokens de límites, de metadatos y de objetos y los dos módulos', () => {
     expect(Object.keys(storage).sort()).toEqual([...RUNTIME_EXPORTS].sort());
     expect(typeof storage.I_PLAN_LIMITS_PROVIDER).toBe('symbol');
     expect(typeof storage.I_NODE_METADATA_READER).toBe('symbol');

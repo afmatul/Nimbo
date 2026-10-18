@@ -1,4 +1,5 @@
 import {
+  BILLING_ERROR_CODES,
   BACKOFFICE_FIELD_ISSUE_REASONS,
   BACKOFFICE_FIELD_MESSAGES,
   IDENTITY_ERROR_CODES,
@@ -274,6 +275,31 @@ describe('error-catalog', () => {
         cause: 'No encontramos la carpeta de destino.',
         fix: 'Puede que la hayas movido a la papelera. Elige otra carpeta y vuelve a intentarlo.',
       });
+    });
+  });
+
+  describe('códigos del cobro (spec 009 §6)', () => {
+    it.each([
+      [
+        BILLING_ERROR_CODES.BILLING_PAYMENT_REJECTED,
+        'La tarjeta fue rechazada. No se hizo ningún cargo. Prueba con otra tarjeta.',
+      ],
+      [
+        BILLING_ERROR_CODES.BILLING_PLAN_NOT_AVAILABLE,
+        'Este plan no está disponible para contratar. Elige otro plan en Planes.',
+      ],
+      [
+        BILLING_ERROR_CODES.BILLING_INVALID_INPUT,
+        'Revisa los datos de pago marcados y corrígelos para continuar.',
+      ],
+    ])('CA-4, CA-5: %s tiene su mensaje con acción correctiva', (code, message) => {
+      expect(messageForCode(code)).toBe(message);
+    });
+
+    it('CA-5: el 429 compartido dice cuántos minutos esperar según `Retry-After`', () => {
+      expect(messageForCode(SHARED_ERROR_CODES.TOO_MANY_REQUESTS, { retryAfterSeconds: 840 })).toBe(
+        'Hiciste demasiados intentos. Espera 14 minutos e inténtalo de nuevo.',
+      );
     });
   });
 

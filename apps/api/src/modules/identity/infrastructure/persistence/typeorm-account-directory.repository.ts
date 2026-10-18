@@ -42,6 +42,9 @@ const LIST_SQL = `SELECT ${SUMMARY_COLUMNS} FROM usuario WHERE ${PREFIX_FILTER}
 const COUNT_SQL = `SELECT count(*)::int AS total FROM usuario WHERE ${PREFIX_FILTER}`;
 const BY_ID_SQL = `SELECT ${SUMMARY_COLUMNS} FROM usuario WHERE id = $1`;
 const CLIENT_BY_EMAIL_SQL = `SELECT id, nombre, correo FROM usuario WHERE correo = $1 AND rol = '${Role.CLIENT}'`;
+const VERIFIED_CLIENT_IDS_SQL = `SELECT id FROM usuario
+  WHERE rol = '${Role.CLIENT}' AND correo_verificado AND ($1::uuid IS NULL OR id > $1::uuid)
+  ORDER BY id LIMIT $2`;
 const STATISTICS_SQL = `SELECT count(*)::int AS total,
     count(*) FILTER (WHERE rol = '${Role.CLIENT}')::int AS clients,
     count(*) FILTER (WHERE rol <> '${Role.CLIENT}')::int AS internal,
@@ -106,6 +109,11 @@ export class TypeOrmAccountDirectoryRepository implements IAccountDirectoryRepos
   async statistics(): Promise<AccountStatistics> {
     const [row] = await this.select<StatisticsRow>(STATISTICS_SQL, []);
     return toStatistics(row as StatisticsRow);
+  }
+
+  async listVerifiedClientIds(afterId: string | null, limit: number): Promise<readonly string[]> {
+    const rows = await this.select<{ id: string }>(VERIFIED_CLIENT_IDS_SQL, [afterId, limit]);
+    return rows.map((row) => row.id);
   }
 
   private async select<T>(sql: string, parameters: unknown[]): Promise<T[]> {

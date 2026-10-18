@@ -74,4 +74,27 @@ describe('SessionAccountMenu (CA-14)', () => {
       '/cuenta/seguridad',
     );
   });
+
+  it.each([
+    ['CLIENT', true],
+    ['SUPPORT', false],
+    ['ADMIN', false],
+    ['OPERATOR', false],
+  ] as const)(
+    '009 CA-7: con el rol %s, «Plan y facturación» se ofrece: %s',
+    async (role, offered) => {
+      rememberSession(sessionFixture({ role }));
+      const user = userEvent.setup();
+      render(
+        <SessionProvider apiPublicUrl="http://localhost/api/v1">
+          <SessionAccountMenu />
+        </SessionProvider>,
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Menú de la cuenta de Ana López' }));
+
+      const item = screen.queryByRole('menuitem', { name: 'Plan y facturación' });
+      expect(item?.getAttribute('href') ?? null).toBe(offered ? '/suscripcion' : null);
+    },
+  );
 });
