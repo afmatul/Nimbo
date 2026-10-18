@@ -62,7 +62,7 @@ export class AppModule {
         PlanLimitsBindingModule,
         storage,
         AuditHttpModule,
-        BillingHttpModule.forRoot(storage),
+        BillingHttpModule.forRoot(env, storage),
         BackofficeModule.forRoot(identity, storage),
       ],
       providers: [PingQueue],

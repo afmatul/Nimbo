@@ -26,6 +26,7 @@ const setup = () => {
       return Promise.resolve();
     }),
     findStanding: jest.fn(),
+    findCurrent: jest.fn(),
     lockCurrent: jest.fn(),
     save: jest.fn(),
   };

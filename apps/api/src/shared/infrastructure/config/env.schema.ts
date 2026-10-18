@@ -69,6 +69,9 @@ const DEFAULT_INVOICE_RETRY_INTERVAL_MINUTES = 1;
 /** El mismo lote que los otros barridos; la función de facturas pendientes no devuelve más de 1000. */
 const DEFAULT_INVOICE_RETRY_BATCH_SIZE = 100;
 const MAX_INVOICE_RETRY_BATCH_SIZE = 1000;
+/** RN-8 de la 010: el aviso previo sale 3 días antes de `vence_en`, configurable de 1 a 7. */
+const DEFAULT_RENEWAL_REMINDER_DAYS = 3;
+const MAX_RENEWAL_REMINDER_DAYS = 7;
 
 /**
  * Valor de desarrollo de `JWT_ACCESS_SECRET` que trae `.env.example` (plan 002 §6.10). Público a propósito: en
@@ -250,6 +253,14 @@ const invoiceRetryShape = {
 };
 
 /**
+ * Días del aviso previo a `vence_en` (010 RN-8): el `api` marca la suscripción «por vencer» y el `worker` envía el
+ * correo, con el mismo valor.
+ */
+const renewalReminderShape = {
+  RENEWAL_REMINDER_DAYS: intBetween(1, MAX_RENEWAL_REMINDER_DAYS, DEFAULT_RENEWAL_REMINDER_DAYS),
+};
+
+/**
  * Forma del entorno del `worker`: el contrato común, su puerto de salud, MinIO, el barrido de cargas (005), la purga
  * de la papelera (006), la conciliación de espacio (007), la de suscripciones y el reintento de facturas (009) y el SMTP (001 plan §6.10); sin `PORT` ni `MINIO_PUBLIC_ENDPOINT`. `SMTP_PASSWORD` se declara **solo** aquí.
  */
@@ -261,6 +272,7 @@ export const workerEnvObjectSchema = sharedEnvBaseSchema.extend({
   ...usageReconcileShape,
   ...subscriptionReconcileShape,
   ...invoiceRetryShape,
+  ...renewalReminderShape,
   SMTP_HOST: nonEmpty(),
   SMTP_PORT: requiredPort(),
   SMTP_TLS: oneOf(['none', 'starttls', 'implicit']),
@@ -281,6 +293,7 @@ export const apiEnvObjectSchema = sharedEnvBaseSchema.extend({
   ...uploadApiShape,
   ...foldersApiShape,
   ...quickAccessApiShape,
+  ...renewalReminderShape,
   WEB_PUBLIC_URL: url(),
   CORS_ORIGIN: urlList(),
   JWT_ACCESS_SECRET: z.string().min(JWT_SECRET_MIN_LENGTH, JWT_SECRET_LENGTH_MESSAGE),

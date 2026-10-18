@@ -7,7 +7,6 @@ import type { IAuditLogger } from '../../audit';
 import type { Invoice } from '../domain/entities/invoice.entity';
 import type { Plan } from '../domain/entities/plan.entity';
 import type { Subscription } from '../domain/entities/subscription.entity';
-import { PlanNotFoundError } from '../domain/errors';
 import type { PaymentInstrument } from '../domain/payment-instrument';
 import { Money } from '../domain/value-objects/money';
 
@@ -18,6 +17,9 @@ import { I_PLAN_REPOSITORY } from './ports/i-plan-repository.port';
 import type { IPlanRepository } from './ports/i-plan-repository.port';
 import { I_SUBSCRIPTION_REPOSITORY } from './ports/i-subscription-repository.port';
 import type { ISubscriptionRepository } from './ports/i-subscription-repository.port';
+import { requirePlan } from './require-plan';
+import { recordSubscriptionEvent } from './subscription-audit';
+import type { SubscriptionAuditAttributes } from './subscription-audit';
 
 /** Quién pidió la renovación (atributo `trigger` de la auditoría, 010 plan §2). */
 export type RenewalTrigger = 'manual' | 'automatic';
@@ -98,18 +100,16 @@ export class RenewalCheckout {
   /** RN-4: el programado si sigue activo; si se desactivó, se descarta y cobra el actual (CA-29). */
   private async nextCycle(current: Subscription): Promise<NextCycle> {
     if (current.pendingPlanId !== null) {
-      const pending = await this.requirePlan(current.pendingPlanId);
+      const pending = await requirePlan(this.plans, current.pendingPlanId);
       if (pending.isActive) return { from: current, plan: pending, discardedPlan: null };
       const from = current.cancelChange();
-      return { from, plan: await this.requirePlan(from.planId), discardedPlan: pending };
+      return { from, plan: await requirePlan(this.plans, from.planId), discardedPlan: pending };
     }
-    return { from: current, plan: await this.requirePlan(current.planId), discardedPlan: null };
-  }
-
-  private async requirePlan(planId: string): Promise<Plan> {
-    const plan = await this.plans.findById(planId);
-    if (plan === null) throw new PlanNotFoundError(planId);
-    return plan;
+    return {
+      from: current,
+      plan: await requirePlan(this.plans, current.planId),
+      discardedPlan: null,
+    };
   }
 
   /** CA-6, CA-22 (plan §2): renovada, salida de solo lectura y cambio aplicado o descartado; nunca datos de tarjeta. */
@@ -138,12 +138,11 @@ export class RenewalCheckout {
     }
   }
 
-  /** En la misma transacción del cobro (011 `recordInTransaction`): si no se audita, no se renueva. */
   private record(
     actor: Actor,
     action: AuditAction,
-    attributes: Readonly<Record<string, string | number>>,
+    attributes: SubscriptionAuditAttributes,
   ): Promise<void> {
-    return this.audit.recordInTransaction({ action, actor, targetUserId: actor.id, attributes });
+    return recordSubscriptionEvent(this.audit, actor, { action, attributes });
   }
 }

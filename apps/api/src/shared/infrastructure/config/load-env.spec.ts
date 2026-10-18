@@ -110,6 +110,7 @@ describe('loadEnv(apiEnvSchema)', () => {
         FOLDER_MAX_DEPTH: 10,
         QUICK_ACCESS_MAX_PINNED: 5,
         QUICK_ACCESS_RECENT_VISIBLE: 3,
+        RENEWAL_REMINDER_DAYS: 3,
       },
     });
   });
@@ -194,6 +195,7 @@ describe('loadEnv(workerEnvSchema)', () => {
         SUBSCRIPTION_RECONCILE_BATCH_SIZE: 100,
         INVOICE_RETRY_INTERVAL_MINUTES: 1,
         INVOICE_RETRY_BATCH_SIZE: 100,
+        RENEWAL_REMINDER_DAYS: 3,
         SMTP_HOST: 'localhost',
         SMTP_PORT: 1025,
         SMTP_TLS: 'none',

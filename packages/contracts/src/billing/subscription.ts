@@ -73,6 +73,14 @@ export const renewRequestSchema = z
   })
   .strict();
 
+/** `PUT /billing/subscription/auto-renew` (spec 010 CA-6). */
+export const autoRenewRequestSchema = z.object({ enabled: z.boolean() }).strict();
+
+/** `PUT /billing/subscription/plan-change` (spec 010 CA-16 a CA-18): el plan del siguiente ciclo, por `slug`. */
+export const planChangeRequestSchema = z
+  .object({ planSlug: z.string().min(1).max(SLUG_MAX_LENGTH) })
+  .strict();
+
 const cents = z.number().int().nonnegative();
 
 /**
@@ -92,6 +100,8 @@ export const paymentReceiptSchema = z
 
 export type SubscribeRequest = z.infer<typeof subscribeRequestSchema>;
 export type RenewRequest = z.infer<typeof renewRequestSchema>;
+export type AutoRenewRequest = z.infer<typeof autoRenewRequestSchema>;
+export type PlanChangeRequest = z.infer<typeof planChangeRequestSchema>;
 export type PaymentReceipt = z.infer<typeof paymentReceiptSchema>;
 export type SubscribeResponse = PaymentReceipt;
 export type RenewResponse = PaymentReceipt;

@@ -51,8 +51,16 @@ const REJECTED = {
   status: 'rechazada' as const,
   invoice: null,
 };
+/** Lo de la 010 que esta pantalla de la 009 aún no muestra (010b T-08). */
+const NO_PAYMENT_VIEW = {
+  status: 'active',
+  autoRenew: true,
+  pendingPlan: null,
+  nextCharge: null,
+  renewal: null,
+} as const;
 const HISTORY: BillingHistoryResponse = {
-  subscription: { plan: TEAM, expiresAt: '2026-11-13T18:00:00.000Z' },
+  subscription: { ...NO_PAYMENT_VIEW, plan: TEAM, expiresAt: '2026-11-13T18:00:00.000Z' },
   paymentMethod: { brand: 'visa', last4: '4242' },
   billingDetails: { nit: '12345678', receiptEmail: 'ana@ejemplo.com' },
   payments: [APPROVED, REJECTED],
@@ -173,7 +181,7 @@ describe('Plan y facturación, /suscripcion (spec 009 CA-7, CA-8, §6; mockup `b
   it('vacío: Personal gratis y sin vencimiento, y «Aún no tienes facturas ni pagos registrados.»', async () => {
     fetchMock.mockResolvedValueOnce(
       jsonResponse({
-        subscription: { plan: PERSONAL, expiresAt: null },
+        subscription: { ...NO_PAYMENT_VIEW, plan: PERSONAL, expiresAt: null },
         paymentMethod: null,
         billingDetails: null,
         payments: [],

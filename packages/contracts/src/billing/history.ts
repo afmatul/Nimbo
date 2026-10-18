@@ -31,22 +31,62 @@ const paymentMethodSchema = z
   .object({ brand: z.string().min(1), last4: z.string().regex(/^\d{4}$/) })
   .strict();
 
+/** Lo que cobra la renovación automática al vencer (010 CA-25): nulo si está apagada, vencida o baja a Personal. */
+const nextChargeSchema = z
+  .object({
+    date: z.string().datetime(),
+    amountCents: cents,
+    planName: z.string().min(1),
+    card: paymentMethodSchema.nullable(),
+  })
+  .strict();
+
+/**
+ * Renovación manual (010 CA-8, CA-10, CA-26, CA-28): si se ofrece «Renovar ahora», por qué no, el `vence_en` que el
+ * pago debe enviar y el periodo y el monto que pagaría (plan del siguiente ciclo).
+ */
+const renewalSchema = z
+  .object({
+    available: z.boolean(),
+    unavailableReason: z.enum(['ALREADY_RENEWED', 'PLAN_CHANGE_PENDING']).nullable(),
+    expectedExpiresAt: z.string().datetime(),
+    periodStartsAt: z.string().datetime(),
+    periodEndsAt: z.string().datetime(),
+    amountCents: cents,
+    planName: z.string().min(1),
+  })
+  .strict();
+
+/**
+ * La suscripción del cliente para «Plan y facturación» (spec 010 §6, CA-25): plan, vencimiento, estado (`expiring` en
+ * los días del aviso previo, RN-8), renovación automática, cambio programado, próximo cobro y renovación manual. En
+ * Personal todo lo de pago es nulo. Nunca la referencia del instrumento (ADR-0031).
+ */
+export const subscriptionViewSchema = z
+  .object({
+    plan: planSchema,
+    expiresAt: z.string().datetime().nullable(),
+    status: z.enum(['active', 'expiring', 'readOnly']),
+    autoRenew: z.boolean(),
+    pendingPlan: planSchema.nullable(),
+    nextCharge: nextChargeSchema.nullable(),
+    renewal: renewalSchema.nullable(),
+  })
+  .strict();
+
 /** Datos de la última factura (CA-7): el NIT (`CF` o dígitos, RN-9) y el correo donde llegan las facturas. */
 const billingDetailsSchema = z
   .object({ nit: z.string().min(1), receiptEmail: z.string().email() })
   .strict();
 
 /**
- * `GET /billing/history` (spec 009 CA-7; mockup `billing/suscripcion/`): plan actual del cliente con el esquema del
- * catálogo de la 008 (nulo si aún no tiene fila de suscripción; `expiresAt` nulo en Personal), la tarjeta del último
+ * `GET /billing/history` (spec 009 CA-7; mockup `billing/suscripcion/`): la suscripción del cliente (010
+ * `subscriptionViewSchema`; nula si aún no tiene fila de suscripción), la tarjeta del último
  * pago aprobado, el NIT y el correo de la última factura y los pagos, del más reciente al más antiguo. Nunca datos de otra cuenta.
  */
 export const billingHistoryResponseSchema = z
   .object({
-    subscription: z
-      .object({ plan: planSchema, expiresAt: z.string().datetime().nullable() })
-      .strict()
-      .nullable(),
+    subscription: subscriptionViewSchema.nullable(),
     paymentMethod: paymentMethodSchema.nullable(),
     billingDetails: billingDetailsSchema.nullable(),
     payments: z.array(historyPaymentSchema),
@@ -62,5 +102,6 @@ export const invoiceDownloadResponseSchema = z
   .strict();
 
 export type BillingHistoryResponse = z.infer<typeof billingHistoryResponseSchema>;
+export type SubscriptionView = z.infer<typeof subscriptionViewSchema>;
 export type BillingHistoryPayment = BillingHistoryResponse['payments'][number];
 export type InvoiceDownloadResponse = z.infer<typeof invoiceDownloadResponseSchema>;

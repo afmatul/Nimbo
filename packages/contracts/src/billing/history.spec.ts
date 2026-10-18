@@ -1,4 +1,8 @@
-import { billingHistoryResponseSchema, invoiceDownloadResponseSchema } from './history';
+import {
+  billingHistoryResponseSchema,
+  invoiceDownloadResponseSchema,
+  subscriptionViewSchema,
+} from './history';
 
 const TEAM = {
   id: '10000000-0000-4000-8000-000000000003',
@@ -26,8 +30,30 @@ const PAYMENT = {
     downloadable: true,
   },
 };
+const VIEW = {
+  plan: TEAM,
+  expiresAt: '2026-11-13T18:00:00.000Z',
+  status: 'active',
+  autoRenew: true,
+  pendingPlan: null,
+  nextCharge: {
+    date: '2026-11-13T18:00:00.000Z',
+    amountCents: 11_000,
+    planName: 'Equipo',
+    card: { brand: 'visa', last4: '4242' },
+  },
+  renewal: {
+    available: true,
+    unavailableReason: null,
+    expectedExpiresAt: '2026-11-13T18:00:00.000Z',
+    periodStartsAt: '2026-11-13T18:00:00.000Z',
+    periodEndsAt: '2026-12-13T18:00:00.000Z',
+    amountCents: 11_000,
+    planName: 'Equipo',
+  },
+};
 const HISTORY = {
-  subscription: { plan: TEAM, expiresAt: '2026-11-13T18:00:00.000Z' },
+  subscription: VIEW,
   paymentMethod: { brand: 'visa', last4: '4242' },
   billingDetails: { nit: '12345678', receiptEmail: 'ana@ejemplo.com' },
   payments: [PAYMENT],
@@ -69,5 +95,36 @@ describe('invoiceDownloadResponseSchema (spec 009 CA-8)', () => {
     };
 
     expect(invoiceDownloadResponseSchema.parse(download)).toEqual(download);
+  });
+});
+
+describe('subscriptionViewSchema (spec 010 §6, CA-25)', () => {
+  it('CA-25: acepta Personal con todo lo de pago nulo', () => {
+    const personal = {
+      ...VIEW,
+      plan: { ...TEAM, slug: 'personal', priceCents: 0 },
+      expiresAt: null,
+      pendingPlan: null,
+      nextCharge: null,
+      renewal: null,
+    };
+
+    expect(subscriptionViewSchema.safeParse(personal).success).toBe(true);
+  });
+
+  it('CA-28: acepta «Renovar ahora» no disponible por un cambio programado', () => {
+    const pending = {
+      ...VIEW,
+      pendingPlan: TEAM,
+      renewal: { ...VIEW.renewal, available: false, unavailableReason: 'PLAN_CHANGE_PENDING' },
+    };
+
+    expect(subscriptionViewSchema.safeParse(pending).success).toBe(true);
+  });
+
+  it('ADR-0031: es lista blanca: la referencia del instrumento no pasa', () => {
+    const withRef = { ...VIEW, nextCharge: { ...VIEW.nextCharge, instrumentRef: 'SIM-TOK-ok-1' } };
+
+    expect(subscriptionViewSchema.safeParse(withRef).success).toBe(false);
   });
 });

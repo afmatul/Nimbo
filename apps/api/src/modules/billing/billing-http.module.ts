@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 
+import type { Env } from '../../shared';
 import { AuditModule } from '../audit';
 import { IdentityReadersModule } from '../identity';
 import { NotificationsModule } from '../notifications';
@@ -16,7 +17,9 @@ import { I_INVOICE_GENERATOR } from './application/ports/i-invoice-generator.por
 import { I_PAYMENT_GATEWAY } from './application/ports/i-payment-gateway.port';
 import { I_PAYMENT_REPOSITORY } from './application/ports/i-payment-repository.port';
 import { RenewalCheckout } from './application/renewal-checkout';
+import { RENEWAL_REMINDER_DAYS } from './application/renewal-config';
 import { SubscriptionCheckout } from './application/subscription-checkout';
+import { SubscriptionSettingsService } from './application/subscription-settings.service';
 import { SubscriptionService } from './application/subscription.service';
 import { BillingModule } from './billing.module';
 import { PdfInvoiceGenerator } from './infrastructure/adapters/pdf-invoice-generator';
@@ -28,14 +31,17 @@ import { SubscriptionController } from './presentation/subscription.controller';
 
 /**
  * Parte de `billing` que solo corre en el `api` (specs 008 y 009): el catálogo público (`GET /billing/plans`), el cobro
- * (`POST /billing/subscribe`) y la renovación manual (`POST /billing/renew`, 010), la emisión del PDF y del aviso (`INotifier`) después del commit, y el historial con la
+ * (`POST /billing/subscribe`), la renovación manual y los ajustes de la suscripción (010), la emisión del PDF y del aviso (`INotifier`) después del commit, y el historial con la
  * descarga de facturas; el `worker` no publica estas rutas. Importa de forma explícita la **misma** instancia de
  * `StorageModule.forRoot(env)` que monta `AppModule` (ampliación de la decisión 1, sin módulo global): con Nest 11,
  * otra llamada a `forRoot` crearía un segundo `storage` con sus rutas duplicadas.
  */
+/** Variables del `api` que `billing` usa (plan 010 §2): los días del estado «por vencer» (RN-8). */
+export type BillingHttpEnv = Pick<Env, 'RENEWAL_REMINDER_DAYS'>;
+
 @Module({})
 export class BillingHttpModule {
-  static forRoot(storage: DynamicModule): DynamicModule {
+  static forRoot(env: BillingHttpEnv, storage: DynamicModule): DynamicModule {
     return {
       module: BillingHttpModule,
       imports: [BillingModule, AuditModule, IdentityReadersModule, NotificationsModule, storage],
@@ -54,6 +60,8 @@ export class BillingHttpModule {
         SubscriptionService,
         RenewalCheckout,
         ManualRenewalService,
+        { provide: RENEWAL_REMINDER_DAYS, useValue: env.RENEWAL_REMINDER_DAYS },
+        SubscriptionSettingsService,
       ],
     };
   }

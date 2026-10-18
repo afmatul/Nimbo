@@ -1,26 +1,22 @@
-import { randomUUID } from 'node:crypto';
-
 import { TEST_CARDS } from '@nimbo/contracts';
-import request from 'supertest';
-import type { Response } from 'supertest';
 import type { DataSource } from 'typeorm';
 
-import { FixedClock, Role } from '../../../src/shared';
 import { connectAsOwner } from '../../support/database-urls';
-import { PROBE_CLOCK_START } from '../../support/probe.module';
-import { TestAccessTokens } from '../../support/test-access-tokens';
 import type { TestApp } from '../setup/test-app';
-import { insertAccount } from '../storage/storage-test-db';
 
 import { createBillingHttpApp } from './billing-http';
 import { removeBillingAccounts } from './billing-test-db';
-
-const RENEW = '/api/v1/billing/renew';
-const PERSONAL_ID = '10000000-0000-4000-8000-000000000001';
-const PRO_ID = '10000000-0000-4000-8000-000000000002';
-const TEAM_ID = '10000000-0000-4000-8000-000000000003';
-const DAY_MS = 86_400_000;
-const PERIOD_MS = 30 * DAY_MS;
+import {
+  countOf,
+  inDays,
+  PERIOD_MS,
+  PERSONAL_ID,
+  PRO_ID,
+  subscriptionAccounts,
+  subscriptionAuditsOf,
+  subscriptionOf,
+} from './subscription-accounts';
+import type { PaidRow } from './subscription-accounts';
 
 const body = (expectedExpiresAt: Date, number: string = TEST_CARDS.approved) => ({
   card: { number, expMonth: 12, expYear: 2030, cvc: '123' },
@@ -28,26 +24,10 @@ const body = (expectedExpiresAt: Date, number: string = TEST_CARDS.approved) => 
   expectedExpiresAt: expectedExpiresAt.toISOString(),
 });
 
-/** La suscripción que se le arma a la cuenta, como dueño de las tablas. */
-interface PaidRow {
-  readonly expiresAt: Date;
-  readonly readOnly?: boolean;
-  readonly pendingPlanId?: string;
-}
-
-interface SubscriptionRow {
-  readonly plan_id: string;
-  readonly iniciado_en: Date;
-  readonly vence_en: Date | null;
-  readonly estado: string;
-  readonly plan_pendiente_id: string | null;
-}
-
 /** `POST /billing/renew` de punta a punta (spec 010 CA-8 a CA-11, CA-20, CA-26, CA-28): Postgres y Redis reales. */
 describe('POST /api/v1/billing/renew (spec 010 CA-8 a CA-11, CA-26, CA-28)', () => {
   let testApp: TestApp;
   let owner: DataSource;
-  const tokens = new TestAccessTokens(new FixedClock(PROBE_CLOCK_START));
   const accounts: string[] = [];
 
   beforeAll(async () => {
@@ -61,60 +41,19 @@ describe('POST /api/v1/billing/renew (spec 010 CA-8 a CA-11, CA-26, CA-28)', () 
     await testApp?.close();
   });
 
+  const accountWith = subscriptionAccounts(
+    () => testApp,
+    () => owner,
+    accounts,
+  );
   const newAccount = async (paid: PaidRow | null) => {
-    const id = await insertAccount(owner);
-    accounts.push(id);
-    await owner.query(
-      `INSERT INTO suscripcion (usuario_id, plan_id, iniciado_en, vence_en, estado, plan_pendiente_id)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      paid === null
-        ? [id, PERSONAL_ID, new Date(), null, 'vigente', null]
-        : [
-            id,
-            TEAM_ID,
-            new Date(paid.expiresAt.getTime() - PERIOD_MS),
-            paid.expiresAt,
-            paid.readOnly === true ? 'solo_lectura' : 'vigente',
-            paid.pendingPlanId ?? null,
-          ],
-    );
-    const auth = {
-      Authorization: `Bearer ${tokens.valid({ userId: id, role: Role.CLIENT, sessionId: randomUUID() })}`,
-    };
-    const renew = (payload: unknown): Promise<Response> =>
-      request(testApp.app.getHttpServer())
-        .post(RENEW)
-        .set(auth)
-        .send(payload as object);
-    return { id, renew };
+    const account = await accountWith(paid);
+    return { id: account.id, renew: (payload: object) => account.call('post', 'renew', payload) };
   };
-
-  const subscriptionOf = async (userId: string): Promise<SubscriptionRow> => {
-    const [row] = (await owner.query(
-      `SELECT plan_id, iniciado_en, vence_en, estado, plan_pendiente_id FROM suscripcion
-        WHERE usuario_id = $1`,
-      [userId],
-    )) as SubscriptionRow[];
-    if (row === undefined) throw new Error('sin suscripción');
-    return row;
-  };
-
-  const countOf = async (table: 'transaccion' | 'factura', userId: string): Promise<number> => {
-    const [row] = (await owner.query(
-      `SELECT count(*)::int AS total FROM ${table} WHERE usuario_id = $1`,
-      [userId],
-    )) as { total: number }[];
-    return row?.total ?? 0;
-  };
-
-  const auditsOf = async (userId: string): Promise<{ accion: string; atributos: object }[]> =>
-    (await owner.query(
-      `SELECT accion, atributos FROM evento_auditoria
-        WHERE usuario_afectado_id = $1 AND accion LIKE 'subscription.%' ORDER BY ocurrido_en, id`,
-      [userId],
-    )) as { accion: string; atributos: object }[];
-
-  const inDays = (days: number): Date => new Date(Date.now() + days * DAY_MS);
+  const subscriptionRow = (userId: string) => subscriptionOf(owner, userId);
+  const auditsOf = (userId: string) => subscriptionAuditsOf(owner, userId);
+  const counted = (table: 'transaccion' | 'factura', userId: string) =>
+    countOf(owner, table, userId);
 
   it('CA-8, RN-1: pagada antes de vencer, el periodo nuevo empieza en el `vence_en` vigente', async () => {
     const expiresAt = inDays(3);
@@ -129,12 +68,12 @@ describe('POST /api/v1/billing/renew (spec 010 CA-8 a CA-11, CA-26, CA-28)', () 
       expiresAt: next.toISOString(),
       amounts: { totalCents: 11_000 },
     });
-    await expect(subscriptionOf(ana.id)).resolves.toMatchObject({
+    await expect(subscriptionRow(ana.id)).resolves.toMatchObject({
       iniciado_en: expiresAt,
       vence_en: next,
       estado: 'vigente',
     });
-    expect(await countOf('factura', ana.id)).toBe(1);
+    expect(await counted('factura', ana.id)).toBe(1);
     await expect(auditsOf(ana.id)).resolves.toEqual([
       {
         accion: 'subscription.renewed',
@@ -151,12 +90,12 @@ describe('POST /api/v1/billing/renew (spec 010 CA-8 a CA-11, CA-26, CA-28)', () 
 
     expect(response.status).toBe(402);
     expect(response.body).toMatchObject({ code: 'BILLING_PAYMENT_REJECTED' });
-    await expect(subscriptionOf(bruno.id)).resolves.toMatchObject({
+    await expect(subscriptionRow(bruno.id)).resolves.toMatchObject({
       vence_en: expiresAt,
       estado: 'vigente',
     });
-    expect(await countOf('transaccion', bruno.id)).toBe(1);
-    expect(await countOf('factura', bruno.id)).toBe(0);
+    expect(await counted('transaccion', bruno.id)).toBe(1);
+    expect(await counted('factura', bruno.id)).toBe(0);
     await expect(auditsOf(bruno.id)).resolves.toMatchObject([
       { accion: 'subscription.renewal_rejected' },
     ]);
@@ -171,15 +110,23 @@ describe('POST /api/v1/billing/renew (spec 010 CA-8 a CA-11, CA-26, CA-28)', () 
 
     expect(response.status).toBe(201);
     expect(response.body).toMatchObject({ plan: { slug: 'pro' } });
-    const row = await subscriptionOf(carla.id);
+    const row = await subscriptionRow(carla.id);
     expect(row).toMatchObject({ plan_id: PRO_ID, estado: 'vigente', plan_pendiente_id: null });
     expect(row.iniciado_en.getTime()).toBeGreaterThanOrEqual(before);
     expect(row.vence_en?.getTime()).toBe(row.iniciado_en.getTime() + PERIOD_MS);
-    await expect(auditsOf(carla.id)).resolves.toMatchObject([
-      { accion: 'subscription.renewed', atributos: { planSlug: 'pro' } },
-      { accion: 'subscription.read_only_exited' },
-      { accion: 'subscription.plan_change_applied', atributos: { planSlug: 'pro' } },
-    ]);
+    // Los tres eventos son de la misma transacción: comparten `ocurrido_en` y su orden no está definido.
+    const audits = await auditsOf(carla.id);
+    expect(audits).toHaveLength(3);
+    expect(audits).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          accion: 'subscription.renewed',
+          atributos: expect.objectContaining({ planSlug: 'pro' }),
+        }),
+        expect.objectContaining({ accion: 'subscription.read_only_exited' }),
+        { accion: 'subscription.plan_change_applied', atributos: { planSlug: 'pro' } },
+      ]),
+    );
   });
 
   it('CA-11: en Personal es 400 BILLING_NO_PAID_SUBSCRIPTION y no se cobra', async () => {
@@ -189,7 +136,7 @@ describe('POST /api/v1/billing/renew (spec 010 CA-8 a CA-11, CA-26, CA-28)', () 
 
     expect(response.status).toBe(400);
     expect(response.body).toMatchObject({ code: 'BILLING_NO_PAID_SUBSCRIPTION' });
-    expect(await countOf('transaccion', dana.id)).toBe(0);
+    expect(await counted('transaccion', dana.id)).toBe(0);
   });
 
   it('CA-26, RN-9: ya pagado por adelantado, o con un `vence_en` viejo, es 409 sin otro cobro', async () => {
@@ -205,7 +152,7 @@ describe('POST /api/v1/billing/renew (spec 010 CA-8 a CA-11, CA-26, CA-28)', () 
       expect(response.status).toBe(409);
       expect(response.body).toMatchObject({ code: 'BILLING_ALREADY_RENEWED' });
     }
-    expect(await countOf('transaccion', elena.id)).toBe(1);
+    expect(await counted('transaccion', elena.id)).toBe(1);
   });
 
   it.each([
@@ -221,8 +168,8 @@ describe('POST /api/v1/billing/renew (spec 010 CA-8 a CA-11, CA-26, CA-28)', () 
 
       expect(response.status).toBe(409);
       expect(response.body).toMatchObject({ code: 'BILLING_PLAN_CHANGE_PENDING' });
-      expect(await countOf('transaccion', fabio.id)).toBe(0);
-      await expect(subscriptionOf(fabio.id)).resolves.toMatchObject({ plan_pendiente_id: planId });
+      expect(await counted('transaccion', fabio.id)).toBe(0);
+      await expect(subscriptionRow(fabio.id)).resolves.toMatchObject({ plan_pendiente_id: planId });
     },
   );
 

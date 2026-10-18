@@ -16,6 +16,8 @@ export interface ISubscriptionRepository {
   insertPersonalIfAbsent(actor: Actor): Promise<void>;
   /** 009 T-03 (PD-80) y 010: plan y estado de la fila del actor, sin candado; `null` sin fila (Personal en los límites). */
   findStanding(actor: Actor): Promise<SubscriptionStanding | null>;
+  /** 010 CA-25: la fila del actor sin candado, para la vista; `null` sin fila. */
+  findCurrent(actor: Actor): Promise<Subscription | null>;
   /** La fila del actor con `FOR UPDATE` (plan §2): dos cobros simultáneos se esperan. Exige que exista. */
   lockCurrent(actor: Actor): Promise<Subscription>;
   /** Guarda plan, periodo, estado, renovación automática y cambio programado de la suscripción del actor. */

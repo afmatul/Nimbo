@@ -14,13 +14,15 @@ const INSERT_PERSONAL_SQL = `INSERT INTO suscripcion (usuario_id, plan_id)
   SELECT $1, p.id FROM plan p WHERE p.slug = $2
   ON CONFLICT ON CONSTRAINT uq_suscripcion_usuario DO NOTHING`;
 
+const CURRENT_SQL = `SELECT plan_id, iniciado_en, vence_en, estado, renovacion_automatica, plan_pendiente_id
+  FROM suscripcion WHERE usuario_id = $1`;
+
 /**
  * La fila del actor, bloqueada para el cobro. Sin `JOIN`: si otro cobro la cambia mientras se espera el candado,
  * Postgres vuelve a evaluar la fila nueva contra la fila de `plan` vieja, el `JOIN` deja de coincidir y la fila
  * desaparece del resultado. El `slug` se lee después, ya con el candado.
  */
-const LOCK_CURRENT_SQL = `SELECT plan_id, iniciado_en, vence_en, estado, renovacion_automatica, plan_pendiente_id
-  FROM suscripcion WHERE usuario_id = $1 FOR UPDATE`;
+const LOCK_CURRENT_SQL = `${CURRENT_SQL} FOR UPDATE`;
 
 const PLAN_SLUG_SQL = 'SELECT slug FROM plan WHERE id = $1';
 
@@ -65,13 +67,30 @@ export class TypeOrmSubscriptionRepository implements ISubscriptionRepository {
       .query(INSERT_PERSONAL_SQL, [actor.id, PERSONAL_PLAN_SLUG]);
   }
 
+  async findCurrent(actor: Actor): Promise<Subscription | null> {
+    const row = await this.currentRow(actor, CURRENT_SQL);
+    return row === undefined ? null : this.toSubscription(actor, row);
+  }
+
   async lockCurrent(actor: Actor): Promise<Subscription> {
-    const manager = this.context.requireActorScope(actor);
-    const [row] = (await manager.query(LOCK_CURRENT_SQL, [actor.id])) as CurrentRow[];
+    const row = await this.currentRow(actor, LOCK_CURRENT_SQL);
     if (row === undefined) {
       throw new Error('El cliente no tiene suscripción: el cobro la garantiza antes de bloquear.');
     }
-    const [plan] = (await manager.query(PLAN_SLUG_SQL, [row.plan_id])) as { slug: string }[];
+    return this.toSubscription(actor, row);
+  }
+
+  private async currentRow(actor: Actor, sql: string): Promise<CurrentRow | undefined> {
+    const rows = (await this.context
+      .requireActorScope(actor)
+      .query(sql, [actor.id])) as CurrentRow[];
+    return rows[0];
+  }
+
+  private async toSubscription(actor: Actor, row: CurrentRow): Promise<Subscription> {
+    const [plan] = (await this.context
+      .requireActorScope(actor)
+      .query(PLAN_SLUG_SQL, [row.plan_id])) as { slug: string }[];
     if (plan === undefined) throw new Error('La suscripción apunta a un plan que no existe.');
     return Subscription.rehydrate({
       userId: actor.id,

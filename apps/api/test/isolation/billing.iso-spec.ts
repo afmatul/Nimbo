@@ -80,7 +80,7 @@ describe('aislamiento de pagos y facturas (spec 009 CA-7, CA-8)', () => {
         ...composition.modules,
         PlanLimitsBindingModule,
         storage,
-        BillingHttpModule.forRoot(storage),
+        BillingHttpModule.forRoot(env, storage),
       ],
     });
     [a, b] = world.clients;

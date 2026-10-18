@@ -58,7 +58,7 @@
     y a plan de pago, auditoría); las int de contratación de la 009 siguen verdes con el limitador compartido.
   - Depende: T-01, T-02.
 
-- [ ] **T-04** Renovación automática encendida o apagada, cambio de plan y vista de la suscripción (API)
+- [x] **T-04** Renovación automática encendida o apagada, cambio de plan y vista de la suscripción (API)
   - Criterio: CA-6, CA-16, CA-17 (PD-86), CA-18, CA-19, CA-22, CA-27, CA-25 (datos de la vista).
   - Archivos: `packages/contracts/src/billing/subscription.ts` (`autoRenewRequestSchema`, `planChangeRequestSchema`),
     `packages/contracts/src/billing/history.ts` (`subscriptionViewSchema`, sin referencia); `billing/application/subscription-settings.service.ts`;
@@ -187,3 +187,13 @@ Antes de cada pantalla se leen sus capturas en `docs/design/capturas/`; las desv
   `paymentReceiptSchema` (también en `web/subscribe-api.ts`). CA-29 en la manual descarta el plan y lo audita;
   `RenewalOutcome.discardedPlan` queda para el correo de T-05 (`renewal-messages.ts`). Un rechazo no guarda el descarte
   (CA-9: no cambia nada).
+- **T-04** (2026-10-18): la vista es una función pura (`subscription-summary.ts`) que usan el historial y las respuestas de
+  los tres ajustes. DRY: la fila de `suscripcion` se lee con `ISubscriptionRepository.findCurrent` (mismo mapeo que
+  `lockCurrent`) y sale de `IBillingHistoryReader`, que suma `findPaymentMethod` (`PAYMENT_METHOD_SQL`, sin la referencia);
+  `requirePlan` y `recordSubscriptionEvent` se comparten con `RenewalCheckout`; las pruebas int usan
+  `test/int/billing/subscription-accounts.ts`. `SubscriptionSettingsService` vive en `BillingHttpModule` (el `worker` no
+  lo usa; el plan §2 lo ponía en el núcleo, YAGNI). `BillingHttpModule.forRoot(env, storage)` recibe
+  `RENEWAL_REMINDER_DAYS`. `nextCharge` es nulo con la renovación apagada, en solo lectura o con la bajada a Personal
+  (capturas `renovacion-desactivada` y `cambio-a-personal`: el texto lo arma la web). `pendingPlan` usa `planSchema`
+  (la confirmación de la bajada necesita su cuota). Los fixtures de `subscription-page.spec.tsx` (009) suman los campos
+  nuevos; la pantalla los usa en T-08.

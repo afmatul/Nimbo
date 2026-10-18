@@ -2,6 +2,7 @@ import { createActor, Role } from '../../../shared';
 import type { BillingHistoryService } from '../application/billing-history.service';
 import type { ManualRenewalService } from '../application/manual-renewal.service';
 import type { SubscribeOutcome } from '../application/subscription-checkout';
+import type { SubscriptionSettingsService } from '../application/subscription-settings.service';
 import type { SubscriptionService } from '../application/subscription.service';
 import { aPlan } from '../application/testing/plans';
 import { aSubscription } from '../application/testing/subscriptions';
@@ -51,6 +52,7 @@ const setup = (status: Payment['status']) => {
     { subscribe } as unknown as SubscriptionService,
     {} as BillingHistoryService,
     { renew } as unknown as ManualRenewalService,
+    {} as SubscriptionSettingsService,
   );
   return { controller, subscribe, renew };
 };
@@ -94,6 +96,7 @@ describe('SubscriptionController (spec 009 CA-3, CA-4)', () => {
       {} as SubscriptionService,
       { download } as unknown as BillingHistoryService,
       {} as ManualRenewalService,
+      {} as SubscriptionSettingsService,
     );
 
     await expect(controller.download(ANA, 'factura-1')).resolves.toEqual({

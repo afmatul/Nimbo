@@ -3,7 +3,7 @@ import type { BillingHistoryPayment, BillingHistoryResponse } from '@nimbo/contr
 import type { BillingHistory } from '../application/billing-history.service';
 import type { PaymentRecord } from '../application/ports/i-billing-history.reader.port';
 
-import { toPlanResponse } from './plan.response';
+import { toSubscriptionView } from './subscription-view.response';
 
 const toPayment = ({ invoice, createdAt, ...payment }: PaymentRecord): BillingHistoryPayment => ({
   ...payment,
@@ -24,13 +24,7 @@ export const toBillingHistoryResponse = ({
   billingDetails,
   payments,
 }: BillingHistory): BillingHistoryResponse => ({
-  subscription:
-    subscription === null
-      ? null
-      : {
-          plan: toPlanResponse(subscription.plan),
-          expiresAt: subscription.expiresAt?.toISOString() ?? null,
-        },
+  subscription: subscription === null ? null : toSubscriptionView(subscription),
   paymentMethod:
     paymentMethod === null ? null : { brand: paymentMethod.brand, last4: paymentMethod.last4 },
   billingDetails:
