@@ -21,7 +21,7 @@ export type RealtimeSocket = Socket<
   ConnectionData
 >;
 
-/** Servidor Socket.IO del canal (uno por proceso `api`, ADR-0028). */
+/** Servidor Socket.IO del canal (uno por proceso `api`, ADR-0030). */
 export type RealtimeServer = Server<
   DefaultEventsMap,
   DefaultEventsMap,

@@ -42,5 +42,5 @@ Sin cambios frente a la revisión anterior: CA-1…CA-14 ✅ con las mismas prue
 - `RealtimeChannel`: métodos cortos, una sola responsabilidad (mantener el canal abierto), `stop()` idempotente y pruebas de temporizadores falsos que comprueban que no queda nada pendiente.
 
 ## DF y pendientes
-- Sin DF nuevos. DF-65 y DF-58 como en la revisión anterior (falta redibujar T3, PD-46).
+- Sin DF nuevos. DF-76 y DF-58 como en la revisión anterior (falta redibujar T3, PD-46).
 - `pendientes.md`: PD-74 y PD-75 siguen vigentes; PD-69 (guarda intermitente de `redact-deep`) volvió a fallar en esta corrida. Si I-3 se pospone al cierre de fase, agrega su fila.

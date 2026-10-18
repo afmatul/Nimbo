@@ -170,7 +170,7 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
 
 ### T1 `shared` (spec 000; guards con 003)
 - Controlador: `HealthController` (live, ready) — `@Public()`, sin autenticación; nunca expone topología.
-- Guards globales (spec 003 D-2, DF-50): `JwtAuthGuard` y `RolesGuard` (`CanActivate`), registrados para toda la API y que **niegan por defecto**. `JwtAuthGuard` verifica el token con el puerto token→`Actor` que declara `shared` y que implementa `identity` (002 D-14; nombre en el plan 003) y construye el `Actor`; `RolesGuard` comprueba `@Roles(...)`. Decoradores `@Public()` y `@Roles(...)`: toda ruta declara uno de los dos (003 D-10). El handshake de T3 `realtime` usa el mismo puerto, que desde 015 devuelve también `expiresAt` en una verificación válida (DF-65).
+- Guards globales (spec 003 D-2, DF-50): `JwtAuthGuard` y `RolesGuard` (`CanActivate`), registrados para toda la API y que **niegan por defecto**. `JwtAuthGuard` verifica el token con el puerto token→`Actor` que declara `shared` y que implementa `identity` (002 D-14; nombre en el plan 003) y construye el `Actor`; `RolesGuard` comprueba `@Roles(...)`. Decoradores `@Public()` y `@Roles(...)`: toda ruta declara uno de los dos (003 D-10). El handshake de T3 `realtime` usa el mismo puerto, que desde 015 devuelve también `expiresAt` en una verificación válida (DF-76).
 - Persistencia con actor: `withActor()` fija `app.actor_id` y `app.actor_role` por transacción para RLS (ADR-0005, 003 D-7).
 - Servicio: `HealthService` (`ready()`: ejecuta los `IHealthIndicator` en paralelo con tiempo límite; agrega `up`/`down`).
 - Puertos → implementaciones:
@@ -204,8 +204,8 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
 - Presentación: `AuditController` con `GET /audit/my-events` (DF-15) en `AuditHttpModule`, que carga solo `api`; el `worker` carga `AuditModule` sin rutas. `LogAuditLogger` (adaptador provisional de 005) se retiró con 004 (DF-64).
 - Tabla: `evento_auditoria` (004).
 
-### T3 `realtime` (spec 015; DF-65 recoge lo que el diagrama no trae)
-- Único gateway Socket.IO (ADR-0028, sin adaptador de Redis: PD-74): handshake autenticado con el puerto token→`Actor` de `shared` (sin depender de `identity`), salas por usuario (`user:<id>`) y por documento (`doc:<id>`). No conoce permisos (ADR-0010): el módulo dueño del documento decide quién entra.
+### T3 `realtime` (spec 015; DF-76 recoge lo que el diagrama no trae)
+- Único gateway Socket.IO (ADR-0030, sin adaptador de Redis: PD-74): handshake autenticado con el puerto token→`Actor` de `shared` (sin depender de `identity`), salas por usuario (`user:<id>`) y por documento (`doc:<id>`). No conoce permisos (ADR-0010): el módulo dueño del documento decide quién entra.
 - Presentación: `RealtimeGateway` (registra el *middleware* de *handshake*, une a la sala del usuario, programa el cierre y responde `room.join` siempre con `SHARED_FORBIDDEN`). Sin `PresenceGateway` (DF-30).
 - Aplicación: `ConnectionAdmission` (límite de intentos por origen con `IRateLimiter` → verificación del token → solo `CLIENT`; produce `Actor` y `expiresAt`) y `RealtimeConfig`.
 - Puertos de frontera que declara y exporta en su `index.ts`, segregados por consumidor (ISP):

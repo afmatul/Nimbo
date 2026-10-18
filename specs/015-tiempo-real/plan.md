@@ -142,11 +142,11 @@ Integración con Testcontainers (Redis real para `RedisRateLimiter`), `TestAcces
   cambia (se verifica en staging, PD-74).
 - **Tormenta de reconexiones** tras reiniciar el `api`: el cliente usa el retraso exponencial por defecto de
   `socket.io-client`; el límite cuenta todos los intentos por origen (60/min; suficiente para 25 usuarios, ajustable por entorno).
-- **Desviaciones de los diagramas**: DF-65 nuevo (puertos, evento y `expiresAt`; el diagrama T3 no los trae). DF-30 y PD-03
+- **Desviaciones de los diagramas**: DF-76 nuevo (puertos, evento y `expiresAt`; el diagrama T3 no los trae). DF-30 y PD-03
   siguen aplicando: sin `PresenceGateway` propio.
 - **Pendientes que deja fuera**: PD-74 (adaptador de Redis y verificación del origen tras el proxy). Presencia, límite de
   editores y avisos de guardado: 016.
-- **ADR requerido**: **ADR-0028** «Socket.IO en el `api` sin adaptador de Redis» (redactado, `Propuesto`; dependencia
+- **ADR requerido**: **ADR-0030** «Socket.IO en el `api` sin adaptador de Redis» (redactado, `Propuesto`; dependencia
   significativa nueva, no cubierta por ADR-0010). Paquetes fijados a versión exacta: `@nestjs/websockets` y
   `@nestjs/platform-socket.io` 11.2.5 (con `socket.io` 4.x) en `api`; `socket.io-client` 4.x en `web`. Debe aceptarse
   antes de `/tasks`. `@nestjs/event-emitter` ya está (ADR-0019).
@@ -159,6 +159,6 @@ Integración con Testcontainers (Redis real para `RedisRateLimiter`), `TestAcces
   `realtime` duplicaría el parseo del JWT y rompería el puerto); `realtime.document-left` con `EventEmitter2` directo en
   el adaptador (el puerto aislante de ADR-0019 ya existe en `identity`; son dos usos, el tercero con 016 extrae
   `IDomainEventPublisher`); 429 como `connect_error` con `data.status` aceptable; cliente web mínimo permitido por
-  CA-4/CA-11. Condiciones: ADR-0028 aceptado antes de `/tasks`; DF-65 aceptado (T3 y `design-model.md` se actualizan en
+  CA-4/CA-11. Condiciones: ADR-0030 aceptado antes de `/tasks`; DF-76 aceptado (T3 y `design-model.md` se actualizan en
   la implementación, PD-46).
-- Adrián: **Aprobado** — 2026-10-15 (incluye ADR-0028 y DF-65 aceptados, y los cambios de CA-2, CA-14 y RN-8).
+- Adrián: **Aprobado** — 2026-10-15 (incluye ADR-0030 y DF-76 aceptados, y los cambios de CA-2, CA-14 y RN-8).

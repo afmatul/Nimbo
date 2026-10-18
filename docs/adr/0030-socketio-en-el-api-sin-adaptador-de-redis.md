@@ -1,11 +1,11 @@
-# ADR-0028 — Socket.IO en el `api` con los paquetes oficiales de Nest y sin adaptador de Redis
+# ADR-0030 — Socket.IO en el `api` con los paquetes oficiales de Nest y sin adaptador de Redis
 
 | Campo | Valor |
 |---|---|
 | Estado | Aceptado (2026-10-15, Adrián) |
 | Fecha | 2026-10-15 |
 | Decisores | Adrián (architect), equipo Nimbo |
-| Specs relacionadas | 015 (plan §2 y §7), 016 (consumidora), ADR-0010 (gateway único), ADR-0019 (evento de salida), PD-74, DF-65 |
+| Specs relacionadas | 015 (plan §2 y §7), 016 (consumidora), ADR-0010 (gateway único), ADR-0019 (evento de salida), PD-74, DF-76 |
 
 ## Contexto
 

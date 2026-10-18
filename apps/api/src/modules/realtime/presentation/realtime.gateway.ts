@@ -54,7 +54,7 @@ export interface RoomJoinDenied {
 const ROOM_JOIN_DENIED: RoomJoinDenied = { error: { code: new InsufficientRoleError().code } };
 
 /**
- * Único gateway del canal en vivo (ADR-0010, ADR-0028). `afterInit` registra el *middleware* de *handshake*, que
+ * Único gateway del canal en vivo (ADR-0010, ADR-0030). `afterInit` registra el *middleware* de *handshake*, que
  * delega la decisión en `ConnectionAdmission` (CA-2, CA-3, CA-14); la conexión admitida se une sola a su sala de
  * usuario (CA-1). Bitácoras (CA-13): `realtime.connected` y `realtime.disconnected` aquí, con el `correlationId` de la
  * conexión; `realtime.rejected` la registra `ConnectionAdmission` (y el adaptador, si el `Origin` no está listado).
