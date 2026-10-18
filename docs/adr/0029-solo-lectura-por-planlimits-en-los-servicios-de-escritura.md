@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Propuesto (2026-10-16); falta el acuerdo del equipo (Adrián). **Enmienda** `architecture.md` §7.5 y la nota de DF-51 / ADR-0022 sobre el contenido de `PlanLimits` |
+| Estado | Propuesto (2026-10-16; ajustado el 2026-10-18 por la auditoría de Adrián en el PR #63: rutas de la regla 3 y nombre de `PlanLimits`); falta el acuerdo del equipo (Adrián). **Enmienda** `architecture.md` §7.5 y la nota de DF-51 / ADR-0022 sobre el contenido de `PlanLimits` |
 | Fecha | 2026-10-16 |
 | Decisores | `architect` (revisión del plan 010), Juan Marcos (dueño de `billing`), Adrián (dueño de `storage`, aprueba) |
 | Specs relacionadas | 010 (RF-23, CA-12, CA-13, RN-6, RN-11); heredan la regla 012, 013, 016 y 021 |
@@ -57,8 +57,15 @@ justificación: los consume `storage` mismo. Juan Marcos acordó en la spec 010 
    Nest) ofrece `assertWritable(actor)` y la función pura `assertWritableLimits(limits)` para los servicios que ya tienen los
    límites. Nadie más interpreta `readOnly`.
 3. La comprobación va en la capa de aplicación, antes de la transacción del servicio, nunca en el controlador. Una prueba de
-   integración recorre **todas** las rutas de escritura de `storage` (las diez de la 010) y una lista explícita de las
-   permitidas (papelera, purga, vaciar, accesos rápidos, `resume` y `cancel`).
+   integración recorre **todas** las rutas de escritura de `storage` (las diez de la 010: `POST /uploads`,
+   `POST /uploads/:id/complete`, `POST /folders`, `PATCH /folders/:id`, `POST /folders/:id/move`, `PATCH /files/:id`,
+   `POST /files/:id/move`, `POST /files/:id/versions/:versionId/restore`, `POST /trash/files/:id/restore` y
+   `POST /trash/folders/:id/restore`) y una lista explícita de las permitidas, incluidos los `POST` que no escriben
+   contenido: papelera (`DELETE /files/:id`, `DELETE /folders/:id`), purga (`DELETE /trash/files/:id`,
+   `DELETE /trash/folders/:id`), vaciar (`DELETE /trash`), accesos rápidos (`PUT` y `DELETE /quick-access/pins/…`,
+   `POST /quick-access/recents/…`), descargas (`POST /files/:id/download-url` y
+   `POST /files/:id/versions/:versionId/download-url`), `resume` (`POST /uploads/:id/resume`) y `cancel`
+   (`DELETE /uploads/:id`). Una ruta de escritura sin clasificar hace fallar la prueba.
 4. **RN-11 (propietario del archivo) no cabe en `limitsFor(actor)`**: cuando 012 y 016 permitan que un editor escriba en nodos de
    otra cuenta, deberán consultar el estado del **propietario** sin fabricar un actor ajeno. Esa forma (método nuevo del puerto
    o función de lectura bajo ADR-0021) se decide en el plan de 012; hasta entonces solo escribe el dueño y `actor` coincide con
@@ -70,7 +77,11 @@ justificación: los consume `storage` mismo. Juan Marcos acordó en la spec 010 
 - Positivas: sin puerto, arista ni dependencia nuevos; el DAG no cambia; la regla cubre `api` y `worker`; los módulos que
   heredan RN-6 (`sharing`, `editing`, `optimizer`) ya dependen de `storage` y usan el mismo campo y el mismo colaborador.
 - Negativas / deuda aceptada: `PlanLimits` mezcla límites y estado de la cuenta; las operaciones de carpeta hacen una lectura
-  más; la cobertura depende de la prueba que recorre rutas. Documentos a actualizar al aceptar:
+  más; la cobertura depende de la prueba que recorre rutas.
+- **El nombre `PlanLimits` deja de describir lo que contiene** (auditoría de Adrián, PR #63, M-5). La 010 no lo renombra
+  (tocaría todo `storage` y sus pruebas en un PR ya grande): se anota en DF-70 y se propone renombrarlo (p. ej.,
+  `StorageConditions`, con su puerto y su adaptador) en el refactor de PD-63.
+- Documentos a actualizar al aceptar:
   - `architecture.md` §7.5: «`RenewalScheduler` (cola `subscription-renewal` con `upsertJobScheduler`, en el `worker`) lista con
     funciones de mantenimiento (ADR-0021) y renueva o vence cada cuenta como su dueño … La solo lectura la comprueban los
     servicios de escritura de cada módulo con `PlanLimits.readOnly` (ADR-0029); no hay guard global.»
