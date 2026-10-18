@@ -20,6 +20,7 @@ import type { ITransactionRunner } from '../../src/shared';
 import { buildTestEnv, createTestApp } from '../int/setup/test-app';
 import type { TestApp } from '../int/setup/test-app';
 import { connectAsOwner, requiredEnv } from '../support/database-urls';
+import { clearMailQueue } from '../support/mail-queue';
 
 import { createIsolationWorld } from './setup/isolation-world';
 import type { InternalRole, IsolationWorld, WorldAccount } from './setup/isolation-world';
@@ -92,6 +93,7 @@ describe('aislamiento de pagos y facturas (spec 009 CA-7, CA-8)', () => {
 
   afterAll(async () => {
     await testApp?.close();
+    await clearMailQueue();
     const owner = await connectAsOwner();
     const ids = world?.clients.map((account) => account.id) ?? [];
     await owner.query('DELETE FROM factura WHERE usuario_id = ANY($1)', [ids]);
