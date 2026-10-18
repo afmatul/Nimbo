@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Borrador (corregida tras la auditoría de Adrián en el PR #63; pendiente de Adrián) |
+| Estado | En curso (2026-10-18; avance autorizado por Adrián antes de aprobar el plan, plan §8) |
 | Dueño | Juan Marcos |
 | Fase | 2 |
 | Requisitos | RF-22, RF-23, RF-24 (y RF-07 y RNF-05 de forma transversal) |
