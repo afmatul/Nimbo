@@ -1,4 +1,11 @@
-import { subscriptionViewSchema, type SubscriptionView } from '@nimbo/contracts';
+import {
+  paymentReceiptSchema,
+  renewRequestSchema,
+  subscriptionViewSchema,
+  type RenewRequest,
+  type RenewResponse,
+  type SubscriptionView,
+} from '@nimbo/contracts';
 
 import type { AuthFetch } from '../identity/session/auth-fetch';
 
@@ -6,6 +13,7 @@ import { billingEndpoint } from './billing-endpoint';
 
 const AUTO_RENEW_PATH = '/billing/subscription/auto-renew';
 const PLAN_CHANGE_PATH = '/billing/subscription/plan-change';
+const RENEW_PATH = '/billing/renew';
 
 const send = async (
   apiPublicUrl: string,
@@ -43,3 +51,20 @@ export const cancelPlanChange = (
   authFetch: AuthFetch,
 ): Promise<SubscriptionView> =>
   send(apiPublicUrl, authFetch, { path: PLAN_CHANGE_PATH, method: 'DELETE' });
+
+/**
+ * `POST /billing/renew` (spec 010 CA-8 a CA-11, CA-26, CA-28): el mismo recibo que contratar. Un `402`, `409`, `422` o
+ * `429` llega como `ApiClientError` con su `code`.
+ */
+export async function renew(
+  apiPublicUrl: string,
+  authFetch: AuthFetch,
+  request: RenewRequest,
+): Promise<RenewResponse> {
+  const raw = await authFetch(billingEndpoint(apiPublicUrl, RENEW_PATH), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(renewRequestSchema.parse(request)),
+  });
+  return paymentReceiptSchema.parse(raw);
+}

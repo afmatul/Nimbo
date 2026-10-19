@@ -25,8 +25,33 @@ function PlanLines({ plan }: { readonly plan: Plan }): JSX.Element {
   );
 }
 
-/** Resumen del plan que se contrata (mockup de pago, spec 009 RN-2): límites y desglose con el IVA incluido. */
-export function PaymentSummary({ plan }: { readonly plan: Plan }): JSX.Element {
+/** El periodo que paga la renovación (010 CA-8, CA-10): fechas y desde cuándo corre. */
+export interface PeriodNote {
+  readonly range: string;
+  readonly note: string;
+}
+
+function PeriodBlock({ period }: { readonly period: PeriodNote }): JSX.Element {
+  return (
+    <div className="rounded-md border-l-4 border-primary bg-muted px-3 py-2">
+      <p className="text-xs font-semibold text-secondary-foreground">Periodo nuevo</p>
+      <p className="text-sm font-semibold text-foreground">{period.range}</p>
+      <p className="text-xs text-secondary-foreground">{period.note}</p>
+    </div>
+  );
+}
+
+/**
+ * Resumen del plan que se paga (mockups de pago; 009 RN-2): límites, el periodo nuevo si es una renovación (010) y el
+ * desglose con el IVA incluido.
+ */
+export function PaymentSummary({
+  plan,
+  period,
+}: {
+  readonly plan: Plan;
+  readonly period?: PeriodNote;
+}): JSX.Element {
   const { subtotalCents, vatCents, totalCents } = breakdown(plan.priceCents);
   return (
     <Card className="flex flex-col gap-4 p-5" aria-labelledby="resumen-pago">
@@ -37,6 +62,7 @@ export function PaymentSummary({ plan }: { readonly plan: Plan }): JSX.Element {
         Resumen
       </p>
       <PlanLines plan={plan} />
+      {period === undefined ? null : <PeriodBlock period={period} />}
       <dl className="flex flex-col gap-1 border-t border-border pt-3 text-sm">
         <AmountRow label="Subtotal" cents={subtotalCents} />
         <AmountRow label="IVA (12 %)" cents={vatCents} />
