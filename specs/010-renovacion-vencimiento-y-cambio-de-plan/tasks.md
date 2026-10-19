@@ -110,7 +110,7 @@
 `358d87c`: estados de `billing/suscripcion/`, confirmación del cambio de plan con el aviso de versiones, variante de renovación del pago).
 Antes de cada pantalla se leen sus capturas en `docs/design/capturas/`; las desviaciones van a «Notas del developer».
 
-- [ ] **T-08** Pantalla «Plan y facturación» con sus cinco estados
+- [x] **T-08** Pantalla «Plan y facturación» con sus cinco estados
   - Criterio: CA-25, CA-6 (confirmación al apagar), CA-19, CA-28 (sin «Renovar ahora» con cualquier cambio programado), CA-16, CA-22
     (actividad en español); textos de spec §6.
   - Archivos: `apps/web/src/lib/error-catalog.ts` (cinco códigos de `billing`); `features/billing/subscription-api.ts`;
@@ -220,3 +220,11 @@ Antes de cada pantalla se leen sus capturas en `docs/design/capturas/`; las desv
   `20261019100100` y `20261019100200`, porque la 016 ya usa `20261018100000` y `20261018100100` (mismo timestamp, orden
   ambiguo). `PlanLimits` conserva el `maxEditors` de la 016 (DF-73) junto a `readOnly`; el catálogo de auditoría, las nueve
   acciones de la 010 junto a las tres de la 016.
+- **T-08** (2026-10-18, rama `feat/010b-renovacion-web`, sobre la 010a sin integrar): `ReadOnlyBanner`
+  (`components/nimbo/read-only-banner.tsx`) se crea aquí y no en T-10, porque el estado «vencida» ya lo usa; recibe título y
+  texto para que T-11 lo reutilice en el explorador. `Switch` es propio (`components/ui/switch.tsx`, `role="switch"`), sin
+  `@radix-ui/react-switch` (sin dependencia ni ADR). La confirmación de apagar usa `AlertDialog` con botón primario y no
+  `ConfirmDestructiveDialog` (apagar no es destructivo, como en el mockup). Las etiquetas de la actividad son frases sin
+  plan ni tarjeta: la respuesta de auditoría solo expone `itemCount`, `sizeBytes`, `note` y `trigger` (`manual` o
+  `scheduled`). Desviaciones del mockup: la ayuda del interruptor apagado nombra la tarjeta en texto («Visa ···· 4242») y
+  no con el distintivo; «Método» sale de la tarjeta del plan (la tarjeta ya está en «Próximo cobro» y «Método de pago»).
