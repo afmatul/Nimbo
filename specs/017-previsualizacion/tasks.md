@@ -5,11 +5,11 @@
 > 11 tareas principales verticales; T-08a/b y T-09a/b son subtareas internas, no tareas principales nuevas. Un commit por tarea (`feat(storage): … [017 T-xx]`); toda tarea de lógica empieza por su prueba.
 > Abel es dueño de `storage/preview`; los cambios fuera de esa frontera se marcan como habilitación de Adrián/compartida y no se asumen como autorizados.
 
-## Estado vigente (2026-10-18)
+## Estado vigente (2026-10-19)
 
-- Spec 017 permanece **En curso**. T-01/T-02/T-03/T-05/T-06/T-07/T-08 completas; cierre y evidencia de T-06/T-07 en [su registro final](#cierre-técnico-t-06-y-t-07-2026-10-18) y de T-08 en [su cierre técnico](#cierre-técnico-t-08-2026-10-18).
+- Spec 017 permanece **En curso**. T-01/T-02/T-03/T-05/T-06/T-07/T-08/T-09 completas; cierre y evidencia de T-06/T-07 en [su registro final](#cierre-técnico-t-06-y-t-07-2026-10-18), de T-08 en [su cierre técnico](#cierre-técnico-t-08-2026-10-18) y de T-09 en [su cierre técnico](#cierre-técnico-t-09-2026-10-19).
 - T-04 permanece `[ ]` por evidencia efectiva en navegador real, consolidada en T-10 y la demo T-11; no presenta un bloqueo abierto de Redis/CORS en backend/Node.
-- T-09, T-10 y T-11 permanecen `[ ]`, con sus requisitos y dependencias originales.
+- T-10 y T-11 permanecen `[ ]`, con sus requisitos y dependencias originales.
 
 ### T-04 — resumen vigente
 
@@ -57,9 +57,9 @@ Redis detenido, rechazo acotado y recuperación real ya están acreditados; tamb
   - [x] **T-08a:** transporte por rangos mediante el helper único de T-07, worker local de la misma versión y una página en canvas, sin scripting ni recursos remotos. El adaptador PDF.js no repite GET/credenciales/validación de rango/cancelación; sin viewer, acciones, formularios interactivos ni XFA; errores de transporte saneados y liberación. Pruebas de consumo del helper y página real primero. — CA: CA-1, CA-2, CA-11 — Archivos: `apps/web/src/features/storage/preview/components/PdfPreview.tsx`, `readers/{pdfjs-adapter,pdf-range-transport}.ts`, `workers/pdfjs.worker.ts`, specs/fixtures — Depende: T-01, T-06, T-07
   - [x] **T-08b:** resto de páginas navegables bajo demanda, capa de texto y bloques accesibles, PDF escaneado visible sin OCR, contraseña y corrupción. `onPassword` informa protegido sin pedir contraseña; cancelar/liberar y tratar fallo de memoria con causa saneada y Descargar, sin límite distinto de 005. Pruebas multipágina, escaneado, protegido/corrupto y con JavaScript, sin depender de mocks para la garantía browser. — CA: CA-1, CA-2, CA-9 — Archivos: `components/PdfPreview.tsx`, `readers/{pdfjs-adapter,pdf-text-reader}.ts`, specs/fixtures, bajo `apps/web/src/features/storage/preview/` — Depende: T-08a
 
-- [ ] **T-09** **(Abel; XLSX/PPTX, una tarea principal con dos subtareas)** Lector OOXML incremental con zip.js + saxes en worker propio; ambas partes deben quedar completas. — CA: CA-1, CA-2, CA-9, CA-11 — Depende: T-01, T-06, T-07
-  - [ ] **T-09a:** paquete ZIP por rangos usando el helper único de T-07, CRC y SAX secuencial UTF-8/UTF-16, namespaces Strict/Transitional y relaciones OPC internas. Rechazar DTD, entidades no admitidas, rutas/partes ambiguas y recursos externos. El fetch de zip.js consume el helper sin repetir su política; cancelar/liberar worker y buffers. Pruebas de paquete/CRC/XML hostil y consumo del helper primero. — CA: CA-2, CA-11 — Archivos: `apps/web/src/features/storage/preview/readers/{ooxml-package-reader,ooxml-xml-reader,ooxml-relations}.ts`, `workers/{ooxml.worker,ooxml-protocol}.ts`, specs/fixtures — Depende: T-01, T-06, T-07
-  - [ ] **T-09b:** proyección de todas las hojas con valores cacheados y texto visible de todas las diapositivas en orden, más protección y corrupción. No recalcular fórmulas; sin cache → «Sin valor guardado»; sin animaciones/notas/recursos activos. Liberar al cambiar unidad; fallo de memoria con causa saneada y Descargar, sin límite nuevo. Pruebas de proyecciones y estados primero. — CA: CA-1, CA-2, CA-9 — Archivos: `apps/web/src/features/storage/preview/components/{SpreadsheetPreview,PresentationPreview}.tsx`, `readers/{xlsx-reader,pptx-reader}.ts`, `readers/preview-readers.spec.ts`, fixtures — Depende: T-09a
+- [x] **T-09** **(Abel; XLSX/PPTX, una tarea principal con dos subtareas)** Lector OOXML incremental con zip.js + saxes en worker propio; ambas partes deben quedar completas. — CA: CA-1, CA-2, CA-9, CA-11 — Depende: T-01, T-06, T-07
+  - [x] **T-09a:** paquete ZIP por rangos usando el helper único de T-07, CRC y SAX secuencial UTF-8/UTF-16, namespaces Strict/Transitional y relaciones OPC internas. Rechazar DTD, entidades no admitidas, rutas/partes ambiguas y recursos externos. El fetch de zip.js consume el helper sin repetir su política; cancelar/liberar worker y buffers. Pruebas de paquete/CRC/XML hostil y consumo del helper primero. — CA: CA-2, CA-11 — Archivos: `apps/web/src/features/storage/preview/readers/{ooxml-package-reader,ooxml-xml-reader,ooxml-relations}.ts`, `workers/{ooxml.worker,ooxml-protocol}.ts`, specs/fixtures — Depende: T-01, T-06, T-07
+  - [x] **T-09b:** proyección de todas las hojas con valores cacheados y texto visible de todas las diapositivas en orden, más protección y corrupción. No recalcular fórmulas; sin cache → «Sin valor guardado»; sin animaciones/notas/recursos activos. Liberar al cambiar unidad; fallo de memoria con causa saneada y Descargar, sin límite nuevo. Pruebas de proyecciones y estados primero. — CA: CA-1, CA-2, CA-9 — Archivos: `apps/web/src/features/storage/preview/components/{SpreadsheetPreview,PresentationPreview}.tsx`, `readers/{xlsx-reader,pptx-reader}.ts`, `readers/preview-readers.spec.ts`, fixtures — Depende: T-09a
 
 - [ ] **T-10** Integración browser, accesibilidad y regresión. Recorrido automatizado con formatos admitidos/excluidos, todas las páginas/hojas/diapositivas, vuelta a `file.folderId`/raíz y foco en control de fila o encabezado, cargas concurrentes, error + Reintentar/Descargar, URL expirada, logout/acceso revocado, CORS/rangos/cookies reales y axe a 360/1440. Confirmar helper único para PDF/ZIP/imagen y que fallo de preview no bloquea navegación/carga/descarga ni agrega control comercial. Ejecutar `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:int`, `pnpm test:isolation`, `pnpm test:e2e`, `pnpm env:check`; si PD-41 sigue siendo marcador, no reportar E2E como acreditado. — CA: CA-1 a CA-12 — Archivos: `e2e/storage-preview.e2e.ts`, suites de T-04/T-06/T-07/T-08a/b/T-09a/b y regresiones existentes — Depende: T-04, T-05, T-07, T-08b, T-09b
 
@@ -95,7 +95,7 @@ CA sin cubrir: ninguno.
 
 ## Lectura de la evidencia histórica
 
-Los bloques fechados del 2026-10-09 al 2026-10-16 que siguen conservan sus resultados, RED/GREEN, límites y decisiones originales. Sus expresiones «actual», «vigente», «pendiente» o «sin commit» describen exclusivamente aquella ronda. No sustituyen el [estado vigente del 2026-10-18](#estado-vigente-2026-10-18) ni el [cierre técnico final](#cierre-técnico-t-06-y-t-07-2026-10-18).
+Los bloques fechados del 2026-10-09 al 2026-10-16 que siguen conservan sus resultados, RED/GREEN, límites y decisiones originales. Sus expresiones «actual», «vigente», «pendiente» o «sin commit» describen exclusivamente aquella ronda. No sustituyen el [estado vigente del 2026-10-19](#estado-vigente-2026-10-19) ni el [cierre técnico final](#cierre-técnico-t-06-y-t-07-2026-10-18).
 
 En particular, los bloqueos históricos Redis/CORS fueron resueltos en las rondas posteriores aquí registradas. Las afirmaciones de ausencia de `object-bytes`, shell sin lectores y T-06/T-07 pendientes quedaron superadas por los commits del cierre técnico. Se conserva la historia sin presentar esos pendientes como abiertos hoy.
 
@@ -659,3 +659,84 @@ La suite real utiliza `@napi-rs/canvas`, actualmente disponible como dependencia
 ### Estado
 
 **T-08 queda `[x]`**, con T-08a y T-08b `[x]`. La evidencia en navegador real (GET/Range, CORS, ausencia efectiva de Cookie/Bearer/cabeceras Nimbo, origen de objetos, axe 360/1440 y E2E) queda para T-10/T-11. T-04 permanece `[ ]`; T-06 y T-07 permanecen `[x]`; T-09, T-10 y T-11 permanecen `[ ]`. La spec permanece **En curso**.
+
+> Estado de la ronda del cierre T-08; T-09 quedó cerrada después, en el bloque siguiente.
+
+## Cierre técnico T-09 (2026-10-19)
+
+Commits, todos bajo `apps/web/src/features/storage/preview/` salvo el registro D1 en `plan.md`; sin cambios en `package.json`, `pnpm-lock.yaml`, contracts, API ni otras fronteras:
+
+| Subtarea | Commit | Mensaje |
+|---|---|---|
+| T-09a | `2ca51dd1` | `feat(storage): implementar base OOXML segura por rangos [017 T-09a]` |
+| T-09a | `40fd1420` | `test(storage): validar cancelación OOXML y registrar D1 [017 T-09a]` |
+| T-09b | `297fb873` | `feat(storage): implementar lector XLSX por ventanas [017 T-09b]` |
+| T-09b | `06ae2fa1` | `fix(storage): corregir fechas y estilos XLSX [017 T-09b]` |
+| T-09b | `ad75c78a` | `feat(storage): se implementó lector PPTX por diapositivas [017 T-09b]` |
+| T-09b | `4c85f1bf` | `feat(storage): se integró la previsualización de XLSX y PPTX [017 T-09b]` |
+
+### T-09a — paquete, XML y relaciones
+
+- `readers/ooxml-range-reader.ts`: subclase de la API pública `Reader` de zip.js (D1); cada rango, incluido `bytes=0-0` para el tamaño, pasa por `fetchObjectBytes`, sin `HttpRangeReader`, HEAD ni fetch propio. `readers/ooxml-package-reader.ts`: `getData` con `checkCrc32: true`; errores clasificados solo por constantes publicadas de zip.js (cifrado → `protected`, `ERR_CODEC_OUT_OF_MEMORY` → `memory`, formato/CRC → `corrupt`, lo desconocido → `unavailable`).
+- `readers/ooxml-xml-reader.ts`: SAX secuencial UTF-8/UTF-16 (BOM o patrón `<?` declarado, ECMA-376-2 §8.1.4), declaración coherente con lo detectado; DTD, entidades internas o externas rechazadas, sin fetch. Namespaces Strict y Transitional.
+- `readers/ooxml-relations.ts`: relaciones OPC internas, rutas normalizadas y partes ambiguas o ausentes como `corrupt`; un target externo nunca se sigue. `readRelationships` acepta una `AbortSignal` opcional (corrección del bloque PPTX) para cancelar los GET de `.rels` de la unidad.
+- `workers/{ooxml.worker,ooxml-session,ooxml-protocol}.ts` + `readers/{ooxml-worker-client,ooxml-runtime}.ts`: worker local con `configure({ useWebWorkers: false })`, sesiones numeradas, una unidad a la vez, cancelación y descarte de obsoletos; del worker solo salen sesión, proyecciones estrechas y razones cerradas, nunca URL, `Error`, XML ni bytes.
+- Un OOXML cifrado por Office es un contenedor CFB, no ZIP: el detector de 005 lo rechaza en la carga por firma (`magic-bytes.detector.ts`), por lo que no llega al visor como xlsx/pptx. Las restricciones sin contraseña (protección de hoja/libro) no se etiquetan como protegido.
+
+### T-09b — proyecciones XLSX y PPTX
+
+- **XLSX** (`readers/{xlsx-reader,xlsx-sheet,xlsx-format}.ts`): hojas en el orden de `<sheets>`, tipos worksheet/chartsheet/dialogsheet/macrosheet y estados visible/hidden/veryHidden. Ventanas de filas por `offset`/`nextOffset` (unidad de paginación, no límite); shared strings solo las necesarias por relectura; valores cacheados `<v>` ya formateados (fecha 1900/1904, porcentaje, número, booleano, error). Fórmula sin cache → «Sin valor guardado» y `missingCache` por ventana, sin evaluar ni inventar cero.
+- **PPTX** (`readers/{pptx-reader,pptx-text,pptx-xml,pptx-model}.ts`): diapositivas en el orden de `p:sldIdLst`, ocultas por `p:sld/@show` y navegables; texto por runs, párrafos, `a:br` y `a:fld` solo con su texto cacheado; grupos (también anidados), tablas, shapes ocultas excluidas y placeholders; capas master → layout → diapositiva según `showMasterSp`, sin repetir el texto de ejemplo de los placeholders de plantilla. `mc:AlternateContent` solo por `Fallback`. Relación estructural externa → `corrupt`; hyperlink/media externos se ignoran; cero fetch externo. Notas, comentarios, imágenes, audio, video, OLE, timing, transiciones, charts y SmartArt no se leen.
+- **UI** (`components/{SpreadsheetPreview,PresentationPreview,ReaderNavigation}.tsx`, `hooks/use-ooxml-reading.ts`): un worker por lectura mediante `startOoxmlWorker`/`connectOoxmlWorker`; la UI consume solo metadata y la proyección vigente (`null` mientras se lee: nunca una ventana o diapositiva anterior). XLSX con pestañas (`tablist`, flechas, Inicio, Fin), «Oculta»/«Muy oculta» en texto, cuadrícula con fila y columna reales en región desplazable con foco, «Filas anteriores/siguientes» y nota de fórmulas sin cache por ventana. PPTX con Anterior/Siguiente, «Diapositiva i de n», «Oculta», bloques de texto y tablas en orden y vacío discreto por diapositiva. `PreviewReader` monta ambos y `use-preview-content` los gestiona como lectores (carga, espera >2 s, ready, fallo).
+- Ciclo de vida: unmount, cambio de archivo y Reintentar abortan y terminan el worker; Reintentar espera ese cleanup antes de reemitir; sin callbacks tardíos. Fallos por el shell existente (CA-2) con Descargar y Reintentar; Descargar sigue el flujo 005. Memoria: el OOM del códec de zip.js llega como `memory`; cualquier otro error no clasificado del worker llega como `unavailable`. Ambos se presentan con la misma causa saneada del catálogo y Descargar primero, sin límite nuevo.
+- `ReaderNavigation` se extrajo de `PdfPreview` (tercer uso: páginas, ventanas y diapositivas); el DOM y las pruebas de PDF se conservan, con una regresión nueva para PDF de 0 páginas.
+
+### Decisiones y limitaciones aprobadas
+
+- PPTX se navega una diapositiva a la vez; no se busca fidelidad gráfica completa de PowerPoint (coordenadas, temas, fuentes, imágenes, animaciones). Charts y SmartArt quedan fuera de 017.
+- XLSX no recalcula fórmulas; una fórmula sin valor cacheado se informa como «Sin valor guardado».
+- XLSX no materializa columnas sin datos: cada encabezado conserva su columna real y, si hay saltos, se avisa en texto («Solo se muestran las columnas con datos en estas filas; cada encabezado indica su columna real.»).
+- chartsheet/dialogsheet/macrosheet se presentan como «Esta hoja no tiene celdas para mostrar.», sin dibujar gráficos ni ejecutar nada.
+- Filas con número repetido (archivo malformado) se pintan en el orden recibido. Dos celdas de una misma fila con la misma columna muestran la última; no bloquea el cierre y no se modificó el reader por ese caso.
+- DOCX sigue excluido (spec §7).
+
+### Precisiones respecto del plan y de la tarea
+
+- `plan.md` §3 dice «orden de hojas por relaciones» y «orden de relaciones de presentación». La implementación usa el orden de `<sheets>` y de `p:sldIdLst`, resueltos mediante sus relaciones; el orden de las entradas `.rels` y el del ZIP no se usan. Es la lectura que fija ECMA-376; queda registrada aquí para que Adrián decida si ajusta la redacción del plan.
+- La tarea nombraba `readers/preview-readers.spec.ts`; las pruebas quedaron por pieza: `ooxml-*.spec.ts`, `xlsx-*.spec.ts`, `pptx-*.spec.ts`, `pptx-engine.real.spec.ts`, `ooxml-engine.real.spec.ts`, `workers/{ooxml,pptx}-*.spec.ts` y, para la UI, `components/{SpreadsheetPreview,PresentationPreview,PreviewPage.ooxml}.spec.tsx`.
+- Este registro no acredita el orden histórico de cada prueba frente a su código. Sí se observaron RED → GREEN en los defectos encontrados por las auditorías: espera por ticks en `ooxml-cancellation.spec.ts`, pérdida de foco al volver a la primera ventana, columnas omitidas sin aviso y claves React duplicadas.
+
+### Evidencia
+
+Resultados de la ronda de integración/UI sobre los bytes de `4c85f1bf`; esta actualización documental los registra sin presentarlos como reejecutados ahora.
+
+| Verificación | Resultado |
+|---|---|
+| UI OOXML + `PreviewReader` + PDF | 58/58 PASS |
+| XLSX focal | 104/104 PASS |
+| PPTX/OOXML focal (incluye `pptx-engine.real` y `ooxml-engine.real` con zip.js y saxes reales en Node) | 257/257 PASS |
+| `src/features/storage/preview` | 42 suites, 732/732 PASS |
+| Web completa | 185 suites, 1863/1863 PASS |
+| `pnpm --filter web typecheck` | PASS |
+| `pnpm --filter web exec eslint src/features/storage/preview --max-warnings 0` | PASS |
+| `pnpm exec prettier --check "apps/web/src/features/storage/preview"` | PASS |
+| `git diff --check` | PASS |
+| `readers/testing/ooxml-build-check.mjs` (última ejecución en el bloque UI; runtime y worker sin cambios después) | 1 entrada de worker local, 3 chunks, 0 WASM, 0 WASM inline, 0 blob workers, 0 `importScripts` inesperados, 0 código dinámico, 0 referencias a CDN |
+
+- Mutation checks: PPTX técnico (5/5 detectadas: `showMasterSp`, External estructural, `Choice`, señal de `.rels`, propiedades extra del protocolo) y UI (7/7 detectadas tras cerrar dos huecos de prueba), siempre restauradas con hash.
+- Las suites de componentes y de shell usan jsdom con un puerto de worker controlado sobre el cliente real; la garantía de los motores viene de las suites reales en Node. Ninguna es evidencia de navegador real.
+- Privacidad comprobada en DOM, logs y almacenamiento: sin URL firmada, query, XML, nombres de partes, targets de relaciones, bytes ni `Error.stack`.
+
+### Residuos no bloqueantes
+
+- El mapeo `ERR_CODEC_OUT_OF_MEMORY` → `memory` no tiene prueba unitaria propia; la razón `memory` sí está probada en protocolo, cliente, UI y shell.
+- `PdfPreview.tsx` conserva `loadPdf` y `PdfCanvas` con 33 líneas (constitución: 30); anteriores a T-09 y no modificadas en este bloque.
+
+### Pendiente para T-10 y T-11
+
+- **T-10:** recorrido en navegador real de todas las hojas y diapositivas; GET/Range, CORS, ausencia efectiva de Cookie/Bearer/cabeceras Nimbo y origen de objetos aislado con el worker OOXML real; axe, contraste efectivo y foco real a 360/1440, incluidos tablist, regiones desplazables y tarjetas 16:9; costo de la activación automática de pestañas con libros grandes. Revisar contra el mockup: Descargar del estado vacío en el encabezado (igual que PDF).
+- **T-11:** demo Docker con XLSX de varias hojas y fórmula sin cache, PPTX de varias diapositivas, archivo vacío válido, corrupto/protegido, Reintentar/Descargar y verificación en DevTools.
+
+### Estado
+
+**T-09 queda `[x]`**, con T-09a y T-09b `[x]`. CA-1, CA-2 y CA-11 quedan acreditados en lo que corresponde a T-09; CA-9 en navegador real (360/1440, contraste y foco efectivos) se consolida en T-10/T-11, igual que en T-08. T-04 permanece `[ ]` por evidencia efectiva en navegador real; T-10 y T-11 permanecen `[ ]`. La spec permanece **En curso**.
