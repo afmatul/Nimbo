@@ -90,7 +90,7 @@ export function formatSerial(
   if (!Number.isFinite(serial) || serial < 0 || serial >= lastDay + 1) return undefined;
   let days = Math.floor(serial);
   let seconds = Math.round((serial - days) * 86_400);
-  if (seconds === 86_400) {
+  if (format.time && seconds === 86_400) {
     days++;
     seconds = 0;
   }
@@ -124,7 +124,7 @@ export function formatIsoDate(text: string, format: CellFormat): string | undefi
   const timed = format.kind === 'date' ? format.time : hours + minutes + secs > 0;
   const withSeconds = format.kind === 'date' ? format.seconds : secs > 0;
   const parts = [
-    dayText(value),
+    format.kind !== 'date' || format.date ? dayText(value) : '',
     timed ? timeText(hours * 3600 + minutes * 60 + secs, withSeconds) : '',
   ];
   return parts.filter(Boolean).join(' ');

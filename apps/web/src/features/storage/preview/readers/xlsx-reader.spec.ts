@@ -426,10 +426,27 @@ describe('XLSX T-09b: estilos mínimos de fecha, hora y porcentaje', () => {
 
   it.each([
     ['estilo inexistente', row(1, [['A1', 's="9"', '<v>1</v>']])],
+    ['estilo inexistente en fecha ISO', row(1, [['A1', 's="9" t="d"', '<v>2026-08-28</v>']])],
     ['fecha ISO inválida', row(1, [['A1', 't="d"', '<v>2026-02-30</v>']])],
   ])('CA-2: %s es corrupto', async (_label, data) => {
     expect(await reasonOf(cells(data, { styles: STYLES }))).toBe('corrupt');
   });
+
+  it.each([false, true])(
+    'CA-1: fecha sin rollover y hora ISO en ZIP real (strict=%s)',
+    async (strict) => {
+      const data = row(1, [
+        ['A1', 's="1"', '<v>46262.999999</v>'],
+        ['B1', 's="5" t="d"', '<v>2026-08-28T18:30:00</v>'],
+        ['C1', 's="1"', '<v>2958465.999999</v>'],
+      ]);
+      expect(await cells(data, { strict, styles: STYLES })).toEqual([
+        ['28/08/2026', 'date'],
+        ['18:30:00', 'date'],
+        ['31/12/9999', 'date'],
+      ]);
+    },
+  );
 
   it('CA-1: serial fuera del calendario con formato de fecha se muestra como número guardado', async () => {
     expect(await cells(row(1, [['A1', 's="1"', '<v>-5</v>']]), { styles: STYLES })).toEqual([

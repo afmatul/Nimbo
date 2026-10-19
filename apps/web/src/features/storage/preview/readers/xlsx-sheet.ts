@@ -165,7 +165,9 @@ function cellOf(source: SheetSource, draft: Draft): Cell | undefined {
     case 'e':
       return { column, text: value, type: 'error' };
     case 'd': {
-      const text = formatIsoDate(value, source.formats[draft.style] ?? { kind: 'general' });
+      const format = source.formats[draft.style];
+      if (format === undefined && draft.style !== 0) throw corrupt();
+      const text = formatIsoDate(value, format ?? { kind: 'general' });
       if (text === undefined) throw corrupt();
       return { column, text, type: 'date' };
     }

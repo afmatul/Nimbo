@@ -68,6 +68,18 @@ describe('formato mínimo XLSX: solo fechas, horas y porcentajes (D2)', () => {
     expect(formatSerial(2958465 - 1462 + 0.999999, DATE_TIME, true)).toBeUndefined();
   });
 
+  it.each([
+    [false, 46262.999999, '28/08/2026'],
+    [true, 46262 - 1462 + 0.999999, '28/08/2026'],
+    [false, 2958465.999999, '31/12/9999'],
+    [true, 2958465 - 1462 + 0.999999, '31/12/9999'],
+  ])(
+    'CA-1: fecha sin hora no redondea el día (1904=%s, serial=%s)',
+    (date1904, serial, expected) => {
+      expect(formatSerial(serial, DATE, date1904)).toBe(expected);
+    },
+  );
+
   it.each([-1, 2958466, Number.NaN, Number.POSITIVE_INFINITY])(
     'serial fuera del calendario %p no se inventa como fecha',
     (serial) => {
@@ -95,6 +107,13 @@ describe('formato mínimo XLSX: solo fechas, horas y porcentajes (D2)', () => {
     expect(formatIsoDate('2026-08-28T00:00:00', cellFormatOf(0, undefined))).toBe('28/08/2026');
     expect(formatIsoDate('2026-02-30', DATE)).toBeUndefined();
     expect(formatIsoDate('28/08/2026', DATE)).toBeUndefined();
+  });
+
+  it.each([
+    [20, '2026-08-28T18:30:00', '18:30'],
+    [21, '2026-08-28T18:30:15', '18:30:15'],
+  ])('CA-1: fecha ISO con formato solo hora %s no añade el día', (id, value, expected) => {
+    expect(formatIsoDate(value, dateFormat(id))).toBe(expected);
   });
 
   it.each(['2026-08-28T18:30:60', '2026-08-28T18:30:99'])(
