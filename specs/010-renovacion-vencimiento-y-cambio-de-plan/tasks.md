@@ -119,14 +119,14 @@ Antes de cada pantalla se leen sus capturas en `docs/design/capturas/`; las desv
   - Prueba: web `plan-and-billing.spec.tsx` (un caso por estado más Personal, axe), `subscription-api` con `fetch` simulado, catálogo y etiquetas.
   - Depende: 010a; mockups.
 
-- [ ] **T-09** Elegir plan para el cambio (`/suscripcion/cambiar-plan`)
+- [x] **T-09** Elegir plan para el cambio (`/suscripcion/cambiar-plan`)
   - Criterio: CA-16, CA-17 (PD-86), CA-18, CA-21 (aviso de versiones), CA-27.
   - Archivos: `app/(app)/(cliente)/suscripcion/cambiar-plan/{page,loading,error}.tsx`; `features/billing/components/plan-change-list.tsx`
     (usa `components/nimbo/plan-card.tsx` y `GET /billing/plans`).
   - Prueba: web `plan-change-list.spec.tsx` (actual marcado, confirmación con y sin aviso, error, Personal → contratación) con axe.
   - Depende: T-08.
 
-- [ ] **T-10** Pago de la renovación manual (`/suscripcion/renovar`) y `ReadOnlyBanner`
+- [x] **T-10** Pago de la renovación manual (`/suscripcion/renovar`) y `ReadOnlyBanner`
   - Criterio: CA-8, CA-9, CA-10, CA-26, CA-28 (mensaje de `409`); B-2 (la ayuda nombra las tres tarjetas); componente del aviso de CA-14.
   - Archivos: `app/(app)/(cliente)/suscripcion/renovar/{page,loading,error}.tsx`; `features/billing/components/{payment-form,payment-summary}.tsx`,
     `hooks/use-payment-form.ts`; `apps/web/src/components/nimbo/read-only-banner.tsx`.
@@ -228,3 +228,14 @@ Antes de cada pantalla se leen sus capturas en `docs/design/capturas/`; las desv
   plan ni tarjeta: la respuesta de auditoría solo expone `itemCount`, `sizeBytes`, `note` y `trigger` (`manual` o
   `scheduled`). Desviaciones del mockup: la ayuda del interruptor apagado nombra la tarjeta en texto («Visa ···· 4242») y
   no con el distintivo; «Método» sale de la tarjeta del plan (la tarjeta ya está en «Próximo cobro» y «Método de pago»).
+- **T-09** (2026-10-18, `7e6d06b`): sin `loading.tsx` ni `error.tsx` propios: la página es de cliente (necesita la sesión
+  para el historial y para programar) y muestra su carga y su error con `StateView`, como `/suscripcion`. El catálogo se
+  lee con la sesión desde el navegador (`fetchPlanCatalogWithSession`, mismo esquema de la 008). DRY: `BillingPageLayout`
+  reúne la barra, las migas y el espacio de las páginas de `billing` (lo usa también `/suscripcion`); `PlanCard` acepta
+  `badge` y `highlighted`. Desviaciones del mockup: el plan ya programado muestra «Cambio programado» deshabilitado (el
+  mockup no lo dibuja), y el texto bajo el título en solo lectura se completó porque la captura lo tapa.
+- **T-10** (2026-10-18, `0d79056`): sin `loading.tsx` ni `error.tsx` propios, por la misma razón que T-09 (página de
+  cliente con la sesión). DRY: `PaymentScreen`, `ApprovedCard` y `usePaymentForm` (con `prepare` y `pay`) los comparten
+  contratar y renovar; `toSubscribeRequest` y `toRenewRequest` validan con su esquema de `contracts`. El `ReadOnlyBanner`
+  ya estaba de T-08. Desviación del mockup: el aprobado no muestra el número de factura, porque el recibo
+  (`paymentReceiptSchema`) no lo trae; se ve en «Pagos y facturas».
