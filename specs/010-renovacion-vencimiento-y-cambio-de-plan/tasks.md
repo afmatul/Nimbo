@@ -126,7 +126,7 @@ Antes de cada pantalla se leen sus capturas en `docs/design/capturas/`; las desv
   - Prueba: web `plan-change-list.spec.tsx` (actual marcado, confirmación con y sin aviso, error, Personal → contratación) con axe.
   - Depende: T-08.
 
-- [ ] **T-10** Pago de la renovación manual (`/suscripcion/renovar`) y `ReadOnlyBanner`
+- [x] **T-10** Pago de la renovación manual (`/suscripcion/renovar`) y `ReadOnlyBanner`
   - Criterio: CA-8, CA-9, CA-10, CA-26, CA-28 (mensaje de `409`); B-2 (la ayuda nombra las tres tarjetas); componente del aviso de CA-14.
   - Archivos: `app/(app)/(cliente)/suscripcion/renovar/{page,loading,error}.tsx`; `features/billing/components/{payment-form,payment-summary}.tsx`,
     `hooks/use-payment-form.ts`; `apps/web/src/components/nimbo/read-only-banner.tsx`.
@@ -234,3 +234,8 @@ Antes de cada pantalla se leen sus capturas en `docs/design/capturas/`; las desv
   reúne la barra, las migas y el espacio de las páginas de `billing` (lo usa también `/suscripcion`); `PlanCard` acepta
   `badge` y `highlighted`. Desviaciones del mockup: el plan ya programado muestra «Cambio programado» deshabilitado (el
   mockup no lo dibuja), y el texto bajo el título en solo lectura se completó porque la captura lo tapa.
+- **T-10** (2026-10-18, `0d79056`): sin `loading.tsx` ni `error.tsx` propios, por la misma razón que T-09 (página de
+  cliente con la sesión). DRY: `PaymentScreen`, `ApprovedCard` y `usePaymentForm` (con `prepare` y `pay`) los comparten
+  contratar y renovar; `toSubscribeRequest` y `toRenewRequest` validan con su esquema de `contracts`. El `ReadOnlyBanner`
+  ya estaba de T-08. Desviación del mockup: el aprobado no muestra el número de factura, porque el recibo
+  (`paymentReceiptSchema`) no lo trae; se ve en «Pagos y facturas».
