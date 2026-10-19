@@ -1,9 +1,11 @@
 import {
   accountListItemSchema,
   accountListResponseSchema,
+  backofficeMetricsResponseSchema,
   clientFilesResponseSchema,
   type AccountListItem,
   type AccountListResponse,
+  type BackofficeMetricsResponse,
   type ClientFilesResponse,
   type EnrollInternalAccountRequest,
 } from '@nimbo/contracts';
@@ -13,6 +15,7 @@ import { parseResponse } from '../storage/storage-http';
 
 const CLIENT_FILES_PATH = '/backoffice/client-files';
 const ACCOUNTS_PATH = '/backoffice/accounts';
+const METRICS_PATH = '/backoffice/metrics';
 
 /** Correo exacto de un cliente y la página de sus archivos (011 CA-13, DF-66). */
 export interface ClientFilesRequest {
@@ -26,7 +29,7 @@ export interface AccountsRequest {
   readonly page: number;
 }
 
-/** El backoffice en la API (011 plan §4): metadatos de archivos y cuentas. */
+/** El backoffice en la API (011 plan §4): metadatos de archivos, cuentas y métricas. */
 export interface BackofficeApi {
   /** `GET /backoffice/client-files`: el cliente y una página de los metadatos de sus archivos. */
   listClientFiles(request: ClientFilesRequest): Promise<ClientFilesResponse>;
@@ -40,6 +43,8 @@ export interface BackofficeApi {
   reactivateAccount(id: string): Promise<AccountListItem>;
   /** `POST /backoffice/accounts`: alta de una cuenta interna (CA-5). */
   enrollAccount(request: EnrollInternalAccountRequest): Promise<AccountListItem>;
+  /** `GET /backoffice/metrics`: solo totales y conteos (CA-12), para ADMIN y OPERATOR. */
+  getMetrics(): Promise<BackofficeMetricsResponse>;
 }
 
 function clientFilesUrl(base: string, { email, page }: ClientFilesRequest): string {
@@ -90,6 +95,11 @@ export function createBackofficeApi(apiPublicUrl: string, authFetch: AuthFetch):
       parseResponse(
         await authFetch(accountsUrl(base, request), { method: 'GET' }),
         accountListResponseSchema,
+      ),
+    getMetrics: async () =>
+      parseResponse(
+        await authFetch(`${base}${METRICS_PATH}`, { method: 'GET' }),
+        backofficeMetricsResponseSchema,
       ),
     ...accountCalls(base, authFetch),
   };

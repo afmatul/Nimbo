@@ -1,7 +1,7 @@
 'use client';
 
 import type { RoleName } from '@nimbo/contracts';
-import { FileSearch, Users } from 'lucide-react';
+import { BarChart3, FileSearch, Users } from 'lucide-react';
 import type { JSX, ReactNode } from 'react';
 
 import { AppLayout, type NavItem } from '../../../components/nimbo/app-layout';
@@ -12,16 +12,19 @@ import { ROLE_LABELS } from '../role-labels';
 type NavEntry = Omit<NavItem, 'active'>;
 
 /**
- * Lo que cada rol puede abrir en su área (matriz §2 de 011, CA-14). Cada entrada llega con su página: Catálogo de
- * planes y Métricas del Administrador y Métricas del Operador, en T-11.
+ * Lo que cada rol puede abrir en su área (matriz §2 de 011, CA-14). Cada entrada llega con su página: el Catálogo de
+ * planes del Administrador, con la suya; el Operador solo tiene Métricas hasta la 022b.
  */
 const INTERNAL_NAV: Readonly<Record<RoleName, readonly NavEntry[]>> = {
   CLIENT: [],
-  ADMIN: [{ label: 'Cuentas', icon: Users, href: INTERNAL_PATHS.adminAccounts }],
+  ADMIN: [
+    { label: 'Cuentas', icon: Users, href: INTERNAL_PATHS.adminAccounts },
+    { label: 'Métricas', icon: BarChart3, href: INTERNAL_PATHS.adminMetrics },
+  ],
   SUPPORT: [
     { label: 'Metadatos de archivos', icon: FileSearch, href: INTERNAL_PATHS.supportFiles },
   ],
-  OPERATOR: [],
+  OPERATOR: [{ label: 'Métricas', icon: BarChart3, href: INTERNAL_PATHS.operatorMetrics }],
 };
 
 /** Navegación del área del rol con la entrada `activeHref` marcada (ninguna en Seguridad y Mi actividad). */

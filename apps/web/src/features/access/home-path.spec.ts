@@ -40,16 +40,19 @@ describe('inicio del área y Mi actividad por rol (011 CA-17)', () => {
   it.each([
     ['SUPPORT', '/soporte/metadatos'],
     ['ADMIN', '/admin/cuentas'],
+    ['OPERATOR', '/operacion/metricas'],
   ] as const)('CA-17: el área de %s empieza en %s', (role, path) => {
     expect(areaHomePathFor(role)).toBe(path);
   });
 
-  it.each(['OPERATOR', 'CLIENT'] as const)(
-    'CA-17: %s no tiene área interna con página (la del Operador llega en T-11)',
-    (role) => {
-      expect(areaHomePathFor(role)).toBeNull();
-    },
-  );
+  it('CA-17: el cliente no tiene área interna', () => {
+    expect(areaHomePathFor('CLIENT')).toBeNull();
+  });
+
+  it('CA-12, CA-17: Administrador y Operador ven las métricas, cada uno en su área', () => {
+    expect(INTERNAL_PATHS.adminMetrics).toBe('/admin/metricas');
+    expect(INTERNAL_PATHS.operatorMetrics).toBe('/operacion/metricas');
+  });
 
   it('CA-17: las rutas del Administrador cuelgan de /admin/cuentas; la ficha y sus metadatos llevan solo el id', () => {
     expect(INTERNAL_PATHS.adminAccounts).toBe('/admin/cuentas');

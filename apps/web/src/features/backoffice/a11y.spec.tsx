@@ -7,8 +7,8 @@ import {
   SHARED_ERROR_CODES,
   type AccountListItem,
   type AccountListResponse,
+  type BackofficeMetricsResponse,
   type ClientFilesResponse,
-  type EnrollInternalAccountRequest,
   type RoleName,
 } from '@nimbo/contracts';
 import { act, render, screen } from '@testing-library/react';
@@ -21,15 +21,16 @@ import { forgetSession, rememberSession } from '../identity/session/session-memo
 import { SessionProvider } from '../identity/session/session-provider';
 import { sessionFixture } from '../identity/session/test-session';
 
-import type { AccountsRequest, ClientFilesRequest } from './api';
 import { AccountProfile } from './components/account-profile';
 import { AdminAccounts } from './components/admin-accounts';
 import { AdminClientFiles } from './components/admin-client-files';
+import { BackofficeMetrics } from './components/backoffice-metrics';
 import { EnrollAccount } from './components/enroll-account';
 import { SupportClientFiles } from './components/support-client-files';
 import { accountItem, accountsPage, ANDREA, DIEGO, MONICA } from './test-accounts';
 import { clientFile, clientFilesPage, LAURA, TRASHED_PDF } from './test-client-files';
 import { always, apiError, enrollmentConflict, loadOf, type Outcome } from './test-loads';
+import { metricsResponse, WITH_INACTIVE_PLAN } from './test-metrics';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
@@ -82,7 +83,7 @@ describe('Accesibilidad de los metadatos de un cliente (011 CA-17)', () => {
 
   it('CA-17: inicial, sin violaciones de axe a 360 y 1440 px', async () => {
     const container = await renderInFrame(
-      <SupportClientFiles load={always<ClientFilesRequest, ClientFilesResponse>('pending')} />,
+      <SupportClientFiles load={always<ClientFilesResponse>('pending')} />,
     );
 
     await expectNoViolations(container);
@@ -106,8 +107,8 @@ describe('Accesibilidad de los metadatos de un cliente (011 CA-17)', () => {
     ['desde-admin cargando', 'pending'],
   ] as const)('CA-17: %s, sin violaciones de axe a 360 y 1440 px', async (_state, files) => {
     const api = {
-      getAccount: always<string, AccountListItem>(accountItem()),
-      listClientFiles: always<ClientFilesRequest, ClientFilesResponse>(files),
+      getAccount: always<AccountListItem>(accountItem()),
+      listClientFiles: always<ClientFilesResponse>(files),
     };
     const container = await renderInFrame(
       <AdminClientFiles accountId={LAURA.id} api={api} />,
@@ -129,9 +130,9 @@ const ACCOUNT_LISTS: readonly (readonly [string, Outcome<AccountListResponse>])[
 /** La ficha de `account`; suspender y reactivar responden `change`. */
 function profileApi(account: AccountListItem | Error, change: AccountListItem = accountItem()) {
   return {
-    getAccount: always<string, AccountListItem>(account),
-    suspendAccount: always<string, AccountListItem>(change),
-    reactivateAccount: always<string, AccountListItem>(change),
+    getAccount: always<AccountListItem>(account),
+    suspendAccount: always<AccountListItem>(change),
+    reactivateAccount: always<AccountListItem>(change),
   };
 }
 
@@ -161,7 +162,7 @@ describe('Accesibilidad de cuentas y alta interna (011 CA-17)', () => {
   it.each(ACCOUNT_LISTS)(
     'CA-17: cuentas %s, sin violaciones de axe a 360 y 1440 px',
     async (_state, outcome) => {
-      const load = always<AccountsRequest, AccountListResponse>(outcome);
+      const load = always<AccountListResponse>(outcome);
       const container = await renderInFrame(<AdminAccounts load={load} />, 'ADMIN');
 
       await expectNoViolations(container);
@@ -232,7 +233,7 @@ describe('Accesibilidad de cuentas y alta interna (011 CA-17)', () => {
   it.each(ENROLL_OUTCOMES)(
     'CA-17: alta interna %s, sin violaciones de axe a 360 y 1440 px',
     async (_state, outcome) => {
-      const enroll = always<EnrollInternalAccountRequest, AccountListItem>(outcome);
+      const enroll = always<AccountListItem>(outcome);
       const container = await renderInFrame(<EnrollAccount enroll={enroll} />, 'ADMIN');
       await fillEnrollment();
       await userEvent.click(screen.getByRole('button', { name: 'Crear cuenta' }));
@@ -243,7 +244,7 @@ describe('Accesibilidad de cuentas y alta interna (011 CA-17)', () => {
   );
 
   it('CA-17: alta interna error-conflicto (409 con campos), sin violaciones de axe a 360 y 1440 px', async () => {
-    const enroll = always<EnrollInternalAccountRequest, AccountListItem>(enrollmentConflict());
+    const enroll = always<AccountListItem>(enrollmentConflict());
     const container = await renderInFrame(<EnrollAccount enroll={enroll} />, 'ADMIN');
     await fillEnrollment();
     await userEvent.click(screen.getByRole('button', { name: 'Crear cuenta' }));
@@ -255,4 +256,39 @@ describe('Accesibilidad de cuentas y alta interna (011 CA-17)', () => {
     expect(screen.getByLabelText('Correo').getAttribute('aria-invalid')).toBe('true');
     await expectNoViolations(container);
   });
+});
+
+const METRICS_STATES: readonly (readonly [
+  string,
+  Outcome<BackofficeMetricsResponse>,
+  'ADMIN' | 'OPERATOR',
+])[] = [
+  ['default', metricsResponse(), 'ADMIN'],
+  ['cargando', 'pending', 'ADMIN'],
+  ['error', new TypeError('Failed to fetch'), 'ADMIN'],
+  ['con-plan-inactivo', WITH_INACTIVE_PLAN, 'ADMIN'],
+  ['operador', metricsResponse(), 'OPERATOR'],
+  ['sin permiso', apiError(403, SHARED_ERROR_CODES.FORBIDDEN), 'OPERATOR'],
+];
+
+describe('Accesibilidad de las métricas (011 CA-12, CA-17)', () => {
+  beforeAll(() => {
+    document.documentElement.lang = 'es';
+    document.title = 'Métricas · Nimbo';
+  });
+
+  beforeEach(() => {
+    global.fetch = jest.fn(() => new Promise<Response>(() => undefined));
+    forgetSession();
+  });
+
+  it.each(METRICS_STATES)(
+    'CA-17: métricas %s, sin violaciones de axe a 360 y 1440 px',
+    async (_state, outcome, role) => {
+      const load = always<BackofficeMetricsResponse>(outcome);
+      const container = await renderInFrame(<BackofficeMetrics load={load} role={role} />, role);
+
+      await expectNoViolations(container);
+    },
+  );
 });

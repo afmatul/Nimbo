@@ -3,6 +3,7 @@ import type { AuthFetch } from '../identity/session/auth-fetch';
 import { createBackofficeApi } from './api';
 import { accountItem, accountsPage } from './test-accounts';
 import { clientFile, clientFilesPage, LAURA } from './test-client-files';
+import { metricsResponse } from './test-metrics';
 
 const API = 'http://localhost/api/v1/';
 
@@ -96,5 +97,20 @@ describe('createBackofficeApi (011 plan §4)', () => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
     });
+  });
+
+  it('CA-12: GET /backoffice/metrics devuelve solo totales y conteos', async () => {
+    const api = apiWith(metricsResponse());
+
+    expect(await api.getMetrics()).toEqual(metricsResponse());
+    expect(api.authFetch).toHaveBeenCalledWith('http://localhost/api/v1/backoffice/metrics', {
+      method: 'GET',
+    });
+  });
+
+  it('CA-12: unas métricas con filas de cuentas se rechazan como falla del servidor', async () => {
+    const api = apiWith({ ...metricsResponse(), accountsList: [] });
+
+    await expect(api.getMetrics()).rejects.toMatchObject({ status: 500 });
   });
 });

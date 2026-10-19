@@ -2,20 +2,29 @@ import { IDENTITY_ERROR_CODES } from '@nimbo/contracts';
 
 import { ApiClientError } from '../../lib/api-error';
 
-/**
- * Doble de una llamada al backoffice: responde en orden cada resultado (un `Error` rechaza) y después queda pendiente
- * para siempre (estado cargando).
- */
-export function loadOf<Req, Res>(
-  ...results: readonly (Res | Error)[]
-): jest.Mock<Promise<Res>, [Req]> {
-  const load = jest.fn((_request: Req) => new Promise<Res>(() => undefined));
+/** Responde en orden cada resultado (un `Error` rechaza) y después queda pendiente para siempre (cargando). */
+function inOrder<Args extends unknown[], Res>(
+  results: readonly (Res | Error)[],
+): jest.Mock<Promise<Res>, Args> {
+  const load = jest.fn((..._args: Args) => new Promise<Res>(() => undefined));
   for (const result of results) {
     load.mockImplementationOnce(() =>
       result instanceof Error ? Promise.reject(result) : Promise.resolve(result),
     );
   }
   return load;
+}
+
+/** Doble de una llamada al backoffice que recibe una petición (`Req`). */
+export function loadOf<Req, Res>(
+  ...results: readonly (Res | Error)[]
+): jest.Mock<Promise<Res>, [Req]> {
+  return inOrder<[Req], Res>(results);
+}
+
+/** Doble de una llamada sin argumentos (p. ej. `GET /backoffice/metrics`). */
+export function callOf<Res>(...results: readonly (Res | Error)[]): jest.Mock<Promise<Res>, []> {
+  return inOrder<[], Res>(results);
 }
 
 /** Error HTTP como lo entrega `auth-fetch`. */
@@ -26,8 +35,8 @@ export function apiError(status: number, code: string): ApiClientError {
 /** Lo que responde un doble fijo: la respuesta, un rechazo o nada (cargando). */
 export type Outcome<Res> = Res | Error | 'pending';
 
-/** Responde siempre lo mismo (o queda pendiente): sirve para revisar los estados uno por uno. */
-export function always<Req, Res>(outcome: Outcome<Res>): (request: Req) => Promise<Res> {
+/** Responde siempre lo mismo (o queda pendiente): sirve para revisar los estados uno por uno. Ignora la petición. */
+export function always<Res>(outcome: Outcome<Res>): () => Promise<Res> {
   return () => {
     if (outcome === 'pending') return new Promise<Res>(() => undefined);
     return outcome instanceof Error ? Promise.reject(outcome) : Promise.resolve(outcome);

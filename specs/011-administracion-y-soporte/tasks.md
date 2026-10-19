@@ -144,3 +144,32 @@ y en `pendientes.md` (PD-31 resuelto, PD-94) prevalece lo de `main` (aviso a Jua
 - Merge de `main` con la 014 (`613f057`, 2026-10-16): conflictos «ambos agregan» en el catálogo de auditoría y
   `storage.module.spec.ts`; `test/int/backoffice/migrations.int-spec.ts` solo exige el orden entre las migraciones de
   011, porque la de la 014 (08/10) corre después (`f8f5296`, misma línea que usa `feat/009`).
+- Revisión de la web del PR-B (2026-10-19, T-11): correcciones del `reviewer` aplicadas — I-1 (los conteos usan
+  `formatCount` del catálogo, con espacio de miles; los porcentajes usan coma decimal, como los bytes; el paginador
+  también pasa a «1 284»), I-2 (ayudante `quantity` para «la 1 cuenta / las 12 cuentas», con el verbo y el pronombre
+  concordados, y su prueba), I-3 (README de `identity` al día), I-4 (el pie de una tabla sin filas dice «0 %» y no
+  «100 %»), S-1 (el encabezado de la tabla por plan es «% con plan»), S-2 (se quitó la prueba de `/interno` que no
+  probaba nada), S-3 (el esqueleto de carga con la forma del mockup) y S-4/S-5 (el tipo de la petición de métricas y
+  el estilo de los tipos JSX). **Desviaciones aceptadas por el `reviewer`**: el espacio de miles con base 1000 y el
+  formateador único de `contracts` (PD-91); sin migas de pan; «Total con plan» como pie de la tabla por plan.
+- Archivos nuevos fuera de la lista de T-11, aprobados por Fátima: `features/backoffice/quantity.ts` (el ayudante de
+  concordancia, con su prueba) y `features/backoffice/components/metrics-tables.tsx` (las tablas con barras, que
+  comparten el pie y el porcentaje).
+
+### Para Adrián
+
+- `apps/web/src/features/identity/README.md` (línea 58): la línea que describía `areaHomePathFor` seguía hablando del
+  «marcador» del área interna, que T-13 y T-11 ya retiraron; se corrige con las rutas actuales (Soporte
+  `/soporte/metadatos`, Admin `/admin/cuentas`, Operador `/operacion/metricas`). El archivo es tuyo: lo toco solo para
+  que no describa una pantalla que ya no existe.
+- `docs/sdd/pendientes.md`: PD-91 queda anotado con la decisión de separador de la 011 (conteos con espacio de
+  `formatCount`, porcentajes con coma, bytes en base 1000 con el formateador de `contracts`); la decisión de unificar
+  `formatPlanBytes` con `formatBytes` sigue abierta y es tuya y de Juan Marcos.
+
+### Para Juan Marcos
+
+- `apps/web/src/lib/format-plan.ts` es tuyo (008): la 011 solo importa `formatCount` de ahí —para los conteos de las
+  métricas y del paginador— y no lo modifica. Si conviene moverlo a un archivo común dentro de `lib/`, se hace en tu
+  PR: la 011 seguiría importándolo desde el lugar donde quede.
+- PD-91 (con Adrián): la 011 ya usa base 1000 con `formatBytes` de `contracts` y el espacio de miles de `formatCount`;
+  falta unificar `formatPlanBytes` (base 1024, punto decimal) con el formateador único.
