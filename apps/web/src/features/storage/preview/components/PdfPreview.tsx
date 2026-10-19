@@ -2,7 +2,6 @@
 
 import * as React from 'react';
 
-import { Button } from '../../../../components/ui/button';
 import type { PreviewFailure } from '../preview-failure';
 import type { ReaderEvents } from '../reader-events';
 import {
@@ -13,6 +12,7 @@ import {
 } from '../readers/pdfjs-adapter';
 
 import styles from './PdfPreview.module.css';
+import { EmptyFileNotice, UnitNavigation } from './ReaderNavigation';
 
 type PdfPreviewProps = ReaderEvents & {
   readonly url: string;
@@ -177,61 +177,15 @@ function PdfCanvas(props: PdfCanvasProps): React.JSX.Element {
   );
 }
 
-type PdfNavigationProps = {
-  readonly page: number;
-  readonly total: number;
-  readonly previous: () => void;
-  readonly next: () => void;
-};
-
-/** Un control que se deshabilita con el foco lo perdería: el foco pasa al control opuesto. */
-function useEdgeFocus(page: number, total: number) {
-  const previousButton = React.useRef<HTMLButtonElement>(null);
-  const nextButton = React.useRef<HTMLButtonElement>(null);
-  React.useLayoutEffect(() => {
-    const focused = document.activeElement;
-    if (page === total && focused === nextButton.current) previousButton.current?.focus();
-    if (page === 1 && focused === previousButton.current) nextButton.current?.focus();
-  }, [page, total]);
-  return { previousButton, nextButton };
-}
-
-function PdfNavigation({ page, total, previous, next }: PdfNavigationProps): React.JSX.Element {
-  const { previousButton, nextButton } = useEdgeFocus(page, total);
-  return (
-    <nav aria-label="Páginas del PDF" className="flex flex-wrap items-center justify-between gap-3">
-      <Button
-        ref={previousButton}
-        type="button"
-        variant="outline"
-        disabled={page === 1}
-        onClick={previous}
-      >
-        Anterior
-      </Button>
-      <p role="status" className="tabular-nums">
-        Página {page} de {total}
-      </p>
-      <Button
-        ref={nextButton}
-        type="button"
-        variant="outline"
-        disabled={page === total}
-        onClick={next}
-      >
-        Siguiente
-      </Button>
-    </nav>
-  );
-}
-
 function PdfPages(loaded: LoadedPdf): React.JSX.Element {
   const [page, setPage] = React.useState(1);
   return (
     <div className="space-y-4">
-      <PdfNavigation
-        page={page}
-        total={loaded.session.numPages}
+      <UnitNavigation
+        label="Páginas del PDF"
+        status={`Página ${page} de ${loaded.session.numPages}`}
+        hasPrevious={page > 1}
+        hasNext={page < loaded.session.numPages}
         previous={() => setPage((current) => current - 1)}
         next={() => setPage((current) => current + 1)}
       />
@@ -244,7 +198,7 @@ function EmptyPdf({ attempt }: LoadedPdf): React.JSX.Element {
   React.useEffect(() => {
     attempt.ready();
   }, [attempt]);
-  return <p role="status">Este archivo no tiene contenido para mostrar.</p>;
+  return <EmptyFileNotice />;
 }
 
 function PdfReading(props: PdfPreviewProps): React.JSX.Element | null {

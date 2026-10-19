@@ -53,6 +53,19 @@ describe('PdfPreview T-08: representación, navegación y lifecycle', () => {
     expect(onFailure).not.toHaveBeenCalled();
   });
 
+  it('CA-1: PDF sin páginas es éxito vacío, sin canvas ni navegación', async () => {
+    jest.mocked(openPdfSession).mockResolvedValueOnce({ numPages: 0, renderPage, dispose });
+    const onReady = jest.fn();
+    const { container } = render(
+      <PdfPreview url={SIGNED} onReady={onReady} onFailure={jest.fn()} />,
+    );
+    const notice = await screen.findByRole('status');
+    expect(notice.textContent).toBe('Este archivo no tiene contenido para mostrar.');
+    expect(onReady).toHaveBeenCalledTimes(1);
+    expect(container.querySelector('canvas,nav')).toBeNull();
+    expect(renderPage).not.toHaveBeenCalled();
+  });
+
   it('CA-9: texto literal solo para tecnologías asistivas; capa de selección sin duplicar lectura', async () => {
     render(<PdfPreview url={SIGNED} onFailure={jest.fn()} />);
     await screen.findByRole('img', { name: 'Página 1 del PDF' });
