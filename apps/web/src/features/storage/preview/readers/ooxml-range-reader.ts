@@ -9,7 +9,7 @@ const FAILURE_MESSAGE = 'No se pudo leer el paquete para la vista previa.';
 const EMPTY = new Uint8Array(0);
 
 /**
- * Fuente ZIP por rangos mediante la API pública `Reader` de zip.js (D1 provisional: sin su lector HTTP).
+ * Fuente ZIP por rangos mediante la API pública `Reader` de zip.js (decisión D1, plan §2.4: sin su lector HTTP).
  * Toda la política HTTP vive en `fetchObjectBytes`; aquí solo se piden rangos y se conserva el total.
  */
 export class ObjectRangeReader extends Reader<string> {
