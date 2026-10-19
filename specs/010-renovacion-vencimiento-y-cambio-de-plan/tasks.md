@@ -2,7 +2,7 @@
 
 > Spec: `./spec.md` · Plan: `./plan.md`
 > Estado: **En curso — avance de la 010a autorizado por Adrián mientras revisa (`plan.md` §8); falta aprobar el plan y
-> aceptar ADR-0029 y ADR-0031.** El `architect` ya revisó M-2 (plan §8). Si Adrián cambia el plan, las tareas se ajustan en
+> aceptar ADR-0032 y ADR-0031.** El `architect` ya revisó M-2 (plan §8). Si Adrián cambia el plan, las tareas se ajustan en
 > el camino.
 > Dos bloques, un PR cada uno (`workflow.md` §4.6): **010a** (`api`, `worker`, `storage`) y **010b** (`web`). 12 tareas
 > verticales, de medio día a un día, un commit cada una (`feat(billing): … [010 T-xx]`). Sin tareas de «cierre».
@@ -11,7 +11,7 @@
 **Compuertas generales**
 - Todo se implementa sobre la **009 integrada en `main`**. Las pruebas de la 009 que cambian (`Subscription`, `PaymentService`,
   `IPaymentGateway`, `SubscriptionCheckout`, `SubscriptionService`, `TEST_CARDS`) se ajustan en la tarea que las toca.
-- Módulos ajenos (`[Adrián]`): solo con su autorización del plan §8; `storage` y su web, además, con **ADR-0029 aceptado**.
+- Módulos ajenos (`[Adrián]`): solo con su autorización del plan §8; `storage` y su web, además, con **ADR-0032 aceptado**.
 - Funciones ≤ 30 líneas y ≤ 3 parámetros; cada tarea de lógica empieza por su prueba en rojo; nombres de prueba `'CA-n: …'`.
 
 ## Bloque 010a — API, worker y `storage` (PR 1)
@@ -86,7 +86,7 @@
   - Depende: T-01, T-02, T-03 (`RenewalCheckout`, `InvoiceIssuer`); PD-63.
 
 - [x] **T-06** Solo lectura en `storage` con `PlanLimits.readOnly` [Adrián]
-  - **Compuerta**: ADR-0029 aceptado y cambios en `storage` autorizados.
+  - **Compuerta**: ADR-0032 aceptado y cambios en `storage` autorizados.
   - Criterio: CA-12, CA-13, CA-10 (vuelve a poder subir); RN-6.
   - Archivos: `packages/contracts/src/storage/{error-codes,space-schemas}.ts`; `storage/application/plan-limits.ts`,
     `storage/domain/errors/account-read-only.error.ts` (+ `index.ts`), `storage/application/writable-account.policy.ts`, `storage/index.ts`;
@@ -135,7 +135,7 @@ Antes de cada pantalla se leen sus capturas en `docs/design/capturas/`; las desv
   - Depende: T-08.
 
 - [ ] **T-11** Explorador en solo lectura [Adrián]
-  - **Compuerta**: ADR-0029 aceptado y cambios en la web de `storage` autorizados.
+  - **Compuerta**: ADR-0032 aceptado y cambios en la web de `storage` autorizados.
   - Criterio: CA-14 (aviso, acciones de CA-13 deshabilitadas con texto, arrastre con el mensaje); las permitidas por RN-6 siguen activas.
   - Archivos: `apps/web/src/lib/error-catalog.ts` (`STORAGE_ACCOUNT_READ_ONLY`, literal); `features/storage/components/{space-provider,
     my-files,upload-dropzone,trash-view,file-detail-view,restore-version-dialog}.tsx`.
@@ -163,7 +163,7 @@ Antes de cada pantalla se leen sus capturas en `docs/design/capturas/`; las desv
 | CA-10 | T-03, T-06, T-10 | CA-20 | T-03, T-05 | | |
 
 ## Notas del developer
-<Desviaciones (con enlace al registro de cambios de la spec), DF o pendientes que surgieron. Al implementar: DF-70 en
+<Desviaciones (con enlace al registro de cambios de la spec), DF o pendientes que surgieron. Al implementar: DF-77 en
 `design-findings.md` (plan §7, incluye M-2 y M-5), PD-86 se cierra, PD-96 se amplía con lo de la 010, PD-63 suma el renombre de
 `PlanLimits` y se registran los pendientes nuevos de plan §7 (conteos al momento para el Operador; `readOnly` del propietario en 012,
 013, 016 y 021).>
@@ -200,7 +200,7 @@ Antes de cada pantalla se leen sus capturas en `docs/design/capturas/`; las desv
   (capturas `renovacion-desactivada` y `cambio-a-personal`: el texto lo arma la web). `pendingPlan` usa `planSchema`
   (la confirmación de la bajada necesita su cuota). Los fixtures de `subscription-page.spec.tsx` (009) suman los campos
   nuevos; la pantalla los usa en T-08.
-- **T-06** (2026-10-18): implementada **antes** de aceptar ADR-0029, por la misma decisión que T-02. `getLimitsByPlanId` y
+- **T-06** (2026-10-18): implementada **antes** de aceptar ADR-0032, por la misma decisión que T-02. `getLimitsByPlanId` y
   `getLimitsBySlug` devuelven `PlanStorageLimits` (sin `readOnly`); solo `limitsFor` compone el estado. `WritableAccountPolicy`
   va en `TRASH_LIFECYCLE_PROVIDERS` (`api` y `worker`) y no se exporta de `storage/index.ts` hasta que otro módulo la use
   (YAGNI). `read-only.int-spec.ts` vuelve a vigente cambiando `suscripcion` como dueño (la renovación misma la prueba

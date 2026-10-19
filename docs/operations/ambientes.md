@@ -58,7 +58,10 @@ Secreto = nunca en el repositorio, vacío en `.env.example` de staging, redactad
 | `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` | | | | ✓ | contraseña | — | En local coinciden con `MINIO_ACCESS_KEY`/`MINIO_SECRET_KEY` |
 | `IMAGE_TAG`, `DOMAIN`, `WEB_HOST`, `API_HOST`, `DOCS_HOST`, `S3_HOST` | | | | ✓ | | `latest`, … | Solo staging (Traefik por host) |
 | `LETSENCRYPT_EMAIL`, `ACME_CA_SERVER` | | | | ✓ | | — | TLS en staging |
-| `ONLYOFFICE_JWT_SECRET` | | | | ✓ | ✓ | — | Perfil `onlyoffice`; `api` lo valida en 016 |
+| `ONLYOFFICE_JWT_SECRET` | ✓ | | | ✓ | ✓ | — | Perfil `onlyoffice` y `api` (016): firma la configuración del editor, sus avisos y los enlaces de contenido. Opcional en el `api`; en staging y producción ≥ 32 caracteres y nunca el de `.env.example` |
+| `ONLYOFFICE_PUBLIC_URL` / `ONLYOFFICE_INTERNAL_URL` | ✓ | | | | | — | 016: desde donde el navegador carga el editor / desde donde el `api` consulta su salud y descarga lo guardado. Opcionales: sin ellas abrir responde `EDITING_UNAVAILABLE` (CA-15) |
+| `EDITING_CALLBACK_BASE_URL` | ✓ | | | | | — | 016: cómo llega ONLYOFFICE al `api` (contenido y aviso de guardado); en local `http://host.docker.internal:3000`. Opcional, como las anteriores |
+| `EDITING_MAX_DOC_BYTES` | ✓ | | | | | `52428800` | 016 RN-10: tope editable (50 MB a validar en staging); por encima, solo lectura |
 | `API_MEM_LIMIT`, `WORKER_MEM_LIMIT` | | | | ✓ | | `768m` | Staging; bajar a `512m` en demos con ONLYOFFICE (R-6) |
 | `COMPOSE_FILE` | | | | ✓ | | — | Solo staging: `compose.yml:compose.staging.yml` |
 

@@ -9,7 +9,7 @@ Son la base para defender la arquitectura en la exposición final (enunciado §6
 | 0001 | [Monolito modular con worker separado](0001-monolito-modular-con-worker-separado.md) | Aceptado |
 | 0002 | [NestJS + TypeORM con migraciones manuales](0002-nestjs-typeorm-migraciones-manuales.md) | Aceptado |
 | 0003 | PostgreSQL + pgvector; dimensión de embeddings fija | Pendiente |
-| 0004 | ONLYOFFICE Docs solo para `.docx` | Pendiente |
+| 0004 | [ONLYOFFICE Docs como editor, solo para `.docx`](0004-onlyoffice-docs-solo-para-docx.md) (spec 016) | Aceptado |
 | 0005 | [Autorización en la consulta + RLS como segunda barrera](0005-autorizacion-en-la-consulta-y-rls.md) | Aceptado |
 | 0006 | Pagos simulados detrás de `PaymentGateway` | Pendiente |
 | 0007 | Modelo de lenguaje detrás de puertos propios | Pendiente |
@@ -32,9 +32,10 @@ Son la base para defender la arquitectura en la exposición final (enunciado §6
 | 0024 | [Avisos no bloqueantes con `sonner` (toast de shadcn/ui); errores siguen como `Alert`](0024-avisos-no-bloqueantes-con-sonner.md) (menor; spec 006) | Aceptado |
 | 0025 | [Imágenes de MinIO desde el fork de Pigsty (`pgsty/silo` y `pgsty/mc`)](0025-imagenes-de-minio-desde-el-fork-de-pigsty.md) (enmienda ADR-0015; Quay dejó de servir los tags) | Propuesto |
 | 0028 | [Dependencia de `billing` para la factura PDF: `pdfkit` detrás de `IInvoiceGenerator`](0028-dependencia-de-billing-para-la-factura-pdf.md) (menor; spec 009 T-07) | Aceptado |
-| 0029 | [La solo lectura por vencimiento se comprueba en los servicios de escritura con `PlanLimits.readOnly`](0029-solo-lectura-por-planlimits-en-los-servicios-de-escritura.md) (enmienda `architecture.md` §7.5 y la nota de DF-51; spec 010) | Propuesto |
+| 0029 | [El trabajo `editing-save` se procesa en el `api`](0029-editing-save-se-procesa-en-el-api.md) (excepción acotada a ADR-0001; spec 016, DF-71) | Aceptado |
 | 0030 | [Socket.IO en el `api` con los paquetes oficiales de Nest y sin adaptador de Redis](0030-socketio-en-el-api-sin-adaptador-de-redis.md) (spec 015) | Aceptado |
 | 0031 | [La referencia del instrumento de pago se guarda en claro bajo RLS, no como hash](0031-referencia-del-instrumento-de-pago-en-claro-bajo-rls.md) (delimita Art. IX.6; spec 010, M-2) | Propuesto |
+| 0032 | [La solo lectura por vencimiento se comprueba en los servicios de escritura con `PlanLimits.readOnly`](0032-solo-lectura-por-planlimits-en-los-servicios-de-escritura.md) (enmienda `architecture.md` §7.5 y la nota de DF-51; spec 010; antes numerado 0029) | Propuesto |
 
 Estados: `Pendiente` (sin redactar) · `Propuesto` (redactado, falta acuerdo del equipo) · `Aceptado` · `Reemplazado por`.
 Los ADR 0001, 0002, 0008, 0009, 0014 y 0015 se aceptaron el 26/09/2026 (Adrián, parte de ADR de la T-27 de la spec 000).
@@ -50,5 +51,6 @@ ADR-0022 se aceptó el 29/09/2026: opción A de DF-51. El 0021 sigue siendo el d
 ADR-0021 lo aceptó Adrián el 14/10/2026 en la revisión de la 009, que suma tres funciones de lectura con la misma lista.
 El 0023 lo redactó y lo aceptó Adrián el 30/09/2026 al adoptar SDD express; reemplaza al 0009 y cambia el Art. I.2 de la constitución.
 El 0024 lo redactó el `architect` y lo aprobó Adrián el 30/09/2026 (dependencia `sonner`, spec 006).
+Los ADR 0004 y 0029 los redactó el `architect` con el plan de la spec 016 (2026-10-16) como `Propuesto`; Adrián los aceptó al aprobar el plan (2026-10-16); 0029 hace una excepción acotada a ADR-0001 y matiza ADR-0030.
 
 Usa `/adr <decisión>` para redactar uno.

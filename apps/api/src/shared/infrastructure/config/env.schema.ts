@@ -12,6 +12,9 @@ const HTTPS_MESSAGE = 'debe usar https en staging y en producción';
 const SMTP_TLS_MESSAGE = 'no puede ser `none` en staging ni en producción';
 const SMTP_USER_MESSAGE = 'es obligatoria si se define `SMTP_PASSWORD`';
 const POSITIVE_INT_MESSAGE = 'debe ser un entero positivo';
+const LOCAL_ONLYOFFICE_SECRET_MESSAGE = 'no puede ser el valor de desarrollo de .env.example';
+const PUBLISHED_ONLYOFFICE_SECRET_LENGTH_MESSAGE =
+  'debe tener al menos 32 caracteres en staging y en producción';
 const MULTIPART_THRESHOLD_MESSAGE = 'debe ser mayor o igual que `UPLOAD_PART_SIZE_BYTES`';
 const JWT_SECRET_MIN_LENGTH = 32;
 /** 32 bytes aleatorios en base64url: el mínimo en ambientes publicados (plan 002 §6.10). */
@@ -71,6 +74,11 @@ const DEFAULT_INVOICE_RETRY_BATCH_SIZE = 100;
 const MAX_INVOICE_RETRY_BATCH_SIZE = 1000;
 /** Intentos de abrir el canal en vivo por origen y minuto (015 CA-14): holgado para 25 usuarios (RNF-02). */
 const DEFAULT_REALTIME_CONNECT_ATTEMPTS_PER_MINUTE = 60;
+/** Tope editable inicial (016 RN-10): 50 MB, a validar en staging con ONLYOFFICE. */
+const DEFAULT_EDITING_MAX_DOC_BYTES = 50 * 1024 * 1024;
+/** Valor de ejemplo de `ONLYOFFICE_JWT_SECRET` en `.env.example`: en staging y producción se rechaza (016 plan §5). */
+const EXAMPLE_ONLYOFFICE_JWT_SECRET = 'cambia-este-secreto-local';
+const ONLYOFFICE_SECRET_MIN_LENGTH = 32;
 
 /**
  * Valor de desarrollo de `JWT_ACCESS_SECRET` que trae `.env.example` (plan 002 §6.10). Público a propósito: en
@@ -136,6 +144,10 @@ const urlList = () =>
 /** Una variable vacía (`CLAVE=` en `.env.example`) cuenta como ausente. */
 const optionalText = () =>
   z.preprocess((value) => (value === '' ? undefined : value), z.string().optional());
+
+/** URL opcional: vacía cuenta como ausente. */
+const optionalUrl = () =>
+  z.preprocess((value) => (value === '' ? undefined : value), url().optional());
 
 const isPublished = (appEnv: string): boolean => PUBLISHED_ENVIRONMENTS.includes(appEnv);
 
@@ -218,6 +230,18 @@ const realtimeApiShape = {
   REALTIME_CONNECT_ATTEMPTS_PER_MINUTE: positiveInt(DEFAULT_REALTIME_CONNECT_ATTEMPTS_PER_MINUTE),
 };
 
+/**
+ * Edición con ONLYOFFICE en el `api` (016 plan §5). Todas opcionales: sin ellas el editor responde
+ * `EDITING_UNAVAILABLE` y el resto sigue (RNF-09).
+ */
+const editingApiShape = {
+  ONLYOFFICE_JWT_SECRET: optionalText(),
+  ONLYOFFICE_PUBLIC_URL: optionalUrl(),
+  ONLYOFFICE_INTERNAL_URL: optionalUrl(),
+  EDITING_CALLBACK_BASE_URL: optionalUrl(),
+  EDITING_MAX_DOC_BYTES: positiveInt(DEFAULT_EDITING_MAX_DOC_BYTES),
+};
+
 /** Purga programada de la papelera en el `worker` (006 plan §4, CA-19). */
 const trashPurgeShape = {
   TRASH_PURGE_INTERVAL_MINUTES: positiveInt(DEFAULT_TRASH_PURGE_INTERVAL_MINUTES),
@@ -289,6 +313,7 @@ export const apiEnvObjectSchema = sharedEnvBaseSchema.extend({
   ...foldersApiShape,
   ...quickAccessApiShape,
   ...realtimeApiShape,
+  ...editingApiShape,
   WEB_PUBLIC_URL: url(),
   CORS_ORIGIN: urlList(),
   JWT_ACCESS_SECRET: z.string().min(JWT_SECRET_MIN_LENGTH, JWT_SECRET_LENGTH_MESSAGE),
@@ -315,6 +340,19 @@ const refinePublishedJwtSecret = (secret: string, ctx: z.RefinementCtx): void =>
   }
 };
 
+/** En staging y producción la clave de ONLYOFFICE no es la de ejemplo y es larga (016 plan §5). */
+const refinePublishedOnlyOfficeSecret = (
+  secret: string | undefined,
+  ctx: z.RefinementCtx,
+): void => {
+  if (secret === undefined) return;
+  if (secret === EXAMPLE_ONLYOFFICE_JWT_SECRET) {
+    addEnvIssue(ctx, 'ONLYOFFICE_JWT_SECRET', LOCAL_ONLYOFFICE_SECRET_MESSAGE);
+  } else if (secret.length < ONLYOFFICE_SECRET_MIN_LENGTH) {
+    addEnvIssue(ctx, 'ONLYOFFICE_JWT_SECRET', PUBLISHED_ONLYOFFICE_SECRET_LENGTH_MESSAGE);
+  }
+};
+
 /**
  * Reglas entre variables del `api`: toda carga por partes tiene al menos dos partes (005 plan §5) y, en ambientes
  * publicados, el enlace del correo nunca viaja por http (001 CA-20) y la clave de firma no es la de desarrollo
@@ -327,6 +365,7 @@ const refineApiEnv = (
     JWT_ACCESS_SECRET: string;
     UPLOAD_PART_SIZE_BYTES: number;
     UPLOAD_MULTIPART_THRESHOLD_BYTES: number;
+    ONLYOFFICE_JWT_SECRET?: string | undefined;
   },
   ctx: z.RefinementCtx,
 ): void => {
@@ -338,6 +377,7 @@ const refineApiEnv = (
     addEnvIssue(ctx, 'WEB_PUBLIC_URL', HTTPS_MESSAGE);
   }
   refinePublishedJwtSecret(env.JWT_ACCESS_SECRET, ctx);
+  refinePublishedOnlyOfficeSecret(env.ONLYOFFICE_JWT_SECRET, ctx);
 };
 
 /** Reglas entre variables del `worker` (001 CA-18, CA-20). */

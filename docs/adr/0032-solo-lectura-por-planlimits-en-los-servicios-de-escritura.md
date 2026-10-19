@@ -1,9 +1,10 @@
-# ADR-0029 — La solo lectura por vencimiento se comprueba en los servicios de escritura con `PlanLimits.readOnly`, no con un guard global
+# ADR-0032 — La solo lectura por vencimiento se comprueba en los servicios de escritura con `PlanLimits.readOnly`, no con un guard global
 
 | Campo | Valor |
 |---|---|
 | Estado | Propuesto (2026-10-16; ajustado el 2026-10-18 por la auditoría de Adrián en el PR #63: rutas de la regla 3 y nombre de `PlanLimits`); falta el acuerdo del equipo (Adrián). **Enmienda** `architecture.md` §7.5 y la nota de DF-51 / ADR-0022 sobre el contenido de `PlanLimits` |
 | Fecha | 2026-10-16 |
+| Numeración | Redactado como ADR-0029; pasa a **0032** porque la 016 entró antes a `main` con su ADR-0029 (N-1 del PR #63, paso 3) |
 | Decisores | `architect` (revisión del plan 010), Juan Marcos (dueño de `billing`), Adrián (dueño de `storage`, aprueba) |
 | Specs relacionadas | 010 (RF-23, CA-12, CA-13, RN-6, RN-11); heredan la regla 012, 013, 016 y 021 |
 
@@ -79,12 +80,12 @@ justificación: los consume `storage` mismo. Juan Marcos acordó en la spec 010 
 - Negativas / deuda aceptada: `PlanLimits` mezcla límites y estado de la cuenta; las operaciones de carpeta hacen una lectura
   más; la cobertura depende de la prueba que recorre rutas.
 - **El nombre `PlanLimits` deja de describir lo que contiene** (auditoría de Adrián, PR #63, M-5). La 010 no lo renombra
-  (tocaría todo `storage` y sus pruebas en un PR ya grande): se anota en DF-70 y se propone renombrarlo (p. ej.,
+  (tocaría todo `storage` y sus pruebas en un PR ya grande): se anota en DF-77 y se propone renombrarlo (p. ej.,
   `StorageConditions`, con su puerto y su adaptador) en el refactor de PD-63.
 - Documentos a actualizar al aceptar:
   - `architecture.md` §7.5: «`RenewalScheduler` (cola `subscription-renewal` con `upsertJobScheduler`, en el `worker`) lista con
     funciones de mantenimiento (ADR-0021) y renueva o vence cada cuenta como su dueño … La solo lectura la comprueban los
-    servicios de escritura de cada módulo con `PlanLimits.readOnly` (ADR-0029); no hay guard global.»
+    servicios de escritura de cada módulo con `PlanLimits.readOnly` (ADR-0032); no hay guard global.»
   - `architecture.md` §8: la fila `RenewalScheduler (@Cron)` pasa a `subscription-renewal` (repetible, concurrencia 1,
     idempotente por suscripción y `vence_en` con `FOR UPDATE`).
   - `architecture.md` §3 (nota DF-51) y el comentario de `storage/application/plan-limits.ts`: la redacción de la regla 1.

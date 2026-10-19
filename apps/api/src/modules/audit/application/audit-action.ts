@@ -23,6 +23,13 @@ export enum AuditAction {
   /** Catálogo (011): recurso `plan`, sin afectado (ningún cliente los ve). */
   PLAN_CREATED = 'plan.created',
   PLAN_DEACTIVATED = 'plan.deactivated',
+  /**
+   * Edición (016 §5): `attributes` con `sessionId` y, según la acción, `versionId`, `versionNumber`, `sizeBytes` o
+   * `reason`; nunca nombres de archivo, URLs ni tokens.
+   */
+  FILE_VERSION_CREATED = 'file.version_created',
+  EDIT_SESSION_OPENED = 'edit.session_opened',
+  EDIT_SAVE_FAILED = 'edit.save_failed',
 }
 
 const AUDIT_ACTIONS: ReadonlySet<string> = new Set(Object.values(AuditAction));

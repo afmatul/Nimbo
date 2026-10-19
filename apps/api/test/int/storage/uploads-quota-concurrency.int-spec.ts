@@ -20,6 +20,7 @@ describe('dos inicios simultáneos con cupo para uno (CA-23)', () => {
         storageQuotaBytes: BigInt(QUOTA_BYTES),
         trashRetentionDays: 30,
         retainedVersions: 3,
+        maxEditors: 0,
         planName: 'Plan de prueba',
       },
     });

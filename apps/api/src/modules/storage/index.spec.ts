@@ -21,8 +21,8 @@ type Expect<T extends true> = T;
 
 /**
  * ISP (005 plan §6): `PlanLimits` solo lleva límites de almacenamiento: bytes y, desde 006 (plan §7, decisión 1), la
- * retención en papelera en días, desde 007 (D-20) el nombre visible del plan que el adaptador lee en la misma fila y,
- * desde 014, las versiones retenidas por archivo.
+ * retención en papelera en días, desde 007 (D-20) el nombre visible del plan que el adaptador lee en la misma fila,
+ * desde 014, las versiones retenidas por archivo y, desde 016, el máximo de editores (DF-73).
  */
 type _PlanLimitsShape = Expect<
   Equal<
@@ -33,6 +33,7 @@ type _PlanLimitsShape = Expect<
       readonly storageQuotaBytes: bigint;
       readonly trashRetentionDays: number;
       readonly retainedVersions: number;
+      readonly maxEditors: number;
     }
   >
 >;
@@ -72,20 +73,23 @@ type _ListForOwnerSignature = Expect<
 /**
  * API pública de `storage` (plan §6, DF-51 opción A): el token del puerto de límites, el módulo que monta la raíz de
  * composición del `api` y el del `worker` (T-51), desde 011 (PD-31) el token del lector de metadatos que consume
- * `backoffice` y el token de `IObjectStorage` para la factura PDF de `billing` (009, decisión 1). El detector, el escáner
- * y los repositorios no salen.
+ * `backoffice`, el token de `IObjectStorage` para la factura PDF de `billing` (009, decisión 1) y, desde 016, la
+ * fachada `EditableFileGateway` para `editing` con el 404 uniforme de un nodo (`NodeNotFoundError`, 005 CA-16:
+ * `editing` responde igual que `storage`). El detector, el escáner y los repositorios no salen.
  */
 const RUNTIME_EXPORTS = [
+  'EditableFileGateway',
   'I_NODE_METADATA_READER',
   'I_OBJECT_STORAGE',
   'I_PLAN_LIMITS_PROVIDER',
+  'NodeNotFoundError',
   'StorageModule',
   'StorageWorkerModule',
   'invoiceObjectKey',
 ] as const;
 
 describe('modules/storage/index.ts', () => {
-  it('CA-3, CA-4, CA-9, RN-1, 011 PD-31, 009: exporta exactamente los tokens de límites, de metadatos y de objetos y los dos módulos', () => {
+  it('CA-3, CA-4, CA-9, RN-1, 011 PD-31, 009, 016 §2: exporta exactamente los tokens de límites, de metadatos y de objetos, los dos módulos y la fachada de edición', () => {
     expect(Object.keys(storage).sort()).toEqual([...RUNTIME_EXPORTS].sort());
     expect(typeof storage.I_PLAN_LIMITS_PROVIDER).toBe('symbol');
     expect(typeof storage.I_NODE_METADATA_READER).toBe('symbol');

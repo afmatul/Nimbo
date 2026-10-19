@@ -41,6 +41,7 @@ const LIMITS: PlanLimits = {
   storageQuotaBytes: 10_000_000n,
   trashRetentionDays: 30,
   retainedVersions: 10,
+  maxEditors: 3,
 };
 
 function setup(limits: PlanLimits = LIMITS) {
