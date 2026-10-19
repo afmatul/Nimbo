@@ -119,7 +119,7 @@ Antes de cada pantalla se leen sus capturas en `docs/design/capturas/`; las desv
   - Prueba: web `plan-and-billing.spec.tsx` (un caso por estado más Personal, axe), `subscription-api` con `fetch` simulado, catálogo y etiquetas.
   - Depende: 010a; mockups.
 
-- [ ] **T-09** Elegir plan para el cambio (`/suscripcion/cambiar-plan`)
+- [x] **T-09** Elegir plan para el cambio (`/suscripcion/cambiar-plan`)
   - Criterio: CA-16, CA-17 (PD-86), CA-18, CA-21 (aviso de versiones), CA-27.
   - Archivos: `app/(app)/(cliente)/suscripcion/cambiar-plan/{page,loading,error}.tsx`; `features/billing/components/plan-change-list.tsx`
     (usa `components/nimbo/plan-card.tsx` y `GET /billing/plans`).
@@ -228,3 +228,9 @@ Antes de cada pantalla se leen sus capturas en `docs/design/capturas/`; las desv
   plan ni tarjeta: la respuesta de auditoría solo expone `itemCount`, `sizeBytes`, `note` y `trigger` (`manual` o
   `scheduled`). Desviaciones del mockup: la ayuda del interruptor apagado nombra la tarjeta en texto («Visa ···· 4242») y
   no con el distintivo; «Método» sale de la tarjeta del plan (la tarjeta ya está en «Próximo cobro» y «Método de pago»).
+- **T-09** (2026-10-18, `7e6d06b`): sin `loading.tsx` ni `error.tsx` propios: la página es de cliente (necesita la sesión
+  para el historial y para programar) y muestra su carga y su error con `StateView`, como `/suscripcion`. El catálogo se
+  lee con la sesión desde el navegador (`fetchPlanCatalogWithSession`, mismo esquema de la 008). DRY: `BillingPageLayout`
+  reúne la barra, las migas y el espacio de las páginas de `billing` (lo usa también `/suscripcion`); `PlanCard` acepta
+  `badge` y `highlighted`. Desviaciones del mockup: el plan ya programado muestra «Cambio programado» deshabilitado (el
+  mockup no lo dibuja), y el texto bajo el título en solo lectura se completó porque la captura lo tapa.
