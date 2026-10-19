@@ -39,6 +39,12 @@ Un actor que ya no está `activa` recibe `403 SHARED_FORBIDDEN` antes de la acci
 vigente (RN-7, CA-14), y deja la bitácora `backoffice.actor.inactive` con `actorId` y `actorRole`. No autoriza por rol
 (`@Roles` + `RolesGuard`) ni valida: eso lo hacen el controlador y el módulo dueño.
 
+Antes de la transacción, `InternalActionService` comprueba el **límite de tasa de la cuenta interna**
+(`BackofficeRateLimiter`, 011 T-14, PD-103): 60 peticiones por minuto y por cuenta, con `I_RATE_LIMITER` de `shared` y la
+clave `backoffice:<actorId>`. La que se pasa recibe `429 SHARED_TOO_MANY_REQUESTS` con su `Retry-After` y deja la bitácora
+`backoffice.rate_limited` (solo `actorId`, `actorRole` y los segundos de espera). El límite es por cuenta y no por IP:
+el riesgo es una cuenta interna abusiva, no una oficina que comparte salida.
+
 ## Cuentas (CA-1 a CA-6)
 
 `AccountsController` (`@Roles(ADMIN)`; los servicios de cuentas no autorizan por sí mismos) valida con los contratos y

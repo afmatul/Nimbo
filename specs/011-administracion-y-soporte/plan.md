@@ -52,6 +52,7 @@ Dueño del módulo entre corchetes: lo ajeno se pide a su dueño en su PR (`spec
 | audit | `audit-actor.ts` (nuevo); `i-audit-logger.port.ts`, `audit-entry.ts`, `audit.service.ts`, `typeorm-audit.repository.ts` (cambian) | `AuditActor = Actor \| SystemActor` (`SYSTEM_ACTOR`, solo en `audit`); `AuditEntry.actorRole: Role \| 'SYSTEM'`; `targetUserId` nulo solo en catálogo y en el alta inicial. Con `SystemActor`, `AuditService` escribe con `run` (se une al `run` del llamador, T1); con `Actor`, `withActor` como hoy |
 | audit/presentation | `audit-event-response.ts`, textos de «Mi actividad» (cambian) | Acciones nuevas en español; el origen sigue siendo solo el rol (004 D-2, CA-16). El mapeador envía `resourceType: null` si el recurso es `account` (el texto de la acción ya lo dice) y nunca recibe `SYSTEM` (sin afectado): el contrato de 004 no cambia |
 | backoffice [Fátima] | `application/internal-action.service.ts` (nuevo) | `InternalActionService` (nombre de M8) por **composición**: `read(actor, work)` = `withActor` + `assertActorActive`; `run(actor, action)` = lo mismo + (si `action.locksAdminRoster`) `lockAdminRoster()` **antes** de la comprobación + `action.work()` + `recordInTransaction(action.event(resultado))`. Única dueña de «transacción + actor activo + evento» (DRY); no autoriza por rol ni valida |
+| backoffice [Fátima] | `application/backoffice-rate-limiter.ts` (nuevo, T-14) | Límite de tasa de las rutas `/backoffice/*`: `I_RATE_LIMITER` de `shared` con la clave `backoffice:<actorId>` y la regla 60/60 s; la que se pasa recibe el `429 SHARED_TOO_MANY_REQUESTS` de `shared` y deja `backoffice.rate_limited` (§5) |
 | backoffice/application | `admin.service.ts` · `catalog-admin.service.ts` · `support.service.ts` · `metrics.service.ts` · `initial-admin-bootstrapper.ts` (nuevos) | Cuentas y altas (`run` con candado; lista y ficha con `read`) · catálogo (`run`; lista con `read`) · metadatos (`run`: correo → cliente o `ClientNotFoundError`, que revierte sin evento) · tablero (`read`) · CA-7: **un solo** `run` sin actor con `enrollInitialAdmin` y el evento de `SYSTEM_ACTOR` |
 | backoffice/presentation | `accounts.controller.ts`, `plans.controller.ts`, `metrics.controller.ts`, `client-files.controller.ts` + `*-response.ts` (nuevos) | Validan con `contracts`, delegan y mapean por **lista blanca** (esquemas `strict`) |
 | backoffice | `domain/errors/client-not-found.error.ts`, `backoffice.module.ts`, `index.ts`, `README.md` | 404 `BACKOFFICE_CLIENT_NOT_FOUND`; módulo y API pública |
@@ -178,9 +179,20 @@ Prefijo `/api/v1`. Errores comunes de `/backoffice/*`: `401 SHARED_UNAUTHENTICAT
   se audita aunque la página venga vacía; el 404 no. El cliente ve solo el rol del actor (004 D-2, CA-16). El actor de sistema
   vive solo en `audit` (`withActor` y `RolesGuard` nunca lo aceptan) y solo inserta el evento que admite su política.
 - **Bitácoras** (Pino, ids): `backoffice.account.suspended|reactivated|enrolled`, `backoffice.plan.created|deactivated`,
-  `backoffice.client_files.viewed|not_found`, `backoffice.actor.inactive`, `identity.account_setup.rejected|completed`, `identity.session.revoked` (`reason: account_suspended`),
+  `backoffice.client_files.viewed|not_found`, `backoffice.actor.inactive`, `backoffice.rate_limited`, `identity.account_setup.rejected|completed`, `identity.session.revoked` (`reason: account_suspended`),
   `identity.invitation.mail_failed`, `admin.bootstrap.completed|refused`. Nunca correo, nombre de archivo, token ni enlace (el
   correo de búsqueda va en la cadena de consulta, que `http.request` ya descarta).
+- **Límite de tasa del backoffice** (T-14, PD-103, Art. IX.7; decisión de Fátima, 2026-10-19): un solo límite para todas
+  las rutas `/backoffice/*` (metadatos, cuentas, catálogo y métricas), **por cuenta interna**: `I_RATE_LIMITER` de `shared`
+  (Redis, ventana deslizante) con la clave `backoffice:<actorId>` y la regla **{ 60 peticiones por 60 s }**. Se comprueba en
+  `InternalActionService.read/run`, antes de abrir la transacción, que es el único punto por el que pasa toda operación del
+  backoffice. El `429` es el de `shared` (`SHARED_TOO_MANY_REQUESTS`, como pide PD-93) con su `Retry-After`; la bitácora
+  `backoffice.rate_limited` lleva el id y el rol del interno y los segundos de espera, nunca el correo que se sondea.
+  **Por qué no el *throttler* de Nest** (como `identity`, ADR-0017): al aplicar la librería todos los *throttlers* con
+  nombre a cada ruta que use su guard, añadir uno al registro global obligaría a tocar `identity/presentation/auth.controller.ts`
+  (fuera de los archivos de R-8) y la clave sería la IP, que no es la unidad del riesgo (varios internos comparten la IP de
+  la oficina). **Por qué no un código propio**: PD-93 unifica los `429` en `SHARED_TOO_MANY_REQUESTS` y la web ya tiene el
+  mensaje.
 - `/auth/account-setup*` reutilizan el modelo de 002: token de 256 bits, solo hash, consumo atómico; sin límite de tasa propio,
   como `reset-password` (adivinar 256 bits no es viable; Fátima, 2026-10-08). La saturación por IP queda en PD-88.
 

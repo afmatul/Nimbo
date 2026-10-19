@@ -8,6 +8,7 @@ import type { AuditRecord, IAuditLogger } from '../../audit';
 import { AccountAdministration, ActorNotActiveError } from '../../identity';
 
 import type { BackofficeLogger } from './backoffice-logger';
+import { BackofficeRateLimiter } from './backoffice-rate-limiter';
 
 /** Una acción del backoffice y el evento que la deja en la auditoría del cliente (RN-2). */
 export interface InternalAction<T> {
@@ -21,23 +22,29 @@ export interface InternalAction<T> {
 /** Lo que este servicio usa de `AccountAdministration`; permite un doble en las pruebas. */
 type ActorGate = Pick<AccountAdministration, 'lockAdminRoster' | 'assertActorActive'>;
 
+/** Lo que este servicio usa del limitador de tasa; permite un doble en las pruebas. */
+type RateGate = Pick<BackofficeRateLimiter, 'assertAllowed'>;
+
 /**
  * Única dueña de «transacción + actor activo + evento» en el backoffice (011 plan §1, §2; nombre de M8; clase sin
  * interfaz, Art. V.2). Toda operación, lecturas incluidas, corre en `withActor` y comprueba una vez que el actor interno
  * sigue `activa` (RN-7, CA-14: si no, `403 SHARED_FORBIDDEN` aunque su token valga). No autoriza por rol (`RolesGuard`)
- * ni valida: eso lo hacen el controlador y el módulo dueño.
+ * ni valida: eso lo hacen el controlador y el módulo dueño. Antes de la transacción comprueba el límite de tasa de la
+ * cuenta interna (T-14, PD-103), que es el único paso por el que pasa toda operación del backoffice.
  */
 @Injectable()
 export class InternalActionService {
   constructor(
     @Inject(I_TRANSACTION_RUNNER) private readonly transactions: ITransactionRunner,
     @Inject(AccountAdministration) private readonly accounts: ActorGate,
+    @Inject(BackofficeRateLimiter) private readonly limiter: RateGate,
     @Inject(I_AUDIT_LOGGER) private readonly audit: Pick<IAuditLogger, 'recordInTransaction'>,
     @Inject(PinoLogger) private readonly logger: Pick<BackofficeLogger, 'warn'>,
   ) {}
 
   /** Lectura sin evento: comprueba al actor y lee en su transacción. */
-  read<T>(actor: Actor, work: () => Promise<T>): Promise<T> {
+  async read<T>(actor: Actor, work: () => Promise<T>): Promise<T> {
+    await this.limiter.assertAllowed(actor);
     return this.transactions.withActor(actor, async () => {
       await this.assertActive(actor);
       return work();
@@ -48,7 +55,8 @@ export class InternalActionService {
    * Acción y evento en la misma transacción (004 D-5): si el evento no se guarda, la acción se revierte. El candado va
    * antes de la comprobación para que una suspensión concurrente del propio actor se vea (plan §7 R-2).
    */
-  run<T>(actor: Actor, action: InternalAction<T>): Promise<T> {
+  async run<T>(actor: Actor, action: InternalAction<T>): Promise<T> {
+    await this.limiter.assertAllowed(actor);
     return this.transactions.withActor(actor, async () => {
       if (action.locksAdminRoster) {
         await this.accounts.lockAdminRoster();

@@ -5,6 +5,7 @@ import { AuditModule } from '../audit';
 import { BillingModule } from '../billing';
 
 import { AdminService } from './application/admin.service';
+import { BackofficeRateLimiter } from './application/backoffice-rate-limiter';
 import { CatalogAdminService } from './application/catalog-admin.service';
 import { InternalActionService } from './application/internal-action.service';
 import { MetricsService } from './application/metrics.service';
@@ -30,6 +31,7 @@ export class BackofficeModule {
       controllers: [ClientFilesController, AccountsController, MetricsController, PlansController],
       providers: [
         InternalActionService,
+        BackofficeRateLimiter,
         SupportService,
         AdminService,
         MetricsService,
