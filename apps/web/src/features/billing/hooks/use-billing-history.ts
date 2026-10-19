@@ -1,6 +1,6 @@
 'use client';
 
-import type { BillingHistoryResponse } from '@nimbo/contracts';
+import type { BillingHistoryResponse, SubscriptionView } from '@nimbo/contracts';
 import * as React from 'react';
 
 export type BillingHistoryState =
@@ -17,6 +17,8 @@ const LOADING: BillingHistoryState = { status: 'loading' };
 export function useBillingHistory(load: () => Promise<BillingHistoryResponse>): {
   readonly state: BillingHistoryState;
   readonly retry: () => void;
+  /** 010 CA-6, CA-19: la vista que respondió un ajuste reemplaza la de la página sin recargar. */
+  readonly replaceSubscription: (subscription: SubscriptionView) => void;
 } {
   const [state, setState] = React.useState<BillingHistoryState>(LOADING);
   const [attempt, setAttempt] = React.useState(0);
@@ -37,5 +39,13 @@ export function useBillingHistory(load: () => Promise<BillingHistoryResponse>): 
     setAttempt((previous) => previous + 1);
   }, []);
 
-  return { state, retry };
+  const replaceSubscription = React.useCallback((subscription: SubscriptionView) => {
+    setState((previous) =>
+      previous.status === 'ready'
+        ? { status: 'ready', history: { ...previous.history, subscription } }
+        : previous,
+    );
+  }, []);
+
+  return { state, retry, replaceSubscription };
 }
