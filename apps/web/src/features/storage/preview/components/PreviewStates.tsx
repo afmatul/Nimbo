@@ -21,8 +21,6 @@ export type PreviewStatesProps = {
   readonly onRetry: () => void;
   readonly onDownload: () => void;
   readonly returnHref: string;
-  /** Éxito del lector sin unidades; nunca se infiere de la emisión ni del tamaño. */
-  readonly empty?: boolean;
   readonly downloadPending?: boolean;
 };
 
@@ -115,17 +113,6 @@ function FailureActions(props: FailureStateProps): React.JSX.Element {
   );
 }
 
-function EmptyPreviewState(props: PreviewStatesProps): React.JSX.Element {
-  return (
-    <Alert variant="info" className="space-y-4 p-6">
-      <h2 className="text-base font-semibold">Este archivo no tiene contenido para mostrar.</h2>
-      <Button type="button" onClick={props.onDownload} disabled={props.downloadPending}>
-        Descargar
-      </Button>
-    </Alert>
-  );
-}
-
 function FailureState(props: FailureStateProps): React.JSX.Element {
   const { failure } = props;
   const message = failureMessage(failure);
@@ -150,6 +137,5 @@ export function PreviewStates(props: PreviewStatesProps): React.JSX.Element | nu
   if (state.status === 'idle' || state.status === 'loading') {
     return <LoadingState prolonged={state.status === 'loading' && state.prolonged} />;
   }
-  if (state.status === 'success' && props.empty) return <EmptyPreviewState {...props} />;
   return state.status === 'failure' ? <FailureState {...props} failure={state.failure} /> : null;
 }

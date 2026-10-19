@@ -1,5 +1,5 @@
 /** @jest-environment jsdom */
-import { STORAGE_PREVIEW_FAILURE_CODES, type PreviewUrlResponse } from '@nimbo/contracts';
+import { STORAGE_PREVIEW_FAILURE_CODES } from '@nimbo/contracts';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
@@ -18,7 +18,7 @@ jest.mock('next/link', () => ({
   ),
 }));
 
-function renderState(state: PreviewState, empty = false) {
+function renderState(state: PreviewState) {
   const onRetry = jest.fn();
   const onDownload = jest.fn();
   const { container } = render(
@@ -28,7 +28,6 @@ function renderState(state: PreviewState, empty = false) {
         state={state}
         onRetry={onRetry}
         onDownload={onDownload}
-        empty={empty}
         returnHref="/archivos?foco=archivo-17"
       />
     </main>,
@@ -119,31 +118,6 @@ describe('estados permitidos T-06', () => {
       expect(onDownload).toHaveBeenCalledTimes(1);
     },
   );
-
-  it('CA-1: vacío válido es éxito sin unidades, status y Descargar, nunca error', async () => {
-    const delivery: PreviewUrlResponse = {
-      file: {
-        id: '11111111-1111-4111-8111-111111111111',
-        name: 'Vacio.pptx',
-        kind: 'pptx',
-        folderId: null,
-        sizeBytes: 100,
-        createdAt: '2026-10-10T10:00:00.000Z',
-        updatedAt: '2026-10-10T10:00:00.000Z',
-      },
-      url: 'https://objects.test/object',
-      expiresAt: '2026-10-10T10:05:00.000Z',
-    };
-    const { container, onDownload } = renderState({ status: 'success', delivery }, true);
-    expect(screen.getByRole('status').textContent).toContain(
-      'Este archivo no tiene contenido para mostrar.',
-    );
-    expect(screen.queryByRole('alert')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Reintentar' })).toBeNull();
-    await userEvent.click(screen.getByRole('button', { name: 'Descargar' }));
-    expect(onDownload).toHaveBeenCalledTimes(1);
-    expect((await axe(container)).violations).toEqual([]);
-  });
 
   it('Guardia complementaria (017 CA-12): límite de emisión usa warning y solo callbacks manuales', () => {
     renderState(failed('rate-limited'));
