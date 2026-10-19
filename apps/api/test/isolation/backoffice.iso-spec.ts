@@ -29,6 +29,7 @@ import type {
 
 const CLIENT_FILES = '/api/v1/backoffice/client-files';
 const ACCOUNTS = '/api/v1/backoffice/accounts';
+const METRICS = '/api/v1/backoffice/metrics';
 const MY_EVENTS = '/api/v1/audit/my-events';
 /** A y B tienen archivos con los mismos nombres: nada los distingue salvo el dueño. */
 const TWIN_NAMES = ['Contrato.txt', 'Contrato (1).txt'];
@@ -128,8 +129,19 @@ const ACCOUNT_ROUTES: readonly BackofficeRoute[] = [
   },
 ];
 
-/** Cada acción de la 011 (CA-15): T-11 suma aquí métricas y catálogo. */
-const ROUTES: readonly BackofficeRoute[] = [CLIENT_FILES_ROUTE, ...ACCOUNT_ROUTES];
+/** Métricas (CA-12): Administrador y Operador; solo totales y conteos, nunca filas de una cuenta. */
+const METRICS_ROUTE: BackofficeRoute = {
+  route: `GET ${METRICS}`,
+  allowed: [Role.ADMIN, Role.OPERATOR],
+  keys: [
+    ...['accounts', 'total', 'clients', 'internal', 'byStatus', 'active', 'suspended'],
+    ...['usedBytesTotal', 'byPlan', 'planId', 'name', 'deactivatedAt', 'clientCount'],
+  ],
+  request: (http) => http.get(METRICS),
+};
+
+/** Cada acción de la 011 (CA-15): T-11 suma aquí el catálogo. */
+const ROUTES: readonly BackofficeRoute[] = [CLIENT_FILES_ROUTE, ...ACCOUNT_ROUTES, METRICS_ROUTE];
 
 /** Pares rol × ruta según la matriz: los que la ruta admite o los que rechaza (CA-14). */
 const casesWhere = (admitted: boolean): [InternalRole, string, BackofficeRoute][] =>
@@ -276,6 +288,19 @@ describe('aislamiento del backoffice (011 CA-15, CA-16)', () => {
         { targetUserId: a.id, actorId: world.internals[Role.SUPPORT].id },
       ]);
     });
+
+    it.each(METRICS_ROUTE.allowed)(
+      'ISO-3 (CA-12, CA-15): %s no puede recibir en las métricas el id ni el correo de A ni de B',
+      async (role) => {
+        const response = await send(world.internals[role], METRICS_ROUTE);
+        expect(response.status).toBe(200);
+        const serialized = JSON.stringify(response.body);
+
+        expect(
+          [a.id, a.email, b.id, b.email].filter((value) => serialized.includes(value)),
+        ).toEqual([]);
+      },
+    );
 
     it.each(CLIENT_FILES_ROUTE.allowed)(
       'ISO-3 (CA-13, CA-15): %s no puede ver archivos de B consultando por A: solo los ids de A',

@@ -49,7 +49,15 @@ const setup = () => {
   const users = new InMemoryUserRepository();
   const sessions = new InMemorySessionRepository();
   const tokens = new InMemoryVerificationTokenRepository();
-  const administration = new AccountAdministration(users, sessions, tokens, new FixedClock(NOW));
+  const logs: Record<string, unknown>[] = [];
+  const logger = { info: (payload: Record<string, unknown>): void => void logs.push(payload) };
+  const administration = new AccountAdministration(
+    users,
+    sessions,
+    tokens,
+    new FixedClock(NOW),
+    logger,
+  );
   const admin = anInternalUser().build();
   users.seed(admin);
   const actor = createActor(admin.id, Role.ADMIN);
@@ -58,7 +66,7 @@ const setup = () => {
     return user;
   };
   const statusOf = async (id: string) => (await users.findById(id))?.status;
-  return { users, sessions, tokens, administration, admin, actor, seed, statusOf };
+  return { users, sessions, tokens, logs, administration, admin, actor, seed, statusOf };
 };
 
 describe('AccountAdministration (011 CA-2 a CA-4, RN-7)', () => {
@@ -69,13 +77,41 @@ describe('AccountAdministration (011 CA-2 a CA-4, RN-7)', () => {
       sessions.seed(anOpenSession(client.id));
       sessions.seed(anOpenSession(client.id));
 
-      const revoked = await administration.suspend(actor, client.id);
+      await administration.suspend(actor, client.id);
 
-      expect(revoked).toBe(2);
       expect(await statusOf(client.id)).toBe(AccountStatus.SUSPENDED);
       expect(
         sessions.all().every((session) => session.revocadaEn?.getTime() === NOW.getTime()),
       ).toBe(true);
+    });
+
+    it('002 D-10: la bitácora `identity.session.revoked` sale solo cuando el llamador la pide, después de su commit', async () => {
+      const { administration, actor, sessions, logs, seed } = setup();
+      const client = seed(aClientUser().withId(randomUUID()).verified().build());
+      sessions.seed(anOpenSession(client.id));
+      sessions.seed(anOpenSession(client.id));
+
+      const suspension = await administration.suspend(actor, client.id);
+      expect(logs).toEqual([]);
+      suspension.logRevokedSessions();
+
+      expect(logs).toEqual([
+        {
+          event: 'identity.session.revoked',
+          userId: client.id,
+          reason: 'account_suspended',
+          count: 2,
+        },
+      ]);
+    });
+
+    it('002 D-10: sin sesiones abiertas, el paso posterior al commit no anota nada', async () => {
+      const { administration, actor, logs, seed } = setup();
+      const client = seed(aClientUser().withId(randomUUID()).verified().build());
+
+      (await administration.suspend(actor, client.id)).logRevokedSessions();
+
+      expect(logs).toEqual([]);
     });
 
     it('CA-2, CA-5: suspender invalida el enlace de alta vigente; tras reactivar sigue sin servir', async () => {

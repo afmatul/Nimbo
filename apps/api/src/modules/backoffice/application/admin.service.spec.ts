@@ -30,8 +30,6 @@ interface SetupOptions {
   readonly commitFails?: boolean;
   readonly accounts?: readonly AccountView[];
   readonly planNames?: ReadonlyMap<string, string>;
-  /** Sesiones abiertas que revoca la suspensión. */
-  readonly revokedSessions?: number;
 }
 
 /**
@@ -64,7 +62,11 @@ const setup = (options: SetupOptions = {}) => {
     get: jest.fn((_actor: Actor, id: string) => Promise.resolve(byId(id))),
   };
   const administration = {
-    suspend: jest.fn(() => Promise.resolve(options.revokedSessions ?? 3)),
+    suspend: jest.fn(() =>
+      Promise.resolve({
+        logRevokedSessions: (): void => void timeline.push('log-revoked-sessions'),
+      }),
+    ),
     reactivate: jest.fn(() => Promise.resolve()),
   };
   const enrolledId = randomUUID();
@@ -169,13 +171,13 @@ describe('AdminService (011 CA-1 a CA-6, RN-2)', () => {
       const account = await service.suspend(actor, client.id);
 
       expect(account.id).toBe(client.id);
-      expect(timeline).toEqual(['run:locks=true', 'commit']);
+      expect(timeline.slice(0, 2)).toEqual(['run:locks=true', 'commit']);
       expect(recorded).toEqual([
         { action: 'account.suspended', actor, targetUserId: client.id, resourceId: client.id },
       ]);
     });
 
-    it('RNF-17: tras suspender, bitácoras con ids y el número de sesiones revocadas, nunca el correo', async () => {
+    it('RNF-17: tras suspender, la bitácora de `backoffice` lleva solo ids, nunca el correo', async () => {
       const client = anAccount(Role.CLIENT);
       const { service, logs, actor } = setup({ accounts: [client] });
 
@@ -183,25 +185,17 @@ describe('AdminService (011 CA-1 a CA-6, RN-2)', () => {
 
       expect(logs).toEqual([
         { event: 'backoffice.account.suspended', actorId: actor.id, accountId: client.id },
-        {
-          event: 'identity.session.revoked',
-          userId: client.id,
-          reason: 'account_suspended',
-          count: 3,
-        },
       ]);
       expect(JSON.stringify(logs)).not.toContain(client.email);
     });
 
-    it('RNF-17: sin sesiones abiertas no anota `identity.session.revoked` (como `identity`)', async () => {
+    it('002 D-10: pide a `identity` la bitácora de sesiones revocadas después del commit', async () => {
       const client = anAccount(Role.CLIENT);
-      const { service, logs, actor } = setup({ accounts: [client], revokedSessions: 0 });
+      const { service, timeline, actor } = setup({ accounts: [client] });
 
       await service.suspend(actor, client.id);
 
-      expect(logs).toEqual([
-        { event: 'backoffice.account.suspended', actorId: actor.id, accountId: client.id },
-      ]);
+      expect(timeline).toEqual(['run:locks=true', 'commit', 'log-revoked-sessions']);
     });
 
     it('CA-3: reactiva con el candado del padrón, audita y deja su bitácora', async () => {
@@ -217,12 +211,13 @@ describe('AdminService (011 CA-1 a CA-6, RN-2)', () => {
       ]);
     });
 
-    it('si la transacción se revierte, no deja bitácoras de éxito', async () => {
+    it('002 D-10: si la transacción se revierte, no deja bitácoras de éxito ni pide la de sesiones revocadas', async () => {
       const client = anAccount(Role.CLIENT);
-      const { service, logs, actor } = setup({ accounts: [client], commitFails: true });
+      const { service, timeline, logs, actor } = setup({ accounts: [client], commitFails: true });
 
       await expect(service.suspend(actor, client.id)).rejects.toThrow('no se pudo confirmar');
       expect(logs).toEqual([]);
+      expect(timeline).not.toContain('log-revoked-sessions');
     });
   });
 

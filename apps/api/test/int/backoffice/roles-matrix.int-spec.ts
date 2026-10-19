@@ -30,7 +30,7 @@ interface DeniedCaller {
   readonly suspended: boolean;
 }
 
-/** Una ruta del backoffice y quiénes no la pueden usar; T-11 suma las de métricas y catálogo. */
+/** Una ruta del backoffice y quiénes no la pueden usar; T-11 suma las del catálogo. */
 interface BackofficeRoute {
   readonly name: string;
   readonly denied: readonly DeniedCaller[];
@@ -48,6 +48,11 @@ const SUSPENDED_SUPPORT: DeniedCaller = {
 const SUSPENDED_ADMIN: DeniedCaller = {
   name: 'un Administrador suspendido',
   role: Role.ADMIN,
+  suspended: true,
+};
+const SUSPENDED_OPERATOR: DeniedCaller = {
+  name: 'un Operador suspendido',
+  role: Role.OPERATOR,
   suspended: true,
 };
 
@@ -98,6 +103,11 @@ const ROUTES: readonly BackofficeRoute[] = [
         employeeCode: uniqueEmployeeCode(),
         role: Role.SUPPORT,
       }),
+  },
+  {
+    name: 'GET /backoffice/metrics',
+    denied: [CLIENT, SUPPORT, SUSPENDED_ADMIN, SUSPENDED_OPERATOR],
+    call: (http, token) => withToken(http.get('/api/v1/backoffice/metrics'), token),
   },
 ];
 

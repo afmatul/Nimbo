@@ -74,18 +74,21 @@ export class AdminService {
     return this.internal.read(actor, () => this.detailOf(actor, id));
   }
 
-  /** CA-2, CA-4: la ficha ya suspendida; las sesiones revocadas quedan en la bitácora (002 D-10). */
+  /**
+   * CA-2, CA-4: la ficha ya suspendida. La bitácora de las sesiones revocadas (002 D-10) la escribe `identity`, después
+   * del commit, como el correo del alta.
+   */
   async suspend(actor: Actor, id: string): Promise<AccountDetail> {
-    const { account, revokedSessions } = await this.internal.run(actor, {
+    const { account, suspension } = await this.internal.run(actor, {
       locksAdminRoster: true,
       work: async () => {
-        const revoked = await this.administration.suspend(actor, id);
-        return { account: await this.detailOf(actor, id), revokedSessions: revoked };
+        const suspension = await this.administration.suspend(actor, id);
+        return { account: await this.detailOf(actor, id), suspension };
       },
       event: () => accountEvent(AuditAction.ACCOUNT_SUSPENDED, actor, id),
     });
     this.logger.info({ event: 'backoffice.account.suspended', actorId: actor.id, accountId: id });
-    this.logSessionsRevoked(id, revokedSessions);
+    suspension.logRevokedSessions();
     return account;
   }
 
@@ -128,18 +131,6 @@ export class AdminService {
       role: account.role,
     });
     return account;
-  }
-
-  /** Como en `identity` (`password.service.ts`): sin sesiones revocadas no hay bitácora. */
-  private logSessionsRevoked(userId: string, count: number): void {
-    if (count > 0) {
-      this.logger.info({
-        event: 'identity.session.revoked',
-        userId,
-        reason: 'account_suspended',
-        count,
-      });
-    }
   }
 
   private async detailOf(actor: Actor, id: string): Promise<AccountDetail> {

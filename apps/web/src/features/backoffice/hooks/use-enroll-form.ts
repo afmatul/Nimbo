@@ -145,7 +145,11 @@ function rejectedPhase(caught: unknown, form: Form): EnrollPhase {
   return { status: 'editing', problem: { kind } };
 }
 
-/** «Crear otra cuenta» vacía el formulario y, ya montado otra vez, enfoca el nombre. */
+/**
+ * «Crear otra cuenta» vacía el formulario y, ya montado otra vez, enfoca el nombre. No reutiliza `useResetWithFocus`:
+ * aquí `react-hook-form` vacía (`reset`) y enfoca (`setFocus`) sin volver a montar el formulario, y el `ref` del campo es
+ * el de `register`; compartir aquel `inputRef` obligaría a fusionar los dos `ref`.
+ */
 function useResetAndFocus(form: Form, setPhase: (phase: EnrollPhase) => void): () => void {
   const [resets, setResets] = React.useState(0);
   const { setFocus } = form;

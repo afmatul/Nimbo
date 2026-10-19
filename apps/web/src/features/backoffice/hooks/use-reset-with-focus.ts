@@ -11,8 +11,9 @@ export interface ResetWithFocus {
 }
 
 /**
- * Vacía un formulario (lo vuelve a montar con `formKey`) y devuelve el foco a su primer campo: el botón que lo pidió
- * desaparece. «Limpiar búsqueda» de Soporte y de cuentas, y «Crear otra cuenta» del alta interna.
+ * Vacía un formulario no controlado por `react-hook-form` (lo vuelve a montar con `formKey`) y devuelve el foco a su
+ * campo: el botón que lo pidió desaparece. «Limpiar búsqueda» de Soporte y de cuentas. El alta interna no lo usa:
+ * `react-hook-form` vacía y enfoca por sí mismo (`useResetAndFocus` en `use-enroll-form.ts`).
  */
 export function useResetWithFocus(onReset: () => void): ResetWithFocus {
   const inputRef = React.useRef<HTMLInputElement>(null);

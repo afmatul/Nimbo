@@ -64,9 +64,23 @@ para clientes; es `null` («—») en internas y en clientes sin suscripción, y
 - El alta la hace `InternalAccountEnrollment` (`identity`) y el correo con el enlace «Crear tu contraseña» sale
   **después** del commit: si la transacción se revierte, no hay enlace en camino.
 - Bitácoras, solo con ids y el rol: `backoffice.account.suspended` y `backoffice.account.reactivated` (`actorId`,
-  `accountId`), `backoffice.account.enrolled` (`actorId`, `accountId`, `role`) e `identity.session.revoked`
-  (`userId`, `reason: account_suspended`, `count`), esta solo si revocó alguna sesión. Nunca correo, nombre ni código
-  de empleado.
+  `accountId`) y `backoffice.account.enrolled` (`actorId`, `accountId`, `role`). Nunca correo, nombre ni código de
+  empleado. `identity.session.revoked` (`reason: account_suspended`, `count`, solo si revocó alguna sesión) la escribe
+  `identity`: `AdminService` llama a `Suspension.logRevokedSessions()` después del commit, como el correo del alta.
+
+## Métricas (CA-12)
+
+`GET /api/v1/backoffice/metrics` (`MetricsController`, `@Roles(ADMIN, OPERATOR)`) delega en `MetricsService.read`, que
+corre en `InternalActionService.read` (sin evento) y responde por lista blanca (`metrics-response.ts`) solo con totales
+y conteos, nunca filas de una cuenta:
+
+- `accounts`: total, clientes, internas y `byStatus` (`active`, `suspended`), de `AccountDirectory.statistics`
+  (`identity`).
+- `usedBytesTotal`: la suma de `usuario.espacio_usado` (005, 007) como texto decimal, sin recalcular desde archivos.
+- `byPlan`: `{ planId, name, deactivatedAt, clientCount }` en el orden del catálogo (`PlanCatalogService.listAll`). Los
+  planes activos salen siempre (con `0` si no tienen clientes); los desactivados, solo si aún tienen clientes. Los
+  conteos salen de `SubscriptionAdministration.clientCountsByPlan` (`billing`, que la base solo permite a `ADMIN` y
+  `OPERATOR`): un cliente sin suscripción no cuenta en ningún plan, así que la suma puede quedar bajo `clients`.
 
 ## Metadatos de un cliente (011 CA-13)
 
