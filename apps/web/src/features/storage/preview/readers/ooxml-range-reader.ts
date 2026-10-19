@@ -14,17 +14,30 @@ const EMPTY = new Uint8Array(0);
  */
 export class ObjectRangeReader extends Reader<string> {
   readonly #source: ObjectSource;
+  #signal: AbortSignal;
   #failed = false;
 
   constructor(source: ObjectSource) {
     // zip.js no necesita el valor: la URL firmada queda solo en el campo privado.
     super('');
     this.#source = source;
+    this.#signal = source.signal;
   }
 
   /** Fallo de transporte ya saneado, sin depender de cómo zip.js envuelva el error. */
   get failed(): boolean {
     return this.#failed;
+  }
+
+  /** Las partes se leen secuencialmente; cancelar una no invalida el paquete ni su siguiente lectura. */
+  async withSignal(signal: AbortSignal, read: () => Promise<void>): Promise<void> {
+    this.#signal = signal;
+    this.#failed = false;
+    try {
+      await read();
+    } finally {
+      this.#signal = this.#source.signal;
+    }
   }
 
   override async init(): Promise<void> {
@@ -46,7 +59,7 @@ export class ObjectRangeReader extends Reader<string> {
 
   async #read(range: { readonly start: number; readonly end: number }): Promise<RangeBytes> {
     try {
-      const result = await fetchObjectBytes({ ...this.#source, range });
+      const result = await fetchObjectBytes({ ...this.#source, signal: this.#signal, range });
       return { bytes: await readStreamBytes(result.body), totalLength: result.totalLength };
     } catch {
       throw this.#failure();

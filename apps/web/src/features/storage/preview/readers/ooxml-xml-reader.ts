@@ -8,6 +8,9 @@ export type XmlElement = XmlName & {
   readonly attributes: ReadonlyMap<string, string>;
 };
 export type XmlHandlers = {
+  readonly signal?: AbortSignal | undefined;
+  /** Raíz esperada de la parte; la estructura interna sigue a cargo de su lector. */
+  readonly root?: { readonly local: string; readonly namespaces: ReadonlySet<string> };
   readonly open?: (element: XmlElement) => void;
   readonly close?: (element: XmlName) => void;
   readonly text?: (text: string) => void;
@@ -20,6 +23,7 @@ type Decoding = {
   encoding?: Encoding;
   decoder?: TextDecoder;
   declared?: string | undefined;
+  consumerError?: unknown;
 };
 type Parser = SaxesParser<{ xmlns: true }>;
 
@@ -82,8 +86,20 @@ function elementOf(tag: SaxesTagNS): XmlElement {
   return { uri: tag.uri, local: tag.local, attributes };
 }
 
+function openHandlerOf(handlers: XmlHandlers) {
+  let first = true;
+  return (tag: SaxesTagNS): void => {
+    const expected = handlers.root;
+    if (first && expected && (tag.local !== expected.local || !expected.namespaces.has(tag.uri)))
+      throw corrupt();
+    first = false;
+    handlers.open?.(elementOf(tag));
+  };
+}
+
 function createParser(handlers: XmlHandlers, state: Decoding): Parser {
   const parser: Parser = new SaxesParser({ xmlns: true });
+  const open = openHandlerOf(handlers);
   parser.on('xmldecl', (declaration: XMLDecl) => {
     state.declared = declaration.encoding;
     if (state.encoding && !declarationMatches(state.encoding, declaration.encoding))
@@ -93,17 +109,29 @@ function createParser(handlers: XmlHandlers, state: Decoding): Parser {
   parser.on('doctype', () => {
     throw corrupt();
   });
-  parser.on('opentag', (tag) => handlers.open?.(elementOf(tag)));
-  parser.on('closetag', (tag) => handlers.close?.({ uri: tag.uri, local: tag.local }));
-  parser.on('text', (text) => handlers.text?.(text));
-  parser.on('cdata', (text) => handlers.text?.(text));
+  const consumer = (call: () => void): void => {
+    try {
+      call();
+    } catch (error) {
+      state.consumerError = error;
+      throw error;
+    }
+  };
+  parser.on('opentag', (tag) => consumer(() => open(tag)));
+  parser.on('closetag', (tag) =>
+    consumer(() => handlers.close?.({ uri: tag.uri, local: tag.local })),
+  );
+  parser.on('text', (text) => consumer(() => handlers.text?.(text)));
+  parser.on('cdata', (text) => consumer(() => handlers.text?.(text)));
   return parser;
 }
 
-function guarded(step: () => void): void {
+/** Lo que lanza el consumidor (p. ej. fin de ventana) llega intacto; lo demás es XML corrupto. */
+function guarded(step: () => void, state: Decoding): void {
   try {
     step();
   } catch (error) {
+    if (error === state.consumerError) throw error;
     throw error instanceof OoxmlError ? error : corrupt();
   }
 }
@@ -116,7 +144,7 @@ export function createXmlReader(handlers: XmlHandlers): XmlReader {
   const run = (step: () => void): void => {
     if (failed) throw corrupt();
     try {
-      guarded(step);
+      guarded(step, state);
     } catch (error) {
       failed = true;
       throw error;
@@ -139,6 +167,6 @@ export async function parseXmlPart(
   handlers: XmlHandlers,
 ): Promise<void> {
   const reader = createXmlReader(handlers);
-  await pkg.readPart(partName, reader.write);
+  await pkg.readPart(partName, reader.write, handlers.signal);
   reader.end();
 }

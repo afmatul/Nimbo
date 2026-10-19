@@ -15,7 +15,12 @@ export class OoxmlError extends Error {
 export type ZipPackage = {
   /** Nombre de parte OPC (`/xl/workbook.xml`); la equivalencia es ASCII sin distinguir mayúsculas. */
   readonly has: (partName: string) => boolean;
-  readonly readPart: (partName: string, onChunk: (chunk: Uint8Array) => void) => Promise<void>;
+  /** Lectura secuencial; la señal opcional cancela solo esta parte, además de la señal del paquete. */
+  readonly readPart: (
+    partName: string,
+    onChunk: (chunk: Uint8Array) => void,
+    signal?: AbortSignal,
+  ) => Promise<void>;
   readonly close: () => Promise<void>;
 };
 
@@ -87,30 +92,62 @@ async function readEntry(
   signal: AbortSignal,
 ): Promise<void> {
   if (entry === undefined) throw new OoxmlError('corrupt');
-  let consumerError: unknown;
-  const sink = new WritableStream<Uint8Array>({
-    write(chunk) {
+  const sink = new WritableStream<Uint8Array>({ write: (chunk) => onChunk(chunk) });
+  await entry.getData(sink, { ...ZIP_OPTIONS, signal });
+}
+
+function combinedSignalOf(packageSignal: AbortSignal, unitSignal?: AbortSignal) {
+  if (unitSignal === undefined) return { signal: packageSignal, cleanup: () => undefined };
+  const controller = new AbortController();
+  const signals = [packageSignal, unitSignal];
+  const abort = (): void => controller.abort();
+  for (const signal of signals) {
+    if (signal.aborted) abort();
+    else signal.addEventListener('abort', abort, { once: true });
+  }
+  return {
+    signal: controller.signal,
+    cleanup: () => {
+      for (const signal of signals) signal.removeEventListener('abort', abort);
+    },
+  };
+}
+
+/** Solo se clasifican errores de zip.js/transporte; lo que lanza el consumidor llega intacto. */
+function readPartOf(archive: Archive, entries: Map<string, zip.FileEntry>, signal: AbortSignal) {
+  return async (
+    partName: string,
+    onChunk: (chunk: Uint8Array) => void,
+    unit?: AbortSignal,
+  ): Promise<void> => {
+    const { signal: readingSignal, cleanup } = combinedSignalOf(signal, unit);
+    let consumerFailed = false;
+    let consumerError: unknown;
+    const consume = (chunk: Uint8Array): void => {
       try {
         onChunk(chunk);
       } catch (error) {
+        consumerFailed = true;
         consumerError = error;
         throw error;
       }
-    },
-  });
-  await entry.getData(sink, { ...ZIP_OPTIONS, signal }).catch((error: unknown) => {
-    throw consumerError ?? error;
-  });
+    };
+    await archive.reader
+      .withSignal(readingSignal, () =>
+        readEntry(entries.get(partKey(partName)), consume, readingSignal),
+      )
+      .catch((error: unknown) => {
+        throw consumerFailed ? consumerError : classify(error, archive.reader);
+      })
+      .finally(cleanup);
+  };
 }
 
 function packageOf(archive: Archive, entries: Map<string, zip.FileEntry>, signal: AbortSignal) {
   let closing: Promise<void> | undefined;
   const pkg: ZipPackage = {
     has: (partName) => entries.has(partKey(partName)),
-    readPart: (partName, onChunk) =>
-      readEntry(entries.get(partKey(partName)), onChunk, signal).catch((error: unknown) => {
-        throw classify(error, archive.reader);
-      }),
+    readPart: readPartOf(archive, entries, signal),
     close: () => {
       closing ??= archive.zip.close().catch(() => undefined);
       entries.clear();

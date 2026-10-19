@@ -119,6 +119,23 @@ describe('lector XML incremental T-09a con saxes real', () => {
     expect(reasonOf(() => reader.write(encoder.encode('<x/>')))).toBe('protected');
   });
 
+  it('CA-7: una señal propia del consumidor (no OoxmlError) se propaga intacta para cortar la lectura', () => {
+    const stop = new Error('fin de ventana');
+    const reader = createXmlReader({
+      open: () => {
+        throw stop;
+      },
+    });
+    let caught: unknown;
+    try {
+      reader.write(encoder.encode('<x/>'));
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBe(stop);
+    expect(reasonOf(() => reader.write(encoder.encode('<y/>')))).toBe('corrupt');
+  });
+
   it('CA-1: parseXmlPart lee una parte real del ZIP en streaming', async () => {
     const xml = `<x xmlns="urn:x">${'<v>1</v>'.repeat(5000)}</x>`;
     serveObject(await zipOf([['p/a.xml', utf16(xml, 'be')]]));

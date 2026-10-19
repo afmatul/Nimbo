@@ -62,7 +62,59 @@ async function fixture(fixtures) {
   return stored;
 }
 
+/** XLSX deflactado real: libro, shared strings, estilos de fecha, fórmula sin cache y chartsheet. */
+async function xlsxFixture() {
+  const { zipOf } = await import('./ooxml-fixtures.ts');
+  const { row, xlsxEntries } = await import('./xlsx-fixtures.ts');
+  const data =
+    row(1, [
+      ['A1', 't="s"', '<v>0</v>'],
+      ['B1', 's="1"', '<v>46262</v>'],
+      ['C1', '', '<f>NOW()</f>'],
+    ]) + row(2, [['A2', '', `<v>${'9'.repeat(15)}</v>`]]);
+  return zipOf(
+    xlsxEntries({
+      strict: scenario === 'xlsx-strict',
+      sheets: [
+        { name: 'Cronograma', data },
+        { name: 'Gráfico', type: 'chartsheet' },
+      ],
+      sharedStrings: ['<r><t>Fase </t></r><r><t>0</t></r>'],
+      styles: '<cellXfs><xf numFmtId="0"/><xf numFmtId="14"/></cellXfs>',
+    }),
+  );
+}
+
+async function runXlsx() {
+  const bytes = await xlsxFixture();
+  if (scenario === 'xlsx-fallback') delete globalThis.DecompressionStream;
+  // Proceso aislado: las APIs se retiran después de crear el fixture y antes de importar el lector.
+  const missingApi =
+    scenario === 'xlsx-no-from-entries'
+      ? 'Object.fromEntries'
+      : scenario === 'xlsx-no-flat-map'
+        ? 'Array.prototype.flatMap'
+        : undefined;
+  if (missingApi === 'Object.fromEntries') delete Object.fromEntries;
+  if (missingApi === 'Array.prototype.flatMap') delete Array.prototype.flatMap;
+  serve(bytes);
+  const { openZipPackage } = await import('../ooxml-package-reader.ts');
+  const { openOoxmlDocument } = await import('../ooxml-relations.ts');
+  const { openXlsxWorkbook } = await import('../xlsx-reader.ts');
+  const pkg = await openZipPackage({ url: URL_SIGNED, signal: new AbortController().signal });
+  const workbook = await openXlsxWorkbook(pkg, await openOoxmlDocument(pkg, 'xlsx'));
+  const projection = await workbook.readSheet(0, { offset: 0, current: () => true });
+  await pkg.close();
+  const native = typeof globalThis.DecompressionStream;
+  const output = { ok: true, preview: workbook.preview, projection, requests, native, missingApi };
+  process.stdout.write(JSON.stringify(output));
+}
+
 try {
+  if (scenario.startsWith('xlsx')) {
+    await runXlsx();
+    process.exit();
+  }
   const fixtures = await import('./ooxml-fixtures.ts');
   const bytes = await fixture(fixtures);
   // Navegadores del target de Next sin deflate-raw nativo: debe actuar el respaldo zlib en JS.

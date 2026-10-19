@@ -19,18 +19,27 @@ function fakeWorker() {
   return { port, sent, terminate, emit };
 }
 
-function connect(worker: ReturnType<typeof fakeWorker>, signal = new AbortController().signal) {
+const PREVIEW = { kind: 'xlsx', sheets: [{ name: 'Uno', type: 'worksheet', state: 'visible' }] };
+const PROJECTION = { index: 0, columns: 0, rows: [], missingCache: 0 };
+
+function connect(
+  worker: ReturnType<typeof fakeWorker>,
+  signal = new AbortController().signal,
+  kind: 'xlsx' | 'pptx' = 'xlsx',
+) {
   const onOpened = jest.fn();
+  const onUnit = jest.fn();
   const onFailure = jest.fn();
   const reading = connectOoxmlWorker(worker.port, {
-    kind: 'xlsx',
+    kind,
     url: URL,
     signal,
     onOpened,
+    onUnit,
     onFailure,
   });
   const session = (worker.sent[0] as { session: number }).session;
-  return { reading, onOpened, onFailure, session };
+  return { reading, onOpened, onUnit, onFailure, session };
 }
 
 describe('cliente del worker OOXML T-09a', () => {
@@ -50,9 +59,54 @@ describe('cliente del worker OOXML T-09a', () => {
     worker.emit('message', { type: 'opened', session, url: URL });
     expect(onOpened).not.toHaveBeenCalled();
     expect(onFailure).not.toHaveBeenCalled();
-    worker.emit('message', { type: 'opened', session });
-    expect(onOpened).toHaveBeenCalledTimes(1);
+    // Desde T-09b, un XLSX abre siempre con su libro.
+    worker.emit('message', { type: 'opened', session, preview: PREVIEW });
+    worker.emit('message', { type: 'opened', session, preview: PREVIEW });
+    expect(onOpened.mock.calls).toEqual([[PREVIEW]]);
     expect(worker.terminate).not.toHaveBeenCalled();
+  });
+
+  it('CA-2: un XLSX que abre sin libro es una violación del protocolo (unavailable)', () => {
+    const worker = fakeWorker();
+    const { onOpened, onFailure, session } = connect(worker);
+    worker.emit('message', { type: 'opened', session });
+    expect(onOpened).not.toHaveBeenCalled();
+    expect(onFailure.mock.calls).toEqual([['unavailable']]);
+    expect(worker.terminate).toHaveBeenCalledTimes(1);
+  });
+
+  it('CA-1: PPTX abre sin libro mientras su lector no exista (transitorio de T-09b)', () => {
+    const worker = fakeWorker();
+    const { onOpened, session } = connect(worker, new AbortController().signal, 'pptx');
+    worker.emit('message', { type: 'opened', session });
+    expect(onOpened.mock.calls).toEqual([[undefined]]);
+  });
+
+  it('CA-7: select solo tras abrir, con peticiones crecientes; solo la última unidad se aplica', () => {
+    const worker = fakeWorker();
+    const { reading, onUnit, session } = connect(worker);
+    reading.select(0, 0);
+    expect(worker.sent).toHaveLength(1);
+    worker.emit('message', { type: 'opened', session, preview: PREVIEW });
+    reading.select(0, 0);
+    reading.select(0, 200);
+    expect(worker.sent.slice(1)).toEqual([
+      { type: 'unit', session, request: 1, index: 0, offset: 0 },
+      { type: 'unit', session, request: 2, index: 0, offset: 200 },
+    ]);
+    worker.emit('message', { type: 'unit', session, request: 1, projection: PROJECTION });
+    worker.emit('message', {
+      type: 'unit',
+      session: session + 1,
+      request: 2,
+      projection: PROJECTION,
+    });
+    expect(onUnit).not.toHaveBeenCalled();
+    worker.emit('message', { type: 'unit', session, request: 2, projection: PROJECTION });
+    expect(onUnit.mock.calls).toEqual([[PROJECTION]]);
+    reading.dispose();
+    reading.select(1, 0);
+    expect(worker.sent).toHaveLength(3);
   });
 
   it.each(['corrupt', 'protected', 'unavailable', 'memory'])(
@@ -101,6 +155,7 @@ describe('cliente del worker OOXML T-09a', () => {
       url: URL,
       signal: controller.signal,
       onOpened: jest.fn(),
+      onUnit: jest.fn(),
       onFailure: jest.fn(),
     });
     expect(worker.sent).toEqual([]);
