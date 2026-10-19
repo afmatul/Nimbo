@@ -12,7 +12,7 @@ export class PlanChangeInvalidError extends DomainError {
 
   constructor() {
     super(
-      'Ese plan no está disponible para el cambio. Elige otro plan activo distinto del actual.',
+      'No pudimos programar el cambio. Ese plan ya no está disponible. Cierra este aviso y elige otro plan de la lista.',
     );
   }
 }
