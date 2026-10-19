@@ -20,6 +20,7 @@ export const toVersionRow = (version: FileVersion): VersionArchivoOrmEntity => (
   tamanoBytes: version.sizeBytes,
   creadoPor: version.createdBy,
   creadaEn: version.createdAt,
+  sesionEdicionId: version.editSessionId,
 });
 
 const toFileVersion = (row: VersionArchivoOrmEntity): FileVersion =>
@@ -33,6 +34,7 @@ const toFileVersion = (row: VersionArchivoOrmEntity): FileVersion =>
     sizeBytes: row.tamanoBytes,
     createdBy: row.creadoPor,
     createdAt: row.creadaEn,
+    editSessionId: row.sesionEdicionId,
   });
 
 /**

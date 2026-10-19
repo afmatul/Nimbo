@@ -98,12 +98,12 @@ No hay paquete `domain` aparte salvo que un ADR lo justifique.
 | `audit` | T2 (extraído de M8, DF-03) | `AuditService`, `AuditEntry`; declara e implementa `IAuditLogger` (ADR-0010). 005 creó el puerto y el catálogo cerrado `AuditAction`; 004 lo implementa con `AuditService`, persistente en `evento_auditoria` (solo adición, RLS por afectado), con el catálogo `AUDIT_CATALOG` (lista blanca de atributos por acción) y el repositorio interno `IAuditRepository`. `AuditModule` (escritura; lo cargan `api` y `worker`) y `AuditHttpModule` (solo `api`: `GET /audit/my-events`, la actividad propia para los cuatro roles) | shared |
 | `notifications` | T4 (DF-34) | Correo y notificaciones; declara e implementa `IMailer` e `INotifier` (ADR-0010). El `api` encola en `mail` y el `worker` entrega por SMTP con nodemailer (ADR-0018) | shared, realtime |
 | `realtime` | T3 (generalizado desde M5, DF-30) | Único gateway Socket.IO, salas por usuario y documento; valida el token del handshake con el puerto token→`Actor` de `shared`; declara `IRealtimePublisher` e `IDocumentRooms` y el evento `realtime.document-left` (ADR-0010, ADR-0019, 015) | shared |
-| `identity` | M1 | Registro, verificación, login, refresh, sesiones, dispositivos. Publica `identity.client-account-verified` (001, ADR-0019). Con 011 (Propuesto): fachadas de cuentas para `backoffice`. Con 009: `VerifiedClientLister` (en el `worker` por `IdentityReadersModule`) y `AccountContactReader` para `billing` | shared, notifications, audit |
+| `identity` | M1 | Registro, verificación, login, refresh, sesiones, dispositivos. Publica `identity.client-account-verified` (001, ADR-0019). Con 011 (Propuesto): fachadas de cuentas para `backoffice`. Con 009: `VerifiedClientLister` (en el `worker` por `IdentityReadersModule`) y `AccountContactReader` para `billing`. Implementa `IUserDirectory` (nombres visibles; lo declara `editing`) | shared, notifications, audit, editing (solo para implementar `IUserDirectory`, patrón `billing → storage`; 016, DF-74) |
 | `billing` | M4 | Planes, suscripciones, pagos, facturas, renovación; implementa `IPlanLimitsProvider` (declarado por `storage`, DF-51 opción A) e `IAgentQuota`; crea la suscripción Personal al consumir `identity.client-account-verified` | shared, notifications, audit, storage (`IObjectStorage` para facturas y `IPlanLimitsProvider`/`PlanLimits` para implementarlo; solo desde `storage/index.ts`), identity (solo desde su `index.ts`: el evento `identity.client-account-verified`, ADR-0019, y desde la 009 las fachadas de lectura `VerifiedClientLister` y `AccountContactReader`, sin repositorios ni entidades; aprobado por Adrián en la revisión del plan 009, decisión 2, DF-69) |
 | `access` | M3a (lectura) | Solo lectura: `PermissionResolver`, políticas, `accessibleNodes(actor)` | shared |
 | `storage` | M2 | Nodos, cargas, descargas, papelera, versiones, cuota, búsqueda por metadatos, vista previa. Con 005: `UploadService`, `QuotaService`, `FileService`, cola `upload-cleanup`. Escribe la columna `usuario.espacio_usado` (regla 6, DF-59). **Declara** `IPlanLimitsProvider` y `PlanLimits` en `application/plan-limits.ts` (DF-51, opción A) y no importa `billing` en ningún archivo | shared, access, audit, realtime (arista permitida por ADR-0010, sin uso en 005: el progreso de carga es local del cliente, DF-58; 015 tampoco la usa, P-7) |
 | `sharing` | M3b (escritura) | Comparticiones, enlaces públicos, límite de intentos | shared, access, storage, audit |
-| `editing` | M5 | Sesiones de edición, presencia, callback, autoría e historial | shared, storage, access, billing, realtime, audit |
+| `editing` | M5 | Sesiones de edición, presencia, callback, autoría e historial. Declara `IUserDirectory` e `IDocumentEditor`. Procesa `editing-save` en el `api` (ADR-0029) | shared, storage, access, realtime, audit (**sin `billing`**: los límites del plan salen de `IPlanLimitsProvider` de `storage`; mantener `editing → billing` cerraría el ciclo `editing → billing → identity → editing`) |
 | `intelligence` | M6 | Indexación, recuperación híbrida, agente con citas; implementa `IIndexQueue` | shared, storage, access, billing (`IAgentQuota`), realtime |
 | `optimizer` | M7 | Estimación y optimización de PDF e imágenes | shared, storage, access |
 | `backoffice` | M8 | Administración, soporte, métricas, colas (la salud y `RolesGuard` pasaron a `shared`: DF-49, 003 D-2) | shared, audit, identity, billing, storage (fachadas, DF-04) |
@@ -120,7 +120,7 @@ No hay paquete `domain` aparte salvo que un ADR lo justifique.
 5. Los transversales (`audit`, `realtime`, `notifications`) declaran sus propios puertos y nunca dependen de un módulo de negocio; entre ellos solo existe `notifications → realtime` (ADR-0010).
 6. **Segunda excepción a «cada módulo es dueño de sus tablas» (DF-59, plan 005 D-5)**: `storage` actualiza la columna `usuario.espacio_usado` (la tabla es de `identity`), y **solo esa columna**, con `SELECT espacio_usado … FOR UPDATE` y `UPDATE usuario SET espacio_usado = espacio_usado + $1`, a través de un único puerto, `IQuotaRepository`. Motivo: el espacio solo puede sumarse en la misma transacción que registra `archivo` y `version_archivo` (RN-10, DF-38), y una tabla propia de uso (`cuota_uso`) duplicaría el contador. No es una arista del grafo: `storage` no importa `identity`. Lo hace cumplir una prueba (`quota.repository.int-spec.ts`: ninguna otra columna cambia), un *fixture* negativo de `boundaries.js` (`storage-imports-identity.ts`) y la revisión del `architect`. Ningún otro módulo copia el patrón sin un DF y un ADR.
 
-**DF-51 (opción A, Fátima, 2026-09-28)**: `storage` declara `IPlanLimitsProvider`, `PlanLimits` e `I_PLAN_LIMITS_PROVIDER` y `billing` los implementa importándolos de `storage/index.ts`; el ciclo `storage ↔ billing` desaparece y queda solo `billing → storage`. `editing` (que ya depende de `storage` y de `billing`) reutiliza el puerto; `PlanLimits` solo lleva límites de almacenamiento: si 016 necesita otros límites, los pide por un puerto que declare `billing`, sin ensanchar `PlanLimits` (ISP). El enlace del token vive en la raíz de composición (`AppModule`). `boundaries.js` prohíbe cualquier import de `billing` desde `storage`.
+**DF-51 (opción A, Fátima, 2026-09-28)**: `storage` declara `IPlanLimitsProvider`, `PlanLimits` e `I_PLAN_LIMITS_PROVIDER` y `billing` los implementa importándolos de `storage/index.ts`; el ciclo `storage ↔ billing` desaparece y queda solo `billing → storage`. `editing` reutiliza el puerto desde `storage`. Con 016 (DF-73) `PlanLimits` suma `retainedVersions` (límite de almacenamiento: la poda es de `storage`) y `maxEditors` (lo consume `editing`, pero se acepta ensanchar el tipo porque `PlanLimitsAdapter.toLimits` ya lee la fila y un segundo puerto de `billing` sería una abstracción de una sola fila; a la tercera familia de límites ajenos a `storage` se separa en un puerto propio). El enlace del token vive en la raíz de composición (`AppModule`). `boundaries.js` prohíbe cualquier import de `billing` desde `storage`.
 
 **Pendiente (PD-18)**: §5 aún no coincide con la tabla en `IAgentQuota` (lo declara e implementa `billing`; `intelligence → billing` ya existe) ni en `IIndexQueue` (propuesta: lo declara `storage`, quien encola, y lo implementa `intelligence`, que ya depende de `storage`). Se confirma en el plan de 019 (indexación); 005 no emite `FileVersionCreated` ni lo necesita (D-16).
 
@@ -175,8 +175,8 @@ modules/storage/
 | `IDocumentRooms` | `SocketIoHub` (015) | realtime (lo declara y lo implementa; solo el módulo dueño de la sala, `editing`; evento de salida `realtime.document-left`, ADR-0019) |
 | `IClock` | `SystemClock` / `FixedClock` | shared |
 | `ITransactionRunner` | TypeORM sobre `TransactionContext` (`AsyncLocalStorage`) | shared (lo consumen los servicios que escriben en más de una tabla; `withActor` de 003 usa el mismo contexto). Con 011 (Propuesto, T1, DF-65): `run` se une a **cualquier** transacción en curso, con o sin actor (antes solo a un `withActor`); `withActor` dentro de un `run` sin actor sigue lanzando |
-| `IDocumentEditor` | `OnlyOfficeEditor` | editing |
-| `IIdempotencyStore` | `RedisIdempotencyStore` | editing |
+| `IDocumentEditor` | `OnlyOfficeEditor` (ADR-0004) | editing |
+| `IUserDirectory` | `UserDirectoryAdapter` (016, DF-74) | lo declara `editing`; lo implementa `identity` importándolo de `editing/index.ts`; se enlaza en la raíz (`UserDirectoryBindingModule`). Recibe ids de participantes y devuelve solo el nombre visible (excepción de §6 punto 9) |
 | `IIndexQueue` | cola BullMQ `indexing` | editing → intelligence |
 | `ILanguageModel` | `GeminiFlashModel` | intelligence |
 | `IEmbeddingProvider` | `GeminiEmbeddingProvider` (dimensión 768) | intelligence |
@@ -185,7 +185,7 @@ modules/storage/
 | `IOptimizer` | `PdfOptimizer`, `ImageOptimizer` (vía `BaseOptimizer`) | optimizer |
 | `IIntegrityValidator` | `DefaultIntegrityValidator` | optimizer |
 | `ICommandRunner` | `ChildProcessRunner` | optimizer |
-| `IHealthIndicator` | `PostgresHealthIndicator`, `RedisHealthIndicator`, `MinioHealthIndicator` (shared); `OnlyOfficeHealthIndicator` (editing, DF-29) | shared (DF-49); cada módulo puede aportar un indicador y la raíz de composición lo registra en `HealthModule.forRoot({ indicators })` |
+| `IHealthIndicator` | `PostgresHealthIndicator`, `RedisHealthIndicator`, `MinioHealthIndicator` (shared); ~~`OnlyOfficeHealthIndicator` (editing, DF-29)~~ omitido (PD-113): `editing` revisa ONLYOFFICE con `IDocumentEditor.isAvailable` al abrir | shared (DF-49); cada módulo puede aportar un indicador y la raíz de composición lo registra en `HealthModule.forRoot({ indicators })` |
 | `IQueueInspector` | `BullMqInspector` | backoffice |
 | `INodeMetadataReader` | `SqlNodeMetadataReader` (solo columnas de `archivo`, dentro de `withActor` y con RLS) | storage (lo **declara e implementa**; lo consume `backoffice`, arista `backoffice → storage`; sin `storage → backoffice`, cierra PD-31). Plan 011, Propuesto |
 | Repositorios `I*Repository` | TypeORM | cada módulo. `storage` (005) agrega `IUploadSessionRepository`, `IQuotaRepository` (único punto que toca `usuario`, regla 6 de §3) e `IExpiredUploadScanner` (único acceso sin actor, §6 punto 6) |
@@ -217,6 +217,7 @@ export interface Actor {
    - **Pendiente**: hoy (000) `api`, `worker` y migraciones comparten una `DATABASE_URL` con el superusuario de `compose.yml`. Los dos roles en compose (script de inicio de Postgres) y staging (GitHub Environments), `DATABASE_MIGRATION_URL` en `.env.example` y en `pnpm env:check`, `withActor` y la regla de lint los entrega el plan de la spec 003 (D-7); las políticas de `archivo`, `version_archivo` y `carga` y la función de mantenimiento, el plan de 005.
 7. **Agente**: `HybridRetriever` filtra `fragmento.archivo_id IN (accessibleNodes)` antes del `ORDER BY embedding <=> $q LIMIT topK` (DF-14).
 8. Suite `test/isolation`: cuentas con contenido casi idéntico; cualquier fuga rompe CI. Corre con los dos roles de BD reales, nunca como superusuario (ADR-0005).
+9. **`IUserDirectory` sin `actor`** (016, DF-74): `displayNames(userIds)` devuelve `id → nombre` de cuentas que `editing` ya autorizó como participantes de una sesión (el nombre visible a los coeditores es el comportamiento pedido, 016 CA-6). `usuario` no tiene RLS (§6.6), así que el adaptador lee solo `id` y `nombre` con `WHERE id = ANY($1)` y no devuelve correo, rol ni estado. Es un segundo caso acotado del punto 3 (no devuelve nodos ni contenido); el token `I_USER_DIRECTORY` solo se resuelve en `editing` (el módulo de enlace no lo exporta globalmente).
 
 ## 7. Flujos críticos (con clases de los diagramas)
 
@@ -229,12 +230,12 @@ Los bytes **nunca pasan por la API** (DF-16): el navegador sube y baja directo d
 5. Toda carga sin completar expira a las 24 h: la limpia el trabajo repetible `upload-cleanup` (§8), y el vencimiento se aplica también de forma perezosa en `resume` y `complete`.
 
 ### 7.2 Edición y guardado (RF-25, 26, 28, DF-05, DF-20)
-1. `EditorController.open` → `EditSessionService.open(actor, fileId)` → `assertCanEdit` (access) y `assertEditorLimit` (`IPlanLimitsProvider.maxEditors`) → `IDocumentEditor.buildConfig` (JWT firmado).
+1. `EditorController.open` → `EditSessionService.open(actor, fileId)` → `accessibleNodes(actor)` + `PermissionResolver` (access), plan de la **cuenta propietaria** y `maxEditors` por `IPlanLimitsProvider` (storage) → `EditModePolicy` (modo o solo lectura con motivo) → `IDocumentEditor.signConfig` (JWT firmado).
 2. `editing` autoriza la sala del documento consultando `access` y une la conexión con `IDocumentRooms.admit` (sale con `retire` o al escuchar `realtime.document-left`, 015); la presencia se difunde por el gateway único de `realtime` (DF-30, ADR-0010); `Participant` registra entrada y salida.
 3. ONLYOFFICE llama `EditorController.callback` con `status`: 1 editando · 2 listo para guardar · 3 error · 4 cerrado sin cambios · 6 guardado forzado · 7 error de guardado forzado.
-4. `SaveCallbackHandler`: `verifyCallback` (JWT) → encola `editing-save` → responde `{"error":0}`.
-5. Processor «Actualizado de Versiones»: candado en `IIdempotencyStore` → descarga la URL (validada contra el host de ONLYOFFICE) a un objeto temporal → `verifyIntegrity` → transacción: `version_archivo(origen=edicion, sesion_edicion_id UNIQUE)` + puntero de versión actual + retención → `EditSession.close()` → `FileVersionCreated`.
-6. Si falla: `EditSession.markFailed`, la versión anterior queda intacta y `editing` avisa al usuario por `realtime`.
+4. `SaveCallbackHandler`: `verifyCallback` (JWT, se usa el payload firmado) → estado 2: CAS `activa → guardando` y encola `editing-save` (`jobId` = sesión) → responde `{"error":0}`.
+5. Procesador `editing-save` (**en el `api`, concurrencia 1, ADR-0029**: las salas de 015 viven en su memoria): descarga la URL (origen de la lista blanca de ONLYOFFICE, tope de bytes) → verifica que sea un `.docx` íntegro → `EditableFileGateway.registerEditedVersion` (`storage`): transacción `version_archivo(origen=edicion, sesion_edicion_id UNIQUE)` + puntero de versión vigente + `addUsedBytes` sin validar cuota + retención → `EditSession.close()` → encola `IIndexQueue`. La idempotencia es la restricción `UNIQUE` (DF-05, DF-72); no hay candado de Redis. Una violación del `UNIQUE` en un reintento se trata como éxito.
+6. Si falla (documento no íntegro o descarga rechazada: `integridad`; archivo purgado: `archivo_purgado`; estado 3: `editor`; tras agotar los intentos: `almacenamiento`): `SaveFailedNotifier` aplica `EditSession.fail` con su motivo, la versión anterior queda intacta y `editing` avisa a cada participante y a la propietaria con `IRealtimePublisher.toUser` (`editing.save-failed`); al reabrir, `lastSaveFailed` muestra el banner.
 
 ### 7.3 Indexación (RF-30, RNF-03)
 `FileVersionCreated` → `IIndexQueue` → `IndexingService.indexFile` → `ExtractorRegistry.forMime` → `ITextExtractor.extract` → `Segment[]` con procedencia →
@@ -264,7 +265,7 @@ el original sigue restaurable durante la retención definida en DF-21.
 | Cola / trabajo | Productor | Reintentos | Idempotencia |
 |---|---|---|---|
 | `indexing` | `IIndexQueue` | 3, backoff exponencial | por `version_archivo_id` |
-| `editing-save` | `SaveCallbackHandler` | 5 | `UNIQUE sesion_edicion_id` + candado Redis |
+| `editing-save` (**procesada en el `api`**, concurrencia 1, ADR-0029) | `SaveCallbackHandler` | 3, backoff exponencial | CAS `activa → guardando` + `UNIQUE sesion_edicion_id` (sin candado Redis, DF-72) |
 | `optimization` | `OptimizationService` | 2 | por `optimizacion.id` |
 | `RenewalScheduler` (`@Cron`) | — | alerta en fallo | por suscripción + periodo |
 | `mail` | `SmtpMailer` (notifications) | 5 (`attempts: 6`, exponencial desde 5 s) | por `idempotencyKey` del productor como `jobId` (sin `:`) + marca `mail:sent:<jobId>` en Redis + `Message-ID` determinista (ADR-0018); no usa `notificacion` |
@@ -312,3 +313,5 @@ apps/web/src/
 | 0019 | Eventos de dominio en proceso; el contrato lo exporta el productor (Propuesto) |
 | 0020 | Validación HTTP con zod desde `contracts`, enmienda 0015 b (Propuesto) |
 | 0021 | Mantenimiento sin actor bajo RLS: función `SECURITY DEFINER` mínima y RLS también en `carga`; enmienda 0005 (Propuesto) |
+| 0029 | `editing-save` se procesa en el `api`; excepción acotada a ADR-0001 (Aceptado) |
+| 0030 | Socket.IO en el `api` sin adaptador de Redis (Aceptado) |

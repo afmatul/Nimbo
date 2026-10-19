@@ -3,6 +3,7 @@ import type { DynamicModule, Provider, ValueProvider } from '@nestjs/common';
 
 import { AuditModule } from '../audit';
 
+import { EditableFileGateway } from './application/editable-file.gateway';
 import { FILE_SERVICE_CONFIG } from './application/file-service-config';
 import { FileVersionService } from './application/file-version.service';
 import { FOLDER_CONFIG } from './application/folder-config';
@@ -136,10 +137,10 @@ describe('StorageModule', () => {
     expect(providers).toEqual(expect.arrayContaining([SpaceMeasurer, SpaceSummaryService]));
   });
 
-  it('011 PD-31: provee el lector de metadatos con su adaptador SQL y exporta su token y el de objetos (009)', () => {
+  it('011 PD-31: provee el lector de metadatos con su adaptador SQL y exporta su token, el de objetos (009) y la fachada de edición (016)', () => {
     const reader = providers.find((provider) => tokenOf(provider) === I_NODE_METADATA_READER);
 
     expect(reader).toEqual({ provide: I_NODE_METADATA_READER, useClass: SqlNodeMetadataReader });
-    expect(module.exports).toEqual([I_NODE_METADATA_READER, I_OBJECT_STORAGE]);
+    expect(module.exports).toEqual([I_NODE_METADATA_READER, I_OBJECT_STORAGE, EditableFileGateway]);
   });
 });

@@ -4,7 +4,7 @@ import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialE
 
 import { TransactionContext } from '../../../../shared';
 import type { Actor } from '../../../../shared';
-import { accessibleNodes } from '../../../access';
+import { accessibleNodes, ownedFiles } from '../../../access';
 import type {
   INodeRepository,
   NodeListPage,
@@ -171,6 +171,17 @@ export class TypeOrmNodeRepository implements INodeRepository {
     return row === null ? null : toFile(row);
   }
 
+  async findOwnedFile(actor: Actor, id: string): Promise<File | null> {
+    const owned = nodesIn(ownedFiles(actor), `${FILE_ALIAS}.id`, 'archivo');
+    const row = await this.context
+      .requireActorScope(actor)
+      .createQueryBuilder(ArchivoOrmEntity, FILE_ALIAS)
+      .where(owned.sql, { ...owned.parameters })
+      .andWhere(`${FILE_ALIAS}.id = :id`, { id })
+      .getOne();
+    return row === null ? null : toFile(row);
+  }
+
   async findLiveFileByName(
     actor: Actor,
     name: FileName,
@@ -278,12 +289,22 @@ export class TypeOrmNodeRepository implements INodeRepository {
     await this.context.requireActorScope(actor).insert(CarpetaOrmEntity, toFolderRow(folder));
   }
 
-  updateCurrentVersion(actor: Actor, file: File): Promise<void> {
-    return this.updateAccessible(actor, ArchivoOrmEntity, 'archivo', file.id, {
-      versionActualId: file.currentVersionId,
-      tamanoBytes: file.sizeBytes,
-      actualizadoEn: file.updatedAt,
-    });
+  /** Por el fragmento de acceso o por propiedad (incluida la papelera, 016 RN-11), en la misma consulta. */
+  async updateCurrentVersion(actor: Actor, file: File): Promise<void> {
+    const access = accessibleCondition(actor, 'id', 'archivo');
+    const owned = nodesIn(ownedFiles(actor), 'id', 'archivo');
+    await this.context
+      .requireActorScope(actor)
+      .createQueryBuilder()
+      .update(ArchivoOrmEntity)
+      .set({
+        versionActualId: file.currentVersionId,
+        tamanoBytes: file.sizeBytes,
+        actualizadoEn: file.updatedAt,
+      })
+      .where(`(${access.sql} OR ${owned.sql})`, { ...access.parameters, ...owned.parameters })
+      .andWhere('id = :id', { id: file.id })
+      .execute();
   }
 
   renameFolder(actor: Actor, folder: Folder): Promise<void> {

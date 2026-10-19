@@ -28,8 +28,9 @@ const ON_PLAN = { resourceType: 'plan', attributes: {} } as const;
 /**
  * Catálogo cerrado (RN-3): por acción, su tipo de recurso y la lista blanca de atributos con su tipo. Son las siete
  * acciones de 005 y 006 (D-1) con los atributos que emiten hoy, las dos de versiones de 014 (plan §5; un reemplazo
- * reutiliza `file.upload_completed` con `replaced`, `versionId` y `versionNumber`) y las siete internas de 011 (plan
- * §2), que no guardan nombres ni correos. Cada spec agrega las suyas. Una acción del enum sin entrada no compila.
+ * reutiliza `file.upload_completed` con `replaced`, `versionId` y `versionNumber`), las siete internas de 011 (plan
+ * §2), que no guardan nombres ni correos, y las tres de edición de 016 (plan §5). Cada spec agrega las suyas. Una
+ * acción del enum sin entrada no compila.
  */
 export const AUDIT_CATALOG = {
   [AuditAction.FILE_UPLOAD_COMPLETED]: {
@@ -89,6 +90,23 @@ export const AUDIT_CATALOG = {
   [AuditAction.CLIENT_FILES_VIEWED]: ON_ACCOUNT,
   [AuditAction.PLAN_CREATED]: ON_PLAN,
   [AuditAction.PLAN_DEACTIVATED]: ON_PLAN,
+  [AuditAction.FILE_VERSION_CREATED]: {
+    resourceType: 'file',
+    attributes: {
+      versionId: 'uuid',
+      versionNumber: 'number',
+      sizeBytes: 'number',
+      sessionId: 'uuid',
+    },
+  },
+  [AuditAction.EDIT_SESSION_OPENED]: {
+    resourceType: 'file',
+    attributes: { sessionId: 'uuid' },
+  },
+  [AuditAction.EDIT_SAVE_FAILED]: {
+    resourceType: 'file',
+    attributes: { sessionId: 'uuid', reason: 'text' },
+  },
 } as const satisfies Record<AuditAction, AuditActionSpec>;
 
 /** Tipos que un atributo (`nodeType`) puede dar: solo nodos y cargas. */

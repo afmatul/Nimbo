@@ -1,0 +1,47 @@
+import type { Actor } from '../../../../shared';
+import type { EditSession, EditSessionState } from '../../domain/edit-session';
+
+/** Entrada o salida de una cuenta en una sesión, con su hora. */
+export interface ParticipationChange {
+  readonly sessionId: string;
+  readonly userId: string;
+  readonly now: Date;
+}
+
+/**
+ * Sesiones de edición y participantes (`sesion_edicion`, `participacion`; plan 016 §2, DF-19: no es el
+ * `ISessionRepository` de `identity`). Todo método toma el `EntityManager` de `requireActorScope(actor)`: la RLS de
+ * las dos tablas es la segunda barrera (solo la cuenta propietaria, hasta 012). Los que escriben exigen la
+ * transacción `withActor` del llamador.
+ */
+export interface IEditSessionRepository {
+  /** La sesión abierta (`activa` o `guardando`) del archivo, bloqueada (`FOR UPDATE`) hasta el fin de la transacción. */
+  findOpenForUpdate(actor: Actor, fileId: string): Promise<EditSession | null>;
+  /** La sesión `sessionId` si sigue abierta (`activa` o `guardando`); `null` en otro caso. */
+  findOpen(actor: Actor, sessionId: string): Promise<EditSession | null>;
+  /**
+   * Inserta la sesión `activa` si el archivo no tiene otra abierta; `false` si otra apertura llegó antes
+   * (`uq_sesion_edicion_abierta`), sin abortar la transacción.
+   */
+  insertIfNoneOpen(actor: Actor, session: EditSession): Promise<boolean>;
+  /** La sesión más reciente del archivo, en cualquier estado (banner de guardado fallido, CA-14); `null` si no hubo. */
+  findLatestFor(actor: Actor, fileId: string): Promise<EditSession | null>;
+  /** Cuentas conectadas como editoras a la sesión (`salio_en IS NULL`), por orden de entrada. */
+  activeParticipants(actor: Actor, sessionId: string): Promise<readonly string[]>;
+  /** Cuentas que entraron como editoras a la sesión, sigan conectadas o no (autoría, RN-5; avisos de CA-14). */
+  allParticipants(actor: Actor, sessionId: string): Promise<readonly string[]>;
+  /** Alta de `userId` como participante conectado; si ya participó, vuelve a contar como conectado. */
+  join(actor: Actor, participation: ParticipationChange): Promise<void>;
+  /**
+   * Marca la salida de `userId` (`salio_en`) si seguía conectado: libera su plaza (CA-7, CA-8) y conserva que participó
+   * (autoría, RN-5). `false` si ya había salido o nunca entró (idempotente, ADR-0019).
+   */
+  leave(actor: Actor, participation: ParticipationChange): Promise<boolean>;
+  /**
+   * Guarda el estado, el motivo y el fin de `session` solo si en la BD sigue en `expected` (comparar y asignar): dos
+   * avisos simultáneos no hacen la misma transición dos veces (RN-7). `false` si otro llegó antes.
+   */
+  compareAndSet(actor: Actor, session: EditSession, expected: EditSessionState): Promise<boolean>;
+}
+
+export const I_EDIT_SESSION_REPOSITORY = Symbol('IEditSessionRepository');

@@ -14,7 +14,7 @@ import { createActor, Role } from '../../../shared';
 import type { Actor } from '../../../shared';
 import type { File } from '../domain/file';
 import { FileVersion } from '../domain/file-version';
-import type { FileVersionOrigin } from '../domain/file-version';
+import type { FileVersionOrigin, NewVersionInput } from '../domain/file-version';
 import { ObjectKey } from '../domain/object-key';
 
 import { FileVersionService } from './file-version.service';
@@ -30,6 +30,7 @@ const LIMITS = {
   storageQuotaBytes: 10_000_000n,
   trashRetentionDays: 30,
   retainedVersions: 3,
+  maxEditors: 0,
 };
 
 function setup() {
@@ -91,23 +92,23 @@ const builders: Record<FileVersionOrigin, (file: File) => RegisterVersionCommand
         now: NOW,
       });
     },
-    edicion: (file) => generated('edicion', file),
-    optimizacion: (file) => generated('optimizacion', file),
+    edicion: (file) => (number) =>
+      FileVersion.fromEdit({ ...generated(file, number), editSessionId: randomUUID() }),
+    optimizacion: (file) => (number) =>
+      FileVersion.forOrigin('optimizacion', generated(file, number)),
   };
 
-/** Doble de lo que harán 016 y 021: el mismo `register` con otro origen (OCP). */
-function generated(origin: 'edicion' | 'optimizacion', file: File) {
-  return (number: number): FileVersion => {
-    const id = randomUUID();
-    return FileVersion.forOrigin(origin, {
-      id,
-      fileId: file.id,
-      objectKey: ObjectKey.of(ANA.id, file.id, id),
-      sizeBytes: NEW_BYTES,
-      createdBy: ANA.id,
-      number,
-      now: NOW,
-    });
+/** Lo que registran 016 y 021: el mismo `register` con otro origen (OCP). */
+function generated(file: File, number: number): NewVersionInput {
+  const id = randomUUID();
+  return {
+    id,
+    fileId: file.id,
+    objectKey: ObjectKey.of(ANA.id, file.id, id),
+    sizeBytes: NEW_BYTES,
+    createdBy: ANA.id,
+    number,
+    now: NOW,
   };
 }
 

@@ -8,3 +8,6 @@
 3cd7482334a33ca6996a3f4225203fc0ba33e5f2:apps/api/test/int/identity/account-setup.int-spec.ts:generic-api-key:19
 # Falso positivo en 1eea385 (spec 011 T-10): contraseña inventada de la prueba del alta interna, no un secreto.
 1eea385bd3375e4f01c6402aa5a5a0c857204fd5:apps/api/test/int/backoffice/accounts.int-spec.ts:generic-api-key:31
+# Falso positivo de gitleaks (generic-api-key) en 1ab8158 (spec 016): `key` es la clave de documento de ONLYOFFICE
+# (el uuid de la sesión) y `token: 'eyJ…'` es texto de relleno de la prueba de contratos, no un secreto.
+1ab81581735227ce1c88304b2e3feb74f92f0d55:packages/contracts/src/editing/schemas.spec.ts:generic-api-key:11
