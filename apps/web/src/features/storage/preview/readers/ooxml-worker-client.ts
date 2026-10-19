@@ -1,7 +1,7 @@
 import { parseWorkerMessage, type WorkerMessage } from '../workers/ooxml-protocol';
 
 import type { OoxmlFailureReason } from './ooxml-package-reader';
-import type { OoxmlKind } from './ooxml-relations';
+import type { PresentationPreview, SlideProjection } from './pptx-model';
 import type { WorkbookPreview } from './xlsx-reader';
 import type { SheetProjection } from './xlsx-sheet';
 
@@ -9,15 +9,24 @@ export type OoxmlWorkerPort = Pick<
   Worker,
   'postMessage' | 'addEventListener' | 'removeEventListener' | 'terminate'
 >;
-export type OoxmlWorkerOptions = {
-  readonly kind: OoxmlKind;
+type WorkerSource = {
   readonly url: string;
   readonly signal: AbortSignal;
-  /** XLSX siempre recibe su libro; PPTX abre sin vista propia hasta que exista su lector. */
-  readonly onOpened: (preview: WorkbookPreview | undefined) => void;
-  readonly onUnit: (projection: SheetProjection) => void;
   readonly onFailure: (reason: OoxmlFailureReason) => void;
 };
+export type OoxmlWorkerOptions = WorkerSource &
+  (
+    | {
+        readonly kind: 'xlsx';
+        readonly onOpened: (preview: WorkbookPreview) => void;
+        readonly onUnit: (projection: SheetProjection) => void;
+      }
+    | {
+        readonly kind: 'pptx';
+        readonly onOpened: (preview: PresentationPreview) => void;
+        readonly onUnit: (projection: SlideProjection) => void;
+      }
+  );
 /** `dispose` termina el worker: es el cierre definitivo, también de un worker colgado. */
 export type OoxmlWorkerReading = {
   readonly select: (index: number, offset: number) => void;
@@ -44,11 +53,16 @@ function deliver(
   const { options } = connection;
   if (message.type === 'failure') fail(message.reason);
   else if (message.type === 'opened' && !connection.opened) {
-    if (options.kind === 'xlsx' && message.preview === undefined) return fail('unavailable');
+    const preview = message.preview;
+    if (preview?.kind !== options.kind) return fail('unavailable');
     connection.opened = true;
-    options.onOpened(message.preview);
+    if (options.kind === 'xlsx' && preview.kind === 'xlsx') options.onOpened(preview);
+    else if (options.kind === 'pptx' && preview.kind === 'pptx') options.onOpened(preview);
   } else if (message.type === 'unit' && message.request === connection.request) {
-    options.onUnit(message.projection);
+    const projection = message.projection;
+    if (options.kind === 'xlsx' && 'rows' in projection) options.onUnit(projection);
+    else if (options.kind === 'pptx' && 'blocks' in projection) options.onUnit(projection);
+    else fail('unavailable');
   }
 }
 

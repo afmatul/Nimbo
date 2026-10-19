@@ -68,11 +68,16 @@ export function relationshipsPartOf(source: string): string {
 /** Recorre una parte plana `<raíz><hijo/>…</raíz>` validando namespace y profundidad. */
 async function readChildren(
   pkg: ZipPackage,
-  part: { readonly name: string; readonly root: XmlName },
+  part: {
+    readonly name: string;
+    readonly root: XmlName;
+    readonly signal?: AbortSignal | undefined;
+  },
   onChild: (element: XmlElement) => void,
 ): Promise<void> {
   let depth = 0;
   await parseXmlPart(pkg, part.name, {
+    signal: part.signal,
     open: (element) => {
       depth++;
       const isRoot = element.uri === part.root.uri && element.local === part.root.local;
@@ -97,17 +102,22 @@ function relationshipOf(source: string, element: XmlElement): Relationship {
 export async function readRelationships(
   pkg: ZipPackage,
   source: string,
+  signal?: AbortSignal,
 ): Promise<readonly Relationship[]> {
   const name = relationshipsPartOf(source);
   if (!pkg.has(name)) return [];
   const items: Relationship[] = [];
   const ids = new Set<string>();
-  await readChildren(pkg, { name, root: { uri: RELS_NS, local: 'Relationships' } }, (element) => {
-    const item = relationshipOf(source, element);
-    if (ids.has(item.id)) throw corrupt();
-    ids.add(item.id);
-    items.push(item);
-  });
+  await readChildren(
+    pkg,
+    { name, root: { uri: RELS_NS, local: 'Relationships' }, signal },
+    (element) => {
+      const item = relationshipOf(source, element);
+      if (ids.has(item.id)) throw corrupt();
+      ids.add(item.id);
+      items.push(item);
+    },
+  );
   return items;
 }
 

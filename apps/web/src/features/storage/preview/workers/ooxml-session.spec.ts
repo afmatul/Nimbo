@@ -4,6 +4,7 @@ import * as packages from '../readers/ooxml-package-reader';
 import { connectOoxmlWorker, type OoxmlWorkerPort } from '../readers/ooxml-worker-client';
 import { SIGNED_URL, serveObject } from '../readers/testing/object-server';
 import { ooxmlEntries, zipOf } from '../readers/testing/ooxml-fixtures';
+import { pptxEntries } from '../readers/testing/pptx-fixtures';
 import { row, xlsxEntries } from '../readers/testing/xlsx-fixtures';
 
 import type { WorkerMessage } from './ooxml-protocol';
@@ -400,6 +401,7 @@ describe('sesión del worker XLSX T-09b: paquete abierto y unidades por petició
         expect(latest?.type).toBe('unit');
         if (latest?.type === 'unit') {
           expect(latest.request).toBe(3);
+          if (!('rows' in latest.projection)) throw new Error('Se esperaba una proyección XLSX');
           expect(latest.projection.rows[0]?.cells[0]?.text).toBe(`8999:${'dato'.repeat(16)}`);
         }
         worker.send(unit(4, 2));
@@ -451,12 +453,14 @@ describe('sesión del worker XLSX T-09b: paquete abierto y unidades por petició
     expect(opened[0]?.close).toHaveBeenCalled();
   });
 
-  it('CA-1: PPTX abre sin libro mientras su lector no exista (transitorio de T-09b)', async () => {
-    serveObject(await zipOf(ooxmlEntries('pptx')));
+  it('CA-1: PPTX abre con una presentación vacía válida', async () => {
+    serveObject(await zipOf(pptxEntries({ slides: [] })));
     const worker = scope();
     worker.send(open(1, 'pptx'));
     await worker.waitFor(1);
-    expect(worker.posted).toEqual([{ type: 'opened', session: 1 }]);
+    expect(worker.posted).toEqual([
+      { type: 'opened', session: 1, preview: { kind: 'pptx', slides: [] } },
+    ]);
   });
 });
 
@@ -477,7 +481,7 @@ describe('cliente OOXML ↔ sesión por MessageChannel real T-09a', () => {
   afterEach(() => jest.restoreAllMocks());
 
   it('CA-1/7: abre, notifica opened y dispose termina una sola vez', async () => {
-    serveObject(await zipOf(ooxmlEntries('pptx', { strict: true })));
+    serveObject(await zipOf(pptxEntries({ slides: [], strict: true })));
     const { client, terminate, close } = channel();
     const onFailure = jest.fn();
     const opened = new Promise<void>((resolve) => {

@@ -3,7 +3,8 @@ import { serveOoxml } from '../workers/ooxml-session';
 
 import { OoxmlError, openZipPackage } from './ooxml-package-reader';
 import { SIGNED_URL } from './testing/object-server';
-import { ooxmlEntries, zipOf } from './testing/ooxml-fixtures';
+import { zipOf } from './testing/ooxml-fixtures';
+import { pptxEntries } from './testing/pptx-fixtures';
 
 jest.mock('./zip-core', () => jest.requireActual('@zip.js/zip.js/index-native.cjs'));
 
@@ -81,13 +82,19 @@ describe('cancelación a mitad de una lectura OOXML real (T-09a, revisión D1)',
   });
 
   it('CA-7: en la frontera del worker, la sesión abortada a mitad de lectura no publica nada tardío', async () => {
-    const bytes = await zipOf(ooxmlEntries('pptx'));
+    const bytes = await zipOf(pptxEntries({ slides: [] }));
     // La 1.ª petición es el rango 0-0; la 2.ª (cola del ZIP) queda en curso.
     const origin = gatedOrigin(bytes, 2);
     const posted: WorkerMessage[] = [];
+    let first = (): void => undefined;
+    // Espera por evento, no por ticks: la descompresión nativa depende del threadpool, no del bucle.
+    const published = new Promise<void>((resolve) => (first = resolve));
     let listener: ((event: MessageEvent<unknown>) => void) | undefined;
     serveOoxml({
-      postMessage: (message) => posted.push(message),
+      postMessage: (message) => {
+        posted.push(message);
+        first();
+      },
       addEventListener: (_type, value) => (listener = value),
     });
     const send = (session: number) =>
@@ -100,10 +107,9 @@ describe('cancelación a mitad de una lectura OOXML real (T-09a, revisión D1)',
     jest.restoreAllMocks();
     const fresh = gatedOrigin(bytes, Number.POSITIVE_INFINITY);
     send(2);
-    for (let tick = 0; tick < 200 && posted.length === 0; tick++)
-      await new Promise((resolve) => setImmediate(resolve));
+    await published;
     await new Promise((resolve) => setImmediate(resolve));
-    expect(posted).toEqual([{ type: 'opened', session: 2 }]);
+    expect(posted).toEqual([{ type: 'opened', session: 2, preview: { kind: 'pptx', slides: [] } }]);
     expect(origin.pending.size).toBe(0);
     expect(fresh.started).toBeGreaterThan(0);
   });

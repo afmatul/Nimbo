@@ -1,10 +1,13 @@
 import { OoxmlError, openZipPackage, type ZipPackage } from '../readers/ooxml-package-reader';
 import { openOoxmlDocument } from '../readers/ooxml-relations';
+import type { PptxPresentation, SlideReading } from '../readers/pptx-model';
+import { openPptxPresentation } from '../readers/pptx-reader';
 import { openXlsxWorkbook, type XlsxWorkbook } from '../readers/xlsx-reader';
 
 import {
   parseWorkerRequest,
   type OpenRequest,
+  type OoxmlProjection,
   type UnitRequest,
   type WorkerMessage,
 } from './ooxml-protocol';
@@ -24,6 +27,7 @@ type Session = {
   readonly controller: AbortController;
   pkg?: ZipPackage;
   workbook?: XlsxWorkbook;
+  presentation?: PptxPresentation;
   unit?: AbortController;
   latest: number;
   queue: Promise<void>;
@@ -49,11 +53,10 @@ async function openSession(scope: WorkerScope, request: OpenRequest, session: Se
     const pkg = await openZipPackage({ url: request.url, signal });
     session.pkg = pkg;
     const document = await openOoxmlDocument(pkg, request.kind);
-    // PPTX todavía sin lector (resto de T-09b): solo se valida el paquete y se libera.
     if (request.kind === 'xlsx') session.workbook = await openXlsxWorkbook(pkg, document);
-    else await pkg.close();
+    else session.presentation = await openPptxPresentation(pkg, document);
     if (signal.aborted) return;
-    const preview = session.workbook?.preview;
+    const preview = session.workbook?.preview ?? session.presentation?.preview;
     scope.postMessage({ type: 'opened', session: session.id, ...(preview ? { preview } : {}) });
   } catch (error) {
     if (!signal.aborted) fail(scope, session, error);
@@ -63,15 +66,25 @@ async function openSession(scope: WorkerScope, request: OpenRequest, session: Se
   }
 }
 
+async function readUnit(
+  session: Session,
+  request: UnitRequest,
+  reading: SlideReading & { readonly offset: number; readonly signal: AbortSignal },
+): Promise<OoxmlProjection> {
+  if (session.workbook) return session.workbook.readSheet(request.index, reading);
+  if (session.presentation) return session.presentation.readSlide(request.index, reading);
+  throw new OoxmlError('unavailable');
+}
+
 async function runUnit(scope: WorkerScope, session: Session, request: UnitRequest) {
   const current = (): boolean =>
     session.latest === request.request && !session.controller.signal.aborted;
-  if (!current() || session.workbook === undefined) return;
+  if (!current()) return;
   const controller = new AbortController();
   session.unit = controller;
   try {
     const window = { offset: request.offset, current, signal: controller.signal };
-    const projection = await session.workbook.readSheet(request.index, window);
+    const projection = await readUnit(session, request, window);
     if (current())
       scope.postMessage({
         type: 'unit',

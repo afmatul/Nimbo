@@ -21,6 +21,8 @@ function fakeWorker() {
 
 const PREVIEW = { kind: 'xlsx', sheets: [{ name: 'Uno', type: 'worksheet', state: 'visible' }] };
 const PROJECTION = { index: 0, columns: 0, rows: [], missingCache: 0 };
+const PRESENTATION = { kind: 'pptx', slides: [{ index: 0, state: 'hidden' }] };
+const SLIDE = { index: 0, blocks: [{ kind: 'text', text: 'Texto cacheado' }] };
 
 function connect(
   worker: ReturnType<typeof fakeWorker>,
@@ -75,12 +77,78 @@ describe('cliente del worker OOXML T-09a', () => {
     expect(worker.terminate).toHaveBeenCalledTimes(1);
   });
 
-  it('CA-1: PPTX abre sin libro mientras su lector no exista (transitorio de T-09b)', () => {
+  it('CA-2: PPTX sin metadata es una violación del protocolo (unavailable)', () => {
     const worker = fakeWorker();
-    const { onOpened, session } = connect(worker, new AbortController().signal, 'pptx');
+    const { onOpened, onFailure, session } = connect(worker, new AbortController().signal, 'pptx');
     worker.emit('message', { type: 'opened', session });
-    expect(onOpened.mock.calls).toEqual([[undefined]]);
+    expect(onOpened).not.toHaveBeenCalled();
+    expect(onFailure.mock.calls).toEqual([['unavailable']]);
+    expect(worker.terminate).toHaveBeenCalledTimes(1);
   });
+
+  it('CA-1/7: PPTX entrega metadata y solo la última slide, sin callbacks después de dispose', () => {
+    const worker = fakeWorker();
+    const { reading, onOpened, onUnit, onFailure, session } = connect(
+      worker,
+      new AbortController().signal,
+      'pptx',
+    );
+    worker.emit('message', { type: 'opened', session, preview: PRESENTATION });
+    expect(onOpened.mock.calls).toEqual([[PRESENTATION]]);
+    reading.select(0, 0);
+    reading.select(0, 0);
+    worker.emit('message', { type: 'unit', session, request: 1, projection: SLIDE });
+    expect(onUnit).not.toHaveBeenCalled();
+    worker.emit('message', { type: 'unit', session, request: 2, projection: SLIDE });
+    expect(onUnit.mock.calls).toEqual([[SLIDE]]);
+    reading.dispose();
+    worker.emit('message', { type: 'unit', session, request: 2, projection: SLIDE });
+    worker.emit('error', new Error(URL));
+    expect(onUnit).toHaveBeenCalledTimes(1);
+    expect(onFailure).not.toHaveBeenCalled();
+    expect(worker.terminate).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['xlsx', 'pptx'] as const)(
+    'CA-2: no entrega metadata de otro formato a un cliente %s',
+    (kind) => {
+      const worker = fakeWorker();
+      const { onOpened, onFailure, session } = connect(worker, new AbortController().signal, kind);
+      worker.emit('message', {
+        type: 'opened',
+        session,
+        preview: kind === 'xlsx' ? PRESENTATION : PREVIEW,
+      });
+      expect(onOpened).not.toHaveBeenCalled();
+      expect(onFailure.mock.calls).toEqual([['unavailable']]);
+    },
+  );
+
+  it.each(['xlsx', 'pptx'] as const)(
+    'CA-2: no entrega proyección de otro formato a un cliente %s',
+    (kind) => {
+      const worker = fakeWorker();
+      const { reading, onUnit, onFailure, session } = connect(
+        worker,
+        new AbortController().signal,
+        kind,
+      );
+      worker.emit('message', {
+        type: 'opened',
+        session,
+        preview: kind === 'xlsx' ? PREVIEW : PRESENTATION,
+      });
+      reading.select(0, 0);
+      worker.emit('message', {
+        type: 'unit',
+        session,
+        request: 1,
+        projection: kind === 'xlsx' ? SLIDE : PROJECTION,
+      });
+      expect(onUnit).not.toHaveBeenCalled();
+      expect(onFailure.mock.calls).toEqual([['unavailable']]);
+    },
+  );
 
   it('CA-7: select solo tras abrir, con peticiones crecientes; solo la última unidad se aplica', () => {
     const worker = fakeWorker();

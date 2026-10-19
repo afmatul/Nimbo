@@ -110,7 +110,61 @@ async function runXlsx() {
   process.stdout.write(JSON.stringify(output));
 }
 
+async function pptxFixture() {
+  const { zipOf } = await import('./ooxml-fixtures.ts');
+  const { pptxEntries, textShape, shapeXml, paragraph, groupShape, tableShape } =
+    await import('./pptx-fixtures.ts');
+  const body =
+    groupShape(
+      2,
+      shapeXml(
+        3,
+        paragraph(['Hola ', 'mundo']) +
+          '<a:p><a:fld id="{1}" type="slidenum"><a:t>42</a:t></a:fld></a:p>',
+      ),
+    ) + tableShape(4, [['A', 'B']]);
+  return zipOf(
+    pptxEntries({
+      strict: scenario === 'pptx-strict',
+      slides: [{ layout: 0, body }, { attributes: 'show="false"' }],
+      layouts: [
+        {
+          master: 0,
+          body:
+            textShape(2, [['Click to add title']], { placeholder: true }) +
+            textShape(3, [['Layout']]),
+        },
+      ],
+      masters: [{ body: textShape(2, [['Master']]) }],
+    }),
+  );
+}
+
+async function runPptx() {
+  const bytes = await pptxFixture();
+  if (scenario === 'pptx-fallback') delete globalThis.DecompressionStream;
+  serve(bytes);
+  const { openZipPackage } = await import('../ooxml-package-reader.ts');
+  const { openOoxmlDocument } = await import('../ooxml-relations.ts');
+  const { openPptxPresentation } = await import('../pptx-reader.ts');
+  const pkg = await openZipPackage({ url: URL_SIGNED, signal: new AbortController().signal });
+  try {
+    const presentation = await openPptxPresentation(pkg, await openOoxmlDocument(pkg, 'pptx'));
+    const projection = await presentation.readSlide(0, { current: () => true });
+    const native = typeof globalThis.DecompressionStream;
+    process.stdout.write(
+      JSON.stringify({ ok: true, preview: presentation.preview, projection, requests, native }),
+    );
+  } finally {
+    await pkg.close();
+  }
+}
+
 try {
+  if (scenario.startsWith('pptx')) {
+    await runPptx();
+    process.exit();
+  }
   if (scenario.startsWith('xlsx')) {
     await runXlsx();
     process.exit();

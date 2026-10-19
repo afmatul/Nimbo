@@ -1,5 +1,6 @@
 import type { OoxmlFailureReason } from '../readers/ooxml-package-reader';
 import type { OoxmlKind } from '../readers/ooxml-relations';
+import type { PresentationPreview, SlideProjection } from '../readers/pptx-model';
 import type { WorkbookPreview } from '../readers/xlsx-reader';
 import type { SheetProjection } from '../readers/xlsx-sheet';
 
@@ -19,14 +20,16 @@ export type UnitRequest = {
   readonly offset: number;
 };
 export type WorkerRequest = OpenRequest | UnitRequest;
+export type OoxmlPreview = WorkbookPreview | PresentationPreview;
+export type OoxmlProjection = SheetProjection | SlideProjection;
 /** Del worker solo salen sesión, proyecciones estrechas y razones cerradas; nunca URL, Error, XML ni bytes. */
 export type WorkerMessage =
-  | { readonly type: 'opened'; readonly session: number; readonly preview?: WorkbookPreview }
+  | { readonly type: 'opened'; readonly session: number; readonly preview?: OoxmlPreview }
   | {
       readonly type: 'unit';
       readonly session: number;
       readonly request: number;
-      readonly projection: SheetProjection;
+      readonly projection: OoxmlProjection;
     }
   | { readonly type: 'failure'; readonly session: number; readonly reason: OoxmlFailureReason };
 
@@ -78,9 +81,20 @@ function validSheet(data: unknown): boolean {
   );
 }
 
-function validPreview(data: unknown): data is WorkbookPreview {
+function validWorkbook(data: unknown): data is WorkbookPreview {
   const preview = shape(data, ['kind', 'sheets']);
   return preview?.kind === 'xlsx' && everyItem(preview.sheets, validSheet);
+}
+
+function validSlide(data: unknown): boolean {
+  const slide = shape(data, ['index', 'state']);
+  return integer(slide?.index, 0) && (slide?.state === 'visible' || slide?.state === 'hidden');
+}
+
+function validPreview(data: unknown): data is OoxmlPreview {
+  if (validWorkbook(data)) return true;
+  const preview = shape(data, ['kind', 'slides']);
+  return preview?.kind === 'pptx' && everyItem(preview.slides, validSlide);
 }
 
 function validCell(data: unknown): boolean {
@@ -95,11 +109,27 @@ function validRow(data: unknown): boolean {
   return integer(row?.row, 1) && everyItem(row?.cells, validCell);
 }
 
-function validProjection(data: unknown): data is SheetProjection {
+function validSheetProjection(data: unknown): data is SheetProjection {
   const value = shape(data, ['index', 'columns', 'rows', 'missingCache'], ['nextOffset']);
   if (value === undefined || !integer(value.index, 0) || !integer(value.columns, 0)) return false;
   if (!integer(value.missingCache, 0) || !everyItem(value.rows, validRow)) return false;
   return value.nextOffset === undefined || integer(value.nextOffset, 1);
+}
+
+function validBlock(data: unknown): boolean {
+  const text = shape(data, ['kind', 'text']);
+  if (text?.kind === 'text' && typeof text.text === 'string') return true;
+  const table = shape(data, ['kind', 'rows']);
+  return (
+    table?.kind === 'table' &&
+    everyItem(table.rows, (row) => everyItem(row, (cell) => typeof cell === 'string'))
+  );
+}
+
+function validProjection(data: unknown): data is OoxmlProjection {
+  if (validSheetProjection(data)) return true;
+  const slide = shape(data, ['index', 'blocks']);
+  return integer(slide?.index, 0) && everyItem(slide?.blocks, validBlock);
 }
 
 export function parseWorkerRequest(data: unknown): WorkerRequest | undefined {
