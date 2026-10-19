@@ -173,7 +173,7 @@ Antes de cada pantalla se leen sus capturas en `docs/design/capturas/`; las desv
   `SubscriptionStanding.readOnly` se lee desde ahora y lo consume T-06 en este mismo PR. Las pruebas de `billing` arman la
   suscripción con `application/testing/subscriptions.ts` (`aSubscription`), como `aPlan` (DRY, Art. VI).
 - **T-02** (2026-10-18): se implementó **antes** de que Adrián acepte ADR-0031, por decisión de Juan Marcos para no
-  frenar la 010a (avance autorizado del plan §8); si el ADR cambia, se ajusta la migración `20261018100100` y el
+  frenar la 010a (avance autorizado del plan §8); si el ADR cambia, se ajusta la migración `20261019100100` y el
   simulador. Desviaciones del plan §2:
   - `assertChargeable` queda como `isChargeable` (booleano puro) en `domain/payment-instrument.ts` y el issue
     `CARD_EXPIRED` sigue en `PaymentService`: el plan suponía que el dominio ya importa `@nimbo/contracts` en `money.ts`,
@@ -216,3 +216,7 @@ Antes de cada pantalla se leen sus capturas en `docs/design/capturas/`; las desv
   `billing-renewal.iso-spec.ts` con los tokens reales del mundo de aislamiento, no en un `billing-internal-roles.int-spec.ts`
   aparte. Las funciones de la pasada se prueban con el dueño NOSUPERUSER (sin él pasarían en vacío). La regla de ADR-0031
   (010a-4) es un recorrido del código sin comentarios.
+- **Merge de `main` con la 016** (2026-10-18): las tres migraciones de la 010 pasan de `20261018…` a `20261019100000`,
+  `20261019100100` y `20261019100200`, porque la 016 ya usa `20261018100000` y `20261018100100` (mismo timestamp, orden
+  ambiguo). `PlanLimits` conserva el `maxEditors` de la 016 (DF-73) junto a `readOnly`; el catálogo de auditoría, las nueve
+  acciones de la 010 junto a las tres de la 016.
