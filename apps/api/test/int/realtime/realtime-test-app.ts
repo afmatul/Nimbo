@@ -36,7 +36,7 @@ export const TEST_CONNECT_ATTEMPTS_PER_MINUTE = 3;
  * `IdentityModule` en `AppModule`. Lleva su propio reloj: el mismo con que la prueba emite los tokens.
  */
 @Module({})
-class TestAccessTokenVerifierModule {
+export class TestAccessTokenVerifierModule {
   static withClock(clock: IClock): DynamicModule {
     return {
       module: TestAccessTokenVerifierModule,

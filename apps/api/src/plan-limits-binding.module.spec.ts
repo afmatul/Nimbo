@@ -38,6 +38,7 @@ describe('PlanLimitsBindingModule', () => {
       trashRetentionDays: 7,
       retainedVersions: 3,
       readOnly: false,
+      maxEditors: 0,
     });
     await moduleRef.close();
   });

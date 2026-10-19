@@ -2,7 +2,7 @@
 
 > Spec: `./spec.md` · Plan: `./plan.md`
 > Estado: **En curso — avance de la 010a autorizado por Adrián mientras revisa (`plan.md` §8); falta aprobar el plan y
-> aceptar ADR-0029 y ADR-0031.** El `architect` ya revisó M-2 (plan §8). Si Adrián cambia el plan, las tareas se ajustan en
+> aceptar ADR-0032 y ADR-0031.** El `architect` ya revisó M-2 (plan §8). Si Adrián cambia el plan, las tareas se ajustan en
 > el camino.
 > Dos bloques, un PR cada uno (`workflow.md` §4.6): **010a** (`api`, `worker`, `storage`) y **010b** (`web`). 12 tareas
 > verticales, de medio día a un día, un commit cada una (`feat(billing): … [010 T-xx]`). Sin tareas de «cierre».
@@ -11,7 +11,7 @@
 **Compuertas generales**
 - Todo se implementa sobre la **009 integrada en `main`**. Las pruebas de la 009 que cambian (`Subscription`, `PaymentService`,
   `IPaymentGateway`, `SubscriptionCheckout`, `SubscriptionService`, `TEST_CARDS`) se ajustan en la tarea que las toca.
-- Módulos ajenos (`[Adrián]`): solo con su autorización del plan §8; `storage` y su web, además, con **ADR-0029 aceptado**.
+- Módulos ajenos (`[Adrián]`): solo con su autorización del plan §8; `storage` y su web, además, con **ADR-0032 aceptado**.
 - Funciones ≤ 30 líneas y ≤ 3 parámetros; cada tarea de lógica empieza por su prueba en rojo; nombres de prueba `'CA-n: …'`.
 
 ## Bloque 010a — API, worker y `storage` (PR 1)
@@ -36,10 +36,10 @@
     contratación de la 009 sigue verde y acepta `0341`.
   - Archivos: `packages/contracts/src/billing/subscription.ts` (`TEST_CARDS.recurringDeclined`, `cardSchema` con tres tarjetas y exportado);
     `apps/api/src/migrations/*-referencia-de-instrumento.ts` (con `down`); `billing/domain/payment-instrument.ts` (`PaymentInstrument`,
-    `InstrumentReference`, `CardOnFile`, `assertChargeable`); `billing/domain/entities/payment.entity.ts` (`instrumentRef`);
+    `InstrumentReference`, `isPresentCard`, `isChargeable`; `CardOnFile` llega con T-05); `billing/domain/entities/payment.entity.ts` (`instrumentRef`);
     `billing/application/ports/i-payment-gateway.port.ts` y `billing/infrastructure/adapters/simulated-payment-gateway.ts`;
     `billing/application/payment.service.ts`, `subscription-checkout.ts`; `i-payment-repository.port.ts` y `typeorm-payment.repository.ts`
-    (`record` con referencia, `findLastApprovedCard`); `apps/api/src/shared/infrastructure/logging/redacted-fields.ts` [Adrián] (redacta `instrumentRef`, `instrument` y `referencia_instrumento`). `findLastApprovedCard` es la única consulta que selecciona la columna (ADR-0031).
+    (`record` con referencia; `findLastApprovedCard` y `CardOnFile` pasaron a T-05, su único usuario); `apps/api/src/shared/infrastructure/logging/redacted-fields.ts` [Adrián] (redacta `instrumentRef`, `instrument` y `referencia_instrumento`). La regla «`findLastApprovedCard` es la única consulta que selecciona la columna» (ADR-0031) se prueba en T-05 y T-07.
   - Prueba: unit `simulated-payment-gateway.spec.ts` (tres tarjetas presentes; referencia de `4242` aprueba y de `0341` rechaza; sin número),
     `payment.service.spec.ts` (guarda lo que da la pasarela; vencimiento solo con tarjeta presente), `subscription.spec.ts` de contracts;
     int `subscribe.int-spec.ts` (`0341` aprobada, la transacción guarda referencia; rechazada sin referencia) y `migrations.int-spec.ts`.
@@ -69,10 +69,12 @@
     (marca y últimos 4) y `renewal`; `pnpm env:check`.
   - Depende: T-01, T-02; comparte controlador con T-03. La vista reutiliza la consulta de marca y últimos 4 de `sql-billing-history.reader.ts` (`PAYMENT_METHOD_SQL`), no `findLastApprovedCard`: la referencia no entra en el camino HTTP (ADR-0031).
 
-- [ ] **T-05** Pasada del `worker`: renovación automática, vencimiento y aviso previo
+- [x] **T-05** Pasada del `worker`: renovación automática, vencimiento y aviso previo
   - Criterio: CA-1, CA-2, CA-3, CA-4, CA-5, CA-7, CA-20 (automática), CA-21, CA-29, CA-23 (conteos); RN-2, RN-8, RN-10 (M-3).
   - Archivos: `apps/api/src/migrations/*-funciones-de-renovacion.ts` (ADR-0021, con `down`); `i-invoice-repository.port.ts` y
-    `typeorm-invoice.repository.ts` (`findLatestNit`); `billing/application/ports/i-due-subscription.scanner.port.ts` y
+    `typeorm-invoice.repository.ts` (`findLatestNit`); `i-payment-repository.port.ts` y `typeorm-payment.repository.ts` (`findLastApprovedCard`,
+    `CardOnFile`, desde T-02); `i-subscription-repository.port.ts` (`markReminderSent`, `markExpiredNoticeSent`, desde T-01);
+    `billing-charging.module.ts` (cobro común de `api` y `worker`, 010a-1); `billing/application/ports/i-due-subscription.scanner.port.ts` y
     `billing/infrastructure/persistence/sql-due-subscription.scanner.ts`; `billing/application/{subscription-renewer,renewal-reminder.service,
     renewal-runner,renewal-config}.ts`; `{mail-message,receipt-message,renewal-messages}.ts`; `billing/infrastructure/{renewal.scheduler,
     renewal.processor}.ts` sobre PD-63; `billing-worker.module.ts`; `env.schema.ts`, `.env.example`, `apps/api/src/worker.module.ts` [Adrián].
@@ -84,7 +86,7 @@
   - Depende: T-01, T-02, T-03 (`RenewalCheckout`, `InvoiceIssuer`); PD-63.
 
 - [x] **T-06** Solo lectura en `storage` con `PlanLimits.readOnly` [Adrián]
-  - **Compuerta**: ADR-0029 aceptado y cambios en `storage` autorizados.
+  - **Compuerta**: ADR-0032 aceptado y cambios en `storage` autorizados.
   - Criterio: CA-12, CA-13, CA-10 (vuelve a poder subir); RN-6.
   - Archivos: `packages/contracts/src/storage/{error-codes,space-schemas}.ts`; `storage/application/plan-limits.ts`,
     `storage/domain/errors/account-read-only.error.ts` (+ `index.ts`), `storage/application/writable-account.policy.ts`, `storage/index.ts`;
@@ -94,12 +96,13 @@
     (diez bloqueadas; permitidas, incluidos los `POST` de `download-url` y `recents`) y renovar → la carga vuelve a aceptarse.
   - Depende: T-01, T-03.
 
-- [ ] **T-07** Aislamiento y roles internos de la 010
+- [x] **T-07** Aislamiento y roles internos de la 010
   - Criterio: CA-23 (`403` y nada cambia), CA-24; RNF-05.
   - Archivos: `apps/api/test/isolation/billing-renewal.iso-spec.ts`; `apps/api/test/int/billing/billing-internal-roles.int-spec.ts`.
   - Prueba: iso (A solo su fila, sin ver la de B ni su referencia; `nimbo_app` sin actor ve 0 filas; con actor las funciones fallan; `PUBLIC`
     no las ejecuta; la solo lectura de A no afecta las cargas de B; dueño sin `SUPERUSER`; `referencia_instrumento` no aparece en
-    `GET /billing/history` ni en ninguna respuesta, ADR-0031); int (cuatro rutas × tres roles → `403`).
+    `GET /billing/history` ni en ninguna respuesta, y ninguna consulta del código salvo `findLastApprovedCard` la selecciona, ADR-0031,
+    010a-4); int (cuatro rutas × tres roles → `403`).
   - Depende: T-03, T-04, T-05, T-06.
 
 ## Bloque 010b — Web (PR 2)
@@ -132,7 +135,7 @@ Antes de cada pantalla se leen sus capturas en `docs/design/capturas/`; las desv
   - Depende: T-08.
 
 - [ ] **T-11** Explorador en solo lectura [Adrián]
-  - **Compuerta**: ADR-0029 aceptado y cambios en la web de `storage` autorizados.
+  - **Compuerta**: ADR-0032 aceptado y cambios en la web de `storage` autorizados.
   - Criterio: CA-14 (aviso, acciones de CA-13 deshabilitadas con texto, arrastre con el mensaje); las permitidas por RN-6 siguen activas.
   - Archivos: `apps/web/src/lib/error-catalog.ts` (`STORAGE_ACCOUNT_READ_ONLY`, literal); `features/storage/components/{space-provider,
     my-files,upload-dropzone,trash-view,file-detail-view,restore-version-dialog}.tsx`.
@@ -160,7 +163,7 @@ Antes de cada pantalla se leen sus capturas en `docs/design/capturas/`; las desv
 | CA-10 | T-03, T-06, T-10 | CA-20 | T-03, T-05 | | |
 
 ## Notas del developer
-<Desviaciones (con enlace al registro de cambios de la spec), DF o pendientes que surgieron. Al implementar: DF-70 en
+<Desviaciones (con enlace al registro de cambios de la spec), DF o pendientes que surgieron. Al implementar: DF-77 en
 `design-findings.md` (plan §7, incluye M-2 y M-5), PD-86 se cierra, PD-96 se amplía con lo de la 010, PD-63 suma el renombre de
 `PlanLimits` y se registran los pendientes nuevos de plan §7 (conteos al momento para el Operador; `readOnly` del propietario en 012,
 013, 016 y 021).>
@@ -197,9 +200,19 @@ Antes de cada pantalla se leen sus capturas en `docs/design/capturas/`; las desv
   (capturas `renovacion-desactivada` y `cambio-a-personal`: el texto lo arma la web). `pendingPlan` usa `planSchema`
   (la confirmación de la bajada necesita su cuota). Los fixtures de `subscription-page.spec.tsx` (009) suman los campos
   nuevos; la pantalla los usa en T-08.
-- **T-06** (2026-10-18): implementada **antes** de aceptar ADR-0029, por la misma decisión que T-02. `getLimitsByPlanId` y
+- **T-06** (2026-10-18): implementada **antes** de aceptar ADR-0032, por la misma decisión que T-02. `getLimitsByPlanId` y
   `getLimitsBySlug` devuelven `PlanStorageLimits` (sin `readOnly`); solo `limitsFor` compone el estado. `WritableAccountPolicy`
   va en `TRASH_LIFECYCLE_PROVIDERS` (`api` y `worker`) y no se exporta de `storage/index.ts` hasta que otro módulo la use
   (YAGNI). `read-only.int-spec.ts` vuelve a vigente cambiando `suscripcion` como dueño (la renovación misma la prueba
   `renew.int-spec.ts`). La web suma el texto de `STORAGE_ACCOUNT_READ_ONLY` a su catálogo de errores.
 - **Fuente única (N-2 del PR #63)**: spec, plan y tareas solo se editan en `spec/010-…`; la 010a trae esta rama y lleva solo código.
+- **T-05** (2026-10-18, `b676bef`): el aviso previo se prueba dentro de `subscription-renewal.int-spec.ts` (no hay
+  `renewal-reminder.int-spec.ts` aparte: mismo arnés). Los correos y sus marcas van en `RenewalNotices` (SRP), aparte del
+  renovador. `attemptEach` (PD-63) pasa a entregar `{ errorName, code }` para que `billing.renewal_failed` lleve el `code`
+  (CA-4). El SQL de «último pago aprobado» y «última factura» se comparte con el historial (`latest-rows.sql.ts`) y la
+  fecha larga con el PDF (`billing-date.ts`). `worker-health.int-spec.ts` cierra a la fuerza el procesador nuevo (con
+  Redis caído BullMQ reintenta para siempre y la suite no terminaba).
+- **T-07** (2026-10-18, `3e6d9bf`): los `403` de los tres roles internos en las cuatro rutas van en
+  `billing-renewal.iso-spec.ts` con los tokens reales del mundo de aislamiento, no en un `billing-internal-roles.int-spec.ts`
+  aparte. Las funciones de la pasada se prueban con el dueño NOSUPERUSER (sin él pasarían en vacío). La regla de ADR-0031
+  (010a-4) es un recorrido del código sin comentarios.

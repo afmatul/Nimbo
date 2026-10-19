@@ -22,7 +22,7 @@ import {
 import type { FreshDatabase } from './billing-test-db';
 
 const PAYMENT_MIGRATION = 'CrearTransaccion20261014100100';
-const INSTRUMENT_MIGRATION = 'ReferenciaDeInstrumento20261018100100';
+const INSTRUMENT_MIGRATION = 'ReferenciaDeInstrumento20261019100100';
 const PAID_AT = new Date('2026-10-14T12:00:00.000Z');
 const INSTRUMENT_REF = 'SIM-TOK-ok-00000000-0000-4000-8000-000000000000';
 

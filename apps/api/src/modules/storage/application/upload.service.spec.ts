@@ -59,6 +59,7 @@ const LIMITS: PlanLimits = {
   trashRetentionDays: 30,
   retainedVersions: 3,
   readOnly: false,
+  maxEditors: 0,
   planName: 'Plan de prueba',
 };
 const CONFIG: UploadConfig = {
@@ -614,7 +615,7 @@ function stateOf(ctx: Setup, session: UploadSession) {
   return { state: current?.state, reason: current?.rejectionReason };
 }
 
-describe('UploadService en solo lectura (spec 010 CA-13, ADR-0029)', () => {
+describe('UploadService en solo lectura (spec 010 CA-13, ADR-0032)', () => {
   it('CA-13: iniciar una carga es 403 STORAGE_ACCOUNT_READ_ONLY sin abrir la transacción ni reservar', async () => {
     const ctx = setup();
     ctx.plans.setReadOnly(true);

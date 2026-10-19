@@ -5,8 +5,8 @@ import type { MigrationInterface, QueryRunner } from 'typeorm';
  * permite la renovación automática sin el cliente. Nunca lleva el número; solo existe en pagos aprobados. Va en claro
  * bajo la RLS forzada de `transaccion` (ADR-0031): las filas existentes quedan sin referencia (no se inventa una).
  */
-export class ReferenciaDeInstrumento20261018100100 implements MigrationInterface {
-  name = 'ReferenciaDeInstrumento20261018100100';
+export class ReferenciaDeInstrumento20261019100100 implements MigrationInterface {
+  name = 'ReferenciaDeInstrumento20261019100100';
 
   async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`

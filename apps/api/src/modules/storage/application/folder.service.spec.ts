@@ -195,7 +195,7 @@ describe('FolderService.create', () => {
   });
 });
 
-describe('FolderService en solo lectura (spec 010 CA-13, ADR-0029)', () => {
+describe('FolderService en solo lectura (spec 010 CA-13, ADR-0032)', () => {
   it('CA-13: crear, renombrar y mover son 403 STORAGE_ACCOUNT_READ_ONLY sin abrir la transacción', async () => {
     const { service, journal, plans, folder } = setup();
     const target = folder('Borrador');

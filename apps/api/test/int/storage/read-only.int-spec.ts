@@ -49,7 +49,7 @@ const route = (
   ...(body === undefined ? {} : { body }),
 });
 
-/** ADR-0029 regla 3 y spec 010 CA-13: las diez que la solo lectura bloquea. */
+/** ADR-0032 regla 3 y spec 010 CA-13: las diez que la solo lectura bloquea. */
 const BLOCKED: readonly WriteRoute[] = [
   route('post', '/uploads', () => '/uploads', {
     name: 'nuevo.pdf',
@@ -88,7 +88,7 @@ const BLOCKED: readonly WriteRoute[] = [
   ),
 ];
 
-/** RN-6 y ADR-0029 regla 3: las que siguen abiertas (lectura, descarga, papelera, accesos rápidos, resume y cancel). */
+/** RN-6 y ADR-0032 regla 3: las que siguen abiertas (lectura, descarga, papelera, accesos rápidos, resume y cancel). */
 const ALLOWED: readonly WriteRoute[] = [
   route('post', '/files/:fileId/download-url', (ids) => `/files/${ids.fileId}/download-url`),
   route(
@@ -126,8 +126,8 @@ const HARNESS_ROUTES = new Set(['POST /api/v1/__probe/actor']);
 const describeWrite = ({ method, path }: WriteRoute): string =>
   `${method.toUpperCase()} ${API}${path}`;
 
-/** Solo lectura en `storage` de punta a punta (spec 010 CA-10, CA-12, CA-13; RN-6; ADR-0029) con `billing` real. */
-describe('cuenta en solo lectura en `storage` (spec 010 CA-10, CA-12, CA-13, RN-6; ADR-0029)', () => {
+/** Solo lectura en `storage` de punta a punta (spec 010 CA-10, CA-12, CA-13; RN-6; ADR-0032) con `billing` real. */
+describe('cuenta en solo lectura en `storage` (spec 010 CA-10, CA-12, CA-13, RN-6; ADR-0032)', () => {
   let storage: StorageHttpApp;
   let accountId: string;
   let token: string;
@@ -184,7 +184,7 @@ describe('cuenta en solo lectura en `storage` (spec 010 CA-10, CA-12, CA-13, RN-
     await storage?.close();
   });
 
-  it('ADR-0029 regla 3: toda ruta de escritura de `storage` está en la lista de bloqueadas o en la de permitidas', () => {
+  it('ADR-0032 regla 3: toda ruta de escritura de `storage` está en la lista de bloqueadas o en la de permitidas', () => {
     const declared = listRouteDeclarations(storage.testApp.app, 'api/v1')
       .filter((declaration) => declaration.method !== 'GET')
       .map(describeRoute)

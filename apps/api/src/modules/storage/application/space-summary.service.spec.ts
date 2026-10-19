@@ -21,6 +21,7 @@ const LIMITS: PlanLimits = {
   trashRetentionDays: 30,
   retainedVersions: 3,
   readOnly: false,
+  maxEditors: 0,
 };
 const BREAKDOWN = SpaceBreakdown.fromBytesByKind(
   new Map([

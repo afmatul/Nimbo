@@ -429,7 +429,7 @@ function organizeSetup() {
 const writesOf = (journal: Journal): string[] =>
   journal.entries.filter((entry) => !entry.startsWith('nodes:find'));
 
-describe('FileService en solo lectura (spec 010 CA-13, ADR-0029)', () => {
+describe('FileService en solo lectura (spec 010 CA-13, ADR-0032)', () => {
   it('CA-13: renombrar y mover son 403 STORAGE_ACCOUNT_READ_ONLY sin abrir la transacción', async () => {
     const { service, journal, plans, file } = organizeSetup();
     const original = file('Informe.docx');

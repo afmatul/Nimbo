@@ -68,6 +68,7 @@ function setup() {
     trashRetentionDays: RETENTION_DAYS,
     retainedVersions: 3,
     readOnly: false,
+    maxEditors: 0,
     planName: 'Plan de prueba',
   });
   const objects = new FakeObjectStorage(journal);
@@ -297,7 +298,7 @@ describe('TrashService.restoreFile', () => {
   });
 });
 
-describe('TrashService en solo lectura (spec 010 CA-13, RN-6, ADR-0029)', () => {
+describe('TrashService en solo lectura (spec 010 CA-13, RN-6, ADR-0032)', () => {
   it('CA-13: restaurar es 403 STORAGE_ACCOUNT_READ_ONLY y el elemento sigue en la papelera', async () => {
     const { service, nodes, plans, folder, file } = setup();
     const target = file('enero.pdf');
@@ -446,6 +447,7 @@ describe('TrashService.list y summary', () => {
       trashRetentionDays: 7,
       retainedVersions: 3,
       readOnly: false,
+      maxEditors: 0,
     });
 
     const page = await service.list(ANA, { limit: 10 });

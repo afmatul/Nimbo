@@ -43,6 +43,7 @@ const LIMITS: PlanLimits = {
   trashRetentionDays: 30,
   retainedVersions: 10,
   readOnly: false,
+  maxEditors: 3,
 };
 
 function setup(limits: PlanLimits = LIMITS) {
@@ -104,7 +105,7 @@ const expectNothingChanged = ({ journal, quotas, versions, file }: Setup): void 
   expect(versions.numbersOf(file.id)).toEqual([1, 2, 3]);
 };
 
-describe('VersionRestoreService en solo lectura (spec 010 CA-13, ADR-0029)', () => {
+describe('VersionRestoreService en solo lectura (spec 010 CA-13, ADR-0032)', () => {
   it('CA-13: restaurar una versión es 403 STORAGE_ACCOUNT_READ_ONLY sin abrir la transacción ni copiar', async () => {
     const { service, file, versions, journal } = setup({ ...LIMITS, readOnly: true });
 

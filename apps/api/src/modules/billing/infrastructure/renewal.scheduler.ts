@@ -16,7 +16,7 @@ export const SUBSCRIPTION_RENEWAL_JOB_NAME = 'renew';
 export const SUBSCRIPTION_RENEWAL_SCHEDULER_ID = 'subscription-renewal';
 
 /**
- * `RenewalScheduler` del diagrama (DF-70: BullMQ en lugar de `@Cron`): registra la pasada cada
+ * `RenewalScheduler` del diagrama (DF-77: BullMQ en lugar de `@Cron`): registra la pasada cada
  * `SUBSCRIPTION_RENEWAL_INTERVAL_MINUTES` con `scheduleRepeatableJob` de `shared` (PD-63).
  */
 @Injectable()

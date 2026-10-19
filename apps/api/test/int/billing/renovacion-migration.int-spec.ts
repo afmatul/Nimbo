@@ -10,8 +10,8 @@ import { connectAsAppDatabase, insertAccount, removeAccounts } from '../storage/
 import { createFreshDatabase, revertFrom } from './billing-test-db';
 import type { FreshDatabase } from './billing-test-db';
 
-const RENEWAL_MIGRATION = 'RenovacionDeSuscripcion20261018100000';
-const FUNCTIONS_MIGRATION = 'FuncionesDeRenovacion20261018100200';
+const RENEWAL_MIGRATION = 'RenovacionDeSuscripcion20261019100000';
+const FUNCTIONS_MIGRATION = 'FuncionesDeRenovacion20261019100200';
 const PERSONAL_ID = '10000000-0000-4000-8000-000000000001';
 const TEAM_ID = '10000000-0000-4000-8000-000000000003';
 const PRO_ID = '10000000-0000-4000-8000-000000000002';

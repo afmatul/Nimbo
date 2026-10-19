@@ -290,7 +290,8 @@ export const connectAsAppDatabase = async (): Promise<AppDatabase> => {
 };
 
 /**
- * Borra (como el dueño) los accesos rápidos, cargas, archivos, carpetas y cuentas de una suite que confirmó *fixtures*.
+ * Borra (como el dueño) los accesos rápidos, cargas, archivos, carpetas, sesiones de edición y cuentas de una suite
+ * que confirmó *fixtures*.
  * `acceso_rapido` va primero: su `usuario_id` no se borra en cascada (con 012 puede señalar un nodo ajeno).
  */
 export const removeAccounts = async (
@@ -303,6 +304,9 @@ export const removeAccounts = async (
     await manager.query('DELETE FROM carga WHERE propietario_id = ANY($1)', [accountIds]);
     await manager.query('DELETE FROM archivo WHERE propietario_id = ANY($1)', [accountIds]);
     await manager.query('DELETE FROM carpeta WHERE propietario_id = ANY($1)', [accountIds]);
+    // Después de `archivo` (sus versiones apuntan a la sesión); la sesión no tiene FK al archivo (016, DF-70).
+    await manager.query('DELETE FROM participacion WHERE usuario_id = ANY($1)', [accountIds]);
+    await manager.query('DELETE FROM sesion_edicion WHERE propietario_id = ANY($1)', [accountIds]);
     await manager.query('DELETE FROM usuario WHERE id = ANY($1)', [accountIds]);
   });
 };

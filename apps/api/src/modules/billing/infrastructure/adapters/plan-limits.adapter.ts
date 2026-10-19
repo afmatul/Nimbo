@@ -12,7 +12,7 @@ import type { Plan } from '../../domain/entities/plan.entity';
 import { PlanNotFoundError } from '../../domain/errors';
 import { PERSONAL_PLAN_SLUG } from '../../domain/plan-slug';
 
-/** Los límites de un plan, sin el estado de una cuenta (010 plan §2; ADR-0029 regla 5). */
+/** Los límites de un plan, sin el estado de una cuenta (010 plan §2; ADR-0032 regla 5). */
 export type PlanStorageLimits = Omit<PlanLimits, 'readOnly'>;
 
 const toLimits = (plan: Plan): PlanStorageLimits => ({
@@ -21,13 +21,14 @@ const toLimits = (plan: Plan): PlanStorageLimits => ({
   storageQuotaBytes: plan.limits.quotaBytes,
   trashRetentionDays: plan.limits.trashRetentionDays,
   retainedVersions: plan.limits.retainedVersions,
+  maxEditors: plan.limits.maxEditors,
 });
 
 /**
  * Implementación de `IPlanLimitsProvider` (spec 006a, RN-4; 009 T-03, PD-80). `storage` declara el puerto; este
  * adaptador no importa entidades de `storage`. Los límites son los del plan de la `suscripcion` del actor, leída bajo
  * RLS con `withActor`; sin fila (cuenta sin verificar o interna), los de Personal y `readOnly` falso. Una cuenta en
- * solo lectura conserva los límites de su plan (010 RN-5); `readOnly` sale de la misma lectura (ADR-0029).
+ * solo lectura conserva los límites de su plan (010 RN-5); `readOnly` sale de la misma lectura (ADR-0032).
  */
 @Injectable()
 export class PlanLimitsAdapter implements IPlanLimitsProvider {

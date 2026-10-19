@@ -5,7 +5,7 @@ const WRITABLE_COLUMNS =
   'estado, renovacion_automatica, plan_pendiente_id, aviso_previo_para, aviso_vencida_para';
 
 /**
- * Renovación, vencimiento y cambio de plan (spec 010, plan §3; DF-70). `suscripcion` suma:
+ * Renovación, vencimiento y cambio de plan (spec 010, plan §3; DF-77). `suscripcion` suma:
  *
  * - `estado` (`vigente` | `solo_lectura`), única fuente de la solo lectura (RN-5); Personal nunca la tiene porque no
  *   vence (`ck_suscripcion_solo_lectura`, CA-15).
@@ -17,8 +17,8 @@ const WRITABLE_COLUMNS =
  * `nimbo_app` solo actualiza columnas concedidas (009): se le conceden las nuevas. La RLS no cambia. `down` las retira
  * en orden inverso.
  */
-export class RenovacionDeSuscripcion20261018100000 implements MigrationInterface {
-  name = 'RenovacionDeSuscripcion20261018100000';
+export class RenovacionDeSuscripcion20261019100000 implements MigrationInterface {
+  name = 'RenovacionDeSuscripcion20261019100000';
 
   async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`

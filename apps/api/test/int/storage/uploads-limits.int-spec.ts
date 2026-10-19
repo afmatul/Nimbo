@@ -30,6 +30,7 @@ describe('POST /uploads contra los límites del plan (CA-3, CA-4, CA-23)', () =>
       trashRetentionDays: 30,
       retainedVersions: 3,
       readOnly: false,
+      maxEditors: 0,
       planName: 'Plan de prueba',
     });
   });
@@ -71,6 +72,7 @@ describe('POST /uploads contra los límites del plan (CA-3, CA-4, CA-23)', () =>
       trashRetentionDays: 30,
       retainedVersions: 3,
       readOnly: false,
+      maxEditors: 0,
       planName: 'Plan de prueba',
     });
     await storage.owner.query('UPDATE usuario SET espacio_usado = $1 WHERE id = $2', [
@@ -99,6 +101,7 @@ describe('POST /uploads contra los límites del plan (CA-3, CA-4, CA-23)', () =>
       trashRetentionDays: 30,
       retainedVersions: 3,
       readOnly: false,
+      maxEditors: 0,
       planName: 'Plan de prueba',
     });
     expect((await client.init({ name: 'segunda.txt', sizeBytes: 1_800 })).status).toBe(422);
@@ -116,6 +119,7 @@ describe('POST /uploads contra los límites del plan (CA-3, CA-4, CA-23)', () =>
       trashRetentionDays: 30,
       retainedVersions: 3,
       readOnly: false,
+      maxEditors: 0,
       planName: 'Plan de prueba',
     });
 

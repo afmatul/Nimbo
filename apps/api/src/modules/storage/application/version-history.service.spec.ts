@@ -24,6 +24,7 @@ const LIMITS = {
   trashRetentionDays: 30,
   retainedVersions: RETAINED,
   readOnly: false,
+  maxEditors: 0,
 };
 
 function setup() {

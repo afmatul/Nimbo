@@ -75,7 +75,7 @@ hasheado?»).
   sirven, y con el simulador no hay ninguna.
 - Documentos a actualizar al aceptar: la constitución Art. IX.6 y la prohibición de CLAUDE.md («tokens y claves siempre
   como hash») suman «emitidos y verificados por Nimbo; las credenciales de terceros que se reenvían, ADR-0031». ADR-0006
-  (pendiente) recoge el contrato de `IPaymentGateway` cuando se redacte. DF-70 lo cita.
+  (pendiente) recoge el contrato de `IPaymentGateway` cuando se redacte. DF-77 lo cita.
 - Cómo sabremos si fue un error: si aparece la referencia en una respuesta, una bitácora o una consulta que no sea
   `findLastApprovedCard`; si otra credencial «de reenvío» quiere usar esta excepción sin ADR propio; o si se integra una
   pasarela real cuyos tokens sirven sin la clave del comercio.

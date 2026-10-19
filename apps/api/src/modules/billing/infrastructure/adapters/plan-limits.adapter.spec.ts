@@ -20,6 +20,7 @@ const TEAM = aPlan({
     maxFileBytes: 1_073_741_824n,
     trashRetentionDays: 60,
     retainedVersions: 60,
+    maxEditors: 5,
   },
 });
 const CATALOG: readonly Plan[] = [PERSONAL_PLAN, TEAM];
@@ -57,7 +58,7 @@ const setup = (
   };
 };
 
-describe('PlanLimitsAdapter (006a CA-2 a CA-5; 009 T-03, PD-80; 010 ADR-0029)', () => {
+describe('PlanLimitsAdapter (006a CA-2 a CA-5; 009 T-03, PD-80; 016 CA-7, DF-73; 010 ADR-0032)', () => {
   it('T-03: con fila de suscripción, los límites del plan contratado, leídos con withActor del cliente', async () => {
     const { adapter, scopes, subscriptions } = setup(TEAM.id);
 
@@ -68,6 +69,7 @@ describe('PlanLimitsAdapter (006a CA-2 a CA-5; 009 T-03, PD-80; 010 ADR-0029)', 
       trashRetentionDays: 60,
       retainedVersions: 60,
       readOnly: false,
+      maxEditors: 5,
     });
     expect(scopes).toEqual([ANA.id]);
     expect(subscriptions.findStanding).toHaveBeenCalledWith(ANA);
@@ -83,6 +85,7 @@ describe('PlanLimitsAdapter (006a CA-2 a CA-5; 009 T-03, PD-80; 010 ADR-0029)', 
       trashRetentionDays: 7,
       retainedVersions: 3,
       readOnly: false,
+      maxEditors: 0,
     });
   });
 

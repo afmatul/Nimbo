@@ -31,9 +31,9 @@ const ON_SUBSCRIPTION_PLAN = { resourceType: null, attributes: { planSlug: 'text
 /**
  * Catálogo cerrado (RN-3): por acción, su tipo de recurso y la lista blanca de atributos con su tipo. Son las siete
  * acciones de 005 y 006 (D-1) con los atributos que emiten hoy, las dos de versiones de 014 (plan §5; un reemplazo
- * reutiliza `file.upload_completed` con `replaced`, `versionId` y `versionNumber`) y las siete internas de 011 (plan
- * §2), que no guardan nombres ni correos, y las nueve de la suscripción de 010 (plan §2, sin datos de tarjeta). Cada spec
- * agrega las suyas. Una acción del enum sin entrada no compila.
+ * reutiliza `file.upload_completed` con `replaced`, `versionId` y `versionNumber`), las siete internas de 011 (plan
+ * §2), que no guardan nombres ni correos, las tres de edición de 016 (plan §5) y las nueve de la suscripción de 010
+ * (plan §2, sin datos de tarjeta). Cada spec agrega las suyas. Una acción del enum sin entrada no compila.
  */
 export const AUDIT_CATALOG = {
   [AuditAction.FILE_UPLOAD_COMPLETED]: {
@@ -111,6 +111,23 @@ export const AUDIT_CATALOG = {
   [AuditAction.SUBSCRIPTION_PLAN_CHANGE_CANCELLED]: ON_SUBSCRIPTION,
   [AuditAction.SUBSCRIPTION_PLAN_CHANGE_APPLIED]: ON_SUBSCRIPTION_PLAN,
   [AuditAction.SUBSCRIPTION_PLAN_CHANGE_DISCARDED]: ON_SUBSCRIPTION_PLAN,
+  [AuditAction.FILE_VERSION_CREATED]: {
+    resourceType: 'file',
+    attributes: {
+      versionId: 'uuid',
+      versionNumber: 'number',
+      sizeBytes: 'number',
+      sessionId: 'uuid',
+    },
+  },
+  [AuditAction.EDIT_SESSION_OPENED]: {
+    resourceType: 'file',
+    attributes: { sessionId: 'uuid' },
+  },
+  [AuditAction.EDIT_SAVE_FAILED]: {
+    resourceType: 'file',
+    attributes: { sessionId: 'uuid', reason: 'text' },
+  },
 } as const satisfies Record<AuditAction, AuditActionSpec>;
 
 /** Tipos que un atributo (`nodeType`) puede dar: solo nodos y cargas. */

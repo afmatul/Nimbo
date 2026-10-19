@@ -8,13 +8,14 @@ const WRITABLE_TEST_LIMITS: PlanLimits = {
   storageQuotaBytes: 1000n,
   trashRetentionDays: 30,
   retainedVersions: 3,
+  maxEditors: 0,
   readOnly: false,
 };
 
 /**
  * Doble de `IPlanLimitsProvider` mientras 006a no lo implemente (R-3). Solo en `test/`: el código de producción
  * no tiene valores del catálogo de planes (RN-1). Devuelve los límites que la prueba le pasa y, con `setReadOnly`, la
- * cuenta en solo lectura de la 010 (ADR-0029).
+ * cuenta en solo lectura de la 010 (ADR-0032).
  */
 export class FakePlanLimitsProvider implements IPlanLimitsProvider {
   private limits: PlanLimits;

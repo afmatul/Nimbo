@@ -6,6 +6,7 @@ import { AuditAction } from './audit-action';
 import { AUDIT_CATALOG, resourceTypeOf } from './audit-catalog';
 
 const VERSION_ID = '7c9e6679-7425-40de-944b-e07fc1f90ae7';
+const SESSION_ID = '0b6f1d2e-3a4b-4c5d-8e6f-7a8b9c0d1e2f';
 
 /** Lo que emiten 005 (`upload.service`, `file.service`), 006 (`trash.service`), 014 (plan §5) y 011 (`backoffice`). */
 const REAL_ATTRIBUTES: Readonly<Record<AuditAction, Record<string, string | number | boolean>>> = {
@@ -48,6 +49,14 @@ const REAL_ATTRIBUTES: Readonly<Record<AuditAction, Record<string, string | numb
   [AuditAction.SUBSCRIPTION_PLAN_CHANGE_CANCELLED]: {},
   [AuditAction.SUBSCRIPTION_PLAN_CHANGE_APPLIED]: { planSlug: 'pro' },
   [AuditAction.SUBSCRIPTION_PLAN_CHANGE_DISCARDED]: { planSlug: 'pro' },
+  [AuditAction.FILE_VERSION_CREATED]: {
+    versionId: VERSION_ID,
+    versionNumber: 5,
+    sizeBytes: 4096,
+    sessionId: SESSION_ID,
+  },
+  [AuditAction.EDIT_SESSION_OPENED]: { sessionId: SESSION_ID },
+  [AuditAction.EDIT_SAVE_FAILED]: { sessionId: SESSION_ID, reason: 'integridad' },
 };
 
 describe('AUDIT_CATALOG', () => {

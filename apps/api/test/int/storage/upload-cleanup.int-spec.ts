@@ -49,6 +49,7 @@ const TEST_LIMITS = {
   trashRetentionDays: 30,
   retainedVersions: 3,
   readOnly: false,
+  maxEditors: 0,
   planName: 'Plan de prueba',
 };
 /** Un `.pdf` mínimo que el detector acepta: la firma `%PDF-` y relleno. */

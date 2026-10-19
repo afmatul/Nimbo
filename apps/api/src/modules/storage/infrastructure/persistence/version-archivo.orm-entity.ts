@@ -34,4 +34,8 @@ export class VersionArchivoOrmEntity {
 
   @Column('timestamptz', { name: 'creada_en' })
   creadaEn!: Date;
+
+  /** Sesión de edición que la generó (016); `UNIQUE` y solo en las de origen `edicion` (DF-05). */
+  @Column('uuid', { name: 'sesion_edicion_id', nullable: true })
+  sesionEdicionId!: string | null;
 }

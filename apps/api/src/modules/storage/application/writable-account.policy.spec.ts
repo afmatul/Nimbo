@@ -13,7 +13,7 @@ const policyWith = (readOnly: boolean) => {
   return { policy: new WritableAccountPolicy(plans), plans };
 };
 
-describe('WritableAccountPolicy (spec 010 CA-13, RN-6; ADR-0029)', () => {
+describe('WritableAccountPolicy (spec 010 CA-13, RN-6; ADR-0032)', () => {
   it('CA-13: en solo lectura es 403 STORAGE_ACCOUNT_READ_ONLY con el mensaje de la spec', async () => {
     const { policy, plans } = policyWith(true);
 
@@ -31,7 +31,7 @@ describe('WritableAccountPolicy (spec 010 CA-13, RN-6; ADR-0029)', () => {
     await expect(policyWith(false).policy.assertWritable(ANA)).resolves.toBeUndefined();
   });
 
-  it('ADR-0029 regla 2: con los límites ya leídos no vuelve a consultar', () => {
+  it('ADR-0032 regla 2: con los límites ya leídos no vuelve a consultar', () => {
     expect(() => assertWritableLimits({ readOnly: true })).toThrow(AccountReadOnlyError);
     expect(() => assertWritableLimits({ readOnly: false })).not.toThrow();
   });

@@ -21,6 +21,7 @@ describe('dos inicios simultáneos con cupo para uno (CA-23)', () => {
         trashRetentionDays: 30,
         retainedVersions: 3,
         readOnly: false,
+        maxEditors: 0,
         planName: 'Plan de prueba',
       },
     });

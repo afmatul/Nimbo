@@ -32,6 +32,7 @@ const LIMITS = {
   trashRetentionDays: 30,
   retainedVersions: 3,
   readOnly: false,
+  maxEditors: 0,
 };
 const VERIFIED: VerifiedUpload = { sizeBytes: 500n, kind: 'docx' };
 

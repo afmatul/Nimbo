@@ -49,6 +49,7 @@ async function setup(usage: QuotaUsage) {
     trashRetentionDays: 30,
     retainedVersions: 3,
     readOnly: false,
+    maxEditors: 0,
     planName: 'Plan de prueba',
   });
   const service = new QuotaService(quotas, new FixedClock(NOW));

@@ -1,7 +1,7 @@
 import { ForbiddenError } from '../../../../shared/domain/errors';
 
 /**
- * La suscripción de pago venció y la cuenta está en solo lectura (spec 010 CA-13, RN-6; ADR-0029): no se sube, crea,
+ * La suscripción de pago venció y la cuenta está en solo lectura (spec 010 CA-13, RN-6; ADR-0032): no se sube, crea,
  * renombra, mueve ni restaura. HTTP 403 y nada cambia.
  */
 export class AccountReadOnlyError extends ForbiddenError {

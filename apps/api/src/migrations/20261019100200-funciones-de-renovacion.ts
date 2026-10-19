@@ -14,8 +14,8 @@ const TO_REMIND = 'suscripciones_por_avisar(integer, integer)';
  *
  * Como `FORCE` somete también al dueño, `suscripcion_mantenimiento` le deja leer las filas de pago sin actor.
  */
-export class FuncionesDeRenovacion20261018100200 implements MigrationInterface {
-  name = 'FuncionesDeRenovacion20261018100200';
+export class FuncionesDeRenovacion20261019100200 implements MigrationInterface {
+  name = 'FuncionesDeRenovacion20261019100200';
 
   async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
