@@ -171,5 +171,9 @@ y en `pendientes.md` (PD-31 resuelto, PD-94) prevalece lo de `main` (aviso a Jua
 - `apps/web/src/lib/format-plan.ts` es tuyo (008): la 011 solo importa `formatCount` de ahí —para los conteos de las
   métricas y del paginador— y no lo modifica. Si conviene moverlo a un archivo común dentro de `lib/`, se hace en tu
   PR: la 011 seguiría importándolo desde el lugar donde quede.
+- `billing` (M4) también es tuyo: la parte de la 011 toca `Plan` (`isDefault`: Personal es el plan por omisión, CA-8)
+  y el mensaje de `PlanNotFoundError`, que ya no repite el identificador buscado (el mismo `404 PLAN_NOT_FOUND` para un
+  id inexistente y para uno mal formado, plan §4). Va en el commit del PR-B; dime si prefieres que lo revises antes de
+  que se integre.
 - PD-91 (con Adrián): la 011 ya usa base 1000 con `formatBytes` de `contracts` y el espacio de miles de `formatCount`;
   falta unificar `formatPlanBytes` (base 1024, punto decimal) con el formateador único.

@@ -69,7 +69,7 @@ export class PlanCatalogService {
   /** 011 CA-10, CA-11: Personal y un plan ya desactivado se rechazan; quien lo tiene lo conserva. */
   async deactivate(_actor: Actor, planId: string): Promise<Plan> {
     const plan = await this.plans.findById(planId);
-    if (plan === null) throw new PlanNotFoundError(planId);
+    if (plan === null) throw new PlanNotFoundError();
     const deactivated = plan.deactivate(this.clock.now());
     if (!(await this.plans.deactivate(deactivated))) throw new PlanAlreadyDeactivatedError();
     return deactivated;

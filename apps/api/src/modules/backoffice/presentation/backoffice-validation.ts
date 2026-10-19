@@ -1,6 +1,7 @@
 import { ParseUUIDPipe } from '@nestjs/common';
 
 import type { DomainError, FieldIssue, InvalidInputFactory } from '../../../shared';
+import { PlanInvalidError, PlanNotFoundError } from '../../billing';
 import { AccountNotFoundError, IdentityInvalidInputError } from '../../identity';
 import { InvalidBackofficeQueryError } from '../domain/errors/invalid-backoffice-query.error';
 
@@ -17,3 +18,12 @@ export const enrollmentValidationError: InvalidInputFactory = (
 /** Un `:id` de cuenta que no es UUID es el mismo 404 que una cuenta inexistente (plan §4). */
 export const accountIdPipe = (): ParseUUIDPipe =>
   new ParseUUIDPipe({ exceptionFactory: () => new AccountNotFoundError() });
+
+/** Fábrica para la forma de un plan nuevo: 422 `BILLING_PLAN_INVALID` con `fields`, como las reglas de CA-11. */
+export const planValidationError: InvalidInputFactory = (
+  issues: readonly FieldIssue[],
+): DomainError => new PlanInvalidError(issues);
+
+/** Un `:id` de plan que no es UUID es el mismo 404 `PLAN_NOT_FOUND` que un plan inexistente (plan §4). */
+export const planIdPipe = (): ParseUUIDPipe =>
+  new ParseUUIDPipe({ exceptionFactory: () => new PlanNotFoundError() });

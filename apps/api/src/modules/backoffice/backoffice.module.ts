@@ -5,12 +5,14 @@ import { AuditModule } from '../audit';
 import { BillingModule } from '../billing';
 
 import { AdminService } from './application/admin.service';
+import { CatalogAdminService } from './application/catalog-admin.service';
 import { InternalActionService } from './application/internal-action.service';
 import { MetricsService } from './application/metrics.service';
 import { SupportService } from './application/support.service';
 import { AccountsController } from './presentation/accounts.controller';
 import { ClientFilesController } from './presentation/client-files.controller';
 import { MetricsController } from './presentation/metrics.controller';
+import { PlansController } from './presentation/plans.controller';
 
 /**
  * Módulo `backoffice` (M8, 011 plan §2): orquesta fachadas de otros módulos, sin reglas ni tablas propias.
@@ -25,8 +27,14 @@ export class BackofficeModule {
     return {
       module: BackofficeModule,
       imports: [identity, storage, AuditModule, BillingModule],
-      controllers: [ClientFilesController, AccountsController, MetricsController],
-      providers: [InternalActionService, SupportService, AdminService, MetricsService],
+      controllers: [ClientFilesController, AccountsController, MetricsController, PlansController],
+      providers: [
+        InternalActionService,
+        SupportService,
+        AdminService,
+        MetricsService,
+        CatalogAdminService,
+      ],
     };
   }
 }

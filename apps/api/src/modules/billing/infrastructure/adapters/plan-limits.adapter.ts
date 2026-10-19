@@ -45,14 +45,14 @@ export class PlanLimitsAdapter implements IPlanLimitsProvider {
   /** CA-2 y CA-4. No está en el puerto de `storage`: 005 fijó `limitsFor` como único método (ISP). */
   async getLimitsByPlanId(planId: string): Promise<PlanLimits> {
     const plan = await this.plans.findById(planId);
-    if (plan === null) throw new PlanNotFoundError(planId);
+    if (plan === null) throw new PlanNotFoundError();
     return toLimits(plan);
   }
 
   /** CA-3 y CA-4. Misma salvedad que `getLimitsByPlanId`. */
   async getLimitsBySlug(slug: string): Promise<PlanLimits> {
     const plan = await this.plans.findBySlug(slug);
-    if (plan === null) throw new PlanNotFoundError(slug);
+    if (plan === null) throw new PlanNotFoundError();
     return toLimits(plan);
   }
 }
