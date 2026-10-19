@@ -29,6 +29,14 @@ export const setAutoRenew = (
 ): Promise<SubscriptionView> =>
   send(apiPublicUrl, authFetch, { path: AUTO_RENEW_PATH, method: 'PUT', body: { enabled } });
 
+/** `PUT /billing/subscription/plan-change` (spec 010 CA-16, CA-17, CA-27): programa (o aplica ya) el plan del siguiente ciclo. */
+export const schedulePlanChange = (
+  apiPublicUrl: string,
+  authFetch: AuthFetch,
+  planSlug: string,
+): Promise<SubscriptionView> =>
+  send(apiPublicUrl, authFetch, { path: PLAN_CHANGE_PATH, method: 'PUT', body: { planSlug } });
+
 /** `DELETE /billing/subscription/plan-change` (spec 010 CA-19): sin cambio programado es `404` con su código. */
 export const cancelPlanChange = (
   apiPublicUrl: string,

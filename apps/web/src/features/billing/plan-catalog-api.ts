@@ -1,6 +1,9 @@
 import { planCatalogResponseSchema, type PlanCatalogResponse } from '@nimbo/contracts';
 
 import { requestJson } from '../../lib/api-client';
+import type { AuthFetch } from '../identity/session/auth-fetch';
+
+import { billingEndpoint } from './billing-endpoint';
 
 const PLAN_CATALOG_PATH = '/api/v1/billing/plans';
 
@@ -14,4 +17,14 @@ export async function fetchPlanCatalog(
 ): Promise<PlanCatalogResponse> {
   const body = await requestJson(`${apiInternalUrl}${PLAN_CATALOG_PATH}`, init);
   return planCatalogResponseSchema.parse(body);
+}
+
+/** El mismo catálogo desde el navegador, con la sesión del cliente (010 CA-17, PD-86: solo planes activos). */
+export async function fetchPlanCatalogWithSession(
+  apiPublicUrl: string,
+  authFetch: AuthFetch,
+): Promise<PlanCatalogResponse> {
+  return planCatalogResponseSchema.parse(
+    await authFetch(billingEndpoint(apiPublicUrl, '/billing/plans')),
+  );
 }

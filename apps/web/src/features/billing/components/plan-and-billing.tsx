@@ -3,14 +3,12 @@
 import type { BillingHistoryResponse, SubscriptionView } from '@nimbo/contracts';
 import * as React from 'react';
 
-import { AppLayout, DEFAULT_NAV_ITEMS } from '../../../components/nimbo/app-layout';
 import { StateView } from '../../../components/nimbo/state-view';
 import { Alert } from '../../../components/ui/alert';
 import { toApiClientError } from '../../../lib/api-error';
 import { messageForCode } from '../../../lib/error-catalog';
 import type { AuthFetch } from '../../identity/session/auth-fetch';
 import { useAuthFetch } from '../../identity/session/use-auth-fetch';
-import { SidebarQuota } from '../../storage/components/sidebar-quota';
 import { useSpace, type SpaceSummaryState } from '../../storage/components/space-provider';
 import { fetchBillingHistory, requestInvoiceDownload } from '../billing-history-api';
 import { useBillingHistory, type BillingHistoryState } from '../hooks/use-billing-history';
@@ -20,14 +18,12 @@ import {
 } from '../hooks/use-subscription-settings';
 
 import { BillingDetailsCard, PaymentMethodCard } from './billing-account-cards';
+import { BillingPageLayout } from './billing-page-layout';
 import { CurrentPlanCard } from './current-plan-card';
 import { InvoiceHistory, type DownloadInvoice } from './invoice-history';
 import { NextChargeCard } from './next-charge-card';
 import { SubscriptionStatusNotice } from './subscription-status-notice';
 import { UsageCard } from './usage-card';
-
-/** Página de la cuenta, como «Seguridad» y «Mi actividad»: ningún destino de la barra lateral queda marcado. */
-const NAV_ITEMS = DEFAULT_NAV_ITEMS.map((item) => ({ ...item, active: false }));
 
 export interface PlanAndBillingViewProps {
   readonly state: BillingHistoryState;
@@ -51,23 +47,6 @@ const rejectedCardOf = (history: BillingHistoryResponse) =>
 
 const usedBytesOf = (space: SpaceSummaryState): number | null =>
   space.status === 'ready' ? space.summary.usedBytes : null;
-
-/** «Cuenta / Plan y facturación» en la barra superior (mockup); solo en escritorio, como las migas de Mis archivos. */
-function Breadcrumbs(): React.JSX.Element {
-  return (
-    <nav aria-label="Ruta" className="min-w-0">
-      <ol className="flex items-center gap-2 text-sm">
-        <li className="text-secondary-foreground">Cuenta</li>
-        <li aria-hidden="true" className="text-muted-foreground">
-          /
-        </li>
-        <li aria-current="page" className="font-semibold text-foreground">
-          Plan y facturación
-        </li>
-      </ol>
-    </nav>
-  );
-}
 
 function SubscriptionCards({
   subscription,
@@ -177,11 +156,7 @@ function Body({
  */
 export function PlanAndBillingView(props: PlanAndBillingViewProps): React.JSX.Element {
   return (
-    <AppLayout
-      navItems={NAV_ITEMS}
-      topBar={<Breadcrumbs />}
-      quotaCard={<SidebarQuota state={props.space} />}
-    >
+    <BillingPageLayout trail={[{ label: 'Plan y facturación' }]} space={props.space}>
       <section
         className="mx-auto flex w-full max-w-6xl flex-col gap-4"
         aria-labelledby="plan-facturacion-titulo"
@@ -192,7 +167,7 @@ export function PlanAndBillingView(props: PlanAndBillingViewProps): React.JSX.El
         </h1>
         <Body {...props} />
       </section>
-    </AppLayout>
+    </BillingPageLayout>
   );
 }
 

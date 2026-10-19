@@ -10,13 +10,28 @@ export interface PlanCardProps {
   readonly className?: string;
   /** Acción al pie (009 CA-9: «Contratar» en los planes de pago); la decide la página. */
   readonly action?: ReactNode;
+  /** Distintivo junto al nombre (010: «Plan actual»). */
+  readonly badge?: ReactNode;
+  /** Borde destacado del plan actual (mockup `planes--cambiar-plan`). */
+  readonly highlighted?: boolean;
 }
 
 /** Tarjeta de un plan del catálogo (008 CA-2, RF-19): nombre, precio y límites salen del contrato, nunca del frontend. */
-export function PlanCard({ plan, className, action }: PlanCardProps): ReactNode {
+export function PlanCard({
+  plan,
+  className,
+  action,
+  badge,
+  highlighted = false,
+}: PlanCardProps): ReactNode {
   return (
-    <Card className={cn('flex flex-col gap-4 p-5', className)}>
-      <h2 className="text-base font-semibold text-foreground">{plan.name}</h2>
+    <Card
+      className={cn('flex flex-col gap-4 p-5', highlighted && 'border-2 border-primary', className)}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <h2 className="text-base font-semibold text-foreground">{plan.name}</h2>
+        {badge}
+      </div>
       <p className="min-h-8 text-xs text-muted-foreground">{plan.description}</p>
       <p className="flex items-baseline gap-1">
         <span className="text-2xl font-bold tabular-nums text-foreground">
