@@ -134,7 +134,7 @@ Antes de cada pantalla se leen sus capturas en `docs/design/capturas/`; las desv
     (`payment-form.spec.tsx` acepta `0341`).
   - Depende: T-08.
 
-- [ ] **T-11** Explorador en solo lectura [Adrián]
+- [x] **T-11** Explorador en solo lectura [Adrián]
   - **Compuerta**: ADR-0032 aceptado y cambios en la web de `storage` autorizados.
   - Criterio: CA-14 (aviso, acciones de CA-13 deshabilitadas con texto, arrastre con el mensaje); las permitidas por RN-6 siguen activas.
   - Archivos: `apps/web/src/lib/error-catalog.ts` (`STORAGE_ACCOUNT_READ_ONLY`, literal); `features/storage/components/{space-provider,
@@ -239,3 +239,9 @@ Antes de cada pantalla se leen sus capturas en `docs/design/capturas/`; las desv
   contratar y renovar; `toSubscribeRequest` y `toRenewRequest` validan con su esquema de `contracts`. El `ReadOnlyBanner`
   ya estaba de T-08. Desviación del mockup: el aprobado no muestra el número de factura, porque el recibo
   (`paymentReceiptSchema`) no lo trae; se ve en «Pagos y facturas».
+- **T-11** (2026-10-19, `8cb0416`): implementada **antes** de aceptar ADR-0032 y sin la autorización explícita de los
+  cambios en la web de `storage` (avance autorizado del plan §8, decisión de Juan Marcos), como T-06. `useReadOnlyAccount`
+  lee `readOnly` del resumen de espacio que ya carga `(cliente)` (sin otra petición) y fuera de `SpaceProvider` devuelve
+  «vigente», así las pruebas existentes no cambian. `ReadOnlyNotice` reutiliza el `ReadOnlyBanner` de T-08. Sin cambio
+  en `upload-dropzone.tsx`, `space-provider` solo suma el hook, y `restore-version-dialog.tsx` no cambia porque «Restaurar»
+  ya no lo abre. El aviso del explorador no muestra la fecha de vencimiento del mockup: el resumen de espacio no la trae.
