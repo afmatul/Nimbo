@@ -1,8 +1,11 @@
 'use client';
 
-import type * as React from 'react';
+import { STORAGE_ERROR_CODES } from '@nimbo/contracts';
+import * as React from 'react';
 
 import { ReadOnlyBanner } from '../../../components/nimbo/read-only-banner';
+import { Alert } from '../../../components/ui/alert';
+import { messageForCode } from '../../../lib/error-catalog';
 import { RENEW_PATH } from '../../billing/routes';
 
 import { useReadOnlyAccount } from './space-provider';
@@ -25,5 +28,38 @@ export function ReadOnlyNotice(): React.JSX.Element | null {
       description={`${plan} venció. Tus archivos siguen aquí: puedes verlos y descargarlos, pero no subir ni editar hasta que renueves.`}
       renewHref={RENEW_PATH}
     />
+  );
+}
+
+/** Lo que el explorador necesita de la solo lectura para sus cargas (spec 010 CA-14). */
+export interface ReadOnlyUploads {
+  readonly readOnly: boolean;
+  /** Se soltaron archivos en solo lectura: se muestra el mensaje de CA-13 y no se cargan. */
+  readonly blockedDrop: boolean;
+  readonly onFiles: (files: readonly File[]) => void;
+}
+
+/** En solo lectura, soltar o elegir archivos no los carga: muestra el mensaje de `STORAGE_ACCOUNT_READ_ONLY`. */
+export function useReadOnlyUploads(onFiles: (files: readonly File[]) => void): ReadOnlyUploads {
+  const { readOnly } = useReadOnlyAccount();
+  const [blockedDrop, setBlockedDrop] = React.useState(false);
+  return { readOnly, blockedDrop, onFiles: readOnly ? () => setBlockedDrop(true) : onFiles };
+}
+
+/** El texto junto a las acciones deshabilitadas y, si se soltaron archivos, el mensaje de CA-13 (CA-14). */
+export function ReadOnlyUploadFeedback({
+  readOnly,
+  blockedDrop,
+}: Omit<ReadOnlyUploads, 'onFiles'>): React.JSX.Element | null {
+  if (!readOnly) return null;
+  return (
+    <>
+      <p className="text-sm text-secondary-foreground">{READ_ONLY_ACTIONS_HINT}</p>
+      {blockedDrop ? (
+        <Alert variant="error">
+          {messageForCode(STORAGE_ERROR_CODES.STORAGE_ACCOUNT_READ_ONLY)}
+        </Alert>
+      ) : null}
+    </>
   );
 }

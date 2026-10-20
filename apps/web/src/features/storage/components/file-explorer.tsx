@@ -1,14 +1,11 @@
 'use client';
 
-import { STORAGE_ERROR_CODES } from '@nimbo/contracts';
 import type { FolderRef, NodeSummary } from '@nimbo/contracts';
 import { FolderPlus, Upload } from 'lucide-react';
 import * as React from 'react';
 
 import { StateView } from '../../../components/nimbo/state-view';
-import { Alert } from '../../../components/ui/alert';
 import { Button } from '../../../components/ui/button';
-import { messageForCode } from '../../../lib/error-catalog';
 import type { ListControls } from '../hooks/use-folder-contents';
 import { MY_FILES_LABEL } from '../routes';
 
@@ -17,8 +14,7 @@ import { FolderBackLink } from './folder-breadcrumbs';
 import { LoadMore } from './load-more';
 import { NodeSortMenu } from './node-sort-menu';
 import { NodeTable, type FolderDisclosure, type NodeTableProps } from './node-table';
-import { READ_ONLY_ACTIONS_HINT } from './read-only-notice';
-import { useReadOnlyAccount } from './space-provider';
+import { ReadOnlyUploadFeedback, useReadOnlyUploads } from './read-only-notice';
 import { UploadDropzone } from './upload-dropzone';
 
 export type FileExplorerStatus = 'loading' | 'ready' | 'error';
@@ -87,6 +83,36 @@ function useCanDragFiles(): boolean {
   return React.useSyncExternalStore(subscribeToDragSupport, canDragNow, () => true);
 }
 
+/** «Nueva carpeta» y «Subir archivos»; deshabilitados en solo lectura (spec 010 CA-14). */
+function ExplorerActions({
+  onNewFolder,
+  onUpload,
+  disabled,
+}: {
+  readonly onNewFolder: () => void;
+  readonly onUpload: () => void;
+  readonly disabled: boolean;
+}): React.JSX.Element {
+  return (
+    <div className="flex w-full gap-2 sm:w-auto">
+      <Button
+        type="button"
+        variant="outline"
+        className="flex-1 sm:flex-none"
+        onClick={onNewFolder}
+        disabled={disabled}
+      >
+        <FolderPlus className="h-4 w-4" aria-hidden="true" />
+        Nueva carpeta
+      </Button>
+      <Button type="button" className="flex-1 sm:flex-none" onClick={onUpload} disabled={disabled}>
+        <Upload className="h-4 w-4" aria-hidden="true" />
+        Subir archivos
+      </Button>
+    </div>
+  );
+}
+
 /**
  * «Mis archivos» o una carpeta: encabezado con «Nueva carpeta» y «Subir archivos», zona de arrastre que sube a la
  * ubicación abierta (CA-6) y los estados de la spec 006 §6.
@@ -106,8 +132,7 @@ export function FileExplorer({
   notice,
   controls,
 }: FileExplorerProps): React.JSX.Element {
-  const { readOnly } = useReadOnlyAccount();
-  const [blockedDrop, setBlockedDrop] = React.useState(false);
+  const uploads = useReadOnlyUploads(onFiles);
   const ownInputRef = React.useRef<HTMLInputElement>(null);
   const inputRef = fileInputRef ?? ownInputRef;
   const openPicker = (): void => inputRef.current?.click();
@@ -121,41 +146,18 @@ export function FileExplorer({
       )}
       <header className="flex flex-wrap items-center justify-between gap-3">
         <ExplorerTitle place={place} loading={status === 'loading'} />
-        <div className="flex w-full gap-2 sm:w-auto">
-          <Button
-            type="button"
-            variant="outline"
-            className="flex-1 sm:flex-none"
-            onClick={onNewFolder}
-            disabled={readOnly}
-          >
-            <FolderPlus className="h-4 w-4" aria-hidden="true" />
-            Nueva carpeta
-          </Button>
-          <Button
-            type="button"
-            className="flex-1 sm:flex-none"
-            onClick={openPicker}
-            disabled={readOnly}
-          >
-            <Upload className="h-4 w-4" aria-hidden="true" />
-            Subir archivos
-          </Button>
-        </div>
+        <ExplorerActions
+          onNewFolder={onNewFolder}
+          onUpload={openPicker}
+          disabled={uploads.readOnly}
+        />
       </header>
-      {readOnly ? (
-        <p className="text-sm text-secondary-foreground">{READ_ONLY_ACTIONS_HINT}</p>
-      ) : null}
-      {blockedDrop ? (
-        <Alert variant="error">
-          {messageForCode(STORAGE_ERROR_CODES.STORAGE_ACCOUNT_READ_ONLY)}
-        </Alert>
-      ) : null}
+      <ReadOnlyUploadFeedback readOnly={uploads.readOnly} blockedDrop={uploads.blockedDrop} />
 
       <UploadDropzone
         destinationName={placeName}
         maxFileLabel={maxFileLabel}
-        onFiles={readOnly ? () => setBlockedDrop(true) : onFiles}
+        onFiles={uploads.onFiles}
         inputRef={inputRef}
       >
         {notice ? (
