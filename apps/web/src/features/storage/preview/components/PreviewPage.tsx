@@ -13,7 +13,7 @@ import { messageForCode } from '../../../../lib/error-catalog';
 import { DATE_LOCALE } from '../../../../lib/format-date';
 import { useAuthFetch } from '../../../identity/session/use-auth-fetch';
 import { requestPreviewUrl, type PreviewUrlRequester } from '../api';
-import { usePreview } from '../hooks/use-preview';
+import { usePreview, type PreviewState } from '../hooks/use-preview';
 import { usePreviewContent } from '../hooks/use-preview-content';
 
 import { PreviewReader } from './PreviewReader';
@@ -97,22 +97,84 @@ function PreviewMetadata({ file }: { readonly file: FileSummary }): React.JSX.El
   );
 }
 
+/** `releasing` deja pasar el único clic que suelta la vuelta diferida; `spent`, ninguno más. */
+type ReturnRelease = 'waiting' | 'releasing' | 'spent';
+type PreviewReturn = {
+  readonly href: string;
+  readonly leaving: boolean;
+  readonly attachLink: (element: HTMLAnchorElement | null) => void;
+  readonly onReturn: (event: React.MouseEvent<HTMLAnchorElement>) => void;
+  readonly onAuxReturn: (event: React.MouseEvent<HTMLAnchorElement>) => void;
+};
+
+/**
+ * Solo la entrega conoce la carpeta (la ruta identifica solo `fileId`): Volver pulsado antes de ella, con o sin
+ * modificadores o con el clic central, espera a que la emisión termine y el mismo enlace navega una vez. Después, el
+ * enlace vuelve a ser normal. El efecto no corre tras desmontar: una respuesta tardía no navega.
+ */
+function usePreviewReturn(fileId: string, emission: PreviewState): PreviewReturn {
+  const link = React.useRef<HTMLAnchorElement>(null);
+  const release = React.useRef<ReturnRelease>('waiting');
+  const [leaving, setLeaving] = React.useState(false);
+  const attachLink = React.useCallback((element: HTMLAnchorElement | null): void => {
+    link.current = element;
+  }, []);
+  const settled = emission.status === 'success' || emission.status === 'failure';
+  const file = emission.status === 'success' ? emission.delivery.file : undefined;
+  const href = returnPathOf({ id: file?.id ?? fileId, folderId: file?.folderId ?? null });
+  React.useEffect(() => {
+    if (!leaving || !settled || release.current !== 'waiting') return;
+    release.current = 'releasing';
+    link.current?.click();
+    release.current = 'spent';
+  }, [leaving, settled]);
+  const onReturn = (event: React.MouseEvent<HTMLAnchorElement>): void => {
+    if (release.current === 'releasing' || (settled && !leaving)) return;
+    event.preventDefault();
+    setLeaving(true);
+  };
+  const onAuxReturn = (event: React.MouseEvent<HTMLAnchorElement>): void => {
+    if (event.button === 1) onReturn(event);
+  };
+  return { href, leaving, attachLink, onReturn, onAuxReturn };
+}
+
 type PreviewHeaderProps = {
   readonly file: FileSummary | undefined;
-  readonly returnHref: string;
+  readonly back: PreviewReturn;
   readonly onDownload: () => void;
   readonly pending: boolean;
   readonly showDownload: boolean;
 };
 
+/** `buttonVariants` atenúa solo `:disabled`, que un enlace no tiene: la espera se ve por `aria-disabled`. */
+const WAITING_LINK =
+  'aria-disabled:cursor-wait aria-disabled:opacity-45 aria-disabled:hover:bg-transparent';
+
+function BackLink(props: PreviewReturn): React.JSX.Element {
+  const { href, leaving, attachLink, onReturn, onAuxReturn } = props;
+  return (
+    <Link
+      ref={attachLink}
+      href={href}
+      prefetch={false}
+      onClick={onReturn}
+      onAuxClick={onAuxReturn}
+      aria-busy={leaving || undefined}
+      aria-disabled={leaving || undefined}
+      className={buttonVariants({ variant: 'ghost', className: WAITING_LINK })}
+    >
+      <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+      Volver
+    </Link>
+  );
+}
+
 function PreviewHeader(props: PreviewHeaderProps): React.JSX.Element {
-  const { file, returnHref, onDownload, pending } = props;
+  const { file, back, onDownload, pending } = props;
   return (
     <header className="space-y-4">
-      <Link href={returnHref} prefetch={false} className={buttonVariants({ variant: 'ghost' })}>
-        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        Volver
-      </Link>
+      <BackLink {...back} />
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0 space-y-2">
           <h1 className="break-words text-2xl font-semibold text-foreground">
@@ -171,8 +233,7 @@ function usePreviewShell({
     region.current?.focus();
   }, []);
   const delivery = emission.status === 'success' ? emission.delivery : undefined;
-  const file = delivery?.file;
-  const returnHref = returnPathOf({ id: file?.id ?? fileId, folderId: file?.folderId ?? null });
+  const back = usePreviewReturn(fileId, emission);
   const onRetry = (): void => {
     region.current?.focus();
     download.reset();
@@ -191,8 +252,8 @@ function usePreviewShell({
     content,
     download,
     attachRegion,
-    file,
-    returnHref,
+    file: delivery?.file,
+    back,
     actions: { onRetry, onDownload },
   };
 }
@@ -200,7 +261,7 @@ function usePreviewShell({
 type PreviewView = ReturnType<typeof usePreviewShell>;
 
 function PreviewBody({ view }: { readonly view: PreviewView }): React.JSX.Element {
-  const { attachRegion, state, download, returnHref, actions } = view;
+  const { attachRegion, state, download, back, actions } = view;
   return (
     <section
       ref={attachRegion}
@@ -211,7 +272,7 @@ function PreviewBody({ view }: { readonly view: PreviewView }): React.JSX.Elemen
     >
       <PreviewStates
         state={state}
-        returnHref={returnHref}
+        returnHref={back.href}
         onRetry={actions.onRetry}
         onDownload={actions.onDownload}
         downloadPending={download.pending}
@@ -239,7 +300,7 @@ function PreviewShell(props: PreviewPageProps): React.JSX.Element {
     <div className="mx-auto w-full min-w-0 max-w-6xl space-y-6 px-4 py-6 sm:px-6">
       <PreviewHeader
         file={view.file}
-        returnHref={view.returnHref}
+        back={view.back}
         onDownload={view.actions.onDownload}
         pending={view.download.pending}
         showDownload={view.state.status !== 'failure'}

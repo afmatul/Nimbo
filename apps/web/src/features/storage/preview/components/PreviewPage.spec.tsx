@@ -1,6 +1,6 @@
 /** @jest-environment jsdom */
 import type { DownloadUrlResponse, PreviewUrlResponse } from '@nimbo/contracts';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 import type * as React from 'react';
@@ -525,4 +525,133 @@ describe('shell T-06', () => {
       expect((await axe(container)).violations).toEqual([]);
     },
   );
+});
+
+describe('Volver antes de la entrega (T-10)', () => {
+  // Navegaciones nativas del enlace: clics (o clic central) que nadie previno; Next Link solo navega sin `preventDefault`.
+  let native: string[] = [];
+  const recordNative = (event: MouseEvent): void => {
+    const link = (event.target as Element | null)?.closest('a');
+    if (event.type === 'auxclick' && event.button !== 1) return;
+    if (link === null || link === undefined || event.defaultPrevented) return;
+    native.push(link.getAttribute('href') ?? '');
+    event.preventDefault(); // jsdom no implementa navegación.
+  };
+  let settle: { resolve: (value: PreviewUrlResponse) => void; reject: (error: unknown) => void };
+
+  beforeEach(() => {
+    jest.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-10-10T10:00:00.000Z'));
+    authFetch.mockReset();
+    mockAutoReady = true;
+    mockDisposeReader.mockReset().mockResolvedValue(undefined);
+    native = [];
+    document.addEventListener('click', recordNative);
+    document.addEventListener('auxclick', recordNative);
+    authFetch.mockReturnValue(
+      new Promise<PreviewUrlResponse>((resolve, reject) => {
+        settle = { resolve, reject };
+      }),
+    );
+  });
+  afterEach(() => {
+    document.removeEventListener('click', recordNative);
+    document.removeEventListener('auxclick', recordNative);
+    jest.restoreAllMocks();
+  });
+
+  const back = (): HTMLElement => screen.getByRole('link', { name: 'Volver' });
+  const navigations = (): readonly string[] => native;
+  const MODIFIED = [{ ctrlKey: true }, { metaKey: true }, { shiftKey: true }] as const;
+  const activateModified = (): void => {
+    for (const modifier of MODIFIED) fireEvent.click(back(), modifier);
+    fireEvent(back(), new MouseEvent('auxclick', { bubbles: true, cancelable: true, button: 1 }));
+  };
+
+  it('A: origen en carpeta espera la entrega y vuelve a la carpeta con foco', async () => {
+    renderPage();
+    await userEvent.click(back());
+    expect(navigations()).toEqual([]);
+    expect(back().getAttribute('aria-busy')).toBe('true');
+    expect(back().getAttribute('aria-disabled')).toBe('true');
+    expect(document.activeElement).toBe(back());
+    await act(async () => settle.resolve(DELIVERY));
+    expect(navigations()).toEqual([`/archivos/carpeta/${FOLDER}?foco=${ID}`]);
+  });
+
+  it('B: origen en la raíz espera la entrega y vuelve a la raíz con foco', async () => {
+    renderPage();
+    await userEvent.click(back());
+    expect(navigations()).toEqual([]);
+    await act(async () =>
+      settle.resolve({ ...DELIVERY, file: { ...DELIVERY.file, folderId: null } }),
+    );
+    expect(navigations()).toEqual([`/archivos?foco=${ID}`]);
+  });
+
+  it('C: un fallo sin entrega vuelve a la raíz segura sin revelar la carpeta', async () => {
+    renderPage();
+    await userEvent.click(back());
+    expect(navigations()).toEqual([]);
+    await act(async () =>
+      settle.reject(
+        new ApiClientError({
+          code: 'STORAGE_NODE_NOT_FOUND',
+          status: 404,
+          message: FOLDER,
+          correlationId: '',
+        }),
+      ),
+    );
+    expect(navigations()).toEqual([`/archivos?foco=${ID}`]);
+  });
+
+  it('D: varias activaciones mientras espera producen una sola navegación', async () => {
+    renderPage();
+    await userEvent.click(back());
+    await userEvent.click(back());
+    act(() => back().focus());
+    await userEvent.keyboard('{Enter}');
+    expect(navigations()).toEqual([]);
+    await act(async () => settle.resolve(DELIVERY));
+    await userEvent.click(back());
+    expect(navigations()).toEqual([`/archivos/carpeta/${FOLDER}?foco=${ID}`]);
+  });
+
+  it('E: tras desmontar, una entrega tardía no navega', async () => {
+    const { unmount } = renderPage();
+    await userEvent.click(back());
+    unmount();
+    await act(async () => settle.resolve(DELIVERY));
+    expect(navigations()).toEqual([]);
+  });
+
+  it('F: con la entrega recibida, Volver navega en el acto como antes', async () => {
+    renderPage();
+    await act(async () => settle.resolve(DELIVERY));
+    expect(back().getAttribute('aria-busy')).toBeNull();
+    expect(back().getAttribute('aria-disabled')).toBeNull();
+    await userEvent.click(back());
+    expect(navigations()).toEqual([`/archivos/carpeta/${FOLDER}?foco=${ID}`]);
+  });
+
+  it('G: Ctrl, Cmd, Shift y clic central esperan la entrega y no abren la raíz provisional', async () => {
+    renderPage();
+    activateModified();
+    expect(navigations()).toEqual([]);
+    expect(back().getAttribute('aria-busy')).toBe('true');
+    expect(back().getAttribute('aria-disabled')).toBe('true');
+    expect(back().className).toContain('aria-disabled:opacity-45');
+    await act(async () => settle.resolve(DELIVERY));
+    expect(navigations()).toEqual([`/archivos/carpeta/${FOLDER}?foco=${ID}`]);
+  });
+
+  it('H: con la entrega recibida, los modificadores y el clic central siguen siendo del enlace', async () => {
+    renderPage();
+    await act(async () => settle.resolve(DELIVERY));
+    activateModified();
+    expect(navigations()).toEqual(
+      Array.from({ length: 4 }, () => `/archivos/carpeta/${FOLDER}?foco=${ID}`),
+    );
+    expect(back().getAttribute('aria-disabled')).toBeNull();
+  });
 });
