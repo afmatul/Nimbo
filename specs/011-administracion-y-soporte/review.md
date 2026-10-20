@@ -44,7 +44,7 @@ altas, catálogo y métricas; las pantallas internas; el aislamiento; y la audit
 - Desviaciones del mockup aceptadas: la tarjeta no muestra la fecha de creación del plan (el contrato no la trae y
   CA-8 no la pide; sí la de desactivación); el formulario deja el nombre vacío al copiar un plan, porque tiene que
   ser distinto del de origen; y **Personal no se puede usar como plan de origen** (CA-9 dice «un plan activo», pero
-  Personal no se desactiva y no tiene sentido offersarlo como origen).
+  Personal no se desactiva y no tiene sentido ofrecerlo como origen).
 
 ## Hallazgos y correcciones
 
@@ -72,16 +72,21 @@ altas, catálogo y métricas; las pantallas internas; el aislamiento; y la audit
 | H-6 | Las unidades estaban repetidas en el formulario | Corregido: se usan las constantes `QUOTA_UNITS` y `MAX_FILE_UNITS` |
 | H-7 | Cada número se traducía dos veces | Corregido: `parsePlanForm` traduce una sola vez y devuelve el cuerpo o los campos que fallan |
 | H-8 | Una copia podía quedar inválida si el valor no daba entero | Corregido: si no hay unidad exacta, el campo queda vacío para que lo escriba la persona |
-| m-1 a m-7 | Menores (diálogo que se cerraba durante el envío, plurales a mano, «Volver» repetido, la copia que perdía valores, la alineación de la tarjeta, erratas, `highlighted` sin usar) | Corregidos los que son de la 011; `highlighted` se queda porque viene de la 010, que está en revisión |
-| m-7 | La descripción del PR seguía diciendo que `backoffice` escribe `identity.session.revoked` | Corregido: lo escribe `identity` (lo llama `backoffice` después del commit) |
+| m-1 a m-6 | Menores (diálogo que se cerraba durante el envío, plurales a mano, «Volver» repetido, la copia que perdía valores, la alineación de la tarjeta, erratas) | Corregidos los que son de la 011 |
+| m-7 / H-10 | La descripción del PR seguía diciendo que `backoffice` escribe `identity.session.revoked` | Corregido: lo escribe `identity` (lo llama `backoffice` después del commit) |
+| m-7 (`highlighted`) | `highlighted` del `PlanCard` no lo usa nada en esta rama | Se queda: es de la 010, que está en revisión, y su `badge` es el mismo que usa la 011 |
+| **R-1** | **El arreglo de H-5 rompió los textos de la desactivación (artículo duplicado y verbo repetido)** | **Corregido (20/10): `whoOf` devuelve la frase con su artículo y los textos no le suman otro; con pruebas del texto completo con 0, 1 y 52 cuentas** |
+| **R-2** | **La demo declaraba haber visto un aviso que estaba roto** | **Pendiente: repetir el recorrido del catálogo sobre el commit de R-1 y anotar aquí y en `tasks.md` la fecha real** |
+| R-3 | Cada valor nulo se revisaba dos veces | Se deja: es el precio de=listar **todos** los campos que fallan de una vez (el resumen dice «Revisa N campos»); la comprobación doble es la que estrecha el tipo |
+| R-4 | Errata «offersarlo», fila duplicada de m-7 y conteos desactualizados en este documento | Corregidos (20/10) |
 
 ## Verificación local (20/10, Node 22)
 
 - `pnpm lint` ✅ · `pnpm typecheck` ✅
-- `pnpm test` ✅ — api 2 146, web 1 573, contratos 449, config 244
-- `pnpm test:int` ✅ — 143 suites, 1 314 pruebas
+- `pnpm test` ✅ — api 2 146, web 1 590, contratos 449, config 244
+- `pnpm test:int` ✅ — 143 suites, 1 326 pruebas
 - `pnpm test:isolation` ✅ — 24 suites, 400 pruebas
-- Recorrido humano de la demo (T-12, 20/10/2026) ✅ — nota en `tasks.md`: cuentas, alta interna, metadatos desde la ficha, «Mi actividad» con el rol, métricas como Admin y como Operador, el «sin permiso», los 360 px y el catálogo completo (crear un plan desde otro con la coma decimal, volver a «Empezar de cero», desactivar con su confirmación y su aviso).
+- Recorrido humano de la demo (T-12, 20/10/2026) ✅ — nota en `tasks.md`: cuentas, alta interna, metadatos desde la ficha, «Mi actividad» con el rol, métricas como Admin y como Operador, el «sin permiso» y los 360 px. El del catálogo se repitió el 20/10, pero con los textos rotos de R-1: **hay que repetirlo sobre el commit de R-1**.
 
 ## Lo que queda pendiente (no bloquea la integración)
 
