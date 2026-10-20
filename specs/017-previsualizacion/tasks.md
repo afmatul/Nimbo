@@ -7,9 +7,9 @@
 
 ## Estado vigente (2026-10-19)
 
-- Spec 017 permanece **En curso**. T-01/T-02/T-03/T-05/T-06/T-07/T-08/T-09 completas; cierre y evidencia de T-06/T-07 en [su registro final](#cierre-técnico-t-06-y-t-07-2026-10-18), de T-08 en [su cierre técnico](#cierre-técnico-t-08-2026-10-18) y de T-09 en [su cierre técnico](#cierre-técnico-t-09-2026-10-19).
-- T-04 permanece `[ ]` por evidencia efectiva en navegador real, consolidada en T-10 y la demo T-11; no presenta un bloqueo abierto de Redis/CORS en backend/Node.
-- T-10 y T-11 permanecen `[ ]`, con sus requisitos y dependencias originales. La evidencia en navegador real de T-10 y sus pendientes externos están en [su registro](#t-10--evidencia-en-navegador-real-2026-10-19).
+- Spec 017 permanece **En curso**. T-01/T-02/T-03/T-05/T-06/T-07/T-08/T-09/T-10 completas; cierre y evidencia de T-06/T-07 en [su registro final](#cierre-técnico-t-06-y-t-07-2026-10-18), de T-08 en [su cierre técnico](#cierre-técnico-t-08-2026-10-18), de T-09 en [su cierre técnico](#cierre-técnico-t-09-2026-10-19) y de T-10 en [su registro](#t-10--evidencia-en-navegador-real-2026-10-19) y [su cierre](#cierre-de-t-10-2026-10-19).
+- T-04 permanece `[ ]` solo por lo que depende de T-11: el hostname de objetos realmente aislado y su comprobación humana en DevTools. La evidencia en navegador real que esperaba quedó acreditada en T-10; no presenta un bloqueo abierto de Redis/CORS en backend/Node.
+- T-11 permanece `[ ]` (demo humana).
 
 ### T-04 — resumen vigente
 
@@ -17,7 +17,7 @@ Redis detenido, rechazo acotado y recuperación real ya están acreditados; tamb
 
 `readers/object-bytes.ts` ya existe en T-07: el helper único usa `credentials: 'omit'`, sin Authorization, Cookie ni cabeceras Nimbo; sus pruebas y la integración Image/Text acreditan la política de código. No equivalen a inspeccionar el tráfico de un navegador real.
 
-**Pendiente único de T-04: evidencia efectiva en navegador real**, consolidada en **T-10 y demo T-11**: GET desde el reader real, ausencia efectiva de cookies/Bearer/cabeceras Nimbo, CORS aplicado por el navegador, rangos reales y origen de objetos aislado. T-04 no se presenta como fallida ni se marca completa.
+**Evidencia en navegador real acreditada en T-10** ([registro](#t-10--evidencia-en-navegador-real-2026-10-19)): GET desde el reader real, ausencia efectiva de Cookie/Bearer/cabeceras Nimbo (con control positivo), CORS aplicado por el navegador (permitido y denegado) y rangos reales 206, sobre el host local `localhost:9000`. **Pendiente único de T-04, en la demo T-11:** el origen de objetos realmente aislado (hostname distinto del de la web) y su comprobación humana en DevTools; localmente el host de objetos es del mismo sitio que la web. T-04 no se presenta como fallida ni se marca completa.
 
 ## Compuertas antes de implementación
 
@@ -61,7 +61,7 @@ Redis detenido, rechazo acotado y recuperación real ya están acreditados; tamb
   - [x] **T-09a:** paquete ZIP por rangos usando el helper único de T-07, CRC y SAX secuencial UTF-8/UTF-16, namespaces Strict/Transitional y relaciones OPC internas. Rechazar DTD, entidades no admitidas, rutas/partes ambiguas y recursos externos. El fetch de zip.js consume el helper sin repetir su política; cancelar/liberar worker y buffers. Pruebas de paquete/CRC/XML hostil y consumo del helper primero. — CA: CA-2, CA-11 — Archivos: `apps/web/src/features/storage/preview/readers/{ooxml-package-reader,ooxml-xml-reader,ooxml-relations}.ts`, `workers/{ooxml.worker,ooxml-protocol}.ts`, specs/fixtures — Depende: T-01, T-06, T-07
   - [x] **T-09b:** proyección de todas las hojas con valores cacheados y texto visible de todas las diapositivas en orden, más protección y corrupción. No recalcular fórmulas; sin cache → «Sin valor guardado»; sin animaciones/notas/recursos activos. Liberar al cambiar unidad; fallo de memoria con causa saneada y Descargar, sin límite nuevo. Pruebas de proyecciones y estados primero. — CA: CA-1, CA-2, CA-9 — Archivos: `apps/web/src/features/storage/preview/components/{SpreadsheetPreview,PresentationPreview}.tsx`, `readers/{xlsx-reader,pptx-reader}.ts`, `readers/preview-readers.spec.ts`, fixtures — Depende: T-09a
 
-- [ ] **T-10** Integración browser, accesibilidad y regresión. Recorrido automatizado con formatos admitidos/excluidos, todas las páginas/hojas/diapositivas, vuelta a `file.folderId`/raíz y foco en control de fila o encabezado, cargas concurrentes, error + Reintentar/Descargar, URL expirada, logout/acceso revocado, CORS/rangos/cookies reales y axe a 360/1440. Confirmar helper único para PDF/ZIP/imagen y que fallo de preview no bloquea navegación/carga/descarga ni agrega control comercial. Ejecutar `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:int`, `pnpm test:isolation`, `pnpm test:e2e`, `pnpm env:check`; si PD-41 sigue siendo marcador, no reportar E2E como acreditado. — CA: CA-1 a CA-12 — Archivos: `e2e/storage-preview.e2e.ts`, suites de T-04/T-06/T-07/T-08a/b/T-09a/b y regresiones existentes — Depende: T-04, T-05, T-07, T-08b, T-09b
+- [x] **T-10** Integración browser, accesibilidad y regresión. Recorrido automatizado con formatos admitidos/excluidos, todas las páginas/hojas/diapositivas, vuelta a `file.folderId`/raíz y foco en control de fila o encabezado, cargas concurrentes, error + Reintentar/Descargar, URL expirada, logout/acceso revocado, CORS/rangos/cookies reales y axe a 360/1440. Confirmar helper único para PDF/ZIP/imagen y que fallo de preview no bloquea navegación/carga/descarga ni agrega control comercial. Ejecutar `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:int`, `pnpm test:isolation`, `pnpm test:e2e`, `pnpm env:check`; si PD-41 sigue siendo marcador, no reportar E2E como acreditado. — CA: CA-1 a CA-12 — Archivos: `e2e/storage-preview.e2e.ts`, suites de T-04/T-06/T-07/T-08a/b/T-09a/b y regresiones existentes — Depende: T-04, T-05, T-07, T-08b, T-09b
 
 - [ ] **T-11** **(humana, Adrián + Abel)** Recorrido de demo local con Docker: abrir PDF multipágina y escaneado; imagen; TXT/MD literal; XLSX con varias hojas/fórmula sin cache; PPTX con varias diapositivas; archivo vacío válido; corrupto/protegido; formato excluido; Reintentar y Descargar; volver a la carpeta de origen/raíz y enfocar control de fila o encabezado sin recuperar estado previo; otra cuenta no ve contenido; rol interno recibe 403; 429 muestra `Retry-After`; 360 y 1440 px. Verificar en DevTools que los bytes salen del origen aislado sin Cookie/Bearer y que download sigue `attachment`. Nota/capturas en el PR. — CA: CA-1 a CA-12 — Depende: T-10
 
@@ -801,23 +801,40 @@ Procedencia: la primera ronda cubrió PDF multipágina y escaneado, PNG, TXT/MD,
 - No se midió específicamente el costo de la activación automática de pestañas con libros grandes; el libro de prueba tiene 450 filas.
 - Las diferencias de UX frente al mockup registradas en T-08 (una página a la vez; Descargar del vacío en el encabezado) siguen como están, sin cambio.
 
-### Pendientes (no resueltos por este registro)
+### Pendientes externos (no bloquean el cierre de T-10)
 
-- **Retorno con la entrega pendiente:** con `preview-url` aún sin responder (o fallido sin entrega), `file.folderId` no existe todavía y Volver cae a `/archivos` con el foco en el encabezado, aunque el archivo esté en una carpeta (reproducido a 360 y 1440 px). Con la entrega recibida, el retorno es correcto. Corregirlo exige decidir el contrato de la ruta de vista previa (hoy solo `fileId`, sin búsqueda ni fragmento): pendiente de Adrián.
-- **PD-41:** E2E real con Playwright.
-- **Contraste compartido:** «Mis archivos» en la barra lateral, `#4a6fa5` sobre `#dde6f0` (4.05:1, requiere 4.5:1), fuera del visor.
-- **Hostname aislado real:** solo verificable en staging.
+- **PD-41 (infraestructura compartida, Adrián):** `pnpm test:e2e` sigue siendo marcador; el E2E con Playwright (`e2e/storage-preview.e2e.ts`) **no está acreditado** y no se creó ningún E2E ficticio. Por decisión de la revisión del 2026-10-19, no bloquea el cierre de T-10.
+- **PD-33 (contraste del `AppLayout`, Fátima con Adrián):** el ítem activo «Mis archivos» de la barra lateral da 4.05:1 (`#4a6fa5` sobre `#dde6f0`; requiere 4.5:1). Está fuera de `storage/preview`; el axe de T-10 se evalúa sobre la región del visor, sin violaciones. No es una regresión de 017 ni bloquea T-10.
+- **Hostname aislado real:** solo verificable en staging o en la demo T-11.
 - **Rol interno real en navegador:** para T-11; el 403 está acreditado por aislamiento (`storage-preview.iso-spec.ts`).
 
 ### Revalidación humana en T-11
 
-Lo ya acreditado arriba no se repite. En la demo solo falta comprobar:
+T-10 ya acredita estos comportamientos mediante automatización y Chrome real. T-11 los revalida de forma humana en el entorno final y completa los puntos que solo pueden demostrarse allí:
 
-- [ ] En DevTools, sobre el hostname aislado real: GET al origen de objetos sin Cookie ni Bearer.
+- [ ] Hostname realmente aislado para el host de objetos.
+- [ ] CORS efectivo en el navegador.
+- [ ] Range real con 206 y `Content-Range`.
+- [ ] En DevTools: GET al origen de objetos sin Cookie ni Bearer.
+- [ ] axe a 360 px.
+- [ ] axe a 1440 px.
 - [ ] Descargar sigue entregando `attachment`.
 - [ ] Un rol interno real recibe 403.
-- [ ] Volver a la carpeta de origen, después de resolver el contrato de la ruta.
+- [ ] Recorrido humano final de Volver a la carpeta de origen o a la raíz, con el foco correspondiente (corregido en `aa28a163`).
+
+### Cierre de T-10 (2026-10-19)
+
+**Volver durante la carga, corregido** en `aa28a163`, con una prueba adicional en `e8c2353c`, sin cambiar el contrato de la ruta: `previewPathOf` sigue identificando solo `fileId` (sin `folderId`, búsqueda ni fragmento).
+
+- Mientras `preview-url` está pendiente, Volver registra la intención y espera: `aria-busy` y `aria-disabled`, atenuado y con el foco conservado.
+- Con éxito, navega una vez a la carpeta de `delivery.file.folderId`, la única fuente autoritativa, con foco en la fila. Con fallo sin entrega, vuelve a la raíz segura con foco en el encabezado, sin revelar la carpeta.
+- No hay navegación tardía tras desmontar. Las activaciones repetidas, Enter, Ctrl/Cmd/Shift y el clic central no usan el href provisional; el clic derecho no se intercepta. Con la entrega ya recibida, el enlace se comporta como siempre, modificadores incluidos.
+- Pruebas A–I en `PreviewPage.spec.tsx`, con RED antes del arreglo. Chrome real a 360 y 1440 px: carpeta, raíz, 404 real de la API y fallo de red; una sola navegación, 0 pestañas con modificadores (con control positivo) y sin errores de consola.
+
+**Auditoría final de `storage/preview`:** revisión completa sin defectos bloqueantes ni de seguridad, ciclo de vida o accesibilidad; el único hueco (clic derecho sin prueba) quedó cubierto en `e8c2353c`. Cobertura de la carpeta: 92.6 % sentencias, 89.6 % ramas y 95.4 % funciones.
+
+**Validación sobre `e8c2353c`:** preview 42 suites / 740 pruebas y web 185 suites / 1871 pruebas PASS; `pnpm test` PASS en todos los paquetes; `pnpm typecheck`, `pnpm env:check`, `pnpm exec eslint . --max-warnings 0`, Prettier y `git diff --check` PASS. `pnpm test:int` (104 suites, 972 pruebas) y `pnpm test:isolation` (18 suites, 308 pruebas) PASS, repetidos sobre `e8c2353c`. `pnpm lint` termina con exit 1 solo por Prettier sobre los cuatro archivos locales excluidos en `.git/info/exclude`, como antes. `pnpm test:e2e` es marcador y no acredita E2E (PD-41).
 
 ### Estado
 
-**T-10 permanece `[ ]`**: la evidencia en navegador real de la parte de `storage/preview` está registrada, pero la tarea exige `e2e/storage-preview.e2e.ts` (PD-41) y el retorno durante la carga depende de la decisión pendiente. **T-11 permanece `[ ]`**. T-04 permanece `[ ]`: la evidencia en navegador que esperaba queda registrada aquí, salvo el hostname aislado real. La spec permanece **En curso**.
+**T-10 `[x]`**: la parte técnica de `storage/preview` está cerrada y el último defecto propio conocido quedó corregido. PD-41 queda explícitamente no acreditado y PD-33 como deuda externa conocida; ninguno bloquea T-10. T-10 depende de T-04: lo que T-04 esperaba de T-10 quedó acreditado aquí, y su único resto (hostname aislado real) pasa a T-11. **T-04 permanece `[ ]`** por ese resto; **T-11 permanece `[ ]`**. La spec permanece **En curso**.
