@@ -250,3 +250,10 @@ Antes de cada pantalla se leen sus capturas en `docs/design/capturas/`; las desv
 - **Quinta auditoría del PR #63** (2026-10-20, `785f115` en la 010a): la renovación automática se audita con
   `trigger: 'scheduled'` (antes `'automatic'`, que la respuesta de «Mi actividad» descartaba porque no está en
   `AUDIT_TRIGGERS`); la web ya lo muestra como «Nimbo (automático)». `RenewalTrigger` es `AuditTrigger`.
+- **Auditoría del PR #69** (2026-10-20, 010a `be29dbd` y `041e57e`): B-2, una sola regla para el plan del siguiente
+  ciclo (`next-cycle.ts`, RN-4 y CA-29) en la renovación, la pasada, el aviso previo y la vista; M-2, `planChangeEvents`
+  y la bajada a Personal en `RenewalCheckout.downgrade`; M-3, `RenewalFollowUp` con lo que sigue al commit; M-1 y PD-119,
+  la cuenta propietaria vencida abre el editor de la 016 en solo lectura (`EDITING_ACCOUNT_READ_ONLY`, «Renovar plan»).
+  Menores: `BillingInvariantError`, parámetros en objeto, `errorName` sin alias, `InstrumentReference`,
+  `requirePlanBySlug` y JSDoc del controlador. M-4 (correo de CA-29 sin marca), los pagos sin referencia en «Próximo
+  cobro» y el `worker` caído más de 30 días quedan como riesgos en plan §7; RN-3 aclara el interruptor en solo lectura.
