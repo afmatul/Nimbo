@@ -134,7 +134,8 @@ describe('NewPlanView (011 CA-9, CA-11, CA-17)', () => {
       PRO_PLAN.id,
     );
 
-    expect((screen.getByLabelText('Nombre') as HTMLInputElement).value).toBe('Pro 2027');
+    // El nombre se deja vacío: tiene que ser distinto del plan de origen.
+    expect((screen.getByLabelText('Nombre') as HTMLInputElement).value).toBe('');
     expect((screen.getByLabelText('Precio al mes, en quetzales') as HTMLInputElement).value).toBe(
       '45.00',
     );
@@ -159,5 +160,70 @@ describe('NewPlanView (011 CA-9, CA-11, CA-17)', () => {
     await act(async () => undefined);
 
     expect(screen.getByRole('heading', { name: 'Sin permiso' })).toBeTruthy();
+  });
+
+  it('N-1: un error del servidor al crear se muestra con su aviso (un 500 no deja la pantalla muda)', async () => {
+    const backoffice = await renderNewPlan(() => Promise.reject(new TypeError('Failed to fetch')));
+
+    await fillForm();
+    await userEvent.click(screen.getByRole('button', { name: 'Crear plan' }));
+    await act(async () => undefined);
+
+    expect(screen.getByRole('alert').textContent).toContain('No pudimos crear el plan.');
+    expect(backoffice.createPlan).toHaveBeenCalledTimes(1);
+  });
+
+  it('N-1: un 403 al crear lleva a «Sin permiso»', async () => {
+    await renderNewPlan(() => Promise.reject(apiError(403, 'SHARED_FORBIDDEN')));
+
+    await fillForm();
+    await userEvent.click(screen.getByRole('button', { name: 'Crear plan' }));
+    await act(async () => undefined);
+
+    expect(screen.getByRole('heading', { name: 'Sin permiso' })).toBeTruthy();
+  });
+
+  it('N-2: el precio con coma decimal no se multiplica por cien', async () => {
+    const backoffice = await renderNewPlan(() => Promise.resolve(CREATED));
+
+    await fillForm();
+    await userEvent.clear(screen.getByLabelText('Precio al mes, en quetzales'));
+    await userEvent.type(screen.getByLabelText('Precio al mes, en quetzales'), '125,50');
+    await userEvent.click(screen.getByRole('button', { name: 'Crear plan' }));
+    await act(async () => undefined);
+
+    expect(backoffice.createPlan).toHaveBeenCalledWith(
+      expect.objectContaining({ priceCents: 12550 }),
+    );
+  });
+
+  it('N-4: un solo número mal escrito marca solo ese campo', async () => {
+    await renderNewPlan(() => Promise.resolve(CREATED));
+
+    await fillForm();
+    await userEvent.clear(screen.getByLabelText('Precio al mes, en quetzales'));
+    await userEvent.type(screen.getByLabelText('Precio al mes, en quetzales'), 'abc');
+    await userEvent.click(screen.getByRole('button', { name: 'Crear plan' }));
+    await act(async () => undefined);
+
+    expect(screen.getByRole('alert').textContent).toContain('Revisa 1 campo para crear el plan.');
+  });
+
+  it('N-6: tras crear desde un plan, se ofrece desactivar el de origen', async () => {
+    await renderNewPlan(() => Promise.resolve(CREATED));
+
+    await userEvent.selectOptions(
+      screen.getByLabelText('Partir de un plan activo (opcional)'),
+      PRO_PLAN.id,
+    );
+    // El nombre va escrito (el de origen no sirve) y el precio, que venía copiado.
+    await userEvent.type(screen.getByLabelText('Nombre'), 'Equipo 2027');
+    await userEvent.clear(screen.getByLabelText('Precio al mes, en quetzales'));
+    await userEvent.type(screen.getByLabelText('Precio al mes, en quetzales'), '125.00');
+    await userEvent.click(screen.getByRole('button', { name: 'Crear plan' }));
+    await act(async () => undefined);
+
+    expect(screen.getByText('Si lo reemplaza, desactiva Pro.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Desactivar Pro' })).toBeTruthy();
   });
 });

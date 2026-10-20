@@ -6,8 +6,8 @@
 
 ## Veredicto
 
-**Aprobada para integrar**, con lo que queda anotado más abajo. La spec cumple sus criterios: los内部控制 de
-cuentas, altas, catálogo y métricas; las tres pantallas internas; el aislamiento; y la auditoría que ve el cliente.
+**Aprobada para integrar**, con lo que queda anotado más abajo. La spec cumple sus criterios: el control de cuentas,
+altas, catálogo y métricas; las pantallas internas; el aislamiento; y la auditoría que ve el cliente.
 
 | CA | Cómo se cumple | Dónde |
 |---|---|---|
@@ -23,7 +23,7 @@ cuentas, altas, catálogo y métricas; las tres pantallas internas; el aislamien
 
 ## Seguridad y privacidad
 
-- Las respuestas salen por lista blanca y los bitsácors solo llevan ids y roles: nunca un correo, un nombre de archivo,
+- Las respuestas salen por lista blanca y las bitácoras solo llevan ids y roles: nunca un correo, un nombre de archivo,
   un código de empleado, un token ni un enlace (RNF-17). La línea `http.request` quita la cadena de consulta, así que
   `?email=` no se registra.
 - Un `:id` que no es UUID da el mismo `404` que una cuenta inexistente, y un correo de una interna el mismo `404` que
@@ -34,15 +34,16 @@ cuentas, altas, catálogo y métricas; las tres pantallas internas; el aislamien
 
 ## Interfaz
 
-- Las pantallas siguen sus mockups (`backoffice/admin`, `alta-interna`, `catalogo`, `metricas`, `soporte`), con todos
-  los estados de la §6 de la spec y axe sin violaciones a 360 y 1440 px.
+- Las pantallas siguen sus mockups (`backoffice/admin`, `alta-interna`, `catalogo`, `metricas`, `soporte`), con los
+  estados de la §6 de la spec y axe sin violaciones a 360 y 1440 px.
 - Separadores y cifras: los conteos usan el separador de miles del catálogo (`formatCount`) y los porcentajes la coma
   decimal, como los bytes (PD-91); el texto concuerda con la cantidad («la 1 cuenta» / «las 12 cuentas»).
 - Un solo `PlanCard` con sus dos variantes (PD-83): `/planes` (008) no cambia y el catálogo de administración añade
-  los seis límites, el estado y el conteo de cuentas.
+  los seis límites, el estado y el conteo de cuentas. La componente se apoya en la forma de la rama de la 010 que
+  propuso Juan Marcos (mismo `badge`, mismo distintivo junto al título, mismo borde destacado).
 - Desviaciones del mockup aceptadas: la tarjeta no muestra la fecha de creación del plan (el contrato no la trae y
-  CA-8 no la pide; sí la de desactivación) y el formulario muestra la fecha de creación en el catálogo, no en la
-  tarjeta.
+  CA-8 no la pide; sí la de desactivación) y el formulario deja el nombre vacío al copiar un plan, porque tiene que
+  ser distinto del de origen.
 
 ## Hallazgos y correcciones
 
@@ -55,7 +56,14 @@ cuentas, altas, catálogo y métricas; las tres pantallas internas; el aislamien
 | S-1 a S-5 | Encabezado, prueba vacía, esqueleto del mockup y dos limpiezas de tipos | Aplicados (revisión del PR, 19/10) |
 | B-1 | Las rutas `/backoffice/plans*` no estaban en la matriz ni en el aislamiento | Añadidas (12 casos en la matriz, 9 en el aislamiento) |
 | M-1 a M-4 | `PlanCard` y la lista con más de 30 líneas; el esqueleto repetido; el modelo sin el limitador; el doble *cast* del alta | Corregidos: piezas cortas, `SkeletonLine` y `LoadingStatus` comunes, M8 actualizado y el resolver propio del alta |
-| m-1 a m-7 | Menores (diálogo que se cerraba durante el envío, `round1` duplicado, código normalizado, condición redundante) | Corregidos o anotados para el pulido de la Fase 4 |
+| **N-1** | **El alta de un plan no mostraba ningún error del servidor (CA-17)** | **Corregido (20/10): el `403` lleva a «Sin permiso» y un error sin campos se muestra con su aviso; con pruebas** |
+| **N-2** | **Un precio con coma decimal creaba un plan 100 veces más caro (RN-4)** | **Corregido (20/10): la coma es el separador decimal y lo que no se puede traducir se rechaza; con prueba** |
+| **N-3** | **Si fallaba la desactivación, la pantalla no decía nada (CA-10, CA-17)** | **Corregido (20/10): el fallo se muestra con su aviso; con prueba** |
+| N-4 | Un solo número mal escrito marcaba los siete campos numéricos | Corregido: cada campo se valida con su propio traductor |
+| N-5 | Diez funciones nuevas de más de 30 líneas | Corregido: todas quedan en 30 líneas o menos |
+| N-6 | Faltaba «ofrecer desactivar el plan de origen» tras crear uno | Corregido: tras crear, se ofrece desactivar el de origen |
+| N-7 | Este `review.md` afirmaba correcciones que no estaban hechas | Corregido (20/10) y revisado de nuevo tras N-1 a N-6 |
+| m-1 a m-7 | Menores (diálogo que se cerraba durante el envío, plurales a mano, «Volver» repetido, la copia que perdía valores, la alineación de la tarjeta, erratas, `highlighted` sin usar) | Corregidos los que son de la 011; `highlighted` se queda porque viene de la 010, que está en revisión |
 
 ## Verificación local (20/10, Node 22)
 
@@ -63,11 +71,10 @@ cuentas, altas, catálogo y métricas; las tres pantallas internas; el aislamien
 - `pnpm test` ✅ — api 2 146, web 1 573, contratos 449, config 244
 - `pnpm test:int` ✅ — 143 suites, 1 314 pruebas
 - `pnpm test:isolation` ✅ — 24 suites, 400 pruebas
-- Recorrido humano de la demo (T-12, 19/10) ✅ — nota en `tasks.md`
+- Recorrido humano de la demo (T-12 y T-12bis, 19/10) ✅ — nota en `tasks.md`
 
 ## Lo que queda pendiente (no bloquea la integración)
 
-- **T-12bis**: repetir el recorrido de la demo con la web del catálogo (antes no existía) y con el límite de tasa.
 - **Visto bueno de Adrián (R-8)** a los tres errores que exporta `identity/index.ts` y a los archivos de
   `features/access` y `test/support/full-api-test-app.ts`.
 - **Juan Marcos**: revisar los cambios de su módulo (`Plan.isDefault` y el mensaje de `PlanNotFoundError`) y la

@@ -87,6 +87,21 @@ const TRASH_FIELD: TextFieldSpec = {
   inputMode: 'numeric',
 };
 
+/** La ayuda de un campo, enlazada con su `aria-describedby`. */
+function FieldHelp({
+  id,
+  text,
+}: {
+  readonly id: string;
+  readonly text: string;
+}): React.JSX.Element {
+  return (
+    <p id={id} className="mt-0.5 text-sm text-secondary-foreground">
+      {text}
+    </p>
+  );
+}
+
 /** Un campo de texto con su ayuda y su error. */
 function TextField({
   spec,
@@ -100,9 +115,7 @@ function TextField({
   return (
     <div>
       <Label htmlFor={id}>{spec.label}</Label>
-      <p id={`${id}-ayuda`} className="mt-0.5 text-sm text-secondary-foreground">
-        {spec.help}
-      </p>
+      <FieldHelp id={`${id}-ayuda`} text={spec.help} />
       <Input
         {...props.form.register(spec.field)}
         id={id}
@@ -127,9 +140,7 @@ function DescriptionField({ props }: { readonly props: PlanFormFieldsProps }): R
   return (
     <div>
       <Label htmlFor={id}>Descripción</Label>
-      <p id={`${id}-ayuda`} className="mt-0.5 text-sm text-secondary-foreground">
-        Una frase sobre para quién es el plan.
-      </p>
+      <FieldHelp id={`${id}-ayuda`} text="Una frase sobre para quién es el plan." />
       <textarea
         {...props.form.register('description')}
         id={id}
@@ -145,6 +156,114 @@ function DescriptionField({ props }: { readonly props: PlanFormFieldsProps }): R
   );
 }
 
+/** El selector de unidad, con su nombre accesible (decisión 9). */
+function UnitSelect({
+  form,
+  unitField,
+  units,
+  ariaLabel,
+  locked,
+}: {
+  readonly form: PlanForm['form'];
+  readonly unitField: 'quotaUnit' | 'maxFileUnit';
+  readonly units: readonly string[];
+  readonly ariaLabel: string;
+  readonly locked: boolean;
+}): React.JSX.Element {
+  return (
+    <select
+      {...form.register(unitField)}
+      aria-label={ariaLabel}
+      disabled={locked}
+      className="h-11 rounded-md border border-input bg-card px-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      {units.map((option) => (
+        <option key={option} value={option}>
+          {option}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+/** El número con su error (decisión 9). */
+function NumberInput({
+  field,
+  id,
+  error,
+  locked,
+  form,
+}: {
+  readonly field: PlanField;
+  readonly id: string;
+  readonly error: string | undefined;
+  readonly locked: boolean;
+  readonly form: PlanForm['form'];
+}): React.JSX.Element {
+  return (
+    <Input
+      {...form.register(field)}
+      id={id}
+      type="number"
+      inputMode="numeric"
+      min={0}
+      autoComplete="off"
+      className="max-w-32"
+      readOnly={locked}
+      error={error !== undefined}
+      aria-describedby={describedBy(`${id}-ayuda`, error !== undefined && `${id}-error`)}
+    />
+  );
+}
+
+/** La unidad de un campo: el campo del formulario, sus opciones y el nombre accesible del selector. */
+interface PlanUnit {
+  readonly field: 'quotaUnit' | 'maxFileUnit';
+  readonly units: readonly string[];
+  readonly ariaLabel: string;
+}
+
+interface NumberWithUnitProps {
+  readonly field: PlanField;
+  readonly id: string;
+  readonly error: string | undefined;
+  readonly locked: boolean;
+  readonly form: PlanForm['form'];
+  readonly unit: PlanUnit;
+}
+
+/** El número con su unidad al lado (decisión 9). */
+function NumberWithUnit({
+  field,
+  id,
+  error,
+  locked,
+  form,
+  unit,
+}: NumberWithUnitProps): React.JSX.Element {
+  return (
+    <div className="mt-1.5 flex gap-2">
+      <NumberInput field={field} id={id} error={error} locked={locked} form={form} />
+      <UnitSelect
+        form={form}
+        unitField={unit.field}
+        units={unit.units}
+        ariaLabel={unit.ariaLabel}
+        locked={locked}
+      />
+    </div>
+  );
+}
+
+interface UnitFieldProps {
+  readonly field: PlanField;
+  readonly label: string;
+  readonly help: string;
+  readonly unitField: 'quotaUnit' | 'maxFileUnit';
+  readonly units: readonly string[];
+  readonly props: PlanFormFieldsProps;
+}
+
 /** Un campo con su unidad al lado (decisión 9): el selector tiene su nombre accesible. */
 function UnitField({
   field,
@@ -153,51 +272,80 @@ function UnitField({
   unitField,
   units,
   props,
-}: {
-  readonly field: PlanField;
-  readonly label: string;
-  readonly help: string;
-  /** El campo del formulario que guarda la unidad. */
-  readonly unitField: 'quotaUnit' | 'maxFileUnit';
-  readonly units: readonly string[];
-  readonly props: PlanFormFieldsProps;
-}): React.JSX.Element {
+}: UnitFieldProps): React.JSX.Element {
   const id = PLAN_FIELD_IDS[field];
   const error = props.errors[field];
   return (
     <div>
       <Label htmlFor={id}>{label}</Label>
-      <p id={`${id}-ayuda`} className="mt-0.5 text-sm text-secondary-foreground">
-        {help}
-      </p>
-      <div className="mt-1.5 flex gap-2">
-        <Input
-          {...props.form.register(field)}
-          id={id}
-          type="number"
-          inputMode="numeric"
-          min={0}
-          autoComplete="off"
-          className="max-w-32"
-          readOnly={props.locked}
-          error={error !== undefined}
-          aria-describedby={describedBy(`${id}-ayuda`, error !== undefined && `${id}-error`)}
-        />
-        <select
-          {...props.form.register(unitField)}
-          aria-label={`Unidad de ${label.toLowerCase()}`}
-          disabled={props.locked}
-          className="h-11 rounded-md border border-input bg-card px-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          {units.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      </div>
+      <FieldHelp id={`${id}-ayuda`} text={help} />
+      <NumberWithUnit
+        field={field}
+        id={id}
+        error={error}
+        locked={props.locked}
+        form={props.form}
+        unit={{
+          field: unitField,
+          units,
+          ariaLabel: `Unidad de ${label.toLowerCase()}`,
+        }}
+      />
       {error === undefined ? null : <FieldMessage id={`${id}-error`} message={error} />}
     </div>
+  );
+}
+
+/** Los dos campos del plan: su nombre y su descripción. */
+function PlanFields({ props }: { readonly props: PlanFormFieldsProps }): React.JSX.Element {
+  return (
+    <fieldset className="grid gap-4">
+      <legend className="text-sm font-semibold text-foreground">Plan</legend>
+      <TextField spec={NAME_FIELD} props={props} />
+      <DescriptionField props={props} />
+    </fieldset>
+  );
+}
+
+/** El precio del plan, en quetzales. */
+function PriceFields({ props }: { readonly props: PlanFormFieldsProps }): React.JSX.Element {
+  return (
+    <fieldset className="grid gap-4">
+      <legend className="text-sm font-semibold text-foreground">Precio</legend>
+      <TextField spec={PRICE_FIELD} props={props} />
+    </fieldset>
+  );
+}
+
+/** Los seis límites que recibe cada cuenta con el plan. */
+function LimitsFields({ props }: { readonly props: PlanFormFieldsProps }): React.JSX.Element {
+  return (
+    <fieldset className="grid gap-4">
+      <legend className="text-sm font-semibold text-foreground">Límites</legend>
+      <p className="text-sm text-secondary-foreground">
+        Cada cuenta con este plan recibe estos límites.
+      </p>
+      <UnitField
+        field="quota"
+        label="Almacenamiento"
+        help="Espacio total de la cuenta."
+        unitField="quotaUnit"
+        units={['GB', 'TB']}
+        props={props}
+      />
+      <UnitField
+        field="maxFile"
+        label="Máximo por archivo"
+        help="Hasta 2 GB y nunca más que el almacenamiento."
+        unitField="maxFileUnit"
+        units={['MB', 'GB']}
+        props={props}
+      />
+      <TextField spec={EDITORS_FIELD} props={props} />
+      <TextField spec={QUERIES_FIELD} props={props} />
+      <TextField spec={VERSIONS_FIELD} props={props} />
+      <TextField spec={TRASH_FIELD} props={props} />
+    </fieldset>
   );
 }
 
@@ -205,41 +353,9 @@ function UnitField({
 export function PlanFormFields(props: PlanFormFieldsProps): React.JSX.Element {
   return (
     <div className="grid gap-5">
-      <fieldset className="grid gap-4">
-        <legend className="text-sm font-semibold text-foreground">Plan</legend>
-        <TextField spec={NAME_FIELD} props={props} />
-        <DescriptionField props={props} />
-      </fieldset>
-      <fieldset className="grid gap-4">
-        <legend className="text-sm font-semibold text-foreground">Precio</legend>
-        <TextField spec={PRICE_FIELD} props={props} />
-      </fieldset>
-      <fieldset className="grid gap-4">
-        <legend className="text-sm font-semibold text-foreground">Límites</legend>
-        <p className="text-sm text-secondary-foreground">
-          Cada cuenta con este plan recibe estos límites.
-        </p>
-        <UnitField
-          field="quota"
-          label="Almacenamiento"
-          help="Espacio total de la cuenta."
-          unitField="quotaUnit"
-          units={['GB', 'TB']}
-          props={props}
-        />
-        <UnitField
-          field="maxFile"
-          label="Máximo por archivo"
-          help="Hasta 2 GB y nunca más que el almacenamiento."
-          unitField="maxFileUnit"
-          units={['MB', 'GB']}
-          props={props}
-        />
-        <TextField spec={EDITORS_FIELD} props={props} />
-        <TextField spec={QUERIES_FIELD} props={props} />
-        <TextField spec={VERSIONS_FIELD} props={props} />
-        <TextField spec={TRASH_FIELD} props={props} />
-      </fieldset>
+      <PlanFields props={props} />
+      <PriceFields props={props} />
+      <LimitsFields props={props} />
     </div>
   );
 }

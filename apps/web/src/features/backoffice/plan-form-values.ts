@@ -11,6 +11,9 @@ export type QuotaUnit = 'GB' | 'TB';
 /** Unidad del máximo por archivo. */
 export type MaxFileUnit = 'MB' | 'GB';
 
+export const QUOTA_UNITS: readonly [QuotaUnit, ...QuotaUnit[]] = ['GB', 'TB'];
+export const MAX_FILE_UNITS: readonly [MaxFileUnit, ...MaxFileUnit[]] = ['MB', 'GB'];
+
 export interface PlanFormValues {
   readonly name: string;
   readonly description: string;
@@ -63,37 +66,33 @@ export function bytesOf(value: string, unit: QuotaUnit | MaxFileUnit): string | 
   return String(amount * BYTES_PER_UNIT[unit]);
 }
 
-/** «125.00» → 12500 centavos; un precio negativo o con letras no se traduce. */
+/**
+ * «125.00» o «125,00» → 12500 centavos. La coma es el separador decimal de la UI (PD-91) y el punto también vale;
+ * con tres decimales o con los dos separadores a la vez no se sabe qué es, así que no se traduce (el campo lo avisa).
+ */
 export function centsOf(value: string): number | null {
-  const trimmed = value.trim().replace(/,/g, '');
-  if (!/^\d+(\.\d{1,2})?$/.test(trimmed)) return null;
-  const [whole, decimals = ''] = trimmed.split('.');
+  const normalized = value.trim().replace(',', '.');
+  if (!/^\d+(\.\d{1,2})?$/.test(normalized)) return null;
+  const [whole, decimals = ''] = normalized.split('.');
   return Number(whole) * 100 + Number(decimals.padEnd(2, '0'));
 }
 
-/**
- * El cuerpo que pide la API (011 CA-9). Lo que no se puede traducir (un número con letras) queda en `null`: el
- * formulario lo avisa antes de enviar, y la API vuelve a validar (CA-11).
- */
+/** El cuerpo que pide la API (011 CA-9), o `null` si algún número no se puede traducir. */
 export function toPlanRequest(values: PlanFormValues): CreatePlanRequest | null {
   const quotaBytes = bytesOf(values.quota, values.quotaUnit);
+  if (quotaBytes === null) return null;
   const maxFileBytes = bytesOf(values.maxFile, values.maxFileUnit);
+  if (maxFileBytes === null) return null;
   const priceCents = centsOf(values.price);
+  if (priceCents === null) return null;
   const maxEditors = integerOf(values.maxEditors);
+  if (maxEditors === null) return null;
   const agentQueries = integerOf(values.agentQueries);
+  if (agentQueries === null) return null;
   const retainedVersions = integerOf(values.retainedVersions);
+  if (retainedVersions === null) return null;
   const trashRetentionDays = integerOf(values.trashRetentionDays);
-  if (
-    quotaBytes === null ||
-    maxFileBytes === null ||
-    priceCents === null ||
-    maxEditors === null ||
-    agentQueries === null ||
-    retainedVersions === null ||
-    trashRetentionDays === null
-  ) {
-    return null;
-  }
+  if (trashRetentionDays === null) return null;
   return {
     name: values.name.trim(),
     description: values.description.trim(),
@@ -105,4 +104,17 @@ export function toPlanRequest(values: PlanFormValues): CreatePlanRequest | null 
     retainedVersions,
     trashRetentionDays,
   };
+}
+
+/** La cantidad con la unidad en la que el número sale entero (500 MB no es «0 GB»). */
+export function amountAndUnit<U extends QuotaUnit | MaxFileUnit>(
+  bytes: number,
+  units: readonly [U, ...U[]],
+): { readonly amount: string; readonly unit: U } {
+  for (const unit of units) {
+    const amount = bytes / BYTES_PER_UNIT[unit];
+    if (Number.isInteger(amount)) return { amount: String(amount), unit };
+  }
+  const [unit] = units;
+  return { amount: (bytes / BYTES_PER_UNIT[unit]).toFixed(1), unit };
 }

@@ -9,6 +9,7 @@ import { StateView } from '../../../components/nimbo/state-view';
 import { Button, buttonVariants } from '../../../components/ui/button';
 import { ForbiddenState } from '../../access/components/forbidden-state';
 import { INTERNAL_PATHS } from '../../access/home-path';
+import { ServerErrorAlert } from '../../identity/components/server-error-alert';
 import type { BackofficeApi } from '../api';
 import { usePlanDeactivation } from '../hooks/use-plan-deactivation';
 import { usePlans, type Plans } from '../hooks/use-plans';
@@ -50,7 +51,7 @@ function PlansLoading(): React.JSX.Element {
   );
 }
 
-/** Sin planes inactivos (mockup `default`): un recuadto, no la pantalla vacía completa. */
+/** Sin planes inactivos (mockup `default`): un recuadro, no la pantalla vacía completa. */
 function NoInactivePlans(): React.JSX.Element {
   return (
     <p className="mt-3 flex items-start gap-2.5 rounded-lg border border-dashed border-border bg-card p-4 text-sm text-secondary-foreground">
@@ -205,6 +206,24 @@ function PlansOutcome({
   );
 }
 
+/** La cabecera del catálogo: el título y el alta de un plan nuevo (mockup `backoffice/catalogo`). */
+function CatalogHeader(): React.JSX.Element {
+  return (
+    <div className="flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <h1 className="text-2xl font-semibold text-foreground">Catálogo de planes</h1>
+        <p className="mt-1 text-sm text-secondary-foreground">
+          Los planes que se ofrecen a los clientes, con su precio y sus límites.
+        </p>
+      </div>
+      <Link href={INTERNAL_PATHS.adminNewPlan} className={buttonVariants()}>
+        <Plus className="h-4 w-4" aria-hidden="true" />
+        Nuevo plan
+      </Link>
+    </div>
+  );
+}
+
 /**
  * Catálogo de planes del Administrador (011 HU-3, CA-8, CA-10, CA-17; mockup `backoffice/catalogo`): los planes que se
  * ofrecen, con su precio, sus límites y cuántas cuentas los tienen; un plan no se edita, se desactiva (RN-4).
@@ -217,24 +236,16 @@ export function AdminPlans({ api }: { readonly api: BackofficeApi }): React.JSX.
   }
   return (
     <div className="mx-auto w-full max-w-6xl">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">Catálogo de planes</h1>
-          <p className="mt-1 text-sm text-secondary-foreground">
-            Los planes que se ofrecen a los clientes, con su precio y sus límites.
-          </p>
-        </div>
-        <Link href={INTERNAL_PATHS.adminNewPlan} className={buttonVariants()}>
-          <Plus className="h-4 w-4" aria-hidden="true" />
-          Nuevo plan
-        </Link>
-      </div>
+      <CatalogHeader />
       <PrivacyNotice text={CATALOG_PRIVACY} />
       <p className="mt-3 flex items-start gap-2 text-sm text-secondary-foreground">
         <ClipboardList className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
         <span>{AUDIT_NOTE}</span>
       </p>
       {deactivation.done === null ? null : <PlanDeactivatedNotice plan={deactivation.done} />}
+      {deactivation.failure === null ? null : (
+        <ServerErrorAlert title="No pudimos desactivar el plan." error={deactivation.failure} />
+      )}
       <PlansOutcome plans={plans} onDeactivate={deactivation.ask} />
       <PlanDeactivateDialog deactivation={deactivation} />
     </div>

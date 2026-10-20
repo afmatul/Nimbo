@@ -95,6 +95,22 @@ function planNote(accounts: Accounts, withPlan: number): string {
   );
 }
 
+/** La nota de por qué las dos tablas cuadran con el total (decisión 4). */
+function PlanNote({
+  accounts,
+  withPlan,
+}: {
+  readonly accounts: Accounts;
+  readonly withPlan: number;
+}): React.JSX.Element {
+  return (
+    <p className="mt-3 flex items-start gap-2 text-sm text-secondary-foreground">
+      <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+      {planNote(accounts, withPlan)}
+    </p>
+  );
+}
+
 function PlansCard({
   metrics,
 }: {
@@ -120,10 +136,7 @@ function PlansCard({
         rows={rows}
         totalLabel="Total con plan"
       />
-      <p className="mt-3 flex items-start gap-2 text-sm text-secondary-foreground">
-        <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-        {planNote(metrics.accounts, withPlanCount)}
-      </p>
+      <PlanNote accounts={metrics.accounts} withPlan={withPlanCount} />
     </ProfileCard>
   );
 }

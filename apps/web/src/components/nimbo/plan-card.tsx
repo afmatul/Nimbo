@@ -54,6 +54,18 @@ function PlanFacts({
   );
 }
 
+/** El precio del plan, en quetzales (008 CA-2). */
+function PlanPrice({ priceCents }: { readonly priceCents: number }): ReactNode {
+  return (
+    <p className="flex items-baseline gap-1">
+      <span className="text-2xl font-bold tabular-nums text-foreground">
+        {formatGtq(priceCents)}
+      </span>
+      <span className="text-xs text-muted-foreground">al mes</span>
+    </p>
+  );
+}
+
 /**
  * Tarjeta de un plan del catálogo (008 CA-2, RF-19) y del catálogo de administración (011 CA-8; PD-83): **un solo
  * componente** (`ui-guidelines.md` §4) con las dos variantes. Nombre, precio y límites salen del contrato, nunca del
@@ -78,12 +90,7 @@ export function PlanCard({
         {badge}
       </div>
       <p className="min-h-8 text-xs text-muted-foreground">{plan.description}</p>
-      <p className="flex items-baseline gap-1">
-        <span className="text-2xl font-bold tabular-nums text-foreground">
-          {formatGtq(plan.priceCents)}
-        </span>
-        <span className="text-xs text-muted-foreground">al mes</span>
-      </p>
+      <PlanPrice priceCents={plan.priceCents} />
       <PlanFacts plan={plan} facts={facts} />
       {meta === undefined ? null : <div className="text-xs text-muted-foreground">{meta}</div>}
       {note === undefined ? null : note}
@@ -100,9 +107,9 @@ function PlanFact({
   readonly value: ReactNode;
 }): ReactNode {
   return (
-    <div className="flex justify-between">
+    <div className="flex justify-between gap-2">
       <dt className="text-muted-foreground">{label}</dt>
-      <dd className="font-medium tabular-nums">{value}</dd>
+      <dd className="text-right font-medium tabular-nums">{value}</dd>
     </div>
   );
 }

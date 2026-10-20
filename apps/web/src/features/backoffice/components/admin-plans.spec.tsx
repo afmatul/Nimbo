@@ -114,6 +114,19 @@ describe('AdminPlans (011 CA-8, CA-10, CA-17)', () => {
     expect(within(inactive).getByRole('heading', { name: 'Pro' })).toBeTruthy();
   });
 
+  it('N-3: si la desactivación falla, se dice (un 409 no cierra el diálogo en silencio)', async () => {
+    const backoffice = await renderPlans([PERSONAL, PRO], () =>
+      Promise.reject(apiError(409, 'BILLING_PLAN_ALREADY_DEACTIVATED')),
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Desactivar el plan Pro' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Desactivar plan' }));
+    await act(async () => undefined);
+
+    expect(backoffice.deactivatePlan).toHaveBeenCalledWith(PRO.id);
+    expect(screen.getByRole('alert').textContent).toContain('No pudimos desactivar el plan.');
+  });
+
   it('CA-14: un 403 muestra «Sin permiso»', async () => {
     const backoffice = {
       listPlans: jest.fn(() => Promise.reject(apiError(403, 'SHARED_FORBIDDEN'))),
