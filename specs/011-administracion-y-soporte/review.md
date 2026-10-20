@@ -67,7 +67,7 @@ altas, catálogo y métricas; las pantallas internas; el aislamiento; y la audit
 | **H-1** | **Al volver a «Empezar de cero» seguía el plan de origen y se ofrecía desactivarlo** | **Corregido: al volver a cero se limpia el origen sin borrar lo escrito** |
 | **H-2** | **Tras desactivar el plan de origen no salía ningún aviso** | **Corregido: sale el aviso de éxito y el botón desaparece** |
 | **H-3** | **Un `403` al desactivar el plan de origen no mostraba nada** | **Corregido: lleva a «Sin permiso», con prueba** |
-| **H-4** | **El recorrido del catálogo declaraba una demo que no podía ser cierta** | **Corregido el texto: el recorrido del 19/10 fue sobre la versión anterior a estas correcciones; falta repetirlo sobre el commit final y anotarlo con su fecha real** |
+| **H-4** | **El recorrido del catálogo declaraba una demo que no podía ser cierta** | **Corregido: el recorrido se repitió el 20/10/2026 sobre el commit final y queda anotado con su fecha real en `tasks.md` y aquí** |
 | H-5 | El artículo del diálogo seguía fijo («Las 1 cuenta…») | Corregido: el artículo y el verbo concuerdan con la cantidad |
 | H-6 | Las unidades estaban repetidas en el formulario | Corregido: se usan las constantes `QUOTA_UNITS` y `MAX_FILE_UNITS` |
 | H-7 | Cada número se traducía dos veces | Corregido: `parsePlanForm` traduce una sola vez y devuelve el cuerpo o los campos que fallan |
@@ -81,8 +81,7 @@ altas, catálogo y métricas; las pantallas internas; el aislamiento; y la audit
 - `pnpm test` ✅ — api 2 146, web 1 573, contratos 449, config 244
 - `pnpm test:int` ✅ — 143 suites, 1 314 pruebas
 - `pnpm test:isolation` ✅ — 24 suites, 400 pruebas
-- Recorrido humano de la demo (T-12, 19/10) ✅ — nota en `tasks.md`. **Pendiente**: repetir el recorrido del catálogo
-  sobre el commit final (H-4).
+- Recorrido humano de la demo (T-12, 20/10/2026) ✅ — nota en `tasks.md`: cuentas, alta interna, metadatos desde la ficha, «Mi actividad» con el rol, métricas como Admin y como Operador, el «sin permiso», los 360 px y el catálogo completo (crear un plan desde otro con la coma decimal, volver a «Empezar de cero», desactivar con su confirmación y su aviso).
 
 ## Lo que queda pendiente (no bloquea la integración)
 
