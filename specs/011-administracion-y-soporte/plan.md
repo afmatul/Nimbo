@@ -77,7 +77,10 @@ Dueño del módulo entre corchetes: lo ajeno se pide a su dueño en su PR (`spec
   exito` (vencido → «¿Olvidaste tu contraseña?», CA-5). `features/backoffice/` (`api.ts`, hooks, componentes por pantalla,
   `page-pager`, `plan-card`, `client-files-table`); `lib/error-catalog.ts`. Reutiliza `StateView`, `ConfirmDestructiveDialog`,
   `FileTypeChip`, `QuotaBar`, `ForbiddenState`, `RequireRole`; crea `StatusBadge` en `components/nimbo/` (`ui-guidelines.md` §4).
-  `PlanCard` vive en `features/backoffice` hasta que exista el único `PlanCard` acordado con la 008 (PD-83, R-5).
+  `PlanCard` de `components/nimbo/` es **uno solo** con las dos variantes (PD-83, R-5): la 011 le suma los huecos opcionales
+  (`badge`, `facts`, `meta`, `note`) y su variante de administración vive en `features/backoffice/components/plan-admin-card.tsx`,
+  que lo compone; `/planes` (008) no cambia. El hueco `badge` es el mismo que el de la 010 (`feat/010b-renovacion-web`),
+  para que las dos ramas convivan sin tocarse.
 - **Marco interno, «Seguridad» y «Mi actividad»** (B-1; `features/access` es de Adrián, que lo autorizó, R-8): `features/access/components/internal-area-layout.tsx` (nuevo; sobre
   `AppLayout`, navegación de `internalNavFor(role)`) y `features/access/home-path.ts` (inicio por rol: `/admin/cuentas`,
   `/soporte/metadatos`, `/operacion/metricas`; `activityPathFor(role)`): un solo lugar para rutas internas, usado por
