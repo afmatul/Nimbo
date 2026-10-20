@@ -9,9 +9,36 @@ const B = require('./billing.js');
 
 const repo = process.argv[2];
 if (!repo) throw new Error('Falta la ruta del worktree');
-const { icon, PLANES, ACTUAL, TARJETA, CUOTA, tarjetaTexto } = B;
-const VENCE = '4 de noviembre de 2026';
+const { icon, PLANES, ACTUAL, TARJETA, VENCE, AVISO_VENCIDA, CUOTA, tarjetaTexto } = B;
 const ORDEN = ['personal', 'pro', 'equipo', 'institucional'];
+
+// ---------- CSS de la lista de planes (PlanCard de 008 + PlanComparisonTable de 009) ----------
+const CSS_PLANES = `
+  .plans { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 20px; }
+  .pc { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+  .pc.is-current { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary), var(--shadow-card); }
+  .pc-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+  .pc h2 { font-size: 16px; }
+  .pc-desc { margin: 0; min-height: 40px; font-size: 13px; color: var(--muted-foreground); }
+  .pc-price { margin: 0; display: flex; align-items: baseline; gap: 4px; font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .pc-price span { font-size: 12px; font-weight: 400; color: var(--muted-foreground); }
+  .pc dl { margin: 0; padding-top: 10px; border-top: 1px solid var(--border); display: grid; gap: 8px; font-size: 13px; }
+  .pc dl div { display: flex; justify-content: space-between; gap: 8px; }
+  .pc dt { color: var(--muted-foreground); }
+  .pc dd { margin: 0; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .pc-action { margin-top: auto; padding-top: 4px; }
+  .pc-action .btn { width: 100%; }
+  .pc-current { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; margin: 0; font-size: 13.5px; font-weight: 600; color: var(--primary-hover); }
+  .cmp { margin-top: 20px; overflow-x: auto; }
+  .cmp table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .cmp th, .cmp td { padding: 12px 16px; border-bottom: 1px solid var(--border); text-align: center; white-space: nowrap; }
+  .cmp thead th { font-weight: 600; background: var(--muted); }
+  .cmp tbody th { text-align: left; font-weight: 500; color: var(--secondary-foreground); }
+  .cmp tbody tr:last-child > * { border-bottom: 0; }
+  .cmp td { font-variant-numeric: tabular-nums; }
+  @media (max-width: 1180px) { .plans { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 600px) { .plans { grid-template-columns: minmax(0, 1fr); } .pc-desc { min-height: 0; } .pc-action .btn { min-height: 44px; } }
+`;
 
 // ---------- Lista ----------
 function tarjetaPlan(clave) {
@@ -54,11 +81,7 @@ function lista({ soloLectura = false } = {}) {
   const intro = soloLectura
     ? 'Tu suscripción venció. Si eliges Personal, el cambio se aplica de inmediato y sin cobro. Si eliges un plan de pago, se aplica cuando renueves.'
     : `El cambio se aplica el ${VENCE}, cuando termina tu periodo. Hasta entonces conservas ${ACTUAL.nombre} y sus límites. No hay cobro proporcional.`;
-  const banner = soloLectura ? M.avisoSoloLectura({
-    titulo: 'Tu suscripción venció.',
-    cuerpo: 'Puedes ver y descargar tus archivos, pero no subir ni editar. Renueva tu plan.',
-    href: '../pago/pago--renovacion.html',
-  }) : '';
+  const banner = soloLectura ? M.avisoSoloLectura({ ...AVISO_VENCIDA, href: '../pago/pago--renovacion.html' }) : '';
   return `${banner}
         <a class="back" href="../suscripcion/suscripcion--${soloLectura ? 'vencida' : 'vigente'}.html">${icon('arrowLeft', 16)}Volver a Plan y facturación</a>
         <div class="sub-head">
@@ -141,6 +164,6 @@ for (const v of ESTADOS) {
   const archivo = `planes--${v.estado}.html`;
   B.escribir(repo, 'planes', archivo, B.pagina({
     generador: 'generar-planes.js', pantalla: 'Cambiar de plan', estado: v.estado, archivo, rotulo: v.rotulo,
-    crumbs: ['Cuenta', 'Plan y facturación', 'Cambiar de plan'], cuerpo: v.cuerpo, dialogo: v.dialogo, css: B.CSS_PLANES,
+    crumbs: ['Cuenta', 'Plan y facturación', 'Cambiar de plan'], cuerpo: v.cuerpo, dialogo: v.dialogo, css: CSS_PLANES,
   }));
 }

@@ -10,6 +10,16 @@ const repo = process.argv[2];
 if (!repo) throw new Error('Falta la ruta del worktree');
 const { icon, ACTUAL, CORREO, alerta } = B;
 
+// Subtotal e IVA desde el precio, con la regla de packages/contracts/src/billing/breakdown.ts (RN-2 de la 009):
+// subtotal = precio × 100 / 112 redondeado al centavo (mitades hacia arriba); IVA = precio − subtotal.
+function importes(precio) {
+  const total = Math.round(Number(precio.replace('Q', '')) * 100);
+  const subtotal = Math.floor((total * 100 + 56) / 112);
+  const q = (centavos) => `Q${(centavos / 100).toFixed(2)}`;
+  return { subtotal: q(subtotal), iva: q(total - subtotal) };
+}
+const IMPORTES = importes(ACTUAL.precio);
+
 const CSS_PAGO = `
   .pay { max-width: 1024px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
   .pay-grid { display: grid; grid-template-columns: minmax(0, 1fr) 22rem; gap: 24px; align-items: start; }
@@ -73,11 +83,11 @@ const PERIODOS = {
   },
 };
 
-function campo({ id, label, valor, tipo = 'text', auto, hint, adorno, extra = '' }) {
+function campo({ id, label, valor, tipo = 'text', modo = 'numeric', auto, hint, adorno, extra = '' }) {
   return `
             <div class="f">
               <label for="${id}">${label}</label>
-              <div class="f-ctl"><input id="${id}" type="${tipo}" inputmode="${id === 'pago-nit' ? 'text' : 'numeric'}" autocomplete="${auto}" value="${valor}"${adorno ? ' class="pr"' : ''}${hint ? ` aria-describedby="${id}-ayuda"` : ''}${extra}>${adorno ? `<span class="f-adorn"><span class="badge">${adorno}</span></span>` : ''}</div>${hint ? `
+              <div class="f-ctl"><input id="${id}" type="${tipo}" inputmode="${modo}" autocomplete="${auto}" value="${valor}"${adorno ? ' class="pr"' : ''}${hint ? ` aria-describedby="${id}-ayuda"` : ''}${extra}>${adorno ? `<span class="f-adorn"><span class="badge">${adorno}</span></span>` : ''}</div>${hint ? `
               <p class="f-hint" id="${id}-ayuda">${hint}</p>` : ''}
             </div>`;
 }
@@ -95,7 +105,7 @@ function formulario({ numero, rechazado = false }) {
             </header>${fallo}
             <form novalidate>${campo({ id: 'pago-number', label: 'Número de tarjeta', valor: numero, auto: 'cc-number', adorno: 'VISA' })}
               <div class="row2">${campo({ id: 'pago-expiry', label: 'Vencimiento', valor: '12/28', auto: 'cc-exp', hint: 'Mes y año, como 12/28.' })}${campo({ id: 'pago-cvc', label: 'CVC', valor: '123', tipo: 'password', auto: 'cc-csc' })}
-              </div>${campo({ id: 'pago-nit', label: 'NIT para la factura', valor: '4527913-6', auto: 'off' })}
+              </div>${campo({ id: 'pago-nit', label: 'NIT para la factura', valor: '4527913-6', modo: 'text', auto: 'off' })}
               <button class="btn btn-primary" type="submit">Pagar ${ACTUAL.precio}</button>
             </form>
             <div class="test-cards">Tarjetas de prueba:
@@ -116,15 +126,15 @@ const resumen = (per) => `
               <li>${ACTUAL.almac} de almacenamiento</li>
               <li>${ACTUAL.archivo} por archivo</li>
               <li>${ACTUAL.versiones} versiones por archivo</li>
-              <li>2 000 consultas al agente al mes</li>
+              <li>${ACTUAL.agente.replace(' / mes', '')} consultas al agente al mes</li>
             </ul>
             <div class="period">
               <dl><dt>Periodo nuevo</dt><dd>${per.rango}</dd></dl>
               <p>${per.nota}</p>
             </div>
             <dl class="amounts">
-              <div><dt>Subtotal</dt><dd>Q98.21</dd></div>
-              <div><dt>IVA (12 %)</dt><dd>Q11.79</dd></div>
+              <div><dt>Subtotal</dt><dd>${IMPORTES.subtotal}</dd></div>
+              <div><dt>IVA (12 %)</dt><dd>${IMPORTES.iva}</dd></div>
             </dl>
             <p class="total"><span>Total hoy</span><span>${ACTUAL.precio}</span></p>
           </section>`;
@@ -136,13 +146,12 @@ const aprobado = (per, { soloLectura = false } = {}) => `
             <p>Renovaste tu plan ${ACTUAL.nombre} hasta el ${per.vence}. Te enviamos el comprobante a ${CORREO}.${soloLectura ? ' Tu cuenta ya no está en solo lectura: puedes volver a subir y editar.' : ''}</p>
             <dl>
               <dt>Referencia</dt><dd>SIM-8K2M4T</dd>
-              <dt>Factura</dt><dd>NB-2026-0152</dd>
               <dt>Periodo nuevo</dt><dd>${per.rango}</dd>
             </dl>
             <a class="btn btn-primary" href="../suscripcion/suscripcion--vigente.html">Ir a Plan y facturación</a>
           </section>`;
 
-const pagina = (izq, per) => `
+const layoutPago = (izq, per) => `
         <div class="pay">
           <a class="back" href="../suscripcion/suscripcion--por-vencer.html">${icon('arrowLeft', 16)}Volver a Plan y facturación</a>
           <div class="pay-grid">${izq}${resumen(per)}
@@ -153,19 +162,19 @@ const A = PERIODOS.anticipada;
 const ESTADOS = [
   {
     estado: 'renovacion', rotulo: `renovar por adelantado (vence el 19 de octubre): el resumen muestra el periodo nuevo ${A.rango} (CA-8)`,
-    cuerpo: pagina(formulario({ numero: '4242 4242 4242 4242' }), A),
+    cuerpo: layoutPago(formulario({ numero: '4242 4242 4242 4242' }), A),
   },
   {
     estado: 'renovacion-rechazado', rotulo: 'tarjeta 4000 0000 0000 0002 rechazada: nada cambia (CA-9)',
-    cuerpo: pagina(formulario({ numero: '4000 0000 0000 0002', rechazado: true }), A),
+    cuerpo: layoutPago(formulario({ numero: '4000 0000 0000 0002', rechazado: true }), A),
   },
   {
-    estado: 'renovacion-exito', rotulo: 'pago aprobado: referencia, factura y periodo nuevo (CA-8)',
-    cuerpo: pagina(aprobado(A), A),
+    estado: 'renovacion-exito', rotulo: 'pago aprobado: referencia y periodo nuevo (CA-8)',
+    cuerpo: layoutPago(aprobado(A), A),
   },
   {
     estado: 'renovacion-solo-lectura', rotulo: 'renovar desde solo lectura: el periodo nuevo empieza hoy (CA-10)',
-    cuerpo: pagina(formulario({ numero: '4242 4242 4242 4242' }), PERIODOS.soloLectura),
+    cuerpo: layoutPago(formulario({ numero: '4242 4242 4242 4242' }), PERIODOS.soloLectura),
   },
 ];
 
