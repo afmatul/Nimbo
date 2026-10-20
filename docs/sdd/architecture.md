@@ -303,7 +303,7 @@ apps/web/src/
 | 0008 | Verificación automática de fronteras entre módulos |
 | 0009 | Crystal Clear + SDD |
 | 0010 | Separar M3 en `access` y `sharing`; extraer `audit`, `realtime`, `notifications` (DF-02, 03, 30, 34) |
-| 0011 | Modelo de nodos: tablas `archivo` y `carpeta` separadas con `CHECK` (DF-40; Aceptado, Adrián 2026-10-17) |
+| 0011 | Modelo de nodos: tablas `archivo` y `carpeta` separadas con `CHECK` (DF-40; Propuesto; la 012 lo propone aceptar con su plan) |
 | 0012 | Versiones: composición con `origen` en lugar de herencia entre módulos (DF-17, DF-18; Propuesto) |
 | 0013 | Política del original en el optimizador (DF-21) |
 | 0014 | Tokens de Cielo Sereno ajustados a AA y mapeados a shadcn (DF-41–48) |

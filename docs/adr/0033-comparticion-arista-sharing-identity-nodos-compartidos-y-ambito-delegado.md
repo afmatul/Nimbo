@@ -1,11 +1,12 @@
-# ADR-0030 — Compartición: arista `sharing → identity`, función `nodos_compartidos()` y ámbito delegado del propietario
+# ADR-0033 — Compartición: arista `sharing → identity`, función `nodos_compartidos()` y ámbito delegado del propietario
 
 | Campo | Valor |
 |---|---|
-| Estado | Propuesto (2026-10-17); falta el acuerdo del equipo (Adrián). **Enmienda** ADR-0010 (aristas de `sharing` y regla 3 de `architecture.md` §3), ADR-0005 (actuar como el dueño también en el `api`) y, si se acepta, la regla 4 de ADR-0029 (Propuesto, rama de la 010) |
+| Estado | Propuesto (2026-10-17); falta el acuerdo del equipo (Adrián). **Enmienda** ADR-0010 (aristas de `sharing` y regla 3 de `architecture.md` §3), ADR-0005 (actuar como el dueño también en el `api`) y, si se acepta, la regla 4 de ADR-0032 (Propuesto, rama de la 010) |
 | Fecha | 2026-10-17 |
+| Numeración | Redactado como ADR-0030; pasa a **0033** porque la 015 entró a `main` con su ADR-0030 (Socket.IO) y la 010 reserva el 0031 y el 0032 |
 | Decisores | `architect` (revisión del plan 012), Fátima (dueña de `sharing`, decisiones D-1, D-2 y D-3), Adrián (dueño de `access`, `storage` e `identity`; aprueba) |
-| Specs relacionadas | PD-20 y DF-10 (contraseña de enlaces, 013); DF-71; 012 (RF-16, RF-18; CA-2, CA-10, CA-13, CA-14, CA-23, CA-24, CA-28; RN-6, RN-7, RN-10, RN-14); la heredan 013 (enlaces públicos y suspensión), 016 (edición del Editor), 018 y 020 (lo compartido por `accessibleNodes`) |
+| Specs relacionadas | PD-20 y DF-10 (contraseña de enlaces, 013); DF-78; 012 (RF-16, RF-18; CA-2, CA-10, CA-13, CA-14, CA-23, CA-24, CA-28; RN-6, RN-7, RN-10, RN-14); la heredan 013 (enlaces públicos y suspensión), 016 (edición del Editor), 018 y 020 (lo compartido por `accessibleNodes`) |
 
 ## Contexto
 
@@ -26,7 +27,7 @@ tercero. Tres fuerzas obligan a decidir antes del código:
 3. **Versión del Editor con el plan del propietario** (CA-13, CA-14, RN-7, RN-14). La versión suma en la cuota del
    propietario, usa su máximo por archivo, su retención y su solo lectura (010). Todo eso ya lo hacen `UploadService`,
    `QuotaService`, `FileVersionService`, `VersionPruner` e `IPlanLimitsProvider.limitsFor(actor)` **para el actor**, bajo
-   RLS del actor. ADR-0029 (regla 4) pidió que 012 resolviera esto «sin fabricar un actor ajeno» y lo dejó como criterio de
+   RLS del actor. ADR-0032 (regla 4) pidió que 012 resolviera esto «sin fabricar un actor ajeno» y lo dejó como criterio de
    error.
 
 Restricciones: equipo de 4, Fase 2 ya atrasada, un servidor de 8 GB, prueba de aislamiento bloqueante, y la exposición final
@@ -164,7 +165,7 @@ sola vez para 012 y 013.
   en la lista (p. ej. la edición del Editor en 016) enmienda este ADR.
 - Enmienda ADR-0005 («Worker»): actuar como el dueño de un recurso después de autorizar a otra persona también se
   permite en el `api`, solo en `SharedVersionUploadService`.
-- Enmienda la regla 4 de ADR-0029: RN-11 se aplica con `limitsFor(owner)` dentro del ámbito delegado; el «sin fabricar un
+- Enmienda la regla 4 de ADR-0032: RN-11 se aplica con `limitsFor(owner)` dentro del ámbito delegado; el «sin fabricar un
   actor ajeno» y su criterio de error se reemplazan por esta regla. Se aplica en la rama de la 010 antes del PR-B de 012.
 
 ## Consecuencias
@@ -180,8 +181,8 @@ sola vez para 012 y 013.
   - Diagramas a redibujar: M3a (función, `ownedNodes`, `IGrantRepository` como lector SQL), M3b (sin `AccessGrant`,
     servicios de lista y «Compartido conmigo», dependencia de `identity`), M2 (`NodeSummaryReader`,
     `SharedVersionUploadService`, delegación), M1 (`ShareRecipientDirectory`), T2 (política compartida) y el E-R
-    (`comparticion.propietario_id`, `actualizado_en`, `carga.iniciada_por`); DF-71, PD-109.
-- Cómo sabremos si fue un error: si un listado supera el p95 de RNF-01 (300 ms) por la función según k6 (PD-111); si otro
+    (`comparticion.propietario_id`, `actualizado_en`, `carga.iniciada_por`); DF-78, PD-124.
+- Cómo sabremos si fue un error: si un listado supera el p95 de RNF-01 (300 ms) por la función según k6 (PD-125); si otro
   servicio necesita actuar como otra cuenta tras autorizar a un tercero (un segundo caso como `SharedVersionUploadService`); si `access` necesita leer otra columna de
   `usuario`; si la auditoría de seguridad encuentra una escritura del Editor fuera de la versión; o si la RLS y
   `accessibleNodes` divergen y `sharing-rls.iso-spec.ts` no lo detecta.
