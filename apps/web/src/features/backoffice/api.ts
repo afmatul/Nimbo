@@ -9,6 +9,7 @@ import {
   type AccountListResponse,
   type BackofficeMetricsResponse,
   type ClientFilesResponse,
+  type CreatePlanRequest,
   type EnrollInternalAccountRequest,
   type PlanAdminListResponse,
   type PlanAdminView,
@@ -52,6 +53,8 @@ export interface BackofficeApi {
   getMetrics(): Promise<BackofficeMetricsResponse>;
   /** `GET /backoffice/plans`: todos los planes, activos y desactivados, con su conteo de cuentas (CA-8). */
   listPlans(): Promise<PlanAdminListResponse>;
+  /** `POST /backoffice/plans` (CA-9): crea un plan activo; el `slug` lo deriva el servidor. */
+  createPlan(request: CreatePlanRequest): Promise<PlanAdminView>;
   /** `POST /backoffice/plans/:id/deactivation` (CA-10): desactiva un plan; no se reactiva. */
   deactivatePlan(id: string): Promise<PlanAdminView>;
 }
@@ -100,6 +103,15 @@ function planCalls(base: string, authFetch: AuthFetch) {
     deactivatePlan: async (id: string): Promise<PlanAdminView> =>
       parseResponse(
         await authFetch(`${planUrl(id)}/deactivation`, { method: 'POST' }),
+        planAdminViewSchema,
+      ),
+    createPlan: async (request: CreatePlanRequest): Promise<PlanAdminView> =>
+      parseResponse(
+        await authFetch(`${base}${PLANS_PATH}`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(request),
+        }),
         planAdminViewSchema,
       ),
   };

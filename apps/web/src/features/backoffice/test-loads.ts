@@ -1,4 +1,5 @@
 import { IDENTITY_ERROR_CODES } from '@nimbo/contracts';
+import type { FieldIssueResponse } from '@nimbo/contracts';
 
 import { ApiClientError } from '../../lib/api-error';
 
@@ -28,8 +29,12 @@ export function callOf<Res>(...results: readonly (Res | Error)[]): jest.Mock<Pro
 }
 
 /** Error HTTP como lo entrega `auth-fetch`. */
-export function apiError(status: number, code: string): ApiClientError {
-  return new ApiClientError({ status, code, message: code, correlationId: 'corr-1' });
+export function apiError(
+  status: number,
+  code: string,
+  fields: readonly FieldIssueResponse[] = [],
+): ApiClientError {
+  return new ApiClientError({ status, code, message: code, correlationId: 'corr-1', fields });
 }
 
 /** Lo que responde un doble fijo: la respuesta, un rechazo o nada (cargando). */

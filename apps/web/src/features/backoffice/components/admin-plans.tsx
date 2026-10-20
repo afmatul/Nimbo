@@ -1,12 +1,14 @@
 'use client';
 
 import type { PlanAdminView } from '@nimbo/contracts';
-import { ClipboardList, PackageX } from 'lucide-react';
+import { ClipboardList, PackageX, Plus } from 'lucide-react';
+import Link from 'next/link';
 import type * as React from 'react';
 
 import { StateView } from '../../../components/nimbo/state-view';
-import { Button } from '../../../components/ui/button';
+import { Button, buttonVariants } from '../../../components/ui/button';
 import { ForbiddenState } from '../../access/components/forbidden-state';
+import { INTERNAL_PATHS } from '../../access/home-path';
 import type { BackofficeApi } from '../api';
 import { usePlanDeactivation } from '../hooks/use-plan-deactivation';
 import { usePlans, type Plans } from '../hooks/use-plans';
@@ -215,10 +217,18 @@ export function AdminPlans({ api }: { readonly api: BackofficeApi }): React.JSX.
   }
   return (
     <div className="mx-auto w-full max-w-6xl">
-      <h1 className="text-2xl font-semibold text-foreground">Catálogo de planes</h1>
-      <p className="mt-1 text-sm text-secondary-foreground">
-        Los planes que se ofrecen a los clientes, con su precio y sus límites.
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">Catálogo de planes</h1>
+          <p className="mt-1 text-sm text-secondary-foreground">
+            Los planes que se ofrecen a los clientes, con su precio y sus límites.
+          </p>
+        </div>
+        <Link href={INTERNAL_PATHS.adminNewPlan} className={buttonVariants()}>
+          <Plus className="h-4 w-4" aria-hidden="true" />
+          Nuevo plan
+        </Link>
+      </div>
       <PrivacyNotice text={CATALOG_PRIVACY} />
       <p className="mt-3 flex items-start gap-2 text-sm text-secondary-foreground">
         <ClipboardList className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />

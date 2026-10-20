@@ -29,6 +29,7 @@ import { AdminClientFiles } from './components/admin-client-files';
 import { AdminPlans } from './components/admin-plans';
 import { BackofficeMetrics } from './components/backoffice-metrics';
 import { EnrollAccount } from './components/enroll-account';
+import { NewPlanView } from './components/new-plan-view';
 import { SupportClientFiles } from './components/support-client-files';
 import { accountItem, accountsPage, ANDREA, DIEGO, MONICA } from './test-accounts';
 import { clientFile, clientFilesPage, LAURA, TRASHED_PDF } from './test-client-files';
@@ -295,6 +296,29 @@ describe('Accesibilidad de las métricas (011 CA-12, CA-17)', () => {
       await expectNoViolations(container);
     },
   );
+});
+
+describe('Accesibilidad del plan nuevo (011 CA-9, CA-17)', () => {
+  beforeAll(() => {
+    document.documentElement.lang = 'es';
+    document.title = 'Nuevo plan · Nimbo';
+  });
+
+  beforeEach(() => {
+    global.fetch = jest.fn(() => new Promise<Response>(() => undefined));
+    forgetSession();
+  });
+
+  it('CA-17: el plan nuevo, sin violaciones de axe a 360 y 1440 px', async () => {
+    const api = {
+      listPlans: always<PlanAdminListResponse>(plansResponse([PERSONAL_PLAN, PRO_PLAN])),
+      createPlan: always<PlanAdminView>(PRO_PLAN),
+      deactivatePlan: always<PlanAdminView>(PRO_PLAN),
+    };
+    const container = await renderInFrame(<NewPlanView api={api as never} />, 'ADMIN');
+
+    await expectNoViolations(container);
+  });
 });
 
 const PLANS_STATES: readonly (readonly [string, Outcome<PlanAdminListResponse>])[] = [

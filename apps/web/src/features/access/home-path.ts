@@ -15,6 +15,8 @@ export const INTERNAL_PATHS = {
   adminNewAccount: `${ADMIN_ACCOUNTS}/nueva`,
   /** Catálogo de planes del Administrador (011 CA-8). */
   adminPlans: '/admin/planes',
+  /** El plan nuevo (011 CA-9). */
+  adminNewPlan: '/admin/planes/nuevo',
   /** Las mismas métricas agregadas (011 CA-12), en el área de cada rol. */
   adminMetrics: '/admin/metricas',
   operatorMetrics: '/operacion/metricas',
