@@ -1,6 +1,6 @@
 # Generadores de los mockups escritos a mano
 
-Los mockups HTML autocontenidos de `identity/seguridad`, `backoffice/admin`, `backoffice/alta-interna`, `backoffice/catalogo`, `backoffice/metricas`, `backoffice/soporte`, `shared/layout`, `storage/carga` (salvo `carga--progreso.html`), los estados de 005, 006 y 007 de `storage/explorador`, `storage/resumen-espacio`, los de 006 de `storage/papelera`, los de 014 de `storage/ficha-archivo` y los de 012 de `sharing/compartir` y `sharing/compartido-conmigo` no se editan a mano: se generan con estos
+Los mockups HTML autocontenidos de `identity/seguridad`, `backoffice/admin`, `backoffice/alta-interna`, `backoffice/catalogo`, `backoffice/metricas`, `backoffice/soporte`, `editing/editor` (salvo `editor--editando.html`), `shared/layout`, `storage/carga` (salvo `carga--progreso.html`), los estados de 005, 006 y 007 de `storage/explorador`, `storage/resumen-espacio`, los de 006 de `storage/papelera`, los de 014 de `storage/ficha-archivo` y los de 012 de `sharing/compartir` y `sharing/compartido-conmigo` no se editan a mano: se generan con estos
 scripts para que el marco de la aplicación (barra lateral, barra superior, menú de la cuenta, cajón móvil y diálogo)
 salga de **un solo lugar**. Así no se copia el marco en cada archivo (DRY). Son referencia visual; `apps/web` no
 los importa.
@@ -42,6 +42,7 @@ los importa.
 | `comparticion/piezas.js` | Piezas de 012: íconos, distintivo de nivel, ítem de menú (`crearItemMenu` de `carpetas.js` con estos íconos), avatar, barra lateral y cajón con Accesos rápidos y la entrada «Compartido conmigo» del marco (el cajón con `cajon({ tarjetaCuota })`, sin parches sobre el HTML generado), CSS común (`css({ escritorio, movil })`), la página y `generar(pantalla, estados)`; usa `carpetaDeSalida`, `archivoDe` y `escribir` de `admin/area.js`. El rótulo «Compartido conmigo» es `marco.COMPARTIDO`, sin alias |
 | `compartir/generar.js` | Los 14 estados de `sharing/compartir` (spec 012: diálogo «Compartir» y `AccessList` sobre Mis archivos); `compartir--propuesta.html` es el paquete de la propuesta y no se genera |
 | `compartido-conmigo/generar.js` | Los 17 estados de `sharing/compartido-conmigo` (spec 012: página con «Cargar más», carpeta abierta, menú por nivel, versión del Editor con el panel de `carga/panel.js`, sus tres rechazos de CA-14 y salir) |
+| `editor/generar.js` | Los 10 estados de 016 de `editing/editor` (barra del editor, presencia con conteo frente al límite, avisos de solo lectura, guardado fallido y servicio no disponible); `editor--editando.html` es el paquete de la propuesta y no se genera |
 | `pw/capturar-rutas.js` | Capturas a 360 y 1440 px de los HTML indicados, en `es-GT` y hora de Guatemala, con movimiento reducido (`reducedMotion: 'reduce'`: esqueletos e indicadores de carga quietos) |
 | `pw/axe-seguridad.js`, `pw/axe-layout.js` | axe-core, desbordamiento a 360 px, objetivos táctiles y consola sobre todos los `.html` de una carpeta (sirve para cualquier pantalla); el de layout recorre además el teclado |
 
@@ -65,6 +66,7 @@ node docs/design/mockups/_generadores/soporte/generar.js "$(pwd)"
 node docs/design/mockups/_generadores/ficha-archivo/generar.js "$(pwd)"
 node docs/design/mockups/_generadores/compartir/generar.js "$(pwd)"
 node docs/design/mockups/_generadores/compartido-conmigo/generar.js "$(pwd)"
+node docs/design/mockups/_generadores/editor/generar.js "$(pwd)"
 node docs/design/mockups/_generadores/pw/capturar-rutas.js "$(pwd)" \
   identity/seguridad/seguridad.html=identity/seguridad/seguridad--default
 node docs/design/mockups/_generadores/pw/axe-layout.js "$(pwd)"

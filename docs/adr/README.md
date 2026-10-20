@@ -9,7 +9,7 @@ Son la base para defender la arquitectura en la exposición final (enunciado §6
 | 0001 | [Monolito modular con worker separado](0001-monolito-modular-con-worker-separado.md) | Aceptado |
 | 0002 | [NestJS + TypeORM con migraciones manuales](0002-nestjs-typeorm-migraciones-manuales.md) | Aceptado |
 | 0003 | PostgreSQL + pgvector; dimensión de embeddings fija | Pendiente |
-| 0004 | ONLYOFFICE Docs solo para `.docx` | Pendiente |
+| 0004 | [ONLYOFFICE Docs como editor, solo para `.docx`](0004-onlyoffice-docs-solo-para-docx.md) (spec 016) | Aceptado |
 | 0005 | [Autorización en la consulta + RLS como segunda barrera](0005-autorizacion-en-la-consulta-y-rls.md) | Aceptado |
 | 0006 | Pagos simulados detrás de `PaymentGateway` | Pendiente |
 | 0007 | Modelo de lenguaje detrás de puertos propios | Pendiente |
@@ -26,12 +26,15 @@ Son la base para defender la arquitectura en la exposición final (enunciado §6
 | 0018 | [Correo transaccional con nodemailer por SMTP y la cola `mail`](0018-correo-con-nodemailer-y-cola-mail.md) (menor) | Aceptado |
 | 0019 | [Eventos de dominio en proceso con `@nestjs/event-emitter`; el contrato lo exporta el productor](0019-eventos-de-dominio-en-proceso.md) (arista `billing → identity`) | Aceptado |
 | 0020 | [Validación HTTP con zod desde `packages/contracts`](0020-validacion-http-con-zod-desde-contracts.md) (enmienda ADR-0015 b) | Aceptado |
-| 0021 | [Mantenimiento sin actor bajo RLS: función `SECURITY DEFINER` mínima y RLS también en `carga`](0021-mantenimiento-sin-actor-bajo-rls-y-rls-en-carga.md) (enmienda ADR-0005; DF-52, PD-19) | Propuesto |
+| 0021 | [Mantenimiento sin actor bajo RLS: función `SECURITY DEFINER` mínima y RLS también en `carga`](0021-mantenimiento-sin-actor-bajo-rls-y-rls-en-carga.md) (enmienda ADR-0005; DF-52, PD-19) | Aceptado |
 | 0022 | [`storage` declara `IPlanLimitsProvider`](0022-storage-declara-iplanlimitsprovider.md) (DF-51, opción A) | Aceptado |
 | 0023 | [SDD express desde la Fase 2: plan obligatorio, artefactos cortos y un PR por spec](0023-sdd-express-desde-la-fase-2.md) (reemplaza 0009; cambia constitución Art. I.2) | Aceptado |
 | 0024 | [Avisos no bloqueantes con `sonner` (toast de shadcn/ui); errores siguen como `Alert`](0024-avisos-no-bloqueantes-con-sonner.md) (menor; spec 006) | Aceptado |
 | 0025 | [Imágenes de MinIO desde el fork de Pigsty (`pgsty/silo` y `pgsty/mc`)](0025-imagenes-de-minio-desde-el-fork-de-pigsty.md) (enmienda ADR-0015; Quay dejó de servir los tags) | Propuesto |
-| 0030 | [Compartición: arista `sharing → identity`, función `nodos_compartidos()` y ámbito delegado del propietario](0030-comparticion-arista-sharing-identity-nodos-compartidos-y-ambito-delegado.md) (enmienda ADR-0010, ADR-0005 y la regla 4 de ADR-0029; spec 012) | Propuesto |
+| 0028 | [Dependencia de `billing` para la factura PDF: `pdfkit` detrás de `IInvoiceGenerator`](0028-dependencia-de-billing-para-la-factura-pdf.md) (menor; spec 009 T-07) | Aceptado |
+| 0029 | [El trabajo `editing-save` se procesa en el `api`](0029-editing-save-se-procesa-en-el-api.md) (excepción acotada a ADR-0001; spec 016, DF-71) | Aceptado |
+| 0030 | [Socket.IO en el `api` con los paquetes oficiales de Nest y sin adaptador de Redis](0030-socketio-en-el-api-sin-adaptador-de-redis.md) (spec 015) | Aceptado |
+| 0033 | [Compartición: arista `sharing → identity`, función `nodos_compartidos()` y ámbito delegado del propietario](0033-comparticion-arista-sharing-identity-nodos-compartidos-y-ambito-delegado.md) (enmienda ADR-0010, ADR-0005 y la regla 4 de ADR-0032; spec 012) | Propuesto |
 
 Estados: `Pendiente` (sin redactar) · `Propuesto` (redactado, falta acuerdo del equipo) · `Aceptado` · `Reemplazado por`.
 Los ADR 0001, 0002, 0008, 0009, 0014 y 0015 se aceptaron el 26/09/2026 (Adrián, parte de ADR de la T-27 de la spec 000).
@@ -45,8 +48,10 @@ ADR-0011 se aceptó el 17/10/2026 (Adrián) con la aprobación de la spec 012; c
 La dependencia `@aws-sdk/s3-request-presigner` (plan 005) se registró como adenda de ADR-0015, sin ADR aparte.
 ADR-0016 se aceptó el 29/09/2026: cierra DF-23 y DF-24. `Money` y `transaccion.monto` se implementan en la 009.
 ADR-0022 se aceptó el 29/09/2026: opción A de DF-51. El 0021 sigue siendo el de mantenimiento sin actor.
+ADR-0021 lo aceptó Adrián el 14/10/2026 en la revisión de la 009, que suma tres funciones de lectura con la misma lista.
 El 0023 lo redactó y lo aceptó Adrián el 30/09/2026 al adoptar SDD express; reemplaza al 0009 y cambia el Art. I.2 de la constitución.
 El 0024 lo redactó el `architect` y lo aprobó Adrián el 30/09/2026 (dependencia `sonner`, spec 006).
-El 0030 lo redactó el `architect` el 17/10/2026 con el plan de la 012 (Propuesto). Los números 0026–0029 los usan ramas abiertas (017: 0026–0027; 009 y 015: 0028; 010: 0029).
+Los ADR 0004 y 0029 los redactó el `architect` con el plan de la spec 016 (2026-10-16) como `Propuesto`; Adrián los aceptó al aprobar el plan (2026-10-16); 0029 hace una excepción acotada a ADR-0001 y matiza ADR-0030.
+El 0033 lo redactó el `architect` el 17/10/2026 con el plan de la 012 (Propuesto; pasa a 0033 porque 0030 lo tomó la 015 al entrar en `main`). Los números 0026–0027 los usa la 017 y 0031–0032 la 010, en ramas abiertas.
 
 Usa `/adr <decisión>` para redactar uno.

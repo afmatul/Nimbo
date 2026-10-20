@@ -27,6 +27,9 @@ import type { AppDatabase, FileRowOptions, FolderRow } from './storage-test-db';
 const DEFAULT_ORDER = NodeOrder.of();
 const MAX_DEPTH = 10;
 const LATER = new Date('2026-10-02T09:00:00.000Z');
+/** Instantes fijos para que el orden por `creado_en` no dependa del reloj entre inserciones. */
+const EARLIER = new Date('2026-10-02T09:00:00.000Z');
+const LATER_CREATED = new Date('2026-10-02T09:00:01.000Z');
 /** Fragmento de `accessibleNodes` filtrado por tipo, tal como llega a Postgres. */
 const TYPED_ACCESS = /nodos\.tipo_nodo = '(archivo|carpeta)'/;
 /** Desde la 011 vale también `idx_archivo_propietario_actualizado`: filtra por propietario, no da el orden (PD-102). */
@@ -57,6 +60,12 @@ describe('TypeOrmNodeRepository · carpetas (006 CA-1, CA-3, CA-5, CA-7, CA-9)',
   /** Archivo confirmado: `archivo` y su versión en una transacción propia (la FK `version_actual_id` es diferida). */
   const fileRow = (actor: Actor, options: FileRowOptions = {}) =>
     owner.transaction((manager) => insertFileWithVersion(manager, actor.id, options));
+
+  const stamp = (table: 'carpeta' | 'archivo', id: string, createdAt: Date): Promise<void> =>
+    owner.query(`UPDATE ${table} SET creado_en = $2, actualizado_en = $2 WHERE id = $1`, [
+      id,
+      createdAt,
+    ]);
 
   const asAna = <T>(work: () => Promise<T>): Promise<T> => app.asActor(ana, work);
 
@@ -136,6 +145,10 @@ describe('TypeOrmNodeRepository · carpetas (006 CA-1, CA-3, CA-5, CA-7, CA-9)',
       const older = await fileRow(ana, { folderId: box.id });
       const newer = await fileRow(ana, { folderId: box.id });
       await fileRow(ana, { folderId: box.id, deletedAt: new Date() });
+      await stamp('carpeta', olderFolder.id, EARLIER);
+      await stamp('carpeta', newerFolder.id, LATER_CREATED);
+      await stamp('archivo', older.fileId, EARLIER);
+      await stamp('archivo', newer.fileId, LATER_CREATED);
 
       const [first, second] = await asAna(async () => {
         const page = await repository.listContents(ana, {

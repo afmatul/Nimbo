@@ -82,4 +82,23 @@ describe('página de planes (008 CA-1, CA-2)', () => {
 
     await expect(PlanesPage()).rejects.toThrow();
   });
+
+  it('009 CA-9: «Contratar» lleva a `/planes/contratar?slug=` solo en los planes de pago', async () => {
+    respondWith([
+      {
+        ...PRO,
+        id: '10000000-0000-4000-8000-000000000001',
+        slug: 'personal',
+        name: 'Personal',
+        priceCents: 0,
+      },
+      PRO,
+    ]);
+
+    const html = await renderPage();
+
+    expect(html.match(/>Contratar</g)).toHaveLength(1);
+    expect(html).toContain('href="/planes/contratar?slug=pro"');
+    expect(html).not.toContain('slug=personal');
+  });
 });

@@ -42,7 +42,8 @@ services:
       dockerfile: apps/api/Dockerfile
     labels:
       traefik.enable: 'true'
-      traefik.http.routers.api.rule: PathPrefix(`/api`)
+      # `/socket.io`: canal en vivo del `api` (spec 015); el WebSocket pasa sin configuración extra.
+      traefik.http.routers.api.rule: PathPrefix(`/api`) || PathPrefix(`/socket.io`)
       traefik.http.routers.api.entrypoints: web
       traefik.http.services.api.loadbalancer.server.port: '3000'
 
@@ -68,6 +69,12 @@ services:
       traefik.http.services.web.loadbalancer.server.port: '3002'
 
   onlyoffice:
+    # 016: ONLYOFFICE llama al `api` del host (contenido y aviso de guardado). Solo local/staging: bloquea IP privadas
+    # por defecto; `host-gateway` hace que `host.docker.internal` exista también en Linux.
+    environment:
+      ALLOW_PRIVATE_IP_ADDRESS: 'true'
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
     labels:
       traefik.enable: 'true'
       traefik.http.routers.onlyoffice.rule: PathPrefix(`/docs`)

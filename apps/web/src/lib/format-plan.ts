@@ -1,19 +1,14 @@
-/** Presentación del catálogo de planes (008 RN-1): el contrato trae centavos enteros y bytes como texto decimal. */
+/**
+ * Presentación del catálogo de planes (008 RN-1): el contrato trae centavos enteros y bytes como texto decimal. El
+ * dinero se formatea con `formatGtq` de `contracts` (009 RN-1, ADR-0028).
+ */
 
-const CENTS_PER_QUETZAL = 100;
 const BYTES_PER_UNIT = 1024;
 const BYTE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB'] as const;
 
 /** Enteros con espacio de no separación como separador de miles: 2 000, 10 000 (como el mockup). */
 export function formatCount(value: number): string {
   return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-}
-
-/** Centavos enteros a quetzales con dos decimales: Q0.00, Q45.00, Q110.00. */
-export function formatQuetzales(priceCents: number): string {
-  const quetzales = Math.trunc(priceCents / CENTS_PER_QUETZAL);
-  const cents = String(priceCents % CENTS_PER_QUETZAL).padStart(2, '0');
-  return `Q${formatCount(quetzales)}.${cents}`;
 }
 
 /** Bytes del plan en potencias de 1024, como el catálogo de la 006a (RN-1): «15 GB», «1.5 GB».

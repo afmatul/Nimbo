@@ -20,3 +20,5 @@ export * from './storage';
 export * from './audit';
 export * from './billing';
 export * from './backoffice';
+export * from './realtime';
+export * from './editing';

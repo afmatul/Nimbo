@@ -1,4 +1,4 @@
-import type { Plan } from '@nimbo/contracts';
+import { formatGtq, type Plan } from '@nimbo/contracts';
 import type { ReactNode } from 'react';
 
 import {
@@ -6,7 +6,6 @@ import {
   formatDocxEditing,
   formatMaxEditors,
   formatPlanBytes,
-  formatQuetzales,
 } from '../../../lib/format-plan';
 
 interface PlanComparisonTableProps {
@@ -20,7 +19,7 @@ interface ComparisonRow {
 
 /** Filas de CA-2 en su orden. «Historial de versiones con autoría» es copy fijo (RN-3), no una columna de `plan`. */
 const COMPARISON_ROWS: readonly ComparisonRow[] = [
-  { label: 'Precio mensual', render: (plan) => formatQuetzales(plan.priceCents) },
+  { label: 'Precio mensual', render: (plan) => formatGtq(plan.priceCents) },
   { label: 'Almacenamiento', render: (plan) => formatPlanBytes(plan.quotaBytes) },
   { label: 'Tamaño máximo por archivo', render: (plan) => formatPlanBytes(plan.maxFileBytes) },
   { label: 'Edición .docx', render: (plan) => formatDocxEditing(plan.maxEditors) },

@@ -1,9 +1,9 @@
+import { formatGtq } from '@nimbo/contracts';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import { expectNoA11yViolations } from '../../../components/test-a11y';
 import { RadioGroup, type RadioGroupProps } from '../../../components/ui/radio-group';
 import type * as RadioGroupModule from '../../../components/ui/radio-group';
-import { formatQuetzales } from '../../../lib/format-plan';
 
 import { PlanPicker, type CatalogPlan } from './plan-picker';
 
@@ -35,7 +35,7 @@ describe('PlanPicker', () => {
       />,
     );
 
-    expect(markup).toContain(`Empresa · ${formatQuetzales(1_250_000)}`);
+    expect(markup).toContain(`Empresa · ${formatGtq(1_250_000)}`);
     expect(markup).toContain('Q12 500.00');
   });
 

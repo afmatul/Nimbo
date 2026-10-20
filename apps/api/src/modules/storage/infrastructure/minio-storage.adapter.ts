@@ -1,3 +1,5 @@
+import { Readable } from 'node:stream';
+
 import {
   AbortMultipartUploadCommand,
   CompleteMultipartUploadCommand,
@@ -20,10 +22,13 @@ import type {
   IObjectStorage,
   ObjectHead,
   PresignDownloadInput,
+  PutObjectInput,
   PresignUploadObjectInput,
   PresignUploadPartInput,
   UploadedPart,
 } from '../application/ports/i-object-storage.port';
+import { isInvoiceObjectKey } from '../domain/invoice-object-key';
+import { ObjectKey } from '../domain/object-key';
 
 /**
  * El cliente interno corre dentro de la transacción de `init` (con `FOR UPDATE` sobre `usuario`) al crear un
@@ -91,6 +96,15 @@ const isNoSuchUpload = (error: unknown): boolean => errorName(error) === 'NoSuch
 
 const isMissingObject = (error: unknown): boolean =>
   errorName(error) === 'NotFound' || errorName(error) === 'NoSuchKey' || httpStatus(error) === 404;
+
+/** Solo `u/{propietario}/{archivo}/{versión}` tal como la arma `ObjectKey.of` (016, revisión SEC-3). */
+const isFileVersionObjectKey = (key: string): boolean => {
+  try {
+    return ObjectKey.parse(key).value === key;
+  } catch {
+    return false;
+  }
+};
 
 /** Adaptador de `IObjectStorage` sobre MinIO con el SDK de S3 (ADR-0015). Nunca registra claves ni URLs. */
 export class MinioStorageAdapter implements IObjectStorage {
@@ -249,6 +263,37 @@ export class MinioStorageAdapter implements IObjectStorage {
     }
   }
 
+  async getObjectStream(key: string): Promise<Readable | null> {
+    try {
+      const output = await this.clients.operations.send(
+        new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+      );
+      if (!(output.Body instanceof Readable)) {
+        throw new Error('MinIO no devolvió el contenido del objeto como flujo.');
+      }
+      return output.Body;
+    } catch (error: unknown) {
+      if (isMissingObject(error)) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  async putObjectStream(key: string, body: Readable, sizeBytes: bigint): Promise<void> {
+    if (!isFileVersionObjectKey(key)) {
+      throw new Error('putObjectStream solo acepta claves u/{propietario}/{archivo}/{versión}.');
+    }
+    await this.clients.operations.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        Body: body,
+        ContentLength: Number(sizeBytes),
+      }),
+    );
+  }
+
   async purgeObject(key: string): Promise<void> {
     let keyMarker: string | undefined;
     let versionIdMarker: string | undefined;
@@ -271,6 +316,20 @@ export class MinioStorageAdapter implements IObjectStorage {
       keyMarker = page.NextKeyMarker;
       versionIdMarker = page.NextVersionIdMarker;
     }
+  }
+
+  async putObject(input: PutObjectInput): Promise<void> {
+    if (!isInvoiceObjectKey(input.key)) {
+      throw new Error('putObject solo acepta claves invoices/{usuario}/{factura}.pdf.');
+    }
+    await this.clients.operations.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: input.key,
+        Body: input.body,
+        ContentType: input.contentType,
+      }),
+    );
   }
 
   private async collectParts(key: string, uploadId: string): Promise<UploadedPart[]> {

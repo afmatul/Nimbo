@@ -6,6 +6,7 @@ export { ForbiddenError } from './forbidden.error';
 export { InsufficientRoleError } from './insufficient-role.error';
 export { InvalidInputError } from './invalid-input.error';
 export { NotFoundError } from './not-found.error';
+export { RateLimitExceededError } from './rate-limit-exceeded.error';
 export { TooManyRequestsError } from './too-many-requests.error';
 export { UnauthenticatedError } from './unauthenticated.error';
 export { UnauthorizedError } from './unauthorized.error';

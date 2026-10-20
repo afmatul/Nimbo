@@ -170,6 +170,32 @@ describe('FileRowMenu (CA-13, CA-21)', () => {
     expect(history?.getAttribute('href')).toBe(`/archivos/archivo/${FILE.id}`);
   });
 
+  it('016 CA-1: un .docx ofrece «Editar», que abre el editor del archivo', async () => {
+    await renderMenu();
+    await press('Enter');
+
+    const edit = items().find((item) => item.textContent?.trim() === 'Editar');
+    expect(edit?.getAttribute('href')).toBe(`/editor/${FILE.id}`);
+  });
+
+  it('016 CA-4: un archivo que no es .docx no ofrece «Editar»', async () => {
+    await mount(
+      <FileRowMenu
+        file={{ ...FILE, name: 'Cuentas.xlsx', kind: 'xlsx' }}
+        requestUrl={jest.fn()}
+        onNotice={jest.fn()}
+        onRefresh={jest.fn()}
+        onRename={jest.fn()}
+        onMove={jest.fn()}
+        onMoveToTrash={jest.fn()}
+        pin={{ pinned: false, onToggle: jest.fn() }}
+      />,
+    );
+    await press('Enter');
+
+    expect(items().map((item) => item.textContent?.trim())).not.toContain('Editar');
+  });
+
   it('006 CA-10: «Mover a la papelera» es la última acción, sin color destructivo', async () => {
     const onMoveToTrash = jest.fn();
     await renderMenu({ onMoveToTrash });
@@ -194,6 +220,7 @@ describe('FileRowMenu (CA-13, CA-21)', () => {
       'Renombrar',
       'Mover a…',
       'Fijar en la barra lateral',
+      'Editar',
       'Mover a la papelera',
     ]);
     await act(async () => items()[4]?.click());

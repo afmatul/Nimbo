@@ -11,6 +11,7 @@ import { Test } from '@nestjs/testing';
 import { Logger } from 'nestjs-pino';
 import type { z } from 'zod';
 
+import { configureRealtime } from '../../../src/modules/realtime';
 import {
   ACCESS_TOKEN_STRATEGY,
   apiEnvSchema,
@@ -64,6 +65,8 @@ export interface TestAppOptions extends TestEnvOptions {
    * `TestJwtStrategy`; `'identity'` no monta nada y usa la real de `IdentityModule` (002).
    */
   readonly accessTokenStrategy?: 'test' | 'identity';
+  /** Instala el canal en vivo con `configureRealtime` antes de `init`, como `main.ts`; exige `RealtimeModule` (015). */
+  readonly withRealtime?: boolean;
 }
 
 export interface TestApp {
@@ -183,6 +186,9 @@ export const createTestApp = async (options: TestAppOptions = {}): Promise<TestA
   });
   app.useLogger(app.get(Logger));
   configureHttpApp(app, env);
+  if (options.withRealtime === true) {
+    configureRealtime(app);
+  }
   if (options.prefix !== undefined) {
     app.setGlobalPrefix(options.prefix);
   }

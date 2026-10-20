@@ -1,3 +1,5 @@
+import { Readable } from 'node:stream';
+
 import {
   AbortMultipartUploadCommand,
   CompleteMultipartUploadCommand,
@@ -16,6 +18,8 @@ import type { MinioStorageClients } from './minio-storage.adapter';
 
 const BUCKET = 'nimbo-test';
 const KEY = 'u/owner-1/file-1/version-1';
+const VERSION_KEY =
+  'u/11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222/33333333-3333-4333-8333-333333333333';
 const UPLOAD_ID = 'upload-abc';
 
 type Input = Record<string, unknown>;
@@ -263,6 +267,88 @@ describe('MinioStorageAdapter (operaciones, cliente falso)', () => {
     });
 
     await expect(adapter.purgeObject(KEY)).rejects.toThrow();
+  });
+
+  it('009 CA-6: `putObject` sube la factura con su tipo de contenido', async () => {
+    const { adapter, calls } = buildAdapter({ PutObjectCommand: () => ({}) });
+    const key =
+      'invoices/11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222.pdf';
+
+    await adapter.putObject({ key, body: Buffer.from('%PDF-'), contentType: 'application/pdf' });
+
+    expect(calls).toEqual([
+      {
+        command: 'PutObjectCommand',
+        input: {
+          Bucket: BUCKET,
+          Key: key,
+          Body: Buffer.from('%PDF-'),
+          ContentType: 'application/pdf',
+        },
+      },
+    ]);
+  });
+
+  it.each([KEY, 'invoices/otra-cosa.pdf', 'invoices/11111111-1111-4111-8111-111111111111/x.exe'])(
+    '009 I-1: `putObject` rechaza la clave %s sin llamar al almacenamiento (solo facturas)',
+    async (key) => {
+      const { adapter, calls } = buildAdapter({});
+
+      await expect(
+        adapter.putObject({ key, body: Buffer.from('x'), contentType: 'application/pdf' }),
+      ).rejects.toThrow(/invoices\//);
+      expect(calls).toEqual([]);
+    },
+  );
+
+  it('016 CA-9: `putObjectStream` sube el flujo a la clave de la versión con su tamaño', async () => {
+    const { adapter, calls } = buildAdapter({ PutObjectCommand: () => ({}) });
+    const body = Readable.from([Buffer.from('docx')]);
+
+    await adapter.putObjectStream(VERSION_KEY, body, 4n);
+
+    expect(calls).toEqual([
+      {
+        command: 'PutObjectCommand',
+        input: { Bucket: BUCKET, Key: VERSION_KEY, Body: body, ContentLength: 4 },
+      },
+    ]);
+  });
+
+  it.each([
+    'invoices/11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222.pdf',
+    KEY,
+    `${VERSION_KEY}/extra`,
+    VERSION_KEY.replace(/1/g, 'A'),
+  ])(
+    '016 SEC-3: `putObjectStream` rechaza la clave %s sin llamar al almacenamiento (solo versiones)',
+    async (key) => {
+      const { adapter, calls } = buildAdapter({});
+
+      await expect(
+        adapter.putObjectStream(key, Readable.from([Buffer.from('x')]), 1n),
+      ).rejects.toThrow(/u\/\{propietario\}/);
+      expect(calls).toEqual([]);
+    },
+  );
+
+  it('016 CA-9: `getObjectStream` devuelve el flujo del cuerpo', async () => {
+    const body = Readable.from([Buffer.from('docx')]);
+    const { adapter } = buildAdapter({ [GetObjectCommand.name]: () => ({ Body: body }) });
+
+    await expect(adapter.getObjectStream(VERSION_KEY)).resolves.toBe(body);
+  });
+
+  it('016 S-2: `getObjectStream` falla si el cuerpo no es un flujo (nunca un documento vacío)', async () => {
+    const { adapter } = buildAdapter({ [GetObjectCommand.name]: () => ({}) });
+
+    await expect(adapter.getObjectStream(VERSION_KEY)).rejects.toThrow(/flujo/);
+  });
+
+  it('016 CA-2: `getObjectStream` de un objeto ausente devuelve `null`', async () => {
+    const { adapter } = buildAdapter({ [GetObjectCommand.name]: throwing('NoSuchKey', 404) });
+
+    await expect(adapter.getObjectStream(VERSION_KEY)).resolves.toBeNull();
   });
 });
 

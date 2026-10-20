@@ -3,12 +3,7 @@ import { JwtService, TokenExpiredError } from '@nestjs/jwt';
 import { z } from 'zod';
 
 import { I_CLOCK, Role } from '../../../../shared';
-import type {
-  AccessTokenClaims,
-  AccessTokenVerification,
-  IAccessTokenVerifier,
-  IClock,
-} from '../../../../shared';
+import type { AccessTokenVerification, IAccessTokenVerifier, IClock } from '../../../../shared';
 import type {
   IssueAccessTokenInput,
   IssuedAccessToken,
@@ -69,17 +64,20 @@ export class JwtTokenService implements ITokenService, IAccessTokenVerifier {
     } catch (error) {
       return error instanceof TokenExpiredError ? EXPIRED : INVALID;
     }
-    const claims = this.parseAccessTokenClaims(payload);
-    return claims === null ? INVALID : { valid: true, claims };
+    return this.toVerification(payload);
   }
 
-  private parseAccessTokenClaims(payload: unknown): AccessTokenClaims | null {
+  private toVerification(payload: unknown): AccessTokenVerification {
     const parsed = accessTokenPayloadSchema.safeParse(payload);
     if (!parsed.success) {
-      return null;
+      return INVALID;
     }
-    const { sub, rol, sid } = parsed.data;
-    return { userId: sub, role: rol, sessionId: sid };
+    const { sub, rol, sid, exp } = parsed.data;
+    return {
+      valid: true,
+      claims: { userId: sub, role: rol, sessionId: sid },
+      expiresAt: new Date(exp * MS_PER_SECOND),
+    };
   }
 
   private nowSeconds(): number {

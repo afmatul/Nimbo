@@ -57,6 +57,7 @@ const LIMITS: PlanLimits = {
   storageQuotaBytes: 2_000n * BigInt(MIB),
   trashRetentionDays: 30,
   retainedVersions: 3,
+  maxEditors: 0,
   planName: 'Plan de prueba',
 };
 const CONFIG: UploadConfig = {

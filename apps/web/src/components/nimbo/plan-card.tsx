@@ -1,24 +1,26 @@
-import type { Plan } from '@nimbo/contracts';
+import { formatGtq, type Plan } from '@nimbo/contracts';
 import type { ReactNode } from 'react';
 
-import { formatDocxEditing, formatPlanBytes, formatQuetzales } from '../../lib/format-plan';
+import { formatDocxEditing, formatPlanBytes } from '../../lib/format-plan';
 import { cn } from '../../lib/utils';
 import { Card } from '../ui/card';
 
 export interface PlanCardProps {
   readonly plan: Plan;
   readonly className?: string;
+  /** Acción al pie (009 CA-9: «Contratar» en los planes de pago); la decide la página. */
+  readonly action?: ReactNode;
 }
 
 /** Tarjeta de un plan del catálogo (008 CA-2, RF-19): nombre, precio y límites salen del contrato, nunca del frontend. */
-export function PlanCard({ plan, className }: PlanCardProps): ReactNode {
+export function PlanCard({ plan, className, action }: PlanCardProps): ReactNode {
   return (
     <Card className={cn('flex flex-col gap-4 p-5', className)}>
       <h2 className="text-base font-semibold text-foreground">{plan.name}</h2>
       <p className="min-h-8 text-xs text-muted-foreground">{plan.description}</p>
       <p className="flex items-baseline gap-1">
         <span className="text-2xl font-bold tabular-nums text-foreground">
-          {formatQuetzales(plan.priceCents)}
+          {formatGtq(plan.priceCents)}
         </span>
         <span className="text-xs text-muted-foreground">al mes</span>
       </p>
@@ -27,6 +29,7 @@ export function PlanCard({ plan, className }: PlanCardProps): ReactNode {
         <PlanFact label="Archivo máx." value={formatPlanBytes(plan.maxFileBytes)} />
         <PlanFact label="Edición .docx" value={formatDocxEditing(plan.maxEditors)} />
       </dl>
+      {action === undefined ? null : <div className="mt-auto pt-2">{action}</div>}
     </Card>
   );
 }

@@ -1,7 +1,7 @@
 import type { DataSource, QueryRunner } from 'typeorm';
 
-import { PlanOrmEntity } from '../../../src/modules/billing/infrastructure/persistence/plan.orm-entity';
 import { TypeOrmPlanRepository } from '../../../src/modules/billing/infrastructure/persistence/typeorm-plan.repository';
+import type { TransactionContext } from '../../../src/shared';
 import { connectAsOwner } from '../../support/database-urls';
 import { inRolledBackTransaction } from '../storage/storage-test-db';
 
@@ -16,7 +16,7 @@ const insertPlanPricedAt = (runner: QueryRunner, slug: string): Promise<unknown>
     [slug, slug, TIED_PRICE_CENTS],
   );
 
-describe('TypeOrmPlanRepository.findAll contra Postgres (008 CA-1, RN-2)', () => {
+describe('TypeOrmPlanRepository.findActive contra Postgres (008 CA-1, RN-2)', () => {
   let owner: DataSource;
 
   beforeAll(async () => {
@@ -31,8 +31,8 @@ describe('TypeOrmPlanRepository.findAll contra Postgres (008 CA-1, RN-2)', () =>
     const slugs = await inRolledBackTransaction(owner, async (runner) => {
       await insertPlanPricedAt(runner, 'pro-anual');
       await insertPlanPricedAt(runner, 'plus');
-      const repository = new TypeOrmPlanRepository(runner.manager.getRepository(PlanOrmEntity));
-      return (await repository.findAll()).map(({ slug }) => slug);
+      const context = { manager: () => runner.manager } as unknown as TransactionContext;
+      return (await new TypeOrmPlanRepository(context).findActive()).map(({ slug }) => slug);
     });
 
     expect(slugs).toEqual(['personal', 'plus', 'pro', 'pro-anual', 'equipo', 'institucional']);
