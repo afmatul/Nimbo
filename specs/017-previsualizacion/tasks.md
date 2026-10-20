@@ -9,7 +9,7 @@
 
 - Spec 017 permanece **En curso**. T-01/T-02/T-03/T-05/T-06/T-07/T-08/T-09/T-10 completas; cierre y evidencia de T-06/T-07 en [su registro final](#cierre-técnico-t-06-y-t-07-2026-10-18), de T-08 en [su cierre técnico](#cierre-técnico-t-08-2026-10-18), de T-09 en [su cierre técnico](#cierre-técnico-t-09-2026-10-19) y de T-10 en [su registro](#t-10--evidencia-en-navegador-real-2026-10-19) y [su cierre](#cierre-de-t-10-2026-10-19).
 - T-04 permanece `[ ]` solo por lo que depende de T-11: el hostname de objetos realmente aislado y su comprobación humana en DevTools. La evidencia en navegador real que esperaba quedó acreditada en T-10; no presenta un bloqueo abierto de Redis/CORS en backend/Node.
-- T-11 permanece `[ ]` (demo humana).
+- T-11 permanece `[ ]`: la demo humana local está completa ([evidencia](#t-11--demo-humana-local-2026-10-19)); faltan solo el hostname de objetos realmente aislado y un rol interno real con 403 humano.
 
 ### T-04 — resumen vigente
 
@@ -838,3 +838,29 @@ T-10 ya acredita estos comportamientos mediante automatización y Chrome real. T
 ### Estado
 
 **T-10 `[x]`**: la parte técnica de `storage/preview` está cerrada y el último defecto propio conocido quedó corregido. PD-41 queda explícitamente no acreditado y PD-33 como deuda externa conocida; ninguno bloquea T-10. T-10 depende de T-04: lo que T-04 esperaba de T-10 quedó acreditado aquí, y su único resto (hostname aislado real) pasa a T-11. **T-04 permanece `[ ]`** por ese resto; **T-11 permanece `[ ]`**. La spec permanece **En curso**.
+
+## T-11 — demo humana local (2026-10-19)
+
+Recorrido humano de Abel en Chrome sobre el entorno local (`pnpm --filter web dev`, API y worker en el host, Docker Compose con Postgres, Redis, MinIO, Traefik y Mailpit), con las cuentas sintéticas A y B de T-10. El agente solo preparó el entorno, verificó por API lo que se le pidió y registró los resultados; no sustituyó ninguna comprobación manual. Sin cambios de código, configuración versionada ni `.env`.
+
+**27/27 comprobaciones locales completadas; demo funcional PASS.**
+
+- **Formatos y estados:** PDF multipágina y escaneado, imágenes, TXT/MD literal, XLSX con varias hojas y fórmula sin cache, PPTX con varias diapositivas, corrupto/protegido, formato excluido, Reintentar y Descargar: PASS.
+- **Archivo vacío válido:** PASS con un `.pptx` sin diapositivas rehecho y guardado con PowerPoint, que se previsualiza vacío y se descarga y abre en PowerPoint sin reparación.
+- **Fixture `vacia.pptx` anterior:** clasificado como **fixture inválido**, sin regresión de descarga. Lo generó el arnés sintético de T-10 con solo 4 partes OPC (sin slide master, layout, tema ni `notesSz`), por lo que PowerPoint pide repararlo. Original, objeto almacenado en MinIO y descarga 005 tienen 1268 bytes y el mismo SHA-256, idénticos byte a byte; la descarga responde `attachment` y `application/octet-stream`.
+- **Volver y foco:** a la carpeta de origen con foco en la fila y a la raíz con foco correspondiente: PASS. Volver pulsado durante el `preview-url` pendiente: PASS.
+- **Acceso:** archivo ajeno (cuenta B) e inexistente indistinguibles: PASS.
+- **Responsive:** 360 y 1440 px: PASS.
+- **DevTools, host de objetos local `localhost:9000`:** CORS PASS; Range con 206 y `Content-Range` PASS; GET sin Cookie, Authorization, Bearer ni cabeceras Nimbo PASS; ninguna navegación del documento al host de objetos PASS; Descargar sigue entregando `attachment` PASS.
+- **axe:** a 360 px, 0 incidencias. A 1440 px, el visor está limpio; la única incidencia es PD-33, el ítem «Mis archivos» de la barra lateral con 4.05:1, externa a `storage/preview` y no regresión de 017.
+- **Teclado y foco:** PASS.
+- **429:** PASS. Se reinició solo la API con `RATE_LIMIT_PREVIEW_URL_PER_MINUTE=3` como variable efímera del proceso. La cuarta emisión del minuto respondió 429 con `Retry-After` y la UI lo mostró; pasado el plazo, Reintentar recuperó la vista previa. Después la API se reinició sin la variable (default 120): `health/live` y `health/ready` 200 con Postgres, Redis y MinIO `up`, y cinco emisiones seguidas respondieron 200.
+
+### Pendientes externos
+
+1. **Hostname realmente aislado del host de objetos.** En local la web es `localhost` y los objetos `localhost:9000`, el mismo sitio; la ausencia de cookies la garantiza el código (`credentials: 'omit'`), no el aislamiento del hostname. Requiere staging o un entorno equivalente.
+2. **Cuenta interna real (ADMIN, SUPPORT u OPERATOR) para el 403 humano.** La base local solo tiene cuentas CLIENT y no se creó una cuenta interna falsa. El 403 sigue acreditado por aislamiento (`storage-preview.iso-spec.ts`).
+
+### Estado
+
+**T-11 permanece `[ ]`** hasta acreditar esos dos pendientes y **T-04 permanece `[ ]`** hasta acreditar el primero. La spec permanece **En curso**.
