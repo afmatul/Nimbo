@@ -91,6 +91,15 @@ describe('PlanCard (008 CA-2)', () => {
     expect(screen.queryByRole('link')).toBeNull();
   });
 
+  it('010: el distintivo va junto al nombre y el plan destacado lleva su borde', () => {
+    const { container } = render(
+      <PlanCard plan={PRO} badge={<span>Plan actual</span>} highlighted />,
+    );
+
+    expect(screen.getByText('Plan actual')).toBeTruthy();
+    expect(container.querySelector('.border-2')).toBeTruthy();
+  });
+
   it('011 CA-8: el distintivo va junto al nombre y los límites por defecto siguen siendo los tres del comparador', () => {
     render(<PlanCard plan={PRO} badge={<span>Activo</span>} />);
 

@@ -18,6 +18,8 @@ export interface PlanCardProps {
   readonly action?: ReactNode;
   /** Distintivo junto al nombre (010: «Plan actual»; 011: «Activo» o «Inactivo»). */
   readonly badge?: ReactNode;
+  /** Borde destacado del plan actual (mockup `planes--cambiar-plan`). */
+  readonly highlighted?: boolean;
   /** Límites que muestra la tarjeta; por defecto, los tres del comparador (008 CA-2). */
   readonly facts?: readonly PlanFactValue[] | undefined;
   /** Contenido entre los límites y el pie (011: cuentas con este plan y fecha de desactivación). */
@@ -33,22 +35,6 @@ function defaultFacts(plan: Plan): readonly PlanFactValue[] {
     { label: 'Archivo máx.', value: formatPlanBytes(plan.maxFileBytes) },
     { label: 'Edición .docx', value: formatDocxEditing(plan.maxEditors) },
   ];
-}
-
-/** El nombre del plan y, si lo hay, el distintivo a su lado (010: «Plan actual»; 011: «Activo» o «Inactivo»). */
-function PlanHeading({
-  plan,
-  badge,
-}: {
-  readonly plan: Plan;
-  readonly badge?: ReactNode;
-}): ReactNode {
-  return (
-    <div className="flex items-start justify-between gap-2">
-      <h2 className="text-base font-semibold text-foreground">{plan.name}</h2>
-      {badge}
-    </div>
-  );
 }
 
 /** Los límites de la tarjeta: los del comparador o los que trae la variante de administración (011 CA-8). */
@@ -78,13 +64,19 @@ export function PlanCard({
   className,
   action,
   badge,
+  highlighted = false,
   facts,
   meta,
   note,
 }: PlanCardProps): ReactNode {
   return (
-    <Card className={cn('flex flex-col gap-4 p-5', className)}>
-      <PlanHeading plan={plan} badge={badge} />
+    <Card
+      className={cn('flex flex-col gap-4 p-5', highlighted && 'border-2 border-primary', className)}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <h2 className="text-base font-semibold text-foreground">{plan.name}</h2>
+        {badge}
+      </div>
       <p className="min-h-8 text-xs text-muted-foreground">{plan.description}</p>
       <p className="flex items-baseline gap-1">
         <span className="text-2xl font-bold tabular-nums text-foreground">
@@ -108,9 +100,9 @@ function PlanFact({
   readonly value: ReactNode;
 }): ReactNode {
   return (
-    <div className="flex justify-between gap-2">
+    <div className="flex justify-between">
       <dt className="text-muted-foreground">{label}</dt>
-      <dd className="text-right font-medium tabular-nums">{value}</dd>
+      <dd className="font-medium tabular-nums">{value}</dd>
     </div>
   );
 }
