@@ -78,7 +78,7 @@ programar un cambio de plan (subir, bajar o volver a Personal) que se aplica en 
 - **RN-8** El aviso previo se envía N días antes de `vence_en`; N es configurable sin cambiar código y vale 3 por defecto. Un aviso por periodo.
 - **RN-9** Un cobro como máximo por suscripción y periodo, sea automático o manual (Art. XI.2).
 - **RN-10** El cobro automático se intenta una sola vez por periodo; si se rechaza, la cuenta sigue con la renovación manual (CA-9, CA-10). A una cuenta que ya está en solo lectura nunca se le cobra en automático.
-- **RN-11** En archivos compartidos manda la cuenta propietaria del archivo: un archivo de una cuenta en solo lectura no se edita, aunque lo abra un editor con cuenta vigente (lo aplican 012 y, en el editor, la 010: `EDITING_ACCOUNT_READ_ONLY`).
+- **RN-11** En archivos compartidos manda la cuenta propietaria del archivo: un archivo de una cuenta en solo lectura no se edita, aunque lo abra un editor con cuenta vigente (lo aplican 012 y, en el editor de la 016, la 010).
 
 ## 5. Seguridad y privacidad
 - Toca datos de un cliente (suscripción, pagos, facturas y el estado que limita sus archivos): lleva pruebas de aislamiento (CA-24).

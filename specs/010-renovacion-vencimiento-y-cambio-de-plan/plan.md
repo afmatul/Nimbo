@@ -69,7 +69,7 @@ Entre corchetes, el dueño del módulo ajeno: **cambio en módulo ajeno, a autor
 
 - **Puertos nuevos**: solo `IDueSubscriptionScanner`, interno (V.2 b). **Puerto cambiado**: `IPaymentGateway` (ADR-0031), interno de `billing`, pero cambia su contrato: lo revisa el `architect`. Entre módulos, ninguno: `IPlanLimitsProvider` se ensancha (ADR-0032).
 - **Dependencias entre módulos**: `billing → audit` (ya permitida en `architecture.md` §3). `storage` sigue sin importar `billing`.
-- **Clases sin interfaz** (una implementación): `RenewalCheckout`, `ManualRenewalService`, `SubscriptionSettingsService`, `SubscriptionRenewer`, `RenewalReminderService`, `RenewalRunner`, `PaymentAttemptLimiter`, `WritableAccountPolicy`. `SubscriptionService.renew` del diagrama se reparte entre ellas (SRP).
+- **Clases sin interfaz** (una implementación): `RenewalCheckout`, `ManualRenewalService`, `SubscriptionSettingsService`, `SubscriptionRenewer`, `RenewalFollowUp`, `RenewalNotices`, `RenewalReminderService`, `RenewalRunner`, `PaymentAttemptLimiter`, `WritableAccountPolicy`. `SubscriptionService.renew` del diagrama se reparte entre ellas (SRP).
 - **Worker**: `AccountContactReader` llega por `IdentityReadersModule`, que ya importan `BillingWorkerModule` y ahora `BillingChargingModule`; sin cambio en `identity`.
 
 ## 3. Datos
