@@ -270,6 +270,20 @@ describe('EditorView (016)', () => {
     await expectAccessible();
   });
 
+  it('solo-lectura-vencida (spec 010, PD-119): texto propio con «Renovar plan»', async () => {
+    await renderEditor(fakeApi(viewingSession('EDITING_ACCOUNT_READ_ONLY', [], 0)));
+
+    expect(
+      screen.getByText('Tu suscripción venció; tus archivos están en solo lectura'),
+    ).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Renovar plan' }).getAttribute('href')).toBe(
+      '/suscripcion/renovar',
+    );
+    expect(screen.queryByRole('link', { name: 'Ver planes' })).toBeNull();
+    expect(within(presencePanel()).getByText('Solo lectura')).toBeTruthy();
+    await expectAccessible();
+  });
+
   it('solo-lectura-tamano, CA-21: el documento supera el tope editable', async () => {
     await renderEditor(fakeApi(viewingSession('EDITING_FILE_TOO_LARGE')));
 
@@ -293,6 +307,7 @@ describe('EditorView (016)', () => {
     ['EDITING_VIEW_ONLY', 'Puedes ver este documento, pero no editarlo'],
     ['EDITING_PLAN_READ_ONLY', 'Tu plan no incluye edición'],
     ['EDITING_OWNER_PLAN_READ_ONLY', 'El plan de la cuenta propietaria no incluye edición'],
+    ['EDITING_ACCOUNT_READ_ONLY', 'Tu suscripción venció; tus archivos están en solo lectura'],
     ['EDITING_LIMIT_REACHED', 'Hay 5 editores; estás en solo lectura. Inténtalo en unos minutos'],
     ['EDITING_FILE_TOO_LARGE', 'Este documento es demasiado grande para editarlo en línea'],
   ])('el aviso de solo lectura sale solo del código `%s`', async (reason, title) => {

@@ -36,12 +36,13 @@ export interface OpenSessionInput {
   readonly connectionId?: string | undefined;
 }
 
-/** Lo que decide la apertura: el archivo, si quien abre puede editar y el máximo de editores de la propietaria. */
+/** Lo que decide la apertura: el archivo, si quien abre puede editar, y el máximo de editores y la solo lectura de la propietaria. */
 interface OpenContext {
   readonly actor: Actor;
   readonly file: EditableFile;
   readonly canEdit: boolean;
   readonly ownerMaxEditors: number;
+  readonly ownerReadOnly: boolean;
   readonly connectionId?: string | undefined;
 }
 
@@ -154,8 +155,8 @@ export class EditSessionService {
       this.permissions.can(actor, file.id, Action.EDIT),
     );
     const owner = createActor(file.ownerId, Role.CLIENT);
-    const { maxEditors } = await this.planLimits.limitsFor(owner);
-    return { actor, file, canEdit, ownerMaxEditors: maxEditors };
+    const { maxEditors, readOnly } = await this.planLimits.limitsFor(owner);
+    return { actor, file, canEdit, ownerMaxEditors: maxEditors, ownerReadOnly: readOnly };
   }
 
   /** Un solo reintento: si otra apertura creó la sesión a la vez, se decide de nuevo sobre la suya. */
@@ -212,6 +213,7 @@ export class EditSessionService {
       canEdit: context.canEdit,
       openedByOwner: context.actor.id === context.file.ownerId,
       ownerMaxEditors: context.ownerMaxEditors,
+      ownerReadOnly: context.ownerReadOnly,
       activeEditors: connected.filter((userId) => userId !== context.actor.id).length,
       sizeBytes: context.file.sizeBytes,
       maxDocBytes: this.config.maxDocBytes,

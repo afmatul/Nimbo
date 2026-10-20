@@ -20,7 +20,7 @@ const openSession = (): EditSession =>
     now: NOW,
   });
 
-const fakes = (open: EditSession) => {
+const fakes = (open: EditSession, ownerReadOnly = false) => {
   const calls: string[] = [];
   const presence = {
     admit: jest.fn(async () => {
@@ -38,7 +38,7 @@ const fakes = (open: EditSession) => {
     { withActor: (_actor: unknown, work: () => unknown) => work() },
     { find: async () => ({ ...file, currentVersionId: open.baseVersionId }) },
     { can: async () => true },
-    { limitsFor: async () => ({ maxEditors: 3 }) },
+    { limitsFor: async () => ({ maxEditors: 3, readOnly: ownerReadOnly }) },
     sessions,
     { displayNames: async () => new Map([[OWNER, 'Ana']]) },
     { factory: async () => ({ build: () => ({}) }) },
@@ -72,5 +72,13 @@ describe('EditSessionService.open (review 016 S-1)', () => {
 
     expect(presence.admit).toHaveBeenCalledWith(actor, CONNECTION_ID, FILE_ID);
     expect(calls).toEqual(['admit', 'announce']);
+  });
+
+  it('010 CA-13, RN-11: con la cuenta propietaria en solo lectura abre en `view`', async () => {
+    const { service } = fakes(openSession(), true);
+
+    const opened = await service.open(actor, FILE_ID, { connectionId: CONNECTION_ID });
+
+    expect(opened).toMatchObject({ mode: 'view', readOnlyReason: 'EDITING_ACCOUNT_READ_ONLY' });
   });
 });

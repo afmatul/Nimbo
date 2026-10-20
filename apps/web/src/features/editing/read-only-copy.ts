@@ -1,7 +1,7 @@
 import type { ReadOnlyReason } from '@nimbo/contracts';
 
-/** Qué ofrece el aviso: ir al comparador de planes, volver a intentar la edición o nada. */
-export type ReadOnlyAction = 'plans' | 'retry' | null;
+/** Qué ofrece el aviso: ir al comparador de planes, renovar el plan vencido, volver a intentar la edición o nada. */
+export type ReadOnlyAction = 'plans' | 'renew' | 'retry' | null;
 
 /** Texto del aviso de solo lectura y de la presencia; sale solo del código de la API (plan §4). */
 export interface ReadOnlyCopy {
@@ -24,7 +24,8 @@ function limitTitle(maxEditors: number): string {
 }
 
 /**
- * Textos por motivo (spec §6). `EDITING_PLAN_READ_ONLY` cubre Personal y suscripción vencida (CA-5); el de la cuenta
+ * Textos por motivo (spec §6). `EDITING_PLAN_READ_ONLY` es el plan sin edición (Personal, CA-5) y
+ * `EDITING_ACCOUNT_READ_ONLY` la suscripción vencida (spec 010, mockup `editor--solo-lectura-vencida`); el de la cuenta
  * propietaria no dice cuál de los dos ni ofrece acciones de plan, porque es de otra cuenta (CA-22).
  */
 const READ_ONLY_COPIES: Readonly<Record<ReadOnlyReason, ReadOnlyCopy>> = {
@@ -55,6 +56,14 @@ const READ_ONLY_COPIES: Readonly<Record<ReadOnlyReason, ReadOnlyCopy>> = {
     action: null,
     blockedLabel: 'Edición no disponible',
     footer: 'Cuando la cuenta propietaria tenga un plan con edición, podrás editarlo aquí.',
+  },
+  EDITING_ACCOUNT_READ_ONLY: {
+    tone: 'warning',
+    title: 'Tu suscripción venció; tus archivos están en solo lectura',
+    description: 'Nada se borró. Renueva tu plan para volver a editar este documento.',
+    action: 'renew',
+    blockedLabel: 'Solo lectura',
+    footer: 'Al renovar, vuelves a editar con el límite de tu plan.',
   },
   EDITING_LIMIT_REACHED: {
     tone: 'warning',

@@ -6,6 +6,7 @@ import * as React from 'react';
 
 import { Alert } from '../../../components/ui/alert';
 import { Button, buttonVariants } from '../../../components/ui/button';
+import { RENEW_PATH } from '../../billing/routes';
 import type { ReadOnlyCopy } from '../read-only-copy';
 import { PLANS_PATH } from '../routes';
 
@@ -47,6 +48,13 @@ function NoticeAction({ copy, onRetry }: ReadOnlyNoticeProps): React.JSX.Element
     return (
       <Link href={PLANS_PATH} className={buttonVariants({ size: 'sm', className: ACTION_CLASS })}>
         Ver planes
+      </Link>
+    );
+  }
+  if (copy.action === 'renew') {
+    return (
+      <Link href={RENEW_PATH} className={buttonVariants({ size: 'sm', className: ACTION_CLASS })}>
+        Renovar plan
       </Link>
     );
   }
