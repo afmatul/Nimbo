@@ -2,6 +2,7 @@ import type { PaymentReceipt } from '@nimbo/contracts';
 
 import type { RenewalOutcome } from '../application/renewal-checkout';
 import type { SubscribeOutcome } from '../application/subscription-checkout';
+import { BillingInvariantError } from '../domain/errors/billing-invariant.error';
 
 /** Lo que el recibo necesita de una contratación (009) o de una renovación (010). */
 type PaidOutcome = Pick<
@@ -20,7 +21,9 @@ export const toPaymentReceipt = ({
   invoice,
 }: PaidOutcome): PaymentReceipt => {
   if (subscription.expiresAt === null || invoice === null) {
-    throw new Error('Un pago aprobado siempre vence (RN-4) y tiene factura (CA-6).');
+    throw new BillingInvariantError(
+      'Un pago aprobado siempre vence (RN-4) y tiene factura (CA-6).',
+    );
   }
   return {
     reference: payment.reference,

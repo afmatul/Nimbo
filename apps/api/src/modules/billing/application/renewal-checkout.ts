@@ -12,14 +12,15 @@ import type { PaymentInstrument } from '../domain/payment-instrument';
 import { Money } from '../domain/value-objects/money';
 
 import { InvoiceService } from './invoice.service';
+import { resolveNextCycle } from './next-cycle';
+import type { NextCyclePlan } from './next-cycle';
 import { PaymentService } from './payment.service';
 import type { ChargeResult } from './payment.service';
 import { I_PLAN_REPOSITORY } from './ports/i-plan-repository.port';
 import type { IPlanRepository } from './ports/i-plan-repository.port';
 import { I_SUBSCRIPTION_REPOSITORY } from './ports/i-subscription-repository.port';
 import type { ISubscriptionRepository } from './ports/i-subscription-repository.port';
-import { requirePlan } from './require-plan';
-import { recordSubscriptionEvent } from './subscription-audit';
+import { planChangeEvents, recordSubscriptionEvent } from './subscription-audit';
 import type { SubscriptionAuditAttributes } from './subscription-audit';
 
 /**
@@ -44,19 +45,25 @@ export interface RenewalOutcome {
   readonly discardedPlan: Plan | null;
 }
 
-/** El plan que cobra el siguiente ciclo y la suscripción de la que parte (sin el cambio, si se descartó). */
-interface NextCycle {
+/** El plan del siguiente ciclo y la suscripción de la que parte (sin el cambio, si se descartó). */
+interface NextCycle extends NextCyclePlan {
   readonly from: Subscription;
-  readonly plan: Plan;
-  readonly discardedPlan: Plan | null;
+}
+
+/** Lo que audita una renovación aprobada: la fila antes y después, el ciclo y quién la pidió. */
+interface RenewalAudit {
+  readonly before: Subscription;
+  readonly next: Subscription;
+  readonly cycle: NextCycle;
+  readonly trigger: RenewalTrigger;
 }
 
 /**
  * Pasos de la renovación dentro de la transacción del cobro, con la fila ya bloqueada (spec 010 plan §2; RN-1, RN-4,
  * CA-20, CA-29): resuelve el plan del siguiente ciclo, cobra su precio completo y, si se aprueba, renueva, registra la
- * factura y audita. Un rechazo se devuelve sin lanzar (009 B-3): a mano no cambia nada (CA-9); en la automática la
+ * factura y audita. Un rechazo se devuelve sin lanzar (como en la 009): a mano no cambia nada (CA-9); en la automática la
  * cuenta queda en solo lectura (CA-2). Comparte con
- * `SubscriptionCheckout` los colaboradores, no la secuencia (m-6).
+ * `SubscriptionCheckout` los colaboradores, no la secuencia (plan §2). También aplica la bajada a Personal al vencer.
  */
 @Injectable()
 export class RenewalCheckout {
@@ -81,7 +88,7 @@ export class RenewalCheckout {
     const next = cycle.from.renewWith(cycle.plan, this.clock.now());
     await this.subscriptions.save(actor, next);
     const invoice = await this.invoices.register(actor, payment, order.nit);
-    await this.auditRenewal(actor, current, cycle, order.trigger);
+    await this.auditRenewal(actor, { before: current, next, cycle, trigger: order.trigger });
     return {
       payment,
       plan: cycle.plan,
@@ -121,43 +128,36 @@ export class RenewalCheckout {
     return { payment, plan: cycle.plan, subscription, invoice: null, discardedPlan: null };
   }
 
-  /** RN-4: el programado si sigue activo; si se desactivó, se descarta y cobra el actual (CA-29). */
-  private async nextCycle(current: Subscription): Promise<NextCycle> {
-    if (current.pendingPlanId !== null) {
-      const pending = await requirePlan(this.plans, current.pendingPlanId);
-      if (pending.isActive) return { from: current, plan: pending, discardedPlan: null };
-      const from = current.cancelChange();
-      return { from, plan: await requirePlan(this.plans, from.planId), discardedPlan: pending };
+  /** CA-21: al vencer con Personal programado, pasa a Personal sin cobro ni vencimiento (la cuota la aplica `storage`). */
+  async downgrade(actor: Actor, current: Subscription, personal: Plan): Promise<Subscription> {
+    const next = current.renewWith(personal, this.clock.now());
+    await this.subscriptions.save(actor, next);
+    for (const event of planChangeEvents(current, next, personal)) {
+      await recordSubscriptionEvent(this.audit, actor, event);
     }
-    return {
-      from: current,
-      plan: await requirePlan(this.plans, current.planId),
-      discardedPlan: null,
-    };
+    return next;
   }
 
-  /** CA-6, CA-22 (plan §2): renovada, salida de solo lectura y cambio aplicado o descartado; nunca datos de tarjeta. */
-  private async auditRenewal(
-    actor: Actor,
-    before: Subscription,
-    cycle: NextCycle,
-    trigger: RenewalTrigger,
-  ): Promise<void> {
-    const { plan, discardedPlan } = cycle;
+  /** RN-4 y CA-29 (`resolveNextCycle`); si el programado se descartó, la renovación parte de la fila sin el cambio. */
+  private async nextCycle(current: Subscription): Promise<NextCycle> {
+    const cycle = await resolveNextCycle(this.plans, current);
+    return { ...cycle, from: cycle.discardedPlan === null ? current : current.cancelChange() };
+  }
+
+  /** CA-6, CA-22 (plan §2): renovada, cambio aplicado, salida de solo lectura y cambio descartado; nunca datos de tarjeta. */
+  private async auditRenewal(actor: Actor, renewal: RenewalAudit): Promise<void> {
+    const { before, next, cycle, trigger } = renewal;
     await this.record(actor, AuditAction.SUBSCRIPTION_RENEWED, {
       trigger,
-      planSlug: plan.slug,
-      amountCents: plan.priceCents,
+      planSlug: cycle.plan.slug,
+      amountCents: cycle.plan.priceCents,
     });
-    if (before.isReadOnly) await this.record(actor, AuditAction.SUBSCRIPTION_READ_ONLY_EXITED, {});
-    if (plan.id !== before.planId) {
-      await this.record(actor, AuditAction.SUBSCRIPTION_PLAN_CHANGE_APPLIED, {
-        planSlug: plan.slug,
-      });
+    for (const event of planChangeEvents(before, next, cycle.plan)) {
+      await recordSubscriptionEvent(this.audit, actor, event);
     }
-    if (discardedPlan !== null) {
+    if (cycle.discardedPlan !== null) {
       await this.record(actor, AuditAction.SUBSCRIPTION_PLAN_CHANGE_DISCARDED, {
-        planSlug: discardedPlan.slug,
+        planSlug: cycle.discardedPlan.slug,
       });
     }
   }

@@ -39,8 +39,6 @@ import { assertWritableLimits } from './writable-account.policy';
 const RATE_LIMIT_WINDOW_SECONDS = 60;
 const RESTORE_RATE_KEY_PREFIX = 'storage:version-restore:';
 
-const errorNameOf = (error: unknown): string => errorName(error);
-
 /** Qué se pide restaurar y con qué límites del plan (pedidos fuera de la transacción). */
 interface RestoreRequest {
   readonly fileId: string;
@@ -165,7 +163,7 @@ export class VersionRestoreService {
         event: 'version.restore_discard_failed',
         fileId,
         versionId: copy.id,
-        errorName: errorNameOf(error),
+        errorName: errorName(error),
       });
     }
   }

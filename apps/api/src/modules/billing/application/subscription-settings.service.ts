@@ -12,35 +12,16 @@ import { I_PLAN_REPOSITORY } from './ports/i-plan-repository.port';
 import type { IPlanRepository } from './ports/i-plan-repository.port';
 import { I_SUBSCRIPTION_REPOSITORY } from './ports/i-subscription-repository.port';
 import type { ISubscriptionRepository } from './ports/i-subscription-repository.port';
-import { recordSubscriptionEvent } from './subscription-audit';
-import type { SubscriptionAuditAttributes } from './subscription-audit';
+import { planChangeEvents, recordSubscriptionEvent } from './subscription-audit';
+import type { SubscriptionEvent } from './subscription-audit';
 import type { SubscriptionSummary } from './subscription-summary';
 
 /** Un evento de auditoría que acompaña al cambio (CA-6, CA-22). */
-interface SettingsEvent {
-  readonly action: AuditAction;
-  readonly attributes?: SubscriptionAuditAttributes;
-}
-
 /** El cambio de dominio sobre la fila bloqueada y los eventos que deja. */
 interface SettingsChange {
   readonly next: Subscription;
-  readonly events: readonly SettingsEvent[];
+  readonly events: readonly SubscriptionEvent[];
 }
-
-/** CA-27: en solo lectura, la bajada a Personal se aplica ya y termina la solo lectura. */
-const scheduledEvents = (before: Subscription, next: Subscription, planSlug: string) => {
-  const scheduled = {
-    action: AuditAction.SUBSCRIPTION_PLAN_CHANGE_SCHEDULED,
-    attributes: { planSlug },
-  };
-  if (next.planId === before.planId) return [scheduled];
-  return [
-    scheduled,
-    { action: AuditAction.SUBSCRIPTION_PLAN_CHANGE_APPLIED, attributes: { planSlug } },
-    { action: AuditAction.SUBSCRIPTION_READ_ONLY_EXITED },
-  ];
-};
 
 /**
  * Ajustes de la suscripción del cliente (spec 010 CA-6, CA-16 a CA-19, CA-22, CA-27): renovación automática y cambio
@@ -74,7 +55,11 @@ export class SubscriptionSettingsService {
       const plan = await this.plans.findBySlug(planSlug);
       if (plan === null) throw new PlanChangeInvalidError();
       const next = current.scheduleChange(plan, this.clock.now());
-      return { next, events: scheduledEvents(current, next, plan.slug) };
+      const scheduled = {
+        action: AuditAction.SUBSCRIPTION_PLAN_CHANGE_SCHEDULED,
+        attributes: { planSlug: plan.slug },
+      };
+      return { next, events: [scheduled, ...planChangeEvents(current, next, plan)] };
     });
   }
 

@@ -24,6 +24,7 @@ import { ManualRenewalService } from '../application/manual-renewal.service';
 import { SubscriptionSettingsService } from '../application/subscription-settings.service';
 import type { SubscriptionSummary } from '../application/subscription-summary';
 import { SubscriptionService } from '../application/subscription.service';
+import { BillingInvariantError } from '../domain/errors/billing-invariant.error';
 import { PaymentRejectedError } from '../domain/errors/payment-rejected.error';
 import type { PaymentCard } from '../domain/payment-card';
 
@@ -41,14 +42,17 @@ const toPaymentCard = ({ number, expMonth, expYear }: SubscribeRequest['card']):
 
 /** Después de un ajuste la fila siempre existe (el servicio la garantiza antes de bloquear). */
 const viewOf = (summary: SubscriptionSummary | null): SubscriptionView => {
-  if (summary === null) throw new Error('Un ajuste de la suscripción siempre deja su fila.');
+  if (summary === null)
+    throw new BillingInvariantError('Un ajuste de la suscripción siempre deja su fila.');
   return toSubscriptionView(summary);
 };
 
 /**
- * Cobro, historial y descarga de facturas del cliente (spec 009 CA-3 a CA-5, CA-7 y CA-8). Solo `CLIENT`: los roles
- * internos reciben `403` y no pagan ni leen pagos de un cliente. El cobro valida RN-9, delega y, si la pasarela rechazó,
- * lanza el `402` ya fuera de la transacción (B-3). El CVC no pasa de aquí; el NIT va a la factura (T-06).
+ * Suscripción del cliente: contratar, historial y descarga de facturas (spec 009 CA-3 a CA-5, CA-7 y CA-8) y, con la
+ * 010, renovar a mano (CA-8 a CA-10, CA-26, CA-28), la renovación automática (CA-6) y el cambio de plan (CA-16 a
+ * CA-19, CA-27). Solo `CLIENT`: los roles internos reciben `403` (CA-23) y no pagan ni leen pagos de un cliente. Los
+ * cobros validan RN-9, delegan y, si la pasarela rechazó, lanzan el `402` ya fuera de la transacción. El CVC no pasa de
+ * aquí; el NIT va a la factura.
  */
 @Roles(Role.CLIENT)
 @Controller('billing')
