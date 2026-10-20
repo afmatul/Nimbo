@@ -35,6 +35,39 @@ function defaultFacts(plan: Plan): readonly PlanFactValue[] {
   ];
 }
 
+/** El nombre del plan y, si lo hay, el distintivo a su lado (010: «Plan actual»; 011: «Activo» o «Inactivo»). */
+function PlanHeading({
+  plan,
+  badge,
+}: {
+  readonly plan: Plan;
+  readonly badge?: ReactNode;
+}): ReactNode {
+  return (
+    <div className="flex items-start justify-between gap-2">
+      <h2 className="text-base font-semibold text-foreground">{plan.name}</h2>
+      {badge}
+    </div>
+  );
+}
+
+/** Los límites de la tarjeta: los del comparador o los que trae la variante de administración (011 CA-8). */
+function PlanFacts({
+  plan,
+  facts,
+}: {
+  readonly plan: Plan;
+  readonly facts?: readonly PlanFactValue[] | undefined;
+}): ReactNode {
+  return (
+    <dl className="flex flex-col gap-2 border-t border-border pt-2 text-xs text-foreground">
+      {(facts ?? defaultFacts(plan)).map((fact) => (
+        <PlanFact key={fact.label} label={fact.label} value={fact.value} />
+      ))}
+    </dl>
+  );
+}
+
 /**
  * Tarjeta de un plan del catálogo (008 CA-2, RF-19) y del catálogo de administración (011 CA-8; PD-83): **un solo
  * componente** (`ui-guidelines.md` §4) con las dos variantes. Nombre, precio y límites salen del contrato, nunca del
@@ -51,10 +84,7 @@ export function PlanCard({
 }: PlanCardProps): ReactNode {
   return (
     <Card className={cn('flex flex-col gap-4 p-5', className)}>
-      <div className="flex items-start justify-between gap-2">
-        <h2 className="text-base font-semibold text-foreground">{plan.name}</h2>
-        {badge}
-      </div>
+      <PlanHeading plan={plan} badge={badge} />
       <p className="min-h-8 text-xs text-muted-foreground">{plan.description}</p>
       <p className="flex items-baseline gap-1">
         <span className="text-2xl font-bold tabular-nums text-foreground">
@@ -62,11 +92,7 @@ export function PlanCard({
         </span>
         <span className="text-xs text-muted-foreground">al mes</span>
       </p>
-      <dl className="flex flex-col gap-2 border-t border-border pt-2 text-xs text-foreground">
-        {(facts ?? defaultFacts(plan)).map((fact) => (
-          <PlanFact key={fact.label} label={fact.label} value={fact.value} />
-        ))}
-      </dl>
+      <PlanFacts plan={plan} facts={facts} />
       {meta === undefined ? null : <div className="text-xs text-muted-foreground">{meta}</div>}
       {note === undefined ? null : note}
       {action === undefined ? null : <div className="mt-auto pt-2">{action}</div>}

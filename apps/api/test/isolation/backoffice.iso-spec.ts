@@ -30,7 +30,10 @@ import type {
 const CLIENT_FILES = '/api/v1/backoffice/client-files';
 const ACCOUNTS = '/api/v1/backoffice/accounts';
 const METRICS = '/api/v1/backoffice/metrics';
+const PLANS = '/api/v1/backoffice/plans';
 const MY_EVENTS = '/api/v1/audit/my-events';
+/** Nombre de los planes que crea la suite: se borran al final (la base es compartida con otras suites). */
+const PLAN_NAME_PREFIX = 'Plan del aislamiento ';
 /** A y B tienen archivos con los mismos nombres: nada los distingue salvo el dueño. */
 const TWIN_NAMES = ['Contrato.txt', 'Contrato (1).txt'];
 /** Marcas de una URL (firmada o no) que ninguna respuesta del backoffice puede traer. */
@@ -61,6 +64,8 @@ interface BackofficeRoute {
   readonly request: (http: Http, target: WorldAccount) => Test;
   /** Estado en que la fila necesita a A antes de la petición (como el dueño); tras cada prueba, A vuelve a `activa`. */
   readonly targetStatus?: 'suspendida';
+  /** Precondición de la fila: deja listo lo que la petición necesita (además del estado de A). */
+  readonly prepare?: () => Promise<void>;
   /** Respuesta de éxito si no es `200` (el alta responde `201`). */
   readonly successStatus?: number;
 }
@@ -140,8 +145,70 @@ const METRICS_ROUTE: BackofficeRoute = {
   request: (http) => http.get(METRICS),
 };
 
+/** Un plan del catálogo y su conteo de cuentas: ningún dato de una cuenta (CA-8). */
+const PLAN_KEYS = [
+  ...['id', 'slug', 'name', 'description', 'priceCents'],
+  ...[
+    'quotaBytes',
+    'maxFileBytes',
+    'maxEditors',
+    'agentQueriesPerMonth',
+    'retainedVersions',
+    'trashRetentionDays',
+  ],
+  ...['deactivatedAt', 'clientCount', 'isDefault'],
+];
+
+/** Plan que la suite desactiva (se crea en `beforeAll` y se borra al final). */
+let catalogPlanId = '';
+/** Conexión del dueño, para dejar lista la precondición de la fila. */
+let db: DataSource | null = null;
+
+/** Catálogo (CA-8 a CA-11): solo el Administrador; un plan no trae datos de ninguna cuenta. */
+const PLAN_ROUTES: readonly BackofficeRoute[] = [
+  {
+    route: `GET ${PLANS}`,
+    allowed: [Role.ADMIN],
+    keys: ['items', ...PLAN_KEYS],
+    request: (http) => http.get(PLANS),
+  },
+  {
+    route: `POST ${PLANS}`,
+    allowed: [Role.ADMIN],
+    keys: PLAN_KEYS,
+    request: (http) =>
+      http.post(PLANS).send({
+        name: `${PLAN_NAME_PREFIX}${randomUUID().slice(0, 8)}`,
+        description: 'Plan sembrado por la suite de aislamiento',
+        priceCents: 4500,
+        quotaBytes: '107374182400',
+        maxFileBytes: '524288000',
+        maxEditors: 3,
+        agentQueriesPerMonth: 500,
+        retainedVersions: 30,
+        trashRetentionDays: 30,
+      }),
+    successStatus: 201,
+  },
+  {
+    route: `POST ${PLANS}/:id/deactivation`,
+    allowed: [Role.ADMIN],
+    keys: PLAN_KEYS,
+    request: (http) => http.post(`${PLANS}/${catalogPlanId}/deactivation`),
+    // Un plan desactivado no se reactiva (RN-4): la suite lo deja activo antes de cada petición.
+    prepare: async () => {
+      await db?.query('UPDATE plan SET desactivado_en = NULL WHERE id = $1', [catalogPlanId]);
+    },
+  },
+];
+
 /** Cada acción de la 011 (CA-15): T-11 suma aquí el catálogo. */
-const ROUTES: readonly BackofficeRoute[] = [CLIENT_FILES_ROUTE, ...ACCOUNT_ROUTES, METRICS_ROUTE];
+const ROUTES: readonly BackofficeRoute[] = [
+  CLIENT_FILES_ROUTE,
+  ...ACCOUNT_ROUTES,
+  METRICS_ROUTE,
+  ...PLAN_ROUTES,
+];
 
 /** Pares rol × ruta según la matriz: los que la ruta admite o los que rechaza (CA-14). */
 const casesWhere = (admitted: boolean): [InternalRole, string, BackofficeRoute][] =>
@@ -189,6 +256,7 @@ describe('aislamiento del backoffice (011 CA-15, CA-16)', () => {
   /** La precondición de la fila y la petición. */
   const sendPrepared = async (account: WorldAccount, row: BackofficeRoute): Promise<Response> => {
     if (row.targetStatus !== undefined) await setStatusOfA(row.targetStatus);
+    if (row.prepare !== undefined) await row.prepare();
     return send(account, row);
   };
 
@@ -232,16 +300,29 @@ describe('aislamiento del backoffice (011 CA-15, CA-16)', () => {
       [NotificationsWorkerModule],
     );
     owner = await connectAsOwner();
+    db = owner;
     [a, b] = world.clients;
     filesA = await world.withFiles(testApp, a, TWIN_NAMES);
     filesB = await world.withFiles(testApp, b, TWIN_NAMES);
     await world.withUploads(testApp, a, UPLOADS_PER_CLIENT);
     await world.withUploads(testApp, b, UPLOADS_PER_CLIENT);
     forbidden = await forbiddenValues();
+    const [plan] = (await owner.query(
+      `INSERT INTO plan (nombre, slug, descripcion, precio_centavos, cuota_bytes, max_archivo_bytes, max_editores,
+                         consultas_agente_mensual, versiones_retenidas, dias_retencion_papelera)
+       SELECT $1, $1, descripcion, precio_centavos, cuota_bytes, max_archivo_bytes, max_editores,
+              consultas_agente_mensual, versiones_retenidas, dias_retencion_papelera
+         FROM plan WHERE slug = 'equipo'
+       RETURNING id`,
+      [`${PLAN_NAME_PREFIX}${randomUUID().slice(0, 8)}`],
+    )) as { id: string }[];
+    if (plan === undefined) throw new Error('no se pudo sembrar el plan de la suite');
+    catalogPlanId = plan.id;
   });
 
   afterAll(async () => {
     await removeEnrolled();
+    await owner?.query('DELETE FROM plan WHERE nombre LIKE $1', [`${PLAN_NAME_PREFIX}%`]);
     await testApp?.close();
     await owner?.destroy();
     await world?.close();

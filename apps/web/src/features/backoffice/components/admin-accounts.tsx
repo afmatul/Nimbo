@@ -1,6 +1,6 @@
 'use client';
 
-import { Loader2, SearchX, UserPlus } from 'lucide-react';
+import { SearchX, UserPlus } from 'lucide-react';
 import Link from 'next/link';
 import type * as React from 'react';
 
@@ -15,6 +15,7 @@ import { useSessionBackofficeApi } from '../hooks/use-session-backoffice-api';
 import { AccountSearch } from './account-search';
 import { ADMIN_PRIVACY } from './account-values';
 import { AccountsTable } from './accounts-table';
+import { LoadingStatus, SkeletonLine } from './loading';
 import { PagePager } from './page-pager';
 import { PrivacyNotice } from './privacy-notice';
 
@@ -28,16 +29,11 @@ function AccountsLoading(): React.JSX.Element {
       <div aria-hidden="true" className="rounded-lg border border-border bg-card">
         {SKELETON_ROWS.map((width) => (
           <div key={width} className="border-b border-border p-3.5 last:border-b-0">
-            <span
-              className={`block h-3 animate-pulse rounded-full bg-muted motion-reduce:animate-none ${width}`}
-            />
+            <SkeletonLine className={width} />
           </div>
         ))}
       </div>
-      <p role="status" className="mt-3 flex items-center gap-2 text-sm text-secondary-foreground">
-        <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-        Cargando cuentas…
-      </p>
+      <LoadingStatus text="Cargando cuentas…" />
     </div>
   );
 }

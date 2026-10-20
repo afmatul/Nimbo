@@ -5,7 +5,7 @@ import {
   type BackofficeMetricsResponse,
   type InternalRoleName,
 } from '@nimbo/contracts';
-import { HardDrive, Info, Loader2, Users } from 'lucide-react';
+import { HardDrive, Info, Users } from 'lucide-react';
 import type * as React from 'react';
 
 import { StateView } from '../../../components/nimbo/state-view';
@@ -16,6 +16,7 @@ import { useMetrics, type LoadMetrics } from '../hooks/use-metrics';
 import { useSessionBackofficeApi } from '../hooks/use-session-backoffice-api';
 import { capitalize, quantity } from '../quantity';
 
+import { LoadingStatus, SkeletonLine } from './loading';
 import { BarsTable, planRows, statusRows } from './metrics-tables';
 import { PrivacyNotice } from './privacy-notice';
 import { ProfileCard } from './profile-card';
@@ -155,22 +156,13 @@ function MetricsBody({
   );
 }
 
-/** Una línea del esqueleto (mockup `backoffice/metricas`, decisión 10). */
-function SkeletonLine({ width }: { readonly width: string }): React.JSX.Element {
-  return (
-    <span
-      className={`block h-3 animate-pulse rounded-full bg-muted motion-reduce:animate-none ${width}`}
-    />
-  );
-}
-
 /** El esqueleto de un total: etiqueta, cifra y su explicación. */
 function KpiSkeleton(): React.JSX.Element {
   return (
     <div className="rounded-lg border border-border bg-card p-5 shadow-card">
-      <SkeletonLine width="w-2/5" />
-      <SkeletonLine width="mt-2.5 h-7 w-2/5" />
-      <SkeletonLine width="mt-2.5 w-3/5" />
+      <SkeletonLine className="w-2/5" />
+      <SkeletonLine className="mt-2.5 h-7 w-2/5" />
+      <SkeletonLine className="mt-2.5 w-3/5" />
     </div>
   );
 }
@@ -179,12 +171,12 @@ function KpiSkeleton(): React.JSX.Element {
 function TableSkeleton({ rows }: { readonly rows: number }): React.JSX.Element {
   return (
     <div className="rounded-lg border border-border bg-card p-5 shadow-card">
-      <SkeletonLine width="w-2/5" />
-      <SkeletonLine width="mt-2.5 w-3/5" />
+      <SkeletonLine className="w-2/5" />
+      <SkeletonLine className="mt-2.5 w-3/5" />
       {Array.from({ length: rows }, (_unused, index) => (
         <div key={index} className="mt-4 grid gap-2 border-t border-border pt-4">
-          <SkeletonLine width="w-3/10" />
-          <SkeletonLine width="w-4/5" />
+          <SkeletonLine className="w-3/10" />
+          <SkeletonLine className="w-4/5" />
         </div>
       ))}
     </div>
@@ -205,10 +197,7 @@ function MetricsLoading(): React.JSX.Element {
           <TableSkeleton rows={4} />
         </div>
       </div>
-      <p role="status" className="mt-3 flex items-center gap-2 text-sm text-secondary-foreground">
-        <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-        Cargando las métricas…
-      </p>
+      <LoadingStatus text="Cargando las métricas…" />
     </div>
   );
 }

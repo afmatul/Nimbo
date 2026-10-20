@@ -1,7 +1,7 @@
 'use client';
 
 import type { PlanAdminView } from '@nimbo/contracts';
-import { ClipboardList, Loader2, PackageX } from 'lucide-react';
+import { ClipboardList, PackageX } from 'lucide-react';
 import type * as React from 'react';
 
 import { StateView } from '../../../components/nimbo/state-view';
@@ -12,6 +12,7 @@ import { usePlanDeactivation } from '../hooks/use-plan-deactivation';
 import { usePlans, type Plans } from '../hooks/use-plans';
 import { useSessionBackofficeApi } from '../hooks/use-session-backoffice-api';
 
+import { LoadingStatus, SkeletonLine } from './loading';
 import { PlanAdminCard } from './plan-admin-card';
 import { PlanDeactivateDialog, PlanDeactivatedNotice } from './plan-deactivate-dialog';
 import { PrivacyNotice } from './privacy-notice';
@@ -36,18 +37,13 @@ function PlansLoading(): React.JSX.Element {
       <div aria-hidden="true" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {SKELETON_CARDS.map((width) => (
           <div key={width} className="rounded-lg border border-border bg-card p-5 shadow-card">
-            <span
-              className={`block h-3 animate-pulse rounded-full bg-muted motion-reduce:animate-none ${width}`}
-            />
-            <span className="mt-3 block h-3 w-1/4 animate-pulse rounded-full bg-muted motion-reduce:animate-none" />
-            <span className="mt-4 block h-6 w-1/3 animate-pulse rounded-full bg-muted motion-reduce:animate-none" />
+            <SkeletonLine className={width} />
+            <SkeletonLine className="mt-3 w-1/4" />
+            <SkeletonLine className="mt-4 h-6 w-1/3" />
           </div>
         ))}
       </div>
-      <p role="status" className="mt-3 flex items-center gap-2 text-sm text-secondary-foreground">
-        <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-        Cargando el catálogo…
-      </p>
+      <LoadingStatus text="Cargando el catálogo…" />
     </div>
   );
 }
@@ -131,34 +127,54 @@ function PlansList({
   const inactive = plans.filter((plan) => plan.deactivatedAt !== null);
   return (
     <>
-      <PlansSection
-        title={`Planes activos (${String(active.length)})`}
-        subtitle="Se ofrecen a quien se registra o cambia de plan."
-        plans={active}
-        onDeactivate={onDeactivate}
-      />
-      <section className="mt-8" aria-label={`Planes inactivos (${String(inactive.length)})`}>
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h2 className="text-base font-semibold text-foreground">
-            {`Planes inactivos (${String(inactive.length)})`}
-          </h2>
-          <p className="text-sm text-secondary-foreground">
-            Ya no se ofrecen; quien los tiene los conserva.
-          </p>
-        </div>
-        {inactive.length === 0 ? (
-          <NoInactivePlans />
-        ) : (
-          <ul className="mt-3 grid list-none gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {inactive.map((plan) => (
-              <li key={plan.id}>
-                <PlanAdminCard plan={plan} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <ActivePlans plans={active} onDeactivate={onDeactivate} />
+      <InactivePlans plans={inactive} />
     </>
+  );
+}
+
+/** Los planes activos (mockup `backoffice/catalogo`, decisión 2). */
+function ActivePlans({
+  plans,
+  onDeactivate,
+}: {
+  readonly plans: readonly PlanAdminView[];
+  readonly onDeactivate: (plan: PlanAdminView) => void;
+}): React.JSX.Element {
+  return (
+    <PlansSection
+      title={`Planes activos (${String(plans.length)})`}
+      subtitle="Se ofrecen a quien se registra o cambia de plan."
+      plans={plans}
+      onDeactivate={onDeactivate}
+    />
+  );
+}
+
+/** Los planes inactivos, con el recuadro cuando no hay (decisiones 2 y 14). */
+function InactivePlans({ plans }: { readonly plans: readonly PlanAdminView[] }): React.JSX.Element {
+  return (
+    <section className="mt-8" aria-label={`Planes inactivos (${String(plans.length)})`}>
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <h2 className="text-base font-semibold text-foreground">
+          {`Planes inactivos (${String(plans.length)})`}
+        </h2>
+        <p className="text-sm text-secondary-foreground">
+          Ya no se ofrecen; quien los tiene los conserva.
+        </p>
+      </div>
+      {plans.length === 0 ? (
+        <NoInactivePlans />
+      ) : (
+        <ul className="mt-3 grid list-none gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {plans.map((plan) => (
+            <li key={plan.id}>
+              <PlanAdminCard plan={plan} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 

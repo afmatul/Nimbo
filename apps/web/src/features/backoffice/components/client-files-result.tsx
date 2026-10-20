@@ -1,4 +1,4 @@
-import { Folder, History, Loader2 } from 'lucide-react';
+import { Folder, History } from 'lucide-react';
 import type { JSX, ReactNode } from 'react';
 
 import { StateView } from '../../../components/nimbo/state-view';
@@ -7,9 +7,9 @@ import type { ClientFiles } from '../hooks/use-client-files';
 
 import { firstNameOf, RoleBadge } from './account-values';
 import { ClientFilesTable } from './client-files-table';
+import { LoadingStatus, SkeletonLine } from './loading';
 import { PagePager } from './page-pager';
 
-const PULSE = 'block h-3 animate-pulse rounded-full bg-muted motion-reduce:animate-none';
 /** Anchos de la línea del nombre; distintos entre sí: sirven de `key`. */
 const SKELETON_ROWS = ['w-3/5', 'w-1/2', 'w-2/3', 'w-2/5', 'w-4/5', 'w-1/3'];
 
@@ -19,8 +19,8 @@ export function ClientFilesLoading(): JSX.Element {
     <div aria-busy="true" className="mt-6">
       <div aria-hidden="true">
         <div className="grid max-w-sm gap-2">
-          <span className={`${PULSE} w-1/2`} />
-          <span className={`${PULSE} w-2/3`} />
+          <SkeletonLine className="w-1/2" />
+          <SkeletonLine className="w-2/3" />
         </div>
         <div className="mt-4 rounded-lg border border-border bg-card">
           {SKELETON_ROWS.map((width) => (
@@ -29,15 +29,12 @@ export function ClientFilesLoading(): JSX.Element {
               className="flex items-center gap-3 border-b border-border p-3.5 last:border-b-0"
             >
               <span className="h-7 w-7 shrink-0 animate-pulse rounded-md bg-muted motion-reduce:animate-none" />
-              <span className={`${PULSE} ${width}`} />
+              <SkeletonLine className={width} />
             </div>
           ))}
         </div>
       </div>
-      <p role="status" className="mt-3 flex items-center gap-2 text-sm text-secondary-foreground">
-        <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-        Buscando la cuenta y sus archivos…
-      </p>
+      <LoadingStatus text="Buscando la cuenta y sus archivos…" />
     </div>
   );
 }

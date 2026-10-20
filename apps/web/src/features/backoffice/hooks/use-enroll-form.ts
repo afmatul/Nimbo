@@ -1,9 +1,7 @@
 'use client';
 
-import { zodResolver } from '@hookform/resolvers/zod';
 import {
   IDENTITY_ERROR_CODES,
-  IDENTITY_FIELD_MESSAGES,
   REQUIRED_REASON,
   enrollInternalAccountRequestSchema,
   type AccountListItem,
@@ -18,6 +16,7 @@ import {
   type Resolver,
   type UseFormReturn,
 } from 'react-hook-form';
+import { z } from 'zod';
 
 import { toApiClientError, type ApiClientError } from '../../../lib/api-error';
 import { enrollmentFieldMessage } from '../../../lib/error-catalog';
@@ -51,49 +50,55 @@ export type EnrollPhase =
 
 const DEFAULTS: EnrollFormValues = { fullName: '', email: '', employeeCode: '' };
 const EDITING: EnrollPhase = { status: 'editing', problem: null };
-/**
- * El esquema de la API valida también lo que falta (un rol sin elegir): por eso el formulario lo admite vacío antes de
- * validar, y el tipo de entrada del resolver se amplía a `EnrollFormValues`.
- */
-const zodEnroll = zodResolver(enrollInternalAccountRequestSchema) as unknown as Resolver<
-  EnrollFormValues,
-  unknown,
-  EnrollInternalAccountRequest
->;
 
-/** Un campo vacío dice qué dato falta (`enrollmentFieldMessage`); los demás motivos ya traen el texto de `contracts`. */
-function withEnrollmentMessages(
-  errors: FormErrors<EnrollFormValues>,
-): FormErrors<EnrollFormValues> {
-  const named: FormErrors<EnrollFormValues> = { ...errors };
-  for (const field of ENROLL_FIELDS) {
-    const error = errors[field];
-    if (error?.message !== IDENTITY_FIELD_MESSAGES.REQUIRED) continue;
-    const message = enrollmentFieldMessage({
-      field,
-      reason: REQUIRED_REASON,
-      message: error.message,
-    });
-    named[field] = { ...error, message };
-  }
-  return named;
+/**
+ * El esquema del formulario: las mismas reglas que el de la API (el de `contracts`), con el rol que puede quedar sin
+ * elegir (mockup, decisión 3). El grupo de radios vacío vale `null` y, como en la API, un rol sin elegir es `REQUIRED`.
+ */
+const enrollFormSchema = enrollInternalAccountRequestSchema.extend({
+  role: z.preprocess(
+    (value) => (value === null ? undefined : value),
+    enrollInternalAccountRequestSchema.shape.role,
+  ),
+});
+
+/** El `reason` del *issue* (el código del servidor), no su texto: un campo vacío es `REQUIRED` (011 CA-6). */
+function reasonOf(issue: { readonly params?: { readonly reason?: unknown } }): string {
+  const reason = issue.params?.reason;
+  return typeof reason === 'string' ? reason : REQUIRED_REASON;
 }
 
 /**
- * Las reglas de la API (`zodResolver` del esquema de `contracts`): un rol sin elegir es `REQUIRED` (el grupo de radios
- * vacío vale `null`), con los textos del alta.
+ * Las reglas de la API (el esquema de `contracts`): un rol sin elegir es `REQUIRED` (el grupo de radios vacío vale
+ * `null`), con los textos del alta. Cada *issue* trae su `reason` en `params`, así que el mensaje de cada campo sale
+ * del código y no de comparar textos.
  */
 const enrollResolver: Resolver<EnrollFormValues, unknown, EnrollInternalAccountRequest> = async (
   values,
-  context,
-  options,
+  _context,
+  _options,
 ) => {
-  const result = await zodEnroll({ ...values, role: values.role ?? undefined }, context, options);
-  return { ...result, errors: withEnrollmentMessages(result.errors) };
+  const result = enrollFormSchema.safeParse(values);
+  if (result.success) return { values: result.data, errors: {} };
+  const errors: FormErrors<EnrollFormValues> = {};
+  for (const issue of result.error.issues) {
+    if (issue.code !== 'custom') continue;
+    const field = issue.path[0];
+    if (!isEnrollField(field)) continue;
+    errors[field] = {
+      type: issue.code,
+      message: enrollmentFieldMessage({
+        field,
+        reason: reasonOf(issue),
+        message: issue.message,
+      }),
+    };
+  }
+  return { values: {}, errors };
 };
 
-function isEnrollField(field: string): field is EnrollField {
-  return (ENROLL_FIELDS as readonly string[]).includes(field);
+function isEnrollField(field: string | number | undefined): field is EnrollField {
+  return typeof field === 'string' && (ENROLL_FIELDS as readonly string[]).includes(field);
 }
 
 /** El primer `fields[]` de cada campo, con los textos del alta (011 CA-6). */
@@ -117,9 +122,6 @@ function messagesOf(errors: FormErrors<EnrollFormValues>): FieldErrors {
   }
   return messages;
 }
-
-/** El código como lo guarda el servicio (recortado y en mayúsculas, RN-5): la respuesta no lo trae. */
-const storedCode = (code: string): string => code.trim().toUpperCase();
 
 export interface EnrollForm {
   readonly form: UseFormReturn<EnrollFormValues, unknown, EnrollInternalAccountRequest>;
@@ -179,7 +181,8 @@ export function useEnrollForm(enroll: EnrollAccountCall): EnrollForm {
     setPhase({ status: 'submitting', fullName: request.fullName });
     try {
       const account = await enroll(request);
-      setPhase({ status: 'created', account, employeeCode: storedCode(request.employeeCode) });
+      // El resumen muestra lo que se escribió; el servicio lo guarda recortado y en mayúsculas (RN-5).
+      setPhase({ status: 'created', account, employeeCode: request.employeeCode });
     } catch (caught) {
       setPhase(rejectedPhase(caught, form));
     }

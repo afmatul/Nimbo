@@ -17,10 +17,12 @@ import { insertAccount, removeAccounts } from '../storage/storage-test-db';
 
 type Http = ReturnType<typeof request>;
 
-/** El cliente sobre el que actúa cada ruta. */
+/** El cliente sobre el que actúa cada ruta y el plan que desactiva la del catálogo. */
 interface Target {
   readonly id: string;
   readonly email: string;
+  /** Plan sembrado que la ruta de desactivación usa: no debe quedar desactivado. */
+  readonly planId: string;
 }
 
 /** Quién no puede usar la ruta: por rol (`@Roles`) o por estar suspendido con su token aún vigente (RN-7, 002 D-10). */
@@ -59,6 +61,9 @@ const SUSPENDED_OPERATOR: DeniedCaller = {
 /** Cuentas (CA-1 a CA-6): solo el Administrador activo (CA-14). */
 const ACCOUNT_DENIED = [CLIENT, SUPPORT, OPERATOR, SUSPENDED_ADMIN];
 const ACCOUNTS = '/api/v1/backoffice/accounts';
+
+/** Catálogo (CA-8 a CA-11): solo el Administrador activo (CA-14). */
+const PLANS = '/api/v1/backoffice/plans';
 
 const withToken = (call: request.Test, token: string): request.Test =>
   call.set('Authorization', `Bearer ${token}`);
@@ -109,6 +114,33 @@ const ROUTES: readonly BackofficeRoute[] = [
     denied: [CLIENT, SUPPORT, SUSPENDED_ADMIN, SUSPENDED_OPERATOR],
     call: (http, token) => withToken(http.get('/api/v1/backoffice/metrics'), token),
   },
+  {
+    name: 'GET /backoffice/plans',
+    denied: ACCOUNT_DENIED,
+    call: (http, token) => withToken(http.get(PLANS), token),
+  },
+  {
+    name: 'POST /backoffice/plans',
+    denied: ACCOUNT_DENIED,
+    call: (http, token) =>
+      withToken(http.post(PLANS), token).send({
+        name: `Plan de la matriz ${randomUUID().slice(0, 8)}`,
+        description: 'Plan que la matriz no debería poder crear',
+        priceCents: 4500,
+        quotaBytes: '107374182400',
+        maxFileBytes: '524288000',
+        maxEditors: 3,
+        agentQueriesPerMonth: 500,
+        retainedVersions: 30,
+        trashRetentionDays: 30,
+      }),
+  },
+  {
+    name: 'POST /backoffice/plans/:id/deactivation',
+    denied: ACCOUNT_DENIED,
+    call: (http, token, target) =>
+      withToken(http.post(`${PLANS}/${target.planId}/deactivation`), token),
+  },
 ];
 
 /** Cada ruta con cada quien no la puede usar. */
@@ -131,7 +163,7 @@ describe('matriz de roles del backoffice (011 CA-14)', () => {
   let owner: DataSource;
   let issuer: JwtTokenService;
   const created: string[] = [];
-  let client = { id: '', email: '' };
+  let client: Target = { id: '', email: '', planId: '' };
 
   const newAccount = async (role: Role, suspended = false): Promise<string> => {
     const id = await insertAccount(owner, role);
@@ -166,13 +198,25 @@ describe('matriz de roles del backoffice (011 CA-14)', () => {
     return rows[0]?.estado;
   };
 
+  /** El plan sembrado sigue activo: la matriz no puede desactivarlo. */
+  const deactivatedAtOf = async (planId: string): Promise<Date | null> => {
+    const rows = (await owner.query('SELECT desactivado_en FROM plan WHERE id = $1', [planId])) as {
+      desactivado_en: Date | null;
+    }[];
+    return rows[0]?.desactivado_en ?? null;
+  };
+
   beforeAll(async () => {
     const env = buildTestEnv();
     testApp = await createFullApiTestApp(env);
     issuer = realAccessTokenIssuer(env);
     owner = await connectAsOwner();
     const id = await newAccount(Role.CLIENT);
-    client = { id, email: await emailOfAccount(owner, id) };
+    const [plan] = (await owner.query("SELECT id FROM plan WHERE slug = 'pro'")) as {
+      id: string;
+    }[];
+    if (plan === undefined) throw new Error('plan pro no sembrado');
+    client = { id, email: await emailOfAccount(owner, id), planId: plan.id };
   });
 
   afterAll(async () => {
@@ -192,6 +236,7 @@ describe('matriz de roles del backoffice (011 CA-14)', () => {
       expect(response.status).toBe(403);
       expect(errorResponseSchema.parse(response.body).code).toBe(SHARED_ERROR_CODES.FORBIDDEN);
       expect(await statusOf(client.id)).toBe('activa');
+      expect(await deactivatedAtOf(client.planId)).toBeNull();
       expect(await eventsOn(client.id)).toBe(0);
       expect(await eventsOn(callerId)).toBe(0);
     },

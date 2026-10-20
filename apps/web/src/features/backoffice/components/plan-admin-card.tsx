@@ -57,7 +57,7 @@ function PlanMeta({
             : clients.form('cuenta con este plan', 'cuentas con este plan')}
         </span>
       </li>
-      {inactive && plan.deactivatedAt !== null ? (
+      {plan.deactivatedAt !== null ? (
         <li className="flex items-center gap-2">
           <Clock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
           <span>Desactivado el {dayText(plan.deactivatedAt)}</span>

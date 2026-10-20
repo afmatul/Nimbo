@@ -111,7 +111,7 @@ export function AccountStatusDialogs({ account, status }: DialogProps): React.JS
       <ConfirmDestructiveDialog
         open={status.asking === 'suspend'}
         onOpenChange={(open) => {
-          if (!open) status.cancel();
+          if (!open && !status.pending) status.cancel();
         }}
         title={`¿Suspender la cuenta de ${account.fullName}?`}
         description={suspendDescription(account)}
