@@ -7,6 +7,7 @@ import type {
   GatewayDecision,
   IPaymentGateway,
 } from '../../application/ports/i-payment-gateway.port';
+import { BillingInvariantError } from '../../domain/errors/billing-invariant.error';
 import type { PaymentCard } from '../../domain/payment-card';
 import { isPresentCard } from '../../domain/payment-instrument';
 import type { InstrumentReference, PaymentInstrument } from '../../domain/payment-instrument';
@@ -41,7 +42,7 @@ const profileOfCard = (card: PaymentCard): RecurringProfile | null =>
 const profileOfReference = (reference: InstrumentReference): RecurringProfile => {
   const profile = reference.slice(REFERENCE_PREFIX.length).split('-')[0] ?? '';
   if (!reference.startsWith(REFERENCE_PREFIX) || !(profile in PROFILE_CARDS)) {
-    throw new Error('Referencia de instrumento desconocida para el simulador.');
+    throw new BillingInvariantError('Referencia de instrumento desconocida para el simulador.');
   }
   return profile as RecurringProfile;
 };

@@ -27,7 +27,14 @@ export interface UpcomingCharge {
 const keyOf = ({ userId, expiresAt }: RenewalNotice): string =>
   `${userId}.${String(expiresAt.getTime())}`;
 
-const mail = (notice: RenewalNotice, subject: string, lines: readonly string[], tag: string) =>
+/** Asunto, líneas y etiqueta de un correo de la renovación. */
+interface RenewalMail {
+  readonly subject: string;
+  readonly lines: readonly string[];
+  readonly tag: string;
+}
+
+const mail = (notice: RenewalNotice, { subject, lines, tag }: RenewalMail) =>
   billingMail({
     to: notice.to,
     recipientId: notice.userId,
@@ -52,37 +59,34 @@ const chargeLines = ({ planName, amountCents, card }: UpcomingCharge): readonly 
 
 /** CA-5 (RN-8): un aviso por periodo, N días antes de `vence_en`. */
 export const reminderMessage = (notice: RenewalNotice, charge: UpcomingCharge): MailMessage =>
-  mail(
-    notice,
-    'Tu plan de Nimbo vence pronto',
-    [`Tu plan vence el ${formatBillingDate(notice.expiresAt)}.`, ...chargeLines(charge)],
-    REMINDER_TAG,
-  );
+  mail(notice, {
+    subject: 'Tu plan de Nimbo vence pronto',
+    lines: [`Tu plan vence el ${formatBillingDate(notice.expiresAt)}.`, ...chargeLines(charge)],
+    tag: REMINDER_TAG,
+  });
 
 /** CA-2 y CA-7: venció sin pago; la cuenta queda en solo lectura con su plan (spec §6). */
 export const expiredMessage = (notice: RenewalNotice, planName: string): MailMessage =>
-  mail(
-    notice,
-    'Tu suscripción de Nimbo venció',
-    [
+  mail(notice, {
+    subject: 'Tu suscripción de Nimbo venció',
+    lines: [
       `Tu plan ${planName} venció el ${formatBillingDate(notice.expiresAt)}.`,
       'Tu suscripción venció. Puedes ver y descargar tus archivos, pero no subir ni editar.',
       RENEW_HINT,
     ],
-    EXPIRED_TAG,
-  );
+    tag: EXPIRED_TAG,
+  });
 
 /** CA-29: el plan programado se desactivó; se renovó con el actual hasta `renewedUntil`. */
 export const planDiscardedMessage = (
   notice: RenewalNotice,
   plans: { readonly discarded: string; readonly renewed: string; readonly renewedUntil: Date },
 ): MailMessage =>
-  mail(
-    notice,
-    'Tu cambio de plan no se aplicó',
-    [
+  mail(notice, {
+    subject: 'Tu cambio de plan no se aplicó',
+    lines: [
       `El plan ${plans.discarded} ya no está disponible, así que no cambiamos tu plan.`,
       `Renovamos tu plan ${plans.renewed} hasta el ${formatBillingDate(plans.renewedUntil)}.`,
     ],
-    DISCARDED_TAG,
-  );
+    tag: DISCARDED_TAG,
+  });

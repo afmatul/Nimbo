@@ -3,6 +3,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { I_TRANSACTION_RUNNER } from '../../../shared';
 import type { Actor, ITransactionRunner } from '../../../shared';
 
+import { resolveNextCycle } from './next-cycle';
 import { I_PAYMENT_REPOSITORY } from './ports/i-payment-repository.port';
 import type { IPaymentRepository } from './ports/i-payment-repository.port';
 import { I_PLAN_REPOSITORY } from './ports/i-plan-repository.port';
@@ -11,7 +12,6 @@ import { I_SUBSCRIPTION_REPOSITORY } from './ports/i-subscription-repository.por
 import type { ISubscriptionRepository } from './ports/i-subscription-repository.port';
 import type { UpcomingCharge } from './renewal-messages';
 import { RenewalNotices } from './renewal-notices';
-import { requirePlan } from './require-plan';
 
 /** El aviso de un periodo: su `vence_en` y lo que cobrará el siguiente ciclo. */
 interface Reminder {
@@ -20,7 +20,7 @@ interface Reminder {
 }
 
 /**
- * Aviso previo de una cuenta (spec 010 CA-5, RN-8), como su dueño: el plan y el monto del siguiente ciclo (RN-4) y la
+ * Aviso previo de una cuenta (spec 010 CA-5, RN-8), como su dueño: el plan y el monto del siguiente ciclo (RN-4, CA-29) y la
  * tarjeta que se cobrará, o el aviso de solo lectura si no se renovará sola. Un correo por periodo (clave y marca).
  */
 @Injectable()
@@ -44,7 +44,7 @@ export class RenewalReminderService {
   private async reminderFor(actor: Actor): Promise<Reminder | null> {
     const current = await this.subscriptions.findCurrent(actor);
     if (current === null || current.isReadOnly || current.expiresAt === null) return null;
-    const next = await requirePlan(this.plans, current.nextCyclePlanId);
+    const { plan: next } = await resolveNextCycle(this.plans, current);
     const card = current.autoRenew ? await this.payments.findLastApprovedCard(actor) : null;
     const chargeable = card !== null && card.instrumentRef !== null;
     return {

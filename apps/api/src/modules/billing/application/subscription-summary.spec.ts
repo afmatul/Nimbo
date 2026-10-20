@@ -79,6 +79,19 @@ describe('summarizeSubscription (spec 010 §6, CA-8, CA-25, CA-26, CA-28; RN-8)'
     });
   });
 
+  it('CA-29: con el plan programado desactivado, el próximo cobro y la renovación son del plan actual', () => {
+    const retired = aPlan({ ...PRO, deactivatedAt: new Date('2026-10-20T00:00:00.000Z') });
+    const summary = summarizeSubscription(
+      facts(team({ pendingPlanId: retired.id }), retired),
+      CLOCK,
+    );
+
+    expect(summary).toMatchObject({
+      nextCharge: { plan: TEAM },
+      renewal: { plan: TEAM },
+    });
+  });
+
   it('RN-7: con la bajada a Personal programada no hay cobro', () => {
     const summary = summarizeSubscription(
       facts(team({ pendingPlanId: PERSONAL_PLAN.id }), PERSONAL_PLAN),

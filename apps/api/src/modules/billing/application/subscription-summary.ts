@@ -1,6 +1,7 @@
 import type { Plan } from '../domain/entities/plan.entity';
 import type { RenewalQuote, Subscription } from '../domain/entities/subscription.entity';
 
+import { chooseNextCycle } from './next-cycle';
 import type { PaymentMethod } from './ports/i-billing-history.reader.port';
 
 const DAY_MS = 86_400_000;
@@ -74,7 +75,7 @@ export const summarizeSubscription = (
     return { ...base, standing: 'active', pendingPlan: null, nextCharge: null, renewal: null };
   }
   const expiresAt = subscription.expiresAt;
-  const nextPlan = pendingPlan ?? plan;
+  const nextPlan = chooseNextCycle(plan, pendingPlan).plan;
   return {
     ...base,
     standing: standingOf(expiresAt, subscription.isReadOnly, clock),

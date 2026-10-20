@@ -170,8 +170,8 @@ describe('RenewalCheckout.renew (spec 010 RN-1, RN-4, CA-8 a CA-10, CA-20, CA-29
     });
     expect(actionsOf(audits)).toEqual([
       'subscription.renewed',
-      'subscription.read_only_exited',
       'subscription.plan_change_applied',
+      'subscription.read_only_exited',
     ]);
   });
 

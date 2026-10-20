@@ -7,9 +7,8 @@ import { I_PLAN_REPOSITORY } from '../../application/ports/i-plan-repository.por
 import type { IPlanRepository } from '../../application/ports/i-plan-repository.port';
 import { I_SUBSCRIPTION_REPOSITORY } from '../../application/ports/i-subscription-repository.port';
 import type { ISubscriptionRepository } from '../../application/ports/i-subscription-repository.port';
-import { requirePlan } from '../../application/require-plan';
+import { requirePlan, requirePlanBySlug } from '../../application/require-plan';
 import type { Plan } from '../../domain/entities/plan.entity';
-import { PlanNotFoundError } from '../../domain/errors';
 import { PERSONAL_PLAN_SLUG } from '../../domain/plan-slug';
 
 /** Los límites de un plan, sin el estado de una cuenta (010 plan §2; ADR-0032 regla 5). */
@@ -55,8 +54,6 @@ export class PlanLimitsAdapter implements IPlanLimitsProvider {
 
   /** CA-3 y CA-4. Misma salvedad que `getLimitsByPlanId`. */
   async getLimitsBySlug(slug: string): Promise<PlanStorageLimits> {
-    const plan = await this.plans.findBySlug(slug);
-    if (plan === null) throw new PlanNotFoundError(slug);
-    return toLimits(plan);
+    return toLimits(await requirePlanBySlug(this.plans, slug));
   }
 }

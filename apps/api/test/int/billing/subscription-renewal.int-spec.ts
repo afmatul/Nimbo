@@ -20,9 +20,11 @@ import { createBillingHttpApp } from './billing-http';
 import { removeBillingAccounts } from './billing-test-db';
 import {
   DAY_MS,
+  insertRetiredPlan,
   PERIOD_MS,
   PERSONAL_ID,
   PRO_ID,
+  removeRetiredPlan,
   subscriptionAccounts,
   subscriptionAuditsOf,
   subscriptionOf,
@@ -264,16 +266,7 @@ describe('pasada de renovación del `worker` (spec 010 CA-1 a CA-3, CA-5, CA-7, 
 
   it('CA-29: un plan programado que se desactivó se descarta, se renueva con Equipo y se avisa', async () => {
     const helena = await paidWith(TEST_CARDS.approved);
-    const [retired] = (await owner.query(
-      `INSERT INTO plan (slug, nombre, descripcion, precio_centavos, cuota_bytes, max_archivo_bytes, max_editores,
-                         consultas_agente_mensual, versiones_retenidas, dias_retencion_papelera, desactivado_en)
-       SELECT 'retirado-' || substr(md5(random()::text), 1, 8), 'Retirado ' || substr(md5(random()::text), 1, 6),
-              descripcion, precio_centavos, cuota_bytes, max_archivo_bytes, max_editores, consultas_agente_mensual,
-              versiones_retenidas, dias_retencion_papelera, now()
-         FROM plan WHERE id = $1 RETURNING id, nombre`,
-      [PRO_ID],
-    )) as { id: string; nombre: string }[];
-    if (retired === undefined) throw new Error('sin plan retirado');
+    const retired = await insertRetiredPlan(owner);
     await owner.query('UPDATE suscripcion SET plan_pendiente_id = $2 WHERE usuario_id = $1', [
       helena.id,
       retired.id,
@@ -289,11 +282,7 @@ describe('pasada de renovación del `worker` (spec 010 CA-1 a CA-3, CA-5, CA-7, 
       (message) => message.tag === 'billing.plan-discarded',
     );
     expect(discarded?.text).toContain(`El plan ${retired.nombre} ya no está disponible`);
-    await owner.query(
-      'UPDATE suscripcion SET plan_pendiente_id = NULL WHERE plan_pendiente_id = $1',
-      [retired.id],
-    );
-    await owner.query('DELETE FROM plan WHERE id = $1', [retired.id]);
+    await removeRetiredPlan(owner, retired.id);
   });
 
   it('CA-3, RN-9: dos pasadas y una renovación manual a la vez dejan un solo cobro del periodo', async () => {

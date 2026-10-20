@@ -8,8 +8,10 @@ import { createBillingHttpApp } from './billing-http';
 import { removeBillingAccounts } from './billing-test-db';
 import {
   inDays,
+  insertRetiredPlan,
   PERSONAL_ID,
   PRO_ID,
+  removeRetiredPlan,
   subscriptionAccounts,
   subscriptionAuditsOf,
   subscriptionOf,
@@ -115,6 +117,23 @@ describe('ajustes de la suscripción y su vista (spec 010 CA-6, CA-16 a CA-19, C
       });
     },
   );
+
+  it('CA-29, CA-25: con el plan programado desactivado, la vista cobra el plan actual', async () => {
+    const julia = await accountWith({ expiresAt: inDays(10) });
+    const retired = await insertRetiredPlan(owner);
+    await owner.query('UPDATE suscripcion SET plan_pendiente_id = $2 WHERE usuario_id = $1', [
+      julia.id,
+      retired.id,
+    ]);
+
+    const history = await julia.call('get', 'history');
+
+    expect(history.status).toBe(200);
+    expect(history.body).toMatchObject({
+      subscription: { nextCharge: { planName: 'Equipo', amountCents: 11_000 } },
+    });
+    await removeRetiredPlan(owner, retired.id);
+  });
 
   it('CA-27: en solo lectura, la bajada a Personal se aplica ya y termina la solo lectura', async () => {
     const elena = await accountWith({ expiresAt: inDays(-2), readOnly: true });

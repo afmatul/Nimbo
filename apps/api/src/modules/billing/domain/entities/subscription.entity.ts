@@ -1,3 +1,4 @@
+import { BillingInvariantError } from '../errors/billing-invariant.error';
 import { NoPaidSubscriptionError } from '../errors/no-paid-subscription.error';
 import { NoPendingPlanChangeError } from '../errors/no-pending-plan-change.error';
 import { PlanChangeInvalidError } from '../errors/plan-change-invalid.error';
@@ -115,7 +116,7 @@ export class Subscription implements SubscriptionProps {
   renewWith(plan: Plan, now: Date): Subscription {
     const start = this.nextPeriodStart(now);
     if (plan.id !== this.nextCyclePlanId) {
-      throw new Error('La renovación usa el plan del siguiente ciclo (RN-4).');
+      throw new BillingInvariantError('La renovación usa el plan del siguiente ciclo (RN-4).');
     }
     if (isPersonalPlan(plan))
       return this.with({ ...this.periodWith(plan, start), expiresAt: null });

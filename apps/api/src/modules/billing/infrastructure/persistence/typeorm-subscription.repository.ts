@@ -8,6 +8,7 @@ import type {
 } from '../../application/ports/i-subscription-repository.port';
 import { Subscription } from '../../domain/entities/subscription.entity';
 import type { SubscriptionStatus } from '../../domain/entities/subscription.entity';
+import { BillingInvariantError } from '../../domain/errors/billing-invariant.error';
 import { PERSONAL_PLAN_SLUG } from '../../domain/plan-slug';
 
 const INSERT_PERSONAL_SQL = `INSERT INTO suscripcion (usuario_id, plan_id)
@@ -81,7 +82,9 @@ export class TypeOrmSubscriptionRepository implements ISubscriptionRepository {
   async lockCurrent(actor: Actor): Promise<Subscription> {
     const row = await this.currentRow(actor, LOCK_CURRENT_SQL);
     if (row === undefined) {
-      throw new Error('El cliente no tiene suscripción: el cobro la garantiza antes de bloquear.');
+      throw new BillingInvariantError(
+        'El cliente no tiene suscripción: el cobro la garantiza antes de bloquear.',
+      );
     }
     return this.toSubscription(actor, row);
   }
@@ -97,7 +100,8 @@ export class TypeOrmSubscriptionRepository implements ISubscriptionRepository {
     const [plan] = (await this.context
       .requireActorScope(actor)
       .query(PLAN_SLUG_SQL, [row.plan_id])) as { slug: string }[];
-    if (plan === undefined) throw new Error('La suscripción apunta a un plan que no existe.');
+    if (plan === undefined)
+      throw new BillingInvariantError('La suscripción apunta a un plan que no existe.');
     return Subscription.rehydrate({
       userId: actor.id,
       planId: row.plan_id,

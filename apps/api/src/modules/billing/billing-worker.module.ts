@@ -17,6 +17,7 @@ import { I_INVOICE_GENERATOR } from './application/ports/i-invoice-generator.por
 import { I_PENDING_INVOICE_SCANNER } from './application/ports/i-pending-invoice.scanner.port';
 import { RENEWAL_REMINDER_DAYS, RENEWAL_SCHEDULE_CONFIG } from './application/renewal-config';
 import type { RenewalScheduleConfig } from './application/renewal-config';
+import { RenewalFollowUp } from './application/renewal-follow-up';
 import { RenewalNotices } from './application/renewal-notices';
 import { RenewalReminderService } from './application/renewal-reminder.service';
 import { RenewalRunner } from './application/renewal-runner';
@@ -58,6 +59,7 @@ export type BillingWorkerEnv = Pick<
 const RENEWAL_PROVIDERS = [
   { provide: I_DUE_SUBSCRIPTION_SCANNER, useClass: SqlDueSubscriptionScanner },
   RenewalNotices,
+  RenewalFollowUp,
   SubscriptionRenewer,
   RenewalReminderService,
   RenewalRunner,

@@ -121,3 +121,29 @@ export const subscriptionAuditsOf = async (
       WHERE usuario_afectado_id = $1 AND accion LIKE 'subscription.%' ORDER BY ocurrido_en, id`,
     [userId],
   )) as { accion: string; atributos: object }[];
+
+/** CA-29: una copia desactivada de Pro con nombre único, para programarla y ver que se descarta. */
+export const insertRetiredPlan = async (
+  owner: DataSource,
+): Promise<{ readonly id: string; readonly nombre: string }> => {
+  const [retired] = (await owner.query(
+    `INSERT INTO plan (slug, nombre, descripcion, precio_centavos, cuota_bytes, max_archivo_bytes, max_editores,
+                       consultas_agente_mensual, versiones_retenidas, dias_retencion_papelera, desactivado_en)
+     SELECT 'retirado-' || substr(md5(random()::text), 1, 8), 'Retirado ' || substr(md5(random()::text), 1, 6),
+            descripcion, precio_centavos, cuota_bytes, max_archivo_bytes, max_editores, consultas_agente_mensual,
+            versiones_retenidas, dias_retencion_papelera, now()
+       FROM plan WHERE id = $1 RETURNING id, nombre`,
+    [PRO_ID],
+  )) as { id: string; nombre: string }[];
+  if (retired === undefined) throw new Error('sin plan retirado');
+  return retired;
+};
+
+/** Quita el plan de `insertRetiredPlan` y lo que lo programaba. */
+export const removeRetiredPlan = async (owner: DataSource, planId: string): Promise<void> => {
+  await owner.query(
+    'UPDATE suscripcion SET plan_pendiente_id = NULL WHERE plan_pendiente_id = $1',
+    [planId],
+  );
+  await owner.query('DELETE FROM plan WHERE id = $1', [planId]);
+};
