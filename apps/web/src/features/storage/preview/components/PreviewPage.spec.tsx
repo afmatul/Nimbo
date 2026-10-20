@@ -654,4 +654,19 @@ describe('Volver antes de la entrega (T-10)', () => {
     );
     expect(back().getAttribute('aria-disabled')).toBeNull();
   });
+
+  it('I: el clic derecho mientras espera no se intercepta ni registra la intención de volver', async () => {
+    renderPage();
+    const secondary = { bubbles: true, cancelable: true, button: 2 };
+    // `dispatchEvent` devuelve false si algún handler llamó a `preventDefault`.
+    expect(back().dispatchEvent(new MouseEvent('auxclick', secondary))).toBe(true);
+    expect(back().dispatchEvent(new MouseEvent('contextmenu', secondary))).toBe(true);
+    expect(back().getAttribute('aria-busy')).toBeNull();
+    expect(back().getAttribute('aria-disabled')).toBeNull();
+    expect(navigations()).toEqual([]);
+    await act(async () => settle.resolve(DELIVERY));
+    expect(navigations()).toEqual([]);
+    await userEvent.click(back());
+    expect(navigations()).toEqual([`/archivos/carpeta/${FOLDER}?foco=${ID}`]);
+  });
 });
