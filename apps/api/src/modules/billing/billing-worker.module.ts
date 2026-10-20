@@ -93,6 +93,19 @@ const configProviders = (env: BillingWorkerEnv) => [
   { provide: RENEWAL_REMINDER_DAYS, useValue: env.RENEWAL_REMINDER_DAYS },
 ];
 
+/** Conciliación de suscripciones (009 CA-2) y reintento de facturas (009 CA-6). */
+const RECONCILE_AND_INVOICE_PROVIDERS = [
+  SubscriptionReconcilerService,
+  SubscriptionReconcileScheduler,
+  SubscriptionReconcileProcessor,
+  { provide: I_INVOICE_GENERATOR, useClass: PdfInvoiceGenerator },
+  { provide: I_PENDING_INVOICE_SCANNER, useClass: SqlPendingInvoiceScanner },
+  InvoiceIssuer,
+  InvoiceRetrier,
+  InvoiceRetryScheduler,
+  InvoiceRetryProcessor,
+];
+
 /**
  * Parte de `billing` que corre en el `worker` (specs 009 y 010): las colas `subscription-reconcile` (CA-2),
  * `invoice-retry` (CA-6) y `subscription-renewal` (010), sus programas repetibles y sus procesadores; el cobro de la
@@ -120,15 +133,7 @@ export class BillingWorkerModule {
       ],
       providers: [
         ...configProviders(env),
-        SubscriptionReconcilerService,
-        SubscriptionReconcileScheduler,
-        SubscriptionReconcileProcessor,
-        { provide: I_INVOICE_GENERATOR, useClass: PdfInvoiceGenerator },
-        { provide: I_PENDING_INVOICE_SCANNER, useClass: SqlPendingInvoiceScanner },
-        InvoiceIssuer,
-        InvoiceRetrier,
-        InvoiceRetryScheduler,
-        InvoiceRetryProcessor,
+        ...RECONCILE_AND_INVOICE_PROVIDERS,
         ...RENEWAL_PROVIDERS,
       ],
     };
