@@ -247,3 +247,6 @@ Antes de cada pantalla se leen sus capturas en `docs/design/capturas/`; las desv
   «vigente», así las pruebas existentes no cambian. `ReadOnlyNotice` reutiliza el `ReadOnlyBanner` de T-08. Sin cambio
   en `upload-dropzone.tsx`, `space-provider` solo suma el hook, y `restore-version-dialog.tsx` no cambia porque «Restaurar»
   ya no lo abre. El aviso del explorador no muestra la fecha de vencimiento del mockup: el resumen de espacio no la trae.
+- **Quinta auditoría del PR #63** (2026-10-20, `785f115` en la 010a): la renovación automática se audita con
+  `trigger: 'scheduled'` (antes `'automatic'`, que la respuesta de «Mi actividad» descartaba porque no está en
+  `AUDIT_TRIGGERS`); la web ya lo muestra como «Nimbo (automático)». `RenewalTrigger` es `AuditTrigger`.
