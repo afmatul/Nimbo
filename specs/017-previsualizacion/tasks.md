@@ -9,7 +9,7 @@
 
 - Spec 017 permanece **En curso**. T-01/T-02/T-03/T-05/T-06/T-07/T-08/T-09 completas; cierre y evidencia de T-06/T-07 en [su registro final](#cierre-técnico-t-06-y-t-07-2026-10-18), de T-08 en [su cierre técnico](#cierre-técnico-t-08-2026-10-18) y de T-09 en [su cierre técnico](#cierre-técnico-t-09-2026-10-19).
 - T-04 permanece `[ ]` por evidencia efectiva en navegador real, consolidada en T-10 y la demo T-11; no presenta un bloqueo abierto de Redis/CORS en backend/Node.
-- T-10 y T-11 permanecen `[ ]`, con sus requisitos y dependencias originales.
+- T-10 y T-11 permanecen `[ ]`, con sus requisitos y dependencias originales. La evidencia en navegador real de T-10 y sus pendientes externos están en [su registro](#t-10--evidencia-en-navegador-real-2026-10-19).
 
 ### T-04 — resumen vigente
 
@@ -740,3 +740,84 @@ Resultados de la ronda de integración/UI sobre los bytes de `4c85f1bf`; esta ac
 ### Estado
 
 **T-09 queda `[x]`**, con T-09a y T-09b `[x]`. CA-1, CA-2 y CA-11 quedan acreditados en lo que corresponde a T-09; CA-9 en navegador real (360/1440, contraste y foco efectivos) se consolida en T-10/T-11, igual que en T-08. T-04 permanece `[ ]` por evidencia efectiva en navegador real; T-10 y T-11 permanecen `[ ]`. La spec permanece **En curso**.
+
+## T-10 — evidencia en navegador real (2026-10-19)
+
+Recorrido automatizado propio con Chrome real por CDP (arnés temporal fuera del repo, sin dependencias nuevas): cuentas sintéticas creadas por los endpoints reales, archivos sintéticos subidos por el input de la UI y apertura desde el menú real de la fila. Primero sobre `pnpm dev` (React StrictMode) y después sobre el build de producción servido con `next start`. No sustituye el E2E de `e2e/storage-preview.e2e.ts` (PD-41) ni la demo humana T-11.
+
+Procedencia: la primera ronda cubrió PDF multipágina y escaneado, PNG, TXT/MD, XLSX, PPTX, vacío, DOCX, sesión, ajeno/inexistente, revocación, logout, concurrencia, progreso y la expiración de XLSX; una auditoría posterior revisó sus scripts y añadió el resto (JPG, JPEG, GIF, WebP, PDF protegido/corrupto/con JavaScript, PNG corrupto, SVG, plan Personal, 429, retorno desde carpeta, foco a 1440, ciclo de vida, expiración de PPTX y el build de producción), y repitió axe limitado al visor.
+
+### Formatos y estados
+
+- **PDF:** multipágina con todas las páginas por Anterior/Siguiente y teclado; escaneado sin capa de texto; protegido con contraseña → causa propia con Descargar y Reintentar; corrupto con firma `%PDF` válida → «No pudimos leer este archivo.»; con `/OpenAction` JavaScript → dos páginas pintadas y el script no se ejecuta.
+- **Imágenes:** PNG, JPG, JPEG, GIF y WebP a 360 y 1440 px: una emisión efectiva, un GET al mismo objeto entregado, presentación por `blob:` local, sin desbordamiento (una panorámica de 1600×200 px se ajusta al visor) y metadatos del archivo sin cambios. PNG con firma válida y cuerpo dañado → corrupto.
+- **TXT/MD:** texto literal, sin renderizar Markdown ni HTML.
+- **XLSX:** todas las hojas por teclado (flechas, Inicio, Fin), hidden y veryHidden rotuladas, chartsheet sin celdas, fórmula sin cache como «Sin valor guardado», hoja dispersa con aviso y ventanas de filas con foco correctivo, a 360 y 1440 px.
+- **PPTX:** todas las diapositivas, oculta navegable, tablas y diapositiva vacía.
+- **Vacío válido:** «Este archivo no tiene contenido para mostrar.» con Descargar en el encabezado.
+- **Excluidos:** DOCX y SVG (tipo `otro`) no ofrecen «Previsualizar»; la ruta directa responde 422 con «Este tipo de archivo no tiene vista previa.» y no hay GET al objeto.
+- **Retry y Descargar:** un POST `preview-url` por clic de Reintentar (también con cinco clics síncronos); Descargar desde el visor usa `download-url` de 005 con `attachment`, sin otra emisión de vista previa y sin salir del visor.
+- **Acceso:** sin sesión → 401 y redirección a iniciar sesión; archivo ajeno e inexistente con la misma UI y el mismo cuerpo de API salvo la correlación, sin el nombre ajeno; revocación (papelera en otra pestaña) y logout en otra pestaña sin contenido. La cuenta de prueba en plan Personal previsualiza sin controles de edición ni de cambio de plan y con «Solo lectura».
+- **429:** tras agotar la tasa real (115 emisiones en la ventana), la API responde `429 STORAGE_TOO_MANY_REQUESTS` con `Retry-After: 44`; la UI muestra «Hiciste demasiadas solicitudes. Espera un momento e inténtalo de nuevo.» sin GET al objeto, y Reintentar tras ese plazo vuelve a entregar (200).
+
+### Accesibilidad, foco y responsive
+
+- Recorrido con Tab dentro del visor a 360 y 1440 px (XLSX, PPTX y error): orden coherente y foco visible en todos los controles.
+- axe limitado al contenedor del visor, sobre el build de producción: sin violaciones en PDF, XLSX, PPTX, corrupto, protegido e imágenes, a 360 y 1440 px. La única violación de página completa es el contraste compartido de la barra lateral (ver pendientes).
+- Espera larga: la barra de progreso aparece pasados 2 s y desaparece al terminar.
+- Volver con la entrega recibida: desde una carpeta creada por la UI vuelve a `/archivos/carpeta/:folderId?foco=:id` con el foco en el control de la fila, con ratón y con Enter; desde la raíz, a `/archivos?foco=:id`. Medido a 360 y 1440 px (`innerWidth` real).
+
+### Ciclo de vida, concurrencia y expiración
+
+- Cambio rápido de archivo A → B por navegación cliente: solo se ve B, el worker de A se termina y no hay GET posteriores de A.
+- Ráfagas de hojas (Resumen → Dispersa → …) y de diapositivas (siguiente, siguiente, anterior): la UI final coincide con la referencia de la selección vigente.
+- Desmontaje durante un GET retenido: el GET termina como `ERR_ABORTED`, sin workers vivos ni errores de consola, y el foco vuelve a la fila.
+- Error corrupto → otro archivo: sin estado residual.
+- Cinco ciclos de abrir y cerrar una imagen: el `blob:` sirve mientras el visor está abierto y queda revocado al salir. Recargar el visor emite una entrega nueva con otra firma.
+- Expiración real (sin acortar el TTL de 300 s): en XLSX y en PPTX el GET con la firma vencida recibe 403, la UI muestra «La vista previa caducó.» y Reintentar emite una URL con firma nueva (PPTX: 1 POST 200 y 43 GET 206; ningún GET reutiliza la firma vencida); el worker anterior se termina.
+
+### Peticiones al host de objetos y privacidad
+
+- Con una cookie canario de dominio `localhost`, las cabeceras efectivas del navegador (incluidas las de los workers) no llevan Cookie, Authorization ni cabeceras Nimbo; un control positivo con `credentials: 'include'` sí adjunta la canario, así que la ausencia no es un artefacto del arnés.
+- Range/206 con `Content-Range` real en PDF y OOXML (los GET OOXML salen del worker); 200 sin Range en imagen y texto.
+- CORS: el origen permitido recibe `Access-Control-Allow-Origin: http://localhost`; desde `http://127.0.0.1:3002`, fuera de la allowlist, el navegador bloquea la lectura.
+- Firma manipulada → 403 de MinIO. Ninguna navegación del documento al host de objetos; la URL firmada no aparece en el DOM, `localStorage` ni `sessionStorage`; los errores visibles no contienen stack, token, Bearer ni URL privada. Las bitácoras de la API registran la ruta como `/files/:id/preview-url`, sin `X-Amz`, nombres de archivo ni Bearer.
+
+### Desarrollo frente a producción
+
+- En `pnpm dev`, `reactStrictMode: true` monta dos veces el visor: aparece un POST `preview-url` abortado más el real, y un GET abortado más el real. La API procesa también el POST abortado (en desarrollo una apertura consume dos fichas de la tasa); la respuesta tardía se descarta por la identidad del intento, sin efecto funcional.
+- En el build de producción, por formato: imagen 1 POST + 1 GET 200; PDF 1 POST + 2 GET 206 desde el hilo principal; XLSX 1 POST + 23 GET 206 desde el worker; PPTX 1 POST + 43 GET 206 desde el worker; 0 GET abortados, un worker abierto y cerrado por lectura y sin errores de consola atribuibles al visor.
+- `pnpm --filter web build`: compilación, validación de tipos, recolección de páginas, 12 páginas estáticas, optimización y `BUILD_ID` correctos; el paso `standalone` falla en local solo por `EPERM` al crear symlinks en Windows sin privilegios (exit 1). `next start` sirvió ese build para el smoke. El build `standalone` e imagen Docker corresponden a CI/staging.
+
+### Pulido de código
+
+- `2a34d09a` (`refactor(storage): se eliminó el estado vacío obsoleto de previsualización [017]`): se eliminaron `PreviewStates.empty`, `EmptyPreviewState` y su prueba. Ese camino de T-06 nunca se conectó en producción: lo sustituyó `EmptyFileNotice` en los lectores PDF, XLSX y PPTX (T-08/T-09b), que dejan Descargar en el encabezado. El registro histórico de T-06 se conserva tal cual. Validación: web 185 suites, 1862/1862 PASS (la diferencia con 1863 es la prueba eliminada); `pnpm --filter web typecheck`, ESLint de `storage/preview`, Prettier de los archivos tocados y `git diff --check` PASS.
+- Sobre `5a3c3f97`, antes de ese commit: `pnpm typecheck`, `pnpm test`, `pnpm test:int` (104 suites, 972 pruebas), `pnpm test:isolation` (18 suites, 308 pruebas) y `pnpm env:check` PASS; `pnpm test:e2e` sigue siendo marcador y no acredita E2E. `pnpm lint` termina con exit 1 solo por Prettier sobre cuatro archivos locales excluidos en `.git/info/exclude`; `pnpm exec eslint . --max-warnings 0` y Prettier sobre los archivos versionados PASS.
+
+### Límites de esta evidencia
+
+- Local, el host de objetos es `localhost:9000`, mismo sitio que la web: la ausencia de cookies la garantiza el código (`credentials: 'omit'`), no un hostname aislado.
+- Del arnés: el axe de la primera ronda PDF fue de página completa (se repitió limitado al visor); el primer conteo de GET del DOCX acumulaba la sesión (se repitió aislado: 0 GET); las peticiones abortadas antes de salir no tienen cabeceras efectivas, y ninguna conclusión de cookies se apoya en ellas.
+- No se midió específicamente el costo de la activación automática de pestañas con libros grandes; el libro de prueba tiene 450 filas.
+- Las diferencias de UX frente al mockup registradas en T-08 (una página a la vez; Descargar del vacío en el encabezado) siguen como están, sin cambio.
+
+### Pendientes (no resueltos por este registro)
+
+- **Retorno con la entrega pendiente:** con `preview-url` aún sin responder (o fallido sin entrega), `file.folderId` no existe todavía y Volver cae a `/archivos` con el foco en el encabezado, aunque el archivo esté en una carpeta (reproducido a 360 y 1440 px). Con la entrega recibida, el retorno es correcto. Corregirlo exige decidir el contrato de la ruta de vista previa (hoy solo `fileId`, sin búsqueda ni fragmento): pendiente de Adrián.
+- **PD-41:** E2E real con Playwright.
+- **Contraste compartido:** «Mis archivos» en la barra lateral, `#4a6fa5` sobre `#dde6f0` (4.05:1, requiere 4.5:1), fuera del visor.
+- **Hostname aislado real:** solo verificable en staging.
+- **Rol interno real en navegador:** para T-11; el 403 está acreditado por aislamiento (`storage-preview.iso-spec.ts`).
+
+### Revalidación humana en T-11
+
+Lo ya acreditado arriba no se repite. En la demo solo falta comprobar:
+
+- [ ] En DevTools, sobre el hostname aislado real: GET al origen de objetos sin Cookie ni Bearer.
+- [ ] Descargar sigue entregando `attachment`.
+- [ ] Un rol interno real recibe 403.
+- [ ] Volver a la carpeta de origen, después de resolver el contrato de la ruta.
+
+### Estado
+
+**T-10 permanece `[ ]`**: la evidencia en navegador real de la parte de `storage/preview` está registrada, pero la tarea exige `e2e/storage-preview.e2e.ts` (PD-41) y el retorno durante la carga depende de la decisión pendiente. **T-11 permanece `[ ]`**. T-04 permanece `[ ]`: la evidencia en navegador que esperaba queda registrada aquí, salvo el hostname aislado real. La spec permanece **En curso**.
