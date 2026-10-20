@@ -4,6 +4,8 @@ import * as React from 'react';
 
 import { Button } from '../../../components/ui/button';
 
+import { useReadOnlyAccount } from './space-provider';
+
 export interface TrashSelectionBarProps {
   readonly count: number;
   readonly totalBytes: number;
@@ -20,6 +22,7 @@ export function TrashSelectionBar({
   onRestore,
   onClear,
 }: TrashSelectionBarProps): React.JSX.Element | null {
+  const { readOnly } = useReadOnlyAccount();
   if (count === 0) return null;
   return (
     <div
@@ -33,7 +36,7 @@ export function TrashSelectionBar({
         </strong>
         {` · ${formatBytes(totalBytes)}`}
       </p>
-      <Button type="button" size="sm" loading={busy} onClick={onRestore}>
+      <Button type="button" size="sm" loading={busy} onClick={onRestore} disabled={readOnly}>
         {busy ? null : <RotateCcw className="h-4 w-4" aria-hidden="true" />}
         {`Restaurar ${String(count)}`}
       </Button>

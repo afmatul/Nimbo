@@ -10,8 +10,9 @@ import {
   type QuickAccessList,
   quickAccessLimitMessage,
 } from '@nimbo/contracts';
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { axe } from 'jest-axe';
 
 import type { StorageApi } from '../api';
 import { StorageRequestError } from '../storage-request-error';
@@ -431,5 +432,81 @@ describe('MyFiles avisa cuando fijar o quitar falla (006 CA-27)', () => {
     expect(alert.textContent).toContain('No pudimos quitar «raiz.pdf» de la barra lateral.');
     expect(alert.textContent).toContain('Hiciste demasiadas solicitudes.');
     expect(within(desktopSidebar()).getByRole('button', { name: RAIZ_IN_SIDEBAR })).toBeTruthy();
+  });
+});
+
+const seriousViolationsOf = (results: Awaited<ReturnType<typeof axe>>): unknown[] =>
+  results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
+
+describe('MyFiles en solo lectura (spec 010 CA-13, CA-14, RN-6)', () => {
+  const readOnlyApi = (overrides: Partial<StorageApi> = {}): StorageApi =>
+    fakeApi({
+      spaceSummary: jest.fn(() =>
+        Promise.resolve({ ...spaceSummaryWith(4.8 * GB), readOnly: true }),
+      ),
+      ...overrides,
+    });
+
+  it('CA-14: el aviso con «Renovar plan», y «Nueva carpeta» y «Subir archivos» deshabilitadas con su explicación', async () => {
+    renderMyFiles(readOnlyApi());
+
+    expect(await screen.findByText('Tu cuenta está en solo lectura.')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Renovar plan' }).getAttribute('href')).toBe(
+      '/suscripcion/renovar',
+    );
+    expect(
+      (screen.getByRole('button', { name: 'Nueva carpeta' }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+    expect(
+      (screen.getByRole('button', { name: 'Subir archivos' }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+    expect(
+      screen.getByText(
+        'Tu cuenta está en solo lectura: no puedes subir, crear, renombrar, mover ni restaurar.',
+      ),
+    ).toBeTruthy();
+    await screen.findByText('raiz.pdf');
+    expect(seriousViolationsOf(await axe(document.body))).toEqual([]);
+  });
+
+  it('CA-13, RN-6: en el menú, renombrar y mover se deshabilitan; papelera y fijar siguen', async () => {
+    renderMyFiles(readOnlyApi());
+    await screen.findByText('Tu cuenta está en solo lectura.');
+    const table = await screen.findByRole('table');
+
+    await userEvent.click(within(table).getByRole('button', { name: 'Acciones de raiz.pdf' }));
+
+    expect(screen.getByRole('menuitem', { name: 'Renombrar' }).getAttribute('aria-disabled')).toBe(
+      'true',
+    );
+    expect(screen.getByRole('menuitem', { name: 'Mover a…' }).getAttribute('aria-disabled')).toBe(
+      'true',
+    );
+    expect(
+      screen.getByRole('menuitem', { name: 'Mover a la papelera' }).getAttribute('aria-disabled'),
+    ).toBeNull();
+    expect(
+      screen
+        .getByRole('menuitem', { name: 'Fijar en la barra lateral' })
+        .getAttribute('aria-disabled'),
+    ).toBeNull();
+  });
+
+  it('CA-14: soltar un archivo muestra el mensaje de CA-13 y no inicia la carga', async () => {
+    const api = readOnlyApi();
+    renderMyFiles(api);
+    await screen.findByText('Tu cuenta está en solo lectura.');
+    const file = new File(['hola'], 'nuevo.pdf', { type: 'application/pdf' });
+
+    fireEvent.drop(screen.getByTestId('upload-dropzone'), {
+      dataTransfer: { files: [file], types: ['Files'] },
+    });
+
+    expect(
+      await screen.findByText(
+        /Tu suscripción venció y tu cuenta está en solo lectura\. Renueva tu plan/,
+      ),
+    ).toBeTruthy();
+    expect(api.init).not.toHaveBeenCalled();
   });
 });

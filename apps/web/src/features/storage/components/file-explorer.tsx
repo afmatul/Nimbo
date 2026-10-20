@@ -1,11 +1,14 @@
 'use client';
 
+import { STORAGE_ERROR_CODES } from '@nimbo/contracts';
 import type { FolderRef, NodeSummary } from '@nimbo/contracts';
 import { FolderPlus, Upload } from 'lucide-react';
 import * as React from 'react';
 
 import { StateView } from '../../../components/nimbo/state-view';
+import { Alert } from '../../../components/ui/alert';
 import { Button } from '../../../components/ui/button';
+import { messageForCode } from '../../../lib/error-catalog';
 import type { ListControls } from '../hooks/use-folder-contents';
 import { MY_FILES_LABEL } from '../routes';
 
@@ -14,6 +17,8 @@ import { FolderBackLink } from './folder-breadcrumbs';
 import { LoadMore } from './load-more';
 import { NodeSortMenu } from './node-sort-menu';
 import { NodeTable, type FolderDisclosure, type NodeTableProps } from './node-table';
+import { READ_ONLY_ACTIONS_HINT } from './read-only-notice';
+import { useReadOnlyAccount } from './space-provider';
 import { UploadDropzone } from './upload-dropzone';
 
 export type FileExplorerStatus = 'loading' | 'ready' | 'error';
@@ -101,6 +106,8 @@ export function FileExplorer({
   notice,
   controls,
 }: FileExplorerProps): React.JSX.Element {
+  const { readOnly } = useReadOnlyAccount();
+  const [blockedDrop, setBlockedDrop] = React.useState(false);
   const ownInputRef = React.useRef<HTMLInputElement>(null);
   const inputRef = fileInputRef ?? ownInputRef;
   const openPicker = (): void => inputRef.current?.click();
@@ -120,21 +127,35 @@ export function FileExplorer({
             variant="outline"
             className="flex-1 sm:flex-none"
             onClick={onNewFolder}
+            disabled={readOnly}
           >
             <FolderPlus className="h-4 w-4" aria-hidden="true" />
             Nueva carpeta
           </Button>
-          <Button type="button" className="flex-1 sm:flex-none" onClick={openPicker}>
+          <Button
+            type="button"
+            className="flex-1 sm:flex-none"
+            onClick={openPicker}
+            disabled={readOnly}
+          >
             <Upload className="h-4 w-4" aria-hidden="true" />
             Subir archivos
           </Button>
         </div>
       </header>
+      {readOnly ? (
+        <p className="text-sm text-secondary-foreground">{READ_ONLY_ACTIONS_HINT}</p>
+      ) : null}
+      {blockedDrop ? (
+        <Alert variant="error">
+          {messageForCode(STORAGE_ERROR_CODES.STORAGE_ACCOUNT_READ_ONLY)}
+        </Alert>
+      ) : null}
 
       <UploadDropzone
         destinationName={placeName}
         maxFileLabel={maxFileLabel}
-        onFiles={onFiles}
+        onFiles={readOnly ? () => setBlockedDrop(true) : onFiles}
         inputRef={inputRef}
       >
         {notice ? (

@@ -29,6 +29,19 @@ export function useSpace(): SpaceContextValue {
   return value;
 }
 
+/** La cuenta en solo lectura (010 CA-14, RF-23) y su plan; fuera del proveedor (p. ej. una prueba aislada), vigente. */
+export interface ReadOnlyAccount {
+  readonly readOnly: boolean;
+  readonly planName: string | null;
+}
+
+/** Lo lee del resumen que el grupo `(cliente)` ya carga (010 plan §1): sin otra petición. */
+export function useReadOnlyAccount(): ReadOnlyAccount {
+  const value = React.useContext(SpaceContext);
+  if (value?.state.status !== 'ready') return { readOnly: false, planName: null };
+  return { readOnly: value.state.summary.readOnly, planName: value.state.summary.planName };
+}
+
 /** Una lectura de `GET /storage/summary` por intento; una respuesta de un intento anterior se descarta. */
 function useSpaceSummary(api: SpaceApi): SpaceContextValue {
   const [state, setState] = React.useState<SpaceSummaryState>(LOADING);
