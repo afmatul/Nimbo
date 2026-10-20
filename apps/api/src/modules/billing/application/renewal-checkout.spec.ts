@@ -137,7 +137,7 @@ describe('RenewalCheckout.renew (spec 010 RN-1, RN-4, CA-8 a CA-10, CA-20, CA-29
     const outcome = await checkout.renew(ANA, team({ pendingPlanId: PRO.id }), {
       ...ORDER,
       instrument: 'SIM-TOK-decline-1',
-      trigger: 'automatic',
+      trigger: 'scheduled',
     });
 
     expect(journal).toEqual(['charge', 'save']);

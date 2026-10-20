@@ -75,7 +75,7 @@ export class SubscriptionRenewer {
     const outcome = await this.checkout.renew(actor, current, {
       instrument,
       nit,
-      trigger: 'automatic',
+      trigger: 'scheduled',
     });
     if (outcome.payment.status === 'rechazada') {
       return { result: 'rejected', expired: outcome.subscription };
