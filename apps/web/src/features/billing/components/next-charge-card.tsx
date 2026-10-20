@@ -123,12 +123,34 @@ function ToggleError({ toggle }: { readonly toggle: NextChargeCardProps['toggle'
   );
 }
 
+const DOWNGRADE_NOTE =
+  'La renovación automática no aplica mientras esté programado el cambio a Personal. Con un cambio de plan programado no puedes renovar por adelantado.';
+
+/** El interruptor de la renovación automática y la renovación manual (sin bajada a Personal programada). */
+function RenewalControls({ subscription, card, toggle }: NextChargeCardProps): React.JSX.Element {
+  return (
+    <>
+      <div className="border-t border-border pt-4">
+        <AutoRenewSwitch
+          subscription={subscription}
+          card={card}
+          pending={toggle.pending}
+          onChange={toggle.onChange}
+        />
+      </div>
+      <div className="border-t border-border pt-4 text-sm text-secondary-foreground">
+        <RenewalFooter subscription={subscription} />
+      </div>
+    </>
+  );
+}
+
 /**
  * «Próximo cobro» (spec 010 CA-25, CA-6, CA-26, CA-28; mockups de `billing/suscripcion/`): qué se cobrará, el interruptor
  * de renovación automática y la renovación manual. Con la bajada a Personal no hay interruptor (no aplica).
  */
 export function NextChargeCard(props: NextChargeCardProps): React.JSX.Element {
-  const { subscription, card, toggle } = props;
+  const { subscription, toggle } = props;
   const downgrade = isDowngradeToPersonal(subscription);
   return (
     <Card role="region" aria-labelledby="proximo-cobro-titulo" className="flex flex-col gap-4 p-6">
@@ -141,23 +163,13 @@ export function NextChargeCard(props: NextChargeCardProps): React.JSX.Element {
       ) : (
         <ChargeFacts charge={subscription.nextCharge} />
       )}
-      {downgrade ? null : (
-        <div className="border-t border-border pt-4">
-          <AutoRenewSwitch
-            subscription={subscription}
-            card={card}
-            pending={toggle.pending}
-            onChange={toggle.onChange}
-          />
-        </div>
+      {downgrade ? (
+        <p className="border-t border-border pt-4 text-sm text-secondary-foreground">
+          {DOWNGRADE_NOTE}
+        </p>
+      ) : (
+        <RenewalControls {...props} />
       )}
-      <div className="border-t border-border pt-4 text-sm text-secondary-foreground">
-        {downgrade ? (
-          'La renovación automática no aplica mientras esté programado el cambio a Personal. Con un cambio de plan programado no puedes renovar por adelantado.'
-        ) : (
-          <RenewalFooter subscription={subscription} />
-        )}
-      </div>
     </Card>
   );
 }

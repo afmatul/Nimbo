@@ -64,6 +64,33 @@ function ConfirmDisable({
   );
 }
 
+const LABEL_ID = 'renovacion-automatica';
+
+/** El interruptor con su estado también en texto. */
+function SwitchControl({
+  checked,
+  disabled,
+  onToggle,
+}: {
+  readonly checked: boolean;
+  readonly disabled: boolean;
+  readonly onToggle: (enabled: boolean) => void;
+}): React.JSX.Element {
+  return (
+    <div className="flex shrink-0 items-center gap-3">
+      <Switch
+        checked={checked}
+        onCheckedChange={onToggle}
+        disabled={disabled}
+        aria-labelledby={LABEL_ID}
+      />
+      <span className="text-sm font-medium text-foreground">
+        {checked ? 'Activada' : 'Desactivada'}
+      </span>
+    </div>
+  );
+}
+
 /**
  * Renovación automática (spec 010 CA-6, RN-3): interruptor con el estado también en texto; apagarlo pide confirmación con
  * la consecuencia, encenderlo no. En solo lectura queda deshabilitado con su explicación.
@@ -71,29 +98,21 @@ function ConfirmDisable({
 export function AutoRenewSwitch(props: AutoRenewSwitchProps): React.JSX.Element {
   const { subscription, pending, onChange } = props;
   const [confirming, setConfirming] = React.useState(false);
-  const disabled = pending || subscription.status === 'readOnly';
+  const readOnly = subscription.status === 'readOnly';
   const toggle = (enabled: boolean): void => (enabled ? onChange(true) : setConfirming(true));
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
-        <p id="renovacion-automatica" className="text-sm font-semibold text-foreground">
+        <p id={LABEL_ID} className="text-sm font-semibold text-foreground">
           Renovación automática
         </p>
         <p className="text-sm text-secondary-foreground">{helpText(props)}</p>
       </div>
-      <div className="flex shrink-0 items-center gap-3">
-        <Switch
-          checked={subscription.autoRenew && subscription.status !== 'readOnly'}
-          onCheckedChange={toggle}
-          disabled={disabled}
-          aria-labelledby="renovacion-automatica"
-        />
-        <span className="text-sm font-medium text-foreground">
-          {subscription.autoRenew && subscription.status !== 'readOnly'
-            ? 'Activada'
-            : 'Desactivada'}
-        </span>
-      </div>
+      <SwitchControl
+        checked={subscription.autoRenew && !readOnly}
+        disabled={pending || readOnly}
+        onToggle={toggle}
+      />
       <ConfirmDisable
         subscription={subscription}
         open={confirming}

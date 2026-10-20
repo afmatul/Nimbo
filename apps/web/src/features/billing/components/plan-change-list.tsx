@@ -37,6 +37,18 @@ const introOf = (subscription: SubscriptionView | null): string => {
   return `El cambio se aplica el ${longDayLabel(subscription.expiresAt)}, cuando termina tu periodo. Hasta entonces conservas ${subscription.plan.name} y sus límites. No hay cobro proporcional.`;
 };
 
+function CurrentPlanNote(): React.JSX.Element {
+  return (
+    <p className="flex items-center justify-center gap-2 py-2 text-sm font-medium text-primary">
+      <Check aria-hidden="true" className="size-4" />
+      Es tu plan actual
+    </p>
+  );
+}
+
+const isOnPersonal = (subscription: SubscriptionView | null): boolean =>
+  subscription === null || subscription.expiresAt === null;
+
 /** El pie de cada tarjeta: el actual, el ya programado, contratar desde Personal (CA-18) o cambiar. */
 function PlanAction({
   plan,
@@ -47,16 +59,8 @@ function PlanAction({
   readonly subscription: SubscriptionView | null;
   readonly onChoose: (plan: Plan) => void;
 }): React.JSX.Element | null {
-  const currentId = subscription?.plan.id ?? null;
-  if (plan.id === currentId) {
-    return (
-      <p className="flex items-center justify-center gap-2 py-2 text-sm font-medium text-primary">
-        <Check aria-hidden="true" className="size-4" />
-        Es tu plan actual
-      </p>
-    );
-  }
-  if (subscription === null || subscription.expiresAt === null) {
+  if (plan.id === subscription?.plan.id) return <CurrentPlanNote />;
+  if (isOnPersonal(subscription)) {
     if (plan.priceCents === 0) return null;
     return (
       <Link href={subscribeHref(plan.slug)} className={buttonVariants({ className: 'w-full' })}>
@@ -64,37 +68,27 @@ function PlanAction({
       </Link>
     );
   }
-  if (subscription.pendingPlan?.id === plan.id) {
-    return (
-      <Button variant="outline" className="w-full" disabled>
-        Cambio programado
-      </Button>
-    );
-  }
+  const scheduled = subscription?.pendingPlan?.id === plan.id;
   return (
-    <Button variant="outline" className="w-full" onClick={() => onChoose(plan)}>
-      {`Cambiar a ${plan.name}`}
+    <Button
+      variant="outline"
+      className="w-full"
+      disabled={scheduled}
+      onClick={() => onChoose(plan)}
+    >
+      {scheduled ? 'Cambio programado' : `Cambiar a ${plan.name}`}
     </Button>
   );
 }
 
-/**
- * «Cambiar de plan» (spec 010 CA-16 a CA-18, CA-21, CA-27; mockups `planes--*`): los planes activos con el actual marcado,
- * la comparativa y la confirmación. Desde Personal, un plan de pago lleva a contratar (009).
- */
-export function PlanChangeList(props: PlanChangeListProps): React.JSX.Element {
-  const { history, plans, usedBytes, pending, error, onSchedule, onDismissError } = props;
-  const { subscription } = history;
-  const [target, setTarget] = React.useState<Plan | null>(null);
-  const close = (): void => {
-    setTarget(null);
-    onDismissError();
-  };
+/** Aviso de vencida, vuelta a «Plan y facturación», título y lo que pasa al cambiar. */
+function ListHeader({
+  subscription,
+}: {
+  readonly subscription: SubscriptionView | null;
+}): React.JSX.Element {
   return (
-    <section
-      aria-labelledby="cambiar-plan-titulo"
-      className="mx-auto flex w-full max-w-6xl flex-col gap-4"
-    >
+    <>
       {subscription?.status === 'readOnly' ? (
         <ReadOnlyBanner
           title="Tu suscripción venció."
@@ -115,33 +109,67 @@ export function PlanChangeList(props: PlanChangeListProps): React.JSX.Element {
         </h1>
         <p className="max-w-3xl text-sm text-secondary-foreground">{introOf(subscription)}</p>
       </div>
-      <div className="flex flex-wrap gap-4">
-        {plans.map((plan) => (
+    </>
+  );
+}
+
+/** Los planes activos con el actual marcado (CA-17: la lista no trae desactivados). */
+function PlanCards({
+  plans,
+  subscription,
+  onChoose,
+}: {
+  readonly plans: readonly Plan[];
+  readonly subscription: SubscriptionView | null;
+  readonly onChoose: (plan: Plan) => void;
+}): React.JSX.Element {
+  return (
+    <div className="flex flex-wrap gap-4">
+      {plans.map((plan) => {
+        const current = plan.id === subscription?.plan.id;
+        return (
           <PlanCard
             key={plan.id}
             plan={plan}
             className="min-w-0 flex-1 basis-56"
-            highlighted={plan.id === subscription?.plan.id}
-            badge={
-              plan.id === subscription?.plan.id ? (
-                <Badge variant="secondary">Plan actual</Badge>
-              ) : undefined
-            }
-            action={<PlanAction plan={plan} subscription={subscription} onChoose={setTarget} />}
+            highlighted={current}
+            badge={current ? <Badge variant="secondary">Plan actual</Badge> : undefined}
+            action={<PlanAction plan={plan} subscription={subscription} onChoose={onChoose} />}
           />
-        ))}
-      </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * «Cambiar de plan» (spec 010 CA-16 a CA-18, CA-21, CA-27; mockups `planes--*`): los planes activos con el actual marcado,
+ * la comparativa y la confirmación. Desde Personal, un plan de pago lleva a contratar (009).
+ */
+export function PlanChangeList(props: PlanChangeListProps): React.JSX.Element {
+  const { history, plans, onSchedule, onDismissError, ...dialog } = props;
+  const { subscription } = history;
+  const [target, setTarget] = React.useState<Plan | null>(null);
+  const close = (): void => {
+    setTarget(null);
+    onDismissError();
+  };
+  return (
+    <section
+      aria-labelledby="cambiar-plan-titulo"
+      className="mx-auto flex w-full max-w-6xl flex-col gap-4"
+    >
+      <ListHeader subscription={subscription} />
+      <PlanCards plans={plans} subscription={subscription} onChoose={setTarget} />
       <PlanComparisonTable plans={plans} />
       {subscription === null ? null : (
         <PlanChangeDialog
           subscription={subscription}
           target={target}
           card={history.paymentMethod}
-          usedBytes={usedBytes}
-          pending={pending}
-          error={error}
           onConfirm={onSchedule}
           onClose={close}
+          {...dialog}
         />
       )}
     </section>

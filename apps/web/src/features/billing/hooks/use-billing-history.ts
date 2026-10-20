@@ -10,18 +10,20 @@ export type BillingHistoryState<T extends BillingHistoryResponse = BillingHistor
 
 const LOADING = { status: 'loading' } as const;
 
+export interface BillingHistoryHandle<T extends BillingHistoryResponse> {
+  readonly state: BillingHistoryState<T>;
+  readonly retry: () => void;
+  /** 010 CA-6, CA-19: la vista que respondió un ajuste reemplaza la de la página sin recargar. */
+  readonly replaceSubscription: (subscription: SubscriptionView) => void;
+}
+
 /**
  * Una lectura del historial por intento (spec 009 CA-7); la respuesta de un intento anterior se descarta y «Reintentar»
  * vuelve a «cargando».
  */
 export function useBillingHistory<T extends BillingHistoryResponse>(
   load: () => Promise<T>,
-): {
-  readonly state: BillingHistoryState<T>;
-  readonly retry: () => void;
-  /** 010 CA-6, CA-19: la vista que respondió un ajuste reemplaza la de la página sin recargar. */
-  readonly replaceSubscription: (subscription: SubscriptionView) => void;
-} {
+): BillingHistoryHandle<T> {
   const [state, setState] = React.useState<BillingHistoryState<T>>(LOADING);
   const [attempt, setAttempt] = React.useState(0);
 

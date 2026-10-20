@@ -181,6 +181,27 @@ export interface PlanAndBillingProps {
   readonly space: SpaceSummaryState;
 }
 
+/** Pide el enlace firmado de una factura y lo abre; un fallo devuelve el mensaje del catálogo por código (009 CA-8). */
+function useInvoiceDownload({
+  apiPublicUrl,
+  authFetch,
+  openUrl,
+}: Omit<PlanAndBillingProps, 'space' | 'openUrl'> & {
+  readonly openUrl: (url: string) => void;
+}): DownloadInvoice {
+  return React.useCallback<DownloadInvoice>(
+    async (invoiceId) => {
+      try {
+        openUrl((await requestInvoiceDownload(apiPublicUrl, authFetch, invoiceId)).downloadUrl);
+        return null;
+      } catch (caught) {
+        return messageForCode(toApiClientError(caught).code);
+      }
+    },
+    [apiPublicUrl, authFetch, openUrl],
+  );
+}
+
 /** La pantalla con su carga y su descarga; un fallo de descarga da el mensaje del catálogo por código. */
 export function PlanAndBilling({
   apiPublicUrl,
@@ -198,17 +219,7 @@ export function PlanAndBilling({
     authFetch,
     onUpdated: replaceSubscription,
   });
-  const onDownload = React.useCallback<DownloadInvoice>(
-    async (invoiceId) => {
-      try {
-        openUrl((await requestInvoiceDownload(apiPublicUrl, authFetch, invoiceId)).downloadUrl);
-        return null;
-      } catch (caught) {
-        return messageForCode(toApiClientError(caught).code);
-      }
-    },
-    [apiPublicUrl, authFetch, openUrl],
-  );
+  const onDownload = useInvoiceDownload({ apiPublicUrl, authFetch, openUrl });
   return (
     <PlanAndBillingView
       state={state}

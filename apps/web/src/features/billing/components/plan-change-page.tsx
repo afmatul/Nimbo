@@ -58,9 +58,8 @@ function useScheduling({
   return { pending, error, onSchedule, onDismissError: () => setError(null) };
 }
 
-/** «Cambiar de plan» con su carga (historial y catálogo a la vez) y el envío (spec 010 CA-16 a CA-18, CA-27). */
-export function PlanChangePage(props: PlanChangePageProps): React.JSX.Element {
-  const { apiPublicUrl, authFetch, space } = props;
+/** El historial y el catálogo a la vez: la pantalla necesita los dos para marcar el plan actual. */
+function usePlanChangeData({ apiPublicUrl, authFetch }: PlanChangePageProps) {
   const load = React.useCallback(async (): Promise<PlanChangeData> => {
     const [history, catalog] = await Promise.all([
       fetchBillingHistory(apiPublicUrl, authFetch),
@@ -68,7 +67,13 @@ export function PlanChangePage(props: PlanChangePageProps): React.JSX.Element {
     ]);
     return { ...history, plans: catalog.plans };
   }, [apiPublicUrl, authFetch]);
-  const { state, retry } = useBillingHistory(load);
+  return useBillingHistory(load);
+}
+
+/** «Cambiar de plan» con su carga (historial y catálogo a la vez) y el envío (spec 010 CA-16 a CA-18, CA-27). */
+export function PlanChangePage(props: PlanChangePageProps): React.JSX.Element {
+  const { space } = props;
+  const { state, retry } = usePlanChangeData(props);
   const scheduling = useScheduling(props);
   return (
     <BillingPageLayout trail={TRAIL} space={space}>

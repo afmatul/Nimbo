@@ -16,33 +16,43 @@ export interface Crumb {
   readonly href?: string;
 }
 
+/** Un paso después del separador: con enlace, salvo la página actual. */
+function CrumbItem({
+  crumb,
+  current,
+}: {
+  readonly crumb: Crumb;
+  readonly current: boolean;
+}): React.JSX.Element {
+  return (
+    <>
+      <li aria-hidden="true" className="text-muted-foreground">
+        /
+      </li>
+      <li
+        aria-current={current ? 'page' : undefined}
+        className={current ? 'font-semibold text-foreground' : 'text-secondary-foreground'}
+      >
+        {crumb.href === undefined || current ? (
+          crumb.label
+        ) : (
+          <Link href={crumb.href} className="hover:underline">
+            {crumb.label}
+          </Link>
+        )}
+      </li>
+    </>
+  );
+}
+
 function Breadcrumbs({ trail }: { readonly trail: readonly Crumb[] }): React.JSX.Element {
   return (
     <nav aria-label="Ruta" className="min-w-0">
       <ol className="flex flex-wrap items-center gap-2 text-sm">
         <li className="text-secondary-foreground">Cuenta</li>
-        {trail.map((crumb, index) => {
-          const current = index === trail.length - 1;
-          return (
-            <React.Fragment key={crumb.label}>
-              <li aria-hidden="true" className="text-muted-foreground">
-                /
-              </li>
-              <li
-                aria-current={current ? 'page' : undefined}
-                className={current ? 'font-semibold text-foreground' : 'text-secondary-foreground'}
-              >
-                {crumb.href === undefined || current ? (
-                  crumb.label
-                ) : (
-                  <Link href={crumb.href} className="hover:underline">
-                    {crumb.label}
-                  </Link>
-                )}
-              </li>
-            </React.Fragment>
-          );
-        })}
+        {trail.map((crumb, index) => (
+          <CrumbItem key={crumb.label} crumb={crumb} current={index === trail.length - 1} />
+        ))}
       </ol>
     </nav>
   );

@@ -52,7 +52,6 @@ export function PaymentSummary({
   readonly plan: Plan;
   readonly period?: PeriodNote;
 }): JSX.Element {
-  const { subtotalCents, vatCents, totalCents } = breakdown(plan.priceCents);
   return (
     <Card className="flex flex-col gap-4 p-5" aria-labelledby="resumen-pago">
       <p
@@ -63,16 +62,7 @@ export function PaymentSummary({
       </p>
       <PlanLines plan={plan} />
       {period === undefined ? null : <PeriodBlock period={period} />}
-      <dl className="flex flex-col gap-1 border-t border-border pt-3 text-sm">
-        <AmountRow label="Subtotal" cents={subtotalCents} />
-        <AmountRow label="IVA (12 %)" cents={vatCents} />
-      </dl>
-      <p className="flex items-baseline justify-between border-t border-border pt-3">
-        <span className="text-sm font-semibold text-foreground">Total hoy</span>
-        <span className="text-2xl font-bold tabular-nums text-foreground">
-          {formatGtq(totalCents)}
-        </span>
-      </p>
+      <Amounts priceCents={plan.priceCents} />
     </Card>
   );
 }
@@ -89,5 +79,24 @@ function AmountRow({
       <dt className="text-muted-foreground">{label}</dt>
       <dd className="tabular-nums text-foreground">{formatGtq(cents)}</dd>
     </div>
+  );
+}
+
+/** Desglose con el IVA incluido (009 RN-2) y el total que se cobra hoy. */
+function Amounts({ priceCents }: { readonly priceCents: number }): JSX.Element {
+  const { subtotalCents, vatCents, totalCents } = breakdown(priceCents);
+  return (
+    <>
+      <dl className="flex flex-col gap-1 border-t border-border pt-3 text-sm">
+        <AmountRow label="Subtotal" cents={subtotalCents} />
+        <AmountRow label="IVA (12 %)" cents={vatCents} />
+      </dl>
+      <p className="flex items-baseline justify-between border-t border-border pt-3">
+        <span className="text-sm font-semibold text-foreground">Total hoy</span>
+        <span className="text-2xl font-bold tabular-nums text-foreground">
+          {formatGtq(totalCents)}
+        </span>
+      </p>
+    </>
   );
 }

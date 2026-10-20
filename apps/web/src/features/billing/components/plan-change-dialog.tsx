@@ -78,6 +78,30 @@ function Failure({ message }: { readonly message: string }) {
   );
 }
 
+/** «Cancelar» y programar; si falló, solo «Cerrar» (mockup `planes--cambio-error`). */
+function Actions({
+  failed,
+  pending,
+  confirmLabel,
+  onConfirm,
+}: {
+  readonly failed: boolean;
+  readonly pending: boolean;
+  readonly confirmLabel: string;
+  readonly onConfirm: () => void;
+}): React.JSX.Element {
+  return (
+    <AlertDialogFooter>
+      <AlertDialogCancel disabled={pending}>{failed ? 'Cerrar' : 'Cancelar'}</AlertDialogCancel>
+      {failed ? null : (
+        <Button onClick={onConfirm} disabled={pending}>
+          {confirmLabel}
+        </Button>
+      )}
+    </AlertDialogFooter>
+  );
+}
+
 /**
  * Confirmación del cambio de plan (spec 010 CA-16, CA-17, CA-21, CA-27; mockups `planes--confirmar-*` y
  * `planes--cambio-error`): resumen, aviso de lo que baja y el botón de programar; si falla, el error y «Cerrar».
@@ -102,16 +126,12 @@ export function PlanChangeDialog(props: PlanChangeDialogProps): React.JSX.Elemen
         ) : (
           <Failure message={error} />
         )}
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={pending}>
-            {error === null ? 'Cancelar' : 'Cerrar'}
-          </AlertDialogCancel>
-          {error === null ? (
-            <Button onClick={() => onConfirm(target)} disabled={pending}>
-              {copy.confirmLabel}
-            </Button>
-          ) : null}
-        </AlertDialogFooter>
+        <Actions
+          failed={error !== null}
+          pending={pending}
+          confirmLabel={copy.confirmLabel}
+          onConfirm={() => onConfirm(target)}
+        />
       </AlertDialogContent>
     </AlertDialog>
   );
