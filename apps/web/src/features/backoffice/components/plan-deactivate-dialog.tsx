@@ -13,9 +13,13 @@ interface DialogProps {
   readonly deactivation: PlanDeactivation;
 }
 
-/** «la 1 cuenta que lo tiene lo conserva» / «las 52 cuentas que lo tienen lo conservan». */
-function whoOf(plan: PlanAdminView, singular: string, plural: string): string {
-  return quantity(plan.clientCount).phrase(singular, plural);
+/** «La 1 cuenta que lo tiene lo conserva…» / «Las 52 cuentas que lo tienen lo conservan…» (RN-4). */
+function keepsLine(plan: PlanAdminView): string {
+  const who = quantity(plan.clientCount).phrase(
+    'cuenta que lo tiene lo conserva',
+    'cuentas que lo tienen lo conservan',
+  );
+  return capitalize(`${who} con el mismo precio y los mismos límites.`);
 }
 
 /** «Q110.00 al mes · 350 GB · 52 cuentas lo tienen» (mockup `confirmar-desactivar`). */
@@ -29,7 +33,7 @@ function planLine(plan: PlanAdminView): string {
 function consequences(plan: PlanAdminView): string {
   return [
     'Deja de ofrecerse: no aparecerá al registrarse ni al cambiar de plan.',
-    `${capitalize(whoOf(plan, 'cuenta que lo tiene lo conserva', 'cuentas que lo tienen lo conservan'))} con el mismo precio y los mismos límites.`,
+    keepsLine(plan),
     'No se puede volver a activar. Si lo necesitas otra vez, crea un plan nuevo con sus valores.',
     'La acción queda registrada en la auditoría.',
   ].join(' ');
@@ -63,7 +67,6 @@ export function PlanDeactivatedNotice({
 }: {
   readonly plan: PlanAdminView;
 }): React.JSX.Element {
-  const who = whoOf(plan, 'cuenta que lo tiene lo conserva', 'cuentas que lo tienen lo conservan');
   return (
     <p className="mt-4 flex items-start gap-2.5 rounded-lg border border-success/40 bg-success/10 px-4 py-3 text-sm text-foreground">
       <Ban className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
@@ -71,7 +74,7 @@ export function PlanDeactivatedNotice({
         <strong className="block font-semibold">
           {`Desactivamos el plan ${plan.name}. Ya no se ofrece a contrataciones nuevas.`}
         </strong>
-        {capitalize(`${who} con el mismo precio y los mismos límites.`)}
+        {keepsLine(plan)}
       </span>
     </p>
   );
