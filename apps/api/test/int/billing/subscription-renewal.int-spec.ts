@@ -147,7 +147,7 @@ describe('pasada de renovación del `worker` (spec 010 CA-1 a CA-3, CA-5, CA-7, 
     ]);
     await expect(invoiceNitsOf(ana.id)).resolves.toEqual([NIT, NIT]);
     await expect(subscriptionAuditsOf(owner, ana.id)).resolves.toMatchObject([
-      { accion: 'subscription.renewed', atributos: { trigger: 'automatic', planSlug: 'equipo' } },
+      { accion: 'subscription.renewed', atributos: { trigger: 'scheduled', planSlug: 'equipo' } },
     ]);
   });
 

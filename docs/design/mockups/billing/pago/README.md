@@ -12,7 +12,7 @@
   - default: `pago.html` (contratación de la 009)
   - renovacion: renovar por adelantado (vence el 19 de octubre); el resumen muestra «Periodo nuevo: del 19 de octubre al 18 de noviembre de 2026» y que no se pierden días (`pago--renovacion.html`, CA-8, RN-1)
   - renovacion-rechazado: `4000 0000 0000 0002`; `Alert` de error con el mensaje del catálogo de la 009 y «Tu plan y su vencimiento no cambiaron.» (`pago--renovacion-rechazado.html`, CA-9)
-  - renovacion-exito: «Pago aprobado», referencia, factura y periodo nuevo; «Ir a Plan y facturación» (`pago--renovacion-exito.html`, CA-8)
+  - renovacion-exito: «Pago aprobado», referencia y periodo nuevo (el recibo no trae el número de factura: llega por correo y en Plan y facturación); «Ir a Plan y facturación» (`pago--renovacion-exito.html`, CA-8)
   - renovacion-solo-lectura: desde una cuenta vencida, el periodo nuevo empieza hoy y termina la solo lectura (`pago--renovacion-solo-lectura.html`, CA-10)
 - **Capturas**: `docs/design/capturas/billing/pago/` (`pago--<estado>--<360|1440>.png`). axe-core sin violaciones a 360 y
   1440 px, sin desbordamiento horizontal, objetivos ≥ 24 px (44 px en los campos y botones), sin errores de consola.

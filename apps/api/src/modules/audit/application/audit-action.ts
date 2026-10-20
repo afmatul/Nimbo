@@ -24,8 +24,8 @@ export enum AuditAction {
   PLAN_CREATED = 'plan.created',
   PLAN_DEACTIVATED = 'plan.deactivated',
   /**
-   * Suscripción del cliente (010 §5, CA-6, CA-22): sin recurso, el afectado es el dueño; `trigger` dice si fue a mano o
-   * en la pasada automática y `planSlug` el plan. Nunca datos de tarjeta ni la referencia del instrumento.
+   * Suscripción del cliente (010 §5, CA-6, CA-22): sin recurso, el afectado es el dueño; `trigger` dice si fue a mano (`manual`) o
+   * en la pasada automática (`scheduled`) y `planSlug` el plan. Nunca datos de tarjeta ni la referencia del instrumento.
    */
   SUBSCRIPTION_AUTO_RENEW_CHANGED = 'subscription.auto_renew_changed',
   SUBSCRIPTION_RENEWED = 'subscription.renewed',

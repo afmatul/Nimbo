@@ -1,4 +1,4 @@
-import { INTERNAL_ROLES } from '@nimbo/contracts';
+import { AUDIT_TRIGGERS, INTERNAL_ROLES } from '@nimbo/contracts';
 
 import type { AttributeRules } from '../domain/attribute-sanitizer';
 import type { AuditAttributes, AuditResourceType } from '../domain/audit-entry';
@@ -24,7 +24,6 @@ const NODE_TYPES = ['file', 'folder'] as const;
 const NODE_ATTRIBUTES = { nodeType: NODE_TYPES, itemCount: 'number', sizeBytes: 'number' } as const;
 const ON_ACCOUNT = { resourceType: 'account', attributes: {} } as const;
 const ON_PLAN = { resourceType: 'plan', attributes: {} } as const;
-const RENEWAL_TRIGGERS = ['manual', 'automatic'] as const;
 const ON_SUBSCRIPTION = { resourceType: null, attributes: {} } as const;
 const ON_SUBSCRIPTION_PLAN = { resourceType: null, attributes: { planSlug: 'text' } } as const;
 
@@ -99,11 +98,11 @@ export const AUDIT_CATALOG = {
   },
   [AuditAction.SUBSCRIPTION_RENEWED]: {
     resourceType: null,
-    attributes: { trigger: RENEWAL_TRIGGERS, planSlug: 'text', amountCents: 'number' },
+    attributes: { trigger: AUDIT_TRIGGERS, planSlug: 'text', amountCents: 'number' },
   },
   [AuditAction.SUBSCRIPTION_RENEWAL_REJECTED]: {
     resourceType: null,
-    attributes: { trigger: RENEWAL_TRIGGERS, planSlug: 'text' },
+    attributes: { trigger: AUDIT_TRIGGERS, planSlug: 'text' },
   },
   [AuditAction.SUBSCRIPTION_READ_ONLY_ENTERED]: ON_SUBSCRIPTION,
   [AuditAction.SUBSCRIPTION_READ_ONLY_EXITED]: ON_SUBSCRIPTION,

@@ -32,6 +32,13 @@ const PLANES = {
 const ACTUAL = PLANES.equipo;
 // Tarjeta guardada del último pago aprobado: solo marca y últimos 4, para mostrar (RN-2, RN-9 de la 009)
 const TARJETA = { marca: 'VISA', ultimos: '4242' };
+// Fin del periodo vigente de los estados (5 de octubre al 4 de noviembre).
+const VENCE = '4 de noviembre de 2026';
+// Textos del aviso de cuenta vencida (M.avisoSoloLectura), iguales en Plan y facturación y en Cambiar de plan.
+const AVISO_VENCIDA = {
+  titulo: 'Tu suscripción venció.',
+  cuerpo: 'Puedes ver y descargar tus archivos, pero no subir ni editar. Renueva tu plan.',
+};
 const CORREO = M.CUENTA.correo;
 // Uso de Lucía: cabe en Pro (100 GB) y no en Personal (15 GB)
 const CUOTA = { usado: '64.2 GB', total: '350 GB', pct: 18 };
@@ -188,6 +195,8 @@ function alerta(a) {
 }
 
 const tarjetaTexto = (t = TARJETA) => `<span class="brand-chip">${t.marca}</span> <span class="num">···· ${t.ultimos}</span>`;
+// La tarjeta dentro de una frase, como la web (spec 010 §6): «Visa ···· 4242».
+const tarjetaEnFrase = (t = TARJETA) => `${t.marca.charAt(0)}${t.marca.slice(1).toLowerCase()} ···· ${t.ultimos}`;
 
 // Diálogo (AlertDialog de shadcn). d: { titulo, descripcion, resumen: [[dt, dd]], aviso: { titulo, items }, error,
 // confirmar, cancelar = 'Cancelar', foco: 'cancelar' | 'confirmar' }
@@ -226,7 +235,7 @@ const topbarSolo = () => `
         </button>
       </header>`;
 
-// p: { carpeta, archivo, chip, pantalla, rotulo, titulo, crumbs, cuerpo, dialogo, sinBarra, generador }
+// p: { pantalla, archivo, rotulo, estado, crumbs, cuerpo, dialogo, sinBarra, css, generador }
 function pagina(p) {
   const html = `${M.cabecera({
     titulo: `${p.pantalla} · Nimbo — ${p.rotulo}`,
@@ -265,32 +274,6 @@ function escribir(repo, carpeta, archivo, html) {
   console.log(`billing/${carpeta}/${archivo}`);
 }
 
-module.exports = { P, icon, PLANES, ACTUAL, TARJETA, CORREO, CUOTA, CSS, alerta, tarjetaTexto, dialogo, pagina, escribir };
-
-// ---------- CSS de la lista de planes (PlanCard de 008 + PlanComparisonTable de 009) ----------
-module.exports.CSS_PLANES = `
-  .plans { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 20px; }
-  .pc { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
-  .pc.is-current { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary), var(--shadow-card); }
-  .pc-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
-  .pc h2 { font-size: 16px; }
-  .pc-desc { margin: 0; min-height: 40px; font-size: 13px; color: var(--muted-foreground); }
-  .pc-price { margin: 0; display: flex; align-items: baseline; gap: 4px; font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .pc-price span { font-size: 12px; font-weight: 400; color: var(--muted-foreground); }
-  .pc dl { margin: 0; padding-top: 10px; border-top: 1px solid var(--border); display: grid; gap: 8px; font-size: 13px; }
-  .pc dl div { display: flex; justify-content: space-between; gap: 8px; }
-  .pc dt { color: var(--muted-foreground); }
-  .pc dd { margin: 0; font-weight: 500; font-variant-numeric: tabular-nums; }
-  .pc-action { margin-top: auto; padding-top: 4px; }
-  .pc-action .btn { width: 100%; }
-  .pc-current { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; margin: 0; font-size: 13.5px; font-weight: 600; color: var(--primary-hover); }
-  .cmp { margin-top: 20px; overflow-x: auto; }
-  .cmp table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .cmp th, .cmp td { padding: 12px 16px; border-bottom: 1px solid var(--border); text-align: center; white-space: nowrap; }
-  .cmp thead th { font-weight: 600; background: var(--muted); }
-  .cmp tbody th { text-align: left; font-weight: 500; color: var(--secondary-foreground); }
-  .cmp tbody tr:last-child > * { border-bottom: 0; }
-  .cmp td { font-variant-numeric: tabular-nums; }
-  @media (max-width: 1180px) { .plans { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  @media (max-width: 600px) { .plans { grid-template-columns: minmax(0, 1fr); } .pc-desc { min-height: 0; } .pc-action .btn { min-height: 44px; } }
-`;
+module.exports = {
+  P, icon, PLANES, ACTUAL, TARJETA, VENCE, AVISO_VENCIDA, CORREO, CUOTA, CSS, alerta, tarjetaTexto, tarjetaEnFrase, dialogo, pagina, escribir,
+};

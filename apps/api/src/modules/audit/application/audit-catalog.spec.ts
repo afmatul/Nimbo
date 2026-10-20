@@ -38,7 +38,7 @@ const REAL_ATTRIBUTES: Readonly<Record<AuditAction, Record<string, string | numb
   [AuditAction.PLAN_DEACTIVATED]: {},
   [AuditAction.SUBSCRIPTION_AUTO_RENEW_CHANGED]: { enabled: false },
   [AuditAction.SUBSCRIPTION_RENEWED]: {
-    trigger: 'automatic',
+    trigger: 'scheduled',
     planSlug: 'equipo',
     amountCents: 11_000,
   },
@@ -105,7 +105,7 @@ describe('AUDIT_CATALOG', () => {
     const rules = AUDIT_CATALOG[AuditAction.SUBSCRIPTION_RENEWED].attributes;
 
     const result = sanitizeAttributes(rules, {
-      trigger: 'automatic',
+      trigger: 'scheduled',
       planSlug: 'equipo',
       amountCents: 11_000,
       cardLast4: '4242',
@@ -113,7 +113,7 @@ describe('AUDIT_CATALOG', () => {
     });
 
     expect(result.attributes).toEqual({
-      trigger: 'automatic',
+      trigger: 'scheduled',
       planSlug: 'equipo',
       amountCents: 11_000,
     });

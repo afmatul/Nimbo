@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import type { AuditTrigger } from '@nimbo/contracts';
 
 import { I_CLOCK } from '../../../shared';
 import type { Actor, IClock } from '../../../shared';
@@ -21,8 +22,11 @@ import { requirePlan } from './require-plan';
 import { recordSubscriptionEvent } from './subscription-audit';
 import type { SubscriptionAuditAttributes } from './subscription-audit';
 
-/** Quién pidió la renovación (atributo `trigger` de la auditoría, 010 plan §2). */
-export type RenewalTrigger = 'manual' | 'automatic';
+/**
+ * Quién pidió la renovación (atributo `trigger` de la auditoría, 010 plan §2): el cliente (`manual`) o la pasada
+ * programada (`scheduled`), el mismo vocabulario que «Mi actividad» muestra como «Nimbo (automático)».
+ */
+export type RenewalTrigger = AuditTrigger;
 
 /** Con qué se renueva: la tarjeta presente (manual) o la referencia del último pago (automática), y el NIT. */
 export interface RenewalOrder {
@@ -113,7 +117,7 @@ export class RenewalCheckout {
       planSlug: cycle.plan.slug,
     });
     const subscription =
-      order.trigger === 'automatic' ? await this.expire(actor, current) : current;
+      order.trigger === 'scheduled' ? await this.expire(actor, current) : current;
     return { payment, plan: cycle.plan, subscription, invoice: null, discardedPlan: null };
   }
 

@@ -8,7 +8,7 @@ const B = require('./billing.js');
 
 const repo = process.argv[2];
 if (!repo) throw new Error('Falta la ruta del worktree');
-const { icon, ACTUAL, PLANES, TARJETA, CORREO, alerta, tarjetaTexto } = B;
+const { icon, ACTUAL, PLANES, TARJETA, VENCE, AVISO_VENCIDA, CORREO, alerta, tarjetaTexto, tarjetaEnFrase } = B;
 const PAGO = '../pago/pago--renovacion.html';
 const CAMBIAR = '../planes/planes--cambiar-plan.html';
 
@@ -17,7 +17,7 @@ const pagada = (fecha, factura, ref, plan, monto) => ({ fecha, factura, ref, pla
 const CICLOS = {
   // Periodo del 5 de octubre al 4 de noviembre
   vigente: {
-    vence: '4 de noviembre de 2026', tarjeta: TARJETA,
+    vence: VENCE, tarjeta: TARJETA,
     pagos: [
       pagada('5 de octubre de 2026', 'NB-2026-0131', 'SIM-7F3K2Q', 'Equipo', 'Q110.00'),
       pagada('5 de septiembre de 2026', 'NB-2026-0098', 'SIM-4H8N1C', 'Equipo', 'Q110.00'),
@@ -190,7 +190,7 @@ const ESTADOS = [
   {
     estado: 'por-vencer', ciclo: 'porVencer', modo: 'auto',
     rotulo: 'vence en 2 días con renovación automática: aviso informativo con la tarjeta que se cobrará (§6, CA-5)',
-    aviso: alerta({ tono: 'info', icono: 'calendarClock', titulo: `Tu plan ${ACTUAL.nombre} vence el ${CICLOS.porVencer.vence}. Se renovará con Visa •••• ${TARJETA.ultimos}.` }),
+    aviso: alerta({ tono: 'info', icono: 'calendarClock', titulo: `Tu plan ${ACTUAL.nombre} vence el ${CICLOS.porVencer.vence}. Se renovará con ${tarjetaEnFrase()}.` }),
   },
   {
     estado: 'renovacion-desactivada', ciclo: 'vigente', modo: 'off',
@@ -221,11 +221,7 @@ const ESTADOS = [
   {
     estado: 'vencida', ciclo: 'vencida', modo: 'vencida',
     rotulo: 'vencida, en solo lectura: aviso de solo lectura del layout con «Renovar plan»; interruptor deshabilitado (§6, CA-2, CA-14)',
-    aviso: M.avisoSoloLectura({
-      titulo: 'Tu suscripción venció.',
-      cuerpo: 'Puedes ver y descargar tus archivos, pero no subir ni editar. Renueva tu plan.',
-      href: PAGO,
-    }),
+    aviso: M.avisoSoloLectura({ ...AVISO_VENCIDA, href: PAGO }),
   },
   {
     estado: 'confirmar-desactivar', ciclo: 'vigente', modo: 'auto',
