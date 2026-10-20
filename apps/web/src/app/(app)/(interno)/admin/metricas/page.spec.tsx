@@ -46,6 +46,6 @@ describe('Métricas del Administrador (/admin/metricas)', () => {
       within(nav)
         .getAllByRole('link')
         .map((link) => link.textContent),
-    ).toEqual(['Cuentas', 'Métricas']);
+    ).toEqual(['Cuentas', 'Catálogo de planes', 'Métricas']);
   });
 });

@@ -9,6 +9,8 @@ import {
   type AccountListResponse,
   type BackofficeMetricsResponse,
   type ClientFilesResponse,
+  type PlanAdminListResponse,
+  type PlanAdminView,
   type RoleName,
 } from '@nimbo/contracts';
 import { act, render, screen } from '@testing-library/react';
@@ -24,6 +26,7 @@ import { sessionFixture } from '../identity/session/test-session';
 import { AccountProfile } from './components/account-profile';
 import { AdminAccounts } from './components/admin-accounts';
 import { AdminClientFiles } from './components/admin-client-files';
+import { AdminPlans } from './components/admin-plans';
 import { BackofficeMetrics } from './components/backoffice-metrics';
 import { EnrollAccount } from './components/enroll-account';
 import { SupportClientFiles } from './components/support-client-files';
@@ -31,6 +34,7 @@ import { accountItem, accountsPage, ANDREA, DIEGO, MONICA } from './test-account
 import { clientFile, clientFilesPage, LAURA, TRASHED_PDF } from './test-client-files';
 import { always, apiError, enrollmentConflict, loadOf, type Outcome } from './test-loads';
 import { metricsResponse, WITH_INACTIVE_PLAN } from './test-metrics';
+import { PERSONAL_PLAN, plansResponse, PRO_PLAN, RETIRED_PLAN } from './test-plans';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
@@ -287,6 +291,37 @@ describe('Accesibilidad de las métricas (011 CA-12, CA-17)', () => {
     async (_state, outcome, role) => {
       const load = always<BackofficeMetricsResponse>(outcome);
       const container = await renderInFrame(<BackofficeMetrics load={load} role={role} />, role);
+
+      await expectNoViolations(container);
+    },
+  );
+});
+
+const PLANS_STATES: readonly (readonly [string, Outcome<PlanAdminListResponse>])[] = [
+  ['default', plansResponse([PERSONAL_PLAN, PRO_PLAN, RETIRED_PLAN])],
+  ['cargando', 'pending'],
+  ['error', new TypeError('Failed to fetch')],
+];
+
+describe('Accesibilidad del catálogo de planes (011 CA-8, CA-17)', () => {
+  beforeAll(() => {
+    document.documentElement.lang = 'es';
+    document.title = 'Catálogo de planes · Nimbo';
+  });
+
+  beforeEach(() => {
+    global.fetch = jest.fn(() => new Promise<Response>(() => undefined));
+    forgetSession();
+  });
+
+  it.each(PLANS_STATES)(
+    'CA-17: catálogo %s, sin violaciones de axe a 360 y 1440 px',
+    async (_state, outcome) => {
+      const api = {
+        listPlans: always<PlanAdminListResponse>(outcome),
+        deactivatePlan: always<PlanAdminView>(PRO_PLAN),
+      };
+      const container = await renderInFrame(<AdminPlans api={api as never} />, 'ADMIN');
 
       await expectNoViolations(container);
     },

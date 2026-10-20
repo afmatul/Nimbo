@@ -3,11 +3,15 @@ import {
   accountListResponseSchema,
   backofficeMetricsResponseSchema,
   clientFilesResponseSchema,
+  planAdminListResponseSchema,
+  planAdminViewSchema,
   type AccountListItem,
   type AccountListResponse,
   type BackofficeMetricsResponse,
   type ClientFilesResponse,
   type EnrollInternalAccountRequest,
+  type PlanAdminListResponse,
+  type PlanAdminView,
 } from '@nimbo/contracts';
 
 import type { AuthFetch } from '../identity/session/auth-fetch';
@@ -16,6 +20,7 @@ import { parseResponse } from '../storage/storage-http';
 const CLIENT_FILES_PATH = '/backoffice/client-files';
 const ACCOUNTS_PATH = '/backoffice/accounts';
 const METRICS_PATH = '/backoffice/metrics';
+const PLANS_PATH = '/backoffice/plans';
 
 /** Correo exacto de un cliente y la página de sus archivos (011 CA-13, DF-66). */
 export interface ClientFilesRequest {
@@ -45,6 +50,10 @@ export interface BackofficeApi {
   enrollAccount(request: EnrollInternalAccountRequest): Promise<AccountListItem>;
   /** `GET /backoffice/metrics`: solo totales y conteos (CA-12), para ADMIN y OPERATOR. */
   getMetrics(): Promise<BackofficeMetricsResponse>;
+  /** `GET /backoffice/plans`: todos los planes, activos y desactivados, con su conteo de cuentas (CA-8). */
+  listPlans(): Promise<PlanAdminListResponse>;
+  /** `POST /backoffice/plans/:id/deactivation` (CA-10): desactiva un plan; no se reactiva. */
+  deactivatePlan(id: string): Promise<PlanAdminView>;
 }
 
 function clientFilesUrl(base: string, { email, page }: ClientFilesRequest): string {
@@ -79,6 +88,23 @@ function accountCalls(base: string, authFetch: AuthFetch) {
   };
 }
 
+/** Catálogo de planes del Administrador (011 CA-8, CA-10): la lista y la desactivación. */
+function planCalls(base: string, authFetch: AuthFetch) {
+  const planUrl = (id: string): string => `${base}${PLANS_PATH}/${encodeURIComponent(id)}`;
+  return {
+    listPlans: async (): Promise<PlanAdminListResponse> =>
+      parseResponse(
+        await authFetch(`${base}${PLANS_PATH}`, { method: 'GET' }),
+        planAdminListResponseSchema,
+      ),
+    deactivatePlan: async (id: string): Promise<PlanAdminView> =>
+      parseResponse(
+        await authFetch(`${planUrl(id)}/deactivation`, { method: 'POST' }),
+        planAdminViewSchema,
+      ),
+  };
+}
+
 /**
  * Habla con la API por `auth-fetch`: un error HTTP llega como `ApiClientError` y una respuesta fuera del contrato
  * (p. ej. con algo más que metadatos, o una cuenta con datos de archivos) se rechaza como falla del servidor (RN-1).
@@ -101,6 +127,7 @@ export function createBackofficeApi(apiPublicUrl: string, authFetch: AuthFetch):
         await authFetch(`${base}${METRICS_PATH}`, { method: 'GET' }),
         backofficeMetricsResponseSchema,
       ),
+    ...planCalls(base, authFetch),
     ...accountCalls(base, authFetch),
   };
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import type { RoleName } from '@nimbo/contracts';
-import { BarChart3, FileSearch, Users } from 'lucide-react';
+import { BarChart3, FileSearch, LayoutGrid, Users } from 'lucide-react';
 import type { JSX, ReactNode } from 'react';
 
 import { AppLayout, type NavItem } from '../../../components/nimbo/app-layout';
@@ -19,6 +19,7 @@ const INTERNAL_NAV: Readonly<Record<RoleName, readonly NavEntry[]>> = {
   CLIENT: [],
   ADMIN: [
     { label: 'Cuentas', icon: Users, href: INTERNAL_PATHS.adminAccounts },
+    { label: 'Catálogo de planes', icon: LayoutGrid, href: INTERNAL_PATHS.adminPlans },
     { label: 'Métricas', icon: BarChart3, href: INTERNAL_PATHS.adminMetrics },
   ],
   SUPPORT: [

@@ -4,6 +4,7 @@ import { createBackofficeApi } from './api';
 import { accountItem, accountsPage } from './test-accounts';
 import { clientFile, clientFilesPage, LAURA } from './test-client-files';
 import { metricsResponse } from './test-metrics';
+import { PERSONAL_PLAN, plansResponse, PRO_PLAN } from './test-plans';
 
 const API = 'http://localhost/api/v1/';
 
@@ -112,5 +113,26 @@ describe('createBackofficeApi (011 plan §4)', () => {
     const api = apiWith({ ...metricsResponse(), accountsList: [] });
 
     await expect(api.getMetrics()).rejects.toMatchObject({ status: 500 });
+  });
+
+  it('CA-8: GET /backoffice/plans devuelve el catálogo con su conteo de cuentas', async () => {
+    const catalog = plansResponse([PERSONAL_PLAN, PRO_PLAN]);
+    const api = apiWith(catalog);
+
+    expect(await api.listPlans()).toEqual(catalog);
+    expect(api.authFetch).toHaveBeenCalledWith('http://localhost/api/v1/backoffice/plans', {
+      method: 'GET',
+    });
+  });
+
+  it('CA-10: POST /backoffice/plans/:id/deactivation desactiva el plan', async () => {
+    const retired = { ...PRO_PLAN, deactivatedAt: '2026-10-20T12:00:00.000Z' };
+    const api = apiWith(retired);
+
+    expect(await api.deactivatePlan(PRO_PLAN.id)).toEqual(retired);
+    expect(api.authFetch).toHaveBeenCalledWith(
+      `http://localhost/api/v1/backoffice/plans/${PRO_PLAN.id}/deactivation`,
+      { method: 'POST' },
+    );
   });
 });

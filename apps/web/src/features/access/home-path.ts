@@ -13,6 +13,8 @@ export const INTERNAL_PATHS = {
   supportFiles: '/soporte/metadatos',
   adminAccounts: ADMIN_ACCOUNTS,
   adminNewAccount: `${ADMIN_ACCOUNTS}/nueva`,
+  /** Catálogo de planes del Administrador (011 CA-8). */
+  adminPlans: '/admin/planes',
   /** Las mismas métricas agregadas (011 CA-12), en el área de cada rol. */
   adminMetrics: '/admin/metricas',
   operatorMetrics: '/operacion/metricas',

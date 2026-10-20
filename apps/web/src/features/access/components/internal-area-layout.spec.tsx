@@ -39,9 +39,10 @@ describe('internalNavFor (011 CA-17)', () => {
     expect(navOf('SUPPORT')).toEqual([['Metadatos de archivos', '/soporte/metadatos']]);
   });
 
-  it('CA-14, CA-17: el Administrador ve Cuentas y Métricas (el Catálogo llega con su página)', () => {
+  it('CA-14, CA-17: el Administrador ve Cuentas, Catálogo de planes y Métricas', () => {
     expect(navOf('ADMIN')).toEqual([
       ['Cuentas', '/admin/cuentas'],
+      ['Catálogo de planes', '/admin/planes'],
       ['Métricas', '/admin/metricas'],
     ]);
   });
