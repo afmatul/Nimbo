@@ -40,8 +40,11 @@ describe('valores del formulario de un plan (011 CA-9, CA-11)', () => {
   });
 
   it('amountAndUnit: elige la unidad en la que el número sale entero', () => {
-    expect(amountAndUnit(500 * 1024 ** 2, QUOTA_UNITS)).toEqual({ amount: '0.5', unit: 'GB' });
     expect(amountAndUnit(100 * 1024 ** 3, QUOTA_UNITS)).toEqual({ amount: '100', unit: 'GB' });
     expect(amountAndUnit(500 * 1024 ** 2, MAX_FILE_UNITS)).toEqual({ amount: '500', unit: 'MB' });
+  });
+
+  it('amountAndUnit: si ninguna unidad da un entero, no hay copia exacta (H-8)', () => {
+    expect(amountAndUnit(500 * 1024 ** 2, QUOTA_UNITS)).toBeNull();
   });
 });

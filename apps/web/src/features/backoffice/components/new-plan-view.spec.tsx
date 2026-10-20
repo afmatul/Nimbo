@@ -26,15 +26,22 @@ const CREATED: PlanAdminView = {
   isDefault: false,
 };
 
-/** La API del catálogo: la lista, el alta y (para el tipo) la desactivación. */
-const api = (create: () => Promise<PlanAdminView>) => ({
+/** La API del catálogo: la lista, el alta y la desactivación (que se puede hacer fallar). */
+const api = (
+  create: () => Promise<PlanAdminView>,
+  deactivate: () => Promise<PlanAdminView> = () =>
+    Promise.resolve({ ...PRO_PLAN, deactivatedAt: '2026-10-20T12:00:00.000Z' }),
+) => ({
   listPlans: jest.fn(() => Promise.resolve({ items: [PERSONAL_PLAN, PRO_PLAN] })),
   createPlan: jest.fn(() => create()),
-  deactivatePlan: jest.fn(),
+  deactivatePlan: jest.fn(() => deactivate()),
 });
 
-async function renderNewPlan(create: () => Promise<PlanAdminView>) {
-  const backoffice = api(create);
+async function renderNewPlan(
+  create: () => Promise<PlanAdminView>,
+  deactivate?: () => Promise<PlanAdminView>,
+) {
+  const backoffice = api(create, deactivate);
   render(<NewPlanView api={backoffice as never} />);
   await act(async () => undefined);
   return backoffice;
@@ -225,5 +232,70 @@ describe('NewPlanView (011 CA-9, CA-11, CA-17)', () => {
 
     expect(screen.getByText('Si lo reemplaza, desactiva Pro.')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Desactivar Pro' })).toBeTruthy();
+  });
+
+  it('H-1: al volver a «Empezar de cero» se quita el plan de origen y no se ofrece desactivarlo', async () => {
+    await renderNewPlan(() => Promise.resolve(CREATED));
+
+    await userEvent.selectOptions(
+      screen.getByLabelText('Partir de un plan activo (opcional)'),
+      PRO_PLAN.id,
+    );
+    await userEvent.selectOptions(screen.getByLabelText('Partir de un plan activo (opcional)'), '');
+    await userEvent.type(screen.getByLabelText('Nombre'), 'Equipo 2027');
+    await userEvent.type(screen.getByLabelText('Descripción'), 'Un plan nuevo');
+    await userEvent.type(screen.getByLabelText('Precio al mes, en quetzales'), '125.00');
+    await userEvent.type(screen.getByLabelText('Almacenamiento'), '500');
+    await userEvent.type(screen.getByLabelText('Máximo por archivo'), '1');
+    await userEvent.type(screen.getByLabelText('Editores simultáneos'), '5');
+    await userEvent.type(screen.getByLabelText('Consultas al agente'), '3000');
+    await userEvent.type(screen.getByLabelText('Versiones retenidas'), '60');
+    await userEvent.type(screen.getByLabelText('Días en papelera'), '60');
+    await userEvent.click(screen.getByRole('button', { name: 'Crear plan' }));
+    await act(async () => undefined);
+
+    expect(screen.queryByText('Si lo reemplaza, desactiva Pro.')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Desactivar Pro' })).toBeNull();
+  });
+
+  it('H-2: tras desactivar el plan de origen sale su aviso y el botón desaparece', async () => {
+    const backoffice = await renderNewPlan(() => Promise.resolve(CREATED));
+
+    await userEvent.selectOptions(
+      screen.getByLabelText('Partir de un plan activo (opcional)'),
+      PRO_PLAN.id,
+    );
+    await userEvent.type(screen.getByLabelText('Nombre'), 'Equipo 2027');
+    await userEvent.click(screen.getByRole('button', { name: 'Crear plan' }));
+    await act(async () => undefined);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Desactivar Pro' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Desactivar plan' }));
+    await act(async () => undefined);
+
+    expect(backoffice.deactivatePlan).toHaveBeenCalledWith(PRO_PLAN.id);
+    expect(screen.getByText(/Desactivamos el plan Pro\./)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Desactivar Pro' })).toBeNull();
+  });
+
+  it('H-3: un 403 al desactivar el plan de origen lleva a «Sin permiso»', async () => {
+    await renderNewPlan(
+      () => Promise.resolve(CREATED),
+      () => Promise.reject(apiError(403, 'SHARED_FORBIDDEN')),
+    );
+
+    await userEvent.selectOptions(
+      screen.getByLabelText('Partir de un plan activo (opcional)'),
+      PRO_PLAN.id,
+    );
+    await userEvent.type(screen.getByLabelText('Nombre'), 'Equipo 2027');
+    await userEvent.click(screen.getByRole('button', { name: 'Crear plan' }));
+    await act(async () => undefined);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Desactivar Pro' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Desactivar plan' }));
+    await act(async () => undefined);
+
+    expect(screen.getByRole('heading', { name: 'Sin permiso' })).toBeTruthy();
   });
 });

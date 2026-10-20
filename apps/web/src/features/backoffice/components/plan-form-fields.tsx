@@ -5,6 +5,7 @@ import type * as React from 'react';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import type { PlanField, PlanFieldErrors, PlanForm } from '../hooks/use-plan-form';
+import { MAX_FILE_UNITS, QUOTA_UNITS } from '../plan-form-values';
 
 import { FieldMessage } from './field-message';
 
@@ -330,7 +331,7 @@ function LimitsFields({ props }: { readonly props: PlanFormFieldsProps }): React
         label="Almacenamiento"
         help="Espacio total de la cuenta."
         unitField="quotaUnit"
-        units={['GB', 'TB']}
+        units={QUOTA_UNITS}
         props={props}
       />
       <UnitField
@@ -338,7 +339,7 @@ function LimitsFields({ props }: { readonly props: PlanFormFieldsProps }): React
         label="Máximo por archivo"
         help="Hasta 2 GB y nunca más que el almacenamiento."
         unitField="maxFileUnit"
-        units={['MB', 'GB']}
+        units={MAX_FILE_UNITS}
         props={props}
       />
       <TextField spec={EDITORS_FIELD} props={props} />

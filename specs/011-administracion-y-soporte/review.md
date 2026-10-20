@@ -42,8 +42,9 @@ altas, catálogo y métricas; las pantallas internas; el aislamiento; y la audit
   los seis límites, el estado y el conteo de cuentas. La componente se apoya en la forma de la rama de la 010 que
   propuso Juan Marcos (mismo `badge`, mismo distintivo junto al título, mismo borde destacado).
 - Desviaciones del mockup aceptadas: la tarjeta no muestra la fecha de creación del plan (el contrato no la trae y
-  CA-8 no la pide; sí la de desactivación) y el formulario deja el nombre vacío al copiar un plan, porque tiene que
-  ser distinto del de origen.
+  CA-8 no la pide; sí la de desactivación); el formulario deja el nombre vacío al copiar un plan, porque tiene que
+  ser distinto del de origen; y **Personal no se puede usar como plan de origen** (CA-9 dice «un plan activo», pero
+  Personal no se desactiva y no tiene sentido offersarlo como origen).
 
 ## Hallazgos y correcciones
 
@@ -61,9 +62,18 @@ altas, catálogo y métricas; las pantallas internas; el aislamiento; y la audit
 | **N-3** | **Si fallaba la desactivación, la pantalla no decía nada (CA-10, CA-17)** | **Corregido (20/10): el fallo se muestra con su aviso; con prueba** |
 | N-4 | Un solo número mal escrito marcaba los siete campos numéricos | Corregido: cada campo se valida con su propio traductor |
 | N-5 | Diez funciones nuevas de más de 30 líneas | Corregido: todas quedan en 30 líneas o menos |
-| N-6 | Faltaba «ofrecer desactivar el plan de origen» tras crear uno | Corregido: tras crear, se ofrece desactivar el de origen |
+| N-6 | Faltaba «ofrecer desactivar el plan de origen» tras crear uno | Corregido: tras crear, se ofrece desactivar el de origen; y se corrigieron sus tres fallos (H-1 a H-3) |
 | N-7 | Este `review.md` afirmaba correcciones que no estaban hechas | Corregido (20/10) y revisado de nuevo tras N-1 a N-6 |
+| **H-1** | **Al volver a «Empezar de cero» seguía el plan de origen y se ofrecía desactivarlo** | **Corregido: al volver a cero se limpia el origen sin borrar lo escrito** |
+| **H-2** | **Tras desactivar el plan de origen no salía ningún aviso** | **Corregido: sale el aviso de éxito y el botón desaparece** |
+| **H-3** | **Un `403` al desactivar el plan de origen no mostraba nada** | **Corregido: lleva a «Sin permiso», con prueba** |
+| **H-4** | **El recorrido del catálogo declaraba una demo que no podía ser cierta** | **Corregido el texto: el recorrido del 19/10 fue sobre la versión anterior a estas correcciones; falta repetirlo sobre el commit final y anotarlo con su fecha real** |
+| H-5 | El artículo del diálogo seguía fijo («Las 1 cuenta…») | Corregido: el artículo y el verbo concuerdan con la cantidad |
+| H-6 | Las unidades estaban repetidas en el formulario | Corregido: se usan las constantes `QUOTA_UNITS` y `MAX_FILE_UNITS` |
+| H-7 | Cada número se traducía dos veces | Corregido: `parsePlanForm` traduce una sola vez y devuelve el cuerpo o los campos que fallan |
+| H-8 | Una copia podía quedar inválida si el valor no daba entero | Corregido: si no hay unidad exacta, el campo queda vacío para que lo escriba la persona |
 | m-1 a m-7 | Menores (diálogo que se cerraba durante el envío, plurales a mano, «Volver» repetido, la copia que perdía valores, la alineación de la tarjeta, erratas, `highlighted` sin usar) | Corregidos los que son de la 011; `highlighted` se queda porque viene de la 010, que está en revisión |
+| m-7 | La descripción del PR seguía diciendo que `backoffice` escribe `identity.session.revoked` | Corregido: lo escribe `identity` (lo llama `backoffice` después del commit) |
 
 ## Verificación local (20/10, Node 22)
 
@@ -71,7 +81,8 @@ altas, catálogo y métricas; las pantallas internas; el aislamiento; y la audit
 - `pnpm test` ✅ — api 2 146, web 1 573, contratos 449, config 244
 - `pnpm test:int` ✅ — 143 suites, 1 314 pruebas
 - `pnpm test:isolation` ✅ — 24 suites, 400 pruebas
-- Recorrido humano de la demo (T-12 y T-12bis, 19/10) ✅ — nota en `tasks.md`
+- Recorrido humano de la demo (T-12, 19/10) ✅ — nota en `tasks.md`. **Pendiente**: repetir el recorrido del catálogo
+  sobre el commit final (H-4).
 
 ## Lo que queda pendiente (no bloquea la integración)
 

@@ -23,7 +23,7 @@ import {
 } from '../plan-form-values';
 
 import { BackLink } from './back-link';
-import { PlanDeactivateDialog } from './plan-deactivate-dialog';
+import { PlanDeactivateDialog, PlanDeactivatedNotice } from './plan-deactivate-dialog';
 import { PlanFormFields, PLAN_FIELD_IDS } from './plan-form-fields';
 
 /** El resumen de los campos que el servidor rechazó (decisión 12): con enlace a cada campo. */
@@ -56,7 +56,7 @@ function ProblemSummary({
   );
 }
 
-/** El selector del plan de origen (decisión 10). */
+/** El selector del plan de origen (decisión 10); al volver a «Empezar de cero» se limpia el origen. */
 function PlanPicker({
   active,
   locked,
@@ -64,7 +64,7 @@ function PlanPicker({
 }: {
   readonly active: readonly PlanAdminView[];
   readonly locked: boolean;
-  readonly onPick: (plan: PlanAdminView) => void;
+  readonly onPick: (plan: PlanAdminView | null) => void;
 }): React.JSX.Element {
   return (
     <select
@@ -73,7 +73,7 @@ function PlanPicker({
       disabled={locked || active.length === 0}
       onChange={(event) => {
         const plan = active.find((item) => item.id === event.target.value);
-        if (plan !== undefined) onPick(plan);
+        onPick(plan ?? null);
       }}
       className="mt-1.5 h-11 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:max-w-sm"
     >
@@ -94,7 +94,7 @@ function CopyFrom({
   locked,
 }: {
   readonly plans: readonly PlanAdminView[];
-  readonly onPick: (plan: PlanAdminView) => void;
+  readonly onPick: (plan: PlanAdminView | null) => void;
   readonly locked: boolean;
 }): React.JSX.Element {
   const active = plans.filter((plan) => plan.deactivatedAt === null && !plan.isDefault);
@@ -121,10 +121,11 @@ function valuesOf(plan: PlanAdminView): Partial<PlanFormValues> {
     name: '',
     description: plan.description ?? '',
     price: (plan.priceCents / 100).toFixed(2),
-    quota: quota.amount,
-    quotaUnit: quota.unit,
-    maxFile: maxFile.amount,
-    maxFileUnit: maxFile.unit,
+    // Si el valor no sale entero en ninguna unidad, el campo queda vacío para que lo escriba la persona (H-8).
+    quota: quota?.amount ?? '',
+    quotaUnit: quota?.unit ?? 'GB',
+    maxFile: maxFile?.amount ?? '',
+    maxFileUnit: maxFile?.unit ?? 'GB',
     maxEditors: String(plan.maxEditors),
     agentQueries: String(plan.agentQueriesPerMonth),
     retainedVersions: String(plan.retainedVersions),
@@ -173,7 +174,7 @@ interface PlanFormProps {
   readonly errors: PlanFieldErrors;
   readonly locked: boolean;
   readonly plans: readonly PlanAdminView[];
-  readonly onPick: (plan: PlanAdminView) => void;
+  readonly onPick: (plan: PlanAdminView | null) => void;
   readonly onSubmit: (event: React.BaseSyntheticEvent) => Promise<void>;
 }
 
@@ -211,6 +212,8 @@ interface SourcePlanOfferProps {
 /** «Desactivar el plan de origen» tras crear uno a partir de otro (decisión 13). */
 function SourcePlanOffer({ source, api }: SourcePlanOfferProps): React.JSX.Element {
   const deactivation = usePlanDeactivation({ api, onDeactivated: () => undefined });
+  if (deactivation.forbidden) return <ForbiddenState role="ADMIN" />;
+  if (deactivation.done !== null) return <PlanDeactivatedNotice plan={deactivation.done} />;
   return (
     <>
       <p className="flex items-start gap-2.5 text-sm text-foreground">
@@ -285,7 +288,7 @@ interface NewPlanOutcomeProps {
   readonly plans: readonly PlanAdminView[];
   readonly source: PlanAdminView | null;
   readonly api: BackofficeApi;
-  readonly onPick: (plan: PlanAdminView) => void;
+  readonly onPick: (plan: PlanAdminView | null) => void;
 }
 
 /** Lo que se ve según cómo va el alta: el plan nuevo, el error del servidor o el formulario. */
@@ -337,8 +340,9 @@ export function NewPlanView({ api }: { readonly api: BackofficeApi }): React.JSX
         source={source}
         api={api}
         onPick={(plan) => {
+          // Volver a «Empezar de cero» quita el origen, pero no borra lo escrito (H-1).
           setSource(plan);
-          form.form.reset(valuesOf(plan));
+          if (plan !== null) form.form.reset(valuesOf(plan));
         }}
       />
     </div>

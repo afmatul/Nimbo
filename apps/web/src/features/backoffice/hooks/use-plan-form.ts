@@ -6,11 +6,10 @@ import { useForm, type FieldErrors as FormErrors, type UseFormReturn } from 'rea
 
 import { toApiClientError, type ApiClientError } from '../../../lib/api-error';
 import {
-  bytesOf,
-  centsOf,
-  integerOf,
+  parsePlanForm,
+  PLAN_FIELDS,
   PLAN_FORM_DEFAULTS,
-  toPlanRequest,
+  type PlanField,
   type PlanFormValues,
 } from '../plan-form-values';
 
@@ -19,19 +18,8 @@ import { isForbidden } from './use-latest-request';
 export type CreatePlanCall = (request: CreatePlanRequest) => Promise<PlanAdminView>;
 
 /** Los campos del formulario y su id (el resumen de errores enlaza a ellos). */
-export const PLAN_FIELDS = [
-  'name',
-  'description',
-  'price',
-  'quota',
-  'maxFile',
-  'maxEditors',
-  'agentQueries',
-  'retainedVersions',
-  'trashRetentionDays',
-] as const;
-
-export type PlanField = (typeof PLAN_FIELDS)[number];
+export { PLAN_FIELDS };
+export type { PlanField };
 
 /** El mensaje de cada campo con error. */
 export type PlanFieldErrors = Partial<Readonly<Record<PlanField, string>>>;
@@ -65,25 +53,6 @@ const SHAPE_MESSAGES: Readonly<Record<PlanField, string>> = {
   retainedVersions: 'Escribe cuántas versiones retiene.',
   trashRetentionDays: 'Escribe cuántos días guarda la papelera.',
 };
-
-/** Lo que no se puede traducir a un número: el campo y su mensaje, uno por campo. */
-function shapeProblem(values: PlanFormValues): PlanFieldErrors {
-  const errors: Record<string, string> = {};
-  if (values.name.trim() === '') errors.name = SHAPE_MESSAGES.name;
-  if (values.description.trim() === '') errors.description = SHAPE_MESSAGES.description;
-  if (centsOf(values.price) === null) errors.price = SHAPE_MESSAGES.price;
-  if (bytesOf(values.quota, values.quotaUnit) === null) errors.quota = SHAPE_MESSAGES.quota;
-  if (bytesOf(values.maxFile, values.maxFileUnit) === null) errors.maxFile = SHAPE_MESSAGES.maxFile;
-  if (integerOf(values.maxEditors) === null) errors.maxEditors = SHAPE_MESSAGES.maxEditors;
-  if (integerOf(values.agentQueries) === null) errors.agentQueries = SHAPE_MESSAGES.agentQueries;
-  if (integerOf(values.retainedVersions) === null) {
-    errors.retainedVersions = SHAPE_MESSAGES.retainedVersions;
-  }
-  if (integerOf(values.trashRetentionDays) === null) {
-    errors.trashRetentionDays = SHAPE_MESSAGES.trashRetentionDays;
-  }
-  return errors;
-}
 
 /** Los mensajes de cada campo, a partir de los del formulario. */
 function messagesOf(errors: FormErrors<PlanFormValues>): PlanFieldErrors {
@@ -150,19 +119,17 @@ export function usePlanForm(create: CreatePlanCall): PlanForm {
     shouldFocusError: false,
   });
   const send = async (values: PlanFormValues): Promise<void> => {
-    const shape = shapeProblem(values);
-    if (Object.keys(shape).length > 0) {
-      for (const [field, message] of Object.entries(shape)) {
-        form.setError(field as PlanField, { type: 'shape', message });
+    const parsed = parsePlanForm(values);
+    if ('invalid' in parsed) {
+      for (const field of parsed.invalid) {
+        form.setError(field, { type: 'shape', message: SHAPE_MESSAGES[field] });
       }
       setPhase({ status: 'editing', problem: { kind: 'fields' } });
       return;
     }
-    const request = toPlanRequest(values);
-    if (request === null) return;
     setPhase({ status: 'submitting' });
     try {
-      const plan = await create(request);
+      const plan = await create(parsed.request);
       setPhase({ status: 'created', plan });
     } catch (caught: unknown) {
       setPhase(rejectedPhase(caught, form));

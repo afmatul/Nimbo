@@ -5,6 +5,21 @@ import type { CreatePlanRequest } from '@nimbo/contracts';
  * texto, con su unidad al lado. Los bytes y los centavos los arma la API; aquí solo se traducen las unidades.
  */
 
+/** Los campos del formulario (011 T-11). */
+export const PLAN_FIELDS = [
+  'name',
+  'description',
+  'price',
+  'quota',
+  'maxFile',
+  'maxEditors',
+  'agentQueries',
+  'retainedVersions',
+  'trashRetentionDays',
+] as const;
+
+export type PlanField = (typeof PLAN_FIELDS)[number];
+
 /** Unidad del almacenamiento del plan. */
 export type QuotaUnit = 'GB' | 'TB';
 
@@ -77,44 +92,102 @@ export function centsOf(value: string): number | null {
   return Number(whole) * 100 + Number(decimals.padEnd(2, '0'));
 }
 
-/** El cuerpo que pide la API (011 CA-9), o `null` si algún número no se puede traducir. */
-export function toPlanRequest(values: PlanFormValues): CreatePlanRequest | null {
-  const quotaBytes = bytesOf(values.quota, values.quotaUnit);
-  if (quotaBytes === null) return null;
-  const maxFileBytes = bytesOf(values.maxFile, values.maxFileUnit);
-  if (maxFileBytes === null) return null;
+/** Un valor traducido, o los campos que no se pudieron traducir. */
+type Parsed<T> =
+  | { readonly ok: true; readonly value: T }
+  | { readonly ok: false; readonly invalid: readonly PlanField[] };
+
+/** El cuerpo que pide la API, o los campos que no se pudieron traducir. */
+export type PlanFormParse =
+  { readonly request: CreatePlanRequest } | { readonly invalid: readonly PlanField[] };
+
+/** El nombre y la descripción del plan: si falta alguno, no hay cuerpo que enviar. */
+function parseText(values: PlanFormValues): Parsed<{ name: string; description: string }> {
+  const name = values.name.trim();
+  const description = values.description.trim();
+  const invalid: PlanField[] = [];
+  if (name === '') invalid.push('name');
+  if (description === '') invalid.push('description');
+  return invalid.length > 0 ? { ok: false, invalid } : { ok: true, value: { name, description } };
+}
+
+/** El precio y los dos tamaños: los que se traducen a centavos y a bytes. */
+function parseMoneyAndSize(
+  values: PlanFormValues,
+): Parsed<{ priceCents: number; quotaBytes: string; maxFileBytes: string }> {
   const priceCents = centsOf(values.price);
-  if (priceCents === null) return null;
+  const quotaBytes = bytesOf(values.quota, values.quotaUnit);
+  const maxFileBytes = bytesOf(values.maxFile, values.maxFileUnit);
+  if (priceCents === null || quotaBytes === null || maxFileBytes === null) {
+    const invalid: PlanField[] = [];
+    if (priceCents === null) invalid.push('price');
+    if (quotaBytes === null) invalid.push('quota');
+    if (maxFileBytes === null) invalid.push('maxFile');
+    return { ok: false, invalid };
+  }
+  return { ok: true, value: { priceCents, quotaBytes, maxFileBytes } };
+}
+
+/** Los cuatro números que se cuentan tal cual. */
+function parseCounts(values: PlanFormValues): Parsed<{
+  maxEditors: number;
+  agentQueriesPerMonth: number;
+  retainedVersions: number;
+  trashRetentionDays: number;
+}> {
   const maxEditors = integerOf(values.maxEditors);
-  if (maxEditors === null) return null;
   const agentQueries = integerOf(values.agentQueries);
-  if (agentQueries === null) return null;
   const retainedVersions = integerOf(values.retainedVersions);
-  if (retainedVersions === null) return null;
   const trashRetentionDays = integerOf(values.trashRetentionDays);
-  if (trashRetentionDays === null) return null;
+  if (
+    maxEditors === null ||
+    agentQueries === null ||
+    retainedVersions === null ||
+    trashRetentionDays === null
+  ) {
+    const invalid: PlanField[] = [];
+    if (maxEditors === null) invalid.push('maxEditors');
+    if (agentQueries === null) invalid.push('agentQueries');
+    if (retainedVersions === null) invalid.push('retainedVersions');
+    if (trashRetentionDays === null) invalid.push('trashRetentionDays');
+    return { ok: false, invalid };
+  }
   return {
-    name: values.name.trim(),
-    description: values.description.trim(),
-    priceCents,
-    quotaBytes,
-    maxFileBytes,
-    maxEditors,
-    agentQueriesPerMonth: agentQueries,
-    retainedVersions,
-    trashRetentionDays,
+    ok: true,
+    value: { maxEditors, agentQueriesPerMonth: agentQueries, retainedVersions, trashRetentionDays },
   };
 }
 
-/** La cantidad con la unidad en la que el número sale entero (500 MB no es «0 GB»). */
+/**
+ * Traduce el formulario una sola vez (011 CA-9, CA-11): o sale el cuerpo que pide la API, o la lista de los campos
+ * que no se pudieron traducir (los mensajes los pone la web).
+ */
+export function parsePlanForm(values: PlanFormValues): PlanFormParse {
+  const text = parseText(values);
+  const money = parseMoneyAndSize(values);
+  const counts = parseCounts(values);
+  const invalid = [
+    ...(text.ok ? [] : text.invalid),
+    ...(money.ok ? [] : money.invalid),
+    ...(counts.ok ? [] : counts.invalid),
+  ];
+  if (text.ok && money.ok && counts.ok && invalid.length === 0) {
+    return { request: { ...text.value, ...money.value, ...counts.value } };
+  }
+  return { invalid };
+}
+
+/**
+ * La cantidad con la unidad en la que el número sale entero (500 MB no es «0 GB»). Si ninguna unidad lo deja entero,
+ * no hay una copia exacta: se devuelve `null` y el campo queda vacío para que lo escriba la persona.
+ */
 export function amountAndUnit<U extends QuotaUnit | MaxFileUnit>(
   bytes: number,
   units: readonly [U, ...U[]],
-): { readonly amount: string; readonly unit: U } {
+): { readonly amount: string; readonly unit: U } | null {
   for (const unit of units) {
     const amount = bytes / BYTES_PER_UNIT[unit];
     if (Number.isInteger(amount)) return { amount: String(amount), unit };
   }
-  const [unit] = units;
-  return { amount: (bytes / BYTES_PER_UNIT[unit]).toFixed(1), unit };
+  return null;
 }
