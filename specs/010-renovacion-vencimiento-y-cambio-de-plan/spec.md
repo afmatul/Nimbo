@@ -9,7 +9,7 @@
 | Fase | 2 |
 | Requisitos | RF-22, RF-23, RF-24 (y RF-07 y RNF-05 de forma transversal) |
 | Depende de | 009 (suscripción, pago simulado, facturas); 005, 006 y 007 (acciones de `storage` que se bloquean) |
-| Última actualización | 2026-10-18 |
+| Última actualización | 2026-10-20 |
 
 ## 1. Contexto y objetivo
 La 009 deja a un cliente con un plan de pago por 30 días, pero nada pasa cuando ese periodo termina. Esta spec cierra

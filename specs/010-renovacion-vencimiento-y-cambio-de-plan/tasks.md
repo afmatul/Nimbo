@@ -2,11 +2,11 @@
 
 > Spec: `./spec.md` · Plan: `./plan.md`
 > Estado: **En curso — avance de la 010a autorizado por Adrián mientras revisa (`plan.md` §8); falta aprobar el plan y
-> aceptar ADR-0032 y ADR-0031.** El `architect` ya revisó M-2 (plan §8). Si Adrián cambia el plan, las tareas se ajustan en
+> aceptar ADR-0032 y ADR-0031.** El `architect` ya revisó el contrato de la pasarela (plan §8). Si Adrián cambia el plan, las tareas se ajustan en
 > el camino.
 > Dos bloques, un PR cada uno (`workflow.md` §4.6): **010a** (`api`, `worker`, `storage`) y **010b** (`web`). 12 tareas
 > verticales, de medio día a un día, un commit cada una (`feat(billing): … [010 T-xx]`). Sin tareas de «cierre».
-> **Tamaño (M-1)**: 010a ≈ 7 días y 010b ≈ 4 días; los dos superan los 3 días de `workflow.md` §4.1 (plan §7).
+> **Tamaño**: 010a ≈ 7 días y 010b ≈ 4 días; los dos superan los 3 días de `workflow.md` §4.1 (plan §7).
 
 **Compuertas generales**
 - Todo se implementa sobre la **009 integrada en `main`**. Las pruebas de la 009 que cambian (`Subscription`, `PaymentService`,
@@ -16,7 +16,7 @@
 
 ## Bloque 010a — API, worker y `storage` (PR 1)
 **Compuerta del bloque**: plan aprobado por Adrián; **PD-63 hecho** (planificador + procesador, bucle de reintento y
-`errorName` extraídos; T-05 los reutiliza); M-2 revisado por el `architect` antes de T-02 (hecho, plan §8).
+`errorName` extraídos; T-05 los reutiliza); contrato de la pasarela revisado por el `architect` antes de T-02 (hecho, plan §8).
 
 - [x] **T-01** Datos y dominio de la suscripción: estado, renovación automática y cambio programado
   - Criterio: CA-15; RN-1, RN-3, RN-5, RN-7 y la regla de `renewalQuote` de CA-26 y CA-28 (cualquier cambio programado).
@@ -30,11 +30,11 @@
     `renewalQuote` no disponible con cambio a Personal y a plan de pago, Personal nunca vence); int `migrations.int-spec.ts`.
   - Depende: 009 en `main`.
 
-- [x] **T-02** Instrumento de pago y tarjeta de prueba `0341` (M-2, B-2)
+- [x] **T-02** Instrumento de pago y tarjeta de prueba `0341` (RN-2, ADR-0031)
   - **Compuerta**: ADR-0031 aceptado por Adrián (`referencia_instrumento` en claro bajo RLS; la columna va en esta migración).
   - Criterio: RN-2 (referencia sin número; marca y últimos 4 solo para mostrar; `0341` aprobada con el cliente presente); la
     contratación de la 009 sigue verde y acepta `0341`.
-  - Archivos: `packages/contracts/src/billing/subscription.ts` (`TEST_CARDS.recurringDeclined`, `cardSchema` con tres tarjetas y exportado);
+  - Archivos: `packages/contracts/src/billing/subscription.ts` (`TEST_CARDS.recurringDeclined`, `cardSchema` con tres tarjetas);
     `apps/api/src/migrations/*-referencia-de-instrumento.ts` (con `down`); `billing/domain/payment-instrument.ts` (`PaymentInstrument`,
     `InstrumentReference`, `isPresentCard`, `isChargeable`; `CardOnFile` llega con T-05); `billing/domain/entities/payment.entity.ts` (`instrumentRef`);
     `billing/application/ports/i-payment-gateway.port.ts` y `billing/infrastructure/adapters/simulated-payment-gateway.ts`;
@@ -70,19 +70,19 @@
   - Depende: T-01, T-02; comparte controlador con T-03. La vista reutiliza la consulta de marca y últimos 4 de `sql-billing-history.reader.ts` (`PAYMENT_METHOD_SQL`), no `findLastApprovedCard`: la referencia no entra en el camino HTTP (ADR-0031).
 
 - [x] **T-05** Pasada del `worker`: renovación automática, vencimiento y aviso previo
-  - Criterio: CA-1, CA-2, CA-3, CA-4, CA-5, CA-7, CA-20 (automática), CA-21, CA-29, CA-23 (conteos); RN-2, RN-8, RN-10 (M-3).
+  - Criterio: CA-1, CA-2, CA-3, CA-4, CA-5, CA-7, CA-20 (automática), CA-21, CA-29, CA-23 (conteos); RN-2, RN-8, RN-10.
   - Archivos: `apps/api/src/migrations/*-funciones-de-renovacion.ts` (ADR-0021, con `down`); `i-invoice-repository.port.ts` y
     `typeorm-invoice.repository.ts` (`findLatestNit`); `i-payment-repository.port.ts` y `typeorm-payment.repository.ts` (`findLastApprovedCard`,
     `CardOnFile`, desde T-02); `i-subscription-repository.port.ts` (`markReminderSent`, `markExpiredNoticeSent`, desde T-01);
-    `billing-charging.module.ts` (cobro común de `api` y `worker`, 010a-1); `billing/application/ports/i-due-subscription.scanner.port.ts` y
+    `billing-charging.module.ts` (cobro común de `api` y `worker`); `billing/application/ports/i-due-subscription.scanner.port.ts` y
     `billing/infrastructure/persistence/sql-due-subscription.scanner.ts`; `billing/application/{subscription-renewer,renewal-reminder.service,
     renewal-runner,renewal-config}.ts`; `{mail-message,receipt-message,renewal-messages}.ts`; `billing/infrastructure/{renewal.scheduler,
     renewal.processor}.ts` sobre PD-63; `billing-worker.module.ts`; `env.schema.ts`, `.env.example`, `apps/api/src/worker.module.ts` [Adrián].
   - Prueba: unit `renewal-runner.spec.ts` (un fallo no frena a las demás, `RenewalRunIncompleteError`, bitácora solo con conteos);
     int `subscription-renewal.int-spec.ts` (`4242` renueva con NIT de la última factura o `CF`; **contratada con `0341`** → solo lectura y
-    correo; **cuenta ya en solo lectura sin correo → solo reenvía, sin transacción (M-3)**; sin referencia → como CA-7; renovación apagada;
+    correo; **cuenta ya en solo lectura sin correo → solo reenvía, sin transacción (RN-10)**; sin referencia → como CA-7; renovación apagada;
     cambio aplicado o, si se rechaza, conservado; a Personal sobre cuota → `STORAGE_QUOTA_EXCEEDED`; plan descartado y correo; dos pasadas
-    y una manual → un cobro); int `renewal-reminder.int-spec.ts` (un correo por periodo).
+    y una manual → un cobro); int `subscription-renewal.int-spec.ts` (un correo por periodo).
   - Depende: T-01, T-02, T-03 (`RenewalCheckout`, `InvoiceIssuer`); PD-63.
 
 - [x] **T-06** Solo lectura en `storage` con `PlanLimits.readOnly` [Adrián]
@@ -98,15 +98,15 @@
 
 - [x] **T-07** Aislamiento y roles internos de la 010
   - Criterio: CA-23 (`403` y nada cambia), CA-24; RNF-05.
-  - Archivos: `apps/api/test/isolation/billing-renewal.iso-spec.ts`; `apps/api/test/int/billing/billing-internal-roles.int-spec.ts`.
+  - Archivos: `apps/api/test/isolation/billing-renewal.iso-spec.ts` (aislamiento y los `403` de los roles internos).
   - Prueba: iso (A solo su fila, sin ver la de B ni su referencia; `nimbo_app` sin actor ve 0 filas; con actor las funciones fallan; `PUBLIC`
     no las ejecuta; la solo lectura de A no afecta las cargas de B; dueño sin `SUPERUSER`; `referencia_instrumento` no aparece en
-    `GET /billing/history` ni en ninguna respuesta, y ninguna consulta del código salvo `findLastApprovedCard` la selecciona, ADR-0031,
-    010a-4); int (cuatro rutas × tres roles → `403`).
+    `GET /billing/history` ni en ninguna respuesta, y ninguna consulta del código salvo `findLastApprovedCard` la selecciona, ADR-0031);
+    iso (cuatro rutas × tres roles → `403`).
   - Depende: T-03, T-04, T-05, T-06.
 
 ## Bloque 010b — Web (PR 2)
-**Compuerta del bloque**: 010a integrado en `main` (contratos y rutas disponibles); mockups creados con `/mockup` (hecho en
+**Compuerta del bloque**: la 010b se construye sobre `feat/010a-renovacion-api` y se integra después de la 010a; mockups creados con `/mockup` (hecho en
 `358d87c`: estados de `billing/suscripcion/`, confirmación del cambio de plan con el aviso de versiones, variante de renovación del pago).
 Antes de cada pantalla se leen sus capturas en `docs/design/capturas/`; las desviaciones van a «Notas del developer».
 
@@ -115,30 +115,32 @@ Antes de cada pantalla se leen sus capturas en `docs/design/capturas/`; las desv
     (actividad en español); textos de spec §6.
   - Archivos: `apps/web/src/lib/error-catalog.ts` (cinco códigos de `billing`); `features/billing/subscription-api.ts`;
     `features/billing/components/{plan-and-billing,current-plan-card}.tsx` y los nuevos `next-charge-card.tsx`, `auto-renew-switch.tsx`,
-    `subscription-status-notice.tsx`, `pending-change-notice.tsx`; `features/audit/activity-labels.ts` [Adrián].
+    `subscription-status-notice.tsx`, `pending-change-notice.tsx`; `apps/web/src/components/nimbo/read-only-banner.tsx`;
+    `features/audit/activity-labels.ts` [Adrián].
   - Prueba: web `plan-and-billing.spec.tsx` (un caso por estado más Personal, axe), `subscription-api` con `fetch` simulado, catálogo y etiquetas.
   - Depende: 010a; mockups.
 
 - [x] **T-09** Elegir plan para el cambio (`/suscripcion/cambiar-plan`)
   - Criterio: CA-16, CA-17 (PD-86), CA-18, CA-21 (aviso de versiones), CA-27.
-  - Archivos: `app/(app)/(cliente)/suscripcion/cambiar-plan/{page,loading,error}.tsx`; `features/billing/components/plan-change-list.tsx`
+  - Archivos: `app/(app)/(cliente)/suscripcion/cambiar-plan/page.tsx` (cargando y error con `StateView`); `features/billing/components/plan-change-list.tsx`
     (usa `components/nimbo/plan-card.tsx` y `GET /billing/plans`).
   - Prueba: web `plan-change-list.spec.tsx` (actual marcado, confirmación con y sin aviso, error, Personal → contratación) con axe.
   - Depende: T-08.
 
-- [x] **T-10** Pago de la renovación manual (`/suscripcion/renovar`) y `ReadOnlyBanner`
-  - Criterio: CA-8, CA-9, CA-10, CA-26, CA-28 (mensaje de `409`); B-2 (la ayuda nombra las tres tarjetas); componente del aviso de CA-14.
-  - Archivos: `app/(app)/(cliente)/suscripcion/renovar/{page,loading,error}.tsx`; `features/billing/components/{payment-form,payment-summary}.tsx`,
-    `hooks/use-payment-form.ts`; `apps/web/src/components/nimbo/read-only-banner.tsx`.
-  - Prueba: web `renovar/page.spec.tsx` (default, rechazado, éxito, `409`), `read-only-banner.spec.tsx`, con axe; las de pago de la 009 siguen verdes
+- [x] **T-10** Pago de la renovación manual (`/suscripcion/renovar`)
+  - Criterio: CA-8, CA-9, CA-10, CA-26, CA-28 (mensaje de `409`); la ayuda nombra las tres tarjetas (RN-2).
+  - Archivos: `app/(app)/(cliente)/suscripcion/renovar/page.tsx` (cargando y error con `StateView`);
+    `features/billing/components/{payment-form,payment-summary}.tsx`, `hooks/use-payment-form.ts`.
+  - Prueba: web `renovar/page.spec.tsx` (default, rechazado, éxito, `409`), `read-only-banner.spec.tsx` (componente de T-08), con axe; las de pago de la 009 siguen verdes
     (`payment-form.spec.tsx` acepta `0341`).
   - Depende: T-08.
 
 - [x] **T-11** Explorador en solo lectura [Adrián]
   - **Compuerta**: ADR-0032 aceptado y cambios en la web de `storage` autorizados.
   - Criterio: CA-14 (aviso, acciones de CA-13 deshabilitadas con texto, arrastre con el mensaje); las permitidas por RN-6 siguen activas.
-  - Archivos: `apps/web/src/lib/error-catalog.ts` (`STORAGE_ACCOUNT_READ_ONLY`, literal); `features/storage/components/{space-provider,
-    my-files,upload-dropzone,trash-view,file-detail-view,restore-version-dialog}.tsx`.
+  - Archivos: `features/storage/components/{space-provider,my-files,file-explorer,file-row-menu,trash-view,trash-list,
+    trash-selection-bar,file-detail-view}.tsx` y el nuevo `read-only-notice.tsx` (`useReadOnlyAccount` en `space-provider`,
+    `ReadOnlyNotice`); el mensaje `STORAGE_ACCOUNT_READ_ONLY` ya está en `error-catalog.ts` desde T-06.
   - Prueba: web `my-files.spec.tsx` (deshabilitadas con texto, permitidas activas, mensaje al arrastrar) con axe.
   - Depende: T-10.
 
@@ -180,7 +182,7 @@ Antes de cada pantalla se leen sus capturas en `docs/design/capturas/`; las desv
     pero no lo hace (ADR-0008). `PaymentService` sigue sin ramificar por tipo.
   - `CardOnFile` y `findLastApprovedCard` se agregan en T-05, su único usuario (YAGNI, Art. V); la regla de ADR-0031
     (única consulta que selecciona la columna) se prueba ahí.
-  - `cardSchema` se exporta en T-03, cuando lo reutiliza `renewRequestSchema`.
+  - `cardSchema` no se exporta: `renewRequestSchema` lo reutiliza dentro del mismo archivo (T-03).
   - `lastFourOf` pasa al simulador (único usuario); `isCardExpired` queda en `payment-card.ts`.
 - **T-03** (2026-10-18): `RenewalCheckout`, `ManualRenewalService` y `PaymentAttemptLimiter` viven en `BillingHttpModule` porque
   `PaymentService` e `InvoiceService` solo existen en el `api`; T-05 los lleva a un módulo que también cargue el `worker`.
