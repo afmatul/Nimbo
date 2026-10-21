@@ -112,7 +112,7 @@ pnpm seed                                   # corpus sintético (marcador hasta 
 - Solo `.docx` se edita en línea. No se implementa nada listado en «Fuera de alcance» (`product-context.md` §9).
 - No se agrega una dependencia significativa sin un ADR.
 - Código, specs y diagramas no pueden contradecirse: si te apartas del diagrama de clases o del E-R, registra o actualiza el hallazgo en `design-findings.md`.
-- Tamaños en bytes siempre `bigint`; tokens y claves siempre como hash.
+- Tamaños en bytes siempre `bigint`; tokens y claves emitidos y verificados por Nimbo siempre como hash (las credenciales de terceros que se reenvían, ADR-0031).
 - En la UI no hay colores escritos a mano: solo tokens de `ui-guidelines.md`. Contraste AA por encima de cualquier mockup.
 - `apps/web` nunca importa de `docs/design/mockups/`; los mockups son referencia.
 - Nadie aprueba su propio trabajo: Adrián aprueba planes y PRs del equipo; los suyos siguen `docs/sdd/workflow.md` §7.1.
