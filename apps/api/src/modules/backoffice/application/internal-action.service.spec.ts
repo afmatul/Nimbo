@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
-import { createActor, InsufficientRoleError, Role } from '../../../shared';
+import { createActor, RateLimitExceededError, Role } from '../../../shared';
 import type { Actor, ITransactionRunner } from '../../../shared';
 import { AuditAction } from '../../audit';
 import type { AuditRecord } from '../../audit';
+import { ActorNotActiveError } from '../../identity';
 
 import { InternalActionService } from './internal-action.service';
 import type { InternalAction } from './internal-action.service';
@@ -37,21 +38,31 @@ interface SetupOptions {
   readonly actorInactive?: boolean;
   /** La auditoría no puede guardar el evento. */
   readonly auditFails?: boolean;
+  /** La cuenta interna pasó su límite de tasa (T-14, PD-103). */
+  readonly rateLimited?: boolean;
 }
 
 const setup = (options: SetupOptions = {}) => {
   const timeline: string[] = [];
   const recorded: AuditRecord[] = [];
+  const logs: Record<string, unknown>[] = [];
   const accounts = {
     lockAdminRoster: (): Promise<void> => {
       timeline.push('lock');
       return Promise.resolve();
     },
-    // `ActorNotActiveError` de `identity` extiende `InsufficientRoleError`: mismo `403 SHARED_FORBIDDEN`.
     assertActorActive: (): Promise<void> => {
       timeline.push('check');
       return options.actorInactive === true
-        ? Promise.reject(new InsufficientRoleError())
+        ? Promise.reject(new ActorNotActiveError())
+        : Promise.resolve();
+    },
+  };
+  const limiter = {
+    assertAllowed: (): Promise<void> => {
+      timeline.push('rate');
+      return options.rateLimited === true
+        ? Promise.reject(new RateLimitExceededError(30))
         : Promise.resolve();
     },
   };
@@ -64,9 +75,16 @@ const setup = (options: SetupOptions = {}) => {
         : Promise.resolve();
     },
   };
-  const service = new InternalActionService(new RecordingTransactions(timeline), accounts, audit);
+  const logger = { warn: (payload: Record<string, unknown>): void => void logs.push(payload) };
+  const service = new InternalActionService(
+    new RecordingTransactions(timeline),
+    accounts,
+    limiter,
+    audit,
+    logger,
+  );
   const actor = createActor(randomUUID(), Role.ADMIN);
-  return { timeline, recorded, service, actor };
+  return { timeline, recorded, logs, service, actor };
 };
 
 /** Una suspensión de prueba: la acción devuelve el id afectado y el evento se arma con él. */
@@ -99,6 +117,7 @@ describe('InternalActionService (011 plan §1, RN-7, CA-14)', () => {
       const result = await service.run(actor, suspension(timeline, actor, false));
 
       expect(timeline).toEqual([
+        'rate',
         `begin:${actor.id}`,
         'check',
         'work',
@@ -114,6 +133,7 @@ describe('InternalActionService (011 plan §1, RN-7, CA-14)', () => {
       await service.run(actor, suspension(timeline, actor, true));
 
       expect(timeline).toEqual([
+        'rate',
         `begin:${actor.id}`,
         'lock',
         'check',
@@ -131,7 +151,6 @@ describe('InternalActionService (011 plan §1, RN-7, CA-14)', () => {
       );
       expect(timeline.slice(-3)).toEqual(['work', 'event:account.suspended', 'rollback']);
     });
-
     it('CA-14: un actor ya no activo recibe `403 SHARED_FORBIDDEN` antes de la acción y sin evento', async () => {
       const { timeline, service, actor } = setup({ actorInactive: true });
 
@@ -139,7 +158,16 @@ describe('InternalActionService (011 plan §1, RN-7, CA-14)', () => {
         status: 403,
         code: 'SHARED_FORBIDDEN',
       });
-      expect(timeline).toEqual([`begin:${actor.id}`, 'lock', 'check', 'rollback']);
+      expect(timeline).toEqual(['rate', `begin:${actor.id}`, 'lock', 'check', 'rollback']);
+    });
+
+    it('T-14: una cuenta que pasa su límite recibe `429 SHARED_TOO_MANY_REQUESTS` sin abrir transacción', async () => {
+      const { timeline, service, actor } = setup({ rateLimited: true });
+
+      await expect(service.run(actor, suspension(timeline, actor, false))).rejects.toBeInstanceOf(
+        RateLimitExceededError,
+      );
+      expect(timeline).toEqual(['rate']);
     });
   });
 
@@ -153,7 +181,7 @@ describe('InternalActionService (011 plan §1, RN-7, CA-14)', () => {
       });
 
       expect(result).toBe('página');
-      expect(timeline).toEqual([`begin:${actor.id}`, 'check', 'read', 'commit']);
+      expect(timeline).toEqual(['rate', `begin:${actor.id}`, 'check', 'read', 'commit']);
     });
 
     it('CA-14: un actor ya no activo recibe `403 SHARED_FORBIDDEN` antes de la lectura', async () => {
@@ -165,7 +193,28 @@ describe('InternalActionService (011 plan §1, RN-7, CA-14)', () => {
         code: 'SHARED_FORBIDDEN',
       });
       expect(work).not.toHaveBeenCalled();
-      expect(timeline).toEqual([`begin:${actor.id}`, 'check', 'rollback']);
+      expect(timeline).toEqual(['rate', `begin:${actor.id}`, 'check', 'rollback']);
+    });
+  });
+
+  describe('bitácora', () => {
+    it('RN-7, RNF-17: un actor ya no activo deja `backoffice.actor.inactive` con su id y rol', async () => {
+      const { logs, service, actor } = setup({ actorInactive: true });
+
+      await expect(service.read(actor, () => Promise.resolve('página'))).rejects.toBeInstanceOf(
+        ActorNotActiveError,
+      );
+      expect(logs).toEqual([
+        { event: 'backoffice.actor.inactive', actorId: actor.id, actorRole: Role.ADMIN },
+      ]);
+    });
+
+    it('un actor activo no deja esa bitácora', async () => {
+      const { logs, timeline, service, actor } = setup();
+
+      await service.run(actor, suspension(timeline, actor, true));
+
+      expect(logs).toEqual([]);
     });
   });
 });

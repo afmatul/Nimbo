@@ -12,6 +12,7 @@ import { I_NODE_METADATA_READER } from '../../storage';
 import type { FileMetadata, INodeMetadataReader } from '../../storage';
 import { ClientNotFoundError } from '../domain/errors/client-not-found.error';
 
+import type { BackofficeLogger } from './backoffice-logger';
 import { InternalActionService } from './internal-action.service';
 
 /** El cliente encontrado y una página de sus metadatos (011 CA-13); `BACKOFFICE_PAGE_SIZE` por página. */
@@ -20,11 +21,6 @@ export interface ClientFilesView {
   readonly items: readonly FileMetadata[];
   readonly page: number;
   readonly total: number;
-}
-
-/** Lo que este servicio usa del logger (se inyecta `PinoLogger`; permite un doble en las pruebas). */
-interface SupportLogger {
-  info(payload: Record<string, unknown>): void;
 }
 
 /** La consulta queda en la auditoría del cliente, que la ve con el rol de quien la hizo (RN-2, CA-16). */
@@ -48,7 +44,7 @@ export class SupportService {
     @Inject(AccountDirectory)
     private readonly directory: Pick<AccountDirectory, 'findClientByEmail'>,
     @Inject(I_NODE_METADATA_READER) private readonly reader: INodeMetadataReader,
-    @Inject(PinoLogger) private readonly logger: SupportLogger,
+    @Inject(PinoLogger) private readonly logger: Pick<BackofficeLogger, 'info'>,
   ) {}
 
   async listClientFiles(actor: Actor, query: ClientFilesQuery): Promise<ClientFilesView> {

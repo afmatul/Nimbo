@@ -55,7 +55,7 @@ que muestra «Tu sesión terminó. Inicia sesión de nuevo.».
 `homePathFor(role)` vive en `features/access/home-path.ts` (003 §6.9): `CLIENT` → `/archivos`; `ADMIN`, `SUPPORT` y
 `OPERATOR` → `/interno`. Lo usan `useEnterSession` y las áreas por rol (`RequireRole`).
 
-En el mismo archivo (011 CA-17): `areaHomePathFor(role)` es la pantalla a la que `/interno` lleva al rol que ya tiene
-área (Soporte: `/soporte/metadatos`; Admin y Operador, `null` y el marcador hasta T-13 y T-11) y
+En el mismo archivo (011 CA-17): `areaHomePathFor(role)` es la pantalla a la que `/interno` lleva a cada rol interno
+(Soporte: `/soporte/metadatos`; Admin: `/admin/cuentas`; Operador: `/operacion/metricas`; el cliente, `null`) y
 `activityPathFor(role)` es «Mi actividad» del menú de la cuenta (cliente: `/actividad`; internos:
 `/interno/actividad`).

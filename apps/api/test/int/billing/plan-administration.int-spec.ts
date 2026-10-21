@@ -70,6 +70,16 @@ describe('catálogo de planes con la base real (spec 011 CA-9 a CA-11)', () => {
     expect((await catalog.list()).map((plan) => plan.id)).not.toContain(id);
   });
 
+  it('CA-8, CA-12: `listAll` trae el plan desactivado con su `deactivatedAt`; `list` no', async () => {
+    const id = await create(uniqueName());
+    await app.runner.run(() => catalog.deactivate(ADMIN, id));
+
+    const retired = (await catalog.listAll(ADMIN)).find((plan) => plan.id === id);
+
+    expect(retired?.deactivatedAt).toBeInstanceOf(Date);
+    expect((await catalog.list()).map((plan) => plan.id)).not.toContain(id);
+  });
+
   it('CA-11: un nombre repetido (mayúsculas y espacios aparte) es `NAME_TAKEN`', async () => {
     const name = uniqueName();
     await create(name);
