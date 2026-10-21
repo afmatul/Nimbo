@@ -1,5 +1,6 @@
 import type { FileKind } from './file-kind';
 import type { FileName } from './file-name.vo';
+import type { FileVersion } from './file-version';
 import type { TrashState } from './trash-state';
 
 export interface CreateFileInput {
@@ -94,6 +95,22 @@ export class File {
 
   get trash(): TrashState | null {
     return this.data.trash;
+  }
+
+  /**
+   * El archivo con `version` como actual (014 CA-5): toma su tamaño (DF-33) y su fecha como `actualizado_en`. Una
+   * versión de otro archivo es un error de programación.
+   */
+  withCurrentVersion(version: FileVersion): File {
+    if (version.fileId !== this.id) {
+      throw new TypeError('La versión pertenece a otro archivo.');
+    }
+    return new File({
+      ...this.data,
+      currentVersionId: version.id,
+      sizeBytes: version.sizeBytes,
+      updatedAt: version.createdAt,
+    });
   }
 
   snapshot(): FileSnapshot {

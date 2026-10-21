@@ -89,6 +89,30 @@ describe('AccountMenu (CA-14, CA-27)', () => {
     ]);
   });
 
+  it('009 CA-7: con su ruta, «Plan y facturación» va entre «Mi actividad» y «Cerrar sesión»', async () => {
+    render(
+      <AccountMenu
+        fullName="Ana López"
+        email="ana@ejemplo.com"
+        onSignOut={jest.fn(() => Promise.resolve())}
+        billingHref="/suscripcion"
+      />,
+    );
+
+    await openWithKeyboard();
+
+    const items = within(screen.getByRole('menu')).getAllByRole('menuitem');
+    expect(items.map((item) => item.textContent)).toEqual([
+      'Seguridad',
+      'Mi actividad',
+      'Plan y facturación',
+      'Cerrar sesión',
+    ]);
+    expect(screen.getByRole('menuitem', { name: 'Plan y facturación' }).getAttribute('href')).toBe(
+      '/suscripcion',
+    );
+  });
+
   it('CA-14: «Seguridad» lleva a /cuenta/seguridad', async () => {
     renderMenu();
 

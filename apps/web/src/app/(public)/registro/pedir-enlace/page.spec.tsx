@@ -22,7 +22,7 @@ describe('página pedir enlace', () => {
     fetchMock.mockReset();
     global.fetch = fetchMock;
     process.env['APP_ENV'] = 'test';
-    process.env['API_INTERNAL_URL'] = 'http://internal.test/api/v1';
+    process.env['API_INTERNAL_URL'] = 'http://internal.test';
     process.env['API_PUBLIC_URL'] = 'http://localhost/api/v1';
     window.sessionStorage.clear();
     window.history.replaceState(null, '', '/registro/pedir-enlace?email=otro@ejemplo.com');

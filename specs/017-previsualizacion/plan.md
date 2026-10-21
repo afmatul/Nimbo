@@ -66,6 +66,7 @@ Prefijos: **S** = `apps/api/src/modules/storage/`; **F** = `apps/web/src/feature
 - Raíz: una llamada `StorageModule.forRoot(env)`; pasar ese descriptor a `PreviewModule.register`. `AppModule` importa PreviewModule, sin import redundante de storage. Storage no importa ni reexporta preview: evita ciclo TS/Nest y doble instancia.
 - Fachada concreta, sin puerto artificial entre carpetas de M2 ni invocar V.2(d). Adaptadores de librerías por V.2(a). El issuer es extracción DRY de código existente (descarga + preview), no abstracción nueva con interfaz.
 - Se mantienen las aristas de M2 hacia `shared`/`access`; no nuevas dependencias de billing/editing/intelligence, Registry, Factory ni clase base por formato.
+- **Nota histórica (2026-10-20, merge de `main` en la rama):** tras integrar la spec 014, `FileService.getDownloadUrl` dejó de reutilizar `AccessibleFileUrlIssuer` porque la descarga ahora firma también versiones retenidas (`versionId`); `StoragePreviewFacade` sigue usando el issuer. Con 009/011/016, `AppModule` importa además el mismo descriptor de `storage` que comparten `billing`, `backoffice`, `editing` y `PreviewModule` (sigue habiendo una sola instancia). Esta evolución posterior no cambia los CA de la 017 ni el estado de T-02.
 - Reutilizar `AuthFetch`, `ApiClientError` (con `Retry-After`), `SessionGate`, `RequireRole`, `AppLayout`, `StateView`, `Button`, `Alert`, `FileTypeChip` y tokens Cielo Sereno. F `index.ts` nuevo publica `MyFiles`, `locationPath`, `useFileDownload`; wrappers consumen F/W públicos y pasan `downloadUrl(fileId)` al visor.
 - El cliente JSON de preview conserva `ApiClientError`: `StorageRequestError` actual pierde `Retry-After`. Ningún cliente autenticado de Nimbo se usa para descargar bytes del objeto.
 
@@ -180,11 +181,11 @@ Prefijos: **I** = `apps/api/test/int/storage/`; **A** = `apps/api/test/isolation
 - **Tiempo:** dependencias nuevas y habilitaciones ajenas amenazan ≤3 días; avisar a Adrián según workflow. Un recorte/división requiere decisión y actualización de spec, no reducir CA unilateralmente.
 - DF-15 queda parcial al aceptar `PreviewService`; fachada/controlador deben reflejarse en M2; sin cambio de puertos ni E-R. Architect registra H-1/H-2 y pendientes de habilitación/documentación cuando tenga permisos; ninguna aceptación se inventa aquí.
 - Dueños históricos y posible `tipo_mime` de design-model/DF-60 no prevalecen sobre backlog/RN-6. PD-46 cubre redibujado existente; PD-49/52 son cabeceras transversales, no resueltas por este plan.
-- ADR: [ADR-0027](../../docs/adr/0027-inline-solo-en-previsualizacion-aislada.md) Rechazado (lo actualiza architect); PD-74 ya no es necesario. El ADR de motores de previsualización lo redacta architect. Este plan no escribe ADR.
+- ADR: [ADR-0027](../../docs/adr/0027-inline-solo-en-previsualizacion-aislada.md) Rechazado (lo actualiza architect); PD-120 ya no es necesario. El ADR de motores de previsualización lo redacta architect. Este plan no escribe ADR.
 
 | ID | Estado técnico | Lo pendiente para aprobación / responsable |
 |---|---|---|
-| Q-1 | `[RESUELTA]` por opción 4 (2026-10-06) | IX.7 se respeta literalmente; ADR-0027 Rechazado; sin G-1 ni PD-74 |
+| Q-1 | `[RESUELTA]` por opción 4 (2026-10-06) | IX.7 se respeta literalmente; ADR-0027 Rechazado; sin G-1 ni PD-120 |
 | Q-2 | `[RESUELTA]` aceptada con ajuste DRY | Fachada delgada + `AccessibleFileUrlIssuer` extraído de `FileService`; tasa en `PreviewService`; sin ensanchar `INodeRepository` |
 | Q-3 | Eliminada | Sin procedencia, índice ni migración |
 | Q-4 | `[RESUELTA]` aceptada por Adrián (G-3) | `pdfjs-dist@6.4.299`, `@zip.js/zip.js@2.23.0`, `saxes@6.0.0`; architect redacta el ADR de motores y evalúa el riesgo de memoria |

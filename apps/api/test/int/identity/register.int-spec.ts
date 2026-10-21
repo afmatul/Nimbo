@@ -14,6 +14,7 @@ import { DataSource } from 'typeorm';
 
 import { FixedClock, I_CLOCK, I_RATE_LIMITER } from '../../../src/shared';
 import type { IRateLimiter } from '../../../src/shared';
+import { uniqueEmployeeCode } from '../../support/employee-codes';
 import { deleteAll, getMessage, listMessages } from '../setup/mailpit';
 import type { MailpitMessage } from '../setup/mailpit';
 import type { TestApp } from '../setup/test-app';
@@ -183,8 +184,8 @@ describe('POST /auth/register (CA-1 a CA-4)', () => {
     const isClient = kind === 'verified-client';
     await dataSource.query(
       `INSERT INTO usuario (id, nombre, correo, hash_clave, rol, correo_verificado, version_terminos,
-                            version_privacidad, terminos_aceptados_en)
-       VALUES ($1, 'Ana Existente', $2, $3, $4, $5, $6, $6, $7)`,
+                            version_privacidad, terminos_aceptados_en, codigo_empleado)
+       VALUES ($1, 'Ana Existente', $2, $3, $4, $5, $6, $6, $7, $8)`,
       [
         randomUUID(),
         email,
@@ -193,6 +194,7 @@ describe('POST /auth/register (CA-1 a CA-4)', () => {
         isClient,
         isClient ? '0.9' : null,
         isClient ? new Date('2026-01-15T10:00:00.000Z') : null,
+        isClient ? null : uniqueEmployeeCode(),
       ],
     );
     return userWithEmail(email);

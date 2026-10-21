@@ -105,8 +105,11 @@ describe('loadEnv(apiEnvSchema)', () => {
         UPLOAD_MULTIPART_THRESHOLD_BYTES: 16_777_216,
         UPLOAD_URL_TTL_SECONDS: 3600,
         RATE_LIMIT_UPLOAD_INIT_PER_MINUTE: 300,
+        REALTIME_CONNECT_ATTEMPTS_PER_MINUTE: 60,
+        EDITING_MAX_DOC_BYTES: 52_428_800,
         RATE_LIMIT_DOWNLOAD_URL_PER_MINUTE: 120,
         RATE_LIMIT_PREVIEW_URL_PER_MINUTE: 120,
+        RATE_LIMIT_VERSION_RESTORE_PER_MINUTE: 30,
         FOLDER_MAX_DEPTH: 10,
         QUICK_ACCESS_MAX_PINNED: 5,
         QUICK_ACCESS_RECENT_VISIBLE: 3,
@@ -191,6 +194,10 @@ describe('loadEnv(workerEnvSchema)', () => {
         TRASH_PURGE_BATCH_SIZE: 100,
         USAGE_RECONCILE_INTERVAL_MINUTES: 1440,
         USAGE_RECONCILE_BATCH_SIZE: 100,
+        SUBSCRIPTION_RECONCILE_INTERVAL_MINUTES: 60,
+        SUBSCRIPTION_RECONCILE_BATCH_SIZE: 100,
+        INVOICE_RETRY_INTERVAL_MINUTES: 1,
+        INVOICE_RETRY_BATCH_SIZE: 100,
         SMTP_HOST: 'localhost',
         SMTP_PORT: 1025,
         SMTP_TLS: 'none',
@@ -397,13 +404,11 @@ describe('loadEnv: carga y descarga de archivos (005 T-20)', () => {
     'RATE_LIMIT_UPLOAD_INIT_PER_MINUTE',
     'RATE_LIMIT_DOWNLOAD_URL_PER_MINUTE',
     'RATE_LIMIT_PREVIEW_URL_PER_MINUTE',
+    'RATE_LIMIT_VERSION_RESTORE_PER_MINUTE',
   ])('RN-16: `%s=0` se rechaza', (key) => {
     const result = loadEnv(apiEnvSchema, { ...VALID_API, [key]: '0' });
 
-    expect(result).toEqual({
-      ok: false,
-      issues: [`\`${key}\` debe ser un entero positivo`],
-    });
+    expect(result).toEqual({ ok: false, issues: [`\`${key}\` debe ser un entero positivo`] });
   });
 
   it('CA-9: `UPLOAD_CLEANUP_BATCH_SIZE` fuera de 1–1000 se rechaza', () => {
@@ -485,6 +490,7 @@ describe('SECRET_KEYS', () => {
       'MINIO_SECRET_KEY',
       'SMTP_PASSWORD',
       'JWT_ACCESS_SECRET',
+      'ONLYOFFICE_JWT_SECRET',
     ]);
   });
 });

@@ -33,6 +33,16 @@ export interface NodeListPage {
 export interface INodeRepository {
   /** El archivo si el actor tiene acceso y no está en la papelera; `null` en otro caso (CA-16: ajeno = inexistente). */
   findAccessibleById(actor: Actor, id: string): Promise<File | null>;
+  /**
+   * El archivo si es del actor, **vivo o en la papelera** (`ownedFiles` de `access`); `null` si es ajeno o se purgó.
+   * Solo para registrar la versión de una sesión de edición (016 RN-11, PD-112).
+   */
+  findOwnedFile(actor: Actor, id: string): Promise<File | null>;
+  /**
+   * El archivo vivo y accesible llamado `name` en la carpeta `folderId` (`null` = raíz), sin distinguir mayúsculas
+   * (005 CA-6); `null` si no hay. Es el archivo que reemplaza una carga con `onConflict: 'replace'` (014 CA-1).
+   */
+  findLiveFileByName(actor: Actor, name: FileName, folderId: string | null): Promise<File | null>;
   /** La carpeta si el actor tiene acceso y no está en la papelera; `null` en otro caso (CA-5). */
   findAccessibleFolder(actor: Actor, id: string): Promise<Folder | null>;
   /** Subcarpetas y archivos directos de una carpeta o de la raíz (CA-5). Lanza `InvalidQueryError` si el cursor no es válido o es de otro orden. */
@@ -62,6 +72,11 @@ export interface INodeRepository {
   /** Inserta el archivo y su versión actual en la transacción del actor (la FK `version_actual_id` es diferida). */
   insertWithVersion(actor: Actor, file: File, version: FileVersion): Promise<void>;
   insertFolder(actor: Actor, folder: Folder): Promise<void>;
+  /**
+   * Guarda la versión actual, el tamaño y `actualizado_en` de `file` (014: lo llama solo `FileVersionService`). Alcanza
+   * también un archivo propio en la papelera: quien llama ya lo resolvió bajo `lockUsage` (016 RN-11).
+   */
+  updateCurrentVersion(actor: Actor, file: File): Promise<void>;
   /** Guarda el nombre y `actualizado_en` de `folder`. */
   renameFolder(actor: Actor, folder: Folder): Promise<void>;
   /** Guarda el nombre y `actualizado_en` de `file`. */

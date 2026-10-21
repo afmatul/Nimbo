@@ -77,10 +77,12 @@ describe('composición de `StoragePreviewFacade` (017 plan §2.3)', () => {
     expect(instancesOf(StorageModule)).toHaveLength(1);
   });
 
-  it('CA-11: `storage` exporta solo la fachada; el emisor interno sigue sirviendo a la descarga de 005', () => {
+  it('CA-11: `storage` exporta la fachada (no el emisor interno) y la descarga de 005 sigue resolviéndose', () => {
     const [storageModule] = instancesOf(StorageModule);
+    const exported = [...(storageModule?.exports ?? [])];
 
-    expect([...(storageModule?.exports ?? [])]).toEqual([StoragePreviewFacade]);
+    expect(exported).toContain(StoragePreviewFacade);
+    expect(exported).not.toContain(AccessibleFileUrlIssuer);
     expect(storageModule?.providers.has(AccessibleFileUrlIssuer)).toBe(true);
     expect(testApp.app.get(FileService)).toBeInstanceOf(FileService);
   });

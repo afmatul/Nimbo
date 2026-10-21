@@ -9,7 +9,7 @@
 | Depende de | **003** (`Actor`, guards, `accessibleNodes`, RLS de `archivo`, `version_archivo` y `carga` que se escriben en el PR de 005, D-1 y D-7 de 003); **006a** (solo su implementación de `IPlanLimitsProvider`: 005 declara el puerto y `PlanLimits`, DF-51 opción A; mientras tanto, doble de prueba); **001** (`IRateLimiter`, `TooManyRequestsError`, `ZodValidationPipe`). **004 llega después de 005**: 005 declara el puerto `IAuditLogger` con un adaptador provisional (bitácora técnica sin datos sensibles) que 004 sustituye |
 | Módulo | M2 `storage` |
 | DF | DF-06, DF-16, DF-38, DF-52 (se cierran en el plan); **DF-51 resuelto** (opción A, Fátima, 2026-09-28: `storage` declara `IPlanLimitsProvider`/`PlanLimits`; `billing` lo implementa); DF-17 y DF-33 (resto) no bloquean. La contradicción «progreso en tiempo real» (RF-08 / `architecture.md` §7.1 con `realtime`) quedó **resuelta** (DF-58): el progreso se mide en el cliente |
-| Última actualización | 2026-10-07 |
+| Última actualización | 2026-10-14 |
 
 ## 1. Contexto y problema
 
@@ -67,7 +67,7 @@ firmado que dura 5 minutos, apunta a un solo objeto y fuerza la descarga. Ningun
   - **Dado** un cliente con `espacio_usado` + reservas activas + tamaño declarado > cuota del plan,
   - **Cuando** inicia la carga,
   - **Entonces** se responde `422` `STORAGE_QUOTA_EXCEEDED` con el mensaje «Te faltan {bytes faltantes} de espacio para subir este archivo. Libera espacio o cambia de plan.», sin sesión, reserva ni objeto. La validación de CA-3 y CA-4 ocurre en el inicio, antes de transferir bytes.
-  - **Y** el aviso ofrece la acción «Liberar espacio», que lleva al Resumen de espacio (spec 007) y, mientras 007 no exista, a Mis archivos; y la acción secundaria «Ver planes», que se oculta mientras la spec 008 (catálogo) no exista.
+  - **Y** el aviso ofrece la acción «Liberar espacio», que lleva al Resumen de espacio (spec 007) y, mientras 007 no exista, a Mis archivos; y la acción secundaria «Ver planes», que se oculta mientras la spec 009 (contratación) no exista (PD-92).
 - **CA-5** (HU-3, HU-1) — tamaño real verificado al completar
   - **Dado** una carga cuyos bytes reales exceden el tamaño declarado o el máximo del plan,
   - **Cuando** se intenta completar,
@@ -221,12 +221,12 @@ firmado que dura 5 minutos, apunta a un solo objeto y fuerza la descarga. Ningun
 
 | Pantalla | Mockup | Capturas | Estados requeridos | Estado del mockup |
 |---|---|---|---|---|
-| Carga en progreso (panel) | `mockups/storage/carga/` | `capturas/storage/carga/` | progreso, pausa, sin-conexion, rechazo-tamano, rechazo-cuota, tipo-invalido (incluye ejecutable y vacío), nombre-repetido, nombre-repetido-varios, confirmar-cancelar; caducada y límite de tasa reutilizan el aviso de fila | Borrador (barra lateral de 005 sin «Carpetas» ni contador de Papelera; lista con menú ⋮; «Ver planes» oculto hasta 008) |
+| Carga en progreso (panel) | `mockups/storage/carga/` | `capturas/storage/carga/` | progreso, pausa, sin-conexion, rechazo-tamano, rechazo-cuota, tipo-invalido (incluye ejecutable y vacío), nombre-repetido, nombre-repetido-varios, confirmar-cancelar; caducada y límite de tasa reutilizan el aviso de fila | Borrador (barra lateral de 005 sin «Carpetas» ni contador de Papelera; lista con menú ⋮; «Ver planes» oculto hasta 009) |
 | Explorador («Subir archivos», arrastrar y soltar, menú ⋮ con «Descargar») | `mockups/storage/explorador/` | `capturas/storage/explorador/` | default, vacio, cargando, arrastre, error, acciones, descarga-preparando, descarga-fallida; otras fallas de descarga reutilizan el aviso | Borrador; textos aprobados |
 
 - **Mensajes clave** (español, tuteo, con acción correctiva):
   - Tamaño: «Este archivo pesa X y tu plan permite hasta Y por archivo. Reduce su tamaño o cambia de plan.»
-  - Cuota: «Te faltan X de espacio para subir este archivo. Libera espacio o cambia de plan.» Acciones: «Liberar espacio» (Resumen de espacio de 007; hasta entonces, Mis archivos) y «Ver planes» (oculta hasta que exista 008).
+  - Cuota: «Te faltan X de espacio para subir este archivo. Libera espacio o cambia de plan.» Acciones: «Liberar espacio» (Resumen de espacio de 007; hasta entonces, Mis archivos) y «Ver planes» (oculta hasta que exista 009; PD-92).
   - Explorador vacío: «Aún no tienes archivos» / «Sube tus documentos con el botón o arrástralos a esta página. Tu plan permite hasta {máximo} por archivo.» (sin arrastre: «Sube tus documentos desde tu dispositivo…») · Cargando: «Cargando tus archivos…» · Arrastre: «Suelta para subir» / «Se guardarán en Mis archivos · hasta {máximo} por archivo».
   - Error del listado: «No pudimos cargar tus archivos.» / «Tus archivos siguen guardados. Inténtalo de nuevo.» con «Reintentar» (sin código de soporte; «Subir archivos» sigue habilitado).
   - Menú de fila: «Acciones de {nombre}» con «Descargar»; si la URL tarda más de 2 s, «Preparando…» (anuncio «Preparando la descarga de {nombre}…»).
@@ -336,3 +336,4 @@ Ninguna.
 | 2026-09-28 | `Borrador` → `Lista` | Plan aprobado por `architect` y confirmado por Adrián | Adrián |
 | 2026-09-29 | **Propuesta (PR-F; resuelta por 007, ver la fila del 2026-10-07)**: §9 pide `{máximo}` en el vacío y el arrastre del explorador, pero ningún contrato expone `PlanLimits.maxFileBytes` a `web` (solo la API lo usa, RN-1). Mientras no exista (p. ej. un `GET` de límites del plan en 006a/007), la página omite la cifra: «Sube tus documentos con el botón o arrástralos a esta página.» y «Se guardarán en Mis archivos». Alternativa: agregar el contrato en 005 | Hueco detectado al montar `/archivos` (T-54) | — |
 | 2026-10-07 | Revisión (`review.md`): la propuesta del 2026-09-29 queda resuelta sin contrato nuevo en 005, porque `GET /storage/summary` (007) expone `maxFileBytes` y la página muestra la cifra (`my-files.tsx`, `maxFileLabelOf`). CA-20: `file.upload_rejected` y `file.download_url_issued` llevan `sizeBytes` (B-1). Se quita `UPLOAD_COMPLETE_TIMEOUT_SECONDS`, que nada aplicaba (I-1; verificación en staging: PD-71). Sin cambio de comportamiento para el cliente | Revisión de 005 | Adrián |
+| 2026-10-14 | «Ver planes» sigue oculto hasta la 009 (contratación), no hasta la 008: `/planes` es el catálogo público y no el destino esperado (PD-92) | Cierre de la 008 | Adrián |

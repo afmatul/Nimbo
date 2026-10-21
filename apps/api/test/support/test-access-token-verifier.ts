@@ -42,7 +42,11 @@ export class TestAccessTokenVerifier implements IAccessTokenVerifier {
     if (exp * MS_PER_SECOND <= this.clock.now().getTime()) {
       return Promise.resolve(EXPIRED);
     }
-    return Promise.resolve({ valid: true, claims: { userId: sub, role: rol, sessionId: sid } });
+    return Promise.resolve({
+      valid: true,
+      claims: { userId: sub, role: rol, sessionId: sid },
+      expiresAt: new Date(exp * MS_PER_SECOND),
+    });
   }
 
   private decode(token: string): unknown {

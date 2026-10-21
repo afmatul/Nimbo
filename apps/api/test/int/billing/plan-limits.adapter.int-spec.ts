@@ -1,10 +1,13 @@
 import { Module } from '@nestjs/common';
+import type { DataSource } from 'typeorm';
 
 import { BillingModule, PlanLimitsAdapter, PlanNotFoundError } from '../../../src/modules/billing';
 import { I_PLAN_LIMITS_PROVIDER } from '../../../src/modules/storage';
 import type { IPlanLimitsProvider } from '../../../src/modules/storage';
 import { createActor, Role } from '../../../src/shared';
+import { connectAsOwner } from '../../support/database-urls';
 import { createTestApp, type TestApp } from '../setup/test-app';
+import { insertAccount, removeAccounts } from '../storage/storage-test-db';
 
 @Module({
   imports: [BillingModule],
@@ -52,6 +55,8 @@ describe('PlanLimitsAdapter integración con base de datos real (T-11, CA-1, CA-
         maxFileBytes: 52428800n,
         storageQuotaBytes: 16106127360n,
         trashRetentionDays: 7,
+        retainedVersions: 3,
+        maxEditors: 0,
       });
     });
 
@@ -65,6 +70,8 @@ describe('PlanLimitsAdapter integración con base de datos real (T-11, CA-1, CA-
         maxFileBytes: 52428800n,
         storageQuotaBytes: 16106127360n,
         trashRetentionDays: 7,
+        retainedVersions: 3,
+        maxEditors: 0,
       });
     });
   });
@@ -77,6 +84,8 @@ describe('PlanLimitsAdapter integración con base de datos real (T-11, CA-1, CA-
         maxFileBytes: 52428800n,
         storageQuotaBytes: 16106127360n,
         trashRetentionDays: 7,
+        retainedVersions: 3,
+        maxEditors: 0,
       });
 
       const pro = await adapter.getLimitsByPlanId('10000000-0000-4000-8000-000000000002');
@@ -85,6 +94,8 @@ describe('PlanLimitsAdapter integración con base de datos real (T-11, CA-1, CA-
         maxFileBytes: 524288000n,
         storageQuotaBytes: 107374182400n,
         trashRetentionDays: 30,
+        retainedVersions: 30,
+        maxEditors: 3,
       });
 
       const equipo = await adapter.getLimitsByPlanId('10000000-0000-4000-8000-000000000003');
@@ -93,6 +104,8 @@ describe('PlanLimitsAdapter integración con base de datos real (T-11, CA-1, CA-
         maxFileBytes: 1073741824n,
         storageQuotaBytes: 375809638400n,
         trashRetentionDays: 60,
+        retainedVersions: 60,
+        maxEditors: 5,
       });
 
       const institucional = await adapter.getLimitsByPlanId('10000000-0000-4000-8000-000000000004');
@@ -101,6 +114,8 @@ describe('PlanLimitsAdapter integración con base de datos real (T-11, CA-1, CA-
         maxFileBytes: 2147483648n,
         storageQuotaBytes: 2199023255552n,
         trashRetentionDays: 90,
+        retainedVersions: 100,
+        maxEditors: 5,
       });
     });
 
@@ -122,24 +137,32 @@ describe('PlanLimitsAdapter integración con base de datos real (T-11, CA-1, CA-
         maxFileBytes: 52428800n,
         storageQuotaBytes: 16106127360n,
         trashRetentionDays: 7,
+        retainedVersions: 3,
+        maxEditors: 0,
       });
       await expect(adapter.getLimitsBySlug('pro')).resolves.toEqual({
         planName: 'Pro',
         maxFileBytes: 524288000n,
         storageQuotaBytes: 107374182400n,
         trashRetentionDays: 30,
+        retainedVersions: 30,
+        maxEditors: 3,
       });
       await expect(adapter.getLimitsBySlug('equipo')).resolves.toEqual({
         planName: 'Equipo',
         maxFileBytes: 1073741824n,
         storageQuotaBytes: 375809638400n,
         trashRetentionDays: 60,
+        retainedVersions: 60,
+        maxEditors: 5,
       });
       await expect(adapter.getLimitsBySlug('institucional')).resolves.toEqual({
         planName: 'Institucional',
         maxFileBytes: 2147483648n,
         storageQuotaBytes: 2199023255552n,
         trashRetentionDays: 90,
+        retainedVersions: 100,
+        maxEditors: 5,
       });
     });
 
@@ -149,6 +172,64 @@ describe('PlanLimitsAdapter integración con base de datos real (T-11, CA-1, CA-
         code: 'PLAN_NOT_FOUND',
         status: 404,
       });
+    });
+  });
+
+  describe('limitsFor con la suscripción real (spec 009 T-03, PD-80; RLS forzada)', () => {
+    let owner: DataSource;
+    const accounts: string[] = [];
+
+    beforeAll(async () => {
+      owner = await connectAsOwner();
+    });
+
+    afterAll(async () => {
+      await removeAccounts(owner, accounts);
+      await owner?.destroy();
+    });
+
+    const newClient = async (): Promise<string> => {
+      const id = await insertAccount(owner);
+      accounts.push(id);
+      return id;
+    };
+
+    it('T-03: con fila en Equipo, los límites de Equipo', async () => {
+      const ana = await newClient();
+      await owner.query(
+        "INSERT INTO suscripcion (usuario_id, plan_id) SELECT $1, id FROM plan WHERE slug = 'equipo'",
+        [ana],
+      );
+
+      await expect(limitsProvider.limitsFor(createActor(ana, Role.CLIENT))).resolves.toMatchObject({
+        planName: 'Equipo',
+        trashRetentionDays: 60,
+      });
+    });
+
+    it('T-03: sin fila, los límites de Personal', async () => {
+      const bruno = await newClient();
+
+      await expect(
+        limitsProvider.limitsFor(createActor(bruno, Role.CLIENT)),
+      ).resolves.toMatchObject({
+        planName: 'Personal',
+      });
+    });
+
+    it('RNF-05: la lectura va bajo RLS: el plan de otro cliente no se filtra a quien no tiene fila', async () => {
+      const carla = await newClient();
+      await owner.query(
+        "INSERT INTO suscripcion (usuario_id, plan_id) SELECT $1, id FROM plan WHERE slug = 'pro'",
+        [carla],
+      );
+      const dana = await newClient();
+
+      await expect(limitsProvider.limitsFor(createActor(dana, Role.CLIENT))).resolves.toMatchObject(
+        {
+          planName: 'Personal',
+        },
+      );
     });
   });
 });

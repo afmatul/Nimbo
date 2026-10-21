@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { Readable } from 'node:stream';
 
 import type { AuditRecord, IAuditLogger } from '../../src/modules/audit';
 import type {
@@ -15,6 +16,7 @@ import type {
   IObjectStorage,
   ObjectHead,
   PresignDownloadInput,
+  PutObjectInput,
   PresignUploadObjectInput,
   PresignUploadPartInput,
   UploadedPart,
@@ -266,6 +268,21 @@ export class FakeNodeRepository implements INodeRepository {
     return Promise.resolve(isLiveOf(actor, file) ? file : null);
   }
 
+  findOwnedFile(actor: Actor, id: string): Promise<File | null> {
+    this.journal.add('nodes:findOwnedFile');
+    const file = this.files.get(id);
+    return Promise.resolve(file?.ownerId === actor.id ? file : null);
+  }
+
+  findLiveFileByName(actor: Actor, name: FileName, folderId: string | null): Promise<File | null> {
+    this.journal.add('nodes:findLiveFileByName');
+    const lower = name.value.toLowerCase();
+    const found = this.liveFiles(actor).find(
+      (file) => file.folderId === folderId && file.name.value.toLowerCase() === lower,
+    );
+    return Promise.resolve(found ?? null);
+  }
+
   findAccessibleFolder(actor: Actor, id: string): Promise<Folder | null> {
     this.journal.add('nodes:findAccessibleFolder');
     const folder = this.folders.get(id);
@@ -324,6 +341,12 @@ export class FakeNodeRepository implements INodeRepository {
   insertWithVersion(_actor: Actor, file: File, version: FileVersion): Promise<void> {
     this.journal.add('nodes:insertWithVersion');
     this.inserted.push({ file, version });
+    this.files.set(file.id, file);
+    return Promise.resolve();
+  }
+
+  updateCurrentVersion(_actor: Actor, file: File): Promise<void> {
+    this.journal.add('nodes:updateCurrentVersion');
     this.files.set(file.id, file);
     return Promise.resolve();
   }
@@ -395,6 +418,7 @@ export class FakeObjectStorage implements IObjectStorage {
   readonly signedObjects: PresignUploadObjectInput[] = [];
   failCreateMultipart = false;
   failSigning = false;
+  failCopy = false;
   /** Cuántas veces más fallará el próximo borrado (`abortMultipart` o `purgeObject`). */
   deleteFailures = 0;
   private nextMultipart = 0;
@@ -466,11 +490,44 @@ export class FakeObjectStorage implements IObjectStorage {
     return Promise.resolve(object.subarray(start, endInclusive + 1));
   }
 
+  /** Como el adaptador real: un origen ausente devuelve `false`; repetir la copia la sobrescribe igual. */
+  copyObject(sourceKey: string, targetKey: string): Promise<boolean> {
+    this.journal.add('storage:copyObject');
+    const source = this.objects.get(sourceKey);
+    if (this.failCopy) return Promise.reject(new Error('minio caído'));
+    if (source === undefined) return Promise.resolve(false);
+    this.objects.set(targetKey, Buffer.from(source));
+    return Promise.resolve(true);
+  }
+
+  getObjectStream(key: string): Promise<Readable | null> {
+    this.journal.add('storage:getObjectStream');
+    const object = this.objects.get(key);
+    return Promise.resolve(object === undefined ? null : Readable.from([Buffer.from(object)]));
+  }
+
+  /** Como el adaptador real, lee el flujo entero; con otro tamaño que el declarado, S3 rechaza. */
+  async putObjectStream(key: string, body: Readable, sizeBytes: bigint): Promise<void> {
+    this.journal.add('storage:putObjectStream');
+    const chunks: Buffer[] = [];
+    for await (const chunk of body) chunks.push(Buffer.from(chunk as Uint8Array));
+    const content = Buffer.concat(chunks);
+    if (BigInt(content.length) !== sizeBytes) throw new Error('IncompleteBody');
+    this.objects.set(key, content);
+  }
+
   purgeObject(key: string): Promise<void> {
     this.journal.add('storage:purgeObject');
     if (this.consumeDeleteFailure()) return Promise.reject(new Error('minio caído'));
     this.purged.push(key);
     this.objects.delete(key);
+    return Promise.resolve();
+  }
+
+  /** 009: la factura PDF; en memoria, como el resto de objetos del doble. */
+  putObject(input: PutObjectInput): Promise<void> {
+    this.journal.add('storage:putObject');
+    this.objects.set(input.key, input.body);
     return Promise.resolve();
   }
 

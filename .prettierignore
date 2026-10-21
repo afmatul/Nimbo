@@ -12,6 +12,7 @@ node_modules/
 dist/
 dist-worker/
 dist-int/
+dist-scripts/
 .next/
 coverage/
 pnpm-lock.yaml

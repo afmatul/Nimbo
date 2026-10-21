@@ -5,13 +5,16 @@ import {
   AlertCircle,
   Download,
   EllipsisVertical,
+  FilePen,
   FolderInput,
+  History,
   Loader2,
   Pencil,
   Pin,
   PinOff,
   X,
 } from 'lucide-react';
+import Link from 'next/link';
 import * as React from 'react';
 
 import { Alert } from '../../../components/ui/alert';
@@ -22,6 +25,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../../../components/ui/dropdown-menu';
+import { editorPath } from '../../editing/routes';
+import { fileDetailPath } from '../routes';
 import { StorageRequestError } from '../storage-request-error';
 
 import { MoveToTrashMenuItem } from './move-to-trash-menu-item';
@@ -64,6 +69,13 @@ function codeOf(error: unknown): string | null {
   return error instanceof StorageRequestError ? error.code : null;
 }
 
+/** Qué hacer tras una petición fallida que se puede repetir: esperar ante un `429`; si no, revisar la conexión. */
+export function retryAdvice(error: unknown): string {
+  return codeOf(error) === STORAGE_ERROR_CODES.STORAGE_TOO_MANY_REQUESTS
+    ? 'Hiciste demasiadas solicitudes. Espera un momento e inténtalo de nuevo.'
+    : 'Revisa tu conexión e inténtalo de nuevo.';
+}
+
 /** Acciones del aviso de descarga fallida: «Reintentar» o, si ya no existe, «Actualizar lista». */
 export interface DownloadFailureActions {
   readonly retry: () => void;
@@ -88,16 +100,16 @@ export function downloadFailureNotice(
   }
   return {
     title: `No pudimos preparar la descarga de «${name}».`,
-    description:
-      code === STORAGE_ERROR_CODES.STORAGE_TOO_MANY_REQUESTS
-        ? 'Hiciste demasiadas solicitudes. Espera un momento e inténtalo de nuevo.'
-        : 'Revisa tu conexión e inténtalo de nuevo.',
+    description: retryAdvice(error),
     actionLabel: 'Reintentar',
     onAction: retry,
   };
 }
 
-/** Menú ⋮ de una fila con «Descargar»; si la URL tarda más de 2 s, muestra «Preparando…» y lo anuncia. */
+/**
+ * Menú ⋮ de una fila con «Descargar» (si la URL tarda más de 2 s, muestra «Preparando…» y lo anuncia) y «Ver historial»,
+ * que abre la ficha del archivo (014 CA-20).
+ */
 export function FileRowMenu({
   file,
   requestUrl,
@@ -166,8 +178,10 @@ export function FileRowMenu({
             )}
             {preparing ? 'Preparando…' : 'Descargar'}
           </DropdownMenuItem>
+          <HistoryMenuItem fileId={file.id} />
           <OrganizeMenuItems onRename={onRename} onMove={onMove} />
           <PinMenuItem pin={pin} />
+          {file.kind === 'docx' ? <EditMenuItem fileId={file.id} /> : null}
           <MoveToTrashMenuItem onSelect={onMoveToTrash} />
         </DropdownMenuContent>
       </DropdownMenu>
@@ -180,6 +194,30 @@ export function FileRowMenu({
 
 /** El botón ⋮ es el control de su fila: lo enfoca la vuelta de la vista previa (017 §6). */
 export const ROW_CONTROL_SELECTOR = '[data-row-control]';
+
+/** «Ver historial»: enlace a la ficha del archivo con sus versiones (plan 014 §2). */
+function HistoryMenuItem({ fileId }: { readonly fileId: string }): React.JSX.Element {
+  return (
+    <DropdownMenuItem asChild>
+      <Link href={fileDetailPath(fileId)}>
+        <History className="h-4 w-4 text-secondary-foreground" aria-hidden="true" />
+        Ver historial
+      </Link>
+    </DropdownMenuItem>
+  );
+}
+
+/** «Editar»: solo para `.docx`, el único formato que se edita en línea (016 CA-1, CA-4; ADR-0004). */
+function EditMenuItem({ fileId }: { readonly fileId: string }): React.JSX.Element {
+  return (
+    <DropdownMenuItem asChild>
+      <Link href={editorPath(fileId)}>
+        <FilePen className="h-4 w-4 text-secondary-foreground" aria-hidden="true" />
+        Editar
+      </Link>
+    </DropdownMenuItem>
+  );
+}
 
 /** Botón ⋮ de una fila (mockup `acciones`): «Acciones de {nombre}». */
 export function RowMenuTrigger({ name }: { readonly name: string }): React.JSX.Element {

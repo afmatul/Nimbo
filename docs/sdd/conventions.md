@@ -13,7 +13,7 @@
   `roles.guard.ts`, `i-object-storage.port.ts`, `minio-storage.adapter.ts`, `file.entity.ts`, `archivo.orm-entity.ts`,
   `savings-estimate.vo.ts`, `access-level.enum.ts`, `file-version-created.event.ts`.
 - Clases `PascalCase`; funciones y variables `camelCase`; constantes de módulo `SCREAMING_SNAKE_CASE`.
-- Interfaces de **puertos** con prefijo `I`, como en los diagramas: `IObjectStorage`, `IClock`. Token de inyección: `I_OBJECT_STORAGE` (símbolo exportado junto a la interfaz). El prefijo es **solo** para puertos (contratos que la infraestructura implementa); tipos de datos, DTOs, props y contratos zod van sin `I` (`Actor`, `HealthReadyResponse`, `Env`).
+- Interfaces de **puertos** con prefijo `I`, como en los diagramas: `IObjectStorage`, `IClock`. Viven en `application/ports/*.port.ts` del módulo que los declara (decisión de Adrián en la revisión de la 009, 2026-10-14). Token de inyección: `I_OBJECT_STORAGE` (símbolo exportado junto a la interfaz). El prefijo es **solo** para puertos (contratos que la infraestructura implementa); tipos de datos, DTOs, props y contratos zod van sin `I` (`Actor`, `HealthReadyResponse`, `Env`).
 - Servicios de aplicación como en los diagramas (`FileService`, `UploadService`…): métodos públicos por caso de uso, con `actor: Actor` como primer parámetro cuando actúan sobre datos de un usuario. Si un servicio supera ~7 métodos públicos o mezcla razones de cambio, se divide (SRP) y se actualiza el diagrama.
 - Retornos explícitos en funciones exportadas.
 - Nada de lógica en constructores ni en decoradores.
@@ -28,7 +28,7 @@
 - Prefijo `/api/v1`. Recursos en plural e inglés: `/files`, `/folders`, `/shares`, `/subscriptions`.
 - Validación con esquemas zod de `packages/contracts` y `ZodValidationPipe` de `shared` (ADR-0020); contratos públicos
   en `packages/contracts`.
-- Paginación por cursor en listados. Fechas ISO-8601 UTC.
+- Paginación por cursor en listados; única excepción, los listados internos de `backoffice` (número de página con `total`, DF-66). Fechas ISO-8601 UTC.
 - OpenAPI generado por `@nestjs/swagger`; el PR que cambia un endpoint actualiza el contrato.
 - Operaciones sensibles con `@Throttle` (login, recuperación, enlaces con contraseña, agente).
 

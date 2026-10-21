@@ -4,7 +4,7 @@ import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialE
 
 import { TransactionContext } from '../../../../shared';
 import type { Actor } from '../../../../shared';
-import { accessibleNodes } from '../../../access';
+import { accessibleNodes, ownedFiles } from '../../../access';
 import type {
   INodeRepository,
   NodeListPage,
@@ -27,6 +27,7 @@ import { afterCondition, orderByOf } from './node-order-sql';
 import { nodesIn, rebaseSubtree } from './node-sql';
 import type { Condition, NodeTable } from './node-sql';
 import { toTrashState, trashColumns } from './trash-columns';
+import { toVersionRow } from './typeorm-version.repository';
 import { VersionArchivoOrmEntity } from './version-archivo.orm-entity';
 
 const FILE_ALIAS = 'archivo';
@@ -170,6 +171,30 @@ export class TypeOrmNodeRepository implements INodeRepository {
     return row === null ? null : toFile(row);
   }
 
+  async findOwnedFile(actor: Actor, id: string): Promise<File | null> {
+    const owned = nodesIn(ownedFiles(actor), `${FILE_ALIAS}.id`, 'archivo');
+    const row = await this.context
+      .requireActorScope(actor)
+      .createQueryBuilder(ArchivoOrmEntity, FILE_ALIAS)
+      .where(owned.sql, { ...owned.parameters })
+      .andWhere(`${FILE_ALIAS}.id = :id`, { id })
+      .getOne();
+    return row === null ? null : toFile(row);
+  }
+
+  async findLiveFileByName(
+    actor: Actor,
+    name: FileName,
+    folderId: string | null,
+  ): Promise<File | null> {
+    const sibling = childOf(`${FILE_ALIAS}.carpetaId`, folderId);
+    const row = await this.liveFiles(actor)
+      .andWhere(sibling.sql, sibling.parameters)
+      .andWhere(`lower(${FILE_ALIAS}.nombre) = lower(:name)`, { name: name.value })
+      .getOne();
+    return row === null ? null : toFile(row);
+  }
+
   async findAccessibleFolder(actor: Actor, id: string): Promise<Folder | null> {
     const row = await this.liveFolders(actor).andWhere(`${FOLDER_ALIAS}.id = :id`, { id }).getOne();
     return row === null ? null : toFolder(row);
@@ -257,19 +282,29 @@ export class TypeOrmNodeRepository implements INodeRepository {
       actualizadoEn: file.updatedAt,
       ...trashColumns(file.trash),
     });
-    await manager.insert(VersionArchivoOrmEntity, {
-      id: version.id,
-      archivoId: version.fileId,
-      origen: version.origin,
-      claveObjeto: version.objectKey.value,
-      tamanoBytes: version.sizeBytes,
-      creadoPor: version.createdBy,
-      creadaEn: version.createdAt,
-    });
+    await manager.insert(VersionArchivoOrmEntity, toVersionRow(version));
   }
 
   async insertFolder(actor: Actor, folder: Folder): Promise<void> {
     await this.context.requireActorScope(actor).insert(CarpetaOrmEntity, toFolderRow(folder));
+  }
+
+  /** Por el fragmento de acceso o por propiedad (incluida la papelera, 016 RN-11), en la misma consulta. */
+  async updateCurrentVersion(actor: Actor, file: File): Promise<void> {
+    const access = accessibleCondition(actor, 'id', 'archivo');
+    const owned = nodesIn(ownedFiles(actor), 'id', 'archivo');
+    await this.context
+      .requireActorScope(actor)
+      .createQueryBuilder()
+      .update(ArchivoOrmEntity)
+      .set({
+        versionActualId: file.currentVersionId,
+        tamanoBytes: file.sizeBytes,
+        actualizadoEn: file.updatedAt,
+      })
+      .where(`(${access.sql} OR ${owned.sql})`, { ...access.parameters, ...owned.parameters })
+      .andWhere('id = :id', { id: file.id })
+      .execute();
   }
 
   renameFolder(actor: Actor, folder: Folder): Promise<void> {

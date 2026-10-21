@@ -1,3 +1,5 @@
+import type { Readable } from 'node:stream';
+
 /** Una parte ya recibida por el almacenamiento en una carga por partes. `listParts` es la fuente de verdad. */
 export interface UploadedPart {
   readonly partNumber: number;
@@ -33,6 +35,13 @@ export interface PresignDownloadInput {
   readonly expiresInSeconds: number;
 }
 
+/** Un objeto que sube el propio servidor (009: la factura PDF). */
+export interface PutObjectInput {
+  readonly key: string;
+  readonly body: Buffer;
+  readonly contentType: string;
+}
+
 /**
  * Almacenamiento de objetos (plan 005 §6, regla a). Las claves son `u/{propietario}/{archivo}/{version}` y nunca
  * salen de la API ni entran en una bitácora. Firmar es cómputo local (no hay red) contra el endpoint público;
@@ -57,10 +66,32 @@ export interface IObjectStorage {
   headObject(key: string): Promise<ObjectHead | null>;
   /** Bytes `[start, endInclusive]` del objeto (posiciones enteras seguras). */
   getRange(key: string, start: number, endInclusive: number): Promise<Buffer>;
+  /**
+   * Copia en el servidor el objeto de `sourceKey` a `targetKey` (014, restaurar): los bytes no pasan por la API.
+   * Idempotente: repetirla con las mismas claves deja el mismo contenido en `targetKey`. `false` si el origen ya no
+   * existe (una poda lo borró mientras tanto) y no crea el destino.
+   */
+  copyObject(sourceKey: string, targetKey: string): Promise<boolean>;
+  /**
+   * Contenido completo del objeto como flujo, sin cargarlo en memoria (016: el editor lee el documento); `null` si no
+   * existe.
+   */
+  getObjectStream(key: string): Promise<Readable | null>;
+  /**
+   * Sube `body` a `key` en una sola petición (016: el documento que entrega el editor, acotado por
+   * `EDITING_MAX_DOC_BYTES`). `sizeBytes` es obligatorio: S3 no acepta un flujo sin longitud. Solo acepta claves
+   * `u/{propietario}/{archivo}/{versión}` (`ObjectKey`): cualquier otra, también las `invoices/` de 009, se rechaza.
+   */
+  putObjectStream(key: string, body: Readable, sizeBytes: bigint): Promise<void>;
   /** Borra todas las versiones y marcas de borrado de la clave (el bucket está versionado). Idempotente. */
   purgeObject(key: string): Promise<void>;
   /** URL de descarga con `attachment`, `application/octet-stream` y `no-store`, válida solo para esa clave. */
   presignDownload(input: PresignDownloadInput): Promise<string>;
+  /**
+   * Sube un objeto que genera el servidor (009 CA-6, decisión 1). Solo acepta claves
+   * `invoices/{usuario_id}/{factura_id}.pdf`: cualquier otra, también las `u/` de los archivos de cliente, se rechaza.
+   */
+  putObject(input: PutObjectInput): Promise<void>;
 }
 
 export const I_OBJECT_STORAGE: unique symbol = Symbol('IObjectStorage');

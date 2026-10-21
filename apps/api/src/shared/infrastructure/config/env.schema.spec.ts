@@ -102,6 +102,7 @@ describe('MinIO compartido por `api` y `worker` (005 T-20)', () => {
     'UPLOAD_URL_TTL_SECONDS',
     'RATE_LIMIT_UPLOAD_INIT_PER_MINUTE',
     'RATE_LIMIT_DOWNLOAD_URL_PER_MINUTE',
+    'RATE_LIMIT_VERSION_RESTORE_PER_MINUTE',
   ])('RN-16: `%s` es solo del `api`', (key) => {
     expect(declaredIn(key)).toEqual(['api']);
   });
@@ -204,6 +205,16 @@ describe('previsualización (017 plan §5)', () => {
   );
 });
 
+describe('canal en vivo (015 plan §5)', () => {
+  it('CA-14: `REALTIME_CONNECT_ATTEMPTS_PER_MINUTE` es solo del `api`, vale 60 por defecto y es positiva', () => {
+    const attempts = apiEnvObjectSchema.shape.REALTIME_CONNECT_ATTEMPTS_PER_MINUTE;
+
+    expect(declaredIn('REALTIME_CONNECT_ATTEMPTS_PER_MINUTE')).toEqual(['api']);
+    expect(attempts.parse(undefined)).toBe(60);
+    expect(attempts.safeParse('0').success).toBe(false);
+  });
+});
+
 describe('JWT_ACCESS_SECRET (002 plan §6.10, CA-25, CA-26)', () => {
   const issuesFor = (patch: Record<string, string | undefined>): readonly string[] => {
     const result = loadEnv(apiEnvSchema, { ...API_ENV, ...patch });
@@ -260,4 +271,55 @@ describe('JWT_ACCESS_SECRET (002 plan §6.10, CA-25, CA-26)', () => {
     expect(SECRET_KEYS).toContain('JWT_ACCESS_SECRET');
     expect(declaredIn('JWT_ACCESS_SECRET')).toEqual(['api']);
   });
+});
+
+describe('edición con ONLYOFFICE (016 plan §5)', () => {
+  const issuesFor = (patch: Record<string, string | undefined>): readonly string[] => {
+    const result = loadEnv(apiEnvSchema, { ...API_ENV, ...patch });
+    return result.ok ? [] : result.issues;
+  };
+
+  it.each([
+    'ONLYOFFICE_JWT_SECRET',
+    'ONLYOFFICE_PUBLIC_URL',
+    'ONLYOFFICE_INTERNAL_URL',
+    'EDITING_CALLBACK_BASE_URL',
+    'EDITING_MAX_DOC_BYTES',
+  ])('CA-15: `%s` es solo del `api` y opcional (sin ONLYOFFICE el `api` arranca igual)', (key) => {
+    expect(declaredIn(key)).toEqual(['api']);
+    expect(issuesFor({ [key]: undefined })).toEqual([]);
+  });
+
+  it('RN-10: `EDITING_MAX_DOC_BYTES` vale 50 MB por defecto y es positiva', () => {
+    const maxBytes = apiEnvObjectSchema.shape.EDITING_MAX_DOC_BYTES;
+
+    expect(maxBytes.parse(undefined)).toBe(50 * 1024 * 1024);
+    expect(maxBytes.safeParse('0').success).toBe(false);
+  });
+
+  it.each(['ONLYOFFICE_PUBLIC_URL', 'ONLYOFFICE_INTERNAL_URL', 'EDITING_CALLBACK_BASE_URL'])(
+    'CA-15: `%s` debe ser una URL',
+    (key) => {
+      expect(issuesFor({ [key]: 'no-es-url' })).toEqual([`\`${key}\` debe ser una URL válida`]);
+    },
+  );
+
+  it('plan §5: `ONLYOFFICE_JWT_SECRET` es secreta y solo la declara el `api`', () => {
+    expect(SECRET_KEYS).toContain('ONLYOFFICE_JWT_SECRET');
+  });
+
+  it.each(['staging', 'production'])(
+    'plan §5: con `APP_ENV=%s`, `ONLYOFFICE_JWT_SECRET` no es el valor de ejemplo ni corta',
+    (appEnv) => {
+      const env = { APP_ENV: appEnv, JWT_ACCESS_SECRET: STAGING_SECRET };
+
+      expect(issuesFor({ ...env, ONLYOFFICE_JWT_SECRET: 'cambia-este-secreto-local' })).toEqual([
+        '`ONLYOFFICE_JWT_SECRET` no puede ser el valor de desarrollo de .env.example',
+      ]);
+      expect(issuesFor({ ...env, ONLYOFFICE_JWT_SECRET: 'x'.repeat(31) })).toEqual([
+        '`ONLYOFFICE_JWT_SECRET` debe tener al menos 32 caracteres en staging y en producción',
+      ]);
+      expect(issuesFor({ ...env, ONLYOFFICE_JWT_SECRET: STAGING_SECRET })).toEqual([]);
+    },
+  );
 });

@@ -191,26 +191,33 @@ function ActivityContent({ activity }: { readonly activity: Activity }): React.J
 }
 
 /**
- * «Mi actividad» (spec 004 D-4, mockup `audit/mi-actividad`): lo que se hizo en la cuenta, por el cliente y por el
- * personal de Nimbo, con filtros, «Cargar más» y sus estados (CA-7, CA-9 a CA-11, CA-13, CA-15). Sin migas y con el
- * encabezado de Seguridad; la sesión se cierra en el menú de la cuenta, que enlaza esta página.
+ * Contenido de «Mi actividad» (spec 004 D-4, mockup `audit/mi-actividad`), sin marco: lo que se hizo en la cuenta, por
+ * ella y por el personal de Nimbo, con filtros, «Cargar más» y sus estados (CA-7, CA-9 a CA-11, CA-13, CA-15). Sin migas
+ * y con el encabezado de Seguridad; la sesión se cierra en el menú de la cuenta, que enlaza esta página. El cliente lo ve
+ * en su marco (`ActivityView`) y los roles internos, en el suyo (011 CA-17).
  */
-export function ActivityView({ load }: { readonly load: LoadActivity }): React.JSX.Element {
+export function ActivityPanel({ load }: { readonly load: LoadActivity }): React.JSX.Element {
   const activity = useActivity(load);
+  return (
+    <div className="mx-auto w-full max-w-4xl space-y-4">
+      <header className="space-y-1">
+        <h1 className="text-2xl font-semibold text-foreground">Mi actividad</h1>
+        <p className="text-sm text-secondary-foreground">
+          Lo que se hizo en tu cuenta, por ti y por el personal de Nimbo. Solo ves el tipo y la
+          cantidad de elementos, nunca sus nombres, y nadie puede modificar ni borrar este registro.
+        </p>
+      </header>
+      <ActivityContent activity={activity} />
+    </div>
+  );
+}
+
+/** «Mi actividad» del cliente, en su marco con la cuota al pie de la barra (007). */
+export function ActivityView({ load }: { readonly load: LoadActivity }): React.JSX.Element {
   const space = useSpace();
   return (
     <AppLayout navItems={ACTIVITY_NAV_ITEMS} quotaCard={<SidebarQuota state={space.state} />}>
-      <div className="mx-auto w-full max-w-4xl space-y-4">
-        <header className="space-y-1">
-          <h1 className="text-2xl font-semibold text-foreground">Mi actividad</h1>
-          <p className="text-sm text-secondary-foreground">
-            Lo que se hizo en tu cuenta, por ti y por el personal de Nimbo. Solo ves el tipo y la
-            cantidad de elementos, nunca sus nombres, y nadie puede modificar ni borrar este
-            registro.
-          </p>
-        </header>
-        <ActivityContent activity={activity} />
-      </div>
+      <ActivityPanel load={load} />
     </AppLayout>
   );
 }
@@ -224,11 +231,20 @@ function useSessionAuditLoad(apiPublicUrl: string): LoadActivity {
   );
 }
 
-/** La vista conectada a la API con la sesión en memoria (002). */
+/** La vista del cliente conectada a la API con la sesión en memoria (002). */
 export function SessionActivityView({
   apiPublicUrl,
 }: {
   readonly apiPublicUrl: string;
 }): React.JSX.Element {
   return <ActivityView load={useSessionAuditLoad(apiPublicUrl)} />;
+}
+
+/** El contenido conectado a la API con la sesión, para montarlo en el marco interno (011 CA-17). */
+export function SessionActivityPanel({
+  apiPublicUrl,
+}: {
+  readonly apiPublicUrl: string;
+}): React.JSX.Element {
+  return <ActivityPanel load={useSessionAuditLoad(apiPublicUrl)} />;
 }

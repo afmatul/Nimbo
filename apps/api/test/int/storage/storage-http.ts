@@ -9,6 +9,7 @@ import {
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
+import type { DynamicModule } from '@nestjs/common';
 import request from 'supertest';
 import type { Response } from 'supertest';
 import type { DataSource } from 'typeorm';
@@ -18,6 +19,7 @@ import type { PlanLimits } from '../../../src/modules/storage';
 import { PreviewModule } from '../../../src/modules/storage/preview';
 import { PlanLimitsBindingModule } from '../../../src/plan-limits-binding.module';
 import { FixedClock, Role } from '../../../src/shared';
+import type { Env } from '../../../src/shared';
 import { connectAsOwner, requiredEnv } from '../../support/database-urls';
 import { FakePlanLimitsProvider } from '../../support/fake-plan-limits.provider';
 import { PROBE_CLOCK_START } from '../../support/probe.module';
@@ -36,6 +38,8 @@ export const DEFAULT_TEST_LIMITS: PlanLimits = {
   maxFileBytes: BigInt(64 * MIB),
   storageQuotaBytes: BigInt(256 * MIB),
   trashRetentionDays: 30,
+  retainedVersions: 3,
+  maxEditors: 0,
   planName: 'Plan de prueba',
 };
 /** Bucket propio y **versionado**, como el de `infra/minio/init.sh`: el compartido del arnés no tiene versionado. */
@@ -124,16 +128,25 @@ export interface StorageClient {
   unpin(nodeType: string, nodeId: string): Promise<Response>;
   /** `POST /quick-access/recents/:nodeType/:nodeId`, sin cuerpo. */
   recordOpen(nodeType: string, nodeId: string): Promise<Response>;
+  /** `DELETE /files/:fileId` (a la papelera) y `DELETE /trash/files/:fileId` (purga definitiva). */
+  trashFile(fileId: string): Promise<Response>;
+  purgeFile(fileId: string): Promise<Response>;
   trashFolder(folderId: string): Promise<Response>;
   purgeFolder(folderId: string): Promise<Response>;
   restoreFolder(folderId: string): Promise<Response>;
   emptyTrash(): Promise<Response>;
   spaceSummary(): Promise<Response>;
+  /** `GET /files/:fileId/versions` (014). */
+  fileVersions(fileId: string): Promise<Response>;
+  /** `POST /files/:fileId/versions/:versionId/restore` (014). */
+  restoreVersion(fileId: string, versionId: string): Promise<Response>;
+  /** `POST /files/:fileId/versions/:versionId/download-url` (014). */
+  versionDownloadUrl(fileId: string, versionId: string): Promise<Response>;
   /** Inicia (en `folderId`, por defecto la raíz), sube con la(s) URL(s) firmada(s) y completa; devuelve `complete`. */
   upload(
     name: string,
     bytes: Buffer,
-    onConflict?: 'ask' | 'keep_both',
+    onConflict?: 'ask' | 'keep_both' | 'replace',
     folderId?: string | null,
   ): Promise<Response>;
 }
@@ -147,6 +160,8 @@ export interface StorageHttpApp {
   /** Host (`host:puerto`) contra el que se firman las URLs. */
   readonly publicHost: string;
   newClient(role?: Role): Promise<StorageClient>;
+  /** Token de acceso de una cuenta creada con `newClient`, para rutas de otros módulos (p. ej. `editing`, 016). */
+  tokenOf(id: string): string | undefined;
   /** Rutas de una cuenta que la suite ya creó (p. ej. el mundo de aislamiento); sin `token`, sin `Authorization`. */
   clientFor(id: string, token?: string): StorageClient;
   /** Versiones y marcas de borrado que quedan en el bucket bajo una clave. */
@@ -174,6 +189,18 @@ export interface StorageHttpOptions {
   readonly accessTokenStrategy?: TestAppOptions['accessTokenStrategy'];
   /** Módulos que se suman a `storage` (p. ej. la composición de `identity` del mundo de aislamiento). */
   readonly modules?: TestAppOptions['modules'];
+  /**
+   * Módulos que necesitan **la misma** instancia de `StorageModule` (p. ej. `EditingModule.forRoot(env, { storage,
+   * realtime })` de 016) y el entorno validado.
+   */
+  readonly withStorage?: (
+    storage: DynamicModule,
+    env: Env,
+  ) => NonNullable<TestAppOptions['modules']>;
+  /** Proveedores sustituidos además del doble de límites (p. ej. el editor de 016). */
+  readonly overrides?: TestAppOptions['overrides'];
+  /** Instala el canal en vivo (015) como `main.ts`; exige `RealtimeModule` entre los módulos (p. ej. `editing`, 016). */
+  readonly withRealtime?: boolean;
 }
 
 interface SignedTarget {
@@ -259,11 +286,19 @@ export const createStorageHttpApp = async (
   const testApp = await createTestApp({
     validatedEnv: env,
     accessTokenStrategy: options.accessTokenStrategy ?? 'test',
-    modules: [...(options.modules ?? []), PlanLimitsBindingModule, entryModule],
-    overrides:
-      options.realPlanLimits === true
+    modules: [
+      ...(options.modules ?? []),
+      PlanLimitsBindingModule,
+      entryModule,
+      ...(options.withStorage?.(storageModule, env) ?? []),
+    ],
+    overrides: [
+      ...(options.realPlanLimits === true
         ? []
-        : [{ provide: I_PLAN_LIMITS_PROVIDER, useValue: limits }],
+        : [{ provide: I_PLAN_LIMITS_PROVIDER, useValue: limits }]),
+      ...(options.overrides ?? []),
+    ],
+    withRealtime: options.withRealtime ?? false,
   });
   const owner = await connectAsOwner();
   const tokens = new TestAccessTokens(new FixedClock(PROBE_CLOCK_START));
@@ -299,12 +334,19 @@ export const createStorageHttpApp = async (
         http().delete(`${API_PREFIX}/quick-access/pins/${nodeType}/${nodeId}`).set(auth),
       recordOpen: (nodeType, nodeId) =>
         http().post(`${API_PREFIX}/quick-access/recents/${nodeType}/${nodeId}`).set(auth),
+      trashFile: (fileId) => http().delete(`${API_PREFIX}/files/${fileId}`).set(auth),
+      purgeFile: (fileId) => http().delete(`${API_PREFIX}/trash/files/${fileId}`).set(auth),
       trashFolder: (folderId) => http().delete(`${API_PREFIX}/folders/${folderId}`).set(auth),
       purgeFolder: (folderId) => http().delete(`${API_PREFIX}/trash/folders/${folderId}`).set(auth),
       restoreFolder: (folderId) =>
         http().post(`${API_PREFIX}/trash/folders/${folderId}/restore`).set(auth),
       emptyTrash: () => http().delete(`${API_PREFIX}/trash`).set(auth),
       spaceSummary: () => http().get(`${API_PREFIX}/storage/summary`).set(auth),
+      fileVersions: (fileId) => http().get(`${API_PREFIX}/files/${fileId}/versions`).set(auth),
+      restoreVersion: (fileId, versionId) =>
+        http().post(`${API_PREFIX}/files/${fileId}/versions/${versionId}/restore`).set(auth),
+      versionDownloadUrl: (fileId, versionId) =>
+        http().post(`${API_PREFIX}/files/${fileId}/versions/${versionId}/download-url`).set(auth),
       upload: async (name, bytes, onConflict = 'ask', folderId = null) => {
         const started = await client.init({ name, sizeBytes: bytes.length, onConflict, folderId });
         if (started.status !== 201) return started;
@@ -316,10 +358,13 @@ export const createStorageHttpApp = async (
     return client;
   };
 
+  const issued = new Map<string, string>();
   const newClient = async (role: Role = Role.CLIENT): Promise<StorageClient> => {
     const id = await insertAccount(owner, role);
     accounts.push(id);
-    return clientFor(id, tokens.valid({ userId: id, role, sessionId: randomUUID() }));
+    const token = tokens.valid({ userId: id, role, sessionId: randomUUID() });
+    issued.set(id, token);
+    return clientFor(id, token);
   };
 
   return {
@@ -329,6 +374,7 @@ export const createStorageHttpApp = async (
     s3,
     publicHost: new URL(publicEndpoint).host,
     newClient,
+    tokenOf: (id) => issued.get(id),
     clientFor,
     versionsOf: async (key) => {
       const page = await s3.send(

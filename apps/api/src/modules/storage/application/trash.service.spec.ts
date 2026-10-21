@@ -61,6 +61,8 @@ function setup() {
     maxFileBytes: 100n,
     storageQuotaBytes: 1000n,
     trashRetentionDays: RETENTION_DAYS,
+    retainedVersions: 3,
+    maxEditors: 0,
     planName: 'Plan de prueba',
   });
   const objects = new FakeObjectStorage(journal);
@@ -413,6 +415,8 @@ describe('TrashService.list y summary', () => {
       maxFileBytes: 100n,
       storageQuotaBytes: 1000n,
       trashRetentionDays: 7,
+      retainedVersions: 3,
+      maxEditors: 0,
     });
 
     const page = await service.list(ANA, { limit: 10 });

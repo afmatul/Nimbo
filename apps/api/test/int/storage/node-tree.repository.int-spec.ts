@@ -27,9 +27,13 @@ import type { AppDatabase, FileRowOptions, FolderRow } from './storage-test-db';
 const DEFAULT_ORDER = NodeOrder.of();
 const MAX_DEPTH = 10;
 const LATER = new Date('2026-10-02T09:00:00.000Z');
+/** Instantes fijos para que el orden por `creado_en` no dependa del reloj entre inserciones. */
+const EARLIER = new Date('2026-10-02T09:00:00.000Z');
+const LATER_CREATED = new Date('2026-10-02T09:00:01.000Z');
 /** Fragmento de `accessibleNodes` filtrado por tipo, tal como llega a Postgres. */
 const TYPED_ACCESS = /nodos\.tipo_nodo = '(archivo|carpeta)'/;
-const ROOT_INDEXES = /idx_(carpeta|archivo)_raiz_creado/;
+/** Desde la 011 vale también `idx_archivo_propietario_actualizado`: filtra por propietario, no da el orden (PD-102). */
+const ROOT_INDEXES = /idx_(carpeta|archivo)_raiz_creado|idx_archivo_propietario_actualizado/;
 
 const idsOf = (nodes: readonly StorageNode[]): string[] => nodes.map((node) => node.id);
 
@@ -56,6 +60,12 @@ describe('TypeOrmNodeRepository · carpetas (006 CA-1, CA-3, CA-5, CA-7, CA-9)',
   /** Archivo confirmado: `archivo` y su versión en una transacción propia (la FK `version_actual_id` es diferida). */
   const fileRow = (actor: Actor, options: FileRowOptions = {}) =>
     owner.transaction((manager) => insertFileWithVersion(manager, actor.id, options));
+
+  const stamp = (table: 'carpeta' | 'archivo', id: string, createdAt: Date): Promise<void> =>
+    owner.query(`UPDATE ${table} SET creado_en = $2, actualizado_en = $2 WHERE id = $1`, [
+      id,
+      createdAt,
+    ]);
 
   const asAna = <T>(work: () => Promise<T>): Promise<T> => app.asActor(ana, work);
 
@@ -135,6 +145,10 @@ describe('TypeOrmNodeRepository · carpetas (006 CA-1, CA-3, CA-5, CA-7, CA-9)',
       const older = await fileRow(ana, { folderId: box.id });
       const newer = await fileRow(ana, { folderId: box.id });
       await fileRow(ana, { folderId: box.id, deletedAt: new Date() });
+      await stamp('carpeta', olderFolder.id, EARLIER);
+      await stamp('carpeta', newerFolder.id, LATER_CREATED);
+      await stamp('archivo', older.fileId, EARLIER);
+      await stamp('archivo', newer.fileId, LATER_CREATED);
 
       const [first, second] = await asAna(async () => {
         const page = await repository.listContents(ana, {
@@ -210,7 +224,7 @@ describe('TypeOrmNodeRepository · carpetas (006 CA-1, CA-3, CA-5, CA-7, CA-9)',
       ).rejects.toBeInstanceOf(InvalidQueryError);
     });
 
-    it('R-2: en la raíz usa los índices parciales de raíz y filtra el fragmento por `tipo_nodo`', async () => {
+    it('R-2: en la raíz usa índices de propietario, sin `Seq Scan`, y filtra el fragmento por `tipo_nodo`', async () => {
       const plans = await app.asActor(ana, async (manager) => {
         const runner = manager.queryRunner;
         if (runner === undefined) throw new Error('withActor no abrió un QueryRunner');
@@ -228,6 +242,7 @@ describe('TypeOrmNodeRepository · carpetas (006 CA-1, CA-3, CA-5, CA-7, CA-9)',
 
       expect(plans).toHaveLength(2);
       plans.forEach((plan) => expect(plan).toMatch(ROOT_INDEXES));
+      plans.forEach((plan) => expect(plan).not.toMatch(/Seq Scan on (archivo|carpeta)/));
     });
   });
 

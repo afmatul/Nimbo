@@ -1,0 +1,18 @@
+# Configuración de gitleaks (ADR-0015). Parte de las reglas por defecto y solo afloja `generic-api-key` en archivos de
+# prueba, donde aparecen contraseñas inventadas, URLs de prueba y claves de relleno. Va por ruta y no por huella en
+# `.gitleaksignore` porque la huella lleva el SHA del commit y el squash merge a `main` crea uno nuevo.
+# Las reglas de secretos con formato propio (claves de AWS, tokens de GitHub, llaves privadas…) siguen activas en todo
+# el repositorio, pruebas incluidas.
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+[[rules.allowlists]]
+description = "Datos inventados de las pruebas y lista de contraseñas débiles que el validador rechaza"
+paths = [
+  '''\.(spec|int-spec|iso-spec)\.tsx?$''', # *.spec.ts(x), *.int-spec.ts, *.iso-spec.ts
+  '''^apps/[^/]+/test/''',                 # ayudas de las pruebas (cuentas, apps y setup de integración)
+  '''^packages/contracts/src/identity/common-passwords\.ts$''',
+]

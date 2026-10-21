@@ -31,7 +31,7 @@ async function renderGroup(role: RoleName): Promise<void> {
 describe('grupo (cliente)', () => {
   beforeEach(() => {
     process.env['APP_ENV'] = 'test';
-    process.env['API_INTERNAL_URL'] = 'http://localhost:3000/api/v1';
+    process.env['API_INTERNAL_URL'] = 'http://localhost:3000';
     process.env['API_PUBLIC_URL'] = 'http://localhost/api/v1';
     replace.mockReset();
     global.fetch = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>();

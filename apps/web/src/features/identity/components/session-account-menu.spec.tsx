@@ -52,4 +52,49 @@ describe('SessionAccountMenu (CA-14)', () => {
     );
     expect(recallSession(Date.now())).toBeNull();
   });
+
+  it.each([
+    ['CLIENT', '/actividad'],
+    ['SUPPORT', '/interno/actividad'],
+    ['ADMIN', '/interno/actividad'],
+    ['OPERATOR', '/interno/actividad'],
+  ] as const)('011 CA-17: con el rol %s, «Mi actividad» lleva a %s', async (role, path) => {
+    rememberSession(sessionFixture({ role }));
+    const user = userEvent.setup();
+    render(
+      <SessionProvider apiPublicUrl="http://localhost/api/v1">
+        <SessionAccountMenu />
+      </SessionProvider>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Ana López (menú de la cuenta)' }));
+
+    expect(screen.getByRole('menuitem', { name: 'Mi actividad' }).getAttribute('href')).toBe(path);
+    expect(screen.getByRole('menuitem', { name: 'Seguridad' }).getAttribute('href')).toBe(
+      '/cuenta/seguridad',
+    );
+  });
+
+  it.each([
+    ['CLIENT', true],
+    ['SUPPORT', false],
+    ['ADMIN', false],
+    ['OPERATOR', false],
+  ] as const)(
+    '009 CA-7: con el rol %s, «Plan y facturación» se ofrece: %s',
+    async (role, offered) => {
+      rememberSession(sessionFixture({ role }));
+      const user = userEvent.setup();
+      render(
+        <SessionProvider apiPublicUrl="http://localhost/api/v1">
+          <SessionAccountMenu />
+        </SessionProvider>,
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Ana López (menú de la cuenta)' }));
+
+      const item = screen.queryByRole('menuitem', { name: 'Plan y facturación' });
+      expect(item?.getAttribute('href') ?? null).toBe(offered ? '/suscripcion' : null);
+    },
+  );
 });

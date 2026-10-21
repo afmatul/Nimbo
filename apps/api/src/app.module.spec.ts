@@ -36,7 +36,8 @@ describe('AppModule: composición de preview (017)', () => {
     expect(preview.mock.calls[0]?.[0].storageModule).toBe(storageModule);
     expect(preview.mock.calls[0]?.[0].config).toEqual({ previewUrlPerMinute: 7 });
     expect(app.imports).toContain(preview.mock.results[0]?.value);
-    expect(app.imports).not.toContain(storageModule);
+    // Desde 009/011/016 la raíz importa el mismo descriptor que comparten `billing`, `backoffice`, `editing` y preview.
+    expect(app.imports).toContain(storageModule);
     expect(storageModule.imports).not.toContain(PreviewModule);
   });
 });

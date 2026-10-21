@@ -8,6 +8,7 @@ import { Role } from '../../../src/shared';
 import { TransactionContext } from '../../../src/shared/infrastructure/persistence/transaction-context';
 import { TypeOrmTransactionRunner } from '../../../src/shared/infrastructure/persistence/typeorm-transaction-runner';
 import { connectTo, requiredEnv } from '../../support/database-urls';
+import { employeeCodeFor } from '../../support/employee-codes';
 
 /** Lo único que las *fixtures* necesitan: un `QueryRunner` del dueño o el `EntityManager` de `withActor`. */
 export interface Queryable {
@@ -36,7 +37,7 @@ export const inRolledBackTransaction = async <T>(
   }
 };
 
-/** Inserta una cuenta (como el dueño: `usuario` es un *fixture* aquí) y devuelve su id. */
+/** Inserta una cuenta (como el dueño: `usuario` es un *fixture* aquí) y devuelve su id. Las internas llevan código. */
 export const insertAccount = async (
   runner: Queryable,
   role: Role = Role.CLIENT,
@@ -45,8 +46,8 @@ export const insertAccount = async (
   const isClient = role === Role.CLIENT;
   await runner.query(
     `INSERT INTO usuario (id, nombre, correo, hash_clave, rol, correo_verificado, version_terminos,
-                          version_privacidad, terminos_aceptados_en)
-     VALUES ($1, 'Ana López', $2, $3, $4, true, $5, $6, $7)`,
+                          version_privacidad, terminos_aceptados_en, codigo_empleado)
+     VALUES ($1, 'Ana López', $2, $3, $4, true, $5, $6, $7, $8)`,
     [
       id,
       `storage.${id}@ejemplo.com`,
@@ -55,6 +56,7 @@ export const insertAccount = async (
       isClient ? LEGAL_DOCUMENTS.terms.version : null,
       isClient ? LEGAL_DOCUMENTS.privacy.version : null,
       isClient ? ACCEPTED_AT : null,
+      employeeCodeFor(role),
     ],
   );
   return id;
@@ -94,7 +96,7 @@ export interface FileRowOptions {
 }
 
 /**
- * Inserta `archivo` y su `version_archivo` en la misma transacción (la FK `version_actual_id` es diferida) y devuelve
+ * Inserta `archivo` y su `version_archivo` número 1 en la misma transacción (la FK `version_actual_id` es diferida) y devuelve
  * ambos ids. La clave de objeto sigue el formato `u/{propietario}/{archivo}/{version}`.
  */
 export const insertFileWithVersion = async (
@@ -125,8 +127,8 @@ export const insertFileWithVersion = async (
     ],
   );
   await runner.query(
-    `INSERT INTO version_archivo (id, archivo_id, origen, clave_objeto, tamano_bytes, creado_por, creada_en)
-     VALUES ($1, $2, 'carga', $3, $4, $5, $6)`,
+    `INSERT INTO version_archivo (id, archivo_id, origen, clave_objeto, tamano_bytes, creado_por, creada_en, numero)
+     VALUES ($1, $2, 'carga', $3, $4, $5, $6, 1)`,
     [versionId, fileId, `u/${ownerId}/${fileId}/${versionId}`, size, ownerId, now],
   );
   return { fileId, versionId };
@@ -288,7 +290,8 @@ export const connectAsAppDatabase = async (): Promise<AppDatabase> => {
 };
 
 /**
- * Borra (como el dueño) los accesos rápidos, cargas, archivos, carpetas y cuentas de una suite que confirmó *fixtures*.
+ * Borra (como el dueño) los accesos rápidos, cargas, archivos, carpetas, sesiones de edición y cuentas de una suite
+ * que confirmó *fixtures*.
  * `acceso_rapido` va primero: su `usuario_id` no se borra en cascada (con 012 puede señalar un nodo ajeno).
  */
 export const removeAccounts = async (
@@ -301,6 +304,9 @@ export const removeAccounts = async (
     await manager.query('DELETE FROM carga WHERE propietario_id = ANY($1)', [accountIds]);
     await manager.query('DELETE FROM archivo WHERE propietario_id = ANY($1)', [accountIds]);
     await manager.query('DELETE FROM carpeta WHERE propietario_id = ANY($1)', [accountIds]);
+    // Después de `archivo` (sus versiones apuntan a la sesión); la sesión no tiene FK al archivo (016, DF-70).
+    await manager.query('DELETE FROM participacion WHERE usuario_id = ANY($1)', [accountIds]);
+    await manager.query('DELETE FROM sesion_edicion WHERE propietario_id = ANY($1)', [accountIds]);
     await manager.query('DELETE FROM usuario WHERE id = ANY($1)', [accountIds]);
   });
 };

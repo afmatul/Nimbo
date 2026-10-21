@@ -4,12 +4,17 @@ import type { DynamicModule, Provider, ValueProvider } from '@nestjs/common';
 import { AuditModule } from '../audit';
 
 import { AccessibleFileUrlIssuer } from './application/accessible-file-url-issuer';
+import { EditableFileGateway } from './application/editable-file.gateway';
 import { FILE_SERVICE_CONFIG } from './application/file-service-config';
+import { FileVersionService } from './application/file-version.service';
 import { FOLDER_CONFIG } from './application/folder-config';
 import { FolderService } from './application/folder.service';
 import { I_PLAN_LIMITS_PROVIDER } from './application/plan-limits';
+import { I_NODE_METADATA_READER } from './application/ports/i-node-metadata-reader.port';
+import { I_OBJECT_STORAGE } from './application/ports/i-object-storage.port';
 import { I_QUICK_ACCESS_REPOSITORY } from './application/ports/i-quick-access.repository.port';
 import { I_TRASH_PURGE_QUEUE } from './application/ports/i-trash-purge-queue.port';
+import { I_VERSION_REPOSITORY } from './application/ports/i-version.repository.port';
 import { QUICK_ACCESS_CONFIG } from './application/quick-access-config';
 import { QuickAccessService } from './application/quick-access.service';
 import { SpaceMeasurer } from './application/space-measurer';
@@ -17,8 +22,14 @@ import { SpaceSummaryService } from './application/space-summary.service';
 import { StoragePreviewFacade } from './application/storage-preview.facade';
 import { TrashPurger } from './application/trash-purger';
 import { UPLOAD_CONFIG } from './application/upload-config';
+import { VersionHistoryService } from './application/version-history.service';
+import { VersionPruner } from './application/version-pruner';
+import { VERSION_RESTORE_CONFIG } from './application/version-restore-config';
+import { VersionRestoreService } from './application/version-restore.service';
+import { SqlNodeMetadataReader } from './infrastructure/persistence/sql-node-metadata.reader';
 import { TrashPurgeProcessor } from './infrastructure/trash-purge.processor';
 import { TRASH_PURGE_QUEUE, TrashPurgeScheduler } from './infrastructure/trash-purge.scheduler';
+import { FileVersionsController } from './presentation/file-versions.controller';
 import { FilesController } from './presentation/files.controller';
 import { FoldersController } from './presentation/folders.controller';
 import { QuickAccessController } from './presentation/quick-access.controller';
@@ -34,6 +45,7 @@ const ENV = {
   UPLOAD_URL_TTL_SECONDS: 3600,
   RATE_LIMIT_UPLOAD_INIT_PER_MINUTE: 300,
   RATE_LIMIT_DOWNLOAD_URL_PER_MINUTE: 120,
+  RATE_LIMIT_VERSION_RESTORE_PER_MINUTE: 30,
   FOLDER_MAX_DEPTH: 7,
   QUICK_ACCESS_MAX_PINNED: 4,
   QUICK_ACCESS_RECENT_VISIBLE: 2,
@@ -96,10 +108,11 @@ describe('StorageModule', () => {
     expect(providers.map(tokenOf)).not.toContain(TrashPurgeProcessor);
   });
 
-  it('CA-17: monta los controladores de cargas, archivos, carpetas, papelera, accesos rápidos y espacio', () => {
+  it('CA-17: monta los controladores de cargas, archivos, versiones, carpetas, papelera, accesos rápidos y espacio', () => {
     expect(module.controllers).toEqual([
       UploadsController,
       FilesController,
+      FileVersionsController,
       FoldersController,
       TrashController,
       QuickAccessController,
@@ -107,14 +120,40 @@ describe('StorageModule', () => {
     ]);
   });
 
+  it('014 CA-5, CA-13: registra el registro y la poda de versiones con su repositorio', () => {
+    expect(providers.map(tokenOf)).toEqual(
+      expect.arrayContaining([I_VERSION_REPOSITORY, VersionPruner, FileVersionService]),
+    );
+  });
+
+  it('014 CA-9: registra la restauración con su límite de tasa del entorno', () => {
+    expect(providers).toContain(VersionRestoreService);
+    expect(valueOf(providers, VERSION_RESTORE_CONFIG)).toEqual({ restorePerMinute: 30 });
+  });
+
+  it('014 CA-6: registra la lectura del historial de versiones', () => {
+    expect(providers).toContain(VersionHistoryService);
+  });
+
   it('007 CA-1: registra el resumen de espacio con su medición', () => {
     expect(providers).toEqual(expect.arrayContaining([SpaceMeasurer, SpaceSummaryService]));
   });
 
-  it('017 CA-11: registra el emisor compartido y exporta solo la fachada de vista previa', () => {
+  it('011 PD-31: provee el lector de metadatos con su adaptador SQL y exporta su token, el de objetos (009), la fachada de edición (016) y la de vista previa (017)', () => {
+    const reader = providers.find((provider) => tokenOf(provider) === I_NODE_METADATA_READER);
+
+    expect(reader).toEqual({ provide: I_NODE_METADATA_READER, useClass: SqlNodeMetadataReader });
+    expect(module.exports).toEqual([
+      I_NODE_METADATA_READER,
+      I_OBJECT_STORAGE,
+      EditableFileGateway,
+      StoragePreviewFacade,
+    ]);
+  });
+
+  it('017 CA-11: registra el emisor compartido y la fachada de vista previa', () => {
     expect(providers).toEqual(
       expect.arrayContaining([AccessibleFileUrlIssuer, StoragePreviewFacade]),
     );
-    expect(module.exports).toEqual([StoragePreviewFacade]);
   });
 });

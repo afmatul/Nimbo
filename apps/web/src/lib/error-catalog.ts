@@ -1,10 +1,13 @@
 import {
+  BACKOFFICE_FIELD_MESSAGES,
+  BILLING_ERROR_CODES,
   EMAIL_REQUEST_COOLDOWN_SECONDS,
   FILE_NAME_MAX_LENGTH,
   IDENTITY_ERROR_CODES,
   IDENTITY_FIELD_MESSAGES,
   LOGIN_LOCK_MINUTES,
   PASSWORD_CHANGE_LOCK_MINUTES,
+  REQUIRED_REASON,
   SHARED_ERROR_CODES,
   STORAGE_ERROR_CODES,
   STORAGE_NODE_FIELD_MESSAGES,
@@ -12,6 +15,7 @@ import {
   SUPPORT_CONTACT_EMAIL,
   formatBytes,
   type FieldIssueReason,
+  type FieldIssueResponse,
 } from '@nimbo/contracts';
 
 import { genericErrorMessage, type ApiErrorDetails } from './api-error';
@@ -39,13 +43,30 @@ export interface StorageMessage {
   readonly fix: string;
 }
 
-type StorageMessageBuilder = (details: ApiErrorDetails, fileName: string) => StorageMessage;
+/** Para qué se pidió espacio: subir un archivo (005) o restaurar una versión (014 CA-12). */
+export type QuotaPurpose = 'upload' | 'restore';
+
+/** Lo que el servidor no envía y la pantalla sí sabe: el nombre del archivo y para qué se pidió espacio. */
+export interface StorageMessageContext {
+  readonly fileName?: string;
+  readonly purpose?: QuotaPurpose;
+}
+
+type StorageMessageBuilder = (
+  details: ApiErrorDetails,
+  context: StorageMessageContext,
+) => StorageMessage;
+
+const QUOTA_PURPOSE_TEXT: Readonly<Record<QuotaPurpose, string>> = {
+  upload: 'subir este archivo',
+  restore: 'restaurar esta versión',
+};
 
 function bytesOf(details: ApiErrorDetails, key: string): string {
   return formatBytes(Number(details[key] ?? 0));
 }
 
-function extensionOf(details: ApiErrorDetails, fileName: string): string {
+function extensionOf(details: ApiErrorDetails, fileName = ''): string {
   const fromServer = details['extension'];
   if (typeof fromServer === 'string' && fromServer !== '') return fromServer;
   return fileName.split('.').pop() ?? '';
@@ -61,11 +82,11 @@ const STORAGE_MESSAGES: Readonly<Record<string, StorageMessageBuilder>> = {
     cause: `Este archivo pesa ${bytesOf(details, 'sizeBytes')} y tu plan permite hasta ${bytesOf(details, 'maxBytes')} por archivo.`,
     fix: 'Reduce su tamaño o cambia de plan.',
   }),
-  [STORAGE_ERROR_CODES.STORAGE_QUOTA_EXCEEDED]: (details) => ({
-    cause: `Te faltan ${bytesOf(details, 'missingBytes')} de espacio para subir este archivo.`,
+  [STORAGE_ERROR_CODES.STORAGE_QUOTA_EXCEEDED]: (details, { purpose = 'upload' }) => ({
+    cause: `Te faltan ${bytesOf(details, 'missingBytes')} de espacio para ${QUOTA_PURPOSE_TEXT[purpose]}.`,
     fix: 'Libera espacio o cambia de plan.',
   }),
-  [STORAGE_ERROR_CODES.STORAGE_INVALID_FILE_TYPE]: (details, fileName) =>
+  [STORAGE_ERROR_CODES.STORAGE_INVALID_FILE_TYPE]: (details, { fileName }) =>
     details['reason'] === 'executable'
       ? { cause: 'No se permiten archivos ejecutables.', fix: 'Sube otro archivo.' }
       : {
@@ -91,6 +112,15 @@ const STORAGE_MESSAGES: Readonly<Record<string, StorageMessageBuilder>> = {
   [STORAGE_ERROR_CODES.STORAGE_NAME_CONFLICT]: fixed(
     'Ya tienes un archivo con ese nombre.',
     'Elige «Conservar ambos» o cancela la carga.',
+  ),
+  // Historial de versiones (014 CA-10, CA-11): el mismo texto que el servidor, en dos partes.
+  [STORAGE_ERROR_CODES.STORAGE_VERSION_NOT_FOUND]: fixed(
+    'No encontramos esta versión.',
+    'Puede que se haya eliminado al superar las versiones que conserva tu plan. Actualiza el historial para ver las disponibles.',
+  ),
+  [STORAGE_ERROR_CODES.STORAGE_VERSION_ALREADY_CURRENT]: fixed(
+    'Esta ya es la versión actual.',
+    'Actualiza el historial para ver los cambios.',
   ),
   [STORAGE_ERROR_CODES.STORAGE_UPLOAD_NOT_FOUND]: fixed(
     'No encontramos esta carga.',
@@ -199,9 +229,35 @@ const CODE_MESSAGES: Readonly<Record<string, string>> = {
     'Este enlace venció. Pide uno nuevo y úsalo en la próxima hora.',
   [IDENTITY_ERROR_CODES.RESET_LINK_INVALID]:
     'Este enlace no es válido. Usa el enlace del correo más reciente o pide uno nuevo.',
+  // Enlace de alta interna (011 CA-5): el mismo texto que el servidor. Sin reenvío del alta: orienta a recuperar.
+  [IDENTITY_ERROR_CODES.SETUP_LINK_EXPIRED]:
+    'Este enlace venció. Usa «¿Olvidaste tu contraseña?» en el inicio de sesión para crear tu contraseña.',
+  [IDENTITY_ERROR_CODES.SETUP_LINK_INVALID]:
+    'Este enlace no es válido o ya se usó. Si ya creaste tu contraseña, inicia sesión; si no, usa «¿Olvidaste tu contraseña?».',
   [IDENTITY_ERROR_CODES.WRONG_PASSWORD]: 'La contraseña actual no es correcta.',
+  // Cuentas y altas internas (011 CA-2 a CA-6, plan §4).
+  [IDENTITY_ERROR_CODES.ACCOUNT_NOT_FOUND]:
+    'No encontramos esa cuenta. Vuelve a Cuentas y búscala de nuevo.',
+  [IDENTITY_ERROR_CODES.CANNOT_CHANGE_OWN_STATUS]:
+    'No puedes suspender ni reactivar tu propia cuenta. Pídeselo a otro Administrador.',
+  [IDENTITY_ERROR_CODES.LAST_ACTIVE_ADMIN]:
+    'No se puede suspender: debe quedar al menos un Administrador activo. Nada cambió.',
+  [IDENTITY_ERROR_CODES.ACCOUNT_STATE_CONFLICT]:
+    'La cuenta ya cambió de estado. Recarga la ficha para ver su estado actual.',
+  [IDENTITY_ERROR_CODES.ENROLLMENT_CONFLICT]:
+    'Ya existe una cuenta con estos datos. Corrige los campos marcados y vuelve a intentarlo.',
   [SHARED_ERROR_CODES.UNAUTHENTICATED]: 'Tu sesión no es válida o expiró. Inicia sesión de nuevo.',
   [SHARED_ERROR_CODES.FORBIDDEN]: `Tu cuenta no tiene permiso para esta acción. Si crees que es un error, escríbenos a ${SUPPORT_CONTACT_EMAIL}.`,
+  [BILLING_ERROR_CODES.BILLING_PLAN_CATALOG_UNAVAILABLE]:
+    'No pudimos cargar los planes. Intenta recargar la página.',
+  [BILLING_ERROR_CODES.BILLING_INVALID_INPUT]:
+    'Revisa los datos de pago marcados y corrígelos para continuar.',
+  [BILLING_ERROR_CODES.BILLING_PLAN_NOT_AVAILABLE]:
+    'Este plan no está disponible para contratar. Elige otro plan en Planes.',
+  [BILLING_ERROR_CODES.BILLING_PAYMENT_REJECTED]:
+    'La tarjeta fue rechazada. No se hizo ningún cargo. Prueba con otra tarjeta.',
+  [BILLING_ERROR_CODES.BILLING_INVOICE_NOT_FOUND]:
+    'No encontramos esa factura o su PDF aún no está listo. Actualiza la página e inténtalo de nuevo.',
 };
 
 interface TimedMessage {
@@ -227,6 +283,11 @@ const TIMED_MESSAGES: Readonly<Record<string, TimedMessage>> = {
     text: (minutes) =>
       `Ya te enviamos un enlace hace poco. Revisa tu bandeja y la carpeta de spam, o inténtalo de nuevo en ${minutes} minutos.`,
   },
+  [SHARED_ERROR_CODES.TOO_MANY_REQUESTS]: {
+    defaultSeconds: SECONDS_PER_MINUTE,
+    text: (minutes) =>
+      `Hiciste demasiados intentos. Espera ${minutes} minutos e inténtalo de nuevo.`,
+  },
 };
 
 const LOGIN_RATE_LIMIT_MESSAGE =
@@ -244,9 +305,38 @@ function minutesFrom(seconds: number): string {
 export function storageMessage(
   code: string,
   details: ApiErrorDetails = {},
-  fileName = '',
+  context: StorageMessageContext = {},
 ): StorageMessage | null {
-  return STORAGE_MESSAGES[code]?.(details, fileName) ?? null;
+  return STORAGE_MESSAGES[code]?.(details, context) ?? null;
+}
+
+function isBackofficeReason(value: string): value is keyof typeof BACKOFFICE_FIELD_MESSAGES {
+  return Object.prototype.hasOwnProperty.call(BACKOFFICE_FIELD_MESSAGES, value);
+}
+
+/** Mensaje de un `reason` de la búsqueda del backoffice (011 CA-13). Uno desconocido cae en el genérico de 000 §10. */
+export function backofficeFieldMessage(reason: string, correlationId = ''): string {
+  return isBackofficeReason(reason)
+    ? BACKOFFICE_FIELD_MESSAGES[reason]
+    : genericErrorMessage(correlationId);
+}
+
+/** Qué falta en cada campo vacío del alta interna (mockup `backoffice/alta-interna`, decisión 8). */
+const ENROLLMENT_REQUIRED_MESSAGES: Readonly<Record<string, string>> = {
+  fullName: 'Escribe el nombre completo de la persona.',
+  email: 'Escribe el correo de la persona.',
+  employeeCode: 'Escribe el código de empleado.',
+  role: 'Elige el rol de la cuenta.',
+};
+
+/**
+ * Mensaje de un campo del alta interna (011 CA-6), del navegador o de la API: un campo vacío dice qué dato falta; los
+ * demás motivos (formato, correo o código en uso) usan el texto de `contracts`.
+ */
+export function enrollmentFieldMessage(issue: FieldIssueResponse): string {
+  const required =
+    issue.reason === REQUIRED_REASON ? ENROLLMENT_REQUIRED_MESSAGES[issue.field] : undefined;
+  return required ?? messageForReason(issue.reason);
 }
 
 /** Mensaje de un `reason` de `fields`. Uno desconocido cae en el genérico de 000 §10. */
@@ -260,7 +350,7 @@ export function messageForReason(reason: string, correlationId = ''): string {
  * `details`. Un código desconocido es el genérico de 000 §10.
  */
 export function messageForCode(code: string, options: MessageOptions = {}): string {
-  const storage = storageMessage(code, options.details, options.fileName);
+  const storage = storageMessage(code, options.details, { fileName: options.fileName ?? '' });
   if (storage !== null) return `${storage.cause} ${storage.fix}`;
   if (code === IDENTITY_ERROR_CODES.TOO_MANY_REQUESTS && options.screen === 'login') {
     return LOGIN_RATE_LIMIT_MESSAGE;

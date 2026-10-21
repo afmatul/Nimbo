@@ -8,6 +8,7 @@ import {
   FakeTransactionRunner,
   Journal,
 } from '../../../../test/support/storage-fakes';
+import { FakeVersionRepository, versionOf } from '../../../../test/support/version-fakes';
 import { createActor, FixedClock, Role } from '../../../shared';
 import type {
   Actor,
@@ -23,14 +24,16 @@ import {
   NameConflictError,
   NodeNotFoundError,
   StorageTooManyRequestsError,
+  VersionNotFoundError,
 } from '../domain/errors';
 import { File } from '../domain/file';
 import { FileName } from '../domain/file-name.vo';
+import { FileVersion } from '../domain/file-version';
 import { Folder } from '../domain/folder';
 import { FolderName } from '../domain/folder-name.vo';
+import { ObjectKey } from '../domain/object-key';
 import { TrashState } from '../domain/trash-state';
 
-import { AccessibleFileUrlIssuer } from './accessible-file-url-issuer';
 import type { FileServiceConfig } from './file-service-config';
 import { FileService } from './file.service';
 import type { IObjectStorage, PresignDownloadInput } from './ports/i-object-storage.port';
@@ -56,6 +59,18 @@ const FILE = File.create({
   sizeBytes: 1_024n,
   currentVersionId: VERSION_ID,
   now: NOW,
+});
+
+/** Versión 1 de `FILE`, ya reemplazada por la actual (`VERSION_ID`). */
+const OLDER_VERSION_ID = '66666666-6666-4666-8666-666666666666';
+const OLDER_VERSION = FileVersion.fromUpload({
+  id: OLDER_VERSION_ID,
+  fileId: FILE_ID,
+  objectKey: ObjectKey.of(OWNER_ID, FILE_ID, OLDER_VERSION_ID),
+  sizeBytes: 512n,
+  createdBy: OWNER_ID,
+  number: 1,
+  now: EARLIER,
 });
 
 /** Ejecutor que anota el actor de cada `withActor` y sabe si hay uno abierto (como `requireActorScope`). */
@@ -153,18 +168,21 @@ function setup(options: SetupOptions = {}) {
   const audit = new FakeAuditLogger(options.auditFails);
   const { storage, presigned } = fakeObjectStorage(calls);
   const logger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() } satisfies StorageLogger;
+  const versions = new FakeVersionRepository(new Journal());
+  versions.versions.set(OLDER_VERSION.id, OLDER_VERSION);
   const service = new FileService(
     transactions,
     nodes,
     new FakeQuotaRepository(new Journal()),
-    new AccessibleFileUrlIssuer(transactions, nodes, storage, new FixedClock(NOW)),
+    versions,
+    storage,
     rateLimiter,
     audit,
     new FixedClock(NOW),
     CONFIG,
     logger,
   );
-  return { service, calls, transactions, nodes, rateLimiter, audit, presigned, logger };
+  return { service, calls, transactions, nodes, versions, rateLimiter, audit, presigned, logger };
 }
 
 describe('FileService', () => {
@@ -278,6 +296,67 @@ describe('FileService', () => {
       });
     });
   });
+
+  describe('getDownloadUrl de una versión (014 CA-8, CA-11, CA-16)', () => {
+    it('CA-8: firma el objeto de la versión por 300 s, con el nombre del archivo como sugerido', async () => {
+      const { service, presigned } = setup();
+
+      const result = await service.getDownloadUrl(ACTOR, FILE_ID, OLDER_VERSION_ID);
+
+      expect(presigned).toEqual([
+        {
+          key: `u/${OWNER_ID}/${FILE_ID}/${OLDER_VERSION_ID}`,
+          fileName: 'Informe final.docx',
+          expiresInSeconds: DOWNLOAD_URL_TTL_SECONDS,
+        },
+      ]);
+      expect(result).toEqual({
+        url: SIGNED_URL,
+        expiresAt: new Date(NOW.getTime() + DOWNLOAD_URL_TTL_SECONDS * 1000),
+      });
+    });
+
+    it('CA-8, CA-19: reutiliza la tasa y la auditoría de 005 con el tamaño de la versión, sin nombre, URL ni clave', async () => {
+      const { service, calls, audit } = setup();
+
+      await service.getDownloadUrl(ACTOR, FILE_ID, OLDER_VERSION_ID);
+
+      expect(calls).toEqual(['consume', 'findAccessibleById', 'presignDownload']);
+      expect(audit.records).toEqual([
+        {
+          action: AuditAction.FILE_DOWNLOAD_URL_ISSUED,
+          actor: ACTOR,
+          targetUserId: OWNER_ID,
+          resourceId: FILE_ID,
+          attributes: { sizeBytes: 512 },
+        },
+      ]);
+    });
+
+    it('CA-11: una versión inexistente, podada o de otro archivo es `STORAGE_VERSION_NOT_FOUND` y no firma', async () => {
+      const { service, versions, presigned } = setup();
+      const otherFileVersion = versionOf(ACTOR, randomUUID(), 1, 100n);
+      versions.versions.set(otherFileVersion.id, otherFileVersion);
+
+      await expect(service.getDownloadUrl(ACTOR, FILE_ID, randomUUID())).rejects.toThrow(
+        VersionNotFoundError,
+      );
+      await expect(service.getDownloadUrl(ACTOR, FILE_ID, otherFileVersion.id)).rejects.toThrow(
+        VersionNotFoundError,
+      );
+      expect(presigned).toEqual([]);
+    });
+
+    it('CA-16: con un archivo ajeno es `STORAGE_NODE_NOT_FOUND` aunque la versión exista', async () => {
+      const { service, presigned } = setup();
+      const stranger = createActor('44444444-4444-4444-8444-444444444444', Role.CLIENT);
+
+      await expect(service.getDownloadUrl(stranger, FILE_ID, OLDER_VERSION_ID)).rejects.toThrow(
+        NodeNotFoundError,
+      );
+      expect(presigned).toEqual([]);
+    });
+  });
 });
 
 const BRUNO: Actor = createActor('44444444-4444-4444-8444-444444444444', Role.CLIENT);
@@ -293,7 +372,8 @@ function organizeSetup() {
     transactions,
     nodes,
     quotas,
-    new AccessibleFileUrlIssuer(transactions, nodes, {} as IObjectStorage, new FixedClock(NOW)),
+    new FakeVersionRepository(journal),
+    {} as IObjectStorage,
     new FakeRateLimiter([]),
     new FakeAuditLogger(),
     new FixedClock(NOW),

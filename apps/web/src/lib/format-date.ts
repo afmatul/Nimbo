@@ -26,6 +26,20 @@ const startedOnFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
   year: 'numeric',
 });
 
+const dayKeyFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
+  timeZone: DISPLAY_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+const clockFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
+  timeZone: DISPLAY_TIME_ZONE,
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+});
+
 /** «hace 2 horas»: la unidad más grande que cabe, redondeada hacia abajo. */
 function timeAgo(elapsedMs: number): string {
   const [unit, unitMs] = RELATIVE_UNITS.find(([, ms]) => elapsedMs >= ms) ?? ['minute', MINUTE_MS];
@@ -38,7 +52,43 @@ export function lastActivityLabel(lastActiveAt: string, now: number): string {
   return elapsedMs < MINUTE_MS ? ACTIVE_NOW_LABEL : `Última actividad: ${timeAgo(elapsedMs)}`;
 }
 
+const longDayFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
+  timeZone: DISPLAY_TIME_ZONE,
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+});
+
+/** «1 de septiembre de 2026», con el día de Guatemala (mockup `billing/suscripcion/`). */
+export function longDayLabel(isoDate: string): string {
+  return longDayFormatter.format(new Date(isoDate));
+}
+
+/** «24 sep 2026», con el día de Guatemala. */
+export function dayLabel(isoDate: string): string {
+  return startedOnFormatter.format(new Date(isoDate));
+}
+
 /** «Iniciada el 24 sep 2026», con el día de Guatemala. */
 export function startedOnLabel(startedAt: string): string {
-  return `Iniciada el ${startedOnFormatter.format(new Date(startedAt))}`;
+  return `Iniciada el ${dayLabel(startedAt)}`;
+}
+
+/** Día de Guatemala de un instante, para comparar «hoy» y «ayer». */
+function dayKey(instant: number): string {
+  return dayKeyFormatter.format(new Date(instant));
+}
+
+/** «hoy», «ayer» o la fecha corta, con el día de Guatemala. */
+function relativeDayLabel(instant: number, now: number): string {
+  const key = dayKey(instant);
+  if (key === dayKey(now)) return 'hoy';
+  if (key === dayKey(now - DAY_MS)) return 'ayer';
+  return startedOnFormatter.format(new Date(instant));
+}
+
+/** «hoy, 10:42», «ayer, 17:20» o «2 oct 2026, 09:15», con el día y la hora de Guatemala (014 CA-6). */
+export function dateTimeLabel(iso: string, now: number): string {
+  const instant = Date.parse(iso);
+  return `${relativeDayLabel(instant, now)}, ${clockFormatter.format(new Date(instant))}`;
 }

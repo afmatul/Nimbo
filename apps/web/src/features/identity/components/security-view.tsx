@@ -4,6 +4,7 @@ import type { JSX, ReactNode } from 'react';
 import { useState } from 'react';
 
 import { AppLayout, DEFAULT_NAV_ITEMS } from '../../../components/nimbo/app-layout';
+import { InternalAreaLayout } from '../../access/components/internal-area-layout';
 import { CLIENT_ROLES } from '../../access/home-path';
 import { useSessionsActions } from '../hooks/use-sessions-actions';
 import { useSession } from '../session/session-provider';
@@ -16,8 +17,8 @@ import { SessionsCard } from './sessions-card';
 const NAV_ITEMS = DEFAULT_NAV_ITEMS.map((item) => ({ ...item, active: false }));
 
 /**
- * Marco de cada rol: el cliente ve la página dentro de su `AppLayout`; los roles internos, sin la navegación del
- * cliente, como `/interno`, hasta que 011 construya su marco (README de Seguridad).
+ * Marco de cada rol: el cliente ve la página dentro de su `AppLayout`; los roles internos, dentro del marco de su área
+ * (011 CA-17, B-1), sin ninguna entrada activa.
  */
 function SecurityFrame({ children }: { readonly children: ReactNode }): JSX.Element | null {
   const { user } = useSession();
@@ -29,7 +30,7 @@ function SecurityFrame({ children }: { readonly children: ReactNode }): JSX.Elem
       </AppLayout>
     );
   }
-  return <main className="mx-auto w-full max-w-6xl px-4 py-10">{children}</main>;
+  return <InternalAreaLayout>{children}</InternalAreaLayout>;
 }
 
 /**

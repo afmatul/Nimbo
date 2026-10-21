@@ -1,6 +1,7 @@
 /**
  * @jest-environment jsdom
  */
+import { axe } from 'jest-axe';
 import { act, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
@@ -38,6 +39,10 @@ function button(name: string): HTMLButtonElement {
   return found;
 }
 
+function buttonLabels(): Array<string | null> {
+  return Array.from(document.querySelectorAll('button')).map((b) => b.textContent);
+}
+
 function checkbox(): HTMLInputElement | null {
   return document.querySelector<HTMLInputElement>('input[type="checkbox"]');
 }
@@ -52,7 +57,7 @@ afterEach(async () => {
 });
 
 describe('NameConflictDialog (CA-6, CA-22)', () => {
-  it('CA-6: se titula «¿Conservar ambos archivos?» y muestra el nombre repetido y el final', async () => {
+  it('CA-6: sin «Reemplazar» (renombrar, mover) se titula «¿Conservar ambos archivos?» y muestra ambos nombres', async () => {
     await renderDialog();
 
     const title = document.querySelector('[data-slot="alert-dialog-title"]');
@@ -71,12 +76,10 @@ describe('NameConflictDialog (CA-6, CA-22)', () => {
     expect(document.activeElement).toBe(button('Conservar ambos'));
   });
 
-  it('CA-6: ofrece «Conservar ambos» y «Cancelar», sin «Reemplazar»', async () => {
+  it('CA-6: sin onReplace ofrece «Conservar ambos» y «Cancelar», sin «Reemplazar»', async () => {
     await renderDialog();
 
-    const labels = Array.from(document.querySelectorAll('button')).map((b) => b.textContent);
-    expect(labels).toEqual(expect.arrayContaining(['Conservar ambos', 'Cancelar']));
-    expect(labels).not.toContain('Reemplazar');
+    expect(buttonLabels()).toEqual(['Cancelar', 'Conservar ambos']);
   });
 
   it('CA-6: sin otros repetidos no muestra la casilla «Aplicar a los demás»', async () => {
@@ -191,4 +194,91 @@ describe('NameConflictDialog (CA-6, CA-22)', () => {
 
     expect(document.body.innerHTML).not.toMatch(RAW_COLOR);
   });
+});
+
+describe('NameConflictDialog con «Reemplazar» (014 CA-1, CA-15)', () => {
+  const REPLACE = 'Reemplazar (nueva versión)';
+
+  function renderUpload(overrides: Partial<NameConflictDialogProps> = {}): Promise<void> {
+    return renderDialog({ onReplace: jest.fn(), ...overrides });
+  }
+
+  function pruneAlert(): Element | null {
+    return document.querySelector('[role="alertdialog"] [role="status"]');
+  }
+
+  it('CA-1: se titula «Ya tienes un archivo con este nombre» y explica las dos opciones', async () => {
+    await renderUpload();
+
+    const title = document.querySelector('[data-slot="alert-dialog-title"]');
+    expect(title?.textContent).toBe('Ya tienes un archivo con este nombre');
+    expect(dialogText()).toContain(
+      'Ya tienes un archivo llamado «informe.pdf». ¿Quieres reemplazarlo o conservar ambos?',
+    );
+    expect(dialogText()).toContain(
+      'Reemplazar: el archivo conserva su nombre y la versión actual queda en su historial.',
+    );
+    expect(dialogText()).toContain('Conservar ambos: el nuevo se guardará como «informe (1).pdf».');
+  });
+
+  it('CA-1: ofrece las tres acciones en orden y el foco inicial va a «Conservar ambos»', async () => {
+    await renderUpload();
+
+    expect(buttonLabels()).toEqual(['Cancelar', REPLACE, 'Conservar ambos']);
+    expect(document.activeElement).toBe(button('Conservar ambos'));
+  });
+
+  it('CA-1: «Reemplazar (nueva versión)» emite onReplace con la casilla', async () => {
+    const onReplace = jest.fn();
+    const onKeepBoth = jest.fn();
+    const onDiscard = jest.fn();
+    await renderUpload({ othersCount: 1, onReplace, onKeepBoth, onDiscard });
+
+    await act(async () => checkbox()?.click());
+    await act(async () => button(REPLACE).click());
+
+    expect(onReplace).toHaveBeenCalledWith({ applyToRest: true });
+    expect(onKeepBoth).not.toHaveBeenCalled();
+    expect(onDiscard).not.toHaveBeenCalled();
+  });
+
+  it('CA-15: sin versión que podar no muestra aviso', async () => {
+    await renderUpload({ wouldPruneVersion: null });
+
+    expect(pruneAlert()).toBeNull();
+    expect(dialogText()).not.toContain('se eliminará');
+  });
+
+  it('CA-15: en el límite avisa qué versión se eliminará al reemplazar, descrito en el diálogo', async () => {
+    await renderUpload({ wouldPruneVersion: 3 });
+
+    const alert = pruneAlert();
+    expect(alert?.textContent).toBe('Al reemplazar se eliminará la versión 3, la más antigua.');
+    const describedBy = document
+      .querySelector('[role="alertdialog"]')
+      ?.getAttribute('aria-describedby');
+    expect(describedBy?.split(' ')).toContain(alert?.id);
+    expect(document.activeElement).toBe(button('Conservar ambos'));
+  });
+
+  it('CA-15: sin «Reemplazar» no muestra el aviso aunque llegue la versión', async () => {
+    await renderDialog({ wouldPruneVersion: 3 });
+
+    expect(pruneAlert()).toBeNull();
+  });
+
+  it.each([
+    ['nombre-repetido', { othersCount: 0, wouldPruneVersion: null }],
+    ['nombre-repetido-varios', { othersCount: 2, wouldPruneVersion: null }],
+    ['nombre-repetido-poda', { othersCount: 0, wouldPruneVersion: 3 }],
+  ] as const)(
+    'CA-1, CA-15: estado %s sin violaciones de axe ni colores crudos',
+    async (_estado, state) => {
+      await renderUpload(state);
+
+      const results = await axe(document.body);
+      expect(results.violations).toEqual([]);
+      expect(document.body.innerHTML).not.toMatch(RAW_COLOR);
+    },
+  );
 });

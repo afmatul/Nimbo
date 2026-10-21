@@ -1,23 +1,23 @@
 'use client';
 
-import type { JSX } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
-import { InternalAreaPlaceholder } from '../../../../features/access/components/internal-area-placeholder';
-import { SignOutButton } from '../../../../features/identity/components/sign-out-button';
+import { areaHomePathFor } from '../../../../features/access/home-path';
 import { useSession } from '../../../../features/identity/session/session-provider';
 
-/** Inicio de ADMIN, SUPPORT y OPERATOR (003 §6.9, CA-17): marcador hasta que 011 construya el área. */
-export default function InternoPage(): JSX.Element | null {
+/**
+ * Inicio común de ADMIN, SUPPORT y OPERATOR (003 §6.9, 011 CA-17): lleva al área del rol con `areaHomePathFor` y no
+ * dibuja nada. Sin sesión no decide: de eso se encarga `SessionGate`.
+ */
+export default function InternoPage(): null {
   const { user } = useSession();
-  if (user === null) return null;
+  const router = useRouter();
+  const target = user === null ? null : areaHomePathFor(user.role);
 
-  return (
-    <main className="mx-auto w-full max-w-3xl space-y-6 px-4 py-10">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold text-foreground">Área interna</h1>
-        <SignOutButton />
-      </div>
-      <InternalAreaPlaceholder fullName={user.fullName} role={user.role} />
-    </main>
-  );
+  useEffect(() => {
+    if (target !== null) router.replace(target);
+  }, [target, router]);
+
+  return null;
 }

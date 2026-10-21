@@ -33,6 +33,21 @@ describe('ObjectKey', () => {
     );
   });
 
+  it('014: `parse` reconstruye la clave guardada en `version_archivo.clave_objeto`', () => {
+    const key = ObjectKey.of(OWNER, FILE, VERSION);
+
+    expect(ObjectKey.parse(key.value).equals(key)).toBe(true);
+  });
+
+  it.each([
+    'u/informe.docx',
+    `x/${OWNER}/${FILE}/${VERSION}`,
+    `u/${OWNER}/${FILE}`,
+    `u/${OWNER}/${FILE}/${VERSION}/extra`,
+  ])('014: `parse` rechaza una clave con otra forma (%s)', (value) => {
+    expect(() => ObjectKey.parse(value)).toThrow();
+  });
+
   it('es inmutable', () => {
     expect(Object.isFrozen(ObjectKey.of(OWNER, FILE, VERSION))).toBe(true);
   });

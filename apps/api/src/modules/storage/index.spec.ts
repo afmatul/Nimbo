@@ -5,8 +5,17 @@ import type { FileSummary } from '@nimbo/contracts';
 
 import type { Actor } from '../../shared';
 
+import type { FileKind } from './domain/file-kind';
+
 import * as storage from './index';
-import type { IPlanLimitsProvider, PlanLimits, PreviewDelivery } from './index';
+import type {
+  FileMetadata,
+  FileMetadataPage,
+  INodeMetadataReader,
+  IPlanLimitsProvider,
+  PlanLimits,
+  PreviewDelivery,
+} from './index';
 
 /** Igualdad estricta de tipos (patrón de `type-challenges`); un fallo aquí lo detecta `pnpm typecheck`. */
 type Equal<X, Y> =
@@ -15,7 +24,8 @@ type Expect<T extends true> = T;
 
 /**
  * ISP (005 plan §6): `PlanLimits` solo lleva límites de almacenamiento: bytes y, desde 006 (plan §7, decisión 1), la
- * retención en papelera en días y, desde 007 (D-20), el nombre visible del plan que el adaptador lee en la misma fila.
+ * retención en papelera en días, desde 007 (D-20) el nombre visible del plan que el adaptador lee en la misma fila,
+ * desde 014, las versiones retenidas por archivo y, desde 016, el máximo de editores (DF-73).
  */
 type _PlanLimitsShape = Expect<
   Equal<
@@ -25,6 +35,8 @@ type _PlanLimitsShape = Expect<
       readonly maxFileBytes: bigint;
       readonly storageQuotaBytes: bigint;
       readonly trashRetentionDays: number;
+      readonly retainedVersions: number;
+      readonly maxEditors: number;
     }
   >
 >;
@@ -47,22 +59,59 @@ type _IssueUrlSignature = Expect<
 >;
 
 /**
+ * 011 plan §2, RN-1: los metadatos que lee el backoffice son solo columnas de `archivo` (sin clave de objeto, versiones
+ * ni contenido); `trashedAt` es `null` si el archivo está disponible.
+ */
+type _FileMetadataShape = Expect<
+  Equal<
+    FileMetadata,
+    {
+      readonly id: string;
+      readonly name: string;
+      readonly kind: FileKind;
+      readonly sizeBytes: bigint;
+      readonly createdAt: Date;
+      readonly updatedAt: Date;
+      readonly trashedAt: Date | null;
+    }
+  >
+>;
+type _ListForOwnerSignature = Expect<
+  Equal<
+    INodeMetadataReader['listForOwner'],
+    (
+      actor: Actor,
+      ownerId: string,
+      request: { readonly page: number; readonly pageSize: number },
+    ) => Promise<FileMetadataPage>
+  >
+>;
+
+/**
  * API pública de `storage` (plan §6, DF-51 opción A): el token del puerto de límites, el módulo que monta la raíz de
- * composición del `api` y el del `worker` (T-51) y, desde 017 (plan §2.3), la fachada de vista previa y su 404. El detector,
- * el escáner, los repositorios y el emisor interno de URLs no salen.
+ * composición del `api` y el del `worker` (T-51), desde 011 (PD-31) el token del lector de metadatos que consume
+ * `backoffice`, el token de `IObjectStorage` para la factura PDF de `billing` (009, decisión 1) y, desde 016, la
+ * fachada `EditableFileGateway` para `editing` con el 404 uniforme de un nodo (`NodeNotFoundError`, 005 CA-16:
+ * `editing` responde igual que `storage`) y, desde 017 (plan §2.3), la fachada de vista previa, que usa el mismo 404.
+ * El detector, el escáner, los repositorios y el emisor interno de URLs no salen.
  */
 const RUNTIME_EXPORTS = [
+  'EditableFileGateway',
+  'I_NODE_METADATA_READER',
+  'I_OBJECT_STORAGE',
   'I_PLAN_LIMITS_PROVIDER',
   'NodeNotFoundError',
   'StorageModule',
   'StoragePreviewFacade',
   'StorageWorkerModule',
+  'invoiceObjectKey',
 ] as const;
 
 describe('modules/storage/index.ts', () => {
-  it('CA-3, CA-4, CA-9, RN-1, 017 CA-11: exporta exactamente el token de límites, los módulos, la fachada y el 404 público', () => {
+  it('CA-3, CA-4, CA-9, RN-1, 011 PD-31, 009, 016 §2, 017 CA-11: exporta exactamente los tokens de límites, de metadatos y de objetos, los dos módulos, la fachada de edición y la de vista previa', () => {
     expect(Object.keys(storage).sort()).toEqual([...RUNTIME_EXPORTS].sort());
     expect(typeof storage.I_PLAN_LIMITS_PROVIDER).toBe('symbol');
+    expect(typeof storage.I_NODE_METADATA_READER).toBe('symbol');
   });
 
   it('017 plan §2.3: el emisor interno de URLs (sin tasa ni auditoría) no sale del módulo', () => {

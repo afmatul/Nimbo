@@ -1,25 +1,30 @@
 import { SHARED_ERROR_CODES } from '@nimbo/contracts';
 import request from 'supertest';
 
-import { AppModule } from '../../../src/app.module';
+import { createFullApiTestApp } from '../../support/full-api-test-app';
 import {
   describeRoute,
   listRouteDeclarations,
   routeDeclarationProblems,
 } from '../../support/route-declarations';
 import type { RouteDeclaration } from '../../support/route-declarations';
-import { buildTestEnv, createTestApp } from '../setup/test-app';
+import { buildTestEnv } from '../setup/test-app';
 import type { TestApp } from '../setup/test-app';
 
 /** Prefijo global de `configureHttpApp` (Nest no lo expone desde la app). */
 const API_PREFIX = 'api/v1';
 
 /**
- * Lista cerrada de rutas públicas (CA-3). Las de 006a (catálogo) se agregan con su PR.
+ * Lista cerrada de rutas públicas (CA-3). El catálogo de planes es público desde la 008 (CA-1).
  */
 const EXPECTED_PUBLIC_ROUTES = [
+  'GET /api/v1/billing/plans',
+  // 016 plan §4: ONLYOFFICE lee el documento sin token de usuario, con un enlace firmado de minutos.
+  'GET /api/v1/editing/content/:token',
   'GET /api/v1/health/live',
   'GET /api/v1/health/ready',
+  'POST /api/v1/auth/account-setup',
+  'POST /api/v1/auth/account-setup/check',
   'POST /api/v1/auth/forgot-password',
   'POST /api/v1/auth/login',
   'POST /api/v1/auth/register',
@@ -29,6 +34,8 @@ const EXPECTED_PUBLIC_ROUTES = [
   'POST /api/v1/auth/session/logout',
   'POST /api/v1/auth/session/refresh',
   'POST /api/v1/auth/verify-email',
+  // 016 plan §4: aviso de guardado de ONLYOFFICE, autenticado por su JWT y el enlace firmado de `callbackUrl`.
+  'POST /api/v1/editing/callback',
 ];
 
 /**
@@ -41,12 +48,7 @@ describe('declaración de rutas de la API completa (CA-3, CA-7)', () => {
   let routes: RouteDeclaration[];
 
   beforeAll(async () => {
-    const env = buildTestEnv();
-    testApp = await createTestApp({
-      modules: [AppModule.forRoot(env)],
-      validatedEnv: env,
-      accessTokenStrategy: 'identity',
-    });
+    testApp = await createFullApiTestApp(buildTestEnv());
     routes = listRouteDeclarations(testApp.app, API_PREFIX);
   });
 

@@ -1,12 +1,25 @@
 /**
  * @jest-environment jsdom
  */
+import type { Plan } from '@nimbo/contracts';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import RegistroPage, { revalidate } from './page';
 
-const PERSONAL = { id: 'personal', name: 'Personal', priceCents: 0, free: true };
+const PERSONAL: Plan = {
+  id: '10000000-0000-4000-8000-000000000001',
+  slug: 'personal',
+  name: 'Personal',
+  description: null,
+  priceCents: 0,
+  quotaBytes: '16106127360',
+  maxFileBytes: '52428800',
+  maxEditors: 0,
+  agentQueriesPerMonth: 20,
+  retainedVersions: 3,
+  trashRetentionDays: 7,
+};
 
 function jsonResponse(body: unknown, status: number): Response {
   return {
@@ -24,7 +37,7 @@ describe('página /registro', () => {
     fetchMock.mockReset();
     global.fetch = fetchMock;
     process.env['APP_ENV'] = 'test';
-    process.env['API_INTERNAL_URL'] = 'http://internal.test/api/v1';
+    process.env['API_INTERNAL_URL'] = 'http://internal.test';
     process.env['API_PUBLIC_URL'] = 'http://localhost/api/v1';
   });
 
@@ -36,13 +49,15 @@ describe('página /registro', () => {
     const user = userEvent.setup();
     fetchMock.mockImplementation((input) => {
       const url = String(input);
-      if (url.endsWith('/plans')) return Promise.resolve(jsonResponse({ plans: [PERSONAL] }, 200));
+      if (url.endsWith('/billing/plans')) {
+        return Promise.resolve(jsonResponse({ plans: [PERSONAL] }, 200));
+      }
       return Promise.resolve(jsonResponse({ status: 'accepted' }, 202));
     });
 
     render(await RegistroPage());
 
-    expect(String(fetchMock.mock.calls[0]?.[0])).toBe('http://internal.test/api/v1/plans');
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe('http://internal.test/api/v1/billing/plans');
     expect(screen.getByText(/Personal/)).toBeTruthy();
 
     await user.type(screen.getByLabelText('Nombre completo'), 'Ana López');

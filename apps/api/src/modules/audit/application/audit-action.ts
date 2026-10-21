@@ -9,6 +9,27 @@ export enum AuditAction {
   NODE_RESTORED = 'node.restored',
   NODE_PURGED = 'node.purged',
   TRASH_EMPTIED = 'trash.emptied',
+  /** Versiones (014, CA-19): `attributes { versionNumber, sizeBytes }` y, al restaurar, `restoredFromNumber`. */
+  FILE_VERSION_RESTORED = 'file.version_restored',
+  FILE_VERSION_PRUNED = 'file.version_pruned',
+  /** Cuentas (011): recurso y afectado son la cuenta; el alta interna guarda solo `role`, nunca nombre ni correo. */
+  ACCOUNT_SUSPENDED = 'account.suspended',
+  ACCOUNT_REACTIVATED = 'account.reactivated',
+  ACCOUNT_INTERNAL_CREATED = 'account.internal_created',
+  /** Alta inicial por comando (011 CA-7): actor de sistema y sin afectado. */
+  ACCOUNT_BOOTSTRAP_ADMIN = 'account.bootstrap_admin',
+  /** Soporte o Administración consultó los metadatos de un cliente (011 CA-13): recurso y afectado, la cuenta. */
+  CLIENT_FILES_VIEWED = 'client.files_viewed',
+  /** Catálogo (011): recurso `plan`, sin afectado (ningún cliente los ve). */
+  PLAN_CREATED = 'plan.created',
+  PLAN_DEACTIVATED = 'plan.deactivated',
+  /**
+   * Edición (016 §5): `attributes` con `sessionId` y, según la acción, `versionId`, `versionNumber`, `sizeBytes` o
+   * `reason`; nunca nombres de archivo, URLs ni tokens.
+   */
+  FILE_VERSION_CREATED = 'file.version_created',
+  EDIT_SESSION_OPENED = 'edit.session_opened',
+  EDIT_SAVE_FAILED = 'edit.save_failed',
 }
 
 const AUDIT_ACTIONS: ReadonlySet<string> = new Set(Object.values(AuditAction));

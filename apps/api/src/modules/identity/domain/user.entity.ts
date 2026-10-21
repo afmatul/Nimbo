@@ -2,6 +2,7 @@ import type { Role } from '../../../shared/domain/role.enum';
 
 import type { AccountStatus } from './account-status.enum';
 import type { EmailAddress } from './email-address.vo';
+import { AccountStateConflictError } from './errors/account-state-conflict.error';
 import type { PasswordHash } from './password-hash.vo';
 
 export interface UserProps {
@@ -32,5 +33,19 @@ export abstract class User {
     this.role = props.role;
     this.status = props.status;
     this.emailVerified = props.emailVerified;
+  }
+
+  /** Lanza `AccountStateConflictError` si ya estaba suspendida (011 CA-2). */
+  abstract suspend(): User;
+
+  /** Lanza `AccountStateConflictError` si ya estaba activa (011 CA-3). */
+  abstract reactivate(): User;
+
+  /** Estado al que pasa la cuenta al suspenderla o reactivarla; ya estar en él es un conflicto (011 CA-2, CA-3). */
+  protected transitionTo(target: AccountStatus): AccountStatus {
+    if (this.status === target) {
+      throw new AccountStateConflictError();
+    }
+    return target;
   }
 }

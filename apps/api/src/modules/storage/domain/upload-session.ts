@@ -32,13 +32,15 @@ export interface MultipartUpload {
 export interface StartUploadInput {
   readonly id: string;
   readonly ownerId: string;
-  /** Ids reservados del futuro `archivo` y de su versión: fijan la clave final desde el inicio. */
+  /** Ids del `archivo` (reservado, o el existente si `replacesFile`) y de su versión: fijan la clave final. */
   readonly fileId: string;
   readonly versionId: string;
   /** Carpeta destino; `null` es la raíz (006, CA-6). Se vuelve a comprobar viva al completar. */
   readonly folderId: string | null;
   readonly name: FileName;
   readonly keepBoth: boolean;
+  /** Reemplazo (014 CA-1): al completar se registra una versión nueva del archivo `fileId` en vez de crearlo. */
+  readonly replacesFile: boolean;
   /** Tamaño declarado: es la reserva de cuota (RN-13). */
   readonly declaredBytes: bigint;
   readonly multipart: MultipartUpload | null;
@@ -53,6 +55,7 @@ export interface UploadSessionSnapshot {
   readonly folderId: string | null;
   readonly name: FileName;
   readonly keepBoth: boolean;
+  readonly replacesFile: boolean;
   readonly declaredBytes: bigint;
   readonly multipart: MultipartUpload | null;
   readonly state: UploadState;
@@ -157,6 +160,10 @@ export class UploadSession {
 
   get keepBoth(): boolean {
     return this.data.keepBoth;
+  }
+
+  get replacesFile(): boolean {
+    return this.data.replacesFile;
   }
 
   get declaredBytes(): bigint {

@@ -22,8 +22,9 @@ export interface SignedFileUrl {
 
 /**
  * Resolver el archivo accesible y firmar su versión actual con la política de descarga de 005 (`presignDownload`:
- * un objeto, 300 s, `attachment`, `application/octet-stream`, `no-store`). Lo comparten la descarga y la vista previa
- * (017 plan §2.3, Art. VI). Sin tasa ni auditoría: cada llamador decide las suyas. Interno: no sale del módulo.
+ * un objeto, 300 s, `attachment`, `application/octet-stream`, `no-store`). Lo usa la vista previa (017 plan §2.3);
+ * desde 014 la descarga firma por su cuenta porque también firma versiones retenidas (`FileService.getDownloadUrl`).
+ * Sin tasa ni auditoría: cada llamador decide las suyas. Interno: no sale del módulo.
  */
 @Injectable()
 export class AccessibleFileUrlIssuer {

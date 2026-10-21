@@ -14,6 +14,7 @@ import { AccountStatus } from '../domain/account-status.enum';
 import type { ClientAccountVerifiedEvent } from '../domain/client-account-verified.event';
 import { ClientUser } from '../domain/client-user.entity';
 import { EmailAddress } from '../domain/email-address.vo';
+import { EmployeeCode } from '../domain/employee-code.vo';
 import {
   IdentityTooManyRequestsError,
   VerificationLinkExpiredError,
@@ -151,6 +152,7 @@ const anInternalUser = (email = EMAIL): InternalUser =>
     role: Role.SUPPORT,
     status: AccountStatus.ACTIVE,
     emailVerified: true,
+    employeeCode: EmployeeCode.of('SOP-001'),
   });
 
 const loggedEvents = (logger: { info: jest.Mock; warn: jest.Mock }): unknown[] =>

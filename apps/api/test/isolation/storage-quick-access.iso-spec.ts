@@ -19,9 +19,9 @@ import type { StorageClient, StorageHttpApp } from '../int/storage/storage-http'
 import { insertQuickAccess } from '../int/storage/storage-test-db';
 import { requiredEnv } from '../support/database-urls';
 
+import { comparable, INTERNAL_ROLES } from './setup/isolation-assertions';
 import { createIsolationWorld } from './setup/isolation-world';
 import type {
-  InternalRole,
   IsolationWorld,
   WorldAccount,
   WorldFile,
@@ -29,7 +29,6 @@ import type {
   WorldNodeRef,
 } from './setup/isolation-world';
 
-const INTERNAL_ROLES: readonly InternalRole[] = [Role.ADMIN, Role.SUPPORT, Role.OPERATOR];
 /** Los dos clientes tienen carpetas y archivos con los mismos nombres (003 CA-10). */
 const FOLDER_NAMES = ['Proyectos', 'Facturas'];
 const FILE_NAMES = ['Informe anual.txt', 'Notas.txt'];
@@ -49,12 +48,6 @@ interface QuickAccessRow {
   readonly abierto_en: Date | null;
   readonly actualizado_en: Date;
 }
-
-/** Lo que un cliente distingue de una respuesta: todo menos el `correlationId` (003 CA-11). */
-const comparable = (response: Response) => {
-  const { correlationId: _ignored, ...body } = response.body as Record<string, unknown>;
-  return { status: response.status, contentType: response.headers['content-type'], body };
-};
 
 const at = <T>(items: readonly T[], index: number): T => {
   const item = items[index];

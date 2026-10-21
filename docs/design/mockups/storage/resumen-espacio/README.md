@@ -47,7 +47,7 @@
   `ui-guidelines.md` §4), también en la tarjeta de la barra lateral; el cuerpo dice «Usas 15 GB de 15 GB. No podrás
   subir archivos hasta que liberes espacio.».
 - **Tu plan**: nombre del plan, cuota, máximo por archivo (CA-6) y días de la papelera. Sin precio, sin «Ampliar» y sin
-  «Ver planes»: queda oculto hasta 008 (spec 007 §6).
+  «Ver planes»: queda oculto hasta 009 (spec 007 §6, PD-92).
 - **Desglose** (CA-2, CA-3): barra apilada sobre la cuota total (lo que sobra es «Disponible») y una lista con nombre,
   formatos incluidos, tamaño y porcentaje del usado. La barra es `aria-hidden`: todas las cifras están en la lista.
   Segmentos con los tonos de texto de tipo de archivo (`--file-docx` Documentos, `--file-img` Imágenes, `--file-other`
@@ -63,7 +63,7 @@
 - **Entrada a la pantalla**: tarjeta de cuota de la barra lateral («Ver detalle» en 0–69 %, «Liberar espacio» en 70 %
   o más), «Liberar espacio» del rechazo por cuota de 005. En el propio resumen la tarjeta no lleva enlace. La ruta de la
   barra superior es «Cuenta / Espacio de almacenamiento». El ítem «Espacio» de la navegación (reemplaza a «Plan y
-  facturación» hasta 008, decisión e) queda activo con `aria-current="page"`; en las pantallas de 007 del explorador
+  facturación» hasta 009, decisión e) queda activo con `aria-current="page"`; en las pantallas de 007 del explorador
   aparece sin marcar.
 
 ## Contraste de los pares nuevos (WCAG 2.1)

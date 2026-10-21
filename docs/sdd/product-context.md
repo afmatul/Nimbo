@@ -45,7 +45,7 @@ Regla madre: **el rol nunca otorga acceso al contenido de los archivos.**
 | Administrar respaldos, llaves, configuración | ✘ | ✘ | ✘ | ✔ |
 | Consultar su propia bitácora de auditoría | ✔ | ✔ | ✔ | ✔ |
 
-¹ «Limitado» (spec 003, D-4): Soporte solo **restaura**, nunca ve ni descarga; siempre con un motivo escrito y siempre en la auditoría visible para el cliente (RF-07). Se implementa en 011.
+¹ «Limitado» (spec 003, D-4): Soporte solo **restaura**, nunca ve ni descarga; siempre con un motivo escrito y siempre en la auditoría visible para el cliente (RF-07). Se implementa en 011b.
 
 ### Niveles de acceso sobre un recurso (dentro del rol Cliente)
 
@@ -153,8 +153,8 @@ El tipo real se valida por contenido (magic bytes), no por extensión (RF-14).
 | RF-37 | Tablero de estado y trabajos con reintento para el Operador | Debe | ops | 3 |
 | RF-38 | Accesos rápidos en la barra lateral: carpetas y archivos fijados por el cliente y recientes (5 + 5 de inicio), por cuenta (spec 006, 2026-10-03) | Debería | storage | 2 |
 
-> RF-08: el progreso «en tiempo real» lo mide el navegador sobre su propia carga (DF-58, spec 005); su difusión a
-> otras pestañas o dispositivos por `realtime`, si se hace, llega con la spec 015.
+> RF-08: el progreso «en tiempo real» lo mide el navegador sobre su propia carga (DF-58, spec 005); no se difunde a
+> otras pestañas ni dispositivos (decisión de Adrián en la spec 015, P-7, 2026-10-15).
 
 ## 7. Requisitos no funcionales (línea base)
 

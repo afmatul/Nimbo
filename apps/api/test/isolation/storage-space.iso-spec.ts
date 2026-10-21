@@ -26,9 +26,9 @@ import type { StorageClient, StorageHttpApp } from '../int/storage/storage-http'
 import { insertAccount, insertFileWithVersion } from '../int/storage/storage-test-db';
 import { connectTo } from '../support/database-urls';
 
+import { comparable, INTERNAL_ROLES } from './setup/isolation-assertions';
 import { createIsolationWorld } from './setup/isolation-world';
 import type {
-  InternalRole,
   IsolationWorld,
   WorldAccount,
   WorldFile,
@@ -38,7 +38,6 @@ import type {
 import { startRestrictedOwnerDatabase } from './setup/nosuperuser-postgres';
 import type { RestrictedOwnerDatabase } from './setup/nosuperuser-postgres';
 
-const INTERNAL_ROLES: readonly InternalRole[] = [Role.ADMIN, Role.SUPPORT, Role.OPERATOR];
 /** Los dos clientes tienen carpetas, archivos y papelera con los mismos nombres (003 CA-10). */
 const FOLDER_NAMES = ['Proyectos', 'Facturas'];
 const FILE_NAMES = ['Informe anual.txt', 'Acta.txt', 'Notas.txt'];
@@ -56,12 +55,6 @@ interface ClientNodes {
   readonly files: readonly WorldFile[];
   readonly trash: WorldTrash;
 }
-
-/** Lo que un cliente distingue de una respuesta: todo menos el `correlationId` (003 CA-11). */
-const comparable = (response: Response) => {
-  const { correlationId: _ignored, ...body } = response.body as Record<string, unknown>;
-  return { status: response.status, contentType: response.headers['content-type'], body };
-};
 
 const first = <T>(items: readonly T[]): T => {
   const [item] = items;

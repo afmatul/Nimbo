@@ -105,7 +105,7 @@ function catalogNotice(
   tone: NoticeTone,
   action?: NoticeAction,
 ): RowNotice {
-  const message = storageMessage(code, row.errorDetails, row.name);
+  const message = storageMessage(code, row.errorDetails, { fileName: row.name });
   if (message === null) return UNKNOWN_FAILURE;
   return action === undefined ? { tone, ...message } : { tone, ...message, action };
 }

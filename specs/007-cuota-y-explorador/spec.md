@@ -11,7 +11,7 @@
 | Depende de | 005 (archivos, cuota reservada, descarga), 006 (`GET /folders/contents` con migas y paginación por cursor; papelera), 006a (`PlanLimits`, `IPlanLimitsProvider`) |
 | Módulo | M2 `storage` |
 | Casos de uso | CU-26 «consultar espacio», CU-38 «explorar archivos» |
-| Última actualización | 2026-10-03 |
+| Última actualización | 2026-10-14 |
 
 ## 1. Contexto y objetivo
 RF-12 pide mostrar el espacio consumido y bloquear el exceso de cuota o tamaño. **El bloqueo ya lo entrega 005**
@@ -83,7 +83,7 @@ sabe cuánto espacio tiene, en qué se va y qué liberar, y encuentra sus archiv
 | Barra lateral: tarjeta de cuota | `shared/layout/` | tramos 70 y 90 %; **nuevos (CA-18, CA-19):** aviso-arriba-centro (sin tapar el panel de cargas), barra-fija-lista-larga | Los dibuja 007 (README del layout); los dos estados nuevos, dibujados el 2026-10-03 (T-15) |
 
 - Mensajes clave (español, tuteo, con acción): «Tu cuota está al X %.» · «Espacio casi agotado.» (90–99 %) · «Espacio agotado.» (100 %) · «No pudimos calcular tu espacio. Tus archivos siguen guardados.» con «Reintentar».
-- Sin cifras de plan ni «Ampliar plan» en el resumen; «Ver planes» sigue oculto hasta 008. A 360 y 1440 px, AA, sin violaciones serias de axe (RNF-13).
+- Sin cifras de plan ni «Ampliar plan» en el resumen; «Ver planes» sigue oculto hasta 009 (PD-92). A 360 y 1440 px, AA, sin violaciones serias de axe (RNF-13).
 
 ## 7. Fuera de alcance
 - Bloqueo por tamaño o cuota al subir y reserva concurrente (005); eliminar, restaurar y purgar (006).
@@ -116,3 +116,4 @@ Sin preguntas abiertas.
 | 2026-10-03 | Revisión de Adrián: se agregan CA-18 (avisos arriba y al centro, sin tapar las cargas) y CA-19 (barra lateral fija). Aprobada por Adrián con esos dos cambios por implementar y pendiente de integrar | Recorrido de la demo (T-12) | Adrián |
 | 2026-10-03 | Adenda del plan (D-21 a D-23) y tareas T-13 a T-15: CA-19 deja la barra lateral en tres bloques con el slot `sidebarSections`, para que 006 CA-27 no vuelva a editar `app-layout.tsx` (conflicto de fusión); orden de integración 006 → 007 → 006 CA-26 a CA-28. P-10 nombra también la fecha de creación (P-5) | Conflicto de fusión entre 007 CA-19 y 006 CA-27 | Adrián |
 | 2026-10-04 | Decisiones de Adrián tras el rebase sobre `main` (006 con CA-26 a CA-28): CA-20 (lo desglosado sigue el orden de la tabla, 10 elementos por nivel y «Ver más» a la carpeta) y CA-21 (releer con otro orden conserva las páginas cargadas) | Costuras 006×007 que ninguna spec definía (revisión del rebase) | Adrián |
+| 2026-10-14 | «Ver planes» sigue oculto hasta la 009 (contratación), no hasta la 008: `/planes` es el catálogo público y no el destino esperado (PD-92) | Cierre de la 008 | Adrián |

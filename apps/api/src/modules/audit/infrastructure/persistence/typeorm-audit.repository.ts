@@ -3,8 +3,10 @@ import { AUDIT_PAGE_SIZE } from '@nimbo/contracts';
 import type { EntityManager } from 'typeorm';
 
 import { TransactionContext } from '../../../../shared';
-import type { Actor, Role } from '../../../../shared';
+import type { Actor } from '../../../../shared';
 import type { AuditPage, IAuditRepository } from '../../application/ports/i-audit.repository.port';
+import { isSystemActor } from '../../domain/audit-actor';
+import type { AuditActor, AuditActorRole } from '../../domain/audit-actor';
 import type { AuditAttributes, AuditEntry, AuditResourceType } from '../../domain/audit-entry';
 import { createAuditEntry } from '../../domain/audit-entry';
 import type { AuditOrigin, AuditQuery } from '../../domain/audit-query';
@@ -16,8 +18,8 @@ interface EventRow {
   readonly id: string;
   readonly accion: string;
   readonly actor_id: string | null;
-  readonly rol_actor: Role;
-  readonly usuario_afectado_id: string;
+  readonly rol_actor: AuditActorRole;
+  readonly usuario_afectado_id: string | null;
   readonly tipo_recurso: AuditResourceType | null;
   readonly recurso_id: string | null;
   readonly atributos: AuditAttributes;
@@ -95,15 +97,18 @@ function toPage(rows: readonly EventRow[]): AuditPage {
 
 /**
  * `evento_auditoria` sobre `TransactionContext` (plan 004 §2): SQL parametrizado y el `EntityManager` de
- * `requireActorScope(actor)`, así se une a la transacción vigente del mismo actor. Los instantes vienen de `IClock`
- * con milisegundos; un escritor con microsegundos rompería el ida y vuelta del cursor (R-4).
+ * `requireActorScope(actor)`, así se une a la transacción vigente del mismo actor; el sistema inserta en la
+ * transacción vigente sin actor (`run`), donde solo lo admite la política `evento_auditoria_alta_sistema` (011 plan
+ * §3). Los instantes vienen de `IClock` con milisegundos; un escritor con microsegundos rompería el ida y vuelta del
+ * cursor (R-4).
  */
 @Injectable()
 export class TypeOrmAuditRepository implements IAuditRepository {
   constructor(@Inject(TransactionContext) private readonly context: TransactionContext) {}
 
-  async insert(actor: Actor, entry: AuditEntry): Promise<void> {
-    await this.manager(actor).query(INSERT_SQL, [
+  async insert(actor: AuditActor, entry: AuditEntry): Promise<void> {
+    const manager = isSystemActor(actor) ? this.context.manager() : this.manager(actor);
+    await manager.query(INSERT_SQL, [
       entry.id,
       entry.action,
       entry.actorId,

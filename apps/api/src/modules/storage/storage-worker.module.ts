@@ -104,7 +104,8 @@ const WORKER_FOLDER_CONFIG: FolderConfig = Object.freeze({
  * Parte de `storage` que corre en el `worker` (CA-9, D-6, ADR-0021): las colas `upload-cleanup`, `trash-purge`
  * (006 CA-19) y `usage-reconcile` (007 CA-13), sus programas repetibles y sus procesadores, que vencen cargas con
  * `UploadService.expire`, purgan la papelera con `TrashService.purgeExpired` y concilian `espacio_usado` con
- * `UsageReconciler`. `apps/worker` la importa solo desde `storage/index.ts`.
+ * `UsageReconciler`. Con `UPLOAD_LIFECYCLE_PROVIDERS` recibe también el registro y la poda de versiones (014), que
+ * `UploadService` necesita. `apps/worker` la importa solo desde `storage/index.ts`.
  * Como `StorageModule`, **no** enlaza `I_PLAN_LIMITS_PROVIDER` (DF-51): lo hace `WorkerModule`. El adaptador de MinIO
  * firma contra el endpoint interno porque el `worker` no tiene `MINIO_PUBLIC_ENDPOINT` ni emite URLs (plan §5): solo
  * aborta partes y borra objetos.
@@ -163,6 +164,8 @@ export class StorageWorkerModule {
         UsageReconcileScheduler,
         UsageReconcileProcessor,
       ],
+      // 009 (decisión 1): `invoice-retry` sube la factura PDF desde el `worker`.
+      exports: [I_OBJECT_STORAGE],
     };
   }
 }

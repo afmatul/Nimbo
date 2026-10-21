@@ -23,6 +23,7 @@ function row(overrides: Partial<UploadView> & { phase: UploadPhase }): UploadVie
     loadedBytes: 0,
     mode: 'multipart',
     suggestedName: null,
+    wouldPruneVersion: null,
     restartsOnResume: false,
     awaitingCancel: false,
     errorCode: null,

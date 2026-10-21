@@ -106,6 +106,13 @@ describe('renombrar y mover', () => {
     });
     expect(reasonsOf(moveFileSchema, { onConflict: 'ask' })).toEqual(['folderId:REQUIRED']);
   });
+
+  it('014 CA-1: «Reemplazar» es solo de la carga: renombrar y mover un archivo rechazan `replace`', () => {
+    expect(renameFileSchema.safeParse({ name: 'a.txt', onConflict: 'replace' }).success).toBe(
+      false,
+    );
+    expect(moveFileSchema.safeParse({ folderId: null, onConflict: 'replace' }).success).toBe(false);
+  });
 });
 
 describe('contenido de una carpeta', () => {

@@ -1,3 +1,5 @@
+import { INTERNAL_ROLES } from '@nimbo/contracts';
+
 import type { AttributeRules } from '../domain/attribute-sanitizer';
 import type { AuditAttributes, AuditResourceType } from '../domain/audit-entry';
 
@@ -20,16 +22,26 @@ const fromAttribute = (key: string): ResourceTypeFromAttribute => ({ fromAttribu
 
 const NODE_TYPES = ['file', 'folder'] as const;
 const NODE_ATTRIBUTES = { nodeType: NODE_TYPES, itemCount: 'number', sizeBytes: 'number' } as const;
+const ON_ACCOUNT = { resourceType: 'account', attributes: {} } as const;
+const ON_PLAN = { resourceType: 'plan', attributes: {} } as const;
 
 /**
  * Catálogo cerrado (RN-3): por acción, su tipo de recurso y la lista blanca de atributos con su tipo. Son las siete
- * acciones de 005 y 006 (D-1) con los atributos que emiten hoy; cada spec agrega las suyas. Una acción del enum sin
- * entrada no compila.
+ * acciones de 005 y 006 (D-1) con los atributos que emiten hoy, las dos de versiones de 014 (plan §5; un reemplazo
+ * reutiliza `file.upload_completed` con `replaced`, `versionId` y `versionNumber`), las siete internas de 011 (plan
+ * §2), que no guardan nombres ni correos, y las tres de edición de 016 (plan §5). Cada spec agrega las suyas. Una
+ * acción del enum sin entrada no compila.
  */
 export const AUDIT_CATALOG = {
   [AuditAction.FILE_UPLOAD_COMPLETED]: {
     resourceType: 'file',
-    attributes: { sizeBytes: 'number', mode: 'text' },
+    attributes: {
+      sizeBytes: 'number',
+      mode: 'text',
+      replaced: 'boolean',
+      versionId: 'uuid',
+      versionNumber: 'number',
+    },
   },
   [AuditAction.FILE_UPLOAD_REJECTED]: {
     resourceType: 'upload',
@@ -55,8 +67,49 @@ export const AUDIT_CATALOG = {
     resourceType: null,
     attributes: { itemCount: 'number', sizeBytes: 'number' },
   },
+  [AuditAction.FILE_VERSION_RESTORED]: {
+    resourceType: 'file',
+    attributes: {
+      versionId: 'uuid',
+      versionNumber: 'number',
+      restoredFromNumber: 'number',
+      sizeBytes: 'number',
+    },
+  },
+  [AuditAction.FILE_VERSION_PRUNED]: {
+    resourceType: 'file',
+    attributes: { versionId: 'uuid', versionNumber: 'number', sizeBytes: 'number' },
+  },
+  [AuditAction.ACCOUNT_SUSPENDED]: ON_ACCOUNT,
+  [AuditAction.ACCOUNT_REACTIVATED]: ON_ACCOUNT,
+  [AuditAction.ACCOUNT_INTERNAL_CREATED]: {
+    resourceType: 'account',
+    attributes: { role: INTERNAL_ROLES },
+  },
+  [AuditAction.ACCOUNT_BOOTSTRAP_ADMIN]: ON_ACCOUNT,
+  [AuditAction.CLIENT_FILES_VIEWED]: ON_ACCOUNT,
+  [AuditAction.PLAN_CREATED]: ON_PLAN,
+  [AuditAction.PLAN_DEACTIVATED]: ON_PLAN,
+  [AuditAction.FILE_VERSION_CREATED]: {
+    resourceType: 'file',
+    attributes: {
+      versionId: 'uuid',
+      versionNumber: 'number',
+      sizeBytes: 'number',
+      sessionId: 'uuid',
+    },
+  },
+  [AuditAction.EDIT_SESSION_OPENED]: {
+    resourceType: 'file',
+    attributes: { sessionId: 'uuid' },
+  },
+  [AuditAction.EDIT_SAVE_FAILED]: {
+    resourceType: 'file',
+    attributes: { sessionId: 'uuid', reason: 'text' },
+  },
 } as const satisfies Record<AuditAction, AuditActionSpec>;
 
+/** Tipos que un atributo (`nodeType`) puede dar: solo nodos y cargas. */
 const RESOURCE_TYPES: ReadonlySet<unknown> = new Set<AuditResourceType>([
   'file',
   'folder',

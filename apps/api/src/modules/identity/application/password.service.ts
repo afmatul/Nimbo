@@ -1,15 +1,11 @@
 import { randomUUID } from 'node:crypto';
 
 import { Inject, Injectable } from '@nestjs/common';
-import {
-  evaluatePassword,
-  IDENTITY_FIELD_MESSAGES,
-  RESET_LINK_TTL_MINUTES,
-} from '@nimbo/contracts';
+import { RESET_LINK_TTL_MINUTES } from '@nimbo/contracts';
 import { PinoLogger } from 'nestjs-pino';
 
 import { I_CLOCK, I_RATE_LIMITER, I_TRANSACTION_RUNNER } from '../../../shared';
-import type { Actor, FieldIssue, IClock, IRateLimiter, ITransactionRunner } from '../../../shared';
+import type { Actor, IClock, IRateLimiter, ITransactionRunner } from '../../../shared';
 import { I_MAILER } from '../../notifications';
 import type { IMailer, MailMessage } from '../../notifications';
 import { ClientUser } from '../domain/client-user.entity';
@@ -22,11 +18,11 @@ import {
   ResetLinkInvalidError,
   WrongPasswordError,
 } from '../domain/errors';
-import { OpaqueToken } from '../domain/opaque-token.vo';
 import type { PasswordHash } from '../domain/password-hash.vo';
 import type { User } from '../domain/user.entity';
-import { VerificationToken } from '../domain/verification-token.entity';
+import type { VerificationToken } from '../domain/verification-token.entity';
 
+import { issueAccountToken } from './account-token-issuer';
 import { findAccountToken } from './account-token-lookup';
 import { IDENTITY_CONFIG } from './identity-config';
 import type { IdentityConfig } from './identity-config';
@@ -40,6 +36,8 @@ import {
 import type { IdentityLogger } from './identity-logger';
 import { passwordChangedMail } from './mail/password-changed-mail.template';
 import { passwordResetMail } from './mail/password-reset-mail.template';
+import { logMassRevocation } from './mass-session-revocation';
+import { weakPasswordIssues } from './password-policy-issues';
 import { I_ATTEMPT_LOCKOUT } from './ports/i-attempt-lockout.port';
 import type { IAttemptLockout } from './ports/i-attempt-lockout.port';
 import { I_PASSWORD_HASHER } from './ports/i-password-hasher.port';
@@ -51,7 +49,7 @@ import type { IUserRepository } from './ports/i-user-repository.port';
 import { I_VERIFICATION_TOKEN_REPOSITORY } from './ports/i-verification-token-repository.port';
 import type { IVerificationTokenRepository } from './ports/i-verification-token-repository.port';
 import { VerificationLinkIssuer } from './verification-link-issuer';
-import { WEB_PATHS, webUrl } from './web-links';
+import { tokenLink, WEB_PATHS, webUrl } from './web-links';
 
 const MS_PER_MINUTE = 60_000;
 const RESET_TAG = 'identity.password-reset';
@@ -97,9 +95,6 @@ interface NewPasswordTarget {
 
 const RESET_TARGET: NewPasswordTarget = { field: 'password', rejectedEvent: REJECTED };
 const CHANGE_TARGET: NewPasswordTarget = { field: 'newPassword', rejectedEvent: CHANGE_REJECTED };
-
-/** Por qué se revocaron todas las sesiones salvo, quizá, la actual (plan §7, `identity.session.revoked`). */
-type MassRevocationReason = 'password_reset' | 'password_change';
 
 /**
  * Recuperación y cambio de contraseña (plan 002 §6.3, design-model M1). Pedir el enlace, revisarlo y aplicarlo son
@@ -232,22 +227,16 @@ export class PasswordService {
 
   /** Invalida los enlaces vigentes y guarda solo el hash del nuevo; el valor en claro solo va en el correo (D-6). */
   private async issueResetLink(user: User): Promise<MailMessage> {
-    const now = this.clock.now();
-    await this.tokens.invalidateActive(user.id, 'recuperacion', now);
-    const value = OpaqueToken.generate();
-    const token = VerificationToken.issue({
-      id: randomUUID(),
+    const issued = await issueAccountToken(this.tokens, {
       userId: user.id,
       type: 'recuperacion',
-      tokenHash: value.hash(),
-      createdAt: now,
-      expiresAt: new Date(now.getTime() + RESET_LINK_TTL_MINUTES * MS_PER_MINUTE),
+      issuedAt: this.clock.now(),
+      ttlMs: RESET_LINK_TTL_MINUTES * MS_PER_MINUTE,
     });
-    await this.tokens.insert(token);
-    const resetUrl = webUrl(this.config, `${WEB_PATHS.passwordReset}#token=${value.toString()}`);
+    const resetUrl = tokenLink(this.config, WEB_PATHS.passwordReset, issued.value);
     return this.mailTo(
       user,
-      `${RESET_TAG}.${token.id}`,
+      `${RESET_TAG}.${issued.id}`,
       RESET_TAG,
       passwordResetMail({ resetUrl }),
     );
@@ -268,13 +257,7 @@ export class PasswordService {
 
   /** CA-21, CA-22: la política D-6 de 001 con el correo de la cuenta, que el esquema no conoce. */
   private enforceStrongPassword(password: string, user: User, target: NewPasswordTarget): void {
-    const issues: FieldIssue[] = evaluatePassword(password, user.email.value)
-      .filter((result) => !result.passed)
-      .map(({ reason }) => ({
-        field: target.field,
-        reason,
-        message: IDENTITY_FIELD_MESSAGES[reason],
-      }));
+    const issues = weakPasswordIssues(password, user.email, target.field);
     if (issues.length > 0) {
       this.logRejection(target.rejectedEvent, 'weak', user.id);
       throw new IdentityWeakPasswordError(issues);
@@ -313,7 +296,10 @@ export class PasswordService {
     throw new WrongPasswordError();
   }
 
-  /** `null` si otro envío consumió el enlace antes (consumo atómico, CA-20); si no, las sesiones revocadas. */
+  /**
+   * `null` si otro envío consumió el enlace antes (consumo atómico, CA-20); si no, las sesiones revocadas. También
+   * invalida la invitación de alta pendiente de una cuenta interna (011 RN-7): ya tiene contraseña.
+   */
   private async resetInTransaction(
     token: VerificationToken,
     passwordHash: PasswordHash,
@@ -324,6 +310,7 @@ export class PasswordService {
       return null;
     }
     await this.users.updatePasswordHash(user.id, passwordHash);
+    await this.tokens.invalidateActive(user.id, 'alta_interna', now);
     return this.sessions.revokeAllExcept(user.id, null, now);
   }
 
@@ -331,22 +318,24 @@ export class PasswordService {
   private async completeReset(user: User, revokedCount: number, changedAt: Date): Promise<void> {
     await this.lockout.clear(loginLockoutKey(user.email));
     await this.lockout.clear(passwordChangeLockoutKey(user.id));
-    this.logSessionsRevoked(user.id, 'password_reset', revokedCount);
+    logMassRevocation(this.logger, {
+      userId: user.id,
+      reason: 'password_reset',
+      count: revokedCount,
+    });
     this.logger.info({ event: 'identity.password_reset.completed', userId: user.id, revokedCount });
     await this.sendPasswordChangedMail(user, changedAt);
   }
 
   /** CA-22, después del commit: registra y avisa «Tu contraseña cambió» (el bloqueo ya se quitó al verificar). */
   private async completeChange(user: User, revokedCount: number, changedAt: Date): Promise<void> {
-    this.logSessionsRevoked(user.id, 'password_change', revokedCount);
+    logMassRevocation(this.logger, {
+      userId: user.id,
+      reason: 'password_change',
+      count: revokedCount,
+    });
     this.logger.info({ event: 'identity.password.changed', userId: user.id, revokedCount });
     await this.sendPasswordChangedMail(user, changedAt);
-  }
-
-  private logSessionsRevoked(userId: string, reason: MassRevocationReason, count: number): void {
-    if (count > 0) {
-      this.logger.info({ event: 'identity.session.revoked', userId, reason, count });
-    }
   }
 
   private async sendPasswordChangedMail(user: User, changedAt: Date): Promise<void> {
