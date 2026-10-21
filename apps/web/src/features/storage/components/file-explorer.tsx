@@ -15,6 +15,7 @@ import { LoadMore } from './load-more';
 import { NodeSortMenu } from './node-sort-menu';
 import { NodeTable, type FolderDisclosure, type NodeTableProps } from './node-table';
 import { ReadOnlyUploadFeedback, useReadOnlyUploads } from './read-only-notice';
+import { useReadOnlyAccount } from './space-provider';
 import { UploadDropzone } from './upload-dropzone';
 
 export type FileExplorerStatus = 'loading' | 'ready' | 'error';
@@ -298,6 +299,9 @@ const EMPTY_TEXTS = {
   },
 } as const;
 
+/** Spec 010 CA-14: en solo lectura el vacío no invita a subir ni ofrece el botón (la carga está bloqueada). */
+const READ_ONLY_EMPTY_TEXT = 'Cuando renueves tu plan podrás subir documentos aquí.';
+
 function EmptyExplorer({
   isRoot,
   maxFileLabel,
@@ -308,7 +312,18 @@ function EmptyExplorer({
   readonly onUpload: () => void;
 }): React.JSX.Element {
   const canDrag = useCanDragFiles();
+  const { readOnly } = useReadOnlyAccount();
   const texts = isRoot ? EMPTY_TEXTS.root : EMPTY_TEXTS.folder;
+  if (readOnly) {
+    return (
+      <StateView
+        type="empty"
+        headingLevel="h2"
+        title={texts.title}
+        description={READ_ONLY_EMPTY_TEXT}
+      />
+    );
+  }
   const invitation = canDrag ? texts.withDrag : texts.withoutDrag;
   const limit =
     maxFileLabel === undefined ? '' : ` Tu plan permite hasta ${maxFileLabel} por archivo.`;

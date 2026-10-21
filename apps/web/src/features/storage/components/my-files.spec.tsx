@@ -492,6 +492,22 @@ describe('MyFiles en solo lectura (spec 010 CA-13, CA-14, RN-6)', () => {
     ).toBeNull();
   });
 
+  it('CA-14: una carpeta vacía no ofrece «Subir archivos» ni invita a subir', async () => {
+    const empty: FolderContentsResponse = {
+      folder: null,
+      breadcrumbs: [],
+      items: [],
+      nextCursor: null,
+    };
+    renderMyFiles(readOnlyApi({ folderContents: jest.fn(() => Promise.resolve(empty)) }));
+
+    expect(await screen.findByText('Aún no tienes archivos')).toBeTruthy();
+    expect(screen.getByText('Cuando renueves tu plan podrás subir documentos aquí.')).toBeTruthy();
+    const uploads = screen.getAllByRole('button', { name: 'Subir archivos' });
+    expect(uploads).toHaveLength(1);
+    expect((uploads[0] as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it('CA-14: soltar un archivo muestra el mensaje de CA-13 y no inicia la carga', async () => {
     const api = readOnlyApi();
     renderMyFiles(api);

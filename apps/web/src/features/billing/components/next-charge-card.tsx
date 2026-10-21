@@ -12,7 +12,6 @@ import { longDayLabel } from '../../../lib/format-date';
 import type { SubscriptionSettings } from '../hooks/use-subscription-settings';
 import { RENEW_PATH } from '../routes';
 
-
 import { AutoRenewSwitch } from './auto-renew-switch';
 import { CardBrand } from './billing-account-cards';
 import {

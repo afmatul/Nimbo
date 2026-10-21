@@ -46,6 +46,13 @@ export function useReadOnlyUploads(onFiles: (files: readonly File[]) => void): R
   return { readOnly, blockedDrop, onFiles: readOnly ? () => setBlockedDrop(true) : onFiles };
 }
 
+/** CA-14: la explicación en texto de las acciones deshabilitadas (explorador, papelera y ficha). Nada si está vigente. */
+export function ReadOnlyActionsHint(): React.JSX.Element | null {
+  const { readOnly } = useReadOnlyAccount();
+  if (!readOnly) return null;
+  return <p className="text-sm text-secondary-foreground">{READ_ONLY_ACTIONS_HINT}</p>;
+}
+
 /** El texto junto a las acciones deshabilitadas y, si se soltaron archivos, el mensaje de CA-13 (CA-14). */
 export function ReadOnlyUploadFeedback({
   readOnly,
@@ -54,7 +61,7 @@ export function ReadOnlyUploadFeedback({
   if (!readOnly) return null;
   return (
     <>
-      <p className="text-sm text-secondary-foreground">{READ_ONLY_ACTIONS_HINT}</p>
+      <ReadOnlyActionsHint />
       {blockedDrop ? (
         <Alert variant="error">
           {messageForCode(STORAGE_ERROR_CODES.STORAGE_ACCOUNT_READ_ONLY)}

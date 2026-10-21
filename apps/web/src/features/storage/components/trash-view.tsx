@@ -18,7 +18,7 @@ import { daysLeft, isPurgeDue, PURGE_SOON_DAYS } from '../trash-dates';
 import { DownloadNoticeBanner, type DownloadNotice } from './file-row-menu';
 import { PurgeConfirmDialog } from './purge-confirm-dialog';
 import { useQuickAccessSidebar } from './quick-access-sidebar';
-import { ReadOnlyNotice } from './read-only-notice';
+import { ReadOnlyActionsHint, ReadOnlyNotice } from './read-only-notice';
 import { RestoreResult } from './restore-result';
 import { SidebarQuota } from './sidebar-quota';
 import { useSpace } from './space-provider';
@@ -77,6 +77,7 @@ export function TrashView(): React.JSX.Element {
           <SignOutButton />
         </div>
         <ReadOnlyNotice />
+        <ReadOnlyActionsHint />
         {notice ? <DownloadNoticeBanner notice={notice} onDismiss={() => setNotice(null)} /> : null}
         <section className="flex flex-col gap-4" aria-labelledby="papelera-titulo">
           <TrashHeader

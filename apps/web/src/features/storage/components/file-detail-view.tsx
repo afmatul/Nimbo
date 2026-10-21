@@ -24,7 +24,7 @@ import { historySummary, totalVersionBytes, versionToPrune } from '../version-hi
 import { DownloadNoticeBanner, openInBrowser, type DownloadNotice } from './file-row-menu';
 import { CHIP_TYPE_BY_KIND } from './node-rows';
 import { useQuickAccessSidebar } from './quick-access-sidebar';
-import { ReadOnlyNotice } from './read-only-notice';
+import { ReadOnlyActionsHint, ReadOnlyNotice } from './read-only-notice';
 import { RestoreVersionDialog, type RestoreTarget } from './restore-version-dialog';
 import { SidebarQuota } from './sidebar-quota';
 import { useSpace, useReadOnlyAccount } from './space-provider';
@@ -90,6 +90,7 @@ export function FileDetailView({
       quotaCard={<SidebarQuota state={space.state} />}
     >
       <ReadOnlyNotice />
+      <ReadOnlyActionsHint />
       <FileDetailContent
         listing={history.listing}
         actions={actions}
