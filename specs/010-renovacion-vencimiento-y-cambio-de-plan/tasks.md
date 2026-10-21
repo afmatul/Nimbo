@@ -144,7 +144,7 @@ Antes de cada pantalla se leen sus capturas en `docs/design/capturas/`; las desv
   - Prueba: web `my-files.spec.tsx` (deshabilitadas con texto, permitidas activas, mensaje al arrastrar) con axe.
   - Depende: T-10.
 
-- [ ] **T-12** **(humana)** Recorrido de la demo en local y nota en el PR — CA: CA-1, CA-2, CA-5, CA-6, CA-8, CA-10, CA-13, CA-14,
+- [x] **T-12** **(humana)** Recorrido de la demo en local y nota en el PR — CA: CA-1, CA-2, CA-5, CA-6, CA-8, CA-10, CA-13, CA-14,
   CA-16, CA-19, CA-21, CA-25, CA-28. Cliente contrata con `4242`: ve «Próximo cobro», apaga y enciende la renovación, programa un cambio
   (sin «Renovar ahora»), lo cancela; se siembra `vence_en` cercano y vencido para ver el aviso y la pasada (renueva con factura en Mailpit).
   Otro cliente contrata con **`0341`** (aprobada); al vencer, la pasada la rechaza y la cuenta queda en solo lectura con el correo; el
@@ -260,3 +260,11 @@ Antes de cada pantalla se leen sus capturas en `docs/design/capturas/`; las desv
 - **Revisión contra la spec** (2026-10-20, 010a `c37ecf3`): CA-29 y §6 suman el aviso del cambio que se descartará
   (`pendingPlanDiscarded` en la vista, de `chooseNextCycle`); la sesión del editor abierta al vencer queda como riesgo
   aceptado en plan §7.
+- **T-12** (2026-10-20, recorrido de Juan Marcos en local, `feat/010b-renovacion-web`): con `4242`, contratar,
+  «Próximo cobro» (CA-25), apagar con confirmación y encender (CA-6), programar Pro sin «Renovar ahora» y cancelarlo
+  (CA-16, CA-19, CA-28), aviso «por vencer» con su correo (CA-5) y renovación automática con factura (CA-1). Con `0341`,
+  contratar aprobado, la pasada rechaza y deja la cuenta en solo lectura con su correo (CA-2); el explorador muestra el
+  aviso, deshabilita lo de CA-13 con su texto y el arrastre da el mensaje (CA-13, CA-14); renovar a mano con `4242`
+  devuelve la carga (CA-10). Se verificó también en la base (transacciones `SIM-2026-000002` a `000006`). La pasada se
+  corrió cada minuto (`SUBSCRIPTION_RENEWAL_INTERVAL_MINUTES=1`). En Fedora hay que etiquetar `infra/` para SELinux
+  (`chcon -R -t container_file_t infra`) en un worktree nuevo, o Traefik no arranca.
