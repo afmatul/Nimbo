@@ -24,6 +24,7 @@ const SUMMARY: SubscriptionSummary = {
   standing: 'expiring',
   autoRenew: true,
   pendingPlan: PRO,
+  pendingPlanDiscarded: false,
   nextCharge: { date: EXPIRES, plan: PRO, card: { brand: 'visa', last4: '4242' } },
   renewal: {
     available: false,
@@ -42,6 +43,7 @@ describe('toSubscriptionView (spec 010 §6, CA-25)', () => {
       status: 'expiring',
       autoRenew: true,
       pendingPlan: { slug: 'pro' },
+      pendingPlanDiscarded: false,
       nextCharge: {
         date: '2026-11-13T12:00:00.000Z',
         amountCents: 25_000,
@@ -66,6 +68,7 @@ describe('toSubscriptionView (spec 010 §6, CA-25)', () => {
       expiresAt: null,
       standing: 'active',
       pendingPlan: null,
+      pendingPlanDiscarded: false,
       nextCharge: null,
       renewal: null,
     });
@@ -73,6 +76,7 @@ describe('toSubscriptionView (spec 010 §6, CA-25)', () => {
     expect(view).toMatchObject({
       expiresAt: null,
       pendingPlan: null,
+      pendingPlanDiscarded: false,
       nextCharge: null,
       renewal: null,
     });

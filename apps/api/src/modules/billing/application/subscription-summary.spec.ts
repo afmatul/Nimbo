@@ -74,6 +74,7 @@ describe('summarizeSubscription (spec 010 §6, CA-8, CA-25, CA-26, CA-28; RN-8)'
 
     expect(summary).toMatchObject({
       pendingPlan: PRO,
+      pendingPlanDiscarded: false,
       nextCharge: { plan: PRO },
       renewal: { available: false, unavailableReason: 'PLAN_CHANGE_PENDING', plan: PRO },
     });
@@ -87,6 +88,8 @@ describe('summarizeSubscription (spec 010 §6, CA-8, CA-25, CA-26, CA-28; RN-8)'
     );
 
     expect(summary).toMatchObject({
+      pendingPlan: retired,
+      pendingPlanDiscarded: true,
       nextCharge: { plan: TEAM },
       renewal: { plan: TEAM },
     });

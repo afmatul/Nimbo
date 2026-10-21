@@ -56,6 +56,7 @@ const NO_PAYMENT_VIEW = {
   status: 'active',
   autoRenew: true,
   pendingPlan: null,
+  pendingPlanDiscarded: false,
   nextCharge: null,
   renewal: null,
 } as const;

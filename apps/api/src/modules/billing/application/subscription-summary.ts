@@ -29,6 +29,8 @@ export interface SubscriptionSummary {
   readonly standing: SubscriptionState;
   readonly autoRenew: boolean;
   readonly pendingPlan: Plan | null;
+  /** CA-29: el programado se desactivó y la renovación lo descartará (`chooseNextCycle`). */
+  readonly pendingPlanDiscarded: boolean;
   readonly nextCharge: NextCharge | null;
   readonly renewal: ManualRenewal | null;
 }
@@ -72,14 +74,22 @@ export const summarizeSubscription = (
   const { subscription, plan, pendingPlan } = facts;
   const base = { plan, expiresAt: subscription.expiresAt, autoRenew: subscription.autoRenew };
   if (subscription.isPersonal || subscription.expiresAt === null) {
-    return { ...base, standing: 'active', pendingPlan: null, nextCharge: null, renewal: null };
+    return {
+      ...base,
+      standing: 'active',
+      pendingPlan: null,
+      pendingPlanDiscarded: false,
+      nextCharge: null,
+      renewal: null,
+    };
   }
   const expiresAt = subscription.expiresAt;
-  const nextPlan = chooseNextCycle(plan, pendingPlan).plan;
+  const { plan: nextPlan, discardedPlan } = chooseNextCycle(plan, pendingPlan);
   return {
     ...base,
     standing: standingOf(expiresAt, subscription.isReadOnly, clock),
     pendingPlan,
+    pendingPlanDiscarded: discardedPlan !== null,
     nextCharge: nextChargeOf(facts, expiresAt, nextPlan),
     renewal: {
       ...subscription.renewalQuote(clock.now),

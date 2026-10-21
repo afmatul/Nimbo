@@ -36,6 +36,7 @@ const VIEW = {
   status: 'active',
   autoRenew: true,
   pendingPlan: null,
+  pendingPlanDiscarded: false,
   nextCharge: {
     date: '2026-11-13T18:00:00.000Z',
     amountCents: 11_000,
@@ -105,6 +106,7 @@ describe('subscriptionViewSchema (spec 010 §6, CA-25)', () => {
       plan: { ...TEAM, slug: 'personal', priceCents: 0 },
       expiresAt: null,
       pendingPlan: null,
+      pendingPlanDiscarded: false,
       nextCharge: null,
       renewal: null,
     };
@@ -116,6 +118,7 @@ describe('subscriptionViewSchema (spec 010 §6, CA-25)', () => {
     const pending = {
       ...VIEW,
       pendingPlan: TEAM,
+      pendingPlanDiscarded: false,
       renewal: { ...VIEW.renewal, available: false, unavailableReason: 'PLAN_CHANGE_PENDING' },
     };
 
