@@ -53,6 +53,7 @@ const VIEW: SubscriptionView = {
   status: 'active',
   autoRenew: true,
   pendingPlan: null,
+  pendingPlanDiscarded: false,
   nextCharge: null,
   renewal: null,
 };

@@ -23,19 +23,32 @@ const downgradeDetail = ({ subscription, usedBytes }: PendingChangeNoticeProps):
   return `Ese día no se cobra nada. Usas ${formatPlanBytes(String(usedBytes))} y Personal incluye ${formatPlanBytes(String(quota))}: no perderás archivos, pero no podrás subir hasta liberar espacio.`;
 };
 
-/** «Tu plan cambiará a <plan> el <fecha>.» con «Cancelar cambio» (spec 010 §6, CA-16, CA-19, CA-21). */
+/** Título de §6: el cambio programado o, si ese plan se desactivó (CA-29), que se renovará con el actual. */
+const titleOf = (subscription: SubscriptionView, pendingName: string): string =>
+  subscription.pendingPlanDiscarded
+    ? `${pendingName} ya no está disponible: el ${expiryLabel(subscription)} se renovará tu plan ${subscription.plan.name}.`
+    : `Tu plan cambiará a ${pendingName} el ${expiryLabel(subscription)}.`;
+
+/** Lo que pasa hasta el cambio; nada si el cambio se descartará (CA-29). */
+const detailOf = (props: PendingChangeNoticeProps): string | null => {
+  const { subscription } = props;
+  if (subscription.pendingPlanDiscarded) return null;
+  return isDowngradeToPersonal(subscription)
+    ? downgradeDetail(props)
+    : `Hasta entonces conservas ${subscription.plan.name} y sus límites.`;
+};
+
+/** «Tu plan cambiará a <plan> el <fecha>.» con «Cancelar cambio» (spec 010 §6, CA-16, CA-19, CA-21, CA-29). */
 export function PendingChangeNotice(props: PendingChangeNoticeProps): React.JSX.Element | null {
   const { subscription, cancelling, onCancel } = props;
   if (subscription.pendingPlan === null) return null;
-  const detail = isDowngradeToPersonal(subscription)
-    ? downgradeDetail(props)
-    : `Hasta entonces conservas ${subscription.plan.name} y sus límites.`;
+  const detail = detailOf(props);
   return (
     <Alert variant="info" className="flex flex-col gap-3 sm:flex-row sm:items-center">
       <CalendarClock aria-hidden="true" className="size-5 shrink-0" />
       <div className="min-w-0 flex-1">
-        <p className="font-semibold">{`Tu plan cambiará a ${subscription.pendingPlan.name} el ${expiryLabel(subscription)}.`}</p>
-        <p>{detail}</p>
+        <p className="font-semibold">{titleOf(subscription, subscription.pendingPlan.name)}</p>
+        {detail === null ? null : <p>{detail}</p>}
       </div>
       <Button
         variant="outline"

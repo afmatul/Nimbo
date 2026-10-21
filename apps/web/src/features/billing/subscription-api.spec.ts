@@ -22,6 +22,7 @@ const VIEW = {
   status: 'active',
   autoRenew: false,
   pendingPlan: null,
+  pendingPlanDiscarded: false,
   nextCharge: null,
   renewal: null,
 };

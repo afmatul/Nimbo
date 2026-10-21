@@ -40,6 +40,7 @@ const VIEW: SubscriptionView = {
   status: 'expiring',
   autoRenew: true,
   pendingPlan: null,
+  pendingPlanDiscarded: false,
   nextCharge: null,
   renewal: RENEWAL,
 };

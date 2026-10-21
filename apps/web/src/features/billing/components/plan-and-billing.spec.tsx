@@ -59,6 +59,7 @@ const VIGENTE: SubscriptionView = {
   status: 'active',
   autoRenew: true,
   pendingPlan: null,
+  pendingPlanDiscarded: false,
   nextCharge: NEXT_CHARGE,
   renewal: RENEWAL,
 };
@@ -167,6 +168,7 @@ describe('Plan y facturación en la 010 (spec 010 §6, CA-6, CA-16, CA-19, CA-25
         ...VIGENTE,
         autoRenew: false,
         pendingPlan: PRO,
+        pendingPlanDiscarded: false,
         nextCharge: null,
         renewal: pendingRenewal,
       }),
@@ -186,6 +188,7 @@ describe('Plan y facturación en la 010 (spec 010 §6, CA-6, CA-16, CA-19, CA-25
       historyWith({
         ...VIGENTE,
         pendingPlan: PRO,
+        pendingPlanDiscarded: false,
         nextCharge: { ...NEXT_CHARGE, amountCents: 4500, planName: 'Pro' },
         renewal: pendingRenewal,
       }),
@@ -200,6 +203,27 @@ describe('Plan y facturación en la 010 (spec 010 §6, CA-6, CA-16, CA-19, CA-25
         /no puedes renovar por adelantado\. Si quieres renovar ahora, primero cancela el cambio/,
       ),
     ).toBeTruthy();
+    expect(seriousViolations(await axe(container))).toEqual([]);
+  });
+
+  it('cambio descartado, CA-29: Pro ya no está disponible y se renovará con Equipo', async () => {
+    const { container } = await renderWith(
+      historyWith({
+        ...VIGENTE,
+        pendingPlan: PRO,
+        pendingPlanDiscarded: true,
+        renewal: pendingRenewal,
+      }),
+    );
+
+    expect(
+      screen.getByText(
+        'Pro ya no está disponible: el 4 de noviembre de 2026 se renovará tu plan Equipo.',
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(/Tu plan cambiará a Pro/)).toBeNull();
+    expect(within(nextCharge()).getByText('Q110.00 · plan Equipo')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Cancelar cambio' })).toBeTruthy();
     expect(seriousViolations(await axe(container))).toEqual([]);
   });
 
