@@ -81,7 +81,7 @@ Cada tarea referencia un criterio. Cada prueba de aceptación nombra el criterio
 3. La recuperación del agente se restringe en SQL a los archivos accesibles antes de ordenar por similitud (RF-33).
 4. Toda acción de un rol interno sobre una cuenta ajena se audita y es visible para el cliente (RF-07).
 5. No existe suplantación. Cuentas internas y de cliente son distintas; un usuario no acumula roles.
-6. Identificadores no predecibles (UUID), tokens y claves guardados solo como hash, URLs firmadas de 5 minutos a un solo objeto (RNF-06).
+6. Identificadores no predecibles (UUID), tokens y claves emitidos y verificados por Nimbo guardados solo como hash (las credenciales de terceros que se reenvían, como la referencia del instrumento de pago, van en claro bajo RLS: ADR-0031), URLs firmadas de 5 minutos a un solo objeto (RNF-06).
 7. Contenido servido desde origen aislado con descarga forzada; límites de tasa en operaciones sensibles (RNF-07, RNF-08).
 
 ## Artículo X — Operabilidad

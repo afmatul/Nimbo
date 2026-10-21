@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | En curso (2026-10-18; avance de la 010a autorizado por Adrián antes de aprobar el plan, plan §8) |
+| Estado | En revisión (2026-10-21: 12 de 12 tareas y `/review 010`; spec y plan aprobados por Adrián el 2026-10-20, plan §8) |
 | Dueño | Juan Marcos |
 | Fase | 2 |
 | Requisitos | RF-22, RF-23, RF-24 (y RF-07 y RNF-05 de forma transversal) |
@@ -139,3 +139,4 @@ programar un cambio de plan (subir, bajar o volver a Personal) que se aplica en 
 | 2026-10-18 | Renumeración sin cambio de contenido: ADR-0029 → **ADR-0032**, DF-70 → **DF-77** y PD-115 → **PD-120**, porque la 016 entró antes a `main` con esos números | N-1 del PR #63 (paso 3) | Borrador (pendiente Adrián) |
 | 2026-10-20 | RN-3: en solo lectura el interruptor se deshabilita y el valor rige desde la renovación manual; RN-11: la 010 aplica la solo lectura en el editor de la 016 (ya integrada) | Auditoría de Adrián, PR #69 (menor 4 y M-1) | Borrador (pendiente Adrián) |
 | 2026-10-20 | CA-29 y §6: el aviso del cambio programado dice que el plan ya no está disponible y con qué plan se renovará; «Próximo cobro» y el aviso previo usan el plan actual | Revisión de la 010 contra la auditoría del PR #69 (B-2) | Borrador (pendiente Adrián) |
+| 2026-10-21 | Spec y plan aprobados por Adrián (2026-10-20); ADR-0031 y ADR-0032 aceptados; se registra en plan §8 | Segunda verificación del PR #70 (N-6) | Adrián |

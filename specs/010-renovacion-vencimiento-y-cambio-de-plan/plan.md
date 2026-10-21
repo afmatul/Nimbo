@@ -1,7 +1,7 @@
 # Plan 010 — Renovación, vencimiento y cambio de plan
 
-> Spec: `./spec.md` · Estado del plan: **Propuesto** (pendiente de Adrián; revisiones del `architect` en §8)
-> Compuertas: **ADR-0032** (Propuesto) para las tareas de `storage` y su web; **ADR-0031** (Propuesto) para T-02.
+> Spec: `./spec.md` · Estado del plan: **Aprobado** (Adrián, 2026-10-20; §8)
+> Compuertas: **ADR-0032** (Aceptado) para las tareas de `storage` y su web; **ADR-0031** (Aceptado) para T-02.
 > Dos PR de código (`workflow.md` §4.6), más el de documentos (§7, «Tamaño»): **010a** (`api`, `worker`, `storage`) y **010b** (`web`).
 > Obligatorio y ≤ 250 líneas. Dice **qué** archivos se tocan y **qué** se espera de cada uno; no es el código en prosa.
 
@@ -181,8 +181,9 @@ Las pruebas de la 009 que tocan la pasarela, `PaymentService` y `TEST_CARDS` se 
   2. Actualizar el comentario de `BillingModule`: el cobro y `InvoiceService` ya no están «en `BillingHttpModule`» ni ausentes del `worker`, sino en `BillingChargingModule`. En `billing-http.module.ts`, el JSDoc del módulo debe ir sobre la clase y no sobre `BillingHttpEnv`.
   - **Atendido** (2026-10-18): 1 en esta rama (DF-77 ya está en `design-findings.md` con esos nombres); 2 en `feat/010a`.
 - **Atendido (quinta auditoría del PR #63)** (2026-10-20): DF-77 registrado en `design-findings.md`; PD-86 cerrado, PD-96 y PD-63 ampliados, PD-121 y PD-122 nuevos; §2, §6 y `tasks.md` alineados con el código (`cardSchema` sin exportar, páginas sin `loading`/`error`, nombres reales de las pruebas, web de `storage`); historial fuera de §1 a §7.
-- Adrián: pendiente. Al aprobar, se registra aquí con la fecha y `spec.md` pasa a «Lista» y luego «En curso». Debe:
-  1. Aceptar ADR-0032 y ADR-0031 (con sus «Documentos a actualizar al aceptar»: constitución Art. IX.6, prohibición de `CLAUDE.md` y `architecture.md` §3, §6.6, §7.5 y §8).
-  2. Autorizar los cambios en módulos ajenos de §2 (`storage` y su web, `audit` y su web, `shared`, `worker.module.ts`, `fake-plan-limits.provider.ts`) y decidir si PD-63 queda en la 010a o va en un PR aparte.
-  3. Aprobar las excepciones de §7: tamaño por encima de 3 días (§4.1) sin partir la spec, tres PR (#63, 010a y 010b; §4.6 permite dos) y la 010b construida sobre la 010a sin integrar.
-  4. Confirmar el intervalo de 15 minutos y la salida de los pagos sin referencia (§7).
+- **Adrián: Aprobado (2026-10-20).** Fuente: Adrián, por WhatsApp el 2026-10-20 (19:19: «la de la spec ya había quedado aprobada desde la mañana»), comunicado por Juan Marcos; lo registra la segunda verificación del PR #70 (N-6, https://github.com/afmatul/Nimbo/pull/70#issuecomment-6327795862). Con la aprobación de la spec quedan:
+  1. **ADR-0031 y ADR-0032 aceptados**, con sus «Documentos a actualizar al aceptar» aplicados el 2026-10-21: constitución Art. IX.6, prohibición de `CLAUDE.md`, `architecture.md` §3, §6.6, §7.5 y §8, y `design-model.md` §M4 (DF-77).
+  2. **Autorizados los cambios en módulos ajenos** de §2: `storage` y su web, `audit` y su web, `shared`, `editing` y su web, `worker.module.ts` y `fake-plan-limits.provider.ts`; PD-63 queda dentro de la 010a.
+  3. **Aprobadas las excepciones** de §7: tamaño por encima de 3 días (§4.1) sin partir la spec, tres PR (#63, #69 y #70; §4.6 permite dos) y la 010b construida sobre la 010a sin integrar. Desde el 2026-10-20 se trabaja en una sola rama, `feat/010b-renovacion-web` (pedido de Adrián).
+  4. El intervalo de 15 minutos y la salida de los pagos sin referencia (§7), como están.
+  - Pendiente de forma: que Adrián deje una revisión aprobada en el PR #63 y lo saque de borrador (N-6, paso 5).

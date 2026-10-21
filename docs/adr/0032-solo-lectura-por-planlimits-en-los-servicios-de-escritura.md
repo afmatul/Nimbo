@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Propuesto (2026-10-16; ajustado el 2026-10-18 por la auditoría de Adrián en el PR #63: rutas de la regla 3 y nombre de `PlanLimits`); falta el acuerdo del equipo (Adrián). **Enmienda** `architecture.md` §7.5 y la nota de DF-51 / ADR-0022 sobre el contenido de `PlanLimits` |
+| Estado | Aceptado (2026-10-20, Adrián: aprobación de la spec 010, registrada en el plan 010 §8 el 2026-10-21); propuesto el 2026-10-16 y ajustado el 2026-10-18 por la auditoría de Adrián en el PR #63 (rutas de la regla 3 y nombre de `PlanLimits`). **Enmienda** `architecture.md` §7.5 y la nota de DF-51 / ADR-0022 sobre el contenido de `PlanLimits` |
 | Fecha | 2026-10-16 |
 | Numeración | Redactado como ADR-0029; pasa a **0032** porque la 016 entró antes a `main` con su ADR-0029 (N-1 del PR #63, paso 3) |
 | Decisores | `architect` (revisión del plan 010), Juan Marcos (dueño de `billing`), Adrián (dueño de `storage`, aprueba) |
