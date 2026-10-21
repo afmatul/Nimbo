@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | En curso (2026-10-18; avance de la 010a autorizado por Adrián antes de aprobar el plan, plan §8) |
+| Estado | En revisión (2026-10-21: 12 de 12 tareas y `/review 010`; falta la aprobación de Adrián del plan, ADR-0031 y ADR-0032, plan §8) |
 | Dueño | Juan Marcos |
 | Fase | 2 |
 | Requisitos | RF-22, RF-23, RF-24 (y RF-07 y RNF-05 de forma transversal) |
