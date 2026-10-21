@@ -28,8 +28,7 @@ const toRenewalView = (renewal: SubscriptionSummary['renewal']): RenewalView => 
     expectedExpiresAt: renewal.expectedExpiresAt.toISOString(),
     periodStartsAt: renewal.periodStartsAt.toISOString(),
     periodEndsAt: renewal.periodEndsAt.toISOString(),
-    amountCents: renewal.plan.priceCents,
-    planName: renewal.plan.name,
+    plan: toPlanResponse(renewal.plan),
   };
 };
 

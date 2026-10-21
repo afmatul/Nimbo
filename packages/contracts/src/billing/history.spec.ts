@@ -49,8 +49,7 @@ const VIEW = {
     expectedExpiresAt: '2026-11-13T18:00:00.000Z',
     periodStartsAt: '2026-11-13T18:00:00.000Z',
     periodEndsAt: '2026-12-13T18:00:00.000Z',
-    amountCents: 11_000,
-    planName: 'Equipo',
+    plan: TEAM,
   },
 };
 const HISTORY = {

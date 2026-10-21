@@ -37,7 +37,7 @@ const SUMMARY: SubscriptionSummary = {
 };
 
 describe('toSubscriptionView (spec 010 §6, CA-25)', () => {
-  it('CA-25: fechas ISO, el plan programado, el próximo cobro con su plan y la renovación con su monto', () => {
+  it('CA-25: fechas ISO, el plan programado, el próximo cobro con su plan y la renovación con su plan', () => {
     expect(toSubscriptionView(SUMMARY)).toMatchObject({
       expiresAt: '2026-11-13T12:00:00.000Z',
       status: 'expiring',
@@ -56,8 +56,7 @@ describe('toSubscriptionView (spec 010 §6, CA-25)', () => {
         expectedExpiresAt: '2026-11-13T12:00:00.000Z',
         periodStartsAt: '2026-11-13T12:00:00.000Z',
         periodEndsAt: '2026-12-13T12:00:00.000Z',
-        amountCents: 25_000,
-        planName: 'Pro',
+        plan: { slug: 'pro', priceCents: 25_000 },
       },
     });
   });
