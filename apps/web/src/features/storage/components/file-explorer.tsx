@@ -133,7 +133,7 @@ export function FileExplorer({
   notice,
   controls,
 }: FileExplorerProps): React.JSX.Element {
-  const uploads = useReadOnlyUploads(onFiles);
+  const uploads = useReadOnlyUploads(onFiles, folderId);
   const ownInputRef = React.useRef<HTMLInputElement>(null);
   const inputRef = fileInputRef ?? ownInputRef;
   const openPicker = (): void => inputRef.current?.click();

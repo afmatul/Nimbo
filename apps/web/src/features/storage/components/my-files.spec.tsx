@@ -525,4 +525,28 @@ describe('MyFiles en solo lectura (spec 010 CA-13, CA-14, RN-6)', () => {
     ).toBeTruthy();
     expect(api.init).not.toHaveBeenCalled();
   });
+
+  it('CA-14: el mensaje del arrastre se borra al cambiar de carpeta', async () => {
+    const api = readOnlyApi();
+    const tree = (folderId: string | null) => (
+      <UploadsProvider api={api}>
+        <UploadsSpaceProvider>
+          <MyFiles folderId={folderId} />
+        </UploadsSpaceProvider>
+      </UploadsProvider>
+    );
+    const { rerender } = render(tree(null));
+    await screen.findByText('Tu cuenta está en solo lectura.');
+    fireEvent.drop(screen.getByTestId('upload-dropzone'), {
+      dataTransfer: { files: [new File(['hola'], 'nuevo.pdf')], types: ['Files'] },
+    });
+    await screen.findByText(/Tu suscripción venció y tu cuenta está en solo lectura\. Renueva/);
+
+    rerender(tree(ALPHA.id));
+
+    await screen.findByText('acta.pdf');
+    expect(
+      screen.queryByText(/Tu suscripción venció y tu cuenta está en solo lectura\. Renueva/),
+    ).toBeNull();
+  });
 });

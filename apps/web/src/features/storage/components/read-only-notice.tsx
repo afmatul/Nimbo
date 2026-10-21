@@ -39,11 +39,19 @@ export interface ReadOnlyUploads {
   readonly onFiles: (files: readonly File[]) => void;
 }
 
-/** En solo lectura, soltar o elegir archivos no los carga: muestra el mensaje de `STORAGE_ACCOUNT_READ_ONLY`. */
-export function useReadOnlyUploads(onFiles: (files: readonly File[]) => void): ReadOnlyUploads {
+/**
+ * En solo lectura, soltar o elegir archivos no los carga: muestra el mensaje de `STORAGE_ACCOUNT_READ_ONLY`. El
+ * mensaje se borra al cambiar de carpeta (`placeKey`).
+ */
+export function useReadOnlyUploads(
+  onFiles: (files: readonly File[]) => void,
+  placeKey: string | null,
+): ReadOnlyUploads {
   const { readOnly } = useReadOnlyAccount();
-  const [blockedDrop, setBlockedDrop] = React.useState(false);
-  return { readOnly, blockedDrop, onFiles: readOnly ? () => setBlockedDrop(true) : onFiles };
+  const [blockedIn, setBlockedIn] = React.useState<{ readonly place: string | null } | null>(null);
+  const blockedDrop = blockedIn !== null && blockedIn.place === placeKey;
+  const block = (): void => setBlockedIn({ place: placeKey });
+  return { readOnly, blockedDrop, onFiles: readOnly ? block : onFiles };
 }
 
 /** CA-14: la explicación en texto de las acciones deshabilitadas (explorador, papelera y ficha). Nada si está vigente. */

@@ -35,7 +35,11 @@ export interface ReadOnlyAccount {
   readonly planName: string | null;
 }
 
-/** Lo lee del resumen que el grupo `(cliente)` ya carga (010 plan §1): sin otra petición. */
+/**
+ * Lo lee del resumen que el grupo `(cliente)` ya carga (010 plan §1): sin otra petición. Mientras carga (o fuera del
+ * proveedor) devuelve «vigente», así que las acciones se ven habilitadas un instante; no es un riesgo: la API rechaza
+ * cada escritura con `WritableAccountPolicy` (CA-13).
+ */
 export function useReadOnlyAccount(): ReadOnlyAccount {
   const value = React.useContext(SpaceContext);
   if (value?.state.status !== 'ready') return { readOnly: false, planName: null };
