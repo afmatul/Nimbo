@@ -50,8 +50,7 @@ const RENEWAL = {
   expectedExpiresAt: EXPIRES,
   periodStartsAt: EXPIRES,
   periodEndsAt: '2026-12-04T18:00:00.000Z',
-  amountCents: 11_000,
-  planName: 'Equipo',
+  plan: TEAM,
 };
 const VIGENTE: SubscriptionView = {
   plan: TEAM,

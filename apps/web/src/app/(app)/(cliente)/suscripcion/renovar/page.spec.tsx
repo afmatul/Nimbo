@@ -25,14 +25,20 @@ const TEAM = {
   retainedVersions: 60,
   trashRetentionDays: 60,
 };
+const PRO = {
+  ...TEAM,
+  id: '10000000-0000-4000-8000-000000000002',
+  slug: 'pro',
+  name: 'Pro',
+  priceCents: 4500,
+};
 const RENEWAL = {
   available: true,
   unavailableReason: null,
   expectedExpiresAt: EXPIRES,
   periodStartsAt: EXPIRES,
   periodEndsAt: '2026-11-18T18:00:00.000Z',
-  amountCents: 11_000,
-  planName: 'Equipo',
+  plan: TEAM,
 };
 const VIEW: SubscriptionView = {
   plan: TEAM,
@@ -153,6 +159,35 @@ describe('Pago de la renovación, /suscripcion/renovar (spec 010 CA-8 a CA-11, C
         'Empieza hoy, al aprobarse el pago, y tu cuenta deja de estar en solo lectura.',
       ),
     ).toBeTruthy();
+  });
+
+  it('CA-20: desde solo lectura con un cambio programado activo, el resumen cobra ese plan', async () => {
+    await renderWith(
+      historyWith({
+        ...VIEW,
+        status: 'readOnly',
+        pendingPlan: PRO,
+        renewal: { ...RENEWAL, plan: PRO },
+      }),
+    );
+
+    expect(screen.getByRole('button', { name: 'Pagar Q45.00' })).toBeTruthy();
+    expect(screen.getByText('Plan Pro')).toBeTruthy();
+  });
+
+  it('CA-29: con el cambio programado descartado, el resumen cobra el plan actual', async () => {
+    await renderWith(
+      historyWith({
+        ...VIEW,
+        status: 'readOnly',
+        pendingPlan: PRO,
+        pendingPlanDiscarded: true,
+        renewal: RENEWAL,
+      }),
+    );
+
+    expect(screen.getByRole('button', { name: 'Pagar Q110.00' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Pagar Q45.00' })).toBeNull();
   });
 
   it.each([

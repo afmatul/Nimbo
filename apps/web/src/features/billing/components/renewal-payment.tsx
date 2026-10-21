@@ -3,7 +3,6 @@
 import {
   BILLING_ERROR_CODES,
   type BillingHistoryResponse,
-  type Plan,
   type SubscriptionView,
 } from '@nimbo/contracts';
 import { ArrowLeft, CircleAlert } from 'lucide-react';
@@ -44,12 +43,6 @@ const periodOf = (subscription: SubscriptionView, renewal: Renewal): PeriodNote 
       : 'Empieza cuando termina tu periodo actual: no pierdes días pagados.',
 });
 
-/** El plan que cobra la renovación (RN-4): el programado desde solo lectura (CA-20), si no el actual. */
-const renewedPlanOf = (subscription: SubscriptionView): Plan =>
-  subscription.status === 'readOnly' && subscription.pendingPlan !== null
-    ? subscription.pendingPlan
-    : subscription.plan;
-
 export interface RenewalFormProps {
   readonly subscription: SubscriptionView;
   readonly renewal: Renewal;
@@ -68,10 +61,9 @@ export function RenewalForm({
     prepare: (values) => toRenewRequest(renewal.expectedExpiresAt, values),
     pay: (request) => renew(apiPublicUrl, authFetch, request),
   });
-  const plan = renewedPlanOf(subscription);
   return (
     <PaymentScreen
-      plan={plan}
+      plan={renewal.plan}
       title="Renovar tu plan"
       state={state}
       period={periodOf(subscription, renewal)}
