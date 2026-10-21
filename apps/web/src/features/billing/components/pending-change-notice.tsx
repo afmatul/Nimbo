@@ -16,7 +16,10 @@ export interface PendingChangeNoticeProps {
   readonly onCancel: () => void;
 }
 
-/** CA-21: bajar a Personal no cobra; si el uso no cabe, se puede seguir viendo todo pero no subir. */
+/**
+ * CA-21: bajar a Personal no cobra; si el uso no cabe, se puede seguir viendo todo pero no subir. Los bytes se convierten
+ * entre texto y número hasta cerrar PD-87.
+ */
 const downgradeDetail = ({ subscription, usedBytes }: PendingChangeNoticeProps): string => {
   const quota = Number(subscription.pendingPlan?.quotaBytes ?? 0);
   if (usedBytes === null || usedBytes <= quota) return 'Ese día no se cobra nada.';

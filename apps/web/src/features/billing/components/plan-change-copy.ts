@@ -16,6 +16,7 @@ const versionsItem = (current: Plan, target: Plan): string | null =>
     ? null
     : `Versiones: ${target.name} guarda ${String(target.retainedVersions)} por archivo y ${current.name} guarda ${String(current.retainedVersions)}. Cuando subas la siguiente versión de un archivo, se eliminarán sus versiones anteriores que pasen de ${String(target.retainedVersions)}. La versión actual nunca se borra.`;
 
+/** Los bytes viajan como texto (ADR-0016) y `usedBytes` como número: se convierten aquí hasta cerrar PD-87. */
 const spaceItem = (target: Plan, usedBytes: number | null): string | null =>
   usedBytes === null || usedBytes <= Number(target.quotaBytes)
     ? null
@@ -32,13 +33,12 @@ export const downgradeWarning = (
   target: Plan,
   usedBytes: number | null,
 ): DowngradeWarning | null => {
-  const items = [
-    versionsItem(current, target),
-    spaceItem(target, usedBytes),
-    editingItem(current, target),
-  ].filter((item): item is string => item !== null);
+  const versions = versionsItem(current, target);
+  const items = [versions, spaceItem(target, usedBytes), editingItem(current, target)].filter(
+    (item): item is string => item !== null,
+  );
   if (items.length === 0) return null;
-  const onlyVersions = items.length === 1 && versionsItem(current, target) !== null;
+  const onlyVersions = items.length === 1 && versions !== null;
   return {
     title: onlyVersions
       ? `${target.name} guarda menos versiones que tu plan actual.`

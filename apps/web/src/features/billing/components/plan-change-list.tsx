@@ -14,6 +14,7 @@ import { PLAN_AND_BILLING_PATH, RENEW_PATH, subscribeHref } from '../routes';
 
 import { PlanChangeDialog } from './plan-change-dialog';
 import { PlanComparisonTable } from './plan-comparison-table';
+import { EXPIRED_BANNER } from './subscription-copy';
 
 export interface PlanChangeListProps {
   readonly history: BillingHistoryResponse;
@@ -26,9 +27,14 @@ export interface PlanChangeListProps {
   readonly onDismissError: () => void;
 }
 
+/** Un plan de pago tiene vencimiento; Personal (o sin suscripción) no. */
+type PaidSubscription = SubscriptionView & { readonly expiresAt: string };
+const isPaid = (subscription: SubscriptionView | null): subscription is PaidSubscription =>
+  subscription !== null && subscription.expiresAt !== null;
+
 /** La frase bajo el título (mockups `planes--cambiar-plan` y `planes--confirmar-personal-solo-lectura`). */
 const introOf = (subscription: SubscriptionView | null): string => {
-  if (subscription === null || subscription.expiresAt === null) {
+  if (!isPaid(subscription)) {
     return 'Tu cuenta usa Personal. Elige un plan de pago para contratarlo.';
   }
   if (subscription.status === 'readOnly') {
@@ -46,9 +52,6 @@ function CurrentPlanNote(): React.JSX.Element {
   );
 }
 
-const isOnPersonal = (subscription: SubscriptionView | null): boolean =>
-  subscription === null || subscription.expiresAt === null;
-
 /** El pie de cada tarjeta: el actual, el ya programado, contratar desde Personal (CA-18) o cambiar. */
 function PlanAction({
   plan,
@@ -60,7 +63,7 @@ function PlanAction({
   readonly onChoose: (plan: Plan) => void;
 }): React.JSX.Element | null {
   if (plan.id === subscription?.plan.id) return <CurrentPlanNote />;
-  if (isOnPersonal(subscription)) {
+  if (!isPaid(subscription)) {
     if (plan.priceCents === 0) return null;
     return (
       <Link href={subscribeHref(plan.slug)} className={buttonVariants({ className: 'w-full' })}>
@@ -68,7 +71,7 @@ function PlanAction({
       </Link>
     );
   }
-  const scheduled = subscription?.pendingPlan?.id === plan.id;
+  const scheduled = subscription.pendingPlan?.id === plan.id;
   return (
     <Button
       variant="outline"
@@ -90,11 +93,7 @@ function ListHeader({
   return (
     <>
       {subscription?.status === 'readOnly' ? (
-        <ReadOnlyBanner
-          title="Tu suscripción venció."
-          description="Puedes ver y descargar tus archivos, pero no subir ni editar. Renueva tu plan."
-          renewHref={RENEW_PATH}
-        />
+        <ReadOnlyBanner {...EXPIRED_BANNER} renewHref={RENEW_PATH} />
       ) : null}
       <Link
         href={PLAN_AND_BILLING_PATH}

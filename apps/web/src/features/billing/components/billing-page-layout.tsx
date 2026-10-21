@@ -65,8 +65,9 @@ export interface BillingPageLayoutProps {
 }
 
 /**
- * Marco de las páginas de `billing` en la cuenta (009 «Plan y facturación»; 010 cambio de plan y pago de la
- * renovación): la barra lateral sin destino marcado, las migas «Cuenta / …» y la tarjeta de espacio.
+ * Marco de las páginas de `billing` en la cuenta (009 «Plan y facturación»; 010 cambio de plan): la barra lateral sin
+ * destino marcado, las migas «Cuenta / …» y la tarjeta de espacio. El pago (contratar y renovar) va sin barra lateral,
+ * como sus mockups (`pago`, `pago--renovacion`).
  */
 export function BillingPageLayout({
   trail,

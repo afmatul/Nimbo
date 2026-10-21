@@ -5,7 +5,8 @@ import type { AuthFetch } from '../identity/session/auth-fetch';
 
 import { billingEndpoint } from './billing-endpoint';
 
-const PLAN_CATALOG_PATH = '/api/v1/billing/plans';
+const PLANS_PATH = '/billing/plans';
+const PLAN_CATALOG_PATH = `/api/v1${PLANS_PATH}`;
 
 /**
  * `GET /billing/plans` desde el servidor (008 CA-1). Un error de la API, la red caída, el tiempo agotado (`init.signal`) o un
@@ -25,6 +26,6 @@ export async function fetchPlanCatalogWithSession(
   authFetch: AuthFetch,
 ): Promise<PlanCatalogResponse> {
   return planCatalogResponseSchema.parse(
-    await authFetch(billingEndpoint(apiPublicUrl, '/billing/plans')),
+    await authFetch(billingEndpoint(apiPublicUrl, PLANS_PATH)),
   );
 }

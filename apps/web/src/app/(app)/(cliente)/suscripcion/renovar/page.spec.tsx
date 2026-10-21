@@ -126,6 +126,18 @@ describe('Pago de la renovación, /suscripcion/renovar (spec 010 CA-8 a CA-11, C
     expect(JSON.parse(String(init?.body))).toMatchObject({ expectedExpiresAt: EXPIRES, nit: 'CF' });
   });
 
+  it('CA-10: el aprobado toma el periodo del recibo, no el que se leyó al abrir la página', async () => {
+    await renderWith(historyWith({ ...VIEW, status: 'readOnly' }));
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ ...RECEIPT, expiresAt: '2026-11-25T18:00:00.000Z' }),
+    );
+
+    await fill('4242424242424242');
+
+    expect(await screen.findByText('Pago aprobado')).toBeTruthy();
+    expect(screen.getByText('del 26 de octubre de 2026 al 25 de noviembre de 2026')).toBeTruthy();
+  });
+
   it('CA-9: rechazada, el aviso del catálogo y el formulario siguen', async () => {
     await renderWith(historyWith(VIEW));
     fetchMock.mockResolvedValueOnce(errorResponse('BILLING_PAYMENT_REJECTED', 402));

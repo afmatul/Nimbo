@@ -31,8 +31,20 @@ const UNAVAILABLE_CODES: Readonly<Record<NonNullable<Renewal['unavailableReason'
   PLAN_CHANGE_PENDING: BILLING_ERROR_CODES.BILLING_PLAN_CHANGE_PENDING,
 };
 
+const rangeLabel = (startsAt: string, endsAt: string): string =>
+  `del ${longDayLabel(startsAt)} al ${longDayLabel(endsAt)}`;
+
 const periodRange = (renewal: Renewal): string =>
-  `del ${longDayLabel(renewal.periodStartsAt)} al ${longDayLabel(renewal.periodEndsAt)}`;
+  rangeLabel(renewal.periodStartsAt, renewal.periodEndsAt);
+
+/**
+ * El periodo que quedó pagado, desde el recibo: en solo lectura empieza al aprobarse (CA-10), así que no se toma del
+ * `renewal` leído al abrir la página. La duración es la del periodo que mandó la API (sin repetir los 30 días aquí).
+ */
+const paidRange = (renewal: Renewal, expiresAt: string): string => {
+  const length = Date.parse(renewal.periodEndsAt) - Date.parse(renewal.periodStartsAt);
+  return rangeLabel(new Date(Date.parse(expiresAt) - length).toISOString(), expiresAt);
+};
 
 /** CA-8: empieza al terminar el periodo actual; CA-10: en solo lectura, hoy. */
 const periodOf = (subscription: SubscriptionView, renewal: Renewal): PeriodNote => ({
@@ -72,7 +84,7 @@ export function RenewalForm({
           message={`Renovaste tu plan ${payment.plan.name} hasta el ${longDayLabel(payment.expiresAt)}. Te enviamos el comprobante a ${payment.receiptEmail}.`}
           facts={[
             { label: 'Referencia', value: payment.reference },
-            { label: 'Periodo nuevo', value: periodRange(renewal) },
+            { label: 'Periodo nuevo', value: paidRange(renewal, payment.expiresAt) },
           ]}
           link={{ href: PLAN_AND_BILLING_PATH, label: 'Ir a Plan y facturación' }}
         />
@@ -123,7 +135,10 @@ export interface RenewalPageProps {
   readonly authFetch: AuthFetch;
 }
 
-/** `/suscripcion/renovar` (spec 010 CA-8 a CA-11, CA-26, CA-28): lee la suscripción para el periodo y el monto. */
+/**
+ * `/suscripcion/renovar` (spec 010 CA-8 a CA-11, CA-26, CA-28): lee la suscripción para el periodo y el monto. Sin
+ * barra lateral, como el mockup `pago--renovacion` y la contratación de la 009.
+ */
 export function RenewalPage({ apiPublicUrl, authFetch }: RenewalPageProps): React.JSX.Element {
   const load = React.useCallback(
     () => fetchBillingHistory(apiPublicUrl, authFetch),

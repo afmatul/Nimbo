@@ -19,3 +19,9 @@ export const expiryLabel = ({ expiresAt }: SubscriptionView): string =>
 /** La bajada a Personal está programada (CA-21): no hay cobro ni renovación automática que mostrar. */
 export const isDowngradeToPersonal = ({ pendingPlan }: SubscriptionView): boolean =>
   pendingPlan !== null && pendingPlan.priceCents === 0;
+
+/** Aviso de suscripción vencida (spec 010 §6, «Vencida»), en «Plan y facturación» y en «Cambiar de plan». */
+export const EXPIRED_BANNER = {
+  title: 'Tu suscripción venció.',
+  description: 'Puedes ver y descargar tus archivos, pero no subir ni editar. Renueva tu plan.',
+} as const;

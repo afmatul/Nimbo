@@ -9,7 +9,7 @@ import { Button, buttonVariants } from '../../../components/ui/button';
 import { RENEW_PATH } from '../routes';
 
 import { PendingChangeNotice, type PendingChangeNoticeProps } from './pending-change-notice';
-import { cardLabel, expiryLabel, isDowngradeToPersonal } from './subscription-copy';
+import { cardLabel, EXPIRED_BANNER, expiryLabel, isDowngradeToPersonal } from './subscription-copy';
 
 export type SubscriptionStatusNoticeProps = PendingChangeNoticeProps;
 
@@ -64,13 +64,7 @@ export function SubscriptionStatusNotice(
 ): React.JSX.Element | null {
   const { subscription } = props;
   if (subscription.status === 'readOnly') {
-    return (
-      <ReadOnlyBanner
-        title="Tu suscripción venció."
-        description="Puedes ver y descargar tus archivos, pero no subir ni editar. Renueva tu plan."
-        renewHref={RENEW_PATH}
-      />
-    );
+    return <ReadOnlyBanner {...EXPIRED_BANNER} renewHref={RENEW_PATH} />;
   }
   if (!subscription.autoRenew && !isDowngradeToPersonal(subscription)) {
     return <NotRenewingNotice {...props} />;
