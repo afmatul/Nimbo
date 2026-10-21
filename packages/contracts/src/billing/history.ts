@@ -43,7 +43,7 @@ const nextChargeSchema = z
 
 /**
  * Renovación manual (010 CA-8, CA-10, CA-26, CA-28): si se ofrece «Renovar ahora», por qué no, el `vence_en` que el
- * pago debe enviar y el periodo y el monto que pagaría (plan del siguiente ciclo).
+ * pago debe enviar, el periodo y el plan que cobraría (el del siguiente ciclo, RN-4 y CA-29: la web no lo recalcula).
  */
 const renewalSchema = z
   .object({
@@ -52,8 +52,7 @@ const renewalSchema = z
     expectedExpiresAt: z.string().datetime(),
     periodStartsAt: z.string().datetime(),
     periodEndsAt: z.string().datetime(),
-    amountCents: cents,
-    planName: z.string().min(1),
+    plan: planSchema,
   })
   .strict();
 
