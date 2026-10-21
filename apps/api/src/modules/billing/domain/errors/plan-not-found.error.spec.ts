@@ -4,7 +4,7 @@ import { PlanNotFoundError } from './plan-not-found.error';
 
 describe('PlanNotFoundError (CA-4)', () => {
   it('hereda de NotFoundError y DomainError', () => {
-    const error = new PlanNotFoundError('plan-inexistente');
+    const error = new PlanNotFoundError();
 
     expect(error).toBeInstanceOf(PlanNotFoundError);
     expect(error).toBeInstanceOf(NotFoundError);
@@ -13,16 +13,18 @@ describe('PlanNotFoundError (CA-4)', () => {
   });
 
   it('fija el código PLAN_NOT_FOUND y el status HTTP 404', () => {
-    const error = new PlanNotFoundError('10000000-0000-4000-8000-000000000099');
+    const error = new PlanNotFoundError();
 
     expect(error.code).toBe('PLAN_NOT_FOUND');
     expect(error.status).toBe(404);
   });
 
-  it('incluye el identificador buscado en un mensaje en español', () => {
-    const error = new PlanNotFoundError('enterprise');
+  it('011 plan §4: el mensaje en español no repite el identificador buscado (mismo 404 para todos)', () => {
+    const error = new PlanNotFoundError();
 
-    expect(error.message).toBe('Plan no encontrado: enterprise');
+    expect(error.message).toBe(
+      'No encontramos ese plan. Revisa el catálogo de planes y vuelve a intentarlo.',
+    );
     expect(error.name).toBe('PlanNotFoundError');
   });
 });

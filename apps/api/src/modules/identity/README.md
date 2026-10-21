@@ -40,7 +40,8 @@ modules/identity/
 │  ├─ password-policy-issues.ts             # weakPasswordIssues: política D-6 con el correo de la cuenta → `fields`
 │  ├─ account-directory.ts                  # AccountDirectory: list, get, findClientByEmail, statistics (011)
 │  ├─ account-administration.ts             # AccountAdministration: lockAdminRoster, assertActorActive, suspend,
-│  │                                        # reactivate (011)
+│  │                                        # reactivate (011); `suspend` devuelve `Suspension`
+│  ├─ mass-session-revocation.ts            # MassRevocationReason y logMassRevocation (`identity.session.revoked`)
 │  ├─ internal-account-enrollment.ts        # InternalAccountEnrollment: enroll, enrollInitialAdmin (011)
 │  ├─ account-setup-link-issuer.ts          # AccountSetupLinkIssuer: enlace `alta_interna` y su correo (011)
 │  ├─ account-setup.service.ts              # AccountSetupService: checkLink, setFirstPassword (011)
@@ -106,6 +107,9 @@ Consume `IMailer` (`notifications`) e `IRateLimiter`, `ITransactionRunner` e `IC
 - Fachadas del backoffice (011 plan §2; clases sin interfaz, Art. V.2): `AccountDirectory`, `AccountAdministration` e
   `InternalAccountEnrollment`, con sus tipos. Corren dentro de la transacción del llamador; ni repositorios ni entidades
   salen del módulo.
+- Errores que reutiliza el borde HTTP del backoffice (011 T-10): `ActorNotActiveError` (bitácora
+  `backoffice.actor.inactive`), `AccountNotFoundError` (un `:id` que no es UUID da el mismo `404`) e
+  `IdentityInvalidInputError` (`422` del alta). Así `backoffice` no repite los códigos de `identity`.
 
 ### Evento `CLIENT_ACCOUNT_VERIFIED` (ADR-0019)
 
@@ -167,6 +171,11 @@ SessionResponse`, rota `nimbo_rt`) y `POST /auth/session/logout` (`204`). `verif
 - **Suspender y reactivar** (`AccountAdministration`): candado del padrón (`pg_advisory_xact_lock`) → no a
   sí mismo → fila `FOR UPDATE` → no al último Administrador activo → `suspendida` y **todas** sus sesiones revocadas
   (002 D-10). Reactivar no devuelve sesiones. `assertActorActive` lee el estado del actor en la transacción (RN-7).
+  `suspend` corre en la transacción del llamador y devuelve una `Suspension` con `logRevokedSessions()`, que el llamador
+  invoca **después** del commit (como `deliverInvitation()`): anota `identity.session.revoked`
+  (`reason: 'account_suspended'`, `count`) solo si revocó alguna sesión. Los motivos de las revocaciones en masa
+  (`password_reset`, `password_change`, `account_suspended`) y esa regla viven en `mass-session-revocation.ts`, que
+  también usa `PasswordService`.
 - **Alta interna** (`InternalAccountEnrollment`): cuenta activa y verificada con el hash de un secreto aleatorio que
   nadie conoce, enlace `alta_interna` de 24 h (`ACCOUNT_SETUP_LINK_TTL_HOURS`, lo emite `AccountSetupLinkIssuer`, con
   la forma de `VerificationLinkIssuer`) y `deliverInvitation()`, que el llamador

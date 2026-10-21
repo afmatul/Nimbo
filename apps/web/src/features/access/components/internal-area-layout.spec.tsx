@@ -39,12 +39,21 @@ describe('internalNavFor (011 CA-17)', () => {
     expect(navOf('SUPPORT')).toEqual([['Metadatos de archivos', '/soporte/metadatos']]);
   });
 
-  it.each(['ADMIN', 'OPERATOR', 'CLIENT'] as const)(
-    'CA-17: %s no tiene entradas mientras no existan sus páginas (llegan en T-11/T-13)',
-    (role) => {
-      expect(navOf(role)).toEqual([]);
-    },
-  );
+  it('CA-14, CA-17: el Administrador ve Cuentas, Catálogo de planes y Métricas', () => {
+    expect(navOf('ADMIN')).toEqual([
+      ['Cuentas', '/admin/cuentas'],
+      ['Catálogo de planes', '/admin/planes'],
+      ['Métricas', '/admin/metricas'],
+    ]);
+  });
+
+  it('CA-14, CA-17: el Operador ve solo Métricas, en su área (hasta la 022b)', () => {
+    expect(navOf('OPERATOR')).toEqual([['Métricas', '/operacion/metricas']]);
+  });
+
+  it('CA-17: el cliente no tiene entradas en el área interna', () => {
+    expect(navOf('CLIENT')).toEqual([]);
+  });
 
   it('CA-17: marca la entrada activa solo en su página', () => {
     const active = internalNavFor('SUPPORT', '/soporte/metadatos');
@@ -91,8 +100,8 @@ describe('InternalAreaLayout (011 CA-17)', () => {
     expect(container.textContent).toBe('');
   });
 
-  it('CA-17: con la barra vacía (Operador), sin violaciones de axe a 360 y 1440 px', async () => {
-    const container = await renderLayout('OPERATOR');
+  it('CA-17: el marco del Operador, sin violaciones de axe a 360 y 1440 px', async () => {
+    const container = await renderLayout('OPERATOR', '/operacion/metricas');
 
     for (const width of VIEWPORTS) {
       Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });

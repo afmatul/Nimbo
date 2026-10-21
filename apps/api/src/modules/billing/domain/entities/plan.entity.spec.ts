@@ -110,6 +110,11 @@ describe('Plan (spec 011 CA-9 a CA-11, RN-4)', () => {
     expect(deactivated.isActive).toBe(false);
   });
 
+  it('011 CA-8: Personal es el plan por omisión; los demás, no', () => {
+    expect(Plan.create(ID, command({ name: 'Personal' })).isDefault).toBe(true);
+    expect(Plan.create(ID, command()).isDefault).toBe(false);
+  });
+
   it('CA-11: Personal no se desactiva', () => {
     const personal = Plan.create(ID, command({ name: 'Personal' }));
 

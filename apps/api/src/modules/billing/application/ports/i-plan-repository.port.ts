@@ -8,6 +8,8 @@ import type { Plan } from '../../domain/entities/plan.entity';
 export interface IPlanRepository {
   /** 008 CA-1: los que se ofrecen (`desactivado_en` nulo, PD-76), por precio y después por `slug`. */
   findActive(): Promise<Plan[]>;
+  /** 011 CA-8, CA-12: todos, activos y desactivados (con `deactivatedAt`), en el mismo orden que `findActive`. */
+  findAll(): Promise<Plan[]>;
   findById(id: string): Promise<Plan | null>;
   findBySlug(slug: string): Promise<Plan | null>;
   /** 011 CA-9: `false` si el nombre o el `slug` ya son de otro plan (`ON CONFLICT DO NOTHING`, sin carreras). */

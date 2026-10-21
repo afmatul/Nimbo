@@ -36,6 +36,7 @@ import {
 import type { IdentityLogger } from './identity-logger';
 import { passwordChangedMail } from './mail/password-changed-mail.template';
 import { passwordResetMail } from './mail/password-reset-mail.template';
+import { logMassRevocation } from './mass-session-revocation';
 import { weakPasswordIssues } from './password-policy-issues';
 import { I_ATTEMPT_LOCKOUT } from './ports/i-attempt-lockout.port';
 import type { IAttemptLockout } from './ports/i-attempt-lockout.port';
@@ -94,9 +95,6 @@ interface NewPasswordTarget {
 
 const RESET_TARGET: NewPasswordTarget = { field: 'password', rejectedEvent: REJECTED };
 const CHANGE_TARGET: NewPasswordTarget = { field: 'newPassword', rejectedEvent: CHANGE_REJECTED };
-
-/** Por qué se revocaron todas las sesiones salvo, quizá, la actual (plan §7, `identity.session.revoked`). */
-type MassRevocationReason = 'password_reset' | 'password_change';
 
 /**
  * Recuperación y cambio de contraseña (plan 002 §6.3, design-model M1). Pedir el enlace, revisarlo y aplicarlo son
@@ -320,22 +318,24 @@ export class PasswordService {
   private async completeReset(user: User, revokedCount: number, changedAt: Date): Promise<void> {
     await this.lockout.clear(loginLockoutKey(user.email));
     await this.lockout.clear(passwordChangeLockoutKey(user.id));
-    this.logSessionsRevoked(user.id, 'password_reset', revokedCount);
+    logMassRevocation(this.logger, {
+      userId: user.id,
+      reason: 'password_reset',
+      count: revokedCount,
+    });
     this.logger.info({ event: 'identity.password_reset.completed', userId: user.id, revokedCount });
     await this.sendPasswordChangedMail(user, changedAt);
   }
 
   /** CA-22, después del commit: registra y avisa «Tu contraseña cambió» (el bloqueo ya se quitó al verificar). */
   private async completeChange(user: User, revokedCount: number, changedAt: Date): Promise<void> {
-    this.logSessionsRevoked(user.id, 'password_change', revokedCount);
+    logMassRevocation(this.logger, {
+      userId: user.id,
+      reason: 'password_change',
+      count: revokedCount,
+    });
     this.logger.info({ event: 'identity.password.changed', userId: user.id, revokedCount });
     await this.sendPasswordChangedMail(user, changedAt);
-  }
-
-  private logSessionsRevoked(userId: string, reason: MassRevocationReason, count: number): void {
-    if (count > 0) {
-      this.logger.info({ event: 'identity.session.revoked', userId, reason, count });
-    }
   }
 
   private async sendPasswordChangedMail(user: User, changedAt: Date): Promise<void> {

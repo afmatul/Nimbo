@@ -3,16 +3,11 @@ import { clientFilesQuerySchema } from '@nimbo/contracts';
 import type { ClientFilesQuery, ClientFilesResponse } from '@nimbo/contracts';
 
 import { CurrentActor, Role, Roles, ZodValidationPipe } from '../../../shared';
-import type { Actor, DomainError, FieldIssue, InvalidInputFactory } from '../../../shared';
+import type { Actor } from '../../../shared';
 import { SupportService } from '../application/support.service';
-import { InvalidBackofficeQueryError } from '../domain/errors/invalid-backoffice-query.error';
 
+import { backofficeQueryValidationError } from './backoffice-validation';
 import { toClientFilesResponse } from './client-files-response';
-
-/** Fábrica de `ZodValidationPipe`: 400 `BACKOFFICE_INVALID_QUERY` con los motivos por campo del contrato. */
-const backofficeQueryValidationError: InvalidInputFactory = (
-  issues: readonly FieldIssue[],
-): DomainError => new InvalidBackofficeQueryError(issues);
 
 /**
  * Metadatos de los archivos de un cliente (011 CA-13; plan §4): solo Administrador y Soporte (CA-14). Valida con el

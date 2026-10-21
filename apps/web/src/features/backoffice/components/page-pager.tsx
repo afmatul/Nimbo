@@ -2,8 +2,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { JSX, ReactNode } from 'react';
 
 import { Button } from '../../../components/ui/button';
-// La web muestra cifras y fechas con la misma configuración regional (es-GT); hoy solo `format-date` la declara.
-import { DATE_LOCALE as DISPLAY_LOCALE } from '../../../lib/format-date';
+import { formatCount } from '../../../lib/format-plan';
 
 export interface PagePagerProps {
   /** Nombre accesible de la navegación («Paginación de los archivos de Laura Barrios»). */
@@ -15,9 +14,6 @@ export interface PagePagerProps {
   readonly total: number;
   readonly onPageChange: (page: number) => void;
 }
-
-const countFormatter = new Intl.NumberFormat(DISPLAY_LOCALE);
-const formatCount = (value: number): string => countFormatter.format(value);
 
 /** «Anterior» o «Siguiente»: 44 px en móvil; deshabilitado en el extremo de la lista. */
 function PageButton({
