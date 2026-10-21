@@ -8,10 +8,13 @@ import { messageForCode } from '../../../lib/error-catalog';
 import type { AuthFetch } from '../../identity/session/auth-fetch';
 import { cancelPlanChange, setAutoRenew } from '../subscription-api';
 
+/** Lo que se intentó con la renovación automática: encenderla o apagarla. */
+export type ToggleIntent = 'enable' | 'disable';
+
 export interface SubscriptionSettings {
   readonly toggle: {
     readonly pending: boolean;
-    readonly failedTo: 'enable' | 'disable' | null;
+    readonly failedTo: ToggleIntent | null;
     readonly onChange: (enabled: boolean) => void;
     readonly onRetry: () => void;
   };
@@ -35,7 +38,7 @@ function useAutoRenewToggle({
   onUpdated,
 }: Deps): SubscriptionSettings['toggle'] {
   const [pending, setPending] = React.useState(false);
-  const [failedTo, setFailedTo] = React.useState<'enable' | 'disable' | null>(null);
+  const [failedTo, setFailedTo] = React.useState<ToggleIntent | null>(null);
   const onChange = React.useCallback(
     (enabled: boolean) => {
       setPending(true);

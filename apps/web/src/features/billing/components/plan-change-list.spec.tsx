@@ -122,7 +122,7 @@ describe('Cambiar de plan, /suscripcion/cambiar-plan (spec 010 CA-16 a CA-18, CA
     const dialog = screen.getByRole('alertdialog', {
       name: '¿Cambiar a Pro el 4 de noviembre de 2026?',
     });
-    expect(within(dialog).getByText('Q45.00 con VISA ···· 4242')).toBeTruthy();
+    expect(within(dialog).getByText('Q45.00 con Visa ···· 4242')).toBeTruthy();
     expect(within(dialog).getByText('Pro guarda menos versiones que tu plan actual.')).toBeTruthy();
     expect(seriousViolations(await axe(container))).toEqual([]);
 

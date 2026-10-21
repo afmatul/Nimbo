@@ -41,9 +41,13 @@ interface ReadyProps {
   readonly settings: SubscriptionSettings;
 }
 
-/** El último cobro se rechazó: «Próximo cobro» lo dice con la tarjeta de ese pago (mockup `vencida`). */
-const rejectedCardOf = (history: BillingHistoryResponse) =>
-  history.payments[0]?.status === 'rechazada' ? history.paymentMethod : null;
+/**
+ * En solo lectura con la renovación automática encendida, la pasada intentó cobrar con la tarjeta del último pago
+ * aprobado y se rechazó (CA-2, RN-10): «Próximo cobro» lo dice con esa tarjeta (mockup `vencida`). Con la renovación
+ * apagada no hubo cobro automático (CA-7), aunque después se rechace un pago manual (CA-9).
+ */
+const rejectedCardOf = (subscription: SubscriptionView, history: BillingHistoryResponse) =>
+  subscription.status === 'readOnly' && subscription.autoRenew ? history.paymentMethod : null;
 
 const usedBytesOf = (space: SpaceSummaryState): number | null =>
   space.status === 'ready' ? space.summary.usedBytes : null;
@@ -61,7 +65,7 @@ function SubscriptionCards({
         <NextChargeCard
           subscription={subscription}
           card={history.paymentMethod}
-          rejectedCard={rejectedCardOf(history)}
+          rejectedCard={rejectedCardOf(subscription, history)}
           toggle={settings.toggle}
         />
       )}

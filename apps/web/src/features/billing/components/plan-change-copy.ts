@@ -3,7 +3,7 @@ import { formatGtq, type Plan, type SubscriptionView } from '@nimbo/contracts';
 import { longDayLabel } from '../../../lib/format-date';
 import { formatPlanBytes } from '../../../lib/format-plan';
 
-import type { Card } from './subscription-copy';
+import { cardLabel, type Card } from './subscription-copy';
 
 /** Lo que el cliente pierde al bajar (spec 010 CA-21): título y una línea por límite que baja. */
 export interface DowngradeWarning {
@@ -64,7 +64,7 @@ export interface ChangeCopy {
 const chargeValue = (target: Plan, card: Card | null): string =>
   target.priceCents === 0
     ? 'Ninguno'
-    : `${formatGtq(target.priceCents)}${card === null ? '' : ` con ${card.brand.toUpperCase()} ···· ${card.last4}`}`;
+    : `${formatGtq(target.priceCents)}${card === null ? '' : ` con ${cardLabel(card)}`}`;
 
 /** CA-27: en solo lectura, bajar a Personal se aplica ya y sin cobro. */
 const immediateCopy = (): ChangeCopy => ({

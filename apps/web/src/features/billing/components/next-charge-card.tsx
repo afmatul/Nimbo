@@ -9,23 +9,25 @@ import { Alert } from '../../../components/ui/alert';
 import { Button, buttonVariants } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { longDayLabel } from '../../../lib/format-date';
+import type { SubscriptionSettings } from '../hooks/use-subscription-settings';
 import { RENEW_PATH } from '../routes';
+
 
 import { AutoRenewSwitch } from './auto-renew-switch';
 import { CardBrand } from './billing-account-cards';
-import { expiryLabel, isDowngradeToPersonal, type Card as SavedCard } from './subscription-copy';
+import {
+  cardLabel,
+  expiryLabel,
+  isDowngradeToPersonal,
+  type Card as SavedCard,
+} from './subscription-copy';
 
-/** Si el último cobro automático se rechazó, con qué tarjeta (mockup `vencida`). */
 export interface NextChargeCardProps {
   readonly subscription: SubscriptionView;
   readonly card: SavedCard | null;
+  /** Si el cobro automático se rechazó, con qué tarjeta (mockup `vencida`). */
   readonly rejectedCard: SavedCard | null;
-  readonly toggle: {
-    readonly pending: boolean;
-    readonly failedTo: 'enable' | 'disable' | null;
-    readonly onChange: (enabled: boolean) => void;
-    readonly onRetry: () => void;
-  };
+  readonly toggle: SubscriptionSettings['toggle'];
 }
 
 function Fact({ label, children }: { readonly label: string; readonly children: React.ReactNode }) {
@@ -66,7 +68,7 @@ const noChargeText = ({ subscription, rejectedCard }: NextChargeCardProps): stri
     const rejected =
       rejectedCard === null
         ? ''
-        : ` y el cobro automático con ${rejectedCard.brand.toUpperCase()} ···· ${rejectedCard.last4} fue rechazado`;
+        : ` y el cobro automático con ${cardLabel(rejectedCard)} fue rechazado`;
     return `Sin cobro programado. Tu suscripción venció el ${until}${rejected}.`;
   }
   if (isDowngradeToPersonal(subscription))

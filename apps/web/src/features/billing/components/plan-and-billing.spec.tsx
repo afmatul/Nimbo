@@ -278,7 +278,7 @@ describe('Plan y facturación en la 010 (spec 010 §6, CA-6, CA-16, CA-19, CA-25
     expect(within(plan).getByText('Venció el')).toBeTruthy();
     expect(
       within(nextCharge()).getByText(
-        'Sin cobro programado. Tu suscripción venció el 4 de noviembre de 2026 y el cobro automático con VISA ···· 4242 fue rechazado.',
+        'Sin cobro programado. Tu suscripción venció el 4 de noviembre de 2026 y el cobro automático con Visa ···· 4242 fue rechazado.',
       ),
     ).toBeTruthy();
     expect((autoRenew() as HTMLButtonElement).disabled).toBe(true);
@@ -286,6 +286,28 @@ describe('Plan y facturación en la 010 (spec 010 §6, CA-6, CA-16, CA-19, CA-25
       within(nextCharge()).getByText('Podrás activarla cuando renueves tu plan.'),
     ).toBeTruthy();
     expect(seriousViolations(await axe(container))).toEqual([]);
+  });
+
+  it('M-1, CA-7: apagada y vencida, un rechazo manual no se presenta como cobro automático', async () => {
+    await renderWith(
+      historyWith(
+        {
+          ...VIGENTE,
+          status: 'readOnly',
+          autoRenew: false,
+          nextCharge: null,
+          renewal: { ...RENEWAL, periodStartsAt: '2026-11-05T18:00:00.000Z' },
+        },
+        [REJECTED_PAYMENT],
+      ),
+    );
+
+    expect(
+      within(nextCharge()).getByText(
+        'Sin cobro programado. Tu suscripción venció el 4 de noviembre de 2026.',
+      ),
+    ).toBeTruthy();
+    expect(within(nextCharge()).queryByText(/cobro automático/)).toBeNull();
   });
 
   it('CA-6: apagar pide confirmación con la consecuencia y manda el PUT; encender no pregunta', async () => {
