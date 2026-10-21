@@ -4,6 +4,8 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
+import { formatCount } from '../../../lib/format-plan';
+
 import { PagePager, type PagePagerProps } from './page-pager';
 
 const LABEL = 'Paginación de los archivos de Laura Barrios';
@@ -56,14 +58,13 @@ describe('PagePager (011 DF-66)', () => {
   });
 
   it('CA-13: el rango y el total usan el mismo formato de cifras', () => {
-    const format = (value: number): string => new Intl.NumberFormat('es-GT').format(value);
     renderPager({ page: 1001, total: 12140 });
 
-    expect(
-      within(pager()).getByText(
-        `Mostrando ${format(10001)}–${format(10010)} de ${format(12140)} archivos`,
-      ),
-    ).toBeTruthy();
+    const range = within(pager()).getByText(/^Mostrando/);
+
+    expect(range.textContent).toBe(
+      `Mostrando ${formatCount(10001)}–${formatCount(10010)} de ${formatCount(12140)} archivos`,
+    );
   });
 
   it('CA-17: los botones miden 44 px en móvil', () => {

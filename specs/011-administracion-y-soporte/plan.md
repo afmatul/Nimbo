@@ -39,7 +39,7 @@ Dueño del módulo entre corchetes: lo ajeno se pide a su dueño en su PR (`spec
 | identity/application/ports | `i-admin-roster.repository.port.ts` · `i-account-directory.repository.port.ts` (nuevos) | `IAdminRosterRepository` (V.2 b; ISP, 2026-10-16: `IUserRepository` no crece): `insertInternalIfAbsent`, `updateStatus`, `lockAdminRoster`, `countActiveAdmins`, `findByEmployeeCode`, `statusOf`; lo implementa `TypeormUserRepository` (`useExisting`). El otro es un modelo de lectura paginado (lista, ficha, estadísticas) |
 | identity/infrastructure | `typeorm-user.repository.ts` (cambia), `typeorm-account-directory.repository.ts` (nuevo) | SQL sobre `TransactionContext` (se une a la transacción del llamador) |
 | identity/presentation | `account-setup.controller.ts` (nuevo, 2026-10-16) | `POST /auth/account-setup/check` y `POST /auth/account-setup`, `@Public()`, delegan en `AccountSetupService`; dentro de `NoStoreMiddleware` (reciben el token del enlace) |
-| identity | `identity.module.ts`, `index.ts` (cambian) | Exporta las tres fachadas; nada de repositorios ni entidades |
+| identity | `identity.module.ts`, `index.ts` (cambian) | Exporta las tres fachadas y los errores que reutiliza el borde HTTP del backoffice (`ActorNotActiveError`, `AccountNotFoundError`, `IdentityInvalidInputError`); nada de repositorios ni entidades |
 | billing/domain [Juan Marcos escribe, Q-7] | `plan.entity.ts`, `plan-limits-set.vo.ts`, `plan-rules.ts` (nuevos); `plan-slug.ts` (amplía el de la 009 T-01 con `PlanSlug`; un solo `PERSONAL_PLAN_SLUG`) | `Plan` (nombre de M4) con `PlanLimitsSet` (no `PlanLimits`: ya es el tipo de `storage` con los dos límites de la carga). `Plan.create` valida CA-11 (precio ≥ 0, límites > 0, editores ≥ 0, máx. por archivo ≤ cuota y ≤ `MAX_FILE_BYTES_CEILING` = 2 GB, RNF-02) y deriva el `slug` (`PlanSlug`); `deactivate(now)` rechaza Personal (`PERSONAL_PLAN_SLUG`) y un plan ya desactivado. Sin `Money` (009) |
 | billing/domain/errors | `plan-invalid`, `plan-not-deactivatable`, `plan-already-deactivated` (nuevos); `plan-not-found` (de 006a, `PLAN_NOT_FOUND`, no cambia) | 422 con `fields` · 409 · 409 · 404 |
 | billing/application | `plan-catalog.service.ts` (lo crea la 008 con `list()`; la 011 lo amplía) | `create(actor, command)` (nombre único → `fields`), `deactivate(actor, id)` (CAS `desactivado_en IS NULL`). `backoffice` no revalida |
@@ -52,6 +52,7 @@ Dueño del módulo entre corchetes: lo ajeno se pide a su dueño en su PR (`spec
 | audit | `audit-actor.ts` (nuevo); `i-audit-logger.port.ts`, `audit-entry.ts`, `audit.service.ts`, `typeorm-audit.repository.ts` (cambian) | `AuditActor = Actor \| SystemActor` (`SYSTEM_ACTOR`, solo en `audit`); `AuditEntry.actorRole: Role \| 'SYSTEM'`; `targetUserId` nulo solo en catálogo y en el alta inicial. Con `SystemActor`, `AuditService` escribe con `run` (se une al `run` del llamador, T1); con `Actor`, `withActor` como hoy |
 | audit/presentation | `audit-event-response.ts`, textos de «Mi actividad» (cambian) | Acciones nuevas en español; el origen sigue siendo solo el rol (004 D-2, CA-16). El mapeador envía `resourceType: null` si el recurso es `account` (el texto de la acción ya lo dice) y nunca recibe `SYSTEM` (sin afectado): el contrato de 004 no cambia |
 | backoffice [Fátima] | `application/internal-action.service.ts` (nuevo) | `InternalActionService` (nombre de M8) por **composición**: `read(actor, work)` = `withActor` + `assertActorActive`; `run(actor, action)` = lo mismo + (si `action.locksAdminRoster`) `lockAdminRoster()` **antes** de la comprobación + `action.work()` + `recordInTransaction(action.event(resultado))`. Única dueña de «transacción + actor activo + evento» (DRY); no autoriza por rol ni valida |
+| backoffice [Fátima] | `application/backoffice-rate-limiter.ts` (nuevo, T-14) | Límite de tasa de las rutas `/backoffice/*`: `I_RATE_LIMITER` de `shared` con la clave `backoffice:<actorId>` y la regla 60/60 s; la que se pasa recibe el `429 SHARED_TOO_MANY_REQUESTS` de `shared` y deja `backoffice.rate_limited` (§5) |
 | backoffice/application | `admin.service.ts` · `catalog-admin.service.ts` · `support.service.ts` · `metrics.service.ts` · `initial-admin-bootstrapper.ts` (nuevos) | Cuentas y altas (`run` con candado; lista y ficha con `read`) · catálogo (`run`; lista con `read`) · metadatos (`run`: correo → cliente o `ClientNotFoundError`, que revierte sin evento) · tablero (`read`) · CA-7: **un solo** `run` sin actor con `enrollInitialAdmin` y el evento de `SYSTEM_ACTOR` |
 | backoffice/presentation | `accounts.controller.ts`, `plans.controller.ts`, `metrics.controller.ts`, `client-files.controller.ts` + `*-response.ts` (nuevos) | Validan con `contracts`, delegan y mapean por **lista blanca** (esquemas `strict`) |
 | backoffice | `domain/errors/client-not-found.error.ts`, `backoffice.module.ts`, `index.ts`, `README.md` | 404 `BACKOFFICE_CLIENT_NOT_FOUND`; módulo y API pública |
@@ -76,7 +77,10 @@ Dueño del módulo entre corchetes: lo ajeno se pide a su dueño en su PR (`spec
   exito` (vencido → «¿Olvidaste tu contraseña?», CA-5). `features/backoffice/` (`api.ts`, hooks, componentes por pantalla,
   `page-pager`, `plan-card`, `client-files-table`); `lib/error-catalog.ts`. Reutiliza `StateView`, `ConfirmDestructiveDialog`,
   `FileTypeChip`, `QuotaBar`, `ForbiddenState`, `RequireRole`; crea `StatusBadge` en `components/nimbo/` (`ui-guidelines.md` §4).
-  `PlanCard` vive en `features/backoffice` hasta que exista el único `PlanCard` acordado con la 008 (PD-83, R-5).
+  `PlanCard` de `components/nimbo/` es **uno solo** con las dos variantes (PD-83, R-5): la 011 le suma los huecos opcionales
+  (`badge`, `facts`, `meta`, `note`) y su variante de administración vive en `features/backoffice/components/plan-admin-card.tsx`,
+  que lo compone; `/planes` (008) no cambia. El hueco `badge` es el mismo que el de la 010 (`feat/010b-renovacion-web`),
+  para que las dos ramas convivan sin tocarse.
 - **Marco interno, «Seguridad» y «Mi actividad»** (B-1; `features/access` es de Adrián, que lo autorizó, R-8): `features/access/components/internal-area-layout.tsx` (nuevo; sobre
   `AppLayout`, navegación de `internalNavFor(role)`) y `features/access/home-path.ts` (inicio por rol: `/admin/cuentas`,
   `/soporte/metadatos`, `/operacion/metricas`; `activityPathFor(role)`): un solo lugar para rutas internas, usado por
@@ -178,9 +182,20 @@ Prefijo `/api/v1`. Errores comunes de `/backoffice/*`: `401 SHARED_UNAUTHENTICAT
   se audita aunque la página venga vacía; el 404 no. El cliente ve solo el rol del actor (004 D-2, CA-16). El actor de sistema
   vive solo en `audit` (`withActor` y `RolesGuard` nunca lo aceptan) y solo inserta el evento que admite su política.
 - **Bitácoras** (Pino, ids): `backoffice.account.suspended|reactivated|enrolled`, `backoffice.plan.created|deactivated`,
-  `backoffice.client_files.viewed|not_found`, `backoffice.actor.inactive`, `identity.account_setup.rejected|completed`, `identity.session.revoked` (`reason: account_suspended`),
+  `backoffice.client_files.viewed|not_found`, `backoffice.actor.inactive`, `backoffice.rate_limited`, `identity.account_setup.rejected|completed`, `identity.session.revoked` (`reason: account_suspended`),
   `identity.invitation.mail_failed`, `admin.bootstrap.completed|refused`. Nunca correo, nombre de archivo, token ni enlace (el
   correo de búsqueda va en la cadena de consulta, que `http.request` ya descarta).
+- **Límite de tasa del backoffice** (T-14, PD-103, Art. IX.7; decisión de Fátima, 2026-10-19): un solo límite para todas
+  las rutas `/backoffice/*` (metadatos, cuentas, catálogo y métricas), **por cuenta interna**: `I_RATE_LIMITER` de `shared`
+  (Redis, ventana deslizante) con la clave `backoffice:<actorId>` y la regla **{ 60 peticiones por 60 s }**. Se comprueba en
+  `InternalActionService.read/run`, antes de abrir la transacción, que es el único punto por el que pasa toda operación del
+  backoffice. El `429` es el de `shared` (`SHARED_TOO_MANY_REQUESTS`, como pide PD-93) con su `Retry-After`; la bitácora
+  `backoffice.rate_limited` lleva el id y el rol del interno y los segundos de espera, nunca el correo que se sondea.
+  **Por qué no el *throttler* de Nest** (como `identity`, ADR-0017): al aplicar la librería todos los *throttlers* con
+  nombre a cada ruta que use su guard, añadir uno al registro global obligaría a tocar `identity/presentation/auth.controller.ts`
+  (fuera de los archivos de R-8) y la clave sería la IP, que no es la unidad del riesgo (varios internos comparten la IP de
+  la oficina). **Por qué no un código propio**: PD-93 unifica los `429` en `SHARED_TOO_MANY_REQUESTS` y la web ya tiene el
+  mensaje.
 - `/auth/account-setup*` reutilizan el modelo de 002: token de 256 bits, solo hash, consumo atómico; sin límite de tasa propio,
   como `reset-password` (adivinar 256 bits no es viable; Fátima, 2026-10-08). La saturación por IP queda en PD-88.
 

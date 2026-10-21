@@ -16,6 +16,7 @@ import { ApiClientError } from './api-error';
 import {
   IDENTITY_FIELD_MESSAGES as reexported,
   backofficeFieldMessage,
+  enrollmentFieldMessage,
   folderNameConflictMessage,
   folderNameFieldMessage,
   messageForCode,
@@ -313,6 +314,51 @@ describe('error-catalog', () => {
 
     it('CA-13: un motivo desconocido cae en el genérico de 000 §10', () => {
       expect(backofficeFieldMessage('OTRO', 'abc')).toContain('abc');
+    });
+
+    it.each([
+      [
+        IDENTITY_ERROR_CODES.ACCOUNT_NOT_FOUND,
+        'No encontramos esa cuenta. Vuelve a Cuentas y búscala de nuevo.',
+      ],
+      [
+        IDENTITY_ERROR_CODES.CANNOT_CHANGE_OWN_STATUS,
+        'No puedes suspender ni reactivar tu propia cuenta. Pídeselo a otro Administrador.',
+      ],
+      [
+        IDENTITY_ERROR_CODES.LAST_ACTIVE_ADMIN,
+        'No se puede suspender: debe quedar al menos un Administrador activo. Nada cambió.',
+      ],
+      [
+        IDENTITY_ERROR_CODES.ACCOUNT_STATE_CONFLICT,
+        'La cuenta ya cambió de estado. Recarga la ficha para ver su estado actual.',
+      ],
+      [
+        IDENTITY_ERROR_CODES.ENROLLMENT_CONFLICT,
+        'Ya existe una cuenta con estos datos. Corrige los campos marcados y vuelve a intentarlo.',
+      ],
+    ])('CA-2 a CA-6: %s dice qué pasó y qué hacer', (code, message) => {
+      expect(messageForCode(code)).toBe(message);
+    });
+
+    it.each([
+      ['fullName', 'Escribe el nombre completo de la persona.'],
+      ['email', 'Escribe el correo de la persona.'],
+      ['employeeCode', 'Escribe el código de empleado.'],
+      ['role', 'Elige el rol de la cuenta.'],
+    ])('CA-6: el alta interna sin %s pide ese dato', (field, message) => {
+      expect(enrollmentFieldMessage({ field, reason: 'REQUIRED', message: 'x' })).toBe(message);
+    });
+
+    it.each([
+      'INVALID_EMAIL',
+      'INVALID_EMPLOYEE_CODE',
+      'EMAIL_IN_USE',
+      'EMPLOYEE_CODE_IN_USE',
+    ] as const)('CA-6: el motivo %s del alta usa el texto de contracts', (reason) => {
+      expect(enrollmentFieldMessage({ field: 'email', reason, message: 'x' })).toBe(
+        IDENTITY_FIELD_MESSAGES[reason],
+      );
     });
   });
 

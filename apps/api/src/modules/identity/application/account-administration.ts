@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { PinoLogger } from 'nestjs-pino';
 
 import { I_CLOCK, Role } from '../../../shared';
 import type { Actor, IClock } from '../../../shared';
@@ -11,12 +12,23 @@ import {
 } from '../domain/errors';
 import type { User } from '../domain/user.entity';
 
+import type { IdentityLogger } from './identity-logger';
+import { logMassRevocation } from './mass-session-revocation';
 import { I_ADMIN_ROSTER_REPOSITORY } from './ports/i-admin-roster.repository.port';
 import type { IAdminRosterRepository } from './ports/i-admin-roster.repository.port';
 import { I_SESSION_REPOSITORY } from './ports/i-session-repository.port';
 import type { ISessionRepository } from './ports/i-session-repository.port';
 import { I_VERIFICATION_TOKEN_REPOSITORY } from './ports/i-verification-token-repository.port';
 import type { IVerificationTokenRepository } from './ports/i-verification-token-repository.port';
+
+/**
+ * Una suspensión hecha dentro de la transacción del llamador y su paso posterior al commit (como `Enrollment`): la
+ * bitácora de las sesiones revocadas es de `identity`, pero solo es cierta si la transacción se confirma.
+ */
+export interface Suspension {
+  /** Anota `identity.session.revoked` (`reason: account_suspended`) si revocó alguna sesión. */
+  logRevokedSessions(): void;
+}
 
 /** Mínimo de Administradores activos que debe quedar tras una suspensión (011 RN-7). */
 const MIN_ACTIVE_ADMINS = 1;
@@ -33,6 +45,7 @@ export class AccountAdministration {
     @Inject(I_SESSION_REPOSITORY) private readonly sessions: ISessionRepository,
     @Inject(I_VERIFICATION_TOKEN_REPOSITORY) private readonly tokens: IVerificationTokenRepository,
     @Inject(I_CLOCK) private readonly clock: IClock,
+    @Inject(PinoLogger) private readonly logger: Pick<IdentityLogger, 'info'>,
   ) {}
 
   /** Candado del padrón de Administradores hasta el fin de la transacción; reentrante en ella (RN-7, CA-7). */
@@ -49,12 +62,12 @@ export class AccountAdministration {
 
   /**
    * CA-2, CA-4: candado → no a sí mismo → fila `FOR UPDATE` → no al último Administrador activo → `suspendida`,
-   * invalida su enlace de alta vigente (CA-5: reactivar no lo revive) y revoca todas sus sesiones (002 D-10). Devuelve
-   * cuántas sesiones revocó, para la bitácora del llamador.
+   * invalida su enlace de alta vigente (CA-5: reactivar no lo revive) y revoca todas sus sesiones (002 D-10). El
+   * llamador anota la revocación con `logRevokedSessions()` **después** de su commit.
    * «No a sí mismo» va antes de leer la fila (igual que en `reactivate`): solo compara ids, y así un pedido que se
    * rechazará no bloquea ninguna fila.
    */
-  async suspend(actor: Actor, id: string): Promise<number> {
+  async suspend(actor: Actor, id: string): Promise<Suspension> {
     await this.users.lockAdminRoster();
     assertNotSelf(actor, id);
     const target = await this.lockedAccount(id);
@@ -62,7 +75,11 @@ export class AccountAdministration {
     await this.users.updateStatus(id, target.suspend().status);
     const now = this.clock.now();
     await this.tokens.invalidateActive(id, 'alta_interna', now);
-    return this.sessions.revokeAllExcept(id, null, now);
+    const count = await this.sessions.revokeAllExcept(id, null, now);
+    return {
+      logRevokedSessions: () =>
+        logMassRevocation(this.logger, { userId: id, reason: 'account_suspended', count }),
+    };
   }
 
   /** CA-3, CA-4: candado → no a sí mismo → `activa`. Las sesiones revocadas no vuelven. */

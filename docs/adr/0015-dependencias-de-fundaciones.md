@@ -92,3 +92,14 @@ de accesibilidad. Los estilos siguen siendo los tokens de ADR-0014 (sin colores 
 `apps/web/src/components/ui/`. Sin ADR aparte: no compite con otra opción razonable dentro de shadcn/ui. Si una spec pide otra familia
 de componentes (p. ej. `dialog` modal de formularios complejos), basta con esta adenda mientras salga de Radix; una biblioteca distinta
 requiere ADR.
+
+## Adenda (2026-10-21): falsos positivos de gitleaks por ruta, no por huella
+
+Las huellas de `.gitleaksignore` llevan el SHA del commit. Con el merge por squash, el commit que llega a `main` tiene otro SHA
+(y a veces otra línea), así que el falso positivo marcado en la rama vuelve a fallar en el push a `main`. Pasó en 586064b, 4b16c7d,
+bb3ede6 y 6ea7ebc: contraseñas inventadas, `http://api.internal:3000` y la clave de documento de ONLYOFFICE en pruebas. Desde esta
+adenda, `.gitleaks.toml` extiende las reglas por defecto y permite **solo** la regla `generic-api-key` en archivos de prueba
+(`*.spec.ts(x)`, `*.int-spec.ts`, `*.iso-spec.ts`, `apps/*/test/`) y en la lista de contraseñas débiles de `contracts`. Las reglas con
+formato propio (tokens de GitHub, claves de AWS, llaves privadas…) siguen activas en todo el repositorio, pruebas incluidas, y
+`generic-api-key` sigue activa en el código de producción. `.gitleaksignore` se elimina; ampliar esa lista de rutas se revisa en PR
+como antes se revisaba el archivo.
