@@ -257,3 +257,6 @@ Antes de cada pantalla se leen sus capturas en `docs/design/capturas/`; las desv
   Menores: `BillingInvariantError`, parámetros en objeto, `errorName` sin alias, `InstrumentReference`,
   `requirePlanBySlug` y JSDoc del controlador. M-4 (correo de CA-29 sin marca), los pagos sin referencia en «Próximo
   cobro» y el `worker` caído más de 30 días quedan como riesgos en plan §7; RN-3 aclara el interruptor en solo lectura.
+- **Revisión contra la spec** (2026-10-20, 010a `c37ecf3`): CA-29 y §6 suman el aviso del cambio que se descartará
+  (`pendingPlanDiscarded` en la vista, de `chooseNextCycle`); la sesión del editor abierta al vencer queda como riesgo
+  aceptado en plan §7.

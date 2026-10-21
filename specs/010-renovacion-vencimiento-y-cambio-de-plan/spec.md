@@ -65,7 +65,7 @@ programar un cambio de plan (subir, bajar o volver a Personal) que se aplica en 
 - **CA-26** (HU-3, RF-22) — error: Dado un cliente que ya pagó por adelantado el siguiente periodo, cuando intenta pagar otro, entonces se responde `409` `BILLING_ALREADY_RENEWED` y no hay cobro.
 - **CA-27** (HU-5, RF-24, RF-23) Dado una cuenta en solo lectura, cuando programa el cambio a Personal, entonces se aplica de inmediato, sin cobro, y termina la solo lectura (si el uso supera la cuota de Personal, aplica CA-21).
 - **CA-28** (HU-3, RF-24) — error: Dado un plan de pago vigente con **cualquier** cambio programado (a Personal o a otro plan de pago), cuando el cliente intenta renovar por adelantado, entonces se responde `409` `BILLING_PLAN_CHANGE_PENDING`, no hay cobro y nada cambia hasta que cancele el cambio; la pantalla no ofrece «Renovar ahora».
-- **CA-29** (HU-5, RF-24) Dado un cambio programado a un plan que se desactiva antes de `vence_en` (011), cuando llega la renovación, entonces el cambio se descarta, se renueva con el plan actual y el cliente recibe un correo que lo explica.
+- **CA-29** (HU-5, RF-24) Dado un cambio programado a un plan que se desactiva antes de `vence_en` (011), cuando llega la renovación, entonces el cambio se descarta, se renueva con el plan actual y el cliente recibe un correo que lo explica. Desde que se desactiva, «Plan y facturación» ya lo avisa (§6) y «Próximo cobro» y el aviso previo muestran el plan actual.
 
 ## 4. Reglas de negocio
 - **RN-1** El periodo de un plan de pago es de 30 días (009). El periodo nuevo empieza en el `vence_en` anterior si se paga antes (solo sin cambio programado, CA-28) o al vencer, y en el momento del pago si la cuenta ya estaba en solo lectura. No se pierden días pagados.
@@ -97,7 +97,7 @@ programar un cambio de plan (subir, bajar o volver a Personal) que se aplica en 
 - Por vencer: «Tu plan <plan> vence el <fecha>. Se renovará con <marca> ···· <últimos 4>.» o, sin renovación automática, «Tu plan vence el <fecha> y no se renovará. Renueva ahora para no quedar en solo lectura.»
 - Sin renovación automática y con un cambio programado (CA-7, CA-28): «Tu plan vence el <fecha> y no se renovará. Para renovar ahora, primero cancela el cambio a <plan>.», con «Cancelar cambio» y sin «Renovar ahora».
 - Vencida: «Tu suscripción venció. Puedes ver y descargar tus archivos, pero no subir ni editar. Renueva tu plan.»
-- Cambio programado: «Tu plan cambiará a <plan> el <fecha>.» con la acción «Cancelar cambio».
+- Cambio programado: «Tu plan cambiará a <plan> el <fecha>.» con la acción «Cancelar cambio». Si ese plan se desactivó (CA-29): «<plan> ya no está disponible: el <fecha> se renovará tu plan <actual>.» con la misma acción.
 
 ## 7. Fuera de alcance
 - Cobro proporcional (prorrateo) al cambiar de plan (`product-context.md` §9) y cambios de plan inmediatos.
@@ -138,3 +138,4 @@ programar un cambio de plan (subir, bajar o volver a Personal) que se aplica en 
 | 2026-10-18 | Sin cambio de comportamiento: el plan (§2, §7, §8 punto 3) describe lo implementado en la 010a (`isChargeable`, `BillingChargingModule`, módulos del `api`, tareas movidas a T-05, PD-63 dentro de la 010a) | Tercera verificación de Adrián, PR #63 (R-1) | Borrador (pendiente Adrián) |
 | 2026-10-18 | Renumeración sin cambio de contenido: ADR-0029 → **ADR-0032**, DF-70 → **DF-77** y PD-115 → **PD-120**, porque la 016 entró antes a `main` con esos números | N-1 del PR #63 (paso 3) | Borrador (pendiente Adrián) |
 | 2026-10-20 | RN-3: en solo lectura el interruptor se deshabilita y el valor rige desde la renovación manual; RN-11: la 010 aplica la solo lectura en el editor de la 016 (ya integrada) | Auditoría de Adrián, PR #69 (menor 4 y M-1) | Borrador (pendiente Adrián) |
+| 2026-10-20 | CA-29 y §6: el aviso del cambio programado dice que el plan ya no está disponible y con qué plan se renovará; «Próximo cobro» y el aviso previo usan el plan actual | Revisión de la 010 contra la auditoría del PR #69 (B-2) | Borrador (pendiente Adrián) |

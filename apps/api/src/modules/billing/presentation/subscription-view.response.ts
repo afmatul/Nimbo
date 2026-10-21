@@ -43,6 +43,7 @@ export const toSubscriptionView = (summary: SubscriptionSummary): SubscriptionVi
   status: summary.standing,
   autoRenew: summary.autoRenew,
   pendingPlan: summary.pendingPlan === null ? null : toPlanResponse(summary.pendingPlan),
+  pendingPlanDiscarded: summary.pendingPlanDiscarded,
   nextCharge: toNextChargeView(summary.nextCharge),
   renewal: toRenewalView(summary.renewal),
 });

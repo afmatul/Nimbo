@@ -82,6 +82,7 @@ describe('ajustes de la suscripción y su vista (spec 010 CA-6, CA-16 a CA-19, C
     expect(scheduled.body).toMatchObject({
       plan: { slug: 'equipo' },
       pendingPlan: { slug: 'pro' },
+      pendingPlanDiscarded: false,
       nextCharge: { planName: 'Pro' },
       renewal: { available: false, unavailableReason: 'PLAN_CHANGE_PENDING' },
     });
@@ -130,7 +131,10 @@ describe('ajustes de la suscripción y su vista (spec 010 CA-6, CA-16 a CA-19, C
 
     expect(history.status).toBe(200);
     expect(history.body).toMatchObject({
-      subscription: { nextCharge: { planName: 'Equipo', amountCents: 11_000 } },
+      subscription: {
+        pendingPlanDiscarded: true,
+        nextCharge: { planName: 'Equipo', amountCents: 11_000 },
+      },
     });
     await removeRetiredPlan(owner, retired.id);
   });

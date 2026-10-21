@@ -69,6 +69,8 @@ export const subscriptionViewSchema = z
     status: z.enum(['active', 'expiring', 'readOnly']),
     autoRenew: z.boolean(),
     pendingPlan: planSchema.nullable(),
+    /** CA-29: el plan programado se desactivó; al vencer se descarta y se renueva con `plan`. */
+    pendingPlanDiscarded: z.boolean(),
     nextCharge: nextChargeSchema.nullable(),
     renewal: renewalSchema.nullable(),
   })

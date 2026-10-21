@@ -32,6 +32,7 @@ const summaryOf = (plan: Plan, expiresAt: Date | null): SubscriptionSummary => (
   standing: 'active',
   autoRenew: true,
   pendingPlan: null,
+  pendingPlanDiscarded: false,
   nextCharge: null,
   renewal: null,
 });
