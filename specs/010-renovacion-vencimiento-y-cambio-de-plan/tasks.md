@@ -268,3 +268,11 @@ Antes de cada pantalla se leen sus capturas en `docs/design/capturas/`; las desv
   devuelve la carga (CA-10). Se verificó también en la base (transacciones `SIM-2026-000002` a `000006`). La pasada se
   corrió cada minuto (`SUBSCRIPTION_RENEWAL_INTERVAL_MINUTES=1`). En Fedora hay que etiquetar `infra/` para SELinux
   (`chcon -R -t container_file_t infra`) en un worktree nuevo, o Traefik no arranca.
+- **Auditoría del PR #70** (2026-10-21, 010a `a95dfdb`, 010b `11c8ff5` a `2cbf72d`): B-1, el pago de la renovación
+  usa `renewal.plan` de la API (sustituye a `planName` y `amountCents`, que nadie usaba) y se borra `renewedPlanOf`;
+  M-1, «Próximo cobro» solo habla de un cobro automático rechazado con la renovación encendida; M-2, el vacío del
+  explorador en solo lectura sin «Subir archivos»; M-3, `ReadOnlyActionsHint` en la papelera y la ficha, con pruebas;
+  M-4, `ToggleIntent` y `cardLabel` («Visa ···· 4242») como fuentes únicas. Menores: el periodo del aprobado sale del
+  recibo, `isPaid`, `EXPIRED_BANNER`, `PLANS_PATH`, `Switch` corto y el mensaje del arrastre por carpeta. El pago de
+  la renovación sigue sin barra lateral porque su mockup no la tiene (`sinBarra` en `generar-pago.js`): se corrigió el
+  comentario de `BillingPageLayout`. `PlanCard` queda como en `main` (011 PR-B), sin cambios de este PR.
