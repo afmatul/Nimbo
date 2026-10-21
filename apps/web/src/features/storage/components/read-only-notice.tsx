@@ -48,16 +48,23 @@ export function useReadOnlyUploads(
   placeKey: string | null,
 ): ReadOnlyUploads {
   const { readOnly } = useReadOnlyAccount();
-  const [blockedIn, setBlockedIn] = React.useState<{ readonly place: string | null } | null>(null);
-  const blockedDrop = blockedIn !== null && blockedIn.place === placeKey;
-  const block = (): void => setBlockedIn({ place: placeKey });
-  return { readOnly, blockedDrop, onFiles: readOnly ? block : onFiles };
+  const [blockedDrop, setBlockedDrop] = React.useState(false);
+  const [shownPlace, setShownPlace] = React.useState(placeKey);
+  if (shownPlace !== placeKey) {
+    // Al cambiar de carpeta se reinicia durante el render (patrón de React para estado derivado de una prop).
+    setShownPlace(placeKey);
+    setBlockedDrop(false);
+  }
+  return { readOnly, blockedDrop, onFiles: readOnly ? () => setBlockedDrop(true) : onFiles };
 }
 
 /** CA-14: la explicación en texto de las acciones deshabilitadas (explorador, papelera y ficha). Nada si está vigente. */
 export function ReadOnlyActionsHint(): React.JSX.Element | null {
   const { readOnly } = useReadOnlyAccount();
-  if (!readOnly) return null;
+  return readOnly ? <ReadOnlyHintText /> : null;
+}
+
+function ReadOnlyHintText(): React.JSX.Element {
   return <p className="text-sm text-secondary-foreground">{READ_ONLY_ACTIONS_HINT}</p>;
 }
 
@@ -69,7 +76,7 @@ export function ReadOnlyUploadFeedback({
   if (!readOnly) return null;
   return (
     <>
-      <ReadOnlyActionsHint />
+      <ReadOnlyHintText />
       {blockedDrop ? (
         <Alert variant="error">
           {messageForCode(STORAGE_ERROR_CODES.STORAGE_ACCOUNT_READ_ONLY)}

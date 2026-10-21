@@ -15,7 +15,6 @@ import { LoadMore } from './load-more';
 import { NodeSortMenu } from './node-sort-menu';
 import { NodeTable, type FolderDisclosure, type NodeTableProps } from './node-table';
 import { ReadOnlyUploadFeedback, useReadOnlyUploads } from './read-only-notice';
-import { useReadOnlyAccount } from './space-provider';
 import { UploadDropzone } from './upload-dropzone';
 
 export type FileExplorerStatus = 'loading' | 'ready' | 'error';
@@ -177,6 +176,7 @@ export function FileExplorer({
           renderRowActions={renderRowActions}
           disclosure={disclosure}
           controls={controls}
+          readOnly={uploads.readOnly}
         />
       </UploadDropzone>
     </section>
@@ -220,31 +220,22 @@ interface ExplorerBodyProps {
   readonly renderRowActions: FileExplorerProps['renderRowActions'] | undefined;
   readonly disclosure: FolderDisclosure | undefined;
   readonly controls: ListControls | undefined;
+  /** Spec 010 CA-14: la cuenta está en solo lectura. */
+  readonly readOnly: boolean;
 }
 
-function ExplorerBody({
-  status,
-  isRoot,
-  placeName,
-  nodes,
-  maxFileLabel,
-  onRetry,
-  onUpload,
-  renderRowActions,
-  disclosure,
-  controls,
-}: ExplorerBodyProps): React.JSX.Element {
+function ExplorerBody(props: ExplorerBodyProps): React.JSX.Element {
+  const { status, isRoot, nodes, controls } = props;
   if (status === 'loading') {
     const title = isRoot ? 'Cargando tus archivos…' : 'Cargando el contenido de la carpeta…';
     return <StateView type="loading" headingLevel="h2" title={title} />;
   }
   if (status === 'error') {
     const title = isRoot ? 'No pudimos cargar tus archivos.' : 'No pudimos abrir esta carpeta.';
-    return <ExplorerErrorState title={title} onRetry={onRetry} />;
+    return <ExplorerErrorState title={title} onRetry={props.onRetry} />;
   }
-  if (nodes.length === 0) {
-    return <EmptyExplorer isRoot={isRoot} maxFileLabel={maxFileLabel} onUpload={onUpload} />;
-  }
+  if (nodes.length === 0) return <EmptyExplorer {...props} />;
+  const { placeName, renderRowActions, disclosure } = props;
   const table = { nodes, placeName, renderRowActions, disclosure };
   return controls ? <ControlledList table={table} controls={controls} /> : <NodeTable {...table} />;
 }
@@ -302,28 +293,25 @@ const EMPTY_TEXTS = {
 /** Spec 010 CA-14: en solo lectura el vacío no invita a subir ni ofrece el botón (la carga está bloqueada). */
 const READ_ONLY_EMPTY_TEXT = 'Cuando renueves tu plan podrás subir documentos aquí.';
 
+/** Spec 010 CA-14: el vacío en solo lectura, sin el botón ni la invitación a subir. */
+function ReadOnlyEmpty({ title }: { readonly title: string }): React.JSX.Element {
+  return (
+    <StateView type="empty" headingLevel="h2" title={title} description={READ_ONLY_EMPTY_TEXT} />
+  );
+}
+
 function EmptyExplorer({
   isRoot,
   maxFileLabel,
+  readOnly,
   onUpload,
-}: {
-  readonly isRoot: boolean;
-  readonly maxFileLabel: string | undefined;
-  readonly onUpload: () => void;
-}): React.JSX.Element {
+}: Pick<
+  ExplorerBodyProps,
+  'isRoot' | 'maxFileLabel' | 'readOnly' | 'onUpload'
+>): React.JSX.Element {
   const canDrag = useCanDragFiles();
-  const { readOnly } = useReadOnlyAccount();
   const texts = isRoot ? EMPTY_TEXTS.root : EMPTY_TEXTS.folder;
-  if (readOnly) {
-    return (
-      <StateView
-        type="empty"
-        headingLevel="h2"
-        title={texts.title}
-        description={READ_ONLY_EMPTY_TEXT}
-      />
-    );
-  }
+  if (readOnly) return <ReadOnlyEmpty title={texts.title} />;
   const invitation = canDrag ? texts.withDrag : texts.withoutDrag;
   const limit =
     maxFileLabel === undefined ? '' : ` Tu plan permite hasta ${maxFileLabel} por archivo.`;

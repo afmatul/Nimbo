@@ -526,7 +526,7 @@ describe('MyFiles en solo lectura (spec 010 CA-13, CA-14, RN-6)', () => {
     expect(api.init).not.toHaveBeenCalled();
   });
 
-  it('CA-14: el mensaje del arrastre se borra al cambiar de carpeta', async () => {
+  it('CA-14: el mensaje del arrastre se borra al cambiar de carpeta y no vuelve al regresar (A → B → A)', async () => {
     const api = readOnlyApi();
     const tree = (folderId: string | null) => (
       <UploadsProvider api={api}>
@@ -545,6 +545,13 @@ describe('MyFiles en solo lectura (spec 010 CA-13, CA-14, RN-6)', () => {
     rerender(tree(ALPHA.id));
 
     await screen.findByText('acta.pdf');
+    expect(
+      screen.queryByText(/Tu suscripción venció y tu cuenta está en solo lectura\. Renueva/),
+    ).toBeNull();
+
+    rerender(tree(null));
+
+    await screen.findByText('raiz.pdf');
     expect(
       screen.queryByText(/Tu suscripción venció y tu cuenta está en solo lectura\. Renueva/),
     ).toBeNull();
