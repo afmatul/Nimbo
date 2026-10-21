@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Propuesto (2026-10-18); falta el acuerdo del equipo (Adrián). **Delimita** el alcance de la constitución Art. IX.6 y de la regla de CLAUDE.md «tokens y claves siempre como hash» |
+| Estado | Aceptado (2026-10-20, Adrián: aprobación de la spec 010, registrada en el plan 010 §8 el 2026-10-21); propuesto el 2026-10-18. **Delimita** el alcance de la constitución Art. IX.6 y de la regla de CLAUDE.md «tokens y claves siempre como hash» |
 | Fecha | 2026-10-18 |
 | Decisores | `architect` (revisión de M-2 del plan 010), Juan Marcos (dueño de `billing`), Adrián (aprueba) |
 | Specs relacionadas | 010 (RN-2, CA-1, CA-2; M-2 de la auditoría del PR #63); 009 (RN-9, `transaccion`) |

@@ -66,6 +66,6 @@ cubiertos porque ninguna ruta `GET` pasa por `WritableAccountPolicy`.
   mockups); **PD-86** cerrado.
 
 ## Condiciones antes del merge (proceso)
-1. Aprobación del plan por Adrián (plan §8) y aceptación de **ADR-0031** y **ADR-0032**, con sus documentos.
-2. Autorización de los cambios en módulos ajenos: `storage` y su web, `audit`, `shared` y `editing`.
+1. ✅ Plan aprobado por Adrián (2026-10-20) y **ADR-0031** y **ADR-0032** aceptados, con sus documentos (plan §8).
+2. ✅ Autorizados los cambios en módulos ajenos: `storage` y su web, `audit`, `shared` y `editing` (plan §8).
 3. Integrar en orden #63 → #69 → #70 (base del #70 a `main` después del #69).
