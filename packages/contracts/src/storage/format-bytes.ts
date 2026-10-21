@@ -1,7 +1,8 @@
 const [BYTE_UNIT, ...LARGER_UNITS] = ['B', 'KB', 'MB', 'GB', 'TB'] as const;
 const BASE = 1000;
 
-function round1(value: number): number {
+/** Redondea a un decimal (el que muestran los tamaños y los porcentajes de la UI). */
+export function round1(value: number): number {
   return Math.round(value * 10) / 10;
 }
 

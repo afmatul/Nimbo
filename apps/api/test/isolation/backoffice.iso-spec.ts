@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { listAuditEventsResponseSchema } from '@nimbo/contracts';
 import type { AuditEventResponse } from '@nimbo/contracts';
 import request from 'supertest';
@@ -5,11 +7,15 @@ import type { Response, Test } from 'supertest';
 import type { DataSource } from 'typeorm';
 
 import { AuditAction } from '../../src/modules/audit';
+import { NotificationsWorkerModule } from '../../src/modules/notifications';
 import { createActor, I_TRANSACTION_RUNNER, Role, TransactionContext } from '../../src/shared';
 import type { Actor, ITransactionRunner } from '../../src/shared';
+import { setupTokenSentTo } from '../int/identity/identity-test-app';
 import { buildTestEnv } from '../int/setup/test-app';
 import type { TestApp } from '../int/setup/test-app';
+import { removeAccounts } from '../int/storage/storage-test-db';
 import { connectAsOwner } from '../support/database-urls';
+import { uniqueEmployeeCode } from '../support/employee-codes';
 import { createFullApiTestApp } from '../support/full-api-test-app';
 
 import { INTERNAL_ROLES } from './setup/isolation-assertions';
@@ -22,7 +28,12 @@ import type {
 } from './setup/isolation-world';
 
 const CLIENT_FILES = '/api/v1/backoffice/client-files';
+const ACCOUNTS = '/api/v1/backoffice/accounts';
+const METRICS = '/api/v1/backoffice/metrics';
+const PLANS = '/api/v1/backoffice/plans';
 const MY_EVENTS = '/api/v1/audit/my-events';
+/** Nombre de los planes que crea la suite: se borran al final (la base es compartida con otras suites). */
+const PLAN_NAME_PREFIX = 'Plan del aislamiento ';
 /** A y B tienen archivos con los mismos nombres: nada los distingue salvo el dueño. */
 const TWIN_NAMES = ['Contrato.txt', 'Contrato (1).txt'];
 /** Marcas de una URL (firmada o no) que ninguna respuesta del backoffice puede traer. */
@@ -51,6 +62,12 @@ interface BackofficeRoute {
   readonly keys: readonly string[];
   /** La petición sin el token, que pone la tabla. */
   readonly request: (http: Http, target: WorldAccount) => Test;
+  /** Estado en que la fila necesita a A antes de la petición (como el dueño); tras cada prueba, A vuelve a `activa`. */
+  readonly targetStatus?: 'suspendida';
+  /** Precondición de la fila: deja listo lo que la petición necesita (además del estado de A). */
+  readonly prepare?: () => Promise<void>;
+  /** Respuesta de éxito si no es `200` (el alta responde `201`). */
+  readonly successStatus?: number;
 }
 
 const CLIENT_FILES_ROUTE: BackofficeRoute = {
@@ -63,8 +80,135 @@ const CLIENT_FILES_ROUTE: BackofficeRoute = {
   request: (http, target) => http.get(CLIENT_FILES).query({ email: target.email }),
 };
 
-/** Cada acción de la 011 (CA-15): T-10 y T-11 suman aquí cuentas, métricas y catálogo. */
-const ROUTES: readonly BackofficeRoute[] = [CLIENT_FILES_ROUTE];
+/** Una cuenta en la lista y en la ficha (CA-1): sin ningún dato de archivos. */
+const ACCOUNT_KEYS = [
+  ...['id', 'email', 'fullName', 'role', 'status', 'emailVerified'],
+  ...['planName', 'usedBytes', 'createdAt', 'isSelf'],
+];
+
+/** Correos de las altas que intenta la tabla: las que sí se crean se borran al final (y su correo se consume). */
+const enrolledEmails: string[] = [];
+
+/** Cuentas (CA-1 a CA-6), solo el Administrador; cada fila arma su precondición y no depende del orden. */
+const ACCOUNT_ROUTES: readonly BackofficeRoute[] = [
+  {
+    route: `GET ${ACCOUNTS}`,
+    allowed: [Role.ADMIN],
+    keys: ['items', 'page', 'pageSize', 'total', ...ACCOUNT_KEYS],
+    request: (http, target) => http.get(ACCOUNTS).query({ email: target.email }),
+  },
+  {
+    route: `GET ${ACCOUNTS}/:id`,
+    allowed: [Role.ADMIN],
+    keys: ACCOUNT_KEYS,
+    request: (http, target) => http.get(`${ACCOUNTS}/${target.id}`),
+  },
+  {
+    route: `POST ${ACCOUNTS}/:id/suspension`,
+    allowed: [Role.ADMIN],
+    keys: ACCOUNT_KEYS,
+    request: (http, target) => http.post(`${ACCOUNTS}/${target.id}/suspension`),
+  },
+  {
+    route: `DELETE ${ACCOUNTS}/:id/suspension`,
+    allowed: [Role.ADMIN],
+    keys: ACCOUNT_KEYS,
+    request: (http, target) => http.delete(`${ACCOUNTS}/${target.id}/suspension`),
+    targetStatus: 'suspendida',
+  },
+  {
+    route: `POST ${ACCOUNTS}`,
+    allowed: [Role.ADMIN],
+    keys: ACCOUNT_KEYS,
+    request: (http) => {
+      const email = `alta-${randomUUID()}@ejemplo.com`;
+      enrolledEmails.push(email);
+      return http.post(ACCOUNTS).send({
+        fullName: 'Sofía Ramírez',
+        email,
+        employeeCode: uniqueEmployeeCode(),
+        role: Role.SUPPORT,
+      });
+    },
+    successStatus: 201,
+  },
+];
+
+/** Métricas (CA-12): Administrador y Operador; solo totales y conteos, nunca filas de una cuenta. */
+const METRICS_ROUTE: BackofficeRoute = {
+  route: `GET ${METRICS}`,
+  allowed: [Role.ADMIN, Role.OPERATOR],
+  keys: [
+    ...['accounts', 'total', 'clients', 'internal', 'byStatus', 'active', 'suspended'],
+    ...['usedBytesTotal', 'byPlan', 'planId', 'name', 'deactivatedAt', 'clientCount'],
+  ],
+  request: (http) => http.get(METRICS),
+};
+
+/** Un plan del catálogo y su conteo de cuentas: ningún dato de una cuenta (CA-8). */
+const PLAN_KEYS = [
+  ...['id', 'slug', 'name', 'description', 'priceCents'],
+  ...[
+    'quotaBytes',
+    'maxFileBytes',
+    'maxEditors',
+    'agentQueriesPerMonth',
+    'retainedVersions',
+    'trashRetentionDays',
+  ],
+  ...['deactivatedAt', 'clientCount', 'isDefault'],
+];
+
+/** Plan que la suite desactiva (se crea en `beforeAll` y se borra al final). */
+let catalogPlanId = '';
+/** Conexión del dueño, para dejar lista la precondición de la fila. */
+let db: DataSource | null = null;
+
+/** Catálogo (CA-8 a CA-11): solo el Administrador; un plan no trae datos de ninguna cuenta. */
+const PLAN_ROUTES: readonly BackofficeRoute[] = [
+  {
+    route: `GET ${PLANS}`,
+    allowed: [Role.ADMIN],
+    keys: ['items', ...PLAN_KEYS],
+    request: (http) => http.get(PLANS),
+  },
+  {
+    route: `POST ${PLANS}`,
+    allowed: [Role.ADMIN],
+    keys: PLAN_KEYS,
+    request: (http) =>
+      http.post(PLANS).send({
+        name: `${PLAN_NAME_PREFIX}${randomUUID().slice(0, 8)}`,
+        description: 'Plan sembrado por la suite de aislamiento',
+        priceCents: 4500,
+        quotaBytes: '107374182400',
+        maxFileBytes: '524288000',
+        maxEditors: 3,
+        agentQueriesPerMonth: 500,
+        retainedVersions: 30,
+        trashRetentionDays: 30,
+      }),
+    successStatus: 201,
+  },
+  {
+    route: `POST ${PLANS}/:id/deactivation`,
+    allowed: [Role.ADMIN],
+    keys: PLAN_KEYS,
+    request: (http) => http.post(`${PLANS}/${catalogPlanId}/deactivation`),
+    // Un plan desactivado no se reactiva (RN-4): la suite lo deja activo antes de cada petición.
+    prepare: async () => {
+      await db?.query('UPDATE plan SET desactivado_en = NULL WHERE id = $1', [catalogPlanId]);
+    },
+  },
+];
+
+/** Cada acción de la 011 (CA-15): T-11 suma aquí el catálogo. */
+const ROUTES: readonly BackofficeRoute[] = [
+  CLIENT_FILES_ROUTE,
+  ...ACCOUNT_ROUTES,
+  METRICS_ROUTE,
+  ...PLAN_ROUTES,
+];
 
 /** Pares rol × ruta según la matriz: los que la ruta admite o los que rechaza (CA-14). */
 const casesWhere = (admitted: boolean): [InternalRole, string, BackofficeRoute][] =>
@@ -98,13 +242,35 @@ describe('aislamiento del backoffice (011 CA-15, CA-16)', () => {
   let b: WorldAccount;
   let filesA: WorldFile[];
   let filesB: WorldFile[];
-  /** Claves de objeto e ids de versión de A y B, ids de archivos de B y marcas de URL. */
+  /** Claves de objeto e ids de versión de A y B, la cuenta de B (id y correo), ids de sus archivos y marcas de URL. */
   let forbidden: string[];
 
   const send = (account: WorldAccount, row: BackofficeRoute): Test =>
     row
       .request(request(testApp.app.getHttpServer()), a)
       .set('Authorization', `Bearer ${world.tokenFor(account)}`);
+
+  const setStatusOfA = (status: 'activa' | 'suspendida'): Promise<unknown> =>
+    owner.query('UPDATE usuario SET estado = $1 WHERE id = $2', [status, a.id]);
+
+  /** La precondición de la fila y la petición. */
+  const sendPrepared = async (account: WorldAccount, row: BackofficeRoute): Promise<Response> => {
+    if (row.targetStatus !== undefined) await setStatusOfA(row.targetStatus);
+    if (row.prepare !== undefined) await row.prepare();
+    return send(account, row);
+  };
+
+  /** Consume el correo de cada alta creada (nada queda en camino hacia otra suite) y borra las cuentas. */
+  const removeEnrolled = async (): Promise<void> => {
+    const rows = (await owner.query('SELECT id, correo FROM usuario WHERE correo = ANY($1)', [
+      enrolledEmails,
+    ])) as { id: string; correo: string }[];
+    for (const row of rows) await setupTokenSentTo(row.correo);
+    await removeAccounts(
+      owner,
+      rows.map((row) => row.id),
+    );
+  };
 
   const leakedIn = (response: Response): string[] => {
     const serialized = JSON.stringify(response.body);
@@ -124,34 +290,55 @@ describe('aislamiento del backoffice (011 CA-15, CA-16)', () => {
     // Centinela: sin versiones sembradas, ISO-1 pasaría en vacío.
     expect(rows.length).toBeGreaterThan(0);
     const versions = rows.flatMap((row) => [row.id, row.clave_objeto]);
-    return [...versions, ...filesB.map((file) => file.id), ...URL_MARKERS];
+    return [...versions, b.id, b.email, ...filesB.map((file) => file.id), ...URL_MARKERS];
   };
 
   beforeAll(async () => {
     world = await createIsolationWorld();
-    testApp = await createFullApiTestApp(buildTestEnv(world.appComposition().env));
+    testApp = await createFullApiTestApp(
+      buildTestEnv(world.appComposition().env, { withWorkerEnv: true }),
+      [NotificationsWorkerModule],
+    );
     owner = await connectAsOwner();
+    db = owner;
     [a, b] = world.clients;
     filesA = await world.withFiles(testApp, a, TWIN_NAMES);
     filesB = await world.withFiles(testApp, b, TWIN_NAMES);
     await world.withUploads(testApp, a, UPLOADS_PER_CLIENT);
     await world.withUploads(testApp, b, UPLOADS_PER_CLIENT);
     forbidden = await forbiddenValues();
+    const [plan] = (await owner.query(
+      `INSERT INTO plan (nombre, slug, descripcion, precio_centavos, cuota_bytes, max_archivo_bytes, max_editores,
+                         consultas_agente_mensual, versiones_retenidas, dias_retencion_papelera)
+       SELECT $1, $1, descripcion, precio_centavos, cuota_bytes, max_archivo_bytes, max_editores,
+              consultas_agente_mensual, versiones_retenidas, dias_retencion_papelera
+         FROM plan WHERE slug = 'equipo'
+       RETURNING id`,
+      [`${PLAN_NAME_PREFIX}${randomUUID().slice(0, 8)}`],
+    )) as { id: string }[];
+    if (plan === undefined) throw new Error('no se pudo sembrar el plan de la suite');
+    catalogPlanId = plan.id;
   });
 
   afterAll(async () => {
+    await removeEnrolled();
+    await owner?.query('DELETE FROM plan WHERE nombre LIKE $1', [`${PLAN_NAME_PREFIX}%`]);
     await testApp?.close();
     await owner?.destroy();
     await world?.close();
   });
 
   describe('rol interno × ruta (CA-14, CA-15)', () => {
+    afterEach(async () => {
+      await setStatusOfA('activa');
+    });
+
     it.each(casesWhere(true))(
       'ISO-1 (CA-15): %s no puede recibir contenido, texto, URL, clave de objeto ni versiones por `%s`',
       async (role, _route, row) => {
-        const response = await send(world.internals[role], row);
+        const response = await sendPrepared(world.internals[role], row);
 
-        expect(response.status).toBe(200);
+        expect(response.status).toBe(row.successStatus ?? 200);
         expect(keysOf(response.body).filter((key) => !row.keys.includes(key))).toEqual([]);
         expect(leakedIn(response)).toEqual([]);
       },
@@ -160,7 +347,7 @@ describe('aislamiento del backoffice (011 CA-15, CA-16)', () => {
     it.each(casesWhere(false))(
       'ISO-2 (CA-14): %s no puede usar `%s`: 403',
       async (role, _route, row) => {
-        const response = await send(world.internals[role], row);
+        const response = await sendPrepared(world.internals[role], row);
 
         expect({ status: response.status, code: response.body.code }).toEqual({
           status: 403,
@@ -182,6 +369,19 @@ describe('aislamiento del backoffice (011 CA-15, CA-16)', () => {
         { targetUserId: a.id, actorId: world.internals[Role.SUPPORT].id },
       ]);
     });
+
+    it.each(METRICS_ROUTE.allowed)(
+      'ISO-3 (CA-12, CA-15): %s no puede recibir en las métricas el id ni el correo de A ni de B',
+      async (role) => {
+        const response = await send(world.internals[role], METRICS_ROUTE);
+        expect(response.status).toBe(200);
+        const serialized = JSON.stringify(response.body);
+
+        expect(
+          [a.id, a.email, b.id, b.email].filter((value) => serialized.includes(value)),
+        ).toEqual([]);
+      },
+    );
 
     it.each(CLIENT_FILES_ROUTE.allowed)(
       'ISO-3 (CA-13, CA-15): %s no puede ver archivos de B consultando por A: solo los ids de A',
