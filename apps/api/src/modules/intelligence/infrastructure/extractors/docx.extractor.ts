@@ -9,8 +9,8 @@ import {
   attributeOf,
   childNamed,
   childrenOf,
+  elementText,
   tagOf,
-  textOf,
   type XmlNode,
 } from './ooxml-reader';
 
@@ -70,10 +70,7 @@ function paragraphText(node: XmlNode): string {
   if (tag === undefined || SKIPPED_TAGS.has(tag)) return '';
   const runText = RUN_TEXT[tag];
   if (runText !== undefined) return runText;
-  if (tag === 'w:t')
-    return childrenOf(node)
-      .map((child) => textOf(child) ?? '')
-      .join('');
+  if (tag === 'w:t') return elementText(node);
   return childrenOf(node).map(paragraphText).join('');
 }
 

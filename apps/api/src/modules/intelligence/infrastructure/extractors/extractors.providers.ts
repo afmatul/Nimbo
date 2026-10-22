@@ -11,12 +11,16 @@ import { ChildProcessRunner } from '../process/child-process.runner';
 import { DocxExtractor } from './docx.extractor';
 import { GHOSTSCRIPT_CONFIG, type GhostscriptConfig, PdfExtractor } from './pdf.extractor';
 import { PlainTextExtractor } from './plain-text.extractor';
+import { PptxExtractor } from './pptx.extractor';
+import { XlsxExtractor } from './xlsx.extractor';
 
-/** Extractores registrados: sumar un formato es una línea aquí (`.xlsx`/`.pptx` en T-12). */
+/** Extractores registrados: sumar un formato es una línea aquí. */
 const TEXT_EXTRACTORS: readonly Type<ITextExtractor>[] = [
   DocxExtractor,
   PdfExtractor,
   PlainTextExtractor,
+  XlsxExtractor,
+  PptxExtractor,
 ];
 
 /**

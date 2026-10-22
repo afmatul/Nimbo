@@ -17,12 +17,14 @@ const compile = (bin: string | null) =>
   }).compile();
 
 describe('EXTRACTOR_PROVIDERS', () => {
-  it('CA-1, CA-2, CA-3, CA-6: arma el registro con `.docx`, `.pdf` y texto; imágenes y «otros» no son indexables', async () => {
+  it('CA-1, CA-2, CA-3, CA-6: arma el registro con `.docx`, `.pdf`, texto, `.xlsx` y `.pptx`; imágenes y «otros» no son indexables', async () => {
     const registry = (await compile('gs')).get(ExtractorRegistry);
 
     expect(registry.supports('docx')).toBe(true);
     expect(registry.supports('pdf')).toBe(true);
     expect(registry.supports('texto')).toBe(true);
+    expect(registry.supports('xlsx')).toBe(true);
+    expect(registry.supports('pptx')).toBe(true);
     expect(registry.supports('imagen')).toBe(false);
     expect(registry.supports('otro')).toBe(false);
   });
