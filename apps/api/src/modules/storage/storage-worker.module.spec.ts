@@ -1,11 +1,13 @@
 import { getQueueToken } from '@nestjs/bullmq';
 import type { DynamicModule, Provider, ValueProvider } from '@nestjs/common';
 
+import { I_DOMAIN_EVENT_PUBLISHER } from '../../shared';
 import { AuditModule } from '../audit';
 
 import { FileVersionService } from './application/file-version.service';
 import { FOLDER_CONFIG } from './application/folder-config';
 import type { FolderConfig } from './application/folder-config';
+import { IndexableFileGateway } from './application/indexable-file.gateway';
 import { I_PLAN_LIMITS_PROVIDER } from './application/plan-limits';
 import { I_CLIENT_ACCOUNT_SCANNER } from './application/ports/i-client-account.scanner.port';
 import { I_EXPIRED_TRASH_SCANNER } from './application/ports/i-expired-trash.scanner.port';
@@ -134,9 +136,15 @@ describe('StorageWorkerModule', () => {
     expect(() => config.maxDepth).toThrow(/worker/);
   });
 
-  it('CA-9, 009 decisión 1: es solo de trabajo: sin controladores y solo exporta `I_OBJECT_STORAGE` (factura PDF)', () => {
+  it('CA-9, 009 decisión 1, 019: es solo de trabajo: sin controladores; exporta `I_OBJECT_STORAGE` (factura PDF) y la fachada de indexación', () => {
     expect(module.controllers ?? []).toEqual([]);
-    expect(module.exports ?? []).toEqual([I_OBJECT_STORAGE]);
+    expect(module.exports ?? []).toEqual([I_OBJECT_STORAGE, IndexableFileGateway]);
+  });
+
+  it('019 RN-11: comparte el publicador de eventos de `FileVersionService` con el `api`', () => {
+    expect(providers.map(tokenOf)).toEqual(
+      expect.arrayContaining([I_DOMAIN_EVENT_PUBLISHER, IndexableFileGateway]),
+    );
   });
 
   it('RN-1, DF-51: no enlaza `I_PLAN_LIMITS_PROVIDER` (lo hace la raíz de composición del `worker`)', () => {

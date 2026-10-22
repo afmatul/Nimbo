@@ -10,6 +10,7 @@ import { BackofficeModule } from './modules/backoffice';
 import { BillingHttpModule } from './modules/billing';
 import { EditingModule } from './modules/editing';
 import { IDENTITY_THROTTLERS, IdentityModule } from './modules/identity';
+import { IntelligenceModule } from './modules/intelligence';
 import { NotificationsModule } from './modules/notifications';
 import { RealtimeModule } from './modules/realtime';
 import { StorageModule } from './modules/storage';
@@ -40,7 +41,8 @@ import { UserDirectoryBindingModule } from './user-directory-binding.module';
  * `identity` y `storage` para no instanciarlos dos veces, el canal en vivo (015), al que se le pasa la misma instancia
  * de `IdentityModule` para resolver `I_ACCESS_TOKEN_VERIFIER` sin que `realtime` importe `identity` (Nest deduplica el
  * módulo dinámico por referencia) y la edición (016), que recibe así las mismas instancias de `StorageModule` y de
- * `RealtimeModule`;
+ * `RealtimeModule`, y la indexación (019), que escucha `storage.file-version-created` y recibe la misma instancia de
+ * `RealtimeModule` para el aviso en vivo;
  * `IUserDirectory` lo enlaza `UserDirectoryBindingModule` con la de `IdentityModule`.
  */
 @Module({})
@@ -75,6 +77,7 @@ export class AppModule {
         BackofficeModule.forRoot(identity, storage),
         realtime,
         EditingModule.forRoot(env, { storage, realtime }),
+        IntelligenceModule.forRoot(env, { realtime }),
       ],
       providers: [PingQueue],
     };

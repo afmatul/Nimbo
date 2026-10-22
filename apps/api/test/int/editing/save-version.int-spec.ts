@@ -1,6 +1,9 @@
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JwtService } from '@nestjs/jwt';
 
 import { editedVersionIdOf } from '../../../src/modules/editing/domain/edited-version-id';
+import { FILE_VERSION_CREATED } from '../../../src/modules/storage';
+import type { FileVersionCreatedEvent } from '../../../src/modules/storage';
 import { collectEvents, settle } from '../realtime/realtime-test-app';
 import { waitForLog } from '../setup/wait-for-log';
 import { usedBytesOf } from '../storage/storage-http';
@@ -119,7 +122,11 @@ describe('guardado firmado: aviso → cola → versión (016 CA-9 a CA-13, CA-16
       [sessionId],
     );
 
-  it('CA-9, CA-12: el aviso de estado 2 responde sin procesar en la petición y deja una versión vigente `edicion` con quien abrió, sus autores y la reindexación encolada', async () => {
+  it('CA-9, CA-12 (019 RN-11): el aviso de estado 2 responde sin procesar en la petición y deja una versión vigente `edicion` con quien abrió y sus autores, anunciada por `storage` para reindexarla', async () => {
+    const announced: FileVersionCreatedEvent[] = [];
+    storage()
+      .testApp.app.get(EventEmitter2)
+      .on(FILE_VERSION_CREATED, (event: FileVersionCreatedEvent) => announced.push(event));
     const ana = await storage().newClient();
     const bea = await storage().newClient();
     const socket = await editing.connect(ana.id);
@@ -154,8 +161,8 @@ describe('guardado firmado: aviso → cola → versión (016 CA-9 a CA-13, CA-16
     expect((await participantsOf(session.sessionId)).map((row) => row.usuario_id).sort()).toEqual(
       [ana.id, bea.id].sort(),
     );
-    const indexJob = await editing.queue('indexing').getJob(versionId);
-    expect(indexJob?.data).toMatchObject({ fileId, versionId });
+    expect(announced).toContainEqual({ fileId, versionId, ownerId: ana.id, kind: 'docx' });
+    expect(() => editing.queue('indexing')).toThrow();
     await settle();
     expect(saved).toEqual([{ sessionId: session.sessionId }]);
     const lines = storage().testApp.logs.lines();

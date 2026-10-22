@@ -1,3 +1,5 @@
 // API pública del módulo `intelligence`. Otros módulos importan solo desde aquí (Art. VIII.3, CA-5).
-// La 019 agrega `IntelligenceModule` (T-05) e `IntelligenceWorkerModule` (T-06); nada de infraestructura se exporta.
-export {};
+// Solo los módulos que montan las raíces de composición; nada de infraestructura se exporta. El `worker` suma
+// `IntelligenceWorkerModule` en la T-06.
+export { IntelligenceModule } from './intelligence.module';
+export type { IntelligenceDependencies, IntelligenceEnv } from './intelligence.module';

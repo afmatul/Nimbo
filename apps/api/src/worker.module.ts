@@ -1,6 +1,7 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import type { z } from 'zod';
 
 import { BillingWorkerModule } from './modules/billing';
@@ -43,6 +44,8 @@ export const WORKER_QUEUES = [
  * cargas vencidas (005 D-6), la purga de la papelera (006) y la conciliación de espacio (007) de `storage`, y la
  * conciliación de suscripciones y el reintento de facturas sin PDF o sin aviso (`invoice-retry`) de `billing` (009),
  * con la configuración de MinIO y el enlace de `I_PLAN_LIMITS_PROVIDER` de la raíz (DF-51: `storage` no conoce a `billing`; `expire` no lo usa, pero `UploadService` lo pide).
+ * Los eventos en proceso (ADR-0019) los pide `FileVersionService`, que `storage` comparte con el `api` y que desde 019
+ * anuncia cada versión vigente (RN-11); en el `worker` aún nadie registra versiones ni escucha (plan 019 §7 punto 7).
  */
 @Module({})
 export class WorkerModule {
@@ -57,6 +60,7 @@ export class WorkerModule {
         SharedModule,
         HealthModule.forRoot({ indicators: [RedisHealthIndicator] }),
         BullModule.registerQueue({ name: PING_QUEUE }),
+        EventEmitterModule.forRoot(),
         NotificationsWorkerModule,
         PlanLimitsBindingModule,
         storage,

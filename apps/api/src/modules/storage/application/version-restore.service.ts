@@ -18,6 +18,7 @@ import { ObjectKey } from '../domain/object-key';
 import type { VersionEntry } from '../domain/version-history';
 
 import { FileVersionService } from './file-version.service';
+import type { RegisteredVersion } from './file-version.service';
 import { I_PLAN_LIMITS_PROVIDER } from './plan-limits';
 import type { IPlanLimitsProvider, PlanLimits } from './plan-limits';
 import { I_NODE_REPOSITORY } from './ports/i-node.repository.port';
@@ -59,6 +60,12 @@ interface CopiedObject {
   readonly objectKey: ObjectKey;
 }
 
+/** La versión registrada con su archivo (para anunciarla y podar) y la entrada del historial que se responde. */
+interface Restoration {
+  readonly registered: RegisteredVersion;
+  readonly entry: VersionEntry;
+}
+
 /**
  * Restaurar una versión (plan 014 §1, CA-9 a CA-12): crea una versión **nueva** de origen `restauracion` con el
  * contenido de una retenida; ninguna existente cambia. Tasa propia antes de resolver el archivo (sin oráculo) →
@@ -95,8 +102,8 @@ export class VersionRestoreService {
     const copy = { id, objectKey: ObjectKey.of(file.ownerId, file.id, id) };
     const copied = await this.objects.copyObject(source.objectKey.value, copy.objectKey.value);
     if (!copied) await this.rejectMissingSource(actor, request);
-    const entry = await this.registerCopy(actor, request, copy);
-    await this.fileVersions.afterCommit(actor, file.id);
+    const { registered, entry } = await this.registerCopy(actor, request, copy);
+    await this.fileVersions.afterCommit(actor, registered);
     await this.recordRestored(actor, entry.version, source.number);
     return entry;
   }
@@ -126,7 +133,7 @@ export class VersionRestoreService {
     actor: Actor,
     request: RestoreRequest,
     copy: CopiedObject,
-  ): Promise<VersionEntry> {
+  ): Promise<Restoration> {
     try {
       return await this.transactions.withActor(actor, () =>
         this.registerRestoration(actor, request, copy),
@@ -142,16 +149,17 @@ export class VersionRestoreService {
     actor: Actor,
     request: RestoreRequest,
     copy: CopiedObject,
-  ): Promise<VersionEntry> {
+  ): Promise<Restoration> {
     await this.quotas.lockUsage(actor);
     const { file, source } = await this.resolveRestorable(actor, request);
     const now = this.clock.now();
-    const { version } = await this.fileVersions.register(actor, {
+    const registered = await this.fileVersions.register(actor, {
       file,
       buildVersion: (number) =>
         FileVersion.fromRestoration(source, { ...copy, createdBy: actor.id, number, now }),
     });
-    return { version, deltaBytes: version.sizeBytes - file.sizeBytes };
+    const { version } = registered;
+    return { registered, entry: { version, deltaBytes: version.sizeBytes - file.sizeBytes } };
   }
 
   /** Compensación de mejor esfuerzo: un fallo se registra (sin la clave) y no tapa el error original. */

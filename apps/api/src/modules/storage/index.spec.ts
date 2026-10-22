@@ -8,6 +8,7 @@ import type { FileKind } from './domain/file-kind';
 import * as storage from './index';
 import type {
   FileMetadata,
+  FileVersionCreatedEvent,
   FileMetadataPage,
   INodeMetadataReader,
   IPlanLimitsProvider,
@@ -59,6 +60,18 @@ type _FileMetadataShape = Expect<
     }
   >
 >;
+/** 019 plan §4: el evento lleva archivo, versión, propietario y tipo; sin nombre ni clave de objeto. */
+type _FileVersionCreatedShape = Expect<
+  Equal<
+    FileVersionCreatedEvent,
+    {
+      readonly fileId: string;
+      readonly versionId: string;
+      readonly ownerId: string;
+      readonly kind: FileKind;
+    }
+  >
+>;
 type _ListForOwnerSignature = Expect<
   Equal<
     INodeMetadataReader['listForOwner'],
@@ -75,10 +88,14 @@ type _ListForOwnerSignature = Expect<
  * composición del `api` y el del `worker` (T-51), desde 011 (PD-31) el token del lector de metadatos que consume
  * `backoffice`, el token de `IObjectStorage` para la factura PDF de `billing` (009, decisión 1) y, desde 016, la
  * fachada `EditableFileGateway` para `editing` con el 404 uniforme de un nodo (`NodeNotFoundError`, 005 CA-16:
- * `editing` responde igual que `storage`). El detector, el escáner y los repositorios no salen.
+ * `editing` responde igual que `storage`). Desde 019, el evento `storage.file-version-created` (ADR-0019: lo exporta
+ * el productor) y la fachada `IndexableFileGateway` para `intelligence`. El detector, el escáner y los repositorios
+ * no salen.
  */
 const RUNTIME_EXPORTS = [
   'EditableFileGateway',
+  'FILE_VERSION_CREATED',
+  'IndexableFileGateway',
   'I_NODE_METADATA_READER',
   'I_OBJECT_STORAGE',
   'I_PLAN_LIMITS_PROVIDER',
@@ -89,7 +106,8 @@ const RUNTIME_EXPORTS = [
 ] as const;
 
 describe('modules/storage/index.ts', () => {
-  it('CA-3, CA-4, CA-9, RN-1, 011 PD-31, 009, 016 §2: exporta exactamente los tokens de límites, de metadatos y de objetos, los dos módulos y la fachada de edición', () => {
+  it('CA-3, CA-4, CA-9, RN-1, 011 PD-31, 009, 016 §2, 019 RN-11: exporta exactamente los tokens de límites, de metadatos y de objetos, los dos módulos, las fachadas de edición e indexación y el evento de versión', () => {
+    expect(storage.FILE_VERSION_CREATED).toBe('storage.file-version-created');
     expect(Object.keys(storage).sort()).toEqual([...RUNTIME_EXPORTS].sort());
     expect(typeof storage.I_PLAN_LIMITS_PROVIDER).toBe('symbol');
     expect(typeof storage.I_NODE_METADATA_READER).toBe('symbol');

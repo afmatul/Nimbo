@@ -4,6 +4,7 @@ import { Readable } from 'node:stream';
 import { FakePlanLimitsProvider } from '../../../../test/support/fake-plan-limits.provider';
 import {
   FakeAuditLogger,
+  FakeDomainEventPublisher,
   FakeFileTypeDetector,
   FakeNodeRepository,
   FakeObjectStorage,
@@ -14,6 +15,7 @@ import {
 import { FakeVersionRepository, seedVersionedFile } from '../../../../test/support/version-fakes';
 import { createActor, FixedClock, Role } from '../../../shared';
 import type { Actor } from '../../../shared';
+import { FILE_VERSION_CREATED } from '../domain/file-version-created.event';
 import { ObjectKey } from '../domain/object-key';
 
 import { EditedVersionRegistrar } from './edited-version.registrar';
@@ -55,7 +57,8 @@ function setup() {
     audit,
     logger,
   );
-  const fileVersions = new FileVersionService(quotas, versions, nodes, pruner, logger);
+  const events = new FakeDomainEventPublisher(journal);
+  const fileVersions = new FileVersionService(quotas, versions, nodes, pruner, events, logger);
   const registrar = new EditedVersionRegistrar(
     transactions,
     nodes,
@@ -67,7 +70,7 @@ function setup() {
     new FixedClock(NOW),
   );
   const file = seedVersionedFile({ nodes, versions, objects }, ANA, [100n, 200n]);
-  return { journal, quotas, nodes, versions, objects, detector, registrar, file };
+  return { journal, quotas, nodes, versions, objects, detector, events, registrar, file };
 }
 
 const inputFor = (fileId: string, content: Buffer = EDITED): EditedVersionInput => ({
@@ -123,6 +126,7 @@ describe('EditedVersionRegistrar (plan 016 §2, ADR-0012)', () => {
 
     expect(again).toEqual({ status: 'duplicate', versionId: input.versionId });
     expect(versions.numbersOf(file.id)).toEqual([1, 2, 3]);
+    expect(journal.entries).not.toContain(`events:${FILE_VERSION_CREATED}`);
     expect(journal.entries).not.toContain('storage:putObjectStream');
   });
 
@@ -159,12 +163,43 @@ describe('EditedVersionRegistrar (plan 016 §2, ADR-0012)', () => {
   });
 
   it('Art. XI: si la transacción falla, el error sigue (el trabajo reintenta) y el objeto subido se borra', async () => {
-    const { registrar, file, objects, quotas } = setup();
+    const { registrar, file, objects, quotas, events } = setup();
     jest.spyOn(quotas, 'addUsedBytes').mockRejectedValueOnce(new Error('BD caída'));
     const input = inputFor(file.id);
 
     await expect(registrar.register(ANA, input)).rejects.toThrow('BD caída');
 
+    expect(events.published).toEqual([]);
     expect(objects.purged).toEqual([ObjectKey.of(ANA.id, file.id, input.versionId).value]);
+  });
+
+  it('019 RN-11: la versión editada se anuncia después del commit, con el propietario y el tipo', async () => {
+    const { registrar, file, events, journal } = setup();
+    const input = inputFor(file.id);
+
+    await registrar.register(ANA, input);
+
+    expect(events.published).toEqual([
+      {
+        name: FILE_VERSION_CREATED,
+        payload: { fileId: file.id, versionId: input.versionId, ownerId: ANA.id, kind: 'docx' },
+      },
+    ]);
+    const commit = journal.entries.indexOf('tx:end', journal.indexOf('quota:addUsedBytes'));
+    expect(journal.indexOf(`events:${FILE_VERSION_CREATED}`)).toBeGreaterThan(commit);
+  });
+
+  it.each([
+    ['no es un `.docx` íntegro', 'corrupt'],
+    ['el archivo ya no es del actor', 'file_missing'],
+  ])('019 RN-11: si %s no se anuncia nada', async (_case, status) => {
+    const { registrar, file, detector, events } = setup();
+    if (status === 'corrupt') detector.result = { ok: false, reason: 'signature' };
+    const fileId = status === 'corrupt' ? file.id : randomUUID();
+
+    const outcome = await registrar.register(ANA, inputFor(fileId));
+
+    expect(outcome.status).toBe(status);
+    expect(events.published).toEqual([]);
   });
 });

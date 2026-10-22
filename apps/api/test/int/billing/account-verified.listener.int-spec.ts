@@ -1,4 +1,4 @@
-import { EventEmitter2, EventEmitterModule } from '@nestjs/event-emitter';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { DataSource } from 'typeorm';
 
 import { BillingModule } from '../../../src/modules/billing';
@@ -22,7 +22,7 @@ describe('alta Personal al verificar la cuenta (spec 009 CA-1)', () => {
   const accounts: string[] = [];
 
   beforeAll(async () => {
-    testApp = await createTestApp({ modules: [EventEmitterModule.forRoot(), BillingModule] });
+    testApp = await createTestApp({ modules: [BillingModule] });
     emitter = testApp.app.get(EventEmitter2);
     owner = await connectAsOwner();
   });

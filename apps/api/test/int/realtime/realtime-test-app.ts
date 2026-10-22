@@ -3,7 +3,7 @@ import type { AddressInfo } from 'node:net';
 
 import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
-import { EventEmitter2, EventEmitterModule } from '@nestjs/event-emitter';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { REALTIME_PATH } from '@nimbo/contracts';
 import type { Server } from 'socket.io';
 import { io } from 'socket.io-client';
@@ -76,7 +76,7 @@ const testConfig = (config: Partial<RealtimeConfig> = {}): RealtimeConfig => ({
 
 /**
  * App de integración con `RealtimeModule` montado por `configureRealtime` (plan 015 §6), Redis real para el límite de
- * intentos, `EventEmitterModule` como en `AppModule` (`realtime.document-left`, ADR-0019) y `TestAccessTokenVerifier`. Escucha en un puerto efímero para que `socket.io-client` se conecte de verdad.
+ * intentos, `EventEmitterModule` de `createTestApp` como en `AppModule` (`realtime.document-left`, ADR-0019) y `TestAccessTokenVerifier`. Escucha en un puerto efímero para que `socket.io-client` se conecte de verdad.
  */
 export const createRealtimeTestApp = async (
   options: RealtimeTestAppOptions = {},
@@ -85,10 +85,7 @@ export const createRealtimeTestApp = async (
   const clock = options.clock ?? new SystemClock();
   const testApp = await createTestApp({
     validatedEnv: env,
-    modules: [
-      EventEmitterModule.forRoot(),
-      RealtimeModule.forRoot(env, TestAccessTokenVerifierModule.withClock(clock)),
-    ],
+    modules: [RealtimeModule.forRoot(env, TestAccessTokenVerifierModule.withClock(clock))],
     overrides: [
       { provide: REALTIME_CONFIG, useValue: testConfig(options.config) },
       ...(options.overrides ?? []),

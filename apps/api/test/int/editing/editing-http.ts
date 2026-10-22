@@ -2,7 +2,6 @@ import type { AddressInfo } from 'node:net';
 
 import { getQueueToken } from '@nestjs/bullmq';
 import { Global, Module } from '@nestjs/common';
-import { EventEmitterModule } from '@nestjs/event-emitter';
 import { JwtService } from '@nestjs/jwt';
 import type { Queue } from 'bullmq';
 import type { Socket as ClientSocket } from 'socket.io-client';
@@ -123,7 +122,7 @@ export interface EditingHttpApp {
   callback(callbackUrl: string, body: CallbackBody, signing?: CallbackSigning): Promise<Response>;
   /** `POST` a la `callbackUrl` con el cuerpo tal cual, sin firmar nada (avisos falsificados). */
   rawCallback(callbackUrl: string, body: CallbackBody): Promise<Response>;
-  /** Una cola BullMQ de la app (`editing-save`, `indexing`). */
+  /** Una cola BullMQ de la app (`editing-save`; desde 019, `editing` ya no registra `indexing`). */
   queue(name: string): Queue;
   close(): Promise<void>;
 }
@@ -184,7 +183,7 @@ export const createEditingHttpApp = async (
   const storage = await createStorageHttpApp({
     env: { ...ONLYOFFICE_TEST_ENV, ...editorEnvOf(options), ...options.env },
     limits: options.limits ?? PAID_TEST_LIMITS,
-    modules: [AccessModule, TestUserDirectoryModule, EventEmitterModule.forRoot()],
+    modules: [AccessModule, TestUserDirectoryModule],
     withStorage: (storageModule, env) => {
       const realtime = RealtimeModule.forRoot(env, TestAccessTokenVerifierModule.withClock(clock));
       return [realtime, EditingModule.forRoot(env, { storage: storageModule, realtime })];

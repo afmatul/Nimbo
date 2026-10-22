@@ -1,7 +1,6 @@
 import { setTimeout as delay } from 'node:timers/promises';
 
 import { getQueueToken } from '@nestjs/bullmq';
-import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerModule } from '@nestjs/throttler';
 import type { RegisterRequest } from '@nimbo/contracts';
 import type { Queue } from 'bullmq';
@@ -72,7 +71,6 @@ export const createIdentityTestApp = async (
     withWorkerEnv: true,
     accessTokenStrategy: 'identity',
     modules: [
-      EventEmitterModule.forRoot(),
       ThrottlerModule.forRoot({ throttlers: [...IDENTITY_THROTTLERS] }),
       NotificationsWorkerModule,
       IdentityModule.forRoot({ ...buildTestEnv(), ...identityEnv }),

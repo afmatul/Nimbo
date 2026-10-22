@@ -20,8 +20,6 @@ import { EditorDownloadRejectedError, I_DOCUMENT_EDITOR } from './ports/i-docume
 import type { DownloadRejection, IDocumentEditor } from './ports/i-document-editor.port';
 import { I_EDIT_SESSION_REPOSITORY } from './ports/i-edit-session.repository.port';
 import type { IEditSessionRepository } from './ports/i-edit-session.repository.port';
-import { I_INDEX_QUEUE } from './ports/i-index-queue.port';
-import type { IIndexQueue } from './ports/i-index-queue.port';
 import type { SaveVersionJob } from './ports/i-save-version-queue.port';
 import { SaveFailedNotifier } from './save-failed-notifier';
 
@@ -38,14 +36,12 @@ type Unsaved = Exclude<SaveOutcome, Saved>;
 const failureOf = ({ status }: Unsaved): EditSessionFailure =>
   status === 'file_missing' ? 'archivo_purgado' : 'integridad';
 
-const errorClassOf = (error: unknown): string =>
-  error instanceof Error ? error.constructor.name : typeof error;
-
 /**
  * El trabajo `editing-save` (plan 016 §2 y §4; corre en el `api`, ADR-0029). Relee la sesión con la cuenta propietaria
  * firmada (`withActor`, no confía en el trabajo) y solo sigue si está `guardando`; descarga lo entregado y pide a
  * `storage` la versión `origen='edicion'` con un id determinista (uuid v5 de la sesión): un reintento da `duplicate`,
- * que cuenta como éxito (CA-10). Después cierra la sesión, avisa a la sala, encola la reindexación (CA-12) y audita.
+ * que cuenta como éxito (CA-10). Después cierra la sesión, avisa a la sala y audita; la reindexación la dispara `storage`
+ * al registrar la versión (`storage.file-version-created`, 019 RN-11), no este servicio (CA-12).
  * Una descarga rechazada o un documento que `storage` no registra no se reintenta: la sesión queda `fallida` con su
  * motivo (CA-14). Un error transitorio se propaga para que la cola reintente; al agotar los intentos, `giveUp`.
  */
@@ -58,7 +54,6 @@ export class SaveVersionService {
     @Inject(I_DOCUMENT_EDITOR) private readonly editor: IDocumentEditor,
     @Inject(EDITING_CONFIG) private readonly config: EditingConfig,
     @Inject(I_REALTIME_PUBLISHER) private readonly publisher: IRealtimePublisher,
-    @Inject(I_INDEX_QUEUE) private readonly indexQueue: IIndexQueue,
     @Inject(I_AUDIT_LOGGER) private readonly audit: IAuditLogger,
     @Inject(I_CLOCK) private readonly clock: IClock,
     @Inject(PinoLogger) private readonly logger: EditingLogger,
@@ -124,20 +119,9 @@ export class SaveVersionService {
       event: EDITING_EVENTS.VERSION_SAVED,
       payload: { sessionId: session.id },
     });
-    await this.enqueueIndexing(session, saved.versionId);
     if (saved.status === 'registered') await this.recordCreated(owner, session, saved);
     const ids = { sessionId: session.id, fileId: session.fileId, versionId: saved.versionId };
     this.logger.info({ event: 'editing.saved', ...ids });
-  }
-
-  /** Sin consumidor hasta 019; si la cola falla, la versión ya está guardada y no se pierde (CA-12). */
-  private async enqueueIndexing(session: EditSession, versionId: string): Promise<void> {
-    try {
-      await this.indexQueue.enqueue({ fileId: session.fileId, versionId });
-    } catch (error) {
-      const failure = { sessionId: session.id, versionId, errorClass: errorClassOf(error) };
-      this.logger.warn({ event: 'editing.index_enqueue_failed', ...failure });
-    }
   }
 
   private recordCreated(owner: Actor, session: EditSession, version: Registered): Promise<void> {
