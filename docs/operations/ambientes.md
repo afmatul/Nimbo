@@ -108,6 +108,25 @@ Imágenes (idénticas en compose y en Testcontainers): `pgvector/pgvector:pg17`,
 - **Degradación**: un SMTP caído no afecta la salud del `worker` ni las respuestas del `api`; la cola reintenta 5 veces
   (~2,5 min) y al agotar registra `mail.failed` (ver `apps/api/src/modules/notifications/README.md`).
 
+## 3c. Ghostscript (spec 019, D-1, ADR-0031)
+
+El `worker` lee el texto de los PDF con Ghostscript (`txtwrite`) en un proceso aparte, sin shell, con tiempo límite y en
+un directorio temporal propio que se borra al terminar. El `api` no lo necesita. Sin Ghostscript, la indexación de los
+PDF falla y se reintenta; el resto de los tipos y del sistema siguen igual.
+
+- **Linux (CI, Debian/Ubuntu)**: `sudo apt-get install -y ghostscript`; el binario es `gs` (valor por defecto de
+  `GHOSTSCRIPT_BIN`). CI lo instala antes de `pnpm test:int` (`.github/workflows/ci.yml`).
+- **macOS**: `brew install ghostscript`; también queda como `gs`.
+- **Windows**: instalar la versión de 64 bits de <https://ghostscript.com/releases/gsdnld.html> y poner en `.env` la ruta
+  completa de `gswin64c.exe` (la de consola, no `gswin64.exe`), p. ej.
+  `GHOSTSCRIPT_BIN=C:\Program Files\gs\gs10.08.0\bin\gswin64c.exe`, o agregar esa carpeta `bin` al `PATH` y usar
+  `GHOSTSCRIPT_BIN=gswin64c`.
+- **Comprobar**: `gs --version` (o `gswin64c --version`) imprime la versión.
+- **Pruebas**: `test/int/intelligence/pdf-extraction.int-spec.ts` usa `GHOSTSCRIPT_BIN` del entorno de la terminal (las
+  pruebas no leen `.env`; si falta, prueba `gs` o, en Windows, `gswin64c`). En CI es obligatoria; en una máquina sin
+  Ghostscript se omite y lo dice el resumen de Jest.
+- **Imagen del `worker`**: todavía no existe `apps/worker/Dockerfile`; quien la cree instala `ghostscript` (PD-125).
+
 ## 4. Arranque y salud
 
 ### Requisito de arranque

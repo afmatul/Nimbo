@@ -1,9 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
+import { EMBEDDING_DIMENSIONS } from '../../../src/modules/intelligence/application/ports/i-embedding-provider.port';
 import type { Queryable } from '../storage/storage-test-db';
-
-/** Dimensión de `fragmento.embedding` (plan 019 §3). */
-export const EMBEDDING_DIMENSIONS = 768;
 
 /** Archivo y versión de una fila de *fixture* de `indexacion` o `fragmento`. */
 export interface IndexedVersionRow {

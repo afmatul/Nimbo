@@ -1,9 +1,7 @@
 import { Column, Entity, PrimaryColumn } from 'typeorm';
 
 import type { ChunkLocationJson } from '../../application/ports/i-chunk-repository.port';
-
-/** Dimensión de `fragmento.embedding` (plan 019 §3, `outputDimensionality` del proveedor). */
-export const EMBEDDING_DIMENSIONS = 768;
+import { EMBEDDING_DIMENSIONS } from '../../application/ports/i-embedding-provider.port';
 
 /**
  * Fila de `fragmento` (migración `CrearIndexacionYFragmento…`, plan 019 §3). `textoBusq` lo genera la BD y no se
