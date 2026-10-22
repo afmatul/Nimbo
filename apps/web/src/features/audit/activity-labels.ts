@@ -41,9 +41,6 @@ interface ActionText {
 
 const REJECTED_UPLOAD = 'Se rechazó una carga';
 
-/** La misma frase la lea quien la lea: los cambios de la suscripción (010) no los hace el personal (CA-23). */
-const sameText = (text: string): ActionText => ({ self: () => text, staff: () => text });
-
 const ACTION_TEXTS: Readonly<Record<string, ActionText>> = {
   'file.upload_completed': { self: (w) => `Subiste ${w}`, staff: (w, a) => `${a} subió ${w}` },
   'file.upload_rejected': { self: () => REJECTED_UPLOAD, staff: () => REJECTED_UPLOAD },
@@ -79,20 +76,6 @@ const ACTION_TEXTS: Readonly<Record<string, ActionText>> = {
   'client.files_viewed': {
     staff: (_w, a) => `${a} consultó la lista de tus archivos (sin abrir su contenido)`,
   },
-  /** Suscripción (010 CA-6, CA-22): sin plan ni tarjeta en el evento; la pasada automática actúa como el dueño. */
-  'subscription.auto_renew_changed': sameText('Cambiaste la renovación automática'),
-  'subscription.renewed': sameText('Se renovó tu plan'),
-  'subscription.renewal_rejected': sameText('Se rechazó el cobro de la renovación'),
-  'subscription.read_only_entered': sameText(
-    'Tu suscripción venció y tu cuenta quedó en solo lectura',
-  ),
-  'subscription.read_only_exited': sameText('Tu cuenta salió de solo lectura'),
-  'subscription.plan_change_scheduled': sameText('Programaste un cambio de plan'),
-  'subscription.plan_change_cancelled': sameText('Cancelaste el cambio de plan'),
-  'subscription.plan_change_applied': sameText('Se aplicó tu cambio de plan'),
-  'subscription.plan_change_discarded': sameText(
-    'Se descartó tu cambio de plan: ese plan ya no está disponible',
-  ),
 };
 
 const UNIT_NOUNS: Readonly<Record<NonNullable<AuditEventResponse['resourceType']>, string>> = {

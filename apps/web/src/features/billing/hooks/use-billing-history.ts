@@ -1,30 +1,24 @@
 'use client';
 
-import type { BillingHistoryResponse, SubscriptionView } from '@nimbo/contracts';
+import type { BillingHistoryResponse } from '@nimbo/contracts';
 import * as React from 'react';
 
-export type BillingHistoryState<T extends BillingHistoryResponse = BillingHistoryResponse> =
+export type BillingHistoryState =
   | { readonly status: 'loading' }
   | { readonly status: 'error' }
-  | { readonly status: 'ready'; readonly history: T };
+  | { readonly status: 'ready'; readonly history: BillingHistoryResponse };
 
-const LOADING = { status: 'loading' } as const;
-
-export interface BillingHistoryHandle<T extends BillingHistoryResponse> {
-  readonly state: BillingHistoryState<T>;
-  readonly retry: () => void;
-  /** 010 CA-6, CA-19: la vista que respondió un ajuste reemplaza la de la página sin recargar. */
-  readonly replaceSubscription: (subscription: SubscriptionView) => void;
-}
+const LOADING: BillingHistoryState = { status: 'loading' };
 
 /**
  * Una lectura del historial por intento (spec 009 CA-7); la respuesta de un intento anterior se descarta y «Reintentar»
  * vuelve a «cargando».
  */
-export function useBillingHistory<T extends BillingHistoryResponse>(
-  load: () => Promise<T>,
-): BillingHistoryHandle<T> {
-  const [state, setState] = React.useState<BillingHistoryState<T>>(LOADING);
+export function useBillingHistory(load: () => Promise<BillingHistoryResponse>): {
+  readonly state: BillingHistoryState;
+  readonly retry: () => void;
+} {
+  const [state, setState] = React.useState<BillingHistoryState>(LOADING);
   const [attempt, setAttempt] = React.useState(0);
 
   React.useEffect(() => {
@@ -43,13 +37,5 @@ export function useBillingHistory<T extends BillingHistoryResponse>(
     setAttempt((previous) => previous + 1);
   }, []);
 
-  const replaceSubscription = React.useCallback((subscription: SubscriptionView) => {
-    setState((previous) =>
-      previous.status === 'ready'
-        ? { status: 'ready', history: { ...previous.history, subscription } }
-        : previous,
-    );
-  }, []);
-
-  return { state, retry, replaceSubscription };
+  return { state, retry };
 }

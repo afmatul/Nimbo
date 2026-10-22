@@ -5,15 +5,6 @@ import { Card } from '../../../components/ui/card';
 
 const CONSUMER_NIT = 'CF';
 
-/** La marca de la tarjeta en mayúsculas (mockup): «Método de pago» y «Próximo cobro» (010). */
-export function CardBrand({ brand }: { readonly brand: string }): React.JSX.Element {
-  return (
-    <span className="rounded-md border border-border bg-muted px-2 py-1 text-xs font-semibold uppercase text-foreground">
-      {brand}
-    </span>
-  );
-}
-
 function AccountCard({
   id,
   title,
@@ -48,7 +39,9 @@ export function PaymentMethodCard({
         <p className="text-sm text-secondary-foreground">Aún no has pagado con tarjeta.</p>
       ) : (
         <div className="flex items-center gap-3">
-          <CardBrand brand={method.brand} />
+          <span className="rounded-md border border-border bg-muted px-2 py-1 text-xs font-semibold uppercase text-foreground">
+            {method.brand}
+          </span>
           <span className="text-sm tabular-nums text-foreground">
             ···· ···· ···· {method.last4}
           </span>

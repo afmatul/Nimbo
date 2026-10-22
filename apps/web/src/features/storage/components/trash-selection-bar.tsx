@@ -4,29 +4,12 @@ import * as React from 'react';
 
 import { Button } from '../../../components/ui/button';
 
-import { useReadOnlyAccount } from './space-provider';
-
 export interface TrashSelectionBarProps {
   readonly count: number;
   readonly totalBytes: number;
   readonly busy: boolean;
   readonly onRestore: () => void;
   readonly onClear: () => void;
-}
-
-/** «Restaurar N»; deshabilitado en solo lectura (spec 010 CA-13, CA-14). */
-function RestoreSelected({
-  count,
-  busy,
-  onRestore,
-}: Pick<TrashSelectionBarProps, 'count' | 'busy' | 'onRestore'>): React.JSX.Element {
-  const { readOnly } = useReadOnlyAccount();
-  return (
-    <Button type="button" size="sm" loading={busy} onClick={onRestore} disabled={readOnly}>
-      {busy ? null : <RotateCcw className="h-4 w-4" aria-hidden="true" />}
-      {`Restaurar ${String(count)}`}
-    </Button>
-  );
 }
 
 /** Selección de la papelera: solo restaura (decisión 11 del mockup); eliminar definitivamente es por elemento. */
@@ -50,7 +33,10 @@ export function TrashSelectionBar({
         </strong>
         {` · ${formatBytes(totalBytes)}`}
       </p>
-      <RestoreSelected count={count} busy={busy} onRestore={onRestore} />
+      <Button type="button" size="sm" loading={busy} onClick={onRestore}>
+        {busy ? null : <RotateCcw className="h-4 w-4" aria-hidden="true" />}
+        {`Restaurar ${String(count)}`}
+      </Button>
       <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={onClear}>
         Quitar selección
       </Button>

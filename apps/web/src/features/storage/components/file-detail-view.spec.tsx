@@ -373,25 +373,3 @@ describe('FileDetailView: ficha de archivo con historial (014 CA-6, CA-7, CA-15,
     },
   );
 });
-
-describe('FileDetailView en solo lectura (spec 010 CA-13, CA-14)', () => {
-  it('CA-14: el aviso, la explicación y «Restaurar» de una versión deshabilitado; descargar sigue activo', async () => {
-    const api = fakeApi({
-      spaceSummary: jest.fn(() =>
-        Promise.resolve({ ...spaceSummaryWith(4.8 * GB), readOnly: true }),
-      ),
-    });
-    await renderView(api);
-    await screen.findByText('Tu cuenta está en solo lectura.');
-
-    expect(
-      screen.getByText(
-        'Tu cuenta está en solo lectura: no puedes subir, crear, renombrar, mover ni restaurar.',
-      ),
-    ).toBeTruthy();
-    const restore = within(itemOf(4)).getByRole('button', { name: 'Restaurar la versión 4' });
-    expect((restore as HTMLButtonElement).disabled).toBe(true);
-    const download = within(itemOf(4)).getByRole('button', { name: /Descargar/ });
-    expect((download as HTMLButtonElement).disabled).toBe(false);
-  });
-});

@@ -30,7 +30,6 @@ import { fileDetailPath } from '../routes';
 import { StorageRequestError } from '../storage-request-error';
 
 import { MoveToTrashMenuItem } from './move-to-trash-menu-item';
-import { useReadOnlyAccount } from './space-provider';
 
 export interface DownloadNotice {
   readonly title: string;
@@ -234,14 +233,13 @@ export interface OrganizeMenuItemsProps {
 
 /** «Renombrar» y «Mover a…», comunes al menú de archivos y al de carpetas (mockups `acciones-*`). */
 export function OrganizeMenuItems({ onRename, onMove }: OrganizeMenuItemsProps): React.JSX.Element {
-  const { readOnly } = useReadOnlyAccount();
   return (
     <>
-      <DropdownMenuItem onSelect={onRename} disabled={readOnly}>
+      <DropdownMenuItem onSelect={onRename}>
         <Pencil className="h-4 w-4 text-secondary-foreground" aria-hidden="true" />
         Renombrar
       </DropdownMenuItem>
-      <DropdownMenuItem onSelect={onMove} disabled={readOnly}>
+      <DropdownMenuItem onSelect={onMove}>
         <FolderInput className="h-4 w-4 text-secondary-foreground" aria-hidden="true" />
         Mover a…
       </DropdownMenuItem>
