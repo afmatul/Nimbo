@@ -4,17 +4,17 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Borrador (2026-10-22) · P-1 a P-9 resueltas |
+| Estado | Borrador (2026-10-22) · P-1 a P-9 resueltas · plan propuesto |
 | Dueño | Fátima |
 | Fase | 2 |
 | Requisitos | RF-05, RF-06, RF-07, RF-12, RF-22, RF-23, RF-24; RNF-05, RNF-13, RNF-14, RNF-17 |
 | Depende de | 004, 006, 007 (resumen de espacio, P-3), 009, 010, 011 |
 | Última actualización | 2026-10-22 |
 
-> **Continuidad:** borrador cerrado el 2026-10-22, sin preguntas abiertas. Lo que queda es `/plan 011b`,
-> `/mockup` de la ficha de cuenta y de la papelera de Soporte, la aprobación de Adrián para pasar a «Lista»,
-> y después `/tasks` e `/implement`. El reparto previsto es PR-A (cuota y vigencia) y PR-B (restauración),
-> según los límites de la 011.
+> **Continuidad:** borrador cerrado y `plan.md` propuesto el 2026-10-22, sin preguntas abiertas. Lo que queda es
+> `/mockup` de la ficha de cuenta y de la papelera de Soporte, la aprobación de Adrián del plan para pasar a «Lista»,
+> y después `/tasks` e `/implement`. Reparto: PR-A (cuota y vigencia) y PR-B (restauración), con el PR-B sobre el PR-A;
+> el ADR-0033 queda propuesto con el PR-A.
 
 ## 1. Contexto y objetivo
 La 011 dejó fuera, por tamaño, tres operaciones que la matriz de roles ya define: el Administrador ajusta la cuota y la
@@ -91,8 +91,8 @@ puede deshacer una eliminación concreta dejando rastro visible para el cliente.
 - Correos al cliente por ajustes o restauración (el cliente lo ve en la aplicación); rediseño de la auditoría (004) o de las bitácoras técnicas (022b); reabrir la 011.
 
 ## 8. Preguntas
-> Todas resueltas el 2026-10-22 con Fátima. El borrador queda listo para `/plan` y `/mockup`; el paso a «Lista»
-> sigue pendiente de la aprobación de Adrián.
+> Todas resueltas el 2026-10-22 con Fátima. El plan quedó propuesto el 2026-10-22 (`./plan.md`); faltan `/mockup` y la
+> aprobación de Adrián para pasar a «Lista».
 
 - [RESUELTA] (2026-10-03, Fátima) **P-2/P-3 de la 011** → 011b: extra sobre el plan, nunca por debajo de lo usado, con fecha de fin; vigencia solo se extiende, quita la solo lectura y no aplica a Personal.
 - [RESUELTA] (2026-10-22, Fátima) **P-1** → sí: Soporte restaura en solo lectura; el cliente sigue sin poder subir ni editar.
@@ -110,3 +110,4 @@ puede deshacer una eliminación concreta dejando rastro visible para el cliente.
 |---|---|---|---|
 | 2026-10-22 | Creación inicial con las decisiones P-2/P-3/P-8 de la 011, tres operaciones y las preguntas abiertas | Arranque de la 011b | Borrador (pendiente Adrián) |
 | 2026-10-22 | P-1 a P-9 resueltas; aclarado «bajo lo usado» como `plan + extra < espacio_usado`; retiradas las marcas «sujeto a» de CA-5, RN-3, RN-6 y RN-7 | Cierre del borrador para `/plan` y `/mockup` | Fátima |
+| 2026-10-22 | `plan.md` propuesto (PR-A cuota y vigencia; PR-B restauración) y ADR-0033 propuesto | Siguiente compuerta para «Lista» | Fátima |
