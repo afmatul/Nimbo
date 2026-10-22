@@ -74,10 +74,10 @@ Estados de indexación de un archivo: `pendiente`, `indexando`, `indexado`, `no_
 - Riesgos: fuga entre cuentas por similitud vectorial sin filtro previo (DF-14); texto de un documento enviado al proveedor de embeddings (se documenta en la Política de privacidad, 001 D-14); clave del proveedor en el navegador (prohibido); fragmentos huérfanos tras purga (CA-15, CA-16).
 
 ## 6. Experiencia de usuario
-Rutas relativas a `docs/design/`. No existe mockup propio: el estado vive en la ficha del archivo (014) y su README lo deja pendiente.
+Rutas relativas a `docs/design/`. No hay mockup propio: el estado vive en la ficha del archivo (014), extendida con los 10 estados de 019 (README: `mockups/storage/ficha-archivo/README.md`; capturas: `capturas/storage/ficha-archivo/ficha-archivo--<estado>--<360|1440>.png`).
 | Pantalla | Mockup | Estados requeridos | Estado del mockup |
 |---|---|---|---|
-| Ficha de archivo (estado de indexación) | `mockups/storage/ficha-archivo/ficha-archivo--<estado>.html` (por crear con `/mockup`, extendiendo el de 014; `--vision` solo referencia) | `indexando`, `indexado`, `no-indexable`, `fallido`, `solo-lectura-lector` | Pendiente: decidido en P-3, se crea antes de `Lista` |
+| Ficha de archivo (estado de indexación) | `mockups/storage/ficha-archivo/ficha-archivo--<estado>.html` (extiende el de 014; `--vision` solo referencia) | `indexando`, `indexado`, `indexado-aviso`, `no-indexable` (+ `-formato`, `-grande`), `fallido` (+ `-reintentando`, `-error-reintento`), `solo-lectura-lector` | Borrador (2026-10-21, `ui-designer`): los 10 estados con capturas a 360 y 1440 px; lo aprueba el equipo |
 
 - Mensajes clave (tuteo): «Indexando… ya puedes seguir trabajando», «Listo para consultar con el agente», «No pudimos leer el texto de este PDF. Se busca solo por nombre», «No pudimos indexar este archivo. Reintenta».
 - Sin columna de indexación en el explorador (decisión previa de 005/014); sin panel del agente (020).
@@ -104,3 +104,4 @@ Rutas relativas a `docs/design/`. No existe mockup propio: el estado vive en la 
 | 2026-10-21 | Creación en `Borrador` | `/spec 019` | — |
 | 2026-10-21 | P-1 a P-7 resueltas con la recomendación de cada una; se agregan RN-11 (disparo por `FileVersionCreated`), RN-12 y CA-23 (archivos previos), y «Fuera de alcance» suma el botón masivo del cliente. Sigue `Borrador`: falta el plan aprobado y el mockup de la ficha | Respuestas de Adrián | Adrián |
 | 2026-10-21 | Pasa a `Lista` con el plan aprobado. CA-19 queda sin verificar al cerrar 019 hasta que exista 012 (PD-120). Mockup de la ficha pendiente con `/mockup` | Aprobación del plan | Adrián |
+| 2026-10-21 | Mockup de la ficha hecho (§6). Decisiones de UI: la ficha se implementa primero para la propietaria y la vista de lector llega con 012 (PD-120); `pendiente` e `indexando` comparten el chip «Indexando…»; el aviso «sin texto» sugiere reemplazar el archivo por una versión con texto (sin OCR). Ghostscript solo en CI y en `ambientes.md` (PD-125) | Respuestas de Adrián | Adrián |

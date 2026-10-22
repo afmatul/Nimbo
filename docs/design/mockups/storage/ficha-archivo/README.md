@@ -1,8 +1,8 @@
 # Mockup: Ficha de archivo con historial de versiones
 
-- **Spec**: 014 (CA-6 a CA-12, CA-15, CA-16, CA-20; D-1 a D-10). 019 (estado de indexación) y 016 (participantes) se
-  suman después.
-- **Propuesta presentada**: No presentada (diseño interno).
+- **Spec**: 014 (CA-6 a CA-12, CA-15, CA-16, CA-20; D-1 a D-10) y 019 (estado de indexación: CA-4, CA-5, CA-7, CA-12 a
+  CA-14, CA-19; P-3). 016 (participantes) se suma después.
+- **Propuesta presentada**: No presentada (diseño interno); 019 es un cambio sobre ella (ver abajo).
 - **Origen**: dos tecnologías en la misma carpeta.
   - Estados de 014: HTML autocontenido generado con `../../_generadores/ficha-archivo/generar.js` (ver
     [`_generadores/README.md`](../../_generadores/README.md)); no se edita a mano. Marco de `marco/marco.js`, barra
@@ -26,10 +26,25 @@
   - error-version-no-encontrada: la versión ya no existe; «Actualizar historial» (`ficha-archivo--error-version-no-encontrada.html`, CA-11)
   - no-encontrado: archivo en la papelera, inexistente o ajeno; mismo mensaje en los tres casos (`ficha-archivo--no-encontrado.html`, CA-16, CA-17)
   - descarga-preparando: la URL firmada de una versión tarda más de 2 s (`ficha-archivo--descarga-preparando.html`, CA-8)
+  - **019, estado de indexación** (misma ficha con chip y aviso; archivo de una sola versión para que el foco sea el estado):
+    - indexando: `pendiente` o `indexando`, sin distinguirlos para el cliente (`ficha-archivo--indexando.html`, CA-14)
+    - indexado: «Listo para consultar con el agente» (`ficha-archivo--indexado.html`, CA-1)
+    - indexado-aviso: el mismo estado cuando termina mientras miras la ficha; toast, sin recargar (`ficha-archivo--indexado-aviso.html`, CA-14)
+    - no-indexable: sin texto, PDF escaneado (`ficha-archivo--no-indexable.html`, CA-4)
+    - no-indexable-formato: el contenido no corresponde a la extensión (`ficha-archivo--no-indexable-formato.html`, CA-5)
+    - no-indexable-grande: supera el tope de indexación, plan Pro (`ficha-archivo--no-indexable-grande.html`, CA-7)
+    - fallido: tras agotar los reintentos; «Reintentar» para propietario y editor (`ficha-archivo--fallido.html`, CA-12, CA-13)
+    - fallido-reintentando: > 2 s, botón `aria-disabled` con «Reintentando…» y anuncio, el foco no se pierde (`ficha-archivo--fallido-reintentando.html`)
+    - fallido-error-reintento: el reintento no llegó al servidor; dice qué hacer (`ficha-archivo--fallido-error-reintento.html`)
+    - solo-lectura-lector: lector de un archivo compartido; ve estado y motivo, sin «Reintentar» ni historial (`ficha-archivo--solo-lectura-lector.html`, CA-13, CA-19)
   - vision: paquete de diseño interno (`ficha-archivo--vision.html`), solo como referencia
 - **Capturas**: `docs/design/capturas/storage/ficha-archivo/` (`ficha-archivo--<estado>--<360|1440>.png`). axe-core sin
   violaciones en los 12 estados de 014 a 360 y 1440 px; sin desbordamiento horizontal a 360 px; objetivos de 36 px en
   escritorio y 44 px en móvil; sin errores de consola. `vision` no pasa axe (paquete; contraste y título): es histórico.
+  Los 10 estados de 019 también pasan axe-core (0 violaciones) a 360 y 1440 px, sin desbordamiento y sin errores de consola.
+- **Propuesta presentada**: este cambio (estado de indexación en la ficha, 019) **no está en el PDF «Mockups nimbo final»
+  (p. 03–18)**: es un cambio interno respecto de la propuesta firmada, decidido por Adrián en P-3 (2026-10-21): el estado
+  vive solo en la ficha, sin columna en el explorador.
 
 ## Decisiones de UX
 - **Entrada**: menú ⋮ de la fila del archivo, «Ver historial» (plan 014). Ruta propia de la ficha, sin panel lateral (D-10).
@@ -76,6 +91,37 @@
 - Roles internos: no llegan a esta ruta (`403`); no se dibuja nada para ellos. Solo lectura (010) no se dibuja: 010
   ocultará «Restaurar».
 
+## Decisiones de UX de 019 (estado de indexación)
+- **Dónde**: bajo el subtítulo del encabezado, un chip (`StatusBadge`: ícono + texto, nunca solo color) con una frase corta, y
+  entre el encabezado y las tarjetas un aviso (`Alert`) con el motivo y lo que puede hacer el cliente. Fila «Indexación» en
+  Detalles (cuándo y de qué versión; RN-1). Nada en el explorador ni en la fila del archivo (P-3).
+- **Estados y copia** (tuteo, sin «embeddings», «fragmentos» ni «vector»):
+  | Estado | Chip | Aviso |
+  |---|---|---|
+  | `pendiente` / `indexando` | «Indexando…» (ícono girando) | info: «Indexando… ya puedes seguir trabajando.» Descargar, editar y compartir siguen igual |
+  | `indexado` | «Indexado» + «Listo para consultar con el agente» | sin aviso fijo; al terminar en vivo, toast |
+  | `no_indexable` | «No se indexa» + «Se busca solo por nombre» | info con el motivo: sin texto, formato no soportado, demasiado grande (50 MB, desde la API) |
+  | `fallido` | «No se pudo indexar» | error con «Reintentar» (propietario y editor) |
+- **`pendiente` e `indexando` se ven igual**: al cliente le da lo mismo si está en cola o en curso; se evita una distinción
+  sin acción asociada.
+- **No indexable no es un error**: usa `info` (no `destructive`); el archivo funciona y se busca por nombre. Solo `fallido`
+  usa el tono de error, porque hay algo que reintentar. Cada motivo dice qué pasa y, si hay salida, cuál (PDF sin texto:
+  «súbela con el mismo nombre y elige "Reemplazar"»); sin OCR (§9).
+- **Aviso en vivo (CA-14)**: el contenedor `role="status"` (`aria-live="polite"`) existe siempre, también vacío, y el
+  contenido cambia dentro de él; no mueve el foco ni usa `role="alert"` (no interrumpe). Al pasar a `indexado` se muestra
+  un toast («Listo para consultar con el agente: {archivo}.») y el chip cambia; el cambio llega por el canal en vivo de 015.
+  Con `prefers-reduced-motion` el ícono de «Indexando…» queda quieto.
+- **«Reintentar»** (CA-13): botón `outline` pequeño dentro del aviso, con foco visible. Al pulsarlo pasa a «Reintentando…»
+  con `aria-disabled` (sigue enfocable: el foco no se pierde) y un anuncio. Cuando el estado cambia a `indexando`, el
+  botón desaparece y el foco debe pasar al contenedor del aviso (`tabindex="-1"`), no al `body`. Si falla la petición, el
+  aviso dice «No pudimos reintentar la indexación. Tu archivo no cambió…» y el botón sigue disponible.
+- **Lector** (CA-13, CA-19): ve el mismo chip y el motivo; sin «Reintentar» (el texto explica que solo quien puede editar
+  lo reintenta) y sin historial de versiones. La UI no ofrece lo que el servidor niega.
+- **Roles internos**: no llegan a la ficha (`403`); no se dibuja nada (CA-20).
+- **Sin estado de «límite del plan»**: indexar no descuenta cupos ni almacenamiento (RN-8). «Demasiado grande» usa el tope de
+  indexación (RN-7), que no depende del plan; se dibuja con un archivo de 120 MB de un plan Pro (el Personal solo sube 50 MB).
+- Sin cuenta en solo lectura por suscripción: indexar no es acción del cliente (CA-22), el estado se ve igual.
+
 ## Contraste de los pares nuevos (WCAG 2.1)
 | Par | Contraste |
 |---|---|
@@ -86,7 +132,10 @@
 | `muted-foreground` sobre `brand` al 12 % (ícono de autor, no texto) | 4.23 |
 | `primary` sobre `card` (íconos de origen y del pie) | 4.97 |
 | `success-foreground` sobre `success` al 12 % (ACTUAL) | 4.80 |
-| `secondary-foreground` sobre `muted` (resumen del diálogo) | 7.45 |
+| `secondary-foreground` sobre `muted` (resumen del diálogo; chips «Indexando…» y «No se indexa») | 7.45 |
+| `success-foreground` sobre `success` al 12 % (chip «Indexado») | 4.80 |
+| `destructive` sobre `destructive-soft` al 12 % (chip y título del aviso de `fallido`) | ≈ 4.9 (axe sin violaciones) |
+| `foreground` sobre `card` (título del aviso informativo) / `primary` sobre `card` (su ícono) | 15.6 / 4.97 |
 
 ## Diferencias con `ficha-archivo--vision.html`
 1. Autoría por porcentaje y cambios «+2 párrafos»: fuera de alcance (atribución por párrafo, `product-context.md` §9;
@@ -99,7 +148,9 @@
 7. Sin versión móvil.
 
 ## Pendiente
-- Participantes de una versión de edición (016) y estado de indexación (019, estado `no-indexable`).
+- Participantes de una versión de edición (016).
+- Ficha del lector (019 CA-19): la ficha de 014 es solo del propietario (`404` para ajenos, CA-16); la vista de lector se
+  dibuja como referencia y depende de 012 (compartir). Ver decisiones pendientes en el informe de 019.
 - Contrato (plan 014 §4): `FileVersionSummary` necesita el número de la versión de origen de una restauración
   (`restoredFromNumber`, que sobreviva a la poda de esa versión) y `deltaBytes` nulo cuando no hay versión anterior
   retenida. Sin ellos, la fila dice solo «Restauración» y el cambio frente a una versión podada no se puede calcular.
