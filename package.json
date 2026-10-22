@@ -29,5 +29,10 @@
     "tsx": "4.23.13",
     "typescript": "5.9.3",
     "typescript-eslint": "8.70.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "strnum": "2.4.2"
+    }
   }
 }

@@ -1,10 +1,17 @@
 # `intelligence` — M6 · Inteligencia Documental
 
-- **Dueño**: Fátima (`specs/README.md`).
+- **Dueño**: Fátima (`specs/README.md`); la 019 la implementa Adrián.
 - **Diagrama de origen**: M6 en `docs/sdd/design-model.md` §3 y `docs/design/diagramas/`.
-- **Responsabilidad**: Indexación, recuperación híbrida, agente con citas; implementa `IIndexQueue`.
-- **Puede depender de**: shared, storage, access, billing (`IAgentQuota`), realtime (`docs/sdd/architecture.md` §3; el lint de fronteras lo hace cumplir).
-- **Specs que lo construyen**: 018 (contenido), 019, 020.
+- **Responsabilidad**: Indexación de la versión vigente de cada archivo (019), recuperación híbrida y agente con citas (020).
+  La indexación se dispara con el evento `storage.file-version-created` (019 RN-11, DF-77); `IIndexQueue` es **interno**
+  de este módulo y ya no lo cruza nadie (cierra PD-18).
+- **Puede depender de**: shared, storage, access, billing (`IAgentQuota`, 020), realtime, audit (resultados de la
+  indexación, 019 CA-21) (`docs/sdd/architecture.md` §3; el lint de fronteras lo hace cumplir).
+- **No expone** fragmentos ni texto por HTTP en la 019: los lee la 020 con `accessibleNodes(actor)` antes de ordenar
+  por similitud (DF-14). Ningún rol interno ve texto indexado (019 CA-20).
+- **Specs que lo construyen**: 019, 020; 018 consume el índice de texto (`texto_busq`) sin modificarlo.
+- **Pendiente al cerrar la 019** (T-11): composición de los módulos `api` y `worker`, puertos internos y estados de
+  indexación.
 
 ## Capas (`docs/sdd/architecture.md` §4)
 
@@ -13,8 +20,9 @@ modules/intelligence/
 ├─ domain/          # entidades, objetos de valor, errores; sin Nest, TypeORM ni zod
 ├─ application/     # servicios («service» de los diagramas) y puertos (`ports/`)
 ├─ infrastructure/  # persistencia (*.orm-entity.ts), adaptadores, procesadores
-├─ presentation/    # controladores, DTOs, gateways
-├─ intelligence.module.ts # lo crea la primera spec del módulo
+├─ presentation/    # controladores, DTOs, oyentes de eventos
+├─ intelligence.module.ts # api (lo crea la 019, T-05)
+├─ intelligence-worker.module.ts # worker (lo crea la 019, T-06)
 └─ index.ts         # única API pública
 ```
 

@@ -1,3 +1,3 @@
 // API pública del módulo `intelligence`. Otros módulos importan solo desde aquí (Art. VIII.3, CA-5).
-// La primera spec del módulo (018 (contenido)) agrega `intelligence.module.ts` y sus exportaciones.
+// La 019 agrega `IntelligenceModule` (T-05) e `IntelligenceWorkerModule` (T-06); nada de infraestructura se exporta.
 export {};

@@ -131,13 +131,20 @@ debe admitir `DELETE` (o menos), **su propia migración** lo revoca (`REVOKE DEL
 `database-roles.iso-spec.ts` agrega la fila a la matriz de permisos. Las tablas con datos de cliente activan RLS en su
 migración (`ENABLE` + `FORCE ROW LEVEL SECURITY`, `USING (… = nimbo_actor_id())`, desde 005).
 
+## Con la spec 019 (ADR-0019, DF-79)
+
+| Pieza                                                                                     | Dónde                                           | Para qué                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ----------------------------------------------------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `IDomainEventPublisher` (`I_DOMAIN_EVENT_PUBLISHER`) → `EventEmitterDomainEventPublisher` | `application/events/`, `infrastructure/events/` | Publica un evento de dominio en el proceso, después del commit. Sube a `shared` con el tercer productor (`storage`, 019; ADR-0019, regla de tres): si un oyente lanza, registra `domain_event.publish_failed` con el nombre y la clase del error (nunca el contenido) y no relanza. `shared.module.ts` **no** lo registra: lo hace cada módulo productor, que necesita `EventEmitterModule.forRoot()` en su raíz. `identity` y `realtime` migran a él en PD-122 |
+| `GEMINI_API_KEY`                                                                          | `infrastructure/config/`                        | Clave de embeddings (019): en `SECRET_KEYS` y declarada **solo** en `workerEnvSchema`                                                                                                                                                                                                                                                                                                                                                                           |
+
 ## Capas
 
 ```
 shared/
 ├─ domain/          # sin Nest, TypeORM ni zod
-├─ application/     # HealthService, puertos (IHealthIndicator, IRateLimiter, ITransactionRunner, IAccessTokenVerifier)
-├─ infrastructure/  # config, logging, correlation, persistence, queue, health, clock, redis, rate-limit
+├─ application/     # HealthService, puertos (IHealthIndicator, IRateLimiter, ITransactionRunner, IAccessTokenVerifier, IDomainEventPublisher)
+├─ infrastructure/  # config, logging, correlation, persistence, queue, health, clock, redis, rate-limit, events
 ├─ presentation/    # HealthController, DomainExceptionFilter, VersionHeaderMiddleware, ZodValidationPipe, configureHttpApp, auth/ (guards y decoradores)
 ├─ shared.module.ts  health.module.ts
 └─ index.ts         # única API pública

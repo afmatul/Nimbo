@@ -28,6 +28,8 @@ export type {
   AccessTokenVerification,
   IAccessTokenVerifier,
 } from './application/auth/i-access-token-verifier.port';
+export { I_DOMAIN_EVENT_PUBLISHER } from './application/events/i-domain-event-publisher.port';
+export type { IDomainEventPublisher } from './application/events/i-domain-event-publisher.port';
 export type { IHealthIndicator } from './application/health/i-health-indicator.port';
 export { I_TRANSACTION_RUNNER } from './application/persistence/i-transaction-runner.port';
 export type { ITransactionRunner } from './application/persistence/i-transaction-runner.port';
@@ -47,6 +49,7 @@ export type { MinioConfig } from './infrastructure/config/minio-config.module';
 export { formatEnvIssues } from './infrastructure/config/env-report';
 export { CorrelationContext } from './infrastructure/correlation/correlation-context';
 export { CorrelationIdMiddleware } from './infrastructure/correlation/correlation-id.middleware';
+export { EventEmitterDomainEventPublisher } from './infrastructure/events/event-emitter-domain-event.publisher';
 export { loadDotenvFile } from './infrastructure/config/load-dotenv-file';
 export { loadEnv } from './infrastructure/config/load-env';
 export { redactDeep } from './infrastructure/logging/redact-deep';

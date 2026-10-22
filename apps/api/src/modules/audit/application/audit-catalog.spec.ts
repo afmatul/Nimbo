@@ -44,6 +44,18 @@ const REAL_ATTRIBUTES: Readonly<Record<AuditAction, Record<string, string | numb
   },
   [AuditAction.EDIT_SESSION_OPENED]: { sessionId: SESSION_ID },
   [AuditAction.EDIT_SAVE_FAILED]: { sessionId: SESSION_ID, reason: 'integridad' },
+  [AuditAction.FILE_INDEXED]: { versionId: VERSION_ID, durationMs: 4210, fragmentCount: 37 },
+  [AuditAction.FILE_INDEX_UNINDEXABLE]: {
+    versionId: VERSION_ID,
+    reason: 'sin_texto',
+    durationMs: 830,
+  },
+  [AuditAction.FILE_INDEX_FAILED]: {
+    versionId: VERSION_ID,
+    reason: 'proveedor_no_disponible',
+    durationMs: 12_400,
+  },
+  [AuditAction.FILE_INDEX_RETRIED]: { versionId: VERSION_ID },
 };
 
 describe('AUDIT_CATALOG', () => {
@@ -88,6 +100,40 @@ describe('AUDIT_CATALOG', () => {
     expect(result).toEqual({ attributes: raw, rejections: [] });
   });
 
+  it.each([
+    AuditAction.FILE_INDEXED,
+    AuditAction.FILE_INDEX_UNINDEXABLE,
+    AuditAction.FILE_INDEX_FAILED,
+    AuditAction.FILE_INDEX_RETRIED,
+  ])(
+    '019 CA-21: `%s` es sobre el archivo y descarta texto, nombre, extracto y vector',
+    (action) => {
+      const leaked = {
+        text: 'contenido del cliente',
+        fileName: 'informe.docx',
+        excerpt: 'párrafo citado',
+        embedding: '[0.1,0.2]',
+      };
+
+      const result = sanitizeAttributes(AUDIT_CATALOG[action].attributes, leaked);
+
+      expect(AUDIT_CATALOG[action].resourceType).toBe('file');
+      expect(result.attributes).toEqual({});
+      expect(result.rejections.map((rejection) => rejection.key).sort()).toEqual(
+        ['embedding', 'excerpt', 'fileName', 'text'].sort(),
+      );
+    },
+  );
+
+  it('019 CA-21: el motivo de indexación es uno del catálogo cerrado del contrato', () => {
+    const rules = AUDIT_CATALOG[AuditAction.FILE_INDEX_FAILED].attributes;
+
+    const result = sanitizeAttributes(rules, { reason: 'el proveedor respondió: clave inválida' });
+
+    expect(result.attributes).toEqual({});
+    expect(result.rejections.map((rejection) => rejection.key)).toEqual(['reason']);
+  });
+
   it('CA-4: el tope de texto del saneo es el del motivo en el contrato', () => {
     expect(AUDIT_NOTE_MAX_LENGTH).toBe(CONTRACT_NOTE_MAX_LENGTH);
   });
@@ -111,6 +157,8 @@ describe('resourceTypeOf', () => {
     [AuditAction.CLIENT_FILES_VIEWED, {}, 'account'],
     [AuditAction.PLAN_CREATED, {}, 'plan'],
     [AuditAction.PLAN_DEACTIVATED, {}, 'plan'],
+    [AuditAction.FILE_INDEXED, {}, 'file'],
+    [AuditAction.FILE_INDEX_RETRIED, {}, 'file'],
   ] as const)('D-3: `%s` con %p es de tipo %p', (action, attributes, expected) => {
     expect(resourceTypeOf(action, attributes)).toBe(expected);
   });

@@ -62,6 +62,13 @@ Secreto = nunca en el repositorio, vacío en `.env.example` de staging, redactad
 | `ONLYOFFICE_PUBLIC_URL` / `ONLYOFFICE_INTERNAL_URL` | ✓ | | | | | — | 016: desde donde el navegador carga el editor / desde donde el `api` consulta su salud y descarga lo guardado. Opcionales: sin ellas abrir responde `EDITING_UNAVAILABLE` (CA-15) |
 | `EDITING_CALLBACK_BASE_URL` | ✓ | | | | | — | 016: cómo llega ONLYOFFICE al `api` (contenido y aviso de guardado); en local `http://host.docker.internal:3000`. Opcional, como las anteriores |
 | `EDITING_MAX_DOC_BYTES` | ✓ | | | | | `52428800` | 016 RN-10: tope editable (50 MB a validar en staging); por encima, solo lectura |
+| `INDEXING_MAX_ATTEMPTS` | ✓ | ✓ | | | | `3` | 019 RN-6: intentos de un trabajo de indexación, con espera creciente, antes de `fallido`. Una sola definición: el `api` encola y el `worker` decide cuándo se agotaron |
+| `RATE_LIMIT_INDEX_RETRY_PER_MINUTE` | ✓ | | | | | `10` | 019 CA-13: «Reintentar» la indexación, por usuario |
+| `INDEXING_MAX_FILE_BYTES` | | ✓ | | | | `52428800` | 019 RN-7 (DF-37): tope indexable (50 MiB, no varía por plan); por encima, `no_indexable/demasiado_grande` |
+| `INDEX_RECONCILE_INTERVAL_MINUTES` / `INDEX_RECONCILE_BATCH_SIZE` | | ✓ | | | | `1440` / `100` | 019 RN-12: conciliación que encola archivos sin indexar o atascados; lote 1–1000 |
+| `GHOSTSCRIPT_BIN` | | ✓ | | | | `gs` | 019 D-1: ejecutable de Ghostscript para el texto de los PDF; en Windows, `gswin64c` |
+| `GEMINI_API_KEY` | | ✓ | | | ✓ | — | 019 RN-9: clave de embeddings. **Solo** la declara y la recibe el `worker`; nunca el `api` ni el navegador. Opcional: sin ella la indexación termina `fallido/proveedor_no_disponible` y el resto sigue (RNF-09) |
+| `GEMINI_EMBEDDING_MODEL` | | ✓ | | | | `gemini-embedding-001` | 019 (ADR-0007): modelo de embeddings, vectorizado a 768 dimensiones (ADR-0003) |
 | `API_MEM_LIMIT`, `WORKER_MEM_LIMIT` | | | | ✓ | | `768m` | Staging; bajar a `512m` en demos con ONLYOFFICE (R-6) |
 | `COMPOSE_FILE` | | | | ✓ | | — | Solo staging: `compose.yml:compose.staging.yml` |
 
