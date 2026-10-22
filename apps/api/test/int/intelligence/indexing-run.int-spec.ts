@@ -75,8 +75,7 @@ describe('indexación en el worker, de la cola al `indexado` (019 CA-1, 5, 6, 7,
     expect(chunks.map((chunk) => chunk.procedencia.tipo)).toEqual(['docx', 'docx']);
     expect(new Set(sections).size).toBe(2);
     expect(await world.indexingOf(file.versionId)).toMatchObject({ fragmentos: 2 });
-    const notices = await world.statusJobsOf(file.fileId);
-    expect(notices.map((job) => job.data)).toContainEqual({
+    expect(await world.settledNoticesOf(file.fileId)).toContainEqual({
       ownerId: ana.id,
       fileId: file.fileId,
       state: 'indexado',

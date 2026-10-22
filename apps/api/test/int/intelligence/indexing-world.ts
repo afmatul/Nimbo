@@ -1,7 +1,7 @@
 import { getQueueToken } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
-import type { Job, Queue } from 'bullmq';
+import type { Queue } from 'bullmq';
 
 import { IntelligenceModule, IntelligenceWorkerModule } from '../../../src/modules/intelligence';
 import { I_EMBEDDING_PROVIDER } from '../../../src/modules/intelligence/application/ports/i-embedding-provider.port';
@@ -152,7 +152,8 @@ export interface IndexingWorld {
   /** Espera a que la versión llegue a un estado final y lo devuelve. */
   settled(versionId: string): Promise<IndexingRow>;
   chunksOf(fileId: string): Promise<ChunkRow[]>;
-  statusJobsOf(fileId: string): Promise<Job[]>;
+  /** Espera el aviso del estado final (se publica después del commit) y devuelve todos los del archivo. */
+  settledNoticesOf(fileId: string): Promise<unknown[]>;
   close(): Promise<void>;
 }
 
@@ -221,10 +222,13 @@ export const createIndexingWorld = async (): Promise<IndexingWorld> => {
         'SELECT version_archivo_id, orden, texto, procedencia FROM fragmento WHERE archivo_id = $1 ORDER BY orden',
         [fileId],
       ),
-    statusJobsOf: async (fileId) =>
-      (await statusQueue.getJobs(['waiting', 'delayed', 'active', 'completed'])).filter(
-        (job) => (job.data as { fileId?: string }).fileId === fileId,
-      ),
+    settledNoticesOf: (fileId) =>
+      eventually(async () => {
+        const notices = (await statusQueue.getJobs(['waiting', 'delayed', 'active', 'completed']))
+          .map((job) => job.data as { fileId?: string; state?: string })
+          .filter((notice) => notice.fileId === fileId);
+        return notices.some((notice) => FINAL_STATES.includes(notice.state ?? '')) ? notices : null;
+      }),
     close: async () => {
       await Promise.all([
         indexingQueue.obliterate({ force: true }),

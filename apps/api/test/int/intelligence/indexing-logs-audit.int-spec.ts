@@ -54,7 +54,7 @@ describe('bitácora y auditoría de la indexación (019 CA-21)', () => {
 
   /** Todo lo que la indexación dejó fuera de las tablas de contenido: bitácora, auditoría y avisos a `index-status`. */
   const tracesOf = async (file: UploadedFile): Promise<string> => {
-    const notices = (await world.statusJobsOf(file.fileId)).map((job) => job.data as unknown);
+    const notices = await world.settledNoticesOf(file.fileId);
     return JSON.stringify([linesOf(file), await auditOf(file.fileId), notices]);
   };
 
