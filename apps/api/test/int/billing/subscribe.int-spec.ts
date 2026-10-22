@@ -81,6 +81,15 @@ describe('POST /api/v1/billing/subscribe (spec 009 CA-3 a CA-5)', () => {
     };
   };
 
+  /** 010 RN-2: la referencia del instrumento de cada transacción, leída como dueño de las tablas. */
+  const instrumentRefsOf = async (userId: string): Promise<(string | null)[]> =>
+    (
+      (await owner.query(
+        'SELECT referencia_instrumento FROM transaccion WHERE usuario_id = $1 ORDER BY creado_en',
+        [userId],
+      )) as { referencia_instrumento: string | null }[]
+    ).map((row) => row.referencia_instrumento);
+
   it('CA-3: un cliente sin fila paga Equipo: transacción aprobada, suscripción de 30 días y referencia SIM', async () => {
     const ana = await newAccount();
 
@@ -109,6 +118,23 @@ describe('POST /api/v1/billing/subscribe (spec 009 CA-3 a CA-5)', () => {
       expires: null,
       payments: ['rechazada'],
     });
+    await expect(instrumentRefsOf(bruno.id)).resolves.toEqual([null]);
+  });
+
+  it('010 RN-2, B-2: 4000…0341 aprueba con el cliente presente y la transacción guarda la referencia, sin el número', async () => {
+    const dana = await newAccount();
+
+    const response = await dana.subscribe(body('equipo', TEST_CARDS.recurringDeclined));
+
+    expect(response.status).toBe(201);
+    expect(response.body).not.toHaveProperty('instrumentRef');
+    await expect(stateOf(dana.id)).resolves.toMatchObject({
+      plan: 'equipo',
+      payments: ['aprobada'],
+    });
+    const [reference] = await instrumentRefsOf(dana.id);
+    expect(reference).toMatch(/^SIM-TOK-decline-/);
+    expect(reference).not.toContain(TEST_CARDS.recurringDeclined);
   });
 
   it.each(['no-existe', 'personal'])('CA-5: el plan «%s» es 400 sin transacción', async (slug) => {

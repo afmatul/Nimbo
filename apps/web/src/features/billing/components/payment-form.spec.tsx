@@ -183,6 +183,19 @@ describe('PaymentForm (spec 009 §6: formulario, procesando, rechazado, aprobado
     });
   });
 
+  it('010 B-2: la tarjeta 0341 se acepta al contratar (aprueba con el cliente presente)', async () => {
+    fetchMock.mockResolvedValue(jsonResponse(APPROVED, 201));
+    renderForm();
+
+    await pay('4000 0000 0000 0341');
+
+    expect(await screen.findByRole('heading', { name: 'Pago aprobado' })).toBeTruthy();
+    const [request] = fetchMock.mock.calls;
+    expect(JSON.parse(String(request?.[1]?.body))).toMatchObject({
+      card: { number: '4000000000000341' },
+    });
+  });
+
   it('error: un fallo inesperado muestra el mensaje del catálogo con el código para soporte', async () => {
     fetchMock.mockResolvedValue(errorResponse('ALGO_INESPERADO', 500));
     renderForm();

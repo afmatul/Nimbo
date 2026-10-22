@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
 
-import { I_TRANSACTION_RUNNER } from '../../../shared';
+import { errorName, I_TRANSACTION_RUNNER } from '../../../shared';
 import type { Actor, ITransactionRunner } from '../../../shared';
 import { AuditAction, I_AUDIT_LOGGER } from '../../audit';
 import type { IAuditLogger } from '../../audit';
@@ -20,8 +20,6 @@ import { I_VERSION_REPOSITORY } from './ports/i-version.repository.port';
 import type { IVersionRepository } from './ports/i-version.repository.port';
 import { recordAudit } from './record-audit';
 import type { StorageLogger } from './storage-logger';
-
-const errorNameOf = (error: unknown): string => (error instanceof Error ? error.name : 'unknown');
 
 /**
  * Poda por retención (plan 014 §1, CA-13, CA-14): después del commit de una versión nueva, borra las que exceden
@@ -49,7 +47,7 @@ export class VersionPruner {
     try {
       surplus = await this.surplusOf(actor, fileId);
     } catch (error) {
-      this.logger.error({ event: 'version.prune_failed', fileId, errorName: errorNameOf(error) });
+      this.logger.error({ event: 'version.prune_failed', fileId, errorName: errorName(error) });
       return;
     }
     for (const version of surplus) await this.pruneOne(actor, version);
@@ -72,7 +70,7 @@ export class VersionPruner {
         event: 'version.prune_failed',
         fileId: version.fileId,
         versionId: version.id,
-        errorName: errorNameOf(error),
+        errorName: errorName(error),
       });
     }
   }

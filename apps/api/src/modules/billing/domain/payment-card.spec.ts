@@ -1,4 +1,4 @@
-import { isCardExpired, lastFourOf } from './payment-card';
+import { isCardExpired } from './payment-card';
 
 const NOW = new Date('2026-10-14T12:00:00.000Z');
 
@@ -14,9 +14,5 @@ describe('PaymentCard (spec 009 RN-3, RN-9)', () => {
     [12, 2025],
   ])('RN-9: %i/%i ya venció', (expMonth, expYear) => {
     expect(isCardExpired({ number: '4242424242424242', expMonth, expYear }, NOW)).toBe(true);
-  });
-
-  it('RN-3: solo se conservan los últimos 4 dígitos', () => {
-    expect(lastFourOf({ number: '4000000000000002', expMonth: 1, expYear: 2030 })).toBe('0002');
   });
 });

@@ -15,6 +15,7 @@ const toSpaceSummaryResponse = ({ breakdown, ...summary }: SpaceSummary): SpaceS
   availableBytes: Number(summary.availableBytes),
   maxFileBytes: Number(summary.maxFileBytes),
   trashRetentionDays: summary.trashRetentionDays,
+  readOnly: summary.readOnly,
   breakdown: {
     documentsBytes: Number(breakdown.documentsBytes),
     imagesBytes: Number(breakdown.imagesBytes),

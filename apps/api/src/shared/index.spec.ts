@@ -75,6 +75,14 @@ const RUNTIME_EXPORTS_BY_TASK = {
   ],
   '005 T-25': ['BIGINT_TRANSFORMER'],
   '009 T-05': ['RateLimitExceededError'],
+  'PD-63': [
+    'attemptEach',
+    'errorName',
+    'IncompleteBatchError',
+    'REPEATABLE_JOB_OPTIONS',
+    'runWithJobCorrelation',
+    'scheduleRepeatableJob',
+  ],
 } as const;
 
 const ALL_RUNTIME_EXPORTS: readonly string[] = Object.values(RUNTIME_EXPORTS_BY_TASK).flat();

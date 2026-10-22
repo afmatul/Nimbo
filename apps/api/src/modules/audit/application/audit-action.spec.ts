@@ -1,7 +1,7 @@
 import { AuditAction, isAuditAction } from './audit-action';
 
 describe('AuditAction', () => {
-  it('CA-20 (005), CA-24 (006), CA-19 (014), 011 §2, 016 §5: carga, descarga, papelera, versiones, acciones internas y edición', () => {
+  it('CA-20 (005), CA-24 (006), CA-19 (014), 011 §2, 016 §5, 010 CA-22: carga, descarga, papelera, versiones, acciones internas, edición y suscripción', () => {
     expect(Object.values(AuditAction).sort()).toEqual(
       [
         'edit.save_failed',
@@ -23,6 +23,15 @@ describe('AuditAction', () => {
         'client.files_viewed',
         'plan.created',
         'plan.deactivated',
+        'subscription.auto_renew_changed',
+        'subscription.renewed',
+        'subscription.renewal_rejected',
+        'subscription.read_only_entered',
+        'subscription.read_only_exited',
+        'subscription.plan_change_scheduled',
+        'subscription.plan_change_cancelled',
+        'subscription.plan_change_applied',
+        'subscription.plan_change_discarded',
       ].sort(),
     );
   });

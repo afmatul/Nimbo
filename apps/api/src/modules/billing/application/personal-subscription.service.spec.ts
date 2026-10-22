@@ -25,7 +25,10 @@ const setup = () => {
       scopes.push(actorInScope === actor ? actor : null);
       return Promise.resolve();
     }),
-    findCurrentPlanId: jest.fn(),
+    findStanding: jest.fn(),
+    findCurrent: jest.fn(),
+    markReminderSent: jest.fn(),
+    markExpiredNoticeSent: jest.fn(),
     lockCurrent: jest.fn(),
     save: jest.fn(),
   };

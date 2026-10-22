@@ -72,6 +72,14 @@ const DEFAULT_INVOICE_RETRY_INTERVAL_MINUTES = 1;
 /** El mismo lote que los otros barridos; la función de facturas pendientes no devuelve más de 1000. */
 const DEFAULT_INVOICE_RETRY_BATCH_SIZE = 100;
 const MAX_INVOICE_RETRY_BATCH_SIZE = 1000;
+/** Cada 15 minutos (010 plan §1): un vencimiento se procesa a más tardar un cuarto de hora después. */
+const DEFAULT_SUBSCRIPTION_RENEWAL_INTERVAL_MINUTES = 15;
+/** El mismo lote y tope que los otros barridos (las funciones de la 010 no devuelven más de 1000). */
+const DEFAULT_SUBSCRIPTION_RENEWAL_BATCH_SIZE = 100;
+const MAX_SUBSCRIPTION_RENEWAL_BATCH_SIZE = 1000;
+/** RN-8 de la 010: el aviso previo sale 3 días antes de `vence_en`, configurable de 1 a 7. */
+const DEFAULT_RENEWAL_REMINDER_DAYS = 3;
+const MAX_RENEWAL_REMINDER_DAYS = 7;
 /** Intentos de abrir el canal en vivo por origen y minuto (015 CA-14): holgado para 25 usuarios (RNF-02). */
 const DEFAULT_REALTIME_CONNECT_ATTEMPTS_PER_MINUTE = 60;
 /** Tope editable inicial (016 RN-10): 50 MB, a validar en staging con ONLYOFFICE. */
@@ -280,6 +288,24 @@ const invoiceRetryShape = {
   ),
 };
 
+/** Pasada de renovación, vencimiento y aviso previo en el `worker` (010 plan §2, CA-1 a CA-5). */
+const subscriptionRenewalShape = {
+  SUBSCRIPTION_RENEWAL_INTERVAL_MINUTES: positiveInt(DEFAULT_SUBSCRIPTION_RENEWAL_INTERVAL_MINUTES),
+  SUBSCRIPTION_RENEWAL_BATCH_SIZE: intBetween(
+    1,
+    MAX_SUBSCRIPTION_RENEWAL_BATCH_SIZE,
+    DEFAULT_SUBSCRIPTION_RENEWAL_BATCH_SIZE,
+  ),
+};
+
+/**
+ * Días del aviso previo a `vence_en` (010 RN-8): el `api` marca la suscripción «por vencer» y el `worker` envía el
+ * correo, con el mismo valor.
+ */
+const renewalReminderShape = {
+  RENEWAL_REMINDER_DAYS: intBetween(1, MAX_RENEWAL_REMINDER_DAYS, DEFAULT_RENEWAL_REMINDER_DAYS),
+};
+
 /**
  * Forma del entorno del `worker`: el contrato común, su puerto de salud, MinIO, el barrido de cargas (005), la purga
  * de la papelera (006), la conciliación de espacio (007), la de suscripciones y el reintento de facturas (009) y el SMTP (001 plan §6.10); sin `PORT` ni `MINIO_PUBLIC_ENDPOINT`. `SMTP_PASSWORD` se declara **solo** aquí.
@@ -292,6 +318,8 @@ export const workerEnvObjectSchema = sharedEnvBaseSchema.extend({
   ...usageReconcileShape,
   ...subscriptionReconcileShape,
   ...invoiceRetryShape,
+  ...subscriptionRenewalShape,
+  ...renewalReminderShape,
   SMTP_HOST: nonEmpty(),
   SMTP_PORT: requiredPort(),
   SMTP_TLS: oneOf(['none', 'starttls', 'implicit']),
@@ -312,6 +340,7 @@ export const apiEnvObjectSchema = sharedEnvBaseSchema.extend({
   ...uploadApiShape,
   ...foldersApiShape,
   ...quickAccessApiShape,
+  ...renewalReminderShape,
   ...realtimeApiShape,
   ...editingApiShape,
   WEB_PUBLIC_URL: url(),

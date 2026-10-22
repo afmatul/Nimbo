@@ -9,8 +9,12 @@ import type {
 import type { Invoice, InvoiceDraft } from '../../domain/entities/invoice.entity';
 import { formatInvoiceNumber } from '../../domain/sequence-number';
 
+import { latestInvoiceSql } from './latest-rows.sql';
 import { onlyRow } from './only-row';
 
+const LATEST_NIT_SQL = latestInvoiceSql('nit');
+/** Consumidor final: sin facturas previas (RN-4 de la 010). */
+const FINAL_CONSUMER_NIT = 'CF';
 const NEXT_NUMBER_SQL = `SELECT nextval('factura_numero_seq')::int AS sequence`;
 const INSERT_SQL = `INSERT INTO factura (transaccion_id, usuario_id, numero, subtotal_centavos, iva_centavos,
     total_centavos, nit, correo_comprobante, creado_en)
@@ -106,5 +110,12 @@ export class TypeOrmInvoiceRepository implements IInvoiceRepository {
 
   async markNoticeQueued(actor: Actor, invoiceId: string): Promise<void> {
     await this.context.requireActorScope(actor).query(MARK_NOTICE_SQL, [invoiceId, actor.id]);
+  }
+
+  async findLatestNit(actor: Actor): Promise<string> {
+    const [row] = (await this.context
+      .requireActorScope(actor)
+      .query(LATEST_NIT_SQL, [actor.id])) as { nit: string }[];
+    return row?.nit ?? FINAL_CONSUMER_NIT;
   }
 }

@@ -7,7 +7,14 @@ import { Logger } from 'nestjs-pino';
 
 import { InitialAdminBootstrapper } from '../modules/backoffice';
 import type { InitialAdminCommand } from '../modules/identity';
-import { apiEnvSchema, CorrelationContext, DomainError, loadDotenvFile, loadEnv } from '../shared';
+import {
+  apiEnvSchema,
+  CorrelationContext,
+  DomainError,
+  errorName,
+  loadDotenvFile,
+  loadEnv,
+} from '../shared';
 import type { Env } from '../shared';
 
 import { BootstrapAdminModule } from './bootstrap-admin.module';
@@ -76,7 +83,7 @@ const systemCodeOf = (error: unknown): string | undefined => {
 const refusalOf = (error: unknown): Record<string, unknown> =>
   error instanceof DomainError
     ? { code: error.code, fields: error.fields?.map((issue) => issue.field) }
-    : { errorName: error instanceof Error ? error.name : 'unknown', code: systemCodeOf(error) };
+    : { errorName: errorName(error), code: systemCodeOf(error) };
 
 /** Contexto Nest sin HTTP: crea el Administrador, registra el resultado y cierra conexiones. */
 async function bootstrapAdmin(env: Env, command: InitialAdminCommand): Promise<void> {

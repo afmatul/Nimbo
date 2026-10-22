@@ -25,6 +25,7 @@ import {
   UploadNotFoundError,
   UploadSizeMismatchError,
   VersionAlreadyCurrentError,
+  AccountReadOnlyError,
   VersionNotFoundError,
 } from '../domain/errors';
 
@@ -51,6 +52,7 @@ const ALL_ERRORS: readonly DomainError[] = [
   new QuickAccessLimitError(5),
   new VersionNotFoundError(),
   new VersionAlreadyCurrentError(),
+  new AccountReadOnlyError(),
 ];
 
 /** Errores que comparten código con otro ya listado (mismo contrato, distinto mensaje). */

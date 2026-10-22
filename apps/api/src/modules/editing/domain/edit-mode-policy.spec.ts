@@ -10,6 +10,7 @@ const OWNER_ON_PRO: EditModeInput = {
   canEdit: true,
   openedByOwner: true,
   ownerMaxEditors: 3,
+  ownerReadOnly: false,
   activeEditors: 0,
   sizeBytes: MB,
   maxDocBytes: 50n * MB,
@@ -39,6 +40,16 @@ describe('EditModePolicy.decide (plan 016 §2)', () => {
       { ...COEDITOR, ownerMaxEditors: 0 },
       'EDITING_OWNER_PLAN_READ_ONLY',
     ],
+    [
+      '010 CA-13: propietaria vencida, en solo lectura',
+      { ...OWNER_ON_PRO, ownerReadOnly: true },
+      'EDITING_ACCOUNT_READ_ONLY',
+    ],
+    [
+      '010 CA-13, CA-22: coeditor con la propietaria vencida',
+      { ...COEDITOR, ownerReadOnly: true },
+      'EDITING_OWNER_PLAN_READ_ONLY',
+    ],
     ['CA-7: límite de Pro', { ...OWNER_ON_PRO, activeEditors: 3 }, 'EDITING_LIMIT_REACHED'],
     [
       'CA-7: límite de Equipo',
@@ -58,6 +69,15 @@ describe('EditModePolicy.decide (plan 016 §2)', () => {
     const reader = { ...COEDITOR, canEdit: false, ownerMaxEditors: 0, activeEditors: 9 };
 
     expect(EditModePolicy.decide(reader).readOnlyReason).toBe('EDITING_VIEW_ONLY');
+  });
+
+  it('010: la cuenta vencida pesa más que el tamaño y el límite, y un Lector sigue siendo Lector', () => {
+    const expired = { ...OWNER_ON_PRO, ownerReadOnly: true, sizeBytes: 99n * MB, activeEditors: 9 };
+
+    expect(EditModePolicy.decide(expired).readOnlyReason).toBe('EDITING_ACCOUNT_READ_ONLY');
+    expect(EditModePolicy.decide({ ...expired, canEdit: false }).readOnlyReason).toBe(
+      'EDITING_VIEW_ONLY',
+    );
   });
 
   it('CA-5: el plan sin edición pesa más que el tamaño y el límite', () => {

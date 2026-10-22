@@ -8,6 +8,9 @@ export const AUDIT_NOTE_MAX_LENGTH = 500;
 export const AUDIT_ORIGINS = ['self', 'staff'] as const;
 export type AuditOrigin = (typeof AUDIT_ORIGINS)[number];
 
-/** Quién disparó una purga: el cliente al vaciar o eliminar (`manual`) o el ciclo programado de la papelera (`scheduled`). */
+/**
+ * Quién disparó la acción: el cliente (`manual`) o un ciclo programado (`scheduled`): la purga de la papelera (CA-7) y
+ * la renovación automática de la suscripción (010).
+ */
 export const AUDIT_TRIGGERS = ['manual', 'scheduled'] as const;
 export type AuditTrigger = (typeof AUDIT_TRIGGERS)[number];

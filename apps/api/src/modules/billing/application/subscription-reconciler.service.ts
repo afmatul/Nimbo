@@ -1,8 +1,14 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
 
-import { createActor, I_TRANSACTION_RUNNER, Role } from '../../../shared';
 import type { ITransactionRunner } from '../../../shared';
+import {
+  attemptEach,
+  createActor,
+  I_TRANSACTION_RUNNER,
+  Role,
+  IncompleteBatchError,
+} from '../../../shared';
 import { VerifiedClientLister } from '../../identity';
 
 import type { BillingLogger } from './billing-logger';
@@ -11,12 +17,12 @@ import { SUBSCRIPTION_RECONCILE_CONFIG } from './subscription-reconcile-config';
 import type { SubscriptionReconcileConfig } from './subscription-reconcile-config';
 
 /** Quedaron clientes sin revisar (CA-2): la pasada falla para que BullMQ la reintente. Sin ids ni cifras de cuentas. */
-export class SubscriptionReconcileIncompleteError extends Error {
-  constructor(readonly failed: number) {
+export class SubscriptionReconcileIncompleteError extends IncompleteBatchError {
+  constructor(failed: number) {
     super(
+      failed,
       `La conciliación de suscripciones dejó ${String(failed)} cuenta(s) sin revisar; se reintentará.`,
     );
-    this.name = 'SubscriptionReconcileIncompleteError';
   }
 }
 
@@ -54,27 +60,17 @@ export class SubscriptionReconcilerService {
     return this.transactions.run(() => this.clients.listIds(afterId, this.config.batchSize));
   }
 
-  /** Cuántas cuentas de la página fallaron. */
-  private async subscribePage(ids: readonly string[]): Promise<number> {
-    let failed = 0;
-    for (const id of ids) {
-      if (!(await this.subscribeAsOwner(id))) failed += 1;
-    }
-    return failed;
-  }
-
-  /** `true` si la cuenta quedó con suscripción. El error solo deja su nombre: el mensaje podría traer datos. */
-  private async subscribeAsOwner(userId: string): Promise<boolean> {
-    try {
-      await this.personal.subscribe(createActor(userId, Role.CLIENT));
-      return true;
-    } catch (error) {
-      this.logger.error({
-        event: 'billing.reconcile_failed',
-        userId,
-        errorName: error instanceof Error ? error.name : 'unknown',
-      });
-      return false;
-    }
+  /** Cuántas cuentas de la página fallaron; el error solo deja su nombre (el mensaje podría traer datos). */
+  private subscribePage(ids: readonly string[]): Promise<number> {
+    return attemptEach(
+      ids,
+      (userId) => this.personal.subscribe(createActor(userId, Role.CLIENT)),
+      (userId, failure) =>
+        this.logger.error({
+          event: 'billing.reconcile_failed',
+          userId,
+          errorName: failure.errorName,
+        }),
+    );
   }
 }

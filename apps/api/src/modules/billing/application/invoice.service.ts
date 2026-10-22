@@ -5,6 +5,7 @@ import type { Actor } from '../../../shared';
 import { AccountContactReader } from '../../identity';
 import type { Invoice } from '../domain/entities/invoice.entity';
 import type { Payment } from '../domain/entities/payment.entity';
+import { BillingInvariantError } from '../domain/errors/billing-invariant.error';
 import { Money } from '../domain/value-objects/money';
 
 import { I_INVOICE_REPOSITORY } from './ports/i-invoice-repository.port';
@@ -23,7 +24,8 @@ export class InvoiceService {
   ) {}
 
   async register(actor: Actor, payment: Payment, nit: string): Promise<Invoice> {
-    if (payment.status !== 'aprobada') throw new Error('Solo un pago aprobado se factura (CA-6).');
+    if (payment.status !== 'aprobada')
+      throw new BillingInvariantError('Solo un pago aprobado se factura (CA-6).');
     const { subtotalCents, vatCents, totalCents } = breakdown(payment.amount.cents);
     return this.invoices.record(actor, {
       paymentId: payment.id,

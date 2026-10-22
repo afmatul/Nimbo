@@ -1,16 +1,15 @@
-import { formatGtq, type BillingHistoryResponse, type Plan } from '@nimbo/contracts';
+import type { Plan, SubscriptionView } from '@nimbo/contracts';
+import { Lock } from 'lucide-react';
 import Link from 'next/link';
 import type * as React from 'react';
 
 import { Badge } from '../../../components/ui/badge';
 import { buttonVariants } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
-import { longDayLabel } from '../../../lib/format-date';
 import { formatCount, formatPlanBytes } from '../../../lib/format-plan';
-import { PLANS_PATH } from '../routes';
+import { CHANGE_PLAN_PATH, PLANS_PATH } from '../routes';
 
-type Subscription = NonNullable<BillingHistoryResponse['subscription']>;
-type PaymentMethod = BillingHistoryResponse['paymentMethod'];
+import { expiryLabel, priceLabel } from './subscription-copy';
 
 const editorsLabel = (maxEditors: number): string =>
   maxEditors > 0
@@ -24,15 +23,6 @@ const limitsLine = (plan: Plan): string =>
     `${formatPlanBytes(plan.maxFileBytes)} por archivo`,
     editorsLabel(plan.maxEditors),
   ].join(' · ');
-
-/** «Visa ···· 4242»: marca con mayúscula inicial y solo los últimos 4 (RN-9). */
-export const paymentMethodLabel = (method: PaymentMethod): string =>
-  method === null
-    ? '—'
-    : `${method.brand.charAt(0).toUpperCase()}${method.brand.slice(1)} ···· ${method.last4}`;
-
-const priceLabel = (priceCents: number): string =>
-  priceCents > 0 ? formatGtq(priceCents) : 'Gratis';
 
 function Fact({
   label,
@@ -51,14 +41,31 @@ function Fact({
   );
 }
 
-function PlanHeading({ plan }: { readonly plan: Plan }): React.JSX.Element {
+/** «Plan actual», o «Vencida» con candado en solo lectura (mockup `vencida`). */
+function PlanBadge({ readOnly }: { readonly readOnly: boolean }): React.JSX.Element {
+  if (!readOnly) return <Badge variant="secondary">Plan actual</Badge>;
+  return (
+    <Badge variant="warning" className="gap-1">
+      <Lock aria-hidden="true" className="size-3" />
+      Vencida
+    </Badge>
+  );
+}
+
+function PlanHeading({
+  plan,
+  readOnly,
+}: {
+  readonly plan: Plan;
+  readonly readOnly: boolean;
+}): React.JSX.Element {
   return (
     <div className="min-w-0 space-y-1">
       <div className="flex flex-wrap items-center gap-2">
         <h2 id="plan-actual-titulo" className="text-xl font-semibold text-foreground">
           Nimbo {plan.name}
         </h2>
-        <Badge variant="secondary">Plan actual</Badge>
+        <PlanBadge readOnly={readOnly} />
       </div>
       <p className="text-3xl font-bold tracking-tight tabular-nums text-foreground">
         {priceLabel(plan.priceCents)}
@@ -72,35 +79,32 @@ function PlanHeading({ plan }: { readonly plan: Plan }): React.JSX.Element {
 }
 
 /**
- * Plan vigente (spec 009 CA-7; mockup `billing/suscripcion/`): nombre, precio, límites, vencimiento, importe y tarjeta.
- * «Cambiar de plan» y «Próximo cobro» son de la 010; «Ver comparativa» lleva al catálogo de la 008.
+ * Plan actual (spec 009 CA-7; 010 CA-25, CA-18; mockups de `billing/suscripcion/`): nombre, precio, límites,
+ * vencimiento e importe. «Cambiar de plan» lleva al cambio de la 010; desde Personal, «Ver planes» lleva a contratar
+ * (009). La tarjeta del cobro está en «Próximo cobro» y en «Método de pago».
  */
 export function CurrentPlanCard({
   subscription,
-  paymentMethod,
 }: {
-  readonly subscription: Subscription;
-  readonly paymentMethod: PaymentMethod;
+  readonly subscription: SubscriptionView;
 }): React.JSX.Element {
-  const { plan, expiresAt } = subscription;
+  const { plan } = subscription;
+  const readOnly = subscription.status === 'readOnly';
+  const paid = subscription.expiresAt !== null;
   return (
     <Card role="region" aria-labelledby="plan-actual-titulo" className="flex flex-col gap-5 p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <PlanHeading plan={plan} />
+        <PlanHeading plan={plan} readOnly={readOnly} />
         <Link
-          href={PLANS_PATH}
+          href={paid ? CHANGE_PLAN_PATH : PLANS_PATH}
           className={buttonVariants({ variant: 'outline', className: 'w-full sm:w-auto' })}
         >
-          Ver comparativa
+          {paid ? 'Cambiar de plan' : 'Ver planes'}
         </Link>
       </div>
-      <dl className="grid gap-4 border-t border-border pt-4 sm:grid-cols-3">
-        <Fact
-          label="Activo hasta"
-          value={expiresAt === null ? 'Sin vencimiento' : longDayLabel(expiresAt)}
-        />
+      <dl className="grid gap-4 border-t border-border pt-4 sm:grid-cols-2">
+        <Fact label={readOnly ? 'Venció el' : 'Activo hasta'} value={expiryLabel(subscription)} />
         <Fact label="Importe" value={priceLabel(plan.priceCents)} />
-        <Fact label="Método" value={paymentMethodLabel(paymentMethod)} />
       </dl>
     </Card>
   );

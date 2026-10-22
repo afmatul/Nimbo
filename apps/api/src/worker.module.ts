@@ -34,6 +34,7 @@ export const WORKER_QUEUES = [
   'usage-reconcile',
   'subscription-reconcile',
   'invoice-retry',
+  'subscription-renewal',
 ] as const;
 
 /**

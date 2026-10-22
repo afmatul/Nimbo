@@ -75,6 +75,7 @@ describe('GET /storage/summary (007 CA-1 a CA-4, CA-6, CA-17)', () => {
       availableBytes: QUOTA - used - PENDING_UPLOAD_BYTES,
       maxFileBytes: Number(DEFAULT_TEST_LIMITS.maxFileBytes),
       trashRetentionDays: DEFAULT_TEST_LIMITS.trashRetentionDays,
+      readOnly: false,
       breakdown: {
         documentsBytes: NOTES_BYTES,
         imagesBytes: PHOTO_BYTES,

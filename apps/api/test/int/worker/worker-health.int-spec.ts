@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import request from 'supertest';
 
 import { InvoiceRetryProcessor } from '../../../src/modules/billing/infrastructure/invoice-retry.processor';
+import { RenewalProcessor } from '../../../src/modules/billing/infrastructure/renewal.processor';
 import { SubscriptionReconcileProcessor } from '../../../src/modules/billing/infrastructure/subscription-reconcile.processor';
 import { MailProcessor } from '../../../src/modules/notifications/infrastructure/mail.processor';
 import { TrashPurgeProcessor } from '../../../src/modules/storage/infrastructure/trash-purge.processor';
@@ -62,6 +63,7 @@ describe('salud del worker (CA-23, CA-21)', () => {
     await testApp?.app.get(UsageReconcileProcessor).worker.close(true);
     await testApp?.app.get(SubscriptionReconcileProcessor).worker.close(true);
     await testApp?.app.get(InvoiceRetryProcessor).worker.close(true);
+    await testApp?.app.get(RenewalProcessor).worker.close(true);
     await Promise.allSettled([testApp?.close(), infra?.stopAll()]);
   }, 60_000);
 

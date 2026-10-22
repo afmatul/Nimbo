@@ -24,7 +24,7 @@ describe('PlanLimitsBindingModule', () => {
       .overrideProvider(I_TRANSACTION_RUNNER)
       .useValue({ withActor: (_actor: unknown, work: () => Promise<unknown>) => work() })
       .overrideProvider(I_SUBSCRIPTION_REPOSITORY)
-      .useValue({ findCurrentPlanId: jest.fn().mockResolvedValue(null) })
+      .useValue({ findStanding: jest.fn().mockResolvedValue(null) })
       .overrideProvider(I_PLAN_REPOSITORY)
       .useValue({ findBySlug: jest.fn().mockResolvedValue(PERSONAL_PLAN) })
       .compile();
@@ -37,6 +37,7 @@ describe('PlanLimitsBindingModule', () => {
       storageQuotaBytes: 16106127360n,
       trashRetentionDays: 7,
       retainedVersions: 3,
+      readOnly: false,
       maxEditors: 0,
     });
     await moduleRef.close();

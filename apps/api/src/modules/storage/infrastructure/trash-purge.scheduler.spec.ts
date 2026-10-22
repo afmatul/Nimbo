@@ -1,11 +1,10 @@
 import type { Queue } from 'bullmq';
 
-import { CorrelationContext } from '../../../shared';
+import { CorrelationContext, REPEATABLE_JOB_OPTIONS } from '../../../shared';
 import type { StorageLogger } from '../application/storage-logger';
 
 import {
   TRASH_PURGE_JOB_NAME,
-  TRASH_PURGE_JOB_OPTIONS,
   TRASH_PURGE_QUEUE,
   TRASH_PURGE_SCHEDULER_ID,
   TrashPurgeScheduler,
@@ -41,13 +40,13 @@ describe('TrashPurgeScheduler (006 CA-19, plan §4)', () => {
       {
         name: TRASH_PURGE_JOB_NAME,
         data: { correlationId: CORRELATION_ID },
-        opts: TRASH_PURGE_JOB_OPTIONS,
+        opts: REPEATABLE_JOB_OPTIONS,
       },
     );
   });
 
   it('CA-19: cada ejecución tiene 3 intentos con espera exponencial', () => {
-    expect(TRASH_PURGE_JOB_OPTIONS).toMatchObject({
+    expect(REPEATABLE_JOB_OPTIONS).toMatchObject({
       attempts: 3,
       backoff: { type: 'exponential' },
     });

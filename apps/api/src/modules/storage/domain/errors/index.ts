@@ -1,3 +1,4 @@
+export { AccountReadOnlyError } from './account-read-only.error';
 export type { BytesFormatter } from './bytes-formatter';
 export { NameConflictError, NodeNotFoundError } from './file-errors';
 export { InvalidFileTypeError } from './invalid-file-type.error';

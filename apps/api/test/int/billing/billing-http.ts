@@ -17,7 +17,7 @@ export const createBillingHttpApp = async (
   const storage = StorageModule.forRoot(env);
   const testApp = await createTestApp({
     validatedEnv: env,
-    modules: [PlanLimitsBindingModule, storage, BillingHttpModule.forRoot(storage)],
+    modules: [PlanLimitsBindingModule, storage, BillingHttpModule.forRoot(env, storage)],
     overrides,
   });
   return {
