@@ -1,6 +1,10 @@
 'use client';
 
-import { formatBytes, type FileVersionSummary } from '@nimbo/contracts';
+import {
+  formatBytes,
+  type FileVersionSummary,
+  type IndexingStatusResponse,
+} from '@nimbo/contracts';
 import { ChevronLeft, Download, FileX, Folder, History, Info, Undo2 } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
@@ -10,9 +14,18 @@ import { FileTypeChip } from '../../../components/nimbo/file-type-chip';
 import { StateView } from '../../../components/nimbo/state-view';
 import { VersionTimeline, versionByline } from '../../../components/nimbo/version-timeline';
 import { Button, buttonVariants } from '../../../components/ui/button';
+import { showNotice } from '../../../components/ui/sonner';
 import { dateTimeLabel } from '../../../lib/format-date';
 import { SignOutButton } from '../../identity/components/sign-out-button';
 import { useSession } from '../../identity/session/session-provider';
+import { IndexingBanner } from '../../intelligence/components/indexing-banner';
+import { IndexingStatusChip } from '../../intelligence/components/indexing-status-chip';
+import {
+  useIndexingStatus,
+  type IndexingStatusView,
+} from '../../intelligence/hooks/use-indexing-status';
+import type { IndexingApi } from '../../intelligence/indexing-api';
+import { indexedNotice, indexingDetailOf } from '../../intelligence/indexing-messages';
 import { FILE_KIND_LABELS } from '../file-kind-label';
 import { useFileVersions, type VersionsListing } from '../hooks/use-file-versions';
 import { useTrashCount } from '../hooks/use-trash-count';
@@ -38,6 +51,8 @@ const OPEN_FOLDER_LABEL = 'Abrir la carpeta';
 
 export interface FileDetailViewProps {
   readonly fileId: string;
+  /** Estado de indexación del archivo (019). */
+  readonly indexingApi: IndexingApi;
   /** Abre la URL firmada; por omisión, en la pestaña (005 CA-13). */
   readonly openUrl?: (url: string) => void;
 }
@@ -60,13 +75,28 @@ function restoreTargetOf(
   };
 }
 
+/** Estado de indexación de la ficha; al terminar mientras se mira, un toast con el nombre del archivo (019 CA-14). */
+function useFileIndexing(
+  api: IndexingApi,
+  fileId: string,
+  listing: VersionsListing,
+): IndexingStatusView {
+  const fileName = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    fileName.current = listing.status === 'ready' ? listing.file.name : null;
+  }, [listing]);
+  const onIndexed = React.useCallback(() => showNotice(indexedNotice(fileName.current)), []);
+  return useIndexingStatus(api, fileId, onIndexed);
+}
+
 /**
  * Ficha de un archivo con su historial de versiones (spec 014, mockup `storage/ficha-archivo`, D-10): descargar cualquier
- * versión, restaurar las anteriores con confirmación y los detalles de espacio. Sin panel lateral; se llega desde
- * «Ver historial» del menú ⋮.
+ * versión, restaurar las anteriores con confirmación y los detalles de espacio, con el estado de indexación (019). Sin
+ * panel lateral; se llega desde «Ver historial» del menú ⋮.
  */
 export function FileDetailView({
   fileId,
+  indexingApi,
   openUrl = openInBrowser,
 }: FileDetailViewProps): React.JSX.Element {
   const { api } = useUploads();
@@ -75,6 +105,7 @@ export function FileDetailView({
   const sidebar = useQuickAccessSidebar({ api, openedFolderId: null, onNotice: setSidebarNotice });
   const trash = useTrashCount(api);
   const history = useFileVersions(api, fileId);
+  const indexing = useFileIndexing(indexingApi, fileId, history.listing);
   const actions = useVersionActions({
     api,
     fileId,
@@ -91,6 +122,7 @@ export function FileDetailView({
       <FileDetailContent
         listing={history.listing}
         actions={actions}
+        indexing={indexing}
         sidebarNotice={sidebarNotice}
         onDismissSidebarNotice={() => setSidebarNotice(null)}
         onRetry={history.reload}
@@ -107,13 +139,14 @@ export function FileDetailView({
 interface FileDetailContentProps {
   readonly listing: VersionsListing;
   readonly actions: VersionActions;
+  readonly indexing: IndexingStatusView;
   readonly sidebarNotice: DownloadNotice | null;
   readonly onDismissSidebarNotice: () => void;
   readonly onRetry: () => void;
 }
 
 function FileDetailContent(props: FileDetailContentProps): React.JSX.Element {
-  const { listing, actions } = props;
+  const { listing, actions, indexing } = props;
   const ready = listing.status === 'ready' ? listing : null;
   const notice = actions.notice ?? props.sidebarNotice;
   const dismiss = actions.notice ? actions.dismissNotice : props.onDismissSidebarNotice;
@@ -127,11 +160,14 @@ function FileDetailContent(props: FileDetailContentProps): React.JSX.Element {
       ) : (
         <>
           <BackLink folderId={ready?.file.folderId ?? null} />
-          <FileHeader ready={ready} actions={actions} />
+          <div>
+            <FileHeader ready={ready} actions={actions} indexing={indexing.status} />
+            <IndexingBanner status={indexing.status} retry={indexing.retry} />
+          </div>
           <HistoryCard listing={listing} actions={actions} onRetry={props.onRetry}>
             {notice ? <DownloadNoticeBanner notice={notice} onDismiss={dismiss} /> : null}
           </HistoryCard>
-          {ready ? <DetailsCard listing={ready} /> : null}
+          {ready ? <DetailsCard listing={ready} indexing={indexing.status} /> : null}
         </>
       )}
     </div>
@@ -151,13 +187,15 @@ function BackLink({ folderId }: { readonly folderId: string | null }): React.JSX
   );
 }
 
-/** Tipo, nombre (CA-20), versión actual y «Descargar» de la versión actual. */
+/** Tipo, nombre (CA-20), versión actual, estado de indexación (019) y «Descargar» de la versión actual. */
 function FileHeader({
   ready,
   actions,
+  indexing,
 }: {
   readonly ready: ReadyListing | null;
   readonly actions: VersionActions;
+  readonly indexing: IndexingStatusResponse | null;
 }): React.JSX.Element {
   const current = ready ? currentOf(ready) : undefined;
   return (
@@ -166,7 +204,10 @@ function FileHeader({
         {ready ? (
           <FileTypeChip fileType={CHIP_TYPE_BY_KIND[ready.file.kind]} className="mt-1 shrink-0" />
         ) : null}
-        <FileTitle ready={ready} current={current} />
+        <div className="min-w-0">
+          <FileTitle ready={ready} current={current} />
+          <IndexingStatusChip status={indexing} />
+        </div>
       </div>
       {current ? (
         <Button
@@ -386,18 +427,27 @@ function LocationLink({ folderId }: { readonly folderId: string | null }): React
 }
 
 /**
- * Tipo y ubicación (CA-20), tamaño de la actual, espacio de todas las versiones (D-1: todas cuentan) y cuándo cambió
- * por última vez.
+ * Tipo y ubicación (CA-20), tamaño de la actual, espacio de todas las versiones (D-1: todas cuentan), cuándo cambió
+ * por última vez y, si el tipo se indexa, cuándo y de qué versión (019, RN-1).
  */
-function DetailsCard({ listing }: { readonly listing: ReadyListing }): React.JSX.Element {
+function DetailsCard({
+  listing,
+  indexing,
+}: {
+  readonly listing: ReadyListing;
+  readonly indexing: IndexingStatusResponse | null;
+}): React.JSX.Element {
   const current = currentOf(listing);
   const { file } = listing;
+  const indexingDetail =
+    indexing && current ? indexingDetailOf(indexing, current.number, listing.loadedAt) : null;
   const rows: readonly (readonly [string, React.ReactNode])[] = [
     ['Tipo', FILE_KIND_LABELS[file.kind]],
     ['Tamaño', current ? `${formatBytes(current.sizeBytes)} (versión actual)` : '—'],
     ['Con versiones', `${formatBytes(totalVersionBytes(listing.items))} de tu espacio`],
     ['Ubicación', <LocationLink key="ubicacion" folderId={file.folderId} />],
     ['Modificado', current ? dateTimeLabel(current.createdAt, listing.loadedAt) : '—'],
+    ...(indexingDetail === null ? [] : [['Indexación', indexingDetail] as const]),
   ];
   return (
     <section
