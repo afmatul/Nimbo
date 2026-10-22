@@ -2,7 +2,12 @@ import { INTELLIGENCE_ERROR_CODES } from '@nimbo/contracts';
 
 import { ConflictError, DomainError } from '../../../../shared/domain/errors';
 
-import { EmbeddingUnavailableError, IndexingNotRetryableError, NotIndexableError } from './index';
+import {
+  ContentReadError,
+  EmbeddingUnavailableError,
+  IndexingNotRetryableError,
+  NotIndexableError,
+} from './index';
 
 describe('errores de `intelligence` (plan 019 §2 y §4)', () => {
   it('CA-13: `IndexingNotRetryableError` es un 409 con el código del contrato y pide actualizar', () => {
@@ -30,5 +35,15 @@ describe('errores de `intelligence` (plan 019 §2 y §4)', () => {
     expect(transient.retryable).toBe(true);
     expect(missingKey.retryable).toBe(false);
     expect(transient).not.toBeInstanceOf(DomainError);
+  });
+
+  it('CA-12: `ContentReadError` es transitorio, lleva `lectura_fallida` y conserva la causa', () => {
+    const cause = new Error('socket cerrado');
+    const error = new ContentReadError(cause);
+
+    expect(error.reason).toBe('lectura_fallida');
+    expect(error.cause).toBe(cause);
+    expect(error.name).toBe('ContentReadError');
+    expect(error).not.toBeInstanceOf(DomainError);
   });
 });

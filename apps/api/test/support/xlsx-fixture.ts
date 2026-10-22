@@ -1,4 +1,4 @@
-import { buildZip, escapeXml } from './docx-fixture';
+import { buildZip, escapeXml, PACKAGE_CONTENT_TYPES } from './docx-fixture';
 
 /**
  * Generador de `.xlsx` mínimos para pruebas (019 D-5): sin binarios versionados. Las cadenas van a
@@ -67,6 +67,7 @@ export function buildXlsx(sheets: readonly XlsxFixtureSheet[]): Buffer {
     sheets.map((sheet, index) => [`xl/worksheets/sheet${index + 1}.xml`, sheetXml(sheet, shared)]),
   );
   return buildZip({
+    '[Content_Types].xml': PACKAGE_CONTENT_TYPES,
     'xl/workbook.xml': workbookXml(sheets),
     'xl/_rels/workbook.xml.rels': workbookRelsXml(sheets),
     'xl/sharedStrings.xml': sharedStringsXml(shared),

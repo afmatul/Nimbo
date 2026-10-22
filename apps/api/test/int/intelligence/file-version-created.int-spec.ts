@@ -1,8 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
 import { getQueueToken } from '@nestjs/bullmq';
-import { Module } from '@nestjs/common';
-import type { DynamicModule } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { INDEXING_EVENTS } from '@nimbo/contracts';
 import type { Queue } from 'bullmq';
@@ -10,8 +8,6 @@ import type { Queue } from 'bullmq';
 import { IntelligenceModule } from '../../../src/modules/intelligence';
 import { I_INDEX_QUEUE } from '../../../src/modules/intelligence/application/ports/i-index-queue.port';
 import type { IIndexQueue } from '../../../src/modules/intelligence/application/ports/i-index-queue.port';
-import { I_REALTIME_PUBLISHER } from '../../../src/modules/realtime';
-import type { IRealtimePublisher, RealtimeNotice } from '../../../src/modules/realtime';
 import { FILE_VERSION_CREATED } from '../../../src/modules/storage';
 import type { FileVersionCreatedEvent } from '../../../src/modules/storage';
 import { FileVersionService } from '../../../src/modules/storage/application/file-version.service';
@@ -26,52 +22,16 @@ import { waitForLog } from '../setup/wait-for-log';
 import { createStorageHttpApp, otherBytes, textBytes } from '../storage/storage-http';
 import type { StorageClient, StorageHttpApp } from '../storage/storage-http';
 
+import { eventually, RecordingPublisher, recordingRealtime } from './indexing-world';
+import type { Delivered } from './indexing-world';
+
 const INDEXING_QUEUE = 'indexing';
 const BODY_BYTES = 2048;
-const WAIT_STEP_MS = 50;
-const WAIT_MS = 10_000;
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const QUEUED_STATES = ['waiting', 'delayed', 'prioritized', 'active'] as const;
 
 const pngBytes = (): Buffer =>
   Buffer.concat([PNG_SIGNATURE, Buffer.alloc(BODY_BYTES - PNG_SIGNATURE.length, 0x41)]);
-
-interface Delivered {
-  readonly userId: string;
-  readonly notice: RealtimeNotice;
-}
-
-/** `IRealtimePublisher` que anota lo que se manda a cada cuenta (el canal real lo prueba T-07). */
-class RecordingPublisher implements IRealtimePublisher {
-  readonly delivered: Delivered[] = [];
-
-  toUser(userId: string, notice: RealtimeNotice): void {
-    this.delivered.push({ userId, notice });
-  }
-
-  toDocument(): void {
-    // Sin salas de documento en esta suite.
-  }
-}
-
-@Module({})
-class RecordingRealtimeModule {}
-
-const recordingRealtime = (publisher: RecordingPublisher): DynamicModule => ({
-  module: RecordingRealtimeModule,
-  providers: [{ provide: I_REALTIME_PUBLISHER, useValue: publisher }],
-  exports: [I_REALTIME_PUBLISHER],
-});
-
-const eventually = async <T>(probe: () => Promise<T | null>): Promise<T> => {
-  const deadline = Date.now() + WAIT_MS;
-  for (;;) {
-    const found = await probe();
-    if (found !== null) return found;
-    if (Date.now() >= deadline) throw new Error(`Nada llegó en ${String(WAIT_MS)} ms`);
-    await new Promise((resolve) => setTimeout(resolve, WAIT_STEP_MS));
-  }
-};
 
 interface IndexingRow {
   readonly version_archivo_id: string;

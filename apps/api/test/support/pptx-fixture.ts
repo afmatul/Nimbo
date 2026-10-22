@@ -1,4 +1,4 @@
-import { buildZip, escapeXml } from './docx-fixture';
+import { buildZip, escapeXml, PACKAGE_CONTENT_TYPES } from './docx-fixture';
 
 /**
  * Generador de `.pptx` mínimos para pruebas (019 D-5): sin binarios versionados. Cada diapositiva se escribe en
@@ -94,6 +94,7 @@ export function buildPptx(
   order: readonly number[] = slides.map((_slide, index) => index),
 ): Buffer {
   return buildZip({
+    '[Content_Types].xml': PACKAGE_CONTENT_TYPES,
     'ppt/presentation.xml': presentationXml(order),
     'ppt/_rels/presentation.xml.rels': presentationRelsXml(slides),
     'ppt/media/image1.png': PNG_BYTES,
