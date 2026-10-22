@@ -19,6 +19,7 @@ import { FolderNotFoundState } from './folder-not-found-state';
 import { FolderRowMenu } from './folder-row-menu';
 import { MyFilesDialogs } from './my-files-dialogs';
 import { QuickAccessLimitAlert } from './quick-access-limit-alert';
+import { ReadOnlyNotice } from './read-only-notice';
 import { SidebarQuota } from './sidebar-quota';
 
 /** Menú ⋮ de una fila: descargar (archivos), renombrar, mover, fijar en la barra lateral y mandar a la papelera. */
@@ -122,6 +123,7 @@ export function MyFiles({ folderId }: MyFilesProps): React.JSX.Element {
         <div className="flex justify-end">
           <SignOutButton />
         </div>
+        <ReadOnlyNotice />
         {listing.status === 'not_found' ? (
           <FolderNotFoundState />
         ) : (

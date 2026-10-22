@@ -14,6 +14,7 @@ import { FolderBackLink } from './folder-breadcrumbs';
 import { LoadMore } from './load-more';
 import { NodeSortMenu } from './node-sort-menu';
 import { NodeTable, type FolderDisclosure, type NodeTableProps } from './node-table';
+import { ReadOnlyUploadFeedback, useReadOnlyUploads } from './read-only-notice';
 import { UploadDropzone } from './upload-dropzone';
 
 export type FileExplorerStatus = 'loading' | 'ready' | 'error';
@@ -82,6 +83,36 @@ function useCanDragFiles(): boolean {
   return React.useSyncExternalStore(subscribeToDragSupport, canDragNow, () => true);
 }
 
+/** «Nueva carpeta» y «Subir archivos»; deshabilitados en solo lectura (spec 010 CA-14). */
+function ExplorerActions({
+  onNewFolder,
+  onUpload,
+  disabled,
+}: {
+  readonly onNewFolder: () => void;
+  readonly onUpload: () => void;
+  readonly disabled: boolean;
+}): React.JSX.Element {
+  return (
+    <div className="flex w-full gap-2 sm:w-auto">
+      <Button
+        type="button"
+        variant="outline"
+        className="flex-1 sm:flex-none"
+        onClick={onNewFolder}
+        disabled={disabled}
+      >
+        <FolderPlus className="h-4 w-4" aria-hidden="true" />
+        Nueva carpeta
+      </Button>
+      <Button type="button" className="flex-1 sm:flex-none" onClick={onUpload} disabled={disabled}>
+        <Upload className="h-4 w-4" aria-hidden="true" />
+        Subir archivos
+      </Button>
+    </div>
+  );
+}
+
 /**
  * «Mis archivos» o una carpeta: encabezado con «Nueva carpeta» y «Subir archivos», zona de arrastre que sube a la
  * ubicación abierta (CA-6) y los estados de la spec 006 §6.
@@ -101,6 +132,7 @@ export function FileExplorer({
   notice,
   controls,
 }: FileExplorerProps): React.JSX.Element {
+  const uploads = useReadOnlyUploads(onFiles, folderId);
   const ownInputRef = React.useRef<HTMLInputElement>(null);
   const inputRef = fileInputRef ?? ownInputRef;
   const openPicker = (): void => inputRef.current?.click();
@@ -114,27 +146,18 @@ export function FileExplorer({
       )}
       <header className="flex flex-wrap items-center justify-between gap-3">
         <ExplorerTitle place={place} loading={status === 'loading'} />
-        <div className="flex w-full gap-2 sm:w-auto">
-          <Button
-            type="button"
-            variant="outline"
-            className="flex-1 sm:flex-none"
-            onClick={onNewFolder}
-          >
-            <FolderPlus className="h-4 w-4" aria-hidden="true" />
-            Nueva carpeta
-          </Button>
-          <Button type="button" className="flex-1 sm:flex-none" onClick={openPicker}>
-            <Upload className="h-4 w-4" aria-hidden="true" />
-            Subir archivos
-          </Button>
-        </div>
+        <ExplorerActions
+          onNewFolder={onNewFolder}
+          onUpload={openPicker}
+          disabled={uploads.readOnly}
+        />
       </header>
+      <ReadOnlyUploadFeedback readOnly={uploads.readOnly} blockedDrop={uploads.blockedDrop} />
 
       <UploadDropzone
         destinationName={placeName}
         maxFileLabel={maxFileLabel}
-        onFiles={onFiles}
+        onFiles={uploads.onFiles}
         inputRef={inputRef}
       >
         {notice ? (
@@ -153,6 +176,7 @@ export function FileExplorer({
           renderRowActions={renderRowActions}
           disclosure={disclosure}
           controls={controls}
+          readOnly={uploads.readOnly}
         />
       </UploadDropzone>
     </section>
@@ -196,31 +220,22 @@ interface ExplorerBodyProps {
   readonly renderRowActions: FileExplorerProps['renderRowActions'] | undefined;
   readonly disclosure: FolderDisclosure | undefined;
   readonly controls: ListControls | undefined;
+  /** Spec 010 CA-14: la cuenta está en solo lectura. */
+  readonly readOnly: boolean;
 }
 
-function ExplorerBody({
-  status,
-  isRoot,
-  placeName,
-  nodes,
-  maxFileLabel,
-  onRetry,
-  onUpload,
-  renderRowActions,
-  disclosure,
-  controls,
-}: ExplorerBodyProps): React.JSX.Element {
+function ExplorerBody(props: ExplorerBodyProps): React.JSX.Element {
+  const { status, isRoot, nodes, controls } = props;
   if (status === 'loading') {
     const title = isRoot ? 'Cargando tus archivos…' : 'Cargando el contenido de la carpeta…';
     return <StateView type="loading" headingLevel="h2" title={title} />;
   }
   if (status === 'error') {
     const title = isRoot ? 'No pudimos cargar tus archivos.' : 'No pudimos abrir esta carpeta.';
-    return <ExplorerErrorState title={title} onRetry={onRetry} />;
+    return <ExplorerErrorState title={title} onRetry={props.onRetry} />;
   }
-  if (nodes.length === 0) {
-    return <EmptyExplorer isRoot={isRoot} maxFileLabel={maxFileLabel} onUpload={onUpload} />;
-  }
+  if (nodes.length === 0) return <EmptyExplorer {...props} />;
+  const { placeName, renderRowActions, disclosure } = props;
   const table = { nodes, placeName, renderRowActions, disclosure };
   return controls ? <ControlledList table={table} controls={controls} /> : <NodeTable {...table} />;
 }
@@ -275,17 +290,28 @@ const EMPTY_TEXTS = {
   },
 } as const;
 
+/** Spec 010 CA-14: en solo lectura el vacío no invita a subir ni ofrece el botón (la carga está bloqueada). */
+const READ_ONLY_EMPTY_TEXT = 'Cuando renueves tu plan podrás subir documentos aquí.';
+
+/** Spec 010 CA-14: el vacío en solo lectura, sin el botón ni la invitación a subir. */
+function ReadOnlyEmpty({ title }: { readonly title: string }): React.JSX.Element {
+  return (
+    <StateView type="empty" headingLevel="h2" title={title} description={READ_ONLY_EMPTY_TEXT} />
+  );
+}
+
 function EmptyExplorer({
   isRoot,
   maxFileLabel,
+  readOnly,
   onUpload,
-}: {
-  readonly isRoot: boolean;
-  readonly maxFileLabel: string | undefined;
-  readonly onUpload: () => void;
-}): React.JSX.Element {
+}: Pick<
+  ExplorerBodyProps,
+  'isRoot' | 'maxFileLabel' | 'readOnly' | 'onUpload'
+>): React.JSX.Element {
   const canDrag = useCanDragFiles();
   const texts = isRoot ? EMPTY_TEXTS.root : EMPTY_TEXTS.folder;
+  if (readOnly) return <ReadOnlyEmpty title={texts.title} />;
   const invitation = canDrag ? texts.withDrag : texts.withoutDrag;
   const limit =
     maxFileLabel === undefined ? '' : ` Tu plan permite hasta ${maxFileLabel} por archivo.`;

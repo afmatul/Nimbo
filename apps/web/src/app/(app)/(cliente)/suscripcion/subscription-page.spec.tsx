@@ -107,7 +107,7 @@ describe('Plan y facturación, /suscripcion (spec 009 CA-7, CA-8, §6; mockup `b
     expect(screen.getByText('Cargando tu plan y tus facturas…')).toBeTruthy();
   });
 
-  it('CA-7, con facturas: el plan con precio, límites, vencimiento y tarjeta, como el mockup', async () => {
+  it('CA-7, con facturas: el plan con precio, límites y vencimiento, como el mockup', async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse(HISTORY));
 
     const { container } = renderPage();
@@ -119,9 +119,8 @@ describe('Plan y facturación, /suscripcion (spec 009 CA-7, CA-8, §6; mockup `b
       within(plan()).getByText('350 GB · 1 GB por archivo · 5 editores simultáneos por documento'),
     ).toBeTruthy();
     expect(within(plan()).getByText('13 de noviembre de 2026')).toBeTruthy();
-    expect(within(plan()).getByText('Visa ···· 4242')).toBeTruthy();
-    expect(within(plan()).getByRole('link', { name: 'Ver comparativa' }).getAttribute('href')).toBe(
-      '/planes',
+    expect(within(plan()).getByRole('link', { name: 'Cambiar de plan' }).getAttribute('href')).toBe(
+      '/suscripcion/cambiar-plan',
     );
     expect(screen.getByRole('navigation', { name: 'Ruta' }).textContent).toContain(
       'Plan y facturación',
@@ -194,7 +193,10 @@ describe('Plan y facturación, /suscripcion (spec 009 CA-7, CA-8, §6; mockup `b
     expect(await screen.findByText('Aún no tienes facturas ni pagos registrados.')).toBeTruthy();
     expect(within(plan()).getByText('Sin vencimiento')).toBeTruthy();
     expect(within(plan()).getAllByText('Gratis')).toHaveLength(2);
-    expect(within(plan()).getByText('—')).toBeTruthy();
+    expect(within(plan()).getByRole('link', { name: 'Ver planes' }).getAttribute('href')).toBe(
+      '/planes',
+    );
+    expect(screen.queryByRole('region', { name: 'Próximo cobro' })).toBeNull();
     expect(screen.getByText('Aún no has pagado con tarjeta.')).toBeTruthy();
     expect(screen.getByText('Se guardan con tu primer pago.')).toBeTruthy();
   });

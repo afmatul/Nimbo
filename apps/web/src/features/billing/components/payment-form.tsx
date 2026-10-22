@@ -3,12 +3,13 @@
 import {
   BILLING_ERROR_CODES,
   formatGtq,
+  TEST_CARDS,
+  type PaymentReceipt,
   type Plan,
-  type SubscribeResponse,
 } from '@nimbo/contracts';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
-import type * as React from 'react';
+import * as React from 'react';
 import type { JSX } from 'react';
 
 import { Alert } from '../../../components/ui/alert';
@@ -25,9 +26,15 @@ import type { AuthFetch } from '../../identity/session/auth-fetch';
 import { useAuthFetch } from '../../identity/session/use-auth-fetch';
 import { MY_FILES_PATH } from '../../storage/routes';
 import { usePaymentForm, type PaymentFormState } from '../hooks/use-payment-form';
-import { cardBrandOf, groupCardNumber, type PaymentField } from '../payment-form-values';
+import {
+  cardBrandOf,
+  groupCardNumber,
+  toSubscribeRequest,
+  type PaymentField,
+} from '../payment-form-values';
+import { subscribe } from '../subscribe-api';
 
-import { PaymentSummary } from './payment-summary';
+import { PaymentSummary, type PeriodNote } from './payment-summary';
 
 export interface PaymentFormProps {
   readonly plan: Plan;
@@ -35,18 +42,61 @@ export interface PaymentFormProps {
   readonly authFetch: AuthFetch;
 }
 
-/** Pantalla de pago (spec 009 §6, mockup `billing/pago/`): formulario o aprobado, y el resumen del plan al lado. */
-export function PaymentForm({ plan, apiPublicUrl, authFetch }: PaymentFormProps): JSX.Element {
-  const state = usePaymentForm({ planSlug: plan.slug, apiPublicUrl, authFetch });
+export interface PaymentScreenProps {
+  readonly plan: Plan;
+  /** «Pago» al contratar (009) o «Renovar tu plan» (010). */
+  readonly title: string;
+  readonly state: PaymentFormState;
+  /** El periodo nuevo de la renovación en el resumen (010 CA-8, CA-10). */
+  readonly period?: PeriodNote;
+  readonly approved: (payment: PaymentReceipt) => JSX.Element;
+}
+
+/**
+ * Pantalla de pago (spec 009 §6; 010 CA-8 a CA-10; mockups `billing/pago/`): formulario o aprobado, y el resumen del
+ * plan al lado. La comparten contratar y renovar.
+ */
+export function PaymentScreen({
+  plan,
+  title,
+  state,
+  period,
+  approved,
+}: PaymentScreenProps): JSX.Element {
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
       {state.outcome.kind === 'approved' ? (
-        <ApprovedCard payment={state.outcome.payment} />
+        approved(state.outcome.payment)
       ) : (
-        <PaymentCard plan={plan} state={state} />
+        <PaymentCard plan={plan} title={title} state={state} />
       )}
-      <PaymentSummary plan={plan} />
+      <PaymentSummary plan={plan} {...(period === undefined ? {} : { period })} />
     </div>
+  );
+}
+
+/** Contratar un plan (spec 009 CA-3 a CA-6). */
+export function PaymentForm({ plan, apiPublicUrl, authFetch }: PaymentFormProps): JSX.Element {
+  const state = usePaymentForm({
+    prepare: (values) => toSubscribeRequest(plan.slug, values),
+    pay: (request) => subscribe(apiPublicUrl, authFetch, request),
+  });
+  return (
+    <PaymentScreen
+      plan={plan}
+      title="Pago"
+      state={state}
+      approved={(payment) => (
+        <ApprovedCard
+          message={`Tu plan ${payment.plan.name} ya está activo. Te enviamos el comprobante a ${payment.receiptEmail}.`}
+          facts={[
+            { label: 'Referencia', value: payment.reference },
+            { label: 'Vence el', value: dayLabel(payment.expiresAt) },
+          ]}
+          link={{ href: MY_FILES_PATH, label: 'Ir a Mis archivos' }}
+        />
+      )}
+    />
   );
 }
 
@@ -56,11 +106,11 @@ export function SessionPaymentForm(props: Omit<PaymentFormProps, 'authFetch'>): 
   return <PaymentForm {...props} authFetch={authFetch} />;
 }
 
-function PaymentHeader(): JSX.Element {
+function PaymentHeader({ title }: { readonly title: string }): JSX.Element {
   return (
     <header className="space-y-1">
       <h1 className="flex items-center gap-2 text-xl font-bold text-foreground">
-        Pago <Badge variant="warning">Simulado</Badge>
+        {title} <Badge variant="warning">Simulado</Badge>
       </h1>
       <p className="text-sm text-muted-foreground">
         Es un pago de prueba. No se hace ningún cargo real.
@@ -99,21 +149,38 @@ function PaymentFields({
   );
 }
 
+/** Las tres tarjetas del simulador (009 RN-3; 010 RN-2, B-2), con los números de `contracts`. */
+function TestCardsHelp(): JSX.Element {
+  return (
+    <div className="rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+      <p>Tarjetas de prueba:</p>
+      <ul className="mt-1 list-disc space-y-0.5 pl-5">
+        <li>{groupCardNumber(TEST_CARDS.approved)} aprueba siempre.</li>
+        <li>
+          {groupCardNumber(TEST_CARDS.recurringDeclined)} aprueba ahora y se rechaza en el cobro
+          automático.
+        </li>
+        <li>{groupCardNumber(TEST_CARDS.rejected)} rechaza siempre.</li>
+      </ul>
+    </div>
+  );
+}
+
 function PaymentCard({
   plan,
+  title,
   state,
 }: {
   readonly plan: Plan;
+  readonly title: string;
   readonly state: PaymentFormState;
 }): JSX.Element {
   return (
     <Card className="flex flex-col gap-4 p-6">
-      <PaymentHeader />
+      <PaymentHeader title={title} />
       <OutcomeAlert state={state} />
       <PaymentFields plan={plan} state={state} />
-      <p className="rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-        Tarjetas de prueba: 4242 4242 4242 4242 aprueba · 4000 0000 0000 0002 rechaza.
-      </p>
+      <TestCardsHelp />
     </Card>
   );
 }
@@ -239,24 +306,40 @@ function OutcomeAlert({ state }: { readonly state: PaymentFormState }): JSX.Elem
   );
 }
 
-/** Aprobado (CA-3, CA-6): referencia `SIM-`, plan activo, vencimiento y a dónde se envió el comprobante (spec §6). */
-function ApprovedCard({ payment }: { readonly payment: SubscribeResponse }): JSX.Element {
+/** Una fila del aprobado: referencia, vencimiento o periodo nuevo. */
+export interface ApprovedFact {
+  readonly label: string;
+  readonly value: string;
+}
+
+/**
+ * Aprobado (009 CA-3, CA-6; 010 CA-8): el mensaje con a dónde se envió el comprobante, sus datos y a dónde seguir. Lo
+ * arma cada flujo con su texto.
+ */
+export function ApprovedCard({
+  message,
+  facts,
+  link,
+}: {
+  readonly message: string;
+  readonly facts: readonly ApprovedFact[];
+  readonly link: { readonly href: string; readonly label: string };
+}): JSX.Element {
   return (
     <Card className="flex flex-col items-start gap-4 p-6" data-state="aprobado">
       <CheckCircle2 aria-hidden="true" className="h-8 w-8 text-success-foreground" />
       <h1 className="text-xl font-bold text-foreground">Pago aprobado</h1>
-      <p className="text-sm text-foreground">
-        Tu plan {payment.plan.name} ya está activo. Te enviamos el comprobante a{' '}
-        {payment.receiptEmail}.
-      </p>
+      <p className="text-sm text-foreground">{message}</p>
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-        <dt className="text-muted-foreground">Referencia</dt>
-        <dd className="font-medium tabular-nums text-foreground">{payment.reference}</dd>
-        <dt className="text-muted-foreground">Vence el</dt>
-        <dd className="text-foreground">{dayLabel(payment.expiresAt)}</dd>
+        {facts.map((fact) => (
+          <React.Fragment key={fact.label}>
+            <dt className="text-muted-foreground">{fact.label}</dt>
+            <dd className="font-medium tabular-nums text-foreground">{fact.value}</dd>
+          </React.Fragment>
+        ))}
       </dl>
-      <Link href={MY_FILES_PATH} className={cn(buttonVariants())}>
-        Ir a Mis archivos
+      <Link href={link.href} className={cn(buttonVariants())}>
+        {link.label}
       </Link>
     </Card>
   );
