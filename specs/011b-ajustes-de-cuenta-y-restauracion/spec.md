@@ -4,12 +4,17 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Borrador (2026-10-22) |
+| Estado | Borrador (2026-10-22) · P-1 a P-9 resueltas |
 | Dueño | Fátima |
 | Fase | 2 |
 | Requisitos | RF-05, RF-06, RF-07, RF-12, RF-22, RF-23, RF-24; RNF-05, RNF-13, RNF-14, RNF-17 |
 | Depende de | 004, 006, 007 (resumen de espacio, P-3), 009, 010, 011 |
 | Última actualización | 2026-10-22 |
+
+> **Continuidad:** borrador cerrado el 2026-10-22, sin preguntas abiertas. Lo que queda es `/plan 011b`,
+> `/mockup` de la ficha de cuenta y de la papelera de Soporte, la aprobación de Adrián para pasar a «Lista»,
+> y después `/tasks` e `/implement`. El reparto previsto es PR-A (cuota y vigencia) y PR-B (restauración),
+> según los límites de la 011.
 
 ## 1. Contexto y objetivo
 La 011 dejó fuera, por tamaño, tres operaciones que la matriz de roles ya define: el Administrador ajusta la cuota y la
@@ -33,7 +38,7 @@ puede deshacer una eliminación concreta dejando rastro visible para el cliente.
 - **CA-2** (HU-1, RF-06, RF-12) - error: Dado un extra que dejaría la cuota total por debajo de lo ya usado, cuando se intenta guardar, entonces se responde `422` `BACKOFFICE_QUOTA_BELOW_USAGE` con el usado y el total resultante, y nada cambia.
 - **CA-3** (HU-1, RF-06) - error: Dado un extra de cero o negativo, una fecha pasada, una cuenta interna, una cuenta sin suscripción o un cliente inexistente, cuando se intenta guardar, entonces se responde `422` `BACKOFFICE_QUOTA_INVALID` o `404` `IDENTITY_ACCOUNT_NOT_FOUND` según el caso, y nada cambia.
 - **CA-4** (HU-1, RF-12) Dado un extra vigente, cuando el Administrador lo cambia, lo quita o lo acorta (sin dejar la cuota bajo lo usado), entonces rige el valor nuevo, se audita y no se borra ningún archivo; al vencer la fecha, la cuota vuelve a la del plan sin trabajo programado.
-- **CA-5** (HU-4, RF-12) Dado un extra vigente, cuando el cliente abre el resumen de espacio, entonces ve la cuota total y una nota con los GB extra y hasta cuándo; al vencer, la nota desaparece. *(Sujeto a P-3.)*
+- **CA-5** (HU-4, RF-12) Dado un extra vigente, cuando el cliente abre el resumen de espacio, entonces ve la cuota total y una nota con los GB extra y hasta cuándo; al vencer, la nota desaparece.
 
 **Vigencia**
 - **CA-6** (HU-2, RF-06, RF-23) Dado un cliente con plan de pago, cuando el Administrador fija un `vence_en` posterior al actual y a ahora, entonces conserva plan y límites, si estaba en solo lectura vuelve a `vigente` de inmediato y la acción queda en su auditoría.
@@ -52,13 +57,13 @@ puede deshacer una eliminación concreta dejando rastro visible para el cliente.
 - **CA-17** (RNF-13, RNF-14) Dado el Administrador o Soporte en la interfaz, cuando ajusta, restaura o recibe un error, entonces ve carga, éxito o error con acción correctiva, funciona a 360 px y usa las etiquetas y el contraste del sistema de diseño.
 
 ## 4. Reglas de negocio
-- **RN-1** La cuota efectiva es la del plan más un único extra por cuenta, vigente mientras `ahora < fin`; el extra reemplaza al anterior, se guarda en bytes (DF-26) y nunca deja el total por debajo de `espacio_usado`. El vencimiento se calcula al leer: no hay job ni evento de expiración.
+- **RN-1** La cuota efectiva es la del plan más un único extra por cuenta, vigente mientras `ahora < fin`; el extra reemplaza al anterior, se guarda en bytes (DF-26) y nunca deja el total por debajo de `espacio_usado`. El vencimiento se calcula al leer: no hay job ni evento de expiración. **«Por debajo de lo usado» significa que `cuota_del_plan + extra < espacio_usado`**: el extra se suma al plan y no descuenta ni reemplaza espacio consumido. Un extra debe ser mayor que cero; quitarlo es una operación distinta y solo se admite si la cuota del plan ya cubre `espacio_usado`.
 - **RN-2** La vigencia solo se extiende: la fecha nueva debe ser posterior a la actual y, si la cuenta está en solo lectura, posterior a ahora. No aplica a Personal. No se registra pago ni factura; no se toca `iniciado_en`; el cambio programado y la renovación automática siguen como estaban.
-- **RN-3** Soporte solo restaura raíces de la papelera con retención vigente, con las reglas de 006. El motivo es obligatorio, se recorta, máximo 500 caracteres; la interfaz avisa de no escribir nombres de archivo ni datos personales. Soporte no purga, no vacía, no descarga, no previsualiza y no ve versiones. La restauración en una cuenta en solo lectura queda pendiente de P-1.
+- **RN-3** Soporte solo restaura raíces de la papelera con retención vigente, con las reglas de 006. El motivo es obligatorio, se recorta, máximo 500 caracteres; la interfaz avisa de no escribir nombres de archivo ni datos personales. Soporte no purga, no vacía, no descarga, no previsualiza y no ve versiones. La restauración se permite también si la cuenta está en solo lectura: no es una escritura del cliente y no cambia su cuota; el cliente sigue sin poder subir ni editar.
 - **RN-4** Auditoría visible (RF-07): `account.quota_adjusted`, `account.validity_adjusted`, `node.restored` con `note` y, si la cuenta sale de solo lectura, el evento de 010 que corresponda. Los eventos no llevan contenido, nombres de archivo, claves de objeto, URLs, tarjeta ni correo; el motivo solo sale en la auditoría del cliente, nunca en logs técnicos.
 - **RN-5** Roles: Administración ajusta cuota y vigencia; Soporte restaura; Operador no hace ninguna de las tres; el Cliente no las llama. Administración no restaura y Soporte no ajusta cuota ni vigencia.
-- **RN-6** La cuota extra se aplica también a Personal; la vigencia no. *(Sujeto a P-4.)*
-- **RN-7** Las tres acciones se permiten sobre cuentas activas o suspendidas y no cambian su estado; suspender sigue revocando sesiones y congelando compartidos (011 RN-6). *(Sujeto a P-6.)*
+- **RN-6** La cuota extra se aplica también a Personal; la vigencia no, porque Personal no vence.
+- **RN-7** Las tres acciones se permiten sobre cuentas activas o suspendidas y no cambian su estado; suspender sigue revocando sesiones y congelando compartidos (011 RN-6).
 - **RN-8** Los tamaños se capturan en GB con el mismo formato que el catálogo de planes y se guardan en bytes exactos (ADR-0016); la diferencia de bases con `formatBytes` de `storage` sigue en PD-91. Las fechas se muestran en hora de Guatemala y con el formato del sistema. No se inventan topes de cuota ni de fecha: la interfaz muestra el total resultante antes de confirmar.
 
 ## 5. Seguridad y privacidad
@@ -83,21 +88,25 @@ puede deshacer una eliminación concreta dejando rastro visible para el cliente.
 - Que Soporte purgue, vacíe, descargue, previsualice o restaure versiones; que Administración restaure; que Soporte ajuste cuota o vigencia; cualquier acción del Operador.
 - Varios extras por cuenta, extras recurrentes, cuotas por carpeta, ampliación automática o un trabajo que borre extras al vencer (el vencimiento es perezoso).
 - Extender la vigencia de Personal, cambiar `iniciado_en`, emitir un pago o una factura por la extensión.
-- Correos al cliente por ajustes o restauración (sujeto a P-7); rediseño de la auditoría (004) o de las bitácoras técnicas (022b); reabrir la 011.
+- Correos al cliente por ajustes o restauración (el cliente lo ve en la aplicación); rediseño de la auditoría (004) o de las bitácoras técnicas (022b); reabrir la 011.
 
 ## 8. Preguntas
+> Todas resueltas el 2026-10-22 con Fátima. El borrador queda listo para `/plan` y `/mockup`; el paso a «Lista»
+> sigue pendiente de la aprobación de Adrián.
+
 - [RESUELTA] (2026-10-03, Fátima) **P-2/P-3 de la 011** → 011b: extra sobre el plan, nunca por debajo de lo usado, con fecha de fin; vigencia solo se extiende, quita la solo lectura y no aplica a Personal.
-- [ABIERTA] **P-1** ¿Soporte puede restaurar cuando la cuenta está en solo lectura? Recomendación: sí, porque no es una escritura del cliente y no cambia su cuota; el cliente seguirá sin poder subir ni editar. — bloquea: **sí**.
-- [ABIERTA] **P-2** ¿La restauración cubre raíces de archivos **y** carpetas, o solo archivos? Recomendación: raíces de ambos, para respetar la semántica de 006 y no sacar un archivo de una carpeta en papelera. — bloquea: **sí**.
-- [ABIERTA] **P-3** ¿El cliente ve el extra y su fecha en el resumen de espacio? Recomendación: sí; si no, solo vería una cuota mayor sin explicación. — bloquea: **sí**.
-- [ABIERTA] **P-4** ¿La cuota extra aplica también a Personal? Recomendación: sí; P-3 solo excluyó la vigencia. — bloquea: no.
-- [ABIERTA] **P-5** ¿El Administrador puede quitar o acortar un extra antes de su fecha? Recomendación: sí, si la cuota no queda por debajo de lo usado; se audita. — bloquea: no.
-- [ABIERTA] **P-6** ¿Se permiten las tres acciones sobre una cuenta suspendida? Recomendación: sí, sin cambiar su estado; la suspensión no borra datos (011 RN-6). — bloquea: no.
-- [ABIERTA] **P-7** ¿La extensión de vigencia envía un correo al cliente? Recomendación: no; lo ve en «Plan y facturación» y en su actividad (YAGNI). — bloquea: no.
-- [ABIERTA] **P-8** ¿La extensión deja la renovación automática como está y, al llegar la fecha nueva, se intenta el cobro si está activa? Recomendación: sí; no hay cobro al extender. — bloquea: no.
-- [ABIERTA] **P-9** ¿Ajustar cuota o vigencia exige un motivo? Recomendación: no; 004 D-6 reserva el motivo para Soporte. — bloquea: no.
+- [RESUELTA] (2026-10-22, Fátima) **P-1** → sí: Soporte restaura en solo lectura; el cliente sigue sin poder subir ni editar.
+- [RESUELTA] (2026-10-22, Fátima) **P-2** → sí: la restauración cubre raíces de archivos **y** carpetas, con la semántica de 006.
+- [RESUELTA] (2026-10-22, Fátima) **P-3** → sí: el cliente ve el extra y su fecha de fin en el resumen de espacio.
+- [RESUELTA] (2026-10-22, Fátima) **P-4** → sí: la cuota extra aplica también a Personal; la vigencia no.
+- [RESUELTA] (2026-10-22, Fátima) **P-5** → sí: el Administrador puede cambiar, quitar o acortar un extra si la cuota no queda bajo lo usado; se audita.
+- [RESUELTA] (2026-10-22, Fátima) **P-6** → sí: las tres acciones se permiten en cuentas activas o suspendidas, sin cambiar su estado.
+- [RESUELTA] (2026-10-22, Fátima) **P-7** → no: la extensión no envía correo; se ve en «Plan y facturación» y en la actividad.
+- [RESUELTA] (2026-10-22, Fátima) **P-8** → sí: la renovación automática y el cambio programado no cambian; al llegar la fecha nueva se cobra si la renovación está activa.
+- [RESUELTA] (2026-10-22, Fátima) **P-9** → no: solo la restauración de Soporte exige motivo; cuota y vigencia no (004 D-6).
 
 ## 9. Registro de cambios
 | Fecha | Cambio | Motivo | Aprobó |
 |---|---|---|---|
 | 2026-10-22 | Creación inicial con las decisiones P-2/P-3/P-8 de la 011, tres operaciones y las preguntas abiertas | Arranque de la 011b | Borrador (pendiente Adrián) |
+| 2026-10-22 | P-1 a P-9 resueltas; aclarado «bajo lo usado» como `plan + extra < espacio_usado`; retiradas las marcas «sujeto a» de CA-5, RN-3, RN-6 y RN-7 | Cierre del borrador para `/plan` y `/mockup` | Fátima |
