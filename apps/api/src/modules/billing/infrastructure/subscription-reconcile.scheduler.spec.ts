@@ -1,11 +1,10 @@
 import type { Queue } from 'bullmq';
 
-import { CorrelationContext } from '../../../shared';
+import { CorrelationContext, REPEATABLE_JOB_OPTIONS } from '../../../shared';
 import type { BillingLogger } from '../application/billing-logger';
 
 import {
   SUBSCRIPTION_RECONCILE_JOB_NAME,
-  SUBSCRIPTION_RECONCILE_JOB_OPTIONS,
   SUBSCRIPTION_RECONCILE_SCHEDULER_ID,
   SubscriptionReconcileScheduler,
 } from './subscription-reconcile.scheduler';
@@ -34,13 +33,13 @@ describe('SubscriptionReconcileScheduler (spec 009 CA-2)', () => {
       {
         name: SUBSCRIPTION_RECONCILE_JOB_NAME,
         data: { correlationId: CORRELATION_ID },
-        opts: SUBSCRIPTION_RECONCILE_JOB_OPTIONS,
+        opts: REPEATABLE_JOB_OPTIONS,
       },
     );
   });
 
   it('CA-2: cada pasada tiene 3 intentos con espera exponencial', () => {
-    expect(SUBSCRIPTION_RECONCILE_JOB_OPTIONS).toMatchObject({
+    expect(REPEATABLE_JOB_OPTIONS).toMatchObject({
       attempts: 3,
       backoff: { type: 'exponential' },
     });

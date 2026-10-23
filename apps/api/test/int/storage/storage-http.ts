@@ -39,6 +39,7 @@ export const DEFAULT_TEST_LIMITS: PlanLimits = {
   storageQuotaBytes: BigInt(256 * MIB),
   trashRetentionDays: 30,
   retainedVersions: 3,
+  readOnly: false,
   maxEditors: 0,
   planName: 'Plan de prueba',
 };

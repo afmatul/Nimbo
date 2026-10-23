@@ -15,7 +15,7 @@ import {
 } from '../index';
 
 describe('STORAGE_ERROR_CODES', () => {
-  it('CA-3, CA-4, CA-7, CA-19, CA-28: es exactamente el catálogo de 005 (plan §5), 006 (plan §4 y §9.2), 014 (plan §4) y 017 (plan §4)', () => {
+  it('CA-3, CA-4, CA-7, CA-19, CA-28: es exactamente el catálogo de 005 (plan §5), 006 (plan §4 y §9.2), 014 (plan §4), 010 (plan §2) y 017 (plan §4)', () => {
     expect(Object.values(STORAGE_ERROR_CODES).sort()).toEqual(
       [
         'STORAGE_INVALID_UPLOAD_REQUEST',
@@ -38,6 +38,7 @@ describe('STORAGE_ERROR_CODES', () => {
         'STORAGE_PREVIEW_UNSUPPORTED',
         'STORAGE_VERSION_NOT_FOUND',
         'STORAGE_VERSION_ALREADY_CURRENT',
+        'STORAGE_ACCOUNT_READ_ONLY',
       ].sort(),
     );
   });

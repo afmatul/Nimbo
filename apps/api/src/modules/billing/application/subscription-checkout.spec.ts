@@ -1,7 +1,6 @@
 import { createActor, FixedClock, Role } from '../../../shared';
 import type { Actor } from '../../../shared';
 import type { Payment } from '../domain/entities/payment.entity';
-import { Subscription } from '../domain/entities/subscription.entity';
 import { PlanNotAvailableError } from '../domain/errors/plan-not-available.error';
 
 import type { InvoiceService } from './invoice.service';
@@ -9,7 +8,8 @@ import type { PaymentService } from './payment.service';
 import type { IPlanRepository } from './ports/i-plan-repository.port';
 import type { ISubscriptionRepository } from './ports/i-subscription-repository.port';
 import { SubscriptionCheckout } from './subscription-checkout';
-import { aPlan, PERSONAL_PLAN } from './testing/plans';
+import { aPlan } from './testing/plans';
+import { aSubscription } from './testing/subscriptions';
 
 const ANA: Actor = createActor('11111111-1111-4111-8111-111111111111', Role.CLIENT);
 const NOW = new Date('2026-10-14T12:00:00.000Z');
@@ -33,16 +33,16 @@ const setup = (options: { status?: Payment['status']; plan?: typeof TEAM | null 
       journal.push(name);
       return Promise.resolve(value);
     };
-  const current = Subscription.rehydrate({
+  const current = aSubscription({
     userId: ANA.id,
-    planId: PERSONAL_PLAN.id,
-    planSlug: PERSONAL_PLAN.slug,
     startedAt: new Date('2026-09-01T00:00:00.000Z'),
-    expiresAt: null,
   });
   const subscriptions: ISubscriptionRepository = {
     insertPersonalIfAbsent: jest.fn(step('personal', undefined)),
-    findCurrentPlanId: jest.fn(),
+    findStanding: jest.fn(),
+    findCurrent: jest.fn(),
+    markReminderSent: jest.fn(),
+    markExpiredNoticeSent: jest.fn(),
     lockCurrent: jest.fn(step('lock', current)),
     save: jest.fn(step('save', undefined)),
   };
@@ -69,11 +69,15 @@ const setup = (options: { status?: Payment['status']; plan?: typeof TEAM | null 
 
 describe('SubscriptionCheckout (spec 009 CA-3 a CA-6, RN-8; plan §2)', () => {
   it('RN-8: fila Personal, candado, cobro, suscripción de 30 días y factura, en ese orden', async () => {
-    const { checkout, journal } = setup();
+    const { checkout, journal, payments } = setup();
 
     const outcome = await checkout.checkout(ANA, COMMAND);
 
     expect(journal).toEqual(['personal', 'lock', 'charge:aprobada', 'save', 'invoice']);
+    expect(payments.charge).toHaveBeenCalledWith(
+      ANA,
+      expect.objectContaining({ instrument: COMMAND.card }),
+    );
     expect(outcome.subscription).toMatchObject({
       planId: TEAM.id,
       expiresAt: new Date('2026-11-13T12:00:00.000Z'),

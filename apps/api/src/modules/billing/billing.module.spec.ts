@@ -37,7 +37,7 @@ describe('BillingHttpModule (008, 009)', () => {
   it('publica el catálogo y el cobro solo en el `api`', () => {
     const storage: DynamicModule = { module: StorageStubModule };
 
-    expect(BillingHttpModule.forRoot(storage).controllers).toEqual([
+    expect(BillingHttpModule.forRoot({ RENEWAL_REMINDER_DAYS: 3 }, storage).controllers).toEqual([
       PlansController,
       SubscriptionController,
     ]);

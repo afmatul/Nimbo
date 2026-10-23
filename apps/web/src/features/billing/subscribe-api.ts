@@ -1,6 +1,6 @@
 import {
   subscribeRequestSchema,
-  subscribeResponseSchema,
+  paymentReceiptSchema,
   type SubscribeRequest,
   type SubscribeResponse,
 } from '@nimbo/contracts';
@@ -25,5 +25,5 @@ export async function subscribe(
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(subscribeRequestSchema.parse(request)),
   });
-  return subscribeResponseSchema.parse(raw);
+  return paymentReceiptSchema.parse(raw);
 }

@@ -198,6 +198,18 @@ function dialog(d, { oculto = false } = {}) {
   </div>`;
 }
 
+// Aviso de solo lectura (ReadOnlyBanner, RF-23). Lo usan shared/layout (layout--solo-lectura) y billing/suscripcion
+// (suscripcion--vencida). a: { titulo, cuerpo }; sin a, nada. El título por defecto es el aprobado del layout.
+function avisoSoloLectura(a) {
+  if (!a) return '';
+  return `
+        <section class="readonly" aria-labelledby="ro-t">
+          ${icon('lock', 20)}
+          <p class="readonly-text"><strong id="ro-t">${a.titulo || 'Tu cuenta está en solo lectura.'}</strong> ${a.cuerpo}</p>
+          <a class="btn btn-primary btn-sm" href="${a.href || '#'}">Renovar plan</a>
+        </section>`;
+}
+
 // <head> común: Inter 400/500/600/700 y el CSS del mockup.
 function cabecera({ titulo, comentarios, css }) {
   return `<!DOCTYPE html>
@@ -273,5 +285,5 @@ const EXTRA = `
 
 module.exports = {
   CSS, EXTRA, P, icon, CUENTA, CUOTA, DIALOGO_CERRAR_SESION,
-  sidebar, cajon, topbar, dialog, cabecera, navegacion, cuota, logo,
+  sidebar, cajon, topbar, dialog, cabecera, navegacion, cuota, logo, avisoSoloLectura,
 };

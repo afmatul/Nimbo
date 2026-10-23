@@ -13,7 +13,11 @@ import { FakeTrashRepository } from '../../../../test/support/trash-fakes';
 import { createActor, FixedClock, Role } from '../../../shared';
 import type { Actor } from '../../../shared';
 import { AuditAction } from '../../audit';
-import { FolderDepthExceededError, NodeNotFoundError } from '../domain/errors';
+import {
+  FolderDepthExceededError,
+  NodeNotFoundError,
+  AccountReadOnlyError,
+} from '../domain/errors';
 import { File } from '../domain/file';
 import { FileName } from '../domain/file-name.vo';
 import { Folder } from '../domain/folder';
@@ -23,6 +27,7 @@ import type { FolderConfig } from './folder-config';
 import type { ITrashPurgeQueue } from './ports/i-trash-purge-queue.port';
 import { TrashPurgeIncompleteError, TrashPurger } from './trash-purger';
 import { TrashService } from './trash.service';
+import { WritableAccountPolicy } from './writable-account.policy';
 
 const NOW = new Date('2026-09-30T10:00:00.000Z');
 const EARLIER = new Date('2026-09-20T10:00:00.000Z');
@@ -62,6 +67,7 @@ function setup() {
     storageQuotaBytes: 1000n,
     trashRetentionDays: RETENTION_DAYS,
     retainedVersions: 3,
+    readOnly: false,
     maxEditors: 0,
     planName: 'Plan de prueba',
   });
@@ -80,6 +86,7 @@ function setup() {
     silentLogger,
     new TrashPurger(transactions, trash, quotas, objects, silentLogger),
     purgeQueue,
+    new WritableAccountPolicy(plans),
   );
 
   const folder = (name: string, parent: Folder | null = null, owner: Actor = ANA): Folder => {
@@ -291,6 +298,29 @@ describe('TrashService.restoreFile', () => {
   });
 });
 
+describe('TrashService en solo lectura (spec 010 CA-13, RN-6, ADR-0032)', () => {
+  it('CA-13: restaurar es 403 STORAGE_ACCOUNT_READ_ONLY y el elemento sigue en la papelera', async () => {
+    const { service, nodes, plans, folder, file } = setup();
+    const target = file('enero.pdf');
+    const box = folder('Viejo');
+    await service.trashFile(ANA, target.id);
+    await service.trashFolder(ANA, box.id);
+    plans.setReadOnly(true);
+
+    await expect(service.restoreFile(ANA, target.id)).rejects.toBeInstanceOf(AccountReadOnlyError);
+    await expect(service.restoreFolder(ANA, box.id)).rejects.toBeInstanceOf(AccountReadOnlyError);
+    expect(nodes.files.get(target.id)?.trash).not.toBeNull();
+  });
+
+  it('RN-6: mandar a la papelera sí se permite (libera espacio)', async () => {
+    const { service, plans, file } = setup();
+    const target = file('enero.pdf');
+    plans.setReadOnly(true);
+
+    await expect(service.trashFile(ANA, target.id)).resolves.toMatchObject({ id: target.id });
+  });
+});
+
 describe('TrashService.restoreFolder', () => {
   it('CA-13: vuelve con lo que arrastró; lo eliminado antes por separado sigue en la papelera', async () => {
     const { service, nodes, audit, folder, file } = setup();
@@ -416,6 +446,7 @@ describe('TrashService.list y summary', () => {
       storageQuotaBytes: 1000n,
       trashRetentionDays: 7,
       retainedVersions: 3,
+      readOnly: false,
       maxEditors: 0,
     });
 

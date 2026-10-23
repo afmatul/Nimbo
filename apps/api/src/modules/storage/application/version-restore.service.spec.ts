@@ -20,6 +20,7 @@ import {
   StorageTooManyRequestsError,
   VersionAlreadyCurrentError,
   VersionNotFoundError,
+  AccountReadOnlyError,
 } from '../domain/errors';
 import type { File } from '../domain/file';
 
@@ -41,6 +42,7 @@ const LIMITS: PlanLimits = {
   storageQuotaBytes: 10_000_000n,
   trashRetentionDays: 30,
   retainedVersions: 10,
+  readOnly: false,
   maxEditors: 3,
 };
 
@@ -102,6 +104,18 @@ const expectNothingChanged = ({ journal, quotas, versions, file }: Setup): void 
   expect(quotas.added).toEqual([]);
   expect(versions.numbersOf(file.id)).toEqual([1, 2, 3]);
 };
+
+describe('VersionRestoreService en solo lectura (spec 010 CA-13, ADR-0032)', () => {
+  it('CA-13: restaurar una versión es 403 STORAGE_ACCOUNT_READ_ONLY sin abrir la transacción ni copiar', async () => {
+    const { service, file, versions, journal } = setup({ ...LIMITS, readOnly: true });
+
+    await expect(
+      service.restore(ANA, file.id, versionNumbered(versions, file, 1).id),
+    ).rejects.toBeInstanceOf(AccountReadOnlyError);
+    expect(journal.entries).not.toContain('tx:begin');
+    expect(journal.entries).not.toContain('storage:copyObject');
+  });
+});
 
 describe('VersionRestoreService (plan 014 §1, CA-9 a CA-12, CA-19)', () => {
   it('plan §1: tasa → archivo → versión → cuota → copia → transacción que revalida y registra → poda → auditoría', async () => {

@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import { FakePlanLimitsProvider } from '../../../../test/support/fake-plan-limits.provider';
 import {
   FakeNodeRepository,
   FakeQuotaRepository,
@@ -14,6 +15,7 @@ import {
   InvalidMoveError,
   InvalidNodeRequestError,
   NodeNotFoundError,
+  AccountReadOnlyError,
 } from '../domain/errors';
 import { File } from '../domain/file';
 import { FileName } from '../domain/file-name.vo';
@@ -24,6 +26,7 @@ import { TrashState } from '../domain/trash-state';
 
 import type { FolderConfig } from './folder-config';
 import { FolderService } from './folder.service';
+import { WritableAccountPolicy } from './writable-account.policy';
 
 /** El orden de 006 (sin `sort` ni `dir`, 007 D-6). */
 const DEFAULT_ORDER = NodeOrder.of();
@@ -40,7 +43,15 @@ function setup() {
   const transactions = new FakeTransactionRunner(journal);
   const quotas = new FakeQuotaRepository(journal, transactions.locks);
   const nodes = new FakeNodeRepository(journal);
-  const service = new FolderService(transactions, nodes, quotas, new FixedClock(NOW), CONFIG);
+  const plans = new FakePlanLimitsProvider();
+  const service = new FolderService(
+    transactions,
+    nodes,
+    quotas,
+    new FixedClock(NOW),
+    CONFIG,
+    new WritableAccountPolicy(plans),
+  );
 
   /** Carpeta ya guardada de `owner` dentro de `parent` (o en la raíz). */
   const folder = (name: string, parent: Folder | null = null, owner: Actor = ANA): Folder => {
@@ -76,7 +87,7 @@ function setup() {
     nodes.folders.set(target.id, trashed);
   };
 
-  return { journal, nodes, service, folder, file, trash };
+  return { journal, nodes, plans, service, folder, file, trash };
 }
 
 /** Lo que pasó entre la apertura de la transacción y su cierre, sin las lecturas. */
@@ -181,6 +192,24 @@ describe('FolderService.create', () => {
     expect(error).toBeInstanceOf(FolderDepthExceededError);
     expect((error as FolderDepthExceededError).details).toEqual({ maxDepth: MAX_DEPTH });
     expect(nodes.folders.size).toBe(3);
+  });
+});
+
+describe('FolderService en solo lectura (spec 010 CA-13, ADR-0032)', () => {
+  it('CA-13: crear, renombrar y mover son 403 STORAGE_ACCOUNT_READ_ONLY sin abrir la transacción', async () => {
+    const { service, journal, plans, folder } = setup();
+    const target = folder('Borrador');
+    plans.setReadOnly(true);
+    const before = journal.entries.length;
+
+    await expect(service.create(ANA, { name: 'Nueva', parentId: null })).rejects.toBeInstanceOf(
+      AccountReadOnlyError,
+    );
+    await expect(service.rename(ANA, target.id, 'Final')).rejects.toBeInstanceOf(
+      AccountReadOnlyError,
+    );
+    await expect(service.move(ANA, target.id, null)).rejects.toBeInstanceOf(AccountReadOnlyError);
+    expect(journal.entries.length).toBe(before);
   });
 });
 

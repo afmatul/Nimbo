@@ -20,6 +20,7 @@ import { FolderNotFoundState } from './folder-not-found-state';
 import { FolderRowMenu } from './folder-row-menu';
 import { MyFilesDialogs } from './my-files-dialogs';
 import { QuickAccessLimitAlert } from './quick-access-limit-alert';
+import { ReadOnlyNotice } from './read-only-notice';
 import { SidebarQuota } from './sidebar-quota';
 
 /**
@@ -145,6 +146,7 @@ export function MyFiles({
         <div className="flex justify-end">
           <SignOutButton />
         </div>
+        <ReadOnlyNotice />
         {listing.status === 'not_found' ? (
           <FolderNotFoundState />
         ) : (

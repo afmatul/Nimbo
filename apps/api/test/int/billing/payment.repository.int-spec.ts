@@ -22,7 +22,9 @@ import {
 import type { FreshDatabase } from './billing-test-db';
 
 const PAYMENT_MIGRATION = 'CrearTransaccion20261014100100';
+const INSTRUMENT_MIGRATION = 'ReferenciaDeInstrumento20261019100100';
 const PAID_AT = new Date('2026-10-14T12:00:00.000Z');
+const INSTRUMENT_REF = 'SIM-TOK-ok-00000000-0000-4000-8000-000000000000';
 
 /** Fila de `transaccion` como la ve el dueño de las tablas (sin RLS). */
 interface PaymentRow {
@@ -32,6 +34,7 @@ interface PaymentRow {
   readonly marca_tarjeta: string;
   readonly tarjeta_ultimos4: string;
   readonly referencia: string;
+  readonly referencia_instrumento: string | null;
 }
 
 const draft = (status: PaymentDraft['status'] = 'aprobada'): PaymentDraft => ({
@@ -40,6 +43,7 @@ const draft = (status: PaymentDraft['status'] = 'aprobada'): PaymentDraft => ({
   status,
   cardBrand: 'visa',
   cardLast4: '4242',
+  instrumentRef: status === 'aprobada' ? INSTRUMENT_REF : null,
   createdAt: PAID_AT,
 });
 
@@ -72,14 +76,15 @@ describe('TypeOrmPaymentRepository y la tabla `transaccion` (spec 009 RN-3, RN-5
 
   const rowOf = async (id: string): Promise<PaymentRow | undefined> => {
     const [row] = (await owner.query(
-      `SELECT usuario_id, monto_centavos, estado, marca_tarjeta, tarjeta_ultimos4, referencia
+      `SELECT usuario_id, monto_centavos, estado, marca_tarjeta, tarjeta_ultimos4, referencia,
+              referencia_instrumento
          FROM transaccion WHERE id = $1`,
       [id],
     )) as PaymentRow[];
     return row;
   };
 
-  it('RN-3, RN-5: guarda el pago con marca, últimos 4 y referencia `SIM-2026-NNNNNN` de la secuencia', async () => {
+  it('RN-3, RN-5 (010 RN-2): guarda el pago con marca, últimos 4, referencia `SIM-2026-NNNNNN` y la del instrumento', async () => {
     const payment = await record(ana);
 
     expect(payment.reference).toMatch(/^SIM-2026-\d{6,}$/);
@@ -90,7 +95,19 @@ describe('TypeOrmPaymentRepository y la tabla `transaccion` (spec 009 RN-3, RN-5
       marca_tarjeta: 'visa',
       tarjeta_ultimos4: '4242',
       referencia: payment.reference,
+      referencia_instrumento: INSTRUMENT_REF,
     });
+  });
+
+  it('010 RN-2: un pago rechazado no guarda referencia del instrumento y la base no lo permite', async () => {
+    const rejected = await record(ana, 'rechazada');
+
+    await expect(rowOf(rejected.id)).resolves.toMatchObject({ referencia_instrumento: null });
+    await expect(
+      app.runner.withActor(ana, () =>
+        repository.record(ana, { ...draft('rechazada'), instrumentRef: INSTRUMENT_REF }),
+      ),
+    ).rejects.toThrow(/ck_transaccion_referencia_instrumento/);
   });
 
   it('RN-5: cada pago, también uno rechazado, toma la siguiente referencia', async () => {
@@ -157,5 +174,22 @@ describe('cierre de la migración de transacción: `revert` y `run` sobre una ba
     const rerun = await fresh.dataSource.runMigrations({ transaction: 'each' });
     expect(rerun.map((migration) => migration.name)).toEqual(reverted);
     expect(await tableExists(fresh.dataSource, 'transaccion')).toBe(true);
+  });
+
+  it('RNF-10 (010 plan §3): `down` quita `referencia_instrumento` y `up` la vuelve a crear', async () => {
+    const hasColumn = async (): Promise<boolean> =>
+      (
+        (await fresh.dataSource.query(
+          `SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'transaccion' AND column_name = 'referencia_instrumento'`,
+        )) as unknown[]
+      ).length === 1;
+
+    const reverted = await revertFrom(fresh.dataSource, INSTRUMENT_MIGRATION);
+
+    expect(reverted[0]).toBe(INSTRUMENT_MIGRATION);
+    expect(await hasColumn()).toBe(false);
+    await fresh.dataSource.runMigrations({ transaction: 'each' });
+    expect(await hasColumn()).toBe(true);
   });
 });

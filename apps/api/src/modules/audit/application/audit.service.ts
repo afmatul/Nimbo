@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
 
-import { CorrelationContext, I_CLOCK, I_TRANSACTION_RUNNER } from '../../../shared';
+import { CorrelationContext, errorName, I_CLOCK, I_TRANSACTION_RUNNER } from '../../../shared';
 import type { Actor, IClock, ITransactionRunner } from '../../../shared';
 import { sanitizeAttributes } from '../domain/attribute-sanitizer';
 import type { AttributeRejection } from '../domain/attribute-sanitizer';
@@ -62,7 +62,7 @@ const recordLine = (entry: AuditEntry): Record<string, unknown> => ({
   occurredAt: entry.occurredAt.toISOString(),
 });
 
-const errorNameOf = (error: unknown): string => (error instanceof Error ? error.name : 'unknown');
+const errorNameOf = (error: unknown): string => errorName(error);
 
 /** El sistema no tiene `actor_id` (`ck_evento_sistema`, 011 plan §3). */
 const actorIdOf = (actor: AuditActor): string | null => (isSystemActor(actor) ? null : actor.id);

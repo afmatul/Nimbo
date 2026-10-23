@@ -20,6 +20,7 @@ const LIMITS: PlanLimits = {
   storageQuotaBytes: 1000n,
   trashRetentionDays: 30,
   retainedVersions: 3,
+  readOnly: false,
   maxEditors: 0,
 };
 const BREAKDOWN = SpaceBreakdown.fromBytesByKind(
@@ -66,7 +67,17 @@ describe('SpaceSummaryService', () => {
       availableBytes: 330n,
       maxFileBytes: 100n,
       trashRetentionDays: 30,
+      readOnly: false,
       breakdown: BREAKDOWN,
+    });
+  });
+
+  it('010 CA-14: dice si la cuenta está en solo lectura, con los límites de su plan', async () => {
+    const { service } = setup({ ...LIMITS, readOnly: true });
+
+    await expect(service.summary(ANA)).resolves.toMatchObject({
+      readOnly: true,
+      quotaBytes: 1000n,
     });
   });
 

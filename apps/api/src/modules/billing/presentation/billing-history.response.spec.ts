@@ -1,5 +1,7 @@
 import type { PaymentRecord } from '../application/ports/i-billing-history.reader.port';
+import type { SubscriptionSummary } from '../application/subscription-summary';
 import { aPlan } from '../application/testing/plans';
+import type { Plan } from '../domain/entities/plan.entity';
 
 import { toBillingHistoryResponse } from './billing-history.response';
 
@@ -23,18 +25,29 @@ const APPROVED: PaymentRecord = {
   status: 'aprobada',
   invoice: INVOICE,
 };
+/** Lo que la 009 mostraba; el resto de la vista lo prueba `subscription-view.response.spec.ts` (010). */
+const summaryOf = (plan: Plan, expiresAt: Date | null): SubscriptionSummary => ({
+  plan,
+  expiresAt,
+  standing: 'active',
+  autoRenew: true,
+  pendingPlan: null,
+  pendingPlanDiscarded: false,
+  nextCharge: null,
+  renewal: null,
+});
 const EMPTY = { subscription: null, paymentMethod: null, billingDetails: null, payments: [] };
 
 describe('toBillingHistoryResponse (spec 009 CA-7)', () => {
   it('CA-7: el plan con el contrato del catálogo, la tarjeta, el correo y la factura descargable, sin la clave', () => {
     const response = toBillingHistoryResponse({
-      subscription: { plan: TEAM, expiresAt: new Date('2026-11-13T18:00:00.000Z') },
+      subscription: summaryOf(TEAM, new Date('2026-11-13T18:00:00.000Z')),
       paymentMethod: { brand: 'visa', last4: '4242' },
       billingDetails: { nit: '12345678', receiptEmail: 'ana@ejemplo.com' },
       payments: [APPROVED],
     });
 
-    expect(response.subscription).toEqual({
+    expect(response.subscription).toMatchObject({
       plan: expect.objectContaining({
         slug: 'equipo',
         priceCents: 11_000,
@@ -64,7 +77,7 @@ describe('toBillingHistoryResponse (spec 009 CA-7)', () => {
 
     const response = toBillingHistoryResponse({
       ...EMPTY,
-      subscription: { plan: aPlan({}), expiresAt: null },
+      subscription: summaryOf(aPlan({}), null),
       payments: [withoutPdf, rejected],
     });
 

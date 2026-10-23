@@ -36,6 +36,8 @@ Son la base para defender la arquitectura en la exposición final (enunciado §6
 | 0028 | [Dependencia de `billing` para la factura PDF: `pdfkit` detrás de `IInvoiceGenerator`](0028-dependencia-de-billing-para-la-factura-pdf.md) (menor; spec 009 T-07) | Aceptado |
 | 0029 | [El trabajo `editing-save` se procesa en el `api`](0029-editing-save-se-procesa-en-el-api.md) (excepción acotada a ADR-0001; spec 016, DF-71) | Aceptado |
 | 0030 | [Socket.IO en el `api` con los paquetes oficiales de Nest y sin adaptador de Redis](0030-socketio-en-el-api-sin-adaptador-de-redis.md) (spec 015) | Aceptado |
+| 0031 | [La referencia del instrumento de pago se guarda en claro bajo RLS, no como hash](0031-referencia-del-instrumento-de-pago-en-claro-bajo-rls.md) (delimita Art. IX.6; spec 010, M-2) | Aceptado |
+| 0032 | [La solo lectura por vencimiento se comprueba en los servicios de escritura con `PlanLimits.readOnly`](0032-solo-lectura-por-planlimits-en-los-servicios-de-escritura.md) (enmienda `architecture.md` §7.5 y la nota de DF-51; spec 010; antes numerado 0029) | Aceptado |
 
 Estados: `Pendiente` (sin redactar) · `Propuesto` (redactado, falta acuerdo del equipo) · `Aceptado` · `Rechazado` · `Reemplazado por`.
 Los ADR 0001, 0002, 0008, 0009, 0014 y 0015 se aceptaron el 26/09/2026 (Adrián, parte de ADR de la T-27 de la spec 000).
@@ -51,7 +53,7 @@ ADR-0022 se aceptó el 29/09/2026: opción A de DF-51. El 0021 sigue siendo el d
 ADR-0021 lo aceptó Adrián el 14/10/2026 en la revisión de la 009, que suma tres funciones de lectura con la misma lista.
 El 0023 lo redactó y lo aceptó Adrián el 30/09/2026 al adoptar SDD express; reemplaza al 0009 y cambia el Art. I.2 de la constitución.
 El 0024 lo redactó el `architect` y lo aprobó Adrián el 30/09/2026 (dependencia `sonner`, spec 006).
-El 0027 se registró el 06/10/2026 a propuesta de Abel y Adrián lo rechazó ese mismo día: 017 obtiene bytes por `fetch` y renderiza en el cliente, la descarga conserva `attachment` y se respeta IX.7 sin excepción; PD-120 queda obsoleto.
+El 0027 se registró el 06/10/2026 a propuesta de Abel y Adrián lo rechazó ese mismo día: 017 obtiene bytes por `fetch` y renderiza en el cliente, la descarga conserva `attachment` y se respeta IX.7 sin excepción; PD-129 queda obsoleto.
 El 0026 (motores de previsualización) lo redactó el `architect` y lo aceptó Adrián el 06/10/2026.
 Los ADR 0004 y 0029 los redactó el `architect` con el plan de la spec 016 (2026-10-16) como `Propuesto`; Adrián los aceptó al aprobar el plan (2026-10-16); 0029 hace una excepción acotada a ADR-0001 y matiza ADR-0030.
 

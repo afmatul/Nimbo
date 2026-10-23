@@ -15,6 +15,7 @@ const SUMMARY: SpaceSummary = {
   availableBytes: 380n,
   maxFileBytes: 100n,
   trashRetentionDays: 30,
+  readOnly: false,
   breakdown: SpaceBreakdown.fromBytesByKind(
     new Map([
       ['docx', 300n],
@@ -41,6 +42,7 @@ describe('SpaceController', () => {
       availableBytes: 380,
       maxFileBytes: 100,
       trashRetentionDays: 30,
+      readOnly: false,
       breakdown: { documentsBytes: 300, imagesBytes: 200, otherBytes: 50, trashBytes: 50 },
     });
   });

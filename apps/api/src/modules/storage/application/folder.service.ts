@@ -20,6 +20,7 @@ import { I_NODE_REPOSITORY } from './ports/i-node.repository.port';
 import type { INodeRepository, NodeListPage } from './ports/i-node.repository.port';
 import { I_QUOTA_REPOSITORY } from './ports/i-quota.repository.port';
 import type { IQuotaRepository } from './ports/i-quota.repository.port';
+import { WritableAccountPolicy } from './writable-account.policy';
 
 /** Carpeta nueva: nombre tal como llegó y su carpeta padre (`null` = raíz). */
 export interface CreateFolderCommand {
@@ -55,11 +56,13 @@ export class FolderService {
     @Inject(I_QUOTA_REPOSITORY) private readonly quotas: IQuotaRepository,
     @Inject(I_CLOCK) private readonly clock: IClock,
     @Inject(FOLDER_CONFIG) private readonly config: FolderConfig,
+    @Inject(WritableAccountPolicy) private readonly writable: WritableAccountPolicy,
   ) {}
 
   /** CA-1, CA-2, CA-3, CA-9: carpeta vacía en la raíz o dentro de una propia. */
   async create(actor: Actor, command: CreateFolderCommand): Promise<Folder> {
     const name = parseFolderName(command.name);
+    await this.writable.assertWritable(actor);
     return this.transactions.withActor(actor, async () => {
       await this.quotas.lockUsage(actor);
       const parent = await this.findParent(actor, command.parentId);
@@ -80,6 +83,7 @@ export class FolderService {
   /** CA-2, CA-3, CA-4: otro nombre en la misma carpeta; solo cambiar mayúsculas no choca consigo misma. */
   async rename(actor: Actor, folderId: string, rawName: string): Promise<Folder> {
     const name = parseFolderName(rawName);
+    await this.writable.assertWritable(actor);
     return this.transactions.withActor(actor, async () => {
       await this.quotas.lockUsage(actor);
       const folder = await this.requireFolder(actor, folderId);
@@ -91,7 +95,8 @@ export class FolderService {
   }
 
   /** CA-3, CA-7, CA-8, CA-9: la carpeta y su subárbol pasan a `parentId` (`null` = raíz). */
-  move(actor: Actor, folderId: string, parentId: string | null): Promise<Folder> {
+  async move(actor: Actor, folderId: string, parentId: string | null): Promise<Folder> {
+    await this.writable.assertWritable(actor);
     return this.transactions.withActor(actor, async () => {
       await this.quotas.lockUsage(actor);
       const folder = await this.requireFolder(actor, folderId);

@@ -122,6 +122,10 @@ const STORAGE_MESSAGES: Readonly<Record<string, StorageMessageBuilder>> = {
     'Esta ya es la versión actual.',
     'Actualiza el historial para ver los cambios.',
   ),
+  [STORAGE_ERROR_CODES.STORAGE_ACCOUNT_READ_ONLY]: fixed(
+    'Tu suscripción venció y tu cuenta está en solo lectura.',
+    'Renueva tu plan para volver a subir, editar y compartir.',
+  ),
   [STORAGE_ERROR_CODES.STORAGE_UPLOAD_NOT_FOUND]: fixed(
     'No encontramos esta carga.',
     'Vuelve a subir el archivo.',
@@ -258,6 +262,16 @@ const CODE_MESSAGES: Readonly<Record<string, string>> = {
     'La tarjeta fue rechazada. No se hizo ningún cargo. Prueba con otra tarjeta.',
   [BILLING_ERROR_CODES.BILLING_INVOICE_NOT_FOUND]:
     'No encontramos esa factura o su PDF aún no está listo. Actualiza la página e inténtalo de nuevo.',
+  [BILLING_ERROR_CODES.BILLING_NO_PAID_SUBSCRIPTION]:
+    'Tu cuenta usa el plan Personal, que no se renueva ni se cambia. Contrata un plan en Planes.',
+  [BILLING_ERROR_CODES.BILLING_PLAN_CHANGE_INVALID]:
+    'No pudimos programar el cambio. Ese plan ya no está disponible. Cierra este aviso y elige otro plan de la lista.',
+  [BILLING_ERROR_CODES.BILLING_NO_PENDING_PLAN_CHANGE]:
+    'No tienes un cambio de plan programado. Recarga la página para ver tu plan actual.',
+  [BILLING_ERROR_CODES.BILLING_ALREADY_RENEWED]:
+    'Tu plan ya está renovado para el siguiente periodo. No se hizo ningún cargo.',
+  [BILLING_ERROR_CODES.BILLING_PLAN_CHANGE_PENDING]:
+    'Tienes un cambio de plan programado. Cancélalo para renovar ahora o espera a que se aplique al vencer.',
 };
 
 interface TimedMessage {

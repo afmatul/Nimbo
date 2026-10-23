@@ -21,7 +21,7 @@ Redis detenido, rechazo acotado y recuperación real ya están acreditados; tamb
 
 ## Compuertas antes de implementación
 
-- [x] **G-1 — IX.7 (opción 4):** Adrián decidió el 2026-10-06 firmar la URL de vista con la política de 005 (`attachment`, `application/octet-stream`); sin `inline`, MIME ni excepción. ADR-0027 Rechazado; PD-120 innecesario.
+- [x] **G-1 — IX.7 (opción 4):** Adrián decidió el 2026-10-06 firmar la URL de vista con la política de 005 (`attachment`, `application/octet-stream`); sin `inline`, MIME ni excepción. ADR-0027 Rechazado; PD-129 innecesario.
 - [x] **G-2 — Ownership:** Adrián aceptó Q-2 (fachada delgada + extracción DRY) y Q-6 (un solo slot `firstAction`); Q-3 eliminada. El mockup `docs/design/mockups/storage/vista-previa/` lo entrega T-05 (ui-designer).
 - [x] **G-3 — Dependencias:** Adrián aceptó `pdfjs-dist@6.4.299`, `@zip.js/zip.js@2.23.0` y `saxes@6.0.0`; registradas en ADR-0026 (Aceptado).
 - [x] **G-4 — Aprobación:** Adrián aprobó spec + plan, registrado en `plan.md` §8 (2026-10-06).

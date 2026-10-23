@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { DOWNLOAD_URL_TTL_SECONDS } from '@nimbo/contracts';
 
+import { FakePlanLimitsProvider } from '../../../../test/support/fake-plan-limits.provider';
 import {
   FakeNodeRepository as InMemoryNodeRepository,
   FakeQuotaRepository,
@@ -25,6 +26,7 @@ import {
   NodeNotFoundError,
   StorageTooManyRequestsError,
   VersionNotFoundError,
+  AccountReadOnlyError,
 } from '../domain/errors';
 import { File } from '../domain/file';
 import { FileName } from '../domain/file-name.vo';
@@ -38,6 +40,7 @@ import type { FileServiceConfig } from './file-service-config';
 import { FileService } from './file.service';
 import type { IObjectStorage, PresignDownloadInput } from './ports/i-object-storage.port';
 import type { StorageLogger } from './storage-logger';
+import { WritableAccountPolicy } from './writable-account.policy';
 
 const NOW = new Date('2026-09-30T10:00:00.000Z');
 const EARLIER = new Date('2026-09-29T10:00:00.000Z');
@@ -181,6 +184,7 @@ function setup(options: SetupOptions = {}) {
     new FixedClock(NOW),
     CONFIG,
     logger,
+    new WritableAccountPolicy(new FakePlanLimitsProvider()),
   );
   return { service, calls, transactions, nodes, versions, rateLimiter, audit, presigned, logger };
 }
@@ -368,6 +372,7 @@ function organizeSetup() {
   const transactions = new FakeTransactionRunner(journal);
   const quotas = new FakeQuotaRepository(journal, transactions.locks);
   const nodes = new InMemoryNodeRepository(journal);
+  const plans = new FakePlanLimitsProvider();
   const service = new FileService(
     transactions,
     nodes,
@@ -379,6 +384,7 @@ function organizeSetup() {
     new FixedClock(NOW),
     CONFIG,
     { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+    new WritableAccountPolicy(plans),
   );
 
   const folder = (name: string, owner: Actor = ACTOR): Folder => {
@@ -416,12 +422,29 @@ function organizeSetup() {
     );
   };
 
-  return { journal, nodes, quotas, service, folder, file, trash };
+  return { journal, nodes, quotas, plans, service, folder, file, trash };
 }
 
 /** Lo que pasó dentro de la transacción, sin las lecturas. */
 const writesOf = (journal: Journal): string[] =>
   journal.entries.filter((entry) => !entry.startsWith('nodes:find'));
+
+describe('FileService en solo lectura (spec 010 CA-13, ADR-0032)', () => {
+  it('CA-13: renombrar y mover son 403 STORAGE_ACCOUNT_READ_ONLY sin abrir la transacción', async () => {
+    const { service, journal, plans, file } = organizeSetup();
+    const original = file('Informe.docx');
+    plans.setReadOnly(true);
+    const before = journal.entries.length;
+
+    await expect(
+      service.rename(ACTOR, original.id, { name: 'Otro.docx', onConflict: 'ask' }),
+    ).rejects.toBeInstanceOf(AccountReadOnlyError);
+    await expect(
+      service.move(ACTOR, original.id, { folderId: null, onConflict: 'ask' }),
+    ).rejects.toBeInstanceOf(AccountReadOnlyError);
+    expect(journal.entries.length).toBe(before);
+  });
+});
 
 describe('FileService.rename', () => {
   it('CA-4: cambia el nombre y `actualizado_en`; carpeta, tipo, tamaño y versión no cambian', async () => {

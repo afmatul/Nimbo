@@ -1,11 +1,10 @@
 import type { Queue } from 'bullmq';
 
-import { CorrelationContext } from '../../../shared';
+import { CorrelationContext, REPEATABLE_JOB_OPTIONS } from '../../../shared';
 import type { StorageLogger } from '../application/storage-logger';
 
 import {
   UPLOAD_CLEANUP_JOB_NAME,
-  UPLOAD_CLEANUP_JOB_OPTIONS,
   UPLOAD_CLEANUP_QUEUE,
   UPLOAD_CLEANUP_SCHEDULER_ID,
   UploadCleanupScheduler,
@@ -41,13 +40,13 @@ describe('UploadCleanupScheduler (CA-9, D-6)', () => {
       {
         name: UPLOAD_CLEANUP_JOB_NAME,
         data: { correlationId: CORRELATION_ID },
-        opts: UPLOAD_CLEANUP_JOB_OPTIONS,
+        opts: REPEATABLE_JOB_OPTIONS,
       },
     );
   });
 
   it('CA-9: cada ejecución tiene 3 intentos con espera exponencial', () => {
-    expect(UPLOAD_CLEANUP_JOB_OPTIONS).toMatchObject({
+    expect(REPEATABLE_JOB_OPTIONS).toMatchObject({
       attempts: 3,
       backoff: { type: 'exponential' },
     });

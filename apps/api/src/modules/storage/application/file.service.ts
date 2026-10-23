@@ -26,6 +26,7 @@ import type { IVersionRepository } from './ports/i-version.repository.port';
 import { recordAudit } from './record-audit';
 import { rateLimited } from './storage-logger';
 import type { StorageLogger } from './storage-logger';
+import { WritableAccountPolicy } from './writable-account.policy';
 
 const RATE_LIMIT_WINDOW_SECONDS = 60;
 const DOWNLOAD_RATE_KEY_PREFIX = 'storage:download-url:';
@@ -77,6 +78,7 @@ export class FileService {
     @Inject(I_CLOCK) private readonly clock: IClock,
     @Inject(FILE_SERVICE_CONFIG) private readonly config: FileServiceConfig,
     @Inject(PinoLogger) private readonly logger: StorageLogger,
+    @Inject(WritableAccountPolicy) private readonly writable: WritableAccountPolicy,
   ) {}
 
   /**
@@ -85,6 +87,7 @@ export class FileService {
    */
   async rename(actor: Actor, fileId: string, command: RenameFileCommand): Promise<File> {
     const requested = parseFileName(command.name);
+    await this.writable.assertWritable(actor);
     return this.transactions.withActor(actor, async () => {
       await this.quotas.lockUsage(actor);
       const file = await this.requireFile(actor, fileId);
@@ -104,7 +107,8 @@ export class FileService {
    * CA-7: el archivo pasa a `folderId` (`null` = raíz) con la regla «(n)» de 005 en el destino; el tamaño, las
    * versiones y `espacio_usado` no cambian. Un destino que el actor no ve es `NodeNotFoundError`.
    */
-  move(actor: Actor, fileId: string, command: MoveFileCommand): Promise<File> {
+  async move(actor: Actor, fileId: string, command: MoveFileCommand): Promise<File> {
+    await this.writable.assertWritable(actor);
     return this.transactions.withActor(actor, async () => {
       await this.quotas.lockUsage(actor);
       const file = await this.requireFile(actor, fileId);

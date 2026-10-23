@@ -24,9 +24,10 @@ import { historySummary, totalVersionBytes, versionToPrune } from '../version-hi
 
 import { DownloadNoticeBanner, openInBrowser, type DownloadNotice } from './file-row-menu';
 import { useQuickAccessSidebar } from './quick-access-sidebar';
+import { ReadOnlyActionsHint, ReadOnlyNotice } from './read-only-notice';
 import { RestoreVersionDialog, type RestoreTarget } from './restore-version-dialog';
 import { SidebarQuota } from './sidebar-quota';
-import { useSpace } from './space-provider';
+import { useSpace, useReadOnlyAccount } from './space-provider';
 
 type ReadyListing = Extract<VersionsListing, { status: 'ready' }>;
 
@@ -88,6 +89,8 @@ export function FileDetailView({
       trashCount={trash.count}
       quotaCard={<SidebarQuota state={space.state} />}
     >
+      <ReadOnlyNotice />
+      <ReadOnlyActionsHint />
       <FileDetailContent
         listing={history.listing}
         actions={actions}
@@ -311,6 +314,7 @@ function VersionButtons({
   readonly actions: VersionActions;
   readonly onRestore: () => void;
 }): React.JSX.Element {
+  const { readOnly } = useReadOnlyAccount();
   const number = String(version.number);
   const preparing = actions.preparingId === version.id;
   return (
@@ -335,6 +339,7 @@ function VersionButtons({
           className={ACTION_CLASS}
           aria-label={`Restaurar la versión ${number}`}
           onClick={onRestore}
+          disabled={readOnly}
         >
           <Undo2 className="h-4 w-4" aria-hidden="true" />
           Restaurar

@@ -24,6 +24,7 @@ import {
 } from '../trash-dates';
 
 import { originalPlaceName } from './restore-result';
+import { useReadOnlyAccount } from './space-provider';
 
 export interface TrashListProps {
   readonly items: readonly TrashItem[];
@@ -150,6 +151,7 @@ function TrashRow({
   onRestore,
   onPurge,
 }: TrashRowProps): React.JSX.Element {
+  const { readOnly } = useReadOnlyAccount();
   const days = daysLeft(item.purgeAt, now);
   const deleted = deletedAtLabel(item.deletedAt, now);
   const place = originalPlaceName(item);
@@ -225,7 +227,7 @@ function TrashRow({
               size="sm"
               className="hidden lg:inline-flex"
               aria-label={`Restaurar ${item.name}`}
-              disabled={busy}
+              disabled={busy || readOnly}
               onClick={onRestore}
             >
               <RotateCcw className="h-4 w-4" aria-hidden="true" />
@@ -293,6 +295,7 @@ function TrashRowMenu({
   readonly onRestore: () => void;
   readonly onPurge: () => void;
 }): React.JSX.Element {
+  const { readOnly } = useReadOnlyAccount();
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
@@ -308,7 +311,7 @@ function TrashRowMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onSelect={onRestore}>
+        <DropdownMenuItem onSelect={onRestore} disabled={readOnly}>
           <RotateCcw className="h-4 w-4 text-secondary-foreground" aria-hidden="true" />
           Restaurar
         </DropdownMenuItem>
