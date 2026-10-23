@@ -49,7 +49,7 @@ logs. La 011b es la primera escritura interna sobre `storage` de un cliente.
    `ajustar_suscripcion_cliente` (guarda cuota y vigencia y resetea los avisos). Se llaman dentro de
    `InternalActionService.run`, así que el evento y el cambio son atómicos.
 2. **Restauración (Soporte):** `archivo` y `carpeta` ganan una política `FOR UPDATE TO nimbo_app` con
-   `USING (nimbo_actor_role() = 'SUPPORT' AND eliminado_en IS NOT NULL)` y `WITH CHECK (rol = 'SUPPORT')`. No se concede
+   `USING (nimbo_actor_role() = 'SUPPORT' AND eliminado_en IS NOT NULL)` y `WITH CHECK (nimbo_actor_role() = 'SUPPORT')`. No se concede
    `INSERT` ni `DELETE` a Soporte, ni acceso a `version_archivo`, `carga` o `clave_objeto`. Un único servicio de
    `storage` (`SupportTrashService`) resuelve el cliente por correo, filtra `propietario_id`,
    `eliminado_con_carpeta_id IS NULL` y `purgar_en > ahora`, bloquea la raíz con `FOR UPDATE` y reutiliza la semántica de
