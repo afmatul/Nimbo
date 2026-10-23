@@ -4,13 +4,13 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | En curso |
+| Estado | En revisión |
 | Dueño | Adrián |
 | Fase | 3 |
 | Requisitos | RF-30, RF-31 (Debería), RNF-03, RNF-05, RNF-09, RNF-17. Casos de uso 07, 14, 37 |
 | Depende de | 005 (archivo, versión vigente, tipo real), 014 (versiones y restauración), 003 (`Actor`, `accessibleNodes`), 015 (aviso en vivo). Sustituye el encolado directo que 016 ya hace (CA-12) por el evento `FileVersionCreated` (RN-11). Alimenta a 020 (agente) y 018 (búsqueda por contenido) |
 | DF / PD | DF-07, DF-08, DF-14, DF-37; PD-18, PD-90 |
-| Última actualización | 2026-10-21 |
+| Última actualización | 2026-10-23 |
 
 ## 1. Contexto y objetivo
 Nimbo «entiende qué dicen por dentro» los archivos: cada documento de texto del cliente se lee en segundo plano y
