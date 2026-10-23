@@ -1,6 +1,6 @@
 # Plan 019 — Indexación de documentos
 
-> Spec: `./spec.md` · Estado del plan: Propuesto
+> Spec: `./spec.md` · Estado del plan: **Aprobado** (Adrián, 2026-10-21, con los cambios del architect; ver §8)
 > Obligatorio y ≤ 250 líneas. Dice **qué** archivos se tocan y **qué** se espera de cada uno; no es el código en
 > prosa (sin cuerpos de funciones ni pseudocódigo). Lo aprueba Adrián antes de escribir código.
 
