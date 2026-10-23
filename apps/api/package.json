@@ -14,6 +14,7 @@
     "migration:generate": "node scripts/migration-generate.mjs",
     "migration:run": "tsx src/scripts/migrate.ts run",
     "migration:revert": "tsx src/scripts/migrate.ts revert",
+    "index:reconcile": "tsx src/scripts/index-reconcile.ts",
     "admin:bootstrap": "tsc -p tsconfig.build.json --outDir dist-scripts && node dist-scripts/scripts/bootstrap-admin.js"
   },
   "dependencies": {

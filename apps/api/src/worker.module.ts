@@ -25,7 +25,7 @@ type WorkerEnv = z.infer<typeof workerEnvSchema>;
 
 /**
  * Colas que este proceso consume; `worker.started` las lista (plan 000 §7). `upload-cleanup`, `trash-purge`,
- * `usage-reconcile`, `subscription-reconcile`, `invoice-retry` e `indexing` se escriben literales: el `worker` importa de `storage`,
+ * `usage-reconcile`, `subscription-reconcile`, `invoice-retry`, `indexing` e `index-reconcile` se escriben literales: el `worker` importa de `storage`,
  * `billing` e `intelligence` solo sus módulos del `worker` (plan 005 §3b, plan 009 §2, plan 019 §2) y `worker.module.spec.ts` fija
  * los nombres. `index-status` no está: el `worker` solo la llena y la consume el `api` (019 D-2).
  */
@@ -38,6 +38,7 @@ export const WORKER_QUEUES = [
   'subscription-reconcile',
   'invoice-retry',
   'indexing',
+  'index-reconcile',
 ] as const;
 
 /**
@@ -49,7 +50,8 @@ export const WORKER_QUEUES = [
  * con la configuración de MinIO y el enlace de `I_PLAN_LIMITS_PROVIDER` de la raíz (DF-51: `storage` no conoce a `billing`; `expire` no lo usa, pero `UploadService` lo pide).
  * Los eventos en proceso (ADR-0019) los pide `FileVersionService`, que `storage` comparte con el `api` y que desde 019
  * anuncia cada versión vigente (RN-11); en el `worker` aún nadie registra versiones ni escucha (plan 019 §7 punto 7).
- * La indexación de 019 (cola `indexing`; avisos a `index-status`) la monta `IntelligenceWorkerModule` con la misma `storage`.
+ * La indexación de 019 (cola `indexing`; avisos a `index-status`) y su conciliación (`index-reconcile`, RN-12) las monta
+ * `IntelligenceWorkerModule` con la misma `storage`.
  */
 @Module({})
 export class WorkerModule {

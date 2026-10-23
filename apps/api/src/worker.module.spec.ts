@@ -1,7 +1,7 @@
 import { WORKER_QUEUES } from './worker.module';
 
 describe('WorkerModule', () => {
-  it('CA-21, 005 CA-9: 006 CA-19, 007 CA-13, 009 CA-2 y CA-6, 019 CA-8: consume las colas `ping`, `mail`, `upload-cleanup`, `trash-purge`, `usage-reconcile`, `subscription-reconcile`, `invoice-retry` e `indexing` (las que lista `worker.started`)', () => {
+  it('CA-21, 005 CA-9: 006 CA-19, 007 CA-13, 009 CA-2 y CA-6, 019 CA-8 y CA-23: consume las colas `ping`, `mail`, `upload-cleanup`, `trash-purge`, `usage-reconcile`, `subscription-reconcile`, `invoice-retry`, `indexing` e `index-reconcile` (las que lista `worker.started`)', () => {
     expect(WORKER_QUEUES).toEqual([
       'ping',
       'mail',
@@ -11,6 +11,7 @@ describe('WorkerModule', () => {
       'subscription-reconcile',
       'invoice-retry',
       'indexing',
+      'index-reconcile',
     ]);
   });
 });

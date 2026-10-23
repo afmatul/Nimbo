@@ -12,6 +12,11 @@
   por el canal de 015, directo desde el `api` o por el relay de `index-status` desde el `worker` (ADR-0031 d).
 - **No expone** fragmentos ni texto por HTTP en la 019: los lee la 020 con `accessibleNodes(actor)` antes de ordenar
   por similitud (DF-14). Ningún rol interno ve texto indexado (019 CA-20).
+- **Conciliación** (019 RN-12, CA-23): el `worker` corre `index-reconcile` cada `INDEX_RECONCILE_INTERVAL_MINUTES`
+  y encola las versiones vigentes indexables sin fila y las `pendiente`/`indexando` de más de 30 min. El Operador la
+  lanza una vez con `pnpm --filter api index:reconcile` (resultado en la bitácora del `worker`:
+  `index.reconcile_completed`); `pnpm seed`, cuando exista el corpus (D-5), usa el mismo gancho
+  (`requestIndexReconcile` de `index.ts`, la única pieza de infraestructura que se exporta, solo para scripts).
 - **Specs que lo construyen**: 019, 020; 018 consume el índice de texto (`texto_busq`) sin modificarlo.
 - **Pendiente al cerrar la 019** (T-11): composición de los módulos `api` y `worker`, puertos internos y estados de
   indexación.
