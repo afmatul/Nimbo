@@ -225,6 +225,9 @@ const createWorker = (doubles: WorkerDoubles): Promise<TestApp> => {
   const storage = StorageWorkerModule.forRoot(env);
   return createTestApp({
     validatedEnv: env,
+    // Sin estrategia de tokens propia: el `worker` no atiende HTTP, y `passport.use` es un registro por proceso donde
+    // gana la última (`createTestApp`); así no pisa la del `api` (la real de `identity` en el aislamiento, T-09).
+    accessTokenStrategy: 'identity',
     modules: [PlanLimitsBindingModule, storage, IntelligenceWorkerModule.forRoot(env, storage)],
     overrides: [
       { provide: I_EMBEDDING_PROVIDER, useValue: doubles.embedder },
@@ -238,8 +241,14 @@ const createWorker = (doubles: WorkerDoubles): Promise<TestApp> => {
 export interface IndexingWorldOptions {
   /** Canal en vivo del `api` (T-07: el de 015 real); por defecto, `recordingRealtime`. */
   readonly realtime?: (env: Env) => DynamicModule;
-  /** Lo que el canal real o la suite cambian del `api` (`REALTIME_CONFIG`, `withRealtime`, límites de tasa). */
-  readonly api?: Pick<StorageHttpOptions, 'env' | 'overrides' | 'withRealtime'>;
+  /**
+   * Lo que el canal real o la suite cambian del `api` (`REALTIME_CONFIG`, `withRealtime`, límites de tasa) y, para el
+   * aislamiento (T-09), la composición de `identity` del mundo de aislamiento (`world.appComposition()`).
+   */
+  readonly api?: Pick<
+    StorageHttpOptions,
+    'env' | 'overrides' | 'withRealtime' | 'accessTokenStrategy' | 'modules'
+  >;
 }
 
 /** Datos de cada aviso que el `worker` encola en `index-status` (`Queue.add` emite `waiting` en la misma instancia). */
