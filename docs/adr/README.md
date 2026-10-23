@@ -8,11 +8,11 @@ Son la base para defender la arquitectura en la exposición final (enunciado §6
 |---|---|---|
 | 0001 | [Monolito modular con worker separado](0001-monolito-modular-con-worker-separado.md) | Aceptado |
 | 0002 | [NestJS + TypeORM con migraciones manuales](0002-nestjs-typeorm-migraciones-manuales.md) | Aceptado |
-| 0003 | [PostgreSQL con pgvector; `vector(768)` fijo e índice HNSW](0003-postgresql-con-pgvector.md) (spec 019) | Propuesto |
+| 0003 | [PostgreSQL con pgvector; `vector(768)` fijo e índice HNSW](0003-postgresql-con-pgvector.md) (spec 019) | Aceptado |
 | 0004 | [ONLYOFFICE Docs como editor, solo para `.docx`](0004-onlyoffice-docs-solo-para-docx.md) (spec 016) | Aceptado |
 | 0005 | [Autorización en la consulta + RLS como segunda barrera](0005-autorizacion-en-la-consulta-y-rls.md) | Aceptado |
 | 0006 | Pagos simulados detrás de `PaymentGateway` | Pendiente |
-| 0007 | [Modelos de lenguaje y de embeddings detrás de puertos propios](0007-modelo-de-lenguaje-detras-de-puertos-propios.md) (spec 019; `ILanguageModel` con 020) | Propuesto |
+| 0007 | [Modelos de lenguaje y de embeddings detrás de puertos propios](0007-modelo-de-lenguaje-detras-de-puertos-propios.md) (spec 019; `ILanguageModel` con 020) | Aceptado |
 | 0008 | [Verificación automática de fronteras entre módulos](0008-verificacion-automatica-de-fronteras.md) (`eslint-plugin-boundaries` + `import-x`) | Aceptado |
 | 0009 | [Crystal Clear + SDD como proceso](0009-crystal-clear-y-sdd-como-proceso.md) | Reemplazado por 0023 |
 | 0010 | [Separar M3 en `access`/`sharing` y extraer `audit`, `realtime`, `notifications`](0010-separacion-de-modulos.md) (DF-02, 03, 30, 34) | Aceptado |
@@ -34,7 +34,7 @@ Son la base para defender la arquitectura en la exposición final (enunciado §6
 | 0028 | [Dependencia de `billing` para la factura PDF: `pdfkit` detrás de `IInvoiceGenerator`](0028-dependencia-de-billing-para-la-factura-pdf.md) (menor; spec 009 T-07) | Aceptado |
 | 0029 | [El trabajo `editing-save` se procesa en el `api`](0029-editing-save-se-procesa-en-el-api.md) (excepción acotada a ADR-0001; spec 016, DF-71) | Aceptado |
 | 0030 | [Socket.IO en el `api` con los paquetes oficiales de Nest y sin adaptador de Redis](0030-socketio-en-el-api-sin-adaptador-de-redis.md) (spec 015) | Aceptado |
-| 0031 | [Extracción de texto (`fflate`, `fast-xml-parser`, Ghostscript), embeddings por REST y relay `index-status`](0031-extraccion-de-texto-y-embeddings-por-rest.md) (spec 019, DF-77) | Propuesto |
+| 0031 | [Extracción de texto (`fflate`, `fast-xml-parser`, Ghostscript), embeddings por REST y relay `index-status`](0031-extraccion-de-texto-y-embeddings-por-rest.md) (spec 019, DF-77) | Aceptado |
 
 Estados: `Pendiente` (sin redactar) · `Propuesto` (redactado, falta acuerdo del equipo) · `Aceptado` · `Reemplazado por`.
 Los ADR 0001, 0002, 0008, 0009, 0014 y 0015 se aceptaron el 26/09/2026 (Adrián, parte de ADR de la T-27 de la spec 000).

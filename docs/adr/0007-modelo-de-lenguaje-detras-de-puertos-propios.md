@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Propuesto |
+| Estado | Aceptado |
 | Fecha | 2026-10-21 |
 | Decisores | Adrián (architect), equipo Nimbo |
 | Specs relacionadas | 019 (`IEmbeddingProvider`), 020 (`ILanguageModel`), ADR-0003, ADR-0031, constitución Art. IV (D) y V.2 reglas (a) y (c), RN-9 de la 019 |

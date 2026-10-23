@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Propuesto |
+| Estado | Aceptado |
 | Fecha | 2026-10-21 |
 | Decisores | Adrián (architect), equipo Nimbo |
 | Specs relacionadas | 019 (plan §1, §2, §7; D-1, D-2), 020, 021 (reutiliza Ghostscript), ADR-0001, ADR-0003, ADR-0007, ADR-0015, ADR-0029, ADR-0030, DF-77, PD-106 |
@@ -72,7 +72,7 @@ ONLYOFFICE (~4 GB) en 8 GB, y la clave del proveedor solo en el backend. Hay tre
   `GeminiEmbeddingProvider` por REST. **d)** Opción 1: relay `index-status`; se acepta como segunda excepción de ADR-0001 con el mismo
   criterio de ADR-0029 (trabajo liviano que necesita los sockets del `api`) y se resuelve la condición de reabrir de ADR-0030 sin
   agregar el adaptador de Redis.
-- Dockerfile del `worker`, CI y `docs/operations/ambientes.md` instalan y documentan Ghostscript.
+- CI (`.github/workflows/ci.yml`) y `docs/operations/ambientes.md` instalan y documentan Ghostscript. El Dockerfile del `worker` aún no existe: instalarlo allí es PD-125.
 
 ## Consecuencias
 

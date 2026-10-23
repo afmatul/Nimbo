@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Propuesto |
+| Estado | Aceptado |
 | Fecha | 2026-10-21 |
 | Decisores | Adrián (architect), equipo Nimbo |
 | Specs relacionadas | 000 (extensión `vector`), 019 (primer uso), 020 (recuperación híbrida), ADR-0005 (RLS), ADR-0007, DF-14 |

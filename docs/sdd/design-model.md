@@ -105,6 +105,7 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
   - repositorio de 006 §9 (interno, DF-63): `IQuickAccessRepository` → `TypeOrmQuickAccessRepository` (`list`, `countPinned`, `findAccessibleNode`, `upsertPin`, `removePin`, `touchRecent`, `pruneRecents`). Toda lectura y escritura une `accessibleNodes(actor)` dentro de la consulta. No hay puerto entre módulos.
   - con 007 (internos, DF-62): `ISpaceRepository` → `TypeOrmSpaceRepository` (bytes vivos propios por tipo), `IClientAccountScanner` → `SqlClientAccountScanner` (solo ids de cuentas de cliente; único acceso sin actor de la conciliación) e `IQuotaRepository.readUsage` (sin bloqueo).
   - con 014 (interno, DF-68): `IVersionRepository` → `TypeOrmVersionRepository` (`list` por `numero DESC`, `nextNumber` = `MAX + 1`, `insert`, `delete`; `find` con la lectura y la restauración; todo con `requireActorScope`); `INodeRepository.updateCurrentVersion` y `findLiveFileByName`; `IObjectStorage.copyObject`; `PlanLimits.retainedVersions`.
+  - con 019 (entre módulos, DF-77): evento `storage.file-version-created` (`FILE_VERSION_CREATED`, `FileVersionCreatedEvent { fileId, versionId, ownerId, kind }`), publicado con `IDomainEventPublisher` (T1 `shared`) después del commit desde `FileVersionService.afterCommit` (reemplazo, restauración y edición) y `UploadRegistrar` (archivo nuevo); y la fachada `IndexableFileGateway` (`findAccessible`, `findOwned`, `openCurrent`, `lockCurrentVersion`, `listIndexable`, `clientIds`) para `intelligence`, que depende de `storage` (sin `storage → intelligence`).
   - con 011 (entre módulos, PD-31): `INodeMetadataReader` (`application/ports/i-node-metadata-reader.port.ts`; `listForOwner(actor, ownerId, FileMetadataPageRequest)`) → `SqlNodeMetadataReader`: lo declara e implementa `storage` y lo consume `backoffice`; solo columnas de `archivo`, dentro de `withActor` y con RLS.
 - Puertos que consume: `IAuditLogger` (lo declara T2 `audit`); `IRateLimiter` (T1 `shared`).
 - Dominio:
@@ -146,20 +147,23 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
 - Controladores (plan 016, DF-70 a DF-74): `EditorController` (`POST /files/:fileId/edit-session`) y `OnlyOfficeController` (contenido y `callback`, públicos y autenticados por JWT). `versions` y `restore` son de la 014.
 - Servicios: `EditSessionService` (abrir, cerrar sin cambios, revocar acceso), `PresenceService`, `SaveCallbackHandler`, `SaveVersionService` (trabajo `editing-save`, procesado en el `api`, ADR-0029) y `SaveFailedNotifier`. El `VersionHistoryService` del diagrama vive en M2 desde 014 (DF-17, DF-68); 016 registra sus versiones con `FileVersionService` y solo aporta la autoría. Sin gateway propio: la presencia se publica por el gateway único de T3 `realtime`, y `editing` autoriza la unión a la sala consultando `access` (DF-30, ADR-0010).
 - Dominio: `EditSession` (estados `activa → guardando → cerrada | fallida`, `activa → sin_cambios`), `EditModePolicy` y `Participant`. `DocumentVersion` desaparece (ADR-0012, DF-18): la autoría sale de `participacion`.
-- Puertos → implementaciones: `IDocumentEditor` → `OnlyOfficeEditor` (ADR-0004); `IEditSessionRepository` (renombre de `ISessionRepository`, DF-19); `IUserDirectory` → `UserDirectoryAdapter` de `identity` (DF-74; lo declara `editing`). `IIdempotencyStore` se descarta (DF-72). `IIndexQueue` → `intelligence` (PD-18). `IVersionRepository` vive en M2 desde 014, interno de `storage` (la versión es de `storage`, ADR-0012, DF-68).
+- Puertos → implementaciones: `IDocumentEditor` → `OnlyOfficeEditor` (ADR-0004); `IEditSessionRepository` (renombre de `ISessionRepository`, DF-19); `IUserDirectory` → `UserDirectoryAdapter` de `identity` (DF-74; lo declara `editing`). `IIdempotencyStore` se descarta (DF-72). `editing` ya no encola la indexación: la versión editada se anuncia con `storage.file-version-created` y `IIndexQueue` es interno de `intelligence` (DF-77, cierra PD-18). `IVersionRepository` vive en M2 desde 014, interno de `storage` (la versión es de `storage`, ADR-0012, DF-68).
 - Fachada que `editing` consume de `storage`: `EditableFileGateway` (`find`, `openContent`, `registerEditedVersion`); `IObjectStorage` suma `getObjectStream` y `putObjectStream`; `PlanLimits` suma `maxEditors` (DF-73; `retainedVersions` llegó con 014, DF-68).
 - Tablas: `sesion_edicion` (`archivo_id` sin FK, DF-70) y `participacion` (N:M `participa`); `version_archivo` gana `sesion_edicion_id` `UNIQUE` con `CHECK` contra `origen` (DF-05).
 
 ### M6 `intelligence`
-- Servicios: `AgentService`, `HybridRetriever` (keyword + vector + fuse), processor `IndexingService`, `Chunker`, `ExtractorRegistry` (**Registry**). Falta `AgentController` y entidades de conversación → DF-15.
-- Puertos → implementaciones: `ILanguageModel` → `GeminiFlashModel`; `IEmbeddingProvider` → `GeminiEmbeddingProvider`; `ITextExtractor` → `DocxExtractor`, `PdfExtractor`, `PlainTextExtractor` (**abierto/cerrado**); `IChunkRepository`; `IAgentQuota` → `billing`.
-- Dominio: `Chunk` con `SourceLocation` (abstracta) ← `PdfLocation` (page), `DocxLocation` (section, paragraph), `TextLocation` (line); `confidence` + `isCertain()`.
-- Tablas: `indexacion`, `fragmento` (`embedding vector(768)`, `texto_busq tsvector`), `conversacion`, `consulta_agente`, `cita` (N:M).
+- Controlador (019, `@Roles(CLIENT)`): `IndexingController` (`GET /files/:fileId/indexing` y `POST /files/:fileId/indexing/retry`). Falta `AgentController` y entidades de conversación → DF-15.
+- Servicios: `AgentService`, `HybridRetriever` (keyword + vector + fuse) → 020. Con 019: `IndexingService` (`indexVersion`, `giveUp`; el processor del diagrama es `IndexingProcessor`, que solo delega), `IndexingOutcomeRecorder` (estado, auditoría, bitácora y aviso), `IndexScheduler` (programa una versión; lo usan el oyente y la conciliación), `IndexStatusService` (`get`, `retry`), `IndexReconciler`, `Chunker` y `ExtractorRegistry` (**Registry**: única fuente de qué tipos se indexan).
+- Procesadores y oyentes (DF-77): `FileVersionCreatedListener` (escucha `storage.file-version-created`, en el `api`), `IndexingProcessor` (cola `indexing`) e `IndexReconcileProcessor` (cola `index-reconcile`) en el `worker`, e `IndexStatusRelay` (cola `index-status`, en el `api`).
+- Puertos → implementaciones (todos **internos**; ninguno cruza módulos): `ILanguageModel` → `GeminiFlashModel` (020); `IEmbeddingProvider` → `GeminiEmbeddingProvider` (REST, ADR-0031); `ITextExtractor` → `DocxExtractor`, `PdfExtractor`, `PlainTextExtractor`, `XlsxExtractor`, `PptxExtractor` (**abierto/cerrado**); `IIndexQueue` → `BullmqIndexQueue` (cola `indexing`; ya **no** `editing → intelligence`, DF-77); `ICommandRunner` → `ChildProcessRunner` (viene de M7: 019 lo necesita antes y `intelligence` no puede importar `optimizer`; interno hasta que 021 lo reutilice, DF-79); `IIndexStatusNotifier` → `RealtimeIndexStatusNotifier` (`api`) y `QueuedIndexStatusNotifier` (`worker`); `IIndexingRepository`, `IChunkRepository` (`replaceForVersion`, `findByFile(actor, …)`, `nearest(actor, vector, limit)` con `accessibleNodes` antes de ordenar); `IAgentQuota` → `billing` (020).
+- Dominio: `FileIndexing` (estados `pendiente → indexando → indexado | no_indexable | fallido`, `fallido → pendiente`, con `reason`), `Segment`, `Chunk` con `SourceLocation` (abstracta: `groupKey()`, `mergeWith()`, `label()`, `isCertain()`, `toJson()`) ← `PdfLocation` (page), `DocxLocation` (section, rango de párrafos), `TextLocation` (rango de líneas), `SheetLocation` (hoja) y `SlideLocation` (diapositiva) (DF-78); `confidence` + `isCertain()`. Errores: `NotIndexableError`, `EmbeddingUnavailableError`, `ContentReadError` e `IndexingNotRetryableError`.
+- Tablas: `indexacion` (una fila por versión, `estado` y `motivo` con `CHECK`), `fragmento` (`archivo_id`, `version_archivo_id`, `orden`, `procedencia jsonb`, `embedding vector(768)`, `texto_busq tsvector` generado), ambas con RLS (`ENABLE` + `FORCE`), `conversacion`, `consulta_agente`, `cita` (N:M).
+- Diagrama «Indexación» sin redibujar (PD-126): sigue mostrando `editing → IIndexQueue → intelligence` y las clases anteriores a 019.
 
 ### M7 `optimizer`
 - Controlador: `OptimizerController` (estimate, run, restoreOriginal).
 - Servicios: `OptimizationService`; processor `OptimizationProcessor`.
-- Puertos → implementaciones: `IOptimizer` ← `BaseOptimizer` (abstracta, **Template Method**) ← `PdfOptimizer`, `ImageOptimizer`; `IIntegrityValidator` → `DefaultIntegrityValidator`; `ICommandRunner` → `ChildProcessRunner`; `IJobRepository`, `IJobQueue`.
+- Puertos → implementaciones: `IOptimizer` ← `BaseOptimizer` (abstracta, **Template Method**) ← `PdfOptimizer`, `ImageOptimizer`; `IIntegrityValidator` → `DefaultIntegrityValidator`; `ICommandRunner` → `ChildProcessRunner` (hoy **interno de `intelligence`** desde la 019, DF-79; 021 lo mueve a `shared` al ser el segundo consumidor); `IJobRepository`, `IJobQueue`.
 - Dominio: `OptimizationJob`; `SavingsEstimate` (value object, `isWorthIt(min)`).
 - Tablas: `optimizacion` (+ `trabajo`, ver DF-22).
 
@@ -177,6 +181,7 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
 - Puertos → implementaciones:
   - `IHealthIndicator` → `PostgresHealthIndicator`, `RedisHealthIndicator`, `MinioHealthIndicator` (DF-29 parcial);
   - `IClock` → `SystemClock` (infraestructura), `FixedClock` (dominio, para pruebas);
+  - con 019 (DF-79): `IDomainEventPublisher` → `EventEmitterDomainEventPublisher` (publica en proceso; un oyente que lanza se registra y no se propaga; lo usa `storage`, y `identity` y `realtime` migran después, PD-122);
   - con 001, `IRateLimiter` → `RedisRateLimiter`, con ventana deslizante en Redis (lo consumen M1 y M3b; PD-30);
   - con 001, `ITransactionRunner` → implementación TypeORM que publica el `EntityManager` en `TransactionContext` (`AsyncLocalStorage`). `withActor` de 003 se construye sobre el mismo contexto (DF-54).
 - Dominio:
@@ -255,8 +260,8 @@ El mapeo vive solo en las entidades TypeORM (`@Entity('archivo')`, `@Column({ na
 | `Invoice` | `factura` | |
 | `EditSession` | `sesion_edicion` | |
 | `Participant` | `participacion` | Tabla de la relación N:M `participa` |
-| (indexación) | `indexacion` | Estado por versión |
-| `Chunk` | `fragmento` | |
+| `FileIndexing` | `indexacion` | Estado por versión, con motivo (019, DF-78) |
+| `Chunk` | `fragmento` | Con `archivo_id`, `orden` y `procedencia jsonb` (019, DF-78) |
 | (conversación, consulta) | `conversacion`, `consulta_agente`, `cita` | Sin clases aún (DF-15) |
 | `OptimizationJob` | `optimizacion` | |
 | (trabajo) | `trabajo` | Ver DF-22 |
