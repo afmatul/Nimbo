@@ -9,13 +9,21 @@ import type {
   Embedding,
   IEmbeddingProvider,
 } from '../../../src/modules/intelligence/application/ports/i-embedding-provider.port';
+import { I_INDEX_STATUS_NOTIFIER } from '../../../src/modules/intelligence/application/ports/i-index-status-notifier.port';
+import type {
+  IIndexStatusNotifier,
+  IndexStatusChange,
+} from '../../../src/modules/intelligence/application/ports/i-index-status-notifier.port';
 import { EmbeddingUnavailableError } from '../../../src/modules/intelligence/domain/errors';
 import { INDEXING_QUEUE } from '../../../src/modules/intelligence/infrastructure/bullmq-index.queue';
 import {
   GEMINI_API_BASE_URL,
   GeminiEmbeddingProvider,
 } from '../../../src/modules/intelligence/infrastructure/gemini-embedding.provider';
-import { INDEX_STATUS_QUEUE } from '../../../src/modules/intelligence/infrastructure/queued-index-status.notifier';
+import {
+  INDEX_STATUS_QUEUE,
+  QueuedIndexStatusNotifier,
+} from '../../../src/modules/intelligence/infrastructure/queued-index-status.notifier';
 import { I_REALTIME_PUBLISHER } from '../../../src/modules/realtime';
 import type { IRealtimePublisher, RealtimeNotice } from '../../../src/modules/realtime';
 import { StorageWorkerModule } from '../../../src/modules/storage';
@@ -111,6 +119,34 @@ export class ControlledEmbeddingProvider implements IEmbeddingProvider {
   }
 }
 
+/**
+ * `IIndexStatusNotifier` del `worker` en las suites: delega en el real (`index-status`) con un gancho que corre una vez
+ * antes del próximo aviso. El aviso se publica después de guardar el estado y con el trabajo todavía activo: el gancho
+ * abre esa ventana (p. ej., «Reintentar» antes de que BullMQ borre el trabajo que dejó `fallido`).
+ */
+export class ControlledStatusNotifier implements IIndexStatusNotifier {
+  private target: IIndexStatusNotifier | null = null;
+  private beforeNext: ((change: IndexStatusChange) => Promise<void>) | null = null;
+
+  bind(target: IIndexStatusNotifier): void {
+    this.target = target;
+  }
+
+  /** Corre `hook` una vez, justo antes de publicar el próximo aviso del `worker`. */
+  onceBeforeNotify(hook: (change: IndexStatusChange) => Promise<void>): void {
+    this.beforeNext = hook;
+  }
+
+  async notify(change: IndexStatusChange): Promise<void> {
+    const hook = this.beforeNext;
+    this.beforeNext = null;
+    if (hook !== null) await hook(change);
+    if (this.target === null)
+      throw new Error('El aviso de prueba no está conectado a `index-status`.');
+    await this.target.notify(change);
+  }
+}
+
 export interface IndexingRow {
   readonly estado: string;
   readonly motivo: string | null;
@@ -141,6 +177,7 @@ export interface IndexingWorld {
   readonly storage: StorageHttpApp;
   readonly worker: TestApp;
   readonly embedder: ControlledEmbeddingProvider;
+  readonly statusNotifier: ControlledStatusNotifier;
   readonly indexingQueue: Queue;
   readonly statusQueue: Queue;
   upload(
@@ -171,7 +208,12 @@ export const eventually = async <T>(probe: () => Promise<T | null>): Promise<T> 
   }
 };
 
-const createWorker = (embedder: ControlledEmbeddingProvider): Promise<TestApp> => {
+interface WorkerDoubles {
+  readonly embedder: ControlledEmbeddingProvider;
+  readonly statusNotifier: ControlledStatusNotifier;
+}
+
+const createWorker = (doubles: WorkerDoubles): Promise<TestApp> => {
   const env = buildTestEnv(
     {
       MINIO_BUCKET: STORAGE_HTTP_BUCKET,
@@ -184,7 +226,10 @@ const createWorker = (embedder: ControlledEmbeddingProvider): Promise<TestApp> =
   return createTestApp({
     validatedEnv: env,
     modules: [PlanLimitsBindingModule, storage, IntelligenceWorkerModule.forRoot(env, storage)],
-    overrides: [{ provide: I_EMBEDDING_PROVIDER, useValue: embedder }],
+    overrides: [
+      { provide: I_EMBEDDING_PROVIDER, useValue: doubles.embedder },
+      { provide: I_INDEX_STATUS_NOTIFIER, useValue: doubles.statusNotifier },
+    ],
     prefix: '',
   });
 };
@@ -216,9 +261,11 @@ export const createIndexingWorld = async (
     },
   });
   const embedder = new ControlledEmbeddingProvider();
-  const worker = await createWorker(embedder);
+  const statusNotifier = new ControlledStatusNotifier();
+  const worker = await createWorker({ embedder, statusNotifier });
   const indexingQueue = worker.app.get<Queue>(getQueueToken(INDEXING_QUEUE));
   const statusQueue = worker.app.get<Queue>(getQueueToken(INDEX_STATUS_QUEUE));
+  statusNotifier.bind(new QueuedIndexStatusNotifier(statusQueue));
   const notices = recordNotices(statusQueue);
   const indexingOf = async (versionId: string): Promise<IndexingRow | null> => {
     const [row] = await storage.owner.query<IndexingRow[]>(
@@ -231,6 +278,7 @@ export const createIndexingWorld = async (
     storage,
     worker,
     embedder,
+    statusNotifier,
     indexingQueue,
     statusQueue,
     upload: (client, name, bytes, replace = false) =>

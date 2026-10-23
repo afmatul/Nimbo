@@ -19,16 +19,24 @@ export interface IndexQueueConfig {
 export const INDEX_QUEUE_CONFIG = Symbol('IndexQueueConfig');
 
 /**
- * Un trabajo por versión (`jobId` = `version_archivo_id`, CA-9). `removeOnComplete/Fail` lo borran al terminar: así
- * «Reintentar» puede volver a encolar la misma versión sin que BullMQ lo ignore por un `jobId` viejo (plan §7 punto 8).
+ * Un trabajo por versión (`jobId` = `version_archivo_id`, CA-9). `removeOnComplete/Fail` lo borran al terminar, así que
+ * el evento y la conciliación pueden volver a encolar la versión cuando su trabajo ya no existe.
  */
-const jobOptionsFor = (job: IndexJob, config: IndexQueueConfig): JobsOptions => ({
-  jobId: job.versionId,
+const jobOptionsFor = (jobId: string, config: IndexQueueConfig): JobsOptions => ({
+  jobId,
   attempts: config.maxAttempts,
   backoff: { type: 'exponential', delay: INDEXING_BACKOFF_MS },
   removeOnComplete: true,
   removeOnFail: true,
 });
+
+/**
+ * `jobId` de un reintento: el trabajo que dejó `fallido` sin clave del proveedor lo guarda y avisa **antes** de
+ * terminar, así que con `jobId` = versión BullMQ ignoraría el reintento y la fila quedaría `pendiente` sin trabajo.
+ * Sin `:`, que BullMQ no admite en ids propios.
+ */
+const retryJobIdOf = (job: IndexJob, retriedAt: Date): string =>
+  `${job.versionId}-retry-${String(retriedAt.getTime())}`;
 
 /** `IIndexQueue` sobre BullMQ, con el `correlationId` de la petición o del trabajo que encola. */
 @Injectable()
@@ -38,8 +46,16 @@ export class BullmqIndexQueue implements IIndexQueue {
     @Inject(INDEX_QUEUE_CONFIG) private readonly config: IndexQueueConfig,
   ) {}
 
-  async enqueue(job: IndexJob): Promise<void> {
+  enqueue(job: IndexJob): Promise<void> {
+    return this.add(job, job.versionId);
+  }
+
+  enqueueRetry(job: IndexJob, retriedAt: Date): Promise<void> {
+    return this.add(job, retryJobIdOf(job, retriedAt));
+  }
+
+  private async add(job: IndexJob, jobId: string): Promise<void> {
     const data = { fileId: job.fileId, versionId: job.versionId, ownerId: job.ownerId };
-    await enqueueWithCorrelation(this.queue, INDEXING_JOB, data, jobOptionsFor(job, this.config));
+    await enqueueWithCorrelation(this.queue, INDEXING_JOB, data, jobOptionsFor(jobId, this.config));
   }
 }

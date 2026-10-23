@@ -64,7 +64,8 @@ const NOT_STARTED: IndexStatus = {
  * `IndexableFileGateway.findAccessible` (`accessibleNodes`): ajeno, en la papelera o inexistente es el mismo
  * `NodeNotFoundError` (CA-15, CA-18). «Reintentar» exige `Action.EDIT` (propietaria o editor, CA-13), pasa por el
  * límite de tasa antes de resolver el archivo (sin oráculo) y vuelve a `pendiente` con comparar y asignar desde
- * `fallido`; tras el commit encola, audita `file.index_retried` con quien lo pulsó y avisa a la propietaria.
+ * `fallido`; tras el commit encola un trabajo propio del reintento (`enqueueRetry`), audita `file.index_retried` con
+ * quien lo pulsó y avisa a la propietaria.
  */
 @Injectable()
 export class IndexStatusService {
@@ -93,7 +94,8 @@ export class IndexStatusService {
     await this.assertWithinRate(actor);
     const file = await this.accessibleFile(actor, fileId);
     const retried = await this.transactions.withActor(actor, () => this.markPending(actor, file));
-    await this.queue.enqueue({ fileId, versionId: retried.versionId, ownerId: file.ownerId });
+    const job = { fileId, versionId: retried.versionId, ownerId: file.ownerId };
+    await this.queue.enqueueRetry(job, retried.snapshot().updatedAt);
     await this.recordRetried(actor, file, retried);
   }
 

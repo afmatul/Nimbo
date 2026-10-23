@@ -174,8 +174,11 @@ describe('IndexStatusService (019 plan §4)', () => {
         attempts: 0,
         updatedAt: NOW,
       });
-      expect(queue.jobs).toEqual([
-        { fileId: file.id, versionId: file.currentVersionId, ownerId: OWNER.id },
+      expect(queue.retries).toEqual([
+        {
+          job: { fileId: file.id, versionId: file.currentVersionId, ownerId: OWNER.id },
+          retriedAt: NOW,
+        },
       ]);
       expect(audit.records).toEqual([
         {
@@ -196,7 +199,17 @@ describe('IndexStatusService (019 plan §4)', () => {
 
       await expect(service.retry(EDITOR, file.id)).rejects.toBeInstanceOf(InsufficientRoleError);
       expect(indexings.byVersion.get(file.currentVersionId)?.state).toBe('fallido');
-      expect(queue.jobs).toEqual([]);
+      expect(queue.retries).toEqual([]);
+    });
+
+    it('CA-13: con el trabajo que dejó `fallido` todavía en la cola, el reintento se encola aparte', async () => {
+      const { service, file, queue } = failedWorld(true);
+      const stillQueued = { fileId: file.id, versionId: file.currentVersionId, ownerId: OWNER.id };
+      await queue.enqueue(stillQueued);
+
+      await service.retry(OWNER, file.id);
+
+      expect(queue.retries).toEqual([{ job: stillQueued, retriedAt: NOW }]);
     });
 
     it('CA-13: sin fila (tipo no indexable o sin empezar) → 409', async () => {
@@ -216,7 +229,7 @@ describe('IndexStatusService (019 plan §4)', () => {
       ]);
 
       expect(results.map((result) => result.status).sort()).toEqual(['fulfilled', 'rejected']);
-      expect(queue.jobs).toHaveLength(1);
+      expect(queue.retries).toHaveLength(1);
     });
 
     it('plan §4: el límite de tasa va antes de resolver el archivo (sin oráculo) y responde 429', async () => {

@@ -55,14 +55,30 @@ export class FakeIndexingRepository implements IIndexingRepository {
   }
 }
 
-/** `IIndexQueue` en memoria: como BullMQ con `jobId` = `versionId`, un trabajo repetido no se agrega dos veces. */
+/** Reintento encolado con `enqueueRetry`: el trabajo y la transición `fallido → pendiente` que lo originó. */
+export interface QueuedRetry {
+  readonly job: IndexJob;
+  readonly retriedAt: Date;
+}
+
+/**
+ * `IIndexQueue` en memoria: como BullMQ con `jobId` = `versionId`, un trabajo repetido no se agrega dos veces; cada
+ * reintento es un trabajo aparte (`retries`), aunque la versión tenga otro en la cola.
+ */
 export class FakeIndexQueue implements IIndexQueue {
   readonly jobs: IndexJob[] = [];
+  readonly retries: QueuedRetry[] = [];
   failure: Error | null = null;
 
   enqueue(job: IndexJob): Promise<void> {
     if (this.failure !== null) return Promise.reject(this.failure);
     if (!this.jobs.some((queued) => queued.versionId === job.versionId)) this.jobs.push(job);
+    return Promise.resolve();
+  }
+
+  enqueueRetry(job: IndexJob, retriedAt: Date): Promise<void> {
+    if (this.failure !== null) return Promise.reject(this.failure);
+    this.retries.push({ job, retriedAt });
     return Promise.resolve();
   }
 }

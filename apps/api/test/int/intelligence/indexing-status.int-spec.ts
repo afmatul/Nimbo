@@ -108,13 +108,10 @@ describe('estado y «Reintentar» de la indexación (019 CA-13, CA-14, CA-15, CA
     return file;
   };
 
-  /** `fallido` sin clave del proveedor, con el trabajo ya borrado de la cola (si no, `jobId` = versión lo absorbería). */
+  /** `fallido` sin clave del proveedor; luego el proveedor vuelve. */
   const failedUpload = async (client: StorageClient): Promise<UploadedFile> => {
     world.embedder.mode = 'keyless';
     const file = await settledUpload(client, 'informe.txt', txt('Informe del trimestre.'));
-    await eventually(async () =>
-      (await world.indexingQueue.getJob(file.versionId)) === undefined ? true : null,
-    );
     world.embedder.mode = 'up';
     return file;
   };
@@ -316,6 +313,31 @@ describe('estado y «Reintentar» de la indexación (019 CA-13, CA-14, CA-15, CA
         [file.fileId],
       );
       expect(audits).toEqual([{ actor_id: ana.id, atributos: { versionId: file.versionId } }]);
+    });
+
+    it('CA-13: «Reintentar» con el trabajo que dejó `fallido` todavía activo se reprocesa sin esperar la conciliación', async () => {
+      const ana = await world.storage.newClient();
+      world.embedder.mode = 'keyless';
+      let retryWindow: { retried: Response; jobStillActive: boolean } | null = null;
+      world.statusNotifier.onceBeforeNotify(async ({ fileId }) => {
+        const active = await world.indexingQueue.getActive();
+        const jobStillActive = active.some(
+          (job) => (job.data as { fileId?: string }).fileId === fileId,
+        );
+        world.embedder.mode = 'up';
+        retryWindow = { retried: await retry(ana, fileId), jobStillActive };
+      });
+
+      const file = await world.upload(ana, unique('informe.txt'), txt('Informe del trimestre.'));
+      const { retried, jobStillActive } = await eventually(() => Promise.resolve(retryWindow));
+
+      expect(jobStillActive).toBe(true);
+      expect(retried.status).toBe(202);
+      expect(await world.settled(file.versionId)).toMatchObject({
+        estado: 'indexado',
+        motivo: null,
+        intentos: 1,
+      });
     });
 
     it('CA-13: fuera de `fallido` → 409 `INTELLIGENCE_INDEXING_NOT_RETRYABLE` sin tocar el estado', async () => {
