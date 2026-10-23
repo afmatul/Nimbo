@@ -3,7 +3,7 @@
 > Spec: `./spec.md` · Estado del plan: **Propuesto** (2026-10-22)
 > Obligatorio y ≤ 250 líneas. Dice qué archivos se tocan y qué se espera de cada uno; no es el código en prosa.
 > Lo aprueba Adrián antes de escribir código. Dos PR sobre la misma rama, como la 011: **PR-A** (cuota y vigencia)
-> y **PR-B** (restauración), con el PR-B encima del PR-A. Antes de implementar se acepta el **ADR-0033** (§7).
+> y **PR-B** (restauración), con el PR-B encima del PR-A. Antes de implementar se acepta el **ADR-0034** (§7).
 
 ## 1. Resumen técnico
 - **PR-A.** `suscripcion` gana `cuota_extra_bytes` y `cuota_extra_hasta`; la cuota efectiva es la del plan más el extra
@@ -150,7 +150,7 @@ CREATE POLICY carpeta_soporte_restauracion ON carpeta FOR UPDATE TO nimbo_app
 ## 7. Riesgos y coherencia con el diseño
 - **Política RLS de Soporte:** es amplia dentro de las filas en papelera (cualquier `SUPPORT` que ejecute SQL directo
   podría tocar otra cuenta). Se mitiga con un único camino de código, la comprobación de `propietario_id`, la transacción
-  única y el aislamiento; el ADR-0033 lo declara y compara con la alternativa de una función `SECURITY DEFINER`.
+  única y el aislamiento; el ADR-0034 lo declara y compara con la alternativa de una función `SECURITY DEFINER`.
 - **Refactor de `TrashService`:** extraer `trash-placement` puede cambiar el orden de lectura o el resultado `R-5`; las
   pruebas de 006 deben quedar verdes antes y después. No se cambia el comportamiento del cliente.
 - **Carrera cuota/uso:** si se omite el `FOR UPDATE` de `usuario`, una carga simultánea puede dejar el total bajo lo usado;
@@ -164,11 +164,11 @@ CREATE POLICY carpeta_soporte_restauracion ON carpeta FOR UPDATE TO nimbo_app
   `pendientes.md` para redibujarlo, como el `fin`.
 - **Pendientes:** PD-91 (bases 1000/1024 y separador) sigue abierto; la ficha usa `formatPlanBytes`/`bytesOf` (1024, como el
   catálogo) y el cliente `formatBytes` (1000, como la 011). No se inventan topes: la UI muestra el total resultante.
-- **ADR requeridos:** **ADR-0033** «Escrituras internas acotadas: funciones `SECURITY DEFINER` para la cuenta y RLS por
+- **ADR requeridos:** **ADR-0034** «Escrituras internas acotadas: funciones `SECURITY DEFINER` para la cuenta y RLS por
   estado para la papelera» (funciones de `suscripcion`, políticas RLS de papelera, motivo en auditoría), en estado
   `Propuesto` con el PR-A y aceptado antes del PR-B.
 - **Fuera de alcance:** lo de la spec §7. No se añaden dependencias.
 
 ## 8. Aprobación
-- `architect`: previsible, por las políticas RLS nuevas y las funciones `SECURITY DEFINER` (ADR-0033); veredicto pendiente.
+- `architect`: previsible, por las políticas RLS nuevas y las funciones `SECURITY DEFINER` (ADR-0034); veredicto pendiente.
 - Adrián: **Propuesto** — 2026-10-22.

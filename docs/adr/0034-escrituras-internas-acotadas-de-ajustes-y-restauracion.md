@@ -1,9 +1,10 @@
-# ADR-0033 — Escrituras internas acotadas: funciones `SECURITY DEFINER` para la cuenta y RLS por estado para la papelera
+# ADR-0034 — Escrituras internas acotadas: funciones `SECURITY DEFINER` para la cuenta y RLS por estado para la papelera
 
 | Campo | Valor |
 |---|---|
 | Estado | Propuesto (2026-10-22) |
 | Fecha | 2026-10-22 |
+| Numeración | 0034 desde 2026-10-23: el 0033 queda reservado por el ADR de compartición de la 012 (PR #61) |
 | Decisores | `architect`, Fátima (dueña de 011/011b), Adrián (aprueba) |
 | Specs relacionadas | 011b (RF-05, RF-06, RF-12, RF-22, RF-23, RF-24); hereda 004, 006, 009, 010 y 011 |
 

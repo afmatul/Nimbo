@@ -9,12 +9,12 @@
 | Fase | 2 |
 | Requisitos | RF-05, RF-06, RF-07, RF-12, RF-22, RF-23, RF-24; RNF-05, RNF-13, RNF-14, RNF-17 |
 | Depende de | 004, 006, 007 (resumen de espacio, P-3), 009, 010, 011 |
-| Última actualización | 2026-10-22 |
+| Última actualización | 2026-10-23 |
 
 > **Continuidad:** borrador cerrado, `plan.md` propuesto y `/mockup` listo el 2026-10-22, sin preguntas abiertas. Lo que
-> queda es la aprobación de Adrián de la spec, el plan, el ADR-0033 y los mockups para pasar a «Lista», y después
+> queda es la aprobación de Adrián de la spec, el plan, el ADR-0034 y los mockups para pasar a «Lista», y después
 > `/tasks` e `/implement`. Reparto: PR-A (cuota y vigencia) y PR-B (restauración), con el PR-B sobre el PR-A; el
-> ADR-0033 queda propuesto con el PR-A.
+> ADR-0034 queda propuesto con el PR-A.
 
 ## 1. Contexto y objetivo
 La 011 dejó fuera, por tamaño, tres operaciones que la matriz de roles ya define: el Administrador ajusta la cuota y la
@@ -110,5 +110,6 @@ puede deshacer una eliminación concreta dejando rastro visible para el cliente.
 |---|---|---|---|
 | 2026-10-22 | Creación inicial con las decisiones P-2/P-3/P-8 de la 011, tres operaciones y las preguntas abiertas | Arranque de la 011b | Borrador (pendiente Adrián) |
 | 2026-10-22 | P-1 a P-9 resueltas; aclarado «bajo lo usado» como `plan + extra < espacio_usado`; retiradas las marcas «sujeto a» de CA-5, RN-3, RN-6 y RN-7 | Cierre del borrador para `/plan` y `/mockup` | Fátima |
-| 2026-10-22 | `plan.md` propuesto (PR-A cuota y vigencia; PR-B restauración) y ADR-0033 propuesto | Siguiente compuerta para «Lista» | Fátima |
+| 2026-10-22 | `plan.md` propuesto (PR-A cuota y vigencia; PR-B restauración) y ADR-0033 (hoy 0034) propuesto | Siguiente compuerta para «Lista» | Fátima |
 | 2026-10-22 | `/mockup` de la ficha (13 estados de límites y vigencia, incluido quitar extra) y de la papelera de Soporte (11 estados), con capturas 360/1440 y axe | Cierre de la compuerta de diseño | Fátima |
+| 2026-10-23 | ADR renumerado de 0033 a 0034; el 0033 queda para la 012 (PR #61) | Evitar el choque de numeración entre specs abiertas | Fátima |
