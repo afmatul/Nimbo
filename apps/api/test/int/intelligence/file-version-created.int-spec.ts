@@ -53,8 +53,11 @@ describe('versión vigente → indexación programada (019 CA-8, CA-9, CA-22; 01
 
   beforeAll(async () => {
     storage = await createStorageHttpApp({
-      withStorage: (_storage, env) => [
-        IntelligenceModule.forRoot(env, { realtime: recordingRealtime(publisher) }),
+      withStorage: (storageModule, env) => [
+        IntelligenceModule.forRoot(env, {
+          storage: storageModule,
+          realtime: recordingRealtime(publisher),
+        }),
       ],
     });
     const { app } = storage.testApp;

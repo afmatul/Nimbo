@@ -66,7 +66,8 @@ export interface RealtimeTestAppOptions {
   readonly overrides?: readonly ProviderOverride[];
 }
 
-const testConfig = (config: Partial<RealtimeConfig> = {}): RealtimeConfig => ({
+/** `RealtimeConfig` de las suites: el origen permitido, el límite corto de intentos y el latido de producción. */
+export const testRealtimeConfig = (config: Partial<RealtimeConfig> = {}): RealtimeConfig => ({
   origins: [ALLOWED_ORIGIN],
   connectAttemptsPerMinute: TEST_CONNECT_ATTEMPTS_PER_MINUTE,
   pingIntervalMs: REALTIME_PING_INTERVAL_MS,
@@ -87,7 +88,7 @@ export const createRealtimeTestApp = async (
     validatedEnv: env,
     modules: [RealtimeModule.forRoot(env, TestAccessTokenVerifierModule.withClock(clock))],
     overrides: [
-      { provide: REALTIME_CONFIG, useValue: testConfig(options.config) },
+      { provide: REALTIME_CONFIG, useValue: testRealtimeConfig(options.config) },
       ...(options.overrides ?? []),
     ],
     withRealtime: true,

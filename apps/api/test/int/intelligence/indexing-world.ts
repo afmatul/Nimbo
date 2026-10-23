@@ -1,7 +1,7 @@
 import { getQueueToken } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
-import type { Queue } from 'bullmq';
+import type { Job, Queue } from 'bullmq';
 
 import { IntelligenceModule, IntelligenceWorkerModule } from '../../../src/modules/intelligence';
 import { I_EMBEDDING_PROVIDER } from '../../../src/modules/intelligence/application/ports/i-embedding-provider.port';
@@ -20,12 +20,13 @@ import { I_REALTIME_PUBLISHER } from '../../../src/modules/realtime';
 import type { IRealtimePublisher, RealtimeNotice } from '../../../src/modules/realtime';
 import { StorageWorkerModule } from '../../../src/modules/storage';
 import { PlanLimitsBindingModule } from '../../../src/plan-limits-binding.module';
+import type { Env } from '../../../src/shared';
 import { FakeEmbeddingProvider } from '../../support/fake-embedding.provider';
 import { GHOSTSCRIPT_BIN } from '../../support/ghostscript';
 import { buildTestEnv, createTestApp } from '../setup/test-app';
 import type { TestApp } from '../setup/test-app';
 import { createStorageHttpApp, STORAGE_HTTP_BUCKET } from '../storage/storage-http';
-import type { StorageClient, StorageHttpApp } from '../storage/storage-http';
+import type { StorageClient, StorageHttpApp, StorageHttpOptions } from '../storage/storage-http';
 
 const KIB = 1024;
 /** Tope indexable de las suites (RN-7): chico para probar `demasiado_grande` sin subir 50 MiB. */
@@ -39,7 +40,7 @@ export interface Delivered {
   readonly notice: RealtimeNotice;
 }
 
-/** `IRealtimePublisher` que anota lo que se manda a cada cuenta (el canal real lo prueba T-07). */
+/** `IRealtimePublisher` que anota lo que se manda a cada cuenta (el canal real lo monta `indexing-status`, T-07). */
 export class RecordingPublisher implements IRealtimePublisher {
   readonly delivered: Delivered[] = [];
 
@@ -152,7 +153,10 @@ export interface IndexingWorld {
   /** Espera a que la versión llegue a un estado final y lo devuelve. */
   settled(versionId: string): Promise<IndexingRow>;
   chunksOf(fileId: string): Promise<ChunkRow[]>;
-  /** Espera el aviso del estado final (se publica después del commit) y devuelve todos los del archivo. */
+  /**
+   * Espera el aviso del estado final (se publica después del commit) y devuelve todos los que el `worker` encoló en
+   * `index-status` para el archivo; el relay del `api` los consume y borra, así que se anotan al encolarse.
+   */
   settledNoticesOf(fileId: string): Promise<unknown[]>;
   close(): Promise<void>;
 }
@@ -185,17 +189,37 @@ const createWorker = (embedder: ControlledEmbeddingProvider): Promise<TestApp> =
   });
 };
 
-export const createIndexingWorld = async (): Promise<IndexingWorld> => {
+/** Cómo se arma el `api` del mundo: por defecto, con el doble que anota los avisos en vivo. */
+export interface IndexingWorldOptions {
+  /** Canal en vivo del `api` (T-07: el de 015 real); por defecto, `recordingRealtime`. */
+  readonly realtime?: (env: Env) => DynamicModule;
+  /** Lo que el canal real o la suite cambian del `api` (`REALTIME_CONFIG`, `withRealtime`, límites de tasa). */
+  readonly api?: Pick<StorageHttpOptions, 'env' | 'overrides' | 'withRealtime'>;
+}
+
+/** Datos de cada aviso que el `worker` encola en `index-status` (`Queue.add` emite `waiting` en la misma instancia). */
+const recordNotices = (statusQueue: Queue): unknown[] => {
+  const notices: unknown[] = [];
+  statusQueue.on('waiting', (job: Job) => notices.push(job.data));
+  return notices;
+};
+
+export const createIndexingWorld = async (
+  options: IndexingWorldOptions = {},
+): Promise<IndexingWorld> => {
   const publisher = new RecordingPublisher();
   const storage = await createStorageHttpApp({
-    withStorage: (_storage, env) => [
-      IntelligenceModule.forRoot(env, { realtime: recordingRealtime(publisher) }),
-    ],
+    ...options.api,
+    withStorage: (storageModule, env) => {
+      const realtime = options.realtime?.(env) ?? recordingRealtime(publisher);
+      return [realtime, IntelligenceModule.forRoot(env, { storage: storageModule, realtime })];
+    },
   });
   const embedder = new ControlledEmbeddingProvider();
   const worker = await createWorker(embedder);
   const indexingQueue = worker.app.get<Queue>(getQueueToken(INDEXING_QUEUE));
   const statusQueue = worker.app.get<Queue>(getQueueToken(INDEX_STATUS_QUEUE));
+  const notices = recordNotices(statusQueue);
   const indexingOf = async (versionId: string): Promise<IndexingRow | null> => {
     const [row] = await storage.owner.query<IndexingRow[]>(
       `SELECT estado, motivo, intentos, fragmentos, duracion_ms FROM indexacion WHERE version_archivo_id = $1`,
@@ -223,11 +247,12 @@ export const createIndexingWorld = async (): Promise<IndexingWorld> => {
         [fileId],
       ),
     settledNoticesOf: (fileId) =>
-      eventually(async () => {
-        const notices = (await statusQueue.getJobs(['waiting', 'delayed', 'active', 'completed']))
-          .map((job) => job.data as { fileId?: string; state?: string })
-          .filter((notice) => notice.fileId === fileId);
-        return notices.some((notice) => FINAL_STATES.includes(notice.state ?? '')) ? notices : null;
+      eventually(() => {
+        const ofFile = (notices as { fileId?: string; state?: string }[]).filter(
+          (notice) => notice.fileId === fileId,
+        );
+        const settled = ofFile.some((notice) => FINAL_STATES.includes(notice.state ?? ''));
+        return Promise.resolve(settled ? ofFile : null);
       }),
     close: async () => {
       await Promise.all([

@@ -41,8 +41,8 @@ import { UserDirectoryBindingModule } from './user-directory-binding.module';
  * `identity` y `storage` para no instanciarlos dos veces, el canal en vivo (015), al que se le pasa la misma instancia
  * de `IdentityModule` para resolver `I_ACCESS_TOKEN_VERIFIER` sin que `realtime` importe `identity` (Nest deduplica el
  * módulo dinámico por referencia) y la edición (016), que recibe así las mismas instancias de `StorageModule` y de
- * `RealtimeModule`, y la indexación (019), que escucha `storage.file-version-created` y recibe la misma instancia de
- * `RealtimeModule` para el aviso en vivo;
+ * `RealtimeModule`, y la indexación (019), que escucha `storage.file-version-created`, expone su estado y recibe las
+ * mismas instancias de `StorageModule` (`IndexableFileGateway`) y de `RealtimeModule` (aviso en vivo);
  * `IUserDirectory` lo enlaza `UserDirectoryBindingModule` con la de `IdentityModule`.
  */
 @Module({})
@@ -77,7 +77,7 @@ export class AppModule {
         BackofficeModule.forRoot(identity, storage),
         realtime,
         EditingModule.forRoot(env, { storage, realtime }),
-        IntelligenceModule.forRoot(env, { realtime }),
+        IntelligenceModule.forRoot(env, { storage, realtime }),
       ],
       providers: [PingQueue],
     };

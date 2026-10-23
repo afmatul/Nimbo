@@ -21,20 +21,15 @@ import type {
 } from '../../../src/modules/editing/application/ports/i-document-editor.port';
 import { UserDirectoryAdapter } from '../../../src/modules/identity';
 import { RealtimeModule } from '../../../src/modules/realtime';
-import {
-  REALTIME_CONFIG,
-  REALTIME_PING_INTERVAL_MS,
-  REALTIME_PING_TIMEOUT_MS,
-} from '../../../src/modules/realtime/application/realtime-config';
+import { REALTIME_CONFIG } from '../../../src/modules/realtime/application/realtime-config';
 import type { RealtimeConfig } from '../../../src/modules/realtime/application/realtime-config';
 import type { PlanLimits } from '../../../src/modules/storage';
 import { Role, SystemClock } from '../../../src/shared';
 import { TestAccessTokens } from '../../support/test-access-tokens';
 import {
-  ALLOWED_ORIGIN,
   connectClient,
-  TEST_CONNECT_ATTEMPTS_PER_MINUTE,
   TestAccessTokenVerifierModule,
+  testRealtimeConfig,
   waitForConnect,
 } from '../realtime/realtime-test-app';
 import { createStorageHttpApp, DEFAULT_TEST_LIMITS } from '../storage/storage-http';
@@ -161,14 +156,6 @@ const pathOf = (callbackUrl: string): string => {
 const editorEnvOf = (options: EditingHttpOptions): Readonly<Record<string, string>> =>
   options.onlyOffice === undefined ? {} : { ONLYOFFICE_INTERNAL_URL: options.onlyOffice.origin };
 
-const realtimeConfig = (config: Partial<RealtimeConfig> = {}): RealtimeConfig => ({
-  origins: [ALLOWED_ORIGIN],
-  connectAttemptsPerMinute: TEST_CONNECT_ATTEMPTS_PER_MINUTE,
-  pingIntervalMs: REALTIME_PING_INTERVAL_MS,
-  pingTimeoutMs: REALTIME_PING_TIMEOUT_MS,
-  ...config,
-});
-
 /**
  * App de integración de `editing` (016 T-03, T-04): `StorageModule` real con su misma instancia en `EditingModule`,
  * `AccessModule`, `IUserDirectory` real, el canal en vivo de 015 escuchando en un puerto efímero, Postgres como
@@ -189,7 +176,7 @@ export const createEditingHttpApp = async (
       return [realtime, EditingModule.forRoot(env, { storage: storageModule, realtime })];
     },
     overrides: [
-      { provide: REALTIME_CONFIG, useValue: realtimeConfig(options.realtime) },
+      { provide: REALTIME_CONFIG, useValue: testRealtimeConfig(options.realtime) },
       ...(options.realEditor === true || options.onlyOffice !== undefined
         ? []
         : [{ provide: I_DOCUMENT_EDITOR, useValue: editor }]),

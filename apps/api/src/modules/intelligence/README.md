@@ -7,6 +7,9 @@
   de este módulo y ya no lo cruza nadie (cierra PD-18).
 - **Puede depender de**: shared, storage, access, billing (`IAgentQuota`, 020), realtime, audit (resultados de la
   indexación, 019 CA-21) (`docs/sdd/architecture.md` §3; el lint de fronteras lo hace cumplir).
+- **Expone por HTTP** solo el estado de indexación y «Reintentar» (`GET /files/:fileId/indexing`,
+  `POST /files/:fileId/indexing/retry`, `@Roles(CLIENT)`, 019 plan §4); el aviso en vivo `indexing.status-changed` sale
+  por el canal de 015, directo desde el `api` o por el relay de `index-status` desde el `worker` (ADR-0031 d).
 - **No expone** fragmentos ni texto por HTTP en la 019: los lee la 020 con `accessibleNodes(actor)` antes de ordenar
   por similitud (DF-14). Ningún rol interno ve texto indexado (019 CA-20).
 - **Specs que lo construyen**: 019, 020; 018 consume el índice de texto (`texto_busq`) sin modificarlo.
