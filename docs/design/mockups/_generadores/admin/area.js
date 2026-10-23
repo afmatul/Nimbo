@@ -252,11 +252,14 @@ const NAV = [
 // logo; yo: persona de la barra lateral y de la barra superior (de admin/corpus.js); nav: entradas { icono, etiqueta,
 // meta (opcional), href }; inicio: destino del logo y de la primera miga (la pantalla de inicio del área).
 const AREA_ADMIN = { etiqueta: 'Administración', chip: 'ADMIN', yo: YO, nav: NAV, inicio: '../admin/admin.html' };
-// Soporte (spec 011, HU-5): solo «Metadatos de archivos» (CA-14). Bitácoras y trabajos (022b) y restauración de papelera
-// (011b) no aparecen hasta sus specs.
+// Soporte (specs 011 y 011b): metadatos (011, CA-14) y papelera con restauración (011b, CA-10). Bitácoras y trabajos
+// (022b) no aparecen hasta su spec.
 const AREA_SOPORTE = {
   etiqueta: 'Soporte', chip: 'SOPORTE', yo: C.ANDREA,
-  nav: [{ icono: 'fileSearch', etiqueta: 'Metadatos de archivos', href: '../soporte/soporte--inicial.html' }],
+  nav: [
+    { icono: 'fileSearch', etiqueta: 'Metadatos de archivos', href: '../soporte/soporte--inicial.html' },
+    { icono: 'trash', etiqueta: 'Papelera', href: '../soporte/soporte--papelera.html' },
+  ],
   inicio: '../soporte/soporte--inicial.html',
 };
 // Operador (product-context §2: «Ver métricas agregadas»): solo «Métricas», en solo lectura; sin Cuentas, Catálogo ni
@@ -283,7 +286,7 @@ function navegacion(idPrimero, actual, area) {
 }
 
 const logo = (cls, area) =>
-  `<a class="${cls}" href="${area.inicio}" aria-label="Nimbo, ${area.etiqueta}"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>`;
+  `<a class="${cls}" href="${area.inicio}"><span class="logo-mark">N</span><span>NIMBO</span><span class="sr-only">, ${area.etiqueta}</span></a>`;
 const chip = (area) => `<span class="plan-chip area-chip">${area.chip}</span>`;
 const quien = (area) => `<div class="who">
         <p class="who-name">${area.yo.nombre}</p>
@@ -336,8 +339,8 @@ function topbar(crumbs, area) {
             <ol>${items}</ol>
           </nav>
         </div>
-        <button class="account-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Menú de la cuenta de ${persona.nombre}">
-          <span class="account-name">${persona.nombre}</span><span class="avatar" aria-hidden="true">${persona.iniciales}</span>
+        <button class="account-btn" type="button" aria-haspopup="menu" aria-expanded="false">
+          <span class="account-name">${persona.nombre}</span><span class="avatar" aria-hidden="true">${persona.iniciales}</span><span class="sr-only">Menú de la cuenta</span>
         </button>
       </header>`;
 }
@@ -445,8 +448,8 @@ function carpetaDeSalida(pantalla) {
 }
 const archivoDe = (pantalla, estado) => (estado === 'default' ? `${pantalla}.html` : `${pantalla}--${estado}.html`);
 // Cabecera de cada HTML generado. referencia: qué pantalla de la spec 011 es; generador: su carpeta en _generadores.
-const comentariosDe = (referencia, estado, generador) => [
-  `Mockup de referencia (spec 011: ${referencia}). Estado: ${estado}.`,
+const comentariosDe = (referencia, estado, generador, spec = '011') => [
+  `Mockup de referencia (spec ${spec}: ${referencia}). Estado: ${estado}.`,
   'Colores: valores de ui-guidelines.md §3 (tonos AA). La implementación usa tokens, components/ui y components/nimbo.',
   `Generado con _generadores/${generador}/generar.js (marco del área en admin/area.js y CSS del marco en marco/marco.js). No editar a mano.`,
 ];
@@ -459,11 +462,11 @@ function escribir(dir, file, html) {
 // titulo: <title>; rotulo: pantalla en el rótulo de la hoja; estado: descripción del estado; cuerpo: HTML de <main>.
 // actual: entrada de la navegación de la pantalla (por defecto «Cuentas»); area: AREA_ADMIN (por defecto), AREA_SOPORTE
 // o AREA_OPERADOR.
-function pagina({ titulo, comentarios, css, rotulo, file, estado, crumbs, cuerpo, dialogo = '', actual = 'Cuentas', area = AREA_ADMIN }) {
+function pagina({ titulo, comentarios, css, rotulo, file, estado, crumbs, cuerpo, dialogo = '', actual = 'Cuentas', area = AREA_ADMIN, spec = '011' }) {
   return `${M.cabecera({ titulo, comentarios, css })}
 <body>
 
-<aside class="sheet-label" aria-label="Rótulo del mockup"><span class="chip">011</span> <strong>${area.etiqueta} · ${rotulo}</strong> <span class="file">${file}</span> <span>sin acceso al contenido de los archivos · estado: ${estado}</span></aside>
+<aside class="sheet-label" aria-label="Rótulo del mockup"><span class="chip">${spec}</span> <strong>${area.etiqueta} · ${rotulo}</strong> <span class="file">${file}</span> <span>sin acceso al contenido de los archivos · estado: ${estado}</span></aside>
 
 <div class="canvas">
   <div class="app"${dialogo ? ' inert' : ''}>

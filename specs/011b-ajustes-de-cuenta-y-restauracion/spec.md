@@ -4,17 +4,17 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Borrador (2026-10-22) · P-1 a P-9 resueltas · plan propuesto |
+| Estado | Borrador (2026-10-22) · P-1 a P-9 resueltas · plan propuesto · mockups listos |
 | Dueño | Fátima |
 | Fase | 2 |
 | Requisitos | RF-05, RF-06, RF-07, RF-12, RF-22, RF-23, RF-24; RNF-05, RNF-13, RNF-14, RNF-17 |
 | Depende de | 004, 006, 007 (resumen de espacio, P-3), 009, 010, 011 |
 | Última actualización | 2026-10-22 |
 
-> **Continuidad:** borrador cerrado y `plan.md` propuesto el 2026-10-22, sin preguntas abiertas. Lo que queda es
-> `/mockup` de la ficha de cuenta y de la papelera de Soporte, la aprobación de Adrián del plan para pasar a «Lista»,
-> y después `/tasks` e `/implement`. Reparto: PR-A (cuota y vigencia) y PR-B (restauración), con el PR-B sobre el PR-A;
-> el ADR-0033 queda propuesto con el PR-A.
+> **Continuidad:** borrador cerrado, `plan.md` propuesto y `/mockup` listo el 2026-10-22, sin preguntas abiertas. Lo que
+> queda es la aprobación de Adrián de la spec, el plan, el ADR-0033 y los mockups para pasar a «Lista», y después
+> `/tasks` e `/implement`. Reparto: PR-A (cuota y vigencia) y PR-B (restauración), con el PR-B sobre el PR-A; el
+> ADR-0033 queda propuesto con el PR-A.
 
 ## 1. Contexto y objetivo
 La 011 dejó fuera, por tamaño, tres operaciones que la matriz de roles ya define: el Administrador ajusta la cuota y la
@@ -76,8 +76,8 @@ puede deshacer una eliminación concreta dejando rastro visible para el cliente.
 ## 6. Experiencia de usuario
 | Pantalla | Mockup (`docs/design/mockups/…`) | Estados requeridos | Estado del mockup |
 |---|---|---|---|
-| Ficha de cuenta, bloque «Límites y vigencia» (Administración) | `backoffice/admin/admin--*.html` (existe, 011) | actual, ajustar cuota, cuota bajo lo usado, cuota inválida, cuota guardada, extender vigencia, fecha no posterior, Personal sin vigencia, sin suscripción, cargando, error | Por crear con `/mockup` sobre el existente |
-| Papelera del cliente (Soporte) | `backoffice/soporte/soporte--*.html` (existe, 011) | lista de raíces, vacía, cargando, error, confirmar restauración con motivo, motivo inválido, restaurando, restaurado, renombrado, movido a la raíz, retención vencida | Por crear con `/mockup` sobre el existente |
+| Ficha de cuenta, bloque «Límites y vigencia» (Administración) | `backoffice/admin/admin--*.html` (existe, 011) | actual, ajustar cuota, cuota bajo lo usado, cuota inválida, cuota guardada, quitar extra, extra quitado, extender vigencia, fecha no posterior, Personal sin vigencia, sin suscripción, cargando, error | Creado (2026-10-22); pendiente de aprobación de Adrián |
+| Papelera del cliente (Soporte) | `backoffice/soporte/soporte--*.html` (existe, 011) | lista de raíces, vacía, cargando, error, confirmar restauración con motivo, motivo inválido, restaurando, restaurado, renombrado, movido a la raíz, retención vencida | Creado (2026-10-22); pendiente de aprobación de Adrián |
 
 - **Mensajes clave:** «La cuota total no puede quedar por debajo de lo que la cuenta ya usa (<usado>).» · «Solo puedes extender la vigencia: la fecha nueva debe ser posterior al <fecha>.» · «Personal no vence: no tiene vigencia que extender.» · «El motivo se guarda en la actividad del cliente. No escribas nombres de archivo ni datos personales.» · «Tu cuota incluye <X> GB extra hasta el <fecha>.» · «Restauramos «<nombre>» en <carpeta>.» · «Restauramos «<nombre>» como «<nuevo>» porque ya existía uno con ese nombre.» · «La carpeta original ya no está disponible. Restauramos «<nombre>» en Mis archivos.»
 - **Cliente:** no hay pantallas nuevas; ve la cuota extra en el resumen de espacio (P-3), la fecha nueva en «Plan y facturación» y las acciones en «Mi actividad» con el bloque de motivo que ya existe en 004.
@@ -91,8 +91,8 @@ puede deshacer una eliminación concreta dejando rastro visible para el cliente.
 - Correos al cliente por ajustes o restauración (el cliente lo ve en la aplicación); rediseño de la auditoría (004) o de las bitácoras técnicas (022b); reabrir la 011.
 
 ## 8. Preguntas
-> Todas resueltas el 2026-10-22 con Fátima. El plan quedó propuesto el 2026-10-22 (`./plan.md`); faltan `/mockup` y la
-> aprobación de Adrián para pasar a «Lista».
+> Todas resueltas el 2026-10-22 con Fátima. El plan quedó propuesto y los mockups listos el 2026-10-22 (`./plan.md`);
+> falta la aprobación de Adrián para pasar a «Lista».
 
 - [RESUELTA] (2026-10-03, Fátima) **P-2/P-3 de la 011** → 011b: extra sobre el plan, nunca por debajo de lo usado, con fecha de fin; vigencia solo se extiende, quita la solo lectura y no aplica a Personal.
 - [RESUELTA] (2026-10-22, Fátima) **P-1** → sí: Soporte restaura en solo lectura; el cliente sigue sin poder subir ni editar.
@@ -111,3 +111,4 @@ puede deshacer una eliminación concreta dejando rastro visible para el cliente.
 | 2026-10-22 | Creación inicial con las decisiones P-2/P-3/P-8 de la 011, tres operaciones y las preguntas abiertas | Arranque de la 011b | Borrador (pendiente Adrián) |
 | 2026-10-22 | P-1 a P-9 resueltas; aclarado «bajo lo usado» como `plan + extra < espacio_usado`; retiradas las marcas «sujeto a» de CA-5, RN-3, RN-6 y RN-7 | Cierre del borrador para `/plan` y `/mockup` | Fátima |
 | 2026-10-22 | `plan.md` propuesto (PR-A cuota y vigencia; PR-B restauración) y ADR-0033 propuesto | Siguiente compuerta para «Lista» | Fátima |
+| 2026-10-22 | `/mockup` de la ficha (13 estados de límites y vigencia, incluido quitar extra) y de la papelera de Soporte (11 estados), con capturas 360/1440 y axe | Cierre de la compuerta de diseño | Fátima |

@@ -58,8 +58,23 @@ const ARCHIVOS = [
 
 const AVISO_SOPORTE = 'Soporte ve metadatos de los archivos (nombre, tipo, tamaño, fechas y estado), nunca su contenido ni vistas previas.';
 
+// Papelera (011b): solo raíces de archivos y carpetas, con la retención de 60 días del plan Equipo. En la app el listado
+// sale de `storage`; aquí basta con tres ejemplos, uno de cada borde (carpeta, archivo y archivo que se renombra).
+const PAPELERA = [
+  { nombre: 'Contratos 2026', tipo: 'carpeta', items: 12, tamano: '48 MB',
+    eliminado: '02/10/2026', purga: '01/12/2026', ruta: 'Mis archivos / Alpha' },
+  { nombre: 'Presupuesto_Q4_borrador.xlsx', tipo: 'xlsx', tamano: '1.3 MB',
+    eliminado: '12/10/2026', purga: '11/12/2026', ruta: 'Mis archivos / Finanzas' },
+  { nombre: 'Contrato_servicios_Alpha.pdf', tipo: 'pdf', tamano: '412 KB',
+    eliminado: '20/10/2026', purga: '19/12/2026', ruta: 'Mis archivos / Contratos 2026' },
+];
+// Vista que quedó abierta más allá de la retención: la fila sigue en pantalla, pero el servidor ya no la restaura. La
+// fecha de purga coincide con el aviso para que el estado no se contradiga.
+const PAPELERA_VENCIDA = { ...PAPELERA[2], eliminado: '20/08/2026', purga: '19/10/2026', vencida: true };
+const AVISO_PAPELERA = 'Soporte puede restaurar raíces de la papelera (archivos y carpetas), nunca abrirlas, descargarlas, editarlas ni borrarlas. Cada restauración exige un motivo y queda en la auditoría del cliente.';
+
 // ---------- CSS ----------
-const CSS = A.CSS + `
+const CSS = A.CSS + A.CSS_FORM + `
   /* Propio de backoffice/soporte (spec 011: metadatos de los archivos de un cliente) */
   :root {
     /* Tipos de archivo (ui-guidelines §3): texto AA; fondo = tono base al 12 % */
@@ -113,6 +128,57 @@ ${A.CSS_BUSQUEDA}${A.CSS_PAGINACION}
 
   /* Vista desde la ficha del Administrador */
   .back { margin-bottom: 8px; }
+
+  /* Papelera (011b): raíces restaurables, sin abrir ni descargar */
+  .trash { margin-top: 16px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); overflow: hidden; }
+  .trash table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .trash th { padding: 11px 14px; text-align: left; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted-foreground); background: var(--background); border-bottom: 1px solid var(--border); white-space: nowrap; }
+  .trash td { padding: 12px 14px; border-bottom: 1px solid var(--border); font-size: 13.5px; color: var(--secondary-foreground); vertical-align: middle; }
+  .trash tr:last-child td { border-bottom: 0; }
+  .c-tipo-p { width: 132px; } .c-tam-p { width: 80px; } .c-fecha-p { width: 102px; } .c-ruta-p { width: 230px; } .c-accion-p { width: 124px; text-align: right; }
+  .trash .c-tam-p, .trash .c-fecha-p { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .trash .fn { font-weight: 500; overflow-wrap: break-word; }
+  .trash .tipo-detalle { display: block; margin-top: 2px; font-size: 12px; color: var(--secondary-foreground); }
+  .ruta { display: block; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .trash .btn { min-height: 36px; padding: 0 12px; font-size: 13px; white-space: nowrap; }
+  .no-action { font-size: 12.5px; color: var(--muted-foreground); white-space: nowrap; }
+  .ftile-folder { color: var(--file-other); background: var(--file-other-bg); }
+  .m-trash { display: none; }
+  .trash .alert { margin: 16px 16px 0; }
+  .trash .alert + table { margin-top: 0; }
+  .sk-p { display: grid; gap: 10px; padding: 14px; }
+
+  .restore-dialog { top: 72px; width: min(560px, calc(100% - 32px)); max-height: calc(100vh - 144px); overflow: auto; }
+  .restore-dialog .sub { margin: 4px 0 0; color: var(--secondary-foreground); font-size: 13.5px; }
+  .restore-dialog .field { margin-top: 16px; }
+  .restore-dialog .field > label { font-size: 13.5px; }
+  .restore-dialog .text-area { max-width: none; min-height: 100px; resize: vertical; line-height: 1.5; }
+  .restore-dialog .counter { margin: 4px 0 0; text-align: right; font-size: 12px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  .restore-dialog .info-box { margin-top: 16px; }
+  .restore-dialog .alert { margin: 0 0 16px; }
+  .restore-dialog .dialog-actions .btn { min-height: 40px; }
+
+  @media (max-width: 1180px) and (min-width: 601px) {
+    /* En la tabla de papelera, tipo, tamaño y eliminado pasan bajo el nombre */
+    .c-tipo-p, .c-tam-p, .c-fecha-p.c-eliminado-p, .trash .tipo-detalle { display: none; }
+    .trash .m-trash { display: grid; gap: 2px; margin-top: 4px; font-size: 12px; color: var(--secondary-foreground); font-variant-numeric: tabular-nums; }
+  }
+  @media (max-width: 1000px) and (min-width: 601px) {
+    .c-ruta-p { display: none; }
+    .trash .m-trash .ruta-line { display: block; }
+  }
+  @media (max-width: 600px) {
+    .trash thead { display: none; }
+    .trash td:not(.c-nombre-p) { display: none; }
+    .trash td { padding: 14px 12px; }
+    .trash .tipo-detalle { display: none; }
+    .trash .m-trash { display: grid; gap: 4px; margin-top: 6px; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+    .trash .m-trash .btn { width: 100%; min-height: 44px; margin-top: 6px; }
+    .trash .alert { margin: 12px 12px 0; }
+    .restore-dialog { top: 16px; max-height: calc(100vh - 32px); }
+    .restore-dialog .dialog-actions { flex-direction: column-reverse; align-items: stretch; }
+    .restore-dialog .dialog-actions .btn { width: 100%; min-height: 44px; }
+  }
 
   @media (max-width: 1180px) and (min-width: 601px) {
     /* Tipo y tamaño bajo el nombre, y fecha de creación bajo la de modificación */
@@ -243,6 +309,132 @@ function cargando() {
 
 const error = () => A.estadoError('No pudimos completar la búsqueda.', 'Revisa tu conexión e inténtalo de nuevo.');
 
+// ---------- Papelera (011b) ----------
+function encabezadoPapelera() {
+  return `
+        <div class="page-head">
+          <div>
+            <h1>Papelera de archivos</h1>
+            <p>Busca a un cliente por su correo para restaurar una carpeta o un archivo de su papelera.</p>
+          </div>
+        </div>${A.privacidad(AVISO_PAPELERA)}`;
+}
+
+const tipoDe = (item) => (item.tipo === 'carpeta'
+  ? { icono: 'folder', token: 'folder', etiqueta: 'Carpeta' }
+  : TIPOS[item.tipo]);
+const detalleDe = (item) => (item.tipo === 'carpeta' ? 'Carpeta' : TIPOS[item.tipo].etiqueta);
+const detalleLargoDe = (item) => (item.tipo === 'carpeta'
+  ? `Carpeta · ${item.items} elementos`
+  : TIPOS[item.tipo].etiqueta);
+const tilePapelera = (item) => {
+  const t = tipoDe(item);
+  return `<span class="ftile ftile-${t.token}">${icon(t.icono, 16)}</span>`;
+};
+
+function filaPapelera(item) {
+  const detalle = detalleDe(item);
+  const largo = detalleLargoDe(item);
+  const accion = item.vencida
+    ? '<span class="no-action">No disponible</span>'
+    : '<a class="btn btn-outline" href="soporte--papelera-confirmar.html">Restaurar</a>';
+  return `
+                <tr>
+                  <td class="c-nombre-p"><div class="fname">${tilePapelera(item)}<div class="fname-text"><span class="fn">${item.nombre.replace(/_/g, '_<wbr>')}</span><span class="tipo-detalle">${largo} · ${item.tamano}</span><div class="m-trash"><span>${largo} · ${item.tamano}</span><span>Eliminado: ${item.eliminado}</span><span>Se purga: ${item.purga}</span><span class="ruta-line">Estaba en: ${item.ruta}</span>${accion}</div></div></div></td>
+                  <td class="c-tipo-p">${detalle}</td>
+                  <td class="c-tam-p">${item.tamano}</td>
+                  <td class="c-fecha-p c-eliminado-p">${item.eliminado}</td>
+                  <td class="c-fecha-p">${item.purga}</td>
+                  <td class="c-ruta-p"><span class="ruta" title="${item.ruta}">${item.ruta}</span></td>
+                  <td class="c-accion-p">${accion}</td>
+                </tr>`;
+}
+
+function tablaPapelera(c, items) {
+  return `
+          <div class="trash">
+            <table>
+              <caption class="sr-only">Papelera de ${c.nombre}: raíces de archivos y carpetas, con su fecha de purga</caption>
+              <thead><tr><th scope="col" class="c-nombre-p">Nombre</th><th scope="col" class="c-tipo-p">Tipo</th><th scope="col" class="c-tam-p">Tamaño</th><th scope="col" class="c-fecha-p c-eliminado-p">Eliminado</th><th scope="col" class="c-fecha-p">Se purga</th><th scope="col" class="c-ruta-p">Ubicación original</th><th scope="col" class="c-accion-p">Acción</th></tr></thead>
+              <tbody>${items.map(filaPapelera).join('')}
+              </tbody>
+            </table>
+          </div>`;
+}
+
+function clientePapelera(c, contenido, aviso = '') {
+  return `
+        <section aria-labelledby="cliente-t">
+          <div class="client">
+            <div>
+              <h2 id="cliente-t">${c.nombre}</h2>
+              <p class="mail">${c.correo}</p>
+            </div>
+            <span class="badge badge-role">${icon('users', 13)}Cliente</span>
+          </div>
+          <div class="info-box audit-box">${icon('history', 16)}<p><strong>Cada restauración queda en la auditoría de ${c.nombre.split(' ')[0]}.</strong>Verá la fecha, el motivo que escribas y tu rol (Soporte), no tu nombre.</p></div>${aviso}${contenido}
+        </section>`;
+}
+
+const vacioPapelera = (c) => `
+          <div class="state state-empty" role="status" aria-labelledby="vacio-p-t">
+            ${icon('trash', 36)}
+            <h2 id="vacio-p-t">La papelera de ${c.nombre} está vacía.</h2>
+            <p>Los archivos y carpetas que borre aparecerán aquí hasta que termine su retención de 60 días.</p>
+          </div>`;
+
+function cargandoPapelera() {
+  return `
+        <div aria-busy="true">
+          <div aria-hidden="true">
+            <div class="sk-client"><span class="skeleton-line w50"></span><span class="skeleton-line w70"></span></div>
+            <div class="trash"><div class="sk-p">${[0, 1, 2, 3, 4].map(() => '<span class="skeleton-line w70"></span>').join('')}</div></div>
+          </div>
+          <p class="loading-text" role="status">${icon('loader', 16, 'spin')}Buscando la cuenta y su papelera…</p>
+        </div>`;
+}
+
+const errorPapelera = () => A.estadoError('No pudimos cargar la papelera.', 'Revisa tu conexión e inténtalo de nuevo.');
+
+function dialogoRestaurar({ item, motivo = '', error = '', errores = '', cargando = false } = {}) {
+  const esCarpeta = item.tipo === 'carpeta';
+  const nombreNuevo = item.nombre.replace(/(\.[^./]+)$/, ' (1)$1');
+  const descripcion = esCarpeta
+    ? `La carpeta y sus ${item.items} elementos volverán a «${item.ruta}». Si ya existe una carpeta con ese nombre, se restaurará con un nombre nuevo.`
+    : `El archivo volverá a «${item.ruta}». Si ya existe uno con ese nombre, se restaurará como «${nombreNuevo}».`;
+  const desc = `motivo-ayuda motivo-contador${error ? ' motivo-error' : ''}`;
+  return `
+  <div class="overlay" aria-hidden="true"></div>
+  <div class="dialog restore-dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-t" aria-describedby="dlg-d">
+    <h2 id="dlg-t">Restaurar «${item.nombre}»</h2>
+    <p class="sub" id="dlg-d">${descripcion}</p>
+    <form onsubmit="return false">
+      ${errores}
+      <div class="field">
+        <label for="motivo">Motivo de la restauración</label>
+        <p class="field-help" id="motivo-ayuda">Obligatorio, de 1 a 500 caracteres. Se guarda en la actividad del cliente; no escribas nombres de archivo ni datos personales.</p>
+        <textarea class="text-input text-area" id="motivo" name="motivo" maxlength="500" required aria-describedby="${desc}"${error ? ' aria-invalid="true"' : ''} autofocus>${motivo}</textarea>
+        <p class="counter" id="motivo-contador">${motivo.length}/500</p>${error ? `
+        <p class="field-error" id="motivo-error">${icon('alert', 15)}<span>${error}</span></p>` : ''}
+      </div>
+      <div class="info-box">${icon('history', 16)}<p><strong>El motivo queda en la auditoría de Laura.</strong>Verá la fecha, el motivo y tu rol (Soporte), no tu nombre.</p></div>
+      <div class="dialog-actions">
+        <a class="btn btn-outline" href="soporte--papelera.html">Cancelar</a>
+        <button class="btn btn-primary" type="button"${cargando ? ' disabled aria-disabled="true"' : ''}>${cargando ? icon('loader', 16, 'spin') : ''}${cargando ? 'Restaurando…' : 'Restaurar'}</button>
+      </div>
+    </form>
+  </div>`;
+}
+
+const AVISO_RESTAURADO = `
+          <div class="alert alert-ok" role="status">${icon('ok', 18)}<div><p class="alert-title">Restauramos «Presupuesto_Q4_borrador.xlsx» en «Finanzas».</p><p class="alert-text">El motivo quedó en la auditoría de Laura. El archivo ya está disponible en su cuenta.</p></div></div>`;
+const AVISO_RENOMBRADO = `
+          <div class="alert alert-ok" role="status">${icon('ok', 18)}<div><p class="alert-title">Restauramos «Contrato_servicios_Alpha.pdf» como «Contrato_servicios_Alpha (1).pdf» porque ya existía uno con ese nombre.</p><p class="alert-text">Quedó en «Contratos 2026». El motivo quedó en la auditoría de Laura.</p></div></div>`;
+const AVISO_RAIZ = `
+          <div class="alert alert-ok" role="status">${icon('ok', 18)}<div><p class="alert-title">La carpeta original ya no está disponible. Restauramos «Contratos 2026» en Mis archivos.</p><p class="alert-text">El motivo quedó en la auditoría de Laura.</p></div></div>`;
+const AVISO_VENCIDA = `
+          <div class="alert alert-error" role="alert">${icon('alert', 18)}<div><p class="alert-title">Ya no se puede restaurar «Contrato_servicios_Alpha.pdf».</p><p class="alert-text">Su retención de 60 días venció el 19/10/2026. Nada cambió.</p></div></div>`;
+
 // Vista del Administrador (desde «Ver metadatos de archivos» de la ficha): mismo contenido, en su área y sin buscador.
 // «Volver a la ficha» y la miga con el nombre llevan a la ficha de Laura Barrios activa (backoffice/admin, estado ficha).
 const FICHA_LAURA = `../admin/${LAURA.ficha}`;
@@ -273,20 +465,69 @@ const VARIANTES = [
     cuerpo: () => encabezado() + busqueda(LAURA.correo) + error() },
   { estado: 'desde-admin', titulo: 'la misma vista para el Administrador, desde la ficha de la cuenta', area: A.AREA_ADMIN,
     actual: 'Cuentas', crumbs: ['Administración', 'Cuentas', { etiqueta: LAURA.nombre, href: FICHA_LAURA }, 'Metadatos de archivos'], cuerpo: desdeAdmin },
+  // 011b: papelera y restauración por Soporte.
+  { estado: 'papelera', titulo: 'papelera de una clienta: raíces de archivos y carpetas con su retención', rotulo: 'Papelera', spec: '011b',
+    referencia: 'restauración de la papelera por Soporte (011b, CA-10 a CA-12)',
+    cuerpo: () => encabezadoPapelera() + busqueda(LAURA.correo) + clientePapelera(LAURA, tablaPapelera(LAURA, PAPELERA)) },
+  { estado: 'papelera-vacia', titulo: 'papelera vacía: no hay raíces restaurables', rotulo: 'Papelera', spec: '011b',
+    referencia: 'restauración de la papelera por Soporte (011b, CA-10 a CA-12)',
+    cuerpo: () => encabezadoPapelera() + busqueda(LAURA.correo) + clientePapelera(LAURA, vacioPapelera(LAURA)) },
+  { estado: 'papelera-cargando', titulo: 'esqueleto mientras se busca la cuenta y llega su papelera', rotulo: 'Papelera', spec: '011b',
+    referencia: 'restauración de la papelera por Soporte (011b, CA-10 a CA-12)',
+    cuerpo: () => encabezadoPapelera() + busqueda(LAURA.correo) + cargandoPapelera() },
+  { estado: 'papelera-error', titulo: 'falló la papelera: error con «Reintentar»', rotulo: 'Papelera', spec: '011b',
+    referencia: 'restauración de la papelera por Soporte (011b, CA-10 a CA-12)',
+    cuerpo: () => encabezadoPapelera() + busqueda(LAURA.correo) + errorPapelera() },
+  { estado: 'papelera-confirmar', titulo: 'confirmación con motivo obligatorio antes de restaurar', rotulo: 'Papelera', spec: '011b',
+    referencia: 'restauración de la papelera por Soporte (011b, CA-10 a CA-12)',
+    cuerpo: () => encabezadoPapelera() + busqueda(LAURA.correo) + clientePapelera(LAURA, tablaPapelera(LAURA, PAPELERA)),
+    dialogo: dialogoRestaurar({ item: PAPELERA[1] }) },
+  { estado: 'papelera-motivo-invalido', titulo: 'motivo vacío: error de campo y resumen, nada cambia', rotulo: 'Papelera', spec: '011b',
+    referencia: 'restauración de la papelera por Soporte (011b, CA-10 a CA-12)',
+    cuerpo: () => encabezadoPapelera() + busqueda(LAURA.correo) + clientePapelera(LAURA, tablaPapelera(LAURA, PAPELERA)),
+    dialogo: dialogoRestaurar({
+      item: PAPELERA[1], error: 'Escribe un motivo de 1 a 500 caracteres.',
+      errores: A.resumenErrores({
+        titulo: 'Escribe un motivo para restaurar.', texto: 'Nada cambió.',
+        items: [['motivo', 'El motivo debe tener entre 1 y 500 caracteres.']],
+      }),
+    }) },
+  { estado: 'papelera-restaurando', titulo: 'restauración en curso: botón ocupado y motivo conservado', rotulo: 'Papelera', spec: '011b',
+    referencia: 'restauración de la papelera por Soporte (011b, CA-10 a CA-12)',
+    cuerpo: () => encabezadoPapelera() + busqueda(LAURA.correo) + clientePapelera(LAURA, tablaPapelera(LAURA, PAPELERA)),
+    dialogo: dialogoRestaurar({ item: PAPELERA[1], motivo: 'El cliente pidió recuperar el presupuesto para revisarlo.', cargando: true }) },
+  { estado: 'papelera-restaurado', titulo: 'restauración completada: el elemento sale de la papelera', rotulo: 'Papelera', spec: '011b',
+    referencia: 'restauración de la papelera por Soporte (011b, CA-10 a CA-12)',
+    cuerpo: () => encabezadoPapelera() + busqueda(LAURA.correo)
+      + clientePapelera(LAURA, tablaPapelera(LAURA, PAPELERA.filter((x) => x !== PAPELERA[1])), AVISO_RESTAURADO) },
+  { estado: 'papelera-renombrado', titulo: 'nombre ocupado: se restaura con un nombre nuevo y se avisa', rotulo: 'Papelera', spec: '011b',
+    referencia: 'restauración de la papelera por Soporte (011b, CA-10 a CA-12)',
+    cuerpo: () => encabezadoPapelera() + busqueda(LAURA.correo)
+      + clientePapelera(LAURA, tablaPapelera(LAURA, PAPELERA.filter((x) => x !== PAPELERA[2])), AVISO_RENOMBRADO) },
+  { estado: 'papelera-movido-raiz', titulo: 'ubicación original eliminada: se restaura en Mis archivos', rotulo: 'Papelera', spec: '011b',
+    referencia: 'restauración de la papelera por Soporte (011b, CA-10 a CA-12)',
+    cuerpo: () => encabezadoPapelera() + busqueda(LAURA.correo)
+      + clientePapelera(LAURA, tablaPapelera(LAURA, PAPELERA.filter((x) => x !== PAPELERA[0])), AVISO_RAIZ) },
+  { estado: 'papelera-retencion-vencida', titulo: 'retención vencida: no se restaura y nada cambia', rotulo: 'Papelera', spec: '011b',
+    referencia: 'restauración de la papelera por Soporte (011b, CA-10 a CA-12)',
+    cuerpo: () => encabezadoPapelera() + busqueda(LAURA.correo) + clientePapelera(LAURA, AVISO_VENCIDA + tablaPapelera(LAURA, [...PAPELERA.slice(0, 2), PAPELERA_VENCIDA])) },
 ];
 
 for (const v of VARIANTES) {
   const file = A.archivoDe('soporte', v.estado);
+  const rotulo = v.rotulo || 'Metadatos de archivos';
   A.escribir(OUT, file, A.pagina({
-    titulo: `Metadatos de archivos · ${v.area ? 'Administración' : 'Soporte'} · Nimbo — ${v.estado}`,
-    comentarios: A.comentariosDe('metadatos de los archivos de un cliente, HU-5, CA-13', v.estado, 'soporte'),
+    titulo: `${rotulo} · ${v.area ? 'Administración' : 'Soporte'} · Nimbo — ${v.estado}`,
+    comentarios: A.comentariosDe(v.referencia || 'metadatos de los archivos de un cliente, HU-5, CA-13', v.estado, 'soporte', v.spec),
     css: CSS,
-    rotulo: 'Metadatos de archivos',
+    rotulo,
     file,
     estado: v.titulo,
-    crumbs: v.crumbs || ['Soporte', 'Metadatos de archivos'],
+    crumbs: v.crumbs || ['Soporte', rotulo],
     cuerpo: v.cuerpo(),
-    actual: v.actual || 'Metadatos de archivos',
+    dialogo: v.dialogo || '',
+    actual: v.actual || rotulo,
     area: v.area || A.AREA_SOPORTE,
+    spec: v.spec,
   }));
 }

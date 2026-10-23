@@ -111,7 +111,7 @@ function cuota({ usado, total, pct } = CUOTA) {
 }
 
 const logo = (cls = 'logo') =>
-  `<a class="${cls}" href="#" aria-label="Nimbo, Mis archivos"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>`;
+  `<a class="${cls}" href="#" aria-label="NIMBO, Mis archivos"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>`;
 
 function sidebar({ activo = '', plan = 'PERSONAL', cuota: q = CUOTA, carpetas = CARPETAS, contadorPapelera, accesos = '' } = {}) {
   return `
@@ -177,8 +177,8 @@ function topbar({ crumbs = ['Cuenta', 'Seguridad'], conMenu = false, menuAbierto
             <ol>${items}</ol>
           </nav>` : ''}
         </div>
-        ${conMenu ? '<div class="account">\n        ' : ''}<button class="account-btn" type="button"${cuentaExtra} aria-haspopup="menu" aria-expanded="${menuAbierto}" aria-label="Menú de la cuenta de ${CUENTA.nombre}">
-          <span class="account-name">${CUENTA.nombre}</span><span class="avatar" aria-hidden="true">${CUENTA.iniciales}</span>
+        ${conMenu ? '<div class="account">\n        ' : ''}<button class="account-btn" type="button"${cuentaExtra} aria-haspopup="menu" aria-expanded="${menuAbierto}">
+          <span class="account-name">${CUENTA.nombre}</span><span class="avatar" aria-hidden="true">${CUENTA.iniciales}</span><span class="sr-only">Menú de la cuenta</span>
         </button>${conMenu ? `${menuCuenta({ abierto: menuAbierto, actividad })}\n        </div>` : ''}
       </header>`;
 }
