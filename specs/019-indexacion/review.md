@@ -4,8 +4,8 @@
 |---|---|
 | Fecha | 2026-10-23 |
 | Rango revisado | `main..6199c1da` (24 commits) |
-| CI | Local: lint ✅ · typecheck ✅ · test, test:int y test:isolation: se vuelven a correr en serie (la primera corrida se hizo con carga paralela: `redact-deep.spec.ts:192` de rendimiento y `worker-health.int-spec.ts:80` fallaron por entorno; las 6 suites de `test/int/intelligence` ✅). Adrián: todo en verde sobre 04362642 |
-| Veredicto | 🔁 Cambios requeridos (I-1, I-2 y suites en verde en serie; sin bloqueantes de código) |
+| CI | Local: lint ✅ · typecheck ✅ · test ✅ (api 2392, web 1466/181, config 246, contracts 457) · test:int ✅ 1352/150 suites · test:isolation ✅ 393/25 suites (corrida en serie; los fallos de la primera, `redact-deep.spec.ts:192` y `worker-health.int-spec.ts:80`, eran de carga paralela y pasan) |
+| Veredicto | 🔁 Cambios requeridos (I-1, I-2; sin bloqueantes de código) |
 
 ## Verificación
 | CA | Prueba | Estado |
@@ -46,7 +46,7 @@
 - Ficha = mockup en sus 10 estados (capturas 360 y 1440 px); solo tokens, sin hex ni arbitrarios; ícono + texto con `sr-only`; `motion-reduce` en íconos que giran; «Reintentar» por `canRetry` con `aria-disabled` mientras responde; axe a 360/1440 px. ✅
 
 ## Bloqueantes
-- Ninguno en el código. Para ✅: `pnpm test`, `test:int` y `test:isolation` en verde en corrida en serie, e I-1/I-2 (T-FIX-1, T-FIX-2).
+- Ninguno en el código; suites en verde. Para ✅: I-1/I-2 (T-FIX-1, T-FIX-2).
 
 ## Importantes y sugerencias
 - [I-1] `indexing.service.ts:45`, `index-scheduler.ts:20`, `index-reconciler.ts:21` repiten «`pendiente` o `indexando`» (Art. VI.2) → `FileIndexing.isAwaitingWorker` en el dominio.
