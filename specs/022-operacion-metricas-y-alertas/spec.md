@@ -29,9 +29,9 @@ cuentas (PD-74, PD-122), son de 022b. La alerta de «> 50 trabajos pendientes o 
 - **HU-1** Como Operador, quiero que `api`, `worker` y las dependencias expongan métricas, para saber cómo está el sistema sin entrar al servidor.
 - **HU-2** Como Operador, quiero tres tableros (operación, negocio, agente), para leer el estado de un vistazo.
 - **HU-3** Como equipo, queremos alertas sobre las condiciones definidas, para enterarnos antes que el cliente.
-- **HU-4** Como Operador, quiero un respaldo diario de la base de datos y objetos versionados, restaurables con un procedimiento probado.
+- **HU-4** Como Operador, quiero un respaldo diario de la base de datos y objetos versionados, para restaurarlos con un procedimiento probado.
 - **HU-5** Como Operador, quiero ensayar la vuelta a la versión anterior en cada fase, para saber que tarda menos de 10 minutos.
-- **HU-6** Como cliente, quiero que la observabilidad nunca exponga mis archivos, nombres ni datos.
+- **HU-6** Como cliente, quiero que la observabilidad nunca exponga mis archivos, nombres ni datos, para que operar Nimbo no comprometa mi privacidad.
 
 ## 3. Criterios de aceptación
 > Umbrales y ventanas: los de `product-context.md` §7 «Alertas definidas», sin repetirlos aquí. Métricas por grupo: RN-3.
@@ -57,7 +57,7 @@ cuentas (PD-74, PD-122), son de 022b. La alerta de «> 50 trabajos pendientes o 
 - **CA-14** (HU-3, RNF-18) Dada la condición de uso de disco de §7, entonces se dispara su alerta.
 - **CA-15** (HU-3, RNF-18, RNF-09, PD-113) Dado Postgres, Redis, MinIO u ONLYOFFICE caído, entonces se dispara la alerta de esa dependencia; con ONLYOFFICE caído, `/api/v1/health/ready` sigue en `200` (016 plan: sonda propia de 022).
 - **CA-16** (HU-3, RF-22) Dado un fallo de la pasada de renovación (010 CA-4), entonces se dispara la alerta «fallo del proceso de renovación».
-- **CA-17** (HU-1, PD-67) Dados eventos de auditoría perdidos (`audit.record_failed`), entonces su contador sube y se ve en el tablero de operación; convertirlo en alerta no está entre las seis de §7 y queda pendiente de decisión (PD-67).
+- **CA-17** (HU-1, RNF-18, PD-67) Dados eventos de auditoría perdidos (`audit.record_failed`), entonces su contador sube y se ve en el tablero de operación; convertirlo en alerta no está entre las seis de §7 y queda pendiente de decisión (PD-67).
 - **CA-18** (HU-3, RNF-18) Dado el Operador que provoca una condición controlada (alerta de prueba), cuando se cumple la ventana, entonces la alerta llega al canal y vuelve a normal al retirar la condición; queda evidencia (captura y hora).
 
 ### Respaldos y vuelta atrás (HU-4, HU-5)
@@ -68,7 +68,7 @@ cuentas (PD-74, PD-122), son de 022b. La alerta de «> 50 trabajos pendientes o 
 - **CA-23** (HU-5, RNF-20, RNF-15) Dada la imagen N desplegada y la N-1 publicada, cuando se ensaya la vuelta atrás de la fase, entonces en < 10 min `/api/v1/health/ready` da `200` con la versión N-1 en `x-nimbo-version` y el ensayo queda registrado. Requiere las imágenes y el staging de 000 (bloques 5–6); hasta entonces RNF-20 no se puede demostrar (P-2).
 
 ### Trazabilidad
-RNF-18 → CA-1 a CA-18 · RNF-20 → CA-23 · RNF-21 → CA-19 a CA-22 · RNF-17 → CA-5 · RNF-16 → CA-21, CA-22 · DF-29 → CA-2, CA-15 · PD-67 → CA-17.
+RNF-18 → CA-1 a CA-18 · RNF-20 → CA-23 · RNF-21 → CA-19 a CA-22 · RNF-17 → CA-5 · RNF-16 → CA-21, CA-22 · RF-05 → CA-9 · RF-22 → CA-16 · RNF-01 → CA-12 · RNF-09 → CA-15, RN-6 · RNF-12 → CA-10 · RNF-15 → CA-23 · DF-29 → CA-2, CA-15 · PD-67 → CA-17.
 
 ## 4. Reglas de negocio
 - **RN-1** Alertas y umbrales: exactamente los seis de `product-context.md` §7. Uno nuevo se agrega primero a ese documento (candidatas: PD-67 y PD-133).
@@ -111,7 +111,7 @@ RNF-18 → CA-1 a CA-18 · RNF-20 → CA-23 · RNF-21 → CA-19 a CA-22 · RNF-1
 - La alerta de prueba (CA-18) se provoca en un ambiente que no es producción.
 - Las métricas de RN-3 viven en módulos de Adrián y de Juan Marcos, y la recolección toca infraestructura de Adrián: quién instrumenta cada una y con qué autorización (como en la 011) se acuerda con cada dueño en el plan; 022 no cambia el comportamiento de esos módulos (antes P-1).
 - Antes del plan se comprueba el tamaño (`workflow.md` §4.1): si el esbozo pasa de 12 archivos, se parte con Adrián, por ejemplo en observabilidad (RNF-18) y respaldos y vuelta atrás (RNF-20, RNF-21) (antes P-4).
-- DF-28 se resuelve «antes de 022»: el redibujo del diagrama de arquitectura con Prometheus y Grafana es tarea documental de Adrián como guardián de diagramas (PD-05) y no cambia el comportamiento (antes P-14).
+- DF-28 se resuelve «antes de 022»: el redibujo del diagrama de arquitectura (PD-05; DF-28 (e) le suma Prometheus y Grafana) es tarea documental de Adrián como guardián de diagramas y no cambia el comportamiento (antes P-14).
 
 ## 9. Preguntas
 - [ABIERTA] **P-2** ¿Dónde se demuestran RNF-18, RNF-20 y RNF-21? Staging no existe (`workflow.md` §7.2) y RNF-20 pide redesplegar la imagen previa, que solo existe con los bloques 5–6 de 000: ¿local primero y staging cuando exista, o se espera a staging? — bloquea: sí
@@ -128,3 +128,4 @@ RNF-18 → CA-1 a CA-18 · RNF-20 → CA-23 · RNF-21 → CA-19 a CA-22 · RNF-1
 | 2026-10-24 | Revisión documental: P-1 (dueños e instrumentación) y P-4 (partir por tamaño) pasan a no bloqueantes; P-2 se acota al ambiente de RNF-20; se retiran rutas de archivos | Regla de bloqueo del planner (solo comportamiento, RF o RNF) | — |
 | 2026-10-24 | Revisión del PR #78: P-5 sin la premisa falsa (la purga borra todas las versiones del objeto); CA-17 queda como contador y la alerta pasa a P-9; CA-21/CA-22 con datos sintéticos (RNF-16) y restaurar sobre cuentas reales fuera de alcance; RN-3 completo con 001, 002, 003, 005, 014, 015 y 016, edición y agente (diferido); CA-7 como eventos «degradadas a solo lectura»; RN-7 (tableros sin acceso a datos de clientes); P-15; PD-130 y PD-131; menores (encabezado, trazabilidad, umbrales citados de §7, CA-2, CA-23, §7, concordancia) | Hallazgos M-1 a M-8 y menores de la revisión | — |
 | 2026-10-24 | Normalización de §8 y §9 según ADR-0034 (como en la 021): solo quedan las 6 preguntas bloqueantes (P-2, P-3, P-5, P-6, P-7, P-8). P-1, P-4 y P-14 pasan a Supuestos (P-14 con PD-05); P-9 pasa a PD-67 (`audit.record_failed`) y PD-133 (demás alertas candidatas); P-10, P-11, P-13 y P-15 pasan a PD-133; P-12 a §7 (k6 es de 023, con PD-60 y PD-62). Sin cambios de comportamiento ni de CA | ADR-0034 y revisión del PR #78 | — |
+| 2026-10-24 | Pulido final: HU-4 y HU-6 con su «para»; CA-17 rastrea a RNF-18; trazabilidad completa con los requisitos del encabezado; alcance exacto de PD-05 frente a DF-28 (e). Sin cambios de comportamiento | Auditoría de cierre | — |
