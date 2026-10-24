@@ -3,6 +3,7 @@ import type { Actor, ITransactionRunner } from '../../../shared';
 import type { INotifier } from '../../notifications';
 import type { IObjectStorage } from '../../storage';
 
+import type { BillingLogger } from './billing-logger';
 import { InvoiceIssuer } from './invoice-issuer';
 import type { IInvoiceGenerator, InvoiceDocument } from './ports/i-invoice-generator.port';
 import type { IInvoiceRepository, IssuableInvoice } from './ports/i-invoice-repository.port';
@@ -48,8 +49,9 @@ const setup = (found: IssuableInvoice | null) => {
   };
   const storage = { putObject: jest.fn(step('putObject')) } as unknown as IObjectStorage;
   const notifier: INotifier = { notify: jest.fn(step('notify')) as () => Promise<void> };
-  const issuer = new InvoiceIssuer(transactions, invoices, generator, storage, notifier);
-  return { issuer, journal, invoices, storage, notifier };
+  const logger: BillingLogger = { info: jest.fn(), error: jest.fn() };
+  const issuer = new InvoiceIssuer(transactions, invoices, generator, storage, notifier, logger);
+  return { issuer, journal, invoices, storage, notifier, generator, logger };
 };
 
 describe('InvoiceIssuer.issue (spec 009 CA-6, T-07 y T-08; revisión N-3)', () => {
@@ -109,5 +111,27 @@ describe('InvoiceIssuer.issue (spec 009 CA-6, T-07 y T-08; revisión N-3)', () =
     await issuer.issue(ANA, INVOICE_ID);
 
     expect(journal).toEqual([`tx:${ANA.id}`]);
+  });
+});
+
+describe('InvoiceIssuer.issueAfterCommit (spec 009 RN-8; 010 plan §2)', () => {
+  it('RN-8: emite como `issue`', async () => {
+    const { issuer, journal } = setup(pending());
+
+    await issuer.issueAfterCommit(ANA, INVOICE_ID);
+
+    expect(journal).toContain('putObject');
+  });
+
+  it('RN-8: si el PDF falla, no lanza y deja solo el nombre del error para `invoice-retry`', async () => {
+    const { issuer, generator, logger } = setup(pending());
+    jest.mocked(generator.generate).mockRejectedValueOnce(new TypeError('minio caído'));
+
+    await expect(issuer.issueAfterCommit(ANA, INVOICE_ID)).resolves.toBeUndefined();
+    expect(logger.error).toHaveBeenCalledWith({
+      event: 'billing.invoice_issue_failed',
+      invoiceId: INVOICE_ID,
+      errorName: 'TypeError',
+    });
   });
 });

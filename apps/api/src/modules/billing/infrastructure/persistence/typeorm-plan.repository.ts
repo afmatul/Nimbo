@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { IsNull } from 'typeorm';
-import type { Repository } from 'typeorm';
+import type { FindOptionsWhere, Repository } from 'typeorm';
 
 import { TransactionContext } from '../../../../shared';
 import type { IPlanRepository } from '../../application/ports/i-plan-repository.port';
@@ -18,13 +18,23 @@ import { PlanOrmEntity } from './plan.orm-entity';
 export class TypeOrmPlanRepository implements IPlanRepository {
   constructor(@Inject(TransactionContext) private readonly context: TransactionContext) {}
 
+  /** 008 CA-1: solo los activos (PD-76). */
+  findActive(): Promise<Plan[]> {
+    return this.findOrdered({ desactivadoEn: IsNull() });
+  }
+
+  /** 011 CA-8, CA-12: activos y desactivados. */
+  findAll(): Promise<Plan[]> {
+    return this.findOrdered({});
+  }
+
   /**
-   * 008 RN-2: precio ascendente y, en empate, `slug`; solo los activos (PD-76). Solo la consulta se traduce a CA-3; un
-   * fallo del mapeo es un defecto y sigue como está (plan 008 §5).
+   * 008 RN-2: precio ascendente y, en empate, `slug`. Solo la consulta se traduce a CA-3; un fallo del mapeo es un
+   * defecto y sigue como está (plan 008 §5).
    */
-  async findActive(): Promise<Plan[]> {
+  private async findOrdered(where: FindOptionsWhere<PlanOrmEntity>): Promise<Plan[]> {
     const rows = await this.plans()
-      .find({ where: { desactivadoEn: IsNull() }, order: { precioCentavos: 'ASC', slug: 'ASC' } })
+      .find({ where, order: { precioCentavos: 'ASC', slug: 'ASC' } })
       .catch((error: unknown) => {
         throw new PlanCatalogUnavailableError(error);
       });

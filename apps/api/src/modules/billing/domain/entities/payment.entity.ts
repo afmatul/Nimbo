@@ -1,3 +1,4 @@
+import type { InstrumentReference } from '../payment-instrument';
 import type { Money } from '../value-objects/money';
 
 /** Resultado del cobro en la pasarela (columna `transaccion.estado`). */
@@ -10,6 +11,8 @@ export interface PaymentDraft {
   readonly status: PaymentStatus;
   readonly cardBrand: string;
   readonly cardLast4: string;
+  /** Referencia que emitió la pasarela al aprobar (spec 010 RN-2, ADR-0031); nula si se rechazó. */
+  readonly instrumentRef: InstrumentReference | null;
   readonly createdAt: Date;
 }
 

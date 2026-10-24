@@ -1,9 +1,9 @@
 import type { Queue } from 'bullmq';
 
-import { CorrelationContext } from '../../../shared';
+import { CorrelationContext, REPEATABLE_JOB_OPTIONS } from '../../../shared';
 
 import { TrashPurgeQueue } from './trash-purge.queue';
-import { TRASH_PURGE_JOB_NAME, TRASH_PURGE_JOB_OPTIONS } from './trash-purge.scheduler';
+import { TRASH_PURGE_JOB_NAME } from './trash-purge.scheduler';
 
 const CORRELATION_ID = '6f1c2a8e-3b1d-4c6e-9a7f-2d4b8e1c0f93';
 
@@ -17,7 +17,7 @@ describe('TrashPurgeQueue (006 CA-18, plan §4)', () => {
     expect(add).toHaveBeenCalledWith(
       TRASH_PURGE_JOB_NAME,
       { correlationId: CORRELATION_ID },
-      TRASH_PURGE_JOB_OPTIONS,
+      REPEATABLE_JOB_OPTIONS,
     );
   });
 });

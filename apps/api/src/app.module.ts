@@ -73,7 +73,7 @@ export class AppModule {
         UserDirectoryBindingModule.forRoot(identity),
         storage,
         AuditHttpModule,
-        BillingHttpModule.forRoot(storage),
+        BillingHttpModule.forRoot(env, storage),
         BackofficeModule.forRoot(identity, storage),
         realtime,
         EditingModule.forRoot(env, { storage, realtime }),

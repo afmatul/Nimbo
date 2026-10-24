@@ -5,8 +5,8 @@ import { I_CLOCK } from '../../../shared';
 import type { Actor, IClock } from '../../../shared';
 import type { Payment } from '../domain/entities/payment.entity';
 import { BillingInvalidInputError } from '../domain/errors/billing-invalid-input.error';
-import { isCardExpired, lastFourOf } from '../domain/payment-card';
-import type { PaymentCard } from '../domain/payment-card';
+import { isChargeable } from '../domain/payment-instrument';
+import type { PaymentInstrument } from '../domain/payment-instrument';
 import type { Money } from '../domain/value-objects/money';
 
 import { I_PAYMENT_GATEWAY } from './ports/i-payment-gateway.port';
@@ -14,11 +14,11 @@ import type { IPaymentGateway } from './ports/i-payment-gateway.port';
 import { I_PAYMENT_REPOSITORY } from './ports/i-payment-repository.port';
 import type { IPaymentRepository } from './ports/i-payment-repository.port';
 
-/** Qué se cobra: el plan, su precio y la tarjeta. */
+/** Qué se cobra: el plan, su precio y con qué (la tarjeta presente o la referencia de un pago anterior, 010 M-2). */
 export interface ChargeOrder {
   readonly planId: string;
   readonly amount: Money;
-  readonly card: PaymentCard;
+  readonly instrument: PaymentInstrument;
 }
 
 /** Contrato único del cobro (revisión B-3): el pago registrado, `aprobada` o `rechazada`. */
@@ -33,7 +33,8 @@ const CARD_EXPIRED_ISSUE = Object.freeze({
 
 /**
  * Único dueño del pago (spec 009 plan §2, B-3). `charge` corre dentro de la transacción del cobro: valida el
- * vencimiento con `IClock`, pide la decisión a la pasarela e inserta la fila aprobada o rechazada. Un rechazo no lanza:
+ * vencimiento de la tarjeta presente con `IClock`, pide la decisión a la pasarela e inserta la fila aprobada o rechazada
+ * con la marca, los últimos 4 y la referencia que ella devuelve (010 M-2). Un rechazo no lanza:
  * si lanzara, la fila rechazada se revertiría; el `402` lo traduce el controlador después del commit. La 010 lo
  * reutiliza al renovar (`architecture.md` §8).
  */
@@ -47,14 +48,17 @@ export class PaymentService {
 
   async charge(actor: Actor, order: ChargeOrder): Promise<ChargeResult> {
     const now = this.clock.now();
-    if (isCardExpired(order.card, now)) throw new BillingInvalidInputError([CARD_EXPIRED_ISSUE]);
-    const decision = await this.gateway.authorize(order.card, order.amount);
+    if (!isChargeable(order.instrument, now)) {
+      throw new BillingInvalidInputError([CARD_EXPIRED_ISSUE]);
+    }
+    const decision = await this.gateway.authorize(order.instrument, order.amount);
     return this.payments.record(actor, {
       planId: order.planId,
       amount: order.amount,
       status: decision.status,
       cardBrand: decision.brand,
-      cardLast4: lastFourOf(order.card),
+      cardLast4: decision.last4,
+      instrumentRef: decision.instrumentRef,
       createdAt: now,
     });
   }

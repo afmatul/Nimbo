@@ -2,19 +2,10 @@ import { formatGtq } from '@nimbo/contracts';
 
 import type { MailMessage } from '../../notifications';
 
+import { billingMail } from './mail-message';
 import type { IssuableInvoice } from './ports/i-invoice-repository.port';
 
 const RECEIPT_TAG = 'billing.receipt';
-const HTML_ESCAPES: Readonly<Record<string, string>> = {
-  '&': '&amp;',
-  '<': '&lt;',
-  '>': '&gt;',
-  '"': '&quot;',
-  "'": '&#39;',
-};
-
-const escapeHtml = (value: string): string =>
-  value.replace(/[&<>"']/g, (char) => HTML_ESCAPES[char] ?? char);
 
 /** Líneas del comprobante: número de factura, plan, referencia del pago y total (CA-6). */
 const receiptLines = ({ document }: IssuableInvoice): readonly string[] => [
@@ -32,14 +23,12 @@ const receiptLines = ({ document }: IssuableInvoice): readonly string[] => [
  * (`mail.duplicate_skipped`; `test/int/notifications/mailer-contract.int-spec.ts`). Va al correo guardado en la factura.
  */
 export function receiptMessage(invoice: IssuableInvoice, userId: string): MailMessage {
-  const lines = receiptLines(invoice);
-  return {
+  return billingMail({
     to: invoice.document.receiptEmail,
-    subject: `Tu comprobante de pago ${invoice.document.number}`,
-    text: lines.join('\n'),
-    html: lines.map((line) => `<p>${escapeHtml(line)}</p>`).join(''),
-    idempotencyKey: `${RECEIPT_TAG}.${invoice.paymentId}`,
-    tag: RECEIPT_TAG,
     recipientId: userId,
-  };
+    subject: `Tu comprobante de pago ${invoice.document.number}`,
+    lines: receiptLines(invoice),
+    tag: RECEIPT_TAG,
+    key: invoice.paymentId,
+  });
 }

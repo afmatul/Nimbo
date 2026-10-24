@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
 
-import { I_CLOCK, I_RATE_LIMITER, I_TRANSACTION_RUNNER } from '../../../shared';
+import { errorName, I_CLOCK, I_RATE_LIMITER, I_TRANSACTION_RUNNER } from '../../../shared';
 import type { Actor, IClock, IRateLimiter, ITransactionRunner } from '../../../shared';
 import { AuditAction, I_AUDIT_LOGGER } from '../../audit';
 import type { IAuditLogger } from '../../audit';
@@ -35,11 +35,10 @@ import { rateLimited } from './storage-logger';
 import type { StorageLogger } from './storage-logger';
 import { VERSION_RESTORE_CONFIG } from './version-restore-config';
 import type { VersionRestoreConfig } from './version-restore-config';
+import { assertWritableLimits } from './writable-account.policy';
 
 const RATE_LIMIT_WINDOW_SECONDS = 60;
 const RESTORE_RATE_KEY_PREFIX = 'storage:version-restore:';
-
-const errorNameOf = (error: unknown): string => (error instanceof Error ? error.name : 'unknown');
 
 /** Qué se pide restaurar y con qué límites del plan (pedidos fuera de la transacción). */
 interface RestoreRequest {
@@ -95,6 +94,7 @@ export class VersionRestoreService {
   async restore(actor: Actor, fileId: string, versionId: string): Promise<VersionEntry> {
     await this.assertWithinRate(actor);
     const request = { fileId, versionId, limits: await this.planLimits.limitsFor(actor) };
+    assertWritableLimits(request.limits);
     const { file, source } = await this.transactions.withActor(actor, () =>
       this.resolveRestorable(actor, request),
     );
@@ -171,7 +171,7 @@ export class VersionRestoreService {
         event: 'version.restore_discard_failed',
         fileId,
         versionId: copy.id,
-        errorName: errorNameOf(error),
+        errorName: errorName(error),
       });
     }
   }

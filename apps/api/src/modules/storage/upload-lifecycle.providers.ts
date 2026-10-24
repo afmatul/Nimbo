@@ -20,6 +20,7 @@ import { TrashService } from './application/trash.service';
 import { UploadRegistrar } from './application/upload-registrar';
 import { UploadService } from './application/upload.service';
 import { VersionPruner } from './application/version-pruner';
+import { WritableAccountPolicy } from './application/writable-account.policy';
 import { MagicBytesDetector } from './infrastructure/magic-bytes.detector';
 import { SqlClientAccountScanner } from './infrastructure/persistence/sql-client-account.scanner';
 import { TypeOrmNodeRepository } from './infrastructure/persistence/typeorm-node.repository';
@@ -54,13 +55,15 @@ export const UPLOAD_LIFECYCLE_PROVIDERS: readonly Provider[] = [
 
 /**
  * `TrashService` y su purga (plan 006 §2): los comparten el `api` («Eliminar definitivamente» y «Vaciar») y el
- * `worker` (purga programada). Quien los usa enlaza `FOLDER_CONFIG` y registra la cola `trash-purge`.
+ * `worker` (purga programada). Quien los usa enlaza `FOLDER_CONFIG` y registra la cola `trash-purge`. Restaurar pide
+ * `WritableAccountPolicy` (010 CA-13), que el `api` reutiliza en carpetas y archivos.
  */
 export const TRASH_LIFECYCLE_PROVIDERS: readonly Provider[] = [
   { provide: I_TRASH_REPOSITORY, useClass: TypeOrmTrashRepository },
   { provide: I_TRASH_PURGE_QUEUE, useClass: TrashPurgeQueue },
   TrashPurger,
   TrashService,
+  WritableAccountPolicy,
 ];
 
 /**

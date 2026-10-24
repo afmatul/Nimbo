@@ -8,28 +8,15 @@ import {
 } from '@nimbo/contracts';
 import { act, renderHook } from '@testing-library/react';
 
-import { ApiClientError } from '../../../lib/api-error';
 import { clientFile, clientFilesPage, LAURA } from '../test-client-files';
+import { apiError, loadOf as loadInOrder } from '../test-loads';
 
 import { useClientFiles, type ClientFilesRequest, type LoadClientFiles } from './use-client-files';
 
 type LoadMock = jest.Mock<Promise<ClientFilesResponse>, [ClientFilesRequest]>;
 
-function apiError(status: number, code: string): ApiClientError {
-  return new ApiClientError({ status, code, message: code, correlationId: 'corr-1' });
-}
-
-function loadOf(...results: readonly (ClientFilesResponse | Error)[]): LoadMock {
-  const load: LoadMock = jest.fn(
-    (_request: ClientFilesRequest) => new Promise<ClientFilesResponse>(() => undefined),
-  );
-  for (const result of results) {
-    load.mockImplementationOnce(() =>
-      result instanceof Error ? Promise.reject(result) : Promise.resolve(result),
-    );
-  }
-  return load;
-}
+const loadOf = (...results: readonly (ClientFilesResponse | Error)[]): LoadMock =>
+  loadInOrder<ClientFilesRequest, ClientFilesResponse>(...results);
 
 async function settle(): Promise<void> {
   await act(async () => undefined);
@@ -54,6 +41,18 @@ describe('useClientFiles (011 CA-13, CA-14, CA-17)', () => {
 
     expect(result.current.state).toEqual({ status: 'idle' });
     expect(load).not.toHaveBeenCalled();
+  });
+
+  it('CA-13: con el correo del cliente (desde su ficha) pide la primera página al montar, sin buscar', async () => {
+    const page = clientFilesPage([clientFile()]);
+    const load = loadOf(page);
+    const { result } = renderHook(() => useClientFiles(load, LAURA.email));
+
+    expect(result.current.state).toEqual({ status: 'loading' });
+    await settle();
+
+    expect(load).toHaveBeenCalledWith({ email: LAURA.email, page: 1 });
+    expect(result.current.state).toEqual({ status: 'found', result: page, paging: false });
   });
 
   it('CA-13: buscar pide la primera página y muestra lo encontrado', async () => {

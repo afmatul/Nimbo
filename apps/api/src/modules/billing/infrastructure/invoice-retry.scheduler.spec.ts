@@ -1,11 +1,10 @@
 import type { Queue } from 'bullmq';
 
-import { CorrelationContext } from '../../../shared';
+import { CorrelationContext, REPEATABLE_JOB_OPTIONS } from '../../../shared';
 import type { BillingLogger } from '../application/billing-logger';
 
 import {
   INVOICE_RETRY_JOB_NAME,
-  INVOICE_RETRY_JOB_OPTIONS,
   INVOICE_RETRY_SCHEDULER_ID,
   InvoiceRetryScheduler,
 } from './invoice-retry.scheduler';
@@ -34,13 +33,13 @@ describe('InvoiceRetryScheduler (spec 009 CA-6, T-07)', () => {
       {
         name: INVOICE_RETRY_JOB_NAME,
         data: { correlationId: CORRELATION_ID },
-        opts: INVOICE_RETRY_JOB_OPTIONS,
+        opts: REPEATABLE_JOB_OPTIONS,
       },
     );
   });
 
   it('CA-6: cada pasada tiene 3 intentos con espera exponencial', () => {
-    expect(INVOICE_RETRY_JOB_OPTIONS).toMatchObject({
+    expect(REPEATABLE_JOB_OPTIONS).toMatchObject({
       attempts: 3,
       backoff: { type: 'exponential' },
     });

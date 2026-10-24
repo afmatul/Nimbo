@@ -35,6 +35,7 @@ const API_ENV: Env = {
   WEB_PUBLIC_URL: 'http://localhost',
   CORS_ORIGIN: ['http://localhost'],
   JWT_ACCESS_SECRET: 'secreto-de-prueba-de-al-menos-32-caracteres',
+  RENEWAL_REMINDER_DAYS: 3,
 };
 
 describe('MinioConfigModule.forRoot', () => {

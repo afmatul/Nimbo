@@ -59,9 +59,10 @@ describe('contratos de `editing` (plan 016 §4)', () => {
     ).toBeTruthy();
   });
 
-  it('CA-3, CA-5, CA-7, CA-21, CA-22: los motivos de solo lectura son los de la spec', () => {
+  it('CA-3, CA-5, CA-7, CA-21, CA-22 y la solo lectura de la 010: los motivos de solo lectura son los de la spec', () => {
     expect([...READ_ONLY_REASONS].sort()).toEqual(
       [
+        'EDITING_ACCOUNT_READ_ONLY',
         'EDITING_FILE_TOO_LARGE',
         'EDITING_LIMIT_REACHED',
         'EDITING_OWNER_PLAN_READ_ONLY',

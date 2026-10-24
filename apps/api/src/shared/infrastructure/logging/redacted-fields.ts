@@ -43,8 +43,20 @@ const STORAGE_REDACTED_FIELDS = [
 /** Campos de la spec 002 (plan §6.7, CA-25): las contraseñas del cambio de contraseña. */
 const SESSION_REDACTED_FIELDS = ['currentPassword', 'newPassword'] as const;
 
-/** Campos del cobro de la spec 009 (§5): la tarjeta completa, su número, el CVC y el NIT. */
-const BILLING_REDACTED_FIELDS = ['card', 'cardNumber', 'number', 'cvc', 'nit'] as const;
+/**
+ * Campos del cobro de la spec 009 (§5): la tarjeta completa, su número, el CVC y el NIT; y de la 010 (plan §2, ADR-0031):
+ * el instrumento con el que se cobra y su referencia, con su nombre de columna.
+ */
+const BILLING_REDACTED_FIELDS = [
+  'card',
+  'cardNumber',
+  'number',
+  'cvc',
+  'nit',
+  'instrument',
+  'instrumentRef',
+  'referencia_instrumento',
+] as const;
 
 /** URLs de conexión: llevan usuario y contraseña embebidos (`postgres://usuario:clave@host/bd`). */
 const CONNECTION_URL_FIELDS = ['DATABASE_URL', 'DATABASE_MIGRATION_URL', 'REDIS_URL'] as const;

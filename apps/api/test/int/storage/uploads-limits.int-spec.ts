@@ -29,6 +29,7 @@ describe('POST /uploads contra los límites del plan (CA-3, CA-4, CA-23)', () =>
       storageQuotaBytes: BigInt(QUOTA_BYTES),
       trashRetentionDays: 30,
       retainedVersions: 3,
+      readOnly: false,
       maxEditors: 0,
       planName: 'Plan de prueba',
     });
@@ -70,6 +71,7 @@ describe('POST /uploads contra los límites del plan (CA-3, CA-4, CA-23)', () =>
       storageQuotaBytes: BigInt(QUOTA_BYTES),
       trashRetentionDays: 30,
       retainedVersions: 3,
+      readOnly: false,
       maxEditors: 0,
       planName: 'Plan de prueba',
     });
@@ -98,6 +100,7 @@ describe('POST /uploads contra los límites del plan (CA-3, CA-4, CA-23)', () =>
       storageQuotaBytes: 3_000n,
       trashRetentionDays: 30,
       retainedVersions: 3,
+      readOnly: false,
       maxEditors: 0,
       planName: 'Plan de prueba',
     });
@@ -115,6 +118,7 @@ describe('POST /uploads contra los límites del plan (CA-3, CA-4, CA-23)', () =>
       storageQuotaBytes: 3_000n,
       trashRetentionDays: 30,
       retainedVersions: 3,
+      readOnly: false,
       maxEditors: 0,
       planName: 'Plan de prueba',
     });

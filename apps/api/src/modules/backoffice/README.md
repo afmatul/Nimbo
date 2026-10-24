@@ -14,7 +14,7 @@ modules/backoffice/
 ├─ application/     # servicios («service» de los diagramas) y puertos (`ports/`)
 ├─ infrastructure/  # persistencia (*.orm-entity.ts), adaptadores, procesadores
 ├─ presentation/    # controladores, DTOs, gateways
-├─ backoffice.module.ts # `forRoot(identity, storage)`: recibe los mismos módulos de `identity` y `storage` que la raíz (Nest los distingue por referencia)
+├─ backoffice.module.ts # `forRoot(identity, storage)`: recibe los mismos módulos de `identity` y `storage` que la raíz (Nest los distingue por referencia) e importa `BillingModule` (estático, sin rutas) por `SubscriptionAdministration`
 └─ index.ts         # única API pública
 ```
 
@@ -36,8 +36,57 @@ eventos y tipos públicos). Nada de `infrastructure/**` cruza la frontera. Nombr
   se revierte.
 
 Un actor que ya no está `activa` recibe `403 SHARED_FORBIDDEN` antes de la acción o de la lectura, aunque su token siga
-vigente (RN-7, CA-14). No autoriza por rol (`@Roles` + `RolesGuard`) ni valida: eso lo hacen el controlador y el módulo
-dueño.
+vigente (RN-7, CA-14), y deja la bitácora `backoffice.actor.inactive` con `actorId` y `actorRole`. No autoriza por rol
+(`@Roles` + `RolesGuard`) ni valida: eso lo hacen el controlador y el módulo dueño.
+
+Antes de la transacción, `InternalActionService` comprueba el **límite de tasa de la cuenta interna**
+(`BackofficeRateLimiter`, 011 T-14, PD-103): 60 peticiones por minuto y por cuenta, con `I_RATE_LIMITER` de `shared` y la
+clave `backoffice:<actorId>`. La que se pasa recibe `429 SHARED_TOO_MANY_REQUESTS` con su `Retry-After` y deja la bitácora
+`backoffice.rate_limited` (solo `actorId`, `actorRole` y los segundos de espera). El límite es por cuenta y no por IP:
+el riesgo es una cuenta interna abusiva, no una oficina que comparte salida.
+
+## Cuentas (CA-1 a CA-6)
+
+`AccountsController` (`@Roles(ADMIN)`; los servicios de cuentas no autorizan por sí mismos) valida con los contratos y
+delega en `AdminService`. Toda respuesta de cuenta es un `AccountListItem` por lista blanca (`accounts-response.ts`):
+id, correo, nombre, rol, estado (`active` o `suspended`), verificada, `planName`, `usedBytes` (texto decimal), fecha de
+alta e `isSelf`; sin datos de archivos. `planName` sale de `SubscriptionAdministration.planNamesFor` (`billing`), solo
+para clientes; es `null` («—») en internas y en clientes sin suscripción, y `usedBytes` es `null` en internas.
+
+| Ruta                                                | Respuesta                                                                                     | Errores (`code`)                                                                                                                                                    |
+| --------------------------------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/v1/backoffice/accounts?email&page`        | `200`, 10 por página, de la más nueva a la más vieja; `email` filtra por el inicio del correo | `400 BACKOFFICE_INVALID_QUERY` (`fields`)                                                                                                                           |
+| `GET /api/v1/backoffice/accounts/:id`               | `200` con la ficha                                                                            | `404 IDENTITY_ACCOUNT_NOT_FOUND` (también si `:id` no es UUID)                                                                                                      |
+| `POST /api/v1/backoffice/accounts/:id/suspension`   | `200`, ya suspendida                                                                          | `404` · `409 IDENTITY_CANNOT_CHANGE_OWN_STATUS` · `409 IDENTITY_LAST_ACTIVE_ADMIN` · `409 IDENTITY_ACCOUNT_STATE_CONFLICT`                                          |
+| `DELETE /api/v1/backoffice/accounts/:id/suspension` | `200`, ya activa                                                                              | `404` · `409 IDENTITY_CANNOT_CHANGE_OWN_STATUS` · `409 IDENTITY_ACCOUNT_STATE_CONFLICT`                                                                             |
+| `POST /api/v1/backoffice/accounts`                  | `201` con la cuenta creada                                                                    | `422 IDENTITY_INVALID_INPUT` (`fields`; rol Cliente) · `409 IDENTITY_ENROLLMENT_CONFLICT` (`fields`: `email` `EMAIL_IN_USE`, `employeeCode` `EMPLOYEE_CODE_IN_USE`) |
+
+- La lista y la ficha corren en `InternalActionService.read`; suspender, reactivar y el alta, en `run` con
+  `locksAdminRoster: true`: el candado del padrón va antes de comprobar al actor, así dos suspensiones cruzadas entre
+  los dos últimos Administradores no dejan cero activos (la segunda recibe `403`, RN-7).
+- Suspender revoca todas las sesiones de la cuenta (002 D-10) e invalida su invitación pendiente; reactivar no devuelve
+  ninguna de las dos. Cada acción se audita sobre la cuenta afectada: `account.suspended`, `account.reactivated` y
+  `account.internal_created` (este, solo con `role`).
+- El alta la hace `InternalAccountEnrollment` (`identity`) y el correo con el enlace «Crear tu contraseña» sale
+  **después** del commit: si la transacción se revierte, no hay enlace en camino.
+- Bitácoras, solo con ids y el rol: `backoffice.account.suspended` y `backoffice.account.reactivated` (`actorId`,
+  `accountId`) y `backoffice.account.enrolled` (`actorId`, `accountId`, `role`). Nunca correo, nombre ni código de
+  empleado. `identity.session.revoked` (`reason: account_suspended`, `count`, solo si revocó alguna sesión) la escribe
+  `identity`: `AdminService` llama a `Suspension.logRevokedSessions()` después del commit, como el correo del alta.
+
+## Métricas (CA-12)
+
+`GET /api/v1/backoffice/metrics` (`MetricsController`, `@Roles(ADMIN, OPERATOR)`) delega en `MetricsService.read`, que
+corre en `InternalActionService.read` (sin evento) y responde por lista blanca (`metrics-response.ts`) solo con totales
+y conteos, nunca filas de una cuenta:
+
+- `accounts`: total, clientes, internas y `byStatus` (`active`, `suspended`), de `AccountDirectory.statistics`
+  (`identity`).
+- `usedBytesTotal`: la suma de `usuario.espacio_usado` (005, 007) como texto decimal, sin recalcular desde archivos.
+- `byPlan`: `{ planId, name, deactivatedAt, clientCount }` en el orden del catálogo (`PlanCatalogService.listAll`). Los
+  planes activos salen siempre (con `0` si no tienen clientes); los desactivados, solo si aún tienen clientes. Los
+  conteos salen de `SubscriptionAdministration.clientCountsByPlan` (`billing`, que la base solo permite a `ADMIN` y
+  `OPERATOR`): un cliente sin suscripción no cuenta en ningún plan, así que la suma puede quedar bajo `clients`.
 
 ## Metadatos de un cliente (011 CA-13)
 

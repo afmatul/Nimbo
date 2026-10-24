@@ -63,6 +63,7 @@ import { UploadRegistrar } from './upload-registrar';
 import type { Registration, VerifiedUpload } from './upload-registrar';
 import { resolveUploadTarget } from './upload-target';
 import type { UploadTarget } from './upload-target';
+import { assertWritableLimits } from './writable-account.policy';
 
 /** Ventana del límite de inicios de carga por actor (plan D-3); el tope sale de la configuración. */
 const RATE_WINDOW_SECONDS = 60;
@@ -122,6 +123,7 @@ export class UploadService {
     const declaredBytes = BigInt(request.sizeBytes);
     if (declaredBytes === 0n) throw new EmptyFileError();
     const limits = await this.plans.limitsFor(actor);
+    assertWritableLimits(limits);
     const started = await this.reserve(actor, {
       name,
       folderId: request.folderId,
@@ -160,8 +162,9 @@ export class UploadService {
     const found = await this.findOwned(actor, uploadId);
     if (found?.state === 'completada') return this.completedFile(actor, found);
     const session = await this.requireActive(actor, found);
-    const { maxFileBytes } = await this.plans.limitsFor(actor);
-    const sizeBytes = await this.assembleObject(actor, session, maxFileBytes);
+    const limits = await this.plans.limitsFor(actor);
+    assertWritableLimits(limits);
+    const sizeBytes = await this.assembleObject(actor, session, limits.maxFileBytes);
     const kind = await this.verifyType(actor, session, sizeBytes);
     if (kind === null) return this.afterLostRegistration(actor, session.id);
     return this.register(actor, session, { sizeBytes, kind });

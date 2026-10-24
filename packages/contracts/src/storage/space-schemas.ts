@@ -16,7 +16,8 @@ export const spaceBreakdownSchema = z
 
 /**
  * `GET /storage/summary`: el nombre visible del plan, lo usado, lo reservado por cargas en curso, la cuota y el máximo
- * por archivo del plan, lo disponible, la retención de la papelera y el desglose (CA-1, CA-6). Sin ofertas de
+ * por archivo del plan, lo disponible, la retención de la papelera, si la cuenta está en solo lectura (010) y el
+ * desglose (CA-1, CA-6). Sin ofertas de
  * ampliación.
  */
 export const spaceSummaryResponseSchema = z
@@ -28,6 +29,8 @@ export const spaceSummaryResponseSchema = z
     availableBytes: byteCount,
     maxFileBytes: byteCount,
     trashRetentionDays: z.number().int().positive(),
+    /** 010 CA-14: la cuenta está en solo lectura; el explorador muestra el aviso y deshabilita las escrituras. */
+    readOnly: z.boolean(),
     breakdown: spaceBreakdownSchema,
   })
   .strict();

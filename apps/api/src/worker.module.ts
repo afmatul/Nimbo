@@ -25,7 +25,7 @@ type WorkerEnv = z.infer<typeof workerEnvSchema>;
 
 /**
  * Colas que este proceso consume; `worker.started` las lista (plan 000 §7). `upload-cleanup`, `trash-purge`,
- * `usage-reconcile`, `subscription-reconcile`, `invoice-retry`, `indexing` e `index-reconcile` se escriben literales: el `worker` importa de `storage`,
+ * `usage-reconcile`, `subscription-reconcile`, `invoice-retry`, `subscription-renewal`, `indexing` e `index-reconcile` se escriben literales: el `worker` importa de `storage`,
  * `billing` e `intelligence` solo sus módulos del `worker` (plan 005 §3b, plan 009 §2, plan 019 §2) y `worker.module.spec.ts` fija
  * los nombres. `index-status` no está: el `worker` solo la llena y la consume el `api` (019 D-2).
  */
@@ -37,6 +37,7 @@ export const WORKER_QUEUES = [
   'usage-reconcile',
   'subscription-reconcile',
   'invoice-retry',
+  'subscription-renewal',
   'indexing',
   'index-reconcile',
 ] as const;

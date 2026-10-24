@@ -1,3 +1,4 @@
+import type { DynamicModule, Type } from '@nestjs/common';
 import type { DataSource } from 'typeorm';
 
 import { AppModule } from '../../src/app.module';
@@ -7,11 +8,15 @@ import type { TestApp } from '../int/setup/test-app';
 
 /**
  * La API completa (`AppModule`, como `main.ts`) con la `JwtStrategy` real de `identity`: los tokens salen de
- * `realAccessTokenIssuer(env)` con el mismo `env`.
+ * `realAccessTokenIssuer(env)` con el mismo `env`. `extraModules` se suman a la composición (p. ej. el `worker` de
+ * correo, para que un alta llegue a Mailpit; ese caso pide un `env` construido con `withWorkerEnv`).
  */
-export const createFullApiTestApp = (env: Env): Promise<TestApp> =>
+export const createFullApiTestApp = (
+  env: Env,
+  extraModules: readonly (Type<unknown> | DynamicModule)[] = [],
+): Promise<TestApp> =>
   createTestApp({
-    modules: [AppModule.forRoot(env)],
+    modules: [AppModule.forRoot(env), ...extraModules],
     validatedEnv: env,
     accessTokenStrategy: 'identity',
   });

@@ -7,12 +7,14 @@ import {
   IDENTITY_FIELD_MESSAGES,
   LOGIN_LOCK_MINUTES,
   PASSWORD_CHANGE_LOCK_MINUTES,
+  REQUIRED_REASON,
   SHARED_ERROR_CODES,
   STORAGE_ERROR_CODES,
   STORAGE_NODE_FIELD_MESSAGES,
   SUPPORT_CONTACT_EMAIL,
   formatBytes,
   type FieldIssueReason,
+  type FieldIssueResponse,
 } from '@nimbo/contracts';
 
 import { genericErrorMessage, type ApiErrorDetails } from './api-error';
@@ -119,6 +121,10 @@ const STORAGE_MESSAGES: Readonly<Record<string, StorageMessageBuilder>> = {
     'Esta ya es la versión actual.',
     'Actualiza el historial para ver los cambios.',
   ),
+  [STORAGE_ERROR_CODES.STORAGE_ACCOUNT_READ_ONLY]: fixed(
+    'Tu suscripción venció y tu cuenta está en solo lectura.',
+    'Renueva tu plan para volver a subir, editar y compartir.',
+  ),
   [STORAGE_ERROR_CODES.STORAGE_UPLOAD_NOT_FOUND]: fixed(
     'No encontramos esta carga.',
     'Vuelve a subir el archivo.',
@@ -211,6 +217,17 @@ const CODE_MESSAGES: Readonly<Record<string, string>> = {
   [IDENTITY_ERROR_CODES.SETUP_LINK_INVALID]:
     'Este enlace no es válido o ya se usó. Si ya creaste tu contraseña, inicia sesión; si no, usa «¿Olvidaste tu contraseña?».',
   [IDENTITY_ERROR_CODES.WRONG_PASSWORD]: 'La contraseña actual no es correcta.',
+  // Cuentas y altas internas (011 CA-2 a CA-6, plan §4).
+  [IDENTITY_ERROR_CODES.ACCOUNT_NOT_FOUND]:
+    'No encontramos esa cuenta. Vuelve a Cuentas y búscala de nuevo.',
+  [IDENTITY_ERROR_CODES.CANNOT_CHANGE_OWN_STATUS]:
+    'No puedes suspender ni reactivar tu propia cuenta. Pídeselo a otro Administrador.',
+  [IDENTITY_ERROR_CODES.LAST_ACTIVE_ADMIN]:
+    'No se puede suspender: debe quedar al menos un Administrador activo. Nada cambió.',
+  [IDENTITY_ERROR_CODES.ACCOUNT_STATE_CONFLICT]:
+    'La cuenta ya cambió de estado. Recarga la ficha para ver su estado actual.',
+  [IDENTITY_ERROR_CODES.ENROLLMENT_CONFLICT]:
+    'Ya existe una cuenta con estos datos. Corrige los campos marcados y vuelve a intentarlo.',
   [SHARED_ERROR_CODES.UNAUTHENTICATED]: 'Tu sesión no es válida o expiró. Inicia sesión de nuevo.',
   [SHARED_ERROR_CODES.FORBIDDEN]: `Tu cuenta no tiene permiso para esta acción. Si crees que es un error, escríbenos a ${SUPPORT_CONTACT_EMAIL}.`,
   [BILLING_ERROR_CODES.BILLING_PLAN_CATALOG_UNAVAILABLE]:
@@ -223,6 +240,16 @@ const CODE_MESSAGES: Readonly<Record<string, string>> = {
     'La tarjeta fue rechazada. No se hizo ningún cargo. Prueba con otra tarjeta.',
   [BILLING_ERROR_CODES.BILLING_INVOICE_NOT_FOUND]:
     'No encontramos esa factura o su PDF aún no está listo. Actualiza la página e inténtalo de nuevo.',
+  [BILLING_ERROR_CODES.BILLING_NO_PAID_SUBSCRIPTION]:
+    'Tu cuenta usa el plan Personal, que no se renueva ni se cambia. Contrata un plan en Planes.',
+  [BILLING_ERROR_CODES.BILLING_PLAN_CHANGE_INVALID]:
+    'No pudimos programar el cambio. Ese plan ya no está disponible. Cierra este aviso y elige otro plan de la lista.',
+  [BILLING_ERROR_CODES.BILLING_NO_PENDING_PLAN_CHANGE]:
+    'No tienes un cambio de plan programado. Recarga la página para ver tu plan actual.',
+  [BILLING_ERROR_CODES.BILLING_ALREADY_RENEWED]:
+    'Tu plan ya está renovado para el siguiente periodo. No se hizo ningún cargo.',
+  [BILLING_ERROR_CODES.BILLING_PLAN_CHANGE_PENDING]:
+    'Tienes un cambio de plan programado. Cancélalo para renovar ahora o espera a que se aplique al vencer.',
 };
 
 interface TimedMessage {
@@ -284,6 +311,24 @@ export function backofficeFieldMessage(reason: string, correlationId = ''): stri
   return isBackofficeReason(reason)
     ? BACKOFFICE_FIELD_MESSAGES[reason]
     : genericErrorMessage(correlationId);
+}
+
+/** Qué falta en cada campo vacío del alta interna (mockup `backoffice/alta-interna`, decisión 8). */
+const ENROLLMENT_REQUIRED_MESSAGES: Readonly<Record<string, string>> = {
+  fullName: 'Escribe el nombre completo de la persona.',
+  email: 'Escribe el correo de la persona.',
+  employeeCode: 'Escribe el código de empleado.',
+  role: 'Elige el rol de la cuenta.',
+};
+
+/**
+ * Mensaje de un campo del alta interna (011 CA-6), del navegador o de la API: un campo vacío dice qué dato falta; los
+ * demás motivos (formato, correo o código en uso) usan el texto de `contracts`.
+ */
+export function enrollmentFieldMessage(issue: FieldIssueResponse): string {
+  const required =
+    issue.reason === REQUIRED_REASON ? ENROLLMENT_REQUIRED_MESSAGES[issue.field] : undefined;
+  return required ?? messageForReason(issue.reason);
 }
 
 /** Mensaje de un `reason` de `fields`. Uno desconocido cae en el genérico de 000 §10. */

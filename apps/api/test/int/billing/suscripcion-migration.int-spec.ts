@@ -57,6 +57,7 @@ describe('migración crear-suscripcion: RLS del dueño (spec 009 CA-1, RNF-05)',
         { policyname: 'suscripcion_cliente_alta', cmd: 'INSERT' },
         { policyname: 'suscripcion_cliente_cambio', cmd: 'UPDATE' },
         { policyname: 'suscripcion_cliente_lectura', cmd: 'SELECT' },
+        { policyname: 'suscripcion_mantenimiento', cmd: 'SELECT' },
       ],
     });
   });

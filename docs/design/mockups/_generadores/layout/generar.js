@@ -122,15 +122,7 @@ const JS = `
 `;
 
 // ---------- Piezas propias ----------
-function avisoSoloLectura(a) {
-  if (!a) return '';
-  return `
-        <section class="readonly" aria-labelledby="ro-t">
-          ${icon('lock', 20)}
-          <p class="readonly-text"><strong id="ro-t">Tu cuenta está en solo lectura.</strong> ${a.cuerpo}</p>
-          <a class="btn btn-primary btn-sm" href="#">Renovar plan</a>
-        </section>`;
-}
+const avisoSoloLectura = M.avisoSoloLectura; // marco/marco.js (también lo usa billing/suscripcion)
 
 // 007: a 360 el cajón debe mostrar la tarjeta completa (con «Liberar espacio») sin recortarse
 const CSS_TRAMO = '  @media (max-width: 900px) { .canvas { min-height: 940px; } }\n';

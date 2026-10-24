@@ -25,6 +25,8 @@ export interface IInvoiceRepository {
   markStored(actor: Actor, invoiceId: string, objectKey: string): Promise<void>;
   /** T-08: marca que el aviso se entregó a `INotifier`, solo si aún no estaba (idempotente). */
   markNoticeQueued(actor: Actor, invoiceId: string): Promise<void>;
+  /** 010 RN-4: el NIT de la última factura del actor, o `CF` si no tiene (la factura de la renovación automática). */
+  findLatestNit(actor: Actor): Promise<string>;
 }
 
 export const I_INVOICE_REPOSITORY = Symbol('IInvoiceRepository');

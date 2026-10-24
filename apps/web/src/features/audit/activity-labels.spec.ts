@@ -26,6 +26,26 @@ function event(overrides: Partial<AuditEventResponse>): AuditEventResponse {
 
 describe('textos de «Mi actividad»', () => {
   it.each([
+    ['subscription.auto_renew_changed', 'Cambiaste la renovación automática'],
+    ['subscription.renewed', 'Se renovó tu plan'],
+    ['subscription.renewal_rejected', 'Se rechazó el cobro de la renovación'],
+    ['subscription.read_only_entered', 'Tu suscripción venció y tu cuenta quedó en solo lectura'],
+    ['subscription.read_only_exited', 'Tu cuenta salió de solo lectura'],
+    ['subscription.plan_change_scheduled', 'Programaste un cambio de plan'],
+    ['subscription.plan_change_cancelled', 'Cancelaste el cambio de plan'],
+    ['subscription.plan_change_applied', 'Se aplicó tu cambio de plan'],
+    [
+      'subscription.plan_change_discarded',
+      'Se descartó tu cambio de plan: ese plan ya no está disponible',
+    ],
+  ] as const)('010 CA-22: %s se lee en español y es sobre la cuenta', (action, text) => {
+    const subscriptionEvent = event({ action, resourceType: null });
+
+    expect(activityActionLabel(subscriptionEvent)).toBe(text);
+    expect(activityResourceLabel(subscriptionEvent)).toBe('Cuenta');
+  });
+
+  it.each([
     ['file.upload_completed', 'file', null, 'Subiste 1 archivo'],
     ['file.upload_rejected', 'upload', null, 'Se rechazó una carga'],
     ['file.download_url_issued', 'file', null, 'Descargaste 1 archivo'],

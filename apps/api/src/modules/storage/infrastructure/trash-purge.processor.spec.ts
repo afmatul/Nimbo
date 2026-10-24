@@ -1,7 +1,7 @@
 import type { Job } from 'bullmq';
 
 import { CorrelationContext, createActor, FixedClock, Role } from '../../../shared';
-import type { Actor, ITransactionRunner } from '../../../shared';
+import type { Actor, CorrelatedJobData, ITransactionRunner } from '../../../shared';
 import type {
   ExpiredTrashItem,
   IExpiredTrashScanner,
@@ -12,7 +12,6 @@ import { TrashPurgeIncompleteError } from '../application/trash-purger';
 import type { TrashService } from '../application/trash.service';
 
 import { TrashPurgeProcessor } from './trash-purge.processor';
-import type { TrashPurgeJobData } from './trash-purge.scheduler';
 
 const NOW = new Date('2026-10-01T12:00:00.000Z');
 const BATCH_SIZE = 100;
@@ -34,8 +33,8 @@ interface LoggedLine {
   readonly jobId: string | undefined;
 }
 
-const job = (data: Partial<TrashPurgeJobData> = { correlationId: CORRELATION_ID }) =>
-  ({ id: JOB_ID, data, attemptsMade: 0 }) as unknown as Job<TrashPurgeJobData>;
+const job = (data: Partial<CorrelatedJobData> = { correlationId: CORRELATION_ID }) =>
+  ({ id: JOB_ID, data, attemptsMade: 0 }) as unknown as Job<CorrelatedJobData>;
 
 const setup = (options: { expired?: readonly ExpiredTrashItem[]; failing?: string[] } = {}) => {
   const journal: string[] = [];

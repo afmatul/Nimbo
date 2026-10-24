@@ -249,7 +249,8 @@ describe('GET /files/:fileId/versions y POST …/versions/:versionId/download-ur
     ]);
     const logged = JSON.stringify(lines);
     expect(logged).not.toContain(file.name);
-    expect(logged).not.toContain('u/');
+    // El prefijo real de la clave de objeto, no `u/` suelto: un ETag en base64 puede contenerlo (PD-102 b).
+    expect(logged).not.toContain(`u/${ana.id}/`);
     expect(logged).not.toContain('X-Amz-Signature');
   });
 

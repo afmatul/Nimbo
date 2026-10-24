@@ -8,6 +8,7 @@ const SUMMARY = {
   availableBytes: 3_750_000_000,
   maxFileBytes: 100_000_000,
   trashRetentionDays: 30,
+  readOnly: false,
   breakdown: {
     documentsBytes: 700_000_000,
     imagesBytes: 300_000_000,

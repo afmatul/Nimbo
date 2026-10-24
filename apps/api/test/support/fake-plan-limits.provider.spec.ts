@@ -11,6 +11,7 @@ describe('FakePlanLimitsProvider', () => {
       storageQuotaBytes: 100n,
       trashRetentionDays: 30,
       retainedVersions: 3,
+      readOnly: false,
       maxEditors: 0,
       planName: 'Plan de prueba',
     });
@@ -20,6 +21,7 @@ describe('FakePlanLimitsProvider', () => {
       storageQuotaBytes: 100n,
       trashRetentionDays: 30,
       retainedVersions: 3,
+      readOnly: false,
       maxEditors: 0,
       planName: 'Plan de prueba',
     });
@@ -31,6 +33,7 @@ describe('FakePlanLimitsProvider', () => {
       storageQuotaBytes: 100n,
       trashRetentionDays: 30,
       retainedVersions: 3,
+      readOnly: false,
       maxEditors: 0,
       planName: 'Plan de prueba',
     });
@@ -41,6 +44,7 @@ describe('FakePlanLimitsProvider', () => {
       storageQuotaBytes: 2n,
       trashRetentionDays: 30,
       retainedVersions: 3,
+      readOnly: false,
       maxEditors: 0,
     });
 
@@ -49,6 +53,7 @@ describe('FakePlanLimitsProvider', () => {
       storageQuotaBytes: 2n,
       trashRetentionDays: 30,
       retainedVersions: 3,
+      readOnly: false,
       maxEditors: 0,
       planName: 'Plan de prueba',
     });
@@ -60,6 +65,7 @@ describe('FakePlanLimitsProvider', () => {
       storageQuotaBytes: 1n,
       trashRetentionDays: 30,
       retainedVersions: 3,
+      readOnly: false,
       maxEditors: 0,
       planName: 'Plan de prueba',
     });

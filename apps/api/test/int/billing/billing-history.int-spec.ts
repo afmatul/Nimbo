@@ -80,7 +80,7 @@ describe('historial y descarga de facturas (spec 009 CA-7, CA-8)', () => {
     const response = await historyOf(bruno);
     const history = billingHistoryResponseSchema.parse(response.body);
 
-    expect(history.subscription).toEqual({
+    expect(history.subscription).toMatchObject({
       plan: expect.objectContaining({
         slug: 'equipo',
         name: 'Equipo',

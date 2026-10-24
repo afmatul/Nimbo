@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { formatGtq } from '@nimbo/contracts';
 import PDFDocument from 'pdfkit';
 
+import { formatBillingDate } from '../../application/billing-date';
 import type {
   IInvoiceGenerator,
   InvoiceDocument,
@@ -11,16 +12,10 @@ import type {
 const REGULAR = 'Helvetica';
 const BOLD = 'Helvetica-Bold';
 const MARGIN = 56;
-const DATE_FORMAT = new Intl.DateTimeFormat('es-GT', {
-  timeZone: 'America/Guatemala',
-  day: 'numeric',
-  month: 'long',
-  year: 'numeric',
-});
 
 /** Filas de la factura: etiqueta y valor, en el orden del mockup de suscripción. */
 const detailRows = (document: InvoiceDocument): readonly (readonly [string, string])[] => [
-  ['Fecha', DATE_FORMAT.format(document.issuedAt)],
+  ['Fecha', formatBillingDate(document.issuedAt)],
   ['Plan', document.planName],
   ['Referencia del pago', document.paymentReference],
   ['NIT', document.nit],

@@ -21,6 +21,8 @@ export interface SpaceSummary {
   readonly availableBytes: bigint;
   readonly maxFileBytes: bigint;
   readonly trashRetentionDays: number;
+  /** 010 CA-14: el explorador lo lee del resumen que ya carga. */
+  readonly readOnly: boolean;
   readonly breakdown: SpaceBreakdown;
 }
 
@@ -51,6 +53,7 @@ export class SpaceSummaryService {
       availableBytes: QuotaPolicy.available(limits, usage),
       maxFileBytes: limits.maxFileBytes,
       trashRetentionDays: limits.trashRetentionDays,
+      readOnly: limits.readOnly,
       breakdown,
     };
   }

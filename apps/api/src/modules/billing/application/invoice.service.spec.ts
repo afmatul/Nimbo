@@ -18,6 +18,7 @@ const PAYMENT: Payment = {
   status: 'aprobada',
   cardBrand: 'visa',
   cardLast4: '4242',
+  instrumentRef: 'SIM-TOK-ok-1',
   reference: 'SIM-2026-000001',
   createdAt: PAID_AT,
 };
@@ -32,6 +33,7 @@ const setup = () => {
     findForIssue: jest.fn(),
     markStored: jest.fn(),
     markNoticeQueued: jest.fn(),
+    findLatestNit: jest.fn(),
   };
   const contacts = {
     contactOf: jest.fn().mockResolvedValue('ana@ejemplo.com'),

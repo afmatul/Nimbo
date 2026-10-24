@@ -7,11 +7,14 @@ import { I_PLAN_REPOSITORY } from '../../application/ports/i-plan-repository.por
 import type { IPlanRepository } from '../../application/ports/i-plan-repository.port';
 import { I_SUBSCRIPTION_REPOSITORY } from '../../application/ports/i-subscription-repository.port';
 import type { ISubscriptionRepository } from '../../application/ports/i-subscription-repository.port';
+import { requirePlan, requirePlanBySlug } from '../../application/require-plan';
 import type { Plan } from '../../domain/entities/plan.entity';
-import { PlanNotFoundError } from '../../domain/errors';
 import { PERSONAL_PLAN_SLUG } from '../../domain/plan-slug';
 
-const toLimits = (plan: Plan): PlanLimits => ({
+/** Los límites de un plan, sin el estado de una cuenta (010 plan §2; ADR-0032 regla 5). */
+export type PlanStorageLimits = Omit<PlanLimits, 'readOnly'>;
+
+const toLimits = (plan: Plan): PlanStorageLimits => ({
   planName: plan.name,
   maxFileBytes: plan.limits.maxFileBytes,
   storageQuotaBytes: plan.limits.quotaBytes,
@@ -23,7 +26,8 @@ const toLimits = (plan: Plan): PlanLimits => ({
 /**
  * Implementación de `IPlanLimitsProvider` (spec 006a, RN-4; 009 T-03, PD-80). `storage` declara el puerto; este
  * adaptador no importa entidades de `storage`. Los límites son los del plan de la `suscripcion` del actor, leída bajo
- * RLS con `withActor`; sin fila (cuenta sin verificar o interna), los de Personal. Ignora `vence_en` hasta la 010.
+ * RLS con `withActor`; sin fila (cuenta sin verificar o interna), los de Personal y `readOnly` falso. Una cuenta en
+ * solo lectura conserva los límites de su plan (010 RN-5); `readOnly` sale de la misma lectura (ADR-0032).
  */
 @Injectable()
 export class PlanLimitsAdapter implements IPlanLimitsProvider {
@@ -34,25 +38,22 @@ export class PlanLimitsAdapter implements IPlanLimitsProvider {
   ) {}
 
   async limitsFor(actor: Actor): Promise<PlanLimits> {
-    const planId = await this.transactions.withActor(actor, () =>
-      this.subscriptions.findCurrentPlanId(actor),
+    const standing = await this.transactions.withActor(actor, () =>
+      this.subscriptions.findStanding(actor),
     );
-    return planId === null
-      ? this.getLimitsBySlug(PERSONAL_PLAN_SLUG)
-      : this.getLimitsByPlanId(planId);
+    if (standing === null) {
+      return { ...(await this.getLimitsBySlug(PERSONAL_PLAN_SLUG)), readOnly: false };
+    }
+    return { ...(await this.getLimitsByPlanId(standing.planId)), readOnly: standing.readOnly };
   }
 
   /** CA-2 y CA-4. No está en el puerto de `storage`: 005 fijó `limitsFor` como único método (ISP). */
-  async getLimitsByPlanId(planId: string): Promise<PlanLimits> {
-    const plan = await this.plans.findById(planId);
-    if (plan === null) throw new PlanNotFoundError(planId);
-    return toLimits(plan);
+  async getLimitsByPlanId(planId: string): Promise<PlanStorageLimits> {
+    return toLimits(await requirePlan(this.plans, planId));
   }
 
   /** CA-3 y CA-4. Misma salvedad que `getLimitsByPlanId`. */
-  async getLimitsBySlug(slug: string): Promise<PlanLimits> {
-    const plan = await this.plans.findBySlug(slug);
-    if (plan === null) throw new PlanNotFoundError(slug);
-    return toLimits(plan);
+  async getLimitsBySlug(slug: string): Promise<PlanStorageLimits> {
+    return toLimits(await requirePlanBySlug(this.plans, slug));
   }
 }

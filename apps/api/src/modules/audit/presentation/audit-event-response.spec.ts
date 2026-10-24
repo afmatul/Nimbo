@@ -98,6 +98,15 @@ describe('toAuditEventResponse (lista blanca, CA-14)', () => {
     expect(response).not.toHaveProperty('trigger');
   });
 
+  it('010 CA-22: la renovación automática copia `trigger: scheduled` («Nimbo (automático)» en la web)', () => {
+    const entry = entryOf({
+      action: 'subscription.renewed',
+      attributes: { trigger: 'scheduled', planSlug: 'equipo' },
+    });
+
+    expect(toAuditEventResponse(entry).trigger).toBe('scheduled');
+  });
+
   it('D-3: conteo y tamaño ausentes o no numéricos son `null`', () => {
     const response = toAuditEventResponse(entryOf({ attributes: { itemCount: '3' } }));
 

@@ -1,8 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
 
-import { I_TRANSACTION_RUNNER } from '../../../shared';
 import type { Actor, ITransactionRunner } from '../../../shared';
+import { I_TRANSACTION_RUNNER, IncompleteBatchError } from '../../../shared';
 
 import { I_QUOTA_REPOSITORY } from './ports/i-quota.repository.port';
 import type { IQuotaRepository } from './ports/i-quota.repository.port';
@@ -10,12 +10,12 @@ import { SpaceMeasurer } from './space-measurer';
 import type { StorageLogger } from './storage-logger';
 
 /** Quedaron cuentas sin conciliar (CA-15): el trabajo falla para que BullMQ lo reintente. Sin ids ni cifras. */
-export class UsageReconcileIncompleteError extends Error {
-  constructor(readonly failed: number) {
+export class UsageReconcileIncompleteError extends IncompleteBatchError {
+  constructor(failed: number) {
     super(
+      failed,
       `La conciliación de espacio dejó ${String(failed)} cuenta(s) sin revisar; se reintentará.`,
     );
-    this.name = 'UsageReconcileIncompleteError';
   }
 }
 
