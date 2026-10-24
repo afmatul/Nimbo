@@ -1,6 +1,7 @@
 import { getQueueToken } from '@nestjs/bullmq';
 import type { DynamicModule, Provider, ValueProvider } from '@nestjs/common';
 
+import { EventEmitterDomainEventPublisher, I_DOMAIN_EVENT_PUBLISHER } from '../../shared';
 import { AuditModule } from '../audit';
 
 import { EditableFileGateway } from './application/editable-file.gateway';
@@ -8,6 +9,7 @@ import { FILE_SERVICE_CONFIG } from './application/file-service-config';
 import { FileVersionService } from './application/file-version.service';
 import { FOLDER_CONFIG } from './application/folder-config';
 import { FolderService } from './application/folder.service';
+import { IndexableFileGateway } from './application/indexable-file.gateway';
 import { I_PLAN_LIMITS_PROVIDER } from './application/plan-limits';
 import { I_NODE_METADATA_READER } from './application/ports/i-node-metadata-reader.port';
 import { I_OBJECT_STORAGE } from './application/ports/i-object-storage.port';
@@ -137,10 +139,23 @@ describe('StorageModule', () => {
     expect(providers).toEqual(expect.arrayContaining([SpaceMeasurer, SpaceSummaryService]));
   });
 
-  it('011 PD-31: provee el lector de metadatos con su adaptador SQL y exporta su token, el de objetos (009) y la fachada de edición (016)', () => {
+  it('011 PD-31: provee el lector de metadatos con su adaptador SQL y exporta su token, el de objetos (009) y las fachadas de edición (016) y de indexación (019)', () => {
     const reader = providers.find((provider) => tokenOf(provider) === I_NODE_METADATA_READER);
 
     expect(reader).toEqual({ provide: I_NODE_METADATA_READER, useClass: SqlNodeMetadataReader });
-    expect(module.exports).toEqual([I_NODE_METADATA_READER, I_OBJECT_STORAGE, EditableFileGateway]);
+    expect(module.exports).toEqual([
+      I_NODE_METADATA_READER,
+      I_OBJECT_STORAGE,
+      EditableFileGateway,
+      IndexableFileGateway,
+    ]);
+  });
+
+  it('019 RN-11: registra el publicador de eventos con que `FileVersionService` anuncia cada versión vigente', () => {
+    expect(providers).toContainEqual({
+      provide: I_DOMAIN_EVENT_PUBLISHER,
+      useClass: EventEmitterDomainEventPublisher,
+    });
+    expect(providers).toContain(IndexableFileGateway);
   });
 });

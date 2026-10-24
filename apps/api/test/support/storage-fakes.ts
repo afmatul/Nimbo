@@ -8,6 +8,8 @@ import type {
   IFileTypeDetector,
 } from '../../src/modules/storage/application/ports/i-file-type-detector.port';
 import type {
+  FileVersionRef,
+  IdPage,
   INodeRepository,
   NodeListPage,
   NodeListQuery,
@@ -37,6 +39,7 @@ import { UploadSession } from '../../src/modules/storage/domain/upload-session';
 import type { UploadState } from '../../src/modules/storage/domain/upload-session';
 import type {
   Actor,
+  IDomainEventPublisher,
   IRateLimiter,
   ITransactionRunner,
   RateLimitDecision,
@@ -272,6 +275,22 @@ export class FakeNodeRepository implements INodeRepository {
     this.journal.add('nodes:findOwnedFile');
     const file = this.files.get(id);
     return Promise.resolve(file?.ownerId === actor.id ? file : null);
+  }
+
+  listOwnedFiles(actor: Actor, page: IdPage): Promise<readonly File[]> {
+    this.journal.add('nodes:listOwnedFiles');
+    const owned = [...this.files.values()]
+      .filter(
+        (file) => file.ownerId === actor.id && (page.afterId === null || file.id > page.afterId),
+      )
+      .sort((a, b) => a.id.localeCompare(b.id));
+    return Promise.resolve(owned.slice(0, page.limit));
+  }
+
+  lockCurrentVersion(actor: Actor, ref: FileVersionRef): Promise<boolean> {
+    this.journal.add('nodes:lockCurrentVersion');
+    const file = this.files.get(ref.fileId);
+    return Promise.resolve(file?.ownerId === actor.id && file.currentVersionId === ref.versionId);
   }
 
   findLiveFileByName(actor: Actor, name: FileName, folderId: string | null): Promise<File | null> {
@@ -587,5 +606,23 @@ export class FakeAuditLogger implements IAuditLogger {
 
   recordInTransaction(entry: AuditRecord): Promise<void> {
     return this.record(entry);
+  }
+}
+
+/** Evento publicado por el doble de `IDomainEventPublisher`. */
+export interface PublishedEvent {
+  readonly name: string;
+  readonly payload: object;
+}
+
+/** `IDomainEventPublisher` en memoria: anota cada evento (019 RN-11) y nunca lanza, como el real. */
+export class FakeDomainEventPublisher implements IDomainEventPublisher {
+  readonly published: PublishedEvent[] = [];
+
+  constructor(private readonly journal: Journal) {}
+
+  publish(name: string, payload: object): void {
+    this.journal.add(`events:${name}`);
+    this.published.push({ name, payload });
   }
 }

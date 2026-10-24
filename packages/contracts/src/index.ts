@@ -22,3 +22,4 @@ export * from './billing';
 export * from './backoffice';
 export * from './realtime';
 export * from './editing';
+export * from './intelligence';

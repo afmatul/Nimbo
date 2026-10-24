@@ -1,9 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
 
-import type { Actor } from '../../../shared';
+import { I_DOMAIN_EVENT_PUBLISHER } from '../../../shared';
+import type { Actor, IDomainEventPublisher } from '../../../shared';
 import type { File } from '../domain/file';
 import type { FileVersion } from '../domain/file-version';
+import { FILE_VERSION_CREATED } from '../domain/file-version-created.event';
+import type { FileVersionCreatedEvent } from '../domain/file-version-created.event';
 
 import { I_NODE_REPOSITORY } from './ports/i-node.repository.port';
 import type { INodeRepository } from './ports/i-node.repository.port';
@@ -32,8 +35,9 @@ export interface RegisteredVersion {
 
 /**
  * Única escritura de versiones de `storage` (plan 014 §1, ADR-0012). `register` corre **dentro** de la transacción
- * `withActor` del llamador; `afterCommit` corre después de su commit y dispara la poda. No indexa ni publica eventos
- * (`FileVersionCreated` llega con 019, D-11).
+ * `withActor` del llamador; `afterCommit` corre después de su commit: anuncia la versión vigente con
+ * `storage.file-version-created` (019 RN-11, ADR-0019) y dispara la poda. Una transacción revertida no llega a
+ * `afterCommit`, así que no anuncia nada.
  */
 @Injectable()
 export class FileVersionService {
@@ -42,6 +46,7 @@ export class FileVersionService {
     @Inject(I_VERSION_REPOSITORY) private readonly versions: IVersionRepository,
     @Inject(I_NODE_REPOSITORY) private readonly nodes: INodeRepository,
     @Inject(VersionPruner) private readonly pruner: VersionPruner,
+    @Inject(I_DOMAIN_EVENT_PUBLISHER) private readonly events: IDomainEventPublisher,
     @Inject(PinoLogger) private readonly logger: StorageLogger,
   ) {}
 
@@ -67,8 +72,23 @@ export class FileVersionService {
     return { file, version };
   }
 
-  /** Tras el commit de `register`: poda lo que exceda la retención del plan; nunca lanza (CA-14). */
-  afterCommit(actor: Actor, fileId: string): Promise<void> {
-    return this.pruner.prune(actor, fileId);
+  /** Tras el commit de `register`: anuncia la versión y poda lo que exceda la retención; nunca lanza (CA-14). */
+  afterCommit(actor: Actor, registered: RegisteredVersion): Promise<void> {
+    this.announce(registered);
+    return this.pruner.prune(actor, registered.file.id);
+  }
+
+  /**
+   * Anuncia, tras el commit, la versión vigente de `registered` (019 RN-11). Lo usa sola la carga de un archivo nuevo,
+   * que no pasa por `register` ni tiene nada que podar. Nunca lanza (`IDomainEventPublisher`).
+   */
+  announce({ file, version }: RegisteredVersion): void {
+    const event: FileVersionCreatedEvent = {
+      fileId: file.id,
+      versionId: version.id,
+      ownerId: file.ownerId,
+      kind: file.kind,
+    };
+    this.events.publish(FILE_VERSION_CREATED, event);
   }
 }

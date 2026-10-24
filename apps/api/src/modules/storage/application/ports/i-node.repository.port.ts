@@ -24,6 +24,18 @@ export interface NodeListPage {
   readonly nextCursor: string | null;
 }
 
+/** Una versión de un archivo, por sus ids. */
+export interface FileVersionRef {
+  readonly fileId: string;
+  readonly versionId: string;
+}
+
+/** Página por id ascendente: hasta `limit` ids mayores que `afterId` (o desde el primero, con `null`). */
+export interface IdPage {
+  readonly afterId: string | null;
+  readonly limit: number;
+}
+
 /**
  * Árbol vivo del actor (diagrama M2): archivos y carpetas fuera de la papelera. Toda consulta une
  * `accessibleNodes(actor)` de `access` y toma el `EntityManager` de `TransactionContext.requireActorScope(actor)`
@@ -38,6 +50,17 @@ export interface INodeRepository {
    * Solo para registrar la versión de una sesión de edición (016 RN-11, PD-112).
    */
   findOwnedFile(actor: Actor, id: string): Promise<File | null>;
+  /**
+   * Archivos del actor, vivos o en la papelera (`ownedFiles`), por id ascendente: la conciliación de la indexación
+   * (019 CA-23) recorre así las versiones vigentes de una cuenta.
+   */
+  listOwnedFiles(actor: Actor, page: IdPage): Promise<readonly File[]>;
+  /**
+   * `SELECT … FOR SHARE` sobre el archivo del actor (`ownedFiles`) si `ref.versionId` sigue siendo su versión vigente:
+   * hasta el commit de la transacción del llamador nadie la reemplaza (019 plan §7 punto 2). `false` si ya no es la
+   * vigente, es ajeno o se purgó. Exige la transacción `withActor` del llamador.
+   */
+  lockCurrentVersion(actor: Actor, ref: FileVersionRef): Promise<boolean>;
   /**
    * El archivo vivo y accesible llamado `name` en la carpeta `folderId` (`null` = raíz), sin distinguir mayúsculas
    * (005 CA-6); `null` si no hay. Es el archivo que reemplaza una carga con `onConflict: 'replace'` (014 CA-1).

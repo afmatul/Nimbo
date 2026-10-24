@@ -21,7 +21,7 @@ const ALLOWED: Readonly<Record<string, readonly string[]>> = {
   storage: ['access', 'audit', 'realtime'],
   sharing: ['access', 'storage', 'audit'],
   editing: ['storage', 'access', 'realtime', 'audit'],
-  intelligence: ['storage', 'access', 'billing', 'realtime'],
+  intelligence: ['storage', 'access', 'billing', 'realtime', 'audit'],
   optimizer: ['storage', 'access'],
   backoffice: ['audit', 'identity', 'billing', 'storage'],
 };
@@ -91,6 +91,7 @@ describe('lint boundaries.js: grafo completo de módulos (CA-5, ADR-0010, PD-24)
     ['access-imports-storage.ts', 'access', 2],
     ['identity-imports-billing.ts', 'identity', 1],
     ['editing-imports-billing.ts', 'editing', 1],
+    ['intelligence-imports-billing.ts', 'intelligence', 1],
   ])('PD-24: el fixture `%s` es error en `%s`', async (name, module, count) => {
     expect(await boundaryErrors(fixture(name), fileOf(module))).toHaveLength(count);
   });

@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { FakePlanLimitsProvider } from '../../../../test/support/fake-plan-limits.provider';
 import {
   FakeAuditLogger,
+  FakeDomainEventPublisher,
   FakeNodeRepository,
   FakeObjectStorage,
   FakeQuotaRepository,
@@ -15,6 +16,7 @@ import type { Actor } from '../../../shared';
 import type { File } from '../domain/file';
 import { FileVersion } from '../domain/file-version';
 import type { FileVersionOrigin, NewVersionInput } from '../domain/file-version';
+import { FILE_VERSION_CREATED } from '../domain/file-version-created.event';
 import { ObjectKey } from '../domain/object-key';
 
 import { FileVersionService } from './file-version.service';
@@ -53,9 +55,22 @@ function setup() {
     audit,
     logger,
   );
-  const service = new FileVersionService(quotas, versions, nodes, pruner, logger);
+  const events = new FakeDomainEventPublisher(journal);
+  const service = new FileVersionService(quotas, versions, nodes, pruner, events, logger);
   const file = seedVersionedFile({ nodes, versions, objects }, ANA, [100n, 200n, 300n]);
-  return { journal, transactions, quotas, nodes, versions, objects, audit, logger, service, file };
+  return {
+    journal,
+    transactions,
+    quotas,
+    nodes,
+    versions,
+    objects,
+    audit,
+    events,
+    logger,
+    service,
+    file,
+  };
 }
 
 /** Cómo arma su versión cada camino que registra (CA-5): el servicio solo le da el número. */
@@ -143,14 +158,14 @@ describe('FileVersionService (plan 014 §1, CA-4, CA-5, CA-13)', () => {
   );
 
   it.each(['carga', 'restauracion', 'edicion'] as const)(
-    'CA-5, CA-13: tras el commit de `%s`, `afterCommit` aplica la misma retención (sin auditar ni publicar más)',
+    'CA-5, CA-13: tras el commit de `%s`, `afterCommit` aplica la misma retención (sin auditar más)',
     async (origin) => {
       const { service, transactions, quotas, versions, audit, file } = setup();
-      await transactions.withActor(ANA, () =>
+      const registered = await transactions.withActor(ANA, () =>
         service.register(ANA, { file, buildVersion: builders[origin](file) }),
       );
 
-      await service.afterCommit(ANA, file.id);
+      await service.afterCommit(ANA, registered);
 
       expect(versions.numbersOf(file.id)).toEqual([2, 3, 4]);
       expect(quotas.added).toEqual([NEW_BYTES, -100n]);
@@ -191,13 +206,65 @@ describe('FileVersionService (plan 014 §1, CA-4, CA-5, CA-13)', () => {
 
   it('`afterCommit` nunca falla al llamador aunque la poda falle', async () => {
     const { service, transactions, objects, versions, file } = setup();
-    await transactions.withActor(ANA, () =>
+    const registered = await transactions.withActor(ANA, () =>
       service.register(ANA, { file, buildVersion: builders.carga(file) }),
     );
     objects.deleteFailures = 1;
 
-    await expect(service.afterCommit(ANA, file.id)).resolves.toBeUndefined();
+    await expect(service.afterCommit(ANA, registered)).resolves.toBeUndefined();
 
     expect(versions.numbersOf(file.id)).toEqual([1, 2, 3, 4]);
+  });
+
+  it.each(['carga', 'restauracion', 'edicion', 'optimizacion'] as const)(
+    '019 RN-11, CA-8: tras el commit de `%s`, `afterCommit` anuncia la versión vigente antes de podar',
+    async (origin) => {
+      const { service, transactions, events, journal, file } = setup();
+      const registered = await transactions.withActor(ANA, () =>
+        service.register(ANA, { file, buildVersion: builders[origin](file) }),
+      );
+      journal.entries.length = 0;
+
+      await service.afterCommit(ANA, registered);
+
+      expect(events.published).toEqual([
+        {
+          name: FILE_VERSION_CREATED,
+          payload: {
+            fileId: file.id,
+            versionId: registered.version.id,
+            ownerId: file.ownerId,
+            kind: file.kind,
+          },
+        },
+      ]);
+      expect(journal.entries[0]).toBe(`events:${FILE_VERSION_CREATED}`);
+    },
+  );
+
+  it('019 RN-11: `register` no anuncia nada: la transacción del llamador puede revertirse', async () => {
+    const { service, transactions, events, file } = setup();
+
+    await transactions.withActor(ANA, () =>
+      service.register(ANA, { file, buildVersion: builders.carga(file) }),
+    );
+
+    expect(events.published).toEqual([]);
+  });
+
+  it('019 RN-11: `announce` anuncia el archivo nuevo sin podar ni tocar la base', async () => {
+    const { service, events, journal, file, versions } = setup();
+    const version = versions.versions.get(file.currentVersionId);
+    if (version === undefined) throw new Error('El archivo sembrado no tiene versión vigente');
+
+    service.announce({ file, version });
+
+    expect(events.published).toEqual([
+      {
+        name: FILE_VERSION_CREATED,
+        payload: { fileId: file.id, versionId: version.id, ownerId: ANA.id, kind: file.kind },
+      },
+    ]);
+    expect(journal.entries).toEqual([`events:${FILE_VERSION_CREATED}`]);
   });
 });
