@@ -11,7 +11,7 @@
   de `_generadores/admin/area.js` con `AREA_SOPORTE` (persona, distintivo «SOPORTE» y navegación propia); la búsqueda
   por correo, la paginación y el diálogo son las mismas piezas de `backoffice/admin` (extraídas a `area.js` sin cambiar
   un byte de sus mockups). Íconos de tipo de `_generadores/mis-archivos/mis-archivos.js`; el campo del motivo usa
-  `A.campo`/`CSS_FORM`. Tonos AA de `ui-guidelines.md` §2–§3, solo Inter, cifras y fechas con `tabular-nums`, versión
+  `A.campo`/`CSS_FORM` y el diálogo, `A.formDialog` (compartido con Administración). Tonos AA de `ui-guidelines.md` §2-§3, solo Inter, cifras y fechas con `tabular-nums`, versión
   móvil real a 360 px. Es referencia visual; `apps/web` no lo importa.
 - **Enlaces entre mockups** (rutas relativas): en el área de Soporte, la entrada «Metadatos de archivos», el logo y la
   miga «Soporte» llevan a `soporte--inicial.html` (inicio del área); «Papelera» lleva a `soporte--papelera.html`. En

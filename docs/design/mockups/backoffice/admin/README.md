@@ -23,8 +23,8 @@
   marco (tokens, barra lateral, barra superior, botones, diálogo, cajón y cortes a 900/600 px) sale de
   `_generadores/marco/marco.js`, el mismo de `identity/seguridad`, `shared/layout` y `storage`; la navegación, la persona y
   la barra superior del área se arman en `_generadores/admin/area.js` (compartido por `backoffice/admin`, `alta-interna`, `catalogo`, `metricas` y `soporte`) con las
-  mismas clases. Los formularios de 011b salen de `A.campo`/`CSS_FORM` (mismo campo del alta interna) y de
-  `limites`, `dialogoCuota` y `dialogoVigencia` en `admin/generar.js`. Tonos AA de `ui-guidelines.md` §2–§3,
+  mismas clases. Los formularios de 011b salen de `A.formDialog`/`A.campo`/`CSS_FORM` (la misma pieza que usa
+  Soporte) y de `limites`, `dialogoCuota` y `dialogoVigencia` en `admin/generar.js`. Tonos AA de `ui-guidelines.md` §2-§3,
   solo Inter, cifras con `tabular-nums`, versión móvil real a 360 px. Es referencia visual; `apps/web` no lo importa.
 - **Enlaces entre mockups** (rutas relativas): la barra lateral, el cajón, el logo y las migas llevan a Cuentas
   (`../admin/admin.html`), Catálogo de planes (`../catalogo/catalogo.html`) y Métricas (`../metricas/metricas.html`); «Nueva cuenta interna» →
