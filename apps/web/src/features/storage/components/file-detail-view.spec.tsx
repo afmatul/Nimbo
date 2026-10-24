@@ -13,6 +13,7 @@ import { axe } from 'jest-axe';
 import { forgetSession, rememberSession } from '../../identity/session/session-memory';
 import { SessionProvider } from '../../identity/session/session-provider';
 import { sessionFixture } from '../../identity/session/test-session';
+import { fakeIndexingApi } from '../../intelligence/test-indexing';
 import type { StorageApi } from '../api';
 import { StorageRequestError } from '../storage-request-error';
 import { GB, spaceSummaryWith } from '../test-space-summary';
@@ -90,7 +91,7 @@ async function renderView(api: StorageApi, openUrl = jest.fn()): Promise<void> {
     <SessionProvider apiPublicUrl="http://localhost/api/v1">
       <UploadsProvider api={api}>
         <UploadsSpaceProvider>
-          <FileDetailView fileId={FILE_ID} openUrl={openUrl} />
+          <FileDetailView fileId={FILE_ID} indexingApi={fakeIndexingApi()} openUrl={openUrl} />
         </UploadsSpaceProvider>
       </UploadsProvider>
     </SessionProvider>,

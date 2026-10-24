@@ -5,7 +5,7 @@ Desde la Fase 2 (30/09/2026) el equipo usa la variante **express**: el **plan es
 escribir código**, pero cada artefacto es corto, las tareas son pocas y verticales, y cada spec es una rama y un PR.
 Las garantías no negociables no cambian: pruebas primero, aislamiento entre cuentas, migraciones reversibles, ADR
 para dependencias nuevas, y `design-findings.md` y `pendientes.md` al día. Decisión: ADR-0023 (reemplaza a ADR-0009).
-ADR-0033 enmienda la secuencia: al crear una spec que todavía no tiene carpeta, `/spec` escribe spec, plan y tareas
+ADR-0034 enmienda la secuencia: al crear una spec que todavía no tiene carpeta, `/spec` escribe spec, plan y tareas
 en una pasada. Las carpetas que ya existen no se reescriben.
 Encaja con Crystal Clear: la reunión de **planificación** de cada fase decide qué specs entran y quién es dueño;
 la reunión de **revisión** verifica las specs terminadas.

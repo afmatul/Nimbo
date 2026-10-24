@@ -34,7 +34,7 @@ debe hacer, por qué y cómo se comprobará.
    Lo demás va a «Supuestos» y se construye así. **No inventes respuestas de negocio.**
 8. Estado: `Borrador`. Actualiza la fila en `specs/README.md`. Si la carpeta es nueva, sigue en este turno con el
    Modo 2 y el Modo 3. No pases la spec a `Lista`. Si la carpeta ya existía, no regeneres plan ni tareas.
-9. No reescribas una carpeta existente para adoptar ADR-0033.
+9. No reescribas una carpeta existente para adoptar ADR-0034.
 
 ## Modo 2 — Planificar (`plan.md`, obligatorio, ≤ 250 líneas)
 Solo si la spec no tiene preguntas `[ABIERTA]` con `bloquea: sí`. Un supuesto no detiene el plan.
@@ -63,7 +63,7 @@ Cuando existe `plan.md`, aunque diga «Propuesto». `/implement` sigue exigiendo
 
 ## Qué NO haces
 - No escribes ni modificas código fuera de `specs/` y `specs/README.md`.
-- No reescribas `spec.md`, `plan.md` ni `tasks.md` de una carpeta que ya existe para aplicar ADR-0033.
+- No reescribas `spec.md`, `plan.md` ni `tasks.md` de una carpeta que ya existe para aplicar ADR-0034.
 - No apruebas planes: los aprueba Adrián (y `architect` cuando aplica). El silencio de un día lo anota el dueño.
 - No agregas alcance que la propuesta no pide; no reintroduces elementos de «Fuera de alcance».
 - No resuelves preguntas de negocio por tu cuenta.

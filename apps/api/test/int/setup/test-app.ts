@@ -6,6 +6,7 @@ import type {
   Type,
 } from '@nestjs/common';
 import { ModulesContainer } from '@nestjs/core';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import { Logger } from 'nestjs-pino';
@@ -139,7 +140,9 @@ const envFor = (options: TestAppOptions): Env => {
 
 /**
  * App de integración equivalente a `main.ts`: sin analizadores por defecto y con `configureHttpApp` (correlación,
- * versión, `trust proxy`, CORS, solo JSON, prefijo y filtro), con el logger capturado en memoria. Los módulos del
+ * versión, `trust proxy`, CORS, solo JSON, prefijo y filtro), con el logger capturado en memoria. Carga
+ * `EventEmitterModule.forRoot()` como las raíces del `api` y del `worker` (ADR-0019): desde 019 `storage` publica
+ * `storage.file-version-created` en ambos procesos, así que una suite no lo vuelve a importar. Los módulos del
  * `worker` que se compongan escriben en el mismo `LogSink`. No escucha en un puerto: `supertest` habla con
  * `app.getHttpServer()`.
  *
@@ -160,6 +163,7 @@ export const createTestApp = async (options: TestAppOptions = {}): Promise<TestA
       EnvModule.forRoot(env),
       MinioConfigModule.forRoot(env),
       SharedModule,
+      EventEmitterModule.forRoot(),
       AuthGuardsModule,
       ...(usesTestStrategy ? [ProbeModule] : []),
       ...(options.modules ?? []),

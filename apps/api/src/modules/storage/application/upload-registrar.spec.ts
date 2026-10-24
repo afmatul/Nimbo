@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { FakePlanLimitsProvider } from '../../../../test/support/fake-plan-limits.provider';
 import {
   FakeAuditLogger,
+  FakeDomainEventPublisher,
   FakeNodeRepository,
   FakeObjectStorage,
   FakeQuotaRepository,
@@ -15,6 +16,7 @@ import { createActor, FixedClock, Role } from '../../../shared';
 import type { Actor } from '../../../shared';
 import { File } from '../domain/file';
 import { FileName } from '../domain/file-name.vo';
+import { FILE_VERSION_CREATED } from '../domain/file-version-created.event';
 import { TrashState } from '../domain/trash-state';
 import { UploadSession } from '../domain/upload-session';
 
@@ -56,9 +58,10 @@ function setup() {
     new FakeAuditLogger(journal),
     logger,
   );
-  const fileVersions = new FileVersionService(quotas, versions, nodes, pruner, logger);
+  const events = new FakeDomainEventPublisher(journal);
+  const fileVersions = new FileVersionService(quotas, versions, nodes, pruner, events, logger);
   const registrar = new UploadRegistrar(transactions, quotas, sessions, nodes, fileVersions, clock);
-  return { journal, quotas, sessions, nodes, versions, objects, registrar };
+  return { journal, quotas, sessions, nodes, versions, objects, events, registrar };
 }
 
 type Setup = ReturnType<typeof setup>;
@@ -135,6 +138,7 @@ describe('UploadRegistrar con reemplazo (014)', () => {
     const registration = await ctx.registrar.register(ANA, session, VERIFIED);
 
     expect(registration).toEqual({ outcome: 'destination_gone' });
+    expect(ctx.events.published).toEqual([]);
     expect(ctx.sessions.sessions.get(session.id)?.state).toBe('cancelada');
     expect(ctx.versions.numbersOf(file.id)).toEqual([1]);
     expect(ctx.quotas.added).toEqual([]);
@@ -149,6 +153,7 @@ describe('UploadRegistrar con reemplazo (014)', () => {
     const registration = await ctx.registrar.register(ANA, session, VERIFIED);
 
     expect(registration).toEqual({ outcome: 'race_lost' });
+    expect(ctx.events.published).toEqual([]);
     expect(ctx.versions.numbersOf(file.id)).toEqual([1, 2, 3]);
     expect(ctx.quotas.added).toEqual([]);
   });
@@ -161,5 +166,32 @@ describe('UploadRegistrar con reemplazo (014)', () => {
 
     expect(registration.outcome === 'registered' && registration.version.number).toBe(1);
     expect(ctx.nodes.inserted.map(({ file }) => file.id)).toEqual([session.fileId]);
+  });
+
+  it.each([
+    ['carga nueva', false],
+    ['reemplazo', true],
+  ])('019 RN-11: una %s anuncia la versión vigente después del commit', async (_case, replaces) => {
+    const ctx = setup();
+    const file = replaces ? seedVersionedFile(ctx, ANA, [100n]) : null;
+    const session = activeUpload(ctx, file);
+
+    const registration = await ctx.registrar.register(ANA, session, VERIFIED);
+
+    if (registration.outcome !== 'registered') throw new Error('La carga no se registró');
+    expect(ctx.events.published).toEqual([
+      {
+        name: FILE_VERSION_CREATED,
+        payload: {
+          fileId: session.fileId,
+          versionId: registration.version.id,
+          ownerId: ANA.id,
+          kind: 'docx',
+        },
+      },
+    ]);
+    expect(ctx.journal.indexOf(`events:${FILE_VERSION_CREATED}`)).toBeGreaterThan(
+      ctx.journal.indexOf('tx:end'),
+    );
   });
 });

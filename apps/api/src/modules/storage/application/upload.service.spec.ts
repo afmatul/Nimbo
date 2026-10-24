@@ -5,6 +5,7 @@ import type { InitUploadInput } from '@nimbo/contracts';
 import { FakePlanLimitsProvider } from '../../../../test/support/fake-plan-limits.provider';
 import {
   FakeAuditLogger,
+  FakeDomainEventPublisher,
   FakeFileTypeDetector,
   FakeNodeRepository,
   FakeObjectStorage,
@@ -106,7 +107,8 @@ function setup() {
     audit,
     logger,
   );
-  const fileVersions = new FileVersionService(quotas, versions, nodes, pruner, logger);
+  const events = new FakeDomainEventPublisher(journal);
+  const fileVersions = new FileVersionService(quotas, versions, nodes, pruner, events, logger);
   const service = new UploadService(
     transactions,
     rateLimiter,
@@ -938,7 +940,7 @@ async function uploadedSimple(ctx: Setup): Promise<UploadSession> {
 }
 
 describe('UploadService.complete: registro final', () => {
-  it('CA-1: en una transacción bloquea el uso, cierra la carga, nombra, inserta y suma el tamaño real', async () => {
+  it('CA-1, 019 RN-11: en una transacción bloquea el uso, cierra la carga, nombra, inserta y suma el tamaño real; tras el commit anuncia la versión', async () => {
     const ctx = setup();
     const session = await uploadedSimple(ctx);
 
@@ -953,6 +955,7 @@ describe('UploadService.complete: registro final', () => {
       'nodes:insertWithVersion',
       'quota:addUsedBytes',
       'tx:end',
+      'events:storage.file-version-created',
       'audit:file.upload_completed',
     ]);
     expect(ctx.quotas.added).toEqual([BigInt(MIB)]);

@@ -3,6 +3,7 @@ import { PinoLogger } from 'nestjs-pino';
 
 import {
   createActor,
+  errorClassOf,
   I_ACCESS_TOKEN_VERIFIER,
   I_RATE_LIMITER,
   InsufficientRoleError,
@@ -17,7 +18,6 @@ import {
 } from '../../../shared';
 import { RealtimeTooManyRequestsError } from '../domain/errors';
 
-import { errorClassOf } from './error-class';
 import { REALTIME_CONFIG, type RealtimeConfig } from './realtime-config';
 
 /** Ventana del límite de intentos de conexión: la variable de entorno los fija «por minuto» (CA-14). */

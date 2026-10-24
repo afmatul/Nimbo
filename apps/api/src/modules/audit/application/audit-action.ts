@@ -43,6 +43,14 @@ export enum AuditAction {
   FILE_VERSION_CREATED = 'file.version_created',
   EDIT_SESSION_OPENED = 'edit.session_opened',
   EDIT_SAVE_FAILED = 'edit.save_failed',
+  /**
+   * Indexación (019 §5, D-6, CA-21): `attributes` con `versionId` y, según el resultado, `reason`, `durationMs` o
+   * `fragmentCount`; nunca texto, nombres de archivo, extractos ni vectores. El reintento lleva como actor a quien lo pulsó.
+   */
+  FILE_INDEXED = 'file.indexed',
+  FILE_INDEX_UNINDEXABLE = 'file.index_unindexable',
+  FILE_INDEX_FAILED = 'file.index_failed',
+  FILE_INDEX_RETRIED = 'file.index_retried',
 }
 
 const AUDIT_ACTIONS: ReadonlySet<string> = new Set(Object.values(AuditAction));

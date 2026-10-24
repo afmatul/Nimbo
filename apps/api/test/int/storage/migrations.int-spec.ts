@@ -6,6 +6,7 @@ import { CrearArchivoYVersionArchivo20260930100100 } from '../../../src/migratio
 import { CrearCarga20260930100200 } from '../../../src/migrations/20260930100200-crear-carga';
 import { PoliticasRlsArchivoVersionCarga20260930100300 } from '../../../src/migrations/20260930100300-politicas-rls-archivo-version-carga';
 import { CrearAccesoRapido20261003100000 } from '../../../src/migrations/20261003100000-crear-acceso-rapido';
+import { CrearIndexacionYFragmento20261022100000 } from '../../../src/migrations/20261022100000-crear-indexacion-y-fragmento';
 import type { Actor } from '../../../src/shared';
 import { buildDataSourceOptions, createActor, Role } from '../../../src/shared';
 import { connectAsOwner } from '../../support/database-urls';
@@ -193,7 +194,8 @@ describe('migración crear-archivo-y-version-archivo (CA-1, CA-6)', () => {
     const migration = new CrearArchivoYVersionArchivo20260930100100();
 
     const [afterDown, indexes] = await inRolledBackTransaction(owner, async (runner) => {
-      /** `acceso_rapido` (006 §9.2) referencia `archivo`: se revierte antes, como en un `migration:revert` en orden. */
+      /** `indexacion`/`fragmento` (019) y `acceso_rapido` (006 §9.2) referencian `archivo`: se revierten antes, como en un `migration:revert` en orden. */
+      await new CrearIndexacionYFragmento20261022100000().down(runner);
       await new CrearAccesoRapido20261003100000().down(runner);
       await migration.down(runner);
       const [tables] = (await runner.query(

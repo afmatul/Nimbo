@@ -6,6 +6,8 @@ import { TransactionContext } from '../../../../shared';
 import type { Actor } from '../../../../shared';
 import { accessibleNodes, ownedFiles } from '../../../access';
 import type {
+  FileVersionRef,
+  IdPage,
   INodeRepository,
   NodeListPage,
   NodeListQuery,
@@ -172,14 +174,27 @@ export class TypeOrmNodeRepository implements INodeRepository {
   }
 
   async findOwnedFile(actor: Actor, id: string): Promise<File | null> {
-    const owned = nodesIn(ownedFiles(actor), `${FILE_ALIAS}.id`, 'archivo');
-    const row = await this.context
-      .requireActorScope(actor)
-      .createQueryBuilder(ArchivoOrmEntity, FILE_ALIAS)
-      .where(owned.sql, { ...owned.parameters })
-      .andWhere(`${FILE_ALIAS}.id = :id`, { id })
-      .getOne();
+    const row = await this.ownedFileRows(actor).andWhere(`${FILE_ALIAS}.id = :id`, { id }).getOne();
     return row === null ? null : toFile(row);
+  }
+
+  async listOwnedFiles(actor: Actor, page: IdPage): Promise<readonly File[]> {
+    const builder = this.ownedFileRows(actor).orderBy(`${FILE_ALIAS}.id`, 'ASC').limit(page.limit);
+    if (page.afterId !== null) {
+      builder.andWhere(`${FILE_ALIAS}.id > :afterId`, { afterId: page.afterId });
+    }
+    return (await builder.getMany()).map(toFile);
+  }
+
+  /** `FOR SHARE` solo del archivo (`archivo` de la consulta exterior; el fragmento de `access` no se bloquea). */
+  async lockCurrentVersion(actor: Actor, ref: FileVersionRef): Promise<boolean> {
+    const row = await this.ownedFileRows(actor)
+      .select(`${FILE_ALIAS}.id`)
+      .andWhere(`${FILE_ALIAS}.id = :fileId`, { fileId: ref.fileId })
+      .andWhere(`${FILE_ALIAS}.versionActualId = :versionId`, { versionId: ref.versionId })
+      .setLock('pessimistic_read')
+      .getOne();
+    return row !== null;
   }
 
   async findLiveFileByName(
@@ -350,6 +365,15 @@ export class TypeOrmNodeRepository implements INodeRepository {
   /** Archivos vivos que el actor ve. */
   private liveFiles(actor: Actor): SelectQueryBuilder<ArchivoOrmEntity> {
     return this.liveNodes(actor, ArchivoOrmEntity, FILE_ALIAS, 'archivo');
+  }
+
+  /** Archivos del actor, vivos o en la papelera (`ownedFiles`, PD-112). */
+  private ownedFileRows(actor: Actor): SelectQueryBuilder<ArchivoOrmEntity> {
+    const owned = nodesIn(ownedFiles(actor), `${FILE_ALIAS}.id`, 'archivo');
+    return this.context
+      .requireActorScope(actor)
+      .createQueryBuilder(ArchivoOrmEntity, FILE_ALIAS)
+      .where(owned.sql, { ...owned.parameters });
   }
 
   /** Carpetas vivas que el actor ve. */

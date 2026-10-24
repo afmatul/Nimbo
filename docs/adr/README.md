@@ -8,11 +8,11 @@ Son la base para defender la arquitectura en la exposición final (enunciado §6
 |---|---|---|
 | 0001 | [Monolito modular con worker separado](0001-monolito-modular-con-worker-separado.md) | Aceptado |
 | 0002 | [NestJS + TypeORM con migraciones manuales](0002-nestjs-typeorm-migraciones-manuales.md) | Aceptado |
-| 0003 | PostgreSQL + pgvector; dimensión de embeddings fija | Pendiente |
+| 0003 | [PostgreSQL con pgvector; `vector(768)` fijo e índice HNSW](0003-postgresql-con-pgvector.md) (spec 019) | Aceptado |
 | 0004 | [ONLYOFFICE Docs como editor, solo para `.docx`](0004-onlyoffice-docs-solo-para-docx.md) (spec 016) | Aceptado |
 | 0005 | [Autorización en la consulta + RLS como segunda barrera](0005-autorizacion-en-la-consulta-y-rls.md) | Aceptado |
 | 0006 | Pagos simulados detrás de `PaymentGateway` | Pendiente |
-| 0007 | Modelo de lenguaje detrás de puertos propios | Pendiente |
+| 0007 | [Modelos de lenguaje y de embeddings detrás de puertos propios](0007-modelo-de-lenguaje-detras-de-puertos-propios.md) (spec 019; `ILanguageModel` con 020) | Aceptado |
 | 0008 | [Verificación automática de fronteras entre módulos](0008-verificacion-automatica-de-fronteras.md) (`eslint-plugin-boundaries` + `import-x`) | Aceptado |
 | 0009 | [Crystal Clear + SDD como proceso](0009-crystal-clear-y-sdd-como-proceso.md) | Reemplazado por 0023 |
 | 0010 | [Separar M3 en `access`/`sharing` y extraer `audit`, `realtime`, `notifications`](0010-separacion-de-modulos.md) (DF-02, 03, 30, 34) | Aceptado |
@@ -36,7 +36,8 @@ Son la base para defender la arquitectura en la exposición final (enunciado §6
 | 0030 | [Socket.IO en el `api` con los paquetes oficiales de Nest y sin adaptador de Redis](0030-socketio-en-el-api-sin-adaptador-de-redis.md) (spec 015) | Aceptado |
 | 0031 | [La referencia del instrumento de pago se guarda en claro bajo RLS, no como hash](0031-referencia-del-instrumento-de-pago-en-claro-bajo-rls.md) (delimita Art. IX.6; spec 010, M-2) | Aceptado |
 | 0032 | [La solo lectura por vencimiento se comprueba en los servicios de escritura con `PlanLimits.readOnly`](0032-solo-lectura-por-planlimits-en-los-servicios-de-escritura.md) (enmienda `architecture.md` §7.5 y la nota de DF-51; spec 010; antes numerado 0029) | Aceptado |
-| 0033 | [SDD express en un pase: spec, plan y tareas juntos](0033-sdd-express-un-pase.md) (enmienda la secuencia de ADR-0023) | Propuesto |
+| 0033 | [Extracción de texto (`fflate`, `fast-xml-parser`, Ghostscript), embeddings por REST y relay `index-status`](0033-extraccion-de-texto-y-embeddings-por-rest.md) (spec 019, DF-78) | Aceptado |
+| 0034 | [SDD express en un pase: spec, plan y tareas juntos](0034-sdd-express-un-pase.md) (enmienda la secuencia de ADR-0023) | Propuesto |
 
 Estados: `Pendiente` (sin redactar) · `Propuesto` (redactado, falta acuerdo del equipo) · `Aceptado` · `Reemplazado por`.
 Los ADR 0001, 0002, 0008, 0009, 0014 y 0015 se aceptaron el 26/09/2026 (Adrián, parte de ADR de la T-27 de la spec 000).
@@ -53,6 +54,8 @@ ADR-0021 lo aceptó Adrián el 14/10/2026 en la revisión de la 009, que suma tr
 El 0023 lo redactó y lo aceptó Adrián el 30/09/2026 al adoptar SDD express; reemplaza al 0009 y cambia el Art. I.2 de la constitución.
 El 0024 lo redactó el `architect` y lo aprobó Adrián el 30/09/2026 (dependencia `sonner`, spec 006).
 Los ADR 0004 y 0029 los redactó el `architect` con el plan de la spec 016 (2026-10-16) como `Propuesto`; Adrián los aceptó al aprobar el plan (2026-10-16); 0029 hace una excepción acotada a ADR-0001 y matiza ADR-0030.
-ADR-0033 (2026-10-23) enmienda la secuencia de ADR-0023: un solo pase al crear una spec que todavía no tiene carpeta. No reescribe las que ya existen.
+ADR-0034 (2026-10-23) enmienda la secuencia de ADR-0023: un solo pase al crear una spec que todavía no tiene carpeta. No reescribe las que ya existen.
+
+Los ADR 0003, 0007 y 0033 los redactó el `architect` con el plan de la spec 019 (2026-10-21) como `Propuesto`; Adrián los acepta al aprobar el plan.
 
 Usa `/adr <decisión>` para redactar uno.

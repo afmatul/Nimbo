@@ -1,5 +1,12 @@
 import * as shared from './index';
-import type { Actor, FieldIssue, IClock, IRateLimiter, ITransactionRunner } from './index';
+import type {
+  Actor,
+  FieldIssue,
+  IClock,
+  IDomainEventPublisher,
+  IRateLimiter,
+  ITransactionRunner,
+} from './index';
 
 /** Igualdad estricta de tipos (patrón de `type-challenges`); un fallo aquí lo detecta `pnpm typecheck`. */
 type Equal<X, Y> =
@@ -12,6 +19,9 @@ type _ActorFlagsContentAccess = Expect<Equal<Actor['canReadContent'], boolean>>;
 type _ClockExposesOnlyNow = Expect<Equal<keyof IClock, 'now'>>;
 type _FieldIssueHasExactlyTheDeclaredKeys = Expect<
   Equal<keyof FieldIssue, 'field' | 'reason' | 'message'>
+>;
+type _DomainEventPublisherExposesOnlyPublish = Expect<
+  Equal<keyof IDomainEventPublisher, 'publish'>
 >;
 type _RateLimiterExposesOnlyConsume = Expect<Equal<keyof IRateLimiter, 'consume'>>;
 type _TransactionRunnerExposesRunAndWithActor = Expect<
@@ -83,6 +93,8 @@ const RUNTIME_EXPORTS_BY_TASK = {
     'runWithJobCorrelation',
     'scheduleRepeatableJob',
   ],
+  '019 T-01': ['I_DOMAIN_EVENT_PUBLISHER', 'EventEmitterDomainEventPublisher'],
+  '019 T-FIX-2': ['errorClassOf'],
 } as const;
 
 const ALL_RUNTIME_EXPORTS: readonly string[] = Object.values(RUNTIME_EXPORTS_BY_TASK).flat();
@@ -178,6 +190,14 @@ describe('shared/index.ts (CA-17)', () => {
   it('RN-11: exporta `BIGINT_TRANSFORMER` para las columnas de bytes de cualquier módulo (005 T-25)', () => {
     expectExportsOf('005 T-25');
     expect(shared.BIGINT_TRANSFORMER.from('1')).toBe(1n);
+  });
+  it('019 RN-11: exporta el puerto `IDomainEventPublisher` y su adaptador en proceso (ADR-0019, 019 T-01)', () => {
+    expectExportsOf('019 T-01');
+    expect(typeof shared.I_DOMAIN_EVENT_PUBLISHER).toBe('symbol');
+  });
+  it('RN-5: exporta `errorClassOf`, la única forma de registrar la clase de un error (019 T-FIX-2)', () => {
+    expectExportsOf('019 T-FIX-2');
+    expect(shared.errorClassOf(new TypeError('dato'))).toBe('TypeError');
   });
   it('CA-17: exporta exactamente la lista del plan §6.2 al cerrar el bloque 2 (T-26)', () => {
     expect(exportedKeys()).toEqual([...ALL_RUNTIME_EXPORTS].sort());

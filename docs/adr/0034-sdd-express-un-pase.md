@@ -1,4 +1,4 @@
-# ADR-0033 — SDD express en un pase: spec, plan y tareas juntos
+# ADR-0034 — SDD express en un pase: spec, plan y tareas juntos
 
 | Campo | Valor |
 |---|---|

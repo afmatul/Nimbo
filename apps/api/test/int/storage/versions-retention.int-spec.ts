@@ -61,7 +61,7 @@ describe('registro y poda de versiones con el plan Personal (014 CA-13, CA-19)',
     const objectKey = ObjectKey.of(client.id, fileId, id);
     await storage.putObject(objectKey.value, textBytes(sizeBytes));
     const transactions = app.get<ITransactionRunner>(I_TRANSACTION_RUNNER);
-    const { version } = await transactions.withActor(actor, async () => {
+    const registered = await transactions.withActor(actor, async () => {
       const file = await nodes.findAccessibleById(actor, fileId);
       if (file === null) throw new Error('El archivo no está vivo');
       const buildVersion = (number: number): FileVersion =>
@@ -76,8 +76,8 @@ describe('registro y poda de versiones con el plan Personal (014 CA-13, CA-19)',
         });
       return service.register(actor, { file, buildVersion });
     });
-    await service.afterCommit(actor, fileId);
-    return version;
+    await service.afterCommit(actor, registered);
+    return registered.version;
   };
 
   it('CA-13, CA-19: al pasar el límite poda la más antigua (objeto, fila y espacio), audita sin nombres ni claves y no reutiliza números', async () => {

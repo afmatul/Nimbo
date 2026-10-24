@@ -16,13 +16,11 @@ import type { EditingConfig, OnlyOfficeConnection } from './application/editing-
 import { EditorAvailability } from './application/editor-availability';
 import { I_DOCUMENT_EDITOR } from './application/ports/i-document-editor.port';
 import { I_EDIT_SESSION_REPOSITORY } from './application/ports/i-edit-session.repository.port';
-import { I_INDEX_QUEUE } from './application/ports/i-index-queue.port';
 import { I_SAVE_VERSION_QUEUE } from './application/ports/i-save-version-queue.port';
 import { PresenceService } from './application/presence.service';
 import { SaveCallbackHandler } from './application/save-callback.handler';
 import { SaveFailedNotifier } from './application/save-failed-notifier';
 import { SaveVersionService } from './application/save-version.service';
-import { INDEX_QUEUE, IndexQueue } from './infrastructure/index.queue';
 import { OnlyOfficeEditor } from './infrastructure/onlyoffice-editor';
 import { TypeOrmEditSessionRepository } from './infrastructure/persistence/typeorm-edit-session.repository';
 import { SaveVersionProcessor } from './infrastructure/save-version.processor';
@@ -64,8 +62,9 @@ export interface EditingDependencies {
  * Módulo `editing` (M5, plan 016 §2). `forRoot(env, { storage, realtime })` recibe las **mismas** instancias que la
  * raíz, como `realtime` con `identity`. `I_PLAN_LIMITS_PROVIDER` e `I_USER_DIRECTORY` los enlaza la raíz (globales);
  * `SharedModule` (global) aporta reloj y transacciones, y la raíz `EventEmitterModule.forRoot()` para
- * `realtime.document-left` (ADR-0019). Sin `billing` (DF-74, plan §2). Registra las colas `editing-save` (con su
- * procesador **en el `api`**, ADR-0029) e `indexing` (sin consumidor hasta 019).
+ * `realtime.document-left` (ADR-0019). Sin `billing` (DF-74, plan §2). Registra la cola `editing-save` (con su
+ * procesador **en el `api`**, ADR-0029); la reindexación de lo guardado la programa `intelligence` al recibir
+ * `storage.file-version-created` (019 RN-11): `editing` ya no encola en `indexing`.
  */
 @Module({})
 export class EditingModule {
@@ -80,7 +79,7 @@ export class EditingModule {
         AccessModule,
         AuditModule,
         JwtModule.register({}),
-        BullModule.registerQueue({ name: SAVE_VERSION_QUEUE }, { name: INDEX_QUEUE }),
+        BullModule.registerQueue({ name: SAVE_VERSION_QUEUE }),
       ],
       controllers: [EditorController, OnlyOfficeController],
       providers: [
@@ -102,7 +101,6 @@ export class EditingModule {
         EditSessionService,
         DocumentContentService,
         { provide: I_SAVE_VERSION_QUEUE, useClass: SaveVersionQueue },
-        { provide: I_INDEX_QUEUE, useClass: IndexQueue },
         SaveFailedNotifier,
         SaveCallbackHandler,
         SaveVersionService,

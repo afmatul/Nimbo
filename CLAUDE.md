@@ -44,7 +44,7 @@ comportarse distinto a lo que dice la spec, primero se corrige la spec y despué
 /spec  →  resumen para Adrián  →  /implement  →  /review  →  PR + CI + aprobación de Adrián  →  squash merge
 ```
 
-`/spec` escribe spec, plan y tareas en una pasada (ADR-0033). El plan es obligatorio y se aprueba antes del código,
+`/spec` escribe spec, plan y tareas en una pasada (ADR-0034). El plan es obligatorio y se aprueba antes del código,
 sobre el resumen de ≤ 15 líneas; `architect` solo interviene si agrega un puerto entre módulos, tecnología nueva o
 cambia la arquitectura. Las carpetas de spec que ya existen no se reescriben. Artefactos cortos (spec ≤ 150 líneas,
 plan ≤ 250, 5–12 tareas de una línea), una rama y un PR por spec, pruebas por riesgo y aislamiento siempre que haya

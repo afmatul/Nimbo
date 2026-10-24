@@ -3,8 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PinoLogger } from 'nestjs-pino';
 
 import type { Actor } from '../../../shared';
-import { InsufficientRoleError } from '../../../shared';
-import { errorClassOf } from '../application/error-class';
+import { errorClassOf, InsufficientRoleError } from '../../../shared';
 import {
   REALTIME_DOCUMENT_LEFT,
   type DocumentLeftEvent,

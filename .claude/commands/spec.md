@@ -7,7 +7,7 @@ Necesidad o cambio: $ARGUMENTS
 
 1. Si el argumento empieza con un número de spec que ya tiene carpeta, delega en `planner` en **Modo 1** solo para
    actualizar `spec.md` y el «Registro de cambios». No regeneres `plan.md` ni `tasks.md` salvo que el cambio de
-   alcance lo exija, y no reescribas la carpeta para el formato de ADR-0033.
+   alcance lo exija, y no reescribas la carpeta para el formato de ADR-0034.
 2. Si la carpeta no existe, delega en `planner` en **Modo 1, 2 y 3** en este mismo turno (≤ 150, ≤ 250, 5–12 tareas
    de una línea). Si el esbozo pasa de 12 archivos o de una pantalla, parte en dos specs antes de redactar.
 3. Si el planner concluye que la necesidad no rastrea a ningún RF/RNF o está en «Fuera de alcance», no crees la spec: explícalo al usuario.

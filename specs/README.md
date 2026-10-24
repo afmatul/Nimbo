@@ -26,7 +26,7 @@ propias (`storage/preview`, `storage/search`) de Abel y Juan Marcos; los cambios
 
 Mapeo desde el flujo anterior: `Aclarada`/`Planificada` → `Lista`; `En implementación`/`En verificación` → `En curso`.
 Detalle de cada estado y sus compuertas en `docs/sdd/workflow.md` §2. Desde la Fase 2, `Lista` exige `plan.md` aprobado por Adrián.
-Desde ADR-0033, `/spec` escribe spec, plan y tareas juntos cuando la carpeta todavía no existe; las que ya están escritas no se reescriben.
+Desde ADR-0034, `/spec` escribe spec, plan y tareas juntos cuando la carpeta todavía no existe; las que ya están escritas no se reescriben.
 Guía de una página para arrancar una spec: `docs/sdd/guia-rapida.md`.
 
 ## Paso previo: decidir los hallazgos del diseño
@@ -60,7 +60,7 @@ Antes de planificar las specs de Fase 1, el equipo decide en una reunión los ha
 | 016  | [edicion-colaborativa-docx](016-edicion-colaborativa-docx/spec.md)                         | M5                  | RF-25, 26, 28, RNF-02, 09 | 05, 19, 20, 39             | 2    | Adrián | 003, 005, 015, identity (nombre visible) | En revisión (2026-10-17): `/review 016` en `feat/016-edicion-colaborativa-docx` ([plan](016-edicion-colaborativa-docx/plan.md) aprobado por Adrián, visto bueno de `architect`; ADR-0004 y ADR-0029 aceptados; [tareas](016-edicion-colaborativa-docx/tasks.md) T-01…T-11) |
 | 017  | previsualizacion                                                                           | M2                  | RF-27                     | 15                         | 2    | Abel | 005           | Pendiente |
 | 018  | busqueda                                                                                   | M2 (+ M6 contenido) | RF-15                     | 15, 32                     | 2    | Juan Marcos | 005           | Pendiente |
-| 019  | indexacion                                                                                 | M6                  | RF-30, 31, RNF-03         | 07, 14, 37                 | 3    | Adrián | 005, 014      | Pendiente |
+| 019  | [indexacion](019-indexacion/spec.md)                                                       | M6                  | RF-30, 31, RNF-03         | 07, 14, 37                 | 3    | Adrián | 005, 014      | En revisión (2026-10-23): [plan](019-indexacion/plan.md) aprobado; [tareas](019-indexacion/tasks.md) T-01 a T-12 hechas (recorrido de la demo T-11 hecho por Adrián); [review](019-indexacion/review.md) ✅ (T-FIX-1 a T-FIX-3 resueltos), PR pendiente de aprobación |
 | 020  | agente-con-citas                                                                           | M6                  | RF-32, 33, 34, RNF-03     | 08, 14, 15, 25             | 3    | Adrián | 019, 010      | Pendiente |
 | 021  | optimizador                                                                                | M7                  | RF-35, 36                 | 21, 22                     | 3    | Abel | 014           | Pendiente |
 | 022  | operacion-metricas-y-alertas (observabilidad: Prometheus, Grafana, alertas y respaldos; RF-37 pasó a 022b) | transversal         | RNF-18, 20, 21            | 28, 29                     | 3    | Abel | 000           | Pendiente |

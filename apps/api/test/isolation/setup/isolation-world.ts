@@ -2,7 +2,6 @@ import { randomBytes, randomUUID } from 'node:crypto';
 
 import { Module } from '@nestjs/common';
 import type { DynamicModule, Type } from '@nestjs/common';
-import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { LEGAL_DOCUMENTS } from '@nimbo/contracts';
 import type { DataSource, EntityManager } from 'typeorm';
@@ -510,12 +509,14 @@ const insertUploads = async (
 @Module({ controllers: [ProbeController], providers: [ProbeCalls, ProbeResources] })
 class WorldProbeRoutesModule {}
 
-/** Composición de `identity` de `AppModule` (eventos, *throttlers*, `IdentityModule`) con la clave del mundo. */
+/**
+ * Composición de `identity` de `AppModule` (*throttlers* e `IdentityModule`; los eventos los carga `createTestApp`) con
+ * la clave del mundo.
+ */
 const appCompositionFor = (secret: string): WorldAppComposition => ({
   env: { JWT_ACCESS_SECRET: secret },
   accessTokenStrategy: 'identity',
   modules: [
-    EventEmitterModule.forRoot(),
     ThrottlerModule.forRoot({ throttlers: [...IDENTITY_THROTTLERS] }),
     IdentityModule.forRoot(buildTestEnv({ JWT_ACCESS_SECRET: secret })),
   ],
