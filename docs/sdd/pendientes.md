@@ -16,7 +16,7 @@ de eso se pierda entre ramas.
 - «Resolver antes de» es la compuerta que se bloquea si el pendiente sigue abierto. «—» significa que no bloquea nada.
 - `/status` y el `architect` revisan esta lista al cerrar cada fase.
 
-Última actualización: 2026-10-22.
+Última actualización: 2026-10-24.
 
 ## Diagramas por redibujar
 
@@ -143,6 +143,7 @@ decisiones; solo faltan los diagramas.
 | PD-77 | Los colores por tipo de archivo de los mockups (`--file-*` y `.ftile-*`) están copiados en cuatro generadores: `mis-archivos/mis-archivos.js` (dentro de `CSS_LISTA`), `resumen-espacio/generar.js`, `explorador/generar-orden.js` (`img`) y `soporte/generar.js` (011, con `img`). Sacarlos a una pieza única (p. ej. `CSS_TIPOS` con `img`) que importen los cuatro, sin cambiar sus capturas; los tres primeros son de storage (Adrián) | Revisión de la spec 011 (I-5) | Cierre de la Fase 2 | Fátima con Adrián | Abierto |
 | PD-79 | Los valores de los planes Personal y Equipo están escritos a mano en `_generadores/espacio/espacio.js`, `mis-archivos/mis-archivos.js` y `carpetas/carpetas.js`; la fuente única de los mockups es `_generadores/admin/corpus.js` (011). Que esos generadores la lean al regenerarse (sin cambiar sus capturas) | Revisión de la spec 011 (mockups) | Próxima regeneración de esos mockups | Adrián | Abierto |
 | PD-83 | Un solo plan para 008 y 011 (DRY): un esquema en `packages/contracts/src/billing/` (claves en inglés, `conventions.md`), una sola entidad `Plan` con `PlanLimitsSet` y un solo `PlanCard` en `components/nimbo/` (`ui-guidelines.md` §4) con sus variantes de administración y comparador, en lugar de `plan-cards.tsx` (008) y `features/backoffice/plan-card.tsx` (011); el prefijo de errores quedó acordado (2026-10-08): `BILLING_PLAN_*` en la 011 y `PLAN_NOT_FOUND` de 006a sin cambio | `packages/contracts/src/billing/`, `apps/web/src/components/nimbo/`, `apps/api/src/modules/billing/` | Revisión de la spec 011 (H-2, H-13) | Aprobación de los planes 008 y 011 | Juan Marcos con Fátima | Parcial (011 T-09, 2026-10-14): una entidad `Plan`/`PlanLimitsSet` y un esquema de plan en `contracts`; el `PlanCard` único ya está en `components/nimbo/` (008); falta su variante de administración (011 T-11) |
+| PD-132 | El mockup `optimizer/optimizador/` contradice las fuentes de la 021 y se corrige con `/mockup` antes de que la spec pase a `Lista` (los requisitos mandan): (1) «libvips · WebP» cambia el formato (propuesta: «recomprime sin cambiar el formato», 021 RN-6); (2) «Near-lossless» no garantiza «sin alterar su contenido» (RF-36; 021 P-5); (3) «Conservar original 30 días» es opcional y con plazo fijo, y RF-36 exige conservarlo (plazo: 021 P-1, DF-21); (4) «Reindexar al terminar» con cuota de consultas, cuando la 019 reindexa sola cada versión vigente (RN-11) y la cuota del agente es de consultas (RF-34); (5) exclusión por «Firma digital», que ninguna fuente define (021 P-6); (6) PDF de 8.5 y 6.2 GB, por encima del máximo por archivo de cualquier plan (2 GB, `product-context.md` §3; ya anotado en el README del mockup); los grupos de imágenes de 18 y 4.3 GB dependen de 021 P-3 (optimizar por lotes). Faltan los estados no-conviene, procesando, completado y error (`ui-guidelines.md` §7) | Spec 021, revisión del PR #77 (M-2); README del mockup | Spec 021 en `Lista` | Abel (021) con Fátima (sistema de diseño) | Abierto |
 
 ## Cerrados
 
