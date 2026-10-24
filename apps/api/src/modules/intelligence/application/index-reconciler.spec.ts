@@ -17,6 +17,7 @@ import type { ReconcileFiles } from './index-reconciler';
 import { IndexScheduler } from './index-scheduler';
 import type { IntelligenceLogger } from './intelligence-logger';
 import type { ITextExtractor } from './ports/i-text-extractor.port';
+import { MAX_LOGGED_IDS } from './reconcile-tally';
 
 const NOW = new Date('2026-10-22T12:00:00.000Z');
 const BATCH_SIZE = 2;
@@ -36,6 +37,19 @@ const fileOf = (ownerId: string, index: number, kind: FileKind = 'docx'): Indexa
   sizeBytes: 10n,
   currentVersionId: `${ownerId.slice(0, 2)}e00000-0000-4000-8000-00000000000${String(index)}`,
 });
+
+/** `count` archivos `.docx` de la cuenta, con ids que se ordenan como texto igual que como número. */
+const manyFilesOf = (ownerId: string, count: number): IndexableFile[] =>
+  Array.from({ length: count }, (_, index) => {
+    const serial = String(index).padStart(12, '0');
+    return {
+      id: `${ownerId.slice(0, 2)}f00000-0000-4000-8000-${serial}`,
+      ownerId,
+      kind: 'docx',
+      sizeBytes: 10n,
+      currentVersionId: `${ownerId.slice(0, 2)}e00000-0000-4000-8000-${serial}`,
+    };
+  });
 
 /** Simula `WHERE id > $after ORDER BY id LIMIT $limit`. */
 const pageOf = <T>(items: readonly T[], idOf: (item: T) => string, page: IdPage): T[] =>
@@ -198,7 +212,30 @@ describe('IndexReconciler (019 RN-12, CA-23)', () => {
         scheduledVersionIds: [missing.currentVersionId],
         requeuedVersionIds: [stale.currentVersionId],
         failedAccountIds: [],
+        idsTruncated: false,
       },
+    ]);
+  });
+
+  it('CA-23: `index.reconcile_completed` acota cada lista a `MAX_LOGGED_IDS` ids y conserva los conteos totales', async () => {
+    const files = manyFilesOf(ANA, MAX_LOGGED_IDS + 1);
+    const done = fileOf(BETO, 1);
+    const { reconciler, indexings, lines } = setup([ANA, BETO], [...files, done]);
+    const row = rowFor(done, 0, 'indexando').complete({ fragmentCount: 1, durationMs: 5, now: NOW });
+    indexings.byVersion.set(row.versionId, row);
+
+    await reconciler.reconcileAll();
+
+    expect(lines).toEqual([
+      expect.objectContaining({
+        event: 'index.reconcile_completed',
+        accounts: 2,
+        files: MAX_LOGGED_IDS + 2,
+        scheduled: MAX_LOGGED_IDS + 1,
+        requeued: 0,
+        scheduledVersionIds: files.slice(0, MAX_LOGGED_IDS).map((file) => file.currentVersionId),
+        idsTruncated: true,
+      }),
     ]);
   });
 

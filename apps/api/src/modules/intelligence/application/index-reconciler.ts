@@ -14,6 +14,8 @@ import { I_INDEX_QUEUE } from './ports/i-index-queue.port';
 import type { IIndexQueue, IndexJob } from './ports/i-index-queue.port';
 import { I_INDEXING_REPOSITORY } from './ports/i-indexing-repository.port';
 import type { IIndexingRepository } from './ports/i-indexing-repository.port';
+import { ReconcileTally } from './reconcile-tally';
+import type { Repair } from './reconcile-tally';
 
 const MINUTE_MS = 60_000;
 /** Una fila que espera al `worker` sin cambios durante este lapso se da por perdida y se vuelve a encolar (plan 019 §1). */
@@ -40,18 +42,10 @@ export class IndexReconcileIncompleteError extends Error {
   }
 }
 
-/** Qué hizo la conciliación con una versión vigente indexable. */
-type Repair = 'scheduled' | 'requeued' | 'none';
-
-interface Repaired {
-  readonly versionId: string;
-  readonly repair: Repair;
-}
-
-/** Resultado de una cuenta: lo reparado, o `null` si falló. */
-interface AccountResult {
-  readonly ownerId: string;
-  readonly repaired: readonly Repaired[] | null;
+/** La cuenta que se concilia y dónde se anota lo hecho. */
+interface AccountRun {
+  readonly owner: Actor;
+  readonly tally: ReconcileTally;
 }
 
 interface PagedSource<T> {
@@ -59,21 +53,19 @@ interface PagedSource<T> {
   idOf(item: T): string;
 }
 
-/** Recorre `source` por páginas de `limit` por id ascendente y junta lo que devuelve `visit` en cada una. */
-async function collectPages<T, R>(
+/** Recorre `source` por páginas de `limit` por id ascendente y entrega cada una a `visit`, sin juntarlas. */
+async function forEachPage<T>(
   source: PagedSource<T>,
   limit: number,
-  visit: (items: readonly T[]) => Promise<readonly R[]>,
-): Promise<R[]> {
-  const results: R[] = [];
+  visit: (items: readonly T[]) => Promise<void>,
+): Promise<void> {
   let afterId: string | null = null;
   do {
     const items = await source.fetch({ afterId, limit });
-    results.push(...(await visit(items)));
+    await visit(items);
     const last = items.at(-1);
     afterId = items.length === limit && last !== undefined ? source.idOf(last) : null;
   } while (afterId !== null);
-  return results;
 }
 
 const jobOf = (owner: Actor, file: IndexableFile): IndexJob => ({
@@ -81,9 +73,6 @@ const jobOf = (owner: Actor, file: IndexableFile): IndexJob => ({
   versionId: file.currentVersionId,
   ownerId: owner.id,
 });
-
-const versionIdsOf = (repaired: readonly Repaired[], repair: Repair): string[] =>
-  repaired.filter((item) => item.repair === repair).map((item) => item.versionId);
 
 /**
  * Conciliación de la indexación (plan 019 §1, RN-12, CA-23): recorre las cuentas de cliente (`clientIds`, solo UUID) y,
@@ -107,31 +96,31 @@ export class IndexReconciler {
   ) {}
 
   async reconcileAll(): Promise<void> {
-    const accounts = await collectPages(
+    const tally = new ReconcileTally();
+    await forEachPage(
       { fetch: (page) => this.files.clientIds(page), idOf: (id) => id },
       this.config.batchSize,
-      (ids) => this.reconcileAccounts(ids),
+      (ids) => this.reconcileAccounts(ids, tally),
     );
-    const failed = this.logCompleted(accounts);
-    if (failed > 0) throw new IndexReconcileIncompleteError(failed);
+    this.logger.info({ event: 'index.reconcile_completed', ...tally.toLog() });
+    if (tally.failedAccounts > 0) throw new IndexReconcileIncompleteError(tally.failedAccounts);
   }
 
-  private async reconcileAccounts(ids: readonly string[]): Promise<AccountResult[]> {
-    const results: AccountResult[] = [];
+  private async reconcileAccounts(ids: readonly string[], tally: ReconcileTally): Promise<void> {
     for (const ownerId of ids) {
-      results.push({ ownerId, repaired: await this.reconcileAccount(ownerId) });
+      tally.accountVisited();
+      await this.reconcileAccount(ownerId, tally);
     }
-    return results;
   }
 
-  /** Lo reparado en la cuenta; `null` si falló. El error solo deja su clase: el mensaje podría traer datos. */
-  private async reconcileAccount(ownerId: string): Promise<Repaired[] | null> {
+  /** Si la cuenta falla, se anota y se sigue. El error solo deja su clase: el mensaje podría traer datos. */
+  private async reconcileAccount(ownerId: string, tally: ReconcileTally): Promise<void> {
     const owner = createActor(ownerId, Role.CLIENT);
     try {
-      return await collectPages(
+      await forEachPage(
         { fetch: (page) => this.files.listIndexable(owner, page), idOf: (file) => file.id },
         this.config.batchSize,
-        (files) => this.reconcileFiles(owner, files),
+        (files) => this.reconcileFiles({ owner, tally }, files),
       );
     } catch (error) {
       this.logger.error({
@@ -139,20 +128,19 @@ export class IndexReconciler {
         ownerId,
         errorClass: errorClassOf(error),
       });
-      return null;
+      tally.accountFailed(ownerId);
     }
   }
 
-  private async reconcileFiles(owner: Actor, page: readonly IndexableFile[]): Promise<Repaired[]> {
+  private async reconcileFiles(run: AccountRun, page: readonly IndexableFile[]): Promise<void> {
+    const { owner, tally } = run;
     const indexable = page.filter((file) => this.extractors.supports(file.kind));
     const repairs = await this.transactions.withActor(owner, () => this.diagnose(owner, indexable));
-    const repaired: Repaired[] = [];
     for (const [index, file] of indexable.entries()) {
       const repair = repairs[index] ?? 'none';
       await this.apply(owner, file, repair);
-      repaired.push({ versionId: file.currentVersionId, repair });
+      tally.fileReconciled(file.currentVersionId, repair);
     }
-    return repaired;
   }
 
   /** Qué necesita cada versión vigente, leído en una sola transacción de la cuenta. */
@@ -178,25 +166,5 @@ export class IndexReconciler {
     } else if (repair === 'requeued') {
       await this.queue.enqueue(jobOf(owner, file));
     }
-  }
-
-  /** `index.reconcile_completed`: conteos e ids de versión y de cuenta, sin nombres ni texto. Devuelve las fallidas. */
-  private logCompleted(accounts: readonly AccountResult[]): number {
-    const failedAccountIds = accounts.filter((a) => a.repaired === null).map((a) => a.ownerId);
-    const repaired = accounts.flatMap((account) => account.repaired ?? []);
-    const scheduledVersionIds = versionIdsOf(repaired, 'scheduled');
-    const requeuedVersionIds = versionIdsOf(repaired, 'requeued');
-    this.logger.info({
-      event: 'index.reconcile_completed',
-      accounts: accounts.length,
-      failedAccounts: failedAccountIds.length,
-      files: repaired.length,
-      scheduled: scheduledVersionIds.length,
-      requeued: requeuedVersionIds.length,
-      scheduledVersionIds,
-      requeuedVersionIds,
-      failedAccountIds,
-    });
-    return failedAccountIds.length;
   }
 }

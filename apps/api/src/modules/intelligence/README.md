@@ -60,7 +60,10 @@ cuenta y con su propio actor encola las versiones vigentes indexables sin fila y
 30 min; repetirla no duplica trabajos ni fragmentos (CA-9). Cubre eventos perdidos y archivos previos (RN-12, CA-23). El
 Operador la lanza una vez con `pnpm --filter api index:reconcile`; `pnpm seed`, cuando exista el corpus (D-5), usa el
 mismo gancho (`requestIndexReconcile` de `index.ts`, la única pieza de infraestructura que se exporta, solo para
-scripts). Resultado en la bitácora del `worker`: `index.reconcile_completed` (conteos e ids, sin nombres ni texto).
+scripts). Resultado en la bitácora del `worker`: `index.reconcile_completed` con los conteos totales (`accounts`,
+`failedAccounts`, `files`, `scheduled`, `requeued`) y, como mucho, `MAX_LOGGED_IDS` (100) ids por lista
+(`scheduledVersionIds`, `requeuedVersionIds`, `failedAccountIds`); `idsTruncated` dice si alguna lista se cortó. Sin
+nombres ni texto.
 
 ## Aislamiento
 
