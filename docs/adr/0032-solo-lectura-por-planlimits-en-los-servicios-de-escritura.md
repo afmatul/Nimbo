@@ -61,7 +61,8 @@ justificación: los consume `storage` mismo. Juan Marcos acordó en la spec 010 
    integración recorre **todas** las rutas de escritura de `storage` (las diez de la 010: `POST /uploads`,
    `POST /uploads/:id/complete`, `POST /folders`, `PATCH /folders/:id`, `POST /folders/:id/move`, `PATCH /files/:id`,
    `POST /files/:id/move`, `POST /files/:id/versions/:versionId/restore`, `POST /trash/files/:id/restore` y
-   `POST /trash/folders/:id/restore`) y una lista explícita de las permitidas, incluidos los `POST` que no escriben
+   `POST /trash/folders/:id/restore`, más `POST /backoffice/client-trash/:nodeId/restore` de la 011b) y una lista
+   explícita de las permitidas, incluidos los `POST` que no escriben
    contenido: papelera (`DELETE /files/:id`, `DELETE /folders/:id`), purga (`DELETE /trash/files/:id`,
    `DELETE /trash/folders/:id`), vaciar (`DELETE /trash`), accesos rápidos (`PUT` y `DELETE /quick-access/pins/…`,
    `POST /quick-access/recents/…`), descargas (`POST /files/:id/download-url` y

@@ -1,12 +1,12 @@
-# ADR-0034 — Escrituras internas acotadas: funciones `SECURITY DEFINER` para la cuenta y RLS por estado para la papelera
+# ADR-0034 — Escrituras internas acotadas: funciones `SECURITY DEFINER` para la cuenta y la papelera
 
 | Campo | Valor |
 |---|---|
-| Estado | Propuesto (2026-10-22) |
+| Estado | Propuesto (2026-10-22; corregido el 2026-10-23 tras el PR #74). **Enmienda ADR-0005 y ADR-0021**; delimita ADR-0032 regla 3. Se acepta antes del código del PR-A |
 | Fecha | 2026-10-22 |
 | Numeración | 0034 desde 2026-10-23: el 0033 queda reservado por el ADR de compartición de la 012 (PR #61) |
-| Decisores | `architect`, Fátima (dueña de 011/011b), Adrián (aprueba) |
-| Specs relacionadas | 011b (RF-05, RF-06, RF-12, RF-22, RF-23, RF-24); hereda 004, 006, 009, 010 y 011 |
+| Decisores | `architect`, Fátima (dueña de 011/011b), Adrián (aprueba `storage`/`identity`/`audit`), Juan Marcos (dueño de `billing`) |
+| Specs relacionadas | 011b (RF-05, RF-06, RF-07, RF-12, RF-22, RF-23, RF-24); hereda 004, 006, 009, 010 y 011 |
 
 ## Contexto
 
@@ -17,6 +17,20 @@ política `suscripcion_administracion` es `SELECT` y las de `archivo`/`carpeta` 
 (006) no sirve: exige `WritableAccountPolicy`, consulta con `ownedTrashedNodes(actor)` —vacío para un actor interno— y
 audita fuera de la transacción contra el propio actor.
 
+Una política RLS **no puede limitar columnas ni comparar el valor viejo con el nuevo**. La política de Soporte que
+proponía el primer plan (`USING` filas en papelera, `WITH CHECK` solo rol) dejaba cambiar `propietario_id`,
+`version_actual_id`, `tamano_bytes`, `tipo`, `purgar_en` o la carpeta de un archivo en papelera; como
+`version_archivo_cliente` da acceso a las versiones a través de `archivo`, el dueño nuevo podía ver y descargar el
+contenido del anterior. Un `GRANT` por columna tampoco sirve: `nimbo_app` es el mismo rol de BD para el cliente y para
+Soporte, así que limitaría también al cliente.
+
+Además, la restauración de 006 reubica `ruta` y `profundidad` **después** de sacar el subárbol de la papelera. Con una
+política de Soporte limitada a filas en papelera, esas filas ya estarían vivas y el `UPDATE` afectaría a 0 filas sin
+error: el árbol quedaría roto y el límite de profundidad se podría saltar. En `suscripcion`, `FORCE RLS` somete también
+al dueño de la tabla; sin una política `UPDATE` para el dueño, una función `SECURITY DEFINER` actualizaría 0 filas y el
+servicio creería que guardó. Por eso las funciones de cuenta son `VOLATILE` (no `STABLE`) y la política del dueño se
+declara explícitamente.
+
 Fuerzas: sin suplantación (regla dura del proyecto), autorización resuelta en la consulta y RLS como segunda barrera
 (ADR-0005), auditoría y cambio en la misma transacción (004 D-5), y el cliente debe ver el motivo sin que aparezca en
 logs. La 011b es la primera escritura interna sobre `storage` de un cliente.
@@ -26,49 +40,82 @@ logs. La 011b es la primera escritura interna sobre `storage` de un cliente.
 1. **A. Políticas `UPDATE` directas para `ADMIN` y `SUPPORT` sobre `nimbo_app`.**
    - Pros: una sola migración de políticas y SQL directo desde los repositorios; sin funciones.
    - Contras: abre `suscripcion` y las tablas de nodos a escrituras directas de cualquier consulta con ese rol; la
-     autorización quedaría solo en el código y la política no distingue una raíz de papelera de un nodo vivo.
-2. **B. Funciones `SECURITY DEFINER` para `suscripcion` y políticas `UPDATE` limitadas al estado de papelera para `storage`.**
-   - Pros: mantiene cerradas las escrituras directas del Administrador (patrón de ADR-0021, ya usado por 009/010); para
-     Soporte, la política solo alcanza filas con `eliminado_en IS NOT NULL` y el `WITH CHECK` solo permite sacarlas de la
-     papelera; el resto de la autorización (correo, propietario, raíz, retención) se resuelve en la consulta.
-   - Contras: dos mecanismos distintos; la política de Soporte es amplia dentro de las filas en papelera y depende de que
-     exista un único camino de código; suma SQL `SECURITY DEFINER` que hay que probar con un dueño sin `SUPERUSER`.
-3. **C. Reutilizar los servicios del cliente fabricando un `Actor` del dueño.**
+     política no puede limitar columnas, así que la autorización quedaría solo en el código y un `UPDATE` directo podría
+     cambiar el dueño, el tamaño o la retención. Descartada por seguridad (SEC-1, SEC-3).
+2. **B. Funciones `SECURITY DEFINER` para la cuenta y para la restauración, con políticas del dueño acotadas.**
+   - Pros: `nimbo_app` no gana escrituras directas; una fila por `usuario_id` en la cuenta; la restauración valida dueño,
+     raíz, retención y destino dentro de la misma transacción; el orden de `ruta`/`profundidad` queda dentro de la
+     función, antes de sacar el subárbol de la papelera; un solo mecanismo para las dos operaciones.
+   - Contras: más SQL `SECURITY DEFINER` que probar con un dueño sin `SUPERUSER`; la función de restauración toca varias
+     filas del subárbol y debe comprobar conteos; el dueño de la tabla necesita políticas `TO CURRENT_USER` que solo usa
+     la función.
+3. **C. Mixta: función para `suscripcion` y políticas `UPDATE` por estado para `storage`.**
+   - Pros: menos SQL en `storage`.
+   - Contras: mantiene dos mecanismos y no resuelve la restricción por columnas ni el orden de la reubicación; la política
+     sigue siendo amplia dentro de la papelera. Descartada tras B-1/B-2.
+4. **D. Reutilizar los servicios del cliente fabricando un `Actor` del dueño.**
    - Contras: es suplantación, prohibida por la constitución y por la 011; además perdería el rol `SUPPORT` en la auditoría.
-4. **D. Posponer.**
+5. **E. Posponer.**
    - Contras: la matriz de roles de la 011 ya define estas operaciones y la Fase 3 las necesita.
 
 ## Decisión
 
 **Opción B**, con estas reglas:
 
-1. **Cuota y vigencia (Administrador):** `suscripcion` no gana políticas de escritura. Dos funciones
-   `SECURITY DEFINER` propiedad del rol que migra, con `REVOKE ALL … FROM PUBLIC` y `EXECUTE` solo para `nimbo_app`,
-   comprueban `nimbo_actor_role() = 'ADMIN'` y operan una fila por `usuario_id`:
-   `bloquear_suscripcion_cliente` (devuelve plan, estado, `vence_en` y el extra con `FOR UPDATE`) y
-   `ajustar_suscripcion_cliente` (guarda cuota y vigencia y resetea los avisos). Se llaman dentro de
-   `InternalActionService.run`, así que el evento y el cambio son atómicos.
-2. **Restauración (Soporte):** `archivo` y `carpeta` ganan una política `FOR UPDATE TO nimbo_app` con
-   `USING (nimbo_actor_role() = 'SUPPORT' AND eliminado_en IS NOT NULL)` y `WITH CHECK (nimbo_actor_role() = 'SUPPORT')`. No se concede
-   `INSERT` ni `DELETE` a Soporte, ni acceso a `version_archivo`, `carga` o `clave_objeto`. Un único servicio de
-   `storage` (`SupportTrashService`) resuelve el cliente por correo, filtra `propietario_id`,
-   `eliminado_con_carpeta_id IS NULL` y `purgar_en > ahora`, bloquea la raíz con `FOR UPDATE` y reutiliza la semántica de
-   006 (carpeta original, renombrado, raíz, profundidad). No se usa `accessibleNodes(actor)` ni se fabrica un actor.
-3. **Auditoría:** `node.restored` admite `note` (1 a 500) en el catálogo; cuota y vigencia suman
-   `account.quota_adjusted` y `account.validity_adjusted`. El motivo no sale de `evento_auditoria`: ni logs, ni
-   respuestas de listado, ni nombres de archivo.
-4. **Prohibiciones:** Soporte no purga, vacía, descarga ni previsualiza; Administración no restaura; el Operador no hace
+1. **Cuota y vigencia (Administrador).** `suscripcion` no gana escrituras directas de `nimbo_app`. Tres funciones
+   `SECURITY DEFINER` propiedad del rol que migra, `VOLATILE`, `plpgsql`, con `SET search_path = pg_catalog, pg_temp`,
+   `REVOKE ALL … FROM PUBLIC` y `EXECUTE` solo para `nimbo_app`, comprueban `public.nimbo_actor_role() = 'ADMIN'` y
+   operan una fila por `usuario_id`:
+   - `bloquear_suscripcion_cliente(p_usuario)` bloquea `usuario` y `suscripcion` con `FOR UPDATE` y devuelve plan,
+     estado, `vence_en`, el extra y `espacio_usado`.
+   - `ajustar_cuota_extra(p_usuario, p_extra, p_hasta)` exige `extra >= 0`; si `extra = 0`, `p_hasta` debe ser
+     `NULL`, y si `extra > 0`, `p_hasta > now()`; además, `plan + extra >= espacio_usado`; no toca `vence_en`, `estado`
+     ni los avisos.
+   - `extender_vigencia(p_usuario, p_vence)` exige plan de pago, `p_vence > vence_en` y `p_vence > now()`; **calcula** el
+     `estado` (`solo_lectura` → `vigente`) y no toca avisos, `plan_pendiente_id` ni `renovacion_automatica`.
+
+   Una política `suscripcion_ajuste_administracion FOR UPDATE TO CURRENT_USER` con `USING`/`WITH CHECK` de rol `ADMIN`
+   permite que la función escriba bajo `FORCE RLS`; `nimbo_app` no la usa. El `SELECT … FOR UPDATE` de la función también
+   necesita esa política. No se reinician `aviso_previo_para` ni `aviso_vencida_para`: la 010 los compara con `vence_en` y
+   el `vence_en` nuevo ya define el periodo siguiente; reiniciarlos reenviaría correos del periodo anterior.
+2. **Restauración (Soporte).** `archivo` y `carpeta` no ganan `UPDATE` para `nimbo_app`. Una función
+   `restaurar_raiz_papelera(p_usuario, p_tipo, p_nodo)` `SECURITY DEFINER` y `VOLATILE`, con el mismo `search_path` y
+   `EXECUTE` solo para `nimbo_app`, comprueba rol `SUPPORT`, que la raíz pertenece a `p_usuario`, que
+   `eliminado_con_carpeta_id IS NULL` y que `purgar_en > now()`. Bloquea primero `usuario` (mismo orden que la 006) y
+   después la raíz; resuelve el destino como una carpeta viva del mismo dueño o la raíz, y el primer nombre libre.
+   Si es carpeta, reubica `ruta` y `profundidad` de todo el subárbol **mientras sigue en papelera** y después saca de la
+   papelera solo lo arrastrado. Escribe únicamente `eliminado_en`, `purgar_en`, `eliminado_con_carpeta_id`, `nombre`,
+   `carpeta_padre_id`/`carpeta_id`, `ruta`, `profundidad` y `actualizado_en`; nunca `propietario_id`,
+   `version_actual_id`, `tamano_bytes`, `tipo` ni `creado_en`. Comprueba los conteos y hace `RAISE` si no cuadran. Devuelve
+   `outcome`, nombre original y final, destino, cantidad y bytes. Las políticas `TO CURRENT_USER` de `SELECT` (raíz y
+   destino) y `UPDATE` (raíz y subárbol) solo las usa la función; `archivo_mantenimiento`/`carpeta_mantenimiento` ya
+   cubren la lectura de las filas en papelera. No se concede `INSERT`, `DELETE` ni acceso a `version_archivo`, `carga` o
+   `clave_objeto`.
+3. **Auditoría.** `node.restored` admite `note` (1 a `AUDIT_NOTE_MAX_LENGTH`) solo en ese evento, no en
+   `NODE_ATTRIBUTES`; cuota y vigencia suman `account.quota_adjusted` y `account.validity_adjusted`. `recordLine` omite
+   los atributos de texto libre (`note`, `reason`) y registra solo sus claves. El motivo no sale de `evento_auditoria`:
+   ni logs, ni respuestas de listado, ni nombres de archivo.
+4. **Prohibiciones.** Soporte no purga, vacía, descarga ni previsualiza; Administración no restaura; el Operador no hace
    ninguna de las tres. La restauración se permite en cuentas en solo lectura y no toca `espacio_usado`.
+5. **Enmiendas.** Este ADR enmienda ADR-0005 (barrera 2: ahora hay escrituras internas por función) y ADR-0021 (sus
+   funciones eran de solo lectura y devolvían solo identificadores; estas escriben y devuelven plan, estado, `vence_en` y
+   el extra). La lista de control es: una fila por `usuario_id` en la cuenta; columnas fijas; rol comprobado dentro de la
+   función; `search_path` cerrado; `VOLATILE`; `REVOKE`/`GRANT`; política del dueño; prueba con dueño `NOSUPERUSER`.
+   Delimita ADR-0032 regla 3: la restauración de Soporte es una escritura permitida en solo lectura y se añade
+   `POST /backoffice/client-trash/:nodeId/restore` a la lista de rutas permitidas de su prueba. `architecture.md` §6.5 y
+   §6.6 se actualizan para incluir `SupportTrashService` y la función de restauración, y para decir que expone nombres de
+   carpeta y la ruta original sin contenido, versiones, claves ni URLs.
 
 ## Consecuencias
 
-- Positivas: ninguna escritura directa nueva del Administrador sobre `suscripcion`; la restauración solo puede tocar
-  filas que ya están en papelera; el evento con motivo es atómico y visible para el cliente; se conserva la semántica de
-  006 sin duplicarla.
-- Negativas / deuda aceptada: conviven dos mecanismos (funciones y política por estado); la política de Soporte no puede
-  expresar «solo la cuenta indicada» en SQL, así que la defensa es el único servicio, el filtro por `propietario_id`, la
-  transacción y la prueba de aislamiento. `cuota_extra_hasta` y `vence_en` se apartan del E-R (`fin`), que se redibuja en
-  `pendientes.md` como el resto de la 009.
-- Cómo sabremos si fue un error: si aparece una escritura de Soporte fuera de `SupportTrashService`; si una prueba permite
-  restaurar o ajustar otra cuenta, un nodo vivo o una raíz vencida; si el motivo aparece en un log; o si el
-  `SECURITY DEFINER` necesita crecer más allá de una fila y cuatro columnas.
+- Positivas: ninguna escritura directa nueva de `nimbo_app` sobre `suscripcion` ni sobre los nodos; la restauración no
+  puede cambiar el dueño, el tamaño, el tipo ni la retención; el orden de `ruta`/`profundidad` es correcto; un solo
+  mecanismo (`SECURITY DEFINER`) para las dos operaciones; el evento con motivo es atómico y visible para el cliente.
+- Negativas / deuda aceptada: hay políticas `TO CURRENT_USER` que solo usa la función; la función de restauración es más
+  grande que las de cuenta y toca un subárbol; hay que probar con un dueño sin `SUPERUSER` y con SQL directo de Soporte;
+  `cuota_extra_hasta` y `vence_en` se apartan del E-R (`fin`), que se redibuja en `pendientes.md` (PD-96) como el resto
+  de la 009.
+- Cómo sabremos si fue un error: si aparece una escritura directa de `nimbo_app` sobre `suscripcion`, `archivo` o
+  `carpeta`; si una prueba permite restaurar o ajustar otra cuenta, un nodo vivo, una raíz vencida o cambiar una columna
+  prohibida; si el motivo aparece en un log; o si una restauración deja `ruta`/`profundidad` inconsistentes en el
+  subárbol. Si la función necesita crecer más allá de las columnas y filas declaradas, se revisa este ADR.
