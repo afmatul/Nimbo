@@ -389,23 +389,8 @@ ${extra > 0 ? `            <a class="btn btn-outline btn-quitar" href="admin--qu
         </section>`;
 }
 
-// Diálogo con formulario (011b): título, campos, cálculo del total y acciones. No es una confirmación destructiva.
-function dialogoForm({ titulo, descripcion, campos, resumen, errores = '', confirmar, cancelar, cargando = false }) {
-  return `
-  <div class="overlay" aria-hidden="true"></div>
-  <div class="dialog form-dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-t" aria-describedby="dlg-d">
-    <h2 id="dlg-t">${titulo}</h2>
-    <p class="sub" id="dlg-d">${descripcion}</p>
-    <form onsubmit="return false">
-      ${errores}${campos}${resumen}
-      <p class="audit-note">${icon('history', 15)}<span>El ajuste queda en la auditoría del cliente; verá la acción y tu rol, no tu nombre.</span></p>
-      <div class="dialog-actions">
-        <a class="btn btn-outline" href="${cancelar}">Cancelar</a>
-        <button class="btn btn-primary" type="button"${cargando ? ' disabled aria-disabled="true"' : ''}>${cargando ? icon('loader', 16, 'spin') : ''}${confirmar}</button>
-      </div>
-    </form>
-  </div>`;
-}
+// Diálogo con formulario (011b): la pieza compartida vive en area.js para que Soporte use la misma.
+const dialogoForm = A.formDialog;
 
 const calcCuota = ({ base, extra, total, usado, pct, danger = false }) => `
       <div class="calc${danger ? ' calc-danger' : ''}" aria-live="polite">
@@ -440,10 +425,10 @@ function dialogoCuota({ c, extra = '50', hasta = '2026-11-15', total = '400 GB',
   });
 }
 
-function dialogoVigencia({ c, fecha = '2026-11-30', error = '', errores = '', soloLectura = false, cargando = false } = {}) {
+function dialogoVigencia({ c, fecha = '2026-11-30', actual = '31/10/2026', error = '', errores = '', soloLectura = false, cargando = false } = {}) {
   const campo = A.campo({
     id: 'vigencia-hasta', label: 'Nueva fecha de vencimiento',
-    help: 'Solo puedes extender la vigencia: la fecha nueva debe ser posterior al 31/10/2026. No se cobra ni se factura.',
+    help: `Solo puedes extender la vigencia: la fecha nueva debe ser posterior al ${actual} y a ahora. No se cobra ni se factura.`,
     type: 'date', value: fecha, short: true, err: error, extra: 'autofocus',
   });
   const aviso = soloLectura
@@ -453,7 +438,7 @@ function dialogoVigencia({ c, fecha = '2026-11-30', error = '', errores = '', so
     titulo: `Extender la vigencia de ${c.nombre}`,
     descripcion: 'La fecha nueva reemplaza a la actual. No registra un cobro ni una factura; la renovación automática y el cambio de plan siguen como están.',
     campos: campo + aviso,
-    resumen: `<div class="calc"><p>Vence actualmente: <strong>31/10/2026</strong>. Fecha nueva: <strong>${fecha.split('-').reverse().join('/')}</strong>.</p></div>`,
+    resumen: `<div class="calc"><p>Vence actualmente: <strong>${actual}</strong>. Fecha nueva: <strong>${fecha.split('-').reverse().join('/')}</strong>.</p></div>`,
     errores,
     confirmar: cargando ? 'Guardando vigencia…' : 'Guardar vigencia',
     cancelar: 'admin--ficha.html',
@@ -640,8 +625,8 @@ const ESTADOS = [
     cuerpo: () => ficha(C.LAURA, { limites: {
       guardado: { titulo: 'Quitamos el espacio extra.', texto: 'La cuota volvió a 350 GB. Laura sigue dentro de su plan; no se borró nada.' },
     } }) },
-  { estado: 'extender-vigencia', titulo: 'ficha con el formulario para extender la vigencia', ficha: C.LAURA.nombre,
-    spec: '011b', cuerpo: () => ficha(C.LAURA, { limites: { soloLectura: true } }), dialogo: dialogoVigencia({ c: C.LAURA, soloLectura: true }) },
+  { estado: 'extender-vigencia', titulo: 'ficha en solo lectura con el formulario para extender la vigencia', ficha: C.LAURA.nombre,
+    spec: '011b', cuerpo: () => ficha(C.LAURA, { limites: { soloLectura: true, vence: '20/10/2026' } }), dialogo: dialogoVigencia({ c: C.LAURA, soloLectura: true, actual: '20/10/2026' }) },
   { estado: 'fecha-no-posterior', titulo: 'fecha de vigencia no posterior: error de campo y resumen', ficha: C.LAURA.nombre,
     spec: '011b', cuerpo: () => ficha(C.LAURA), dialogo: DLG_VIGENCIA_ERROR },
   { estado: 'vigencia-guardada', titulo: 'vigencia extendida: la cuenta vuelve a vigente', ficha: C.LAURA.nombre,

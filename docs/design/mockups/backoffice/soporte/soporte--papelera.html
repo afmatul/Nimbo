@@ -419,8 +419,8 @@
   .restore-dialog .dialog-actions .btn { min-height: 40px; }
 
   @media (max-width: 1180px) and (min-width: 601px) {
-    /* En la tabla de papelera, tipo, tamaño y eliminado pasan bajo el nombre */
-    .c-tipo-p, .c-tam-p, .c-fecha-p.c-eliminado-p, .trash .tipo-detalle { display: none; }
+    /* En la tabla de papelera, tipo, tamaño y eliminado pasan bajo el nombre; la acción también, para no duplicarla */
+    .c-tipo-p, .c-tam-p, .c-fecha-p.c-eliminado-p, .c-accion-p, .trash .tipo-detalle { display: none; }
     .trash .m-trash { display: grid; gap: 2px; margin-top: 4px; font-size: 12px; color: var(--secondary-foreground); font-variant-numeric: tabular-nums; }
   }
   @media (max-width: 1000px) and (min-width: 601px) {
@@ -540,31 +540,31 @@
               <thead><tr><th scope="col" class="c-nombre-p">Nombre</th><th scope="col" class="c-tipo-p">Tipo</th><th scope="col" class="c-tam-p">Tamaño</th><th scope="col" class="c-fecha-p c-eliminado-p">Eliminado</th><th scope="col" class="c-fecha-p">Se purga</th><th scope="col" class="c-ruta-p">Ubicación original</th><th scope="col" class="c-accion-p">Acción</th></tr></thead>
               <tbody>
                 <tr>
-                  <td class="c-nombre-p"><div class="fname"><span class="ftile ftile-folder"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg></span><div class="fname-text"><span class="fn">Contratos 2026</span><span class="tipo-detalle">Carpeta · 12 elementos · 48 MB</span><div class="m-trash"><span>Carpeta · 12 elementos · 48 MB</span><span>Eliminado: 02/10/2026</span><span>Se purga: 01/12/2026</span><span class="ruta-line">Estaba en: Mis archivos / Alpha</span><a class="btn btn-outline" href="soporte--papelera-confirmar.html">Restaurar</a></div></div></div></td>
+                  <td class="c-nombre-p"><div class="fname"><span class="ftile ftile-folder"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg></span><div class="fname-text"><span class="fn">Contratos 2026</span><span class="tipo-detalle">Carpeta · 12 elementos · 48 MB</span><div class="m-trash"><span>Carpeta · 12 elementos · 48 MB</span><span>Eliminado: 02/10/2026</span><span>Se purga: 01/12/2026</span><span class="ruta-line">Estaba en: Mis archivos / Alpha</span><a class="btn btn-outline" href="soporte--papelera-confirmar.html" aria-label="Restaurar Contratos 2026">Restaurar</a></div></div></div></td>
                   <td class="c-tipo-p">Carpeta</td>
                   <td class="c-tam-p">48 MB</td>
                   <td class="c-fecha-p c-eliminado-p">02/10/2026</td>
                   <td class="c-fecha-p">01/12/2026</td>
                   <td class="c-ruta-p"><span class="ruta" title="Mis archivos / Alpha">Mis archivos / Alpha</span></td>
-                  <td class="c-accion-p"><a class="btn btn-outline" href="soporte--papelera-confirmar.html">Restaurar</a></td>
+                  <td class="c-accion-p"><a class="btn btn-outline" href="soporte--papelera-confirmar.html" aria-label="Restaurar Contratos 2026">Restaurar</a></td>
                 </tr>
                 <tr>
-                  <td class="c-nombre-p"><div class="fname"><span class="ftile ftile-xlsx"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h2"/><path d="M14 13h2"/><path d="M8 17h2"/><path d="M14 17h2"/></svg></span><div class="fname-text"><span class="fn">Presupuesto_<wbr>Q4_<wbr>borrador.xlsx</span><span class="tipo-detalle">Hoja de cálculo · 1.3 MB</span><div class="m-trash"><span>Hoja de cálculo · 1.3 MB</span><span>Eliminado: 12/10/2026</span><span>Se purga: 11/12/2026</span><span class="ruta-line">Estaba en: Mis archivos / Finanzas</span><a class="btn btn-outline" href="soporte--papelera-confirmar.html">Restaurar</a></div></div></div></td>
+                  <td class="c-nombre-p"><div class="fname"><span class="ftile ftile-xlsx"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h2"/><path d="M14 13h2"/><path d="M8 17h2"/><path d="M14 17h2"/></svg></span><div class="fname-text"><span class="fn">Presupuesto_<wbr>Q4_<wbr>borrador.xlsx</span><span class="tipo-detalle">Hoja de cálculo · 1.3 MB</span><div class="m-trash"><span>Hoja de cálculo · 1.3 MB</span><span>Eliminado: 12/10/2026</span><span>Se purga: 11/12/2026</span><span class="ruta-line">Estaba en: Mis archivos / Finanzas</span><a class="btn btn-outline" href="soporte--papelera-confirmar.html" aria-label="Restaurar Presupuesto_Q4_borrador.xlsx">Restaurar</a></div></div></div></td>
                   <td class="c-tipo-p">Hoja de cálculo</td>
                   <td class="c-tam-p">1.3 MB</td>
                   <td class="c-fecha-p c-eliminado-p">12/10/2026</td>
                   <td class="c-fecha-p">11/12/2026</td>
                   <td class="c-ruta-p"><span class="ruta" title="Mis archivos / Finanzas">Mis archivos / Finanzas</span></td>
-                  <td class="c-accion-p"><a class="btn btn-outline" href="soporte--papelera-confirmar.html">Restaurar</a></td>
+                  <td class="c-accion-p"><a class="btn btn-outline" href="soporte--papelera-confirmar.html" aria-label="Restaurar Presupuesto_Q4_borrador.xlsx">Restaurar</a></td>
                 </tr>
                 <tr>
-                  <td class="c-nombre-p"><div class="fname"><span class="ftile ftile-pdf"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span><div class="fname-text"><span class="fn">Contrato_<wbr>servicios_<wbr>Alpha.pdf</span><span class="tipo-detalle">PDF · 412 KB</span><div class="m-trash"><span>PDF · 412 KB</span><span>Eliminado: 20/10/2026</span><span>Se purga: 19/12/2026</span><span class="ruta-line">Estaba en: Mis archivos / Contratos 2026</span><a class="btn btn-outline" href="soporte--papelera-confirmar.html">Restaurar</a></div></div></div></td>
+                  <td class="c-nombre-p"><div class="fname"><span class="ftile ftile-pdf"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span><div class="fname-text"><span class="fn">Contrato_<wbr>servicios_<wbr>Alpha.pdf</span><span class="tipo-detalle">PDF · 412 KB</span><div class="m-trash"><span>PDF · 412 KB</span><span>Eliminado: 20/10/2026</span><span>Se purga: 19/12/2026</span><span class="ruta-line">Estaba en: Mis archivos / Legal</span><a class="btn btn-outline" href="soporte--papelera-confirmar.html" aria-label="Restaurar Contrato_servicios_Alpha.pdf">Restaurar</a></div></div></div></td>
                   <td class="c-tipo-p">PDF</td>
                   <td class="c-tam-p">412 KB</td>
                   <td class="c-fecha-p c-eliminado-p">20/10/2026</td>
                   <td class="c-fecha-p">19/12/2026</td>
-                  <td class="c-ruta-p"><span class="ruta" title="Mis archivos / Contratos 2026">Mis archivos / Contratos 2026</span></td>
-                  <td class="c-accion-p"><a class="btn btn-outline" href="soporte--papelera-confirmar.html">Restaurar</a></td>
+                  <td class="c-ruta-p"><span class="ruta" title="Mis archivos / Legal">Mis archivos / Legal</span></td>
+                  <td class="c-accion-p"><a class="btn btn-outline" href="soporte--papelera-confirmar.html" aria-label="Restaurar Contrato_servicios_Alpha.pdf">Restaurar</a></td>
                 </tr>
               </tbody>
             </table>

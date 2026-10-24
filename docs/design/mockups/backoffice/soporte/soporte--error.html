@@ -419,8 +419,8 @@
   .restore-dialog .dialog-actions .btn { min-height: 40px; }
 
   @media (max-width: 1180px) and (min-width: 601px) {
-    /* En la tabla de papelera, tipo, tamaño y eliminado pasan bajo el nombre */
-    .c-tipo-p, .c-tam-p, .c-fecha-p.c-eliminado-p, .trash .tipo-detalle { display: none; }
+    /* En la tabla de papelera, tipo, tamaño y eliminado pasan bajo el nombre; la acción también, para no duplicarla */
+    .c-tipo-p, .c-tam-p, .c-fecha-p.c-eliminado-p, .c-accion-p, .trash .tipo-detalle { display: none; }
     .trash .m-trash { display: grid; gap: 2px; margin-top: 4px; font-size: 12px; color: var(--secondary-foreground); font-variant-numeric: tabular-nums; }
   }
   @media (max-width: 1000px) and (min-width: 601px) {

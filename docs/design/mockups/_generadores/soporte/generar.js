@@ -66,7 +66,7 @@ const PAPELERA = [
   { nombre: 'Presupuesto_Q4_borrador.xlsx', tipo: 'xlsx', tamano: '1.3 MB',
     eliminado: '12/10/2026', purga: '11/12/2026', ruta: 'Mis archivos / Finanzas' },
   { nombre: 'Contrato_servicios_Alpha.pdf', tipo: 'pdf', tamano: '412 KB',
-    eliminado: '20/10/2026', purga: '19/12/2026', ruta: 'Mis archivos / Contratos 2026' },
+    eliminado: '20/10/2026', purga: '19/12/2026', ruta: 'Mis archivos / Legal' },
 ];
 // Vista que quedó abierta más allá de la retención: la fila sigue en pantalla, pero el servidor ya no la restaura. La
 // fecha de purga coincide con el aviso para que el estado no se contradiga.
@@ -159,8 +159,8 @@ ${A.CSS_BUSQUEDA}${A.CSS_PAGINACION}
   .restore-dialog .dialog-actions .btn { min-height: 40px; }
 
   @media (max-width: 1180px) and (min-width: 601px) {
-    /* En la tabla de papelera, tipo, tamaño y eliminado pasan bajo el nombre */
-    .c-tipo-p, .c-tam-p, .c-fecha-p.c-eliminado-p, .trash .tipo-detalle { display: none; }
+    /* En la tabla de papelera, tipo, tamaño y eliminado pasan bajo el nombre; la acción también, para no duplicarla */
+    .c-tipo-p, .c-tam-p, .c-fecha-p.c-eliminado-p, .c-accion-p, .trash .tipo-detalle { display: none; }
     .trash .m-trash { display: grid; gap: 2px; margin-top: 4px; font-size: 12px; color: var(--secondary-foreground); font-variant-numeric: tabular-nums; }
   }
   @media (max-width: 1000px) and (min-width: 601px) {
@@ -337,7 +337,7 @@ function filaPapelera(item) {
   const largo = detalleLargoDe(item);
   const accion = item.vencida
     ? '<span class="no-action">No disponible</span>'
-    : '<a class="btn btn-outline" href="soporte--papelera-confirmar.html">Restaurar</a>';
+    : `<a class="btn btn-outline" href="soporte--papelera-confirmar.html" aria-label="Restaurar ${item.nombre}">Restaurar</a>`;
   return `
                 <tr>
                   <td class="c-nombre-p"><div class="fname">${tilePapelera(item)}<div class="fname-text"><span class="fn">${item.nombre.replace(/_/g, '_<wbr>')}</span><span class="tipo-detalle">${largo} · ${item.tamano}</span><div class="m-trash"><span>${largo} · ${item.tamano}</span><span>Eliminado: ${item.eliminado}</span><span>Se purga: ${item.purga}</span><span class="ruta-line">Estaba en: ${item.ruta}</span>${accion}</div></div></div></td>
@@ -402,34 +402,28 @@ function dialogoRestaurar({ item, motivo = '', error = '', errores = '', cargand
   const descripcion = esCarpeta
     ? `La carpeta y sus ${item.items} elementos volverán a «${item.ruta}». Si ya existe una carpeta con ese nombre, se restaurará con un nombre nuevo.`
     : `El archivo volverá a «${item.ruta}». Si ya existe uno con ese nombre, se restaurará como «${nombreNuevo}».`;
-  const desc = `motivo-ayuda motivo-contador${error ? ' motivo-error' : ''}`;
-  return `
-  <div class="overlay" aria-hidden="true"></div>
-  <div class="dialog restore-dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-t" aria-describedby="dlg-d">
-    <h2 id="dlg-t">Restaurar «${item.nombre}»</h2>
-    <p class="sub" id="dlg-d">${descripcion}</p>
-    <form onsubmit="return false">
-      ${errores}
-      <div class="field">
-        <label for="motivo">Motivo de la restauración</label>
-        <p class="field-help" id="motivo-ayuda">Obligatorio, de 1 a 500 caracteres. Se guarda en la actividad del cliente; no escribas nombres de archivo ni datos personales.</p>
-        <textarea class="text-input text-area" id="motivo" name="motivo" maxlength="500" required aria-describedby="${desc}"${error ? ' aria-invalid="true"' : ''} autofocus>${motivo}</textarea>
-        <p class="counter" id="motivo-contador">${motivo.length}/500</p>${error ? `
-        <p class="field-error" id="motivo-error">${icon('alert', 15)}<span>${error}</span></p>` : ''}
-      </div>
-      <div class="info-box">${icon('history', 16)}<p><strong>El motivo queda en la auditoría de Laura.</strong>Verá la fecha, el motivo y tu rol (Soporte), no tu nombre.</p></div>
-      <div class="dialog-actions">
-        <a class="btn btn-outline" href="soporte--papelera.html">Cancelar</a>
-        <button class="btn btn-primary" type="button"${cargando ? ' disabled aria-disabled="true"' : ''}>${cargando ? icon('loader', 16, 'spin') : ''}${cargando ? 'Restaurando…' : 'Restaurar'}</button>
-      </div>
-    </form>
-  </div>`;
+  const campo = A.campo({
+    id: 'motivo', label: 'Motivo de la restauración',
+    help: 'Obligatorio, de 1 a 500 caracteres. Se guarda en la actividad del cliente; no escribas nombres de archivo ni datos personales.',
+    value: motivo, err: error, multilinea: true, extra: 'maxlength="500" autofocus',
+  });
+  return A.formDialog({
+    clase: 'restore-dialog',
+    titulo: `Restaurar «${item.nombre}»`,
+    descripcion,
+    errores,
+    campos: `${campo}<p class="counter" id="motivo-contador">${motivo.length}/500</p>`,
+    nota: '<strong>El motivo queda en la auditoría de Laura.</strong> Verá la fecha, el motivo y tu rol (Soporte), no tu nombre.',
+    confirmar: cargando ? 'Restaurando.' : 'Restaurar',
+    cancelar: 'soporte--papelera.html',
+    cargando,
+  });
 }
 
 const AVISO_RESTAURADO = `
           <div class="alert alert-ok" role="status">${icon('ok', 18)}<div><p class="alert-title">Restauramos «Presupuesto_Q4_borrador.xlsx» en «Finanzas».</p><p class="alert-text">El motivo quedó en la auditoría de Laura. El archivo ya está disponible en su cuenta.</p></div></div>`;
 const AVISO_RENOMBRADO = `
-          <div class="alert alert-ok" role="status">${icon('ok', 18)}<div><p class="alert-title">Restauramos «Contrato_servicios_Alpha.pdf» como «Contrato_servicios_Alpha (1).pdf» porque ya existía uno con ese nombre.</p><p class="alert-text">Quedó en «Contratos 2026». El motivo quedó en la auditoría de Laura.</p></div></div>`;
+          <div class="alert alert-ok" role="status">${icon('ok', 18)}<div><p class="alert-title">Restauramos «Contrato_servicios_Alpha.pdf» como «Contrato_servicios_Alpha (1).pdf» porque ya existía uno con ese nombre.</p><p class="alert-text">Quedó en «Legal». El motivo quedó en la auditoría de Laura.</p></div></div>`;
 const AVISO_RAIZ = `
           <div class="alert alert-ok" role="status">${icon('ok', 18)}<div><p class="alert-title">La carpeta original ya no está disponible. Restauramos «Contratos 2026» en Mis archivos.</p><p class="alert-text">El motivo quedó en la auditoría de Laura.</p></div></div>`;
 const AVISO_VENCIDA = `

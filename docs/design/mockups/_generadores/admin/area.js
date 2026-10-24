@@ -437,6 +437,26 @@ function resumenErrores({ titulo, texto, items }) {
             <ul class="alert-list">${items.map(([id, t]) => `<li><a href="#${id}">${t}</a></li>`).join('')}</ul></div></div>`;
 }
 
+// Diálogo de formulario breve (011b): título, descripción, campos, errores, cálculo/resumen y acciones. No es una
+// confirmación destructiva; el foco inicial va al primer campo y «Cancelar» vuelve al mockup de origen. `nota` es el
+// aviso de auditoría (por defecto, el de un ajuste de cuenta; la restauración pasa el suyo).
+function formDialog({ titulo, descripcion, campos, resumen = '', errores = '', nota = 'El ajuste queda en la auditoría del cliente; verá la acción y tu rol, no tu nombre.', confirmar, cancelar, cargando = false, clase = 'form-dialog' }) {
+  return `
+  <div class="overlay" aria-hidden="true"></div>
+  <div class="dialog ${clase}" role="dialog" aria-modal="true" aria-labelledby="dlg-t" aria-describedby="dlg-d">
+    <h2 id="dlg-t">${titulo}</h2>
+    <p class="sub" id="dlg-d">${descripcion}</p>
+    <form onsubmit="return false">
+      ${errores}${campos}${resumen}
+      <p class="audit-note">${icon('history', 15)}<span>${nota}</span></p>
+      <div class="dialog-actions">
+        <a class="btn btn-outline" href="${cancelar}">Cancelar</a>
+        <button class="btn btn-primary" type="button"${cargando ? ' disabled aria-disabled="true"' : ''}>${cargando ? icon('loader', 16, 'spin') : ''}${confirmar}</button>
+      </div>
+    </form>
+  </div>`;
+}
+
 // ---------- Archivos generados ----------
 // Carpeta de salida de una pantalla de backoffice (la crea si no existe). Uso de cada generador: node generar.js <worktree>.
 function carpetaDeSalida(pantalla) {
@@ -488,6 +508,6 @@ function pagina({ titulo, comentarios, css, rotulo, file, estado, crumbs, cuerpo
 module.exports = {
   P, icon, ICONO_ROL, CSS, CSS_FORM, privacidad, pagina,
   carpetaDeSalida, archivoDe, comentariosDe, escribir,
-  estadoError, dialogo, campo, resumenErrores, badgeInactivo,
+  estadoError, dialogo, campo, resumenErrores, formDialog, badgeInactivo,
   AREA_ADMIN, AREA_SOPORTE, AREA_OPERADOR, busqueda, paginacion, CSS_BUSQUEDA, CSS_BUSQUEDA_MQ600, CSS_PAGINACION, CSS_PAGINACION_MQ600,
 };
