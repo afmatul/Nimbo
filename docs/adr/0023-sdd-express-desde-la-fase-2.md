@@ -43,7 +43,8 @@ Opción 1. Reglas (detalle en `docs/sdd/workflow.md` §1–5 y `docs/sdd/guia-ra
 
 - Flujo: `/spec` → `/plan` → **aprobación de Adrián** → `/tasks` → `/implement` → `/review` → PR con CI verde →
   aprobación de Adrián → squash merge. `architect` solo opina antes si el plan agrega un puerto entre módulos, una
-  tecnología nueva o cambia la arquitectura.
+  tecnología nueva o cambia la arquitectura. La secuencia de comandos la enmienda ADR-0033: `/spec` escribe los
+  tres artefactos y Adrián aprueba el resumen. El plan sigue siendo obligatorio antes del código.
 - Artefactos: spec ≤ 150 líneas (qué y por qué, sin enfoque técnico), plan obligatorio ≤ 250 líneas (archivos,
   contratos, datos, pruebas y riesgos, sin el código en prosa), 5–12 tareas verticales de medio día a un día,
   `review.md` de una página. Sin tareas de «cierre». Se elimina `/verify`.

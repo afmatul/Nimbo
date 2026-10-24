@@ -26,6 +26,7 @@ propias (`storage/preview`, `storage/search`) de Abel y Juan Marcos; los cambios
 
 Mapeo desde el flujo anterior: `Aclarada`/`Planificada` → `Lista`; `En implementación`/`En verificación` → `En curso`.
 Detalle de cada estado y sus compuertas en `docs/sdd/workflow.md` §2. Desde la Fase 2, `Lista` exige `plan.md` aprobado por Adrián.
+Desde ADR-0033, `/spec` escribe spec, plan y tareas juntos cuando la carpeta todavía no existe; las que ya están escritas no se reescriben.
 Guía de una página para arrancar una spec: `docs/sdd/guia-rapida.md`.
 
 ## Paso previo: decidir los hallazgos del diseño

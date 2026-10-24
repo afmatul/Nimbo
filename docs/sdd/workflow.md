@@ -5,6 +5,8 @@ Desde la Fase 2 (30/09/2026) el equipo usa la variante **express**: el **plan es
 escribir código**, pero cada artefacto es corto, las tareas son pocas y verticales, y cada spec es una rama y un PR.
 Las garantías no negociables no cambian: pruebas primero, aislamiento entre cuentas, migraciones reversibles, ADR
 para dependencias nuevas, y `design-findings.md` y `pendientes.md` al día. Decisión: ADR-0023 (reemplaza a ADR-0009).
+ADR-0033 enmienda la secuencia: al crear una spec que todavía no tiene carpeta, `/spec` escribe spec, plan y tareas
+en una pasada. Las carpetas que ya existen no se reescriben.
 Encaja con Crystal Clear: la reunión de **planificación** de cada fase decide qué specs entran y quién es dueño;
 la reunión de **revisión** verifica las specs terminadas.
 
@@ -15,7 +17,7 @@ specs/NNN-slug/
 ├─ spec.md      # QUÉ y POR QUÉ — historias, criterios de aceptación, reglas, seguridad, UI, fuera de alcance
 │                # ≤ 150 líneas. Sin detalles de implementación: el cómo vive en plan.md
 ├─ plan.md      # CÓMO — obligatorio. Archivos, contratos, migraciones, pruebas y riesgos. ≤ 250 líneas
-├─ tasks.md     # EN QUÉ ORDEN — 5 a 12 tareas verticales de medio día a un día
+├─ tasks.md     # EN QUÉ ORDEN — 5 a 12 tareas de una línea (CA, prueba, depende de). Los archivos están en el plan
 └─ review.md    # cierre — una página: CA → prueba → estado, seguridad y bloqueantes
 ```
 
@@ -27,8 +29,8 @@ a un ADR (`docs/adr/`).
 
 | Estado | Entra cuando | Quién decide | Sale hacia |
 |---|---|---|---|
-| `Borrador` | `/spec` crea el archivo | planner | `Lista` |
-| `Lista` | Spec sin preguntas `[ABIERTA]` bloqueantes, pantallas con mockup o decisión explícita, y `plan.md` **aprobado por Adrián** | **Adrián** | `En curso` |
+| `Borrador` | `/spec` crea spec, plan y tareas | planner | `Lista` |
+| `Lista` | Sin preguntas `[ABIERTA]` que cambien el comportamiento o un RF/RNF, pantallas con mockup o decisión explícita, y `plan.md` **aprobado por Adrián** (el resumen de ≤ 15 líneas; si no objeta en el día, el dueño anota «Aprobado») | **Adrián** | `En curso` |
 | `En curso` | Primer commit de `feat/NNN-*` | dueño de la spec | `En revisión` |
 | `En revisión` | Tareas marcadas, CI en verde y `/review` corrido | reviewer + Adrián | `Hecha` o vuelve a `En curso` |
 | `Hecha` | PR integrado y desplegado en staging (mientras no exista staging: integrado y demostrable en local, §7.2) | Adrián | — |
@@ -40,25 +42,28 @@ agrega un puerto entre módulos, una tecnología nueva o cambia la arquitectura.
 ## 3. Secuencia típica
 
 ```
-Dueño: /spec "carga de archivos por partes"        → planner → spec.md (Borrador) con preguntas
-Dueño responde preguntas
-Dueño: /plan 005                                    → planner → plan.md
+Dueño: /spec "renovar la suscripción"              → planner → spec.md + plan.md + tasks.md (Borrador)
                                                       (architect, solo si hay puerto nuevo / tecnología nueva)
-Adrián revisa spec + plan (Claude le prepara el resumen) → Aprobado → spec en Lista
-Dueño: /tasks 005                                   → planner → tasks.md (5–12 tareas)
-Dueño: /implement 005                               → developer → prueba roja → código → verde → commit por tarea
-Dueño: /review 005                                  → reviewer (+ security-auditor si aplica) → review.md
+Dueño responde solo las preguntas que cambian el comportamiento o un RF/RNF
+Adrián aprueba el resumen de ≤ 15 líneas (si no objeta en el día, queda Aprobado) → spec en Lista
+Dueño: /implement 010                               → developer → prueba roja → código → verde → commit por tarea
+Dueño: /review 010                                  → reviewer (+ security-auditor si aplica) → review.md
 Dueño abre el PR → CI verde → Adrián aprueba → squash merge → Hecha
 ```
 
+`/plan` y `/tasks` completan un artefacto que falte. Una carpeta que ya tiene `spec.md` sigue con esos archivos:
+un cambio de alcance se anota en su registro y no regenera el plan ni las tareas salvo que el alcance lo exija.
+
 ## 4. Reglas del flujo
 
-1. **Una spec ≈ un entregable demostrable** en ≤ 3 días de una persona. Si es más grande, se divide en dos specs.
+1. **Una spec ≈ un entregable demostrable** en ≤ 3 días de una persona. Si el esbozo pasa de 12 archivos o de una
+   pantalla, se divide en dos specs antes de redactar.
 2. Las specs se numeran en orden de creación; el orden de implementación lo dan las dependencias en `specs/README.md`.
-3. **Tiempos de referencia**: spec 1 h · plan 2 h · revisión del plan 30 min · implementación 1–3 días · revisión
-   del PR 1 h. Si algo pasa del doble, el dueño avisa a Adrián en vez de seguir.
-4. **Tareas verticales**: 5 a 12 por spec, cada una de medio día a un día, y cada una deja algo probado de punta a
-   punta (contrato + dominio + endpoint + prueba, o componente + prueba). Sin tareas de «cierre» ni de
+3. **Tiempos de referencia**: preparación (spec, plan y tareas) 2 h · aprobación el mismo día · implementación
+   1–3 días · revisión del PR 1 h. Si algo pasa del doble, el dueño avisa a Adrián en vez de seguir.
+4. **Tareas verticales**: 5 a 12 por spec, cada una de medio día a un día y de una línea (criterio, prueba y de qué
+   depende). Los archivos y las rutas de prueba viven en el plan. Cada tarea deja algo probado de punta a punta
+   (contrato + dominio + endpoint + prueba, o componente + prueba). Sin tareas de «cierre» ni de
    «actualizar casillas»: el PR integrado es el cierre. Una sola tarea humana: el recorrido de la demo.
 5. **Pruebas por riesgo** (el Art. III sigue: pruebas primero, integración contra servicios reales):
    - unitarias para reglas de dominio y políticas;
@@ -76,6 +81,8 @@ Dueño abre el PR → CI verde → Adrián aprueba → squash merge → Hecha
 10. **Hallazgos y pendientes**: toda desviación de los diagramas va a `design-findings.md` (DF-xx) y todo lo que
     queda fuera de la spec (diagramas por redibujar, documentos por corregir, decisiones abiertas) va a
     `pendientes.md`, en el mismo PR que lo descubre.
+11. **Carpetas ya escritas**: toda carpeta `specs/NNN-slug/` que ya tiene `spec.md`, en `main` o en una rama,
+    no se reescribe para este pase. El pase único vale al crear una spec que todavía no tiene carpeta.
 
 ## 5. Trabajo en paralelo
 

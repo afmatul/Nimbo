@@ -41,12 +41,14 @@ comportarse distinto a lo que dice la spec, primero se corrige la spec y despué
 ## Flujo de trabajo (SDD express, `docs/sdd/workflow.md`)
 
 ```
-/spec  →  /plan  →  aprobación de Adrián  →  /tasks  →  /implement  →  /review  →  PR + CI + aprobación de Adrián  →  squash merge
+/spec  →  resumen para Adrián  →  /implement  →  /review  →  PR + CI + aprobación de Adrián  →  squash merge
 ```
 
-El plan es obligatorio y se aprueba antes del código; `architect` solo interviene si agrega un puerto entre módulos,
-tecnología nueva o cambia la arquitectura. Artefactos cortos (spec ≤ 150 líneas, plan ≤ 250, 5–12 tareas verticales),
-una rama y un PR por spec, pruebas por riesgo y aislamiento siempre que haya datos de cliente.
+`/spec` escribe spec, plan y tareas en una pasada (ADR-0033). El plan es obligatorio y se aprueba antes del código,
+sobre el resumen de ≤ 15 líneas; `architect` solo interviene si agrega un puerto entre módulos, tecnología nueva o
+cambia la arquitectura. Las carpetas de spec que ya existen no se reescriben. Artefactos cortos (spec ≤ 150 líneas,
+plan ≤ 250, 5–12 tareas de una línea), una rama y un PR por spec, pruebas por riesgo y aislamiento siempre que haya
+datos de cliente.
 Apoyo: `/status` (avance), `/adr` (decisiones), `/design-check` (coherencia código ↔ diagramas), `/mockup` (mockups y capturas).
 
 | Subagente          | Responsabilidad                                                     | Escribe en                          |

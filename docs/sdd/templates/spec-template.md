@@ -41,10 +41,13 @@
 ## 7. Fuera de alcance
 - <Lo que alguien podría asumir que entra y no entra.>
 
-## 8. Preguntas
-- [ABIERTA] <pregunta> — bloquea: sí/no
+## 8. Supuestos
+- <detalle que no cambia lo que el usuario ve ni un RF/RNF; se construye así>
+
+## 9. Preguntas
+- [ABIERTA] <pregunta> — bloquea: sí solo si cambia el comportamiento observable o un RF/RNF
 - [RESUELTA] <pregunta> → <respuesta> (fecha, quién)
 
-## 9. Registro de cambios
+## 10. Registro de cambios
 | Fecha | Cambio | Motivo | Aprobó |
 |---|---|---|---|

@@ -26,14 +26,19 @@ debe hacer, por qué y cómo se comprobará.
    - usa valores del catálogo de planes, nunca números inventados;
    - considera a los roles internos: ¿qué pasa si un rol interno intenta esto?
 4. Llena «Seguridad y privacidad» siempre, aunque sea para decir «no aplica» con razón.
-5. Si la spec tiene interfaz, pide al `ui-designer` (Modo 1) la tabla de pantallas, mockups y estados. Sin mockup,
-   agrega una pregunta `[ABIERTA]` bloqueante: «¿Se crea mockup (`/mockup`) o se usan patrones existentes?».
-6. **Nada de cómo** en la spec: módulos, tablas y contratos van al plan.
-7. Todo lo ambiguo va a «Preguntas» como `[ABIERTA]`, indicando si bloquea. **No inventes respuestas.**
-8. Estado: `Borrador`. Actualiza la fila en `specs/README.md`. Siguiente paso: `/plan NNN`.
+5. Si la spec tiene interfaz y `docs/sdd/ui-guidelines.md` §7 ya lista la pantalla, usa esa fila. Sin fila y sin
+   decisión explícita de mockup, agrega una pregunta `[ABIERTA]` con `bloquea: sí`: «¿Se crea mockup (`/mockup`) o se usan patrones existentes?».
+6. **Nada de cómo** en la spec: módulos, tablas y contratos van al plan. Si una spec anterior del mismo módulo ya
+   cubre una regla, la seguridad o los roles, cítala en una línea («igual que NNN») y escribe solo el delta.
+7. Lo que cambia el comportamiento observable o un RF/RNF va a «Preguntas» como `[ABIERTA]` con `bloquea: sí`.
+   Lo demás va a «Supuestos» y se construye así. **No inventes respuestas de negocio.**
+8. Estado: `Borrador`. Actualiza la fila en `specs/README.md`. Si la carpeta es nueva, sigue en este turno con el
+   Modo 2 y el Modo 3. No pases la spec a `Lista`. Si la carpeta ya existía, no regeneres plan ni tareas.
+9. No reescribas una carpeta existente para adoptar ADR-0033.
 
 ## Modo 2 — Planificar (`plan.md`, obligatorio, ≤ 250 líneas)
-Solo si la spec no tiene preguntas bloqueantes abiertas.
+Solo si la spec no tiene preguntas `[ABIERTA]` con `bloquea: sí`. Un supuesto no detiene el plan.
+Si la tabla de archivos pasa de 12 filas o la spec tiene más de una pantalla, detente y parte en dos specs.
 1. Copia `plan-template.md`. Decide módulos y capas según `architecture.md`.
 2. Usa las clases, puertos y tablas de los diagramas (`design-model.md`) con sus nombres exactos. Reutiliza
    fachadas, políticas y puertos existentes (DRY): busca con Grep antes de proponer algo nuevo.
@@ -49,16 +54,17 @@ Solo si la spec no tiene preguntas bloqueantes abiertas.
 8. Deja la sección «Aprobación» para `architect` (solo si hay puerto nuevo, tecnología nueva o cambio de arquitectura) y Adrián.
 
 ## Modo 3 — Descomponer (`tasks.md`)
-Solo si `plan.md` está aprobado por Adrián.
-1. Copia `tasks-template.md`. Entre **5 y 12 tareas**, cada una **vertical** (deja algo probado de punta a punta) y
-   de medio día a un día, con sus CA, archivos y dependencias.
+Cuando existe `plan.md`, aunque diga «Propuesto». `/implement` sigue exigiendo «Aprobado».
+1. Copia `tasks-template.md`. Entre **5 y 12 tareas**, cada una **vertical** (deja algo probado de punta a punta),
+   de medio día a un día y de **una línea**: título, CA, prueba y de qué depende. Los archivos viven en el plan.
 2. Toda tarea de lógica empieza por su prueba.
 3. Incluye una tarea de aislamiento si la spec toca datos de cliente y una sola tarea humana (el recorrido de la demo).
 4. **No** crees tareas de «cierre del PR», de marcar casillas ni de actualizar el backlog.
 
 ## Qué NO haces
 - No escribes ni modificas código fuera de `specs/` y `specs/README.md`.
-- No apruebas planes: los aprueba Adrián (y `architect` cuando aplica).
+- No reescribas `spec.md`, `plan.md` ni `tasks.md` de una carpeta que ya existe para aplicar ADR-0033.
+- No apruebas planes: los aprueba Adrián (y `architect` cuando aplica). El silencio de un día lo anota el dueño.
 - No agregas alcance que la propuesta no pide; no reintroduces elementos de «Fuera de alcance».
 - No resuelves preguntas de negocio por tu cuenta.
 
