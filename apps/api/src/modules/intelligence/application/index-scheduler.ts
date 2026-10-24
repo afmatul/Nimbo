@@ -6,7 +6,6 @@ import { createActor, I_CLOCK, I_TRANSACTION_RUNNER, Role } from '../../../share
 import type { Actor, IClock, ITransactionRunner } from '../../../shared';
 import type { FileVersionCreatedEvent } from '../../storage';
 import { FileIndexing } from '../domain/file-indexing';
-import type { IndexingState } from '../domain/file-indexing';
 
 import { ExtractorRegistry } from './extractor-registry';
 import { I_INDEX_QUEUE } from './ports/i-index-queue.port';
@@ -15,9 +14,6 @@ import { I_INDEX_STATUS_NOTIFIER } from './ports/i-index-status-notifier.port';
 import type { IIndexStatusNotifier } from './ports/i-index-status-notifier.port';
 import { I_INDEXING_REPOSITORY } from './ports/i-indexing-repository.port';
 import type { IIndexingRepository } from './ports/i-indexing-repository.port';
-
-/** Estados en que la versión todavía espera al `worker`: encolarla otra vez no duplica nada (`jobId` = versión). */
-const AWAITING_WORKER: readonly IndexingState[] = ['pendiente', 'indexando'];
 
 /** Qué dejó la transacción: fila nueva, una que todavía espera al `worker` o una ya terminada. */
 type Pending = 'created' | 'awaiting' | 'settled';
@@ -64,6 +60,6 @@ export class IndexScheduler {
     });
     if (await this.indexings.insertIfAbsent(owner, indexing)) return 'created';
     const existing = await this.indexings.findByVersion(owner, version.versionId);
-    return existing !== null && AWAITING_WORKER.includes(existing.state) ? 'awaiting' : 'settled';
+    return existing !== null && existing.isAwaitingWorker ? 'awaiting' : 'settled';
   }
 }

@@ -10,12 +10,7 @@ import type { Chunk } from '../domain/chunk';
 import { Chunker } from '../domain/chunker';
 import { ContentReadError, EmbeddingUnavailableError, NotIndexableError } from '../domain/errors';
 import { FAILURE_REASONS } from '../domain/file-indexing';
-import type {
-  FailureReason,
-  FileIndexing,
-  IndexingResult,
-  IndexingState,
-} from '../domain/file-indexing';
+import type { FailureReason, FileIndexing, IndexingResult } from '../domain/file-indexing';
 
 import { ExtractorRegistry } from './extractor-registry';
 import { IndexingOutcomeRecorder } from './indexing-outcome.recorder';
@@ -40,9 +35,6 @@ export type IndexingFiles = Pick<
   IndexableFileGateway,
   'findOwned' | 'openCurrent' | 'lockCurrentVersion'
 >;
-
-/** Estados desde los que un trabajo puede reclamar o darse por vencido (plan §7 punto 8). */
-const CLAIMABLE: readonly IndexingState[] = ['pendiente', 'indexando'];
 
 /** Intento en curso: además de lo que registra el recorder, cuándo empezó (para `duracion_ms`). */
 interface ActiveRun extends IndexingRun {
@@ -121,7 +113,7 @@ export class IndexingService {
     const indexing = await this.transactions.withActor(owner, () =>
       this.indexings.findByVersion(owner, job.versionId),
     );
-    if (indexing === null || !CLAIMABLE.includes(indexing.state)) return;
+    if (indexing === null || !indexing.isAwaitingWorker) return;
     const failed = indexing.fail(failureReasonOf(error), {
       durationMs: null,
       now: this.clock.now(),
@@ -140,7 +132,7 @@ export class IndexingService {
     const startedAt = this.clock.now();
     return this.transactions.withActor(owner, async () => {
       const current = await this.indexings.findByVersion(owner, job.versionId);
-      if (current === null || !CLAIMABLE.includes(current.state)) return null;
+      if (current === null || !current.isAwaitingWorker) return null;
       const claimed = current.claim(startedAt);
       const applied = await this.indexings.compareAndSet(owner, claimed, current.state);
       return applied ? { owner, indexing: claimed, startedAt } : null;

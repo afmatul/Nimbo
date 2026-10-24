@@ -5,7 +5,7 @@ import { createActor, I_CLOCK, I_TRANSACTION_RUNNER, Role } from '../../../share
 import type { Actor, IClock, ITransactionRunner } from '../../../shared';
 import { IndexableFileGateway } from '../../storage';
 import type { IdPage, IndexableFile } from '../../storage';
-import type { FileIndexing, IndexingState } from '../domain/file-indexing';
+import type { FileIndexing } from '../domain/file-indexing';
 
 import { ExtractorRegistry } from './extractor-registry';
 import { IndexScheduler } from './index-scheduler';
@@ -18,7 +18,6 @@ import type { IIndexingRepository } from './ports/i-indexing-repository.port';
 const MINUTE_MS = 60_000;
 /** Una fila que espera al `worker` sin cambios durante este lapso se da por perdida y se vuelve a encolar (plan 019 §1). */
 export const STALE_AFTER_MS = 30 * MINUTE_MS;
-const AWAITING_WORKER: readonly IndexingState[] = ['pendiente', 'indexando'];
 
 /** Conciliación de la indexación (`INDEX_RECONCILE_INTERVAL_MINUTES`, `INDEX_RECONCILE_BATCH_SIZE`). */
 export interface IndexReconcileConfig {
@@ -171,7 +170,7 @@ export class IndexReconciler {
 
   private repairFor(indexing: FileIndexing | null): Repair {
     if (indexing === null) return 'scheduled';
-    if (!AWAITING_WORKER.includes(indexing.state)) return 'none';
+    if (!indexing.isAwaitingWorker) return 'none';
     const idleMs = this.clock.now().getTime() - indexing.snapshot().updatedAt.getTime();
     return idleMs > STALE_AFTER_MS ? 'requeued' : 'none';
   }

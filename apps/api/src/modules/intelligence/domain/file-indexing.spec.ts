@@ -116,6 +116,16 @@ describe('FileIndexing (plan 019 §2)', () => {
     expect(() => current.retry(LATER)).toThrow(IndexingNotRetryableError);
   });
 
+  it.each<[string, boolean, () => FileIndexing]>([
+    ['pendiente', true, pending],
+    ['indexando', true, indexing],
+    ['indexado', false, () => indexing().complete({ ...DONE, fragmentCount: 1 })],
+    ['no_indexable', false, () => indexing().markUnindexable('sin_texto', DONE)],
+    ['fallido', false, failed],
+  ])('CA-9: `%s` espera al `worker`: %s', (_state, expected, build) => {
+    expect(build().isAwaitingWorker).toBe(expected);
+  });
+
   it('CA-9: solo se termina lo que se está indexando', () => {
     expect(() => pending().complete({ ...DONE, fragmentCount: 1 })).toThrow(TypeError);
     expect(() => pending().markUnindexable('sin_texto', DONE)).toThrow(TypeError);

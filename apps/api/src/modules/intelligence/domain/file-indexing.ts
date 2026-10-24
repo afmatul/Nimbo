@@ -79,7 +79,10 @@ const ALLOWED_FROM: Readonly<Record<IndexingState, readonly IndexingState[]>> = 
   fallido: ['pendiente', 'indexando'],
 };
 
-const isCount = (value: number): boolean => Number.isInteger(value) && value >= 0;
+/** Estados que todavía esperan al `worker`. */
+const AWAITING_WORKER: readonly IndexingState[] = ['pendiente', 'indexando'];
+
+const isCount =(value: number): boolean => Number.isInteger(value) && value >= 0;
 
 /** Mismas reglas que los `CHECK` de la tabla, más la correspondencia entre estado y motivo. */
 function assertInvariants(snapshot: FileIndexingSnapshot): void {
@@ -175,6 +178,11 @@ export class FileIndexing {
 
   get isRetryable(): boolean {
     return this.data.state === 'fallido';
+  }
+
+  /** `pendiente` o `indexando`: el `worker` puede reclamarla y volver a encolarla no duplica nada (`jobId` = versión). */
+  get isAwaitingWorker(): boolean {
+    return AWAITING_WORKER.includes(this.data.state);
   }
 
   get id(): string {
