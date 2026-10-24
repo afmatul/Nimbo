@@ -193,7 +193,7 @@ describe('migración crear-indexacion-y-fragmento (plan 019 §3)', () => {
     ).rejects.toThrow(/768 dimensions/);
   });
 
-  it('PD-124: `texto_busq` se genera del texto en español (lo consume 018)', async () => {
+  it('PD-127: `texto_busq` se genera del texto en español (lo consume 018)', async () => {
     const [row] = await inRolledBackTransaction(owner, async (runner) => {
       const version = await indexedVersion(runner);
       await insertChunk(runner, version, { text: 'Las ventas del trimestre crecieron' });

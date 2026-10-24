@@ -1,4 +1,4 @@
-/** Tipo de procedencia guardado en `fragmento.procedencia.tipo` (DF-07, DF-78): el tipo de archivo del que sale. */
+/** Tipo de procedencia guardado en `fragmento.procedencia.tipo` (DF-07, DF-79): el tipo de archivo del que sale. */
 export type SourceLocationType = 'docx' | 'pdf' | 'texto' | 'xlsx' | 'pptx';
 
 /**
@@ -30,7 +30,7 @@ function requireConfidence(value: number): number {
 }
 
 /**
- * Procedencia de un segmento o fragmento (diagrama M6, DF-78; VO inmutable). Cada subclase fija su unidad de ubicación:
+ * Procedencia de un segmento o fragmento (diagrama M6, DF-79; VO inmutable). Cada subclase fija su unidad de ubicación:
  * dos ubicaciones con igual `groupKey()` pueden unirse en un fragmento (`mergeWith`) sin mezclar ubicaciones (RN-3);
  * con distinta, nunca.
  */

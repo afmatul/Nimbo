@@ -62,7 +62,7 @@ const failedIndexing = (file: IndexableFile): FileIndexing =>
     .claim(CREATED)
     .fail('proveedor_no_disponible', { durationMs: null, now: CREATED });
 
-/** Archivos que ve cada actor y qué puede editar: antes de 012 nadie más que la propietaria (PD-120). */
+/** Archivos que ve cada actor y qué puede editar: antes de 012 nadie más que la propietaria (PD-123). */
 class FakeAccess implements IndexStatusFiles, IndexStatusPermissions {
   readonly visible = new Map<string, Set<string>>();
   readonly editable = new Set<string>();

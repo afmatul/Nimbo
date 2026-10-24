@@ -6,7 +6,7 @@ import { unzipSync, type UnzipFileInfo } from 'fflate';
 import { NotIndexableError } from '../../domain/errors';
 
 /**
- * Tope de bytes descomprimidos que se leen de un paquete OOXML (ADR-0031 a): corta las bombas de compresión antes de
+ * Tope de bytes descomprimidos que se leen de un paquete OOXML (ADR-0033 a): corta las bombas de compresión antes de
  * inflar. El texto de un documento que llega al tope de fragmentos (D-4) ocupa mucho menos, aun con el marcado XML.
  */
 export const OOXML_MAX_UNCOMPRESSED_BYTES = 64 * 1024 * 1024;
@@ -120,7 +120,7 @@ function parseXml(bytes: Uint8Array): readonly XmlNode[] {
 }
 
 /**
- * Lector común de paquetes OOXML (`.docx`, `.xlsx`, `.pptx`; ADR-0031 a): zip con `fflate` y XML con
+ * Lector común de paquetes OOXML (`.docx`, `.xlsx`, `.pptx`; ADR-0033 a): zip con `fflate` y XML con
  * `fast-xml-parser`. Solo descomprime las partes pedidas, con tope de bytes; un zip o un XML dañado es
  * `formato_no_soportado`.
  */

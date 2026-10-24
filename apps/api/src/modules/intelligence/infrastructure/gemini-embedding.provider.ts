@@ -69,7 +69,7 @@ async function parseBatch(response: Response, expected: number): Promise<readonl
 }
 
 /**
- * `IEmbeddingProvider` sobre la API REST de Gemini con `fetch`, sin SDK (ADR-0007, ADR-0031 c): `batchEmbedContents`
+ * `IEmbeddingProvider` sobre la API REST de Gemini con `fetch`, sin SDK (ADR-0007, ADR-0033 c): `batchEmbedContents`
  * en lotes de hasta 100, 768 dimensiones (`outputDimensionality`) y normalización L2. La clave va solo en la cabecera
  * `x-goog-api-key`: nunca en la URL, en un error ni en bitácora, y los errores no llevan la respuesta del proveedor.
  * Sin clave, `EmbeddingUnavailableError` no reintentable sin llamar a la red (CA-12).

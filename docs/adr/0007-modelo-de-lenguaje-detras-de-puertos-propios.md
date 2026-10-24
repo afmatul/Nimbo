@@ -5,7 +5,7 @@
 | Estado | Aceptado |
 | Fecha | 2026-10-21 |
 | Decisores | Adrián (architect), equipo Nimbo |
-| Specs relacionadas | 019 (`IEmbeddingProvider`), 020 (`ILanguageModel`), ADR-0003, ADR-0031, constitución Art. IV (D) y V.2 reglas (a) y (c), RN-9 de la 019 |
+| Specs relacionadas | 019 (`IEmbeddingProvider`), 020 (`ILanguageModel`), ADR-0003, ADR-0033, constitución Art. IV (D) y V.2 reglas (a) y (c), RN-9 de la 019 |
 
 ## Contexto
 
@@ -36,7 +36,7 @@ pueden depender de la red ni del cupo del proveedor. La 019 es el primer consumi
 
 ## Decisión
 
-Opción 1. En 019 se implementa solo `IEmbeddingProvider` → `GeminiEmbeddingProvider` (REST, ver ADR-0031) en
+Opción 1. En 019 se implementa solo `IEmbeddingProvider` → `GeminiEmbeddingProvider` (REST, ver ADR-0033) en
 `intelligence/infrastructure`, con el puerto declarado en `intelligence/application/ports`. `ILanguageModel` → `GeminiFlashModel` llega
 con la 020 y se registra aquí como cumplido. Ambos puertos son **internos** de `intelligence` (nadie más los consume). Reglas:
 

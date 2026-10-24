@@ -29,7 +29,7 @@ const relayWith = (publisher: RecordingPublisher): IndexStatusRelay =>
 const jobOf = (data: IndexStatusJobData): Job<IndexStatusJobData> =>
   ({ id: 'aviso-1', data }) as Job<IndexStatusJobData>;
 
-describe('IndexStatusRelay (019 CA-14, ADR-0031 d)', () => {
+describe('IndexStatusRelay (019 CA-14, ADR-0033 d)', () => {
   it('CA-14: retransmite el aviso del `worker` a la propietaria como `indexing.status-changed`', async () => {
     const publisher = new RecordingPublisher();
 

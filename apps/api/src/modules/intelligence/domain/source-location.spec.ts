@@ -4,7 +4,7 @@ import { SheetLocation } from './sheet-location';
 import { SlideLocation } from './slide-location';
 import { TextLocation } from './text-location';
 
-describe('SourceLocation (DF-07, DF-78)', () => {
+describe('SourceLocation (DF-07, DF-79)', () => {
   describe('groupKey', () => {
     it('RN-3: los párrafos de una misma sección comparten unidad; los de otra sección, no', () => {
       expect(DocxLocation.paragraph(2, 1).groupKey()).toBe(DocxLocation.paragraph(2, 7).groupKey());

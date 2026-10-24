@@ -103,6 +103,6 @@ Rutas relativas a `docs/design/`. No hay mockup propio: el estado vive en la fic
 |---|---|---|---|
 | 2026-10-21 | Creación en `Borrador` | `/spec 019` | — |
 | 2026-10-21 | P-1 a P-7 resueltas con la recomendación de cada una; se agregan RN-11 (disparo por `FileVersionCreated`), RN-12 y CA-23 (archivos previos), y «Fuera de alcance» suma el botón masivo del cliente. Sigue `Borrador`: falta el plan aprobado y el mockup de la ficha | Respuestas de Adrián | Adrián |
-| 2026-10-21 | Pasa a `Lista` con el plan aprobado. CA-19 queda sin verificar al cerrar 019 hasta que exista 012 (PD-120). Mockup de la ficha pendiente con `/mockup` | Aprobación del plan | Adrián |
-| 2026-10-21 | Mockup de la ficha hecho (§6). Decisiones de UI: la ficha se implementa primero para la propietaria y la vista de lector llega con 012 (PD-120); `pendiente` e `indexando` comparten el chip «Indexando…»; el aviso «sin texto» sugiere reemplazar el archivo por una versión con texto (sin OCR). Ghostscript solo en CI y en `ambientes.md` (PD-125) | Respuestas de Adrián | Adrián |
+| 2026-10-21 | Pasa a `Lista` con el plan aprobado. CA-19 queda sin verificar al cerrar 019 hasta que exista 012 (PD-123). Mockup de la ficha pendiente con `/mockup` | Aprobación del plan | Adrián |
+| 2026-10-21 | Mockup de la ficha hecho (§6). Decisiones de UI: la ficha se implementa primero para la propietaria y la vista de lector llega con 012 (PD-123); `pendiente` e `indexando` comparten el chip «Indexando…»; el aviso «sin texto» sugiere reemplazar el archivo por una versión con texto (sin OCR). Ghostscript solo en CI y en `ambientes.md` (PD-128) | Respuestas de Adrián | Adrián |
 | 2026-10-21 | Pasa a `En curso` con T-01 (fundaciones) | Inicio de la implementación | Adrián |

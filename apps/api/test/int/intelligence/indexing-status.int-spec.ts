@@ -49,7 +49,7 @@ const errorOf = (response: Response): { status: number; code: unknown } => ({
  * Estado, «Reintentar» y aviso en vivo de la indexación (019 T-07, plan §4): el `api` real con `StorageModule`,
  * `IntelligenceModule` y el canal de 015 escuchando en un puerto efímero, y el `worker` real que indexa y publica en
  * `index-status`; Postgres como `nimbo_app`, Redis y MinIO reales. Antes de 012 el único con acceso es la propietaria:
- * editor y lector se prueban en `index-status.service.spec.ts` y en la 012 (PD-120).
+ * editor y lector se prueban en `index-status.service.spec.ts` y en la 012 (PD-123).
  */
 describe('estado y «Reintentar» de la indexación (019 CA-13, CA-14, CA-15, CA-18, CA-20)', () => {
   let world: IndexingWorld;

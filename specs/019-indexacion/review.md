@@ -28,7 +28,7 @@
 | CA-16 | `indexing-run.int-spec`, `intelligence.iso-spec` | ✅ |
 | CA-17 | `intelligence.iso-spec`, `chunk.repository.int-spec` | ✅ |
 | CA-18 | `intelligence.iso-spec`, `indexing-status.int-spec` | ✅ |
-| CA-19 | Vista: `indexing-banner.spec`; servidor con lector espera a 012 (PD-120) | ⏸ |
+| CA-19 | Vista: `indexing-banner.spec`; servidor con lector espera a 012 (PD-123) | ⏸ |
 | CA-20 | `intelligence.iso-spec`, `migrations.int-spec`, `indexing-status.int-spec` | ✅ |
 | CA-21 | `indexing-logs-audit.int-spec` | ✅ |
 | CA-22 | `indexing-run.int-spec` (suscripción vencida) | ✅ |
@@ -61,4 +61,4 @@
 - Migración reversible con `CHECK` nombrados, HNSW y GIN; integración y aislamiento con servicios reales.
 
 ## DF y pendientes
-- DF-07, DF-14, DF-37 aplicados; DF-77 a DF-79 aceptados. PD-18, PD-90, PD-123 cerrados. Abiertos: PD-120 (CA-19 con 012), PD-121, PD-122, PD-124, PD-125, PD-126. PD-63 sin cambios (I-3 resuelto, no diferido).
+- DF-07, DF-14, DF-37 aplicados; DF-78 a DF-80 aceptados. PD-18, PD-90, PD-126 cerrados. Abiertos: PD-123 (CA-19 con 012), PD-124, PD-125, PD-127, PD-128, PD-129. PD-63 sin cambios (I-3 resuelto, no diferido).

@@ -108,7 +108,7 @@ Imágenes (idénticas en compose y en Testcontainers): `pgvector/pgvector:pg17`,
 - **Degradación**: un SMTP caído no afecta la salud del `worker` ni las respuestas del `api`; la cola reintenta 5 veces
   (~2,5 min) y al agotar registra `mail.failed` (ver `apps/api/src/modules/notifications/README.md`).
 
-## 3c. Ghostscript (spec 019, D-1, ADR-0031)
+## 3c. Ghostscript (spec 019, D-1, ADR-0033)
 
 El `worker` lee el texto de los PDF con Ghostscript (`txtwrite`) en un proceso aparte, sin shell, con tiempo límite y en
 un directorio temporal propio que se borra al terminar. El `api` no lo necesita. Sin Ghostscript, la indexación de los
@@ -125,7 +125,7 @@ PDF falla y se reintenta; el resto de los tipos y del sistema siguen igual.
 - **Pruebas**: `test/int/intelligence/pdf-extraction.int-spec.ts` usa `GHOSTSCRIPT_BIN` del entorno de la terminal (las
   pruebas no leen `.env`; si falta, prueba `gs` o, en Windows, `gswin64c`). En CI es obligatoria; en una máquina sin
   Ghostscript se omite y lo dice el resumen de Jest.
-- **Imagen del `worker`**: todavía no existe `apps/worker/Dockerfile`; quien la cree instala `ghostscript` (PD-125).
+- **Imagen del `worker`**: todavía no existe `apps/worker/Dockerfile`; quien la cree instala `ghostscript` (PD-128).
 
 ## 4. Arranque y salud
 

@@ -3,13 +3,13 @@
 - **Dueño**: Fátima (`specs/README.md`); la 019 la implementa Adrián.
 - **Diagrama de origen**: M6 en `docs/sdd/design-model.md` §3 y `docs/design/diagramas/`.
 - **Responsabilidad**: Indexación de la versión vigente de cada archivo (019), recuperación híbrida y agente con citas (020).
-  La indexación se dispara con el evento `storage.file-version-created` (019 RN-11, DF-77); `IIndexQueue` es **interno**
+  La indexación se dispara con el evento `storage.file-version-created` (019 RN-11, DF-78); `IIndexQueue` es **interno**
   de este módulo y ya no lo cruza nadie (cierra PD-18).
 - **Puede depender de**: shared, storage, access, audit (resultados de la indexación, 019 CA-21), billing
   (`IAgentQuota`, 020), realtime (`docs/sdd/architecture.md` §3; el lint de fronteras lo hace cumplir).
 - **Expone por HTTP** solo el estado de indexación y «Reintentar» (`GET /files/:fileId/indexing`,
   `POST /files/:fileId/indexing/retry`, `@Roles(CLIENT)`, 019 plan §4); el aviso en vivo `indexing.status-changed` sale
-  por el canal de 015, directo desde el `api` o por el relay de `index-status` desde el `worker` (ADR-0031 d).
+  por el canal de 015, directo desde el `api` o por el relay de `index-status` desde el `worker` (ADR-0033 d).
 - **No expone** fragmentos ni texto por HTTP en la 019: los lee la 020 con `accessibleNodes(actor)` antes de ordenar
   por similitud (DF-14). Ningún rol interno ve texto indexado (019 CA-20).
 - **Conciliación** (019 RN-12, CA-23): el `worker` corre `index-reconcile` cada `INDEX_RECONCILE_INTERVAL_MINUTES`
@@ -17,16 +17,16 @@
   lanza una vez con `pnpm --filter api index:reconcile` (resultado en la bitácora del `worker`:
   `index.reconcile_completed`); `pnpm seed`, cuando exista el corpus (D-5), usa el mismo gancho
   (`requestIndexReconcile` de `index.ts`, la única pieza de infraestructura que se exporta, solo para scripts).
-- **Specs que lo construyen**: 019 (indexación, completa), 020; 018 consume el índice de texto (`texto_busq`) sin modificarlo (PD-124).
+- **Specs que lo construyen**: 019 (indexación, completa), 020; 018 consume el índice de texto (`texto_busq`) sin modificarlo (PD-127).
 
 ## Puertos (todos internos: ninguno cruza módulos)
 
 | Puerto                                                             | Implementación                                                                          |
 | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
 | `ITextExtractor` (`ExtractorRegistry` decide qué tipos se indexan) | `DocxExtractor`, `PdfExtractor`, `PlainTextExtractor`, `XlsxExtractor`, `PptxExtractor` |
-| `IEmbeddingProvider` (768 dimensiones)                             | `GeminiEmbeddingProvider` (REST, sin SDK; ADR-0007, ADR-0031)                           |
-| `ICommandRunner` (sin shell, con tiempo límite y salida acotada)   | `ChildProcessRunner`; interno hasta que 021 lo reutilice (DF-79)                        |
-| `IIndexQueue` (`enqueue`, `enqueueRetry`)                          | `BullmqIndexQueue` (ya no `editing → intelligence`, DF-77)                              |
+| `IEmbeddingProvider` (768 dimensiones)                             | `GeminiEmbeddingProvider` (REST, sin SDK; ADR-0007, ADR-0033)                           |
+| `ICommandRunner` (sin shell, con tiempo límite y salida acotada)   | `ChildProcessRunner`; interno hasta que 021 lo reutilice (DF-80)                        |
+| `IIndexQueue` (`enqueue`, `enqueueRetry`)                          | `BullmqIndexQueue` (ya no `editing → intelligence`, DF-78)                              |
 | `IIndexStatusNotifier`                                             | `RealtimeIndexStatusNotifier` (`api`) y `QueuedIndexStatusNotifier` (`worker`)          |
 | `IIndexingRepository`, `IChunkRepository`                          | `TypeOrmIndexingRepository`, `TypeOrmChunkRepository`                                   |
 
@@ -44,7 +44,7 @@
    `GEMINI_API_KEY` → `fallido/proveedor_no_disponible` sin reintento. Archivo ajeno, purgado o versión superada = descarte.
 3. **Relay.** Cada cambio de estado se publica en la cola `index-status` (`{ownerId, fileId, state, reason}`) y
    `IndexStatusRelay`, **en el `api`**, lo retransmite por el canal de 015 como `indexing.status-changed` a la propietaria
-   (ADR-0031 d). Los cambios hechos en el `api` van directo. El aviso es de mejor esfuerzo.
+   (ADR-0033 d). Los cambios hechos en el `api` van directo. El aviso es de mejor esfuerzo.
 
 ## Reintento
 

@@ -14,7 +14,7 @@ import { INDEX_STATUS_QUEUE } from './queued-index-status.notifier';
 export type IndexStatusJobData = IndexStatusChange & { readonly correlationId?: string };
 
 /**
- * Relay de `index-status` **en el `api`** (ADR-0031 d, D-2): los sockets de 015 viven aquí, así que retransmite cada
+ * Relay de `index-status` **en el `api`** (ADR-0033 d, D-2): los sockets de 015 viven aquí, así que retransmite cada
  * cambio que encoló el `worker` con el notificador del `api` (`RealtimeIndexStatusNotifier`, `toUser(ownerId)`). Solo
  * pasa archivo, estado y motivo: ni `ownerId` ni `correlationId` llegan al navegador. Sin reintentos: el aviso es de
  * mejor esfuerzo y el estado guardado no depende de él.

@@ -3,14 +3,14 @@ import type { MigrationInterface, QueryRunner } from 'typeorm';
 const TABLES = ['indexacion', 'fragmento'] as const;
 
 /**
- * Estado de indexación por versión y fragmentos indexados (spec 019, plan §3; DF-07, DF-14, DF-78). La extensión
+ * Estado de indexación por versión y fragmentos indexados (spec 019, plan §3; DF-07, DF-14, DF-79). La extensión
  * `vector` ya existe (`20260915120000`).
  *
  * - `indexacion`: una fila por versión (`uq_indexacion_version`, idempotencia CA-9 y RN-10); hay `motivo` si y solo si
  *   el estado es `no_indexable` o `fallido` (`ck_indexacion_motivo`). `idx_indexacion_pendiente` sirve a la
  *   conciliación (`pendiente`/`indexando` viejos, CA-23).
  * - `fragmento`: `archivo_id` desnormalizado para la RLS y el filtro previo por `accessibleNodes` (DF-14);
- *   `procedencia` es un objeto con `tipo` (DF-07); `texto_busq` se genera en español y lo consume 018 (PD-124).
+ *   `procedencia` es un objeto con `tipo` (DF-07); `texto_busq` se genera en español y lo consume 018 (PD-127).
  * - Ambas caen en cascada con su archivo (purga, CA-15) y con su versión (retención). Las acciones referenciales no
  *   pasan por RLS: la purga de la propietaria las borra igual.
  * - RLS como `version_archivo_cliente`: solo `CLIENT` y solo sobre archivos que `archivo` (también con RLS) le deja

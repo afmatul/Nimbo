@@ -48,7 +48,7 @@ export interface IntelligenceDependencies {
  * Módulo `intelligence` del `api` (M6, plan 019 §2): escucha `storage.file-version-created` y programa la indexación
  * (fila `pendiente`, trabajo en la cola `indexing` y aviso en vivo), expone el estado y «Reintentar»
  * (`IndexingController`) y retransmite por el canal en vivo los avisos que el `worker` deja en `index-status`
- * (`IndexStatusRelay`, ADR-0031 d). `ExtractorRegistry` decide qué tipos se indexan. `SharedModule` (global) aporta
+ * (`IndexStatusRelay`, ADR-0033 d). `ExtractorRegistry` decide qué tipos se indexan. `SharedModule` (global) aporta
  * reloj, transacciones y límite de tasa, y la raíz `EventEmitterModule.forRoot()` (ADR-0019). El `worker` usa
  * `IntelligenceWorkerModule` (T-06), sin oyente ni controlador.
  */

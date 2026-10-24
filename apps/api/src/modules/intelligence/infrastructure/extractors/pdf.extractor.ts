@@ -97,7 +97,7 @@ function requirePdfSignature(content: Buffer): void {
 }
 
 /**
- * Extractor de `.pdf` (CA-2, CA-4, CA-5; D-1, ADR-0031 b): Ghostscript `txtwrite` en un proceso aparte, con tiempo
+ * Extractor de `.pdf` (CA-2, CA-4, CA-5; D-1, ADR-0033 b): Ghostscript `txtwrite` en un proceso aparte, con tiempo
  * límite y sin shell, dentro de un directorio temporal propio (0700) que se borra siempre. Un segmento por página con
  * texto. Si Ghostscript no lo lee o no da páginas → `formato_no_soportado`; si ninguna página tiene texto (escaneado,
  * sin OCR) → `sin_texto`. Un tope pasado o un binario ausente se propagan como transitorios.

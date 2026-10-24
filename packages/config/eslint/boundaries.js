@@ -23,7 +23,7 @@ const ALLOWED = {
   sharing: ['access', 'storage', 'audit'],
   // Sin `billing`: con `identity → editing` cerraría `editing → billing → identity → editing` (plan 016 §2).
   editing: ['storage', 'access', 'realtime', 'audit'],
-  // `audit` para los resultados de la indexación (019 CA-21, DF-77; transversal sin dependencias, regla 5).
+  // `audit` para los resultados de la indexación (019 CA-21, DF-78; transversal sin dependencias, regla 5).
   intelligence: ['storage', 'access', 'billing', 'realtime', 'audit'],
   optimizer: ['storage', 'access'],
   backoffice: ['audit', 'identity', 'billing', 'storage'],

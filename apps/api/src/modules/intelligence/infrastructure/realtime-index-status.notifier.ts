@@ -10,7 +10,7 @@ import type {
 
 /**
  * `IIndexStatusNotifier` del `api` (ADR-0030): avisa directo por el canal de 015 a las conexiones de la propietaria
- * (`toUser`). Hasta 012 no llega a quienes comparten el archivo (PD-120). `toUser` es síncrono y nunca lanza.
+ * (`toUser`). Hasta 012 no llega a quienes comparten el archivo (PD-123). `toUser` es síncrono y nunca lanza.
  */
 @Injectable()
 export class RealtimeIndexStatusNotifier implements IIndexStatusNotifier {
