@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | En curso |
+| Estado | En revisión |
 | Dueño | Adrián |
 | Fase | 3 |
 | Requisitos | RF-30, RF-31 (Debería), RNF-03, RNF-05, RNF-09, RNF-17. Casos de uso 07, 14, 37 |
