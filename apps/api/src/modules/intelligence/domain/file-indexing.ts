@@ -82,7 +82,7 @@ const ALLOWED_FROM: Readonly<Record<IndexingState, readonly IndexingState[]>> = 
 /** Estados que todavía esperan al `worker`. */
 const AWAITING_WORKER: readonly IndexingState[] = ['pendiente', 'indexando'];
 
-const isCount =(value: number): boolean => Number.isInteger(value) && value >= 0;
+const isCount = (value: number): boolean => Number.isInteger(value) && value >= 0;
 
 /** Mismas reglas que los `CHECK` de la tabla, más la correspondencia entre estado y motivo. */
 function assertInvariants(snapshot: FileIndexingSnapshot): void {

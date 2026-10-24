@@ -221,7 +221,11 @@ describe('IndexReconciler (019 RN-12, CA-23)', () => {
     const files = manyFilesOf(ANA, MAX_LOGGED_IDS + 1);
     const done = fileOf(BETO, 1);
     const { reconciler, indexings, lines } = setup([ANA, BETO], [...files, done]);
-    const row = rowFor(done, 0, 'indexando').complete({ fragmentCount: 1, durationMs: 5, now: NOW });
+    const row = rowFor(done, 0, 'indexando').complete({
+      fragmentCount: 1,
+      durationMs: 5,
+      now: NOW,
+    });
     indexings.byVersion.set(row.versionId, row);
 
     await reconciler.reconcileAll();
