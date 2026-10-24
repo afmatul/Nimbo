@@ -86,6 +86,7 @@ const RUNTIME_EXPORTS_BY_TASK = {
   '005 T-25': ['BIGINT_TRANSFORMER'],
   '009 T-05': ['RateLimitExceededError'],
   '019 T-01': ['I_DOMAIN_EVENT_PUBLISHER', 'EventEmitterDomainEventPublisher'],
+  '019 T-FIX-2': ['errorClassOf'],
 } as const;
 
 const ALL_RUNTIME_EXPORTS: readonly string[] = Object.values(RUNTIME_EXPORTS_BY_TASK).flat();
@@ -185,6 +186,10 @@ describe('shared/index.ts (CA-17)', () => {
   it('019 RN-11: exporta el puerto `IDomainEventPublisher` y su adaptador en proceso (ADR-0019, 019 T-01)', () => {
     expectExportsOf('019 T-01');
     expect(typeof shared.I_DOMAIN_EVENT_PUBLISHER).toBe('symbol');
+  });
+  it('RN-5: exporta `errorClassOf`, la única forma de registrar la clase de un error (019 T-FIX-2)', () => {
+    expectExportsOf('019 T-FIX-2');
+    expect(shared.errorClassOf(new TypeError('dato'))).toBe('TypeError');
   });
   it('CA-17: exporta exactamente la lista del plan §6.2 al cerrar el bloque 2 (T-26)', () => {
     expect(exportedKeys()).toEqual([...ALL_RUNTIME_EXPORTS].sort());

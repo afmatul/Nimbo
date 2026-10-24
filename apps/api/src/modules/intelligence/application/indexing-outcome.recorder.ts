@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
 
-import { I_TRANSACTION_RUNNER } from '../../../shared';
+import { errorClassOf, I_TRANSACTION_RUNNER } from '../../../shared';
 import type { Actor, ITransactionRunner } from '../../../shared';
 import { AuditAction, I_AUDIT_LOGGER } from '../../audit';
 import type { AuditRecord, IAuditLogger } from '../../audit';
@@ -40,9 +40,6 @@ const OUTCOMES: Readonly<
 };
 
 const isSettled = (state: IndexingState): state is Settled => state in OUTCOMES;
-
-const errorClassOf = (error: unknown): string =>
-  error instanceof Error ? error.constructor.name : typeof error;
 
 const idsOf = (indexing: FileIndexing): FileVersionRef => ({
   fileId: indexing.fileId,

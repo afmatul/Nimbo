@@ -30,6 +30,7 @@ export type {
 } from './application/auth/i-access-token-verifier.port';
 export { I_DOMAIN_EVENT_PUBLISHER } from './application/events/i-domain-event-publisher.port';
 export type { IDomainEventPublisher } from './application/events/i-domain-event-publisher.port';
+export { errorClassOf } from './application/error-class';
 export type { IHealthIndicator } from './application/health/i-health-indicator.port';
 export { I_TRANSACTION_RUNNER } from './application/persistence/i-transaction-runner.port';
 export type { ITransactionRunner } from './application/persistence/i-transaction-runner.port';

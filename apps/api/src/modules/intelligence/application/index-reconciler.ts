@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
 
-import { createActor, I_CLOCK, I_TRANSACTION_RUNNER, Role } from '../../../shared';
+import { createActor, errorClassOf, I_CLOCK, I_TRANSACTION_RUNNER, Role } from '../../../shared';
 import type { Actor, IClock, ITransactionRunner } from '../../../shared';
 import { IndexableFileGateway } from '../../storage';
 import type { IdPage, IndexableFile } from '../../storage';
@@ -84,9 +84,6 @@ const jobOf = (owner: Actor, file: IndexableFile): IndexJob => ({
 
 const versionIdsOf = (repaired: readonly Repaired[], repair: Repair): string[] =>
   repaired.filter((item) => item.repair === repair).map((item) => item.versionId);
-
-const errorClassOf = (error: unknown): string =>
-  error instanceof Error ? error.constructor.name : typeof error;
 
 /**
  * Conciliación de la indexación (plan 019 §1, RN-12, CA-23): recorre las cuentas de cliente (`clientIds`, solo UUID) y,

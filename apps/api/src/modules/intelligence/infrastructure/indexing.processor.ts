@@ -5,7 +5,7 @@ import { Inject } from '@nestjs/common';
 import type { Job } from 'bullmq';
 import { PinoLogger } from 'nestjs-pino';
 
-import { CorrelationContext } from '../../../shared';
+import { CorrelationContext, errorClassOf } from '../../../shared';
 import { IndexingService } from '../application/indexing.service';
 import type { IntelligenceLogger } from '../application/intelligence-logger';
 import type { IndexJob } from '../application/ports/i-index-queue.port';
@@ -29,9 +29,6 @@ const indexJobOf = ({ fileId, versionId, ownerId }: IndexJobData): IndexJob => (
 
 const attemptsExhausted = (job: Job<IndexJobData>): boolean =>
   job.attemptsMade >= (job.opts.attempts ?? DEFAULT_ATTEMPTS);
-
-const errorClassOf = (error: unknown): string =>
-  error instanceof Error ? error.constructor.name : typeof error;
 
 /** Corre `work` con el `correlationId` del trabajo (o uno nuevo) y su `jobId`, como `PingProcessor` (RNF-17). */
 function inJobContext<T>(job: Job<IndexJobData>, work: () => Promise<T>): Promise<T> {

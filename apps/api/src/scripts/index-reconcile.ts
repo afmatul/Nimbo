@@ -4,7 +4,7 @@ import { Queue } from 'bullmq';
 import type { RedisOptions } from 'bullmq';
 
 import { INDEX_RECONCILE_QUEUE, requestIndexReconcile } from '../modules/intelligence';
-import { loadDotenvFile, loadEnv } from '../shared';
+import { errorClassOf, loadDotenvFile, loadEnv } from '../shared';
 import { workerEnvObjectSchema } from '../shared/infrastructure/config/env.schema';
 import { buildBullConnection } from '../shared/infrastructure/queue/bull.config';
 
@@ -23,9 +23,6 @@ const connectionTo = (redisUrl: string): RedisOptions => ({
 const writeLine = (stream: NodeJS.WriteStream, payload: Record<string, unknown>): void => {
   stream.write(`${JSON.stringify(payload)}\n`);
 };
-
-const errorClassOf = (error: unknown): string =>
-  error instanceof Error ? error.constructor.name : typeof error;
 
 /**
  * Tarea administrativa del Operador (019 RN-12, CA-23): `pnpm --filter api index:reconcile` deja **un** trabajo en
