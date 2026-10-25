@@ -187,7 +187,7 @@ modules/storage/
 | `ILanguageModel` | `GeminiFlashModel` | intelligence |
 | `IEmbeddingProvider` | `GeminiEmbeddingProvider` (dimensión 768) | intelligence |
 | `ITextExtractor` | `DocxExtractor`, `PdfExtractor`, `PlainTextExtractor`, `XlsxExtractor`, `PptxExtractor` (`ExtractorRegistry` decide qué tipos se indexan) | intelligence |
-| `IAgentQuota` | fachada de billing | intelligence → billing |
+| `IAgentQuota` | `AgentQuotaService` (`reserve`/`release`/`status`; tabla `uso_agente` por `(usuario_id, periodo_inicio)`, reserva atómica con `INSERT … ON CONFLICT DO UPDATE … WHERE`, 020 D-3) | lo **declara e implementa** `billing` (`application/ports/i-agent-quota.port.ts`, token `I_AGENT_QUOTA` en `billing/index.ts`); lo consume `intelligence` (intelligence → billing; PD-18, DF-27) |
 | `IOptimizer` | `PdfOptimizer`, `ImageOptimizer` (vía `BaseOptimizer`) | optimizer |
 | `IIntegrityValidator` | `DefaultIntegrityValidator` | optimizer |
 | `ICommandRunner` | `ChildProcessRunner` (sin shell, tiempo límite y salida acotada) | **interno** de `intelligence` desde 019 (Ghostscript para PDF; DF-80, ADR-0033 b); 021 lo mueve a `shared` al ser el segundo consumidor (`optimizer`) |
