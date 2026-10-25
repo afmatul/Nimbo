@@ -92,9 +92,11 @@ export class FileVersionService {
     }
     if (keepPreviousForDays === undefined) return null;
     const current = await this.versions.find(actor, file.id, file.currentVersionId);
-    if (current === null) throw new Error('El archivo no tiene su versión actual.');
+    if (current === null) throw new TypeError('El archivo no tiene su versión actual.');
     const kept = current.conserveAsOriginal(version, keepPreviousForDays);
-    await this.versions.markKept(actor, kept);
+    if (!(await this.versions.markKept(actor, kept))) {
+      throw new TypeError('El original no se pudo conservar: el contador divergiría.');
+    }
     return kept;
   }
 

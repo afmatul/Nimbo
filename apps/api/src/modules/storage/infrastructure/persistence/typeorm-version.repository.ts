@@ -83,12 +83,13 @@ export class TypeOrmVersionRepository implements IVersionRepository {
     await this.manager(actor).insert(VersionArchivoOrmEntity, toVersionRow(version));
   }
 
-  async markKept(actor: Actor, version: FileVersion): Promise<void> {
-    await this.manager(actor).update(
+  async markKept(actor: Actor, version: FileVersion): Promise<boolean> {
+    const result = await this.manager(actor).update(
       VersionArchivoOrmEntity,
       { id: version.id, archivoId: version.fileId, conservadaHasta: IsNull() },
       { conservadaHasta: version.keptUntil },
     );
+    return result.affected === 1;
   }
 
   /**

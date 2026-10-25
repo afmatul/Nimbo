@@ -62,7 +62,7 @@ export class UsageReconcileProcessor extends WorkerHost {
     let afterId: string | null = null;
     do {
       const ids = await this.nextPage(afterId);
-      tally.failed += await this.reconcilePage(ids, tally);
+      await this.reconcilePage(ids, tally);
       tally.scanned += ids.length;
       afterId = ids.length === this.config.batchSize ? (ids.at(-1) ?? null) : null;
     } while (afterId !== null);
@@ -74,11 +74,16 @@ export class UsageReconcileProcessor extends WorkerHost {
     return this.transactions.run(() => this.scanner.listClientIds(afterId, this.config.batchSize));
   }
 
-  /** Cuántas cuentas de la página fallaron; el error solo deja su nombre (el mensaje podría traer datos de la cuenta). */
-  private reconcilePage(ids: readonly string[], tally: ReconcileRunTally): Promise<number> {
-    return attemptEach(
+  /**
+   * Suma a `tally` las cuentas de la página que fallaron y los originales purgados; el error solo deja su nombre (el
+   * mensaje podría traer datos de la cuenta).
+   */
+  private async reconcilePage(ids: readonly string[], tally: ReconcileRunTally): Promise<void> {
+    tally.failed += await attemptEach(
       ids,
-      (userId) => this.maintain(createActor(userId, Role.CLIENT), tally),
+      async (userId) => {
+        tally.keptPurged += await this.maintain(createActor(userId, Role.CLIENT));
+      },
       (userId, failure) =>
         this.logger.error({
           event: 'quota.reconcile_failed',
@@ -88,10 +93,10 @@ export class UsageReconcileProcessor extends WorkerHost {
     );
   }
 
-  /** Purga los originales vencidos del dueño (nunca lanza) y después concilia su espacio. */
-  private async maintain(owner: Actor, tally: ReconcileRunTally): Promise<void> {
+  /** Purga los originales vencidos del dueño (nunca lanza), concilia su espacio y devuelve cuántos purgó. */
+  private async maintain(owner: Actor): Promise<number> {
     const purged = await this.pruner.purgeExpiredOriginals(owner, this.clock.now());
-    tally.keptPurged += purged;
     await this.reconciler.reconcile(owner);
+    return purged;
   }
 }

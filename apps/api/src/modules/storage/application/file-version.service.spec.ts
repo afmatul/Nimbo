@@ -340,6 +340,16 @@ describe('FileVersionService: optimización que conserva el original (014b)', ()
     expect(quotas.added).toEqual([]);
   });
 
+  it('RN-7: si el original no se pudo marcar, se rechaza sin tocar el espacio (el contador no diverge)', async () => {
+    const context = setup();
+    jest.spyOn(context.versions, 'markKept').mockResolvedValue(false);
+
+    await expect(optimize(context, KEEP_DAYS)).rejects.toThrow(TypeError);
+
+    expect(context.quotas.added).toEqual([]);
+    expect(context.versions.numbersOf(context.file.id)).toEqual([1, 2, 3]);
+  });
+
   it('RN-3: una optimización sin días, o los días con otro origen, se rechazan', async () => {
     const context = setup();
     const { service, transactions, file } = context;

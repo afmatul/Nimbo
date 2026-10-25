@@ -17,9 +17,9 @@ export interface IVersionRepository {
   insert(actor: Actor, version: FileVersion): Promise<void>;
   /**
    * Guarda la fecha de `version`, ya conservada por `FileVersion.conserveAsOriginal` (014b CA-1), solo si la fila no la
-   * tenía: un reintento no alarga el plazo.
+   * tenía: un reintento no alarga el plazo. `false` si no marcó la fila (ya estaba conservada o no existe).
    */
-  markKept(actor: Actor, version: FileVersion): Promise<void>;
+  markKept(actor: Actor, version: FileVersion): Promise<boolean>;
   /**
    * Originales conservados vencidos a `now` de los archivos vivos del actor, nunca la versión actual (014b CA-6, CA-9):
    * un archivo en la papelera no es accesible y su original espera a que vuelva.

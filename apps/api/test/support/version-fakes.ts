@@ -44,12 +44,11 @@ export class FakeVersionRepository implements IVersionRepository {
     return Promise.resolve();
   }
 
-  markKept(_actor: Actor, version: FileVersion): Promise<void> {
+  markKept(_actor: Actor, version: FileVersion): Promise<boolean> {
     this.journal.add(`versions:markKept:${String(version.number)}`);
-    if (this.versions.get(version.id)?.countsInQuota === true) {
-      this.versions.set(version.id, version);
-    }
-    return Promise.resolve();
+    if (this.versions.get(version.id)?.countsInQuota !== true) return Promise.resolve(false);
+    this.versions.set(version.id, version);
+    return Promise.resolve(true);
   }
 
   listExpiredKept(actor: Actor, now: Date): Promise<readonly FileVersion[]> {
