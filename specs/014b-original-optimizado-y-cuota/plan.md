@@ -1,6 +1,6 @@
 # Plan 014b — Original optimizado y cuota
 
-> Spec: `./spec.md` · Estado del plan: Propuesto
+> Spec: `./spec.md` · Estado del plan: Aprobado (Adrián, 2026-10-25)
 > Obligatorio y ≤ 250 líneas. Dice **qué** archivos se tocan y **qué** se espera de cada uno; no es el código en
 > prosa (sin cuerpos de funciones ni pseudocódigo). Lo aprueba Adrián antes de escribir código.
 
@@ -160,4 +160,4 @@ aislamiento solo en `test/isolation`.
 
 - `architect`: no aplica. Sin puerto nuevo entre módulos, sin tecnología nueva ni cambio de arquitectura (amplía un
   puerto interno y reutiliza la cola `usage-reconcile`).
-- Adrián: pendiente.
+- Adrián: aprobado el 2026-10-25 (pidió comenzar la implementación).

@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Propuesto |
+| Estado | Aceptado |
 | Fecha | 2026-10-25 |
 | Decisores | Adrián (storage), Abel (021) |
 | Specs relacionadas | 014b, 021, 014, 007 |

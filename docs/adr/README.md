@@ -18,7 +18,7 @@ Son la base para defender la arquitectura en la exposición final (enunciado §6
 | 0010 | [Separar M3 en `access`/`sharing` y extraer `audit`, `realtime`, `notifications`](0010-separacion-de-modulos.md) (DF-02, 03, 30, 34) | Aceptado |
 | 0011 | [Modelo de nodos: tablas separadas `archivo` y `carpeta` con `CHECK` de exclusividad](0011-modelo-de-nodos-dos-tablas-con-check.md) (DF-40) | Propuesto |
 | 0012 | [Versiones por composición con `origen`; `storage` dueño del ciclo de vida](0012-versiones-por-composicion-con-origen.md) (DF-17, 18) | Aceptado |
-| 0013 | [El original optimizado se conserva durante la retención de papelera sin contar en la cuota](0013-politica-del-original-en-el-optimizador.md) (DF-21; specs 014b y 021) | Propuesto |
+| 0013 | [El original optimizado se conserva durante la retención de papelera sin contar en la cuota](0013-politica-del-original-en-el-optimizador.md) (DF-21; specs 014b y 021) | Aceptado |
 | 0014 | [Tokens de Cielo Sereno ajustados a AA y mapeados a shadcn; axe en E2E](0014-tokens-cielo-sereno-shadcn-axe.md) (DF-41–48) | Aceptado |
 | 0015 | [Dependencias de fundaciones: gitleaks, zod, nestjs-pino, Testcontainers](0015-dependencias-de-fundaciones.md) (menor) | Aceptado |
 | 0016 | [Representación de dinero en centavos y almacenamiento en bytes](0016-dinero-en-centavos-y-almacenamiento-en-bytes.md) (DF-23, DF-24) | Aceptado |

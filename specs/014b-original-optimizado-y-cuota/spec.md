@@ -4,13 +4,13 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Borrador |
+| Estado | En curso |
 | Dueño | Adrián (1) |
 | Fase | 3 |
 | Requisitos | RF-36, RF-13, RF-12 (principales); aplican RF-11, RF-07, RF-29, RNF-05, RNF-17 |
 | Depende de | 014 (registro único de versiones, poda, restauración), 007 (contador y conciliación de `espacio_usado`), 006 (papelera y purga), 006a (`PlanLimits`: retención en papelera y versiones retenidas) |
 | Módulo | M2 `storage` (dueño del ciclo de vida de versiones, DF-17, ADR-0012) |
-| DF | DF-21 (Abierto, «requiere decisión de producto»; esta spec es la propuesta), DF-38; [ADR-0013](../../docs/adr/0013-politica-del-original-en-el-optimizador.md) Propuesto |
+| DF | DF-21 (Abierto, «requiere decisión de producto»; esta spec es la propuesta), DF-38; [ADR-0013](../../docs/adr/0013-politica-del-original-en-el-optimizador.md) Aceptado |
 | Última actualización | 2026-10-25 |
 
 ## 1. Contexto y objetivo
@@ -98,10 +98,11 @@ la retención en papelera del plan y después se purga solo. 021 queda fuera; aq
 
 ## 9. Preguntas
 
-- [ABIERTA] ¿Adrián acepta esta política para DF-21 (original sin contar desde la optimización, plazo = retención en papelera, purga automática)? — bloquea: no para el plan, que se aprueba con ella; sí para `Lista`, que espera a ADR-0013 `Aceptado`.
+- [RESUELTA 2026-10-25: sí, Adrián pidió implementarla; ADR-0013 `Aceptado`] ¿Adrián acepta esta política para DF-21 (original sin contar desde la optimización, plazo = retención en papelera, purga automática)? — bloquea: no para el plan, que se aprueba con ella; sí para `Lista`, que espera a ADR-0013 `Aceptado`.
 
 ## 10. Registro de cambios
 
 | Fecha | Cambio | Motivo | Aprobó |
 |---|---|---|---|
 | 2026-10-25 | Creación en `Borrador` con plan y tareas (ADR-0034) | Prerrequisito de 021 (DF-21, ADR-0013) | — |
+| 2026-10-25 | Plan aprobado, ADR-0013 `Aceptado`; pasa a `En curso` | Adrián pidió comenzar la implementación | Adrián |
