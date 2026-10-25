@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Aceptado (Adrián, 2026-10-25, al aprobar el plan 020) |
+| Estado | Aceptado (Adrián, 2026-10-25, al aprobar el plan 020); enmendado el 2026-10-25 (PD-134) |
 | Fecha | 2026-10-25 |
 | Decisores | Adrián (architect), equipo Nimbo |
 | Specs relacionadas | 020 (plan D-2), 019, DF-81, ADR-0005 (autorización en la consulta), ADR-0010 (fronteras), `architecture.md` §3 reglas 3 y 6 |
@@ -47,3 +47,11 @@ Es defendible porque repite el razonamiento de `access` (la autorización se res
 - Positivas: recuperación correcta (recall y aislamiento) con una consulta; sin puertos ni dependencias nuevas.
 - Negativas / deuda aceptada: acoplamiento de `intelligence` a cinco columnas de `storage`; `architecture.md` §3 gana la regla 7.
 - Cómo sabremos si fue un error: si `storage` cambia esas columnas y la prueba falla con frecuencia, o si aparece un segundo lector (pasar a la opción 3).
+
+## Enmienda 2026-10-25 (PD-134, Adrián)
+
+El evento `citation` de `POST /agent/ask` lleva `fileName` (plan 020 §4, S-1) y nada de lo aceptado lo provee. Se suma la columna
+`archivo.nombre` a las que `intelligence` puede leer, en la misma consulta de `chunk-sql.ts` que ya filtra con `accessibleNodes(actor)`:
+sin puerto nuevo ni otra ida a la base (RNF-03). Se descartó `namesOf(actor, fileIds)` en `storage` (una consulta y un puerto más para
+un solo consumidor). El nombre solo viaja en el evento `citation`: nunca entra al prompt (S-1) ni a bitácoras. La prueba de columnas
+(`chunk-search.int-spec.ts`) suma `nombre`; el acoplamiento pasa a seis columnas.
