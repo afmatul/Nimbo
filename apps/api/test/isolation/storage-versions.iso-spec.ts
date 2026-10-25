@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { fileVersionsResponseSchema } from '@nimbo/contracts';
 import type { Response } from 'supertest';
 
+import { VersionPruner } from '../../src/modules/storage/application/version-pruner';
 import { createActor, I_TRANSACTION_RUNNER, Role, TransactionContext } from '../../src/shared';
 import type { Actor, ITransactionRunner } from '../../src/shared';
 import { createStorageHttpApp, textBytes } from '../int/storage/storage-http';
@@ -68,11 +69,15 @@ describe('aislamiento de las versiones (014 CA-16, CA-17, CA-18)', () => {
     return { id: file.id, versionIds: await versionIdsOf(file.id) };
   };
 
-  /** Sube `NAME` a la carpeta de A y lo reemplaza: el archivo queda con las versiones 1 y 2. */
-  const uploadTwoVersionsAsA = async (): Promise<VersionedFile> => {
-    const asA = routesOf(a);
-    const first = await asA.upload(NAME, textBytes(CONTENT_BYTES, 'v1'), 'ask', folderIdA);
-    const second = await asA.upload(NAME, textBytes(CONTENT_BYTES, 'v2'), 'replace', folderIdA);
+  /** Sube `name` a `folderId` de `account` y lo reemplaza: el archivo queda con las versiones 1 y 2. */
+  const uploadTwoVersions = async (
+    account: WorldAccount,
+    name: string,
+    folderId: string | null = null,
+  ): Promise<VersionedFile> => {
+    const client = routesOf(account);
+    const first = await client.upload(name, textBytes(CONTENT_BYTES, 'v1'), 'ask', folderId);
+    const second = await client.upload(name, textBytes(CONTENT_BYTES, 'v2'), 'replace', folderId);
     expect([first.status, second.status]).toEqual([200, 200]);
     return versioned((first.body as { file: { id: string } }).file);
   };
@@ -84,7 +89,7 @@ describe('aislamiento de las versiones (014 CA-16, CA-17, CA-18)', () => {
     [{ id: folderIdA }] = (await world.withFolders(storage.testApp, a, ['Contratos'])) as [
       WorldFolder,
     ];
-    fileA = await uploadTwoVersionsAsA();
+    fileA = await uploadTwoVersions(a, NAME, folderIdA);
     onlyA = await versioned(...(await world.withFiles(storage.testApp, a, [ONLY_A_NAME])));
     const trash = await world.withTrash(storage.testApp, a, { files: ['En la papelera.txt'] });
     trashedA = await versioned(...trash.files);
@@ -210,6 +215,72 @@ describe('aislamiento de las versiones (014 CA-16, CA-17, CA-18)', () => {
     it('ISO-7 (CA-18): sin token no se puede usar ninguna ruta de versiones ni reemplazar: 401', async () => {
       await expectEvery(storage.clientFor(a.id), 401, 'SHARED_UNAUTHENTICATED');
     });
+  });
+
+  describe('originales conservados (014b CA-11, CA-12)', () => {
+    /** Mucho después de cualquier fecha de conservación: todo original marcado está vencido. */
+    const LATER = new Date(Date.now() + 365 * 86_400_000);
+
+    /** Marca la versión 1 de `file` como original conservado ya vencido, como el dueño de las tablas. */
+    const keepFirstVersion = async (file: VersionedFile): Promise<void> => {
+      await storage.owner.query(
+        `UPDATE version_archivo SET conservada_hasta = creada_en + interval '1 day' WHERE id = $1`,
+        [firstVersionOf(file)],
+      );
+    };
+
+    let keptA: VersionedFile;
+    let keptB: VersionedFile;
+
+    beforeAll(async () => {
+      keptA = await uploadTwoVersions(a, 'Optimizado de A.txt');
+      keptB = await uploadTwoVersions(b, 'Optimizado de B.txt');
+      await keepFirstVersion(keptA);
+      await keepFirstVersion(keptB);
+    });
+
+    it.each(VERSION_ROUTES)(
+      'ISO-9 (CA-11): B no puede %s del original conservado de A: mismo 404 que un id inexistente',
+      async (_action, call) => {
+        const asB = routesOf(b);
+
+        const foreign = await call(asB, keptA.id, firstVersionOf(keptA));
+        const missing = await call(asB, randomUUID(), randomUUID());
+
+        expect(foreign.status).toBe(404);
+        expect(comparable(foreign)).toEqual(comparable(missing));
+      },
+    );
+
+    it.each(INTERNAL_ROLES)(
+      'ISO-10 (CA-12): %s no ve el historial con el original conservado: 403',
+      async (role) => {
+        const response = await routesOf(world.internals[role]).fileVersions(keptA.id);
+
+        expect(response.status).toBe(403);
+        expect(response.body).toMatchObject({ code: 'SHARED_FORBIDDEN' });
+      },
+    );
+
+    it('ISO-11 (CA-11): la pasada de mantenimiento de A purga su original vencido y nunca el de B', async () => {
+      const pruner = storage.testApp.app.get(VersionPruner);
+
+      await pruner.purgeExpiredOriginals(createActor(a.id, Role.CLIENT), LATER);
+
+      expect(await versionIdsOf(keptA.id)).toEqual(keptA.versionIds.slice(1));
+      expect(await versionIdsOf(keptB.id)).toEqual(keptB.versionIds);
+    });
+
+    it.each(INTERNAL_ROLES)(
+      'ISO-12 (CA-11, CA-12): una pasada como %s no borra ni lee originales de nadie',
+      async (role) => {
+        const pruner = storage.testApp.app.get(VersionPruner);
+
+        await pruner.purgeExpiredOriginals(createActor(world.internals[role].id, role), LATER);
+
+        expect(await versionIdsOf(keptB.id)).toEqual(keptB.versionIds);
+      },
+    );
   });
 
   describe('RLS de `version_archivo` (CA-18, RNF-05)', () => {

@@ -267,7 +267,8 @@ global. Si la pasada falla, se dispara una alerta.
 ### 7.6 Optimización (RF-35, RF-36, DF-21)
 `OptimizerController.estimate` → `OptimizationService.estimate` → `IOptimizer.estimate` → `SavingsEstimate.isWorthIt(min)`; si no conviene, no se ofrece.
 `run` → `OptimizationJob` → `OptimizationProcessor` → `optimize` → `IIntegrityValidator.validate` → nueva `version_archivo(origen=optimizacion)`;
-el original sigue restaurable durante la retención definida en DF-21.
+el original sigue restaurable durante la retención en papelera del plan y no cuenta en `espacio_usado` desde el registro
+(spec 014b, ADR-0013: `version_archivo.conservada_hasta`); lo purga la pasada de `usage-reconcile` al vencer.
 
 ## 8. Colas y trabajos (worker)
 
@@ -282,7 +283,7 @@ el original sigue restaurable durante la retención definida en DF-21.
 | `mail` | `SmtpMailer` (notifications) | 5 (`attempts: 6`, exponencial desde 5 s) | por `idempotencyKey` del productor como `jobId` (sin `:`) + marca `mail:sent:<jobId>` en Redis + `Message-ID` determinista (ADR-0018); no usa `notificacion` |
 | `upload-cleanup` (repetible con `upsertJobScheduler`, cada `UPLOAD_CLEANUP_INTERVAL_MINUTES`, 005) | `UploadCleanupScheduler` (worker, al arrancar) | 3, backoff exponencial; concurrencia 1 | compare-and-set sobre `carga.estado`; opera bajo RLS con la función de mantenimiento de ADR-0021 |
 | `trash-purge` (repetible con `upsertJobScheduler`, cada `TRASH_PURGE_INTERVAL_MINUTES`, 006; DF-61) | `TrashPurgeScheduler` (worker, al arrancar) y «Vaciar» (`TrashPurgeQueue`) | 3, backoff exponencial; concurrencia 1 | naturalmente idempotente; opera bajo RLS sin actor con el patrón de ADR-0021 (DF-52) |
-| `usage-reconcile` (repetible con `upsertJobScheduler`, cada `USAGE_RECONCILE_INTERVAL_MINUTES`, por defecto un día; 007, DF-62) | `UsageReconcileScheduler` (worker, al arrancar) | 3, backoff exponencial; concurrencia 1 | idempotente: por cuenta, `lockUsage` → medir → `addUsedBytes(diferencia)`; una cuenta coherente no cambia. Lista ids con `IClientAccountScanner` (sin actor) y concilia como cada dueño bajo RLS |
+| `usage-reconcile` (repetible con `upsertJobScheduler`, cada `USAGE_RECONCILE_INTERVAL_MINUTES`, por defecto un día; 007, DF-62) | `UsageReconcileScheduler` (worker, al arrancar) | 3, backoff exponencial; concurrencia 1 | idempotente: por cuenta, primero purga los originales conservados vencidos (014b, uno por transacción, `VersionPruner.purgeExpiredOriginals`) y después `lockUsage` → medir → `addUsedBytes(diferencia)`; una cuenta coherente no cambia. Lista ids con `IClientAccountScanner` (sin actor) y concilia como cada dueño bajo RLS |
 
 ## 9. Frontend
 

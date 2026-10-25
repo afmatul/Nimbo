@@ -25,6 +25,11 @@ export interface RegisterVersionCommand {
    * (reemplazo y restauración en 014, edición en 016, optimización en 021; CA-5, OCP).
    */
   readonly buildVersion: (number: number) => FileVersion;
+  /**
+   * Días que se conserva la versión actual como original (014b RN-3, `PlanLimits.trashRetentionDays` que lee el
+   * llamador fuera de la transacción). Obligatorio si y solo si la versión es una `optimizacion`.
+   */
+  readonly keepPreviousForDays?: number;
 }
 
 /** El archivo con su nueva versión actual y la versión registrada. */
@@ -52,24 +57,47 @@ export class FileVersionService {
 
   /**
    * `lockUsage` (serializa por propietario, CA-4) → `MAX + 1` → `INSERT version_archivo` → puntero de `archivo` →
-   * `espacio_usado += bytes` (RN-3). El `UNIQUE (archivo_id, numero)` es la red de seguridad de la numeración.
+   * `espacio_usado += bytes` (RN-3). El `UNIQUE (archivo_id, numero)` es la red de seguridad de la numeración. Una
+   * `optimizacion` conserva además la versión actual como original y resta sus bytes en el mismo `addUsedBytes`
+   * (014b RN-1): el cambio neto es negativo, así que no hace falta cuota libre (CA-2).
    */
   async register(actor: Actor, command: RegisterVersionCommand): Promise<RegisteredVersion> {
     await this.quotas.lockUsage(actor);
     const number = await this.versions.nextNumber(actor, command.file.id);
     const version = command.buildVersion(number);
+    const kept = await this.conserveOriginal(actor, command, version);
     const file = command.file.withCurrentVersion(version);
     await this.versions.insert(actor, version);
     await this.nodes.updateCurrentVersion(actor, file);
-    await this.quotas.addUsedBytes(actor, version.sizeBytes);
+    await this.quotas.addUsedBytes(actor, version.sizeBytes - (kept?.sizeBytes ?? 0n));
     this.logger.info({
       event: 'version.registered',
       fileId: file.id,
       versionId: version.id,
       versionNumber: version.number,
       origin: version.origin,
+      ...(kept !== null && { keptVersionId: kept.id }),
     });
     return { file, version };
+  }
+
+  /** Con una `optimizacion`, la versión actual pasa a original conservado (014b CA-1, CA-3); si no, `null`. */
+  private async conserveOriginal(
+    actor: Actor,
+    { file, keepPreviousForDays }: RegisterVersionCommand,
+    version: FileVersion,
+  ): Promise<FileVersion | null> {
+    if ((version.origin === 'optimizacion') !== (keepPreviousForDays !== undefined)) {
+      throw new TypeError('Solo una optimización conserva el original, y siempre con sus días.');
+    }
+    if (keepPreviousForDays === undefined) return null;
+    const current = await this.versions.find(actor, file.id, file.currentVersionId);
+    if (current === null) throw new TypeError('El archivo no tiene su versión actual.');
+    const kept = current.conserveAsOriginal(version, keepPreviousForDays);
+    if (!(await this.versions.markKept(actor, kept))) {
+      throw new TypeError('El original no se pudo conservar: el contador divergiría.');
+    }
+    return kept;
   }
 
   /** Tras el commit de `register`: anuncia la versión y poda lo que exceda la retención; nunca lanza (CA-14). */
