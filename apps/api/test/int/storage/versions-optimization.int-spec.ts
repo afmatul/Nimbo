@@ -8,14 +8,9 @@ import {
 
 import { I_PLAN_LIMITS_PROVIDER } from '../../../src/modules/storage';
 import type { IPlanLimitsProvider } from '../../../src/modules/storage';
-import { FileVersionService } from '../../../src/modules/storage/application/file-version.service';
-import { I_NODE_REPOSITORY } from '../../../src/modules/storage/application/ports/i-node.repository.port';
-import type { INodeRepository } from '../../../src/modules/storage/application/ports/i-node.repository.port';
-import { FileVersion } from '../../../src/modules/storage/domain/file-version';
-import { ObjectKey } from '../../../src/modules/storage/domain/object-key';
-import { createActor, I_TRANSACTION_RUNNER, Role } from '../../../src/shared';
-import type { ITransactionRunner } from '../../../src/shared';
+import { createActor, Role } from '../../../src/shared';
 
+import { registerVersion } from './register-version';
 import { createStorageHttpApp, DEFAULT_TEST_LIMITS, textBytes, usedBytesOf } from './storage-http';
 import type { StorageClient, StorageHttpApp } from './storage-http';
 
@@ -41,8 +36,8 @@ interface UploadedFile {
 
 /**
  * El original conservado por una optimización (014b CA-1 a CA-5) con Postgres como `nimbo_app` (RLS) y MinIO real.
- * El origen `optimizacion` es un doble de 021 (como 014 CA-5): sube un objeto menor y llama `FileVersionService.register`
- * dentro de `withActor`, con los días de `PlanLimits.trashRetentionDays` leídos antes de la transacción.
+ * El origen `optimizacion` es un doble de 021 (como 014 CA-5): `registerVersion` sube un objeto menor y lo registra con
+ * los días de `PlanLimits.trashRetentionDays`, leídos antes de la transacción.
  */
 describe('versión `optimizacion` y original conservado (014b CA-1 a CA-5)', () => {
   let storage: StorageHttpApp;
@@ -84,25 +79,12 @@ describe('versión `optimizacion` y original conservado (014b CA-1 a CA-5)', () 
     fileId: string,
     sizeBytes: number,
   ): Promise<string> => {
-    const { app } = storage.testApp;
     const actor = createActor(client.id, Role.CLIENT);
-    const limits = await app.get<IPlanLimitsProvider>(I_PLAN_LIMITS_PROVIDER).limitsFor(actor);
-    const id = randomUUID();
-    const objectKey = ObjectKey.of(client.id, fileId, id);
-    await storage.putObject(objectKey.value, textBytes(sizeBytes, 'optimizada'));
-    const nodes = app.get<INodeRepository>(I_NODE_REPOSITORY);
-    const input = { id, fileId, objectKey, sizeBytes: BigInt(sizeBytes), createdBy: client.id };
-    await app.get<ITransactionRunner>(I_TRANSACTION_RUNNER).withActor(actor, async () => {
-      const file = await nodes.findAccessibleById(actor, fileId);
-      if (file === null) throw new Error('El archivo no es accesible');
-      await app.get(FileVersionService).register(actor, {
-        file,
-        buildVersion: (number) =>
-          FileVersion.forOrigin('optimizacion', { ...input, number, now: new Date() }),
-        keepPreviousForDays: limits.trashRetentionDays,
-      });
-    });
-    return id;
+    const { trashRetentionDays } = await storage.testApp.app
+      .get<IPlanLimitsProvider>(I_PLAN_LIMITS_PROVIDER)
+      .limitsFor(actor);
+    const next = { fileId, sizeBytes, keepPreviousForDays: trashRetentionDays };
+    return (await registerVersion(storage, client, next)).id;
   };
 
   /** Archivo subido y optimizado: versión 1 conservada, versión 2 `optimizacion` actual. */
