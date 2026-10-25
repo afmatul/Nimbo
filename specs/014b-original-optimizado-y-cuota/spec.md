@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | En curso |
+| Estado | En revisión |
 | Dueño | Adrián (1) |
 | Fase | 3 |
 | Requisitos | RF-36, RF-13, RF-12 (principales); aplican RF-11, RF-07, RF-29, RNF-05, RNF-17 |

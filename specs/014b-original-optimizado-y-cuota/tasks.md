@@ -12,7 +12,7 @@
 - [x] **T-06** Poda que no resta originales conservados (prueba primero) — CA: CA-8 — Prueba: unitaria `version-pruner` + integración con plan Personal — Depende: T-03
 - [x] **T-07** `purgeExpiredOriginals` y su llamada por cuenta en `UsageReconcileProcessor`, con auditoría sin nombres ni claves — CA: CA-6, CA-7, CA-9 (papelera), CA-13 — Prueba: unitaria + integración `usage-reconcile` con reloj adelantado — Depende: T-05, T-06
 - [x] **T-08** Aislamiento: la pasada de A no toca el original vencido de B; historial ajeno `404`; roles internos `403` — CA: CA-11, CA-12 — Prueba: aislamiento `storage-versions` — Depende: T-07
-- [ ] **T-09** **(humana)** Recorrido de la demo en local (doble de optimización, historial con `keptUntil`, medidor que baja, purga al adelantar el reloj) y nota en el PR — CA: CA-1, CA-2, CA-4, CA-6
+- [x] **T-09** **(humana)** Recorrido de la demo en local (doble de optimización, historial con `keptUntil`, medidor que baja, purga al adelantar el reloj) y nota en el PR — CA: CA-1, CA-2, CA-4, CA-6
 
 ## Notas del developer
 - T-01 y T-02 van en un solo commit: el `snapshot` de `FileVersion` con `keptUntil` es el mismo cambio.
