@@ -21,6 +21,7 @@ export const toVersionRow = (version: FileVersion): VersionArchivoOrmEntity => (
   creadoPor: version.createdBy,
   creadaEn: version.createdAt,
   sesionEdicionId: version.editSessionId,
+  conservadaHasta: version.keptUntil,
 });
 
 const toFileVersion = (row: VersionArchivoOrmEntity): FileVersion =>
@@ -35,6 +36,7 @@ const toFileVersion = (row: VersionArchivoOrmEntity): FileVersion =>
     createdBy: row.creadoPor,
     createdAt: row.creadaEn,
     editSessionId: row.sesionEdicionId,
+    keptUntil: row.conservadaHasta,
   });
 
 /**

@@ -25,6 +25,7 @@ const VERSION: FileVersionSummary = {
   createdAt: '2026-10-07T23:20:00.000Z',
   createdById: '0b7e6c1a-6f0e-4c1b-9d3a-2f5b8e9a1c4d',
   isCurrent: false,
+  keptUntil: null,
 };
 
 describe('api de versiones (014 plan §4)', () => {
