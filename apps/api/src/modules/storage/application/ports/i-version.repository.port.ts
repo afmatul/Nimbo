@@ -15,6 +15,11 @@ export interface IVersionRepository {
   /** `MAX(numero) + 1` del archivo: bajo `lockUsage` es consecutivo y nunca reutiliza un número podado (RN-4). */
   nextNumber(actor: Actor, fileId: string): Promise<number>;
   insert(actor: Actor, version: FileVersion): Promise<void>;
+  /**
+   * Guarda la fecha de `version`, ya conservada por `FileVersion.conserveAsOriginal` (014b CA-1), solo si la fila no la
+   * tenía: un reintento no alarga el plazo.
+   */
+  markKept(actor: Actor, version: FileVersion): Promise<void>;
   /** Borra la fila de `version`; `false` si ya no estaba (otra poda llegó antes). */
   delete(actor: Actor, version: FileVersion): Promise<boolean>;
 }

@@ -6,7 +6,7 @@
 
 - [x] **T-01** Migración `conservada_hasta` (con `down`), columna en la entidad y el repositorio, y `keptUntil` en el contrato y en `FileVersionSummary` — CA: CA-4 — Prueba: migración reversible, columnas de ORM y contrato (unit)
 - [x] **T-02** Dominio: `FileVersion.conserveAsOriginal` y `countsInQuota` (prueba primero) — CA: CA-1, CA-3 — Prueba: unitaria — Depende: T-01
-- [ ] **T-03** `register` conserva el original y aplica el cambio neto con `markKept`, probado con el doble del origen `optimizacion` (cuenta llena incluida) — CA: CA-1, CA-2, CA-3 — Prueba: unitaria + integración `versions-optimization` — Depende: T-02
+- [x] **T-03** `register` conserva el original y aplica el cambio neto con `markKept`, probado con el doble del origen `optimizacion` (cuenta llena incluida) — CA: CA-1, CA-2, CA-3 — Prueba: unitaria + integración `versions-optimization` — Depende: T-02
 - [ ] **T-04** Historial con `keptUntil`, descarga y restauración del original con y sin cuota — CA: CA-4, CA-5 — Prueba: integración `versions-optimization` — Depende: T-03
 - [ ] **T-05** Predicado único «versión que cuenta» en `FILE_BYTES_SQL`, `FOLDER_BYTES_SQL` y `purgeTargets`: medidor, papelera y conciliación coherentes — CA: CA-9 (purga del archivo), CA-10 — Prueba: integración `usage-reconcile` — Depende: T-03
 - [ ] **T-06** Poda que no resta originales conservados (prueba primero) — CA: CA-8 — Prueba: unitaria `version-pruner` + integración con plan Personal — Depende: T-03

@@ -26,6 +26,9 @@ import { VersionPruner } from './version-pruner';
 const ANA: Actor = createActor('11111111-1111-4111-8111-111111111111', Role.CLIENT);
 const NOW = new Date('2026-10-08T10:00:00.000Z');
 const NEW_BYTES = 500n;
+/** Lo que mide la optimización del doble de 021: menos que la versión actual sembrada (300 bytes). */
+const OPTIMIZED_BYTES = 100n;
+const KEEP_DAYS = 7;
 const LIMITS = {
   planName: 'Plan de prueba',
   maxFileBytes: 1_000_000n,
@@ -111,25 +114,32 @@ const builders: Record<FileVersionOrigin, (file: File) => RegisterVersionCommand
     edicion: (file) => (number) =>
       FileVersion.fromEdit({ ...generated(file, number), editSessionId: randomUUID() }),
     optimizacion: (file) => (number) =>
-      FileVersion.forOrigin('optimizacion', generated(file, number)),
+      FileVersion.forOrigin('optimizacion', generated(file, number, OPTIMIZED_BYTES)),
   };
 
 /** Lo que registran 016 y 021: el mismo `register` con otro origen (OCP). */
-function generated(file: File, number: number): NewVersionInput {
+function generated(file: File, number: number, sizeBytes = NEW_BYTES): NewVersionInput {
   const id = randomUUID();
   return {
     id,
     fileId: file.id,
     objectKey: ObjectKey.of(ANA.id, file.id, id),
-    sizeBytes: NEW_BYTES,
+    sizeBytes,
     createdBy: ANA.id,
     number,
     now: NOW,
   };
 }
 
+/** El comando de cada origen: el doble de 021 pasa los días de conservación (014b RN-3). */
+const commandFor = (origin: FileVersionOrigin, file: File): RegisterVersionCommand => ({
+  file,
+  buildVersion: builders[origin](file),
+  ...(origin === 'optimizacion' && { keepPreviousForDays: KEEP_DAYS }),
+});
+
 describe('FileVersionService (plan 014 §1, CA-4, CA-5, CA-13)', () => {
-  it.each(['carga', 'restauracion', 'edicion', 'optimizacion'] as const)(
+  it.each(['carga', 'restauracion', 'edicion'] as const)(
     'CA-5, CA-4: `%s` se registra con la misma numeración, puntero y cuota, en la transacción del llamador',
     async (origin) => {
       const { service, transactions, journal, quotas, nodes, versions, file } = setup();
@@ -221,7 +231,7 @@ describe('FileVersionService (plan 014 §1, CA-4, CA-5, CA-13)', () => {
     async (origin) => {
       const { service, transactions, events, journal, file } = setup();
       const registered = await transactions.withActor(ANA, () =>
-        service.register(ANA, { file, buildVersion: builders[origin](file) }),
+        service.register(ANA, commandFor(origin, file)),
       );
       journal.entries.length = 0;
 
@@ -266,5 +276,99 @@ describe('FileVersionService (plan 014 §1, CA-4, CA-5, CA-13)', () => {
       },
     ]);
     expect(journal.entries).toEqual([`events:${FILE_VERSION_CREATED}`]);
+  });
+});
+
+describe('FileVersionService: optimización que conserva el original (014b)', () => {
+  const optimize = (context: ReturnType<typeof setup>, keepPreviousForDays?: number) =>
+    context.transactions.withActor(ANA, () =>
+      context.service.register(ANA, {
+        file: context.file,
+        buildVersion: builders.optimizacion(context.file),
+        ...(keepPreviousForDays !== undefined && { keepPreviousForDays }),
+      }),
+    );
+
+  it('CA-1: la optimizada pasa a ser la actual, la anterior se conserva y el espacio cambia en Y − X una sola vez', async () => {
+    const context = setup();
+    const { versions, quotas, journal, file } = context;
+
+    const registered = await optimize(context, KEEP_DAYS);
+
+    const original = versions.versions.get(file.currentVersionId);
+    expect(registered.file.currentVersionId).toBe(registered.version.id);
+    expect(original?.keptUntil).toEqual(new Date('2026-10-15T10:00:00.000Z'));
+    expect(original?.countsInQuota).toBe(false);
+    expect(quotas.added).toEqual([OPTIMIZED_BYTES - 300n]);
+    expect(journal.entries).toEqual([
+      'tx:begin',
+      'quota:lockUsage',
+      'versions:nextNumber',
+      'versions:find',
+      'versions:markKept:3',
+      'versions:insert:4',
+      'nodes:updateCurrentVersion',
+      'quota:addUsedBytes',
+      'tx:end',
+    ]);
+  });
+
+  it('CA-2: con la cuenta llena se registra igual y el espacio baja (`register` no valida cuota)', async () => {
+    const context = setup();
+    context.quotas.usage = { usedBytes: LIMITS.storageQuotaBytes, reservedBytes: 0n };
+
+    await expect(optimize(context, KEEP_DAYS)).resolves.toBeDefined();
+
+    expect(context.quotas.added).toEqual([OPTIMIZED_BYTES - 300n]);
+  });
+
+  it('CA-3: una optimización que no es menor se rechaza sin tocar la versión actual, el original ni el espacio', async () => {
+    const context = setup();
+    const { service, transactions, versions, nodes, quotas, file } = context;
+    const notSmaller = (number: number) =>
+      FileVersion.forOrigin('optimizacion', generated(file, number, 300n));
+
+    await expect(
+      transactions.withActor(ANA, () =>
+        service.register(ANA, { file, buildVersion: notSmaller, keepPreviousForDays: KEEP_DAYS }),
+      ),
+    ).rejects.toThrow(TypeError);
+
+    expect(nodes.files.get(file.id)?.currentVersionId).toBe(file.currentVersionId);
+    expect(versions.versions.get(file.currentVersionId)?.countsInQuota).toBe(true);
+    expect(versions.numbersOf(file.id)).toEqual([1, 2, 3]);
+    expect(quotas.added).toEqual([]);
+  });
+
+  it('RN-3: una optimización sin días, o los días con otro origen, se rechazan', async () => {
+    const context = setup();
+    const { service, transactions, file } = context;
+
+    await expect(optimize(context)).rejects.toThrow(TypeError);
+    await expect(
+      transactions.withActor(ANA, () =>
+        service.register(ANA, {
+          file,
+          buildVersion: builders.carga(file),
+          keepPreviousForDays: 7,
+        }),
+      ),
+    ).rejects.toThrow(TypeError);
+    expect(context.quotas.added).toEqual([]);
+  });
+
+  it('CA-13: la bitácora técnica suma solo el UUID del original conservado', async () => {
+    const context = setup();
+
+    const { version } = await optimize(context, KEEP_DAYS);
+
+    expect(context.logger.info).toHaveBeenCalledWith({
+      event: 'version.registered',
+      fileId: context.file.id,
+      versionId: version.id,
+      versionNumber: 4,
+      origin: 'optimizacion',
+      keptVersionId: context.file.currentVersionId,
+    });
   });
 });

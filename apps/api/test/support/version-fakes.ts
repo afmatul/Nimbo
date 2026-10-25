@@ -37,6 +37,14 @@ export class FakeVersionRepository implements IVersionRepository {
     return Promise.resolve();
   }
 
+  markKept(_actor: Actor, version: FileVersion): Promise<void> {
+    this.journal.add(`versions:markKept:${String(version.number)}`);
+    if (this.versions.get(version.id)?.countsInQuota === true) {
+      this.versions.set(version.id, version);
+    }
+    return Promise.resolve();
+  }
+
   delete(_actor: Actor, version: FileVersion): Promise<boolean> {
     this.journal.add(`versions:delete:${String(version.number)}`);
     return Promise.resolve(this.versions.delete(version.id));

@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { IsNull } from 'typeorm';
 import type { EntityManager } from 'typeorm';
 
 import { TransactionContext } from '../../../../shared';
@@ -77,6 +78,14 @@ export class TypeOrmVersionRepository implements IVersionRepository {
 
   async insert(actor: Actor, version: FileVersion): Promise<void> {
     await this.manager(actor).insert(VersionArchivoOrmEntity, toVersionRow(version));
+  }
+
+  async markKept(actor: Actor, version: FileVersion): Promise<void> {
+    await this.manager(actor).update(
+      VersionArchivoOrmEntity,
+      { id: version.id, archivoId: version.fileId, conservadaHasta: IsNull() },
+      { conservadaHasta: version.keptUntil },
+    );
   }
 
   async delete(actor: Actor, version: FileVersion): Promise<boolean> {
