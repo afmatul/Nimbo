@@ -11,7 +11,7 @@
 | Depende de | 014 (versiones: numeración, origen optimización, cuota, retención y restauración), 019 (reindexación de cada versión vigente nueva, PD-90), 010 (cuenta en solo lectura, PD-121), 003 (roles y aislamiento), 004 (auditoría) |
 | Módulo | M7 `optimizer` |
 | DF / PD / ADR | DF-21 (Abierto, «requiere decisión de producto»), DF-22 (Abierto), DF-80; PD-121, PD-132; ADR-0013 (Pendiente) |
-| Última actualización | 2026-10-24 |
+| Última actualización | 2026-10-25 |
 
 ## 1. Contexto y objetivo
 Cuando el espacio se agota, hoy la única salida es pagar más (propuesta, «Espacio agotado»). El optimizador **estima**
@@ -48,12 +48,12 @@ es el objetivo del optimizador (P-1).
 - **CA-5** (HU-3, RF-36) Dada una estimación que conviene, cuando confirmo, entonces la optimización corre en segundo plano, veo que está en proceso (RNF-14) y puedo seguir usando Nimbo.
 - **CA-6** (HU-3, RF-36, RF-29) Dada una optimización que termina bien, entonces el archivo conserva su `id` y nombre, la versión nueva (origen «optimización») es la actual y el historial la muestra con su tamaño y el cambio frente a la anterior (014 CA-6).
 - **CA-7** (HU-3, RF-36) Dado un PDF optimizado, cuando se compara con el original, entonces conserva páginas, texto y estructura; en una imagen, formato y dimensiones (P-5).
-- **CA-8** (HU-5, RF-36, Art. XI.1) — error: Dado un resultado que no abre o no supera la validación de integridad, entonces no se crea versión, el original sigue como actual y veo «No pudimos optimizar este archivo. Tu archivo no cambió. Puedes volver a intentarlo.».
+- **CA-8** (HU-5, RF-36, Art. XI.1) — error: Dado un resultado que no abre o no supera la validación de integridad, entonces no se crea versión, el original sigue como actual y veo «No pudimos optimizar este archivo sin dañarlo. Tu archivo no cambió y puedes seguir usándolo como está.»; no se invita a repetir la misma optimización.
 - **CA-9** (HU-5, Art. XI.1) — error: Dado que la versión actual cambia mientras se optimiza (reemplazo, edición o restauración), cuando termina, entonces el resultado se descarta y la nueva versión actual no cambia.
 - **CA-10** (HU-3, Art. XI.2) Dado el mismo trabajo de optimización entregado dos veces, entonces se registra una sola versión.
 - **CA-11** (HU-3, RF-30) Dado un PDF optimizado, cuando se registra la versión, entonces su indexación vuelve a `pendiente` como cualquier versión vigente nueva (019 RN-11), sin acción del cliente.
 - **CA-12** (HU-3, RF-13) Dado un archivo en el límite de versiones retenidas de su plan, cuando voy a optimizarlo, entonces antes de confirmar se me avisa qué versión se eliminará (igual que 014 CA-15).
-- **CA-13** (HU-3, RNF-09) — error: Dado el optimizador caído o lento, entonces subir, descargar, navegar, editar y restaurar funcionan, y la optimización queda fallida con el mensaje de CA-8. El cliente puede volver a pedirla; el reintento manual por el Operador no es de esta spec (pertenece a 022b).
+- **CA-13** (HU-3, RNF-09) — error: Dado el optimizador caído o lento, entonces subir, descargar, navegar, editar y restaurar funcionan, y la optimización queda fallida con «El optimizador no está disponible ahora. Tu archivo no cambió; vuelve a intentarlo más tarde.». El cliente puede volver a pedirla cuando el servicio esté disponible; el reintento manual por el Operador no es de esta spec (pertenece a 022b).
 
 ### Original y espacio (HU-4)
 - **CA-14** (HU-4, RF-36, RF-13) Dado un archivo optimizado, cuando restauro la versión anterior desde el historial, entonces se aplica 014 CA-9 (versión nueva con origen restauración) mientras el original siga retenido (P-1).
@@ -90,7 +90,7 @@ es el objetivo del optimizador (P-1).
 |---|---|---|---|
 | Optimizador | `optimizer/optimizador/` (`ui-guidelines.md` §7) | estimacion, no-conviene, procesando, completado, error | Borrador: solo `estimacion`; contradice fuentes (PD-132) |
 
-- Mensajes clave (español, tuteo, con acción): «El ahorro sería mínimo; no vale la pena optimizar este archivo.» · CA-8 · solo lectura de 010 CA-13 · aviso de poda de 014 CA-15.
+- Mensajes clave (español, tuteo, con acción): «El ahorro sería mínimo; no vale la pena optimizar este archivo.» · CA-8 · CA-13 · solo lectura de 010 CA-13 · aviso de poda de 014 CA-15.
 
 ## 7. Fuera de alcance
 - Optimizar Office o video, OCR y conversión de formato (`product-context.md` §9).
@@ -103,7 +103,7 @@ es el objetivo del optimizador (P-1).
 - Toda herramienta nueva de procesamiento entra con su ADR en el plan.
 - Los requisitos mandan sobre el mockup: lo que el mockup contradice (formato WebP, «near-lossless», original opcional, reindexación con cuota, PDF de más de 2 GB) se registra en PD-132 y se corrige con `/mockup` antes de `Lista` (antes P-4).
 - Lo que 021 necesite de módulos de otros dueños (registrar la versión optimizada, consultar la solo lectura, procesar archivos; PD-121, DF-80) se acuerda en el plan; no cambia el comportamiento de 014 (antes P-7).
-- Solo el propietario optimiza mientras no exista 012 (014 RN-7 y D-5); si 012 da a Editor «generar versiones», se revisa ahí (antes P-8).
+- Si 012 concede al Editor «generar versiones» (014 RN-7 y D-5), se revisa RN-5 (antes P-8).
 - Dónde vive el estado interno de cada optimización (DF-22, compartido con 022b) lo decide el plan; no cambia lo que ve el cliente (antes P-10).
 
 ## 9. Preguntas
@@ -115,7 +115,6 @@ es el objetivo del optimizador (P-1).
 - [ABIERTA] **P-11** ¿Tamaño máximo optimizable? Ninguna fuente lo fija (la indexación usa su propio tope, DF-37). Los formatos ya los fija RN-1. — bloquea: sí
 - [ABIERTA] **P-12** ¿El estado «procesando → completado» se actualiza en vivo (015) o al volver a la pantalla? RNF-14 solo exige progreso visible; en la 019 el aviso en vivo fue una decisión explícita (019 P-3). — bloquea: sí
 - [RESUELTA] **P-9** Solo lectura → estimar sí, optimizar `403` `STORAGE_ACCOUNT_READ_ONLY` → RN-7, CA-16. Fuente: 010 RN-6 y CA-13, PD-121 (2026-10-24, por fuentes vigentes).
-- [RESUELTA] **P-11 (formatos)** → los de imagen de 005 plan D-9 → RN-1. Fuente: 005 (2026-10-24, por fuentes vigentes).
 
 ## 10. Registro de cambios
 | Fecha | Cambio | Motivo | Aprobó |
@@ -124,3 +123,4 @@ es el objetivo del optimizador (P-1).
 | 2026-10-24 | Revisión documental: P-9, P-11 y P-12 pasan a bloqueantes; P-7 y P-10 quedan no bloqueantes (diseño para el plan); CA-16 queda sujeto a P-9; se retiran nombres de clases, puertos y archivos | Regla de bloqueo del planner y «sin cómo» en la spec | — |
 | 2026-10-24 | Revisión del PR #77: P-9 resuelta por fuentes (RN-7) y CA-16 concreto, que ya no depende de P-9; formatos de P-11 resueltos por 005 (RN-1), el tamaño sigue abierto; P-4, P-7, P-8 y P-10 pasan a Supuestos (ADR-0034); P-1 sin la premisa falsa (la poda borra todas las versiones del objeto); PD-132 con las contradicciones del mockup; estado `error` en §6 y en `ui-guidelines.md` §7; dependencias 014, 019 y 010 en el backlog; menores (historias, CA-8, CA-13, concordancia). Siguen condicionados: CA-15 a P-1 y CA-21 a P-3 | Hallazgos M-1 a M-4 y menores de la revisión | — |
 | 2026-10-24 | Pulido final: RF-05 y RF-11 en el encabezado (los usan CA-19 y CA-17); las referencias a 014 en §1 y a `product-context.md` §9 en CA-3 sin ambigüedad; CA-12 avisa antes de confirmar, como 014 CA-15. Sin cambios de comportamiento | Auditoría de cierre | — |
+| 2026-10-25 | CA-8 (integridad, sin invitar a repetir) y CA-13 (servicio no disponible, se puede volver a pedir) con mensajes distintos; P-11 queda solo por tamaño (los formatos ya están en RN-1); el supuesto de 012 remite a RN-5 sin repetirla | Menores n-1, n-2 y n-4 de la segunda revisión | — |
