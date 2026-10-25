@@ -1,6 +1,6 @@
 # Plan 020b — Panel del agente (web)
 
-> Spec: `./spec.md` · Estado del plan: Propuesto
+> Spec: `./spec.md` · Estado del plan: Aprobado (Adrián, 2026-10-25)
 > Solo `apps/web`. Consume los contratos y endpoints de la 020; no toca `api`, `packages/contracts` ni migraciones.
 
 ## 1. Resumen técnico y decisiones
@@ -102,7 +102,7 @@ Consumidos de la 020 (`packages/contracts/src/intelligence/`), sin redefinirlos:
 
 ## 8. Aprobación
 - `architect`: no aplica (sin puerto nuevo entre módulos, sin tecnología nueva ni cambio de arquitectura).
-- Adrián: pendiente.
+- Adrián (2026-10-25): **Aprobado** sobre el resumen de ≤ 15 líneas, con S-1 aceptado (archivo como ámbito solo desde su ficha).
 
 ## 9. Registro de cambios
 | Fecha | Cambio | Motivo | Aprobó |

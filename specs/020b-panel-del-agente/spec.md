@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Borrador |
+| Estado | Lista |
 | Dueño | Adrián |
 | Fase | 3 |
 | Requisitos | RF-32, RF-34; RNF-03 (lo que ve el cliente), RNF-09, RNF-13, RNF-14 |
@@ -93,7 +93,7 @@ Rutas relativas a `docs/design/`. `ui-guidelines.md` §7 lista la pantalla (fila
 - **S-6** La cita abre la ficha con `?ubicacion=<etiqueta>` (sin nombre de archivo); con 017 se cambia el destino, no el chip.
 
 ## 9. Preguntas
-- [ABIERTA] ¿Se acepta S-1 (archivo solo desde su ficha, sin buscador en el panel)? — bloquea: no (si se pide el buscador, se agrega al panel y sube el tamaño de la spec).
+- [RESUELTA] ¿Se acepta S-1 (archivo solo desde su ficha, sin buscador en el panel)? → Sí (2026-10-25, Adrián).
 - [RESUELTA] ¿Se crea mockup? → Ya existe y está aprobado: 12 estados (2026-10-25, Adrián).
 - [RESUELTA] Sin 017 la cita abre la ficha con la ubicación visible → CA-11 (2026-10-25, Adrián; P-5 de 020).
 - [RESUELTA] Solo lectura con cuota agotada → «Renovar plan» y sin fecha → CA-8 (2026-10-25, Adrián; plan 020).
@@ -103,3 +103,4 @@ Rutas relativas a `docs/design/`. `ui-guidelines.md` §7 lista la pantalla (fila
 | Fecha | Cambio | Motivo | Aprobó |
 |---|---|---|---|
 | 2026-10-25 | Creación en `Borrador`, con plan y tareas | Parte de la 020 por ADR-0034 (el plan pasaba de 12 archivos) | — |
+| 2026-10-25 | Plan aprobado y S-1 aceptado; pasa a `Lista` | Resumen aprobado | Adrián |

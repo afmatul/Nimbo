@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Borrador |
+| Estado | Lista |
 | Dueño | Adrián |
 | Fase | 3 |
 | Requisitos | RF-32, RF-33, RF-34; RNF-03 (primer fragmento < 3 s), RNF-05, RNF-09, RNF-17 |
@@ -109,4 +109,5 @@ Sin preguntas abiertas.
 | 2026-10-25 | **Partida en 020 (API) y 020b (panel web)** por ADR-0034: el plan pasaba de 12 archivos y de una pantalla. Vuelve a `Borrador` hasta aprobar el resumen | Decisión de Adrián | pendiente |
 | 2026-10-25 | CA-8 movido a 020b (abrir la cita); CA-7, CA-9, CA-10 y CA-11 reformulados como respuesta de la API (la parte visible: 020b CA-2, 12, 1, 8); RN-9 y RN-10 conservan solo la parte del servidor; RNF-13 y RNF-14 pasan a 020b; §6 sin interfaz; P-4/P-5 trasladadas | Partición | pendiente |
 | 2026-10-25 | 019 ya implementada: RN-6 cubre hoja y diapositiva (RF-31 indexado); P-7 resuelta de otra forma; CA-2 usa el corpus de medición (S-5) en lugar del «corpus de 019», que no existe | Reconciliar con la 019 real | pendiente |
-| 2026-10-25 | Decisiones aprobadas del plan anterior pasan a P-9 y S-4; nuevos S-1…S-3, S-5, S-6; `maxQuestionChars` en el estado (S-3) | ADR-0034 (supuestos) y petición de 020b | pendiente |
+| 2026-10-25 | Decisiones aprobadas del plan anterior pasan a P-9 y S-4; nuevos S-1…S-3, S-5, S-6; `maxQuestionChars` en el estado (S-3) | ADR-0034 (supuestos) y petición de 020b | Adrián |
+| 2026-10-25 | Plan aprobado tras la partición; pasa a `Lista` | Resumen aprobado | Adrián |

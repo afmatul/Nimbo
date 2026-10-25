@@ -1,6 +1,6 @@
 # Plan 020 — Agente con citas (API)
 
-> Spec: `./spec.md` · Estado del plan: Propuesto (cambio de alcance 2026-10-25: ADR-0034, el panel web pasa a 020b)
+> Spec: `./spec.md` · Estado del plan: Aprobado (Adrián, 2026-10-25, tras el cambio de alcance de ADR-0034: el panel web pasa a 020b)
 > Qué archivos se tocan y qué se espera de cada uno. Sin cuerpos de funciones. Lo aprueba Adrián antes de escribir código.
 
 ## 1. Resumen técnico y decisiones
@@ -159,11 +159,11 @@ Siembra: se reutilizan `insertChunk`, `insertIndexing` y `axisVector` de `test/i
 - `architect` (2026-10-25, plan original): **Aprobado con cambios**. Evidencia: (1) `IAgentQuota`: `boundaries.js` permite `intelligence → billing` y `billing` no admite `intelligence`; declararlo en `billing` mantiene el DAG y es coherente con `architecture.md` §3 y §5 (PD-18); Art. V.2 d. (2) DF-81: excepción aceptada, con ADR-0035. (3) DF-82: no contradice ADR-0030; no requiere ADR. (4) Gemini por `fetch` nativo: sin dependencia, sin ADR.
   Cambios exigidos, ya cumplidos o vigentes: 1. ADR-0035 aceptado; el SQL de `archivo`/`carpeta` acotado a `chunk-sql.ts` con prueba que falla si cambian las columnas. 2. `agentUsagePeriod` y `AgentQuotaService` reutilizan `I_CLOCK` y `PAID_PLAN_PERIOD_DAYS` (`Grep` antes de escribir otra). 3. `AgentService.ask` solo orquesta; ninguna función > 30 líneas ni > 3 parámetros. 4. Al cerrar: `architecture.md` §5 y §7.4, `design-model.md` M6 en el mismo PR (PD-18 ya lo cerró la 019). 5. ADR-0035 en «ADR requeridos».
   **Cambios desde ese veredicto (2026-10-25, planner)**: la 019 ya existe y el plan usa su contrato real; `IChunkSearch` nuevo en lugar de ampliar `IChunkRepository` y retiro de `nearest`; vectorial exacto sin HNSW; `gemini-http.ts`; la clave de Gemini entra al `api` (D-8); el panel web sale a 020b. **Ninguno agrega puerto entre módulos, tecnología ni cambia la arquitectura**: `IChunkSearch` es interno de `intelligence` y el resto se justifica en D-2/D-7/D-8. Sin nuevo dictamen de `architect` salvo que Adrián lo pida.
-- Adrián (2026-10-25, plan original): **Aprobado** con los cambios 1–5 y «Lo discutible» (P-9 de la spec). **Pendiente de nueva aprobación por el cambio de alcance** (ADR-0034: el resumen de ≤ 15 líneas; si no objeta en el día, el dueño anota «Aprobado»).
-- Opción abierta para Adrián: si prefiere que el contador de `billing` (filas 9 y 10, T-02) tenga dueño propio, sale como **020a** sin tocar el resto: `IAgentQuota` es el único contacto y T-06 usa un doble hasta que llegue.
+- Adrián (2026-10-25, plan original): **Aprobado** con los cambios 1–5 y «Lo discutible» (P-9 de la spec). - Adrián (2026-10-25, cambio de alcance): **Aprobado** sobre el resumen de ≤ 15 líneas. Decisiones: el contador queda en la 020 con **visto bueno de Juan Marcos** (dueño de `billing`) en el PR, sin 020a; se aceptan `IChunkSearch` con el retiro de `nearest`, el vectorial exacto sin HNSW y la clave de Gemini también en el `api` (enmienda RN-9 de la 019).
 
 ## 9. Registro de cambios
 | Fecha | Cambio | Motivo | Aprobó |
 |---|---|---|---|
 | 2026-10-25 | Plan inicial (34 filas, con `apps/web`) | `/plan 020` | Adrián |
-| 2026-10-25 | **Reescrito para la 020 (API)**: 12 filas; sin `apps/web` (→ 020b); contrato real de la 019 (D-1); `IChunkSearch` y retiro de `nearest` (D-2); `gemini-http.ts` (D-7); `task` en embeddings y clave del `api` (D-8); `GET /agent/status` suma `maxQuestionChars`; códigos en `INTELLIGENCE_ERROR_CODES`; corpus de medición (R-2); DF/PD reconciliados. Vuelve a «Propuesto» | ADR-0034 y decisión de Adrián | pendiente |
+| 2026-10-25 | **Reescrito para la 020 (API)**: 12 filas; sin `apps/web` (→ 020b); contrato real de la 019 (D-1); `IChunkSearch` y retiro de `nearest` (D-2); `gemini-http.ts` (D-7); `task` en embeddings y clave del `api` (D-8); `GET /agent/status` suma `maxQuestionChars`; códigos en `INTELLIGENCE_ERROR_CODES`; corpus de medición (R-2); DF/PD reconciliados. Vuelve a «Propuesto» | ADR-0034 y decisión de Adrián | Adrián |
+| 2026-10-25 | Aprobado tras el cambio de alcance; `billing` con visto bueno de Juan Marcos en el PR | Resumen aprobado | Adrián |
