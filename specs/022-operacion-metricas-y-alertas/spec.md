@@ -10,7 +10,7 @@
 | Requisitos | RNF-18 (métricas, tableros y alertas; la salud ya la entregó 000), RNF-20, RNF-21 (principales); aplican RF-05, RF-22, RNF-01, RNF-09, RNF-12, RNF-15, RNF-16, RNF-17 |
 | Depende de | 000 (salud CA-20 a CA-23, bitácoras con `correlationId`, CI; rollback CA-31; bloques 5–6 de imágenes y staging **sin integrar**, `workflow.md` §7.2). Toma las señales que difirieron a 022 las specs 001, 002, 003, 004 (PD-67), 005, 010, 014, 015 y 016 (RN-3) |
 | DF / PD | DF-28, DF-29; PD-05, PD-60, PD-62, PD-67, PD-113, PD-130, PD-131, PD-133 |
-| Última actualización | 2026-10-24 |
+| Última actualización | 2026-10-25 |
 
 ## 1. Contexto y objetivo
 Hoy Nimbo solo dice si está vivo (`/health/live` y `/health/ready`, spec 000) y deja bitácoras. RNF-18 pide además
@@ -31,7 +31,7 @@ cuentas (PD-74, PD-122), son de 022b. La alerta de «> 50 trabajos pendientes o 
 - **HU-3** Como equipo, queremos alertas sobre las condiciones definidas, para enterarnos antes que el cliente.
 - **HU-4** Como Operador, quiero un respaldo diario de la base de datos y objetos versionados, para restaurarlos con un procedimiento probado.
 - **HU-5** Como Operador, quiero ensayar la vuelta a la versión anterior en cada fase, para saber que tarda menos de 10 minutos.
-- **HU-6** Como cliente, quiero que la observabilidad nunca exponga mis archivos, nombres ni datos, para que operar Nimbo no comprometa mi privacidad.
+- **HU-6** Como cliente, quiero que la observabilidad no exponga el contenido de mis archivos ni datos sensibles (nombres de archivo, correos, claves de objeto, tokens; los identificadores, P-11), para que operar Nimbo no comprometa mi privacidad.
 
 ## 3. Criterios de aceptación
 > Umbrales y ventanas: los de `product-context.md` §7 «Alertas definidas», sin repetirlos aquí. Métricas por grupo: RN-3.
@@ -78,7 +78,7 @@ RNF-18 → CA-1 a CA-18 · RNF-20 → CA-23 · RNF-21 → CA-19 a CA-22 · RNF-1
   - **Almacenamiento**: las métricas declaradas en 005 plan §7 (cargas por resultado, rechazos por motivo, bytes cargados, enlaces de descarga emitidos, límites de frecuencia alcanzados y duración de la limpieza); espacio usado (por cuenta o total: P-11); tasa de error de MinIO.
   - **Identidad y acceso**: las diferidas por 001 plan §7 (registros, verificaciones y correos fallidos), 002 plan §7 (inicios de sesión por resultado, reúso de tokens de refresco y bloqueos) y 003 plan §7 (denegaciones de autorización).
   - **Edición** (016 existe): sesiones abiertas, editores concurrentes (por documento, o máximo y distribución: P-11), versiones generadas y guardados fallidos.
-  - **Canal en vivo**: 015 difiere a 022 sus métricas y tableros (015 spec §7) sin definirlas; el plan fija el conjunto a partir de señales observables del canal, y si eso cambia el comportamiento observable o un RNF se registra antes como pregunta.
+  - **Canal en vivo**: 015 difiere a 022 «Métricas y tableros del canal» (015 spec §7) y no define su conjunto concreto (§8).
   - **Negocio**: CA-7. **Auditoría**: CA-17. **Sistema**: CA-3.
   - **Agente** (consultas por plan, latencia hasta el primer fragmento, fragmentos recuperados por consulta, consumo y costo estimado): las pide la propuesta §4.3; si se entregan en 022 o en 020 (que aún no existe) lo decide P-8, y «por cuenta», P-11.
   - **Fuera**: las alertas candidatas de 001, 002 y 003 no se agregan sin decisión (PD-133).
@@ -110,6 +110,7 @@ RNF-18 → CA-1 a CA-18 · RNF-20 → CA-23 · RNF-21 → CA-19 a CA-22 · RNF-1
 ## 8. Supuestos
 - Prometheus recolecta y Grafana presenta (stack de `CLAUDE.md` y propuesta §4.3); toda librería o imagen nueva va con su ADR en el plan.
 - La alerta de prueba (CA-18) se provoca en un ambiente que no es producción.
+- Canal en vivo (RN-3): como 015 no define su conjunto de métricas, el plan concreta las señales observables necesarias; si al hacerlo aparece una decisión que cambia comportamiento observable o un RF/RNF, se registra como pregunta bloqueante antes de cerrar el plan.
 - Las métricas de RN-3 viven en módulos de Adrián y de Juan Marcos, y la recolección toca infraestructura de Adrián: quién instrumenta cada una y con qué autorización (como en la 011) se acuerda con cada dueño en el plan; 022 no cambia el comportamiento de esos módulos (antes P-1).
 - ADR-0034 y `workflow.md` §4 (regla 1) piden partir una spec antes de redactarla si el esbozo pasa de 12 archivos o de una pantalla. Esta spec ya está redactada: antes de seguir al plan se hace esa comprobación y, si corresponde, se parte con Adrián, por ejemplo en observabilidad (RNF-18) y respaldos y vuelta atrás (RNF-20, RNF-21) (antes P-4).
 - DF-28 se resuelve «antes de 022»: el redibujo del diagrama de arquitectura (PD-05; DF-28 (e) le suma Prometheus y Grafana) es tarea documental de Adrián como guardián de diagramas y no cambia el comportamiento (antes P-14).
@@ -132,3 +133,4 @@ RNF-18 → CA-1 a CA-18 · RNF-20 → CA-23 · RNF-21 → CA-19 a CA-22 · RNF-1
 | 2026-10-24 | Normalización de §8 y §9 según ADR-0034 (como en la 021): solo quedan las 6 preguntas bloqueantes (P-2, P-3, P-5, P-6, P-7, P-8). P-1, P-4 y P-14 pasan a Supuestos (P-14 con PD-05); P-9 pasa a PD-67 (`audit.record_failed`) y PD-133 (demás alertas candidatas); P-10, P-11, P-13 y P-15 pasan a PD-133; P-12 a §7 (k6 es de 023, con PD-60 y PD-62). Sin cambios de comportamiento ni de CA | ADR-0034 y revisión del PR #78 | — |
 | 2026-10-24 | Pulido final: HU-4 y HU-6 con su «para»; CA-17 rastrea a RNF-18; trazabilidad completa con los requisitos del encabezado; alcance exacto de PD-05 frente a DF-28 (e). Sin cambios de comportamiento | Auditoría de cierre | — |
 | 2026-10-24 | Segunda revisión del PR #78: RN-3, CA-4 y CA-8 quedan condicionados a P-8 (sigue abierta); P-11 vuelve como bloqueante y RN-2, CA-5, RN-3, RN-7 y §5 quedan condicionados a ella; canal en vivo sin métricas inventadas (015 no las define); RN-3 sin nombres de series; §8 cita ADR-0034 tal como está escrito; PD-67, PD-133, PD-60 y PD-62 ajustados | Hallazgos M-1 a M-3 y menores | — |
+| 2026-10-25 | HU-6 alineada con RN-2, CA-5 y P-11 (no decide identificadores); la regla de planificación del canal en vivo pasa de RN-3 a §8. Sin cambios de comportamiento ni de preguntas | Menores de la tercera revisión | — |
