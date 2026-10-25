@@ -18,8 +18,8 @@ métricas, tableros y alertas de tasa de error, latencia, profundidad de cola y 
 imagen anterior en menos de 10 minutos; RNF-21, respaldo diario de la base de datos, objetos versionados y una
 restauración probada por fase. Esta spec deja al Operador de infraestructura (matriz `product-context.md` §2:
 «respaldos, colas, alertas») viendo el estado del sistema en tres tableros, recibiendo las seis alertas definidas
-(`product-context.md` §7) y con respaldos que se restauran de verdad. Ningún dato de un cliente sale en métricas,
-tableros, alertas ni bitácoras de respaldo.
+(`product-context.md` §7) y con respaldos que se restauran de verdad. Ningún contenido, nombre ni correo de un
+cliente sale en métricas, tableros, alertas ni bitácoras de respaldo.
 
 **Frontera con 022b (Fátima, RF-37).** 022 mide y avisa; no lista trabajos ni los reintenta. La pantalla de
 bitácoras técnicas y trabajos con reintento para Administrador, Soporte y Operador, y los conteos al momento de
@@ -40,13 +40,13 @@ cuentas (PD-74, PD-122), son de 022b. La alerta de «> 50 trabajos pendientes o 
 - **CA-1** (HU-1, RNF-18) Dado `api` y `worker` en marcha, cuando el recolector los consulta por la red interna, entonces obtiene peticiones por ruta y código, latencia (p50, p95, p99) y, por cola, trabajos en espera, activos, completados y fallidos, con su tiempo de espera y de ejecución.
 - **CA-2** (HU-1, RNF-18, DF-29) — error: Dada una petición a las métricas desde fuera de la red interna (por Traefik o directa al host), cuando llega, entonces no recibe métricas; Traefik no enruta ningún host ni ruta hacia las métricas y lo público sigue siendo lo de 000.
 - **CA-3** (HU-1, RNF-18) Dados los servicios del compose, cuando se consultan las métricas de sistema, entonces se ven CPU, memoria y disco por contenedor y la disponibilidad de Postgres, Redis, MinIO y, con su perfil activo, ONLYOFFICE.
-- **CA-4** (HU-1, RNF-18) Dado cada grupo de RN-3 que esta spec cubre, cuando ocurre su evento, entonces su serie cambia y se lee en un tablero; lo diferido (agente) no aparece como dato inventado.
-- **CA-5** (HU-6, RNF-17) — privacidad: Dada cualquier serie, etiqueta, tablero o mensaje de alerta, cuando se inspecciona, entonces no contiene identificadores de cuenta, de archivo o de documento, correos, nombres de archivo, claves de objeto, tokens ni contenido; las rutas con identificadores aparecen por su plantilla.
+- **CA-4** (HU-1, RNF-18) Dado cada grupo de RN-3 cuyo alcance en 022 está decidido (el del Agente depende de P-8), cuando ocurre su evento, entonces su serie cambia y se lee en un tablero.
+- **CA-5** (HU-6, RNF-17) — privacidad: Dada cualquier serie, etiqueta, tablero o mensaje de alerta, cuando se inspecciona, entonces no contiene correos, nombres de archivo, claves de objeto, tokens ni contenido, ni identificadores de cuenta, de archivo o de documento fuera de lo que P-11 decida (RN-2); las rutas con identificadores aparecen por su plantilla.
 
 ### Tableros (HU-2)
 - **CA-6** (HU-2, RNF-18) Dadas las métricas recolectadas, cuando el Operador abre el tablero de operación, entonces ve tasa de error, latencia p95, profundidad de cada cola, uso de disco y disponibilidad de cada dependencia, en el ambiente elegido (P-2).
 - **CA-7** (HU-2, RNF-18) Dado el tablero de negocio, cuando se abre, entonces muestra como totales agregados por periodo los eventos de registro, contratación, renovación, vencimiento y cuentas degradadas a solo lectura (propuesta §4.3), no cuántas cuentas están hoy en cada estado (eso es PD-122, 022b); alcance sujeto a P-7.
-- **CA-8** (HU-2, RNF-18) Dado el tablero del agente, cuando se abre, entonces muestra el grupo «Agente» de RN-3 (alcance sujeto a P-8: 020 no existe).
+- **CA-8** (HU-2, RNF-18) Dado el tablero del agente, cuando se abre, entonces muestra el grupo «Agente» de RN-3; si se entrega en 022 y con qué datos lo decide P-8 (020 no existe).
 - **CA-9** (HU-2, RF-05) — error: Dado alguien sin acceso autorizado a los tableros (P-6), cuando intenta abrirlos, entonces no ve ningún tablero ni dato.
 - **CA-10** (HU-2, RNF-12) Dado un ambiente levantado desde cero, cuando termina de arrancar, entonces los tres tableros y las reglas de alerta ya existen sin pasos manuales.
 
@@ -72,26 +72,27 @@ RNF-18 → CA-1 a CA-18 · RNF-20 → CA-23 · RNF-21 → CA-19 a CA-22 · RNF-1
 
 ## 4. Reglas de negocio
 - **RN-1** Alertas y umbrales: exactamente los seis de `product-context.md` §7. Uno nuevo se agrega primero a ese documento (candidatas: PD-67 y PD-133).
-- **RN-2** Las métricas son agregadas: ninguna serie lleva identificadores de cuenta, de archivo o de documento (CA-5). Lo que la propuesta pide «por cuenta» o «por documento» se mide solo como total o distribución; la diferencia con la propuesta queda en PD-133.
+- **RN-2** Ninguna serie lleva contenido, nombres de archivo, correos, claves de objeto ni tokens (CA-5). Si las métricas que la propuesta §4.3 pide «por cuenta» y «por documento» se mantienen así o se sustituyen por agregados y distribuciones sin identificadores lo decide P-11; su respuesta se traslada a esta regla (PD-133 (b)).
 - **RN-3** Grupos de métricas (propuesta §4.3) y lo que otras specs difirieron a 022:
-  - **API y colas**: CA-1. Fallos de `upload-cleanup` dentro de colas (005 plan §7). Métricas de versiones registradas, restauradas, podadas y podas fallidas (014 plan, «Métricas: diferidas a 022»).
-  - **Almacenamiento**: `nimbo_storage_*` declaradas en 005 plan §7; espacio usado total; tasa de error de MinIO.
-  - **Identidad y acceso**: las candidatas de 001 plan (`nimbo_identity_registrations_total`, `nimbo_identity_verifications_total`, `nimbo_notifications_mail_failed_total`), 002 plan (`nimbo_identity_logins_total`, `nimbo_identity_refresh_reuse_total`, `nimbo_identity_lockouts_total`) y 003 plan (`nimbo_shared_auth_denied_total`).
-  - **Edición** (016 existe): sesiones abiertas, editores concurrentes (máximo y distribución, sin identificar el documento), versiones generadas y guardados fallidos. **Canal en vivo**: las de 015 (spec §fuera de alcance).
+  - **API y colas**: CA-1. Fallos de la limpieza de cargas (005 plan §7). Versiones registradas, restauradas, podadas y podas fallidas (014 plan, «Métricas: diferidas a 022»).
+  - **Almacenamiento**: las métricas declaradas en 005 plan §7 (cargas por resultado, rechazos por motivo, bytes cargados, enlaces de descarga emitidos, límites de frecuencia alcanzados y duración de la limpieza); espacio usado (por cuenta o total: P-11); tasa de error de MinIO.
+  - **Identidad y acceso**: las diferidas por 001 plan §7 (registros, verificaciones y correos fallidos), 002 plan §7 (inicios de sesión por resultado, reúso de tokens de refresco y bloqueos) y 003 plan §7 (denegaciones de autorización).
+  - **Edición** (016 existe): sesiones abiertas, editores concurrentes (por documento, o máximo y distribución: P-11), versiones generadas y guardados fallidos.
+  - **Canal en vivo**: 015 difiere a 022 sus métricas y tableros (015 spec §7) sin definirlas; el plan fija el conjunto a partir de señales observables del canal, y si eso cambia el comportamiento observable o un RNF se registra antes como pregunta.
   - **Negocio**: CA-7. **Auditoría**: CA-17. **Sistema**: CA-3.
-  - **Agente** (consultas por plan, latencia hasta el primer fragmento, fragmentos recuperados por consulta, consumo y costo estimado): **diferido** porque 020 no existe (P-8); «por cuenta» choca con RN-2 (PD-133).
+  - **Agente** (consultas por plan, latencia hasta el primer fragmento, fragmentos recuperados por consulta, consumo y costo estimado): las pide la propuesta §4.3; si se entregan en 022 o en 020 (que aún no existe) lo decide P-8, y «por cuenta», P-11.
   - **Fuera**: las alertas candidatas de 001, 002 y 003 no se agregan sin decisión (PD-133).
 - **RN-4** La salud no cambia: `live`/`ready` siguen como en 000 (públicos, sin topología) y ONLYOFFICE no entra en `ready` (PD-113).
 - **RN-5** Respaldo de base de datos diario (RNF-21); restauración probada al menos una vez por fase (`workflow.md` §6) y vuelta atrás ensayada por fase desde la Fase 2, ambas con datos sintéticos (RNF-16).
 - **RN-6** Una falla de métricas, tableros, alertas o respaldos no afecta a cargar, descargar ni navegar (Art. XII).
-- **RN-7** Los tableros solo leen series agregadas del recolector de métricas; no consultan PostgreSQL ni otra fuente de datos de clientes, así que no hay una vía de lectura que salte la autorización ni RLS (Art. IX.2).
+- **RN-7** Los tableros solo leen series del recolector de métricas; no consultan PostgreSQL ni otra fuente de datos de clientes, así que no hay una vía de lectura que salte la autorización ni RLS (Art. IX.2).
 
 ## 5. Seguridad y privacidad
-- **¿Toca datos de un cliente?** Las métricas y los tableros no (RN-2, RN-7). Los respaldos de producción sí contienen todos los datos de cuentas: viven fuera del repositorio, solo el Operador los administra (matriz §2) y su destino, retención y cifrado son P-5. Las pruebas de esta spec (CA-21, CA-22) usan solo datos sintéticos: ninguna toca contenido real de clientes.
+- **¿Toca datos de un cliente?** Las métricas no llevan contenido, nombres ni correos (RN-2; los identificadores de cuenta o documento, P-11) y los tableros no consultan datos de clientes (RN-7). Los respaldos de producción sí contienen todos los datos de cuentas: viven fuera del repositorio, solo el Operador los administra (matriz §2) y su destino, retención y cifrado son P-5. Las pruebas de esta spec (CA-21, CA-22) usan solo datos sintéticos: ninguna toca contenido real de clientes.
 - **No van a bitácoras, métricas ni alertas**: contenido, nombres de archivo, correos, contraseñas, tokens, claves de enlaces, cadenas de conexión ni credenciales de respaldo (RNF-17).
 - **Roles**: «Ver métricas agregadas» es de Administrador y Operador; «Administrar respaldos» solo del Operador (matriz §2). Cliente y Soporte no ven tableros. Acceso a Grafana: P-6.
 - **Superficie**: las métricas no se publican por Traefik (CA-2). 022 no agrega rutas a la API de clientes.
-- Sin pruebas de aislamiento propias: no hay consultas por cuenta. Si se decidieran datos por cuenta (PD-133), se revisa.
+- Sin pruebas de aislamiento propias: no hay consultas por cuenta. Si P-11 mantiene métricas por cuenta, se revisa.
 
 ## 6. Experiencia de usuario
 - Sin interfaz en `apps/web`: los tableros son de Grafana y no siguen Cielo Sereno (no hay fila en `ui-guidelines.md` §7). La pantalla de bitácoras y trabajos es 022b.
@@ -99,7 +100,7 @@ RNF-18 → CA-1 a CA-18 · RNF-20 → CA-23 · RNF-21 → CA-19 a CA-22 · RNF-1
 ## 7. Fuera de alcance
 - RF-37 completo (022b): lista de trabajos, reintento, pantalla de bitácoras técnicas, conteos al momento (PD-74, PD-122).
 - Panel de métricas agregadas de la app (011, CA-12) y sus cambios.
-- Pruebas de carga k6 y aislamiento global (023, `specs/README.md`), incluidas las mediciones con k6 de PD-60 y PD-62 (antes P-12; el ajuste de su columna «Resolver antes de» está en PD-133).
+- Pruebas de carga k6 y aislamiento global (023, `specs/README.md`), incluidas las mediciones con k6 de PD-60 y PD-62 (antes P-12).
 - Imágenes en ghcr.io, staging y el mecanismo de despliegue (000, bloques 5–6); 022 solo ensaya la vuelta atrás.
 - Que Traefik retire del enrutamiento lo que deje de responder (propuesta §4.3): es configuración de despliegue y no está asignada (antes P-13; PD-133).
 - Objetos huérfanos y credencial raíz de MinIO en `api` y `worker` (005 plan R-7 y R-13, «revisar en 022»): no rastrean a RNF-18, 20 ni 21 y se tratan como endurecimiento de staging (antes P-15; PD-133).
@@ -110,7 +111,7 @@ RNF-18 → CA-1 a CA-18 · RNF-20 → CA-23 · RNF-21 → CA-19 a CA-22 · RNF-1
 - Prometheus recolecta y Grafana presenta (stack de `CLAUDE.md` y propuesta §4.3); toda librería o imagen nueva va con su ADR en el plan.
 - La alerta de prueba (CA-18) se provoca en un ambiente que no es producción.
 - Las métricas de RN-3 viven en módulos de Adrián y de Juan Marcos, y la recolección toca infraestructura de Adrián: quién instrumenta cada una y con qué autorización (como en la 011) se acuerda con cada dueño en el plan; 022 no cambia el comportamiento de esos módulos (antes P-1).
-- Antes del plan se comprueba el tamaño (`workflow.md` §4.1): si el esbozo pasa de 12 archivos, se parte con Adrián, por ejemplo en observabilidad (RNF-18) y respaldos y vuelta atrás (RNF-20, RNF-21) (antes P-4).
+- ADR-0034 y `workflow.md` §4 (regla 1) piden partir una spec antes de redactarla si el esbozo pasa de 12 archivos o de una pantalla. Esta spec ya está redactada: antes de seguir al plan se hace esa comprobación y, si corresponde, se parte con Adrián, por ejemplo en observabilidad (RNF-18) y respaldos y vuelta atrás (RNF-20, RNF-21) (antes P-4).
 - DF-28 se resuelve «antes de 022»: el redibujo del diagrama de arquitectura (PD-05; DF-28 (e) le suma Prometheus y Grafana) es tarea documental de Adrián como guardián de diagramas y no cambia el comportamiento (antes P-14).
 
 ## 9. Preguntas
@@ -120,6 +121,7 @@ RNF-18 → CA-1 a CA-18 · RNF-20 → CA-23 · RNF-21 → CA-19 a CA-22 · RNF-1
 - [ABIERTA] **P-6** ¿Quién entra a Grafana (Operador; también Administrador por la matriz) y cómo: cuentas propias, red interna o túnel? ¿Se publica por Traefik? — bloquea: sí
 - [ABIERTA] **P-7** ¿El tablero de negocio duplica el panel de métricas de 011 o lo complementa? — bloquea: sí
 - [ABIERTA] **P-8** El tablero del agente depende de 020 (Pendiente): ¿se difiere a 020, se entrega con lo que exista o se corta? — bloquea: sí
+- [ABIERTA] **P-11** ¿Las métricas que la propuesta §4.3 pide «por cuenta» y «por documento» (espacio usado, consumo y costo del agente, editores) se mantienen así, o Adrián aprueba sustituirlas por agregados y distribuciones para no llevar identificadores ni acceder a datos de clientes (RNF-17)? Cambia lo que RNF-18 entrega — bloquea: sí
 
 ## 10. Registro de cambios
 | Fecha | Cambio | Motivo | Aprobó |
@@ -129,3 +131,4 @@ RNF-18 → CA-1 a CA-18 · RNF-20 → CA-23 · RNF-21 → CA-19 a CA-22 · RNF-1
 | 2026-10-24 | Revisión del PR #78: P-5 sin la premisa falsa (la purga borra todas las versiones del objeto); CA-17 queda como contador y la alerta pasa a P-9; CA-21/CA-22 con datos sintéticos (RNF-16) y restaurar sobre cuentas reales fuera de alcance; RN-3 completo con 001, 002, 003, 005, 014, 015 y 016, edición y agente (diferido); CA-7 como eventos «degradadas a solo lectura»; RN-7 (tableros sin acceso a datos de clientes); P-15; PD-130 y PD-131; menores (encabezado, trazabilidad, umbrales citados de §7, CA-2, CA-23, §7, concordancia) | Hallazgos M-1 a M-8 y menores de la revisión | — |
 | 2026-10-24 | Normalización de §8 y §9 según ADR-0034 (como en la 021): solo quedan las 6 preguntas bloqueantes (P-2, P-3, P-5, P-6, P-7, P-8). P-1, P-4 y P-14 pasan a Supuestos (P-14 con PD-05); P-9 pasa a PD-67 (`audit.record_failed`) y PD-133 (demás alertas candidatas); P-10, P-11, P-13 y P-15 pasan a PD-133; P-12 a §7 (k6 es de 023, con PD-60 y PD-62). Sin cambios de comportamiento ni de CA | ADR-0034 y revisión del PR #78 | — |
 | 2026-10-24 | Pulido final: HU-4 y HU-6 con su «para»; CA-17 rastrea a RNF-18; trazabilidad completa con los requisitos del encabezado; alcance exacto de PD-05 frente a DF-28 (e). Sin cambios de comportamiento | Auditoría de cierre | — |
+| 2026-10-24 | Segunda revisión del PR #78: RN-3, CA-4 y CA-8 quedan condicionados a P-8 (sigue abierta); P-11 vuelve como bloqueante y RN-2, CA-5, RN-3, RN-7 y §5 quedan condicionados a ella; canal en vivo sin métricas inventadas (015 no las define); RN-3 sin nombres de series; §8 cita ADR-0034 tal como está escrito; PD-67, PD-133, PD-60 y PD-62 ajustados | Hallazgos M-1 a M-3 y menores | — |
