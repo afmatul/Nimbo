@@ -29,12 +29,17 @@ const CORS_EXPOSED_HEADERS = [CORRELATION_ID_HEADER, 'retry-after'];
 const NO_CORS: CorsOptions = { origin: false };
 
 /**
- * Rutas cuyas respuestas nunca se guardan en caché: las de `auth` (plan 001 §5) y las del backoffice, que devuelven
- * correos y nombres de archivo de clientes (011 CA-13). Se fija aquí, antes del analizador, para cubrir también su
- * `400` de JSON mal formado; para `auth`, `identity` la vuelve a fijar en sus controladores. En minúsculas: el
- * enrutador de Express no distingue mayúsculas.
+ * Rutas cuyas respuestas nunca se guardan en caché: las de `auth` (plan 001 §5), las del backoffice, que devuelven
+ * correos y nombres de archivo de clientes (011 CA-13), y las del agente, que devuelven respuestas sobre el contenido,
+ * citas y nombres de archivo (020 plan §2). Se fija aquí, antes del analizador, para cubrir también su `400` de JSON
+ * mal formado; para `auth`, `identity` la vuelve a fijar en sus controladores. En minúsculas: el enrutador de Express
+ * no distingue mayúsculas.
  */
-const NO_STORE_PATH_PREFIXES = [`/${API_PREFIX}/auth/`, `/${API_PREFIX}/backoffice/`];
+const NO_STORE_PATH_PREFIXES = [
+  `/${API_PREFIX}/auth/`,
+  `/${API_PREFIX}/backoffice/`,
+  `/${API_PREFIX}/agent/`,
+];
 
 /** Lo único del entorno que la configuración HTTP necesita. */
 export type HttpAppEnv = Pick<Env, 'APP_VERSION' | 'CORS_ORIGIN'>;

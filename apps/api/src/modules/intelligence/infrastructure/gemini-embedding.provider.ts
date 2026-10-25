@@ -11,7 +11,10 @@ import { EmbeddingUnavailableError } from '../domain/errors';
 /** Base de la API REST de Gemini; las pruebas la apuntan a un servidor local. */
 export const GEMINI_API_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
 
-/** `GEMINI_API_KEY` (opcional, solo `worker`) y `GEMINI_EMBEDDING_MODEL` (plan 019 §5). */
+/**
+ * `GEMINI_API_KEY` (opcional, secreta) y `GEMINI_EMBEDDING_MODEL` (plan 019 §5). Las lee el `worker` para los
+ * fragmentos y, desde la 020 (D-8), también el `api` para la pregunta al agente.
+ */
 export interface GeminiEmbeddingConfig {
   readonly apiKey: string | undefined;
   readonly model: string;

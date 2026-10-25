@@ -4,7 +4,7 @@
 > 10 tareas verticales, un commit cada una (`feat(intelligence): … [020 T-xx]`). Cada tarea es una línea: criterio, prueba y de qué depende; los archivos viven en `plan.md` §2 y §6.
 > Toda tarea de lógica empieza por su prueba (roja → verde). Funciones ≤ 30 líneas y ≤ 3 parámetros. Los documentos de diseño (plan §2, nota de documentos) se actualizan dentro de la tarea que cambia el contrato; no hay tarea de cierre.
 
-- [ ] **T-01** Pregunta, errores y contratos del agente, y variables de entorno del `api` (clave de Gemini, plazos, máximo; `/agent/` sin caché; comentarios de RN-9 corregidos) — CA: CA-6 (regla), CA-18 (clave redactada) — Prueba: unitaria de `AgentQuestion` y de los esquemas zod, `env.schema.spec.ts` y `pnpm env:check`
+- [x] **T-01** Pregunta, errores y contratos del agente, y variables de entorno del `api` (clave de Gemini, plazos, máximo; `/agent/` sin caché; comentarios de RN-9 corregidos) — CA: CA-6 (regla), CA-18 (clave redactada) — Prueba: unitaria de `AgentQuestion` y de los esquemas zod, `env.schema.spec.ts` y `pnpm env:check`
 - [ ] **T-02** Contador de consultas en `billing`: `uso_agente`, `agentUsagePeriod` e `IAgentQuota` (`reserve`/`release`/`status`); fila `IAgentQuota` de `architecture.md` §5 (PD-18 ya está cerrado), DF-25 y DF-27 al día — CA: CA-10 (dato), CA-11, CA-12, CA-13, CA-14 (servicio) — Prueba: unitaria del periodo + integración de migración (`up`/`down`, RLS) y de N reservas paralelas con límite 3
 - [ ] **T-03** Proveedor Gemini: `gemini-http.ts` compartido, `task` `query|document` en embeddings y `GeminiFlashModel` con su doble — CA: CA-15 (adaptador y plazos) — Prueba: unitaria con `fetch` simulado y contratos compartidos de `ILanguageModel` e `IEmbeddingProvider` — Depende: T-01
 - [ ] **T-04** Citas del servidor: `sourceLocationFromJson`, `RetrievedFragment`, RRF, prompt escapado y filtro de marcas `[n]` — CA: CA-1, CA-3, CA-4 (dominio), RN-6 — Prueba: unitaria (marca partida, `[n]` inventado, texto hostil, hoja y diapositiva) — Depende: T-01
@@ -30,4 +30,5 @@
 | CA-9 | T-05, T-08 | CA-18 | T-01, T-06, T-07 |
 
 ## Notas del developer
-<Desviaciones (con enlace al registro de cambios de la spec), DF o pendientes que surgieron.>
+- T-01: `details` de `AGENT_QUOTA_EXCEEDED` omite `resetsAt` cuando es `null` (solo lectura, P-9), porque `errorResponseSchema.details` no admite `null`; el mensaje dice entonces «Se renuevan cuando renueves tu plan.» (`agentQuotaExceededDetailsSchema`).
+- T-01: plazos iniciales del modelo de 10 000 ms (primer trozo y entre trozos), a medir en T-09. `AgentUnavailableError` es el segundo 503 de dominio: la base común se extrae al tercero (Art. VI.2), aunque el comentario de `EditingUnavailableError` diga «al segundo».
