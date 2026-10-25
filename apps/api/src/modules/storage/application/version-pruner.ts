@@ -75,13 +75,16 @@ export class VersionPruner {
     }
   }
 
-  /** `false` si otra poda ya borró la fila: entonces no se resta el espacio otra vez. */
+  /**
+   * `false` si otra poda ya borró la fila: entonces no se resta el espacio otra vez. Un original conservado ya no cuenta
+   * en el espacio y no se resta (014b CA-8, RN-7).
+   */
   private deleteVersion(actor: Actor, version: FileVersion): Promise<boolean> {
     return this.transactions.withActor(actor, async () => {
       await this.quotas.lockUsage(actor);
       await this.objects.purgeObject(version.objectKey.value);
       if (!(await this.versions.delete(actor, version))) return false;
-      await this.quotas.addUsedBytes(actor, -version.sizeBytes);
+      if (version.countsInQuota) await this.quotas.addUsedBytes(actor, -version.sizeBytes);
       return true;
     });
   }

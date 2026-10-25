@@ -18,6 +18,12 @@ interface VersionRow {
   readonly clave_objeto: string;
 }
 
+/** Tamaño de la versión que se registra y, si es una optimización (014b), los días que se conserva el original. */
+interface NextVersion {
+  readonly sizeBytes: number;
+  readonly keepPreviousForDays?: number;
+}
+
 /**
  * Registro y poda de versiones de punta a punta (014 CA-13, CA-19): `FileVersionService` real dentro de una
  * transacción con actor, Postgres como `nimbo_app` (RLS), el MinIO real del arnés (bucket versionado) y los límites
@@ -27,14 +33,16 @@ interface VersionRow {
 describe('registro y poda de versiones con el plan Personal (014 CA-13, CA-19)', () => {
   let storage: StorageHttpApp;
   let retained: number;
+  let trashRetentionDays: number;
 
   beforeAll(async () => {
     storage = await createStorageHttpApp({ realPlanLimits: true });
-    const [row] = await storage.owner.query<{ versiones_retenidas: number }[]>(
-      "SELECT versiones_retenidas FROM plan WHERE slug = 'personal'",
-    );
+    const [row] = await storage.owner.query<
+      { versiones_retenidas: number; dias_retencion_papelera: number }[]
+    >("SELECT versiones_retenidas, dias_retencion_papelera FROM plan WHERE slug = 'personal'");
     if (row === undefined) throw new Error('Falta el plan personal sembrado (006a)');
     retained = row.versiones_retenidas;
+    trashRetentionDays = row.dias_retencion_papelera;
   });
 
   afterAll(async () => {
@@ -47,11 +55,14 @@ describe('registro y poda de versiones con el plan Personal (014 CA-13, CA-19)',
       [fileId],
     );
 
-  /** Sube el contenido de una versión nueva a MinIO y la registra como un reemplazo, con su poda tras el commit. */
+  /**
+   * Sube el contenido de una versión nueva a MinIO y la registra como un reemplazo, con su poda tras el commit. Con
+   * `keepPreviousForDays` hace de doble del origen `optimizacion` (014b): conserva la actual como original.
+   */
   const registerVersion = async (
     client: StorageClient,
     fileId: string,
-    sizeBytes: number,
+    { sizeBytes, keepPreviousForDays }: NextVersion,
   ): Promise<FileVersion> => {
     const app = storage.testApp.app;
     const actor = createActor(client.id, Role.CLIENT);
@@ -64,8 +75,8 @@ describe('registro y poda de versiones con el plan Personal (014 CA-13, CA-19)',
     const registered = await transactions.withActor(actor, async () => {
       const file = await nodes.findAccessibleById(actor, fileId);
       if (file === null) throw new Error('El archivo no está vivo');
-      const buildVersion = (number: number): FileVersion =>
-        FileVersion.fromUpload({
+      const buildVersion = (number: number): FileVersion => {
+        const input = {
           id,
           fileId,
           objectKey,
@@ -73,8 +84,13 @@ describe('registro y poda de versiones con el plan Personal (014 CA-13, CA-19)',
           createdBy: client.id,
           number,
           now: new Date(),
-        });
-      return service.register(actor, { file, buildVersion });
+        };
+        return keepPreviousForDays === undefined
+          ? FileVersion.fromUpload(input)
+          : FileVersion.forOrigin('optimizacion', input);
+      };
+      const kept = keepPreviousForDays === undefined ? {} : { keepPreviousForDays };
+      return service.register(actor, { file, buildVersion, ...kept });
     });
     await service.afterCommit(actor, registered);
     return registered.version;
@@ -92,7 +108,8 @@ describe('registro y poda de versiones con el plan Personal (014 CA-13, CA-19)',
     const sizes = Array.from({ length: retained }, (_, index) => 2000 + index * 1000);
     const versions = await CorrelationContext.run({ correlationId }, async () => {
       const registered: FileVersion[] = [];
-      for (const size of sizes) registered.push(await registerVersion(ana, fileId, size));
+      for (const size of sizes)
+        registered.push(await registerVersion(ana, fileId, { sizeBytes: size }));
       return registered;
     });
 
@@ -128,8 +145,25 @@ describe('registro y poda de versiones con el plan Personal (014 CA-13, CA-19)',
     expect(logged).not.toContain(name);
     expect(logged).not.toContain('u/');
 
-    const next = await registerVersion(ana, fileId, 500);
+    const next = await registerVersion(ana, fileId, { sizeBytes: 500 });
     expect(next.number).toBe(5);
     expect((await versionRows(fileId)).map((row) => row.numero)).toEqual([3, 4, 5]);
+  });
+
+  it('014b CA-8, RN-5, RN-7: la poda alcanza al original conservado antes de su fecha y lo borra sin restar de `espacio_usado`', async () => {
+    const ana = await storage.newClient();
+    const uploaded = await ana.upload(`secreto-${randomUUID()}.txt`, textBytes(1000));
+    expect(uploaded.status).toBe(200);
+    const fileId = (uploaded.body as { file: { id: string } }).file.id;
+    const [original] = await versionRows(fileId);
+    await registerVersion(ana, fileId, { sizeBytes: 600, keepPreviousForDays: trashRetentionDays });
+    await expect(usedBytesOf(storage.owner, ana.id)).resolves.toBe(600n);
+
+    for (const sizeBytes of [700, 800]) await registerVersion(ana, fileId, { sizeBytes });
+
+    expect(retained).toBe(3);
+    expect((await versionRows(fileId)).map((row) => row.numero)).toEqual([2, 3, 4]);
+    await expect(storage.versionsOf(original?.clave_objeto ?? '')).resolves.toBe(0);
+    await expect(usedBytesOf(storage.owner, ana.id)).resolves.toBe(600n + 700n + 800n);
   });
 });

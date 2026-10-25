@@ -14,6 +14,7 @@ import { createActor, Role } from '../../../shared';
 import type { Actor } from '../../../shared';
 import { AuditAction } from '../../audit';
 import { File } from '../domain/file';
+import { FileVersion } from '../domain/file-version';
 import { TrashState } from '../domain/trash-state';
 
 import { VersionPruner } from './version-pruner';
@@ -54,6 +55,16 @@ function setup() {
     seedVersionedFile({ nodes, versions, objects }, ANA, sizes);
   return { journal, quotas, nodes, versions, objects, limits, audit, logger, pruner, seed };
 }
+
+/** La versión `number` pasa a ser un original conservado (014b), que no cuenta en el espacio. */
+const keepOriginal = (versions: FakeVersionRepository, number: number): FileVersion => {
+  const version = [...versions.versions.values()].find((v) => v.number === number);
+  if (version === undefined) throw new Error(`No existe la versión ${String(number)}`);
+  const keptUntil = new Date(version.createdAt.getTime() + 86_400_000);
+  const kept = FileVersion.rehydrate({ ...version.snapshot(), keptUntil });
+  versions.versions.set(kept.id, kept);
+  return kept;
+};
 
 /** Lo que cambia el estado, en orden. */
 const writesOf = (journal: Journal): string[] =>
@@ -183,6 +194,19 @@ describe('VersionPruner (plan 014 §1, CA-13, CA-14, CA-19)', () => {
 
     expect(quotas.added).toEqual([]);
     expect(audit.records).toEqual([]);
+  });
+
+  it('014b CA-8, RN-7: un original conservado que alcanza la poda se borra sin restar de `espacio_usado`', async () => {
+    const { pruner, versions, objects, quotas, audit, seed } = setup();
+    const file = seed([100n, 200n, 300n, 400n]);
+    const original = keepOriginal(versions, 1);
+
+    await pruner.prune(ANA, file.id);
+
+    expect(versions.numbersOf(file.id)).toEqual([2, 3, 4]);
+    expect(objects.purged).toEqual([original.objectKey.value]);
+    expect(quotas.added).toEqual([]);
+    expect(audit.records).toHaveLength(1);
   });
 
   it('CA-16: un archivo ajeno, inexistente o en la papelera no se poda', async () => {
