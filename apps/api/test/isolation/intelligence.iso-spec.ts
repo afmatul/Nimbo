@@ -12,6 +12,7 @@ import type {
 } from '../../src/modules/intelligence/application/ports/i-chunk-repository.port';
 import type { IndexJob } from '../../src/modules/intelligence/application/ports/i-index-queue.port';
 import { INDEXING_JOB } from '../../src/modules/intelligence/infrastructure/bullmq-index.queue';
+import { TypeOrmChunkSearch } from '../../src/modules/intelligence/infrastructure/persistence/typeorm-chunk-search';
 import { IndexableFileGateway } from '../../src/modules/storage';
 import type { IndexableFile } from '../../src/modules/storage';
 import { createActor, I_TRANSACTION_RUNNER, Role, TransactionContext } from '../../src/shared';
@@ -35,7 +36,7 @@ const contractOf = (amount: string): Buffer =>
   );
 const AMOUNT_A = '4500';
 const AMOUNT_B = '4501';
-/** Más que todos los fragmentos de la suite: `nearest` devuelve todo lo que el actor ve. */
+/** Más que todos los fragmentos de la suite: la búsqueda vectorial devuelve todo lo que el actor ve. */
 const NEAREST_LIMIT = 50;
 const NOT_FOUND = { status: 404, code: 'STORAGE_NODE_NOT_FOUND' };
 const FORBIDDEN = { status: 403, code: 'SHARED_FORBIDDEN' };
@@ -86,6 +87,13 @@ describe('aislamiento de la indexación (019 CA-17, CA-18, CA-20)', () => {
   const workerGet = <T>(token: unknown): T =>
     world.worker.app.get<unknown, T>(token as symbol, { strict: false });
   const chunks = (): IChunkRepository => workerGet<IChunkRepository>(I_CHUNK_REPOSITORY);
+  /** Por similitud con la búsqueda del agente (020 D-2 retiró `nearest`), en todos los archivos del actor. */
+  const nearest = (actor: Actor, vector: readonly number[]): Promise<readonly StoredChunk[]> =>
+    new TypeOrmChunkSearch(workerGet<TransactionContext>(TransactionContext)).vectorSearch(actor, {
+      vector,
+      scope: { type: 'all' },
+      limit: NEAREST_LIMIT,
+    });
   const clientActor = (account: WorldAccount): Actor => createActor(account.id, Role.CLIENT);
   const internalActor = (role: (typeof INTERNAL_ROLES)[number]): Actor =>
     createActor(iso.internals[role].id, role);
@@ -169,7 +177,7 @@ describe('aislamiento de la indexación (019 CA-17, CA-18, CA-20)', () => {
     await iso?.close();
   });
 
-  describe('`IChunkRepository` (CA-17, DF-14)', () => {
+  describe('`IChunkRepository` e `IChunkSearch` (CA-17, DF-14)', () => {
     /** Vector guardado del primer fragmento de A, leído como el dueño de las tablas. */
     const vectorOfA = async (): Promise<number[]> => {
       const [row] = await world.storage.owner.query<{ embedding: string }[]>(
@@ -194,8 +202,8 @@ describe('aislamiento de la indexación (019 CA-17, CA-18, CA-20)', () => {
       const [asB, asA] = [clientActor(b), clientActor(a)];
       const vector = await vectorOfA();
 
-      const foreign = await asActor(asB, () => chunks().nearest(asB, vector, NEAREST_LIMIT));
-      const own = await asActor(asA, () => chunks().nearest(asA, vector, NEAREST_LIMIT));
+      const foreign = await asActor(asB, () => nearest(asB, vector));
+      const own = await asActor(asA, () => nearest(asA, vector));
 
       expect(fileIdsOf(foreign)).toEqual([fileB.fileId]);
       expect(foreign.map((chunk) => chunk.text).join(' ')).not.toContain(AMOUNT_A);
@@ -210,9 +218,7 @@ describe('aislamiento de la indexación (019 CA-17, CA-18, CA-20)', () => {
         const vector = await vectorOfA();
 
         const byId = await asActor(internal, () => chunks().findByFile(internal, fileA.fileId));
-        const bySimilarity = await asActor(internal, () =>
-          chunks().nearest(internal, vector, NEAREST_LIMIT),
-        );
+        const bySimilarity = await asActor(internal, () => nearest(internal, vector));
 
         expect([byId, bySimilarity]).toEqual([[], []]);
       },

@@ -21,15 +21,16 @@
 
 ## Puertos (todos internos: ninguno cruza módulos)
 
-| Puerto                                                              | Implementación                                                                          |
-| ------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `ITextExtractor` (`ExtractorRegistry` decide qué tipos se indexan)  | `DocxExtractor`, `PdfExtractor`, `PlainTextExtractor`, `XlsxExtractor`, `PptxExtractor` |
-| `IEmbeddingProvider` (768 dimensiones; `task` `document` o `query`) | `GeminiEmbeddingProvider` (REST, sin SDK; ADR-0007, ADR-0033)                           |
-| `ILanguageModel` (`stream(prompt, signal)`, solo `api`)             | `GeminiFlashModel` (SSE por `fetch`, plazos al primer trozo y entre trozos; 020)        |
-| `ICommandRunner` (sin shell, con tiempo límite y salida acotada)    | `ChildProcessRunner`; interno hasta que 021 lo reutilice (DF-80)                        |
-| `IIndexQueue` (`enqueue`, `enqueueRetry`)                           | `BullmqIndexQueue` (ya no `editing → intelligence`, DF-78)                              |
-| `IIndexStatusNotifier`                                              | `RealtimeIndexStatusNotifier` (`api`) y `QueuedIndexStatusNotifier` (`worker`)          |
-| `IIndexingRepository`, `IChunkRepository`                           | `TypeOrmIndexingRepository`, `TypeOrmChunkRepository`                                   |
+| Puerto                                                                             | Implementación                                                                          |
+| ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `ITextExtractor` (`ExtractorRegistry` decide qué tipos se indexan)                 | `DocxExtractor`, `PdfExtractor`, `PlainTextExtractor`, `XlsxExtractor`, `PptxExtractor` |
+| `IEmbeddingProvider` (768 dimensiones; `task` `document` o `query`)                | `GeminiEmbeddingProvider` (REST, sin SDK; ADR-0007, ADR-0033)                           |
+| `ILanguageModel` (`stream(prompt, signal)`, solo `api`)                            | `GeminiFlashModel` (SSE por `fetch`, plazos al primer trozo y entre trozos; 020)        |
+| `ICommandRunner` (sin shell, con tiempo límite y salida acotada)                   | `ChildProcessRunner`; interno hasta que 021 lo reutilice (DF-80)                        |
+| `IIndexQueue` (`enqueue`, `enqueueRetry`)                                          | `BullmqIndexQueue` (ya no `editing → intelligence`, DF-78)                              |
+| `IIndexStatusNotifier`                                                             | `RealtimeIndexStatusNotifier` (`api`) y `QueuedIndexStatusNotifier` (`worker`)          |
+| `IIndexingRepository`, `IChunkRepository`                                          | `TypeOrmIndexingRepository`, `TypeOrmChunkRepository`                                   |
+| `IChunkSearch` (léxica, vectorial, `hasIndexed`, `scopeExists`; solo lectura, 020) | `TypeOrmChunkSearch`; SQL en `chunk-sql.ts`, único con `archivo`/`carpeta` (ADR-0035)   |
 
 ## Flujo: evento → worker → relay
 
@@ -70,7 +71,7 @@ nombres ni texto.
 
 - `indexacion` y `fragmento` tienen RLS (`ENABLE` + `FORCE`) solo para `CLIENT`; Administrador, Soporte y Operador ven 0
   filas y las rutas de estado y «Reintentar» responden `SHARED_FORBIDDEN` (CA-20).
-- Toda consulta lleva `actor` y usa `TransactionContext.requireActorScope`; `nearest(actor, vector, limit)` restringe a
+- Toda consulta lleva `actor` y usa `TransactionContext.requireActorScope`; `IChunkSearch` (020 D-2, retiró `nearest`) restringe a
   `accessibleNodes` **antes** de ordenar por similitud (DF-14). Archivo ajeno, en la papelera o inexistente: el mismo 404.
 - Ninguna bitácora, auditoría ni trabajo lleva texto, nombres de archivo, extractos ni vectores. La clave del proveedor
   solo existe en el `worker`.
