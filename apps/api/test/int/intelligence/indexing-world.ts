@@ -16,10 +16,8 @@ import type {
 } from '../../../src/modules/intelligence/application/ports/i-index-status-notifier.port';
 import { EmbeddingUnavailableError } from '../../../src/modules/intelligence/domain/errors';
 import { INDEXING_QUEUE } from '../../../src/modules/intelligence/infrastructure/bullmq-index.queue';
-import {
-  GEMINI_API_BASE_URL,
-  GeminiEmbeddingProvider,
-} from '../../../src/modules/intelligence/infrastructure/gemini-embedding.provider';
+import { GeminiEmbeddingProvider } from '../../../src/modules/intelligence/infrastructure/gemini-embedding.provider';
+import { GEMINI_API_BASE_URL } from '../../../src/modules/intelligence/infrastructure/gemini-http';
 import {
   INDEX_STATUS_QUEUE,
   QueuedIndexStatusNotifier,

@@ -28,11 +28,11 @@ import {
   ghostscriptConfigProvider,
 } from './infrastructure/extractors/extractors.providers';
 import {
-  GEMINI_API_BASE_URL,
   GEMINI_EMBEDDING_CONFIG,
   GeminiEmbeddingProvider,
 } from './infrastructure/gemini-embedding.provider';
 import type { GeminiEmbeddingConfig } from './infrastructure/gemini-embedding.provider';
+import { GEMINI_API_BASE_URL } from './infrastructure/gemini-http';
 import { IndexReconcileProcessor } from './infrastructure/index-reconcile.processor';
 import {
   INDEX_RECONCILE_QUEUE,

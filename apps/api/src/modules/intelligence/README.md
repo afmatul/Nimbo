@@ -21,14 +21,15 @@
 
 ## Puertos (todos internos: ninguno cruza módulos)
 
-| Puerto                                                             | Implementación                                                                          |
-| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
-| `ITextExtractor` (`ExtractorRegistry` decide qué tipos se indexan) | `DocxExtractor`, `PdfExtractor`, `PlainTextExtractor`, `XlsxExtractor`, `PptxExtractor` |
-| `IEmbeddingProvider` (768 dimensiones)                             | `GeminiEmbeddingProvider` (REST, sin SDK; ADR-0007, ADR-0033)                           |
-| `ICommandRunner` (sin shell, con tiempo límite y salida acotada)   | `ChildProcessRunner`; interno hasta que 021 lo reutilice (DF-80)                        |
-| `IIndexQueue` (`enqueue`, `enqueueRetry`)                          | `BullmqIndexQueue` (ya no `editing → intelligence`, DF-78)                              |
-| `IIndexStatusNotifier`                                             | `RealtimeIndexStatusNotifier` (`api`) y `QueuedIndexStatusNotifier` (`worker`)          |
-| `IIndexingRepository`, `IChunkRepository`                          | `TypeOrmIndexingRepository`, `TypeOrmChunkRepository`                                   |
+| Puerto                                                              | Implementación                                                                          |
+| ------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `ITextExtractor` (`ExtractorRegistry` decide qué tipos se indexan)  | `DocxExtractor`, `PdfExtractor`, `PlainTextExtractor`, `XlsxExtractor`, `PptxExtractor` |
+| `IEmbeddingProvider` (768 dimensiones; `task` `document` o `query`) | `GeminiEmbeddingProvider` (REST, sin SDK; ADR-0007, ADR-0033)                           |
+| `ILanguageModel` (`stream(prompt, signal)`, solo `api`)             | `GeminiFlashModel` (SSE por `fetch`, plazos al primer trozo y entre trozos; 020)        |
+| `ICommandRunner` (sin shell, con tiempo límite y salida acotada)    | `ChildProcessRunner`; interno hasta que 021 lo reutilice (DF-80)                        |
+| `IIndexQueue` (`enqueue`, `enqueueRetry`)                           | `BullmqIndexQueue` (ya no `editing → intelligence`, DF-78)                              |
+| `IIndexStatusNotifier`                                              | `RealtimeIndexStatusNotifier` (`api`) y `QueuedIndexStatusNotifier` (`worker`)          |
+| `IIndexingRepository`, `IChunkRepository`                           | `TypeOrmIndexingRepository`, `TypeOrmChunkRepository`                                   |
 
 ## Flujo: evento → worker → relay
 
