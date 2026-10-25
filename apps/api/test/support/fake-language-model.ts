@@ -1,8 +1,6 @@
-import type {
-  ILanguageModel,
-  LanguageModelPrompt,
-} from '../../src/modules/intelligence/application/ports/i-language-model.port';
+import type { ILanguageModel } from '../../src/modules/intelligence/application/ports/i-language-model.port';
 import { AgentUnavailableError } from '../../src/modules/intelligence/domain/errors';
+import type { AgentPrompt } from '../../src/modules/intelligence/domain/prompt-builder';
 
 /** `failAfter`: entrega esos trozos y luego falla como un proveedor caído a mitad del flujo (CA-15). */
 export interface FakeLanguageModelOptions {
@@ -14,14 +12,14 @@ export interface FakeLanguageModelOptions {
  * recibió para comprobar qué llega al proveedor (S-1). Cumple el contrato de `language-model.contract.ts`.
  */
 export class FakeLanguageModel implements ILanguageModel {
-  readonly prompts: LanguageModelPrompt[] = [];
+  readonly prompts: AgentPrompt[] = [];
 
   constructor(
     private readonly chunks: readonly string[],
     private readonly options: FakeLanguageModelOptions = {},
   ) {}
 
-  async *stream(prompt: LanguageModelPrompt, signal: AbortSignal): AsyncGenerator<string> {
+  async *stream(prompt: AgentPrompt, signal: AbortSignal): AsyncGenerator<string> {
     this.prompts.push(prompt);
     for (const [index, chunk] of this.chunks.entries()) {
       await Promise.resolve();

@@ -1,11 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { z } from 'zod';
 
-import type {
-  ILanguageModel,
-  LanguageModelPrompt,
-} from '../application/ports/i-language-model.port';
+import type { ILanguageModel } from '../application/ports/i-language-model.port';
 import { AgentUnavailableError } from '../domain/errors';
+import type { AgentPrompt } from '../domain/prompt-builder';
 
 import { postToGemini } from './gemini-http';
 
@@ -130,7 +128,7 @@ async function* textsOf(
 export class GeminiFlashModel implements ILanguageModel {
   constructor(@Inject(GEMINI_CHAT_CONFIG) private readonly config: GeminiChatConfig) {}
 
-  async *stream(prompt: LanguageModelPrompt, signal: AbortSignal): AsyncGenerator<string> {
+  async *stream(prompt: AgentPrompt, signal: AbortSignal): AsyncGenerator<string> {
     const apiKey = this.config.apiKey;
     if (apiKey === undefined) throw new AgentUnavailableError();
     const deadline = new Deadline();
@@ -152,7 +150,7 @@ export class GeminiFlashModel implements ILanguageModel {
 
   private async open(
     apiKey: string,
-    prompt: LanguageModelPrompt,
+    prompt: AgentPrompt,
     signal: AbortSignal,
   ): Promise<ReadableStream<Uint8Array>> {
     const response = await postToGemini(
