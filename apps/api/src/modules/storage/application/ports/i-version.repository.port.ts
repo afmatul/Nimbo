@@ -20,6 +20,11 @@ export interface IVersionRepository {
    * tenía: un reintento no alarga el plazo.
    */
   markKept(actor: Actor, version: FileVersion): Promise<void>;
+  /**
+   * Originales conservados vencidos a `now` de los archivos vivos del actor, nunca la versión actual (014b CA-6, CA-9):
+   * un archivo en la papelera no es accesible y su original espera a que vuelva.
+   */
+  listExpiredKept(actor: Actor, now: Date): Promise<readonly FileVersion[]>;
   /** Borra la fila de `version`; `false` si ya no estaba (otra poda llegó antes). */
   delete(actor: Actor, version: FileVersion): Promise<boolean>;
 }

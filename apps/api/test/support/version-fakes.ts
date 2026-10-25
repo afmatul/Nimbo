@@ -7,13 +7,20 @@ import { FileVersion } from '../../src/modules/storage/domain/file-version';
 import { ObjectKey } from '../../src/modules/storage/domain/object-key';
 import type { Actor } from '../../src/shared';
 
+import { isLiveOf } from './storage-fakes';
 import type { FakeNodeRepository, FakeObjectStorage, Journal } from './storage-fakes';
 
-/** `version_archivo` en memoria: numera con `MAX + 1` y borra por id, como `TypeOrmVersionRepository`. */
+/**
+ * `version_archivo` en memoria: numera con `MAX + 1` y borra por id, como `TypeOrmVersionRepository`. Con `nodes`,
+ * `listExpiredKept` ve qué archivos están vivos y cuál es su versión actual; sin él, ninguno lo está.
+ */
 export class FakeVersionRepository implements IVersionRepository {
   readonly versions = new Map<string, FileVersion>();
 
-  constructor(private readonly journal: Journal) {}
+  constructor(
+    private readonly journal: Journal,
+    private readonly nodes?: FakeNodeRepository,
+  ) {}
 
   list(_actor: Actor, fileId: string): Promise<readonly FileVersion[]> {
     this.journal.add('versions:list');
@@ -43,6 +50,21 @@ export class FakeVersionRepository implements IVersionRepository {
       this.versions.set(version.id, version);
     }
     return Promise.resolve();
+  }
+
+  listExpiredKept(actor: Actor, now: Date): Promise<readonly FileVersion[]> {
+    this.journal.add('versions:listExpiredKept');
+    const expired = [...this.versions.values()].filter((version) => {
+      const file = this.nodes?.files.get(version.fileId);
+      const keptUntil = version.keptUntil;
+      return (
+        keptUntil !== null &&
+        keptUntil <= now &&
+        isLiveOf(actor, file) &&
+        file.currentVersionId !== version.id
+      );
+    });
+    return Promise.resolve(expired);
   }
 
   delete(_actor: Actor, version: FileVersion): Promise<boolean> {
