@@ -147,7 +147,7 @@ Siembra: se reutilizan `insertChunk`, `insertIndexing` y `axisVector` de `test/i
 5. **Crash entre reservar y responder** deja 1 consulta consumida (se prefiere sobrecobrar una a regalar sin límite); el caso normal (error/abort) siempre libera.
 6. **Inyección residual**: el servidor garantiza procedencia y aislamiento, no que el modelo diga la verdad; por eso las citas son del servidor y, sin cita válida, se agrega el aviso de D-5.
 7. **API y modelo de Gemini cambian**: adaptador aislado + prueba de contrato; id del modelo y forma de la API se confirman al implementar.
-8. **Módulo ajeno**: `billing` es de Juan Marcos (`specs/README.md`); las filas 9 y 10 son el único cambio en un módulo ajeno. Requiere su visto bueno (como en 011) o separar esas dos filas como 020a (§8).
+8. **Módulo ajeno**: `billing` es de Juan Marcos (`specs/README.md`); las filas 9 y 10 son el único cambio en un módulo ajeno. Adrián, como tech lead, autoriza el cambio sin visto bueno de Juan Marcos (2026-10-25).
 - **Desviaciones de los diagramas** (`design-findings.md`): DF-14 y DF-79 ya aceptados y aplicados por la 019 (solo se actualiza el estado a «aplicado y usado por 020»); DF-07 ya aplicado (rehidratación en D-1); DF-08 → No aplica (RN-10);
   DF-15 → `AgentController` Aceptado, `Conversation`/`AgentQuery` Descartado; DF-25 → Parcial (`uso_agente` por periodo, sin `agentQueriesUsed`); DF-27 → `IAgentQuota` Aceptado (`reserve/release/status`); DF-81 → Aceptado (ADR-0035) y **se acota a las
   columnas de §D-2**; DF-82 → HTTP en streaming (corrige `architecture.md` §7.4).
@@ -167,3 +167,4 @@ Siembra: se reutilizan `insertChunk`, `insertIndexing` y `axisVector` de `test/i
 | 2026-10-25 | Plan inicial (34 filas, con `apps/web`) | `/plan 020` | Adrián |
 | 2026-10-25 | **Reescrito para la 020 (API)**: 12 filas; sin `apps/web` (→ 020b); contrato real de la 019 (D-1); `IChunkSearch` y retiro de `nearest` (D-2); `gemini-http.ts` (D-7); `task` en embeddings y clave del `api` (D-8); `GET /agent/status` suma `maxQuestionChars`; códigos en `INTELLIGENCE_ERROR_CODES`; corpus de medición (R-2); DF/PD reconciliados. Vuelve a «Propuesto» | ADR-0034 y decisión de Adrián | Adrián |
 | 2026-10-25 | Aprobado tras el cambio de alcance; `billing` con visto bueno de Juan Marcos en el PR | Resumen aprobado | Adrián |
+| 2026-10-25 | `billing` sin visto bueno de Juan Marcos: lo autoriza Adrián como tech lead | Decisión de Adrián | Adrián |
