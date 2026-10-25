@@ -1,6 +1,6 @@
 # Tareas 020 — Agente con citas (API)
 
-> Spec: `./spec.md` · Plan: `./plan.md` (Propuesto; `/implement` exige «Aprobado»). El panel web es la 020b.
+> Spec: `./spec.md` · Plan: `./plan.md` (Aprobado). El panel web es la 020b.
 > 10 tareas verticales, un commit cada una (`feat(intelligence): … [020 T-xx]`). Cada tarea es una línea: criterio, prueba y de qué depende; los archivos viven en `plan.md` §2 y §6.
 > Toda tarea de lógica empieza por su prueba (roja → verde). Funciones ≤ 30 líneas y ≤ 3 parámetros. Los documentos de diseño (plan §2, nota de documentos) se actualizan dentro de la tarea que cambia el contrato; no hay tarea de cierre.
 
