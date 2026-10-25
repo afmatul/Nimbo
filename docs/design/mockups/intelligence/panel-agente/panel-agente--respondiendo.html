@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agente Nimbo · Nimbo — respuesta en streaming con indicador en vivo (CA-1, RNF-03)</title>
+<!-- Mockup de referencia (spec 020: agente con citas). Estado: respondiendo. -->
+<!-- Colores: valores de ui-guidelines.md §3 (tonos AA). La implementación usa tokens, components/ui y components/nimbo (AgentPanel, CitationChip, Alert, StateView). -->
+<!-- Generado con _generadores/panel-agente/generar.js. No editar a mano. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Valores de ui-guidelines.md §3 (tonos AA de ADR-0014). La implementación usa las utilidades de Tailwind, nunca hex. */
+    --sheet: #E7EDF5;          /* fondo de la hoja de mockups (no es un token de la app) */
+    --background: #F4F7FB;
+    --card: #FAFCFF;
+    --border: #DDE6F0;
+    --input: #7F93AA;
+    --foreground: #1E2D40;
+    --secondary-foreground: #3A5068;
+    --muted-foreground: #5E7389;
+    --primary: #4A6FA5;
+    --primary-hover: #3B5A8A;
+    --primary-foreground: #FFFFFF;
+    --brand: #6B8DD6;
+    --muted: #EEF3F9;
+    --accent: #DDE6F0;
+    --ring: #4A6FA5;
+    --success: #6DB99A;
+    --success-foreground: #3A7560;
+    --destructive: #A34F4F;
+    --destructive-soft: #C97B7B;
+    --overlay: rgba(44, 58, 82, .45); /* velo de diálogo: agent-bg al 45 %; token pendiente (#6 de app-layout) */
+    --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px; --radius-xl: 18px;
+    --shadow-card: 0 1px 3px rgba(74,111,165,.08), 0 1px 2px rgba(74,111,165,.04);
+    --shadow-modal: 0 8px 24px rgba(44,58,82,.18);
+    --shadow-button: 0 1px 2px rgba(107,141,214,.20);
+    /* Mezclas al 12 % sobre card (fondo de alertas y distintivos) */
+    --success-soft: color-mix(in srgb, var(--success) 12%, var(--card));
+    --destructive-tint: color-mix(in srgb, var(--destructive-soft) 12%, var(--card));
+    --brand-soft: color-mix(in srgb, var(--brand) 12%, var(--card));
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--sheet); color: var(--foreground);
+    font-family: Inter, system-ui, sans-serif; font-size: 14px; line-height: 1.5;
+  }
+  a { color: var(--primary); text-decoration: underline; text-underline-offset: 2px; }
+  a:hover { color: var(--primary-hover); }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+  .ico { flex: none; }
+
+  /* Rótulo de la hoja */
+  .sheet-label {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px;
+    padding: 40px 48px 12px; font-size: 12px; line-height: 1.5; color: var(--secondary-foreground);
+  }
+  .sheet-label .chip { background: var(--border); border-radius: var(--radius-sm); padding: 1px 7px; font-weight: 600; font-size: 11px; }
+  .sheet-label strong { color: var(--foreground); font-size: 13px; font-weight: 600; }
+  .sheet-label .file { font-weight: 500; font-variant-numeric: tabular-nums; color: var(--primary-hover); }
+
+  /* Lienzo y marco de la aplicación (propuesta p. 08 y p. 17) */
+  .canvas {
+    position: relative; margin: 0 48px 48px; background: var(--background); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card); overflow: hidden;
+  }
+  .app { display: grid; grid-template-columns: 236px minmax(0, 1fr); min-height: 860px; }
+  .sidebar { display: flex; flex-direction: column; gap: 14px; background: var(--card); border-right: 1px solid var(--border); padding: 18px 12px 16px; }
+  .brand-row { display: flex; align-items: center; gap: 10px; padding: 4px 8px 10px; border-bottom: 1px solid var(--border); }
+  .logo { display: inline-flex; align-items: center; gap: 10px; color: var(--foreground); text-decoration: none; font-weight: 700; font-size: 17px; letter-spacing: .02em; min-height: 36px; }
+  .logo-mark { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; background: var(--primary); color: var(--primary-foreground); font-size: 15px; font-weight: 700; box-shadow: var(--shadow-button); }
+  .plan-chip { font-size: 10px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: .04em; color: var(--secondary-foreground); background: var(--muted); border-radius: var(--radius-sm); padding: 2px 6px; }
+  .nav { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  .nav a { display: flex; align-items: center; gap: 12px; min-height: 36px; padding: 6px 12px; border-radius: var(--radius-md); color: var(--secondary-foreground); text-decoration: none; font-size: 13.5px; font-weight: 500; }
+  .nav a:hover { background: var(--muted); color: var(--foreground); }
+  .nav .meta { margin-left: auto; font-size: 11px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  .nav-sep { height: 1px; background: var(--border); margin: 2px 8px; }
+  .nav-title { margin: 6px 12px 0; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted-foreground); }
+  .quota { margin-top: auto; border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 12px 14px; background: var(--card); }
+  .quota-head { display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 600; }
+  .quota-bar { height: 6px; border-radius: 999px; background: var(--muted); margin: 8px 0 6px; overflow: hidden; }
+  .quota-bar span { display: block; height: 100%; width: 21%; background: var(--success); border-radius: 999px; }
+  .quota-meta { font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--muted-foreground); }
+
+  .main { min-width: 0; display: flex; flex-direction: column; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 64px; padding: 10px 28px; background: var(--card); border-bottom: 1px solid var(--border); }
+  .topbar .menu-btn, .topbar .logo-mobile { display: none; }
+  .crumbs ol { display: flex; align-items: center; gap: 10px; list-style: none; margin: 0; padding: 0; font-size: 14px; }
+  .crumbs li + li::before { content: "/"; color: var(--muted-foreground); margin-right: 10px; }
+  .crumbs a { color: var(--secondary-foreground); text-decoration: none; }
+  .crumbs a:hover { color: var(--foreground); text-decoration: underline; }
+  .crumbs [aria-current] { font-weight: 600; color: var(--foreground); }
+  .account-btn { display: inline-flex; align-items: center; gap: 10px; min-height: 40px; padding: 4px 6px 4px 12px; border: 0; border-radius: 999px; background: transparent; color: var(--secondary-foreground); font: inherit; font-size: 13px; cursor: pointer; }
+  .account-btn:hover { background: var(--muted); }
+  .avatar { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 999px; background: var(--card); color: var(--foreground); font-size: 11px; font-weight: 700; box-shadow: 0 0 0 2px var(--brand); }
+
+  .content { padding: 28px 28px 40px; }
+  .page-head h1 { margin: 0; font-size: 26px; line-height: 1.25; font-weight: 700; letter-spacing: -.01em; }
+  .page-head p { margin: 6px 0 0; color: var(--secondary-foreground); font-size: 14.5px; }
+  /* Botones (components/ui/button) */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 8px 16px; border-radius: var(--radius-md); font: inherit; font-weight: 600; font-size: 13.5px; line-height: 1.2; cursor: pointer; text-decoration: none; white-space: nowrap; }
+  .btn-sm { min-height: 36px; padding: 6px 12px; font-size: 13px; }
+  .btn-outline { color: var(--secondary-foreground); background: var(--card); border: 1px solid var(--input); }
+  .btn-outline:hover { background: var(--muted); color: var(--foreground); }
+  .btn-primary { color: var(--primary-foreground); background: var(--primary); border: 1px solid var(--primary); box-shadow: var(--shadow-button); }
+  .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+  .btn-destructive { color: var(--primary-foreground); background: var(--destructive); border: 1px solid var(--destructive); }
+  .btn[disabled] { opacity: .45; pointer-events: none; }
+  .btn-busy { opacity: 1 !important; }
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin, .skeleton-line { animation: none !important; } }
+
+  /* Extensiones del marco (shared/layout) */
+  :root {
+    --warning: #D4A96A;
+    --warning-foreground: #8A6424;
+    --warning-soft: color-mix(in srgb, var(--warning) 12%, var(--card));
+  }
+  [hidden] { display: none !important; }
+
+  /* Ítem activo: fondo accent, texto foreground en 600 y barra de 3 px (no solo color) */
+  .nav a[aria-current="page"] { background: var(--accent); color: var(--foreground); font-weight: 600; border-left: 3px solid var(--primary); padding-left: 9px; }
+  .nav a[aria-current="page"] .meta, .nav a:hover .meta { color: var(--secondary-foreground); } /* muted-foreground sobre muted da 4.39 */
+  @media (max-width: 900px) { .logo { min-height: 44px; } } /* CA-5 de 000b: 44 px en móvil */
+
+  /* Menú de la cuenta (DropdownMenu de shadcn) */
+  .topbar { position: relative; }
+  .account { position: relative; }
+  .account-btn[aria-expanded="true"] { background: var(--muted); color: var(--foreground); }
+  .account-pop { position: absolute; z-index: 20; top: calc(100% + 8px); right: 0; width: 272px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-modal); padding: 6px; }
+  .account-who { padding: 10px 12px 12px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
+  .account-who p { margin: 0; }
+  .account-who-name { font-weight: 600; font-size: 14px; }
+  .account-who-mail { font-size: 13px; color: var(--muted-foreground); overflow-wrap: anywhere; }
+  .account-menu { list-style: none; margin: 0; padding: 0; }
+  .account-menu [role="menuitem"] { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 40px; padding: 8px 12px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--foreground); font: inherit; font-size: 14px; font-weight: 500; text-align: left; text-decoration: none; cursor: pointer; }
+  .account-menu [role="menuitem"] .ico { color: var(--secondary-foreground); }
+  .account-menu [role="menuitem"]:hover, .account-menu [role="menuitem"]:focus { background: var(--muted); }
+  .account-menu [role="menuitem"]:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+  .account-sep { height: 1px; background: var(--border); margin: 6px 4px; }
+
+  /* Cajón móvil (AppLayout, por debajo de 900 px) */
+  .drawer-overlay { position: absolute; inset: 0; z-index: 10; background: var(--overlay); }
+  .drawer { position: absolute; z-index: 11; top: 0; bottom: 0; left: 0; width: min(320px, calc(100% - 40px)); display: flex; flex-direction: column; gap: 14px; overflow-y: auto; background: var(--card); box-shadow: var(--shadow-modal); padding: 12px 12px 16px; }
+  .drawer-head { display: flex; align-items: center; gap: 10px; padding: 0 0 10px 8px; border-bottom: 1px solid var(--border); }
+  .drawer-head .icon-btn { margin-left: auto; }
+  .drawer .nav a { min-height: 44px; font-size: 15px; }
+  .icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--foreground); cursor: pointer; }
+  .icon-btn:hover { background: var(--muted); }
+  @media (min-width: 901px) { .drawer, .drawer-overlay { display: none !important; } }
+
+  /* Aviso de solo lectura (ReadOnlyBanner, RF-23) */
+  .readonly { display: flex; align-items: center; gap: 12px 16px; margin: 0 0 22px; padding: 14px 16px; border: 1px solid color-mix(in srgb, var(--warning) 45%, var(--card)); border-radius: var(--radius-lg); background: var(--warning-soft); color: var(--foreground); }
+  .readonly > .ico { color: var(--warning-foreground); flex: none; }
+  .readonly-text { flex: 1; min-width: 0; margin: 0; font-size: 14px; line-height: 1.5; }
+  .readonly-text strong { display: block; color: var(--warning-foreground); font-weight: 600; }
+  .readonly .btn { flex: none; }
+
+  @media (max-width: 600px) {
+    .account { position: static; }
+    .account-pop { top: calc(100% - 2px); right: 8px; width: min(272px, calc(100% - 16px)); }
+    .account-menu [role="menuitem"] { min-height: 44px; }
+    .readonly { flex-wrap: wrap; align-items: flex-start; padding: 14px; }
+    .readonly .btn { width: 100%; }
+  }
+
+  /* Propio de intelligence/panel-agente (spec 020) */
+  :root {
+    --live: #7EC8D8;
+    --agent-bg: #2C3A52; --agent-text: #D8E4F0; --agent-accent: #7EC8D8; --agent-tag: #3A4E6A;
+    --warning-tint: color-mix(in srgb, var(--warning) 10%, var(--card));
+    --file-docx: #3F62A8; --file-docx-bg: #6B8DD620;
+    --file-xlsx: #3A7560; --file-xlsx-bg: #6DB99A20;
+    --file-pdf: #A34F4F; --file-pdf-bg: #C97B7B20;
+    --file-img: #276B7A; --file-img-bg: #7EC8D820;
+    --file-other: #53677D; --file-other-bg: #7A90A820;
+  }
+  .app.app-agente { grid-template-columns: 236px minmax(0, 1fr) 420px; min-height: 860px; }
+  .btn .ico { flex: none; }
+  .tn { font-variant-numeric: tabular-nums; }
+
+  /* Zona de trabajo (a la izquierda del panel) */
+  .work { padding: 24px 28px 32px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .files { list-style: none; margin: 0; padding: 0; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }
+  .files li { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); min-width: 0; }
+  .files li:last-child { border-bottom: 0; }
+  .ftile { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex: none; border-radius: 8px; }
+  .ftile-docx { color: var(--file-docx); background: var(--file-docx-bg); }
+  .ftile-xlsx { color: var(--file-xlsx); background: var(--file-xlsx-bg); }
+  .ftile-pdf { color: var(--file-pdf); background: var(--file-pdf-bg); }
+  .ftile-img { color: var(--file-img); background: var(--file-img-bg); }
+  .ftile-other { color: var(--file-other); background: var(--file-other-bg); }
+  .files .fn { flex: 1; min-width: 0; font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .files .fm { font-size: 12.5px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* Fragmento citado en su documento (la vista previa llega con 017; antes, la ficha con la ubicación visible) */
+  .doc-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 12px; font-size: 13px; color: var(--secondary-foreground); }
+  .doc-where { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--primary-hover); font-variant-numeric: tabular-nums; }
+  .doc { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: 40px 48px 48px; }
+  .doc h2 { margin: 0 0 14px; font-size: 20px; line-height: 1.3; font-weight: 700; }
+  .doc p { margin: 0 0 14px; font-size: 14px; line-height: 1.75; }
+  .hit { padding: 14px 16px; border-left: 3px solid var(--brand); border-radius: var(--radius-sm); background: var(--brand-soft); }
+  .hit-tag { display: inline-flex; align-items: center; gap: 6px; margin: 0 0 6px; font-size: 12px; font-weight: 600; color: var(--primary-hover); }
+  .hit p { margin: 0; }
+
+  /* Panel del agente (AgentPanel): superficie agent-bg; el foco usa el cian del panel (ui-guidelines §2) */
+  .agent { display: flex; flex-direction: column; min-width: 0; background: var(--agent-bg); color: var(--agent-text); }
+  .agent :focus-visible { outline-color: var(--live); }
+  .agent-head { padding: 16px 20px 12px; display: grid; gap: 10px; }
+  .agent-title { display: flex; align-items: center; gap: 10px; }
+  .agent-title h2 { margin: 0; font-size: 15px; font-weight: 600; flex: 1; }
+  .agent-title > .ico { color: var(--agent-accent); }
+  .agent-close { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--agent-text); cursor: pointer; }
+  .agent-close:hover { background: var(--agent-tag); }
+  .uses { margin: 0; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 2px 12px; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  .uses strong { font-weight: 600; }
+  .meter { height: 6px; border-radius: 999px; background: var(--agent-tag); overflow: hidden; }
+  .meter span { display: block; height: 100%; border-radius: 999px; background: var(--agent-accent); }
+  .meter-warn span { background: var(--warning); }
+  .meter-full span { background: var(--destructive-soft); }
+  .uses-full { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; }
+
+  /* Selector de ámbito (RN-9): menú de opciones excluyentes */
+  .scope { position: relative; padding: 0 20px 12px; }
+  .scope-btn { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 40px; padding: 6px 12px; border: 1px solid var(--input); border-radius: var(--radius-md); background: transparent; color: var(--agent-text); font: inherit; font-size: 13.5px; text-align: left; cursor: pointer; }
+  .scope-btn:hover, .scope-btn[aria-expanded="true"] { background: var(--agent-tag); }
+  .scope-k { font-size: 12px; font-weight: 600; color: var(--agent-accent); }
+  .scope-btn:hover .scope-k, .scope-btn[aria-expanded="true"] .scope-k { color: var(--agent-text); } /* agent-accent sobre agent-tag da 4.50: al límite */
+  .scope-v { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .scope-pop { position: absolute; z-index: 5; top: calc(100% - 8px); left: 20px; right: 20px; background: var(--card); color: var(--foreground); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-modal); padding: 6px; }
+  .scope-pop ul { list-style: none; margin: 0; padding: 0; }
+  .scope-item { display: flex; align-items: flex-start; gap: 12px; width: 100%; min-height: 44px; padding: 8px 12px; border: 0; border-radius: var(--radius-md); background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  .scope-item:hover, .scope-item:focus { background: var(--muted); }
+  .scope-item:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+  .scope-item .ico { margin-top: 2px; color: var(--primary); }
+  .scope-item .ico-off { visibility: hidden; }
+  .scope-item strong { display: block; font-size: 14px; font-weight: 600; }
+  .scope-item .nota { display: block; font-size: 12.5px; color: var(--muted-foreground); }
+  .scope-item:hover .nota, .scope-item:focus .nota, .scope-item[aria-checked="true"] .nota { color: var(--secondary-foreground); }
+  .scope-item[aria-checked="true"] { background: var(--accent); }
+
+  /* Conversación (role=log: el streaming se anuncia en voz baja) */
+  .thread { flex: 1; display: flex; flex-direction: column; gap: 18px; padding: 8px 20px 20px; border-top: 1px solid var(--agent-tag); overflow: auto; }
+  .intro, .state { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; margin: auto 0; padding: 24px 0; }
+  .intro > .ico, .state > .ico { color: var(--agent-accent); margin-bottom: 14px; }
+  .intro h3, .state h3 { margin: 0; font-size: 16px; line-height: 1.5; font-weight: 600; }
+  .intro p, .state p { margin: 6px 0 0; max-width: 36ch; font-size: 14px; line-height: 1.6; }
+  .state .btn { margin-top: 18px; }
+  .formats { list-style: none; margin: 16px 0 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+  .formats li { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 3px 10px; border-radius: var(--radius-sm); background: var(--agent-tag); font-size: 12.5px; }
+  .formats strong { font-weight: 600; }
+  .msg-user { align-self: flex-end; max-width: 90%; margin: 10px 0 0; padding: 10px 14px; border-radius: 14px 14px 4px 14px; background: var(--agent-tag); font-size: 14px; line-height: 1.55; overflow-wrap: anywhere; }
+  .msg-user p { margin: 0; }
+  .msg-agent { display: grid; gap: 10px; }
+  .msg-label { display: flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--agent-accent); }
+  .msg-agent > p:not(.msg-label) { margin: 0; font-size: 14px; line-height: 1.75; }
+  .msg-agent strong { font-weight: 600; }
+
+  /* CitationChip: «archivo · ubicación», navegable; la ubicación aproximada lleva ícono, borde discontinuo y texto */
+  .cita { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-height: 28px; margin: 2px 2px 2px 0; padding: 3px 10px; border: 1px solid var(--input); border-radius: var(--radius-sm); background: var(--agent-tag); color: var(--agent-text); font-size: 12.5px; line-height: 1.35; text-decoration: none; vertical-align: middle; }
+  .cita:hover { border-color: var(--agent-accent); text-decoration: underline; color: var(--agent-text); }
+  .cita .n { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cita .l { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .cita-aprox { border-style: dashed; border-color: var(--agent-accent); }
+  .cita-aprox .ico { color: var(--agent-accent); }
+  .cita-aprox { align-items: flex-start; flex-wrap: wrap; }
+  .cita-aprox .ico { margin-top: 2px; }
+  .cita-aprox .n { white-space: normal; overflow-wrap: anywhere; }
+  .cita-aprox .l { white-space: normal; flex-basis: 100%; padding-left: 20px; }
+
+  /* Indicador en vivo: punto cian con texto (el color nunca va solo) y cursor de escritura */
+  .live { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--agent-accent); }
+  .live-dot { width: 8px; height: 8px; border-radius: 999px; background: var(--agent-accent); box-shadow: 0 0 0 0 color-mix(in srgb, var(--agent-accent) 60%, transparent); animation: latido 1.6s ease-out infinite; }
+  .cursor { display: inline-block; width: 7px; height: 16px; margin-left: 2px; vertical-align: -3px; background: var(--agent-accent); animation: parpadeo 1s steps(2, start) infinite; }
+  @keyframes latido { to { box-shadow: 0 0 0 7px transparent; } }
+  @keyframes parpadeo { to { visibility: hidden; } }
+  @media (prefers-reduced-motion: reduce) { .live-dot, .cursor { animation: none !important; } }
+
+  /* Avisos dentro del panel: tarjeta clara con tokens (Alert warning / error de ui-guidelines §4) */
+  .note { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border: 1px solid var(--warning); border-radius: var(--radius-lg); background: var(--warning-tint); color: var(--foreground); }
+  .note > .ico { margin-top: 2px; color: var(--warning-foreground); }
+  .note-body { flex: 1; min-width: 0; }
+  .note-title { margin: 0; font-size: 14px; line-height: 1.45; font-weight: 600; color: var(--warning-foreground); }
+  .msg-agent .note-text, .note-text { margin: 2px 0 0; font-size: 13.5px; line-height: 1.55; color: var(--foreground); }
+  .note-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .note-error { border-color: var(--destructive); background: color-mix(in srgb, var(--destructive-soft) 8%, var(--card)); }
+  .note-error > .ico, .note-error .note-title { color: var(--destructive); }
+  .note-info { border-color: var(--border); background: var(--card); }
+  .note-info > .ico { color: var(--primary); }
+  .note-info .note-title { color: var(--foreground); }
+  .agent .note .btn-primary { border-color: var(--primary); }
+  .agent .note :focus-visible { outline-color: var(--ring); }
+
+  /* Cuadro de la pregunta (claro dentro del panel oscuro: los errores del campo usan los tonos de la tarjeta) */
+  .composer { display: grid; gap: 10px; padding: 12px 20px 16px; border-top: 1px solid var(--agent-tag); }
+  .field { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 4px 8px; padding: 8px 8px 8px 12px; background: var(--card); color: var(--foreground); border: 1px solid var(--input); border-radius: var(--radius-lg); }
+  .field:focus-within { outline: 2px solid var(--live); outline-offset: 2px; }
+  .field textarea { width: 100%; min-height: 48px; border: 0; padding: 4px 0; background: transparent; color: var(--foreground); font: inherit; font-size: 14px; line-height: 1.5; resize: none; outline: none; }
+  .field textarea::placeholder { color: var(--muted-foreground); opacity: 1; }
+  .field .send { width: 40px; min-width: 40px; min-height: 40px; padding: 0; border-radius: var(--radius-md); }
+  .field .send:focus-visible { outline-color: var(--ring); }
+  .field-foot { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; font-size: 12.5px; color: var(--muted-foreground); }
+  .field-foot .count { font-variant-numeric: tabular-nums; margin-left: auto; }
+  .field-error { flex: 1 1 100%; display: flex; align-items: flex-start; gap: 6px; margin: 0; color: var(--destructive); font-weight: 600; }
+  .field-error .ico { margin-top: 1px; }
+  .field-invalid { border: 1.5px solid var(--destructive); }
+  .field-invalid .count { color: var(--destructive); font-weight: 600; }
+  .field-off { background: var(--muted); }
+  .field-off .field-foot { color: var(--secondary-foreground); }
+  .foot-note { margin: 0; font-size: 12px; line-height: 1.5; }
+
+  @media (max-width: 1100px) { .app.app-agente { grid-template-columns: 236px minmax(0, 1fr) 360px; } .doc { padding: 28px 28px 36px; } }
+
+  /* Hoja a pantalla completa (≤ 900 px): solo el panel, sin marco ni rótulo; el cuadro de pregunta queda al pie */
+  @media (max-width: 900px) {
+    body { background: var(--agent-bg); }
+    .sheet-label { display: none; }
+    .canvas { margin: 0; border-radius: 0; box-shadow: none; }
+    .app.app-agente { grid-template-columns: minmax(0, 1fr); min-height: 100vh; min-height: 100dvh; }
+    .app.app-agente .sidebar, .app.app-agente .main { display: none; }
+    .agent { min-height: 100vh; min-height: 100dvh; }
+    .agent-head { padding: 8px 12px 12px; }
+    .agent-title { min-height: 44px; }
+    .agent-close { width: 44px; height: 44px; margin-right: -4px; }
+    .scope { padding: 0 12px 12px; }
+    .scope-btn { min-height: 44px; }
+    .scope-pop { left: 12px; right: 12px; }
+    .thread { padding: 8px 12px 16px; }
+    .msg-user { max-width: 94%; }
+    .cita { min-height: 36px; padding: 6px 12px; }
+    .composer { position: sticky; bottom: 0; padding: 10px 12px 12px; background: var(--agent-bg); }
+    .field .send { width: 44px; min-width: 44px; min-height: 44px; }
+    .btn { min-height: 44px; }
+    .state .btn, .note-actions .btn { width: 100%; }
+    .note { padding: 12px; }
+    .formats li { min-height: 36px; }
+  }
+</style>
+</head>
+<body>
+
+<aside class="sheet-label" aria-label="Rótulo del mockup"><span class="chip">020</span> <strong>Panel del agente</strong> <span class="file">panel-agente--respondiendo.html</span> <span>respuesta en streaming con indicador en vivo (CA-1, RNF-03)</span></aside>
+
+<div class="canvas">
+  <div class="app app-agente">
+    <aside class="sidebar" aria-label="Barra lateral">
+      <div class="brand-row">
+        <a class="logo" href="#" aria-label="Nimbo, Mis archivos"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>
+        <span class="plan-chip">EQUIPO</span>
+      </div>
+      <nav aria-label="Navegación principal">
+        <ul class="nav">
+          <li><a href="#" aria-current="page"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span>Mis archivos</span></a></li>
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4"/><path d="m15.4 6.5-6.8 4"/></svg><span>Compartidos conmigo</span></a></li>
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><span>Recientes</span></a></li>
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg><span>Fijados</span></a></li>
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg><span>Papelera</span><span class="meta">3</span></a></li>
+        </ul>
+        <div class="nav-sep" role="presentation"></div>
+        <ul class="nav">
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m12 3-1.9 5.8L4 10.7l6.1 1.9 1.9 5.9 1.9-5.9 6.1-1.9-6.1-1.9Z"/><path d="M5 3v4"/><path d="M3 5h4"/></svg><span>Optimizador</span></a></li>
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/></svg><span>Plan y facturación</span></a></li>
+        </ul>
+        <p class="nav-title">Carpetas</p>
+        <ul class="nav">
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span>Proyecto Alpha</span><span class="meta">4</span></a></li>
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span>Documentos legales</span><span class="meta">126</span></a></li>
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span>Finanzas</span><span class="meta">64</span></a></li>
+        </ul>
+      </nav>
+      <div class="quota">
+        <div class="quota-head"><span>Almacenamiento</span><span>12 %</span></div>
+        <div class="quota-bar" role="progressbar" aria-label="Almacenamiento usado" aria-valuemin="0" aria-valuemax="100" aria-valuenow="12" aria-valuetext="42 GB de 350 GB (12 %)"><span style="width: 12%"></span></div>
+        <div class="quota-meta">42 GB de 350 GB</div>
+      </div>
+    </aside>
+    <div class="main">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="menu-btn" type="button" aria-label="Abrir menú de navegación" aria-expanded="false"><svg class="ico " width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg></button>
+          <a class="logo logo-mobile" href="#" aria-label="Nimbo, Mis archivos"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>
+          <nav class="crumbs" aria-label="Ruta">
+            <ol><li><span aria-current="page">Mis archivos</span></li></ol>
+          </nav>
+        </div>
+        <button class="account-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Menú de la cuenta de Lucía Barrios">
+          <span class="account-name">Lucía Barrios</span><span class="avatar" aria-hidden="true">LB</span>
+        </button>
+      </header>
+      <main class="work" id="contenido">
+        <section aria-labelledby="mis-archivos-t">
+          <div class="page-head"><h1 id="mis-archivos-t">Mis archivos</h1></div>
+          <ul class="files" style="margin-top: 16px">
+            <li><span class="ftile ftile-docx"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span><span class="fn">Propuesta_Nimbo_v3.docx</span><span class="fm">hoy, 09:12 · 1.8 MB</span></li>
+            <li><span class="ftile ftile-pdf"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span><span class="fn">Catalogo_de_planes.pdf</span><span class="fm">ayer · 640 KB</span></li>
+            <li><span class="ftile ftile-pdf"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span><span class="fn">Contrato_La_Ceiba.pdf</span><span class="fm">19 oct · 2.3 MB</span></li>
+            <li><span class="ftile ftile-other"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span><span class="fn">Notas_de_facturacion.md</span><span class="fm">12 oct · 8 KB</span></li>
+            <li><span class="ftile ftile-xlsx"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h2"/><path d="M14 13h2"/><path d="M8 17h2"/><path d="M14 17h2"/></svg></span><span class="fn">Presupuesto_2027.xlsx</span><span class="fm">3 oct · 412 KB</span></li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <aside class="agent" aria-label="Agente Nimbo">
+      <div class="agent-head">
+        <div class="agent-title">
+          <svg class="ico " width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m12 3-1.9 5.8L4 10.7l6.1 1.9 1.9 5.9 1.9-5.9 6.1-1.9-6.1-1.9Z"/><path d="M5 3v4"/><path d="M3 5h4"/></svg>
+          <h2>Agente Nimbo</h2>
+          <button class="agent-close" type="button" aria-label="Cerrar el agente"><svg class="ico " width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+        </div>
+        <div>
+          <p class="uses"><strong>142 de 2 000 consultas este mes</strong><span>Se renuevan el 14 de noviembre</span></p>
+          <div class="meter" role="progressbar" aria-label="Consultas usadas este mes" aria-valuemin="0" aria-valuemax="2000" aria-valuenow="142" aria-valuetext="142 de 2 000 consultas" style="margin-top: 6px"><span style="width: 7.1%"></span></div>
+        </div>
+      </div>
+      <div class="scope">
+        <button class="scope-btn" type="button" id="ambito-btn" aria-haspopup="menu" aria-controls="ambito-menu" aria-expanded="false">
+          <span class="scope-k">Ámbito</span><span class="scope-v">Todos mis archivos</span><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="scope-pop" id="ambito-pop" hidden>
+          <ul role="menu" id="ambito-menu" aria-labelledby="ambito-btn">
+              <li role="none"><button class="scope-item" type="button" role="menuitemradio" aria-checked="true" tabindex="-1"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5"/></svg><span><strong>Todos mis archivos</strong><span class="nota">Incluye los que te compartieron · 14 archivos indexados</span></span></button></li>
+              <li role="none"><button class="scope-item" type="button" role="menuitemradio" aria-checked="false" tabindex="-1"><svg class="ico ico-off" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5"/></svg><span><strong>Una carpeta</strong><span class="nota">Con sus subcarpetas · Finanzas, 64 archivos</span></span></button></li>
+              <li role="none"><button class="scope-item" type="button" role="menuitemradio" aria-checked="false" tabindex="-1"><svg class="ico ico-off" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5"/></svg><span><strong>Un archivo</strong><span class="nota">Elige el archivo en el que buscar</span></span></button></li>
+          </ul>
+        </div>
+      </div>
+      <div class="thread" role="log" aria-label="Conversación con el agente" aria-live="polite" aria-busy="true">
+        <div class="msg-user"><p><span class="sr-only">Preguntaste: </span>¿Cuántas consultas incluye el plan Equipo y cuántas versiones conserva?</p></div>
+        <article class="msg-agent" aria-label="Respuesta del agente">
+          <p class="msg-label"><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m12 3-1.9 5.8L4 10.7l6.1 1.9 1.9 5.9 1.9-5.9 6.1-1.9-6.1-1.9Z"/><path d="M5 3v4"/><path d="M3 5h4"/></svg>Respuesta<span class="live" role="status"><span class="live-dot" aria-hidden="true"></span>Escribiendo…</span></p>
+          
+          <p>El plan Equipo incluye <strong>2 000 consultas mensuales</strong> al agente y conserva las <strong>últimas 60 versiones</strong> de cada documento. <a class="cita" href="#" aria-label="Abrir Propuesta_Nimbo_v3.docx, sección 5, párrafo 2" title="Propuesta_Nimbo_v3.docx"><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg><span class="n">Propuesta_Nimbo_v3.docx</span><span class="l">· sec. 5, párr. 2</span></a></p>
+          <p>La papelera guarda lo eliminado durante 60 días<span class="cursor" aria-hidden="true"></span></p>
+        </article>
+      </div>
+      <form class="composer" onsubmit="return false" novalidate>
+        <div class="field field-off">
+          <label class="sr-only" for="pregunta">Pregunta sobre tus documentos</label>
+          <textarea id="pregunta" rows="2" placeholder="Esperando la respuesta…" disabled aria-describedby="pregunta-cuenta"></textarea>
+          <button class="btn btn-primary send" type="submit" aria-label="Enviar pregunta" disabled><svg class="ico " width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
+          <div class="field-foot"><span>Podrás preguntar de nuevo cuando termine.</span><span class="count" id="pregunta-cuenta"><span class="sr-only">Caracteres: </span>0 / 1 000</span></div>
+        </div>
+        <p class="foot-note">Cada pregunta es independiente: no guardamos tus preguntas ni las respuestas. El agente solo lee los archivos a los que tienes acceso.</p>
+      </form>
+    </aside>
+  </div>
+</div>
+<script>
+(function () {
+  var b = document.getElementById('ambito-btn'), pop = document.getElementById('ambito-pop');
+  if (!b || !pop) return;
+  var items = Array.prototype.slice.call(pop.querySelectorAll('[role="menuitemradio"]'));
+  function cerrar(foco) { pop.hidden = true; b.setAttribute('aria-expanded', 'false'); if (foco) b.focus(); }
+  function abrir() { pop.hidden = false; b.setAttribute('aria-expanded', 'true'); (items.filter(function (i) { return i.getAttribute('aria-checked') === 'true'; })[0] || items[0]).focus(); }
+  b.addEventListener('click', function () { if (pop.hidden) abrir(); else cerrar(true); });
+  pop.addEventListener('keydown', function (e) {
+    var i = items.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown') { e.preventDefault(); items[(i + 1) % items.length].focus(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
+    else if (e.key === 'Escape') { e.preventDefault(); cerrar(true); }
+    else if (e.key === 'Tab') cerrar(false);
+  });
+  document.addEventListener('click', function (e) { if (!pop.hidden && !pop.contains(e.target) && !b.contains(e.target)) cerrar(false); });
+})();
+</script>
+</body>
+</html>

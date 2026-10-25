@@ -1,6 +1,6 @@
 # Generadores de los mockups escritos a mano
 
-Los mockups HTML autocontenidos de `identity/seguridad`, `backoffice/admin`, `backoffice/alta-interna`, `backoffice/catalogo`, `backoffice/metricas`, `backoffice/soporte`, `editing/editor` (salvo `editor--editando.html`), `shared/layout`, `storage/carga` (salvo `carga--progreso.html`), los estados de 005, 006 y 007 de `storage/explorador`, `storage/resumen-espacio`, los de 006 de `storage/papelera`, los de 014 de `storage/ficha-archivo` y los de 010 de `billing/suscripcion`, `billing/planes` y `billing/pago` no se editan a mano: se generan con estos
+Los mockups HTML autocontenidos de `identity/seguridad`, `backoffice/admin`, `backoffice/alta-interna`, `backoffice/catalogo`, `backoffice/metricas`, `backoffice/soporte`, `editing/editor` (salvo `editor--editando.html`), `intelligence/panel-agente`, `shared/layout`, `storage/carga` (salvo `carga--progreso.html`), los estados de 005, 006 y 007 de `storage/explorador`, `storage/resumen-espacio`, los de 006 de `storage/papelera`, los de 014 de `storage/ficha-archivo` y los de 010 de `billing/suscripcion`, `billing/planes` y `billing/pago` no se editan a mano: se generan con estos
 scripts para que el marco de la aplicación (barra lateral, barra superior, menú de la cuenta, cajón móvil y diálogo)
 salga de **un solo lugar**. Así no se copia el marco en cada archivo (DRY). Son referencia visual; `apps/web` no
 los importa.
@@ -40,6 +40,7 @@ los importa.
 | `billing/generar-planes.js` | Los 5 estados de 010 de `billing/planes` (cambiar de plan y confirmaciones); `planes--plan-actual.html` es el paquete de 008 y no se genera |
 | `billing/generar-pago.js` | Los 4 estados de 010 de `billing/pago` (renovación); `pago.html` es el paquete de 009 y no se genera |
 | `editor/generar.js` | Los 10 estados de 016 de `editing/editor` (barra del editor, presencia con conteo frente al límite, avisos de solo lectura, guardado fallido y servicio no disponible); `editor--editando.html` es el paquete de la propuesta y no se genera |
+| `panel-agente/generar.js` | Los 12 estados de 020 de `intelligence/panel-agente` (panel del agente `AgentPanel` con `CitationChip`, ámbito, consultas del plan y errores; hoja a pantalla completa en ≤ 900 px); sustituye al paquete de la propuesta |
 | `pw/capturar-rutas.js` | Capturas a 360 y 1440 px de los HTML indicados, en `es-GT` y hora de Guatemala, con movimiento reducido (`reducedMotion: 'reduce'`: esqueletos e indicadores de carga quietos) |
 | `pw/axe-seguridad.js`, `pw/axe-layout.js` | axe-core, desbordamiento a 360 px, objetivos táctiles y consola sobre todos los `.html` de una carpeta (sirve para cualquier pantalla); el de layout recorre además el teclado |
 
@@ -65,6 +66,7 @@ node docs/design/mockups/_generadores/billing/generar-suscripcion.js "$(pwd)"
 node docs/design/mockups/_generadores/billing/generar-planes.js "$(pwd)"
 node docs/design/mockups/_generadores/billing/generar-pago.js "$(pwd)"
 node docs/design/mockups/_generadores/editor/generar.js "$(pwd)"
+node docs/design/mockups/_generadores/panel-agente/generar.js "$(pwd)"
 node docs/design/mockups/_generadores/pw/capturar-rutas.js "$(pwd)" \
   identity/seguridad/seguridad.html=identity/seguridad/seguridad--default
 node docs/design/mockups/_generadores/pw/axe-layout.js "$(pwd)"
