@@ -4,8 +4,8 @@
 > 5 a 12 tareas verticales, de medio día a un día, un commit cada una (`feat(optimizer): … [021 T-xx]`; las de
 > `storage`, `feat(storage): … [021 T-xx]`). Cada tarea es una línea: criterio, prueba y de qué depende. Los archivos
 > viven en `plan.md`. Sin tareas de «cierre». Ninguna agrega `sharp` antes de que ADR-0035 esté `Aceptado`.
-> El spike de ADR-0035 (fuera del repo) ya fijó los valores de plan §6 B y el mockup tiene capturas y axe; queda
-> que Adrián acepte ADR-0035 junto con el plan (plan §9).
+> El spike de ADR-0035 (fuera del repo) ya fijó los valores de plan §6 B y el mockup tiene capturas y axe. Plan
+> aprobado y ADR-0035 aceptado por Adrián el 2026-10-26 (plan §9).
 
 - [ ] **T-01** `storage` registra de forma segura una versión optimizada: lector común de la versión vigente (PD-124), fachada y registrador con resultados `registered / duplicate / file_changed / not_smaller / file_missing / corrupt` y compensación del objeto (PD-130), exportación de la solo lectura (PD-121), probado con un doble del origen `optimizacion` — CA: CA-11, CA-12 (registro único), CA-15 (espacio neto y `keptUntil` de 014b) — Prueba: unitaria del registrador + integración `versions-optimizer-facade` + pruebas existentes de las otras dos fachadas sin cambios
 - [ ] **T-02** Pedir el cálculo de ahorro y consultar su estado: tabla `optimizacion` (migración con `down` y RLS), contratos, `POST …/estimate` y `GET …/optimization` con rechazo por tipo y por contenido real, `no_disponible(tamano)`, papelera `404`, solo lectura permitida, límite de tasa y caducidad perezosa — CA: CA-3, CA-4, CA-5 (bytes), CA-17 (calcular), CA-18 — Prueba: unitaria del dominio y del contrato + integración `estimate` y `migrations` — Depende: T-01
@@ -18,7 +18,7 @@
 - [ ] **T-09** **(humana)** Recorrido de la demo en local: calcular, no conviene, no disponible, optimizar, historial con el original conservado, medidor que baja, restaurar el original y solo lectura; nota en el PR — CA: CA-1, CA-2, CA-5, CA-6, CA-7, CA-15, CA-16, CA-17
 
 ## Notas del developer
-- T-03 no empieza hasta que Adrián acepte ADR-0035; T-01 y T-02 no dependen de `sharp`.
+- ADR-0035 está `Aceptado` (2026-10-26): T-03 ya puede agregar `sharp`; T-01 y T-02 no dependen de él.
 - El spike de ADR-0035 no es una tarea: corrió fuera del repo y su resultado está en plan §6 B y en el ADR. Los *fixtures*
   del repo (plan §7) se crean en T-03 y T-04.
-- Capturas y axe del mockup de la ficha (estados de 021) se generan al tener el entorno (Node 22 + pnpm), antes de `Lista` (PD-132).
+- El mockup de la ficha (14 estados de 021, 28 capturas y axe sin violaciones) ya está completo (PD-132); la UI de T-07 lo sigue.

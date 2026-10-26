@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Propuesto |
+| Estado | Aceptado (Adrián, 2026-10-26, con el plan de 021) |
 | Fecha | 2026-10-25 |
 | Decisores | Abel (021), Adrián (aprobación; autorizó preparar este ADR el 2026-10-25) |
 | Specs relacionadas | 021 (optimizador de imágenes), 021b (PDF, no lo usa); ADR-0001, ADR-0013, ADR-0028, ADR-0033; PD-128 |

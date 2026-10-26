@@ -4,14 +4,14 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Borrador (plan Propuesto) |
+| Estado | Lista (plan aprobado por Adrián, 2026-10-26) |
 | Dueño | Abel (3) |
 | Fase | 3 |
 | Requisitos | RF-35 (Debe) y RF-36 (Debería) para imágenes (el PDF es 021b); aplican RF-05, RF-07, RF-11, RF-12, RF-13, RF-14, RF-23, RF-29, RNF-05, RNF-07, RNF-09, RNF-13, RNF-14, RNF-17 |
 | Depende de | 014 (versiones, historial y restauración), 014b (original conservado: cuota, `keptUntil` y purga), 005 (tipo real por contenido), 010 (solo lectura, PD-121), 003 (roles y aislamiento), 004 (auditoría) |
 | Módulo | M7 `optimizer` |
-| DF / PD / ADR | DF-21 (Aceptado, 014b), DF-22 (Abierto, para 022b); PD-121, PD-124, PD-130, PD-132; ADR-0013 (Aceptado), ADR-0035 (`sharp`, Propuesto) |
-| Última actualización | 2026-10-25 |
+| DF / PD / ADR | DF-21 (Aceptado, 014b), DF-22 (Abierto, para 022b); PD-121, PD-124, PD-130, PD-132; ADR-0013 (Aceptado), ADR-0035 (`sharp`, Aceptado) |
+| Última actualización | 2026-10-26 |
 
 ## 1. Contexto y objetivo
 Cuando el espacio se agota, hoy la única salida es pagar más (propuesta, «Espacio agotado»). Esta spec entrega el
@@ -130,3 +130,4 @@ registrar) y después se purga sola. 021 consume esa política y no la cambia.
 | 2026-10-25 | **Alcance: solo imágenes; el PDF pasa a 021b.** P-2, P-3, P-5 (imágenes), P-11 y P-12 resueltas; P-6 movida a 021b; CA reescritos y renumerados (CA-5 no disponible, CA-10 descarte por ahorro real, CA-11 versión cambiada, CA-15 y CA-16 con 014b, CA-22 en la ficha); se quita la reindexación (las imágenes no se indexan, 019); RN-8 a RN-10; ADR-0035; plan y tareas | Decisiones de Adrián | Adrián (decisiones); plan pendiente |
 | 2026-10-25 | WebP animado dentro de 021 (solo el GIF animado queda fuera, como decidió Adrián), con integridad de cuadros, tiempos y bucle (CA-8); límite por píxeles decodificados totales (RN-8); mensajes de límite sin cifras (CA-5); solo lectura y éxito con patrones existentes (§6) | Revisión del plan | — |
 | 2026-10-25 | Spike de ADR-0035: WebP animado confirmado; GIF estático sin recompresión sin pérdida (supuesto en §8); mockup completo con capturas y axe (§6) | Spike y capturas | — |
+| 2026-10-26 | **Lista.** Plan aprobado (con precisiones en plan §2 a §5 y la nota del mockup en tareas), ADR-0035 y DF-81 aceptados, excepción de ADR-0034 | Aprobación del plan | Adrián |

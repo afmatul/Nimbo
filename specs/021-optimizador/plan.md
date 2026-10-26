@@ -1,6 +1,6 @@
 # Plan 021 — Optimizador de imágenes
 
-> Spec: `./spec.md` · Estado del plan: Propuesto
+> Spec: `./spec.md` · Estado del plan: Aprobado (Adrián, 2026-10-26)
 > Obligatorio y ≤ 250 líneas. Dice **qué** archivos se tocan y **qué** se espera de cada uno; no es el código en
 > prosa (sin cuerpos de funciones ni pseudocódigo). Lo aprueba Adrián antes de escribir código.
 
@@ -20,7 +20,7 @@ versión con resultados explícitos y compensación del objeto).
   original conservado y espacio neto negativo).
 - **Estado (CA-6, RN-9, RN-10):** `GET …/optimization` devuelve la última fila con `pollAfterMs` mientras no es final; la
   ficha consulta con ese intervalo, se detiene al llegar a un estado final y relee al abrir o al volver a estar visible.
-- **Imágenes:** `sharp` (ADR-0035, `Propuesto`): ninguna tarea agrega la dependencia antes de que pase a `Aceptado`.
+- **Imágenes:** `sharp` (ADR-0035, `Aceptado` el 2026-10-26 con este plan).
 
 **Lo que no hace 021 (va a 021b):** DF-80 (`ICommandRunner` a `shared`: `sharp` corre en proceso, no lanza programas) y
 el oyente de versiones en el `worker` de 019 §7.7 (las imágenes no se indexan: `ExtractorRegistry` no soporta `imagen`,
@@ -48,7 +48,7 @@ así que el evento que emite el registro no programa nada). Los dos tienen consu
 | optimizer/infrastructure | `persistence/optimizacion.orm-entity.ts`, `persistence/typeorm-job.repository.ts` (nuevos) | A | Tabla de §3; transiciones con compare-and-set; última fila por archivo; caducidad |
 | optimizer/infrastructure | `bullmq-job.queue.ts`, `optimization.processor.ts` (nuevos) | A | Cola `optimization` (`estimate`, `run`); `jobId` `estimate-<id>` / `run-<id>`; `attempts` de `OPTIMIZER_MAX_ATTEMPTS`, espera exponencial, `removeOnComplete/Fail`; procesador con concurrencia 1 y `correlationId` (como `IndexingProcessor`); `failed` agotado → `fallida(servicio_no_disponible)` |
 | optimizer/presentation | `optimizer.controller.ts` (nuevo) | A | `OptimizerController` con `@Roles(Role.CLIENT)`: rutas de §4; valida con zod de `contracts` |
-| optimizer | `optimizer.module.ts`, `optimizer-worker.module.ts` (nuevos), `index.ts` (cambia) | B | Módulos del `api` y del `worker` (reciben **la misma** instancia de `StorageModule`, como 019) y API pública |
+| optimizer | `optimizer.module.ts`, `optimizer-worker.module.ts` (nuevos), `index.ts` (cambia) | B | Módulos del `api` y del `worker` (reciben **la misma** instancia de `StorageModule`, como 019) y API pública. `ImageOptimizer`, `ImageIntegrityValidator` y el procesador solo se registran en `OptimizerWorkerModule`: el `api` nunca carga `sharp` (ADR-0035) |
 | audit/application | `audit-action.ts`, `audit-catalog.ts` (cambian; Adrián) | B | `file.optimized`, `file.optimization_discarded`, `file.optimization_failed` y su lista blanca (§5) |
 | packages/config | `eslint/boundaries.js` (cambia; Adrián) | B | `optimizer: ['storage', 'access', 'audit']` (autorizado; `architecture.md` §3 en el mismo PR) |
 | migración | `apps/api/src/migrations/2026…-crear-optimizacion.ts` (nuevo) | A | §3, con `down` |
@@ -105,6 +105,8 @@ CREATE INDEX idx_optimizacion_archivo ON optimizacion (archivo_id, creado_en DES
 `gif_animado`, `ilegible`) | **`fallida`**; `estimada` → `optimizando` → **`completada`** | **`descartada`** (`ahorro_minimo`,
 `version_cambiada`, `archivo_eliminado`) | **`fallida`** (`integridad`, `servicio_no_disponible`). `no_disponible(tamano)`
 se crea ya final al pedir estimar. Una `estimada` cuya versión de origen dejó de ser la vigente se responde como obsoleta.
+Resultados del registrador (§2): `registered` y `duplicate` → `completada`; `not_smaller` → `descartada(ahorro_minimo)`;
+`file_changed` → `descartada(version_cambiada)`; `file_missing` → `descartada(archivo_eliminado)`; `corrupt` → `fallida(integridad)`.
 
 - **Sin `propietario_id`:** la RLS va por `EXISTS archivo`, como `indexacion`. **Sin `trabajo`** (DF-22 sigue abierto
   para 022b). Ahorro y porcentaje se derivan; no se guardan. **Nunca** se guardan nombres, claves de objeto, rutas
@@ -116,7 +118,7 @@ se crea ya final al pedir estimar. Una `estimada` cuya versión de origen dejó 
 | Método | Ruta | Rol | Request → Respuesta | Errores (`code`) |
 |---|---|---|---|---|
 | POST | `/files/:fileId/optimization/estimate` | CLIENT | — → `202` `OptimizationStatus` (`estimando`, la fila en curso si ya había una, o `no_disponible(tamano)`) | `404` `STORAGE_NODE_NOT_FOUND`, `422` `OPTIMIZER_UNSUPPORTED_TYPE`, `429` `SHARED_TOO_MANY_REQUESTS` |
-| POST | `/files/:fileId/optimization/run` | CLIENT | `{ optimizationId }` → `202` `OptimizationStatus` (`optimizando`; repetir con el mismo id responde igual) | `403` `STORAGE_ACCOUNT_READ_ONLY`, `404`, `409` `OPTIMIZER_ESTIMATE_STALE` (no está `estimada`, no es la última o la versión cambió), `429` |
+| POST | `/files/:fileId/optimization/run` | CLIENT | `{ optimizationId }` → `202` `OptimizationStatus` (`optimizando`; repetir con el mismo id responde igual) | `403` `STORAGE_ACCOUNT_READ_ONLY`, `404`, `422` `OPTIMIZER_UNSUPPORTED_TYPE` (CA-3), `409` `OPTIMIZER_ESTIMATE_STALE` (no está `estimada`, no es la última o la versión cambió), `429` |
 | GET | `/files/:fileId/optimization` | CLIENT | — → `200` `{ optimization: OptimizationStatus \| null }` | `404` |
 
 - `OptimizationStatus`: `{ id, state, reason, originalBytes, estimatedBytes, resultBytes, savedBytes, savedPercent,
@@ -135,7 +137,8 @@ se crea ya final al pedir estimar. Una `estimada` cuya versión de origen dejó 
   transacción. El registro en el `worker` no vuelve a comprobarla: la decisión se tomó al confirmar (como 016).
 - **Idempotencia y concurrencia:** doble pedido de estimar → índice único parcial, devuelve la fila en curso; «Ejecutar»
   repetido → compare-and-set `estimada → optimizando` con el mismo `optimizationId`; reintento o `worker` reiniciado →
-  se reclama desde el estado activo; la clave del objeto sale de `version_resultado_id`, así que una subida repetida
+  se reclama desde el estado activo, y reclamar renueva `actualizado_en` (así la caducidad perezosa no alcanza a un
+  trabajo que el `worker` está procesando); la clave del objeto sale de `version_resultado_id`, así que una subida repetida
   reescribe el mismo objeto; el registrador responde `duplicate` si la versión ya existe (se toma como éxito); versión
   cambiada → `file_changed` → `descartada(version_cambiada)` y objeto borrado.
 - **Trabajos perdidos:** caducidad perezosa (precedente: vencimiento perezoso de cargas, 005 D-5). Al leer o pedir de
@@ -236,13 +239,11 @@ usan `sharp` se escriben después de que ADR-0035 se acepte (el spike de §6 us�
   actualizan en el PR. DF-22 sigue abierto para 022b.
 - **Pendientes:** PD-130 y PD-121 se cierran con esta spec; PD-124 se cierra si 021 se integra antes que 017; la parte de
   PD-132 de la 021 está hecha (28 capturas, axe sin violaciones). DF-80 y 019 §7.7 pasan a 021b.
-- **ADR requeridos:** ADR-0035 (`sharp`), `Propuesto`; ninguna tarea agrega la dependencia antes de que se acepte.
+- **ADR requeridos:** ADR-0035 (`sharp`), `Aceptado` con este plan (2026-10-26).
 
 ## 9. Aprobación
 
-- `architect`: aplica por tecnología nueva (`sharp`, ADR-0035) y la arista `optimizer → audit` (autorizada por Adrián
-  el 2026-10-25). Sin puerto nuevo entre módulos.
-- Compuertas cumplidas: spike con valores medidos (§6 B) y mockup completo (capturas y axe). El plan se presenta junto
-  con ADR-0035, que debe aceptarse a la vez: T-03 no agrega `sharp` antes.
-- Adrián: pendiente. Al aprobar: ADR-0035, la excepción de ADR-0034 (§8) y la revisión de los archivos de `storage`
-  (PD-124, PD-130, PD-121), `audit`, `boundaries.js`, `env.schema.ts`, `app.module.ts` y `worker.module.ts`.
+- Arquitectura (tecnología nueva y arista `optimizer → audit`; 2026-10-26): sin objeciones. Sin puerto nuevo entre
+  módulos; `sharp` detrás de `IOptimizer` y solo en el `worker`. Se precisaron §2, §3, §4 y §5 antes de aprobar.
+- **Adrián: aprobado el 2026-10-26.** ADR-0035 y DF-81 `Aceptado`; valores de §6 A confirmados; excepción de ADR-0034
+  (§8); Adrián revisa en el PR `storage` (PD-124, PD-130, PD-121), `audit`, `boundaries.js` y la raíz.

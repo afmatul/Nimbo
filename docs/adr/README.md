@@ -38,7 +38,7 @@ Son la base para defender la arquitectura en la exposición final (enunciado §6
 | 0032 | [La solo lectura por vencimiento se comprueba en los servicios de escritura con `PlanLimits.readOnly`](0032-solo-lectura-por-planlimits-en-los-servicios-de-escritura.md) (enmienda `architecture.md` §7.5 y la nota de DF-51; spec 010; antes numerado 0029) | Aceptado |
 | 0033 | [Extracción de texto (`fflate`, `fast-xml-parser`, Ghostscript), embeddings por REST y relay `index-status`](0033-extraccion-de-texto-y-embeddings-por-rest.md) (spec 019, DF-78) | Aceptado |
 | 0034 | [SDD express en un pase: spec, plan y tareas juntos](0034-sdd-express-un-pase.md) (enmienda la secuencia de ADR-0023) | Propuesto |
-| 0035 | [Las imágenes se recomprimen con `sharp` (libvips) dentro del `worker`](0035-recompresion-de-imagenes-con-sharp.md) (spec 021) | Propuesto |
+| 0035 | [Las imágenes se recomprimen con `sharp` (libvips) dentro del `worker`](0035-recompresion-de-imagenes-con-sharp.md) (spec 021) | Aceptado |
 
 Estados: `Pendiente` (sin redactar) · `Propuesto` (redactado, falta acuerdo del equipo) · `Aceptado` · `Reemplazado por`.
 Los ADR 0001, 0002, 0008, 0009, 0014 y 0015 se aceptaron el 26/09/2026 (Adrián, parte de ADR de la T-27 de la spec 000).
@@ -59,6 +59,6 @@ ADR-0034 (2026-10-23) enmienda la secuencia de ADR-0023: un solo pase al crear u
 
 Los ADR 0003, 0007 y 0033 los redactó el `architect` con el plan de la spec 019 (2026-10-21) como `Propuesto`; Adrián los acepta al aprobar el plan.
 
-ADR-0035 (dependencia `sharp`) lo redactó Abel con el plan de la spec 021 (2026-10-25) como `Propuesto`, con autorización de Adrián para prepararlo; ninguna tarea agrega la dependencia antes de que pase a `Aceptado`.
+ADR-0035 (dependencia `sharp`) lo redactó Abel con el plan de la spec 021 (2026-10-25) como `Propuesto`, con autorización de Adrián para prepararlo; Adrián lo aceptó al aprobar el plan (2026-10-26).
 
 Usa `/adr <decisión>` para redactar uno.
