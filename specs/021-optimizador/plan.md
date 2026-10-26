@@ -1,6 +1,6 @@
 # Plan 021 — Optimizador de imágenes
 
-> Spec: `./spec.md` · Estado del plan: Aprobado (Adrián, 2026-10-26)
+> Spec: `./spec.md` · Estado del plan: Aprobado (Adrián, 2026-10-26); enmienda de alcance del 2026-10-26 pendiente de su aprobación (§9)
 > Obligatorio y ≤ 250 líneas. Dice **qué** archivos se tocan y **qué** se espera de cada uno; no es el código en
 > prosa (sin cuerpos de funciones ni pseudocódigo). Lo aprueba Adrián antes de escribir código.
 
@@ -11,7 +11,7 @@ Módulo nuevo `optimizer` (M7) en el `api` y en el `worker`, más una fachada en
 versión con resultados explícitos y compensación del objeto).
 
 - **Estimar (CA-1 a CA-5):** `POST …/estimate` valida propietario, tipo real y tamaño, crea una fila `optimizacion` en
-  `estimando` y encola. El `worker` lee dimensiones y cuadros, rechaza el GIF animado y lo que supere los límites
+  `estimando` y encola. El `worker` lee las dimensiones, rechaza el PNG animado y lo que supere los límites
   (`no_disponible`), recomprime en memoria **sin guardar nada** y deja `estimada` o `no_conviene` con los bytes estimados.
 - **Optimizar (CA-6 a CA-14):** `POST …/run` (no en solo lectura) pasa la fila a `optimizando` y fija el id de la versión
   resultante. El `worker` vuelve a recomprimir (determinista con los mismos parámetros), valida la integridad, vuelve a
@@ -20,7 +20,7 @@ versión con resultados explícitos y compensación del objeto).
   original conservado y espacio neto negativo).
 - **Estado (CA-6, RN-9, RN-10):** `GET …/optimization` devuelve la última fila con `pollAfterMs` mientras no es final; la
   ficha consulta con ese intervalo, se detiene al llegar a un estado final y relee al abrir o al volver a estar visible.
-- **Imágenes:** `sharp` (ADR-0035, `Aceptado` el 2026-10-26 con este plan).
+- **Imágenes:** solo JPEG y PNG (recorte del 2026-10-26); `sharp` (ADR-0035, `Aceptado` el 2026-10-26 con este plan).
 
 **Lo que no hace 021 (va a 021b):** DF-80 (`ICommandRunner` a `shared`: `sharp` corre en proceso, no lanza programas) y
 el oyente de versiones en el `worker` de 019 §7.7 (las imágenes no se indexan: `ExtractorRegistry` no soporta `imagen`,
@@ -32,19 +32,17 @@ así que el evento que emite el registro no programa nada). Los dos tienen consu
 
 | Módulo / capa | Archivo (nuevo o cambiado) | | Responsabilidad |
 |---|---|---|---|
-| storage/application | `current-version-content.reader.ts` (nuevo) | A | **PD-124:** lector común «versión vigente del archivo del actor → flujo / `ByteReader`», dentro de `withActor`, sin claves fuera de `storage`. Es el tercer lector de contenido |
-| storage/application | `editable-file.gateway.ts`, `indexable-file.gateway.ts` (cambian) | A | Delegan su lectura en el lector común; su API pública no cambia (sus pruebas siguen igual) |
-| storage/application | `optimizable-file.gateway.ts` (nuevo) | A | **PD-130:** `findOwnedImage(actor, fileId)` → `{ id, ownerId, kind, mime, extension, sizeBytes, currentVersionId }` o `null` (propio, vivo; tipo y MIME **reales** con `IFileTypeDetector`, CA-4); `openCurrent(actor, ref)`; `registerOptimizedVersion(actor, input)` |
+| storage/application | `optimizable-file.gateway.ts` (nuevo) | A | **PD-130:** `findOwnedImage(actor, fileId)` → `{ id, ownerId, kind, mime, extension, sizeBytes, currentVersionId }` o `null` (propio, vivo; tipo y MIME **reales** con `IFileTypeDetector`, CA-4; solo `image/jpeg` e `image/png`, el resto lo rechaza el servicio con `UnsupportedTypeError`); `openCurrent(actor, ref)`, que **lee la versión vigente por su cuenta, como `EditableFileGateway` e `IndexableFileGateway`** (PD-124 queda fuera: el lector común lo extrae quien integre 017); `registerOptimizedVersion(actor, input)` |
 | storage/application | `optimized-version.registrar.ts` (nuevo) | A | **PD-130**, como `EditedVersionRegistrar`: lee `trashRetentionDays` fuera de la transacción; sube el objeto con la clave del id preasignado; comprueba que la firma real coincide con el tipo del archivo; bajo `lockUsage` revalida y responde `registered`, `duplicate`, `file_changed` (la vigente ya no es la de origen), `not_smaller`, `file_missing` (ajeno, papelera o purgado) o `corrupt`. **Nunca llama a `register` con un resultado no menor**, así que el `TypeError` de 014b no se alcanza. Compensa (borra el objeto) en todo lo que no sea `registered` ni `duplicate` y si la transacción falla. `afterCommit` anuncia y poda (014) |
 | storage | `upload-lifecycle.providers.ts`, `storage.module.ts`, `storage-worker.module.ts`, `index.ts` (cambian) | B | Proveedores y exportación de la fachada en el `api` y el `worker`; **PD-121:** exportar `WritableAccountPolicy` y `AccountReadOnlyError` |
 | optimizer/domain | `optimization-job.ts` (nuevo) | A | `OptimizationJob` (nombre del diagrama): estados, motivos y transiciones de §3; `isStale(now)` |
 | optimizer/domain | `savings-estimate.ts` (nuevo) | A | `SavingsEstimate.isWorthIt({ minBytes, minPercent })`: **las dos** condiciones (RN-2); el no menor nunca conviene |
-| optimizer/domain | `errors/index.ts` (nuevo) | A | `UnsupportedTypeError` (`422` `OPTIMIZER_UNSUPPORTED_TYPE`), `EstimateStaleError` (`409` `OPTIMIZER_ESTIMATE_STALE`); el `404` reutiliza `NodeNotFoundError` de `storage` |
+| optimizer/domain | `errors/index.ts` (nuevo) | A | `UnsupportedTypeError` (`422` `OPTIMIZER_UNSUPPORTED_TYPE`, también para GIF y WebP), `EstimateStaleError` (`409` `OPTIMIZER_ESTIMATE_STALE`); el `404` reutiliza `NodeNotFoundError` de `storage` |
 | optimizer/application | `optimization.service.ts` (nuevo) | A | `OptimizationService` del `api`: estimar, ejecutar y estado, con límite de tasa, solo lectura (`WritableAccountPolicy`) y caducidad perezosa; `OPTIMIZER_CONFIG` |
 | optimizer/application | `optimization-runner.ts` (nuevo) | A | Flujo del `worker` para `estimate` y `run`: reclamar, leer, inspeccionar, recomprimir, validar, umbral, registrar y mapear el resultado; auditoría y bitácoras |
 | optimizer/application/ports | `i-job.repository.port.ts`, `i-job-queue.port.ts`, `i-optimizer.port.ts`, `i-integrity-validator.port.ts` (nuevos) | B | `IJobRepository`, `IJobQueue`, `IOptimizer` (`inspect`, `optimize`) e `IIntegrityValidator` del diagrama. `IOptimizer` aísla una tecnología externa (regla (a) de Art. V.2); sin `BaseOptimizer` hasta que 021b traiga el segundo (DF-81) |
-| optimizer/infrastructure | `image/image.optimizer.ts` (nuevo) | A | `ImageOptimizer` con `sharp`: `inspect` (formato, ancho y alto por cuadro, cuadros, tiempos, bucle, orientación, perfil, alfa) y píxeles decodificados **totales** = ancho × alto × cuadros (RN-8); `optimize` en el mismo formato (§6), con el WebP animado leído siempre con `animated: true` (sin eso queda un solo cuadro) y escrito como WebP animado pasando sus tiempos y bucle. `sharp` **descarta los metadatos por defecto**: se llama a `keepIccProfile()` siempre y a `keepExif()` solo si la entrada trae EXIF (verificado en el spike, ADR-0035; `withMetadata()` no sirve porque cambia un perfil no sRGB por sRGB), **sin rotar** los píxeles; el resto de EXIF no se promete. Tiempo límite y `limitInputPixels` |
-| optimizer/infrastructure | `image/image-integrity.validator.ts` (nuevo) | A | `ImageIntegrityValidator` (CA-8): decodifica el resultado; mismo formato (firma), dimensiones, orientación, perfil (si existía) y alfa; en WebP animado, misma cantidad de cuadros, dimensiones por cuadro, tiempos y bucle; en PNG y GIF, mismo hash SHA-256 de los píxeles crudos (por flujo, sin dos imágenes en memoria) |
+| optimizer/infrastructure | `image/image.optimizer.ts` (nuevo) | A | `ImageOptimizer` con `sharp`: `inspect` (formato, ancho y alto, orientación, perfil, alfa, PNG animado) y píxeles decodificados = ancho × alto (RN-8); `optimize` en el mismo formato (§6). `sharp` **descarta los metadatos por defecto**: se llama a `keepIccProfile()` siempre y a `keepExif()` solo si la entrada trae EXIF (verificado en el spike, ADR-0035; `withMetadata()` no sirve porque cambia un perfil no sRGB por sRGB), **sin rotar** los píxeles; el resto de EXIF no se promete. Un PNG con el fragmento `acTL` (animado) se reporta como tal y termina en `no_disponible(animada)`; que `sharp` solo lea su primer cuadro se confirma en T-03. Tiempo límite y `limitInputPixels` |
+| optimizer/infrastructure | `image/image-integrity.validator.ts` (nuevo) | A | `ImageIntegrityValidator` (CA-8): decodifica el resultado; mismo formato (firma), dimensiones, orientación, perfil (si existía) y alfa; en PNG, mismo hash SHA-256 de los píxeles crudos (por flujo, sin dos imágenes en memoria) |
 | optimizer/infrastructure | `persistence/optimizacion.orm-entity.ts`, `persistence/typeorm-job.repository.ts` (nuevos) | A | Tabla de §3; transiciones con compare-and-set; última fila por archivo; caducidad |
 | optimizer/infrastructure | `bullmq-job.queue.ts`, `optimization.processor.ts` (nuevos) | A | Cola `optimization` (`estimate`, `run`); `jobId` `estimate-<id>` / `run-<id>`; `attempts` de `OPTIMIZER_MAX_ATTEMPTS`, espera exponencial, `removeOnComplete/Fail`; procesador con concurrencia 1 y `correlationId` (como `IndexingProcessor`); `failed` agotado → `fallida(servicio_no_disponible)` |
 | optimizer/presentation | `optimizer.controller.ts` (nuevo) | A | `OptimizerController` con `@Roles(Role.CLIENT)`: rutas de §4; valida con zod de `contracts` |
@@ -56,15 +54,15 @@ así que el evento que emite el registro no programa nada). Los dos tienen consu
 | contracts | `src/optimizer/schemas.ts` (nuevo) | A | Estados, motivos, `optimizationStatusSchema` (con `refine` motivo ↔ estado), `runOptimizationBodySchema` |
 | contracts | `src/optimizer/error-codes.ts`, `src/optimizer/index.ts` (nuevos), `src/index.ts` (cambia) | B | `OPTIMIZER_ERROR_CODES` y barriles |
 | dependencias | `apps/api/package.json` (cambia) | B | `sharp` **solo tras ADR-0035 `Aceptado`**; si pnpm 10 lo pide, `onlyBuiltDependencies` en el `package.json` raíz |
-| web/features/optimizer | `optimizer-api.ts`, `hooks/use-file-optimization.ts`, `components/optimization-card.tsx`, `components/confirm-optimization-dialog.tsx`, `optimizer-messages.ts` (nuevos) | A | Cliente; consulta periódica (§5); tarjeta con los estados de spec §6; diálogo con el aviso de poda (reutiliza el cálculo de `features/storage/version-history.ts`) y la fecha de conservación; mensajes de la spec |
+| web/features/optimizer | `optimizer-api.ts`, `hooks/use-file-optimization.ts`, `components/optimization-card.tsx`, `components/confirm-optimization-dialog.tsx`, `optimizer-messages.ts` (nuevos) | A | Cliente; consulta periódica (§5); tarjeta con los 8 estados de spec §6 (el estado final reúne completada y error, y «no disponible» tiene un solo mensaje); diálogo con el aviso de poda (reutiliza el cálculo de `features/storage/version-history.ts`) y la fecha de conservación; mensajes de la spec |
 | web | `features/storage/components/file-detail-view.tsx` (cambia) | A | Muestra la tarjeta solo si el archivo es `imagen` y del actor; recarga el historial al completar |
 | web | `features/storage/components/session-file-detail-view.tsx` (cambia) | B | Crea el cliente de `optimizer` con la sesión |
 | web | `components/nimbo/version-timeline.tsx` (cambia) | A | «Original conservado hasta {fecha} · no ocupa tu espacio» cuando `keptUntil` no es nulo (014b CA-4, PD-130) |
 
-- **Recuento (ADR-0034):** **48** archivos de producción (**26 A** y **22 B**; +1 si pnpm exige `onlyBuiltDependencies`).
-  Por dueño: Abel 32 (`optimizer`, `contracts`, `web`, migración), `storage` 9 (PD-124, PD-130 y PD-121), `audit` y
-  `boundaries.js` 3, raíz y `shared` 3, `package.json` 1. Pruebas: unos 14 archivos (§7). Documentos: `architecture.md`
-  §3, §7.6 y §8, `design-model.md` (M7), `ambientes.md`, los README de `storage` y `optimizer`, y el mockup.
+- **Recuento (ADR-0034):** **45** archivos de producción (**23 A** y **22 B**; +1 si pnpm exige `onlyBuiltDependencies`).
+  Por dueño: Abel 32 (`optimizer`, `contracts`, `web`, migración), `storage` 6 (PD-130 y PD-121), `audit` y
+  `boundaries.js` 3, raíz y `shared` 3, `package.json` 1. Pruebas: unos 13 archivos (§7). Documentos: `architecture.md`
+  §3, §7.6 y §8, `design-model.md` (M7), `ambientes.md`, los README de `storage` y `optimizer`. Mockup existente: 8 de sus 14 estados.
 - **Nota de decisión:** la partición por formato (021 imágenes, 021b PDF) la indicó Adrián (2026-10-25). No se parte por
   capas: estimar y optimizar son un solo entregable vertical (sin la ejecución no hay valor, y sin la estimación RF-35 no
   se cumple). El recuento supera 12 y se deja explícito en §8.
@@ -91,7 +89,7 @@ CREATE TABLE optimizacion (
   actualizado_en       timestamptz NOT NULL,
   CONSTRAINT ck_optimizacion_estado CHECK (estado IN ('estimando','estimada','no_conviene','no_disponible',
                                                       'optimizando','completada','descartada','fallida')),
-  CONSTRAINT ck_optimizacion_motivo_valor CHECK (motivo IN ('tamano','pixeles','gif_animado','ilegible',
+  CONSTRAINT ck_optimizacion_motivo_valor CHECK (motivo IN ('tamano','pixeles','animada','ilegible',
                                                  'ahorro_minimo','version_cambiada','archivo_eliminado',
                                                  'integridad','servicio_no_disponible')),
   CONSTRAINT ck_optimizacion_motivo CHECK ((estado IN ('no_disponible','descartada','fallida')) = (motivo IS NOT NULL))
@@ -102,7 +100,7 @@ CREATE INDEX idx_optimizacion_archivo ON optimizacion (archivo_id, creado_en DES
 ```
 
 **Estados** (finales en negrita): `estimando` → `estimada` | **`no_conviene`** | **`no_disponible`** (`pixeles`,
-`gif_animado`, `ilegible`) | **`fallida`**; `estimada` → `optimizando` → **`completada`** | **`descartada`** (`ahorro_minimo`,
+`animada`, `ilegible`) | **`fallida`**; `estimada` → `optimizando` → **`completada`** | **`descartada`** (`ahorro_minimo`,
 `version_cambiada`, `archivo_eliminado`) | **`fallida`** (`integridad`, `servicio_no_disponible`). `no_disponible(tamano)`
 se crea ya final al pedir estimar. Una `estimada` cuya versión de origen dejó de ser la vigente se responde como obsoleta.
 Resultados del registrador (§2): `registered` y `duplicate` → `completada`; `not_smaller` → `descartada(ahorro_minimo)`;
@@ -182,32 +180,30 @@ indicativo). Memoria = pico de RSS menos la base del proceso (49 MB).
 
 | Variable | Valor | Evidencia | Por qué |
 |---|---|---|---|
-| `OPTIMIZER_MAX_PIXELS` | 36 000 000 (totales) | JPEG 297 MB a 40 MP (369 a 50); WebP 348 MB a 40 MP (417 a 50); WebP animado 141 MB a 40 M | Con el presupuesto supuesto de ~350 MB, 50 MP no cabe; 36 MP deja ~10 % de margen al caso más caro (WebP ≈ 313 MB) y cubre cámaras de 12–33 MP |
+| `OPTIMIZER_MAX_PIXELS` | 36 000 000 | JPEG 297 MB a 40 MP (369 a 50); el spike midió también WebP, hoy fuera de alcance (348 MB a 40 MP) | Con el presupuesto supuesto de ~350 MB, 50 MP no cabe; 36 MP (≈ 267 MB en JPEG) deja margen y cubre cámaras de 12–33 MP. Se conserva el valor aprobado aunque sin WebP sobraría margen: subirlo exige medir de nuevo (T-08) |
 | `OPTIMIZER_MAX_FILE_BYTES` | 40 000 000 (40 MB) | PNG de 40 MB (20 MP): 302 MB; PNG de 50 MB (25 MP): 376 MB | En PNG manda el peso (entrada, salida y comparación de píxeles); 50 MB no cabe |
-| `OPTIMIZER_TIMEOUT_MS` | 100 000 | Peor caso dentro de los límites: WebP animado de 40 M píxeles, 30,8–34,3 s; PNG de 40 MB, 15,3 s; WebP de 40 MP, 7,8 s; JPEG de 40 MP, 2,4 s | ≈ 3 × el peor máximo medido (34,3 s), por si el servidor es más lento |
+| `OPTIMIZER_TIMEOUT_MS` | 100 000 | Peor caso dentro de los límites: PNG de 40 MB, 15,3 s; JPEG de 40 MP, 2,4 s (el spike midió también WebP, hasta 34,3 s, hoy fuera de alcance) | Margen de más de 6 × sobre el peor caso que queda, por si el servidor es más lento; T-08 puede bajarlo con la medición real |
 | `OPTIMIZER_JPEG_QUALITY` + codificador | 80 con `mozjpeg: true` | 12 MP: 57,2 % en 134 ms por defecto frente a 62,7 % en 865 ms con mozjpeg; 50 MP: 0,53 s frente a 3,76 s; error medio visible 2,48 frente a 2,00 sobre 255; misma memoria | mozjpeg **no** es el valor por defecto (el binario lo trae y la opción activa sus ajustes): ~13 % menos bytes **y** menos error por ~6,5 × CPU, lejos del tiempo límite con concurrencia 1 |
-| `OPTIMIZER_WEBP_QUALITY` | 80 | WebP de 12 MP: 67 % en 1,3 s; animado: 27–45 % con cuadros, tiempos, bucle y alfa intactos; error medio 1,1–2,8 | Confirmado |
-| Concurrencia | cola 1, `sharp.concurrency(1)`, `sharp.cache(false)` | Con 2 hilos: JPEG 30 % más rápido, WebP 12 %, PNG 6 %, misma memoria; dos trabajos a la vez no se probaron | Dos trabajos de ~300 MB no caben; el segundo hilo gana poco y quita CPU al `api` y a la indexación |
+| Concurrencia | cola 1, `sharp.concurrency(1)`, `sharp.cache(false)` | Con 2 hilos: JPEG 30 % más rápido, PNG 6 %, misma memoria; dos trabajos a la vez no se probaron | Dos trabajos de ~300 MB no caben; el segundo hilo gana poco y quita CPU al `api` y a la indexación |
 
 Validación: `stats()` comprueba que el resultado abre (38 MB a 50 MP; decodificar a crudo costaba ~3 B/píxel más). En
-PNG y GIF, hash de los píxeles; la estimación hace la misma comparación para no mostrar «conviene» si el validador
+PNG, hash de los píxeles; la estimación hace la misma comparación para no mostrar «conviene» si el validador
 rechazaría el resultado.
 
 **No medible aquí:** la base del `worker` real (Nest, TypeORM, BullMQ) y una indexación concurrente, que el presupuesto
 **supone** en ~250 y ~150 MB, y los tiempos en Linux y en el servidor. T-08 los mide en el `worker` limitado a 768 MB;
-si la base es mayor, `OPTIMIZER_MAX_PIXELS` baja en proporción (≈ 8,7 B por píxel en el peor formato).
+si la base es mayor, `OPTIMIZER_MAX_PIXELS` baja en proporción (≈ 7,4 B por píxel en JPEG, el peor formato que queda).
 
-PNG: compresión 9 con filtrado adaptativo, sin paleta (píxeles idénticos). GIF estático: **`sharp` no lo recomprime sin
-pérdida** (~2 % de los píxeles cambian, diferencia máxima 5) y ahorra ~0,2 %: siempre termina en «no conviene» (§8).
+PNG: compresión 9 con filtrado adaptativo, sin paleta (píxeles idénticos). GIF y WebP quedan fuera de 021: la medición del
+spike (WebP animado, y GIF estático que `sharp` no recomprime sin pérdida) es antecedente para la spec que los retome.
 
 ## 7. Estrategia de pruebas (por riesgo)
 
 | CA | Nivel | Archivo |
 |---|---|---|
 | Transiciones, motivos, caducidad; umbral (bytes **y** %) | unit | `optimizer/domain/optimization-job.spec.ts`, `savings-estimate.spec.ts` |
-| CA-8: formato, alfa y píxeles en PNG y GIF; JPEG con orientación EXIF 6 que se ve igual y **sin rotar** (mismo ancho y alto); perfil ICC conservado; WebP animado con cuadros, tiempos y bucle; CA-5: GIF animado, píxeles totales, ilegible | unit con `sharp` real y *fixtures* | `optimizer/infrastructure/image/image.optimizer.spec.ts`, `image-integrity.validator.spec.ts` |
+| CA-8: formato, alfa y píxeles en PNG; JPEG con orientación EXIF 6 que se ve igual y **sin rotar** (mismo ancho y alto); perfil ICC conservado; CA-5: PNG animado, píxeles, ilegible; CA-3: GIF y WebP rechazados por contenido real | unit con `sharp` real y *fixtures* | `optimizer/infrastructure/image/image.optimizer.spec.ts`, `image-integrity.validator.spec.ts` |
 | PD-130: `registered`, `duplicate`, `file_changed`, `not_smaller`, `file_missing`, `corrupt`; compensación; 014b (espacio neto y `keptUntil`) | unit + int (Postgres + MinIO) | `storage/application/optimized-version.registrar.spec.ts`, `test/int/storage/versions-optimizer-facade.int-spec.ts` |
-| PD-124 sin regresión | unit + int existentes | las pruebas de `editable-file.gateway` e `indexable-file.gateway` sin cambios |
 | CA-1 a CA-5, CA-17 (estimar), CA-18 | int | `test/int/optimizer/estimate.int-spec.ts` |
 | CA-6, CA-7, CA-9 a CA-12, CA-14 a CA-16, CA-17 (ejecutar) | int | `test/int/optimizer/run.int-spec.ts` (incluye restaurar el original con y sin cuota) |
 | CA-21 | int | `test/int/optimizer/logs-and-audit.int-spec.ts` |
@@ -216,28 +212,29 @@ pérdida** (~2 % de los píxeles cambian, diferencia máxima 5) y ahorra ~0,2 %:
 | Contrato | unit | `packages/contracts/src/optimizer/schemas.spec.ts` |
 | CA-6 (consulta, parada, pausa, relectura), CA-13, CA-15, CA-22 | web (RTL + axe) | `features/optimizer/**/*.spec.tsx`, `components/nimbo/version-timeline.spec.tsx` |
 
-*Fixtures* versionados y pequeños en `apps/api/test/fixtures/images/`: PNG con alfa, JPEG con orientación EXIF 6 y JPEG
-con perfil ICC no sRGB, GIF estático y animado, WebP estático y animado (varios cuadros, tiempos distintos y bucle).
+*Fixtures* versionados y pequeños en `apps/api/test/fixtures/images/`: PNG con alfa, PNG animado, JPEG con orientación EXIF 6 y JPEG
+con perfil ICC no sRGB, y un GIF y un WebP (solo para comprobar que se rechazan).
 Generados en la prueba: la imagen corrupta y una cabecera cuyos píxeles totales superan el límite. Las pruebas que
 usan `sharp` se escriben después de que ADR-0035 se acepte (el spike de §6 usó equivalentes sintéticos fuera del repo).
 
 ## 8. Riesgos y coherencia con el diseño
 
-- **Tamaño (ADR-0034):** 48 archivos de producción (26 con lógica, 22 de cableado) superan los 12. Se documenta una
+- **Tamaño (ADR-0034):** 45 archivos de producción (23 con lógica, 22 de cableado) superan los 12. Se documenta una
   excepción de ADR-0034 para 021 por ser un módulo nuevo y mantener el corte vertical por formato decidido por Adrián.
 - **`sharp` en proceso:** un fallo nativo reiniciaría el `worker` y la indexación. Se mitiga con límites antes de
   decodificar, concurrencia 1, un hilo de libvips y la caducidad (§5). Si ocurre con imágenes dentro de los límites,
   ADR-0035 prevé pasar a herramientas externas detrás de `IOptimizer`.
 - **Valores:** los de §6 B están medidos en el spike; queda supuesta la base del `worker` real, que mide T-08.
-- **WebP animado:** el spike confirmó cuadros, dimensiones, tiempos, bucle y alfa intactos (ADR-0035). Sin bloqueo.
-- **GIF estático (hallazgo del spike, no bloqueante):** sigue dentro de 021. `sharp` no lo recomprime sin pérdida, así que
-  la estimación y el validador lo dejan en `no_conviene` (RN-6, CA-2); no se marca `no_disponible` sin decisión de Adrián.
-- **PD-124 y 017:** la rama de 017 (también de Abel, sin integrar) trae otra fachada de lectura
-  (`storage-preview.facade.ts`). El lector común entra con quien se integre primero, y la otra spec lo reutiliza.
+- **WebP y GIF (recorte del 2026-10-26):** fuera de 021. ADR-0035 (`Aceptado`) conserva el resultado del spike sobre ambos;
+  no se reescribe. Un PNG animado se trata como `no_disponible(animada)`; es un riesgo de pérdida de datos que el recorte
+  no debe dejar abierto, y T-03 confirma el comportamiento de `sharp` con un *fixture*.
+- **PD-124 y 017 (deuda explícita):** 021 agrega una tercera fachada que lee la versión vigente por su cuenta. El Art. VI.2
+  ya pediría extraer el lector; se difiere por decisión del 2026-10-26: lo extrae quien integre 017 (cuya rama trae
+  `storage-preview.facade.ts`), que pasará a ser la cuarta lectura. PD-124 sigue abierto en `pendientes.md`.
 - **Desviaciones del diagrama:** DF-81 (M7 sin `restoreOriginal` ni `BaseOptimizer`, `OptimizationRunner`, sin
   `trabajo`). `design-model.md` M7 y `architecture.md` §3, §7.6 (solo imágenes) y §8 (cola `optimization`) se
   actualizan en el PR. DF-22 sigue abierto para 022b.
-- **Pendientes:** PD-130 y PD-121 se cierran con esta spec; PD-124 se cierra si 021 se integra antes que 017; la parte de
+- **Pendientes:** PD-130 y PD-121 se cierran con esta spec; PD-124 sigue abierto (lo cierra quien integre 017); la parte de
   PD-132 de la 021 está hecha (28 capturas, axe sin violaciones). DF-80 y 019 §7.7 pasan a 021b.
 - **ADR requeridos:** ADR-0035 (`sharp`), `Aceptado` con este plan (2026-10-26).
 
@@ -246,4 +243,7 @@ usan `sharp` se escriben después de que ADR-0035 se acepte (el spike de §6 us�
 - Arquitectura (tecnología nueva y arista `optimizer → audit`; 2026-10-26): sin objeciones. Sin puerto nuevo entre
   módulos; `sharp` detrás de `IOptimizer` y solo en el `worker`. Se precisaron §2, §3, §4 y §5 antes de aprobar.
 - **Adrián: aprobado el 2026-10-26.** ADR-0035 y DF-81 `Aceptado`; valores de §6 A confirmados; excepción de ADR-0034
-  (§8); Adrián revisa en el PR `storage` (PD-124, PD-130, PD-121), `audit`, `boundaries.js` y la raíz.
+  (§8); Adrián revisa en el PR `storage` (PD-130, PD-121), `audit`, `boundaries.js` y la raíz.
+- **Enmienda de alcance, 2026-10-26 (pendiente de aprobación de Adrián):** solo JPEG y PNG; PD-124 fuera; interfaz de
+  8 estados con un solo mensaje de «no disponible». Quita 3 archivos (48 → 45); sin puertos ni tecnología nuevos,
+  `architect` no interviene. Valores de §6 iguales salvo `OPTIMIZER_WEBP_QUALITY`, que desaparece.
