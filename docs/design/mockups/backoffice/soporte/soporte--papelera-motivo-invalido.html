@@ -313,8 +313,19 @@
   .alert-list a { display: inline-flex; align-items: center; min-height: 24px; color: var(--destructive); font-weight: 500; }
   .alert-list a:hover { color: var(--foreground); }
 
+  /* Diálogo con formulario (ajustar cuota, extender vigencia y motivo de restauración) */
+  .form-dialog { top: 72px; width: min(560px, calc(100% - 32px)); max-height: calc(100vh - 144px); overflow: auto; }
+  .form-dialog .sub { margin: 4px 0 0; color: var(--secondary-foreground); font-size: 13.5px; }
+  .form-dialog .field { margin-top: 16px; }
+  .form-dialog .field > label { font-size: 13.5px; }
+  .form-dialog .text-input { max-width: none; }
+  .form-dialog .text-input.short { max-width: 220px; }
+
   @media (max-width: 600px) {
     .text-input, .text-input.short { max-width: none; min-height: 44px; }
+    .form-dialog { top: 16px; max-height: calc(100vh - 32px); }
+    .form-dialog .dialog-actions { flex-direction: column-reverse; align-items: stretch; }
+    .form-dialog .dialog-actions .btn { width: 100%; min-height: 44px; }
     .form-actions { flex-direction: column; align-items: stretch; }
     .form-actions .btn { width: 100%; min-height: 44px; }
     .alert-list a { min-height: 32px; }
@@ -408,15 +419,10 @@
   .trash .alert + table { margin-top: 0; }
   .sk-p { display: grid; gap: 10px; padding: 14px; }
 
-  .restore-dialog { top: 72px; width: min(560px, calc(100% - 32px)); max-height: calc(100vh - 144px); overflow: auto; }
-  .restore-dialog .sub { margin: 4px 0 0; color: var(--secondary-foreground); font-size: 13.5px; }
-  .restore-dialog .field { margin-top: 16px; }
-  .restore-dialog .field > label { font-size: 13.5px; }
   .restore-dialog .text-area { max-width: none; min-height: 100px; resize: vertical; line-height: 1.5; }
   .restore-dialog .counter { margin: 4px 0 0; text-align: right; font-size: 12px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
   .restore-dialog .info-box { margin-top: 16px; }
   .restore-dialog .alert { margin: 0 0 16px; }
-  .restore-dialog .dialog-actions .btn { min-height: 40px; }
 
   @media (max-width: 1180px) and (min-width: 601px) {
     /* En la tabla de papelera, tipo, tamaño y eliminado pasan bajo el nombre; la acción también, para no duplicarla */
@@ -435,9 +441,6 @@
     .trash .m-trash { display: grid; gap: 4px; margin-top: 6px; font-size: 12.5px; font-variant-numeric: tabular-nums; }
     .trash .m-trash .btn { width: 100%; min-height: 44px; margin-top: 6px; }
     .trash .alert { margin: 12px 12px 0; }
-    .restore-dialog { top: 16px; max-height: calc(100vh - 32px); }
-    .restore-dialog .dialog-actions { flex-direction: column-reverse; align-items: stretch; }
-    .restore-dialog .dialog-actions .btn { width: 100%; min-height: 44px; }
   }
 
   @media (max-width: 1180px) and (min-width: 601px) {
@@ -593,7 +596,7 @@
       </div>
   </div>
   <div class="overlay" aria-hidden="true"></div>
-  <div class="dialog restore-dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-t" aria-describedby="dlg-d">
+  <div class="dialog form-dialog restore-dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-t" aria-describedby="dlg-d">
     <h2 id="dlg-t">Restaurar «Presupuesto_Q4_borrador.xlsx»</h2>
     <p class="sub" id="dlg-d">El archivo volverá a «Mis archivos / Finanzas». Si ya existe uno con ese nombre, se restaurará como «Presupuesto_Q4_borrador (1).xlsx».</p>
     <form onsubmit="return false">

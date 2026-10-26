@@ -9,7 +9,7 @@ import { AuditModule } from '../audit';
 
 import { FOLDER_CONFIG } from './application/folder-config';
 import type { FolderConfig } from './application/folder-config';
-import { I_CLIENT_ACCOUNT_SCANNER } from './application/ports/i-client-account.scanner.port';
+import { IndexableFileGateway } from './application/indexable-file.gateway';
 import { I_EXPIRED_TRASH_SCANNER } from './application/ports/i-expired-trash.scanner.port';
 import { I_EXPIRED_UPLOAD_SCANNER } from './application/ports/i-expired-upload.scanner.port';
 import { I_OBJECT_STORAGE } from './application/ports/i-object-storage.port';
@@ -21,7 +21,6 @@ import {
   buildMinioStorageClients,
   MinioStorageAdapter,
 } from './infrastructure/minio-storage.adapter';
-import { SqlClientAccountScanner } from './infrastructure/persistence/sql-client-account.scanner';
 import { SqlExpiredTrashScanner } from './infrastructure/persistence/sql-expired-trash.scanner';
 import { SqlExpiredUploadScanner } from './infrastructure/persistence/sql-expired-upload.scanner';
 import { TrashPurgeProcessor } from './infrastructure/trash-purge.processor';
@@ -46,6 +45,7 @@ import {
 } from './infrastructure/usage-reconcile.scheduler';
 import type { UsageReconcileConfig } from './infrastructure/usage-reconcile.scheduler';
 import {
+  INDEXABLE_FILE_PROVIDERS,
   SPACE_PROVIDERS,
   TRASH_LIFECYCLE_PROVIDERS,
   UPLOAD_LIFECYCLE_PROVIDERS,
@@ -105,7 +105,8 @@ const WORKER_FOLDER_CONFIG: FolderConfig = Object.freeze({
  * (006 CA-19) y `usage-reconcile` (007 CA-13), sus programas repetibles y sus procesadores, que vencen cargas con
  * `UploadService.expire`, purgan la papelera con `TrashService.purgeExpired` y concilian `espacio_usado` con
  * `UsageReconciler`. Con `UPLOAD_LIFECYCLE_PROVIDERS` recibe también el registro y la poda de versiones (014), que
- * `UploadService` necesita. `apps/worker` la importa solo desde `storage/index.ts`.
+ * `UploadService` necesita, y desde 019 exporta `IndexableFileGateway` para la indexación. `apps/worker` la importa
+ * solo desde `storage/index.ts`.
  * Como `StorageModule`, **no** enlaza `I_PLAN_LIMITS_PROVIDER` (DF-51): lo hace `WorkerModule`. El adaptador de MinIO
  * firma contra el endpoint interno porque el `worker` no tiene `MINIO_PUBLIC_ENDPOINT` ni emite URLs (plan §5): solo
  * aborta partes y borra objetos.
@@ -152,10 +153,10 @@ export class StorageWorkerModule {
         },
         { provide: I_EXPIRED_UPLOAD_SCANNER, useClass: SqlExpiredUploadScanner },
         { provide: I_EXPIRED_TRASH_SCANNER, useClass: SqlExpiredTrashScanner },
-        { provide: I_CLIENT_ACCOUNT_SCANNER, useClass: SqlClientAccountScanner },
         ...UPLOAD_LIFECYCLE_PROVIDERS,
         ...TRASH_LIFECYCLE_PROVIDERS,
         ...SPACE_PROVIDERS,
+        ...INDEXABLE_FILE_PROVIDERS,
         UsageReconciler,
         UploadCleanupScheduler,
         UploadCleanupProcessor,
@@ -164,8 +165,8 @@ export class StorageWorkerModule {
         UsageReconcileScheduler,
         UsageReconcileProcessor,
       ],
-      // 009 (decisión 1): `invoice-retry` sube la factura PDF desde el `worker`.
-      exports: [I_OBJECT_STORAGE],
+      // 009 (decisión 1): `invoice-retry` sube la factura PDF desde el `worker`. 019: la fachada de la indexación.
+      exports: [I_OBJECT_STORAGE, IndexableFileGateway],
     };
   }
 }

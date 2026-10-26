@@ -18,6 +18,7 @@ const icon = MA.crearIcon({ ...A.P, ...MA.P, image: E.P.image });
 // Laura Barrios (la ficha que tiene «Ver metadatos de archivos») y Diego Coj (recién registrado, sin archivos) vienen del
 // corpus del área (admin/corpus.js), los mismos de la lista de cuentas de backoffice/admin.
 const { LAURA, DIEGO } = C;
+const NOMBRE_CLIENTE = LAURA.nombre.split(' ')[0];
 const TOTAL_ARCHIVOS = 214;
 
 // archivo.tipo (FileKind de 005: docx, pdf, texto, xlsx, pptx, imagen, otro) → ícono, token --file-* y etiqueta.
@@ -148,15 +149,10 @@ ${A.CSS_BUSQUEDA}${A.CSS_PAGINACION}
   .trash .alert + table { margin-top: 0; }
   .sk-p { display: grid; gap: 10px; padding: 14px; }
 
-  .restore-dialog { top: 72px; width: min(560px, calc(100% - 32px)); max-height: calc(100vh - 144px); overflow: auto; }
-  .restore-dialog .sub { margin: 4px 0 0; color: var(--secondary-foreground); font-size: 13.5px; }
-  .restore-dialog .field { margin-top: 16px; }
-  .restore-dialog .field > label { font-size: 13.5px; }
   .restore-dialog .text-area { max-width: none; min-height: 100px; resize: vertical; line-height: 1.5; }
   .restore-dialog .counter { margin: 4px 0 0; text-align: right; font-size: 12px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
   .restore-dialog .info-box { margin-top: 16px; }
   .restore-dialog .alert { margin: 0 0 16px; }
-  .restore-dialog .dialog-actions .btn { min-height: 40px; }
 
   @media (max-width: 1180px) and (min-width: 601px) {
     /* En la tabla de papelera, tipo, tamaño y eliminado pasan bajo el nombre; la acción también, para no duplicarla */
@@ -175,9 +171,6 @@ ${A.CSS_BUSQUEDA}${A.CSS_PAGINACION}
     .trash .m-trash { display: grid; gap: 4px; margin-top: 6px; font-size: 12.5px; font-variant-numeric: tabular-nums; }
     .trash .m-trash .btn { width: 100%; min-height: 44px; margin-top: 6px; }
     .trash .alert { margin: 12px 12px 0; }
-    .restore-dialog { top: 16px; max-height: calc(100vh - 32px); }
-    .restore-dialog .dialog-actions { flex-direction: column-reverse; align-items: stretch; }
-    .restore-dialog .dialog-actions .btn { width: 100%; min-height: 44px; }
   }
 
   @media (max-width: 1180px) and (min-width: 601px) {
@@ -408,24 +401,24 @@ function dialogoRestaurar({ item, motivo = '', error = '', errores = '', cargand
     value: motivo, err: error, multilinea: true, extra: 'maxlength="500" autofocus',
   });
   return A.formDialog({
-    clase: 'restore-dialog',
+    clase: 'form-dialog restore-dialog',
     titulo: `Restaurar «${item.nombre}»`,
     descripcion,
     errores,
     campos: `${campo}<p class="counter" id="motivo-contador">${motivo.length}/500</p>`,
-    nota: '<strong>El motivo queda en la auditoría de Laura.</strong> Verá la fecha, el motivo y tu rol (Soporte), no tu nombre.',
-    confirmar: cargando ? 'Restaurando.' : 'Restaurar',
+    nota: `<strong>El motivo queda en la auditoría de ${NOMBRE_CLIENTE}.</strong> Verá la fecha, el motivo y tu rol (Soporte), no tu nombre.`,
+    confirmar: cargando ? 'Restaurando…' : 'Restaurar',
     cancelar: 'soporte--papelera.html',
     cargando,
   });
 }
 
 const AVISO_RESTAURADO = `
-          <div class="alert alert-ok" role="status">${icon('ok', 18)}<div><p class="alert-title">Restauramos «Presupuesto_Q4_borrador.xlsx» en «Finanzas».</p><p class="alert-text">El motivo quedó en la auditoría de Laura. El archivo ya está disponible en su cuenta.</p></div></div>`;
+          <div class="alert alert-ok" role="status">${icon('ok', 18)}<div><p class="alert-title">Restauramos «Presupuesto_Q4_borrador.xlsx» en «Finanzas».</p><p class="alert-text">El motivo quedó en la auditoría de ${NOMBRE_CLIENTE}. El archivo ya está disponible en su cuenta.</p></div></div>`;
 const AVISO_RENOMBRADO = `
-          <div class="alert alert-ok" role="status">${icon('ok', 18)}<div><p class="alert-title">Restauramos «Contrato_servicios_Alpha.pdf» como «Contrato_servicios_Alpha (1).pdf» porque ya existía uno con ese nombre.</p><p class="alert-text">Quedó en «Legal». El motivo quedó en la auditoría de Laura.</p></div></div>`;
+          <div class="alert alert-ok" role="status">${icon('ok', 18)}<div><p class="alert-title">Restauramos «Contrato_servicios_Alpha.pdf» como «Contrato_servicios_Alpha (1).pdf» porque ya existía uno con ese nombre.</p><p class="alert-text">Quedó en «Legal». El motivo quedó en la auditoría de ${NOMBRE_CLIENTE}.</p></div></div>`;
 const AVISO_RAIZ = `
-          <div class="alert alert-ok" role="status">${icon('ok', 18)}<div><p class="alert-title">La carpeta original ya no está disponible. Restauramos «Contratos 2026» en Mis archivos.</p><p class="alert-text">El motivo quedó en la auditoría de Laura.</p></div></div>`;
+          <div class="alert alert-ok" role="status">${icon('ok', 18)}<div><p class="alert-title">La carpeta original ya no está disponible. Restauramos «Contratos 2026» en Mis archivos.</p><p class="alert-text">El motivo quedó en la auditoría de ${NOMBRE_CLIENTE}.</p></div></div>`;
 const AVISO_VENCIDA = `
           <div class="alert alert-error" role="alert">${icon('alert', 18)}<div><p class="alert-title">Ya no se puede restaurar «Contrato_servicios_Alpha.pdf».</p><p class="alert-text">Su retención de 60 días venció el 19/10/2026. Nada cambió.</p></div></div>`;
 

@@ -179,8 +179,19 @@ const CSS_FORM = `
   .alert-list a { display: inline-flex; align-items: center; min-height: 24px; color: var(--destructive); font-weight: 500; }
   .alert-list a:hover { color: var(--foreground); }
 
+  /* Diálogo con formulario (ajustar cuota, extender vigencia y motivo de restauración) */
+  .form-dialog { top: 72px; width: min(560px, calc(100% - 32px)); max-height: calc(100vh - 144px); overflow: auto; }
+  .form-dialog .sub { margin: 4px 0 0; color: var(--secondary-foreground); font-size: 13.5px; }
+  .form-dialog .field { margin-top: 16px; }
+  .form-dialog .field > label { font-size: 13.5px; }
+  .form-dialog .text-input { max-width: none; }
+  .form-dialog .text-input.short { max-width: 220px; }
+
   @media (max-width: 600px) {
     .text-input, .text-input.short { max-width: none; min-height: 44px; }
+    .form-dialog { top: 16px; max-height: calc(100vh - 32px); }
+    .form-dialog .dialog-actions { flex-direction: column-reverse; align-items: stretch; }
+    .form-dialog .dialog-actions .btn { width: 100%; min-height: 44px; }
     .form-actions { flex-direction: column; align-items: stretch; }
     .form-actions .btn { width: 100%; min-height: 44px; }
     .alert-list a { min-height: 32px; }

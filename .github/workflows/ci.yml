@@ -93,6 +93,11 @@ jobs:
           docker compose up -d --wait postgres
       - name: Migraciones run → revert → run (CA-11, CA-12)
         run: bash scripts/ci/migrations-roundtrip.sh
+      - name: Ghostscript para el texto de los PDF (019 D-1)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ghostscript
+          gs --version
       - name: Pruebas de integración
         run: pnpm test:int
       - name: Pruebas de aislamiento

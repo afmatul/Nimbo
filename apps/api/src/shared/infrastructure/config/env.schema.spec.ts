@@ -307,3 +307,56 @@ describe('edición con ONLYOFFICE (016 plan §5)', () => {
     },
   );
 });
+
+describe('indexación (019 plan §5)', () => {
+  it.each([
+    ['INDEXING_MAX_FILE_BYTES', 50 * 1024 * 1024],
+    ['INDEX_RECONCILE_INTERVAL_MINUTES', 1440],
+    ['INDEX_RECONCILE_BATCH_SIZE', 100],
+    ['GHOSTSCRIPT_BIN', 'gs'],
+    ['GEMINI_EMBEDDING_MODEL', 'gemini-embedding-001'],
+  ] as const)(
+    'RN-7, RN-12, D-1: `%s` es solo del `worker` y vale %p por defecto',
+    (key, fallback) => {
+      expect(declaredIn(key)).toEqual(['worker']);
+      expect(workerEnvObjectSchema.shape[key].parse(undefined)).toBe(fallback);
+    },
+  );
+
+  it('RN-6: `INDEXING_MAX_ATTEMPTS` vale 3 y es la misma definición en `api` (encola) y `worker` (agota)', () => {
+    expect(declaredIn('INDEXING_MAX_ATTEMPTS')).toEqual(['api', 'worker']);
+    expect(apiShape.INDEXING_MAX_ATTEMPTS).toBe(workerShape.INDEXING_MAX_ATTEMPTS);
+    expect(workerEnvObjectSchema.shape.INDEXING_MAX_ATTEMPTS.parse(undefined)).toBe(3);
+    expect(workerEnvObjectSchema.shape.INDEXING_MAX_ATTEMPTS.safeParse('0').success).toBe(false);
+  });
+
+  it('CA-13: `RATE_LIMIT_INDEX_RETRY_PER_MINUTE` es solo del `api`, vale 10 por defecto y es positiva', () => {
+    const retries = apiEnvObjectSchema.shape.RATE_LIMIT_INDEX_RETRY_PER_MINUTE;
+
+    expect(declaredIn('RATE_LIMIT_INDEX_RETRY_PER_MINUTE')).toEqual(['api']);
+    expect(retries.parse(undefined)).toBe(10);
+    expect(retries.safeParse('0').success).toBe(false);
+  });
+
+  it('RN-12: el lote de la conciliación se acota a 1000, como los otros barridos', () => {
+    const batch = workerEnvObjectSchema.shape.INDEX_RECONCILE_BATCH_SIZE;
+
+    expect(batch.safeParse('1000').success).toBe(true);
+    expect(batch.safeParse('1001').success).toBe(false);
+    expect(batch.safeParse('0').success).toBe(false);
+  });
+
+  it('RN-9: `GEMINI_API_KEY` es secreta, solo la declara el `worker` y es opcional (vacía cuenta como ausente)', () => {
+    const key = workerEnvObjectSchema.shape.GEMINI_API_KEY;
+
+    expect(SECRET_KEYS).toContain('GEMINI_API_KEY');
+    expect(declaredIn('GEMINI_API_KEY')).toEqual(['worker']);
+    expect(key.parse('')).toBeUndefined();
+    expect(key.parse(undefined)).toBeUndefined();
+  });
+
+  it('D-1: `GHOSTSCRIPT_BIN` y `GEMINI_EMBEDDING_MODEL` no pueden quedar vacías', () => {
+    expect(workerEnvObjectSchema.shape.GHOSTSCRIPT_BIN.safeParse('').success).toBe(false);
+    expect(workerEnvObjectSchema.shape.GEMINI_EMBEDDING_MODEL.safeParse('').success).toBe(false);
+  });
+});

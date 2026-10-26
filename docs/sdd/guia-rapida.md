@@ -7,18 +7,16 @@ Una página para quien arranca su primera spec. El detalle está en `workflow.md
 
 | # | Qué haces | Comando | Resultado | Tiempo de referencia |
 |---|---|---|---|---|
-| 1 | Describes la necesidad | `/spec "…"` | `spec.md` en `Borrador`, ≤ 150 líneas | 1 h |
-| 2 | Respondes las preguntas `[ABIERTA]` | — | spec sin bloqueantes | — |
-| 3 | Pides el plan | `/plan NNN` | `plan.md`, ≤ 250 líneas | 2 h |
-| 4 | **Adrián aprueba spec y plan** | — | spec en `Lista` | 30 min |
-| 5 | Pides las tareas | `/tasks NNN` | `tasks.md`, 5–12 tareas verticales | 30 min |
-| 6 | Implementas en **una** rama `feat/NNN-slug` | `/implement NNN` | un commit por tarea, pruebas primero | 1–3 días |
-| 7 | Cierras | `/review NNN` | `review.md` de una página | 1 h |
-| 8 | Abres el PR | — | CI verde → Adrián aprueba → squash merge → `Hecha` | — |
+| 1 | Describes la necesidad | `/spec "…"` | `spec.md`, `plan.md` y `tasks.md` en `Borrador`. Spec ≤ 150, plan ≤ 250, 5–12 tareas de una línea | 2 h |
+| 2 | **Adrián aprueba el resumen** (≤ 15 líneas) | — | plan «Aprobado» y spec en `Lista`. Si no objeta en el día, queda Aprobado | el mismo día |
+| 3 | Implementas en **una** rama `feat/NNN-slug` | `/implement NNN` | un commit por tarea, pruebas primero | 1–3 días |
+| 4 | Cierras | `/review NNN` | `review.md` de una página | 1 h |
+| 5 | Abres el PR | — | CI verde → Adrián aprueba → squash merge → `Hecha` | — |
 
+`/plan` y `/tasks` solo completan un artefacto que falte. Una carpeta que ya tiene `spec.md` no se reescribe.
 Si un paso tarda más del doble, avisa a Adrián en vez de seguir.
 
-## Lo que Adrián revisa en tu plan
+## Lo que Adrián revisa en el resumen
 
 - Los archivos que tocas son de **tu** módulo (`specs/README.md`); si necesitas otro módulo, se lo pides a su dueño o usas un puerto.
 - Los servicios reciben `actor: Actor` y las consultas filtran con `accessibleNodes(actor)` o RLS.

@@ -1,9 +1,11 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import type { z } from 'zod';
 
 import { BillingWorkerModule } from './modules/billing';
+import { IntelligenceWorkerModule } from './modules/intelligence';
 import { MAIL_QUEUE, NotificationsWorkerModule } from './modules/notifications';
 import { StorageWorkerModule } from './modules/storage';
 import { PlanLimitsBindingModule } from './plan-limits-binding.module';
@@ -23,8 +25,9 @@ type WorkerEnv = z.infer<typeof workerEnvSchema>;
 
 /**
  * Colas que este proceso consume; `worker.started` las lista (plan 000 §7). `upload-cleanup`, `trash-purge`,
- * `usage-reconcile`, `subscription-reconcile` e `invoice-retry` se escriben literales: el `worker` importa de `storage` y `billing` solo
- * sus módulos del `worker` (plan 005 §3b, plan 009 §2) y `worker.module.spec.ts` fija los nombres.
+ * `usage-reconcile`, `subscription-reconcile`, `invoice-retry`, `subscription-renewal`, `indexing` e `index-reconcile` se escriben literales: el `worker` importa de `storage`,
+ * `billing` e `intelligence` solo sus módulos del `worker` (plan 005 §3b, plan 009 §2, plan 019 §2) y `worker.module.spec.ts` fija
+ * los nombres. `index-status` no está: el `worker` solo la llena y la consume el `api` (019 D-2).
  */
 export const WORKER_QUEUES = [
   PING_QUEUE,
@@ -35,6 +38,8 @@ export const WORKER_QUEUES = [
   'subscription-reconcile',
   'invoice-retry',
   'subscription-renewal',
+  'indexing',
+  'index-reconcile',
 ] as const;
 
 /**
@@ -44,6 +49,10 @@ export const WORKER_QUEUES = [
  * cargas vencidas (005 D-6), la purga de la papelera (006) y la conciliación de espacio (007) de `storage`, y la
  * conciliación de suscripciones y el reintento de facturas sin PDF o sin aviso (`invoice-retry`) de `billing` (009),
  * con la configuración de MinIO y el enlace de `I_PLAN_LIMITS_PROVIDER` de la raíz (DF-51: `storage` no conoce a `billing`; `expire` no lo usa, pero `UploadService` lo pide).
+ * Los eventos en proceso (ADR-0019) los pide `FileVersionService`, que `storage` comparte con el `api` y que desde 019
+ * anuncia cada versión vigente (RN-11); en el `worker` aún nadie registra versiones ni escucha (plan 019 §7 punto 7).
+ * La indexación de 019 (cola `indexing`; avisos a `index-status`) y su conciliación (`index-reconcile`, RN-12) las monta
+ * `IntelligenceWorkerModule` con la misma `storage`.
  */
 @Module({})
 export class WorkerModule {
@@ -58,10 +67,12 @@ export class WorkerModule {
         SharedModule,
         HealthModule.forRoot({ indicators: [RedisHealthIndicator] }),
         BullModule.registerQueue({ name: PING_QUEUE }),
+        EventEmitterModule.forRoot(),
         NotificationsWorkerModule,
         PlanLimitsBindingModule,
         storage,
         BillingWorkerModule.forRoot(env, storage),
+        IntelligenceWorkerModule.forRoot(env, storage),
       ],
       providers: [PingProcessor],
     };

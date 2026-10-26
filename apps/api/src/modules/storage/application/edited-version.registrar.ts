@@ -9,6 +9,7 @@ import { FileVersion } from '../domain/file-version';
 import { ObjectKey } from '../domain/object-key';
 
 import { FileVersionService } from './file-version.service';
+import type { RegisteredVersion } from './file-version.service';
 import { I_FILE_TYPE_DETECTOR } from './ports/i-file-type-detector.port';
 import type { ByteReader, IFileTypeDetector } from './ports/i-file-type-detector.port';
 import { I_NODE_REPOSITORY } from './ports/i-node.repository.port';
@@ -50,14 +51,26 @@ export type EditedVersionOutcome =
   | { readonly status: 'corrupt' }
   | { readonly status: 'file_missing' };
 
-type Target = { readonly file: File } | Exclude<EditedVersionOutcome, { status: 'registered' }>;
+type Unregistered = Exclude<EditedVersionOutcome, { status: 'registered' }>;
+type Target = { readonly file: File } | Unregistered;
+/** Lo que deja la transacción: la versión registrada con su archivo (para anunciarla y podar) o por qué no se registró. */
+type Insertion =
+  { readonly status: 'registered'; readonly registered: RegisteredVersion } | Unregistered;
+
+const registeredOutcome = ({ version }: RegisteredVersion): EditedVersionOutcome => ({
+  status: 'registered',
+  versionId: version.id,
+  versionNumber: version.number,
+  sizeBytes: version.sizeBytes,
+});
 
 /**
  * Registra la versión de una sesión de edición (plan 016 §2, ADR-0012) con la única escritura de versiones de
  * `storage` (`FileVersionService`). Como la restauración de 014: el contenido se sube fuera de la transacción, se
  * verifica que sea un `.docx` íntegro y después, bajo `lockUsage`, se revalida y se registra **sin validar cuota**
- * (RN-8, CA-20: un sobregiro bloquea cargas, no pierde trabajo). La poda corre tras el commit (CA-13). Si la
- * transacción falla se borra lo subido y el error sigue: la versión vigente no cambia (Art. XI).
+ * (RN-8, CA-20: un sobregiro bloquea cargas, no pierde trabajo). Tras el commit se anuncia la versión (019 RN-11) y se
+ * poda (CA-13). Si la transacción falla se borra lo subido y el error sigue: la versión vigente no cambia ni se anuncia
+ * (Art. XI).
  */
 @Injectable()
 export class EditedVersionRegistrar {
@@ -81,9 +94,10 @@ export class EditedVersionRegistrar {
       await this.objects.purgeObject(key.value);
       return { status: 'corrupt' };
     }
-    const outcome = await this.registerUploaded(actor, input, key);
-    if (outcome.status === 'registered') await this.fileVersions.afterCommit(actor, input.fileId);
-    return outcome;
+    const insertion = await this.registerUploaded(actor, input, key);
+    if (insertion.status !== 'registered') return insertion;
+    await this.fileVersions.afterCommit(actor, insertion.registered);
+    return registeredOutcome(insertion.registered);
   }
 
   /**
@@ -101,16 +115,16 @@ export class EditedVersionRegistrar {
     actor: Actor,
     input: EditedVersionInput,
     key: ObjectKey,
-  ): Promise<EditedVersionOutcome> {
-    let outcome: EditedVersionOutcome;
+  ): Promise<Insertion> {
+    let insertion: Insertion;
     try {
-      outcome = await this.transactions.withActor(actor, () => this.insert(actor, input, key));
+      insertion = await this.transactions.withActor(actor, () => this.insert(actor, input, key));
     } catch (error) {
       await this.objects.purgeObject(key.value);
       throw error;
     }
-    if (outcome.status === 'file_missing') await this.objects.purgeObject(key.value);
-    return outcome;
+    if (insertion.status === 'file_missing') await this.objects.purgeObject(key.value);
+    return insertion;
   }
 
   /** `lockUsage` primero: con el propietario serializado, revalidar el archivo y la versión no tiene carreras. */
@@ -118,20 +132,15 @@ export class EditedVersionRegistrar {
     actor: Actor,
     input: EditedVersionInput,
     objectKey: ObjectKey,
-  ): Promise<EditedVersionOutcome> {
+  ): Promise<Insertion> {
     await this.quotas.lockUsage(actor);
     const target = await this.resolve(actor, input);
     if (!('file' in target)) return target;
-    const { version } = await this.fileVersions.register(actor, {
+    const registered = await this.fileVersions.register(actor, {
       file: target.file,
       buildVersion: this.versionBuilder(input, objectKey),
     });
-    return {
-      status: 'registered',
-      versionId: version.id,
-      versionNumber: version.number,
-      sizeBytes: version.sizeBytes,
-    };
+    return { status: 'registered', registered };
   }
 
   private versionBuilder(input: EditedVersionInput, objectKey: ObjectKey) {

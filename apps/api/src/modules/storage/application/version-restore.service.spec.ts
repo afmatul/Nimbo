@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { FakePlanLimitsProvider } from '../../../../test/support/fake-plan-limits.provider';
 import {
   FakeAuditLogger,
+  FakeDomainEventPublisher,
   FakeNodeRepository,
   FakeObjectStorage,
   FakeQuotaRepository,
@@ -23,6 +24,7 @@ import {
   AccountReadOnlyError,
 } from '../domain/errors';
 import type { File } from '../domain/file';
+import { FILE_VERSION_CREATED } from '../domain/file-version-created.event';
 
 import { FileVersionService } from './file-version.service';
 import type { PlanLimits } from './plan-limits';
@@ -68,7 +70,8 @@ function setup(limits: PlanLimits = LIMITS) {
     audit,
     logger,
   );
-  const fileVersions = new FileVersionService(quotas, versions, nodes, pruner, logger);
+  const events = new FakeDomainEventPublisher(journal);
+  const fileVersions = new FileVersionService(quotas, versions, nodes, pruner, events, logger);
   const service = new VersionRestoreService(
     transactions,
     nodes,
@@ -85,7 +88,19 @@ function setup(limits: PlanLimits = LIMITS) {
     logger,
   );
   const file = seedVersionedFile({ nodes, versions, objects }, ANA, [100n, 250n, 200n]);
-  return { journal, quotas, nodes, versions, objects, audit, rateLimiter, logger, service, file };
+  return {
+    journal,
+    quotas,
+    nodes,
+    versions,
+    objects,
+    audit,
+    rateLimiter,
+    logger,
+    events,
+    service,
+    file,
+  };
 }
 
 type Setup = ReturnType<typeof setup>;
@@ -143,6 +158,7 @@ describe('VersionRestoreService (plan 014 §1, CA-9 a CA-12, CA-19)', () => {
       'nodes:updateCurrentVersion',
       'quota:addUsedBytes',
       'tx:end',
+      `events:${FILE_VERSION_CREATED}`,
       'tx:begin',
       'nodes:findAccessibleById',
       'versions:list',
@@ -281,6 +297,7 @@ describe('VersionRestoreService (plan 014 §1, CA-9 a CA-12, CA-19)', () => {
     );
 
     const [copy] = objects.purged;
+    expect(context.events.published).toEqual([]);
     expect(objects.purged).toHaveLength(1);
     expect(copy).toMatch(new RegExp(`^u/${ANA.id}/${file.id}/`));
     expect(objects.objects.has(copy ?? '')).toBe(false);
@@ -381,5 +398,18 @@ describe('VersionRestoreService (plan 014 §1, CA-9 a CA-12, CA-19)', () => {
       event: 'upload.rate_limited',
       operation: 'version_restore',
     });
+  });
+
+  it('019 RN-11: la versión restaurada se anuncia después del commit, con el propietario y el tipo', async () => {
+    const { service, file, versions, events } = setup();
+
+    const entry = await service.restore(ANA, file.id, versionNumbered(versions, file, 1).id);
+
+    expect(events.published).toEqual([
+      {
+        name: FILE_VERSION_CREATED,
+        payload: { fileId: file.id, versionId: entry.version.id, ownerId: ANA.id, kind: 'docx' },
+      },
+    ]);
   });
 });

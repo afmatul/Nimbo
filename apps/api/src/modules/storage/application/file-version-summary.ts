@@ -21,5 +21,6 @@ export function toFileVersionSummary(
     createdAt: version.createdAt.toISOString(),
     createdById: version.createdBy,
     isCurrent: version.id === currentVersionId,
+    keptUntil: version.keptUntil?.toISOString() ?? null,
   };
 }

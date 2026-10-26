@@ -1,15 +1,11 @@
 import { randomUUID } from 'node:crypto';
 
-import { FileVersionService } from '../../../src/modules/storage/application/file-version.service';
-import { I_NODE_REPOSITORY } from '../../../src/modules/storage/application/ports/i-node.repository.port';
-import type { INodeRepository } from '../../../src/modules/storage/application/ports/i-node.repository.port';
-import { FileVersion } from '../../../src/modules/storage/domain/file-version';
-import { ObjectKey } from '../../../src/modules/storage/domain/object-key';
-import { CorrelationContext, createActor, I_TRANSACTION_RUNNER, Role } from '../../../src/shared';
-import type { ITransactionRunner } from '../../../src/shared';
+import type { FileVersion } from '../../../src/modules/storage/domain/file-version';
+import { CorrelationContext } from '../../../src/shared';
 
+import { registerVersion } from './register-version';
 import { createStorageHttpApp, textBytes, usedBytesOf } from './storage-http';
-import type { StorageClient, StorageHttpApp } from './storage-http';
+import type { StorageHttpApp } from './storage-http';
 
 /** Lo que queda de una versión en `version_archivo`, visto por el dueño de las tablas. */
 interface VersionRow {
@@ -27,14 +23,16 @@ interface VersionRow {
 describe('registro y poda de versiones con el plan Personal (014 CA-13, CA-19)', () => {
   let storage: StorageHttpApp;
   let retained: number;
+  let trashRetentionDays: number;
 
   beforeAll(async () => {
     storage = await createStorageHttpApp({ realPlanLimits: true });
-    const [row] = await storage.owner.query<{ versiones_retenidas: number }[]>(
-      "SELECT versiones_retenidas FROM plan WHERE slug = 'personal'",
-    );
+    const [row] = await storage.owner.query<
+      { versiones_retenidas: number; dias_retencion_papelera: number }[]
+    >("SELECT versiones_retenidas, dias_retencion_papelera FROM plan WHERE slug = 'personal'");
     if (row === undefined) throw new Error('Falta el plan personal sembrado (006a)');
     retained = row.versiones_retenidas;
+    trashRetentionDays = row.dias_retencion_papelera;
   });
 
   afterAll(async () => {
@@ -46,39 +44,6 @@ describe('registro y poda de versiones con el plan Personal (014 CA-13, CA-19)',
       'SELECT id, numero, clave_objeto FROM version_archivo WHERE archivo_id = $1 ORDER BY numero',
       [fileId],
     );
-
-  /** Sube el contenido de una versión nueva a MinIO y la registra como un reemplazo, con su poda tras el commit. */
-  const registerVersion = async (
-    client: StorageClient,
-    fileId: string,
-    sizeBytes: number,
-  ): Promise<FileVersion> => {
-    const app = storage.testApp.app;
-    const actor = createActor(client.id, Role.CLIENT);
-    const service = app.get(FileVersionService);
-    const nodes = app.get<INodeRepository>(I_NODE_REPOSITORY);
-    const id = randomUUID();
-    const objectKey = ObjectKey.of(client.id, fileId, id);
-    await storage.putObject(objectKey.value, textBytes(sizeBytes));
-    const transactions = app.get<ITransactionRunner>(I_TRANSACTION_RUNNER);
-    const { version } = await transactions.withActor(actor, async () => {
-      const file = await nodes.findAccessibleById(actor, fileId);
-      if (file === null) throw new Error('El archivo no está vivo');
-      const buildVersion = (number: number): FileVersion =>
-        FileVersion.fromUpload({
-          id,
-          fileId,
-          objectKey,
-          sizeBytes: BigInt(sizeBytes),
-          createdBy: client.id,
-          number,
-          now: new Date(),
-        });
-      return service.register(actor, { file, buildVersion });
-    });
-    await service.afterCommit(actor, fileId);
-    return version;
-  };
 
   it('CA-13, CA-19: al pasar el límite poda la más antigua (objeto, fila y espacio), audita sin nombres ni claves y no reutiliza números', async () => {
     const ana = await storage.newClient();
@@ -92,7 +57,8 @@ describe('registro y poda de versiones con el plan Personal (014 CA-13, CA-19)',
     const sizes = Array.from({ length: retained }, (_, index) => 2000 + index * 1000);
     const versions = await CorrelationContext.run({ correlationId }, async () => {
       const registered: FileVersion[] = [];
-      for (const size of sizes) registered.push(await registerVersion(ana, fileId, size));
+      for (const size of sizes)
+        registered.push(await registerVersion(storage, ana, { fileId, sizeBytes: size }));
       return registered;
     });
 
@@ -128,8 +94,29 @@ describe('registro y poda de versiones con el plan Personal (014 CA-13, CA-19)',
     expect(logged).not.toContain(name);
     expect(logged).not.toContain('u/');
 
-    const next = await registerVersion(ana, fileId, 500);
+    const next = await registerVersion(storage, ana, { fileId, sizeBytes: 500 });
     expect(next.number).toBe(5);
     expect((await versionRows(fileId)).map((row) => row.numero)).toEqual([3, 4, 5]);
+  });
+
+  it('014b CA-8, RN-5, RN-7: la poda alcanza al original conservado antes de su fecha y lo borra sin restar de `espacio_usado`', async () => {
+    const ana = await storage.newClient();
+    const uploaded = await ana.upload(`secreto-${randomUUID()}.txt`, textBytes(1000));
+    expect(uploaded.status).toBe(200);
+    const fileId = (uploaded.body as { file: { id: string } }).file.id;
+    const [original] = await versionRows(fileId);
+    await registerVersion(storage, ana, {
+      fileId,
+      sizeBytes: 600,
+      keepPreviousForDays: trashRetentionDays,
+    });
+    await expect(usedBytesOf(storage.owner, ana.id)).resolves.toBe(600n);
+
+    for (const sizeBytes of [700, 800]) await registerVersion(storage, ana, { fileId, sizeBytes });
+
+    expect(retained).toBe(3);
+    expect((await versionRows(fileId)).map((row) => row.numero)).toEqual([2, 3, 4]);
+    await expect(storage.versionsOf(original?.clave_objeto ?? '')).resolves.toBe(0);
+    await expect(usedBytesOf(storage.owner, ana.id)).resolves.toBe(600n + 700n + 800n);
   });
 });

@@ -1,10 +1,10 @@
-# ADR-0034 — Escrituras internas acotadas: funciones `SECURITY DEFINER` para la cuenta y la papelera
+# ADR-0035 — Escrituras internas acotadas: funciones `SECURITY DEFINER` para la cuenta y la papelera
 
 | Campo | Valor |
 |---|---|
-| Estado | Propuesto (2026-10-22; corregido el 2026-10-23 tras el PR #74). **Enmienda ADR-0005 y ADR-0021**; delimita ADR-0032 regla 3. Se acepta antes del código del PR-A |
+| Estado | Propuesto (2026-10-22; corregido el 2026-10-24 tras la auditoría de Adrián). **Enmienda ADR-0005 y ADR-0021**; delimita ADR-0032 regla 3. Se acepta antes del código del PR-A |
 | Fecha | 2026-10-22 |
-| Numeración | 0034 desde 2026-10-23: el 0033 queda reservado por el ADR de compartición de la 012 (PR #61) |
+| Numeración | 0035 desde 2026-10-24: el 0034 lo usa la ADR de SDD express en `main`; el 0033 lo usa la 019 |
 | Decisores | `architect`, Fátima (dueña de 011/011b), Adrián (aprueba `storage`/`identity`/`audit`), Juan Marcos (dueño de `billing`) |
 | Specs relacionadas | 011b (RF-05, RF-06, RF-07, RF-12, RF-22, RF-23, RF-24); hereda 004, 006, 009, 010 y 011 |
 
@@ -62,22 +62,26 @@ logs. La 011b es la primera escritura interna sobre `storage` de un cliente.
 
 **Opción B**, con estas reglas:
 
-1. **Cuota y vigencia (Administrador).** `suscripcion` no gana escrituras directas de `nimbo_app`. Tres funciones
+1. **Cuota y vigencia (Administrador).** `suscripcion` no gana escrituras directas de `nimbo_app`. Dos funciones
    `SECURITY DEFINER` propiedad del rol que migra, `VOLATILE`, `plpgsql`, con `SET search_path = pg_catalog, pg_temp`,
-   `REVOKE ALL … FROM PUBLIC` y `EXECUTE` solo para `nimbo_app`, comprueban `public.nimbo_actor_role() = 'ADMIN'` y
-   operan una fila por `usuario_id`:
-   - `bloquear_suscripcion_cliente(p_usuario)` bloquea `usuario` y `suscripcion` con `FOR UPDATE` y devuelve plan,
-     estado, `vence_en`, el extra y `espacio_usado`.
-   - `ajustar_cuota_extra(p_usuario, p_extra, p_hasta)` exige `extra >= 0`; si `extra = 0`, `p_hasta` debe ser
-     `NULL`, y si `extra > 0`, `p_hasta > now()`; además, `plan + extra >= espacio_usado`; no toca `vence_en`, `estado`
-     ni los avisos.
+   `REVOKE ALL … FROM PUBLIC` y `EXECUTE` solo para `nimbo_app`, comprueban `public.nimbo_actor_role() = 'ADMIN'`,
+   bloquean `usuario` y `suscripcion` con `FOR UPDATE` y operan una fila por `usuario_id`:
+   - `ajustar_cuota_extra(p_usuario, p_extra, p_hasta)` es la fuente de verdad de las reglas que dependen del estado.
+     `PUT` exige `p_extra > 0` y `p_hasta > now()`; `DELETE` llama con `0`/`NULL`, única vía para quitar. Exige
+     `plan + p_extra <= 2^53-1` y `plan + p_extra >= espacio_usado`; no toca `vence_en`, `estado` ni los avisos. La
+     fecha se captura como día en `America/Guatemala` y el adaptador la convierte al inicio del día siguiente en UTC.
    - `extender_vigencia(p_usuario, p_vence)` exige plan de pago, `p_vence > vence_en` y `p_vence > now()`; **calcula** el
-     `estado` (`solo_lectura` → `vigente`) y no toca avisos, `plan_pendiente_id` ni `renovacion_automatica`.
+     `estado` (`solo_lectura` → `vigente`) y no toca avisos, `plan_pendiente_id` ni `renovacion_automatica`. La fecha
+     sigue la misma conversión de día.
 
-   Una política `suscripcion_ajuste_administracion FOR UPDATE TO CURRENT_USER` con `USING`/`WITH CHECK` de rol `ADMIN`
-   permite que la función escriba bajo `FORCE RLS`; `nimbo_app` no la usa. El `SELECT … FOR UPDATE` de la función también
-   necesita esa política. No se reinician `aviso_previo_para` ni `aviso_vencida_para`: la 010 los compara con `vence_en` y
-   el `vence_en` nuevo ya define el periodo siguiente; reiniciarlos reenviaría correos del periodo anterior.
+   Las funciones devuelven un **código de resultado** (`ok`, `quota_invalid`, `quota_below_usage`,
+   `validity_not_extended`, `personal`, `account_not_found`, `no_subscription`) y la vista nueva; el repositorio traduce
+   el código a errores de dominio. Los fallos esperados no se lanzan como excepciones arbitrarias; solo un rol distinto
+   de `ADMIN` (`SQLSTATE 42501`) o un conteo interno inesperado hace `RAISE`. Una política
+   `suscripcion_ajuste_administracion FOR UPDATE TO CURRENT_USER` con `USING`/`WITH CHECK` de rol `ADMIN` permite que la
+   función escriba bajo `FORCE RLS`; `nimbo_app` no la usa. El `SELECT … FOR UPDATE` de la función también necesita esa
+   política. No se reinician `aviso_previo_para` ni `aviso_vencida_para`: la 010 los compara con `vence_en` y el `vence_en`
+   nuevo ya define el periodo siguiente; reiniciarlos reenviaría correos del periodo anterior.
 2. **Restauración (Soporte).** `archivo` y `carpeta` no ganan `UPDATE` para `nimbo_app`. Una función
    `restaurar_raiz_papelera(p_usuario, p_tipo, p_nodo)` `SECURITY DEFINER` y `VOLATILE`, con el mismo `search_path` y
    `EXECUTE` solo para `nimbo_app`, comprueba rol `SUPPORT`, que la raíz pertenece a `p_usuario`, que
@@ -101,10 +105,11 @@ logs. La 011b es la primera escritura interna sobre `storage` de un cliente.
    funciones eran de solo lectura y devolvían solo identificadores; estas escriben y devuelven plan, estado, `vence_en` y
    el extra). La lista de control es: una fila por `usuario_id` en la cuenta; columnas fijas; rol comprobado dentro de la
    función; `search_path` cerrado; `VOLATILE`; `REVOKE`/`GRANT`; política del dueño; prueba con dueño `NOSUPERUSER`.
-   Delimita ADR-0032 regla 3: la restauración de Soporte es una escritura permitida en solo lectura y se añade
-   `POST /backoffice/client-trash/:nodeId/restore` a la lista de rutas permitidas de su prueba. `architecture.md` §6.5 y
-   §6.6 se actualizan para incluir `SupportTrashService` y la función de restauración, y para decir que expone nombres de
-   carpeta y la ruta original sin contenido, versiones, claves ni URLs.
+   Delimita ADR-0032 regla 3: la restauración de Soporte es una escritura permitida en solo lectura. **No se edita
+   ADR-0032**, que está Aceptada: al aceptarse este ADR, su prueba añade
+   `POST /backoffice/client-trash/:nodeId/restore` a la lista de rutas permitidas y lo deja fuera de la de bloqueadas.
+   `architecture.md` §6.5 y §6.6 se actualizan para incluir `SupportTrashService` y la función de restauración, y para
+   decir que expone nombres de carpeta y la ruta original sin contenido, versiones, claves ni URLs.
 
 ## Consecuencias
 

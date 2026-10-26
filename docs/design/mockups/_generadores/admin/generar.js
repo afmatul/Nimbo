@@ -121,14 +121,9 @@ ${A.CSS_PAGINACION}
   .limits-actions .btn-quitar { margin-left: auto; }
   .limits .audit-note { margin-top: 12px; }
   .limits .alert { margin: 0 0 16px; }
+  .skeleton-line.tall { margin-top: 10px; height: 18px; }
 
-  /* Diálogo con formulario (ajustar cuota y extender vigencia) */
-  .form-dialog { top: 72px; width: min(560px, calc(100% - 32px)); max-height: calc(100vh - 144px); overflow: auto; }
-  .form-dialog .sub { margin: 4px 0 0; color: var(--secondary-foreground); font-size: 13.5px; }
-  .form-dialog .field { margin-top: 16px; }
-  .form-dialog .field > label { font-size: 13.5px; }
-  .form-dialog .text-input { max-width: none; }
-  .form-dialog .text-input.short { max-width: 220px; }
+  /* Diálogo con formulario (ajustar cuota y extender vigencia): base compartida en area.js */
   .input-group { display: flex; align-items: stretch; max-width: 220px; }
   .input-group .text-input { max-width: none; border-right: 0; border-radius: var(--radius-md) 0 0 var(--radius-md); }
   .input-group .unit { display: flex; align-items: center; padding: 0 12px; border: 1px solid var(--input); border-left: 0; border-radius: 0 var(--radius-md) var(--radius-md) 0; background: var(--muted); color: var(--secondary-foreground); font-size: 13px; font-weight: 600; }
@@ -150,9 +145,6 @@ ${A.CSS_PAGINACION}
     .limit:last-child { padding-bottom: 0; border-bottom: 0; }
     .limits-actions .btn { width: 100%; min-height: 44px; }
     .limits-actions .btn-quitar { margin-left: 0; }
-    .form-dialog { top: 16px; max-height: calc(100vh - 32px); }
-    .form-dialog .dialog-actions { flex-direction: column-reverse; align-items: stretch; }
-    .form-dialog .dialog-actions .btn { width: 100%; min-height: 44px; }
     .input-group { max-width: none; }
   }
 
@@ -325,7 +317,7 @@ function limites(c, {
         <section class="card limits" aria-labelledby="limites-t" aria-busy="true">
           <div class="limits-head"><div><h2 id="limites-t">Límites y vigencia</h2><p class="sub">Cuota, espacio extra y vencimiento de la suscripción.</p></div></div>
           <div class="limits-grid" aria-hidden="true">
-            ${[0, 1, 2, 3].map(() => '<div class="limit"><span class="skeleton-line w50"></span><span class="skeleton-line w70" style="margin-top: 10px; height: 18px;"></span></div>').join('')}
+            ${[0, 1, 2, 3].map(() => '<div class="limit"><span class="skeleton-line w50"></span><span class="skeleton-line w70 tall"></span></div>').join('')}
           </div>
           <p class="loading-text" role="status">${icon('loader', 16, 'spin')}Cargando la cuota y la vigencia…</p>
         </section>`;
@@ -344,7 +336,7 @@ function limites(c, {
     ? 'Personal no vence: no tiene vigencia que extender.'
     : soloLectura
       ? 'La cuenta está en solo lectura. Extiende la vigencia para que vuelva a vigente.'
-      : 'Al vencer, la cuota vuelve a la del plan y la cuenta pasa a solo lectura si no se renueva.';
+      : 'Al vencer el extra, la cuota vuelve a la del plan; la cuenta sigue vigente hasta su vencimiento.';
   return `
         <section class="card limits" aria-labelledby="limites-t">
           <div class="limits-head">

@@ -13,11 +13,18 @@ export interface Condition {
 }
 
 /**
- * Bytes del archivo de alias `a`: la suma de sus versiones (plan 006 §3, 007 D-3). Es lo que se muestra, lo que libera la
- * purga y lo que cuenta en el desglose del espacio.
+ * La versión de alias `v` cuenta en `espacio_usado`: no es un original conservado (014b RN-1, RN-7). Toda suma de
+ * versiones que mida espacio debe usarlo, o el contador y la conciliación divergen.
+ */
+export const COUNTED_VERSION_SQL = 'v.conservada_hasta IS NULL';
+
+/**
+ * Bytes del archivo de alias `a`: la suma de sus versiones que cuentan (plan 006 §3, 007 D-3, 014b CA-10). Es lo que se
+ * muestra, lo que libera la purga y lo que cuenta en el desglose del espacio.
  */
 export const FILE_BYTES_SQL =
-  '(SELECT COALESCE(SUM(v.tamano_bytes), 0) FROM version_archivo v WHERE v.archivo_id = a.id)';
+  '(SELECT COALESCE(SUM(v.tamano_bytes), 0) FROM version_archivo v ' +
+  `WHERE v.archivo_id = a.id AND ${COUNTED_VERSION_SQL})`;
 
 /** Ejecuta `sql` con parámetros con nombre (`:nombre`), como los fragmentos de `access` y las `Condition`. */
 export const selectRows = async <T>(

@@ -2,7 +2,6 @@ import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:net';
 import type { AddressInfo } from 'node:net';
 
-import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { acceptedResponseSchema, EMAIL_REQUEST_COOLDOWN_SECONDS } from '@nimbo/contracts';
 import request from 'supertest';
@@ -196,7 +195,6 @@ describe('registro con el SMTP caído (CA-21, CA-13)', () => {
       accessTokenStrategy: 'identity',
       env: { SMTP_PORT: String(smtpPort) },
       modules: [
-        EventEmitterModule.forRoot(),
         ThrottlerModule.forRoot({ throttlers: [...IDENTITY_THROTTLERS] }),
         NotificationsWorkerModule,
         IdentityModule.forRoot(buildTestEnv()),
