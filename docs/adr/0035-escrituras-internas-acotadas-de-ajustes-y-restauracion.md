@@ -74,7 +74,8 @@ logs. La 011b es la primera escritura interna sobre `storage` de un cliente.
      `PUT` exige `p_extra > 0` y `p_hasta > now()`; `DELETE` llama con `0`/`NULL`, única vía para quitar. Exige
      `plan + p_extra <= 2^53-1` y `plan + p_extra >= espacio_usado`; no toca `vence_en`, `estado` ni los avisos. La
      fecha se captura como día en `America/Guatemala` y **el dominio** la convierte a las 00:00 del día siguiente en
-     `America/Guatemala` (06:00 UTC).
+     `America/Guatemala` (06:00 UTC). Códigos: `ok`, `quota_invalid`, `quota_below_usage`, `account_not_found`,
+     `no_subscription`.
    - `extender_vigencia(p_usuario, p_vence)` exige plan de pago, `p_vence > vence_en` y `p_vence > now()`; **calcula** el
      `estado` (`solo_lectura` → `vigente`) y no toca avisos, `plan_pendiente_id` ni `renovacion_automatica`. El dominio
      aplica la misma conversión de día. Códigos: `ok`, `validity_not_extended`, `personal`, `account_not_found`,
@@ -111,8 +112,8 @@ logs. La 011b es la primera escritura interna sobre `storage` de un cliente.
    ninguna de las tres. La restauración se permite en cuentas en solo lectura y no toca `espacio_usado`.
 5. **Enmiendas.** Este ADR enmienda ADR-0005 (barrera 2: ahora hay escrituras internas por función) y ADR-0021 (sus
    funciones eran de solo lectura y devolvían solo identificadores; las de escritura de este ADR escriben y devuelven
-   plan, estado, `vence_en` y el extra; la de lectura devuelve la misma vista). La lista de control es: como máximo una fila por `usuario_id` en la cuenta; columnas fijas; rol comprobado dentro de la
-   función; `search_path` cerrado; `VOLATILE` en las de escritura y `STABLE` sin `FOR UPDATE` en la de lectura;
+   plan, estado, `vence_en` y el extra; la de lectura devuelve la misma vista). La lista de control es: como máximo una fila por `usuario_id` en la
+   cuenta; columnas fijas; rol comprobado dentro de la función; `search_path` cerrado; `VOLATILE` en las de escritura y `STABLE` sin `FOR UPDATE` en la de lectura;
    `REVOKE`/`GRANT`; política del dueño (`SELECT` para la lectura y `UPDATE` para las escrituras); prueba con dueño
    `NOSUPERUSER`.
    Delimita ADR-0032 regla 3: la restauración de Soporte es una escritura permitida en solo lectura. **No se edita
