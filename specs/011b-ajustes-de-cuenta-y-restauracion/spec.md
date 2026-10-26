@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Lista (aprobada por Adrián el 2026-10-26, PR #74) · P-1 a P-9 resueltas · plan, ADR-0035 y mockups aprobados |
+| Estado | En curso (2026-10-26: PR-A en `feat/011b-ajustes`) · aprobada por Adrián el 2026-10-26 (PR #74) · plan, ADR-0035 y mockups aprobados |
 | Dueño | Fátima |
 | Fase | 3 (hereda la 011, Fase 2; se ejecuta en la Fase 3) |
 | Requisitos | RF-05, RF-06, RF-07, RF-12, RF-22, RF-23, RF-24; RNF-05, RNF-13, RNF-14, RNF-17 |
