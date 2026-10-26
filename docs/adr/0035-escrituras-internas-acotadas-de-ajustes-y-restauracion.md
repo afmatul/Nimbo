@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Propuesto (2026-10-22; corregido el 2026-10-24 y el 2026-10-26 tras las auditorías de Adrián). **Enmienda ADR-0005 y ADR-0021**; delimita ADR-0032 regla 3. Se acepta antes del código del PR-A |
+| Estado | **Aceptado** (Adrián, 2026-10-26, PR #74; propuesto el 2026-10-22 y corregido el 2026-10-24 y el 2026-10-26). **Enmienda ADR-0005 y ADR-0021**; delimita ADR-0032 regla 3 |
 | Fecha | 2026-10-22 |
 | Numeración | 0035 desde 2026-10-24: el 0034 lo usa la ADR de SDD express en `main`; el 0033 lo usa la 019 |
 | Decisores | `architect`, Fátima (dueña de 011/011b), Adrián (aprueba `storage`/`identity`/`audit`), Juan Marcos (dueño de `billing`) |

@@ -623,7 +623,7 @@
     <form onsubmit="return false">
       
           <div class="alert alert-error" role="alert" tabindex="-1" id="errores"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg><div><p class="alert-title">Revisa los datos de la cuota.</p><p class="alert-text">Nada cambió.</p>
-            <ul class="alert-list"><li><a href="#cuota-extra">El espacio extra debe ser mayor que cero.</a></li><li><a href="#cuota-hasta">La fecha de fin debe ser futura.</a></li></ul></div></div>
+            <ul class="alert-list"><li><a href="#cuota-extra">El espacio extra debe ser mayor que cero.</a></li><li><a href="#cuota-hasta">La fecha de fin no puede ser anterior a hoy.</a></li></ul></div></div>
           <div class="field">
             <label for="cuota-extra">Espacio extra</label>
             <p class="field-help" id="cuota-extra-ayuda">Se suma a la cuota del plan mientras esté vigente. Debe ser mayor que cero.</p>
@@ -634,7 +634,7 @@
             <label for="cuota-hasta">Vigente hasta</label>
             <p class="field-help" id="cuota-hasta-ayuda">La cuota vuelve a la del plan al terminar este día, sin borrar archivos.</p>
             <input class="text-input short" id="cuota-hasta" name="cuota-hasta" type="date" value="2026-10-20" required aria-describedby="cuota-hasta-ayuda cuota-hasta-error" aria-invalid="true" >
-            <p class="field-error" id="cuota-hasta-error"><svg class="ico " width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg><span>La fecha de fin debe ser futura.</span></p>
+            <p class="field-error" id="cuota-hasta-error"><svg class="ico " width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg><span>La fecha de fin no puede ser anterior a hoy.</span></p>
           </div>
       <div class="calc" aria-live="polite">
         <p>Cuota del plan <strong>350 GB</strong> + extra <strong>0 GB</strong> = <strong>350 GB</strong>.</p>

@@ -1,6 +1,6 @@
 # Plan 011b — Ajustes de cuenta y restauración por Soporte
 
-> Spec: `./spec.md` · Estado del plan: **Propuesto** (2026-10-22, revisado el 2026-10-26)
+> Spec: `./spec.md` · Estado del plan: **Aprobado** (Adrián, 2026-10-26; propuesto el 2026-10-22)
 > Obligatorio y ≤ 250 líneas. Dice qué archivos se tocan y qué se espera de cada uno; no es el código en prosa.
 > Lo aprueba Adrián antes de escribir código. **PR-A** (cuota y vigencia) en `feat/011b-ajustes`, desde `main`; **PR-B**
 > (restauración) en `feat/011b-restauracion`, rama nueva desde `main` cuando el PR-A esté integrado. No se apilan.
@@ -62,7 +62,7 @@
 | web/app | `app/(app)/(interno)/soporte/papelera/page.tsx` (nuevo) | Ruta de Soporte; `INTERNAL_PATHS.supportTrash` y la navegación interna en `home-path.ts` e `internal-area-layout.tsx`. |
 | web/storage | `space-summary-view.tsx`, `sidebar-quota.tsx` | Nota «Tu cuota incluye <X> GB extra hasta el <fecha>» cuando `extraQuotaBytes > 0`; desaparece al vencer. |
 | web/audit | `activity-labels.ts` + spec | Textos de `account.quota_adjusted` y `account.validity_adjusted`; `node.restored` y el bloque de `note` ya existen. |
-| web/lib, web/billing, billing/application | `lib/format-date.ts` + spec, `subscription-copy.ts`, `payment-form.tsx`, `renewal-payment.tsx`; `billing-date.ts` + spec, `renewal-messages.ts` | `lastDayLabel`, `longLastDayLabel` y `formatBillingLastDay` muestran un instante de fin como el último día en que rige (día de Guatemala de `instante − 1 ms`, RN-8). Los usan la ficha, la nota del resumen de espacio y las vistas y correos de la 010 que dicen «vence», «venció» o «hasta»; las demás fechas («se aplica el», «empieza el») no cambian. |
+| web/lib, web/billing, billing/application | `lib/format-date.ts` + spec, `subscription-copy.ts`, `plan-change-copy.ts`, `payment-form.tsx`, `renewal-payment.tsx`; `billing-date.ts` + spec, `renewal-messages.ts` | `lastDayLabel`, `longLastDayLabel` y `formatBillingLastDay` muestran un instante de fin como el último día en que rige (día de Guatemala de `instante − 1 ms`, RN-8). Los usan la ficha, la nota del resumen de espacio y las vistas y correos de la 010 que dicen «vence» o «hasta» (en `plan-change-copy.ts`, «Plan actual · hasta el»; «el»/«desde el» siguen con el instante). «Venció el» (`current-plan-card.tsx`, correo de vencida) y las demás fechas («se aplica el», «empieza el») no cambian. |
 
 - **Puertos nuevos:** `ISubscriptionAdministrationRepository` (billing), `ISupportTrashRepository` (storage) y la fachada
   `SupportTrashService`. Sin `IAccountUsageLock`: las funciones de escritura de §3 bloquean `usuario` y validan el uso en
@@ -244,7 +244,6 @@ CREATE POLICY archivo_soporte_destino ON archivo FOR SELECT TO CURRENT_USER
 - **Fuera de alcance:** lo de la spec §7. No se añaden dependencias.
 
 ## 8. Aprobación
-- `architect`: veredicto pendiente sobre el ADR-0035 y las funciones `SECURITY DEFINER`; `security-auditor`: revisión de
-  las políticas del dueño y de la función de restauración.
-- Juan Marcos: visto bueno pendiente de `billing` (dominio, aplicación y migración).
-- Adrián: **Propuesto** — 2026-10-22; revisión de los hallazgos del PR #74 el 2026-10-23, auditoría del 2026-10-24 y seguimiento del 2026-10-26.
+- Adrián: **Aprobado — Adrián, 2026-10-26** (PR #74): spec, plan, ADR-0035 y mockups; su aprobación basta y no se espera
+  a `architect`, Juan Marcos ni `security-auditor`. Antes: auditorías del 2026-10-23, 2026-10-24 y 2026-10-26.
+- `security-auditor` sigue siendo obligatorio en la revisión de cada PR de código (aislamiento, CA-15).

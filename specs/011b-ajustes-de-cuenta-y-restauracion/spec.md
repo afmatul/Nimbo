@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Borrador (2026-10-22, revisado el 2026-10-26) · P-1 a P-9 resueltas · plan propuesto · mockups listos para revisión |
+| Estado | Lista (aprobada por Adrián el 2026-10-26, PR #74) · P-1 a P-9 resueltas · plan, ADR-0035 y mockups aprobados |
 | Dueño | Fátima |
 | Fase | 3 (hereda la 011, Fase 2; se ejecuta en la Fase 3) |
 | Requisitos | RF-05, RF-06, RF-07, RF-12, RF-22, RF-23, RF-24; RNF-05, RNF-13, RNF-14, RNF-17 |
@@ -12,9 +12,9 @@
 | Última actualización | 2026-10-26 |
 
 > **Continuidad:** borrador cerrado, `plan.md` propuesto y `/mockup` listo el 2026-10-22, con los hallazgos del PR #74
-> corregidos el 2026-10-23, la auditoría de Adrián del 2026-10-24 y su seguimiento del 2026-10-26. Lo que queda es la aprobación de Adrián de la spec,
-> el plan, el ADR-0035 y los mockups para pasar a «Lista», y después `/tasks` e `/implement`. Reparto: PR-A (cuota y
-> vigencia) y PR-B (restauración), en ramas nuevas desde `main`; el ADR-0035 se acepta antes del código del PR-A.
+> corregidos el 2026-10-23, la auditoría de Adrián del 2026-10-24 y su seguimiento del 2026-10-26. Adrián aprobó spec,
+> plan, ADR-0035 y mockups el 2026-10-26 («Lista»); sigue `/tasks` e `/implement`. Reparto: PR-A (cuota y vigencia) y
+> PR-B (restauración), en ramas nuevas desde `main`; el ADR-0035 queda aceptado antes del código del PR-A.
 
 ## 1. Contexto y objetivo
 La 011 dejó fuera, por tamaño, tres operaciones que la matriz de roles ya define: el Administrador ajusta la cuota y la
@@ -65,7 +65,7 @@ puede deshacer una eliminación concreta dejando rastro visible para el cliente.
 - **RN-5** Roles: Administración ajusta cuota y vigencia; Soporte restaura; Operador no hace ninguna de las tres; el Cliente no las llama. Administración no restaura y Soporte no ajusta cuota ni vigencia.
 - **RN-6** La cuota extra se aplica también a Personal; la vigencia no, porque Personal no vence.
 - **RN-7** Las tres acciones se permiten sobre cuentas activas o suspendidas y no cambian su estado; suspender sigue revocando sesiones y congelando compartidos (011 RN-6).
-- **RN-8** Los tamaños se capturan en GB con el mismo formato que el catálogo de planes y se guardan en bytes exactos (ADR-0016); la diferencia de bases con `formatBytes` de `storage` sigue en PD-91. Las fechas se muestran en hora de Guatemala y con el formato del sistema; el día que se captura se convierte a las 00:00 del día siguiente en `America/Guatemala` (06:00 UTC) y se guarda en UTC. Un instante de fin (`vence_en`, `cuota_extra_hasta`) se muestra como el último día en que rige: el día en Guatemala del instante menos 1 ms. Así se ve el día elegido, y un `vence_en` de la 010 con hora intermedia se ve igual que hoy. Lo aplican la ficha, el resumen de espacio, «Plan y facturación» y los correos de la 010 que dicen «vence», «venció» o «hasta». No se inventan topes de negocio: el único tope es técnico (`2^53-1` bytes, por el `number` de los contratos y la suma `bigint`); el contrato valida cada valor y el dominio/SQL validan la suma `plan + extra`, y la interfaz muestra el total resultante antes de confirmar.
+- **RN-8** Los tamaños se capturan en GB con el mismo formato que el catálogo de planes y se guardan en bytes exactos (ADR-0016); la diferencia de bases con `formatBytes` de `storage` sigue en PD-91. Las fechas se muestran en hora de Guatemala y con el formato del sistema; el día que se captura se convierte a las 00:00 del día siguiente en `America/Guatemala` (06:00 UTC) y se guarda en UTC. Un instante de fin (`vence_en`, `cuota_extra_hasta`) se muestra como el último día en que rige: el día en Guatemala del instante menos 1 ms. Así se ve el día elegido, y un `vence_en` de la 010 con hora intermedia se ve igual que hoy. Lo aplican la ficha, el resumen de espacio, «Plan y facturación», el diálogo de cambio de plan y los correos de la 010 que dicen «vence» o «hasta». «Venció el» queda fuera: muestra el instante real, el primer día sin vigencia («Activo hasta el 30/11» y después «Venció el 01/12»). No se inventan topes de negocio: el único tope es técnico (`2^53-1` bytes, por el `number` de los contratos y la suma `bigint`); el contrato valida cada valor y el dominio/SQL validan la suma `plan + extra`, y la interfaz muestra el total resultante antes de confirmar.
 
 ## 5. Seguridad y privacidad
 - **Toca datos de un cliente: sí** → pruebas de aislamiento bloqueantes (RNF-05), además de las unitarias y de integración.
@@ -116,3 +116,5 @@ puede deshacer una eliminación concreta dejando rastro visible para el cliente.
 | 2026-10-23 | ADR renumerado a 0035: el 0033 lo usa la 019 y el 0034 la SDD express en `main` | Evitar el choque de numeración entre specs abiertas | Fátima |
 | 2026-10-23 | Hallazgos del PR #74: restauración por función `SECURITY DEFINER`, funciones de cuenta `VOLATILE` con política del dueño, sin reinicio de avisos, fecha de vigencia siempre posterior a ahora, tope técnico `2^53-1`, códigos de error separados y nombres de estados de la interfaz | Revisión de `architect`, `security-auditor`, `ui-designer` y `reviewer` | Fátima |
 | 2026-10-24 | Auditoría de Adrián: ADR-0035 y DF-81; restauración permitida en solo lectura fuera de la lista de bloqueos de ADR-0032; fecha con conversión de día Guatemala; `PUT` con extra > 0 y `DELETE` para quitar; errores de cuenta interna y sin suscripción separados; fuente de verdad de reglas y mapeo SQL; `FormDialog` y CSS compartidos | Cierre de B-1 a B-4, M-1 a M-7 y menores | Fátima |
+| 2026-10-26 | Seguimiento de Adrián: lectura `limites_de_cuenta`, fecha a las 00:00 del día siguiente en Guatemala, `no_subscription` en la vigencia. RN-8: un instante de fin se muestra como el último día en que rige; CA-6, CA-7 y RN-2 piden un día posterior al que se muestra | Cierre de N-1 a N-6 y decisión de Fátima sobre las fechas de fin | Fátima |
+| 2026-10-26 | N-7: el diálogo de cambio de plan usa la regla; «Venció el» queda fuera de ella. N-8: mensaje «La fecha de fin no puede ser anterior a hoy». Spec, plan, ADR-0035 y mockups aprobados: pasa a «Lista» | Aprobación de Adrián, PR #74 | Adrián |

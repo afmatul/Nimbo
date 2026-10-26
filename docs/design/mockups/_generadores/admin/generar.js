@@ -537,14 +537,17 @@ const DLG_QUITAR_EXTRA = dialogo({
   confirmar: 'Quitar extra', clase: 'btn-primary-dlg', ic: 'circlex', cancelar: 'admin--ficha.html',
 });
 
+const EXTRA_NO_POSITIVO = 'El espacio extra debe ser mayor que cero.';
+const FIN_ANTERIOR_A_HOY = 'La fecha de fin no puede ser anterior a hoy.';
+
 const DLG_CUOTA_INVALIDA = dialogoCuota({
   c: C.LAURA, extra: '0', hasta: '2026-10-20', total: '350 GB', usado: '304 GB', pct: 87,
-  errorCampo: { extra: 'El espacio extra debe ser mayor que cero.', hasta: 'La fecha de fin debe ser futura.' },
+  errorCampo: { extra: EXTRA_NO_POSITIVO, hasta: FIN_ANTERIOR_A_HOY },
   resumen: A.resumenErrores({
     titulo: 'Revisa los datos de la cuota.', texto: 'Nada cambió.',
     items: [
-      ['cuota-extra', 'El espacio extra debe ser mayor que cero.'],
-      ['cuota-hasta', 'La fecha de fin debe ser futura.'],
+      ['cuota-extra', EXTRA_NO_POSITIVO],
+      ['cuota-hasta', FIN_ANTERIOR_A_HOY],
     ],
   }),
 });
