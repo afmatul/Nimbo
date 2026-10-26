@@ -18,9 +18,8 @@
   `STABLE`, sin `FOR UPDATE`) devuelve la vista para `limitsOf`; sin ella `nimbo_app` no puede leer `suscripcion`.
   Las de escritura devuelven un código de resultado y la vista nueva; el repositorio traduce el código a errores de
   dominio. No hay una función de bloqueo separada ni una regla TS que duplique la de SQL.
-- La vigencia solo se extiende: `vence_en` nuevo, `estado` a `vigente` si estaba en solo lectura y **sin tocar los
-  avisos**; no toca `iniciado_en`, `renovacion_automatica` ni `plan_pendiente_id` (RN-2, CA-8). El `vence_en` nuevo basta
-  para que la 010 vuelva a avisar en el periodo nuevo.
+- La vigencia solo se extiende: `vence_en` nuevo y `estado` a `vigente` si estaba en solo lectura; **no toca los avisos**,
+  `iniciado_en`, `renovacion_automatica` ni `plan_pendiente_id` (RN-2, CA-8): el `vence_en` nuevo basta para la 010.
 - **PR-B.** `storage` gana una fachada `SupportTrashService` owner-scoped que lista raíces y restaura con una función
   `SECURITY DEFINER` (`restaurar_raiz_papelera`). La función comprueba dueño, raíz, retención y destino, reubica el
   subárbol **mientras sigue en papelera** y escribe solo las columnas permitidas. No reutiliza `TrashService`
@@ -63,11 +62,11 @@
 | web/app | `app/(app)/(interno)/soporte/papelera/page.tsx` (nuevo) | Ruta de Soporte; `INTERNAL_PATHS.supportTrash` y la navegación interna en `home-path.ts` e `internal-area-layout.tsx`. |
 | web/storage | `space-summary-view.tsx`, `sidebar-quota.tsx` | Nota «Tu cuota incluye <X> GB extra hasta el <fecha>» cuando `extraQuotaBytes > 0`; desaparece al vencer. |
 | web/audit | `activity-labels.ts` + spec | Textos de `account.quota_adjusted` y `account.validity_adjusted`; `node.restored` y el bloque de `note` ya existen. |
+| web/lib, web/billing, billing/application | `lib/format-date.ts` + spec, `subscription-copy.ts`, `payment-form.tsx`, `renewal-payment.tsx`; `billing-date.ts` + spec, `renewal-messages.ts` | `lastDayLabel`, `longLastDayLabel` y `formatBillingLastDay` muestran un instante de fin como el último día en que rige (día de Guatemala de `instante − 1 ms`, RN-8). Los usan la ficha, la nota del resumen de espacio y las vistas y correos de la 010 que dicen «vence», «venció» o «hasta»; las demás fechas («se aplica el», «empieza el») no cambian. |
 
-- **Puertos nuevos:** `ISubscriptionAdministrationRepository` (billing) e `ISupportTrashRepository` (storage), más la
-  fachada `SupportTrashService`. No se crea `IAccountUsageLock`: las funciones de escritura de §3 bloquean `usuario` y validan el uso
-  en la misma transacción; una carga ya autorizada puede terminar después y dejar la cuenta por encima de la cuota
-  (el sistema ya lo tolera, `architecture.md` §7.2).
+- **Puertos nuevos:** `ISubscriptionAdministrationRepository` (billing), `ISupportTrashRepository` (storage) y la fachada
+  `SupportTrashService`. Sin `IAccountUsageLock`: las funciones de escritura de §3 bloquean `usuario` y validan el uso en
+  la misma transacción; una carga ya autorizada puede terminar después por encima de la cuota (`architecture.md` §7.2).
 - **Dependencias:** `backoffice → identity, billing, storage, audit` (ya existe); `billing → identity` ya existe
   (evento `identity.client-account-verified`, `VerifiedClientLister`, `AccountContactReader` y `AccountNotFoundError`)
   y `storage` sigue sin importar `billing` (recibe la cuota por `IPlanLimitsProvider`).
@@ -109,7 +108,8 @@ CREATE POLICY suscripcion_ajuste_administracion ON suscripcion FOR UPDATE TO CUR
 --   plan + p_extra <= 2^53-1 y >= espacio_usado; no toca vence_en, estado ni avisos; actualiza actualizado_en.
 --   Códigos: ok, quota_invalid, quota_below_usage, account_not_found, no_subscription.
 -- extender_vigencia(p_usuario, p_vence) bloquea usuario y suscripcion y devuelve la misma vista.
---   Exige plan de pago, p_vence > vence_en y > now(); calcula estado (solo_lectura -> vigente) y no toca avisos,
+--   Exige plan de pago, p_vence > now() y p_vence > la medianoche de Guatemala que cierra el día de
+--   (vence_en - 1 ms), es decir, un día posterior al que se muestra (spec RN-8); calcula estado (solo_lectura -> vigente) y no toca avisos,
 --   plan_pendiente_id ni renovacion_automatica.
 --   Códigos: ok, validity_not_extended, personal, account_not_found, no_subscription.
 -- Las de escritura comprueban una fila por usuario_id (RAISE si el conteo interno no cuadra); la de lectura devuelve 0 o 1.
@@ -187,7 +187,7 @@ CREATE POLICY archivo_soporte_destino ON archivo FOR SELECT TO CURRENT_USER
 |---|---|---|
 | CA-1, CA-4, CA-5 | unit + int + web | `subscription-adjustment.spec.ts`, `plan-limits.adapter.spec.ts`, `space-summary.service.spec.ts`, `test/int/backoffice/account-adjustments.int-spec.ts`, `account-limits.spec.tsx`, `space-summary-view.spec.tsx` |
 | CA-2, CA-3, CA-7 | unit + int | `subscription-adjustment.spec.ts` (conversión de fecha), `typeorm-subscription-administration.repository.spec.ts` (códigos a errores), `account-adjustments.int-spec.ts` (bordes de `plan + extra < usado`, fecha no posterior, `422`/`404`, nada cambia, sin evento) |
-| CA-6, CA-8, CA-9, CA-18 | unit + int | `subscription-administration.spec.ts` (solo extiende, no toca renovación ni cambio), `account-adjustments.int-spec.ts` (solo lectura → vigente; un ajuste de cuota no vuelve a seleccionar la cuenta en `suscripciones_por_avisar`) |
+| CA-6, CA-8, CA-9, CA-18 | unit + int | `subscription-administration.spec.ts` (solo extiende, no toca renovación ni cambio), `format-date.spec.ts` y `billing-date.spec.ts` (último día: medianoche y hora intermedia), `account-adjustments.int-spec.ts` (solo lectura → vigente; un ajuste de cuota no vuelve a seleccionar la cuenta en `suscripciones_por_avisar`) |
 | CA-10, CA-11 | unit + int | `support-trash.service.spec.ts`, `test/int/backoffice/client-trash.int-spec.ts` (raíces, retención, destino, renombrado, `moved_to_root`, carpetas y `ruta`/`profundidad` del subárbol) |
 | CA-12 | unit + int | `client-trash.int-spec.ts` (motivo vacío/largo, tipo inválido, no raíz, ajena, vencida, correo inválido/inexistente) |
 | CA-13, CA-16 | int | `test/int/backoffice/roles-matrix.int-spec.ts` (SUPPORT solo restaura; ADMIN, OPERATOR y CLIENT `403`) |
