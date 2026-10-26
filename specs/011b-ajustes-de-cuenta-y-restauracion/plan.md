@@ -32,7 +32,7 @@
 ## 2. Módulos, archivos y diseño
 | Módulo / capa | Archivo (nuevo o cambiado) | Responsabilidad |
 |---|---|---|
-| contracts/backoffice | `src/backoffice/adjustments.ts` (nuevo), `error-codes.ts`, `schemas.ts`, `index.ts` | `accountLimitsSchema` (`status: active \| readOnly \| personal \| none`; base y total `null` sin suscripción), `adjustQuotaRequestSchema`, `adjustValidityRequestSchema`, códigos y `BACKOFFICE_FIELD_ISSUE_REASONS` nuevos. Valida forma: bytes como texto decimal (011), patrón `^[1-9][0-9]{0,15}$` para `PUT` (cero se quita con `DELETE`) y que cada valor no supere `2^53-1`; fecha `YYYY-MM-DD`. No conoce la cuota del plan ni valida la suma; eso queda en SQL. |
+| contracts/backoffice | `src/backoffice/adjustments.ts` (nuevo), `fields.ts` (nuevo, interno: `addReason`, `byteText` y `timestamp` compartidos sin reexportar), `error-codes.ts`, `schemas.ts`, `index.ts` | `accountLimitsSchema` (`status: active \| readOnly \| personal \| none`; base y total `null` sin suscripción), `adjustQuotaRequestSchema`, `adjustValidityRequestSchema`, códigos y `BACKOFFICE_FIELD_ISSUE_REASONS` nuevos. Valida forma: bytes como texto decimal (011), patrón `^[1-9][0-9]{0,15}$` para `PUT` (cero se quita con `DELETE`) y que cada valor no supere `2^53-1`; fecha `YYYY-MM-DD`. No conoce la cuota del plan ni valida la suma; eso queda en SQL. |
 | contracts/backoffice | `src/backoffice/trash.ts` (nuevo), `index.ts` | `clientTrashResponseSchema` (reutiliza `trashItemSchema` de `storage` y añade `client`), `restoreClientNodeRequestSchema` con `type`, `email` y `note` de 1 a `AUDIT_NOTE_MAX_LENGTH`; reutiliza `restoreResponseSchema`. |
 | contracts/storage | `src/storage/space-schemas.ts`, `src/storage/schemas.spec.ts` | `baseQuotaBytes`, `extraQuotaBytes`, `extraQuotaUntil` (aquí bytes numéricos, como el resto de `storage`); `quotaBytes` sigue siendo la efectiva. |
 | billing/domain | `subscription-adjustment.ts` (nuevo) + spec | Convierte `YYYY-MM-DD` a las 00:00 del día siguiente en `America/Guatemala` (06:00 UTC); no mapea códigos de SQL. No repite las reglas que dependen del estado; la fuente de verdad de esas reglas es la función SQL. |
@@ -62,7 +62,7 @@
 | web/app | `app/(app)/(interno)/soporte/papelera/page.tsx` (nuevo) | Ruta de Soporte; `INTERNAL_PATHS.supportTrash` y la navegación interna en `home-path.ts` e `internal-area-layout.tsx`. |
 | web/storage | `space-summary-view.tsx`, `sidebar-quota.tsx` | Nota «Tu cuota incluye <X> GB extra hasta el <fecha>» cuando `extraQuotaBytes > 0`; desaparece al vencer. |
 | web/audit | `activity-labels.ts` + spec | Textos de `account.quota_adjusted` y `account.validity_adjusted`; `node.restored` y el bloque de `note` ya existen. |
-| web/lib, web/billing, billing/application | `lib/format-date.ts` + spec, `subscription-copy.ts`, `plan-change-copy.ts`, `payment-form.tsx`, `renewal-payment.tsx`; `billing-date.ts` + spec, `renewal-messages.ts` | `lastDayLabel`, `longLastDayLabel` y `formatBillingLastDay` muestran un instante de fin como el último día en que rige (día de Guatemala de `instante − 1 ms`, RN-8). Los usan la ficha, la nota del resumen de espacio y las vistas y correos de la 010 que dicen «vence» o «hasta» (en `plan-change-copy.ts`, «Plan actual · hasta el»; «el»/«desde el» siguen con el instante). «Venció el» (`current-plan-card.tsx`, correo de vencida) y las demás fechas («se aplica el», «empieza el») no cambian. |
+| web/lib, web/billing, billing/application | `lib/format-date.ts` + spec, `subscription-copy.ts`, `plan-change-copy.ts`, `payment-form.tsx`, `renewal-payment.tsx`, `current-plan-card.tsx`, `next-charge-card.tsx`, `pending-change-notice.tsx` (estos tres con `expiryInstantLabel`, para que «Venció el», «cambiará a X el» y «pasas a Personal el» no cambien); `billing-date.ts` + spec, `renewal-messages.ts` | `lastDayLabel`, `longLastDayLabel` y `formatBillingLastDay` muestran un instante de fin como el último día en que rige (día de Guatemala de `instante − 1 ms`, RN-8). Los usan la ficha, la nota del resumen de espacio y las vistas y correos de la 010 que dicen «vence» o «hasta» (en `plan-change-copy.ts`, «Plan actual · hasta el»; «el»/«desde el» siguen con el instante). «Venció el» (`current-plan-card.tsx`, correo de vencida) y las demás fechas («se aplica el», «empieza el») no cambian. |
 
 - **Puertos nuevos:** `ISubscriptionAdministrationRepository` (billing), `ISupportTrashRepository` (storage) y la fachada
   `SupportTrashService`. Sin `IAccountUsageLock`: las funciones de escritura de §3 bloquean `usuario` y validan el uso en
@@ -80,7 +80,7 @@
 
 ## 3. Datos
 ```sql
--- 20261022100000-cuota-extra-y-ajuste-de-vigencia.ts (PR-A)
+-- 20261026100000-cuota-extra-y-ajuste-de-vigencia.ts (PR-A; 20261022100000 ya lo usa la 019)
 ALTER TABLE suscripcion
   ADD COLUMN cuota_extra_bytes bigint NOT NULL DEFAULT 0,
   ADD COLUMN cuota_extra_hasta timestamptz,
@@ -107,14 +107,14 @@ CREATE POLICY suscripcion_ajuste_administracion ON suscripcion FOR UPDATE TO CUR
 --   PUT exige p_extra > 0 y p_hasta > now(); DELETE llama con 0/NULL (única vía para quitar).
 --   plan + p_extra <= 2^53-1 y >= espacio_usado; no toca vence_en, estado ni avisos; actualiza actualizado_en.
 --   Códigos: ok, quota_invalid, quota_below_usage, account_not_found, no_subscription.
--- extender_vigencia(p_usuario, p_vence) bloquea usuario y suscripcion y devuelve la misma vista.
+-- extender_vigencia(p_usuario, p_vence) bloquea usuario y suscripcion y devuelve la misma vista más salio_de_solo_lectura.
 --   Exige plan de pago, p_vence > now() y p_vence > la medianoche de Guatemala que cierra el día de
 --   (vence_en - 1 ms), es decir, un día posterior al que se muestra (spec RN-8); calcula estado (solo_lectura -> vigente) y no toca avisos,
 --   plan_pendiente_id ni renovacion_automatica.
 --   Códigos: ok, validity_not_extended, personal, account_not_found, no_subscription.
 -- Las de escritura comprueban una fila por usuario_id (RAISE si el conteo interno no cuadra); la de lectura devuelve 0 o 1.
 
--- 20261022100100-soporte-restaura-la-papelera.ts (PR-B)
+-- 20261026100100-soporte-restaura-la-papelera.ts (PR-B, después de la del PR-A)
 CREATE POLICY archivo_soporte_restauracion ON archivo FOR UPDATE TO CURRENT_USER
   USING (nimbo_actor_role() = 'SUPPORT' AND eliminado_en IS NOT NULL)
   WITH CHECK (nimbo_actor_role() = 'SUPPORT');

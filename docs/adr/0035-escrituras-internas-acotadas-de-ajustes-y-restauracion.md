@@ -78,7 +78,8 @@ logs. La 011b es la primera escritura interna sobre `storage` de un cliente.
      `no_subscription`.
    - `extender_vigencia(p_usuario, p_vence)` exige plan de pago, `p_vence > now()` y que `p_vence` sea
      posterior a la medianoche de Guatemala que cierra el último día de la vigencia actual (el día de `vence_en − 1 ms`;
-     así el día elegido es posterior al que se muestra, spec RN-8); **calcula** el
+     así el día elegido es posterior al que se muestra, spec RN-8); devuelve también `salio_de_solo_lectura` para que el
+     servicio emita `subscription.read_only_exited` sin otra lectura; **calcula** el
      `estado` (`solo_lectura` → `vigente`) y no toca avisos, `plan_pendiente_id` ni `renovacion_automatica`. El dominio
      aplica la misma conversión de día. Códigos: `ok`, `validity_not_extended`, `personal`, `account_not_found`,
      `no_subscription`.
