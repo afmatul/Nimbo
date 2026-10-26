@@ -1,6 +1,6 @@
 # Plan 021 — Optimizador de imágenes
 
-> Spec: `./spec.md` · Estado del plan: Aprobado (Adrián, 2026-10-26); enmienda de alcance del 2026-10-26 pendiente de su aprobación (§9)
+> Spec: `./spec.md` · Estado del plan: Aprobado (Adrián, 2026-10-26); enmienda de alcance aprobada el 2026-10-26 (§9)
 > Obligatorio y ≤ 250 líneas. Dice **qué** archivos se tocan y **qué** se espera de cada uno; no es el código en
 > prosa (sin cuerpos de funciones ni pseudocódigo). Lo aprueba Adrián antes de escribir código.
 
@@ -244,6 +244,6 @@ usan `sharp` se escriben después de que ADR-0035 se acepte (el spike de §6 us�
   módulos; `sharp` detrás de `IOptimizer` y solo en el `worker`. Se precisaron §2, §3, §4 y §5 antes de aprobar.
 - **Adrián: aprobado el 2026-10-26.** ADR-0035 y DF-81 `Aceptado`; valores de §6 A confirmados; excepción de ADR-0034
   (§8); Adrián revisa en el PR `storage` (PD-130, PD-121), `audit`, `boundaries.js` y la raíz.
-- **Enmienda de alcance, 2026-10-26 (pendiente de aprobación de Adrián):** solo JPEG y PNG; PD-124 fuera; interfaz de
+- **Enmienda de alcance, 2026-10-26 (aprobada en la rama de la spec):** solo JPEG y PNG; PD-124 fuera; interfaz de
   8 estados con un solo mensaje de «no disponible». Quita 3 archivos (48 → 45); sin puertos ni tecnología nuevos,
   `architect` no interviene. Valores de §6 iguales salvo `OPTIMIZER_WEBP_QUALITY`, que desaparece.
