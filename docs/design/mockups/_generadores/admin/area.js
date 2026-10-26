@@ -179,8 +179,19 @@ const CSS_FORM = `
   .alert-list a { display: inline-flex; align-items: center; min-height: 24px; color: var(--destructive); font-weight: 500; }
   .alert-list a:hover { color: var(--foreground); }
 
+  /* Diálogo con formulario (ajustar cuota, extender vigencia y motivo de restauración) */
+  .form-dialog { top: 72px; width: min(560px, calc(100% - 32px)); max-height: calc(100vh - 144px); overflow: auto; }
+  .form-dialog .sub { margin: 4px 0 0; color: var(--secondary-foreground); font-size: 13.5px; }
+  .form-dialog .field { margin-top: 16px; }
+  .form-dialog .field > label { font-size: 13.5px; }
+  .form-dialog .text-input { max-width: none; }
+  .form-dialog .text-input.short { max-width: 220px; }
+
   @media (max-width: 600px) {
     .text-input, .text-input.short { max-width: none; min-height: 44px; }
+    .form-dialog { top: 16px; max-height: calc(100vh - 32px); }
+    .form-dialog .dialog-actions { flex-direction: column-reverse; align-items: stretch; }
+    .form-dialog .dialog-actions .btn { width: 100%; min-height: 44px; }
     .form-actions { flex-direction: column; align-items: stretch; }
     .form-actions .btn { width: 100%; min-height: 44px; }
     .alert-list a { min-height: 32px; }
@@ -252,11 +263,14 @@ const NAV = [
 // logo; yo: persona de la barra lateral y de la barra superior (de admin/corpus.js); nav: entradas { icono, etiqueta,
 // meta (opcional), href }; inicio: destino del logo y de la primera miga (la pantalla de inicio del área).
 const AREA_ADMIN = { etiqueta: 'Administración', chip: 'ADMIN', yo: YO, nav: NAV, inicio: '../admin/admin.html' };
-// Soporte (spec 011, HU-5): solo «Metadatos de archivos» (CA-14). Bitácoras y trabajos (022b) y restauración de papelera
-// (011b) no aparecen hasta sus specs.
+// Soporte (specs 011 y 011b): metadatos (011, CA-14) y papelera con restauración (011b, CA-10). Bitácoras y trabajos
+// (022b) no aparecen hasta su spec.
 const AREA_SOPORTE = {
   etiqueta: 'Soporte', chip: 'SOPORTE', yo: C.ANDREA,
-  nav: [{ icono: 'fileSearch', etiqueta: 'Metadatos de archivos', href: '../soporte/soporte--inicial.html' }],
+  nav: [
+    { icono: 'fileSearch', etiqueta: 'Metadatos de archivos', href: '../soporte/soporte--inicial.html' },
+    { icono: 'trash', etiqueta: 'Papelera', href: '../soporte/soporte--papelera.html' },
+  ],
   inicio: '../soporte/soporte--inicial.html',
 };
 // Operador (product-context §2: «Ver métricas agregadas»): solo «Métricas», en solo lectura; sin Cuentas, Catálogo ni
@@ -283,7 +297,7 @@ function navegacion(idPrimero, actual, area) {
 }
 
 const logo = (cls, area) =>
-  `<a class="${cls}" href="${area.inicio}" aria-label="Nimbo, ${area.etiqueta}"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>`;
+  `<a class="${cls}" href="${area.inicio}"><span class="logo-mark">N</span><span>NIMBO</span><span class="sr-only">, ${area.etiqueta}</span></a>`;
 const chip = (area) => `<span class="plan-chip area-chip">${area.chip}</span>`;
 const quien = (area) => `<div class="who">
         <p class="who-name">${area.yo.nombre}</p>
@@ -336,8 +350,8 @@ function topbar(crumbs, area) {
             <ol>${items}</ol>
           </nav>
         </div>
-        <button class="account-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Menú de la cuenta de ${persona.nombre}">
-          <span class="account-name">${persona.nombre}</span><span class="avatar" aria-hidden="true">${persona.iniciales}</span>
+        <button class="account-btn" type="button" aria-haspopup="menu" aria-expanded="false">
+          <span class="account-name">${persona.nombre}</span><span class="avatar" aria-hidden="true">${persona.iniciales}</span><span class="sr-only">Menú de la cuenta</span>
         </button>
       </header>`;
 }
@@ -434,6 +448,26 @@ function resumenErrores({ titulo, texto, items }) {
             <ul class="alert-list">${items.map(([id, t]) => `<li><a href="#${id}">${t}</a></li>`).join('')}</ul></div></div>`;
 }
 
+// Diálogo de formulario breve (011b): título, descripción, campos, errores, cálculo/resumen y acciones. No es una
+// confirmación destructiva; el foco inicial va al primer campo y «Cancelar» vuelve al mockup de origen. `nota` es el
+// aviso de auditoría (por defecto, el de un ajuste de cuenta; la restauración pasa el suyo).
+function formDialog({ titulo, descripcion, campos, resumen = '', errores = '', nota = 'El ajuste queda en la auditoría del cliente; verá la acción y tu rol, no tu nombre.', confirmar, cancelar, cargando = false, clase = 'form-dialog' }) {
+  return `
+  <div class="overlay" aria-hidden="true"></div>
+  <div class="dialog ${clase}" role="dialog" aria-modal="true" aria-labelledby="dlg-t" aria-describedby="dlg-d">
+    <h2 id="dlg-t">${titulo}</h2>
+    <p class="sub" id="dlg-d">${descripcion}</p>
+    <form onsubmit="return false">
+      ${errores}${campos}${resumen}
+      <p class="audit-note">${icon('history', 15)}<span>${nota}</span></p>
+      <div class="dialog-actions">
+        <a class="btn btn-outline" href="${cancelar}">Cancelar</a>
+        <button class="btn btn-primary" type="button"${cargando ? ' disabled aria-disabled="true"' : ''}>${cargando ? icon('loader', 16, 'spin') : ''}${confirmar}</button>
+      </div>
+    </form>
+  </div>`;
+}
+
 // ---------- Archivos generados ----------
 // Carpeta de salida de una pantalla de backoffice (la crea si no existe). Uso de cada generador: node generar.js <worktree>.
 function carpetaDeSalida(pantalla) {
@@ -445,8 +479,8 @@ function carpetaDeSalida(pantalla) {
 }
 const archivoDe = (pantalla, estado) => (estado === 'default' ? `${pantalla}.html` : `${pantalla}--${estado}.html`);
 // Cabecera de cada HTML generado. referencia: qué pantalla de la spec 011 es; generador: su carpeta en _generadores.
-const comentariosDe = (referencia, estado, generador) => [
-  `Mockup de referencia (spec 011: ${referencia}). Estado: ${estado}.`,
+const comentariosDe = (referencia, estado, generador, spec = '011') => [
+  `Mockup de referencia (spec ${spec}: ${referencia}). Estado: ${estado}.`,
   'Colores: valores de ui-guidelines.md §3 (tonos AA). La implementación usa tokens, components/ui y components/nimbo.',
   `Generado con _generadores/${generador}/generar.js (marco del área en admin/area.js y CSS del marco en marco/marco.js). No editar a mano.`,
 ];
@@ -459,11 +493,11 @@ function escribir(dir, file, html) {
 // titulo: <title>; rotulo: pantalla en el rótulo de la hoja; estado: descripción del estado; cuerpo: HTML de <main>.
 // actual: entrada de la navegación de la pantalla (por defecto «Cuentas»); area: AREA_ADMIN (por defecto), AREA_SOPORTE
 // o AREA_OPERADOR.
-function pagina({ titulo, comentarios, css, rotulo, file, estado, crumbs, cuerpo, dialogo = '', actual = 'Cuentas', area = AREA_ADMIN }) {
+function pagina({ titulo, comentarios, css, rotulo, file, estado, crumbs, cuerpo, dialogo = '', actual = 'Cuentas', area = AREA_ADMIN, spec = '011' }) {
   return `${M.cabecera({ titulo, comentarios, css })}
 <body>
 
-<aside class="sheet-label" aria-label="Rótulo del mockup"><span class="chip">011</span> <strong>${area.etiqueta} · ${rotulo}</strong> <span class="file">${file}</span> <span>sin acceso al contenido de los archivos · estado: ${estado}</span></aside>
+<aside class="sheet-label" aria-label="Rótulo del mockup"><span class="chip">${spec}</span> <strong>${area.etiqueta} · ${rotulo}</strong> <span class="file">${file}</span> <span>sin acceso al contenido de los archivos · estado: ${estado}</span></aside>
 
 <div class="canvas">
   <div class="app"${dialogo ? ' inert' : ''}>
@@ -485,6 +519,6 @@ function pagina({ titulo, comentarios, css, rotulo, file, estado, crumbs, cuerpo
 module.exports = {
   P, icon, ICONO_ROL, CSS, CSS_FORM, privacidad, pagina,
   carpetaDeSalida, archivoDe, comentariosDe, escribir,
-  estadoError, dialogo, campo, resumenErrores, badgeInactivo,
+  estadoError, dialogo, campo, resumenErrores, formDialog, badgeInactivo,
   AREA_ADMIN, AREA_SOPORTE, AREA_OPERADOR, busqueda, paginacion, CSS_BUSQUEDA, CSS_BUSQUEDA_MQ600, CSS_PAGINACION, CSS_PAGINACION_MQ600,
 };

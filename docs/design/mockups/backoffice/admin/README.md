@@ -1,6 +1,7 @@
 # Mockup: Administración · cuentas y ficha
 
-- **Spec**: 011 (CA-1 a CA-4, CA-13, CA-14, CA-17; RN-1, RN-6, RN-7; §6)
+- **Spec**: 011 (CA-1 a CA-4, CA-13, CA-14, CA-17; RN-1, RN-6, RN-7; §6) y 011b (CA-1 a CA-9, CA-17; RN-1,
+  RN-2, RN-6 a RN-8; §6).
 - **Propuesta presentada**: p. 18 (vista de cuentas con ficha lateral).
 - **Cambios respecto de la propuesta** (decisiones de la dueña, 2026-10-03, y de esta revisión):
   - Aviso de privacidad: «metadatos de los archivos (nombre, tipo, tamaño, fechas y estado), nunca su contenido» (P-5), en
@@ -14,11 +15,16 @@
   - La ficha pasa de panel lateral a página propia (`/admin/cuentas/:id`, ver decisión 1).
   - El paquete de la propuesta (`admin.html` empaquetado) se reemplazó por el HTML generado; la p. 18 del PDF sigue
     siendo la referencia histórica.
+  - **011b:** la ficha gana el bloque «Límites y vigencia» (cuota del plan, extra, total, usado y vencimiento) con
+    «Ajustar cuota» y «Extender vigencia»; no hay pantalla nueva. El extra se muestra como «+ 50 GB» con su fecha y el
+    total incluye el extra; el diálogo enseña el total resultante antes de guardar. Personal conserva «Ajustar cuota» y
+    pierde «Extender vigencia» («Personal no vence»). Una cuenta sin suscripción no muestra acciones.
 - **Origen**: HTML autocontenido generado con `../../_generadores/admin/generar.js`; no se edita a mano. El CSS del
   marco (tokens, barra lateral, barra superior, botones, diálogo, cajón y cortes a 900/600 px) sale de
   `_generadores/marco/marco.js`, el mismo de `identity/seguridad`, `shared/layout` y `storage`; la navegación, la persona y
   la barra superior del área se arman en `_generadores/admin/area.js` (compartido por `backoffice/admin`, `alta-interna`, `catalogo`, `metricas` y `soporte`) con las
-  mismas clases. Tonos AA de `ui-guidelines.md` §2–§3,
+  mismas clases. Los formularios de 011b salen de `A.formDialog`/`A.campo`/`CSS_FORM` (la misma pieza que usa
+  Soporte) y de `limites`, `dialogoCuota` y `dialogoVigencia` en `admin/generar.js`. Tonos AA de `ui-guidelines.md` §2-§3,
   solo Inter, cifras con `tabular-nums`, versión móvil real a 360 px. Es referencia visual; `apps/web` no lo importa.
 - **Enlaces entre mockups** (rutas relativas): la barra lateral, el cajón, el logo y las migas llevan a Cuentas
   (`../admin/admin.html`), Catálogo de planes (`../catalogo/catalogo.html`) y Métricas (`../metricas/metricas.html`); «Nueva cuenta interna» →
@@ -29,7 +35,8 @@
   propósito: no tienen ficha dibujada y llevarlos a la de Laura mostraría a otra persona con otros datos (correo, plan,
   espacio, alta), lo que confunde al recorrer el mockup; en la app cada nombre abre `/admin/cuentas/:id`.
   «Reactivar cuenta» (suspendida) y «Cancelar» de confirmar-reactivar siguen siendo botones: la ficha suspendida sin
-  aviso no está dibujada.
+  aviso no está dibujada. En la ficha, «Ajustar cuota» y «Extender vigencia» abren sus formularios; «Quitar extra» (solo
+  si hay extra) abre la confirmación, y «Cancelar» vuelve a `admin--ficha.html`.
 - **Estados incluidos**:
   - default: lista paginada (10 de 1 284), clientes e internas, búsqueda vacía (`admin.html`)
   - vacio: búsqueda por correo sin resultados, con «Limpiar búsqueda» (`admin--vacio.html`)
@@ -42,10 +49,26 @@
     cuenta» (`admin--suspendida.html`)
   - confirmar-reactivar: ficha suspendida con el diálogo de reactivar (`admin--confirmar-reactivar.html`)
   - propia-cuenta (CA-4): ficha de la propia Administradora, sin «Suspender» y con el motivo (`admin--propia-cuenta.html`)
+  - ajustar-cuota (011b): formulario con GB, fecha de fin y total resultante antes de guardar (`admin--ajustar-cuota.html`)
+  - cuota-bajo-lo-usado (011b): total 105 GB sobre una cuenta que usa 108 GB; error de dominio y nada cambia
+    (`admin--cuota-bajo-lo-usado.html`)
+  - cuota-invalida (011b): extra 0 y fecha pasada, con resumen de errores y error en cada campo
+    (`admin--cuota-invalida.html`)
+  - cuota-guardada (011b): 50 GB extra hasta el 15/11/2026; el total y el usado se actualizan en la misma ficha
+    (`admin--cuota-guardada.html`)
+  - quitar-extra (011b): el extra vuelve a la cuota del plan; dice que no se borra nada y que la cuenta sigue dentro
+    (`admin--quitar-extra.html`)
+  - extra-quitado (011b): la cuota vuelve a 350 GB y la cuenta sigue dentro de su plan (`admin--extra-quitado.html`)
+  - extender-vigencia (011b): fecha nueva, aviso de solo lectura y confirmación (`admin--extender-vigencia.html`)
+  - fecha-no-posterior (011b): fecha que no extiende, con error de campo y resumen (`admin--fecha-no-posterior.html`)
+  - vigencia-guardada (011b): vence el 30/11/2026 y la cuenta vuelve a vigente (`admin--vigencia-guardada.html`)
+  - personal (011b): Personal no vence; solo se puede ajustar la cuota (`admin--personal.html`)
+  - sin-suscripcion (011b): sin plan, cuota ni vencimiento que ajustar (`admin--sin-suscripcion.html`)
+  - limites-cargando (011b): esqueleto dentro del bloque, sin perder el resto de la ficha (`admin--limites-cargando.html`)
+  - limites-error (011b): error del bloque con «Reintentar» (`admin--limites-error.html`)
 - **Capturas**: `docs/design/capturas/backoffice/admin/` (`admin--<estado>--<360|1440>.png`, con movimiento
-  reducido). En los nueve estados:
-  axe-core sin violaciones a 360 y 1440 px, sin desbordamiento horizontal a 360 px, sin errores de consola y sin
-  objetivos menores de 24 px (`_generadores/pw/axe-seguridad.js` sobre la carpeta).
+  reducido). En los veintidós estados: axe-core sin violaciones a 360 y 1440 px, sin desbordamiento horizontal a 360 px,
+  sin errores de consola y sin objetivos menores de 24 px (`_generadores/pw/axe-seguridad.js` sobre la carpeta).
 
 ## Datos de ejemplo
 Planes y cuotas del catálogo (`product-context.md` §3). En la app la lista, el total, los planes y el espacio vienen de la
@@ -81,6 +104,23 @@ cuentas y las personas que aparecen en otras pantallas (Mónica, Andrea, Pablo, 
     «No puedes suspender tu propia cuenta. Si necesitas hacerlo, pídeselo a otro Administrador.»
 11. **Ver metadatos de archivos** (CA-13) solo en fichas de clientes, con el aviso de que la consulta queda en la
     auditoría que ve la persona; las cuentas internas no guardan archivos. Lleva a la vista de metadatos (mockup aparte).
+12. **«Límites y vigencia» es un bloque aparte**, a todo el ancho y debajo de la rejilla de datos y acciones: no compite
+    con «Datos de la cuenta» ni convierte la ficha en un formulario permanente. Los valores van en texto (cuota, extra,
+    total, usado y fecha), con el mismo `tabular-nums`; el estado de la suscripción se refuerza con texto e ícono, nunca
+    solo con color. La cuenta puede seguir «Activa» y la suscripción estar en «Solo lectura»: son estados distintos.
+13. **Ajustar cuota** enseña el cálculo antes de guardar (`cuota del plan + extra = total`) y actualiza el total al
+    escribir. El extra debe ser mayor que cero; **«Quitar extra»** es una acción aparte y solo se ofrece si la cuota del
+    plan ya cubre lo usado. Si el total queda por debajo de lo usado, el error nombra las dos cifras (total y usado) y el
+    foco vuelve al campo; no es un diálogo destructivo porque no borra nada. La fecha de fin es obligatoria y futura
+    (P-2 de la 011).
+14. **Extender vigencia** solo alarga: no hay atajo para acortar ni para dejar la cuenta vencida. Si la suscripción está
+    en solo lectura, el diálogo lo dice y la acción sigue disponible; al guardar, la cuenta vuelve a vigente. No se cobra
+    ni se factura y no se envía correo (P-3 de la 011). El texto no promete un cobro ni un cambio de plan.
+15. **Personal no vence**: muestra «Sin vencimiento» y conserva «Ajustar cuota»; no muestra «Extender vigencia» ni una
+    fecha inventada. **Sin suscripción** no muestra el bloque de acciones: no hay cuota ni vigencia que ajustar.
+16. **El éxito se cuenta en el bloque** con `role="status"` y, si hay extra, «Datos de la cuenta» pasa a mostrar el total
+    con extra y el porcentaje recalculado. Así no se ven dos totales distintos en la misma ficha. El aviso de la acción
+    queda en la auditoría del cliente con la fecha y el rol del Administrador, no con su nombre (RN-2).
 
 ## Pendiente
 - **Rechazo de «último Administrador activo»** (CA-4, RN-7): quien suspende es un Administrador activo que no puede
@@ -96,3 +136,12 @@ cuentas y las personas que aparecen en otras pantallas (Mónica, Andrea, Pablo, 
 - Búsqueda por inicio del correo y 10 por página (resuelto en el plan, P-16/Q-5).
 - Token ya emitido: al suspender, el acceso que la cuenta ya tenía caduca en 15 min como máximo (002 D-10; CA-2). El
   diálogo dice «Se cerrarán sus sesiones…»; el plan decide si se le explica ese margen al Administrador.
+- **011b, extra vencido**: no hay estado propio. Cuando el extra vence, el bloque vuelve a «Cuota del plan», «Espacio
+  extra: 0 GB» y el total del plan; si el usado supera ese total, se aplica el mismo aviso de solo lectura de la 011.
+  «Quitar extra» solo se ofrece si `cuota del plan >= espacio_usado`; si no, el servidor lo rechaza y la UI no dibuja esa
+  acción. El texto final lo fija el plan con el `code`.
+- **011b, error de red o del servidor al guardar**: el diálogo se queda abierto con un aviso y el botón vuelve a estar
+  disponible; no se dibuja un estado aparte. Los `code` (`BACKOFFICE_QUOTA_BELOW_USAGE`, `BACKOFFICE_QUOTA_INVALID`,
+  `BACKOFFICE_VALIDITY_NOT_EXTENDED`, `BACKOFFICE_INVALID_INPUT`) los fija el plan en `contracts`.
+- **011b, concurrencia**: si entre abrir el diálogo y guardar el usado cambió, el servidor vuelve a validar y el error de
+  dominio se pinta en el mismo diálogo; el mockup de `cuota-bajo-lo-usado` es la referencia visual.
