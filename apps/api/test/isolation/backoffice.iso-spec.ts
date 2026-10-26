@@ -13,7 +13,7 @@ import type { Actor, ITransactionRunner } from '../../src/shared';
 import { setupTokenSentTo } from '../int/identity/identity-test-app';
 import { buildTestEnv } from '../int/setup/test-app';
 import type { TestApp } from '../int/setup/test-app';
-import { removeAccounts } from '../int/storage/storage-test-db';
+import { insertAccount, removeAccounts } from '../int/storage/storage-test-db';
 import { connectAsOwner } from '../support/database-urls';
 import { uniqueEmployeeCode } from '../support/employee-codes';
 import { createFullApiTestApp } from '../support/full-api-test-app';
@@ -250,6 +250,8 @@ describe('aislamiento del backoffice (011 CA-15, CA-16)', () => {
       .request(request(testApp.app.getHttpServer()), a)
       .set('Authorization', `Bearer ${world.tokenFor(account)}`);
 
+  const internalActor = (role: InternalRole): Actor => createActor(world.internals[role].id, role);
+
   const setStatusOfA = (status: 'activa' | 'suspendida'): Promise<unknown> =>
     owner.query('UPDATE usuario SET estado = $1 WHERE id = $2', [status, a.id]);
 
@@ -405,8 +407,6 @@ describe('aislamiento del backoffice (011 CA-15, CA-16)', () => {
       );
 
     const worldFileIds = (): string[] => sortedIds([...filesA, ...filesB]);
-    const internalActor = (role: InternalRole): Actor =>
-      createActor(world.internals[role].id, role);
 
     beforeAll(() => {
       runner = testApp.app.get<ITransactionRunner>(I_TRANSACTION_RUNNER, { strict: false });
@@ -434,6 +434,105 @@ describe('aislamiento del backoffice (011 CA-15, CA-16)', () => {
         );
       },
     );
+  });
+
+  /**
+   * Las funciones de `suscripcion` de la 011b y las columnas del extra (plan §6, casos 6 y 7; ADR-0035): solo el
+   * Administrador las ejecuta y el cliente no se sube la cuota ni por `UPDATE` ni por `INSERT`. Todo como `nimbo_app`.
+   */
+  describe('ajustes de `suscripcion` como `nimbo_app` (011b CA-1, CA-3; RNF-05)', () => {
+    let runner: ITransactionRunner;
+    let context: TransactionContext;
+    let newcomer: Actor;
+    const until = new Date(Date.now() + 3 * 86_400_000);
+    const limitsSql = 'SELECT * FROM limites_de_cuenta($1)';
+    const calls: readonly [string, string, unknown[]][] = [
+      ['limites_de_cuenta', limitsSql, []],
+      ['ajustar_cuota_extra', 'SELECT * FROM ajustar_cuota_extra($1, $2, $3)', ['1024', until]],
+      ['extender_vigencia', 'SELECT * FROM extender_vigencia($1, $2)', [until]],
+    ];
+
+    const asActor = (actor: Actor, sql: string, params: unknown[]): Promise<unknown> =>
+      runner.withActor(actor, () => context.requireActorScope(actor).query(sql, params));
+
+    const extraOf = async (userId: string): Promise<unknown> =>
+      (
+        (await owner.query(
+          'SELECT cuota_extra_bytes AS extra, cuota_extra_hasta AS hasta FROM suscripcion WHERE usuario_id = $1',
+          [userId],
+        )) as { extra: string; hasta: Date | null }[]
+      )[0];
+
+    beforeAll(async () => {
+      runner = testApp.app.get<ITransactionRunner>(I_TRANSACTION_RUNNER, { strict: false });
+      context = testApp.app.get(TransactionContext, { strict: false });
+      await owner.query(
+        `INSERT INTO suscripcion (usuario_id, plan_id) SELECT id, '10000000-0000-4000-8000-000000000002'
+           FROM usuario WHERE id = ANY($1) ON CONFLICT (usuario_id) DO NOTHING`,
+        [[a.id, b.id]],
+      );
+      newcomer = createActor(await insertAccount(owner), Role.CLIENT);
+    });
+
+    afterAll(async () => {
+      await removeAccounts(owner, [newcomer.id]);
+    });
+
+    it.each([Role.SUPPORT, Role.OPERATOR, Role.CLIENT] as const)(
+      'ISO-6 (plan §6 caso 6): %s no puede ejecutar ninguna de las tres funciones de `suscripcion`',
+      async (role) => {
+        const actor = role === Role.CLIENT ? createActor(a.id, role) : internalActor(role);
+
+        for (const [name, sql, params] of calls) {
+          await expect(asActor(actor, sql, [a.id, ...params])).rejects.toThrow(
+            new RegExp(`${name} solo la usa un administrador`),
+          );
+        }
+        expect(await extraOf(a.id)).toEqual({ extra: '0', hasta: null });
+      },
+    );
+
+    it('ISO-6 (plan §6 caso 6): sin actor en la sesión ninguna corre; el Administrador sí (centinela)', async () => {
+      for (const [name, sql, params] of calls) {
+        await expect(
+          runner.run(() => context.manager().query(sql, [a.id, ...params])),
+        ).rejects.toThrow(new RegExp(`${name} solo la usa un administrador`));
+      }
+
+      expect(await asActor(internalActor(Role.ADMIN), limitsSql, [a.id])).toHaveLength(1);
+    });
+
+    it('ISO-7 (plan §6 caso 7): A no puede subirse la cuota por `UPDATE`, aunque sí cambia una columna concedida', async () => {
+      const ana = createActor(a.id, Role.CLIENT);
+
+      await expect(
+        asActor(
+          ana,
+          'UPDATE suscripcion SET cuota_extra_bytes = $2, cuota_extra_hasta = $3 WHERE usuario_id = $1',
+          [a.id, '1099511627776', until],
+        ),
+      ).rejects.toThrow(/permission denied/);
+      await expect(
+        asActor(ana, 'UPDATE suscripcion SET renovacion_automatica = true WHERE usuario_id = $1', [
+          a.id,
+        ]),
+      ).resolves.toBeDefined();
+      expect(await extraOf(a.id)).toEqual({ extra: '0', hasta: null });
+    });
+
+    it('ISO-7 (plan §6 caso 7): un cliente no puede darse de alta con extra; sin extra, sí (centinela)', async () => {
+      const insert = (extra: string, hasta: Date | null) =>
+        asActor(
+          newcomer,
+          `INSERT INTO suscripcion (usuario_id, plan_id, cuota_extra_bytes, cuota_extra_hasta)
+           VALUES ($1, '10000000-0000-4000-8000-000000000001', $2, $3)`,
+          [newcomer.id, extra, hasta],
+        );
+
+      await expect(insert('1099511627776', until)).rejects.toThrow(/row-level security/);
+      await expect(insert('0', null)).resolves.toBeDefined();
+      expect(await extraOf(newcomer.id)).toEqual({ extra: '0', hasta: null });
+    });
   });
 
   describe('la consulta de Soporte sobre A en «Mi actividad» (CA-16, RN-2)', () => {
