@@ -1,6 +1,6 @@
 # Plan 011b — Ajustes de cuenta y restauración por Soporte
 
-> Spec: `./spec.md` · Estado del plan: **Propuesto** (2026-10-22, revisado el 2026-10-24)
+> Spec: `./spec.md` · Estado del plan: **Propuesto** (2026-10-22, revisado el 2026-10-26)
 > Obligatorio y ≤ 250 líneas. Dice qué archivos se tocan y qué se espera de cada uno; no es el código en prosa.
 > Lo aprueba Adrián antes de escribir código. **PR-A** (cuota y vigencia) en `feat/011b-ajustes`, desde `main`; **PR-B**
 > (restauración) en `feat/011b-restauracion`, rama nueva desde `main` cuando el PR-A esté integrado. No se apilan.
@@ -12,10 +12,12 @@
   la suma, `PlanLimits` y el resumen de espacio exponen base, extra y fecha, y la ficha del Administrador gana el bloque
   «Límites y vigencia» con ajustar/quitar cuota y extender vigencia.
 - La escritura del Administrador sobre `suscripcion` **no** abre una política UPDATE a `nimbo_app`: dos funciones
-  `SECURITY DEFINER` (`ajustar_cuota_extra`, `extender_vigencia`) comprueban el rol `ADMIN`, bloquean `usuario` y
-  `suscripcion`, validan y escriben una fila por `usuario_id`; una política `UPDATE TO CURRENT_USER` acotada permite que
-  la función escriba bajo `FORCE RLS`. Devuelven un código de resultado y la vista nueva; el repositorio traduce el
-  código a errores de dominio. No hay una función de bloqueo separada ni una regla TS que duplique la de SQL.
+  `SECURITY DEFINER` de escritura (`ajustar_cuota_extra`, `extender_vigencia`) comprueban el rol `ADMIN`, bloquean
+  `usuario` y `suscripcion`, validan y escriben una fila por `usuario_id`; una política `UPDATE TO CURRENT_USER`
+  acotada permite que la función escriba bajo `FORCE RLS`. Una tercera función de lectura (`limites_de_cuenta`,
+  `STABLE`, sin `FOR UPDATE`) devuelve la vista para `limitsOf`; sin ella `nimbo_app` no puede leer `suscripcion`.
+  Las de escritura devuelven un código de resultado y la vista nueva; el repositorio traduce el código a errores de
+  dominio. No hay una función de bloqueo separada ni una regla TS que duplique la de SQL.
 - La vigencia solo se extiende: `vence_en` nuevo, `estado` a `vigente` si estaba en solo lectura y **sin tocar los
   avisos**; no toca `iniciado_en`, `renovacion_automatica` ni `plan_pendiente_id` (RN-2, CA-8). El `vence_en` nuevo basta
   para que la 010 vuelva a avisar en el periodo nuevo.
@@ -34,11 +36,11 @@
 | contracts/backoffice | `src/backoffice/adjustments.ts` (nuevo), `error-codes.ts`, `schemas.ts`, `index.ts` | `accountLimitsSchema` (`status: active \| readOnly \| personal \| none`; base y total `null` sin suscripción), `adjustQuotaRequestSchema`, `adjustValidityRequestSchema`, códigos y `BACKOFFICE_FIELD_ISSUE_REASONS` nuevos. Valida forma: bytes como texto decimal (011), patrón `^[1-9][0-9]{0,15}$` para `PUT` (cero se quita con `DELETE`) y que cada valor no supere `2^53-1`; fecha `YYYY-MM-DD`. No conoce la cuota del plan ni valida la suma; eso queda en SQL. |
 | contracts/backoffice | `src/backoffice/trash.ts` (nuevo), `index.ts` | `clientTrashResponseSchema` (reutiliza `trashItemSchema` de `storage` y añade `client`), `restoreClientNodeRequestSchema` con `type`, `email` y `note` de 1 a `AUDIT_NOTE_MAX_LENGTH`; reutiliza `restoreResponseSchema`. |
 | contracts/storage | `src/storage/space-schemas.ts`, `src/storage/schemas.spec.ts` | `baseQuotaBytes`, `extraQuotaBytes`, `extraQuotaUntil` (aquí bytes numéricos, como el resto de `storage`); `quotaBytes` sigue siendo la efectiva. |
-| billing/domain | `subscription-adjustment.ts` (nuevo) + spec | Convierte `YYYY-MM-DD` de `America/Guatemala` al inicio del día siguiente en UTC y mapea el código de resultado de SQL a los errores de dominio. No repite las reglas que dependen del estado; la fuente de verdad de esas reglas es la función SQL. |
+| billing/domain | `subscription-adjustment.ts` (nuevo) + spec | Convierte `YYYY-MM-DD` a las 00:00 del día siguiente en `America/Guatemala` (06:00 UTC); no mapea códigos de SQL. No repite las reglas que dependen del estado; la fuente de verdad de esas reglas es la función SQL. |
 | billing/domain/errors | `quota-below-usage.error.ts`, `quota-invalid.error.ts`, `validity-not-extended.error.ts` (nuevos) | Errores de la regla en el módulo dueño (`billing`), no en `backoffice`; el controlador los traduce a §4. |
-| billing/application | `subscription-administration.ts` (cambia) | `limitsOf(actor, clientId)`, `adjustQuota(actor, cmd)` y `adjustValidity(actor, cmd)`: llaman al puerto y devuelven la vista nueva; todo dentro de la transacción del llamador. `cmd` lleva `clientId` (máximo 3 parámetros, Art. VII.2). |
+| billing/application | `subscription-administration.ts` (cambia) | `limitsOf(actor, clientId)` usa `limites_de_cuenta`; `adjustQuota(actor, cmd)` y `adjustValidity(actor, cmd)` usan las funciones de escritura. Devuelven la vista nueva, todo dentro de la transacción del llamador. `cmd` lleva `clientId` (máximo 3 parámetros, Art. VII.2). |
 | billing/application/ports | `i-subscription-administration.repository.port.ts` (nuevo) | `limitsOf(actor, clientId)`, `adjustQuota(actor, cmd)` y `adjustValidity(actor, cmd)`; no agranda `ISubscriptionRepository` (V.2). No hay `lockSnapshot` separado: la función de escritura bloquea y valida. |
-| billing/infrastructure | `typeorm-subscription-administration.repository.ts` (nuevo) | Llama a `ajustar_cuota_extra` y `extender_vigencia` (§3) desde el `EntityManager` del actor y traduce su código de resultado. |
+| billing/infrastructure | `typeorm-subscription-administration.repository.ts` (nuevo) | Llama a `limites_de_cuenta`, `ajustar_cuota_extra` y `extender_vigencia` (§3) desde el `EntityManager` del actor y traduce los códigos de resultado. |
 | billing/infrastructure | `adapters/plan-limits.adapter.ts`, `i-subscription-repository.port.ts`, `typeorm-subscription.repository.ts` | `SubscriptionStanding` suma `extraQuotaBytes` y `extraQuotaUntil`; `limitsFor` inyecta `IClock` y suma el extra vigente a `storageQuotaBytes`. |
 | billing | `billing.module.ts` | Registra el puerto y el repositorio nuevos; exporta los errores de dominio. |
 | storage/application | `plan-limits.ts` | `PlanLimits` suma `extraQuotaBytes` y `extraQuotaUntil` (solo el vigente); `PlanStorageLimits` los omite y actualiza dobles de prueba. |
@@ -63,10 +65,11 @@
 | web/audit | `activity-labels.ts` + spec | Textos de `account.quota_adjusted` y `account.validity_adjusted`; `node.restored` y el bloque de `note` ya existen. |
 
 - **Puertos nuevos:** `ISubscriptionAdministrationRepository` (billing) e `ISupportTrashRepository` (storage), más la
-  fachada `SupportTrashService`. No se crea `IAccountUsageLock`: las funciones de §3 bloquean `usuario` y validan el uso
+  fachada `SupportTrashService`. No se crea `IAccountUsageLock`: las funciones de escritura de §3 bloquean `usuario` y validan el uso
   en la misma transacción; una carga ya autorizada puede terminar después y dejar la cuenta por encima de la cuota
   (el sistema ya lo tolera, `architecture.md` §7.2).
-- **Dependencias:** `backoffice → identity, billing, storage, audit` (ya existe); `billing` sigue sin importar `identity`
+- **Dependencias:** `backoffice → identity, billing, storage, audit` (ya existe); `billing → identity` ya existe
+  (evento `identity.client-account-verified`, `VerifiedClientLister`, `AccountContactReader` y `AccountNotFoundError`)
   y `storage` sigue sin importar `billing` (recibe la cuota por `IPlanLimitsProvider`).
 - **Permisos por módulo (workflow.md §5):** `billing` es de Juan Marcos (dominio, aplicación, adaptador de límites,
   módulo y migración de `suscripcion`); `storage`, `identity` y `audit` son de Adrián; `backoffice`, `contracts` y `web`
@@ -94,10 +97,12 @@ CREATE POLICY suscripcion_cliente_alta ON suscripcion FOR INSERT TO nimbo_app
 CREATE POLICY suscripcion_ajuste_administracion ON suscripcion FOR UPDATE TO CURRENT_USER
   USING (nimbo_actor_role() = 'ADMIN') WITH CHECK (nimbo_actor_role() = 'ADMIN');
 
--- Las dos funciones son VOLATILE, plpgsql, SECURITY DEFINER, SET search_path = pg_catalog, pg_temp,
+-- Las dos funciones de escritura son VOLATILE, plpgsql, SECURITY DEFINER, SET search_path = pg_catalog, pg_temp,
 -- con public.nimbo_actor_role() calificado, REVOKE ALL FROM PUBLIC y EXECUTE solo a nimbo_app.
--- La función SQL es la fuente de verdad de las reglas que dependen del estado; el dominio solo convierte la fecha y
--- traduce el código de resultado a sus errores. Rol distinto de ADMIN: RAISE SQLSTATE 42501.
+-- limites_de_cuenta es STABLE, SECURITY DEFINER, sin FOR UPDATE; comprueba ADMIN, usa la política SELECT
+--   suscripcion_administracion y devuelve la vista (0 filas = status none); no escribe, no bloquea ni usa UPDATE.
+-- Las funciones SQL son la fuente de verdad de las reglas que dependen del estado; el dominio solo convierte la fecha
+-- y el repositorio traduce los códigos de resultado a errores. Rol distinto de ADMIN: RAISE SQLSTATE 42501.
 -- ajustar_cuota_extra(p_usuario, p_extra, p_hasta) bloquea usuario y suscripcion (FOR UPDATE) y devuelve
 --   codigo, plan, estado, vence_en, extra, hasta, espacio_usado y cuota_total.
 --   PUT exige p_extra > 0 y p_hasta > now(); DELETE llama con 0/NULL (única vía para quitar).
@@ -105,8 +110,9 @@ CREATE POLICY suscripcion_ajuste_administracion ON suscripcion FOR UPDATE TO CUR
 --   Códigos: ok, quota_invalid, quota_below_usage, account_not_found, no_subscription.
 -- extender_vigencia(p_usuario, p_vence) bloquea usuario y suscripcion y devuelve la misma vista.
 --   Exige plan de pago, p_vence > vence_en y > now(); calcula estado (solo_lectura -> vigente) y no toca avisos,
---   plan_pendiente_id ni renovacion_automatica. Códigos: ok, validity_not_extended, personal, account_not_found.
--- Ambas comprueban una fila por usuario_id; los conteos internos inesperados sí hacen RAISE.
+--   plan_pendiente_id ni renovacion_automatica.
+--   Códigos: ok, validity_not_extended, personal, account_not_found, no_subscription.
+-- Las de escritura comprueban una fila por usuario_id (RAISE si el conteo interno no cuadra); la de lectura devuelve 0 o 1.
 
 -- 20261022100100-soporte-restaura-la-papelera.ts (PR-B)
 CREATE POLICY archivo_soporte_restauracion ON archivo FOR UPDATE TO CURRENT_USER
@@ -132,7 +138,7 @@ CREATE POLICY archivo_soporte_destino ON archivo FOR SELECT TO CURRENT_USER
 --   ruta, profundidad y actualizado_en; nunca propietario_id, version_actual_id, tamano_bytes, tipo ni creado_en.
 --   Comprueba los conteos y hace RAISE si no cuadran; una raíz vencida o ajena es 0 filas.
 ```
-- `down` de PR-A: `DROP FUNCTION` de las dos funciones, `DROP POLICY suscripcion_ajuste_administracion`, restaurar la
+- `down` de PR-A: `DROP FUNCTION` de las tres funciones, `DROP POLICY suscripcion_ajuste_administracion`, restaurar la
   política `suscripcion_cliente_alta` anterior, `DROP CONSTRAINT` y `DROP COLUMN`. `down` de PR-B: `DROP FUNCTION`,
   `DROP POLICY` de las cuatro políticas. Ambas migraciones se prueban `up → down → up` con un dueño sin `SUPERUSER`.
 - No hay tabla nueva. El vencimiento del extra no se persiste como estado: se evalúa con `IClock` en cada lectura.
@@ -158,8 +164,8 @@ CREATE POLICY archivo_soporte_destino ON archivo FOR SELECT TO CURRENT_USER
 
 ## 5. Seguridad y operación
 - **PR-A:** la ficha y los ajustes exigen `@Roles(ADMIN)`; el actor activo, el rate limit y la transacción los pone
-  `InternalActionService`. `AccountDirectory.get` da el `404` de cuenta y el rol; las funciones bloquean `usuario` y
-  `suscripcion` en ese orden, validan `plan + extra >= espacio_usado` y no aceptan estado ni fechas fuera de las reglas.
+  `InternalActionService`. `AccountDirectory.get` da el `404` de cuenta y el rol; las funciones de escritura bloquean
+  `usuario` y `suscripcion` en ese orden, validan `plan + extra >= espacio_usado` y no aceptan estado ni fechas fuera de las reglas.
   Una carga autorizada antes puede terminar después de quitar el extra y dejar la cuenta por encima de la cuota; no hay
   pérdida de datos y la siguiente operación la vuelve a medir.
 - **PR-B:** el correo se resuelve antes de tocar `storage` y un correo inexistente o interno da el mismo `404`; la función
@@ -180,7 +186,7 @@ CREATE POLICY archivo_soporte_destino ON archivo FOR SELECT TO CURRENT_USER
 | CA | Nivel | Archivo |
 |---|---|---|
 | CA-1, CA-4, CA-5 | unit + int + web | `subscription-adjustment.spec.ts`, `plan-limits.adapter.spec.ts`, `space-summary.service.spec.ts`, `test/int/backoffice/account-adjustments.int-spec.ts`, `account-limits.spec.tsx`, `space-summary-view.spec.tsx` |
-| CA-2, CA-3, CA-7 | unit + int | `subscription-adjustment.spec.ts` (conversión de fecha y mapeo de códigos), `account-adjustments.int-spec.ts` (bordes de `plan + extra < usado`, fecha no posterior, `422`/`404`, nada cambia, sin evento) |
+| CA-2, CA-3, CA-7 | unit + int | `subscription-adjustment.spec.ts` (conversión de fecha), `typeorm-subscription-administration.repository.spec.ts` (códigos a errores), `account-adjustments.int-spec.ts` (bordes de `plan + extra < usado`, fecha no posterior, `422`/`404`, nada cambia, sin evento) |
 | CA-6, CA-8, CA-9, CA-18 | unit + int | `subscription-administration.spec.ts` (solo extiende, no toca renovación ni cambio), `account-adjustments.int-spec.ts` (solo lectura → vigente; un ajuste de cuota no vuelve a seleccionar la cuenta en `suscripciones_por_avisar`) |
 | CA-10, CA-11 | unit + int | `support-trash.service.spec.ts`, `test/int/backoffice/client-trash.int-spec.ts` (raíces, retención, destino, renombrado, `moved_to_root`, carpetas y `ruta`/`profundidad` del subárbol) |
 | CA-12 | unit + int | `client-trash.int-spec.ts` (motivo vacío/largo, tipo inválido, no raíz, ajena, vencida, correo inválido/inexistente) |
@@ -211,9 +217,10 @@ CREATE POLICY archivo_soporte_destino ON archivo FOR SELECT TO CURRENT_USER
 - **Función de restauración:** es el punto sensible; su cuerpo debe limitarse a las columnas de §3 y probarse con un
   dueño sin `SUPERUSER`, SQL directo de Soporte y una raíz vencida. No hay política `UPDATE` de Soporte sobre
   `nimbo_app`, así que un error de la función no abre la tabla.
-- **Funciones de cuenta:** son las primeras `SECURITY DEFINER` que escriben y devuelven más que identificadores; el
-  ADR-0035 enmienda ADR-0021 y fija la lista de control (una fila, columnas fijas, rol dentro, `search_path`, `VOLATILE`,
-  `REVOKE`/`GRANT` y política del dueño).
+- **Funciones de cuenta:** las de escritura son las primeras `SECURITY DEFINER` que escriben y devuelven más que
+  identificadores; la de lectura cubre `limitsOf`. El ADR-0035 enmienda ADR-0021 y fija la lista de control (una fila,
+  columnas fijas, rol dentro, `search_path`, `VOLATILE` en las de escritura y `STABLE` sin `FOR UPDATE` en la de
+  lectura, `REVOKE`/`GRANT` y política del dueño).
 - **Carrera cuota/uso:** las funciones bloquean `usuario` antes de validar; una carga ya autorizada puede terminar
   después y dejar la cuenta por encima de la cuota. Se declara como desfase aceptado, sin candado nuevo (YAGNI).
 - **Fase y tamaño:** la 011b nace de la 011 (Fase 2) y se ejecuta en la Fase 3; la regla de partir una spec no aplica
@@ -240,4 +247,4 @@ CREATE POLICY archivo_soporte_destino ON archivo FOR SELECT TO CURRENT_USER
 - `architect`: veredicto pendiente sobre el ADR-0035 y las funciones `SECURITY DEFINER`; `security-auditor`: revisión de
   las políticas del dueño y de la función de restauración.
 - Juan Marcos: visto bueno pendiente de `billing` (dominio, aplicación y migración).
-- Adrián: **Propuesto** — 2026-10-22; revisión de los hallazgos del PR #74 el 2026-10-23 y auditoría del 2026-10-24.
+- Adrián: **Propuesto** — 2026-10-22; revisión de los hallazgos del PR #74 el 2026-10-23, auditoría del 2026-10-24 y seguimiento del 2026-10-26.

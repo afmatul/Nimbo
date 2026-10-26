@@ -56,7 +56,7 @@ El 0023 lo redactó y lo aceptó Adrián el 30/09/2026 al adoptar SDD express; r
 El 0024 lo redactó el `architect` y lo aprobó Adrián el 30/09/2026 (dependencia `sonner`, spec 006).
 Los ADR 0004 y 0029 los redactó el `architect` con el plan de la spec 016 (2026-10-16) como `Propuesto`; Adrián los aceptó al aprobar el plan (2026-10-16); 0029 hace una excepción acotada a ADR-0001 y matiza ADR-0030.
 ADR-0034 (2026-10-23) enmienda la secuencia de ADR-0023: un solo pase al crear una spec que todavía no tiene carpeta. No reescribe las que ya existen.
-ADR-0035 (2026-10-24) documenta las escrituras internas acotadas de la 011b; enmienda ADR-0005 y ADR-0021 y delimita ADR-0032 regla 3.
+ADR-0035 (2026-10-26) documenta las escrituras internas acotadas de la 011b; enmienda ADR-0005 y ADR-0021 y delimita ADR-0032 regla 3.
 
 Los ADR 0003, 0007 y 0033 los redactó el `architect` con el plan de la spec 019 (2026-10-21) como `Propuesto`; Adrián los acepta al aprobar el plan.
 

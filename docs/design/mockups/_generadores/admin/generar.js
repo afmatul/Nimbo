@@ -420,7 +420,7 @@ function dialogoCuota({ c, extra = '50', hasta = '2026-11-15', total = '400 GB',
 function dialogoVigencia({ c, fecha = '2026-11-30', actual = '31/10/2026', error = '', errores = '', soloLectura = false, cargando = false } = {}) {
   const campo = A.campo({
     id: 'vigencia-hasta', label: 'Nueva fecha de vencimiento',
-    help: `Solo puedes extender la vigencia: la fecha nueva debe ser posterior al ${actual} y a ahora. No se cobra ni se factura.`,
+    help: `Solo puedes extender la vigencia: elige el ${actual} o un día posterior. No se cobra ni se factura.`,
     type: 'date', value: fecha, short: true, err: error, extra: 'autofocus',
   });
   const aviso = soloLectura
@@ -552,10 +552,10 @@ const DLG_CUOTA_INVALIDA = dialogoCuota({
 const DLG_VIGENCIA = dialogoVigencia({ c: C.LAURA });
 
 const DLG_VIGENCIA_ERROR = dialogoVigencia({
-  c: C.LAURA, fecha: '2026-10-20', error: 'La fecha debe ser posterior al 31/10/2026.',
+  c: C.LAURA, fecha: '2026-10-20', error: 'La fecha debe ser el 31/10/2026 o un día posterior.',
   errores: A.resumenErrores({
     titulo: 'Revisa la fecha de vencimiento.', texto: 'Nada cambió.',
-    items: [['vigencia-hasta', 'La fecha debe ser posterior al 31/10/2026.']],
+    items: [['vigencia-hasta', 'La fecha debe ser el 31/10/2026 o un día posterior.']],
   }),
 });
 

@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Propuesto (2026-10-22; corregido el 2026-10-24 tras la auditoría de Adrián). **Enmienda ADR-0005 y ADR-0021**; delimita ADR-0032 regla 3. Se acepta antes del código del PR-A |
+| Estado | Propuesto (2026-10-22; corregido el 2026-10-24 y el 2026-10-26 tras las auditorías de Adrián). **Enmienda ADR-0005 y ADR-0021**; delimita ADR-0032 regla 3. Se acepta antes del código del PR-A |
 | Fecha | 2026-10-22 |
 | Numeración | 0035 desde 2026-10-24: el 0034 lo usa la ADR de SDD express en `main`; el 0033 lo usa la 019 |
 | Decisores | `architect`, Fátima (dueña de 011/011b), Adrián (aprueba `storage`/`identity`/`audit`), Juan Marcos (dueño de `billing`) |
@@ -62,22 +62,30 @@ logs. La 011b es la primera escritura interna sobre `storage` de un cliente.
 
 **Opción B**, con estas reglas:
 
-1. **Cuota y vigencia (Administrador).** `suscripcion` no gana escrituras directas de `nimbo_app`. Dos funciones
-   `SECURITY DEFINER` propiedad del rol que migra, `VOLATILE`, `plpgsql`, con `SET search_path = pg_catalog, pg_temp`,
-   `REVOKE ALL … FROM PUBLIC` y `EXECUTE` solo para `nimbo_app`, comprueban `public.nimbo_actor_role() = 'ADMIN'`,
-   bloquean `usuario` y `suscripcion` con `FOR UPDATE` y operan una fila por `usuario_id`:
+1. **Cuota y vigencia (Administrador).** `suscripcion` no gana escrituras directas de `nimbo_app`. Dos funciones de
+   escritura y una de lectura, `SECURITY DEFINER` propiedad del rol que migra, con
+   `SET search_path = pg_catalog, pg_temp`, `REVOKE ALL … FROM PUBLIC` y `EXECUTE` solo para `nimbo_app`, comprueban
+   `public.nimbo_actor_role() = 'ADMIN'`. Las de escritura son `VOLATILE`, `plpgsql`, bloquean `usuario` y
+   `suscripcion` con `FOR UPDATE` y operan una fila por `usuario_id`; la de lectura es `STABLE`, no bloquea y devuelve
+   la vista o 0 filas:
+   - `limites_de_cuenta(p_usuario)` devuelve plan, estado, `vence_en`, extra, hasta, `espacio_usado` y `cuota_total`;
+     0 filas significa cuenta sin suscripción (la API responde `status: none`) y no escribe.
    - `ajustar_cuota_extra(p_usuario, p_extra, p_hasta)` es la fuente de verdad de las reglas que dependen del estado.
      `PUT` exige `p_extra > 0` y `p_hasta > now()`; `DELETE` llama con `0`/`NULL`, única vía para quitar. Exige
      `plan + p_extra <= 2^53-1` y `plan + p_extra >= espacio_usado`; no toca `vence_en`, `estado` ni los avisos. La
-     fecha se captura como día en `America/Guatemala` y el adaptador la convierte al inicio del día siguiente en UTC.
+     fecha se captura como día en `America/Guatemala` y **el dominio** la convierte a las 00:00 del día siguiente en
+     `America/Guatemala` (06:00 UTC).
    - `extender_vigencia(p_usuario, p_vence)` exige plan de pago, `p_vence > vence_en` y `p_vence > now()`; **calcula** el
-     `estado` (`solo_lectura` → `vigente`) y no toca avisos, `plan_pendiente_id` ni `renovacion_automatica`. La fecha
-     sigue la misma conversión de día.
+     `estado` (`solo_lectura` → `vigente`) y no toca avisos, `plan_pendiente_id` ni `renovacion_automatica`. El dominio
+     aplica la misma conversión de día. Códigos: `ok`, `validity_not_extended`, `personal`, `account_not_found`,
+     `no_subscription`.
 
-   Las funciones devuelven un **código de resultado** (`ok`, `quota_invalid`, `quota_below_usage`,
-   `validity_not_extended`, `personal`, `account_not_found`, `no_subscription`) y la vista nueva; el repositorio traduce
-   el código a errores de dominio. Los fallos esperados no se lanzan como excepciones arbitrarias; solo un rol distinto
-   de `ADMIN` (`SQLSTATE 42501`) o un conteo interno inesperado hace `RAISE`. Una política
+   Las funciones de escritura devuelven un **código de resultado** (`ok`, `quota_invalid`, `quota_below_usage`,
+   `validity_not_extended`, `personal`, `account_not_found`, `no_subscription`) y la vista nueva; `limites_de_cuenta`
+   devuelve la vista o 0 filas. El repositorio traduce el código a errores de dominio. Los fallos esperados no se lanzan
+   como excepciones arbitrarias; solo un rol distinto de `ADMIN` (`SQLSTATE 42501`) o un conteo interno inesperado de
+   las funciones de escritura hace `RAISE`. `limites_de_cuenta` usa la política
+   `SELECT` existente `suscripcion_administracion`, sin `FOR UPDATE`. La política
    `suscripcion_ajuste_administracion FOR UPDATE TO CURRENT_USER` con `USING`/`WITH CHECK` de rol `ADMIN` permite que la
    función escriba bajo `FORCE RLS`; `nimbo_app` no la usa. El `SELECT … FOR UPDATE` de la función también necesita esa
    política. No se reinician `aviso_previo_para` ni `aviso_vencida_para`: la 010 los compara con `vence_en` y el `vence_en`
@@ -102,9 +110,11 @@ logs. La 011b es la primera escritura interna sobre `storage` de un cliente.
 4. **Prohibiciones.** Soporte no purga, vacía, descarga ni previsualiza; Administración no restaura; el Operador no hace
    ninguna de las tres. La restauración se permite en cuentas en solo lectura y no toca `espacio_usado`.
 5. **Enmiendas.** Este ADR enmienda ADR-0005 (barrera 2: ahora hay escrituras internas por función) y ADR-0021 (sus
-   funciones eran de solo lectura y devolvían solo identificadores; estas escriben y devuelven plan, estado, `vence_en` y
-   el extra). La lista de control es: una fila por `usuario_id` en la cuenta; columnas fijas; rol comprobado dentro de la
-   función; `search_path` cerrado; `VOLATILE`; `REVOKE`/`GRANT`; política del dueño; prueba con dueño `NOSUPERUSER`.
+   funciones eran de solo lectura y devolvían solo identificadores; las de escritura de este ADR escriben y devuelven
+   plan, estado, `vence_en` y el extra; la de lectura devuelve la misma vista). La lista de control es: como máximo una fila por `usuario_id` en la cuenta; columnas fijas; rol comprobado dentro de la
+   función; `search_path` cerrado; `VOLATILE` en las de escritura y `STABLE` sin `FOR UPDATE` en la de lectura;
+   `REVOKE`/`GRANT`; política del dueño (`SELECT` para la lectura y `UPDATE` para las escrituras); prueba con dueño
+   `NOSUPERUSER`.
    Delimita ADR-0032 regla 3: la restauración de Soporte es una escritura permitida en solo lectura. **No se edita
    ADR-0032**, que está Aceptada: al aceptarse este ADR, su prueba añade
    `POST /backoffice/client-trash/:nodeId/restore` a la lista de rutas permitidas y lo deja fuera de la de bloqueadas.
