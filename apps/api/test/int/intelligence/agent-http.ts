@@ -129,6 +129,8 @@ export interface IndexedChunk {
   readonly name: string;
   readonly text: string;
   readonly location?: unknown;
+  /** Carpeta del archivo (ya insertada); sin ella, la raíz. */
+  readonly folderId?: string;
 }
 
 /** Inicio del periodo Personal de hoy (RN-4): el que usa `billing` para la fila de `uso_agente`. */
@@ -203,7 +205,10 @@ export const createAgentWorld = async (
     },
     indexedFile: (userId, chunk) =>
       owner.transaction(async (manager) => {
-        const version = await insertFileWithVersion(manager, userId, { name: chunk.name });
+        const version = await insertFileWithVersion(manager, userId, {
+          name: chunk.name,
+          folderId: chunk.folderId ?? null,
+        });
         await insertChunk(manager, version, { text: chunk.text, location: chunk.location });
         await insertIndexing(manager, version, { state: 'indexado' });
         return version;
