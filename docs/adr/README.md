@@ -18,7 +18,7 @@ Son la base para defender la arquitectura en la exposición final (enunciado §6
 | 0010 | [Separar M3 en `access`/`sharing` y extraer `audit`, `realtime`, `notifications`](0010-separacion-de-modulos.md) (DF-02, 03, 30, 34) | Aceptado |
 | 0011 | [Modelo de nodos: tablas separadas `archivo` y `carpeta` con `CHECK` de exclusividad](0011-modelo-de-nodos-dos-tablas-con-check.md) (DF-40) | Propuesto |
 | 0012 | [Versiones por composición con `origen`; `storage` dueño del ciclo de vida](0012-versiones-por-composicion-con-origen.md) (DF-17, 18) | Aceptado |
-| 0013 | Política del original en el optimizador (DF-21) | Pendiente |
+| 0013 | [El original optimizado se conserva durante la retención de papelera sin contar en la cuota](0013-politica-del-original-en-el-optimizador.md) (DF-21; specs 014b y 021) | Aceptado |
 | 0014 | [Tokens de Cielo Sereno ajustados a AA y mapeados a shadcn; axe en E2E](0014-tokens-cielo-sereno-shadcn-axe.md) (DF-41–48) | Aceptado |
 | 0015 | [Dependencias de fundaciones: gitleaks, zod, nestjs-pino, Testcontainers](0015-dependencias-de-fundaciones.md) (menor) | Aceptado |
 | 0016 | [Representación de dinero en centavos y almacenamiento en bytes](0016-dinero-en-centavos-y-almacenamiento-en-bytes.md) (DF-23, DF-24) | Aceptado |
@@ -38,6 +38,7 @@ Son la base para defender la arquitectura en la exposición final (enunciado §6
 | 0032 | [La solo lectura por vencimiento se comprueba en los servicios de escritura con `PlanLimits.readOnly`](0032-solo-lectura-por-planlimits-en-los-servicios-de-escritura.md) (enmienda `architecture.md` §7.5 y la nota de DF-51; spec 010; antes numerado 0029) | Aceptado |
 | 0033 | [Extracción de texto (`fflate`, `fast-xml-parser`, Ghostscript), embeddings por REST y relay `index-status`](0033-extraccion-de-texto-y-embeddings-por-rest.md) (spec 019, DF-78) | Aceptado |
 | 0034 | [SDD express en un pase: spec, plan y tareas juntos](0034-sdd-express-un-pase.md) (enmienda la secuencia de ADR-0023) | Propuesto |
+| 0035 | [Las imágenes se recomprimen con `sharp` (libvips) dentro del `worker`](0035-recompresion-de-imagenes-con-sharp.md) (spec 021) | Propuesto |
 
 Estados: `Pendiente` (sin redactar) · `Propuesto` (redactado, falta acuerdo del equipo) · `Aceptado` · `Reemplazado por`.
 Los ADR 0001, 0002, 0008, 0009, 0014 y 0015 se aceptaron el 26/09/2026 (Adrián, parte de ADR de la T-27 de la spec 000).
@@ -57,5 +58,7 @@ Los ADR 0004 y 0029 los redactó el `architect` con el plan de la spec 016 (2026
 ADR-0034 (2026-10-23) enmienda la secuencia de ADR-0023: un solo pase al crear una spec que todavía no tiene carpeta. No reescribe las que ya existen.
 
 Los ADR 0003, 0007 y 0033 los redactó el `architect` con el plan de la spec 019 (2026-10-21) como `Propuesto`; Adrián los acepta al aprobar el plan.
+
+ADR-0035 (dependencia `sharp`) lo redactó Abel con el plan de la spec 021 (2026-10-25) como `Propuesto`, con autorización de Adrián para prepararlo; ninguna tarea agrega la dependencia antes de que pase a `Aceptado`.
 
 Usa `/adr <decisión>` para redactar uno.

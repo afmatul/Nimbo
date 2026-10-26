@@ -1,7 +1,8 @@
 # Mockup: Ficha de archivo con historial de versiones
 
-- **Spec**: 014 (CA-6 a CA-12, CA-15, CA-16, CA-20; D-1 a D-10) y 019 (estado de indexación: CA-4, CA-5, CA-7, CA-12 a
-  CA-14, CA-19; P-3). 016 (participantes) se suma después.
+- **Spec**: 014 (CA-6 a CA-12, CA-15, CA-16, CA-20; D-1 a D-10), 019 (estado de indexación: CA-4, CA-5, CA-7, CA-12 a
+  CA-14, CA-19; P-3) y 021 (optimizar una imagen desde la ficha: CA-1, CA-2, CA-5, CA-6, CA-7, CA-9 a CA-11,
+  CA-13 a CA-15, CA-17, CA-22; original conservado de 014b). 016 (participantes) se suma después.
 - **Propuesta presentada**: No presentada (diseño interno); 019 es un cambio sobre ella (ver abajo).
 - **Origen**: dos tecnologías en la misma carpeta.
   - Estados de 014: HTML autocontenido generado con `../../_generadores/ficha-archivo/generar.js` (ver
@@ -37,11 +38,34 @@
     - fallido-reintentando: > 2 s, botón `aria-disabled` con «Reintentando…» y anuncio, el foco no se pierde (`ficha-archivo--fallido-reintentando.html`)
     - fallido-error-reintento: el reintento no llegó al servidor; dice qué hacer (`ficha-archivo--fallido-error-reintento.html`)
     - solo-lectura-lector: lector de un archivo compartido; ve estado y motivo, sin «Reintentar» ni historial (`ficha-archivo--solo-lectura-lector.html`, CA-13, CA-19)
+  - **021, optimizar una imagen** (tarjeta «Optimizar espacio» encima del historial; `Foto_inventario.jpg`, plan
+    Personal, 3 de 3 versiones; cifras ilustrativas 4.8 MB → 2.9 MB, ahorro 1.9 MB, 40 %):
+    - optimizar-sin-estimacion: texto breve y «Calcular ahorro» (`ficha-archivo--optimizar-sin-estimacion.html`, CA-1)
+    - optimizar-estimando: «Calculando el ahorro…», progreso indeterminado y anuncio; la ficha sigue usable (`ficha-archivo--optimizar-estimando.html`, CA-1, RNF-14)
+    - optimizar-conviene: tamaño actual, estimado, «Ahorrarías 1.9 MB (40 %)» y «Optimizar» (`ficha-archivo--optimizar-conviene.html`, CA-1)
+    - optimizar-confirmar: diálogo «¿Optimizar esta imagen?» con la fecha de conservación y, en 3 de 3, el aviso de poda de 014 (`ficha-archivo--optimizar-confirmar.html`, CA-6, CA-13)
+    - optimizar-no-conviene: cifras y «El ahorro sería mínimo…», sin «Optimizar» (`ficha-archivo--optimizar-no-conviene.html`, CA-2)
+    - optimizar-no-disponible: tres archivos, uno por motivo, sin botón y sin cifras de límite (CA-5):
+      tamaño, «Esta imagen supera el tamaño máximo permitido para optimizarla.» (`ficha-archivo--optimizar-no-disponible.html`);
+      resolución, «Esta imagen supera la resolución máxima permitida para optimizarla.» (`ficha-archivo--optimizar-no-disponible-megapixeles.html`);
+      GIF animado, «La optimización no está disponible para GIF animados.» (`ficha-archivo--optimizar-no-disponible-animado.html`)
+    - optimizar-optimizando: «Optimizando… Puedes seguir usando Nimbo; te mostramos el resultado aquí.», progreso indeterminado (`ficha-archivo--optimizar-optimizando.html`, CA-6, RNF-14)
+    - optimizar-completada: la tarjeta en su estado normal con el texto «Optimizamos tu imagen: ahorraste 1.9 MB (40 %).»; versión 4 «Optimización» ACTUAL y NUEVA, la 3 con «Original conservado hasta 1 nov 2026 · no ocupa tu espacio», la 1 podada y la cuota de 4.9 GB a 4.8 GB (`ficha-archivo--optimizar-completada.html`, CA-7, CA-15)
+    - optimizar-descartada: «El ahorro real fue mínimo. Tu archivo no cambió.» (`ficha-archivo--optimizar-descartada.html`, CA-10; variante de texto de CA-11 abajo)
+    - optimizar-error-integridad: «No pudimos optimizar este archivo sin dañarlo…», sin invitar a repetir (`ficha-archivo--optimizar-error-integridad.html`, CA-9)
+    - optimizar-error-servicio: «El optimizador no está disponible ahora…» con «Calcular ahorro» habilitado (`ficha-archivo--optimizar-error-servicio.html`, CA-14)
+    - optimizar-solo-lectura: `ReadOnlyBanner` de 010 CA-13 una sola vez arriba de la vista, con «Renovar plan»; la estimación se ve y «Optimizar» queda deshabilitado (`aria-disabled`, descrito por el banner); el historial no ofrece «Restaurar» (`ficha-archivo--optimizar-solo-lectura.html`, CA-17)
   - vision: paquete de diseño interno (`ficha-archivo--vision.html`), solo como referencia
 - **Capturas**: `docs/design/capturas/storage/ficha-archivo/` (`ficha-archivo--<estado>--<360|1440>.png`). axe-core sin
   violaciones en los 12 estados de 014 a 360 y 1440 px; sin desbordamiento horizontal a 360 px; objetivos de 36 px en
   escritorio y 44 px en móvil; sin errores de consola. `vision` no pasa axe (paquete; contraste y título): es histórico.
   Los 10 estados de 019 también pasan axe-core (0 violaciones) a 360 y 1440 px, sin desbordamiento y sin errores de consola.
+  **021:** los 14 estados tienen sus 28 capturas a 360 y 1440 px (`ficha-archivo--optimizar-<estado>--<360|1440>.png`)
+  y pasan axe-core con 0 violaciones de cualquier gravedad, sin desbordamiento a 360 px, sin objetivos de menos de
+  24 px y sin errores de consola (2026-10-25). Se usaron los scripts del repositorio (`pw/capturar-rutas.js` y
+  `pw/axe-seguridad.js`) copiados a un directorio temporal fuera del repo, con Playwright 1.48.2 y axe-core 4.10.2
+  instalados allí y el Chrome del sistema (`channel: 'chrome'`); única diferencia con el original: el canal del
+  navegador y, en axe, el filtro a los archivos `--optimizar-`. El repositorio no ganó dependencias.
 - **Propuesta presentada**: este cambio (estado de indexación en la ficha, 019) **no está en el PDF «Mockups nimbo final»
   (p. 03–18)**: es un cambio interno respecto de la propuesta firmada, decidido por Adrián en P-3 (2026-10-21): el estado
   vive solo en la ficha, sin columna en el explorador.
@@ -122,6 +146,69 @@
   indexación (RN-7), que no depende del plan; se dibuja con un archivo de 120 MB de un plan Pro (el Personal solo sube 50 MB).
 - Sin cuenta en solo lectura por suscripción: indexar no es acción del cliente (CA-22), el estado se ve igual.
 
+## Decisiones de UX de 021 (optimizar una imagen)
+- **Dónde**: archivo por archivo, en la ficha (decisión de Adrián sobre P-3). Una tarjeta «Optimizar espacio» (`Card`)
+  es la primera de la rejilla, encima del historial, porque el resultado se ve en el historial justo debajo. No hay
+  pantalla global ni ítem «Optimizador» en la navegación: en los estados de 021 el generador quita ese ítem que trae
+  `marco/marco.js` (los estados de 014 y 019 no se tocan; ver «Pendiente»).
+- **Cuándo aparece**: solo para imágenes `png`, `jpg`/`jpeg`, `gif` estático y `webp` (también animado) del
+  propietario (RN-1, RN-5). El WebP animado se optimiza conservando cuadros, tiempos y bucle (sujeto al spike de
+  ADR-0035); solo el GIF animado queda fuera.
+  Para un PDF (spec futura 021b), un `.docx` u otro tipo **la tarjeta no se dibuja** (CA-3): no se ofrece lo que la API
+  rechaza. Lectores y roles internos tampoco la ven.
+- **Ícono de tipo**: `FileTypeChip` de imagen (`--file-img`, como en 007), en el encabezado.
+- **Cifras** (`opt-figs`): tamaño actual y estimado en grande (`tabular-nums`), una barra comparativa decorativa
+  (`aria-hidden`; el relleno `primary` es el estimado respecto del actual) y el ahorro en texto con ícono, «Ahorrarías
+  1.9 MB (40 %)», en `success-foreground`. Debajo, una nota: el original se conserva 7 días y no ocupa tu espacio.
+  «Optimizar» es `primary` (no destructivo: el original sigue restaurable).
+- **No conviene / descartada / no disponible**: `Alert` `info`, no de error (el archivo funciona). Sin botón. En «no
+  conviene» las cifras siguen visibles (CA-1) y el ahorro va en `secondary-foreground` (sin tono de éxito).
+- **No disponible: tres archivos, uno por motivo** (tamaño, resolución, GIF animado), para que cada texto tenga su
+  captura y su prueba; la estructura es la misma. **Sin números de límite en la UI**: los límites aún no están medidos
+  (P-11) y el texto no depende de ellos («Esta imagen supera el tamaño máximo / la resolución máxima permitida para
+  optimizarla.»). Los tamaños de los archivos de ejemplo son datos del archivo, no límites. El tamaño se conoce sin
+  estimar, así que ese aviso reemplaza a «Calcular ahorro» desde el principio; resolución y animación se conocen al
+  estimar, y el aviso reemplaza al resultado.
+- **Descartada (variante de texto, CA-11)**: si el archivo cambió mientras se optimizaba, el mismo `Alert` `info` dice
+  «Tu archivo cambió mientras se optimizaba. No aplicamos la optimización; puedes calcular el ahorro de nuevo.» y suma
+  «Calcular ahorro» (la estimación anterior ya no vale). No se genera un archivo aparte.
+- **Errores**: `Alert` de error (tono `destructive`). Integridad (CA-9): sin botón, no invita a repetir. Servicio
+  (CA-14): «Calcular ahorro» habilitado debajo, para volver a pedirla cuando el servicio vuelva. Los dos dicen primero
+  que el archivo no cambió.
+- **En curso** (estimando y optimizando, > 2 s, RNF-14): ícono girando, título y texto, una barra indeterminada
+  (`role="progressbar"` sin `aria-valuenow`, con nombre) y el botón que se pulsó queda en su sitio como «Calculando…» u
+  «Optimizando…» con `aria-disabled` (sigue enfocable: el foco no se pierde, patrón de «Reintentando…» de 019). Al
+  llegar el resultado el botón desaparece y el foco pasa al cuerpo de la tarjeta (`tabindex="-1"`), no al `body`. Con
+  `prefers-reduced-motion` el ícono queda quieto y la barra se ve llena en un tono suave, sin movimiento.
+- **Sin tiempo real**: la ficha consulta el estado periódicamente; el contenedor `role="status"` (`aria-live="polite"`)
+  de la tarjeta existe siempre y su contenido cambia dentro, así cada cambio se anuncia sin mover el foco. Sin toast:
+  el resultado se muestra en la tarjeta («te mostramos el resultado aquí») y ya se anuncia; un toast lo repetiría.
+  Si la implementación necesita aviso transitorio (por ejemplo, si el cliente se fue de la ficha), se usa el toast
+  existente de 006/014 (`carpetas/carpetas.js`), sin variantes nuevas.
+- **Confirmar** (`AlertDialog`, mismo patrón que restaurar): «¿Optimizar esta imagen?», «Se creará una versión
+  optimizada. El original se conserva hasta el 1 nov 2026 y no ocupa tu espacio.» (fecha = hoy + retención en papelera
+  del plan, 7 días en Personal; viene de la API) y un resumen (actual 4.8 MB · versión 3; estimado 2.9 MB · ahorras
+  1.9 MB). En 3 de 3, el mismo `Alert` `warning` de 014 CA-15: «**Se eliminará la versión 1.** Tu plan conserva 3
+  versiones. Al continuar se eliminará la versión 1, la más antigua.», y el foco inicial pasa a «Cancelar». Por debajo
+  del límite no hay aviso y el foco inicial va a «Optimizar».
+- **Completada**: la tarjeta en su estado normal, sin `Alert` (no hay variante de éxito en `ui-guidelines.md` §4):
+  el texto «Optimizamos tu imagen: ahorraste 1.9 MB (40 %).» con ícono de check, con el mismo estilo que el ahorro
+  estimado (`success-foreground` sobre `card`), y una nota con cuándo vence el original. En el historial la versión 4 («Optimización», ACTUAL y NUEVA). La versión 3 lleva una marca de texto con ícono a lo ancho
+  de su fila, «Original conservado hasta 1 nov 2026 · no ocupa tu espacio» (no solo color), y conserva «Restaurar»
+  (restaurar sí usa espacio, como 014; el diálogo de restaurar ya lo dice). El original conservado ocupa uno de los 3
+  lugares, así que la versión 1 se podó y la 2 dice «Sin comparación». Detalles: «Con versiones» ya no suma el original
+  (7.4 MB) y una fila «Original conservado» lo explica. La cuota de la barra lateral baja de 4.9 GB a 4.8 GB (cifras
+  elegidas en el borde del redondeo para que la bajada se vea; un ahorro pequeño puede no cambiar el decimal).
+- **Solo lectura** (CA-17): el patrón existente, el `ReadOnlyBanner` (`avisoSoloLectura` del marco) **una sola vez,
+  arriba de la vista**, con el texto de 010 CA-13 («Tu suscripción venció y tu cuenta está en solo lectura. Renueva tu
+  plan para volver a subir, editar y compartir.») y «Renovar plan». La tarjeta es la de «conviene» (estimar está
+  permitido) con «Optimizar» deshabilitado: `aria-disabled="true"` (sigue enfocable) y `aria-describedby` al título
+  del banner, con la opacidad de los botones deshabilitados. Sin segundo banner ni texto nuevo en la tarjeta. El
+  historial no ofrece «Restaurar» (010 CA-13 la rechaza).
+- **Tamaños**: botones de la tarjeta de 36 px en escritorio y 44 px a todo el ancho en móvil; el diálogo usa el de 014.
+- **Texto «esta imagen»**: la spec §6 dice «no vale la pena optimizar este archivo»; el mockup usa «esta imagen»
+  porque la 021 solo optimiza imágenes. Se alinea la spec o el mockup al aprobar.
+
 ## Contraste de los pares nuevos (WCAG 2.1)
 | Par | Contraste |
 |---|---|
@@ -136,6 +223,10 @@
 | `success-foreground` sobre `success` al 12 % (chip «Indexado») | 4.80 |
 | `destructive` sobre `destructive-soft` al 12 % (chip y título del aviso de `fallido`) | ≈ 4.9 (axe sin violaciones) |
 | `foreground` sobre `card` (título del aviso informativo) / `primary` sobre `card` (su ícono) | 15.6 / 4.97 |
+| 021: `success-foreground` sobre `card` (ahorro «Ahorrarías…» y resultado «Optimizamos tu imagen…») | 5.24 |
+| 021: `secondary-foreground` sobre `muted` (marca «Original conservado») / `primary` sobre `muted` (su ícono) | 7.45 / 4.59 |
+| 021: `primary` sobre `muted` (barra indeterminada y barra comparativa, no texto; mínimo 3:1) | 4.59 |
+| 021: `file-img` sobre `file-img-bg` (ícono de imagen del encabezado, el de 007) | el de 007 |
 
 ## Diferencias con `ficha-archivo--vision.html`
 1. Autoría por porcentaje y cambios «+2 párrafos»: fuera de alcance (atribución por párrafo, `product-context.md` §9;
@@ -148,6 +239,9 @@
 7. Sin versión móvil.
 
 ## Pendiente
+- 021: los 22 estados de 014 y 019 (y el resto de mockups con la barra de `marco/marco.js`) siguen mostrando el ítem
+  «Optimizador» en la navegación; quitarlo del marco cambia todos esos HTML y se hace en un cambio aparte.
+- 021: P-2 y P-11 están resueltas como regla (spec RN-2 y RN-8) y sus valores técnicos se midieron en el spike (plan §6); la UI no muestra cifras de límite.
 - Participantes de una versión de edición (016).
 - Ficha del lector (019 CA-19): la ficha de 014 es solo del propietario (`404` para ajenos, CA-16); la vista de lector se
   dibuja como referencia y depende de 012 (compartir). Ver decisiones pendientes en el informe de 019.

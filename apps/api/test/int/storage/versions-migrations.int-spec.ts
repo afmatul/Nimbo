@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { DataSource, QueryRunner } from 'typeorm';
 
 import { VersionesNumeroYRestauracion20261008100000 } from '../../../src/migrations/20261008100000-versiones-numero-y-restauracion';
+import { ConservarOriginalOptimizado20261025100000 } from '../../../src/migrations/20261025100000-conservar-original-optimizado';
 import { connectAsOwner } from '../../support/database-urls';
 
 import {
@@ -172,6 +173,66 @@ describe('migración versiones-numero-y-restauracion (CA-4, plan §3)', () => {
       index: 'uq_version_archivo_numero',
       check: 'ck_version_numero',
       legacy: { numero: 1, restaurada_de_numero: null },
+    });
+  });
+});
+
+describe('migración conservar-original-optimizado (014b CA-4, plan §3)', () => {
+  const keep = new ConservarOriginalOptimizado20261025100000();
+
+  /** La columna, su `CHECK` y su índice parcial, o `null` si no están. */
+  const keepSchemaOf = async (runner: QueryRunner) => {
+    const [row] = (await runner.query(
+      `SELECT (SELECT data_type::text FROM information_schema.columns
+                WHERE table_name = 'version_archivo' AND column_name = 'conservada_hasta') AS column,
+              (SELECT conname::text FROM pg_constraint WHERE conname = 'ck_version_conservada_hasta') AS check,
+              to_regclass('idx_version_archivo_conservada')::text AS index`,
+    )) as { column: string | null; check: string | null; index: string | null }[];
+    return row;
+  };
+
+  it('CA-4: `conservada_hasta` es `timestamptz` opcional y una versión existente queda nula (cuenta)', async () => {
+    const [column, kept] = await inRolledBackTransaction(owner, async (runner) => {
+      const { fileId } = await fileWithVersion(runner);
+      const [row] = (await runner.query(
+        'SELECT conservada_hasta FROM version_archivo WHERE archivo_id = $1',
+        [fileId],
+      )) as { conservada_hasta: Date | null }[];
+      return [(await columnsOf(runner, 'version_archivo'))['conservada_hasta'], row];
+    });
+
+    expect(column).toEqual({ type: 'timestamp with time zone', nullable: true, default: null });
+    expect(kept).toEqual({ conservada_hasta: null });
+  });
+
+  it.each([
+    ['igual a la creación', '0'],
+    ['anterior a la creación', '-1 day'],
+  ])('RN-3: `ck_version_conservada_hasta` rechaza una fecha %s', async (_case, offset) => {
+    await expect(
+      inRolledBackTransaction(owner, async (runner) => {
+        const { fileId } = await fileWithVersion(runner);
+        await runner.query(
+          `UPDATE version_archivo SET conservada_hasta = creada_en + $2::interval WHERE archivo_id = $1`,
+          [fileId, offset],
+        );
+      }),
+    ).rejects.toThrow(/ck_version_conservada_hasta/);
+  });
+
+  it('RNF-10: el `down` quita columna, `CHECK` e índice y el `up` los repone', async () => {
+    const [afterDown, afterUp] = await inRolledBackTransaction(owner, async (runner) => {
+      await keep.down(runner);
+      const down = await keepSchemaOf(runner);
+      await keep.up(runner);
+      return [down, await keepSchemaOf(runner)];
+    });
+
+    expect(afterDown).toEqual({ column: null, check: null, index: null });
+    expect(afterUp).toEqual({
+      column: 'timestamp with time zone',
+      check: 'ck_version_conservada_hasta',
+      index: 'idx_version_archivo_conservada',
     });
   });
 });

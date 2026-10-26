@@ -52,6 +52,7 @@ describe('toFileVersionSummary (plan 014 §4, CA-6)', () => {
       createdAt: CREATED_AT.toISOString(),
       createdById: ANA.id,
       isCurrent: true,
+      keptUntil: null,
     });
     expect(fileVersionSummarySchema.parse(summary)).toEqual(summary);
     expect(JSON.stringify(summary)).not.toContain('u/');
@@ -73,5 +74,22 @@ describe('toFileVersionSummary (plan 014 §4, CA-6)', () => {
     if (entry === undefined) throw new Error('falta la entrada');
 
     expect(toFileVersionSummary(entry, small.id).deltaBytes).toBe(String(1n - 2n ** 60n));
+  });
+
+  it('014b CA-4: un original conservado trae su fecha de conservación en ISO', () => {
+    const optimized = FileVersion.forOrigin('optimizacion', {
+      id: randomUUID(),
+      fileId: FILE_ID,
+      objectKey: ObjectKey.of(ANA.id, FILE_ID, randomUUID()),
+      sizeBytes: 400n,
+      createdBy: ANA.id,
+      number: 2,
+      now: CREATED_AT,
+    });
+    const kept = uploaded(1, 1_000n).conserveAsOriginal(optimized, 7);
+    const [, entry] = VersionHistory.of([kept, optimized]);
+    if (entry === undefined) throw new Error('falta la entrada');
+
+    expect(toFileVersionSummary(entry, optimized.id).keptUntil).toBe('2026-10-08T10:00:00.000Z');
   });
 });

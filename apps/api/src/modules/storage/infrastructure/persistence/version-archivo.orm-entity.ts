@@ -38,4 +38,8 @@ export class VersionArchivoOrmEntity {
   /** Sesión de edición que la generó (016); `UNIQUE` y solo en las de origen `edicion` (DF-05). */
   @Column('uuid', { name: 'sesion_edicion_id', nullable: true })
   sesionEdicionId!: string | null;
+
+  /** Fecha de purga de un original conservado (014b); nula = cuenta en `espacio_usado`. */
+  @Column('timestamptz', { name: 'conservada_hasta', nullable: true })
+  conservadaHasta!: Date | null;
 }
