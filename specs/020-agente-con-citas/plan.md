@@ -139,6 +139,17 @@ Siembra: se reutilizan `insertChunk`, `insertIndexing` y `axisVector` de `test/i
 
 - Las pruebas de la 019 que usaban `nearest` (`chunk.repository.int-spec.ts`, `intelligence.iso-spec.ts`, `intelligence-fakes.ts`) se migran en T-05. Sin repetir un CA en tres capas. Cobertura de lógica de negocio ≥ 60 %.
 
+### Medición con Gemini real (T-09; la corre Adrián en T-10)
+- **Comando**: `pnpm --filter api agent:measure` con `GEMINI_API_KEY` en `.env` (no hace falta Docker). Sin clave termina con `agent.measure.missing_key` y código 1. Solo imprime números y nombres de modelo.
+- **Qué mide** (`apps/api/test/perf/`): corpus de 5 documentos (docx, xlsx, pptx, md, txt) generados con `test/support/*-fixture.ts` y pasados por los extractores y el `Chunker` reales, vectorizado con `task: 'document'`. Con `HybridRetriever`, `AnswerComposer` y `GeminiFlashModel` reales sobre `MemoryChunkSearch` (coseno exacto en memoria, sin léxica), 20 preguntas con respuesta dan el tiempo al primer `delta` (embedding de la pregunta + recuperación + primer trozo), el primer trozo del modelo, el hueco máximo entre trozos y la mejor similitud; 10 sin respuesta dan solo la mejor similitud. Los plazos van holgados (60 s) para observar, no cortar.
+- **Qué no mide**: el SQL (léxica y barrido de pgvector) ni HTTP/Traefik, que confirma T-10 con `curl -N`; el volumen de decenas de miles de fragmentos por cuenta (riesgo 3) queda para la carga (023).
+- **Lectura**: `agent.measure.completed` trae `firstFragment.p95Ms`, `meetsCa2` y `proposals` (`MIN_SIMILARITY` = punto medio entre la peor con respuesta y la mejor sin respuesta, solo si no se cruzan; plazos = 2 × p95 al segundo). Si `withoutFragments > 0`, el umbral provisional dejó preguntas sin modelo: se fija primero `MIN_SIMILARITY` y se repite la corrida para CA-2.
+- **Al fijar**: `MIN_SIMILARITY` en `hybrid-retriever.ts`; los plazos por omisión en `env.schema.ts`, `.env.example` y `ambientes.md`; en un commit `[020 T-10]` con la fila de abajo.
+
+| Fecha | Modelos (chat / embedding) | p95 primer fragmento | CA-2 | `MIN_SIMILARITY` propuesta (rango) | Plazos propuestos (primer trozo / entre trozos) | Valores fijados |
+|---|---|---|---|---|---|---|
+| Pendiente (T-10) | | | | | | |
+
 ## 7. Riesgos y coherencia con el diseño
 1. **Similitud mínima sin calibrar** (CA-3): el doble de embeddings es un hash, no mide cercanía semántica; `MIN_SIMILARITY` queda provisional hasta T-09 con el embedding real. Si el corpus de medición no la separa bien, se ajusta en la revisión de T-10, no se inventa.
 2. **No hay corpus** (`pnpm seed` es un marcador): CA-2 y T-10 dependen del script `agent:measure`, que genera su corpus con los generadores de `test/support/*-fixture.ts`. PD-133 deja el `seed` real a quien lo haga.
@@ -168,3 +179,4 @@ Siembra: se reutilizan `insertChunk`, `insertIndexing` y `axisVector` de `test/i
 | 2026-10-25 | **Reescrito para la 020 (API)**: 12 filas; sin `apps/web` (→ 020b); contrato real de la 019 (D-1); `IChunkSearch` y retiro de `nearest` (D-2); `gemini-http.ts` (D-7); `task` en embeddings y clave del `api` (D-8); `GET /agent/status` suma `maxQuestionChars`; códigos en `INTELLIGENCE_ERROR_CODES`; corpus de medición (R-2); DF/PD reconciliados. Vuelve a «Propuesto» | ADR-0034 y decisión de Adrián | Adrián |
 | 2026-10-25 | Aprobado tras el cambio de alcance; `billing` con visto bueno de Juan Marcos en el PR | Resumen aprobado | Adrián |
 | 2026-10-25 | `billing` sin visto bueno de Juan Marcos: lo autoriza Adrián como tech lead | Decisión de Adrián | Adrián |
+| 2026-10-25 | §6 suma «Medición con Gemini real»: comando de `agent:measure`, alcance (en memoria, sin SQL ni HTTP) y tabla de resultados para T-10. Sin cambio de alcance ni de valores | T-09 | — (nota de implementación) |

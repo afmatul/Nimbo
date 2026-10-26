@@ -83,16 +83,16 @@ nombres ni texto.
 Definidas en `shared/infrastructure/config/env.schema.ts` y `.env.example` (valores y detalle en
 `docs/operations/ambientes.md`).
 
-| Variable                                                            | Proceso          | Qué fija                                                      |
-| ------------------------------------------------------------------- | ---------------- | ------------------------------------------------------------- |
-| `INDEXING_MAX_ATTEMPTS`                                             | `api` y `worker` | Intentos por trabajo (3)                                      |
-| `RATE_LIMIT_INDEX_RETRY_PER_MINUTE`                                 | `api`            | Límite de «Reintentar» (10)                                   |
-| `INDEXING_MAX_FILE_BYTES`                                           | `worker`         | Tope indexable (50 MiB)                                       |
-| `INDEX_RECONCILE_INTERVAL_MINUTES`, `INDEX_RECONCILE_BATCH_SIZE`    | `worker`         | Frecuencia (1440) y tamaño de página (100) de la conciliación |
-| `GHOSTSCRIPT_BIN`                                                   | `worker`         | Binario para PDF (`gs`; en Windows `gswin64c`)                |
-| `GEMINI_API_KEY`, `GEMINI_EMBEDDING_MODEL`                          | `api` y `worker` | Clave (opcional, secreta) y modelo de embeddings (020 D-8)    |
-| `GEMINI_CHAT_MODEL`, `AGENT_MAX_QUESTION_CHARS`                     | `api`            | Modelo del agente y largo máximo de la pregunta (1000)        |
-| `AGENT_MODEL_FIRST_CHUNK_TIMEOUT_MS`, `AGENT_MODEL_IDLE_TIMEOUT_MS` | `api`            | Plazos del modelo (10000 ms cada uno; se miden en T-09)       |
+| Variable                                                            | Proceso          | Qué fija                                                                                                    |
+| ------------------------------------------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------- |
+| `INDEXING_MAX_ATTEMPTS`                                             | `api` y `worker` | Intentos por trabajo (3)                                                                                    |
+| `RATE_LIMIT_INDEX_RETRY_PER_MINUTE`                                 | `api`            | Límite de «Reintentar» (10)                                                                                 |
+| `INDEXING_MAX_FILE_BYTES`                                           | `worker`         | Tope indexable (50 MiB)                                                                                     |
+| `INDEX_RECONCILE_INTERVAL_MINUTES`, `INDEX_RECONCILE_BATCH_SIZE`    | `worker`         | Frecuencia (1440) y tamaño de página (100) de la conciliación                                               |
+| `GHOSTSCRIPT_BIN`                                                   | `worker`         | Binario para PDF (`gs`; en Windows `gswin64c`)                                                              |
+| `GEMINI_API_KEY`, `GEMINI_EMBEDDING_MODEL`                          | `api` y `worker` | Clave (opcional, secreta) y modelo de embeddings (020 D-8)                                                  |
+| `GEMINI_CHAT_MODEL`, `AGENT_MAX_QUESTION_CHARS`                     | `api`            | Modelo del agente y largo máximo de la pregunta (1000)                                                      |
+| `AGENT_MODEL_FIRST_CHUNK_TIMEOUT_MS`, `AGENT_MODEL_IDLE_TIMEOUT_MS` | `api`            | Plazos del modelo (10000 ms cada uno; los mide `pnpm --filter api agent:measure`, T-09, y se fijan en T-10) |
 
 ## Capas (`docs/sdd/architecture.md` §4)
 
