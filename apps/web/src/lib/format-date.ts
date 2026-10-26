@@ -69,6 +69,21 @@ export function dayLabel(isoDate: string): string {
   return startedOnFormatter.format(new Date(isoDate));
 }
 
+/** Un instante de fin (`vence_en`, `cuota_extra_hasta`) rige hasta el milisegundo anterior (011b RN-8). */
+function lastInstantOf(endIso: string): Date {
+  return new Date(Date.parse(endIso) - 1);
+}
+
+/** «30 de noviembre de 2026»: el último día de Guatemala en que rige un instante de fin; «Venció el» no la usa. */
+export function longLastDayLabel(endIso: string): string {
+  return longDayFormatter.format(lastInstantOf(endIso));
+}
+
+/** «30 nov 2026»: como `longLastDayLabel`, en formato corto. */
+export function lastDayLabel(endIso: string): string {
+  return startedOnFormatter.format(lastInstantOf(endIso));
+}
+
 /** «Iniciada el 24 sep 2026», con el día de Guatemala. */
 export function startedOnLabel(startedAt: string): string {
   return `Iniciada el ${dayLabel(startedAt)}`;

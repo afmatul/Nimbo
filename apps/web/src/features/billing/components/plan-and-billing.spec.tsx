@@ -349,6 +349,53 @@ describe('Plan y facturación en la 010 (spec 010 §6, CA-6, CA-16, CA-19, CA-25
     expect(await within(nextCharge()).findByText('Desactivada')).toBeTruthy();
   });
 
+  describe('011b RN-8: un `vence_en` a medianoche de Guatemala', () => {
+    // 2026-12-01 06:00 UTC = 2026-12-01 00:00 en Guatemala: el plan rige hasta el 30 de noviembre.
+    const MIDNIGHT = '2026-12-01T06:00:00.000Z';
+    const planCard = () => screen.getByRole('region', { name: /Nimbo Equipo/ });
+
+    it('CA-9: «Activo hasta» y «vence el» muestran el último día en que rige', async () => {
+      await renderWith(
+        historyWith({ ...VIGENTE, expiresAt: MIDNIGHT, autoRenew: false, nextCharge: null }),
+      );
+
+      expect(within(planCard()).getByText('Activo hasta')).toBeTruthy();
+      expect(within(planCard()).getByText('30 de noviembre de 2026')).toBeTruthy();
+      expect(
+        within(nextCharge()).getByText(
+          'No habrá cobro automático. Tu plan vence el 30 de noviembre de 2026.',
+        ),
+      ).toBeTruthy();
+      expect(
+        screen.getByText(
+          'Tu plan vence el 30 de noviembre de 2026 y no se renovará. Renueva ahora para no quedar en solo lectura.',
+        ),
+      ).toBeTruthy();
+    });
+
+    it('«Venció el» sigue con el instante: el primer día sin vigencia', async () => {
+      await renderWith(
+        historyWith({ ...VIGENTE, expiresAt: MIDNIGHT, status: 'readOnly', nextCharge: null }),
+      );
+
+      expect(within(planCard()).getByText('Venció el')).toBeTruthy();
+      expect(within(planCard()).getByText('1 de diciembre de 2026')).toBeTruthy();
+      expect(
+        within(nextCharge()).getByText(
+          /^Sin cobro programado\. Tu suscripción venció el 1 de diciembre de 2026/,
+        ),
+      ).toBeTruthy();
+    });
+
+    it('el cambio programado se aplica el instante, no el último día', async () => {
+      await renderWith(
+        historyWith({ ...VIGENTE, expiresAt: MIDNIGHT, pendingPlan: PRO, renewal: pendingRenewal }),
+      );
+
+      expect(screen.getByText('Tu plan cambiará a Pro el 1 de diciembre de 2026.')).toBeTruthy();
+    });
+  });
+
   it('Personal: sin «Próximo cobro» ni avisos; «Ver planes» lleva a contratar', async () => {
     await renderWith(
       historyWith({ ...VIGENTE, plan: PERSONAL, expiresAt: null, nextCharge: null, renewal: null }),

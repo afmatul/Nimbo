@@ -65,6 +65,37 @@ describe('correos de la renovación (spec 010 CA-2, CA-5, CA-7, CA-29)', () => {
     expect(message.text).toContain('hasta el 13 de diciembre de 2026');
   });
 
+  describe('011b RN-8: un fin a medianoche de Guatemala', () => {
+    // 2026-12-01 06:00 UTC = 2026-12-01 00:00 en Guatemala: el plan rige hasta el 30 de noviembre.
+    const MIDNIGHT = { ...NOTICE, expiresAt: new Date('2026-12-01T06:00:00.000Z') };
+
+    it('CA-9: el aviso dice que vence el último día en que rige', () => {
+      const message = reminderMessage(MIDNIGHT, {
+        planName: 'Personal',
+        amountCents: 0,
+        card: null,
+      });
+
+      expect(message.text).toContain('Tu plan vence el 30 de noviembre de 2026.');
+    });
+
+    it('CA-9: el cambio descartado dice hasta el último día en que rige', () => {
+      const message = planDiscardedMessage(NOTICE, {
+        discarded: 'Pro',
+        renewed: 'Equipo',
+        renewedUntil: MIDNIGHT.expiresAt,
+      });
+
+      expect(message.text).toContain('hasta el 30 de noviembre de 2026.');
+    });
+
+    it('«venció el» sigue con el instante: el primer día sin vigencia', () => {
+      const message = expiredMessage(MIDNIGHT, 'Equipo');
+
+      expect(message.text).toContain('Tu plan Equipo venció el 1 de diciembre de 2026.');
+    });
+  });
+
   it('el HTML escapa lo que viene de datos', () => {
     const message = expiredMessage(NOTICE, '<b>Equipo</b>');
 

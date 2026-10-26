@@ -1,8 +1,11 @@
 import {
   ACTIVE_NOW_LABEL,
   dateTimeLabel,
+  dayLabel,
   lastActivityLabel,
+  lastDayLabel,
   longDayLabel,
+  longLastDayLabel,
   startedOnLabel,
 } from './format-date';
 
@@ -41,6 +44,23 @@ describe('longDayLabel (009, mockup `billing/suscripcion/`)', () => {
   it('escribe el mes completo y usa el día de Guatemala', () => {
     expect(longDayLabel('2026-09-01T12:00:00.000Z')).toBe('1 de septiembre de 2026');
     expect(longDayLabel('2026-10-01T03:00:00.000Z')).toBe('30 de septiembre de 2026');
+  });
+});
+
+describe('último día en que rige un instante de fin (011b RN-8, CA-9)', () => {
+  // 2026-12-01 06:00 UTC = 2026-12-01 00:00 en Guatemala: el último día que rige es el 30 de noviembre.
+  const MIDNIGHT_END = '2026-12-01T06:00:00.000Z';
+  // 2026-11-04 18:00 UTC = 12:00 en Guatemala: un `vence_en` de la 010 se ve igual que hoy.
+  const MIDDAY_END = '2026-11-04T18:00:00.000Z';
+
+  it('CA-9: a medianoche de Guatemala muestra el día anterior', () => {
+    expect(longLastDayLabel(MIDNIGHT_END)).toBe('30 de noviembre de 2026');
+    expect(lastDayLabel(MIDNIGHT_END)).toBe(dayLabel('2026-11-30T18:00:00.000Z'));
+  });
+
+  it('CA-9: con hora intermedia muestra el mismo día que el instante', () => {
+    expect(longLastDayLabel(MIDDAY_END)).toBe(longDayLabel(MIDDAY_END));
+    expect(lastDayLabel(MIDDAY_END)).toBe(dayLabel(MIDDAY_END));
   });
 });
 
