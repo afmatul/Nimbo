@@ -35,7 +35,7 @@ coincide (en cualquier carpeta), los acota por tipo y por fecha de modificación
 - **CA-3** (HU-1, RF-15, RNF-14) Dado más resultados que el tamaño de página, cuando pulsa «Cargar más», entonces se agregan los siguientes sin repetir ni saltar ninguno, con los estados de 007 (cargando más y error con «Reintentar»).
 - **CA-4** (HU-1, RF-15) Dado el texto «50%» o «a_b», entonces se busca tal cual: encuentra «Avance 50%.pdf» o «a_b.txt», y no todos los nombres.
 - **CA-5** (HU-1, RF-11) Dado un archivo o una carpeta en la papelera, entonces no aparece en los resultados; al restaurarlo vuelve a aparecer.
-- **CA-6** (HU-1, RF-15) — error: Dado un texto vacío o solo con espacios, la web no busca y pide escribir algo; la API responde `400` `STORAGE_INVALID_QUERY` con `fields[q].reason = REQUIRED`. Con más de 255 caracteres, `NAME_TOO_LONG` y el mensaje «Usa 255 caracteres o menos…».
+- **CA-6** (HU-1, RF-15) — error: Dado un texto vacío o solo con espacios, la web no busca, deja la página en su estado inicial («Escribe qué quieres buscar.») y devuelve el foco al campo; la API responde `400` `STORAGE_INVALID_QUERY` con `fields[q].reason = REQUIRED`. Con más de 255 caracteres, `NAME_TOO_LONG` y el mensaje «Usa 255 caracteres o menos…».
 
 ### Filtros (HU-2)
 - **CA-7** (HU-2, RF-15) Dado el filtro de tipo «Documentos», «Imágenes» u «Otros» (las categorías del resumen de espacio, 007 CA-2), entonces solo aparecen archivos de esa categoría y **ninguna carpeta**; al quitar el filtro, las carpetas vuelven.
@@ -72,7 +72,7 @@ coincide (en cualquier carpeta), los acota por tipo y por fecha de modificación
 
 | Pantalla | Mockup (`docs/design/mockups/…`) | Estados requeridos | Estado del mockup |
 |---|---|---|---|
-| Búsqueda (`/buscar`) | `storage/busqueda/` | resultados por nombre (carpetas y archivos, con ubicación), filtro de tipo, filtro de fecha, sin-resultados, cargando, error, cargando-mas y cargar-mas-error (patrón del explorador, 007) | `Borrador` (resultados de la propuesta, por contenido). Decisión explícita del dueño: el `ui-designer` crea con `/mockup` los estados nuevos (resultado por nombre y carpeta, filtro de fecha, sin-resultados) en `feat/018-busqueda`; **pendientes de aprobación de Adrián** |
+| Búsqueda (`/buscar`) | `storage/busqueda/` | resultados por nombre (carpetas y archivos, con ubicación), filtro de tipo, filtro de fecha, sin-resultados, cargando, error, cargando-mas y cargar-mas-error (patrón del explorador, 007) | `Borrador`, **pendiente de aprobación de Adrián**: 11 estados de la 018 (entrada, resultados-por-nombre, filtros, rango-invalido, sin-resultados, sin-resultados-sin-filtros, cargando, error, cargando-mas, cargar-mas-error, menu-movil) creados con `/mockup` en `feat/018-busqueda`; `busqueda--resultados` queda como referencia de 018b |
 | Navegación (barra lateral y menú móvil) | `shared/layout/` | ítem «Buscar» activo en `/buscar` | Patrón existente del layout (000b) |
 
 - Del mockup existente **no se construye**: «En comentarios», «texto reconocido por OCR» (fuera de alcance, §9 del contexto), «Preguntar al agente» y «Resumir con citas» (020), «Incluir papelera», «Solo indexados», el porcentaje de relevancia, la tarjeta «Ámbito de la búsqueda», los fragmentos de contenido y «Coincidencia en contenido» (018b), el total «28 coincidencias en 9 archivos · 0.4 s» y «Ordenar: Relevancia».
@@ -107,3 +107,4 @@ coincide (en cualquier carpeta), los acota por tipo y por fecha de modificación
 |---|---|---|---|
 | 2026-10-26 | Spec, plan y tareas en un solo pase (ADR-0034), ya partida de 018b | Regla de partición (`workflow.md` §4.1) | Partición: Adrián |
 | 2026-10-26 | Mockup alineado con la spec: entrada por «Buscar» en la navegación (no campo en la cabecera), sin resaltado de la coincidencia; CA-8 suma los atajos de fecha del mockup | Mockup y plan se hicieron en paralelo y diferían | Dueño: Juan Marcos (pendiente Adrián) |
+| 2026-10-26 | Revisión de la spec: CA-6 alineado con el mockup (vacío sin mensaje de error), §6 con los 11 estados; en el plan, copias declaradas (M-1), prueba de atajos y PD-135 (lint de capas) | Revisión SOLID/DRY/YAGNI del dueño | Dueño: Juan Marcos (pendiente Adrián) |

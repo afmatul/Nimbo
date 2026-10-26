@@ -28,7 +28,7 @@ La web agrega `/buscar` en `features/search` y el ítem «Buscar» en la navegac
 | contracts | `packages/contracts/src/storage/index.ts` (cambia) | `export * from './search-schemas'` |
 | storage · aplicación | `apps/api/src/modules/storage/search/application/search.service.ts` (nuevo) | `SearchService.search(actor, request)`: palabras (NFC, recorte, división por espacios, sin repetidas), categoría → `FileKind[]` con `categoryOf` de `domain/file-category.ts`, `withActor`, mapeo a `SearchResponse` con `toNodeSummary` |
 | storage · puerto | `apps/api/src/modules/storage/search/application/ports/i-node-search.repository.port.ts` (nuevo) | `INodeSearchRepository.search(actor, criteria)` → `SearchPage` (`{ node: StorageNode, location: Folder ref \| null }[]` + `nextCursor`); token `I_NODE_SEARCH_REPOSITORY`; `NodeSearchCriteria` (`terms`, `kinds?`, `from?`, `to?`, `limit`, `cursor?`) |
-| storage · infraestructura | `apps/api/src/modules/storage/search/infrastructure/typeorm-node-search.repository.ts` (nuevo) | Las dos consultas de §3 con `requireActorScope(actor)`; reutiliza `nodesIn` (`node-sql`), `orderByOf`/`afterCondition` (`node-order-sql`), `encode/decodeNodeListCursor`, `toFile`; escapa `%`, `_` y `\` como `findTakenNames`; constante `FOLD_FROM`/`FOLD_TO` del plegado |
+| storage · infraestructura | `apps/api/src/modules/storage/search/infrastructure/typeorm-node-search.repository.ts` (nuevo) | Las dos consultas de §3 con `requireActorScope(actor)`; reutiliza `nodesIn` (`node-sql`), `orderByOf`/`afterCondition` (`node-order-sql`), `encode/decodeNodeListCursor`, `toFile`; escapa `%`, `_` y `\` con la copia de `escapeLike` (§2); constante `FOLD_FROM`/`FOLD_TO` del plegado |
 | storage · presentación | `apps/api/src/modules/storage/search/presentation/search.controller.ts` (nuevo) | `@Roles(Role.CLIENT)`, `@Controller('search')`, `@Get()` con `ZodValidationPipe(searchQuerySchema, storageQueryValidationError)` |
 | storage · composición | `apps/api/src/modules/storage/storage.module.ts` (cambia, **archivo de Adrián**) | Registra `SearchController`, `SearchService` y `{ provide: I_NODE_SEARCH_REPOSITORY, useClass: TypeOrmNodeSearchRepository }` (tres entradas; no se exporta nada) |
 | web · ruta | `apps/web/src/app/(app)/(cliente)/buscar/page.tsx` (nuevo) | Página cliente que monta `SearchView`; la guarda de rol del grupo `(cliente)` ya la cubre |
@@ -43,8 +43,12 @@ La web agrega `/buscar` en `features/search` y el ítem «Buscar» en la navegac
 - Puertos nuevos: `INodeSearchRepository`, **interno de `storage`**. Art. V.2 (b): es un repositorio y mantiene la
   aplicación libre de TypeORM. No se reutiliza `INodeRepository` porque es de Adrián (`storage` fuera de
   `storage/search`) y ya pasa de 400 líneas; el plan solo lee sus funciones exportadas.
-- Mapeo fila → `Folder`: `toFolder` no se exporta de `typeorm-node.repository.ts`; el repositorio de búsqueda tiene su
-  copia (segundo uso, Art. VI.2). Al tercer uso se exporta uno solo.
+- Copias declaradas (segundo uso, Art. VI.2; al tercero se extrae uno solo):
+  - `toFolder` y `escapeLike` (con `LIKE_SPECIAL_CHARACTERS`), privados en `typeorm-node.repository.ts` (de Adrián):
+    copia en `typeorm-node-search.repository.ts`. Alternativa si Adrián prefiere: que los exporte él (una línea cada
+    uno) y la búsqueda los importa; no suma archivos a esta spec.
+  - `localDayStart` e `isInvalidRange`, privados en `features/audit/hooks/use-activity.ts` (004): copia en
+    `use-search.ts`.
 - Dependencias nuevas entre módulos: ninguna (`storage → access` ya existe). Sin `architect`.
 - Frontend: reutiliza `LoadMore` y `MoreStatus` (`features/storage`), `SidebarQuota` y `useSpace`, `routes.ts`,
   `FileTypeChip`, `StateView` y `formatBytes`. Los estados nuevos siguen el mockup cuando Adrián lo apruebe.
@@ -113,7 +117,7 @@ Eventos / Socket.IO: ninguno.
 | CA-1 (mayúsculas, acentos, ñ ≠ n), CA-2 (orden y grupos, ubicación), CA-3 (cursor sin repetir ni saltar), CA-4 (comodines literales), CA-5 (papelera), CA-7, CA-8 (extremos del rango) | int (Testcontainers, `nimbo_app`) | `apps/api/test/int/storage/search.repository.int-spec.ts` |
 | CA-6/CA-9 (error principal `400`), CA-14 (`403` internos, `401`), CA-15 (bitácora capturada sin `q` ni nombres), caso feliz HTTP | int | `apps/api/test/int/storage/search.int-spec.ts` |
 | CA-13 (A y B con nombres casi iguales; ubicación ajena nunca nombrada; roles internos con 0 filas en el repositorio) | iso | `apps/api/test/isolation/storage-search.iso-spec.ts` |
-| CA-3, CA-8, CA-9 (URL ↔ filtros, días → instantes, rango inválido sin consultar, páginas) | web (hook) | `apps/web/src/features/search/use-search.spec.ts` |
+| CA-3, CA-8, CA-9 (URL ↔ filtros, días → instantes, cada atajo de fecha → su rango, rango inválido sin consultar, páginas), CA-6 (vacío sin consultar) | web (hook) | `apps/web/src/features/search/use-search.spec.ts` |
 | CA-2, CA-10, CA-11 (resultados, enlaces, sin resultados con «Quitar filtros», cargando, error con «Reintentar», foco) | web (componente) | `apps/web/src/features/search/components/search-view.spec.tsx` |
 | CA-11 (axe a 360 y 1440 px) | web | `apps/web/src/features/search/a11y.spec.tsx` |
 | CA-12 («Buscar» en la navegación del cliente, no en la interna) | web | `apps/web/src/components/nimbo/app-layout.spec.tsx` (se amplía) |
@@ -131,12 +135,15 @@ Sin E2E (marcador hasta 000b/023). El recorrido de la demo es la tarea humana.
   «Mis archivos». Hoy no pasa (todo es propio); 012 decide el texto («Compartido contigo») → PD-132.
 - **R-4 Texto buscado en direcciones**: Pino lo quita; un `accessLog` de Traefik lo registraría → PD-133 (como PD-101).
 - **R-5 Archivos de Adrián**: `storage.module.ts` (tres entradas) y los dos de `packages/contracts/src/storage/`
-  (motivos y una exportación). Se piden en esta aprobación; nada más fuera de `storage/search` y `features/search`.
+  (motivos y una exportación). Se piden en esta aprobación. Además `components/nimbo/app-layout.tsx` (un ítem en
+  `DEFAULT_NAV_ITEMS`): es archivo compartido de 000b permitido por `specs/README.md`, se nombra para que no sorprenda.
+- **R-7 Lint de capas**: `layers.js` solo vigila `modules/*/{domain,application}/**`; `storage/search/application`
+  queda fuera. Pedido a Adrián antes de `/implement`: extender a `modules/*/*/…` (PD-135, también sirve a 017).
 - **R-6 Mockup**: T-08 espera la aprobación de los estados nuevos. Los atajos de fecha del mockup («Últimos 7 días»,
   «Últimos 30 días», «Este año») se resuelven en la web sobre el mismo `from`/`to`; la API no cambia.
 - Desviaciones de los diagramas: DF-15 actualizado (`SearchService` y `SearchController` en `storage/search`,
   propuesto por este plan); M2 sin redibujar → PD-134.
-- Pendientes que deja fuera: PD-131 (k6 de la búsqueda), PD-132 (ubicación de lo compartido, 012), PD-133 (access log),
+- Pendientes que deja fuera: PD-131 (k6 de la búsqueda), PD-132 (ubicación de lo compartido, 012), PD-133 (access log), PD-135 (lint de capas),
   PD-134 (Clases M2 y `design-model.md`, sección de búsqueda en `storage/README.md`); PD-127 pasa a 018b.
 - ADR requeridos: ninguno. **Discutible**: si Adrián prefiere `unaccent` (D-1), propongo no hacer ADR (contrib de la
   imagen ya aprobada en ADR-0003) y anotarlo en este plan.
