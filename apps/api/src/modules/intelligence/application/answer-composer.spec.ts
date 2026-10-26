@@ -20,6 +20,7 @@ const fragment = (id: string, certain = true): RetrievedFragment => ({
   id: `fragmento-${id}`,
   fileId: `archivo-${id}`,
   versionId: `version-${id}`,
+  fileName: `informe-${id}.pdf`,
   text: `texto ${id}`,
   location: certain ? PdfLocation.page(4) : SheetLocation.sheet('Ventas', 0.5),
 });
@@ -60,6 +61,7 @@ describe('AnswerComposer (plan 020 §2, fila 4)', () => {
         ordinal: 1,
         fileId: 'archivo-1',
         versionId: 'version-1',
+        fileName: 'informe-1.pdf',
         label: 'Página 4',
         isCertain: true,
       },
@@ -77,6 +79,7 @@ describe('AnswerComposer (plan 020 §2, fila 4)', () => {
     expect(sent).toContain('texto 1');
     expect(sent).not.toContain('archivo-1');
     expect(sent).not.toContain('version-1');
+    expect(sent).not.toContain('informe-1.pdf');
   });
 
   it('CA-3: sin fragmentos responde la frase fija sin llamar al modelo', async () => {

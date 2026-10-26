@@ -9,9 +9,8 @@ import type { RetrievedFragment } from '../domain/retrieved-fragment';
 import { fuse } from '../domain/rrf-fuse';
 import { sourceLocationFromJson } from '../domain/source-location-json';
 
-import type { StoredChunk } from './ports/i-chunk-repository.port';
 import { I_CHUNK_SEARCH } from './ports/i-chunk-search.port';
-import type { IChunkSearch, ScoredChunk } from './ports/i-chunk-search.port';
+import type { IChunkSearch, ScoredChunk, SearchedChunk } from './ports/i-chunk-search.port';
 import { I_EMBEDDING_PROVIDER } from './ports/i-embedding-provider.port';
 import type { Embedding, IEmbeddingProvider } from './ports/i-embedding-provider.port';
 
@@ -40,20 +39,21 @@ export interface Retrieval {
 }
 
 /** Fragmento con su ubicación rehidratada, o `undefined` si la procedencia guardada no es válida (D-5). */
-function toFragment(chunk: StoredChunk): RetrievedFragment | undefined {
+function toFragment(chunk: SearchedChunk): RetrievedFragment | undefined {
   const location = sourceLocationFromJson(chunk.location);
   if (location === undefined) return undefined;
   return {
     id: chunk.id,
     fileId: chunk.fileId,
     versionId: chunk.versionId,
+    fileName: chunk.fileName,
     text: chunk.text,
     location,
   };
 }
 
 /** Rehidrata cada lista; un fragmento inválido sale de todas y se cuenta una vez aunque esté en las dos. */
-function rehydrate(rankings: readonly (readonly StoredChunk[])[]): {
+function rehydrate(rankings: readonly (readonly SearchedChunk[])[]): {
   rankings: RetrievedFragment[][];
   discarded: number;
 } {
@@ -110,7 +110,7 @@ export class HybridRetriever {
     actor: Actor,
     request: RetrievalRequest,
     vector: Embedding,
-  ): Promise<[readonly StoredChunk[], readonly ScoredChunk[]]> {
+  ): Promise<[readonly SearchedChunk[], readonly ScoredChunk[]]> {
     const { question, scope } = request;
     const limit = CANDIDATES_PER_SEARCH;
     const lexical = await this.search.keywordSearch(actor, { text: question.text, scope, limit });

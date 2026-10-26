@@ -6,6 +6,7 @@ const fragment = (id: string): RetrievedFragment => ({
   id,
   fileId: `archivo-${id}`,
   versionId: `version-${id}`,
+  fileName: `informe-${id}.pdf`,
   text: `texto ${id}`,
   location: PdfLocation.page(1),
 });

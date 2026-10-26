@@ -26,7 +26,7 @@ export type AnswerOutcome = 'answered' | 'not_found';
 
 /**
  * Eventos de la respuesta (plan 020 §4) antes de pasar a SSE. La cita trae archivo, versión, etiqueta y certeza del
- * fragmento del servidor, nunca del modelo (D-5, RN-6). El nombre del archivo lo agrega la presentación (S-1).
+ * fragmento del servidor, nunca del modelo (D-5, RN-6); `fileName` va solo al navegador del dueño (S-1).
  */
 export type AgentAnswerEvent =
   | {
@@ -34,6 +34,7 @@ export type AgentAnswerEvent =
       readonly ordinal: number;
       readonly fileId: string;
       readonly versionId: string;
+      readonly fileName: string;
       readonly label: string;
       readonly isCertain: boolean;
     }
@@ -63,7 +64,7 @@ function toEvent(piece: FilteredPiece, tally: AnswerTally): AgentAnswerEvent {
     tally.text += piece.text;
     return { type: 'delta', text: piece.text };
   }
-  const { fileId, versionId, location } = piece.fragment;
+  const { fileId, versionId, fileName, location } = piece.fragment;
   tally.citations += 1;
   tally.uncertain ||= !location.isCertain();
   return {
@@ -71,6 +72,7 @@ function toEvent(piece: FilteredPiece, tally: AnswerTally): AgentAnswerEvent {
     ordinal: piece.ordinal,
     fileId,
     versionId,
+    fileName,
     label: location.label(),
     isCertain: location.isCertain(),
   };

@@ -18,8 +18,16 @@ export interface VectorQuery {
   readonly limit: number;
 }
 
+/**
+ * Fragmento encontrado para el agente con el nombre de su archivo (`archivo.nombre`, leído en la misma consulta;
+ * enmienda de ADR-0035). El nombre es para la cita del dueño (S-1): nunca va al modelo ni a bitácoras.
+ */
+export interface SearchedChunk extends StoredChunk {
+  readonly fileName: string;
+}
+
 /** Fragmento de la búsqueda vectorial con su similitud coseno con la pregunta (1 = idéntico). */
-export interface ScoredChunk extends StoredChunk {
+export interface ScoredChunk extends SearchedChunk {
   readonly similarity: number;
 }
 
@@ -31,7 +39,7 @@ export interface ScoredChunk extends StoredChunk {
  */
 export interface IChunkSearch {
   /** Fragmentos con algún lexema de la pregunta, de mayor a menor `ts_rank_cd`. */
-  keywordSearch(actor: Actor, query: KeywordQuery): Promise<readonly StoredChunk[]>;
+  keywordSearch(actor: Actor, query: KeywordQuery): Promise<readonly SearchedChunk[]>;
   /** Los más cercanos por coseno (barrido exacto sobre lo filtrado, sin HNSW). */
   vectorSearch(actor: Actor, query: VectorQuery): Promise<readonly ScoredChunk[]>;
   /** Hay al menos un archivo accesible con su versión vigente `indexado` (CA-7). */

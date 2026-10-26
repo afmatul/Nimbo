@@ -120,7 +120,7 @@ No hay paquete `domain` aparte salvo que un ADR lo justifique.
 5. Los transversales (`audit`, `realtime`, `notifications`) declaran sus propios puertos y nunca dependen de un módulo de negocio; entre ellos solo existe `notifications → realtime` (ADR-0010).
 6. **Segunda excepción a «cada módulo es dueño de sus tablas» (DF-59, plan 005 D-5)**: `storage` actualiza la columna `usuario.espacio_usado` (la tabla es de `identity`), y **solo esa columna**, con `SELECT espacio_usado … FOR UPDATE` y `UPDATE usuario SET espacio_usado = espacio_usado + $1`, a través de un único puerto, `IQuotaRepository`. Motivo: el espacio solo puede sumarse en la misma transacción que registra `archivo` y `version_archivo` (RN-10, DF-38), y una tabla propia de uso (`cuota_uso`) duplicaría el contador. No es una arista del grafo: `storage` no importa `identity`. Lo hace cumplir una prueba (`quota.repository.int-spec.ts`: ninguna otra columna cambia), un *fixture* negativo de `boundaries.js` (`storage-imports-identity.ts`) y la revisión del `architect`. Ningún otro módulo copia el patrón sin un DF y un ADR.
 
-7. **Tercera excepción a «cada módulo es dueño de sus tablas» (DF-81, ADR-0035, Aceptado)**: `intelligence` lee por SQL, de solo lectura y dentro de la misma consulta que `accessibleNodes(actor)`, solo `archivo(id, carpeta_id, version_actual_id)` y `carpeta(id, ruta)`, en un único archivo (`chunk-sql.ts`). No escribe ni importa `storage`. Ningún otro módulo copia el patrón sin DF y ADR.
+7. **Tercera excepción a «cada módulo es dueño de sus tablas» (DF-81, ADR-0035, Aceptado)**: `intelligence` lee por SQL, de solo lectura y dentro de la misma consulta que `accessibleNodes(actor)`, solo `archivo(id, carpeta_id, version_actual_id, nombre)` y `carpeta(id, ruta)`, en un único archivo (`chunk-sql.ts`); `nombre` (enmienda de ADR-0035, PD-134) solo viaja en el evento `citation` al navegador del dueño, nunca al prompt ni a bitácoras. No escribe ni importa `storage`. Ningún otro módulo copia el patrón sin DF y ADR.
 
 **DF-51 (opción A, Fátima, 2026-09-28)**: `storage` declara `IPlanLimitsProvider`, `PlanLimits` e `I_PLAN_LIMITS_PROVIDER` y `billing` los implementa importándolos de `storage/index.ts`; el ciclo `storage ↔ billing` desaparece y queda solo `billing → storage`. `editing` reutiliza el puerto desde `storage`. Con 016 (DF-73) `PlanLimits` suma `retainedVersions` (límite de almacenamiento: la poda es de `storage`) y `maxEditors` (lo consume `editing`, pero se acepta ensanchar el tipo porque `PlanLimitsAdapter.toLimits` ya lee la fila y un segundo puerto de `billing` sería una abstracción de una sola fila; a la tercera familia de límites ajenos a `storage` se separa en un puerto propio). Con la 010 (ADR-0032, regla 1) `PlanLimits` describe las **condiciones de almacenamiento de la cuenta del actor** que consume `storage`: límites, retención, nombre visible y `readOnly`; otro módulo que necesite algo que `storage` no consume lo pide por un puerto de `billing`. El enlace del token vive en la raíz de composición (`AppModule`). `boundaries.js` prohíbe cualquier import de `billing` desde `storage`.
 
@@ -252,11 +252,16 @@ Los bytes **nunca pasan por la API** (DF-16): el navegador sube y baja directo d
 6. **Conciliación** (`index-reconcile`, RN-12): ver §8.
 
 ### 7.4 Consulta al agente (RF-32–34)
-`AgentController` → `AgentService.ask(actor, q)` → `IAgentQuota.consume` → `HybridRetriever.retrieve` (embedding de la pregunta +
-`keywordSearch` + `vectorSearch`, ambas restringidas; `fuse` por RRF) → `buildPrompt` con fragmentos numerados (el contenido se
-trata como datos, no como instrucciones) → `ILanguageModel.stream` → `realtime` → `attachCitations` valida que cada cita
-corresponda a un fragmento recuperado; si `SourceLocation.isCertain()` es falso, la respuesta lo dice → se guardan `consulta_agente`
-y `cita` como instantánea (DF-08).
+`AgentController` (`POST /agent/ask`, `GET /agent/status`, `@Roles(CLIENT)`) → `AgentService.ask(actor, request)` → `AgentAdmission`
+(límite de tasa, `AgentQuestion`, `scopeExists`, `hasIndexed`; sin indexados responde la frase fija sin reservar) → `IAgentQuota.reserve`
+(`billing`, reserva atómica en `uso_agente`) → `HybridRetriever.retrieve` (embedding de la pregunta + `keywordSearch` + `vectorSearch`,
+ambas restringidas en la misma consulta; `fuse` por RRF) → `AnswerComposer`: `buildAgentPrompt` con fragmentos numerados y escapados
+(datos, no instrucciones; sin ids ni nombres) → `ILanguageModel.stream` → `CitationMarkerFilter` deja solo los `[n]` entregados y la cita
+(archivo, versión, nombre, etiqueta, certeza) sale del fragmento del servidor; si `SourceLocation.isCertain()` es falso, la respuesta lo dice
+una vez. La respuesta viaja por **HTTP en streaming** (`text/event-stream`, eventos `citation`, `delta`, `done` y `error`), no por
+`realtime` (DF-82): el primer evento se espera antes de escribir cabeceras, así 422/404/429/503 son estados HTTP; un fallo posterior
+llega como evento `error`. Ante un fallo, o una cancelación antes del primer evento, `IAgentQuota.release` devuelve la consulta. No se
+guarda pregunta ni respuesta (020 RN-10; sin `conversacion`, `consulta_agente` ni `cita`, DF-08); la bitácora `agent.asked` solo lleva conteos.
 
 ### 7.5 Renovación y solo lectura (RF-22–24)
 `RenewalScheduler` (cola `subscription-renewal` con `upsertJobScheduler`, en el `worker`) lista con funciones de mantenimiento

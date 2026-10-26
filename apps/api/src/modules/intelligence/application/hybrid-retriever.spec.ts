@@ -7,11 +7,11 @@ import { AgentUnavailableError, EmbeddingUnavailableError } from '../domain/erro
 import { PdfLocation } from '../domain/pdf-location';
 
 import { CANDIDATES_PER_SEARCH, HybridRetriever, MIN_SIMILARITY, TOP_K } from './hybrid-retriever';
-import type { StoredChunk } from './ports/i-chunk-repository.port';
 import type {
   IChunkSearch,
   KeywordQuery,
   ScoredChunk,
+  SearchedChunk,
   VectorQuery,
 } from './ports/i-chunk-search.port';
 import type {
@@ -25,10 +25,11 @@ const FOLDER_SCOPE: AgentScope = { type: 'folder', id: 'carpeta-1' };
 const ANA: Actor = createActor('ana', Role.CLIENT);
 const PDF_PAGE = { tipo: 'pdf', pagina: 2, confianza: 1 } as const;
 
-const stored = (id: string, location: StoredChunk['location'] = PDF_PAGE): StoredChunk => ({
+const stored = (id: string, location: SearchedChunk['location'] = PDF_PAGE): SearchedChunk => ({
   id,
   fileId: `archivo-${id}`,
   versionId: `version-${id}`,
+  fileName: `informe-${id}.pdf`,
   order: 0,
   text: `texto ${id}`,
   location,
@@ -38,14 +39,14 @@ const scored = (id: string, similarity: number): ScoredChunk => ({ ...stored(id)
 
 /** `IChunkSearch` que devuelve listas fijas y anota lo que le piden y si había transacción abierta. */
 class FakeChunkSearch implements IChunkSearch {
-  keyword: readonly StoredChunk[] = [];
+  keyword: readonly SearchedChunk[] = [];
   vector: readonly ScoredChunk[] = [];
   readonly keywordQueries: KeywordQuery[] = [];
   readonly vectorQueries: VectorQuery[] = [];
 
   constructor(private readonly journal: Journal) {}
 
-  keywordSearch(_actor: Actor, query: KeywordQuery): Promise<readonly StoredChunk[]> {
+  keywordSearch(_actor: Actor, query: KeywordQuery): Promise<readonly SearchedChunk[]> {
     this.journal.add('search:keyword');
     this.keywordQueries.push(query);
     return Promise.resolve(this.keyword);
@@ -143,7 +144,7 @@ describe('HybridRetriever (plan 020 D-2)', () => {
     expect(fragments[0]?.id).toBe(ids[0]);
   });
 
-  it('RN-6: rehidrata la procedencia y entrega archivo, versión y texto del servidor', async () => {
+  it('RN-6, S-1: rehidrata la procedencia y entrega archivo, versión, nombre y texto del servidor', async () => {
     search.keyword = [stored('a')];
 
     const { fragments } = await retrieve();
@@ -153,6 +154,7 @@ describe('HybridRetriever (plan 020 D-2)', () => {
         id: 'a',
         fileId: 'archivo-a',
         versionId: 'version-a',
+        fileName: 'informe-a.pdf',
         text: 'texto a',
         location: PdfLocation.page(2),
       },

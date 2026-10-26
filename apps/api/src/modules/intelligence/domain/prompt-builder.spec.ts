@@ -10,6 +10,7 @@ const fragment = (id: string, text: string): RetrievedFragment => ({
   id: `fragmento-${id}`,
   fileId: `0b9f6a1e-0000-4000-8000-00000000000${id}`,
   versionId: `version-${id}`,
+  fileName: `informe-${id}.pdf`,
   text,
   location: PdfLocation.page(1),
 });
@@ -37,12 +38,13 @@ describe('buildAgentPrompt (plan 020 D-5)', () => {
     expect(prompt.system).toContain(AGENT_NOT_FOUND_ANSWER);
   });
 
-  it('CA-1: al modelo no viajan ids de fragmento, archivo ni versión', () => {
+  it('CA-1, S-1: al modelo no viajan ids de fragmento, archivo ni versión, ni el nombre del archivo', () => {
     const fragments = [fragment('1', 'Texto uno.'), fragment('2', 'Texto dos.')];
     const prompt = buildAgentPrompt(question('¿Qué dice?'), fragments);
     const sent = `${prompt.system}\n${prompt.user}`;
 
-    for (const { id, fileId, versionId } of fragments) {
+    for (const { id, fileId, versionId, fileName } of fragments) {
+      expect(sent).not.toContain(fileName);
       expect(sent).not.toContain(id);
       expect(sent).not.toContain(fileId);
       expect(sent).not.toContain(versionId);

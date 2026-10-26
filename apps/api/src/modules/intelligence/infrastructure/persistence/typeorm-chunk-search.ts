@@ -3,11 +3,11 @@ import type { EntityManager } from 'typeorm';
 
 import { TransactionContext } from '../../../../shared';
 import type { Actor } from '../../../../shared';
-import type { StoredChunk } from '../../application/ports/i-chunk-repository.port';
 import type {
   IChunkSearch,
   KeywordQuery,
   ScoredChunk,
+  SearchedChunk,
   VectorQuery,
 } from '../../application/ports/i-chunk-search.port';
 import type { AgentScope } from '../../domain/agent-scope';
@@ -23,9 +23,19 @@ import {
   vectorSearchQuery,
 } from './chunk-sql';
 
-interface ScoredChunkRow extends ChunkRow {
+/** Fila de una búsqueda: el fragmento y el nombre de su archivo (`SEARCH_COLUMNS` de `chunk-sql.ts`). */
+interface SearchedChunkRow extends ChunkRow {
+  readonly archivo_nombre: string;
+}
+
+interface ScoredChunkRow extends SearchedChunkRow {
   readonly similitud: number;
 }
+
+const toSearchedChunk = (row: SearchedChunkRow): SearchedChunk => ({
+  ...toStoredChunk(row),
+  fileName: row.archivo_nombre,
+});
 
 /**
  * `IChunkSearch` sobre Postgres y pgvector (plan 020 D-2). El SQL vive en `chunk-sql.ts` (ADR-0035); aquí solo se
@@ -36,14 +46,14 @@ interface ScoredChunkRow extends ChunkRow {
 export class TypeOrmChunkSearch implements IChunkSearch {
   constructor(@Inject(TransactionContext) private readonly context: TransactionContext) {}
 
-  async keywordSearch(actor: Actor, query: KeywordQuery): Promise<readonly StoredChunk[]> {
-    const rows = await this.run<ChunkRow>(actor, keywordSearchQuery(actor, query));
-    return rows.map(toStoredChunk);
+  async keywordSearch(actor: Actor, query: KeywordQuery): Promise<readonly SearchedChunk[]> {
+    const rows = await this.run<SearchedChunkRow>(actor, keywordSearchQuery(actor, query));
+    return rows.map(toSearchedChunk);
   }
 
   async vectorSearch(actor: Actor, query: VectorQuery): Promise<readonly ScoredChunk[]> {
     const rows = await this.run<ScoredChunkRow>(actor, vectorSearchQuery(actor, query));
-    return rows.map((row) => ({ ...toStoredChunk(row), similarity: Number(row.similitud) }));
+    return rows.map((row) => ({ ...toSearchedChunk(row), similarity: Number(row.similitud) }));
   }
 
   hasIndexed(actor: Actor): Promise<boolean> {

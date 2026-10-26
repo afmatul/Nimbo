@@ -43,6 +43,7 @@ const FRAGMENT: RetrievedFragment = {
   id: 'fragmento-1',
   fileId: 'archivo-1',
   versionId: 'version-1',
+  fileName: 'contrato.pdf',
   text: 'El plazo de entrega es de 30 días.',
   location: PdfLocation.page(2),
 };

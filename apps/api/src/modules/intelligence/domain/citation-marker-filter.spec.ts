@@ -7,6 +7,7 @@ const fragment = (id: string, certain = true): RetrievedFragment => ({
   id: `fragmento-${id}`,
   fileId: `archivo-${id}`,
   versionId: `version-${id}`,
+  fileName: `informe-${id}.pdf`,
   text: `texto ${id}`,
   location: certain ? PdfLocation.page(1) : SheetLocation.sheet('Ventas', 0.5),
 });

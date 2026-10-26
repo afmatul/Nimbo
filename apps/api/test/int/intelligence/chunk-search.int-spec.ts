@@ -132,6 +132,25 @@ describe('TypeOrmChunkSearch (plan 020 D-2)', () => {
     await owner.destroy();
   });
 
+  it('S-1 (enmienda de ADR-0035): ambas búsquedas traen el nombre del archivo en la misma consulta', async () => {
+    const ana = await account();
+    const file = await fileWithChunk(ana, 12, {
+      name: 'ventas-trimestre.pdf',
+      text: 'Ventas del trimestre',
+    });
+
+    const lexical = await app.asActor(ana, () =>
+      search.keywordSearch(ana, { text: QUESTION, scope: ALL, limit: LIMIT }),
+    );
+    const semantic = await app.asActor(ana, () =>
+      search.vectorSearch(ana, { vector: axisVector(12), scope: ALL, limit: LIMIT }),
+    );
+
+    const expected = { fileId: file.fileId, fileName: 'ventas-trimestre.pdf' };
+    expect(lexical).toEqual([expect.objectContaining(expected)]);
+    expect(semantic).toEqual([expect.objectContaining(expected)]);
+  });
+
   describe('búsqueda vectorial', () => {
     it('CA-17: ordena por coseno, informa la similitud y respeta el límite', async () => {
       const ana = await account();
@@ -300,14 +319,14 @@ describe('TypeOrmChunkSearch (plan 020 D-2)', () => {
     },
   );
 
-  it('ADR-0035: las columnas de `storage` que lee `chunk-sql.ts` siguen existiendo', async () => {
+  it('ADR-0035 (enmendado): las columnas de `storage` que lee `chunk-sql.ts` siguen existiendo', async () => {
     const [file, folder] = await asOwner(async (manager) => [
       await columnsOf(manager, 'archivo'),
       await columnsOf(manager, 'carpeta'),
     ]);
 
     expect(Object.keys(file)).toEqual(
-      expect.arrayContaining(['id', 'carpeta_id', 'version_actual_id']),
+      expect.arrayContaining(['id', 'carpeta_id', 'version_actual_id', 'nombre']),
     );
     expect(Object.keys(folder)).toEqual(expect.arrayContaining(['id', 'ruta']));
   });

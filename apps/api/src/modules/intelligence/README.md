@@ -7,8 +7,9 @@
   de este módulo y ya no lo cruza nadie (cierra PD-18).
 - **Puede depender de**: shared, storage, access, audit (resultados de la indexación, 019 CA-21), billing
   (`IAgentQuota`, 020), realtime (`docs/sdd/architecture.md` §3; el lint de fronteras lo hace cumplir).
-- **Expone por HTTP** solo el estado de indexación y «Reintentar» (`GET /files/:fileId/indexing`,
-  `POST /files/:fileId/indexing/retry`, `@Roles(CLIENT)`, 019 plan §4); el aviso en vivo `indexing.status-changed` sale
+- **Expone por HTTP** el estado de indexación y «Reintentar» (`GET /files/:fileId/indexing`,
+  `POST /files/:fileId/indexing/retry`, 019 plan §4) y el agente (`POST /agent/ask` en `text/event-stream` y
+  `GET /agent/status`, 020 plan §4), todo `@Roles(CLIENT)`; el aviso en vivo `indexing.status-changed` sale
   por el canal de 015, directo desde el `api` o por el relay de `index-status` desde el `worker` (ADR-0033 d).
 - **No expone** fragmentos ni texto por HTTP en la 019: los lee la 020 con `accessibleNodes(actor)` antes de ordenar
   por similitud (DF-14). Ningún rol interno ve texto indexado (019 CA-20).

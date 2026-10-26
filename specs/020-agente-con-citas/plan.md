@@ -23,7 +23,7 @@ Todo lo de `apps/web` es de 020b. Verificado contra la 019 ya en `main` (no se a
   y `CHUNK_COLUMNS`/`ChunkRow`/`toStoredChunk` pasan a `chunk-rows.ts`, compartido por las dos implementaciones. Filtro común en `chunk-sql.ts`:
   `fragmento f JOIN archivo a ON a.id = f.archivo_id AND a.version_actual_id = f.version_archivo_id`, `accessibleFiles(actor, 'f.archivo_id')` y ámbito
   (archivo: `a.id = :scopeId`; carpeta: `a.carpeta_id` en las carpetas cuyo `ruta` empieza por la de la carpeta accesible del ámbito). `chunk-sql.ts` es el único
-  archivo con SQL de `archivo`/`carpeta` (ADR-0035: `archivo(id, carpeta_id, version_actual_id)`, `carpeta(id, ruta)`) y de `indexacion`.
+  archivo con SQL de `archivo`/`carpeta` (ADR-0035 enmendado: `archivo(id, carpeta_id, version_actual_id, nombre)`, `carpeta(id, ruta)`; `nombre` solo para la cita, S-1) y de `indexacion`.
   **Vectorial: barrido exacto filtrado, sin HNSW.** El filtro (cuenta + versión vigente + ámbito) deja miles de fragmentos de entre los de todas las cuentas; HNSW
   recorre el índice global y filtra después, así que pierde resultados (recall). Se reduce primero (`MATERIALIZED`, como `nearest` de la 019) y se ordena por coseno solo lo de la cuenta.
   `idx_fragmento_embedding` queda sin uso del agente (sigue siendo de la 019). Si T-09 mide fuera de presupuesto se evalúa `hnsw.iterative_scan`; antes no (YAGNI).

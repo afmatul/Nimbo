@@ -8,10 +8,11 @@ import type { NamedQuery } from './accessible-files';
 import { CHUNK_COLUMNS, toVectorLiteral } from './chunk-rows';
 
 /**
- * SQL de lectura del agente (plan 020 D-2). **Único archivo de `intelligence` que lee tablas de `storage`** (ADR-0035,
- * `architecture.md` §3 regla 7): solo `archivo(id, carpeta_id, version_actual_id)` y `carpeta(id, ruta)`, de solo
- * lectura y siempre junto a `accessibleNodes(actor)` en la misma consulta. También es el único que lee `indexacion`
- * para el agente. `test/int/intelligence/chunk-search.int-spec.ts` falla si esas columnas cambian.
+ * SQL de lectura del agente (plan 020 D-2). **Único archivo de `intelligence` que lee tablas de `storage`** (ADR-0035
+ * y su enmienda, `architecture.md` §3 regla 7): solo `archivo(id, carpeta_id, version_actual_id, nombre)` y
+ * `carpeta(id, ruta)`, de solo lectura y siempre junto a `accessibleNodes(actor)` en la misma consulta. `nombre` solo
+ * viaja a la cita del dueño (S-1), nunca al modelo ni a bitácoras. También es el único que lee `indexacion` para el
+ * agente. `test/int/intelligence/chunk-search.int-spec.ts` falla si esas columnas cambian.
  */
 
 const INDEXED: IndexingState = 'indexado';
@@ -20,6 +21,9 @@ const NO_FILTER: NamedQuery = { sql: 'true', parameters: {} };
 /** Fragmento de la versión vigente de su archivo (RN-2): `archivo.version_actual_id`. */
 const LIVE_CHUNKS_SOURCE =
   'fragmento f JOIN archivo a ON a.id = f.archivo_id AND a.version_actual_id = f.version_archivo_id';
+
+/** Columnas de una búsqueda: las del fragmento y el nombre de su archivo (`SearchedChunkRow`). */
+const SEARCH_COLUMNS = `${CHUNK_COLUMNS}, a.nombre AS archivo_nombre`;
 
 /**
  * Archivos dentro de una carpeta accesible y de todas sus subcarpetas: `carpeta.ruta` es el camino materializado
@@ -61,7 +65,7 @@ export const keywordSearchQuery = (actor: Actor, query: KeywordQuery): NamedQuer
   return {
     sql:
       "WITH consulta AS (SELECT replace(plainto_tsquery('spanish', :questionText)::text, ' & ', ' | ')::tsquery AS q) " +
-      `SELECT ${CHUNK_COLUMNS} FROM consulta, ${live.sql} AND f.texto_busq @@ consulta.q ` +
+      `SELECT ${SEARCH_COLUMNS} FROM consulta, ${live.sql} AND f.texto_busq @@ consulta.q ` +
       'ORDER BY ts_rank_cd(f.texto_busq, consulta.q) DESC, f.id LIMIT :resultLimit',
     parameters: { ...live.parameters, questionText: query.text, resultLimit: query.limit },
   };
@@ -75,8 +79,9 @@ export const vectorSearchQuery = (actor: Actor, query: VectorQuery): NamedQuery 
   const live = liveChunksIn(actor, query.scope);
   return {
     sql:
-      `WITH candidatos AS MATERIALIZED (SELECT ${CHUNK_COLUMNS}, f.embedding FROM ${live.sql}) ` +
-      `SELECT ${CHUNK_COLUMNS}, 1 - (f.embedding <=> CAST(:queryVector AS vector)) AS similitud ` +
+      `WITH candidatos AS MATERIALIZED (SELECT ${SEARCH_COLUMNS}, f.embedding FROM ${live.sql}) ` +
+      `SELECT ${CHUNK_COLUMNS}, f.archivo_nombre, ` +
+      '1 - (f.embedding <=> CAST(:queryVector AS vector)) AS similitud ' +
       'FROM candidatos f ORDER BY similitud DESC, f.id LIMIT :resultLimit',
     parameters: {
       ...live.parameters,
