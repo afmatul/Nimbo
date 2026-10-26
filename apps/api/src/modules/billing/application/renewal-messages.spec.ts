@@ -39,7 +39,8 @@ describe('correos de la renovación (spec 010 CA-2, CA-5, CA-7, CA-29)', () => {
   it('CA-21: la bajada a Personal no cobra', () => {
     const message = reminderMessage(NOTICE, { planName: 'Personal', amountCents: 0, card: null });
 
-    expect(message.text).toContain('Ese día pasas a Personal, sin cobro.');
+    expect(message.text).toContain('Después pasas a Personal, sin cobro.');
+    expect(message.text).not.toContain('Ese día');
   });
 
   it('CA-2, CA-7: el de vencida dice que venció, qué se puede hacer y cómo renovar', () => {

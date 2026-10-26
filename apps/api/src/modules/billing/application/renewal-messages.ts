@@ -44,9 +44,12 @@ const mail = (notice: RenewalNotice, { subject, lines, tag }: RenewalMail) =>
     key: keyOf(notice),
   });
 
-/** Solo se cobra si el ciclo cuesta: bajar a Personal no cobra (CA-21). */
+/**
+ * Solo se cobra si el ciclo cuesta: bajar a Personal no cobra (CA-21). El paso a Personal ocurre después del último día
+ * que muestra el aviso (011b RN-8), así que no se fija un día.
+ */
 const chargeLines = ({ planName, amountCents, card }: UpcomingCharge): readonly string[] => {
-  if (amountCents === 0) return ['Ese día pasas a Personal, sin cobro.'];
+  if (amountCents === 0) return ['Después pasas a Personal, sin cobro.'];
   const amount = `${formatGtq(amountCents)} (plan ${planName})`;
   if (card === null) {
     return [
