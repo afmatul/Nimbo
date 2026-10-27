@@ -33,6 +33,10 @@ const REAL_ATTRIBUTES: Readonly<Record<AuditAction, Record<string, string | numb
   [AuditAction.ACCOUNT_REACTIVATED]: {},
   [AuditAction.ACCOUNT_INTERNAL_CREATED]: { role: 'SUPPORT' },
   [AuditAction.ACCOUNT_BOOTSTRAP_ADMIN]: {},
+  [AuditAction.ACCOUNT_QUOTA_ADJUSTED]: {
+    extraBytes: 5_368_709_120,
+    until: '2026-12-01T06:00:00.000Z',
+  },
   [AuditAction.CLIENT_FILES_VIEWED]: {},
   [AuditAction.PLAN_CREATED]: {},
   [AuditAction.PLAN_DEACTIVATED]: {},
@@ -189,6 +193,7 @@ describe('resourceTypeOf', () => {
     [AuditAction.ACCOUNT_REACTIVATED, {}, 'account'],
     [AuditAction.ACCOUNT_INTERNAL_CREATED, {}, 'account'],
     [AuditAction.ACCOUNT_BOOTSTRAP_ADMIN, {}, 'account'],
+    [AuditAction.ACCOUNT_QUOTA_ADJUSTED, {}, 'account'],
     [AuditAction.CLIENT_FILES_VIEWED, {}, 'account'],
     [AuditAction.PLAN_CREATED, {}, 'plan'],
     [AuditAction.PLAN_DEACTIVATED, {}, 'plan'],

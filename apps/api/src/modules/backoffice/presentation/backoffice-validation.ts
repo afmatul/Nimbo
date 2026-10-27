@@ -1,7 +1,7 @@
 import { ParseUUIDPipe } from '@nestjs/common';
 
 import type { DomainError, FieldIssue, InvalidInputFactory } from '../../../shared';
-import { PlanInvalidError, PlanNotFoundError } from '../../billing';
+import { PlanInvalidError, PlanNotFoundError, QuotaInvalidError } from '../../billing';
 import { AccountNotFoundError, IdentityInvalidInputError } from '../../identity';
 import { InvalidBackofficeQueryError } from '../domain/errors/invalid-backoffice-query.error';
 
@@ -23,6 +23,11 @@ export const accountIdPipe = (): ParseUUIDPipe =>
 export const planValidationError: InvalidInputFactory = (
   issues: readonly FieldIssue[],
 ): DomainError => new PlanInvalidError(issues);
+
+/** Fábrica para el cuerpo de la cuota: 422 `BACKOFFICE_QUOTA_INVALID` con `fields`, como sus reglas (011b CA-3). */
+export const quotaValidationError: InvalidInputFactory = (
+  issues: readonly FieldIssue[],
+): DomainError => new QuotaInvalidError('invalid', issues);
 
 /** Un `:id` de plan que no es UUID es el mismo 404 `PLAN_NOT_FOUND` que un plan inexistente (plan §4). */
 export const planIdPipe = (): ParseUUIDPipe =>

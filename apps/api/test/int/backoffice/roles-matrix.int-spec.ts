@@ -32,7 +32,7 @@ interface DeniedCaller {
   readonly suspended: boolean;
 }
 
-/** Una ruta del backoffice y quiénes no la pueden usar; T-11 suma las del catálogo. */
+/** Una ruta del backoffice y quiénes no la pueden usar; T-11 suma las del catálogo y la 011b, las de ajustes. */
 interface BackofficeRoute {
   readonly name: string;
   readonly denied: readonly DeniedCaller[];
@@ -58,15 +58,41 @@ const SUSPENDED_OPERATOR: DeniedCaller = {
   suspended: true,
 };
 
+const withToken = (call: request.Test, token: string): request.Test =>
+  call.set('Authorization', `Bearer ${token}`);
+
 /** Cuentas (CA-1 a CA-6): solo el Administrador activo (CA-14). */
 const ACCOUNT_DENIED = [CLIENT, SUPPORT, OPERATOR, SUSPENDED_ADMIN];
 const ACCOUNTS = '/api/v1/backoffice/accounts';
 
+/** Un día de fin de vigencia o de extra que las rutas de ajustes aceptarían (011b CA-1, CA-6). */
+const IN_A_MONTH = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
+
+/** Ajustes de cuenta (011b CA-16): solo el Administrador; Soporte, Operador y Cliente reciben `403`. */
+const ADJUSTMENT_ROUTES: readonly BackofficeRoute[] = [
+  {
+    name: 'GET /backoffice/accounts/:id/limits',
+    denied: ACCOUNT_DENIED,
+    call: (http, token, target) => withToken(http.get(`${ACCOUNTS}/${target.id}/limits`), token),
+  },
+  {
+    name: 'PUT /backoffice/accounts/:id/quota',
+    denied: ACCOUNT_DENIED,
+    call: (http, token, target) =>
+      withToken(http.put(`${ACCOUNTS}/${target.id}/quota`), token).send({
+        extraBytes: '1024',
+        until: IN_A_MONTH,
+      }),
+  },
+  {
+    name: 'DELETE /backoffice/accounts/:id/quota',
+    denied: ACCOUNT_DENIED,
+    call: (http, token, target) => withToken(http.delete(`${ACCOUNTS}/${target.id}/quota`), token),
+  },
+];
+
 /** Catálogo (CA-8 a CA-11): solo el Administrador activo (CA-14). */
 const PLANS = '/api/v1/backoffice/plans';
-
-const withToken = (call: request.Test, token: string): request.Test =>
-  call.set('Authorization', `Bearer ${token}`);
 
 const ROUTES: readonly BackofficeRoute[] = [
   {
@@ -141,6 +167,7 @@ const ROUTES: readonly BackofficeRoute[] = [
     call: (http, token, target) =>
       withToken(http.post(`${PLANS}/${target.planId}/deactivation`), token),
   },
+  ...ADJUSTMENT_ROUTES,
 ];
 
 /** Cada ruta con cada quien no la puede usar. */
@@ -239,6 +266,21 @@ describe('matriz de roles del backoffice (011 CA-14)', () => {
       expect(await deactivatedAtOf(client.planId)).toBeNull();
       expect(await eventsOn(client.id)).toBe(0);
       expect(await eventsOn(callerId)).toBe(0);
+    },
+  );
+
+  it.each(ADJUSTMENT_ROUTES.map((route): [string, BackofficeRoute] => [route.name, route]))(
+    '011b CA-16: `%s` sin token responde `401 SHARED_UNAUTHENTICATED` sin auditoría',
+    async (_route, route) => {
+      const http = request(testApp.app.getHttpServer());
+
+      const response: Response = await route.call(http, '', client).unset('Authorization');
+
+      expect(response.status).toBe(401);
+      expect(errorResponseSchema.parse(response.body).code).toBe(
+        SHARED_ERROR_CODES.UNAUTHENTICATED,
+      );
+      expect(await eventsOn(client.id)).toBe(0);
     },
   );
 });
