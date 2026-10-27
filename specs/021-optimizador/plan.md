@@ -20,7 +20,7 @@ versión con resultados explícitos y compensación del objeto).
   original conservado y espacio neto negativo).
 - **Estado (CA-6, RN-9, RN-10):** `GET …/optimization` devuelve la última fila con `pollAfterMs` mientras no es final; la
   ficha consulta con ese intervalo, se detiene al llegar a un estado final y relee al abrir o al volver a estar visible.
-- **Imágenes:** solo JPEG y PNG (recorte del 2026-10-26); `sharp` (ADR-0035, `Aceptado` el 2026-10-26 con este plan).
+- **Imágenes:** solo JPEG y PNG (recorte del 2026-10-26); `sharp` (ADR-0036, `Aceptado` el 2026-10-26 con este plan).
 
 **Lo que no hace 021 (va a 021b):** DF-80 (`ICommandRunner` a `shared`: `sharp` corre en proceso, no lanza programas) y
 el oyente de versiones en el `worker` de 019 §7.7 (las imágenes no se indexan: `ExtractorRegistry` no soporta `imagen`,
@@ -40,20 +40,20 @@ así que el evento que emite el registro no programa nada). Los dos tienen consu
 | optimizer/domain | `errors/index.ts` (nuevo) | A | `UnsupportedTypeError` (`422` `OPTIMIZER_UNSUPPORTED_TYPE`, también para GIF y WebP), `EstimateStaleError` (`409` `OPTIMIZER_ESTIMATE_STALE`); el `404` reutiliza `NodeNotFoundError` de `storage` |
 | optimizer/application | `optimization.service.ts` (nuevo) | A | `OptimizationService` del `api`: estimar, ejecutar y estado, con límite de tasa, solo lectura (`WritableAccountPolicy`) y caducidad perezosa; `OPTIMIZER_CONFIG` |
 | optimizer/application | `optimization-runner.ts` (nuevo) | A | Flujo del `worker` para `estimate` y `run`: reclamar, leer, inspeccionar, recomprimir, validar, umbral, registrar y mapear el resultado; auditoría y bitácoras |
-| optimizer/application/ports | `i-job.repository.port.ts`, `i-job-queue.port.ts`, `i-optimizer.port.ts`, `i-integrity-validator.port.ts` (nuevos) | B | `IJobRepository`, `IJobQueue`, `IOptimizer` (`inspect`, `optimize`) e `IIntegrityValidator` del diagrama. `IOptimizer` aísla una tecnología externa (regla (a) de Art. V.2); sin `BaseOptimizer` hasta que 021b traiga el segundo (DF-81) |
-| optimizer/infrastructure | `image/image.optimizer.ts` (nuevo) | A | `ImageOptimizer` con `sharp`: `inspect` (formato, ancho y alto, orientación, perfil, alfa, PNG animado) y píxeles decodificados = ancho × alto (RN-8); `optimize` en el mismo formato (§6). `sharp` **descarta los metadatos por defecto**: se llama a `keepIccProfile()` siempre y a `keepExif()` solo si la entrada trae EXIF (verificado en el spike, ADR-0035; `withMetadata()` no sirve porque cambia un perfil no sRGB por sRGB), **sin rotar** los píxeles; el resto de EXIF no se promete. Un PNG con el fragmento `acTL` (animado) se reporta como tal y termina en `no_disponible(animada)`; que `sharp` solo lea su primer cuadro se confirma en T-03. Tiempo límite y `limitInputPixels` |
+| optimizer/application/ports | `i-job.repository.port.ts`, `i-job-queue.port.ts`, `i-optimizer.port.ts`, `i-integrity-validator.port.ts` (nuevos) | B | `IJobRepository`, `IJobQueue`, `IOptimizer` (`inspect`, `optimize`) e `IIntegrityValidator` del diagrama. `IOptimizer` aísla una tecnología externa (regla (a) de Art. V.2); sin `BaseOptimizer` hasta que 021b traiga el segundo (DF-82) |
+| optimizer/infrastructure | `image/image.optimizer.ts` (nuevo) | A | `ImageOptimizer` con `sharp`: `inspect` (formato, ancho y alto, orientación, perfil, alfa, PNG animado) y píxeles decodificados = ancho × alto (RN-8); `optimize` en el mismo formato (§6). `sharp` **descarta los metadatos por defecto**: se llama a `keepIccProfile()` siempre y a `keepExif()` solo si la entrada trae EXIF (verificado en el spike, ADR-0036; `withMetadata()` no sirve porque cambia un perfil no sRGB por sRGB), **sin rotar** los píxeles; el resto de EXIF no se promete. Un PNG con el fragmento `acTL` (animado) se reporta como tal y termina en `no_disponible(animada)`; que `sharp` solo lea su primer cuadro se confirma en T-03. Tiempo límite y `limitInputPixels` |
 | optimizer/infrastructure | `image/image-integrity.validator.ts` (nuevo) | A | `ImageIntegrityValidator` (CA-8): decodifica el resultado; mismo formato (firma), dimensiones, orientación, perfil (si existía) y alfa; en PNG, mismo hash SHA-256 de los píxeles crudos (por flujo, sin dos imágenes en memoria) |
 | optimizer/infrastructure | `persistence/optimizacion.orm-entity.ts`, `persistence/typeorm-job.repository.ts` (nuevos) | A | Tabla de §3; transiciones con compare-and-set; última fila por archivo; caducidad |
 | optimizer/infrastructure | `bullmq-job.queue.ts`, `optimization.processor.ts` (nuevos) | A | Cola `optimization` (`estimate`, `run`); `jobId` `estimate-<id>` / `run-<id>`; `attempts` de `OPTIMIZER_MAX_ATTEMPTS`, espera exponencial, `removeOnComplete/Fail`; procesador con concurrencia 1 y `correlationId` (como `IndexingProcessor`); `failed` agotado → `fallida(servicio_no_disponible)` |
 | optimizer/presentation | `optimizer.controller.ts` (nuevo) | A | `OptimizerController` con `@Roles(Role.CLIENT)`: rutas de §4; valida con zod de `contracts` |
-| optimizer | `optimizer.module.ts`, `optimizer-worker.module.ts` (nuevos), `index.ts` (cambia) | B | Módulos del `api` y del `worker` (reciben **la misma** instancia de `StorageModule`, como 019) y API pública. `ImageOptimizer`, `ImageIntegrityValidator` y el procesador solo se registran en `OptimizerWorkerModule`: el `api` nunca carga `sharp` (ADR-0035) |
+| optimizer | `optimizer.module.ts`, `optimizer-worker.module.ts` (nuevos), `index.ts` (cambia) | B | Módulos del `api` y del `worker` (reciben **la misma** instancia de `StorageModule`, como 019) y API pública. `ImageOptimizer`, `ImageIntegrityValidator` y el procesador solo se registran en `OptimizerWorkerModule`: el `api` nunca carga `sharp` (ADR-0036) |
 | audit/application | `audit-action.ts`, `audit-catalog.ts` (cambian; Adrián) | B | `file.optimized`, `file.optimization_discarded`, `file.optimization_failed` y su lista blanca (§5) |
 | packages/config | `eslint/boundaries.js` (cambia; Adrián) | B | `optimizer: ['storage', 'access', 'audit']` (autorizado; `architecture.md` §3 en el mismo PR) |
 | migración | `apps/api/src/migrations/2026…-crear-optimizacion.ts` (nuevo) | A | §3, con `down` |
 | raíz | `app.module.ts`, `worker.module.ts`, `shared/infrastructure/config/env.schema.ts` (cambian; Adrián) | B | `OptimizerModule` en el `api`; `OptimizerWorkerModule` y `'optimization'` en `WORKER_QUEUES`; variables de §6 (`.env.example` y `ambientes.md` en el mismo cambio, `pnpm env:check`) |
 | contracts | `src/optimizer/schemas.ts` (nuevo) | A | Estados, motivos, `optimizationStatusSchema` (con `refine` motivo ↔ estado), `runOptimizationBodySchema` |
 | contracts | `src/optimizer/error-codes.ts`, `src/optimizer/index.ts` (nuevos), `src/index.ts` (cambia) | B | `OPTIMIZER_ERROR_CODES` y barriles |
-| dependencias | `apps/api/package.json` (cambia) | B | `sharp` **solo tras ADR-0035 `Aceptado`**; si pnpm 10 lo pide, `onlyBuiltDependencies` en el `package.json` raíz |
+| dependencias | `apps/api/package.json` (cambia) | B | `sharp` **solo tras ADR-0036 `Aceptado`**; si pnpm 10 lo pide, `onlyBuiltDependencies` en el `package.json` raíz |
 | web/features/optimizer | `optimizer-api.ts`, `hooks/use-file-optimization.ts`, `components/optimization-card.tsx`, `components/confirm-optimization-dialog.tsx`, `optimizer-messages.ts` (nuevos) | A | Cliente; consulta periódica (§5); tarjeta con los 8 estados de spec §6 (el estado final reúne completada y error, y «no disponible» tiene un solo mensaje); diálogo con el aviso de poda (reutiliza el cálculo de `features/storage/version-history.ts`) y la fecha de conservación; mensajes de la spec |
 | web | `features/storage/components/file-detail-view.tsx` (cambia) | A | Muestra la tarjeta solo si el archivo es `imagen` y del actor; recarga el historial al completar |
 | web | `features/storage/components/session-file-detail-view.tsx` (cambia) | B | Crea el cliente de `optimizer` con la sesión |
@@ -162,7 +162,7 @@ Resultados del registrador (§2): `registered` y `duplicate` → `completada`; `
 ## 6. Configuración y valores
 
 Todas en `env.schema.ts` (`api` y/o `worker`), `.env.example` y `ambientes.md`; cambiarlas no requiere código. Adrián
-pidió valores **medidos y justificados**: los de A son de política; los de B salen del spike de ADR-0035 (2026-10-25).
+pidió valores **medidos y justificados**: los de A son de política; los de B salen del spike de ADR-0036 (2026-10-25).
 
 **A. Política (propuesta inicial justificada; no dependen de una medición, se confirman al aprobar el plan)**
 
@@ -174,7 +174,7 @@ pidió valores **medidos y justificados**: los de A son de política; los de B s
 | `RATE_LIMIT_OPTIMIZER_PER_MINUTE` | 10 | Como el reintento de indexación (019): cada pedido cuesta segundos de `worker`; 10 por minuto supera el uso humano archivo por archivo |
 | `OPTIMIZER_MAX_ATTEMPTS` | 3 | 1 + 2 reintentos (`architecture.md` §8) |
 
-**B. Técnicos, medidos en el spike de ADR-0035** (`sharp` 0.34.5, libvips 8.17.3, Node 24, Windows x64; un proceso por
+**B. Técnicos, medidos en el spike de ADR-0036** (`sharp` 0.34.5, libvips 8.17.3, Node 24, Windows x64; un proceso por
 caso con el trabajo completo: leer, inspeccionar, recomprimir y validar; *fixtures* sintéticos, así que el ahorro es
 indicativo). Memoria = pico de RSS menos la base del proceso (49 MB).
 
@@ -215,7 +215,7 @@ spike (WebP animado, y GIF estático que `sharp` no recomprime sin pérdida) es 
 *Fixtures* versionados y pequeños en `apps/api/test/fixtures/images/`: PNG con alfa, PNG animado, JPEG con orientación EXIF 6 y JPEG
 con perfil ICC no sRGB, y un GIF y un WebP (solo para comprobar que se rechazan).
 Generados en la prueba: la imagen corrupta y una cabecera cuyos píxeles totales superan el límite. Las pruebas que
-usan `sharp` se escriben después de que ADR-0035 se acepte (el spike de §6 usó equivalentes sintéticos fuera del repo).
+usan `sharp` se escriben después de que ADR-0036 se acepte (el spike de §6 usó equivalentes sintéticos fuera del repo).
 
 ## 8. Riesgos y coherencia con el diseño
 
@@ -223,26 +223,26 @@ usan `sharp` se escriben después de que ADR-0035 se acepte (el spike de §6 us�
   excepción de ADR-0034 para 021 por ser un módulo nuevo y mantener el corte vertical por formato decidido por Adrián.
 - **`sharp` en proceso:** un fallo nativo reiniciaría el `worker` y la indexación. Se mitiga con límites antes de
   decodificar, concurrencia 1, un hilo de libvips y la caducidad (§5). Si ocurre con imágenes dentro de los límites,
-  ADR-0035 prevé pasar a herramientas externas detrás de `IOptimizer`.
+  ADR-0036 prevé pasar a herramientas externas detrás de `IOptimizer`.
 - **Valores:** los de §6 B están medidos en el spike; queda supuesta la base del `worker` real, que mide T-08.
-- **WebP y GIF (recorte del 2026-10-26):** fuera de 021. ADR-0035 (`Aceptado`) conserva el resultado del spike sobre ambos;
+- **WebP y GIF (recorte del 2026-10-26):** fuera de 021. ADR-0036 (`Aceptado`) conserva el resultado del spike sobre ambos;
   no se reescribe. Un PNG animado se trata como `no_disponible(animada)`; es un riesgo de pérdida de datos que el recorte
   no debe dejar abierto, y T-03 confirma el comportamiento de `sharp` con un *fixture*.
 - **PD-124 y 017 (deuda explícita):** 021 agrega una tercera fachada que lee la versión vigente por su cuenta. El Art. VI.2
   ya pediría extraer el lector; se difiere por decisión del 2026-10-26: lo extrae quien integre 017 (cuya rama trae
   `storage-preview.facade.ts`), que pasará a ser la cuarta lectura. PD-124 sigue abierto en `pendientes.md`.
-- **Desviaciones del diagrama:** DF-81 (M7 sin `restoreOriginal` ni `BaseOptimizer`, `OptimizationRunner`, sin
+- **Desviaciones del diagrama:** DF-82 (M7 sin `restoreOriginal` ni `BaseOptimizer`, `OptimizationRunner`, sin
   `trabajo`). `design-model.md` M7 y `architecture.md` §3, §7.6 (solo imágenes) y §8 (cola `optimization`) se
   actualizan en el PR. DF-22 sigue abierto para 022b.
 - **Pendientes:** PD-130 y PD-121 se cierran con esta spec; PD-124 sigue abierto (lo cierra quien integre 017); la parte de
   PD-132 de la 021 está hecha (28 capturas, axe sin violaciones). DF-80 y 019 §7.7 pasan a 021b.
-- **ADR requeridos:** ADR-0035 (`sharp`), `Aceptado` con este plan (2026-10-26).
+- **ADR requeridos:** ADR-0036 (`sharp`), `Aceptado` con este plan (2026-10-26).
 
 ## 9. Aprobación
 
 - Arquitectura (tecnología nueva y arista `optimizer → audit`; 2026-10-26): sin objeciones. Sin puerto nuevo entre
   módulos; `sharp` detrás de `IOptimizer` y solo en el `worker`. Se precisaron §2, §3, §4 y §5 antes de aprobar.
-- **Adrián: aprobado el 2026-10-26.** ADR-0035 y DF-81 `Aceptado`; valores de §6 A confirmados; excepción de ADR-0034
+- **Adrián: aprobado el 2026-10-26.** ADR-0036 y DF-82 `Aceptado`; valores de §6 A confirmados; excepción de ADR-0034
   (§8); Adrián revisa en el PR `storage` (PD-130, PD-121), `audit`, `boundaries.js` y la raíz.
 - **Enmienda de alcance, 2026-10-26 (aprobada en la rama de la spec):** solo JPEG y PNG; PD-124 fuera; interfaz de
   8 estados con un solo mensaje de «no disponible». Quita 3 archivos (48 → 45); sin puertos ni tecnología nuevos,

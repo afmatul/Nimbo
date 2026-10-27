@@ -1,4 +1,4 @@
-# ADR-0035 — Las imágenes se recomprimen con `sharp` (libvips) dentro del `worker`
+# ADR-0036 — Las imágenes se recomprimen con `sharp` (libvips) dentro del `worker`
 
 | Campo | Valor |
 |---|---|

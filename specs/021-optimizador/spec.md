@@ -10,7 +10,7 @@
 | Requisitos | RF-35 (Debe) y RF-36 (Debería) para imágenes (el PDF es 021b); aplican RF-05, RF-07, RF-11, RF-12, RF-13, RF-14, RF-23, RF-29, RNF-05, RNF-07, RNF-09, RNF-13, RNF-14, RNF-17 |
 | Depende de | 014 (versiones, historial y restauración), 014b (original conservado: cuota, `keptUntil` y purga), 005 (tipo real por contenido), 010 (solo lectura, PD-121), 003 (roles y aislamiento), 004 (auditoría) |
 | Módulo | M7 `optimizer` |
-| DF / PD / ADR | DF-21 (Aceptado, 014b), DF-22 (Abierto, para 022b); PD-121, PD-130, PD-132 (PD-124 queda fuera, §7); ADR-0013 (Aceptado), ADR-0035 (`sharp`, Aceptado) |
+| DF / PD / ADR | DF-21 (Aceptado, 014b), DF-22 (Abierto, para 022b); PD-121, PD-130, PD-132 (PD-124 queda fuera, §7); ADR-0013 (Aceptado), ADR-0036 (`sharp`, Aceptado) |
 | Última actualización | 2026-10-26 |
 
 ## 1. Contexto y objetivo
@@ -108,7 +108,7 @@ registrar) y después se purga sola. 021 consume esa política y no la cambia.
 
 ## 8. Supuestos
 - Disponible en todos los planes: el catálogo (`product-context.md` §3) no lo limita.
-- Solo JPEG y PNG (recorte del 2026-10-26): el spike de ADR-0035 sobre WebP animado y GIF estático queda como antecedente para la spec que los retome.
+- Solo JPEG y PNG (recorte del 2026-10-26): el spike de ADR-0036 sobre WebP animado y GIF estático queda como antecedente para la spec que los retome.
 - La fachada que 021 necesita de `storage` (leer la versión vigente, registrar la optimizada con resultados explícitos, exportar la solo lectura) la implementa Abel con revisión de Adrián (PD-130, PD-121; autorización de Adrián, 2026-10-25). PD-124 queda fuera. No cambia el comportamiento de 014 ni de 014b.
 - Si 012 concede al Editor «generar versiones» (014 RN-7 y D-5), se revisa RN-5.
 
@@ -128,8 +128,8 @@ registrar) y después se purga sola. 021 consume esa política y no la cambia.
 | 2026-10-24 | Creación en `Borrador` con P-1 a P-12; revisión documental (P-9, P-11 y P-12 bloqueantes; supuestos P-4, P-7, P-8, P-10) | `/spec 021` y revisión del PR #77 | — |
 | 2026-10-24 | P-9 resuelta por fuentes; PD-132; pulido de CA-8, CA-12, CA-13 y CA-17 | Revisión del PR #77 y auditoría de cierre | — |
 | 2026-10-25 | 014b integrada: P-1 resuelta, ADR-0013 y DF-21 aceptados; de 7 a 6 preguntas bloqueantes | Incorporación de 014b | — |
-| 2026-10-25 | **Alcance: solo imágenes; el PDF pasa a 021b.** P-2, P-3, P-5 (imágenes), P-11 y P-12 resueltas; P-6 movida a 021b; CA reescritos y renumerados (CA-5 no disponible, CA-10 descarte por ahorro real, CA-11 versión cambiada, CA-15 y CA-16 con 014b, CA-22 en la ficha); se quita la reindexación (las imágenes no se indexan, 019); RN-8 a RN-10; ADR-0035; plan y tareas | Decisiones de Adrián | Adrián (decisiones); plan pendiente |
+| 2026-10-25 | **Alcance: solo imágenes; el PDF pasa a 021b.** P-2, P-3, P-5 (imágenes), P-11 y P-12 resueltas; P-6 movida a 021b; CA reescritos y renumerados (CA-5 no disponible, CA-10 descarte por ahorro real, CA-11 versión cambiada, CA-15 y CA-16 con 014b, CA-22 en la ficha); se quita la reindexación (las imágenes no se indexan, 019); RN-8 a RN-10; ADR-0036; plan y tareas | Decisiones de Adrián | Adrián (decisiones); plan pendiente |
 | 2026-10-25 | WebP animado dentro de 021 (solo el GIF animado queda fuera, como decidió Adrián), con integridad de cuadros, tiempos y bucle (CA-8); límite por píxeles decodificados totales (RN-8); mensajes de límite sin cifras (CA-5); solo lectura y éxito con patrones existentes (§6) | Revisión del plan | — |
-| 2026-10-25 | Spike de ADR-0035: WebP animado confirmado; GIF estático sin recompresión sin pérdida (supuesto en §8); mockup completo con capturas y axe (§6) | Spike y capturas | — |
-| 2026-10-26 | **Lista.** Plan aprobado (con precisiones en plan §2 a §5 y la nota del mockup en tareas), ADR-0035 y DF-81 aceptados, excepción de ADR-0034 | Aprobación del plan | Adrián |
+| 2026-10-25 | Spike de ADR-0036: WebP animado confirmado; GIF estático sin recompresión sin pérdida (supuesto en §8); mockup completo con capturas y axe (§6) | Spike y capturas | — |
+| 2026-10-26 | **Lista.** Plan aprobado (con precisiones en plan §2 a §5 y la nota del mockup en tareas), ADR-0036 y DF-82 aceptados, excepción de ADR-0034 | Aprobación del plan | Adrián |
 | 2026-10-26 | **Recorte de alcance.** (1) Solo JPEG y PNG: WebP y GIF, estáticos y animados, salen de 021 (RN-1, CA-3, CA-5, CA-8, RN-6, RN-8); se agrega el PNG animado como «no disponible» porque `sharp` leería solo su primer cuadro (T-03 lo confirma). (2) PD-124 fuera: la fachada lee como las otras dos y el lector común lo extrae quien integre 017 (§7, §8). (3) La interfaz baja a 8 estados y «no disponible» a un solo mensaje (CA-5, §6, CA-22). Plan y tareas ajustados | Pedido de reducir la complejidad | Aprobada (2026-10-26, en la rama de la spec) |

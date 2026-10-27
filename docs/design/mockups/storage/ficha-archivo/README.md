@@ -153,7 +153,7 @@
   `marco/marco.js` (los estados de 014 y 019 no se tocan; ver «Pendiente»).
 - **Cuándo aparece**: solo para imágenes `png`, `jpg`/`jpeg`, `gif` estático y `webp` (también animado) del
   propietario (RN-1, RN-5). El WebP animado se optimiza conservando cuadros, tiempos y bucle (sujeto al spike de
-  ADR-0035); solo el GIF animado queda fuera.
+  ADR-0036); solo el GIF animado queda fuera.
   Para un PDF (spec futura 021b), un `.docx` u otro tipo **la tarjeta no se dibuja** (CA-3): no se ofrece lo que la API
   rechaza. Lectores y roles internos tampoco la ven.
 - **Ícono de tipo**: `FileTypeChip` de imagen (`--file-img`, como en 007), en el encabezado.

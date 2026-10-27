@@ -75,6 +75,7 @@ decisiones; solo faltan los diagramas.
 
 | ID | Qué falta | Dónde | Origen | Resolver antes de | Responsable | Estado |
 |---|---|---|---|---|---|---|
+| PD-131 | Extraer la duplicación de los generadores de mockups (`_generadores/admin/generar.js` y `_generadores/soporte/generar.js`): tablas, estados, esqueletos, CSS de diálogo y ayudantes de página, sin cambiar las capturas ni axe. La 011b ya comparte `FormDialog` y su CSS en `area.js`; los generadores siguen superando las 80 líneas nuevas | Revisión de mockups de 011b (m-2) | 20 % de refactor de la Fase 3 | Fátima | Abierto |
 | PD-24 | `boundaries.js` con las reglas de ADR-0010, `import-x/no-cycle` y los fixtures negativos `realtime-imports-identity.ts` y `access-imports-storage.ts`. Con DF-51 (opción A) `storage` **no** tiene a `billing` en su lista permitida y `billing` sí a `storage`; ver PD-47 | `packages/config/eslint/` | ADR-0010, T-28 de 000 | PR de CI de 000 | Adrián | Resuelto (2026-10-07, `feat/000-ci`: `boundaries.js` con el grafo completo, `cycles.js` y los fixtures) |
 | PD-25 | Segundo rol de BD (`nimbo_app`, que no es dueño) y `DATABASE_MIGRATION_URL`: script de inicio de Postgres en compose, `.env.example`, `env:check` y secretos de staging | `compose.yml`, `.env.example`, `apps/api` | ADR-0005 | Plan de 003 | Adrián | Abierto |
 | PD-26 | Regla de lint que prohíba `set_config` fuera de `withActor()` | `packages/config/eslint/` | ADR-0005 | Plan de 003 | Adrián | Abierto |
