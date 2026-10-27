@@ -30,9 +30,12 @@ export interface ValidityChange {
   readonly expiresAt: Date;
 }
 
-/** La vista tras extender la vigencia y si la cuenta salió de solo lectura (`subscription.read_only_exited`, 010). */
+/**
+ * La vista tras extender la vigencia y si la cuenta salió de solo lectura (`subscription.read_only_exited`, 010). Solo
+ * se extiende un plan de pago (Personal se rechaza), así que `expiresAt` es el `vence_en` nuevo y nunca es nulo.
+ */
 export interface ValidityAdjustment {
-  readonly limits: SubscriptionLimits;
+  readonly limits: SubscriptionLimits & { readonly expiresAt: Date };
   readonly exitedReadOnly: boolean;
 }
 

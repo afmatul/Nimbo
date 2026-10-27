@@ -3,10 +3,12 @@ import { randomUUID } from 'node:crypto';
 import {
   accountLimitsSchema,
   BACKOFFICE_ERROR_CODES,
+  BACKOFFICE_FIELD_MESSAGES,
+  billingHistoryResponseSchema,
   errorResponseSchema,
   IDENTITY_ERROR_CODES,
 } from '@nimbo/contracts';
-import type { AccountLimits } from '@nimbo/contracts';
+import type { AccountLimits, SubscriptionView } from '@nimbo/contracts';
 import request from 'supertest';
 import type { Response } from 'supertest';
 import type { DataSource } from 'typeorm';
@@ -138,6 +140,20 @@ describe('`/backoffice/accounts/:id/limits`, `/quota` y `/validity` con dueño N
     asAdmin(http().delete(`${ACCOUNTS}/${id}/quota`));
   const putValidity = (id: string, body: Record<string, unknown>): request.Test =>
     asAdmin(http().put(`${ACCOUNTS}/${id}/validity`).send(body));
+
+  /** La suscripción como la ve el cliente en «Plan y facturación» (`GET /billing/history`, CA-9). */
+  const clientSubscriptionOf = async (client: Actor): Promise<SubscriptionView | null> => {
+    const { token } = await issuer.issueAccessToken({
+      userId: client.id,
+      role: Role.CLIENT,
+      sessionId: randomUUID(),
+    });
+    const response = await http()
+      .get('/api/v1/billing/history')
+      .set('Authorization', `Bearer ${token}`);
+    expect(response.status).toBe(200);
+    return billingHistoryResponseSchema.parse(response.body).subscription;
+  };
 
   /** Pagos y facturas del cliente, como los ve él mismo: extender no cobra ni factura (CA-8). */
   const chargesOf = async (client: Actor): Promise<number> =>
@@ -428,6 +444,10 @@ describe('`/backoffice/accounts/:id/limits`, `/quota` y `/validity` con dueño N
         },
         { accion: 'subscription.read_only_exited', rol_actor: 'ADMIN', atributos: {} },
       ]);
+      expect(await clientSubscriptionOf(client)).toMatchObject({
+        status: 'active',
+        expiresAt: endOfDay(day).toISOString(),
+      });
     });
 
     it('CA-6: una cuenta vigente solo deja el evento del ajuste', async () => {
@@ -473,6 +493,7 @@ describe('`/backoffice/accounts/:id/limits`, `/quota` y `/validity` con dueño N
       expect(unsubscribedError.code).toBe(BACKOFFICE_ERROR_CODES.VALIDITY_NOT_EXTENDED);
       expect(malformed.code).toBe(BACKOFFICE_ERROR_CODES.VALIDITY_NOT_EXTENDED);
       expect(malformed.fields?.map((field) => field.reason)).toEqual(['INVALID_DAY']);
+      expect(malformed.message).toBe(BACKOFFICE_FIELD_MESSAGES.INVALID_DAY);
       expect(await eventsOf(personal)).toEqual([]);
       expect(await eventsOf(unsubscribed)).toEqual([]);
     });

@@ -120,13 +120,13 @@ describe('TypeOrmSubscriptionAdministrationRepository (011b plan §3, §4)', () 
     });
   });
 
-  it('CA-6: adjustValidity llama a `extender_vigencia` con el instante nuevo y dice si salió de solo lectura', async () => {
+  it('CA-6: adjustValidity llama a `extender_vigencia` con el instante nuevo, lo da como `expiresAt` y dice si salió de solo lectura', async () => {
     const { repository, query } = setup([
       { codigo: 'ok', ...VIEW, estado: 'vigente', salio_de_solo_lectura: true },
     ]);
 
     await expect(repository.adjustValidity(ADMIN, validity)).resolves.toEqual({
-      limits: expect.objectContaining({ status: 'vigente' }),
+      limits: expect.objectContaining({ status: 'vigente', expiresAt: UNTIL }),
       exitedReadOnly: true,
     });
     expect(query).toHaveBeenCalledWith(

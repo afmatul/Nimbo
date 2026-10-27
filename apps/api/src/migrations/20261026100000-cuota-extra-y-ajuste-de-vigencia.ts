@@ -57,12 +57,13 @@ const EXPECT_ONE_ROW = (name: string): string => `
     RAISE EXCEPTION '${name} actualizó % filas de suscripcion', v_filas USING ERRCODE = 'cardinality_violation';
   END IF;`;
 
+/** Solo cuentas de cliente, como las de escritura (`LOCK_ACCOUNT`): una interna da 0 filas aunque tenga suscripción. */
 const LIMITS_SQL = `
   CREATE FUNCTION limites_de_cuenta(p_usuario uuid) RETURNS TABLE (${VIEW_COLUMNS}) ${definer('STABLE')} $$
   #variable_conflict use_column
   BEGIN
     ${REQUIRE_ADMIN('limites_de_cuenta')}
-    RETURN QUERY SELECT ${VIEW_SELECT};
+    RETURN QUERY SELECT ${VIEW_SELECT} AND u.rol = 'CLIENT';
   END
   $$`;
 
@@ -136,7 +137,7 @@ const EXTEND_VALIDITY_SQL = `
  *
  * - `nimbo_app` no gana `UPDATE` de las columnas nuevas y su alta exige el extra vacío: el cliente no se sube la cuota.
  * - Tres funciones `SECURITY DEFINER` con el rol `ADMIN` comprobado dentro: `limites_de_cuenta` (`STABLE`, lee por
- *   `suscripcion_administracion`; 0 filas = sin suscripción) y las de escritura `ajustar_cuota_extra` y
+ *   `suscripcion_administracion`; 0 filas = sin suscripción o cuenta interna) y las de escritura `ajustar_cuota_extra` y
  *   `extender_vigencia` (`VOLATILE`), que devuelven un código de resultado y la vista; la de vigencia, también
  *   `salio_de_solo_lectura`.
  * - `suscripcion_ajuste_administracion` (`TO CURRENT_USER`) deja al dueño bloquear y escribir bajo `FORCE` RLS; solo

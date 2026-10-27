@@ -7,6 +7,7 @@ import {
   accountLimitsSchema,
   adjustQuotaRequestSchema,
   adjustValidityRequestSchema,
+  isCalendarDay,
 } from './adjustments';
 import { BACKOFFICE_FIELD_MESSAGES } from './error-codes';
 
@@ -154,4 +155,17 @@ describe('accountLimitsSchema (011b CA-1, CA-3, HU-5)', () => {
   ])('es estricto: rechaza %s', (_case, patch) => {
     expect(accountLimitsSchema.safeParse({ ...paidLimits, ...patch }).success).toBe(false);
   });
+});
+
+describe('isCalendarDay (011b CA-3, CA-7)', () => {
+  it.each(['2026-11-30', '2028-02-29', '2026-01-01'])('%s es un día del calendario', (day) => {
+    expect(isCalendarDay(day)).toBe(true);
+  });
+
+  it.each(['2026-02-30', '2027-02-29', '2026-13-01', '2026-11-31', '30/11/2026', AT, ''])(
+    '%p no es un día del calendario',
+    (day) => {
+      expect(isCalendarDay(day)).toBe(false);
+    },
+  );
 });

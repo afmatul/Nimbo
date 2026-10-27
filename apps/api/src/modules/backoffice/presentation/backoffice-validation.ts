@@ -34,10 +34,13 @@ export const quotaValidationError: InvalidInputFactory = (
   issues: readonly FieldIssue[],
 ): DomainError => new QuotaInvalidError('invalid', issues);
 
-/** Fábrica para el cuerpo de la vigencia: 422 `BACKOFFICE_VALIDITY_NOT_EXTENDED` con `fields` (011b CA-7). */
+/**
+ * Fábrica para el cuerpo de la vigencia: 422 `BACKOFFICE_VALIDITY_NOT_EXTENDED` con `fields` y el mensaje de un día
+ * inválido, no el de un día que no extiende (011b CA-7).
+ */
 export const validityValidationError: InvalidInputFactory = (
   issues: readonly FieldIssue[],
-): DomainError => new ValidityNotExtendedError('not_later', issues);
+): DomainError => new ValidityNotExtendedError('invalid', issues);
 
 /** Un `:id` de plan que no es UUID es el mismo 404 `PLAN_NOT_FOUND` que un plan inexistente (plan §4). */
 export const planIdPipe = (): ParseUUIDPipe =>

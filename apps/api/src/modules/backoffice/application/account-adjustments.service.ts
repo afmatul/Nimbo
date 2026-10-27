@@ -13,6 +13,7 @@ import type {
   ValidityAdjustment,
 } from '../../billing';
 import { AccountDirectory, AccountNotFoundError } from '../../identity';
+import type { AccountView } from '../../identity';
 
 import type { BackofficeLogger } from './backoffice-logger';
 import { InternalActionService } from './internal-action.service';
@@ -23,6 +24,10 @@ export interface AccountLimitsDetail {
   readonly subscription: SubscriptionLimits | null;
 }
 
+/** Una cuenta de cliente: siempre tiene espacio usado (las internas no). */
+type ClientAccount = AccountView & { readonly usedBytes: bigint };
+
+/** Con suscripción, el usado sale de la misma vista que la cuota: una sola fuente para la ficha. */
 const detailOf = (limits: SubscriptionLimits): AccountLimitsDetail => ({
   usedBytes: limits.usedBytes,
   subscription: limits,
@@ -54,7 +59,7 @@ const validityEvents = (
     actor,
     targetUserId: clientId,
     resourceId: clientId,
-    attributes: limits.expiresAt === null ? {} : { expiresAt: limits.expiresAt.toISOString() },
+    attributes: { expiresAt: limits.expiresAt.toISOString() },
   },
   ...(exitedReadOnly
     ? [{ action: AuditAction.SUBSCRIPTION_READ_ONLY_EXITED, actor, targetUserId: clientId }]
@@ -80,11 +85,14 @@ export class AccountAdjustmentsService {
     @Inject(PinoLogger) private readonly logger: Pick<BackofficeLogger, 'info'>,
   ) {}
 
-  /** HU-5, CA-3: sin suscripción, `subscription` es `null` (la ficha muestra `status: none`). */
+  /** HU-5, CA-3: sin suscripción, `subscription` es `null` y el usado es el de la cuenta (`status: none`). */
   limits(actor: Actor, clientId: string): Promise<AccountLimitsDetail> {
     return this.internal.read(actor, async () => {
-      const usedBytes = await this.clientUsage(actor, clientId);
-      return { usedBytes, subscription: await this.subscriptions.limitsOf(actor, clientId) };
+      const account = await this.requireClient(actor, clientId);
+      const subscription = await this.subscriptions.limitsOf(actor, clientId);
+      return subscription === null
+        ? { usedBytes: account.usedBytes, subscription }
+        : detailOf(subscription);
     });
   }
 
@@ -93,7 +101,7 @@ export class AccountAdjustmentsService {
     const limits = await this.internal.run(actor, {
       locksAdminRoster: false,
       work: async () => {
-        await this.clientUsage(actor, cmd.clientId);
+        await this.requireClient(actor, cmd.clientId);
         return this.subscriptions.adjustQuota(actor, cmd);
       },
       event: (result) => quotaEvent(actor, cmd.clientId, result),
@@ -114,7 +122,7 @@ export class AccountAdjustmentsService {
     const { limits, exitedReadOnly } = await this.internal.run(actor, {
       locksAdminRoster: false,
       work: async () => {
-        await this.clientUsage(actor, cmd.clientId);
+        await this.requireClient(actor, cmd.clientId);
         return this.subscriptions.adjustValidity(actor, cmd);
       },
       event: (result) => validityEvents(actor, cmd.clientId, result),
@@ -129,11 +137,11 @@ export class AccountAdjustmentsService {
   }
 
   /** Solo una cuenta de cliente tiene suscripción: una interna es el mismo `404` que una inexistente (CA-3). */
-  private async clientUsage(actor: Actor, clientId: string): Promise<bigint> {
+  private async requireClient(actor: Actor, clientId: string): Promise<ClientAccount> {
     const account = await this.directory.get(actor, clientId);
     if (account.role !== Role.CLIENT || account.usedBytes === null) {
       throw new AccountNotFoundError();
     }
-    return account.usedBytes;
+    return { ...account, usedBytes: account.usedBytes };
   }
 }

@@ -695,6 +695,22 @@ describe('migración de 011b: cuota extra y ajuste de vigencia con dueño NOSUPE
       expect(await limitsOf((await newClient()).id)).toEqual([]);
     });
 
+    it('CA-3: una cuenta interna no devuelve filas, aunque tenga una fila de `suscripcion`', async () => {
+      // Se da de alta con la política del cliente: la sesión dice `CLIENT`, pero `usuario.rol` es `SUPPORT`.
+      const support = createActor(await insertAccount(owner, Role.SUPPORT), Role.CLIENT);
+      await as(support, 'INSERT INTO suscripcion (usuario_id, plan_id) VALUES ($1, $2)', [
+        support.id,
+        PRO_PLAN_ID,
+      ]);
+
+      expect(
+        await as<unknown[]>(support, 'SELECT 1 FROM suscripcion WHERE usuario_id = $1', [
+          support.id,
+        ]),
+      ).toHaveLength(1);
+      expect(await limitsOf(support.id)).toEqual([]);
+    });
+
     it('CA-4, RN-1: un extra vencido no cuenta en la vista, sin trabajo programado', async () => {
       const client = await aClientWith();
       await adjustQuota(client.id, FIVE_GIB, guatemalaMidnightIn(3));

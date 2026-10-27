@@ -10,7 +10,6 @@ export { SubscriptionAdministration } from './application/subscription-administr
 export type {
   AdjustQuotaCommand,
   AdjustValidityCommand,
-  ExtraQuota,
 } from './application/subscription-administration';
 export type { PlanClientCount } from './application/ports/i-subscription-administration.reader.port';
 export type {

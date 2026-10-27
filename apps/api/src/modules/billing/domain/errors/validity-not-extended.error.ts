@@ -1,8 +1,11 @@
 import { InvalidInputError } from '../../../../shared/domain/errors';
 import type { FieldIssue } from '../../../../shared/domain/errors';
 
-/** Por qué no se extiende la vigencia (011b CA-7): Personal, sin suscripción o un día que no es posterior. */
-export type ValidityRejection = 'personal' | 'no_subscription' | 'not_later';
+/**
+ * Por qué no se extiende la vigencia (011b CA-7): Personal, sin suscripción, un día que no es posterior o un cuerpo que
+ * no trae un día del calendario.
+ */
+export type ValidityRejection = 'personal' | 'no_subscription' | 'not_later' | 'invalid';
 
 const MESSAGES: Readonly<Record<ValidityRejection, string>> = {
   personal:
@@ -11,6 +14,8 @@ const MESSAGES: Readonly<Record<ValidityRejection, string>> = {
     'Esta cuenta aún no tiene una suscripción, así que no tiene vigencia que extender. Vuelve a abrir la ficha más tarde.',
   not_later:
     'Solo puedes extender la vigencia: elige un día posterior al último día vigente que no sea anterior a hoy.',
+  /** El texto de `INVALID_DAY` en `BACKOFFICE_FIELD_MESSAGES` de `contracts` (sin importarlo, ADR-0008). */
+  invalid: 'Elige un día válido del calendario.',
 };
 
 /**

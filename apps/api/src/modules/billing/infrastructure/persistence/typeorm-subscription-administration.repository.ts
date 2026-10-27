@@ -125,11 +125,12 @@ export class TypeOrmSubscriptionAdministrationRepository implements ISubscriptio
     return outcomeOf(onlyRow(rows), quotaRejections(change));
   }
 
+  /** Con `ok`, la función guardó `p_vence` como `vence_en`: es el `expiresAt` de la vista, nunca nulo. */
   async adjustValidity(actor: Actor, change: ValidityChange): Promise<ValidityAdjustment> {
     const params = [change.clientId, change.expiresAt];
     const row = onlyRow(await this.call<ValidityRow>(actor, EXTEND_VALIDITY_SQL, params));
     return {
-      limits: outcomeOf(row, VALIDITY_REJECTIONS),
+      limits: { ...outcomeOf(row, VALIDITY_REJECTIONS), expiresAt: change.expiresAt },
       exitedReadOnly: row.salio_de_solo_lectura,
     };
   }

@@ -479,7 +479,7 @@ describe('aislamiento del backoffice (011 CA-15, CA-16)', () => {
     });
 
     it.each([Role.SUPPORT, Role.OPERATOR, Role.CLIENT] as const)(
-      'ISO-6 (plan §6 caso 6): %s no puede ejecutar ninguna de las tres funciones de `suscripcion`',
+      'ISO-12 (plan §6 caso 6): %s no puede ejecutar ninguna de las tres funciones de `suscripcion`',
       async (role) => {
         const actor = role === Role.CLIENT ? createActor(a.id, role) : internalActor(role);
 
@@ -492,7 +492,7 @@ describe('aislamiento del backoffice (011 CA-15, CA-16)', () => {
       },
     );
 
-    it('ISO-6 (plan §6 caso 6): sin actor en la sesión ninguna corre; el Administrador sí (centinela)', async () => {
+    it('ISO-12 (plan §6 caso 6): sin actor en la sesión ninguna corre; el Administrador sí (centinela)', async () => {
       for (const [name, sql, params] of calls) {
         await expect(
           runner.run(() => context.manager().query(sql, [a.id, ...params])),
@@ -502,7 +502,7 @@ describe('aislamiento del backoffice (011 CA-15, CA-16)', () => {
       expect(await asActor(internalActor(Role.ADMIN), limitsSql, [a.id])).toHaveLength(1);
     });
 
-    it('ISO-7 (plan §6 caso 7): A no puede subirse la cuota por `UPDATE`, aunque sí cambia una columna concedida', async () => {
+    it('ISO-13 (plan §6 caso 7): A no puede subirse la cuota por `UPDATE`, aunque sí cambia una columna concedida', async () => {
       const ana = createActor(a.id, Role.CLIENT);
 
       await expect(
@@ -520,7 +520,7 @@ describe('aislamiento del backoffice (011 CA-15, CA-16)', () => {
       expect(await extraOf(a.id)).toEqual({ extra: '0', hasta: null });
     });
 
-    it('ISO-7 (plan §6 caso 7): un cliente no puede darse de alta con extra; sin extra, sí (centinela)', async () => {
+    it('ISO-13 (plan §6 caso 7): un cliente no puede darse de alta con extra; sin extra, sí (centinela)', async () => {
       const insert = (extra: string, hasta: Date | null) =>
         asActor(
           newcomer,

@@ -16,8 +16,11 @@ const CALENDAR_DAY = /^\d{4}-\d{2}-\d{2}$/;
 const isPositiveBytes = (value: string): boolean =>
   POSITIVE_BYTES.test(value) && BigInt(value) <= MAX_BYTES;
 
-/** Un día que existe en el calendario: `2026-02-30` y `2026-13-01` tienen la forma pero no son días. */
-const isCalendarDay = (value: string): boolean => {
+/**
+ * Un día `YYYY-MM-DD` que existe en el calendario: `2026-02-30` y `2026-13-01` tienen la forma pero no son días. Lo usan
+ * el contrato y los formularios de la web (RN-1, RN-2).
+ */
+export const isCalendarDay = (value: string): boolean => {
   if (!CALENDAR_DAY.test(value)) return false;
   const midnight = new Date(`${value}T00:00:00.000Z`);
   return !Number.isNaN(midnight.getTime()) && midnight.toISOString().startsWith(value);

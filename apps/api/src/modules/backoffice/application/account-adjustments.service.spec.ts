@@ -13,18 +13,22 @@ import type { InternalAction } from './internal-action.service';
 
 const ADMIN: Actor = createActor(randomUUID(), Role.ADMIN);
 const UNTIL = new Date('2026-12-01T06:00:00.000Z');
+const EXPIRES = new Date('2026-11-20T15:30:00.000Z');
 
 const LIMITS: SubscriptionLimits = {
   planName: 'Equipo',
   isPersonal: false,
   status: 'vigente',
-  expiresAt: new Date('2026-11-20T15:30:00.000Z'),
+  expiresAt: EXPIRES,
   planQuotaBytes: 1000n,
   extraQuotaBytes: 500n,
   extraQuotaUntil: UNTIL,
   usedBytes: 700n,
   totalQuotaBytes: 1500n,
 };
+
+/** Tras extender, el `vence_en` nuevo nunca es nulo (`ValidityAdjustment`). */
+const EXTENDED = { ...LIMITS, expiresAt: EXPIRES };
 
 const anAccount = (role: Role): AccountView => ({
   id: randomUUID(),
@@ -63,7 +67,7 @@ const setup = (options: SetupOptions = {}) => {
   const subscriptions = {
     limitsOf: jest.fn(() => Promise.resolve(resolved)),
     adjustQuota: jest.fn(() => Promise.resolve(LIMITS)),
-    adjustValidity: jest.fn(() => Promise.resolve({ limits: LIMITS, exitedReadOnly: false })),
+    adjustValidity: jest.fn(() => Promise.resolve({ limits: EXTENDED, exitedReadOnly: false })),
   };
   const logger = { info: (payload: Record<string, unknown>): void => void logs.push(payload) };
   const service = new AccountAdjustmentsService(internal, directory, subscriptions, logger);
@@ -71,16 +75,16 @@ const setup = (options: SetupOptions = {}) => {
 };
 
 describe('AccountAdjustmentsService.limits (011b HU-5, CA-1, CA-3)', () => {
-  it('HU-5: el usado de la cuenta y los límites de su suscripción', async () => {
-    const { service, account } = setup();
+  it('HU-5: con suscripción, el usado sale de la misma vista que sus límites', async () => {
+    const { service, account } = setup({ account: { ...anAccount(Role.CLIENT), usedBytes: 699n } });
 
     await expect(service.limits(ADMIN, account.id)).resolves.toEqual({
-      usedBytes: 700n,
+      usedBytes: LIMITS.usedBytes,
       subscription: LIMITS,
     });
   });
 
-  it('CA-3: sin suscripción, `subscription` es `null` y el usado sigue', async () => {
+  it('CA-3: sin suscripción, `subscription` es `null` y el usado es el de la cuenta', async () => {
     const { service, account } = setup({ limits: null });
 
     await expect(service.limits(ADMIN, account.id)).resolves.toEqual({
@@ -161,7 +165,7 @@ describe('AccountAdjustmentsService.adjustValidity (011b CA-6 a CA-9, RN-4)', ()
 
   it('CA-6, CA-9: deja `account.validity_adjusted` con el `vence_en` nuevo y, si sale de solo lectura, el evento de la 010', async () => {
     const { service, account, recorded, locks, subscriptions, logs } = setup();
-    subscriptions.adjustValidity.mockResolvedValue({ limits: LIMITS, exitedReadOnly: true });
+    subscriptions.adjustValidity.mockResolvedValue({ limits: EXTENDED, exitedReadOnly: true });
 
     await expect(service.adjustValidity(ADMIN, cmdFor(account.id))).resolves.toEqual({
       usedBytes: 700n,
@@ -176,7 +180,7 @@ describe('AccountAdjustmentsService.adjustValidity (011b CA-6 a CA-9, RN-4)', ()
         actor: ADMIN,
         targetUserId: account.id,
         resourceId: account.id,
-        attributes: { expiresAt: LIMITS.expiresAt?.toISOString() },
+        attributes: { expiresAt: EXPIRES.toISOString() },
       },
       { action: AuditAction.SUBSCRIPTION_READ_ONLY_EXITED, actor: ADMIN, targetUserId: account.id },
     ]);
