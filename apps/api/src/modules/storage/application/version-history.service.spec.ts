@@ -25,6 +25,8 @@ const LIMITS = {
   retainedVersions: RETAINED,
   readOnly: false,
   maxEditors: 0,
+  extraQuotaBytes: 0n,
+  extraQuotaUntil: null,
 };
 
 function setup() {

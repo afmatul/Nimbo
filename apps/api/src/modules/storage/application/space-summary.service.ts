@@ -17,7 +17,12 @@ export interface SpaceSummary {
   readonly usedBytes: bigint;
   /** Cargas en curso (005 RN-13). */
   readonly reservedBytes: bigint;
+  /** Cuota efectiva: la del plan más el extra vigente (011b RN-1). */
   readonly quotaBytes: bigint;
+  /** 011b CA-5: la cuota del plan, el extra vigente y el instante en que deja de regir (`0` y `null` sin extra). */
+  readonly baseQuotaBytes: bigint;
+  readonly extraQuotaBytes: bigint;
+  readonly extraQuotaUntil: Date | null;
   readonly availableBytes: bigint;
   readonly maxFileBytes: bigint;
   readonly trashRetentionDays: number;
@@ -50,6 +55,9 @@ export class SpaceSummaryService {
       planName: limits.planName,
       ...usage,
       quotaBytes: limits.storageQuotaBytes,
+      baseQuotaBytes: limits.storageQuotaBytes - limits.extraQuotaBytes,
+      extraQuotaBytes: limits.extraQuotaBytes,
+      extraQuotaUntil: limits.extraQuotaUntil,
       availableBytes: QuotaPolicy.available(limits, usage),
       maxFileBytes: limits.maxFileBytes,
       trashRetentionDays: limits.trashRetentionDays,

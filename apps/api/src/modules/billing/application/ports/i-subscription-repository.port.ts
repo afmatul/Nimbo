@@ -1,10 +1,15 @@
 import type { Actor } from '../../../../shared';
 import type { Subscription } from '../../domain/entities/subscription.entity';
 
-/** Lo que `storage` necesita de la suscripción del actor (plan 010 §2): su plan y si está en solo lectura (RN-5). */
+/**
+ * Lo que `storage` necesita de la suscripción del actor (plan 010 §2): su plan, si está en solo lectura (RN-5) y, desde
+ * la 011b, el extra de cuota guardado tal cual (`0` y `null` sin extra); si sigue vigente lo decide el adaptador (RN-1).
+ */
 export interface SubscriptionStanding {
   readonly planId: string;
   readonly readOnly: boolean;
+  readonly extraQuotaBytes: bigint;
+  readonly extraQuotaUntil: Date | null;
 }
 
 /**
