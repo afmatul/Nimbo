@@ -106,22 +106,16 @@ ${A.CSS_PAGINACION}
 
   /* Límites y vigencia (011b) */
   .limits { margin-top: 20px; }
-  .limits-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; }
-  .limits-head h2 { margin: 0; }
-  .limits-head .sub { margin: 2px 0 0; }
-  .limits-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
-  .limit { min-width: 0; padding-right: 16px; border-right: 1px solid var(--border); }
-  .limit:last-child { padding-right: 0; border-right: 0; }
-  .limit-label { margin: 0; font-size: 12.5px; font-weight: 500; color: var(--secondary-foreground); }
-  .limit-value { margin: 2px 0 0; font-size: 20px; line-height: 1.3; font-weight: 700; overflow-wrap: anywhere; }
-  .limit-note { margin: 4px 0 0; font-size: 12.5px; color: var(--muted-foreground); }
-  .limit .use-bar { max-width: 240px; margin-top: 8px; }
+  .limits-badge { margin-top: 12px; }
+  .limits .facts { margin-top: 12px; }
   .limits-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
   .limits-actions .btn { min-height: 40px; }
   .limits-actions .btn-quitar { margin-left: auto; }
   .limits .audit-note { margin-top: 12px; }
-  .limits .alert { margin: 0 0 16px; }
-  .skeleton-line.tall { margin-top: 10px; height: 18px; }
+  .limits .alert { margin: 16px 0 0; }
+  .limits .state { min-height: 0; }
+  .state-loading { border: 1px dashed var(--border); background: var(--card); }
+  .state-loading > .ico { color: var(--primary); }
 
   /* Diálogo con formulario (ajustar cuota y extender vigencia): base compartida en area.js */
   .input-group { display: flex; align-items: stretch; max-width: 220px; }
@@ -135,14 +129,7 @@ ${A.CSS_PAGINACION}
   .calc-danger strong { color: var(--destructive); }
   .readonly-note { margin-top: 16px; }
 
-  @media (max-width: 900px) {
-    .limits-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .limit:nth-child(2) { padding-right: 0; border-right: 0; }
-  }
   @media (max-width: 600px) {
-    .limits-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
-    .limit { padding: 0 0 12px; border-right: 0; border-bottom: 1px solid var(--border); }
-    .limit:last-child { padding-bottom: 0; border-bottom: 0; }
     .limits-actions .btn { width: 100%; min-height: 44px; }
     .limits-actions .btn-quitar { margin-left: 0; }
     .input-group { max-width: none; }
@@ -293,92 +280,94 @@ function datosCuenta(c, estado, totalOverride = null) {
           </section>`;
 }
 
-// Bloque «Límites y vigencia» (011b): cuota del plan, extra temporal y vencimiento. Los estados de carga y error viven
-// dentro del bloque para no perder el resto de la ficha.
-function limites(c, {
-  extra = 0, hasta = '15/11/2026', total = null, usado = c.usado, pct = c.pct,
-  vence = '31/10/2026', soloLectura = false, guardado = null, cargando = false, error = false,
-} = {}) {
-  if (esInterna(c)) return '';
-  if (esSinSuscripcion(c)) {
-    return `
-        <section class="card limits" aria-labelledby="limites-t">
-          <div class="limits-head">
-            <div>
-              <h2 id="limites-t">Límites y vigencia</h2>
-              <p class="sub">Cuota, espacio extra y vencimiento de la suscripción.</p>
-            </div>
-          </div>
-          <div class="info-box">${icon('info', 16)}<p><strong>Esta cuenta no tiene suscripción.</strong>No hay cuota ni vigencia que ajustar. Mientras no contrate un plan, usa el plan Personal.</p></div>
+// Fechas cortas como `lastDayLabel` de la app («31 oct 2026»): un día `YYYY-MM-DD`, con el día de Guatemala.
+const FORMATO_DIA = new Intl.DateTimeFormat('es-GT', {
+  timeZone: 'America/Guatemala', day: 'numeric', month: 'short', year: 'numeric',
+});
+const diaCorto = (dia) => FORMATO_DIA.format(new Date(`${dia}T12:00:00.000Z`));
+
+// Bloque «Límites y vigencia» (011b, `AccountLimitsCard`): cuota del plan, extra temporal y vencimiento en filas como
+// «Datos de la cuenta», siempre en texto. Los estados de carga y error viven dentro del bloque sin perder la ficha.
+const bloqueLimites = (contenido, atributos = '') => `
+        <section class="card limits" aria-labelledby="limites-t"${atributos}>
+          <h2 id="limites-t">Límites y vigencia</h2>
+          <p class="sub">Cuota, espacio extra y vencimiento de la suscripción.</p>${contenido}
         </section>`;
-  }
-  if (cargando) {
-    return `
-        <section class="card limits" aria-labelledby="limites-t" aria-busy="true">
-          <div class="limits-head"><div><h2 id="limites-t">Límites y vigencia</h2><p class="sub">Cuota, espacio extra y vencimiento de la suscripción.</p></div></div>
-          <div class="limits-grid" aria-hidden="true">
-            ${[0, 1, 2, 3].map(() => '<div class="limit"><span class="skeleton-line w50"></span><span class="skeleton-line w70 tall"></span></div>').join('')}
-          </div>
-          <p class="loading-text" role="status">${icon('loader', 16, 'spin')}Cargando la cuota y la vigencia…</p>
-        </section>`;
-  }
-  if (error) {
-    return `
-        <section class="card limits" aria-labelledby="limites-t">
-          <div class="limits-head"><div><h2 id="limites-t">Límites y vigencia</h2><p class="sub">Cuota, espacio extra y vencimiento de la suscripción.</p></div></div>
-          <div class="alert alert-error" role="alert">${icon('alert', 18)}<div><p class="alert-title">No pudimos cargar la cuota y la vigencia.</p><p class="alert-text">Ningún dato cambió. Revisa tu conexión e inténtalo de nuevo.</p></div></div>
-          <button class="btn btn-outline" type="button">${icon('retry', 16)}Reintentar</button>
-        </section>`;
-  }
-  const esPersonal = c.plan.id === 'personal';
-  const totalTxt = total || c.plan.espacio;
-  const notaVencimiento = esPersonal
-    ? 'Personal no vence: no tiene vigencia que extender.'
-    : soloLectura
-      ? 'La cuenta está en solo lectura. Extiende la vigencia para que vuelva a vigente.'
-      : 'Al vencer el extra, la cuota vuelve a la del plan; la cuenta sigue vigente hasta su vencimiento.';
+
+const SIN_SUSCRIPCION_LIMITES = `
+          <div class="info-box limits-badge">${icon('info', 16)}<p><strong>Esta cuenta no tiene suscripción.</strong>No hay cuota ni vigencia que ajustar. Mientras no contrate un plan, usa el plan Personal.</p></div>`;
+
+const CARGANDO_LIMITES = `
+          <div class="state state-loading" role="status" aria-live="polite">
+            ${icon('loader', 36, 'spin')}
+            <h2>Cargando la cuota y la vigencia…</h2>
+          </div>`;
+
+const ERROR_LIMITES = A.estadoError('No pudimos cargar la cuota y la vigencia.',
+  'Ningún dato cambió. Revisa tu conexión e inténtalo de nuevo.');
+
+// Distintivo y nota del vencimiento según la suscripción (`BADGES` y `EXPIRY_NOTES` de account-limits.tsx).
+const SUSCRIPCION = {
+  vigente: { badge: `<span class="badge badge-ok">${icon('ok', 13)}Vigente</span>`,
+    nota: 'Al vencer el extra, la cuota vuelve a la del plan; la cuenta sigue vigente hasta su vencimiento.' },
+  soloLectura: { badge: `<span class="badge badge-off">${icon('lock', 13)}Solo lectura</span>`,
+    nota: 'La cuenta está en solo lectura. Extiende la vigencia para que vuelva a vigente.' },
+  personal: { badge: `<span class="badge badge-idle">${icon('clock', 13)}Sin vencimiento</span>`,
+    nota: 'Personal no vence: no tiene vigencia que extender.' },
+};
+
+function suscripcionDe(c, soloLectura) {
+  if (c.plan.id === 'personal') return 'personal';
+  return soloLectura ? 'soloLectura' : 'vigente';
+}
+
+// Una fila como `Fact` de la app: término, valor con cifras tabulares y, si hay, la aclaración (`Note`).
+const hecho = (termino, valor, nota = '') => `
+            <dt>${termino}</dt><dd><span class="num">${valor}</span>${nota ? `<span class="note">${nota}</span>` : ''}</dd>`;
+
+function hechosLimites(c, o, suscripcion) {
+  const conExtra = o.extra > 0;
+  const notaExtra = conExtra
+    ? `Hasta el ${diaCorto(o.hasta)}. Se suma al plan; no reemplaza el espacio usado.`
+    : 'Espacio temporal sin cambiar de plan.';
+  const vence = suscripcion === 'personal' ? 'No vence' : diaCorto(o.vence);
   return `
-        <section class="card limits" aria-labelledby="limites-t">
-          <div class="limits-head">
-            <div>
-              <h2 id="limites-t">Límites y vigencia</h2>
-              <p class="sub">Cuota, espacio extra y vencimiento de la suscripción.</p>
-            </div>
-            ${esPersonal
-    ? `<span class="badge badge-idle">${icon('clock', 13)}Sin vencimiento</span>`
-    : soloLectura
-      ? `<span class="badge badge-off">${icon('lock', 13)}Solo lectura</span>`
-      : `<span class="badge badge-ok">${icon('ok', 13)}Vigente</span>`}
-          </div>
-${guardado ? `          <div class="alert alert-ok" role="status">${icon('ok', 18)}<div><p class="alert-title">${guardado.titulo}</p><p class="alert-text">${guardado.texto}</p></div></div>` : ''}
-          <div class="limits-grid">
-            <div class="limit">
-              <p class="limit-label">Cuota del plan</p>
-              <p class="limit-value num">${c.plan.espacio}</p>
-            </div>
-            <div class="limit">
-              <p class="limit-label">Espacio extra</p>
-              <p class="limit-value num">${extra > 0 ? `+ ${extra} GB` : 'Sin extra'}</p>
-              <p class="limit-note">${extra > 0 ? `Hasta el ${hasta}. Se suma al plan; no reemplaza el espacio usado.` : 'Espacio temporal sin cambiar de plan.'}</p>
-            </div>
-            <div class="limit">
-              <p class="limit-label">Cuota total</p>
-              <p class="limit-value num">${totalTxt}</p>
-              <span class="use-text num">${usado} usados (${pct} %)</span>${barraUso(Math.min(pct, 100))}
-            </div>
-            <div class="limit">
-              <p class="limit-label">Vencimiento</p>
-              <p class="limit-value num">${esPersonal ? 'No vence' : vence}</p>
-              <p class="limit-note">${notaVencimiento}</p>
-            </div>
-          </div>
+          <dl class="facts">${[
+    hecho('Cuota del plan', c.plan.espacio),
+    hecho('Espacio extra', conExtra ? `+ ${o.extra} GB` : 'Sin extra', notaExtra),
+    hecho('Cuota total', o.total || c.plan.espacio, `${o.usado} usados (${o.pct} %)`),
+    hecho('Vencimiento', vence, SUSCRIPCION[suscripcion].nota),
+  ].join('')}
+          </dl>`;
+}
+
+// «Ajustar cuota», «Extender vigencia» (no en Personal) y «Quitar extra» (solo si hay extra y el plan cubre lo usado).
+const accionesLimites = (o, suscripcion) => `
           <div class="limits-actions">
-            <a class="btn btn-outline" href="admin--ajustar-cuota.html">${icon('drive', 16)}Ajustar cuota</a>
-${esPersonal ? '' : `            <a class="btn btn-outline" href="admin--extender-vigencia.html">${icon('calendar', 16)}Extender vigencia</a>`}
-${extra > 0 ? `            <a class="btn btn-outline btn-quitar" href="admin--quitar-extra.html">${icon('circlex', 16)}Quitar extra</a>` : ''}
+            <a class="btn btn-outline" href="admin--ajustar-cuota.html">${icon('drive', 16)}Ajustar cuota</a>${suscripcion === 'personal' ? '' : `
+            <a class="btn btn-outline" href="admin--extender-vigencia.html">${icon('calendar', 16)}Extender vigencia</a>`}${o.extra > 0 ? `
+            <a class="btn btn-outline btn-quitar" href="admin--quitar-extra.html">${icon('circlex', 16)}Quitar extra</a>` : ''}
           </div>
-          <p class="audit-note">${icon('history', 15)}<span>Cada ajuste queda en la auditoría de la cuenta; el cliente ve la acción y tu rol.</span></p>
-        </section>`;
+          <p class="audit-note">${icon('history', 15)}<span>Cada ajuste queda en la auditoría de la cuenta; el cliente ve la acción y tu rol.</span></p>`;
+
+const avisoLimites = (guardado) => (guardado ? `
+          <div class="alert alert-ok" role="status">${icon('ok', 18)}<div><p class="alert-title">${guardado.titulo}</p><p class="alert-text">${guardado.texto}</p></div></div>` : '');
+
+function limitesListos(c, o) {
+  const suscripcion = suscripcionDe(c, o.soloLectura);
+  return `
+          <div class="limits-badge">${SUSCRIPCION[suscripcion].badge}</div>${avisoLimites(o.guardado)}${hechosLimites(c, o, suscripcion)}${accionesLimites(o, suscripcion)}`;
+}
+
+// Días `YYYY-MM-DD`: hasta, el último día del extra; vence, el último día vigente.
+const LIMITES_POR_OMISION = { extra: 0, hasta: '2026-11-15', total: null, vence: '2026-10-31', soloLectura: false, guardado: null };
+
+function limites(c, opciones = {}) {
+  if (esInterna(c)) return '';
+  if (esSinSuscripcion(c)) return bloqueLimites(SIN_SUSCRIPCION_LIMITES);
+  if (opciones.cargando) return bloqueLimites(CARGANDO_LIMITES, ' aria-busy="true"');
+  if (opciones.error) return bloqueLimites(ERROR_LIMITES);
+  return bloqueLimites(limitesListos(c, { ...LIMITES_POR_OMISION, usado: c.usado, pct: c.pct, ...opciones }));
 }
 
 // Diálogo con formulario (011b): la pieza compartida vive en area.js para que Soporte use la misma.
@@ -390,51 +379,56 @@ const calcCuota = ({ base, extra, total, usado, pct, danger = false }) => `
         <p>La cuenta usa <strong>${usado}</strong> (${pct} %).</p>
       </div>`;
 
-function dialogoCuota({ c, extra = '50', hasta = '2026-11-15', total = '400 GB', usado = c.usado, pct = c.pct,
-  danger = false, resumen = '', errorCampo = {}, cargando = false } = {}) {
-  const campos = `${A.campo({
-    id: 'cuota-extra', label: 'Espacio extra',
-    help: 'Se suma a la cuota del plan mientras esté vigente. Debe ser mayor que cero.',
-    value: extra, despues: '<span class="unit">GB</span>', short: true,
-    err: errorCampo.extra || '', extra: 'inputmode="decimal" autofocus',
-  })}${A.campo({
-    id: 'cuota-hasta', label: 'Vigente hasta',
-    help: 'La cuota vuelve a la del plan al terminar este día, sin borrar archivos.',
-    type: 'date', value: hasta, short: true, err: errorCampo.hasta || '',
-  })}`;
-  const errores = danger
-    ? `<div class="alert alert-error" role="alert">${icon('alert', 18)}<div><p class="alert-title">La cuota total no puede quedar por debajo de lo que la cuenta ya usa (${usado}).</p><p class="alert-text">Con ${extra} GB extra, la cuota total sería ${total}. Nada cambió.</p></div></div>`
-    : resumen;
+const camposCuota = ({ extra, hasta, errorCampo }) => `${A.campo({
+  id: 'cuota-extra', label: 'Espacio extra',
+  help: 'Se suma a la cuota del plan mientras esté vigente. Debe ser mayor que cero.',
+  value: extra, despues: '<span class="unit">GB</span>', short: true,
+  err: errorCampo.extra || '', extra: 'inputmode="numeric" autocomplete="off" autofocus',
+})}${A.campo({
+  id: 'cuota-hasta', label: 'Vigente hasta',
+  help: 'La cuota vuelve a la del plan al terminar este día, sin borrar archivos.',
+  type: 'date', value: hasta, short: true, err: errorCampo.hasta || '',
+})}`;
+
+const rechazoBajoLoUsado = ({ extra, total, usado }) => `<div class="alert alert-error" role="alert">${icon('alert', 18)}<div><p class="alert-title">La cuota total no puede quedar por debajo de lo que la cuenta ya usa (${usado}).</p><p class="alert-text">Con ${extra} GB extra, la cuota total sería ${total}. Nada cambió.</p></div></div>`;
+
+// pct: lo usado sobre el total resultante, como `usedPercent(usado, plan + extra)` (304 de 400 GB = 76 %).
+function dialogoCuota({ c, extra = '50', hasta = '2026-11-15', total = '400 GB', usado = c.usado, pct,
+  danger = false, resumen = '', errorCampo = {} } = {}) {
   return dialogoForm({
     titulo: `Ajustar cuota de ${c.nombre}`,
     descripcion: 'El espacio extra se suma al plan y vence en la fecha indicada. No cambia el plan ni el precio.',
-    campos,
+    campos: camposCuota({ extra, hasta, errorCampo }),
     resumen: calcCuota({ base: c.plan.espacio, extra, total, usado, pct, danger }),
-    errores,
-    confirmar: cargando ? 'Guardando cuota…' : 'Guardar cuota',
+    errores: danger ? rechazoBajoLoUsado({ extra, total, usado }) : resumen,
+    confirmar: 'Guardar cuota',
     cancelar: 'admin--ficha.html',
-    cargando,
   });
 }
 
-function dialogoVigencia({ c, fecha = '2026-11-30', actual = '31/10/2026', error = '', errores = '', soloLectura = false, cargando = false } = {}) {
+// Ayuda del campo con el último día vigente en formato corto (`validityNotLaterMessage`).
+const ayudaVigencia = (actual) =>
+  `Solo puedes extender la vigencia: elige un día posterior al ${diaCorto(actual)}. No se cobra ni se factura.`;
+
+const AVISO_SOLO_LECTURA = `<div class="info-box readonly-note">${icon('lock', 16)}<p><strong>La cuenta está en solo lectura.</strong>Al guardar, vuelve a vigente de inmediato y puede subir y editar otra vez.</p></div>`;
+
+const resumenVigencia = (actual, fecha) =>
+  `<div class="calc" aria-live="polite"><p>Vence actualmente: <strong>${diaCorto(actual)}</strong>. Fecha nueva: <strong>${diaCorto(fecha)}</strong>.</p></div>`;
+
+// actual y fecha: días `YYYY-MM-DD` (el último día vigente y el elegido).
+function dialogoVigencia({ c, fecha = '2026-11-30', actual = '2026-10-31', error = '', errores = '', soloLectura = false } = {}) {
   const campo = A.campo({
-    id: 'vigencia-hasta', label: 'Nueva fecha de vencimiento',
-    help: `Solo puedes extender la vigencia: elige un día posterior al ${actual}. No se cobra ni se factura.`,
+    id: 'vigencia-hasta', label: 'Nueva fecha de vencimiento', help: ayudaVigencia(actual),
     type: 'date', value: fecha, short: true, err: error, extra: 'autofocus',
   });
-  const aviso = soloLectura
-    ? `<div class="info-box readonly-note">${icon('lock', 16)}<p><strong>La cuenta está en solo lectura.</strong>Al guardar, vuelve a vigente de inmediato y puede subir y editar otra vez.</p></div>`
-    : '';
   return dialogoForm({
     titulo: `Extender la vigencia de ${c.nombre}`,
     descripcion: 'La fecha nueva reemplaza a la actual. No registra un cobro ni una factura; la renovación automática y el cambio de plan siguen como están.',
-    campos: campo + aviso,
-    resumen: `<div class="calc"><p>Vence actualmente: <strong>${actual}</strong>. Fecha nueva: <strong>${fecha.split('-').reverse().join('/')}</strong>.</p></div>`,
+    campos: campo + (soloLectura ? AVISO_SOLO_LECTURA : ''),
+    resumen: resumenVigencia(actual, fecha),
     errores,
-    confirmar: cargando ? 'Guardando vigencia…' : 'Guardar vigencia',
+    confirmar: 'Guardar vigencia',
     cancelar: 'admin--ficha.html',
-    cargando,
   });
 }
 
@@ -519,22 +513,21 @@ const DLG_REACTIVAR = dialogo({
   confirmar: 'Reactivar cuenta', clase: 'btn-primary-dlg', ic: 'userCheck',
 });
 
-const DLG_CUOTA = dialogoCuota({ c: C.LAURA });
+const DLG_CUOTA = dialogoCuota({ c: C.LAURA, pct: 76 });
 
 const DLG_CUOTA_BAJA = dialogoCuota({
-  c: SOBRE_CUOTA, extra: '5', total: '105 GB', usado: '108 GB', pct: 108, danger: true,
+  c: SOBRE_CUOTA, extra: '5', total: '105 GB', usado: '108 GB', pct: 103, danger: true,
 });
 
 const DLG_QUITAR_EXTRA = dialogo({
   titulo: `Quitar el espacio extra de ${C.LAURA.nombre}`,
-  quienLinea: `${C.LAURA.nombre} · ${C.LAURA.correo}`,
   items: [
     ['drive', 'La cuota total vuelve a 350 GB, la de su plan Equipo.'],
     ['check', 'La cuenta usa 304 GB, así que sigue dentro de la cuota.'],
     ['shield', 'No se borra ningún archivo, no se cambia el plan y no se cobra nada.'],
     ['history', 'Queda en su auditoría con la fecha y tu rol (Administrador).'],
   ],
-  confirmar: 'Quitar extra', clase: 'btn-primary-dlg', ic: 'circlex', cancelar: 'admin--ficha.html',
+  confirmar: 'Quitar extra', clase: 'btn-destructive', ic: 'circlex', cancelar: 'admin--ficha.html',
 });
 
 const EXTRA_NO_POSITIVO = 'El espacio extra debe ser mayor que cero.';
@@ -552,9 +545,7 @@ const DLG_CUOTA_INVALIDA = dialogoCuota({
   }),
 });
 
-const DLG_VIGENCIA = dialogoVigencia({ c: C.LAURA });
-
-const VIGENCIA_NO_POSTERIOR = 'Elige un día posterior al 31/10/2026.';
+const VIGENCIA_NO_POSTERIOR = `Elige un día posterior al ${diaCorto('2026-10-31')}.`;
 
 const DLG_VIGENCIA_ERROR = dialogoVigencia({
   c: C.LAURA, fecha: '2026-10-20', error: VIGENCIA_NO_POSTERIOR,
@@ -607,15 +598,15 @@ const ESTADOS = [
     spec: '011b', cuerpo: () => ficha(SOBRE_CUOTA, { limites: { usado: '108 GB', pct: 108 } }), dialogo: DLG_CUOTA_BAJA },
   { estado: 'cuota-invalida', titulo: 'cuota extra inválida: cero y fecha pasada, con resumen de errores', ficha: C.LAURA.nombre,
     spec: '011b', cuerpo: () => ficha(C.LAURA), dialogo: DLG_CUOTA_INVALIDA },
-  { estado: 'cuota-guardada', titulo: 'cuota extra guardada: 50 GB hasta el 15/11/2026', ficha: C.LAURA.nombre,
+  { estado: 'cuota-guardada', titulo: 'cuota extra guardada: 50 GB hasta el 15 nov 2026', ficha: C.LAURA.nombre,
     spec: '011b',
     cuerpo: () => ficha(C.LAURA, { limites: {
-      extra: 50, hasta: '15/11/2026', total: '400 GB', usado: '304 GB', pct: 76,
-      guardado: { titulo: 'Guardamos la cuota extra.', texto: 'Laura tiene 50 GB extra hasta el 15/11/2026; la cuota total es 400 GB.' },
+      extra: 50, total: '400 GB', usado: '304 GB', pct: 76,
+      guardado: { titulo: 'Guardamos la cuota extra.', texto: 'Laura tiene 50 GB extra hasta el 15 nov 2026; la cuota total es 400 GB.' },
     } }) },
   { estado: 'quitar-extra', titulo: 'quitar el extra: la cuota vuelve al plan sin tocar los archivos', ficha: C.LAURA.nombre,
     spec: '011b',
-    cuerpo: () => ficha(C.LAURA, { limites: { extra: 50, hasta: '15/11/2026', total: '400 GB', usado: '304 GB', pct: 76 } }),
+    cuerpo: () => ficha(C.LAURA, { limites: { extra: 50, total: '400 GB', usado: '304 GB', pct: 76 } }),
     dialogo: DLG_QUITAR_EXTRA },
   { estado: 'extra-quitado', titulo: 'extra quitado: la cuenta sigue dentro de la cuota del plan', ficha: C.LAURA.nombre,
     spec: '011b',
@@ -623,20 +614,20 @@ const ESTADOS = [
       guardado: { titulo: 'Quitamos el espacio extra.', texto: 'La cuota volvió a 350 GB. Laura sigue dentro de su plan; no se borró nada.' },
     } }) },
   { estado: 'extender-vigencia', titulo: 'ficha en solo lectura con el formulario para extender la vigencia', ficha: C.LAURA.nombre,
-    spec: '011b', cuerpo: () => ficha(C.LAURA, { limites: { soloLectura: true, vence: '20/10/2026' } }), dialogo: dialogoVigencia({ c: C.LAURA, soloLectura: true, actual: '20/10/2026' }) },
+    spec: '011b', cuerpo: () => ficha(C.LAURA, { limites: { soloLectura: true, vence: '2026-10-20' } }), dialogo: dialogoVigencia({ c: C.LAURA, soloLectura: true, actual: '2026-10-20' }) },
   { estado: 'fecha-no-posterior', titulo: 'fecha de vigencia no posterior: error de campo y resumen', ficha: C.LAURA.nombre,
     spec: '011b', cuerpo: () => ficha(C.LAURA), dialogo: DLG_VIGENCIA_ERROR },
   { estado: 'vigencia-guardada', titulo: 'vigencia extendida: la cuenta vuelve a vigente', ficha: C.LAURA.nombre,
     spec: '011b',
     cuerpo: () => ficha(C.LAURA, { limites: {
-      vence: '30/11/2026',
-      guardado: { titulo: 'Extendimos la vigencia.', texto: 'La cuenta vence el 30/11/2026 y volvió a vigente. No se cobró ni facturó nada.' },
+      vence: '2026-11-30',
+      guardado: { titulo: 'Extendimos la vigencia.', texto: 'La cuenta vence el 30 nov 2026 y volvió a vigente. No se cobró ni facturó nada.' },
     } }) },
   { estado: 'personal', titulo: 'plan Personal: cuota ajustable y vigencia que no vence', ficha: C.DIEGO.nombre,
     spec: '011b', cuerpo: () => ficha(C.DIEGO, { limites: { usado: '0 B', pct: 0 } }) },
   { estado: 'sin-suscripcion', titulo: 'cliente sin suscripción: sin cuota ni vigencia que ajustar', ficha: SIN_SUSCRIPCION.nombre,
     spec: '011b', cuerpo: () => ficha(SIN_SUSCRIPCION) },
-  { estado: 'limites-cargando', titulo: 'esqueleto del bloque de límites y vigencia', ficha: C.LAURA.nombre,
+  { estado: 'limites-cargando', titulo: 'carga del bloque de límites y vigencia', ficha: C.LAURA.nombre,
     spec: '011b', cuerpo: () => ficha(C.LAURA, { limites: { cargando: true } }) },
   { estado: 'limites-error', titulo: 'falló el bloque de límites: error con «Reintentar»', ficha: C.LAURA.nombre,
     spec: '011b', cuerpo: () => ficha(C.LAURA, { limites: { error: true } }) },

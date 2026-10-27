@@ -403,14 +403,15 @@ const estadoError = (titulo, texto) => `
         </div>`;
 
 // Diálogo de confirmación (ConfirmDestructiveDialog) con la lista de consecuencias. cancelar: href opcional del mockup
-// al que vuelve «Cancelar» (en la app cierra el diálogo sin cambiar nada); sin él, «Cancelar» es un botón.
+// al que vuelve «Cancelar» (en la app cierra el diálogo sin cambiar nada); sin él, «Cancelar» es un botón. quienLinea:
+// opcional (quitar el extra no la lleva).
 function dialogo({ titulo, quienLinea, items, confirmar, clase, ic, cancelar = '' }) {
   return `
   <div class="overlay" aria-hidden="true"></div>
   <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dlg-t" aria-describedby="dlg-d">
     <h2 id="dlg-t">${titulo}</h2>
-    <div id="dlg-d">
-      <p class="who-line">${quienLinea}</p>
+    <div id="dlg-d">${quienLinea ? `
+      <p class="who-line">${quienLinea}</p>` : ''}
       <ul class="conseq">${items.map(([i, t]) => `\n        <li>${icon(i, 16)}<span>${t}</span></li>`).join('')}
       </ul>
     </div>

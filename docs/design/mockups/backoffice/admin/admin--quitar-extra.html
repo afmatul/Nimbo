@@ -405,22 +405,16 @@
 
   /* Límites y vigencia (011b) */
   .limits { margin-top: 20px; }
-  .limits-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; }
-  .limits-head h2 { margin: 0; }
-  .limits-head .sub { margin: 2px 0 0; }
-  .limits-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
-  .limit { min-width: 0; padding-right: 16px; border-right: 1px solid var(--border); }
-  .limit:last-child { padding-right: 0; border-right: 0; }
-  .limit-label { margin: 0; font-size: 12.5px; font-weight: 500; color: var(--secondary-foreground); }
-  .limit-value { margin: 2px 0 0; font-size: 20px; line-height: 1.3; font-weight: 700; overflow-wrap: anywhere; }
-  .limit-note { margin: 4px 0 0; font-size: 12.5px; color: var(--muted-foreground); }
-  .limit .use-bar { max-width: 240px; margin-top: 8px; }
+  .limits-badge { margin-top: 12px; }
+  .limits .facts { margin-top: 12px; }
   .limits-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
   .limits-actions .btn { min-height: 40px; }
   .limits-actions .btn-quitar { margin-left: auto; }
   .limits .audit-note { margin-top: 12px; }
-  .limits .alert { margin: 0 0 16px; }
-  .skeleton-line.tall { margin-top: 10px; height: 18px; }
+  .limits .alert { margin: 16px 0 0; }
+  .limits .state { min-height: 0; }
+  .state-loading { border: 1px dashed var(--border); background: var(--card); }
+  .state-loading > .ico { color: var(--primary); }
 
   /* Diálogo con formulario (ajustar cuota y extender vigencia): base compartida en area.js */
   .input-group { display: flex; align-items: stretch; max-width: 220px; }
@@ -434,14 +428,7 @@
   .calc-danger strong { color: var(--destructive); }
   .readonly-note { margin-top: 16px; }
 
-  @media (max-width: 900px) {
-    .limits-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .limit:nth-child(2) { padding-right: 0; border-right: 0; }
-  }
   @media (max-width: 600px) {
-    .limits-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
-    .limit { padding: 0 0 12px; border-right: 0; border-bottom: 1px solid var(--border); }
-    .limit:last-child { padding-bottom: 0; border-bottom: 0; }
     .limits-actions .btn { width: 100%; min-height: 44px; }
     .limits-actions .btn-quitar { margin-left: 0; }
     .input-group { max-width: none; }
@@ -557,35 +544,15 @@
           </section>
         </div>
         <section class="card limits" aria-labelledby="limites-t">
-          <div class="limits-head">
-            <div>
-              <h2 id="limites-t">Límites y vigencia</h2>
-              <p class="sub">Cuota, espacio extra y vencimiento de la suscripción.</p>
-            </div>
-            <span class="badge badge-ok"><svg class="ico " width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>Vigente</span>
-          </div>
-
-          <div class="limits-grid">
-            <div class="limit">
-              <p class="limit-label">Cuota del plan</p>
-              <p class="limit-value num">350 GB</p>
-            </div>
-            <div class="limit">
-              <p class="limit-label">Espacio extra</p>
-              <p class="limit-value num">+ 50 GB</p>
-              <p class="limit-note">Hasta el 15/11/2026. Se suma al plan; no reemplaza el espacio usado.</p>
-            </div>
-            <div class="limit">
-              <p class="limit-label">Cuota total</p>
-              <p class="limit-value num">400 GB</p>
-              <span class="use-text num">304 GB usados (76 %)</span><span class="use-bar use-warn" aria-hidden="true"><span style="width: 76%"></span></span>
-            </div>
-            <div class="limit">
-              <p class="limit-label">Vencimiento</p>
-              <p class="limit-value num">31/10/2026</p>
-              <p class="limit-note">Al vencer el extra, la cuota vuelve a la del plan; la cuenta sigue vigente hasta su vencimiento.</p>
-            </div>
-          </div>
+          <h2 id="limites-t">Límites y vigencia</h2>
+          <p class="sub">Cuota, espacio extra y vencimiento de la suscripción.</p>
+          <div class="limits-badge"><span class="badge badge-ok"><svg class="ico " width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>Vigente</span></div>
+          <dl class="facts">
+            <dt>Cuota del plan</dt><dd><span class="num">350 GB</span></dd>
+            <dt>Espacio extra</dt><dd><span class="num">+ 50 GB</span><span class="note">Hasta el 15 nov 2026. Se suma al plan; no reemplaza el espacio usado.</span></dd>
+            <dt>Cuota total</dt><dd><span class="num">400 GB</span><span class="note">304 GB usados (76 %)</span></dd>
+            <dt>Vencimiento</dt><dd><span class="num">31 oct 2026</span><span class="note">Al vencer el extra, la cuota vuelve a la del plan; la cuenta sigue vigente hasta su vencimiento.</span></dd>
+          </dl>
           <div class="limits-actions">
             <a class="btn btn-outline" href="admin--ajustar-cuota.html"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M22 12H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><path d="M6 16h.01"/><path d="M10 16h.01"/></svg>Ajustar cuota</a>
             <a class="btn btn-outline" href="admin--extender-vigencia.html"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>Extender vigencia</a>
@@ -620,7 +587,6 @@
   <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dlg-t" aria-describedby="dlg-d">
     <h2 id="dlg-t">Quitar el espacio extra de Laura Barrios</h2>
     <div id="dlg-d">
-      <p class="who-line">Laura Barrios · laura.barrios@alpha.gt</p>
       <ul class="conseq">
         <li><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M22 12H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><path d="M6 16h.01"/><path d="M10 16h.01"/></svg><span>La cuota total vuelve a 350 GB, la de su plan Equipo.</span></li>
         <li><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5"/></svg><span>La cuenta usa 304 GB, así que sigue dentro de la cuota.</span></li>
@@ -630,7 +596,7 @@
     </div>
     <div class="dialog-actions">
       <a class="btn btn-outline" href="admin--ficha.html" autofocus>Cancelar</a>
-      <button class="btn btn-primary-dlg" type="button"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>Quitar extra</button>
+      <button class="btn btn-destructive" type="button"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>Quitar extra</button>
     </div>
   </div>
 </div>

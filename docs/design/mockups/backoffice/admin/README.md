@@ -50,21 +50,23 @@
   - confirmar-reactivar: ficha suspendida con el diálogo de reactivar (`admin--confirmar-reactivar.html`)
   - propia-cuenta (CA-4): ficha de la propia Administradora, sin «Suspender» y con el motivo (`admin--propia-cuenta.html`)
   - ajustar-cuota (011b): formulario con GB, fecha de fin y total resultante antes de guardar (`admin--ajustar-cuota.html`)
-  - cuota-bajo-lo-usado (011b): total 105 GB sobre una cuenta que usa 108 GB; error de dominio y nada cambia
+  - cuota-bajo-lo-usado (011b): total 105 GB sobre una cuenta que usa 108 GB (103 %); error de dominio y nada cambia
     (`admin--cuota-bajo-lo-usado.html`)
   - cuota-invalida (011b): extra 0 y fecha pasada, con resumen de errores y error en cada campo
     (`admin--cuota-invalida.html`)
-  - cuota-guardada (011b): 50 GB extra hasta el 15/11/2026; el total y el usado se actualizan en la misma ficha
+  - cuota-guardada (011b): 50 GB extra hasta el 15 nov 2026; el total y el usado se actualizan en la misma ficha
     (`admin--cuota-guardada.html`)
   - quitar-extra (011b): el extra vuelve a la cuota del plan; dice que no se borra nada y que la cuenta sigue dentro
     (`admin--quitar-extra.html`)
   - extra-quitado (011b): la cuota vuelve a 350 GB y la cuenta sigue dentro de su plan (`admin--extra-quitado.html`)
   - extender-vigencia (011b): fecha nueva, aviso de solo lectura y confirmación (`admin--extender-vigencia.html`)
   - fecha-no-posterior (011b): fecha que no extiende, con error de campo y resumen (`admin--fecha-no-posterior.html`)
-  - vigencia-guardada (011b): vence el 30/11/2026 y la cuenta vuelve a vigente (`admin--vigencia-guardada.html`)
+  - vigencia-guardada (011b): vence el 30 nov 2026 y la cuenta, que estaba en solo lectura, «volvió a vigente»
+    (`admin--vigencia-guardada.html`)
   - personal (011b): Personal no vence; solo se puede ajustar la cuota (`admin--personal.html`)
   - sin-suscripcion (011b): sin plan, cuota ni vencimiento que ajustar (`admin--sin-suscripcion.html`)
-  - limites-cargando (011b): esqueleto dentro del bloque, sin perder el resto de la ficha (`admin--limites-cargando.html`)
+  - limites-cargando (011b): indicador de carga (`StateView`) dentro del bloque, sin perder el resto de la ficha
+    (`admin--limites-cargando.html`)
   - limites-error (011b): error del bloque con «Reintentar» (`admin--limites-error.html`)
 - **Capturas**: `docs/design/capturas/backoffice/admin/` (`admin--<estado>--<360|1440>.png`, con movimiento
   reducido). En los veintidós estados: axe-core sin violaciones a 360 y 1440 px, sin desbordamiento horizontal a 360 px,
@@ -105,17 +107,20 @@ cuentas y las personas que aparecen en otras pantallas (Mónica, Andrea, Pablo, 
 11. **Ver metadatos de archivos** (CA-13) solo en fichas de clientes, con el aviso de que la consulta queda en la
     auditoría que ve la persona; las cuentas internas no guardan archivos. Lleva a la vista de metadatos (mockup aparte).
 12. **«Límites y vigencia» es un bloque aparte**, a todo el ancho y debajo de la rejilla de datos y acciones: no compite
-    con «Datos de la cuenta» ni convierte la ficha en un formulario permanente. Los valores van en texto (cuota, extra,
-    total, usado y fecha), con el mismo `tabular-nums`; el estado de la suscripción se refuerza con texto e ícono, nunca
+    con «Datos de la cuenta» ni convierte la ficha en un formulario permanente. Usa las mismas filas que «Datos de la
+    cuenta» (`Fact`: término, valor y aclaración) y no lleva barra de uso: cuota, extra, total, usado con su porcentaje y
+    fecha van en texto, con el mismo `tabular-nums`. Las fechas van en formato corto («31 oct 2026», `lastDayLabel`) en
+    el bloque, los diálogos y los avisos. El distintivo va bajo el título; el estado de la suscripción se refuerza con texto e ícono, nunca
     solo con color. La cuenta puede seguir «Activa» y la suscripción estar en «Solo lectura»: son estados distintos.
 13. **Ajustar cuota** enseña el cálculo antes de guardar (`cuota del plan + extra = total`) y actualiza el total al
-    escribir. El extra debe ser mayor que cero; **«Quitar extra»** es una acción aparte y solo se ofrece si la cuota del
-    plan ya cubre lo usado. Si el total queda por debajo de lo usado, el error nombra las dos cifras (total y usado) y el
+    escribir; el porcentaje de lo usado es sobre ese total resultante (304 de 400 GB = 76 %). El extra debe ser mayor
+    que cero; **«Quitar extra»** es una acción aparte, solo se ofrece si la cuota del plan ya cubre lo usado y se confirma
+    con `ConfirmDestructiveDialog` (botón destructivo «Quitar extra», foco inicial en «Cancelar»). Si el total queda por debajo de lo usado, el error nombra las dos cifras (total y usado) y el
     foco vuelve al campo; no es un diálogo destructivo porque no borra nada. La fecha de fin es obligatoria y futura
     (P-2 de la 011).
 14. **Extender vigencia** solo alarga: no hay atajo para acortar ni para dejar la cuenta vencida. Si la suscripción está
-    en solo lectura, el diálogo lo dice y la acción sigue disponible; al guardar, la cuenta vuelve a vigente. No se cobra
-    ni se factura y no se envía correo (P-3 de la 011). El texto no promete un cobro ni un cambio de plan.
+    en solo lectura, el diálogo lo dice y la acción sigue disponible. Al guardar, el aviso dice «volvió a vigente» si la
+    cuenta salía de solo lectura y «sigue vigente» si no (el mockup dibuja el primer caso). No se cobra ni se factura y no se envía correo (P-3 de la 011). El texto no promete un cobro ni un cambio de plan.
 15. **Personal no vence**: muestra «Sin vencimiento» y conserva «Ajustar cuota»; no muestra «Extender vigencia» ni una
     fecha inventada. **Sin suscripción** no muestra el bloque de acciones: no hay cuota ni vigencia que ajustar.
 16. **El éxito se cuenta en el bloque** con `role="status"` y, si hay extra, «Datos de la cuenta» pasa a mostrar el total
