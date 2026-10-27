@@ -13,6 +13,8 @@ const REPO_ROOT = join(here, '../../..');
 const DOMAIN_FILE = 'apps/api/src/modules/storage/domain/errors/x.ts';
 const SHARED_DOMAIN_FILE = 'apps/api/src/shared/domain/x.ts';
 const APPLICATION_FILE = 'apps/api/src/modules/storage/application/ports/x.ts';
+const SUBFOLDER_DOMAIN_FILE = 'apps/api/src/modules/storage/preview/domain/x.ts';
+const SUBFOLDER_APPLICATION_FILE = 'apps/api/src/modules/storage/search/application/ports/x.ts';
 const DOMAIN_SPEC_FILE = 'apps/api/src/modules/storage/domain/x.spec.ts';
 
 const lint = async (specifier: string, relativePath: string): Promise<ESLint.LintResult> => {
@@ -101,5 +103,23 @@ describe('lint layers.js: capas dentro de cada módulo (CA-6, Art. VIII.2)', () 
     expect(
       await errorsOf('../../../sharing', APPLICATION_FILE, 'no-restricted-imports'),
     ).toHaveLength(1);
+  });
+
+  it('PD-135: las capas también rigen en subcarpetas con capas propias (`storage/search`)', async () => {
+    const application = await errorsOf(
+      '../../infrastructure/typeorm-node-search.repository',
+      SUBFOLDER_APPLICATION_FILE,
+    );
+    const domain = await errorsOf('@nestjs/common', SUBFOLDER_DOMAIN_FILE);
+
+    expect(application).toHaveLength(1);
+    expect(application[0]).toContain('`application`');
+    expect(domain).toHaveLength(1);
+    expect(domain[0]).toContain('`domain`');
+  });
+
+  it('PD-135: `storage/search/application` sí importa su dominio y `@nestjs/common`', async () => {
+    expect(await errorsOf('../../domain/x', SUBFOLDER_APPLICATION_FILE)).toEqual([]);
+    expect(await errorsOf('@nestjs/common', SUBFOLDER_APPLICATION_FILE)).toEqual([]);
   });
 });

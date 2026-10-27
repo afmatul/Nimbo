@@ -1,6 +1,6 @@
 # Tareas 018 — Búsqueda por nombre, tipo y fecha
 
-> Spec: `./spec.md` · Plan: `./plan.md` (Propuesto: `/implement` exige «Aprobado»)
+> Spec: `./spec.md` · Plan: `./plan.md` (Aprobado por Adrián, 2026-10-27)
 > 5 a 12 tareas verticales, de medio día a un día, un commit cada una (`feat(storage): … [018 T-xx]` o
 > `feat(web): … [018 T-xx]`). Cada tarea es una línea: criterio, prueba y de qué depende. Los archivos viven en `plan.md`.
 

@@ -16,7 +16,7 @@ de eso se pierda entre ramas.
 - «Resolver antes de» es la compuerta que se bloquea si el pendiente sigue abierto. «—» significa que no bloquea nada.
 - `/status` y el `architect` revisan esta lista al cerrar cada fase.
 
-Última actualización: 2026-10-26.
+Última actualización: 2026-10-27.
 
 ## Diagramas por redibujar
 
@@ -130,7 +130,7 @@ decisiones; solo faltan los diagramas.
 | PD-131 | Medir `GET /search` (018) con k6 contra RNF-01 (p95 < 300 ms): `LIKE` por palabra sobre el nombre plegado, sin índice (plan 018 D-2). Si no alcanza, índice GIN con `pg_trgm` sobre la expresión plegada (extensión nueva: ADR corto) | `apps/api/src/modules/storage/search/infrastructure/typeorm-node-search.repository.ts` | Plan 018 §3 D-2, R-1 | Spec 023 (carga) | Juan Marcos con Adrián | Abierto |
 | PD-132 | Con 012: en la búsqueda (018), un resultado compartido cuya carpeta contenedora el actor no ve llega con `location: null` y la web lo muestra como «Mis archivos». Decidir el texto (p. ej. «Compartido contigo») y probarlo en la suite de aislamiento de 012 | `apps/web/src/features/search/components/search-view.tsx`, `storage/search` | Plan 018 §7 R-3 | Spec 012 | Fátima con Juan Marcos | Abierto |
 | PD-133 | El texto buscado viaja en `GET /search?q=` (018): Pino quita la cadena de consulta, pero un `accessLog` de Traefik la registraría. Configurarlo sin la cadena de consulta, igual que PD-101 | `infra/` (Traefik) | Plan 018 §7 R-4 | Al activar el `accessLog` | Adrián | Abierto |
-| PD-135 | El lint de capas (`packages/config/eslint/layers.js`) solo aplica a `apps/api/src/modules/*/{domain,application}/**`: las subcarpetas con capas propias de un módulo (`storage/search` de 018, `storage/preview` de 017) quedan sin vigilar. Extender los patrones a `modules/*/*/{domain,application}/**` | `packages/config/eslint/layers.js` | Revisión de la spec 018 (2026-10-26) | Antes de `/implement 018` | Adrián | Abierto |
+| PD-135 | El lint de capas (`packages/config/eslint/layers.js`) solo aplica a `apps/api/src/modules/*/{domain,application}/**`: las subcarpetas con capas propias de un módulo (`storage/search` de 018, `storage/preview` de 017) quedan sin vigilar. Extender los patrones a `modules/*/*/{domain,application}/**` | `packages/config/eslint/layers.js` | Revisión de la spec 018 (2026-10-26) | Antes de `/implement 018` | Adrián | Resuelto (2026-10-27): `layers.js` suma `modules/*/*/{domain,application}/**` y `layers.spec.ts` cubre `storage/search` y `storage/preview` |
 | PD-130 | Para 021: fachada de `storage` que registre la versión optimizada (lee `PlanLimits.trashRetentionDays`, comprueba bajo `lockUsage` que la versión de origen sigue siendo la actual y compensa el objeto si el registro se rechaza) y la marca «Original conservado hasta {fecha} · no ocupa tu espacio» en la ficha, con su estado en el mockup `ficha-archivo` | `storage/index.ts`, ficha de archivo | Plan 014b §7 (spec §6, §7) | Plan de 021 | Abel | Abierto |
 
 ## Diseño y UX

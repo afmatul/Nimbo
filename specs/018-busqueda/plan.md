@@ -1,6 +1,6 @@
 # Plan 018 — Búsqueda por nombre, tipo y fecha
 
-> Spec: `./spec.md` · Estado del plan: Propuesto
+> Spec: `./spec.md` · Estado del plan: Aprobado
 > Obligatorio y ≤ 250 líneas. Dice **qué** archivos se tocan y **qué** se espera de cada uno; no es el código en
 > prosa. Lo aprueba Adrián antes de escribir código.
 
@@ -137,8 +137,8 @@ Sin E2E (marcador hasta 000b/023). El recorrido de la demo es la tarea humana.
 - **R-5 Archivos de Adrián**: `storage.module.ts` (tres entradas) y los dos de `packages/contracts/src/storage/`
   (motivos y una exportación). Se piden en esta aprobación. Además `components/nimbo/app-layout.tsx` (un ítem en
   `DEFAULT_NAV_ITEMS`): es archivo compartido de 000b permitido por `specs/README.md`, se nombra para que no sorprenda.
-- **R-7 Lint de capas**: `layers.js` solo vigila `modules/*/{domain,application}/**`; `storage/search/application`
-  queda fuera. Pedido a Adrián antes de `/implement`: extender a `modules/*/*/…` (PD-135, también sirve a 017).
+- **R-7 Lint de capas** (resuelto, PD-135, 2026-10-27): `layers.js` vigilaba solo `modules/*/{domain,application}/**`; ahora
+  también `modules/*/*/{domain,application}/**`, así que `storage/search/application` queda cubierto (sirve a 017).
 - **R-6 Mockup**: T-08 espera la aprobación de los estados nuevos. Los atajos de fecha del mockup («Últimos 7 días»,
   «Últimos 30 días», «Este año») se resuelven en la web sobre el mismo `from`/`to`; la API no cambia.
 - Desviaciones de los diagramas: DF-15 actualizado (`SearchService` y `SearchController` en `storage/search`,
@@ -156,4 +156,7 @@ Sin E2E (marcador hasta 000b/023). El recorrido de la demo es la tarea humana.
 
 - `architect` (solo si hay puerto nuevo entre módulos, tecnología nueva o cambio de arquitectura): no aplica (puerto
   interno de `storage`, sin tecnología nueva).
-- Adrián:
+- Adrián: **Aprobado** (2026-10-27), con los archivos suyos que pide R-5 (`storage.module.ts`, `contracts/storage/*`,
+  `app-layout.tsx`). Antes de implementar, corregir el plan: `escapeLike` ya tiene dos copias (`storage` e `identity`), así
+  que la búsqueda es el tercer uso y se extrae a un solo lugar común (Art. VI.2); precisar que la categoría → tipos
+  filtra `FILE_KINDS` con `categoryOf`, y que el plegado de `Ñ` no dependa del locale de `lower()`.

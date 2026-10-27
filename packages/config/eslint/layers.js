@@ -1,4 +1,5 @@
-// Capas dentro de cada módulo y de `shared` (CA-6, Art. VIII.2). Usa `@typescript-eslint/no-restricted-imports`, una
+// Capas dentro de cada módulo, de sus subcarpetas con capas propias (`storage/search`, `storage/preview`; PD-135) y de
+// `shared` (CA-6, Art. VIII.2). Usa `@typescript-eslint/no-restricted-imports`, una
 // regla distinta de la de `boundaries.js`: si ambas usaran `no-restricted-imports`, la última apagaría a la otra.
 const RULE = '@typescript-eslint/no-restricted-imports';
 
@@ -14,7 +15,11 @@ const TESTS = ['**/*.spec.ts', '**/*.int-spec.ts', '**/*.iso-spec.ts'];
 
 export default [
   {
-    files: ['apps/api/src/modules/*/domain/**/*.ts', 'apps/api/src/shared/domain/**/*.ts'],
+    files: [
+      'apps/api/src/modules/*/domain/**/*.ts',
+      'apps/api/src/modules/*/*/domain/**/*.ts',
+      'apps/api/src/shared/domain/**/*.ts',
+    ],
     ignores: TESTS,
     rules: {
       [RULE]: [
@@ -40,6 +45,7 @@ export default [
   {
     files: [
       'apps/api/src/modules/*/application/**/*.ts',
+      'apps/api/src/modules/*/*/application/**/*.ts',
       'apps/api/src/shared/application/**/*.ts',
     ],
     ignores: TESTS,
