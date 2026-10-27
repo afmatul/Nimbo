@@ -79,6 +79,30 @@ describe('SpaceSummaryView', () => {
     );
   });
 
+  it('011b CA-5: con un extra vigente, la cuota se rotula «Cuota total» y «Tu plan» muestra la del plan', () => {
+    renderView({
+      status: 'ready',
+      summary: spaceSummaryWith(4.8 * GB, {
+        extra: { bytes: 50 * GB, until: '2026-11-16T06:00:00.000Z' },
+      }),
+    });
+
+    const card = usageCard();
+    expect(card.textContent).toContain('Cuota total65 GB');
+    expect(card.textContent).not.toContain('Cuota del plan');
+    const plan = screen.getByRole('region', { name: 'Tu plan' });
+    expect(plan.textContent).toContain('15 GB de almacenamiento');
+  });
+
+  it('011b CA-5: sin extra, la cuota sigue rotulada «Cuota del plan» y «Tu plan» muestra la misma', () => {
+    renderView(ready(4.8 * GB));
+
+    expect(usageCard().textContent).toContain('Cuota del plan15 GB');
+    expect(usageCard().textContent).not.toContain('Cuota total');
+    const plan = screen.getByRole('region', { name: 'Tu plan' });
+    expect(plan.textContent).toContain('15 GB de almacenamiento');
+  });
+
   it('011b CA-5: sin extra (o ya vencido), no hay nota', () => {
     renderView(ready(4.8 * GB));
 
