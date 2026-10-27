@@ -47,6 +47,8 @@ interface SeededSubscription {
   readonly expiresAt?: Date | null;
   readonly readOnly?: boolean;
   readonly usedBytes?: bigint;
+  /** Los avisos de la 010 de ese `vence_en` ya salieron (el previo y, si está en solo lectura, el de vencida). */
+  readonly noticed?: boolean;
 }
 
 interface StoredEvent {
@@ -58,12 +60,12 @@ interface StoredEvent {
 type Http = ReturnType<typeof request>;
 
 /**
- * Límites y cuota de una cuenta por HTTP (011b CA-1 a CA-4; plan §4, §6) contra la API completa con tokens reales y un
+ * Límites, cuota y vigencia de una cuenta por HTTP (011b CA-1 a CA-9, CA-18; plan §4, §6) contra la API completa con tokens reales y un
  * Postgres **migrado por un dueño `NOSUPERUSER`** (ADR-0021:73-74): con un superusuario, las funciones
  * `SECURITY DEFINER` ignorarían `FORCE` RLS y ocultarían la falta de la política del dueño. La API usa `nimbo_app`; el
  * estado de la suscripción y la actividad se leen como el propio cliente.
  */
-describe('`/backoffice/accounts/:id/limits` y `/quota` con dueño NOSUPERUSER (011b CA-1 a CA-4)', () => {
+describe('`/backoffice/accounts/:id/limits`, `/quota` y `/validity` con dueño NOSUPERUSER (011b CA-1 a CA-9, CA-18)', () => {
   let database: RestrictedOwnerDatabase;
   let owner: DataSource;
   let app: DataSource;
@@ -84,14 +86,19 @@ describe('`/backoffice/accounts/:id/limits` y `/quota` con dueño NOSUPERUSER (0
   /** Un cliente con su suscripción dada de alta por él mismo (`suscripcion_cliente_alta`) y su espacio usado. */
   const aClientWith = async (seed: SeededSubscription = {}): Promise<Actor> => {
     const client = await newClient();
+    const expiresAt = seed.expiresAt === undefined ? endOfDay(guatemalaDay(10)) : seed.expiresAt;
+    const notice = seed.noticed === true ? expiresAt : null;
     await as(
       client,
-      'INSERT INTO suscripcion (usuario_id, plan_id, vence_en, estado) VALUES ($1, $2, $3, $4)',
+      `INSERT INTO suscripcion (usuario_id, plan_id, vence_en, estado, aviso_previo_para, aviso_vencida_para)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
       [
         client.id,
         seed.planId ?? PRO_PLAN_ID,
-        seed.expiresAt === undefined ? endOfDay(guatemalaDay(10)) : seed.expiresAt,
+        expiresAt,
         seed.readOnly === true ? 'solo_lectura' : 'vigente',
+        notice,
+        seed.readOnly === true ? notice : null,
       ],
     );
     await owner.query('UPDATE usuario SET espacio_usado = $2 WHERE id = $1', [
@@ -129,6 +136,26 @@ describe('`/backoffice/accounts/:id/limits` y `/quota` con dueño NOSUPERUSER (0
     asAdmin(http().put(`${ACCOUNTS}/${id}/quota`).send(body));
   const deleteQuota = (id: string): request.Test =>
     asAdmin(http().delete(`${ACCOUNTS}/${id}/quota`));
+  const putValidity = (id: string, body: Record<string, unknown>): request.Test =>
+    asAdmin(http().put(`${ACCOUNTS}/${id}/validity`).send(body));
+
+  /** Pagos y facturas del cliente, como los ve él mismo: extender no cobra ni factura (CA-8). */
+  const chargesOf = async (client: Actor): Promise<number> =>
+    (
+      await as<{ total: number }[]>(
+        client,
+        'SELECT ((SELECT count(*) FROM transaccion) + (SELECT count(*) FROM factura))::int AS total',
+      )
+    )[0]?.total ?? 0;
+
+  /** La pasada de la 010 sin actor (como el `worker`): a quién le tocaría un aviso previo o un correo de vencida. */
+  const dueForNotice = async (): Promise<string[]> => {
+    const rows = (await app.query(
+      `SELECT usuario_id FROM suscripciones_por_avisar(7, 1000)
+       UNION SELECT usuario_id FROM suscripciones_por_renovar(1000)`,
+    )) as { usuario_id: string }[];
+    return rows.map((row) => row.usuario_id);
+  };
 
   const limitsOf = (response: Response): AccountLimits => {
     expect(response.status).toBe(200);
@@ -371,5 +398,116 @@ describe('`/backoffice/accounts/:id/limits` y `/quota` con dueño NOSUPERUSER (0
       limitsOf(await putQuota(personal.id, { extraBytes: '1024', until: guatemalaDay(3) })),
     ).toMatchObject({ status: 'personal', extraQuotaBytes: '1024' });
     expect(limitsOf(await getLimits(readOnly.id)).status).toBe('readOnly');
+  });
+
+  describe('`PUT /backoffice/accounts/:id/validity` (CA-6 a CA-9, CA-18)', () => {
+    it('CA-6, CA-8, CA-9: una cuenta en solo lectura vuelve a `vigente` con el día nuevo, sin cobro ni factura, y su actividad lo dice con el rol de Administración', async () => {
+      const client = await aClientWith({
+        expiresAt: new Date(Date.now() - DAY_MS),
+        readOnly: true,
+        noticed: true,
+      });
+      const before = await storedOf(client);
+      const day = guatemalaDay(30);
+
+      const adjusted = limitsOf(await putValidity(client.id, { expiresAt: day }));
+
+      expect(adjusted).toMatchObject({ status: 'active', expiresAt: endOfDay(day).toISOString() });
+      expect(await storedOf(client)).toEqual({
+        ...before,
+        vence_en: endOfDay(day),
+        estado: 'vigente',
+        actualizado_en: expect.any(Date),
+      });
+      expect(await chargesOf(client)).toBe(0);
+      expect(await eventsOf(client)).toEqual([
+        {
+          accion: 'account.validity_adjusted',
+          rol_actor: 'ADMIN',
+          atributos: { expiresAt: endOfDay(day).toISOString() },
+        },
+        { accion: 'subscription.read_only_exited', rol_actor: 'ADMIN', atributos: {} },
+      ]);
+    });
+
+    it('CA-6: una cuenta vigente solo deja el evento del ajuste', async () => {
+      const client = await aClientWith();
+
+      limitsOf(await putValidity(client.id, { expiresAt: guatemalaDay(40) }));
+
+      expect((await eventsOf(client)).map((event) => event.accion)).toEqual([
+        'account.validity_adjusted',
+      ]);
+    });
+
+    it.each([
+      ['el último día que ya se muestra', () => guatemalaDay(10)],
+      ['un día anterior a hoy', () => guatemalaDay(-1)],
+    ])('CA-7: %s es `422 BACKOFFICE_VALIDITY_NOT_EXTENDED` y nada cambia', async (_case, dayOf) => {
+      const client = await aClientWith({ expiresAt: endOfDay(guatemalaDay(10)) });
+      const before = await storedOf(client);
+
+      const body = errorOf(await putValidity(client.id, { expiresAt: dayOf() }), 422);
+
+      expect(body.code).toBe(BACKOFFICE_ERROR_CODES.VALIDITY_NOT_EXTENDED);
+      expect(await storedOf(client)).toEqual(before);
+      expect(await eventsOf(client)).toEqual([]);
+    });
+
+    it('CA-7: Personal se explica con «Personal no vence»; sin suscripción o con un día inválido, el mismo `422`', async () => {
+      const personal = await aClientWith({ planId: PERSONAL_PLAN_ID, expiresAt: null });
+      const unsubscribed = await newClient();
+      const day = guatemalaDay(30);
+
+      const personalError = errorOf(await putValidity(personal.id, { expiresAt: day }), 422);
+      const unsubscribedError = errorOf(
+        await putValidity(unsubscribed.id, { expiresAt: day }),
+        422,
+      );
+      const malformed = errorOf(await putValidity(personal.id, { expiresAt: '2026-13-01' }), 422);
+
+      expect(personalError).toMatchObject({
+        code: BACKOFFICE_ERROR_CODES.VALIDITY_NOT_EXTENDED,
+        message: expect.stringContaining('Personal no vence') as unknown,
+      });
+      expect(unsubscribedError.code).toBe(BACKOFFICE_ERROR_CODES.VALIDITY_NOT_EXTENDED);
+      expect(malformed.code).toBe(BACKOFFICE_ERROR_CODES.VALIDITY_NOT_EXTENDED);
+      expect(malformed.fields?.map((field) => field.reason)).toEqual(['INVALID_DAY']);
+      expect(await eventsOf(personal)).toEqual([]);
+      expect(await eventsOf(unsubscribed)).toEqual([]);
+    });
+
+    it.each([
+      ['una cuenta interna', () => insertAccount(owner, Role.OPERATOR)],
+      ['una cuenta inexistente', () => Promise.resolve(randomUUID())],
+    ])('CA-7: %s es `404 IDENTITY_ACCOUNT_NOT_FOUND`', async (_case, idOf) => {
+      const response = await putValidity(await idOf(), { expiresAt: guatemalaDay(30) });
+
+      expect(errorOf(response, 404).code).toBe(IDENTITY_ERROR_CODES.ACCOUNT_NOT_FOUND);
+    });
+
+    it('CA-18: ajustar solo la cuota no vuelve a poner la cuenta en la pasada de avisos ni reenvía el de vencida', async () => {
+      const readOnly = await aClientWith({
+        expiresAt: new Date(Date.now() - DAY_MS),
+        readOnly: true,
+        noticed: true,
+      });
+      const expiring = await aClientWith({
+        expiresAt: new Date(Date.now() + 2 * DAY_MS),
+        noticed: true,
+      });
+      const before = await dueForNotice();
+
+      for (const client of [readOnly, expiring]) {
+        limitsOf(await putQuota(client.id, { extraBytes: '1024', until: guatemalaDay(5) }));
+      }
+
+      const after = await dueForNotice();
+      for (const due of [before, after]) {
+        expect(due).not.toContain(readOnly.id);
+        expect(due).not.toContain(expiring.id);
+      }
+      expect(await storedOf(readOnly)).toMatchObject({ estado: 'solo_lectura' });
+    });
   });
 });

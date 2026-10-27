@@ -89,6 +89,14 @@ const ADJUSTMENT_ROUTES: readonly BackofficeRoute[] = [
     denied: ACCOUNT_DENIED,
     call: (http, token, target) => withToken(http.delete(`${ACCOUNTS}/${target.id}/quota`), token),
   },
+  {
+    name: 'PUT /backoffice/accounts/:id/validity',
+    denied: ACCOUNT_DENIED,
+    call: (http, token, target) =>
+      withToken(http.put(`${ACCOUNTS}/${target.id}/validity`), token).send({
+        expiresAt: IN_A_MONTH,
+      }),
+  },
 ];
 
 /** Catálogo (CA-8 a CA-11): solo el Administrador activo (CA-14). */

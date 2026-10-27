@@ -1,4 +1,5 @@
 import { InvalidInputError } from '../../../../shared/domain/errors';
+import type { FieldIssue } from '../../../../shared/domain/errors';
 
 /** Por qué no se extiende la vigencia (011b CA-7): Personal, sin suscripción o un día que no es posterior. */
 export type ValidityRejection = 'personal' | 'no_subscription' | 'not_later';
@@ -13,13 +14,14 @@ const MESSAGES: Readonly<Record<ValidityRejection, string>> = {
 };
 
 /**
- * La vigencia no se extiende (011b CA-7, RN-2): lo decide `extender_vigencia`, fuente de verdad (ADR-0035). HTTP 422 y
- * nada cambia; el código coincide con `BACKOFFICE_ERROR_CODES` de `contracts` sin importarlo (ADR-0008).
+ * La vigencia no se extiende (011b CA-7, RN-2): lo decide `extender_vigencia`, fuente de verdad (ADR-0035), o el
+ * contrato si el cuerpo no tiene su forma (con `fields`). HTTP 422 y nada cambia; el código coincide con
+ * `BACKOFFICE_ERROR_CODES` de `contracts` sin importarlo (ADR-0008).
  */
 export class ValidityNotExtendedError extends InvalidInputError {
   readonly code = 'BACKOFFICE_VALIDITY_NOT_EXTENDED';
 
-  constructor(rejection: ValidityRejection) {
-    super(MESSAGES[rejection]);
+  constructor(rejection: ValidityRejection, fields?: readonly FieldIssue[]) {
+    super(MESSAGES[rejection], fields);
   }
 }

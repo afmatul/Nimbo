@@ -495,6 +495,11 @@ interface ResultRow extends LimitsRow {
   readonly codigo: string;
 }
 
+/** `extender_vigencia` suma si la cuenta salió de solo lectura (para `subscription.read_only_exited`). */
+interface ValidityRow extends ResultRow {
+  readonly salio_de_solo_lectura: boolean;
+}
+
 /** La fila completa como la lee el propio cliente: para comprobar que «nada cambia». */
 type StoredSubscription = Record<string, unknown>;
 
@@ -574,10 +579,10 @@ describe('migración de 011b: cuota extra y ajuste de vigencia con dueño NOSUPE
       ])
     )[0] as ResultRow;
 
-  const extendValidity = async (userId: string, expiresAt: Date | null): Promise<ResultRow> =>
+  const extendValidity = async (userId: string, expiresAt: Date | null): Promise<ValidityRow> =>
     (
-      await as<ResultRow[]>(admin, 'SELECT * FROM extender_vigencia($1, $2)', [userId, expiresAt])
-    )[0] as ResultRow;
+      await as<ValidityRow[]>(admin, 'SELECT * FROM extender_vigencia($1, $2)', [userId, expiresAt])
+    )[0] as ValidityRow;
 
   const limitsOf = (userId: string): Promise<LimitsRow[]> =>
     as<LimitsRow[]>(admin, 'SELECT * FROM limites_de_cuenta($1)', [userId]);
@@ -803,7 +808,12 @@ describe('migración de 011b: cuota extra y ajuste de vigencia con dueño NOSUPE
 
       const result = await extendValidity(client.id, expiresAt);
 
-      expect(result).toMatchObject({ codigo: 'ok', estado: 'vigente', vence_en: expiresAt });
+      expect(result).toMatchObject({
+        codigo: 'ok',
+        estado: 'vigente',
+        vence_en: expiresAt,
+        salio_de_solo_lectura: true,
+      });
       expect(await storedOf(client)).toEqual({
         ...before,
         vence_en: expiresAt,
@@ -829,7 +839,7 @@ describe('migración de 011b: cuota extra y ajuste de vigencia con dueño NOSUPE
         expect(await storedOf(client)).toEqual(before);
         expect(
           await extendValidity(client.id, new Date(lastShownDayEnd.getTime() + DAY_MS)),
-        ).toMatchObject({ codigo: 'ok' });
+        ).toMatchObject({ codigo: 'ok', salio_de_solo_lectura: false });
       },
     );
 
@@ -852,6 +862,7 @@ describe('migración de 011b: cuota extra y ajuste de vigencia con dueño NOSUPE
       expect(await extendValidity(personal.id, expiresAt)).toMatchObject({
         codigo: 'personal',
         vence_en: null,
+        salio_de_solo_lectura: false,
       });
       expect(await extendValidity((await newClient()).id, expiresAt)).toMatchObject({
         codigo: 'no_subscription',
@@ -861,7 +872,26 @@ describe('migración de 011b: cuota extra y ajuste de vigencia con dueño NOSUPE
       });
       expect(await extendValidity(randomUUID(), expiresAt)).toMatchObject({
         codigo: 'account_not_found',
+        salio_de_solo_lectura: false,
       });
+    });
+
+    it('CA-18: rechazar una cuenta en solo lectura no la saca; solo `extender_vigencia` dice si salió', async () => {
+      const client = await aClientWith({ expiresAt: daysAgo(1), readOnly: true });
+
+      const rejected = await extendValidity(client.id, daysAgo(1));
+
+      expect(rejected).toMatchObject({
+        codigo: 'validity_not_extended',
+        estado: 'solo_lectura',
+        salio_de_solo_lectura: false,
+      });
+      expect(Object.keys((await limitsOf(client.id))[0] ?? {})).not.toContain(
+        'salio_de_solo_lectura',
+      );
+      expect(
+        Object.keys(await adjustQuota(client.id, FIVE_GIB, guatemalaMidnightIn(3))),
+      ).not.toContain('salio_de_solo_lectura');
     });
   });
 

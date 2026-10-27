@@ -120,11 +120,14 @@ describe('TypeOrmSubscriptionAdministrationRepository (011b plan §3, §4)', () 
     });
   });
 
-  it('CA-6: adjustValidity llama a `extender_vigencia` con el instante nuevo', async () => {
-    const { repository, query } = setup([{ codigo: 'ok', ...VIEW, estado: 'vigente' }]);
+  it('CA-6: adjustValidity llama a `extender_vigencia` con el instante nuevo y dice si salió de solo lectura', async () => {
+    const { repository, query } = setup([
+      { codigo: 'ok', ...VIEW, estado: 'vigente', salio_de_solo_lectura: true },
+    ]);
 
-    await expect(repository.adjustValidity(ADMIN, validity)).resolves.toMatchObject({
-      status: 'vigente',
+    await expect(repository.adjustValidity(ADMIN, validity)).resolves.toEqual({
+      limits: expect.objectContaining({ status: 'vigente' }),
+      exitedReadOnly: true,
     });
     expect(query).toHaveBeenCalledWith(
       'SELECT * FROM extender_vigencia($1::uuid, $2::timestamptz)',
@@ -139,7 +142,10 @@ describe('TypeOrmSubscriptionAdministrationRepository (011b plan §3, §4)', () 
     ['account_not_found', AccountNotFoundError],
   ] as const)('CA-7: el código `%s` de la vigencia es %p', async (codigo, expected) => {
     await expect(
-      setup([{ codigo, ...NO_VIEW }]).repository.adjustValidity(ADMIN, validity),
+      setup([{ codigo, ...NO_VIEW, salio_de_solo_lectura: false }]).repository.adjustValidity(
+        ADMIN,
+        validity,
+      ),
     ).rejects.toBeInstanceOf(expected);
   });
 

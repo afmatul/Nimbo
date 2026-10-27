@@ -1,7 +1,12 @@
 import { ParseUUIDPipe } from '@nestjs/common';
 
 import type { DomainError, FieldIssue, InvalidInputFactory } from '../../../shared';
-import { PlanInvalidError, PlanNotFoundError, QuotaInvalidError } from '../../billing';
+import {
+  PlanInvalidError,
+  PlanNotFoundError,
+  QuotaInvalidError,
+  ValidityNotExtendedError,
+} from '../../billing';
 import { AccountNotFoundError, IdentityInvalidInputError } from '../../identity';
 import { InvalidBackofficeQueryError } from '../domain/errors/invalid-backoffice-query.error';
 
@@ -28,6 +33,11 @@ export const planValidationError: InvalidInputFactory = (
 export const quotaValidationError: InvalidInputFactory = (
   issues: readonly FieldIssue[],
 ): DomainError => new QuotaInvalidError('invalid', issues);
+
+/** Fábrica para el cuerpo de la vigencia: 422 `BACKOFFICE_VALIDITY_NOT_EXTENDED` con `fields` (011b CA-7). */
+export const validityValidationError: InvalidInputFactory = (
+  issues: readonly FieldIssue[],
+): DomainError => new ValidityNotExtendedError('not_later', issues);
 
 /** Un `:id` de plan que no es UUID es el mismo 404 `PLAN_NOT_FOUND` que un plan inexistente (plan §4). */
 export const planIdPipe = (): ParseUUIDPipe =>

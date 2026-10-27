@@ -25,6 +25,7 @@ describe('AuditAction', () => {
         'account.internal_created',
         'account.bootstrap_admin',
         'account.quota_adjusted',
+        'account.validity_adjusted',
         'client.files_viewed',
         'plan.created',
         'plan.deactivated',

@@ -54,7 +54,7 @@ const setup = (options: SetupOptions = {}) => {
     run: async <T>(_actor: Actor, action: InternalAction<T>): Promise<T> => {
       locks.push(action.locksAdminRoster);
       const result = await action.work();
-      recorded.push(action.event(result));
+      recorded.push(...[action.event(result)].flat());
       return result;
     },
   };
@@ -63,6 +63,7 @@ const setup = (options: SetupOptions = {}) => {
   const subscriptions = {
     limitsOf: jest.fn(() => Promise.resolve(resolved)),
     adjustQuota: jest.fn(() => Promise.resolve(LIMITS)),
+    adjustValidity: jest.fn(() => Promise.resolve({ limits: LIMITS, exitedReadOnly: false })),
   };
   const logger = { info: (payload: Record<string, unknown>): void => void logs.push(payload) };
   const service = new AccountAdjustmentsService(internal, directory, subscriptions, logger);
@@ -151,6 +152,61 @@ describe('AccountAdjustmentsService.adjustQuota (011b CA-1, CA-4, RN-4)', () => 
       service.adjustQuota(ADMIN, { clientId: account.id, extra: null }),
     ).rejects.toBeInstanceOf(AccountNotFoundError);
     expect(subscriptions.adjustQuota).not.toHaveBeenCalled();
+    expect(recorded).toEqual([]);
+  });
+});
+
+describe('AccountAdjustmentsService.adjustValidity (011b CA-6 a CA-9, RN-4)', () => {
+  const cmdFor = (clientId: string) => ({ clientId, lastDay: '2026-12-31' });
+
+  it('CA-6, CA-9: deja `account.validity_adjusted` con el `vence_en` nuevo y, si sale de solo lectura, el evento de la 010', async () => {
+    const { service, account, recorded, locks, subscriptions, logs } = setup();
+    subscriptions.adjustValidity.mockResolvedValue({ limits: LIMITS, exitedReadOnly: true });
+
+    await expect(service.adjustValidity(ADMIN, cmdFor(account.id))).resolves.toEqual({
+      usedBytes: 700n,
+      subscription: LIMITS,
+    });
+
+    expect(subscriptions.adjustValidity).toHaveBeenCalledWith(ADMIN, cmdFor(account.id));
+    expect(locks).toEqual([false]);
+    expect(recorded).toEqual([
+      {
+        action: AuditAction.ACCOUNT_VALIDITY_ADJUSTED,
+        actor: ADMIN,
+        targetUserId: account.id,
+        resourceId: account.id,
+        attributes: { expiresAt: LIMITS.expiresAt?.toISOString() },
+      },
+      { action: AuditAction.SUBSCRIPTION_READ_ONLY_EXITED, actor: ADMIN, targetUserId: account.id },
+    ]);
+    expect(logs).toEqual([
+      {
+        event: 'backoffice.account.validity_adjusted',
+        actorId: ADMIN.id,
+        accountId: account.id,
+        exitedReadOnly: true,
+      },
+    ]);
+  });
+
+  it('CA-6: una cuenta vigente solo deja el evento del ajuste', async () => {
+    const { service, account, recorded } = setup();
+
+    await service.adjustValidity(ADMIN, cmdFor(account.id));
+
+    expect(recorded.map((entry) => entry.action)).toEqual([AuditAction.ACCOUNT_VALIDITY_ADJUSTED]);
+  });
+
+  it('CA-7: una cuenta interna es `404` y no se extiende ni se audita', async () => {
+    const { service, account, recorded, subscriptions } = setup({
+      account: anAccount(Role.OPERATOR),
+    });
+
+    await expect(service.adjustValidity(ADMIN, cmdFor(account.id))).rejects.toBeInstanceOf(
+      AccountNotFoundError,
+    );
+    expect(subscriptions.adjustValidity).not.toHaveBeenCalled();
     expect(recorded).toEqual([]);
   });
 });

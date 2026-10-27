@@ -18,11 +18,12 @@ const definer = (volatility: 'STABLE' | 'VOLATILE'): string => `
 const VIEW_COLUMNS = `plan_slug text, plan_nombre text, cuota_plan bigint, estado text, vence_en timestamptz,
   extra bigint, hasta timestamptz, espacio_usado bigint, cuota_total bigint`;
 const EXTRA_IN_FORCE = 'CASE WHEN s.cuota_extra_hasta > now() THEN s.cuota_extra_bytes ELSE 0 END';
-const VIEW_SELECT = `p.slug::text, p.nombre::text, p.cuota_bytes, s.estado::text, s.vence_en, ${EXTRA_IN_FORCE},
+const VIEW_VALUES = `p.slug::text, p.nombre::text, p.cuota_bytes, s.estado::text, s.vence_en, ${EXTRA_IN_FORCE},
   CASE WHEN s.cuota_extra_hasta > now() THEN s.cuota_extra_hasta END, u.espacio_usado,
-  p.cuota_bytes + ${EXTRA_IN_FORCE}
-  FROM public.suscripcion s JOIN public.plan p ON p.id = s.plan_id JOIN public.usuario u ON u.id = s.usuario_id
-  WHERE s.usuario_id = p_usuario`;
+  p.cuota_bytes + ${EXTRA_IN_FORCE}`;
+const VIEW_FROM = `FROM public.suscripcion s JOIN public.plan p ON p.id = s.plan_id
+  JOIN public.usuario u ON u.id = s.usuario_id WHERE s.usuario_id = p_usuario`;
+const VIEW_SELECT = `${VIEW_VALUES} ${VIEW_FROM}`;
 const NO_VIEW =
   'NULL::text, NULL::text, NULL::bigint, NULL::text, NULL::timestamptz, NULL::bigint, NULL::timestamptz, NULL::bigint, NULL::bigint';
 
@@ -32,17 +33,20 @@ const REQUIRE_ADMIN = (name: string): string => `
     RAISE EXCEPTION '${name} solo la usa un administrador' USING ERRCODE = 'insufficient_privilege';
   END IF;`;
 
-/** Bloquea primero `usuario` (solo clientes) y después su `suscripcion`; sin una de las dos, devuelve el código. */
-const LOCK_ACCOUNT = (subscriptionInto: string): string => `
+/**
+ * Bloquea primero `usuario` (solo clientes) y después su `suscripcion`; sin una de las dos, devuelve el código con
+ * `noView`, la fila vacía de la función.
+ */
+const LOCK_ACCOUNT = (subscriptionInto: string, noView: string): string => `
   PERFORM 1 FROM public.usuario u WHERE u.id = p_usuario AND u.rol = 'CLIENT' FOR UPDATE;
   IF NOT FOUND THEN
-    RETURN QUERY SELECT 'account_not_found'::text, ${NO_VIEW};
+    RETURN QUERY SELECT 'account_not_found'::text, ${noView};
     RETURN;
   END IF;
   SELECT ${subscriptionInto} FROM public.suscripcion s JOIN public.plan p ON p.id = s.plan_id
    JOIN public.usuario u ON u.id = s.usuario_id WHERE s.usuario_id = p_usuario FOR UPDATE OF s;
   IF NOT FOUND THEN
-    RETURN QUERY SELECT 'no_subscription'::text, ${NO_VIEW};
+    RETURN QUERY SELECT 'no_subscription'::text, ${noView};
     RETURN;
   END IF;`;
 
@@ -77,7 +81,7 @@ const ADJUST_QUOTA_SQL = `
     v_filas integer;
   BEGIN
     ${REQUIRE_ADMIN('ajustar_cuota_extra')}
-    ${LOCK_ACCOUNT('p.cuota_bytes, u.espacio_usado INTO v_cuota_plan, v_usado')}
+    ${LOCK_ACCOUNT('p.cuota_bytes, u.espacio_usado INTO v_cuota_plan, v_usado', NO_VIEW)}
     IF COALESCE((p_extra = 0 AND p_hasta IS NULL)
                 OR (p_extra > 0 AND p_hasta > now() AND p_extra <= ${MAX_BYTES} - v_cuota_plan), false) IS FALSE THEN
       v_codigo := 'quota_invalid';
@@ -95,20 +99,22 @@ const ADJUST_QUOTA_SQL = `
 /**
  * Solo extiende (RN-2): de pago, `p_vence > now()` y posterior a la medianoche de Guatemala que cierra el último día
  * que se muestra, el de `vence_en − 1 ms` (RN-8). Sale de solo lectura y no toca avisos, renovación ni cambio programado.
+ * `salio_de_solo_lectura` dice si la cuenta estaba en solo lectura y salió, para el evento de la 010 sin otra lectura.
  */
 const EXTEND_VALIDITY_SQL = `
   CREATE FUNCTION extender_vigencia(p_usuario uuid, p_vence timestamptz)
-    RETURNS TABLE (codigo text, ${VIEW_COLUMNS}) ${definer('VOLATILE')} $$
+    RETURNS TABLE (codigo text, ${VIEW_COLUMNS}, salio_de_solo_lectura boolean) ${definer('VOLATILE')} $$
   #variable_conflict use_column
   DECLARE
     v_slug text;
     v_vence timestamptz;
+    v_estado text;
     v_fin_del_ultimo_dia timestamptz;
     v_codigo text := 'ok';
     v_filas integer;
   BEGIN
     ${REQUIRE_ADMIN('extender_vigencia')}
-    ${LOCK_ACCOUNT('p.slug, s.vence_en INTO v_slug, v_vence')}
+    ${LOCK_ACCOUNT('p.slug, s.vence_en, s.estado::text INTO v_slug, v_vence, v_estado', `${NO_VIEW}, false`)}
     v_fin_del_ultimo_dia := (date_trunc('day', (v_vence - interval '1 millisecond') AT TIME ZONE ${TIME_ZONE})
                              + interval '1 day') AT TIME ZONE ${TIME_ZONE};
     IF v_slug = 'personal' THEN
@@ -120,7 +126,7 @@ const EXTEND_VALIDITY_SQL = `
        WHERE s.usuario_id = p_usuario;
       ${EXPECT_ONE_ROW('extender_vigencia')}
     END IF;
-    RETURN QUERY SELECT v_codigo, ${VIEW_SELECT};
+    RETURN QUERY SELECT v_codigo, ${VIEW_VALUES}, (v_codigo = 'ok' AND v_estado = 'solo_lectura') ${VIEW_FROM};
   END
   $$`;
 
@@ -131,7 +137,8 @@ const EXTEND_VALIDITY_SQL = `
  * - `nimbo_app` no gana `UPDATE` de las columnas nuevas y su alta exige el extra vacío: el cliente no se sube la cuota.
  * - Tres funciones `SECURITY DEFINER` con el rol `ADMIN` comprobado dentro: `limites_de_cuenta` (`STABLE`, lee por
  *   `suscripcion_administracion`; 0 filas = sin suscripción) y las de escritura `ajustar_cuota_extra` y
- *   `extender_vigencia` (`VOLATILE`), que devuelven un código de resultado y la vista.
+ *   `extender_vigencia` (`VOLATILE`), que devuelven un código de resultado y la vista; la de vigencia, también
+ *   `salio_de_solo_lectura`.
  * - `suscripcion_ajuste_administracion` (`TO CURRENT_USER`) deja al dueño bloquear y escribir bajo `FORCE` RLS; solo
  *   la usan las funciones.
  */

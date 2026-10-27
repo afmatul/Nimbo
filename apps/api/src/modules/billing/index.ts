@@ -13,7 +13,10 @@ export type {
   ExtraQuota,
 } from './application/subscription-administration';
 export type { PlanClientCount } from './application/ports/i-subscription-administration.reader.port';
-export type { SubscriptionLimits } from './application/ports/i-subscription-administration.repository.port';
+export type {
+  SubscriptionLimits,
+  ValidityAdjustment,
+} from './application/ports/i-subscription-administration.repository.port';
 export { QuotaBelowUsageError } from './domain/errors/quota-below-usage.error';
 export { QuotaInvalidError } from './domain/errors/quota-invalid.error';
 export { ValidityNotExtendedError } from './domain/errors/validity-not-extended.error';

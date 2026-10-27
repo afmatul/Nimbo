@@ -30,6 +30,12 @@ export interface ValidityChange {
   readonly expiresAt: Date;
 }
 
+/** La vista tras extender la vigencia y si la cuenta salió de solo lectura (`subscription.read_only_exited`, 010). */
+export interface ValidityAdjustment {
+  readonly limits: SubscriptionLimits;
+  readonly exitedReadOnly: boolean;
+}
+
 /**
  * Lectura y ajustes de `suscripcion` del Administrador (011b plan §2, §3; ADR-0035): llaman a `limites_de_cuenta`,
  * `ajustar_cuota_extra` y `extender_vigencia`, que comprueban el rol, bloquean y validan dentro; el repositorio traduce
@@ -39,7 +45,7 @@ export interface ISubscriptionAdministrationRepository {
   /** `null` si la cuenta no tiene suscripción (o no es de un cliente: `AccountDirectory` ya dio el `404`). */
   limitsOf(actor: Actor, clientId: string): Promise<SubscriptionLimits | null>;
   adjustQuota(actor: Actor, change: QuotaChange): Promise<SubscriptionLimits>;
-  adjustValidity(actor: Actor, change: ValidityChange): Promise<SubscriptionLimits>;
+  adjustValidity(actor: Actor, change: ValidityChange): Promise<ValidityAdjustment>;
 }
 
 export const I_SUBSCRIPTION_ADMINISTRATION_REPOSITORY = Symbol(

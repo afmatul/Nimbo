@@ -99,6 +99,10 @@ export const AUDIT_CATALOG = {
     resourceType: 'account',
     attributes: { extraBytes: 'number', until: 'text' },
   },
+  [AuditAction.ACCOUNT_VALIDITY_ADJUSTED]: {
+    resourceType: 'account',
+    attributes: { expiresAt: 'text' },
+  },
   [AuditAction.CLIENT_FILES_VIEWED]: ON_ACCOUNT,
   [AuditAction.PLAN_CREATED]: ON_PLAN,
   [AuditAction.PLAN_DEACTIVATED]: ON_PLAN,

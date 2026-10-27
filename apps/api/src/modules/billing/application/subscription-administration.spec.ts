@@ -39,7 +39,7 @@ const setup = () => {
   const repository: jest.Mocked<ISubscriptionAdministrationRepository> = {
     limitsOf: jest.fn().mockResolvedValue(LIMITS),
     adjustQuota: jest.fn().mockResolvedValue(LIMITS),
-    adjustValidity: jest.fn().mockResolvedValue(LIMITS),
+    adjustValidity: jest.fn().mockResolvedValue({ limits: LIMITS, exitedReadOnly: false }),
   };
   const administration = new SubscriptionAdministration(transactions, reader, repository);
   return { administration, scopes, reader, repository };
@@ -115,7 +115,7 @@ describe('SubscriptionAdministration: límites y ajustes (011b plan §2)', () =>
 
     await expect(
       administration.adjustValidity(ADMIN, { clientId: ANA, lastDay: '2026-12-31' }),
-    ).resolves.toBe(LIMITS);
+    ).resolves.toEqual({ limits: LIMITS, exitedReadOnly: false });
 
     expect(scopes).toEqual([ADMIN.id]);
     expect(repository.adjustValidity).toHaveBeenCalledWith(ADMIN, {

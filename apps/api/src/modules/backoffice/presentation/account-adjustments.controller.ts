@@ -1,13 +1,17 @@
 import { Body, Controller, Delete, Get, Param, Put } from '@nestjs/common';
-import { adjustQuotaRequestSchema } from '@nimbo/contracts';
-import type { AccountLimits, AdjustQuotaRequest } from '@nimbo/contracts';
+import { adjustQuotaRequestSchema, adjustValidityRequestSchema } from '@nimbo/contracts';
+import type { AccountLimits, AdjustQuotaRequest, AdjustValidityRequest } from '@nimbo/contracts';
 
 import { CurrentActor, Role, Roles, ZodValidationPipe } from '../../../shared';
 import type { Actor } from '../../../shared';
 import { AccountAdjustmentsService } from '../application/account-adjustments.service';
 
 import { toAccountLimits } from './account-limits.response';
-import { accountIdPipe, quotaValidationError } from './backoffice-validation';
+import {
+  accountIdPipe,
+  quotaValidationError,
+  validityValidationError,
+} from './backoffice-validation';
 
 /**
  * Límites, cuota y vigencia de una cuenta (011b plan §4; DF-81): solo el Administrador (CA-16; el servicio no
@@ -45,5 +49,16 @@ export class AccountAdjustmentsController {
     return toAccountLimits(
       await this.adjustments.adjustQuota(actor, { clientId: id, extra: null }),
     );
+  }
+
+  @Put(':id/validity')
+  async adjustValidity(
+    @CurrentActor() actor: Actor,
+    @Param('id', accountIdPipe()) id: string,
+    @Body(new ZodValidationPipe(adjustValidityRequestSchema, validityValidationError))
+    body: AdjustValidityRequest,
+  ): Promise<AccountLimits> {
+    const cmd = { clientId: id, lastDay: body.expiresAt };
+    return toAccountLimits(await this.adjustments.adjustValidity(actor, cmd));
   }
 }

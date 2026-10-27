@@ -14,6 +14,7 @@ import type {
   ISubscriptionAdministrationRepository,
   QuotaChange,
   SubscriptionLimits,
+  ValidityAdjustment,
 } from './ports/i-subscription-administration.repository.port';
 
 /** Un extra de `bytes` hasta el final de `lastDay`, día de Guatemala `YYYY-MM-DD` (011b RN-1). */
@@ -77,7 +78,7 @@ export class SubscriptionAdministration {
   }
 
   /** CA-6 a CA-8: solo el `vence_en` nuevo; ni cobro, ni renovación, ni cambio programado. */
-  adjustValidity(actor: Actor, cmd: AdjustValidityCommand): Promise<SubscriptionLimits> {
+  adjustValidity(actor: Actor, cmd: AdjustValidityCommand): Promise<ValidityAdjustment> {
     const change = { clientId: cmd.clientId, expiresAt: endOfGuatemalaDay(cmd.lastDay) };
     return this.transactions.withActor(actor, () => this.repository.adjustValidity(actor, change));
   }

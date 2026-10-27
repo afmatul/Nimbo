@@ -6,7 +6,12 @@ import type { Actor } from '../../../shared';
 import { AuditAction } from '../../audit';
 import type { AuditRecord } from '../../audit';
 import { SubscriptionAdministration } from '../../billing';
-import type { AdjustQuotaCommand, SubscriptionLimits } from '../../billing';
+import type {
+  AdjustQuotaCommand,
+  AdjustValidityCommand,
+  SubscriptionLimits,
+  ValidityAdjustment,
+} from '../../billing';
 import { AccountDirectory, AccountNotFoundError } from '../../identity';
 
 import type { BackofficeLogger } from './backoffice-logger';
@@ -36,6 +41,27 @@ const quotaEvent = (actor: Actor, clientId: string, limits: SubscriptionLimits):
 });
 
 /**
+ * RN-4, CA-9: el `vence_en` nuevo contra la cuenta y, si salió de solo lectura, el evento de la 010, ambos con el rol
+ * del Administrador.
+ */
+const validityEvents = (
+  actor: Actor,
+  clientId: string,
+  { limits, exitedReadOnly }: ValidityAdjustment,
+): AuditRecord[] => [
+  {
+    action: AuditAction.ACCOUNT_VALIDITY_ADJUSTED,
+    actor,
+    targetUserId: clientId,
+    resourceId: clientId,
+    attributes: limits.expiresAt === null ? {} : { expiresAt: limits.expiresAt.toISOString() },
+  },
+  ...(exitedReadOnly
+    ? [{ action: AuditAction.SUBSCRIPTION_READ_ONLY_EXITED, actor, targetUserId: clientId }]
+    : []),
+];
+
+/**
  * Límites, cuota y vigencia de una cuenta para el Administrador (011b plan §2; DF-81). Compone fachadas: la cuenta es
  * de `identity` (`404` si no existe o es interna) y las reglas de la suscripción, de `billing`; la transacción, el
  * actor activo y el evento los pone `InternalActionService`. No autoriza por rol: eso es `@Roles(ADMIN)`.
@@ -47,7 +73,10 @@ export class AccountAdjustmentsService {
     private readonly internal: Pick<InternalActionService, 'read' | 'run'>,
     @Inject(AccountDirectory) private readonly directory: Pick<AccountDirectory, 'get'>,
     @Inject(SubscriptionAdministration)
-    private readonly subscriptions: Pick<SubscriptionAdministration, 'limitsOf' | 'adjustQuota'>,
+    private readonly subscriptions: Pick<
+      SubscriptionAdministration,
+      'limitsOf' | 'adjustQuota' | 'adjustValidity'
+    >,
     @Inject(PinoLogger) private readonly logger: Pick<BackofficeLogger, 'info'>,
   ) {}
 
@@ -73,6 +102,28 @@ export class AccountAdjustmentsService {
       event: 'backoffice.account.quota_adjusted',
       actorId: actor.id,
       accountId: cmd.clientId,
+    });
+    return detailOf(limits);
+  }
+
+  /**
+   * CA-6 a CA-8: solo extiende; si la cuenta estaba en solo lectura vuelve a `vigente` y su evento sale en la misma
+   * transacción. Sin cobro, factura, renovación ni cambio programado.
+   */
+  async adjustValidity(actor: Actor, cmd: AdjustValidityCommand): Promise<AccountLimitsDetail> {
+    const { limits, exitedReadOnly } = await this.internal.run(actor, {
+      locksAdminRoster: false,
+      work: async () => {
+        await this.clientUsage(actor, cmd.clientId);
+        return this.subscriptions.adjustValidity(actor, cmd);
+      },
+      event: (result) => validityEvents(actor, cmd.clientId, result),
+    });
+    this.logger.info({
+      event: 'backoffice.account.validity_adjusted',
+      actorId: actor.id,
+      accountId: cmd.clientId,
+      exitedReadOnly,
     });
     return detailOf(limits);
   }

@@ -8,6 +8,7 @@ import type {
   ISubscriptionAdministrationRepository,
   QuotaChange,
   SubscriptionLimits,
+  ValidityAdjustment,
   ValidityChange,
 } from '../../application/ports/i-subscription-administration.repository.port';
 import type { SubscriptionStatus } from '../../domain/entities/subscription.entity';
@@ -43,6 +44,11 @@ interface LimitsRow {
 /** Fila de una función de escritura: el código y la vista (en `NULL` sin cuenta o sin suscripción). */
 interface AdjustmentRow extends LimitsRow {
   readonly codigo: string;
+}
+
+/** Fila de `extender_vigencia`: además, si la cuenta estaba en solo lectura y salió. */
+interface ValidityRow extends AdjustmentRow {
+  readonly salio_de_solo_lectura: boolean;
 }
 
 /** Cómo se traduce cada código distinto de `ok` (plan §4); un código ausente es un invariante roto. */
@@ -119,10 +125,13 @@ export class TypeOrmSubscriptionAdministrationRepository implements ISubscriptio
     return outcomeOf(onlyRow(rows), quotaRejections(change));
   }
 
-  async adjustValidity(actor: Actor, change: ValidityChange): Promise<SubscriptionLimits> {
+  async adjustValidity(actor: Actor, change: ValidityChange): Promise<ValidityAdjustment> {
     const params = [change.clientId, change.expiresAt];
-    const rows = await this.call<AdjustmentRow>(actor, EXTEND_VALIDITY_SQL, params);
-    return outcomeOf(onlyRow(rows), VALIDITY_REJECTIONS);
+    const row = onlyRow(await this.call<ValidityRow>(actor, EXTEND_VALIDITY_SQL, params));
+    return {
+      limits: outcomeOf(row, VALIDITY_REJECTIONS),
+      exitedReadOnly: row.salio_de_solo_lectura,
+    };
   }
 
   private async call<T>(actor: Actor, sql: string, params: readonly unknown[]): Promise<T[]> {
