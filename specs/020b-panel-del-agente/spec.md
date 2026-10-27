@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Lista |
+| Estado | En curso |
 | Dueño | Adrián |
 | Fase | 3 |
 | Requisitos | RF-32, RF-34; RNF-03 (lo que ve el cliente), RNF-09, RNF-13, RNF-14 |
