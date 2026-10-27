@@ -5,6 +5,7 @@ import {
   BACKOFFICE_ERROR_CODES,
   IDENTITY_ERROR_CODES,
   SHARED_ERROR_CODES,
+  type AccountLimits,
   type AccountListItem,
   type AccountListResponse,
   type BackofficeMetricsResponse,
@@ -13,7 +14,7 @@ import {
   type PlanAdminView,
   type RoleName,
 } from '@nimbo/contracts';
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 import type { ReactElement } from 'react';
@@ -33,6 +34,14 @@ import { NewPlanView } from './components/new-plan-view';
 import { SupportClientFiles } from './components/support-client-files';
 import { accountItem, accountsPage, ANDREA, DIEGO, MONICA } from './test-accounts';
 import { clientFile, clientFilesPage, LAURA, TRASHED_PDF } from './test-client-files';
+import {
+  accountLimits,
+  NO_SUBSCRIPTION,
+  PERSONAL,
+  pendingLimitsApi,
+  READ_ONLY,
+  WITH_EXTRA,
+} from './test-limits';
 import { always, apiError, enrollmentConflict, loadOf, type Outcome } from './test-loads';
 import { metricsResponse, WITH_INACTIVE_PLAN } from './test-metrics';
 import { PERSONAL_PLAN, plansResponse, PRO_PLAN, RETIRED_PLAN } from './test-plans';
@@ -138,6 +147,7 @@ function profileApi(account: AccountListItem | Error, change: AccountListItem = 
     getAccount: always<AccountListItem>(account),
     suspendAccount: always<AccountListItem>(change),
     reactivateAccount: always<AccountListItem>(change),
+    ...pendingLimitsApi(),
   };
 }
 
@@ -350,4 +360,99 @@ describe('Accesibilidad del catálogo de planes (011 CA-8, CA-17)', () => {
       await expectNoViolations(container);
     },
   );
+});
+
+/** La ficha de Laura con sus límites; cada ajuste responde `change` (011b). */
+function limitsProfileApi(limits: Outcome<AccountLimits>, change: AccountLimits = WITH_EXTRA) {
+  return {
+    ...profileApi(accountItem()),
+    getAccountLimits: always<AccountLimits>(limits),
+    adjustQuota: always<AccountLimits>(change),
+    removeQuota: always<AccountLimits>(accountLimits()),
+    adjustValidity: always<AccountLimits>(change),
+  };
+}
+
+const LIMITS_STATES: readonly (readonly [string, Outcome<AccountLimits>])[] = [
+  ['ficha', accountLimits()],
+  ['con extra', WITH_EXTRA],
+  ['solo lectura', READ_ONLY],
+  ['personal-sin-vigencia', PERSONAL],
+  ['sin-suscripcion', NO_SUBSCRIPTION],
+  ['limites-cargando', 'pending'],
+  ['limites-error', new TypeError('Failed to fetch')],
+];
+
+async function openLimitsDialog(limits: AccountLimits, label: string): Promise<void> {
+  await renderInFrame(
+    <AccountProfile accountId={LAURA.id} api={limitsProfileApi(limits)} />,
+    'ADMIN',
+  );
+  await userEvent.click(screen.getByRole('button', { name: label }));
+}
+
+async function submitIn(label: string): Promise<void> {
+  await userEvent.click(screen.getByRole('button', { name: label }));
+  await act(async () => undefined);
+}
+
+describe('Accesibilidad de límites y vigencia (011b CA-17)', () => {
+  beforeAll(() => {
+    document.documentElement.lang = 'es';
+    document.title = 'Cuenta · Nimbo';
+  });
+
+  beforeEach(() => {
+    global.fetch = jest.fn(() => new Promise<Response>(() => undefined));
+    forgetSession();
+  });
+
+  it.each(LIMITS_STATES)(
+    'CA-17: %s, sin violaciones de axe a 360 y 1440 px',
+    async (_s, limits) => {
+      const container = await renderInFrame(
+        <AccountProfile accountId={LAURA.id} api={limitsProfileApi(limits)} />,
+        'ADMIN',
+      );
+
+      await expectNoViolations(container);
+    },
+  );
+
+  it.each([
+    ['ajustar-cuota', accountLimits(), 'Ajustar cuota'],
+    ['quitar-extra', WITH_EXTRA, 'Quitar extra'],
+    ['extender-vigencia', READ_ONLY, 'Extender vigencia'],
+  ] as const)('CA-17: %s, sin violaciones de axe a 360 y 1440 px', async (_s, limits, label) => {
+    await openLimitsDialog(limits, label);
+
+    await expectNoViolations(document.body);
+  });
+
+  it('CA-17: cuota-invalida, sin violaciones de axe a 360 y 1440 px', async () => {
+    await openLimitsDialog(accountLimits(), 'Ajustar cuota');
+    fireEvent.change(screen.getByLabelText('Espacio extra'), { target: { value: '0' } });
+    await submitIn('Guardar cuota');
+
+    expect(screen.getByText('Revisa los datos de la cuota. Nada cambió.')).toBeTruthy();
+    await expectNoViolations(document.body);
+  });
+
+  it('CA-17: fecha-no-posterior, sin violaciones de axe a 360 y 1440 px', async () => {
+    await openLimitsDialog(accountLimits(), 'Extender vigencia');
+    await submitIn('Guardar vigencia');
+
+    expect(screen.getByText('Revisa la fecha de vencimiento. Nada cambió.')).toBeTruthy();
+    await expectNoViolations(document.body);
+  });
+
+  it('CA-17: cuota-guardada, sin violaciones de axe a 360 y 1440 px', async () => {
+    await openLimitsDialog(accountLimits(), 'Ajustar cuota');
+    fireEvent.change(screen.getByLabelText('Espacio extra'), { target: { value: '50' } });
+    fireEvent.change(screen.getByLabelText('Vigente hasta'), { target: { value: '2030-11-15' } });
+    await submitIn('Guardar cuota');
+
+    expect(screen.getByText('Guardamos la cuota extra.')).toBeTruthy();
+    await expectNoViolations(document.body);
+  });
 });

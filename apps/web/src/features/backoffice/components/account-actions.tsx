@@ -11,6 +11,7 @@ import type { AccountStatusActions } from '../hooks/use-account-status';
 import { useReturnFocus } from '../hooks/use-return-focus';
 
 import { firstNameOf, isInternal } from './account-values';
+import { InfoNote } from './info-note';
 import { ProfileCard } from './profile-card';
 
 /** Borde y texto destructivos sobre la tarjeta: la acción de mayor riesgo se distingue antes de confirmarla. */
@@ -101,15 +102,12 @@ function StatusAction({ account, status }: StatusActionProps): React.JSX.Element
 /** CA-4 en la UI (decisión 10): en la propia ficha no se ofrece lo que el servidor niega; se dice por qué. */
 function SelfNotice(): React.JSX.Element {
   return (
-    <div className="mt-4 flex items-start gap-2.5 rounded-md border border-border bg-muted px-3.5 py-3 text-sm text-secondary-foreground">
-      <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-      <p>
-        <strong className="block font-semibold text-foreground">
-          No puedes suspender tu propia cuenta.
-        </strong>
-        Si necesitas hacerlo, pídeselo a otro Administrador.
-      </p>
-    </div>
+    <InfoNote
+      icon={Info}
+      className="mt-4"
+      title="No puedes suspender tu propia cuenta."
+      text="Si necesitas hacerlo, pídeselo a otro Administrador."
+    />
   );
 }
 

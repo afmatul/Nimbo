@@ -1,5 +1,6 @@
 import {
   BILLING_ERROR_CODES,
+  BACKOFFICE_ERROR_CODES,
   BACKOFFICE_FIELD_ISSUE_REASONS,
   BACKOFFICE_FIELD_MESSAGES,
   IDENTITY_ERROR_CODES,
@@ -21,7 +22,9 @@ import {
   folderNameFieldMessage,
   messageForCode,
   messageForReason,
+  quotaBelowUsageMessage,
   storageMessage,
+  validityNotLaterMessage,
 } from './error-catalog';
 
 describe('error-catalog', () => {
@@ -301,6 +304,28 @@ describe('error-catalog', () => {
       expect(messageForCode(SHARED_ERROR_CODES.TOO_MANY_REQUESTS, { retryAfterSeconds: 840 })).toBe(
         'Hiciste demasiados intentos. Espera 14 minutos e inténtalo de nuevo.',
       );
+    });
+  });
+
+  describe('ajustes de cuota y vigencia (spec 011b §6)', () => {
+    it('CA-2: la cuota bajo lo usado nombra lo que la cuenta ya usa, en GB del catálogo', () => {
+      expect(quotaBelowUsageMessage(String(108 * 1024 ** 3))).toBe(
+        'La cuota total no puede quedar por debajo de lo que la cuenta ya usa (108 GB).',
+      );
+    });
+
+    it('CA-7: la vigencia que no extiende nombra el último día vigente', () => {
+      expect(validityNotLaterMessage('31 oct 2026')).toBe(
+        'Solo puedes extender la vigencia: elige un día posterior al 31 oct 2026.',
+      );
+    });
+
+    it.each([
+      [BACKOFFICE_ERROR_CODES.QUOTA_INVALID, 'Revisa el espacio extra'],
+      [BACKOFFICE_ERROR_CODES.QUOTA_BELOW_USAGE, 'por debajo de lo que la cuenta ya usa'],
+      [BACKOFFICE_ERROR_CODES.VALIDITY_NOT_EXTENDED, 'Solo puedes extender la vigencia'],
+    ])('CA-2, CA-3, CA-7: %s tiene texto propio con la acción correctiva', (code, text) => {
+      expect(messageForCode(code)).toContain(text);
     });
   });
 

@@ -1,8 +1,11 @@
 import {
   ACTIVE_NOW_LABEL,
+  calendarDayLabel,
   dateTimeLabel,
+  dayInputValue,
   dayLabel,
   lastActivityLabel,
+  lastDayInputValue,
   lastDayLabel,
   longDayLabel,
   longLastDayLabel,
@@ -61,6 +64,21 @@ describe('último día en que rige un instante de fin (011b RN-8, CA-9)', () => 
   it('CA-9: con hora intermedia muestra el mismo día que el instante', () => {
     expect(longLastDayLabel(MIDDAY_END)).toBe(longDayLabel(MIDDAY_END));
     expect(lastDayLabel(MIDDAY_END)).toBe(dayLabel(MIDDAY_END));
+  });
+});
+
+describe('días del calendario de los ajustes (011b RN-1, RN-2, RN-8)', () => {
+  it('CA-7: el valor inicial del campo es el último día que se muestra (`YYYY-MM-DD`)', () => {
+    expect(lastDayInputValue('2026-12-01T06:00:00.000Z')).toBe('2026-11-30');
+    expect(lastDayInputValue('2026-11-30T18:00:00.000Z')).toBe('2026-11-30');
+  });
+
+  it('CA-7: hoy es el día de Guatemala aunque en UTC ya sea el siguiente', () => {
+    expect(dayInputValue(Date.parse('2026-10-27T03:00:00.000Z'))).toBe('2026-10-26');
+  });
+
+  it('CA-1: un día elegido se muestra con el formato corto del sistema', () => {
+    expect(calendarDayLabel('2026-11-30')).toBe(dayLabel('2026-11-30T18:00:00.000Z'));
   });
 });
 

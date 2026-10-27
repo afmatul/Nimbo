@@ -79,6 +79,13 @@ const ACTION_TEXTS: Readonly<Record<string, ActionText>> = {
   'client.files_viewed': {
     staff: (_w, a) => `${a} consultó la lista de tus archivos (sin abrir su contenido)`,
   },
+  /** Ajustes de la cuenta (011b CA-9, RN-4): el evento no trae cifras ni fechas, solo la acción y el rol. */
+  'account.quota_adjusted': {
+    staff: (_w, a) => `${a} ajustó la cuota de tu cuenta`,
+  },
+  'account.validity_adjusted': {
+    staff: (_w, a) => `${a} extendió la vigencia de tu plan`,
+  },
   /** Suscripción (010 CA-6, CA-22): sin plan ni tarjeta en el evento; la pasada automática actúa como el dueño. */
   'subscription.auto_renew_changed': sameText('Cambiaste la renovación automática'),
   'subscription.renewed': sameText('Se renovó tu plan'),
