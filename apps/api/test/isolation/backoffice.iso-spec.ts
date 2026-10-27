@@ -535,6 +535,164 @@ describe('aislamiento del backoffice (011 CA-15, CA-16)', () => {
     });
   });
 
+  /**
+   * Las rutas de ajustes de la 011b contra la API completa (spec §5, CA-9, CA-15, CA-16; ADR-0035): la respuesta del
+   * Administrador es la lista blanca de límites, sin nada de B ni de archivos; el evento queda solo en la actividad de
+   * A; B no cambia. Por SQL, las políticas `TO CURRENT_USER` del dueño no se extienden a `nimbo_app`.
+   */
+  describe('ajustes de cuota y vigencia sobre A (011b CA-9, CA-15, CA-16; RNF-05)', () => {
+    const LIMITS_KEYS = [
+      ...['status', 'planName', 'usedBytes', 'baseQuotaBytes', 'extraQuotaBytes'],
+      ...['extraQuotaUntil', 'totalQuotaBytes', 'expiresAt'],
+    ];
+    const SUBSCRIPTION_SQL = `SELECT plan_id, vence_en, estado, cuota_extra_bytes, cuota_extra_hasta
+      FROM suscripcion WHERE usuario_id = $1`;
+    const guatemalaDay = (offsetDays: number): string =>
+      new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala' }).format(
+        new Date(Date.now() + offsetDays * 86_400_000),
+      );
+    const putQuota = (http: Http): Test =>
+      http.put(`${ACCOUNTS}/${a.id}/quota`).send({ extraBytes: '1024', until: guatemalaDay(3) });
+    const putValidity = (http: Http): Test =>
+      http.put(`${ACCOUNTS}/${a.id}/validity`).send({ expiresAt: guatemalaDay(40) });
+    const adjustments: readonly [string, (http: Http) => Test][] = [
+      ['GET :id/limits', (http) => http.get(`${ACCOUNTS}/${a.id}/limits`)],
+      ['PUT :id/quota', putQuota],
+      ['DELETE :id/quota', (http) => http.delete(`${ACCOUNTS}/${a.id}/quota`)],
+      ['PUT :id/validity', putValidity],
+    ];
+    let runner: ITransactionRunner;
+    let context: TransactionContext;
+
+    const sendAs = (account: WorldAccount, build: (http: Http) => Test): Test =>
+      build(request(testApp.app.getHttpServer())).set(
+        'Authorization',
+        `Bearer ${world.tokenFor(account)}`,
+      );
+
+    const subscriptionOf = async (userId: string): Promise<unknown> =>
+      ((await owner.query(SUBSCRIPTION_SQL, [userId])) as unknown[])[0];
+
+    const myEvents = async (account: WorldAccount): Promise<AuditEventResponse[]> => {
+      const response = await sendAs(account, (http) => http.get(MY_EVENTS));
+      expect(response.status).toBe(200);
+      return listAuditEventsResponseSchema.parse(response.body).items;
+    };
+
+    beforeAll(async () => {
+      runner = testApp.app.get<ITransactionRunner>(I_TRANSACTION_RUNNER, { strict: false });
+      context = testApp.app.get(TransactionContext, { strict: false });
+      // A y B con un plan de pago vigente dos días más; como dueño, son fixtures.
+      await owner.query(
+        `INSERT INTO suscripcion (usuario_id, plan_id) SELECT id, '10000000-0000-4000-8000-000000000002'
+           FROM usuario WHERE id = ANY($1) ON CONFLICT (usuario_id) DO NOTHING`,
+        [[a.id, b.id]],
+      );
+      await owner.query(
+        `UPDATE suscripcion SET vence_en = now() + interval '2 days', estado = 'vigente',
+           cuota_extra_bytes = 0, cuota_extra_hasta = NULL WHERE usuario_id = ANY($1)`,
+        [[a.id, b.id]],
+      );
+    });
+
+    afterAll(async () => {
+      await owner.query(
+        `UPDATE suscripcion SET vence_en = NULL, estado = 'vigente', cuota_extra_bytes = 0,
+           cuota_extra_hasta = NULL WHERE usuario_id = ANY($1)`,
+        [[a.id, b.id]],
+      );
+    });
+
+    it.each(adjustments)(
+      'ISO-8 (011b CA-15): ADMIN no puede recibir por `%s` sobre A nada fuera de los límites, ni datos de B o de archivos',
+      async (_route, build) => {
+        const response = await sendAs(world.internals[Role.ADMIN], build);
+
+        expect(response.status).toBe(200);
+        expect(keysOf(response.body).filter((key) => !LIMITS_KEYS.includes(key))).toEqual([]);
+        expect(leakedIn(response)).toEqual([]);
+      },
+    );
+
+    it.each([Role.SUPPORT, Role.OPERATOR] as const)(
+      'ISO-9 (011b CA-16): %s no puede ajustar la cuota ni la vigencia de A: 403, A intacta y sin evento',
+      async (role) => {
+        const before = { a: await subscriptionOf(a.id), events: sortedIds(await worldEvents()) };
+
+        for (const [, build] of adjustments) {
+          const response = await sendAs(world.internals[role], build);
+          expect({ status: response.status, code: response.body.code }).toEqual({
+            status: 403,
+            code: 'SHARED_FORBIDDEN',
+          });
+        }
+        expect(await subscriptionOf(a.id)).toEqual(before.a);
+        expect(sortedIds(await worldEvents())).toEqual(before.events);
+      },
+    );
+
+    it('ISO-9 (011b CA-16): B no puede ajustar la cuota ni la vigencia de A ni leer sus límites: 403', async () => {
+      const before = await subscriptionOf(a.id);
+
+      for (const [, build] of adjustments) {
+        const response = await sendAs(b, build);
+        expect({ status: response.status, code: response.body.code }).toEqual({
+          status: 403,
+          code: 'SHARED_FORBIDDEN',
+        });
+      }
+      expect(await subscriptionOf(a.id)).toEqual(before);
+    });
+
+    it('ISO-10 (011b CA-9, RN-4): B no puede ver ni sufrir los ajustes sobre A; A los ve con el rol ADMIN y sin datos del interno', async () => {
+      const admin = world.internals[Role.ADMIN];
+      // ISO-8 ya extendió la vigencia de A a ese día: vuelve a dos días para que el ajuste sea una extensión.
+      await owner.query(
+        "UPDATE suscripcion SET vence_en = now() + interval '2 days' WHERE usuario_id = $1",
+        [a.id],
+      );
+      const beforeB = { row: await subscriptionOf(b.id), events: await myEvents(b) };
+      const beforeA = (await myEvents(a)).map((event) => event.id);
+
+      const quota = await sendAs(admin, putQuota);
+      const validity = await sendAs(admin, putValidity);
+      expect([quota.status, validity.status]).toEqual([200, 200]);
+
+      const added = (await myEvents(a)).filter((event) => !beforeA.includes(event.id));
+      expect(added.map((event) => event.action).sort()).toEqual(
+        [AuditAction.ACCOUNT_QUOTA_ADJUSTED, AuditAction.ACCOUNT_VALIDITY_ADJUSTED].sort(),
+      );
+      for (const event of added) {
+        expect(event).toMatchObject({ actorRole: Role.ADMIN, origin: 'staff' });
+      }
+      const serialized = JSON.stringify(added);
+      expect(
+        [admin.name, admin.email, b.id, b.email].filter((value) => serialized.includes(value)),
+      ).toEqual([]);
+      expect(await subscriptionOf(b.id)).toEqual(beforeB.row);
+      expect(await myEvents(b)).toEqual(beforeB.events);
+    });
+
+    it('ISO-11 (ADR-0035): ADMIN como `nimbo_app` no puede leer ni escribir `suscripcion` de A sin las funciones', async () => {
+      const admin = internalActor(Role.ADMIN);
+      const asAdmin = (sql: string, params: unknown[]): Promise<unknown> =>
+        runner.withActor(admin, () => context.requireActorScope(admin).query(sql, params));
+      const before = await subscriptionOf(a.id);
+
+      expect(await asAdmin('SELECT id FROM suscripcion WHERE usuario_id = $1', [a.id])).toEqual([]);
+      await expect(
+        asAdmin('UPDATE suscripcion SET cuota_extra_bytes = 1 WHERE usuario_id = $1', [a.id]),
+      ).rejects.toThrow(/permission denied/);
+      await asAdmin(
+        "UPDATE suscripcion SET vence_en = now() + interval '9 years', estado = 'vigente' WHERE usuario_id = $1",
+        [a.id],
+      );
+      expect(await subscriptionOf(a.id)).toEqual(before);
+      // Centinela: la función sí lee la fila de A con el mismo actor.
+      expect(await asAdmin('SELECT * FROM limites_de_cuenta($1)', [a.id])).toHaveLength(1);
+    });
+  });
+
   describe('la consulta de Soporte sobre A en «Mi actividad» (CA-16, RN-2)', () => {
     let support: WorldAccount;
     let viewed: AuditEventResponse;
