@@ -1,5 +1,6 @@
 import {
   BACKOFFICE_FIELD_MESSAGES,
+  isCalendarDay,
   type AccountLimits,
   type AdjustQuotaRequest,
   type AdjustValidityRequest,
@@ -24,11 +25,6 @@ export const VALIDITY_FIELD_IDS = { expiresAt: 'vigencia-hasta' } as const;
 
 export const EXTRA_NOT_POSITIVE = 'El espacio extra debe ser mayor que cero.';
 export const END_BEFORE_TODAY = 'La fecha de fin no puede ser anterior a hoy.';
-
-const CALENDAR_DAY = /^\d{4}-\d{2}-\d{2}$/;
-
-/** Un `<input type="date">` con un día (`YYYY-MM-DD`); vacío si se borró. */
-export const isCalendarDay = (day: string): boolean => CALENDAR_DAY.test(day);
 
 export interface QuotaValues {
   /** GB enteros, como el catálogo de planes. */

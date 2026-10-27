@@ -2,6 +2,7 @@
 
 import {
   BACKOFFICE_ERROR_CODES,
+  isCalendarDay,
   type AccountLimits,
   type AdjustValidityRequest,
 } from '@nimbo/contracts';
@@ -18,7 +19,6 @@ import {
 } from '../../../lib/format-date';
 import { ServerErrorAlert } from '../../identity/components/server-error-alert';
 import {
-  isCalendarDay,
   notLaterIssue,
   serverIssuesOf,
   VALIDITY_FIELD_IDS,

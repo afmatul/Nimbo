@@ -14,11 +14,13 @@ import {
   type PlanAdminView,
   type RoleName,
 } from '@nimbo/contracts';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 import type { ReactElement } from 'react';
 
+import { ApiClientError } from '../../lib/api-error';
+import { quotaBelowUsageMessage } from '../../lib/error-catalog';
 import { InternalAreaLayout } from '../access/components/internal-area-layout';
 import { forgetSession, rememberSession } from '../identity/session/session-memory';
 import { SessionProvider } from '../identity/session/session-provider';
@@ -36,6 +38,7 @@ import { accountItem, accountsPage, ANDREA, DIEGO, MONICA } from './test-account
 import { clientFile, clientFilesPage, LAURA, TRASHED_PDF } from './test-client-files';
 import {
   accountLimits,
+  gb,
   NO_SUBSCRIPTION,
   PERSONAL,
   pendingLimitsApi,
@@ -363,7 +366,10 @@ describe('Accesibilidad del catálogo de planes (011 CA-8, CA-17)', () => {
 });
 
 /** La ficha de Laura con sus límites; cada ajuste responde `change` (011b). */
-function limitsProfileApi(limits: Outcome<AccountLimits>, change: AccountLimits = WITH_EXTRA) {
+function limitsProfileApi(
+  limits: Outcome<AccountLimits>,
+  change: Outcome<AccountLimits> = WITH_EXTRA,
+) {
   return {
     ...profileApi(accountItem()),
     getAccountLimits: always<AccountLimits>(limits),
@@ -383,9 +389,13 @@ const LIMITS_STATES: readonly (readonly [string, Outcome<AccountLimits>])[] = [
   ['limites-error', new TypeError('Failed to fetch')],
 ];
 
-async function openLimitsDialog(limits: AccountLimits, label: string): Promise<void> {
+async function openLimitsDialog(
+  limits: AccountLimits,
+  label: string,
+  change?: Outcome<AccountLimits>,
+): Promise<void> {
   await renderInFrame(
-    <AccountProfile accountId={LAURA.id} api={limitsProfileApi(limits)} />,
+    <AccountProfile accountId={LAURA.id} api={limitsProfileApi(limits, change)} />,
     'ADMIN',
   );
   await userEvent.click(screen.getByRole('button', { name: label }));
@@ -395,6 +405,75 @@ async function submitIn(label: string): Promise<void> {
   await userEvent.click(screen.getByRole('button', { name: label }));
   await act(async () => undefined);
 }
+
+/** `422 BACKOFFICE_QUOTA_BELOW_USAGE`: la cuenta usa 360 GB y el total pedido serían 355 GB (mockup `cuota-bajo-lo-usado`). */
+const quotaBelowUsage = (): ApiClientError =>
+  new ApiClientError({
+    status: 422,
+    code: BACKOFFICE_ERROR_CODES.QUOTA_BELOW_USAGE,
+    message: 'x',
+    correlationId: 'corr-1',
+    details: { usedBytes: gb(360), totalQuotaBytes: gb(355) },
+  });
+
+/** Un estado del bloque de límites: la ficha, el botón que abre el diálogo y, si hace falta, cómo se llega al estado. */
+interface LimitsDialogState {
+  readonly limits: AccountLimits;
+  readonly label: string;
+  readonly change?: Outcome<AccountLimits>;
+  readonly reach?: () => Promise<void>;
+}
+
+const LIMITS_DIALOG_STATES: readonly (readonly [string, LimitsDialogState])[] = [
+  ['ajustar-cuota', { limits: accountLimits(), label: 'Ajustar cuota' }],
+  ['quitar-extra', { limits: WITH_EXTRA, label: 'Quitar extra' }],
+  ['extender-vigencia', { limits: READ_ONLY, label: 'Extender vigencia' }],
+  [
+    'cuota-bajo-lo-usado',
+    {
+      limits: accountLimits(),
+      label: 'Ajustar cuota',
+      change: quotaBelowUsage(),
+      reach: async () => {
+        fireEvent.change(screen.getByLabelText('Espacio extra'), { target: { value: '5' } });
+        fireEvent.change(screen.getByLabelText('Vigente hasta'), {
+          target: { value: '2030-11-15' },
+        });
+        await submitIn('Guardar cuota');
+        expect(screen.getByText(quotaBelowUsageMessage(gb(360)))).toBeTruthy();
+      },
+    },
+  ],
+  [
+    'extra-quitado',
+    {
+      limits: WITH_EXTRA,
+      label: 'Quitar extra',
+      reach: async () => {
+        const confirm = within(
+          screen.getByRole('alertdialog', { name: /Quitar el espacio extra/ }),
+        );
+        await userEvent.click(confirm.getByRole('button', { name: 'Quitar extra' }));
+        await act(async () => undefined);
+        expect(screen.getByText('Quitamos el espacio extra.')).toBeTruthy();
+      },
+    },
+  ],
+  [
+    'vigencia-guardada',
+    {
+      limits: READ_ONLY,
+      label: 'Extender vigencia',
+      reach: async () => {
+        fireEvent.change(screen.getByLabelText('Nueva fecha de vencimiento'), {
+          target: { value: '2030-11-30' },
+        });
+        await submitIn('Guardar vigencia');
+        expect(screen.getByText('Extendimos la vigencia.')).toBeTruthy();
+      },
+    },
+  ],
+];
 
 describe('Accesibilidad de límites y vigencia (011b CA-17)', () => {
   beforeAll(() => {
@@ -419,15 +498,15 @@ describe('Accesibilidad de límites y vigencia (011b CA-17)', () => {
     },
   );
 
-  it.each([
-    ['ajustar-cuota', accountLimits(), 'Ajustar cuota'],
-    ['quitar-extra', WITH_EXTRA, 'Quitar extra'],
-    ['extender-vigencia', READ_ONLY, 'Extender vigencia'],
-  ] as const)('CA-17: %s, sin violaciones de axe a 360 y 1440 px', async (_s, limits, label) => {
-    await openLimitsDialog(limits, label);
+  it.each(LIMITS_DIALOG_STATES)(
+    'CA-17: %s, sin violaciones de axe a 360 y 1440 px',
+    async (_s, { limits, label, change, reach }) => {
+      await openLimitsDialog(limits, label, change);
+      await reach?.();
 
-    await expectNoViolations(document.body);
-  });
+      await expectNoViolations(document.body);
+    },
+  );
 
   it('CA-17: cuota-invalida, sin violaciones de axe a 360 y 1440 px', async () => {
     await openLimitsDialog(accountLimits(), 'Ajustar cuota');

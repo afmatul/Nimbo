@@ -79,7 +79,10 @@ const ACTION_TEXTS: Readonly<Record<string, ActionText>> = {
   'client.files_viewed': {
     staff: (_w, a) => `${a} consultó la lista de tus archivos (sin abrir su contenido)`,
   },
-  /** Ajustes de la cuenta (011b CA-9, RN-4): el evento no trae cifras ni fechas, solo la acción y el rol. */
+  /**
+   * Ajustes de la cuenta (011b CA-9, RN-4): el evento trae `extraBytes` y `until`, o `expiresAt`, pero la frase solo
+   * dice la acción y el rol; las cifras y fechas vigentes se ven en el resumen de espacio y en «Plan y facturación».
+   */
   'account.quota_adjusted': {
     staff: (_w, a) => `${a} ajustó la cuota de tu cuenta`,
   },
