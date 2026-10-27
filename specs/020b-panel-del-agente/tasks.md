@@ -5,7 +5,7 @@
 > Cada tarea es una línea: criterio, prueba y de qué depende. Los archivos viven en `plan.md`. Sin tareas de «cierre».
 > Toda la spec depende de la **020** (contratos y endpoints en `packages/contracts/src/intelligence/`); T-01 lo verifica.
 
-- [ ] **T-01** Cliente del agente: `getStatus` y `streamAnswer` con lector SSE validado por evento, errores previos por `code` y renovación única ante 401 — CA: CA-3, CA-9, CA-10 — Prueba: unitaria (marcos partidos, marco inválido, corte, 401, abortar) — Depende: 020 (contratos)
+- [x] **T-01** Cliente del agente: `getStatus` y `streamAnswer` con lector SSE validado por evento, errores previos por `code` y renovación única ante 401 — CA: CA-3, CA-9, CA-10 — Prueba: unitaria (marcos partidos, marco inválido, corte, 401, abortar) — Depende: 020 (contratos)
 - [ ] **T-02** Sesión del agente solo en memoria: reductor, ámbito, detener y reintentar, mensajes por `code` en el catálogo — CA: CA-4, CA-7, CA-8, CA-9, CA-16, CA-17 — Prueba: unitaria del hook y del catálogo, sin `localStorage` — Depende: T-01
 - [ ] **T-03** `CitationChip` con la etiqueta del servidor sin texto duplicado y `AgentAnswer` en texto plano con `[n]` → chip y aviso de ubicación aproximada — CA: CA-3, CA-6, CA-13 — Prueba: componente — Depende: T-02
 - [ ] **T-04** `AgentPanel` con contador, `inicio`, `vacio`, `respondiendo`, `con-citas` y `sin-resultados`, hoja a 360 px y foco — CA: CA-1, CA-2, CA-3, CA-5, CA-19 — Prueba: componente + axe a 360 y 1440 px — Depende: T-02, T-03
