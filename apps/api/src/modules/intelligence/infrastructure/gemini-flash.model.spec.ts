@@ -80,7 +80,7 @@ describe('GeminiFlashModel', () => {
     expect(new Headers(init?.headers).get('x-goog-api-key')).toBe(API_KEY);
   });
 
-  it('envía la instrucción de sistema aparte de la pregunta', async () => {
+  it('pide pensamiento mínimo para que el primer trozo llegue rápido (CA-2)', async () => {
     fetchMock.mockResolvedValue(sseResponse([sseEvent('hola')]));
 
     await ask(model());
@@ -88,6 +88,7 @@ describe('GeminiFlashModel', () => {
     expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
       systemInstruction: { parts: [{ text: PROMPT.system }] },
       contents: [{ role: 'user', parts: [{ text: PROMPT.user }] }],
+      generationConfig: { thinkingConfig: { thinkingLevel: 'minimal' } },
     });
   });
 

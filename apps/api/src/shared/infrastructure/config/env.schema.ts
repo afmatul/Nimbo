@@ -105,8 +105,8 @@ const DEFAULT_GEMINI_CHAT_MODEL = 'gemini-3.5-flash';
 /** Largo máximo inicial de la pregunta al agente (020 RN-7, P-6). */
 const DEFAULT_AGENT_MAX_QUESTION_CHARS = 1000;
 /** Plazos iniciales del modelo hasta el primer trozo y entre trozos (020 D-7, CA-15); se miden en T-09. */
-const DEFAULT_AGENT_MODEL_FIRST_CHUNK_TIMEOUT_MS = 10_000;
-const DEFAULT_AGENT_MODEL_IDLE_TIMEOUT_MS = 10_000;
+const DEFAULT_AGENT_MODEL_FIRST_CHUNK_TIMEOUT_MS = 5_000;
+const DEFAULT_AGENT_MODEL_IDLE_TIMEOUT_MS = 5_000;
 /** Ghostscript en Linux y macOS; en Windows se configura `gswin64c` (019 D-1). */
 const DEFAULT_GHOSTSCRIPT_BIN = 'gs';
 

@@ -21,10 +21,10 @@ export const TOP_K = 8;
 export const CANDIDATES_PER_SEARCH = 20;
 
 /**
- * Similitud coseno mínima de un candidato vectorial (CA-3). **Provisional**: el doble de embeddings es un hash y no
- * mide cercanía; T-09 la calibra con el embedding real (spec S-6, plan §7 riesgo 1).
+ * Similitud coseno mínima de un candidato vectorial (CA-3). Calibrada en T-10 con el embedding real (plan §6): punto
+ * medio entre la peor pregunta con respuesta (0.676) y la mejor sin respuesta (0.645). Corpus de 12 fragmentos: revisar con datos reales.
  */
-export const MIN_SIMILARITY = 0.5;
+export const MIN_SIMILARITY = 0.66;
 
 /** Qué se pregunta y dónde (RN-9). */
 export interface RetrievalRequest {
