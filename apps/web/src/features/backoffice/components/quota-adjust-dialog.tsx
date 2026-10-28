@@ -47,6 +47,33 @@ export interface QuotaAdjustDialogProps {
 const isBelowUsage = (rejection: ApiClientError | null): rejection is ApiClientError =>
   rejection?.code === BACKOFFICE_ERROR_CODES.QUOTA_BELOW_USAGE;
 
+function calculationClass(below: boolean): string {
+  return cn(
+    'rounded-md border px-3.5 py-3 text-sm text-secondary-foreground',
+    below ? 'border-destructive-soft bg-destructive/5' : 'border-border bg-muted',
+  );
+}
+
+function QuotaEquation({
+  base,
+  extraLabel,
+  total,
+  strong,
+}: {
+  readonly base: string;
+  readonly extraLabel: string;
+  readonly total: string;
+  readonly strong: string;
+}): React.JSX.Element {
+  return (
+    <p>
+      Cuota del plan <strong className={strong}>{formatPlanBytes(base)}</strong> + extra{' '}
+      <strong className={strong}>{extraLabel}</strong> ={' '}
+      <strong className={strong}>{formatPlanBytes(total)}</strong>.
+    </p>
+  );
+}
+
 /** El total resultante antes de guardar (RN-8, decisión 13): `plan + extra = total` y lo que la cuenta usa. */
 function QuotaCalculation({
   limits,
@@ -60,19 +87,10 @@ function QuotaCalculation({
   const total = resultingTotal(base, extraBytes);
   const below = BigInt(total) < BigInt(limits.usedBytes);
   const strong = cn('font-semibold', below ? 'text-destructive' : 'text-foreground');
+  const extraLabel = `${extraBytes === null ? '0' : extra.trim()} GB`;
   return (
-    <div
-      aria-live="polite"
-      className={cn(
-        'rounded-md border px-3.5 py-3 text-sm text-secondary-foreground',
-        below ? 'border-destructive-soft bg-destructive/5' : 'border-border bg-muted',
-      )}
-    >
-      <p>
-        Cuota del plan <strong className={strong}>{formatPlanBytes(base)}</strong> + extra{' '}
-        <strong className={strong}>{`${extraBytes === null ? '0' : extra.trim()} GB`}</strong> ={' '}
-        <strong className={strong}>{formatPlanBytes(total)}</strong>.
-      </p>
+    <div aria-live="polite" className={calculationClass(below)}>
+      <QuotaEquation base={base} extraLabel={extraLabel} total={total} strong={strong} />
       <p className="mt-1">
         La cuenta usa <strong className={strong}>{formatPlanBytes(limits.usedBytes)}</strong> (
         {usedPercent(limits.usedBytes, total)} %).
@@ -118,36 +136,54 @@ interface QuotaFieldsProps {
   readonly extraRef: React.RefObject<HTMLInputElement | null>;
 }
 
-function QuotaFields({ values, onChange, issues, locked, extraRef }: QuotaFieldsProps) {
+function ExtraField({
+  values,
+  onChange,
+  issues,
+  locked,
+  extraRef,
+}: QuotaFieldsProps): React.JSX.Element {
+  return (
+    <FormField
+      id={QUOTA_FIELD_IDS.extraBytes}
+      label="Espacio extra"
+      help="Se suma a la cuota del plan mientras esté vigente. Debe ser mayor que cero."
+      error={issueFor(issues, QUOTA_FIELD_IDS.extraBytes)}
+      suffix="GB"
+      input={{
+        ref: extraRef,
+        inputMode: 'numeric',
+        autoComplete: 'off',
+        readOnly: locked,
+        value: values.extra,
+        onChange: (event) => onChange({ ...values, extra: event.target.value }),
+      }}
+    />
+  );
+}
+
+function UntilField({ values, onChange, issues, locked }: QuotaFieldsProps): React.JSX.Element {
+  return (
+    <FormField
+      id={QUOTA_FIELD_IDS.until}
+      label="Vigente hasta"
+      help="La cuota vuelve a la del plan al terminar este día, sin borrar archivos."
+      error={issueFor(issues, QUOTA_FIELD_IDS.until)}
+      input={{
+        type: 'date',
+        readOnly: locked,
+        value: values.until,
+        onChange: (event) => onChange({ ...values, until: event.target.value }),
+      }}
+    />
+  );
+}
+
+function QuotaFields(props: QuotaFieldsProps): React.JSX.Element {
   return (
     <>
-      <FormField
-        id={QUOTA_FIELD_IDS.extraBytes}
-        label="Espacio extra"
-        help="Se suma a la cuota del plan mientras esté vigente. Debe ser mayor que cero."
-        error={issueFor(issues, QUOTA_FIELD_IDS.extraBytes)}
-        suffix="GB"
-        input={{
-          ref: extraRef,
-          inputMode: 'numeric',
-          autoComplete: 'off',
-          readOnly: locked,
-          value: values.extra,
-          onChange: (event) => onChange({ ...values, extra: event.target.value }),
-        }}
-      />
-      <FormField
-        id={QUOTA_FIELD_IDS.until}
-        label="Vigente hasta"
-        help="La cuota vuelve a la del plan al terminar este día, sin borrar archivos."
-        error={issueFor(issues, QUOTA_FIELD_IDS.until)}
-        input={{
-          type: 'date',
-          readOnly: locked,
-          value: values.until,
-          onChange: (event) => onChange({ ...values, until: event.target.value }),
-        }}
-      />
+      <ExtraField {...props} />
+      <UntilField {...props} />
     </>
   );
 }

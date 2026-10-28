@@ -132,6 +132,57 @@ interface LimitsFlow {
   readonly removeExtra: () => void;
 }
 
+interface Removal {
+  readonly failure: ApiClientError | null;
+  readonly removing: boolean;
+  readonly removeExtra: () => void;
+  readonly clearFailure: () => void;
+}
+
+/** `DELETE` de la cuota: el éxito lo cierra quien llama; el rechazo deja el aviso y cierra el diálogo. */
+function useRemoveExtra(
+  remove: () => Promise<AccountLimits>,
+  onRemoved: (limits: AccountLimits) => void,
+  onFailed: () => void,
+): Removal {
+  const [failure, setFailure] = React.useState<ApiClientError | null>(null);
+  const [removing, setRemoving] = React.useState(false);
+  const removeExtra = (): void => {
+    setRemoving(true);
+    void remove()
+      .then(onRemoved, (caught: unknown) => {
+        setFailure(toApiClientError(caught));
+        onFailed();
+      })
+      .finally(() => setRemoving(false));
+  };
+  return { failure, removing, removeExtra, clearFailure: () => setFailure(null) };
+}
+
+function rememberSaved(
+  onChanged: (limits: AccountLimits) => void,
+  setNotice: (kind: LimitsNoticeKind) => void,
+  setDialog: (dialog: LimitsDialog | null) => void,
+): LimitsFlow['saved'] {
+  return (kind) => (limits) => {
+    onChanged(limits);
+    setNotice(kind);
+    setDialog(null);
+  };
+}
+
+function openDialog(
+  setDialog: (dialog: LimitsDialog | null) => void,
+  setNotice: (notice: LimitsNoticeKind | null) => void,
+  clearFailure: () => void,
+): (next: LimitsDialog) => void {
+  return (next) => {
+    setDialog(next);
+    setNotice(null);
+    clearFailure();
+  };
+}
+
 /** Qué diálogo está abierto, el último aviso y la petición de quitar el extra. */
 function useLimitsFlow({
   account,
@@ -140,59 +191,40 @@ function useLimitsFlow({
 }: LimitsProps & { readonly onChanged: (limits: AccountLimits) => void }): LimitsFlow {
   const [dialog, setDialog] = React.useState<LimitsDialog | null>(null);
   const [notice, setNotice] = React.useState<LimitsNoticeKind | null>(null);
-  const [failure, setFailure] = React.useState<ApiClientError | null>(null);
-  const [removing, setRemoving] = React.useState(false);
-  const saved = (kind: LimitsNoticeKind) => (limits: AccountLimits) => {
-    onChanged(limits);
-    setNotice(kind);
-    setDialog(null);
-  };
-  const removeExtra = (): void => {
-    setRemoving(true);
-    void api
-      .removeQuota(account.id)
-      .then(saved('quotaRemoved'), (caught: unknown) => {
-        setFailure(toApiClientError(caught));
-        setDialog(null);
-      })
-      .finally(() => setRemoving(false));
-  };
-  const open = (next: LimitsDialog): void => {
-    setDialog(next);
-    setNotice(null);
-    setFailure(null);
-  };
+  const saved = rememberSaved(onChanged, setNotice, setDialog);
+  const removal = useRemoveExtra(
+    () => api.removeQuota(account.id),
+    saved('quotaRemoved'),
+    () => setDialog(null),
+  );
+  const open = openDialog(setDialog, setNotice, removal.clearFailure);
   return {
     dialog,
     notice,
-    failure,
-    removing,
     open,
-    close: () => setDialog(null),
     saved,
-    removeExtra,
+    close: () => setDialog(null),
+    failure: removal.failure,
+    removing: removal.removing,
+    removeExtra: removal.removeExtra,
   };
 }
 
-/** Éxito (`role="status"`) o el rechazo de quitar el extra (decisión 16). */
-function LimitsNotice({
-  flow,
-  limits,
-  account,
+function RemoveExtraFailure({ error }: { readonly error: ApiClientError }): React.JSX.Element {
+  return (
+    <div className="mt-4">
+      <ServerErrorAlert title="No quitamos el espacio extra." error={error} />
+    </div>
+  );
+}
+
+function SuccessNotice({
+  title,
+  text,
 }: {
-  readonly flow: LimitsFlow;
-  readonly limits: AccountLimits;
-  readonly account: AccountListItem;
-}): React.ReactNode {
-  if (flow.failure !== null) {
-    return (
-      <div className="mt-4">
-        <ServerErrorAlert title="No quitamos el espacio extra." error={flow.failure} />
-      </div>
-    );
-  }
-  if (flow.notice === null) return null;
-  const [title, text] = NOTICES[flow.notice](limits, firstNameOf(account.fullName));
+  readonly title: string;
+  readonly text: string;
+}): React.JSX.Element {
   return (
     <Alert variant="success" className="mt-4 flex items-start gap-2.5">
       <CheckCircle2
@@ -205,6 +237,22 @@ function LimitsNotice({
       </div>
     </Alert>
   );
+}
+
+/** Éxito (`role="status"`) o el rechazo de quitar el extra (decisión 16). */
+function LimitsNotice({
+  flow,
+  limits,
+  account,
+}: {
+  readonly flow: LimitsFlow;
+  readonly limits: AccountLimits;
+  readonly account: AccountListItem;
+}): React.ReactNode {
+  if (flow.failure !== null) return <RemoveExtraFailure error={flow.failure} />;
+  if (flow.notice === null) return null;
+  const [title, text] = NOTICES[flow.notice](limits, firstNameOf(account.fullName));
+  return <SuccessNotice title={title} text={text} />;
 }
 
 /** Cuota del plan, extra, total con lo usado y vencimiento, siempre en texto (decisión 12). */
@@ -255,6 +303,73 @@ function LimitsAction({ label, icon: Icon, onClick, buttonRef, className }: Acti
   );
 }
 
+type ActionRef = React.RefObject<HTMLButtonElement | null>;
+
+/** Tras quitar el extra el botón desaparece: el foco vuelve a «Ajustar cuota». */
+function useRemovedQuotaFocus(notice: LimitsNoticeKind | null, quotaRef: ActionRef): void {
+  React.useEffect(() => {
+    if (notice === 'quotaRemoved') quotaRef.current?.focus();
+  }, [notice, quotaRef]);
+}
+
+function QuotaAction({
+  flow,
+  buttonRef,
+}: {
+  readonly flow: LimitsFlow;
+  readonly buttonRef: ActionRef;
+}): React.JSX.Element {
+  return (
+    <LimitsAction
+      label="Ajustar cuota"
+      icon={HardDrive}
+      buttonRef={buttonRef}
+      onClick={() => flow.open('quota')}
+    />
+  );
+}
+
+function ValidityAction({
+  limits,
+  flow,
+  buttonRef,
+}: {
+  readonly limits: AccountLimits;
+  readonly flow: LimitsFlow;
+  readonly buttonRef: ActionRef;
+}): React.JSX.Element | null {
+  if (limits.status === 'personal' || limits.expiresAt === null) return null;
+  return (
+    <LimitsAction
+      label="Extender vigencia"
+      icon={CalendarDays}
+      buttonRef={buttonRef}
+      onClick={() => flow.open('validity')}
+    />
+  );
+}
+
+function RemoveExtraAction({
+  limits,
+  flow,
+  buttonRef,
+}: {
+  readonly limits: AccountLimits;
+  readonly flow: LimitsFlow;
+  readonly buttonRef: ActionRef;
+}): React.JSX.Element | null {
+  if (!canRemoveExtra(limits)) return null;
+  return (
+    <LimitsAction
+      label="Quitar extra"
+      icon={CircleX}
+      buttonRef={buttonRef}
+      className="sm:ml-auto"
+      onClick={() => flow.open('removeExtra')}
+    />
+  );
+}
+
 /** «Ajustar cuota», «Extender vigencia» (no en Personal) y «Quitar extra»; el foco vuelve al botón que abrió. */
 function LimitsActions({
   limits,
@@ -266,35 +381,12 @@ function LimitsActions({
   const quotaRef = useReturnFocus(flow.dialog === 'quota');
   const validityRef = useReturnFocus(flow.dialog === 'validity');
   const removeRef = useReturnFocus(flow.dialog === 'removeExtra');
-  React.useEffect(() => {
-    if (flow.notice === 'quotaRemoved') quotaRef.current?.focus();
-  }, [flow.notice, quotaRef]);
-  const canExtend = limits.status !== 'personal' && limits.expiresAt !== null;
+  useRemovedQuotaFocus(flow.notice, quotaRef);
   return (
     <div className="mt-4 flex flex-col gap-2.5 border-t border-border pt-4 sm:flex-row sm:flex-wrap">
-      <LimitsAction
-        label="Ajustar cuota"
-        icon={HardDrive}
-        buttonRef={quotaRef}
-        onClick={() => flow.open('quota')}
-      />
-      {canExtend ? (
-        <LimitsAction
-          label="Extender vigencia"
-          icon={CalendarDays}
-          buttonRef={validityRef}
-          onClick={() => flow.open('validity')}
-        />
-      ) : null}
-      {canRemoveExtra(limits) ? (
-        <LimitsAction
-          label="Quitar extra"
-          icon={CircleX}
-          buttonRef={removeRef}
-          className="sm:ml-auto"
-          onClick={() => flow.open('removeExtra')}
-        />
-      ) : null}
+      <QuotaAction flow={flow} buttonRef={quotaRef} />
+      <ValidityAction limits={limits} flow={flow} buttonRef={validityRef} />
+      <RemoveExtraAction limits={limits} flow={flow} buttonRef={removeRef} />
     </div>
   );
 }

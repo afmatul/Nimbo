@@ -118,6 +118,41 @@ export interface FormFieldProps {
   readonly suffix?: string;
 }
 
+function FieldSuffix({ suffix }: { readonly suffix: string }): React.JSX.Element {
+  return (
+    <span className="flex items-center rounded-r-md border border-l-0 border-input bg-muted px-3 text-sm font-semibold text-secondary-foreground">
+      {suffix}
+    </span>
+  );
+}
+
+function FieldControl({
+  id,
+  describedBy,
+  invalid,
+  input,
+  suffix,
+}: {
+  readonly id: string;
+  readonly describedBy: string;
+  readonly invalid: boolean;
+  readonly input: FormFieldProps['input'];
+  readonly suffix: string | undefined;
+}): React.JSX.Element {
+  return (
+    <>
+      <Input
+        {...input}
+        id={id}
+        error={invalid}
+        aria-describedby={describedBy}
+        className={suffix === undefined ? undefined : 'rounded-r-none'}
+      />
+      {suffix === undefined ? null : <FieldSuffix suffix={suffix} />}
+    </>
+  );
+}
+
 /** Etiqueta, ayuda, control y error bajo el control, con ícono y texto (mockup `A.campo`). */
 export function FormField({
   id,
@@ -135,21 +170,34 @@ export function FormField({
         {help}
       </p>
       <div className="mt-1.5 flex max-w-56">
-        <Input
-          {...input}
+        <FieldControl
           id={id}
-          error={error !== undefined}
-          aria-describedby={describedBy}
-          className={suffix === undefined ? undefined : 'rounded-r-none'}
+          describedBy={describedBy}
+          invalid={error !== undefined}
+          input={input}
+          suffix={suffix}
         />
-        {suffix === undefined ? null : (
-          <span className="flex items-center rounded-r-md border border-l-0 border-input bg-muted px-3 text-sm font-semibold text-secondary-foreground">
-            {suffix}
-          </span>
-        )}
       </div>
       {error === undefined ? null : <FieldMessage id={`${id}-error`} message={error} />}
     </div>
+  );
+}
+
+function ErrorSummaryList({
+  issues,
+}: {
+  readonly issues: readonly FormIssue[];
+}): React.JSX.Element {
+  return (
+    <ul className="mt-1.5 list-disc space-y-1 pl-6">
+      {issues.map((issue) => (
+        <li key={issue.fieldId}>
+          <a href={`#${issue.fieldId}`} className="font-medium underline underline-offset-2">
+            {issue.message}
+          </a>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -177,15 +225,7 @@ export function FormErrorSummary({
         <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
         {title} Nada cambió.
       </p>
-      <ul className="mt-1.5 list-disc space-y-1 pl-6">
-        {issues.map((issue) => (
-          <li key={issue.fieldId}>
-            <a href={`#${issue.fieldId}`} className="font-medium underline underline-offset-2">
-              {issue.message}
-            </a>
-          </li>
-        ))}
-      </ul>
+      <ErrorSummaryList issues={issues} />
     </div>
   );
 }
