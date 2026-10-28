@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-import { createAuthFetch, type AuthFetch } from './auth-fetch';
+import { createAuthFetch, type AuthFetch, type AuthFetchDeps } from './auth-fetch';
 import { useSession } from './session-provider';
 
 interface TokenHolder {
@@ -22,12 +22,21 @@ function createTokenHolder(initial: string | null): TokenHolder {
 }
 
 /**
+ * Token en memoria de la sesión (002) y su renovación, también para quien no lee JSON (el flujo del agente, 020b D-1).
+ * El token se lee en cada petición: una renovación no cambia la identidad del objeto.
+ */
+export function useAuthFetchDeps(): AuthFetchDeps {
+  const { accessToken, renew } = useSession();
+  const [token] = useState(() => createTokenHolder(accessToken));
+  useEffect(() => token.set(accessToken), [token, accessToken]);
+  return useMemo(() => ({ getAccessToken: token.get, renew }), [token, renew]);
+}
+
+/**
  * `auth-fetch` con el token en memoria de la sesión (002). El token se lee en cada petición: una renovación no cambia
  * la identidad de la función, así no recrea a quien depende de ella ni repite sus cargas.
  */
 export function useAuthFetch(): AuthFetch {
-  const { accessToken, renew } = useSession();
-  const [token] = useState(() => createTokenHolder(accessToken));
-  useEffect(() => token.set(accessToken), [token, accessToken]);
-  return useMemo(() => createAuthFetch({ getAccessToken: token.get, renew }), [token, renew]);
+  const deps = useAuthFetchDeps();
+  return useMemo(() => createAuthFetch(deps), [deps]);
 }

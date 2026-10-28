@@ -2,6 +2,7 @@ import {
   ACTIVE_NOW_LABEL,
   dateTimeLabel,
   lastActivityLabel,
+  dayMonthLabel,
   longDayLabel,
   startedOnLabel,
 } from './format-date';
@@ -41,6 +42,13 @@ describe('longDayLabel (009, mockup `billing/suscripcion/`)', () => {
   it('escribe el mes completo y usa el día de Guatemala', () => {
     expect(longDayLabel('2026-09-01T12:00:00.000Z')).toBe('1 de septiembre de 2026');
     expect(longDayLabel('2026-10-01T03:00:00.000Z')).toBe('30 de septiembre de 2026');
+  });
+});
+
+describe('dayMonthLabel (020b CA-8)', () => {
+  it('escribe el día y el mes completo, sin año, con el día de Guatemala', () => {
+    expect(dayMonthLabel('2026-11-01T12:00:00.000Z')).toBe('1 de noviembre');
+    expect(dayMonthLabel('2026-11-01T03:00:00.000Z')).toBe('31 de octubre');
   });
 });
 

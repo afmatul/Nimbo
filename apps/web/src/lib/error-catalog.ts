@@ -5,6 +5,7 @@ import {
   FILE_NAME_MAX_LENGTH,
   IDENTITY_ERROR_CODES,
   IDENTITY_FIELD_MESSAGES,
+  INTELLIGENCE_ERROR_CODES,
   LOGIN_LOCK_MINUTES,
   PASSWORD_CHANGE_LOCK_MINUTES,
   REQUIRED_REASON,
@@ -18,6 +19,8 @@ import {
 } from '@nimbo/contracts';
 
 import { genericErrorMessage, type ApiErrorDetails } from './api-error';
+import { dayMonthLabel } from './format-date';
+import { formatCount } from './format-plan';
 
 export { IDENTITY_FIELD_MESSAGES };
 
@@ -164,6 +167,83 @@ const STORAGE_MESSAGES: Readonly<Record<string, StorageMessageBuilder>> = {
     fix: 'Quita uno para fijar otro.',
   }),
 };
+
+/** Mensaje del agente en dos partes, como el de `storage`: qué pasó y qué hacer (020b, RNF-14). */
+export interface AgentMessage {
+  readonly cause: string;
+  readonly fix: string;
+}
+
+/** Lo que la pantalla sabe y el servidor no envía: si la respuesta se cortó con texto ya recibido (CA-9). */
+export interface AgentMessageContext {
+  readonly partial?: boolean;
+}
+
+type AgentMessageBuilder = (details: ApiErrorDetails, context: AgentMessageContext) => AgentMessage;
+
+const NOT_CHARGED = 'No se descontó tu consulta.';
+
+function numberOf(details: ApiErrorDetails, key: string): number | null {
+  const value = details[key];
+  return typeof value === 'number' ? value : null;
+}
+
+/** CA-7: vacía, o larga con los caracteres que sobran y el máximo (`details` que suma la web con `GET /agent/status`). */
+function invalidQuestionMessage(details: ApiErrorDetails): AgentMessage {
+  if (details['reason'] === 'empty') {
+    return { cause: 'Escribe una pregunta para consultar a tus documentos.', fix: NOT_CHARGED };
+  }
+  const excess = numberOf(details, 'excessChars');
+  const max = numberOf(details, 'maxChars');
+  if (excess === null || max === null) {
+    return {
+      cause: 'Tu pregunta es demasiado larga.',
+      fix: `Acórtala para enviarla. ${NOT_CHARGED}`,
+    };
+  }
+  const unit = excess === 1 ? 'carácter' : 'caracteres';
+  return {
+    cause: `Tu pregunta tiene ${formatCount(excess)} ${unit} de más.`,
+    fix: `Acórtala a ${formatCount(max)} o menos para enviarla. ${NOT_CHARGED}`,
+  };
+}
+
+/** CA-8, RN-5: con fecha de renovación, o sin ella (solo lectura) con la salida de renovar el plan. */
+function quotaMessage(details: ApiErrorDetails): AgentMessage {
+  const used = `Usaste tus ${formatCount(numberOf(details, 'limit') ?? 0)} consultas de este mes.`;
+  const resetsAt = details['resetsAt'];
+  if (typeof resetsAt !== 'string') {
+    return { cause: used, fix: 'Renueva tu plan para volver a preguntar.' };
+  }
+  return {
+    cause: `${used} Se renuevan el ${dayMonthLabel(resetsAt)}.`,
+    fix: 'Mientras tanto, subir, descargar y buscar archivos funciona igual.',
+  };
+}
+
+const AGENT_MESSAGES: Readonly<Record<string, AgentMessageBuilder>> = {
+  [INTELLIGENCE_ERROR_CODES.AGENT_INVALID_QUESTION]: invalidQuestionMessage,
+  [INTELLIGENCE_ERROR_CODES.AGENT_QUOTA_EXCEEDED]: quotaMessage,
+  [INTELLIGENCE_ERROR_CODES.AGENT_UNAVAILABLE]: (_details, { partial = false }) => ({
+    cause: 'El agente no está disponible. Tus archivos siguen a salvo.',
+    fix: partial
+      ? `La respuesta se cortó; lo de arriba es lo que alcanzó a llegar. ${NOT_CHARGED}`
+      : `${NOT_CHARGED} Inténtalo de nuevo en unos minutos.`,
+  }),
+  [INTELLIGENCE_ERROR_CODES.AGENT_SCOPE_NOT_FOUND]: () => ({
+    cause: 'Esa carpeta o archivo ya no está disponible.',
+    fix: 'Elige otro ámbito.',
+  }),
+};
+
+/** Mensaje de un código del agente en dos partes; `null` si el código no es del agente. */
+export function agentMessage(
+  code: string,
+  details: ApiErrorDetails = {},
+  context: AgentMessageContext = {},
+): AgentMessage | null {
+  return AGENT_MESSAGES[code]?.(details, context) ?? null;
+}
 
 /**
  * Campo «Nombre de la carpeta» (mockup `storage/explorador`, 006 CA-2). `INVALID_NAME` usa el texto de `contracts`
@@ -344,6 +424,8 @@ export function messageForReason(reason: string, correlationId = ''): string {
 export function messageForCode(code: string, options: MessageOptions = {}): string {
   const storage = storageMessage(code, options.details, { fileName: options.fileName ?? '' });
   if (storage !== null) return `${storage.cause} ${storage.fix}`;
+  const agent = agentMessage(code, options.details);
+  if (agent !== null) return `${agent.cause} ${agent.fix}`;
   if (code === IDENTITY_ERROR_CODES.TOO_MANY_REQUESTS && options.screen === 'login') {
     return LOGIN_RATE_LIMIT_MESSAGE;
   }
