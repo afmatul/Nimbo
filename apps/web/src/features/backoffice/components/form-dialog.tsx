@@ -237,7 +237,35 @@ export interface FormSubmission<Req> {
   readonly send: (request: Req) => void;
 }
 
-/** Envía y, si sale bien, entrega la respuesta; si no, deja el rechazo para el aviso del diálogo. */
+function savedOrRejection<Res>(
+  response: Res,
+  onSaved: (response: Res) => void,
+): ApiClientError | null {
+  try {
+    onSaved(response);
+    return null;
+  } catch (caught: unknown) {
+    return toApiClientError(caught);
+  }
+}
+
+function endSubmission({
+  setPending,
+  setRejection,
+  sending,
+  error,
+}: {
+  readonly setPending: (pending: boolean) => void;
+  readonly setRejection: (error: ApiClientError | null) => void;
+  readonly sending: React.RefObject<boolean>;
+  readonly error: ApiClientError | null;
+}): void {
+  sending.current = false;
+  setPending(false);
+  if (error !== null) setRejection(error);
+}
+
+/** Envía una vez: un segundo clic mientras sale no dispara otro. El éxito también suelta el botón. */
 export function useFormSubmission<Req, Res>({
   save,
   onSaved,
@@ -247,13 +275,17 @@ export function useFormSubmission<Req, Res>({
 }): FormSubmission<Req> {
   const [pending, setPending] = React.useState(false);
   const [rejection, setRejection] = React.useState<ApiClientError | null>(null);
+  const sending = React.useRef(false);
   const send = (request: Req): void => {
+    if (sending.current) return;
+    sending.current = true;
     setPending(true);
     setRejection(null);
-    save(request).then(onSaved, (caught: unknown) => {
-      setRejection(toApiClientError(caught));
-      setPending(false);
-    });
+    const settle = { setPending, setRejection, sending };
+    void save(request).then(
+      (response) => endSubmission({ ...settle, error: savedOrRejection(response, onSaved) }),
+      (caught: unknown) => endSubmission({ ...settle, error: toApiClientError(caught) }),
+    );
   };
   return { pending, rejection, send };
 }

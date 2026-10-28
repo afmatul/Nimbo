@@ -139,7 +139,21 @@ interface Removal {
   readonly clearFailure: () => void;
 }
 
-/** `DELETE` de la cuota: el éxito lo cierra quien llama; el rechazo deja el aviso y cierra el diálogo. */
+function removedOrFailure(
+  limits: AccountLimits,
+  onRemoved: (limits: AccountLimits) => void,
+  onFailed: () => void,
+): ApiClientError | null {
+  try {
+    onRemoved(limits);
+    return null;
+  } catch (caught: unknown) {
+    onFailed();
+    return toApiClientError(caught);
+  }
+}
+
+/** `DELETE` de la cuota: un segundo clic mientras sale no dispara otro. */
 function useRemoveExtra(
   remove: () => Promise<AccountLimits>,
   onRemoved: (limits: AccountLimits) => void,
@@ -147,14 +161,26 @@ function useRemoveExtra(
 ): Removal {
   const [failure, setFailure] = React.useState<ApiClientError | null>(null);
   const [removing, setRemoving] = React.useState(false);
+  const removingRef = React.useRef(false);
   const removeExtra = (): void => {
+    if (removingRef.current) return;
+    removingRef.current = true;
     setRemoving(true);
     void remove()
-      .then(onRemoved, (caught: unknown) => {
-        setFailure(toApiClientError(caught));
-        onFailed();
-      })
-      .finally(() => setRemoving(false));
+      .then(
+        (limits) => {
+          const error = removedOrFailure(limits, onRemoved, onFailed);
+          if (error !== null) setFailure(error);
+        },
+        (caught: unknown) => {
+          setFailure(toApiClientError(caught));
+          onFailed();
+        },
+      )
+      .finally(() => {
+        removingRef.current = false;
+        setRemoving(false);
+      });
   };
   return { failure, removing, removeExtra, clearFailure: () => setFailure(null) };
 }
