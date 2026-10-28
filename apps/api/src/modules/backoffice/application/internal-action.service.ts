@@ -15,9 +15,20 @@ export interface InternalAction<T> {
   /** Acciones sobre cuentas (RN-7): toman el candado del padrón de Administradores antes de comprobar al actor. */
   readonly locksAdminRoster: boolean;
   work(): Promise<T>;
-  /** El evento se arma con lo que devolvió la acción (p. ej. el id de la cuenta creada). */
-  event(result: T): AuditRecord;
+  /**
+   * El evento se arma con lo que devolvió la acción (p. ej. el id de la cuenta creada). Puede ser una lista, en orden:
+   * extender la vigencia suma la salida de solo lectura de la 010 (011b RN-4, DF-81).
+   */
+  event(result: T): AuditRecord | readonly AuditRecord[];
 }
+
+const isRecordList = (
+  event: AuditRecord | readonly AuditRecord[],
+): event is readonly AuditRecord[] => Array.isArray(event);
+
+/** Un evento o una lista, siempre como lista: los llamadores que devuelven uno solo no cambian. */
+const recordsOf = (event: AuditRecord | readonly AuditRecord[]): readonly AuditRecord[] =>
+  isRecordList(event) ? event : [event];
 
 /** Lo que este servicio usa de `AccountAdministration`; permite un doble en las pruebas. */
 type ActorGate = Pick<AccountAdministration, 'lockAdminRoster' | 'assertActorActive'>;
@@ -63,7 +74,9 @@ export class InternalActionService {
       }
       await this.assertActive(actor);
       const result = await action.work();
-      await this.audit.recordInTransaction(action.event(result));
+      for (const record of recordsOf(action.event(result))) {
+        await this.audit.recordInTransaction(record);
+      }
       return result;
     });
   }

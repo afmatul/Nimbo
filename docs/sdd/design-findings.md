@@ -14,7 +14,7 @@
 | 001–004 identidad y acceso | DF-01, DF-11, DF-12, DF-13, DF-32, DF-35, DF-50, DF-53, DF-54 (DF-15 parcial: `SessionsController` y `AuditController`; DF-33 parcial: `usuario`) |
 | 005–007 almacenamiento | DF-15 (resto), DF-17, DF-33 (resto), DF-40; DF-06, DF-16, DF-38, DF-52, DF-59 y DF-60 aceptados con el plan de 005; DF-58 resuelto; DF-62 propuesto con el plan de 007; DF-63 aceptado con el plan 006 §9 |
 | 006a catálogo y límites | DF-51 aceptado (opción A); el resto de la convención de §5 (`IAgentQuota`, `IIndexQueue`) sigue en PD-18 |
-| 008-011 billing y backoffice | DF-25, DF-27 (resto); DF-26 aceptado con el plan 011b; DF-04, DF-36, DF-65 y DF-66 aceptados con el plan de 011; DF-67 (008); DF-69 abierto con el plan de 009; DF-77 aceptado con el plan de 010; DF-81 propuesto con el plan 011b |
+| 008-011 billing y backoffice | DF-25, DF-27 (resto); DF-26 aceptado con el plan 011b; DF-04, DF-36, DF-65 y DF-66 aceptados con el plan de 011; DF-67 (008); DF-69 abierto con el plan de 009; DF-77 aceptado con el plan de 010; DF-81 aceptado con el plan 011b (2026-10-26) |
 | 012–013 compartición | DF-09, DF-10, DF-31 |
 | 014–016 versiones y edición | DF-05, DF-18 (resto: `sesion_edicion_id` y autores, 016), DF-19, DF-20, DF-39, DF-70, DF-71, DF-72, DF-73, DF-74; DF-17, DF-18 (parcial) y DF-68 aceptados con el plan de 014; DF-76 aceptado con el plan de 015; DF-05, DF-19, DF-20, DF-39 y DF-70 a DF-74 aceptados con el plan de 016; DF-75 (implementación de 016) |
 | 019–020 inteligencia | DF-07, DF-08, DF-14, DF-37 |

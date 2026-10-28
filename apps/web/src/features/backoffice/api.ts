@@ -1,11 +1,15 @@
 import {
+  accountLimitsSchema,
   accountListItemSchema,
   accountListResponseSchema,
   backofficeMetricsResponseSchema,
   clientFilesResponseSchema,
   planAdminListResponseSchema,
   planAdminViewSchema,
+  type AccountLimits,
   type AccountListItem,
+  type AdjustQuotaRequest,
+  type AdjustValidityRequest,
   type AccountListResponse,
   type BackofficeMetricsResponse,
   type ClientFilesResponse,
@@ -47,6 +51,14 @@ export interface BackofficeApi {
   suspendAccount(id: string): Promise<AccountListItem>;
   /** `DELETE /backoffice/accounts/:id/suspension` (CA-3). */
   reactivateAccount(id: string): Promise<AccountListItem>;
+  /** `GET /backoffice/accounts/:id/limits` (011b CA-1, HU-5): cuota, extra y vencimiento de un cliente. */
+  getAccountLimits(id: string): Promise<AccountLimits>;
+  /** `PUT /backoffice/accounts/:id/quota` (011b CA-1): el extra que reemplaza al anterior, hasta el día elegido. */
+  adjustQuota(id: string, request: AdjustQuotaRequest): Promise<AccountLimits>;
+  /** `DELETE /backoffice/accounts/:id/quota` (011b CA-4): quita el extra. */
+  removeQuota(id: string): Promise<AccountLimits>;
+  /** `PUT /backoffice/accounts/:id/validity` (011b CA-6): el último día de la vigencia nueva. */
+  adjustValidity(id: string, request: AdjustValidityRequest): Promise<AccountLimits>;
   /** `POST /backoffice/accounts`: alta de una cuenta interna (CA-5). */
   enrollAccount(request: EnrollInternalAccountRequest): Promise<AccountListItem>;
   /** `GET /backoffice/metrics`: solo totales y conteos (CA-12), para ADMIN y OPERATOR. */
@@ -73,6 +85,13 @@ function accountsUrl(base: string, { email, page }: AccountsRequest): string {
 const accountUrl = (base: string, id: string): string =>
   `${base}${ACCOUNTS_PATH}/${encodeURIComponent(id)}`;
 
+/** Petición con cuerpo JSON: el alta, el plan nuevo y los ajustes de la 011b. */
+const jsonBody = (method: 'POST' | 'PUT', body: unknown): RequestInit => ({
+  method,
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify(body),
+});
+
 /** Ficha y cambios de estado: la respuesta es siempre la cuenta (`AccountListItem`). */
 function accountCalls(base: string, authFetch: AuthFetch) {
   const call = async (url: string, init: RequestInit): Promise<AccountListItem> =>
@@ -83,11 +102,21 @@ function accountCalls(base: string, authFetch: AuthFetch) {
     reactivateAccount: (id: string) =>
       call(`${accountUrl(base, id)}/suspension`, { method: 'DELETE' }),
     enrollAccount: (request: EnrollInternalAccountRequest) =>
-      call(`${base}${ACCOUNTS_PATH}`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(request),
-      }),
+      call(`${base}${ACCOUNTS_PATH}`, jsonBody('POST', request)),
+  };
+}
+
+/** Límites, cuota y vigencia de un cliente (011b plan §4): la respuesta es siempre `AccountLimits`. */
+function limitsCalls(base: string, authFetch: AuthFetch) {
+  const call = async (url: string, init: RequestInit): Promise<AccountLimits> =>
+    parseResponse(await authFetch(url, init), accountLimitsSchema);
+  return {
+    getAccountLimits: (id: string) => call(`${accountUrl(base, id)}/limits`, { method: 'GET' }),
+    adjustQuota: (id: string, request: AdjustQuotaRequest) =>
+      call(`${accountUrl(base, id)}/quota`, jsonBody('PUT', request)),
+    removeQuota: (id: string) => call(`${accountUrl(base, id)}/quota`, { method: 'DELETE' }),
+    adjustValidity: (id: string, request: AdjustValidityRequest) =>
+      call(`${accountUrl(base, id)}/validity`, jsonBody('PUT', request)),
   };
 }
 
@@ -107,11 +136,7 @@ function planCalls(base: string, authFetch: AuthFetch) {
       ),
     createPlan: async (request: CreatePlanRequest): Promise<PlanAdminView> =>
       parseResponse(
-        await authFetch(`${base}${PLANS_PATH}`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(request),
-        }),
+        await authFetch(`${base}${PLANS_PATH}`, jsonBody('POST', request)),
         planAdminViewSchema,
       ),
   };
@@ -141,5 +166,6 @@ export function createBackofficeApi(apiPublicUrl: string, authFetch: AuthFetch):
       ),
     ...planCalls(base, authFetch),
     ...accountCalls(base, authFetch),
+    ...limitsCalls(base, authFetch),
   };
 }

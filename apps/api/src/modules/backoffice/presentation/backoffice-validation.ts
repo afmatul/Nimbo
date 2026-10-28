@@ -1,7 +1,12 @@
 import { ParseUUIDPipe } from '@nestjs/common';
 
 import type { DomainError, FieldIssue, InvalidInputFactory } from '../../../shared';
-import { PlanInvalidError, PlanNotFoundError } from '../../billing';
+import {
+  PlanInvalidError,
+  PlanNotFoundError,
+  QuotaInvalidError,
+  ValidityNotExtendedError,
+} from '../../billing';
 import { AccountNotFoundError, IdentityInvalidInputError } from '../../identity';
 import { InvalidBackofficeQueryError } from '../domain/errors/invalid-backoffice-query.error';
 
@@ -23,6 +28,19 @@ export const accountIdPipe = (): ParseUUIDPipe =>
 export const planValidationError: InvalidInputFactory = (
   issues: readonly FieldIssue[],
 ): DomainError => new PlanInvalidError(issues);
+
+/** Fábrica para el cuerpo de la cuota: 422 `BACKOFFICE_QUOTA_INVALID` con `fields`, como sus reglas (011b CA-3). */
+export const quotaValidationError: InvalidInputFactory = (
+  issues: readonly FieldIssue[],
+): DomainError => new QuotaInvalidError('invalid', issues);
+
+/**
+ * Fábrica para el cuerpo de la vigencia: 422 `BACKOFFICE_VALIDITY_NOT_EXTENDED` con `fields` y el mensaje de un día
+ * inválido, no el de un día que no extiende (011b CA-7).
+ */
+export const validityValidationError: InvalidInputFactory = (
+  issues: readonly FieldIssue[],
+): DomainError => new ValidityNotExtendedError('invalid', issues);
 
 /** Un `:id` de plan que no es UUID es el mismo 404 `PLAN_NOT_FOUND` que un plan inexistente (plan §4). */
 export const planIdPipe = (): ParseUUIDPipe =>

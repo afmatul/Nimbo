@@ -143,6 +143,30 @@ describe('InternalActionService (011 plan §1, RN-7, CA-14)', () => {
       ]);
     });
 
+    it('011b RN-4: `event` puede dar una lista; cada evento se registra en orden en la misma transacción', async () => {
+      const { timeline, recorded, service, actor } = setup();
+      const clientId = randomUUID();
+
+      await service.run(actor, {
+        locksAdminRoster: false,
+        work: () => Promise.resolve(clientId),
+        event: (id) => [
+          { action: AuditAction.ACCOUNT_QUOTA_ADJUSTED, actor, targetUserId: id, resourceId: id },
+          { action: AuditAction.SUBSCRIPTION_READ_ONLY_EXITED, actor, targetUserId: id },
+        ],
+      });
+
+      expect(timeline).toEqual([
+        'rate',
+        `begin:${actor.id}`,
+        'check',
+        'event:account.quota_adjusted',
+        'event:subscription.read_only_exited',
+        'commit',
+      ]);
+      expect(recorded.map((entry) => entry.targetUserId)).toEqual([clientId, clientId]);
+    });
+
     it('RN-2: si el evento no se guarda, la acción se revierte con él y el error sube', async () => {
       const { timeline, service, actor } = setup({ auditFails: true });
 

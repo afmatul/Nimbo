@@ -6,6 +6,7 @@ import { PlanCatalogService } from './application/plan-catalog.service';
 import { I_INVOICE_REPOSITORY } from './application/ports/i-invoice-repository.port';
 import { I_PLAN_REPOSITORY } from './application/ports/i-plan-repository.port';
 import { I_SUBSCRIPTION_ADMINISTRATION_READER } from './application/ports/i-subscription-administration.reader.port';
+import { I_SUBSCRIPTION_ADMINISTRATION_REPOSITORY } from './application/ports/i-subscription-administration.repository.port';
 import { I_SUBSCRIPTION_REPOSITORY } from './application/ports/i-subscription-repository.port';
 import { SubscriptionAdministration } from './application/subscription-administration';
 import { PlanLimitsAdapter } from './infrastructure/adapters/plan-limits.adapter';
@@ -13,6 +14,7 @@ import { PlanOrmEntity } from './infrastructure/persistence/plan.orm-entity';
 import { SqlSubscriptionAdministrationReader } from './infrastructure/persistence/sql-subscription-administration.reader';
 import { TypeOrmInvoiceRepository } from './infrastructure/persistence/typeorm-invoice.repository';
 import { TypeOrmPlanRepository } from './infrastructure/persistence/typeorm-plan.repository';
+import { TypeOrmSubscriptionAdministrationRepository } from './infrastructure/persistence/typeorm-subscription-administration.repository';
 import { TypeOrmSubscriptionRepository } from './infrastructure/persistence/typeorm-subscription.repository';
 import { AccountVerifiedListener } from './presentation/account-verified.listener';
 
@@ -24,7 +26,8 @@ import { AccountVerifiedListener } from './presentation/account-verified.listene
  * y `RenewalCheckout` en `BillingChargingModule`, que importan el `api` y el `worker` (010). Exporta a `backoffice` el adaptador de límites,
  * `PlanCatalogService` y `SubscriptionAdministration`, y a esos dos módulos de `billing` sus repositorios (los tokens
  * no salen de `index.ts`). `I_PLAN_LIMITS_PROVIDER` lo enlaza `PlanLimitsBindingModule`: `storage` no conoce a
- * `billing`.
+ * `billing`. Con la 011b, `SubscriptionAdministration` también ajusta cuota y vigencia por
+ * `ISubscriptionAdministrationRepository` (DF-81).
  */
 @Module({
   imports: [TypeOrmModule.forFeature([PlanOrmEntity])],
@@ -39,6 +42,10 @@ import { AccountVerifiedListener } from './presentation/account-verified.listene
     {
       provide: I_SUBSCRIPTION_ADMINISTRATION_READER,
       useClass: SqlSubscriptionAdministrationReader,
+    },
+    {
+      provide: I_SUBSCRIPTION_ADMINISTRATION_REPOSITORY,
+      useClass: TypeOrmSubscriptionAdministrationRepository,
     },
     SubscriptionAdministration,
   ],

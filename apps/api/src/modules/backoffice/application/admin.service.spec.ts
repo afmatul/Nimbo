@@ -48,7 +48,7 @@ const setup = (options: SetupOptions = {}) => {
     run: async <T>(_actor: Actor, action: InternalAction<T>): Promise<T> => {
       timeline.push(`run:locks=${String(action.locksAdminRoster)}`);
       const result = await action.work();
-      recorded.push(action.event(result));
+      recorded.push(...[action.event(result)].flat());
       if (options.commitFails === true) {
         timeline.push('rollback');
         throw new Error('no se pudo confirmar la transacción');

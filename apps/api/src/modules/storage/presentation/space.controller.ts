@@ -6,12 +6,15 @@ import type { Actor } from '../../../shared';
 import { SpaceSummaryService } from '../application/space-summary.service';
 import type { SpaceSummary } from '../application/space-summary.service';
 
-/** Bytes como enteros seguros en JSON (D-4). */
+/** Bytes como enteros seguros en JSON (D-4); el fin del extra como instante ISO (011b CA-5). */
 const toSpaceSummaryResponse = ({ breakdown, ...summary }: SpaceSummary): SpaceSummaryResponse => ({
   planName: summary.planName,
   usedBytes: Number(summary.usedBytes),
   reservedBytes: Number(summary.reservedBytes),
   quotaBytes: Number(summary.quotaBytes),
+  baseQuotaBytes: Number(summary.baseQuotaBytes),
+  extraQuotaBytes: Number(summary.extraQuotaBytes),
+  extraQuotaUntil: summary.extraQuotaUntil?.toISOString() ?? null,
   availableBytes: Number(summary.availableBytes),
   maxFileBytes: Number(summary.maxFileBytes),
   trashRetentionDays: summary.trashRetentionDays,

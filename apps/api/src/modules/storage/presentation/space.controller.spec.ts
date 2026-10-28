@@ -12,6 +12,9 @@ const SUMMARY: SpaceSummary = {
   usedBytes: 600n,
   reservedBytes: 20n,
   quotaBytes: 1000n,
+  baseQuotaBytes: 800n,
+  extraQuotaBytes: 200n,
+  extraQuotaUntil: new Date('2026-11-16T06:00:00.000Z'),
   availableBytes: 380n,
   maxFileBytes: 100n,
   trashRetentionDays: 30,
@@ -27,7 +30,7 @@ const SUMMARY: SpaceSummary = {
 };
 
 describe('SpaceController', () => {
-  it('CA-1, CA-6, D-4: delega con el actor y responde el esquema del resumen con bytes como enteros', async () => {
+  it('CA-1, CA-6, D-4, 011b CA-5: delega con el actor y responde el esquema del resumen con bytes como enteros', async () => {
     const summary = jest.fn((_actor: unknown) => Promise.resolve(SUMMARY));
     const controller = new SpaceController({ summary } as unknown as SpaceSummaryService);
 
@@ -39,6 +42,9 @@ describe('SpaceController', () => {
       usedBytes: 600,
       reservedBytes: 20,
       quotaBytes: 1000,
+      baseQuotaBytes: 800,
+      extraQuotaBytes: 200,
+      extraQuotaUntil: '2026-11-16T06:00:00.000Z',
       availableBytes: 380,
       maxFileBytes: 100,
       trashRetentionDays: 30,
