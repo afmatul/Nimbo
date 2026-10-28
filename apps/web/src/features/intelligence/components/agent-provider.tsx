@@ -49,8 +49,13 @@ export function AgentProvider({ deps, children }: AgentProviderProps): React.JSX
   return <AgentContext.Provider value={value}>{children}</AgentContext.Provider>;
 }
 
+/** La sesión del agente, o `null` fuera del layout del Cliente: sin ella no hay «Preguntar sobre esto» (CA-18). */
+export function useOptionalAgent(): AgentContextValue | null {
+  return React.useContext(AgentContext);
+}
+
 export function useAgent(): AgentContextValue {
-  const value = React.useContext(AgentContext);
+  const value = useOptionalAgent();
   if (value === null) throw new Error('useAgent debe usarse dentro de <AgentProvider>.');
   return value;
 }
