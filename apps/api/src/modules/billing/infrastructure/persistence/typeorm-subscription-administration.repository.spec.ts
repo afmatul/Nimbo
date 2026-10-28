@@ -122,7 +122,7 @@ describe('TypeOrmSubscriptionAdministrationRepository (011b plan §3, §4)', () 
 
   it('CA-6: adjustValidity llama a `extender_vigencia` con el instante nuevo, lo da como `expiresAt` y dice si salió de solo lectura', async () => {
     const { repository, query } = setup([
-      { codigo: 'ok', ...VIEW, estado: 'vigente', salio_de_solo_lectura: true },
+      { codigo: 'ok', ...VIEW, estado: 'vigente', vence_en: UNTIL, salio_de_solo_lectura: true },
     ]);
 
     await expect(repository.adjustValidity(ADMIN, validity)).resolves.toEqual({
@@ -147,6 +147,15 @@ describe('TypeOrmSubscriptionAdministrationRepository (011b plan §3, §4)', () 
         validity,
       ),
     ).rejects.toBeInstanceOf(expected);
+  });
+
+  it('un `vence_en` distinto del pedido es un invariante roto', async () => {
+    await expect(
+      setup([{ codigo: 'ok', ...VIEW, salio_de_solo_lectura: false }]).repository.adjustValidity(
+        ADMIN,
+        validity,
+      ),
+    ).rejects.toBeInstanceOf(BillingInvariantError);
   });
 
   it('CA-7: Personal se explica con «Personal no vence»', async () => {

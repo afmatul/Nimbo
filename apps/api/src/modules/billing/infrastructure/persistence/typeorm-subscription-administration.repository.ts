@@ -84,6 +84,12 @@ const VALIDITY_REJECTIONS: Rejections = {
   account_not_found: () => new AccountNotFoundError(),
 };
 
+/** El `vence_en` que devolvió SQL, si es el instante pedido (RN-2). */
+const storedExpiry = (stored: Date | null, requested: Date): Date => {
+  if (stored !== null && stored.getTime() === requested.getTime()) return stored;
+  throw new BillingInvariantError('extender_vigencia no guardó el vence_en pedido.');
+};
+
 const outcomeOf = (row: AdjustmentRow, rejections: Rejections): SubscriptionLimits => {
   if (row.codigo === OK) return toLimits(row);
   const rejection = rejections[row.codigo];
@@ -125,12 +131,13 @@ export class TypeOrmSubscriptionAdministrationRepository implements ISubscriptio
     return outcomeOf(onlyRow(rows), quotaRejections(change));
   }
 
-  /** Con `ok`, la función guardó `p_vence` como `vence_en`: es el `expiresAt` de la vista, nunca nulo. */
+  /** Con `ok`, `vence_en` de la vista es el instante pedido; si no, la función no guardó lo que dijo. */
   async adjustValidity(actor: Actor, change: ValidityChange): Promise<ValidityAdjustment> {
     const params = [change.clientId, change.expiresAt];
     const row = onlyRow(await this.call<ValidityRow>(actor, EXTEND_VALIDITY_SQL, params));
+    const limits = outcomeOf(row, VALIDITY_REJECTIONS);
     return {
-      limits: { ...outcomeOf(row, VALIDITY_REJECTIONS), expiresAt: change.expiresAt },
+      limits: { ...limits, expiresAt: storedExpiry(limits.expiresAt, change.expiresAt) },
       exitedReadOnly: row.salio_de_solo_lectura,
     };
   }
