@@ -40,7 +40,7 @@ const setup = (options: SetupOptions = {}) => {
   const internal = {
     run: async <T>(_actor: Actor, action: InternalAction<T>): Promise<T> => {
       const result = await action.work();
-      recorded.push(action.event(result));
+      recorded.push(...[action.event(result)].flat());
       return result;
     },
   };

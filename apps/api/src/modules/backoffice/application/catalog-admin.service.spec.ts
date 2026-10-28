@@ -45,7 +45,7 @@ const setup = (options: SetupOptions = {}) => {
     run: async <T>(_actor: Actor, action: InternalAction<T>): Promise<T> => {
       timeline.push(`run:locks=${String(action.locksAdminRoster)}`);
       const result = await action.work();
-      recorded.push(action.event(result));
+      recorded.push(...[action.event(result)].flat());
       if (options.commitFails === true) throw new Error('no se pudo confirmar la transacción');
       timeline.push('commit');
       return result;

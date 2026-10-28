@@ -25,6 +25,8 @@ const WIDTHS = [
     for (const [mockup, capture] of SCREENS) {
       const url = 'file:///' + path.posix.join(repo, 'docs/design/mockups', mockup);
       await page.goto(url, { waitUntil: 'networkidle' });
+      // La tipografía es parte del mockup: no captures con la fuente de reserva si Google Fonts tarda.
+      await page.evaluate(() => document.fonts.ready);
       await page.waitForTimeout(800);
       const out = path.posix.join(repo, 'docs/design/capturas', `${capture}--${width}.png`);
       await page.screenshot({ path: out, fullPage: true });

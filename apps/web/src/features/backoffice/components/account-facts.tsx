@@ -14,11 +14,17 @@ import {
 import { ProfileCard } from './profile-card';
 
 /** Aclaración bajo un dato («Cuenta interna»). */
-function Note({ children }: { readonly children: ReactNode }): JSX.Element {
+export function Note({ children }: { readonly children: ReactNode }): JSX.Element {
   return <span className="block text-xs font-normal text-muted-foreground">{children}</span>;
 }
 
-function Fact({ term, children }: { readonly term: string; readonly children: ReactNode }) {
+export function Fact({
+  term,
+  children,
+}: {
+  readonly term: string;
+  readonly children: ReactNode;
+}): JSX.Element {
   return (
     <div className="grid gap-1 border-b border-border py-2.5 last:border-b-0 sm:grid-cols-3 sm:gap-3">
       <dt className="text-secondary-foreground">{term}</dt>

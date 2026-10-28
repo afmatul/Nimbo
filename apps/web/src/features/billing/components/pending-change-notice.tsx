@@ -6,7 +6,7 @@ import { Alert } from '../../../components/ui/alert';
 import { Button } from '../../../components/ui/button';
 import { formatPlanBytes } from '../../../lib/format-plan';
 
-import { expiryLabel, isDowngradeToPersonal } from './subscription-copy';
+import { expiryInstantLabel, isDowngradeToPersonal } from './subscription-copy';
 
 export interface PendingChangeNoticeProps {
   readonly subscription: SubscriptionView;
@@ -29,8 +29,8 @@ const downgradeDetail = ({ subscription, usedBytes }: PendingChangeNoticeProps):
 /** Título de §6: el cambio programado o, si ese plan se desactivó (CA-29), que se renovará con el actual. */
 const titleOf = (subscription: SubscriptionView, pendingName: string): string =>
   subscription.pendingPlanDiscarded
-    ? `${pendingName} ya no está disponible: el ${expiryLabel(subscription)} se renovará tu plan ${subscription.plan.name}.`
-    : `Tu plan cambiará a ${pendingName} el ${expiryLabel(subscription)}.`;
+    ? `${pendingName} ya no está disponible: el ${expiryInstantLabel(subscription)} se renovará tu plan ${subscription.plan.name}.`
+    : `Tu plan cambiará a ${pendingName} el ${expiryInstantLabel(subscription)}.`;
 
 /** Lo que pasa hasta el cambio; nada si el cambio se descartará (CA-29). */
 const detailOf = (props: PendingChangeNoticeProps): string | null => {

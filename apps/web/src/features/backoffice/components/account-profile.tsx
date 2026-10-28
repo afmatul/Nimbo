@@ -15,6 +15,7 @@ import { useSessionBackofficeApi } from '../hooks/use-session-backoffice-api';
 
 import { AccountActions } from './account-actions';
 import { AccountFacts } from './account-facts';
+import { AccountLimitsCard, type AccountLimitsApi } from './account-limits';
 import { AccountLoadState } from './account-load-state';
 import { AccountStatusDialogs } from './account-status-dialogs';
 import {
@@ -30,7 +31,8 @@ import { PrivacyNotice } from './privacy-notice';
 export type AccountProfileApi = Pick<
   BackofficeApi,
   'getAccount' | 'suspendAccount' | 'reactivateAccount'
->;
+> &
+  AccountLimitsApi;
 
 /** Avisos de éxito (decisión 8): qué cambió y qué pasa ahora; comparticiones y enlaces solo en clientes (RN-6). */
 const DONE_TEXTS = {
@@ -116,6 +118,7 @@ function ProfileView({ account, api, onChanged }: ProfileViewProps): React.JSX.E
         <AccountFacts account={account} />
         <AccountActions account={account} status={status} />
       </div>
+      {isInternal(account) ? null : <AccountLimitsCard account={account} api={api} />}
       <AccountStatusDialogs account={account} status={status} />
     </div>
   );
@@ -123,7 +126,8 @@ function ProfileView({ account, api, onChanged }: ProfileViewProps): React.JSX.E
 
 /**
  * Ficha de una cuenta para el Administrador (011 CA-1 a CA-4, CA-17; mockup `backoffice/admin`): sus datos sin
- * archivos, suspender o reactivar con confirmación y, en clientes, el acceso a sus metadatos.
+ * archivos, suspender o reactivar con confirmación y, en clientes, el acceso a sus metadatos y sus límites y vigencia
+ * (011b).
  */
 export function AccountProfile({
   accountId,

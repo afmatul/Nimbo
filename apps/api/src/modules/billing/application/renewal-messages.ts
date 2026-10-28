@@ -2,7 +2,7 @@ import { formatGtq } from '@nimbo/contracts';
 
 import type { MailMessage } from '../../notifications';
 
-import { formatBillingDate } from './billing-date';
+import { formatBillingDate, formatBillingLastDay } from './billing-date';
 import { billingMail } from './mail-message';
 
 const REMINDER_TAG = 'billing.renewal-reminder';
@@ -44,9 +44,12 @@ const mail = (notice: RenewalNotice, { subject, lines, tag }: RenewalMail) =>
     key: keyOf(notice),
   });
 
-/** Solo se cobra si el ciclo cuesta: bajar a Personal no cobra (CA-21). */
+/**
+ * Solo se cobra si el ciclo cuesta: bajar a Personal no cobra (CA-21). El paso a Personal ocurre después del último día
+ * que muestra el aviso (011b RN-8), así que no se fija un día.
+ */
 const chargeLines = ({ planName, amountCents, card }: UpcomingCharge): readonly string[] => {
-  if (amountCents === 0) return ['Ese día pasas a Personal, sin cobro.'];
+  if (amountCents === 0) return ['Después pasas a Personal, sin cobro.'];
   const amount = `${formatGtq(amountCents)} (plan ${planName})`;
   if (card === null) {
     return [
@@ -61,7 +64,7 @@ const chargeLines = ({ planName, amountCents, card }: UpcomingCharge): readonly 
 export const reminderMessage = (notice: RenewalNotice, charge: UpcomingCharge): MailMessage =>
   mail(notice, {
     subject: 'Tu plan de Nimbo vence pronto',
-    lines: [`Tu plan vence el ${formatBillingDate(notice.expiresAt)}.`, ...chargeLines(charge)],
+    lines: [`Tu plan vence el ${formatBillingLastDay(notice.expiresAt)}.`, ...chargeLines(charge)],
     tag: REMINDER_TAG,
   });
 
@@ -86,7 +89,7 @@ export const planDiscardedMessage = (
     subject: 'Tu cambio de plan no se aplicó',
     lines: [
       `El plan ${plans.discarded} ya no está disponible, así que no cambiamos tu plan.`,
-      `Renovamos tu plan ${plans.renewed} hasta el ${formatBillingDate(plans.renewedUntil)}.`,
+      `Renovamos tu plan ${plans.renewed} hasta el ${formatBillingLastDay(plans.renewedUntil)}.`,
     ],
     tag: DISCARDED_TAG,
   });
