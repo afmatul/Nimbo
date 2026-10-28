@@ -11,7 +11,7 @@ import { backofficeFieldMessage } from '../../lib/error-catalog';
 import { calendarDayLabel, lastDayInputValue } from '../../lib/format-date';
 
 import type { FormIssue } from './components/form-dialog';
-import { amountAndUnit, bytesOf } from './plan-form-values';
+import { bytesOf } from './plan-form-values';
 
 /**
  * Lo que se escribe en los diálogos de cuota y vigencia (011b RN-1, RN-2, RN-8; mockup `backoffice/admin`): el extra en
@@ -30,18 +30,49 @@ export interface QuotaValues {
   /** GB enteros, como el catálogo de planes. */
   readonly extra: string;
   readonly until: string;
+  /**
+   * Bytes del extra vigente cuando no son un entero de GB. El campo queda por escribir y el total
+   * usa estos bytes, no cero.
+   */
+  readonly currentExtraBytes?: string | null;
 }
 
 /** Una petición lista para enviar, o los campos que no valen. */
 export type Parsed<Req> = { readonly request: Req } | { readonly issues: readonly FormIssue[] };
 
-/** El extra que ya tiene la cuenta en GB y su último día; vacío si no tiene. */
+const GIB = 1024n ** 3n;
+
+/** El extra vigente no cabe en el campo de GB enteros (RN-8). */
+export const EXTRA_NOT_WHOLE_GIB =
+  'El extra actual no cabe en GB enteros. Escribe el espacio extra en GB.';
+
+/** GB enteros del catálogo, o `null` si no es un múltiplo exacto dentro del tope de un `number`. */
+function wholeGigabytes(bytes: string): string | null {
+  if (!/^(0|[1-9][0-9]*)$/.test(bytes)) return null;
+  const value = BigInt(bytes);
+  if (value === 0n || value % GIB !== 0n) return null;
+  const gigs = value / GIB;
+  return gigs > BigInt(Number.MAX_SAFE_INTEGER) ? null : gigs.toString();
+}
+
+/** El extra que ya tiene la cuenta en GB y su último día; vacío si no tiene o no cabe en GB enteros. */
 export function initialQuotaValues(limits: AccountLimits): QuotaValues {
-  const amount = amountAndUnit(Number(limits.extraQuotaBytes), ['GB'])?.amount ?? '0';
-  return {
-    extra: amount === '0' ? '' : amount,
-    until: limits.extraQuotaUntil === null ? '' : lastDayInputValue(limits.extraQuotaUntil),
-  };
+  const until = limits.extraQuotaUntil === null ? '' : lastDayInputValue(limits.extraQuotaUntil);
+  const gigs = wholeGigabytes(limits.extraQuotaBytes);
+  if (gigs !== null) return { extra: gigs, until, currentExtraBytes: null };
+  const current = limits.extraQuotaBytes === '0' ? null : limits.extraQuotaBytes;
+  return { extra: '', until, currentExtraBytes: current };
+}
+
+/**
+ * Bytes del total antes de guardar: lo escrito en GB, o el extra vigente si el campo aún no lo representa.
+ * Un texto que no es GB entero cuenta como cero, igual que un campo vacío sin extra.
+ */
+export function quotaPreviewBytes(values: QuotaValues): string | null {
+  const typed = extraBytesOf(values.extra);
+  if (typed !== null) return typed;
+  if (values.extra.trim() !== '') return null;
+  return values.currentExtraBytes ?? null;
 }
 
 /** Bytes del extra escrito, o `null` si no es un entero de GB dentro del tope técnico (RN-1). */

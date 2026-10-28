@@ -16,9 +16,10 @@ import { formatPlanBytes } from '../../../lib/format-plan';
 import { cn } from '../../../lib/utils';
 import { ServerErrorAlert } from '../../identity/components/server-error-alert';
 import {
-  extraBytesOf,
+  EXTRA_NOT_WHOLE_GIB,
   initialQuotaValues,
   QUOTA_FIELD_IDS,
+  quotaPreviewBytes,
   quotaRequestOf,
   resultingTotal,
   serverIssuesOf,
@@ -74,23 +75,32 @@ function QuotaEquation({
   );
 }
 
+function extraLabel(values: QuotaValues, preview: string | null): string {
+  if (values.extra.trim() !== '' && preview !== null) return `${values.extra.trim()} GB`;
+  return preview === null ? '0 GB' : formatPlanBytes(preview);
+}
+
 /** El total resultante antes de guardar (RN-8, decisión 13): `plan + extra = total` y lo que la cuenta usa. */
 function QuotaCalculation({
   limits,
-  extra,
+  values,
 }: {
   readonly limits: AccountLimits;
-  readonly extra: string;
+  readonly values: QuotaValues;
 }): React.JSX.Element {
   const base = limits.baseQuotaBytes ?? '0';
-  const extraBytes = extraBytesOf(extra);
-  const total = resultingTotal(base, extraBytes);
+  const preview = quotaPreviewBytes(values);
+  const total = resultingTotal(base, preview);
   const below = BigInt(total) < BigInt(limits.usedBytes);
   const strong = cn('font-semibold', below ? 'text-destructive' : 'text-foreground');
-  const extraLabel = `${extraBytes === null ? '0' : extra.trim()} GB`;
   return (
     <div aria-live="polite" className={calculationClass(below)}>
-      <QuotaEquation base={base} extraLabel={extraLabel} total={total} strong={strong} />
+      <QuotaEquation
+        base={base}
+        extraLabel={extraLabel(values, preview)}
+        total={total}
+        strong={strong}
+      />
       <p className="mt-1">
         La cuenta usa <strong className={strong}>{formatPlanBytes(limits.usedBytes)}</strong> (
         {usedPercent(limits.usedBytes, total)} %).
@@ -136,6 +146,13 @@ interface QuotaFieldsProps {
   readonly extraRef: React.RefObject<HTMLInputElement | null>;
 }
 
+function extraHelp(values: QuotaValues): string {
+  const pending = (values.currentExtraBytes ?? null) !== null && values.extra.trim() === '';
+  return pending
+    ? EXTRA_NOT_WHOLE_GIB
+    : 'Se suma a la cuota del plan mientras esté vigente. Debe ser mayor que cero.';
+}
+
 function ExtraField({
   values,
   onChange,
@@ -147,7 +164,7 @@ function ExtraField({
     <FormField
       id={QUOTA_FIELD_IDS.extraBytes}
       label="Espacio extra"
-      help="Se suma a la cuota del plan mientras esté vigente. Debe ser mayor que cero."
+      help={extraHelp(values)}
       error={issueFor(issues, QUOTA_FIELD_IDS.extraBytes)}
       suffix="GB"
       input={{
@@ -237,7 +254,7 @@ export function QuotaAdjustDialog(props: QuotaAdjustDialogProps): React.JSX.Elem
         locked={form.submission.pending}
         extraRef={form.extraRef}
       />
-      <QuotaCalculation limits={props.limits} extra={form.values.extra} />
+      <QuotaCalculation limits={props.limits} values={form.values} />
     </FormDialog>
   );
 }
