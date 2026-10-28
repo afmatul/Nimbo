@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { AppLayout } from '../components/nimbo/app-layout';
-import { CitationChip } from '../components/nimbo/citation-chip';
+import { CitationChip, type CitationChipCitation } from '../components/nimbo/citation-chip';
 import { FileTypeChip } from '../components/nimbo/file-type-chip';
 import { StateView } from '../components/nimbo/state-view';
 import { Badge } from '../components/ui/badge';
@@ -13,6 +13,22 @@ import { getApiHealth } from '../lib/api-health';
 
 const API_UNAVAILABLE_TEXT = 'API: no disponible. Revisa el estado de los servicios.';
 const API_AVAILABLE_TEXT = 'API: disponible';
+
+/** Citas de muestra para la página de estado: una certera y una con la etiqueta aproximada que trae el servidor. */
+const DEMO_CITATIONS: readonly CitationChipCitation[] = [
+  {
+    fileId: '00000000-0000-4000-8000-000000000001',
+    fileName: 'especificacion-000b.docx',
+    label: 'sec. 2, párr. 1',
+    isCertain: true,
+  },
+  {
+    fileId: '00000000-0000-4000-8000-000000000002',
+    fileName: 'arquitectura.pdf',
+    label: 'p. 3 (ubicación aproximada)',
+    isCertain: false,
+  },
+];
 
 /** Se evalúa en cada petición: el estado de la API no se cachea ni se hornea en el build (CA-29). */
 export const dynamic = 'force-dynamic';
@@ -108,12 +124,9 @@ export default async function StatusPage(): Promise<ReactNode> {
                   Citas del Agente
                 </span>
                 <div className="flex flex-wrap gap-2 pt-1">
-                  <CitationChip filename="especificacion-000b.docx" location="pág. 2" />
-                  <CitationChip
-                    filename="arquitectura.pdf"
-                    location="sección 3"
-                    isCertain={false}
-                  />
+                  {DEMO_CITATIONS.map((citation) => (
+                    <CitationChip key={citation.fileId} citation={citation} />
+                  ))}
                 </div>
               </div>
             </CardContent>
