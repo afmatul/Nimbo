@@ -4,3 +4,4 @@ export * from './catalog';
 export * from './error-codes';
 export * from './parameters';
 export * from './schemas';
+export * from './trash';

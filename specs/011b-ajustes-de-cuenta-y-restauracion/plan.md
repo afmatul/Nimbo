@@ -48,7 +48,7 @@
 | backoffice/application | `internal-action.service.ts` | `event` puede devolver `AuditRecord` o una lista; `run` normaliza ambos con `Array.isArray`, así los llamadores actuales no cambian. La salida de solo lectura suma `subscription.read_only_exited` al evento de vigencia; se prueba con los llamadores existentes. |
 | backoffice/presentation | `account-adjustments.controller.ts`, `account-limits.response.ts` (nuevos) | Rutas de §4 con `@Roles(ADMIN)` y respuesta de lista blanca; `accountIdPipe` ya existe. |
 | backoffice | `backoffice.module.ts` | Registra servicio y controlador. |
-| audit | `audit-action.ts`, `audit-catalog.ts`, `audit.service.ts` | `ACCOUNT_QUOTA_ADJUSTED`, `ACCOUNT_VALIDITY_ADJUSTED` y `note: 'text'` solo en `NODE_RESTORED`; `recordLine` omite los atributos de texto libre (`note`, `reason`) y registra solo sus claves. |
+| audit | `audit-action.ts`, `audit-catalog.ts`, `audit.service.ts` | `ACCOUNT_QUOTA_ADJUSTED`, `ACCOUNT_VALIDITY_ADJUSTED` y `note: 'text'` solo en `NODE_RESTORED`; `recordLine` omite el valor de `note` (único texto libre; `reason` son códigos) y registra su clave. |
 | storage/application | `support-trash.service.ts` (nuevo) | Fachada pública con `list(actor, query)` (`query` lleva `ownerId`, `cursor` y `limit`) y `restore(actor, cmd)`; no reutiliza `TrashService` ni `WritableAccountPolicy`. |
 | storage/application/ports | `i-support-trash.repository.port.ts` (nuevo) | `listRoots(actor, query)` y `restoreRoot(actor, cmd)`; sin `findRoot` separado, porque la función valida la raíz y el destino. `query` y `cmd` mantienen dos parámetros (Art. VII.2) y `query` incluye `limit`. |
 | storage/infrastructure | `typeorm-support-trash.repository.ts` (nuevo) | SQL de raíces (`eliminado_con_carpeta_id IS NULL`) con `purgar_en > now()`, nombre original y `ruta`; la restauración llama a `restaurar_raiz_papelera` y no usa `rebaseSubtree` desde la aplicación. |
@@ -178,7 +178,7 @@ CREATE POLICY archivo_soporte_destino ON archivo FOR SELECT TO CURRENT_USER
 - **Bitácoras:** `backoffice.account.quota_adjusted`, `backoffice.account.validity_adjusted`,
   `backoffice.client_trash.viewed` y `backoffice.client_trash.restored`, solo con ids y resultado; nunca el motivo, nombres,
   correo, claves de objeto ni URLs. El motivo vive únicamente en `evento_auditoria`, y el cliente lo ve en «Mi actividad».
-  `recordLine` omite `note` y `reason`; una prueba captura Pino y verifica que no aparecen.
+  `recordLine` omite `note` (solo su clave); una prueba captura Pino y verifica que el motivo no aparece.
 - **Aislamiento:** el restaurar no toca `espacio_usado` ni la cuota del cliente; una cuenta en solo lectura puede recibir
   la restauración y sigue sin poder subir ni editar (RN-3). Operador y Administrador reciben `403 SHARED_FORBIDDEN` en las
   rutas de Soporte; Soporte y Operador, en las de Administración.

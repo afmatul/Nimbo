@@ -34,6 +34,11 @@ export type { FileVersionRef, IdPage } from './application/ports/i-node.reposito
 export { WritableAccountPolicy } from './application/writable-account.policy';
 // 011b (plan §2, ADR-0035): la fachada con que Soporte lista y restaura la papelera de un cliente desde `backoffice`.
 export { SupportTrashService } from './application/support-trash.service';
+// El cursor ilegible de esa papelera (`backoffice` lo responde con su `400 BACKOFFICE_INVALID_QUERY`, CA-12) y los
+// mapeadores que dan a Soporte el mismo elemento y la misma restauración que ve el cliente (006 §4), sin copiarlos.
+export { InvalidQueryError } from './domain/errors';
+export { toNodeSummary } from './application/node-summary';
+export { toTrashItem } from './application/trash-item';
 export type {
   SupportRestoreCommand,
   SupportRestoreResult,

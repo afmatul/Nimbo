@@ -94,12 +94,14 @@ type _ListForOwnerSignature = Expect<
  * fachada `EditableFileGateway` para `editing` con el 404 uniforme de un nodo (`NodeNotFoundError`, 005 CA-16:
  * `editing` responde igual que `storage`). Desde 019, el evento `storage.file-version-created` (ADR-0019: lo exporta
  * el productor) y la fachada `IndexableFileGateway` para `intelligence`. Desde 011b, la fachada `SupportTrashService`
- * para `backoffice`. El detector, el escáner y los repositorios no salen.
+ * para `backoffice`, con `InvalidQueryError` y los mapeadores `toTrashItem` y `toNodeSummary`. El detector, el escáner
+ * y los repositorios no salen.
  */
 const RUNTIME_EXPORTS = [
   'EditableFileGateway',
   'FILE_VERSION_CREATED',
   'IndexableFileGateway',
+  'InvalidQueryError',
   'I_NODE_METADATA_READER',
   'I_OBJECT_STORAGE',
   'I_PLAN_LIMITS_PROVIDER',
@@ -109,10 +111,12 @@ const RUNTIME_EXPORTS = [
   'WritableAccountPolicy',
   'SupportTrashService',
   'invoiceObjectKey',
+  'toNodeSummary',
+  'toTrashItem',
 ] as const;
 
 describe('modules/storage/index.ts', () => {
-  it('CA-3, CA-4, CA-9, RN-1, 011 PD-31, 009, 016 §2, 019 RN-11, 012 PD-121, 011b: exporta exactamente los tokens de límites, de metadatos y de objetos, los dos módulos, las fachadas de edición, indexación y papelera de Soporte, el evento de versión y la política de solo lectura', () => {
+  it('CA-3, CA-4, CA-9, RN-1, 011 PD-31, 009, 016 §2, 019 RN-11, 012 PD-121, 011b: exporta exactamente los tokens de límites, de metadatos y de objetos, los dos módulos, las fachadas de edición, indexación y papelera de Soporte (con su error de cursor y sus mapeadores), el evento de versión y la política de solo lectura', () => {
     expect(storage.FILE_VERSION_CREATED).toBe('storage.file-version-created');
     expect(Object.keys(storage).sort()).toEqual([...RUNTIME_EXPORTS].sort());
     expect(typeof storage.I_PLAN_LIMITS_PROVIDER).toBe('symbol');
