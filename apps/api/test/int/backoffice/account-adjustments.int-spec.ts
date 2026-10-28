@@ -531,4 +531,17 @@ describe('`/backoffice/accounts/:id/limits`, `/quota` y `/validity` con dueño N
       expect(await storedOf(readOnly)).toMatchObject({ estado: 'solo_lectura' });
     });
   });
+
+  it('RN-7: una cuenta suspendida recibe extra y vigencia y sigue suspendida', async () => {
+    const client = await aClientWith();
+    await owner.query("UPDATE usuario SET estado = 'suspendida' WHERE id = $1", [client.id]);
+
+    limitsOf(await putQuota(client.id, { extraBytes: '1024', until: guatemalaDay(5) }));
+    limitsOf(await putValidity(client.id, { expiresAt: guatemalaDay(40) }));
+
+    const [account] = (await owner.query('SELECT estado FROM usuario WHERE id = $1', [
+      client.id,
+    ])) as { estado: string }[];
+    expect(account?.estado).toBe('suspendida');
+  });
 });
