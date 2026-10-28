@@ -8,7 +8,7 @@ export type {
   EditedVersionOutcome,
 } from './application/edited-version.registrar';
 export { I_PLAN_LIMITS_PROVIDER } from './application/plan-limits';
-export { NodeNotFoundError } from './domain/errors';
+export { AccountReadOnlyError, NodeNotFoundError } from './domain/errors';
 export type { IPlanLimitsProvider, PlanLimits } from './application/plan-limits';
 export { I_NODE_METADATA_READER } from './application/ports/i-node-metadata-reader.port';
 export type {
@@ -21,6 +21,7 @@ export { StorageModule } from './storage.module';
 export { I_OBJECT_STORAGE } from './application/ports/i-object-storage.port';
 export { invoiceObjectKey } from './domain/invoice-object-key';
 export type { IObjectStorage, PutObjectInput } from './application/ports/i-object-storage.port';
+export { StorageFacadesWorkerModule } from './storage-facades-worker.module';
 export { StorageWorkerModule } from './storage-worker.module';
 // 019 (RN-11, ADR-0019): el evento de versión vigente lo exporta su productor; `intelligence` lo escucha y lee por la
 // fachada `IndexableFileGateway`.
@@ -29,4 +30,12 @@ export type { FileVersionCreatedEvent } from './domain/file-version-created.even
 export type { FileKind } from './domain/file-kind';
 export { IndexableFileGateway } from './application/indexable-file.gateway';
 export type { IndexableFile } from './application/indexable-file.gateway';
+// 021 (PD-130, PD-121): la fachada del optimizador y la política de solo lectura con su error, para `optimizer`.
+export { OptimizableFileGateway } from './application/optimizable-file.gateway';
+export type { OptimizableFile } from './application/optimizable-file.gateway';
+export type {
+  OptimizedVersionInput,
+  OptimizedVersionOutcome,
+} from './application/optimized-version.registrar';
+export { WritableAccountPolicy } from './application/writable-account.policy';
 export type { FileVersionRef, IdPage } from './application/ports/i-node.repository.port';

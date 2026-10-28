@@ -15,6 +15,7 @@ import { FOLDER_CONFIG } from './application/folder-config';
 import type { FolderConfig } from './application/folder-config';
 import { FolderService } from './application/folder.service';
 import { IndexableFileGateway } from './application/indexable-file.gateway';
+import { OptimizableFileGateway } from './application/optimizable-file.gateway';
 import { I_NODE_METADATA_READER } from './application/ports/i-node-metadata-reader.port';
 import { I_OBJECT_STORAGE } from './application/ports/i-object-storage.port';
 import type { IObjectStorage } from './application/ports/i-object-storage.port';
@@ -29,6 +30,7 @@ import { VersionHistoryService } from './application/version-history.service';
 import { VERSION_RESTORE_CONFIG } from './application/version-restore-config';
 import type { VersionRestoreConfig } from './application/version-restore-config';
 import { VersionRestoreService } from './application/version-restore.service';
+import { WritableAccountPolicy } from './application/writable-account.policy';
 import {
   buildMinioStorageClients,
   MinioStorageAdapter,
@@ -45,6 +47,7 @@ import { TrashController } from './presentation/trash.controller';
 import { UploadsController } from './presentation/uploads.controller';
 import {
   INDEXABLE_FILE_PROVIDERS,
+  OPTIMIZABLE_FILE_PROVIDERS,
   SPACE_PROVIDERS,
   TRASH_LIFECYCLE_PROVIDERS,
   UPLOAD_LIFECYCLE_PROVIDERS,
@@ -137,15 +140,18 @@ export class StorageModule {
         EditedVersionRegistrar,
         EditableFileGateway,
         ...INDEXABLE_FILE_PROVIDERS,
+        ...OPTIMIZABLE_FILE_PROVIDERS,
       ],
       // 011 (PD-31): el lector de metadatos para `backoffice`. 009 (ampliación de la decisión 1, 2026-10-15): `billing`
       // importa `I_OBJECT_STORAGE` de forma explícita, sin módulo global. 016: la fachada de edición para `editing`.
-      // 019: la fachada de la indexación para `intelligence`.
+      // 019: la fachada de la indexación para `intelligence`. 021: la del optimizador y la solo lectura (PD-121).
       exports: [
         I_NODE_METADATA_READER,
         I_OBJECT_STORAGE,
         EditableFileGateway,
         IndexableFileGateway,
+        OptimizableFileGateway,
+        WritableAccountPolicy,
       ],
     };
   }

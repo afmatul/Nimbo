@@ -3,8 +3,7 @@ import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 import type { z } from 'zod';
 
-import { MINIO_CONFIG } from '../../shared';
-import type { MinioConfig, workerEnvSchema } from '../../shared';
+import type { workerEnvSchema } from '../../shared';
 import { AuditModule } from '../audit';
 
 import { FOLDER_CONFIG } from './application/folder-config';
@@ -13,14 +12,7 @@ import { IndexableFileGateway } from './application/indexable-file.gateway';
 import { I_EXPIRED_TRASH_SCANNER } from './application/ports/i-expired-trash.scanner.port';
 import { I_EXPIRED_UPLOAD_SCANNER } from './application/ports/i-expired-upload.scanner.port';
 import { I_OBJECT_STORAGE } from './application/ports/i-object-storage.port';
-import type { IObjectStorage } from './application/ports/i-object-storage.port';
-import { UPLOAD_CONFIG } from './application/upload-config';
-import type { UploadConfig } from './application/upload-config';
 import { UsageReconciler } from './application/usage-reconciler';
-import {
-  buildMinioStorageClients,
-  MinioStorageAdapter,
-} from './infrastructure/minio-storage.adapter';
 import { SqlExpiredTrashScanner } from './infrastructure/persistence/sql-expired-trash.scanner';
 import { SqlExpiredUploadScanner } from './infrastructure/persistence/sql-expired-upload.scanner';
 import { TrashPurgeProcessor } from './infrastructure/trash-purge.processor';
@@ -48,8 +40,8 @@ import {
   INDEXABLE_FILE_PROVIDERS,
   SPACE_PROVIDERS,
   TRASH_LIFECYCLE_PROVIDERS,
-  UPLOAD_LIFECYCLE_PROVIDERS,
 } from './upload-lifecycle.providers';
+import { WORKER_STORAGE_CORE_PROVIDERS } from './worker-storage-core.providers';
 
 /** Variables del `worker` que `storage` usa (plan §5); las de MinIO llegan por `MINIO_CONFIG`. */
 export type StorageWorkerEnv = Pick<
@@ -61,31 +53,6 @@ export type StorageWorkerEnv = Pick<
   | 'USAGE_RECONCILE_INTERVAL_MINUTES'
   | 'USAGE_RECONCILE_BATCH_SIZE'
 >;
-
-const uploadConfigUnavailable = (): never => {
-  throw new Error(
-    'La configuración de carga no existe en el worker: solo vence cargas. Inicia, reanuda o completa desde el api.',
-  );
-};
-
-/**
- * `UploadService` pide `UPLOAD_CONFIG`, pero el `worker` solo llama `expire`, que no la lee; las variables de carga son
- * del `api` (plan §5). En vez de inventar valores, cada campo falla al leerse.
- */
-const WORKER_UPLOAD_CONFIG: UploadConfig = Object.freeze({
-  get partSizeBytes(): bigint {
-    return uploadConfigUnavailable();
-  },
-  get multipartThresholdBytes(): bigint {
-    return uploadConfigUnavailable();
-  },
-  get urlTtlSeconds(): number {
-    return uploadConfigUnavailable();
-  },
-  get initPerMinute(): number {
-    return uploadConfigUnavailable();
-  },
-});
 
 const folderConfigUnavailable = (): never => {
   throw new Error(
@@ -105,7 +72,8 @@ const WORKER_FOLDER_CONFIG: FolderConfig = Object.freeze({
  * (006 CA-19) y `usage-reconcile` (007 CA-13), sus programas repetibles y sus procesadores, que vencen cargas con
  * `UploadService.expire`, purgan la papelera con `TrashService.purgeExpired` y concilian `espacio_usado` con
  * `UsageReconciler`. Con `UPLOAD_LIFECYCLE_PROVIDERS` recibe también el registro y la poda de versiones (014), que
- * `UploadService` necesita, y desde 019 exporta `IndexableFileGateway` para la indexación. `apps/worker` la importa
+ * `UploadService` necesita (el núcleo `WORKER_STORAGE_CORE_PROVIDERS`, que comparte con `StorageFacadesWorkerModule`,
+ * ADR-0037), y desde 019 exporta `IndexableFileGateway` para la indexación. `apps/worker` la importa
  * solo desde `storage/index.ts`.
  * Como `StorageModule`, **no** enlaza `I_PLAN_LIMITS_PROVIDER` (DF-51): lo hace `WorkerModule`. El adaptador de MinIO
  * firma contra el endpoint interno porque el `worker` no tiene `MINIO_PUBLIC_ENDPOINT` ni emite URLs (plan §5): solo
@@ -140,20 +108,10 @@ export class StorageWorkerModule {
         { provide: UPLOAD_CLEANUP_CONFIG, useValue: cleanupConfig },
         { provide: TRASH_PURGE_CONFIG, useValue: purgeConfig },
         { provide: USAGE_RECONCILE_CONFIG, useValue: reconcileConfig },
-        { provide: UPLOAD_CONFIG, useValue: WORKER_UPLOAD_CONFIG },
         { provide: FOLDER_CONFIG, useValue: WORKER_FOLDER_CONFIG },
-        {
-          provide: I_OBJECT_STORAGE,
-          inject: [MINIO_CONFIG],
-          useFactory: (config: MinioConfig): IObjectStorage =>
-            new MinioStorageAdapter(
-              buildMinioStorageClients(config, config.MINIO_ENDPOINT),
-              config.MINIO_BUCKET,
-            ),
-        },
         { provide: I_EXPIRED_UPLOAD_SCANNER, useClass: SqlExpiredUploadScanner },
         { provide: I_EXPIRED_TRASH_SCANNER, useClass: SqlExpiredTrashScanner },
-        ...UPLOAD_LIFECYCLE_PROVIDERS,
+        ...WORKER_STORAGE_CORE_PROVIDERS,
         ...TRASH_LIFECYCLE_PROVIDERS,
         ...SPACE_PROVIDERS,
         ...INDEXABLE_FILE_PROVIDERS,
@@ -165,7 +123,8 @@ export class StorageWorkerModule {
         UsageReconcileScheduler,
         UsageReconcileProcessor,
       ],
-      // 009 (decisión 1): `invoice-retry` sube la factura PDF desde el `worker`. 019: la fachada de la indexación.
+      // 009 (decisión 1): `invoice-retry` sube la factura PDF desde el `worker`. 019: la fachada de la indexación. La
+      // del optimizador vive en `StorageFacadesWorkerModule`, que importa el proceso `worker-optimizer` (ADR-0037).
       exports: [I_OBJECT_STORAGE, IndexableFileGateway],
     };
   }

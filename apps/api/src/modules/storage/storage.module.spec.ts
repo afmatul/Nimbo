@@ -10,6 +10,7 @@ import { FileVersionService } from './application/file-version.service';
 import { FOLDER_CONFIG } from './application/folder-config';
 import { FolderService } from './application/folder.service';
 import { IndexableFileGateway } from './application/indexable-file.gateway';
+import { OptimizableFileGateway } from './application/optimizable-file.gateway';
 import { I_PLAN_LIMITS_PROVIDER } from './application/plan-limits';
 import { I_NODE_METADATA_READER } from './application/ports/i-node-metadata-reader.port';
 import { I_OBJECT_STORAGE } from './application/ports/i-object-storage.port';
@@ -26,6 +27,7 @@ import { VersionHistoryService } from './application/version-history.service';
 import { VersionPruner } from './application/version-pruner';
 import { VERSION_RESTORE_CONFIG } from './application/version-restore-config';
 import { VersionRestoreService } from './application/version-restore.service';
+import { WritableAccountPolicy } from './application/writable-account.policy';
 import { SqlNodeMetadataReader } from './infrastructure/persistence/sql-node-metadata.reader';
 import { TrashPurgeProcessor } from './infrastructure/trash-purge.processor';
 import { TRASH_PURGE_QUEUE, TrashPurgeScheduler } from './infrastructure/trash-purge.scheduler';
@@ -139,7 +141,7 @@ describe('StorageModule', () => {
     expect(providers).toEqual(expect.arrayContaining([SpaceMeasurer, SpaceSummaryService]));
   });
 
-  it('011 PD-31: provee el lector de metadatos con su adaptador SQL y exporta su token, el de objetos (009) y las fachadas de edición (016) y de indexación (019)', () => {
+  it('011 PD-31: provee el lector de metadatos con su adaptador SQL y exporta su token, el de objetos (009) y las fachadas de edición (016), de indexación (019) y de optimización con la solo lectura (021, PD-121)', () => {
     const reader = providers.find((provider) => tokenOf(provider) === I_NODE_METADATA_READER);
 
     expect(reader).toEqual({ provide: I_NODE_METADATA_READER, useClass: SqlNodeMetadataReader });
@@ -148,6 +150,8 @@ describe('StorageModule', () => {
       I_OBJECT_STORAGE,
       EditableFileGateway,
       IndexableFileGateway,
+      OptimizableFileGateway,
+      WritableAccountPolicy,
     ]);
   });
 

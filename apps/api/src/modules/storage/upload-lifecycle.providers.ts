@@ -4,6 +4,8 @@ import { EventEmitterDomainEventPublisher, I_DOMAIN_EVENT_PUBLISHER } from '../.
 
 import { FileVersionService } from './application/file-version.service';
 import { IndexableFileGateway } from './application/indexable-file.gateway';
+import { OptimizableFileGateway } from './application/optimizable-file.gateway';
+import { OptimizedVersionRegistrar } from './application/optimized-version.registrar';
 import { I_CLIENT_ACCOUNT_SCANNER } from './application/ports/i-client-account.scanner.port';
 import { I_FILE_TYPE_DETECTOR } from './application/ports/i-file-type-detector.port';
 import { I_NODE_REPOSITORY } from './application/ports/i-node.repository.port';
@@ -83,4 +85,14 @@ export const SPACE_PROVIDERS: readonly Provider[] = [
 export const INDEXABLE_FILE_PROVIDERS: readonly Provider[] = [
   { provide: I_CLIENT_ACCOUNT_SCANNER, useClass: SqlClientAccountScanner },
   IndexableFileGateway,
+];
+
+/**
+ * `OptimizableFileGateway` y su registrador (plan 021 §2, PD-130), exportados por `StorageModule` (estimar y ejecutar en
+ * el `api`) y por `StorageWorkerModule` (leer y registrar en el `worker`). Piden `I_OBJECT_STORAGE`,
+ * `I_PLAN_LIMITS_PROVIDER` (enlazado en la raíz) y los repositorios de `UPLOAD_LIFECYCLE_PROVIDERS`.
+ */
+export const OPTIMIZABLE_FILE_PROVIDERS: readonly Provider[] = [
+  OptimizedVersionRegistrar,
+  OptimizableFileGateway,
 ];
