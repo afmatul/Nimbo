@@ -26,7 +26,8 @@ function citationHref({ fileId, label }: CitationChipCitation): string {
 }
 
 /**
- * Cita documental del panel del agente (superficie `agent-bg`): «archivo · ubicación», navegable. La etiqueta llega
+ * Cita documental del panel del agente (superficie `agent-bg`): compacta, solo con la ubicación; el archivo completo
+ * («archivo · ubicación») sale al pasar el cursor (`title`) y en el nombre accesible. Navegable. La etiqueta llega
  * del servidor ya en español y, si no es certera, con «(ubicación aproximada)» (020b S-5): no se reescribe. La cita
  * incierta se distingue también por ícono y borde discontinuo, no solo por color (CA-6).
  */
@@ -36,21 +37,19 @@ export function CitationChip({ citation, className }: CitationChipProps): React.
     <Link
       href={citationHref(citation)}
       aria-label={`Abrir ${citation.fileName}, ${citation.label}`}
-      title={citation.fileName}
+      title={`${citation.fileName} · ${citation.label}`}
       className={cn(
-        'mx-0.5 inline-flex min-h-7 max-w-full items-center gap-1.5 rounded-sm border border-input bg-agent-tag px-2.5 py-0.5 align-middle text-xs font-medium text-agent-text no-underline hover:border-agent-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-agent-accent focus-visible:ring-offset-1 focus-visible:ring-offset-agent-bg',
+        'mx-0.5 inline-flex min-h-5 max-w-full items-center gap-1 rounded-sm border border-input bg-agent-tag px-1.5 py-0 align-middle text-[11px] leading-5 font-medium text-agent-text no-underline hover:border-agent-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-agent-accent focus-visible:ring-offset-1 focus-visible:ring-offset-agent-bg',
         !citation.isCertain && 'border-dashed border-agent-accent',
         className,
       )}
     >
       <Icon
-        className="h-3.5 w-3.5 shrink-0 text-agent-accent"
+        className="h-3 w-3 shrink-0 text-agent-accent"
         aria-hidden="true"
         data-icon={citation.isCertain ? 'certera' : 'aproximada'}
       />
-      <span className="min-w-0 truncate font-semibold">{citation.fileName}</span>
-      <span aria-hidden="true">·</span>
-      <span className="tabular-nums">{citation.label}</span>
+      <span className="min-w-0 truncate tabular-nums">{citation.label}</span>
     </Link>
   );
 }

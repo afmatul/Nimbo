@@ -23,11 +23,12 @@ function citation(overrides: Partial<AgentCitationEvent> = {}): AgentCitationEve
 }
 
 describe('CitationChip (020b CA-3, CA-6, CA-11)', () => {
-  it('CA-3: muestra «archivo · ubicación» con la etiqueta tal como llega del servidor', () => {
+  it('CA-3: muestra la etiqueta tal como llega del servidor y el archivo completo al pasar el cursor', () => {
     render(<CitationChip citation={citation()} />);
 
     const chip = screen.getByRole('link', { name: 'Abrir Contrato_La_Ceiba.pdf, Página 7' });
-    expect(chip.textContent).toBe('Contrato_La_Ceiba.pdf·Página 7');
+    expect(chip.textContent).toBe('Página 7');
+    expect(chip.getAttribute('title')).toBe('Contrato_La_Ceiba.pdf · Página 7');
   });
 
   it('CA-11 (S-6): abre la ficha del archivo con solo la etiqueta en `ubicacion`, nunca el nombre', () => {

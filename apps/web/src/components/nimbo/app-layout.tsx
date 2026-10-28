@@ -191,7 +191,7 @@ export function AppLayout({
         ) : null}
         <main
           inert={behindDrawer}
-          className={cn('flex-1 p-4 md:p-8 min-w-0', agent.reservesPanel && 'mr-105')}
+          className={cn('flex-1 p-4 md:p-8 min-w-0', agent.reservesPanel && 'mr-(--agent-panel-width)')}
         >
           {children}
         </main>

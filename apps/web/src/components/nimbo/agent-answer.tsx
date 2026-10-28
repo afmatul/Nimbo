@@ -22,16 +22,62 @@ export interface AgentAnswerProps {
 /** Captura cada marca `[n]` como parte propia al partir el texto. */
 const CITATION_MARK = /(\[\d+\])/;
 
+/** Un párrafo termina en una línea en blanco. */
+const PARAGRAPH_BREAK = /\n{2,}/;
+
 /**
- * Parte el texto en nodos de texto de React y chips (020b D-6, CA-13): nunca se interpreta como HTML ni Markdown.
- * Un `[n]` sin cita recibida queda como texto: la web no construye citas (RN-2).
+ * Un párrafo con sus marcas `[n]` ya resueltas: el texto sin ellas y, aparte, las citas que lo respaldan sin repetir
+ * (mismo archivo y misma ubicación). Un `[n]` sin cita recibida queda como texto: la web no construye citas (RN-2).
  */
-function renderAnswerText(text: string, citations: AgentCitationsByOrdinal): React.ReactNode[] {
-  return text.split(CITATION_MARK).map((part, index) => {
-    const ordinal = CITATION_MARK.test(part) ? Number(part.slice(1, -1)) : undefined;
-    const citation = ordinal === undefined ? undefined : citations[ordinal];
-    return citation ? <CitationChip key={index} citation={citation} /> : part;
+function splitParagraph(
+  paragraph: string,
+  citations: AgentCitationsByOrdinal,
+): { readonly body: string; readonly cited: readonly AgentCitationEvent[] } {
+  const cited = new Map<string, AgentCitationEvent>();
+  const body = paragraph
+    .split(CITATION_MARK)
+    .map((part) => {
+      const citation = CITATION_MARK.test(part) ? citations[Number(part.slice(1, -1))] : undefined;
+      if (citation === undefined) return part;
+      const key = `${citation.fileId}|${citation.label}`;
+      if (!cited.has(key)) cited.set(key, citation);
+      return '';
+    })
+    .join('');
+  return { body, cited: [...cited.values()] };
+}
+
+/**
+ * Parte el texto en párrafos de React (020b D-6, CA-13): nunca se interpreta como HTML ni Markdown. Las citas no van
+ * entre las frases: se indican una sola vez al final de cada párrafo.
+ */
+function renderAnswerText(
+  text: string,
+  citations: AgentCitationsByOrdinal,
+  cursor: React.ReactNode,
+): React.ReactNode[] {
+  const paragraphs = text.split(PARAGRAPH_BREAK);
+  return paragraphs.map((paragraph, index) => {
+    const { body, cited } = splitParagraph(paragraph, citations);
+    return (
+      <p key={index} className="whitespace-pre-wrap break-words text-sm leading-7">
+        {body}
+        {cited.map((citation) => (
+          <CitationChip key={`${citation.fileId}|${citation.label}`} citation={citation} />
+        ))}
+        {index === paragraphs.length - 1 && cursor}
+      </p>
+    );
   });
+}
+
+function StreamingCursor(): React.JSX.Element {
+  return (
+    <span
+      aria-hidden="true"
+      className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-agent-accent align-middle motion-reduce:animate-none"
+    />
+  );
 }
 
 function LiveIndicator(): React.JSX.Element {
@@ -88,15 +134,7 @@ export function AgentAnswer({
           Respuesta
           {isStreaming && <LiveIndicator />}
         </p>
-        <p className="whitespace-pre-wrap break-words text-sm leading-7">
-          {renderAnswerText(text, citations)}
-          {isStreaming && (
-            <span
-              aria-hidden="true"
-              className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-agent-accent align-middle motion-reduce:animate-none"
-            />
-          )}
-        </p>
+        {renderAnswerText(text, citations, isStreaming && <StreamingCursor />)}
         {hasUncertain && <UncertainLocationNotice />}
         {isStreaming && onStop && (
           <Button

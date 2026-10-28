@@ -79,6 +79,13 @@ interface QuestionFieldProps {
   readonly error: string | null;
 }
 
+/** Enter envía el formulario; Shift+Enter deja el salto de línea. No interfiere con la composición de IME. */
+function submitOnEnter(event: React.KeyboardEvent<HTMLTextAreaElement>): void {
+  if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return;
+  event.preventDefault();
+  event.currentTarget.form?.requestSubmit();
+}
+
 function QuestionField({
   draft,
   onDraftChange,
@@ -95,6 +102,7 @@ function QuestionField({
         rows={2}
         value={draft}
         onChange={(event) => onDraftChange(event.target.value)}
+        onKeyDown={submitOnEnter}
         disabled={lock !== null}
         placeholder={lock?.placeholder ?? 'Pregunta sobre tus documentos…'}
         aria-invalid={error !== null || undefined}

@@ -20,6 +20,7 @@ import {
 import { AgentEmptyState, AgentIntro } from './agent-panel-states';
 import { quotaPercentOf, quotaTierOf, type QuotaTier } from './quota-bar';
 import { StateView } from './state-view';
+import { KEYBOARD_STEP, useAgentPanelWidth, type AgentPanelWidth } from './use-agent-panel-width';
 import { trapTabKey, useAgentSheetFocus, useIsAgentSheet } from './use-agent-sheet';
 
 export type { AgentPanelNotice, AgentPanelScreen } from './agent-panel-notices';
@@ -192,7 +193,7 @@ function AgentThread(
       aria-label="Conversación con el agente"
       aria-live="polite"
       aria-busy={isStreaming || undefined}
-      className="flex min-h-0 flex-1 flex-col gap-4.5 overflow-y-auto border-t border-agent-tag px-4 pt-2 pb-5"
+      className="flex min-h-0 flex-1 flex-col gap-4.5 overflow-y-auto overflow-x-hidden [overflow-wrap:anywhere] border-t border-agent-tag px-4 pt-2 pb-5"
     >
       {turns.length === 0 && <ThreadStart {...props} />}
       <AgentTurns turns={turns} isStreaming={isStreaming} onStop={onStop} />
@@ -204,8 +205,40 @@ function AgentThread(
 /** Hoja modal a pantalla completa (≤ 900 px) o complemento de 420 px bajo el encabezado. */
 const ROOT_LAYOUT = {
   sheet: 'top-0 left-0',
-  complement: 'top-header z-30 w-105 border-l border-agent-tag shadow-modal',
+  complement: 'top-header z-30 border-l border-agent-tag shadow-modal',
 } as const;
+
+/** Asa del borde izquierdo para ajustar el ancho: arrastre con el puntero o flechas con el teclado. */
+function ResizeHandle({ size }: { readonly size: AgentPanelWidth }): React.JSX.Element {
+  const { width, min, max, resizeTo } = size;
+  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      resizeTo(window.innerWidth - event.clientX);
+    }
+  };
+  const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'ArrowLeft') resizeTo(width + KEYBOARD_STEP);
+    else if (event.key === 'ArrowRight') resizeTo(width - KEYBOARD_STEP);
+    else return;
+    event.preventDefault();
+    event.stopPropagation();
+  };
+  return (
+    <div
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Ajustar el ancho del agente"
+      aria-valuenow={width}
+      aria-valuemin={min}
+      aria-valuemax={max}
+      tabIndex={0}
+      onPointerDown={(event) => event.currentTarget.setPointerCapture(event.pointerId)}
+      onPointerMove={onPointerMove}
+      onKeyDown={onKeyDown}
+      className="absolute inset-y-0 left-0 z-10 w-1.5 cursor-col-resize touch-none hover:bg-agent-accent/40 focus-visible:bg-agent-accent focus-visible:outline-none"
+    />
+  );
+}
 
 /**
  * Panel del agente (020b D-5): presentacional, recibe la sesión por props. A más de 900 px es un complemento no modal
@@ -214,6 +247,7 @@ const ROOT_LAYOUT = {
  */
 export function AgentPanel(props: AgentPanelProps): React.JSX.Element {
   const isSheet = useIsAgentSheet();
+  const size = useAgentPanelWidth(!isSheet);
   const ref = React.useRef<HTMLElement>(null);
   useAgentSheetFocus(ref, isSheet);
   const onKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
@@ -228,11 +262,13 @@ export function AgentPanel(props: AgentPanelProps): React.JSX.Element {
       aria-modal={isSheet || undefined}
       aria-labelledby={TITLE_ID}
       onKeyDown={onKeyDown}
+      style={isSheet ? undefined : { width: size.width }}
       className={cn(
         'fixed right-0 bottom-0 z-50 flex flex-col overflow-y-auto bg-agent-bg text-agent-text',
         isSheet ? ROOT_LAYOUT.sheet : ROOT_LAYOUT.complement,
       )}
     >
+      {isSheet ? null : <ResizeHandle size={size} />}
       <AgentPanelHeader {...props} />
       <AgentThread {...props} />
       <AgentPanelComposer

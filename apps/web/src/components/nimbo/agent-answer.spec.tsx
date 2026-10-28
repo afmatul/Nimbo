@@ -50,6 +50,22 @@ describe('AgentAnswer (020b CA-3, CA-6, CA-13)', () => {
     expect(answer.textContent).toContain('Entrega a 30 días ');
   });
 
+  it('CA-3: las citas de un párrafo van una sola vez al final y sin repetirse', () => {
+    const same = { fileId: citation(1).fileId, label: 'Página 1' };
+    renderAnswer({
+      text: 'Entrega a 30 días [1]. Pago a 45 días [2].\n\nGarantía de un año [3].',
+      citations: { 1: citation(1), 2: citation(2, same), 3: citation(3) },
+    });
+
+    const first = screen.getByText(/Entrega a 30 días/);
+    const second = screen.getByText(/Garantía de un año/);
+    expect(within(first).getAllByRole('link')).toHaveLength(1);
+    expect(first.lastElementChild?.getAttribute('aria-label')).toBe(
+      'Abrir Contrato_1.pdf, Página 1',
+    );
+    expect(within(second).getAllByRole('link')).toHaveLength(1);
+  });
+
   it('CA-3 (RN-2): un [n] sin cita recibida queda como texto', () => {
     const answer = renderAnswer({ text: 'Según [1] y [3].', citations: { 1: citation(1) } });
 

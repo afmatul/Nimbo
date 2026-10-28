@@ -446,7 +446,7 @@ describe('AppLayout con la entrada del agente (020b)', () => {
     });
 
     expect(container.querySelector('[aria-label="Panel de prueba"]')).not.toBeNull();
-    expect(container.querySelector('main')?.className).toContain('mr-105');
+    expect(container.querySelector('main')?.className).toContain('mr-(--agent-panel-width)');
     await act(async () => {
       root.unmount();
     });
@@ -485,6 +485,6 @@ describe('AppLayout con la entrada del agente (020b)', () => {
 
     expect(markup).not.toContain('Agente Nimbo');
     expect(markup).not.toContain('#agente');
-    expect(markup).not.toContain('mr-105');
+    expect(markup).not.toContain('mr-(--agent-panel-width)');
   });
 });

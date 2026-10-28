@@ -153,11 +153,9 @@ const ScopeTrigger = React.forwardRef<HTMLButtonElement, { readonly scope: Agent
         <button
           ref={ref}
           type="button"
-          className="group flex min-h-11 w-full items-center gap-2 rounded-md border border-input px-3 py-1.5 text-left text-sm text-agent-text outline-none hover:bg-agent-tag focus-visible:outline-2 focus-visible:outline-ring aria-expanded:bg-agent-tag sm:min-h-10"
+          className="flex min-h-11 w-full items-center gap-2 rounded-md border border-input px-3 py-1.5 text-left text-sm text-agent-text outline-none hover:bg-agent-tag focus-visible:outline-2 focus-visible:outline-ring aria-expanded:bg-agent-tag sm:min-h-10"
         >
-          <span className="text-xs font-semibold text-agent-accent group-hover:text-agent-text group-aria-expanded:text-agent-text">
-            Ámbito
-          </span>
+          <span className="sr-only">Ámbito </span>
           <span className="min-w-0 flex-1 truncate font-semibold">{scopeLabel(scope)}</span>
           <ChevronDown className="h-4 w-4 shrink-0" aria-hidden="true" />
         </button>
