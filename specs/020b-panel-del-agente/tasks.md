@@ -16,4 +16,10 @@
 - [ ] **T-09** **(humana)** Recorrido de la demo en local: preguntar con streaming, abrir una cita, limitar a una carpeta, agotar consultas y apagar el modelo; a 1440 y 360 px — CA: los visibles — Depende: T-01 a T-08 y la 020 integrada
 
 ## Notas del developer
-<Desviaciones (con enlace al registro de cambios de la spec), DF o pendientes que surgieron.>
+Integración en `feat/020b-panel-del-agente` sobre la 020 (2026-10-27). Sin DF ni pendientes nuevos. Desviaciones menores, para revisar en `/review`:
+- **T-01:** `requestJson` se partió en `sendRequest` y `errorFromResponse` (sin cambio de comportamiento) para que el flujo SSE lea los errores igual que el resto; la renovación ante 401 se repite una segunda vez (D-1, sin extraer).
+- **T-02/T-05:** estados derivados extra: `cargando`, `detenido` (sin aviso: el mockup no lo trae), `ambito-no-disponible` y `error`. Textos tomados del mockup o nuevos, por confirmar: «Podrás preguntar de nuevo cuando renueves tu plan.» (solo lectura, campo apagado) y «No pudimos responder tu pregunta.» (título del aviso genérico).
+- **T-04:** el medidor no usa `QuotaBar` (trabaja en bytes); reutiliza `quotaPercentOf`/`quotaTierOf`. Vacío e inicio no usan `StateView` (no admite la lista de formatos).
+- **T-06:** «Subir archivos» cierra el panel y lleva a Mis archivos. En `/cuenta/seguridad` (fuera de `(cliente)`) no hay entrada al agente y la sesión del panel se pierde al ir ahí; CA-17 no la nombra.
+- **T-07:** `features/storage/index.ts` nuevo como índice público; «Mis archivos» (raíz) no se acepta como carpeta del ámbito.
+- **S-2:** mockup y capturas del estado `vacio` actualizados a los seis formatos (pendiente de aprobación del estado, según `/mockup`).
