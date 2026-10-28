@@ -7,7 +7,12 @@ import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 import * as React from 'react';
 
-import { AgentPanel, type AgentPanelProps, type AgentPanelTurn } from './agent-panel';
+import {
+  AgentPanel,
+  type AgentPanelNotice,
+  type AgentPanelProps,
+  type AgentPanelTurn,
+} from './agent-panel';
 
 const SHEET_MAX_WIDTH = 900;
 
@@ -68,6 +73,8 @@ function props(overrides: Partial<AgentPanelProps> = {}): AgentPanelProps {
     onStop: jest.fn(),
     onUploadFiles: jest.fn(),
     onClose: jest.fn(),
+    notice: null,
+    onRetry: jest.fn(),
     ...overrides,
   };
 }
@@ -333,5 +340,163 @@ describe('AgentPanel (020b CA-1, CA-2, CA-3, CA-5, CA-17, CA-19)', () => {
       turns: [turn({ text: 'No encontré esto en tus documentos.', citations: {} })],
     });
     expect((await act(async () => axe(document.body))).violations).toEqual([]);
+  });
+});
+
+const QUOTA_NOTICE: AgentPanelNotice = {
+  cause: 'Usaste tus 20 consultas de este mes. Se renuevan el 14 de noviembre.',
+  fix: 'Mientras tanto, subir, descargar y buscar archivos funciona igual.',
+  link: { label: 'Ver planes', href: '/planes' },
+};
+const READ_ONLY_QUOTA_NOTICE: AgentPanelNotice = {
+  cause: 'Usaste tus 20 consultas de este mes.',
+  fix: 'Renueva tu plan para volver a preguntar.',
+  link: { label: 'Renovar plan', href: '/suscripcion/renovar' },
+};
+const UNAVAILABLE_NOTICE: AgentPanelNotice = {
+  cause: 'El agente no está disponible. Tus archivos siguen a salvo.',
+  fix: 'No se descontó tu consulta. Inténtalo de nuevo en unos minutos.',
+};
+const TOO_LONG_NOTICE: AgentPanelNotice = {
+  cause: 'Tu pregunta tiene 3 caracteres de más.',
+  fix: 'Acórtala a 10 o menos para enviarla. No se descontó tu consulta.',
+};
+const EMPTY_NOTICE: AgentPanelNotice = {
+  cause: 'Escribe una pregunta para consultar a tus documentos.',
+  fix: 'No se descontó tu consulta.',
+};
+const SCOPE_NOTICE: AgentPanelNotice = {
+  cause: 'Esa carpeta o archivo ya no está disponible.',
+  fix: 'Elige otro ámbito.',
+};
+const exhausted = (resetsAt: string | null = '2026-11-14T06:00:00.000Z'): AgentStatusResponse =>
+  status({ used: 20, limit: 20, resetsAt });
+
+describe('AgentPanel: estados de fallo (020b CA-7, CA-8, CA-9, CA-16, RN-5)', () => {
+  it('CA-8: límite alcanzado es un aviso (no error) con el mensaje, «Ver planes» y el campo apagado con su motivo', () => {
+    renderPanel({ screen: 'limite-alcanzado', status: exhausted(), notice: QUOTA_NOTICE });
+
+    const notice = within(conversation()).getByRole('status');
+    expect(notice.textContent).toContain(QUOTA_NOTICE.cause);
+    expect(notice.textContent).toContain(QUOTA_NOTICE.fix);
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(within(notice).getByRole('link', { name: 'Ver planes' }).getAttribute('href')).toBe(
+      '/planes',
+    );
+    const field = questionField();
+    expect(field.hasAttribute('disabled')).toBe(true);
+    expect(field.getAttribute('placeholder')).toBe('Sin consultas disponibles');
+    const reason = screen.getByText('Podrás preguntar de nuevo el 14 de noviembre.');
+    expect(field.getAttribute('aria-describedby')).toContain(reason.id);
+  });
+
+  it('RN-5: en solo lectura sin fecha, ofrece «Renovar plan» y no muestra ninguna fecha', () => {
+    renderPanel({
+      screen: 'limite-alcanzado',
+      status: exhausted(null),
+      notice: READ_ONLY_QUOTA_NOTICE,
+    });
+
+    const link = screen.getByRole('link', { name: 'Renovar plan' });
+    expect(link.getAttribute('href')).toBe('/suscripcion/renovar');
+    expect(screen.queryByRole('link', { name: 'Ver planes' })).toBeNull();
+    expect(document.body.textContent).not.toMatch(/de noviembre|Se renuevan/);
+    expect(questionField().hasAttribute('disabled')).toBe(true);
+  });
+
+  it.each(['no-disponible', 'no-disponible-parcial'] as const)(
+    'CA-9: %s avisa que el agente no está disponible, conserva lo recibido y «Reintentar» llama onRetry',
+    async (failure) => {
+      const { onRetry } = renderPanel({
+        screen: failure,
+        turns: [turn({ text: 'El plan Equipo incluye…', citations: {} })],
+        notice: UNAVAILABLE_NOTICE,
+      });
+
+      const alert = within(conversation()).getByRole('alert');
+      expect(alert.textContent).toContain(
+        'El agente no está disponible. Tus archivos siguen a salvo.',
+      );
+      expect(alert.textContent).toContain(UNAVAILABLE_NOTICE.fix);
+      expect(conversation().textContent).toContain('El plan Equipo incluye…');
+      expect(questionField().hasAttribute('disabled')).toBe(false);
+      await userEvent.click(within(alert).getByRole('button', { name: 'Reintentar' }));
+      expect(onRetry).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('CA-7: una pregunta larga marca el campo con los caracteres que sobran, la corrección y que no se descontó', async () => {
+    const onAsk = jest.fn(() => false);
+    const limited = status({ maxQuestionChars: 10 });
+    const { rerender } = render(<AgentPanel {...props({ status: limited, onAsk })} />);
+    await userEvent.type(questionField(), 'Trece letras.');
+    await userEvent.click(screen.getByRole('button', { name: 'Enviar pregunta' }));
+    rerender(
+      <AgentPanel
+        {...props({ screen: 'error-pregunta', status: limited, notice: TOO_LONG_NOTICE, onAsk })}
+      />,
+    );
+
+    const field = questionField();
+    expect(field.getAttribute('aria-invalid')).toBe('true');
+    const error = screen.getByText(/Tu pregunta tiene 3 caracteres de más\./).closest('p');
+    expect(error?.textContent).toContain('No se descontó tu consulta.');
+    expect(field.getAttribute('aria-describedby')?.split(' ')).toContain(error?.id);
+    expect((field as HTMLTextAreaElement).value).toBe('Trece letras.');
+    expect(screen.getByText('13 / 10')).toBeTruthy();
+    expect(field.hasAttribute('disabled')).toBe(false);
+  });
+
+  it('CA-7: vacía, el campo marca el error y nada se envía', async () => {
+    const onAsk = jest.fn(() => false);
+    renderPanel({ screen: 'error-pregunta-vacia', notice: EMPTY_NOTICE, onAsk });
+
+    expect(questionField().getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByText(/Escribe una pregunta para consultar/).textContent).toContain(
+      'No se descontó tu consulta.',
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Enviar pregunta' }));
+    expect(onAsk).toHaveReturnedWith(false);
+    expect(within(conversation()).queryByRole('alert')).toBeNull();
+  });
+
+  it('sin error, el campo no se marca inválido', () => {
+    renderPanel();
+
+    expect(questionField().hasAttribute('aria-invalid')).toBe(false);
+  });
+
+  it.each([
+    ['ambito-no-disponible', SCOPE_NOTICE],
+    ['error', UNAVAILABLE_NOTICE],
+  ] as const)(
+    'CA-16: %s muestra su mensaje como error y la pregunta puede reenviarse',
+    (failure, notice) => {
+      renderPanel({ screen: failure, turns: [turn()], notice });
+
+      const alert = within(conversation()).getByRole('alert');
+      expect(alert.textContent).toContain(notice.cause);
+      expect(alert.textContent).toContain(notice.fix);
+      expect(within(alert).queryByRole('button')).toBeNull();
+      expect(questionField().hasAttribute('disabled')).toBe(false);
+    },
+  );
+
+  it.each([360, 1440])('sin violaciones de axe a %i px en los estados de fallo', async (width) => {
+    setViewport(width);
+    const cases: readonly Partial<AgentPanelProps>[] = [
+      { screen: 'limite-alcanzado', status: exhausted(), notice: QUOTA_NOTICE },
+      { screen: 'limite-alcanzado', status: exhausted(null), notice: READ_ONLY_QUOTA_NOTICE },
+      { screen: 'no-disponible', notice: UNAVAILABLE_NOTICE },
+      { screen: 'no-disponible-parcial', turns: [turn()], notice: UNAVAILABLE_NOTICE },
+      { screen: 'error-pregunta', notice: TOO_LONG_NOTICE },
+      { screen: 'error-pregunta-vacia', notice: EMPTY_NOTICE },
+      { screen: 'ambito-no-disponible', notice: SCOPE_NOTICE },
+    ];
+    for (const overrides of cases) {
+      renderPanel(overrides);
+      expect((await act(async () => axe(document.body))).violations).toEqual([]);
+      cleanup();
+    }
   });
 });

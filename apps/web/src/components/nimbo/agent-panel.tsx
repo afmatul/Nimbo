@@ -9,11 +9,19 @@ import { formatCount } from '../../lib/format-plan';
 import { cn } from '../../lib/utils';
 
 import { AgentAnswer, type AgentCitationsByOrdinal } from './agent-answer';
-import { AgentPanelComposer, type ComposerLock } from './agent-panel-composer';
-import { AgentEmptyState, AgentIntro, NotFoundNotice } from './agent-panel-states';
+import { AgentPanelComposer } from './agent-panel-composer';
+import {
+  composerLockOf,
+  fieldErrorOf,
+  ScreenNotice,
+  type AgentPanelNotice,
+} from './agent-panel-notices';
+import { AgentEmptyState, AgentIntro } from './agent-panel-states';
 import { quotaPercentOf, quotaTierOf, type QuotaTier } from './quota-bar';
 import { StateView } from './state-view';
 import { trapTabKey, useAgentSheetFocus, useIsAgentSheet } from './use-agent-sheet';
+
+export type { AgentPanelNotice } from './agent-panel-notices';
 
 /**
  * Estados de pantalla del panel, con los nombres del mockup `intelligence/panel-agente/` (los deriva la sesión del
@@ -57,17 +65,13 @@ export interface AgentPanelProps {
   readonly onUploadFiles: () => void;
   /** Cierra el panel; quien lo monta lo desmonta y el foco vuelve a quien lo abrió. */
   readonly onClose: () => void;
+  /** Mensaje del fallo vigente ya resuelto por el catálogo; `null` sin fallo (CA-7, CA-8, CA-9, CA-16). */
+  readonly notice: AgentPanelNotice | null;
+  /** «Reintentar» de `no-disponible` (CA-9): vuelve a enviar la última pregunta. */
+  readonly onRetry: () => void;
 }
 
 const TITLE_ID = 'agente-titulo';
-
-/** Campo apagado por estado (CA-3). Los estados de fallo (T-05) suman aquí su motivo. */
-const COMPOSER_LOCKS: Partial<Record<AgentPanelScreen, ComposerLock>> = {
-  respondiendo: {
-    placeholder: 'Esperando la respuesta…',
-    reason: 'Escribiendo… Podrás preguntar de nuevo cuando termine.',
-  },
-};
 
 /** Relleno del medidor por tramo de `QuotaBar` (mockup: `agent-accent`, `warning` desde 70 %, `destructive-soft` al 100 %). */
 const METER_FILL: Readonly<Record<QuotaTier, string>> = {
@@ -171,16 +175,6 @@ function ThreadStart({
   return <AgentIntro />;
 }
 
-/** Aviso tras la conversación según el estado. Los estados de fallo (T-05) suman aquí su caso. */
-function ScreenNotice({ screen }: Pick<AgentPanelProps, 'screen'>): React.JSX.Element | null {
-  switch (screen) {
-    case 'sin-resultados':
-      return <NotFoundNotice />;
-    default:
-      return null;
-  }
-}
-
 interface AgentTurnsProps {
   readonly turns: readonly AgentPanelTurn[];
   /** Solo el último turno se escribe en vivo. */
@@ -208,9 +202,9 @@ function AgentTurns({ turns, isStreaming, onStop }: AgentTurnsProps): React.JSX.
 
 /** Conversación en `role="log"`: lo nuevo se anuncia con calma y `aria-busy` mientras llega texto (CA-19). */
 function AgentThread(
-  props: Pick<AgentPanelProps, 'screen' | 'status' | 'turns' | 'onStop' | 'onUploadFiles'>,
+  props: Omit<AgentPanelProps, 'scopeControl' | 'onAsk' | 'onClose'>,
 ): React.JSX.Element {
-  const { screen, turns, onStop } = props;
+  const { screen, turns, onStop, notice, onRetry } = props;
   const isStreaming = screen === 'respondiendo';
   return (
     <div
@@ -222,7 +216,7 @@ function AgentThread(
     >
       {turns.length === 0 && <ThreadStart {...props} />}
       <AgentTurns turns={turns} isStreaming={isStreaming} onStop={onStop} />
-      <ScreenNotice screen={screen} />
+      <ScreenNotice screen={screen} notice={notice} onRetry={onRetry} />
     </div>
   );
 }
@@ -263,7 +257,8 @@ export function AgentPanel(props: AgentPanelProps): React.JSX.Element {
       <AgentThread {...props} />
       <AgentPanelComposer
         maxChars={props.status?.maxQuestionChars ?? null}
-        lock={COMPOSER_LOCKS[props.screen] ?? null}
+        lock={composerLockOf(props.screen, props.status)}
+        error={fieldErrorOf(props.screen, props.notice)}
         onAsk={props.onAsk}
       />
     </Root>
