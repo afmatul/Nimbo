@@ -32,3 +32,10 @@ export type { IndexableFile } from './application/indexable-file.gateway';
 export type { FileVersionRef, IdPage } from './application/ports/i-node.repository.port';
 // 012 (PD-121): `sharing` rechaza compartir desde una cuenta en solo lectura con la misma regla que `storage`.
 export { WritableAccountPolicy } from './application/writable-account.policy';
+// 011b (plan §2, ADR-0035): la fachada con que Soporte lista y restaura la papelera de un cliente desde `backoffice`.
+export { SupportTrashService } from './application/support-trash.service';
+export type {
+  SupportRestoreCommand,
+  SupportRestoreResult,
+} from './application/ports/i-support-trash.repository.port';
+export type { TrashPage } from './application/ports/i-trash.repository.port';

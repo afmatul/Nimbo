@@ -96,7 +96,8 @@ export const toFile = (row: ArchivoOrmEntity): File =>
     trash: toTrashState(row),
   });
 
-const toFolder = (row: CarpetaOrmEntity): Folder =>
+/** Fila → `Folder`; también la usa `TypeOrmSupportTrashRepository` para la carpeta que restauró (011b). */
+export const toFolder = (row: CarpetaOrmEntity): Folder =>
   Folder.rehydrate({
     id: row.id,
     ownerId: row.propietarioId,
