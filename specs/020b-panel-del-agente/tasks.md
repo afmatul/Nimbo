@@ -13,7 +13,7 @@
 - [x] **T-06** Entrada y montaje: «Agente Nimbo» abre el panel, proveedor en el layout del Cliente, sin entrada para roles internos — CA: CA-1, CA-17, CA-18 — Prueba: componente (`app-layout`, regresión incluida) — Depende: T-04
 - [x] **T-07** Selector de ámbito con árbol de carpetas reutilizado (extrae `useTreeFocus`) y `AGENT_SCOPE_NOT_FOUND` → «Todos mis archivos» — CA: CA-14, CA-16 — Prueba: componente + regresión de `move-dialog` — Depende: T-05
 - [x] **T-08** «Preguntar sobre esto» en la ficha y en la carpeta, «Ubicación citada» y archivo inexistente solo con «No encontramos este archivo.» — CA: CA-11, CA-12, CA-15 — Prueba: componente — Depende: T-06, T-07
-- [ ] **T-09** **(humana)** Recorrido de la demo en local: preguntar con streaming, abrir una cita, limitar a una carpeta, agotar consultas y apagar el modelo; a 1440 y 360 px — CA: los visibles — Depende: T-01 a T-08 y la 020 integrada
+- [x] **T-09** **(humana)** Recorrido de la demo en local: preguntar con streaming, abrir una cita, limitar a una carpeta, agotar consultas y apagar el modelo; a 1440 y 360 px — CA: los visibles — Depende: T-01 a T-08 y la 020 integrada
 
 ## Notas del developer
 Integración en `feat/020b-panel-del-agente` sobre la 020 (2026-10-27). Sin DF ni pendientes nuevos. Desviaciones menores, para revisar en `/review`:
