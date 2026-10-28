@@ -69,6 +69,26 @@ const REAL_ATTRIBUTES: Readonly<Record<AuditAction, Record<string, string | numb
     durationMs: 12_400,
   },
   [AuditAction.FILE_INDEX_RETRIED]: { versionId: VERSION_ID },
+  [AuditAction.FILE_OPTIMIZED]: {
+    optimizationId: SESSION_ID,
+    sourceVersionId: VERSION_ID,
+    versionId: VERSION_ID,
+    originalBytes: 4_800_000,
+    resultBytes: 2_000_000,
+  },
+  [AuditAction.FILE_OPTIMIZATION_DISCARDED]: {
+    optimizationId: SESSION_ID,
+    sourceVersionId: VERSION_ID,
+    originalBytes: 4_800_000,
+    resultBytes: 4_700_000,
+    reason: 'ahorro_minimo',
+  },
+  [AuditAction.FILE_OPTIMIZATION_FAILED]: {
+    optimizationId: SESSION_ID,
+    sourceVersionId: VERSION_ID,
+    originalBytes: 4_800_000,
+    reason: 'integridad',
+  },
 };
 
 describe('AUDIT_CATALOG', () => {

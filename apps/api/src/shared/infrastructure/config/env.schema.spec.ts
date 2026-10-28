@@ -360,3 +360,48 @@ describe('indexación (019 plan §5)', () => {
     expect(workerEnvObjectSchema.shape.GEMINI_EMBEDDING_MODEL.safeParse('').success).toBe(false);
   });
 });
+
+describe('optimizador de imágenes (021 plan §6)', () => {
+  it.each([
+    ['OPTIMIZER_MAX_ATTEMPTS', 3],
+    ['OPTIMIZER_TIMEOUT_MS', 100_000],
+  ] as const)(
+    'plan §5: `%s` vale %p y es la misma definición en `api` (encola y caduca) y `worker` (reintenta y corta)',
+    (key, fallback) => {
+      expect(declaredIn(key)).toEqual(['api', 'worker']);
+      expect(apiShape[key]).toBe(workerShape[key]);
+      expect(workerEnvObjectSchema.shape[key].parse(undefined)).toBe(fallback);
+    },
+  );
+
+  it.each([
+    ['OPTIMIZER_MAX_PIXELS', 36_000_000],
+    ['OPTIMIZER_MIN_SAVED_PERCENT', 20],
+    ['OPTIMIZER_MIN_SAVED_BYTES', 1_000_000],
+    ['OPTIMIZER_JPEG_QUALITY', 80],
+  ] as const)('RN-2, RN-8: `%s` es solo del `worker` y vale %p por defecto', (key, fallback) => {
+    expect(declaredIn(key)).toEqual(['worker']);
+    expect(workerEnvObjectSchema.shape[key].parse(undefined)).toBe(fallback);
+  });
+
+  it('RN-2: el porcentaje mínimo va de 1 a 99 y la calidad JPEG de 1 a 100', () => {
+    const percent = workerEnvObjectSchema.shape.OPTIMIZER_MIN_SAVED_PERCENT;
+    const quality = workerEnvObjectSchema.shape.OPTIMIZER_JPEG_QUALITY;
+
+    expect([percent.safeParse('0').success, percent.safeParse('100').success]).toEqual([
+      false,
+      false,
+    ]);
+    expect([quality.safeParse('0').success, quality.safeParse('101').success]).toEqual([
+      false,
+      false,
+    ]);
+    expect(quality.safeParse('100').success).toBe(true);
+  });
+
+  it('ADR-0036: el `worker` no recibe lo que solo usa el `api` (tope de bytes, consulta y tasa)', () => {
+    expect(declaredIn('OPTIMIZER_MAX_FILE_BYTES')).toEqual(['api']);
+    expect(declaredIn('OPTIMIZER_POLL_INTERVAL_MS')).toEqual(['api']);
+    expect(declaredIn('RATE_LIMIT_OPTIMIZER_PER_MINUTE')).toEqual(['api']);
+  });
+});

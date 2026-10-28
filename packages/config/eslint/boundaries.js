@@ -25,7 +25,7 @@ const ALLOWED = {
   editing: ['storage', 'access', 'realtime', 'audit'],
   // `audit` para los resultados de la indexación (019 CA-21, DF-78; transversal sin dependencias, regla 5).
   intelligence: ['storage', 'access', 'billing', 'realtime', 'audit'],
-  optimizer: ['storage', 'access'],
+  optimizer: ['storage', 'access', 'audit'],
   backoffice: ['audit', 'identity', 'billing', 'storage'],
 };
 

@@ -102,6 +102,25 @@ const DEFAULT_RATE_LIMIT_INDEX_RETRY_PER_MINUTE = 10;
 const DEFAULT_GEMINI_EMBEDDING_MODEL = 'gemini-embedding-001';
 /** Ghostscript en Linux y macOS; en Windows se configura `gswin64c` (019 D-1). */
 const DEFAULT_GHOSTSCRIPT_BIN = 'gs';
+/** Tope de bytes optimizable (021 plan §6 B, medido en el spike de ADR-0036): 40 MB; por encima, `no_disponible`. */
+const DEFAULT_OPTIMIZER_MAX_FILE_BYTES = 40_000_000;
+/** Intentos de un trabajo de optimización: 1 + 2 reintentos (`architecture.md` §8). */
+const DEFAULT_OPTIMIZER_MAX_ATTEMPTS = 3;
+/** Tiempo límite de una operación de `sharp` (021 plan §6 B): unas 3 veces el peor caso medido (34,3 s). */
+const DEFAULT_OPTIMIZER_TIMEOUT_MS = 100_000;
+/** Cada cuánto la ficha vuelve a consultar una optimización en curso (021 plan §6 A, RN-10). */
+const DEFAULT_OPTIMIZER_POLL_INTERVAL_MS = 3000;
+/** Calcular y optimizar por cuenta y minuto (021 plan §6 A, RNF-07). */
+const DEFAULT_RATE_LIMIT_OPTIMIZER_PER_MINUTE = 10;
+/** Píxeles decodificados optimizables (021 plan §6 B, RN-8): 36 MP; por encima, `no_disponible(pixeles)`. */
+const DEFAULT_OPTIMIZER_MAX_PIXELS = 36_000_000;
+/** Ahorro mínimo en porcentaje (021 plan §6 A, RN-2); se exige junto con el mínimo en bytes. */
+const DEFAULT_OPTIMIZER_MIN_SAVED_PERCENT = 20;
+/** Ahorro mínimo en bytes (021 plan §6 A, RN-2): 1 MB. */
+const DEFAULT_OPTIMIZER_MIN_SAVED_BYTES = 1_000_000;
+/** Calidad JPEG con mozjpeg (021 plan §6 B, ADR-0036). */
+const DEFAULT_OPTIMIZER_JPEG_QUALITY = 80;
+const MAX_PERCENT = 100;
 
 /**
  * Valor de desarrollo de `JWT_ACCESS_SECRET` que trae `.env.example` (plan 002 §6.10). Público a propósito: en
@@ -279,6 +298,30 @@ const indexingApiShape = {
 };
 
 /**
+ * Optimizador de imágenes en ambos procesos (021 plan §5 y §6), **una sola definición**: el `api` encola con esos
+ * intentos y caduca lo perdido (intentos × 3 × tiempo límite + 5 min); el `worker` reintenta y corta cada operación.
+ */
+const optimizerQueueShape = {
+  OPTIMIZER_MAX_ATTEMPTS: positiveInt(DEFAULT_OPTIMIZER_MAX_ATTEMPTS),
+  OPTIMIZER_TIMEOUT_MS: positiveInt(DEFAULT_OPTIMIZER_TIMEOUT_MS),
+};
+
+/** Optimizador en el `api` (021 plan §4 a §6): tope de bytes de CA-5, intervalo de consulta y límite de tasa. */
+const optimizerApiShape = {
+  OPTIMIZER_MAX_FILE_BYTES: positiveInt(DEFAULT_OPTIMIZER_MAX_FILE_BYTES),
+  OPTIMIZER_POLL_INTERVAL_MS: positiveInt(DEFAULT_OPTIMIZER_POLL_INTERVAL_MS),
+  RATE_LIMIT_OPTIMIZER_PER_MINUTE: positiveInt(DEFAULT_RATE_LIMIT_OPTIMIZER_PER_MINUTE),
+};
+
+/** Optimizador en el `worker` (021 plan §6): tope de píxeles (RN-8), umbral de ahorro (RN-2) y calidad JPEG. */
+const optimizerWorkerShape = {
+  OPTIMIZER_MAX_PIXELS: positiveInt(DEFAULT_OPTIMIZER_MAX_PIXELS),
+  OPTIMIZER_MIN_SAVED_PERCENT: intBetween(1, MAX_PERCENT - 1, DEFAULT_OPTIMIZER_MIN_SAVED_PERCENT),
+  OPTIMIZER_MIN_SAVED_BYTES: positiveInt(DEFAULT_OPTIMIZER_MIN_SAVED_BYTES),
+  OPTIMIZER_JPEG_QUALITY: intBetween(1, MAX_PERCENT, DEFAULT_OPTIMIZER_JPEG_QUALITY),
+};
+
+/**
  * Indexación en el `worker` (019 plan §5): tope indexable, conciliación, Ghostscript y el proveedor de embeddings.
  * `GEMINI_API_KEY` es opcional: sin ella la indexación termina `fallido/proveedor_no_disponible` y el resto sigue
  * (RNF-09); el `api` nunca la lee (RN-9).
@@ -355,7 +398,7 @@ const renewalReminderShape = {
 /**
  * Forma del entorno del `worker`: el contrato común, su puerto de salud, MinIO, el barrido de cargas (005), la purga
  * de la papelera (006), la conciliación de espacio (007), la de suscripciones y el reintento de facturas (009), la
- * indexación (019) y el SMTP (001 plan §6.10); sin `PORT` ni `MINIO_PUBLIC_ENDPOINT`. `SMTP_PASSWORD` y
+ * indexación (019), el optimizador de imágenes (021) y el SMTP (001 plan §6.10); sin `PORT` ni `MINIO_PUBLIC_ENDPOINT`. `SMTP_PASSWORD` y
  * `GEMINI_API_KEY` se declaran **solo** aquí.
  */
 export const workerEnvObjectSchema = sharedEnvBaseSchema.extend({
@@ -370,6 +413,8 @@ export const workerEnvObjectSchema = sharedEnvBaseSchema.extend({
   ...renewalReminderShape,
   ...indexingQueueShape,
   ...indexingWorkerShape,
+  ...optimizerQueueShape,
+  ...optimizerWorkerShape,
   SMTP_HOST: nonEmpty(),
   SMTP_PORT: requiredPort(),
   SMTP_TLS: oneOf(['none', 'starttls', 'implicit']),
@@ -381,7 +426,7 @@ export const workerEnvObjectSchema = sharedEnvBaseSchema.extend({
 /**
  * Forma del entorno del `api`: además el puerto HTTP público, MinIO, la carga de archivos (005), las carpetas y los
  * accesos rápidos (006), el límite de intentos del canal en vivo (015), la edición (016), los intentos y el reintento
- * de la indexación (019), la URL pública de `web`, CORS y la clave que firma los tokens de acceso (002), que se declara
+ * de la indexación (019), el optimizador (021), la URL pública de `web`, CORS y la clave que firma los tokens de acceso (002), que se declara
  * **solo** aquí.
  */
 export const apiEnvObjectSchema = sharedEnvBaseSchema.extend({
@@ -396,6 +441,8 @@ export const apiEnvObjectSchema = sharedEnvBaseSchema.extend({
   ...editingApiShape,
   ...indexingQueueShape,
   ...indexingApiShape,
+  ...optimizerQueueShape,
+  ...optimizerApiShape,
   WEB_PUBLIC_URL: url(),
   CORS_ORIGIN: urlList(),
   JWT_ACCESS_SECRET: z.string().min(JWT_SECRET_MIN_LENGTH, JWT_SECRET_LENGTH_MESSAGE),

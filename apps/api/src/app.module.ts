@@ -12,6 +12,7 @@ import { EditingModule } from './modules/editing';
 import { IDENTITY_THROTTLERS, IdentityModule } from './modules/identity';
 import { IntelligenceModule } from './modules/intelligence';
 import { NotificationsModule } from './modules/notifications';
+import { OptimizerModule } from './modules/optimizer';
 import { RealtimeModule } from './modules/realtime';
 import { StorageModule } from './modules/storage';
 import { PlanLimitsBindingModule } from './plan-limits-binding.module';
@@ -42,7 +43,8 @@ import { UserDirectoryBindingModule } from './user-directory-binding.module';
  * de `IdentityModule` para resolver `I_ACCESS_TOKEN_VERIFIER` sin que `realtime` importe `identity` (Nest deduplica el
  * módulo dinámico por referencia) y la edición (016), que recibe así las mismas instancias de `StorageModule` y de
  * `RealtimeModule`, y la indexación (019), que escucha `storage.file-version-created`, expone su estado y recibe las
- * mismas instancias de `StorageModule` (`IndexableFileGateway`) y de `RealtimeModule` (aviso en vivo);
+ * mismas instancias de `StorageModule` (`IndexableFileGateway`) y de `RealtimeModule` (aviso en vivo), y el
+ * optimizador (021), que recibe la misma instancia de `StorageModule` (`OptimizableFileGateway`);
  * `IUserDirectory` lo enlaza `UserDirectoryBindingModule` con la de `IdentityModule`.
  */
 @Module({})
@@ -78,6 +80,7 @@ export class AppModule {
         realtime,
         EditingModule.forRoot(env, { storage, realtime }),
         IntelligenceModule.forRoot(env, { storage, realtime }),
+        OptimizerModule.forRoot(env, { storage }),
       ],
       providers: [PingQueue],
     };

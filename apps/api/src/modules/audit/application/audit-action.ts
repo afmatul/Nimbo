@@ -51,6 +51,10 @@ export enum AuditAction {
   FILE_INDEX_UNINDEXABLE = 'file.index_unindexable',
   FILE_INDEX_FAILED = 'file.index_failed',
   FILE_INDEX_RETRIED = 'file.index_retried',
+  /** Optimización (021 §5, CA-21): solo resultados terminales; estimar no se audita. */
+  FILE_OPTIMIZED = 'file.optimized',
+  FILE_OPTIMIZATION_DISCARDED = 'file.optimization_discarded',
+  FILE_OPTIMIZATION_FAILED = 'file.optimization_failed',
 }
 
 const AUDIT_ACTIONS: ReadonlySet<string> = new Set(Object.values(AuditAction));
