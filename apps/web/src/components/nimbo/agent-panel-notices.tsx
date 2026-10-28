@@ -7,9 +7,29 @@ import { dayMonthLabel } from '../../lib/format-date';
 import { Alert } from '../ui/alert';
 import { Button, buttonVariants } from '../ui/button';
 
-import type { AgentPanelScreen } from './agent-panel';
 import type { ComposerLock } from './agent-panel-composer';
 import { NotFoundNotice } from './agent-panel-states';
+
+/**
+ * Estados de pantalla del panel, con los nombres del mockup `intelligence/panel-agente/` (los deriva la sesión del
+ * agente). El panel no importa de `features`: el tipo es su contrato de props.
+ */
+export type AgentPanelScreen =
+  | 'cargando'
+  | 'inicio'
+  | 'vacio'
+  | 'respondiendo'
+  | 'con-citas'
+  | 'cita-incierta'
+  | 'sin-resultados'
+  | 'detenido'
+  | 'limite-alcanzado'
+  | 'no-disponible'
+  | 'no-disponible-parcial'
+  | 'error-pregunta'
+  | 'error-pregunta-vacia'
+  | 'ambito-no-disponible'
+  | 'error';
 
 /**
  * Mensaje de un fallo ya resuelto por el catálogo (`agentMessage`, `messageForCode`): qué pasó y qué hacer. Con la

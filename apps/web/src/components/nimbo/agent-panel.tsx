@@ -15,34 +15,14 @@ import {
   fieldErrorOf,
   ScreenNotice,
   type AgentPanelNotice,
+  type AgentPanelScreen,
 } from './agent-panel-notices';
 import { AgentEmptyState, AgentIntro } from './agent-panel-states';
 import { quotaPercentOf, quotaTierOf, type QuotaTier } from './quota-bar';
 import { StateView } from './state-view';
 import { trapTabKey, useAgentSheetFocus, useIsAgentSheet } from './use-agent-sheet';
 
-export type { AgentPanelNotice } from './agent-panel-notices';
-
-/**
- * Estados de pantalla del panel, con los nombres del mockup `intelligence/panel-agente/` (los deriva la sesión del
- * agente). Este componente no importa de `features`: el tipo es su contrato de props.
- */
-export type AgentPanelScreen =
-  | 'cargando'
-  | 'inicio'
-  | 'vacio'
-  | 'respondiendo'
-  | 'con-citas'
-  | 'cita-incierta'
-  | 'sin-resultados'
-  | 'detenido'
-  | 'limite-alcanzado'
-  | 'no-disponible'
-  | 'no-disponible-parcial'
-  | 'error-pregunta'
-  | 'error-pregunta-vacia'
-  | 'ambito-no-disponible'
-  | 'error';
+export type { AgentPanelNotice, AgentPanelScreen } from './agent-panel-notices';
 
 /** Una pregunta y su respuesta tal como las pinta `AgentAnswer`. */
 export interface AgentPanelTurn {

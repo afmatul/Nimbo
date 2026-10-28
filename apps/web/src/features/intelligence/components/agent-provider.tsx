@@ -2,11 +2,7 @@
 
 import * as React from 'react';
 
-import { createAuthFetch } from '../../identity/session/auth-fetch';
-import { useAuthFetchDeps } from '../../identity/session/use-auth-fetch';
-import { getStatus } from '../agent-api';
 import type { AgentScope } from '../agent-scope';
-import { streamAnswer } from '../agent-stream';
 import {
   useAgentConversation,
   type AgentConversation,
@@ -31,7 +27,7 @@ export interface AgentProviderProps {
 
 /**
  * Sostiene la sesión del agente por encima de las páginas del Cliente: navegar la conserva y recargar la vacía (CA-17).
- * No pinta el panel ni se monta en el layout: eso es de T-06.
+ * No pinta el panel: eso es de `AgentPanelConnector` y del `AppLayout`.
  */
 export function AgentProvider({ deps, children }: AgentProviderProps): React.JSX.Element {
   const conversation = useAgentConversation(deps);
@@ -51,29 +47,6 @@ export function AgentProvider({ deps, children }: AgentProviderProps): React.JSX
     [conversation, isOpen, open, close],
   );
   return <AgentContext.Provider value={value}>{children}</AgentContext.Provider>;
-}
-
-/** `getStatus` con `auth-fetch` y `streamAnswer` con el token en memoria de la sesión (002, D-1). */
-function useSessionAgentDeps(apiPublicUrl: string): AgentConversationDeps {
-  const auth = useAuthFetchDeps();
-  return React.useMemo(() => {
-    const authFetch = createAuthFetch(auth);
-    return {
-      loadStatus: () => getStatus(apiPublicUrl, authFetch),
-      ask: (request, signal) => streamAnswer({ apiPublicUrl, request, signal, auth }),
-    };
-  }, [apiPublicUrl, auth]);
-}
-
-/** El proveedor con la API real de la sesión, para el layout de `(cliente)` (T-06). */
-export function SessionAgentProvider({
-  apiPublicUrl,
-  children,
-}: {
-  readonly apiPublicUrl: string;
-  readonly children: React.ReactNode;
-}): React.JSX.Element {
-  return <AgentProvider deps={useSessionAgentDeps(apiPublicUrl)}>{children}</AgentProvider>;
 }
 
 export function useAgent(): AgentContextValue {
