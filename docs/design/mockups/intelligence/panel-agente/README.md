@@ -10,7 +10,7 @@
 - **Estados incluidos** (`panel-agente--<estado>.html`):
   - con-citas: respuesta completa; cada afirmación lleva su cita. A la izquierda, el fragmento citado resaltado en su documento (CA-1, CA-8, CA-10).
   - inicio: hay archivos indexados y todavía no hay preguntas («Pregunta sobre tus documentos»).
-  - vacio: sin archivos indexados. Explica qué formatos se indexan (`.docx`, `.pdf` con texto, `.txt`, `.md`), qué no, y ofrece «Subir archivos» (CA-7).
+  - vacio: sin archivos indexados. Explica qué formatos se indexan (`.docx`, `.pdf` con texto, `.txt`, `.md`, `.xlsx` y `.pptx`, según S-2 de la 020b), qué no (PDF escaneados e imágenes), y ofrece «Subir archivos» (CA-7).
   - respondiendo: streaming con indicador en vivo («Escribiendo…», punto y cursor), cuadro de pregunta apagado (CA-1, RNF-03).
   - sin-resultados: «No encontré esto en tus documentos», sin citas, con la pista de ampliar el ámbito y la nota de que cuenta como consulta (CA-3, RN-5).
   - cita-incierta: chip con «ubicación aproximada» y el aviso en el texto «La ubicación de esta cita es aproximada», junto a una cita certera (CA-4).
