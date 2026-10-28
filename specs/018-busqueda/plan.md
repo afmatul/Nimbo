@@ -15,8 +15,8 @@ fecha. Orden fijo `actualizado_en DESC, id DESC` por grupo y cursor opaco reutil
 (`NodeOrder.of('updated', 'desc')`, `encodeNodeListCursor`, `orderByOf`, `afterCondition`). La ubicación sale de un
 `LEFT JOIN` a la carpeta contenedora, también filtrada por `accessibleNodes`.
 
-Plegado sin extensión de PostgreSQL: `translate(lower(nombre), <vocales acentuadas y ç>, <sin marca>)` en una sola
-constante del repositorio, aplicada a la columna y al parámetro (D-1). Sin migración ni índices nuevos (D-2).
+Plegado sin extensión de PostgreSQL: `lower(translate(nombre, <mayúsculas y minúsculas con marca, Ç y Ñ>, <su minúscula
+sin marca; Ñ → ñ>))` en una sola constante del repositorio, aplicada a la columna y al parámetro (D-1). Sin migración ni índices nuevos (D-2).
 La web agrega `/buscar` en `features/search` y el ítem «Buscar» en la navegación por defecto del `AppLayout`.
 
 ## 2. Módulos, archivos y diseño
@@ -26,29 +26,33 @@ La web agrega `/buscar` en `features/search` y el ítem «Buscar» en la navegac
 | contracts | `packages/contracts/src/storage/search-schemas.ts` (nuevo) | `SEARCH_TYPES` (`documents`, `images`, `other`, espejo de `FileCategory`); `searchQuerySchema` = `pageQuerySchema` + `q` (recorta; `REQUIRED`, `NAME_TOO_LONG` con mensajes propios, como `STORAGE_NODE_FIELD_MESSAGES`), `type`, `from`/`to` (instantes ISO; `to` exclusivo; `INVALID_RANGE` si `from >= to`, igual que `GET /audit/my-events`); `searchHitSchema` (`nodeSummarySchema` + `location: folderRefSchema \| null`) y `searchResponseSchema` (`items`, `nextCursor`) |
 | contracts | `packages/contracts/src/storage/error-codes.ts` (cambia) | Suma `INVALID_TYPE`, `INVALID_DATE` e `INVALID_RANGE` a `STORAGE_FIELD_ISSUE_REASONS` con sus mensajes |
 | contracts | `packages/contracts/src/storage/index.ts` (cambia) | `export * from './search-schemas'` |
-| storage · aplicación | `apps/api/src/modules/storage/search/application/search.service.ts` (nuevo) | `SearchService.search(actor, request)`: palabras (NFC, recorte, división por espacios, sin repetidas), categoría → `FileKind[]` con `categoryOf` de `domain/file-category.ts`, `withActor`, mapeo a `SearchResponse` con `toNodeSummary` |
+| storage · aplicación | `apps/api/src/modules/storage/search/application/search.service.ts` (nuevo) | `SearchService.search(actor, request)`: palabras (NFC, recorte, división por espacios, sin repetidas), categoría → `FileKind[]` filtrando `FILE_KINDS` (`domain/file-kind.ts`) con `categoryOf` (`domain/file-category.ts`), sin una segunda tabla inversa de `CATEGORY_BY_KIND`, `withActor`, mapeo a `SearchResponse` con `toNodeSummary` |
 | storage · puerto | `apps/api/src/modules/storage/search/application/ports/i-node-search.repository.port.ts` (nuevo) | `INodeSearchRepository.search(actor, criteria)` → `SearchPage` (`{ node: StorageNode, location: Folder ref \| null }[]` + `nextCursor`); token `I_NODE_SEARCH_REPOSITORY`; `NodeSearchCriteria` (`terms`, `kinds?`, `from?`, `to?`, `limit`, `cursor?`) |
-| storage · infraestructura | `apps/api/src/modules/storage/search/infrastructure/typeorm-node-search.repository.ts` (nuevo) | Las dos consultas de §3 con `requireActorScope(actor)`; reutiliza `nodesIn` (`node-sql`), `orderByOf`/`afterCondition` (`node-order-sql`), `encode/decodeNodeListCursor`, `toFile`; escapa `%`, `_` y `\` con la copia de `escapeLike` (§2); constante `FOLD_FROM`/`FOLD_TO` del plegado |
+| storage · infraestructura | `apps/api/src/modules/storage/search/infrastructure/typeorm-node-search.repository.ts` (nuevo) | Las dos consultas de §3 con `requireActorScope(actor)`; reutiliza `nodesIn` (`node-sql`), `orderByOf`/`afterCondition` (`node-order-sql`), `encode/decodeNodeListCursor`, `toFile`; escapa `%`, `_` y `\` con `escapeLike` de `shared` (§2); `toFolder` exportado de `typeorm-node.repository.ts`; constante `FOLD_FROM`/`FOLD_TO` del plegado |
 | storage · presentación | `apps/api/src/modules/storage/search/presentation/search.controller.ts` (nuevo) | `@Roles(Role.CLIENT)`, `@Controller('search')`, `@Get()` con `ZodValidationPipe(searchQuerySchema, storageQueryValidationError)` |
 | storage · composición | `apps/api/src/modules/storage/storage.module.ts` (cambia, **archivo de Adrián**) | Registra `SearchController`, `SearchService` y `{ provide: I_NODE_SEARCH_REPOSITORY, useClass: TypeOrmNodeSearchRepository }` (tres entradas; no se exporta nada) |
+| shared · persistencia | `apps/api/src/shared/infrastructure/persistence/escape-like.ts` (nuevo, **de Adrián**, condición de su aprobación) | `escapeLike(text)`: escapa `\`, `%` y `_` para `LIKE … ESCAPE '\'`. Tercer uso (Art. VI.2): sustituye las copias de `storage` e `identity` |
+| shared · fachada | `apps/api/src/shared/index.ts` (cambia, **de Adrián**) | Exporta `escapeLike` |
+| storage · persistencia | `apps/api/src/modules/storage/infrastructure/persistence/typeorm-node.repository.ts` (cambia, **de Adrián**) | Importa `escapeLike` de `shared` (borra su copia) y exporta `toFolder` para la búsqueda |
+| identity · persistencia | `apps/api/src/modules/identity/infrastructure/persistence/typeorm-account-directory.repository.ts` (cambia, **de Adrián**) | Importa `escapeLike` de `shared` y borra su copia; sin cambio de comportamiento |
 | web · ruta | `apps/web/src/app/(app)/(cliente)/buscar/page.tsx` (nuevo) | Página cliente que monta `SearchView`; la guarda de rol del grupo `(cliente)` ya la cubre |
 | web · datos | `apps/web/src/features/search/use-search.ts` (nuevo) | `fetchSearchPage` (con `storage-http`, valida con `searchResponseSchema`) y `useSearch`: estado en la URL (`q`, `tipo`, `desde`, `hasta` como días `AAAA-MM-DD`), conversión de días locales a `from`/`to` como `use-activity` (004), rango inválido sin consultar, páginas con `MoreStatus` de 007 |
 | web · pantalla | `apps/web/src/features/search/components/search-view.tsx` (nuevo) | `AppLayout` con «Buscar» activo y `SidebarQuota`; formulario (`role="search"`, foco al montar), filtro de tipo y de fechas, lista de resultados (`FileTypeChip`, ubicación, fecha, tamaño con `formatBytes`), enlaces con `folderPath`/`fileDetailPath`, `StateView` para vacío, sin resultados y error, `LoadMore` de 007 |
 | web · compartido | `apps/web/src/components/nimbo/app-layout.tsx` (cambia, 000b, permitido) | Ítem «Buscar» (`Search` de lucide, `/buscar`) en `DEFAULT_NAV_ITEMS`; la navegación interna (`internalNavFor`) no lo recibe |
 
-12 archivos de producción. Pruebas en §6.
+16 archivos de producción: los 12 de la búsqueda y 4 de la extracción de `escapeLike` que Adrián pidió al aprobar (Art. VI.2 manda sobre el tope de ADR-0034; son cambios de una o dos líneas, sin comportamiento nuevo). Pruebas en §6.
 
 - Nombres de `design-model.md`: `SearchService` (DF-15). Nuevos: `SearchController` (DF-15 ya lo pide como punto de
   entrada) e `INodeSearchRepository` con `TypeOrmNodeSearchRepository`.
 - Puertos nuevos: `INodeSearchRepository`, **interno de `storage`**. Art. V.2 (b): es un repositorio y mantiene la
   aplicación libre de TypeORM. No se reutiliza `INodeRepository` porque es de Adrián (`storage` fuera de
   `storage/search`) y ya pasa de 400 líneas; el plan solo lee sus funciones exportadas.
-- Copias declaradas (segundo uso, Art. VI.2; al tercero se extrae uno solo):
-  - `toFolder` y `escapeLike` (con `LIKE_SPECIAL_CHARACTERS`), privados en `typeorm-node.repository.ts` (de Adrián):
-    copia en `typeorm-node-search.repository.ts`. Alternativa si Adrián prefiere: que los exporte él (una línea cada
-    uno) y la búsqueda los importa; no suma archivos a esta spec.
+- DRY (Art. VI.2), decidido en la aprobación de Adrián (2026-10-27):
+  - `escapeLike` ya tenía dos copias (`storage` e `identity`); la búsqueda es el tercer uso → se extrae a `shared` y
+    las tres lo importan.
+  - `toFolder` no se copia: `typeorm-node.repository.ts` lo exporta (el archivo ya cambia por `escapeLike`).
   - `localDayStart` e `isInvalidRange`, privados en `features/audit/hooks/use-activity.ts` (004): copia en
-    `use-search.ts`.
+    `use-search.ts` (segundo uso); al tercero se extraen.
 - Dependencias nuevas entre módulos: ninguna (`storage → access` ya existe). Sin `architect`.
 - Frontend: reutiliza `LoadMore` y `MoreStatus` (`features/storage`), `SidebarQuota` y `useSpace`, `routes.ts`,
   `FileTypeChip`, `StateView` y `formatBytes`. Los estados nuevos siguen el mockup cuando Adrián lo apruebe.
@@ -75,9 +79,10 @@ SELECT a.*, p.id AS ubicacion_id, p.nombre AS ubicacion_nombre
 ```
 
 - **D-1 Plegado sin `unaccent`.** `translate` con un mapa cerrado (vocales con tilde, grave, circunflejo, diéresis,
-  `ç` y sus mayúsculas) en vez de `CREATE EXTENSION unaccent`: (a) no hay migración ni extensión nueva; (b) `unaccent`
-  iguala `ñ` y `n` («año» = «ano»), y en español son letras distintas (RN-1); (c) no depende del `LC_CTYPE` de la base
-  para las mayúsculas acentuadas; (d) sin índice (D-2), la inmutabilidad que pediría `unaccent` en una expresión
+  `ç` y **sus mayúsculas**, más `Ñ` → `ñ`) aplicado **antes** de `lower()`, en vez de `CREATE EXTENSION unaccent`:
+  (a) no hay migración ni extensión nueva; (b) `unaccent` iguala `ñ` y `n` («año» = «ano»), y en español son letras
+  distintas (RN-1); (c) no depende del `LC_CTYPE` de la base: el mapa ya deja en minúscula toda letra no ASCII que
+  importa (Á, Ñ, Ü…), y a `lower()` solo le queda el ASCII, que pliega igual en cualquier locale (incluido `C`); (d) sin índice (D-2), la inmutabilidad que pediría `unaccent` en una expresión
   indexada no importa. Alternativa (discutible, §7): `unaccent` en una migración reversible
   (`CREATE EXTENSION IF NOT EXISTS unaccent` / `DROP EXTENSION IF EXISTS unaccent`). Es un módulo *contrib* incluido en
   la imagen `pgvector/pgvector:pg17` y marcado *trusted* desde PG 13: a mi juicio no es «dependencia significativa»
@@ -113,8 +118,9 @@ Eventos / Socket.IO: ninguno.
 | CA | Nivel (unit / int / iso / web / e2e) | Archivo |
 |---|---|---|
 | CA-6, CA-9 (forma de `q`, tipo, fechas y rango) | unit (contratos) | `packages/contracts/src/storage/search-schemas.spec.ts` |
+| CA-4 (`\`, `%` y `_` escapados; texto sin especiales intacto) | unit | `apps/api/src/shared/infrastructure/persistence/escape-like.spec.ts` |
 | CA-1 (palabras, NFC, sin repetidas), CA-7 (categoría → tipos), mapeo de la respuesta | unit | `apps/api/src/modules/storage/search/application/search.service.spec.ts` |
-| CA-1 (mayúsculas, acentos, ñ ≠ n), CA-2 (orden y grupos, ubicación), CA-3 (cursor sin repetir ni saltar), CA-4 (comodines literales), CA-5 (papelera), CA-7, CA-8 (extremos del rango) | int (Testcontainers, `nimbo_app`) | `apps/api/test/int/storage/search.repository.int-spec.ts` |
+| CA-1 (mayúsculas, acentos, ñ ≠ n; «AÑO» = «año» y «ÁRBOL» = «arbol» sin depender del locale), CA-2 (orden y grupos, ubicación), CA-3 (cursor sin repetir ni saltar, también con varios nodos de igual `actualizado_en`, porque el cursor guarda milisegundos y PostgreSQL microsegundos, como en 007), CA-4 (comodines literales), CA-5 (papelera), CA-7, CA-8 (extremos del rango) | int (Testcontainers, `nimbo_app`) | `apps/api/test/int/storage/search.repository.int-spec.ts` |
 | CA-6/CA-9 (error principal `400`), CA-14 (`403` internos, `401`), CA-15 (bitácora capturada sin `q` ni nombres), caso feliz HTTP | int | `apps/api/test/int/storage/search.int-spec.ts` |
 | CA-13 (A y B con nombres casi iguales; ubicación ajena nunca nombrada; roles internos con 0 filas en el repositorio) | iso | `apps/api/test/isolation/storage-search.iso-spec.ts` |
 | CA-3, CA-8, CA-9 (URL ↔ filtros, días → instantes, cada atajo de fecha → su rango, rango inválido sin consultar, páginas), CA-6 (vacío sin consultar) | web (hook) | `apps/web/src/features/search/use-search.spec.ts` |
@@ -130,20 +136,20 @@ Sin E2E (marcador hasta 000b/023). El recorrido de la demo es la tarea humana.
   `accessibleNodes` acota primero; `limit + 1`; medir en 023 (PD-131). Si no alcanza, índice GIN `pg_trgm` sobre la
   expresión plegada (extensión nueva → ADR corto).
 - **R-2 Mapa de plegado a mano**: un solo lugar (constante del repositorio, aplicada a columna y parámetro); la
-  prueba de integración fija «camión», «CAMIÓN», «pingüino», «Año» frente a «ano». La web no pliega (no resalta).
+  prueba de integración fija «camión», «CAMIÓN», «pingüino», «AÑO» = «año» y «Año» frente a «ano». La web no pliega (no resalta).
 - **R-3 Ubicación con 012**: un archivo compartido cuya carpeta no veo devuelve `location: null` y la web diría
   «Mis archivos». Hoy no pasa (todo es propio); 012 decide el texto («Compartido contigo») → PD-132.
 - **R-4 Texto buscado en direcciones**: Pino lo quita; un `accessLog` de Traefik lo registraría → PD-133 (como PD-101).
-- **R-5 Archivos de Adrián**: `storage.module.ts` (tres entradas) y los dos de `packages/contracts/src/storage/`
-  (motivos y una exportación). Se piden en esta aprobación. Además `components/nimbo/app-layout.tsx` (un ítem en
+- **R-5 Archivos de Adrián**: `storage.module.ts` (tres entradas), los dos de `packages/contracts/src/storage/`
+  (motivos y una exportación) y los cuatro de la extracción de `escapeLike` (§2). Se piden en esta aprobación. Además `components/nimbo/app-layout.tsx` (un ítem en
   `DEFAULT_NAV_ITEMS`): es archivo compartido de 000b permitido por `specs/README.md`, se nombra para que no sorprenda.
+- **R-6 Mockup**: T-09 espera la aprobación de los estados nuevos. Los atajos de fecha del mockup («Últimos 7 días»,
+  «Últimos 30 días», «Este año») se resuelven en la web sobre el mismo `from`/`to`; la API no cambia.
 - **R-7 Lint de capas** (resuelto, PD-135, 2026-10-27): `layers.js` vigilaba solo `modules/*/{domain,application}/**`; ahora
   también `modules/*/*/{domain,application}/**`, así que `storage/search/application` queda cubierto (sirve a 017).
-- **R-6 Mockup**: T-08 espera la aprobación de los estados nuevos. Los atajos de fecha del mockup («Últimos 7 días»,
-  «Últimos 30 días», «Este año») se resuelven en la web sobre el mismo `from`/`to`; la API no cambia.
 - Desviaciones de los diagramas: DF-15 actualizado (`SearchService` y `SearchController` en `storage/search`,
   propuesto por este plan); M2 sin redibujar → PD-134.
-- Pendientes que deja fuera: PD-131 (k6 de la búsqueda), PD-132 (ubicación de lo compartido, 012), PD-133 (access log), PD-135 (lint de capas),
+- Pendientes que deja fuera: PD-131 (k6 de la búsqueda), PD-132 (ubicación de lo compartido, 012), PD-133 (access log),
   PD-134 (Clases M2 y `design-model.md`, sección de búsqueda en `storage/README.md`); PD-127 pasa a 018b.
 - ADR requeridos: ninguno. **Discutible**: si Adrián prefiere `unaccent` (D-1), propongo no hacer ADR (contrib de la
   imagen ya aprobada en ADR-0003) y anotarlo en este plan.
