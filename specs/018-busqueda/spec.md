@@ -4,14 +4,14 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Borrador |
+| Estado | Lista (2026-10-28): plan aprobado por Adrián (2026-10-27) y mockup aprobado (2026-10-28) |
 | Dueño | Juan Marcos (2) |
 | Fase | 2 |
 | Requisitos | RF-15 (nombre, tipo y fecha; el contenido pasa a 018b); aplican RF-05, RF-07, RF-10, RF-11, RNF-05, RNF-13, RNF-14, RNF-17 |
 | Depende de | 005 (archivos), 006 (carpetas y papelera), 007 (categorías de tipo, fecha de modificación y «Cargar más») |
 | Módulo | M2 `storage`, carpeta propia `storage/search` (`specs/README.md`, excepciones); web `features/search` |
 | DF | DF-15 (`SearchService`), DF-32 (`accessibleNodes`) |
-| Última actualización | 2026-10-26 |
+| Última actualización | 2026-10-28 |
 
 ## 1. Contexto y objetivo
 
@@ -40,7 +40,7 @@ coincide (en cualquier carpeta), los acota por tipo y por fecha de modificación
 ### Filtros (HU-2)
 - **CA-7** (HU-2, RF-15) Dado el filtro de tipo «Documentos», «Imágenes» u «Otros» (las categorías del resumen de espacio, 007 CA-2), entonces solo aparecen archivos de esa categoría y **ninguna carpeta**; al quitar el filtro, las carpetas vuelven.
 - **CA-8** (HU-2, RF-15) Dado un rango de fechas de modificación («desde», «hasta» o ambos, días completos en la hora local del cliente), entonces solo aparecen los elementos modificados dentro del rango, ambos días incluidos; el rango se combina con el texto y el tipo. La pantalla ofrece «Cualquier fecha», «Últimos 7 días», «Últimos 30 días», «Este año» y «Rango personalizado» (desde/hasta); los atajos equivalen a ese mismo rango.
-- **CA-9** (HU-2, RF-15) — error: Dado un tipo fuera del catálogo, una fecha mal formada o un «hasta» anterior al «desde», la API responde `400` `STORAGE_INVALID_QUERY` con `INVALID_TYPE`, `INVALID_DATE` o `INVALID_RANGE`; la web no consulta un rango inválido y muestra el mensaje junto al campo, con la acción para corregirlo.
+- **CA-9** (HU-2, RF-15) — error: Dado un tipo fuera del catálogo, una fecha mal formada o un «hasta» anterior al «desde», la API responde `400` `STORAGE_INVALID_QUERY` con `INVALID_TYPE`, `INVALID_DATE` o `INVALID_RANGE`; la web no consulta un rango inválido y muestra el mensaje junto al campo, que sigue editable para corregirlo (esa es la acción); la lista anterior se ve atenuada porque ya no corresponde a los filtros.
 
 ### Abrir un resultado y estados (HU-3)
 - **CA-10** (HU-3, RF-15, RF-10) Dado un resultado, cuando lo activa (clic o teclado), entonces una carpeta se abre en el explorador (006) y un archivo, en su ficha (014).
@@ -72,11 +72,17 @@ coincide (en cualquier carpeta), los acota por tipo y por fecha de modificación
 
 | Pantalla | Mockup (`docs/design/mockups/…`) | Estados requeridos | Estado del mockup |
 |---|---|---|---|
-| Búsqueda (`/buscar`) | `storage/busqueda/` | resultados por nombre (carpetas y archivos, con ubicación), filtro de tipo, filtro de fecha, sin-resultados, cargando, error, cargando-mas y cargar-mas-error (patrón del explorador, 007) | `Borrador`, **pendiente de aprobación de Adrián**: 11 estados de la 018 (entrada, resultados-por-nombre, filtros, rango-invalido, sin-resultados, sin-resultados-sin-filtros, cargando, error, cargando-mas, cargar-mas-error, menu-movil) creados con `/mockup` en `feat/018-busqueda`; `busqueda--resultados` queda como referencia de 018b |
+| Búsqueda (`/buscar`) | `storage/busqueda/` | resultados por nombre (carpetas y archivos, con ubicación), filtro de tipo, filtro de fecha, sin-resultados, cargando, error, cargando-mas y cargar-mas-error (patrón del explorador, 007) | `Aprobado` (Adrián, 2026-10-28, PR #81): 11 estados de la 018 (entrada, resultados-por-nombre, filtros, rango-invalido, sin-resultados, sin-resultados-sin-filtros, cargando, error, cargando-mas, cargar-mas-error, menu-movil); `busqueda--resultados` queda como referencia de 018b |
 | Navegación (barra lateral y menú móvil) | `shared/layout/` | ítem «Buscar» activo en `/buscar` | Patrón existente del layout (000b) |
 
 - Del mockup existente **no se construye**: «En comentarios», «texto reconocido por OCR» (fuera de alcance, §9 del contexto), «Preguntar al agente» y «Resumir con citas» (020), «Incluir papelera», «Solo indexados», el porcentaje de relevancia, la tarjeta «Ámbito de la búsqueda», los fragmentos de contenido y «Coincidencia en contenido» (018b), el total «28 coincidencias en 9 archivos · 0.4 s» y «Ordenar: Relevancia».
-- Mensajes clave (tuteo, con acción): vacío «Escribe qué quieres buscar.»; sin resultados «No encontramos nada con «{texto}». Revisa lo que escribiste o quita los filtros.»; rango «La fecha final debe ser igual o posterior a la inicial. Corrige el rango para buscar.»; error «No pudimos buscar. Revisa tu conexión y vuelve a intentarlo.» con «Reintentar».
+- Observaciones de la aprobación del mockup (Adrián, 2026-10-28) que se aplican al implementar, sin regenerar el mockup:
+  a 360 px los filtros van en un panel plegable (cerrado por defecto, con el número de filtros activos) para no empujar
+  los resultados; en `rango-invalido` los campos de fecha quedan editables y la lista anterior se atenúa (CA-9); las
+  fechas se muestran en `es-GT`. No aplican a 018: «Optimizador» en la barra lateral (marco del mockup; llega con 021),
+  «Buscar» repetido en miga, `h1` y navegación (patrón del resto de pantallas), `NAME_TOO_LONG` sin estado propio
+  (`maxlength`) y el aviso de axe del botón de cuenta (marco compartido).
+- Mensajes clave (tuteo, con acción): vacío «Escribe qué quieres buscar.»; sin resultados con filtros activos «No encontramos nada con «{texto}». Revisa lo que escribiste o quita los filtros.» y, sin filtros activos, «No encontramos nada con «{texto}». Revisa lo que escribiste.» (sin acción); rango «La fecha final debe ser igual o posterior a la inicial. Corrige el rango para buscar.»; error «No pudimos buscar. Revisa tu conexión y vuelve a intentarlo.» con «Reintentar».
 
 ## 7. Fuera de alcance
 
@@ -109,3 +115,4 @@ coincide (en cualquier carpeta), los acota por tipo y por fecha de modificación
 | 2026-10-26 | Mockup alineado con la spec: entrada por «Buscar» en la navegación (no campo en la cabecera), sin resaltado de la coincidencia; CA-8 suma los atajos de fecha del mockup | Mockup y plan se hicieron en paralelo y diferían | Dueño: Juan Marcos (pendiente Adrián) |
 | 2026-10-26 | Revisión de la spec: CA-6 alineado con el mockup (vacío sin mensaje de error), §6 con los 11 estados; en el plan, copias declaradas (M-1), prueba de atajos y PD-135 (lint de capas) | Revisión SOLID/DRY/YAGNI del dueño | Dueño: Juan Marcos (pendiente Adrián) |
 | 2026-10-27 | Plan corregido según la aprobación de Adrián: `escapeLike` a `shared` (tercer uso) y `toFolder` exportado; categoría → tipos con `FILE_KINDS` + `categoryOf`; plegado de mayúsculas no ASCII y `Ñ` sin depender del locale; prueba del cursor con fechas iguales; nueva T-03 (11 tareas) | Condiciones de la aprobación del plan (PR #81) | Adrián (2026-10-27) |
+| 2026-10-28 | Spec a `Lista`; mockup `Aprobado`; mensaje de sin resultados sin filtros (observación 9), CA-9 con campos editables y lista atenuada, y observaciones del mockup para la implementación (§6) | Auditoría de Adrián del PR #81 (medio 1 y observaciones 1, 2, 3, 6 y 9) | Adrián (2026-10-28) |

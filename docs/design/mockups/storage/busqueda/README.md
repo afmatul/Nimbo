@@ -2,7 +2,7 @@
 
 - **Spec**: [018](../../../../../specs/018-busqueda/spec.md) (búsqueda por **nombre**, **tipo** y **fecha** de última
   modificación; RF-15 parcial; CA-1…CA-15, §6 y §7). La búsqueda por contenido es la 018b.
-- **Estado**: Borrador, **pendiente de aprobación de Adrián** (2026-10-26). Dueño de la spec: Juan Marcos. Alineado con
+- **Estado**: **Aprobado** por Adrián (2026-10-28, auditoría del PR #81), con observaciones (ver «Aprobación»). Dueño de la spec: Juan Marcos. Alineado con
   la spec el 2026-10-26 (decisiones del dueño: entrada por la navegación, sin resaltado, filtro de fecha con atajos).
 - **Origen**:
   - Estados de 018: HTML autocontenido generado con `_generadores/busqueda/generar.js` (marco, fila y tabla del
@@ -39,7 +39,7 @@ coincidencias, orden elegible, búsqueda mientras se escribe, «En comentarios»
 «Resumir con citas», «Incluir papelera», «Solo indexados», % de relevancia, «Ámbito de la búsqueda» y fragmentos de
 contenido (spec §6 y §7).
 
-## Decisiones de UX (requieren aprobación de Adrián)
+## Decisiones de UX (aprobadas por Adrián, 2026-10-28)
 
 1. **Entrada por la navegación** (CA-12): ítem «Buscar» (ícono `Search` de lucide) después de «Mis archivos» en la
    barra lateral y en el cajón móvil, con `aria-current="page"` en `/buscar`. **No hay campo en la barra superior**
@@ -74,9 +74,9 @@ contenido (spec §6 y §7).
 
 ## Diferencias con la spec
 
-- **sin-resultados-sin-filtros**: §6 da un único mensaje («… Revisa lo que escribiste o quita los filtros.»). Sin
-  filtros activos el mockup omite «o quita los filtros». Si el equipo prefiere el texto literal en ambos casos, es un
-  cambio de una línea en el generador.
+- **sin-resultados-sin-filtros**: resuelto (2026-10-28). La spec §6 ya da dos mensajes: con filtros activos
+  «… Revisa lo que escribiste o quita los filtros.» y, sin filtros, «… Revisa lo que escribiste.» sin acción, como el
+  mockup.
 - **NAME_TOO_LONG** (CA-6): no tiene estado propio; el campo limita a 255 caracteres (`maxlength`), así que el mensaje
   «Usa 255 caracteres o menos…» solo llegaría desde la API (p. ej. dirección editada a mano). Si se quiere dibujar, va
   junto al campo como el error de rango.
@@ -91,7 +91,17 @@ contenido (spec §6 y §7).
 - Contraste de pares usados: texto de ayuda, ubicación y nota (`secondary-foreground` sobre `card`/`background`)
   8.09:1; botón primario `#4A6FA5` con texto blanco ≥ 4.5:1 (§3). No hay pares nuevos.
 
-## Pendiente
+## Aprobación (Adrián, 2026-10-28)
 
-- Aprobación de Adrián de los 11 estados y de las decisiones 1–11.
-- Los campos de fecha salen con el formato del sistema en las capturas (mm/dd/aaaa); en la app se muestran en es-GT.
+Aprobados los 11 estados y las decisiones 1–11. Observaciones, que se aplican al implementar sin regenerar el mockup
+(spec §6):
+
+1. A 360 px la tarjeta de filtros empuja los resultados casi 1000 px: en la app va en un panel plegable.
+2. En `rango-invalido` la lista anterior se atenúa (ya no corresponde a los filtros).
+3. La acción que corrige el rango son los campos de fecha editables; «Quitar filtros» no lo corrige.
+4. «Optimizador» en la barra lateral viene del marco compartido; llega con 021.
+5. «Buscar» en miga, `h1` y navegación: patrón del resto de pantallas, se mantiene.
+6. Las capturas muestran mm/dd/aaaa (formato del sistema); la app muestra las fechas en es-GT.
+7. `NAME_TOO_LONG` sin estado propio: `maxlength` lo evita; solo llegaría desde la API.
+8. La violación `serious` de axe (`label-content-name-mismatch` en `.account-btn`) es del marco compartido.
+9. Sin resultados sin filtros: confirmado sin «o quita los filtros» (spec §6).

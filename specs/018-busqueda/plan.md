@@ -55,7 +55,12 @@ La web agrega `/buscar` en `features/search` y el ítem «Buscar» en la navegac
     `use-search.ts` (segundo uso); al tercero se extraen.
 - Dependencias nuevas entre módulos: ninguna (`storage → access` ya existe). Sin `architect`.
 - Frontend: reutiliza `LoadMore` y `MoreStatus` (`features/storage`), `SidebarQuota` y `useSpace`, `routes.ts`,
-  `FileTypeChip`, `StateView` y `formatBytes`. Los estados nuevos siguen el mockup cuando Adrián lo apruebe.
+  `FileTypeChip`, `StateView` y `formatBytes`. Los estados siguen el mockup aprobado (2026-10-28) con sus observaciones
+  (spec §6): filtros en panel plegable a 360 px, lista atenuada con rango inválido y fechas en `es-GT`.
+- Tamaño de funciones y SRP en la web (auditoría de Adrián, menor 7): `use-search.ts` separa en funciones puras la
+  lectura y escritura de la URL, los atajos y días → `from`/`to` y la validación del rango; `search-view.tsx` separa
+  formulario, filtros y lista en componentes, todos ≤ 30 líneas y ≤ 3 parámetros. Siguen en los mismos dos archivos;
+  si alguno pasa de ~200 líneas se parte dentro de `features/search` y se anota en «Notas del developer».
 
 ## 3. Datos
 
@@ -124,7 +129,7 @@ Eventos / Socket.IO: ninguno.
 | CA-6/CA-9 (error principal `400`), CA-14 (`403` internos, `401`), CA-15 (bitácora capturada sin `q` ni nombres), caso feliz HTTP | int | `apps/api/test/int/storage/search.int-spec.ts` |
 | CA-13 (A y B con nombres casi iguales; ubicación ajena nunca nombrada; roles internos con 0 filas en el repositorio) | iso | `apps/api/test/isolation/storage-search.iso-spec.ts` |
 | CA-3, CA-8, CA-9 (URL ↔ filtros, días → instantes, cada atajo de fecha → su rango, rango inválido sin consultar, páginas), CA-6 (vacío sin consultar) | web (hook) | `apps/web/src/features/search/use-search.spec.ts` |
-| CA-2, CA-10, CA-11 (resultados, enlaces, sin resultados con «Quitar filtros», cargando, error con «Reintentar», foco) | web (componente) | `apps/web/src/features/search/components/search-view.spec.tsx` |
+| CA-2, CA-10, CA-11 (resultados, enlaces, sin resultados con y sin filtros, cargando, error con «Reintentar», foco, fechas en `es-GT`, panel de filtros plegable a 360 px, lista atenuada con rango inválido) | web (componente) | `apps/web/src/features/search/components/search-view.spec.tsx` |
 | CA-11 (axe a 360 y 1440 px) | web | `apps/web/src/features/search/a11y.spec.tsx` |
 | CA-12 («Buscar» en la navegación del cliente, no en la interna) | web | `apps/web/src/components/nimbo/app-layout.spec.tsx` (se amplía) |
 
