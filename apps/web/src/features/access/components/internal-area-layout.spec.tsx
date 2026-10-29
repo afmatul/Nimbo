@@ -55,6 +55,12 @@ describe('internalNavFor (011 CA-17)', () => {
     expect(navOf('CLIENT')).toEqual([]);
   });
 
+  it('018 CA-14: ningún rol interno recibe «Buscar»', () => {
+    for (const role of ['ADMIN', 'SUPPORT', 'OPERATOR'] as const) {
+      expect(navOf(role).map(([, href]) => href)).not.toContain('/buscar');
+    }
+  });
+
   it('CA-17: marca la entrada activa solo en su página', () => {
     const active = internalNavFor('SUPPORT', '/soporte/metadatos');
     const elsewhere = internalNavFor('SUPPORT');

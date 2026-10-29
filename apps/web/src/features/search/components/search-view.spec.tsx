@@ -85,6 +85,16 @@ describe('SearchView: pantalla /buscar (018 CA-2, CA-6, CA-9 a CA-12)', () => {
     expect(load).not.toHaveBeenCalled();
   });
 
+  it('CA-12: «Buscar» es la única entrada activa de la navegación', async () => {
+    await renderView('', loadOf());
+
+    const nav = screen.getByRole('navigation', { name: 'Navegación principal' });
+    const active = within(nav)
+      .getAllByRole('link')
+      .filter((link) => link.classList.contains('bg-accent'));
+    expect(active.map((link) => link.getAttribute('href'))).toEqual(['/buscar']);
+  });
+
   it('CA-6: enviar solo espacios no busca y devuelve el foco al campo', async () => {
     const load = loadOf();
     const navigate = await renderView('', load);

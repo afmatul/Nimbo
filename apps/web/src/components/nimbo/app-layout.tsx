@@ -1,6 +1,6 @@
 'use client';
 
-import { Cloud, Menu, Folder, Share2, Trash2, HardDrive, Sparkles } from 'lucide-react';
+import { Cloud, Menu, Folder, Search, Share2, Trash2, HardDrive, Sparkles } from 'lucide-react';
 import type * as React from 'react';
 
 import { Toaster } from '../ui/sonner';
@@ -12,9 +12,10 @@ import { useMobileNav, type MobileNav } from './use-mobile-nav';
 
 export type { NavItem };
 
-/** «Espacio» reemplaza a «Planes y Cuota» hasta 009 (007 D-18, PD-92). */
+/** «Espacio» reemplaza a «Planes y Cuota» hasta 009 (007 D-18, PD-92); «Buscar» es la entrada de la búsqueda (018 CA-12). */
 export const DEFAULT_NAV_ITEMS: readonly NavItem[] = [
   { label: 'Mis Archivos', icon: Folder, href: '/archivos', active: true },
+  { label: 'Buscar', icon: Search, href: '/buscar' },
   { label: 'Compartidos', icon: Share2, href: '#compartidos' },
   { label: 'Papelera', icon: Trash2, href: TRASH_HREF },
   { label: 'Espacio', icon: HardDrive, href: '/espacio' },
