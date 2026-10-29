@@ -74,7 +74,7 @@ SELECT a.*, p.id AS ubicacion_id, p.nombre AS ubicacion_nombre
         AND p.id IN (SELECT nodo_id FROM (<accessibleNodes>) n WHERE n.tipo_nodo = 'carpeta')
  WHERE a.id IN (SELECT nodo_id FROM (<accessibleNodes>) n WHERE n.tipo_nodo = 'archivo')
    AND a.eliminado_en IS NULL
-   AND translate(lower(a.nombre), :foldFrom, :foldTo) LIKE '%' || translate(lower(:t1), :foldFrom, :foldTo) || '%' ESCAPE '\'
+   AND lower(translate(a.nombre, :foldFrom, :foldTo)) LIKE '%' || lower(translate(:t1, :foldFrom, :foldTo)) || '%' ESCAPE '\'
    -- … una condición por palabra (:t2, :t3…)
    AND a.tipo = ANY(:kinds)                       -- solo con filtro de tipo; con él no se consulta `carpeta`
    AND a.actualizado_en >= :from AND a.actualizado_en < :to   -- cada extremo, solo si viene
@@ -95,7 +95,7 @@ SELECT a.*, p.id AS ubicacion_id, p.nombre AS ubicacion_nombre
 - **D-2 Sin índices nuevos (YAGNI).** `LIKE '%…%'` no usa B-tree; un índice GIN con `pg_trgm` sería otra extensión.
   `accessibleNodes` acota a los nodos del actor (`idx_archivo_propietario_actualizado`, migración `20261007100400`,
   sirve además al orden). Con el volumen de la demo (el corpus de 005/019, cientos a pocos miles de nodos por cuenta)
-  basta, como midió 007 para el orden (PD-62). Se mide con k6 en 023 (PD-131).
+  basta, como midió 007 para el orden (PD-62). Se mide con k6 en 023 (PD-137).
 - `down`: no aplica. RLS: sin cambios (`archivo` y `carpeta` ya tienen `ENABLE` + `FORCE`).
 
 ## 4. Contratos
@@ -138,7 +138,7 @@ Sin E2E (marcador hasta 000b/023). El recorrido de la demo es la tarea humana.
 ## 7. Riesgos y coherencia con el diseño
 
 - **R-1 Rendimiento sin índice** (RNF-01, p95 < 300 ms): `LIKE` por palabra sobre los nodos del actor. Mitigación:
-  `accessibleNodes` acota primero; `limit + 1`; medir en 023 (PD-131). Si no alcanza, índice GIN `pg_trgm` sobre la
+  `accessibleNodes` acota primero; `limit + 1`; medir en 023 (PD-137). Si no alcanza, índice GIN `pg_trgm` sobre la
   expresión plegada (extensión nueva → ADR corto).
 - **R-2 Mapa de plegado a mano**: un solo lugar (constante del repositorio, aplicada a columna y parámetro); la
   prueba de integración fija «camión», «CAMIÓN», «pingüino», «AÑO» = «año» y «Año» frente a «ano». La web no pliega (no resalta).
@@ -154,7 +154,7 @@ Sin E2E (marcador hasta 000b/023). El recorrido de la demo es la tarea humana.
   también `modules/*/*/{domain,application}/**`, así que `storage/search/application` queda cubierto (sirve a 017).
 - Desviaciones de los diagramas: DF-15 actualizado (`SearchService` y `SearchController` en `storage/search`,
   propuesto por este plan); M2 sin redibujar → PD-134.
-- Pendientes que deja fuera: PD-131 (k6 de la búsqueda), PD-132 (ubicación de lo compartido, 012), PD-133 (access log),
+- Pendientes que deja fuera: PD-137 (k6 de la búsqueda), PD-132 (ubicación de lo compartido, 012), PD-133 (access log),
   PD-134 (Clases M2 y `design-model.md`, sección de búsqueda en `storage/README.md`); PD-127 pasa a 018b.
 - ADR requeridos: ninguno. **Discutible**: si Adrián prefiere `unaccent` (D-1), propongo no hacer ADR (contrib de la
   imagen ya aprobada en ADR-0003) y anotarlo en este plan.
