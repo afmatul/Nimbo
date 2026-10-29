@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { EntityManager, ObjectLiteral, SelectQueryBuilder } from 'typeorm';
 import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 
-import { TransactionContext } from '../../../../shared';
+import { escapeLike, TransactionContext } from '../../../../shared';
 import type { Actor } from '../../../../shared';
 import { accessibleNodes, ownedFiles } from '../../../access';
 import type {
@@ -34,11 +34,6 @@ import { VersionArchivoOrmEntity } from './version-archivo.orm-entity';
 
 const FILE_ALIAS = 'archivo';
 const FOLDER_ALIAS = 'carpeta';
-/** Comodines de `LIKE` y su carácter de escape: en un nombre son texto, no patrones. */
-const LIKE_SPECIAL_CHARACTERS = /[\\%_]/g;
-
-const escapeLike = (text: string): string => text.replace(LIKE_SPECIAL_CHARACTERS, '\\$&');
-
 /** Patrón `LIKE` de las copias «base (n)tail» (D-4); `tail` es «.ext» en archivos y vacío en carpetas. */
 const copiesPattern = (base: string, tail: string): string =>
   `${escapeLike(base)} (%)${escapeLike(tail)}`;
@@ -74,7 +69,8 @@ export const toFile = (row: ArchivoOrmEntity): File =>
     trash: toTrashState(row),
   });
 
-const toFolder = (row: CarpetaOrmEntity): Folder =>
+/** Fila → `Folder`; también la usa la búsqueda (018) para sus carpetas. */
+export const toFolder = (row: CarpetaOrmEntity): Folder =>
   Folder.rehydrate({
     id: row.id,
     ownerId: row.propietarioId,

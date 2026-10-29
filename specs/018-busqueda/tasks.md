@@ -6,7 +6,7 @@
 
 - [x] **T-01** Contratos de la búsqueda (`search-schemas`, motivos `INVALID_TYPE`, `INVALID_DATE`, `INVALID_RANGE`, exportación) — CA: CA-6, CA-9 — Prueba: unitaria de contratos, en rojo primero
 - [x] **T-02** `SearchService` y `INodeSearchRepository` con un doble: palabras, categoría → tipos y mapeo a la respuesta — CA: CA-1, CA-7 — Prueba: unitaria, en rojo primero — Depende: T-01
-- [ ] **T-03** Extraer `escapeLike` a `shared` (tercer uso), con `storage` e `identity` importándolo y `toFolder` exportado — CA: CA-4 — Prueba: unitaria de `escapeLike` en rojo primero; las suites existentes de `storage` e `identity` siguen en verde — Depende: —
+- [x] **T-03** Extraer `escapeLike` a `shared` (tercer uso), con `storage` e `identity` importándolo y `toFolder` exportado — CA: CA-4 — Prueba: unitaria de `escapeLike` en rojo primero; las suites existentes de `storage` e `identity` siguen en verde — Depende: —
 - [ ] **T-04** `TypeOrmNodeSearchRepository` por nombre: `accessibleNodes`, plegado (D-1), comodines literales, papelera, orden por grupos, cursor y ubicación — CA: CA-1, CA-2, CA-3, CA-4, CA-5 — Prueba: integración (Testcontainers, `nimbo_app`), en rojo primero — Depende: T-02, T-03
 - [ ] **T-05** Filtros de tipo (sin carpetas) y de rango de fechas en el repositorio — CA: CA-7, CA-8 — Prueba: integración con los extremos del rango — Depende: T-04
 - [ ] **T-06** `GET /search` (`SearchController`, registro en `StorageModule`) — CA: CA-6, CA-9, CA-14, CA-15 — Prueba: integración HTTP, caso feliz y `400`, `403` de los tres roles internos, `401` y bitácora sin `q` ni nombres — Depende: T-05
