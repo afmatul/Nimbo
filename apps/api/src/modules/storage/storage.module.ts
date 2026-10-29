@@ -43,6 +43,10 @@ import { QuickAccessController } from './presentation/quick-access.controller';
 import { SpaceController } from './presentation/space.controller';
 import { TrashController } from './presentation/trash.controller';
 import { UploadsController } from './presentation/uploads.controller';
+import { I_NODE_SEARCH_REPOSITORY } from './search/application/ports/i-node-search.repository.port';
+import { SearchService } from './search/application/search.service';
+import { TypeOrmNodeSearchRepository } from './search/infrastructure/typeorm-node-search.repository';
+import { SearchController } from './search/presentation/search.controller';
 import {
   INDEXABLE_FILE_PROVIDERS,
   SPACE_PROVIDERS,
@@ -66,7 +70,7 @@ export type StorageEnv = Pick<
 >;
 
 /**
- * Módulo `storage` (M2, plan §6): carga, descarga, carpetas, papelera y accesos rápidos (006), resumen de espacio (007) y
+ * Módulo `storage` (M2, plan §6): carga, descarga, carpetas, papelera y accesos rápidos (006), resumen de espacio (007), búsqueda (018, `storage/search`) y
  * versiones (014: registro y poda en `UPLOAD_LIFECYCLE_PROVIDERS`; historial, descarga y restauración solo en el `api`)
  * y, desde 016, `EditableFileGateway` (exportado) con el registro de versiones de edición, solo en el `api`; desde 019,
  * `IndexableFileGateway` (exportada) y el anuncio de cada versión vigente (`storage.file-version-created`).
@@ -107,6 +111,7 @@ export class StorageModule {
         TrashController,
         QuickAccessController,
         SpaceController,
+        SearchController,
       ],
       providers: [
         { provide: UPLOAD_CONFIG, useValue: uploadConfig },
@@ -133,6 +138,8 @@ export class StorageModule {
         VersionRestoreService,
         FolderService,
         QuickAccessService,
+        SearchService,
+        { provide: I_NODE_SEARCH_REPOSITORY, useClass: TypeOrmNodeSearchRepository },
         { provide: I_NODE_METADATA_READER, useClass: SqlNodeMetadataReader },
         EditedVersionRegistrar,
         EditableFileGateway,
