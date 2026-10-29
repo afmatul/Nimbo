@@ -39,6 +39,7 @@ Son la base para defender la arquitectura en la exposición final (enunciado §6
 | 0033 | [Extracción de texto (`fflate`, `fast-xml-parser`, Ghostscript), embeddings por REST y relay `index-status`](0033-extraccion-de-texto-y-embeddings-por-rest.md) (spec 019, DF-78) | Aceptado |
 | 0034 | [SDD express en un pase: spec, plan y tareas juntos](0034-sdd-express-un-pase.md) (enmienda la secuencia de ADR-0023) | Propuesto |
 | 0035 | [Escrituras internas acotadas: funciones `SECURITY DEFINER` para la cuenta y la papelera](0035-escrituras-internas-acotadas-de-ajustes-y-restauracion.md) (spec 011b; PR-A y PR-B; **enmienda ADR-0005 y ADR-0021**, delimita ADR-0032 regla 3) | Aceptado |
+| 0036 | [`intelligence` lee `archivo` y `carpeta` por SQL de solo lectura para recuperar con el filtro en la consulta](0036-intelligence-lee-archivo-y-carpeta-por-sql-de-solo-lectura.md) (tercera excepción acotada, DF-83; spec 020) | Aceptado |
 
 Estados: `Pendiente` (sin redactar) · `Propuesto` (redactado, falta acuerdo del equipo) · `Aceptado` · `Reemplazado por`.
 Los ADR 0001, 0002, 0008, 0009, 0014 y 0015 se aceptaron el 26/09/2026 (Adrián, parte de ADR de la T-27 de la spec 000).

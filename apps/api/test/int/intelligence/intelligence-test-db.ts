@@ -49,12 +49,13 @@ export const insertIndexing = async (
   return id;
 };
 
-/** Fragmento de *fixture*: orden, texto, procedencia y eje de su vector. */
+/** Fragmento de *fixture*: orden, texto, procedencia y eje de su vector (o el vector exacto, que manda sobre el eje). */
 export interface ChunkRowOptions {
   readonly order?: number;
   readonly text?: string;
   readonly location?: unknown;
   readonly axis?: number;
+  readonly vector?: readonly number[];
 }
 
 /** Inserta un `fragmento` sobre `version` y devuelve su id. */
@@ -74,7 +75,7 @@ export const insertChunk = async (
       options.order ?? 0,
       options.text ?? 'Informe trimestral de ventas',
       JSON.stringify(options.location ?? { tipo: 'pdf', pagina: 1, confianza: 1 }),
-      toVectorLiteral(axisVector(options.axis ?? 0)),
+      toVectorLiteral(options.vector ?? axisVector(options.axis ?? 0)),
     ],
   );
   return id;

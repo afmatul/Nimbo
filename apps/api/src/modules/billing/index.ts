@@ -11,6 +11,13 @@ export type {
   AdjustQuotaCommand,
   AdjustValidityCommand,
 } from './application/subscription-administration';
+export { I_AGENT_QUOTA } from './application/ports/i-agent-quota.port';
+export type {
+  AgentQuotaReservation,
+  AgentQuotaReserveResult,
+  AgentQuotaStatus,
+  IAgentQuota,
+} from './application/ports/i-agent-quota.port';
 export type { PlanClientCount } from './application/ports/i-subscription-administration.reader.port';
 export type {
   SubscriptionLimits,

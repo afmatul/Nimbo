@@ -7,7 +7,7 @@ import {
 /**
  * Contrato de `IEmbeddingProvider` (Liskov, 019 T-04): lo cumplen `GeminiEmbeddingProvider` (contra un servidor HTTP
  * local) y el doble `FakeEmbeddingProvider` que usan las pruebas del pipeline, para que el doble no prometa lo que el
- * real no da.
+ * real no da. `task` (020 D-8) no cambia la forma del resultado.
  */
 const UNIT_NORM_DIGITS = 6;
 /** Más de un lote del proveedor (100): el reparto en lotes no se nota desde fuera. */
@@ -44,5 +44,12 @@ export function itBehavesAsEmbeddingProvider(provider: () => IEmbeddingProvider)
 
   it('contrato: una lista vacía da una lista vacía', async () => {
     expect(await provider().embed([])).toEqual([]);
+  });
+
+  it("contrato: con `task: 'query'` (pregunta del agente, 020 D-8) también da un vector unitario por texto", async () => {
+    const vectors = await provider().embed(['¿cuándo vence el contrato?'], 'query');
+
+    expect(vectors).toHaveLength(1);
+    vectors.forEach(expectUnitVector);
   });
 }
