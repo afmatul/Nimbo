@@ -71,7 +71,7 @@ Secreto = nunca en el repositorio, vacío en `.env.example` de staging, redactad
 | `GEMINI_EMBEDDING_MODEL` | ✓ | ✓ | | | | `gemini-embedding-001` | 019 (ADR-0007): modelo de embeddings, vectorizado a 768 dimensiones (ADR-0003); el `api` lo usa para la pregunta (020 D-8) |
 | `GEMINI_CHAT_MODEL` | ✓ | | | | | `gemini-3.5-flash` | 020 D-7: modelo que redacta las respuestas del agente |
 | `AGENT_MAX_QUESTION_CHARS` | ✓ | | | | | `1000` | 020 RN-7: largo máximo de la pregunta; `GET /agent/status` lo informa (`maxQuestionChars`) |
-| `AGENT_MODEL_FIRST_CHUNK_TIMEOUT_MS` / `AGENT_MODEL_IDLE_TIMEOUT_MS` | ✓ | | | | | `10000` / `10000` | 020 CA-15: plazos del modelo hasta el primer trozo y entre trozos; vencidos, `AGENT_UNAVAILABLE` sin descontar. Valores iniciales: los mide `pnpm --filter api agent:measure` (T-09, plan 020 §6) y se fijan en T-10 |
+| `AGENT_MODEL_FIRST_CHUNK_TIMEOUT_MS` / `AGENT_MODEL_IDLE_TIMEOUT_MS` | ✓ | | | | | `5000` / `5000` | 020 CA-15: plazos del modelo hasta el primer trozo y entre trozos; vencidos, `AGENT_UNAVAILABLE` sin descontar. Fijados en T-10 con `pnpm --filter api agent:measure` (plan 020 §6) |
 | `API_MEM_LIMIT`, `WORKER_MEM_LIMIT` | | | | ✓ | | `768m` | Staging; bajar a `512m` en demos con ONLYOFFICE (R-6) |
 | `COMPOSE_FILE` | | | | ✓ | | — | Solo staging: `compose.yml:compose.staging.yml` |
 

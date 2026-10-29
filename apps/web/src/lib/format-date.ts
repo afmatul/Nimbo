@@ -64,6 +64,17 @@ export function longDayLabel(isoDate: string): string {
   return longDayFormatter.format(new Date(isoDate));
 }
 
+const dayMonthFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
+  timeZone: DISPLAY_TIME_ZONE,
+  day: 'numeric',
+  month: 'long',
+});
+
+/** «1 de noviembre», sin año, con el día de Guatemala (mockup `intelligence/panel-agente/`, 020b CA-8). */
+export function dayMonthLabel(isoDate: string): string {
+  return dayMonthFormatter.format(new Date(isoDate));
+}
+
 /** «24 sep 2026», con el día de Guatemala. */
 export function dayLabel(isoDate: string): string {
   return startedOnFormatter.format(new Date(isoDate));

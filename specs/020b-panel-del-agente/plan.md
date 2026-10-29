@@ -23,7 +23,7 @@ el panel es presentacional y pinta los 12 estados del mockup con `StateView`, `A
   «Cerrar el agente» de 44 px). Al cerrar, el foco vuelve a quien lo abrió. Conversación en `role="log"` con `aria-live="polite"` y `aria-busy` al llegar texto; con reduced-motion el punto y el cursor quedan quietos.
 - **D-6 Respuesta en texto plano** (CA-13). El texto va como nodos de texto de React (nunca `dangerouslySetInnerHTML`, sin Markdown ni autoenlace). Cada `[n]` del texto se sustituye por el `CitationChip` del ordinal
   `n` recibido en un evento `citation`; un `[n]` sin cita se deja como texto. La web no construye citas (RN-2).
-- **D-7 `CitationChip`**. Ya existe. Cambia: muestra `label` tal como llega (019 añade « (ubicación aproximada)»; el chip **no** repite el texto), conserva ícono y borde discontinuo para `!isCertain`, y su `aria-label` deja de agregar «(ubicación estimada)».
+- **D-7 `CitationChip`**. Ya existe. Cambia: muestra «nombre del archivo · `label`» con la etiqueta siempre visible al final (se trunca el nombre, nunca la etiqueta; `min-h-7 text-xs`, objetivo táctil ≥ 24 px), `label` tal como llega (019 añade « (ubicación aproximada)»; el chip **no** repite el texto), conserva ícono y borde discontinuo para `!isCertain`, y su `aria-label` deja de agregar «(ubicación estimada)».
   Su clic navega a `/archivos/archivo/<fileId>?ubicacion=<etiqueta>`; con 017 solo cambia el destino (S-6).
 - **D-8 Ámbito** (RN-9 de 020, S-1). El botón dice el ámbito vigente. «Una carpeta» abre el árbol de «Mover a…» (`useFolderTree`, `MoveFolderTree`) con selección única y sin celdas deshabilitadas. «Un archivo» muestra el archivo fijado desde la ficha o aparece apagada.
   `useTreeFocus` hoy es local de `move-dialog.tsx`; al ser su segundo uso se **mueve** a `hooks/use-tree-focus.ts` (no se copia) y `move-dialog.tsx` lo importa.
@@ -108,3 +108,4 @@ Consumidos de la 020 (`packages/contracts/src/intelligence/`), sin redefinirlos:
 | Fecha | Cambio | Motivo | Aprobó |
 |---|---|---|---|
 | 2026-10-25 | Plan inicial | Parte de la 020 por ADR-0034 | — |
+| 2026-10-28 | D-7: chip «nombre del archivo · ubicación» con la ubicación al final y sin truncar | Enmienda de CA-3 (revisión B-2) | Adrián |

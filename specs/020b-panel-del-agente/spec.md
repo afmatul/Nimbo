@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Lista |
+| Estado | En revisión |
 | Dueño | Adrián |
 | Fase | 3 |
 | Requisitos | RF-32, RF-34; RNF-03 (lo que ve el cliente), RNF-09, RNF-13, RNF-14 |
@@ -30,7 +30,7 @@ Los números de la 020 (CA-x) indican el criterio del servidor que la pantalla h
 **Panel y consultas**
 - **CA-1** (HU-3, RF-34; 020 CA-10) Dado un cliente, cuando abre «Agente Nimbo», entonces el panel muestra «N de L consultas este mes» con L del plan de quien pregunta (Personal 20, Pro 500, Equipo 2 000, Institucional 10 000), la fecha de renovación y el ámbito vigente («Todos mis archivos» por omisión).
 - **CA-2** (HU-1, RF-32; 020 CA-7) Dado que no tiene archivos indexados, cuando abre el panel, entonces ve el estado vacío que explica qué formatos se indexan y «Subir archivos»; si pregunta igual, el servidor no descuenta y se muestra su respuesta.
-- **CA-3** (HU-1, RF-32, RNF-03; 020 CA-1) Dado una pregunta válida, cuando la envía, entonces su pregunta aparece, el campo se apaga con «Escribiendo…» y «Detener», el texto se va escribiendo y cada cita aparece como chip «archivo · ubicación» antes del texto que la menciona.
+- **CA-3** (HU-1, RF-32, RNF-03; 020 CA-1) Dado una pregunta válida, cuando la envía, entonces su pregunta aparece, el campo se apaga con «Escribiendo…» y «Detener», el texto se va escribiendo y cada cita aparece como chip «nombre del archivo · ubicación» antes del texto que la menciona; la ubicación exacta (página, sección, línea, hoja o diapositiva) va siempre visible al final del chip y, si falta espacio, se trunca el nombre, nunca la ubicación.
 - **CA-4** (HU-1, RF-32; 020 CA-1) Dado una respuesta en curso, cuando el cliente pulsa «Detener», entonces la escritura para y se conserva lo recibido; si aún no había texto, el contador queda igual (la consulta se libera, decisión aprobada en la 020).
 - **CA-5** (HU-1, RF-32; 020 CA-3) Dado que el servidor responde «No encontré esto en tus documentos», entonces se muestra sin citas, con la pista de ampliar el ámbito y la nota de que cuenta como consulta.
 - **CA-6** (HU-1, RF-32; 020 CA-4) Dado una cita de ubicación no certera, entonces su chip lo marca con ícono y borde (no solo color) y con el texto «ubicación aproximada» que trae la etiqueta del servidor, y la respuesta muestra el aviso «La ubicación de esta cita es aproximada».
@@ -76,6 +76,7 @@ Rutas relativas a `docs/design/`. `ui-guidelines.md` §7 lista la pantalla (fila
 | «Preguntar sobre esto» y «Ubicación citada» | Patrones existentes de la ficha (014) y de la carpeta (006) | un botón y una línea; la ficha de archivo inexistente ya existe | Decisión explícita: sin mockup nuevo |
 
 - Mensajes clave (tuteo): «Pregunta sobre tus documentos», «No encontré esto en tus documentos», «La ubicación de esta cita es aproximada», CA-8, CA-9, CA-16.
+- Ajustes del recorrido (T-09), aprobados: el ancho del panel se ajusta con puntero y teclado (420 px por defecto) y Enter envía la pregunta (Shift+Enter salta de línea).
 - Del mockup se ignoran: atribución por párrafo (fuera de alcance, §9 del contexto) y sugerencias de preguntas (YAGNI).
 
 ## 7. Fuera de alcance
@@ -104,3 +105,6 @@ Rutas relativas a `docs/design/`. `ui-guidelines.md` §7 lista la pantalla (fila
 |---|---|---|---|
 | 2026-10-25 | Creación en `Borrador`, con plan y tareas | Parte de la 020 por ADR-0034 (el plan pasaba de 12 archivos) | — |
 | 2026-10-25 | Plan aprobado y S-1 aceptado; pasa a `Lista` | Resumen aprobado | Adrián |
+| 2026-10-28 | CA-3: el chip muestra el nombre de la fuente y termina siempre con la ubicación exacta; se trunca el nombre, nunca la ubicación; objetivo táctil ≥ 24 px (`min-h-7 text-xs`) | Revisión B-2: el chip solo con la ubicación dejaba el archivo en `title`, invisible en táctil | Adrián |
+| 2026-10-28 | Se aprueban los ajustes de T-09: asa de ancho del panel y Enter para enviar (I-2); estado `vacio` del mockup con los seis formatos que indexa la 019 (S-2) y textos «Podrás preguntar de nuevo cuando renueves tu plan.» y «No pudimos responder tu pregunta.» (I-5). Sin mockups nuevos | Revisión, segunda pasada | Adrián |
+| 2026-10-28 | Correcciones de la revisión: Prettier en `app-layout.tsx` (T-FIX-1) y chip «archivo · ubicación» con `min-h-7 text-xs` y su prueba restaurada (T-FIX-2). En la 020: Prettier en `gemini-flash.model` (T-FIX-1) y `http.unhandled_error` sin `query` ni `parameters` (T-FIX-2) | Revisión B-1, B-2 y SEC-1 | Adrián |

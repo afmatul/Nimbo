@@ -125,7 +125,7 @@ describe('HybridRetriever (plan 020 D-2)', () => {
     await expect(retrieve()).resolves.toEqual({ fragments: [], discarded: 0 });
   });
 
-  it('CA-3: descarta los vectoriales por debajo de `MIN_SIMILARITY` (umbral provisional hasta T-09)', async () => {
+  it('CA-3: descarta los vectoriales por debajo de `MIN_SIMILARITY` (calibrado en T-10)', async () => {
     search.vector = [scored('cerca', MIN_SIMILARITY), scored('lejos', MIN_SIMILARITY - 0.01)];
 
     const { fragments } = await retrieve();

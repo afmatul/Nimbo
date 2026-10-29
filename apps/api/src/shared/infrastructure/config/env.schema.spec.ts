@@ -392,8 +392,8 @@ describe('Gemini y agente con citas (020 plan D-8)', () => {
     ['GEMINI_EMBEDDING_MODEL', 'gemini-embedding-001'],
     ['GEMINI_CHAT_MODEL', 'gemini-3.5-flash'],
     ['AGENT_MAX_QUESTION_CHARS', 1000],
-    ['AGENT_MODEL_FIRST_CHUNK_TIMEOUT_MS', 10_000],
-    ['AGENT_MODEL_IDLE_TIMEOUT_MS', 10_000],
+    ['AGENT_MODEL_FIRST_CHUNK_TIMEOUT_MS', 5_000],
+    ['AGENT_MODEL_IDLE_TIMEOUT_MS', 5_000],
   ] as const)('RN-7, D-7: `%s` vale %p por defecto', (key, fallback) => {
     expect(apiEnvObjectSchema.shape[key].parse(undefined)).toBe(fallback);
   });

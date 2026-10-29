@@ -332,5 +332,25 @@ describe('POST /agent/ask (spec 020 CA-1, CA-3, CA-6, CA-7, CA-11 a CA-16, CA-18
         expect(everything).not.toContain(forbidden);
       }
     });
+
+    it('CA-18: si la búsqueda falla en Postgres, responde 500 y ninguna línea de bitácora lleva la pregunta', async () => {
+      const ana = await clientWithFiles();
+      world.storage.testApp.logs.clear();
+      await world.owner.query('REVOKE SELECT ON fragmento FROM nimbo_app');
+      const result = await world
+        .ask(ana, { question: QUESTION })
+        .finally(() => world.owner.query('GRANT SELECT ON fragmento TO nimbo_app'));
+
+      expect(errorOf(result)).toEqual({ status: 500, code: 'INTERNAL_ERROR' });
+      const unhandled = world.storage.testApp.logs
+        .withCorrelationId(result.correlationId)
+        .find((line) => line.event === 'http.unhandled_error');
+      expect(unhandled).toMatchObject({ errorClass: 'QueryFailedError' });
+      const everything = JSON.stringify(world.storage.testApp.logs.lines());
+      for (const forbidden of [QUESTION, 'presupuesto', '"parameters"', '"driverError"']) {
+        expect(everything).not.toContain(forbidden);
+      }
+      await expect(world.usedThisPeriod(ana)).resolves.toBe(0);
+    });
   });
 });

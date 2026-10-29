@@ -119,6 +119,9 @@ async function* textsOf(
   }
 }
 
+/** Medido en T-10: con pensamiento mínimo el primer trozo baja de ~3.5 s a ~1 s; el agente responde con fragmentos ya recuperados. */
+const THINKING_CONFIG = { thinkingConfig: { thinkingLevel: 'minimal' } } as const;
+
 /**
  * `ILanguageModel` sobre la API REST de Gemini con `fetch`, sin SDK (ADR-0007, ADR-0033 c; 020 D-7). Dos plazos: hasta el
  * primer trozo y entre trozos (el tiempo que tarda quien consume no cuenta). Fallo, plazo vencido, respuesta mal formada
@@ -162,6 +165,7 @@ export class GeminiFlashModel implements ILanguageModel {
         body: {
           systemInstruction: { parts: [{ text: prompt.system }] },
           contents: [{ role: 'user', parts: [{ text: prompt.user }] }],
+          generationConfig: THINKING_CONFIG,
         },
       },
       signal,

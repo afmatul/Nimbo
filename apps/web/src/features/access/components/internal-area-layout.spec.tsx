@@ -79,6 +79,16 @@ describe('InternalAreaLayout (011 CA-17)', () => {
     expect(screen.queryByRole('link', { name: 'Mis Archivos' })).toBeNull();
   });
 
+  it.each(['ADMIN', 'SUPPORT', 'OPERATOR'] as const)(
+    '020b CA-18: %s no ve «Agente Nimbo» ni el panel del agente',
+    async (role) => {
+      await renderLayout(role);
+
+      expect(screen.queryByText('Agente Nimbo')).toBeNull();
+      expect(screen.queryByRole('complementary', { name: 'Agente Nimbo' })).toBeNull();
+    },
+  );
+
   it('CA-17: al pie de la barra dice quién es y con qué rol', async () => {
     await renderLayout('ADMIN');
 

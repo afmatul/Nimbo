@@ -12,14 +12,17 @@ import { FileDetailView } from './file-detail-view';
 export function SessionFileDetailView({
   apiPublicUrl,
   fileId,
+  citedLocation,
 }: {
   readonly apiPublicUrl: string;
   readonly fileId: string;
+  /** Etiqueta de la cita (`?ubicacion=`, 020b CA-11). */
+  readonly citedLocation: string | undefined;
 }): React.JSX.Element {
   const authFetch = useAuthFetch();
   const indexingApi = React.useMemo(
     () => createIndexingApi(createStorageHttp(apiPublicUrl, authFetch)),
     [apiPublicUrl, authFetch],
   );
-  return <FileDetailView fileId={fileId} indexingApi={indexingApi} />;
+  return <FileDetailView fileId={fileId} indexingApi={indexingApi} citedLocation={citedLocation} />;
 }

@@ -148,7 +148,7 @@ Siembra: se reutilizan `insertChunk`, `insertIndexing` y `axisVector` de `test/i
 
 | Fecha | Modelos (chat / embedding) | p95 primer fragmento | CA-2 | `MIN_SIMILARITY` propuesta (rango) | Plazos propuestos (primer trozo / entre trozos) | Valores fijados |
 |---|---|---|---|---|---|---|
-| Pendiente (T-10) | | | | | | |
+| 2026-10-27 | gemini-3.5-flash (`thinkingLevel: minimal`) / gemini-embedding-001 | 2 015 ms (20 de 20; sin `thinkingConfig` fue 4 487 ms) | Cumple (< 3 s) | 0.66 (0.645 – 0.676) | 3 000 / 1 000 ms | `MIN_SIMILARITY` 0.66; plazos 5 000 / 5 000 ms (el doble del p95 propuesto sería frágil con el modelo en ~1 s) |
 
 ## 7. Riesgos y coherencia con el diseño
 1. **Similitud mínima sin calibrar** (CA-3): el doble de embeddings es un hash, no mide cercanía semántica; `MIN_SIMILARITY` queda provisional hasta T-09 con el embedding real. Si el corpus de medición no la separa bien, se ajusta en la revisión de T-10, no se inventa.

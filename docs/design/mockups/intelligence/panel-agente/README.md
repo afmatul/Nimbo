@@ -10,7 +10,7 @@
 - **Estados incluidos** (`panel-agente--<estado>.html`):
   - con-citas: respuesta completa; cada afirmación lleva su cita. A la izquierda, el fragmento citado resaltado en su documento (CA-1, CA-8, CA-10).
   - inicio: hay archivos indexados y todavía no hay preguntas («Pregunta sobre tus documentos»).
-  - vacio: sin archivos indexados. Explica qué formatos se indexan (`.docx`, `.pdf` con texto, `.txt`, `.md`), qué no, y ofrece «Subir archivos» (CA-7).
+  - vacio: sin archivos indexados. Explica qué formatos se indexan (`.docx`, `.pdf` con texto, `.txt`, `.md`, `.xlsx` y `.pptx`, según S-2 de la 020b), qué no (PDF escaneados e imágenes), y ofrece «Subir archivos» (CA-7).
   - respondiendo: streaming con indicador en vivo («Escribiendo…», punto y cursor), cuadro de pregunta apagado (CA-1, RNF-03).
   - sin-resultados: «No encontré esto en tus documentos», sin citas, con la pista de ampliar el ámbito y la nota de que cuenta como consulta (CA-3, RN-5).
   - cita-incierta: chip con «ubicación aproximada» y el aviso en el texto «La ubicación de esta cita es aproximada», junto a una cita certera (CA-4).
@@ -36,7 +36,8 @@
   L sale de la API (plan de quien pregunta, RN-3).
 - **Ámbito** (RN-9): menú de tres opciones excluyentes (`menuitemradio`) con el conteo de archivos indexados; la opción activa
   lleva marca y fondo, no solo color. El botón dice siempre el ámbito vigente («Carpeta Finanzas»).
-- **Citas** (`CitationChip`): enlace «archivo · ubicación» en texto. La ubicación depende del formato (RN-6): `sec. 5, párr. 2`
+- **Citas** (`CitationChip`): enlace «archivo · ubicación» en texto; la ubicación va siempre visible al final y, si falta
+  espacio, se trunca el nombre del archivo, nunca la ubicación (020b CA-3, 2026-10-28). La ubicación depende del formato (RN-6): `sec. 5, párr. 2`
   (docx), `p. 4` (pdf), `línea 18` (txt, md), con `aria-label` completo. La aproximada lleva ícono, borde discontinuo y el
   texto «ubicación aproximada»; el aviso en el cuerpo de la respuesta usa `Alert` `warning`.
 - **Cada afirmación, su cita** (CA-1): las citas van al final del párrafo que respaldan. Se quitó la lista «Fuentes verificables»
