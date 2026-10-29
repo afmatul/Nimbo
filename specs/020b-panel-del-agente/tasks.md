@@ -15,6 +15,9 @@
 - [x] **T-08** «Preguntar sobre esto» en la ficha y en la carpeta, «Ubicación citada» y archivo inexistente solo con «No encontramos este archivo.» — CA: CA-11, CA-12, CA-15 — Prueba: componente — Depende: T-06, T-07
 - [x] **T-09** **(humana)** Recorrido de la demo en local: preguntar con streaming, abrir una cita, limitar a una carpeta, agotar consultas y apagar el modelo; a 1440 y 360 px — CA: los visibles — Depende: T-01 a T-08 y la 020 integrada
 
+- [x] **T-FIX-1** Formatear con Prettier `app-layout.tsx` (los dos archivos del api van en T-FIX-1 de la 020) (review B-1) — CA: compuerta de CI — Prueba: `pnpm lint` — Depende: T-09
+- [ ] **T-FIX-2** El chip de cita vuelve a «archivo · ubicación» con `min-h-7 text-xs` y se restaura `citation-chip.spec.tsx` (o Adrián enmienda CA-3 y el mockup y el chip conserva un objetivo táctil ≥ 24 px) (review B-2) — CA: CA-3, CA-19 — Prueba: componente — Depende: T-FIX-1
+
 ## Notas del developer
 Integración en `feat/020b-panel-del-agente` sobre la 020 (2026-10-27). Sin DF ni pendientes nuevos. Desviaciones menores, para revisar en `/review`:
 - **T-01:** `requestJson` se partió en `sendRequest` y `errorFromResponse` (sin cambio de comportamiento) para que el flujo SSE lea los errores igual que el resto; la renovación ante 401 se repite una segunda vez (D-1, sin extraer).
