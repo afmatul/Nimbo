@@ -2,6 +2,8 @@ import { spawn } from 'node:child_process';
 import type { AddressInfo } from 'node:net';
 import { resolve } from 'node:path';
 
+import { getQueueToken } from '@nestjs/bullmq';
+import type { Queue } from 'bullmq';
 import request from 'supertest';
 
 import { OptimizationProcessor } from '../../../src/modules/optimizer/infrastructure/optimization.processor';
@@ -55,9 +57,16 @@ describe('salud del worker-optimizer (ADR-0037, CA-23)', () => {
   }, 180_000);
 
   afterAll(async () => {
-    // Con Redis caído el `Worker` de BullMQ reintenta para siempre; se cierra a la fuerza antes de apagar la app.
-    await testApp?.app.get(OptimizationProcessor).worker.close(true);
-    await Promise.allSettled([testApp?.close(), infra?.stopAll()]);
+    // Forzar ambos backends evita esperar init/QUIT sin Redis; cerrar solo el Worker deja viva la Queue productora.
+    await Promise.all([
+      testApp?.app.get(OptimizationProcessor).worker.close(true),
+      testApp?.app.get<Queue>(getQueueToken('optimization')).backend.close(true),
+    ]);
+    try {
+      await testApp?.close();
+    } finally {
+      await infra?.stopAll();
+    }
   }, 60_000);
 
   const ready = (): { app: TestApp; containers: TestInfra } => {

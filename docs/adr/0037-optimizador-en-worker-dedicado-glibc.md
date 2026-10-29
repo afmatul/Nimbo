@@ -3,6 +3,7 @@
 | Campo | Valor |
 |---|---|
 | Estado | Aceptado (Adrián, 2026-10-27) |
+| Enmiendas posteriores | Runtime concreto y entorno físico mínimo aceptados por Matul/Adrián el 2026-10-28, después de `7f9285ff` |
 | Fecha | 2026-10-27 |
 | Decisores | Abel (021), `architect` (dos revisiones), Adrián (aprobación) |
 | Specs relacionadas | 021 (T-08, T-10), 019 (indexación), 021b (Ghostscript en la imagen); **enmienda ADR-0001 y ADR-0036**; no reemplaza ADR-0017; cierra PD-128 |
@@ -66,7 +67,7 @@ asignador no se midió); además `ldd`, Ghostscript por `apt` y los binarios pre
   glibc 2.41; ver la enmienda del 2026-10-28); `node_modules` y los binarios nativos se instalan y se copian dentro de la
   misma libc. El `api` sigue en `node:22-alpine` (no carga `sharp`). Ghostscript (la versión de Trixie al construir la
   imagen, sin fijar; `10.05.1~dfsg-1+deb13u3` al 2026-10-28) se instala por
-  `apt` (`GHOSTSCRIPT_BIN=gs`) para 019 y 021b.
+  `apt` (`GHOSTSCRIPT_BIN=gs`) para 019 y futuro 021b. La imagen es compartida: 021 JPEG/PNG no usa Ghostscript.
 - **Memoria.** `ENV MALLOC_ARENA_MAX=2` en la etapa final de la imagen (no se repite en compose). Los dos `worker` con
   `mem_limit` = `memswap_limit` = 768m (sin swap del contenedor: al tope se reinicia, no se degrada). La swap del host
   de R-6 no cambia. La reducción a 512m de R-6 ya **no** aplica a ningún `worker`.
@@ -97,10 +98,11 @@ activo, 527,6 y 490,8 MiB; OOM 0, `MemAvailable` mínimo del host 68,9 %, un sol
 solo en `worker-optimizer`, y un SIGKILL al optimizador a mitad de un trabajo no afecta al general (compose lo reinicia
 y el trabajo se retoma una sola vez).
 
-## Enmienda (2026-10-28, auditoría previa al commit de 021) — **pendiente de aprobación de Adrián**
+## Enmienda de runtime (propuesta 2026-10-28) — **aceptada por Matul/Adrián el 2026-10-28**
 
-La decisión original (opción C con glibc) es la aceptada el 2026-10-27; esta enmienda no tiene todavía aprobación
-registrada.
+La decisión original (opción C con glibc) es la aceptada el 2026-10-27 y no cambia. La aprobación humana posterior
+a `7f9285ff` acepta la enmienda concreta: `node:22.23.3-trixie-slim`, sharp 0.35.5/libvips 8.18.7,
+Ghostscript provisto por Trixie y `MALLOC_ARENA_MAX=2`. Antes de esa respuesta la propuesta seguía sin aprobar.
 
 - **Base Debian 13 (`node:22.23.3-trixie-slim`) en vez de Debian 12.** El tracker de seguridad de Debian marca en
   bookworm (`ghostscript` 10.0.0~dfsg-11+deb12u8) CVE-2026-103226, CVE-2026-101258 y CVE-2026-39919 sin corregir, más
@@ -125,8 +127,20 @@ registrada.
 - **Entorno propio (PD-135, partes 1 a 3):** `worker-optimizer` valida `workerOptimizerEnvSchema` (base común, MinIO,
   tiempo límite, píxeles, umbrales, calidad JPEG y su puerto): 17 variables consumidas. El general no valida variables del
   optimizador. `OPTIMIZER_MAX_ATTEMPTS` pertenece solo al `api`, que lo guarda al encolar; el consumidor usa `job.opts.attempts`.
-  **Schema mínimo implementado; inyección física mínima pendiente:** compose todavía entrega todo el `.env`
-  (parte 4 de PD-135, requiere decisión de Adrián).
+  Las partes 1 a 3 precedieron a la aprobación de la inyección física mínima; su implementación posterior cierra
+  la parte 4 de PD-135 como se registra abajo.
 - **`storage`:** `StorageFacadesWorkerModule` registra solo MinIO, la escritura de versiones (`FILE_VERSION_PROVIDERS`) y
   la fachada; el ciclo de carga queda en `StorageWorkerModule`.
 - **Imagen:** el build comprueba en la etapa final `sharp`/libvips, Ghostscript, glibc y `MALLOC_ARENA_MAX`.
+
+## Entorno físico mínimo (aprobado por Matul/Adrián el 2026-10-28, después de `7f9285ff`)
+
+- `worker-optimizer` deja de usar `env_file` y declara `environment` con las 17 claves de `workerOptimizerEnvSchema`.
+  La prueba `scripts/optimizer-compose.spec.ts` resuelve Compose base y sus overrides disponibles y compara sus claves
+  efectivas contra el schema real, sin una segunda lista manual. Las variables `ENV` de imagen/runtime quedan aparte.
+- `DATABASE_URL` se construye para `nimbo_app` en `postgres:5432` con la contraseña de aplicación interpolada por Compose;
+  la variable auxiliar no se entrega al proceso. Redis y MinIO usan `redis:6379` y `minio:9000`, con credenciales S3 de aplicación.
+  No se inyectan credenciales de migración, root, SMTP, Gemini, JWT ni ONLYOFFICE.
+- **No hay enmienda ni excepción a CA-19 de 000:** `.env.example` es el catálogo completo del sistema; cada proceso
+  recibe su mínimo necesario. PD-135 queda cerrado. El enlace amplio de billing es una deuda independiente (PD-139).
+- T-09 sigue siendo el recorrido humano pendiente de Abel; `/review 021` se realiza después de ese recorrido y estos ajustes.

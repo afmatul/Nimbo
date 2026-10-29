@@ -161,8 +161,8 @@ Resultados del registrador (§2): `registered` y `duplicate` → `completada`; `
 
 ## 6. Configuración y valores
 
-Schemas por consumidor en `env.schema.ts`: ningún `OPTIMIZER_*` en el general; intentos solo en API y tiempo límite compartido con el especializado (17 claves, mapa en `ambientes.md`). Catálogo conjunto en `.env.example`; inyección física mínima pendiente (PD-135).
-Adrián pidió valores **medidos y justificados**: A es política; B sale del spike de ADR-0036 (2026-10-25). La enmienda Trixie/sharp 0.35.5 sigue pendiente de aprobación, separada de C + glibc aceptada.
+Schemas por consumidor en `env.schema.ts`: ningún `OPTIMIZER_*` en el general; intentos solo en API y tiempo límite compartido con el especializado. Compose inyecta las 17 claves del schema por `environment` explícito (PD-135 cerrado); catálogo completo en `.env.example`, sin enmienda de CA-19. La prueba `optimizer-compose.spec.ts` contrasta ambos.
+Adrián pidió valores **medidos y justificados**: A es política; B sale del spike de ADR-0036 (2026-10-25). Matul/Adrián aceptó el runtime Trixie/sharp 0.35.5/libvips 8.18.7 el 2026-10-28, después de `7f9285ff`; C + glibc fue aceptada el 2026-10-27. Ghostscript es para 019/futuro 021b, no para JPEG/PNG.
 
 **A. Política (propuesta inicial justificada; no dependen de una medición, se confirman al aprobar el plan)**
 
@@ -246,5 +246,5 @@ usan `sharp` se escriben después de que ADR-0036 se acepte (el spike de §6 us�
 - **Enmienda de alcance, 2026-10-26 (aprobada en la rama de la spec):** solo JPEG y PNG; PD-124 fuera; interfaz de
   8 estados con un solo mensaje de «no disponible». Quita 3 archivos (48 → 45); sin puertos ni tecnología nuevos,
   `architect` no interviene. Valores de §6 iguales salvo `OPTIMIZER_WEBP_QUALITY`, que desaparece.
-- **Enmienda ADR-0037, 2026-10-27 (aprobada por Adrián tras dos revisiones de `architect`):** T-10 aísla el optimizador en
-  `worker-optimizer` (misma imagen glibc, otro comando, 768m sin swap); T-08 depende de T-10. Cambia §1, §2, §6 B y §8.
+- **ADR-0037 original, 2026-10-27 (aprobada por Adrián tras dos revisiones de `architect`):** T-10 aísla el optimizador en `worker-optimizer` (misma imagen glibc, otro comando, 768m sin swap); T-08 depende de T-10. Cambia §1, §2, §6 B y §8.
+- **Aprobación posterior a `7f9285ff`, 2026-10-28 (Matul/Adrián):** runtime concreto Trixie/sharp 0.35.5/libvips 8.18.7, Ghostscript de Trixie y arenas 2; entorno explícito de 17 claves, rol `nimbo_app` y hosts internos. Sin enmienda de CA-19. T-09 humana sigue pendiente y precede a `/review 021`.

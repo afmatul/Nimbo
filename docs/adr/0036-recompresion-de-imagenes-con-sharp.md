@@ -116,7 +116,9 @@ ahora **solo en el proceso `worker-optimizer`** (cola `optimization`); el `api` 
 imagen del `worker` (PD-128) usa base glibc (`node:22.23.3-trixie-slim`) con `MALLOC_ARENA_MAX=2`. El resto de este ADR
 (formatos, metadatos, límites, validación) no cambia.
 
-Versión (2026-10-28, **pendiente de aprobación de Adrián**, como la enmienda de ADR-0037): `sharp` pasa de 0.34.5 a **0.35.5** (libvips 8.17.3 → 8.18.7), la estable vigente. Ninguna API
+Versión (propuesta 2026-10-28, **aceptada por Matul/Adrián el 2026-10-28 después de `7f9285ff`**, junto con la enmienda de ADR-0037): `sharp` pasa de 0.34.5 a **0.35.5** (libvips 8.17.3 → 8.18.7). Ninguna API
 usada cambia (0.35 quita `failOnError`, `paletteBitDepth` y opciones de `sharpen`, que 021 no usa, y agrega
 `limitInputChannels` = 5, por encima de los 4 canales de JPEG y PNG); las pruebas con *fixtures* reales y la T-08 se
-repitieron con esa versión. Los datos del spike de abajo se conservan como se midieron.
+repitieron con esa versión. Los datos del spike original se conservan como se midieron. También quedan aprobados
+`node:22.23.3-trixie-slim`, Ghostscript de Trixie y `MALLOC_ARENA_MAX=2`; Ghostscript solo sirve a 019/futuro 021b,
+no a 021 JPEG/PNG. C + glibc mantiene su aprobación original del 2026-10-27.

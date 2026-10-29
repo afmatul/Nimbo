@@ -25,7 +25,7 @@ separar uno como servicio el día que haga falta.
 activo) y `s3.staging.nimbo.me` (MinIO, habilitado cuando 005 lo necesite). Imágenes en `ghcr.io/afmatul/nimbo-{api,worker,web}`;
 despliegue por SSH desde GitHub Actions (`migration:run` antes de `up -d`); rollback = redesplegar la etiqueta anterior.
 Solo Traefik publica puertos (80/443). La separación `api`/`worker` es por **proceso e imagen**, no por carpeta (ADR-0001).
-La imagen `nimbo-worker` usa base glibc (Ghostscript y `MALLOC_ARENA_MAX=2`); la del `api`, Alpine (ADR-0037). El runtime actual `node:22.23.3-trixie-slim` y sharp 0.35.5/libvips 8.18.7 siguen pendientes de aprobación de Adrián (enmienda del 2026-10-28); C + glibc sí está aceptada.
+La imagen `nimbo-worker` usa base glibc; la del `api`, Alpine (ADR-0037). C + glibc fue aceptada el 2026-10-27; la enmienda concreta `node:22.23.3-trixie-slim`, sharp 0.35.5/libvips 8.18.7, Ghostscript de Trixie y `MALLOC_ARENA_MAX=2` fue aceptada por Matul/Adrián el 2026-10-28, después de `7f9285ff`. Ghostscript está en la imagen compartida para 019/futuro 021b, no participa en 021 JPEG/PNG. El optimizador recibe solo las 17 claves de su schema por `environment` explícito, sin `env_file` (PD-135 cerrado); esto no enmienda CA-19 de 000.
 
 ```mermaid
 flowchart TB

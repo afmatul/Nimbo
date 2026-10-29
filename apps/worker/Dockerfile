@@ -32,7 +32,7 @@ RUN pnpm --filter api deploy --prod --legacy /deploy \
   && cp apps/worker/dist/healthcheck.js /out/dist/healthcheck.js
 
 FROM ${NODE_IMAGE} AS runtime
-# Ghostscript para el `worker` general (PDF, ADR-0036/021b); `--no-install-recommends` deja fuera fuentes y X11.
+# Ghostscript para PDF de 019 (ADR-0033) y futuro 021b; 021 JPEG/PNG no lo usa. Se comparte imagen, no pipeline.
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ghostscript \
   && rm -rf /var/lib/apt/lists/*

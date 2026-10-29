@@ -208,7 +208,7 @@ const sharedEnvBaseSchema = z.object({
 /** Lo que `SharedModule` y sus piezas internas necesitan; cada proceso provee un superconjunto. */
 export type SharedEnvBase = z.infer<typeof sharedEnvBaseSchema>;
 
-/** El `api` y el general validan este puerto (CA-19); el especializado tiene su propio puerto. */
+/** Puerto de salud del general; el `api` conserva su validación previa y el especializado tiene su propio puerto. */
 const workerPortShape = { WORKER_PORT: port(DEFAULT_WORKER_PORT) };
 
 /**

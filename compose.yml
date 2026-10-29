@@ -120,7 +120,26 @@ services:
   worker-optimizer:
     image: ${WORKER_IMAGE:-ghcr.io/afmatul/nimbo-worker}:${IMAGE_TAG:-latest}
     command: ['node', 'dist/worker-optimizer.main.js']
-    env_file: .env
+    # Catálogo completo en `.env.example`; inyección solo del schema de este proceso (PD-135).
+    # La contraseña de aplicación se interpola en la URL, no se inyecta como variable auxiliar ni se usa el rol dueño.
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      APP_ENV: ${APP_ENV}
+      APP_VERSION: ${APP_VERSION:-dev}
+      LOG_LEVEL: ${LOG_LEVEL}
+      DATABASE_URL: postgres://nimbo_app:${NIMBO_APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET: ${MINIO_BUCKET:-nimbo}
+      MINIO_REGION: ${MINIO_REGION:-us-east-1}
+      OPTIMIZER_TIMEOUT_MS: ${OPTIMIZER_TIMEOUT_MS:-100000}
+      OPTIMIZER_MAX_PIXELS: ${OPTIMIZER_MAX_PIXELS:-36000000}
+      OPTIMIZER_MIN_SAVED_PERCENT: ${OPTIMIZER_MIN_SAVED_PERCENT:-20}
+      OPTIMIZER_MIN_SAVED_BYTES: ${OPTIMIZER_MIN_SAVED_BYTES:-1000000}
+      OPTIMIZER_JPEG_QUALITY: ${OPTIMIZER_JPEG_QUALITY:-80}
+      WORKER_OPTIMIZER_PORT: ${WORKER_OPTIMIZER_PORT:-3003}
     depends_on:
       postgres:
         condition: service_healthy

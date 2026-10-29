@@ -34,7 +34,7 @@ Secreto = nunca en el repositorio, vacío en `.env.example` de staging, redactad
 | `LOG_LEVEL` | ✓ | ✓ | | | | — | `trace` … `fatal` |
 | `DATABASE_URL` | ✓ | ✓ | | | (contiene contraseña) | — | Postgres con pgvector, **como `nimbo_app`** (003): local `postgres://nimbo_app:nimbo_app@localhost:5432/nimbo`. Con el dueño o un superusuario la app no arranca (`db.role_rejected`, §4) |
 | `DATABASE_MIGRATION_URL` | | | | | (contiene contraseña) | — | Solo migraciones (`migrationEnvSchema`: `data-source.cli.ts`, `migrate.ts`); dueño de las tablas, local `postgres://nimbo:nimbo@localhost:5432/nimbo`. No cae a `DATABASE_URL` si falta (`config.invalid`). En staging, solo en el entorno del paso de migración (PD-43, provisional) |
-| `NIMBO_APP_DB_PASSWORD` | | | | ✓ | ✓ | — | Contraseña de `nimbo_app` que fija `infra/postgres/init/10-nimbo-app.sh`; debe coincidir con `DATABASE_URL`. No la lee ninguna app |
+| `NIMBO_APP_DB_PASSWORD` | | | | ✓ | ✓ | — | Contraseña de `nimbo_app`: inicializa el rol y Compose la interpola en `DATABASE_URL` del optimizador; nunca se inyecta allí como clave auxiliar |
 | `REDIS_URL` | ✓ | ✓ | | | | — | BullMQ y caché |
 | `MINIO_ENDPOINT` | ✓ | ✓ | | | | — | API S3 (puerto 9000); la consola 9001 no la usa la app |
 | `MINIO_ACCESS_KEY` | ✓ | ✓ | | | ✓ | — | Una sola definición compartida por `api` y `worker` (005); el worker aborta partes y borra objetos |
@@ -53,7 +53,7 @@ Secreto = nunca en el repositorio, vacío en `.env.example` de staging, redactad
 | `SMTP_PORT` | | ✓ | | | | — | Mailpit `1025`; Resend `465` |
 | `SMTP_TLS` | | ✓ | | | | — | `none` | `starttls` | `implicit`; `none` prohibido en staging y producción |
 | `SMTP_USER` | | ✓ | | | | — | Opcional; obligatoria si hay `SMTP_PASSWORD` (Resend: `resend`) |
-| `SMTP_PASSWORD` | | ✓ | | | ✓ | — | Solo la valida y consume el general (ADR-0018); la inyección física por `env_file` sigue siendo compartida |
+| `SMTP_PASSWORD` | | ✓ | | | ✓ | — | Solo la valida y consume el general (ADR-0018); `worker-optimizer` no la recibe. Los otros servicios conservan `env_file` |
 | `MAIL_FROM` | | ✓ | | | | — | `Nimbo <no-responder@nimbo.me>` |
 | `API_INTERNAL_URL` | | | ✓ | | | — | `web` llama a la API solo desde el servidor (sin `NEXT_PUBLIC_`) |
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | | | | ✓ | contraseña | — | Dueño de las tablas; deben coincidir con `DATABASE_MIGRATION_URL` |
@@ -88,12 +88,20 @@ Cada raíz publica en `ENV` el objeto que validó con su schema; `SharedModule` 
 
 ### Entorno del optimizador: catálogo, inyección, schema y consumo (PD-135)
 
-- **A. Catálogo:** `.env.example` reúne las variables de todos los procesos; no es una lista de permisos por proceso.
-- **B. Inyección física mínima pendiente:** compose conserva `env_file: .env`, también en `worker-optimizer`.
-  Las claves sobrantes siguen en `process.env`, aunque Zod no las devuelva. Cambiar esa inyección requiere decisión de Adrián.
+- **A. Catálogo:** `.env.example` reúne las variables de todos los procesos; CA-19 de 000 exige completitud del catálogo,
+  no entregar todas las claves a cada proceso. No hay enmienda ni excepción de CA.
+- **B. Inyección física mínima implementada y aprobada:** Matul/Adrián aprobó la parte 4 el 2026-10-28 después de `7f9285ff`.
+  `worker-optimizer` declara solo `environment`, sin `env_file`; recibe las 17 claves del schema. PD-135 está cerrado.
+  Los `ENV` de imagen (p. ej. `MALLOC_ARENA_MAX` y `GHOSTSCRIPT_BIN`) y las variables del sistema no son claves del servicio.
 - **C. Schema mínimo implementado:** `workerOptimizerEnvSchema` declara exactamente las 17 claves de la tabla siguiente.
 - **D. Consumo real:** `workerBaseImports` compone la base común y MinIO; `OptimizerWorkerModule` transforma solo
   los parámetros de imagen y ahorro. Los intentos no forman parte de este schema: vienen guardados en cada job por la API.
+
+Compose construye `DATABASE_URL` con rol `nimbo_app`, host `postgres:5432`, `POSTGRES_DB` y la contraseña de aplicación
+`NIMBO_APP_DB_PASSWORD`: estos auxiliares de interpolación no se inyectan como claves del optimizador. Redis apunta a
+`redis:6379` y MinIO a `http://minio:9000`, con `MINIO_ACCESS_KEY`/`MINIO_SECRET_KEY` de aplicación, sin credenciales root.
+El base y el perfil local comparten esa red. No existe aún `compose.staging.yml`; cuando se añada, la prueba también
+resolverá ese override. `scripts/optimizer-compose.spec.ts` compara los nombres efectivos con el schema, no con otra lista manual.
 
 | Variable validada | Módulo → consumidor |
 |---|---|
@@ -141,8 +149,8 @@ Imágenes (idénticas en compose y en Testcontainers): `pgvector/pgvector:pg17`,
   `SMTP_PORT=1025`, porque dentro de la red de compose Mailpit no está en `localhost`.
 - **Por proceso**: el `api` solo encola en la cola `mail` y valida `WEB_PUBLIC_URL` y `CORS_ORIGIN`; el `worker`
   entrega por SMTP y valida `SMTP_*` y `MAIL_FROM`. `SMTP_PASSWORD` es secreta, se declara solo en el esquema del
-  `worker`, se redacta en las bitácoras y no la consumen el `api` ni el optimizador. La inyección por `env_file` no
-  aplica esa separación física (§2, PD-135).
+  `worker`, se redacta en las bitácoras y no la consumen el `api` ni el optimizador. El optimizador tampoco la recibe;
+  el `api` conserva su inyección compartida por `env_file` (§2).
 - **Staging (al montarlo, D-12)**: SMTP de Resend por protocolo, no por su SDK: `SMTP_HOST=smtp.resend.com`,
   `SMTP_PORT=465`, `SMTP_TLS=implicit`, `SMTP_USER=resend` y la clave de API de Resend como `SMTP_PASSWORD`, con SPF y
   DKIM de `nimbo.me` verificados. La clave vive solo en GitHub Environments y en el `.env` del Droplet.
@@ -159,8 +167,9 @@ PDF falla y se reintenta; el resto de los tipos y del sistema siguen igual.
   `GHOSTSCRIPT_BIN`). CI lo instala antes de `pnpm test:int` (`.github/workflows/ci.yml`).
 - **Imagen `nimbo-worker`** (ADR-0037, PD-128): `apps/worker/Dockerfile` lo instala por `apt` sobre `node:22.23.3-trixie-slim` (Debian 13: la versión de Trixie al
   construir la imagen, con parches de seguridad que Debian 12 no tiene; el build comprueba `gs --version`)
-  y fija `GHOSTSCRIPT_BIN=gs`. La base Trixie y sharp 0.35.5/libvips 8.18.7 siguen pendientes de aprobación de Adrián
-  (enmienda del 2026-10-28 de ADR-0037); C + glibc sí está aceptada.
+  y fija `GHOSTSCRIPT_BIN=gs`. La base Trixie, sharp 0.35.5/libvips 8.18.7, Ghostscript de Trixie y arenas 2 están
+  aceptados por Matul/Adrián desde el 2026-10-28, después de `7f9285ff`; C + glibc mantiene su aprobación del 2026-10-27.
+  Ghostscript se incluye en la imagen compartida por 019/futuro 021b: no participa en 021 JPEG/PNG.
 - **macOS**: `brew install ghostscript`; también queda como `gs`.
 - **Windows**: instalar la versión de 64 bits de <https://ghostscript.com/releases/gsdnld.html> y poner en `.env` la ruta
   completa de `gswin64c.exe` (la de consola, no `gswin64.exe`), p. ej.

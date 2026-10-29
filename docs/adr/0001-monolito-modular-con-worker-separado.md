@@ -66,5 +66,5 @@ resulta costoso (R-3 del plan 000), el punto de entrada del worker puede compila
 El `worker` pasa a ser **dos procesos con la misma imagen** `nimbo-worker`: el general (`worker.main.ts`, todas las
 colas salvo `optimization`) y `worker-optimizer` (`worker-optimizer.main.ts`, solo `optimization`). Cada uno tiene su
 salud interna, su `HEALTHCHECK` y su límite de memoria. La separación por proceso e imagen y el lint de las raíces se
-mantienen; la imagen de los `worker` usa base glibc. La actualización concreta a Debian 13 (`trixie-slim`) sigue
-pendiente de aprobación en la enmienda del 2026-10-28 de ADR-0037.
+mantienen; la imagen de los `worker` usa base glibc. La actualización concreta a Debian 13 (`trixie-slim`) y
+sharp 0.35.5/libvips 8.18.7 fue aceptada por Matul/Adrián el 2026-10-28, después de `7f9285ff` (ADR-0037).

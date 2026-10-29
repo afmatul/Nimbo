@@ -66,4 +66,8 @@ ADR-0036 (dependencia `sharp`; numerado 0035 en la rama de la 021 y renumerado a
 
 ADR-0037 (2026-10-27) lo redactó Abel con la evidencia de la T-08 de 021 y dos revisiones del `architect`; Adrián lo aceptó el 2026-10-27. Enmienda ADR-0001 (dos procesos `worker` con la misma imagen) y ADR-0036 (`sharp` solo en `worker-optimizer`); no reemplaza ADR-0017.
 
+El 2026-10-28, después de `7f9285ff`, Matul/Adrián aceptó las dos decisiones pendientes de 021: runtime concreto
+Trixie + sharp 0.35.5/libvips 8.18.7 (Ghostscript de Trixie y arenas 2) y entorno físico mínimo del optimizador.
+La segunda queda implementada con 17 claves explícitas y PD-135 cerrado; no cambia CA-19 de 000.
+
 Usa `/adr <decisión>` para redactar uno.
