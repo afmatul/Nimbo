@@ -23,12 +23,34 @@ function citation(overrides: Partial<AgentCitationEvent> = {}): AgentCitationEve
 }
 
 describe('CitationChip (020b CA-3, CA-6, CA-11)', () => {
-  it('CA-3: muestra la etiqueta tal como llega del servidor y el archivo completo al pasar el cursor', () => {
+  it('CA-3: muestra «nombre del archivo · ubicación» con la ubicación al final, tal como llega del servidor', () => {
     render(<CitationChip citation={citation()} />);
 
     const chip = screen.getByRole('link', { name: 'Abrir Contrato_La_Ceiba.pdf, Página 7' });
-    expect(chip.textContent).toBe('Página 7');
-    expect(chip.getAttribute('title')).toBe('Contrato_La_Ceiba.pdf · Página 7');
+    expect(chip.textContent).toBe('Contrato_La_Ceiba.pdf·Página 7');
+    expect(chip.lastElementChild?.textContent).toBe('Página 7');
+  });
+
+  it('CA-3: un nombre largo se trunca y la ubicación queda siempre visible al final', () => {
+    const fileName = `${'Informe_trimestral_de_ventas_'.repeat(4)}.docx`;
+    render(<CitationChip citation={citation({ fileName, label: 'sec. 5, párr. 2' })} />);
+
+    const name = screen.getByText(fileName);
+    const location = screen.getByText('sec. 5, párr. 2');
+    expect(name.className).toContain('truncate');
+    expect(name.className).toContain('min-w-0');
+    expect(location.className).toContain('shrink-0');
+    expect(location.className).toContain('whitespace-nowrap');
+    expect(location.className).not.toContain('truncate');
+  });
+
+  it('CA-19: el chip ofrece un objetivo táctil de al menos 24 px (`min-h-7`) con texto `text-xs`', () => {
+    render(<CitationChip citation={citation()} />);
+
+    const chip = screen.getByRole('link');
+    expect(chip.className).toContain('min-h-7');
+    expect(chip.className).toContain('text-xs');
+    expect(chip.className).not.toMatch(/text-\[|min-h-5/);
   });
 
   it('CA-11 (S-6): abre la ficha del archivo con solo la etiqueta en `ubicacion`, nunca el nombre', () => {

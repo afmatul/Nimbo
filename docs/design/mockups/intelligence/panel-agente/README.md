@@ -36,7 +36,8 @@
   L sale de la API (plan de quien pregunta, RN-3).
 - **Ámbito** (RN-9): menú de tres opciones excluyentes (`menuitemradio`) con el conteo de archivos indexados; la opción activa
   lleva marca y fondo, no solo color. El botón dice siempre el ámbito vigente («Carpeta Finanzas»).
-- **Citas** (`CitationChip`): enlace «archivo · ubicación» en texto. La ubicación depende del formato (RN-6): `sec. 5, párr. 2`
+- **Citas** (`CitationChip`): enlace «archivo · ubicación» en texto; la ubicación va siempre visible al final y, si falta
+  espacio, se trunca el nombre del archivo, nunca la ubicación (020b CA-3, 2026-10-28). La ubicación depende del formato (RN-6): `sec. 5, párr. 2`
   (docx), `p. 4` (pdf), `línea 18` (txt, md), con `aria-label` completo. La aproximada lleva ícono, borde discontinuo y el
   texto «ubicación aproximada»; el aviso en el cuerpo de la respuesta usa `Alert` `warning`.
 - **Cada afirmación, su cita** (CA-1): las citas van al final del párrafo que respaldan. Se quitó la lista «Fuentes verificables»

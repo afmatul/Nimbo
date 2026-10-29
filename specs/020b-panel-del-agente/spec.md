@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | En curso |
+| Estado | En revisión |
 | Dueño | Adrián |
 | Fase | 3 |
 | Requisitos | RF-32, RF-34; RNF-03 (lo que ve el cliente), RNF-09, RNF-13, RNF-14 |
@@ -30,7 +30,7 @@ Los números de la 020 (CA-x) indican el criterio del servidor que la pantalla h
 **Panel y consultas**
 - **CA-1** (HU-3, RF-34; 020 CA-10) Dado un cliente, cuando abre «Agente Nimbo», entonces el panel muestra «N de L consultas este mes» con L del plan de quien pregunta (Personal 20, Pro 500, Equipo 2 000, Institucional 10 000), la fecha de renovación y el ámbito vigente («Todos mis archivos» por omisión).
 - **CA-2** (HU-1, RF-32; 020 CA-7) Dado que no tiene archivos indexados, cuando abre el panel, entonces ve el estado vacío que explica qué formatos se indexan y «Subir archivos»; si pregunta igual, el servidor no descuenta y se muestra su respuesta.
-- **CA-3** (HU-1, RF-32, RNF-03; 020 CA-1) Dado una pregunta válida, cuando la envía, entonces su pregunta aparece, el campo se apaga con «Escribiendo…» y «Detener», el texto se va escribiendo y cada cita aparece como chip «archivo · ubicación» antes del texto que la menciona.
+- **CA-3** (HU-1, RF-32, RNF-03; 020 CA-1) Dado una pregunta válida, cuando la envía, entonces su pregunta aparece, el campo se apaga con «Escribiendo…» y «Detener», el texto se va escribiendo y cada cita aparece como chip «nombre del archivo · ubicación» antes del texto que la menciona; la ubicación exacta (página, sección, línea, hoja o diapositiva) va siempre visible al final del chip y, si falta espacio, se trunca el nombre, nunca la ubicación.
 - **CA-4** (HU-1, RF-32; 020 CA-1) Dado una respuesta en curso, cuando el cliente pulsa «Detener», entonces la escritura para y se conserva lo recibido; si aún no había texto, el contador queda igual (la consulta se libera, decisión aprobada en la 020).
 - **CA-5** (HU-1, RF-32; 020 CA-3) Dado que el servidor responde «No encontré esto en tus documentos», entonces se muestra sin citas, con la pista de ampliar el ámbito y la nota de que cuenta como consulta.
 - **CA-6** (HU-1, RF-32; 020 CA-4) Dado una cita de ubicación no certera, entonces su chip lo marca con ícono y borde (no solo color) y con el texto «ubicación aproximada» que trae la etiqueta del servidor, y la respuesta muestra el aviso «La ubicación de esta cita es aproximada».
@@ -104,3 +104,4 @@ Rutas relativas a `docs/design/`. `ui-guidelines.md` §7 lista la pantalla (fila
 |---|---|---|---|
 | 2026-10-25 | Creación en `Borrador`, con plan y tareas | Parte de la 020 por ADR-0034 (el plan pasaba de 12 archivos) | — |
 | 2026-10-25 | Plan aprobado y S-1 aceptado; pasa a `Lista` | Resumen aprobado | Adrián |
+| 2026-10-28 | CA-3: el chip muestra el nombre de la fuente y termina siempre con la ubicación exacta; se trunca el nombre, nunca la ubicación; objetivo táctil ≥ 24 px (`min-h-7 text-xs`) | Revisión B-2: el chip solo con la ubicación dejaba el archivo en `title`, invisible en táctil | Adrián |
