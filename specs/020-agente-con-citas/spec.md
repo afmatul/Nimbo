@@ -10,7 +10,7 @@
 | Requisitos | RF-32, RF-33, RF-34; RNF-03 (primer fragmento < 3 s), RNF-05, RNF-09, RNF-17 |
 | Depende de | 019 (ya en `main`: fragmentos con procedencia y estado `indexacion`), 010 (periodo y solo lectura), 003 (`Actor`, nodos accesibles). 012 (compartidos) amplía CA-5 cuando llegue |
 | Consume | **020b** (panel web) lee esta API; RNF-13 y RNF-14 pasaron a 020b |
-| DF / ADR | DF-08, DF-14, DF-15, DF-25, DF-27, DF-81, DF-82; PD-18 (`IAgentQuota`); ADR-0035 |
+| DF / ADR | DF-08, DF-14, DF-15, DF-25, DF-27, DF-83, DF-82; PD-18 (`IAgentQuota`); ADR-0036 |
 | Última actualización | 2026-10-25 |
 
 ## 1. Contexto y objetivo
@@ -111,4 +111,4 @@ Sin preguntas abiertas.
 | 2026-10-25 | 019 ya implementada: RN-6 cubre hoja y diapositiva (RF-31 indexado); P-7 resuelta de otra forma; CA-2 usa el corpus de medición (S-5) en lugar del «corpus de 019», que no existe | Reconciliar con la 019 real | pendiente |
 | 2026-10-25 | Decisiones aprobadas del plan anterior pasan a P-9 y S-4; nuevos S-1…S-3, S-5, S-6; `maxQuestionChars` en el estado (S-3) | ADR-0034 (supuestos) y petición de 020b | Adrián |
 | 2026-10-25 | Plan aprobado tras la partición; pasa a `Lista` | Resumen aprobado | Adrián |
-| 2026-10-25 | **Propuesta (T-06)**: el plan no fija de dónde sale `fileName` de la cita (S-1) y ADR-0035 no permite leer `archivo.nombre`; se decide antes de T-07 (PD-134). **Decidido**: enmienda de ADR-0035, `intelligence` lee `archivo.nombre` en la misma consulta; se aplica en T-07 | Hueco detectado al implementar | Adrián |
+| 2026-10-25 | **Propuesta (T-06)**: el plan no fija de dónde sale `fileName` de la cita (S-1) y ADR-0036 no permite leer `archivo.nombre`; se decide antes de T-07 (PD-136). **Decidido**: enmienda de ADR-0036, `intelligence` lee `archivo.nombre` en la misma consulta; se aplica en T-07 | Hueco detectado al implementar | Adrián |

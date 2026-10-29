@@ -22,7 +22,10 @@ const LIMITS: PlanLimits = {
   retainedVersions: 3,
   readOnly: false,
   maxEditors: 0,
+  extraQuotaBytes: 0n,
+  extraQuotaUntil: null,
 };
+const EXTRA_UNTIL = new Date('2026-10-16T06:00:00.000Z');
 const BREAKDOWN = SpaceBreakdown.fromBytesByKind(
   new Map([
     ['pdf', 400n],
@@ -64,11 +67,42 @@ describe('SpaceSummaryService', () => {
       usedBytes: 550n,
       reservedBytes: 120n,
       quotaBytes: 1000n,
+      baseQuotaBytes: 1000n,
+      extraQuotaBytes: 0n,
+      extraQuotaUntil: null,
       availableBytes: 330n,
       maxFileBytes: 100n,
       trashRetentionDays: 30,
       readOnly: false,
       breakdown: BREAKDOWN,
+    });
+  });
+
+  it('011b CA-5: antes de `cuota_extra_hasta`, la cuota es la efectiva y expone la del plan, el extra y su fecha', async () => {
+    const { service } = setup({
+      ...LIMITS,
+      storageQuotaBytes: 1500n,
+      extraQuotaBytes: 500n,
+      extraQuotaUntil: EXTRA_UNTIL,
+    });
+
+    await expect(service.summary(ANA)).resolves.toMatchObject({
+      quotaBytes: 1500n,
+      baseQuotaBytes: 1000n,
+      extraQuotaBytes: 500n,
+      extraQuotaUntil: EXTRA_UNTIL,
+      availableBytes: 830n,
+    });
+  });
+
+  it('011b CA-4, CA-5: después de `cuota_extra_hasta` (el proveedor ya no lo da), solo la cuota del plan', async () => {
+    const { service } = setup();
+
+    await expect(service.summary(ANA)).resolves.toMatchObject({
+      quotaBytes: 1000n,
+      baseQuotaBytes: 1000n,
+      extraQuotaBytes: 0n,
+      extraQuotaUntil: null,
     });
   });
 

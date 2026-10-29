@@ -9,7 +9,7 @@ import { Card } from '../../../components/ui/card';
 import { formatCount, formatPlanBytes } from '../../../lib/format-plan';
 import { CHANGE_PLAN_PATH, PLANS_PATH } from '../routes';
 
-import { expiryLabel, priceLabel } from './subscription-copy';
+import { expiryInstantLabel, expiryLabel, priceLabel } from './subscription-copy';
 
 const editorsLabel = (maxEditors: number): string =>
   maxEditors > 0
@@ -103,7 +103,10 @@ export function CurrentPlanCard({
         </Link>
       </div>
       <dl className="grid gap-4 border-t border-border pt-4 sm:grid-cols-2">
-        <Fact label={readOnly ? 'Venció el' : 'Activo hasta'} value={expiryLabel(subscription)} />
+        <Fact
+          label={readOnly ? 'Venció el' : 'Activo hasta'}
+          value={readOnly ? expiryInstantLabel(subscription) : expiryLabel(subscription)}
+        />
         <Fact label="Importe" value={priceLabel(plan.priceCents)} />
       </dl>
     </Card>

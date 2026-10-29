@@ -38,7 +38,7 @@ const toSearchedChunk = (row: SearchedChunkRow): SearchedChunk => ({
 });
 
 /**
- * `IChunkSearch` sobre Postgres y pgvector (plan 020 D-2). El SQL vive en `chunk-sql.ts` (ADR-0035); aquí solo se
+ * `IChunkSearch` sobre Postgres y pgvector (plan 020 D-2). El SQL vive en `chunk-sql.ts` (ADR-0036); aquí solo se
  * ejecuta con el `EntityManager` de `requireActorScope(actor)` y se mapean las filas. `@Inject` explícito: con `tsx`
  * (esbuild) no hay `design:paramtypes`.
  */

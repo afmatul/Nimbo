@@ -135,6 +135,18 @@ describe('Cambiar de plan, /suscripcion/cambiar-plan (spec 010 CA-16 a CA-18, CA
     expect(put?.[1]?.body).toBe(JSON.stringify({ planSlug: 'pro' }));
   });
 
+  it('011b RN-8: con fin a medianoche, «Plan actual» dura hasta el último día y el cambio se aplica el instante', async () => {
+    // 2026-12-01 06:00 UTC = 2026-12-01 00:00 en Guatemala: Equipo rige hasta el 30 de noviembre.
+    await renderWith(historyWith({ ...VIEW, expiresAt: '2026-12-01T06:00:00.000Z' }));
+
+    await userEvent.click(screen.getByRole('button', { name: 'Cambiar a Pro' }));
+    const dialog = screen.getByRole('alertdialog', {
+      name: '¿Cambiar a Pro el 1 de diciembre de 2026?',
+    });
+    expect(within(dialog).getByText('Equipo · hasta el 30 de noviembre de 2026')).toBeTruthy();
+    expect(within(dialog).getByText('Pro · desde el 1 de diciembre de 2026')).toBeTruthy();
+  });
+
   it('CA-16: subir a Institucional no avisa nada (no baja ningún límite)', async () => {
     await renderWith(historyWith(VIEW));
 

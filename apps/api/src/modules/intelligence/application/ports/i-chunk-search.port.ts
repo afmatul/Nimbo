@@ -20,7 +20,7 @@ export interface VectorQuery {
 
 /**
  * Fragmento encontrado para el agente con el nombre de su archivo (`archivo.nombre`, leído en la misma consulta;
- * enmienda de ADR-0035). El nombre es para la cita del dueño (S-1): nunca va al modelo ni a bitácoras.
+ * enmienda de ADR-0036). El nombre es para la cita del dueño (S-1): nunca va al modelo ni a bitácoras.
  */
 export interface SearchedChunk extends StoredChunk {
   readonly fileName: string;

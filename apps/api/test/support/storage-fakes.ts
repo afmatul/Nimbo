@@ -416,7 +416,7 @@ export class FakeNodeRepository implements INodeRepository {
 }
 
 /** Nodo propio del actor y fuera de la papelera (lo que deja ver `accessibleNodes`). */
-function isLiveOf(actor: Actor, node: File | Folder | undefined): node is File | Folder {
+export function isLiveOf(actor: Actor, node: File | Folder | undefined): node is File | Folder {
   return node !== undefined && node.ownerId === actor.id && node.trash === null;
 }
 

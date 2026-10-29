@@ -6,6 +6,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { accountItem, ANDREA, MONICA } from '../test-accounts';
+import { accountLimits, pendingLimitsApi } from '../test-limits';
 import { apiError, loadOf } from '../test-loads';
 
 import { AccountProfile, type AccountProfileApi } from './account-profile';
@@ -30,6 +31,9 @@ function apiOf(
     getAccount: loadOf<string, AccountListItem>(...account),
     suspendAccount: loadOf<string, AccountListItem>(...suspend),
     reactivateAccount: loadOf<string, AccountListItem>(...reactivate),
+    ...pendingLimitsApi(),
+    // Límites ya cargados: el bloque de la 011b no añade otro `role="status"` a los avisos de la ficha.
+    getAccountLimits: () => Promise.resolve(accountLimits()),
   };
 }
 

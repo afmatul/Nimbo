@@ -50,6 +50,8 @@ const TEST_LIMITS = {
   retainedVersions: 3,
   readOnly: false,
   maxEditors: 0,
+  extraQuotaBytes: 0n,
+  extraQuotaUntil: null,
   planName: 'Plan de prueba',
 };
 /** Un `.pdf` mínimo que el detector acepta: la firma `%PDF-` y relleno. */

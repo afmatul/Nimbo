@@ -1,6 +1,9 @@
 import type { SpaceSummaryResponse } from '@nimbo/contracts';
 
-/** Constructor de resúmenes de espacio para pruebas: segmentos + papelera = usado; disponible = cuota − usado − reservas. */
+/**
+ * Constructor de resúmenes de espacio para pruebas: segmentos + papelera = usado; cuota = la del plan + el extra (011b);
+ * disponible = cuota − usado − reservas.
+ */
 export const GB = 1_000_000_000;
 const TEST_QUOTA_BYTES = 15 * GB;
 export const TEST_PLAN_NAME = 'Personal';
@@ -8,6 +11,8 @@ export const TEST_PLAN_NAME = 'Personal';
 interface SpaceExtras {
   readonly trashBytes?: number;
   readonly reservedBytes?: number;
+  /** 011b CA-5: un extra vigente y el instante en que deja de regir. */
+  readonly extra?: { readonly bytes: number; readonly until: string };
 }
 
 /** Las cifras se redondean a bytes enteros: `14.1 * GB` no es exacto en coma flotante. */
@@ -15,6 +20,8 @@ export function spaceSummaryWith(used: number, extras: SpaceExtras = {}): SpaceS
   const usedBytes = Math.round(used);
   const trashBytes = Math.round(extras.trashBytes ?? 0);
   const reservedBytes = Math.round(extras.reservedBytes ?? 0);
+  const extraQuotaBytes = Math.round(extras.extra?.bytes ?? 0);
+  const quotaBytes = TEST_QUOTA_BYTES + extraQuotaBytes;
   const live = usedBytes - trashBytes;
   const documentsBytes = Math.round(live * 0.6);
   const imagesBytes = Math.round(live * 0.3);
@@ -22,8 +29,11 @@ export function spaceSummaryWith(used: number, extras: SpaceExtras = {}): SpaceS
     planName: TEST_PLAN_NAME,
     usedBytes,
     reservedBytes,
-    quotaBytes: TEST_QUOTA_BYTES,
-    availableBytes: Math.max(0, TEST_QUOTA_BYTES - usedBytes - reservedBytes),
+    quotaBytes,
+    baseQuotaBytes: TEST_QUOTA_BYTES,
+    extraQuotaBytes,
+    extraQuotaUntil: extras.extra?.until ?? null,
+    availableBytes: Math.max(0, quotaBytes - usedBytes - reservedBytes),
     maxFileBytes: 50_000_000,
     trashRetentionDays: 7,
     readOnly: false,

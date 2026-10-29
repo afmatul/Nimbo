@@ -50,6 +50,8 @@ async function setup(usage: QuotaUsage) {
     retainedVersions: 3,
     readOnly: false,
     maxEditors: 0,
+    extraQuotaBytes: 0n,
+    extraQuotaUntil: null,
     planName: 'Plan de prueba',
   });
   const service = new QuotaService(quotas, new FixedClock(NOW));

@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Laura Barrios · Administración · Nimbo — fecha-no-posterior</title>
+<!-- Mockup de referencia (spec 011b: administración, cuentas y ficha). Estado: fecha-no-posterior. -->
+<!-- Colores: valores de ui-guidelines.md §3 (tonos AA). La implementación usa tokens, components/ui y components/nimbo. -->
+<!-- Generado con _generadores/admin/generar.js (marco del área en admin/area.js y CSS del marco en marco/marco.js). No editar a mano. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Valores de ui-guidelines.md §3 (tonos AA de ADR-0014). La implementación usa las utilidades de Tailwind, nunca hex. */
+    --sheet: #E7EDF5;          /* fondo de la hoja de mockups (no es un token de la app) */
+    --background: #F4F7FB;
+    --card: #FAFCFF;
+    --border: #DDE6F0;
+    --input: #7F93AA;
+    --foreground: #1E2D40;
+    --secondary-foreground: #3A5068;
+    --muted-foreground: #5E7389;
+    --primary: #4A6FA5;
+    --primary-hover: #3B5A8A;
+    --primary-foreground: #FFFFFF;
+    --brand: #6B8DD6;
+    --muted: #EEF3F9;
+    --accent: #DDE6F0;
+    --ring: #4A6FA5;
+    --success: #6DB99A;
+    --success-foreground: #3A7560;
+    --destructive: #A34F4F;
+    --destructive-soft: #C97B7B;
+    --overlay: rgba(44, 58, 82, .45); /* velo de diálogo: agent-bg al 45 %; token pendiente (#6 de app-layout) */
+    --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px; --radius-xl: 18px;
+    --shadow-card: 0 1px 3px rgba(74,111,165,.08), 0 1px 2px rgba(74,111,165,.04);
+    --shadow-modal: 0 8px 24px rgba(44,58,82,.18);
+    --shadow-button: 0 1px 2px rgba(107,141,214,.20);
+    /* Mezclas al 12 % sobre card (fondo de alertas y distintivos) */
+    --success-soft: color-mix(in srgb, var(--success) 12%, var(--card));
+    --destructive-tint: color-mix(in srgb, var(--destructive-soft) 12%, var(--card));
+    --brand-soft: color-mix(in srgb, var(--brand) 12%, var(--card));
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--sheet); color: var(--foreground);
+    font-family: Inter, system-ui, sans-serif; font-size: 14px; line-height: 1.5;
+  }
+  a { color: var(--primary); text-decoration: underline; text-underline-offset: 2px; }
+  a:hover { color: var(--primary-hover); }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+  .ico { flex: none; }
+
+  /* Rótulo de la hoja */
+  .sheet-label {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px;
+    padding: 40px 48px 12px; font-size: 12px; line-height: 1.5; color: var(--secondary-foreground);
+  }
+  .sheet-label .chip { background: var(--border); border-radius: var(--radius-sm); padding: 1px 7px; font-weight: 600; font-size: 11px; }
+  .sheet-label strong { color: var(--foreground); font-size: 13px; font-weight: 600; }
+  .sheet-label .file { font-weight: 500; font-variant-numeric: tabular-nums; color: var(--primary-hover); }
+
+  /* Lienzo y marco de la aplicación (propuesta p. 08 y p. 17) */
+  .canvas {
+    position: relative; margin: 0 48px 48px; background: var(--background); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card); overflow: hidden;
+  }
+  .app { display: grid; grid-template-columns: 236px minmax(0, 1fr); min-height: 860px; }
+  .sidebar { display: flex; flex-direction: column; gap: 14px; background: var(--card); border-right: 1px solid var(--border); padding: 18px 12px 16px; }
+  .brand-row { display: flex; align-items: center; gap: 10px; padding: 4px 8px 10px; border-bottom: 1px solid var(--border); }
+  .logo { display: inline-flex; align-items: center; gap: 10px; color: var(--foreground); text-decoration: none; font-weight: 700; font-size: 17px; letter-spacing: .02em; min-height: 36px; }
+  .logo-mark { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; background: var(--primary); color: var(--primary-foreground); font-size: 15px; font-weight: 700; box-shadow: var(--shadow-button); }
+  .plan-chip { font-size: 10px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: .04em; color: var(--secondary-foreground); background: var(--muted); border-radius: var(--radius-sm); padding: 2px 6px; }
+  .nav { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  .nav a { display: flex; align-items: center; gap: 12px; min-height: 36px; padding: 6px 12px; border-radius: var(--radius-md); color: var(--secondary-foreground); text-decoration: none; font-size: 13.5px; font-weight: 500; }
+  .nav a:hover { background: var(--muted); color: var(--foreground); }
+  .nav .meta { margin-left: auto; font-size: 11px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  .nav-sep { height: 1px; background: var(--border); margin: 2px 8px; }
+  .nav-title { margin: 6px 12px 0; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted-foreground); }
+  .quota { margin-top: auto; border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 12px 14px; background: var(--card); }
+  .quota-head { display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 600; }
+  .quota-bar { height: 6px; border-radius: 999px; background: var(--muted); margin: 8px 0 6px; overflow: hidden; }
+  .quota-bar span { display: block; height: 100%; width: 21%; background: var(--success); border-radius: 999px; }
+  .quota-meta { font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--muted-foreground); }
+
+  .main { min-width: 0; display: flex; flex-direction: column; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 64px; padding: 10px 28px; background: var(--card); border-bottom: 1px solid var(--border); }
+  .topbar .menu-btn, .topbar .logo-mobile { display: none; }
+  .crumbs ol { display: flex; align-items: center; gap: 10px; list-style: none; margin: 0; padding: 0; font-size: 14px; }
+  .crumbs li + li::before { content: "/"; color: var(--muted-foreground); margin-right: 10px; }
+  .crumbs a { color: var(--secondary-foreground); text-decoration: none; }
+  .crumbs a:hover { color: var(--foreground); text-decoration: underline; }
+  .crumbs [aria-current] { font-weight: 600; color: var(--foreground); }
+  .account-btn { display: inline-flex; align-items: center; gap: 10px; min-height: 40px; padding: 4px 6px 4px 12px; border: 0; border-radius: 999px; background: transparent; color: var(--secondary-foreground); font: inherit; font-size: 13px; cursor: pointer; }
+  .account-btn:hover { background: var(--muted); }
+  .avatar { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 999px; background: var(--card); color: var(--foreground); font-size: 11px; font-weight: 700; box-shadow: 0 0 0 2px var(--brand); }
+
+  .content { padding: 28px 28px 40px; }
+  .page-head h1 { margin: 0; font-size: 26px; line-height: 1.25; font-weight: 700; letter-spacing: -.01em; }
+  .page-head p { margin: 6px 0 0; color: var(--secondary-foreground); font-size: 14.5px; }
+  /* Botones (components/ui/button) */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 8px 16px; border-radius: var(--radius-md); font: inherit; font-weight: 600; font-size: 13.5px; line-height: 1.2; cursor: pointer; text-decoration: none; white-space: nowrap; }
+  .btn-sm { min-height: 36px; padding: 6px 12px; font-size: 13px; }
+  .btn-outline { color: var(--secondary-foreground); background: var(--card); border: 1px solid var(--input); }
+  .btn-outline:hover { background: var(--muted); color: var(--foreground); }
+  .btn-primary { color: var(--primary-foreground); background: var(--primary); border: 1px solid var(--primary); box-shadow: var(--shadow-button); }
+  .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+  .btn-destructive { color: var(--primary-foreground); background: var(--destructive); border: 1px solid var(--destructive); }
+  .btn[disabled] { opacity: .45; pointer-events: none; }
+  .btn-busy { opacity: 1 !important; }
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin, .skeleton-line { animation: none !important; } }
+  /* Diálogo de confirmación (ConfirmDestructiveDialog) */
+  .overlay { position: absolute; inset: 0; background: var(--overlay); z-index: 10; }
+  .dialog { position: absolute; z-index: 11; top: 150px; left: 50%; transform: translateX(-50%); width: min(460px, calc(100% - 32px)); background: var(--card); border-radius: var(--radius-xl); box-shadow: var(--shadow-modal); padding: 24px; }
+  .dialog h2 { margin: 0; font-size: 18px; line-height: 1.35; font-weight: 700; }
+  .dialog p { margin: 8px 0 0; color: var(--secondary-foreground); font-size: 14px; }
+  .dialog-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+  @media (max-width: 900px) {
+    .app { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+    .sidebar { display: none; }
+    .topbar { padding: 10px 12px; }
+    .topbar .menu-btn { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--foreground); cursor: pointer; }
+    .topbar .logo-mobile { display: inline-flex; }
+    .crumbs { display: none; }
+    .topbar-left { display: flex; align-items: center; gap: 4px; }
+    .account-btn .account-name { display: none; }
+    .account-btn { padding: 4px; min-width: 44px; min-height: 44px; justify-content: center; }
+  }
+  @media (max-width: 600px) {
+    .sheet-label { padding: 16px 12px 10px; }
+    .canvas { margin: 0 8px 16px; border-radius: var(--radius-md); }
+    .content { padding: 18px 12px 28px; }
+    .page-head h1 { font-size: 23px; }
+    .dialog { top: 96px; padding: 20px 16px 16px; }
+    .dialog-actions { flex-direction: column-reverse; }
+    .dialog-actions .btn { width: 100%; }
+  }
+
+  /* Extensiones del marco (shared/layout) */
+  :root {
+    --warning: #D4A96A;
+    --warning-foreground: #8A6424;
+    --warning-soft: color-mix(in srgb, var(--warning) 12%, var(--card));
+  }
+  [hidden] { display: none !important; }
+
+  /* Ítem activo: fondo accent, texto foreground en 600 y barra de 3 px (no solo color) */
+  .nav a[aria-current="page"] { background: var(--accent); color: var(--foreground); font-weight: 600; border-left: 3px solid var(--primary); padding-left: 9px; }
+  .nav a[aria-current="page"] .meta, .nav a:hover .meta { color: var(--secondary-foreground); } /* muted-foreground sobre muted da 4.39 */
+  @media (max-width: 900px) { .logo { min-height: 44px; } } /* CA-5 de 000b: 44 px en móvil */
+
+  /* Menú de la cuenta (DropdownMenu de shadcn) */
+  .topbar { position: relative; }
+  .account { position: relative; }
+  .account-btn[aria-expanded="true"] { background: var(--muted); color: var(--foreground); }
+  .account-pop { position: absolute; z-index: 20; top: calc(100% + 8px); right: 0; width: 272px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-modal); padding: 6px; }
+  .account-who { padding: 10px 12px 12px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
+  .account-who p { margin: 0; }
+  .account-who-name { font-weight: 600; font-size: 14px; }
+  .account-who-mail { font-size: 13px; color: var(--muted-foreground); overflow-wrap: anywhere; }
+  .account-menu { list-style: none; margin: 0; padding: 0; }
+  .account-menu [role="menuitem"] { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 40px; padding: 8px 12px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--foreground); font: inherit; font-size: 14px; font-weight: 500; text-align: left; text-decoration: none; cursor: pointer; }
+  .account-menu [role="menuitem"] .ico { color: var(--secondary-foreground); }
+  .account-menu [role="menuitem"]:hover, .account-menu [role="menuitem"]:focus { background: var(--muted); }
+  .account-menu [role="menuitem"]:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+  .account-sep { height: 1px; background: var(--border); margin: 6px 4px; }
+
+  /* Cajón móvil (AppLayout, por debajo de 900 px) */
+  .drawer-overlay { position: absolute; inset: 0; z-index: 10; background: var(--overlay); }
+  .drawer { position: absolute; z-index: 11; top: 0; bottom: 0; left: 0; width: min(320px, calc(100% - 40px)); display: flex; flex-direction: column; gap: 14px; overflow-y: auto; background: var(--card); box-shadow: var(--shadow-modal); padding: 12px 12px 16px; }
+  .drawer-head { display: flex; align-items: center; gap: 10px; padding: 0 0 10px 8px; border-bottom: 1px solid var(--border); }
+  .drawer-head .icon-btn { margin-left: auto; }
+  .drawer .nav a { min-height: 44px; font-size: 15px; }
+  .icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--foreground); cursor: pointer; }
+  .icon-btn:hover { background: var(--muted); }
+  @media (min-width: 901px) { .drawer, .drawer-overlay { display: none !important; } }
+
+  /* Aviso de solo lectura (ReadOnlyBanner, RF-23) */
+  .readonly { display: flex; align-items: center; gap: 12px 16px; margin: 0 0 22px; padding: 14px 16px; border: 1px solid color-mix(in srgb, var(--warning) 45%, var(--card)); border-radius: var(--radius-lg); background: var(--warning-soft); color: var(--foreground); }
+  .readonly > .ico { color: var(--warning-foreground); flex: none; }
+  .readonly-text { flex: 1; min-width: 0; margin: 0; font-size: 14px; line-height: 1.5; }
+  .readonly-text strong { display: block; color: var(--warning-foreground); font-weight: 600; }
+  .readonly .btn { flex: none; }
+
+  @media (max-width: 600px) {
+    .account { position: static; }
+    .account-pop { top: calc(100% - 2px); right: 8px; width: min(272px, calc(100% - 16px)); }
+    .account-menu [role="menuitem"] { min-height: 44px; }
+    .readonly { flex-wrap: wrap; align-items: flex-start; padding: 14px; }
+    .readonly .btn { width: 100%; }
+  }
+
+  /* Común del área de administración (spec 011) */
+  .app { min-height: 900px; }
+  a.btn-primary, a.btn-primary:hover { color: var(--primary-foreground); }
+  a.btn-outline:hover { color: var(--foreground); }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* Barra lateral del área de administración: persona abajo en lugar de la cuota */
+  .area-chip { color: var(--primary-foreground); background: var(--secondary-foreground); }
+  .who { margin-top: auto; border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 12px 14px; background: var(--card); }
+  .who p { margin: 0; }
+  .who-name { font-size: 13.5px; font-weight: 600; }
+  .who-role { display: flex; align-items: center; gap: 6px; margin-top: 2px; font-size: 12px; color: var(--secondary-foreground); }
+  .who-role .ico { color: var(--primary); }
+
+  /* Encabezado de página */
+  .page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px 16px; flex-wrap: wrap; }
+  .page-head p { margin-top: 4px; }
+
+  /* Aviso de privacidad (Alert de shadcn, variante informativa): ícono + texto, nunca solo color */
+  .privacy { display: flex; align-items: flex-start; gap: 10px; margin: 20px 0 0; padding: 12px 16px; border: 1px solid color-mix(in srgb, var(--brand) 35%, var(--card)); border-radius: var(--radius-lg); background: var(--brand-soft); font-size: 13.5px; color: var(--foreground); }
+  .privacy .ico { margin-top: 2px; color: var(--primary); }
+  .privacy p { margin: 0; }
+
+  /* Volver, tarjeta, recuadro informativo y avisos (Alert de shadcn) */
+  .crumbs a { display: inline-flex; align-items: center; min-height: 24px; } /* objetivo táctil de 24 px (WCAG 2.5.8) */
+  .back { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; font-size: 13.5px; font-weight: 500; text-decoration: none; }
+  .back:hover { text-decoration: underline; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: 20px; }
+  .card h2 { margin: 0 0 4px; font-size: 16px; font-weight: 600; }
+  .card > .sub { margin: 0 0 12px; font-size: 13px; color: var(--muted-foreground); }
+  .info-box { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--muted); font-size: 13.5px; color: var(--secondary-foreground); }
+  .info-box .ico { margin-top: 2px; color: var(--secondary-foreground); }
+  .info-box p { margin: 0; }
+  .info-box strong { display: block; color: var(--foreground); font-weight: 600; }
+  .alert { display: flex; align-items: flex-start; gap: 12px; margin: 20px 0 0; padding: 14px 16px; border-radius: var(--radius-lg); }
+  .alert > .ico { margin-top: 2px; flex: none; }
+  .alert p { margin: 0; }
+  .alert-title { font-size: 14px; font-weight: 600; }
+  .alert-text { margin-top: 2px !important; font-size: 13.5px; color: var(--foreground); }
+  .alert-ok { border: 1px solid color-mix(in srgb, var(--success) 45%, var(--card)); background: var(--success-soft); }
+  .alert-ok > .ico, .alert-ok .alert-title { color: var(--success-foreground); }
+
+  /* StatusBadge: ícono + etiqueta (Art. XIII.4) */
+  .badge { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 600; line-height: 1.5; white-space: nowrap; border: 1px solid transparent; }
+  .badge-ok { color: var(--success-foreground); background: var(--success-soft); border-color: color-mix(in srgb, var(--success) 40%, var(--card)); }
+  .badge-off { color: var(--destructive); background: var(--destructive-tint); border-color: color-mix(in srgb, var(--destructive-soft) 45%, var(--card)); }
+  .badge-role { color: var(--secondary-foreground); background: var(--muted); border-color: var(--border); }
+  /* Plan inactivo (catálogo y métricas): contorno neutro, nunca rojo (no es un error) */
+  .badge-idle { color: var(--secondary-foreground); background: var(--card); border-color: var(--input); }
+
+  /* Estados de pantalla (StateView): vacío, cargando y error */
+  .state { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 260px; margin-top: 16px; padding: 32px; text-align: center; border-radius: var(--radius-lg); }
+  .state h2 { margin: 12px 0 6px; font-size: 16px; line-height: 1.5; font-weight: 600; }
+  .state p { margin: 0 0 20px; max-width: 48ch; font-size: 14px; }
+  .state-empty { background: var(--card); border: 1px dashed var(--input); box-shadow: var(--shadow-card); }
+  .state-empty > .ico { color: var(--muted-foreground); }
+  .state-empty p { color: var(--secondary-foreground); }
+  .state-error { border: 1px dashed color-mix(in srgb, var(--destructive-soft) 60%, var(--card)); background: var(--destructive-tint); }
+  .state-error > .ico, .state-error h2 { color: var(--destructive); }
+  .state-error p { color: var(--foreground); }
+  .skeleton-line { display: block; height: 12px; border-radius: 999px; background: var(--muted); animation: pulse 1.4s ease-in-out infinite; }
+  .w30 { width: 30%; } .w40 { width: 40%; } .w50 { width: 50%; } .w60 { width: 60%; } .w70 { width: 70%; } .w80 { width: 80%; }
+  @keyframes pulse { 50% { opacity: .55; } }
+  .loading-text { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; font-size: 13px; color: var(--secondary-foreground); }
+
+  /* Botón destructivo con borde (acción que abre una confirmación) */
+  .btn-destructive-outline { color: var(--destructive); background: var(--card); border: 1px solid var(--destructive); }
+  .btn-destructive-outline:hover { background: var(--destructive-tint); }
+
+  /* Diálogo de confirmación con lista de consecuencias */
+  .dialog { top: 120px; width: min(500px, calc(100% - 32px)); }
+  .dialog .who-line { margin-top: 6px; font-weight: 500; color: var(--foreground); overflow-wrap: anywhere; }
+  .conseq { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 10px; }
+  .conseq li { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: var(--secondary-foreground); }
+  .conseq .ico { margin-top: 2px; color: var(--secondary-foreground); }
+  .btn-primary-dlg { color: var(--primary-foreground); background: var(--primary); border: 1px solid var(--primary); box-shadow: var(--shadow-button); }
+
+  @media (max-width: 900px) {
+    .who { margin-top: 8px; }
+  }
+  @media (max-width: 600px) {
+    .app { min-height: 0; }
+    .privacy { padding: 12px; margin-top: 16px; }
+    .card { padding: 16px; }
+    .back { min-height: 44px; }
+    .alert { padding: 12px; }
+    .state { padding: 28px 16px; }
+    .state .btn { width: 100%; }
+  }
+
+  /* Formulario del área (Input y Label de shadcn): ayuda bajo la etiqueta y error bajo el control, con ícono y texto */
+  .req-note { margin: 0; font-size: 13px; color: var(--secondary-foreground); }
+  .field { margin-top: 20px; }
+  .field > label, .legend { display: block; margin: 0 0 4px; padding: 0; font-size: 13.5px; font-weight: 600; color: var(--foreground); }
+  .field-help { margin: 0 0 8px; font-size: 13px; color: var(--secondary-foreground); }
+  .text-input { width: 100%; max-width: 440px; min-height: 40px; padding: 8px 12px; border: 1px solid var(--input); border-radius: var(--radius-md); background: var(--card); color: var(--foreground); font: inherit; font-size: 14px; }
+  .text-input.short { max-width: 220px; }
+  .text-input:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+  .text-input[aria-invalid="true"] { border-color: var(--destructive); box-shadow: 0 0 0 1px var(--destructive); }
+  .text-input[readonly] { background: var(--muted); color: var(--secondary-foreground); }
+  .field-error { display: flex; gap: 6px; align-items: flex-start; margin: 6px 0 0; font-size: 13px; font-weight: 500; color: var(--destructive); }
+  .field-error .ico { margin-top: 2px; }
+  .field-error a { display: inline-flex; align-items: center; min-height: 24px; color: var(--destructive); }
+  .field-error a:hover { color: var(--foreground); }
+
+  /* Aviso de auditoría y acciones del formulario */
+  .audit-note { display: flex; align-items: flex-start; gap: 8px; margin: 12px 0 0; font-size: 13px; color: var(--secondary-foreground); }
+  .audit-note .ico { margin-top: 2px; }
+  .form-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--border); }
+
+  /* Resumen de errores (Alert destructivo): cuántos campos y enlaces a cada uno */
+  .form-card .alert { margin: 0 0 16px; }
+  .alert-error { border: 1px solid color-mix(in srgb, var(--destructive-soft) 60%, var(--card)); background: var(--destructive-tint); }
+  .alert-error > .ico, .alert-error .alert-title { color: var(--destructive); }
+  .alert-list { margin: 6px 0 0; padding-left: 18px; font-size: 13.5px; color: var(--destructive); }
+  .alert-list a { display: inline-flex; align-items: center; min-height: 24px; color: var(--destructive); font-weight: 500; }
+  .alert-list a:hover { color: var(--foreground); }
+
+  /* Diálogo con formulario (ajustar cuota, extender vigencia y motivo de restauración) */
+  .form-dialog { top: 72px; width: min(560px, calc(100% - 32px)); max-height: calc(100vh - 144px); overflow: auto; }
+  .form-dialog .sub { margin: 4px 0 0; color: var(--secondary-foreground); font-size: 13.5px; }
+  .form-dialog .field { margin-top: 16px; }
+  .form-dialog .field > label { font-size: 13.5px; }
+  .form-dialog .text-input { max-width: none; }
+  .form-dialog .text-input.short { max-width: 220px; }
+
+  @media (max-width: 600px) {
+    .text-input, .text-input.short { max-width: none; min-height: 44px; }
+    .form-dialog { top: 16px; max-height: calc(100vh - 32px); }
+    .form-dialog .dialog-actions { flex-direction: column-reverse; align-items: stretch; }
+    .form-dialog .dialog-actions .btn { width: 100%; min-height: 44px; }
+    .form-actions { flex-direction: column; align-items: stretch; }
+    .form-actions .btn { width: 100%; min-height: 44px; }
+    .alert-list a { min-height: 32px; }
+  }
+
+  /* Propio de backoffice/admin (spec 011: cuentas y ficha) */
+
+  /* Búsqueda por correo (Input + Button) */
+  .search { margin-top: 20px; }
+  .search label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; }
+  .search-row { display: flex; gap: 10px; max-width: 560px; }
+  .input-wrap { position: relative; flex: 1; min-width: 0; }
+  .input-wrap .ico { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted-foreground); pointer-events: none; }
+  .input { width: 100%; min-height: 40px; padding: 8px 12px 8px 38px; border: 1px solid var(--input); border-radius: var(--radius-md); background: var(--card); color: var(--foreground); font: inherit; font-size: 14px; }
+  .input::placeholder { color: var(--muted-foreground); }
+  .input:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+  .search-hint { margin: 6px 0 0; font-size: 12.5px; color: var(--muted-foreground); }
+
+  /* Tabla de cuentas */
+  .accounts { margin-top: 16px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); overflow: hidden; }
+  .accounts table { width: 100%; border-collapse: collapse; }
+  .accounts th { padding: 11px 14px; text-align: left; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted-foreground); background: var(--background); border-bottom: 1px solid var(--border); white-space: nowrap; }
+  .accounts td { padding: 12px 14px; border-bottom: 1px solid var(--border); font-size: 13.5px; color: var(--secondary-foreground); vertical-align: middle; }
+  .accounts tr:last-child td { border-bottom: 0; }
+  .accounts tbody tr:hover { background: var(--muted); }
+  .c-rol { width: 124px; } .c-estado { width: 136px; } .c-verif { width: 100px; } .c-plan { width: 112px; } .c-uso { width: 176px; } .c-alta { width: 104px; }
+  .c-alta, .c-uso { font-variant-numeric: tabular-nums; }
+  .acct { min-width: 0; }
+  .acct-link { display: inline-flex; align-items: center; min-height: 24px; color: var(--foreground); font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
+  .acct-link:hover { color: var(--primary-hover); text-decoration: underline; }
+  .acct-mail { display: block; font-size: 12.5px; color: var(--muted-foreground); overflow-wrap: anywhere; }
+  .you { margin-left: 6px; font-size: 10.5px; font-weight: 600; letter-spacing: .04em; color: var(--secondary-foreground); background: var(--muted); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 1px 6px; white-space: nowrap; }
+  .acct-m { display: none; }
+  .na { color: var(--muted-foreground); }
+  .yesno { display: inline-flex; align-items: center; gap: 6px; }
+  .yesno .ico { color: var(--secondary-foreground); }
+
+  /* Uso del espacio (QuotaBar en miniatura: tramo por color y siempre GB y % en texto) */
+  .use-text { display: block; font-size: 12.5px; color: var(--secondary-foreground); white-space: nowrap; }
+  .use-bar { display: block; height: 5px; margin-top: 5px; border-radius: 999px; background: var(--muted); overflow: hidden; }
+  .use-bar span { display: block; height: 100%; border-radius: 999px; background: var(--success); }
+  .use-warn span { background: var(--warning); }
+  .use-full span { background: var(--destructive-soft); }
+
+  /* Paginación */
+  .pager { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; margin-top: 14px; font-size: 13px; color: var(--secondary-foreground); }
+  .pager p { margin: 0; }
+  .pager-ctrl { display: flex; align-items: center; gap: 8px; }
+  .pager-page { min-width: 96px; text-align: center; white-space: nowrap; }
+
+  /* Esqueleto de la lista (StateView y skeleton-line en area.js) */
+  .sk-row { display: grid; grid-template-columns: minmax(0, 1fr) 124px 136px 100px 112px 176px 104px; gap: 0 14px; align-items: center; padding: 14px; border-bottom: 1px solid var(--border); }
+  .sk-row:last-child { border-bottom: 0; }
+  .sk-head { padding: 12px 14px; background: var(--background); }
+  .sk-head .skeleton-line { height: 10px; width: 60%; background: var(--border); }
+  .sk-two .skeleton-line + .skeleton-line { margin-top: 7px; height: 10px; }
+
+  /* Ficha de la cuenta */
+  .profile-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; margin-top: 8px; }
+  .profile-head h1 { margin: 0; font-size: 26px; line-height: 1.25; font-weight: 700; letter-spacing: -.01em; }
+  .profile-head .mail { margin: 4px 0 0; color: var(--secondary-foreground); font-size: 14.5px; overflow-wrap: anywhere; }
+  .badges { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 6px; }
+  .ficha-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 20px; margin-top: 20px; align-items: start; }
+  .facts { display: grid; grid-template-columns: 170px minmax(0, 1fr); margin: 0; }
+  .facts dt, .facts dd { padding: 11px 0; border-top: 1px solid var(--border); font-size: 14px; }
+  .facts dt { color: var(--secondary-foreground); }
+  .facts dd { margin: 0; color: var(--foreground); font-weight: 500; min-width: 0; }
+  .facts dd .use-bar { max-width: 260px; height: 6px; }
+  .facts dd .use-text { font-size: 14px; color: var(--foreground); white-space: normal; }
+  .facts .note { display: block; margin-top: 2px; font-size: 12.5px; font-weight: 400; color: var(--muted-foreground); }
+  .action { padding: 16px 0; border-top: 1px solid var(--border); }
+  .action:first-of-type { border-top: 0; padding-top: 4px; }
+  .action h3 { margin: 0; font-size: 14px; font-weight: 600; }
+  .action p { margin: 4px 0 12px; font-size: 13.5px; color: var(--secondary-foreground); }
+  .action .info-box p { margin: 0; font-size: 13.5px; } /* el recuadro de area.js no hereda el margen de .action p */
+  a.btn-destructive-outline, a.btn-destructive-outline:hover { color: var(--destructive); } /* «Suspender cuenta» enlaza la confirmación */
+
+  /* Límites y vigencia (011b) */
+  .limits { margin-top: 20px; }
+  .limits-badge { margin-top: 12px; }
+  .limits .facts { margin-top: 12px; }
+  .limits-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .limits-actions .btn { min-height: 40px; }
+  .limits-actions .btn-quitar { margin-left: auto; }
+  .limits .audit-note { margin-top: 12px; }
+  .limits .alert { margin: 16px 0 0; }
+  .limits .state { min-height: 0; }
+  .state-loading { border: 1px dashed var(--border); background: var(--card); }
+  .state-loading > .ico { color: var(--primary); }
+
+  /* Diálogo con formulario (ajustar cuota y extender vigencia): base compartida en area.js */
+  .input-group { display: flex; align-items: stretch; max-width: 220px; }
+  .input-group .text-input { max-width: none; border-right: 0; border-radius: var(--radius-md) 0 0 var(--radius-md); }
+  .input-group .unit { display: flex; align-items: center; padding: 0 12px; border: 1px solid var(--input); border-left: 0; border-radius: 0 var(--radius-md) var(--radius-md) 0; background: var(--muted); color: var(--secondary-foreground); font-size: 13px; font-weight: 600; }
+  .calc { margin-top: 16px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--muted); font-size: 13.5px; color: var(--secondary-foreground); }
+  .calc p { margin: 0; }
+  .calc p + p { margin-top: 4px; }
+  .calc strong { color: var(--foreground); }
+  .calc-danger { border-color: color-mix(in srgb, var(--destructive-soft) 60%, var(--card)); background: var(--destructive-tint); }
+  .calc-danger strong { color: var(--destructive); }
+  .readonly-note { margin-top: 16px; }
+
+  @media (max-width: 600px) {
+    .limits-actions .btn { width: 100%; min-height: 44px; }
+    .limits-actions .btn-quitar { margin-left: 0; }
+    .input-group { max-width: none; }
+  }
+
+  @media (max-width: 900px) {
+    .ficha-grid { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 1180px) and (min-width: 601px) {
+    .c-verif, .c-alta { display: none; }
+  }
+  @media (max-width: 600px) {
+    .page-head .btn { width: 100%; }
+    .search-row { max-width: none; }
+    .input { min-height: 44px; }
+    .search .btn { min-height: 44px; }
+    /* Tabla → filas apiladas: la primera celda resume todo; el resto de columnas se ocultan */
+    .accounts thead { display: none; }
+    .accounts td:not(.c-cuenta) { display: none; }
+    .accounts td { padding: 14px 12px; }
+    .acct-m { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 8px; font-size: 12.5px; color: var(--secondary-foreground); }
+    .acct-m .use, .acct-m .linea { flex-basis: 100%; }
+    .acct-m .use-bar { max-width: 220px; }
+    .pager { flex-direction: column; align-items: stretch; }
+    .pager p { text-align: center; }
+    .pager-ctrl { justify-content: space-between; }
+    .pager-ctrl .btn { min-height: 44px; }
+    .pager-page { min-width: 0; }
+    .sk-row { grid-template-columns: minmax(0, 1fr); padding: 14px 12px; }
+    .sk-row > .sk-col, .sk-head { display: none; }
+    .profile-head h1 { font-size: 23px; }
+    .facts { grid-template-columns: minmax(0, 1fr); }
+    .facts dt { padding-bottom: 0; font-size: 13px; }
+    .facts dd { border-top: 0; padding-top: 2px; }
+    .action .btn { width: 100%; min-height: 44px; }
+  }
+</style>
+</head>
+<body>
+
+<aside class="sheet-label" aria-label="Rótulo del mockup"><span class="chip">011b</span> <strong>Administración · Ficha de cuenta</strong> <span class="file">admin--fecha-no-posterior.html</span> <span>sin acceso al contenido de los archivos · estado: fecha de vigencia no posterior: error de campo y resumen</span></aside>
+
+<div class="canvas">
+  <div class="app" inert>
+    
+    <aside class="sidebar" aria-label="Barra lateral">
+      <div class="brand-row">
+        <a class="logo" href="../admin/admin.html"><span class="logo-mark">N</span><span>NIMBO</span><span class="sr-only">, Administración</span></a>
+        <span class="plan-chip area-chip">ADMIN</span>
+      </div>
+      <nav aria-label="Navegación de administración">
+        <ul class="nav">
+          <li><a href="../admin/admin.html" aria-current="page"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Cuentas</span><span class="meta">1 284</span></a></li>
+          <li><a href="../catalogo/catalogo.html"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg><span>Catálogo de planes</span></a></li>
+          <li><a href="../metricas/metricas.html"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span>Métricas</span></a></li>
+        </ul>
+      </nav>
+      <div class="who">
+        <p class="who-name">Mónica Herrera</p>
+        <p class="who-role"><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1Z"/></svg><span>Administrador</span></p>
+      </div>
+    </aside>
+    <div class="main">
+      
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="menu-btn" type="button" aria-label="Abrir menú de navegación" aria-expanded="false" aria-controls="cajon"><svg class="ico " width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg></button>
+          <a class="logo logo-mobile" href="../admin/admin.html"><span class="logo-mark">N</span><span>NIMBO</span><span class="sr-only">, Administración</span></a>
+          <nav class="crumbs" aria-label="Ruta">
+            <ol><li><a href="../admin/admin.html">Administración</a></li><li><a href="../admin/admin.html">Cuentas</a></li><li><span aria-current="page">Laura Barrios</span></li></ol>
+          </nav>
+        </div>
+        <button class="account-btn" type="button" aria-haspopup="menu" aria-expanded="false">
+          <span class="account-name">Mónica Herrera</span><span class="avatar" aria-hidden="true">MH</span><span class="sr-only">Menú de la cuenta</span>
+        </button>
+      </header>
+      <main class="content" id="contenido">
+        <a class="back" href="admin.html"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>Volver a cuentas</a>
+        <div class="profile-head">
+          <div>
+            <h1>Laura Barrios</h1>
+            <p class="mail">laura.barrios@alpha.gt</p>
+          </div>
+          <div class="badges"><span class="badge badge-ok"><svg class="ico " width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>Activa</span><span class="badge badge-role"><svg class="ico " width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Cliente</span></div>
+        </div>
+        <div class="privacy"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><p>La administración muestra metadatos de los archivos (nombre, tipo, tamaño, fechas y estado), nunca su contenido.</p></div>
+        <div class="ficha-grid">
+          <section class="card" aria-labelledby="datos-t">
+            <h2 id="datos-t">Datos de la cuenta</h2>
+            <p class="sub">Solo datos de la cuenta y de su uso; sin archivos.</p>
+            <dl class="facts">
+              <dt>Rol</dt><dd>Cliente</dd>
+              <dt>Estado</dt><dd><span class="badge badge-ok"><svg class="ico " width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>Activa</span></dd>
+              <dt>Correo verificado</dt><dd><span class="yesno"><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5"/></svg>Sí</span></dd>
+              <dt>Plan</dt><dd>Equipo</dd>
+              <dt>Espacio usado</dt><dd><span class="use-text num">304 GB de 350 GB (87 %)</span><span class="use-bar use-warn" aria-hidden="true"><span style="width: 87%"></span></span></dd>
+              <dt>Fecha de alta</dt><dd class="num">01/09/2026</dd>
+            </dl>
+          </section>
+          <section class="card" aria-labelledby="acciones-t">
+            <h2 id="acciones-t">Acciones</h2>
+            <p class="sub">Cada acción queda en la auditoría de la cuenta; el cliente ve la acción y tu rol.</p>
+            <div class="action">
+              <h3>Metadatos de archivos</h3>
+              <p>Nombre, tipo, tamaño, fechas y estado de sus archivos. La consulta queda en la auditoría que ve Laura.</p>
+              <a class="btn btn-outline" href="../soporte/soporte--desde-admin.html"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M4.27 21a2 2 0 0 0 1.73 1H18a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v3"/><path d="m9 18-1.5-1.5"/><circle cx="5" cy="14" r="3"/></svg><span>Ver metadatos de archivos</span></a>
+            </div>
+            <div class="action">
+              <h3>Suspender cuenta</h3>
+              <p>Cierra sus sesiones y pausa sus comparticiones y enlaces mientras esté suspendida. No borra nada.</p>
+              <a class="btn btn-destructive-outline" href="admin--confirmar-suspender.html"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg>Suspender cuenta</a>
+            </div>
+          </section>
+        </div>
+        <section class="card limits" aria-labelledby="limites-t">
+          <h2 id="limites-t">Límites y vigencia</h2>
+          <p class="sub">Cuota, espacio extra y vencimiento de la suscripción.</p>
+          <div class="limits-badge"><span class="badge badge-ok"><svg class="ico " width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>Vigente</span></div>
+          <dl class="facts">
+            <dt>Cuota del plan</dt><dd><span class="num">350 GB</span></dd>
+            <dt>Espacio extra</dt><dd><span class="num">Sin extra</span><span class="note">Espacio temporal sin cambiar de plan.</span></dd>
+            <dt>Cuota total</dt><dd><span class="num">350 GB</span><span class="note">304 GB usados (87 %)</span></dd>
+            <dt>Vencimiento</dt><dd><span class="num">31 oct 2026</span><span class="note">Al vencer el extra, la cuota vuelve a la del plan; la cuenta sigue vigente hasta su vencimiento.</span></dd>
+          </dl>
+          <div class="limits-actions">
+            <a class="btn btn-outline" href="admin--ajustar-cuota.html"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M22 12H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><path d="M6 16h.01"/><path d="M10 16h.01"/></svg>Ajustar cuota</a>
+            <a class="btn btn-outline" href="admin--extender-vigencia.html"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>Extender vigencia</a>
+          </div>
+          <p class="audit-note"><svg class="ico " width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg><span>Cada ajuste queda en la auditoría de la cuenta; el cliente ve la acción y tu rol.</span></p>
+        </section>
+      </main>
+    </div>
+  </div>
+  <div class="drawer-overlay" data-cerrar-cajon aria-hidden="true" hidden></div>
+  <div class="drawer" id="cajon" role="dialog" aria-modal="true" aria-labelledby="cajon-t" hidden>
+      <div class="drawer-head">
+        <a class="logo" href="../admin/admin.html"><span class="logo-mark">N</span><span>NIMBO</span><span class="sr-only">, Administración</span></a>
+        <span class="plan-chip area-chip">ADMIN</span>
+        <h2 id="cajon-t" class="sr-only">Menú de navegación</h2>
+        <button class="icon-btn" type="button" data-cerrar-cajon aria-label="Cerrar menú"><svg class="ico " width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+      </div>
+      <nav aria-label="Navegación de administración">
+        <ul class="nav">
+          <li><a href="../admin/admin.html" id="cajon-primero" aria-current="page"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Cuentas</span><span class="meta">1 284</span></a></li>
+          <li><a href="../catalogo/catalogo.html"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg><span>Catálogo de planes</span></a></li>
+          <li><a href="../metricas/metricas.html"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span>Métricas</span></a></li>
+        </ul>
+      </nav>
+      <div class="who">
+        <p class="who-name">Mónica Herrera</p>
+        <p class="who-role"><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1Z"/></svg><span>Administrador</span></p>
+      </div>
+  </div>
+  <div class="overlay" aria-hidden="true"></div>
+  <div class="dialog form-dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-t" aria-describedby="dlg-d">
+    <h2 id="dlg-t">Extender la vigencia de Laura Barrios</h2>
+    <p class="sub" id="dlg-d">La fecha nueva reemplaza a la actual. No registra un cobro ni una factura; la renovación automática y el cambio de plan siguen como están.</p>
+    <form onsubmit="return false">
+      
+          <div class="alert alert-error" role="alert" tabindex="-1" id="errores"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg><div><p class="alert-title">Revisa la fecha de vencimiento.</p><p class="alert-text">Nada cambió.</p>
+            <ul class="alert-list"><li><a href="#vigencia-hasta">Elige un día posterior al 31 oct 2026.</a></li></ul></div></div>
+          <div class="field">
+            <label for="vigencia-hasta">Nueva fecha de vencimiento</label>
+            <p class="field-help" id="vigencia-hasta-ayuda">Solo puedes extender la vigencia: elige un día posterior al 31 oct 2026. No se cobra ni se factura.</p>
+            <input class="text-input short" id="vigencia-hasta" name="vigencia-hasta" type="date" value="2026-10-20" required aria-describedby="vigencia-hasta-ayuda vigencia-hasta-error" aria-invalid="true" autofocus>
+            <p class="field-error" id="vigencia-hasta-error"><svg class="ico " width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg><span>Elige un día posterior al 31 oct 2026.</span></p>
+          </div><div class="calc" aria-live="polite"><p>Vence actualmente: <strong>31 oct 2026</strong>. Fecha nueva: <strong>20 oct 2026</strong>.</p></div>
+      <p class="audit-note"><svg class="ico " width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg><span>El ajuste queda en la auditoría del cliente; verá la acción y tu rol, no tu nombre.</span></p>
+      <div class="dialog-actions">
+        <a class="btn btn-outline" href="admin--ficha.html">Cancelar</a>
+        <button class="btn btn-primary" type="button">Guardar vigencia</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+(function () {
+  var app = document.querySelector('.app');
+  var btn = document.querySelector('.menu-btn');
+  var cajon = document.getElementById('cajon');
+  var velo = document.querySelector('.drawer-overlay');
+  var primero = document.getElementById('cajon-primero');
+  var conDialogo = !!document.querySelector('.dialog');
+  function abrir() { cajon.hidden = false; velo.hidden = false; btn.setAttribute('aria-expanded', 'true'); app.inert = true; primero.focus(); }
+  function cerrar() { cajon.hidden = true; velo.hidden = true; btn.setAttribute('aria-expanded', 'false'); app.inert = conDialogo; btn.focus(); }
+  btn.addEventListener('click', abrir);
+  Array.prototype.forEach.call(document.querySelectorAll('[data-cerrar-cajon]'), function (el) { el.addEventListener('click', cerrar); });
+  cajon.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.preventDefault(); cerrar(); } });
+  // Diálogo: el foco empieza en «Cancelar» (autofocus); en la app, Escape o «Cancelar» lo cierran sin cambiar nada.
+  var dlg = document.querySelector('.dialog');
+  if (dlg) dlg.querySelector('[autofocus]').focus();
+})();
+</script>
+</body>
+</html>

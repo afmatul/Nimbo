@@ -20,6 +20,7 @@ function version(overrides: Partial<FileVersionSummary> & { number: number }): F
     createdAt: '2026-10-08T16:42:00.000Z',
     createdById: OWNER,
     isCurrent: false,
+    keptUntil: null,
     ...overrides,
   };
 }

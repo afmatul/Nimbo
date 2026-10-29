@@ -9,6 +9,8 @@ const WRITABLE_TEST_LIMITS: PlanLimits = {
   trashRetentionDays: 30,
   retainedVersions: 3,
   maxEditors: 0,
+  extraQuotaBytes: 0n,
+  extraQuotaUntil: null,
   readOnly: false,
 };
 

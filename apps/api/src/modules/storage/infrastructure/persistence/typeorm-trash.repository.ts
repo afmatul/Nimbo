@@ -25,7 +25,13 @@ import type { TrashState } from '../../domain/trash-state';
 
 import { ArchivoOrmEntity } from './archivo.orm-entity';
 import { CarpetaOrmEntity } from './carpeta.orm-entity';
-import { FILE_BYTES_SQL, nodesIn, rebaseSubtree, selectRows } from './node-sql';
+import {
+  COUNTED_VERSION_SQL,
+  FILE_BYTES_SQL,
+  nodesIn,
+  rebaseSubtree,
+  selectRows,
+} from './node-sql';
 import type { Condition, NodeTable } from './node-sql';
 import { trashColumns } from './trash-columns';
 import { decodeTrashCursor, encodeTrashCursor } from './trash-cursor';
@@ -34,10 +40,13 @@ import { toFile } from './typeorm-node.repository';
 /** Columnas de papelera de un nodo que vuelve. */
 const LIVE = trashColumns(null);
 
-/** Bytes de una carpeta de la papelera: las versiones de los archivos que arrastró (RN-6, en `numeric` sin pérdida). */
+/**
+ * Bytes de una carpeta de la papelera: las versiones que cuentan de los archivos que arrastró (RN-6, 014b CA-10; en
+ * `numeric` sin pérdida).
+ */
 const FOLDER_BYTES_SQL =
   '(SELECT COALESCE(SUM(v.tamano_bytes), 0) FROM archivo h JOIN version_archivo v ON v.archivo_id = h.id ' +
-  'WHERE h.eliminado_con_carpeta_id = c.id)';
+  `WHERE h.eliminado_con_carpeta_id = c.id AND ${COUNTED_VERSION_SQL})`;
 
 /** Raíces de la papelera del actor con su tamaño: `ownedTrashedNodes` va dentro de cada rama (ADR-0005). */
 const trashRootsSql = (actor: Actor): Condition => {
@@ -104,7 +113,7 @@ const toTrashedFolder = (row: TrashedFolderRow): TrashedFolder => ({
   sizeBytes: BigInt(row.tamano),
 });
 
-/** Fila de `purgeTargets`: un archivo con la suma y las claves de sus versiones. */
+/** Fila de `purgeTargets`: un archivo con lo que libera (sus versiones que cuentan) y las claves de todas. */
 interface PurgeFileRow {
   readonly id: string;
   readonly tamano: string;
@@ -287,7 +296,7 @@ export class TypeOrmTrashRepository implements ITrashRepository {
         : this.carriedBy(actor, item.id, 'a.eliminado_con_carpeta_id');
     const rows = await this.select<PurgeFileRow>(
       actor,
-      `SELECT a.id, COALESCE(SUM(v.tamano_bytes), 0)::text AS tamano,
+      `SELECT a.id, COALESCE(SUM(v.tamano_bytes) FILTER (WHERE ${COUNTED_VERSION_SQL}), 0)::text AS tamano,
               COALESCE(array_agg(v.clave_objeto ORDER BY v.creada_en) FILTER (WHERE v.id IS NOT NULL), '{}') AS claves
          FROM archivo a LEFT JOIN version_archivo v ON v.archivo_id = a.id
         WHERE ${files.sql}

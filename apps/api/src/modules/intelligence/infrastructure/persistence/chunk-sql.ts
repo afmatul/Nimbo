@@ -8,7 +8,7 @@ import type { NamedQuery } from './accessible-files';
 import { CHUNK_COLUMNS, toVectorLiteral } from './chunk-rows';
 
 /**
- * SQL de lectura del agente (plan 020 D-2). **Único archivo de `intelligence` que lee tablas de `storage`** (ADR-0035
+ * SQL de lectura del agente (plan 020 D-2). **Único archivo de `intelligence` que lee tablas de `storage`** (ADR-0036
  * y su enmienda, `architecture.md` §3 regla 7): solo `archivo(id, carpeta_id, version_actual_id, nombre)` y
  * `carpeta(id, ruta)`, de solo lectura y siempre junto a `accessibleNodes(actor)` en la misma consulta. `nombre` solo
  * viaja a la cita del dueño (S-1), nunca al modelo ni a bitácoras. También es el único que lee `indexacion` para el

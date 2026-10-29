@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { byteCount } from './schema-fields';
+import { byteCount, timestamp } from './schema-fields';
 
 /** Esquema del resumen de espacio (spec 007, plan §4). Bytes como enteros seguros, como el resto de `storage`. */
 
@@ -17,8 +17,8 @@ export const spaceBreakdownSchema = z
 /**
  * `GET /storage/summary`: el nombre visible del plan, lo usado, lo reservado por cargas en curso, la cuota y el máximo
  * por archivo del plan, lo disponible, la retención de la papelera, si la cuenta está en solo lectura (010) y el
- * desglose (CA-1, CA-6). Sin ofertas de
- * ampliación.
+ * desglose (CA-1, CA-6). Sin ofertas de ampliación. `quotaBytes` es la cuota efectiva: la del plan (`baseQuotaBytes`)
+ * más el extra vigente (`extraQuotaBytes`, hasta `extraQuotaUntil`); sin extra o vencido, `0` y `null` (011b RN-1, CA-5).
  */
 export const spaceSummaryResponseSchema = z
   .object({
@@ -26,6 +26,9 @@ export const spaceSummaryResponseSchema = z
     usedBytes: byteCount,
     reservedBytes: byteCount,
     quotaBytes: byteCount,
+    baseQuotaBytes: byteCount,
+    extraQuotaBytes: byteCount,
+    extraQuotaUntil: timestamp.nullable(),
     availableBytes: byteCount,
     maxFileBytes: byteCount,
     trashRetentionDays: z.number().int().positive(),
