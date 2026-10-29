@@ -46,7 +46,11 @@ export type { BatchFailure } from './application/batch/attempt-each';
 export { IncompleteBatchError } from './application/batch/incomplete-batch.error';
 export { HealthModule } from './health.module';
 export { SystemClock } from './infrastructure/clock/system.clock';
-export { apiEnvSchema, workerEnvSchema } from './infrastructure/config/env.schema';
+export {
+  apiEnvSchema,
+  workerEnvSchema,
+  workerOptimizerEnvSchema,
+} from './infrastructure/config/env.schema';
 export type { Env, SharedEnvBase } from './infrastructure/config/env.schema';
 export { ENV, EnvModule } from './infrastructure/config/env.module';
 export { MINIO_CONFIG, MinioConfigModule } from './infrastructure/config/minio-config.module';

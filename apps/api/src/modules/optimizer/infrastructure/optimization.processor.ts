@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Inject } from '@nestjs/common';
+import { UnrecoverableError } from 'bullmq';
 import type { Job } from 'bullmq';
 import { PinoLogger } from 'nestjs-pino';
 
@@ -28,8 +29,15 @@ const taskOf = ({ optimizationId, fileId, ownerId }: OptimizationJobData): Optim
   ownerId,
 });
 
-const attemptsExhausted = (job: Job<OptimizationJobData>): boolean =>
-  job.attemptsMade >= (job.opts.attempts ?? DEFAULT_ATTEMPTS);
+/**
+ * Terminal como lo decide BullMQ al fallar (`Job.shouldRetryJob`): sin intentos restantes o con `UnrecoverableError`.
+ * Así falla un trabajo atascado más de `maxStalledCount` veces (el proceso murió con él activo): con intentos todavía
+ * disponibles, pero sin reintento. Se compara también por `name`, como BullMQ, por si llega de otra copia del paquete.
+ */
+const isTerminalFailure = (job: Job<OptimizationJobData>, error: Error): boolean =>
+  job.attemptsMade >= (job.opts.attempts ?? DEFAULT_ATTEMPTS) ||
+  error instanceof UnrecoverableError ||
+  error.name === 'UnrecoverableError';
 
 /** Corre `work` con el `correlationId` del trabajo (o uno nuevo) y su `jobId` (RNF-17). */
 function inJobContext<T>(job: Job<OptimizationJobData>, work: () => Promise<T>): Promise<T> {
@@ -60,12 +68,12 @@ export class OptimizationProcessor extends WorkerHost {
   }
 
   /**
-   * Último intento fallido → `giveUp`. BullMQ no espera a los oyentes: un fallo aquí se registra y no se propaga; la
+   * Fallo terminal (último intento o `UnrecoverableError`) → `giveUp`. BullMQ no espera a los oyentes: un fallo aquí se registra y no se propaga; la
    * fila queda en curso y la caducidad perezosa del `api` la cierra (plan §5).
    */
   @OnWorkerEvent('failed')
   async onFailed(job: Job<OptimizationJobData> | undefined, error: Error): Promise<void> {
-    if (job === undefined || !attemptsExhausted(job)) return;
+    if (job === undefined || !isTerminalFailure(job, error)) return;
     const task = taskOf(job.data);
     await inJobContext(job, async () => {
       try {

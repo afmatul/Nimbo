@@ -46,6 +46,8 @@ const RUNTIME_EXPORTS_BY_TASK = {
   'T-13': [
     'apiEnvSchema',
     'workerEnvSchema',
+    // ADR-0037, PD-135: el entorno propio del `worker-optimizer`.
+    'workerOptimizerEnvSchema',
     'loadEnv',
     'loadDotenvFile',
     'formatEnvIssues',

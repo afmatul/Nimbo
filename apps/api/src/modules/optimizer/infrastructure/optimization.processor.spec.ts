@@ -1,3 +1,4 @@
+import { UnrecoverableError } from 'bullmq';
 import type { Job } from 'bullmq';
 
 import { CorrelationContext } from '../../../shared';
@@ -108,6 +109,25 @@ describe('OptimizationProcessor (plan 021 §2, T-03)', () => {
 
     expect(givenUp).toEqual([]);
   });
+
+  it.each([
+    ['la clase', new UnrecoverableError('job stalled more than allowable limit')],
+    [
+      'el nombre (otra copia de bullmq)',
+      Object.assign(new Error('x'), { name: 'UnrecoverableError' }),
+    ],
+  ])(
+    'CA-14: un fallo terminal antes de agotar los intentos (atascado más de `maxStalledCount`, por %s) se da por vencido',
+    async (_, error) => {
+      const { processor, givenUp } = setup();
+
+      await processor.onFailed(jobOf(TASK, 1), error);
+
+      expect(givenUp).toEqual([
+        { task: TASK, correlationId: expect.any(String), jobId: JOB_ID, error },
+      ]);
+    },
+  );
 
   it('CA-14: agotados los intentos, se da por vencido con el último error y en el contexto del trabajo', async () => {
     const { processor, givenUp } = setup();

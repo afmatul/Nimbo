@@ -57,6 +57,13 @@ services:
       SMTP_HOST: mailpit
       SMTP_PORT: '1025'
 
+  # Misma imagen que `worker` (ADR-0037); sin SMTP: no consume `mail`.
+  worker-optimizer:
+    profiles: [apps]
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+
   web:
     profiles: [apps]
     build:

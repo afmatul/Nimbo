@@ -25,6 +25,8 @@ const LOCAL_JWT_SECRET_MESSAGE = 'no puede ser el valor de desarrollo de .env.ex
 
 const DEFAULT_API_PORT = 3000;
 const DEFAULT_WORKER_PORT = 3001;
+/** Salud interna del proceso `worker-optimizer` (ADR-0037): otro puerto para que los dos convivan en el host en local. */
+const DEFAULT_WORKER_OPTIMIZER_PORT = 3003;
 const DEFAULT_APP_VERSION = 'dev';
 const DEFAULT_MINIO_BUCKET = 'nimbo';
 const DEFAULT_MINIO_REGION = 'us-east-1';
@@ -206,8 +208,14 @@ const sharedEnvBaseSchema = z.object({
 /** Lo que `SharedModule` y sus piezas internas necesitan; cada proceso provee un superconjunto. */
 export type SharedEnvBase = z.infer<typeof sharedEnvBaseSchema>;
 
-/** Ambos procesos comparten el mismo `.env` (CA-19), así que ambos validan el puerto interno de salud. */
+/** El `api` y el general validan este puerto (CA-19); el especializado tiene su propio puerto. */
 const workerPortShape = { WORKER_PORT: port(DEFAULT_WORKER_PORT) };
+
+/**
+ * Puerto de salud del proceso `worker-optimizer` (ADR-0037), sin publicar nunca (CA-23). Solo lo lee su entrypoint;
+ * el `api` no lo declara.
+ */
+const workerOptimizerPortShape = { WORKER_OPTIMIZER_PORT: port(DEFAULT_WORKER_OPTIMIZER_PORT) };
 
 /**
  * MinIO, **una sola definición** que componen `api` y `worker` (005 plan §5): el `api` firma y valida cargas y el
@@ -298,22 +306,22 @@ const indexingApiShape = {
 };
 
 /**
- * Optimizador de imágenes en ambos procesos (021 plan §5 y §6), **una sola definición**: el `api` encola con esos
- * intentos y caduca lo perdido (intentos × 3 × tiempo límite + 5 min); el `worker` reintenta y corta cada operación.
+ * Tiempo límite compartido por el `api` (caducidad) y `worker-optimizer` (sharp), con una sola definición.
+ * Los intentos los fija únicamente el `api` al encolar; el consumidor consulta `job.opts.attempts`.
  */
-const optimizerQueueShape = {
-  OPTIMIZER_MAX_ATTEMPTS: positiveInt(DEFAULT_OPTIMIZER_MAX_ATTEMPTS),
+const optimizerTimeoutShape = {
   OPTIMIZER_TIMEOUT_MS: positiveInt(DEFAULT_OPTIMIZER_TIMEOUT_MS),
 };
 
-/** Optimizador en el `api` (021 plan §4 a §6): tope de bytes de CA-5, intervalo de consulta y límite de tasa. */
+/** Optimizador en el `api`: intentos al encolar, tope de bytes, intervalo de consulta y límite de tasa. */
 const optimizerApiShape = {
+  OPTIMIZER_MAX_ATTEMPTS: positiveInt(DEFAULT_OPTIMIZER_MAX_ATTEMPTS),
   OPTIMIZER_MAX_FILE_BYTES: positiveInt(DEFAULT_OPTIMIZER_MAX_FILE_BYTES),
   OPTIMIZER_POLL_INTERVAL_MS: positiveInt(DEFAULT_OPTIMIZER_POLL_INTERVAL_MS),
   RATE_LIMIT_OPTIMIZER_PER_MINUTE: positiveInt(DEFAULT_RATE_LIMIT_OPTIMIZER_PER_MINUTE),
 };
 
-/** Optimizador en el `worker` (021 plan §6): tope de píxeles (RN-8), umbral de ahorro (RN-2) y calidad JPEG. */
+/** `worker-optimizer` (021 plan §6): tope de píxeles (RN-8), umbral de ahorro (RN-2) y calidad JPEG. */
 const optimizerWorkerShape = {
   OPTIMIZER_MAX_PIXELS: positiveInt(DEFAULT_OPTIMIZER_MAX_PIXELS),
   OPTIMIZER_MIN_SAVED_PERCENT: intBetween(1, MAX_PERCENT - 1, DEFAULT_OPTIMIZER_MIN_SAVED_PERCENT),
@@ -398,7 +406,7 @@ const renewalReminderShape = {
 /**
  * Forma del entorno del `worker`: el contrato común, su puerto de salud, MinIO, el barrido de cargas (005), la purga
  * de la papelera (006), la conciliación de espacio (007), la de suscripciones y el reintento de facturas (009), la
- * indexación (019), el optimizador de imágenes (021) y el SMTP (001 plan §6.10); sin `PORT` ni `MINIO_PUBLIC_ENDPOINT`. `SMTP_PASSWORD` y
+ * indexación (019) y el SMTP (001 plan §6.10); sin configuración del optimizador, `PORT` ni `MINIO_PUBLIC_ENDPOINT`. `SMTP_PASSWORD` y
  * `GEMINI_API_KEY` se declaran **solo** aquí.
  */
 export const workerEnvObjectSchema = sharedEnvBaseSchema.extend({
@@ -413,8 +421,6 @@ export const workerEnvObjectSchema = sharedEnvBaseSchema.extend({
   ...renewalReminderShape,
   ...indexingQueueShape,
   ...indexingWorkerShape,
-  ...optimizerQueueShape,
-  ...optimizerWorkerShape,
   SMTP_HOST: nonEmpty(),
   SMTP_PORT: requiredPort(),
   SMTP_TLS: oneOf(['none', 'starttls', 'implicit']),
@@ -441,7 +447,7 @@ export const apiEnvObjectSchema = sharedEnvBaseSchema.extend({
   ...editingApiShape,
   ...indexingQueueShape,
   ...indexingApiShape,
-  ...optimizerQueueShape,
+  ...optimizerTimeoutShape,
   ...optimizerApiShape,
   WEB_PUBLIC_URL: url(),
   CORS_ORIGIN: urlList(),
@@ -529,6 +535,18 @@ const refineWorkerEnv = (
 
 /** Entorno validado del `worker`. */
 export const workerEnvSchema = workerEnvObjectSchema.superRefine(refineWorkerEnv);
+
+/**
+ * Entorno del proceso `worker-optimizer` (ADR-0037, PD-135): solo lo que su composición lee. La base común (registro,
+ * base de datos, Redis), MinIO, el optimizador y su puerto de salud; sin SMTP, Gemini, indexación ni configuración de
+ * mantenimiento de storage/billing. Sus variables ajenas no le impiden arrancar. Sin reglas entre variables.
+ */
+export const workerOptimizerEnvSchema = sharedEnvBaseSchema.extend({
+  ...workerOptimizerPortShape,
+  ...minioShape,
+  ...optimizerTimeoutShape,
+  ...optimizerWorkerShape,
+});
 
 /** Entorno validado del `api`. */
 export const apiEnvSchema = apiEnvObjectSchema.superRefine(refineApiEnv);

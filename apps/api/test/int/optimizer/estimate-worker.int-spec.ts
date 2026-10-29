@@ -21,7 +21,8 @@ import {
   pngWithAlpha,
   truncatedJpeg,
 } from '../../support/image-fixtures';
-import { buildTestEnv, createTestApp } from '../setup/test-app';
+import { buildOptimizerTestEnv } from '../../support/optimizer-env';
+import { createTestApp } from '../setup/test-app';
 import type { TestApp } from '../setup/test-app';
 import { createStorageHttpApp, STORAGE_HTTP_BUCKET } from '../storage/storage-http';
 import type { StorageClient, StorageHttpApp } from '../storage/storage-http';
@@ -33,7 +34,6 @@ const MAX_ATTEMPTS = '1';
 /** Topes chicos para *fixtures* chicos: 50 000 píxeles y 100 bytes de ahorro mínimo (el 20 % se mantiene). */
 const WORKER_ENV = {
   MINIO_BUCKET: STORAGE_HTTP_BUCKET,
-  OPTIMIZER_MAX_ATTEMPTS: MAX_ATTEMPTS,
   OPTIMIZER_MAX_PIXELS: '50000',
   OPTIMIZER_MIN_SAVED_BYTES: '100',
 };
@@ -49,7 +49,7 @@ interface OptimizationRow {
 }
 
 const createWorker = (): Promise<TestApp> => {
-  const env = buildTestEnv(WORKER_ENV, { withWorkerEnv: true });
+  const env = buildOptimizerTestEnv(WORKER_ENV);
   const storage = StorageFacadesWorkerModule.forRoot();
   return createTestApp({
     validatedEnv: env,

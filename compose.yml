@@ -1,7 +1,8 @@
 # Compose base (spec 000, CA-3): el mismo archivo en local y staging.
 # Local: `docker compose up -d` carga automáticamente `compose.override.yml` (puertos, Mailpit, apps por perfil).
 # Staging: `COMPOSE_FILE=compose.yml:compose.staging.yml` (imágenes por SHA, Traefik con TLS, sin puertos internos).
-# `WORKER_PORT` nunca aparece en `ports:` (CA-23). ONLYOFFICE solo con `--profile onlyoffice` (CA-2).
+# `WORKER_PORT` y `WORKER_OPTIMIZER_PORT` nunca aparecen en `ports:` (CA-23, ADR-0037). ONLYOFFICE solo con
+# `--profile onlyoffice` (CA-2).
 name: nimbo
 
 services:
@@ -104,8 +105,42 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+    # Sin swap del contenedor (`memswap_limit` = `mem_limit`, ADR-0037): al tope se reinicia, no se degrada.
     mem_limit: ${WORKER_MEM_LIMIT:-768m}
+    memswap_limit: ${WORKER_MEM_LIMIT:-768m}
     restart: unless-stopped
+    # Cierre ordenado: `init` reenvía SIGTERM a `node` (y recoge a los hijos de Ghostscript) y Nest cierra cada `Worker`
+    # esperando su trabajo activo. Paso acotado más largo: Ghostscript (45 s) + una petición de embeddings (30 s) + 15 s;
+    # un trabajo más largo queda atascado y BullMQ lo reintenta (los del general son idempotentes).
+    init: true
+    stop_grace_period: 90s
+
+  # Optimizador de imágenes (021, ADR-0037): la misma imagen que `worker`, otro comando; consume solo `optimization`.
+  # Su memoria y sus fallos quedan aislados del `worker` general. Salud interna en `WORKER_OPTIMIZER_PORT`.
+  worker-optimizer:
+    image: ${WORKER_IMAGE:-ghcr.io/afmatul/nimbo-worker}:${IMAGE_TAG:-latest}
+    command: ['node', 'dist/worker-optimizer.main.js']
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'node', 'dist/healthcheck.js', 'WORKER_OPTIMIZER_PORT']
+      interval: 20s
+      timeout: 5s
+      retries: 2
+      start_period: 30s
+    mem_limit: ${WORKER_OPTIMIZER_MEM_LIMIT:-768m}
+    memswap_limit: ${WORKER_OPTIMIZER_MEM_LIMIT:-768m}
+    restart: unless-stopped
+    # Cierre ordenado sin cortar una optimización válida: cada intento hace a lo sumo 3 operaciones de `sharp` acotadas
+    # por `OPTIMIZER_TIMEOUT_MS` (100 s, la misma cota de la caducidad perezosa, plan 021 §5) + E/S (30 s).
+    init: true
+    stop_grace_period: 330s
 
   web:
     image: ${WEB_IMAGE:-ghcr.io/afmatul/nimbo-web}:${IMAGE_TAG:-latest}

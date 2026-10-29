@@ -213,12 +213,6 @@ describe('loadEnv(workerEnvSchema)', () => {
         INDEX_RECONCILE_BATCH_SIZE: 100,
         GHOSTSCRIPT_BIN: 'gs',
         GEMINI_EMBEDDING_MODEL: 'gemini-embedding-001',
-        OPTIMIZER_MAX_ATTEMPTS: 3,
-        OPTIMIZER_TIMEOUT_MS: 100_000,
-        OPTIMIZER_MAX_PIXELS: 36_000_000,
-        OPTIMIZER_MIN_SAVED_PERCENT: 20,
-        OPTIMIZER_MIN_SAVED_BYTES: 1_000_000,
-        OPTIMIZER_JPEG_QUALITY: 80,
         SMTP_HOST: 'localhost',
         SMTP_PORT: 1025,
         SMTP_TLS: 'none',
@@ -241,6 +235,21 @@ describe('loadEnv(workerEnvSchema)', () => {
         '`MAIL_FROM` es obligatoria',
       ],
     });
+  });
+
+  it.each([
+    'OPTIMIZER_MAX_ATTEMPTS',
+    'OPTIMIZER_TIMEOUT_MS',
+    'OPTIMIZER_MAX_PIXELS',
+    'OPTIMIZER_MIN_SAVED_PERCENT',
+    'OPTIMIZER_MIN_SAVED_BYTES',
+    'OPTIMIZER_JPEG_QUALITY',
+    'WORKER_OPTIMIZER_PORT',
+  ])('ADR-0037: `%s=0` no afecta al general ni aparece en su entorno validado', (key) => {
+    const result = loadEnv(workerEnvSchema, { ...VALID_WORKER, [key]: '0' });
+
+    expect(result.ok).toBe(true);
+    expect(result.ok && result.env).not.toHaveProperty(key);
   });
 
   it('CA-18: `SMTP_TLS` solo admite `none`, `starttls` o `implicit`', () => {

@@ -12,7 +12,7 @@ export const RUN_JOB = 'run';
 /** Primera espera antes de reintentar; después crece exponencialmente (como la indexación, 019). */
 const OPTIMIZATION_BACKOFF_MS = 2_000;
 
-/** Intentos por trabajo (`OPTIMIZER_MAX_ATTEMPTS`): el mismo valor en el `api` y en el `worker`. */
+/** Intentos por trabajo (`OPTIMIZER_MAX_ATTEMPTS`): el `api` los guarda en `job.opts.attempts` al encolar. */
 export interface JobQueueConfig {
   readonly maxAttempts: number;
 }

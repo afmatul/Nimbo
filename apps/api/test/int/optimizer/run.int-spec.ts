@@ -28,7 +28,8 @@ import { PlanLimitsBindingModule } from '../../../src/plan-limits-binding.module
 import { createActor, I_TRANSACTION_RUNNER, Role } from '../../../src/shared';
 import type { ITransactionRunner } from '../../../src/shared';
 import { jpegWithOrientationAndP3, pngWithAlpha } from '../../support/image-fixtures';
-import { buildTestEnv, createTestApp } from '../setup/test-app';
+import { buildOptimizerTestEnv } from '../../support/optimizer-env';
+import { createTestApp } from '../setup/test-app';
 import type { TestApp } from '../setup/test-app';
 import { registerVersion } from '../storage/register-version';
 import {
@@ -77,10 +78,10 @@ describe('optimizar y registrar (021 T-04)', () => {
       withStorage: (module, env) => [OptimizerModule.forRoot(env, { storage: module })],
     });
     // Solo el mínimo de bytes baja para fixtures pequeños; porcentaje, calidad, intentos y tiempo son los aprobados.
-    const env = buildTestEnv(
-      { MINIO_BUCKET: STORAGE_HTTP_BUCKET, OPTIMIZER_MIN_SAVED_BYTES: '100' },
-      { withWorkerEnv: true },
-    );
+    const env = buildOptimizerTestEnv({
+      MINIO_BUCKET: STORAGE_HTTP_BUCKET,
+      OPTIMIZER_MIN_SAVED_BYTES: '100',
+    });
     const module = StorageFacadesWorkerModule.forRoot();
     worker = await createTestApp({
       validatedEnv: env,
@@ -287,6 +288,28 @@ describe('optimizar y registrar (021 T-04)', () => {
     const versions = await versionsOf(context.fileId);
     expect(versions).toHaveLength(2);
     expect(versions.map((version) => version.origen)).not.toContain('optimizacion');
+  });
+
+  it('CA-14: un trabajo atascado más de `maxStalledCount` (BullMQ lo falla sin reintentar) queda fallida, no en curso', async () => {
+    const client = await storage.newClient();
+    const upload = await client.upload(`${randomUUID()}.png`, await pngWithAlpha(200, 150));
+    const fileId = (upload.body as { file: { id: string } }).file.id;
+    await queue.pause();
+    const response = await http()
+      .post(`${PREFIX}/files/${fileId}/optimization/estimate`)
+      .set(auth(client));
+    const { id } = optimizationStatusSchema.parse(response.body);
+    // Lo que hace `moveStalledJobsToWait` al superar el límite: marca el fallo diferido y lo devuelve a `wait`.
+    const redis = await queue.backend.client;
+    await redis.hset(queue.toKey(`estimate-${id}`), {
+      defa: 'job stalled more than allowable limit',
+    });
+
+    await queue.resume();
+
+    const row = await waitFor(fileId);
+    expect(row).toMatchObject({ estado: 'fallida', motivo: 'servicio_no_disponible' });
+    expect(await queue.getJob(`estimate-${id}`)).toBeUndefined();
   });
 
   it('una estimación anterior ya sustituida no se confirma: 409', async () => {

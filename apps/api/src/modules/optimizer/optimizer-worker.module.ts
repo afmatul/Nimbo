@@ -3,7 +3,7 @@ import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 import type { z } from 'zod';
 
-import type { workerEnvSchema } from '../../shared';
+import type { workerOptimizerEnvSchema } from '../../shared';
 import { AuditModule } from '../audit';
 
 import { OPTIMIZATION_RUNNER_CONFIG, OptimizationRunner } from './application/optimization-runner';
@@ -18,10 +18,9 @@ import type { ImageOptimizerConfig } from './infrastructure/image/image.optimize
 import { OptimizationProcessor } from './infrastructure/optimization.processor';
 import { TypeOrmJobRepository } from './infrastructure/persistence/typeorm-job.repository';
 
-/** Variables del `worker` que `optimizer` usa (plan 021 §6). */
+/** Variables que consume `OptimizerWorkerModule` en el proceso especializado (plan 021 §6). */
 export type OptimizerWorkerEnv = Pick<
-  z.infer<typeof workerEnvSchema>,
-  | 'OPTIMIZER_MAX_ATTEMPTS'
+  z.infer<typeof workerOptimizerEnvSchema>,
   | 'OPTIMIZER_TIMEOUT_MS'
   | 'OPTIMIZER_MAX_PIXELS'
   | 'OPTIMIZER_MIN_SAVED_PERCENT'
@@ -44,11 +43,12 @@ const imageConfigOf = (env: OptimizerWorkerEnv): ImageOptimizerConfig => ({
 });
 
 /**
- * Parte de `optimizer` que corre en el `worker` (plan 021 §2): consume la cola `optimization` con
- * `OptimizationProcessor` (concurrencia 1) y calcula con `OptimizationRunner` e `ImageOptimizer` (`sharp`, solo aquí).
- * Sin controlador. Se exporta por `worker.ts`, no por `index.ts`: el `api` importa ese barril y así nunca carga el binario
- * nativo de `sharp` (ADR-0036). Recibe **la misma** instancia de `StorageWorkerModule` que monta `WorkerModule` (aporta
- * `OptimizableFileGateway`; otro `forRoot` duplicaría sus procesadores). Estimación y ejecución comparten el
+ * Parte de `optimizer` que corre en el proceso `worker-optimizer` (plan 021 §2, ADR-0037): consume la cola
+ * `optimization` con `OptimizationProcessor` (concurrencia 1) y calcula con `OptimizationRunner` e `ImageOptimizer`
+ * (`sharp`, solo aquí). Sin controlador. Se exporta por `worker.ts`, no por `index.ts`: el `api` importa ese barril y así
+ * nunca carga el binario nativo de `sharp` (ADR-0036). Recibe el módulo de `storage` que elige su raíz:
+ * `WorkerOptimizerModule` le pasa `StorageFacadesWorkerModule` (aporta `OptimizableFileGateway`, sin los procesadores de
+ * mantenimiento, que son del `worker` general con `StorageWorkerModule`). Estimación y ejecución comparten el
  * optimizador y el validador (plan §6); solo la ejecución entrega el candidato a la fachada para registrarlo.
  */
 @Module({})

@@ -79,9 +79,16 @@ const onlyImports = (from, allowed) => ({
 
 export default [
   ...Object.entries(ALLOWED).map(([from, allowed]) => onlyImports(from, allowed)),
-  // Composición del worker: de `storage` solo `StorageWorkerModule`, y solo desde `storage/index.ts` (plan 005 §3b).
+  // Composición de los worker: de `storage` solo `StorageWorkerModule` (plan 005 §3b) o, en `worker-optimizer`,
+  // `StorageFacadesWorkerModule` (ADR-0037), y solo desde `storage/index.ts`.
   {
-    files: ['apps/api/src/worker.module.ts', 'apps/api/src/worker.main.ts', 'apps/worker/**/*.ts'],
+    files: [
+      'apps/api/src/worker.module.ts',
+      'apps/api/src/worker.main.ts',
+      'apps/api/src/worker-base.ts',
+      'apps/api/src/worker-bootstrap.ts',
+      'apps/worker/**/*.ts',
+    ],
     rules: {
       'no-restricted-imports': [
         'error',
@@ -91,6 +98,30 @@ export default [
               name: './modules/storage',
               allowImportNames: ['StorageWorkerModule'],
               message: 'El worker importa de `storage` solo `StorageWorkerModule`.',
+            },
+          ],
+          patterns: [
+            {
+              regex: deepImport(['storage']),
+              message: 'El worker importa `storage` solo desde `storage/index.ts`.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['apps/api/src/worker-optimizer.module.ts', 'apps/api/src/worker-optimizer.main.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: './modules/storage',
+              allowImportNames: ['StorageFacadesWorkerModule'],
+              message:
+                'El `worker-optimizer` importa de `storage` solo `StorageFacadesWorkerModule`.',
             },
           ],
           patterns: [

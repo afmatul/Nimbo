@@ -1,9 +1,10 @@
 import type { DynamicModule, Provider, Type } from '@nestjs/common';
 import type { z } from 'zod';
 
-import { workerEnvSchema } from '../../src/shared';
+import { workerEnvSchema, workerOptimizerEnvSchema } from '../../src/shared';
 
 type WorkerEnv = z.infer<typeof workerEnvSchema>;
+type WorkerOptimizerEnv = z.infer<typeof workerOptimizerEnvSchema>;
 
 /** Clave con que `@Processor(cola)` de `@nestjs/bullmq` guarda `{ name }` en la clase (`bull.constants`). */
 const PROCESSOR_METADATA = 'bullmq:processor_metadata';
@@ -62,17 +63,25 @@ export function processorQueuesOf(root: ModuleNode): string[] {
   return queues;
 }
 
+const BASE_ENV = {
+  NODE_ENV: 'test',
+  APP_ENV: 'test',
+  LOG_LEVEL: 'info',
+  DATABASE_URL: 'postgres://nimbo:nimbo@localhost:5432/nimbo',
+  REDIS_URL: 'redis://localhost:6379',
+  MINIO_ENDPOINT: 'http://localhost:9000',
+  MINIO_ACCESS_KEY: 'nimbo',
+  MINIO_SECRET_KEY: 'nimbo-secret',
+};
+
+/** Cada raíz se prueba con su propio esquema, sin heredar requisitos del otro proceso. */
+export const validWorkerOptimizerEnv = (): WorkerOptimizerEnv =>
+  workerOptimizerEnvSchema.parse(BASE_ENV);
+
 /** Entorno del `worker` válido y mínimo (los valores por defecto del esquema completan el resto). */
 export const validWorkerEnv = (): WorkerEnv =>
   workerEnvSchema.parse({
-    NODE_ENV: 'test',
-    APP_ENV: 'test',
-    LOG_LEVEL: 'info',
-    DATABASE_URL: 'postgres://nimbo:nimbo@localhost:5432/nimbo',
-    REDIS_URL: 'redis://localhost:6379',
-    MINIO_ENDPOINT: 'http://localhost:9000',
-    MINIO_ACCESS_KEY: 'nimbo',
-    MINIO_SECRET_KEY: 'nimbo-secret',
+    ...BASE_ENV,
     SMTP_HOST: 'localhost',
     SMTP_PORT: '1025',
     SMTP_TLS: 'none',

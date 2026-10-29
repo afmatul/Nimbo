@@ -31,11 +31,12 @@ import {
   Role,
 } from '../../src/shared';
 import type { IRateLimiter, ITransactionRunner } from '../../src/shared';
-import { buildTestEnv, createTestApp } from '../int/setup/test-app';
+import { createTestApp } from '../int/setup/test-app';
 import type { TestApp } from '../int/setup/test-app';
 import { createStorageHttpApp, STORAGE_HTTP_BUCKET } from '../int/storage/storage-http';
 import type { StorageHttpApp } from '../int/storage/storage-http';
 import { gif, pngWithAlpha, webp } from '../support/image-fixtures';
+import { buildOptimizerTestEnv } from '../support/optimizer-env';
 
 import { comparable, INTERNAL_ROLES } from './setup/isolation-assertions';
 import { createIsolationWorld } from './setup/isolation-world';
@@ -100,10 +101,10 @@ describe('021 T-06: aislamiento owner-only del optimizador', () => {
   };
 
   const startWorker = async (): Promise<void> => {
-    const env = buildTestEnv(
-      { MINIO_BUCKET: STORAGE_HTTP_BUCKET, OPTIMIZER_MIN_SAVED_BYTES: '100' },
-      { withWorkerEnv: true },
-    );
+    const env = buildOptimizerTestEnv({
+      MINIO_BUCKET: STORAGE_HTTP_BUCKET,
+      OPTIMIZER_MIN_SAVED_BYTES: '100',
+    });
     const module = StorageFacadesWorkerModule.forRoot();
     worker = await createTestApp({
       validatedEnv: env,

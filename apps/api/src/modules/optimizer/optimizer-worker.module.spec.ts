@@ -11,7 +11,6 @@ import { OptimizationProcessor } from './infrastructure/optimization.processor';
 import { OptimizerWorkerModule } from './worker';
 
 const WORKER_ENV = {
-  OPTIMIZER_MAX_ATTEMPTS: 3,
   OPTIMIZER_TIMEOUT_MS: 100_000,
   OPTIMIZER_MAX_PIXELS: 36_000_000,
   OPTIMIZER_MIN_SAVED_PERCENT: 20,

@@ -22,7 +22,8 @@ import {
 import { PlanLimitsBindingModule } from '../../../src/plan-limits-binding.module';
 import { CorrelationContext, TransactionContext } from '../../../src/shared';
 import { pngWithAlpha } from '../../support/image-fixtures';
-import { buildTestEnv, createTestApp } from '../setup/test-app';
+import { buildOptimizerTestEnv } from '../../support/optimizer-env';
+import { createTestApp } from '../setup/test-app';
 import type { TestApp } from '../setup/test-app';
 import { createStorageHttpApp, STORAGE_HTTP_BUCKET } from '../storage/storage-http';
 import type { StorageClient, StorageHttpApp } from '../storage/storage-http';
@@ -65,10 +66,10 @@ describe('021 T-05 CA-21: logs y auditoría persistente (Postgres, Redis, MinIO 
     storage = await createStorageHttpApp({
       withStorage: (module, env) => [OptimizerModule.forRoot(env, { storage: module })],
     });
-    const env = buildTestEnv(
-      { MINIO_BUCKET: STORAGE_HTTP_BUCKET, OPTIMIZER_MIN_SAVED_BYTES: '100' },
-      { withWorkerEnv: true },
-    );
+    const env = buildOptimizerTestEnv({
+      MINIO_BUCKET: STORAGE_HTTP_BUCKET,
+      OPTIMIZER_MIN_SAVED_BYTES: '100',
+    });
     const module = StorageFacadesWorkerModule.forRoot();
     worker = await createTestApp({
       validatedEnv: env,
@@ -211,7 +212,8 @@ describe('021 T-05 CA-21: logs y auditoría persistente (Postgres, Redis, MinIO 
       'signature=',
       'https://secreto',
       'C:\\temp',
-      'u/',
+      // La clave real del objeto (`u/{dueño}/…`), no un `u/` suelto: un ETag en base64 puede contenerlo por azar.
+      `u/${context.client.id}/`,
       'stack',
       'objectKey',
       'fileName',

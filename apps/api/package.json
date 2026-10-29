@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "nest start --watch",
     "dev:worker": "nest start --watch --path tsconfig.worker.json --entryFile worker.main",
+    "dev:worker-optimizer": "nest start --watch --path tsconfig.worker-optimizer.json --entryFile worker-optimizer.main",
     "build": "nest build",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "jest",
