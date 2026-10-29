@@ -27,7 +27,8 @@ const LOCK_CURRENT_SQL = `${CURRENT_SQL} FOR UPDATE`;
 
 const PLAN_SLUG_SQL = 'SELECT slug FROM plan WHERE id = $1';
 
-const STANDING_SQL = 'SELECT plan_id, estado FROM suscripcion WHERE usuario_id = $1';
+const STANDING_SQL = `SELECT plan_id, estado, cuota_extra_bytes, cuota_extra_hasta
+  FROM suscripcion WHERE usuario_id = $1`;
 
 const SAVE_SQL = `UPDATE suscripcion SET plan_id = $2, iniciado_en = $3, vence_en = $4, estado = $5,
     renovacion_automatica = $6, plan_pendiente_id = $7, actualizado_en = now()
@@ -39,17 +40,30 @@ const MARK_REMINDER_SQL =
 const MARK_EXPIRED_NOTICE_SQL =
   'UPDATE suscripcion SET aviso_vencida_para = $2 WHERE usuario_id = $1 AND vence_en = $2';
 
-interface StandingRow {
+interface StatusRow {
   readonly plan_id: string;
   readonly estado: SubscriptionStatus;
 }
 
-interface CurrentRow extends StandingRow {
+/** `cuota_extra_bytes` llega como texto: `bigint` de Postgres no cabe en un `number` (ADR-0016). */
+interface StandingRow extends StatusRow {
+  readonly cuota_extra_bytes: string;
+  readonly cuota_extra_hasta: Date | null;
+}
+
+interface CurrentRow extends StatusRow {
   readonly iniciado_en: Date;
   readonly vence_en: Date | null;
   readonly renovacion_automatica: boolean;
   readonly plan_pendiente_id: string | null;
 }
+
+const toStanding = (row: StandingRow): SubscriptionStanding => ({
+  planId: row.plan_id,
+  readOnly: row.estado === 'solo_lectura',
+  extraQuotaBytes: BigInt(row.cuota_extra_bytes),
+  extraQuotaUntil: row.cuota_extra_hasta,
+});
 
 /**
  * `ISubscriptionRepository` sobre `suscripcion` (plan 009 §3) con el `EntityManager` de `TransactionContext`: con
@@ -63,9 +77,7 @@ export class TypeOrmSubscriptionRepository implements ISubscriptionRepository {
     const [row] = (await this.context
       .requireActorScope(actor)
       .query(STANDING_SQL, [actor.id])) as StandingRow[];
-    return row === undefined
-      ? null
-      : { planId: row.plan_id, readOnly: row.estado === 'solo_lectura' };
+    return row === undefined ? null : toStanding(row);
   }
 
   async insertPersonalIfAbsent(actor: Actor): Promise<void> {

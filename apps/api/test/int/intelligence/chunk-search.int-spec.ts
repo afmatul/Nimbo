@@ -35,7 +35,7 @@ const QUESTION = '¿Cuánto crecieron las ventas del trimestre?';
 const NEUTRAL_TEXT = 'Acta de la asamblea general';
 
 /**
- * `TypeOrmChunkSearch` contra el Postgres del arnés como `nimbo_app` (plan 020 D-2, §6 fila 3/9/17; ADR-0035): las dos
+ * `TypeOrmChunkSearch` contra el Postgres del arnés como `nimbo_app` (plan 020 D-2, §6 fila 3/9/17; ADR-0036): las dos
  * búsquedas, `hasIndexed` y `scopeExists` filtran en la misma consulta por `accessibleNodes`, versión vigente y ámbito.
  * Cada cuenta es nueva por prueba para que los resultados no dependan de las demás.
  */
@@ -132,7 +132,7 @@ describe('TypeOrmChunkSearch (plan 020 D-2)', () => {
     await owner.destroy();
   });
 
-  it('S-1 (enmienda de ADR-0035): ambas búsquedas traen el nombre del archivo en la misma consulta', async () => {
+  it('S-1 (enmienda de ADR-0036): ambas búsquedas traen el nombre del archivo en la misma consulta', async () => {
     const ana = await account();
     const file = await fileWithChunk(ana, 12, {
       name: 'ventas-trimestre.pdf',
@@ -319,7 +319,7 @@ describe('TypeOrmChunkSearch (plan 020 D-2)', () => {
     },
   );
 
-  it('ADR-0035 (enmendado): las columnas de `storage` que lee `chunk-sql.ts` siguen existiendo', async () => {
+  it('ADR-0036 (enmendado): las columnas de `storage` que lee `chunk-sql.ts` siguen existiendo', async () => {
     const [file, folder] = await asOwner(async (manager) => [
       await columnsOf(manager, 'archivo'),
       await columnsOf(manager, 'carpeta'),

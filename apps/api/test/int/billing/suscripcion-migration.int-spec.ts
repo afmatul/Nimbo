@@ -54,6 +54,8 @@ describe('migración crear-suscripcion: RLS del dueño (spec 009 CA-1, RNF-05)',
       forced: true,
       policies: [
         { policyname: 'suscripcion_administracion', cmd: 'SELECT' },
+        // 011b (ADR-0035): solo la usan las funciones de ajuste del Administrador.
+        { policyname: 'suscripcion_ajuste_administracion', cmd: 'UPDATE' },
         { policyname: 'suscripcion_cliente_alta', cmd: 'INSERT' },
         { policyname: 'suscripcion_cliente_cambio', cmd: 'UPDATE' },
         { policyname: 'suscripcion_cliente_lectura', cmd: 'SELECT' },

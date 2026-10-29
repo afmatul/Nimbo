@@ -3,8 +3,10 @@ import { CircleAlert } from 'lucide-react';
 import type * as React from 'react';
 
 import { QuotaBar, QuotaLink, quotaStateOf } from '../../../components/nimbo/quota-bar';
+import { lastDayLabel } from '../../../lib/format-date';
 import { SPACE_PATH } from '../routes';
 
+import { extraQuotaNote } from './extra-quota-note';
 import type { SpaceSummaryState } from './space-provider';
 
 const CARD_LABEL = 'Almacenamiento';
@@ -23,6 +25,7 @@ function ReadyQuota({
   readonly linked: boolean;
 }): React.JSX.Element {
   const hasNotice = quotaStateOf(summary).notice !== null;
+  const extraNote = extraQuotaNote(summary, lastDayLabel);
   return (
     <>
       <QuotaBar
@@ -31,6 +34,7 @@ function ReadyQuota({
         quotaBytes={summary.quotaBytes}
         {...(linked ? { freeSpaceHref: SPACE_PATH } : {})}
       />
+      {extraNote === null ? null : <p className="text-xs text-secondary-foreground">{extraNote}</p>}
       {linked && !hasNotice ? <QuotaLink href={SPACE_PATH}>Ver detalle</QuotaLink> : null}
     </>
   );
@@ -58,7 +62,8 @@ function QuotaBody({ state, linked }: Required<SidebarQuotaProps>): React.JSX.El
 /**
  * Tarjeta de cuota de la barra lateral (spec 007, mockup `shared/layout` cuota-70 y cuota-90): `QuotaBar` con sus
  * tramos y «Liberar espacio»; bajo el 70 %, «Ver detalle». Ambos llevan a `/espacio` (CA-5, CA-7, D-19 d). Si el
- * resumen falla lo dice sin barra y la navegación sigue usable (CA-8). Sin ofertas de ampliación.
+ * resumen falla lo dice sin barra y la navegación sigue usable (CA-8). Sin ofertas de ampliación. Con un extra vigente,
+ * una nota corta con los GB extra y su último día (011b CA-5).
  */
 export function SidebarQuota({ state, linked = true }: SidebarQuotaProps): React.JSX.Element {
   return (

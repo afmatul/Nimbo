@@ -31,7 +31,7 @@
 | `IIndexQueue` (`enqueue`, `enqueueRetry`)                                          | `BullmqIndexQueue` (ya no `editing → intelligence`, DF-78)                              |
 | `IIndexStatusNotifier`                                                             | `RealtimeIndexStatusNotifier` (`api`) y `QueuedIndexStatusNotifier` (`worker`)          |
 | `IIndexingRepository`, `IChunkRepository`                                          | `TypeOrmIndexingRepository`, `TypeOrmChunkRepository`                                   |
-| `IChunkSearch` (léxica, vectorial, `hasIndexed`, `scopeExists`; solo lectura, 020) | `TypeOrmChunkSearch`; SQL en `chunk-sql.ts`, único con `archivo`/`carpeta` (ADR-0035)   |
+| `IChunkSearch` (léxica, vectorial, `hasIndexed`, `scopeExists`; solo lectura, 020) | `TypeOrmChunkSearch`; SQL en `chunk-sql.ts`, único con `archivo`/`carpeta` (ADR-0036)   |
 
 ## Flujo: evento → worker → relay
 

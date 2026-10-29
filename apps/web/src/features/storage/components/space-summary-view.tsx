@@ -11,9 +11,11 @@ import { StateView } from '../../../components/nimbo/state-view';
 import { Alert } from '../../../components/ui/alert';
 import { buttonVariants } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
+import { longLastDayLabel } from '../../../lib/format-date';
 import { SignOutButton } from '../../identity/components/sign-out-button';
 import { MY_FILES_PATH, SPACE_PATH, TRASH_PATH } from '../routes';
 
+import { extraQuotaNote } from './extra-quota-note';
 import { SidebarQuota } from './sidebar-quota';
 import { SpaceBreakdown } from './space-breakdown';
 import type { SpaceSummaryState } from './space-provider';
@@ -130,12 +132,19 @@ function UsageFigure({
   );
 }
 
+/** Con un extra vigente la cuota ya no es solo la del plan: se rotula «Cuota total» (011b CA-5). */
+function quotaLabelOf(summary: SpaceSummaryResponse): string {
+  return summary.extraQuotaBytes > 0 ? 'Cuota total' : 'Cuota del plan';
+}
+
 /**
  * «Espacio usado» (CA-1): cifra grande, barra del tramo y Usado · Disponible · Cuota del plan en texto. El texto del
- * tramo va solo en el aviso de arriba (no se repite aquí); sin aviso, «Tienes espacio de sobra.».
+ * tramo va solo en el aviso de arriba (no se repite aquí); sin aviso, «Tienes espacio de sobra.». Con un extra vigente,
+ * la cuota es la total, se rotula «Cuota total» y una nota dice cuánto extra y hasta qué día (011b CA-5).
  */
 function UsageCard({ summary }: { readonly summary: SpaceSummaryResponse }): React.JSX.Element {
   const { percent, notice } = quotaStateOf(summary);
+  const extraNote = extraQuotaNote(summary, longLastDayLabel);
   return (
     <Card role="region" aria-labelledby="medidor-titulo" className="p-5 lg:col-span-2">
       <h2 id="medidor-titulo" className="text-base font-semibold">
@@ -149,8 +158,11 @@ function UsageCard({ summary }: { readonly summary: SpaceSummaryResponse }): Rea
       <dl className="mt-4 grid gap-3 border-t border-border pt-4 sm:grid-cols-3">
         <Stat label="Usado" bytes={summary.usedBytes} />
         <Stat label="Disponible" bytes={summary.availableBytes} />
-        <Stat label="Cuota del plan" bytes={summary.quotaBytes} />
+        <Stat label={quotaLabelOf(summary)} bytes={summary.quotaBytes} />
       </dl>
+      {extraNote === null ? null : (
+        <p className="mt-3 text-sm text-secondary-foreground">{extraNote}</p>
+      )}
     </Card>
   );
 }
@@ -164,7 +176,10 @@ function PlanFact({ children }: { readonly children: React.ReactNode }): React.J
   );
 }
 
-/** «Tu plan» (CA-1, CA-6, D-20): nombre y límites que entrega la API; sin precio, «Ampliar» ni «Ver planes» (spec 007 §6). */
+/**
+ * «Tu plan» (CA-1, CA-6, D-20): nombre y límites que entrega la API; sin precio, «Ampliar» ni «Ver planes» (spec 007 §6).
+ * El almacenamiento es la cuota del plan, sin el extra vigente (011b CA-5).
+ */
 function PlanCard({ summary }: { readonly summary: SpaceSummaryResponse }): React.JSX.Element {
   const strong = 'font-semibold text-foreground tabular-nums';
   return (
@@ -175,7 +190,8 @@ function PlanCard({ summary }: { readonly summary: SpaceSummaryResponse }): Reac
       <p className="mt-3.5 text-xl font-bold text-foreground">{summary.planName}</p>
       <ul className="mt-3.5 grid gap-2.5 text-sm text-secondary-foreground">
         <PlanFact>
-          <strong className={strong}>{formatBytes(summary.quotaBytes)}</strong> de almacenamiento
+          <strong className={strong}>{formatBytes(summary.baseQuotaBytes)}</strong> de
+          almacenamiento
         </PlanFact>
         <PlanFact>
           Hasta <strong className={strong}>{formatBytes(summary.maxFileBytes)}</strong> por archivo

@@ -1,11 +1,12 @@
 import type { Job } from 'bullmq';
 
-import { CorrelationContext, createActor, Role } from '../../../shared';
+import { CorrelationContext, createActor, FixedClock, Role } from '../../../shared';
 import type { Actor, CorrelatedJobData, ITransactionRunner } from '../../../shared';
 import type { IClientAccountScanner } from '../application/ports/i-client-account.scanner.port';
 import type { StorageLogger } from '../application/storage-logger';
 import { UsageReconcileIncompleteError } from '../application/usage-reconciler';
 import type { UsageReconciler } from '../application/usage-reconciler';
+import type { VersionPruner } from '../application/version-pruner';
 
 import { UsageReconcileProcessor } from './usage-reconcile.processor';
 
@@ -17,6 +18,7 @@ const ACCOUNTS = [
   '1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f',
   '5c6b5a4f-3e2d-4c1b-9a8f-7e6d5c4b3a29',
 ] as const;
+const NOW = new Date('2026-10-25T03:00:00.000Z');
 
 interface LoggedLine {
   readonly level: 'info' | 'warn' | 'error';
@@ -32,7 +34,14 @@ const job = (data: Partial<CorrelatedJobData> = { correlationId: CORRELATION_ID 
 const pageOf = (accounts: readonly string[], afterId: string | null, limit: number) =>
   accounts.filter((id) => afterId === null || id > afterId).slice(0, limit);
 
-const setup = (options: { accounts?: readonly string[]; failing?: readonly string[] } = {}) => {
+interface SetupOptions {
+  readonly accounts?: readonly string[];
+  readonly failing?: readonly string[];
+  /** Originales vencidos que purga cada cuenta (014b). */
+  readonly keptPurged?: number;
+}
+
+const setup = (options: SetupOptions = {}) => {
   const accounts = options.accounts ?? ACCOUNTS;
   const journal: string[] = [];
   const lines: LoggedLine[] = [];
@@ -72,14 +81,21 @@ const setup = (options: { accounts?: readonly string[]; failing?: readonly strin
     return Promise.resolve();
   });
   const reconciler = { reconcile } as unknown as UsageReconciler;
+  const purgeExpiredOriginals = jest.fn((owner: Actor, now: Date) => {
+    journal.push(`purge:${owner.id}:${now.toISOString()}`);
+    return Promise.resolve(options.keptPurged ?? 0);
+  });
+  const pruner = { purgeExpiredOriginals } as unknown as VersionPruner;
   const processor = new UsageReconcileProcessor(
     transactions,
     scanner,
     reconciler,
+    pruner,
+    new FixedClock(NOW),
     { intervalMinutes: 1440, batchSize: BATCH_SIZE },
     logger,
   );
-  return { processor, journal, lines, reconcile };
+  return { processor, journal, lines, reconcile, purgeExpiredOriginals };
 };
 
 describe('UsageReconcileProcessor (spec 007 CA-13 a CA-15; plan §5)', () => {
@@ -111,6 +127,26 @@ describe('UsageReconcileProcessor (spec 007 CA-13 a CA-15; plan §5)', () => {
     expect(reconcile.mock.calls).toEqual(ACCOUNTS.map((id) => [createActor(id, Role.CLIENT)]));
   });
 
+  it('014b CA-6: por cada cuenta, como su dueño, purga los originales vencidos a la hora del reloj y después concilia', async () => {
+    const { processor, journal } = setup();
+
+    await processor.process(job());
+
+    expect(journal.filter((entry) => !entry.startsWith('scan:'))).toEqual(
+      ACCOUNTS.flatMap((id) => [`purge:${id}:${NOW.toISOString()}`, `reconcile:${id}`]),
+    );
+  });
+
+  it('014b CA-6: `quota.reconcile_run` suma los originales purgados de todas las cuentas', async () => {
+    const { processor, lines } = setup({ keptPurged: 2 });
+
+    await processor.process(job());
+
+    expect(lines.map((line) => line.payload)).toEqual([
+      { event: 'quota.reconcile_run', scanned: 3, failed: 0, keptPurged: 6 },
+    ]);
+  });
+
   it('CA-13: una página completa pide la siguiente; una vacía cierra la pasada', async () => {
     const { processor, journal } = setup({ accounts: ACCOUNTS.slice(0, BATCH_SIZE) });
 
@@ -129,7 +165,7 @@ describe('UsageReconcileProcessor (spec 007 CA-13 a CA-15; plan §5)', () => {
         level: 'info',
         correlationId: CORRELATION_ID,
         jobId: JOB_ID,
-        payload: { event: 'quota.reconcile_run', scanned: 3, failed: 0 },
+        payload: { event: 'quota.reconcile_run', scanned: 3, failed: 0, keptPurged: 0 },
       },
     ]);
   });
@@ -143,7 +179,7 @@ describe('UsageReconcileProcessor (spec 007 CA-13 a CA-15; plan §5)', () => {
     expect(reconcile).toHaveBeenCalledTimes(ACCOUNTS.length);
     expect(lines.map((line) => [line.level, line.payload])).toEqual([
       ['error', { event: 'quota.reconcile_failed', userId: failing, errorName: 'Error' }],
-      ['info', { event: 'quota.reconcile_run', scanned: 3, failed: 1 }],
+      ['info', { event: 'quota.reconcile_run', scanned: 3, failed: 1, keptPurged: 0 }],
     ]);
   });
 

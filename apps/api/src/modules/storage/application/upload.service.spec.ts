@@ -61,6 +61,8 @@ const LIMITS: PlanLimits = {
   retainedVersions: 3,
   readOnly: false,
   maxEditors: 0,
+  extraQuotaBytes: 0n,
+  extraQuotaUntil: null,
   planName: 'Plan de prueba',
 };
 const CONFIG: UploadConfig = {

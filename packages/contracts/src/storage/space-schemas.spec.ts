@@ -5,6 +5,9 @@ const SUMMARY = {
   usedBytes: 1_200_000_000,
   reservedBytes: 50_000_000,
   quotaBytes: 5_000_000_000,
+  baseQuotaBytes: 5_000_000_000,
+  extraQuotaBytes: 0,
+  extraQuotaUntil: null,
   availableBytes: 3_750_000_000,
   maxFileBytes: 100_000_000,
   trashRetentionDays: 30,
@@ -20,6 +23,18 @@ const SUMMARY = {
 describe('spaceSummaryResponseSchema (007 plan §4)', () => {
   it('CA-1, CA-6: el resumen lleva plan, usado, reservado, cuota, disponible, máximo por archivo, retención y desglose', () => {
     expect(spaceSummaryResponseSchema.parse(SUMMARY)).toEqual(SUMMARY);
+  });
+
+  it('011b CA-5: con un extra vigente lleva la cuota del plan, el extra y su fecha; `quotaBytes` es la efectiva', () => {
+    const withExtra = {
+      ...SUMMARY,
+      quotaBytes: 55_000_000_000,
+      extraQuotaBytes: 50_000_000_000,
+      extraQuotaUntil: '2026-11-16T06:00:00.000Z',
+      availableBytes: 53_750_000_000,
+    };
+
+    expect(spaceSummaryResponseSchema.parse(withExtra)).toEqual(withExtra);
   });
 
   it('CA-1: un espacio vacío (todo en cero salvo cuota, máximo y retención) es válido', () => {
@@ -40,6 +55,10 @@ describe('spaceSummaryResponseSchema (007 plan §4)', () => {
     ['bytes fuera del entero seguro', { ...SUMMARY, quotaBytes: Number.MAX_SAFE_INTEGER + 2 }],
     ['bytes como texto', { ...SUMMARY, maxFileBytes: '100' }],
     ['sin nombre de plan', { ...SUMMARY, planName: '' }],
+    ['extra negativo', { ...SUMMARY, extraQuotaBytes: -1 }],
+    ['extra como texto', { ...SUMMARY, extraQuotaBytes: '50' }],
+    ['fecha del extra que no es un instante', { ...SUMMARY, extraQuotaUntil: '16/11/2026' }],
+    ['sin la cuota del plan', { ...SUMMARY, baseQuotaBytes: undefined }],
     ['retención en cero', { ...SUMMARY, trashRetentionDays: 0 }],
     ['campo de más', { ...SUMMARY, upgradeOffer: true }],
     [

@@ -1,0 +1,119 @@
+# Spec 011b — Ajustes de cuenta y restauración por Soporte
+
+> Qué y por qué, en ≤ 150 líneas. El cómo va en `./plan.md` (obligatorio).
+
+| Campo | Valor |
+|---|---|
+| Estado | En curso (2026-10-26: PR-A en `feat/011b-ajustes`) · aprobada por Adrián el 2026-10-26 (PR #74) · plan, ADR-0035 y mockups aprobados |
+| Dueño | Fátima |
+| Fase | 3 (hereda la 011, Fase 2; se ejecuta en la Fase 3) |
+| Requisitos | RF-05, RF-06, RF-07, RF-12, RF-22, RF-23, RF-24; RNF-05, RNF-13, RNF-14, RNF-17 |
+| Depende de | 004, 006, 007 (resumen de espacio, P-3), 009, 010, 011 |
+| Última actualización | 2026-10-26 |
+
+> **Continuidad:** borrador cerrado, `plan.md` propuesto y `/mockup` listo el 2026-10-22, con los hallazgos del PR #74
+> corregidos el 2026-10-23, la auditoría de Adrián del 2026-10-24 y su seguimiento del 2026-10-26. Adrián aprobó spec,
+> plan, ADR-0035 y mockups el 2026-10-26 («Lista»); sigue `/tasks` e `/implement`. Reparto: PR-A (cuota y vigencia) y
+> PR-B (restauración), en ramas nuevas desde `main`; el ADR-0035 queda aceptado antes del código del PR-A.
+
+## 1. Contexto y objetivo
+La 011 dejó fuera, por tamaño, tres operaciones que la matriz de roles ya define: el Administrador ajusta la cuota y la
+vigencia de una cuenta, y Soporte restaura un elemento de la papelera de un cliente con un motivo escrito (P-8 de la
+011). Esta spec las cierra sin reabrir la 011: no cambia planes, precios ni cobros, y no da a ningún rol interno acceso
+al contenido. El resultado es que una cuenta puede recibir espacio o tiempo extra sin contratar otro plan, y que Soporte
+puede deshacer una eliminación concreta dejando rastro visible para el cliente.
+
+## 2. Historias de usuario
+- **HU-1** Como Administrador, quiero dar a una cuenta un espacio extra temporal, para resolver una necesidad puntual sin cambiar su plan.
+- **HU-2** Como Administrador, quiero extender la vigencia de una cuenta de pago, para darle un plazo y quitarle la solo lectura sin registrar un cobro.
+- **HU-3** Como Soporte, quiero ver la papelera de un cliente y restaurar un elemento con un motivo, para corregir una eliminación sin pedirle al cliente que lo haga.
+- **HU-4** Como cliente, quiero ver en mi actividad los ajustes y la restauración hechos por el personal, con su motivo, para saber qué cambió en mi cuenta.
+- **HU-5** Como Administrador, quiero ver en la ficha de la cuenta su cuota, su extra y su vencimiento, para decidir antes de ajustar.
+
+## 3. Criterios de aceptación
+> Dado/Cuando/Entonces en una o dos líneas. Cada criterio es verificable por una prueba y rastrea a un requisito.
+
+**Cuota**
+- **CA-1** (HU-1, RF-06, RF-12) Dado un cliente con suscripción, cuando el Administrador fija un extra de X bytes hasta una fecha futura, entonces la cuota efectiva pasa a ser la del plan + X hasta esa fecha, la ficha lo muestra y la acción queda en la auditoría del cliente.
+- **CA-2** (HU-1, RF-06, RF-12) - error: Dado un extra que dejaría la cuota total por debajo de lo ya usado, cuando se intenta guardar, entonces se responde `422` `BACKOFFICE_QUOTA_BELOW_USAGE` con el usado y el total resultante, y nada cambia.
+- **CA-3** (HU-1, RF-06) - error: Dado un extra menor o igual a cero en `PUT` (se quita con `DELETE`), una fecha pasada, un total `plan + extra` mayor que `2^53-1`, una cuenta interna, una cuenta sin suscripción o un cliente inexistente, cuando se intenta guardar, entonces se responde `422` `BACKOFFICE_QUOTA_INVALID` si el extra o la fecha no valen o la cuenta no tiene suscripción, `404` `IDENTITY_ACCOUNT_NOT_FOUND` si la cuenta es interna o no existe, y nada cambia. El `GET` de límites de una cuenta interna también responde `404`; una cuenta sin suscripción responde `200` con `status: none`.
+- **CA-4** (HU-1, RF-12) Dado un extra vigente, cuando el Administrador lo cambia, lo quita o lo acorta (sin dejar la cuota bajo lo usado), entonces rige el valor nuevo, se audita y no se borra ningún archivo; al vencer la fecha, la cuota vuelve a la del plan sin trabajo programado.
+- **CA-5** (HU-4, RF-12) Dado un extra vigente, cuando el cliente abre el resumen de espacio, entonces ve la cuota total y una nota con los GB extra y hasta cuándo; al vencer, la nota desaparece.
+
+**Vigencia**
+- **CA-6** (HU-2, RF-06, RF-23) Dado un cliente con plan de pago, cuando el Administrador elige un día posterior al último día de la vigencia actual y no anterior a hoy, entonces conserva plan y límites, si estaba en solo lectura vuelve a `vigente` de inmediato y la acción queda en su auditoría.
+- **CA-7** (HU-2, RF-06, RF-23) - error: Dado una cuenta con plan Personal, una cuenta sin suscripción, una cuenta interna, un cliente inexistente o un día que no sea posterior al último día de la vigencia actual o sea anterior a hoy (siempre, no solo en solo lectura), cuando se intenta guardar, entonces se responde `422` `BACKOFFICE_VALIDITY_NOT_EXTENDED` para Personal, sin suscripción o fecha no posterior, y `404` `IDENTITY_ACCOUNT_NOT_FOUND` para una cuenta interna o inexistente; nada cambia. Personal se explica con «Personal no vence».
+- **CA-8** (HU-2, RF-22, RF-24) Dado un ajuste de vigencia, entonces no hay cobro ni factura, no cambia la renovación automática ni el cambio de plan programado, y el siguiente ciclo usa el `vence_en` nuevo como fecha de vencimiento.
+- **CA-9** (HU-4, RF-07, RF-23) Cuando se extiende la vigencia, entonces el cliente ve la fecha nueva en «Plan y facturación», el aviso de solo lectura desaparece si estaba vencido y su actividad registra la acción con el rol de Administración.
+
+**Restauración por Soporte**
+- **CA-10** (HU-3, RF-05, RF-06) Dado un cliente identificado por su correo, cuando Soporte abre su papelera, entonces ve solo las raíces (archivos y carpetas) con nombre, tipo, tamaño, fecha de eliminación, fecha de purga y ubicación original, solo con retención vigente; no ve contenido, versiones, claves de objeto ni URLs, y la consulta queda en la auditoría del cliente como la de metadatos de la 011.
+- **CA-11** (HU-3, RF-05, RF-07) Dado un elemento raíz de la papelera de ese cliente, cuando Soporte lo restaura con un motivo de 1 a 500 caracteres, entonces vuelve a su carpeta original o a la raíz con las reglas de 006 CA-13 a CA-15, el motivo queda en el evento `node.restored` visible para el cliente con el rol `SUPPORT`, y Soporte recibe el resultado (restaurado, renombrado o movido a la raíz) sin ver el contenido.
+- **CA-12** (HU-3, RF-05) - error: Dado un motivo vacío o de más de 500 caracteres, un tipo que no es `file` ni `folder`, un elemento que no es raíz, que no está en la papelera, que es de otro cliente o cuya retención ya venció, o un correo que no es de un cliente, cuando se intenta restaurar, entonces se responde `422` `BACKOFFICE_INVALID_INPUT` con `fields` si el motivo, el tipo o el correo no valen, `404` `BACKOFFICE_CLIENT_NOT_FOUND` o `404` `STORAGE_NODE_NOT_FOUND` según el caso, y `422` `STORAGE_FOLDER_DEPTH_EXCEEDED` si la carpeta de destino supera la profundidad permitida, sin guardar el motivo y sin cambiar nada; el mismo 404 cubre «no existe» y «no es tuyo». La consulta de la papelera con `email`, `cursor` o `limit` inválidos responde `400` `BACKOFFICE_INVALID_QUERY`.
+- **CA-13** (HU-3, RF-05) Dado cualquier rol interno, cuando intenta purgar, vaciar, descargar o previsualizar la papelera de un cliente, entonces recibe `403`; Soporte solo restaura y el Administrador no restaura.
+- **CA-14** (HU-4, RF-07, RNF-17) Cuando Soporte restaura, entonces el cliente ve en «Mi actividad» la restauración con el motivo escrito, sin nombre de archivo ni correo en la bitácora técnica ni en los logs, sin datos del actor más allá de su rol, y la petición conserva su `correlationId`.
+- **CA-15** (RNF-05) Dado dos clientes A y B, cuando Soporte restaura un elemento de A, entonces solo cambia la papelera de A; B no cambia y no hay forma de alcanzarlo sin su correo.
+- **CA-16** (RF-05) Dado un Administrador, Soporte, Operador o Cliente, cuando llama a las rutas de esta spec fuera de su rol, entonces recibe `403` `SHARED_FORBIDDEN`; sin token, `401` `SHARED_UNAUTHENTICATED`.
+- **CA-17** (RNF-13, RNF-14) Dado el Administrador o Soporte en la interfaz, cuando ajusta, restaura o recibe un error, entonces ve carga, éxito o error con acción correctiva, funciona a 360 px y usa las etiquetas y el contraste del sistema de diseño.
+- **CA-18** (HU-4, RF-07, 010 CA-5) Dado una cuenta en solo lectura, cuando el Administrador ajusta solo la cuota, entonces no se reenvía el aviso previo ni el de vencida del mismo `vence_en` y la cuenta no vuelve a aparecer en `suscripciones_por_avisar` por ese ajuste.
+
+## 4. Reglas de negocio
+- **RN-1** La cuota efectiva es la del plan más un único extra por cuenta, vigente mientras `ahora < cuota_extra_hasta`; el extra reemplaza al anterior, se guarda en bytes (DF-26) y **al guardar el ajuste** no deja el total por debajo de `espacio_usado`. El vencimiento se calcula al leer: no hay job ni evento de expiración. **«Por debajo de lo usado» significa que `cuota_del_plan + extra < espacio_usado`**: el extra se suma al plan y no descuenta ni reemplaza espacio consumido. `PUT` exige un extra **mayor que cero** y un total `plan + extra` que no supere `2^53-1` bytes (tope técnico, no de negocio). Quitarlo es `DELETE` (`extra = 0`, `hasta = null`) y solo se admite si la cuota del plan ya cubre `espacio_usado`. La fecha se captura como día en `America/Guatemala` y se guarda como las 00:00 del día siguiente en `America/Guatemala` (06:00 UTC); así el extra vale hasta el final del día elegido y «hasta hoy» sigue siendo futuro. Un cambio programado a un plan menor (010 CA-21) puede dejar el total bajo lo usado después; esta regla no lo impide.
+- **RN-2** La vigencia solo se extiende: la fecha nueva debe ser posterior a la actual **y** a ahora, siempre (también si la cuenta aún figura como vigente pero ya venció). La fecha se captura como día en `America/Guatemala` y se guarda como las 00:00 del día siguiente en `America/Guatemala` (06:00 UTC), igual que el extra. En días, el día elegido debe ser posterior al último día en que rige la vigencia actual (RN-8) y no anterior a hoy. No aplica a Personal. No se registra pago ni factura; no se toca `iniciado_en`; el cambio programado y la renovación automática siguen como estaban. Los avisos de la 010 no se reinician: el `vence_en` nuevo ya define el periodo siguiente.
+- **RN-3** Soporte solo restaura raíces de la papelera con retención vigente, con las reglas de 006. El motivo es obligatorio, se recorta, máximo 500 caracteres; la interfaz avisa de no escribir nombres de archivo ni datos personales. Soporte no purga, no vacía, no descarga, no previsualiza y no ve versiones. La restauración se permite también si la cuenta está en solo lectura: no es una escritura del cliente y no cambia su cuota; el cliente sigue sin poder subir ni editar.
+- **RN-4** Auditoría visible (RF-07): `account.quota_adjusted`, `account.validity_adjusted`, `node.restored` con `note` y, si la cuenta sale de solo lectura, el evento de 010 que corresponda. Los eventos no llevan contenido, nombres de archivo, claves de objeto, URLs, tarjeta ni correo; el motivo solo sale en la auditoría del cliente, nunca en bitácoras técnicas ni en logs.
+- **RN-5** Roles: Administración ajusta cuota y vigencia; Soporte restaura; Operador no hace ninguna de las tres; el Cliente no las llama. Administración no restaura y Soporte no ajusta cuota ni vigencia.
+- **RN-6** La cuota extra se aplica también a Personal; la vigencia no, porque Personal no vence.
+- **RN-7** Las tres acciones se permiten sobre cuentas activas o suspendidas y no cambian su estado; suspender sigue revocando sesiones y congelando compartidos (011 RN-6).
+- **RN-8** Los tamaños se capturan en GB con el mismo formato que el catálogo de planes y se guardan en bytes exactos (ADR-0016); la diferencia de bases con `formatBytes` de `storage` sigue en PD-91. Las fechas se muestran en hora de Guatemala y con el formato del sistema; el día que se captura se convierte a las 00:00 del día siguiente en `America/Guatemala` (06:00 UTC) y se guarda en UTC. Un instante de fin (`vence_en`, `cuota_extra_hasta`) se muestra como el último día en que rige: el día en Guatemala del instante menos 1 ms. Así se ve el día elegido, y un `vence_en` de la 010 con hora intermedia se ve igual que hoy. Lo aplican la ficha, el resumen de espacio, «Plan y facturación», el diálogo de cambio de plan y los correos de la 010 que dicen «vence» o «hasta». «Venció el» queda fuera: muestra el instante real, el primer día sin vigencia («Activo hasta el 30/11» y después «Venció el 01/12»). No se inventan topes de negocio: el único tope es técnico (`2^53-1` bytes, por el `number` de los contratos y la suma `bigint`); el contrato valida cada valor y el dominio/SQL validan la suma `plan + extra`, y la interfaz muestra el total resultante antes de confirmar.
+
+## 5. Seguridad y privacidad
+- **Toca datos de un cliente: sí** → pruebas de aislamiento bloqueantes (RNF-05), además de las unitarias y de integración.
+- **Auditoría (RF-07):** las tres acciones, el motivo de Soporte y la salida de solo lectura. **No** debe aparecer en bitácoras técnicas ni en logs: contenido, nombres de archivo o carpeta, claves de objeto, URLs firmadas, datos de tarjeta, correo del cliente ni el motivo. El motivo sí se guarda en la auditoría visible del cliente (RN-4).
+- **Roles internos:** Administración (cuota y vigencia), Soporte (leer raíces de papelera y restaurar), Operador (nada) y Cliente (nada). Ningún rol suplanta al cliente ni obtiene contenido.
+- **Excepción de escritura:** restaurar es la primera escritura de un rol interno sobre datos de `storage` de un cliente. La autorización debe resolverse en la consulta, limitarse a la raíz indicada y ejecutarse en la misma transacción que su evento de auditoría; el plan la detalla y, si cambia la arquitectura de autorización, se aprueba con ADR antes de implementar.
+- **Motivo:** texto libre de 1 a 500 caracteres; se guarda en la auditoría del cliente y se advierte que no incluya nombres de archivo ni datos personales. No se intenta detectar nombres en el servidor (no es fiable); la lista blanca de atributos y el largo son la defensa.
+
+## 6. Experiencia de usuario
+| Pantalla | Mockup (`docs/design/mockups/…`) | Estados requeridos | Estado del mockup |
+|---|---|---|---|
+| Ficha de cuenta, bloque «Límites y vigencia» (Administración) | `backoffice/admin/admin--*.html` (existe, 011) | ficha (con el bloque), ajustar cuota, cuota bajo lo usado, cuota inválida, cuota guardada, quitar extra, extra quitado, extender vigencia, fecha no posterior, vigencia guardada, Personal sin vigencia, sin suscripción, cargando, error | Creado (2026-10-22); aprobado por Adrián (2026-10-26) |
+| Papelera del cliente (Soporte) | `backoffice/soporte/soporte--*.html` (existe, 011) | lista de raíces, vacía, cargando, error, confirmar restauración con motivo, motivo inválido, restaurando, restaurado, renombrado, movido a la raíz, retención vencida | Creado (2026-10-22); aprobado por Adrián (2026-10-26) |
+
+- **Mensajes clave:** «La cuota total no puede quedar por debajo de lo que la cuenta ya usa (<usado>).» · «Solo puedes extender la vigencia: elige un día posterior al <fecha>.» · «Personal no vence: no tiene vigencia que extender.» · «El motivo se guarda en la actividad del cliente. No escribas nombres de archivo ni datos personales.» · «Tu cuota incluye <X> GB extra hasta el <fecha>.» · «Restauramos «<nombre>» en <carpeta>.» · «Restauramos «<nombre>» como «<nuevo>» porque ya existía uno con ese nombre.» · «La carpeta original ya no está disponible. Restauramos «<nombre>» en Mis archivos.»
+- **Cliente:** no hay pantallas nuevas; ve la cuota extra en el resumen de espacio (P-3), la fecha nueva en «Plan y facturación» y las acciones en «Mi actividad» con el bloque de motivo que ya existe en 004.
+- **Sin interfaz:** no aplica.
+
+## 7. Fuera de alcance
+- Cambiar planes, precios o catálogo (011), contratar (008/009), cambiar de plan (010), cobrar, facturar, prorratear o reembolsar por una extensión.
+- Que Soporte purgue, vacíe, descargue, previsualice o restaure versiones; que Administración restaure; que Soporte ajuste cuota o vigencia; cualquier acción del Operador.
+- Varios extras por cuenta, extras recurrentes, cuotas por carpeta, ampliación automática o un trabajo que borre extras al vencer (el vencimiento es perezoso).
+- Extender la vigencia de Personal, cambiar `iniciado_en`, emitir un pago o una factura por la extensión.
+- Correos al cliente por ajustes o restauración (el cliente lo ve en la aplicación); rediseño de la auditoría (004) o de las bitácoras técnicas (022b); reabrir la 011.
+
+## 8. Preguntas
+> Todas resueltas el 2026-10-22 con Fátima. Adrián aprobó spec, plan y mockups el 2026-10-26 (PR #74).
+
+- [RESUELTA] (2026-10-03, Fátima) **P-2/P-3 de la 011** → 011b: extra sobre el plan, nunca por debajo de lo usado, con fecha de fin; vigencia solo se extiende, quita la solo lectura y no aplica a Personal.
+- [RESUELTA] (2026-10-22, Fátima) **P-1** → sí: Soporte restaura en solo lectura; el cliente sigue sin poder subir ni editar.
+- [RESUELTA] (2026-10-22, Fátima) **P-2** → sí: la restauración cubre raíces de archivos **y** carpetas, con la semántica de 006.
+- [RESUELTA] (2026-10-22, Fátima) **P-3** → sí: el cliente ve el extra y su fecha de fin en el resumen de espacio.
+- [RESUELTA] (2026-10-22, Fátima) **P-4** → sí: la cuota extra aplica también a Personal; la vigencia no.
+- [RESUELTA] (2026-10-22, Fátima) **P-5** → sí: el Administrador puede cambiar, quitar o acortar un extra si la cuota no queda bajo lo usado; se audita.
+- [RESUELTA] (2026-10-22, Fátima) **P-6** → sí: las tres acciones se permiten en cuentas activas o suspendidas, sin cambiar su estado.
+- [RESUELTA] (2026-10-22, Fátima) **P-7** → no: la extensión no envía correo; se ve en «Plan y facturación» y en la actividad.
+- [RESUELTA] (2026-10-22, Fátima) **P-8** → sí: la renovación automática y el cambio programado no cambian; al llegar la fecha nueva se cobra si la renovación está activa.
+- [RESUELTA] (2026-10-22, Fátima) **P-9** → no: solo la restauración de Soporte exige motivo; cuota y vigencia no (004 D-6).
+
+## 9. Registro de cambios
+| Fecha | Cambio | Motivo | Aprobó |
+|---|---|---|---|
+| 2026-10-22 | Creación inicial con las decisiones P-2/P-3/P-8 de la 011, tres operaciones y las preguntas abiertas | Arranque de la 011b | Borrador (pendiente Adrián) |
+| 2026-10-22 | P-1 a P-9 resueltas; aclarado «bajo lo usado» como `plan + extra < espacio_usado`; retiradas las marcas «sujeto a» de CA-5, RN-3, RN-6 y RN-7 | Cierre del borrador para `/plan` y `/mockup` | Fátima |
+| 2026-10-22 | `plan.md` propuesto (PR-A cuota y vigencia; PR-B restauración) y ADR-0033 (hoy 0035) propuesto | Siguiente compuerta para «Lista» | Fátima |
+| 2026-10-22 | `/mockup` de la ficha (13 estados de límites y vigencia, incluido quitar extra) y de la papelera de Soporte (11 estados), con capturas 360/1440 y axe | Cierre de la compuerta de diseño | Fátima |
+| 2026-10-23 | ADR renumerado a 0035: el 0033 lo usa la 019 y el 0034 la SDD express en `main` | Evitar el choque de numeración entre specs abiertas | Fátima |
+| 2026-10-23 | Hallazgos del PR #74: restauración por función `SECURITY DEFINER`, funciones de cuenta `VOLATILE` con política del dueño, sin reinicio de avisos, fecha de vigencia siempre posterior a ahora, tope técnico `2^53-1`, códigos de error separados y nombres de estados de la interfaz | Revisión de `architect`, `security-auditor`, `ui-designer` y `reviewer` | Fátima |
+| 2026-10-24 | Auditoría de Adrián: ADR-0035 y DF-81; restauración permitida en solo lectura fuera de la lista de bloqueos de ADR-0032; fecha con conversión de día Guatemala; `PUT` con extra > 0 y `DELETE` para quitar; errores de cuenta interna y sin suscripción separados; fuente de verdad de reglas y mapeo SQL; `FormDialog` y CSS compartidos | Cierre de B-1 a B-4, M-1 a M-7 y menores | Fátima |
+| 2026-10-26 | Seguimiento de Adrián: lectura `limites_de_cuenta`, fecha a las 00:00 del día siguiente en Guatemala, `no_subscription` en la vigencia. RN-8: un instante de fin se muestra como el último día en que rige; CA-6, CA-7 y RN-2 piden un día posterior al que se muestra | Cierre de N-1 a N-6 y decisión de Fátima sobre las fechas de fin | Fátima |
+| 2026-10-26 | N-7: el diálogo de cambio de plan usa la regla; «Venció el» queda fuera de ella. N-8: mensaje «La fecha de fin no puede ser anterior a hoy». Spec, plan, ADR-0035 y mockups aprobados: pasa a «Lista» | Aprobación de Adrián, PR #74 | Adrián |

@@ -16,7 +16,7 @@
 | CA-2 | `agent-streaming.int-spec.ts › CA-2`; medición real p95 2 015 ms (plan §6) | ✅ |
 | CA-3 | `agent-ask.int-spec.ts › CA-3`; `agent.service.spec.ts › CA-3` | ✅ |
 | CA-4 | `answer-composer.spec.ts › CA-4`; `citation-marker-filter.spec.ts › CA-4` | ✅ |
-| CA-5 | Diferido a la 012 (PD-132) | n/a |
+| CA-5 | Diferido a la 012 (PD-134) | n/a |
 | CA-6 | `agent-ask.int-spec.ts › CA-6` (vacía, espacios, límite+1) | ✅ |
 | CA-7 | `agent-ask.int-spec.ts › CA-7`; `agent-status.int-spec.ts › CA-7`; `ISO-11` | ✅ |
 | CA-8 | Pasó a la 020b | n/a |
@@ -49,7 +49,7 @@
 
 ## Importantes y sugerencias
 - **[I-1]** `docs/sdd/design-model.md:144`: M4 no refleja `uso_agente`, `AgentQuotaService`, `IAgentUsageRepository`→`TypeOrmAgentUsageRepository`, `agentUsagePeriod`; falta fila de mapeo `uso_agente` (DF-25).
-- **[I-2]** `hybrid-retriever.ts:23-27`: `MIN_SIMILARITY = 0.66` calibrado con 12 fragmentos (margen 0.645–0.676) y sin fila en `pendientes.md`; abrir PD junto con PD-133 y la 023.
+- **[I-2]** `hybrid-retriever.ts:23-27`: `MIN_SIMILARITY = 0.66` calibrado con 12 fragmentos (margen 0.645–0.676) y sin fila en `pendientes.md`; abrir PD junto con PD-135 y la 023.
 - **[I-3]** `billing-renewal.iso-spec.ts:322` falla en Windows (rutas con `\`): preexistente; registrar PD o normalizar con `path.posix`.
 - **[S-1]** `agent.controller.ts:34-37`: cualquier error de esquema distinto del ámbito responde `reason: 'empty'`; anotar en el contrato del plan §4.
 - **[S-2]** `agent-quota-exceeded.error.ts:4-9` repite `BILLING_DATE_FORMAT`; al tercer uso, a `shared` (Art. VI.2).
@@ -57,5 +57,5 @@
 - **[S-4]** `pnpm audit --prod`: 1 crítica (`next` ≤ 15.5.27, GHSA-2464-fhr4-w9xw), 11 altas; preexistentes, fuera de 020, tratar aparte.
 
 ## DF y pendientes
-- DF al día: DF-08, 14, 15, 25 (Parcial), 27, 79, 81, 82; PD-130 resuelta; PD-131…134 registradas.
+- DF al día: DF-08, 14, 15, 25 (Parcial), 27, 79, 81, 82; PD-132 resuelta; PD-133…134 registradas.
 - Faltan: M4 en `design-model.md` (I-1), PD de `MIN_SIMILARITY` (I-2), PD del fallo en Windows (I-3).

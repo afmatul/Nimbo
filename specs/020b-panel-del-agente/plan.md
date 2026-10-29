@@ -97,7 +97,7 @@ Consumidos de la 020 (`packages/contracts/src/intelligence/`), sin redefinirlos:
 5. **Etiquetas de 019** (hoja, diapositiva, « (ubicación aproximada)») pueden crecer: la web las pinta tal cual, así que no hay casos por formato en la web.
 6. **Estado vacío vs. mockup** (S-2, cuatro formatos en el mockup): se avisa a `ui-designer` para actualizar la captura cuando se implemente.
 - Desviaciones de los diagramas: ninguna (el panel no está en los diagramas de clases; M6 lo cubre la 020). Sin `DF-xx` nuevo.
-- Pendientes que deja fuera: conectar la cita a la vista previa cuando 017 llegue (ya es PD-132 de la 020). Sin fila nueva.
+- Pendientes que deja fuera: conectar la cita a la vista previa cuando 017 llegue (ya es PD-134 de la 020). Sin fila nueva.
 - ADR requeridos: ninguno (sin dependencia nueva ni cambio de arquitectura).
 
 ## 8. Aprobación

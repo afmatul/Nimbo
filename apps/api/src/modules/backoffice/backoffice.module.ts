@@ -4,12 +4,14 @@ import type { DynamicModule } from '@nestjs/common';
 import { AuditModule } from '../audit';
 import { BillingModule } from '../billing';
 
+import { AccountAdjustmentsService } from './application/account-adjustments.service';
 import { AdminService } from './application/admin.service';
 import { BackofficeRateLimiter } from './application/backoffice-rate-limiter';
 import { CatalogAdminService } from './application/catalog-admin.service';
 import { InternalActionService } from './application/internal-action.service';
 import { MetricsService } from './application/metrics.service';
 import { SupportService } from './application/support.service';
+import { AccountAdjustmentsController } from './presentation/account-adjustments.controller';
 import { AccountsController } from './presentation/accounts.controller';
 import { ClientFilesController } from './presentation/client-files.controller';
 import { MetricsController } from './presentation/metrics.controller';
@@ -28,7 +30,13 @@ export class BackofficeModule {
     return {
       module: BackofficeModule,
       imports: [identity, storage, AuditModule, BillingModule],
-      controllers: [ClientFilesController, AccountsController, MetricsController, PlansController],
+      controllers: [
+        ClientFilesController,
+        AccountsController,
+        AccountAdjustmentsController,
+        MetricsController,
+        PlansController,
+      ],
       providers: [
         InternalActionService,
         BackofficeRateLimiter,
@@ -36,6 +44,7 @@ export class BackofficeModule {
         AdminService,
         MetricsService,
         CatalogAdminService,
+        AccountAdjustmentsService,
       ],
     };
   }

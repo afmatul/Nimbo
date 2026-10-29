@@ -85,7 +85,7 @@ describe('migración crear-archivo-y-version-archivo (CA-1, CA-6)', () => {
 
     // 006 agrega `carpeta_id`, `purgar_en` y `eliminado_con_carpeta_id` (folders-migrations.int-spec.ts); 014,
     // `numero` y `restaurada_de_numero` (versions-migrations.int-spec.ts); 016, `sesion_edicion_id`
-    // (editing/migrations.int-spec.ts).
+    // (editing/migrations.int-spec.ts); 014b, `conservada_hasta` (versions-migrations.int-spec.ts).
     expect(Object.keys(file).sort()).toEqual([
       'actualizado_en',
       'carpeta_id',
@@ -103,6 +103,7 @@ describe('migración crear-archivo-y-version-archivo (CA-1, CA-6)', () => {
     expect(Object.keys(version).sort()).toEqual([
       'archivo_id',
       'clave_objeto',
+      'conservada_hasta',
       'creada_en',
       'creado_por',
       'id',

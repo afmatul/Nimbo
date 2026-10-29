@@ -1,4 +1,5 @@
 import {
+  BACKOFFICE_ERROR_CODES,
   BACKOFFICE_FIELD_MESSAGES,
   BILLING_ERROR_CODES,
   EMAIL_REQUEST_COOLDOWN_SECONDS,
@@ -20,7 +21,7 @@ import {
 
 import { genericErrorMessage, type ApiErrorDetails } from './api-error';
 import { dayMonthLabel } from './format-date';
-import { formatCount } from './format-plan';
+import { formatCount, formatPlanBytes } from './format-plan';
 
 export { IDENTITY_FIELD_MESSAGES };
 
@@ -308,6 +309,13 @@ const CODE_MESSAGES: Readonly<Record<string, string>> = {
     'La cuenta ya cambió de estado. Recarga la ficha para ver su estado actual.',
   [IDENTITY_ERROR_CODES.ENROLLMENT_CONFLICT]:
     'Ya existe una cuenta con estos datos. Corrige los campos marcados y vuelve a intentarlo.',
+  // Ajustes de cuota y vigencia (011b CA-2, CA-3, CA-7): el mismo texto que el servidor.
+  [BACKOFFICE_ERROR_CODES.QUOTA_INVALID]:
+    'Revisa el espacio extra: debe ser mayor que cero, la fecha de fin no puede ser anterior a hoy y la cuota total no puede superar el máximo admitido.',
+  [BACKOFFICE_ERROR_CODES.QUOTA_BELOW_USAGE]:
+    'La cuota total no puede quedar por debajo de lo que la cuenta ya usa. Elige un espacio extra mayor.',
+  [BACKOFFICE_ERROR_CODES.VALIDITY_NOT_EXTENDED]:
+    'Solo puedes extender la vigencia: elige un día posterior al último día vigente que no sea anterior a hoy.',
   [SHARED_ERROR_CODES.UNAUTHENTICATED]: 'Tu sesión no es válida o expiró. Inicia sesión de nuevo.',
   [SHARED_ERROR_CODES.FORBIDDEN]: `Tu cuenta no tiene permiso para esta acción. Si crees que es un error, escríbenos a ${SUPPORT_CONTACT_EMAIL}.`,
   [BILLING_ERROR_CODES.BILLING_PLAN_CATALOG_UNAVAILABLE]:
@@ -391,6 +399,16 @@ export function backofficeFieldMessage(reason: string, correlationId = ''): stri
   return isBackofficeReason(reason)
     ? BACKOFFICE_FIELD_MESSAGES[reason]
     : genericErrorMessage(correlationId);
+}
+
+/** `422 BACKOFFICE_QUOTA_BELOW_USAGE` con `details.usedBytes` (011b CA-2, §6), en GB del catálogo (RN-8). */
+export function quotaBelowUsageMessage(usedBytes: string): string {
+  return `La cuota total no puede quedar por debajo de lo que la cuenta ya usa (${formatPlanBytes(usedBytes)}).`;
+}
+
+/** Ayuda y rechazo de la vigencia (011b CA-7, §6): `lastDay` es el último día vigente, como se muestra. */
+export function validityNotLaterMessage(lastDay: string): string {
+  return `Solo puedes extender la vigencia: elige un día posterior al ${lastDay}.`;
 }
 
 /** Qué falta en cada campo vacío del alta interna (mockup `backoffice/alta-interna`, decisión 8). */

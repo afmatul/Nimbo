@@ -1,6 +1,6 @@
 import { formatGtq, type Plan, type SubscriptionView } from '@nimbo/contracts';
 
-import { longDayLabel } from '../../../lib/format-date';
+import { longDayLabel, longLastDayLabel } from '../../../lib/format-date';
 import { formatPlanBytes } from '../../../lib/format-plan';
 
 import { cardLabel, type Card } from './subscription-copy';
@@ -88,7 +88,10 @@ const scheduledDescription = (subscription: SubscriptionView, target: Plan): str
   return `Hasta esa fecha conservas ${subscription.plan.name} y sus límites. Hoy no se cobra nada.`;
 };
 
-/** CA-16: el cambio se programa para el `vence_en` (en solo lectura, para cuando renueve). */
+/**
+ * CA-16: el cambio se programa para el `vence_en` (en solo lectura, para cuando renueve). El plan actual rige hasta el
+ * último día anterior a ese instante (011b RN-8).
+ */
 export const changeCopy = (
   subscription: SubscriptionView,
   target: Plan,
@@ -96,7 +99,9 @@ export const changeCopy = (
 ): ChangeCopy => {
   const readOnly = subscription.status === 'readOnly';
   if (readOnly && target.priceCents === 0) return immediateCopy();
-  const when = subscription.expiresAt === null ? '' : longDayLabel(subscription.expiresAt);
+  const { expiresAt } = subscription;
+  const when = expiresAt === null ? '' : longDayLabel(expiresAt);
+  const lastDay = expiresAt === null ? '' : longLastDayLabel(expiresAt);
   const chargeLabel = target.priceCents === 0 ? 'Cobro' : 'Cobro al renovar';
   return {
     title: readOnly ? `¿Cambiar a ${target.name}?` : `¿Cambiar a ${target.name} el ${when}?`,
@@ -104,7 +109,7 @@ export const changeCopy = (
     rows: [
       ...(readOnly
         ? []
-        : [{ label: 'Plan actual', value: `${subscription.plan.name} · hasta el ${when}` }]),
+        : [{ label: 'Plan actual', value: `${subscription.plan.name} · hasta el ${lastDay}` }]),
       {
         label: 'Plan nuevo',
         value: readOnly ? `${target.name} · al renovar` : `${target.name} · desde el ${when}`,

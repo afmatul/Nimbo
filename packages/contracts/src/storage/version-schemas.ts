@@ -29,6 +29,8 @@ export const fileVersionSummarySchema = z
     createdAt: timestamp,
     createdById: uuidSchema,
     isCurrent: z.boolean(),
+    /** No nulo ⇒ original conservado por una optimización: no cuenta en el espacio y se purga en esa fecha (014b). */
+    keptUntil: timestamp.nullable(),
   })
   .strict();
 
