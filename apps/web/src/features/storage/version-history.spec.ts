@@ -10,6 +10,12 @@ function version(number: number, sizeBytes = 1_000): FileVersionSummary {
 const AT_LIMIT = [version(5), version(4), version(3)];
 
 describe('historial de versiones (014)', () => {
+  it('021 CA-15 / 014b: el original conservado ocupa lugar pero no cuenta en el espacio', () => {
+    const kept = { ...version(4, 4_800_000), keptUntil: '2027-01-15T16:00:00.000Z' };
+    const versions = [version(5, 2_900_000), kept, version(3, 1_000_000)];
+    expect(totalVersionBytes(versions)).toBe(3_900_000);
+    expect(versionToPrune(versions, 3)).toBe(3);
+  });
   it('CA-15: en el límite del plan, restaurar elimina la más antigua retenida', () => {
     expect(versionToPrune(AT_LIMIT, 3)).toBe(3);
   });

@@ -23,6 +23,7 @@ import {
   indexingStatus,
   NOT_INDEXED_TYPE,
 } from '../../intelligence/test-indexing';
+import { fakeOptimizerApi } from '../../optimizer/test-optimization';
 import { RealtimeContext } from '../../realtime/use-realtime';
 import type { StorageApi } from '../api';
 import { StorageRequestError } from '../storage-request-error';
@@ -69,7 +70,11 @@ async function renderView(
       <RealtimeContext.Provider value={channel}>
         <UploadsProvider api={api}>
           <UploadsSpaceProvider>
-            <FileDetailView fileId={INDEXED_FILE_ID} indexingApi={indexingApi} />
+            <FileDetailView
+              fileId={INDEXED_FILE_ID}
+              indexingApi={indexingApi}
+              optimizerApi={fakeOptimizerApi()}
+            />
           </UploadsSpaceProvider>
         </UploadsProvider>
       </RealtimeContext.Provider>
