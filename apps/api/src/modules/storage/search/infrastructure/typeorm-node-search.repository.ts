@@ -5,7 +5,6 @@ import { escapeLike, TransactionContext } from '../../../../shared';
 import type { Actor } from '../../../../shared';
 import { accessibleNodes } from '../../../access';
 import { NodeOrder } from '../../domain/node-order';
-import type { NodeGroup } from '../../domain/node-order';
 import type { StorageNode } from '../../domain/storage-node';
 import { ArchivoOrmEntity } from '../../infrastructure/persistence/archivo.orm-entity';
 import { CarpetaOrmEntity } from '../../infrastructure/persistence/carpeta.orm-entity';
@@ -28,6 +27,7 @@ import type {
 
 /** Orden fijo de la búsqueda (CA-2): el del explorador por fecha de modificación, del más reciente al más antiguo. */
 const ORDER = NodeOrder.of('updated', 'desc');
+const FILE_ALIAS = 'archivo';
 const LOCATION_ALIAS = 'ubicacion';
 
 /**
@@ -51,21 +51,36 @@ const nameMatches = (alias: string, terms: readonly string[]): Condition => {
   return { sql: clauses.join(' AND '), parameters };
 };
 
+/** Fecha de modificación dentro del rango (RN-4): `from` inclusivo y `to` exclusivo, cada extremo solo si viene. */
+const updatedWithin = (alias: string, criteria: NodeSearchCriteria): readonly Condition[] => {
+  const { from, to } = criteria;
+  return [
+    ...(from === undefined
+      ? []
+      : [{ sql: `${alias}.actualizadoEn >= :from`, parameters: { from } }]),
+    ...(to === undefined ? [] : [{ sql: `${alias}.actualizadoEn < :to`, parameters: { to } }]),
+  ];
+};
+
+/** Tipo de archivo entre los de la categoría pedida (RN-3); sin filtro, cualquiera. */
+const kindIn = (criteria: NodeSearchCriteria): readonly Condition[] =>
+  criteria.kinds === undefined
+    ? []
+    : [{ sql: `${FILE_ALIAS}.tipo IN (:...kinds)`, parameters: { kinds: criteria.kinds } }];
+
 /** Cómo se busca en cada tabla de nodos: carpetas y archivos van en consultas separadas, como `listContents`. */
 interface SearchGroup<T extends ObjectLiteral> {
-  readonly group: NodeGroup;
   readonly entity: new () => T;
   readonly alias: string;
   readonly table: NodeTable;
   /** Propiedad con la carpeta que contiene el nodo (su ubicación). */
   readonly parentProperty: string;
   readonly toNode: (row: T) => StorageNode;
-  /** Condiciones propias del grupo además del nombre. */
+  /** Condiciones propias del grupo además del nombre y la fecha. */
   readonly filters: (criteria: NodeSearchCriteria) => readonly Condition[];
 }
 
 const FOLDERS: SearchGroup<CarpetaOrmEntity> = {
-  group: 'folder',
   entity: CarpetaOrmEntity,
   alias: 'carpeta',
   table: 'carpeta',
@@ -75,14 +90,23 @@ const FOLDERS: SearchGroup<CarpetaOrmEntity> = {
 };
 
 const FILES: SearchGroup<ArchivoOrmEntity> = {
-  group: 'file',
   entity: ArchivoOrmEntity,
-  alias: 'archivo',
+  alias: FILE_ALIAS,
   table: 'archivo',
   parentProperty: 'carpetaId',
   toNode: toFile,
-  filters: () => [],
+  filters: kindIn,
 };
+
+/** Todo lo que acota un grupo: el nombre, la fecha y lo propio del grupo. */
+const conditionsOf = <T extends ObjectLiteral>(
+  group: SearchGroup<T>,
+  criteria: NodeSearchCriteria,
+): readonly Condition[] => [
+  nameMatches(group.alias, criteria.terms),
+  ...updatedWithin(group.alias, criteria),
+  ...group.filters(criteria),
+];
 
 /** Página pedida a un grupo: los criterios (con el `limit` que le queda) a partir de `after` (exclusivo). */
 interface GroupPage {
@@ -122,7 +146,8 @@ const ordered = <T extends ObjectLiteral>(
 /**
  * `INodeSearchRepository` sobre Postgres (plan 018 §3): dos consultas, carpetas y luego archivos, cada una con
  * `accessibleNodes(actor)` dentro del `WHERE` y del `JOIN` de la ubicación, sobre el `EntityManager` de
- * `requireActorScope(actor)`; la RLS es la segunda barrera. Un cursor de archivos salta las carpetas.
+ * `requireActorScope(actor)`; la RLS es la segunda barrera. Un cursor de archivos o un filtro de tipo (las carpetas no
+ * tienen tipo, RN-3) saltan las carpetas.
  */
 @Injectable()
 export class TypeOrmNodeSearchRepository implements INodeSearchRepository {
@@ -131,8 +156,8 @@ export class TypeOrmNodeSearchRepository implements INodeSearchRepository {
   async search(actor: Actor, criteria: NodeSearchCriteria): Promise<SearchPage> {
     const { limit, cursor } = criteria;
     const after = cursor === undefined ? null : decodeNodeListCursor(cursor, ORDER);
-    const folders =
-      after?.group === 'file' ? [] : await this.hits(actor, FOLDERS, { criteria, after });
+    const skipFolders = after?.group === 'file' || criteria.kinds !== undefined;
+    const folders = skipFolders ? [] : await this.hits(actor, FOLDERS, { criteria, after });
     if (folders.length > limit) return pageOf(folders.slice(0, limit), true);
     const room = limit - folders.length;
     const files = await this.hits(actor, FILES, {
@@ -148,11 +173,9 @@ export class TypeOrmNodeSearchRepository implements INodeSearchRepository {
     page: GroupPage,
   ): Promise<NodeSearchHit[]> {
     const builder = this.liveRowsWithLocation(actor, group);
-    const name = nameMatches(group.alias, page.criteria.terms);
-    builder.andWhere(name.sql, name.parameters);
-    group
-      .filters(page.criteria)
-      .forEach((filter) => builder.andWhere(filter.sql, filter.parameters));
+    conditionsOf(group, page.criteria).forEach((condition) =>
+      builder.andWhere(condition.sql, condition.parameters),
+    );
     const { entities, raw } = await ordered(
       builder,
       group.alias,

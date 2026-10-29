@@ -243,6 +243,74 @@ describe('TypeOrmNodeSearchRepository · por nombre (018 CA-1 a CA-5)', () => {
     });
   });
 
+  describe('filtros de tipo y de fecha (T-05)', () => {
+    const setKind = (id: string, kind: string): Promise<unknown> =>
+      owner.query('UPDATE archivo SET tipo = $2 WHERE id = $1', [id, kind]);
+
+    it('CA-7: con tipo solo aparecen archivos de esos tipos y ninguna carpeta; sin tipo, las carpetas vuelven', async () => {
+      const ana = await newClient();
+      await folderRow(ana, 'Viaje fotos');
+      const photo = await fileRow(ana, 'viaje.png');
+      await fileRow(ana, 'viaje.pdf');
+      const sheet = await fileRow(ana, 'viaje.xlsx');
+      await setKind(photo, 'imagen');
+      await setKind(sheet, 'xlsx');
+
+      const ofKinds = async (kinds: NodeSearchCriteria['kinds']) =>
+        (await search(ana, { terms: ['viaje'], ...(kinds === undefined ? {} : { kinds }) })).hits
+          .map((hit) => hit.node.name.value)
+          .sort();
+
+      expect(await ofKinds(['imagen'])).toEqual(['viaje.png']);
+      expect(await ofKinds(['pdf', 'xlsx'])).toEqual(['viaje.pdf', 'viaje.xlsx']);
+      expect(await ofKinds(['otro'])).toEqual([]);
+      expect(await ofKinds(undefined)).toEqual(
+        ['viaje.pdf', 'viaje.png', 'viaje.xlsx', 'Viaje fotos'].sort(),
+      );
+    });
+
+    it('CA-8: `from` es inclusivo y `to` exclusivo, también en las carpetas', async () => {
+      const ana = await newClient();
+      const folder = await folderRow(ana, 'Rango carpeta');
+      const older = await fileRow(ana, 'rango-viejo.pdf');
+      const middle = await fileRow(ana, 'rango-medio.pdf');
+      const newer = await fileRow(ana, 'rango-nuevo.pdf');
+      await touch('carpeta', folder.id, MIDDLE);
+      await touch('archivo', older, OLDER);
+      await touch('archivo', middle, MIDDLE);
+      await touch('archivo', newer, NEWER);
+
+      const between = async (range: Pick<NodeSearchCriteria, 'from' | 'to'>) =>
+        (await search(ana, { terms: ['rango'], ...range })).hits.map((hit) => hit.node.id);
+
+      expect(await between({ from: MIDDLE })).toEqual([folder.id, newer, middle]);
+      expect(await between({ to: MIDDLE })).toEqual([older]);
+      expect(await between({ from: MIDDLE, to: NEWER })).toEqual([folder.id, middle]);
+      expect(await between({ from: OLDER, to: new Date(NEWER.getTime() + 1) })).toEqual([
+        folder.id,
+        newer,
+        middle,
+        older,
+      ]);
+    });
+
+    it('CA-8: el rango se combina con el texto y el tipo', async () => {
+      const ana = await newClient();
+      const match = await fileRow(ana, 'acta-enero.png');
+      const otherKind = await fileRow(ana, 'acta-febrero.pdf');
+      const outOfRange = await fileRow(ana, 'acta-marzo.png');
+      await setKind(match, 'imagen');
+      await setKind(outOfRange, 'imagen');
+      await touch('archivo', match, MIDDLE);
+      await touch('archivo', otherKind, MIDDLE);
+      await touch('archivo', outOfRange, OLDER);
+
+      const { hits } = await search(ana, { terms: ['acta'], kinds: ['imagen'], from: MIDDLE });
+
+      expect(hits.map((hit) => hit.node.id)).toEqual([match]);
+    });
+  });
+
   describe('cursor', () => {
     it('CA-3: con fechas de modificación iguales, las páginas no repiten ni saltan ningún nodo', async () => {
       const ana = await newClient();
