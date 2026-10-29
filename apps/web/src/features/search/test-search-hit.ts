@@ -4,9 +4,12 @@ import { searchResponseSchema, type SearchHit, type SearchResponse } from '@nimb
 
 const uuid = (n: number): string => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 
+type FolderHit = Extract<SearchHit, { type: 'folder' }>;
+type FileHit = Extract<SearchHit, { type: 'file' }>;
+
 export const LOGISTICA = { id: uuid(900), name: 'Logística' } as const;
 
-export function folderHit(n: number, name = `Camiones ${String(n)}`): SearchHit {
+export function folderHit(n: number, name = `Camiones ${String(n)}`): FolderHit {
   return {
     type: 'folder',
     id: uuid(n),
@@ -18,7 +21,7 @@ export function folderHit(n: number, name = `Camiones ${String(n)}`): SearchHit 
   };
 }
 
-export function fileHit(n: number, name = `Camión_${String(n)}.docx`): SearchHit {
+export function fileHit(n: number, name = `Camión_${String(n)}.docx`): FileHit {
   return {
     type: 'file',
     id: uuid(n),
