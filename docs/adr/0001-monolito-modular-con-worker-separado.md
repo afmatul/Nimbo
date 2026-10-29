@@ -5,7 +5,7 @@
 | Estado | Aceptado (2026-09-26, Adrián) |
 | Fecha | 2026-09-15 |
 | Decisores | Adrián (architect), equipo Nimbo |
-| Specs relacionadas | 000 (lo materializa); todas las posteriores |
+| Specs relacionadas | 000 (lo materializa); todas las posteriores; **enmendado por ADR-0037** (021: dos procesos `worker`) |
 
 ## Contexto
 
@@ -60,3 +60,11 @@ resulta costoso (R-3 del plan 000), el punto de entrada del worker puede compila
   la memoria de staging (4 GB) obliga a límites por contenedor y a ONLYOFFICE bajo perfil.
 - Cómo sabremos si fue un error: si aparece `forwardRef` o un ciclo entre módulos que el lint no pueda resolver, o si
   el worker termina duplicando lógica de la API en lugar de importarla.
+
+## Enmienda (ADR-0037, 2026-10-27)
+
+El `worker` pasa a ser **dos procesos con la misma imagen** `nimbo-worker`: el general (`worker.main.ts`, todas las
+colas salvo `optimization`) y `worker-optimizer` (`worker-optimizer.main.ts`, solo `optimization`). Cada uno tiene su
+salud interna, su `HEALTHCHECK` y su límite de memoria. La separación por proceso e imagen y el lint de las raíces se
+mantienen; la imagen de los `worker` usa base glibc. La actualización concreta a Debian 13 (`trixie-slim`) sigue
+pendiente de aprobación en la enmienda del 2026-10-28 de ADR-0037.

@@ -6,7 +6,7 @@
 
 ## 1. Resumen técnico
 
-Módulo nuevo `optimizer` (M7) en el `api` y en el `worker`, más una fachada en `storage`. Sigue los patrones de 019
+Módulo nuevo `optimizer` (M7) en el `api` y en el proceso `worker-optimizer` (ADR-0037, T-10), más una fachada en `storage`. Sigue los patrones de 019
 (estado de negocio en una tabla propia, BullMQ solo ejecuta, procesador con concurrencia 1) y de 016 (registrador de
 versión con resultados explícitos y compensación del objeto).
 
@@ -32,7 +32,7 @@ así que el evento que emite el registro no programa nada). Los dos tienen consu
 
 | Módulo / capa | Archivo (nuevo o cambiado) | | Responsabilidad |
 |---|---|---|---|
-| storage/application | `optimizable-file.gateway.ts` (nuevo) | A | **PD-130:** `findOwnedImage(actor, fileId)` → `{ id, ownerId, kind, mime, extension, sizeBytes, currentVersionId }` o `null` (propio, vivo; tipo y MIME **reales** con `IFileTypeDetector`, CA-4; solo `image/jpeg` e `image/png`, el resto lo rechaza el servicio con `UnsupportedTypeError`); `openCurrent(actor, ref)`, que **lee la versión vigente por su cuenta, como `EditableFileGateway` e `IndexableFileGateway`** (PD-124 queda fuera: el lector común lo extrae quien integre 017); `registerOptimizedVersion(actor, input)` |
+| storage/application | `optimizable-file.gateway.ts` (nuevo) | A | **PD-130:** `findOwnedImage(actor, fileId)` → `{ id, ownerId, kind, mime, extension, sizeBytes, currentVersionId }` o `null` (propio, vivo; tipo y MIME **reales** con `IFileTypeDetector`, CA-4; solo `image/jpeg` e `image/png`, el resto lo rechaza el servicio con `UnsupportedTypeError`); `openCurrent(actor, ref)`, que **lee la versión vigente por su cuenta, como `EditableFileGateway` e `IndexableFileGateway`** (PD-124 queda fuera: el lector común lo extrae quien integre 017); `lockCurrentVersion(actor, ref)` (`FOR SHARE` de la versión vigente al confirmar, como 019); `registerOptimizedVersion(actor, input)` |
 | storage/application | `optimized-version.registrar.ts` (nuevo) | A | **PD-130**, como `EditedVersionRegistrar`: lee `trashRetentionDays` fuera de la transacción; sube el objeto con la clave del id preasignado; comprueba que la firma real coincide con el tipo del archivo; bajo `lockUsage` revalida y responde `registered`, `duplicate`, `file_changed` (la vigente ya no es la de origen), `not_smaller`, `file_missing` (ajeno, papelera o purgado) o `corrupt`. **Nunca llama a `register` con un resultado no menor**, así que el `TypeError` de 014b no se alcanza. Compensa (borra el objeto) en todo lo que no sea `registered` ni `duplicate` y si la transacción falla. `afterCommit` anuncia y poda (014) |
 | storage | `upload-lifecycle.providers.ts`, `storage.module.ts`, `storage-worker.module.ts`, `index.ts` (cambian) | B | Proveedores y exportación de la fachada en el `api` y el `worker`; **PD-121:** exportar `WritableAccountPolicy` y `AccountReadOnlyError` |
 | optimizer/domain | `optimization-job.ts` (nuevo) | A | `OptimizationJob` (nombre del diagrama): estados, motivos y transiciones de §3; `isStale(now)` |
@@ -50,7 +50,7 @@ así que el evento que emite el registro no programa nada). Los dos tienen consu
 | audit/application | `audit-action.ts`, `audit-catalog.ts` (cambian; Adrián) | B | `file.optimized`, `file.optimization_discarded`, `file.optimization_failed` y su lista blanca (§5) |
 | packages/config | `eslint/boundaries.js` (cambia; Adrián) | B | `optimizer: ['storage', 'access', 'audit']` (autorizado; `architecture.md` §3 en el mismo PR) |
 | migración | `apps/api/src/migrations/2026…-crear-optimizacion.ts` (nuevo) | A | §3, con `down` |
-| raíz | `app.module.ts`, `worker.module.ts`, `shared/infrastructure/config/env.schema.ts` (cambian; Adrián) | B | `OptimizerModule` en el `api`; `OptimizerWorkerModule` y `'optimization'` en `WORKER_QUEUES`; variables de §6 (`.env.example` y `ambientes.md` en el mismo cambio, `pnpm env:check`) |
+| raíz | `app.module.ts`, `env.schema.ts` (cambian; Adrián); **T-10 (ADR-0037):** `worker-base.ts`, `worker-bootstrap.ts`, `worker-drain.module.ts`, `worker-optimizer.module.ts`, `worker-optimizer.main.ts`, `storage-facades-worker.module.ts`, `worker-object-storage.provider.ts`, `apps/worker/Dockerfile` (nuevos); `worker.module.ts`, `worker.main.ts`, `upload-lifecycle.providers.ts`, compose | B | `OptimizerModule` en el `api`; `OptimizerWorkerModule` solo en `WorkerOptimizerModule` (`['optimization']`); fachada con MinIO, `FILE_VERSION_PROVIDERS` y `OPTIMIZABLE_FILE_PROVIDERS`, sin mantenimiento; schemas por consumidor y salud propia (`pnpm env:check`) |
 | contracts | `src/optimizer/schemas.ts` (nuevo) | A | Estados, motivos, `optimizationStatusSchema` (con `refine` motivo ↔ estado), `runOptimizationBodySchema` |
 | contracts | `src/optimizer/error-codes.ts`, `src/optimizer/index.ts` (nuevos), `src/index.ts` (cambia) | B | `OPTIMIZER_ERROR_CODES` y barriles |
 | dependencias | `apps/api/package.json` (cambia) | B | `sharp` **solo tras ADR-0036 `Aceptado`**; si pnpm 10 lo pide, `onlyBuiltDependencies` en el `package.json` raíz |
@@ -92,7 +92,7 @@ CREATE TABLE optimizacion (
   CONSTRAINT ck_optimizacion_motivo_valor CHECK (motivo IN ('tamano','pixeles','animada','ilegible',
                                                  'ahorro_minimo','version_cambiada','archivo_eliminado',
                                                  'integridad','servicio_no_disponible')),
-  CONSTRAINT ck_optimizacion_motivo CHECK ((estado IN ('no_disponible','descartada','fallida')) = (motivo IS NOT NULL))
+  CONSTRAINT ck_optimizacion_motivo CHECK ((estado IN ('no_disponible','descartada','fallida')) = (motivo IS NOT NULL)) -- + ck_optimizacion_{version_resultado,bytes_estimados,bytes_resultado,completada} (2026-10-28): reglas de resultado de OptimizationJob
 );
 CREATE UNIQUE INDEX uq_optimizacion_en_curso ON optimizacion (archivo_id) WHERE estado IN ('estimando','optimizando');
 CREATE INDEX idx_optimizacion_archivo ON optimizacion (archivo_id, creado_en DESC);
@@ -134,7 +134,7 @@ Resultados del registrador (§2): `registered` y `duplicate` → `completada`; `
 - **Solo lectura (CA-17):** `estimate` no la consulta; `run` llama a `WritableAccountPolicy.assertWritable` antes de su
   transacción. El registro en el `worker` no vuelve a comprobarla: la decisión se tomó al confirmar (como 016).
 - **Idempotencia y concurrencia:** doble pedido de estimar → índice único parcial, devuelve la fila en curso; «Ejecutar»
-  repetido → compare-and-set `estimada → optimizando` con el mismo `optimizationId`; reintento o `worker` reiniciado →
+  repetido → compare-and-set `estimada → optimizando` con el mismo `optimizationId`, en la transacción que bloquea la versión vigente (una nueva entre leer y confirmar es `409`); reintento o `worker` reiniciado →
   se reclama desde el estado activo, y reclamar renueva `actualizado_en` (así la caducidad perezosa no alcanza a un
   trabajo que el `worker` está procesando); la clave del objeto sale de `version_resultado_id`, así que una subida repetida
   reescribe el mismo objeto; el registrador responde `duplicate` si la versión ya existe (se toma como éxito); versión
@@ -161,8 +161,8 @@ Resultados del registrador (§2): `registered` y `duplicate` → `completada`; `
 
 ## 6. Configuración y valores
 
-Todas en `env.schema.ts` (`api` y/o `worker`), `.env.example` y `ambientes.md`; cambiarlas no requiere código. Adrián
-pidió valores **medidos y justificados**: los de A son de política; los de B salen del spike de ADR-0036 (2026-10-25).
+Schemas por consumidor en `env.schema.ts`: ningún `OPTIMIZER_*` en el general; intentos solo en API y tiempo límite compartido con el especializado (17 claves, mapa en `ambientes.md`). Catálogo conjunto en `.env.example`; inyección física mínima pendiente (PD-135).
+Adrián pidió valores **medidos y justificados**: A es política; B sale del spike de ADR-0036 (2026-10-25). La enmienda Trixie/sharp 0.35.5 sigue pendiente de aprobación, separada de C + glibc aceptada.
 
 **A. Política (propuesta inicial justificada; no dependen de una medición, se confirman al aprobar el plan)**
 
@@ -172,7 +172,7 @@ pidió valores **medidos y justificados**: los de A son de política; los de B s
 | `OPTIMIZER_MIN_SAVED_BYTES` | 1 000 000 (1 MB) | Por debajo, el ahorro es < 0,007 % de la cuota más chica (Personal, 15 GB) y el medidor, con un decimal en GB, ni se mueve; aun así costaría una versión retenida |
 | `OPTIMIZER_POLL_INTERVAL_MS` | 3 000 | Va en `pollAfterMs` (la web no tiene `NEXT_PUBLIC_*`). Progreso visible desde el `202` (RNF-14); unas 20 consultas por minuto, solo con la ficha abierta y mientras no es final |
 | `RATE_LIMIT_OPTIMIZER_PER_MINUTE` | 10 | Como el reintento de indexación (019): cada pedido cuesta segundos de `worker`; 10 por minuto supera el uso humano archivo por archivo |
-| `OPTIMIZER_MAX_ATTEMPTS` | 3 | 1 + 2 reintentos (`architecture.md` §8) |
+| `OPTIMIZER_MAX_ATTEMPTS` | 3 | Solo el `api`: fija 1 + 2 reintentos al encolar y calcula la caducidad; el consumidor usa `job.opts.attempts` |
 
 **B. Técnicos, medidos en el spike de ADR-0036** (`sharp` 0.34.5, libvips 8.17.3, Node 24, Windows x64; un proceso por
 caso con el trabajo completo: leer, inspeccionar, recomprimir y validar; *fixtures* sintéticos, así que el ahorro es
@@ -190,9 +190,9 @@ Validación: `stats()` comprueba que el resultado abre (38 MB a 50 MP; decodific
 PNG, hash de los píxeles; la estimación hace la misma comparación para no mostrar «conviene» si el validador
 rechazaría el resultado.
 
-**No medible aquí:** la base del `worker` real (Nest, TypeORM, BullMQ) y una indexación concurrente, que el presupuesto
-**supone** en ~250 y ~150 MB, y los tiempos en Linux y en el servidor. T-08 los mide en el `worker` limitado a 768 MB;
-si la base es mayor, `OPTIMIZER_MAX_PIXELS` baja en proporción (≈ 7,4 B por píxel en JPEG, el peor formato que queda).
+**No medible aquí:** la base del `worker` real y una indexación concurrente. T-08 los midió: con indexación pesada y una
+imagen de 36 MP en el mismo `worker` de 768 MiB hubo OOM; por eso el optimizador pasó a su propio proceso (ADR-0037,
+T-10) y los valores de esta tabla se mantienen. Resultados en el registro de la spec (§10).
 
 PNG: compresión 9 con filtrado adaptativo, sin paleta (píxeles idénticos). GIF y WebP quedan fuera de 021: la medición del
 spike (WebP animado, y GIF estático que `sharp` no recomprime sin pérdida) es antecedente para la spec que los retome.
@@ -221,9 +221,8 @@ usan `sharp` se escriben después de que ADR-0036 se acepte (el spike de §6 us�
 
 - **Tamaño (ADR-0034):** 45 archivos de producción (23 con lógica, 22 de cableado) superan los 12. Se documenta una
   excepción de ADR-0034 para 021 por ser un módulo nuevo y mantener el corte vertical por formato decidido por Adrián.
-- **`sharp` en proceso:** un fallo nativo reiniciaría el `worker` y la indexación. Se mitiga con límites antes de
-  decodificar, concurrencia 1, un hilo de libvips y la caducidad (§5). Si ocurre con imágenes dentro de los límites,
-  ADR-0036 prevé pasar a herramientas externas detrás de `IOptimizer`.
+- **`sharp` en proceso:** desde ADR-0037 corre solo en `worker-optimizer`: un fallo nativo lo reinicia sin tocar la
+  indexación. Se mitiga además con límites antes de decodificar, concurrencia 1, un hilo de libvips y la caducidad (§5).
 - **Valores:** los de §6 B están medidos en el spike; queda supuesta la base del `worker` real, que mide T-08.
 - **WebP y GIF (recorte del 2026-10-26):** fuera de 021. ADR-0036 (`Aceptado`) conserva el resultado del spike sobre ambos;
   no se reescribe. Un PNG animado se trata como `no_disponible(animada)`; es un riesgo de pérdida de datos que el recorte
@@ -236,7 +235,7 @@ usan `sharp` se escriben después de que ADR-0036 se acepte (el spike de §6 us�
   actualizan en el PR. DF-22 sigue abierto para 022b.
 - **Pendientes:** PD-130 y PD-121 se cierran con esta spec; PD-124 sigue abierto (lo cierra quien integre 017); la parte de
   PD-132 de la 021 está hecha (28 capturas, axe sin violaciones). DF-80 y 019 §7.7 pasan a 021b.
-- **ADR requeridos:** ADR-0036 (`sharp`), `Aceptado` con este plan (2026-10-26).
+- **ADR requeridos:** ADR-0036 (`sharp`), `Aceptado` con este plan (2026-10-26); ADR-0037 (T-10), `Aceptado` el 2026-10-27.
 
 ## 9. Aprobación
 
@@ -247,3 +246,5 @@ usan `sharp` se escriben después de que ADR-0036 se acepte (el spike de §6 us�
 - **Enmienda de alcance, 2026-10-26 (aprobada en la rama de la spec):** solo JPEG y PNG; PD-124 fuera; interfaz de
   8 estados con un solo mensaje de «no disponible». Quita 3 archivos (48 → 45); sin puertos ni tecnología nuevos,
   `architect` no interviene. Valores de §6 iguales salvo `OPTIMIZER_WEBP_QUALITY`, que desaparece.
+- **Enmienda ADR-0037, 2026-10-27 (aprobada por Adrián tras dos revisiones de `architect`):** T-10 aísla el optimizador en
+  `worker-optimizer` (misma imagen glibc, otro comando, 768m sin swap); T-08 depende de T-10. Cambia §1, §2, §6 B y §8.

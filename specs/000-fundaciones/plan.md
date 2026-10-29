@@ -317,7 +317,7 @@ apps/api/src/
 `DomainExceptionFilter`, `CorrelationContext`, `CorrelationIdMiddleware`, `VersionHeaderMiddleware`,
 `enqueueWithCorrelation`, `REDACTED_FIELDS`, `redactDeep`, `SharedModule`, `HealthModule`, `IHealthIndicator`,
 `PostgresHealthIndicator`, `RedisHealthIndicator`, `MinioHealthIndicator`, `buildDataSourceOptions`, `Env`,
-`SharedEnvBase`, `apiEnvSchema`, `workerEnvSchema`, `loadEnv`, `formatEnvIssues`, `ENV`, `EnvModule`, `MINIO_CONFIG`,
+`SharedEnvBase`, `apiEnvSchema`, `workerEnvSchema`, `workerOptimizerEnvSchema` (ADR-0037, PD-135), `loadEnv`, `formatEnvIssues`, `ENV`, `EnvModule`, `MINIO_CONFIG`,
 `MinioConfigModule`, `MinioConfig`, `PingProcessor` (refactor de T-16, §12 2026-09-19: las raíces de composición
 necesitan `EnvModule.forRoot(env)` y `MinioConfigModule.forRoot(env)`).
 **No** exporta `PingQueue` ni `HealthService` (ningún módulo los usa; la prueba de CA-14 importa `PingQueue` por ruta
@@ -463,13 +463,15 @@ Dockerfiles (`apps/<app>/Dockerfile`, contexto = raíz del repo, `.dockerignore`
 
 | Etapa | api / worker | web |
 |---|---|---|
-| `base` | `node:22-alpine`, `corepack enable`, `pnpm@10.x` | igual |
+| `base` | `node:22-alpine` (api); **`node:22.23.3-trixie-slim` en todas las etapas del worker** (ADR-0037), `corepack enable`, `pnpm@10.x` | igual |
 | `deps` | `pnpm fetch` con `pnpm-lock.yaml` (caché de capa) | igual |
 | `build` | `pnpm install --frozen-lockfile --offline`, `pnpm --filter api... build` (worker: `--filter worker...` incluye `api`) | `pnpm --filter web... build` con `output: 'standalone'` |
-| `prod` | `pnpm --filter api deploy --prod /out` (worker: `--filter worker`) | copia `.next/standalone`, `.next/static`, `public` |
-| `runtime` | `node:22-alpine`, `USER node` (uid 1000), `ENV NODE_ENV=production`, `ARG APP_VERSION` → `ENV APP_VERSION`, `HEALTHCHECK`, `CMD ["node","dist/main.js"]` | `USER node`, `CMD ["node","server.js"]`, `HOSTNAME=0.0.0.0` |
+| `prod` | `pnpm --filter api deploy --prod /out` (worker, ADR-0037: `--filter api deploy --prod --legacy` y a la imagen solo pasan `package.json`, `node_modules` y `dist` con el `healthcheck.js` de `apps/worker`, de `root` y solo lectura) | copia `.next/standalone`, `.next/static`, `public` |
+| `runtime` | `node:22-alpine` (api) / `node:22.23.3-trixie-slim` + Ghostscript por `apt` y `ENV MALLOC_ARENA_MAX=2` (worker, ADR-0037), `USER node` (uid 1000), `ENV NODE_ENV=production`, `ARG APP_VERSION` → `ENV APP_VERSION`, `HEALTHCHECK`, `CMD ["node","dist/main.js"]` | `USER node`, `CMD ["node","server.js"]`, `HOSTNAME=0.0.0.0` |
 
 Sin `devDependencies` (CA-28); `pnpm deploy --prod` produce un `node_modules` aislado. Solo la etapa final se publica.
+La imagen `nimbo-worker` es **una** para los dos procesos `worker` (ADR-0037): `CMD ["node","dist/worker.main.js"]` por
+omisión y `node dist/worker-optimizer.main.js` para `worker-optimizer`; `node_modules` nunca cruza de libc.
 
 `compose.yml` (base, raíz):
 
@@ -480,7 +482,8 @@ Sin `devDependencies` (CA-28); `pnpm deploy --prod` produce un `node_modules` ai
 | `minio` | `minio/minio` | `server /data --console-address :9001`; volumen `minio_data`; healthcheck `mc ready local`; `minio-init` (imagen `minio/mc`, `infra/minio/init.sh`: `mc mb --ignore-existing`, `mc version enable`) |
 | `traefik` | `traefik:v3` | `ports: 80`; providers docker (`exposedByDefault: false`); enrutadores por labels: `web` → `/`, `api` → `PathPrefix(/api)`, `onlyoffice` → `PathPrefix(/docs)` + `stripprefix`, `minio` → `PathPrefix(/s3)` (local) |
 | `api` | `${API_IMAGE:-ghcr.io/afmatul/nimbo-api}:${IMAGE_TAG:-latest}` | `env_file: .env`; `depends_on` con `condition: service_healthy`; `mem_limit` 768m |
-| `worker` | `${WORKER_IMAGE:-…nimbo-worker}:${IMAGE_TAG:-latest}` | idem; sin puertos; `mem_limit` 768m |
+| `worker` | `${WORKER_IMAGE:-…nimbo-worker}:${IMAGE_TAG:-latest}` | idem; sin puertos; `mem_limit` = `memswap_limit` 768m (ADR-0037) |
+| `worker-optimizer` | la misma imagen que `worker` | ADR-0037: `command: node dist/worker-optimizer.main.js`; `env_file`; `healthcheck` con `healthcheck.js WORKER_OPTIMIZER_PORT`; sin puertos; `mem_limit` = `memswap_limit` 768m (`WORKER_OPTIMIZER_MEM_LIMIT`); `restart: unless-stopped` |
 | `web` | `${WEB_IMAGE:-…nimbo-web}:${IMAGE_TAG:-latest}` | `mem_limit` 512m |
 | `onlyoffice` | `onlyoffice/documentserver` | **`profiles: [onlyoffice]`**; `JWT_ENABLED=true`, `JWT_SECRET=${ONLYOFFICE_JWT_SECRET}`; `mem_limit` 3g; volumen `onlyoffice_data` |
 
@@ -490,8 +493,8 @@ Sin `devDependencies` (CA-28); `pnpm deploy --prod` produce un `node_modules` ai
   `profiles: [apps]` en el override para que `docker compose up -d` levante solo dependencias y Traefik enrute al
   host por `host.docker.internal` — ver R-4 en §9).
 - Puertos publicados: `5432`, `6379`, `9000`, `9001`, `8025` (Mailpit UI), `1025` (SMTP), `8080` (dashboard Traefik).
-  `WORKER_PORT` **no** se publica en ningún ambiente. En el host: `api` 3000, `worker` 3001, `web` 3002 (script `dev`
-  de `apps/web`: `next dev -p 3002`), coherente con R-4.
+  `WORKER_PORT` y `WORKER_OPTIMIZER_PORT` **no** se publican en ningún ambiente. En el host: `api` 3000, `worker` 3001,
+  `web` 3002 (script `dev` de `apps/web`: `next dev -p 3002`), `worker-optimizer` 3003 (ADR-0037), coherente con R-4.
 - `mailpit` (`axllent/mailpit`) solo aquí (pregunta 2 resuelta).
 - Traefik: `infra/traefik/traefik.local.yml` (sin TLS, `api.insecure` para el dashboard local).
 
@@ -513,8 +516,9 @@ el `.env` del servidor, que Docker lee automáticamente):
   (`traefik.enable=false` en las labels de `minio`, con comentario «lo activa 005 para URLs firmadas») hasta que 005 lo
   necesite: en 000 no hay ningún consumidor y exponer el API S3 a Internet sin uso es superficie gratuita. La consola
   (`:9001`) nunca tiene enrutador. CA-32 se verifica con `9000`/`9001` cerrados y sin respuesta en `s3.staging`.
-- Memoria en demo de 016 (§11.2 punto 10): con el perfil `onlyoffice` activo, `api`/`worker` bajan a 512m
-  (`compose.staging.yml` lee `API_MEM_LIMIT`/`WORKER_MEM_LIMIT` con default 768m); swap de 2 GB en el Droplet.
+- Memoria en demo de 016 (§11.2 punto 10): con el perfil `onlyoffice` activo, `api` baja a 512m
+  (`compose.staging.yml` lee `API_MEM_LIMIT` con default 768m); swap de 2 GB en el Droplet. **Los dos `worker` no bajan**
+  (ADR-0037: 512m no alcanza la carga medida en 021 T-08; quedan en 768m sin swap del contenedor).
   Documentado en `despliegue.md`.
 - Volúmenes con `driver_opts` a `/srv/nimbo/{postgres,redis,minio,onlyoffice,letsencrypt}`.
 - `restart: unless-stopped`; `logging: json-file, max-size 20m, max-file 5`.
@@ -682,7 +686,7 @@ Cobertura: umbral 60 % en `apps/api/src/shared/**` (`jest/base.cjs`).
 | R-3 (decisión, 2026-09-16, T-06) | **Se tomó la alternativa**: la ruta canónica falló en `typecheck` (TS6305: exige `apps/api/dist` compilado) y en runtime (`tsc-alias` no reescribe rutas fuera de `rootDir`; `Cannot find module '@nimbo/api/shared'`). `apps/api/src/worker.main.ts` + `worker.module.ts` son raíces de composición compiladas por `nest build`; `apps/worker` conserva `package.json`, `src/healthcheck.ts` y (T-35) `Dockerfile`. §6.3 y §6.4 se leen con esa precisión: el elemento `composition` incluye `worker.main.ts`/`worker.module.ts` y no hay alias que resolver. Detalle en `tasks.md` «Notas del developer» | — | — | — |
 | R-4 | En local, `pnpm dev` corre en el host mientras Traefik está en Docker: `localhost/api/v1` debe llegar al host | Media | Bajo | Override con `extra_hosts: host.docker.internal:host-gateway` y enrutadores hacia `host.docker.internal:3000/3002`; documentado en README. Alternativa: perfil `apps` que corre las apps en contenedores |
 | R-5 | Let's Encrypt bloquea por iteraciones (5 fallos/h) | Media | Medio | `ACME_CA_SERVER` apuntando al staging de LE hasta que `traefik.staging.yml` esté estable; cambiar a producción una sola vez |
-| R-6 | Droplet de 4 GB: api+worker+web+postgres+redis+minio+traefik ≈ 2 GB; ONLYOFFICE +3 GB → OOM | Alta con ONLYOFFICE | Alto | `mem_limit` por servicio; perfil `onlyoffice` apagado; swap de 2 GB en el Droplet (documentado en `despliegue.md`) |
+| R-6 | Droplet de 4 GB: api+worker+web+postgres+redis+minio+traefik ≈ 2 GB; ONLYOFFICE +3 GB → OOM | Alta con ONLYOFFICE | Alto | `mem_limit` por servicio; perfil `onlyoffice` apagado; swap de 2 GB en el Droplet (documentado en `despliegue.md`). Desde ADR-0037: `worker` y `worker-optimizer` con `memswap_limit` = `mem_limit` = 768m, sin bajar a 512m |
 | R-7 | `pgvector` no disponible o `CREATE EXTENSION` sin privilegio en algún ambiente | Baja | Alto | Imagen oficial `pgvector/pgvector:pg17` en los tres ambientes; usuario de la app es el superusuario del contenedor en local/staging (revisar en 022 si se separa un rol de app) |
 | R-8 | Redacción profunda con `hooks.logMethod` degrada el rendimiento del logger | Baja | Bajo | `redactDeep` solo recorre objetos planos ≤ 16 niveles, ignora `Buffer`/`Error`; microbenchmark en la prueba unitaria (< 50 µs por línea típica) |
 | R-9 | Dominio `nimbo.me` tarda en propagarse | Media | Medio | Mientras tanto `*.<ip>.sslip.io` con la misma configuración (solo cambian `*_HOST`) |
@@ -826,6 +830,8 @@ anota en el PR que el ADR-0010 está pendiente; el merge del PR-3 espera a la ac
     sin ONLYOFFICE; con el perfil activo (3g) se depende de la swap de 2 GB (R-6). Aceptado como riesgo de demo:
     ONLYOFFICE se enciende solo para 016 y con `api`/`worker` reducidos a 512m durante la demo (documentar en
     `despliegue.md`). Concurrencia de colas: `ping` sin concurrencia configurada, correcto en 000.
+    **Enmienda (ADR-0037, 2026-10-27):** se suma `worker-optimizer` 768m (≈ 4.2 GB de límites sin ONLYOFFICE; 7936 MiB
+    con él) y ningún `worker` baja a 512m: con el perfil activo solo baja `api`.
 11. **Datos** — Solo `CREATE EXTENSION vector`; sin columnas especulativas; `migracion` en español singular. Correcto.
 12. **Coherencia con los diagramas** — DF-49 registrado y documentos textuales actualizados; el PDF de clases M8 se
     redibuja al cierre de Fase 1. DF-29 queda `Abierto` (parcial: Redis en 000). **Bloqueo condicional**: DF-02,
@@ -904,7 +910,8 @@ en spec §15 la precisión de rutas de salud del worker (sin prefijo `/api/v1`).
   módulo (regla: `shared` solo aloja lo que usan ≥ 3 módulos o lo que el proceso necesita antes de que exista un módulo).
 - `int` + `isolation` con Testcontainers por encima de 6 min (R-2): migrar a `services:` salvo las pruebas que
   detienen contenedores.
-- ONLYOFFICE en el Droplet de 4 GB (R-6): el ensayo de 016 debe hacerse con `api`/`worker` a 512m y swap activa.
+- ONLYOFFICE en el Droplet de 4 GB (R-6): el ensayo de 016 debe hacerse con `api` a 512m y swap activa (los `worker` quedan
+  en 768m, ADR-0037).
 
 ## 12. Registro de cambios del plan
 
@@ -922,3 +929,5 @@ en spec §15 la precisión de rutas de salud del worker (sin prefijo `/api/v1`).
 | 2026-09-22 | **Correcciones de revisión del PR-2** (revisión independiente, veredicto Aprobar sin bloqueantes): `PING_QUEUE`/`PingQueue`/`PingJobData` pasan a la fachada `shared/index.ts` porque las dos raíces de composición registran la cola y el lint de fronteras (T-28) habría fallado con el import por ruta; la sonda de Postgres aplica `SET LOCAL statement_timeout = READY_TIMEOUT_MS` en una transacción revertida para no retener una conexión del pool tras el `down`; el cliente efímero de Redis registra oyente de `error` (ioredis no lanza el evento sin oyentes: hace `console.error` con el `stack`, que esquiva Pino y volcaría `REDIS_URL` con credencial) y `check()` devuelve `down` en vez de propagar; `DATABASE_URL` y `REDIS_URL` entran en `REDACTED_FIELDS`; el worker instala `CorrelationIdMiddleware` (no `VersionHeaderMiddleware`: su salud no es API pública, CA-23); se fijan las etiquetas de MinIO, `mc` y ONLYOFFICE, que resolvían a `latest` | Frontera de módulos (Art. VIII), retención de conexiones, prohibición dura de credenciales en bitácoras, RNF-17 y paridad de ambientes (RNF-12) | Adrián + developer |
 | 2026-09-22 | Calendario de §9b: PR-3 «CI», PR-4 «imágenes» y PR-5 «staging» (y la compuerta §9a que condiciona el PR-3) pasan a la primera semana de Fase 2. No cambia diseño, contratos ni tareas; solo su fecha. Ver `docs/sdd/workflow.md` §7.2 | Calendario de la Fase 1 | Adrián |
 | 2026-09-26 | Calendario de §9b: PR-3 «CI», PR-4 «imágenes» y PR-5 «staging» (y la compuerta §9a) se implementan desde el 30/09/2026, fecha de la entrega de Fase 1. T-33 usa dos rulesets para permitir la autoaprobación permanente del diseñador principal sin saltarse los checks. Ver `docs/sdd/workflow.md` §7 | Decisión del diseñador principal | Adrián |
+| 2026-10-27 | **Enmienda por ADR-0037** (021 T-10): §6.5 — etapas del `worker` sobre `node:22-bookworm-slim` (glibc) con Ghostscript por `apt` y `MALLOC_ARENA_MAX=2`, el `api` sigue en Alpine; una imagen `nimbo-worker` para dos procesos; servicio `worker-optimizer` en compose (misma imagen, otro comando, `healthcheck` propio, sin puertos); `memswap_limit` = `mem_limit` = 768m en los dos `worker`. R-6 y la demo de 016: solo `api` baja a 512m. Presupuesto de límites con ONLYOFFICE: 7168 → 7936 MiB | T-08 de 021: OOM con indexación pesada e imagen de 36 MP en un solo `worker` de 768 MiB; aislamiento de fallos (Art. XII) | Adrián (aprobación ADR-0037) + Abel |
+| 2026-10-28 | §6.5: la base del `worker` pasa de `node:22-bookworm-slim` a `node:22-trixie-slim` (Debian 13) por CVE de Ghostscript abiertos en Debian 12 (enmienda de ADR-0037); nada más cambia | Seguridad de Ghostscript con PDF no confiables | Abel; **pendiente de aprobación de Adrián** (enmienda de ADR-0037) |

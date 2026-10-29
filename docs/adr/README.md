@@ -39,7 +39,8 @@ Son la base para defender la arquitectura en la exposición final (enunciado §6
 | 0033 | [Extracción de texto (`fflate`, `fast-xml-parser`, Ghostscript), embeddings por REST y relay `index-status`](0033-extraccion-de-texto-y-embeddings-por-rest.md) (spec 019, DF-78) | Aceptado |
 | 0034 | [SDD express en un pase: spec, plan y tareas juntos](0034-sdd-express-un-pase.md) (enmienda la secuencia de ADR-0023) | Propuesto |
 | 0035 | [Escrituras internas acotadas: funciones `SECURITY DEFINER` para la cuenta y la papelera](0035-escrituras-internas-acotadas-de-ajustes-y-restauracion.md) (spec 011b; PR-A y PR-B; **enmienda ADR-0005 y ADR-0021**, delimita ADR-0032 regla 3) | Aceptado |
-| 0036 | [Las imágenes se recomprimen con `sharp` (libvips) dentro del `worker`](0036-recompresion-de-imagenes-con-sharp.md) (spec 021) | Aceptado |
+| 0036 | [Las imágenes se recomprimen con `sharp` (libvips) dentro del `worker`](0036-recompresion-de-imagenes-con-sharp.md) (spec 021; enmendado por ADR-0037) | Aceptado |
+| 0037 | [El optimizador corre en un proceso `worker-optimizer` propio, sobre una imagen glibc](0037-optimizador-en-worker-dedicado-glibc.md) (spec 021 T-08/T-10; **enmienda ADR-0001 y ADR-0036**; cierra PD-128) | Aceptado |
 
 Estados: `Pendiente` (sin redactar) · `Propuesto` (redactado, falta acuerdo del equipo) · `Aceptado` · `Reemplazado por`.
 Los ADR 0001, 0002, 0008, 0009, 0014 y 0015 se aceptaron el 26/09/2026 (Adrián, parte de ADR de la T-27 de la spec 000).
@@ -62,5 +63,7 @@ ADR-0035 (2026-10-26) documenta las escrituras internas acotadas de la 011b; enm
 Los ADR 0003, 0007 y 0033 los redactó el `architect` con el plan de la spec 019 (2026-10-21) como `Propuesto`; Adrián los acepta al aprobar el plan.
 
 ADR-0036 (dependencia `sharp`; numerado 0035 en la rama de la 021 y renumerado al integrar la 011b, que ya usaba 0035) lo redactó Abel con el plan de la spec 021 (2026-10-25) como `Propuesto`, con autorización de Adrián para prepararlo; Adrián lo aceptó al aprobar el plan (2026-10-26).
+
+ADR-0037 (2026-10-27) lo redactó Abel con la evidencia de la T-08 de 021 y dos revisiones del `architect`; Adrián lo aceptó el 2026-10-27. Enmienda ADR-0001 (dos procesos `worker` con la misma imagen) y ADR-0036 (`sharp` solo en `worker-optimizer`); no reemplaza ADR-0017.
 
 Usa `/adr <decisión>` para redactar uno.
