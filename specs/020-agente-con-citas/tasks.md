@@ -16,7 +16,7 @@
 - [x] **T-10** **(humana, Adrián)** Recorrido de la demo por API en local con `GEMINI_API_KEY` real: pregunta con citas, «No encontré esto», ámbito, agotar consultas, quitar la clave, Soporte recibe 403 y `curl -N` a través de Traefik (PD-131); nota en el PR — CA: los visibles (CA-1 a CA-4, CA-7, CA-10 a CA-16), CA-2 medido — Depende: T-08, T-09
 
 - [x] **T-FIX-1** Formatear con Prettier `gemini-flash.model.ts` y `.spec.ts` (review B-1) — CA: compuerta de CI — Prueba: `pnpm lint` — Depende: T-10 — Nota: el contenido versionado ya cumplía Prettier; el fallo era CRLF en la copia de trabajo local (`eol=lf`); `prettier --write` lo normalizó sin cambios en git
-- [ ] **T-FIX-2** El filtro global no registra `query`, `parameters` ni `driverError` de `QueryFailedError` (solo clase, `message` truncado y `stack`), con prueba de que ninguna línea de bitácora contiene la pregunta cuando falla la búsqueda (review B-2, SEC-1) — CA: CA-18 — Prueba: integración — Depende: T-FIX-1
+- [x] **T-FIX-2** El filtro global no registra `query`, `parameters` ni `driverError` de `QueryFailedError` (solo clase, `message` truncado y `stack`), con prueba de que ninguna línea de bitácora contiene la pregunta cuando falla la búsqueda (review B-2, SEC-1) — CA: CA-18 — Prueba: integración — Depende: T-FIX-1
 
 ## Matriz CA → tarea
 
