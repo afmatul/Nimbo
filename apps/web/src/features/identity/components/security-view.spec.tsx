@@ -48,7 +48,7 @@ describe('SecurityView: marco de cada rol (011 CA-17)', () => {
   });
 
   it.each([
-    ['SUPPORT', ['Metadatos de archivos']],
+    ['SUPPORT', ['Metadatos de archivos', 'Papelera']],
     ['ADMIN', ['Cuentas', 'Catálogo de planes', 'Métricas']],
     ['OPERATOR', ['Métricas']],
   ] as const)(
