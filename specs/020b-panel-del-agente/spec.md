@@ -76,6 +76,7 @@ Rutas relativas a `docs/design/`. `ui-guidelines.md` §7 lista la pantalla (fila
 | «Preguntar sobre esto» y «Ubicación citada» | Patrones existentes de la ficha (014) y de la carpeta (006) | un botón y una línea; la ficha de archivo inexistente ya existe | Decisión explícita: sin mockup nuevo |
 
 - Mensajes clave (tuteo): «Pregunta sobre tus documentos», «No encontré esto en tus documentos», «La ubicación de esta cita es aproximada», CA-8, CA-9, CA-16.
+- Ajustes del recorrido (T-09), aprobados: el ancho del panel se ajusta con puntero y teclado (420 px por defecto) y Enter envía la pregunta (Shift+Enter salta de línea).
 - Del mockup se ignoran: atribución por párrafo (fuera de alcance, §9 del contexto) y sugerencias de preguntas (YAGNI).
 
 ## 7. Fuera de alcance
@@ -105,3 +106,5 @@ Rutas relativas a `docs/design/`. `ui-guidelines.md` §7 lista la pantalla (fila
 | 2026-10-25 | Creación en `Borrador`, con plan y tareas | Parte de la 020 por ADR-0034 (el plan pasaba de 12 archivos) | — |
 | 2026-10-25 | Plan aprobado y S-1 aceptado; pasa a `Lista` | Resumen aprobado | Adrián |
 | 2026-10-28 | CA-3: el chip muestra el nombre de la fuente y termina siempre con la ubicación exacta; se trunca el nombre, nunca la ubicación; objetivo táctil ≥ 24 px (`min-h-7 text-xs`) | Revisión B-2: el chip solo con la ubicación dejaba el archivo en `title`, invisible en táctil | Adrián |
+| 2026-10-28 | Se aprueban los ajustes de T-09: asa de ancho del panel y Enter para enviar (I-2); estado `vacio` del mockup con los seis formatos que indexa la 019 (S-2) y textos «Podrás preguntar de nuevo cuando renueves tu plan.» y «No pudimos responder tu pregunta.» (I-5). Sin mockups nuevos | Revisión, segunda pasada | Adrián |
+| 2026-10-28 | Correcciones de la revisión: Prettier en `app-layout.tsx` (T-FIX-1) y chip «archivo · ubicación» con `min-h-7 text-xs` y su prueba restaurada (T-FIX-2). En la 020: Prettier en `gemini-flash.model` (T-FIX-1) y `http.unhandled_error` sin `query` ni `parameters` (T-FIX-2) | Revisión B-1, B-2 y SEC-1 | Adrián |

@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | En curso |
+| Estado | En revisión |
 | Dueño | Adrián |
 | Fase | 3 |
 | Requisitos | RF-32, RF-33, RF-34; RNF-03 (primer fragmento < 3 s), RNF-05, RNF-09, RNF-17 |
