@@ -89,7 +89,7 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
   - con 014 (DF-68): `FileVersionsController` (`GET /files/:fileId/versions`, `POST …/versions/:versionId/restore` y `…/download-url`, `@Roles(Role.CLIENT)`).
   - Faltan búsqueda y vista previa → DF-15.
 - Servicios (todos con `actor: Actor` primero):
-  - `FileService` (`getDownloadUrl`, renombrar, mover), `UploadService` (`init`, `resume`, `complete`, `cancel`, `expire`), `QuotaService` (`assertCanUpload`);
+  - `FileService` (`getDownloadUrl`, renombrar, mover; con 012, `getDetail`), `UploadService` (`init`, `resume`, `complete`, `cancel`, `expire`), `QuotaService` (`assertCanUpload`);
   - con 006 (DF-61): `FolderService` (`create`, `rename`, `move`, `contents`), `TrashService` (eliminar, listar, restaurar, purgar, vaciar; el `trash` del diagrama sale de `FileService` por SRP) y `TrashPurger` (borrado definitivo de objetos, filas y `espacio_usado` en una transacción con `lockUsage` primero); con 011b (DF-81): `SupportTrashService` (`list(actor, query)`, `restore(actor, cmd)`; recibe `actor` y `ownerId`, no usa `WritableAccountPolicy` ni `accessibleNodes`) y la función `restaurar_raiz_papelera` (ADR-0035);
   - con 006 §9 (DF-63): `QuickAccessService` (`list`, `pin`, `unpin`, `recordOpen`; solo `pin` toma `IQuotaRepository.lockUsage` y comprueba el tope). Configuración `QUICK_ACCESS_CONFIG` = `{ maxPinned, recentVisible }` desde `QUICK_ACCESS_MAX_PINNED` (5) y `QUICK_ACCESS_RECENT_VISIBLE` (3, decisión de Adrián del 2026-10-03) y la constante `RECENTS_STORED = 25` (colchón de poda, no configuración).
   - con 007 (DF-62): `SpaceSummaryService` (`summary`), `SpaceMeasurer` (`measure`, compartido por el resumen y la conciliación) y `UsageReconciler` (`reconcile`).

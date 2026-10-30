@@ -237,7 +237,7 @@ Pruebas: `upload-cleanup.processor.spec.ts` y `upload-cleanup.scheduler.spec.ts`
 | `UploadService`                            | `init` (reserva de cuota y URLs prefirmadas), `resume`, `complete`, `cancel`, `expire`             |
 | `UploadRegistrar`                          | Paso final de `complete`: CAS `activa → completada`, nombre definitivo, `archivo` + versión, cuota |
 | `QuotaService`                             | Máximo por archivo y cuota total con reservas de cargas activas (`QuotaPolicy`)                    |
-| `FileService`                              | Renombrar y mover archivos (006) y URL de descarga de 300 s                                        |
+| `FileService`                              | Ficha (012), renombrar y mover archivos (006) y URL de descarga de 300 s                           |
 | `FolderService` (006)                      | Crear, renombrar, mover y abrir carpetas, con migas                                                |
 | `TrashService` (006)                       | Mandar a la papelera, listar, resumir y restaurar                                                  |
 | `IObjectStorage` → `MinioStorageAdapter`   | Multipart, URLs prefirmadas (`Content-Length` firmado), `headObject`, `getRange`, copia, purga     |
@@ -247,7 +247,8 @@ Rutas (solo `CLIENT`; roles internos → 403, sin token → 401; un id que no es
 inexistente): `POST /uploads`, `POST /uploads/:uploadId/resume`, `POST /uploads/:uploadId/complete`,
 `DELETE /uploads/:uploadId`, `POST /files/:fileId/download-url` (y desde 006 `PATCH /files/:fileId` y
 `POST /files/:fileId/move`; desde 014 `GET /files/:fileId/versions`,
-`POST /files/:fileId/versions/:versionId/download-url` y `POST /files/:fileId/versions/:versionId/restore`). `init`, las
+`POST /files/:fileId/versions/:versionId/download-url` y `POST /files/:fileId/versions/:versionId/restore`; desde 012
+`GET /files/:fileId`). `init`, las
 dos `download-url` y `restore` (con su propio `RATE_LIMIT_VERSION_RESTORE_PER_MINUTE`) pasan por `IRateLimiter`.
 
 - Pruebas HTTP: `apps/api/test/int/storage/*.int-spec.ts` (`pnpm test:int`); aislamiento:
@@ -323,5 +324,8 @@ ambientes (rol dueño de las migraciones) está en `docs/operations/ambientes.md
 - `GET /folders/contents` responde `accessLevel` (`OWNER`, `EDITOR` o `VIEWER`): el nivel del actor sobre la carpeta
   abierta según `PermissionResolver.levelFor` de `access` (en la raíz, `OWNER`). La web lo usa solo para ocultar
   acciones (012b RN-1). Lo compartido no cuenta en el espacio ni en la cuota del destinatario (`propietario_id`).
+- `GET /files/:fileId` es la ficha del archivo (012 CA-12): `{ file: FileSummary, accessLevel }`, con
+  `FileService.getDetail` (`findAccessibleById` y `levelFor`). La abren el propietario y el destinatario; el historial
+  (`GET /files/:fileId/versions`) sigue siendo solo del propietario (CA-14). No se audita.
 - Pruebas: `test/isolation/storage-shared-writes.iso-spec.ts` recorre todas las rutas de escritura como Lector y Editor;
   `test/int/storage/shared-access.int-spec.ts`, lo que el destinatario abre.

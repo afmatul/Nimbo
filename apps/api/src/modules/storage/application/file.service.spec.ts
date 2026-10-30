@@ -18,6 +18,7 @@ import type {
   RateLimitDecision,
   RateLimitRule,
 } from '../../../shared';
+import { AccessLevel, PermissionResolver } from '../../access';
 import { AuditAction } from '../../audit';
 import type { AuditRecord, IAuditLogger } from '../../audit';
 import {
@@ -167,7 +168,13 @@ function fakeObjectStorage(calls: string[]) {
 interface SetupOptions {
   readonly decision?: RateLimitDecision;
   readonly auditFails?: boolean;
+  /** Lo que responde `access` por el nivel del actor (por defecto, `OWNER`). */
+  readonly level?: AccessLevel | null;
 }
+
+/** `PermissionResolver` sobre un lector que siempre responde `level`. */
+const resolverReturning = (level: AccessLevel | null): PermissionResolver =>
+  new PermissionResolver({ levelFor: () => Promise.resolve(level) });
 
 function setup(options: SetupOptions = {}) {
   const calls: string[] = [];
@@ -191,11 +198,39 @@ function setup(options: SetupOptions = {}) {
     CONFIG,
     logger,
     new WritableAccountPolicy(new FakePlanLimitsProvider()),
+    resolverReturning(options.level === undefined ? AccessLevel.OWNER : options.level),
   );
   return { service, calls, transactions, nodes, versions, rateLimiter, audit, presigned, logger };
 }
 
 describe('FileService', () => {
+  describe('getDetail (012 CA-12)', () => {
+    it('CA-12: busca el archivo en `withActor(actor)` y lo devuelve con el nivel que da `access`', async () => {
+      const { service, transactions, calls } = setup({ level: AccessLevel.EDITOR });
+
+      await expect(service.getDetail(ACTOR, FILE_ID)).resolves.toEqual({
+        file: FILE,
+        accessLevel: AccessLevel.EDITOR,
+      });
+      expect(transactions.actors).toEqual([ACTOR.id]);
+      expect(calls).toEqual(['findAccessibleById']);
+    });
+
+    it('CA-12: lo ajeno o inexistente es `NodeNotFoundError`', async () => {
+      const { service } = setup();
+      const stranger = createActor('44444444-4444-4444-8444-444444444444', Role.CLIENT);
+
+      await expect(service.getDetail(stranger, FILE_ID)).rejects.toThrow(NodeNotFoundError);
+      await expect(service.getDetail(ACTOR, randomUUID())).rejects.toThrow(NodeNotFoundError);
+    });
+
+    it('CA-12: si `access` ya no da nivel (revocado entre medias), es `NodeNotFoundError`', async () => {
+      const { service } = setup({ level: null });
+
+      await expect(service.getDetail(ACTOR, FILE_ID)).rejects.toThrow(NodeNotFoundError);
+    });
+  });
+
   describe('getDownloadUrl', () => {
     it('CA-16: busca el archivo dentro de `withActor(actor)`', async () => {
       const { service, transactions } = setup();
@@ -391,6 +426,7 @@ function organizeSetup() {
     CONFIG,
     { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
     new WritableAccountPolicy(plans),
+    resolverReturning(null),
   );
 
   const folder = (name: string, owner: Actor = ACTOR): Folder => {

@@ -104,10 +104,11 @@ REVOKE ALL ON FUNCTION nodos_compartidos() FROM PUBLIC;  GRANT EXECUTE ON FUNCTI
 
 | GET | `/api/v1/shares/received` | CLIENT | → `{ entries: ReceivedShare[] }` (directos vigentes, más recientes primero; sin paginar, S-8) | `403` `SHARED_FORBIDDEN` (otros roles), `401` |
 | DELETE | `/api/v1/shares/received/:shareId` | CLIENT | → `204` (Salir; el destinatario borra su propio acceso directo; sin `WritableAccountPolicy`) | `404` `SHARING_SHARE_NOT_FOUND` (ajeno, inexistente o ya revocado) |
+| GET | `/api/v1/files/:fileId` (`storage`, ficha, CA-12; registro de cambios 2026-10-30) | CLIENT | → `{ file: FileSummary, accessLevel }` (`FileService.getDetail`: `findAccessibleById` + `levelFor`; sin auditar) | `404` `STORAGE_NODE_NOT_FOUND` (ajeno, inexistente, papelera o revocado); `403` `SHARED_FORBIDDEN` |
 
 `ReceivedShare` = `{ shareId, nodeType, nodeId, name, owner: { displayName }, level, createdAt }` (el nombre del nodo viaja en la respuesta, nunca a bitácoras; el nombre del propietario sale de `IShareeDirectory.displayNames`).
 `AccessEntry` = `{ shareId \| null, grantee: { id, displayName, email }, level, origin: 'direct'\|'inherited', inheritedFrom: { folderId, folderName } \| null, createdAt }`.
-Las cinco rutas: `@Roles(Role.CLIENT)` (otros roles `403` `SHARED_FORBIDDEN`, sin token `401`), `Cache-Control: no-store`
+Las cinco rutas de `sharing`: `@Roles(Role.CLIENT)` (otros roles `403` `SHARED_FORBIDDEN`, sin token `401`), `Cache-Control: no-store`
 (llevan correos). El correo viaja en el cuerpo, nunca en la URL. Sin eventos de dominio ni Socket.IO: no hay consumidor (YAGNI).
 
 ## 5. Seguridad y operación

@@ -5,6 +5,7 @@ import { toFieldIssues } from '../validation';
 import { STORAGE_NODE_FIELD_MESSAGES } from './error-codes';
 import {
   createFolderSchema,
+  fileDetailResponseSchema,
   folderContentsQuerySchema,
   folderContentsResponseSchema,
   folderSummarySchema,
@@ -201,6 +202,17 @@ describe('contenido de una carpeta', () => {
     expect(folderContentsResponseSchema.safeParse({ ...root, accessLevel: 'ADMIN' }).success).toBe(
       false,
     );
+  });
+
+  it('012 CA-12: la ficha es `{ file: FileSummary, accessLevel }`, estricta', () => {
+    const detail = { file, accessLevel: 'EDITOR' };
+
+    expect(fileDetailResponseSchema.parse(detail)).toEqual(detail);
+    expect(fileDetailResponseSchema.safeParse({ file }).success).toBe(false);
+    expect(fileDetailResponseSchema.safeParse({ ...detail, accessLevel: 'ADMIN' }).success).toBe(
+      false,
+    );
+    expect(fileDetailResponseSchema.safeParse({ ...detail, versions: [] }).success).toBe(false);
   });
 
   it('CA-1: `FolderSummary` y `NodeSummary` son estrictos y se discriminan por `type`', () => {

@@ -1,7 +1,14 @@
-import { folderContentsResponseSchema, spaceSummaryResponseSchema } from '@nimbo/contracts';
-import type { FolderContentsResponse } from '@nimbo/contracts';
+import { randomUUID } from 'node:crypto';
+
+import {
+  fileDetailResponseSchema,
+  folderContentsResponseSchema,
+  spaceSummaryResponseSchema,
+} from '@nimbo/contracts';
+import type { FileDetailResponse, FolderContentsResponse } from '@nimbo/contracts';
 import type { Response } from 'supertest';
 
+import { Role } from '../../../src/shared';
 import { insertShare } from '../sharing/sharing-test-db';
 
 import { createStorageHttpApp, insertCommittedFile } from './storage-http';
@@ -50,6 +57,18 @@ describe('lo compartido abierto por el destinatario (012 CA-12, CA-13)', () => {
     const response = await client.folderContents(folderId === undefined ? {} : { folderId });
     expect(response.status).toBe(200);
     return folderContentsResponseSchema.parse(response.body);
+  };
+
+  const detailOf = async (client: StorageClient, fileId: string): Promise<FileDetailResponse> => {
+    const response = await client.fileDetail(fileId);
+    expect(response.status).toBe(200);
+    return fileDetailResponseSchema.parse(response.body);
+  };
+
+  /** Un archivo suelto de Ana en su raíz, compartido con Bruno como Lector; devuelve su id y el de la fila. */
+  const sharedLooseFile = async (name: string): Promise<{ fileId: string; shareId: string }> => {
+    const { fileId } = await insertCommittedFile(storage.owner, ana.id, { folderId: null, name });
+    return { fileId, shareId: await share(bruno.id, { fileId }, 'VIEWER') };
   };
 
   const seedAnaTree = async (): Promise<AnaTree> => {
@@ -178,4 +197,61 @@ describe('lo compartido abierto por el destinatario (012 CA-12, CA-13)', () => {
     expect(trashed.map(statusAndCode)).toEqual([NOT_FOUND, NOT_FOUND]);
     expect(idsOf(await contentsOf(bruno, tree.acme))).toEqual([tree.inAcme]);
   });
+
+  it('CA-12: la ficha del archivo da el `FileSummary` con `accessLevel` OWNER, VIEWER (directo) y EDITOR (heredado)', async () => {
+    const owned = await detailOf(ana, tree.inAcme);
+
+    expect(owned.file).toMatchObject({
+      id: tree.inAcme,
+      name: 'contrato.pdf',
+      folderId: tree.acme,
+    });
+    expect(owned.accessLevel).toBe('OWNER');
+    expect((await detailOf(bruno, tree.report)).accessLevel).toBe('VIEWER');
+    expect(await detailOf(carla, tree.inProjects)).toEqual({
+      file: (await detailOf(ana, tree.inProjects)).file,
+      accessLevel: 'EDITOR',
+    });
+  });
+
+  it('CA-12: la ficha de lo no compartido es el 404 de lo inexistente', async () => {
+    expect(statusAndCode(await bruno.fileDetail(tree.privateFile))).toEqual(NOT_FOUND);
+    expect(statusAndCode(await dani.fileDetail(tree.report))).toEqual(NOT_FOUND);
+    expect(statusAndCode(await bruno.fileDetail(randomUUID()))).toEqual(NOT_FOUND);
+  });
+
+  it('CA-12, CA-13: la ficha de un archivo compartido en la papelera es 404 para el destinatario', async () => {
+    const { fileId } = await sharedLooseFile('papelera.pdf');
+    expect((await detailOf(bruno, fileId)).accessLevel).toBe('VIEWER');
+
+    expect((await ana.trashFile(fileId)).status).toBe(200);
+
+    expect(statusAndCode(await bruno.fileDetail(fileId))).toEqual(NOT_FOUND);
+  });
+
+  it('CA-10, CA-12: tras revocar el acceso, la ficha es 404 en la siguiente petición', async () => {
+    const { fileId, shareId } = await sharedLooseFile('revocado.pdf');
+    expect((await bruno.fileDetail(fileId)).status).toBe(200);
+
+    await storage.owner.query('DELETE FROM comparticion WHERE id = $1', [shareId]);
+
+    expect(statusAndCode(await bruno.fileDetail(fileId))).toEqual(NOT_FOUND);
+  });
+
+  it('CA-14: el historial sigue siendo solo de la propietaria aunque el destinatario abra la ficha', async () => {
+    expect((await bruno.fileDetail(tree.report)).status).toBe(200);
+    expect(statusAndCode(await bruno.fileVersions(tree.report))).toEqual(NOT_FOUND);
+  });
+
+  it.each([Role.ADMIN, Role.SUPPORT, Role.OPERATOR])(
+    'CA-12: el rol interno %s recibe 403 SHARED_FORBIDDEN en la ficha',
+    async (role) => {
+      const internal = await storage.newClient(role);
+
+      expect(statusAndCode(await internal.fileDetail(tree.report))).toEqual({
+        status: 403,
+        code: 'SHARED_FORBIDDEN',
+      });
+    },
+  );
 });

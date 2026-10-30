@@ -28,6 +28,8 @@ export type SortDirection = (typeof SORT_DIRECTIONS)[number];
 export const NODE_ACCESS_LEVELS = ['OWNER', 'EDITOR', 'VIEWER'] as const;
 export type NodeAccessLevel = (typeof NODE_ACCESS_LEVELS)[number];
 
+const accessLevelField = z.enum(NODE_ACCESS_LEVELS);
+
 const UNKNOWN_FIELD_MESSAGE = STORAGE_NODE_FIELD_MESSAGES.UNKNOWN_FIELD;
 
 /** Nombre de un nodo al crear o renombrar: mismas reglas que al subir, mensajes sin «subir». */
@@ -95,8 +97,16 @@ export const folderContentsResponseSchema = z
     breadcrumbs: z.array(folderRefSchema),
     items: z.array(nodeSummarySchema),
     nextCursor: z.string().min(1).nullable(),
-    accessLevel: z.enum(NODE_ACCESS_LEVELS),
+    accessLevel: accessLevelField,
   })
+  .strict();
+
+/**
+ * Respuesta de `GET /files/:fileId` (spec 012 CA-12): la ficha del archivo y el nivel del actor sobre él. La abre el
+ * propietario y quien lo tiene compartido; el historial de versiones sigue siendo solo del propietario (CA-14).
+ */
+export const fileDetailResponseSchema = z
+  .object({ file: fileSummarySchema, accessLevel: accessLevelField })
   .strict();
 
 export type FolderRef = z.infer<typeof folderRefSchema>;
@@ -112,3 +122,4 @@ export type MoveFileRequest = z.input<typeof moveFileSchema>;
 export type MoveFileInput = z.output<typeof moveFileSchema>;
 export type FolderContentsQuery = z.output<typeof folderContentsQuerySchema>;
 export type FolderContentsResponse = z.infer<typeof folderContentsResponseSchema>;
+export type FileDetailResponse = z.infer<typeof fileDetailResponseSchema>;
