@@ -276,6 +276,8 @@ describe('RLS de `sesion_edicion` y `participacion` (plan 016 §3, RNF-05)', () 
   /** La de 016 para la propietaria y las del Editor de 012 (plan 012 §3, PD-108); ninguna para roles internos. */
   const POLICIES_OF: Record<string, { policyname: string; cmd: string }[]> = {
     sesion_edicion: [
+      { policyname: 'sesion_edicion_alta_de_la_propietaria', cmd: 'INSERT' },
+      { policyname: 'sesion_edicion_cambio_de_la_propietaria', cmd: 'UPDATE' },
       { policyname: 'sesion_edicion_cliente', cmd: 'ALL' },
       { policyname: 'sesion_edicion_compartida', cmd: 'SELECT' },
       { policyname: 'sesion_edicion_compartida_alta', cmd: 'INSERT' },

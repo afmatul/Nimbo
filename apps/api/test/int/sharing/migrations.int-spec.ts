@@ -31,7 +31,7 @@ const RECIPIENT_POLICIES_SQL = `SELECT p.tablename, p.policyname, p.cmd, p.qual
   ORDER BY p.tablename, p.policyname`;
 
 /** Políticas de `nimbo_app` que toca la migración C de 012 (Editor y agente), con su comando y su condición. */
-const EDITING_POLICIES_SQL = `SELECT p.tablename, p.policyname, p.cmd, p.qual
+const EDITING_POLICIES_SQL = `SELECT p.tablename, p.policyname, p.cmd, p.qual, p.permissive
    FROM pg_policies p
   WHERE p.tablename IN ('sesion_edicion', 'participacion', 'indexacion', 'fragmento')
     AND 'nimbo_app' = ANY (p.roles)
@@ -49,11 +49,18 @@ const EDITING_POLICIES = [
   ['sesion_edicion', 'sesion_edicion_compartida_bloqueo', 'UPDATE'],
 ];
 
+/** Políticas `AS RESTRICTIVE` de la migración C: toda escritura de `sesion_edicion` es de la propietaria (SEC-2, SEC-4). */
+const RESTRICTIVE_SESSION_POLICIES = [
+  ['sesion_edicion', 'sesion_edicion_alta_de_la_propietaria', 'INSERT'],
+  ['sesion_edicion', 'sesion_edicion_cambio_de_la_propietaria', 'UPDATE'],
+];
+
 interface PolicyRow {
   readonly tablename: string;
   readonly policyname: string;
   readonly cmd: string;
   readonly qual: string;
+  readonly permissive?: string;
 }
 
 /** Lo que crea la migración A de 012: tabla, índices, políticas (también las del dueño en `archivo`/`carpeta`) y función. */
@@ -259,10 +266,16 @@ describe('migración crear-comparticion con dueño NOSUPERUSER (plan 012 §3)', 
       rows
         .filter((row) => /_compartid[oa](_\w+)?$/.test(row.policyname))
         .map((row) => [row.tablename, row.policyname, row.cmd]);
+    const restrictive = (rows: PolicyRow[]): string[][] =>
+      rows
+        .filter((row) => row.permissive === 'RESTRICTIVE')
+        .map((row) => [row.tablename, row.policyname, row.cmd]);
     const qualOf = (rows: PolicyRow[], name: string): string =>
       rows.find((row) => row.policyname === name)?.qual ?? '';
     expect(reverted).toEqual([EDITING_POLICIES_MIGRATION, LEAVE_AUDIT_MIGRATION]);
     expect(created(before)).toEqual(EDITING_POLICIES);
+    expect(restrictive(before)).toEqual(RESTRICTIVE_SESSION_POLICIES);
+    expect(restrictive(afterDown)).toEqual([]);
     expect(qualOf(before, 'participacion_cliente')).toContain('propietario_id = nimbo_actor_id()');
     expect(qualOf(afterDown, 'participacion_cliente')).not.toContain('propietario_id');
     expect(created(afterDown)).toEqual([]);

@@ -5,16 +5,31 @@ const EDITOR_OF = (column: string): string =>
   `nimbo_actor_role() = 'CLIENT'
    AND ${column} IN (SELECT nodo_id FROM nodos_compartidos() WHERE tipo_nodo = 'archivo' AND nivel = 'EDITOR')`;
 
-/** La sesión pertenece a la propietaria del archivo: el Editor no abre sesiones a nombre de otra cuenta. */
+/**
+ * La sesión nueva es de la propietaria de un archivo que el actor ve (SEC-4): nadie abre una sesión a su nombre sobre
+ * un archivo ajeno ni sobre un id que no alcanza, y el Editor solo la abre a nombre de la propietaria.
+ */
 const SESSION_OF_FILE_OWNER = `propietario_id = (SELECT a.propietario_id FROM archivo a
                                                   WHERE a.id = sesion_edicion.archivo_id)`;
 
-/** La participación es de una sesión sobre un archivo compartido con el actor como Editor. */
-const PARTICIPATION_OF_SHARED_SESSION = `nimbo_actor_role() = 'CLIENT'
-   AND EXISTS (SELECT 1 FROM sesion_edicion s
-                WHERE s.id = participacion.sesion_edicion_id AND ${EDITOR_OF('s.archivo_id')})`;
+/**
+ * Solo la propietaria cambia su sesión y no la pasa a otra cuenta (SEC-2). No exige que el archivo exista: la sesión de
+ * un archivo purgado se marca `fallida` (016 CA-14).
+ */
+const CHANGED_BY_ITS_OWNER = `propietario_id = nimbo_actor_id()
+   AND NOT EXISTS (SELECT 1 FROM archivo a
+                    WHERE a.id = sesion_edicion.archivo_id AND a.propietario_id <> nimbo_actor_id())`;
 
-const OWN_PARTICIPATION = `${PARTICIPATION_OF_SHARED_SESSION} AND usuario_id = nimbo_actor_id()`;
+/** La participación es de una sesión sobre un archivo compartido con el actor como Editor. */
+const PARTICIPATION_OF_SHARED_SESSION = (openOnly: boolean): string =>
+  `nimbo_actor_role() = 'CLIENT'
+   AND EXISTS (SELECT 1 FROM sesion_edicion s
+                WHERE s.id = participacion.sesion_edicion_id AND ${EDITOR_OF('s.archivo_id')}${
+                  openOnly ? " AND s.estado IN ('activa', 'guardando')" : ''
+                })`;
+
+/** Su propia participación en una sesión abierta: el Editor no se suma a la autoría de una versión ya cerrada. */
+const OWN_PARTICIPATION = `${PARTICIPATION_OF_SHARED_SESSION(true)} AND usuario_id = nimbo_actor_id()`;
 
 /** Condición de `participacion_cliente`; con `ownerOnly`, la sesión además es de la cuenta del actor. */
 const participationOfVisibleSession = (ownerOnly: boolean): string =>
@@ -30,41 +45,68 @@ const currentVersionShared = (table: 'indexacion' | 'fragmento'): string =>
    AND EXISTS (SELECT 1 FROM archivo a
                 WHERE a.id = ${table}.archivo_id AND a.version_actual_id = ${table}.version_archivo_id)`;
 
-/** Políticas nuevas: nombre, tabla, orden y cláusulas (`USING`/`WITH CHECK`). */
+/** Políticas nuevas: nombre, tabla, modo (`AS RESTRICTIVE` y orden) y cláusulas (`USING`/`WITH CHECK`). */
 const POLICIES: readonly (readonly [string, string, string, string])[] = [
-  ['sesion_edicion_compartida', 'sesion_edicion', 'SELECT', `USING (${EDITOR_OF('archivo_id')})`],
+  [
+    'sesion_edicion_compartida',
+    'sesion_edicion',
+    'FOR SELECT',
+    `USING (${EDITOR_OF('archivo_id')})`,
+  ],
   [
     'sesion_edicion_compartida_alta',
     'sesion_edicion',
-    'INSERT',
-    `WITH CHECK (${EDITOR_OF('archivo_id')} AND abierta_por = nimbo_actor_id() AND ${SESSION_OF_FILE_OWNER})`,
+    'FOR INSERT',
+    `WITH CHECK (${EDITOR_OF('archivo_id')} AND abierta_por = nimbo_actor_id())`,
   ],
   [
     'sesion_edicion_compartida_bloqueo',
     'sesion_edicion',
-    'UPDATE',
-    `USING (${EDITOR_OF('archivo_id')}) WITH CHECK (${EDITOR_OF('archivo_id')} AND ${SESSION_OF_FILE_OWNER})`,
+    'FOR UPDATE',
+    `USING (${EDITOR_OF('archivo_id')}) WITH CHECK (false)`,
+  ],
+  [
+    'sesion_edicion_alta_de_la_propietaria',
+    'sesion_edicion',
+    'AS RESTRICTIVE FOR INSERT',
+    `WITH CHECK (${SESSION_OF_FILE_OWNER})`,
+  ],
+  [
+    'sesion_edicion_cambio_de_la_propietaria',
+    'sesion_edicion',
+    'AS RESTRICTIVE FOR UPDATE',
+    `USING (true) WITH CHECK (${CHANGED_BY_ITS_OWNER})`,
   ],
   [
     'participacion_compartida',
     'participacion',
-    'SELECT',
-    `USING (${PARTICIPATION_OF_SHARED_SESSION})`,
+    'FOR SELECT',
+    `USING (${PARTICIPATION_OF_SHARED_SESSION(false)})`,
   ],
-  ['participacion_compartida_alta', 'participacion', 'INSERT', `WITH CHECK (${OWN_PARTICIPATION})`],
+  [
+    'participacion_compartida_alta',
+    'participacion',
+    'FOR INSERT',
+    `WITH CHECK (${OWN_PARTICIPATION})`,
+  ],
   [
     'participacion_compartida_cambio',
     'participacion',
-    'UPDATE',
+    'FOR UPDATE',
     `USING (${OWN_PARTICIPATION}) WITH CHECK (${OWN_PARTICIPATION})`,
   ],
   [
     'indexacion_compartida',
     'indexacion',
-    'SELECT',
+    'FOR SELECT',
     `USING (${currentVersionShared('indexacion')})`,
   ],
-  ['fragmento_compartido', 'fragmento', 'SELECT', `USING (${currentVersionShared('fragmento')})`],
+  [
+    'fragmento_compartido',
+    'fragmento',
+    'FOR SELECT',
+    `USING (${currentVersionShared('fragmento')})`,
+  ],
 ];
 
 /**
@@ -73,9 +115,13 @@ const POLICIES: readonly (readonly [string, string, string, string])[] = [
  * sesión (016 RN-2). Los roles internos siguen sin política.
  *
  * - `sesion_edicion`: el Editor la lee, la crea (abierta por él y de la propietaria del archivo) y la bloquea
- *   (`SELECT … FOR UPDATE` exige una política `UPDATE`); cerrarla o guardarla lo hace la propietaria (016 plan §4).
+ *   (`SELECT … FOR UPDATE` exige el `USING` de una política `UPDATE`, no su `WITH CHECK`); cerrarla o guardarla lo hace
+ *   la propietaria (016 plan §4). Dos políticas `AS RESTRICTIVE` valen para toda escritura, también la de 016: el alta
+ *   es de la propietaria de un archivo que el actor ve (SEC-4) y el cambio, de la propietaria sin pasarla a otra cuenta
+ *   (SEC-2). Bastan sin trigger: el bloqueo del Editor no evalúa `WITH CHECK`, y su `UPDATE` no lo cumple.
  * - `participacion`: `participacion_cliente` decidía por la sesión visible, que ahora alcanza la compartida; se acota a
- *   la propietaria y el Editor lee las participaciones de la sesión y solo da de alta o cierra la suya.
+ *   la propietaria y el Editor lee las participaciones de la sesión y solo da de alta o cierra la suya, mientras la
+ *   sesión siga abierta (no se suma a la autoría de una versión ya guardada).
  * - `indexacion`/`fragmento`: solo `SELECT`, y solo de la versión vigente de un archivo compartido (Lector o Editor);
  *   la escritura sigue siendo solo de la propietaria (`*_cliente`, migración B).
  */
@@ -84,10 +130,8 @@ export class PoliticasRlsEdicionYAgenteCompartidos20261101100200 implements Migr
 
   async up(queryRunner: QueryRunner): Promise<void> {
     await this.alterParticipationPolicy(queryRunner, true);
-    for (const [name, table, command, clauses] of POLICIES) {
-      await queryRunner.query(
-        `CREATE POLICY ${name} ON ${table} FOR ${command} TO nimbo_app ${clauses}`,
-      );
+    for (const [name, table, mode, clauses] of POLICIES) {
+      await queryRunner.query(`CREATE POLICY ${name} ON ${table} ${mode} TO nimbo_app ${clauses}`);
     }
   }
 

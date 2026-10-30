@@ -486,53 +486,68 @@ describe('RLS de compartición con dueño NOSUPERUSER (012 CA-21, CA-20; plan R-
       },
     );
 
-    it.failing(
-      'ISO-32 (SEC-2): B (Editor) no puede cambiar por SQL el estado de la sesión de A',
-      async () => {
-        const changed = await attemptAs(b, (m) =>
+    it('ISO-32 (SEC-2): B (Editor) no puede cambiar por SQL el estado de la sesión de A', async () => {
+      await expect(
+        attemptAs(b, (m) =>
           changedIds(
             m,
             `UPDATE sesion_edicion SET estado = 'fallida', motivo_fallo = 'editor', finalizada_en = now()
             WHERE id = $1`,
             [world.sessions.direct],
           ),
-        );
+        ),
+      ).rejects.toThrow(RLS_ERROR);
+    });
 
-        expect(changed).toEqual([]);
-      },
-    );
+    it('ISO-33 (SEC-2): B (Editor) no puede quedarse por SQL con la sesión de A', async () => {
+      await expect(
+        attemptAs(b, (m) =>
+          changedIds(m, 'UPDATE sesion_edicion SET propietario_id = $2 WHERE id = $1', [
+            world.sessions.direct,
+            b.id,
+          ]),
+        ),
+      ).rejects.toThrow(RLS_ERROR);
+    });
 
-    it.failing(
-      'ISO-33 (SEC-2): B (Editor) no puede quedarse por SQL con la sesión de A',
-      async () => {
+    it('ISO-38 (SEC-2): B (Editor) no puede sumarse a la autoría de una sesión ya cerrada de A', async () => {
+      const closed = randomUUID();
+      await asActor(a, (m) =>
+        m.query(
+          `INSERT INTO sesion_edicion
+             (id, archivo_id, propietario_id, abierta_por, version_base_id, estado, iniciada_en, finalizada_en)
+           VALUES ($1, $2, $3, $3, $4, 'cerrada', now(), now())`,
+          [closed, world.direct.fileId, a.id, world.direct.versionId],
+        ),
+      );
+      try {
         await expect(
           attemptAs(b, (m) =>
-            changedIds(m, 'UPDATE sesion_edicion SET propietario_id = $2 WHERE id = $1', [
-              world.sessions.direct,
-              b.id,
+            m.query(
+              'INSERT INTO participacion (sesion_edicion_id, usuario_id, entro_en) VALUES ($1, $2, now())',
+              [closed, b.id],
+            ),
+          ),
+        ).rejects.toThrow(RLS_ERROR);
+      } finally {
+        await asActor(a, (m) => m.query('DELETE FROM sesion_edicion WHERE id = $1', [closed]));
+      }
+    });
+
+    it('ISO-34 (SEC-4): B (Lector) y C no pueden abrir una sesión a su nombre sobre un archivo de A', async () => {
+      for (const actor of [b, c]) {
+        await expect(
+          attemptAs(actor, (m) =>
+            m.query(INSERT_SESSION_SQL, [
+              randomUUID(),
+              world.inSub.fileId,
+              actor.id,
+              world.inSub.versionId,
             ]),
           ),
         ).rejects.toThrow(RLS_ERROR);
-      },
-    );
-
-    it.failing(
-      'ISO-34 (SEC-4): B (Lector) y C no pueden abrir una sesión a su nombre sobre un archivo de A',
-      async () => {
-        for (const actor of [b, c]) {
-          await expect(
-            attemptAs(actor, (m) =>
-              m.query(INSERT_SESSION_SQL, [
-                randomUUID(),
-                world.inSub.fileId,
-                actor.id,
-                world.inSub.versionId,
-              ]),
-            ),
-          ).rejects.toThrow(RLS_ERROR);
-        }
-      },
-    );
+      }
+    });
   });
 
   describe('auditoría de Salir desde el aislamiento (T-11)', () => {
