@@ -94,7 +94,7 @@ export class VersionPruner {
   private async surplusOf(actor: Actor, fileId: string): Promise<readonly FileVersion[]> {
     const { retainedVersions } = await this.planLimits.limitsFor(actor);
     const versions = await this.transactions.withActor(actor, async () => {
-      if ((await this.nodes.findAccessibleById(actor, fileId)) === null) return [];
+      if ((await this.nodes.findOwnedLiveFile(actor, fileId)) === null) return [];
       return this.versions.list(actor, fileId);
     });
     return VersionRetention.surplus(versions, retainedVersions);

@@ -31,9 +31,9 @@ interface FileVersions {
 }
 
 /**
- * Lectura del historial (plan 014 §2, RF-29). El archivo se resuelve con `findAccessibleById` (`accessibleNodes`)
- * **antes** de leer versiones, en la misma transacción con actor: ajeno, inexistente o en la papelera es el mismo
- * `NodeNotFoundError` (CA-16). Las retenidas salen del plan vía `IPlanLimitsProvider` (sin números mágicos).
+ * Lectura del historial (plan 014 §2, RF-29). El archivo se resuelve con `findOwnedLiveFile` (`ownedNodes`: el
+ * historial es solo del propietario, 014 RN-7 y 012 CA-14) **antes** de leer versiones, en la misma transacción con
+ * actor: ajeno, compartido, inexistente o en la papelera es el mismo `NodeNotFoundError` (CA-16). Las retenidas salen del plan vía `IPlanLimitsProvider` (sin números mágicos).
  */
 @Injectable()
 export class VersionHistoryService {
@@ -53,7 +53,7 @@ export class VersionHistoryService {
   }
 
   private async readVersions(actor: Actor, fileId: string): Promise<FileVersions> {
-    const file = await this.nodes.findAccessibleById(actor, fileId);
+    const file = await this.nodes.findOwnedLiveFile(actor, fileId);
     if (file === null) throw new NodeNotFoundError();
     const versions = await this.versions.list(actor, file.id);
     return { file, versions };

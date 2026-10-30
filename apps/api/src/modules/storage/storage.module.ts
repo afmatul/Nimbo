@@ -4,6 +4,7 @@ import type { DynamicModule } from '@nestjs/common';
 
 import { MINIO_CONFIG } from '../../shared';
 import type { Env, MinioConfig } from '../../shared';
+import { AccessModule } from '../access';
 import { AuditModule } from '../audit';
 
 import { EditableFileGateway } from './application/editable-file.gateway';
@@ -29,6 +30,7 @@ import { VersionHistoryService } from './application/version-history.service';
 import { VERSION_RESTORE_CONFIG } from './application/version-restore-config';
 import type { VersionRestoreConfig } from './application/version-restore-config';
 import { VersionRestoreService } from './application/version-restore.service';
+import { WritableAccountPolicy } from './application/writable-account.policy';
 import {
   buildMinioStorageClients,
   MinioStorageAdapter,
@@ -98,7 +100,7 @@ export class StorageModule {
     };
     return {
       module: StorageModule,
-      imports: [AuditModule, BullModule.registerQueue({ name: TRASH_PURGE_QUEUE })],
+      imports: [AccessModule, AuditModule, BullModule.registerQueue({ name: TRASH_PURGE_QUEUE })],
       controllers: [
         UploadsController,
         FilesController,
@@ -140,12 +142,13 @@ export class StorageModule {
       ],
       // 011 (PD-31): el lector de metadatos para `backoffice`. 009 (ampliación de la decisión 1, 2026-10-15): `billing`
       // importa `I_OBJECT_STORAGE` de forma explícita, sin módulo global. 016: la fachada de edición para `editing`.
-      // 019: la fachada de la indexación para `intelligence`.
+      // 019: la fachada de la indexación para `intelligence`. 012 (PD-121): la política de solo lectura para `sharing`.
       exports: [
         I_NODE_METADATA_READER,
         I_OBJECT_STORAGE,
         EditableFileGateway,
         IndexableFileGateway,
+        WritableAccountPolicy,
       ],
     };
   }

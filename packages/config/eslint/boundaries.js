@@ -11,8 +11,9 @@ const ALLOWED = {
   realtime: [],
   // Transversales: solo `notifications → realtime` (regla 5).
   notifications: ['realtime'],
-  // `editing` solo para implementar `IUserDirectory` (016, DF-74), como `billing → storage`.
-  identity: ['notifications', 'audit', 'editing'],
+  // `editing` y `sharing` solo para implementar `IUserDirectory` (016, DF-74) e `IShareeDirectory` (012, DF-84), como
+  // `billing → storage`.
+  identity: ['notifications', 'audit', 'editing', 'sharing'],
   // `storage` para implementar `IPlanLimitsProvider` (DF-51) y subir facturas (`IObjectStorage`); `identity` por el evento
   // de cuenta verificada (ADR-0019) y las fachadas de lectura de la 009 (`VerifiedClientLister`, `AccountContactReader`).
   billing: ['notifications', 'audit', 'storage', 'identity'],

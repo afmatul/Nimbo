@@ -52,10 +52,17 @@ const ROOT: FolderContentsResponse = {
     { type: 'folder', ...FINANZAS, parentId: null, createdAt: AT, updatedAt: AT },
   ],
   nextCursor: null,
+  accessLevel: 'OWNER',
 };
 
 function fase3(items: FolderContentsResponse['items']): FolderContentsResponse {
-  return { folder: FASE3, breadcrumbs: [ALPHA, FASE3], items, nextCursor: null };
+  return {
+    folder: FASE3,
+    breadcrumbs: [ALPHA, FASE3],
+    items,
+    nextCursor: null,
+    accessLevel: 'OWNER',
+  };
 }
 
 const FASE3_CONTENTS = fase3([

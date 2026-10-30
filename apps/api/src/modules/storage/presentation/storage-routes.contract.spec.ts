@@ -54,7 +54,7 @@ describe('rutas de `storage` (CA-17)', () => {
     await moduleRef.close();
   });
 
-  it('CA-17, 006 CA-23, 014 CA-18: expone exactamente las rutas de cargas, archivos y versiones (005 §5, 006 §4, 014 §4), todas solo para CLIENT', () => {
+  it('CA-17, 006 CA-23, 014 CA-18, 012 CA-12: expone exactamente las rutas de cargas, archivos y versiones (005 §5, 006 §4, 014 §4, 012 §4), todas solo para CLIENT', () => {
     const routes = listRouteDeclarations(moduleRef, PREFIX);
 
     expect(routes.map(describeRoute).sort()).toEqual(
@@ -64,6 +64,7 @@ describe('rutas de `storage` (CA-17)', () => {
         'POST /api/v1/uploads/:uploadId/complete',
         'DELETE /api/v1/uploads/:uploadId',
         'POST /api/v1/files/:fileId/download-url',
+        'GET /api/v1/files/:fileId',
         'PATCH /api/v1/files/:fileId',
         'POST /api/v1/files/:fileId/move',
         'GET /api/v1/files/:fileId/versions',
@@ -80,6 +81,7 @@ describe('rutas de `storage` (CA-17)', () => {
     [UploadsController, 'complete'],
     [UploadsController, 'cancel'],
     [FilesController, 'downloadUrl'],
+    [FilesController, 'detail'],
   ] as const)('CA-16: %p.%s valida el id como UUID antes del servicio', (controller, method) => {
     expect(pipesOf(controller, method)).toEqual([expect.any(ParseUUIDPipe)]);
   });

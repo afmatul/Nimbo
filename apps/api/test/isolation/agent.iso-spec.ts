@@ -8,6 +8,8 @@ import { createAgentWorld } from '../int/intelligence/agent-http';
 import type { AgentWorld, AskResult } from '../int/intelligence/agent-http';
 import { insertChunk, insertIndexing } from '../int/intelligence/intelligence-test-db';
 import type { IndexedVersionRow } from '../int/intelligence/intelligence-test-db';
+import { insertShare } from '../int/sharing/sharing-test-db';
+import type { SharedNode } from '../int/sharing/sharing-test-db';
 import { connectAsAppDatabase, insertFolder } from '../int/storage/storage-test-db';
 import type { AppDatabase, FolderRow } from '../int/storage/storage-test-db';
 import { FakeEmbeddingProvider } from '../support/fake-embedding.provider';
@@ -126,6 +128,34 @@ describe('aislamiento del agente (020 CA-17, CA-9, CA-16)', () => {
     expect(sent).not.toContain(SECRET_B);
   };
 
+  /** Versión 2 vigente del archivo, `indexado` y con un fragmento `text`; la 1 conserva sus fragmentos. */
+  const newIndexedVersion = (
+    ownerId: string,
+    file: IndexedVersionRow,
+    text: string | null,
+  ): Promise<IndexedVersionRow> =>
+    world.owner.transaction(async (manager) => {
+      const version = { fileId: file.fileId, versionId: randomUUID() };
+      await manager.query(
+        `INSERT INTO version_archivo (id, archivo_id, origen, clave_objeto, tamano_bytes, creado_por, creada_en, numero)
+         VALUES ($1, $2, 'carga', $3, 10, $4, now(), 2)`,
+        [
+          version.versionId,
+          file.fileId,
+          `u/${ownerId}/${file.fileId}/${version.versionId}`,
+          ownerId,
+        ],
+      );
+      await manager.query('UPDATE archivo SET version_actual_id = $1 WHERE id = $2', [
+        version.versionId,
+        file.fileId,
+      ]);
+      if (text === null) return version;
+      await insertChunk(manager, version, { text });
+      await insertIndexing(manager, version, { state: 'indexado' });
+      return version;
+    });
+
   describe('A no obtiene datos, citas ni nombres de B (CA-17)', () => {
     it('ISO-1 (CA-17): A no puede obtener ni citar el dato que solo está en el archivo de B', async () => {
       const of = await pair();
@@ -222,7 +252,7 @@ describe('aislamiento del agente (020 CA-17, CA-9, CA-16)', () => {
       expect(expectCitationsWithin(result.events, [inFolder])).toEqual([inFolder.fileId]);
     });
 
-    it('ISO-4 (CA-17): un archivo de B dentro de una carpeta de A (fila forzada por el dueño) no puede entrar con ese ámbito', async () => {
+    it('ISO-4 (CA-17): un archivo de B no entra en una carpeta de A (ni forzado por el dueño) ni en ese ámbito', async () => {
       const of = await pair();
       const folderA = await folderOf(of.a);
       const inFolderA = await world.indexedFile(of.a, {
@@ -230,11 +260,13 @@ describe('aislamiento del agente (020 CA-17, CA-9, CA-16)', () => {
         text: TEXT_A,
         folderId: folderA.id,
       });
-      const planted = await world.indexedFile(of.b, {
+      /** Desde 012 (SEC-1) la FK compuesta lo impide para todo rol: la fila ya no se puede forzar. */
+      const planting = world.indexedFile(of.b, {
         name: B_ONLY_NAME,
         text: TEXT_B,
         folderId: folderA.id,
       });
+      await expect(planting).rejects.toThrow(/fk_archivo_carpeta_propietario/);
       world.model.use(new FakeLanguageModel(EVERY_MARKER));
 
       const result = await world.ask(of.a, {
@@ -243,7 +275,6 @@ describe('aislamiento del agente (020 CA-17, CA-9, CA-16)', () => {
       });
 
       expect(expectCitationsWithin(result.events, [inFolderA])).toEqual([inFolderA.fileId]);
-      expect(JSON.stringify(result.events)).not.toContain(planted.fileId);
       expect(JSON.stringify(world.model.prompts)).not.toContain(SECRET_B);
     });
   });
@@ -340,34 +371,6 @@ describe('aislamiento del agente (020 CA-17, CA-9, CA-16)', () => {
     const TRASHED_TEXT = 'La clave del portón trasero de la bodega es 5512.';
     const OLD_TEXT = 'La clave antigua del portón de la bodega era 9090.';
 
-    /** Versión 2 vigente del archivo, `indexado` y con un fragmento `text`; la 1 conserva sus fragmentos. */
-    const newIndexedVersion = (
-      ownerId: string,
-      file: IndexedVersionRow,
-      text: string | null,
-    ): Promise<IndexedVersionRow> =>
-      world.owner.transaction(async (manager) => {
-        const version = { fileId: file.fileId, versionId: randomUUID() };
-        await manager.query(
-          `INSERT INTO version_archivo (id, archivo_id, origen, clave_objeto, tamano_bytes, creado_por, creada_en, numero)
-           VALUES ($1, $2, 'carga', $3, 10, $4, now(), 2)`,
-          [
-            version.versionId,
-            file.fileId,
-            `u/${ownerId}/${file.fileId}/${version.versionId}`,
-            ownerId,
-          ],
-        );
-        await manager.query('UPDATE archivo SET version_actual_id = $1 WHERE id = $2', [
-          version.versionId,
-          file.fileId,
-        ]);
-        if (text === null) return version;
-        await insertChunk(manager, version, { text });
-        await insertIndexing(manager, version, { state: 'indexado' });
-        return version;
-      });
-
     it('ISO-9 (CA-9): un archivo citado que pasa a la papelera no puede volver a recuperarse ni citarse, ni como ámbito', async () => {
       const ana = await world.newClient();
       const kept = await world.indexedFile(ana, { name: SHARED_NAME, text: TEXT_A });
@@ -417,6 +420,124 @@ describe('aislamiento del agente (020 CA-17, CA-9, CA-16)', () => {
       expect(result.events.at(-1)).toMatchObject({ type: 'done', outcome: 'not_found', used: 0 });
       expect(world.model.prompts).toHaveLength(0);
       expect(status.body.hasIndexedFiles).toBe(false);
+    });
+  });
+
+  describe('lo compartido conmigo (012 CA-16, 020 CA-5)', () => {
+    const OLD_SHARED_TEXT = 'La clave antigua del portón de la bodega era 4404.';
+
+    /** B comparte con `granteeId` como lo deja `POST /shares`; devuelve el id para revocarlo (`DELETE /shares/:id`). */
+    const share = (of: { b: string; granteeId: string }, node: SharedNode, level = 'VIEWER') =>
+      insertShare(world.owner, { ownerId: of.b, granteeId: of.granteeId, node, level });
+
+    const revoke = (shareId: string) =>
+      world.owner.query('DELETE FROM comparticion WHERE id = $1', [shareId]);
+
+    it('ISO-16 (012 CA-16): A cita el archivo indexado que B le compartió como Lector; tras revocarlo ya no puede, ni preguntarle', async () => {
+      const [a, b] = [await world.newClient(), await world.newClient()];
+      const fileB = await world.indexedFile(b, { name: B_ONLY_NAME, text: TEXT_B });
+      const shareId = await share({ b, granteeId: a }, { fileId: fileB.fileId });
+      world.model.use(new FakeLanguageModel(EVERY_MARKER));
+
+      const shared = await world.ask(a, { question: QUESTION });
+      const sharedStatus = await world.status(a);
+      await revoke(shareId);
+      world.model.reset();
+      world.model.use(new FakeLanguageModel(EVERY_MARKER));
+      const revoked = await world.ask(a, { question: QUESTION });
+      const scoped = await world.ask(a, {
+        question: QUESTION,
+        scope: { type: 'file', id: fileB.fileId },
+      });
+
+      expect(expectCitationsWithin(shared.events, [fileB])).toEqual([fileB.fileId]);
+      expect(sharedStatus.body.hasIndexedFiles).toBe(true);
+      expect(citationsOf(revoked.events)).toEqual([]);
+      expect(revoked.events.at(-1)).toMatchObject({ type: 'done', outcome: 'not_found' });
+      expect(world.model.prompts).toHaveLength(0);
+      expect(errorOf(scoped)).toEqual(SCOPE_NOT_FOUND);
+      expect((await world.status(a)).body.hasIndexedFiles).toBe(false);
+    });
+
+    it('ISO-17 (012 CA-16): A cita lo de una carpeta que B le compartió como Editor, también con esa carpeta como ámbito; tras revocarla, no', async () => {
+      const of = await pair();
+      const folderB = await folderOf(of.b);
+      const inFolder = await world.indexedFile(of.b, {
+        name: B_ONLY_NAME,
+        text: TEXT_B,
+        folderId: folderB.id,
+      });
+      const shareId = await share({ b: of.b, granteeId: of.a }, { folderId: folderB.id }, 'EDITOR');
+      world.model.use(new FakeLanguageModel(EVERY_MARKER));
+
+      const all = await world.ask(of.a, { question: QUESTION });
+      const scoped = await world.ask(of.a, {
+        question: QUESTION,
+        scope: { type: 'folder', id: folderB.id },
+      });
+      await revoke(shareId);
+      const after = await world.ask(of.a, { question: QUESTION });
+
+      expect(new Set(expectCitationsWithin(all.events, [of.fileA, inFolder]))).toEqual(
+        new Set([of.fileA.fileId, inFolder.fileId]),
+      );
+      expect(expectCitationsWithin(scoped.events, [inFolder])).toEqual([inFolder.fileId]);
+      expect(expectCitationsWithin(after.events, [of.fileA])).toEqual([of.fileA.fileId]);
+      expect(JSON.stringify(after.events)).not.toContain(inFolder.fileId);
+    });
+
+    it('ISO-18 (012 CA-16): un tercero C no puede citar ni preguntar por lo que B compartió con A', async () => {
+      const of = await pair();
+      const c = await world.newClient();
+      await world.indexedFile(c, { name: SHARED_NAME, text: TEXT_A });
+      await share({ b: of.b, granteeId: of.a }, { fileId: of.fileB.fileId }, 'EDITOR');
+      world.model.use(new FakeLanguageModel(EVERY_MARKER));
+
+      const asked = await world.ask(c, { question: QUESTION });
+      const scoped = await world.ask(c, {
+        question: QUESTION,
+        scope: { type: 'file', id: of.fileB.fileId },
+      });
+
+      expect(citationsOf(asked.events).map(({ fileId }) => fileId)).not.toContain(of.fileB.fileId);
+      expect(JSON.stringify(asked.events)).not.toContain(B_ONLY_NAME);
+      expect(JSON.stringify(world.model.prompts)).not.toContain(SECRET_B);
+      expect(errorOf(scoped)).toEqual(SCOPE_NOT_FOUND);
+    });
+
+    it('ISO-19 (012 CA-16, RN-2): con SQL sin servicio A lee solo los fragmentos vigentes de lo compartido y no escribe ninguno', async () => {
+      const [a, b] = [await world.newClient(), await world.newClient()];
+      const v1 = await world.indexedFile(b, { name: B_ONLY_NAME, text: OLD_SHARED_TEXT });
+      const v2 = await newIndexedVersion(b, v1, TEXT_B);
+      await share({ b, granteeId: a }, { fileId: v1.fileId }, 'EDITOR');
+      const asA = createActor(a, Role.CLIENT);
+      const run = (sql: string) => app.asActor(asA, (manager) => manager.query(sql, [v1.fileId]));
+
+      const chunks = (await run(
+        'SELECT version_archivo_id FROM fragmento WHERE archivo_id = $1',
+      )) as { version_archivo_id: string }[];
+      const indexings = (await run(
+        'SELECT version_archivo_id FROM indexacion WHERE archivo_id = $1',
+      )) as { version_archivo_id: string }[];
+      const updated = (await run(
+        "UPDATE fragmento SET texto = 'alterado' WHERE archivo_id = $1",
+      )) as [unknown[], number];
+      const deleted = (await run('DELETE FROM indexacion WHERE archivo_id = $1')) as [
+        unknown[],
+        number,
+      ];
+      const planted = () =>
+        app.asActor(asA, (manager) => insertChunk(manager, v2, { order: 99, text: 'plantado' }));
+
+      expect(chunks).toEqual([{ version_archivo_id: v2.versionId }]);
+      expect(indexings).toEqual([{ version_archivo_id: v2.versionId }]);
+      expect([updated[1], deleted[1]]).toEqual([0, 0]);
+      await expect(planted()).rejects.toThrow(/row-level security/);
+      const [left] = (await world.owner.query(
+        "SELECT count(*)::int AS n FROM fragmento WHERE archivo_id = $1 AND texto <> 'alterado'",
+        [v1.fileId],
+      )) as { n: number }[];
+      expect(left?.n).toBe(2);
     });
   });
 

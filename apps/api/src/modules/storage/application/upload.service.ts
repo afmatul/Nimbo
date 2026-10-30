@@ -217,7 +217,7 @@ export class UploadService {
     try {
       return await this.transactions.withActor(actor, async () => {
         await this.quota.assertCanUpload(actor, input.declaredBytes, input.limits);
-        await this.assertDestinationAccessible(actor, input.folderId);
+        await this.assertDestinationOwned(actor, input.folderId);
         const target = await resolveUploadTarget(
           { nodes: this.nodes, versions: this.versions },
           actor,
@@ -246,10 +246,10 @@ export class UploadService {
     }
   }
 
-  /** 006 CA-6: la carpeta destino debe estar viva y ser del actor; `null` es la raíz. */
-  private async assertDestinationAccessible(actor: Actor, folderId: string | null): Promise<void> {
+  /** 006 CA-6: la carpeta destino debe estar viva y ser del actor (no basta compartida, 012 CA-14); `null` es la raíz. */
+  private async assertDestinationOwned(actor: Actor, folderId: string | null): Promise<void> {
     if (folderId === null) return;
-    if ((await this.nodes.findAccessibleFolder(actor, folderId)) === null) {
+    if ((await this.nodes.findOwnedFolder(actor, folderId)) === null) {
       throw new NodeNotFoundError();
     }
   }

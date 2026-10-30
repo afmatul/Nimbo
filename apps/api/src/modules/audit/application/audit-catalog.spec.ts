@@ -74,6 +74,9 @@ const REAL_ATTRIBUTES: Readonly<Record<AuditAction, Record<string, string | numb
     durationMs: 12_400,
   },
   [AuditAction.FILE_INDEX_RETRIED]: { versionId: VERSION_ID },
+  [AuditAction.SHARE_GRANTED]: { nodeType: 'folder', level: 'EDITOR' },
+  [AuditAction.SHARE_LEVEL_CHANGED]: { nodeType: 'file', level: 'VIEWER' },
+  [AuditAction.SHARE_REVOKED]: { nodeType: 'file', level: 'EDITOR' },
 };
 
 describe('AUDIT_CATALOG', () => {
@@ -174,6 +177,25 @@ describe('AUDIT_CATALOG', () => {
     expect(result.rejections.map((rejection) => rejection.key)).toEqual(['reason']);
   });
 
+  it.each([AuditAction.SHARE_GRANTED, AuditAction.SHARE_LEVEL_CHANGED, AuditAction.SHARE_REVOKED])(
+    '012 CA-19: `%s` guarda tipo de nodo y nivel, y descarta nombre, correo y `OWNER`',
+    (action) => {
+      const raw = {
+        nodeType: 'file',
+        level: 'OWNER',
+        fileName: 'informe.pdf',
+        email: 'b@nimbo.me',
+      };
+
+      const result = sanitizeAttributes(AUDIT_CATALOG[action].attributes, raw);
+
+      expect(result.attributes).toEqual({ nodeType: 'file' });
+      expect(result.rejections.map((rejection) => rejection.key).sort()).toEqual(
+        ['email', 'fileName', 'level'].sort(),
+      );
+    },
+  );
+
   it('CA-4: el tope de texto del saneo es el del motivo en el contrato', () => {
     expect(AUDIT_NOTE_MAX_LENGTH).toBe(CONTRACT_NOTE_MAX_LENGTH);
   });
@@ -201,6 +223,9 @@ describe('resourceTypeOf', () => {
     [AuditAction.PLAN_DEACTIVATED, {}, 'plan'],
     [AuditAction.FILE_INDEXED, {}, 'file'],
     [AuditAction.FILE_INDEX_RETRIED, {}, 'file'],
+    [AuditAction.SHARE_GRANTED, { nodeType: 'folder' }, 'folder'],
+    [AuditAction.SHARE_LEVEL_CHANGED, { nodeType: 'file' }, 'file'],
+    [AuditAction.SHARE_REVOKED, { nodeType: 'folder' }, 'folder'],
   ] as const)('D-3: `%s` con %p es de tipo %p', (action, attributes, expected) => {
     expect(resourceTypeOf(action, attributes)).toBe(expected);
   });

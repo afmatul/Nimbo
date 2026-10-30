@@ -54,6 +54,13 @@ export enum AuditAction {
   FILE_INDEX_UNINDEXABLE = 'file.index_unindexable',
   FILE_INDEX_FAILED = 'file.index_failed',
   FILE_INDEX_RETRIED = 'file.index_retried',
+  /**
+   * Comparticiones (012 CA-19, plan §5): en la actividad del propietario, `attributes { nodeType, level }` y el nodo
+   * como recurso; nunca nombres de archivo ni correos. Revocar y salir (CA-23) son `share.revoked`.
+   */
+  SHARE_GRANTED = 'share.granted',
+  SHARE_LEVEL_CHANGED = 'share.level_changed',
+  SHARE_REVOKED = 'share.revoked',
 }
 
 const AUDIT_ACTIONS: ReadonlySet<string> = new Set(Object.values(AuditAction));

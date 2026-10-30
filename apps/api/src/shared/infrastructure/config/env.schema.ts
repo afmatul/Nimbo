@@ -98,6 +98,11 @@ const DEFAULT_INDEX_RECONCILE_BATCH_SIZE = 100;
 const MAX_INDEX_RECONCILE_BATCH_SIZE = 1000;
 /** «Reintentar» por usuario y minuto (019 CA-13): es una acción manual y rara; el límite frena la repetición. */
 const DEFAULT_RATE_LIMIT_INDEX_RETRY_PER_MINUTE = 10;
+/**
+ * Intentos de compartir por propietario y minuto (012 CA-7, S-4, RNF-07): holgado para quien comparte a mano y bajo
+ * para quien prueba correos (la respuesta de CA-3 dice si un correo tiene cuenta, §5).
+ */
+const DEFAULT_SHARING_RATE_LIMIT_PER_MINUTE = 20;
 /** Modelo de embeddings por defecto (ADR-0007): se vectoriza a 768 dimensiones (ADR-0003). */
 const DEFAULT_GEMINI_EMBEDDING_MODEL = 'gemini-embedding-001';
 /** Modelo que redacta las respuestas del agente (020 D-7, RNF-09). */
@@ -308,6 +313,11 @@ const indexingWorkerShape = {
   GHOSTSCRIPT_BIN: nonEmpty().default(DEFAULT_GHOSTSCRIPT_BIN),
 };
 
+/** Compartir con otro cliente en el `api` (012 plan §2, CA-7). */
+const sharingApiShape = {
+  SHARING_RATE_LIMIT_PER_MINUTE: positiveInt(DEFAULT_SHARING_RATE_LIMIT_PER_MINUTE),
+};
+
 /** Agente con citas en el `api` (020 plan D-7, D-8): modelo, largo máximo de la pregunta (RN-7) y plazos (CA-15). */
 const agentApiShape = {
   GEMINI_CHAT_MODEL: nonEmpty().default(DEFAULT_GEMINI_CHAT_MODEL),
@@ -402,7 +412,7 @@ export const workerEnvObjectSchema = sharedEnvBaseSchema.extend({
 /**
  * Forma del entorno del `api`: además el puerto HTTP público, MinIO, la carga de archivos (005), las carpetas y los
  * accesos rápidos (006), el límite de intentos del canal en vivo (015), la edición (016), los intentos y el reintento
- * de la indexación (019), Gemini y el agente (020), la URL pública de `web`, CORS y la clave que firma los tokens de
+ * de la indexación (019), Gemini y el agente (020), los intentos de compartir (012), la URL pública de `web`, CORS y la clave que firma los tokens de
  * acceso (002), que se declara **solo** aquí.
  */
 export const apiEnvObjectSchema = sharedEnvBaseSchema.extend({
@@ -419,6 +429,7 @@ export const apiEnvObjectSchema = sharedEnvBaseSchema.extend({
   ...indexingApiShape,
   ...geminiShape,
   ...agentApiShape,
+  ...sharingApiShape,
   WEB_PUBLIC_URL: url(),
   CORS_ORIGIN: urlList(),
   JWT_ACCESS_SECRET: z.string().min(JWT_SECRET_MIN_LENGTH, JWT_SECRET_LENGTH_MESSAGE),

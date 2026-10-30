@@ -106,11 +106,12 @@ const RUNTIME_EXPORTS = [
   'NodeNotFoundError',
   'StorageModule',
   'StorageWorkerModule',
+  'WritableAccountPolicy',
   'invoiceObjectKey',
 ] as const;
 
 describe('modules/storage/index.ts', () => {
-  it('CA-3, CA-4, CA-9, RN-1, 011 PD-31, 009, 016 §2, 019 RN-11: exporta exactamente los tokens de límites, de metadatos y de objetos, los dos módulos, las fachadas de edición e indexación y el evento de versión', () => {
+  it('CA-3, CA-4, CA-9, RN-1, 011 PD-31, 009, 016 §2, 019 RN-11, 012 PD-121: exporta exactamente los tokens de límites, de metadatos y de objetos, los dos módulos, las fachadas de edición e indexación, el evento de versión y la política de solo lectura', () => {
     expect(storage.FILE_VERSION_CREATED).toBe('storage.file-version-created');
     expect(Object.keys(storage).sort()).toEqual([...RUNTIME_EXPORTS].sort());
     expect(typeof storage.I_PLAN_LIMITS_PROVIDER).toBe('symbol');

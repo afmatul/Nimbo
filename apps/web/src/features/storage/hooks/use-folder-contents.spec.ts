@@ -44,7 +44,13 @@ function fileNode(n: number): NodeSummary {
 
 /** Respuesta simulada validada con el esquema de `contracts` (la API de orden, A T-04, aún no está). */
 function page(items: readonly NodeSummary[], nextCursor: string | null): FolderContentsResponse {
-  return folderContentsResponseSchema.parse({ folder: null, breadcrumbs: [], items, nextCursor });
+  return folderContentsResponseSchema.parse({
+    folder: null,
+    breadcrumbs: [],
+    items,
+    nextCursor,
+    accessLevel: 'OWNER',
+  });
 }
 
 interface Deferred {

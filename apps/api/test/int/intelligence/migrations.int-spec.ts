@@ -302,19 +302,23 @@ describe('RLS de `indexacion` y `fragmento` (plan 019 §3, RNF-05)', () => {
   });
 
   it.each(TABLES)(
-    'RNF-05: `%s` tiene RLS habilitada y forzada, con una sola política de cliente',
+    'RNF-05: `%s` tiene RLS habilitada y forzada, con la política de cliente y la de lectura de lo compartido (012)',
     async (table) => {
       const [rls] = (await owner.query(
         'SELECT relrowsecurity AS enabled, relforcerowsecurity AS forced FROM pg_class WHERE oid = $1::regclass',
         [table],
       )) as { enabled: boolean; forced: boolean }[];
       const policies = (await owner.query(
-        'SELECT policyname, cmd FROM pg_policies WHERE tablename = $1',
+        'SELECT policyname, cmd FROM pg_policies WHERE tablename = $1 ORDER BY policyname',
         [table],
       )) as { policyname: string; cmd: string }[];
+      const shared = table === 'fragmento' ? 'fragmento_compartido' : 'indexacion_compartida';
 
       expect(rls).toEqual({ enabled: true, forced: true });
-      expect(policies).toEqual([{ policyname: `${table}_cliente`, cmd: 'ALL' }]);
+      expect(policies).toEqual([
+        { policyname: `${table}_cliente`, cmd: 'ALL' },
+        { policyname: shared, cmd: 'SELECT' },
+      ]);
     },
   );
 

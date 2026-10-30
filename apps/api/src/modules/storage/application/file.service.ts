@@ -5,6 +5,7 @@ import { PinoLogger } from 'nestjs-pino';
 
 import { I_CLOCK, I_RATE_LIMITER, I_TRANSACTION_RUNNER } from '../../../shared';
 import type { Actor, IClock, IRateLimiter, ITransactionRunner } from '../../../shared';
+import { AccessLevel, PermissionResolver } from '../../access';
 import { AuditAction, I_AUDIT_LOGGER } from '../../audit';
 import type { IAuditLogger } from '../../audit';
 import { InvalidNodeRequestError, NodeNotFoundError, VersionNotFoundError } from '../domain/errors';
@@ -46,6 +47,12 @@ interface DownloadTarget {
   readonly sizeBytes: bigint;
 }
 
+/** Ficha de `GET /files/:id`: el archivo y el nivel del actor sobre él (012 CA-12). */
+export interface FileDetail {
+  readonly file: File;
+  readonly accessLevel: AccessLevel;
+}
+
 /** `PATCH /files/:id`: nombre nuevo tal como llegó y qué hacer si está ocupado en su carpeta (CA-4). */
 export interface RenameFileCommand {
   readonly name: string;
@@ -79,7 +86,21 @@ export class FileService {
     @Inject(FILE_SERVICE_CONFIG) private readonly config: FileServiceConfig,
     @Inject(PinoLogger) private readonly logger: StorageLogger,
     @Inject(WritableAccountPolicy) private readonly writable: WritableAccountPolicy,
+    @Inject(PermissionResolver) private readonly permissions: PermissionResolver,
   ) {}
+
+  /**
+   * 012 CA-12: la ficha la abre el propietario y quien tiene el archivo compartido, con su nivel de `access` (la regla
+   * no se duplica, como en `FolderService`). Ajeno, inexistente o en la papelera es `NodeNotFoundError`. No se audita.
+   */
+  async getDetail(actor: Actor, fileId: string): Promise<FileDetail> {
+    return this.transactions.withActor(actor, async () => {
+      const file = await this.requireFile(actor, fileId);
+      const accessLevel = await this.permissions.levelFor(actor, file.id);
+      if (accessLevel === null) throw new NodeNotFoundError();
+      return { file, accessLevel };
+    });
+  }
 
   /**
    * CA-4: otro nombre en la misma carpeta, con la regla «(n)» de 005; el tipo, el tamaño y la versión no cambian.
@@ -90,7 +111,7 @@ export class FileService {
     await this.writable.assertWritable(actor);
     return this.transactions.withActor(actor, async () => {
       await this.quotas.lockUsage(actor);
-      const file = await this.requireFile(actor, fileId);
+      const file = await this.requireOwnedFile(actor, fileId);
       const name = await freeFileName(this.nodes, actor, {
         name: requested,
         folderId: file.folderId,
@@ -105,14 +126,15 @@ export class FileService {
 
   /**
    * CA-7: el archivo pasa a `folderId` (`null` = raíz) con la regla «(n)» de 005 en el destino; el tamaño, las
-   * versiones y `espacio_usado` no cambian. Un destino que el actor no ve es `NodeNotFoundError`.
+   * versiones y `espacio_usado` no cambian. Un archivo o un destino que no son del actor es `NodeNotFoundError` (012
+   * CA-14: lo compartido tampoco).
    */
   async move(actor: Actor, fileId: string, command: MoveFileCommand): Promise<File> {
     await this.writable.assertWritable(actor);
     return this.transactions.withActor(actor, async () => {
       await this.quotas.lockUsage(actor);
-      const file = await this.requireFile(actor, fileId);
-      await this.assertFolderAccessible(actor, command.folderId);
+      const file = await this.requireOwnedFile(actor, fileId);
+      await this.assertOwnedFolder(actor, command.folderId);
       const name = await freeFileName(this.nodes, actor, {
         name: file.name,
         folderId: command.folderId,
@@ -132,8 +154,9 @@ export class FileService {
 
   /**
    * La tasa corre antes de resolver el archivo (sin oráculo, CA-19); ajeno, inexistente o en la papelera es
-   * `NodeNotFoundError` (CA-16). Con `versionId` firma esa versión del archivo; si no es suya (inexistente, podada o de
-   * otro archivo) es `VersionNotFoundError` (014 CA-11). La auditoría es de mejor esfuerzo: si falla, se registra y la
+   * `NodeNotFoundError` (CA-16). La versión vigente la descarga también quien la tiene compartida (012 CA-12). Con
+   * `versionId` firma esa versión, que es historial: solo del propietario (014 RN-7, 012 CA-14); si no es del archivo
+   * (inexistente, podada o de otro archivo) es `VersionNotFoundError` (014 CA-11). La auditoría es de mejor esfuerzo: si falla, se registra y la
    * URL se entrega igual.
    */
   async getDownloadUrl(actor: Actor, fileId: string, versionId?: string): Promise<DownloadUrl> {
@@ -159,12 +182,13 @@ export class FileService {
     fileId: string,
     versionId: string | undefined,
   ): Promise<DownloadTarget> {
-    const file = await this.requireFile(actor, fileId);
-    const target = { fileId: file.id, fileName: file.name.value };
     if (versionId === undefined) {
+      const file = await this.requireFile(actor, fileId);
       const objectKey = ObjectKey.of(file.ownerId, file.id, file.currentVersionId).value;
-      return { ...target, objectKey, sizeBytes: file.sizeBytes };
+      return { fileId: file.id, fileName: file.name.value, objectKey, sizeBytes: file.sizeBytes };
     }
+    const file = await this.requireOwnedFile(actor, fileId);
+    const target = { fileId: file.id, fileName: file.name.value };
     const version = await this.versions.find(actor, file.id, versionId);
     if (version === null) throw new VersionNotFoundError();
     return { ...target, objectKey: version.objectKey.value, sizeBytes: version.sizeBytes };
@@ -176,10 +200,16 @@ export class FileService {
     return file;
   }
 
-  /** `null` es la raíz, siempre accesible. */
-  private async assertFolderAccessible(actor: Actor, folderId: string | null): Promise<void> {
+  private async requireOwnedFile(actor: Actor, fileId: string): Promise<File> {
+    const file = await this.nodes.findOwnedLiveFile(actor, fileId);
+    if (file === null) throw new NodeNotFoundError();
+    return file;
+  }
+
+  /** `null` es la raíz, siempre del actor. */
+  private async assertOwnedFolder(actor: Actor, folderId: string | null): Promise<void> {
     if (folderId === null) return;
-    if ((await this.nodes.findAccessibleFolder(actor, folderId)) === null) {
+    if ((await this.nodes.findOwnedFolder(actor, folderId)) === null) {
       throw new NodeNotFoundError();
     }
   }

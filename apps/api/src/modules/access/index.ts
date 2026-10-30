@@ -6,6 +6,7 @@ export { Action } from './domain/action.enum';
 export {
   accessibleNodes,
   ownedFiles,
+  ownedNodes,
   ownedTrashedNodes,
 } from './infrastructure/sql/accessible-nodes';
 export type { AccessibleNodesFragment } from './infrastructure/sql/accessible-nodes';

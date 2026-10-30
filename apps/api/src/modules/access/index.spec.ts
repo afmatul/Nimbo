@@ -12,7 +12,7 @@ type _FragmentHasSqlAndParameters = Expect<
 
 /**
  * API pública de `access` (plan 003 §5, §6.5): nada de `infrastructure/**` salvo `accessibleNodes`,
- * `ownedTrashedNodes` (plan 006 §2) y `ownedFiles` (plan 016 §2, PD-112).
+ * `ownedTrashedNodes` (plan 006 §2), `ownedFiles` (plan 016 §2, PD-112) y `ownedNodes` (plan 012 §2).
  */
 const RUNTIME_EXPORTS = [
   'AccessModule',
@@ -20,6 +20,7 @@ const RUNTIME_EXPORTS = [
   'accessibleNodes',
   'ownedTrashedNodes',
   'ownedFiles',
+  'ownedNodes',
   'AccessLevel',
   'Action',
 ] as const;

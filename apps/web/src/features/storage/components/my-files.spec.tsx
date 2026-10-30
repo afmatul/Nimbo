@@ -56,12 +56,14 @@ const LISTINGS: Readonly<Record<string, FolderContentsResponse>> = {
     breadcrumbs: [],
     items: [folder(ALPHA, null), file('f-root', 'raiz.pdf', null)],
     nextCursor: null,
+    accessLevel: 'OWNER',
   },
   [ALPHA.id]: {
     folder: ALPHA,
     breadcrumbs: [ALPHA],
     items: [folder(FASE3, ALPHA.id), folder(NOTAS, ALPHA.id), file('f-a', 'acta.pdf', ALPHA.id)],
     nextCursor: null,
+    accessLevel: 'OWNER',
   },
 };
 
@@ -498,6 +500,7 @@ describe('MyFiles en solo lectura (spec 010 CA-13, CA-14, RN-6)', () => {
       breadcrumbs: [],
       items: [],
       nextCursor: null,
+      accessLevel: 'OWNER',
     };
     renderMyFiles(readOnlyApi({ folderContents: jest.fn(() => Promise.resolve(empty)) }));
 
