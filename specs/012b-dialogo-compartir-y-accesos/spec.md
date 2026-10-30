@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Borrador (plan Propuesto y tareas; falta la aprobación de Adrián y P-3) |
+| Estado | Borrador (plan aprobado por Adrián, 2026-10-30; falta el mockup de «Compartidos conmigo» para pasar a `Lista`) |
 | Dueño | Fátima |
 | Fase | 2 |
 | Requisitos | RF-16, RF-18; RNF-13, RNF-14 |
@@ -73,7 +73,7 @@ destinatario ve lo que le compartieron, lo abre y sale de ello. Los enlaces púb
 
 ## 9. Preguntas
 - [ABIERTA] P-2 ¿La sección «Enlace público» se oculta hasta la 013 (S-2) o se muestra deshabilitada con «Próximamente»? — bloquea: no
-- [ABIERTA] P-3 ¿Se crea mockup (`/mockup`) para «Compartidos conmigo» o se usan patrones existentes (tabla del explorador)? §7 de `ui-guidelines.md` no tiene su fila. Recomendación: mockup con los 10 estados de §6 antes de `Lista`. No cambia el plan, que es el mismo en ambos casos — bloquea: sí (la pantalla; bloquea `Lista`, no el plan)
+- [RESUELTA 2026-10-30: sí, se crea el mockup; bloquea `Lista` hasta que Adrián lo apruebe] P-3 ¿Se crea mockup (`/mockup`) para «Compartidos conmigo» o se usan patrones existentes (tabla del explorador)? §7 de `ui-guidelines.md` no tiene su fila. Recomendación: mockup con los 10 estados de §6 antes de `Lista`. No cambia el plan, que es el mismo en ambos casos — bloquea: sí (la pantalla; bloquea `Lista`, no el plan)
 - [RESUELTA 2026-10-30: entra en esta spec, Adrián] P-1 ¿La vista «Compartidos conmigo» y «Salir» (010 RN-6) entran? Su API es la 012 CA-22 y CA-23.
 
 ## 10. Registro de cambios

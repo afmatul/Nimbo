@@ -108,5 +108,5 @@ Las suites actuales de `storage` y `app-layout` siguen en verde sin cambio para 
 
 ## 8. Aprobación
 - `architect`: no aplica (sin puerto entre módulos, tecnología nueva ni cambio de arquitectura)
-- Dueños de módulo: cambios en `features/storage` (de Adrián) — por autorizar por Adrián a Fátima (precedente 012 P-3)
-- Adrián: Propuesto — sin aprobar
+- Dueños de módulo: cambios en `features/storage` (de Adrián) — autorizados por Adrián a Fátima (2026-10-30)
+- Adrián: Aprobado (2026-10-30)
