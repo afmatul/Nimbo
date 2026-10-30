@@ -69,6 +69,8 @@ function setup() {
     retainedVersions: 3,
     readOnly: false,
     maxEditors: 0,
+    extraQuotaBytes: 0n,
+    extraQuotaUntil: null,
     planName: 'Plan de prueba',
   });
   const objects = new FakeObjectStorage(journal);
@@ -448,6 +450,8 @@ describe('TrashService.list y summary', () => {
       retainedVersions: 3,
       readOnly: false,
       maxEditors: 0,
+      extraQuotaBytes: 0n,
+      extraQuotaUntil: null,
     });
 
     const page = await service.list(ANA, { limit: 10 });

@@ -49,6 +49,18 @@ describe('SidebarQuota (CA-5, CA-8, D-19 d)', () => {
     expect(card().textContent).toContain('Espacio agotado.');
   });
 
+  it('011b CA-5: con un extra vigente lo nota con su último día; sin extra, no', () => {
+    const withExtra = spaceSummaryWith(4.8 * GB, {
+      extra: { bytes: 50 * GB, until: '2026-11-16T06:00:00.000Z' },
+    });
+    const { rerender } = render(<SidebarQuota state={{ status: 'ready', summary: withExtra }} />);
+    expect(card().textContent).toContain('4,8 GB de 65 GB');
+    expect(card().textContent).toContain('Tu cuota incluye 50 GB extra hasta el 15 nov 2026.');
+
+    rerender(<SidebarQuota state={ready(4.8 * GB)} />);
+    expect(card().textContent).not.toContain('extra');
+  });
+
   it('en el propio resumen la tarjeta no lleva enlaces', () => {
     render(<SidebarQuota state={ready(12.3 * GB)} linked={false} />);
 

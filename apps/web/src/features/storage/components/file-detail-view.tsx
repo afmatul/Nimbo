@@ -5,7 +5,7 @@ import {
   type FileVersionSummary,
   type IndexingStatusResponse,
 } from '@nimbo/contracts';
-import { ChevronLeft, Download, FileX, Folder, History, Info, Undo2 } from 'lucide-react';
+import { ChevronLeft, Download, FileX, Folder, History, Info, MapPin, Undo2 } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
 
@@ -36,6 +36,7 @@ import { useVersionActions, type VersionActions } from '../hooks/use-version-act
 import { locationPath, MY_FILES_LABEL, MY_FILES_PATH } from '../routes';
 import { historySummary, totalVersionBytes, versionToPrune } from '../version-history';
 
+import { AskAgentButton } from './ask-agent-button';
 import { DownloadNoticeBanner, openInBrowser, type DownloadNotice } from './file-row-menu';
 import { CHIP_TYPE_BY_KIND } from './node-rows';
 import { useQuickAccessSidebar } from './quick-access-sidebar';
@@ -59,6 +60,8 @@ export interface FileDetailViewProps {
   readonly optimizerApi: OptimizerApi;
   /** Abre la URL firmada; por omisión, en la pestaña (005 CA-13). */
   readonly openUrl?: (url: string) => void;
+  /** Etiqueta de la cita que trajo hasta aquí (`?ubicacion=`, 020b CA-11); se pinta como texto, nunca se registra. */
+  readonly citedLocation?: string | undefined;
 }
 
 function currentOf(listing: ReadyListing): FileVersionSummary | undefined {
@@ -103,6 +106,7 @@ export function FileDetailView({
   indexingApi,
   optimizerApi,
   openUrl = openInBrowser,
+  citedLocation,
 }: FileDetailViewProps): React.JSX.Element {
   const { api } = useUploads();
   const space = useSpace();
@@ -127,6 +131,8 @@ export function FileDetailView({
       <ReadOnlyNotice />
       <ReadOnlyActionsHint />
       <FileDetailContent
+        fileId={fileId}
+        citedLocation={citedLocation}
         listing={history.listing}
         actions={actions}
         indexing={indexing}
@@ -155,6 +161,8 @@ export function FileDetailView({
 }
 
 interface FileDetailContentProps {
+  readonly fileId: string;
+  readonly citedLocation: string | undefined;
   readonly listing: VersionsListing;
   readonly actions: VersionActions;
   readonly indexing: IndexingStatusView;
@@ -180,7 +188,13 @@ function FileDetailContent(props: FileDetailContentProps): React.JSX.Element {
         <>
           <BackLink folderId={ready?.file.folderId ?? null} />
           <div>
-            <FileHeader ready={ready} actions={actions} indexing={indexing.status} />
+            <FileHeader
+              ready={ready}
+              actions={actions}
+              indexing={indexing.status}
+              fileId={props.fileId}
+            />
+            {ready ? <CitedLocation label={props.citedLocation} /> : null}
             <IndexingBanner status={indexing.status} retry={indexing.retry} />
           </div>
           {props.optimization}
@@ -236,15 +250,20 @@ function BackLink({ folderId }: { readonly folderId: string | null }): React.JSX
   );
 }
 
-/** Tipo, nombre (CA-20), versión actual, estado de indexación (019) y «Descargar» de la versión actual. */
+/**
+ * Tipo, nombre (CA-20), versión actual, estado de indexación (019), «Preguntar sobre esto» (020b CA-15) y «Descargar»
+ * de la versión actual.
+ */
 function FileHeader({
   ready,
   actions,
   indexing,
+  fileId,
 }: {
   readonly ready: ReadyListing | null;
   readonly actions: VersionActions;
   readonly indexing: IndexingStatusResponse | null;
+  readonly fileId: string;
 }): React.JSX.Element {
   const current = ready ? currentOf(ready) : undefined;
   return (
@@ -258,18 +277,38 @@ function FileHeader({
           <IndexingStatusChip status={indexing} />
         </div>
       </div>
-      {current ? (
-        <Button
-          type="button"
-          className="w-full sm:w-auto"
-          aria-label="Descargar la versión actual"
-          onClick={() => void actions.download(current)}
-        >
-          <Download className="h-4 w-4" aria-hidden="true" />
-          Descargar
-        </Button>
-      ) : null}
+      <div className="flex flex-col gap-2 sm:flex-row">
+        {ready ? (
+          <AskAgentButton scope={{ type: 'file', id: fileId, name: ready.file.name }} />
+        ) : null}
+        {current ? (
+          <Button
+            type="button"
+            className="w-full sm:w-auto"
+            aria-label="Descargar la versión actual"
+            onClick={() => void actions.download(current)}
+          >
+            <Download className="h-4 w-4" aria-hidden="true" />
+            Descargar
+          </Button>
+        ) : null}
+      </div>
     </header>
+  );
+}
+
+/** «Ubicación citada: <etiqueta>» (020b CA-11): texto plano, solo con el archivo ya cargado (CA-12). */
+function CitedLocation({
+  label,
+}: {
+  readonly label: string | undefined;
+}): React.JSX.Element | null {
+  if (!label) return null;
+  return (
+    <p className="mt-2 flex items-start gap-2 text-sm text-secondary-foreground">
+      <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+      <span className="wrap-anywhere">{`Ubicación citada: ${label}`}</span>
+    </p>
   );
 }
 

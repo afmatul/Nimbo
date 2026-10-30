@@ -69,8 +69,11 @@ Secreto = nunca en el repositorio, vacío en `.env.example` de staging, redactad
 | `INDEXING_MAX_FILE_BYTES` | | ✓ | | | | `52428800` | 019 RN-7 (DF-37): tope indexable (50 MiB, no varía por plan); por encima, `no_indexable/demasiado_grande` |
 | `INDEX_RECONCILE_INTERVAL_MINUTES` / `INDEX_RECONCILE_BATCH_SIZE` | | ✓ | | | | `1440` / `100` | 019 RN-12: conciliación que encola archivos sin indexar o atascados; lote 1–1000 |
 | `GHOSTSCRIPT_BIN` | | ✓ | | | | `gs` | 019 D-1: ejecutable de Ghostscript para el texto de los PDF; en Windows, `gswin64c` |
-| `GEMINI_API_KEY` | | ✓ | | | ✓ | — | 019 RN-9: clave de embeddings; solo la valida y consume el general, nunca el navegador. `env_file` no limita su inyección física. Sin ella: `fallido/proveedor_no_disponible` (RNF-09) |
-| `GEMINI_EMBEDDING_MODEL` | | ✓ | | | | `gemini-embedding-001` | 019 (ADR-0007): modelo de embeddings, vectorizado a 768 dimensiones (ADR-0003) |
+| `GEMINI_API_KEY` | ✓ | ✓ | | | ✓ | — | 019 y 020 D-8 (enmienda RN-9 de la 019): clave de Gemini, una sola definición. El `worker` indexa y el `api` vectoriza la pregunta y redacta la respuesta del agente; nunca el navegador. Opcional: sin ella la indexación termina `fallido/proveedor_no_disponible`, el agente responde `AGENT_UNAVAILABLE` y el resto sigue (RNF-09). `worker-optimizer` no la recibe (ADR-0038) |
+| `GEMINI_EMBEDDING_MODEL` | ✓ | ✓ | | | | `gemini-embedding-001` | 019 (ADR-0007): modelo de embeddings, vectorizado a 768 dimensiones (ADR-0003); el `api` lo usa para la pregunta (020 D-8) |
+| `GEMINI_CHAT_MODEL` | ✓ | | | | | `gemini-3.5-flash` | 020 D-7: modelo que redacta las respuestas del agente |
+| `AGENT_MAX_QUESTION_CHARS` | ✓ | | | | | `1000` | 020 RN-7: largo máximo de la pregunta; `GET /agent/status` lo informa (`maxQuestionChars`) |
+| `AGENT_MODEL_FIRST_CHUNK_TIMEOUT_MS` / `AGENT_MODEL_IDLE_TIMEOUT_MS` | ✓ | | | | | `5000` / `5000` | 020 CA-15: plazos del modelo hasta el primer trozo y entre trozos; vencidos, `AGENT_UNAVAILABLE` sin descontar. Fijados en T-10 con `pnpm --filter api agent:measure` (plan 020 §6) |
 | `OPTIMIZER_MAX_FILE_BYTES` | ✓ | | | | | `40000000` | 021 RN-8, CA-5: tope de bytes optimizable (40 MB, medido en el spike de ADR-0037, plan §6 B); por encima, `no_disponible(tamano)` |
 | `OPTIMIZER_MAX_ATTEMPTS` | ✓ | | | | | `3` | Solo el `api`: intentos al encolar y caducidad; el consumidor usa `job.opts.attempts` |
 | `OPTIMIZER_TIMEOUT_MS` | ✓ | | | | | `100000` | Definición compartida por el `api` (caducidad: intentos × 3 × tiempo + 5 min) y `worker-optimizer` (sharp); no la valida el general |

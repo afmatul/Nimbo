@@ -1,6 +1,6 @@
 import { formatGtq, type BillingHistoryResponse, type SubscriptionView } from '@nimbo/contracts';
 
-import { longDayLabel } from '../../../lib/format-date';
+import { longDayLabel, longLastDayLabel } from '../../../lib/format-date';
 
 export type Card = NonNullable<BillingHistoryResponse['paymentMethod']>;
 
@@ -12,9 +12,15 @@ export const cardLabel = ({ brand, last4 }: Card): string =>
 export const priceLabel = (priceCents: number): string =>
   priceCents > 0 ? formatGtq(priceCents) : 'Gratis';
 
-/** El vencimiento en largo; Personal no vence. */
+const NO_EXPIRY = 'Sin vencimiento';
+
+/** «vence el» y «hasta el»: el último día en que rige el plan (011b RN-8); Personal no vence. */
 export const expiryLabel = ({ expiresAt }: SubscriptionView): string =>
-  expiresAt === null ? 'Sin vencimiento' : longDayLabel(expiresAt);
+  expiresAt === null ? NO_EXPIRY : longLastDayLabel(expiresAt);
+
+/** «Venció el» y lo que se aplica ese día (cambio programado, paso a Personal): el instante de `vence_en`. */
+export const expiryInstantLabel = ({ expiresAt }: SubscriptionView): string =>
+  expiresAt === null ? NO_EXPIRY : longDayLabel(expiresAt);
 
 /** La bajada a Personal está programada (CA-21): no hay cobro ni renovación automática que mostrar. */
 export const isDowngradeToPersonal = ({ pendingPlan }: SubscriptionView): boolean =>

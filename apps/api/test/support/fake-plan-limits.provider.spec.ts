@@ -13,6 +13,8 @@ describe('FakePlanLimitsProvider', () => {
       retainedVersions: 3,
       readOnly: false,
       maxEditors: 0,
+      extraQuotaBytes: 0n,
+      extraQuotaUntil: null,
       planName: 'Plan de prueba',
     });
 
@@ -23,6 +25,8 @@ describe('FakePlanLimitsProvider', () => {
       retainedVersions: 3,
       readOnly: false,
       maxEditors: 0,
+      extraQuotaBytes: 0n,
+      extraQuotaUntil: null,
       planName: 'Plan de prueba',
     });
   });
@@ -35,6 +39,8 @@ describe('FakePlanLimitsProvider', () => {
       retainedVersions: 3,
       readOnly: false,
       maxEditors: 0,
+      extraQuotaBytes: 0n,
+      extraQuotaUntil: null,
       planName: 'Plan de prueba',
     });
 
@@ -46,6 +52,8 @@ describe('FakePlanLimitsProvider', () => {
       retainedVersions: 3,
       readOnly: false,
       maxEditors: 0,
+      extraQuotaBytes: 0n,
+      extraQuotaUntil: null,
     });
 
     await expect(provider.limitsFor(actor)).resolves.toEqual({
@@ -55,6 +63,8 @@ describe('FakePlanLimitsProvider', () => {
       retainedVersions: 3,
       readOnly: false,
       maxEditors: 0,
+      extraQuotaBytes: 0n,
+      extraQuotaUntil: null,
       planName: 'Plan de prueba',
     });
   });
@@ -67,6 +77,8 @@ describe('FakePlanLimitsProvider', () => {
       retainedVersions: 3,
       readOnly: false,
       maxEditors: 0,
+      extraQuotaBytes: 0n,
+      extraQuotaUntil: null,
       planName: 'Plan de prueba',
     });
 

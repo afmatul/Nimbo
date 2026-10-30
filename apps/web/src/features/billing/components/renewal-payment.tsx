@@ -11,7 +11,7 @@ import * as React from 'react';
 import { StateView } from '../../../components/nimbo/state-view';
 import { TextLink } from '../../../components/nimbo/text-link';
 import { messageForCode } from '../../../lib/error-catalog';
-import { longDayLabel } from '../../../lib/format-date';
+import { longDayLabel, longLastDayLabel } from '../../../lib/format-date';
 import type { AuthFetch } from '../../identity/session/auth-fetch';
 import { useAuthFetch } from '../../identity/session/use-auth-fetch';
 import { fetchBillingHistory } from '../billing-history-api';
@@ -31,8 +31,9 @@ const UNAVAILABLE_CODES: Readonly<Record<NonNullable<Renewal['unavailableReason'
   PLAN_CHANGE_PENDING: BILLING_ERROR_CODES.BILLING_PLAN_CHANGE_PENDING,
 };
 
+/** Empieza el día del instante de inicio y termina el último día en que rige el fin (011b RN-8). */
 const rangeLabel = (startsAt: string, endsAt: string): string =>
-  `del ${longDayLabel(startsAt)} al ${longDayLabel(endsAt)}`;
+  `del ${longDayLabel(startsAt)} al ${longLastDayLabel(endsAt)}`;
 
 const periodRange = (renewal: Renewal): string =>
   rangeLabel(renewal.periodStartsAt, renewal.periodEndsAt);
@@ -81,7 +82,7 @@ export function RenewalForm({
       period={periodOf(subscription, renewal)}
       approved={(payment) => (
         <ApprovedCard
-          message={`Renovaste tu plan ${payment.plan.name} hasta el ${longDayLabel(payment.expiresAt)}. Te enviamos el comprobante a ${payment.receiptEmail}.`}
+          message={`Renovaste tu plan ${payment.plan.name} hasta el ${longLastDayLabel(payment.expiresAt)}. Te enviamos el comprobante a ${payment.receiptEmail}.`}
           facts={[
             { label: 'Referencia', value: payment.reference },
             { label: 'Periodo nuevo', value: paidRange(renewal, payment.expiresAt) },

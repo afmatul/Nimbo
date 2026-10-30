@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { DataSource } from 'typeorm';
 
 import type { ChunkToStore } from '../../../src/modules/intelligence/application/ports/i-chunk-repository.port';
+import { TypeOrmChunkSearch } from '../../../src/modules/intelligence/infrastructure/persistence/typeorm-chunk-search';
 import { TypeOrmChunkRepository } from '../../../src/modules/intelligence/infrastructure/persistence/typeorm-chunk.repository';
 import type { Actor } from '../../../src/shared';
 import { createActor, Role } from '../../../src/shared';
@@ -29,11 +30,15 @@ const chunk = (order: number, axis = order): ChunkToStore => ({
   embedding: axisVector(axis),
 });
 
-/** `TypeOrmChunkRepository` contra el Postgres del arnés como `nimbo_app` (plan 019 §2, DF-14). */
+/**
+ * `TypeOrmChunkRepository` contra el Postgres del arnés como `nimbo_app` (plan 019 §2, DF-14). Las lecturas por
+ * similitud de 019 pasan por `TypeOrmChunkSearch.vectorSearch` con ámbito `all` (plan 020 D-2).
+ */
 describe('TypeOrmChunkRepository (plan 019 §2)', () => {
   let owner: DataSource;
   let app: AppDatabase;
   let repository: TypeOrmChunkRepository;
+  let search: TypeOrmChunkSearch;
   let ana: Actor;
   let bruno: Actor;
   let support: Actor;
@@ -52,15 +57,20 @@ describe('TypeOrmChunkRepository (plan 019 §2)', () => {
   const ordersOf = async (actor: Actor, fileId: string): Promise<number[]> =>
     (await app.asActor(actor, () => repository.findByFile(actor, fileId))).map((row) => row.order);
 
-  const nearestFiles = async (actor: Actor, axis: number, limit = 5): Promise<string[]> =>
-    (await app.asActor(actor, () => repository.nearest(actor, axisVector(axis), limit))).map(
-      (row) => row.fileId,
+  /** Por similitud, con la búsqueda del agente (020 D-2 retiró `nearest`) sobre todos sus archivos. */
+  const nearest = (actor: Actor, axis: number, limit: number) =>
+    app.asActor(actor, () =>
+      search.vectorSearch(actor, { vector: axisVector(axis), scope: { type: 'all' }, limit }),
     );
+
+  const nearestFiles = async (actor: Actor, axis: number, limit = 5): Promise<string[]> =>
+    (await nearest(actor, axis, limit)).map((row) => row.fileId);
 
   beforeAll(async () => {
     owner = await connectAsOwner();
     app = await connectAsAppDatabase();
     repository = new TypeOrmChunkRepository(app.context);
+    search = new TypeOrmChunkSearch(app.context);
     const ids = await owner.transaction(async (manager) => [
       await insertAccount(manager),
       await insertAccount(manager),
@@ -154,7 +164,7 @@ describe('TypeOrmChunkRepository (plan 019 §2)', () => {
     const version = await fileOf(bruno);
     await store(bruno, version, [chunk(0, 702), chunk(1, 703), chunk(2, 704)]);
 
-    const rows = await app.asActor(bruno, () => repository.nearest(bruno, axisVector(703), 1));
+    const rows = await nearest(bruno, 703, 1);
 
     expect(rows.map((row) => [row.fileId, row.order])).toEqual([[version.fileId, 1]]);
   });

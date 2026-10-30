@@ -166,7 +166,10 @@ describe('DomainExceptionFilter (CA-16)', () => {
       .withCorrelationId('corr-500')
       .find((line) => line.event === 'http.unhandled_error');
     expect(unhandled).toBeDefined();
-    expect(unhandled?.err).toMatchObject({ message: expect.stringContaining('secret.ts') });
+    expect(unhandled).toMatchObject({
+      errorClass: 'Error',
+      errorMessage: expect.stringContaining('secret.ts'),
+    });
   });
 
   it('CA-16: `BadRequestException` (ValidationPipe) → 400 `VALIDATION_FAILED` con la misma forma', async () => {

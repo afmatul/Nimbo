@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import type { DataSource } from 'typeorm';
 
-import { CrearOptimizacion20261026100000 } from '../../../src/migrations/20261026100000-crear-optimizacion';
+import { CrearOptimizacion20261026110000 } from '../../../src/migrations/20261026110000-crear-optimizacion';
 import { createActor, Role } from '../../../src/shared';
 import type { Actor } from '../../../src/shared';
 import { connectAsOwner } from '../../support/database-urls';
@@ -16,7 +16,7 @@ import {
   removeAccounts,
 } from '../storage/storage-test-db';
 
-const migration = new CrearOptimizacion20261026100000();
+const migration = new CrearOptimizacion20261026110000();
 
 interface FileVersionRow {
   readonly fileId: string;

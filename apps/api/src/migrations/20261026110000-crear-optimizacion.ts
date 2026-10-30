@@ -16,8 +16,8 @@ import type { MigrationInterface, QueryRunner } from 'typeorm';
  * - RLS solo para el **dueño del archivo** (`propietario_id = nimbo_actor_id()`): un Editor que ve un archivo compartido
  *   (012) no ve ni crea optimizaciones (RN-5). Sin política para roles internos ni para `nimbo_app` sin actor: 0 filas.
  */
-export class CrearOptimizacion20261026100000 implements MigrationInterface {
-  name = 'CrearOptimizacion20261026100000';
+export class CrearOptimizacion20261026110000 implements MigrationInterface {
+  name = 'CrearOptimizacion20261026110000';
 
   async up(queryRunner: QueryRunner): Promise<void> {
     await this.createTable(queryRunner);

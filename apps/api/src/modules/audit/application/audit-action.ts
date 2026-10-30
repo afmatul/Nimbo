@@ -18,6 +18,9 @@ export enum AuditAction {
   ACCOUNT_INTERNAL_CREATED = 'account.internal_created',
   /** Alta inicial por comando (011 CA-7): actor de sistema y sin afectado. */
   ACCOUNT_BOOTSTRAP_ADMIN = 'account.bootstrap_admin',
+  /** Ajustes del Administrador (011b RN-4): recurso y afectado, la cuenta; el extra y su fin, o el `vence_en` nuevo. */
+  ACCOUNT_QUOTA_ADJUSTED = 'account.quota_adjusted',
+  ACCOUNT_VALIDITY_ADJUSTED = 'account.validity_adjusted',
   /** Soporte o Administración consultó los metadatos de un cliente (011 CA-13): recurso y afectado, la cuenta. */
   CLIENT_FILES_VIEWED = 'client.files_viewed',
   /** Catálogo (011): recurso `plan`, sin afectado (ningún cliente los ve). */

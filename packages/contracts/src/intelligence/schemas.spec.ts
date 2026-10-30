@@ -43,10 +43,12 @@ describe('contratos de `intelligence` (plan 019 §4)', () => {
     );
   });
 
-  it('CA-13: el único código propio es reintentar fuera de `fallido`', () => {
-    expect(INTELLIGENCE_ERROR_CODES).toEqual({
-      INTELLIGENCE_INDEXING_NOT_RETRYABLE: 'INTELLIGENCE_INDEXING_NOT_RETRYABLE',
-    });
+  it('CA-13: el único código de la indexación es reintentar fuera de `fallido`', () => {
+    const indexingCodes = Object.keys(INTELLIGENCE_ERROR_CODES).filter((code) =>
+      code.startsWith('INTELLIGENCE_'),
+    );
+
+    expect(indexingCodes).toEqual(['INTELLIGENCE_INDEXING_NOT_RETRYABLE']);
   });
 
   it('CA-14: el estado trae `state`, `reason`, `updatedAt` y `canRetry`', () => {

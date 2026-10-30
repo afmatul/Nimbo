@@ -46,6 +46,8 @@ const LIMITS: PlanLimits = {
   retainedVersions: 10,
   readOnly: false,
   maxEditors: 3,
+  extraQuotaBytes: 0n,
+  extraQuotaUntil: null,
 };
 
 function setup(limits: PlanLimits = LIMITS) {

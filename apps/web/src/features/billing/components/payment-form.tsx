@@ -19,7 +19,7 @@ import { Card } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { messageForCode } from '../../../lib/error-catalog';
-import { dayLabel } from '../../../lib/format-date';
+import { lastDayLabel } from '../../../lib/format-date';
 import { cn } from '../../../lib/utils';
 import { ServerErrorAlert } from '../../identity/components/server-error-alert';
 import type { AuthFetch } from '../../identity/session/auth-fetch';
@@ -91,7 +91,7 @@ export function PaymentForm({ plan, apiPublicUrl, authFetch }: PaymentFormProps)
           message={`Tu plan ${payment.plan.name} ya está activo. Te enviamos el comprobante a ${payment.receiptEmail}.`}
           facts={[
             { label: 'Referencia', value: payment.reference },
-            { label: 'Vence el', value: dayLabel(payment.expiresAt) },
+            { label: 'Vence el', value: lastDayLabel(payment.expiresAt) },
           ]}
           link={{ href: MY_FILES_PATH, label: 'Ir a Mis archivos' }}
         />

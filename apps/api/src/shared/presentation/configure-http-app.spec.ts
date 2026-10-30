@@ -30,7 +30,7 @@ class DiscardLogsModule {}
 
 @Controller()
 class EchoController {
-  @Post(['auth/register', 'backoffice/echo', 'echo'])
+  @Post(['auth/register', 'backoffice/echo', 'agent/ask', 'echo'])
   @HttpCode(200)
   echo(@Body() body: unknown): unknown {
     return body ?? null;
@@ -80,6 +80,13 @@ describe('configureHttpApp: `no-store` antes del analizador (001 CA-6)', () => {
     expect(response.headers['cache-control']).toBe('no-store');
   });
 
+  it('020 CA-18: las respuestas de `/api/v1/agent/*` (preguntas, citas y nombres) llevan `no-store`', async () => {
+    const response = await postRaw('/api/v1/agent/ask', '{"question":"¿Qué dice?"}');
+
+    expect(response.status).toBe(200);
+    expect(response.headers['cache-control']).toBe('no-store');
+  });
+
   it('CA-6: la ruta se compara sin distinguir mayúsculas, como el enrutador de Express', async () => {
     const response = await postRaw('/API/v1/Auth/register', MALFORMED_JSON);
 
@@ -94,7 +101,7 @@ describe('configureHttpApp: `no-store` antes del analizador (001 CA-6)', () => {
     expect(response.headers['cache-control']).toBe('no-store');
   });
 
-  it('CA-6: fuera de `/api/v1/auth/` y `/api/v1/backoffice/` no se fija `no-store`', async () => {
+  it('CA-6: fuera de `/api/v1/auth/`, `/api/v1/backoffice/` y `/api/v1/agent/` no se fija `no-store`', async () => {
     const response = await postRaw('/api/v1/echo', MALFORMED_JSON);
 
     expect(response.status).toBe(400);

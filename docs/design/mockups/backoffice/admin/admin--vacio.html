@@ -405,22 +405,16 @@
 
   /* Límites y vigencia (011b) */
   .limits { margin-top: 20px; }
-  .limits-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; }
-  .limits-head h2 { margin: 0; }
-  .limits-head .sub { margin: 2px 0 0; }
-  .limits-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
-  .limit { min-width: 0; padding-right: 16px; border-right: 1px solid var(--border); }
-  .limit:last-child { padding-right: 0; border-right: 0; }
-  .limit-label { margin: 0; font-size: 12.5px; font-weight: 500; color: var(--secondary-foreground); }
-  .limit-value { margin: 2px 0 0; font-size: 20px; line-height: 1.3; font-weight: 700; overflow-wrap: anywhere; }
-  .limit-note { margin: 4px 0 0; font-size: 12.5px; color: var(--muted-foreground); }
-  .limit .use-bar { max-width: 240px; margin-top: 8px; }
+  .limits-badge { margin-top: 12px; }
+  .limits .facts { margin-top: 12px; }
   .limits-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
   .limits-actions .btn { min-height: 40px; }
   .limits-actions .btn-quitar { margin-left: auto; }
   .limits .audit-note { margin-top: 12px; }
-  .limits .alert { margin: 0 0 16px; }
-  .skeleton-line.tall { margin-top: 10px; height: 18px; }
+  .limits .alert { margin: 16px 0 0; }
+  .limits .state { min-height: 0; }
+  .state-loading { border: 1px dashed var(--border); background: var(--card); }
+  .state-loading > .ico { color: var(--primary); }
 
   /* Diálogo con formulario (ajustar cuota y extender vigencia): base compartida en area.js */
   .input-group { display: flex; align-items: stretch; max-width: 220px; }
@@ -434,14 +428,7 @@
   .calc-danger strong { color: var(--destructive); }
   .readonly-note { margin-top: 16px; }
 
-  @media (max-width: 900px) {
-    .limits-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .limit:nth-child(2) { padding-right: 0; border-right: 0; }
-  }
   @media (max-width: 600px) {
-    .limits-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
-    .limit { padding: 0 0 12px; border-right: 0; border-bottom: 1px solid var(--border); }
-    .limit:last-child { padding-bottom: 0; border-bottom: 0; }
     .limits-actions .btn { width: 100%; min-height: 44px; }
     .limits-actions .btn-quitar { margin-left: 0; }
     .input-group { max-width: none; }

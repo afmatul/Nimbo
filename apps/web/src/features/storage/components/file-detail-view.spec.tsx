@@ -9,10 +9,13 @@ import {
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
+import * as React from 'react';
 
 import { forgetSession, rememberSession } from '../../identity/session/session-memory';
 import { SessionProvider } from '../../identity/session/session-provider';
 import { sessionFixture } from '../../identity/session/test-session';
+import { AgentProvider, useAgent } from '../../intelligence';
+import { agentStatus } from '../../intelligence/test-agent';
 import { fakeIndexingApi } from '../../intelligence/test-indexing';
 import { fakeOptimizerApi } from '../../optimizer/test-optimization';
 import type { StorageApi } from '../api';
@@ -400,5 +403,87 @@ describe('FileDetailView en solo lectura (spec 010 CA-13, CA-14)', () => {
     expect((restore as HTMLButtonElement).disabled).toBe(true);
     const download = within(itemOf(4)).getByRole('button', { name: /Descargar/ });
     expect((download as HTMLButtonElement).disabled).toBe(false);
+  });
+});
+
+/** Lo que el panel tiene abierto: el ámbito vigente, o «cerrado». */
+function AgentProbe(): React.JSX.Element {
+  const { isOpen, conversation } = useAgent();
+  return (
+    <output data-testid="agente">
+      {isOpen ? JSON.stringify(conversation.state.scope) : 'cerrado'}
+    </output>
+  );
+}
+
+async function renderWithAgent(api: StorageApi, citedLocation?: string): Promise<void> {
+  const deps = { loadStatus: jest.fn(() => Promise.resolve(agentStatus())), ask: jest.fn() };
+  render(
+    <AgentProvider deps={deps}>
+      <SessionProvider apiPublicUrl="http://localhost/api/v1">
+        <UploadsProvider api={api}>
+          <UploadsSpaceProvider>
+            <FileDetailView
+              fileId={FILE_ID}
+              indexingApi={fakeIndexingApi()}
+              optimizerApi={fakeOptimizerApi()}
+              citedLocation={citedLocation}
+            />
+            <AgentProbe />
+          </UploadsSpaceProvider>
+        </UploadsProvider>
+      </SessionProvider>
+    </AgentProvider>,
+  );
+  await act(async () => undefined);
+}
+
+describe('FileDetailView con el agente (020b CA-11, CA-12, CA-15)', () => {
+  beforeEach(() => {
+    global.fetch = jest.fn(() => never<Response>());
+    rememberSession(sessionFixture());
+  });
+
+  afterEach(() => forgetSession());
+
+  it('CA-15: «Preguntar sobre esto» abre el panel con el archivo como ámbito', async () => {
+    await renderWithAgent(fakeApi());
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Preguntar sobre esto' }));
+
+    expect(JSON.parse(screen.getByTestId('agente').textContent ?? '')).toEqual({
+      type: 'file',
+      id: FILE_ID,
+      name: 'Informe_avance_sep.docx',
+    });
+  });
+
+  it('CA-11: la cita muestra «Ubicación citada» como texto, sin interpretar HTML', async () => {
+    await renderWithAgent(fakeApi(), 'Hoja <b>Ventas</b> & fila 3');
+
+    expect(await screen.findByText('Ubicación citada: Hoja <b>Ventas</b> & fila 3')).toBeTruthy();
+    expect(document.querySelector('b')).toBeNull();
+  });
+
+  it('CA-12 (no-encontrado): solo «No encontramos este archivo.», sin la ubicación ni el botón', async () => {
+    const gone = new StorageRequestError(404, STORAGE_ERROR_CODES.STORAGE_NODE_NOT_FOUND);
+    await renderWithAgent(
+      fakeApi({ fileVersions: jest.fn(() => Promise.reject(gone)) }),
+      'Página 3',
+    );
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'No encontramos este archivo.' }),
+    ).toBeTruthy();
+    expect(screen.queryByText(/Ubicación citada/)).toBeNull();
+    expect(screen.queryByText(/Página 3/)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Preguntar sobre esto' })).toBeNull();
+  });
+
+  it('sin la sesión del agente (roles internos) no hay «Preguntar sobre esto»', async () => {
+    await renderView(fakeApi());
+    await screen.findByRole('list', { name: 'Historial de versiones' });
+
+    expect(screen.queryByRole('button', { name: 'Preguntar sobre esto' })).toBeNull();
   });
 });

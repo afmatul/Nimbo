@@ -44,8 +44,8 @@ const OPTIMIZATION_ATTRIBUTES = {
  * acciones de 005 y 006 (D-1) con los atributos que emiten hoy, las dos de versiones de 014 (plan §5; un reemplazo
  * reutiliza `file.upload_completed` con `replaced`, `versionId` y `versionNumber`), las siete internas de 011 (plan
  * §2), que no guardan nombres ni correos, las tres de edición de 016 (plan §5), las nueve de la suscripción de 010
- * (plan §2, sin datos de tarjeta) y las cuatro de indexación de 019 (D-6). Cada spec agrega las suyas. Una acción del
- * enum sin entrada no compila.
+ * (plan §2, sin datos de tarjeta), las cuatro de indexación de 019 (D-6) y los ajustes de cuenta de 011b (plan §4).
+ * Cada spec agrega las suyas. Una acción del enum sin entrada no compila.
  */
 export const AUDIT_CATALOG = {
   [AuditAction.FILE_UPLOAD_COMPLETED]: {
@@ -102,6 +102,14 @@ export const AUDIT_CATALOG = {
     attributes: { role: INTERNAL_ROLES },
   },
   [AuditAction.ACCOUNT_BOOTSTRAP_ADMIN]: ON_ACCOUNT,
+  [AuditAction.ACCOUNT_QUOTA_ADJUSTED]: {
+    resourceType: 'account',
+    attributes: { extraBytes: 'number', until: 'text' },
+  },
+  [AuditAction.ACCOUNT_VALIDITY_ADJUSTED]: {
+    resourceType: 'account',
+    attributes: { expiresAt: 'text' },
+  },
   [AuditAction.CLIENT_FILES_VIEWED]: ON_ACCOUNT,
   [AuditAction.PLAN_CREATED]: ON_PLAN,
   [AuditAction.PLAN_DEACTIVATED]: ON_PLAN,

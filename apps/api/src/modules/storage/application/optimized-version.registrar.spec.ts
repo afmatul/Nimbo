@@ -36,6 +36,8 @@ const LIMITS = {
   planName: 'Plan de prueba',
   maxFileBytes: 1_000_000n,
   storageQuotaBytes: 10_000_000n,
+  extraQuotaBytes: 0n,
+  extraQuotaUntil: null,
   trashRetentionDays: 7,
   retainedVersions: 3,
   maxEditors: 3,

@@ -39,6 +39,7 @@ Son la base para defender la arquitectura en la exposición final (enunciado §6
 | 0033 | [Extracción de texto (`fflate`, `fast-xml-parser`, Ghostscript), embeddings por REST y relay `index-status`](0033-extraccion-de-texto-y-embeddings-por-rest.md) (spec 019, DF-78) | Aceptado |
 | 0034 | [SDD express en un pase: spec, plan y tareas juntos](0034-sdd-express-un-pase.md) (enmienda la secuencia de ADR-0023) | Propuesto |
 | 0035 | [Escrituras internas acotadas: funciones `SECURITY DEFINER` para la cuenta y la papelera](0035-escrituras-internas-acotadas-de-ajustes-y-restauracion.md) (spec 011b; PR-A y PR-B; **enmienda ADR-0005 y ADR-0021**, delimita ADR-0032 regla 3) | Aceptado |
+| 0036 | [`intelligence` lee `archivo` y `carpeta` por SQL de solo lectura para recuperar con el filtro en la consulta](0036-intelligence-lee-archivo-y-carpeta-por-sql-de-solo-lectura.md) (tercera excepción acotada, DF-83; spec 020) | Aceptado |
 | 0037 | [Las imágenes se recomprimen con `sharp` (libvips) dentro del `worker`](0037-recompresion-de-imagenes-con-sharp.md) (spec 021; enmendado por ADR-0038) | Aceptado |
 | 0038 | [El optimizador corre en un proceso `worker-optimizer` propio, sobre una imagen glibc](0038-optimizador-en-worker-dedicado-glibc.md) (spec 021 T-08/T-10; **enmienda ADR-0001 y ADR-0037**; cierra PD-128) | Aceptado |
 

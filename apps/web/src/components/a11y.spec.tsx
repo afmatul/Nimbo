@@ -78,7 +78,14 @@ describe('Auditoría automatizada de accesibilidad WCAG AA (CA-7)', () => {
       <div>
         <FileTypeChip extension="docx" />
         <FileTypeChip extension="pdf" />
-        <CitationChip filename="especificacion.docx" location="pág. 3" />
+        <CitationChip
+          citation={{
+            fileId: '00000000-0000-4000-8000-000000000001',
+            fileName: 'especificacion.docx',
+            label: 'p. 3 (ubicación aproximada)',
+            isCertain: false,
+          }}
+        />
       </div>,
     );
   });

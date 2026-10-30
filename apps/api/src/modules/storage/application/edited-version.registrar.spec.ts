@@ -34,6 +34,8 @@ const LIMITS = {
   trashRetentionDays: 30,
   retainedVersions: 3,
   maxEditors: 3,
+  extraQuotaBytes: 0n,
+  extraQuotaUntil: null,
   readOnly: false,
 };
 

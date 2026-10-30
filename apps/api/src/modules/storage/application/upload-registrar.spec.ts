@@ -35,6 +35,8 @@ const LIMITS = {
   retainedVersions: 3,
   readOnly: false,
   maxEditors: 0,
+  extraQuotaBytes: 0n,
+  extraQuotaUntil: null,
 };
 const VERIFIED: VerifiedUpload = { sizeBytes: 500n, kind: 'docx' };
 
