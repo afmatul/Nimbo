@@ -330,14 +330,32 @@ describe('optimizar y registrar (021 T-04)', () => {
     expect(await versionsOf(context.fileId)).toHaveLength(2);
   });
 
-  it('CA-17: solo lectura rechaza run con 403 sin cambiar la estimada', async () => {
+  it('CA-17: solo lectura rechaza run con 403 sin cambiar cuota, versiones ni encolar', async () => {
     const context = await prepare();
     storage.limits.setReadOnly(true);
+    const summary = await context.client.spaceSummary();
+    expect(summary.status).toBe(200);
+    expect(summary.body).toMatchObject({ readOnly: true, usedBytes: context.original.length });
+    const usedBefore = await usedBytesOf(storage.owner, context.client.id);
+    const currentBefore = await currentOf(context.fileId);
+    const versionsBefore = await versionsOf(context.fileId);
+    const optimizationBefore = await rowOf(context.fileId);
+    expect(optimizationBefore.estado).toBe('estimada');
+    const enqueue = jest.spyOn(
+      storage.testApp.app.get<Queue>(getQueueToken('optimization')),
+      'add',
+    );
+
     const response = await run(context);
+
     expect(response.status).toBe(403);
     expect(response.body).toMatchObject({ code: 'STORAGE_ACCOUNT_READ_ONLY' });
-    expect((await rowOf(context.fileId)).estado).toBe('estimada');
-    expect(await versionsOf(context.fileId)).toHaveLength(1);
+    expect(await usedBytesOf(storage.owner, context.client.id)).toBe(usedBefore);
+    expect(await currentOf(context.fileId)).toBe(currentBefore);
+    expect(await versionsOf(context.fileId)).toEqual(versionsBefore);
+    expect(await rowOf(context.fileId)).toEqual(optimizationBefore);
+    expect(enqueue).not.toHaveBeenCalled();
+    expect(await queue.getJob(`run-${context.optimizationId}`)).toBeUndefined();
   });
 
   it('plan §5: una cuenta sobre cuota sí optimiza; no exige espacio libre', async () => {
