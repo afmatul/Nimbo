@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Borrador |
+| Estado | Lista (plan aprobado por Adrián, 2026-10-30) |
 | Dueño | Fátima |
 | Fase | 2 |
 | Requisitos | RF-16, RF-18; apoyan RF-05, RF-07, RF-33, RNF-05, RNF-07, RNF-17 |
@@ -103,7 +103,7 @@ Sin interfaz en esta spec: la pantalla es la 012b. Para el `ui-designer`, estos 
 ## 9. Preguntas
 - [ABIERTA] P-1 ¿El destinatario recibe un aviso (correo o en la aplicación) al compartirle, y ve en su actividad que ganó o perdió un acceso? Sin RF que lo pida; se asume que no (S-5) — bloquea: no
 - [ABIERTA] P-2 ¿Se acepta revelar con un mensaje único que un correo tiene o no cuenta (CA-3), acotado por el límite de CA-7, o se prefiere una respuesta neutra que nunca lo diga? Solo cambiaría CA-3 y la 012b — bloquea: no
-- [ABIERTA] P-3 ¿Adrián autoriza a Fátima a cambiar `access`, `storage`, `identity` y `audit` en los archivos que nombra el plan (precedente 011, 2026-10-07/08), o los hace él? Va en el plan §8 — bloquea: no
+- [RESUELTA 2026-10-30: sí, Adrián autoriza] P-3 ¿Adrián autoriza a Fátima a cambiar `access`, `storage`, `identity` y `audit` en los archivos que nombra el plan (precedente 011, 2026-10-07/08), o los hace él? Va en el plan §8 — bloquea: no
 - [ABIERTA] P-4 El «Salir» que la 010 RN-6 permite al destinatario: ¿entra en la 012b o se descarta? — bloquea: no
 
 ## 10. Registro de cambios

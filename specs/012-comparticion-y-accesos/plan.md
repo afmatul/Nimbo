@@ -156,6 +156,6 @@ Pruebas existentes que **deben seguir en verde** sin cambio: las suites de `stor
 - Documentos a actualizar en el PR: `architecture.md` §3, §5 y §6; `design-model.md` (M3a, M3b, M1, T2, §4 mapeo); READMEs de `sharing` y `access`.
 
 ## 8. Aprobación
-- `architect` (puerto nuevo entre módulos, arista `identity → sharing` y lectura de `usuario.estado` en la función): Pendiente
-- Dueños de módulo: cambios en `access`, `storage`, `identity` y `audit` (de Adrián) — autorización pendiente (spec P-3)
-- Adrián: Pendiente
+- `architect` (puerto nuevo entre módulos, arista `identity → sharing` y lectura de `usuario.estado` en la función): aceptado por Adrián como tech lead (2026-10-30); sin pasada del subagente
+- Dueños de módulo: cambios en `access`, `storage`, `identity` y `audit` (de Adrián) — autorizados por Adrián, dueño de los módulos, a Fátima (2026-10-30; spec P-3)
+- Adrián: Aprobado (2026-10-30)
