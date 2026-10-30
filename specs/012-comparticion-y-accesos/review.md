@@ -87,7 +87,7 @@ recibió nada y para la propia propietaria (ISO-20, ISO-21). El actor no se pued
   central») y CA-21 («la base lo niega»). Corrección: (a) una política `AS RESTRICTIVE` en `sesion_edicion` para `INSERT`/`UPDATE`
   con `SESSION_OF_FILE_OWNER`; (b) un trigger `BEFORE UPDATE` que rechace `NEW IS DISTINCT FROM OLD` cuando
   `nimbo_actor_id() <> OLD.propietario_id` (`SELECT … FOR UPDATE` no dispara triggers, así el bloqueo del Editor sigue funcionando).
-  **Resuelto** (T-FIX-1, `35617f5`): bastó (a), sin trigger. En la migración C, `sesion_edicion_cambio_de_la_propietaria`
+  **Resuelto** (T-FIX-1, `63970a8`): bastó (a), sin trigger. En la migración C, `sesion_edicion_cambio_de_la_propietaria`
   (`AS RESTRICTIVE FOR UPDATE`, `WITH CHECK`: el actor es la propietaria y ningún archivo que ve es de otra cuenta; no exige que el
   archivo exista, para marcar `fallida` la sesión de uno purgado) y `sesion_edicion_compartida_bloqueo` con `WITH CHECK (false)`. El
   bloqueo `FOR UPDATE` solo evalúa el `USING`, así que el Editor sigue serializando su entrada. Además, el Editor solo da de alta o
@@ -105,7 +105,7 @@ recibió nada y para la propia propietaria (ISO-20, ISO-21). El actor no se pued
   destinatarios. Corrección: FK compuestas `(carpeta_id, propietario_id) → carpeta(id, propietario_id)` (y lo mismo para
   `carpeta_padre_id` y `eliminado_con_carpeta_id`, con `UNIQUE (id, propietario_id)`), que evitan la recursión de una política de
   `carpeta` sobre `carpeta`; y `AND a.propietario_id = r.propietario_id` en la línea 48.
-  **Resuelto** (T-FIX-2, `8f83020`): FK compuestas en la migración nueva `20261101100400-carpeta-del-mismo-propietario.ts` (las FK son de
+  **Resuelto** (T-FIX-2, `bbb681f`): FK compuestas en la migración nueva `20261101100400-carpeta-del-mismo-propietario.ts` (las FK son de
   005/006), con `uq_carpeta_id_propietario` y `ON DELETE SET NULL (columna)` para no anular `propietario_id`. Se eligieron frente
   a un `WITH CHECK` porque la integridad referencial no pasa por RLS (vale para todo rol, también el dueño) y no recurre sobre
   `carpeta`. `nodos_compartidos()` compara el propietario al unir los archivos de cada carpeta. ISO-29/30/31 esperan el error de
@@ -115,7 +115,7 @@ recibió nada y para la propia propietaria (ISO-20, ISO-21). El actor no se pued
   el id, inserta una sesión `activa` a su nombre sobre un archivo ajeno (ISO-34). Como `uq_sesion_edicion_abierta` es global por
   archivo, la propietaria ya no puede abrir el editor (denegación de servicio). Viene de la 016; la 012 entrega los ids. Corrección: la
   misma política restrictiva de SEC-2 y una FK a `archivo`.
-  **Resuelto** (T-FIX-1, `35617f5`): `sesion_edicion_alta_de_la_propietaria` (`AS RESTRICTIVE FOR INSERT`) exige que
+  **Resuelto** (T-FIX-1, `63970a8`): `sesion_edicion_alta_de_la_propietaria` (`AS RESTRICTIVE FOR INSERT`) exige que
   `propietario_id` sea el dueño de un archivo que el actor ve, para la propietaria y para el Editor. Sin FK a `archivo`: DF-70 la
   descarta a propósito (la purga no borra la evidencia de una sesión `fallida`) y la política ya niega un id ajeno o inexistente.
 - **[SEC-3] media, sugerencia** · `apps/api/src/migrations/20261101100300-auditoria-al-salir-de-comparticion.ts:16-25`. Riesgo: mientras
@@ -123,7 +123,7 @@ recibió nada y para la propia propietaria (ISO-20, ISO-21). El actor no se pued
   libres (texto de phishing) y `ocurrido_en` arbitrario (ISO-37). Lo demás se rechaza: otras acciones, nodos heredados, otro afectado,
   un tercero, y leer, cambiar o borrar la actividad ajena (ISO-35, ISO-36). Corrección: en el `WITH CHECK`, exigir
   `atributos = jsonb_build_object('nodeType', …, 'level', c.nivel)` y que `ocurrido_en` caiga en una ventana corta alrededor de `now()`.
-  **Resuelto** (T-FIX-3, `b599cb8`): la política exige `atributos = jsonb_build_object('nodeType', tipo_recurso, 'level', c.nivel)` de esa
+  **Resuelto** (T-FIX-3, `6814ee6`): la política exige `atributos = jsonb_build_object('nodeType', tipo_recurso, 'level', c.nivel)` de esa
   compartición y `ocurrido_en` dentro de `now() ± 5 minutos` (holgura entre el reloj de la API y el de Postgres). ISO-37 prueba
   atributos de más, nivel falso y fecha antigua; `audit-leave-policy.int-spec.ts` escribe el evento exacto y suma los falsos.
 - **[SEC-5] baja, informativa** (abierto, aceptado: PD-141) · `apps/api/src/shared/infrastructure/persistence/typeorm-transaction-runner.ts:15`. `app.actor_id` es
@@ -147,7 +147,8 @@ recibió nada y para la propia propietaria (ISO-20, ISO-21). El actor no se pued
 > **Nota del reviewer sobre la sección «Seguridad»** (se conserva tal cual): los «Resuelto» se cumplen en el código (sin
 > `it.failing` en `test/isolation` ni en `test/int/sharing`; ISO-29 a ISO-38 en verde), pero los commits citados `35617f5`,
 > `8f83020` y `b599cb8` no están en la rama (son anteriores a un rebase). Los equivalentes, con el mismo `patch-id`, son
-> `63970a8` (T-FIX-1), `bbb681f` (T-FIX-2) y `6814ee6` (T-FIX-3). Ver S-1.
+> `63970a8` (T-FIX-1), `bbb681f` (T-FIX-2) y `6814ee6` (T-FIX-3). Ver S-1. **Resuelto** (T-FIX-5): los hallazgos citan ya esos
+> hashes; el squash merge los cambiará otra vez.
 
 ## UI
 - No aplica: la spec no tiene pantalla (la 012b). La web solo suma `accessLevel: 'OWNER'` a fixtures de pruebas.
@@ -174,19 +175,24 @@ recibió nada y para la propia propietaria (ISO-20, ISO-21). El actor no se pued
   del developer» de `tasks.md`. Corrección: una fila por desviación en el «Registro de cambios» de la spec (o en el plan §7)
   para que Adrián las ratifique junto con I-1. La del orden cambia la respuesta: en solo lectura, un correo sin cuenta da `422`
   y no `403`.
+  **Resuelto** (T-FIX-5): plan §2, §3, §5 y §7 («Desviaciones de la implementación — pendientes de ratificar por Adrián») y una fila en el registro de cambios de la spec; la ratificación sigue pendiente.
 - **[I-3]** `docs/sdd/design-model.md:121-133` (M3a, M3b), `:55-81` (M1), `:207-212` (T2), `:255` (§4) — el plan §7
   (`plan.md:168`) pide actualizarlos en este PR y solo cambió una línea de M2. Faltan: `ownedNodes` y `nodos_compartidos()` en
   M3a; `SharingController` + `ReceivedSharesController`, `SharingService` + `ReceivedSharesService`, `IShareRepository`,
   `IShareeDirectory` y `AccessGrant`/`PublicLinkService` diferidos en M3b; `ShareeDirectoryAdapter` en M1; `SHARE_GRANTED`,
   `SHARE_LEVEL_CHANGED`, `SHARE_REVOKED` y la política de Salir en T2; columnas, índices y RLS de `comparticion` en §4.
+  **Resuelto** (T-FIX-5): M1, M2, M3a, M3b, T2 y §4 actualizados.
 - **[I-4]** `docs/sdd/architecture.md:118` (§3 regla 3) y `:215` (§6 punto 3) — no dicen que `access` lee `usuario.estado` en
   `nodos_compartidos()` (la excepción que DF-85 declara «documentada» en §3 regla 3) ni que las escrituras y los destinos usan
   `ownedNodes`. Agregar una línea en cada uno.
+  **Resuelto** (T-FIX-5): una línea en §3 regla 3 y otra en §6 punto 3.
 - **[I-5]** `docs/sdd/design-findings.md:42,111,112` — DF-31 sigue «Abierto (… pasa a `Aceptado` con la aprobación de
   Adrián)» y DF-84/DF-85 «Abierto (propuesto; pide al `architect`)», aunque el plan está aprobado y el §8 recoge la aceptación
   de Adrián. Pasarlos a `Aceptado (plan 012, 2026-10-30)`, con lo aplicado.
+  **Resuelto** (T-FIX-5): DF-31, DF-84 y DF-85 en `Aceptado (plan 012, 2026-10-30)`, con lo aplicado.
 - **[S-1]** `review.md`, sección «Seguridad»: que el `security-auditor` cambie los hashes por `63970a8`, `bbb681f` y `6814ee6` (o
   los quite, porque el squash merge los cambia de nuevo).
+  **Resuelto** (T-FIX-5): hashes sustituidos en «Seguridad».
 - **[S-2]** `apps/api/src/modules/sharing/infrastructure/persistence/typeorm-share.repository.ts:122` — el comentario «su
   propietario (revocar, CA-10)» no cubre `recipient` (Salir, CA-23): «Quién borra la fila: el propietario (revocar) o el
   destinatario (Salir)».
@@ -206,6 +212,7 @@ recibió nada y para la propia propietaria (ISO-20, ISO-21). El actor no se pued
 - PD-109 (`pendientes.md:103`) dice «Resuelto (012 T-09)» y sigue en la tabla de abiertos: moverlo a «Cerrados».
 - PD-121 (`pendientes.md:127`): anotar que la parte de la 012 está hecha (T-03 exporta la política, T-06 la aplica) y quitar
   «aceptar (012)», porque no existe; quedan 013 y 021.
+- **Resuelto** (T-FIX-5): DF-31, DF-84 y DF-85 aceptados; PD-109 en «Cerrados»; PD-121 sin «aceptar» y con la parte de 012 hecha.
 
 ## Documentos del plan §7
 `architecture.md` §3 (fila `identity`) ✅, §5 (`IShareeDirectory`) ✅, §6 punto 10 ✅, §3 regla 3 y §6 punto 3 ❌ (I-4) ·
