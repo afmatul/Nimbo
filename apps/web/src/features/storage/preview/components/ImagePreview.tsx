@@ -2,10 +2,11 @@
 
 import * as React from 'react';
 
-import type { PreviewFailure } from '../preview-failure';
+import { readerFailure, type PreviewFailure } from '../preview-failure';
 import type { ReaderEvents } from '../reader-events';
 import { detectImageMime } from '../readers/image-mime';
 import { fetchObjectBytes } from '../readers/object-bytes';
+import { concatenateChunks, discardStream, releaseStreamReader } from '../readers/stream-bytes';
 
 type ImagePreviewProps = ReaderEvents & {
   readonly url: string;
@@ -31,14 +32,7 @@ type ImageAttempt = {
 async function releaseReader(attempt: ImageAttempt, cancel: boolean): Promise<void> {
   const reader = attempt.reader;
   attempt.reader = undefined;
-  if (reader === undefined) return;
-  try {
-    if (cancel) await reader.cancel();
-  } catch {
-    // Cancelar un reader fallido puede devolver la excepción privada del transporte.
-  } finally {
-    reader.releaseLock();
-  }
+  if (reader !== undefined) await releaseStreamReader(reader, cancel);
 }
 
 function revokeImageUrl(attempt: ImageAttempt): void {
@@ -65,17 +59,7 @@ function failAttempt(attempt: ImageAttempt, reason: 'corrupt' | 'unavailable'): 
   if (!attempt.active) return;
   void disposeAttempt(attempt);
   attempt.publish(null);
-  attempt.onFailure({ reason, correlationId: '' });
-}
-
-function concatenateChunks(chunks: readonly Uint8Array[]): Uint8Array<ArrayBuffer> {
-  const bytes = new Uint8Array(chunks.reduce((length, chunk) => length + chunk.byteLength, 0));
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return bytes;
+  attempt.onFailure(readerFailure(reason));
 }
 
 async function readImageBody(
@@ -98,19 +82,11 @@ async function readImageBody(
   }
 }
 
-async function discardLateBody(body: ReadableStream<Uint8Array>): Promise<void> {
-  try {
-    await body.cancel();
-  } catch {
-    // El intento ya no existe: tanto la entrega como su eventual error se descartan.
-  }
-}
-
 async function loadImage(url: string, attempt: ImageAttempt): Promise<void> {
   try {
     const { body } = await fetchObjectBytes({ url, signal: attempt.controller.signal });
     if (!attempt.active) {
-      await discardLateBody(body);
+      await discardStream(body);
       return;
     }
     const bytes = await readImageBody(attempt, body);

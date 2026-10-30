@@ -10,6 +10,8 @@ import type { SharedEnvBase } from '../config/env.schema';
 export const REDIS_CLIENT = Symbol('REDIS_CLIENT');
 
 const CONNECT_TIMEOUT_MS = 1000;
+/** Un comando que no responde en 1 s falla en vez de colgar la petición (la tasa de 017 falla cerrada). */
+const COMMAND_TIMEOUT_MS = 1000;
 /** Un solo reintento por comando: con Redis caído, quien lo usa falla rápido y cerrado (001 CA-15). */
 const MAX_RETRIES_PER_REQUEST = 1;
 
@@ -31,7 +33,7 @@ const createRedisClient = (env: SharedEnvBase, logger: RedisErrorLogger): Redis 
   const client = new Redis(env.REDIS_URL, {
     lazyConnect: true,
     connectTimeout: CONNECT_TIMEOUT_MS,
-    commandTimeout: 1000,
+    commandTimeout: COMMAND_TIMEOUT_MS,
     maxRetriesPerRequest: MAX_RETRIES_PER_REQUEST,
   });
   client.on('error', (error: unknown) => {

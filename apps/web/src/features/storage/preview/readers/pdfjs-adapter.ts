@@ -1,6 +1,6 @@
 import type * as PdfJs from 'pdfjs-dist';
 
-import type { PreviewFailure } from '../preview-failure';
+import { readerFailure, type PreviewFailure } from '../preview-failure';
 
 import { openPdfRangeTransport, type PdfRanges } from './pdf-range-transport';
 import { renderPdfText, type PdfTextReading } from './pdf-text-reader';
@@ -111,7 +111,7 @@ function disposePdf(reading: PdfReading): Promise<void> {
 
 function failPdf(reading: PdfReading, reason: PreviewFailure['reason']): void {
   if (reading.controller.signal.aborted || reading.failure !== undefined) return;
-  reading.failure = { reason, correlationId: '' };
+  reading.failure = readerFailure(reason);
   reading.options.onFailure(reading.failure);
   void disposePdf(reading);
 }

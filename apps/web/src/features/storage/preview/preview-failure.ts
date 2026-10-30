@@ -29,9 +29,14 @@ const API_REASONS: Readonly<Record<string, PreviewFailureReason>> = {
   [SHARED_ERROR_CODES.UNAUTHENTICATED]: 'unauthenticated',
 };
 
+/** Fallo detectado en el navegador: no viene de una respuesta de la API, así que no tiene identificador de correlación. */
+export function readerFailure(reason: PreviewFailureReason): PreviewFailure {
+  return { reason, correlationId: '' };
+}
+
 /** Solo metadata pública cerrada; no transportar la excepción ni sus detalles privados. */
 export function classifyPreviewFailure(caught: unknown): PreviewFailure {
-  if (!(caught instanceof ApiClientError)) return { reason: 'unexpected', correlationId: '' };
+  if (!(caught instanceof ApiClientError)) return readerFailure('unexpected');
   const apiReason = Object.prototype.hasOwnProperty.call(API_REASONS, caught.code)
     ? API_REASONS[caught.code]
     : undefined;

@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 
-import type { PreviewFailure } from '../preview-failure';
+import { readerFailure, type PreviewFailure } from '../preview-failure';
 import type { ReaderEvents } from '../reader-events';
 import type { OoxmlFailureReason } from '../readers/ooxml-package-reader';
 import type { OoxmlWorkerOptions, OoxmlWorkerReading } from '../readers/ooxml-worker-client';
@@ -89,7 +89,7 @@ function eventsOf<K extends OoxmlFormat>(
       if (!attempt.active) return;
       void disposeAttempt(attempt);
       setView(initialView<K>());
-      callbacks.current.onFailure({ reason, correlationId: '' });
+      callbacks.current.onFailure(readerFailure(reason));
     },
   };
 }

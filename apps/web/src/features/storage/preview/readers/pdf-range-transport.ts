@@ -1,6 +1,6 @@
 import type * as PdfJs from 'pdfjs-dist';
 
-import type { PreviewFailure } from '../preview-failure';
+import { readerFailure, type PreviewFailure } from '../preview-failure';
 
 import { fetchObjectBytes } from './object-bytes';
 import { readStreamBytes } from './stream-bytes';
@@ -44,7 +44,7 @@ async function deliverRange(
     if (!reading.controller.signal.aborted) transport.onDataRange(range.begin, chunk);
   } catch {
     if (reading.controller.signal.aborted) return;
-    reading.onFailure({ reason: 'unavailable', correlationId: '' });
+    reading.onFailure(readerFailure('unavailable'));
     reading.controller.abort();
   }
 }

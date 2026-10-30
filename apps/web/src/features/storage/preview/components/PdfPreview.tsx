@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 
-import type { PreviewFailure } from '../preview-failure';
+import { readerFailure, type PreviewFailure } from '../preview-failure';
 import type { ReaderEvents } from '../reader-events';
 import {
   openPdfSession,
@@ -69,10 +69,7 @@ async function loadPdf(
     }
     publish({ session, attempt });
   } catch (error) {
-    attempt.fail({
-      reason: error instanceof PdfReadError ? error.reason : 'unavailable',
-      correlationId: '',
-    });
+    attempt.fail(readerFailure(error instanceof PdfReadError ? error.reason : 'unavailable'));
   }
 }
 
@@ -95,7 +92,7 @@ function usePdfReading({
         if (!attempt.active) return;
         void disposeAttempt(attempt);
         setLoaded(null);
-        callbacks.current.onFailure({ reason: failure.reason, correlationId: '' });
+        callbacks.current.onFailure(readerFailure(failure.reason));
       },
       ready: () => {
         if (attempt.active) callbacks.current.onReady?.();
@@ -136,7 +133,7 @@ function usePdfPage({ session, attempt, pageNumber }: PdfCanvasProps) {
         attempt.ready();
       })
       .catch(() => {
-        if (!controller.signal.aborted) attempt.fail({ reason: 'unavailable', correlationId: '' });
+        if (!controller.signal.aborted) attempt.fail(readerFailure('unavailable'));
       });
     return () => controller.abort();
   }, [session, attempt, pageNumber]);

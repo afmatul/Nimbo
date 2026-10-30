@@ -2,9 +2,10 @@
 
 import * as React from 'react';
 
-import type { PreviewFailure } from '../preview-failure';
+import { readerFailure, type PreviewFailure } from '../preview-failure';
 import type { ReaderEvents } from '../reader-events';
 import { fetchObjectBytes } from '../readers/object-bytes';
+import { discardStream, releaseStreamReader } from '../readers/stream-bytes';
 
 type TextPreviewProps = ReaderEvents & {
   readonly url: string;
@@ -24,14 +25,7 @@ type TextAttempt = {
 async function releaseReader(attempt: TextAttempt, cancel: boolean): Promise<void> {
   const reader = attempt.reader;
   attempt.reader = undefined;
-  if (reader === undefined) return;
-  try {
-    if (cancel) await reader.cancel();
-  } catch {
-    // Cancelar un reader fallido puede devolver la excepción privada del transporte.
-  } finally {
-    reader.releaseLock();
-  }
+  if (reader !== undefined) await releaseStreamReader(reader, cancel);
 }
 
 function disposeAttempt(attempt: TextAttempt): Promise<void> {
@@ -46,7 +40,7 @@ function failAttempt(attempt: TextAttempt, reason: 'corrupt' | 'unavailable'): v
   if (!attempt.active) return;
   void disposeAttempt(attempt);
   attempt.publish('');
-  attempt.onFailure({ reason, correlationId: '' });
+  attempt.onFailure(readerFailure(reason));
 }
 
 function decodeFragment(
@@ -84,19 +78,11 @@ async function readTextBody(attempt: TextAttempt, body: ReadableStream<Uint8Arra
   }
 }
 
-async function discardLateBody(body: ReadableStream<Uint8Array>): Promise<void> {
-  try {
-    await body.cancel();
-  } catch {
-    // El intento ya no existe: tanto la entrega como su eventual error se descartan.
-  }
-}
-
 async function loadText(url: string, attempt: TextAttempt): Promise<void> {
   try {
     const { body } = await fetchObjectBytes({ url, signal: attempt.controller.signal });
     if (!attempt.active) {
-      await discardLateBody(body);
+      await discardStream(body);
       return;
     }
     await readTextBody(attempt, body);

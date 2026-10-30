@@ -1,3 +1,5 @@
+import { releaseStreamReader } from './stream-bytes';
+
 type ObjectByteRange = {
   readonly start: number;
   readonly end: number;
@@ -91,21 +93,11 @@ async function discardBody(response: Response): Promise<void> {
   }
 }
 
-async function releaseReader(reader: BodyReading['reader'], cancel: boolean): Promise<void> {
-  try {
-    if (cancel) await reader.cancel();
-  } catch {
-    // Una cancelación puede rechazar con el error privado que originó el fallo del body.
-  } finally {
-    reader.releaseLock();
-  }
-}
-
 function finishReading(reading: BodyReading, cancel: boolean): Promise<void> {
   if (reading.finished) return reading.cleanup ?? Promise.resolve();
   reading.finished = true;
   reading.signal.removeEventListener('abort', reading.onAbort);
-  reading.cleanup = releaseReader(reading.reader, cancel);
+  reading.cleanup = releaseStreamReader(reading.reader, cancel);
   return reading.cleanup;
 }
 

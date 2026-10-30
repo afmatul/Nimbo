@@ -1,4 +1,4 @@
-import type { PreviewFailure } from '../preview-failure';
+import { readerFailure, type PreviewFailure } from '../preview-failure';
 
 import type { PdfRuntime } from './pdfjs-adapter';
 
@@ -46,7 +46,7 @@ function resourceFactory(
         if (!response.ok) throw new Error('Recurso PDF no disponible.');
         return new Uint8Array(await response.arrayBuffer());
       } catch {
-        if (!signal.aborted) onFailure({ reason: 'unavailable', correlationId: '' });
+        if (!signal.aborted) onFailure(readerFailure('unavailable'));
         throw new Error('Recurso PDF no disponible.');
       }
     }
@@ -59,7 +59,7 @@ function watchWorker(
   onFailure: (failure: PreviewFailure) => void,
 ): () => void {
   const failed = (): void => {
-    if (!signal.aborted) onFailure({ reason: 'unavailable', correlationId: '' });
+    if (!signal.aborted) onFailure(readerFailure('unavailable'));
   };
   port.addEventListener('error', failed);
   port.addEventListener('messageerror', failed);

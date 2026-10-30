@@ -6,6 +6,7 @@ import Link from 'next/link';
 import type * as React from 'react';
 
 import { DropdownMenuItem } from '../../../../components/ui/dropdown-menu';
+import { isPreviewableKind } from '../previewable-kind';
 import { previewPathOf } from '../routes';
 
 export function PreviewMenuItem({
@@ -13,7 +14,7 @@ export function PreviewMenuItem({
 }: {
   readonly file: FileSummary;
 }): React.JSX.Element | null {
-  if (file.kind === 'docx' || file.kind === 'otro') return null;
+  if (!isPreviewableKind(file.kind)) return null;
   return (
     <DropdownMenuItem asChild>
       <Link href={previewPathOf(file.id)} prefetch={false}>

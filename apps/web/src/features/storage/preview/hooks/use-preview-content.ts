@@ -1,9 +1,9 @@
 'use client';
 
-import type { FileKind } from '@nimbo/contracts';
 import * as React from 'react';
 
-import type { PreviewFailure } from '../preview-failure';
+import { readerFailure, type PreviewFailure } from '../preview-failure';
+import { isPreviewableKind } from '../previewable-kind';
 import type { ReaderEvents } from '../reader-events';
 
 import { PREVIEW_WAIT_DELAY_MS, type PreviewState } from './use-preview';
@@ -37,7 +37,6 @@ type PreviewContent = Required<ReaderEvents> & {
   readonly retire: () => Promise<boolean>;
 };
 const LOADING: ReadingView = { status: 'loading', prolonged: false };
-const MANAGED_KINDS: readonly (FileKind | undefined)[] = ['imagen', 'texto', 'pdf', 'xlsx', 'pptx'];
 
 function readingControl(ref: ReadingSession['control']): ReadingControl {
   if (ref.current === null) ref.current = { active: true, pending: true };
@@ -118,7 +117,7 @@ function useReaderCallbacks(session: ReadingSession, publish: (value: CurrentRea
       if (!control.active) return;
       stopWaiting(control);
       const reason = readerReason(failure, session.expiresAt);
-      publish({ session, view: { status: 'failure', failure: { reason, correlationId: '' } } });
+      publish({ session, view: { status: 'failure', failure: readerFailure(reason) } });
     },
     [session, publish],
   );
@@ -141,7 +140,7 @@ function useReaderCleanup(session: ReadingSession): NonNullable<ReaderEvents['re
 export function usePreviewContent(state: PreviewState, generation: number): PreviewContent {
   const delivery = state.status === 'success' ? state.delivery : undefined;
   const kind = delivery?.file.kind;
-  const managedReader = MANAGED_KINDS.includes(kind);
+  const managedReader = isPreviewableKind(kind);
   const expiresAt = delivery === undefined ? undefined : Date.parse(delivery.expiresAt);
   const session = React.useMemo<ReadingSession>(
     () => ({
