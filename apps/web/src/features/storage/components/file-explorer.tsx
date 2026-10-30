@@ -9,6 +9,7 @@ import { Button } from '../../../components/ui/button';
 import type { ListControls } from '../hooks/use-folder-contents';
 import { MY_FILES_LABEL } from '../routes';
 
+import { AskAgentButton } from './ask-agent-button';
 import { ExplorerErrorState } from './explorer-error-state';
 import { FolderBackLink } from './folder-breadcrumbs';
 import { LoadMore } from './load-more';
@@ -146,11 +147,14 @@ export function FileExplorer({
       )}
       <header className="flex flex-wrap items-center justify-between gap-3">
         <ExplorerTitle place={place} loading={status === 'loading'} />
-        <ExplorerActions
-          onNewFolder={onNewFolder}
-          onUpload={openPicker}
-          disabled={uploads.readOnly}
-        />
+        <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+          <AskAboutFolder folderId={folderId} place={place} />
+          <ExplorerActions
+            onNewFolder={onNewFolder}
+            onUpload={openPicker}
+            disabled={uploads.readOnly}
+          />
+        </div>
       </header>
       <ReadOnlyUploadFeedback readOnly={uploads.readOnly} blockedDrop={uploads.blockedDrop} />
 
@@ -181,6 +185,18 @@ export function FileExplorer({
       </UploadDropzone>
     </section>
   );
+}
+
+/** Ámbito carpeta (020b CA-15) cuando ya se sabe su nombre; la raíz no es una carpeta y el selector tampoco la ofrece. */
+function AskAboutFolder({
+  folderId,
+  place,
+}: {
+  readonly folderId: string | null;
+  readonly place: Place;
+}): React.JSX.Element | null {
+  if (folderId === null || place.name === undefined) return null;
+  return <AskAgentButton scope={{ type: 'folder', id: folderId, name: place.name }} />;
 }
 
 /** El nombre de la carpeta llega con el listado: mientras tanto, una línea de esqueleto anunciada como «Cargando carpeta». */

@@ -7,8 +7,9 @@
   de este módulo y ya no lo cruza nadie (cierra PD-18).
 - **Puede depender de**: shared, storage, access, audit (resultados de la indexación, 019 CA-21), billing
   (`IAgentQuota`, 020), realtime (`docs/sdd/architecture.md` §3; el lint de fronteras lo hace cumplir).
-- **Expone por HTTP** solo el estado de indexación y «Reintentar» (`GET /files/:fileId/indexing`,
-  `POST /files/:fileId/indexing/retry`, `@Roles(CLIENT)`, 019 plan §4); el aviso en vivo `indexing.status-changed` sale
+- **Expone por HTTP** el estado de indexación y «Reintentar» (`GET /files/:fileId/indexing`,
+  `POST /files/:fileId/indexing/retry`, 019 plan §4) y el agente (`POST /agent/ask` en `text/event-stream` y
+  `GET /agent/status`, 020 plan §4), todo `@Roles(CLIENT)`; el aviso en vivo `indexing.status-changed` sale
   por el canal de 015, directo desde el `api` o por el relay de `index-status` desde el `worker` (ADR-0033 d).
 - **No expone** fragmentos ni texto por HTTP en la 019: los lee la 020 con `accessibleNodes(actor)` antes de ordenar
   por similitud (DF-14). Ningún rol interno ve texto indexado (019 CA-20).
@@ -21,14 +22,16 @@
 
 ## Puertos (todos internos: ninguno cruza módulos)
 
-| Puerto                                                             | Implementación                                                                          |
-| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
-| `ITextExtractor` (`ExtractorRegistry` decide qué tipos se indexan) | `DocxExtractor`, `PdfExtractor`, `PlainTextExtractor`, `XlsxExtractor`, `PptxExtractor` |
-| `IEmbeddingProvider` (768 dimensiones)                             | `GeminiEmbeddingProvider` (REST, sin SDK; ADR-0007, ADR-0033)                           |
-| `ICommandRunner` (sin shell, con tiempo límite y salida acotada)   | `ChildProcessRunner`; interno hasta que 021 lo reutilice (DF-80)                        |
-| `IIndexQueue` (`enqueue`, `enqueueRetry`)                          | `BullmqIndexQueue` (ya no `editing → intelligence`, DF-78)                              |
-| `IIndexStatusNotifier`                                             | `RealtimeIndexStatusNotifier` (`api`) y `QueuedIndexStatusNotifier` (`worker`)          |
-| `IIndexingRepository`, `IChunkRepository`                          | `TypeOrmIndexingRepository`, `TypeOrmChunkRepository`                                   |
+| Puerto                                                                             | Implementación                                                                          |
+| ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `ITextExtractor` (`ExtractorRegistry` decide qué tipos se indexan)                 | `DocxExtractor`, `PdfExtractor`, `PlainTextExtractor`, `XlsxExtractor`, `PptxExtractor` |
+| `IEmbeddingProvider` (768 dimensiones; `task` `document` o `query`)                | `GeminiEmbeddingProvider` (REST, sin SDK; ADR-0007, ADR-0033)                           |
+| `ILanguageModel` (`stream(prompt, signal)`, solo `api`)                            | `GeminiFlashModel` (SSE por `fetch`, plazos al primer trozo y entre trozos; 020)        |
+| `ICommandRunner` (sin shell, con tiempo límite y salida acotada)                   | `ChildProcessRunner`; interno hasta que 021 lo reutilice (DF-80)                        |
+| `IIndexQueue` (`enqueue`, `enqueueRetry`)                                          | `BullmqIndexQueue` (ya no `editing → intelligence`, DF-78)                              |
+| `IIndexStatusNotifier`                                                             | `RealtimeIndexStatusNotifier` (`api`) y `QueuedIndexStatusNotifier` (`worker`)          |
+| `IIndexingRepository`, `IChunkRepository`                                          | `TypeOrmIndexingRepository`, `TypeOrmChunkRepository`                                   |
+| `IChunkSearch` (léxica, vectorial, `hasIndexed`, `scopeExists`; solo lectura, 020) | `TypeOrmChunkSearch`; SQL en `chunk-sql.ts`, único con `archivo`/`carpeta` (ADR-0036)   |
 
 ## Flujo: evento → worker → relay
 
@@ -69,7 +72,7 @@ nombres ni texto.
 
 - `indexacion` y `fragmento` tienen RLS (`ENABLE` + `FORCE`) solo para `CLIENT`; Administrador, Soporte y Operador ven 0
   filas y las rutas de estado y «Reintentar» responden `SHARED_FORBIDDEN` (CA-20).
-- Toda consulta lleva `actor` y usa `TransactionContext.requireActorScope`; `nearest(actor, vector, limit)` restringe a
+- Toda consulta lleva `actor` y usa `TransactionContext.requireActorScope`; `IChunkSearch` (020 D-2, retiró `nearest`) restringe a
   `accessibleNodes` **antes** de ordenar por similitud (DF-14). Archivo ajeno, en la papelera o inexistente: el mismo 404.
 - Ninguna bitácora, auditoría ni trabajo lleva texto, nombres de archivo, extractos ni vectores. La clave del proveedor
   solo existe en el `worker`.
@@ -80,14 +83,16 @@ nombres ni texto.
 Definidas en `shared/infrastructure/config/env.schema.ts` y `.env.example` (valores y detalle en
 `docs/operations/ambientes.md`).
 
-| Variable                                                         | Proceso          | Qué fija                                                      |
-| ---------------------------------------------------------------- | ---------------- | ------------------------------------------------------------- |
-| `INDEXING_MAX_ATTEMPTS`                                          | `api` y `worker` | Intentos por trabajo (3)                                      |
-| `RATE_LIMIT_INDEX_RETRY_PER_MINUTE`                              | `api`            | Límite de «Reintentar» (10)                                   |
-| `INDEXING_MAX_FILE_BYTES`                                        | `worker`         | Tope indexable (50 MiB)                                       |
-| `INDEX_RECONCILE_INTERVAL_MINUTES`, `INDEX_RECONCILE_BATCH_SIZE` | `worker`         | Frecuencia (1440) y tamaño de página (100) de la conciliación |
-| `GHOSTSCRIPT_BIN`                                                | `worker`         | Binario para PDF (`gs`; en Windows `gswin64c`)                |
-| `GEMINI_API_KEY`, `GEMINI_EMBEDDING_MODEL`                       | `worker`         | Clave (opcional, secreta) y modelo de embeddings              |
+| Variable                                                            | Proceso          | Qué fija                                                                                                    |
+| ------------------------------------------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------- |
+| `INDEXING_MAX_ATTEMPTS`                                             | `api` y `worker` | Intentos por trabajo (3)                                                                                    |
+| `RATE_LIMIT_INDEX_RETRY_PER_MINUTE`                                 | `api`            | Límite de «Reintentar» (10)                                                                                 |
+| `INDEXING_MAX_FILE_BYTES`                                           | `worker`         | Tope indexable (50 MiB)                                                                                     |
+| `INDEX_RECONCILE_INTERVAL_MINUTES`, `INDEX_RECONCILE_BATCH_SIZE`    | `worker`         | Frecuencia (1440) y tamaño de página (100) de la conciliación                                               |
+| `GHOSTSCRIPT_BIN`                                                   | `worker`         | Binario para PDF (`gs`; en Windows `gswin64c`)                                                              |
+| `GEMINI_API_KEY`, `GEMINI_EMBEDDING_MODEL`                          | `api` y `worker` | Clave (opcional, secreta) y modelo de embeddings (020 D-8)                                                  |
+| `GEMINI_CHAT_MODEL`, `AGENT_MAX_QUESTION_CHARS`                     | `api`            | Modelo del agente y largo máximo de la pregunta (1000)                                                      |
+| `AGENT_MODEL_FIRST_CHUNK_TIMEOUT_MS`, `AGENT_MODEL_IDLE_TIMEOUT_MS` | `api`            | Plazos del modelo (10000 ms cada uno; los mide `pnpm --filter api agent:measure`, T-09, y se fijan en T-10) |
 
 ## Capas (`docs/sdd/architecture.md` §4)
 

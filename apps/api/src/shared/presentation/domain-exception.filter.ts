@@ -17,6 +17,39 @@ const httpErrorMessage = (status: number): string =>
   `La petición no pudo procesarse (HTTP ${String(status)}). Verifica la ruta, el método y los datos enviados.`;
 
 const RETRY_AFTER_HEADER = 'Retry-After';
+/** Tope del mensaje registrado de un error no controlado: basta para diagnosticar y limita lo que pueda arrastrar. */
+export const UNHANDLED_ERROR_MESSAGE_MAX = 200;
+const STACK_FRAME = /^\s+at /;
+
+interface UnhandledErrorLog {
+  readonly errorClass: string;
+  readonly errorMessage?: string;
+  readonly stack?: string;
+}
+
+/** Solo los marcos de la pila: la cabecera repite el mensaje completo, sin recortar. */
+const stackFramesOf = (error: Error): string | undefined =>
+  error.stack
+    ?.split('\n')
+    .filter((line) => STACK_FRAME.test(line))
+    .join('\n');
+
+/**
+ * Clase, mensaje recortado y marcos de la pila de un error no controlado; de un valor que no es `Error`, solo su tipo.
+ * Nunca sus propiedades: un `QueryFailedError` trae `query`, `parameters` y `driverError`, que pueden llevar la
+ * pregunta al agente u otro contenido del cliente (020 CA-18, SEC-1).
+ */
+const describeUnhandled = (exception: unknown): UnhandledErrorLog => {
+  if (!(exception instanceof Error)) {
+    return { errorClass: typeof exception };
+  }
+  const stack = stackFramesOf(exception);
+  return {
+    errorClass: exception.constructor.name,
+    errorMessage: exception.message.slice(0, UNHANDLED_ERROR_MESSAGE_MAX),
+    ...(stack === undefined ? {} : { stack }),
+  };
+};
 
 interface Translated {
   readonly status: number;
@@ -47,8 +80,8 @@ const translateDomainError = (error: DomainError): Translated => ({
  * Único traductor de errores a HTTP (Art. VII.5, CA-16, RN-1). Cuerpo siempre `{ code, message, correlationId }`,
  * más `fields` si el error de entrada los trae (001 CA-5, CA-6) y `details` si el error los trae (005 D-12); nunca `stack`, nombre de clase ni rutas. Un
  * `TooManyRequestsError` agrega `Retry-After` (001 CA-15). `DomainError` usa el `status` de su clase y el mensaje que la
- * subclase definió; `HttpException` conserva su estado; todo lo demás es `500 INTERNAL_ERROR` con detalle
- * solo en la bitácora `http.unhandled_error`. La bitácora `http.domain_error` lleva solo `code` y `status`: ni el
+ * subclase definió; `HttpException` conserva su estado; todo lo demás es `500 INTERNAL_ERROR` con clase, mensaje
+ * recortado y pila solo en la bitácora `http.unhandled_error`. La bitácora `http.domain_error` lleva solo `code` y `status`: ni el
  * mensaje ni `details` (pueden llevar un nombre de archivo, 005 CA-20), ni cuerpos.
  */
 @Catch()
@@ -84,7 +117,7 @@ export class DomainExceptionFilter implements ExceptionFilter {
     if (exception instanceof HttpException) {
       return translateHttpException(exception);
     }
-    this.logger.error({ event: 'http.unhandled_error', err: exception });
+    this.logger.error({ event: 'http.unhandled_error', ...describeUnhandled(exception) });
     return {
       status: HttpStatus.INTERNAL_SERVER_ERROR,
       code: 'INTERNAL_ERROR',

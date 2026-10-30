@@ -28,11 +28,11 @@ import {
   ghostscriptConfigProvider,
 } from './infrastructure/extractors/extractors.providers';
 import {
-  GEMINI_API_BASE_URL,
   GEMINI_EMBEDDING_CONFIG,
   GeminiEmbeddingProvider,
 } from './infrastructure/gemini-embedding.provider';
 import type { GeminiEmbeddingConfig } from './infrastructure/gemini-embedding.provider';
+import { GEMINI_API_BASE_URL } from './infrastructure/gemini-http';
 import { IndexReconcileProcessor } from './infrastructure/index-reconcile.processor';
 import {
   INDEX_RECONCILE_QUEUE,
@@ -107,7 +107,8 @@ function reconcileProviders(env: IntelligenceWorkerEnv): Provider[] {
  * extrae (Ghostscript para PDF), vectoriza con Gemini y publica cada cambio de estado en `index-status`, que el `api`
  * retransmite por su canal en vivo (D-2); además programa y consume `index-reconcile` (RN-12). Sin oyente ni
  * controlador. Recibe **la misma** instancia de `StorageWorkerModule` que monta `WorkerModule` (aporta
- * `IndexableFileGateway`; otro `forRoot` duplicaría sus procesadores). La clave del proveedor solo vive aquí (RN-9).
+ * `IndexableFileGateway`; otro `forRoot` duplicaría sus procesadores). La clave del proveedor vive en el backend: aquí
+ * y, para el agente, en el `api` (020 D-8, que enmienda RN-9 de la 019); nunca en el navegador.
  */
 @Module({})
 export class IntelligenceWorkerModule {

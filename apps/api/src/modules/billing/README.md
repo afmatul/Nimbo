@@ -4,7 +4,7 @@
 - **Diagrama de origen**: M4 en `docs/sdd/design-model.md` §3 y `docs/design/diagramas/`.
 - **Responsabilidad**: Planes, suscripciones, pagos, facturas, renovación; implementa `IPlanLimitsProvider` e `IAgentQuota`.
 - **Puede depender de**: shared, notifications, audit, storage (importa el puerto `IPlanLimitsProvider` que declara `storage`, ADR-0022; `IObjectStorage` para facturas sigue abierto) (`docs/sdd/architecture.md` §3; el lint de fronteras lo hace cumplir).
-- **Specs que lo construyen**: 006a, 008, 009, 010.
+- **Specs que lo construyen**: 006a, 008, 009, 010, 011; 020 (contador del agente: `uso_agente`, `AgentQuotaService` detrás de `IAgentQuota`, consumido por `intelligence`).
 
 ## Capas (`docs/sdd/architecture.md` §4)
 

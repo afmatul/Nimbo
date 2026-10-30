@@ -3,14 +3,15 @@ import type { ReactNode } from 'react';
 import { getEnv } from '../../../env';
 import { RequireRole } from '../../../features/access/components/require-role';
 import { CLIENT_ROLES } from '../../../features/access/home-path';
+import { SessionAgentProvider } from '../../../features/intelligence/components/session-agent-provider';
 import { UploadsSpaceProvider } from '../../../features/storage/components/space-provider';
 import { SessionUploadsProvider } from '../../../features/storage/components/uploads-provider';
 
 /**
  * Rutas del Cliente (003 §6.9); anidadas en `(app)`, que ya exige sesión. El proveedor de cargas vive aquí para que
  * navegar dentro de la pestaña conserve las cargas y el panel; recargar la página las pierde (RN-7, plan 005 §6
- * Frontend). Dentro, el resumen de espacio compartido (007 D-15) se refresca al completar cargas. Va dentro de la guarda de
- * rol: un rol interno no llega a montarlos.
+ * Frontend). Dentro, el resumen de espacio compartido (007 D-15) se refresca al completar cargas. La sesión del agente y
+ * su panel siguen la misma regla (020b CA-17). Va dentro de la guarda de rol: un rol interno no llega a montarlos (CA-18).
  */
 export default function ClienteGroupLayout({
   children,
@@ -20,7 +21,9 @@ export default function ClienteGroupLayout({
   return (
     <RequireRole allowed={CLIENT_ROLES}>
       <SessionUploadsProvider apiPublicUrl={getEnv().API_PUBLIC_URL}>
-        <UploadsSpaceProvider>{children}</UploadsSpaceProvider>
+        <SessionAgentProvider apiPublicUrl={getEnv().API_PUBLIC_URL}>
+          <UploadsSpaceProvider>{children}</UploadsSpaceProvider>
+        </SessionAgentProvider>
       </SessionUploadsProvider>
     </RequireRole>
   );

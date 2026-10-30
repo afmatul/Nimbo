@@ -3,24 +3,55 @@
 import { Cloud, Menu, Folder, Search, Share2, Trash2, HardDrive, Sparkles } from 'lucide-react';
 import type * as React from 'react';
 
+import { cn } from '../../lib/utils';
 import { Toaster } from '../ui/sonner';
 
-import { AppSidebar, TRASH_HREF, type NavItem } from './app-sidebar';
+import { useAgentEntry } from './agent-entry';
+import { AppSidebar, TRASH_HREF, type AppSidebarProps, type NavItem } from './app-sidebar';
 import { useHeaderAccount } from './header-account';
 import { MobileNavDrawer } from './mobile-nav-drawer';
+import { useIsAgentSheet } from './use-agent-sheet';
 import { useMobileNav, type MobileNav } from './use-mobile-nav';
 
 export type { NavItem };
 
-/** «Espacio» reemplaza a «Planes y Cuota» hasta 009 (007 D-18, PD-92); «Buscar» es la entrada de la búsqueda (018 CA-12). */
+/**
+ * «Espacio» reemplaza a «Planes y Cuota» hasta 009 (007 D-18, PD-92); «Buscar» es la entrada de la búsqueda (018
+ * CA-12). «Agente Nimbo» no está aquí: lo suma el layout solo con la entrada del agente (020b D-4, CA-18).
+ */
 export const DEFAULT_NAV_ITEMS: readonly NavItem[] = [
   { label: 'Mis Archivos', icon: Folder, href: '/archivos', active: true },
   { label: 'Buscar', icon: Search, href: '/buscar' },
   { label: 'Compartidos', icon: Share2, href: '#compartidos' },
   { label: 'Papelera', icon: Trash2, href: TRASH_HREF },
   { label: 'Espacio', icon: HardDrive, href: '/espacio' },
-  { label: 'Agente Nimbo', icon: Sparkles, href: '#agente' },
 ];
+
+interface AgentLayout {
+  readonly navItems: readonly NavItem[];
+  readonly panel: React.ReactNode;
+  /** El panel abierto como complemento de escritorio: `main` le cede su ancho (020b D-5). */
+  readonly reservesPanel: boolean;
+}
+
+/** Con la entrada del agente (layout del Cliente), «Agente Nimbo» al final de la navegación y su panel abierto. */
+function useAgentLayout(navItems: readonly NavItem[]): AgentLayout {
+  const entry = useAgentEntry();
+  const isSheet = useIsAgentSheet();
+  if (entry === null) return { navItems, panel: null, reservesPanel: false };
+  const agentItem: NavItem = {
+    label: 'Agente Nimbo',
+    icon: Sparkles,
+    href: '#agente',
+    onSelect: entry.open,
+  };
+  const isOpen = entry.panel !== null && entry.panel !== undefined;
+  return {
+    navItems: [...navItems, agentItem],
+    panel: entry.panel,
+    reservesPanel: isOpen && !isSheet,
+  };
+}
 
 export interface AppLayoutProps {
   readonly children: React.ReactNode;
@@ -103,6 +134,25 @@ function BrandLink(): React.JSX.Element {
   );
 }
 
+/** Barra lateral de escritorio, fija bajo el encabezado (007 CA-19); `inert` tras el cajón móvil. */
+function DesktopSidebar({
+  behindDrawer,
+  sidebar,
+}: {
+  readonly behindDrawer: true | undefined;
+  readonly sidebar: Omit<AppSidebarProps, 'variant'>;
+}): React.JSX.Element {
+  return (
+    <aside
+      inert={behindDrawer}
+      className="hidden w-64 shrink-0 border-r border-border bg-card p-4 md:sticky md:top-header md:flex md:h-below-header md:flex-col md:self-start"
+      aria-label="Barra lateral de escritorio"
+    >
+      <AppSidebar variant="desktop" {...sidebar} />
+    </aside>
+  );
+}
+
 /**
  * Layout base responsivo de Nimbo, desde 360 px hasta escritorio, con navegación accesible, áreas táctiles de 44 px y
  * sin desbordamiento horizontal (CA-5). La página se desplaza con la ventana; la barra de escritorio queda fija bajo el
@@ -120,7 +170,8 @@ export function AppLayout({
   quotaCard,
 }: AppLayoutProps): React.JSX.Element {
   const { open, toggle, close, menuButtonRef } = useMobileNav(initialMobileMenuOpen);
-  const sidebar = { navItems, trashCount, section: sidebarSection, quotaCard };
+  const agent = useAgentLayout(navItems);
+  const sidebar = { navItems: agent.navItems, trashCount, section: sidebarSection, quotaCard };
   const behindDrawer = open ? true : undefined;
 
   return (
@@ -133,22 +184,23 @@ export function AppLayout({
         userEmail={userEmail}
       />
       <div className="flex flex-1 min-w-0">
-        <aside
-          inert={behindDrawer}
-          className="hidden w-64 shrink-0 border-r border-border bg-card p-4 md:sticky md:top-header md:flex md:h-below-header md:flex-col md:self-start"
-          aria-label="Barra lateral de escritorio"
-        >
-          <AppSidebar variant="desktop" {...sidebar} />
-        </aside>
+        <DesktopSidebar behindDrawer={behindDrawer} sidebar={sidebar} />
         {open ? (
           <MobileNavDrawer onClose={close}>
             <AppSidebar variant="mobile" {...sidebar} />
           </MobileNavDrawer>
         ) : null}
-        <main inert={behindDrawer} className="flex-1 p-4 md:p-8 min-w-0">
+        <main
+          inert={behindDrawer}
+          className={cn(
+            'flex-1 p-4 md:p-8 min-w-0',
+            agent.reservesPanel && 'mr-(--agent-panel-width)',
+          )}
+        >
           {children}
         </main>
       </div>
+      {agent.panel}
       <Toaster />
     </div>
   );

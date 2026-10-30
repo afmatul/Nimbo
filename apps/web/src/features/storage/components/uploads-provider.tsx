@@ -66,7 +66,7 @@ function UploadCenter(): React.JSX.Element | null {
     <>
       {/* Reserva al pie el alto del panel (lista incluida) para que no tape las últimas filas de la página (UI-4). */}
       <div data-testid="upload-panel-spacer" aria-hidden="true" className="h-80 sm:h-120" />
-      <div className="fixed inset-x-0 bottom-0 z-30 pb-safe sm:inset-x-auto sm:bottom-6 sm:right-6 sm:pb-0">
+      <div className="fixed inset-x-0 bottom-0 z-30 pb-safe sm:inset-x-auto sm:bottom-6 sm:right-[calc(1.5rem+var(--agent-panel-width,0px))] sm:pb-0">
         <UploadPanel
           rows={rows}
           onPause={(id) => manager.pause(id)}

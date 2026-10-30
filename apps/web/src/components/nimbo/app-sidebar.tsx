@@ -3,11 +3,16 @@ import type * as React from 'react';
 
 import { cn } from '../../lib/utils';
 
+import { useSidebarSlot } from './sidebar-slot';
+
 export interface NavItem {
   readonly label: string;
+  /** Destino del enlace; con `onSelect` solo identifica al ítem. */
   readonly href: string;
   readonly icon: LucideIcon;
   readonly active?: boolean;
+  /** Con él, el ítem es un botón que hace algo en la página en vez de navegar (p. ej. abrir el agente, 020b D-4). */
+  readonly onSelect?: () => void;
 }
 
 /** Enlace de la Papelera, el que lleva el contador (006). */
@@ -76,6 +81,42 @@ function NavLabel({
   );
 }
 
+interface NavEntryProps {
+  readonly item: NavItem;
+  readonly styles: VariantStyles;
+  readonly trashCount: number | undefined;
+}
+
+/** Un ítem: enlace o, con `onSelect`, botón que antes cierra el cajón móvil (en escritorio no hace nada). */
+function NavEntry({ item, styles, trashCount }: NavEntryProps): React.JSX.Element {
+  const { onNavigate } = useSidebarSlot();
+  const Icon = item.icon;
+  const className = cn(LINK_BASE_CLASS, styles.link, item.active ? styles.active : LINK_IDLE_CLASS);
+  const content = (
+    <>
+      <Icon className={cn('shrink-0', styles.icon)} aria-hidden="true" />
+      <NavLabel item={item} trashCount={trashCount} />
+    </>
+  );
+  const { onSelect } = item;
+  if (onSelect === undefined) {
+    return (
+      <a href={item.href} className={className}>
+        {content}
+      </a>
+    );
+  }
+  const select = (): void => {
+    onNavigate();
+    onSelect();
+  };
+  return (
+    <button type="button" onClick={select} className={cn(className, 'w-full text-left')}>
+      {content}
+    </button>
+  );
+}
+
 function SidebarNav({
   variant,
   navItems,
@@ -84,23 +125,9 @@ function SidebarNav({
   const styles = VARIANT_STYLES[variant];
   return (
     <nav className={cn('shrink-0', styles.nav)} aria-label={styles.navLabel}>
-      {navItems.map((item) => {
-        const Icon = item.icon;
-        return (
-          <a
-            key={item.label}
-            href={item.href}
-            className={cn(
-              LINK_BASE_CLASS,
-              styles.link,
-              item.active ? styles.active : LINK_IDLE_CLASS,
-            )}
-          >
-            <Icon className={cn('shrink-0', styles.icon)} aria-hidden="true" />
-            <NavLabel item={item} trashCount={trashCount} />
-          </a>
-        );
-      })}
+      {navItems.map((item) => (
+        <NavEntry key={item.label} item={item} styles={styles} trashCount={trashCount} />
+      ))}
     </nav>
   );
 }

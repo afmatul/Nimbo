@@ -114,10 +114,6 @@ export class FakeChunkRepository implements IChunkRepository {
     return Promise.resolve(this.storedOf(fileId));
   }
 
-  nearest(): Promise<readonly StoredChunk[]> {
-    return Promise.reject(new Error('`nearest` no se usa en las pruebas unitarias de 019.'));
-  }
-
   private storedOf(fileId: string): readonly StoredChunk[] {
     return this.stored
       .filter((chunk) => chunk.fileId === fileId)

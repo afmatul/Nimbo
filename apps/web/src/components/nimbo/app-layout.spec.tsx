@@ -1,10 +1,11 @@
 import { JSDOM } from 'jsdom';
 import { Folder } from 'lucide-react';
-import type * as React from 'react';
+import * as React from 'react';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 
+import { AgentEntryProvider } from './agent-entry';
 import { AppLayout } from './app-layout';
 import { HeaderAccountProvider } from './header-account';
 import { useSidebarSlot } from './sidebar-slot';
@@ -416,5 +417,90 @@ describe('AppLayout component (CA-5)', () => {
     const header = doc.querySelector('header');
     expect(header?.textContent).toContain('Menú de la cuenta');
     expect(header?.textContent).not.toContain('ana@ejemplo.com');
+  });
+});
+
+/** Entrada del agente como la llena el layout del Cliente: «Agente Nimbo» abre un panel de prueba. */
+function AgentEntryHarness({
+  children,
+}: {
+  readonly children: React.ReactNode;
+}): React.JSX.Element {
+  const [open, setOpen] = React.useState(false);
+  const entry = {
+    open: () => setOpen(true),
+    panel: open ? <aside aria-label="Panel de prueba">Panel del agente</aside> : null,
+  };
+  return <AgentEntryProvider entry={entry}>{children}</AgentEntryProvider>;
+}
+
+function agentButtonIn(scope: ParentNode): HTMLButtonElement {
+  const button = Array.from(scope.querySelectorAll('button')).find(
+    (candidate) => candidate.textContent === 'Agente Nimbo',
+  );
+  if (button === undefined) throw new Error('Sin botón «Agente Nimbo»');
+  return button;
+}
+
+describe('AppLayout con la entrada del agente (020b)', () => {
+  it('CA-1: «Agente Nimbo» abre el panel y main le reserva su ancho en escritorio', async () => {
+    const { root, container } = mountDom();
+    await act(async () => {
+      root.render(
+        <AgentEntryHarness>
+          <AppLayout>
+            <div>Contenido</div>
+          </AppLayout>
+        </AgentEntryHarness>,
+      );
+    });
+    expect(container.querySelector('[aria-label="Panel de prueba"]')).toBeNull();
+
+    const desktopNav = container.querySelector('[aria-label="Barra lateral de escritorio"]');
+    await act(async () => {
+      agentButtonIn(desktopNav as Element).click();
+    });
+
+    expect(container.querySelector('[aria-label="Panel de prueba"]')).not.toBeNull();
+    expect(container.querySelector('main')?.className).toContain('mr-(--agent-panel-width)');
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it('CA-1: en el menú móvil, «Agente Nimbo» cierra el cajón y abre el panel', async () => {
+    const { dom, root, container } = mountDom();
+    await act(async () => {
+      root.render(
+        <AgentEntryHarness>
+          <AppLayout initialMobileMenuOpen>
+            <div>Contenido</div>
+          </AppLayout>
+        </AgentEntryHarness>,
+      );
+    });
+    const drawer = dom.window.document.querySelector('[role="dialog"]') as Element;
+
+    await act(async () => {
+      agentButtonIn(drawer).click();
+    });
+
+    expect(dom.window.document.querySelector('[role="dialog"]')).toBeNull();
+    expect(container.querySelector('[aria-label="Panel de prueba"]')).not.toBeNull();
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it('CA-18: sin la entrada del agente no hay «Agente Nimbo» ni panel', () => {
+    const markup = renderToStaticMarkup(
+      <AppLayout initialMobileMenuOpen>
+        <div>Contenido</div>
+      </AppLayout>,
+    );
+
+    expect(markup).not.toContain('Agente Nimbo');
+    expect(markup).not.toContain('#agente');
+    expect(markup).not.toContain('mr-(--agent-panel-width)');
   });
 });

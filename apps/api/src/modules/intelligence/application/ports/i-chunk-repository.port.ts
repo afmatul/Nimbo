@@ -29,10 +29,10 @@ export interface StoredChunk extends ChunkVersion {
 }
 
 /**
- * Fragmentos indexados (`fragmento`, plan 019 §2; `IChunkRepository` de M6). Todo método toma el `EntityManager` de
- * `requireActorScope(actor)`. Las lecturas restringen a `accessibleNodes(actor)` **dentro de la consulta y antes de
- * ordenar** (DF-14, CA-17): un archivo ajeno o en la papelera no aparece ni por id ni por similitud; la RLS es la
- * segunda barrera. 019 no los expone por HTTP: las lecturas existen para el aislamiento y las usa 020.
+ * Fragmentos indexados (`fragmento`, plan 019 §2; `IChunkRepository` de M6): la escritura del `worker` y la lectura por
+ * archivo. Todo método toma el `EntityManager` de `requireActorScope(actor)`. La lectura restringe a
+ * `accessibleNodes(actor)` **dentro de la consulta** (DF-14, CA-17): un archivo ajeno o en la papelera no aparece; la
+ * RLS es la segunda barrera. La búsqueda del agente es de `IChunkSearch` (plan 020 D-2, que retiró `nearest`).
  */
 export interface IChunkRepository {
   /**
@@ -47,8 +47,6 @@ export interface IChunkRepository {
   ): Promise<void>;
   /** Fragmentos del archivo por orden; vacío si el actor no lo ve vivo. */
   findByFile(actor: Actor, fileId: string): Promise<readonly StoredChunk[]>;
-  /** Los `limit` fragmentos más cercanos a `vector` (coseno) entre los archivos que el actor ve vivos. */
-  nearest(actor: Actor, vector: readonly number[], limit: number): Promise<readonly StoredChunk[]>;
 }
 
 export const I_CHUNK_REPOSITORY = Symbol('IChunkRepository');

@@ -103,7 +103,7 @@ describe('GeminiEmbeddingProvider', () => {
     expect(request?.apiKey).toBe(API_KEY);
   });
 
-  it('pide 768 dimensiones del modelo configurado, para documentos', async () => {
+  it('pide 768 dimensiones del modelo configurado, por omisión para documentos', async () => {
     await provider().embed(['hola']);
 
     expect(server.received[0]?.body.requests).toEqual([
@@ -114,6 +114,15 @@ describe('GeminiEmbeddingProvider', () => {
         taskType: 'RETRIEVAL_DOCUMENT',
       },
     ]);
+  });
+
+  it.each([
+    ['document', 'RETRIEVAL_DOCUMENT'],
+    ['query', 'RETRIEVAL_QUERY'],
+  ] as const)("020 D-8: `task: '%s'` → `taskType` %s", async (task, taskType) => {
+    await provider().embed(['hola'], task);
+
+    expect(server.received[0]?.body.requests[0]?.taskType).toBe(taskType);
   });
 
   it('reparte en lotes de hasta 100 textos', async () => {
