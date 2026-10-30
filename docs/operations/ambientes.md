@@ -62,6 +62,16 @@ Secreto = nunca en el repositorio, vacío en `.env.example` de staging, redactad
 | `ONLYOFFICE_PUBLIC_URL` / `ONLYOFFICE_INTERNAL_URL` | ✓ | | | | | — | 016: desde donde el navegador carga el editor / desde donde el `api` consulta su salud y descarga lo guardado. Opcionales: sin ellas abrir responde `EDITING_UNAVAILABLE` (CA-15) |
 | `EDITING_CALLBACK_BASE_URL` | ✓ | | | | | — | 016: cómo llega ONLYOFFICE al `api` (contenido y aviso de guardado); en local `http://host.docker.internal:3000`. Opcional, como las anteriores |
 | `EDITING_MAX_DOC_BYTES` | ✓ | | | | | `52428800` | 016 RN-10: tope editable (50 MB a validar en staging); por encima, solo lectura |
+| `INDEXING_MAX_ATTEMPTS` | ✓ | ✓ | | | | `3` | 019 RN-6: intentos de un trabajo de indexación, con espera creciente, antes de `fallido`. Una sola definición: el `api` encola y el `worker` decide cuándo se agotaron |
+| `RATE_LIMIT_INDEX_RETRY_PER_MINUTE` | ✓ | | | | | `10` | 019 CA-13: «Reintentar» la indexación, por usuario |
+| `INDEXING_MAX_FILE_BYTES` | | ✓ | | | | `52428800` | 019 RN-7 (DF-37): tope indexable (50 MiB, no varía por plan); por encima, `no_indexable/demasiado_grande` |
+| `INDEX_RECONCILE_INTERVAL_MINUTES` / `INDEX_RECONCILE_BATCH_SIZE` | | ✓ | | | | `1440` / `100` | 019 RN-12: conciliación que encola archivos sin indexar o atascados; lote 1–1000 |
+| `GHOSTSCRIPT_BIN` | | ✓ | | | | `gs` | 019 D-1: ejecutable de Ghostscript para el texto de los PDF; en Windows, `gswin64c` |
+| `GEMINI_API_KEY` | ✓ | ✓ | | | ✓ | — | 019 y 020 D-8 (enmienda RN-9 de la 019): clave de Gemini, una sola definición. El `worker` indexa y el `api` vectoriza la pregunta y redacta la respuesta del agente; nunca el navegador. Opcional: sin ella la indexación termina `fallido/proveedor_no_disponible`, el agente responde `AGENT_UNAVAILABLE` y el resto sigue (RNF-09) |
+| `GEMINI_EMBEDDING_MODEL` | ✓ | ✓ | | | | `gemini-embedding-001` | 019 (ADR-0007): modelo de embeddings, vectorizado a 768 dimensiones (ADR-0003); el `api` lo usa para la pregunta (020 D-8) |
+| `GEMINI_CHAT_MODEL` | ✓ | | | | | `gemini-3.5-flash` | 020 D-7: modelo que redacta las respuestas del agente |
+| `AGENT_MAX_QUESTION_CHARS` | ✓ | | | | | `1000` | 020 RN-7: largo máximo de la pregunta; `GET /agent/status` lo informa (`maxQuestionChars`) |
+| `AGENT_MODEL_FIRST_CHUNK_TIMEOUT_MS` / `AGENT_MODEL_IDLE_TIMEOUT_MS` | ✓ | | | | | `5000` / `5000` | 020 CA-15: plazos del modelo hasta el primer trozo y entre trozos; vencidos, `AGENT_UNAVAILABLE` sin descontar. Fijados en T-10 con `pnpm --filter api agent:measure` (plan 020 §6) |
 | `API_MEM_LIMIT`, `WORKER_MEM_LIMIT` | | | | ✓ | | `768m` | Staging; bajar a `512m` en demos con ONLYOFFICE (R-6) |
 | `COMPOSE_FILE` | | | | ✓ | | — | Solo staging: `compose.yml:compose.staging.yml` |
 
@@ -100,6 +110,25 @@ Imágenes (idénticas en compose y en Testcontainers): `pgvector/pgvector:pg17`,
   DKIM de `nimbo.me` verificados. La clave vive solo en GitHub Environments y en el `.env` del Droplet.
 - **Degradación**: un SMTP caído no afecta la salud del `worker` ni las respuestas del `api`; la cola reintenta 5 veces
   (~2,5 min) y al agotar registra `mail.failed` (ver `apps/api/src/modules/notifications/README.md`).
+
+## 3c. Ghostscript (spec 019, D-1, ADR-0033)
+
+El `worker` lee el texto de los PDF con Ghostscript (`txtwrite`) en un proceso aparte, sin shell, con tiempo límite y en
+un directorio temporal propio que se borra al terminar. El `api` no lo necesita. Sin Ghostscript, la indexación de los
+PDF falla y se reintenta; el resto de los tipos y del sistema siguen igual.
+
+- **Linux (CI, Debian/Ubuntu)**: `sudo apt-get install -y ghostscript`; el binario es `gs` (valor por defecto de
+  `GHOSTSCRIPT_BIN`). CI lo instala antes de `pnpm test:int` (`.github/workflows/ci.yml`).
+- **macOS**: `brew install ghostscript`; también queda como `gs`.
+- **Windows**: instalar la versión de 64 bits de <https://ghostscript.com/releases/gsdnld.html> y poner en `.env` la ruta
+  completa de `gswin64c.exe` (la de consola, no `gswin64.exe`), p. ej.
+  `GHOSTSCRIPT_BIN=C:\Program Files\gs\gs10.08.0\bin\gswin64c.exe`, o agregar esa carpeta `bin` al `PATH` y usar
+  `GHOSTSCRIPT_BIN=gswin64c`.
+- **Comprobar**: `gs --version` (o `gswin64c --version`) imprime la versión.
+- **Pruebas**: `test/int/intelligence/pdf-extraction.int-spec.ts` usa `GHOSTSCRIPT_BIN` del entorno de la terminal (las
+  pruebas no leen `.env`; si falta, prueba `gs` o, en Windows, `gswin64c`). En CI es obligatoria; en una máquina sin
+  Ghostscript se omite y lo dice el resumen de Jest.
+- **Imagen del `worker`**: todavía no existe `apps/worker/Dockerfile`; quien la cree instala `ghostscript` (PD-128).
 
 ## 4. Arranque y salud
 

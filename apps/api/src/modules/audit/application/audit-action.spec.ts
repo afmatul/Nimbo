@@ -1,11 +1,15 @@
 import { AuditAction, isAuditAction } from './audit-action';
 
 describe('AuditAction', () => {
-  it('CA-20 (005), CA-24 (006), CA-19 (014), 011 §2, 016 §5, 010 CA-22: carga, descarga, papelera, versiones, acciones internas, edición y suscripción', () => {
+  it('CA-20 (005), CA-24 (006), CA-19 (014), 011 §2, 016 §5, 010 CA-22, 019 D-6, 011b §4: carga, descarga, papelera, versiones, acciones internas, edición, suscripción e indexación', () => {
     expect(Object.values(AuditAction).sort()).toEqual(
       [
         'edit.save_failed',
         'edit.session_opened',
+        'file.indexed',
+        'file.index_unindexable',
+        'file.index_failed',
+        'file.index_retried',
         'file.version_created',
         'file.download_url_issued',
         'file.upload_completed',
@@ -20,6 +24,8 @@ describe('AuditAction', () => {
         'account.reactivated',
         'account.internal_created',
         'account.bootstrap_admin',
+        'account.quota_adjusted',
+        'account.validity_adjusted',
         'client.files_viewed',
         'plan.created',
         'plan.deactivated',

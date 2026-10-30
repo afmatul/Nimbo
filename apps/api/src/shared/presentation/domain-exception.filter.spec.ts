@@ -1,9 +1,10 @@
 import type { ArgumentsHost } from '@nestjs/common';
 import type { Logger } from 'nestjs-pino';
+import { QueryFailedError } from 'typeorm';
 
 import { ConflictError, InvalidInputError, TooManyRequestsError } from '../domain/errors';
 
-import { DomainExceptionFilter } from './domain-exception.filter';
+import { DomainExceptionFilter, UNHANDLED_ERROR_MESSAGE_MAX } from './domain-exception.filter';
 
 class ExampleInvalidInputError extends InvalidInputError {
   readonly code = 'SHARED_EXAMPLE_INVALID_INPUT';
@@ -129,5 +130,50 @@ describe('DomainExceptionFilter: `details` (005 D-12, CA-20)', () => {
     expect(response.json).toHaveBeenCalledWith(
       expect.not.objectContaining({ details: expect.anything() }),
     );
+  });
+});
+
+const QUESTION = '¿Cuál es el presupuesto aprobado?';
+
+describe('DomainExceptionFilter: error no controlado (020 CA-18, SEC-1)', () => {
+  const logged: unknown[] = [];
+  const loggingFilter = new DomainExceptionFilter({
+    error: (entry: unknown) => logged.push(entry),
+  } as unknown as Logger);
+
+  beforeEach(() => {
+    logged.length = 0;
+  });
+
+  const queryFailed = (): QueryFailedError =>
+    new QueryFailedError('SELECT plainto_tsquery($1)', [QUESTION], new Error(`falló: ${QUESTION}`));
+
+  it('CA-18: de un `QueryFailedError` registra solo clase, mensaje y pila; ni `query`, ni `parameters`, ni `driverError`', () => {
+    loggingFilter.catch(queryFailed(), hostFor(fakeResponse()));
+
+    expect(logged).toEqual([
+      {
+        event: 'http.unhandled_error',
+        errorClass: 'QueryFailedError',
+        errorMessage: `falló: ${QUESTION}`,
+        stack: expect.stringMatching(/^\s+at /),
+      },
+    ]);
+  });
+
+  it('CA-18: la pila no repite el mensaje y el mensaje se recorta', () => {
+    const long = new Error('x'.repeat(UNHANDLED_ERROR_MESSAGE_MAX + 50));
+
+    loggingFilter.catch(long, hostFor(fakeResponse()));
+
+    const [entry] = logged as { errorMessage: string; stack: string }[];
+    expect(entry?.errorMessage).toHaveLength(UNHANDLED_ERROR_MESSAGE_MAX);
+    expect(entry?.stack).not.toContain('xxx');
+  });
+
+  it('CA-18: de un valor que no es `Error` registra solo su tipo', () => {
+    loggingFilter.catch(QUESTION, hostFor(fakeResponse()));
+
+    expect(logged).toEqual([{ event: 'http.unhandled_error', errorClass: 'string' }]);
   });
 });

@@ -1,12 +1,16 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { IsNull } from 'typeorm';
 import type { EntityManager } from 'typeorm';
 
 import { TransactionContext } from '../../../../shared';
 import type { Actor } from '../../../../shared';
+import { accessibleNodes } from '../../../access';
 import type { IVersionRepository } from '../../application/ports/i-version.repository.port';
 import { FileVersion } from '../../domain/file-version';
 import { ObjectKey } from '../../domain/object-key';
 
+import { ArchivoOrmEntity } from './archivo.orm-entity';
+import { nodesIn } from './node-sql';
 import { VersionArchivoOrmEntity } from './version-archivo.orm-entity';
 
 /** `FileVersion` → fila; también la usa `TypeOrmNodeRepository.insertWithVersion` (DRY). */
@@ -21,6 +25,7 @@ export const toVersionRow = (version: FileVersion): VersionArchivoOrmEntity => (
   creadoPor: version.createdBy,
   creadaEn: version.createdAt,
   sesionEdicionId: version.editSessionId,
+  conservadaHasta: version.keptUntil,
 });
 
 const toFileVersion = (row: VersionArchivoOrmEntity): FileVersion =>
@@ -35,6 +40,7 @@ const toFileVersion = (row: VersionArchivoOrmEntity): FileVersion =>
     createdBy: row.creadoPor,
     createdAt: row.creadaEn,
     editSessionId: row.sesionEdicionId,
+    keptUntil: row.conservadaHasta,
   });
 
 /**
@@ -75,6 +81,34 @@ export class TypeOrmVersionRepository implements IVersionRepository {
 
   async insert(actor: Actor, version: FileVersion): Promise<void> {
     await this.manager(actor).insert(VersionArchivoOrmEntity, toVersionRow(version));
+  }
+
+  async markKept(actor: Actor, version: FileVersion): Promise<boolean> {
+    const result = await this.manager(actor).update(
+      VersionArchivoOrmEntity,
+      { id: version.id, archivoId: version.fileId, conservadaHasta: IsNull() },
+      { conservadaHasta: version.keptUntil },
+    );
+    return result.affected === 1;
+  }
+
+  /**
+   * `accessibleNodes(actor)` va dentro de la consulta (ADR-0005) y deja fuera los archivos en la papelera (014b CA-9);
+   * además `propietario_id = actor.id`, como el espacio: solo se purga lo propio. `idx_version_archivo_conservada` sirve
+   * al plazo.
+   */
+  async listExpiredKept(actor: Actor, now: Date): Promise<readonly FileVersion[]> {
+    const live = nodesIn(accessibleNodes(actor), 'v.archivoId', 'archivo');
+    const rows = await this.manager(actor)
+      .createQueryBuilder(VersionArchivoOrmEntity, 'v')
+      .innerJoin(ArchivoOrmEntity, 'a', 'a.id = v.archivoId')
+      .where(live.sql, { ...live.parameters })
+      .andWhere('a.propietarioId = :ownerId', { ownerId: actor.id })
+      .andWhere('v.id <> a.versionActualId')
+      .andWhere('v.conservadaHasta <= :now', { now })
+      .orderBy('v.conservadaHasta', 'ASC')
+      .getMany();
+    return rows.map(toFileVersion);
   }
 
   async delete(actor: Actor, version: FileVersion): Promise<boolean> {

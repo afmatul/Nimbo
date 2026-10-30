@@ -1,10 +1,12 @@
 import {
+  BACKOFFICE_ERROR_CODES,
   BACKOFFICE_FIELD_MESSAGES,
   BILLING_ERROR_CODES,
   EMAIL_REQUEST_COOLDOWN_SECONDS,
   FILE_NAME_MAX_LENGTH,
   IDENTITY_ERROR_CODES,
   IDENTITY_FIELD_MESSAGES,
+  INTELLIGENCE_ERROR_CODES,
   LOGIN_LOCK_MINUTES,
   PASSWORD_CHANGE_LOCK_MINUTES,
   REQUIRED_REASON,
@@ -19,6 +21,8 @@ import {
 } from '@nimbo/contracts';
 
 import { genericErrorMessage, type ApiErrorDetails } from './api-error';
+import { dayMonthLabel } from './format-date';
+import { formatCount, formatPlanBytes } from './format-plan';
 
 export { IDENTITY_FIELD_MESSAGES };
 
@@ -187,6 +191,83 @@ const STORAGE_MESSAGES: Readonly<Record<string, StorageMessageBuilder>> = {
   ),
 };
 
+/** Mensaje del agente en dos partes, como el de `storage`: qué pasó y qué hacer (020b, RNF-14). */
+export interface AgentMessage {
+  readonly cause: string;
+  readonly fix: string;
+}
+
+/** Lo que la pantalla sabe y el servidor no envía: si la respuesta se cortó con texto ya recibido (CA-9). */
+export interface AgentMessageContext {
+  readonly partial?: boolean;
+}
+
+type AgentMessageBuilder = (details: ApiErrorDetails, context: AgentMessageContext) => AgentMessage;
+
+const NOT_CHARGED = 'No se descontó tu consulta.';
+
+function numberOf(details: ApiErrorDetails, key: string): number | null {
+  const value = details[key];
+  return typeof value === 'number' ? value : null;
+}
+
+/** CA-7: vacía, o larga con los caracteres que sobran y el máximo (`details` que suma la web con `GET /agent/status`). */
+function invalidQuestionMessage(details: ApiErrorDetails): AgentMessage {
+  if (details['reason'] === 'empty') {
+    return { cause: 'Escribe una pregunta para consultar a tus documentos.', fix: NOT_CHARGED };
+  }
+  const excess = numberOf(details, 'excessChars');
+  const max = numberOf(details, 'maxChars');
+  if (excess === null || max === null) {
+    return {
+      cause: 'Tu pregunta es demasiado larga.',
+      fix: `Acórtala para enviarla. ${NOT_CHARGED}`,
+    };
+  }
+  const unit = excess === 1 ? 'carácter' : 'caracteres';
+  return {
+    cause: `Tu pregunta tiene ${formatCount(excess)} ${unit} de más.`,
+    fix: `Acórtala a ${formatCount(max)} o menos para enviarla. ${NOT_CHARGED}`,
+  };
+}
+
+/** CA-8, RN-5: con fecha de renovación, o sin ella (solo lectura) con la salida de renovar el plan. */
+function quotaMessage(details: ApiErrorDetails): AgentMessage {
+  const used = `Usaste tus ${formatCount(numberOf(details, 'limit') ?? 0)} consultas de este mes.`;
+  const resetsAt = details['resetsAt'];
+  if (typeof resetsAt !== 'string') {
+    return { cause: used, fix: 'Renueva tu plan para volver a preguntar.' };
+  }
+  return {
+    cause: `${used} Se renuevan el ${dayMonthLabel(resetsAt)}.`,
+    fix: 'Mientras tanto, subir, descargar y buscar archivos funciona igual.',
+  };
+}
+
+const AGENT_MESSAGES: Readonly<Record<string, AgentMessageBuilder>> = {
+  [INTELLIGENCE_ERROR_CODES.AGENT_INVALID_QUESTION]: invalidQuestionMessage,
+  [INTELLIGENCE_ERROR_CODES.AGENT_QUOTA_EXCEEDED]: quotaMessage,
+  [INTELLIGENCE_ERROR_CODES.AGENT_UNAVAILABLE]: (_details, { partial = false }) => ({
+    cause: 'El agente no está disponible. Tus archivos siguen a salvo.',
+    fix: partial
+      ? `La respuesta se cortó; lo de arriba es lo que alcanzó a llegar. ${NOT_CHARGED}`
+      : `${NOT_CHARGED} Inténtalo de nuevo en unos minutos.`,
+  }),
+  [INTELLIGENCE_ERROR_CODES.AGENT_SCOPE_NOT_FOUND]: () => ({
+    cause: 'Esa carpeta o archivo ya no está disponible.',
+    fix: 'Elige otro ámbito.',
+  }),
+};
+
+/** Mensaje de un código del agente en dos partes; `null` si el código no es del agente. */
+export function agentMessage(
+  code: string,
+  details: ApiErrorDetails = {},
+  context: AgentMessageContext = {},
+): AgentMessage | null {
+  return AGENT_MESSAGES[code]?.(details, context) ?? null;
+}
+
 /**
  * Campo «Nombre de la carpeta» (mockup `storage/explorador`, 006 CA-2). `INVALID_NAME` usa el texto de `contracts`
  * porque también cubre «.», «..» y caracteres de control, no solo los separadores de ruta.
@@ -250,6 +331,13 @@ const CODE_MESSAGES: Readonly<Record<string, string>> = {
     'La cuenta ya cambió de estado. Recarga la ficha para ver su estado actual.',
   [IDENTITY_ERROR_CODES.ENROLLMENT_CONFLICT]:
     'Ya existe una cuenta con estos datos. Corrige los campos marcados y vuelve a intentarlo.',
+  // Ajustes de cuota y vigencia (011b CA-2, CA-3, CA-7): el mismo texto que el servidor.
+  [BACKOFFICE_ERROR_CODES.QUOTA_INVALID]:
+    'Revisa el espacio extra: debe ser mayor que cero, la fecha de fin no puede ser anterior a hoy y la cuota total no puede superar el máximo admitido.',
+  [BACKOFFICE_ERROR_CODES.QUOTA_BELOW_USAGE]:
+    'La cuota total no puede quedar por debajo de lo que la cuenta ya usa. Elige un espacio extra mayor.',
+  [BACKOFFICE_ERROR_CODES.VALIDITY_NOT_EXTENDED]:
+    'Solo puedes extender la vigencia: elige un día posterior al último día vigente que no sea anterior a hoy.',
   [SHARED_ERROR_CODES.UNAUTHENTICATED]: 'Tu sesión no es válida o expiró. Inicia sesión de nuevo.',
   [SHARED_ERROR_CODES.FORBIDDEN]: `Tu cuenta no tiene permiso para esta acción. Si crees que es un error, escríbenos a ${SUPPORT_CONTACT_EMAIL}.`,
   [BILLING_ERROR_CODES.BILLING_PLAN_CATALOG_UNAVAILABLE]:
@@ -335,6 +423,16 @@ export function backofficeFieldMessage(reason: string, correlationId = ''): stri
     : genericErrorMessage(correlationId);
 }
 
+/** `422 BACKOFFICE_QUOTA_BELOW_USAGE` con `details.usedBytes` (011b CA-2, §6), en GB del catálogo (RN-8). */
+export function quotaBelowUsageMessage(usedBytes: string): string {
+  return `La cuota total no puede quedar por debajo de lo que la cuenta ya usa (${formatPlanBytes(usedBytes)}).`;
+}
+
+/** Ayuda y rechazo de la vigencia (011b CA-7, §6): `lastDay` es el último día vigente, como se muestra. */
+export function validityNotLaterMessage(lastDay: string): string {
+  return `Solo puedes extender la vigencia: elige un día posterior al ${lastDay}.`;
+}
+
 /** Qué falta en cada campo vacío del alta interna (mockup `backoffice/alta-interna`, decisión 8). */
 const ENROLLMENT_REQUIRED_MESSAGES: Readonly<Record<string, string>> = {
   fullName: 'Escribe el nombre completo de la persona.',
@@ -366,6 +464,8 @@ export function messageForReason(reason: string, correlationId = ''): string {
 export function messageForCode(code: string, options: MessageOptions = {}): string {
   const storage = storageMessage(code, options.details, { fileName: options.fileName ?? '' });
   if (storage !== null) return `${storage.cause} ${storage.fix}`;
+  const agent = agentMessage(code, options.details);
+  if (agent !== null) return `${agent.cause} ${agent.fix}`;
   if (code === IDENTITY_ERROR_CODES.TOO_MANY_REQUESTS && options.screen === 'login') {
     return LOGIN_RATE_LIMIT_MESSAGE;
   }

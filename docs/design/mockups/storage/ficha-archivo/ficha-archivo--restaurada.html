@@ -343,7 +343,24 @@
   /* Propio de storage/ficha-archivo (spec 014) */
   :root {
     --file-docx: #3F62A8; --file-docx-bg: #6B8DD620;
+    --file-pdf: #A34F4F; --file-pdf-bg: #C97B7B20;
   }
+  .ftile-pdf { color: var(--file-pdf); background: var(--file-pdf-bg); }
+
+  /* Estado de indexación (spec 019, StatusBadge + Alert): chip con ícono y texto, y aviso con el motivo */
+  .idx-line { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin-top: 8px; }
+  .idx-hint { font-size: 13px; color: var(--secondary-foreground); }
+  .idx-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12.5px; font-weight: 600; white-space: nowrap; color: var(--secondary-foreground); background: var(--muted); }
+  .idx-chip .ico { flex: none; }
+  .idx-chip-ok { color: var(--success-foreground); background: var(--success-soft); border-color: color-mix(in srgb, var(--success) 40%, var(--card)); }
+  .idx-chip-fail { color: var(--destructive); background: var(--destructive-tint); border-color: color-mix(in srgb, var(--destructive-soft) 45%, var(--card)); }
+  .idx-live .alert { margin-top: 18px; }
+  .alert.alert-info { border-color: var(--border); background: var(--card); box-shadow: var(--shadow-card); }
+  .alert.alert-info > .ico { color: var(--primary); }
+  .alert.alert-info .alert-title { color: var(--foreground); }
+  .idx-live .alert-text + .alert-text { margin-top: 6px; }
+
+  .idx-live .alert-actions { align-self: center; }
   .app { min-height: 900px; }
   a.btn-primary, a.btn-primary:hover { color: var(--primary-foreground); }
   a.btn-outline:hover { color: var(--foreground); }

@@ -43,9 +43,19 @@ export interface FileVersionSnapshot {
   readonly createdAt: Date;
   /** Sesión de edición que la generó (`sesion_edicion_id`); solo y siempre en las de origen `edicion` (016). */
   readonly editSessionId: string | null;
+  /**
+   * Fecha de purga de un original conservado por una optimización (014b, ADR-0013); `null` = cuenta en `espacio_usado`.
+   * Un original conservado no cuenta en el espacio y vence en esa fecha.
+   */
+  readonly keptUntil: Date | null;
 }
 
-/** Mismas reglas que `ck_version_numero` y `ck_version_archivo_sesion_origen`. */
+const DAY_MS = 86_400_000;
+
+const copyDate = (date: Date | null): Date | null =>
+  date === null ? null : new Date(date.getTime());
+
+/** Mismas reglas que `ck_version_numero`, `ck_version_archivo_sesion_origen` y `ck_version_conservada_hasta`. */
 function assertInvariants(snapshot: FileVersionSnapshot): void {
   if ((snapshot.origin === 'edicion') !== (snapshot.editSessionId !== null)) {
     throw new TypeError('Solo una versión de edición tiene sesión de edición, y siempre la tiene.');
@@ -60,6 +70,29 @@ function assertInvariants(snapshot: FileVersionSnapshot): void {
   if (from !== null && (!Number.isInteger(from) || from < 1 || from >= snapshot.number)) {
     throw new TypeError('Una restauración debe venir de una versión con número anterior.');
   }
+  if (snapshot.keptUntil !== null && snapshot.keptUntil <= snapshot.createdAt) {
+    throw new TypeError('Un original se conserva hasta después de su creación.');
+  }
+}
+
+/** Reglas de 014b para conservar `original` por la optimización `optimized` (CA-3, RN-2, RN-3). */
+function assertConservable(
+  original: FileVersion,
+  optimized: FileVersion,
+  retentionDays: number,
+): void {
+  if (optimized.origin !== 'optimizacion' || optimized.fileId !== original.fileId) {
+    throw new TypeError('Solo una optimización del mismo archivo conserva el original.');
+  }
+  if (optimized.sizeBytes >= original.sizeBytes) {
+    throw new TypeError('La versión optimizada debe ser menor que el original.');
+  }
+  if (!original.countsInQuota) {
+    throw new TypeError('El original ya estaba conservado.');
+  }
+  if (!Number.isInteger(retentionDays) || retentionDays < 1) {
+    throw new TypeError('Los días de conservación deben ser un entero positivo.');
+  }
 }
 
 /** Versión de un archivo (`version_archivo`), inmutable (RN-2). La clave de objeto nunca sale de la API. */
@@ -68,7 +101,11 @@ export class FileVersion {
 
   private constructor(snapshot: FileVersionSnapshot) {
     assertInvariants(snapshot);
-    this.data = Object.freeze({ ...snapshot, createdAt: new Date(snapshot.createdAt.getTime()) });
+    this.data = Object.freeze({
+      ...snapshot,
+      createdAt: new Date(snapshot.createdAt.getTime()),
+      keptUntil: copyDate(snapshot.keptUntil),
+    });
     Object.freeze(this);
   }
 
@@ -91,6 +128,7 @@ export class FileVersion {
       restoredFromNumber: null,
       editSessionId,
       createdAt: now,
+      keptUntil: null,
     });
   }
 
@@ -105,6 +143,7 @@ export class FileVersion {
       restoredFromNumber: source.number,
       editSessionId: null,
       createdAt: now,
+      keptUntil: null,
     });
   }
 
@@ -120,6 +159,7 @@ export class FileVersion {
       restoredFromNumber: null,
       editSessionId: null,
       createdAt: now,
+      keptUntil: null,
     });
   }
 
@@ -163,7 +203,26 @@ export class FileVersion {
     return this.data.editSessionId;
   }
 
+  get keptUntil(): Date | null {
+    return copyDate(this.data.keptUntil);
+  }
+
+  /** Si suma en `espacio_usado`: toda versión salvo un original conservado (014b RN-1, RN-7). */
+  get countsInQuota(): boolean {
+    return this.data.keptUntil === null;
+  }
+
+  /**
+   * Esta versión, la actual, como original conservado por `optimized` (014b CA-1, RN-3): deja de contar y vence
+   * `retentionDays` días después del registro de la optimización. Rechaza lo que no ahorra espacio (CA-3, RN-2).
+   */
+  conserveAsOriginal(optimized: FileVersion, retentionDays: number): FileVersion {
+    assertConservable(this, optimized, retentionDays);
+    const keptUntil = new Date(optimized.createdAt.getTime() + retentionDays * DAY_MS);
+    return new FileVersion({ ...this.data, keptUntil });
+  }
+
   snapshot(): FileVersionSnapshot {
-    return { ...this.data, createdAt: this.createdAt };
+    return { ...this.data, createdAt: this.createdAt, keptUntil: this.keptUntil };
   }
 }

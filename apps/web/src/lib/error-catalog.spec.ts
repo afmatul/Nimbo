@@ -1,8 +1,10 @@
 import {
   BILLING_ERROR_CODES,
+  BACKOFFICE_ERROR_CODES,
   BACKOFFICE_FIELD_ISSUE_REASONS,
   BACKOFFICE_FIELD_MESSAGES,
   IDENTITY_ERROR_CODES,
+  INTELLIGENCE_ERROR_CODES,
   IDENTITY_FIELD_MESSAGES,
   LOGIN_LOCK_MINUTES,
   SHARED_ERROR_CODES,
@@ -16,14 +18,18 @@ import {
 import { ApiClientError } from './api-error';
 import {
   IDENTITY_FIELD_MESSAGES as reexported,
+  agentMessage,
   backofficeFieldMessage,
   enrollmentFieldMessage,
   folderNameConflictMessage,
   folderNameFieldMessage,
   messageForCode,
   messageForReason,
+  quotaBelowUsageMessage,
   storageMessage,
+  validityNotLaterMessage,
 } from './error-catalog';
+import { formatCount } from './format-plan';
 
 describe('error-catalog', () => {
   it('reexporta IDENTITY_FIELD_MESSAGES y resuelve cada reason', () => {
@@ -335,6 +341,28 @@ describe('error-catalog', () => {
     });
   });
 
+  describe('ajustes de cuota y vigencia (spec 011b §6)', () => {
+    it('CA-2: la cuota bajo lo usado nombra lo que la cuenta ya usa, en GB del catálogo', () => {
+      expect(quotaBelowUsageMessage(String(108 * 1024 ** 3))).toBe(
+        'La cuota total no puede quedar por debajo de lo que la cuenta ya usa (108 GB).',
+      );
+    });
+
+    it('CA-7: la vigencia que no extiende nombra el último día vigente', () => {
+      expect(validityNotLaterMessage('31 oct 2026')).toBe(
+        'Solo puedes extender la vigencia: elige un día posterior al 31 oct 2026.',
+      );
+    });
+
+    it.each([
+      [BACKOFFICE_ERROR_CODES.QUOTA_INVALID, 'Revisa el espacio extra'],
+      [BACKOFFICE_ERROR_CODES.QUOTA_BELOW_USAGE, 'por debajo de lo que la cuenta ya usa'],
+      [BACKOFFICE_ERROR_CODES.VALIDITY_NOT_EXTENDED, 'Solo puedes extender la vigencia'],
+    ])('CA-2, CA-3, CA-7: %s tiene texto propio con la acción correctiva', (code, text) => {
+      expect(messageForCode(code)).toContain(text);
+    });
+  });
+
   describe('backoffice (spec 011)', () => {
     it.each(BACKOFFICE_FIELD_ISSUE_REASONS)(
       'CA-13: el motivo %s del campo de búsqueda usa el texto de contracts',
@@ -417,6 +445,90 @@ describe('error-catalog', () => {
         expect(shown).not.toContain(serverMessage);
         expect(shown).not.toContain(error.correlationId);
       }
+    });
+  });
+  describe('códigos del agente (020b, RNF-14)', () => {
+    const {
+      AGENT_INVALID_QUESTION,
+      AGENT_QUOTA_EXCEEDED,
+      AGENT_SCOPE_NOT_FOUND,
+      AGENT_UNAVAILABLE,
+    } = INTELLIGENCE_ERROR_CODES;
+
+    it('CA-7: pregunta vacía con la corrección y sin descontar la consulta', () => {
+      expect(agentMessage(AGENT_INVALID_QUESTION, { reason: 'empty' })).toEqual({
+        cause: 'Escribe una pregunta para consultar a tus documentos.',
+        fix: 'No se descontó tu consulta.',
+      });
+    });
+
+    it('CA-7: pregunta larga con los caracteres que sobran y el máximo de la API', () => {
+      const details = { reason: 'too_long', excessChars: 124, maxChars: 1000 };
+
+      expect(agentMessage(AGENT_INVALID_QUESTION, details)).toEqual({
+        cause: 'Tu pregunta tiene 124 caracteres de más.',
+        fix: `Acórtala a ${formatCount(1000)} o menos para enviarla. No se descontó tu consulta.`,
+      });
+      expect(agentMessage(AGENT_INVALID_QUESTION, { ...details, excessChars: 1 })?.cause).toBe(
+        'Tu pregunta tiene 1 carácter de más.',
+      );
+    });
+
+    it('CA-7: larga sin cifras (solo el motivo del servidor) sigue diciendo qué hacer', () => {
+      expect(agentMessage(AGENT_INVALID_QUESTION, { reason: 'too_long' })).toEqual({
+        cause: 'Tu pregunta es demasiado larga.',
+        fix: 'Acórtala para enviarla. No se descontó tu consulta.',
+      });
+    });
+
+    it('CA-8: consultas agotadas con el límite del plan y la fecha de renovación', () => {
+      const details = { limit: 20, resetsAt: '2026-11-01T12:00:00.000Z' };
+
+      expect(agentMessage(AGENT_QUOTA_EXCEEDED, details)).toEqual({
+        cause: 'Usaste tus 20 consultas de este mes. Se renuevan el 1 de noviembre.',
+        fix: 'Mientras tanto, subir, descargar y buscar archivos funciona igual.',
+      });
+    });
+
+    it('CA-8, RN-5: en solo lectura sin fecha, ninguna fecha y la salida es renovar el plan', () => {
+      const message = agentMessage(AGENT_QUOTA_EXCEEDED, { limit: 2000 });
+
+      expect(message).toEqual({
+        cause: `Usaste tus ${formatCount(2000)} consultas de este mes.`,
+        fix: 'Renueva tu plan para volver a preguntar.',
+      });
+    });
+
+    it('CA-9: no disponible, con archivos a salvo y sin descontar; variante parcial', () => {
+      expect(agentMessage(AGENT_UNAVAILABLE)).toEqual({
+        cause: 'El agente no está disponible. Tus archivos siguen a salvo.',
+        fix: 'No se descontó tu consulta. Inténtalo de nuevo en unos minutos.',
+      });
+      expect(agentMessage(AGENT_UNAVAILABLE, {}, { partial: true })).toEqual({
+        cause: 'El agente no está disponible. Tus archivos siguen a salvo.',
+        fix: 'La respuesta se cortó; lo de arriba es lo que alcanzó a llegar. No se descontó tu consulta.',
+      });
+    });
+
+    it('CA-16: ámbito que ya no existe', () => {
+      const message = agentMessage(AGENT_SCOPE_NOT_FOUND);
+
+      expect(`${message?.cause} ${message?.fix}`).toBe(
+        'Esa carpeta o archivo ya no está disponible. Elige otro ámbito.',
+      );
+    });
+
+    it('un code ajeno al agente devuelve null', () => {
+      expect(agentMessage(SHARED_ERROR_CODES.FORBIDDEN)).toBeNull();
+    });
+
+    it('messageForCode une causa y corrección de los codes del agente', () => {
+      expect(messageForCode(AGENT_SCOPE_NOT_FOUND)).toBe(
+        'Esa carpeta o archivo ya no está disponible. Elige otro ámbito.',
+      );
+      expect(messageForCode(AGENT_QUOTA_EXCEEDED, { details: { limit: 20 } })).toBe(
+        'Usaste tus 20 consultas de este mes. Renueva tu plan para volver a preguntar.',
+      );
     });
   });
 });

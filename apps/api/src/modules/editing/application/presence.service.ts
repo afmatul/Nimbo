@@ -3,7 +3,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { EDITING_EVENTS } from '@nimbo/contracts';
 import { PinoLogger } from 'nestjs-pino';
 
-import { createActor, I_CLOCK, I_TRANSACTION_RUNNER, Role } from '../../../shared';
+import { createActor, errorClassOf, I_CLOCK, I_TRANSACTION_RUNNER, Role } from '../../../shared';
 import type { Actor, IClock, ITransactionRunner } from '../../../shared';
 import { I_DOCUMENT_ROOMS, I_REALTIME_PUBLISHER, REALTIME_DOCUMENT_LEFT } from '../../realtime';
 import type { DocumentLeftEvent, IDocumentRooms, IRealtimePublisher } from '../../realtime';
@@ -45,9 +45,6 @@ interface DepartureOutcome {
 }
 
 /** Clase de un error inesperado para la bitácora: nunca su mensaje, que puede traer datos (RNF-17). */
-const errorClassOf = (error: unknown): string =>
-  error instanceof Error ? error.constructor.name : typeof error;
-
 /**
  * Presencia de Nimbo sobre el canal de 015 (plan 016 §1, RN-9): admite la conexión en la sala del documento (la sala
  * es el id del archivo), publica la lista `editing.presence` y cierra la participación de quien sale. El acceso lo

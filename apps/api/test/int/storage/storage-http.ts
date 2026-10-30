@@ -41,6 +41,8 @@ export const DEFAULT_TEST_LIMITS: PlanLimits = {
   retainedVersions: 3,
   readOnly: false,
   maxEditors: 0,
+  extraQuotaBytes: 0n,
+  extraQuotaUntil: null,
   planName: 'Plan de prueba',
 };
 /** Bucket propio y **versionado**, como el de `infra/minio/init.sh`: el compartido del arnés no tiene versionado. */

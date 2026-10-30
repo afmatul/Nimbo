@@ -25,6 +25,8 @@ const icon = S.crearIcon({
   user: M.P.user,
   info: M.P.info,
   sparkles: M.P.sparkles,
+  retry: M.P.retry,
+  ban: '<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>',
 });
 
 // ---------- CSS ----------
@@ -34,7 +36,24 @@ const CSS = '\n' + M.CSS.MARCO + M.CSS.BOTONES + M.CSS.DIALOGO + M.CSS.MQ_900 +
   /* Propio de storage/ficha-archivo (spec 014) */
   :root {
     --file-docx: #3F62A8; --file-docx-bg: #6B8DD620;
+    --file-pdf: #A34F4F; --file-pdf-bg: #C97B7B20;
   }
+  .ftile-pdf { color: var(--file-pdf); background: var(--file-pdf-bg); }
+
+  /* Estado de indexación (spec 019, StatusBadge + Alert): chip con ícono y texto, y aviso con el motivo */
+  .idx-line { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin-top: 8px; }
+  .idx-hint { font-size: 13px; color: var(--secondary-foreground); }
+  .idx-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12.5px; font-weight: 600; white-space: nowrap; color: var(--secondary-foreground); background: var(--muted); }
+  .idx-chip .ico { flex: none; }
+  .idx-chip-ok { color: var(--success-foreground); background: var(--success-soft); border-color: color-mix(in srgb, var(--success) 40%, var(--card)); }
+  .idx-chip-fail { color: var(--destructive); background: var(--destructive-tint); border-color: color-mix(in srgb, var(--destructive-soft) 45%, var(--card)); }
+  .idx-live .alert { margin-top: 18px; }
+  .alert.alert-info { border-color: var(--border); background: var(--card); box-shadow: var(--shadow-card); }
+  .alert.alert-info > .ico { color: var(--primary); }
+  .alert.alert-info .alert-title { color: var(--foreground); }
+  .idx-live .alert-text + .alert-text { margin-top: 6px; }
+
+  .idx-live .alert-actions { align-self: center; }
   .app { min-height: 900px; }
   a.btn-primary, a.btn-primary:hover { color: var(--primary-foreground); }
   a.btn-outline:hover { color: var(--foreground); }
@@ -155,9 +174,12 @@ const CSS = '\n' + M.CSS.MARCO + M.CSS.BOTONES + M.CSS.DIALOGO + M.CSS.MQ_900 +
 
 // ---------- Datos de ejemplo (en la app vienen de GET /files/:id/versions y de PlanLimits) ----------
 // Plan Personal (product-context §3): 15 GB, 50 MB por archivo, conserva 3 versiones (incluye la actual, D-2).
-const PLAN = 'Personal';
-const RETENIDAS = 3;
-const ARCHIVO = 'Informe_avance_sep.docx';
+// (let: los estados de 019 cambian de archivo y, para «demasiado grande», de plan; 014 siempre usa estos valores)
+let PLAN = 'Personal';
+let RETENIDAS = 3;
+let ARCHIVO = 'Informe_avance_sep.docx';
+let TIPO = 'Documento de Word (.docx)';
+let TILE = 'docx';
 const CARPETA = 'Proyecto Alpha';
 
 // Una versión: [número, cuándo, origen, de (restauración), tamaño, cambio frente a la anterior retenida]
@@ -249,7 +271,7 @@ function historial(versiones, { preparando = 0, unaSola = false, alerta = '' } =
         </section>`;
 }
 
-function detalles(versiones) {
+function detalles(versiones, { filas = '', lector = false } = {}) {
   const actual = versiones[0];
   // Todas las versiones cuentan en la cuota (D-1): suma de los tamaños del historial
   const total = `${Math.round(versiones.reduce((t, v) => t + parseFloat(v.tam), 0) * 10) / 10} MB`;
@@ -257,26 +279,29 @@ function detalles(versiones) {
         <section class="card" aria-labelledby="det-t">
           <div class="card-head"><h2 id="det-t">Detalles</h2></div>
           <dl class="details">
-            <div><dt>Tipo</dt><dd>Documento de Word (.docx)</dd></div>
+            <div><dt>Tipo</dt><dd>${TIPO}</dd></div>
             <div><dt>Tamaño</dt><dd>${actual.tam} (versión actual)</dd></div>
             <div><dt>Con versiones</dt><dd>${total} de tu espacio</dd></div>
-            <div><dt>Ubicación</dt><dd>${CARPETA}</dd></div>
+            <div><dt>${lector ? 'Compartido por' : 'Ubicación'}</dt><dd>${lector ? 'Mónica Pérez' : CARPETA}</dd></div>
             <div><dt>Creado</dt><dd>28 sep 2026</dd></div>
-            <div><dt>Modificado</dt><dd>${actual.cuando === 'ahora' ? 'ahora' : actual.cuando}</dd></div>
+            <div><dt>Modificado</dt><dd>${actual.cuando === 'ahora' ? 'ahora' : actual.cuando}</dd></div>${filas}
           </dl>
         </section>`;
 }
 
-function encabezado(versiones) {
+function encabezado(versiones, { linea = '', lector = false } = {}) {
   const actual = versiones && versiones[0];
-  const sub = actual ? `${actual.tam} · versión ${actual.numero} · en ${CARPETA}` : `en ${CARPETA}`;
+  const donde = lector ? 'Compartidos conmigo' : CARPETA;
+  const sub = actual
+    ? `${actual.tam} · versión ${actual.numero} · ${lector ? 'compartido por Mónica Pérez · solo lectura' : `en ${CARPETA}`}`
+    : `en ${CARPETA}`;
   return `
-        <a class="back-link" href="#" aria-label="Volver a ${CARPETA}">${icon('chevronLeft', 18)}<span>${CARPETA}</span></a>
+        <a class="back-link" href="#" aria-label="Volver a ${donde}">${icon('chevronLeft', 18)}<span>${donde}</span></a>
         <div class="file-head">
-          <span class="ftile ftile-docx">${icon('fileText', 20)}</span>
+          <span class="ftile ftile-${TILE}">${icon('fileText', 20)}</span>
           <div class="file-head-text">
             <h1>${ARCHIVO}</h1>
-            <p class="page-sub">${sub}</p>
+            <p class="page-sub">${sub}</p>${linea}
           </div>
           <button class="btn btn-primary" type="button">${icon('download', 16)}<span>Descargar</span></button>
         </div>`;
@@ -327,7 +352,7 @@ function page(v) {
   return C.conLogo(`${M.cabecera({
     titulo: `Ficha de archivo · Nimbo — ${v.titulo}`,
     comentarios: [
-      `Mockup de referencia (spec 014: versiones y restauración). Estado: ${v.estado}.`,
+      `Mockup de referencia (spec ${v.spec ? '019: estado de indexación sobre la ficha de 014' : '014: versiones y restauración'}). Estado: ${v.estado}.`,
       'Colores: valores de ui-guidelines.md §3 (tonos AA). La implementación usa tokens, components/ui y components/nimbo (VersionTimeline).',
       'Generado con _generadores/ficha-archivo/generar.js (marco, espacio, carpetas y estados). No editar a mano.',
     ],
@@ -335,18 +360,19 @@ function page(v) {
   })}
 <body>
 
-<aside class="sheet-label" aria-label="Rótulo del mockup"><span class="chip">014</span> <strong>Ficha de archivo</strong> <span class="file">${file}</span> <span>plan ${PLAN} (conserva ${RETENIDAS} versiones) · estado: ${v.titulo}</span></aside>
+<aside class="sheet-label" aria-label="Rótulo del mockup"><span class="chip">${v.spec || '014'}</span> <strong>Ficha de archivo</strong> <span class="file">${file}</span> <span>plan ${PLAN} (conserva ${RETENIDAS} versiones) · estado: ${v.titulo}</span></aside>
 
 <div class="canvas">
   <div class="app"${v.dialogo ? ' inert' : ''}>
-    ${Q.sidebar({ q, activo: 'Mis archivos' })}
+    ${Q.sidebar({ q, activo: v.activo || 'Mis archivos' })}
     <div class="main">
       ${M.topbar({ crumbs: v.crumbs || ['Mis archivos', CARPETA, ARCHIVO] })}
       <main class="content" id="contenido">${v.cuerpo()}
       </main>
     </div>
   </div>${v.dialogo ? dialogoRestaurar(v.dialogo) : ''}${v.toast || ''}
-</div>
+</div>${v.cuerpo().includes('data-foco') ? `
+<script>document.querySelector('[data-foco]').focus();</script>` : ''}
 
 </body>
 </html>
@@ -440,7 +466,114 @@ const ESTADOS = [
   },
 ];
 
+// ---------- Spec 019: estado de indexación en la ficha (chip + aviso con el motivo, solo aquí: P-3) ----------
+// idx: { e: 'indexando'|'indexado'|'no-indexable'|'fallido', motivo, lector, reintentando, errorReintento, foco }
+const CHIP = {
+  indexando: ['', 'loader', 'Indexando…', 'Ya puedes seguir trabajando'],
+  indexado: ['ok', 'check', 'Indexado', 'Listo para consultar con el agente'],
+  'no-indexable': ['', 'info', 'No se indexa', 'Se busca solo por nombre'],
+  fallido: ['fail', 'alert', 'No se pudo indexar', ''],
+};
+function lineaIdx(idx) {
+  const [tono, ic, texto, pista] = CHIP[idx.e];
+  const chip = `<span class="idx-chip${tono ? ` idx-chip-${tono}` : ''}">${icon(ic, 14, idx.e === 'indexando' ? 'spin' : '')}<span class="sr-only">Estado de indexación: </span>${texto}</span>`;
+  return `
+            <div class="idx-line">${chip}${pista ? `<span class="idx-hint">${pista}</span>` : ''}</div>`;
+}
+
+const MOTIVO = {
+  'sin-texto': ['No pudimos leer el texto de este PDF.', 'Se busca solo por nombre. Parece un documento escaneado, sin texto que se pueda seleccionar. Puedes descargarlo y compartirlo como siempre.', 'Si tienes una copia con texto, súbela con el mismo nombre y elige «Reemplazar».'],
+  formato: ['No pudimos leer el contenido de este archivo.', 'Su contenido no corresponde a un documento de Word, aunque el nombre termine en .docx. Se busca solo por nombre; puedes descargarlo y compartirlo como siempre.'],
+  grande: ['Este archivo es demasiado grande para indexarlo.', 'Nimbo indexa archivos de hasta 50 MB y este pesa 120 MB. Se busca solo por nombre; puedes descargarlo y compartirlo como siempre.'],
+};
+
+// El contenedor role="status" existe siempre (también vacío): así el cambio de estado en vivo (015) se anuncia sin mover el foco.
+function avisoIdx(idx) {
+  const parrafos = (ts) => ts.map((t) => `<p class="alert-text">${t}</p>`).join('');
+  const caja = (tono, ic, titulo, textos, accion = '') => `
+        <div class="alert alert-${tono}">
+          ${icon(ic, 18, ic === 'loader' ? 'spin' : '')}
+          <div class="alert-body">
+            <p class="alert-title">${titulo}</p>${parrafos(textos)}
+          </div>${accion ? `
+          <div class="alert-actions">${accion}</div>` : ''}
+        </div>`;
+  let cuerpo = '';
+  if (idx.e === 'indexando') {
+    cuerpo = caja('info', 'loader', 'Indexando… ya puedes seguir trabajando.', ['Estamos leyendo este archivo para que puedas consultarlo con el agente. Descargarlo, editarlo y compartirlo funciona con normalidad. Este aviso se actualiza solo cuando termine.']);
+  } else if (idx.e === 'no-indexable') {
+    const [t, ...ps] = MOTIVO[idx.motivo];
+    cuerpo = caja('info', 'info', t, ps);
+  } else if (idx.e === 'fallido' && idx.lector) {
+    cuerpo = caja('fail', 'alert', 'No pudimos indexar este archivo.', ['Solo quien puede editarlo puede reintentarlo. Mientras tanto, el archivo sigue disponible para descargar.']);
+  } else if (idx.e === 'fallido') {
+    const btn = idx.reintentando
+      ? `<button class="btn btn-outline btn-sm" type="button" aria-disabled="true" data-foco>${icon('loader', 14, 'spin')}<span>Reintentando…</span></button>`
+      : `<button class="btn btn-outline btn-sm" type="button"${idx.foco ? ' data-foco' : ''}>${icon('retry', 14)}<span>Reintentar</span></button>`;
+    const titulo = idx.errorReintento ? 'No pudimos reintentar la indexación.' : 'No pudimos indexar este archivo.';
+    const texto = idx.errorReintento
+      ? 'Tu archivo no cambió. Revisa tu conexión y vuelve a intentarlo en unos segundos.'
+      : 'Lo intentamos varias veces y no fue posible. Tu archivo está a salvo y puedes seguir trabajando. Reintenta ahora o inténtalo más tarde.';
+    cuerpo = caja('fail', 'alert', titulo, [texto], btn)
+      + (idx.reintentando ? '\n        <p class="sr-only">Reintentando la indexación…</p>' : '');
+  }
+  return `
+        <div class="idx-live" role="status">${cuerpo}
+        </div>`;
+}
+
+const FILA_IDX = {
+  indexando: 'En curso · versión 1',
+  indexado: 'hoy, 10:44 · versión 1',
+  'no-indexable': 'No aplica: se busca solo por nombre',
+  fallido: 'Falló hoy, 10:44 · versión 1',
+};
+const filaIdx = (idx) => `<div><dt>Indexación</dt><dd>${FILA_IDX[idx.e]}</dd></div>`;
+
+function fichaIdx(versiones, idx) {
+  const l = !!idx.lector;
+  const grid = l ? detalles(versiones, { filas: filaIdx(idx), lector: true }) : `${historial(versiones, { unaSola: true })}${detalles(versiones, { filas: filaIdx(idx) })}`;
+  return `${encabezado(versiones, { linea: lineaIdx(idx), lector: l })}${avisoIdx(idx)}
+        <div class="ficha-grid">${grid}
+        </div>`;
+}
+
+// Archivo de ejemplo de cada estado de 019: [nombre, tipo, ícono de tile, tamaño]
+const ARCH = {
+  docx: ['Informe_avance_sep.docx', 'Documento de Word (.docx)', 'docx', '2.6 MB'],
+  pdf: ['Contrato_arrendamiento_escaneado.pdf', 'Documento PDF (.pdf)', 'pdf', '4.1 MB'],
+  falso: ['Plano_oficina.docx', 'Documento de Word (.docx)', 'docx', '1.2 MB'],
+  grande: ['Manual_operaciones_completo.pdf', 'Documento PDF (.pdf)', 'pdf', '120 MB'],
+};
+const UNICA = (tam) => [V(1, 'hoy, 10:42', 'carga', tam, null, { primera: true })];
+const E19 = (estado, titulo, arch, idx, extra = {}) => ({
+  estado, titulo, spec: '019', arch, idx, ...extra,
+  crumbs: extra.crumbs || ['Mis archivos', CARPETA, ARCH[arch][0]],
+  cuerpo: () => fichaIdx(UNICA(ARCH[arch][3]), idx),
+});
+
+ESTADOS.push(
+  E19('indexando', 'indexando (pendiente o en curso): «Indexando… ya puedes seguir trabajando»', 'docx', { e: 'indexando' }),
+  E19('indexado', 'indexado: listo para consultar con el agente', 'docx', { e: 'indexado' }),
+  E19('indexado-aviso', 'indexado en vivo: aviso al terminar mientras la miras, sin recargar', 'docx', { e: 'indexado' }, {
+    toast: C.toast({ texto: 'Listo para consultar con el agente: Informe_avance_sep.docx.' }),
+  }),
+  E19('no-indexable', 'no indexable por falta de texto (PDF escaneado): se busca solo por nombre', 'pdf', { e: 'no-indexable', motivo: 'sin-texto' }),
+  E19('no-indexable-formato', 'no indexable por formato no soportado (el contenido no coincide con la extensión)', 'falso', { e: 'no-indexable', motivo: 'formato' }),
+  E19('no-indexable-grande', 'no indexable por tamaño (supera el tope de indexación; plan Pro)', 'grande', { e: 'no-indexable', motivo: 'grande' }, { plan: ['Pro', 30] }),
+  E19('fallido', 'indexación fallida: motivo y «Reintentar» para propietario y editor', 'docx', { e: 'fallido', foco: true }),
+  E19('fallido-reintentando', 'reintentando (> 2 s): botón deshabilitado con indicador y anuncio, el foco no se pierde', 'docx', { e: 'fallido', reintentando: true }),
+  E19('fallido-error-reintento', 'no se pudo reintentar (red): dice qué hacer y «Reintentar» sigue disponible', 'docx', { e: 'fallido', errorReintento: true, foco: true }),
+  E19('solo-lectura-lector', 'vista de lector (solo lectura): ve el estado y el motivo, sin «Reintentar» ni historial', 'docx', { e: 'fallido', lector: true }, {
+    activo: 'Compartidos conmigo', crumbs: ['Compartidos conmigo', 'Informe_avance_sep.docx'],
+  }),
+);
+
 for (const v of ESTADOS) {
+  // Cada estado fija su archivo y su plan (los de 014 usan los valores por defecto)
+  const a = v.arch ? ARCH[v.arch] : ['Informe_avance_sep.docx', 'Documento de Word (.docx)', 'docx'];
+  [ARCHIVO, TIPO, TILE] = a;
+  [PLAN, RETENIDAS] = v.plan || ['Personal', 3];
   const file = v.estado === 'default' ? 'ficha-archivo.html' : `ficha-archivo--${v.estado}.html`;
   fs.writeFileSync(path.join(OUT, file), page(v), 'utf8');
   console.log(file);

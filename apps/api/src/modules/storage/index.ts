@@ -25,3 +25,11 @@ export { I_OBJECT_STORAGE } from './application/ports/i-object-storage.port';
 export { invoiceObjectKey } from './domain/invoice-object-key';
 export type { IObjectStorage, PutObjectInput } from './application/ports/i-object-storage.port';
 export { StorageWorkerModule } from './storage-worker.module';
+// 019 (RN-11, ADR-0019): el evento de versión vigente lo exporta su productor; `intelligence` lo escucha y lee por la
+// fachada `IndexableFileGateway`.
+export { FILE_VERSION_CREATED } from './domain/file-version-created.event';
+export type { FileVersionCreatedEvent } from './domain/file-version-created.event';
+export type { FileKind } from './domain/file-kind';
+export { IndexableFileGateway } from './application/indexable-file.gateway';
+export type { IndexableFile } from './application/indexable-file.gateway';
+export type { FileVersionRef, IdPage } from './application/ports/i-node.repository.port';

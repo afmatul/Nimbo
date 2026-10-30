@@ -58,6 +58,8 @@ describe('PlanLimitsAdapter integración con base de datos real (T-11, CA-1, CA-
         retainedVersions: 3,
         readOnly: false,
         maxEditors: 0,
+        extraQuotaBytes: 0n,
+        extraQuotaUntil: null,
       });
     });
 
@@ -74,6 +76,8 @@ describe('PlanLimitsAdapter integración con base de datos real (T-11, CA-1, CA-
         retainedVersions: 3,
         readOnly: false,
         maxEditors: 0,
+        extraQuotaBytes: 0n,
+        extraQuotaUntil: null,
       });
     });
   });
@@ -206,6 +210,33 @@ describe('PlanLimitsAdapter integración con base de datos real (T-11, CA-1, CA-
       await expect(limitsProvider.limitsFor(createActor(ana, Role.CLIENT))).resolves.toMatchObject({
         planName: 'Equipo',
         trashRetentionDays: 60,
+      });
+    });
+
+    it('011b CA-4, CA-5: lee `cuota_extra_bytes` y `cuota_extra_hasta`; vigente suma, vencido no', async () => {
+      const [vigente, vencido] = [await newClient(), await newClient()];
+      const insertWithExtra = (id: string, until: string) =>
+        owner.query(
+          `INSERT INTO suscripcion (usuario_id, plan_id, cuota_extra_bytes, cuota_extra_hasta)
+             SELECT $1, id, 53687091200, $2 FROM plan WHERE slug = 'personal'`,
+          [id, until],
+        );
+      await insertWithExtra(vigente, '2999-01-01T06:00:00.000Z');
+      await insertWithExtra(vencido, '2000-01-01T06:00:00.000Z');
+
+      await expect(
+        limitsProvider.limitsFor(createActor(vigente, Role.CLIENT)),
+      ).resolves.toMatchObject({
+        storageQuotaBytes: 16106127360n + 53687091200n,
+        extraQuotaBytes: 53687091200n,
+        extraQuotaUntil: new Date('2999-01-01T06:00:00.000Z'),
+      });
+      await expect(
+        limitsProvider.limitsFor(createActor(vencido, Role.CLIENT)),
+      ).resolves.toMatchObject({
+        storageQuotaBytes: 16106127360n,
+        extraQuotaBytes: 0n,
+        extraQuotaUntil: null,
       });
     });
 

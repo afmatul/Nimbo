@@ -26,6 +26,7 @@ export function versionFixture(
     createdAt: '2026-10-08T16:42:00.000Z',
     createdById: VERSION_OWNER_ID,
     isCurrent: false,
+    keptUntil: null,
     ...overrides,
   };
 }

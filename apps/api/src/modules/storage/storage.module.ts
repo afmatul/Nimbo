@@ -15,6 +15,7 @@ import { FileService } from './application/file.service';
 import { FOLDER_CONFIG } from './application/folder-config';
 import type { FolderConfig } from './application/folder-config';
 import { FolderService } from './application/folder.service';
+import { IndexableFileGateway } from './application/indexable-file.gateway';
 import { I_NODE_METADATA_READER } from './application/ports/i-node-metadata-reader.port';
 import { I_OBJECT_STORAGE } from './application/ports/i-object-storage.port';
 import type { IObjectStorage } from './application/ports/i-object-storage.port';
@@ -45,6 +46,7 @@ import { SpaceController } from './presentation/space.controller';
 import { TrashController } from './presentation/trash.controller';
 import { UploadsController } from './presentation/uploads.controller';
 import {
+  INDEXABLE_FILE_PROVIDERS,
   SPACE_PROVIDERS,
   TRASH_LIFECYCLE_PROVIDERS,
   UPLOAD_LIFECYCLE_PROVIDERS,
@@ -68,7 +70,8 @@ export type StorageEnv = Pick<
 /**
  * Módulo `storage` (M2, plan §6): carga, descarga, carpetas, papelera y accesos rápidos (006), resumen de espacio (007) y
  * versiones (014: registro y poda en `UPLOAD_LIFECYCLE_PROVIDERS`; historial, descarga y restauración solo en el `api`)
- * y, desde 016, `EditableFileGateway` (exportado) con el registro de versiones de edición, solo en el `api`.
+ * y, desde 016, `EditableFileGateway` (exportado) con el registro de versiones de edición, solo en el `api`; desde 019,
+ * `IndexableFileGateway` (exportada) y el anuncio de cada versión vigente (`storage.file-version-created`).
  * `forRoot(env)` publica la configuración técnica (bytes como `bigint`) y une cada puerto con su adaptador. **No**
  * enlaza `I_PLAN_LIMITS_PROVIDER` ni importa `billing`: ese enlace vive en la raíz de composición (DF-51, opción A). `SharedModule` (global) aporta reloj, tasa, transacciones y
  * `TransactionContext`; `MinioConfigModule` (global), `MINIO_CONFIG`. La cola `trash-purge` se registra solo para que
@@ -138,15 +141,18 @@ export class StorageModule {
         { provide: I_NODE_METADATA_READER, useClass: SqlNodeMetadataReader },
         EditedVersionRegistrar,
         EditableFileGateway,
+        ...INDEXABLE_FILE_PROVIDERS,
       ],
       // 011 (PD-31): el lector de metadatos para `backoffice`. 009 (ampliación de la decisión 1, 2026-10-15): `billing`
       // importa `I_OBJECT_STORAGE` de forma explícita, sin módulo global. 016: la fachada de edición para `editing`.
       // 017 (plan §2.3): la fachada de vista previa para `PreviewModule`.
+      // 019: la fachada de la indexación para `intelligence`.
       exports: [
         I_NODE_METADATA_READER,
         I_OBJECT_STORAGE,
         EditableFileGateway,
         StoragePreviewFacade,
+        IndexableFileGateway,
       ],
     };
   }

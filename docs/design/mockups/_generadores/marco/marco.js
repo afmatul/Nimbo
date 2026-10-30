@@ -111,7 +111,7 @@ function cuota({ usado, total, pct } = CUOTA) {
 }
 
 const logo = (cls = 'logo') =>
-  `<a class="${cls}" href="#"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>`;
+  `<a class="${cls}" href="#" aria-label="NIMBO, Mis archivos"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>`;
 
 function sidebar({ activo = '', plan = 'PERSONAL', cuota: q = CUOTA, carpetas = CARPETAS, contadorPapelera, accesos = '' } = {}) {
   return `

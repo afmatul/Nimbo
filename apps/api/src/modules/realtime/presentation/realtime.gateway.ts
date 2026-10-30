@@ -15,6 +15,7 @@ import type { DisconnectReason } from 'socket.io';
 import {
   CorrelationContext,
   DomainError,
+  errorClassOf,
   InsufficientRoleError,
   UnauthenticatedError,
 } from '../../../shared';
@@ -22,7 +23,6 @@ import {
   ConnectionAdmission,
   type ConnectionAttempt,
 } from '../application/connection-admission.service';
-import { errorClassOf } from '../application/error-class';
 import { userRoom } from '../domain/room-names';
 import { ConnectionLifetime } from '../infrastructure/connection-lifetime';
 import {

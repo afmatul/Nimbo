@@ -39,6 +39,8 @@ describe('PlanLimitsBindingModule', () => {
       retainedVersions: 3,
       readOnly: false,
       maxEditors: 0,
+      extraQuotaBytes: 0n,
+      extraQuotaUntil: null,
     });
     await moduleRef.close();
   });

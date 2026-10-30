@@ -14,6 +14,8 @@ export interface TreeNewFolder {
 
 export interface MoveFolderTreeProps {
   readonly tree: FolderTree;
+  /** Nombre accesible del árbol; «Carpetas de destino» en «Mover a…». */
+  readonly label?: string;
   readonly selected: string | null;
   /** Elemento con `tabIndex=0` (foco itinerante del patrón `tree` de WAI-ARIA). */
   readonly focused: string;
@@ -26,6 +28,7 @@ export interface MoveFolderTreeProps {
 }
 
 const LOADING_LABEL = 'Cargando carpetas…';
+const DESTINATION_LABEL = 'Carpetas de destino';
 
 /**
  * Sangría de cada nivel (1 = «Mis archivos») en la fila y no en el grupo, así el campo «Nueva carpeta» puede usar todo
@@ -103,13 +106,13 @@ function useTreeKeyboard({
   };
 }
 
-/** Árbol de destino de «Mover a…»: selección única, carga perezosa al abrir cada carpeta. */
+/** Árbol de carpetas de «Mover a…» (también el ámbito del agente): selección única, carga perezosa al abrir cada carpeta. */
 export function MoveFolderTree(props: MoveFolderTreeProps): React.JSX.Element {
   const onKeyDown = useTreeKeyboard(props);
   return (
     <ul
       role="tree"
-      aria-label="Carpetas de destino"
+      aria-label={props.label ?? DESTINATION_LABEL}
       onKeyDown={onKeyDown}
       className="max-h-72 overflow-y-auto rounded-md border border-border bg-card p-1"
     >

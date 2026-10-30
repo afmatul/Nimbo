@@ -127,6 +127,20 @@ describe('textos de «Mi actividad»', () => {
   );
 
   it.each([
+    ['account.quota_adjusted', 'Administración de Nimbo ajustó la cuota de tu cuenta'],
+    ['account.validity_adjusted', 'Administración de Nimbo extendió la vigencia de tu plan'],
+  ] as const)(
+    'CA-9 (011b): %s lleva el rol de Administración como sujeto y se describe como «Cuenta»',
+    (action, text) => {
+      const adjusted = event({ action, actorRole: 'ADMIN', origin: 'staff', resourceType: null });
+
+      expect(activityActionLabel(adjusted)).toBe(text);
+      expect(activityActorLabel(adjusted)).toBe('Administración de Nimbo');
+      expect(activityResourceLabel(adjusted)).toBe('Cuenta');
+    },
+  );
+
+  it.each([
     ['account.suspended', 'Tú suspendió tu cuenta'],
     ['client.files_viewed', 'Tú consultó la lista de tus archivos (sin abrir su contenido)'],
   ] as const)(
@@ -148,7 +162,7 @@ describe('textos de «Mi actividad»', () => {
   );
 
   it('CA-7: una acción que la web aún no conoce se muestra como «Actividad en tu cuenta»', () => {
-    expect(activityActionLabel(event({ action: 'account.quota_adjusted' }))).toBe(
+    expect(activityActionLabel(event({ action: 'account.future_action' }))).toBe(
       UNKNOWN_ACTIVITY_LABEL,
     );
     expect(UNKNOWN_ACTIVITY_LABEL).toBe('Actividad en tu cuenta');

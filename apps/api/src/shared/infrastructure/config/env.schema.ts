@@ -89,6 +89,28 @@ const DEFAULT_EDITING_MAX_DOC_BYTES = 50 * 1024 * 1024;
 /** Valor de ejemplo de `ONLYOFFICE_JWT_SECRET` en `.env.example`: en staging y producción se rechaza (016 plan §5). */
 const EXAMPLE_ONLYOFFICE_JWT_SECRET = 'cambia-este-secreto-local';
 const ONLYOFFICE_SECRET_MIN_LENGTH = 32;
+/** Tope indexable inicial (019 RN-7, DF-37): 50 MiB, único y no por plan. */
+const DEFAULT_INDEXING_MAX_FILE_BYTES = 50 * MIB;
+/** Intentos de un trabajo de indexación antes de `fallido` (019 RN-6). */
+const DEFAULT_INDEXING_MAX_ATTEMPTS = 3;
+/** Un día: la conciliación repone eventos perdidos y archivos previos a 019 (RN-12), no es el disparo normal. */
+const DEFAULT_INDEX_RECONCILE_INTERVAL_MINUTES = 1440;
+/** El mismo lote y tope que los otros barridos. */
+const DEFAULT_INDEX_RECONCILE_BATCH_SIZE = 100;
+const MAX_INDEX_RECONCILE_BATCH_SIZE = 1000;
+/** «Reintentar» por usuario y minuto (019 CA-13): es una acción manual y rara; el límite frena la repetición. */
+const DEFAULT_RATE_LIMIT_INDEX_RETRY_PER_MINUTE = 10;
+/** Modelo de embeddings por defecto (ADR-0007): se vectoriza a 768 dimensiones (ADR-0003). */
+const DEFAULT_GEMINI_EMBEDDING_MODEL = 'gemini-embedding-001';
+/** Modelo que redacta las respuestas del agente (020 D-7, RNF-09). */
+const DEFAULT_GEMINI_CHAT_MODEL = 'gemini-3.5-flash';
+/** Largo máximo inicial de la pregunta al agente (020 RN-7, P-6). */
+const DEFAULT_AGENT_MAX_QUESTION_CHARS = 1000;
+/** Plazos iniciales del modelo hasta el primer trozo y entre trozos (020 D-7, CA-15); se miden en T-09. */
+const DEFAULT_AGENT_MODEL_FIRST_CHUNK_TIMEOUT_MS = 5_000;
+const DEFAULT_AGENT_MODEL_IDLE_TIMEOUT_MS = 5_000;
+/** Ghostscript en Linux y macOS; en Windows se configura `gswin64c` (019 D-1). */
+const DEFAULT_GHOSTSCRIPT_BIN = 'gs';
 
 /**
  * Valor de desarrollo de `JWT_ACCESS_SECRET` que trae `.env.example` (plan 002 §6.10). Público a propósito: en
@@ -253,6 +275,50 @@ const editingApiShape = {
   EDITING_MAX_DOC_BYTES: positiveInt(DEFAULT_EDITING_MAX_DOC_BYTES),
 };
 
+/**
+ * Intentos de un trabajo de indexación (019 RN-6), **una sola definición** para el `api` (que encola al recibir el
+ * evento o el reintento) y el `worker` (que decide cuándo se agotaron).
+ */
+const indexingQueueShape = {
+  INDEXING_MAX_ATTEMPTS: positiveInt(DEFAULT_INDEXING_MAX_ATTEMPTS),
+};
+
+/** «Reintentar» la indexación en el `api` (019 plan §4, CA-13). */
+const indexingApiShape = {
+  RATE_LIMIT_INDEX_RETRY_PER_MINUTE: positiveInt(DEFAULT_RATE_LIMIT_INDEX_RETRY_PER_MINUTE),
+};
+
+/**
+ * Proveedor Gemini, **una sola definición** para el `worker` (vectoriza los fragmentos, 019) y el `api` (vectoriza la
+ * pregunta al agente en proceso, 020 D-8; enmienda RN-9 de la 019). `GEMINI_API_KEY` es opcional: sin ella la
+ * indexación termina `fallido/proveedor_no_disponible`, el agente responde `AGENT_UNAVAILABLE` y el resto sigue
+ * (RNF-09). Nunca llega al navegador.
+ */
+const geminiShape = {
+  GEMINI_API_KEY: optionalText(),
+  GEMINI_EMBEDDING_MODEL: nonEmpty().default(DEFAULT_GEMINI_EMBEDDING_MODEL),
+};
+
+/** Indexación en el `worker` (019 plan §5): tope indexable, conciliación y Ghostscript. */
+const indexingWorkerShape = {
+  INDEXING_MAX_FILE_BYTES: positiveInt(DEFAULT_INDEXING_MAX_FILE_BYTES),
+  INDEX_RECONCILE_INTERVAL_MINUTES: positiveInt(DEFAULT_INDEX_RECONCILE_INTERVAL_MINUTES),
+  INDEX_RECONCILE_BATCH_SIZE: intBetween(
+    1,
+    MAX_INDEX_RECONCILE_BATCH_SIZE,
+    DEFAULT_INDEX_RECONCILE_BATCH_SIZE,
+  ),
+  GHOSTSCRIPT_BIN: nonEmpty().default(DEFAULT_GHOSTSCRIPT_BIN),
+};
+
+/** Agente con citas en el `api` (020 plan D-7, D-8): modelo, largo máximo de la pregunta (RN-7) y plazos (CA-15). */
+const agentApiShape = {
+  GEMINI_CHAT_MODEL: nonEmpty().default(DEFAULT_GEMINI_CHAT_MODEL),
+  AGENT_MAX_QUESTION_CHARS: positiveInt(DEFAULT_AGENT_MAX_QUESTION_CHARS),
+  AGENT_MODEL_FIRST_CHUNK_TIMEOUT_MS: positiveInt(DEFAULT_AGENT_MODEL_FIRST_CHUNK_TIMEOUT_MS),
+  AGENT_MODEL_IDLE_TIMEOUT_MS: positiveInt(DEFAULT_AGENT_MODEL_IDLE_TIMEOUT_MS),
+};
+
 /** Purga programada de la papelera en el `worker` (006 plan §4, CA-19). */
 const trashPurgeShape = {
   TRASH_PURGE_INTERVAL_MINUTES: positiveInt(DEFAULT_TRASH_PURGE_INTERVAL_MINUTES),
@@ -311,7 +377,9 @@ const renewalReminderShape = {
 
 /**
  * Forma del entorno del `worker`: el contrato común, su puerto de salud, MinIO, el barrido de cargas (005), la purga
- * de la papelera (006), la conciliación de espacio (007), la de suscripciones y el reintento de facturas (009) y el SMTP (001 plan §6.10); sin `PORT` ni `MINIO_PUBLIC_ENDPOINT`. `SMTP_PASSWORD` se declara **solo** aquí.
+ * de la papelera (006), la conciliación de espacio (007), la de suscripciones y el reintento de facturas (009), la
+ * indexación con Gemini (019) y el SMTP (001 plan §6.10); sin `PORT` ni `MINIO_PUBLIC_ENDPOINT`. `SMTP_PASSWORD` se
+ * declara **solo** aquí; `GEMINI_API_KEY` también la declara el `api`, con la misma definición (020 D-8).
  */
 export const workerEnvObjectSchema = sharedEnvBaseSchema.extend({
   ...workerPortShape,
@@ -323,6 +391,9 @@ export const workerEnvObjectSchema = sharedEnvBaseSchema.extend({
   ...invoiceRetryShape,
   ...subscriptionRenewalShape,
   ...renewalReminderShape,
+  ...indexingQueueShape,
+  ...indexingWorkerShape,
+  ...geminiShape,
   SMTP_HOST: nonEmpty(),
   SMTP_PORT: requiredPort(),
   SMTP_TLS: oneOf(['none', 'starttls', 'implicit']),
@@ -333,8 +404,9 @@ export const workerEnvObjectSchema = sharedEnvBaseSchema.extend({
 
 /**
  * Forma del entorno del `api`: además el puerto HTTP público, MinIO, la carga de archivos (005), las carpetas y los
- * accesos rápidos (006), el límite de intentos del canal en vivo (015), la URL pública de `web`, CORS y la clave que firma los tokens de acceso (002), que se declara
- * **solo** aquí.
+ * accesos rápidos (006), el límite de intentos del canal en vivo (015), la edición (016), los intentos y el reintento
+ * de la indexación (019), Gemini y el agente (020), la URL pública de `web`, CORS y la clave que firma los tokens de
+ * acceso (002), que se declara **solo** aquí.
  */
 export const apiEnvObjectSchema = sharedEnvBaseSchema.extend({
   ...workerPortShape,
@@ -346,6 +418,10 @@ export const apiEnvObjectSchema = sharedEnvBaseSchema.extend({
   ...renewalReminderShape,
   ...realtimeApiShape,
   ...editingApiShape,
+  ...indexingQueueShape,
+  ...indexingApiShape,
+  ...geminiShape,
+  ...agentApiShape,
   WEB_PUBLIC_URL: url(),
   CORS_ORIGIN: urlList(),
   JWT_ACCESS_SECRET: z.string().min(JWT_SECRET_MIN_LENGTH, JWT_SECRET_LENGTH_MESSAGE),

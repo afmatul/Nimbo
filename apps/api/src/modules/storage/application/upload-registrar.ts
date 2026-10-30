@@ -56,7 +56,10 @@ export class UploadRegistrar {
     @Inject(I_CLOCK) private readonly clock: IClock,
   ) {}
 
-  /** Registra en su transacción y, si fue un reemplazo, poda tras el commit (014 CA-13; nunca lanza). */
+  /**
+   * Registra en su transacción y, tras el commit, anuncia la versión vigente (019 RN-11); si fue un reemplazo, además
+   * poda (014 CA-13). Nada de eso lanza.
+   */
   async register(
     actor: Actor,
     session: UploadSession,
@@ -67,8 +70,11 @@ export class UploadRegistrar {
         ? this.registerReplacement(actor, session, verified)
         : this.registerNewFile(actor, session, verified),
     );
-    if (registration.outcome === 'registered' && session.replacesFile) {
-      await this.fileVersions.afterCommit(actor, registration.file.id);
+    if (registration.outcome !== 'registered') return registration;
+    if (session.replacesFile) {
+      await this.fileVersions.afterCommit(actor, registration);
+    } else {
+      this.fileVersions.announce(registration);
     }
     return registration;
   }

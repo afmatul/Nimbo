@@ -1,4 +1,4 @@
-import { AUDIT_TRIGGERS, INTERNAL_ROLES } from '@nimbo/contracts';
+import { AUDIT_TRIGGERS, INDEXING_REASONS, INTERNAL_ROLES } from '@nimbo/contracts';
 
 import type { AttributeRules } from '../domain/attribute-sanitizer';
 import type { AuditAttributes, AuditResourceType } from '../domain/audit-entry';
@@ -26,13 +26,19 @@ const ON_ACCOUNT = { resourceType: 'account', attributes: {} } as const;
 const ON_PLAN = { resourceType: 'plan', attributes: {} } as const;
 const ON_SUBSCRIPTION = { resourceType: null, attributes: {} } as const;
 const ON_SUBSCRIPTION_PLAN = { resourceType: null, attributes: { planSlug: 'text' } } as const;
+/** Resultado de una indexación (019 D-6): la versión, el motivo del catálogo cerrado y la duración. */
+const INDEXING_OUTCOME = {
+  resourceType: 'file',
+  attributes: { versionId: 'uuid', reason: INDEXING_REASONS, durationMs: 'number' },
+} as const;
 
 /**
  * Catálogo cerrado (RN-3): por acción, su tipo de recurso y la lista blanca de atributos con su tipo. Son las siete
  * acciones de 005 y 006 (D-1) con los atributos que emiten hoy, las dos de versiones de 014 (plan §5; un reemplazo
  * reutiliza `file.upload_completed` con `replaced`, `versionId` y `versionNumber`), las siete internas de 011 (plan
- * §2), que no guardan nombres ni correos, las tres de edición de 016 (plan §5) y las nueve de la suscripción de 010
- * (plan §2, sin datos de tarjeta). Cada spec agrega las suyas. Una acción del enum sin entrada no compila.
+ * §2), que no guardan nombres ni correos, las tres de edición de 016 (plan §5), las nueve de la suscripción de 010
+ * (plan §2, sin datos de tarjeta), las cuatro de indexación de 019 (D-6) y los ajustes de cuenta de 011b (plan §4).
+ * Cada spec agrega las suyas. Una acción del enum sin entrada no compila.
  */
 export const AUDIT_CATALOG = {
   [AuditAction.FILE_UPLOAD_COMPLETED]: {
@@ -89,6 +95,14 @@ export const AUDIT_CATALOG = {
     attributes: { role: INTERNAL_ROLES },
   },
   [AuditAction.ACCOUNT_BOOTSTRAP_ADMIN]: ON_ACCOUNT,
+  [AuditAction.ACCOUNT_QUOTA_ADJUSTED]: {
+    resourceType: 'account',
+    attributes: { extraBytes: 'number', until: 'text' },
+  },
+  [AuditAction.ACCOUNT_VALIDITY_ADJUSTED]: {
+    resourceType: 'account',
+    attributes: { expiresAt: 'text' },
+  },
   [AuditAction.CLIENT_FILES_VIEWED]: ON_ACCOUNT,
   [AuditAction.PLAN_CREATED]: ON_PLAN,
   [AuditAction.PLAN_DEACTIVATED]: ON_PLAN,
@@ -126,6 +140,16 @@ export const AUDIT_CATALOG = {
   [AuditAction.EDIT_SAVE_FAILED]: {
     resourceType: 'file',
     attributes: { sessionId: 'uuid', reason: 'text' },
+  },
+  [AuditAction.FILE_INDEXED]: {
+    resourceType: 'file',
+    attributes: { versionId: 'uuid', durationMs: 'number', fragmentCount: 'number' },
+  },
+  [AuditAction.FILE_INDEX_UNINDEXABLE]: INDEXING_OUTCOME,
+  [AuditAction.FILE_INDEX_FAILED]: INDEXING_OUTCOME,
+  [AuditAction.FILE_INDEX_RETRIED]: {
+    resourceType: 'file',
+    attributes: { versionId: 'uuid' },
   },
 } as const satisfies Record<AuditAction, AuditActionSpec>;
 

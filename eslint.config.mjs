@@ -26,6 +26,7 @@ export default tseslint.config(
   {
     ignores: [
       'docs/**',
+      '.claude/**',
       '**/dist/**',
       '**/dist-worker/**',
       '**/dist-int/**',

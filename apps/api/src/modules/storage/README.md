@@ -184,6 +184,7 @@ STORAGE_NODE_NOT_FOUND` que un nodo ajeno, inexistente o en la papelera.
   `propietario_id = actor.id`, agrupadas por `tipo`) + `ITrashRepository.trashSummary` (raíces: una carpeta pesa lo que
   arrastró) en un `SpaceBreakdown`. La reutiliza la conciliación (T-05).
 - `FILE_BYTES_SQL` y `selectRows` (parámetros con nombre) viven en `node-sql.ts` y los comparten papelera y espacio.
+  Toda suma de versiones filtra con `COUNTED_VERSION_SQL`: un original conservado (014b) no cuenta en el espacio.
 - Pruebas: `space-measurer.spec.ts`, `space-summary.service.spec.ts`, `space.controller.spec.ts`,
   `storage-routes.contract.spec.ts` y `test/int/storage/space-summary.int-spec.ts`.
 
