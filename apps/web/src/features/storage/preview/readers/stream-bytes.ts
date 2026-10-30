@@ -22,6 +22,16 @@ export async function releaseStreamReader(
   }
 }
 
+/** Suelta el reader que un intento tenga en curso, una sola vez (Imagen y Texto lo comparten). */
+export async function releaseHeldReader(
+  holder: { reader: ReadableStreamDefaultReader<Uint8Array> | undefined },
+  cancel: boolean,
+): Promise<void> {
+  const reader = holder.reader;
+  holder.reader = undefined;
+  if (reader !== undefined) await releaseStreamReader(reader, cancel);
+}
+
 /** Descarta un body que llegó cuando su intento ya no existe: la entrega y su eventual error se ignoran. */
 export async function discardStream(body: ReadableStream<Uint8Array>): Promise<void> {
   try {

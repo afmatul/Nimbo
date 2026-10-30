@@ -1,12 +1,11 @@
 'use client';
 
-import type { FileSummary } from '@nimbo/contracts';
+import { isPreviewableKind, type FileSummary } from '@nimbo/contracts';
 import { Eye } from 'lucide-react';
 import Link from 'next/link';
 import type * as React from 'react';
 
 import { DropdownMenuItem } from '../../../../components/ui/dropdown-menu';
-import { isPreviewableKind } from '../previewable-kind';
 import { previewPathOf } from '../routes';
 
 export function PreviewMenuItem({

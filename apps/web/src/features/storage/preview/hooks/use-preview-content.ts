@@ -1,9 +1,9 @@
 'use client';
 
+import { isPreviewableKind } from '@nimbo/contracts';
 import * as React from 'react';
 
 import { readerFailure, type PreviewFailure } from '../preview-failure';
-import { isPreviewableKind } from '../previewable-kind';
 import type { ReaderEvents } from '../reader-events';
 
 import { PREVIEW_WAIT_DELAY_MS, type PreviewState } from './use-preview';

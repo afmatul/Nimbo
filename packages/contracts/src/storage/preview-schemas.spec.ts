@@ -1,7 +1,11 @@
 import * as contracts from '../index';
 
 import { STORAGE_ERROR_CODES } from './error-codes';
-import { STORAGE_PREVIEW_FAILURE_CODES, previewUrlResponseSchema } from './preview-schemas';
+import {
+  STORAGE_PREVIEW_FAILURE_CODES,
+  isPreviewableKind,
+  previewUrlResponseSchema,
+} from './preview-schemas';
 import { downloadUrlSchema } from './schemas';
 
 const ID = '2f0c1d2e-3a4b-4c5d-8e6f-7a8b9c0d1e2f';
@@ -60,5 +64,18 @@ describe('códigos públicos de previsualización (plan 017 §4)', () => {
   it('CA-1: el contrato se exporta desde la raíz del paquete', () => {
     expect(contracts.previewUrlResponseSchema).toBe(previewUrlResponseSchema);
     expect(contracts.STORAGE_PREVIEW_FAILURE_CODES).toBe(STORAGE_PREVIEW_FAILURE_CODES);
+  });
+});
+
+describe('isPreviewableKind (017 RN-1)', () => {
+  it.each(['pdf', 'xlsx', 'pptx', 'texto', 'imagen'] as const)(
+    'CA-11: %s tiene vista previa',
+    (kind) => {
+      expect(isPreviewableKind(kind)).toBe(true);
+    },
+  );
+
+  it.each(['docx', 'otro', undefined] as const)('CA-11: %s no tiene vista previa', (kind) => {
+    expect(isPreviewableKind(kind)).toBe(false);
   });
 });

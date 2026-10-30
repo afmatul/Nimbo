@@ -128,3 +128,4 @@ y `health/ready` en 200, también a través de Traefik).
 
 Pendiente: la primera corrida en GitHub (duración < 30 min, CA-24), T-32 (gitleaks del historial), T-33
 (protección de `main` con los cuatro checks) y T-34 (ensayo «CI falla cuando debe»).
+

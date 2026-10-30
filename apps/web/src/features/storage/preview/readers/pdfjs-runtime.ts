@@ -107,7 +107,8 @@ export async function createPdfRuntime(
   onFailure: (failure: PreviewFailure) => void,
 ): Promise<PdfRuntime> {
   const engine = await import('pdfjs-dist');
-  if (signal.aborted || engine.version !== PINNED_ENGINE_VERSION) throw new Error('Motor PDF no disponible.');
+  if (signal.aborted || engine.version !== PINNED_ENGINE_VERSION)
+    throw new Error('Motor PDF no disponible.');
   const port = new Worker(new URL('../workers/pdfjs.worker.ts', import.meta.url), {
     type: 'module',
   });

@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 
+import { useLatestCallbacks } from '../hooks/use-latest-callbacks';
 import { readerFailure, type PreviewFailure } from '../preview-failure';
 import type { ReaderEvents } from '../reader-events';
 import {
@@ -80,10 +81,7 @@ function usePdfReading({
   registerCleanup,
 }: PdfPreviewProps): LoadedPdf | null {
   const [loaded, setLoaded] = React.useState<LoadedPdf | null>(null);
-  const callbacks = React.useRef({ onFailure, onReady });
-  React.useEffect(() => {
-    callbacks.current = { onFailure, onReady };
-  }, [onFailure, onReady]);
+  const callbacks = useLatestCallbacks({ onFailure, onReady });
   React.useEffect(() => {
     const attempt: PdfAttempt = {
       controller: new AbortController(),
@@ -104,7 +102,7 @@ function usePdfReading({
       unregister?.();
       void disposeAttempt(attempt);
     };
-  }, [url, registerCleanup]);
+  }, [url, registerCleanup, callbacks]);
   return loaded;
 }
 

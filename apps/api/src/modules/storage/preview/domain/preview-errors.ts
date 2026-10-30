@@ -1,4 +1,4 @@
-import { TooManyRequestsError } from '../../../../shared/domain/errors';
+import { TooManyRequestsError } from '../../../../shared';
 
 /** Límite de emisión de URLs de previsualización. HTTP 429 con Retry-After. */
 export class PreviewTooManyRequestsError extends TooManyRequestsError {

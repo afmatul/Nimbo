@@ -260,13 +260,19 @@ describe('PreviewPage con lectores y transporte reales, red y decoder gráfico c
 
   it('CA-2: retry con la misma URL crea otra lectura real y espera cancel/release de A', async () => {
     const a = source();
-    objectFetch.mockResolvedValueOnce(response(a.body));
+    // UTF-8 inválido dispara la relectura como Windows-1252; si esa también falla, el estado es `unavailable`.
+    objectFetch
+      .mockResolvedValueOnce(response(a.body))
+      .mockRejectedValueOnce(new Error('relectura caída'));
     const { container } = renderPage();
     await act(async () => a.controller.enqueue(encode('Parcial A')));
     await text(container, 'Parcial A');
     const previous = objectSignal();
     await act(async () => a.controller.enqueue(Uint8Array.of(0xc3, 0x28)));
-    await waitFor(() => expect(screen.queryByRole('alert') !== null).toBe(true), SAFE_WAIT);
+    await waitFor(
+      () => expect(screen.queryByRole('button', { name: 'Reintentar' }) !== null).toBe(true),
+      SAFE_WAIT,
+    );
     let retiredBeforePost = false;
     authFetch.mockImplementationOnce(async () => {
       retiredBeforePost = previous.aborted && !a.body.locked && a.cancel.mock.calls.length === 1;
@@ -275,10 +281,10 @@ describe('PreviewPage con lectores y transporte reales, red y decoder gráfico c
     await userEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
     await text(container, 'Texto B');
     expect(authFetch).toHaveBeenCalledTimes(2);
-    expect(objectFetch).toHaveBeenCalledTimes(2);
-    expect(objectFetch.mock.calls[0]?.[0] === objectFetch.mock.calls[1]?.[0]).toBe(true);
-    expect(objectSignal(1) === previous).toBe(false);
-    expect(objectSignal(1).aborted).toBe(false);
+    expect(objectFetch).toHaveBeenCalledTimes(3);
+    expect(objectFetch.mock.calls[0]?.[0] === objectFetch.mock.calls[2]?.[0]).toBe(true);
+    expect(objectSignal(2) === previous).toBe(false);
+    expect(objectSignal(2).aborted).toBe(false);
     expect(retiredBeforePost).toBe(true);
     expect(screen.queryByRole('alert')).toBeNull();
     privateDom(container);

@@ -2,10 +2,11 @@
 
 import * as React from 'react';
 
+import { useLatestCallbacks } from '../hooks/use-latest-callbacks';
 import { readerFailure, type PreviewFailure } from '../preview-failure';
 import type { ReaderEvents } from '../reader-events';
 import { fetchObjectBytes } from '../readers/object-bytes';
-import { discardStream, releaseStreamReader } from '../readers/stream-bytes';
+import { discardStream, releaseHeldReader } from '../readers/stream-bytes';
 
 type TextPreviewProps = ReaderEvents & {
   readonly url: string;
@@ -15,12 +16,17 @@ type TextPreviewProps = ReaderEvents & {
 /** Un texto grande llega en cientos de chunks: se pinta a lo sumo cada 100 ms en vez de reconstruir el `<pre>` por chunk. */
 const PUBLISH_INTERVAL_MS = 100;
 
+type TextEncoding = 'utf-8' | 'windows-1252';
+
 type TextAttempt = {
   readonly controller: AbortController;
   readonly onFailure: TextPreviewProps['onFailure'];
   readonly publish: (text: string) => void;
   readonly onReady: () => void;
   active: boolean;
+  encoding: TextEncoding;
+  /** UTF-8 estricto falló: el archivo se relee una vez como Windows-1252, que no rechaza ningún byte. */
+  retryAsLegacy: boolean;
   flush: ReturnType<typeof setTimeout> | undefined;
   pending: string;
   published: string;
@@ -28,18 +34,12 @@ type TextAttempt = {
   cleanup?: Promise<void>;
 };
 
-async function releaseReader(attempt: TextAttempt, cancel: boolean): Promise<void> {
-  const reader = attempt.reader;
-  attempt.reader = undefined;
-  if (reader !== undefined) await releaseStreamReader(reader, cancel);
-}
-
 function disposeAttempt(attempt: TextAttempt): Promise<void> {
   if (!attempt.active) return attempt.cleanup ?? Promise.resolve();
   attempt.active = false;
   clearTimeout(attempt.flush);
   attempt.controller.abort();
-  attempt.cleanup = releaseReader(attempt, true);
+  attempt.cleanup = releaseHeldReader(attempt, true);
   return attempt.cleanup;
 }
 
@@ -58,7 +58,8 @@ function decodeFragment(
   try {
     return chunk.done ? decoder.decode() : decoder.decode(chunk.value, { stream: true });
   } catch {
-    failAttempt(attempt, 'corrupt');
+    if (attempt.encoding === 'utf-8') attempt.retryAsLegacy = true;
+    else failAttempt(attempt, 'corrupt');
     return undefined;
   }
 }
@@ -83,7 +84,7 @@ function publishText(attempt: TextAttempt, text: string, done: boolean): void {
 }
 
 async function readTextBody(attempt: TextAttempt, body: ReadableStream<Uint8Array>): Promise<void> {
-  const decoder = new TextDecoder('utf-8', { fatal: true });
+  const decoder = new TextDecoder(attempt.encoding, { fatal: true });
   const reader = body.getReader();
   attempt.reader = reader;
   let text = '';
@@ -103,18 +104,36 @@ async function readTextBody(attempt: TextAttempt, body: ReadableStream<Uint8Arra
   } catch {
     failAttempt(attempt, 'unavailable');
   } finally {
-    await releaseReader(attempt, false);
+    await releaseHeldReader(attempt, attempt.retryAsLegacy);
   }
+}
+
+async function readOnce(url: string, attempt: TextAttempt): Promise<void> {
+  const { body } = await fetchObjectBytes({ url, signal: attempt.controller.signal });
+  if (!attempt.active) {
+    await discardStream(body);
+    return;
+  }
+  await readTextBody(attempt, body);
+}
+
+function restartAsLegacy(attempt: TextAttempt): void {
+  clearTimeout(attempt.flush);
+  attempt.flush = undefined;
+  attempt.pending = '';
+  attempt.published = '';
+  attempt.retryAsLegacy = false;
+  attempt.encoding = 'windows-1252';
+  attempt.publish('');
 }
 
 async function loadText(url: string, attempt: TextAttempt): Promise<void> {
   try {
-    const { body } = await fetchObjectBytes({ url, signal: attempt.controller.signal });
-    if (!attempt.active) {
-      await discardStream(body);
-      return;
+    await readOnce(url, attempt);
+    if (attempt.active && attempt.retryAsLegacy) {
+      restartAsLegacy(attempt);
+      await readOnce(url, attempt);
     }
-    await readTextBody(attempt, body);
     if (attempt.active) attempt.onReady();
   } catch {
     failAttempt(attempt, 'unavailable');
@@ -123,10 +142,7 @@ async function loadText(url: string, attempt: TextAttempt): Promise<void> {
 
 function useTextReading({ url, onFailure, onReady, registerCleanup }: TextPreviewProps): string {
   const [text, setText] = React.useState('');
-  const callbacks = React.useRef({ onFailure, onReady });
-  React.useEffect(() => {
-    callbacks.current = { onFailure, onReady };
-  }, [onFailure, onReady]);
+  const callbacks = useLatestCallbacks({ onFailure, onReady });
   React.useEffect(() => {
     const attempt: TextAttempt = {
       controller: new AbortController(),
@@ -134,6 +150,8 @@ function useTextReading({ url, onFailure, onReady, registerCleanup }: TextPrevie
       onReady: () => callbacks.current.onReady?.(),
       publish: setText,
       active: true,
+      encoding: 'utf-8',
+      retryAsLegacy: false,
       pending: '',
       flush: undefined,
       published: '',
@@ -145,7 +163,7 @@ function useTextReading({ url, onFailure, onReady, registerCleanup }: TextPrevie
       unregister?.();
       void disposeAttempt(attempt);
     };
-  }, [url, registerCleanup]);
+  }, [url, registerCleanup, callbacks]);
   return text;
 }
 

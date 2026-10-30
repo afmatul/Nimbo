@@ -1,23 +1,14 @@
 import { Injectable } from '@nestjs/common';
+import { isPreviewableKind } from '@nimbo/contracts';
 import type { FileSummary } from '@nimbo/contracts';
 
 import { InsufficientRoleError } from '../../../shared';
 import type { Actor } from '../../../shared';
 import { PreviewUnsupportedError } from '../domain/errors';
 import type { File } from '../domain/file';
-import type { FileKind } from '../domain/file-kind';
 
 import { AccessibleFileUrlIssuer } from './accessible-file-url-issuer';
 import { toFileSummary } from './file-summary';
-
-/** Tipos con vista previa (017 RN-1); `docx` y `otro` (SVG, BMP, HEIC…) quedan fuera. */
-const PREVIEWABLE_KINDS: ReadonlySet<FileKind> = new Set([
-  'pdf',
-  'xlsx',
-  'pptx',
-  'texto',
-  'imagen',
-]);
 
 /** Archivo tal como lo ve el cliente y URL firmada para leer sus bytes desde el origen de objetos (017 CA-11). */
 export interface PreviewDelivery {
@@ -45,5 +36,5 @@ export class StoragePreviewFacade {
 }
 
 function assertPreviewable(file: File): void {
-  if (!PREVIEWABLE_KINDS.has(file.kind)) throw new PreviewUnsupportedError();
+  if (!isPreviewableKind(file.kind)) throw new PreviewUnsupportedError();
 }

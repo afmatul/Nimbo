@@ -2,11 +2,12 @@
 
 import * as React from 'react';
 
+import { useLatestCallbacks } from '../hooks/use-latest-callbacks';
 import { readerFailure, type PreviewFailure } from '../preview-failure';
 import type { ReaderEvents } from '../reader-events';
 import { detectImageMime } from '../readers/image-mime';
 import { fetchObjectBytes } from '../readers/object-bytes';
-import { concatenateChunks, discardStream, releaseStreamReader } from '../readers/stream-bytes';
+import { concatenateChunks, discardStream, releaseHeldReader } from '../readers/stream-bytes';
 
 type ImagePreviewProps = ReaderEvents & {
   readonly url: string;
@@ -29,12 +30,6 @@ type ImageAttempt = {
   cleanup?: Promise<void>;
 };
 
-async function releaseReader(attempt: ImageAttempt, cancel: boolean): Promise<void> {
-  const reader = attempt.reader;
-  attempt.reader = undefined;
-  if (reader !== undefined) await releaseStreamReader(reader, cancel);
-}
-
 function revokeImageUrl(attempt: ImageAttempt): void {
   const objectUrl = attempt.objectUrl;
   attempt.objectUrl = undefined;
@@ -51,7 +46,7 @@ function disposeAttempt(attempt: ImageAttempt): Promise<void> {
   attempt.active = false;
   attempt.controller.abort();
   revokeImageUrl(attempt);
-  attempt.cleanup = releaseReader(attempt, true);
+  attempt.cleanup = releaseHeldReader(attempt, true);
   return attempt.cleanup;
 }
 
@@ -78,7 +73,7 @@ async function readImageBody(
     }
   } finally {
     chunks.length = 0;
-    await releaseReader(attempt, false);
+    await releaseHeldReader(attempt, false);
   }
 }
 
@@ -111,10 +106,7 @@ function useImageReading({
   registerCleanup,
 }: ImagePreviewProps): ImageResource | null {
   const [image, setImage] = React.useState<ImageResource | null>(null);
-  const callbacks = React.useRef({ onFailure, onReady });
-  React.useEffect(() => {
-    callbacks.current = { onFailure, onReady };
-  }, [onFailure, onReady]);
+  const callbacks = useLatestCallbacks({ onFailure, onReady });
   React.useEffect(() => {
     const attempt: ImageAttempt = {
       controller: new AbortController(),
@@ -131,7 +123,7 @@ function useImageReading({
       unregister?.();
       void disposeAttempt(attempt);
     };
-  }, [url, registerCleanup]);
+  }, [url, registerCleanup, callbacks]);
   return image;
 }
 

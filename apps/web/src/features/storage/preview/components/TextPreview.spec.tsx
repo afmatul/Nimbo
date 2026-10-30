@@ -202,24 +202,45 @@ describe('TextPreview T-07: UTF-8 incremental literal y lifecycle propio', () =>
   });
 
   it.each([
-    ['secuencia inválida durante stream', Uint8Array.of(0xc3, 0x28), false],
-    ['secuencia incompleta al EOF', Uint8Array.of(0xf0, 0x9f, 0x98), true],
-  ] as const)('CA-2: %s retira el parcial e informa corrupt', async (_label, bytes, close) => {
+    ['secuencia inválida durante stream', Uint8Array.of(0x63, 0x61, 0x66, 0xe9, 0x28), false],
+    ['secuencia incompleta al EOF', Uint8Array.of(0x63, 0x61, 0x66, 0xe9), true],
+  ] as const)(
+    'CA-1: %s se relee una vez como Windows-1252 sin mostrar el parcial',
+    async (_label, bytes, close) => {
+      const source = controlledSource();
+      const legacy = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(bytes);
+          controller.close();
+        },
+      });
+      fetchBytes
+        .mockResolvedValueOnce({ body: source.body })
+        .mockResolvedValueOnce({ body: legacy });
+      const { container, onFailure } = renderText();
+      await act(async () => source.controller.enqueue(encode('PARCIAL_VALIDO_T07')));
+      await expectText(container, 'PARCIAL_VALIDO_T07');
+      await act(async () => {
+        source.controller.enqueue(bytes);
+        if (close) source.controller.close();
+      });
+      await expectText(container, bytes.length === 5 ? 'café(' : 'café');
+      expect(fetchBytes).toHaveBeenCalledTimes(2);
+      expect(container.textContent?.includes('PARCIAL_VALIDO_T07')).toBe(false);
+      expect(onFailure).not.toHaveBeenCalled();
+      expect(source.body.locked).toBe(false);
+      expectPrivateDom(container);
+    },
+  );
+
+  it('CA-2: si la relectura también falla, informa unavailable sin repetir más lecturas', async () => {
     const source = controlledSource();
-    fetchBytes.mockResolvedValue({ body: source.body });
+    fetchBytes.mockResolvedValueOnce({ body: source.body }).mockRejectedValueOnce(privateError());
     const { container, onFailure } = renderText();
-    await act(async () => source.controller.enqueue(encode('PARCIAL_VALIDO_T07')));
-    await expectText(container, 'PARCIAL_VALIDO_T07');
-    await act(async () => {
-      source.controller.enqueue(bytes);
-      if (close) source.controller.close();
-    });
+    await act(async () => source.controller.enqueue(Uint8Array.of(0xc3, 0x28)));
     await waitFor(() => expect(onFailure).toHaveBeenCalledTimes(1), WAIT_OPTIONS);
-    expectFailure(onFailure, 'corrupt');
-    expect(container.textContent?.includes('PARCIAL_VALIDO_T07')).toBe(false);
-    expect(container.textContent?.includes('\ufffd')).toBe(false);
-    expect(source.body.locked).toBe(false);
-    if (!close) expect(source.cancel).toHaveBeenCalledTimes(1);
+    expectFailure(onFailure, 'unavailable');
+    expect(fetchBytes).toHaveBeenCalledTimes(2);
     expectPrivateDom(container);
   });
 

@@ -10,6 +10,8 @@ import type { PresentationPreview, SlideProjection } from '../readers/pptx-model
 import type { WorkbookPreview } from '../readers/xlsx-reader';
 import type { SheetProjection } from '../readers/xlsx-sheet';
 
+import { useLatestCallbacks } from './use-latest-callbacks';
+
 type OoxmlModels = {
   readonly xlsx: { readonly preview: WorkbookPreview; readonly unit: SheetProjection };
   readonly pptx: { readonly preview: PresentationPreview; readonly unit: SlideProjection };
@@ -123,10 +125,7 @@ function useReadingAttempt<K extends OoxmlFormat>(
 ): React.RefObject<Attempt | null> {
   const { url, onFailure, onReady, registerCleanup } = props;
   const current = React.useRef<Attempt | null>(null);
-  const callbacks = React.useRef({ onFailure, onReady });
-  React.useEffect(() => {
-    callbacks.current = { onFailure, onReady };
-  }, [onFailure, onReady]);
+  const callbacks = useLatestCallbacks({ onFailure, onReady });
   React.useEffect(() => {
     const attempt: Attempt = { controller: new AbortController(), active: true };
     current.current = attempt;
@@ -136,7 +135,7 @@ function useReadingAttempt<K extends OoxmlFormat>(
       unregister?.();
       void disposeAttempt(attempt);
     };
-  }, [kind, url, registerCleanup, setView]);
+  }, [kind, url, registerCleanup, setView, callbacks]);
   return current;
 }
 
