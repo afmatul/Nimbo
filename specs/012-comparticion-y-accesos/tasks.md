@@ -4,7 +4,7 @@
 > 12 tareas verticales, de medio día a un día, un commit cada una (`feat(sharing): … [012 T-xx]`). Rama `feat/012-comparticion-y-accesos`, un PR.
 > Cada tarea es una línea: criterio, prueba y de qué depende. Los archivos viven en `plan.md` §2. La prueba va primero (roja).
 
-- [ ] **T-01** Contratos `sharing.ts` y migración A (`comparticion`, `nodos_compartidos()`, RLS propia, con `down`) — CA: CA-2 (forma), CA-21 (base) — Prueba: `migrations.int-spec.ts` `up → down → up` con dueño `NOSUPERUSER` y unitaria de los esquemas
+- [x] **T-01** Contratos `sharing.ts` y migración A (`comparticion`, `nodos_compartidos()`, RLS propia, con `down`) — CA: CA-2 (forma), CA-21 (base) — Prueba: `migrations.int-spec.ts` `up → down → up` con dueño `NOSUPERUSER` y unitaria de los esquemas
 - [ ] **T-02** `access`: `accessibleNodes` suma lo compartido, nace `ownedNodes`, y migración B (políticas `SELECT` del destinatario) — CA: CA-13, CA-17, CA-21 — Prueba: integración SQL real `accessible-nodes-shared.int-spec.ts` (directo, heredado, nivel mayor, papelera, suspensión, `EXPLAIN`) — Depende: T-01
 - [ ] **T-03** `storage`: escrituras y destinos a `ownedNodes`, `findOwnedFolder` y export de `WritableAccountPolicy`, sin cambiar lo del propietario — CA: CA-14 — Prueba: iso que recorre las rutas de escritura de `storage` como Lector y Editor (roja primero) y las suites actuales de `storage` en verde — Depende: T-02
 - [ ] **T-04** `storage`: el destinatario abre ficha, descarga, contenido y migas de lo compartido con su `accessLevel` (contrato de `storage`); la raíz sigue siendo solo suya — CA: CA-12, CA-13 — Prueba: integración `shared-access.int-spec.ts` (feliz y 404 de lo no compartido, sin cuota ni espacio ajeno, `accessLevel` de Lector, Editor y propietario) — Depende: T-03
@@ -18,4 +18,5 @@
 - [ ] **T-12** **(humana)** Recorrido de la demo en local por API (y por la pantalla cuando exista la 012b): A comparte una carpeta con B como Editor, B la ve en «Compartidos conmigo» y la abre, A ve el acceso, lo revoca y B recibe `404`; B sale de otro acceso; nota en el PR — CA: los visibles — Depende: T-09, T-10, T-11
 
 ## Notas del developer
-<Desviaciones (con enlace al registro de cambios de la spec), DF o pendientes que surgieron.>
+- T-01: código de validación `SHARING_INVALID_REQUEST` (el 422 «con `fields`» de CA-3 y la consulta inválida de `GET /shares`); el nivel inválido sale del esquema con `reason: 'INVALID_LEVEL'` para que el controlador lo responda como `SHARING_INVALID_LEVEL` (CA-2).
+- T-01: `nodos_compartidos()` devuelve `tipo_nodo` `'archivo'`/`'carpeta'` (como `papelera_vencida`). Bajo `FORCE`, el dueño la ejecuta con tres políticas `TO CURRENT_USER` acotadas al actor: `comparticion_nodos_compartidos`, `archivo_nodos_compartidos` y `carpeta_nodos_compartidos` (nodos vivos de quien compartió con el actor). El `WITH CHECK` de `comparticion_propietario` exige que el nodo sea del actor.
