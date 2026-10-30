@@ -20,6 +20,7 @@ import type { ShareRow } from './sharing-test-db';
 
 const MIGRATION = 'CrearComparticion20261101100000';
 const POLICIES_MIGRATION = 'PoliticasRlsNodosCompartidos20261101100100';
+const EDITING_POLICIES_MIGRATION = 'PoliticasRlsEdicionYAgenteCompartidos20261101100200';
 
 /** Políticas de `nimbo_app` que toca la migración B de 012, con su condición tal como la guarda Postgres. */
 const RECIPIENT_POLICIES_SQL = `SELECT p.tablename, p.policyname, p.cmd, p.qual
@@ -27,6 +28,25 @@ const RECIPIENT_POLICIES_SQL = `SELECT p.tablename, p.policyname, p.cmd, p.qual
   WHERE p.tablename IN ('archivo', 'carpeta', 'version_archivo', 'indexacion', 'fragmento')
     AND 'nimbo_app' = ANY (p.roles)
   ORDER BY p.tablename, p.policyname`;
+
+/** Políticas de `nimbo_app` que toca la migración C de 012 (Editor y agente), con su comando y su condición. */
+const EDITING_POLICIES_SQL = `SELECT p.tablename, p.policyname, p.cmd, p.qual
+   FROM pg_policies p
+  WHERE p.tablename IN ('sesion_edicion', 'participacion', 'indexacion', 'fragmento')
+    AND 'nimbo_app' = ANY (p.roles)
+  ORDER BY p.tablename, p.policyname`;
+
+/** Políticas que crea la migración C, por tabla, con su comando. */
+const EDITING_POLICIES = [
+  ['fragmento', 'fragmento_compartido', 'SELECT'],
+  ['indexacion', 'indexacion_compartida', 'SELECT'],
+  ['participacion', 'participacion_compartida', 'SELECT'],
+  ['participacion', 'participacion_compartida_alta', 'INSERT'],
+  ['participacion', 'participacion_compartida_cambio', 'UPDATE'],
+  ['sesion_edicion', 'sesion_edicion_compartida', 'SELECT'],
+  ['sesion_edicion', 'sesion_edicion_compartida_alta', 'INSERT'],
+  ['sesion_edicion', 'sesion_edicion_compartida_bloqueo', 'UPDATE'],
+];
 
 interface PolicyRow {
   readonly tablename: string;
@@ -199,7 +219,7 @@ describe('migración crear-comparticion con dueño NOSUPERUSER (plan 012 §3)', 
     const names = (rows: PolicyRow[]): string[] => rows.map((row) => row.policyname);
     const qualOf = (rows: PolicyRow[], name: string): string =>
       rows.find((row) => row.policyname === name)?.qual ?? '';
-    expect(reverted).toEqual([POLICIES_MIGRATION]);
+    expect(reverted).toEqual([POLICIES_MIGRATION, EDITING_POLICIES_MIGRATION]);
     expect(names(before)).toEqual(
       expect.arrayContaining([
         'archivo_compartido',
@@ -208,7 +228,9 @@ describe('migración crear-comparticion con dueño NOSUPERUSER (plan 012 §3)', 
       ]),
     );
     expect(
-      before.filter((row) => /_compartid[oa]$/.test(row.policyname)).map((row) => row.cmd),
+      before
+        .filter((row) => /^(archivo|carpeta|version_archivo)_compartid[oa]$/.test(row.policyname))
+        .map((row) => row.cmd),
     ).toEqual(['SELECT', 'SELECT', 'SELECT']);
     for (const policy of ['version_archivo_cliente', 'indexacion_cliente', 'fragmento_cliente']) {
       expect(qualOf(before, policy)).toContain('propietario_id = nimbo_actor_id()');
@@ -216,6 +238,29 @@ describe('migración crear-comparticion con dueño NOSUPERUSER (plan 012 §3)', 
     }
     expect(names(afterDown)).not.toContain('archivo_compartido');
     expect(names(afterDown)).not.toContain('version_archivo_compartida');
+    expect(await policiesOf()).toEqual(before);
+  });
+
+  it('RNF-10: migración C up → down → up: abre al Editor la sesión y al agente lo compartido, y lo devuelve', async () => {
+    const policiesOf = async (): Promise<PolicyRow[]> =>
+      (await owner.query(EDITING_POLICIES_SQL)) as PolicyRow[];
+    const before = await policiesOf();
+
+    const reverted = await revertFrom(owner, EDITING_POLICIES_MIGRATION);
+    const afterDown = await policiesOf();
+    await owner.runMigrations({ transaction: 'each' });
+
+    const created = (rows: PolicyRow[]): string[][] =>
+      rows
+        .filter((row) => /_compartid[oa](_\w+)?$/.test(row.policyname))
+        .map((row) => [row.tablename, row.policyname, row.cmd]);
+    const qualOf = (rows: PolicyRow[], name: string): string =>
+      rows.find((row) => row.policyname === name)?.qual ?? '';
+    expect(reverted).toEqual([EDITING_POLICIES_MIGRATION]);
+    expect(created(before)).toEqual(EDITING_POLICIES);
+    expect(qualOf(before, 'participacion_cliente')).toContain('propietario_id = nimbo_actor_id()');
+    expect(qualOf(afterDown, 'participacion_cliente')).not.toContain('propietario_id');
+    expect(created(afterDown)).toEqual([]);
     expect(await policiesOf()).toEqual(before);
   });
 

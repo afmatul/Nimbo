@@ -66,5 +66,8 @@ En 003 `accessibleNodes` devolvía el **conjunto vacío tipado** para todos los 
   `carpeta_compartida` y `version_archivo_compartida` (migración `20261101100100`). Nace `ownedNodes(actor)` (la
   propiedad viva) para que `storage` escriba solo lo propio. Sin `inheritedGrants` ni `IGrantRepository` (YAGNI).
   Prueba: `test/int/access/accessible-nodes-shared.int-spec.ts`.
+- **012 (T-09)**: la misma función decide las políticas del Editor en `sesion_edicion`/`participacion` y la lectura de
+  `indexacion`/`fragmento` vigentes de lo compartido para el agente (migración `20261101100200`). Pruebas:
+  `test/int/editing/shared-editing.int-spec.ts` y `test/isolation/agent.iso-spec.ts` (ISO-16 a ISO-19).
 - Un valor nuevo de `Action` (p. ej. historial o restaurar, 014) queda negado para Editor y Viewer hasta que su spec lo
   agregue a la política.
