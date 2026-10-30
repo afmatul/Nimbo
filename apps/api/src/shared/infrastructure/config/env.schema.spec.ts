@@ -236,6 +236,39 @@ describe('JWT_ACCESS_SECRET (002 plan §6.10, CA-25, CA-26)', () => {
     expect(issues.join()).not.toContain('x'.repeat(31));
   });
 
+  it.each(['staging', 'production'])(
+    'CA-11: con `APP_ENV=%s` rechaza servir objetos desde el hostname de la web',
+    (appEnv) => {
+      expect(
+        issuesFor({
+          APP_ENV: appEnv,
+          JWT_ACCESS_SECRET: STAGING_SECRET,
+          WEB_PUBLIC_URL: 'https://nimbo.me',
+          MINIO_PUBLIC_ENDPOINT: 'https://nimbo.me:9000',
+        }),
+      ).toEqual([
+        '`MINIO_PUBLIC_ENDPOINT` debe usar un hostname distinto del de WEB_PUBLIC_URL en staging y en producción (origen de objetos aislado)',
+      ]);
+    },
+  );
+
+  it('CA-11: con `APP_ENV=staging` acepta un subdominio propio para los objetos', () => {
+    expect(
+      issuesFor({
+        APP_ENV: 'staging',
+        JWT_ACCESS_SECRET: STAGING_SECRET,
+        WEB_PUBLIC_URL: 'https://nimbo.me',
+        MINIO_PUBLIC_ENDPOINT: 'https://objetos.nimbo.me',
+      }),
+    ).toEqual([]);
+  });
+
+  it('CA-11: en local el host de objetos puede compartir hostname con la web', () => {
+    expect(issuesFor({ APP_ENV: 'local', MINIO_PUBLIC_ENDPOINT: 'http://localhost:9000' })).toEqual(
+      [],
+    );
+  });
+
   it('CA-26: en local basta el valor de desarrollo de `.env.example`', () => {
     expect(issuesFor({ APP_ENV: 'local' })).toEqual([]);
   });

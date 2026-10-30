@@ -332,7 +332,11 @@ describe('loadEnv(apiEnvSchema): variables de 001 (plan §6.10)', () => {
   });
 
   it('CA-20: `WEB_PUBLIC_URL` con `http://` y `APP_ENV=staging` falla', () => {
-    const result = loadEnv(apiEnvSchema, { ...VALID_API, APP_ENV: 'staging' });
+    const result = loadEnv(apiEnvSchema, {
+      ...VALID_API,
+      APP_ENV: 'staging',
+      MINIO_PUBLIC_ENDPOINT: 'http://objetos.localhost:9000',
+    });
 
     expect(result).toEqual({
       ok: false,

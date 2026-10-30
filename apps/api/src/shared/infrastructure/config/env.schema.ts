@@ -8,6 +8,8 @@ const PORT_MESSAGE = 'debe ser un entero entre 1 y 65535';
 const URL_MESSAGE = 'debe ser una URL válida';
 const EMPTY_MESSAGE = 'no puede estar vacía';
 const URL_LIST_MESSAGE = 'debe ser una lista de URL separadas por comas';
+const ISOLATED_OBJECT_HOST_MESSAGE =
+  'debe usar un hostname distinto del de WEB_PUBLIC_URL en staging y en producción (origen de objetos aislado)';
 const HTTPS_MESSAGE = 'debe usar https en staging y en producción';
 const SMTP_TLS_MESSAGE = 'no puede ser `none` en staging ni en producción';
 const SMTP_USER_MESSAGE = 'es obligatoria si se define `SMTP_PASSWORD`';
@@ -464,12 +466,13 @@ const refinePublishedOnlyOfficeSecret = (
 /**
  * Reglas entre variables del `api`: toda carga por partes tiene al menos dos partes (005 plan §5) y, en ambientes
  * publicados, el enlace del correo nunca viaja por http (001 CA-20) y la clave de firma no es la de desarrollo
- * (002 CA-26).
+ * (002 CA-26); el host de objetos nunca es el de la web (017 CA-11, RNF-07, Art. IX.7).
  */
 const refineApiEnv = (
   env: {
     APP_ENV: string;
     WEB_PUBLIC_URL: string;
+    MINIO_PUBLIC_ENDPOINT: string;
     JWT_ACCESS_SECRET: string;
     UPLOAD_PART_SIZE_BYTES: number;
     UPLOAD_MULTIPART_THRESHOLD_BYTES: number;
@@ -483,6 +486,9 @@ const refineApiEnv = (
   if (!isPublished(env.APP_ENV)) return;
   if (!env.WEB_PUBLIC_URL.startsWith('https://')) {
     addEnvIssue(ctx, 'WEB_PUBLIC_URL', HTTPS_MESSAGE);
+  }
+  if (new URL(env.MINIO_PUBLIC_ENDPOINT).hostname === new URL(env.WEB_PUBLIC_URL).hostname) {
+    addEnvIssue(ctx, 'MINIO_PUBLIC_ENDPOINT', ISOLATED_OBJECT_HOST_MESSAGE);
   }
   refinePublishedJwtSecret(env.JWT_ACCESS_SECRET, ctx);
   refinePublishedOnlyOfficeSecret(env.ONLYOFFICE_JWT_SECRET, ctx);

@@ -19,6 +19,8 @@ Redis detenido, rechazo acotado y recuperación real ya están acreditados; tamb
 
 **Evidencia en navegador real acreditada en T-10** ([registro](#t-10--evidencia-en-navegador-real-2026-10-19)): GET desde el reader real, ausencia efectiva de Cookie/Bearer/cabeceras Nimbo (con control positivo), CORS aplicado por el navegador (permitido y denegado) y rangos reales 206, sobre el host local `localhost:9000`. **Pendiente único de T-04, en la demo T-11:** el origen de objetos realmente aislado (hostname distinto del de la web) y su comprobación humana en DevTools; localmente el host de objetos es del mismo sitio que la web. T-04 no se presenta como fallida ni se marca completa.
 
+> **Seguimiento 2026-10-30 ([review.md](./review.md)):** el `api` rechaza en staging/producción un `MINIO_PUBLIC_ENDPOINT` con el mismo hostname que `WEB_PUBLIC_URL` (prueba en `env.schema.spec`). En local se puede ver el origen aislado con `MINIO_PUBLIC_ENDPOINT=http://objetos.localhost:9000`. T-04 y T-11 siguen abiertas: falta la comprobación humana en DevTools (cookies, host) y el 403 real de un rol interno; las integraciones y el aislamiento exigen Docker.
+
 ## Compuertas antes de implementación
 
 - [x] **G-1 — IX.7 (opción 4):** Adrián decidió el 2026-10-06 firmar la URL de vista con la política de 005 (`attachment`, `application/octet-stream`); sin `inline`, MIME ni excepción. ADR-0027 Rechazado; PD-129 innecesario.

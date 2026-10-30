@@ -21,7 +21,15 @@ export class PreviewController {
     const { file, url, expiresAt } = await this.preview.issueUrl(actor, fileId);
 
     return {
-      file,
+      file: {
+        id: file.id,
+        name: file.name,
+        sizeBytes: file.sizeBytes,
+        kind: file.kind,
+        folderId: file.folderId,
+        createdAt: file.createdAt,
+        updatedAt: file.updatedAt,
+      },
       url,
       expiresAt: expiresAt.toISOString(),
     };
