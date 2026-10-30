@@ -22,6 +22,7 @@ const MIGRATION = 'CrearComparticion20261101100000';
 const POLICIES_MIGRATION = 'PoliticasRlsNodosCompartidos20261101100100';
 const EDITING_POLICIES_MIGRATION = 'PoliticasRlsEdicionYAgenteCompartidos20261101100200';
 const LEAVE_AUDIT_MIGRATION = 'AuditoriaAlSalirDeComparticion20261101100300';
+const SAME_OWNER_FOLDER_MIGRATION = 'CarpetaDelMismoPropietario20261101100400';
 
 /** Políticas de `nimbo_app` que toca la migración B de 012, con su condición tal como la guarda Postgres. */
 const RECIPIENT_POLICIES_SQL = `SELECT p.tablename, p.policyname, p.cmd, p.qual
@@ -54,6 +55,13 @@ const RESTRICTIVE_SESSION_POLICIES = [
   ['sesion_edicion', 'sesion_edicion_alta_de_la_propietaria', 'INSERT'],
   ['sesion_edicion', 'sesion_edicion_cambio_de_la_propietaria', 'UPDATE'],
 ];
+
+/** FK hacia `carpeta` y claves únicas no primarias de `archivo`/`carpeta` (migración E de 012, SEC-1). */
+const FOLDER_CONSTRAINTS_SQL = `SELECT conname, pg_get_constraintdef(oid) AS definicion
+   FROM pg_constraint
+  WHERE conrelid IN ('archivo'::regclass, 'carpeta'::regclass)
+    AND (confrelid = 'carpeta'::regclass OR contype = 'u')
+  ORDER BY conname`;
 
 interface PolicyRow {
   readonly tablename: string;
@@ -231,6 +239,7 @@ describe('migración crear-comparticion con dueño NOSUPERUSER (plan 012 §3)', 
       POLICIES_MIGRATION,
       EDITING_POLICIES_MIGRATION,
       LEAVE_AUDIT_MIGRATION,
+      SAME_OWNER_FOLDER_MIGRATION,
     ]);
     expect(names(before)).toEqual(
       expect.arrayContaining([
@@ -272,7 +281,11 @@ describe('migración crear-comparticion con dueño NOSUPERUSER (plan 012 §3)', 
         .map((row) => [row.tablename, row.policyname, row.cmd]);
     const qualOf = (rows: PolicyRow[], name: string): string =>
       rows.find((row) => row.policyname === name)?.qual ?? '';
-    expect(reverted).toEqual([EDITING_POLICIES_MIGRATION, LEAVE_AUDIT_MIGRATION]);
+    expect(reverted).toEqual([
+      EDITING_POLICIES_MIGRATION,
+      LEAVE_AUDIT_MIGRATION,
+      SAME_OWNER_FOLDER_MIGRATION,
+    ]);
     expect(created(before)).toEqual(EDITING_POLICIES);
     expect(restrictive(before)).toEqual(RESTRICTIVE_SESSION_POLICIES);
     expect(restrictive(afterDown)).toEqual([]);
@@ -280,6 +293,34 @@ describe('migración crear-comparticion con dueño NOSUPERUSER (plan 012 §3)', 
     expect(qualOf(afterDown, 'participacion_cliente')).not.toContain('propietario_id');
     expect(created(afterDown)).toEqual([]);
     expect(await policiesOf()).toEqual(before);
+  });
+
+  it('RNF-10: migración E up → down → up: archivos y carpetas solo cuelgan de una carpeta del mismo propietario', async () => {
+    const constraintsOf = async (): Promise<string[]> =>
+      (
+        (await owner.query(FOLDER_CONSTRAINTS_SQL)) as { conname: string; definicion: string }[]
+      ).map((row) => `${row.conname}: ${row.definicion}`);
+    const before = await constraintsOf();
+
+    const reverted = await revertFrom(owner, SAME_OWNER_FOLDER_MIGRATION);
+    const afterDown = await constraintsOf();
+    await owner.runMigrations({ transaction: 'each' });
+
+    expect(reverted).toEqual([SAME_OWNER_FOLDER_MIGRATION]);
+    expect(before).toEqual([
+      'fk_archivo_carpeta_propietario: FOREIGN KEY (carpeta_id, propietario_id) REFERENCES carpeta(id, propietario_id) ON DELETE SET NULL (carpeta_id)',
+      'fk_archivo_eliminado_con_propietario: FOREIGN KEY (eliminado_con_carpeta_id, propietario_id) REFERENCES carpeta(id, propietario_id)',
+      'fk_carpeta_eliminado_con_propietario: FOREIGN KEY (eliminado_con_carpeta_id, propietario_id) REFERENCES carpeta(id, propietario_id)',
+      'fk_carpeta_padre_propietario: FOREIGN KEY (carpeta_padre_id, propietario_id) REFERENCES carpeta(id, propietario_id) ON DELETE SET NULL (carpeta_padre_id)',
+      'uq_carpeta_id_propietario: UNIQUE (id, propietario_id)',
+    ]);
+    expect(afterDown).toEqual([
+      'archivo_carpeta_id_fkey: FOREIGN KEY (carpeta_id) REFERENCES carpeta(id) ON DELETE SET NULL',
+      'archivo_eliminado_con_carpeta_id_fkey: FOREIGN KEY (eliminado_con_carpeta_id) REFERENCES carpeta(id)',
+      'carpeta_carpeta_padre_id_fkey: FOREIGN KEY (carpeta_padre_id) REFERENCES carpeta(id) ON DELETE SET NULL',
+      'carpeta_eliminado_con_carpeta_id_fkey: FOREIGN KEY (eliminado_con_carpeta_id) REFERENCES carpeta(id)',
+    ]);
+    expect(await constraintsOf()).toEqual(before);
   });
 
   it('RNF-05: `nodos_compartidos()` no la ejecuta `PUBLIC` y sí `nimbo_app`', async () => {

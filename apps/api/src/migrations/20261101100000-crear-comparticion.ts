@@ -21,8 +21,8 @@ const NODE_OWNED_BY_ACTOR = `
 /**
  * `nodos_compartidos()`: la regla única de «qué se comparte conmigo» (spec 012 CA-13, CA-17, CA-21; plan §3,
  * ADR-0005). Une los accesos directos del actor y el subárbol de cada carpeta compartida (prefijo de `ruta`, del
- * mismo propietario), solo nodos vivos de propietarios `activa`, con el nivel mayor por nodo. Una fila cuyo nodo no
- * es del `propietario_id` de la compartición no alcanza nada. Devuelve `tipo_nodo` `archivo` o `carpeta`.
+ * mismo propietario, también para los archivos de cada carpeta), solo nodos vivos de propietarios `activa`, con el
+ * nivel mayor por nodo. Una fila cuyo nodo no es del `propietario_id` de la compartición no alcanza nada. Devuelve `tipo_nodo` `archivo` o `carpeta`.
  * El rango `~>=~`/`~<~` acota el prefijo para que `idx_carpeta_ruta` (`text_pattern_ops`) lo sirva en el bucle
  * anidado (un `LIKE` con patrón no constante no usa índice, R-3); `~` es mayor que todo carácter de una `ruta` (UUID y
  * «/») y el `LIKE` sigue siendo la condición exacta.
@@ -34,7 +34,7 @@ const SHARED_NODES_BODY = `
       JOIN public.usuario u ON u.id = c.propietario_id AND u.estado = 'activa'
      WHERE public.nimbo_actor_role() = 'CLIENT' AND c.destinatario_id = public.nimbo_actor_id()
   ), carpetas AS (
-    SELECT h.id, d.nivel
+    SELECT h.id, h.propietario_id, d.nivel
       FROM directos d
       JOIN public.carpeta r ON r.id = d.carpeta_id AND r.propietario_id = d.propietario_id
       JOIN public.carpeta h ON h.propietario_id = r.propietario_id
@@ -45,7 +45,9 @@ const SHARED_NODES_BODY = `
     SELECT 'carpeta'::text AS tipo_nodo, k.id AS nodo_id, k.nivel FROM carpetas k
     UNION ALL
     SELECT 'archivo'::text, a.id, k.nivel
-      FROM carpetas k JOIN public.archivo a ON a.carpeta_id = k.id AND a.eliminado_en IS NULL
+      FROM carpetas k
+      JOIN public.archivo a ON a.carpeta_id = k.id AND a.propietario_id = k.propietario_id
+     WHERE a.eliminado_en IS NULL
     UNION ALL
     SELECT 'archivo'::text, a.id, d.nivel
       FROM directos d

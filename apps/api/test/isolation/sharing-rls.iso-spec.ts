@@ -448,43 +448,33 @@ describe('RLS de compartición con dueño NOSUPERUSER (012 CA-21, CA-20; plan R-
   });
 
   describe('riesgos reportados por los developers (T-09, T-11)', () => {
-    it.failing(
-      'ISO-29 (SEC-1): B no puede colgar un archivo propio de la carpeta compartida de A',
-      async () => {
-        await expect(
-          attemptAs(b, (m) => insertFileWithVersion(m, b.id, { folderId: world.shared.id })),
-        ).rejects.toThrow(RLS_ERROR);
-      },
-    );
+    it('ISO-29 (SEC-1): B no puede colgar un archivo propio de la carpeta compartida de A', async () => {
+      await expect(
+        attemptAs(b, (m) => insertFileWithVersion(m, b.id, { folderId: world.shared.id })),
+      ).rejects.toThrow(/fk_archivo_carpeta_propietario/);
+    });
 
-    it.failing(
-      'ISO-30 (SEC-1): B no puede colgar una carpeta propia de la carpeta compartida de A',
-      async () => {
-        await expect(
-          attemptAs(b, (m) => insertFolder(m, b.id, { parent: world.shared })),
-        ).rejects.toThrow(RLS_ERROR);
-      },
-    );
+    it('ISO-30 (SEC-1): B no puede colgar una carpeta propia de la carpeta compartida de A', async () => {
+      await expect(
+        attemptAs(b, (m) => insertFolder(m, b.id, { parent: world.shared })),
+      ).rejects.toThrow(/fk_carpeta_padre_propietario/);
+    });
 
-    it.failing(
-      'ISO-31 (SEC-1): B no puede impedir que A purgue su carpeta atando a ella un archivo propio',
-      async () => {
-        const deletedAt = new Date();
-        const planted = await asActor(b, (m) =>
-          insertFileWithVersion(m, b.id, { deletedAt, trashedWithFolderId: world.editorFolder.id }),
-        ).catch(() => null);
-        try {
-          const purged = await attemptAs(a, (m) =>
-            changedIds(m, 'DELETE FROM carpeta WHERE id = $1', [world.editorFolder.id]),
-          );
-          expect(purged).toEqual([world.editorFolder.id]);
-        } finally {
-          if (planted !== null) {
-            await asActor(b, (m) => m.query('DELETE FROM archivo WHERE id = $1', [planted.fileId]));
-          }
-        }
-      },
-    );
+    it('ISO-31 (SEC-1): B no puede impedir que A purgue su carpeta atando a ella un archivo propio', async () => {
+      const planting = attemptAs(b, (m) =>
+        insertFileWithVersion(m, b.id, {
+          deletedAt: new Date(),
+          trashedWithFolderId: world.editorFolder.id,
+        }),
+      );
+      await expect(planting).rejects.toThrow(/fk_archivo_eliminado_con_propietario/);
+
+      const purged = await attemptAs(a, (m) =>
+        changedIds(m, 'DELETE FROM carpeta WHERE id = $1', [world.editorFolder.id]),
+      );
+
+      expect(purged).toEqual([world.editorFolder.id]);
+    });
 
     it('ISO-32 (SEC-2): B (Editor) no puede cambiar por SQL el estado de la sesión de A', async () => {
       await expect(

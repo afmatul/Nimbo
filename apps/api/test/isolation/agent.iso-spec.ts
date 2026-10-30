@@ -252,7 +252,7 @@ describe('aislamiento del agente (020 CA-17, CA-9, CA-16)', () => {
       expect(expectCitationsWithin(result.events, [inFolder])).toEqual([inFolder.fileId]);
     });
 
-    it('ISO-4 (CA-17): un archivo de B dentro de una carpeta de A (fila forzada por el dueño) no puede entrar con ese ámbito', async () => {
+    it('ISO-4 (CA-17): un archivo de B no entra en una carpeta de A (ni forzado por el dueño) ni en ese ámbito', async () => {
       const of = await pair();
       const folderA = await folderOf(of.a);
       const inFolderA = await world.indexedFile(of.a, {
@@ -260,11 +260,13 @@ describe('aislamiento del agente (020 CA-17, CA-9, CA-16)', () => {
         text: TEXT_A,
         folderId: folderA.id,
       });
-      const planted = await world.indexedFile(of.b, {
+      /** Desde 012 (SEC-1) la FK compuesta lo impide para todo rol: la fila ya no se puede forzar. */
+      const planting = world.indexedFile(of.b, {
         name: B_ONLY_NAME,
         text: TEXT_B,
         folderId: folderA.id,
       });
+      await expect(planting).rejects.toThrow(/fk_archivo_carpeta_propietario/);
       world.model.use(new FakeLanguageModel(EVERY_MARKER));
 
       const result = await world.ask(of.a, {
@@ -273,7 +275,6 @@ describe('aislamiento del agente (020 CA-17, CA-9, CA-16)', () => {
       });
 
       expect(expectCitationsWithin(result.events, [inFolderA])).toEqual([inFolderA.fileId]);
-      expect(JSON.stringify(result.events)).not.toContain(planted.fileId);
       expect(JSON.stringify(world.model.prompts)).not.toContain(SECRET_B);
     });
   });

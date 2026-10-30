@@ -63,6 +63,11 @@ recibió nada y para la propia propietaria (ISO-20, ISO-21). El actor no se pued
   destinatarios. Corrección: FK compuestas `(carpeta_id, propietario_id) → carpeta(id, propietario_id)` (y lo mismo para
   `carpeta_padre_id` y `eliminado_con_carpeta_id`, con `UNIQUE (id, propietario_id)`), que evitan la recursión de una política de
   `carpeta` sobre `carpeta`; y `AND a.propietario_id = r.propietario_id` en la línea 48.
+  **Resuelto** (T-FIX-2): FK compuestas en la migración nueva `20261101100400-carpeta-del-mismo-propietario.ts` (las FK son de
+  005/006), con `uq_carpeta_id_propietario` y `ON DELETE SET NULL (columna)` para no anular `propietario_id`. Se eligieron frente
+  a un `WITH CHECK` porque la integridad referencial no pasa por RLS (vale para todo rol, también el dueño) y no recurre sobre
+  `carpeta`. `nodos_compartidos()` compara el propietario al unir los archivos de cada carpeta. ISO-29/30/31 esperan el error de
+  la FK; ISO-4 de `agent.iso-spec.ts` (020), que forzaba esa fila como dueño, ahora comprueba que ya no se puede.
 - **[SEC-4] media, importante** · `apps/api/src/migrations/20261018100000-crear-sesion-edicion-y-participacion.ts:52,81-84`. Riesgo:
   `sesion_edicion_cliente` solo exige `propietario_id = actor`, y `archivo_id` no tiene FK. Un Lector, o cualquier cliente que conozca
   el id, inserta una sesión `activa` a su nombre sobre un archivo ajeno (ISO-34). Como `uq_sesion_edicion_abierta` es global por

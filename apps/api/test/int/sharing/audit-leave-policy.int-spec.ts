@@ -16,6 +16,8 @@ import { insertShare } from './sharing-test-db';
 
 const MIGRATION = 'AuditoriaAlSalirDeComparticion20261101100300';
 const POLICY = 'evento_auditoria_salir_comparticion';
+/** La migración que la sigue: `revertFrom` también la revierte. */
+const NEXT_MIGRATION = 'CarpetaDelMismoPropietario20261101100400';
 
 /** Lo que el caso de uso de Salir escribe (CA-23, S-8); cada prueba cambia solo lo que quiere falsear. */
 interface LeaveEvent {
@@ -103,7 +105,7 @@ describe('migración auditoria-al-salir-de-comparticion con dueño NOSUPERUSER (
       ).map((row) => row.policyname);
     const before = await policies();
 
-    expect(await revertFrom(owner, MIGRATION)).toEqual([MIGRATION]);
+    expect(await revertFrom(owner, MIGRATION)).toEqual([MIGRATION, NEXT_MIGRATION]);
     const afterDown = await policies();
     await owner.runMigrations({ transaction: 'each' });
 
