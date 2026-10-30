@@ -1,6 +1,6 @@
 # Tareas 012 — Compartición y accesos (API)
 
-> Spec: `./spec.md` · Plan: `./plan.md` (Propuesto: `/implement` exige «Aprobado»)
+> Spec: `./spec.md` · Plan: `./plan.md` (Aprobado)
 > 12 tareas verticales, de medio día a un día, un commit cada una (`feat(sharing): … [012 T-xx]`). Rama `feat/012-comparticion-y-accesos`, un PR.
 > Cada tarea es una línea: criterio, prueba y de qué depende. Los archivos viven en `plan.md` §2. La prueba va primero (roja).
 

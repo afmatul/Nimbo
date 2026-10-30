@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Lista (plan aprobado por Adrián, 2026-10-30) |
+| Estado | En curso (plan aprobado por Adrián, 2026-10-30) |
 | Dueño | Fátima |
 | Fase | 2 |
 | Requisitos | RF-16, RF-18; apoyan RF-05, RF-07, RF-33, RNF-05, RNF-07, RNF-17 |
