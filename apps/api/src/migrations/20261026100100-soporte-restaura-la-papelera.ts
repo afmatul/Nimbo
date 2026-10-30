@@ -27,7 +27,10 @@ const TAKEN = (
  * Regla de 005 CA-6 y 006 CA-14 (`node-name.ts`): el nombre si está libre; si no, «base (n)cola» con el primer `n`
  * libre, la base recortada a 255 puntos de código y sin espacios al final. La cola es la extensión del archivo (el
  * último punto que no es el primero ni el último carácter); una carpeta no tiene. La prueba de equivalencia de
- * `support-trash.int-spec.ts` la compara con `FileName`/`FolderName.firstFree`.
+ * `support-trash.int-spec.ts` la compara con `FileName`/`FolderName.firstFree`. Límite conocido (M-1 del PR #85, DF-81):
+ * `lower()` de Postgres y `toLowerCase()` de JS (`nameComparisonKey`) pueden diferir con Unicode poco común; aquí
+ * manda `lower()`, el mismo de los índices `uq_*_nombre`, así que nunca hay duplicados, pero el número elegido podría
+ * no coincidir con el de una restauración del cliente.
  */
 const FREE_NAME = `
   v_punto := char_length(v_nombre) + 1 - strpos(reverse(v_nombre), '.');

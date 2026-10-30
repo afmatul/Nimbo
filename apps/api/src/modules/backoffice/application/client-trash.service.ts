@@ -9,7 +9,7 @@ import type { AuditRecord } from '../../audit';
 import { AccountDirectory } from '../../identity';
 import type { ClientIdentity } from '../../identity';
 import { InvalidQueryError, SupportTrashService } from '../../storage';
-import type { SupportRestoreCommand, SupportRestoreResult, TrashPage } from '../../storage';
+import type { SupportRestoreCommand, SupportRestoreView, SupportTrashPage } from '../../storage';
 import { ClientNotFoundError } from '../domain/errors/client-not-found.error';
 import { InvalidBackofficeQueryError } from '../domain/errors/invalid-backoffice-query.error';
 
@@ -20,7 +20,7 @@ import { filesViewedEvent } from './support.service';
 /** El cliente encontrado y una página de las raíces de su papelera (CA-10). */
 export interface ClientTrashView {
   readonly client: ClientIdentity;
-  readonly page: TrashPage;
+  readonly page: SupportTrashPage;
 }
 
 /** CA-11: la raíz `item` de la papelera del cliente con ese correo y el motivo escrito de Soporte (ya recortado). */
@@ -44,7 +44,7 @@ const cursorQueryError = (): InvalidBackofficeQueryError =>
 const restoredEvent = (
   actor: Actor,
   cmd: ClientRestoreCommand & { readonly clientId: string },
-  result: SupportRestoreResult,
+  result: SupportRestoreView,
 ): AuditRecord => ({
   action: AuditAction.NODE_RESTORED,
   actor,
@@ -93,7 +93,7 @@ export class ClientTrashService {
   }
 
   /** CA-11, CA-12: la restauración y su evento en la misma transacción; un rechazo no cambia ni audita nada. */
-  async restore(actor: Actor, cmd: ClientRestoreCommand): Promise<SupportRestoreResult> {
+  async restore(actor: Actor, cmd: ClientRestoreCommand): Promise<SupportRestoreView> {
     const { clientId, result } = await this.internal.run(actor, {
       locksAdminRoster: false,
       work: async () => {

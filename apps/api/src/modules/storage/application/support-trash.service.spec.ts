@@ -8,8 +8,10 @@ import { FolderName } from '../domain/folder-name.vo';
 import { FolderPath } from '../domain/folder-path';
 
 import type { FolderConfig } from './folder-config';
+import { toNodeSummary } from './node-summary';
 import type { SupportRestoreResult } from './ports/i-support-trash.repository.port';
 import { SupportTrashService } from './support-trash.service';
+import { toTrashItem } from './trash-item';
 
 const MAX_DEPTH = 4;
 const CONFIG: FolderConfig = { maxDepth: MAX_DEPTH };
@@ -45,24 +47,32 @@ function setup() {
 }
 
 describe('SupportTrashService (spec 011b CA-10 a CA-12)', () => {
-  it('CA-10: lista la papelera del cliente pedido dentro de una transacción como Soporte', async () => {
+  it('CA-10: lista la papelera del cliente pedido dentro de una transacción como Soporte, ya en forma de lectura', async () => {
     const { journal, transactions, repository, service } = setup();
     const query = { ownerId: OWNER_ID, cursor: 'c', limit: 20 };
 
-    await expect(service.list(SUPPORT, query)).resolves.toBe(repository.page);
+    await expect(service.list(SUPPORT, query)).resolves.toEqual({
+      items: repository.page.items.map(toTrashItem),
+      nextCursor: repository.page.nextCursor,
+    });
 
     expect(repository.queries).toEqual([query]);
     expect(transactions.actors).toEqual([SUPPORT.id]);
     expect(journal.entries).toEqual(['tx:begin', 'supportTrash:listRoots', 'tx:end']);
   });
 
-  it('CA-11: restaura con la profundidad máxima de `FOLDER_MAX_DEPTH` y devuelve lo que audita `node.restored`', async () => {
+  it('CA-11: restaura con la profundidad máxima de `FOLDER_MAX_DEPTH` y devuelve la vista de lectura y lo que audita `node.restored`', async () => {
     const { journal, repository, service } = setup();
-    repository.result = restoredFolder();
+    const result = restoredFolder();
+    repository.result = result;
 
-    await expect(service.restore(SUPPORT, { ownerId: OWNER_ID, item: ITEM })).resolves.toBe(
-      repository.result,
-    );
+    await expect(service.restore(SUPPORT, { ownerId: OWNER_ID, item: ITEM })).resolves.toEqual({
+      item: toNodeSummary(result.node),
+      outcome: 'moved_to_root',
+      originalName: 'Contratos',
+      itemCount: 3,
+      sizeBytes: 2048n,
+    });
 
     expect(repository.requests).toEqual([{ ownerId: OWNER_ID, item: ITEM, maxDepth: MAX_DEPTH }]);
     expect(journal.entries).toEqual(['tx:begin', 'supportTrash:restoreRoot', 'tx:end']);

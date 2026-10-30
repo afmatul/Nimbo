@@ -7,7 +7,7 @@ import type { Actor } from '../../../shared';
 import type { AuditRecord } from '../../audit';
 import type { ClientIdentity } from '../../identity';
 import { InvalidQueryError, NodeNotFoundError } from '../../storage';
-import type { SupportRestoreResult, TrashPage } from '../../storage';
+import type { SupportRestoreView, SupportTrashPage } from '../../storage';
 
 import { ClientTrashService } from './client-trash.service';
 import type { InternalAction } from './internal-action.service';
@@ -15,10 +15,10 @@ import type { InternalAction } from './internal-action.service';
 const CLIENT: ClientIdentity = { id: randomUUID(), fullName: 'Ana López', email: 'ana@nimbo.me' };
 const NODE_ID = randomUUID();
 const NOTE = 'La clienta pidió recuperarlo por teléfono';
-const EMPTY_PAGE: TrashPage = { items: [], nextCursor: null };
+const EMPTY_PAGE: SupportTrashPage = { items: [], nextCursor: null };
 
-const RESTORED: SupportRestoreResult = {
-  node: {} as SupportRestoreResult['node'],
+const RESTORED: SupportRestoreView = {
+  item: {} as SupportRestoreView['item'],
   outcome: 'renamed',
   originalName: 'informe.docx',
   itemCount: 3,
