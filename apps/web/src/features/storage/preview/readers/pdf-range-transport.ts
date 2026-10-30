@@ -69,11 +69,20 @@ function createTransport(
   })();
 }
 
-export async function openPdfRangeTransport(options: RangeOptions): Promise<PdfRanges> {
+/** Un controlador propio que también se aborta con la señal del llamador; `release` lo desengancha. */
+function linkedController(signal: AbortSignal): {
+  controller: AbortController;
+  release: () => void;
+} {
   const controller = new AbortController();
   const abort = (): void => controller.abort();
-  options.signal.addEventListener('abort', abort, { once: true });
-  if (options.signal.aborted) controller.abort();
+  signal.addEventListener('abort', abort, { once: true });
+  if (signal.aborted) controller.abort();
+  return { controller, release: () => signal.removeEventListener('abort', abort) };
+}
+
+export async function openPdfRangeTransport(options: RangeOptions): Promise<PdfRanges> {
+  const { controller, release } = linkedController(options.signal);
   try {
     const result = await fetchObjectBytes({
       url: options.url,
@@ -89,18 +98,15 @@ export async function openPdfRangeTransport(options: RangeOptions): Promise<PdfR
       length: result.totalLength,
       pending: new Set(),
     };
-    const transport = createTransport(reading, initial);
-    return {
-      transport,
-      dispose: async () => {
-        controller.abort();
-        options.signal.removeEventListener('abort', abort);
-        await Promise.allSettled(reading.pending);
-      },
+    const dispose = async (): Promise<void> => {
+      controller.abort();
+      release();
+      await Promise.allSettled(reading.pending);
     };
+    return { transport: createTransport(reading, initial), dispose };
   } catch {
     controller.abort();
-    options.signal.removeEventListener('abort', abort);
+    release();
     throw new Error('No se pudo preparar la lectura PDF.');
   }
 }

@@ -215,6 +215,42 @@ function usePreviewRequest(apiPublicUrl: string): PreviewUrlRequester {
   );
 }
 
+/** La región de la vista previa recibe el foco al abrir y antes de cada acción que la reemplaza. */
+function useFocusRegion() {
+  const region = React.useRef<HTMLElement>(null);
+  const attachRegion = React.useCallback((element: HTMLElement | null): void => {
+    region.current = element;
+  }, []);
+  const focusRegion = (): void => region.current?.focus();
+  React.useEffect(() => {
+    region.current?.focus();
+  }, []);
+  return { focusRegion, attachRegion };
+}
+
+type ActionDeps = {
+  readonly focusRegion: () => void;
+  readonly download: ReturnType<typeof usePreviewDownload>;
+  readonly content: ReturnType<typeof usePreviewContent>;
+  readonly retry: () => void;
+};
+
+function previewActions({ focusRegion, download, content, retry }: ActionDeps) {
+  return {
+    onRetry: (): void => {
+      focusRegion();
+      download.reset();
+      void content.retire().then((mounted) => {
+        if (mounted) retry();
+      });
+    },
+    onDownload: (): void => {
+      focusRegion();
+      download.start();
+    },
+  };
+}
+
 function usePreviewShell({
   fileId,
   apiPublicUrl,
@@ -225,26 +261,10 @@ function usePreviewShell({
   const content = usePreviewContent(emission, generation);
   const state = content.state;
   const download = usePreviewDownload(fileId, openDownloadUrl);
-  const region = React.useRef<HTMLElement>(null);
-  const attachRegion = React.useCallback((element: HTMLElement | null): void => {
-    region.current = element;
-  }, []);
-  React.useEffect(() => {
-    region.current?.focus();
-  }, []);
+  const { focusRegion, attachRegion } = useFocusRegion();
   const delivery = emission.status === 'success' ? emission.delivery : undefined;
   const back = usePreviewReturn(fileId, emission);
-  const onRetry = (): void => {
-    region.current?.focus();
-    download.reset();
-    void content.retire().then((mounted) => {
-      if (mounted) retry();
-    });
-  };
-  const onDownload = (): void => {
-    region.current?.focus();
-    download.start();
-  };
+  const actions = previewActions({ focusRegion, download, content, retry });
   return {
     state,
     delivery,
@@ -254,11 +274,27 @@ function usePreviewShell({
     attachRegion,
     file: delivery?.file,
     back,
-    actions: { onRetry, onDownload },
+    actions,
   };
 }
 
 type PreviewView = ReturnType<typeof usePreviewShell>;
+
+function ReaderSlot({ view }: { readonly view: PreviewView }): React.JSX.Element | null {
+  if (view.delivery === undefined) return null;
+  return (
+    <div hidden={view.state.status === 'failure'}>
+      <PreviewReader
+        key={view.generation}
+        kind={view.delivery.file.kind}
+        url={view.delivery.url}
+        onFailure={view.content.onFailure}
+        onReady={view.content.onReady}
+        registerCleanup={view.content.registerCleanup}
+      />
+    </div>
+  );
+}
 
 function PreviewBody({ view }: { readonly view: PreviewView }): React.JSX.Element {
   const { attachRegion, state, download, back, actions } = view;
@@ -277,18 +313,7 @@ function PreviewBody({ view }: { readonly view: PreviewView }): React.JSX.Elemen
         onDownload={actions.onDownload}
         downloadPending={download.pending}
       />
-      {view.delivery === undefined ? null : (
-        <div hidden={state.status === 'failure'}>
-          <PreviewReader
-            key={view.generation}
-            kind={view.delivery.file.kind}
-            url={view.delivery.url}
-            onFailure={view.content.onFailure}
-            onReady={view.content.onReady}
-            registerCleanup={view.content.registerCleanup}
-          />
-        </div>
-      )}
+      <ReaderSlot view={view} />
       {download.failed ? <DownloadFailure onRetry={actions.onDownload} /> : null}
     </section>
   );

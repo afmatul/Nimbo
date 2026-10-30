@@ -232,6 +232,18 @@ type SharedRead = {
   capture: boolean;
 };
 
+/** Cierra un `<si>`: guarda su texto si ese índice se pidió y aún no se leyó; devuelve si lo guardó. */
+function recordString(
+  read: SharedRead,
+  wanted: Map<number, string | undefined>,
+  window: SheetWindow,
+): boolean {
+  if (!window.current()) throw new OoxmlError('unavailable');
+  if (!wanted.has(read.index) || wanted.get(read.index) !== undefined) return false;
+  wanted.set(read.index, read.text);
+  return true;
+}
+
 function sharedHandlers(
   read: SharedRead,
   wanted: Map<number, string | undefined>,
@@ -252,11 +264,7 @@ function sharedHandlers(
       if (local === 't') read.capture = false;
       else if (local === 'rPh') read.phonetic = false;
       else if (local === 'si') {
-        if (!window.current()) throw new OoxmlError('unavailable');
-        if (wanted.has(read.index) && wanted.get(read.index) === undefined) {
-          wanted.set(read.index, read.text);
-          if (--pending === 0) throw WINDOW_END;
-        }
+        if (recordString(read, wanted, window) && --pending === 0) throw WINDOW_END;
         Object.assign(read, { inside: false, index: read.index + 1 });
       }
     },

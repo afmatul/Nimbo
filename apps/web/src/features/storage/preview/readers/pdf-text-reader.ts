@@ -38,19 +38,33 @@ async function readLiteral(
   }
 }
 
+function scaleOverlay({ overlay, viewport }: PdfTextOptions): void {
+  overlay.style.setProperty(
+    '--total-scale-factor',
+    String(viewport.scale * (viewport.userUnit ?? 1)),
+  );
+}
+
+function createLayer(options: PdfTextOptions, source: ReadableStream) {
+  const layer = new options.engine.TextLayer({
+    textContentSource: source,
+    container: options.overlay,
+    viewport: options.viewport,
+  });
+  scaleOverlay(options);
+  return layer;
+}
+
+function clearText({ overlay, literal }: PdfTextOptions): void {
+  overlay.replaceChildren();
+  literal.replaceChildren();
+}
+
 /** La proyección literal consume todo el stream, incluso si TextLayer limita sus textDivs. */
 export function renderPdfText(options: PdfTextOptions): PdfTextReading {
   const [layout, literal] = options.source.tee();
   const reader = literal.getReader();
-  const layer = new options.engine.TextLayer({
-    textContentSource: layout,
-    container: options.overlay,
-    viewport: options.viewport,
-  });
-  options.overlay.style.setProperty(
-    '--total-scale-factor',
-    String(options.viewport.scale * (options.viewport.userUnit ?? 1)),
-  );
+  const layer = createLayer(options, layout);
   let active = true;
   let cleanup: Promise<void> | undefined;
   const promise = Promise.all([layer.render(), readLiteral(reader, options.literal, () => active)])
@@ -68,10 +82,7 @@ export function renderPdfText(options: PdfTextOptions): PdfTextReading {
         reader.cancel().catch(() => undefined),
         layout.cancel().catch(() => undefined),
         promise,
-      ]).then(() => {
-        options.overlay.replaceChildren();
-        options.literal.replaceChildren();
-      });
+      ]).then(() => clearText(options));
       return cleanup;
     },
   };

@@ -74,6 +74,26 @@ async function loadPdf(
   }
 }
 
+function createAttempt(
+  setLoaded: (loaded: LoadedPdf | null) => void,
+  callbacks: ReturnType<typeof useLatestCallbacks>,
+): PdfAttempt {
+  const attempt: PdfAttempt = {
+    controller: new AbortController(),
+    active: true,
+    fail: (failure) => {
+      if (!attempt.active) return;
+      void disposeAttempt(attempt);
+      setLoaded(null);
+      callbacks.current.onFailure(readerFailure(failure.reason));
+    },
+    ready: () => {
+      if (attempt.active) callbacks.current.onReady?.();
+    },
+  };
+  return attempt;
+}
+
 function usePdfReading({
   url,
   onFailure,
@@ -83,19 +103,7 @@ function usePdfReading({
   const [loaded, setLoaded] = React.useState<LoadedPdf | null>(null);
   const callbacks = useLatestCallbacks({ onFailure, onReady });
   React.useEffect(() => {
-    const attempt: PdfAttempt = {
-      controller: new AbortController(),
-      active: true,
-      fail: (failure) => {
-        if (!attempt.active) return;
-        void disposeAttempt(attempt);
-        setLoaded(null);
-        callbacks.current.onFailure(readerFailure(failure.reason));
-      },
-      ready: () => {
-        if (attempt.active) callbacks.current.onReady?.();
-      },
-    };
+    const attempt = createAttempt(setLoaded, callbacks);
     const unregister = registerCleanup?.(() => disposeAttempt(attempt));
     void loadPdf(url, attempt, setLoaded);
     return () => {
@@ -138,28 +146,44 @@ function usePdfPage({ session, attempt, pageNumber }: PdfCanvasProps) {
   return { canvas, textLayer, literalText, ready };
 }
 
+type PageSurfaceProps = {
+  readonly canvas: React.RefObject<HTMLCanvasElement | null>;
+  readonly textLayer: React.RefObject<HTMLDivElement | null>;
+  readonly ready: boolean;
+  readonly pageNumber: number;
+};
+
+function PageSurface({
+  canvas,
+  textLayer,
+  ready,
+  pageNumber,
+}: PageSurfaceProps): React.JSX.Element {
+  return (
+    <div
+      className={
+        ready ? 'relative mx-auto w-fit max-w-full' : 'invisible relative mx-auto w-fit max-w-full'
+      }
+    >
+      <canvas
+        ref={canvas}
+        role="img"
+        aria-label={`Página ${pageNumber} del PDF`}
+        aria-hidden={!ready}
+        className="block h-auto max-w-full"
+      />
+      <div ref={textLayer} className={styles.textLayer} aria-hidden="true" />
+    </div>
+  );
+}
+
 function PdfCanvas(props: PdfCanvasProps): React.JSX.Element {
   const { canvas, textLayer, literalText, ready } = usePdfPage(props);
   const { pageNumber } = props;
   return (
     <div role="group" aria-label={`Página ${pageNumber}`} aria-busy={!ready} data-pdf-page="">
       {!ready ? <p role="status">Preparando página…</p> : null}
-      <div
-        className={
-          ready
-            ? 'relative mx-auto w-fit max-w-full'
-            : 'invisible relative mx-auto w-fit max-w-full'
-        }
-      >
-        <canvas
-          ref={canvas}
-          role="img"
-          aria-label={`Página ${pageNumber} del PDF`}
-          aria-hidden={!ready}
-          className="block h-auto max-w-full"
-        />
-        <div ref={textLayer} className={styles.textLayer} aria-hidden="true" />
-      </div>
+      <PageSurface canvas={canvas} textLayer={textLayer} ready={ready} pageNumber={pageNumber} />
       <div
         ref={literalText}
         role="group"
