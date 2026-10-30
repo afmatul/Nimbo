@@ -252,6 +252,9 @@ describe('accessibleNodes con comparticiones (012 CA-13, CA-17, CA-21)', () => {
         outer: planText(await runner.query(outerSql, values)),
       };
     });
+    // `ANALYZE` escribe `pg_class.reltuples` en el sitio, fuera de la transacción: se vuelve a medir la tabla real para
+    // no dejar al planificador de las demás suites creyendo que `carpeta` tiene miles de filas.
+    await owner.query('ANALYZE carpeta');
 
     expect(plans.inner).toMatch(
       /idx_carpeta_ruta on carpeta h[^\n]*\n\s*Index Cond: [^\n]*ruta ~>=~ r\.ruta/,

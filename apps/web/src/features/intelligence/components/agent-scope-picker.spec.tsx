@@ -36,6 +36,7 @@ function contentsOf(folderId: string | null): Promise<FolderContentsResponse> {
       updatedAt: AT,
     })),
     nextCursor: null,
+    accessLevel: 'OWNER',
   });
 }
 

@@ -4,6 +4,7 @@ import type { DynamicModule } from '@nestjs/common';
 
 import { MINIO_CONFIG } from '../../shared';
 import type { Env, MinioConfig } from '../../shared';
+import { AccessModule } from '../access';
 import { AuditModule } from '../audit';
 
 import { EditableFileGateway } from './application/editable-file.gateway';
@@ -99,7 +100,7 @@ export class StorageModule {
     };
     return {
       module: StorageModule,
-      imports: [AuditModule, BullModule.registerQueue({ name: TRASH_PURGE_QUEUE })],
+      imports: [AccessModule, AuditModule, BullModule.registerQueue({ name: TRASH_PURGE_QUEUE })],
       controllers: [
         UploadsController,
         FilesController,

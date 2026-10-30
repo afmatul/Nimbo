@@ -320,4 +320,8 @@ ambientes (rol dueño de las migraciones) está en `docs/operations/ambientes.md
   `maxSubtreeDepth`, los `UPDATE` de nombre y carpeta, la papelera (`TypeOrmTrashRepository`) y la poda de originales.
   `listContents` de la raíz también es solo lo propio (012 R-2). Un nodo compartido responde como inexistente (`404`,
   012 CA-14).
-- Prueba: `test/isolation/storage-shared-writes.iso-spec.ts` recorre todas las rutas de escritura como Lector y Editor.
+- `GET /folders/contents` responde `accessLevel` (`OWNER`, `EDITOR` o `VIEWER`): el nivel del actor sobre la carpeta
+  abierta según `PermissionResolver.levelFor` de `access` (en la raíz, `OWNER`). La web lo usa solo para ocultar
+  acciones (012b RN-1). Lo compartido no cuenta en el espacio ni en la cuota del destinatario (`propietario_id`).
+- Pruebas: `test/isolation/storage-shared-writes.iso-spec.ts` recorre todas las rutas de escritura como Lector y Editor;
+  `test/int/storage/shared-access.int-spec.ts`, lo que el destinatario abre.

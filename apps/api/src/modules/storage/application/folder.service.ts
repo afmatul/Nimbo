@@ -5,6 +5,7 @@ import { STORAGE_NODE_FIELD_MESSAGES } from '@nimbo/contracts';
 
 import { I_CLOCK, I_TRANSACTION_RUNNER } from '../../../shared';
 import type { Actor, IClock, ITransactionRunner } from '../../../shared';
+import { AccessLevel, PermissionResolver } from '../../access';
 import {
   FolderNameConflictError,
   InvalidNodeRequestError,
@@ -36,11 +37,15 @@ export interface FolderContentsQuery {
   readonly limit: number;
 }
 
-/** Carpeta abierta (`null` en la raíz), sus migas desde la raíz hasta ella y una página de su contenido (CA-5). */
+/**
+ * Carpeta abierta (`null` en la raíz), sus migas desde la raíz hasta ella, una página de su contenido (CA-5) y el nivel
+ * del actor sobre ella (`OWNER` en la raíz; en lo compartido, el de `access`, 012 CA-13).
+ */
 export interface FolderContents {
   readonly folder: Folder | null;
   readonly breadcrumbs: readonly Folder[];
   readonly page: NodeListPage;
+  readonly accessLevel: AccessLevel;
 }
 
 /**
@@ -58,6 +63,7 @@ export class FolderService {
     @Inject(I_CLOCK) private readonly clock: IClock,
     @Inject(FOLDER_CONFIG) private readonly config: FolderConfig,
     @Inject(WritableAccountPolicy) private readonly writable: WritableAccountPolicy,
+    @Inject(PermissionResolver) private readonly permissions: PermissionResolver,
   ) {}
 
   /** CA-1, CA-2, CA-3, CA-9: carpeta vacía en la raíz o dentro de una propia. */
@@ -123,9 +129,11 @@ export class FolderService {
   contents(actor: Actor, query: FolderContentsQuery): Promise<FolderContents> {
     return this.transactions.withActor(actor, async () => {
       const folder = await this.findOpenedFolder(actor, query.folderId);
+      const accessLevel = await this.levelOn(actor, folder);
       const ancestors = folder === null ? [] : await this.nodes.breadcrumbs(actor, folder);
       const page = await this.nodes.listContents(actor, query);
-      return { folder, breadcrumbs: folder === null ? [] : [...ancestors, folder], page };
+      const breadcrumbs = folder === null ? [] : [...ancestors, folder];
+      return { folder, breadcrumbs, page, accessLevel };
     });
   }
 
@@ -133,6 +141,14 @@ export class FolderService {
   private async findOpenedFolder(actor: Actor, folderId: string | null): Promise<Folder | null> {
     if (folderId === null) return null;
     return requireFound(await this.nodes.findAccessibleFolder(actor, folderId));
+  }
+
+  /** La raíz es siempre del actor; una carpeta, el nivel que da `access` (sin duplicar la regla, plan 012 §1). */
+  private async levelOn(actor: Actor, folder: Folder | null): Promise<AccessLevel> {
+    if (folder === null) return AccessLevel.OWNER;
+    const level = await this.permissions.levelFor(actor, folder.id);
+    if (level === null) throw new NodeNotFoundError();
+    return level;
   }
 
   /** Destino de crear o mover: `null` es la raíz; una carpeta que no es del actor es `NodeNotFoundError` (012 CA-14). */

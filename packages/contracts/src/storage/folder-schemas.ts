@@ -21,6 +21,13 @@ export type NodeSort = (typeof NODE_SORTS)[number];
 export const SORT_DIRECTIONS = ['asc', 'desc'] as const;
 export type SortDirection = (typeof SORT_DIRECTIONS)[number];
 
+/**
+ * Nivel del actor sobre lo que abre (spec 012 CA-13): `OWNER` en lo propio y en la raíz, `EDITOR` o `VIEWER` en lo
+ * compartido con él (el mayor si tiene varios). La web lo usa solo para ocultar acciones (012b RN-1); la API decide.
+ */
+export const NODE_ACCESS_LEVELS = ['OWNER', 'EDITOR', 'VIEWER'] as const;
+export type NodeAccessLevel = (typeof NODE_ACCESS_LEVELS)[number];
+
 const UNKNOWN_FIELD_MESSAGE = STORAGE_NODE_FIELD_MESSAGES.UNKNOWN_FIELD;
 
 /** Nombre de un nodo al crear o renombrar: mismas reglas que al subir, mensajes sin «subir». */
@@ -79,7 +86,8 @@ export const folderContentsQuerySchema = pageQuerySchema.extend({
 
 /**
  * Respuesta de `GET /folders/contents`: carpetas primero y luego en el orden pedido (por defecto, más recientes primero). `folder` es `null` en la raíz;
- * `breadcrumbs` va desde la raíz hasta la carpeta abierta, sin «Mis archivos».
+ * `breadcrumbs` va desde la raíz hasta la carpeta abierta, sin «Mis archivos» (en lo compartido, desde la carpeta
+ * compartida, 012 CA-13). `accessLevel` es el nivel del actor sobre la carpeta abierta; en la raíz, `OWNER`.
  */
 export const folderContentsResponseSchema = z
   .object({
@@ -87,6 +95,7 @@ export const folderContentsResponseSchema = z
     breadcrumbs: z.array(folderRefSchema),
     items: z.array(nodeSummarySchema),
     nextCursor: z.string().min(1).nullable(),
+    accessLevel: z.enum(NODE_ACCESS_LEVELS),
   })
   .strict();
 

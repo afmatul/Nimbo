@@ -12,6 +12,7 @@ import {
   moveFolderSchema,
   nodeSummarySchema,
   renameFileSchema,
+  NODE_ACCESS_LEVELS,
   NODE_SORTS,
   renameFolderSchema,
   SORT_DIRECTIONS,
@@ -174,15 +175,32 @@ describe('contenido de una carpeta', () => {
         { type: 'file', ...file },
       ],
       nextCursor: null,
+      accessLevel: 'VIEWER',
     };
 
     expect(folderContentsResponseSchema.parse(response)).toEqual(response);
   });
 
   it('CA-5: en la raíz `folder` es `null` y no hay migas', () => {
-    const root = { folder: null, breadcrumbs: [], items: [], nextCursor: 'abc' };
+    const root = {
+      folder: null,
+      breadcrumbs: [],
+      items: [],
+      nextCursor: 'abc',
+      accessLevel: 'OWNER',
+    };
 
     expect(folderContentsResponseSchema.parse(root)).toEqual(root);
+  });
+
+  it('012 CA-13: `accessLevel` es obligatorio y solo `OWNER`, `EDITOR` o `VIEWER`', () => {
+    const root = { folder: null, breadcrumbs: [], items: [], nextCursor: null };
+
+    expect(NODE_ACCESS_LEVELS).toEqual(['OWNER', 'EDITOR', 'VIEWER']);
+    expect(folderContentsResponseSchema.safeParse(root).success).toBe(false);
+    expect(folderContentsResponseSchema.safeParse({ ...root, accessLevel: 'ADMIN' }).success).toBe(
+      false,
+    );
   });
 
   it('CA-1: `FolderSummary` y `NodeSummary` son estrictos y se discriminan por `type`', () => {
