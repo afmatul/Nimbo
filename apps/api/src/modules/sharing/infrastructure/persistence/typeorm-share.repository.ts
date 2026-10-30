@@ -4,7 +4,12 @@ import type { EntityManager } from 'typeorm';
 import { TransactionContext } from '../../../../shared';
 import type { Actor } from '../../../../shared';
 import { ownedNodes } from '../../../access';
-import type { IShareRepository } from '../../application/ports/i-share.repository.port';
+import type {
+  AccessGrants,
+  DirectGrant,
+  InheritedGrant,
+  IShareRepository,
+} from '../../application/ports/i-share.repository.port';
 import { UserShare } from '../../domain/user-share';
 import type { SharedNodeRef, ShareLevel, ShareNodeType } from '../../domain/user-share';
 
@@ -27,6 +32,66 @@ const insertSql = (ownedSql: string): string => `
          :now::timestamptz, :now::timestamptz
    WHERE :node_id::uuid IN (SELECT o.nodo_id FROM (${ownedSql}) o WHERE o.tipo_nodo = :node_table)
   RETURNING id`;
+
+/**
+ * La `ruta` donde están los antepasados del nodo propio y vivo: la de la carpeta misma o la de la carpeta del archivo
+ * (`NULL` si el archivo está en la raíz). Sin fila, no hay un nodo de ese tipo con ese id.
+ */
+const NODE_PATH_SQL: Readonly<Record<ShareNodeType, (ownedSql: string) => string>> = {
+  folder: (ownedSql) => `
+    SELECT k.ruta FROM carpeta k
+     WHERE k.id = :node_id::uuid
+       AND k.id IN (SELECT o.nodo_id FROM (${ownedSql}) o WHERE o.tipo_nodo = 'carpeta')`,
+  file: (ownedSql) => `
+    SELECT k.ruta FROM archivo a LEFT JOIN carpeta k ON k.id = a.carpeta_id
+     WHERE a.id = :node_id::uuid
+       AND a.id IN (SELECT o.nodo_id FROM (${ownedSql}) o WHERE o.tipo_nodo = 'archivo')`,
+};
+
+/**
+ * RN-4: accesos heredados por `carpeta.ruta` (`/<id>/…/<id>/`): las comparticiones de las carpetas que la forman,
+ * salvo el nodo mismo, de la raíz hacia adentro. Las carpetas de la `ruta` de un nodo vivo también están vivas (006).
+ */
+const INHERITED_SQL = `
+  SELECT c.destinatario_id, c.nivel, c.creado_en, k.id AS carpeta_id, k.nombre AS carpeta_nombre
+    FROM comparticion c JOIN carpeta k ON k.id = c.carpeta_id
+   WHERE c.propietario_id = :owner_id::uuid
+     AND k.id = ANY (string_to_array(btrim(:path::text, '/'), '/')::uuid[])
+     AND k.id <> :node_id::uuid
+   ORDER BY k.profundidad, c.creado_en, c.id`;
+
+interface InheritedRow {
+  readonly destinatario_id: string;
+  readonly nivel: ShareLevel;
+  readonly creado_en: Date;
+  readonly carpeta_id: string;
+  readonly carpeta_nombre: string;
+}
+
+/** Lo que identifica la búsqueda de heredados: dueño, nodo y la `ruta` de sus antepasados. */
+interface InheritedQuery {
+  readonly ownerId: string;
+  readonly nodeId: string;
+  readonly path: string;
+}
+
+const toInherited = (row: InheritedRow): InheritedGrant => ({
+  granteeId: row.destinatario_id,
+  level: row.nivel,
+  createdAt: row.creado_en,
+  folder: { id: row.carpeta_id, name: row.carpeta_nombre },
+});
+
+const toDirect = (row: ComparticionOrmEntity): DirectGrant => ({
+  shareId: row.id,
+  granteeId: row.destinatarioId,
+  level: row.nivel as ShareLevel,
+  createdAt: row.creadoEn,
+});
+
+/** Filtro de `comparticion` por su nodo (la columna que no es nula). */
+const nodeWhere = (node: SharedNodeRef): { archivoId: string } | { carpetaId: string } =>
+  node.type === 'file' ? { archivoId: node.id } : { carpetaId: node.id };
 
 /** Columnas `archivo_id`/`carpeta_id` del nodo: exactamente una (`ck_comparticion_nodo`). */
 const nodeColumns = (
@@ -81,11 +146,7 @@ export class TypeOrmShareRepository implements IShareRepository {
     recipientId: string,
   ): Promise<UserShare | null> {
     const row = await this.context.requireActorScope(actor).findOne(ComparticionOrmEntity, {
-      where: {
-        propietarioId: actor.id,
-        destinatarioId: recipientId,
-        ...(node.type === 'file' ? { archivoId: node.id } : { carpetaId: node.id }),
-      },
+      where: { propietarioId: actor.id, destinatarioId: recipientId, ...nodeWhere(node) },
     });
     return row === null ? null : toShare(row);
   }
@@ -117,5 +178,41 @@ export class TypeOrmShareRepository implements IShareRepository {
         { id: share.id, propietarioId: actor.id },
         { nivel: share.level, actualizadoEn: () => 'now()' },
       );
+  }
+
+  async listAccess(actor: Actor, node: SharedNodeRef): Promise<AccessGrants | null> {
+    const manager = this.context.requireActorScope(actor);
+    const owned = ownedNodes(actor);
+    const [located] = await queryNamed<{ ruta: string | null }>(
+      manager,
+      NODE_PATH_SQL[node.type](owned.sql),
+      { ...owned.parameters, node_id: node.id },
+    );
+    if (located === undefined) return null;
+    const direct = await manager.find(ComparticionOrmEntity, {
+      where: { propietarioId: actor.id, ...nodeWhere(node) },
+      order: { creadoEn: 'ASC', id: 'ASC' },
+    });
+    const inherited =
+      located.ruta === null
+        ? []
+        : await this.listInherited(manager, {
+            ownerId: actor.id,
+            nodeId: node.id,
+            path: located.ruta,
+          });
+    return { direct: direct.map(toDirect), inherited };
+  }
+
+  private async listInherited(
+    manager: EntityManager,
+    query: InheritedQuery,
+  ): Promise<InheritedGrant[]> {
+    const rows = await queryNamed<InheritedRow>(manager, INHERITED_SQL, {
+      owner_id: query.ownerId,
+      node_id: query.nodeId,
+      path: query.path,
+    });
+    return rows.map(toInherited);
   }
 }

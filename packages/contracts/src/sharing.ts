@@ -78,6 +78,14 @@ export const shareRequestSchema = z
   })
   .strict();
 
+/** `GET /shares?nodeType&nodeId` (CA-8): el nodo cuyos accesos se piden. */
+export const accessListQuerySchema = z
+  .object({
+    nodeType: reasonField('INVALID_NODE', isNodeType),
+    nodeId: reasonField('INVALID_NODE', isNodeId),
+  })
+  .strict();
+
 const granteeSchema = z
   .object({ id: z.string().uuid(), displayName: z.string().min(1), email: z.string().email() })
   .strict();
@@ -131,6 +139,7 @@ export const receivedShareSchema = z
 export const receivedSharesSchema = z.object({ entries: z.array(receivedShareSchema) }).strict();
 
 export type ShareRequest = z.infer<typeof shareRequestSchema>;
+export type AccessListQuery = z.infer<typeof accessListQuerySchema>;
 export type AccessEntry = z.infer<typeof accessEntrySchema>;
 export type AccessList = z.infer<typeof accessListSchema>;
 export type ReceivedShare = z.infer<typeof receivedShareSchema>;

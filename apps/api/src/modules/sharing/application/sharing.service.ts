@@ -14,13 +14,14 @@ import { Action, PermissionResolver } from '../../access';
 import { AuditAction, I_AUDIT_LOGGER } from '../../audit';
 import type { AuditRecord, IAuditLogger } from '../../audit';
 import { NodeNotFoundError, WritableAccountPolicy } from '../../storage';
+import { AccessList } from '../domain/access-list';
 import type { DirectAccess } from '../domain/access-list';
 import { RecipientNotFoundError } from '../domain/errors';
 import { UserShare } from '../domain/user-share';
 import type { SharedNodeRef, ShareNodeType, UserShareSnapshot } from '../domain/user-share';
 
 import { I_SHARE_REPOSITORY } from './ports/i-share.repository.port';
-import type { IShareRepository } from './ports/i-share.repository.port';
+import type { AccessGrants, IShareRepository } from './ports/i-share.repository.port';
 import { I_SHAREE_DIRECTORY } from './ports/i-sharee-directory.port';
 import type { IShareeDirectory, Sharee } from './ports/i-sharee-directory.port';
 import { SHARING_CONFIG } from './sharing-config';
@@ -70,6 +71,19 @@ const shareEvent = (action: AuditAction, actor: Actor, share: UserShareSnapshot)
   attributes: { nodeType: share.node.type, level: share.level },
 });
 
+/** Un acceso con el id de quien lo tiene, antes de sumarle su perfil. */
+type WithGranteeId = { readonly granteeId: string };
+
+/** El acceso con el perfil de su destinatario; sin perfil (no debería pasar: FK a `usuario`), se omite. */
+const withGrantee = <T extends WithGranteeId>(
+  profiles: ReadonlyMap<string, Sharee>,
+  grant: T,
+): (Omit<T, 'granteeId'> & { readonly grantee: Sharee })[] => {
+  const { granteeId, ...rest } = grant;
+  const grantee = profiles.get(granteeId);
+  return grantee === undefined ? [] : [{ ...rest, grantee }];
+};
+
 const LOG_EVENTS: Readonly<Record<Exclude<ShareChange, 'unchanged'>, string>> = {
   granted: 'sharing.granted',
   level_changed: 'sharing.level_changed',
@@ -106,6 +120,25 @@ export class SharingService {
     );
     this.logChange(outcome, command.nodeId);
     return outcome;
+  }
+
+  /** CA-8, CA-9: solo el propietario (`VIEW_ACCESS_LIST`); lo demás es el 404 de lo inexistente. */
+  listAccess(actor: Actor, node: SharedNodeRef): Promise<AccessList> {
+    return this.transactions.withActor(actor, async () => {
+      await this.assertAllowed(actor, node.id, Action.VIEW_ACCESS_LIST);
+      const grants = await this.shares.listAccess(actor, node);
+      if (grants === null) throw new NodeNotFoundError();
+      return this.accessListOf(grants);
+    });
+  }
+
+  private async accessListOf(grants: AccessGrants): Promise<AccessList> {
+    const ids = [...grants.direct, ...grants.inherited].map((grant) => grant.granteeId);
+    const profiles = await this.directory.profiles(ids);
+    return AccessList.of({
+      direct: grants.direct.flatMap((grant) => withGrantee(profiles, grant)),
+      inherited: grants.inherited.flatMap((grant) => withGrantee(profiles, grant)),
+    });
   }
 
   private async shareInScope(actor: Actor, command: ShareCommand): Promise<ShareOutcome> {

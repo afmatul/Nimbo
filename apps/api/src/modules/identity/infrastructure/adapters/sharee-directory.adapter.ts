@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { In } from 'typeorm';
 
 import { Role, TransactionContext } from '../../../../shared';
 import type { IShareeDirectory, Sharee } from '../../../sharing';
@@ -32,6 +33,18 @@ export class ShareeDirectoryAdapter implements IShareeDirectory {
       },
     });
     return row === null ? null : { id: row.id, displayName: row.nombre, email: row.correo };
+  }
+
+  /** CA-8: nombre y correo de cualquier cuenta pedida, sin filtrar estado; lo acota el llamador a sus accesos. */
+  async profiles(userIds: readonly string[]): Promise<ReadonlyMap<string, Sharee>> {
+    if (userIds.length === 0) return new Map();
+    const rows = await this.context.manager().find(UsuarioOrmEntity, {
+      select: { id: true, nombre: true, correo: true },
+      where: { id: In([...new Set(userIds)]) },
+    });
+    return new Map(
+      rows.map((row) => [row.id, { id: row.id, displayName: row.nombre, email: row.correo }]),
+    );
   }
 
   displayNames(userIds: readonly string[]): Promise<ReadonlyMap<string, string>> {

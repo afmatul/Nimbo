@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { accessEntrySchema } from '@nimbo/contracts';
+import { accessEntrySchema, accessListSchema } from '@nimbo/contracts';
 import type { Response } from 'supertest';
 
 import { Role } from '../../../src/shared';
@@ -38,7 +38,7 @@ const stableError = (response: Response): Omit<ErrorBody, 'correlationId'> => {
  * `POST /shares` por HTTP con Postgres, Redis y el directorio reales (spec 012 CA-1 a CA-7, CA-19, CA-20). Ana comparte
  * sus nodos; Bruno es un cliente verificado y activo; Dani tiene sus propios archivos.
  */
-describe('POST /shares (012 CA-1 a CA-7, CA-19, CA-20)', () => {
+describe('POST y GET /shares (012 CA-1 a CA-9, CA-19, CA-20)', () => {
   let sharing: SharingHttpApp;
   let ana: StorageClient;
   let bruno: StorageClient;
@@ -256,6 +256,119 @@ describe('POST /shares (012 CA-1 a CA-7, CA-19, CA-20)', () => {
       code: 'SHARED_UNAUTHENTICATED',
     });
     await expect(shareRows(folderId)).resolves.toEqual([]);
+  });
+
+  describe('GET /shares (CA-8, CA-9)', () => {
+    /** «Proyectos» ⊃ «Acme» ⊃ contrato, y un archivo suelto en la raíz de Ana. */
+    let tree: { projects: string; acme: string; contract: string; loose: string };
+    let carla: StorageClient;
+
+    const entriesOf = async (client: SharesClient, nodeType: string, nodeId: string) => {
+      const response = await client.accessList({ nodeType, nodeId });
+      expect(response.status).toBe(200);
+      expect(response.headers['cache-control']).toBe('no-store');
+      return accessListSchema
+        .parse(response.body)
+        .entries.map((entry) => [
+          entry.origin,
+          entry.grantee.id,
+          entry.level,
+          entry.inheritedFrom?.folderId ?? entry.shareId,
+        ]);
+    };
+
+    beforeAll(async () => {
+      carla = await sharing.storage.newClient();
+      const [projects, acme] = await sharing.storage.owner.transaction(async (manager) => {
+        const root = await insertFolder(manager, ana.id, { name: `Proyectos-${randomUUID()}` });
+        return [root, await insertFolder(manager, ana.id, { name: 'Acme', parent: root })];
+      });
+      const file = (folderId: string | null) =>
+        insertCommittedFile(sharing.storage.owner, ana.id, { folderId });
+      tree = {
+        projects: projects.id,
+        acme: acme.id,
+        contract: (await file(acme.id)).fileId,
+        loose: (await file(null)).fileId,
+      };
+    });
+
+    it('CA-8: cada persona con nombre, correo, nivel y fecha; `direct` con `shareId` e `inherited` con su carpeta', async () => {
+      const share = (
+        granteeId: string,
+        node: { fileId: string } | { folderId: string },
+        level: string,
+      ) => insertShare(sharing.storage.owner, { ownerId: ana.id, granteeId, node, level });
+      const onProjects = await share(bruno.id, { folderId: tree.projects }, 'VIEWER');
+      const onAcme = await share(carla.id, { folderId: tree.acme }, 'EDITOR');
+      const onContract = await share(bruno.id, { fileId: tree.contract }, 'EDITOR');
+
+      const response = await anaShares.accessList({ nodeType: 'file', nodeId: tree.contract });
+
+      const [direct] = accessListSchema.parse(response.body).entries;
+      expect(direct).toEqual({
+        shareId: onContract,
+        grantee: { id: bruno.id, displayName: 'Ana López', email: brunoEmail },
+        level: 'EDITOR',
+        origin: 'direct',
+        inheritedFrom: null,
+        createdAt: expect.any(String) as string,
+      });
+      await expect(entriesOf(anaShares, 'file', tree.contract)).resolves.toEqual([
+        ['direct', bruno.id, 'EDITOR', onContract],
+        ['inherited', bruno.id, 'VIEWER', tree.projects],
+        ['inherited', carla.id, 'EDITOR', tree.acme],
+      ]);
+      await expect(entriesOf(anaShares, 'folder', tree.acme)).resolves.toEqual([
+        ['direct', carla.id, 'EDITOR', onAcme],
+        ['inherited', bruno.id, 'VIEWER', tree.projects],
+      ]);
+      await expect(entriesOf(anaShares, 'folder', tree.projects)).resolves.toEqual([
+        ['direct', bruno.id, 'VIEWER', onProjects],
+      ]);
+      await expect(entriesOf(anaShares, 'file', tree.loose)).resolves.toEqual([]);
+    });
+
+    it('CA-9: Lector, Editora, ajeno, inexistente o de otro tipo es 404; un rol interno 403 y sin token 401', async () => {
+      await insertShare(sharing.storage.owner, {
+        ownerId: ana.id,
+        granteeId: dani.id,
+        node: { folderId: tree.projects },
+        level: 'EDITOR',
+      });
+      const attempts = [
+        await sharing.sharesOf(bruno).accessList({ nodeType: 'folder', nodeId: tree.projects }),
+        await sharing.sharesOf(dani).accessList({ nodeType: 'folder', nodeId: tree.acme }),
+        await sharing.sharesOf(dani).accessList({ nodeType: 'file', nodeId: tree.loose }),
+        await anaShares.accessList({ nodeType: 'folder', nodeId: randomUUID() }),
+        await anaShares.accessList({ nodeType: 'file', nodeId: tree.projects }),
+      ];
+      const support = await sharing.storage.newClient(Role.SUPPORT);
+      const anonymous = sharing.sharesOf(sharing.storage.clientFor(randomUUID()));
+      const query = { nodeType: 'folder', nodeId: tree.projects };
+
+      for (const response of attempts) {
+        expect(errorOf(response)).toEqual({ status: 404, code: 'STORAGE_NODE_NOT_FOUND' });
+      }
+      expect(errorOf(await sharing.sharesOf(support).accessList(query))).toEqual({
+        status: 403,
+        code: 'SHARED_FORBIDDEN',
+      });
+      expect(errorOf(await anonymous.accessList(query))).toEqual({
+        status: 401,
+        code: 'SHARED_UNAUTHENTICATED',
+      });
+    });
+
+    it('CA-9: una consulta mal formada es 422 `SHARING_INVALID_REQUEST` con `fields`', async () => {
+      const response = await anaShares.accessList({ nodeType: 'carga', nodeId: 'abc' });
+
+      expect(errorOf(response)).toEqual({ status: 422, code: 'SHARING_INVALID_REQUEST' });
+      expect((response.body as ErrorBody).fields?.map((field) => field.field).sort()).toEqual([
+        'nodeId',
+        'nodeType',
+      ]);
+    });
   });
 });
 

@@ -12,7 +12,7 @@ import {
 import { UserShare } from '../domain/user-share';
 import type { SharedNodeRef } from '../domain/user-share';
 
-import type { IShareRepository } from './ports/i-share.repository.port';
+import type { AccessGrants, IShareRepository } from './ports/i-share.repository.port';
 import type { IShareeDirectory, Sharee } from './ports/i-sharee-directory.port';
 import { SharingService } from './sharing.service';
 import type { ShareCommand } from './sharing.service';
@@ -26,6 +26,22 @@ const BRUNO: Sharee = {
 const FOLDER: SharedNodeRef = { type: 'folder', id: '33333333-3333-4333-8333-333333333333' };
 const NOW = new Date('2026-10-30T10:00:00.000Z');
 const RATE_LIMIT_PER_MINUTE = 20;
+const PARENT = { id: '55555555-5555-4555-8555-555555555555', name: 'Proyectos' };
+const CARLA_ID = '66666666-6666-4666-8666-666666666666';
+const GRANTS: AccessGrants = {
+  direct: [
+    {
+      shareId: '44444444-4444-4444-8444-444444444444',
+      granteeId: BRUNO.id,
+      level: 'EDITOR',
+      createdAt: NOW,
+    },
+  ],
+  inherited: [
+    { granteeId: BRUNO.id, level: 'VIEWER', createdAt: NOW, folder: PARENT },
+    { granteeId: CARLA_ID, level: 'VIEWER', createdAt: NOW, folder: PARENT },
+  ],
+};
 
 /** Error que el doble de `WritableAccountPolicy` lanza en solo lectura (el real es de `storage`). */
 class ReadOnlyForTest extends Error {}
@@ -55,6 +71,8 @@ interface SetupOptions {
   readonly readOnly?: boolean;
   readonly rate?: RateLimitDecision;
   readonly inserted?: boolean;
+  readonly grants?: AccessGrants | null;
+  readonly profiles?: ReadonlyMap<string, Sharee>;
 }
 
 const setup = (options: SetupOptions = {}) => {
@@ -82,12 +100,14 @@ const setup = (options: SetupOptions = {}) => {
     findClientByEmail: jest.fn(
       step('recipient', options.recipient === undefined ? BRUNO : options.recipient),
     ),
+    profiles: jest.fn(step('profiles', options.profiles ?? new Map([[BRUNO.id, BRUNO]]))),
     displayNames: jest.fn(),
   };
   const shares: IShareRepository = {
     findDirect: jest.fn(step('findDirect', options.existing ?? null)),
     insert: jest.fn(step('insert', options.inserted ?? true)),
     updateLevel: jest.fn(step('updateLevel', undefined)),
+    listAccess: jest.fn(step('listAccess', options.grants === undefined ? GRANTS : options.grants)),
   };
   const writable = {
     assertWritable: jest.fn(() => {
@@ -273,5 +293,41 @@ describe('SharingService.share (plan 012 §5)', () => {
 
     expect(outcome.change).toBe('level_changed');
     expect(journal).not.toContain('writable');
+  });
+});
+
+describe('SharingService.listAccess (plan 012 §2)', () => {
+  it('CA-8: con `VIEW_ACCESS_LIST`, directos y heredados con el perfil de cada persona; sin perfil, se omite', async () => {
+    const { service, journal, permissions } = setup();
+
+    const list = await service.listAccess(ANA, FOLDER);
+
+    expect(permissions.can).toHaveBeenCalledWith(ANA, FOLDER.id, Action.VIEW_ACCESS_LIST);
+    expect(journal).toEqual([`tx:${ANA.id}`, 'can', 'listAccess', 'profiles', 'commit']);
+    expect(list.entries()).toEqual([
+      {
+        origin: 'direct',
+        shareId: '44444444-4444-4444-8444-444444444444',
+        grantee: BRUNO,
+        level: 'EDITOR',
+        createdAt: NOW,
+      },
+      { origin: 'inherited', grantee: BRUNO, level: 'VIEWER', createdAt: NOW, folder: PARENT },
+    ]);
+  });
+
+  it('CA-9: sin el permiso (ajeno, inexistente, Editor o Lector), 404 de nodo sin leer accesos', async () => {
+    const { service, journal } = setup({ allowed: false });
+
+    await expect(service.listAccess(ANA, FOLDER)).rejects.toBeInstanceOf(NodeNotFoundError);
+    expect(journal).not.toContain('listAccess');
+  });
+
+  it('CA-9: si no hay un nodo de ese tipo, el mismo 404', async () => {
+    const { service } = setup({ grants: null });
+
+    await expect(service.listAccess(ANA, { ...FOLDER, type: 'file' })).rejects.toBeInstanceOf(
+      NodeNotFoundError,
+    );
   });
 });

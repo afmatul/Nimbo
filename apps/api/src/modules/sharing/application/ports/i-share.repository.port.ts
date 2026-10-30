@@ -1,5 +1,27 @@
 import type { Actor } from '../../../../shared';
-import type { SharedNodeRef, UserShare } from '../../domain/user-share';
+import type { SharedNodeRef, ShareLevel, UserShare } from '../../domain/user-share';
+
+/** Un acceso directo al nodo, con el id de quien lo recibe (su perfil lo da `IShareeDirectory`). */
+export interface DirectGrant {
+  readonly shareId: string;
+  readonly granteeId: string;
+  readonly level: ShareLevel;
+  readonly createdAt: Date;
+}
+
+/** Un acceso que viene de una carpeta antepasada del nodo (RN-4): se revoca en esa carpeta. */
+export interface InheritedGrant {
+  readonly granteeId: string;
+  readonly level: ShareLevel;
+  readonly createdAt: Date;
+  readonly folder: { readonly id: string; readonly name: string };
+}
+
+/** Los accesos de un nodo del actor (CA-8): directos y heredados, en ese orden de lectura. */
+export interface AccessGrants {
+  readonly direct: readonly DirectGrant[];
+  readonly inherited: readonly InheritedGrant[];
+}
 
 /**
  * Comparticiones del propietario (`comparticion`, plan 012 §2). Cada método corre dentro de `withActor(actor, …)`:
@@ -12,6 +34,11 @@ export interface IShareRepository {
   insert(actor: Actor, share: UserShare): Promise<boolean>;
   /** Persiste el nivel nuevo de un acceso directo del actor (CA-5). */
   updateLevel(actor: Actor, share: UserShare): Promise<void>;
+  /**
+   * CA-8: los accesos de un nodo propio y vivo (`ownedNodes`); `null` si no hay un nodo de ese tipo con ese id. Los
+   * heredados salen de las carpetas de su `ruta` (del archivo, la de su carpeta), más cercanas al final.
+   */
+  listAccess(actor: Actor, node: SharedNodeRef): Promise<AccessGrants | null>;
 }
 
 export const I_SHARE_REPOSITORY = Symbol('IShareRepository');

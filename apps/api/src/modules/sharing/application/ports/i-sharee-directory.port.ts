@@ -1,4 +1,7 @@
-/** Un cliente que puede recibir una compartición (RN-3): verificado y activo. */
+/**
+ * Perfil de un cliente para `sharing`: el destinatario que se busca por correo (RN-3: verificado y activo) o quien ya
+ * tiene un acceso (CA-8).
+ */
 export interface Sharee {
   readonly id: string;
   readonly displayName: string;
@@ -18,6 +21,11 @@ export interface IShareeDirectory {
    * correo o está suspendido, sin distinguir el motivo. Normaliza el correo como `identity`.
    */
   findClientByEmail(email: string): Promise<Sharee | null>;
+  /**
+   * CA-8: `id → perfil` (nombre visible y correo) de quienes ya tienen un acceso, sin filtrar estado (un suspendido
+   * conserva su acceso, CA-17); un id sin cuenta no aparece en el mapa. Solo para la respuesta del propietario.
+   */
+  profiles(userIds: readonly string[]): Promise<ReadonlyMap<string, Sharee>>;
   /** CA-22: `id → nombre visible`; un id sin cuenta no aparece en el mapa. */
   displayNames(userIds: readonly string[]): Promise<ReadonlyMap<string, string>>;
 }

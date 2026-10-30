@@ -13,7 +13,7 @@ import { connectAsAppDatabase, insertAccount, removeAccounts } from '../storage/
  * `IShareeDirectory` de `sharing` implementado por `identity` (012 CA-3, RN-3, RN-8, DF-84): solo un cliente
  * verificado y activo es destinatario; los demás motivos dan `null`, sin distinguirse.
  */
-describe('ShareeDirectoryAdapter (spec 012 CA-3, CA-22)', () => {
+describe('ShareeDirectoryAdapter (spec 012 CA-3, CA-8, CA-22)', () => {
   let owner: DataSource;
   let app: AppDatabase;
   let directory: ShareeDirectoryAdapter;
@@ -63,6 +63,16 @@ describe('ShareeDirectoryAdapter (spec 012 CA-3, CA-22)', () => {
 
   it('CA-3: un correo sin cuenta da null', async () => {
     expect(await find(emailOf(randomUUID()))).toBeNull();
+  });
+
+  it('CA-8: da nombre y correo de las cuentas pedidas que existen, también de una suspendida', async () => {
+    const id = await account(Role.CLIENT, "nombre = 'Dora Gil', estado = 'suspendida'");
+
+    const profiles = await app.runner.run(() => directory.profiles([id, randomUUID()]));
+
+    expect([...profiles.entries()]).toEqual([
+      [id, { id, displayName: 'Dora Gil', email: emailOf(id) }],
+    ]);
   });
 
   it('CA-22: da el nombre visible de las cuentas pedidas que existen', async () => {

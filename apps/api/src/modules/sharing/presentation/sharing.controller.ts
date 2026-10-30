@@ -1,6 +1,11 @@
-import { Body, Controller, Header, HttpStatus, Post, Res } from '@nestjs/common';
-import { shareRequestSchema } from '@nimbo/contracts';
-import type { AccessEntry, ShareRequest } from '@nimbo/contracts';
+import { Body, Controller, Get, Header, HttpStatus, Post, Query, Res } from '@nestjs/common';
+import { accessListQuerySchema, shareRequestSchema } from '@nimbo/contracts';
+import type {
+  AccessEntry,
+  AccessList as AccessListResponse,
+  AccessListQuery,
+  ShareRequest,
+} from '@nimbo/contracts';
 import type { Response } from 'express';
 
 import { CurrentActor, Role, Roles, ZodValidationPipe } from '../../../shared';
@@ -20,8 +25,12 @@ const invalidShareRequest = (issues: readonly FieldIssue[]): DomainError =>
     ? new SharingInvalidLevelError()
     : new SharingInvalidRequestError(issues);
 
+/** CA-9, plan §4: una consulta mal formada (tipo o id inválidos) es `422` con `fields`. */
+const invalidQuery = (issues: readonly FieldIssue[]): DomainError =>
+  new SharingInvalidRequestError(issues);
+
 /**
- * Compartir con otro cliente (plan 012 §4). Solo `CLIENT`: un rol interno recibe `403 SHARED_FORBIDDEN` y sin token
+ * Compartir con otro cliente y ver los accesos de un nodo (plan 012 §4). Solo `CLIENT`: un rol interno recibe `403 SHARED_FORBIDDEN` y sin token
  * `401` (CA-20). Mapea y delega; las reglas viven en `SharingService`.
  */
 @Roles(Role.CLIENT)
@@ -40,5 +49,16 @@ export class SharingController {
     const { access, change } = await this.sharing.share(actor, body);
     response.status(change === 'granted' ? HttpStatus.CREATED : HttpStatus.OK);
     return toAccessEntry({ ...access, origin: 'direct' });
+  }
+
+  /** CA-8: directos y heredados con su origen; `404` si el actor no es el propietario (CA-9). */
+  @Get()
+  @Header('Cache-Control', NO_STORE)
+  async listAccess(
+    @CurrentActor() actor: Actor,
+    @Query(new ZodValidationPipe(accessListQuerySchema, invalidQuery)) query: AccessListQuery,
+  ): Promise<AccessListResponse> {
+    const list = await this.sharing.listAccess(actor, { type: query.nodeType, id: query.nodeId });
+    return { entries: list.entries().map(toAccessEntry) };
   }
 }

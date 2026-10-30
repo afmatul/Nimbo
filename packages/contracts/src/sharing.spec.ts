@@ -1,5 +1,6 @@
 import {
   accessEntrySchema,
+  accessListQuerySchema,
   accessListSchema,
   receivedShareSchema,
   receivedSharesSchema,
@@ -99,6 +100,20 @@ describe('contratos de `sharing` (plan 012 §4)', () => {
     expect(shareRequestSchema.safeParse({ ...REQUEST, extra: true }).success).toBe(false);
     expect(shareRequestSchema.safeParse({ ...REQUEST, nodeType: 'upload' }).success).toBe(false);
     expect(shareRequestSchema.safeParse({ ...REQUEST, nodeId: 'abc' }).success).toBe(false);
+  });
+
+  it('CA-8: la consulta de accesos pide un tipo de nodo y un UUID, sin campos de más', () => {
+    const query = { nodeType: 'file', nodeId: NODE_ID };
+
+    expect(accessListQuerySchema.parse(query)).toEqual(query);
+    const result = accessListQuerySchema.safeParse({ nodeType: 'upload', nodeId: 'abc', x: '1' });
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(
+      toFieldIssues(result.error)
+        .map((issue) => `${issue.field}:${issue.reason}`)
+        .sort(),
+    ).toEqual(['nodeId:INVALID_NODE', 'nodeType:INVALID_NODE', 'x:UNKNOWN_FIELD']);
   });
 
   it('CA-8: una entrada directa lleva `shareId` y ninguna carpeta de origen', () => {
