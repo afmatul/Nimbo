@@ -11,7 +11,7 @@
 | Depende de | 005 (archivos), 006 (carpetas y papelera), 007 (categorías de tipo, fecha de modificación y «Cargar más») |
 | Módulo | M2 `storage`, carpeta propia `storage/search` (`specs/README.md`, excepciones); web `features/search` |
 | DF | DF-15 (`SearchService`), DF-32 (`accessibleNodes`) |
-| Última actualización | 2026-10-28 |
+| Última actualización | 2026-10-30 |
 
 ## 1. Contexto y objetivo
 

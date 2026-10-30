@@ -53,6 +53,9 @@ La web agrega `/buscar` en `features/search` y el ítem «Buscar» en la navegac
   - `toFolder` no se copia: `typeorm-node.repository.ts` lo exporta (el archivo ya cambia por `escapeLike`).
   - `localDayStart` e `isInvalidRange`, privados en `features/audit/hooks/use-activity.ts` (004): copia en
     `use-search.ts` (segundo uso); al tercero se extraen.
+  - `pageOf`, `ordered` y el paginado «carpetas y luego archivos con el espacio que queda», privados en
+    `typeorm-node.repository.ts` (`listContents`, 006/007): segunda copia en `typeorm-node-search.repository.ts`
+    (review I-1). Al tercer uso (p. ej. 018b) se extraen a un solo lugar de `storage`.
 - Dependencias nuevas entre módulos: ninguna (`storage → access` ya existe). Sin `architect`.
 - Frontend: reutiliza `LoadMore` y `MoreStatus` (`features/storage`), `SidebarQuota` y `useSpace`, `routes.ts`,
   `FileTypeChip`, `StateView` y `formatBytes`. Los estados siguen el mockup aprobado (2026-10-28) con sus observaciones

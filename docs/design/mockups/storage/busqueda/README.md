@@ -74,6 +74,10 @@ contenido (spec §6 y §7).
 
 ## Diferencias con la spec
 
+- **Implementación (T-09, 2026-10-28)**, aceptadas en la revisión de la 018: (1) mientras carga, el campo y los
+  filtros no se deshabilitan, para no quitar el foco (WCAG 2.4.3); (2) el error de «Cargar más» reutiliza `LoadMore`
+  de 007 y dice «…elementos»; (3) sin miga en la barra superior, como Espacio y Mi actividad; (4) las fechas se
+  muestran cortas en es-GT («20 oct 2026»), no «hoy · 08:40» ni «ayer».
 - **sin-resultados-sin-filtros**: resuelto (2026-10-28). La spec §6 ya da dos mensajes: con filtros activos
   «… Revisa lo que escribiste o quita los filtros.» y, sin filtros, «… Revisa lo que escribiste.» sin acción, como el
   mockup.
