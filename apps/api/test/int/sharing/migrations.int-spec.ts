@@ -21,6 +21,7 @@ import type { ShareRow } from './sharing-test-db';
 const MIGRATION = 'CrearComparticion20261101100000';
 const POLICIES_MIGRATION = 'PoliticasRlsNodosCompartidos20261101100100';
 const EDITING_POLICIES_MIGRATION = 'PoliticasRlsEdicionYAgenteCompartidos20261101100200';
+const LEAVE_AUDIT_MIGRATION = 'AuditoriaAlSalirDeComparticion20261101100300';
 
 /** Políticas de `nimbo_app` que toca la migración B de 012, con su condición tal como la guarda Postgres. */
 const RECIPIENT_POLICIES_SQL = `SELECT p.tablename, p.policyname, p.cmd, p.qual
@@ -219,7 +220,11 @@ describe('migración crear-comparticion con dueño NOSUPERUSER (plan 012 §3)', 
     const names = (rows: PolicyRow[]): string[] => rows.map((row) => row.policyname);
     const qualOf = (rows: PolicyRow[], name: string): string =>
       rows.find((row) => row.policyname === name)?.qual ?? '';
-    expect(reverted).toEqual([POLICIES_MIGRATION, EDITING_POLICIES_MIGRATION]);
+    expect(reverted).toEqual([
+      POLICIES_MIGRATION,
+      EDITING_POLICIES_MIGRATION,
+      LEAVE_AUDIT_MIGRATION,
+    ]);
     expect(names(before)).toEqual(
       expect.arrayContaining([
         'archivo_compartido',
@@ -256,7 +261,7 @@ describe('migración crear-comparticion con dueño NOSUPERUSER (plan 012 §3)', 
         .map((row) => [row.tablename, row.policyname, row.cmd]);
     const qualOf = (rows: PolicyRow[], name: string): string =>
       rows.find((row) => row.policyname === name)?.qual ?? '';
-    expect(reverted).toEqual([EDITING_POLICIES_MIGRATION]);
+    expect(reverted).toEqual([EDITING_POLICIES_MIGRATION, LEAVE_AUDIT_MIGRATION]);
     expect(created(before)).toEqual(EDITING_POLICIES);
     expect(qualOf(before, 'participacion_cliente')).toContain('propietario_id = nimbo_actor_id()');
     expect(qualOf(afterDown, 'participacion_cliente')).not.toContain('propietario_id');
