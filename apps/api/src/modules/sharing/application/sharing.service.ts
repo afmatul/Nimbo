@@ -12,7 +12,7 @@ import {
 import type { Actor, IClock, IRateLimiter, ITransactionRunner } from '../../../shared';
 import { Action, PermissionResolver } from '../../access';
 import { AuditAction, I_AUDIT_LOGGER } from '../../audit';
-import type { AuditRecord, IAuditLogger } from '../../audit';
+import type { IAuditLogger } from '../../audit';
 import { NodeNotFoundError, WritableAccountPolicy } from '../../storage';
 import { AccessList } from '../domain/access-list';
 import type { DirectAccess } from '../domain/access-list';
@@ -24,6 +24,7 @@ import { I_SHARE_REPOSITORY } from './ports/i-share.repository.port';
 import type { AccessGrants, IShareRepository } from './ports/i-share.repository.port';
 import { I_SHAREE_DIRECTORY } from './ports/i-sharee-directory.port';
 import type { IShareeDirectory, Sharee } from './ports/i-sharee-directory.port';
+import { logEntryOf, logShare, REVOKED_LOG_EVENT, shareEvent } from './share-records';
 import { SHARING_CONFIG } from './sharing-config';
 import type { SharingConfig } from './sharing-config';
 import type { SharingLogger } from './sharing-logger';
@@ -62,15 +63,6 @@ const directAccessOf = (share: UserShareSnapshot, recipient: Sharee): DirectAcce
   createdAt: share.createdAt,
 });
 
-/** CA-19: en la actividad del propietario, el nodo con su tipo y el nivel; nunca correo ni nombre. */
-const shareEvent = (action: AuditAction, actor: Actor, share: UserShareSnapshot): AuditRecord => ({
-  action,
-  actor,
-  targetUserId: share.ownerId,
-  resourceId: share.node.id,
-  attributes: { nodeType: share.node.type, level: share.level },
-});
-
 /** Un acceso con el id de quien lo tiene, antes de sumarle su perfil. */
 type WithGranteeId = { readonly granteeId: string };
 
@@ -88,14 +80,6 @@ const LOG_EVENTS: Readonly<Record<Exclude<ShareChange, 'unchanged'>, string>> = 
   granted: 'sharing.granted',
   level_changed: 'sharing.level_changed',
 };
-const REVOKED_LOG_EVENT = 'sharing.revoked';
-
-/** Lo único que la bitácora lleva de un acceso (plan §5): ids y nivel, nunca correo ni nombre. */
-interface ShareLogEntry {
-  readonly shareId: string;
-  readonly nodeId: string;
-  readonly level: string;
-}
 
 /**
  * Compartir con otro cliente y ver o revocar accesos (M3b, plan 012 §1). La autorización no se duplica:
@@ -153,11 +137,7 @@ export class SharingService {
       await this.audit.recordInTransaction(shareEvent(AuditAction.SHARE_REVOKED, actor, snapshot));
       return snapshot;
     });
-    this.log(REVOKED_LOG_EVENT, {
-      shareId: revoked.id,
-      nodeId: revoked.node.id,
-      level: revoked.level,
-    });
+    logShare(this.logger, REVOKED_LOG_EVENT, logEntryOf(revoked));
   }
 
   private async accessListOf(grants: AccessGrants): Promise<AccessList> {
@@ -241,10 +221,10 @@ export class SharingService {
 
   private logChange({ access, change }: ShareOutcome, nodeId: string): void {
     if (change === 'unchanged') return;
-    this.log(LOG_EVENTS[change], { shareId: access.shareId, nodeId, level: access.level });
-  }
-
-  private log(event: string, entry: ShareLogEntry): void {
-    this.logger.info({ event, ...entry });
+    logShare(this.logger, LOG_EVENTS[change], {
+      shareId: access.shareId,
+      nodeId,
+      level: access.level,
+    });
   }
 }

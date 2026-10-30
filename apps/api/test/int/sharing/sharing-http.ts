@@ -27,6 +27,10 @@ export interface SharesClient {
   accessList(query: Record<string, string>): Promise<Response>;
   /** `DELETE /shares/:shareId` (CA-10). */
   revoke(shareId: string): Promise<Response>;
+  /** `GET /shares/received` (CA-22). */
+  received(): Promise<Response>;
+  /** `DELETE /shares/received/:shareId`, Salir (CA-23). */
+  leave(shareId: string): Promise<Response>;
 }
 
 export interface SharingHttpApp {
@@ -70,6 +74,8 @@ export const createSharingHttpApp = async (
       share: (body) => http().post(`${API_PREFIX}/shares`).set(auth).send(body),
       accessList: (query) => http().get(`${API_PREFIX}/shares`).query(query).set(auth),
       revoke: (shareId) => http().delete(`${API_PREFIX}/shares/${shareId}`).set(auth),
+      received: () => http().get(`${API_PREFIX}/shares/received`).set(auth),
+      leave: (shareId) => http().delete(`${API_PREFIX}/shares/received/${shareId}`).set(auth),
     };
   };
   return {

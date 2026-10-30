@@ -7,7 +7,6 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  ParseUUIDPipe,
   Post,
   Query,
   Res,
@@ -24,16 +23,11 @@ import type { Response } from 'express';
 import { CurrentActor, Role, Roles, ZodValidationPipe } from '../../../shared';
 import type { Actor, DomainError, FieldIssue } from '../../../shared';
 import { SharingService } from '../application/sharing.service';
-import {
-  ShareNotFoundError,
-  SharingInvalidLevelError,
-  SharingInvalidRequestError,
-} from '../domain/errors';
+import { SharingInvalidLevelError, SharingInvalidRequestError } from '../domain/errors';
 
 import { toAccessEntry } from './access-entry.response';
+import { NO_STORE, shareIdPipe } from './sharing-http.constants';
 
-/** Las respuestas llevan correos y nombres (plan §4): ningún intermediario las guarda. */
-const NO_STORE = 'no-store';
 const INVALID_LEVEL_REASON = 'INVALID_LEVEL';
 
 /** CA-2: un nivel inválido es `SHARING_INVALID_LEVEL`; el resto (p. ej. un correo mal formado, CA-3), con `fields`. */
@@ -45,10 +39,6 @@ const invalidShareRequest = (issues: readonly FieldIssue[]): DomainError =>
 /** CA-9, plan §4: una consulta mal formada (tipo o id inválidos) es `422` con `fields`. */
 const invalidQuery = (issues: readonly FieldIssue[]): DomainError =>
   new SharingInvalidRequestError(issues);
-
-/** CA-11: un `:shareId` que no es UUID es el mismo 404 que uno ajeno, inexistente o ya revocado. */
-const shareIdPipe = (): ParseUUIDPipe =>
-  new ParseUUIDPipe({ exceptionFactory: () => new ShareNotFoundError() });
 
 /**
  * Compartir con otro cliente, ver y revocar los accesos de un nodo (plan 012 §4). Solo `CLIENT`: un rol interno recibe `403 SHARED_FORBIDDEN` y sin token

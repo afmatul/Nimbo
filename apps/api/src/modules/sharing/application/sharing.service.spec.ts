@@ -113,6 +113,9 @@ const setup = (options: SetupOptions = {}) => {
     revoke: jest.fn(
       step('revoke', options.revoked === undefined ? existingShare('EDITOR') : options.revoked),
     ),
+    listReceived: jest.fn(),
+    findReceived: jest.fn(),
+    leave: jest.fn(),
   };
   const writable = {
     assertWritable: jest.fn(() => {

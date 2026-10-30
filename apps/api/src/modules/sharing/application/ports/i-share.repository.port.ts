@@ -17,6 +17,17 @@ export interface InheritedGrant {
   readonly folder: { readonly id: string; readonly name: string };
 }
 
+/** Un acceso directo vigente que el actor recibió (CA-22), con el id de quien lo comparte. */
+export interface ReceivedGrant {
+  readonly shareId: string;
+  readonly node: SharedNodeRef;
+  /** Nombre del nodo: viaja en la respuesta, nunca a bitácoras ni auditoría. */
+  readonly name: string;
+  readonly ownerId: string;
+  readonly level: ShareLevel;
+  readonly createdAt: Date;
+}
+
 /** Los accesos de un nodo del actor (CA-8): directos y heredados, en ese orden de lectura. */
 export interface AccessGrants {
   readonly direct: readonly DirectGrant[];
@@ -44,6 +55,15 @@ export interface IShareRepository {
    * `null` si es ajeno, inexistente o ya revocado.
    */
   revoke(actor: Actor, shareId: string): Promise<UserShare | null>;
+  /**
+   * CA-22: los accesos directos del actor como destinatario cuyo nodo sigue en `nodos_compartidos()` (vivo y de un
+   * propietario activo), más recientes primero; sin heredados.
+   */
+  listReceived(actor: Actor): Promise<ReceivedGrant[]>;
+  /** El acceso directo `shareId` con el actor como destinatario (CA-23), o `null` si es ajeno o no existe. */
+  findReceived(actor: Actor, shareId: string): Promise<UserShare | null>;
+  /** Salir (CA-23): borra el acceso `shareId` solo si el actor es su destinatario; `null` si no había. */
+  leave(actor: Actor, shareId: string): Promise<UserShare | null>;
 }
 
 export const I_SHARE_REPOSITORY = Symbol('IShareRepository');

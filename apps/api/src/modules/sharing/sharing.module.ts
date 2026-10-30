@@ -6,10 +6,12 @@ import { AccessModule } from '../access';
 import { AuditModule } from '../audit';
 
 import { I_SHARE_REPOSITORY } from './application/ports/i-share.repository.port';
+import { ReceivedSharesService } from './application/received-shares.service';
 import { SHARING_CONFIG } from './application/sharing-config';
 import type { SharingConfig } from './application/sharing-config';
 import { SharingService } from './application/sharing.service';
 import { TypeOrmShareRepository } from './infrastructure/persistence/typeorm-share.repository';
+import { ReceivedSharesController } from './presentation/received-shares.controller';
 import { SharingController } from './presentation/sharing.controller';
 
 /** Variables del `api` que `sharing` usa (plan 012 §2). */
@@ -27,11 +29,12 @@ export class SharingModule {
     return {
       module: SharingModule,
       imports: [storage, AccessModule, AuditModule],
-      controllers: [SharingController],
+      controllers: [SharingController, ReceivedSharesController],
       providers: [
         { provide: SHARING_CONFIG, useValue: config },
         { provide: I_SHARE_REPOSITORY, useClass: TypeOrmShareRepository },
         SharingService,
+        ReceivedSharesService,
       ],
     };
   }

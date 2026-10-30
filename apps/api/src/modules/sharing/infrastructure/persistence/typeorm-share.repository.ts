@@ -9,6 +9,7 @@ import type {
   DirectGrant,
   InheritedGrant,
   IShareRepository,
+  ReceivedGrant,
 } from '../../application/ports/i-share.repository.port';
 import { UserShare } from '../../domain/user-share';
 import type { SharedNodeRef, ShareLevel, ShareNodeType } from '../../domain/user-share';
@@ -118,12 +119,48 @@ const toShare = (row: ComparticionOrmEntity): UserShare =>
     createdAt: row.creadoEn,
   });
 
-/** De quién es la fila que se borra: del propietario (revocar, CA-10). */
-type DeletingParty = 'owner';
+/** Quién borra la fila: su propietario (revocar, CA-10). */
+type DeletingParty = 'owner' | 'recipient';
 
-const PARTY_COLUMNS: Readonly<Record<DeletingParty, 'propietario_id'>> = {
+const PARTY_COLUMNS: Readonly<Record<DeletingParty, 'propietario_id' | 'destinatario_id'>> = {
   owner: 'propietario_id',
+  recipient: 'destinatario_id',
 };
+
+/**
+ * CA-22: los accesos directos del actor cuyo nodo está en `nodos_compartidos()`, así «vivo y de un propietario activo»
+ * no se repite aquí. Los nombres salen de `archivo`/`carpeta` por las políticas del destinatario (migración B).
+ */
+const RECEIVED_SQL = `
+  WITH compartidos AS (SELECT nodo_id, tipo_nodo FROM nodos_compartidos())
+  SELECT c.id, c.propietario_id, c.archivo_id, c.carpeta_id, c.nivel, c.creado_en,
+         COALESCE(a.nombre, k.nombre) AS nombre
+    FROM comparticion c
+    LEFT JOIN archivo a ON a.id = c.archivo_id
+    LEFT JOIN carpeta k ON k.id = c.carpeta_id
+   WHERE c.destinatario_id = :actor_id::uuid
+     AND (c.archivo_id IN (SELECT nodo_id FROM compartidos WHERE tipo_nodo = 'archivo')
+          OR c.carpeta_id IN (SELECT nodo_id FROM compartidos WHERE tipo_nodo = 'carpeta'))
+   ORDER BY c.creado_en DESC, c.id DESC`;
+
+interface ReceivedRow {
+  readonly id: string;
+  readonly propietario_id: string;
+  readonly archivo_id: string | null;
+  readonly carpeta_id: string | null;
+  readonly nivel: ShareLevel;
+  readonly creado_en: Date;
+  readonly nombre: string;
+}
+
+const toReceived = (row: ReceivedRow): ReceivedGrant => ({
+  shareId: row.id,
+  node: nodeOf({ archivoId: row.archivo_id, carpetaId: row.carpeta_id }),
+  name: row.nombre,
+  ownerId: row.propietario_id,
+  level: row.nivel,
+  createdAt: row.creado_en,
+});
 
 /**
  * Borra el acceso `:share_id` solo si la columna de `party` es el actor (dentro de la consulta; RLS lo repite). Va en
@@ -244,6 +281,26 @@ export class TypeOrmShareRepository implements IShareRepository {
 
   revoke(actor: Actor, shareId: string): Promise<UserShare | null> {
     return this.deleteAs(actor, 'owner', shareId);
+  }
+
+  async listReceived(actor: Actor): Promise<ReceivedGrant[]> {
+    const rows = await queryNamed<ReceivedRow>(
+      this.context.requireActorScope(actor),
+      RECEIVED_SQL,
+      { actor_id: actor.id },
+    );
+    return rows.map(toReceived);
+  }
+
+  async findReceived(actor: Actor, shareId: string): Promise<UserShare | null> {
+    const row = await this.context.requireActorScope(actor).findOne(ComparticionOrmEntity, {
+      where: { id: shareId, destinatarioId: actor.id },
+    });
+    return row === null ? null : toShare(row);
+  }
+
+  leave(actor: Actor, shareId: string): Promise<UserShare | null> {
+    return this.deleteAs(actor, 'recipient', shareId);
   }
 
   private async deleteAs(
