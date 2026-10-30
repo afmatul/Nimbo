@@ -15,6 +15,8 @@
 - [x] **T-09** Pantalla `/buscar` con resultados, filtros y estados (spec §6) — CA: CA-2, CA-10, CA-11 — Prueba: componente y axe a 360 y 1440 px con las observaciones del mockup aprobado (spec §6: filtros plegables a 360 px, lista atenuada con rango inválido, fechas `es-GT`) — Depende: T-08
 - [x] **T-10** Punto de entrada: «Buscar» en `DEFAULT_NAV_ITEMS` de `AppLayout` (barra lateral y menú móvil), no en la navegación interna — CA: CA-12, CA-14 — Prueba: componente (`app-layout.spec.tsx`) — Depende: T-09
 - [x] **T-11** **(humana)** Recorrido de la demo en local (buscar «camion», filtrar por tipo y fecha, abrir carpeta y archivo, sin resultados, rol interno sin «Buscar») y nota en el PR — CA: CA-1, CA-7, CA-8, CA-10, CA-11, CA-12, CA-14 — Depende: T-07, T-10
+- [x] **T-FIX-1** (review B-1) `date-filter.tsx` usa `STORAGE_FIELD_MESSAGES.INVALID_RANGE` de `contracts` en vez de copiar el texto; con S-2, importa `DATE_OPTIONS` de `search-url.ts` — Prueba: suites de `features/search` en verde
+- [x] **T-FIX-2** (review I-1) Plan §2 declara la segunda copia de `pageOf`, `ordered` y el paginado «carpetas y luego archivos» (se extraen al tercer uso, p. ej. 018b) — Prueba: no aplica (documentación)
 
 ## Notas del developer
 - T-01: los mensajes de `q` (`REQUIRED` «Escribe qué quieres buscar.», `NAME_TOO_LONG` «Usa 255 caracteres o menos…») viven en `STORAGE_SEARCH_FIELD_MESSAGES` de `search-schemas.ts`, como `STORAGE_NODE_FIELD_MESSAGES`; `INVALID_TYPE`, `INVALID_DATE` e `INVALID_RANGE` se suman a `STORAGE_FIELD_MESSAGES` con los textos de la spec §6.

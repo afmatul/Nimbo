@@ -1,11 +1,12 @@
 'use client';
 
+import { STORAGE_FIELD_MESSAGES } from '@nimbo/contracts';
 import { CircleAlert } from 'lucide-react';
 import * as React from 'react';
 
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
-import type { DateOption, SearchFilters } from '../search-url';
+import { DATE_OPTIONS, type DateOption, type SearchFilters } from '../search-url';
 
 /** Fecha de modificación (CA-8): atajos en un `select` y, con «Rango personalizado», «Desde» y «Hasta». */
 
@@ -19,14 +20,8 @@ const DATE_LABELS: Readonly<Record<DateOption, string>> = {
   rango: 'Rango personalizado',
 };
 
-/** El texto de la spec §6 dice «igual o posterior»: un mismo día en «Desde» y «Hasta» es válido. */
-const INVALID_RANGE_MESSAGE =
-  'La fecha final debe ser igual o posterior a la inicial. Corrige el rango para buscar.';
-
 const SELECT_CLASSES =
   'h-11 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:w-60';
-
-const DATE_OPTIONS = Object.keys(DATE_LABELS) as DateOption[];
 
 export function DateSelect({
   date,
@@ -118,7 +113,7 @@ export function RangeError({ id }: { readonly id: string }): React.JSX.Element {
       className="flex items-start gap-1.5 text-sm font-medium text-destructive"
     >
       <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-      <span>{INVALID_RANGE_MESSAGE}</span>
+      <span>{STORAGE_FIELD_MESSAGES.INVALID_RANGE}</span>
     </p>
   );
 }
