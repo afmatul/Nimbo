@@ -1,7 +1,48 @@
 # Revisión 012 — Compartición y accesos (API)
 
 > Una página. La escribe `reviewer` (con `security-auditor` solo si aplica, `workflow.md` §4) y la aprueba Adrián.
-> Por ahora solo trae la sección «Seguridad» (`security-auditor`, T-10); el `reviewer` completa el resto.
+
+| Campo | Valor |
+|---|---|
+| Fecha | 2026-10-30 |
+| Rango revisado | `8676659..181325a` (rama `claude/fervent-shannon-bey1ow`, 25 commits; código en `apps/api`, `packages/contracts`, `packages/config`) |
+| CI | Sin PR todavía; suites corridas en local (abajo) |
+| Veredicto | 🔁 Cambios requeridos (B-1); T-12 (recorrido humano) sigue pendiente a propósito |
+
+## Verificación
+| CA | Prueba (`apps/api/…` salvo que se indique) | Estado |
+|---|---|---|
+| CA-1 | `test/int/sharing/shares.int-spec.ts` › «CA-1, CA-19: 201 con la entrada directa…»; `sharing.service.spec.ts` | ✅ |
+| CA-2 | `shares.int-spec.ts` › «CA-2: `OWNER` o un nivel desconocido…»; `sharing/domain/user-share.spec.ts`; `packages/contracts/src/sharing.spec.ts` | ✅ |
+| CA-3 | `shares.int-spec.ts` › «CA-3: inexistente, interna, sin verificar y suspendida…»; `test/isolation/sharing.iso-spec.ts` ISO-13/14; `test/int/identity/sharee-directory.int-spec.ts` | ✅ |
+| CA-4 | `shares.int-spec.ts` › «CA-4: ajeno, inexistente, en la papelera, de otro tipo o donde es Editora…» | ✅ |
+| CA-5 | `shares.int-spec.ts` › «CA-5: compartir otra vez cambia el nivel…»; `user-share.spec.ts` | ✅ |
+| CA-6 | `shares.int-spec.ts` › «CA-6: en solo lectura…» y «CA-6: … revocar se permite» | ✅ |
+| CA-7 | `shares.int-spec.ts` › «CA-7: superado el límite, 429…» | ✅ |
+| CA-8 | `shares.int-spec.ts` › «CA-8: cada persona con nombre, correo…»; `sharing/domain/access-list.spec.ts` | ✅ |
+| CA-9 | `shares.int-spec.ts` › «CA-9: Lector, Editora, ajeno…» y «CA-9: una consulta mal formada…» | ✅ |
+| CA-10 | `shares.int-spec.ts` › «CA-10, CA-19: 204…»; `test/int/storage/shared-access.int-spec.ts` › «CA-10, CA-12» | ✅ |
+| CA-11 | `shares.int-spec.ts` › «CA-11: ajeno, del que es destinatario, inexistente…» | ✅ |
+| CA-12 | `shared-access.int-spec.ts` › «CA-12: …» (ficha, descarga 5 min, raíz, espacio y cuota, 404) | ✅ |
+| CA-13 | `shared-access.int-spec.ts` › «CA-13: …»; `test/int/access/accessible-nodes-shared.int-spec.ts` › «CA-13: …» | ✅ |
+| CA-14 | `test/isolation/storage-shared-writes.iso-spec.ts`; `sharing.iso-spec.ts` ISO-6/7; `sharing-rls.iso-spec.ts` ISO-25 a ISO-31; `shared-access.int-spec.ts` › «CA-14» | ✅ (S-5) |
+| CA-15 | `test/int/editing/shared-editing.int-spec.ts` › «CA-15: …» (Editor, Lector, cierre, revocación) | ✅ |
+| CA-16 | `test/isolation/agent.iso-spec.ts` ISO-16 a ISO-19 | ✅ |
+| CA-17 | `accessible-nodes-shared.int-spec.ts` › «CA-17: con Ana suspendida…»; `sharing.iso-spec.ts` ISO-8 | ✅ |
+| CA-18 | `shares.int-spec.ts` › «CA-18: en la papelera la compartición se conserva…» | ✅ |
+| CA-19 | `shares.int-spec.ts` (CA-1 y CA-10: evento, `correlation_id`, logs sin correo ni nombre); `shares-received.int-spec.ts` › «CA-23, CA-19» | ✅ |
+| CA-20 | `shares.int-spec.ts` › «CA-20: …»; `sharing.iso-spec.ts` ISO-9/10 (5 rutas y la ficha) | ✅ |
+| CA-21 | `sharing.iso-spec.ts` ISO-1 a ISO-5; `sharing-rls.iso-spec.ts` ISO-15 a ISO-24; `accessible-nodes-shared.int-spec.ts` › «CA-21» | ✅ |
+| CA-22 | `test/int/sharing/shares-received.int-spec.ts` › «CA-22: …» (3); `received-shares.service.spec.ts` | ✅ |
+| CA-23 | `shares-received.int-spec.ts` › «CA-23: …» (4); `test/int/sharing/audit-leave-policy.int-spec.ts`; `sharing.iso-spec.ts` ISO-11/12 | ✅ |
+
+**Suites** (tras `pnpm --filter @nimbo/contracts build`): `pnpm lint` ✅ · `pnpm typecheck` ✅ · `pnpm env:check` ✅ ·
+`pnpm test` ✅ (api 298 suites/2874, web 218/1925, contracts 30/573, config 7/247, raíz 3/34) · `pnpm test:isolation` ✅
+(30 suites, 581 pruebas) · `pnpm test:int`, dos corridas completas: 1.ª ❌ 173/176 suites (1732 pruebas), 2.ª 174/176 (1733 pruebas).
+`test/int/shared/dotenv-bootstrap.int-spec.ts` falla en las dos y es **no verificable en este entorno** (necesita `.env` y
+`docker compose`); `test/int/storage/node-tree.repository.int-spec.ts` R-2 falla solo en la 1.ª (intermitente, B-1).
+Sin `deadlock`. **Cobertura** de `sharing` (unitarias): `domain` y `application` 100 % de líneas (`sharing.service.ts` 80,95 %
+de ramas); `infrastructure` y `presentation` las cubren las suites de integración.
 
 ## Seguridad
 
@@ -102,3 +143,85 @@ recibió nada y para la propia propietaria (ISO-20, ISO-21). El actor no se pued
 - [x] Destinatario sin versiones antiguas, sin escribir versiones, índices ni fragmentos (ISO-18, ISO-26); el agente cita lo compartido y nada más (`agent.iso-spec.ts`, T-09).
 - [x] Auditoría de Salir sin eventos falsificables (SEC-3 resuelto, T-FIX-3).
 - [x] Sin dependencias nuevas en T-10.
+
+> **Nota del reviewer sobre la sección «Seguridad»** (se conserva tal cual): los «Resuelto» se cumplen en el código (sin
+> `it.failing` en `test/isolation` ni en `test/int/sharing`; ISO-29 a ISO-38 en verde), pero los commits citados `35617f5`,
+> `8f83020` y `b599cb8` no están en la rama (son anteriores a un rebase). Los equivalentes, con el mismo `patch-id`, son
+> `63970a8` (T-FIX-1), `bbb681f` (T-FIX-2) y `6814ee6` (T-FIX-3). Ver S-1.
+
+## UI
+- No aplica: la spec no tiene pantalla (la 012b). La web solo suma `accessLevel: 'OWNER'` a fixtures de pruebas.
+
+## Bloqueantes
+- **[B-1]** `apps/api/test/int/storage/node-tree.repository.int-spec.ts:36,244` — la prueba R-2 (006) falla en la corrida
+  completa de `pnpm test:int` y pasa sola y en par con `accessible-nodes-shared.int-spec.ts` (falló en 1 de las 2 corridas completas de esta revisión, y
+  también en una corrida del developer durante la 012).
+  Desde la 012, la política `carpeta_compartida` (`20261101100100-politicas-rls-nodos-compartidos.ts:48-51`) suma subplanes de
+  `nodos_compartidos()` a cada lectura de `carpeta`, y con las estadísticas que dejan las suites anteriores (contenedores
+  compartidos por corrida, `jest.int.config.cjs`) el planificador elige `idx_carpeta_hijas`, que es un índice de propietario y no
+  usa `Seq Scan`, pero no está en `ROOT_INDEXES`. El arreglo de T-04 (`accessible-nodes-shared.int-spec.ts:255-257`) no alcanza. —
+  viola: suite en rojo y prueba que depende del orden (Art. VII; `review-template`). — corrección: que R-2 mida su propio
+  estado (`ANALYZE archivo, carpeta` dentro de la prueba, antes del `EXPLAIN`) y que `ROOT_INDEXES` acepte los índices de
+  propietario de 006 (`idx_carpeta_hijas`); la aserción que importa es «sin `Seq Scan`».
+
+## Importantes y sugerencias
+- **[I-1]** `specs/012-comparticion-y-accesos/spec.md:120`, `plan.md:107` — la ruta nueva `GET /files/:fileId` (CA-12) figura
+  como «aprobación de Adrián pendiente». Sin spec aprobada no hay código: Adrián la ratifica en el PR (y se anota «Aprobó») o se
+  retira de `files.controller.ts` y `FileService.getDetail`.
+- **[I-2]** `plan.md:118-119` (§5), `plan.md:27-28` y `plan.md:96` (§2, §3) — el plan no muestra lo construido: el orden real de
+  `share` es destinatario → solo lectura (`sharing.service.ts:152-172`); hay migraciones C, D y E (`20261101100200`, `…300`,
+  `…400`) y `ReceivedSharesService`/`ReceivedSharesController`, que el plan no nombra. Las desviaciones solo están en las «Notas
+  del developer» de `tasks.md`. Corrección: una fila por desviación en el «Registro de cambios» de la spec (o en el plan §7)
+  para que Adrián las ratifique junto con I-1. La del orden cambia la respuesta: en solo lectura, un correo sin cuenta da `422`
+  y no `403`.
+- **[I-3]** `docs/sdd/design-model.md:121-133` (M3a, M3b), `:55-81` (M1), `:207-212` (T2), `:255` (§4) — el plan §7
+  (`plan.md:168`) pide actualizarlos en este PR y solo cambió una línea de M2. Faltan: `ownedNodes` y `nodos_compartidos()` en
+  M3a; `SharingController` + `ReceivedSharesController`, `SharingService` + `ReceivedSharesService`, `IShareRepository`,
+  `IShareeDirectory` y `AccessGrant`/`PublicLinkService` diferidos en M3b; `ShareeDirectoryAdapter` en M1; `SHARE_GRANTED`,
+  `SHARE_LEVEL_CHANGED`, `SHARE_REVOKED` y la política de Salir en T2; columnas, índices y RLS de `comparticion` en §4.
+- **[I-4]** `docs/sdd/architecture.md:118` (§3 regla 3) y `:215` (§6 punto 3) — no dicen que `access` lee `usuario.estado` en
+  `nodos_compartidos()` (la excepción que DF-85 declara «documentada» en §3 regla 3) ni que las escrituras y los destinos usan
+  `ownedNodes`. Agregar una línea en cada uno.
+- **[I-5]** `docs/sdd/design-findings.md:42,111,112` — DF-31 sigue «Abierto (… pasa a `Aceptado` con la aprobación de
+  Adrián)» y DF-84/DF-85 «Abierto (propuesto; pide al `architect`)», aunque el plan está aprobado y el §8 recoge la aceptación
+  de Adrián. Pasarlos a `Aceptado (plan 012, 2026-10-30)`, con lo aplicado.
+- **[S-1]** `review.md`, sección «Seguridad»: que el `security-auditor` cambie los hashes por `63970a8`, `bbb681f` y `6814ee6` (o
+  los quite, porque el squash merge los cambia de nuevo).
+- **[S-2]** `apps/api/src/modules/sharing/infrastructure/persistence/typeorm-share.repository.ts:122` — el comentario «su
+  propietario (revocar, CA-10)» no cubre `recipient` (Salir, CA-23): «Quién borra la fila: el propietario (revocar) o el
+  destinatario (Salir)».
+- **[S-3]** `test/int/sharing/shares.int-spec.ts:101,311`, `shares-received.int-spec.ts:121,130` — todas las cuentas de prueba
+  se llaman «Ana López», así que estas pruebas HTTP pasarían aunque el nombre del destinatario y el del propietario se
+  cruzaran (las unitarias sí lo distinguen). Usar nombres distintos en `newClient`.
+- **[S-4]** `test/isolation/sharing.iso-spec.ts:453` (ISO-14) mide tiempo real, con una tolerancia de 25 ms, en una suite que
+  bloquea. Si falla en CI, subir las muestras o pasarlo a un job que no bloquee; no relajar ISO-13.
+- **[S-5]** `test/isolation/storage-shared-writes.iso-spec.ts:51-139` — CA-14 nombra «restaurar» y «reemplazar» y la lista no los
+  tiene: hoy los cubren `ownedTrashedNodes` y el destino de `POST /uploads`. Agregar `POST /trash/files/:id/restore` y
+  `POST /uploads` con `onConflict: 'replace'` cuesta dos filas.
+
+## DF y pendientes
+- DF-31, DF-84, DF-85: existen y describen lo hecho; el estado está desactualizado (I-5).
+- PD-108 cerrado (T-09) ✅ · PD-134 parcial (queda la 017) ✅ · PD-137 a PD-141 abiertos y coherentes con la spec y la
+  sección «Seguridad» ✅.
+- PD-109 (`pendientes.md:103`) dice «Resuelto (012 T-09)» y sigue en la tabla de abiertos: moverlo a «Cerrados».
+- PD-121 (`pendientes.md:127`): anotar que la parte de la 012 está hecha (T-03 exporta la política, T-06 la aplica) y quitar
+  «aceptar (012)», porque no existe; quedan 013 y 021.
+
+## Documentos del plan §7
+`architecture.md` §3 (fila `identity`) ✅, §5 (`IShareeDirectory`) ✅, §6 punto 10 ✅, §3 regla 3 y §6 punto 3 ❌ (I-4) ·
+`design-model.md` M3a, M3b, M1, T2 y §4 ❌ (I-3) · READMEs de `sharing`, `access`, `storage` e `identity` ✅ · `.env.example`
+(`SHARING_RATE_LIMIT_PER_MINUTE`) ✅. **Pendiente humano:** T-12 (recorrido de la demo); no es bloqueante de código.
+
+## Lo que está bien hecho
+- La regla «qué se comparte conmigo» vive una sola vez, en `nodos_compartidos()`, y la usan el fragmento de `access`, las
+  políticas RLS y `listReceived`. Las escrituras pasaron a `ownedNodes` (T-03) **antes** de abrir las lecturas (T-04).
+- La autorización está dentro de la consulta: el alta es `INSERT … SELECT … WHERE nodo IN ownedNodes`, y revocar y Salir borran
+  con la parte en el `WHERE`. Lo ajeno da un 404 uniforme y los cuatro motivos de CA-3 dan respuestas idénticas byte a byte.
+- Las FK compuestas de T-FIX-2 resuelven SEC-1 sin una política recursiva y valen para todo rol.
+- SRP (`ReceivedSharesService` aparte), DRY (`share-records.ts`) y funciones cortas con ≤ 3 parámetros. Las pruebas nombran su
+  CA y cubren errores y límites.
+
+## Veredicto
+🔁 **Cambios requeridos.** Hay un solo bloqueante, B-1, y es de pruebas: la funcionalidad está completa y los 23 CA tienen
+prueba. Con B-1 corregido y `pnpm test:int` en verde en una corrida completa, el veredicto pasa a ✅. Antes del merge conviene
+cerrar I-1 e I-2 (Adrián las ratifica) e I-3 a I-5 (documentos). Las sugerencias quedan a criterio del equipo.
