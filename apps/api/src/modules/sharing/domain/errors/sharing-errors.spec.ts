@@ -7,6 +7,7 @@ import {
   RecipientNotFoundError,
   ShareNotFoundError,
   SharingInvalidLevelError,
+  SharingInvalidRequestError,
 } from './index';
 
 describe('errores de `sharing` (plan 012 §2 y §4)', () => {
@@ -36,6 +37,17 @@ describe('errores de `sharing` (plan 012 §2 y §4)', () => {
     expect(error.status).toBe(404);
     expect(error.code).toBe(SHARING_ERROR_CODES.SHARING_SHARE_NOT_FOUND);
     expect(error.message).toBe('Este acceso ya no existe. Actualiza la lista.');
+  });
+
+  it('CA-3: `SharingInvalidRequestError` es un 422 con `fields` y el código del contrato', () => {
+    const fields = [
+      { field: 'email', reason: 'INVALID_EMAIL', message: 'Escribe un correo válido.' },
+    ];
+    const error = new SharingInvalidRequestError(fields);
+
+    expect(error).toBeInstanceOf(InvalidInputError);
+    expect(error.code).toBe(SHARING_ERROR_CODES.SHARING_INVALID_REQUEST);
+    expect(error.fields).toEqual(fields);
   });
 
   it('CA-3, RN-8: el mensaje del destinatario no dice el motivo', () => {

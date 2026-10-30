@@ -13,6 +13,7 @@ import { IDENTITY_THROTTLERS, IdentityModule } from './modules/identity';
 import { IntelligenceModule } from './modules/intelligence';
 import { NotificationsModule } from './modules/notifications';
 import { RealtimeModule } from './modules/realtime';
+import { SharingModule } from './modules/sharing';
 import { StorageModule } from './modules/storage';
 import { PlanLimitsBindingModule } from './plan-limits-binding.module';
 import {
@@ -45,14 +46,14 @@ import { UserDirectoryBindingModule } from './user-directory-binding.module';
  * `RealtimeModule`, y la indexación (019), que escucha `storage.file-version-created`, expone su estado y recibe las
  * mismas instancias de `StorageModule` (`IndexableFileGateway`) y de `RealtimeModule` (aviso en vivo);
  * `IUserDirectory` lo enlaza `UserDirectoryBindingModule` con la de `IdentityModule`, e `IShareeDirectory` (012),
- * `ShareeDirectoryBindingModule` con la misma.
+ * `ShareeDirectoryBindingModule` con la misma, que usa la compartición (012) junto con la misma instancia de `StorageModule`.
  */
 @Module({})
 export class AppModule {
   static forRoot(env: Env): DynamicModule {
     const identity = IdentityModule.forRoot(env);
-    // Una sola instancia de `storage`: `billing`, `backoffice` y `editing` la importan de forma explícita (009,
-    // ampliación de la decisión 1; 011; 016).
+    // Una sola instancia de `storage`: `billing`, `backoffice`, `editing` y `sharing` la importan de forma explícita
+    // (009, ampliación de la decisión 1; 011; 016; 012).
     const storage = StorageModule.forRoot(env);
     const realtime = RealtimeModule.forRoot(env, identity);
     return {
@@ -81,6 +82,7 @@ export class AppModule {
         realtime,
         EditingModule.forRoot(env, { storage, realtime }),
         IntelligenceModule.forRoot(env, { storage, realtime }),
+        SharingModule.forRoot(env, storage),
       ],
       providers: [PingQueue],
     };
