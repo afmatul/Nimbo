@@ -324,8 +324,9 @@ describe('OptimizationService.status (plan 021 §4, T-02)', () => {
 
   it('un estado final no pide volver a consultar', async () => {
     const file = imageOf();
-    const { service, jobs } = setup(file);
-    jobs.seed(seeded(file, 'completada'));
+    const { service, jobs, files } = setup(file);
+    const completed = jobs.seed(seeded(file, 'completada'));
+    files.file = { ...file, currentVersionId: completed.resultVersionId ?? '' };
 
     const status = await service.status(ANA, file.id);
 

@@ -214,7 +214,7 @@ function FileOptimization({
     return null;
   return (
     <OptimizationCard
-      key={fileId}
+      key={`${fileId}:${currentOf(listing)?.id ?? ''}`}
       api={api}
       fileId={fileId}
       history={listing}

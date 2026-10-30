@@ -112,16 +112,31 @@ describe('OptimizationJob (plan 021 §3)', () => {
     expect(OptimizationJob.startEstimate(base).isEstimateOf(SOURCE)).toBe(false);
   });
 
-  it('una estimación resuelta de otra versión es obsoleta; una en curso o final de ejecución, no', () => {
+  it('una estimación resuelta de otra versión es obsoleta; una en curso, no', () => {
     const estimated = OptimizationJob.rehydrate(
       snapshotOf({ state: 'estimada', estimatedBytes: 1n }),
     );
-    const completed = OptimizationJob.rehydrate(snapshotOf({ state: 'completada' }));
 
     expect(estimated.isObsoleteFor('otra-version')).toBe(true);
     expect(estimated.isObsoleteFor(SOURCE)).toBe(false);
     expect(OptimizationJob.startEstimate(base).isObsoleteFor('otra-version')).toBe(false);
-    expect(completed.isObsoleteFor('otra-version')).toBe(false);
+  });
+
+  it('CA-1, CA-7, CA-16: el éxito sigue vigente solo para su resultado, sin reabrir ni borrar el trabajo', () => {
+    const data = snapshotOf({ state: 'completada' });
+    const completed = OptimizationJob.rehydrate(data);
+
+    expect(completed.isObsoleteFor(data.resultVersionId ?? '')).toBe(false);
+    expect(completed.isObsoleteFor(SOURCE)).toBe(true);
+    expect(completed.isObsoleteFor('version-restaurada-o-reemplazada')).toBe(true);
+    expect(completed.snapshot()).toEqual(data);
+  });
+
+  it('CA-11: un descarte por versión cambiada sigue informando por qué no se aplicó', () => {
+    const job = OptimizationJob.rehydrate(
+      snapshotOf({ state: 'descartada', reason: 'version_cambiada' }),
+    );
+    expect(job.isObsoleteFor('otra-version')).toBe(false);
   });
 
   it('reclamarla (T-03) renueva `actualizado_en` sin cambiar el estado, para que no caduque mientras trabaja', () => {

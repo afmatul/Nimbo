@@ -19,7 +19,7 @@ versión con resultados explícitos y compensación del objeto).
   bajo `lockUsage`, comprueba que la versión de origen sigue siendo la actual antes de `register` (014b hace el resto:
   original conservado y espacio neto negativo).
 - **Estado (CA-6, RN-9, RN-10):** `GET …/optimization` devuelve la última fila con `pollAfterMs` mientras no es final; la
-  ficha consulta con ese intervalo, se detiene al llegar a un estado final y relee al abrir o al volver a estar visible.
+  ficha consulta con ese intervalo, se detiene al llegar a un estado final y relee al abrir, al cambiar la versión activa o al volver a estar visible.
 - **Imágenes:** solo JPEG y PNG (recorte del 2026-10-26); `sharp` (ADR-0036, `Aceptado` el 2026-10-26 con este plan).
 
 **Lo que no hace 021 (va a 021b):** DF-80 (`ICommandRunner` a `shared`: `sharp` corre en proceso, no lanza programas) y
@@ -102,7 +102,7 @@ CREATE INDEX idx_optimizacion_archivo ON optimizacion (archivo_id, creado_en DES
 **Estados** (finales en negrita): `estimando` → `estimada` | **`no_conviene`** | **`no_disponible`** (`pixeles`,
 `animada`, `ilegible`) | **`fallida`**; `estimada` → `optimizando` → **`completada`** | **`descartada`** (`ahorro_minimo`,
 `version_cambiada`, `archivo_eliminado`) | **`fallida`** (`integridad`, `servicio_no_disponible`). `no_disponible(tamano)`
-se crea ya final al pedir estimar. Una `estimada` cuya versión de origen dejó de ser la vigente se responde como obsoleta.
+se crea ya final al pedir estimar. Los resultados de estimación con otro origen y las completadas cuyo resultado ya no es vigente se responden como `null`, sin alterar sus filas ni las versiones (RN-9); la tarjeta se identifica también por la versión activa.
 Resultados del registrador (§2): `registered` y `duplicate` → `completada`; `not_smaller` → `descartada(ahorro_minimo)`;
 `file_changed` → `descartada(version_cambiada)`; `file_missing` → `descartada(archivo_eliminado)`; `corrupt` → `fallida(integridad)`.
 

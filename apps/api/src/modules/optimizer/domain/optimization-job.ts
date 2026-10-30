@@ -263,8 +263,9 @@ export class OptimizationJob {
     return ESTIMATE_RESULTS.includes(this.data.state) && this.data.sourceVersionId === versionId;
   }
 
-  /** Es el resultado de una estimación de otra versión: ya no describe el archivo (la ficha vuelve a «sin estimación»). */
+  /** La estimación describe su origen; el éxito, su resultado. Otro current vuelve la ficha a «sin estimación», sin borrar nada. */
   isObsoleteFor(currentVersionId: string): boolean {
+    if (this.state === 'completada') return this.resultVersionId !== currentVersionId;
     return (
       ESTIMATE_RESULTS.includes(this.data.state) && this.data.sourceVersionId !== currentVersionId
     );

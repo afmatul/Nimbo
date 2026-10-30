@@ -166,7 +166,7 @@ export class OptimizationService {
     });
   }
 
-  /** La última optimización (tras caducar una perdida), o `null` si no hay o es una estimación obsoleta. */
+  /** La última optimización (tras caducar una perdida), o `null` si no hay o su resultado dejó de ser vigente. */
   async status(actor: Actor, fileId: string): Promise<OptimizationView | null> {
     const file = await this.files.findOwned(actor, fileId);
     if (file === null) throw new NodeNotFoundError();

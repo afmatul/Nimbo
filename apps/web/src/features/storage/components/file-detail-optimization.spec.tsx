@@ -1,6 +1,7 @@
 /** @jest-environment jsdom */
 import type { FileVersionsResponse } from '@nimbo/contracts';
 import { act, render, screen, within } from '@testing-library/react';
+import type { RenderResult } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { dayLabel } from '../../../lib/format-date';
@@ -38,6 +39,19 @@ const HISTORY: FileVersionsResponse = {
   items: [ORIGINAL],
   retainedVersions: 3,
 };
+const KEPT = { ...ORIGINAL, isCurrent: false, keptUntil: KEPT_UNTIL };
+const AFTER_OPTIMIZATION = { ...HISTORY, items: [OPTIMIZED, KEPT] };
+const RESTORED = versionFixture({
+  number: 3,
+  isCurrent: true,
+  origin: 'restauracion',
+  restoredFromNumber: 1,
+  sizeBytes: 4_800_000,
+});
+const AFTER_RESTORE = {
+  ...HISTORY,
+  items: [RESTORED, { ...OPTIMIZED, isCurrent: false }, KEPT],
+};
 function storageApi(history = HISTORY): jest.Mocked<StorageApi> {
   return {
     init: jest.fn(() => new Promise(() => undefined)),
@@ -47,8 +61,8 @@ function storageApi(history = HISTORY): jest.Mocked<StorageApi> {
     fileVersions: jest.fn().mockResolvedValue(history),
   } as unknown as jest.Mocked<StorageApi>;
 }
-async function renderView(api: StorageApi, optimizerApi: OptimizerApi): Promise<void> {
-  render(
+async function renderView(api: StorageApi, optimizerApi: OptimizerApi): Promise<RenderResult> {
+  const view = render(
     <SessionProvider apiPublicUrl="http://localhost/api/v1">
       <UploadsProvider api={api}>
         <UploadsSpaceProvider>
@@ -62,6 +76,18 @@ async function renderView(api: StorageApi, optimizerApi: OptimizerApi): Promise<
     </SessionProvider>,
   );
   await act(async () => undefined);
+  return view;
+}
+
+function restorationFixture() {
+  const api = storageApi(AFTER_OPTIMIZATION);
+  api.fileVersions.mockResolvedValueOnce(AFTER_OPTIMIZATION).mockResolvedValue(AFTER_RESTORE);
+  api.restoreVersion = jest.fn().mockResolvedValue(RESTORED);
+  api.spaceSummary.mockResolvedValue(spaceSummaryWith(7_700_000));
+  const optimizer = fakeOptimizerApi({
+    status: jest.fn().mockResolvedValueOnce(COMPLETED).mockResolvedValue(null),
+  });
+  return { api, optimizer };
 }
 
 describe('021: optimización en la ficha existente', () => {
@@ -138,7 +164,8 @@ describe('021: optimización en la ficha existente', () => {
     await act(async () => {
       jest.advanceTimersByTime(60_000);
     });
-    expect(optimizer.status).toHaveBeenCalledTimes(2);
+    // Dos lecturas del trabajo y una revalidación al cambiar la versión activa; sin polling posterior.
+    expect(optimizer.status).toHaveBeenCalledTimes(3);
   });
 
   it('CA-17: reutiliza el banner de 010 y deja Optimizar deshabilitado', async () => {
@@ -152,6 +179,41 @@ describe('021: optimización en la ficha existente', () => {
     expect((screen.getByRole('button', { name: 'Optimizar' }) as HTMLButtonElement).disabled).toBe(
       true,
     );
+    expect(optimizer.run).not.toHaveBeenCalled();
+  });
+
+  it('CA-1, CA-6, CA-16: restaurar V1 como V3 relee la optimización sin F5 y permite calcular de nuevo', async () => {
+    const user = userEvent.setup();
+    const { api, optimizer } = restorationFixture();
+    await renderView(api, optimizer);
+    const card = screen.getByRole('region', { name: 'Optimizar espacio' });
+    expect(within(card).getByText(/Optimizamos tu imagen/)).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Restaurar la versión 1' }));
+    await user.click(screen.getByRole('button', { name: 'Restaurar versión 1' }));
+    expect(api.restoreVersion).toHaveBeenCalledWith(IMAGE_FILE_ID, ORIGINAL.id);
+    expect(optimizer.status).toHaveBeenCalledTimes(2);
+    const fresh = screen.getByRole('region', { name: 'Optimizar espacio' });
+    expect(within(fresh).queryByText(/Optimizamos tu imagen/)).toBeNull();
+    await user.click(await within(fresh).findByRole('button', { name: 'Calcular ahorro' }));
+    expect(optimizer.estimate).toHaveBeenCalledWith(IMAGE_FILE_ID);
+    for (const number of [1, 2, 3]) {
+      expect(
+        screen.getByRole('button', { name: `Descargar la versión ${String(number)}` }),
+      ).toBeTruthy();
+    }
+  });
+
+  it('CA-1, CA-6: al reabrir tras F5 sobre V3 usa el estado vigente, no el éxito anterior', async () => {
+    const optimizer = fakeOptimizerApi({
+      status: jest.fn().mockResolvedValueOnce(COMPLETED).mockResolvedValue(null),
+    });
+    const previous = await renderView(storageApi(AFTER_OPTIMIZATION), optimizer);
+    expect(screen.getByText(/Optimizamos tu imagen/)).toBeTruthy();
+    previous.unmount();
+    await renderView(storageApi(AFTER_RESTORE), optimizer);
+    expect(screen.queryByText(/Optimizamos tu imagen/)).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Calcular ahorro' }));
+    expect(optimizer.estimate).toHaveBeenCalledWith(IMAGE_FILE_ID);
     expect(optimizer.run).not.toHaveBeenCalled();
   });
 });

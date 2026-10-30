@@ -2,7 +2,9 @@ import { randomUUID } from 'node:crypto';
 
 import { getQueueToken } from '@nestjs/bullmq';
 import {
+  downloadUrlSchema,
   fileVersionSummarySchema,
+  fileVersionsResponseSchema,
   optimizationResponseSchema,
   optimizationStatusSchema,
 } from '@nimbo/contracts';
@@ -172,6 +174,100 @@ describe('optimizar y registrar (021 T-04)', () => {
     expect(row.estado).toBe('completada');
     return row;
   };
+
+  const supersede = async (
+    context: Prepared,
+    change: 'restaurar' | 'reemplazar',
+  ): Promise<string> => {
+    const history = fileVersionsResponseSchema.parse(
+      (await context.client.fileVersions(context.fileId)).body,
+    );
+    if (change === 'restaurar') {
+      const response = await context.client.restoreVersion(
+        context.fileId,
+        history.items.find((version) => version.number === 1)?.id ?? '',
+      );
+      expect(response.status).toBe(201);
+      return fileVersionSummarySchema.parse(response.body).id;
+    }
+    const response = await context.client.upload(history.file.name, context.original, 'replace');
+    expect(response.status).toBe(200);
+    expect((response.body as { file: { id: string } }).file.id).toBe(context.fileId);
+    return currentOf(context.fileId);
+  };
+
+  const assertDownloads = async (context: Prepared, optimized: Buffer): Promise<void> => {
+    const history = await context.client.fileVersions(context.fileId);
+    expect(history.status).toBe(200);
+    const { items } = fileVersionsResponseSchema.parse(history.body);
+    expect(items.map((version) => version.number)).toEqual([3, 2, 1]);
+    for (const version of items) {
+      const issued = await context.client.versionDownloadUrl(context.fileId, version.id);
+      expect(issued.status).toBe(200);
+      const download = await fetch(downloadUrlSchema.parse(issued.body).url);
+      expect(download.status).toBe(200);
+      expect(Buffer.from(await download.arrayBuffer())).toEqual(
+        version.number === 2 ? optimized : context.original,
+      );
+    }
+  };
+
+  const reestimateCurrent = async (context: Prepared, versionId: string): Promise<void> => {
+    const requests = await Promise.all(
+      [0, 1].map(() =>
+        http()
+          .post(`${PREFIX}/files/${context.fileId}/optimization/estimate`)
+          .set(auth(context.client)),
+      ),
+    );
+    expect(requests.map((response) => response.status)).toEqual([202, 202]);
+    const ids = requests.map((response) => optimizationStatusSchema.parse(response.body).id);
+    expect(ids[0]).toBe(ids[1]);
+    expect(ids[0]).not.toBe(context.optimizationId);
+    expect(await waitFor(context.fileId)).toMatchObject({
+      id: ids[0],
+      estado: 'estimada',
+      version_origen_id: versionId,
+    });
+    expect((await run(context)).status).toBe(409);
+  };
+
+  const assertNoCurrentOptimization = async (context: Prepared): Promise<void> => {
+    for (let read = 0; read < 2; read += 1) {
+      const response = await http()
+        .get(`${PREFIX}/files/${context.fileId}/optimization`)
+        .set(auth(context.client));
+      expect(response.status).toBe(200);
+      expect(optimizationResponseSchema.parse(response.body).optimization).toBeNull();
+    }
+  };
+
+  it.each(['restaurar', 'reemplazar'] as const)(
+    'CA-1, CA-6, CA-15, CA-16: %s tras V1→V2 permite estimar V3 sin perder historial ni duplicar ahorro',
+    async (change) => {
+      const context = await prepare('jpg');
+      const completed = await complete(context);
+      const optimized = await storage.readObject(
+        keyOf(context, completed.version_resultado_id ?? ''),
+      );
+      const previous = await versionsOf(context.fileId);
+      const versionId = await supersede(context, change);
+      const expectedUsed = BigInt(context.original.length + optimized.length);
+      await assertNoCurrentOptimization(context);
+      expect(await currentOf(context.fileId)).toBe(versionId);
+      expect((await versionsOf(context.fileId)).slice(0, 2)).toEqual(previous);
+      expect(await usedBytesOf(storage.owner, context.client.id)).toBe(expectedUsed);
+      await assertDownloads(context, optimized);
+      await reestimateCurrent(context, versionId);
+      expect(await versionsOf(context.fileId)).toHaveLength(3);
+      expect(await usedBytesOf(storage.owner, context.client.id)).toBe(expectedUsed);
+      const [preserved] = await storage.owner.query<OptimizationRow[]>(
+        'SELECT * FROM optimizacion WHERE id = $1',
+        [completed.id],
+      );
+      expect(preserved).toEqual(completed);
+    },
+  );
 
   it.each(['jpg', 'png'] as const)(
     'CA-7, CA-8, CA-15: %s real queda current, original conservado y cuota Y-X',
