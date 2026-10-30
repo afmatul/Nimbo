@@ -28,6 +28,7 @@ import {
   SharedModule,
 } from './shared';
 import type { Env } from './shared';
+import { ShareeDirectoryBindingModule } from './sharee-directory-binding.module';
 import { UserDirectoryBindingModule } from './user-directory-binding.module';
 
 /**
@@ -43,7 +44,8 @@ import { UserDirectoryBindingModule } from './user-directory-binding.module';
  * módulo dinámico por referencia) y la edición (016), que recibe así las mismas instancias de `StorageModule` y de
  * `RealtimeModule`, y la indexación (019), que escucha `storage.file-version-created`, expone su estado y recibe las
  * mismas instancias de `StorageModule` (`IndexableFileGateway`) y de `RealtimeModule` (aviso en vivo);
- * `IUserDirectory` lo enlaza `UserDirectoryBindingModule` con la de `IdentityModule`.
+ * `IUserDirectory` lo enlaza `UserDirectoryBindingModule` con la de `IdentityModule`, e `IShareeDirectory` (012),
+ * `ShareeDirectoryBindingModule` con la misma.
  */
 @Module({})
 export class AppModule {
@@ -71,6 +73,7 @@ export class AppModule {
         AccessModule,
         PlanLimitsBindingModule,
         UserDirectoryBindingModule.forRoot(identity),
+        ShareeDirectoryBindingModule.forRoot(identity),
         storage,
         AuditHttpModule,
         BillingHttpModule.forRoot(env, storage),

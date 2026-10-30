@@ -15,7 +15,7 @@ const ALLOWED: Readonly<Record<string, readonly string[]>> = {
   audit: [],
   realtime: [],
   notifications: ['realtime'],
-  identity: ['notifications', 'audit', 'editing'],
+  identity: ['notifications', 'audit', 'editing', 'sharing'],
   billing: ['notifications', 'audit', 'storage', 'identity'],
   access: [],
   storage: ['access', 'audit', 'realtime'],
