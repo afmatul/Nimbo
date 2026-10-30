@@ -38,7 +38,8 @@ versiones). `index.spec.ts` fija esa lista (`RUNTIME_EXPORTS`). `StorageModule` 
 (adaptador `SqlNodeMetadataReader`); `backoffice` importa el mismo `DynamicModule` que la raíz. No salen el detector de
 tipos, `IExpiredUploadScanner`, el adaptador de auditoría ni los repositorios. Ni `StorageModule` ni
 `StorageWorkerModule` enlazan `I_PLAN_LIMITS_PROVIDER` (DF-51): lo hace la raíz de composición (`AppModule`,
-`WorkerModule`).
+`WorkerModule`). Desde 012 (PD-121), `index.ts` y `StorageModule` exportan también `WritableAccountPolicy`: `sharing`
+rechaza compartir desde una cuenta en solo lectura con la misma regla.
 
 ## Persistencia (005, PR-C)
 
@@ -306,3 +307,17 @@ ambientes (rol dueño de las migraciones) está en `docs/operations/ambientes.md
 - **Multipart abandonados**: MinIO los limpia por su cuenta (`stale_uploads_expiry=24h`, revisión cada 6 h), es decir
   después del vencimiento de la carga. Es solo una red de seguridad; la limpieza real es `upload-cleanup`.
 - Resultado completo del spike: `specs/005-carga-y-descarga/plan.md` §8.
+
+## Lo compartido (012, T-03 y T-04)
+
+- `accessibleNodes(actor)` suma lo compartido con el actor (012 T-02), así que **solo las lecturas** lo usan:
+  `findAccessibleById` (ficha y descarga de la versión vigente), `findAccessibleFolder`, `listContents` dentro de una
+  carpeta, `breadcrumbs` (solo antepasados accesibles: en lo compartido las migas empiezan en la carpeta compartida),
+  las fachadas de edición e indexación y los accesos rápidos.
+- Toda escritura, todo destino y todo lo que solo hace el propietario usan `ownedNodes(actor)`: `findOwnedLiveFile`
+  (renombrar, mover, eliminar, reemplazar, historial, restaurar y descargar una versión retenida), `findOwnedFolder`
+  (destino de crear, subir, mover y restaurar), `findLiveFileByName`, `findTakenNames`, `findTakenFolderNames`,
+  `maxSubtreeDepth`, los `UPDATE` de nombre y carpeta, la papelera (`TypeOrmTrashRepository`) y la poda de originales.
+  `listContents` de la raíz también es solo lo propio (012 R-2). Un nodo compartido responde como inexistente (`404`,
+  012 CA-14).
+- Prueba: `test/isolation/storage-shared-writes.iso-spec.ts` recorre todas las rutas de escritura como Lector y Editor.

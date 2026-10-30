@@ -116,6 +116,12 @@ class FakeNodeRepository extends InMemoryNodeRepository {
     this.calls.push('findAccessibleById');
     return super.findAccessibleById(actor, id);
   }
+
+  override findOwnedLiveFile(actor: Actor, id: string): Promise<File | null> {
+    this.transactions.requireScope(actor);
+    this.calls.push('findOwnedLiveFile');
+    return super.findOwnedLiveFile(actor, id);
+  }
 }
 
 class FakeRateLimiter implements IRateLimiter {
@@ -325,7 +331,7 @@ describe('FileService', () => {
 
       await service.getDownloadUrl(ACTOR, FILE_ID, OLDER_VERSION_ID);
 
-      expect(calls).toEqual(['consume', 'findAccessibleById', 'presignDownload']);
+      expect(calls).toEqual(['consume', 'findOwnedLiveFile', 'presignDownload']);
       expect(audit.records).toEqual([
         {
           action: AuditAction.FILE_DOWNLOAD_URL_ISSUED,

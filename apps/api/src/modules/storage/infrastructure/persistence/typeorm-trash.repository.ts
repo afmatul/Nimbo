@@ -4,7 +4,7 @@ import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialE
 
 import { TransactionContext } from '../../../../shared';
 import type { Actor } from '../../../../shared';
-import { accessibleNodes, ownedTrashedNodes } from '../../../access';
+import { ownedNodes, ownedTrashedNodes } from '../../../access';
 import type {
   ITrashRepository,
   PurgeFile,
@@ -142,9 +142,10 @@ const pageOf = (entries: readonly TrashEntry[], hasMore: boolean): TrashPage => 
 
 /**
  * `ITrashRepository` sobre Postgres (plan 006 §2). Las raíces se leen y escriben con `ownedTrashedNodes(actor)` y lo
- * vivo con `accessibleNodes(actor)`, siempre dentro de la consulta; lo arrastrado se alcanza por
- * `eliminado_con_carpeta_id` de una raíz propia. Todo método toma el `EntityManager` de `requireActorScope(actor)`
- * (la RLS es la segunda barrera). `@Inject` explícito: con `tsx` (esbuild) no hay `design:paramtypes`.
+ * vivo con `ownedNodes(actor)` (lo compartido no se elimina, 012 CA-14), siempre dentro de la consulta; lo arrastrado
+ * se alcanza por `eliminado_con_carpeta_id` de una raíz propia. Todo método toma el `EntityManager` de
+ * `requireActorScope(actor)` (la RLS es la segunda barrera). `@Inject` explícito: con `tsx` (esbuild) no hay
+ * `design:paramtypes`.
  */
 @Injectable()
 export class TypeOrmTrashRepository implements ITrashRepository {
@@ -152,7 +153,7 @@ export class TypeOrmTrashRepository implements ITrashRepository {
 
   async markFileTrashed(actor: Actor, fileId: string, state: TrashState): Promise<void> {
     await this.update(actor, ArchivoOrmEntity, trashColumns(state), [
-      nodesIn(accessibleNodes(actor), 'id', 'archivo'),
+      nodesIn(ownedNodes(actor), 'id', 'archivo'),
       { sql: 'id = :fileId', parameters: { fileId } },
     ]);
   }
@@ -161,23 +162,23 @@ export class TypeOrmTrashRepository implements ITrashRepository {
   async markFolderSubtreeTrashed(actor: Actor, folder: Folder, state: TrashState): Promise<number> {
     const carried = trashColumns(state.carriedBy(folder.id));
     const subtree = { subtree: `${folder.path.value}%` };
-    const liveFolder = nodesIn(accessibleNodes(actor), 's.id', 'carpeta');
+    const liveFolder = nodesIn(ownedNodes(actor), 's.id', 'carpeta');
     const files = await this.update(actor, ArchivoOrmEntity, carried, [
-      nodesIn(accessibleNodes(actor), 'id', 'archivo'),
+      nodesIn(ownedNodes(actor), 'id', 'archivo'),
       {
         sql: `carpeta_id IN (SELECT s.id FROM carpeta s WHERE s.ruta LIKE :subtree AND ${liveFolder.sql})`,
         parameters: { ...subtree, ...liveFolder.parameters },
       },
     ]);
     const folders = await this.update(actor, CarpetaOrmEntity, carried, [
-      nodesIn(accessibleNodes(actor), 'id', 'carpeta'),
+      nodesIn(ownedNodes(actor), 'id', 'carpeta'),
       {
         sql: 'ruta LIKE :subtree AND id <> :rootId',
         parameters: { ...subtree, rootId: folder.id },
       },
     ]);
     const root = await this.update(actor, CarpetaOrmEntity, trashColumns(state), [
-      nodesIn(accessibleNodes(actor), 'id', 'carpeta'),
+      nodesIn(ownedNodes(actor), 'id', 'carpeta'),
       { sql: 'id = :rootId', parameters: { rootId: folder.id } },
     ]);
     return files + folders + root;

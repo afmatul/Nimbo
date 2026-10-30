@@ -1241,9 +1241,9 @@ describe('UploadService con carpeta destino (006)', () => {
 
     const entries = ctx.journal.entries;
     expect(entries.indexOf('quota:lockAndReadUsage')).toBeLessThan(
-      entries.indexOf('nodes:findAccessibleFolder'),
+      entries.indexOf('nodes:findOwnedFolder'),
     );
-    expect(entries.indexOf('nodes:findAccessibleFolder')).toBeLessThan(
+    expect(entries.indexOf('nodes:findOwnedFolder')).toBeLessThan(
       entries.indexOf('nodes:findTakenNames'),
     );
   });
@@ -1288,7 +1288,7 @@ describe('UploadService con carpeta destino (006)', () => {
     ).toEqual([
       'tx:begin',
       'quota:lockUsage',
-      'nodes:findAccessibleFolder',
+      'nodes:findOwnedFolder',
       'session:transition:completada',
     ]);
   });

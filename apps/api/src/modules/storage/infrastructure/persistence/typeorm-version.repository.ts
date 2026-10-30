@@ -4,7 +4,7 @@ import type { EntityManager } from 'typeorm';
 
 import { TransactionContext } from '../../../../shared';
 import type { Actor } from '../../../../shared';
-import { accessibleNodes } from '../../../access';
+import { ownedNodes } from '../../../access';
 import type { IVersionRepository } from '../../application/ports/i-version.repository.port';
 import { FileVersion } from '../../domain/file-version';
 import { ObjectKey } from '../../domain/object-key';
@@ -45,10 +45,10 @@ const toFileVersion = (row: VersionArchivoOrmEntity): FileVersion =>
 
 /**
  * `IVersionRepository` sobre Postgres (plan 014 §2). Todo método toma el `EntityManager` de
- * `requireActorScope(actor)` y la RLS `version_archivo_cliente` deja ver solo las versiones de archivos propios; el
- * servicio resuelve antes el archivo con `accessibleNodes(actor)`. `uq_version_archivo_numero` sirve a `list` y a
- * `MAX(numero)`; `find` exige el par (versión, archivo): una versión de otro archivo es `null` (CA-11). `@Inject`
- * explícito: con `tsx` (esbuild) no hay `design:paramtypes`.
+ * `requireActorScope(actor)` y la RLS deja ver las versiones de archivos propios y solo la vigente de lo compartido
+ * (012); el servicio resuelve antes el archivo (`findOwnedLiveFile` para el historial y las escrituras).
+ * `uq_version_archivo_numero` sirve a `list` y a `MAX(numero)`; `find` exige el par (versión, archivo): una versión de
+ * otro archivo es `null` (CA-11). `@Inject` explícito: con `tsx` (esbuild) no hay `design:paramtypes`.
  */
 @Injectable()
 export class TypeOrmVersionRepository implements IVersionRepository {
@@ -93,17 +93,15 @@ export class TypeOrmVersionRepository implements IVersionRepository {
   }
 
   /**
-   * `accessibleNodes(actor)` va dentro de la consulta (ADR-0005) y deja fuera los archivos en la papelera (014b CA-9);
-   * además `propietario_id = actor.id`, como el espacio: solo se purga lo propio. `idx_version_archivo_conservada` sirve
-   * al plazo.
+   * `ownedNodes(actor)` va dentro de la consulta (ADR-0005): solo se purga lo propio y deja fuera los archivos en la
+   * papelera (014b CA-9; 012). `idx_version_archivo_conservada` sirve al plazo.
    */
   async listExpiredKept(actor: Actor, now: Date): Promise<readonly FileVersion[]> {
-    const live = nodesIn(accessibleNodes(actor), 'v.archivoId', 'archivo');
+    const live = nodesIn(ownedNodes(actor), 'v.archivoId', 'archivo');
     const rows = await this.manager(actor)
       .createQueryBuilder(VersionArchivoOrmEntity, 'v')
       .innerJoin(ArchivoOrmEntity, 'a', 'a.id = v.archivoId')
       .where(live.sql, { ...live.parameters })
-      .andWhere('a.propietarioId = :ownerId', { ownerId: actor.id })
       .andWhere('v.id <> a.versionActualId')
       .andWhere('v.conservadaHasta <= :now', { now })
       .orderBy('v.conservadaHasta', 'ASC')

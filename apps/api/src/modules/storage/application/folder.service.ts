@@ -44,9 +44,10 @@ export interface FolderContents {
 }
 
 /**
- * Carpetas del actor (plan 006 §2): crear, renombrar, mover y abrir. Cada mutación corre en `withActor` y toma primero
- * `lockUsage` (la fila del dueño), así dos cambios del árbol del mismo dueño no se cruzan en un ciclo ni en un nombre
- * repetido. Lo ajeno, inexistente o en la papelera es el mismo `NodeNotFoundError` (CA-5, CA-22). No se audita (CA-24).
+ * Carpetas del actor (plan 006 §2): crear, renombrar, mover y abrir. Solo el propietario escribe y solo sus carpetas
+ * son destino (`findOwnedFolder`, 012 CA-14); abrir alcanza también lo compartido. Cada mutación corre en `withActor`
+ * y toma primero `lockUsage` (la fila del dueño), así dos cambios del árbol del mismo dueño no se cruzan en un ciclo ni
+ * en un nombre repetido. Lo ajeno, inexistente o en la papelera es el mismo `NodeNotFoundError` (CA-5, CA-22). No se audita (CA-24).
  */
 @Injectable()
 export class FolderService {
@@ -65,7 +66,7 @@ export class FolderService {
     await this.writable.assertWritable(actor);
     return this.transactions.withActor(actor, async () => {
       await this.quotas.lockUsage(actor);
-      const parent = await this.findParent(actor, command.parentId);
+      const parent = await this.findOwnedParent(actor, command.parentId);
       const folder = Folder.create({
         id: randomUUID(),
         ownerId: actor.id,
@@ -86,7 +87,7 @@ export class FolderService {
     await this.writable.assertWritable(actor);
     return this.transactions.withActor(actor, async () => {
       await this.quotas.lockUsage(actor);
-      const folder = await this.requireFolder(actor, folderId);
+      const folder = await this.requireOwnedFolder(actor, folderId);
       await this.assertNameFree(actor, name, folder.parentId, folder.id);
       const renamed = Folder.rehydrate({ ...folder.snapshot(), name, updatedAt: this.clock.now() });
       await this.nodes.renameFolder(actor, renamed);
@@ -99,8 +100,8 @@ export class FolderService {
     await this.writable.assertWritable(actor);
     return this.transactions.withActor(actor, async () => {
       await this.quotas.lockUsage(actor);
-      const folder = await this.requireFolder(actor, folderId);
-      const parent = await this.findParent(actor, parentId);
+      const folder = await this.requireOwnedFolder(actor, folderId);
+      const parent = await this.findOwnedParent(actor, parentId);
       const deepest = await this.nodes.maxSubtreeDepth(actor, folder);
       folder.assertCanMoveTo(parent, deepest, this.config.maxDepth);
       await this.assertNameFree(actor, folder.name, parent?.id ?? null, folder.id);
@@ -115,10 +116,13 @@ export class FolderService {
     });
   }
 
-  /** CA-5: subcarpetas y archivos directos, carpetas primero, con las migas desde la raíz. */
+  /**
+   * CA-5: subcarpetas y archivos directos, carpetas primero, con las migas desde la raíz. Una carpeta compartida con el
+   * actor también se abre, con migas que empiezan en ella (012 CA-13); la raíz es solo lo propio.
+   */
   contents(actor: Actor, query: FolderContentsQuery): Promise<FolderContents> {
     return this.transactions.withActor(actor, async () => {
-      const folder = await this.findParent(actor, query.folderId);
+      const folder = await this.findOpenedFolder(actor, query.folderId);
       const ancestors = folder === null ? [] : await this.nodes.breadcrumbs(actor, folder);
       const page = await this.nodes.listContents(actor, query);
       return { folder, breadcrumbs: folder === null ? [] : [...ancestors, folder], page };
@@ -126,14 +130,18 @@ export class FolderService {
   }
 
   /** `null` es la raíz; un id que el actor no ve es `NodeNotFoundError`. */
-  private async findParent(actor: Actor, folderId: string | null): Promise<Folder | null> {
-    return folderId === null ? null : this.requireFolder(actor, folderId);
+  private async findOpenedFolder(actor: Actor, folderId: string | null): Promise<Folder | null> {
+    if (folderId === null) return null;
+    return requireFound(await this.nodes.findAccessibleFolder(actor, folderId));
   }
 
-  private async requireFolder(actor: Actor, folderId: string): Promise<Folder> {
-    const folder = await this.nodes.findAccessibleFolder(actor, folderId);
-    if (folder === null) throw new NodeNotFoundError();
-    return folder;
+  /** Destino de crear o mover: `null` es la raíz; una carpeta que no es del actor es `NodeNotFoundError` (012 CA-14). */
+  private async findOwnedParent(actor: Actor, folderId: string | null): Promise<Folder | null> {
+    return folderId === null ? null : this.requireOwnedFolder(actor, folderId);
+  }
+
+  private async requireOwnedFolder(actor: Actor, folderId: string): Promise<Folder> {
+    return requireFound(await this.nodes.findOwnedFolder(actor, folderId));
   }
 
   /** CA-3: unicidad entre carpetas hermanas vivas, sin distinguir mayúsculas; `exceptId` es la carpeta que cambia. */
@@ -146,6 +154,12 @@ export class FolderService {
     const taken = await this.nodes.findTakenFolderNames(actor, name, parentId, exceptId);
     if (!name.firstFree(taken).sameAs(name)) throw new FolderNameConflictError();
   }
+}
+
+/** Lo ajeno, inexistente o en la papelera es el mismo `NodeNotFoundError` (CA-5, CA-22). */
+function requireFound(folder: Folder | null): Folder {
+  if (folder === null) throw new NodeNotFoundError();
+  return folder;
 }
 
 /** El esquema de la petición ya validó la forma; esto normaliza y cubre a quien llame sin pasar por él (CA-2). */

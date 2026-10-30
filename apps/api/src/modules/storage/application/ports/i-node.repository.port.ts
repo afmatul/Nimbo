@@ -37,14 +37,24 @@ export interface IdPage {
 }
 
 /**
- * Árbol vivo del actor (diagrama M2): archivos y carpetas fuera de la papelera. Toda consulta une
- * `accessibleNodes(actor)` de `access` y toma el `EntityManager` de `TransactionContext.requireActorScope(actor)`
- * (ADR-0005): no hay método sin actor. Las mutaciones no se serializan aquí: quien las llama toma antes
- * `IQuotaRepository.lockUsage(actor)` en la misma transacción (plan 006 §1).
+ * Árbol vivo del actor (diagrama M2): archivos y carpetas fuera de la papelera. Toda consulta une un fragmento de
+ * `access` y toma el `EntityManager` de `TransactionContext.requireActorScope(actor)` (ADR-0005): no hay método sin
+ * actor. Las lecturas «accesibles» (`accessibleNodes`) alcanzan también lo compartido con el actor (012); toda
+ * escritura, todo destino y todo lo que solo hace el propietario usan `ownedNodes` (012 CA-14, R-1). Las mutaciones no
+ * se serializan aquí: quien las llama toma antes `IQuotaRepository.lockUsage(actor)` en la misma transacción (plan 006
+ * §1).
  */
 export interface INodeRepository {
-  /** El archivo si el actor tiene acceso y no está en la papelera; `null` en otro caso (CA-16: ajeno = inexistente). */
+  /**
+   * El archivo si el actor tiene acceso (propio o compartido, 012) y no está en la papelera; `null` en otro caso (CA-16:
+   * ajeno = inexistente). Solo para leer: ficha, descarga de la versión vigente, edición e indexación.
+   */
   findAccessibleById(actor: Actor, id: string): Promise<File | null>;
+  /**
+   * El archivo si es del actor y no está en la papelera (`ownedNodes`); `null` si es ajeno, compartido con él o no
+   * existe (012 CA-14). Lo que solo hace el propietario: renombrar, mover, eliminar, reemplazar e historial.
+   */
+  findOwnedLiveFile(actor: Actor, id: string): Promise<File | null>;
   /**
    * El archivo si es del actor, **vivo o en la papelera** (`ownedFiles` de `access`); `null` si es ajeno o se purgó.
    * Solo para registrar la versión de una sesión de edición (016 RN-11, PD-112).
@@ -62,18 +72,26 @@ export interface INodeRepository {
    */
   lockCurrentVersion(actor: Actor, ref: FileVersionRef): Promise<boolean>;
   /**
-   * El archivo vivo y accesible llamado `name` en la carpeta `folderId` (`null` = raíz), sin distinguir mayúsculas
+   * El archivo vivo y propio llamado `name` en la carpeta `folderId` (`null` = raíz), sin distinguir mayúsculas
    * (005 CA-6); `null` si no hay. Es el archivo que reemplaza una carga con `onConflict: 'replace'` (014 CA-1).
    */
   findLiveFileByName(actor: Actor, name: FileName, folderId: string | null): Promise<File | null>;
-  /** La carpeta si el actor tiene acceso y no está en la papelera; `null` en otro caso (CA-5). */
+  /** La carpeta si el actor tiene acceso (propia o compartida, 012) y no está en la papelera; `null` en otro caso (CA-5). */
   findAccessibleFolder(actor: Actor, id: string): Promise<Folder | null>;
-  /** Subcarpetas y archivos directos de una carpeta o de la raíz (CA-5). Lanza `InvalidQueryError` si el cursor no es válido o es de otro orden. */
+  /**
+   * La carpeta si es del actor y no está en la papelera (`ownedNodes`); `null` si es ajena o compartida con él (012
+   * CA-14). Es la carpeta que se escribe y todo destino de crear, subir, mover o restaurar.
+   */
+  findOwnedFolder(actor: Actor, id: string): Promise<Folder | null>;
+  /**
+   * Subcarpetas y archivos directos de una carpeta accesible o de la raíz, que es solo lo propio (CA-5; 012 CA-12).
+   * Lanza `InvalidQueryError` si el cursor no es válido o es de otro orden.
+   */
   listContents(actor: Actor, query: NodeListQuery): Promise<NodeListPage>;
-  /** Ancestros de `folder`, desde la raíz y sin ella (migas, CA-5). */
+  /** Ancestros accesibles de `folder`, desde la raíz y sin ella (migas, CA-5; en lo compartido empiezan en ella, 012 CA-13). */
   breadcrumbs(actor: Actor, folder: Folder): Promise<readonly Folder[]>;
   /**
-   * Nombres de archivo ocupados en la carpeta `folderId` (`null` = raíz) que chocan con `name` o con sus copias
+   * Nombres de archivo propios ocupados en la carpeta `folderId` (`null` = raíz) que chocan con `name` o con sus copias
    * «base (n).ext», tal como están guardados; sin distinguir mayúsculas e ignorando la papelera (005 CA-6) y el archivo
    * `exceptId` (renombrar o mover en el mismo lugar). Alimenta `FileName.firstFree`.
    */
@@ -90,7 +108,7 @@ export interface INodeRepository {
     parentId: string | null,
     exceptId?: string,
   ): Promise<readonly string[]>;
-  /** Profundidad de la carpeta viva más honda del subárbol de `folder` (la propia si no tiene hijas; CA-9). */
+  /** Profundidad de la carpeta propia y viva más honda del subárbol de `folder` (la propia si no tiene hijas; CA-9). */
   maxSubtreeDepth(actor: Actor, folder: Folder): Promise<number>;
   /** Inserta el archivo y su versión actual en la transacción del actor (la FK `version_actual_id` es diferida). */
   insertWithVersion(actor: Actor, file: File, version: FileVersion): Promise<void>;
