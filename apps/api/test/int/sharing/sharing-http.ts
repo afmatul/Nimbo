@@ -38,6 +38,8 @@ export interface SharingHttpApp {
   sharesOf(client: StorageClient): SharesClient;
   /** Correo de una cuenta, leído como el dueño (las *fixtures* lo derivan del id). */
   emailOf(userId: string): Promise<string>;
+  /** Cambia el nombre de una cuenta (las *fixtures* las crean todas con el mismo), para distinguir a las personas. */
+  rename(userId: string, name: string): Promise<void>;
   /** Eventos de auditoría cuyo afectado es `userId`, en orden. */
   eventsOf(userId: string): Promise<AuditEventRow[]>;
   close(): Promise<void>;
@@ -88,6 +90,9 @@ export const createSharingHttpApp = async (
       const [row] = rows;
       if (row === undefined) throw new Error('La cuenta no existe');
       return row.correo;
+    },
+    rename: async (userId, name) => {
+      await storage.owner.query('UPDATE usuario SET nombre = $2 WHERE id = $1', [userId, name]);
     },
     eventsOf: (userId) =>
       storage.owner.query(

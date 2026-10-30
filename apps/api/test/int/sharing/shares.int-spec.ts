@@ -77,6 +77,7 @@ describe('POST y GET /shares (012 CA-1 a CA-9, CA-19, CA-20)', () => {
     ];
     anaShares = sharing.sharesOf(ana);
     brunoEmail = await sharing.emailOf(bruno.id);
+    await sharing.rename(bruno.id, 'Bruno Díaz');
   });
 
   afterEach(() => {
@@ -98,7 +99,7 @@ describe('POST y GET /shares (012 CA-1 a CA-9, CA-19, CA-20)', () => {
     expect(response.headers['cache-control']).toBe('no-store');
     const entry = accessEntrySchema.parse(response.body);
     expect(entry).toMatchObject({
-      grantee: { id: bruno.id, email: brunoEmail, displayName: 'Ana López' },
+      grantee: { id: bruno.id, email: brunoEmail, displayName: 'Bruno Díaz' },
       level: 'VIEWER',
       origin: 'direct',
       inheritedFrom: null,
@@ -308,7 +309,7 @@ describe('POST y GET /shares (012 CA-1 a CA-9, CA-19, CA-20)', () => {
       const [direct] = accessListSchema.parse(response.body).entries;
       expect(direct).toEqual({
         shareId: onContract,
-        grantee: { id: bruno.id, displayName: 'Ana López', email: brunoEmail },
+        grantee: { id: bruno.id, displayName: 'Bruno Díaz', email: brunoEmail },
         level: 'EDITOR',
         origin: 'direct',
         inheritedFrom: null,

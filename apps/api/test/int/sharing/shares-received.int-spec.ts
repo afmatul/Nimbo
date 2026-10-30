@@ -63,9 +63,8 @@ describe('GET /shares/received (012 CA-22)', () => {
       await sharing.storage.newClient(),
     ];
     const eva = await sharing.storage.newClient();
-    await sharing.storage.owner.query("UPDATE usuario SET nombre = 'Carla Ruiz' WHERE id = $1", [
-      carla.id,
-    ]);
+    await sharing.rename(carla.id, 'Carla Ruiz');
+    await sharing.rename(bruno.id, 'Bruno Díaz');
     const [projects, acme] = await sharing.storage.owner.transaction(async (manager) => {
       const root = await insertFolder(manager, ana.id, { name: 'Proyectos' });
       return [root, await insertFolder(manager, ana.id, { name: 'Acme', parent: root })];

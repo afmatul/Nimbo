@@ -22,13 +22,21 @@ interface RouteCall {
   readonly body?: Record<string, unknown>;
 }
 
-/** Lo que A comparte con B en un nivel: una carpeta con un archivo dentro y un archivo suelto con versión antigua. */
+/**
+ * Lo que A comparte con B en un nivel: una carpeta con un archivo dentro, un archivo suelto con versión antigua y una
+ * carpeta y un archivo en la papelera (la compartición se conserva, CA-18).
+ */
 interface SharedNodes {
   readonly folderId: string;
   readonly fileInFolderId: string;
   readonly fileId: string;
   readonly oldVersionId: string;
+  readonly trashedFolderId: string;
+  readonly trashedFileId: string;
 }
+
+/** Nombre del archivo dentro de la carpeta compartida, el que una carga con `onConflict: 'replace'` reemplazaría. */
+const FILE_IN_FOLDER_NAME = 'contrato.pdf';
 
 /** Lo propio de B, para moverlo a lo compartido. */
 interface OwnNodes {
@@ -125,6 +133,27 @@ const SHARED_WRITE_ROUTES: readonly SharedWriteRoute[] = [
     }),
   ],
   [
+    "POST /uploads (reemplazar el archivo de la carpeta compartida, `onConflict: 'replace'`)",
+    (s, _o, id) => ({
+      method: 'post',
+      path: '/uploads',
+      body: {
+        name: FILE_IN_FOLDER_NAME,
+        sizeBytes: 10,
+        folderId: id ?? s.folderId,
+        onConflict: 'replace',
+      },
+    }),
+  ],
+  [
+    'POST /trash/files/:id/restore',
+    (s, _o, id) => ({ method: 'post', path: `/trash/files/${id ?? s.trashedFileId}/restore` }),
+  ],
+  [
+    'POST /trash/folders/:id/restore',
+    (s, _o, id) => ({ method: 'post', path: `/trash/folders/${id ?? s.trashedFolderId}/restore` }),
+  ],
+  [
     'GET /files/:id/versions (historial)',
     (s, _o, id) => ({ method: 'get', path: `/files/${id ?? s.fileId}/versions` }),
   ],
@@ -184,11 +213,14 @@ describe('escrituras de `storage` sobre lo compartido (012 CA-14)', () => {
   const stateOfA = (): Promise<unknown[]> =>
     storage.owner.query(A_STATE_SQL, [a.id]) as Promise<unknown[]>;
 
-  /** Carpeta con un archivo y un archivo suelto con dos versiones, compartidos con B en `level`. */
+  /** Carpeta con un archivo, un archivo suelto con dos versiones y dos nodos en la papelera, compartidos con B en `level`. */
   const shareWithB = (level: SharedLevel): Promise<SharedNodes> =>
     storage.owner.transaction(async (manager) => {
       const folder = await insertFolder(manager, a.id, { name: `Compartida ${level}` });
-      const inFolder = await insertFileWithVersion(manager, a.id, { folderId: folder.id });
+      const inFolder = await insertFileWithVersion(manager, a.id, {
+        folderId: folder.id,
+        name: FILE_IN_FOLDER_NAME,
+      });
       const file = await insertFileWithVersion(manager, a.id);
       const current = randomUUID();
       await manager.query(
@@ -200,14 +232,21 @@ describe('escrituras de `storage` sobre lo compartido (012 CA-14)', () => {
         file.fileId,
         current,
       ]);
+      const deletedAt = new Date();
+      const trashedFolder = await insertFolder(manager, a.id, { deletedAt });
+      const trashedFile = await insertFileWithVersion(manager, a.id, { deletedAt });
       const share = { ownerId: a.id, granteeId: b.id, level };
       await insertShare(manager, { ...share, node: { folderId: folder.id } });
       await insertShare(manager, { ...share, node: { fileId: file.fileId } });
+      await insertShare(manager, { ...share, node: { folderId: trashedFolder.id } });
+      await insertShare(manager, { ...share, node: { fileId: trashedFile.fileId } });
       return {
         folderId: folder.id,
         fileInFolderId: inFolder.fileId,
         fileId: file.fileId,
         oldVersionId: file.versionId,
+        trashedFolderId: trashedFolder.id,
+        trashedFileId: trashedFile.fileId,
       };
     });
 

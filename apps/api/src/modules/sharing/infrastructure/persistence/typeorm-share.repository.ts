@@ -119,7 +119,7 @@ const toShare = (row: ComparticionOrmEntity): UserShare =>
     createdAt: row.creadoEn,
   });
 
-/** Quién borra la fila: su propietario (revocar, CA-10). */
+/** Quién borra la fila: el propietario (revocar, CA-10) o el destinatario (Salir, CA-23). */
 type DeletingParty = 'owner' | 'recipient';
 
 const PARTY_COLUMNS: Readonly<Record<DeletingParty, 'propietario_id' | 'destinatario_id'>> = {
