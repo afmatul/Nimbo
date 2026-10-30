@@ -9,7 +9,7 @@ import { UploadService } from './application/upload.service';
 import { StorageFacadesWorkerModule } from './storage-facades-worker.module';
 import { StorageWorkerModule } from './storage-worker.module';
 
-describe('StorageFacadesWorkerModule (ADR-0037)', () => {
+describe('StorageFacadesWorkerModule (ADR-0038)', () => {
   it('no registra procesadores ni colas: el proceso que lo importa no consume `upload-cleanup`, `trash-purge` ni `usage-reconcile`', () => {
     const module = StorageFacadesWorkerModule.forRoot();
 

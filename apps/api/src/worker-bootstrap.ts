@@ -17,7 +17,7 @@ import type { WorkerBaseEnv } from './worker-base';
 type WorkerName = 'worker' | 'worker-optimizer';
 
 /**
- * Lo que distingue a un proceso `worker` de otro (ADR-0037): su nombre, el esquema de su entorno (PD-135: cada uno
+ * Lo que distingue a un proceso `worker` de otro (ADR-0038): su nombre, el esquema de su entorno (PD-140: cada uno
  * valida solo lo que lee), su raíz, su puerto interno y sus colas.
  */
 export interface WorkerProcess<TEnv extends WorkerBaseEnv> {
@@ -49,7 +49,7 @@ const bootstrap = async <TEnv extends WorkerBaseEnv>(
   const app = await NestFactory.create(worker.root(env), { bufferLogs: true, abortOnError: false });
   const logger = app.get(Logger);
   app.useLogger(logger);
-  // SIGTERM/SIGINT cierran Nest: `@nestjs/bullmq` cierra cada `Worker` esperando el trabajo activo (I-3, ADR-0037).
+  // SIGTERM/SIGINT cierran Nest: `@nestjs/bullmq` cierra cada `Worker` esperando el trabajo activo (I-3, ADR-0038).
   app.enableShutdownHooks();
 
   // Su salud interna también abre contexto de correlación (RNF-17): sin esto, una petición a
@@ -81,7 +81,7 @@ export const reportStartFailure = (name: WorkerName, error: unknown): void => {
 };
 
 /**
- * Arranque común de los procesos `worker` (plan 000 §6.3, ADR-0037): cargar el `.env` de la raíz si existe → validar
+ * Arranque común de los procesos `worker` (plan 000 §6.3, ADR-0038): cargar el `.env` de la raíz si existe → validar
  * su entorno → `config.invalid` + exit 1 si falla → Nest con Pino y cierre ordenado → escuchar en su puerto interno
  * (nunca publicado, sin prefijo `/api/v1`: su salud no es API pública, CA-23). El arranque también lleva
  * `correlationId` (RNF-17).

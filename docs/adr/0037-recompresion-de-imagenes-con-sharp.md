@@ -1,11 +1,11 @@
-# ADR-0036 — Las imágenes se recomprimen con `sharp` (libvips) dentro del `worker`
+# ADR-0037 — Las imágenes se recomprimen con `sharp` (libvips) dentro del `worker`
 
 | Campo | Valor |
 |---|---|
 | Estado | Aceptado (Adrián, 2026-10-26, con el plan de 021) |
 | Fecha | 2026-10-25 |
 | Decisores | Abel (021), Adrián (aprobación; autorizó preparar este ADR el 2026-10-25) |
-| Specs relacionadas | 021 (optimizador de imágenes), 021b (PDF, no lo usa); ADR-0001, ADR-0013, ADR-0028, ADR-0033; PD-128; **enmendado por ADR-0037** |
+| Specs relacionadas | 021 (optimizador de imágenes), 021b (PDF, no lo usa); ADR-0001, ADR-0013, ADR-0028, ADR-0033; PD-128; **enmendado por ADR-0038** |
 
 ## Contexto
 RF-36 pide reducir imágenes «sin alterar su contenido», y la propuesta dice que «en las imágenes recomprime sin cambiar
@@ -109,14 +109,14 @@ Hecho fuera del repositorio (directorio temporal, sin tocar `package.json` ni el
 - **Restricciones descubiertas:** el GIF estático no se puede optimizar sin pérdida con `sharp`; la base de memoria del
   `worker` real no se pudo medir aquí (la supone el plan de 021 y la mide su T-08).
 
-## Enmienda (ADR-0037, 2026-10-27)
+## Enmienda (ADR-0038, 2026-10-27)
 
 La T-08 de 021 midió OOM con indexación pesada y una imagen de 36 MP en el mismo `worker` de 768 MiB. `sharp` se carga
 ahora **solo en el proceso `worker-optimizer`** (cola `optimization`); el `api` y el `worker` general no lo cargan. La
 imagen del `worker` (PD-128) usa base glibc (`node:22.23.3-trixie-slim`) con `MALLOC_ARENA_MAX=2`. El resto de este ADR
 (formatos, metadatos, límites, validación) no cambia.
 
-Versión (propuesta 2026-10-28, **aceptada por Matul/Adrián el 2026-10-28 después de `7f9285ff`**, junto con la enmienda de ADR-0037): `sharp` pasa de 0.34.5 a **0.35.5** (libvips 8.17.3 → 8.18.7). Ninguna API
+Versión (propuesta 2026-10-28, **aceptada por Matul/Adrián el 2026-10-28 después de `7f9285ff`**, junto con la enmienda de ADR-0038): `sharp` pasa de 0.34.5 a **0.35.5** (libvips 8.17.3 → 8.18.7). Ninguna API
 usada cambia (0.35 quita `failOnError`, `paletteBitDepth` y opciones de `sharpen`, que 021 no usa, y agrega
 `limitInputChannels` = 5, por encima de los 4 canales de JPEG y PNG); las pruebas con *fixtures* reales y la T-08 se
 repitieron con esa versión. Los datos del spike original se conservan como se midieron. También quedan aprobados

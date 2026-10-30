@@ -32,7 +32,7 @@ const discoveryOf = (instances: readonly unknown[]): DiscoveryService =>
     getProviders: () => instances.map((instance) => ({ instance }) as InstanceWrapper),
   }) as unknown as DiscoveryService;
 
-describe('WorkerDrain (I-3, ADR-0037)', () => {
+describe('WorkerDrain (I-3, ADR-0038)', () => {
   it('antes del cierre de Nest cierra cada `Worker` de BullMQ (que espera su trabajo activo) y nada más', async () => {
     const closing: string[] = [];
     const drain = new WorkerDrain(

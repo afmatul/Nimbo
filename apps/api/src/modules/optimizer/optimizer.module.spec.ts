@@ -11,7 +11,7 @@ import { OptimizationProcessor } from './infrastructure/optimization.processor';
 
 import { OptimizerModule } from '.';
 
-// ADR-0036: si algo del `api` (su raíz o el barril de `optimizer`) requiriera `sharp`, esta suite no cargaría.
+// ADR-0037: si algo del `api` (su raíz o el barril de `optimizer`) requiriera `sharp`, esta suite no cargaría.
 jest.mock('sharp', () => {
   throw new Error('El `api` no carga `sharp`.');
 });
@@ -34,7 +34,7 @@ const tokensOf = (module: DynamicModule): unknown[] =>
     typeof provider === 'function' ? provider : provider.provide,
   );
 
-describe('módulos de `optimizer` (plan 021 §2, ADR-0036)', () => {
+describe('módulos de `optimizer` (plan 021 §2, ADR-0037)', () => {
   it('el `api` calcula y consulta y encola en `optimization`, sin optimizador, flujo ni procesador', () => {
     const tokens = tokensOf(OptimizerModule.forRoot(API_ENV, { storage: STORAGE }));
 

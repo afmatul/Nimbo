@@ -1,6 +1,6 @@
 // `HEALTHCHECK` de la imagen `nimbo-worker` (CA-23): consulta `/health/ready` (Redis) del proceso y sale con `1`
 // si no responde `200`. Lo ejecuta `node dist/healthcheck.js [VARIABLE]` dentro del contenedor: la misma imagen corre
-// el `worker` general (`WORKER_PORT`, por omisión) y el `worker-optimizer` (`WORKER_OPTIMIZER_PORT`, ADR-0037).
+// el `worker` general (`WORKER_PORT`, por omisión) y el `worker-optimizer` (`WORKER_OPTIMIZER_PORT`, ADR-0038).
 const DEFAULT_PORTS: Readonly<Record<string, number>> = {
   WORKER_PORT: 3001,
   WORKER_OPTIMIZER_PORT: 3003,

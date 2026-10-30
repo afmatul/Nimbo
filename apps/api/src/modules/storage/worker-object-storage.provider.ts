@@ -11,7 +11,7 @@ import {
 } from './infrastructure/minio-storage.adapter';
 
 /**
- * MinIO para los dos procesos `worker` (ADR-0037): firma contra el endpoint interno porque ninguno tiene
+ * MinIO para los dos procesos `worker` (ADR-0038): firma contra el endpoint interno porque ninguno tiene
  * `MINIO_PUBLIC_ENDPOINT` ni emite URLs (plan 005 §5); solo leen, suben y borran objetos.
  */
 export const WORKER_OBJECT_STORAGE_PROVIDER: Provider = {

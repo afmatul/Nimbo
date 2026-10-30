@@ -80,7 +80,7 @@ const onlyImports = (from, allowed) => ({
 export default [
   ...Object.entries(ALLOWED).map(([from, allowed]) => onlyImports(from, allowed)),
   // Composición de los worker: de `storage` solo `StorageWorkerModule` (plan 005 §3b) o, en `worker-optimizer`,
-  // `StorageFacadesWorkerModule` (ADR-0037), y solo desde `storage/index.ts`.
+  // `StorageFacadesWorkerModule` (ADR-0038), y solo desde `storage/index.ts`.
   {
     files: [
       'apps/api/src/worker.module.ts',

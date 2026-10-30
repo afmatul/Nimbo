@@ -5,7 +5,7 @@
 | Estado | Aceptado (2026-09-26, Adrián) |
 | Fecha | 2026-09-15 |
 | Decisores | Adrián (architect), equipo Nimbo |
-| Specs relacionadas | 000 (lo materializa); todas las posteriores; **enmendado por ADR-0037** (021: dos procesos `worker`) |
+| Specs relacionadas | 000 (lo materializa); todas las posteriores; **enmendado por ADR-0038** (021: dos procesos `worker`) |
 
 ## Contexto
 
@@ -61,10 +61,10 @@ resulta costoso (R-3 del plan 000), el punto de entrada del worker puede compila
 - Cómo sabremos si fue un error: si aparece `forwardRef` o un ciclo entre módulos que el lint no pueda resolver, o si
   el worker termina duplicando lógica de la API en lugar de importarla.
 
-## Enmienda (ADR-0037, 2026-10-27)
+## Enmienda (ADR-0038, 2026-10-27)
 
 El `worker` pasa a ser **dos procesos con la misma imagen** `nimbo-worker`: el general (`worker.main.ts`, todas las
 colas salvo `optimization`) y `worker-optimizer` (`worker-optimizer.main.ts`, solo `optimization`). Cada uno tiene su
 salud interna, su `HEALTHCHECK` y su límite de memoria. La separación por proceso e imagen y el lint de las raíces se
 mantienen; la imagen de los `worker` usa base glibc. La actualización concreta a Debian 13 (`trixie-slim`) y
-sharp 0.35.5/libvips 8.18.7 fue aceptada por Matul/Adrián el 2026-10-28, después de `7f9285ff` (ADR-0037).
+sharp 0.35.5/libvips 8.18.7 fue aceptada por Matul/Adrián el 2026-10-28, después de `7f9285ff` (ADR-0038).

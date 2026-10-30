@@ -10,7 +10,7 @@ import type { IIntegrityValidator } from '../../application/ports/i-integrity-va
 import { IMAGE_OPTIMIZER_CONFIG } from './image.optimizer';
 import type { ImageOptimizerConfig } from './image.optimizer';
 
-/** EXIF solo se exige si existía; no se promete conservar el resto byte a byte (ADR-0036). */
+/** EXIF solo se exige si existía; no se promete conservar el resto byte a byte (ADR-0037). */
 const sameMetadata = (before: Metadata, after: Metadata): boolean =>
   (before.format === 'jpeg' || before.format === 'png') &&
   before.format === after.format &&

@@ -23,7 +23,7 @@ export class EstimateStaleError extends ConflictError {
 }
 
 /**
- * `sharp` no pudo leer la imagen: firma desconocida, cabecera o datos dañados, JPEG truncado (CA-5, ADR-0036). El
+ * `sharp` no pudo leer la imagen: firma desconocida, cabecera o datos dañados, JPEG truncado (CA-5, ADR-0037). El
  * resultado es `no_disponible(ilegible)`, sin reintento. Lo lanza `ImageOptimizer` en el `worker`; nunca llega a una
  * respuesta HTTP, por eso no es un `DomainError`. Conserva la causa para la clase del error, nunca su mensaje en el
  * propio (los mensajes de `sharp` no van a las bitácoras, plan 021 §5).

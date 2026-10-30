@@ -29,10 +29,10 @@ const rawOf = async (image: Buffer): Promise<Buffer> => {
     .toBuffer();
 };
 
-describe('ImageOptimizer con `sharp` real (plan 021 §2 y §6, ADR-0036)', () => {
+describe('ImageOptimizer con `sharp` real (plan 021 §2 y §6, ADR-0037)', () => {
   const optimizer = new ImageOptimizer(CONFIG);
 
-  it('ADR-0036: un hilo de libvips y sin caché', () => {
+  it('ADR-0037: un hilo de libvips y sin caché', () => {
     expect(concurrency()).toBe(1);
     expect(cache().items.max).toBe(0);
   });
@@ -68,7 +68,7 @@ describe('ImageOptimizer con `sharp` real (plan 021 §2 y §6, ADR-0036)', () =>
       expect(result.length).toBeLessThan(original.length);
     });
 
-    it('ADR-0036: sin EXIF en la entrada no lo agrega (ni orientación 1) y sin perfil no inventa uno', async () => {
+    it('ADR-0037: sin EXIF en la entrada no lo agrega (ni orientación 1) y sin perfil no inventa uno', async () => {
       const result = await optimizer.optimize(await jpeg());
       const after = await sharp(result).metadata();
 

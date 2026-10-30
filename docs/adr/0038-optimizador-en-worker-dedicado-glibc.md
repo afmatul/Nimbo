@@ -1,4 +1,4 @@
-# ADR-0037 — El optimizador corre en un proceso `worker-optimizer` propio, sobre una imagen glibc
+# ADR-0038 — El optimizador corre en un proceso `worker-optimizer` propio, sobre una imagen glibc
 
 | Campo | Valor |
 |---|---|
@@ -6,10 +6,10 @@
 | Enmiendas posteriores | Runtime concreto y entorno físico mínimo aceptados por Matul/Adrián el 2026-10-28, después de `7f9285ff` |
 | Fecha | 2026-10-27 |
 | Decisores | Abel (021), `architect` (dos revisiones), Adrián (aprobación) |
-| Specs relacionadas | 021 (T-08, T-10), 019 (indexación), 021b (Ghostscript en la imagen); **enmienda ADR-0001 y ADR-0036**; no reemplaza ADR-0017; cierra PD-128 |
+| Specs relacionadas | 021 (T-08, T-10), 019 (indexación), 021b (Ghostscript en la imagen); **enmienda ADR-0001 y ADR-0037**; no reemplaza ADR-0017; cierra PD-128 |
 
 ## Contexto
-ADR-0036 puso `sharp` en el único proceso `worker` (ADR-0001), con concurrencia 1 por cola y 768 MB por contenedor, y
+ADR-0037 puso `sharp` en el único proceso `worker` (ADR-0001), con concurrencia 1 por cola y 768 MB por contenedor, y
 dejó para la T-08 de 021 medir la memoria real. La T-08 se midió con el `worker` real compilado para Linux, en un
 contenedor de cgroup v2 con `--memory=768m --memory-swap=768m` (sin swap del contenedor), bajo glibc y `MALLOC_ARENA_MAX=2`:
 
@@ -39,7 +39,7 @@ píxeles dejaría fuera fotos comunes y no protege la indexación. El `worker` t
    una raíz de composición.
 4. **D — Recorte temprano de la indexación de 019** (cortar antes de construir todos los segmentos): reduce el pico de
    indexación, pero cambia 019, que no es de esta spec; queda como pendiente (PD) y no resuelve el aislamiento de fallos.
-5. **E/F — Otra librería o herramientas por formato** (opción 2 de ADR-0036): rehacer el optimizador sin evidencia de
+5. **E/F — Otra librería o herramientas por formato** (opción 2 de ADR-0037): rehacer el optimizador sin evidencia de
    que libvips sea el problema; los picos son de la combinación, no de una fuga.
 
 Sobre la base de la imagen: **musl (Alpine, plan 000 §6.5)** frente a **glibc (`bookworm-slim`)**. `sharp` publica
@@ -87,7 +87,7 @@ asignador no se midió); además `ldd`, Ghostscript por `apt` y los binarios pre
 ## Relación con otros ADR
 - **ADR-0001**: se mantiene el monolito modular y la separación por proceso e imagen; pasa de **un** proceso `worker` a
   **dos procesos con la misma imagen**.
-- **ADR-0036**: `sharp` sigue siendo la librería y se carga solo en `worker-optimizer`, no en «el `worker`». Su nota
+- **ADR-0037**: `sharp` sigue siendo la librería y se carga solo en `worker-optimizer`, no en «el `worker`». Su nota
   sobre la imagen (PD-128) queda resuelta: base glibc.
 - **ADR-0017** no cambia: solo menciona Alpine como restricción de `argon2` en la imagen del `api`.
 
@@ -110,7 +110,7 @@ Ghostscript provisto por Trixie y `MALLOC_ARENA_MAX=2`. Antes de esa respuesta l
   `worker` procesan PDF no confiables con Ghostscript (019, 021b), así que la imagen pasa a trixie (glibc 2.41). El resto
   de la decisión no cambia: glibc en todas las etapas, una imagen y dos comandos, `MALLOC_ARENA_MAX=2`, 768 MiB sin swap.
   El `api` sigue en Alpine.
-- **`sharp` 0.35.5 (libvips 8.18.7)** en vez de 0.34.5 / 8.17.3 (ADR-0036, enmienda de la misma fecha).
+- **`sharp` 0.35.5 (libvips 8.18.7)** en vez de 0.34.5 / 8.17.3 (ADR-0037, enmienda de la misma fecha).
 - Por los dos cambios, la T-08 se volvió a medir sobre la imagen nueva (registro de la spec 021, §10): general 543,0 MiB
   (29,3 % libre) y optimizador 478,0 MiB (37,8 %) en el escenario C; con ONLYOFFICE, 527,4 y 466,5 MiB y `MemAvailable`
   mínimo del host 71,0 %; OOM 0. Los picos no cambian de forma significativa.
@@ -124,11 +124,11 @@ Ghostscript provisto por Trixie y `MALLOC_ARENA_MAX=2`. Antes de esa respuesta l
   `OPTIMIZER_TIMEOUT_MS` + E/S).
 - **Trabajo atascado:** si el proceso muere con un trabajo activo más de `maxStalledCount` veces, BullMQ lo falla con
   `UnrecoverableError` aunque queden intentos; `OptimizationProcessor` lo trata como terminal y lo deja `fallida`.
-- **Entorno propio (PD-135, partes 1 a 3):** `worker-optimizer` valida `workerOptimizerEnvSchema` (base común, MinIO,
+- **Entorno propio (PD-140, partes 1 a 3):** `worker-optimizer` valida `workerOptimizerEnvSchema` (base común, MinIO,
   tiempo límite, píxeles, umbrales, calidad JPEG y su puerto): 17 variables consumidas. El general no valida variables del
   optimizador. `OPTIMIZER_MAX_ATTEMPTS` pertenece solo al `api`, que lo guarda al encolar; el consumidor usa `job.opts.attempts`.
   Las partes 1 a 3 precedieron a la aprobación de la inyección física mínima; su implementación posterior cierra
-  la parte 4 de PD-135 como se registra abajo.
+  la parte 4 de PD-140 como se registra abajo.
 - **`storage`:** `StorageFacadesWorkerModule` registra solo MinIO, la escritura de versiones (`FILE_VERSION_PROVIDERS`) y
   la fachada; el ciclo de carga queda en `StorageWorkerModule`.
 - **Imagen:** el build comprueba en la etapa final `sharp`/libvips, Ghostscript, glibc y `MALLOC_ARENA_MAX`.
@@ -142,5 +142,5 @@ Ghostscript provisto por Trixie y `MALLOC_ARENA_MAX=2`. Antes de esa respuesta l
   la variable auxiliar no se entrega al proceso. Redis y MinIO usan `redis:6379` y `minio:9000`, con credenciales S3 de aplicación.
   No se inyectan credenciales de migración, root, SMTP, Gemini, JWT ni ONLYOFFICE.
 - **No hay enmienda ni excepción a CA-19 de 000:** `.env.example` es el catálogo completo del sistema; cada proceso
-  recibe su mínimo necesario. PD-135 queda cerrado. El enlace amplio de billing es una deuda independiente (PD-139).
+  recibe su mínimo necesario. PD-140 queda cerrado. El enlace amplio de billing es una deuda independiente (PD-144).
 - T-09 sigue siendo el recorrido humano pendiente de Abel; `/review 021` se realiza después de ese recorrido y estos ajustes.

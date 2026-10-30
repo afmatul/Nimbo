@@ -50,7 +50,7 @@ const configOf = (env: OptimizerEnv): OptimizerConfig => ({
  * Módulo `optimizer` del `api` (M7, plan 021 §2): calcular el ahorro y consultar el estado (`OptimizerController`) con
  * el estado de negocio en `optimizacion`; el cálculo se encola en `optimization`. `SharedModule` (global) aporta
  * reloj, transacciones y límite de tasa; la raíz enlaza `I_PLAN_LIMITS_PROVIDER`. El `api` nunca carga `sharp`
- * (ADR-0036): el procesamiento vive en `OptimizerWorkerModule`.
+ * (ADR-0037): el procesamiento vive en `OptimizerWorkerModule`.
  */
 @Module({})
 export class OptimizerModule {

@@ -4,7 +4,7 @@ import { WorkerDrainModule } from './worker-drain.module';
 import { WORKER_OPTIMIZER_QUEUES, WorkerOptimizerModule } from './worker-optimizer.module';
 import { WORKER_QUEUES } from './worker.module';
 
-describe('WorkerOptimizerModule (ADR-0037)', () => {
+describe('WorkerOptimizerModule (ADR-0038)', () => {
   it('consume solo la cola `optimization`', () => {
     expect(WORKER_OPTIMIZER_QUEUES).toEqual(['optimization']);
   });

@@ -3,8 +3,8 @@ import { startWorker } from './worker-bootstrap';
 import { WORKER_OPTIMIZER_QUEUES, WorkerOptimizerModule } from './worker-optimizer.module';
 
 /**
- * Arranque del `worker-optimizer` (ADR-0037): misma imagen que el `worker` general, otro comando; escucha su salud
- * interna en `WORKER_OPTIMIZER_PORT` y valida solo su propio entorno (PD-135).
+ * Arranque del `worker-optimizer` (ADR-0038): misma imagen que el `worker` general, otro comando; escucha su salud
+ * interna en `WORKER_OPTIMIZER_PORT` y valida solo su propio entorno (PD-140).
  */
 void startWorker({
   name: 'worker-optimizer',

@@ -72,7 +72,7 @@ const definitionsAgree = (
   right: Record<string, unknown>,
 ): boolean => !Object.hasOwn(left, key) || !Object.hasOwn(right, key) || left[key] === right[key];
 
-describe('MinIO compartido por los tres procesos (005 T-20, ADR-0037)', () => {
+describe('MinIO compartido por los tres procesos (005 T-20, ADR-0038)', () => {
   it.each(MINIO_KEYS)(
     'RN-2: `%s` tiene una sola definición, compuesta por los tres esquemas',
     (key) => {
@@ -409,15 +409,15 @@ describe('optimizador de imágenes (021 plan §6)', () => {
     expect(quality.safeParse('100').success).toBe(true);
   });
 
-  it('ADR-0037: solo el schema del `api` declara tope de bytes, consulta y tasa', () => {
+  it('ADR-0038: solo el schema del `api` declara tope de bytes, consulta y tasa', () => {
     expect(declaredIn('OPTIMIZER_MAX_FILE_BYTES')).toEqual(['api']);
     expect(declaredIn('OPTIMIZER_POLL_INTERVAL_MS')).toEqual(['api']);
     expect(declaredIn('RATE_LIMIT_OPTIMIZER_PER_MINUTE')).toEqual(['api']);
   });
 });
 
-describe('worker del optimizador (ADR-0037)', () => {
-  /** Lo único que lee su composición (PD-135): la base común, MinIO, el optimizador y su puerto de salud. */
+describe('worker del optimizador (ADR-0038)', () => {
+  /** Lo único que lee su composición (PD-140): la base común, MinIO, el optimizador y su puerto de salud. */
   const OPTIMIZER_ENV = {
     NODE_ENV: 'production',
     APP_ENV: 'staging',
@@ -429,7 +429,7 @@ describe('worker del optimizador (ADR-0037)', () => {
     MINIO_SECRET_KEY: 'nimbo-secret',
   };
 
-  it('PD-135: el esquema propio declara solo la base común, MinIO, el optimizador y su puerto', () => {
+  it('PD-140: el esquema propio declara solo la base común, MinIO, el optimizador y su puerto', () => {
     expect(Object.keys(workerOptimizerEnvSchema.shape).sort()).toEqual(
       [
         'NODE_ENV',
@@ -453,7 +453,7 @@ describe('worker del optimizador (ADR-0037)', () => {
     );
   });
 
-  it('PD-135: arranca en staging sin SMTP, `MAIL_FROM` ni Gemini (un correo mal configurado no lo tumba)', () => {
+  it('PD-140: arranca en staging sin SMTP, `MAIL_FROM` ni Gemini (un correo mal configurado no lo tumba)', () => {
     const result = loadEnv(workerOptimizerEnvSchema, {
       ...OPTIMIZER_ENV,
       SMTP_TLS: 'invalido',
@@ -475,7 +475,7 @@ describe('worker del optimizador (ADR-0037)', () => {
     'OPTIMIZER_MIN_SAVED_BYTES',
     'OPTIMIZER_JPEG_QUALITY',
     'WORKER_OPTIMIZER_PORT',
-  ])('PD-135: `%s=0` sí impide validar el optimizador', (key) => {
+  ])('PD-140: `%s=0` sí impide validar el optimizador', (key) => {
     const result = loadEnv(workerOptimizerEnvSchema, {
       ...OPTIMIZER_ENV,
       [key]: '0',

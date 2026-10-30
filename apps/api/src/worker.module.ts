@@ -15,7 +15,7 @@ import type { WorkerEnv } from './worker-base';
  * `usage-reconcile`, `subscription-reconcile`, `invoice-retry`, `subscription-renewal`, `indexing` e `index-reconcile` se escriben literales: el `worker` importa de `storage`,
  * `billing` e `intelligence` solo sus módulos del `worker` (plan 005 §3b, plan 009 §2, plan 019 §2) y `worker.module.spec.ts` fija
  * los nombres. `index-status` no está: el `worker` solo la llena y la consume el `api` (019 D-2). `optimization` tampoco:
- * la consume solo el proceso `worker-optimizer` (ADR-0037).
+ * la consume solo el proceso `worker-optimizer` (ADR-0038).
  */
 export const WORKER_QUEUES = [
   PING_QUEUE,
@@ -40,7 +40,7 @@ export const WORKER_QUEUES = [
  * anuncia cada versión vigente (RN-11); en el `worker` aún nadie registra versiones ni escucha (plan 019 §7 punto 7).
  * La indexación de 019 (cola `indexing`; avisos a `index-status`) y su conciliación (`index-reconcile`, RN-12) las monta
  * `IntelligenceWorkerModule` con la misma `storage`. El optimizador de imágenes (021) **no** está aquí: corre en su
- * propio proceso, `worker-optimizer` (ADR-0037), y esta raíz nunca carga `sharp`.
+ * propio proceso, `worker-optimizer` (ADR-0038), y esta raíz nunca carga `sharp`.
  */
 @Module({})
 export class WorkerModule {

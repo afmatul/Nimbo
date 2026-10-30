@@ -1,7 +1,7 @@
 # Compose base (spec 000, CA-3): el mismo archivo en local y staging.
 # Local: `docker compose up -d` carga automáticamente `compose.override.yml` (puertos, Mailpit, apps por perfil).
 # Staging: `COMPOSE_FILE=compose.yml:compose.staging.yml` (imágenes por SHA, Traefik con TLS, sin puertos internos).
-# `WORKER_PORT` y `WORKER_OPTIMIZER_PORT` nunca aparecen en `ports:` (CA-23, ADR-0037). ONLYOFFICE solo con
+# `WORKER_PORT` y `WORKER_OPTIMIZER_PORT` nunca aparecen en `ports:` (CA-23, ADR-0038). ONLYOFFICE solo con
 # `--profile onlyoffice` (CA-2).
 name: nimbo
 
@@ -105,7 +105,7 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-    # Sin swap del contenedor (`memswap_limit` = `mem_limit`, ADR-0037): al tope se reinicia, no se degrada.
+    # Sin swap del contenedor (`memswap_limit` = `mem_limit`, ADR-0038): al tope se reinicia, no se degrada.
     mem_limit: ${WORKER_MEM_LIMIT:-768m}
     memswap_limit: ${WORKER_MEM_LIMIT:-768m}
     restart: unless-stopped
@@ -115,12 +115,12 @@ services:
     init: true
     stop_grace_period: 90s
 
-  # Optimizador de imágenes (021, ADR-0037): la misma imagen que `worker`, otro comando; consume solo `optimization`.
+  # Optimizador de imágenes (021, ADR-0038): la misma imagen que `worker`, otro comando; consume solo `optimization`.
   # Su memoria y sus fallos quedan aislados del `worker` general. Salud interna en `WORKER_OPTIMIZER_PORT`.
   worker-optimizer:
     image: ${WORKER_IMAGE:-ghcr.io/afmatul/nimbo-worker}:${IMAGE_TAG:-latest}
     command: ['node', 'dist/worker-optimizer.main.js']
-    # Catálogo completo en `.env.example`; inyección solo del schema de este proceso (PD-135).
+    # Catálogo completo en `.env.example`; inyección solo del schema de este proceso (PD-140).
     # La contraseña de aplicación se interpola en la URL, no se inyecta como variable auxiliar ni se usa el rol dueño.
     environment:
       NODE_ENV: ${NODE_ENV}

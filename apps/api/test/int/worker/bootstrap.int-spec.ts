@@ -149,7 +149,7 @@ describe('bootstrap del worker (CA-18, CA-21)', () => {
     ]);
   });
 
-  /** Lo que el `worker` general rechaza (CA-20, CA-21) y el `worker-optimizer` no lee (PD-135). */
+  /** Lo que el `worker` general rechaza (CA-20, CA-21) y el `worker-optimizer` no lee (PD-140). */
   const BROKEN_MAIL = { SMTP_HOST: '', SMTP_TLS: 'invalido', MAIL_FROM: '' };
   const runOptimizerSync = (env: NodeJS.ProcessEnv) =>
     spawnSync(process.execPath, [compiledEntry('worker-optimizer.main')], {
@@ -164,7 +164,7 @@ describe('bootstrap del worker (CA-18, CA-21)', () => {
       .filter((line) => line.startsWith('{'))
       .map((line) => JSON.parse(line) as Record<string, unknown>);
 
-  it('ADR-0037, PD-135: el `worker-optimizer` escucha en `WORKER_OPTIMIZER_PORT` (no en `WORKER_PORT`), sin SMTP válido, y consume solo `optimization`', async () => {
+  it('ADR-0038, PD-140: el `worker-optimizer` escucha en `WORKER_OPTIMIZER_PORT` (no en `WORKER_PORT`), sin SMTP válido, y consume solo `optimization`', async () => {
     const generalPort = await freePort();
     const optimizerPort = await freePort();
     const env = {
@@ -187,7 +187,7 @@ describe('bootstrap del worker (CA-18, CA-21)', () => {
     expect(started.queues).toEqual(['optimization']);
   });
 
-  it('PD-135: una variable del optimizador inválida impide arrancar: exit ≠ 0 y una sola línea `config.invalid`', () => {
+  it('PD-140: una variable del optimizador inválida impide arrancar: exit ≠ 0 y una sola línea `config.invalid`', () => {
     const result = runOptimizerSync({ ...process.env, OPTIMIZER_JPEG_QUALITY: '0' });
 
     expect(result.status).not.toBe(0);

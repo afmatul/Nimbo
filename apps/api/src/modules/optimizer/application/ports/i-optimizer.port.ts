@@ -19,7 +19,7 @@ export interface ImageInspection {
 
 /**
  * Recompresión de imágenes (`IOptimizer` del diagrama; plan 021 §2): aísla `sharp`, una tecnología externa (regla (a) de
- * Art. V.2, ADR-0036). Solo el `worker` lo instancia. Una imagen dañada o con otro formato lanza `UnreadableImageError`
+ * Art. V.2, ADR-0037). Solo el `worker` lo instancia. Una imagen dañada o con otro formato lanza `UnreadableImageError`
  * (→ `no_disponible(ilegible)`); cualquier otro error (tiempo límite incluido) es transitorio y la cola reintenta.
  */
 export interface IOptimizer {

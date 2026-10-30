@@ -8,7 +8,7 @@ import { FILE_VERSION_PROVIDERS, OPTIMIZABLE_FILE_PROVIDERS } from './upload-lif
 import { WORKER_OBJECT_STORAGE_PROVIDER } from './worker-object-storage.provider';
 
 /**
- * Fachadas de `storage` para un proceso `worker` que no hace mantenimiento de `storage` (ADR-0037): MinIO, la escritura de
+ * Fachadas de `storage` para un proceso `worker` que no hace mantenimiento de `storage` (ADR-0038): MinIO, la escritura de
  * versiones (`FILE_VERSION_PROVIDERS`) y la fachada del optimizador, sin el ciclo de carga y **sin** colas, programadores ni
  * procesadores (`upload-cleanup`, `trash-purge`,
  * `usage-reconcile` los consume solo el `worker` general con `StorageWorkerModule`). Lo importa `worker-optimizer`.

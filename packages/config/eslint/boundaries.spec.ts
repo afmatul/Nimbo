@@ -170,7 +170,7 @@ describe('lint boundaries.js: fronteras de storage, access, audit, billing y bac
     expect(boundaryErrors(deep)).toHaveLength(1);
   });
 
-  it('ADR-0037: el `worker-optimizer` importa de `storage` solo `StorageFacadesWorkerModule`, y el general no', async () => {
+  it('ADR-0038: el `worker-optimizer` importa de `storage` solo `StorageFacadesWorkerModule`, y el general no', async () => {
     const optimizerRoot = 'apps/api/src/worker-optimizer.module.ts';
     const facades = importOf('./modules/storage', 'StorageFacadesWorkerModule');
 

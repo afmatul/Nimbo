@@ -71,27 +71,27 @@ Secreto = nunca en el repositorio, vacío en `.env.example` de staging, redactad
 | `GHOSTSCRIPT_BIN` | | ✓ | | | | `gs` | 019 D-1: ejecutable de Ghostscript para el texto de los PDF; en Windows, `gswin64c` |
 | `GEMINI_API_KEY` | | ✓ | | | ✓ | — | 019 RN-9: clave de embeddings; solo la valida y consume el general, nunca el navegador. `env_file` no limita su inyección física. Sin ella: `fallido/proveedor_no_disponible` (RNF-09) |
 | `GEMINI_EMBEDDING_MODEL` | | ✓ | | | | `gemini-embedding-001` | 019 (ADR-0007): modelo de embeddings, vectorizado a 768 dimensiones (ADR-0003) |
-| `OPTIMIZER_MAX_FILE_BYTES` | ✓ | | | | | `40000000` | 021 RN-8, CA-5: tope de bytes optimizable (40 MB, medido en el spike de ADR-0036, plan §6 B); por encima, `no_disponible(tamano)` |
+| `OPTIMIZER_MAX_FILE_BYTES` | ✓ | | | | | `40000000` | 021 RN-8, CA-5: tope de bytes optimizable (40 MB, medido en el spike de ADR-0037, plan §6 B); por encima, `no_disponible(tamano)` |
 | `OPTIMIZER_MAX_ATTEMPTS` | ✓ | | | | | `3` | Solo el `api`: intentos al encolar y caducidad; el consumidor usa `job.opts.attempts` |
 | `OPTIMIZER_TIMEOUT_MS` | ✓ | | | | | `100000` | Definición compartida por el `api` (caducidad: intentos × 3 × tiempo + 5 min) y `worker-optimizer` (sharp); no la valida el general |
 | `OPTIMIZER_POLL_INTERVAL_MS` | ✓ | | | | | `3000` | 021 RN-10: cada cuánto la ficha vuelve a consultar una optimización en curso (`pollAfterMs`) |
 | `RATE_LIMIT_OPTIMIZER_PER_MINUTE` | ✓ | | | | | `10` | 021 RNF-07: calcular y optimizar, por cuenta |
 | `OPTIMIZER_MAX_PIXELS` | | | | | | `36000000` | Solo valida `worker-optimizer`: píxeles decodificados; por encima, `no_disponible(pixeles)` (021 RN-8, CA-5) |
 | `OPTIMIZER_MIN_SAVED_PERCENT` / `OPTIMIZER_MIN_SAVED_BYTES` | | | | | | `20` / `1000000` | Solo valida `worker-optimizer`: se exigen ambos umbrales; porcentaje 1–99 (021 RN-2) |
-| `OPTIMIZER_JPEG_QUALITY` | | | | | | `80` | Solo valida `worker-optimizer`: calidad JPEG con mozjpeg, 1–100 (ADR-0036) |
-| `API_MEM_LIMIT`, `WORKER_MEM_LIMIT`, `WORKER_OPTIMIZER_MEM_LIMIT` | | | | ✓ | | `768m` | Staging; en demos con ONLYOFFICE solo `API_MEM_LIMIT` baja a `512m` (R-6). Los dos `worker` quedan en 768m con `memswap_limit` igual (sin swap del contenedor; ADR-0037) |
-| `MALLOC_ARENA_MAX` | | | | | | `2` | Runtime glibc de ambos workers, no Zod: fijada en la imagen (ADR-0037); limita arenas y memoria retenida |
+| `OPTIMIZER_JPEG_QUALITY` | | | | | | `80` | Solo valida `worker-optimizer`: calidad JPEG con mozjpeg, 1–100 (ADR-0037) |
+| `API_MEM_LIMIT`, `WORKER_MEM_LIMIT`, `WORKER_OPTIMIZER_MEM_LIMIT` | | | | ✓ | | `768m` | Staging; en demos con ONLYOFFICE solo `API_MEM_LIMIT` baja a `512m` (R-6). Los dos `worker` quedan en 768m con `memswap_limit` igual (sin swap del contenedor; ADR-0038) |
+| `MALLOC_ARENA_MAX` | | | | | | `2` | Runtime glibc de ambos workers, no Zod: fijada en la imagen (ADR-0038); limita arenas y memoria retenida |
 | `COMPOSE_FILE` | | | | ✓ | | — | Solo staging: `compose.yml:compose.staging.yml` |
 
 Cada raíz publica en `ENV` el objeto que validó con su schema; `SharedModule` consume solo la base común y
 `MinioConfigModule` las cinco claves de MinIO. Ambos workers necesitan MinIO; el general no valida ninguna clave `OPTIMIZER_*`.
 
-### Entorno del optimizador: catálogo, inyección, schema y consumo (PD-135)
+### Entorno del optimizador: catálogo, inyección, schema y consumo (PD-140)
 
 - **A. Catálogo:** `.env.example` reúne las variables de todos los procesos; CA-19 de 000 exige completitud del catálogo,
   no entregar todas las claves a cada proceso. No hay enmienda ni excepción de CA.
 - **B. Inyección física mínima implementada y aprobada:** Matul/Adrián aprobó la parte 4 el 2026-10-28 después de `7f9285ff`.
-  `worker-optimizer` declara solo `environment`, sin `env_file`; recibe las 17 claves del schema. PD-135 está cerrado.
+  `worker-optimizer` declara solo `environment`, sin `env_file`; recibe las 17 claves del schema. PD-140 está cerrado.
   Los `ENV` de imagen (p. ej. `MALLOC_ARENA_MAX` y `GHOSTSCRIPT_BIN`) y las variables del sistema no son claves del servicio.
 - **C. Schema mínimo implementado:** `workerOptimizerEnvSchema` declara exactamente las 17 claves de la tabla siguiente.
 - **D. Consumo real:** `workerBaseImports` compone la base común y MinIO; `OptimizerWorkerModule` transforma solo
@@ -165,7 +165,7 @@ PDF falla y se reintenta; el resto de los tipos y del sistema siguen igual.
 
 - **Linux (CI, Debian/Ubuntu)**: `sudo apt-get install -y ghostscript`; el binario es `gs` (valor por defecto de
   `GHOSTSCRIPT_BIN`). CI lo instala antes de `pnpm test:int` (`.github/workflows/ci.yml`).
-- **Imagen `nimbo-worker`** (ADR-0037, PD-128): `apps/worker/Dockerfile` lo instala por `apt` sobre `node:22.23.3-trixie-slim` (Debian 13: la versión de Trixie al
+- **Imagen `nimbo-worker`** (ADR-0038, PD-128): `apps/worker/Dockerfile` lo instala por `apt` sobre `node:22.23.3-trixie-slim` (Debian 13: la versión de Trixie al
   construir la imagen, con parches de seguridad que Debian 12 no tiene; el build comprueba `gs --version`)
   y fija `GHOSTSCRIPT_BIN=gs`. La base Trixie, sharp 0.35.5/libvips 8.18.7, Ghostscript de Trixie y arenas 2 están
   aceptados por Matul/Adrián desde el 2026-10-28, después de `7f9285ff`; C + glibc mantiene su aprobación del 2026-10-27.
@@ -179,7 +179,7 @@ PDF falla y se reintenta; el resto de los tipos y del sistema siguen igual.
 - **Pruebas**: `test/int/intelligence/pdf-extraction.int-spec.ts` usa `GHOSTSCRIPT_BIN` del entorno de la terminal (las
   pruebas no leen `.env`; si falta, prueba `gs` o, en Windows, `gswin64c`). En CI es obligatoria; en una máquina sin
   Ghostscript se omite y lo dice el resumen de Jest.
-- **Imagen del `worker`**: existe desde 021 T-10 (PD-128 cerrado); CI todavía no la construye (PD-137).
+- **Imagen del `worker`**: existe desde 021 T-10 (PD-128 cerrado); CI todavía no la construye (PD-142).
 
 ## 4. Arranque y salud
 
@@ -245,11 +245,11 @@ El worker escucha en `WORKER_PORT` (3001) **sin prefijo `/api/v1`** porque no es
 que consulta `http://127.0.0.1:${WORKER_PORT}/health/ready` y sale con `1` si no responde `200`; con
 `--interval=20s --timeout=5s --retries=2 --start-period=30s` el contenedor pasa a no sano en menos de 60 s.
 
-`worker-optimizer` (ADR-0037) usa la misma imagen con `node dist/worker-optimizer.main.js` y escucha en
+`worker-optimizer` (ADR-0038) usa la misma imagen con `node dist/worker-optimizer.main.js` y escucha en
 `WORKER_OPTIMIZER_PORT` (3003), tampoco publicado. Compose sobrescribe su `healthcheck` con
 `node dist/healthcheck.js WORKER_OPTIMIZER_PORT` (el argumento es el nombre de la variable que lleva el puerto). En
 local, `pnpm dev` arranca los dos procesos (`apps/worker`: `dev:worker` y `dev:worker-optimizer` de `api`).
-`worker-optimizer` valida solo su entorno (`workerOptimizerEnvSchema`, PD-135): un SMTP o un Gemini mal configurados no
+`worker-optimizer` valida solo su entorno (`workerOptimizerEnvSchema`, PD-140): un SMTP o un Gemini mal configurados no
 le impiden arrancar.
 
 Cierre: los dos procesos atienden SIGTERM; `WorkerDrainModule` cierra cada `Worker` de BullMQ esperando su trabajo activo

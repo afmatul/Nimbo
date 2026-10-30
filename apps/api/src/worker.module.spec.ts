@@ -3,7 +3,7 @@ import { processorQueuesOf, validWorkerEnv } from '../test/support/processor-que
 import { WorkerDrainModule } from './worker-drain.module';
 import { WORKER_QUEUES, WorkerModule } from './worker.module';
 
-// ADR-0037: el `worker` general nunca carga `sharp` (solo `worker-optimizer`). Si algo de su raíz lo requiriera,
+// ADR-0038: el `worker` general nunca carga `sharp` (solo `worker-optimizer`). Si algo de su raíz lo requiriera,
 // esta suite no cargaría.
 jest.mock('sharp', () => {
   throw new Error('El `worker` general no carga `sharp`.');
@@ -25,7 +25,7 @@ describe('WorkerModule', () => {
     ]);
   });
 
-  it('ADR-0037: los procesadores que registra su composición son exactamente `WORKER_QUEUES`, uno por cola y sin `optimization`', () => {
+  it('ADR-0038: los procesadores que registra su composición son exactamente `WORKER_QUEUES`, uno por cola y sin `optimization`', () => {
     const queues = processorQueuesOf(WorkerModule.forRoot(validWorkerEnv()));
 
     expect([...queues].sort()).toEqual([...WORKER_QUEUES].sort());

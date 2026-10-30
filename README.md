@@ -39,7 +39,7 @@ Resultado esperado (menos de 10 minutos sin contar descargas de imágenes):
 | `http://localhost:8080`                | Panel de Traefik (solo local)                      |
 | `http://localhost:9001`                | Consola de MinIO (`MINIO_ROOT_USER` / `_PASSWORD`) |
 
-Los procesos `worker` y `worker-optimizer` (ADR-0037) escriben la bitácora `worker.started` (con `process`) y su
+Los procesos `worker` y `worker-optimizer` (ADR-0038) escriben la bitácora `worker.started` (con `process`) y su
 `correlationId` al arrancar.
 
 ### Puertos en el host

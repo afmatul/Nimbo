@@ -73,7 +73,7 @@ const toInspection = (metadata: SupportedMetadata, content: Buffer): ImageInspec
 });
 
 /**
- * `IOptimizer` con `sharp` (ADR-0036), solo en el `worker`: un hilo de libvips y sin caché. Inspecciona leyendo la
+ * `IOptimizer` con `sharp` (ADR-0037), solo en el `worker`: un hilo de libvips y sin caché. Inspecciona leyendo la
  * cabecera **sin decodificar** (sin tope: el flujo decide con los píxeles informados). Recomprime en el mismo formato y
  * el mismo espacio de color (un PNG de 16 bits o en grises no pasa a 8 bits ni a RGB), **sin rotar**: `sharp` descarta
  * los metadatos por defecto, así que se pide `keepIccProfile()` siempre y `keepExif()` solo si la entrada trae EXIF; no

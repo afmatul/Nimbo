@@ -245,7 +245,7 @@ describe('loadEnv(workerEnvSchema)', () => {
     'OPTIMIZER_MIN_SAVED_BYTES',
     'OPTIMIZER_JPEG_QUALITY',
     'WORKER_OPTIMIZER_PORT',
-  ])('ADR-0037: `%s=0` no afecta al general ni aparece en su entorno validado', (key) => {
+  ])('ADR-0038: `%s=0` no afecta al general ni aparece en su entorno validado', (key) => {
     const result = loadEnv(workerEnvSchema, { ...VALID_WORKER, [key]: '0' });
 
     expect(result.ok).toBe(true);

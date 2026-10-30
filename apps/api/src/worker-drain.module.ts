@@ -14,7 +14,7 @@ const workerOf = (host: WorkerHost): Worker | null => {
 };
 
 /**
- * Cierre ordenado de los procesos `worker` (I-3, ADR-0037). Nest corre los `onApplicationShutdown` a la vez: el de
+ * Cierre ordenado de los procesos `worker` (I-3, ADR-0038). Nest corre los `onApplicationShutdown` a la vez: el de
  * `@nestjs/bullmq` espera el trabajo activo mientras TypeORM y Redis cierran sus conexiones, y ese trabajo falla al
  * terminar («Driver not Connected»). Aquí, en `beforeApplicationShutdown`, que Nest corre antes, se cierra cada `Worker`
  * de BullMQ (`close()` espera su trabajo activo y no toma otro); después el resto cierra sin trabajos en vuelo.

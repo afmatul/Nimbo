@@ -25,7 +25,7 @@ const STORAGE: DynamicModule = { module: StorageDoubleModule };
 
 const providers = (module: DynamicModule): Provider[] => module.providers ?? [];
 
-describe('OptimizerWorkerModule (plan 021 §2, ADR-0036)', () => {
+describe('OptimizerWorkerModule (plan 021 §2, ADR-0037)', () => {
   it('registra `ImageOptimizer` como `IOptimizer`, el flujo y el procesador, sin el servicio del `api`', () => {
     const module = OptimizerWorkerModule.forRoot(WORKER_ENV, STORAGE);
 

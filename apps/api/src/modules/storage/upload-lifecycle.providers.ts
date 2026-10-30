@@ -37,7 +37,7 @@ import { TrashPurgeQueue } from './infrastructure/trash-purge.queue';
  * La única escritura de versiones (014, 014b): `FileVersionService` registra y `VersionPruner` poda, con sus repositorios,
  * el detector de tipo real y, desde 019, el publicador con que se anuncia cada versión vigente (RN-11, ADR-0019; la raíz
  * de cada proceso carga `EventEmitterModule.forRoot()`). Piden además `IObjectStorage` e `I_PLAN_LIMITS_PROVIDER`, que
- * enlaza cada proceso. Es todo lo que el registro de una optimización necesita de `storage` (021, ADR-0037).
+ * enlaza cada proceso. Es todo lo que el registro de una optimización necesita de `storage` (021, ADR-0038).
  */
 export const FILE_VERSION_PROVIDERS: readonly Provider[] = [
   { provide: I_DOMAIN_EVENT_PUBLISHER, useClass: EventEmitterDomainEventPublisher },
@@ -96,7 +96,7 @@ export const INDEXABLE_FILE_PROVIDERS: readonly Provider[] = [
 
 /**
  * `OptimizableFileGateway` y su registrador (plan 021 §2, PD-130), exportados por `StorageModule` (estimar y ejecutar en
- * el `api`) y por `StorageFacadesWorkerModule` (leer y registrar en el `worker-optimizer`, ADR-0037). Piden
+ * el `api`) y por `StorageFacadesWorkerModule` (leer y registrar en el `worker-optimizer`, ADR-0038). Piden
  * `I_OBJECT_STORAGE`, `I_PLAN_LIMITS_PROVIDER` (enlazado en la raíz) y `FILE_VERSION_PROVIDERS`.
  */
 export const OPTIMIZABLE_FILE_PROVIDERS: readonly Provider[] = [

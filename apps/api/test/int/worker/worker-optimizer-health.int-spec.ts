@@ -38,8 +38,8 @@ const runHealthcheck = (port: number): Promise<number | null> =>
     child.once('error', reject);
   });
 
-/** El `worker-optimizer` (ADR-0037) expone la misma salud interna que el `worker` general, en su propio puerto. */
-describe('salud del worker-optimizer (ADR-0037, CA-23)', () => {
+/** El `worker-optimizer` (ADR-0038) expone la misma salud interna que el `worker` general, en su propio puerto. */
+describe('salud del worker-optimizer (ADR-0038, CA-23)', () => {
   let infra: TestInfra | undefined;
   let testApp: TestApp | undefined;
   let port = 0;
@@ -74,14 +74,14 @@ describe('salud del worker-optimizer (ADR-0037, CA-23)', () => {
     return { app: testApp, containers: infra };
   };
 
-  it('ADR-0037: `GET /health/live` → 200 sin prefijo `/api/v1`', async () => {
+  it('ADR-0038: `GET /health/live` → 200 sin prefijo `/api/v1`', async () => {
     const server = ready().app.app.getHttpServer();
 
     expect((await request(server).get('/health/live')).status).toBe(200);
     expect((await request(server).get('/api/v1/health/live')).status).toBe(404);
   });
 
-  it('ADR-0037: con Redis arriba `GET /health/ready` → 200 y `healthcheck.ts WORKER_OPTIMIZER_PORT` sale 0', async () => {
+  it('ADR-0038: con Redis arriba `GET /health/ready` → 200 y `healthcheck.ts WORKER_OPTIMIZER_PORT` sale 0', async () => {
     const response = await request(ready().app.app.getHttpServer()).get('/health/ready');
 
     expect(response.status).toBe(200);
@@ -89,7 +89,7 @@ describe('salud del worker-optimizer (ADR-0037, CA-23)', () => {
     await expect(runHealthcheck(port)).resolves.toBe(0);
   });
 
-  it('ADR-0037: con Redis detenido → 503 y `healthcheck.ts WORKER_OPTIMIZER_PORT` sale 1', async () => {
+  it('ADR-0038: con Redis detenido → 503 y `healthcheck.ts WORKER_OPTIMIZER_PORT` sale 1', async () => {
     await ready().containers.redis.stop();
 
     const response = await request(ready().app.app.getHttpServer()).get('/health/ready');

@@ -43,10 +43,10 @@ const imageConfigOf = (env: OptimizerWorkerEnv): ImageOptimizerConfig => ({
 });
 
 /**
- * Parte de `optimizer` que corre en el proceso `worker-optimizer` (plan 021 §2, ADR-0037): consume la cola
+ * Parte de `optimizer` que corre en el proceso `worker-optimizer` (plan 021 §2, ADR-0038): consume la cola
  * `optimization` con `OptimizationProcessor` (concurrencia 1) y calcula con `OptimizationRunner` e `ImageOptimizer`
  * (`sharp`, solo aquí). Sin controlador. Se exporta por `worker.ts`, no por `index.ts`: el `api` importa ese barril y así
- * nunca carga el binario nativo de `sharp` (ADR-0036). Recibe el módulo de `storage` que elige su raíz:
+ * nunca carga el binario nativo de `sharp` (ADR-0037). Recibe el módulo de `storage` que elige su raíz:
  * `WorkerOptimizerModule` le pasa `StorageFacadesWorkerModule` (aporta `OptimizableFileGateway`, sin los procesadores de
  * mantenimiento, que son del `worker` general con `StorageWorkerModule`). Estimación y ejecución comparten el
  * optimizador y el validador (plan §6); solo la ejecución entrega el candidato a la fachada para registrarlo.

@@ -25,7 +25,7 @@ const LOCAL_JWT_SECRET_MESSAGE = 'no puede ser el valor de desarrollo de .env.ex
 
 const DEFAULT_API_PORT = 3000;
 const DEFAULT_WORKER_PORT = 3001;
-/** Salud interna del proceso `worker-optimizer` (ADR-0037): otro puerto para que los dos convivan en el host en local. */
+/** Salud interna del proceso `worker-optimizer` (ADR-0038): otro puerto para que los dos convivan en el host en local. */
 const DEFAULT_WORKER_OPTIMIZER_PORT = 3003;
 const DEFAULT_APP_VERSION = 'dev';
 const DEFAULT_MINIO_BUCKET = 'nimbo';
@@ -104,7 +104,7 @@ const DEFAULT_RATE_LIMIT_INDEX_RETRY_PER_MINUTE = 10;
 const DEFAULT_GEMINI_EMBEDDING_MODEL = 'gemini-embedding-001';
 /** Ghostscript en Linux y macOS; en Windows se configura `gswin64c` (019 D-1). */
 const DEFAULT_GHOSTSCRIPT_BIN = 'gs';
-/** Tope de bytes optimizable (021 plan §6 B, medido en el spike de ADR-0036): 40 MB; por encima, `no_disponible`. */
+/** Tope de bytes optimizable (021 plan §6 B, medido en el spike de ADR-0037): 40 MB; por encima, `no_disponible`. */
 const DEFAULT_OPTIMIZER_MAX_FILE_BYTES = 40_000_000;
 /** Intentos de un trabajo de optimización: 1 + 2 reintentos (`architecture.md` §8). */
 const DEFAULT_OPTIMIZER_MAX_ATTEMPTS = 3;
@@ -120,7 +120,7 @@ const DEFAULT_OPTIMIZER_MAX_PIXELS = 36_000_000;
 const DEFAULT_OPTIMIZER_MIN_SAVED_PERCENT = 20;
 /** Ahorro mínimo en bytes (021 plan §6 A, RN-2): 1 MB. */
 const DEFAULT_OPTIMIZER_MIN_SAVED_BYTES = 1_000_000;
-/** Calidad JPEG con mozjpeg (021 plan §6 B, ADR-0036). */
+/** Calidad JPEG con mozjpeg (021 plan §6 B, ADR-0037). */
 const DEFAULT_OPTIMIZER_JPEG_QUALITY = 80;
 const MAX_PERCENT = 100;
 
@@ -212,7 +212,7 @@ export type SharedEnvBase = z.infer<typeof sharedEnvBaseSchema>;
 const workerPortShape = { WORKER_PORT: port(DEFAULT_WORKER_PORT) };
 
 /**
- * Puerto de salud del proceso `worker-optimizer` (ADR-0037), sin publicar nunca (CA-23). Solo lo lee su entrypoint;
+ * Puerto de salud del proceso `worker-optimizer` (ADR-0038), sin publicar nunca (CA-23). Solo lo lee su entrypoint;
  * el `api` no lo declara.
  */
 const workerOptimizerPortShape = { WORKER_OPTIMIZER_PORT: port(DEFAULT_WORKER_OPTIMIZER_PORT) };
@@ -537,7 +537,7 @@ const refineWorkerEnv = (
 export const workerEnvSchema = workerEnvObjectSchema.superRefine(refineWorkerEnv);
 
 /**
- * Entorno del proceso `worker-optimizer` (ADR-0037, PD-135): solo lo que su composición lee. La base común (registro,
+ * Entorno del proceso `worker-optimizer` (ADR-0038, PD-140): solo lo que su composición lee. La base común (registro,
  * base de datos, Redis), MinIO, el optimizador y su puerto de salud; sin SMTP, Gemini, indexación ni configuración de
  * mantenimiento de storage/billing. Sus variables ajenas no le impiden arrancar. Sin reglas entre variables.
  */

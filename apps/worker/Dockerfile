@@ -1,7 +1,7 @@
-# Imagen `nimbo-worker` (plan 000 §6.5, ADR-0037, PD-128). Contexto = raíz del repositorio.
+# Imagen `nimbo-worker` (plan 000 §6.5, ADR-0038, PD-128). Contexto = raíz del repositorio.
 # Un solo artefacto para los dos procesos `worker`: el general (`CMD` por omisión) y el `worker-optimizer`
 # (`node dist/worker-optimizer.main.js`); solo cambia el comando. Todas las etapas usan la misma base glibc
-# (`trixie-slim`, ADR-0037): `node_modules` y binarios nativos (`sharp`/libvips, `argon2`) nunca cruzan de libc.
+# (`trixie-slim`, ADR-0038): `node_modules` y binarios nativos (`sharp`/libvips, `argon2`) nunca cruzan de libc.
 # Debian 13 porque su Ghostscript (10.05.1, con parches de seguridad) corrige CVE que Debian 12 deja abiertos.
 ARG NODE_IMAGE=node:22.23.3-trixie-slim
 

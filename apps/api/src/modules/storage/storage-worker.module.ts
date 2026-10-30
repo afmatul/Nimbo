@@ -153,7 +153,7 @@ export class StorageWorkerModule {
         UsageReconcileProcessor,
       ],
       // 009 (decisión 1): `invoice-retry` sube la factura PDF desde el `worker`. 019: la fachada de la indexación. La
-      // del optimizador vive en `StorageFacadesWorkerModule`, que importa el proceso `worker-optimizer` (ADR-0037).
+      // del optimizador vive en `StorageFacadesWorkerModule`, que importa el proceso `worker-optimizer` (ADR-0038).
       exports: [I_OBJECT_STORAGE, IndexableFileGateway],
     };
   }

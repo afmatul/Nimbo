@@ -12,7 +12,7 @@ Procesamiento Asíncrono → Almacenamiento de Datos**, más **Servicios Externo
 - `api`: NestJS con los módulos de la «Lógica del Sistema» (REST + WebSocket).
 - `worker`: NestJS standalone con los procesadores y trabajos programados del «Procesamiento Asíncrono» (Indexación,
   Optimización, Control de Suscripciones, Actualizado de Versiones). Usa los mismos módulos que `api`. Son **dos
-  procesos con la misma imagen** (ADR-0037): el `worker` general (todas las colas salvo `optimization`) y
+  procesos con la misma imagen** (ADR-0038): el `worker` general (todas las colas salvo `optimization`) y
   `worker-optimizer` (solo `optimization`, el único que carga `sharp`), cada uno con su salud interna y 768 MiB sin swap.
 
 Justificación (ADR-0001): 4 personas y 10 semanas no justifican microservicios; las fronteras por módulo permiten
@@ -25,7 +25,7 @@ separar uno como servicio el día que haga falta.
 activo) y `s3.staging.nimbo.me` (MinIO, habilitado cuando 005 lo necesite). Imágenes en `ghcr.io/afmatul/nimbo-{api,worker,web}`;
 despliegue por SSH desde GitHub Actions (`migration:run` antes de `up -d`); rollback = redesplegar la etiqueta anterior.
 Solo Traefik publica puertos (80/443). La separación `api`/`worker` es por **proceso e imagen**, no por carpeta (ADR-0001).
-La imagen `nimbo-worker` usa base glibc; la del `api`, Alpine (ADR-0037). C + glibc fue aceptada el 2026-10-27; la enmienda concreta `node:22.23.3-trixie-slim`, sharp 0.35.5/libvips 8.18.7, Ghostscript de Trixie y `MALLOC_ARENA_MAX=2` fue aceptada por Matul/Adrián el 2026-10-28, después de `7f9285ff`. Ghostscript está en la imagen compartida para 019/futuro 021b, no participa en 021 JPEG/PNG. El optimizador recibe solo las 17 claves de su schema por `environment` explícito, sin `env_file` (PD-135 cerrado); esto no enmienda CA-19 de 000.
+La imagen `nimbo-worker` usa base glibc; la del `api`, Alpine (ADR-0038). C + glibc fue aceptada el 2026-10-27; la enmienda concreta `node:22.23.3-trixie-slim`, sharp 0.35.5/libvips 8.18.7, Ghostscript de Trixie y `MALLOC_ARENA_MAX=2` fue aceptada por Matul/Adrián el 2026-10-28, después de `7f9285ff`. Ghostscript está en la imagen compartida para 019/futuro 021b, no participa en 021 JPEG/PNG. El optimizador recibe solo las 17 claves de su schema por `environment` explícito, sin `env_file` (PD-140 cerrado); esto no enmienda CA-19 de 000.
 
 ```mermaid
 flowchart TB
@@ -80,7 +80,7 @@ nimbo/
 │  │  └─ src/shared/       # módulo transversal T1 (ver §3)
 │  │  └─ src/modules/<modulo>/   # aquí viven también los *.processor.ts y *.job.ts de cada módulo
 │  └─ worker/              # imagen `nimbo-worker` (Dockerfile) y `healthcheck.ts`; las raíces `worker.main.ts` y
-│                          # `worker-optimizer.main.ts` viven en `apps/api/src` (plan 000 R-3, ADR-0037)
+│                          # `worker-optimizer.main.ts` viven en `apps/api/src` (plan 000 R-3, ADR-0038)
 ├─ packages/
 │  ├─ contracts/           # DTOs y tipos compartidos web ↔ api (fuente única)
 │  └─ config/              # eslint (incl. boundaries.js), tsconfig, jest base
@@ -272,7 +272,7 @@ global. Si la pasada falla, se dispara una alerta.
 021 procesa solo JPEG y PNG, archivo por archivo; el PDF queda para 021b y GIF/WebP no se ofrecen. El estado vive en
 `optimizacion`, bajo RLS `CLIENT` propietario, no en BullMQ. La ficha consulta `GET …/optimization` mientras hay
 `pollAfterMs`, sin realtime. `OptimizerModule` no carga `sharp`; `OptimizerWorkerModule` entra por `optimizer/worker.ts` y
-solo lo compone `WorkerOptimizerModule`, en el proceso `worker-optimizer`, con `StorageFacadesWorkerModule` (ADR-0037).
+solo lo compone `WorkerOptimizerModule`, en el proceso `worker-optimizer`, con `StorageFacadesWorkerModule` (ADR-0038).
 
 `POST …/estimate` → `OptimizationService.estimate` → cola `optimization/estimate` → `OptimizationRunner.estimate`:
 lee la versión vigente por la fachada de storage, inspecciona, recomprime y valida en memoria (también hash de píxeles
@@ -281,7 +281,7 @@ PNG), sin guardar candidato. `SavingsEstimate` exige mínimo de bytes **y** porc
 `POST …/run { optimizationId }` exige cuenta escribible y última estimación de la versión vigente; CAS
 `estimada → optimizando` fija `version_resultado_id` una sola vez. Repetir mientras está `optimizando` recupera el mismo
 trabajo; un terminal no se reabre (`409 OPTIMIZER_ESTIMATE_STALE`). El worker vuelve al original, usa `ImageOptimizer`
-y `ImageIntegrityValidator` (ADR-0036), reaplica ambos umbrales reales y entrega el contenido a `OptimizableFileGateway`.
+y `ImageIntegrityValidator` (ADR-0037), reaplica ambos umbrales reales y entrega el contenido a `OptimizableFileGateway`.
 Solo `OptimizedVersionRegistrar` sube, revalida bajo `lockUsage`, registra y compensa. `registered`/`duplicate` completan;
 `file_changed`, `file_missing` y `not_smaller` descartan; `corrupt` falla por integridad. Los reintentos recuperan los
 metadatos de la versión preasignada ya registrada antes de intentar releer un origen que dejó de ser current.
@@ -299,7 +299,7 @@ de 014/014b vuelve a contar el contenido y puede rechazar por cuota. No hay endp
 | `index-status` (productor `worker`, **procesada en el `api`** por `IndexStatusRelay`; ADR-0033 d) | `QueuedIndexStatusNotifier` | sin reintentos (aviso de mejor esfuerzo) | no aplica: el estado guardado no depende de él; solo lleva `{ownerId, fileId, state, reason}` |
 | `index-reconcile` (repetible con `upsertJobScheduler`, cada `INDEX_RECONCILE_INTERVAL_MINUTES`, 019 RN-12) | `IndexReconcileScheduler` (worker, al arrancar) y `pnpm --filter api index:reconcile` | 3, backoff exponencial desde 30 s; concurrencia 1 | por cuenta, con su propio actor: encola versiones vigentes indexables sin fila y `pendiente`/`indexando` de más de 30 min; mismo `jobId` y fila única |
 | `editing-save` (**procesada en el `api`**, concurrencia 1, ADR-0029) | `SaveCallbackHandler` | 3, backoff exponencial | CAS `activa → guardando` + `UNIQUE sesion_edicion_id` (sin candado Redis, DF-72) |
-| `optimization` (`estimate` y `run`; **solo `worker-optimizer`**, concurrencia 1; ADR-0037) | `OptimizationService` → `IJobQueue` (`BullmqJobQueue`) | `OPTIMIZER_MAX_ATTEMPTS` (3 intentos), backoff exponencial desde 2 s; `giveUp` al agotarlos | `estimate-<optimizacion.id>` / `run-<optimizacion.id>`; CAS de estado y fecha, id de versión preasignado, `registered`/`duplicate` convergen sin doble cuota. Se borran los jobs al terminar; el estado queda en `optimizacion`. Caducidad perezosa: intentos × 3 × timeout + 5 min |
+| `optimization` (`estimate` y `run`; **solo `worker-optimizer`**, concurrencia 1; ADR-0038) | `OptimizationService` → `IJobQueue` (`BullmqJobQueue`) | `OPTIMIZER_MAX_ATTEMPTS` (3 intentos), backoff exponencial desde 2 s; `giveUp` al agotarlos | `estimate-<optimizacion.id>` / `run-<optimizacion.id>`; CAS de estado y fecha, id de versión preasignado, `registered`/`duplicate` convergen sin doble cuota. Se borran los jobs al terminar; el estado queda en `optimizacion`. Caducidad perezosa: intentos × 3 × timeout + 5 min |
 | `subscription-renewal` (repetible con `upsertJobScheduler`, cada `SUBSCRIPTION_RENEWAL_INTERVAL_MINUTES`, 010) | `RenewalScheduler` (worker, al arrancar) | 3, backoff exponencial; concurrencia 1 | idempotente por suscripción y `vence_en` con `FOR UPDATE`; lista con funciones de mantenimiento (ADR-0021) y renueva como cada dueño bajo RLS; alerta en fallo |
 | `mail` | `SmtpMailer` (notifications) | 5 (`attempts: 6`, exponencial desde 5 s) | por `idempotencyKey` del productor como `jobId` (sin `:`) + marca `mail:sent:<jobId>` en Redis + `Message-ID` determinista (ADR-0018); no usa `notificacion` |
 | `upload-cleanup` (repetible con `upsertJobScheduler`, cada `UPLOAD_CLEANUP_INTERVAL_MINUTES`, 005) | `UploadCleanupScheduler` (worker, al arrancar) | 3, backoff exponencial; concurrencia 1 | compare-and-set sobre `carga.estado`; opera bajo RLS con la función de mantenimiento de ADR-0021 |
@@ -348,4 +348,4 @@ apps/web/src/
 | 0021 | Mantenimiento sin actor bajo RLS: función `SECURITY DEFINER` mínima y RLS también en `carga`; enmienda 0005 (Propuesto) |
 | 0029 | `editing-save` se procesa en el `api`; excepción acotada a ADR-0001 (Aceptado) |
 | 0030 | Socket.IO en el `api` sin adaptador de Redis (Aceptado) |
-| 0037 | El optimizador corre en `worker-optimizer` (misma imagen glibc, otro comando); enmienda 0001 y 0036 (Aceptado) |
+| 0038 | El optimizador corre en `worker-optimizer` (misma imagen glibc, otro comando); enmienda 0001 y 0037 (Aceptado) |
