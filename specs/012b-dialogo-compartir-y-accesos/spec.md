@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Borrador (plan aprobado por Adrián, 2026-10-30; falta el mockup de «Compartidos conmigo» para pasar a `Lista`) |
+| Estado | Lista (plan y mockup aprobados por Adrián, 2026-10-30) |
 | Dueño | Fátima |
 | Fase | 2 |
 | Requisitos | RF-16, RF-18; RNF-13, RNF-14 |
@@ -53,7 +53,7 @@ destinatario ve lo que le compartieron, lo abre y sale de ello. Los enlaces púb
 | Pantalla | Mockup (`docs/design/mockups/…`) | Estados requeridos | Estado del mockup |
 |---|---|---|---|
 | Compartir y accesos (`ui-guidelines.md` §7, fila «Compartir y accesos») | `sharing/compartir/` | default, lista-accesos, cargando, vacía, compartiendo, éxito, nivel cambiado, destinatario no encontrado, contigo mismo, solo lectura, demasiados intentos, confirmar quitar, quitando, acceso heredado, error de carga | Borrador (solo `default`); el resto lo crea `/mockup` antes de `Lista` |
-| Compartidos conmigo (`/compartidos`; fila en §7) | `sharing/compartidos-conmigo/` | cargando, con-elementos, vacía, error-carga, menu-fila, confirmar-salir, saliendo, salió, error-salir (acceso ya inexistente, sin conexión), solo-lectura (puede salir) | Hecho, pendiente de aprobación de Adrián (11 archivos, uno por estado; el ítem del menú ya está en `shared/layout/`) |
+| Compartidos conmigo (`/compartidos`; fila en §7) | `sharing/compartidos-conmigo/` | cargando, con-elementos, vacía, error-carga, menu-fila, confirmar-salir, saliendo, salió, error-salir (acceso ya inexistente, sin conexión), solo-lectura (puede salir) | Hecho, aprobado por Adrián (2026-10-30) (11 archivos, uno por estado; el ítem del menú ya está en `shared/layout/`) |
 
 - Mapeo CA → estados: CA-1/2 lista-accesos, cargando, vacía, compartiendo, éxito · CA-3 un estado por error · CA-4 nivel cambiado, solo lectura · CA-5 confirmar quitar, quitando, acceso heredado · CA-8 cargando, con-elementos, vacía · CA-10 confirmar-salir, saliendo, salió, solo-lectura · CA-11 error-carga, error-salir.
 - Mensajes clave: los de la 012 §6, más «Viene de «<carpeta>». Quita el acceso desde esa carpeta.», «Quitamos el acceso. Esa persona ya no puede abrirlo.», «Todavía no te han compartido nada. Lo que compartan contigo aparecerá aquí.», «¿Salir de «<nombre>»? Dejarás de verlo. Quien lo compartió puede volver a compartírtelo.» y «Saliste de «<nombre>».»
