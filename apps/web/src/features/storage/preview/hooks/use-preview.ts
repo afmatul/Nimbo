@@ -30,6 +30,7 @@ type Emission = {
   readonly setCurrent: Dispatch<SetStateAction<CurrentPreview>>;
 };
 const LOADING: PreviewState = { status: 'loading', prolonged: false };
+/** CA-9: el progreso aparece cuando la espera supera dos segundos (por eso 2001, no 2000). */
 export const PREVIEW_WAIT_DELAY_MS = 2001;
 
 function stopAttempt(active: Emission['active']): void {

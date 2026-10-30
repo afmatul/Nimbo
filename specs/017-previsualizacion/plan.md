@@ -173,7 +173,7 @@ Prefijos: **I** = `apps/api/test/int/storage/`; **A** = `apps/api/test/isolation
 - PD-41 sigue abierto: `test:e2e` marcador no acredita Playwright/axe; coordinar arnés real con Adrián. Esta revisión documental no ejecuta ni declara aprobadas esas suites.
 
 ## 7. Riesgos y coherencia con el diseño
-- **H-1 — Ownership/DI (Alta propuesta):** falta frontera pública suficiente y extensión UI. Diseño §2 aceptado por Adrián (Q-2/Q-6) con ajustes; sin imports internos ni segundo MinIO. Registro oficial DF/PD pendiente por permisos solo `specs/**`.
+- **H-1 — Ownership/DI (Alta propuesta):** falta frontera pública suficiente y extensión UI. Diseño §2 aceptado por Adrián (Q-2/Q-6) con ajustes; sin imports internos ni segundo MinIO. Registrado como DF-84 en `design-findings.md` (Aceptado).
 - **H-2 — retirado.** Existía solo por el MIME/procedencia; la opción 4 elimina ambos. No queda residuo: el desfase 006 (UI fija sufijo, backend permite renombrar) ya no afecta a preview, pues el lector falla seguro.
 - **Memoria:** rangos no garantizan memoria acotada: PDF.js reserva Uint8Array del largo del documento; zip.js puede almacenar directorio central completo; saxes acumula tokens/atributos sin tope intrínseco; imágenes/canvas/XML hostil añaden expansión. No se garantiza viabilidad hasta 2 GB por seleccionar librerías.
 - Un archivo admitido por la carga puede agotar la memoria del visor. Ese fallo es CA-2: causa saneada y Descargar. No se agrega un límite de tamaño distinto del de la 005.

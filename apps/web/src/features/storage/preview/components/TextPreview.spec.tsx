@@ -279,6 +279,23 @@ describe('TextPreview T-07: UTF-8 incremental literal y lifecycle propio', () =>
     expect(source.body.locked).toBe(false);
   });
 
+  it('CA-9: agrupa los chunks intermedios en pocas pinturas y publica el texto íntegro al EOF', async () => {
+    const source = controlledSource();
+    fetchBytes.mockResolvedValue({ body: source.body });
+    const { container } = renderText();
+    await act(async () => source.controller.enqueue(encode('0\n')));
+    await expectText(container, '0\n');
+    const pre = container.querySelector('pre');
+    const paints = jest.fn();
+    new MutationObserver(paints).observe(pre as Node, { childList: true, characterData: true });
+    await act(async () => {
+      for (let line = 1; line <= 50; line += 1) source.controller.enqueue(encode(`${line}\n`));
+      source.controller.close();
+    });
+    await expectText(container, `${Array.from({ length: 51 }, (_, line) => line).join('\n')}\n`);
+    expect(paints.mock.calls.flat().flat().length).toBeLessThan(10);
+  });
+
   it('CA-1: mantiene todo el contenido y MARCADOR_FINAL_T07 sin truncamiento', async () => {
     const middle = 'línea de lectura '.repeat(20_000);
     const text = `INICIO\n${middle}\nMARCADOR_FINAL_T07`;

@@ -12,12 +12,18 @@ type TextPreviewProps = ReaderEvents & {
   readonly onFailure: (failure: PreviewFailure) => void;
 };
 
+/** Un texto grande llega en cientos de chunks: se pinta a lo sumo cada 100 ms en vez de reconstruir el `<pre>` por chunk. */
+const PUBLISH_INTERVAL_MS = 100;
+
 type TextAttempt = {
   readonly controller: AbortController;
   readonly onFailure: TextPreviewProps['onFailure'];
   readonly publish: (text: string) => void;
   readonly onReady: () => void;
   active: boolean;
+  flush: ReturnType<typeof setTimeout> | undefined;
+  pending: string;
+  published: string;
   reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
   cleanup?: Promise<void>;
 };
@@ -31,6 +37,7 @@ async function releaseReader(attempt: TextAttempt, cancel: boolean): Promise<voi
 function disposeAttempt(attempt: TextAttempt): Promise<void> {
   if (!attempt.active) return attempt.cleanup ?? Promise.resolve();
   attempt.active = false;
+  clearTimeout(attempt.flush);
   attempt.controller.abort();
   attempt.cleanup = releaseReader(attempt, true);
   return attempt.cleanup;
@@ -56,6 +63,25 @@ function decodeFragment(
   }
 }
 
+/** Primer fragmento al instante; los siguientes se agrupan y el último se publica siempre al terminar. */
+function publishText(attempt: TextAttempt, text: string, done: boolean): void {
+  attempt.pending = text;
+  if (done || attempt.published === '') {
+    clearTimeout(attempt.flush);
+    attempt.flush = undefined;
+    attempt.published = text;
+    attempt.publish(text);
+    return;
+  }
+  if (attempt.flush !== undefined) return;
+  attempt.flush = setTimeout(() => {
+    attempt.flush = undefined;
+    if (!attempt.active) return;
+    attempt.published = attempt.pending;
+    attempt.publish(attempt.pending);
+  }, PUBLISH_INTERVAL_MS);
+}
+
 async function readTextBody(attempt: TextAttempt, body: ReadableStream<Uint8Array>): Promise<void> {
   const decoder = new TextDecoder('utf-8', { fatal: true });
   const reader = body.getReader();
@@ -68,8 +94,11 @@ async function readTextBody(attempt: TextAttempt, body: ReadableStream<Uint8Arra
       const fragment = decodeFragment(attempt, decoder, chunk);
       if (fragment === undefined) return;
       text += fragment;
-      if (fragment.length > 0) attempt.publish(text);
-      if (chunk.done) return;
+      if (chunk.done) {
+        if (text.length > 0) publishText(attempt, text, true);
+        return;
+      }
+      if (fragment.length > 0) publishText(attempt, text, false);
     }
   } catch {
     failAttempt(attempt, 'unavailable');
@@ -105,6 +134,9 @@ function useTextReading({ url, onFailure, onReady, registerCleanup }: TextPrevie
       onReady: () => callbacks.current.onReady?.(),
       publish: setText,
       active: true,
+      pending: '',
+      flush: undefined,
+      published: '',
       reader: undefined,
     };
     const unregister = registerCleanup?.(() => disposeAttempt(attempt));

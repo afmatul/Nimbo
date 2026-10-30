@@ -20,6 +20,9 @@ const RESOURCES: Readonly<Record<string, (filename: string) => string>> = {
   ),
 };
 
+/** Debe coincidir con `pdfjs-dist` en `package.json` (ADR-0026): el worker y los assets empaquetados son de esa versión. */
+const PINNED_ENGINE_VERSION = '6.4.299';
+
 function resourceUrl(kind: string, filename: string): string {
   if (!/^[\w.-]+$/.test(filename) || filename.includes('..'))
     throw new Error('Recurso PDF no disponible.');
@@ -104,7 +107,7 @@ export async function createPdfRuntime(
   onFailure: (failure: PreviewFailure) => void,
 ): Promise<PdfRuntime> {
   const engine = await import('pdfjs-dist');
-  if (signal.aborted || engine.version !== '6.4.299') throw new Error('Motor PDF no disponible.');
+  if (signal.aborted || engine.version !== PINNED_ENGINE_VERSION) throw new Error('Motor PDF no disponible.');
   const port = new Worker(new URL('../workers/pdfjs.worker.ts', import.meta.url), {
     type: 'module',
   });

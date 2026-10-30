@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { DOWNLOAD_URL_TTL_SECONDS, STORAGE_NODE_FIELD_MESSAGES } from '@nimbo/contracts';
+import { STORAGE_NODE_FIELD_MESSAGES } from '@nimbo/contracts';
 import type { OnConflict } from '@nimbo/contracts';
 import { PinoLogger } from 'nestjs-pino';
 
@@ -24,19 +24,17 @@ import type { IQuotaRepository } from './ports/i-quota.repository.port';
 import { I_VERSION_REPOSITORY } from './ports/i-version.repository.port';
 import type { IVersionRepository } from './ports/i-version.repository.port';
 import { recordAudit } from './record-audit';
+import { signDownload } from './signed-download';
+import type { SignedFileUrl } from './signed-download';
 import { rateLimited } from './storage-logger';
 import type { StorageLogger } from './storage-logger';
 import { WritableAccountPolicy } from './writable-account.policy';
 
 const RATE_LIMIT_WINDOW_SECONDS = 60;
 const DOWNLOAD_RATE_KEY_PREFIX = 'storage:download-url:';
-const MS_PER_SECOND = 1000;
 
 /** URL de descarga firmada y el instante en que deja de valer (CA-13). */
-export interface DownloadUrl {
-  readonly url: string;
-  readonly expiresAt: Date;
-}
+export type DownloadUrl = SignedFileUrl;
 
 /** Lo que se firma al descargar: un solo objeto, el nombre del archivo y el tamaño que se audita (sin la clave). */
 interface DownloadTarget {
@@ -141,17 +139,13 @@ export class FileService {
     const target = await this.transactions.withActor(actor, () =>
       this.resolveDownload(actor, fileId, versionId),
     );
-    const url = await this.objects.presignDownload({
+    const signed = await signDownload(this.objects, this.clock, {
       key: target.objectKey,
       fileName: target.fileName,
-      expiresInSeconds: DOWNLOAD_URL_TTL_SECONDS,
     });
-    const expiresAt = new Date(
-      this.clock.now().getTime() + DOWNLOAD_URL_TTL_SECONDS * MS_PER_SECOND,
-    );
     await this.recordIssued(actor, target);
     this.logger.info({ event: 'download.url_issued', fileId: target.fileId });
-    return { url, expiresAt };
+    return signed;
   }
 
   private async resolveDownload(
