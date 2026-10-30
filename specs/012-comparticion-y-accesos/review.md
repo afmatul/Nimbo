@@ -46,7 +46,7 @@ recibió nada y para la propia propietaria (ISO-20, ISO-21). El actor no se pued
   central») y CA-21 («la base lo niega»). Corrección: (a) una política `AS RESTRICTIVE` en `sesion_edicion` para `INSERT`/`UPDATE`
   con `SESSION_OF_FILE_OWNER`; (b) un trigger `BEFORE UPDATE` que rechace `NEW IS DISTINCT FROM OLD` cuando
   `nimbo_actor_id() <> OLD.propietario_id` (`SELECT … FOR UPDATE` no dispara triggers, así el bloqueo del Editor sigue funcionando).
-  **Resuelto** (T-FIX-1): bastó (a), sin trigger. En la migración C, `sesion_edicion_cambio_de_la_propietaria`
+  **Resuelto** (T-FIX-1, `35617f5`): bastó (a), sin trigger. En la migración C, `sesion_edicion_cambio_de_la_propietaria`
   (`AS RESTRICTIVE FOR UPDATE`, `WITH CHECK`: el actor es la propietaria y ningún archivo que ve es de otra cuenta; no exige que el
   archivo exista, para marcar `fallida` la sesión de uno purgado) y `sesion_edicion_compartida_bloqueo` con `WITH CHECK (false)`. El
   bloqueo `FOR UPDATE` solo evalúa el `USING`, así que el Editor sigue serializando su entrada. Además, el Editor solo da de alta o
@@ -64,7 +64,7 @@ recibió nada y para la propia propietaria (ISO-20, ISO-21). El actor no se pued
   destinatarios. Corrección: FK compuestas `(carpeta_id, propietario_id) → carpeta(id, propietario_id)` (y lo mismo para
   `carpeta_padre_id` y `eliminado_con_carpeta_id`, con `UNIQUE (id, propietario_id)`), que evitan la recursión de una política de
   `carpeta` sobre `carpeta`; y `AND a.propietario_id = r.propietario_id` en la línea 48.
-  **Resuelto** (T-FIX-2): FK compuestas en la migración nueva `20261101100400-carpeta-del-mismo-propietario.ts` (las FK son de
+  **Resuelto** (T-FIX-2, `8f83020`): FK compuestas en la migración nueva `20261101100400-carpeta-del-mismo-propietario.ts` (las FK son de
   005/006), con `uq_carpeta_id_propietario` y `ON DELETE SET NULL (columna)` para no anular `propietario_id`. Se eligieron frente
   a un `WITH CHECK` porque la integridad referencial no pasa por RLS (vale para todo rol, también el dueño) y no recurre sobre
   `carpeta`. `nodos_compartidos()` compara el propietario al unir los archivos de cada carpeta. ISO-29/30/31 esperan el error de
@@ -74,7 +74,7 @@ recibió nada y para la propia propietaria (ISO-20, ISO-21). El actor no se pued
   el id, inserta una sesión `activa` a su nombre sobre un archivo ajeno (ISO-34). Como `uq_sesion_edicion_abierta` es global por
   archivo, la propietaria ya no puede abrir el editor (denegación de servicio). Viene de la 016; la 012 entrega los ids. Corrección: la
   misma política restrictiva de SEC-2 y una FK a `archivo`.
-  **Resuelto** (T-FIX-1): `sesion_edicion_alta_de_la_propietaria` (`AS RESTRICTIVE FOR INSERT`) exige que
+  **Resuelto** (T-FIX-1, `35617f5`): `sesion_edicion_alta_de_la_propietaria` (`AS RESTRICTIVE FOR INSERT`) exige que
   `propietario_id` sea el dueño de un archivo que el actor ve, para la propietaria y para el Editor. Sin FK a `archivo`: DF-70 la
   descarta a propósito (la purga no borra la evidencia de una sesión `fallida`) y la política ya niega un id ajeno o inexistente.
 - **[SEC-3] media, sugerencia** · `apps/api/src/migrations/20261101100300-auditoria-al-salir-de-comparticion.ts:16-25`. Riesgo: mientras
@@ -82,7 +82,7 @@ recibió nada y para la propia propietaria (ISO-20, ISO-21). El actor no se pued
   libres (texto de phishing) y `ocurrido_en` arbitrario (ISO-37). Lo demás se rechaza: otras acciones, nodos heredados, otro afectado,
   un tercero, y leer, cambiar o borrar la actividad ajena (ISO-35, ISO-36). Corrección: en el `WITH CHECK`, exigir
   `atributos = jsonb_build_object('nodeType', …, 'level', c.nivel)` y que `ocurrido_en` caiga en una ventana corta alrededor de `now()`.
-  **Resuelto** (T-FIX-3): la política exige `atributos = jsonb_build_object('nodeType', tipo_recurso, 'level', c.nivel)` de esa
+  **Resuelto** (T-FIX-3, `b599cb8`): la política exige `atributos = jsonb_build_object('nodeType', tipo_recurso, 'level', c.nivel)` de esa
   compartición y `ocurrido_en` dentro de `now() ± 5 minutos` (holgura entre el reloj de la API y el de Postgres). ISO-37 prueba
   atributos de más, nivel falso y fecha antigua; `audit-leave-policy.int-spec.ts` escribe el evento exacto y suma los falsos.
 - **[SEC-5] baja, informativa** (abierto, aceptado: PD-141) · `apps/api/src/shared/infrastructure/persistence/typeorm-transaction-runner.ts:15`. `app.actor_id` es
