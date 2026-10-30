@@ -157,8 +157,8 @@ const expectedForB = (
  * RLS de compartición sin filtro en la consulta (spec 012 CA-20, CA-21; plan §3, R-4) con un dueño **sin**
  * `SUPERUSER` (ADR-0021): así `SECURITY DEFINER` de `nodos_compartidos()` queda sometido a `FORCE` y a sus políticas
  * `TO CURRENT_USER`, como en producción. Todo se escribe como `nimbo_app` dentro de `withActor`; las cuentas, como el
- * dueño. Los riesgos que reportaron los developers (T-09, T-11) van al final; los que hoy no se cumplen están marcados
- * con `it.failing` y documentados en `review.md` (Seguridad).
+ * dueño. Los riesgos que reportaron los developers (T-09, T-11) van al final; los que no se cumplían (SEC-1 a SEC-4 de
+ * `review.md`, Seguridad) se corrigieron en T-FIX-1 a T-FIX-3.
  */
 describe('RLS de compartición con dueño NOSUPERUSER (012 CA-21, CA-20; plan R-4)', () => {
   let database: Awaited<ReturnType<typeof startRestrictedOwnerDatabase>>;
@@ -596,20 +596,21 @@ describe('RLS de compartición con dueño NOSUPERUSER (012 CA-21, CA-20; plan R-
       await expect(writeEventAs(c, {})).rejects.toThrow(RLS_ERROR);
     });
 
-    it.failing(
-      'ISO-37 (SEC-3): B no puede escribir en la actividad de A un `share.revoked` con atributos y fecha falsos',
-      async () => {
-        const forged = {
+    it('ISO-37 (SEC-3): B no puede escribir en la actividad de A un `share.revoked` con atributos y fecha falsos', async () => {
+      const forged: Record<string, unknown>[] = [
+        {
           attributes: {
             nodeType: 'folder',
-            level: 'EDITOR',
+            level: 'VIEWER',
             nota: 'Llama al 555-0100 para reactivar',
           },
-          at: new Date('2020-01-01T00:00:00.000Z'),
-        };
-
-        await expect(writeEventAs(b, forged)).rejects.toThrow(RLS_ERROR);
-      },
-    );
+        },
+        { attributes: { nodeType: 'folder', level: 'EDITOR' } },
+        { at: new Date('2020-01-01T00:00:00.000Z') },
+      ];
+      for (const event of forged) {
+        await expect(writeEventAs(b, event)).rejects.toThrow(RLS_ERROR);
+      }
+    });
   });
 });

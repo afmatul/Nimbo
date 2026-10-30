@@ -25,11 +25,13 @@ interface LeaveEvent {
   readonly targetUserId: string;
   readonly resourceType?: string;
   readonly resourceId: string;
+  readonly attributes?: Record<string, unknown>;
+  readonly occurredAt?: Date;
 }
 
 const INSERT_EVENT_SQL = `INSERT INTO evento_auditoria
     (id, accion, actor_id, rol_actor, usuario_afectado_id, tipo_recurso, recurso_id, atributos, ocurrido_en)
-  VALUES ($1, $2, nimbo_actor_id(), 'CLIENT', $3, $4, $5, '{}', now())`;
+  VALUES ($1, $2, nimbo_actor_id(), 'CLIENT', $3, $4, $5, $6::jsonb, $7)`;
 
 /**
  * Política de auditoría de Salir (spec 012 CA-23, S-8) con un dueño **sin** `SUPERUSER` (ADR-0021): el destinatario
@@ -61,6 +63,10 @@ describe('migración auditoria-al-salir-de-comparticion con dueño NOSUPERUSER (
         event.targetUserId,
         event.resourceType ?? 'file',
         event.resourceId,
+        JSON.stringify(
+          event.attributes ?? { nodeType: event.resourceType ?? 'file', level: 'VIEWER' },
+        ),
+        event.occurredAt ?? new Date(),
       ]),
     );
 
@@ -136,6 +142,24 @@ describe('migración auditoria-al-salir-de-comparticion con dueño NOSUPERUSER (
   it('RNF-05: solo `share.revoked`; otra acción sobre la actividad de la propietaria se rechaza', async () => {
     for (const action of ['share.granted', 'file.download_url_issued']) {
       await expect(writeAs(bruno, { ...leaveEventOf(nodes.file), action })).rejects.toThrow(
+        /row-level security/,
+      );
+    }
+  });
+
+  it('RNF-05 (SEC-3): solo el evento exacto: sin atributos de más, con el nivel de la compartición y la fecha de ahora', async () => {
+    const minutes = (n: number): Date => new Date(Date.now() + n * 60_000);
+    const forged: Partial<LeaveEvent>[] = [
+      { attributes: {} },
+      { attributes: { nodeType: 'file', level: 'VIEWER', nota: 'Llama al 555-0100' } },
+      { attributes: { nodeType: 'file', level: 'EDITOR' } },
+      { attributes: { nodeType: 'folder', level: 'VIEWER' } },
+      { occurredAt: new Date('2020-01-01T00:00:00.000Z') },
+      { occurredAt: minutes(-10) },
+      { occurredAt: minutes(10) },
+    ];
+    for (const change of forged) {
+      await expect(writeAs(bruno, { ...leaveEventOf(nodes.file), ...change })).rejects.toThrow(
         /row-level security/,
       );
     }

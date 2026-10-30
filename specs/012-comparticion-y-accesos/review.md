@@ -5,13 +5,14 @@
 
 ## Seguridad
 
-**Veredicto: ❌ Bloqueado** por SEC-2 (escritura entre cuentas que esta spec introduce en `sesion_edicion`). Ninguna prueba encontró
+**Veredicto: ✅ Sin bloqueantes** tras T-FIX-1 a T-FIX-3 (SEC-1 a SEC-4 resueltos; SEC-5 y SEC-6 quedan aceptados en PD-141).
+Antes: ❌ Bloqueado por SEC-2 (escritura entre cuentas que esta spec introducía en `sesion_edicion`). Ninguna prueba encontró
 **acceso a contenido** de otra cuenta: lectura, descarga, migas, agente y roles internos están bien aislados.
 
-- Datos de cliente: sí. `actor` + `accessibleNodes`/`ownedNodes` + RLS: ✅ en lectura; ❌ en dos escrituras por SQL (SEC-1, SEC-2).
+- Datos de cliente: sí. `actor` + `accessibleNodes`/`ownedNodes` + RLS: ✅ en lectura y, tras T-FIX-1 y T-FIX-2, en escritura por SQL.
 - Bitácoras y auditoría sin nombres, correos ni claves: ✅ (cubierto en `test/int/sharing/shares.int-spec.ts`, CA-19; no se repite aquí).
 
-**Pruebas ISO agregadas** (bloqueantes en CI; `pnpm test:isolation` en verde, con 6 `it.failing` que documentan SEC-1 a SEC-4).
+**Pruebas ISO agregadas** (bloqueantes en CI; `pnpm test:isolation` en verde; los 6 `it.failing` de SEC-1 a SEC-4 pasaron a pruebas normales en T-FIX-1 a T-FIX-3, y T-FIX-1 sumó ISO-38).
 Son dos archivos: el plan §6 pedía uno, pero la parte SQL necesita su propio Postgres con dueño `NOSUPERUSER`.
 - `apps/api/test/isolation/sharing.iso-spec.ts` (HTTP, 16): ISO-1 a ISO-5 A/B/C (C y A no alcanzan nada ajeno por ficha, descarga,
   historial, contenido, migas, fijado ni `/shares`; B alcanza solo lo compartido y su subárbol, las migas empiezan en la carpeta
@@ -81,20 +82,23 @@ recibió nada y para la propia propietaria (ISO-20, ISO-21). El actor no se pued
   libres (texto de phishing) y `ocurrido_en` arbitrario (ISO-37). Lo demás se rechaza: otras acciones, nodos heredados, otro afectado,
   un tercero, y leer, cambiar o borrar la actividad ajena (ISO-35, ISO-36). Corrección: en el `WITH CHECK`, exigir
   `atributos = jsonb_build_object('nodeType', …, 'level', c.nivel)` y que `ocurrido_en` caiga en una ventana corta alrededor de `now()`.
-- **[SEC-5] baja, informativa** · `apps/api/src/shared/infrastructure/persistence/typeorm-transaction-runner.ts:15`. `app.actor_id` es
+  **Resuelto** (T-FIX-3): la política exige `atributos = jsonb_build_object('nodeType', tipo_recurso, 'level', c.nivel)` de esa
+  compartición y `ocurrido_en` dentro de `now() ± 5 minutos` (holgura entre el reloj de la API y el de Postgres). ISO-37 prueba
+  atributos de más, nivel falso y fecha antigua; `audit-leave-policy.int-spec.ts` escribe el evento exacto y suma los falsos.
+- **[SEC-5] baja, informativa** (abierto, aceptado: PD-141) · `apps/api/src/shared/infrastructure/persistence/typeorm-transaction-runner.ts:15`. `app.actor_id` es
   una GUC que cualquier SQL de `nimbo_app` puede fijar, así que la base no ata el actor a una identidad (riesgo aceptado en ADR-0005).
   Lo mitigan `withActor`, que es el único que la fija y valida UUID y rol, y la regla de lint `rls.js`. No se agregó una prueba que
   fije la GUC a mano: el lint lo prohíbe.
-- **[SEC-6] baja, sugerencia** · `apps/api/src/migrations/20261101100000-crear-comparticion.ts:9-12,143-152`. `archivo/carpeta_nodos_compartidos`
+- **[SEC-6] baja, sugerencia** (abierto: PD-141) · `apps/api/src/migrations/20261101100000-crear-comparticion.ts:9-12,143-152`. `archivo/carpeta_nodos_compartidos`
   dejan al dueño ver **todos** los nodos vivos de quien compartió algo con el actor, no solo el subárbol compartido. Hoy solo se
   alcanza dentro del cuerpo de la función (la app no corre como dueño); si otro `SECURITY DEFINER` reutiliza al dueño, conviene acotarlas.
 
 **Checklist**
 - [x] `actor` en los casos de uso; lecturas con `accessibleNodes`, escrituras con `ownedNodes` (ISO-1 a ISO-7 y `storage-shared-writes.iso-spec.ts`).
-- [ ] RLS como segunda barrera en escrituras: SEC-1, SEC-2, SEC-4.
+- [x] RLS como segunda barrera en escrituras: SEC-1, SEC-2, SEC-4 resueltos (T-FIX-1, T-FIX-2).
 - [x] `nodos_compartidos()`: `SECURITY DEFINER`, `search_path`, sin `PUBLIC`, políticas `TO CURRENT_USER` (ISO-22 a ISO-24).
 - [x] Roles internos sin filas ni rutas (ISO-9, ISO-20); sin token, 401 (ISO-10).
 - [x] CA-3 sin diferencia de cuerpo, cabeceras ni tiempo observable (ISO-13, ISO-14); límite de CA-7 en `shares.int-spec.ts`.
 - [x] Destinatario sin versiones antiguas, sin escribir versiones, índices ni fragmentos (ISO-18, ISO-26); el agente cita lo compartido y nada más (`agent.iso-spec.ts`, T-09).
-- [ ] Auditoría de Salir sin eventos falsificables (SEC-3).
+- [x] Auditoría de Salir sin eventos falsificables (SEC-3 resuelto, T-FIX-3).
 - [x] Sin dependencias nuevas en T-10.
