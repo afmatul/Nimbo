@@ -20,8 +20,8 @@ import { CrearIndexacionYFragmento20261022100000 } from '../../../src/migrations
 import { CrearUsoAgente20261028100000 } from '../../../src/migrations/20261028100000-crear-uso-agente';
 import { CrearComparticion20261101100000 } from '../../../src/migrations/20261101100000-crear-comparticion';
 import { PoliticasRlsNodosCompartidos20261101100100 } from '../../../src/migrations/20261101100100-politicas-rls-nodos-compartidos';
-import { AuditoriaAlSalirDeComparticion20261101100300 } from '../../../src/migrations/20261101100300-auditoria-al-salir-de-comparticion';
 import { PoliticasRlsEdicionYAgenteCompartidos20261101100200 } from '../../../src/migrations/20261101100200-politicas-rls-edicion-y-agente-compartidos';
+import { AuditoriaAlSalirDeComparticion20261101100300 } from '../../../src/migrations/20261101100300-auditoria-al-salir-de-comparticion';
 import { buildDataSourceOptions } from '../../../src/shared';
 
 const APP_ROLE = 'nimbo_app';
