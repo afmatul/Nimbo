@@ -14,12 +14,13 @@
 | ------------------------------------ | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `POST /api/v1/shares`                | `SharingService.share`      | `201` alta, `200` cambio o mismo nivel (CA-1, CA-5). Orden: límite (`sharing:share:<propietario>`, `SHARING_RATE_LIMIT_PER_MINUTE`) → `PermissionResolver.can(SHARE)` (404 uniforme) → destinatario (los cuatro motivos de CA-3 en un solo `null`) → solo lectura (`WritableAccountPolicy`, solo si crea o sube a `EDITOR`) → alta o cambio con `share.granted`/`share.level_changed` en la misma transacción |
 | `GET /api/v1/shares?nodeType&nodeId` | `SharingService.listAccess` | `PermissionResolver.can(VIEW_ACCESS_LIST)` (404 uniforme); directos del nodo y heredados de las carpetas de su `ruta` (de la raíz hacia adentro), con nombre y correo de `IShareeDirectory.profiles` (CA-8, CA-9). Consulta inválida: `422 SHARING_INVALID_REQUEST`                                                                                                                                           |
+| `DELETE /api/v1/shares/:shareId`     | `SharingService.revoke`     | `204`; el repositorio borra con `propietario_id` = actor dentro de la consulta (`WITH … DELETE … RETURNING`) y `share.revoked` va en la misma transacción. Ajeno, inexistente, ya revocado o id no UUID: el mismo `404 SHARING_SHARE_NOT_FOUND` (CA-10, CA-11). Sin `WritableAccountPolicy` (CA-6). La purga definitiva borra las comparticiones por `ON DELETE CASCADE`; la papelera las conserva (CA-18)    |
 
 - Todas las rutas: `@Roles(Role.CLIENT)` y `Cache-Control: no-store` (llevan correos).
 - Persistencia: `TypeOrmShareRepository` (`IShareRepository`) sobre `comparticion` con `requireActorScope`; el alta
   exige el nodo en `ownedNodes(actor)` dentro de la consulta, igual que la lectura de accesos (`null` si el nodo de ese
   tipo no es propio y vivo).
-- Bitácoras: `sharing.granted`, `sharing.level_changed`, `sharing.rate_limited`, solo con ids y nivel.
+- Bitácoras: `sharing.granted`, `sharing.level_changed`, `sharing.revoked`, `sharing.rate_limited`, solo con ids y nivel.
 
 ## Capas (`docs/sdd/architecture.md` §4)
 

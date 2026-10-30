@@ -39,6 +39,11 @@ export interface IShareRepository {
    * heredados salen de las carpetas de su `ruta` (del archivo, la de su carpeta), más cercanas al final.
    */
   listAccess(actor: Actor, node: SharedNodeRef): Promise<AccessGrants | null>;
+  /**
+   * CA-10, CA-11: borra el acceso directo `shareId` si el actor es su propietario (dentro de la consulta) y lo devuelve;
+   * `null` si es ajeno, inexistente o ya revocado.
+   */
+  revoke(actor: Actor, shareId: string): Promise<UserShare | null>;
 }
 
 export const I_SHARE_REPOSITORY = Symbol('IShareRepository');

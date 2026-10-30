@@ -25,6 +25,8 @@ class TestShareeDirectoryModule {}
 export interface SharesClient {
   share(body: Record<string, unknown>): Promise<Response>;
   accessList(query: Record<string, string>): Promise<Response>;
+  /** `DELETE /shares/:shareId` (CA-10). */
+  revoke(shareId: string): Promise<Response>;
 }
 
 export interface SharingHttpApp {
@@ -67,6 +69,7 @@ export const createSharingHttpApp = async (
     return {
       share: (body) => http().post(`${API_PREFIX}/shares`).set(auth).send(body),
       accessList: (query) => http().get(`${API_PREFIX}/shares`).query(query).set(auth),
+      revoke: (shareId) => http().delete(`${API_PREFIX}/shares/${shareId}`).set(auth),
     };
   };
   return {

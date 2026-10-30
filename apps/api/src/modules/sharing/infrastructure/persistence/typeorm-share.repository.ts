@@ -102,7 +102,7 @@ const nodeColumns = (
     : { archivoId: null, carpetaId: node.id };
 
 /** Sin `archivo_id`, la fila tiene `carpeta_id` (`ck_comparticion_nodo`). */
-const nodeOf = (row: ComparticionOrmEntity): SharedNodeRef =>
+const nodeOf = (row: Pick<ComparticionOrmEntity, 'archivoId' | 'carpetaId'>): SharedNodeRef =>
   row.archivoId === null
     ? { type: 'folder', id: row.carpetaId as string }
     : { type: 'file', id: row.archivoId };
@@ -116,6 +116,44 @@ const toShare = (row: ComparticionOrmEntity): UserShare =>
     node: nodeOf(row),
     level: row.nivel as ShareLevel,
     createdAt: row.creadoEn,
+  });
+
+/** De quién es la fila que se borra: del propietario (revocar, CA-10). */
+type DeletingParty = 'owner';
+
+const PARTY_COLUMNS: Readonly<Record<DeletingParty, 'propietario_id'>> = {
+  owner: 'propietario_id',
+};
+
+/**
+ * Borra el acceso `:share_id` solo si la columna de `party` es el actor (dentro de la consulta; RLS lo repite). Va en
+ * un CTE para que el driver devuelva las filas como en un `SELECT` (un `DELETE` suelto da `[filas, cuántas]`).
+ */
+const deleteSql = (party: DeletingParty): string => `
+  WITH borrada AS (
+    DELETE FROM comparticion
+     WHERE id = :share_id::uuid AND ${PARTY_COLUMNS[party]} = :actor_id::uuid
+    RETURNING id, propietario_id, destinatario_id, archivo_id, carpeta_id, nivel, creado_en)
+  SELECT * FROM borrada`;
+
+interface DeletedRow {
+  readonly id: string;
+  readonly propietario_id: string;
+  readonly destinatario_id: string;
+  readonly archivo_id: string | null;
+  readonly carpeta_id: string | null;
+  readonly nivel: ShareLevel;
+  readonly creado_en: Date;
+}
+
+const fromDeleted = (row: DeletedRow): UserShare =>
+  UserShare.rehydrate({
+    id: row.id,
+    ownerId: row.propietario_id,
+    recipientId: row.destinatario_id,
+    node: nodeOf({ archivoId: row.archivo_id, carpetaId: row.carpeta_id }),
+    level: row.nivel,
+    createdAt: row.creado_en,
   });
 
 /** Consulta con parámetros con nombre (los del fragmento de `access` y los propios). */
@@ -202,6 +240,23 @@ export class TypeOrmShareRepository implements IShareRepository {
             path: located.ruta,
           });
     return { direct: direct.map(toDirect), inherited };
+  }
+
+  revoke(actor: Actor, shareId: string): Promise<UserShare | null> {
+    return this.deleteAs(actor, 'owner', shareId);
+  }
+
+  private async deleteAs(
+    actor: Actor,
+    party: DeletingParty,
+    shareId: string,
+  ): Promise<UserShare | null> {
+    const [row] = await queryNamed<DeletedRow>(
+      this.context.requireActorScope(actor),
+      deleteSql(party),
+      { share_id: shareId, actor_id: actor.id },
+    );
+    return row === undefined ? null : fromDeleted(row);
   }
 
   private async listInherited(

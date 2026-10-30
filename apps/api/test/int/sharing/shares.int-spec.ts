@@ -4,7 +4,7 @@ import { accessEntrySchema, accessListSchema } from '@nimbo/contracts';
 import type { Response } from 'supertest';
 
 import { Role } from '../../../src/shared';
-import { insertCommittedFile } from '../storage/storage-http';
+import { insertCommittedFile, textBytes } from '../storage/storage-http';
 import type { StorageClient } from '../storage/storage-http';
 import { insertFolder } from '../storage/storage-test-db';
 
@@ -368,6 +368,126 @@ describe('POST y GET /shares (012 CA-1 a CA-9, CA-19, CA-20)', () => {
         'nodeId',
         'nodeType',
       ]);
+    });
+  });
+
+  describe('DELETE /shares/:shareId (CA-10, CA-11, CA-18)', () => {
+    const SHARE_NOT_FOUND = { status: 404, code: 'SHARING_SHARE_NOT_FOUND' };
+    const NODE_NOT_FOUND = { status: 404, code: 'STORAGE_NODE_NOT_FOUND' };
+    const UPLOADED_BYTES = 64;
+
+    /**
+     * Carpeta de Ana con un archivo subido dentro (cuenta en su espacio: la purga lo descuenta), compartida con Bruno
+     * como Lector (fila directa: `POST /shares` ya lo cubre y su límite de intentos es por minuto).
+     */
+    const sharedFolder = async (): Promise<{
+      folderId: string;
+      fileId: string;
+      shareId: string;
+    }> => {
+      const folderId = await newFolder(ana.id);
+      const uploaded = await ana.upload('informe.txt', textBytes(UPLOADED_BYTES), 'ask', folderId);
+      expect(uploaded.status).toBe(200);
+      const fileId = (uploaded.body as { file: { id: string } }).file.id;
+      const shareId = await insertShare(sharing.storage.owner, {
+        ownerId: ana.id,
+        granteeId: bruno.id,
+        node: { folderId },
+      });
+      return { folderId, fileId, shareId };
+    };
+
+    /** Lo que Bruno ve de la carpeta compartida: su contenido y la ficha del archivo de dentro. */
+    const brunoSees = async (folder: { folderId: string; fileId: string }) => [
+      errorOf(await bruno.folderContents({ folderId: folder.folderId })).status,
+      errorOf(await bruno.fileDetail(folder.fileId)).status,
+    ];
+
+    it('CA-10, CA-19: 204, el destinatario recibe 404 desde la siguiente petición y queda `share.revoked`', async () => {
+      const folder = await sharedFolder();
+      await expect(brunoSees(folder)).resolves.toEqual([200, 200]);
+
+      const response = await anaShares.revoke(folder.shareId);
+
+      expect(response.status).toBe(204);
+      expect(errorOf(await bruno.folderContents({ folderId: folder.folderId }))).toEqual(
+        NODE_NOT_FOUND,
+      );
+      expect(errorOf(await bruno.fileDetail(folder.fileId))).toEqual(NODE_NOT_FOUND);
+      await expect(shareRows(folder.folderId)).resolves.toEqual([]);
+      const revoked = (await sharing.eventsOf(ana.id)).filter(
+        (e) => e.recurso_id === folder.folderId && e.accion === 'share.revoked',
+      );
+      expect(revoked).toEqual([
+        {
+          accion: 'share.revoked',
+          actor_id: ana.id,
+          tipo_recurso: 'folder',
+          recurso_id: folder.folderId,
+          atributos: { nodeType: 'folder', level: 'VIEWER' },
+          correlation_id: response.headers[CORRELATION_HEADER] as string,
+        },
+      ]);
+      const logs = JSON.stringify(sharing.storage.testApp.logs.lines());
+      expect(logs).toContain('sharing.revoked');
+      expect(logs).not.toContain(brunoEmail);
+      expect(logs).not.toContain(FOLDER_PREFIX);
+    });
+
+    it('CA-11: ajeno, del que es destinatario, inexistente, ya revocado o mal formado es 404 y nada cambia', async () => {
+      const folder = await sharedFolder();
+      const danisFolder = await newFolder(dani.id);
+      const danisShare = await insertShare(sharing.storage.owner, {
+        ownerId: dani.id,
+        granteeId: bruno.id,
+        node: { folderId: danisFolder },
+      });
+      const revokedFolder = await sharedFolder();
+      expect((await anaShares.revoke(revokedFolder.shareId)).status).toBe(204);
+
+      const responses = [
+        await anaShares.revoke(danisShare),
+        await sharing.sharesOf(bruno).revoke(folder.shareId),
+        await anaShares.revoke(randomUUID()),
+        await anaShares.revoke(revokedFolder.shareId),
+        await anaShares.revoke('no-es-un-uuid'),
+      ];
+
+      for (const response of responses) expect(errorOf(response)).toEqual(SHARE_NOT_FOUND);
+      await expect(shareRows(danisFolder)).resolves.toEqual([{ nivel: 'VIEWER' }]);
+      await expect(shareRows(folder.folderId)).resolves.toEqual([{ nivel: 'VIEWER' }]);
+      const revocations = (await sharing.eventsOf(ana.id)).filter(
+        (e) => e.recurso_id === revokedFolder.folderId && e.accion === 'share.revoked',
+      );
+      expect(revocations).toHaveLength(1);
+    });
+
+    it('CA-6: con la cuenta en solo lectura, revocar se permite', async () => {
+      const folder = await sharedFolder();
+      sharing.storage.limits.setReadOnly(true);
+
+      expect((await anaShares.revoke(folder.shareId)).status).toBe(204);
+      await expect(shareRows(folder.folderId)).resolves.toEqual([]);
+    });
+
+    it('CA-18: en la papelera la compartición se conserva y vuelve al restaurar; la purga definitiva la borra', async () => {
+      const folder = await sharedFolder();
+      await insertShare(sharing.storage.owner, {
+        ownerId: ana.id,
+        granteeId: dani.id,
+        node: { fileId: folder.fileId },
+      });
+
+      expect((await ana.trashFolder(folder.folderId)).status).toBe(200);
+      await expect(brunoSees(folder)).resolves.toEqual([404, 404]);
+      await expect(shareRows(folder.folderId)).resolves.toEqual([{ nivel: 'VIEWER' }]);
+      expect((await ana.restoreFolder(folder.folderId)).status).toBe(200);
+      await expect(brunoSees(folder)).resolves.toEqual([200, 200]);
+      expect((await ana.trashFolder(folder.folderId)).status).toBe(200);
+      expect((await ana.purgeFolder(folder.folderId)).status).toBe(200);
+
+      await expect(shareRows(folder.folderId)).resolves.toEqual([]);
+      await expect(shareRows(folder.fileId)).resolves.toEqual([]);
     });
   });
 });

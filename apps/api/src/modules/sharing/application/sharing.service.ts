@@ -16,7 +16,7 @@ import type { AuditRecord, IAuditLogger } from '../../audit';
 import { NodeNotFoundError, WritableAccountPolicy } from '../../storage';
 import { AccessList } from '../domain/access-list';
 import type { DirectAccess } from '../domain/access-list';
-import { RecipientNotFoundError } from '../domain/errors';
+import { RecipientNotFoundError, ShareNotFoundError } from '../domain/errors';
 import { UserShare } from '../domain/user-share';
 import type { SharedNodeRef, ShareNodeType, UserShareSnapshot } from '../domain/user-share';
 
@@ -88,6 +88,14 @@ const LOG_EVENTS: Readonly<Record<Exclude<ShareChange, 'unchanged'>, string>> = 
   granted: 'sharing.granted',
   level_changed: 'sharing.level_changed',
 };
+const REVOKED_LOG_EVENT = 'sharing.revoked';
+
+/** Lo único que la bitácora lleva de un acceso (plan §5): ids y nivel, nunca correo ni nombre. */
+interface ShareLogEntry {
+  readonly shareId: string;
+  readonly nodeId: string;
+  readonly level: string;
+}
 
 /**
  * Compartir con otro cliente y ver o revocar accesos (M3b, plan 012 §1). La autorización no se duplica:
@@ -129,6 +137,26 @@ export class SharingService {
       const grants = await this.shares.listAccess(actor, node);
       if (grants === null) throw new NodeNotFoundError();
       return this.accessListOf(grants);
+    });
+  }
+
+  /**
+   * CA-10, CA-11: solo el propietario (la consulta borra con `propietario_id` = actor); ajeno, inexistente o ya revocado
+   * es el mismo 404. Sin `WritableAccountPolicy`: revocar se permite en solo lectura (CA-6). `share.revoked` en la
+   * misma transacción; la bitácora tras el commit.
+   */
+  async revoke(actor: Actor, shareId: string): Promise<void> {
+    const revoked = await this.transactions.withActor(actor, async () => {
+      const share = await this.shares.revoke(actor, shareId);
+      if (share === null) throw new ShareNotFoundError();
+      const snapshot = share.toSnapshot();
+      await this.audit.recordInTransaction(shareEvent(AuditAction.SHARE_REVOKED, actor, snapshot));
+      return snapshot;
+    });
+    this.log(REVOKED_LOG_EVENT, {
+      shareId: revoked.id,
+      nodeId: revoked.node.id,
+      level: revoked.level,
     });
   }
 
@@ -213,11 +241,10 @@ export class SharingService {
 
   private logChange({ access, change }: ShareOutcome, nodeId: string): void {
     if (change === 'unchanged') return;
-    this.logger.info({
-      event: LOG_EVENTS[change],
-      shareId: access.shareId,
-      nodeId,
-      level: access.level,
-    });
+    this.log(LOG_EVENTS[change], { shareId: access.shareId, nodeId, level: access.level });
+  }
+
+  private log(event: string, entry: ShareLogEntry): void {
+    this.logger.info({ event, ...entry });
   }
 }

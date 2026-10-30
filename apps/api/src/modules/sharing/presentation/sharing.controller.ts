@@ -1,4 +1,17 @@
-import { Body, Controller, Get, Header, HttpStatus, Post, Query, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Header,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+  Res,
+} from '@nestjs/common';
 import { accessListQuerySchema, shareRequestSchema } from '@nimbo/contracts';
 import type {
   AccessEntry,
@@ -11,7 +24,11 @@ import type { Response } from 'express';
 import { CurrentActor, Role, Roles, ZodValidationPipe } from '../../../shared';
 import type { Actor, DomainError, FieldIssue } from '../../../shared';
 import { SharingService } from '../application/sharing.service';
-import { SharingInvalidLevelError, SharingInvalidRequestError } from '../domain/errors';
+import {
+  ShareNotFoundError,
+  SharingInvalidLevelError,
+  SharingInvalidRequestError,
+} from '../domain/errors';
 
 import { toAccessEntry } from './access-entry.response';
 
@@ -29,8 +46,12 @@ const invalidShareRequest = (issues: readonly FieldIssue[]): DomainError =>
 const invalidQuery = (issues: readonly FieldIssue[]): DomainError =>
   new SharingInvalidRequestError(issues);
 
+/** CA-11: un `:shareId` que no es UUID es el mismo 404 que uno ajeno, inexistente o ya revocado. */
+const shareIdPipe = (): ParseUUIDPipe =>
+  new ParseUUIDPipe({ exceptionFactory: () => new ShareNotFoundError() });
+
 /**
- * Compartir con otro cliente y ver los accesos de un nodo (plan 012 §4). Solo `CLIENT`: un rol interno recibe `403 SHARED_FORBIDDEN` y sin token
+ * Compartir con otro cliente, ver y revocar los accesos de un nodo (plan 012 §4). Solo `CLIENT`: un rol interno recibe `403 SHARED_FORBIDDEN` y sin token
  * `401` (CA-20). Mapea y delega; las reglas viven en `SharingService`.
  */
 @Roles(Role.CLIENT)
@@ -60,5 +81,16 @@ export class SharingController {
   ): Promise<AccessListResponse> {
     const list = await this.sharing.listAccess(actor, { type: query.nodeType, id: query.nodeId });
     return { entries: list.entries().map(toAccessEntry) };
+  }
+
+  /** CA-10: `204`; desde la siguiente petición la persona recibe `404` sobre el nodo (RN-6). */
+  @Delete(':shareId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Header('Cache-Control', NO_STORE)
+  async revoke(
+    @CurrentActor() actor: Actor,
+    @Param('shareId', shareIdPipe()) shareId: string,
+  ): Promise<void> {
+    await this.sharing.revoke(actor, shareId);
   }
 }

@@ -7,6 +7,7 @@ import { NodeNotFoundError } from '../../storage';
 import {
   CannotShareWithSelfError,
   RecipientNotFoundError,
+  ShareNotFoundError,
   SharingInvalidLevelError,
 } from '../domain/errors';
 import { UserShare } from '../domain/user-share';
@@ -73,6 +74,7 @@ interface SetupOptions {
   readonly inserted?: boolean;
   readonly grants?: AccessGrants | null;
   readonly profiles?: ReadonlyMap<string, Sharee>;
+  readonly revoked?: UserShare | null;
 }
 
 const setup = (options: SetupOptions = {}) => {
@@ -108,6 +110,9 @@ const setup = (options: SetupOptions = {}) => {
     insert: jest.fn(step('insert', options.inserted ?? true)),
     updateLevel: jest.fn(step('updateLevel', undefined)),
     listAccess: jest.fn(step('listAccess', options.grants === undefined ? GRANTS : options.grants)),
+    revoke: jest.fn(
+      step('revoke', options.revoked === undefined ? existingShare('EDITOR') : options.revoked),
+    ),
   };
   const writable = {
     assertWritable: jest.fn(() => {
@@ -329,5 +334,41 @@ describe('SharingService.listAccess (plan 012 §2)', () => {
     await expect(service.listAccess(ANA, { ...FOLDER, type: 'file' })).rejects.toBeInstanceOf(
       NodeNotFoundError,
     );
+  });
+});
+
+describe('SharingService.revoke (plan 012 §2)', () => {
+  const SHARE_ID = '44444444-4444-4444-8444-444444444444';
+
+  it('CA-10, CA-19: borra como propietaria y audita `share.revoked` en la transacción, sin mirar la solo lectura', async () => {
+    const { service, journal, recorded, shares, logger } = setup({ readOnly: true });
+
+    await service.revoke(ANA, SHARE_ID);
+
+    expect(shares.revoke).toHaveBeenCalledWith(ANA, SHARE_ID);
+    expect(journal).toEqual([`tx:${ANA.id}`, 'revoke', 'audit:share.revoked', 'commit']);
+    expect(recorded).toEqual([
+      {
+        action: AuditAction.SHARE_REVOKED,
+        actor: ANA,
+        targetUserId: ANA.id,
+        resourceId: FOLDER.id,
+        attributes: { nodeType: 'folder', level: 'EDITOR' },
+      },
+    ]);
+    expect(logger.info).toHaveBeenCalledWith({
+      event: 'sharing.revoked',
+      shareId: SHARE_ID,
+      nodeId: FOLDER.id,
+      level: 'EDITOR',
+    });
+  });
+
+  it('CA-11: ajeno, inexistente o ya revocado es 404 `SHARING_SHARE_NOT_FOUND` sin auditar ni registrar', async () => {
+    const { service, recorded, logger } = setup({ revoked: null });
+
+    await expect(service.revoke(ANA, SHARE_ID)).rejects.toBeInstanceOf(ShareNotFoundError);
+    expect(recorded).toEqual([]);
+    expect(logger.info).not.toHaveBeenCalled();
   });
 });
