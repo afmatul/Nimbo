@@ -19,6 +19,21 @@ import { insertShare } from './sharing-test-db';
 import type { ShareRow } from './sharing-test-db';
 
 const MIGRATION = 'CrearComparticion20261101100000';
+const POLICIES_MIGRATION = 'PoliticasRlsNodosCompartidos20261101100100';
+
+/** Políticas de `nimbo_app` que toca la migración B de 012, con su condición tal como la guarda Postgres. */
+const RECIPIENT_POLICIES_SQL = `SELECT p.tablename, p.policyname, p.cmd, p.qual
+   FROM pg_policies p
+  WHERE p.tablename IN ('archivo', 'carpeta', 'version_archivo', 'indexacion', 'fragmento')
+    AND 'nimbo_app' = ANY (p.roles)
+  ORDER BY p.tablename, p.policyname`;
+
+interface PolicyRow {
+  readonly tablename: string;
+  readonly policyname: string;
+  readonly cmd: string;
+  readonly qual: string;
+}
 
 /** Lo que crea la migración A de 012: tabla, índices, políticas (también las del dueño en `archivo`/`carpeta`) y función. */
 const SHARING_SCHEMA_SQL = `SELECT
@@ -170,6 +185,38 @@ describe('migración crear-comparticion con dueño NOSUPERUSER (plan 012 §3)', 
     expect(policiesAfterDown).not.toContain('carpeta_nodos_compartidos');
     expect(rerun.map((migration) => migration.name)).toEqual(reverted);
     expect(await sharingSchemaOf(owner)).toEqual(before);
+  });
+
+  it('RNF-10: migración B up → down → up: abre la lectura al destinatario, acota lo de 005/019 y lo devuelve', async () => {
+    const policiesOf = async (): Promise<PolicyRow[]> =>
+      (await owner.query(RECIPIENT_POLICIES_SQL)) as PolicyRow[];
+    const before = await policiesOf();
+
+    const reverted = await revertFrom(owner, POLICIES_MIGRATION);
+    const afterDown = await policiesOf();
+    await owner.runMigrations({ transaction: 'each' });
+
+    const names = (rows: PolicyRow[]): string[] => rows.map((row) => row.policyname);
+    const qualOf = (rows: PolicyRow[], name: string): string =>
+      rows.find((row) => row.policyname === name)?.qual ?? '';
+    expect(reverted).toEqual([POLICIES_MIGRATION]);
+    expect(names(before)).toEqual(
+      expect.arrayContaining([
+        'archivo_compartido',
+        'carpeta_compartida',
+        'version_archivo_compartida',
+      ]),
+    );
+    expect(
+      before.filter((row) => /_compartid[oa]$/.test(row.policyname)).map((row) => row.cmd),
+    ).toEqual(['SELECT', 'SELECT', 'SELECT']);
+    for (const policy of ['version_archivo_cliente', 'indexacion_cliente', 'fragmento_cliente']) {
+      expect(qualOf(before, policy)).toContain('propietario_id = nimbo_actor_id()');
+      expect(qualOf(afterDown, policy)).not.toContain('propietario_id');
+    }
+    expect(names(afterDown)).not.toContain('archivo_compartido');
+    expect(names(afterDown)).not.toContain('version_archivo_compartida');
+    expect(await policiesOf()).toEqual(before);
   });
 
   it('RNF-05: `nodos_compartidos()` no la ejecuta `PUBLIC` y sí `nimbo_app`', async () => {

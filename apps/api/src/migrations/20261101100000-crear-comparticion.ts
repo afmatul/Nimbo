@@ -23,6 +23,9 @@ const NODE_OWNED_BY_ACTOR = `
  * ADR-0005). Une los accesos directos del actor y el subárbol de cada carpeta compartida (prefijo de `ruta`, del
  * mismo propietario), solo nodos vivos de propietarios `activa`, con el nivel mayor por nodo. Una fila cuyo nodo no
  * es del `propietario_id` de la compartición no alcanza nada. Devuelve `tipo_nodo` `archivo` o `carpeta`.
+ * El rango `~>=~`/`~<~` acota el prefijo para que `idx_carpeta_ruta` (`text_pattern_ops`) lo sirva en el bucle
+ * anidado (un `LIKE` con patrón no constante no usa índice, R-3); `~` es mayor que todo carácter de una `ruta` (UUID y
+ * «/») y el `LIKE` sigue siendo la condición exacta.
  */
 const SHARED_NODES_BODY = `
   WITH directos AS (
@@ -34,7 +37,9 @@ const SHARED_NODES_BODY = `
     SELECT h.id, d.nivel
       FROM directos d
       JOIN public.carpeta r ON r.id = d.carpeta_id AND r.propietario_id = d.propietario_id
-      JOIN public.carpeta h ON h.propietario_id = r.propietario_id AND h.ruta LIKE r.ruta || '%'
+      JOIN public.carpeta h ON h.propietario_id = r.propietario_id
+                           AND h.ruta ~>=~ r.ruta AND h.ruta ~<~ (r.ruta || '~')
+                           AND h.ruta LIKE r.ruta || '%'
      WHERE h.eliminado_en IS NULL
   ), alcanzados AS (
     SELECT 'carpeta'::text AS tipo_nodo, k.id AS nodo_id, k.nivel FROM carpetas k
