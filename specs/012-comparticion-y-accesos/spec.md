@@ -24,6 +24,7 @@ exactamente lo compartido, con el poder de su nivel y nada más. Entrega solo la
 - **HU-4** Como propietario, quiero revocar un acceso, para dejar de compartir cuando ya no corresponda.
 - **HU-5** Como destinatario, quiero abrir lo compartido conmigo según mi nivel, para colaborar sin poder dañar lo ajeno.
 - **HU-6** Como equipo, queremos una suite que falle si una cuenta alcanza lo que nadie le compartió.
+- **HU-7** Como destinatario, quiero listar lo que me compartieron y salir de ello, para encontrarlo sin enlace y dejar de verlo.
 
 ## 3. Criterios de aceptación
 > Dado/Cuando/Entonces. «Nodo» = archivo o carpeta. Los errores de un nodo ajeno son idénticos a los de uno inexistente (003 D-6).
@@ -52,9 +53,13 @@ exactamente lo compartido, con el poder de su nivel y nada más. Entrega solo la
 - **CA-17** (HU-5, RF-16) Dado un propietario suspendido (011 RN-6), cuando sus destinatarios piden lo compartido, entonces `404`; al reactivarlo, las comparticiones vuelven como estaban sin recrearse.
 - **CA-18** (HU-4, RF-18) Dado un nodo compartido, cuando se elimina definitivamente (006), entonces sus comparticiones desaparecen; en la papelera se conservan y vuelven al restaurar.
 
+**Compartidos conmigo y Salir (RF-16; decisión de Adrián, 2026-10-30, 012b P-1)**
+- **CA-22** (HU-7, RF-16) Dado accesos directos vigentes conmigo, cuando pido lo compartido conmigo, entonces recibo cada uno con `shareId`, tipo y nombre del nodo, nombre visible del propietario, mi nivel y fecha, más recientes primero, y `[]` si no hay; sin accesos heredados, sin nodos en la papelera ni de propietarios suspendidos; con un rol interno `403` `SHARED_FORBIDDEN`.
+- **CA-23** (HU-7, RF-16, 010 RN-6) Dado un acceso directo mío como destinatario, cuando salgo, entonces `204`, desde la siguiente petición recibo `404` sobre el nodo, el propietario ya no me ve en sus accesos y queda auditado; se permite aunque mi cuenta esté en solo lectura. — error: un `shareId` ajeno, inexistente o ya revocado da `404` `SHARING_SHARE_NOT_FOUND`.
+
 **Auditoría, roles y aislamiento (RF-07, RF-05, RNF-05, RNF-17)**
 - **CA-19** (HU-1, RF-07, RNF-17) Dado compartir, cambiar nivel o revocar, entonces «Mi actividad» del propietario registra `share.granted`, `share.level_changed` o `share.revoked` con tipo de nodo y nivel, sin nombre de archivo ni correo; los logs tampoco los llevan y la petición conserva su `correlationId`.
-- **CA-20** (HU-6, RF-05) Dado un Administrador, Soporte u Operador, cuando llama a cualquiera de las tres rutas, entonces `403` `SHARED_FORBIDDEN`; sin token, `401` `SHARED_UNAUTHENTICATED`.
+- **CA-20** (HU-6, RF-05) Dado un Administrador, Soporte u Operador, cuando llama a cualquiera de las rutas, entonces `403` `SHARED_FORBIDDEN`; sin token, `401` `SHARED_UNAUTHENTICATED`.
 - **CA-21** (HU-6, RNF-05) Dado los clientes A, B y C, y A comparte un nodo con B, cuando cada uno consulta, entonces C no alcanza nada de A, B solo alcanza ese nodo (y su subárbol si es carpeta) y A no alcanza nada de B; la base de datos lo niega aunque la consulta olvide filtrar. `pnpm test:isolation` falla ante cualquier fuga.
 
 ## 4. Reglas de negocio
@@ -86,7 +91,7 @@ Sin interfaz en esta spec: la pantalla es la 012b. Para el `ui-designer`, estos 
 ## 7. Fuera de alcance
 - Enlaces públicos (013, RF-17) e invitaciones a correos sin cuenta.
 - Avisos al destinatario (correo o en la aplicación) y que el destinatario vea el cambio en su actividad.
-- «Compartidos conmigo» y «Salir» (012b, P-1; pendiente PD-138); comparticiones con vencimiento.
+- Comparticiones con vencimiento (PD-138). La pantalla «Compartidos conmigo» es de la 012b; su API es CA-22 y CA-23.
 - Que Editor o Lector vean el historial de versiones, restauren o reemplacen por carga, o suban a una carpeta compartida (014 RN-7; PD-139 y PD-140).
 - Grupos, organizaciones, administración delegada y excepciones de permiso dentro de una carpeta (`product-context.md` §9).
 - Transferir la propiedad.
@@ -99,14 +104,16 @@ Sin interfaz en esta spec: la pantalla es la 012b. Para el `ui-designer`, estos 
 - **S-5** La auditoría es solo del propietario (CA-19); el destinatario no recibe aviso (PD-138).
 - **S-6** Revocar no corta una sesión de edición al instante: se detecta en la siguiente verificación (015 P-2, 016 CA-16).
 - **S-7** El mockup `sharing/compartir` existe en `Borrador` con el estado `default`; los demás estados los crea `/mockup` en la 012b.
+- **S-8** La lista de CA-22 no se pagina (como S-3). Salir se audita como `share.revoked` en la actividad del propietario, sin correo ni nombres (CA-19).
 
 ## 9. Preguntas
 - [ABIERTA] P-1 ¿El destinatario recibe un aviso (correo o en la aplicación) al compartirle, y ve en su actividad que ganó o perdió un acceso? Sin RF que lo pida; se asume que no (S-5) — bloquea: no
 - [ABIERTA] P-2 ¿Se acepta revelar con un mensaje único que un correo tiene o no cuenta (CA-3), acotado por el límite de CA-7, o se prefiere una respuesta neutra que nunca lo diga? Solo cambiaría CA-3 y la 012b — bloquea: no
 - [RESUELTA 2026-10-30: sí, Adrián autoriza] P-3 ¿Adrián autoriza a Fátima a cambiar `access`, `storage`, `identity` y `audit` en los archivos que nombra el plan (precedente 011, 2026-10-07/08), o los hace él? Va en el plan §8 — bloquea: no
-- [ABIERTA] P-4 El «Salir» que la 010 RN-6 permite al destinatario: ¿entra en la 012b o se descarta? — bloquea: no
+- [RESUELTA 2026-10-30: entra, Adrián; API en esta spec, pantalla en la 012b] P-4 El «Salir» que la 010 RN-6 permite al destinatario: ¿entra en la 012b o se descarta? — bloquea: no
 
 ## 10. Registro de cambios
 | Fecha | Cambio | Motivo | Aprobó |
 |---|---|---|---|
 | 2026-10-30 | Creación en `Borrador` desde cero (sin la rama antigua de 012); partida en 012 (API) y 012b (pantalla) | Más de una pantalla y de 12 archivos | Pendiente (Adrián) |
+| 2026-10-30 | CA-22 y CA-23 (listar lo compartido conmigo y salir), HU-7, S-8; P-4 resuelta; plan y tareas con delta mínimo (rutas, política `DELETE` del destinatario, T-11). El plan §8 no se toca | Decisión de Adrián sobre 012b P-1: la vista entra; su API vive en `sharing` | Adrián (decisión); delta del plan por confirmar en el resumen |
