@@ -44,10 +44,17 @@
 - **[S-1]** `trash-notices.ts`: `moved_to_root` no dice el nombre nuevo si además hubo renombrado; `renamed` podría usar `locationText(folder)`.
 - **[S-2] Corregido** `TrashRestoreDialog` deja de ser genérico (un solo uso, Art. V.3).
 - **[S-3]** `client-trash.service.ts` importa `filesViewedEvent` de `support.service.ts`; moverlo a `backoffice-events.ts` si aparece un tercer uso.
-- **[S-4]** `422 BACKOFFICE_INVALID_INPUT` no está en `apps/web/src/lib/error-catalog.ts` (cae al genérico).
+- **[S-4] Corregido** (m-1 de Adrián) `422 BACKOFFICE_INVALID_INPUT` está en `apps/web/src/lib/error-catalog.ts`, con el mismo texto que `IDENTITY_INVALID_INPUT` (`FIELDS_MARKED`).
 - **[S-6] Corregido** (re-verificación) `NoteCounter` contaba `value.length` y validaba el texto recortado («505/500» sin rojo); ahora cuenta el recortado, con prueba.
 - **[S-7]** (re-verificación) `trash-restore-dialog.tsx`: sin `details.maxDepth` el aviso quedaría sin cifra; hoy la API siempre lo envía (`node.errors.ts`).
 - **[S-5, fuera de 011b]** `configure-http-app.ts:25`: `CORS_METHODS` es `GET,POST,DELETE` desde la 001; desde `:3002` fallan `PUT` y `PATCH` (cuota, vigencia, renovación, renombrar, fijar). Con Traefik no.
+
+## Auditoría de Adrián (PR #85, 2026-10-30)
+- Sin bloqueantes; el CI rojo es por falta de minutos de GitHub Actions y no cuenta.
+- **M-1 Corregido:** límite de `lower()` frente a `toLowerCase()` anotado en la migración y en DF-81 (manda `lower()`, el de los índices: nunca hay duplicados).
+- **M-2 Corregido:** `SupportTrashService` devuelve vistas de lectura (`SupportTrashPage`, `SupportRestoreView`); `storage` deja de exportar `toTrashItem`, `toNodeSummary`, `SupportRestoreResult` y `TrashPage`. El mapeo `RestoreResult` → `RestoreResponse` queda en 2 usos (`trash.controller.ts` y la fachada): por la regla de tres no se unifica todavía.
+- **M-3:** aislamiento en Linux (WSL), resultado en el PR.
+- **m-1 Corregido** (S-4). m-2 a m-9 quedan para un seguimiento.
 
 ## DF y pendientes
 - DF nuevos: ninguno. DF-81 actualizado (I-3). PD-96, PD-120 y PD-131 siguen como dice el plan §7. Fila propuesta en `pendientes.md`: CORS de S-5.
