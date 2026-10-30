@@ -7,7 +7,7 @@
 | Fecha | 2026-10-30 |
 | Rango revisado | `8676659..181325a` (rama `claude/fervent-shannon-bey1ow`, 25 commits; código en `apps/api`, `packages/contracts`, `packages/config`) |
 | CI | Sin PR todavía; suites corridas en local (abajo) |
-| Veredicto | 🔁 Cambios requeridos (B-1); T-12 (recorrido humano) sigue pendiente a propósito |
+| Veredicto | ✅ Sin bloqueantes tras T-FIX-4 y T-FIX-5 (era 🔁 por B-1); T-12 (recorrido humano) y la ratificación de Adrián (I-1, I-2) siguen pendientes |
 
 ## Verificación
 | CA | Prueba (`apps/api/…` salvo que se indique) | Estado |
@@ -40,7 +40,7 @@
 `pnpm test` ✅ (api 298 suites/2874, web 218/1925, contracts 30/573, config 7/247, raíz 3/34) · `pnpm test:isolation` ✅
 (30 suites, 581 pruebas) · `pnpm test:int`, dos corridas completas: 1.ª ❌ 173/176 suites (1732 pruebas), 2.ª 174/176 (1733 pruebas).
 `test/int/shared/dotenv-bootstrap.int-spec.ts` falla en las dos y es **no verificable en este entorno** (necesita `.env` y
-`docker compose`); `test/int/storage/node-tree.repository.int-spec.ts` R-2 falla solo en la 1.ª (intermitente, B-1).
+`docker compose`); `test/int/storage/node-tree.repository.int-spec.ts` R-2 falla solo en la 1.ª (intermitente, B-1). Tras T-FIX-4: dos corridas completas con 1733 pruebas en verde y solo `dotenv-bootstrap` en rojo; `pnpm test:isolation` 587/587.
 Sin `deadlock`. **Cobertura** de `sharing` (unitarias): `domain` y `application` 100 % de líneas (`sharing.service.ts` 80,95 %
 de ramas); `infrastructure` y `presentation` las cubren las suites de integración.
 
@@ -165,6 +165,7 @@ recibió nada y para la propia propietaria (ISO-20, ISO-21). El actor no se pued
   estado (`ANALYZE archivo, carpeta` dentro de la prueba, antes del `EXPLAIN`) y que `ROOT_INDEXES` acepte los índices de
   propietario de 006 (`idx_carpeta_hijas`); la aserción que importa es «sin `Seq Scan`».
 
+  **Resuelto** (T-FIX-4): la causa son estadísticas e índices inflados que dejan otras suites; `refreshNodeStatistics` antes del `EXPLAIN` y la aserción pasa a «sin `Seq Scan`» más un `Index Scan` acotado por `propietario_id`, sin depender del nombre del índice (la lista ampliada sola volvió a fallar con `uq_carpeta_hermanos_nombre`). Dos corridas completas en verde.
 ## Importantes y sugerencias
 - **[I-1]** `specs/012-comparticion-y-accesos/spec.md:120`, `plan.md:107` — la ruta nueva `GET /files/:fileId` (CA-12) figura
   como «aprobación de Adrián pendiente». Sin spec aprobada no hay código: Adrián la ratifica en el PR (y se anota «Aprobó») o se
@@ -196,15 +197,18 @@ recibió nada y para la propia propietaria (ISO-20, ISO-21). El actor no se pued
 - **[S-2]** `apps/api/src/modules/sharing/infrastructure/persistence/typeorm-share.repository.ts:122` — el comentario «su
   propietario (revocar, CA-10)» no cubre `recipient` (Salir, CA-23): «Quién borra la fila: el propietario (revocar) o el
   destinatario (Salir)».
+  **Resuelto** (T-FIX-4): comentario de `DeletingParty` corregido.
 - **[S-3]** `test/int/sharing/shares.int-spec.ts:101,311`, `shares-received.int-spec.ts:121,130` — todas las cuentas de prueba
   se llaman «Ana López», así que estas pruebas HTTP pasarían aunque el nombre del destinatario y el del propietario se
   cruzaran (las unitarias sí lo distinguen). Usar nombres distintos en `newClient`.
+  **Resuelto** (T-FIX-4): `SharingHttpApp.rename`; Bruno es «Bruno Díaz» frente a «Ana López» y «Carla Ruiz».
 - **[S-4]** `test/isolation/sharing.iso-spec.ts:453` (ISO-14) mide tiempo real, con una tolerancia de 25 ms, en una suite que
   bloquea. Si falla en CI, subir las muestras o pasarlo a un job que no bloquee; no relajar ISO-13.
 - **[S-5]** `test/isolation/storage-shared-writes.iso-spec.ts:51-139` — CA-14 nombra «restaurar» y «reemplazar» y la lista no los
   tiene: hoy los cubren `ownedTrashedNodes` y el destino de `POST /uploads`. Agregar `POST /trash/files/:id/restore` y
   `POST /uploads` con `onConflict: 'replace'` cuesta dos filas.
 
+  **Resuelto** (T-FIX-4): restaurar archivo y carpeta desde la papelera y `POST /uploads` con `onConflict: 'replace'`, como Lector y Editor (35/35).
 ## DF y pendientes
 - DF-31, DF-84, DF-85: existen y describen lo hecho; el estado está desactualizado (I-5).
 - PD-108 cerrado (T-09) ✅ · PD-134 parcial (queda la 017) ✅ · PD-137 a PD-141 abiertos y coherentes con la spec y la
@@ -229,6 +233,6 @@ recibió nada y para la propia propietaria (ISO-20, ISO-21). El actor no se pued
   CA y cubren errores y límites.
 
 ## Veredicto
-🔁 **Cambios requeridos.** Hay un solo bloqueante, B-1, y es de pruebas: la funcionalidad está completa y los 23 CA tienen
-prueba. Con B-1 corregido y `pnpm test:int` en verde en una corrida completa, el veredicto pasa a ✅. Antes del merge conviene
-cerrar I-1 e I-2 (Adrián las ratifica) e I-3 a I-5 (documentos). Las sugerencias quedan a criterio del equipo.
+✅ **Sin bloqueantes.** B-1 quedó resuelto en T-FIX-4 (dos corridas completas de `pnpm test:int` en verde salvo
+`dotenv-bootstrap`, no verificable aquí) e I-2 a I-5 en T-FIX-5. Los 23 CA tienen prueba. Antes del merge: Adrián ratifica I-1
+(`GET /files/:fileId`) y las desviaciones del plan §7, y se hace T-12 (recorrido humano). S-4 queda a criterio del equipo.
