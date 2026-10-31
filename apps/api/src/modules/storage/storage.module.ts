@@ -20,10 +20,12 @@ import { I_NODE_METADATA_READER } from './application/ports/i-node-metadata-read
 import { I_OBJECT_STORAGE } from './application/ports/i-object-storage.port';
 import type { IObjectStorage } from './application/ports/i-object-storage.port';
 import { I_QUICK_ACCESS_REPOSITORY } from './application/ports/i-quick-access.repository.port';
+import { I_SUPPORT_TRASH_REPOSITORY } from './application/ports/i-support-trash.repository.port';
 import { QUICK_ACCESS_CONFIG } from './application/quick-access-config';
 import type { QuickAccessConfig } from './application/quick-access-config';
 import { QuickAccessService } from './application/quick-access.service';
 import { SpaceSummaryService } from './application/space-summary.service';
+import { SupportTrashService } from './application/support-trash.service';
 import { UPLOAD_CONFIG } from './application/upload-config';
 import type { UploadConfig } from './application/upload-config';
 import { VersionHistoryService } from './application/version-history.service';
@@ -37,6 +39,7 @@ import {
 } from './infrastructure/minio-storage.adapter';
 import { SqlNodeMetadataReader } from './infrastructure/persistence/sql-node-metadata.reader';
 import { TypeOrmQuickAccessRepository } from './infrastructure/persistence/typeorm-quick-access.repository';
+import { TypeOrmSupportTrashRepository } from './infrastructure/persistence/typeorm-support-trash.repository';
 import { TRASH_PURGE_QUEUE } from './infrastructure/trash-purge.scheduler';
 import { FileVersionsController } from './presentation/file-versions.controller';
 import { FilesController } from './presentation/files.controller';
@@ -45,6 +48,10 @@ import { QuickAccessController } from './presentation/quick-access.controller';
 import { SpaceController } from './presentation/space.controller';
 import { TrashController } from './presentation/trash.controller';
 import { UploadsController } from './presentation/uploads.controller';
+import { I_NODE_SEARCH_REPOSITORY } from './search/application/ports/i-node-search.repository.port';
+import { SearchService } from './search/application/search.service';
+import { TypeOrmNodeSearchRepository } from './search/infrastructure/typeorm-node-search.repository';
+import { SearchController } from './search/presentation/search.controller';
 import {
   INDEXABLE_FILE_PROVIDERS,
   SPACE_PROVIDERS,
@@ -68,15 +75,17 @@ export type StorageEnv = Pick<
 >;
 
 /**
- * Módulo `storage` (M2, plan §6): carga, descarga, carpetas, papelera y accesos rápidos (006), resumen de espacio (007) y
- * versiones (014: registro y poda en `UPLOAD_LIFECYCLE_PROVIDERS`; historial, descarga y restauración solo en el `api`)
- * y, desde 016, `EditableFileGateway` (exportado) con el registro de versiones de edición, solo en el `api`; desde 019,
- * `IndexableFileGateway` (exportada) y el anuncio de cada versión vigente (`storage.file-version-created`).
- * `forRoot(env)` publica la configuración técnica (bytes como `bigint`) y une cada puerto con su adaptador. **No**
- * enlaza `I_PLAN_LIMITS_PROVIDER` ni importa `billing`: ese enlace vive en la raíz de composición (DF-51, opción A). `SharedModule` (global) aporta reloj, tasa, transacciones y
- * `TransactionContext`; `MinioConfigModule` (global), `MINIO_CONFIG`. La cola `trash-purge` se registra solo para que
- * «Vaciar papelera» encole: la programa y la procesa el `worker`. Exporta solo `I_NODE_METADATA_READER`, que consume
- * `backoffice` (011, PD-31) importando **este mismo** `DynamicModule` que la raíz (Nest los distingue por referencia).
+ * Módulo `storage` (M2, plan §6): carga, descarga, carpetas, papelera y accesos rápidos (006), resumen de espacio
+ * (007), búsqueda (018, `storage/search`) y versiones (014: registro y poda en `UPLOAD_LIFECYCLE_PROVIDERS`; historial,
+ * descarga y restauración solo en el `api`) y, desde 016, `EditableFileGateway` (exportado) con el registro de
+ * versiones de edición, solo en el `api`; desde 019, `IndexableFileGateway` (exportada) y el anuncio de cada versión
+ * vigente (`storage.file-version-created`). `forRoot(env)` publica la configuración técnica (bytes como `bigint`) y une
+ * cada puerto con su adaptador. **No** enlaza `I_PLAN_LIMITS_PROVIDER` ni importa `billing`: ese enlace vive en la raíz
+ * de composición (DF-51, opción A). `SharedModule` (global) aporta reloj, tasa, transacciones y `TransactionContext`;
+ * `MinioConfigModule` (global), `MINIO_CONFIG`. La cola `trash-purge` se registra solo para que «Vaciar papelera»
+ * encole: la programa y la procesa el `worker`. Exporta `I_NODE_METADATA_READER` (011, PD-31) y, desde 011b,
+ * `SupportTrashService`, que consume `backoffice` importando **este mismo** `DynamicModule` que la raíz (Nest los
+ * distingue por referencia).
  */
 @Module({})
 export class StorageModule {
@@ -109,6 +118,7 @@ export class StorageModule {
         TrashController,
         QuickAccessController,
         SpaceController,
+        SearchController,
       ],
       providers: [
         { provide: UPLOAD_CONFIG, useValue: uploadConfig },
@@ -135,7 +145,11 @@ export class StorageModule {
         VersionRestoreService,
         FolderService,
         QuickAccessService,
+        SearchService,
+        { provide: I_NODE_SEARCH_REPOSITORY, useClass: TypeOrmNodeSearchRepository },
         { provide: I_NODE_METADATA_READER, useClass: SqlNodeMetadataReader },
+        { provide: I_SUPPORT_TRASH_REPOSITORY, useClass: TypeOrmSupportTrashRepository },
+        SupportTrashService,
         EditedVersionRegistrar,
         EditableFileGateway,
         ...INDEXABLE_FILE_PROVIDERS,
@@ -143,12 +157,14 @@ export class StorageModule {
       // 011 (PD-31): el lector de metadatos para `backoffice`. 009 (ampliación de la decisión 1, 2026-10-15): `billing`
       // importa `I_OBJECT_STORAGE` de forma explícita, sin módulo global. 016: la fachada de edición para `editing`.
       // 019: la fachada de la indexación para `intelligence`. 012 (PD-121): la política de solo lectura para `sharing`.
+      // 011b: la papelera de Soporte para `backoffice`.
       exports: [
         I_NODE_METADATA_READER,
         I_OBJECT_STORAGE,
         EditableFileGateway,
         IndexableFileGateway,
         WritableAccountPolicy,
+        SupportTrashService,
       ],
     };
   }

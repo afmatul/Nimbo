@@ -50,7 +50,7 @@ describe('STORAGE_ERROR_CODES', () => {
 });
 
 describe('motivos', () => {
-  it('CA-7: STORAGE_FIELD_ISSUE_REASONS es el conjunto cerrado de motivos de campo', () => {
+  it('CA-7, 018 CA-9: STORAGE_FIELD_ISSUE_REASONS es el conjunto cerrado de motivos de campo', () => {
     expect([...STORAGE_FIELD_ISSUE_REASONS].sort()).toEqual(
       [
         'REQUIRED',
@@ -62,6 +62,9 @@ describe('motivos', () => {
         'INVALID_FOLDER',
         'INVALID_SORT',
         'INVALID_DIRECTION',
+        'INVALID_TYPE',
+        'INVALID_DATE',
+        'INVALID_RANGE',
       ].sort(),
     );
   });

@@ -139,6 +139,8 @@ export interface StorageClient {
   restoreFolder(folderId: string): Promise<Response>;
   emptyTrash(): Promise<Response>;
   spaceSummary(): Promise<Response>;
+  /** `GET /search` (018) con la cadena de consulta tal cual. */
+  search(query?: Record<string, string>): Promise<Response>;
   /** `GET /files/:fileId/versions` (014). */
   fileVersions(fileId: string): Promise<Response>;
   /** `POST /files/:fileId/versions/:versionId/restore` (014). */
@@ -336,6 +338,7 @@ export const createStorageHttpApp = async (
         http().post(`${API_PREFIX}/trash/folders/${folderId}/restore`).set(auth),
       emptyTrash: () => http().delete(`${API_PREFIX}/trash`).set(auth),
       spaceSummary: () => http().get(`${API_PREFIX}/storage/summary`).set(auth),
+      search: (query = {}) => http().get(`${API_PREFIX}/search`).query(query).set(auth),
       fileVersions: (fileId) => http().get(`${API_PREFIX}/files/${fileId}/versions`).set(auth),
       restoreVersion: (fileId, versionId) =>
         http().post(`${API_PREFIX}/files/${fileId}/versions/${versionId}/restore`).set(auth),

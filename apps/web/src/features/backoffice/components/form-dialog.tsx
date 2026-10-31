@@ -45,6 +45,8 @@ export interface FormDialogProps {
   /** Cancelar o Escape; mientras se envía no se cierra. */
   readonly onClose: () => void;
   readonly submit: FormSubmit;
+  /** Aviso de auditoría sobre «Cancelar»; sin él, el de los ajustes de cuenta. */
+  readonly auditNote?: string;
   readonly children: React.ReactNode;
 }
 
@@ -58,6 +60,7 @@ export function FormDialog({
   description,
   onClose,
   submit,
+  auditNote = AUDIT_NOTE,
   children,
 }: FormDialogProps): React.JSX.Element {
   const onOpenChange = (open: boolean): void => {
@@ -76,19 +79,25 @@ export function FormDialog({
             <DialogDescription>{description}</DialogDescription>
           </DialogHeader>
           {children}
-          <FormDialogFooter submit={submit} />
+          <FormDialogFooter submit={submit} auditNote={auditNote} />
         </form>
       </DialogContent>
     </Dialog>
   );
 }
 
-function FormDialogFooter({ submit }: { readonly submit: FormSubmit }): React.JSX.Element {
+function FormDialogFooter({
+  submit,
+  auditNote,
+}: {
+  readonly submit: FormSubmit;
+  readonly auditNote: string;
+}): React.JSX.Element {
   return (
     <>
       <p className="flex items-start gap-2 text-sm text-secondary-foreground">
         <History className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-        {AUDIT_NOTE}
+        {auditNote}
       </p>
       <DialogFooter className="border-t border-border pt-4">
         <DialogClose asChild>

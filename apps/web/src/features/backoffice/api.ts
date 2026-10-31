@@ -4,8 +4,10 @@ import {
   accountListResponseSchema,
   backofficeMetricsResponseSchema,
   clientFilesResponseSchema,
+  clientTrashResponseSchema,
   planAdminListResponseSchema,
   planAdminViewSchema,
+  restoreResponseSchema,
   type AccountLimits,
   type AccountListItem,
   type AdjustQuotaRequest,
@@ -13,10 +15,13 @@ import {
   type AccountListResponse,
   type BackofficeMetricsResponse,
   type ClientFilesResponse,
+  type ClientTrashResponse,
   type CreatePlanRequest,
   type EnrollInternalAccountRequest,
   type PlanAdminListResponse,
   type PlanAdminView,
+  type RestoreClientNodeRequest,
+  type RestoreResponse,
 } from '@nimbo/contracts';
 
 import type { AuthFetch } from '../identity/session/auth-fetch';
@@ -26,6 +31,18 @@ const CLIENT_FILES_PATH = '/backoffice/client-files';
 const ACCOUNTS_PATH = '/backoffice/accounts';
 const METRICS_PATH = '/backoffice/metrics';
 const PLANS_PATH = '/backoffice/plans';
+const CLIENT_TRASH_PATH = '/backoffice/client-trash';
+
+/** Correo exacto de un cliente y, si hay, el cursor de la siguiente página de su papelera (011b CA-10). */
+export interface ClientTrashRequest {
+  readonly email: string;
+  readonly cursor?: string;
+}
+
+/** Raíz de la papelera de un cliente que Soporte restaura, con el motivo (011b CA-11). */
+export interface RestoreClientNodeCall extends RestoreClientNodeRequest {
+  readonly nodeId: string;
+}
 
 /** Correo exacto de un cliente y la página de sus archivos (011 CA-13, DF-66). */
 export interface ClientFilesRequest {
@@ -43,6 +60,10 @@ export interface AccountsRequest {
 export interface BackofficeApi {
   /** `GET /backoffice/client-files`: el cliente y una página de los metadatos de sus archivos. */
   listClientFiles(request: ClientFilesRequest): Promise<ClientFilesResponse>;
+  /** `GET /backoffice/client-trash` (011b CA-10): el cliente y una página de las raíces de su papelera. */
+  listClientTrash(request: ClientTrashRequest): Promise<ClientTrashResponse>;
+  /** `POST /backoffice/client-trash/:nodeId/restore` (011b CA-11): restaura una raíz; el motivo queda en la auditoría. */
+  restoreClientNode(request: RestoreClientNodeCall): Promise<RestoreResponse>;
   /** `GET /backoffice/accounts`: una página de cuentas, de la más reciente. */
   listAccounts(request: AccountsRequest): Promise<AccountListResponse>;
   /** `GET /backoffice/accounts/:id`: la ficha de una cuenta. */
@@ -74,6 +95,34 @@ export interface BackofficeApi {
 function clientFilesUrl(base: string, { email, page }: ClientFilesRequest): string {
   const params = new URLSearchParams({ email, page: String(page) });
   return `${base}${CLIENT_FILES_PATH}?${params.toString()}`;
+}
+
+function clientTrashUrl(base: string, { email, cursor }: ClientTrashRequest): string {
+  const params = new URLSearchParams({ email });
+  if (cursor !== undefined) params.set('cursor', cursor);
+  return `${base}${CLIENT_TRASH_PATH}?${params.toString()}`;
+}
+
+/** Papelera de un cliente para Soporte (011b plan §4): la lista de raíces y la restauración con motivo. */
+function clientTrashCalls(base: string, authFetch: AuthFetch) {
+  return {
+    listClientTrash: async (request: ClientTrashRequest): Promise<ClientTrashResponse> =>
+      parseResponse(
+        await authFetch(clientTrashUrl(base, request), { method: 'GET' }),
+        clientTrashResponseSchema,
+      ),
+    restoreClientNode: async ({
+      nodeId,
+      ...body
+    }: RestoreClientNodeCall): Promise<RestoreResponse> =>
+      parseResponse(
+        await authFetch(
+          `${base}${CLIENT_TRASH_PATH}/${encodeURIComponent(nodeId)}/restore`,
+          jsonBody('POST', body),
+        ),
+        restoreResponseSchema,
+      ),
+  };
 }
 
 function accountsUrl(base: string, { email, page }: AccountsRequest): string {
@@ -164,6 +213,7 @@ export function createBackofficeApi(apiPublicUrl: string, authFetch: AuthFetch):
         await authFetch(`${base}${METRICS_PATH}`, { method: 'GET' }),
         backofficeMetricsResponseSchema,
       ),
+    ...clientTrashCalls(base, authFetch),
     ...planCalls(base, authFetch),
     ...accountCalls(base, authFetch),
     ...limitsCalls(base, authFetch),

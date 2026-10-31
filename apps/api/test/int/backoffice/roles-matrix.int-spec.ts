@@ -32,7 +32,10 @@ interface DeniedCaller {
   readonly suspended: boolean;
 }
 
-/** Una ruta del backoffice y quiénes no la pueden usar; T-11 suma las del catálogo y la 011b, las de ajustes. */
+/**
+ * Una ruta del backoffice y quiénes no la pueden usar; T-11 suma las del catálogo y la 011b, las de ajustes y las de la
+ * papelera de Soporte.
+ */
 interface BackofficeRoute {
   readonly name: string;
   readonly denied: readonly DeniedCaller[];
@@ -42,6 +45,7 @@ interface BackofficeRoute {
 const CLIENT: DeniedCaller = { name: 'un Cliente', role: Role.CLIENT, suspended: false };
 const SUPPORT: DeniedCaller = { name: 'Soporte', role: Role.SUPPORT, suspended: false };
 const OPERATOR: DeniedCaller = { name: 'un Operador', role: Role.OPERATOR, suspended: false };
+const ADMIN: DeniedCaller = { name: 'un Administrador', role: Role.ADMIN, suspended: false };
 const SUSPENDED_SUPPORT: DeniedCaller = {
   name: 'Soporte suspendido',
   role: Role.SUPPORT,
@@ -96,6 +100,58 @@ const ADJUSTMENT_ROUTES: readonly BackofficeRoute[] = [
       withToken(http.put(`${ACCOUNTS}/${target.id}/validity`), token).send({
         expiresAt: IN_A_MONTH,
       }),
+  },
+];
+
+/** Papelera de un cliente (011b CA-13, CA-16): solo Soporte activo; el Administrador no restaura. */
+const CLIENT_TRASH = '/api/v1/backoffice/client-trash';
+const CLIENT_TRASH_DENIED = [CLIENT, OPERATOR, ADMIN, SUSPENDED_SUPPORT];
+
+const CLIENT_TRASH_ROUTES: readonly BackofficeRoute[] = [
+  {
+    name: 'GET /backoffice/client-trash',
+    denied: CLIENT_TRASH_DENIED,
+    call: (http, token, target) =>
+      withToken(http.get(CLIENT_TRASH).query({ email: target.email }), token),
+  },
+  {
+    name: 'POST /backoffice/client-trash/:nodeId/restore',
+    denied: CLIENT_TRASH_DENIED,
+    call: (http, token, target) =>
+      withToken(http.post(`${CLIENT_TRASH}/${randomUUID()}/restore`), token).send({
+        email: target.email,
+        note: 'Motivo de la matriz',
+        type: 'file',
+      }),
+  },
+];
+
+/**
+ * 011b CA-13: purgar, vaciar y descargar (la vista previa usa la misma URL firmada) son rutas del cliente; ningún rol
+ * interno las alcanza, tampoco Soporte.
+ */
+const INTERNAL_ROLES_DENIED = [SUPPORT, OPERATOR, ADMIN];
+const CLIENT_ONLY_TRASH_ROUTES: readonly BackofficeRoute[] = [
+  {
+    name: 'DELETE /trash/files/:fileId',
+    denied: INTERNAL_ROLES_DENIED,
+    call: (http, token) => withToken(http.delete(`/api/v1/trash/files/${randomUUID()}`), token),
+  },
+  {
+    name: 'DELETE /trash/folders/:folderId',
+    denied: INTERNAL_ROLES_DENIED,
+    call: (http, token) => withToken(http.delete(`/api/v1/trash/folders/${randomUUID()}`), token),
+  },
+  {
+    name: 'DELETE /trash',
+    denied: INTERNAL_ROLES_DENIED,
+    call: (http, token) => withToken(http.delete('/api/v1/trash'), token),
+  },
+  {
+    name: 'POST /files/:fileId/download-url',
+    denied: INTERNAL_ROLES_DENIED,
+    call: (http, token) =>
+      withToken(http.post(`/api/v1/files/${randomUUID()}/download-url`), token),
   },
 ];
 
@@ -176,6 +232,8 @@ const ROUTES: readonly BackofficeRoute[] = [
       withToken(http.post(`${PLANS}/${target.planId}/deactivation`), token),
   },
   ...ADJUSTMENT_ROUTES,
+  ...CLIENT_TRASH_ROUTES,
+  ...CLIENT_ONLY_TRASH_ROUTES,
 ];
 
 /** Cada ruta con cada quien no la puede usar. */
@@ -277,7 +335,12 @@ describe('matriz de roles del backoffice (011 CA-14)', () => {
     },
   );
 
-  it.each(ADJUSTMENT_ROUTES.map((route): [string, BackofficeRoute] => [route.name, route]))(
+  it.each(
+    [...ADJUSTMENT_ROUTES, ...CLIENT_TRASH_ROUTES].map((route): [string, BackofficeRoute] => [
+      route.name,
+      route,
+    ]),
+  )(
     '011b CA-16: `%s` sin token responde `401 SHARED_UNAUTHENTICATED` sin auditoría',
     async (_route, route) => {
       const http = request(testApp.app.getHttpServer());

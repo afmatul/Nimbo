@@ -63,6 +63,7 @@ export { PostgresHealthIndicator } from './infrastructure/health/postgres.health
 export { RedisHealthIndicator } from './infrastructure/health/redis.health-indicator';
 export { BIGINT_TRANSFORMER } from './infrastructure/persistence/bigint.transformer';
 export { buildDataSourceOptions } from './infrastructure/persistence/data-source';
+export { escapeLike } from './infrastructure/persistence/escape-like';
 export { TransactionContext } from './infrastructure/persistence/transaction-context';
 export { REDIS_CLIENT } from './infrastructure/redis/redis-client.provider';
 export { enqueueWithCorrelation } from './infrastructure/queue/enqueue-with-correlation';

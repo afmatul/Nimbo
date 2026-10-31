@@ -14,7 +14,12 @@ const REAL_ATTRIBUTES: Readonly<Record<AuditAction, Record<string, string | numb
   [AuditAction.FILE_UPLOAD_REJECTED]: { reason: 'TYPE_MISMATCH', mode: 'simple', sizeBytes: 2048 },
   [AuditAction.FILE_DOWNLOAD_URL_ISSUED]: { sizeBytes: 12_582_912 },
   [AuditAction.NODE_TRASHED]: { nodeType: 'folder', itemCount: 3, sizeBytes: 2048 },
-  [AuditAction.NODE_RESTORED]: { nodeType: 'file', itemCount: 1, sizeBytes: 1024 },
+  [AuditAction.NODE_RESTORED]: {
+    nodeType: 'file',
+    itemCount: 1,
+    sizeBytes: 1024,
+    note: 'El cliente lo pidió por teléfono',
+  },
   [AuditAction.NODE_PURGED]: {
     nodeType: 'file',
     itemCount: 1,
@@ -195,6 +200,14 @@ describe('AUDIT_CATALOG', () => {
       );
     },
   );
+
+  it('011b RN-4: solo `node.restored` admite el motivo escrito de Soporte (`note`)', () => {
+    const withNote = Object.values(AuditAction).filter((action) =>
+      Object.hasOwn(AUDIT_CATALOG[action].attributes, 'note'),
+    );
+
+    expect(withNote).toEqual([AuditAction.NODE_RESTORED]);
+  });
 
   it('CA-4: el tope de texto del saneo es el del motivo en el contrato', () => {
     expect(AUDIT_NOTE_MAX_LENGTH).toBe(CONTRACT_NOTE_MAX_LENGTH);

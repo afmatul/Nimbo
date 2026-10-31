@@ -111,6 +111,27 @@ describe('AuditService.record (mejor esfuerzo)', () => {
     expect(logger.error).not.toHaveBeenCalled();
   });
 
+  it('011b RN-4: el motivo de Soporte se guarda, pero la línea `audit.record` solo lleva su clave', async () => {
+    const { service, inserted, logger } = buildSut();
+    const note = 'El cliente pidió recuperar el informe';
+
+    await service.record({
+      action: AuditAction.NODE_RESTORED,
+      actor: SUPPORT,
+      targetUserId: ANA.id,
+      resourceId: FILE_ID,
+      attributes: { nodeType: 'file', itemCount: 1, sizeBytes: 1024, note },
+    });
+
+    expect(inserted[0]?.entry.attributes).toMatchObject({ note });
+    const line = logger.info.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(line).toMatchObject({
+      attributes: { nodeType: 'file', itemCount: 1, sizeBytes: 1024 },
+      omittedKeys: ['note'],
+    });
+    expect(JSON.stringify(line)).not.toContain(note);
+  });
+
   it('CA-1: sin contexto de correlación ni recurso, guarda `null` en ambos', async () => {
     const { service, inserted, logger } = buildSut();
 

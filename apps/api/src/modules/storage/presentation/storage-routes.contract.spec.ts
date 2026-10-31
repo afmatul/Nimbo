@@ -17,6 +17,8 @@ import { VersionHistoryService } from '../application/version-history.service';
 import { VersionRestoreService } from '../application/version-restore.service';
 import { InvalidQueryError, NodeNotFoundError, VersionNotFoundError } from '../domain/errors';
 import { NODE_SORTS, SORT_DIRECTIONS } from '../domain/node-order';
+import { SearchService } from '../search/application/search.service';
+import { SearchController } from '../search/presentation/search.controller';
 
 import { FileVersionsController } from './file-versions.controller';
 import { FilesController } from './files.controller';
@@ -149,6 +151,30 @@ describe('ruta del resumen de espacio (007 plan §4)', () => {
     expect(routes.map(describeRoute)).toEqual(['GET /api/v1/storage/summary']);
     expect(routes.every((route) => !route.public)).toBe(true);
     expect(routes.every((route) => route.roles.join() === Role.CLIENT)).toBe(true);
+  });
+});
+
+describe('ruta de la búsqueda (018 plan §4)', () => {
+  let moduleRef: TestingModule;
+
+  beforeAll(async () => {
+    moduleRef = await Test.createTestingModule({
+      controllers: [SearchController],
+      providers: [{ provide: SearchService, useValue: {} }],
+    }).compile();
+  });
+
+  afterAll(async () => {
+    await moduleRef.close();
+  });
+
+  it('018 CA-14: expone solo `GET /search`, solo para CLIENT, validada con su esquema', () => {
+    const routes = listRouteDeclarations(moduleRef, PREFIX);
+
+    expect(routes.map(describeRoute)).toEqual(['GET /api/v1/search']);
+    expect(routes.every((route) => !route.public)).toBe(true);
+    expect(routes.every((route) => route.roles.join() === Role.CLIENT)).toBe(true);
+    expect(pipesOf(SearchController, 'search')).toEqual([expect.any(ZodValidationPipe)]);
   });
 });
 

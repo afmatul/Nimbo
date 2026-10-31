@@ -4,6 +4,7 @@
 |---|---|
 | Estado | **Aceptado** (Adrián, 2026-10-26, PR #74; propuesto el 2026-10-22 y corregido el 2026-10-24 y el 2026-10-26). **Enmienda ADR-0005 y ADR-0021**; delimita ADR-0032 regla 3 |
 | Fecha | 2026-10-22 |
+| Modificado | 2026-10-27 (Fátima, con el visto bueno de Adrián; sigue Aceptado): la función de restauración recibe `p_max_profundidad` y devuelve `resultado`, `nombre_original`, `elementos` y `bytes` (de `tamano_bytes`); `recordLine` omite solo `note` (011b T-08 y T-09) |
 | Numeración | 0035 desde 2026-10-24: el 0034 lo usa la ADR de SDD express en `main`; el 0033 lo usa la 019 |
 | Decisores | `architect`, Fátima (dueña de 011/011b), Adrián (aprueba `storage`/`identity`/`audit`), Juan Marcos (dueño de `billing`) |
 | Specs relacionadas | 011b (RF-05, RF-06, RF-07, RF-12, RF-22, RF-23, RF-24); hereda 004, 006, 009, 010 y 011 |
@@ -95,21 +96,25 @@ logs. La 011b es la primera escritura interna sobre `storage` de un cliente.
    política. No se reinician `aviso_previo_para` ni `aviso_vencida_para`: la 010 los compara con `vence_en` y el `vence_en`
    nuevo ya define el periodo siguiente; reiniciarlos reenviaría correos del periodo anterior.
 2. **Restauración (Soporte).** `archivo` y `carpeta` no ganan `UPDATE` para `nimbo_app`. Una función
-   `restaurar_raiz_papelera(p_usuario, p_tipo, p_nodo)` `SECURITY DEFINER` y `VOLATILE`, con el mismo `search_path` y
+   `restaurar_raiz_papelera(p_usuario, p_tipo, p_nodo, p_max_profundidad)` `SECURITY DEFINER` y `VOLATILE`, con el mismo `search_path` y
    `EXECUTE` solo para `nimbo_app`, comprueba rol `SUPPORT`, que la raíz pertenece a `p_usuario`, que
    `eliminado_con_carpeta_id IS NULL` y que `purgar_en > now()`. Bloquea primero `usuario` (mismo orden que la 006) y
-   después la raíz; resuelve el destino como una carpeta viva del mismo dueño o la raíz, y el primer nombre libre.
+   después la raíz; resuelve el destino como una carpeta viva del mismo dueño o la raíz, comprueba la profundidad contra
+   `p_max_profundidad` (`FOLDER_MAX_DEPTH`, que pasa la aplicación) y busca el primer nombre libre.
    Si es carpeta, reubica `ruta` y `profundidad` de todo el subárbol **mientras sigue en papelera** y después saca de la
    papelera solo lo arrastrado. Escribe únicamente `eliminado_en`, `purgar_en`, `eliminado_con_carpeta_id`, `nombre`,
    `carpeta_padre_id`/`carpeta_id`, `ruta`, `profundidad` y `actualizado_en`; nunca `propietario_id`,
    `version_actual_id`, `tamano_bytes`, `tipo` ni `creado_en`. Comprueba los conteos y hace `RAISE` si no cuadran. Devuelve
-   `outcome`, nombre original y final, destino, cantidad y bytes. Las políticas `TO CURRENT_USER` de `SELECT` (raíz y
+   `resultado` (`restored`, `renamed`, `moved_to_root` o `depth_exceeded`, sin cambios), `nombre_original`, `elementos` y
+   `bytes`; los bytes son `tamano_bytes` (la versión actual), porque nadie lee `version_archivo`. El nombre final y el
+   destino los lee la aplicación del nodo restaurado; una raíz ajena, vencida o que no es raíz da 0 filas. Las políticas `TO CURRENT_USER` de `SELECT` (raíz y
    destino) y `UPDATE` (raíz y subárbol) solo las usa la función; `archivo_mantenimiento`/`carpeta_mantenimiento` ya
    cubren la lectura de las filas en papelera. No se concede `INSERT`, `DELETE` ni acceso a `version_archivo`, `carga` o
    `clave_objeto`.
 3. **Auditoría.** `node.restored` admite `note` (1 a `AUDIT_NOTE_MAX_LENGTH`) solo en ese evento, no en
    `NODE_ATTRIBUTES`; cuota y vigencia suman `account.quota_adjusted` y `account.validity_adjusted`. `recordLine` omite
-   los atributos de texto libre (`note`, `reason`) y registra solo sus claves. El motivo no sale de `evento_auditoria`:
+   el valor de `note`, el único atributo de texto libre, y registra solo su clave (`reason` lleva códigos cerrados y se
+   conserva). El motivo no sale de `evento_auditoria`:
    ni logs, ni respuestas de listado, ni nombres de archivo.
 4. **Prohibiciones.** Soporte no purga, vacía, descarga ni previsualiza; Administración no restaura; el Operador no hace
    ninguna de las tres. La restauración se permite en cuentas en solo lectura y no toca `espacio_usado`.

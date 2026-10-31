@@ -71,9 +71,10 @@ export const AUDIT_CATALOG = {
     resourceType: fromAttribute('nodeType'),
     attributes: NODE_ATTRIBUTES,
   },
+  /** 011b RN-4: si restaura Soporte, `note` lleva su motivo escrito (1 a 500); el cliente no escribe motivo. */
   [AuditAction.NODE_RESTORED]: {
     resourceType: fromAttribute('nodeType'),
-    attributes: NODE_ATTRIBUTES,
+    attributes: { ...NODE_ATTRIBUTES, note: 'text' },
   },
   [AuditAction.NODE_PURGED]: {
     resourceType: fromAttribute('nodeType'),

@@ -173,6 +173,22 @@ describe('AppLayout component (CA-5)', () => {
     expect(markup).toMatch(/<a[^>]*href="\/archivos"[^>]*>(?:(?!<\/a>).)*Mis Archivos/);
   });
 
+  it('018 CA-12: «Buscar» enlaza a /buscar justo después de «Mis Archivos», en la barra y en el menú móvil', () => {
+    const doc = parse(
+      <AppLayout initialMobileMenuOpen>
+        <div>Contenido</div>
+      </AppLayout>,
+    );
+
+    for (const name of ['Navegación principal', 'Navegación móvil']) {
+      const links = [...doc.querySelectorAll(`nav[aria-label="${name}"] a`)];
+      const labels = links.map((link) => link.textContent);
+      expect(labels.slice(0, 2)).toEqual(['Mis Archivos', 'Buscar']);
+      expect(links[1]?.getAttribute('href')).toBe('/buscar');
+      expect(links[1]?.querySelector('svg')?.classList.contains('lucide-search')).toBe(true);
+    }
+  });
+
   it('permite personalizar los ítems de navegación mediante la prop navItems (S-1)', () => {
     const customItems = [
       { label: 'Archivos Propios', icon: Folder, href: '/custom-archivos', active: true },

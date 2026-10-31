@@ -17,6 +17,7 @@ import { SuscripcionMenorPrivilegio20261017100000 } from '../../../src/migration
 import { CrearSesionEdicionYParticipacion20261018100000 } from '../../../src/migrations/20261018100000-crear-sesion-edicion-y-participacion';
 import { AgregarSesionEdicionAVersionArchivo20261018100100 } from '../../../src/migrations/20261018100100-agregar-sesion-edicion-a-version-archivo';
 import { CrearIndexacionYFragmento20261022100000 } from '../../../src/migrations/20261022100000-crear-indexacion-y-fragmento';
+import { SoporteRestauraLaPapelera20261026100100 } from '../../../src/migrations/20261026100100-soporte-restaura-la-papelera';
 import { CrearUsoAgente20261028100000 } from '../../../src/migrations/20261028100000-crear-uso-agente';
 import { CrearComparticion20261101100000 } from '../../../src/migrations/20261101100000-crear-comparticion';
 import { PoliticasRlsNodosCompartidos20261101100100 } from '../../../src/migrations/20261101100100-politicas-rls-nodos-compartidos';
@@ -172,13 +173,14 @@ describe('migración crear-funciones-de-actor (CA-12)', () => {
 
   it('CA-12: el `down` elimina las dos funciones', async () => {
     const migration = new CrearFuncionesDeActor20260928110100();
-    /** Las políticas RLS de 012, 020, 019, 016, 009, 004, 006 y 005 usan las funciones: se revierten antes, como en un `migration:revert` en orden. */
+    /** Las políticas RLS de 012, 020, 011b, 019, 016, 009, 004, 006 y 005 usan las funciones: se revierten antes, como en un `migration:revert` en orden. */
     const dependents = [
       new AuditoriaAlSalirDeComparticion20261101100300(),
       new PoliticasRlsEdicionYAgenteCompartidos20261101100200(),
       new PoliticasRlsNodosCompartidos20261101100100(),
       new CrearComparticion20261101100000(),
       new CrearUsoAgente20261028100000(),
+      new SoporteRestauraLaPapelera20261026100100(),
       new CrearIndexacionYFragmento20261022100000(),
       new AgregarSesionEdicionAVersionArchivo20261018100100(),
       new CrearSesionEdicionYParticipacion20261018100000(),

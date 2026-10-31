@@ -327,9 +327,13 @@ describe('error-catalog', () => {
       [BACKOFFICE_ERROR_CODES.QUOTA_INVALID, 'Revisa el espacio extra'],
       [BACKOFFICE_ERROR_CODES.QUOTA_BELOW_USAGE, 'por debajo de lo que la cuenta ya usa'],
       [BACKOFFICE_ERROR_CODES.VALIDITY_NOT_EXTENDED, 'Solo puedes extender la vigencia'],
-    ])('CA-2, CA-3, CA-7: %s tiene texto propio con la acción correctiva', (code, text) => {
-      expect(messageForCode(code)).toContain(text);
-    });
+      [BACKOFFICE_ERROR_CODES.INVALID_INPUT, 'campos marcados'],
+    ])(
+      'CA-2, CA-3, CA-7, 011b CA-12: %s tiene texto propio con la acción correctiva',
+      (code, text) => {
+        expect(messageForCode(code)).toContain(text);
+      },
+    );
   });
 
   describe('backoffice (spec 011)', () => {

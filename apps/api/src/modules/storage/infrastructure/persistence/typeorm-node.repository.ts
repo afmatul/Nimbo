@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { EntityManager, ObjectLiteral, SelectQueryBuilder } from 'typeorm';
 import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 
-import { TransactionContext } from '../../../../shared';
+import { escapeLike, TransactionContext } from '../../../../shared';
 import type { Actor } from '../../../../shared';
 import { accessibleNodes, ownedFiles, ownedNodes } from '../../../access';
 import type { AccessibleNodesFragment } from '../../../access';
@@ -18,7 +18,6 @@ import { FileName } from '../../domain/file-name.vo';
 import type { FileVersion } from '../../domain/file-version';
 import { Folder } from '../../domain/folder';
 import { FolderName } from '../../domain/folder-name.vo';
-import { FolderPath } from '../../domain/folder-path';
 import type { NodeGroup, NodeOrder } from '../../domain/node-order';
 import type { StorageNode } from '../../domain/storage-node';
 
@@ -26,20 +25,16 @@ import { ArchivoOrmEntity } from './archivo.orm-entity';
 import { CarpetaOrmEntity } from './carpeta.orm-entity';
 import { decodeNodeListCursor, encodeNodeListCursor } from './node-list-cursor';
 import type { NodeListPosition } from './node-list-cursor';
+import { toFile, toFolder } from './node-mappers';
 import { afterCondition, orderByOf } from './node-order-sql';
 import { nodesIn, rebaseSubtree } from './node-sql';
 import type { Condition, NodeTable } from './node-sql';
-import { toTrashState, trashColumns } from './trash-columns';
+import { trashColumns } from './trash-columns';
 import { toVersionRow } from './typeorm-version.repository';
 import { VersionArchivoOrmEntity } from './version-archivo.orm-entity';
 
 const FILE_ALIAS = 'archivo';
 const FOLDER_ALIAS = 'carpeta';
-/** Comodines de `LIKE` y su carácter de escape: en un nombre son texto, no patrones. */
-const LIKE_SPECIAL_CHARACTERS = /[\\%_]/g;
-
-const escapeLike = (text: string): string => text.replace(LIKE_SPECIAL_CHARACTERS, '\\$&');
-
 /** Patrón `LIKE` de las copias «base (n)tail» (D-4); `tail` es «.ext» en archivos y vacío en carpetas. */
 const copiesPattern = (base: string, tail: string): string =>
   `${escapeLike(base)} (%)${escapeLike(tail)}`;
@@ -80,33 +75,6 @@ const childOf = (parentColumn: string, folderId: string | null): Condition =>
   folderId === null
     ? { sql: `${parentColumn} IS NULL`, parameters: {} }
     : { sql: `${parentColumn} = :parentFolderId`, parameters: { parentFolderId: folderId } };
-
-/** Fila → `File`; también la usa `TypeOrmTrashRepository` (un archivo no guarda ruta: no hay nada que rehacer). */
-export const toFile = (row: ArchivoOrmEntity): File =>
-  File.rehydrate({
-    id: row.id,
-    ownerId: row.propietarioId,
-    folderId: row.carpetaId,
-    name: FileName.of(row.nombre),
-    kind: row.tipo,
-    sizeBytes: row.tamanoBytes,
-    currentVersionId: row.versionActualId,
-    createdAt: row.creadoEn,
-    updatedAt: row.actualizadoEn,
-    trash: toTrashState(row),
-  });
-
-const toFolder = (row: CarpetaOrmEntity): Folder =>
-  Folder.rehydrate({
-    id: row.id,
-    ownerId: row.propietarioId,
-    parentId: row.carpetaPadreId,
-    name: FolderName.of(row.nombre),
-    path: FolderPath.of(row.ruta),
-    createdAt: row.creadoEn,
-    updatedAt: row.actualizadoEn,
-    trash: toTrashState(row),
-  });
 
 const toFolderRow = (folder: Folder): CarpetaOrmEntity => ({
   id: folder.id,
