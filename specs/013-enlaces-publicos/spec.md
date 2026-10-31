@@ -43,14 +43,15 @@ y la autorización; la sección «Enlace público» del diálogo «Compartir» y
 - **CA-9** (HU-3, RF-17) Dado un enlace disponible, cuando un visitante sin sesión lo abre, entonces ve la ficha: nombre y tamaño del archivo, nombre visible de quien lo compartió, vencimiento y si pide contraseña; nada más (ni ids, ni carpeta, ni correo, ni otros archivos).
 - **CA-10** (HU-3, RF-09, RNF-06) Dado un enlace disponible sin contraseña, o con la contraseña correcta, cuando el visitante pide descargar, entonces recibe una URL de 5 minutos a la versión vigente de ese archivo, con descarga forzada; la actividad del propietario registra la descarga.
 - **CA-11** (HU-3, RF-17, 011 RN-6) — error: Dado un token inexistente, mal formado, revocado, reemplazado o vencido, un archivo en la papelera o un propietario suspendido, cuando el visitante abre o descarga, entonces `404` `SHARING_LINK_UNAVAILABLE` con el mismo cuerpo en todos los casos (P-1). Al restaurar el archivo o reactivar al propietario vuelve a servir si no venció; con la eliminación definitiva desaparece.
-- **CA-12** (HU-4, RNF-08) — error: Dado un enlace con contraseña, cuando el visitante descarga sin ella o con una incorrecta, entonces `403` `SHARING_LINK_PASSWORD_INVALID` y no recibe URL; cada contraseña incorrecta queda registrada sin la contraseña ni la IP completa.
+- **CA-12** (HU-4, RNF-08) — error: Dado un enlace con contraseña, cuando el visitante descarga sin ella o con una incorrecta, entonces `403` `SHARING_LINK_PASSWORD_INVALID` y no recibe URL. Sin contraseña, el intento no cuenta para el bloqueo ni se registra; una contraseña incorrecta cuenta y queda en la bitácora técnica (`password_failed`), sin la contraseña ni la IP.
 - **CA-13** (HU-4, RNF-08, RNF-07) — error: Dado que desde una IP se fallaron N contraseñas de un enlace en la ventana (S-1), cuando vuelve a intentar con ese enlace, entonces `429` `SHARED_TOO_MANY_REQUESTS` con la espera, aunque la contraseña sea correcta; otra IP sigue pudiendo, tras la espera se vuelve a intentar, y el bloqueo queda una vez en la actividad del propietario. Igual `429` si una IP supera el límite general de las rutas públicas.
 - **CA-14** (HU-3, 010 RN-6) Dado el propietario en solo lectura, cuando el visitante abre o descarga, entonces el enlace sigue sirviendo (descargar es lectura).
 
 **Auditoría, roles y aislamiento (RF-07, RF-05, RNF-05, RNF-17)**
 - **CA-15** (HU-4, RF-07, RNF-17) Dado generar, revocar o reemplazar, una descarga o un bloqueo, entonces «Mi actividad» del propietario registra `public_link.created`, `public_link.revoked` (motivo `revoked` o `replaced`), `public_link.downloaded` o `public_link.locked` sobre el archivo; las líneas de negocio y la auditoría no llevan token, contraseña, IP, nombre de archivo ni correo (como 002 CA-18), y cada línea lleva su `correlationId`. La línea técnica de acceso `http.request` (de `shared`) conserva la IP como en todas las rutas, para investigar abusos (RNF-08).
 - **CA-16** (HU-5, RF-05) Dado un Administrador, Soporte u Operador, cuando llama a generar, ver o revocar, entonces `403` `SHARED_FORBIDDEN`; sin token, `401` `SHARED_UNAUTHENTICATED`. Las rutas del visitante no usan la sesión: con o sin ella responden igual.
-- **CA-17** (HU-5, RNF-05) Dado los clientes A, B y C, y A genera un enlace a un archivo, cuando B, C o un anónimo usan ese token, entonces solo alcanzan la ficha y la versión vigente de ese archivo; ningún token da otro archivo, una carpeta ni versiones anteriores; B no ve ni revoca enlaces de A; la base de datos lo niega aunque la consulta olvide filtrar. `pnpm test:isolation` falla ante cualquier fuga.
+- **CA-17** (HU-5, RNF-05) Dado los clientes A, B y C, y A genera un enlace a un archivo, cuando B, C o un anónimo usan ese token, entonces solo alcanzan la ficha y la versión vigente de ese archivo; ningún token da otro archivo, una carpeta ni versiones anteriores; B no ve ni revoca enlaces de A; la base de datos lo niega aunque la consulta olvide filtrar. Las rutas del visitante aceptan solo el token y la contraseña: un id en el cuerpo (de otro archivo de A, por ejemplo) da el `404` de CA-11 y nunca lo alcanza. `pnpm test:isolation` falla ante cualquier fuga.
+- **CA-18** (HU-4, RF-07) Dado una descarga o un bloqueo de un visitante, cuando el propietario mira «Mi actividad», entonces `public_link.downloaded` y `public_link.locked` salen con `trigger` `public_link`, para que la 013b los muestre como «Alguien con el enlace» y no como acciones suyas.
 
 ## 4. Reglas de negocio
 - **RN-1** Solo el propietario genera, ve y revoca (acción `CREATE_PUBLIC_LINK` de 003; `product-context.md` §2: Editor y Lector no crean enlaces).
@@ -67,7 +68,7 @@ y la autorización; la sección «Enlace público» del diálogo «Compartir» y
 - **Riesgo central:** el visitante no tiene sesión y la base niega todo sin actor. El camino del token al archivo es explícito, mínimo y probado (plan §1, ADR-0039 propuesto).
 - **Indistinguibilidad (CA-11):** ninguna respuesta pública dice si un token existió, se revocó, venció, está en la papelera o es de una cuenta suspendida. El token tiene 256 bits: no se enumera.
 - **El token** viaja solo en la URL entregada al propietario, en el fragmento (`#`), y del navegador a la API en el cuerpo: no llega a rutas, cadenas de consulta, `Referer` ni bitácoras. Respuestas públicas con `Cache-Control: no-store` y `Referrer-Policy: no-referrer`.
-- **Auditoría (RF-07):** CA-15, en la actividad del propietario. Los fallos sueltos no van a la auditoría: solo a `intento_acceso` (RNF-08, con la red de origen truncada, S-3) y a la bitácora técnica `password_failed`, sin contraseña ni token.
+- **Auditoría (RF-07):** CA-15 y CA-18, en la actividad del propietario. Los fallos sueltos no van a la auditoría: solo a la bitácora técnica `password_failed` (RNF-08), sin contraseña, token ni IP; el bloqueo sí (`public_link.locked`).
 - **Roles internos:** no generan, ven ni revocan (CA-16). Si un interno recibe un enlace, es un visitante más por decisión explícita del propietario (Art. IX.1): la ruta pública no lee su sesión.
 - **La ficha se ve sin contraseña** (S-7): quien tiene el token ve nombre y tamaño; la contraseña protege la descarga.
 
@@ -86,13 +87,13 @@ Sin interfaz en esta spec: la pantalla es la 013b. Para el `ui-designer`, estos 
 - Enlaces a carpetas, varios enlaces por archivo, cambiar vencimiento o contraseña de un enlace existente (se genera otro: S-6).
 - Vista previa en la página pública (017) y descargar versiones anteriores.
 - Lista de «todos mis enlaces», contador de descargas, avisos por correo al propietario.
-- Lector y retención del registro de intentos (PD-145).
+- Una tabla de intentos fallidos (el bloqueo vive en Redis; PD-145 descartado).
 - La pantalla (013b).
 
 ## 8. Supuestos
 - **S-1** Los límites son técnicos (RNF-07, RNF-08) y configurables por entorno, como 012 S-4; el plan fija los valores (por omisión, 5 fallos en 15 min por enlace e IP y 15 min de espera, como el inicio de sesión de 002 D-5).
 - **S-2** La contraseña del enlace mide de 8 a 128 caracteres, sin la política de complejidad de la cuenta (P-2).
-- **S-3** El registro de intentos guarda la red de origen truncada (/24 en IPv4, /48 en IPv6), nunca la IP completa.
+- **S-3** Ninguna tabla guarda la IP ni su red: el bloqueo y el límite viven en Redis, con el hash de la red (RN-7), y caducan con la ventana.
 - **S-4** El vencimiento se cuenta en horas exactas desde la creación (1, 7 o 30 × 24 h) con el reloj del servidor.
 - **S-5** Si el propietario sube una versión nueva, el enlace sirve la nueva (RN-4).
 - **S-6** Para cambiar la contraseña o el vencimiento se genera un enlace nuevo (CA-4).
@@ -110,3 +111,4 @@ Sin interfaz en esta spec: la pantalla es la 013b. Para el `ui-designer`, estos 
 |---|---|---|---|
 | 2026-10-30 | Creación en `Borrador` con plan y tareas (ADR-0034); partida en 013 (API) y 013b (pantalla) | Decisiones de producto de Fátima (archivos, contraseña opcional, vencimiento 1/7/30, un enlace activo, ficha y descarga, bloqueo por enlace e IP, actividad); más de una pantalla | Pendiente (Adrián) |
 | 2026-10-30 | Correcciones de la revisión de documentos (B-1, I-1…I-5, S-1…S-13): CA-8 revoca en la papelera, CA-15 acota bitácoras (IP solo en `http.request`), RN-7 cuenta la IP por red, §5 fallos sueltos fuera de la auditoría | Revisión de documentos; I-1 y S-11 decididos por Fátima | Pendiente (Adrián) |
+| 2026-10-31 | Auditoría de Adrián en PR #87 (M-1…M-4, m-1…m-4, m-6): CA-12 aclara qué cuenta, CA-17 sin ids en el cuerpo, CA-18 nuevo (`trigger` `public_link`), S-3 sin tabla de intentos | Decisiones de Fátima sobre la auditoría | Pendiente (Adrián) |

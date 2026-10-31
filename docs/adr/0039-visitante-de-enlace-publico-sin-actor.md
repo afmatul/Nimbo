@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Propuesto (2026-10-30, `architect`); lo acepta Adrián al aprobar el plan 013. **Delimita** el alcance de la constitución Art. IX.2 y de la regla de CLAUDE.md «todo servicio que toca datos de un usuario recibe `actor: Actor`» (excepción: el visitante de un enlace público); **amplía** ADR-0021 |
+| Estado | Propuesto (2026-10-30, `architect`); se acepta con la aprobación del PR #87 (Adrián), que trae los documentos ya actualizados. **Delimita** el alcance de la constitución Art. IX.2 y de la regla de CLAUDE.md «todo servicio que toca datos de un usuario recibe `actor: Actor`» (excepción: el visitante de un enlace público); **amplía** ADR-0021 |
 | Fecha | 2026-10-30 |
 | Decisores | `architect`, Fátima (dueña de la 013), Adrián (tech lead) |
 | Specs relacionadas | 013 (RF-17, RNF-08; CA-9 a CA-14, CA-17), 012 (`nodos_compartidos()`), 005 y 006 (patrón de mantenimiento); ADR-0005, ADR-0021, ADR-0035; DF-09, DF-86; PD-141 |
@@ -32,7 +32,7 @@ convierta el token en acceso a otro archivo (CA-17). Restricciones: equipo de 4,
    - Pros: es el patrón de ADR-0021 que ya revisó el equipo (`carga_expiradas`, `papelera_vencida`, las funciones de
      009 y 011b). La única capacidad sin actor es `enlace_por_token(hash)`: lee solo `enlace_publico`, devuelve 0 o 1
      fila con tres UUID y exige conocer el hash de un token de 256 bits (no enumera, a diferencia de `carga_expiradas`).
-     Todo lo demás (clave, vencimiento, archivo, versión, intentos, auditoría) corre con RLS normal como el
+     Todo lo demás (clave, vencimiento, archivo, versión, auditoría) corre con RLS normal como el
      propietario, con las mismas políticas que ya protegen su cuenta. No cambia `withActor`, `Role`, los guards ni
      ninguna política de `archivo`, `version_archivo` o `evento_auditoria`.
    - Contras: el servicio del visitante fabrica un actor (`createActor(propietario_id, CLIENT)`), así que «el actor
@@ -75,27 +75,28 @@ Opción A, con estas reglas (las verifica la suite `test/isolation/public-links.
    Así no nace otra excepción a «cada módulo es dueño de sus tablas» y SEC-6 (PD-141) no se amplía: la función no toca
    `archivo`, `carpeta` ni `comparticion`.
 3. **Actor derivado** (excepción de `architecture.md` §6 punto 11): solo `PublicLinkAccessService` (sus dos métodos
-   públicos reciben `{ token, ip }` y no `actor`) construye `createActor(propietario_id, Role.CLIENT)`, y solo
+   públicos reciben `{ token, ip }` o `{ token, ip, password }`, sin ningún id, y no `actor`) construye `createActor(propietario_id, Role.CLIENT)`, y solo
    **después** de que `activeDisplayName(propietario_id)` confirme un cliente activo y verificado. El actor no sale
    del servicio, no se devuelve, no se guarda en la petición y se usa únicamente con el `enlace_id` y el
-   `archivo_id` de la fila de la función, **nunca** con un id de la petición. Con ese actor: se relee el enlace por
+   `archivo_id` de la fila de la función, **nunca** con un id de la petición: los cuerpos públicos son `.strict()` y un campo de más (p. ej. `fileId` u
+   `ownerId`) da el mismo `404` de la regla 4. Con ese actor: se relee el enlace por
    `id` con RLS (clave y vencimiento, mismo filtro de disponibilidad), se pide la ficha y la URL a
-   `LinkedFileGateway`, se registra el intento fallido y se audita. Ningún otro servicio fabrica un actor a partir de
+   `LinkedFileGateway` y se audita (los intentos fallidos solo cuentan en Redis y van a la bitácora técnica). Ningún otro servicio fabrica un actor a partir de
    datos de una petición.
 4. **Indistinguible** (CA-11): todos los motivos (token inexistente, mal formado, revocado, reemplazado o vencido,
    archivo en la papelera o purgado, propietario suspendido) y el cuerpo inválido terminan en el mismo
    `PublicLinkUnavailableError`, con el mismo cuerpo.
 5. **Auditoría**: `public_link.downloaded` y `public_link.locked` se insertan con el actor derivado, así pasan por
    `evento_auditoria_alta` sin política nueva. `actor_id` = propietario significa «en nombre de», y la acción
-   `public_link.*` dice que fue un visitante. El filtro «Yo» de «Mi actividad» es `actor_id = usuario_afectado_id`
-   (`typeorm-audit.repository.ts`), así que estos eventos caen ahí, como la purga programada (`node.purged` con
-   `trigger`), que también se inserta con el actor del dueño; la 013b solo cambia el rótulo a «Alguien con el
-   enlace», nunca «Tú».
-6. **Pruebas**: `nimbo_app` sin actor ve 0 filas de `enlace_publico` e `intento_acceso`; la función devuelve una fila
+   `public_link.*` dice que fue un visitante. Llevan `trigger: 'public_link'` (valor nuevo de `AUDIT_TRIGGERS`, que
+   `audit-event-response.ts` ya devuelve por `isTrigger`). El evento sigue en el filtro «Yo» de «Mi actividad»
+   (`actor_id = usuario_afectado_id`, `typeorm-audit.repository.ts`), pero el `trigger` lo distingue, como
+   `node.purged` con `trigger: 'scheduled'`; la 013b lo muestra como «Alguien con el enlace», nunca «Tú» (spec CA-18).
+6. **Pruebas**: `nimbo_app` sin actor ve 0 filas de `enlace_publico`; la función devuelve una fila
    de tres columnas solo para su hash y ninguna para un revocado o vencido; `PUBLIC` no la ejecuta; `pg_proc` y
    `pg_policies` muestran que función y política son del dueño de las tablas; `nimbo_app` no borra `enlace_publico` y solo
    actualiza `revocado_en`; el token de A nunca alcanza otro
-   archivo, una carpeta ni una versión anterior.
+   archivo, una carpeta ni una versión anterior, ni con ids de otro archivo en el cuerpo.
 
 ## Consecuencias
 
@@ -103,12 +104,12 @@ Opción A, con estas reglas (las verifica la suite `test/isolation/public-links.
   mismo patrón que el equipo ya defendió con ADR-0021 se explica en una frase en la exposición («el token solo
   traduce a tres ids; lo demás lo protege la RLS del dueño»).
 - Negativas / deuda aceptada: una excepción nombrada a «el servicio recibe `actor`»; la auditoría del visitante
-  lleva el id del propietario como actor; otra función y otra política `TO CURRENT_USER` del dueño; quien tenga
+  lleva el id del propietario como actor, distinguida por `trigger`; otra función y otra política `TO CURRENT_USER` del dueño; quien tenga
   `nimbo_app` y un token válido obtiene tres UUID (lo mismo que ya obtiene con el token por la API).
 - Cómo sabremos si fue un error: si la función necesita devolver algo más que identificadores o leer otra tabla; si
   otro servicio empieza a fabricar actores a partir de la petición; si `public-links.iso-spec.ts` sigue verde al
   quitar `enlace_publico_por_token` con el dueño `NOSUPERUSER`; o si una spec futura (enlaces a carpetas) pide navegar,
   lo que exigiría revisar esta decisión con un ADR nuevo.
-- Documentos a actualizar al aceptar: constitución Art. IX.2 (excepción: visitante de enlace público, ADR-0039) y la
+- Actualizados en el mismo PR: constitución Art. IX.2 (excepción: visitante de enlace público, ADR-0039) y la
   prohibición de `CLAUDE.md` («todo servicio … recibe `actor: Actor`»), como hizo ADR-0031 con Art. IX.6; el Estado de
-  ADR-0021 anota «ampliado por ADR-0039». PD-141 SEC-6 se evaluó y no aplica: la función no lee `archivo` ni `carpeta`.
+  ADR-0021 anota «ampliado por ADR-0039». Si el PR no se aprueba, esos cambios se retiran con él. PD-141 SEC-6 se evaluó y no aplica: la función no lee `archivo` ni `carpeta`.
