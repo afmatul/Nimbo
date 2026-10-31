@@ -40,7 +40,7 @@ Son la base para defender la arquitectura en la exposición final (enunciado §6
 | 0034 | [SDD express en un pase: spec, plan y tareas juntos](0034-sdd-express-un-pase.md) (enmienda la secuencia de ADR-0023) | Propuesto |
 | 0035 | [Escrituras internas acotadas: funciones `SECURITY DEFINER` para la cuenta y la papelera](0035-escrituras-internas-acotadas-de-ajustes-y-restauracion.md) (spec 011b; PR-A y PR-B; **enmienda ADR-0005 y ADR-0021**, delimita ADR-0032 regla 3) | Aceptado |
 | 0036 | [`intelligence` lee `archivo` y `carpeta` por SQL de solo lectura para recuperar con el filtro en la consulta](0036-intelligence-lee-archivo-y-carpeta-por-sql-de-solo-lectura.md) (tercera excepción acotada, DF-83; spec 020) | Aceptado |
-| 0039 | [El visitante de un enlace público llega a su archivo por una función `SECURITY DEFINER` de identificadores y actúa como el propietario](0039-visitante-de-enlace-publico-sin-actor.md) (spec 013; amplía ADR-0021, excepción nombrada a «el servicio recibe `actor`»; DF-09, DF-86) | Propuesto |
+| 0039 | [El visitante de un enlace público llega a su archivo por una función `SECURITY DEFINER` de identificadores y actúa como el propietario](0039-visitante-de-enlace-publico-sin-actor.md) (spec 013; amplía ADR-0021, excepción nombrada a «el servicio recibe `actor`»; DF-09, DF-86) | Aceptado |
 
 Estados: `Pendiente` (sin redactar) · `Propuesto` (redactado, falta acuerdo del equipo) · `Aceptado` · `Reemplazado por`.
 Los ADR 0001, 0002, 0008, 0009, 0014 y 0015 se aceptaron el 26/09/2026 (Adrián, parte de ADR de la T-27 de la spec 000).
@@ -60,7 +60,7 @@ Los ADR 0004 y 0029 los redactó el `architect` con el plan de la spec 016 (2026
 ADR-0034 (2026-10-23) enmienda la secuencia de ADR-0023: un solo pase al crear una spec que todavía no tiene carpeta. No reescribe las que ya existen.
 ADR-0035 (2026-10-26) documenta las escrituras internas acotadas de la 011b; enmienda ADR-0005 y ADR-0021 y delimita ADR-0032 regla 3. Adrián lo aceptó el 2026-10-26 al aprobar el plan (PR #74).
 
-ADR-0039 (2026-10-30) lo redactó el `architect` con el plan de la spec 013 como `Propuesto`; Adrián lo acepta al aprobar el plan. Los números 0037 y 0038 están tomados en la rama `spec/021-optimizador`.
+ADR-0039 (2026-10-30) lo redactó el `architect` con el plan de la spec 013 como `Propuesto`; Adrián lo aceptó al aprobar el plan (2026-10-31, PR #87), con el acuerdo de los cuatro integrantes. Los números 0037 y 0038 están tomados en la rama `spec/021-optimizador`.
 
 Los ADR 0003, 0007 y 0033 los redactó el `architect` con el plan de la spec 019 (2026-10-21) como `Propuesto`; Adrián los acepta al aprobar el plan.
 

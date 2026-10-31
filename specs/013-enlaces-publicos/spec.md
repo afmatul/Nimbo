@@ -4,12 +4,12 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Borrador |
+| Estado | Lista |
 | Dueño | Fátima |
 | Fase | 2 |
 | Requisitos | RF-17, RNF-08; apoyan RF-05, RF-07, RF-09, RF-18, RNF-05, RNF-06, RNF-07, RNF-17 |
 | Depende de | 012 (módulo `sharing`); consume lo integrado de 004, 005, 006, 010 y 011 · Hermana: 013b (pantalla) |
-| Última actualización | 2026-10-30 |
+| Última actualización | 2026-10-31 |
 
 ## 1. Contexto y objetivo
 La 012 deja compartir con otros clientes. Esta spec deja que un propietario genere un enlace público a un **archivo**,
@@ -113,3 +113,4 @@ Sin interfaz en esta spec: la pantalla es la 013b. Para el `ui-designer`, estos 
 | 2026-10-30 | Correcciones de la revisión de documentos (B-1, I-1…I-5, S-1…S-13): CA-8 revoca en la papelera, CA-15 acota bitácoras (IP solo en `http.request`), RN-7 cuenta la IP por red, §5 fallos sueltos fuera de la auditoría | Revisión de documentos; I-1 y S-11 decididos por Fátima | Pendiente (Adrián) |
 | 2026-10-31 | Auditoría de Adrián en PR #87 (M-1…M-4, m-1…m-4, m-6): CA-12 aclara qué cuenta, CA-17 sin ids en el cuerpo, CA-18 nuevo (`trigger` `public_link`), S-3 sin tabla de intentos | Decisiones de Fátima sobre la auditoría | Pendiente (Adrián) |
 | 2026-10-31 | Segunda revisión de Adrián en PR #87 (N-1, N-3, n-1): merge de `main` (011b y 018); el pendiente del token opaco pasa a PD-155 y se quita el de la tabla de intentos (PD-145 y PD-146 ya eran de la 018); ADR-0010 sin `intento_acceso` | Choque de numeración con la 018 | Pendiente (Adrián) |
+| 2026-10-31 | Pasa a `Lista`: plan y ADR-0039 aprobados | Acuerdo de Adrián en PR #87, con la condición de que el actor derivado del dueño solo exista dentro de `PublicLinkAccessService` y que las acciones del visitante se sigan distinguiendo como tales (`trigger: 'public_link'`, CA-18) | Adrián |

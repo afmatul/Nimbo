@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Propuesto (2026-10-30, `architect`); se acepta con la aprobación del PR #87 (Adrián), que trae los documentos ya actualizados. **Delimita** el alcance de la constitución Art. IX.2 y de la regla de CLAUDE.md «todo servicio que toca datos de un usuario recibe `actor: Actor`» (excepción: el visitante de un enlace público); **amplía** ADR-0021 |
+| Estado | Aceptado (2026-10-31). Propuesto por el `architect` (2026-10-30); aceptado en el PR #87 con el acuerdo de los cuatro integrantes que exige la constitución, transmitido por Adrián en el PR, con la condición de que el actor derivado del dueño solo exista dentro de `PublicLinkAccessService` y que las acciones del visitante se sigan distinguiendo como tales (`trigger: 'public_link'`, CA-18). **Delimita** el alcance de la constitución Art. IX.2 y de la regla de CLAUDE.md «todo servicio que toca datos de un usuario recibe `actor: Actor`» (excepción: el visitante de un enlace público); **amplía** ADR-0021 |
 | Fecha | 2026-10-30 |
 | Decisores | `architect`, Fátima (dueña de la 013), Adrián (tech lead) |
 | Specs relacionadas | 013 (RF-17, RNF-08; CA-9 a CA-14, CA-17), 012 (`nodos_compartidos()`), 005 y 006 (patrón de mantenimiento); ADR-0005, ADR-0021, ADR-0035; DF-09, DF-86; PD-141 |

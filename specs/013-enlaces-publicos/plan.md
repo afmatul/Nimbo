@@ -1,6 +1,6 @@
 # Plan 013 — Enlaces públicos (API)
 
-> Spec: `./spec.md` · Estado del plan: Propuesto
+> Spec: `./spec.md` · Estado del plan: Aprobado (2026-10-31, Adrián, PR #87)
 > Obligatorio y ≤ 250 líneas. Dice **qué** archivos se tocan y **qué** se espera de cada uno; no es el código en
 > prosa (sin cuerpos de funciones ni pseudocódigo). Lo aprueba Adrián antes de escribir código.
 
@@ -214,5 +214,5 @@ Cada tarea de lógica empieza por su prueba en rojo. Sin repetir un CA en tres c
   `trigger`; (7) D-1 a D-6 decididas (§7). Auditoría de Adrián en el PR #87 (2026-10-31): M-1 a M-4, m-1 a m-4 y m-6
   aplicados. ADR-0039 pasa a `Aceptado` con la aprobación del PR; si Adrián lo rechaza, el plan vuelve al `architect`.
 - Dueños de módulo: cambios en `shared`, `identity`, `storage`, `audit`, `contracts/audit` y
-  `test/int/shared/route-declarations.int-spec.ts` (de Adrián), en los archivos de §2 — pendiente (spec P-4)
-- Adrián: pendiente
+  `test/int/shared/route-declarations.int-spec.ts` (de Adrián), en los archivos de §2 — autorizados por Adrián al dar inicio a la implementación (PR #87, 2026-10-31; spec P-4)
+- Adrián: **Aprobado** (2026-10-31, PR #87), con la condición de que el actor derivado del dueño solo exista dentro de `PublicLinkAccessService` y que las acciones del visitante se sigan distinguiendo como tales (`trigger: 'public_link'`, CA-18). Implementación: T-01 como PR previo y luego T-02 a T-10.
