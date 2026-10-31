@@ -182,7 +182,7 @@ Cada tarea de lógica empieza por su prueba en rojo. Sin repetir un CA en tres c
   cuerpo inválido es el mismo `404`» y enseñaría la forma del cuerpo. Un cuerpo inválido no pasa por el límite por red
   (el `ZodValidationPipe` corre antes del servicio): no consulta la base ni Argon2, así que no hace falta.
 - **D-5 Sin `intento_acceso` (m-2, Fátima).** RNF-08 («registrados») se cumple con `password_failed` y
-  `public_link.locked`; el límite lo lleva Redis. Una tabla sin lector ni retención (PD-145) sería YAGNI.
+  `public_link.locked`; el límite lo lleva Redis. Una tabla sin lector ni retención sería YAGNI.
 - **D-6 `trigger: 'public_link'` (M-2, Fátima).** Reusa `AUDIT_TRIGGERS` y `isTrigger` en lugar de un campo nuevo.
 - **Revisados sin cambios:** `LinkedFileGateway` (una fachada por consumidor; usa `findOwnedLiveFile`, no
   `findAccessibleById`, porque el dueño ve también lo que le compartieron); `current-version-download.ts` (la URL de 5
@@ -195,8 +195,8 @@ Cada tarea de lógica empieza por su prueba en rojo. Sin repetir un CA en tres c
 - **DF-86**: `enlace_publico` sin `carpeta_id`, con `revocado_en`, `propietario_id` (RLS) y un índice único parcial;
   `intento_acceso` del E-R **no se crea**; `PublicLinkService` partido en dos; `IPublicLinkRepository`,
   `IPublicLinkResolver`, `LinkedFileGateway` (M2) e `IShareeDirectory.activeDisplayName`; `LinkToken` es la segunda copia
-  de `OpaqueToken` de `identity` (Art. VI.2: se extrae a la tercera, PD-146).
-- **Pendientes:** PD-145 descartado (sin tabla); PD-146 nuevo; al integrar se cierran PD-20 (por PR-0), la parte de 013
+  de `OpaqueToken` de `identity` (Art. VI.2: se extrae a la tercera, PD-155).
+- **Pendientes:** PD-155 nuevo; al integrar se cierran PD-20 (por PR-0), la parte de 013
   de PD-78 (CA-11) y de PD-121 (CA-5).
 - **ADR:** ADR-0039 (D-1), se acepta con la aprobación del PR #87; con él se actualizan en el mismo PR la constitución
   Art. IX.2 y `CLAUDE.md`. D-2 sin ADR.

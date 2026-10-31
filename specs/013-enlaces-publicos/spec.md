@@ -87,7 +87,7 @@ Sin interfaz en esta spec: la pantalla es la 013b. Para el `ui-designer`, estos 
 - Enlaces a carpetas, varios enlaces por archivo, cambiar vencimiento o contraseña de un enlace existente (se genera otro: S-6).
 - Vista previa en la página pública (017) y descargar versiones anteriores.
 - Lista de «todos mis enlaces», contador de descargas, avisos por correo al propietario.
-- Una tabla de intentos fallidos (el bloqueo vive en Redis; PD-145 descartado).
+- Una tabla de intentos fallidos (el bloqueo vive en Redis).
 - La pantalla (013b).
 
 ## 8. Supuestos
@@ -112,3 +112,4 @@ Sin interfaz en esta spec: la pantalla es la 013b. Para el `ui-designer`, estos 
 | 2026-10-30 | Creación en `Borrador` con plan y tareas (ADR-0034); partida en 013 (API) y 013b (pantalla) | Decisiones de producto de Fátima (archivos, contraseña opcional, vencimiento 1/7/30, un enlace activo, ficha y descarga, bloqueo por enlace e IP, actividad); más de una pantalla | Pendiente (Adrián) |
 | 2026-10-30 | Correcciones de la revisión de documentos (B-1, I-1…I-5, S-1…S-13): CA-8 revoca en la papelera, CA-15 acota bitácoras (IP solo en `http.request`), RN-7 cuenta la IP por red, §5 fallos sueltos fuera de la auditoría | Revisión de documentos; I-1 y S-11 decididos por Fátima | Pendiente (Adrián) |
 | 2026-10-31 | Auditoría de Adrián en PR #87 (M-1…M-4, m-1…m-4, m-6): CA-12 aclara qué cuenta, CA-17 sin ids en el cuerpo, CA-18 nuevo (`trigger` `public_link`), S-3 sin tabla de intentos | Decisiones de Fátima sobre la auditoría | Pendiente (Adrián) |
+| 2026-10-31 | Segunda revisión de Adrián en PR #87 (N-1, N-3, n-1): merge de `main` (011b y 018); el pendiente del token opaco pasa a PD-155 y se quita el de la tabla de intentos (PD-145 y PD-146 ya eran de la 018); ADR-0010 sin `intento_acceso` | Choque de numeración con la 018 | Pendiente (Adrián) |
