@@ -61,7 +61,7 @@ Opción 1. Se reemplaza M3 por dos módulos y se agregan tres transversales (`de
 | Módulo | Responsabilidad | Puede depender de | Expone en `index.ts` |
 |---|---|---|---|
 | `access` (M3a) | Solo lectura: `PermissionResolver` (`levelFor`, `can`, `inheritedGrants`), `IAccessPolicy` (Owner/Editor/Viewer, Strategy), `accessibleNodes(actor)` (DF-32) | `shared` | `PermissionResolver`, `accessibleNodes`, `AccessLevel`, `Action` |
-| `sharing` (M3b) | Escritura: `SharingService`, `PublicLinkService` (usa `IRateLimiter` de `shared`); tablas `comparticion`, `enlace_publico`, `intento_acceso` | `shared`, `access`, `storage`, `audit` | Solo su módulo Nest (nadie lo consume) |
+| `sharing` (M3b) | Escritura: `SharingService`, `PublicLinkService` (usa `IRateLimiter` de `shared`); tablas `comparticion`, `enlace_publico` (`intento_acceso` no se crea: 013, DF-86) | `shared`, `access`, `storage`, `audit` | Solo su módulo Nest (nadie lo consume) |
 | `audit` (T2) | `AuditService`, `AuditEntry`; tabla `evento_auditoria` | `shared` | `IAuditLogger` y consulta para M8 |
 | `realtime` (T3) | Único servidor Socket.IO: handshake autenticado, salas por usuario y por documento | `shared` | Puerto de publicación (nombre en el plan 015) |
 | `notifications` (T4) | `IMailer`, `INotifier` (segregados por consumidor), tabla `notificacion`, cola `mail` | `shared`, `realtime` | `IMailer`, `INotifier` |
