@@ -71,7 +71,7 @@ contenido (spec §6 y §7).
     sin acción. Ver «Diferencias con la spec».
 11. **Ámbito**: propios y, desde 012, compartidos. Un compartido cuya carpeta no veo muestra «Compartido contigo» (ícono
     de personas, texto sin enlace); está dibujado en `resultados-por-nombre` y los estados con la lista (2026-10-31,
-    cierra PD-148; pendiente de la aprobación de Adrián).
+    cierra PD-148; aprobado por Adrián el 2026-10-31).
 
 ## Diferencias con la spec
 

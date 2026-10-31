@@ -14,12 +14,14 @@ import { I_PLAN_LIMITS_PROVIDER } from './application/plan-limits';
 import { I_NODE_METADATA_READER } from './application/ports/i-node-metadata-reader.port';
 import { I_OBJECT_STORAGE } from './application/ports/i-object-storage.port';
 import { I_QUICK_ACCESS_REPOSITORY } from './application/ports/i-quick-access.repository.port';
+import { I_SUPPORT_TRASH_REPOSITORY } from './application/ports/i-support-trash.repository.port';
 import { I_TRASH_PURGE_QUEUE } from './application/ports/i-trash-purge-queue.port';
 import { I_VERSION_REPOSITORY } from './application/ports/i-version.repository.port';
 import { QUICK_ACCESS_CONFIG } from './application/quick-access-config';
 import { QuickAccessService } from './application/quick-access.service';
 import { SpaceMeasurer } from './application/space-measurer';
 import { SpaceSummaryService } from './application/space-summary.service';
+import { SupportTrashService } from './application/support-trash.service';
 import { TrashPurger } from './application/trash-purger';
 import { UPLOAD_CONFIG } from './application/upload-config';
 import { VersionHistoryService } from './application/version-history.service';
@@ -28,6 +30,7 @@ import { VERSION_RESTORE_CONFIG } from './application/version-restore-config';
 import { VersionRestoreService } from './application/version-restore.service';
 import { WritableAccountPolicy } from './application/writable-account.policy';
 import { SqlNodeMetadataReader } from './infrastructure/persistence/sql-node-metadata.reader';
+import { TypeOrmSupportTrashRepository } from './infrastructure/persistence/typeorm-support-trash.repository';
 import { TrashPurgeProcessor } from './infrastructure/trash-purge.processor';
 import { TRASH_PURGE_QUEUE, TrashPurgeScheduler } from './infrastructure/trash-purge.scheduler';
 import { FileVersionsController } from './presentation/file-versions.controller';
@@ -164,7 +167,16 @@ describe('StorageModule', () => {
       EditableFileGateway,
       IndexableFileGateway,
       WritableAccountPolicy,
+      SupportTrashService,
     ]);
+  });
+
+  it('011b CA-10, CA-11: registra la papelera de Soporte con su repositorio SQL y exporta la fachada', () => {
+    expect(providers).toContainEqual({
+      provide: I_SUPPORT_TRASH_REPOSITORY,
+      useClass: TypeOrmSupportTrashRepository,
+    });
+    expect(providers).toContain(SupportTrashService);
   });
 
   it('019 RN-11: registra el publicador de eventos con que `FileVersionService` anuncia cada versión vigente', () => {

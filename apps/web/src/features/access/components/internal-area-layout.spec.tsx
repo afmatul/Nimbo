@@ -35,8 +35,11 @@ function desktopNav(): HTMLElement {
 }
 
 describe('internalNavFor (011 CA-17)', () => {
-  it('CA-14, CA-17: Soporte ve solo Metadatos de archivos', () => {
-    expect(navOf('SUPPORT')).toEqual([['Metadatos de archivos', '/soporte/metadatos']]);
+  it('CA-14, CA-17: Soporte ve solo Metadatos de archivos y Papelera (011b CA-10)', () => {
+    expect(navOf('SUPPORT')).toEqual([
+      ['Metadatos de archivos', '/soporte/metadatos'],
+      ['Papelera', '/soporte/papelera'],
+    ]);
   });
 
   it('CA-14, CA-17: el Administrador ve Cuentas, Catálogo de planes y Métricas', () => {
@@ -65,8 +68,12 @@ describe('internalNavFor (011 CA-17)', () => {
     const active = internalNavFor('SUPPORT', '/soporte/metadatos');
     const elsewhere = internalNavFor('SUPPORT');
 
-    expect(active.map((item) => item.active)).toEqual([true]);
-    expect(elsewhere.map((item) => item.active)).toEqual([false]);
+    expect(active.map((item) => item.active)).toEqual([true, false]);
+    expect(elsewhere.map((item) => item.active)).toEqual([false, false]);
+    expect(internalNavFor('SUPPORT', '/soporte/papelera').map((item) => item.active)).toEqual([
+      false,
+      true,
+    ]);
   });
 });
 
@@ -81,7 +88,7 @@ describe('InternalAreaLayout (011 CA-17)', () => {
 
     expect(within(screen.getByRole('main')).getByText('Contenido del área')).toBeTruthy();
     const links = within(desktopNav()).getAllByRole('link');
-    expect(links.map((link) => link.textContent)).toEqual(['Metadatos de archivos']);
+    expect(links.map((link) => link.textContent)).toEqual(['Metadatos de archivos', 'Papelera']);
     expect(screen.queryByRole('link', { name: 'Mis Archivos' })).toBeNull();
   });
 

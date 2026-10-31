@@ -67,6 +67,7 @@ describe('parámetros y códigos del backoffice (011 plan §4)', () => {
       QUOTA_INVALID: 'BACKOFFICE_QUOTA_INVALID',
       QUOTA_BELOW_USAGE: 'BACKOFFICE_QUOTA_BELOW_USAGE',
       VALIDITY_NOT_EXTENDED: 'BACKOFFICE_VALIDITY_NOT_EXTENDED',
+      INVALID_INPUT: 'BACKOFFICE_INVALID_INPUT',
     });
     expect([...BACKOFFICE_FIELD_ISSUE_REASONS]).toEqual([
       'REQUIRED',
@@ -74,6 +75,11 @@ describe('parámetros y códigos del backoffice (011 plan §4)', () => {
       'INVALID_PAGE',
       'INVALID_EXTRA_BYTES',
       'INVALID_DAY',
+      'INVALID_CURSOR',
+      'INVALID_LIMIT',
+      'NOTE_REQUIRED',
+      'NOTE_TOO_LONG',
+      'INVALID_NODE_TYPE',
     ]);
   });
 });

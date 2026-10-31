@@ -48,7 +48,7 @@
 | backoffice/application | `internal-action.service.ts` | `event` puede devolver `AuditRecord` o una lista; `run` normaliza ambos con `Array.isArray`, así los llamadores actuales no cambian. La salida de solo lectura suma `subscription.read_only_exited` al evento de vigencia; se prueba con los llamadores existentes. |
 | backoffice/presentation | `account-adjustments.controller.ts`, `account-limits.response.ts` (nuevos) | Rutas de §4 con `@Roles(ADMIN)` y respuesta de lista blanca; `accountIdPipe` ya existe. |
 | backoffice | `backoffice.module.ts` | Registra servicio y controlador. |
-| audit | `audit-action.ts`, `audit-catalog.ts`, `audit.service.ts` | `ACCOUNT_QUOTA_ADJUSTED`, `ACCOUNT_VALIDITY_ADJUSTED` y `note: 'text'` solo en `NODE_RESTORED`; `recordLine` omite los atributos de texto libre (`note`, `reason`) y registra solo sus claves. |
+| audit | `audit-action.ts`, `audit-catalog.ts`, `audit.service.ts` | `ACCOUNT_QUOTA_ADJUSTED`, `ACCOUNT_VALIDITY_ADJUSTED` y `note: 'text'` solo en `NODE_RESTORED`; `recordLine` omite el valor de `note` (único texto libre; `reason` son códigos) y registra su clave. |
 | storage/application | `support-trash.service.ts` (nuevo) | Fachada pública con `list(actor, query)` (`query` lleva `ownerId`, `cursor` y `limit`) y `restore(actor, cmd)`; no reutiliza `TrashService` ni `WritableAccountPolicy`. |
 | storage/application/ports | `i-support-trash.repository.port.ts` (nuevo) | `listRoots(actor, query)` y `restoreRoot(actor, cmd)`; sin `findRoot` separado, porque la función valida la raíz y el destino. `query` y `cmd` mantienen dos parámetros (Art. VII.2) y `query` incluye `limit`. |
 | storage/infrastructure | `typeorm-support-trash.repository.ts` (nuevo) | SQL de raíces (`eliminado_con_carpeta_id IS NULL`) con `purgar_en > now()`, nombre original y `ruta`; la restauración llama a `restaurar_raiz_papelera` y no usa `rebaseSubtree` desde la aplicación. |
@@ -128,11 +128,12 @@ CREATE POLICY archivo_soporte_destino ON archivo FOR SELECT TO CURRENT_USER
 -- El SELECT interno de filas en papelera ya existe (archivo_mantenimiento / carpeta_mantenimiento);
 -- no se concede INSERT, DELETE ni acceso a version_archivo, carga o clave_objeto.
 
--- restaurar_raiz_papelera(p_usuario, p_tipo, p_nodo) es VOLATILE, SECURITY DEFINER y devuelve
--- outcome, original_name, final_name, parent_id, parent_name, item_count y size_bytes. Antes de escribir:
+-- restaurar_raiz_papelera(p_usuario, p_tipo, p_nodo, p_max_profundidad), VOLATILE y SECURITY DEFINER, devuelve resultado
+-- (restored|renamed|moved_to_root|depth_exceeded), nombre_original, elementos y bytes (tamano_bytes: nadie lee version_archivo).
 --   bloquea usuario (mismo orden que la 006) y la raíz FOR UPDATE; exige rol SUPPORT, propietario_id,
 --   eliminado_en IS NOT NULL, eliminado_con_carpeta_id IS NULL y purgar_en > now(); resuelve el destino
---   como carpeta viva del mismo dueño o la raíz y el primer nombre libre. Si es carpeta, reubica ruta y
+--   como carpeta viva del mismo dueño o la raíz, la profundidad contra p_max_profundidad (FOLDER_MAX_DEPTH) y
+--   el primer nombre libre con la regla de node-name.ts (prueba de equivalencia). Si es carpeta, reubica ruta y
 --   profundidad del subárbol mientras sigue en papelera; después saca de la papelera solo lo arrastrado.
 --   Escribe solo eliminado_en, purgar_en, eliminado_con_carpeta_id, nombre, carpeta_padre_id/carpeta_id,
 --   ruta, profundidad y actualizado_en; nunca propietario_id, version_actual_id, tamano_bytes, tipo ni creado_en.
@@ -177,7 +178,7 @@ CREATE POLICY archivo_soporte_destino ON archivo FOR SELECT TO CURRENT_USER
 - **Bitácoras:** `backoffice.account.quota_adjusted`, `backoffice.account.validity_adjusted`,
   `backoffice.client_trash.viewed` y `backoffice.client_trash.restored`, solo con ids y resultado; nunca el motivo, nombres,
   correo, claves de objeto ni URLs. El motivo vive únicamente en `evento_auditoria`, y el cliente lo ve en «Mi actividad».
-  `recordLine` omite `note` y `reason`; una prueba captura Pino y verifica que no aparecen.
+  `recordLine` omite `note` (solo su clave); una prueba captura Pino y verifica que el motivo no aparece.
 - **Aislamiento:** el restaurar no toca `espacio_usado` ni la cuota del cliente; una cuenta en solo lectura puede recibir
   la restauración y sigue sin poder subir ni editar (RN-3). Operador y Administrador reciben `403 SHARED_FORBIDDEN` en las
   rutas de Soporte; Soporte y Operador, en las de Administración.
@@ -188,13 +189,13 @@ CREATE POLICY archivo_soporte_destino ON archivo FOR SELECT TO CURRENT_USER
 | CA-1, CA-4, CA-5 | unit + int + web | `subscription-adjustment.spec.ts`, `plan-limits.adapter.spec.ts`, `space-summary.service.spec.ts`, `test/int/backoffice/account-adjustments.int-spec.ts`, `account-limits.spec.tsx`, `space-summary-view.spec.tsx` |
 | CA-2, CA-3, CA-7 | unit + int | `subscription-adjustment.spec.ts` (conversión de fecha), `typeorm-subscription-administration.repository.spec.ts` (códigos a errores), `account-adjustments.int-spec.ts` (bordes de `plan + extra < usado`, fecha no posterior, `422`/`404`, nada cambia, sin evento) |
 | CA-6, CA-8, CA-9, CA-18 | unit + int | `subscription-administration.spec.ts` (solo extiende, no toca renovación ni cambio), `format-date.spec.ts` y `billing-date.spec.ts` (último día: medianoche y hora intermedia), `account-adjustments.int-spec.ts` (solo lectura → vigente; un ajuste de cuota no vuelve a seleccionar la cuenta en `suscripciones_por_avisar`) |
-| CA-10, CA-11 | unit + int | `support-trash.service.spec.ts`, `test/int/backoffice/client-trash.int-spec.ts` (raíces, retención, destino, renombrado, `moved_to_root`, carpetas y `ruta`/`profundidad` del subárbol) |
+| CA-10, CA-11 | unit + int | `support-trash.service.spec.ts`, `test/int/storage/support-trash.int-spec.ts` (función: destino, renombrado, `moved_to_root`, profundidad, `ruta`/`profundidad` del subárbol, 0 filas y equivalencia del nombre con `node-name.ts`), `test/int/backoffice/client-trash.int-spec.ts` (endpoints) |
 | CA-12 | unit + int | `client-trash.int-spec.ts` (motivo vacío/largo, tipo inválido, no raíz, ajena, vencida, correo inválido/inexistente) |
 | CA-13, CA-16 | int | `test/int/backoffice/roles-matrix.int-spec.ts` (SUPPORT solo restaura; ADMIN, OPERATOR y CLIENT `403`) |
 | CA-14 | int + web | `client-trash.int-spec.ts` (evento con `note`, sin nombre en logs), `activity-labels.spec.ts` |
-| CA-15 | iso | `test/isolation/backoffice.iso-spec.ts` (A/B, sin contenido, versiones, claves ni URLs; B intacto) |
+| CA-15 | iso | `test/isolation/backoffice.iso-spec.ts` (casos 6 y 7) y `backoffice-trash.iso-spec.ts` (casos 1 a 5 y 8 a 11: A/B, sin contenido, versiones, claves ni URLs; B intacto) |
 | CA-17 | web | `support-trash.spec.tsx`, `account-limits.spec.tsx`, `a11y.spec.tsx` (360 y 1440 px) |
-| Migraciones | int | `test/int/backoffice/migrations.int-spec.ts` (`up → down → up`, CHECK y políticas, dueño `NOSUPERUSER`) |
+| Migraciones | int | `test/int/backoffice/migrations.int-spec.ts` (PR-A) y `test/int/storage/support-trash.int-spec.ts` (PR-B): `up → down → up`, CHECK y políticas, dueño `NOSUPERUSER` |
 
 - **Impacto de `InternalAction.event`:** `internal-action.service.spec.ts` cubre el retorno simple y la lista; los
   llamadores existentes (`suspender`, `reactivar`, catálogo y alta interna) se ejecutan sin cambios.

@@ -7,7 +7,7 @@
 | Fecha | 2026-10-29 |
 | Rango revisado | `origin/main...6500779f` (`feat/018-busqueda`, 21 commits) |
 | CI | Local: `lint` ✅ · `typecheck` ✅ · `test` ✅ (contracts 548, config 248, api 2658, web 1809, raíz 3 suites / 34) · `test:int` ✅ (completo en dos tandas: storage + identity 80 suites / 846 pruebas; resto 84 suites / 779; total 164 / 1625) · `test:isolation` ✅ (27 suites, 476 pruebas) |
-| Veredicto | ✅ Aprobable (2026-10-30), tras cerrar B-1 e I-1 (T-FIX-1 y T-FIX-2) y aplicar S-1 a S-3. Primera pasada: 🔁 por B-1 |
+| Veredicto | ✅ Aprobable (2026-10-30), tras cerrar B-1 e I-1 (T-FIX-1 y T-FIX-2) y aplicar S-1 a S-3. Primera pasada: 🔁 por B-1. Seguimiento de la auditoría del PR #81 (2026-10-31): N-1, N-2 y M-1 a M-3 atendidos; mockup con «Compartido contigo» aprobado por Adrián |
 
 ## Verificación
 | CA | Prueba (archivo › caso) | Estado |

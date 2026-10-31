@@ -10,7 +10,10 @@ import { toTrashState } from './trash-columns';
 
 /** Filas de `archivo` y `carpeta` → entidades de dominio, compartidas por los repositorios de nodos (PD-145). */
 
-/** Fila → `File`; también la usan la papelera y la búsqueda (018); un archivo no guarda ruta: no hay nada que rehacer. */
+/**
+ * Fila → `File`; también la usan la papelera, la restauración de Soporte (011b) y la búsqueda (018). Un archivo no guarda
+ * ruta: no hay nada que rehacer.
+ */
 export const toFile = (row: ArchivoOrmEntity): File =>
   File.rehydrate({
     id: row.id,

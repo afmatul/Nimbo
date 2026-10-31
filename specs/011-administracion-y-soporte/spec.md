@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | En curso |
+| Estado | Hecha (2026-10-21: PR-A `586064b` y PR-B #67 `6ea7ebc` integrados en `main`) |
 | Dueño | Fátima |
 | Fase | 2 |
 | Requisitos | RF-06 (principal); RF-05 (matriz), RF-07, RF-19, RF-24, RNF-02, RNF-05, RNF-13, RNF-14 |
