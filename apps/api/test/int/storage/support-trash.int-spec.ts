@@ -1,5 +1,6 @@
-import type { DataSource, EntityManager } from 'typeorm';
+import type { DataSource, EntityManager, QueryRunner } from 'typeorm';
 
+import { SoporteRestauraLaPapelera20261026100100 } from '../../../src/migrations/20261026100100-soporte-restaura-la-papelera';
 import { FileName } from '../../../src/modules/storage/domain/file-name.vo';
 import { FolderName } from '../../../src/modules/storage/domain/folder-name.vo';
 import { createActor, Role } from '../../../src/shared';
@@ -12,12 +13,15 @@ import {
 } from '../../isolation/setup/nosuperuser-postgres';
 import type { RestrictedOwnerDatabase } from '../../isolation/setup/nosuperuser-postgres';
 import { connectTo } from '../../support/database-urls';
-import { revertFrom } from '../billing/billing-test-db';
 
-import { insertAccount, insertFileWithVersion, insertFolder } from './storage-test-db';
+import {
+  inRolledBackTransaction,
+  insertAccount,
+  insertFileWithVersion,
+  insertFolder,
+} from './storage-test-db';
 import type { FileRowOptions, FolderRow, FolderRowOptions } from './storage-test-db';
 
-const MIGRATION = 'SoporteRestauraLaPapelera20261026100100';
 const FUNCTION_SIGNATURE = 'restaurar_raiz_papelera(uuid, text, uuid, integer)';
 const MAX_DEPTH = 10;
 const DAY_MS = 86_400_000;
@@ -40,6 +44,10 @@ interface Schema {
   readonly politicas: [string, string, string, string, string, string | null][] | null;
   readonly funciones: [string, boolean, string[]][] | null;
 }
+
+/** Lee el esquema en `db`: dentro de la transacción de la prueba, el DDL todavía no confirmado se ve. */
+const schemaIn = async (db: DataSource | QueryRunner): Promise<Schema> =>
+  ((await db.query(SCHEMA_SQL)) as Schema[])[0] as Schema;
 
 interface RestoreRow {
   readonly resultado: string;
@@ -122,8 +130,7 @@ describe('papelera de Soporte: `restaurar_raiz_papelera` con dueño NOSUPERUSER 
     return row as NodeRow;
   };
 
-  const schemaOf = async (): Promise<Schema> =>
-    ((await owner.query(SCHEMA_SQL)) as Schema[])[0] as Schema;
+  const schemaOf = (db: DataSource | QueryRunner = owner): Promise<Schema> => schemaIn(db);
 
   beforeAll(async () => {
     database = await startRestrictedOwnerDatabase();
@@ -390,15 +397,23 @@ describe('papelera de Soporte: `restaurar_raiz_papelera` con dueño NOSUPERUSER 
     });
   });
 
-  it('up → down → up: el `down` quita la función y las cuatro políticas, y el `up` las vuelve a poner', async () => {
+  /**
+   * Solo esta migración, en una transacción que se revierte: revertir también las posteriores arrastraría `down` de
+   * otras specs que validan FK con datos y RLS (p. ej. 012 `carpeta-del-mismo-propietario`) y la prueba dejaría de
+   * medir lo suyo. La cadena completa sobre una base vacía la recorre `scripts/ci/migrations-roundtrip.sh`.
+   */
+  it('down → up: el `down` quita la función y las cuatro políticas, y el `up` las vuelve a poner', async () => {
     const before = await schemaOf();
+    const migration = new SoporteRestauraLaPapelera20261026100100();
 
-    const reverted = await revertFrom(owner, MIGRATION);
+    const [afterDown, afterUp] = await inRolledBackTransaction(owner, async (runner) => {
+      await migration.down(runner);
+      const down = await schemaOf(runner);
+      await migration.up(runner);
+      return [down, await schemaOf(runner)] as const;
+    });
 
-    expect(reverted[0]).toBe(MIGRATION);
-    expect(await schemaOf()).toEqual({ politicas: null, funciones: null });
-    const rerun = await owner.runMigrations({ transaction: 'each' });
-    expect(rerun.map((migration) => migration.name)).toEqual(reverted);
-    expect(await schemaOf()).toEqual(before);
+    expect(afterDown).toEqual({ politicas: null, funciones: null });
+    expect(afterUp).toEqual(before);
   });
 });
