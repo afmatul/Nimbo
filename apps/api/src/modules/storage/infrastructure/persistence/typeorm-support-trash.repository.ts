@@ -16,9 +16,9 @@ import type { StorageNode } from '../../domain/storage-node';
 
 import { ArchivoOrmEntity } from './archivo.orm-entity';
 import { CarpetaOrmEntity } from './carpeta.orm-entity';
+import { toFile, toFolder } from './node-mappers';
 import type { Condition } from './node-sql';
 import { afterCursor, selectTrashEntries, trashPageOf } from './trash-entries';
-import { toFile, toFolder } from './typeorm-node.repository';
 
 /** Raíz de la papelera del cliente con retención vigente: lo vencido es de la purga y Soporte ya no lo ve (RN-3). */
 const rootInForce = (alias: string): string =>

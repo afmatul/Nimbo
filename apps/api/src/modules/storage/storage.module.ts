@@ -48,6 +48,10 @@ import { QuickAccessController } from './presentation/quick-access.controller';
 import { SpaceController } from './presentation/space.controller';
 import { TrashController } from './presentation/trash.controller';
 import { UploadsController } from './presentation/uploads.controller';
+import { I_NODE_SEARCH_REPOSITORY } from './search/application/ports/i-node-search.repository.port';
+import { SearchService } from './search/application/search.service';
+import { TypeOrmNodeSearchRepository } from './search/infrastructure/typeorm-node-search.repository';
+import { SearchController } from './search/presentation/search.controller';
 import {
   INDEXABLE_FILE_PROVIDERS,
   SPACE_PROVIDERS,
@@ -71,15 +75,16 @@ export type StorageEnv = Pick<
 >;
 
 /**
- * Módulo `storage` (M2, plan §6): carga, descarga, carpetas, papelera y accesos rápidos (006), resumen de espacio (007) y
- * versiones (014: registro y poda en `UPLOAD_LIFECYCLE_PROVIDERS`; historial, descarga y restauración solo en el `api`)
- * y, desde 016, `EditableFileGateway` (exportado) con el registro de versiones de edición, solo en el `api`; desde 019,
- * `IndexableFileGateway` (exportada) y el anuncio de cada versión vigente (`storage.file-version-created`).
- * `forRoot(env)` publica la configuración técnica (bytes como `bigint`) y une cada puerto con su adaptador. **No**
- * enlaza `I_PLAN_LIMITS_PROVIDER` ni importa `billing`: ese enlace vive en la raíz de composición (DF-51, opción A). `SharedModule` (global) aporta reloj, tasa, transacciones y
- * `TransactionContext`; `MinioConfigModule` (global), `MINIO_CONFIG`. La cola `trash-purge` se registra solo para que
- * «Vaciar papelera» encole: la programa y la procesa el `worker`. Exporta `I_NODE_METADATA_READER` (011, PD-31) y, desde
- * 011b, `SupportTrashService`, que consume `backoffice` importando **este mismo** `DynamicModule` que la raíz (Nest los
+ * Módulo `storage` (M2, plan §6): carga, descarga, carpetas, papelera y accesos rápidos (006), resumen de espacio
+ * (007), búsqueda (018, `storage/search`) y versiones (014: registro y poda en `UPLOAD_LIFECYCLE_PROVIDERS`; historial,
+ * descarga y restauración solo en el `api`) y, desde 016, `EditableFileGateway` (exportado) con el registro de
+ * versiones de edición, solo en el `api`; desde 019, `IndexableFileGateway` (exportada) y el anuncio de cada versión
+ * vigente (`storage.file-version-created`). `forRoot(env)` publica la configuración técnica (bytes como `bigint`) y une
+ * cada puerto con su adaptador. **No** enlaza `I_PLAN_LIMITS_PROVIDER` ni importa `billing`: ese enlace vive en la raíz
+ * de composición (DF-51, opción A). `SharedModule` (global) aporta reloj, tasa, transacciones y `TransactionContext`;
+ * `MinioConfigModule` (global), `MINIO_CONFIG`. La cola `trash-purge` se registra solo para que «Vaciar papelera»
+ * encole: la programa y la procesa el `worker`. Exporta `I_NODE_METADATA_READER` (011, PD-31) y, desde 011b,
+ * `SupportTrashService`, que consume `backoffice` importando **este mismo** `DynamicModule` que la raíz (Nest los
  * distingue por referencia).
  */
 @Module({})
@@ -113,6 +118,7 @@ export class StorageModule {
         TrashController,
         QuickAccessController,
         SpaceController,
+        SearchController,
       ],
       providers: [
         { provide: UPLOAD_CONFIG, useValue: uploadConfig },
@@ -139,6 +145,8 @@ export class StorageModule {
         VersionRestoreService,
         FolderService,
         QuickAccessService,
+        SearchService,
+        { provide: I_NODE_SEARCH_REPOSITORY, useClass: TypeOrmNodeSearchRepository },
         { provide: I_NODE_METADATA_READER, useClass: SqlNodeMetadataReader },
         { provide: I_SUPPORT_TRASH_REPOSITORY, useClass: TypeOrmSupportTrashRepository },
         SupportTrashService,

@@ -40,6 +40,10 @@ import { QuickAccessController } from './presentation/quick-access.controller';
 import { SpaceController } from './presentation/space.controller';
 import { TrashController } from './presentation/trash.controller';
 import { UploadsController } from './presentation/uploads.controller';
+import { I_NODE_SEARCH_REPOSITORY } from './search/application/ports/i-node-search.repository.port';
+import { SearchService } from './search/application/search.service';
+import { TypeOrmNodeSearchRepository } from './search/infrastructure/typeorm-node-search.repository';
+import { SearchController } from './search/presentation/search.controller';
 import { StorageModule } from './storage.module';
 
 const ENV = {
@@ -112,7 +116,7 @@ describe('StorageModule', () => {
     expect(providers.map(tokenOf)).not.toContain(TrashPurgeProcessor);
   });
 
-  it('CA-17: monta los controladores de cargas, archivos, versiones, carpetas, papelera, accesos rápidos y espacio', () => {
+  it('CA-17: monta los controladores de cargas, archivos, versiones, carpetas, papelera, accesos rápidos, espacio y búsqueda', () => {
     expect(module.controllers).toEqual([
       UploadsController,
       FilesController,
@@ -121,7 +125,17 @@ describe('StorageModule', () => {
       TrashController,
       QuickAccessController,
       SpaceController,
+      SearchController,
     ]);
+  });
+
+  it('018 CA-1: registra la búsqueda con su repositorio sobre Postgres, sin exportarla', () => {
+    expect(providers).toContain(SearchService);
+    expect(providers).toContainEqual({
+      provide: I_NODE_SEARCH_REPOSITORY,
+      useClass: TypeOrmNodeSearchRepository,
+    });
+    expect(module.exports).not.toContain(SearchService);
   });
 
   it('014 CA-5, CA-13: registra el registro y la poda de versiones con su repositorio', () => {

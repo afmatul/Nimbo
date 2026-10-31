@@ -24,6 +24,7 @@ import type { TrashState } from '../../domain/trash-state';
 
 import { ArchivoOrmEntity } from './archivo.orm-entity';
 import { CarpetaOrmEntity } from './carpeta.orm-entity';
+import { toFile } from './node-mappers';
 import {
   COUNTED_VERSION_SQL,
   FILE_BYTES_SQL,
@@ -35,7 +36,6 @@ import type { Condition, NodeTable } from './node-sql';
 import { trashColumns } from './trash-columns';
 import { afterCursor, selectTrashEntries, toEntry, trashPageOf } from './trash-entries';
 import type { TrashEntryRow } from './trash-entries';
-import { toFile } from './typeorm-node.repository';
 
 /** Columnas de papelera de un nodo que vuelve. */
 const LIVE = trashColumns(null);
