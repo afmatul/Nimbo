@@ -115,6 +115,14 @@ describe('OptimizationRunner.run (021 T-04)', () => {
     },
   );
 
+  it('RN-8: si la inspección del origen ya no es optimizable al ejecutar, termina `fallida(integridad)` sin registrar', async () => {
+    const { runner, task, files, optimizer, stored } = setup();
+    optimizer.inspection = { ...optimizer.inspection, animated: true };
+    await runner.run(task);
+    expect(stored()).toMatchObject({ state: 'fallida', reason: 'integridad' });
+    expect(files.registerOptimizedVersion).not.toHaveBeenCalled();
+  });
+
   it('CA-9: falla integridad sin registrar ni subir', async () => {
     const { runner, task, files, integrity, stored } = setup();
     integrity.validate.mockResolvedValueOnce(false);

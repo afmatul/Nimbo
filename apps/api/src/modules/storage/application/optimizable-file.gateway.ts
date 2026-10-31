@@ -8,10 +8,11 @@ import type { File } from '../domain/file';
 import type { FileKind } from '../domain/file-kind';
 import type { FileVersion } from '../domain/file-version';
 
+import { objectByteReader } from './object-byte-reader';
 import { OptimizedVersionRegistrar } from './optimized-version.registrar';
 import type { OptimizedVersionInput, OptimizedVersionOutcome } from './optimized-version.registrar';
 import { I_FILE_TYPE_DETECTOR } from './ports/i-file-type-detector.port';
-import type { ByteReader, IFileTypeDetector } from './ports/i-file-type-detector.port';
+import type { IFileTypeDetector } from './ports/i-file-type-detector.port';
 import { I_NODE_REPOSITORY } from './ports/i-node.repository.port';
 import type { FileVersionRef, INodeRepository } from './ports/i-node.repository.port';
 import { I_OBJECT_STORAGE } from './ports/i-object-storage.port';
@@ -73,7 +74,10 @@ export class OptimizableFileGateway {
     const owned = await this.transactions.withActor(actor, () => this.ownedCurrent(actor, fileId));
     if (owned === null) return null;
     const { file, current } = owned;
-    const detected = await this.detector.detect(this.readerFor(current), file.name.extension());
+    const detected = await this.detector.detect(
+      objectByteReader(this.objects, current.objectKey.value, current.sizeBytes),
+      file.name.extension(),
+    );
     return toOptimizableFile(file, detected.ok ? detected.mime : null);
   }
 
@@ -137,19 +141,5 @@ export class OptimizableFileGateway {
     if (file === null) return null;
     const current = await this.versions.find(actor, file.id, file.currentVersionId);
     return current === null ? null : { file, current };
-  }
-
-  private readerFor(version: FileVersion): ByteReader {
-    const size = Number(version.sizeBytes);
-    const key = version.objectKey.value;
-    return {
-      size,
-      read: (offset, length) => {
-        const end = Math.min(offset + length, size);
-        return end <= offset
-          ? Promise.resolve(Buffer.alloc(0))
-          : this.objects.getRange(key, offset, end - 1);
-      },
-    };
   }
 }

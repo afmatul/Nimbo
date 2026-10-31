@@ -7,7 +7,7 @@ import type { Metadata, Sharp } from 'sharp';
 
 import type { IIntegrityValidator } from '../../application/ports/i-integrity-validator.port';
 
-import { IMAGE_OPTIMIZER_CONFIG } from './image.optimizer';
+import { IMAGE_OPTIMIZER_CONFIG, sharpTimeoutSeconds } from './image.optimizer';
 import type { ImageOptimizerConfig } from './image.optimizer';
 
 /** EXIF solo se exige si existía; no se promete conservar el resto byte a byte (ADR-0037). */
@@ -55,7 +55,7 @@ export class ImageIntegrityValidator implements IIntegrityValidator {
   private image(content: Buffer): Sharp {
     // Compara muestras originales: aplicar el ICC podría convertir o recortar colores y ocultar diferencias.
     return sharp(content, { limitInputPixels: this.config.maxPixels, ignoreIcc: true }).timeout({
-      seconds: Math.ceil(this.config.timeoutMs / 1000),
+      seconds: sharpTimeoutSeconds(this.config),
     });
   }
 

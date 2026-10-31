@@ -30,16 +30,15 @@ export type { FileVersionCreatedEvent } from './domain/file-version-created.even
 export type { FileKind } from './domain/file-kind';
 export { IndexableFileGateway } from './application/indexable-file.gateway';
 export type { IndexableFile } from './application/indexable-file.gateway';
-// 021 (PD-130, PD-121): la fachada del optimizador y la política de solo lectura con su error, para `optimizer`.
+// 021 (PD-130): la fachada del optimizador para `optimizer`; la solo lectura es la política de 012 (PD-121), más abajo.
 export { OptimizableFileGateway } from './application/optimizable-file.gateway';
 export type { OptimizableFile } from './application/optimizable-file.gateway';
 export type {
   OptimizedVersionInput,
   OptimizedVersionOutcome,
 } from './application/optimized-version.registrar';
-export { WritableAccountPolicy } from './application/writable-account.policy';
 export type { FileVersionRef, IdPage } from './application/ports/i-node.repository.port';
-// 012 (PD-121): `sharing` rechaza compartir desde una cuenta en solo lectura con la misma regla que `storage`.
+// 012 (PD-121): `sharing` rechaza compartir desde una cuenta en solo lectura con la misma regla que `storage`; 021 la reutiliza para `run`.
 export { WritableAccountPolicy } from './application/writable-account.policy';
 // 011b (plan §2, ADR-0035): la fachada con que Soporte lista y restaura la papelera de un cliente desde `backoffice`,
 // con vistas de lectura (las de 006 en contracts), no entidades de `storage` (M-2 del PR #85).

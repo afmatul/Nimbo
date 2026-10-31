@@ -112,6 +112,8 @@ export class OptimizationRunner {
     const content = await this.readSource(owner, job);
     if (content === null) return this.sourceUnavailable(owner, job);
     try {
+      // La estimación ya filtró animadas y gigantes (el origen es inmutable): solo llega aquí si cambió el tope de píxeles
+      // entre calcular y confirmar. Una ejecución confirmada no admite `no_disponible`; `integridad` es el motivo final que ofrece.
       if (this.unavailableReason(await this.optimizer.inspect(content)) !== null)
         return job.fail(this.clock.now(), 'integridad');
       const candidate = await this.optimizer.optimize(content);

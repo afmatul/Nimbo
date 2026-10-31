@@ -11,10 +11,11 @@ import { ObjectKey } from '../domain/object-key';
 
 import { FileVersionService } from './file-version.service';
 import type { RegisteredVersion } from './file-version.service';
+import { objectByteReader } from './object-byte-reader';
 import { I_PLAN_LIMITS_PROVIDER } from './plan-limits';
 import type { IPlanLimitsProvider } from './plan-limits';
 import { I_FILE_TYPE_DETECTOR } from './ports/i-file-type-detector.port';
-import type { ByteReader, IFileTypeDetector } from './ports/i-file-type-detector.port';
+import type { IFileTypeDetector } from './ports/i-file-type-detector.port';
 import { I_NODE_REPOSITORY } from './ports/i-node.repository.port';
 import type { INodeRepository } from './ports/i-node.repository.port';
 import { I_OBJECT_STORAGE } from './ports/i-object-storage.port';
@@ -183,21 +184,8 @@ export class OptimizedVersionRegistrar {
 
   /** La firma real del resultado es la de la extensión del archivo y del mismo tipo (RN-6: sin conversión). */
   private async matchesKind(file: File, key: ObjectKey, sizeBytes: bigint): Promise<boolean> {
-    const reader = this.readerFor(key, sizeBytes);
+    const reader = objectByteReader(this.objects, key.value, sizeBytes);
     const result = await this.detector.detect(reader, file.name.extension());
     return result.ok && result.kind === file.kind;
-  }
-
-  private readerFor(key: ObjectKey, sizeBytes: bigint): ByteReader {
-    const size = Number(sizeBytes);
-    return {
-      size,
-      read: (offset, length) => {
-        const end = Math.min(offset + length, size);
-        return end <= offset
-          ? Promise.resolve(Buffer.alloc(0))
-          : this.objects.getRange(key.value, offset, end - 1);
-      },
-    };
   }
 }

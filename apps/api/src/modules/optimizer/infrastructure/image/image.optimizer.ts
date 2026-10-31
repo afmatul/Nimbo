@@ -29,6 +29,10 @@ const PNG_SIGNATURE_BYTES = 8;
 const PNG_CHUNK_OVERHEAD = 12;
 const MS_PER_SECOND = 1000;
 
+/** `sharp` mide el tiempo límite en segundos enteros: se redondea hacia arriba. */
+export const sharpTimeoutSeconds = ({ timeoutMs }: Pick<ImageOptimizerConfig, 'timeoutMs'>): number =>
+  Math.ceil(timeoutMs / MS_PER_SECOND);
+
 type SupportedMetadata = Metadata & {
   readonly format: ImageFormat;
   readonly width: number;
@@ -114,7 +118,7 @@ export class ImageOptimizer implements IOptimizer {
 
   private pipeline(content: Buffer, metadata: SupportedMetadata): Sharp {
     const image = sharp(content, { limitInputPixels: this.config.maxPixels })
-      .timeout({ seconds: Math.ceil(this.config.timeoutMs / MS_PER_SECOND) })
+      .timeout({ seconds: sharpTimeoutSeconds(this.config) })
       .keepIccProfile();
     if (metadata.exif !== undefined) image.keepExif();
     if (metadata.space !== undefined) image.toColourspace(metadata.space);

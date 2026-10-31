@@ -5,12 +5,9 @@ import { In } from 'typeorm';
 import { TransactionContext } from '../../../../shared';
 import type { Actor } from '../../../../shared';
 import type { IJobRepository } from '../../application/ports/i-job.repository.port';
-import { OptimizationJob } from '../../domain/optimization-job';
-import type { OptimizationState } from '../../domain/optimization-job';
+import { IN_PROGRESS_STATES, OptimizationJob } from '../../domain/optimization-job';
 
 import { OptimizacionOrmEntity } from './optimizacion.orm-entity';
-
-const IN_PROGRESS: OptimizationState[] = ['estimando', 'optimizando'];
 
 /** Otro pedido en curso del mismo archivo choca con `uq_optimizacion_en_curso` y no aborta la transacción. */
 const INSERT_IF_NONE_IN_PROGRESS_SQL = `
@@ -75,7 +72,7 @@ export class TypeOrmJobRepository implements IJobRepository {
 
   async findInProgress(actor: Actor, fileId: string): Promise<OptimizationJob | null> {
     const row = await this.manager(actor).findOne(OptimizacionOrmEntity, {
-      where: { archivoId: fileId, estado: In(IN_PROGRESS) },
+      where: { archivoId: fileId, estado: In([...IN_PROGRESS_STATES]) },
     });
     return row === null ? null : toJob(row);
   }

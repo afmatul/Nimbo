@@ -43,7 +43,7 @@ const REASONS_OF: Readonly<Partial<Record<OptimizationState, readonly Optimizati
 };
 
 /** Estados que esperan al `worker`: a lo sumo uno por archivo (`uq_optimizacion_en_curso`, RN-9). */
-const IN_PROGRESS: readonly OptimizationState[] = ['estimando', 'optimizando'];
+export const IN_PROGRESS_STATES: readonly OptimizationState[] = ['estimando', 'optimizando'];
 
 /** Resultados de una estimación: describen la versión de la que se calcularon. */
 const ESTIMATE_RESULTS: readonly OptimizationState[] = ['estimada', 'no_conviene', 'no_disponible'];
@@ -188,7 +188,7 @@ export class OptimizationJob {
 
   /** Espera al `worker` (`estimando` u `optimizando`). */
   get isInProgress(): boolean {
-    return IN_PROGRESS.includes(this.data.state);
+    return IN_PROGRESS_STATES.includes(this.data.state);
   }
 
   /**
