@@ -20,7 +20,7 @@ const SHARED_FOLDERS = ['Informes', 'Facturas'];
 const SHARED_FILES = ['Informe anual.txt', 'Acta del informe.txt'];
 /** Lo único que distingue los nombres de A y B: un dígito. */
 const NEARLY = { a: 'Informe trimestral 2026.txt', b: 'Informe trimestral 2025.txt' };
-/** Carpeta de A que contiene un archivo de B (insertado a mano) y un archivo de A compartido con B (012): B no debe verla nombrada. */
+/** Carpeta de A con un archivo de A compartido con B (012): B recibe el archivo, pero nunca el nombre ni el id de la carpeta. */
 const FOREIGN_FOLDER_NAME = 'Informes privados de A';
 const SHARED_WITH_B_NAME = 'Plan reservado.txt';
 const PAGE_LIMIT = '1';
@@ -120,7 +120,7 @@ describe('aislamiento de la búsqueda (018 CA-13, CA-14)', () => {
       expect([...ofA].sort()).toEqual([...nodesA.ids, foreignFolder.id].sort());
     });
 
-    // Con 012 un nodo no vive en una carpeta ajena (`fk_archivo_carpeta_propietario`); lo compartido va en la prueba siguiente.
+    // Con 012 un nodo no vive en una carpeta ajena (`fk_archivo_carpeta_propietario`); lo compartido se prueba en «un archivo que A comparte con B aparece `shared`».
     it('CA-13: la ubicación solo nombra carpetas de B, nunca la carpeta de A', async () => {
       const body = await searchAs(clientB, { q: 'informe' });
       const locations = body.items.flatMap((item) =>
