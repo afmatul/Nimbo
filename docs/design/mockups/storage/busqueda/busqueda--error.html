@@ -438,8 +438,8 @@
   .files .c-loc { width: 30%; }
   .files thead th.c-size, .files thead th.c-date { width: 120px; }
   .fname-text a.fname-link { display: inline-block; padding: 2px 0; } /* objetivo de 24 px */
-  a.loc { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; color: var(--secondary-foreground); text-decoration: none; overflow-wrap: anywhere; }
-  a.loc .ico { color: var(--muted-foreground); }
+  a.loc, span.loc { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; color: var(--secondary-foreground); text-decoration: none; overflow-wrap: anywhere; }
+  a.loc .ico, span.loc .ico { color: var(--muted-foreground); }
   a.loc:hover { color: var(--foreground); text-decoration: underline; }
   .floc-m { display: none; }
   .files caption { text-align: left; }
@@ -512,7 +512,7 @@
     
     <aside class="sidebar" aria-label="Barra lateral">
       <div class="brand-row">
-        <a class="logo" href="#" aria-label="Nimbo, Mis archivos"><span class="logo-mark logo-mark-nube" aria-hidden="true"><svg class="logo-nube" viewBox="0 58 418 304" width="34" height="25" aria-hidden="true" focusable="false"><g class="logo-nube-cuerpo"><circle cx="258" cy="170" r="110"/><circle cx="122" cy="206" r="78"/><circle cx="348" cy="246" r="60"/><circle cx="69" cy="292" r="67"/><circle cx="351" cy="294" r="65"/><rect x="69" y="200" width="282" height="159"/></g><path class="logo-nube-destello" d="M210 122Q221 213 315 224Q221 235 210 328Q199 235 105 224Q199 213 210 122Z"/></svg></span><span>NIMBO</span></a>
+        <a class="logo" href="#" aria-label="NIMBO, Mis archivos"><span class="logo-mark logo-mark-nube" aria-hidden="true"><svg class="logo-nube" viewBox="0 58 418 304" width="34" height="25" aria-hidden="true" focusable="false"><g class="logo-nube-cuerpo"><circle cx="258" cy="170" r="110"/><circle cx="122" cy="206" r="78"/><circle cx="348" cy="246" r="60"/><circle cx="69" cy="292" r="67"/><circle cx="351" cy="294" r="65"/><rect x="69" y="200" width="282" height="159"/></g><path class="logo-nube-destello" d="M210 122Q221 213 315 224Q221 235 210 328Q199 235 105 224Q199 213 210 122Z"/></svg></span><span>NIMBO</span></a>
         <span class="plan-chip">PERSONAL</span>
       </div>
       <nav aria-label="Navegación principal">
@@ -548,13 +548,13 @@
       <header class="topbar">
         <div class="topbar-left">
           <button class="menu-btn" type="button" aria-label="Abrir menú de navegación" aria-expanded="false"><svg class="ico " width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg></button>
-          <a class="logo logo-mobile" href="#" aria-label="Nimbo, Mis archivos"><span class="logo-mark logo-mark-nube" aria-hidden="true"><svg class="logo-nube" viewBox="0 58 418 304" width="34" height="25" aria-hidden="true" focusable="false"><g class="logo-nube-cuerpo"><circle cx="258" cy="170" r="110"/><circle cx="122" cy="206" r="78"/><circle cx="348" cy="246" r="60"/><circle cx="69" cy="292" r="67"/><circle cx="351" cy="294" r="65"/><rect x="69" y="200" width="282" height="159"/></g><path class="logo-nube-destello" d="M210 122Q221 213 315 224Q221 235 210 328Q199 235 105 224Q199 213 210 122Z"/></svg></span><span>NIMBO</span></a>
+          <a class="logo logo-mobile" href="#" aria-label="NIMBO, Mis archivos"><span class="logo-mark logo-mark-nube" aria-hidden="true"><svg class="logo-nube" viewBox="0 58 418 304" width="34" height="25" aria-hidden="true" focusable="false"><g class="logo-nube-cuerpo"><circle cx="258" cy="170" r="110"/><circle cx="122" cy="206" r="78"/><circle cx="348" cy="246" r="60"/><circle cx="69" cy="292" r="67"/><circle cx="351" cy="294" r="65"/><rect x="69" y="200" width="282" height="159"/></g><path class="logo-nube-destello" d="M210 122Q221 213 315 224Q221 235 210 328Q199 235 105 224Q199 213 210 122Z"/></svg></span><span>NIMBO</span></a>
           <nav class="crumbs" aria-label="Ruta">
             <ol><li><span aria-current="page">Buscar</span></li></ol>
           </nav>
         </div>
-        <button class="account-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Menú de la cuenta de Lucía Barrios">
-          <span class="account-name">Lucía Barrios</span><span class="avatar" aria-hidden="true">LB</span>
+        <button class="account-btn" type="button" aria-haspopup="menu" aria-expanded="false">
+          <span class="account-name">Lucía Barrios</span><span class="avatar" aria-hidden="true">LB</span><span class="sr-only">Menú de la cuenta</span>
         </button>
       </header>
       <main class="content" id="contenido">

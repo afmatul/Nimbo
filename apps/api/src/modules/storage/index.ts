@@ -30,3 +30,5 @@ export type { FileKind } from './domain/file-kind';
 export { IndexableFileGateway } from './application/indexable-file.gateway';
 export type { IndexableFile } from './application/indexable-file.gateway';
 export type { FileVersionRef, IdPage } from './application/ports/i-node.repository.port';
+// 012 (PD-121): `sharing` rechaza compartir desde una cuenta en solo lectura con la misma regla que `storage`.
+export { WritableAccountPolicy } from './application/writable-account.policy';

@@ -1,7 +1,7 @@
 'use client';
 
 import { formatBytes, type SearchHit } from '@nimbo/contracts';
-import { Folder } from 'lucide-react';
+import { Folder, Users } from 'lucide-react';
 import Link from 'next/link';
 import type * as React from 'react';
 
@@ -13,6 +13,8 @@ import { fileDetailPath, folderPath, locationPath, MY_FILES_LABEL } from '../../
 
 const LINK_CLASSES =
   'rounded-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+/** Ubicación de un resultado de otra cuenta cuya carpeta no se ve (012, spec 018 CA-2). */
+const SHARED_LABEL = 'Compartido contigo';
 const HEAD_CLASSES = 'px-2 py-2 text-xs font-medium uppercase tracking-wide';
 
 /** «Resultados para «texto»», sin total de coincidencias (RN-6). */
@@ -33,9 +35,16 @@ function HitIcon({ hit }: { readonly hit: SearchHit }): React.JSX.Element {
   );
 }
 
-/** La carpeta que lo contiene o «Mis archivos» (CA-2), enlazada al explorador. */
+/** Sin carpeta visible, «Compartido contigo» (de otra cuenta, sin enlace) o «Mis archivos» (CA-2). */
 function HitLocation({ hit }: { readonly hit: SearchHit }): React.JSX.Element {
-  const name = hit.location?.name ?? MY_FILES_LABEL;
+  if (hit.location === null && hit.shared) {
+    return (
+      <span className="inline-flex min-w-0 items-center gap-1.5 text-secondary-foreground">
+        <Users className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        <span className="truncate">{SHARED_LABEL}</span>
+      </span>
+    );
+  }
   return (
     <Link
       href={locationPath(hit.location?.id ?? null)}
@@ -45,7 +54,7 @@ function HitLocation({ hit }: { readonly hit: SearchHit }): React.JSX.Element {
       )}
     >
       <Folder className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-      <span className="truncate">{name}</span>
+      <span className="truncate">{hit.location?.name ?? MY_FILES_LABEL}</span>
     </Link>
   );
 }

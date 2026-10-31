@@ -1,5 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { SearchHit, SearchQuery, SearchResponse, SearchType } from '@nimbo/contracts';
+import type {
+  NodeSummary,
+  SearchHit,
+  SearchQuery,
+  SearchResponse,
+  SearchType,
+} from '@nimbo/contracts';
 
 import { I_TRANSACTION_RUNNER } from '../../../../shared';
 import type { Actor, ITransactionRunner } from '../../../../shared';
@@ -36,10 +42,21 @@ const criteriaOf = (query: SearchQuery): NodeSearchCriteria => ({
   ...(query.cursor === undefined ? {} : { cursor: query.cursor }),
 });
 
-const toSearchHit = ({ node, location }: NodeSearchHit): SearchHit => ({
-  ...toNodeSummary(node),
-  location: location === null ? null : { id: location.id, name: location.name },
-});
+/** El resumen sin la carpeta que contiene al nodo: el actor no la ve y su id delataría que existe (CA-13, PD-152). */
+const withoutParent = (summary: NodeSummary): NodeSummary =>
+  summary.type === 'folder' ? { ...summary, parentId: null } : { ...summary, folderId: null };
+
+/** `shared`: el nodo es de otra cuenta (012). Sin ubicación visible no lleva el id de su carpeta (CA-2, CA-13). */
+const toSearchHit =
+  (actor: Actor) =>
+  ({ node, location }: NodeSearchHit): SearchHit => {
+    const summary = toNodeSummary(node);
+    return {
+      ...(location === null ? withoutParent(summary) : summary),
+      location: location === null ? null : { id: location.id, name: location.name },
+      shared: node.ownerId !== actor.id,
+    };
+  };
 
 /**
  * Búsqueda por nombre, tipo y fecha (spec 018, DF-15) entre los nodos vivos que el actor ve. Leer metadatos propios:
@@ -56,6 +73,6 @@ export class SearchService {
     const page = await this.transactions.withActor(actor, () =>
       this.nodes.search(actor, criteriaOf(query)),
     );
-    return { items: page.hits.map(toSearchHit), nextCursor: page.nextCursor };
+    return { items: page.hits.map(toSearchHit(actor)), nextCursor: page.nextCursor };
   }
 }

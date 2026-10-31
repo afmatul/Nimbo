@@ -273,20 +273,38 @@ describe('RLS de `sesion_edicion` y `participacion` (plan 016 §3, RNF-05)', () 
     await removeAccounts(owner, created);
   });
 
+  /** La de 016 para la propietaria y las del Editor de 012 (plan 012 §3, PD-108); ninguna para roles internos. */
+  const POLICIES_OF: Record<string, { policyname: string; cmd: string }[]> = {
+    sesion_edicion: [
+      { policyname: 'sesion_edicion_alta_de_la_propietaria', cmd: 'INSERT' },
+      { policyname: 'sesion_edicion_cambio_de_la_propietaria', cmd: 'UPDATE' },
+      { policyname: 'sesion_edicion_cliente', cmd: 'ALL' },
+      { policyname: 'sesion_edicion_compartida', cmd: 'SELECT' },
+      { policyname: 'sesion_edicion_compartida_alta', cmd: 'INSERT' },
+      { policyname: 'sesion_edicion_compartida_bloqueo', cmd: 'UPDATE' },
+    ],
+    participacion: [
+      { policyname: 'participacion_cliente', cmd: 'ALL' },
+      { policyname: 'participacion_compartida', cmd: 'SELECT' },
+      { policyname: 'participacion_compartida_alta', cmd: 'INSERT' },
+      { policyname: 'participacion_compartida_cambio', cmd: 'UPDATE' },
+    ],
+  };
+
   it.each(['sesion_edicion', 'participacion'])(
-    'RNF-05: `%s` tiene RLS habilitada y forzada, con una sola política de cliente',
+    'RNF-05: `%s` tiene RLS habilitada y forzada, con la política de cliente y las del Editor de 012',
     async (table) => {
       const [rls] = (await owner.query(
         'SELECT relrowsecurity AS enabled, relforcerowsecurity AS forced FROM pg_class WHERE oid = $1::regclass',
         [table],
       )) as { enabled: boolean; forced: boolean }[];
       const policies = (await owner.query(
-        'SELECT policyname, cmd FROM pg_policies WHERE tablename = $1',
+        'SELECT policyname, cmd FROM pg_policies WHERE tablename = $1 ORDER BY policyname',
         [table],
       )) as { policyname: string; cmd: string }[];
 
       expect(rls).toEqual({ enabled: true, forced: true });
-      expect(policies).toEqual([{ policyname: `${table}_cliente`, cmd: 'ALL' }]);
+      expect(policies).toEqual(POLICIES_OF[table]);
     },
   );
 

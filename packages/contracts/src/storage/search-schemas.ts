@@ -56,13 +56,17 @@ export const searchQuerySchema = pageQuerySchema
     }
   });
 
-/** Carpeta que contiene el resultado y que el actor ve; `null` = «Mis archivos» (CA-2, CA-13). */
-const location = { location: folderRefSchema.nullable() };
+/**
+ * Lo que la búsqueda agrega al `NodeSummary` (CA-2, CA-13): la carpeta que contiene el resultado y que el actor ve
+ * (`null` = «Mis archivos», o una carpeta que no ve, y entonces el padre del resumen también va en `null`) y si el
+ * nodo es de otra cuenta (012).
+ */
+const searchExtras = { location: folderRefSchema.nullable(), shared: z.boolean() };
 
 /** Resultado: un `NodeSummary` del explorador más su ubicación (CA-2). */
 export const searchHitSchema = z.discriminatedUnion('type', [
-  folderSummarySchema.extend({ type: z.literal('folder'), ...location }),
-  fileSummarySchema.extend({ type: z.literal('file'), ...location }),
+  folderSummarySchema.extend({ type: z.literal('folder'), ...searchExtras }),
+  fileSummarySchema.extend({ type: z.literal('file'), ...searchExtras }),
 ]);
 
 /** Página de resultados: carpetas y luego archivos, del modificado más reciente al más antiguo; sin total (RN-6). */

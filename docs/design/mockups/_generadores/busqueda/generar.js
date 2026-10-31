@@ -28,6 +28,7 @@ fs.mkdirSync(OUT, { recursive: true });
 const icon = S.crearIcon({
   ...C.P, ...Q.P,
   search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+  users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
   searchX: '<path d="m13.5 8.5-5 5"/><path d="m8.5 8.5 5 5"/><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
 });
 
@@ -98,8 +99,8 @@ const CSS = '\n' + M.CSS.MARCO + M.CSS.BOTONES + M.CSS.MQ_900 +
   .files .c-loc { width: 30%; }
   .files thead th.c-size, .files thead th.c-date { width: 120px; }
   .fname-text a.fname-link { display: inline-block; padding: 2px 0; } /* objetivo de 24 px */
-  a.loc { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; color: var(--secondary-foreground); text-decoration: none; overflow-wrap: anywhere; }
-  a.loc .ico { color: var(--muted-foreground); }
+  a.loc, span.loc { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; color: var(--secondary-foreground); text-decoration: none; overflow-wrap: anywhere; }
+  a.loc .ico, span.loc .ico { color: var(--muted-foreground); }
   a.loc:hover { color: var(--foreground); text-decoration: underline; }
   .floc-m { display: none; }
   .files caption { text-align: left; }
@@ -131,6 +132,8 @@ const CSS = '\n' + M.CSS.MARCO + M.CSS.BOTONES + M.CSS.MQ_900 +
 // [tipo, nombre, carpeta que lo contiene (o «Mis archivos»), tamaño, modificado, días desde la modificación, categoría]
 // Orden fijo (CA-2): carpetas primero y después archivos, cada grupo del modificado más reciente al más antiguo.
 // Categorías de FileCategory (spec 007 CA-2): documents (docx, pdf, xlsx, pptx, txt, md), images y other.
+// Ubicación de un resultado de otra cuenta cuya carpeta no se ve (012, spec 018 CA-2): texto sin enlace.
+const COMPARTIDO = 'Compartido contigo';
 const RESULTADOS = [
   ['carpeta', 'Camiones', 'Logística', '', '22 oct', 4, null],
   ['carpeta', 'Seguro del camión', 'Finanzas', '', '30 sep', 26, null],
@@ -140,6 +143,7 @@ const RESULTADOS = [
   ['archivo', 'Ruta_CAMIONES_zona_norte.pdf', 'Logística', '2.4 MB', '15 oct', 11, 'documents'],
   ['archivo', 'Foto_camión_entrega.jpg', 'Camiones', '3.8 MB', '9 oct', 17, 'images'],
   ['archivo', 'Cotizacion_camion_usado.pdf', 'Finanzas', '640 KB', '3 sep', 53, 'documents'],
+  ['archivo', 'Plan_de_ruta_camion_compartido.docx', COMPARTIDO, '88 KB', '18 ago', 70, 'documents'],
   ['archivo', 'Recorrido_camion_ruta_sur.mp4', 'Camiones', '38.6 MB', '12 jun', 136, 'other'],
   ['archivo', 'Inventario_camiones_2025.xlsx', 'Logística', '214 KB', '14 nov 2025', 346, 'documents'],
 ];
@@ -181,7 +185,9 @@ const tileDe = (tipo, nombre) => {
 };
 
 // Ubicación: la carpeta que contiene el elemento, o «Mis archivos» en la raíz (CA-2); el enlace la abre en el explorador.
-const ubicacion = (carpeta) => `<a class="loc" href="#">${icon('folder', 14)}<span>${carpeta}</span></a>`;
+const ubicacion = (carpeta) => carpeta === COMPARTIDO
+  ? `<span class="loc">${icon('users', 14)}<span>${carpeta}</span></span>`
+  : `<a class="loc" href="#">${icon('folder', 14)}<span>${carpeta}</span></a>`;
 
 // Fila de resultado: el nombre es el enlace (carpeta → explorador, 006; archivo → su ficha, 014; CA-10). Sin resaltado.
 function filaResultado([tipo, nombre, carpeta, tam, fecha]) {

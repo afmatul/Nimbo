@@ -13,10 +13,10 @@ import {
   encodeNodeListCursor,
 } from '../../infrastructure/persistence/node-list-cursor';
 import type { NodeListPosition } from '../../infrastructure/persistence/node-list-cursor';
+import { toFile, toFolder } from '../../infrastructure/persistence/node-mappers';
 import { afterCondition, orderByOf } from '../../infrastructure/persistence/node-order-sql';
 import { nodesIn } from '../../infrastructure/persistence/node-sql';
 import type { Condition, NodeTable } from '../../infrastructure/persistence/node-sql';
-import { toFile, toFolder } from '../../infrastructure/persistence/typeorm-node.repository';
 import type {
   INodeSearchRepository,
   NodeSearchCriteria,

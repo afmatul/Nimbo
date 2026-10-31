@@ -9,6 +9,7 @@ import {
 } from '../../../../test/support/storage-fakes';
 import { createActor, FixedClock, Role } from '../../../shared';
 import type { Actor } from '../../../shared';
+import { AccessLevel, PermissionResolver } from '../../access';
 import {
   FolderDepthExceededError,
   FolderNameConflictError,
@@ -51,6 +52,10 @@ function setup() {
     new FixedClock(NOW),
     CONFIG,
     new WritableAccountPolicy(plans),
+    new PermissionResolver({
+      levelFor: (actor: Actor, nodeId: string) =>
+        Promise.resolve(nodes.folders.get(nodeId)?.ownerId === actor.id ? AccessLevel.OWNER : null),
+    }),
   );
 
   /** Carpeta ya guardada de `owner` dentro de `parent` (o en la raíz). */
@@ -366,6 +371,7 @@ describe('FolderService.contents', () => {
 
     expect(contents.folder).toBeNull();
     expect(contents.breadcrumbs).toEqual([]);
+    expect(contents.accessLevel).toBe(AccessLevel.OWNER);
     expect(contents.page.items.map((node) => node.id)).toEqual([top.id, loose.id]);
     expect(nodes.listed).toEqual([{ folderId: null, order: DEFAULT_ORDER, limit: 20 }]);
   });
@@ -384,6 +390,7 @@ describe('FolderService.contents', () => {
     });
 
     expect(contents.folder?.id).toBe(third.id);
+    expect(contents.accessLevel).toBe(AccessLevel.OWNER);
     expect(contents.breadcrumbs.map((crumb) => crumb.id)).toEqual([first.id, second.id, third.id]);
     expect(nodes.listed).toEqual([
       { folderId: third.id, order: DEFAULT_ORDER, cursor: 'c', limit: 5 },

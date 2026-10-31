@@ -71,7 +71,7 @@ describe('migración crear-evento-auditoria: esquema (DF-12)', () => {
     expect(rows[1]?.indexdef).toContain('(usuario_afectado_id, ocurrido_en DESC, id DESC)');
   });
 
-  it('CA-6: tiene RLS habilitada y forzada, con solo las políticas de lectura y alta (más la del sistema, 011)', async () => {
+  it('CA-6: tiene RLS habilitada y forzada, con solo las políticas de lectura y alta (más la del sistema, 011, y la de Salir, 012)', async () => {
     const [rls] = (await owner.query(
       "SELECT relrowsecurity AS enabled, relforcerowsecurity AS forced FROM pg_class WHERE oid = 'evento_auditoria'::regclass",
     )) as { enabled: boolean; forced: boolean }[];
@@ -84,6 +84,7 @@ describe('migración crear-evento-auditoria: esquema (DF-12)', () => {
       { policyname: 'evento_auditoria_alta', cmd: 'INSERT' },
       { policyname: 'evento_auditoria_alta_sistema', cmd: 'INSERT' },
       { policyname: 'evento_auditoria_lectura', cmd: 'SELECT' },
+      { policyname: 'evento_auditoria_salir_comparticion', cmd: 'INSERT' },
     ]);
   });
 

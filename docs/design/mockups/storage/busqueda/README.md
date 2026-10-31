@@ -69,8 +69,9 @@ contenido (spec §6 y §7).
    resultados con filtros (CA-11).
 10. **Sin resultados sin filtros**: el texto de §6 sin la parte «o quita los filtros», porque no hay filtros activos, y
     sin acción. Ver «Diferencias con la spec».
-11. **Ámbito**: hoy solo elementos propios. Con 012, un compartido cuya carpeta no veo llega con `location: null`; el
-    texto lo decide PD-132.
+11. **Ámbito**: propios y, desde 012, compartidos. Un compartido cuya carpeta no veo muestra «Compartido contigo» (ícono
+    de personas, texto sin enlace); está dibujado en `resultados-por-nombre` y los estados con la lista (2026-10-31,
+    cierra PD-148; pendiente de la aprobación de Adrián).
 
 ## Diferencias con la spec
 

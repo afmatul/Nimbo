@@ -1,4 +1,4 @@
-// Capas dentro de cada módulo, de sus subcarpetas con capas propias (`storage/search`, `storage/preview`; PD-135) y de
+// Capas dentro de cada módulo, de sus subcarpetas con capas propias (`storage/search`, `storage/preview`; PD-151) y de
 // `shared` (CA-6, Art. VIII.2). Usa `@typescript-eslint/no-restricted-imports`, una
 // regla distinta de la de `boundaries.js`: si ambas usaran `no-restricted-imports`, la última apagaría a la otra.
 const RULE = '@typescript-eslint/no-restricted-imports';

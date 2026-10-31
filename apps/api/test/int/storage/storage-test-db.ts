@@ -37,6 +37,15 @@ export const inRolledBackTransaction = async <T>(
   }
 };
 
+/**
+ * Vuelve a medir `archivo` y `carpeta` con sus filas reales. `ANALYZE` escribe `pg_class.reltuples` en el sitio, fuera de
+ * la transacción: tras sembrar volumen en una transacción revertida, o con lo que dejan otras suites, el planificador
+ * cree que las tablas tienen otras filas y cambia de índice. Las pruebas de `EXPLAIN` lo llaman antes de medir.
+ */
+export const refreshNodeStatistics = async (owner: Queryable): Promise<void> => {
+  await owner.query('ANALYZE archivo, carpeta');
+};
+
 /** Inserta una cuenta (como el dueño: `usuario` es un *fixture* aquí) y devuelve su id. Las internas llevan código. */
 export const insertAccount = async (
   runner: Queryable,

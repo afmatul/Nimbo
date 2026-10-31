@@ -106,7 +106,7 @@ export class TrashService {
     const state = await this.newTrashState(actor);
     const entry = await this.transactions.withActor(actor, async () => {
       await this.quotas.lockUsage(actor);
-      const file = await this.nodes.findAccessibleById(actor, fileId);
+      const file = await this.nodes.findOwnedLiveFile(actor, fileId);
       if (file === null) throw new NodeNotFoundError();
       await this.trash.markFileTrashed(actor, file.id, state);
       return this.requireEntry(actor, 'file', file.id);
@@ -120,7 +120,7 @@ export class TrashService {
     const state = await this.newTrashState(actor);
     const { entry, itemCount } = await this.transactions.withActor(actor, async () => {
       await this.quotas.lockUsage(actor);
-      const folder = await this.nodes.findAccessibleFolder(actor, folderId);
+      const folder = await this.nodes.findOwnedFolder(actor, folderId);
       if (folder === null) throw new NodeNotFoundError();
       const marked = await this.trash.markFolderSubtreeTrashed(actor, folder, state);
       return { entry: await this.requireEntry(actor, 'folder', folder.id), itemCount: marked };
@@ -258,10 +258,10 @@ export class TrashService {
     return entry;
   }
 
-  /** `parentId` `null` es la raíz; una carpeta que el actor ya no ve viva (en la papelera o purgada) también (CA-15). */
+  /** `parentId` `null` es la raíz; una carpeta propia que ya no está viva (en la papelera o purgada) también (CA-15). */
   private async placeFor(actor: Actor, parentId: string | null): Promise<RestorePlace> {
     if (parentId === null) return { parent: null, movedToRoot: false };
-    const parent = await this.nodes.findAccessibleFolder(actor, parentId);
+    const parent = await this.nodes.findOwnedFolder(actor, parentId);
     return { parent, movedToRoot: parent === null };
   }
 

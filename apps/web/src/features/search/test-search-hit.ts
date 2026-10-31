@@ -18,6 +18,7 @@ export function folderHit(n: number, name = `Camiones ${String(n)}`): FolderHit 
     createdAt: '2026-10-01T15:00:00.000Z',
     updatedAt: '2026-10-22T15:00:00.000Z',
     location: LOGISTICA,
+    shared: false,
   };
 }
 
@@ -32,6 +33,7 @@ export function fileHit(n: number, name = `Camión_${String(n)}.docx`): FileHit 
     createdAt: '2026-10-01T15:00:00.000Z',
     updatedAt: '2026-10-20T15:00:00.000Z',
     location: null,
+    shared: false,
   };
 }
 

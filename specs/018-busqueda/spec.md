@@ -11,7 +11,7 @@
 | Depende de | 005 (archivos), 006 (carpetas y papelera), 007 (categorías de tipo, fecha de modificación y «Cargar más») |
 | Módulo | M2 `storage`, carpeta propia `storage/search` (`specs/README.md`, excepciones); web `features/search` |
 | DF | DF-15 (`SearchService`), DF-32 (`accessibleNodes`) |
-| Última actualización | 2026-10-30 |
+| Última actualización | 2026-10-31 |
 
 ## 1. Contexto y objetivo
 
@@ -31,7 +31,7 @@ coincide (en cualquier carpeta), los acota por tipo y por fecha de modificación
 
 ### Buscar por nombre (HU-1)
 - **CA-1** (HU-1, RF-15) Dado archivos y carpetas del cliente, cuando busca un texto, entonces recibe los que contienen **todas** sus palabras en el nombre, en cualquier orden, sin distinguir mayúsculas ni acentos: «camion informe» encuentra «Informe del Camión.docx»; «ano» no encuentra «Año.pdf».
-- **CA-2** (HU-1, RF-15) Dado varios resultados, entonces llegan primero las carpetas y después los archivos, cada grupo del modificado más reciente al más antiguo; cada uno muestra nombre, fecha de modificación y ubicación (carpeta que lo contiene o «Mis archivos»), y los archivos, además, tipo y tamaño.
+- **CA-2** (HU-1, RF-15) Dado varios resultados, entonces llegan primero las carpetas y después los archivos, cada grupo del modificado más reciente al más antiguo; cada uno muestra nombre, fecha de modificación y ubicación (carpeta que lo contiene, «Mis archivos» o, si es de otra cuenta y su carpeta no se ve, «Compartido contigo»), y los archivos, además, tipo y tamaño.
 - **CA-3** (HU-1, RF-15, RNF-14) Dado más resultados que el tamaño de página, cuando pulsa «Cargar más», entonces se agregan los siguientes sin repetir ni saltar ninguno, con los estados de 007 (cargando más y error con «Reintentar»).
 - **CA-4** (HU-1, RF-15) Dado el texto «50%» o «a_b», entonces se busca tal cual: encuentra «Avance 50%.pdf» o «a_b.txt», y no todos los nombres.
 - **CA-5** (HU-1, RF-11) Dado un archivo o una carpeta en la papelera, entonces no aparece en los resultados; al restaurarlo vuelve a aparecer.
@@ -48,17 +48,17 @@ coincide (en cualquier carpeta), los acota por tipo y por fecha de modificación
 - **CA-12** (HU-1, RF-15) Dado un cliente en cualquier pantalla de su cuenta, entonces la navegación (barra lateral y menú móvil) tiene «Buscar»; la página de búsqueda pone el foco en el campo y la dirección guarda texto y filtros (recargar o volver atrás repite la búsqueda).
 
 ### Aislamiento, roles y bitácoras (HU-4)
-- **CA-13** (HU-4, RNF-05) Dado dos clientes A y B con nombres de archivos y carpetas casi idénticos, cuando B busca, entonces nunca recibe nodos de A, ni su ubicación ni indicios de su existencia; la ubicación solo nombra una carpeta que el actor ve. Se añade a `pnpm test:isolation`.
+- **CA-13** (HU-4, RNF-05) Dado dos clientes A y B con nombres de archivos y carpetas casi idénticos, cuando B busca, entonces nunca recibe nodos de A, ni su ubicación ni indicios de su existencia; la ubicación solo nombra una carpeta que el actor ve, y un resultado cuya carpeta no ve llega sin ella: `location` y su `parentId`/`folderId` en `null`, sin UUID que delate que existe. Con 012, un nodo que A comparte con B sí aparece para B, marcado `shared`. Se añade a `pnpm test:isolation`.
 - **CA-14** (HU-4, RF-05) Dado un Administrador, Soporte u Operador, cuando llama a la búsqueda, entonces `403` `SHARED_FORBIDDEN`; sin sesión, `401` `SHARED_UNAUTHENTICATED`. Su navegación no muestra «Buscar» y la página de búsqueda no les abre (guarda de rutas de cliente, 003).
 - **CA-15** (HU-4, RNF-17, RF-07) Dado cualquier búsqueda (con resultados, sin ellos o con error), entonces ninguna bitácora contiene el texto buscado, la cadena de consulta ni nombres de archivo o carpeta, y no se registra evento de auditoría.
 
 ## 4. Reglas de negocio
 
 - **RN-1** Coincidencia: el texto se divide en palabras por espacios; cada palabra debe aparecer como fragmento del nombre completo (extensión incluida). Se ignoran mayúsculas y las marcas de acento y diéresis de las vocales (á, à, â, ä → a; ü → u; también ç → c); la ñ es una letra distinta de la n.
-- **RN-2** Alcance: elementos vivos que el actor puede ver (DF-32). Hoy son los propios; cuando llegue 012 se suman los compartidos con él sin cambiar esta spec. La papelera nunca entra.
+- **RN-2** Alcance: elementos vivos que el actor puede ver (DF-32). Los propios y, desde 012, los compartidos con él (marcados `shared` en el resultado). Si la carpeta que contiene un resultado no se ve, el resultado llega sin ubicación y sin el id de esa carpeta (CA-2, CA-13). La papelera nunca entra.
 - **RN-3** Tipo = categoría de 007: Documentos (Word, PDF, texto, Excel, PowerPoint), Imágenes, Otros. Las carpetas no tienen tipo: con filtro de tipo no aparecen.
 - **RN-4** Fecha = fecha de **última modificación**, la columna «Modificado» del explorador (007).
-- **RN-5** El texto mide de 1 a 255 caracteres tras recortar espacios (el largo máximo de un nombre, 005).
+- **RN-5** El texto mide de 1 a 255 caracteres tras recortar espacios (el largo máximo de un nombre, 005). No hay otro tope de palabras: el largo ya lo acota (a lo sumo 128 palabras de un carácter, una condición `LIKE` por cada una) y repetidas cuentan una vez.
 - **RN-6** Página: el mismo tamaño por defecto y máximo que el explorador (50 y 100); sin total de coincidencias.
 
 ## 5. Seguridad y privacidad
@@ -94,7 +94,7 @@ coincide (en cualquier carpeta), los acota por tipo y por fecha de modificación
 ## 8. Supuestos
 
 - Las categorías de tipo son las de 007 (Documentos, Imágenes, Otros); se elige una o ninguna.
-- Lo compartido conmigo aparece cuando llegue 012, por el mismo filtro de acceso, sin tocar esta spec.
+- Lo compartido conmigo aparece por el mismo filtro de acceso (012); su fila dice «Compartido contigo» cuando su carpeta no se ve y no enlaza a ninguna ubicación.
 - La paginación es la del explorador (007): cursor opaco y «Cargar más».
 - Se busca al enviar el formulario y al cambiar un filtro; la búsqueda exige texto (los filtros solo acotan).
 - Un archivo se abre en su ficha (014), no en su carpeta.
@@ -113,6 +113,7 @@ coincide (en cualquier carpeta), los acota por tipo y por fecha de modificación
 |---|---|---|---|
 | 2026-10-26 | Spec, plan y tareas en un solo pase (ADR-0034), ya partida de 018b | Regla de partición (`workflow.md` §4.1) | Partición: Adrián |
 | 2026-10-26 | Mockup alineado con la spec: entrada por «Buscar» en la navegación (no campo en la cabecera), sin resaltado de la coincidencia; CA-8 suma los atajos de fecha del mockup | Mockup y plan se hicieron en paralelo y diferían | Dueño: Juan Marcos (pendiente Adrián) |
-| 2026-10-26 | Revisión de la spec: CA-6 alineado con el mockup (vacío sin mensaje de error), §6 con los 11 estados; en el plan, copias declaradas (M-1), prueba de atajos y PD-135 (lint de capas) | Revisión SOLID/DRY/YAGNI del dueño | Dueño: Juan Marcos (pendiente Adrián) |
+| 2026-10-26 | Revisión de la spec: CA-6 alineado con el mockup (vacío sin mensaje de error), §6 con los 11 estados; en el plan, copias declaradas (M-1), prueba de atajos y PD-151 (lint de capas) | Revisión SOLID/DRY/YAGNI del dueño | Dueño: Juan Marcos (pendiente Adrián) |
 | 2026-10-27 | Plan corregido según la aprobación de Adrián: `escapeLike` a `shared` (tercer uso) y `toFolder` exportado; categoría → tipos con `FILE_KINDS` + `categoryOf`; plegado de mayúsculas no ASCII y `Ñ` sin depender del locale; prueba del cursor con fechas iguales; nueva T-03 (11 tareas) | Condiciones de la aprobación del plan (PR #81) | Adrián (2026-10-27) |
 | 2026-10-28 | Spec a `Lista`; mockup `Aprobado`; mensaje de sin resultados sin filtros (observación 9), CA-9 con campos editables y lista atenuada, y observaciones del mockup para la implementación (§6) | Auditoría de Adrián del PR #81 (medio 1 y observaciones 1, 2, 3, 6 y 9) | Adrián (2026-10-28) |
+| 2026-10-31 | CA-2, CA-13 y RN-2: los resultados compartidos (012) llevan `shared`, la ubicación que el actor no ve se muestra «Compartido contigo» y se anula el `parentId`/`folderId` que delataría la carpeta. Cierra PD-148 y PD-152 (antes PD-132 y PD-136, renumerados porque chocaban con los de 020 y 012) | Auditoría de Adrián del PR #81 (N-1): 012 ya está en `main` y hace reales ambos riesgos | Pendiente Adrián |

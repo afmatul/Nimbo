@@ -145,6 +145,7 @@ describe('SearchService', () => {
           createdAt: AT.toISOString(),
           updatedAt: AT.toISOString(),
           location: null,
+          shared: false,
         },
         {
           type: 'file',
@@ -156,9 +157,75 @@ describe('SearchService', () => {
           createdAt: AT.toISOString(),
           updatedAt: AT.toISOString(),
           location: { id: FOLDER_ID, name: 'Informes' },
+          shared: false,
         },
       ],
       nextCursor: 'siguiente',
+    });
+  });
+
+  describe('lo compartido por otra cuenta (012, PD-148 y PD-152)', () => {
+    const OWNER_ID = '99999999-9999-4999-8999-999999999999';
+    const sharedFile = File.create({
+      id: FILE_ID,
+      ownerId: OWNER_ID,
+      folderId: FOLDER_ID,
+      name: FileName.of('Plan compartido.docx'),
+      kind: 'docx',
+      sizeBytes: 1024n,
+      currentVersionId: '4f0c1d2e-3a4b-4c5d-8e6f-7a8b9c0d1e2f',
+      now: AT,
+    });
+    const ownersRoot = Folder.create({
+      id: '5f0c1d2e-3a4b-4c5d-8e6f-7a8b9c0d1e2f',
+      ownerId: OWNER_ID,
+      name: FolderName.of('Cuenta'),
+      parent: null,
+      maxDepth: 3,
+      now: AT,
+    });
+    const sharedFolder = Folder.create({
+      id: FOLDER_ID,
+      ownerId: OWNER_ID,
+      name: FolderName.of('Proyectos'),
+      parent: ownersRoot,
+      maxDepth: 3,
+      now: AT,
+    });
+
+    const searchWith = async (hits: SearchPage['hits']) => {
+      const { repository, service } = setup();
+      repository.page = { hits, nextCursor: null };
+      return (await service.search(ANA, { q: 'plan', limit: 50 })).items;
+    };
+
+    it('CA-2: lo que no es del actor sale con `shared`; lo propio, no', async () => {
+      const [own, other] = await searchWith([
+        { node: file, location: { id: FOLDER_ID, name: 'Informes' } },
+        { node: sharedFile, location: { id: FOLDER_ID, name: 'Proyectos' } },
+      ]);
+
+      expect([own?.shared, other?.shared]).toEqual([false, true]);
+    });
+
+    it('CA-13: sin ubicación visible, el archivo sale sin `folderId` (no delata la carpeta)', async () => {
+      const [hit] = await searchWith([{ node: sharedFile, location: null }]);
+
+      expect(hit).toMatchObject({ type: 'file', folderId: null, location: null, shared: true });
+    });
+
+    it('CA-13: sin ubicación visible, la carpeta sale sin `parentId`', async () => {
+      const [hit] = await searchWith([{ node: sharedFolder, location: null }]);
+
+      expect(hit).toMatchObject({ type: 'folder', parentId: null, location: null, shared: true });
+    });
+
+    it('CA-13: con ubicación visible se conserva el padre', async () => {
+      const [hit] = await searchWith([
+        { node: sharedFile, location: { id: FOLDER_ID, name: 'Proyectos' } },
+      ]);
+
+      expect(hit).toMatchObject({ type: 'file', folderId: FOLDER_ID, shared: true });
     });
   });
 });

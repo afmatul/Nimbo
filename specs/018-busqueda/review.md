@@ -24,18 +24,18 @@
 | CA-10 | `search-view.spec` › carpeta → explorador, archivo → ficha | ✅ |
 | CA-11 | `search-view.spec` › cargando, error + «Reintentar», sin resultados con/sin filtros, panel plegable · `a11y.spec` › axe 360/1440 | ✅ |
 | CA-12 | `app-layout.spec` › «Buscar» tras «Mis Archivos» (barra y cajón) · `use-search.spec` › dirección y volver atrás · `page.spec` · `search-view.spec` › foco | ✅ |
-| CA-13 | `storage-search.iso-spec` › nombres casi iguales, ubicación ajena `null`, respuesta idéntica, filtros, cursor de A, internos 0 filas | ✅ (ver PD-136) |
+| CA-13 | `storage-search.iso-spec` › nombres casi iguales, ubicación ajena `null`, respuesta idéntica, filtros, cursor de A, internos 0 filas | ✅ (ver PD-152) |
 | CA-14 | `search.int-spec` + `storage-search.iso-spec` › 403 ×3, 401 · `storage-routes.contract.spec` › solo `CLIENT` · `internal-area-layout.spec` | ✅ |
 | CA-15 | `search.int-spec` › CA-15 (con resultados, sin ellos y 400; sin `q`, `?q=` ni nombres; sin `audit.record`) | ✅ |
 
 ## Seguridad
 - Datos de cliente: sí. `actor` en `SearchService.search` y en el puerto; `accessibleNodes(actor)` dentro del `WHERE` de las dos consultas **y** del `JOIN` de la ubicación (`typeorm-node-search.repository.ts:192-210`); `requireActorScope(actor)`; RLS sin cambios (`FORCE`). ✅
 - Roles internos: `@Roles(Role.CLIENT)` → 403 antes del servicio; además 0 filas en el repositorio. Bitácoras: sin línea propia, `stripQuery` de Pino, 400 sin el valor. ✅
-- Residual aceptado: `NodeSummary.folderId` revelaría el UUID de una carpeta no visible cuando exista 012 (PD-136). Hoy es imposible (todo es propio); el dueño de 012 debe cerrarlo con su auditoría. No pido `security-auditor` para 018.
+- Residual (cerrado el 2026-10-31, auditoría del PR #81): con 012 en `main`, `NodeSummary.folderId`/`parentId` revelaba el UUID de una carpeta no visible (PD-152) y la web rotulaba «Mis archivos» a lo compartido (PD-148). `SearchService` ahora anula el padre sin ubicación visible y marca `shared`; la prueba de aislamiento comparte un archivo de A con B. No pido `security-auditor` para 018.
 
 ## UI
 - Coincide con el mockup aprobado y sus observaciones (panel plegable a 360 px, lista atenuada e `inert`, es-GT); solo tokens (`bg-brand/10`, `text-secondary-foreground`, `text-destructive`…), sin hex ni valores arbitrarios; axe sin `serious`/`critical` a 360 y 1440 px. ✅
-- Desviaciones del developer, valoradas: campos no deshabilitados al cargar (justificada por WCAG 2.4.3, mejor que el mockup) · «Cargar más» dice «elementos» (reutiliza `LoadMore` de 007, que CA-3 pide) · fecha corta es-GT (observación 6) · sin migas (patrón de Espacio y Mi actividad) · `aria-current` ausente en la barra compartida (preexistente, PD-138). Aceptadas; ver S-1.
+- Desviaciones del developer, valoradas: campos no deshabilitados al cargar (justificada por WCAG 2.4.3, mejor que el mockup) · «Cargar más» dice «elementos» (reutiliza `LoadMore` de 007, que CA-3 pide) · fecha corta es-GT (observación 6) · sin migas (patrón de Espacio y Mi actividad) · `aria-current` ausente en la barra compartida (preexistente, PD-154). Aceptadas; ver S-1.
 
 ## Bloqueantes
 - **[B-1]** `apps/web/src/features/search/components/date-filter.tsx:23-24` — `INVALID_RANGE_MESSAGE` copia literal de `STORAGE_FIELD_MESSAGES.INVALID_RANGE` (`packages/contracts/src/storage/error-codes.ts:69-70`), mismo conocimiento (regla y texto del error de rango de 018). Viola Art. VI (mensajes duplicados) — si se ajusta el texto en el contrato, la web diverge en silencio. Corrección: `import { STORAGE_FIELD_MESSAGES } from '@nimbo/contracts';` y en la línea 121 `<span>{STORAGE_FIELD_MESSAGES.INVALID_RANGE}</span>`; borrar la constante y su comentario.
@@ -48,7 +48,13 @@
 
 ## DF y pendientes
 - DF-15 actualizado (`SearchController`/`SearchService` en `storage/search`). Sin DF nuevos.
-- Filas nuevas: PD-132, PD-133, PD-134, PD-135 (resuelto en la rama: `layers.js` + prueba), PD-136, PD-137, PD-138; PD-127 reasignado a 018b. Completo.
+- Filas nuevas: PD-148, PD-149, PD-150, PD-151 (resuelto en la rama: `layers.js` + prueba), PD-152, PD-153, PD-154; PD-127 reasignado a 018b. Completo.
+
+## Seguimiento de la auditoría del PR #81 (2026-10-31)
+- N-1 (012 hace reales PD-148 y PD-152): spec CA-2, CA-13 y RN-2; `SearchHit.shared`; `search.service` y la web («Compartido contigo»); prueba de aislamiento con un archivo compartido; mockup con ese estado.
+- N-2: los PD de la 018 chocaban con los de 020 y 012; renumerados a PD-148 a PD-154 en spec, plan, review, mockup, `layers.js`, DF-15 y `pendientes.md`.
+- M-1 (PD-145): `toFile` y `toFolder` pasan a `node-mappers.ts`. M-3 (PD-147): `use-search.ts` cede tipos y reductores a `search-pages.ts`. M-2 (PD-146): el umbral de `pg_trgm` queda fijado en el plan R-1. m-1, m-3 y m-6 atendidos; m-2 y m-4 se dejan (ver respuesta en el PR).
+- Verificación local: `lint`, `typecheck`, unitarias de `api`, `web` y `contracts`. `test:int` y `test:isolation` **no** se pudieron correr en esa sesión (sin Docker): hay que correrlos antes del merge.
 
 ## Lo que está bien hecho
 - Plegado D-1 sin extensión y probado con `COLLATE "C"`; ñ ≠ n fijado en integración.

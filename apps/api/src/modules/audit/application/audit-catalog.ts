@@ -21,6 +21,13 @@ export interface AuditActionSpec {
 const fromAttribute = (key: string): ResourceTypeFromAttribute => ({ fromAttribute: key });
 
 const NODE_TYPES = ['file', 'folder'] as const;
+/** Niveles que se asignan al compartir (012 RN-2, DF-31): sin `OWNER`. */
+const SHARE_LEVELS = ['VIEWER', 'EDITOR'] as const;
+/** Compartición (012 CA-19): el nodo como recurso, su tipo y el nivel; nunca nombres ni correos. */
+const ON_SHARE = {
+  resourceType: fromAttribute('nodeType'),
+  attributes: { nodeType: NODE_TYPES, level: SHARE_LEVELS },
+} as const;
 const NODE_ATTRIBUTES = { nodeType: NODE_TYPES, itemCount: 'number', sizeBytes: 'number' } as const;
 const ON_ACCOUNT = { resourceType: 'account', attributes: {} } as const;
 const ON_PLAN = { resourceType: 'plan', attributes: {} } as const;
@@ -37,7 +44,8 @@ const INDEXING_OUTCOME = {
  * acciones de 005 y 006 (D-1) con los atributos que emiten hoy, las dos de versiones de 014 (plan §5; un reemplazo
  * reutiliza `file.upload_completed` con `replaced`, `versionId` y `versionNumber`), las siete internas de 011 (plan
  * §2), que no guardan nombres ni correos, las tres de edición de 016 (plan §5), las nueve de la suscripción de 010
- * (plan §2, sin datos de tarjeta), las cuatro de indexación de 019 (D-6) y los ajustes de cuenta de 011b (plan §4).
+ * (plan §2, sin datos de tarjeta), las cuatro de indexación de 019 (D-6), los ajustes de cuenta de 011b (plan §4) y las tres de compartición de 012
+ * (plan §5).
  * Cada spec agrega las suyas. Una acción del enum sin entrada no compila.
  */
 export const AUDIT_CATALOG = {
@@ -151,6 +159,9 @@ export const AUDIT_CATALOG = {
     resourceType: 'file',
     attributes: { versionId: 'uuid' },
   },
+  [AuditAction.SHARE_GRANTED]: ON_SHARE,
+  [AuditAction.SHARE_LEVEL_CHANGED]: ON_SHARE,
+  [AuditAction.SHARE_REVOKED]: ON_SHARE,
 } as const satisfies Record<AuditAction, AuditActionSpec>;
 
 /** Tipos que un atributo (`nodeType`) puede dar: solo nodos y cargas. */

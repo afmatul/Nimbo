@@ -105,7 +105,7 @@ describe('lint layers.js: capas dentro de cada módulo (CA-6, Art. VIII.2)', () 
     ).toHaveLength(1);
   });
 
-  it('PD-135: las capas también rigen en subcarpetas con capas propias (`storage/search`)', async () => {
+  it('PD-151: las capas también rigen en subcarpetas con capas propias (`storage/search`)', async () => {
     const application = await errorsOf(
       '../../infrastructure/typeorm-node-search.repository',
       SUBFOLDER_APPLICATION_FILE,
@@ -118,7 +118,7 @@ describe('lint layers.js: capas dentro de cada módulo (CA-6, Art. VIII.2)', () 
     expect(domain[0]).toContain('`domain`');
   });
 
-  it('PD-135: `storage/search/application` sí importa su dominio y `@nestjs/common`', async () => {
+  it('PD-151: `storage/search/application` sí importa su dominio y `@nestjs/common`', async () => {
     expect(await errorsOf('../../domain/x', SUBFOLDER_APPLICATION_FILE)).toEqual([]);
     expect(await errorsOf('@nestjs/common', SUBFOLDER_APPLICATION_FILE)).toEqual([]);
   });

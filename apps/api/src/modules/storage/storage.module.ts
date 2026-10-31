@@ -4,6 +4,7 @@ import type { DynamicModule } from '@nestjs/common';
 
 import { MINIO_CONFIG } from '../../shared';
 import type { Env, MinioConfig } from '../../shared';
+import { AccessModule } from '../access';
 import { AuditModule } from '../audit';
 
 import { EditableFileGateway } from './application/editable-file.gateway';
@@ -29,6 +30,7 @@ import { VersionHistoryService } from './application/version-history.service';
 import { VERSION_RESTORE_CONFIG } from './application/version-restore-config';
 import type { VersionRestoreConfig } from './application/version-restore-config';
 import { VersionRestoreService } from './application/version-restore.service';
+import { WritableAccountPolicy } from './application/writable-account.policy';
 import {
   buildMinioStorageClients,
   MinioStorageAdapter,
@@ -70,15 +72,16 @@ export type StorageEnv = Pick<
 >;
 
 /**
- * Módulo `storage` (M2, plan §6): carga, descarga, carpetas, papelera y accesos rápidos (006), resumen de espacio (007), búsqueda (018, `storage/search`) y
- * versiones (014: registro y poda en `UPLOAD_LIFECYCLE_PROVIDERS`; historial, descarga y restauración solo en el `api`)
- * y, desde 016, `EditableFileGateway` (exportado) con el registro de versiones de edición, solo en el `api`; desde 019,
- * `IndexableFileGateway` (exportada) y el anuncio de cada versión vigente (`storage.file-version-created`).
- * `forRoot(env)` publica la configuración técnica (bytes como `bigint`) y une cada puerto con su adaptador. **No**
- * enlaza `I_PLAN_LIMITS_PROVIDER` ni importa `billing`: ese enlace vive en la raíz de composición (DF-51, opción A). `SharedModule` (global) aporta reloj, tasa, transacciones y
- * `TransactionContext`; `MinioConfigModule` (global), `MINIO_CONFIG`. La cola `trash-purge` se registra solo para que
- * «Vaciar papelera» encole: la programa y la procesa el `worker`. Exporta solo `I_NODE_METADATA_READER`, que consume
- * `backoffice` (011, PD-31) importando **este mismo** `DynamicModule` que la raíz (Nest los distingue por referencia).
+ * Módulo `storage` (M2, plan §6): carga, descarga, carpetas, papelera y accesos rápidos (006), resumen de espacio
+ * (007), búsqueda (018, `storage/search`) y versiones (014: registro y poda en `UPLOAD_LIFECYCLE_PROVIDERS`; historial,
+ * descarga y restauración solo en el `api`) y, desde 016, `EditableFileGateway` (exportado) con el registro de
+ * versiones de edición, solo en el `api`; desde 019, `IndexableFileGateway` (exportada) y el anuncio de cada versión
+ * vigente (`storage.file-version-created`). `forRoot(env)` publica la configuración técnica (bytes como `bigint`) y une
+ * cada puerto con su adaptador. **No** enlaza `I_PLAN_LIMITS_PROVIDER` ni importa `billing`: ese enlace vive en la raíz
+ * de composición (DF-51, opción A). `SharedModule` (global) aporta reloj, tasa, transacciones y `TransactionContext`;
+ * `MinioConfigModule` (global), `MINIO_CONFIG`. La cola `trash-purge` se registra solo para que «Vaciar papelera»
+ * encole: la programa y la procesa el `worker`. Exporta solo `I_NODE_METADATA_READER`, que consume `backoffice` (011,
+ * PD-31) importando **este mismo** `DynamicModule` que la raíz (Nest los distingue por referencia).
  */
 @Module({})
 export class StorageModule {
@@ -102,7 +105,7 @@ export class StorageModule {
     };
     return {
       module: StorageModule,
-      imports: [AuditModule, BullModule.registerQueue({ name: TRASH_PURGE_QUEUE })],
+      imports: [AccessModule, AuditModule, BullModule.registerQueue({ name: TRASH_PURGE_QUEUE })],
       controllers: [
         UploadsController,
         FilesController,
@@ -147,12 +150,13 @@ export class StorageModule {
       ],
       // 011 (PD-31): el lector de metadatos para `backoffice`. 009 (ampliación de la decisión 1, 2026-10-15): `billing`
       // importa `I_OBJECT_STORAGE` de forma explícita, sin módulo global. 016: la fachada de edición para `editing`.
-      // 019: la fachada de la indexación para `intelligence`.
+      // 019: la fachada de la indexación para `intelligence`. 012 (PD-121): la política de solo lectura para `sharing`.
       exports: [
         I_NODE_METADATA_READER,
         I_OBJECT_STORAGE,
         EditableFileGateway,
         IndexableFileGateway,
+        WritableAccountPolicy,
       ],
     };
   }

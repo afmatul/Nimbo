@@ -66,6 +66,7 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
   - con 011: `IAdminRosterRepository` (padrón interno: alta, estado, conteo de Administradores activos y candado `pg_advisory_xact_lock`; toma de `IUserRepository` solo `findByIdForUpdate` y `findByEmail`, ISP) → `TypeormUserRepository` (`useExisting`, el mismo adaptador); `IAccountDirectoryRepository` (modelo de lectura paginado) → `TypeOrmAccountDirectoryRepository`;
   - `IAccountEventsPublisher` (nuevo, DF-54) → `EventEmitterAccountEventsPublisher` (ADR-0019).
   - Implementa hacia fuera el puerto token→`Actor` que declara T1 `shared` (002 D-14).
+  - con 012 (DF-84): implementa `IShareeDirectory`, que declara M3b `sharing`, con `ShareeDirectoryAdapter` (`findClientByEmail`: cliente `activa` y verificado, filtro en la consulta; `profiles(ids)` sin filtrar estado; `displayNames` delega en `UserDirectoryAdapter`). Arista `identity → sharing` solo para el puerto; el enlace vive en la raíz (`ShareeDirectoryBindingModule`), como `UserDirectoryBindingModule` (DF-74).
 - Puertos que consume: `IMailer` (lo declara e implementa T4 `notifications`); `IRateLimiter`, `ITransactionRunner` e `IClock` (T1 `shared`; el límite por correo es de 001 D-15).
 - Dominio:
   - `User` (abstracta) ← `ClientUser` (sin `subscriptionId`: la relación vive solo en `suscripcion.usuario_id`, DF-35), `InternalUser`;
@@ -89,7 +90,7 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
   - con 014 (DF-68): `FileVersionsController` (`GET /files/:fileId/versions`, `POST …/versions/:versionId/restore` y `…/download-url`, `@Roles(Role.CLIENT)`).
   - Faltan búsqueda y vista previa → DF-15.
 - Servicios (todos con `actor: Actor` primero):
-  - `FileService` (`getDownloadUrl`, renombrar, mover), `UploadService` (`init`, `resume`, `complete`, `cancel`, `expire`), `QuotaService` (`assertCanUpload`);
+  - `FileService` (`getDownloadUrl`, renombrar, mover; con 012, `getDetail`), `UploadService` (`init`, `resume`, `complete`, `cancel`, `expire`), `QuotaService` (`assertCanUpload`);
   - con 006 (DF-61): `FolderService` (`create`, `rename`, `move`, `contents`), `TrashService` (eliminar, listar, restaurar, purgar, vaciar; el `trash` del diagrama sale de `FileService` por SRP) y `TrashPurger` (borrado definitivo de objetos, filas y `espacio_usado` en una transacción con `lockUsage` primero); con 011b (DF-81): `SupportTrashService` (`list(actor, query)`, `restore(actor, cmd)`; recibe `actor` y `ownerId`, no usa `WritableAccountPolicy` ni `accessibleNodes`) y la función `restaurar_raiz_papelera` (ADR-0035);
   - con 006 §9 (DF-63): `QuickAccessService` (`list`, `pin`, `unpin`, `recordOpen`; solo `pin` toma `IQuotaRepository.lockUsage` y comprueba el tope). Configuración `QUICK_ACCESS_CONFIG` = `{ maxPinned, recentVisible }` desde `QUICK_ACCESS_MAX_PINNED` (5) y `QUICK_ACCESS_RECENT_VISIBLE` (3, decisión de Adrián del 2026-10-03) y la constante `RECENTS_STORED = 25` (colchón de poda, no configuración).
   - con 007 (DF-62): `SpaceSummaryService` (`summary`), `SpaceMeasurer` (`measure`, compartido por el resumen y la conciliación) y `UsageReconciler` (`reconcile`).
@@ -98,7 +99,7 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
   - con 007 (DF-62): `UsageReconcileProcessor` y `UsageReconcileScheduler` (cola `usage-reconcile`).
 - Puertos → implementaciones:
   - `IObjectStorage` → `MinioStorageAdapter` (con 005: `createMultipart`, `presignUploadPart`, `presignUploadObject`, `listParts`, `completeMultipart`, `abortMultipart`, `headObject`, `getRange`, `purgeObject`, `presignDownload`); `IFileTypeDetector` → `MagicBytesDetector`;
-  - `INodeRepository` → TypeORM (archivos y, con 006, carpetas);
+  - `INodeRepository` → TypeORM (archivos y, con 006, carpetas); con 012 (DF-85), escrituras y destinos con `ownedNodes`, `findOwnedFolder` y `findOwnedLiveFile`; las lecturas siguen con `accessibleNodes` y abren lo compartido;
   - `IPlanLimitsProvider` → lo **declara** `storage` con `PlanLimits` e `I_PLAN_LIMITS_PROVIDER` (`application/plan-limits.ts`, exportados por `storage/index.ts`) y lo implementa `billing` (DF-51, opción A; `storage` no importa `billing`); con 006, `PlanLimits.trashRetentionDays`; con 011b (DF-81), `PlanLimits.extraQuotaBytes`/`extraQuotaUntil` (solo el extra vigente, sumado a la cuota al leer con `IClock`; `PlanStorageLimits` los omite);
   - repositorios de 005: `IUploadSessionRepository`, `IQuotaRepository` (único punto que escribe `usuario.espacio_usado`: DF-59) e `IExpiredUploadScanner` (acceso sin actor de la limpieza, ADR-0021);
   - repositorios de 006 (internos, DF-61): `ITrashRepository` (incluye `schedulePurgeOfAll`), `IExpiredTrashScanner` (único acceso sin actor de la purga, función `papelera_vencida`) e `ITrashPurgeQueue` → `TrashPurgeQueue`; con 011b (DF-81): `ISupportTrashRepository` → `TypeOrmSupportTrashRepository` (`listRoots(actor, query)`, `restoreRoot(actor, cmd)`; llama a `restaurar_raiz_papelera`);
@@ -119,18 +120,19 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
 - Tablas: `carpeta`, `archivo`, `version_archivo`, `carga` y, con 006 §9, `acceso_rapido`. Con 005: `archivo`, `version_archivo` y `carga` con RLS (`ENABLE` + `FORCE`); función de mantenimiento `carga_expiradas` (ADR-0021). Con 006: RLS en `carpeta` y función `papelera_vencida`. Con 006 §9: RLS de cliente en `acceso_rapido`, sin política para roles internos ni de mantenimiento. `storage` además escribe la columna `usuario.espacio_usado` (excepción DF-59). Desde 007, `storage` lee `usuario.id` y `rol` para listar cuentas en la conciliación (extensión de DF-59, DF-62).
 
 ### M3a `access`
-- Servicio: `PermissionResolver` (levelFor, can, inheritedGrants) + `accessibleNodes(actor)`, constructor de la consulta de nodos accesibles (DF-32, spec 003 D-1: 003 entrega la firma; la consulta se completa con 005 y 012).
-- Puertos → implementaciones: `IAccessPolicy` → `OwnerPolicy`, `EditorPolicy`, `ViewerPolicy` (**Strategy**); `IGrantRepository`.
+- Servicio: `PermissionResolver` (`levelFor`, `can`; `levelFor` lo usan `FolderService` y `FileService.getDetail` para el `accessLevel`, 012 CA-13). Sin `inheritedGrants` ni `IGrantRepository` (YAGNI): los heredados de la lista de accesos los da `IShareRepository.listAccess` de M3b (DF-85).
+- Fragmentos SQL (funciones puras, exportadas por `index.ts`; DF-32, DF-85): `accessibleNodes(actor)` = propios vivos (`OWNER`) ∪ compartidos (`nodos_compartidos()`, `EDITOR` o `VIEWER`), solo para leer; con 012, `ownedNodes(actor)` (propios vivos), para toda escritura y destino; `ownedTrashedNodes` (006) y `ownedFiles` (016). Los roles internos reciben el conjunto vacío.
+- Puertos → implementaciones: `IAccessPolicy` → `OwnerPolicy`, `EditorPolicy`, `ViewerPolicy` (**Strategy**); `IAccessLevelReader` → `SqlAccessLevelReader` (interno, consulta `accessibleNodes`).
 - Dominio: `AccessLevel` = `OWNER | EDITOR | VIEWER`; `Action`.
-- Tablas que lee: `archivo`, `carpeta`, `comparticion` (modelo de lectura).
+- Tablas que lee: `archivo`, `carpeta`, `comparticion` (modelo de lectura). Función `nodos_compartidos()` (012, `STABLE`, `SECURITY DEFINER`, sin parámetros): la regla única de «qué se comparte conmigo» (directos y herencia por `carpeta.ruta`, del mismo propietario, nodos vivos, nivel mayor); lee `usuario.estado` (propietaria `activa`, CA-17), excepción acotada de `architecture.md` §3 regla 3. La usan el fragmento y las políticas RLS del destinatario.
 
 ### M3b `sharing`
-- Controlador: `SharingController` (share, listAccess, revokeGrant, createLink, openLink).
-- Servicios: `SharingService`, `PublicLinkService`.
-- Puertos → implementaciones: `ISecretCipher` (ver DF-10).
-- Puertos que consume: `IAuditLogger` (lo declara e implementa T2 `audit`); `IRateLimiter` (T1 `shared`).
-- Dominio: `AccessGrant` (abstracta) ← `UserShare`, `PublicLink`; `AccessList` (value object).
-- Tablas: `comparticion`, `enlace_publico`, `intento_acceso`.
+- Controladores (012): `SharingController` (`POST /shares`, `GET /shares`, `DELETE /shares/:shareId`) y `ReceivedSharesController` (`GET /shares/received`, `DELETE /shares/received/:shareId`), `@Roles(Role.CLIENT)` y `no-store`. `createLink` y `openLink` llegan con la 013.
+- Servicios (con `actor` primero): `SharingService` (`share`, `listAccess`, `revoke`; autoriza con `PermissionResolver.can` y `Action.SHARE`/`VIEW_ACCESS_LIST`; límite con `IRateLimiter` y solo lectura con `WritableAccountPolicy` de `storage`) y, por SRP, `ReceivedSharesService` (`listReceived`, `leave`; sin `WritableAccountPolicy`, 010 RN-6); `share-records.ts` arma evento y bitácora de ambos. `PublicLinkService` se difiere a la 013 (DF-84).
+- Puertos → implementaciones: `IShareRepository` (interno) → `TypeOrmShareRepository` (`findDirect`, `insert`, `updateLevel`, `listAccess`, `revoke`, `listReceived`, `findReceived`, `leave`; todo con `requireActorScope`); `IShareeDirectory` (lo declara `sharing` y lo exporta `index.ts`: `findClientByEmail`, `profiles`, `displayNames`) → `ShareeDirectoryAdapter` de M1 (DF-84). `ISecretCipher` con la 013 (DF-10).
+- Puertos que consume: `IAuditLogger` (lo declara e implementa T2 `audit`); `IRateLimiter`, `ITransactionRunner` e `IClock` (T1 `shared`).
+- Dominio: `UserShare` (`grant`, `changeLevel`, `rehydrate`, `toSnapshot`; rechaza `OWNER` y compartir consigo, DF-31) y `AccessList` (value object, `direct` e `inherited`). `AccessGrant` (abstracta) y `PublicLink` se difieren a la 013 (DF-84). Errores: `SharingInvalidLevelError`, `SharingInvalidRequestError`, `RecipientNotFoundError`, `CannotShareWithSelfError` (422) y `ShareNotFoundError` (404).
+- Tablas: `comparticion` (012); `enlace_publico` e `intento_acceso` con la 013.
 
 ### M4 `billing`
 - Controladores: `PlansController` (`GET /api/v1/billing/plans`, público; spec 008, DF-67); `SubscriptionController` (subscribe, renew, changePlan, history, invoice). `listPlans` y `comparePlans` no se crean: el catálogo es una sola lectura y la comparación se arma en `web`.
@@ -209,6 +211,7 @@ declara y los implementa. El módulo de negocio no los declara (ADR-0010, `archi
 - `AuditService` implementa `IAuditLogger` (token `I_AUDIT_LOGGER`): `record(entry: AuditRecord)` de mejor esfuerzo y posterior al commit (005, 006; nunca lanza), `recordInTransaction(entry)` síncrona, que lanza y se une a la transacción del llamador (011, D-5), y `listForUser(actor, query)`; ambas escrituras delegan en un `append` privado. `AuditRecord = { action: AuditAction; actor: AuditActor; targetUserId; resourceId?; attributes? }`, con `AuditActor = Actor | SystemActor` (011: `SYSTEM_ACTOR` solo para el alta inicial por comando, sin `actorId`).
 - Puerto interno `IAuditRepository` (`insert(actor, entry)`, `listForTarget`) → `TypeOrmAuditRepository`, dentro de `audit` (no lo exporta `index.ts`).
 - Presentación: `AuditController` con `GET /audit/my-events` (DF-15) en `AuditHttpModule`, que carga solo `api`; el `worker` carga `AuditModule` sin rutas. `LogAuditLogger` (adaptador provisional de 005) se retiró con 004 (DF-64).
+- Acciones de compartición (012): `SHARE_GRANTED`, `SHARE_LEVEL_CHANGED` y `SHARE_REVOKED` (`share.granted`, `share.level_changed`, `share.revoked`), tipo de recurso `file`/`folder` y atributos `nodeType` y `level`; afectado = propietario (CA-19). Salir (CA-23) escribe `share.revoked` en la actividad de la propietaria con el destinatario como actor: lo admite solo la política `evento_auditoria_salir_comparticion` (migración `20261101100300`), con el evento exacto y `ocurrido_en` en `now() ± 5 min`.
 - Tabla: `evento_auditoria` (004).
 
 ### T3 `realtime` (spec 015; DF-76 recoge lo que el diagrama no trae)
@@ -252,7 +255,7 @@ El mapeo vive solo en las entidades TypeORM (`@Entity('archivo')`, `@Column({ na
 | `FileVersion` / `DocumentVersion` | `version_archivo` | `origen` = carga / edicion / restauracion / optimizacion (ADR-0012). Con 005: `clave_objeto` única (`u/{propietario}/{archivo}/{version}`), `creado_por`; sin `checksum` ni `sesion_edicion_id`; RLS, sin política para roles internos. Con 014 (DF-68): `numero` (consecutivo por archivo, `UNIQUE (archivo_id, numero)` y `CHECK > 0`; la actual es la de mayor número y no se reutiliza tras una poda) y `restaurada_de_numero` (sin FK, entre 1 y `numero - 1`). Con 014b (DF-21): `conservada_hasta` (`timestamptz` nula = cuenta en `espacio_usado`; con fecha = original conservado por una optimización, no cuenta y se purga en esa fecha; `CHECK > creada_en` e índice parcial) |
 | `UploadSession` | `carga` | Reserva de cuota mientras está `activa`; `upload_id` y `clave_objeto` nunca salen de la API; RLS solo para el propietario; `archivo_id`/`version_id` reservados sin FK; con 006, `carpeta_destino_id` sin FK (DF-61); con 014, `reemplaza` (la carga crea una versión nueva de un archivo existente, DF-68). DF-33 parcial, ADR-0021 |
 | (uso de espacio) | `usuario.espacio_usado` | Atributo almacenado (`bigint`, `CHECK >= 0`, DF-38); `storage` lo escribe por excepción (DF-59) |
-| `UserShare` | `comparticion` | |
+| `UserShare` | `comparticion` | Con 012 (DF-31, DF-85): `propietario_id`, `destinatario_id` (FK a `usuario`), `archivo_id` o `carpeta_id` (FK con `ON DELETE CASCADE`, `CHECK` de exactamente uno, ADR-0011), `nivel` (`CHECK IN ('EDITOR','VIEWER')`), `creado_en`, `actualizado_en`; `CHECK destinatario_id <> propietario_id`. Únicas parciales `(archivo_id, destinatario_id)` y `(carpeta_id, destinatario_id)`; índice `(destinatario_id)`. RLS `ENABLE` + `FORCE`: el propietario todo sobre nodos propios; el destinatario `SELECT` y `DELETE` (Salir); sin política para roles internos. La regla de lo compartido vive en la función `nodos_compartidos()` (M3a). Desde 012, `archivo.carpeta_id`, `archivo/carpeta.eliminado_con_carpeta_id` y `carpeta.carpeta_padre_id` son FK compuestas con `propietario_id` (`uq_carpeta_id_propietario`) |
 | `PublicLink` | `enlace_publico` | |
 | (intentos) | `intento_acceso` | |
 | `Plan` + `PlanLimits` | `plan` | Bytes `bigint` y precio en centavos (DF-24, DF-23, ADR-0016) |

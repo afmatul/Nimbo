@@ -20,7 +20,13 @@ const FILE = {
   createdAt: AT,
   updatedAt: AT,
 };
-const EMPTY_ROOT = { folder: null, breadcrumbs: [], items: [], nextCursor: null };
+const EMPTY_ROOT = {
+  folder: null,
+  breadcrumbs: [],
+  items: [],
+  nextCursor: null,
+  accessLevel: 'OWNER',
+};
 
 function storageError(
   code: string,

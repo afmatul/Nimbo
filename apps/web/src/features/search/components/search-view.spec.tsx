@@ -162,6 +162,16 @@ describe('SearchView: pantalla /buscar (018 CA-2, CA-6, CA-9 a CA-12)', () => {
     expect(screen.queryByText(/coincidencias/)).toBeNull();
   });
 
+  it('CA-2: un resultado compartido sin carpeta visible dice «Compartido contigo», sin enlace a una ubicación', async () => {
+    const shared = { ...fileHit(3, 'Plan.docx'), shared: true };
+    await renderView('q=plan', loadOf(searchPage([shared])));
+
+    const row = within(results()).getAllByRole('row')[1] as HTMLElement;
+    expect(within(row).getAllByText('Compartido contigo').length).toBeGreaterThan(0);
+    expect(within(row).queryByRole('link', { name: 'Compartido contigo' })).toBeNull();
+    expect(within(row).queryByRole('link', { name: 'Mis archivos' })).toBeNull();
+  });
+
   it('CA-11: mientras busca se anuncia «Buscando «texto»…»', async () => {
     await renderView('q=camion', loadOf());
 

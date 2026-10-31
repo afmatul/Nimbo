@@ -5,7 +5,8 @@ import { I_NODE_SEARCH_REPOSITORY } from '../../src/modules/storage/search/appli
 import type { INodeSearchRepository } from '../../src/modules/storage/search/application/ports/i-node-search.repository.port';
 import { createActor, I_TRANSACTION_RUNNER, Role } from '../../src/shared';
 import type { ITransactionRunner } from '../../src/shared';
-import { createStorageHttpApp } from '../int/storage/storage-http';
+import { insertShare } from '../int/sharing/sharing-test-db';
+import { createStorageHttpApp, insertCommittedFile } from '../int/storage/storage-http';
 import type { StorageClient, StorageHttpApp } from '../int/storage/storage-http';
 import { insertFileWithVersion, insertFolder } from '../int/storage/storage-test-db';
 import type { FolderRow } from '../int/storage/storage-test-db';
@@ -19,8 +20,9 @@ const SHARED_FOLDERS = ['Informes', 'Facturas'];
 const SHARED_FILES = ['Informe anual.txt', 'Acta del informe.txt'];
 /** Lo único que distingue los nombres de A y B: un dígito. */
 const NEARLY = { a: 'Informe trimestral 2026.txt', b: 'Informe trimestral 2025.txt' };
-/** Carpeta de A que contiene un archivo de B (lo que 012 permitirá al compartir): B no debe verla nombrada. */
+/** Carpeta de A que contiene un archivo de B (insertado a mano) y un archivo de A compartido con B (012): B no debe verla nombrada. */
 const FOREIGN_FOLDER_NAME = 'Informes privados de A';
+const SHARED_WITH_B_NAME = 'Plan reservado.txt';
 const PAGE_LIMIT = '1';
 
 /** Nodos de un cliente que coinciden con «informe», con la carpeta que contiene a los anidados. */
@@ -131,7 +133,34 @@ describe('aislamiento de la búsqueda (018 CA-13, CA-14)', () => {
       for (const location of locations) expect(nodesB.folderIds).toContain(location.id);
       expect(foreignHit?.location).toBeNull();
       expect(JSON.stringify(body)).not.toContain(FOREIGN_FOLDER_NAME);
-      // El `folderId` del propio archivo sigue siendo el UUID de esa carpeta (contrato de `NodeSummary`): PD-136, con 012.
+      expect(foreignHit).toMatchObject({ folderId: null, shared: false });
+      expect(JSON.stringify(body)).not.toContain(foreignFolder.id);
+    });
+
+    it('CA-2, CA-13: un archivo que A comparte con B aparece `shared`, sin ubicación ni el id de la carpeta de A', async () => {
+      const { fileId } = await insertCommittedFile(storage.owner, a.id, {
+        folderId: foreignFolder.id,
+        name: SHARED_WITH_B_NAME,
+      });
+      await insertShare(storage.owner, { ownerId: a.id, granteeId: b.id, node: { fileId } });
+
+      const ofB = await searchAs(clientB, { q: 'reservado' });
+      const ofA = await searchAs(clientA, { q: 'reservado' });
+
+      expect(ofB.items).toHaveLength(1);
+      expect(ofB.items[0]).toMatchObject({
+        id: fileId,
+        folderId: null,
+        location: null,
+        shared: true,
+      });
+      expect(JSON.stringify(ofB)).not.toContain(foreignFolder.id);
+      expect(JSON.stringify(ofB)).not.toContain(FOREIGN_FOLDER_NAME);
+      expect(ofA.items[0]).toMatchObject({
+        id: fileId,
+        shared: false,
+        location: { id: foreignFolder.id },
+      });
     });
 
     it('CA-13: un texto que solo coincide con A responde igual que uno que no coincide con nada', async () => {

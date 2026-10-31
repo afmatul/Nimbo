@@ -33,6 +33,7 @@ const folderHit = {
   createdAt: AT,
   updatedAt: AT,
   location: null,
+  shared: false,
 };
 const fileHit = {
   type: 'file',
@@ -44,6 +45,7 @@ const fileHit = {
   createdAt: AT,
   updatedAt: AT,
   location: { id: FOLDER_ID, name: 'Informes' },
+  shared: false,
 };
 
 describe('searchQuerySchema', () => {
@@ -143,6 +145,13 @@ describe('searchResponseSchema', () => {
     expect(searchHitSchema.parse(fileHit)).toEqual(fileHit);
     expect(searchHitSchema.safeParse({ ...fileHit, location: undefined }).success).toBe(false);
     expect(searchHitSchema.safeParse({ ...fileHit, path: '/x' }).success).toBe(false);
+  });
+
+  it('CA-2, CA-13: `shared` es obligatorio; un compartido sin ubicación lleva el padre en `null`', () => {
+    const shared = { ...fileHit, folderId: null, location: null, shared: true };
+
+    expect(searchHitSchema.parse(shared)).toEqual(shared);
+    expect(searchHitSchema.safeParse({ ...fileHit, shared: undefined }).success).toBe(false);
   });
 
   it('CA-3: la página lleva resultados y cursor, sin total', () => {

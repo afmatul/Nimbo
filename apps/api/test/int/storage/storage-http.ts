@@ -116,6 +116,8 @@ export interface StorageClient {
   complete(uploadId: string): Promise<Response>;
   cancel(uploadId: string): Promise<Response>;
   downloadUrl(fileId: string): Promise<Response>;
+  /** `GET /files/:fileId`: la ficha del archivo con el `accessLevel` del actor (012 CA-12). */
+  fileDetail(fileId: string): Promise<Response>;
   renameFile(fileId: string, body: Record<string, unknown>): Promise<Response>;
   moveFile(fileId: string, body: Record<string, unknown>): Promise<Response>;
   folderContents(query?: Record<string, string>): Promise<Response>;
@@ -309,6 +311,7 @@ export const createStorageHttpApp = async (
       complete: (uploadId) => http().post(`${API_PREFIX}/uploads/${uploadId}/complete`).set(auth),
       cancel: (uploadId) => http().delete(`${API_PREFIX}/uploads/${uploadId}`).set(auth),
       downloadUrl: (fileId) => http().post(`${API_PREFIX}/files/${fileId}/download-url`).set(auth),
+      fileDetail: (fileId) => http().get(`${API_PREFIX}/files/${fileId}`).set(auth),
       renameFile: (fileId, body) =>
         http().patch(`${API_PREFIX}/files/${fileId}`).set(auth).send(body),
       moveFile: (fileId, body) =>

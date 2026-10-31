@@ -23,7 +23,7 @@ La web agrega `/buscar` en `features/search` y el ítem «Buscar» en la navegac
 
 | Módulo / capa | Archivo (nuevo o cambiado) | Responsabilidad |
 |---|---|---|
-| contracts | `packages/contracts/src/storage/search-schemas.ts` (nuevo) | `SEARCH_TYPES` (`documents`, `images`, `other`, espejo de `FileCategory`); `searchQuerySchema` = `pageQuerySchema` + `q` (recorta; `REQUIRED`, `NAME_TOO_LONG` con mensajes propios, como `STORAGE_NODE_FIELD_MESSAGES`), `type`, `from`/`to` (instantes ISO; `to` exclusivo; `INVALID_RANGE` si `from >= to`, igual que `GET /audit/my-events`); `searchHitSchema` (`nodeSummarySchema` + `location: folderRefSchema \| null`) y `searchResponseSchema` (`items`, `nextCursor`) |
+| contracts | `packages/contracts/src/storage/search-schemas.ts` (nuevo) | `SEARCH_TYPES` (`documents`, `images`, `other`, espejo de `FileCategory`); `searchQuerySchema` = `pageQuerySchema` + `q` (recorta; `REQUIRED`, `NAME_TOO_LONG` con mensajes propios, como `STORAGE_NODE_FIELD_MESSAGES`), `type`, `from`/`to` (instantes ISO; `to` exclusivo; `INVALID_RANGE` si `from >= to`, igual que `GET /audit/my-events`); `searchHitSchema` (`nodeSummarySchema` + `location: folderRefSchema \| null` + `shared: boolean`) y `searchResponseSchema` (`items`, `nextCursor`) |
 | contracts | `packages/contracts/src/storage/error-codes.ts` (cambia) | Suma `INVALID_TYPE`, `INVALID_DATE` e `INVALID_RANGE` a `STORAGE_FIELD_ISSUE_REASONS` con sus mensajes |
 | contracts | `packages/contracts/src/storage/index.ts` (cambia) | `export * from './search-schemas'` |
 | storage · aplicación | `apps/api/src/modules/storage/search/application/search.service.ts` (nuevo) | `SearchService.search(actor, request)`: palabras (NFC, recorte, división por espacios, sin repetidas), categoría → `FileKind[]` filtrando `FILE_KINDS` (`domain/file-kind.ts`) con `categoryOf` (`domain/file-category.ts`), sin una segunda tabla inversa de `CATEGORY_BY_KIND`, `withActor`, mapeo a `SearchResponse` con `toNodeSummary` |
@@ -98,14 +98,14 @@ SELECT a.*, p.id AS ubicacion_id, p.nombre AS ubicacion_nombre
 - **D-2 Sin índices nuevos (YAGNI).** `LIKE '%…%'` no usa B-tree; un índice GIN con `pg_trgm` sería otra extensión.
   `accessibleNodes` acota a los nodos del actor (`idx_archivo_propietario_actualizado`, migración `20261007100400`,
   sirve además al orden). Con el volumen de la demo (el corpus de 005/019, cientos a pocos miles de nodos por cuenta)
-  basta, como midió 007 para el orden (PD-62). Se mide con k6 en 023 (PD-137).
+  basta, como midió 007 para el orden (PD-62). Se mide con k6 en 023 (PD-153).
 - `down`: no aplica. RLS: sin cambios (`archivo` y `carpeta` ya tienen `ENABLE` + `FORCE`).
 
 ## 4. Contratos
 
 | Método | Ruta | Rol | Request → Respuesta | Errores (`code`) |
 |---|---|---|---|---|
-| GET | `/search?q=&type=&from=&to=&cursor=&limit=` | `CLIENT` | `q` obligatorio (1–255 tras recortar); `type` ∈ `documents\|images\|other`; `from` inclusivo y `to` exclusivo (ISO 8601); `limit` 50 por defecto, 100 máximo (`pageQuerySchema`) → `200 { items: SearchHit[], nextCursor: string \| null }`; `SearchHit` = `NodeSummary` + `location: { id, name } \| null` (`null` = «Mis archivos») | `400 STORAGE_INVALID_QUERY` (`fields[].reason`: `REQUIRED`, `NAME_TOO_LONG`, `INVALID_TYPE`, `INVALID_DATE`, `INVALID_RANGE`, `INVALID_CURSOR`); `401 SHARED_UNAUTHENTICATED`; `403 SHARED_FORBIDDEN` |
+| GET | `/search?q=&type=&from=&to=&cursor=&limit=` | `CLIENT` | `q` obligatorio (1–255 tras recortar); `type` ∈ `documents\|images\|other`; `from` inclusivo y `to` exclusivo (ISO 8601); `limit` 50 por defecto, 100 máximo (`pageQuerySchema`) → `200 { items: SearchHit[], nextCursor: string \| null }`; `SearchHit` = `NodeSummary` + `location: { id, name } \| null` + `shared` (`location: null` = «Mis archivos» si es propio, «Compartido contigo» si `shared`; sin ubicación el `parentId`/`folderId` va en `null`) | `400 STORAGE_INVALID_QUERY` (`fields[].reason`: `REQUIRED`, `NAME_TOO_LONG`, `INVALID_TYPE`, `INVALID_DATE`, `INVALID_RANGE`, `INVALID_CURSOR`); `401 SHARED_UNAUTHENTICATED`; `403 SHARED_FORBIDDEN` |
 
 Eventos / Socket.IO: ninguno.
 
@@ -141,24 +141,26 @@ Sin E2E (marcador hasta 000b/023). El recorrido de la demo es la tarea humana.
 ## 7. Riesgos y coherencia con el diseño
 
 - **R-1 Rendimiento sin índice** (RNF-01, p95 < 300 ms): `LIKE` por palabra sobre los nodos del actor. Mitigación:
-  `accessibleNodes` acota primero; `limit + 1`; medir en 023 (PD-137). Si no alcanza, índice GIN `pg_trgm` sobre la
-  expresión plegada (extensión nueva → ADR corto).
+  `accessibleNodes` acota primero; `limit + 1`; medir en 023 (PD-153). **Umbral** (PD-146): con 50 000 nodos vivos del
+  actor (el cliente más grande que simula 023), si el p95 de `GET /search` supera 300 ms (RNF-01) se crea el índice GIN
+  `pg_trgm` sobre la expresión plegada (extensión nueva → ADR corto); mientras no se supere, no se indexa (YAGNI).
 - **R-2 Mapa de plegado a mano**: un solo lugar (constante del repositorio, aplicada a columna y parámetro); la
   prueba de integración fija «camión», «CAMIÓN», «pingüino», «AÑO» = «año» y «Año» frente a «ano». La web no pliega (no resalta).
-- **R-3 Ubicación con 012**: un archivo compartido cuya carpeta no veo devuelve `location: null` y la web diría
-  «Mis archivos». Hoy no pasa (todo es propio); 012 decide el texto («Compartido contigo») → PD-132.
-- **R-4 Texto buscado en direcciones**: Pino lo quita; un `accessLog` de Traefik lo registraría → PD-133 (como PD-101).
+- **R-3 Ubicación con 012** (resuelto, PD-148 y PD-152, 2026-10-31): un resultado compartido cuya carpeta no se ve llega con
+  `location: null`, `shared: true` y su `parentId`/`folderId` en `null` (`SearchService.toSearchHit`: `shared` = el nodo no es
+  del actor; sin ubicación, se anula el padre). La web escribe «Compartido contigo» sin enlace; sin `shared`, «Mis archivos».
+- **R-4 Texto buscado en direcciones**: Pino lo quita; un `accessLog` de Traefik lo registraría → PD-149 (como PD-101).
 - **R-5 Archivos de Adrián**: `storage.module.ts` (tres entradas), los dos de `packages/contracts/src/storage/`
   (motivos y una exportación) y los cuatro de la extracción de `escapeLike` (§2). Se piden en esta aprobación. Además `components/nimbo/app-layout.tsx` (un ítem en
   `DEFAULT_NAV_ITEMS`): es archivo compartido de 000b permitido por `specs/README.md`, se nombra para que no sorprenda.
 - **R-6 Mockup**: T-09 espera la aprobación de los estados nuevos. Los atajos de fecha del mockup («Últimos 7 días»,
   «Últimos 30 días», «Este año») se resuelven en la web sobre el mismo `from`/`to`; la API no cambia.
-- **R-7 Lint de capas** (resuelto, PD-135, 2026-10-27): `layers.js` vigilaba solo `modules/*/{domain,application}/**`; ahora
+- **R-7 Lint de capas** (resuelto, PD-151, 2026-10-27): `layers.js` vigilaba solo `modules/*/{domain,application}/**`; ahora
   también `modules/*/*/{domain,application}/**`, así que `storage/search/application` queda cubierto (sirve a 017).
 - Desviaciones de los diagramas: DF-15 actualizado (`SearchService` y `SearchController` en `storage/search`,
-  propuesto por este plan); M2 sin redibujar → PD-134.
-- Pendientes que deja fuera: PD-137 (k6 de la búsqueda), PD-132 (ubicación de lo compartido, 012), PD-133 (access log),
-  PD-134 (Clases M2 y `design-model.md`, sección de búsqueda en `storage/README.md`); PD-127 pasa a 018b.
+  propuesto por este plan); M2 sin redibujar → PD-150.
+- Pendientes que deja fuera: PD-153 (k6 de la búsqueda), PD-149 (access log),
+  PD-150 (Clases M2 y `design-model.md`, sección de búsqueda en `storage/README.md`); PD-127 pasa a 018b.
 - ADR requeridos: ninguno. **Discutible**: si Adrián prefiere `unaccent` (D-1), propongo no hacer ADR (contrib de la
   imagen ya aprobada en ADR-0003) y anotarlo en este plan.
 - **Discutible**: entrada por un ítem «Buscar» en la navegación y no por un campo fijo en la cabecera. El campo en la

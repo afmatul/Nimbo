@@ -39,7 +39,13 @@ describe('api de carpetas', () => {
   });
 
   it('CA-5: la raíz se lista con GET /folders/contents sin folderId', async () => {
-    const root = { folder: null, breadcrumbs: [], items: [FOLDER], nextCursor: null };
+    const root = {
+      folder: null,
+      breadcrumbs: [],
+      items: [FOLDER],
+      nextCursor: null,
+      accessLevel: 'OWNER',
+    };
     fetchMock.mockResolvedValue(jsonResponse(root));
 
     await expect(api.folderContents(null)).resolves.toEqual(root);
@@ -47,7 +53,13 @@ describe('api de carpetas', () => {
   });
 
   it('CA-5: una carpeta se lista con su folderId y trae migas e ítems de ambos tipos', async () => {
-    const contents = { folder: ALPHA, breadcrumbs: [ALPHA], items: [FILE], nextCursor: null };
+    const contents = {
+      folder: ALPHA,
+      breadcrumbs: [ALPHA],
+      items: [FILE],
+      nextCursor: null,
+      accessLevel: 'OWNER',
+    };
     fetchMock.mockResolvedValue(jsonResponse(contents));
 
     await expect(api.folderContents(ALPHA.id)).resolves.toEqual(contents);
@@ -60,6 +72,7 @@ describe('api de carpetas', () => {
       breadcrumbs: [ALPHA],
       items: [FOLDER, FILE],
       nextCursor: 'c-2',
+      accessLevel: 'OWNER',
     };
     fetchMock.mockResolvedValue(jsonResponse(folderContentsResponseSchema.parse(contents)));
 
@@ -70,7 +83,13 @@ describe('api de carpetas', () => {
   });
 
   it('007 CA-9: pide la página siguiente con el nextCursor y el mismo orden', async () => {
-    const page = { folder: null, breadcrumbs: [], items: [FILE], nextCursor: null };
+    const page = {
+      folder: null,
+      breadcrumbs: [],
+      items: [FILE],
+      nextCursor: null,
+      accessLevel: 'OWNER',
+    };
     fetchMock.mockResolvedValue(jsonResponse(page));
 
     await api.folderContents(null, { sort: 'created', dir: 'desc', cursor: 'c-2' });
@@ -79,7 +98,13 @@ describe('api de carpetas', () => {
   });
 
   it('007 CA-20: envía el tamaño de página (limit) cuando se pide', async () => {
-    const page = { folder: ALPHA, breadcrumbs: [ALPHA], items: [FILE], nextCursor: 'c-2' };
+    const page = {
+      folder: ALPHA,
+      breadcrumbs: [ALPHA],
+      items: [FILE],
+      nextCursor: 'c-2',
+      accessLevel: 'OWNER',
+    };
     fetchMock.mockResolvedValue(jsonResponse(page));
 
     await api.folderContents(ALPHA.id, { sort: 'name', dir: 'asc', limit: 10 });
@@ -92,7 +117,13 @@ describe('api de carpetas', () => {
   it('007 CA-10: una respuesta sin updatedAt no pasa la validación del contrato', async () => {
     const withoutUpdatedAt = { ...FILE, updatedAt: undefined };
     fetchMock.mockResolvedValue(
-      jsonResponse({ folder: null, breadcrumbs: [], items: [withoutUpdatedAt], nextCursor: null }),
+      jsonResponse({
+        folder: null,
+        breadcrumbs: [],
+        items: [withoutUpdatedAt],
+        nextCursor: null,
+        accessLevel: 'OWNER',
+      }),
     );
 
     await expect(api.folderContents(null, { sort: 'name', dir: 'asc' })).rejects.toThrow();
