@@ -17,7 +17,6 @@ import type {
   TrashTotals,
 } from '../../application/ports/i-trash.repository.port';
 import type { File } from '../../domain/file';
-import type { FileKind } from '../../domain/file-kind';
 import type { Folder } from '../../domain/folder';
 import { FolderName } from '../../domain/folder-name.vo';
 import { FolderPath } from '../../domain/folder-path';
@@ -34,7 +33,8 @@ import {
 } from './node-sql';
 import type { Condition, NodeTable } from './node-sql';
 import { trashColumns } from './trash-columns';
-import { decodeTrashCursor, encodeTrashCursor } from './trash-cursor';
+import { afterCursor, selectTrashEntries, toEntry, trashPageOf } from './trash-entries';
+import type { TrashEntryRow } from './trash-entries';
 import { toFile } from './typeorm-node.repository';
 
 /** Columnas de papelera de un nodo que vuelve. */
@@ -61,33 +61,6 @@ const trashRootsSql = (actor: Actor): Condition => {
     parameters: { ...files.parameters, ...folders.parameters },
   };
 };
-
-/** Fila de `trashRootsSql` con su carpeta original (si sigue existiendo). */
-interface TrashEntryRow {
-  readonly tipo: TrashItemType;
-  readonly id: string;
-  readonly nombre: string;
-  readonly clase: FileKind | null;
-  readonly eliminado_en: Date;
-  readonly purgar_en: Date;
-  readonly tamano: string;
-  readonly padre_id: string | null;
-  readonly padre_nombre: string | null;
-}
-
-const toEntry = (row: TrashEntryRow): TrashEntry => ({
-  id: row.id,
-  type: row.tipo,
-  name: row.nombre,
-  kind: row.clase,
-  sizeBytes: BigInt(row.tamano),
-  originalFolder:
-    row.padre_id === null || row.padre_nombre === null
-      ? null
-      : { id: row.padre_id, name: row.padre_nombre },
-  deletedAt: row.eliminado_en,
-  purgeAt: row.purgar_en,
-});
 
 interface TrashedFolderRow {
   readonly id: string;
@@ -130,14 +103,6 @@ const toPurgeFile = (row: PurgeFileRow): PurgeFile => ({
 const ROOT_TABLE: Readonly<Record<TrashItemType, { table: NodeTable; alias: string }>> = {
   file: { table: 'archivo', alias: 'a' },
   folder: { table: 'carpeta', alias: 'c' },
-};
-
-/** Página con `nextCursor` (`[tipo, eliminado_en, id]`) en la última fila si quedan más. */
-const pageOf = (entries: readonly TrashEntry[], hasMore: boolean): TrashPage => {
-  const last = entries.at(-1);
-  if (!hasMore || last === undefined) return { items: entries, nextCursor: null };
-  const position = { type: last.type, deletedAt: last.deletedAt, id: last.id };
-  return { items: entries, nextCursor: encodeTrashCursor(position) };
 };
 
 /**
@@ -185,16 +150,8 @@ export class TypeOrmTrashRepository implements ITrashRepository {
   }
 
   async listTrash(actor: Actor, query: TrashListQuery): Promise<TrashPage> {
-    const after = query.cursor === undefined ? null : decodeTrashCursor(query.cursor);
-    const filter: Condition =
-      after === null
-        ? { sql: 'true', parameters: {} }
-        : {
-            sql: '(n.eliminado_en, n.id) < (:afterDeletedAt, :afterId)',
-            parameters: { afterDeletedAt: after.deletedAt, afterId: after.id },
-          };
-    const rows = await this.entries(actor, filter, query.limit + 1);
-    return pageOf(rows.slice(0, query.limit).map(toEntry), rows.length > query.limit);
+    const rows = await this.entries(actor, afterCursor(query.cursor), query.limit + 1);
+    return trashPageOf(rows, query.limit);
   }
 
   async trashSummary(actor: Actor): Promise<TrashTotals> {
@@ -375,20 +332,15 @@ export class TypeOrmTrashRepository implements ITrashRepository {
     };
   }
 
-  /** Raíces de la papelera que cumplen `filter`, `eliminado_en DESC, id DESC`, con su carpeta original. */
+  /** Raíces de la papelera del actor que cumplen `filter`, con su carpeta original. */
   private entries(actor: Actor, filter: Condition, take: number): Promise<TrashEntryRow[]> {
     const roots = trashRootsSql(actor);
-    return this.select<TrashEntryRow>(
-      actor,
-      `SELECT n.tipo, n.id, n.nombre, n.clase, n.eliminado_en, n.purgar_en, n.tamano::text AS tamano,
-              p.id AS padre_id, p.nombre AS padre_nombre
-         FROM (${roots.sql}) n
-         LEFT JOIN carpeta p ON p.id = n.padre_id AND p.propietario_id = :access_actor_id
-        WHERE ${filter.sql}
-        ORDER BY n.eliminado_en DESC, n.id DESC
-        LIMIT :take`,
-      { ...roots.parameters, ...filter.parameters, take },
-    );
+    return selectTrashEntries(this.manager(actor), {
+      roots,
+      ownerParameter: 'access_actor_id',
+      filter,
+      take,
+    });
   }
 
   private select<T>(

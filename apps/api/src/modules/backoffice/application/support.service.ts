@@ -23,8 +23,11 @@ export interface ClientFilesView {
   readonly total: number;
 }
 
-/** La consulta queda en la auditoría del cliente, que la ve con el rol de quien la hizo (RN-2, CA-16). */
-const filesViewedEvent = (actor: Actor, client: ClientIdentity): AuditRecord => ({
+/**
+ * La consulta queda en la auditoría del cliente, que la ve con el rol de quien la hizo (RN-2, CA-16). También la de su
+ * papelera (011b CA-10).
+ */
+export const filesViewedEvent = (actor: Actor, client: ClientIdentity): AuditRecord => ({
   action: AuditAction.CLIENT_FILES_VIEWED,
   actor,
   targetUserId: client.id,

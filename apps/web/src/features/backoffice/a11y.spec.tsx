@@ -5,13 +5,16 @@ import {
   BACKOFFICE_ERROR_CODES,
   IDENTITY_ERROR_CODES,
   SHARED_ERROR_CODES,
+  STORAGE_ERROR_CODES,
   type AccountLimits,
   type AccountListItem,
   type AccountListResponse,
   type BackofficeMetricsResponse,
   type ClientFilesResponse,
+  type ClientTrashResponse,
   type PlanAdminListResponse,
   type PlanAdminView,
+  type RestoreResponse,
   type RoleName,
 } from '@nimbo/contracts';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
@@ -34,8 +37,16 @@ import { BackofficeMetrics } from './components/backoffice-metrics';
 import { EnrollAccount } from './components/enroll-account';
 import { NewPlanView } from './components/new-plan-view';
 import { SupportClientFiles } from './components/support-client-files';
+import { SupportTrash } from './components/support-trash';
 import { accountItem, accountsPage, ANDREA, DIEGO, MONICA } from './test-accounts';
 import { clientFile, clientFilesPage, LAURA, TRASHED_PDF } from './test-client-files';
+import {
+  clientTrashPage,
+  restored,
+  TRASH_FOLDER,
+  TRASH_PDF,
+  TRASH_SHEET,
+} from './test-client-trash';
 import {
   accountLimits,
   gb,
@@ -534,4 +545,97 @@ describe('Accesibilidad de límites y vigencia (011b CA-17)', () => {
     expect(screen.getByText('Guardamos la cuota extra.')).toBeTruthy();
     await expectNoViolations(document.body);
   });
+});
+
+const TRASH_OUTCOMES: readonly (readonly [string, Outcome<ClientTrashResponse>])[] = [
+  ['papelera', clientTrashPage([TRASH_FOLDER, TRASH_SHEET, TRASH_PDF], 'cursor-2')],
+  ['papelera-vacia', clientTrashPage([])],
+  ['papelera-cargando', 'pending'],
+  ['papelera-error', new TypeError('Failed to fetch')],
+  ['no-encontrado', apiError(404, BACKOFFICE_ERROR_CODES.CLIENT_NOT_FOUND)],
+];
+
+const REASON = 'El cliente pidió recuperar el presupuesto para revisarlo.';
+
+/** Busca a Laura en la papelera y, si se pide, abre «Restaurar» de la hoja y confirma con el motivo. */
+async function searchTrash(
+  step: 'search' | 'dialog' | 'invalid' | 'restoring' | 'done',
+): Promise<void> {
+  await userEvent.type(screen.getByLabelText('Correo del cliente'), LAURA.email);
+  await userEvent.click(screen.getByRole('button', { name: 'Buscar' }));
+  await act(async () => undefined);
+  if (step === 'search') return;
+  await userEvent.click(screen.getByRole('button', { name: `Restaurar ${TRASH_SHEET.name}` }));
+  if (step === 'dialog') return;
+  const dialog = screen.getByRole('dialog');
+  if (step !== 'invalid') {
+    await userEvent.click(within(dialog).getByLabelText('Motivo de la restauración'));
+    await userEvent.paste(REASON);
+  }
+  await userEvent.click(within(dialog).getByRole('button', { name: 'Restaurar' }));
+  await act(async () => undefined);
+}
+
+describe('Accesibilidad de la papelera de un cliente (011b CA-17)', () => {
+  beforeAll(() => {
+    document.documentElement.lang = 'es';
+    document.title = 'Papelera de archivos · Nimbo';
+  });
+
+  beforeEach(() => {
+    global.fetch = jest.fn(() => new Promise<Response>(() => undefined));
+    forgetSession();
+  });
+
+  it('CA-17: inicial, sin violaciones de axe a 360 y 1440 px', async () => {
+    const container = await renderInFrame(
+      <SupportTrash
+        load={always<ClientTrashResponse>('pending')}
+        restore={always<RestoreResponse>('pending')}
+      />,
+    );
+
+    await expectNoViolations(container);
+  });
+
+  it.each(TRASH_OUTCOMES)(
+    'CA-17: %s, sin violaciones de axe a 360 y 1440 px',
+    async (_state, outcome) => {
+      const container = await renderInFrame(
+        <SupportTrash load={always(outcome)} restore={always<RestoreResponse>('pending')} />,
+      );
+
+      await searchTrash('search');
+
+      await expectNoViolations(container);
+    },
+  );
+
+  it.each([
+    ['papelera-confirmar', 'pending', 'dialog'],
+    ['papelera-motivo-invalido', 'pending', 'invalid'],
+    ['papelera-restaurando', 'pending', 'restoring'],
+    ['papelera-restaurado', restored(TRASH_SHEET), 'done'],
+    ['papelera-renombrado', restored(TRASH_SHEET, 'renamed', 'Presupuesto (1).xlsx'), 'done'],
+    ['papelera-movido-raiz', restored(TRASH_SHEET, 'moved_to_root'), 'done'],
+    [
+      'papelera-retencion-vencida',
+      apiError(404, STORAGE_ERROR_CODES.STORAGE_NODE_NOT_FOUND),
+      'done',
+    ],
+  ] as const)(
+    'CA-17: %s, sin violaciones de axe a 360 y 1440 px',
+    async (_state, restore, step) => {
+      const container = await renderInFrame(
+        <SupportTrash
+          load={always(clientTrashPage([TRASH_FOLDER, TRASH_SHEET, TRASH_PDF]))}
+          restore={always<RestoreResponse>(restore)}
+        />,
+      );
+
+      await searchTrash(step);
+
+      await expectNoViolations(step === 'done' ? container : document.body);
+    },
+  );
 });

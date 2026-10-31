@@ -88,7 +88,11 @@ const BLOCKED: readonly WriteRoute[] = [
   ),
 ];
 
-/** RN-6 y ADR-0032 regla 3: las que siguen abiertas (lectura, descarga, papelera, accesos rápidos, resume y cancel). */
+/**
+ * RN-6 y ADR-0032 regla 3: las que siguen abiertas (lectura, descarga, papelera, accesos rápidos, resume y cancel).
+ * La restauración de Soporte (`POST /backoffice/client-trash/:nodeId/restore`, 011b RN-3) también se permite en solo
+ * lectura, pero es de `backoffice` y este arnés solo monta `storage`: la cubre `client-trash.int-spec.ts` (RN-3).
+ */
 const ALLOWED: readonly WriteRoute[] = [
   route('post', '/files/:fileId/download-url', (ids) => `/files/${ids.fileId}/download-url`),
   route(

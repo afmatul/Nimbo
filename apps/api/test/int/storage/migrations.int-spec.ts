@@ -545,12 +545,13 @@ describe('migración politicas-rls-archivo-version-carga (CA-16, CA-17, DF-52)',
 
   it('CA-16: el `down` quita función, políticas y RLS, y el `up` las devuelve', async () => {
     const migration = new PoliticasRlsArchivoVersionCarga20260930100300();
-    // `archivo_mantenimiento` (006) y las políticas de 012 no son de 005: su `down` no las toca.
+    // `archivo_mantenimiento` (006), las políticas de 012 y las dos `archivo_soporte_*` de 011b no son de 005: su `down` no las toca.
     const snapshot = async (runner: QueryRunner) => {
       const [state] = (await runner.query(
         `SELECT (SELECT count(*)::int FROM pg_policies WHERE tablename IN ('archivo', 'version_archivo', 'carga')
                     AND policyname NOT IN ('archivo_mantenimiento', 'archivo_nodos_compartidos',
-                                           'archivo_compartido', 'version_archivo_compartida'))
+                                           'archivo_compartido', 'version_archivo_compartida',
+                                           'archivo_soporte_restauracion', 'archivo_soporte_destino'))
                   AS policies,
                 (SELECT count(*)::int FROM pg_class
                   WHERE relname IN ('archivo', 'version_archivo', 'carga') AND (relrowsecurity OR relforcerowsecurity))

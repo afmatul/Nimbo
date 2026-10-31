@@ -50,17 +50,24 @@ function keysByReason(rejections: readonly AttributeRejection[]): Map<string, st
   return grouped;
 }
 
-/** La línea `audit.record` de 005 (D-11), ahora tras guardar: solo identificadores y atributos ya saneados. */
-const recordLine = (entry: AuditEntry): Record<string, unknown> => ({
-  event: 'audit.record',
-  action: entry.action,
-  actorId: entry.actorId,
-  actorRole: entry.actorRole,
-  targetUserId: entry.targetUserId,
-  ...(entry.resourceId !== null && { resourceId: entry.resourceId }),
-  attributes: entry.attributes,
-  occurredAt: entry.occurredAt.toISOString(),
-});
+/**
+ * La línea `audit.record` de 005 (D-11), ahora tras guardar: solo identificadores y atributos ya saneados. El motivo
+ * de Soporte (`note`, texto libre) vive solo en `evento_auditoria`: la línea lleva su clave, nunca el valor (011b RN-4).
+ */
+const recordLine = (entry: AuditEntry): Record<string, unknown> => {
+  const { note, ...attributes } = entry.attributes;
+  return {
+    event: 'audit.record',
+    action: entry.action,
+    actorId: entry.actorId,
+    actorRole: entry.actorRole,
+    targetUserId: entry.targetUserId,
+    ...(entry.resourceId !== null && { resourceId: entry.resourceId }),
+    attributes,
+    ...(note !== undefined && { omittedKeys: ['note'] }),
+    occurredAt: entry.occurredAt.toISOString(),
+  };
+};
 
 const errorNameOf = (error: unknown): string => errorName(error);
 
