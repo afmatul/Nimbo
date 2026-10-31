@@ -5,6 +5,8 @@ import type { OnModuleInit } from '@nestjs/common';
 import { SUPPORT_CONTACT_EMAIL } from '@nimbo/contracts';
 import { PinoLogger } from 'nestjs-pino';
 
+import { I_ATTEMPT_LOCKOUT, I_PASSWORD_HASHER } from '../../../shared';
+import type { PasswordHash, IAttemptLockout, IPasswordHasher } from '../../../shared';
 import { AccountStatus } from '../domain/account-status.enum';
 import { EmailAddress } from '../domain/email-address.vo';
 import {
@@ -13,16 +15,11 @@ import {
   InvalidCredentialsError,
   LoginLockedError,
 } from '../domain/errors';
-import type { PasswordHash } from '../domain/password-hash.vo';
 import type { User } from '../domain/user.entity';
 
 import type { ClientContext } from './client-context';
 import { LOGIN_LOCKOUT_POLICY, loginLockoutKey } from './identity-limit-keys';
 import type { IdentityLogger } from './identity-logger';
-import { I_ATTEMPT_LOCKOUT } from './ports/i-attempt-lockout.port';
-import type { IAttemptLockout } from './ports/i-attempt-lockout.port';
-import { I_PASSWORD_HASHER } from './ports/i-password-hasher.port';
-import type { IPasswordHasher } from './ports/i-password-hasher.port';
 import { I_USER_REPOSITORY } from './ports/i-user-repository.port';
 import type { IUserRepository } from './ports/i-user-repository.port';
 import { SessionService } from './session.service';

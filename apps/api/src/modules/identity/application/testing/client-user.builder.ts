@@ -1,8 +1,8 @@
+import { PasswordHash } from '../../../../shared';
 import { AccountStatus } from '../../domain/account-status.enum';
 import { ClientUser } from '../../domain/client-user.entity';
 import { EmailAddress } from '../../domain/email-address.vo';
 import { LegalAcceptance } from '../../domain/legal-acceptance.vo';
-import { PasswordHash } from '../../domain/password-hash.vo';
 
 /** Builder de cuentas de cliente para pruebas de aplicación (conventions §Pruebas). */
 export class ClientUserBuilder {

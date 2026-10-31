@@ -6,7 +6,8 @@ import {
   LEGAL_DOCUMENTS,
 } from '@nimbo/contracts';
 
-import type { ITransactionRunner, RateLimitDecision } from '../../../shared';
+import { PasswordHash } from '../../../shared';
+import type { ITransactionRunner, RateLimitDecision, IPasswordHasher } from '../../../shared';
 import { FixedClock } from '../../../shared/domain/fixed.clock';
 import { Role } from '../../../shared/domain/role.enum';
 import type { MailMessage } from '../../notifications';
@@ -22,12 +23,10 @@ import {
 } from '../domain/errors';
 import { InternalUser } from '../domain/internal-user.entity';
 import { OpaqueToken } from '../domain/opaque-token.vo';
-import { PasswordHash } from '../domain/password-hash.vo';
 import { VerificationToken } from '../domain/verification-token.entity';
 import type { VerificationTokenType } from '../domain/verification-token.entity';
 
 import type { IAccountEventsPublisher } from './ports/i-account-events-publisher.port';
-import type { IPasswordHasher } from './ports/i-password-hasher.port';
 import { RegistrationAttemptNotifier } from './registration-attempt-notifier';
 import { RegistrationService } from './registration.service';
 import { aClientUser } from './testing/client-user.builder';

@@ -3,8 +3,8 @@
 - **Dueño**: Adrián (`specs/README.md`).
 - **Diagrama de origen**: bloque T1 de `docs/sdd/design-model.md` §3 (salud movida desde M8, DF-49; `RolesGuard`
   movido desde M8, DF-50).
-- **Specs que lo construyen**: 000 (fundaciones) y 003 (guards globales). Después de 000 solo entra lo que usan
-  ≥ 3 módulos o lo que el proceso necesita antes de que exista un módulo (plan 000 R-11).
+- **Specs que lo construyen**: 000 (fundaciones) y 003 (guards globales). Después de 000 solo entra lo que cumple la
+  regla 8 de `architecture.md` §3 (copiada en «Qué entra en `shared`», al final).
 
 ## Contenido (al cerrar la spec 000)
 
@@ -138,13 +138,30 @@ migración (`ENABLE` + `FORCE ROW LEVEL SECURITY`, `USING (… = nimbo_actor_id(
 | `IDomainEventPublisher` (`I_DOMAIN_EVENT_PUBLISHER`) → `EventEmitterDomainEventPublisher` | `application/events/`, `infrastructure/events/` | Publica un evento de dominio en el proceso, después del commit. Sube a `shared` con el tercer productor (`storage`, 019; ADR-0019, regla de tres): si un oyente lanza, registra `domain_event.publish_failed` con el nombre y la clase del error (nunca el contenido) y no relanza. `shared.module.ts` **no** lo registra: lo hace cada módulo productor, que necesita `EventEmitterModule.forRoot()` en su raíz. `identity` y `realtime` migran a él en PD-125 |
 | `GEMINI_API_KEY`                                                                          | `infrastructure/config/`                        | Clave de embeddings (019): en `SECRET_KEYS` y declarada **solo** en `workerEnvSchema`                                                                                                                                                                                                                                                                                                                                                                           |
 
+## Con la spec 013 (plan 013 D-2, PD-20)
+
+`IPasswordHasher` e `IAttemptLockout` suben desde `identity` **sin cambiar firmas ni comportamiento**: los necesitan
+`identity` (002) y `sharing` (contraseña y bloqueo de los enlaces públicos, 013), y la regla 1 no admite
+`sharing → identity` porque ya existe `identity → sharing` (DF-84). Es el primer caso de la regla 8.
+
+| Pieza                                                           | Dónde                                                   | Para qué                                                                                                                                                                                                                          |
+| --------------------------------------------------------------- | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PasswordHash`                                                  | `domain/password-hash.vo.ts`                            | PHC opaco: `toString` y `toJSON` dan `[REDACTED]`; solo el hasher y los repositorios llaman `reveal()`                                                                                                                            |
+| `IPasswordHasher` (`I_PASSWORD_HASHER`) → `Argon2idHasher`      | `application/security/`, `infrastructure/security/`     | `hash(plain)` y `verify(hash, plain)` con Argon2id m=19456, t=2, p=1 (RN-3 de 001, ADR-0017)                                                                                                                                      |
+| `IAttemptLockout` (`I_ATTEMPT_LOCKOUT`) → `RedisAttemptLockout` | `application/rate-limit/`, `infrastructure/rate-limit/` | `check`, `recordFailure`, `reserveAttempt` y `clear` con un script Lua atómico; `now` sale de `IClock` y si Redis falla, lanza (falla cerrado). Los tipos `LockoutPolicy`, `LockState` y `AttemptReservation` también se exportan |
+
+`SharedModule` (global) provee y exporta los dos tokens. Las **claves** de bloqueo y los **valores** de
+`LockoutPolicy` no viven aquí: los pone cada consumidor (`identity-limit-keys.ts` en `identity`). Las pruebas de
+contrato contra la librería y Redis reales están en `test/int/shared/password-hash.int-spec.ts` y
+`test/int/shared/redis-attempt-lockout.int-spec.ts`.
+
 ## Capas
 
 ```
 shared/
-├─ domain/          # sin Nest, TypeORM ni zod
-├─ application/     # HealthService, puertos (IHealthIndicator, IRateLimiter, ITransactionRunner, IAccessTokenVerifier, IDomainEventPublisher)
-├─ infrastructure/  # config, logging, correlation, persistence, queue, health, clock, redis, rate-limit, events
+├─ domain/          # sin Nest, TypeORM ni zod (incluye PasswordHash)
+├─ application/     # HealthService, puertos (IHealthIndicator, IRateLimiter, IAttemptLockout, IPasswordHasher, ITransactionRunner, IAccessTokenVerifier, IDomainEventPublisher)
+├─ infrastructure/  # config, logging, correlation, persistence, queue, health, clock, redis, rate-limit, security, events
 ├─ presentation/    # HealthController, DomainExceptionFilter, VersionHeaderMiddleware, ZodValidationPipe, configureHttpApp, auth/ (guards y decoradores)
 ├─ shared.module.ts  health.module.ts
 └─ index.ts         # única API pública
@@ -154,3 +171,13 @@ shared/
 
 Otros módulos y `apps/worker` importan **solo** desde `shared/index.ts` (Art. VIII.3; lint de fronteras, CA-5).
 `shared` no importa de ningún módulo.
+
+### Qué entra en `shared` (copia de la regla 8 de `architecture.md` §3)
+
+> **Qué entra en `shared`** (plan 000 R-11, precisada por el plan 013 D-2): lo que usan ≥ 3 módulos, lo que el
+> proceso necesita antes de que exista un módulo **o** una capacidad técnica sin reglas de negocio ni tablas (aísla una
+> librería o Redis, Art. V.2 a) que necesitan dos módulos entre los que la regla 1 no admite arista. Primer caso:
+> `IPasswordHasher`/`IAttemptLockout` (013: `identity` y `sharing`, porque ya existe `identity → sharing`). Se mueve
+> sin cambiar firmas ni comportamiento, y las reglas de uso (claves, valores de `LockoutPolicy`, variables) se quedan
+> en cada consumidor. Lo que tiene reglas de negocio, tablas o un dueño funcional no entra por esta vía: se resuelve
+> con un puerto declarado por el consumidor (regla 1) o con un evento.

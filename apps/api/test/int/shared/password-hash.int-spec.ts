@@ -4,21 +4,20 @@ import request from 'supertest';
 import type { Response } from 'supertest';
 import { DataSource } from 'typeorm';
 
-import { PasswordHash } from '../../../src/modules/identity/domain/password-hash.vo';
+import { PasswordHash } from '../../../src/shared';
 import {
   ARGON2ID_MEMORY_COST_KIB,
   ARGON2ID_PARALLELISM,
   ARGON2ID_TIME_COST,
   Argon2idHasher,
-} from '../../../src/modules/identity/infrastructure/argon2id.hasher';
-import { deleteAll } from '../setup/mailpit';
-import type { TestApp } from '../setup/test-app';
-
+} from '../../../src/shared/infrastructure/security/argon2id.hasher';
 import {
   createIdentityTestApp,
   validRegistration,
   verificationTokenSentTo,
-} from './identity-test-app';
+} from '../identity/identity-test-app';
+import { deleteAll } from '../setup/mailpit';
+import type { TestApp } from '../setup/test-app';
 
 const REGISTER = '/api/v1/auth/register';
 const RESEND = '/api/v1/auth/resend-verification';

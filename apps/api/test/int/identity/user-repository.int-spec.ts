@@ -10,10 +10,9 @@ import { EmailAddress } from '../../../src/modules/identity/domain/email-address
 import { EmployeeCode } from '../../../src/modules/identity/domain/employee-code.vo';
 import { InternalUser } from '../../../src/modules/identity/domain/internal-user.entity';
 import { LegalAcceptance } from '../../../src/modules/identity/domain/legal-acceptance.vo';
-import { PasswordHash } from '../../../src/modules/identity/domain/password-hash.vo';
 import { TypeormUserRepository } from '../../../src/modules/identity/infrastructure/persistence/typeorm-user.repository';
 import { UsuarioOrmEntity } from '../../../src/modules/identity/infrastructure/persistence/usuario.orm-entity';
-import { buildDataSourceOptions } from '../../../src/shared';
+import { PasswordHash, buildDataSourceOptions } from '../../../src/shared';
 import { Role } from '../../../src/shared/domain/role.enum';
 import { TransactionContext } from '../../../src/shared/infrastructure/persistence/transaction-context';
 import { TypeOrmTransactionRunner } from '../../../src/shared/infrastructure/persistence/typeorm-transaction-runner';

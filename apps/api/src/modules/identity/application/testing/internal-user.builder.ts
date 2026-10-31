@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
 
+import { PasswordHash } from '../../../../shared';
 import { Role } from '../../../../shared/domain/role.enum';
 import { AccountStatus } from '../../domain/account-status.enum';
 import { EmailAddress } from '../../domain/email-address.vo';
 import { EmployeeCode } from '../../domain/employee-code.vo';
 import { InternalUser } from '../../domain/internal-user.entity';
-import { PasswordHash } from '../../domain/password-hash.vo';
 
 /** Builder de cuentas internas para pruebas de aplicación (conventions §Pruebas): activas y con id y código únicos. */
 export class InternalUserBuilder {
