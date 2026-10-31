@@ -1,7 +1,8 @@
 # Compose base (spec 000, CA-3): el mismo archivo en local y staging.
 # Local: `docker compose up -d` carga automáticamente `compose.override.yml` (puertos, Mailpit, apps por perfil).
 # Staging: `COMPOSE_FILE=compose.yml:compose.staging.yml` (imágenes por SHA, Traefik con TLS, sin puertos internos).
-# `WORKER_PORT` nunca aparece en `ports:` (CA-23). ONLYOFFICE solo con `--profile onlyoffice` (CA-2).
+# `WORKER_PORT` y `WORKER_OPTIMIZER_PORT` nunca aparecen en `ports:` (CA-23, ADR-0038). ONLYOFFICE solo con
+# `--profile onlyoffice` (CA-2).
 name: nimbo
 
 services:
@@ -104,8 +105,61 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+    # Sin swap del contenedor (`memswap_limit` = `mem_limit`, ADR-0038): al tope se reinicia, no se degrada.
     mem_limit: ${WORKER_MEM_LIMIT:-768m}
+    memswap_limit: ${WORKER_MEM_LIMIT:-768m}
     restart: unless-stopped
+    # Cierre ordenado: `init` reenvía SIGTERM a `node` (y recoge a los hijos de Ghostscript) y Nest cierra cada `Worker`
+    # esperando su trabajo activo. Paso acotado más largo: Ghostscript (45 s) + una petición de embeddings (30 s) + 15 s;
+    # un trabajo más largo queda atascado y BullMQ lo reintenta (los del general son idempotentes).
+    init: true
+    stop_grace_period: 90s
+
+  # Optimizador de imágenes (021, ADR-0038): la misma imagen que `worker`, otro comando; consume solo `optimization`.
+  # Su memoria y sus fallos quedan aislados del `worker` general. Salud interna en `WORKER_OPTIMIZER_PORT`.
+  worker-optimizer:
+    image: ${WORKER_IMAGE:-ghcr.io/afmatul/nimbo-worker}:${IMAGE_TAG:-latest}
+    command: ['node', 'dist/worker-optimizer.main.js']
+    # Catálogo completo en `.env.example`; inyección solo del schema de este proceso (PD-158).
+    # La contraseña de aplicación se interpola en la URL, no se inyecta como variable auxiliar ni se usa el rol dueño.
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      APP_ENV: ${APP_ENV}
+      APP_VERSION: ${APP_VERSION:-dev}
+      LOG_LEVEL: ${LOG_LEVEL}
+      DATABASE_URL: postgres://nimbo_app:${NIMBO_APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET: ${MINIO_BUCKET:-nimbo}
+      MINIO_REGION: ${MINIO_REGION:-us-east-1}
+      OPTIMIZER_TIMEOUT_MS: ${OPTIMIZER_TIMEOUT_MS:-100000}
+      OPTIMIZER_MAX_PIXELS: ${OPTIMIZER_MAX_PIXELS:-36000000}
+      OPTIMIZER_MIN_SAVED_PERCENT: ${OPTIMIZER_MIN_SAVED_PERCENT:-20}
+      OPTIMIZER_MIN_SAVED_BYTES: ${OPTIMIZER_MIN_SAVED_BYTES:-1000000}
+      OPTIMIZER_JPEG_QUALITY: ${OPTIMIZER_JPEG_QUALITY:-80}
+      WORKER_OPTIMIZER_PORT: ${WORKER_OPTIMIZER_PORT:-3003}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'node', 'dist/healthcheck.js', 'WORKER_OPTIMIZER_PORT']
+      interval: 20s
+      timeout: 5s
+      retries: 2
+      start_period: 30s
+    mem_limit: ${WORKER_OPTIMIZER_MEM_LIMIT:-768m}
+    memswap_limit: ${WORKER_OPTIMIZER_MEM_LIMIT:-768m}
+    restart: unless-stopped
+    # Cierre ordenado sin cortar una optimización válida: cada intento hace a lo sumo 3 operaciones de `sharp` acotadas
+    # por `OPTIMIZER_TIMEOUT_MS` (100 s, la misma cota de la caducidad perezosa, plan 021 §5) + E/S (30 s).
+    init: true
+    stop_grace_period: 330s
 
   web:
     image: ${WEB_IMAGE:-ghcr.io/afmatul/nimbo-web}:${IMAGE_TAG:-latest}

@@ -39,6 +39,13 @@ const INDEXING_OUTCOME = {
   attributes: { versionId: 'uuid', reason: INDEXING_REASONS, durationMs: 'number' },
 } as const;
 
+const OPTIMIZATION_ATTRIBUTES = {
+  optimizationId: 'uuid',
+  sourceVersionId: 'uuid',
+  originalBytes: 'number',
+  resultBytes: 'number',
+} as const;
+
 /**
  * Catálogo cerrado (RN-3): por acción, su tipo de recurso y la lista blanca de atributos con su tipo. Son las siete
  * acciones de 005 y 006 (D-1) con los atributos que emiten hoy, las dos de versiones de 014 (plan §5; un reemplazo
@@ -163,6 +170,21 @@ export const AUDIT_CATALOG = {
   [AuditAction.SHARE_GRANTED]: ON_SHARE,
   [AuditAction.SHARE_LEVEL_CHANGED]: ON_SHARE,
   [AuditAction.SHARE_REVOKED]: ON_SHARE,
+  [AuditAction.FILE_OPTIMIZED]: {
+    resourceType: 'file',
+    attributes: { ...OPTIMIZATION_ATTRIBUTES, versionId: 'uuid' },
+  },
+  [AuditAction.FILE_OPTIMIZATION_DISCARDED]: {
+    resourceType: 'file',
+    attributes: {
+      ...OPTIMIZATION_ATTRIBUTES,
+      reason: ['ahorro_minimo', 'version_cambiada', 'archivo_eliminado'],
+    },
+  },
+  [AuditAction.FILE_OPTIMIZATION_FAILED]: {
+    resourceType: 'file',
+    attributes: { ...OPTIMIZATION_ATTRIBUTES, reason: ['integridad', 'servicio_no_disponible'] },
+  },
 } as const satisfies Record<AuditAction, AuditActionSpec>;
 
 /** Tipos que un atributo (`nodeType`) puede dar: solo nodos y cargas. */

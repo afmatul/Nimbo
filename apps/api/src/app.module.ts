@@ -12,6 +12,7 @@ import { EditingModule } from './modules/editing';
 import { IDENTITY_THROTTLERS, IdentityModule } from './modules/identity';
 import { IntelligenceModule } from './modules/intelligence';
 import { NotificationsModule } from './modules/notifications';
+import { OptimizerModule } from './modules/optimizer';
 import { RealtimeModule } from './modules/realtime';
 import { SharingModule } from './modules/sharing';
 import { StorageModule } from './modules/storage';
@@ -46,7 +47,8 @@ import { UserDirectoryBindingModule } from './user-directory-binding.module';
  * `RealtimeModule`, y la indexación (019), que escucha `storage.file-version-created`, expone su estado y recibe las
  * mismas instancias de `StorageModule` (`IndexableFileGateway`) y de `RealtimeModule` (aviso en vivo);
  * `IUserDirectory` lo enlaza `UserDirectoryBindingModule` con la de `IdentityModule`, e `IShareeDirectory` (012),
- * `ShareeDirectoryBindingModule` con la misma, que usa la compartición (012) junto con la misma instancia de `StorageModule`.
+ * `ShareeDirectoryBindingModule` con la misma, que usa la compartición (012) junto con la misma instancia de `StorageModule`. El optimizador (021) recibe la misma instancia de
+ * `StorageModule` (`OptimizableFileGateway`).
  */
 @Module({})
 export class AppModule {
@@ -83,6 +85,7 @@ export class AppModule {
         EditingModule.forRoot(env, { storage, realtime }),
         IntelligenceModule.forRoot(env, { storage, realtime }),
         SharingModule.forRoot(env, storage),
+        OptimizerModule.forRoot(env, { storage }),
       ],
       providers: [PingQueue],
     };

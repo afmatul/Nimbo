@@ -26,6 +26,8 @@ import {
 } from '../../intelligence/hooks/use-indexing-status';
 import type { IndexingApi } from '../../intelligence/indexing-api';
 import { indexedNotice, indexingDetailOf } from '../../intelligence/indexing-messages';
+import { OptimizationCard } from '../../optimizer/components/optimization-card';
+import type { OptimizerApi } from '../../optimizer/optimizer-api';
 import { FILE_KIND_LABELS } from '../file-kind-label';
 import { useFileVersions, type VersionsListing } from '../hooks/use-file-versions';
 import { useTrashCount } from '../hooks/use-trash-count';
@@ -55,6 +57,7 @@ export interface FileDetailViewProps {
   readonly fileId: string;
   /** Estado de indexación del archivo (019). */
   readonly indexingApi: IndexingApi;
+  readonly optimizerApi: OptimizerApi;
   /** Abre la URL firmada; por omisión, en la pestaña (005 CA-13). */
   readonly openUrl?: (url: string) => void;
   /** Etiqueta de la cita que trajo hasta aquí (`?ubicacion=`, 020b CA-11); se pinta como texto, nunca se registra. */
@@ -101,6 +104,7 @@ function useFileIndexing(
 export function FileDetailView({
   fileId,
   indexingApi,
+  optimizerApi,
   openUrl = openInBrowser,
   citedLocation,
 }: FileDetailViewProps): React.JSX.Element {
@@ -132,6 +136,17 @@ export function FileDetailView({
         listing={history.listing}
         actions={actions}
         indexing={indexing}
+        optimization={
+          <FileOptimization
+            api={optimizerApi}
+            fileId={fileId}
+            listing={history.listing}
+            onCompleted={() => {
+              history.reload();
+              space.refresh();
+            }}
+          />
+        }
         sidebarNotice={sidebarNotice}
         onDismissSidebarNotice={() => setSidebarNotice(null)}
         onRetry={history.reload}
@@ -151,6 +166,7 @@ interface FileDetailContentProps {
   readonly listing: VersionsListing;
   readonly actions: VersionActions;
   readonly indexing: IndexingStatusView;
+  readonly optimization: React.ReactNode;
   readonly sidebarNotice: DownloadNotice | null;
   readonly onDismissSidebarNotice: () => void;
   readonly onRetry: () => void;
@@ -181,6 +197,7 @@ function FileDetailContent(props: FileDetailContentProps): React.JSX.Element {
             {ready ? <CitedLocation label={props.citedLocation} /> : null}
             <IndexingBanner status={indexing.status} retry={indexing.retry} />
           </div>
+          {props.optimization}
           <HistoryCard listing={listing} actions={actions} onRetry={props.onRetry}>
             {notice ? <DownloadNoticeBanner notice={notice} onDismiss={dismiss} /> : null}
           </HistoryCard>
@@ -188,6 +205,35 @@ function FileDetailContent(props: FileDetailContentProps): React.JSX.Element {
         </>
       )}
     </div>
+  );
+}
+
+/** El historial ya autoriza la ficha; GET optimization confirma la propiedad antes de habilitar acciones. */
+function FileOptimization({
+  api,
+  fileId,
+  listing,
+  onCompleted,
+}: {
+  readonly api: OptimizerApi;
+  readonly fileId: string;
+  readonly listing: VersionsListing;
+  readonly onCompleted: () => void;
+}): React.JSX.Element | null {
+  if (
+    listing.status !== 'ready' ||
+    listing.file.kind !== 'imagen' ||
+    !/\.(jpe?g|png)$/i.test(listing.file.name)
+  )
+    return null;
+  return (
+    <OptimizationCard
+      key={`${fileId}:${currentOf(listing)?.id ?? ''}`}
+      api={api}
+      fileId={fileId}
+      history={listing}
+      onCompleted={onCompleted}
+    />
   );
 }
 
@@ -471,7 +517,7 @@ function LocationLink({ folderId }: { readonly folderId: string | null }): React
 }
 
 /**
- * Tipo y ubicación (CA-20), tamaño de la actual, espacio de todas las versiones (D-1: todas cuentan), cuándo cambió
+ * Tipo y ubicación (CA-20), tamaño de la actual, espacio de las versiones que cuentan (014b), cuándo cambió
  * por última vez y, si el tipo se indexa, cuándo y de qué versión (019, RN-1).
  */
 function DetailsCard({

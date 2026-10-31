@@ -61,6 +61,10 @@ export enum AuditAction {
   SHARE_GRANTED = 'share.granted',
   SHARE_LEVEL_CHANGED = 'share.level_changed',
   SHARE_REVOKED = 'share.revoked',
+  /** Optimización (021 §5, CA-21): solo resultados terminales; estimar no se audita. */
+  FILE_OPTIMIZED = 'file.optimized',
+  FILE_OPTIMIZATION_DISCARDED = 'file.optimization_discarded',
+  FILE_OPTIMIZATION_FAILED = 'file.optimization_failed',
 }
 
 const AUDIT_ACTIONS: ReadonlySet<string> = new Set(Object.values(AuditAction));

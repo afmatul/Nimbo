@@ -19,7 +19,8 @@ ambientes: se comporta según el `.env` inyectado, sin reconstruir (CA-29).
 
 ## 2. Variables
 
-Leyenda: **api**/**worker**/**web** = el proceso la valida al arrancar; **compose** = solo la usa `compose*.yml`.
+Leyenda: **api**/**worker** (general)/**web** = el proceso la valida al arrancar; **compose** = solo la usa `compose*.yml`.
+El schema de `worker-optimizer` y sus consumidores están separados debajo de la tabla; validar no equivale a inyectar.
 Secreto = nunca en el repositorio, vacío en `.env.example` de staging, redactado en bitácoras (`SECRET_KEYS`).
 
 | Variable | api | worker | web | compose | Secreto | Default | Notas |
@@ -29,10 +30,11 @@ Secreto = nunca en el repositorio, vacío en `.env.example` de staging, redactad
 | `APP_VERSION` | ✓ | ✓ | | ✓ | | `dev` | `sha-<short>` en imágenes publicadas; cabecera `x-nimbo-version` (CA-31) |
 | `PORT` | ✓ | | ✓ | | | api `3000`, web `3002` | Traefik local enruta `/api` → 3000 y `/` → 3002 |
 | `WORKER_PORT` | ✓ | ✓ | | | | `3001` | Salud interna del worker; **nunca** en `ports:` (CA-23) |
+| `WORKER_OPTIMIZER_PORT` | | | | | | `3003` | Solo valida `worker-optimizer`: salud interna; **nunca** en `ports:` |
 | `LOG_LEVEL` | ✓ | ✓ | | | | — | `trace` … `fatal` |
 | `DATABASE_URL` | ✓ | ✓ | | | (contiene contraseña) | — | Postgres con pgvector, **como `nimbo_app`** (003): local `postgres://nimbo_app:nimbo_app@localhost:5432/nimbo`. Con el dueño o un superusuario la app no arranca (`db.role_rejected`, §4) |
 | `DATABASE_MIGRATION_URL` | | | | | (contiene contraseña) | — | Solo migraciones (`migrationEnvSchema`: `data-source.cli.ts`, `migrate.ts`); dueño de las tablas, local `postgres://nimbo:nimbo@localhost:5432/nimbo`. No cae a `DATABASE_URL` si falta (`config.invalid`). En staging, solo en el entorno del paso de migración (PD-43, provisional) |
-| `NIMBO_APP_DB_PASSWORD` | | | | ✓ | ✓ | — | Contraseña de `nimbo_app` que fija `infra/postgres/init/10-nimbo-app.sh`; debe coincidir con `DATABASE_URL`. No la lee ninguna app |
+| `NIMBO_APP_DB_PASSWORD` | | | | ✓ | ✓ | — | Contraseña de `nimbo_app`: inicializa el rol y Compose la interpola en `DATABASE_URL` del optimizador; nunca se inyecta allí como clave auxiliar |
 | `REDIS_URL` | ✓ | ✓ | | | | — | BullMQ y caché |
 | `MINIO_ENDPOINT` | ✓ | ✓ | | | | — | API S3 (puerto 9000); la consola 9001 no la usa la app |
 | `MINIO_ACCESS_KEY` | ✓ | ✓ | | | ✓ | — | Una sola definición compartida por `api` y `worker` (005); el worker aborta partes y borra objetos |
@@ -51,7 +53,7 @@ Secreto = nunca en el repositorio, vacío en `.env.example` de staging, redactad
 | `SMTP_PORT` | | ✓ | | | | — | Mailpit `1025`; Resend `465` |
 | `SMTP_TLS` | | ✓ | | | | — | `none` | `starttls` | `implicit`; `none` prohibido en staging y producción |
 | `SMTP_USER` | | ✓ | | | | — | Opcional; obligatoria si hay `SMTP_PASSWORD` (Resend: `resend`) |
-| `SMTP_PASSWORD` | | ✓ | | | ✓ | — | **Solo** el worker la declara y la recibe; el `api` no tiene credenciales de correo (ADR-0018) |
+| `SMTP_PASSWORD` | | ✓ | | | ✓ | — | Solo la valida y consume el general (ADR-0018); `worker-optimizer` no la recibe. Los otros servicios conservan `env_file` |
 | `MAIL_FROM` | | ✓ | | | | — | `Nimbo <no-responder@nimbo.me>` |
 | `API_INTERNAL_URL` | | | ✓ | | | — | `web` llama a la API solo desde el servidor (sin `NEXT_PUBLIC_`) |
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | | | | ✓ | contraseña | — | Dueño de las tablas; deben coincidir con `DATABASE_MIGRATION_URL` |
@@ -67,16 +69,62 @@ Secreto = nunca en el repositorio, vacío en `.env.example` de staging, redactad
 | `INDEXING_MAX_FILE_BYTES` | | ✓ | | | | `52428800` | 019 RN-7 (DF-37): tope indexable (50 MiB, no varía por plan); por encima, `no_indexable/demasiado_grande` |
 | `INDEX_RECONCILE_INTERVAL_MINUTES` / `INDEX_RECONCILE_BATCH_SIZE` | | ✓ | | | | `1440` / `100` | 019 RN-12: conciliación que encola archivos sin indexar o atascados; lote 1–1000 |
 | `GHOSTSCRIPT_BIN` | | ✓ | | | | `gs` | 019 D-1: ejecutable de Ghostscript para el texto de los PDF; en Windows, `gswin64c` |
-| `GEMINI_API_KEY` | ✓ | ✓ | | | ✓ | — | 019 y 020 D-8 (enmienda RN-9 de la 019): clave de Gemini, una sola definición. El `worker` indexa y el `api` vectoriza la pregunta y redacta la respuesta del agente; nunca el navegador. Opcional: sin ella la indexación termina `fallido/proveedor_no_disponible`, el agente responde `AGENT_UNAVAILABLE` y el resto sigue (RNF-09) |
+| `GEMINI_API_KEY` | ✓ | ✓ | | | ✓ | — | 019 y 020 D-8 (enmienda RN-9 de la 019): clave de Gemini, una sola definición. El `worker` indexa y el `api` vectoriza la pregunta y redacta la respuesta del agente; nunca el navegador. Opcional: sin ella la indexación termina `fallido/proveedor_no_disponible`, el agente responde `AGENT_UNAVAILABLE` y el resto sigue (RNF-09). `worker-optimizer` no la recibe (ADR-0038) |
 | `GEMINI_EMBEDDING_MODEL` | ✓ | ✓ | | | | `gemini-embedding-001` | 019 (ADR-0007): modelo de embeddings, vectorizado a 768 dimensiones (ADR-0003); el `api` lo usa para la pregunta (020 D-8) |
 | `GEMINI_CHAT_MODEL` | ✓ | | | | | `gemini-3.5-flash` | 020 D-7: modelo que redacta las respuestas del agente |
 | `AGENT_MAX_QUESTION_CHARS` | ✓ | | | | | `1000` | 020 RN-7: largo máximo de la pregunta; `GET /agent/status` lo informa (`maxQuestionChars`) |
 | `AGENT_MODEL_FIRST_CHUNK_TIMEOUT_MS` / `AGENT_MODEL_IDLE_TIMEOUT_MS` | ✓ | | | | | `5000` / `5000` | 020 CA-15: plazos del modelo hasta el primer trozo y entre trozos; vencidos, `AGENT_UNAVAILABLE` sin descontar. Fijados en T-10 con `pnpm --filter api agent:measure` (plan 020 §6) |
-| `API_MEM_LIMIT`, `WORKER_MEM_LIMIT` | | | | ✓ | | `768m` | Staging; bajar a `512m` en demos con ONLYOFFICE (R-6) |
+| `OPTIMIZER_MAX_FILE_BYTES` | ✓ | | | | | `40000000` | 021 RN-8, CA-5: tope de bytes optimizable (40 MB, medido en el spike de ADR-0037, plan §6 B); por encima, `no_disponible(tamano)` |
+| `OPTIMIZER_MAX_ATTEMPTS` | ✓ | | | | | `3` | Solo el `api`: intentos al encolar y caducidad; el consumidor usa `job.opts.attempts` |
+| `OPTIMIZER_TIMEOUT_MS` | ✓ | | | | | `100000` | Definición compartida por el `api` (caducidad: intentos × 3 × tiempo + 5 min) y `worker-optimizer` (sharp); no la valida el general |
+| `OPTIMIZER_POLL_INTERVAL_MS` | ✓ | | | | | `3000` | 021 RN-10: cada cuánto la ficha vuelve a consultar una optimización en curso (`pollAfterMs`) |
+| `RATE_LIMIT_OPTIMIZER_PER_MINUTE` | ✓ | | | | | `10` | 021 RNF-07: calcular y optimizar, por cuenta |
+| `OPTIMIZER_MAX_PIXELS` | | | | | | `36000000` | Solo valida `worker-optimizer`: píxeles decodificados; por encima, `no_disponible(pixeles)` (021 RN-8, CA-5) |
+| `OPTIMIZER_MIN_SAVED_PERCENT` / `OPTIMIZER_MIN_SAVED_BYTES` | | | | | | `20` / `1000000` | Solo valida `worker-optimizer`: se exigen ambos umbrales; porcentaje 1–99 (021 RN-2) |
+| `OPTIMIZER_JPEG_QUALITY` | | | | | | `80` | Solo valida `worker-optimizer`: calidad JPEG con mozjpeg, 1–100 (ADR-0037) |
+| `API_MEM_LIMIT`, `WORKER_MEM_LIMIT`, `WORKER_OPTIMIZER_MEM_LIMIT` | | | | ✓ | | `768m` | Staging; en demos con ONLYOFFICE solo `API_MEM_LIMIT` baja a `512m` (R-6). Los dos `worker` quedan en 768m con `memswap_limit` igual (sin swap del contenedor; ADR-0038) |
+| `MALLOC_ARENA_MAX` | | | | | | `2` | Runtime glibc de ambos workers, no Zod: fijada en la imagen (ADR-0038); limita arenas y memoria retenida |
 | `COMPOSE_FILE` | | | | ✓ | | — | Solo staging: `compose.yml:compose.staging.yml` |
 
-El worker **no** exige `MINIO_*` en 000 (`workerEnvSchema`); cuando los procesadores de 019/021 necesiten MinIO se
-añaden al esquema del worker. `SharedModule` provee bajo `ENV` el contrato más completo que el entorno satisface.
+Cada raíz publica en `ENV` el objeto que validó con su schema; `SharedModule` consume solo la base común y
+`MinioConfigModule` las cinco claves de MinIO. Ambos workers necesitan MinIO; el general no valida ninguna clave `OPTIMIZER_*`.
+
+### Entorno del optimizador: catálogo, inyección, schema y consumo (PD-158)
+
+- **A. Catálogo:** `.env.example` reúne las variables de todos los procesos; CA-19 de 000 exige completitud del catálogo,
+  no entregar todas las claves a cada proceso. No hay enmienda ni excepción de CA.
+- **B. Inyección física mínima implementada y aprobada:** Matul/Adrián aprobó la parte 4 el 2026-10-28 después de `7f9285ff`.
+  `worker-optimizer` declara solo `environment`, sin `env_file`; recibe las 17 claves del schema. PD-158 está cerrado.
+  Los `ENV` de imagen (p. ej. `MALLOC_ARENA_MAX` y `GHOSTSCRIPT_BIN`) y las variables del sistema no son claves del servicio.
+- **C. Schema mínimo implementado:** `workerOptimizerEnvSchema` declara exactamente las 17 claves de la tabla siguiente.
+- **D. Consumo real:** `workerBaseImports` compone la base común y MinIO; `OptimizerWorkerModule` transforma solo
+  los parámetros de imagen y ahorro. Los intentos no forman parte de este schema: vienen guardados en cada job por la API.
+
+Compose construye `DATABASE_URL` con rol `nimbo_app`, host `postgres:5432`, `POSTGRES_DB` y la contraseña de aplicación
+`NIMBO_APP_DB_PASSWORD`: estos auxiliares de interpolación no se inyectan como claves del optimizador. Redis apunta a
+`redis:6379` y MinIO a `http://minio:9000`, con `MINIO_ACCESS_KEY`/`MINIO_SECRET_KEY` de aplicación, sin credenciales root.
+El base y el perfil local comparten esa red. No existe aún `compose.staging.yml`; cuando se añada, la prueba también
+resolverá ese override. `scripts/optimizer-compose.spec.ts` compara los nombres efectivos con el schema, no con otra lista manual.
+
+| Variable validada | Módulo → consumidor |
+|---|---|
+| `NODE_ENV` | Nest/Express → `defaultConfiguration` de Express (modo del servidor) |
+| `APP_ENV` | Bootstrap → `worker.started.appEnv` |
+| `APP_VERSION` | Bootstrap → `worker.started.version` |
+| `LOG_LEVEL` | `SharedModule` → logger Pino |
+| `DATABASE_URL` | `SharedModule` → `buildDataSourceOptions` → TypeORM |
+| `REDIS_URL` | `SharedModule` y salud → BullMQ, cliente Redis y `RedisHealthIndicator` |
+| `MINIO_ENDPOINT` | `MinioConfigModule` → provider de objetos → cliente S3 interno |
+| `MINIO_ACCESS_KEY` | `MinioConfigModule` → provider de objetos → credenciales S3 |
+| `MINIO_SECRET_KEY` | `MinioConfigModule` → provider de objetos → credenciales S3 |
+| `MINIO_BUCKET` | `MinioConfigModule` → provider de objetos → bucket del adaptador |
+| `MINIO_REGION` | `MinioConfigModule` → provider de objetos → región S3 |
+| `OPTIMIZER_TIMEOUT_MS` | `OptimizerWorkerModule` → `ImageOptimizer` e `ImageIntegrityValidator` |
+| `OPTIMIZER_MAX_PIXELS` | `OptimizerWorkerModule` → runner, optimizador y validador |
+| `OPTIMIZER_MIN_SAVED_PERCENT` | `OptimizerWorkerModule` → runner → `SavingsEstimate` |
+| `OPTIMIZER_MIN_SAVED_BYTES` | `OptimizerWorkerModule` → runner → `SavingsEstimate` |
+| `OPTIMIZER_JPEG_QUALITY` | `OptimizerWorkerModule` → `ImageOptimizer` → mozjpeg |
+| `WORKER_OPTIMIZER_PORT` | Entry point → `app.listen`; healthcheck → puerto de la sonda |
 
 ## 3. Compose: base y diferencias por ambiente (CA-3)
 
@@ -104,7 +152,8 @@ Imágenes (idénticas en compose y en Testcontainers): `pgvector/pgvector:pg17`,
   `SMTP_PORT=1025`, porque dentro de la red de compose Mailpit no está en `localhost`.
 - **Por proceso**: el `api` solo encola en la cola `mail` y valida `WEB_PUBLIC_URL` y `CORS_ORIGIN`; el `worker`
   entrega por SMTP y valida `SMTP_*` y `MAIL_FROM`. `SMTP_PASSWORD` es secreta, se declara solo en el esquema del
-  `worker`, se redacta en las bitácoras de ambos procesos y nunca se le entrega al `api`.
+  `worker`, se redacta en las bitácoras y no la consumen el `api` ni el optimizador. El optimizador tampoco la recibe;
+  el `api` conserva su inyección compartida por `env_file` (§2).
 - **Staging (al montarlo, D-12)**: SMTP de Resend por protocolo, no por su SDK: `SMTP_HOST=smtp.resend.com`,
   `SMTP_PORT=465`, `SMTP_TLS=implicit`, `SMTP_USER=resend` y la clave de API de Resend como `SMTP_PASSWORD`, con SPF y
   DKIM de `nimbo.me` verificados. La clave vive solo en GitHub Environments y en el `.env` del Droplet.
@@ -119,6 +168,11 @@ PDF falla y se reintenta; el resto de los tipos y del sistema siguen igual.
 
 - **Linux (CI, Debian/Ubuntu)**: `sudo apt-get install -y ghostscript`; el binario es `gs` (valor por defecto de
   `GHOSTSCRIPT_BIN`). CI lo instala antes de `pnpm test:int` (`.github/workflows/ci.yml`).
+- **Imagen `nimbo-worker`** (ADR-0038, PD-128): `apps/worker/Dockerfile` lo instala por `apt` sobre `node:22.23.3-trixie-slim` (Debian 13: la versión de Trixie al
+  construir la imagen, con parches de seguridad que Debian 12 no tiene; el build comprueba `gs --version`)
+  y fija `GHOSTSCRIPT_BIN=gs`. La base Trixie, sharp 0.35.5/libvips 8.18.7, Ghostscript de Trixie y arenas 2 están
+  aceptados por Matul/Adrián desde el 2026-10-28, después de `7f9285ff`; C + glibc mantiene su aprobación del 2026-10-27.
+  Ghostscript se incluye en la imagen compartida por 019/futuro 021b: no participa en 021 JPEG/PNG.
 - **macOS**: `brew install ghostscript`; también queda como `gs`.
 - **Windows**: instalar la versión de 64 bits de <https://ghostscript.com/releases/gsdnld.html> y poner en `.env` la ruta
   completa de `gswin64c.exe` (la de consola, no `gswin64.exe`), p. ej.
@@ -128,7 +182,7 @@ PDF falla y se reintenta; el resto de los tipos y del sistema siguen igual.
 - **Pruebas**: `test/int/intelligence/pdf-extraction.int-spec.ts` usa `GHOSTSCRIPT_BIN` del entorno de la terminal (las
   pruebas no leen `.env`; si falta, prueba `gs` o, en Windows, `gswin64c`). En CI es obligatoria; en una máquina sin
   Ghostscript se omite y lo dice el resumen de Jest.
-- **Imagen del `worker`**: todavía no existe `apps/worker/Dockerfile`; quien la cree instala `ghostscript` (PD-128).
+- **Imagen del `worker`**: existe desde 021 T-10 (PD-128 cerrado); CI todavía no la construye (PD-160).
 
 ## 4. Arranque y salud
 
@@ -194,12 +248,24 @@ El worker escucha en `WORKER_PORT` (3001) **sin prefijo `/api/v1`** porque no es
 que consulta `http://127.0.0.1:${WORKER_PORT}/health/ready` y sale con `1` si no responde `200`; con
 `--interval=20s --timeout=5s --retries=2 --start-period=30s` el contenedor pasa a no sano en menos de 60 s.
 
+`worker-optimizer` (ADR-0038) usa la misma imagen con `node dist/worker-optimizer.main.js` y escucha en
+`WORKER_OPTIMIZER_PORT` (3003), tampoco publicado. Compose sobrescribe su `healthcheck` con
+`node dist/healthcheck.js WORKER_OPTIMIZER_PORT` (el argumento es el nombre de la variable que lleva el puerto). En
+local, `pnpm dev` arranca los dos procesos (`apps/worker`: `dev:worker` y `dev:worker-optimizer` de `api`).
+`worker-optimizer` valida solo su entorno (`workerOptimizerEnvSchema`, PD-158): un SMTP o un Gemini mal configurados no
+le impiden arrancar.
+
+Cierre: los dos procesos atienden SIGTERM; `WorkerDrainModule` cierra cada `Worker` de BullMQ esperando su trabajo activo
+antes de que cierren la base de datos y Redis, y compose usa `init: true`; `stop_grace_period` es 90 s en el `worker` general y 330 s en `worker-optimizer`. Un arranque fallido
+(base de datos o Redis inalcanzables) escribe una sola línea `{"event":"worker.start_failed","process":…,"errorClass":…}`
+en stderr, sin el mensaje del error, y sale con `1`.
+
 ## 5. Bitácoras
 
 JSON por línea (Pino). Toda línea lleva `correlationId` (de la cabecera `x-correlation-id` o generado) y, en el
 worker, `jobId`. Campos redactados en cualquier nivel (`[REDACTED]`): `password`, `passwordHash`, `token`,
 `accessToken`, `refreshToken`, `authorization`, `cookie`, `secret`, `apiKey`, `fileName`, `nombre`, `content`,
-`prompt`, los de 001 (`email`, `correo`, `fullName`, `to`, `html`, `text`) y las claves de `SECRET_KEYS`. Eventos de 000: `api.started`, `worker.started`, `config.invalid`,
+`prompt`, los de 001 (`email`, `correo`, `fullName`, `to`, `html`, `text`) y las claves de `SECRET_KEYS`. Eventos de 000: `api.started`, `worker.started`, `worker.start_failed` (021), `config.invalid`,
 `http.request`, `http.domain_error`, `http.unhandled_error`, `health.ready`, `queue.enqueued`, `job.started`,
 `job.completed`, `migration.run`, `migration.revert`. Eventos de correo (001): `mail.enqueued`, `mail.sent`,
 `mail.retry_scheduled`, `mail.failed` y `mail.duplicate_skipped`, solo con `tag`, `recipientId`, `jobId`,

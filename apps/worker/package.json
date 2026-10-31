@@ -4,7 +4,7 @@
   "private": true,
   "description": "Nimbo worker: proceso e imagen propios que componen los módulos de `api` (ADR-0001, plan 000 R-3)",
   "scripts": {
-    "dev": "pnpm --filter api run dev:worker",
+    "dev": "pnpm --filter api run \"/^dev:worker/\"",
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "jest --passWithNoTests"

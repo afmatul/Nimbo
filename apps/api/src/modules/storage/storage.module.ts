@@ -16,6 +16,7 @@ import { FOLDER_CONFIG } from './application/folder-config';
 import type { FolderConfig } from './application/folder-config';
 import { FolderService } from './application/folder.service';
 import { IndexableFileGateway } from './application/indexable-file.gateway';
+import { OptimizableFileGateway } from './application/optimizable-file.gateway';
 import { I_NODE_METADATA_READER } from './application/ports/i-node-metadata-reader.port';
 import { I_OBJECT_STORAGE } from './application/ports/i-object-storage.port';
 import type { IObjectStorage } from './application/ports/i-object-storage.port';
@@ -54,6 +55,7 @@ import { TypeOrmNodeSearchRepository } from './search/infrastructure/typeorm-nod
 import { SearchController } from './search/presentation/search.controller';
 import {
   INDEXABLE_FILE_PROVIDERS,
+  OPTIMIZABLE_FILE_PROVIDERS,
   SPACE_PROVIDERS,
   TRASH_LIFECYCLE_PROVIDERS,
   UPLOAD_LIFECYCLE_PROVIDERS,
@@ -153,11 +155,12 @@ export class StorageModule {
         EditedVersionRegistrar,
         EditableFileGateway,
         ...INDEXABLE_FILE_PROVIDERS,
+        ...OPTIMIZABLE_FILE_PROVIDERS,
       ],
       // 011 (PD-31): el lector de metadatos para `backoffice`. 009 (ampliación de la decisión 1, 2026-10-15): `billing`
       // importa `I_OBJECT_STORAGE` de forma explícita, sin módulo global. 016: la fachada de edición para `editing`.
       // 019: la fachada de la indexación para `intelligence`. 012 (PD-121): la política de solo lectura para `sharing`.
-      // 011b: la papelera de Soporte para `backoffice`.
+      // 011b: la papelera de Soporte para `backoffice`. 021: la fachada del optimizador.
       exports: [
         I_NODE_METADATA_READER,
         I_OBJECT_STORAGE,
@@ -165,6 +168,7 @@ export class StorageModule {
         IndexableFileGateway,
         WritableAccountPolicy,
         SupportTrashService,
+        OptimizableFileGateway,
       ],
     };
   }
