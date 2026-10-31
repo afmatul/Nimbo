@@ -49,7 +49,6 @@ describe('aislamiento de la búsqueda (018 CA-13, CA-14)', () => {
   let nodesA: ClientNodes;
   let nodesB: ClientNodes;
   let foreignFolder: FolderRow;
-  let fileOfBInForeignFolder: string;
 
   const clientOf = (account: WorldAccount): StorageClient =>
     storage.clientFor(account.id, world.tokenFor(account));
@@ -105,7 +104,6 @@ describe('aislamiento de la búsqueda (018 CA-13, CA-14)', () => {
     nodesA = await seed(a, NEARLY.a);
     nodesB = await seed(b, NEARLY.b);
     foreignFolder = await insertFolder(storage.owner, a.id, { name: FOREIGN_FOLDER_NAME });
-    fileOfBInForeignFolder = await fileRow(b, 'Informe en carpeta ajena.txt', foreignFolder.id);
   });
 
   afterAll(async () => {
@@ -118,22 +116,20 @@ describe('aislamiento de la búsqueda (018 CA-13, CA-14)', () => {
       const ofB = idsOf(await searchAs(clientB, { q: 'informe' }));
       const ofA = idsOf(await searchAs(clientA, { q: 'informe' }));
 
-      expect([...ofB].sort()).toEqual([...nodesB.ids, fileOfBInForeignFolder].sort());
+      expect([...ofB].sort()).toEqual([...nodesB.ids].sort());
       expect([...ofA].sort()).toEqual([...nodesA.ids, foreignFolder.id].sort());
     });
 
-    it('CA-13: la ubicación solo nombra carpetas de B; la carpeta de A que contiene un archivo de B queda `null`', async () => {
+    // Con 012 un nodo no vive en una carpeta ajena (`fk_archivo_carpeta_propietario`); lo compartido va en la prueba siguiente.
+    it('CA-13: la ubicación solo nombra carpetas de B, nunca la carpeta de A', async () => {
       const body = await searchAs(clientB, { q: 'informe' });
       const locations = body.items.flatMap((item) =>
         item.location === null ? [] : [item.location],
       );
-      const foreignHit = body.items.find((item) => item.id === fileOfBInForeignFolder);
 
       expect(locations.length).toBeGreaterThan(0);
       for (const location of locations) expect(nodesB.folderIds).toContain(location.id);
-      expect(foreignHit?.location).toBeNull();
       expect(JSON.stringify(body)).not.toContain(FOREIGN_FOLDER_NAME);
-      expect(foreignHit).toMatchObject({ folderId: null, shared: false });
       expect(JSON.stringify(body)).not.toContain(foreignFolder.id);
     });
 
@@ -179,8 +175,7 @@ describe('aislamiento de la búsqueda (018 CA-13, CA-14)', () => {
       });
 
       expect(idsOf(filtered).length).toBeGreaterThan(0);
-      for (const id of idsOf(filtered))
-        expect([...nodesB.ids, fileOfBInForeignFolder]).toContain(id);
+      for (const id of idsOf(filtered)) expect(nodesB.ids).toContain(id);
     });
   });
 
@@ -189,7 +184,7 @@ describe('aislamiento de la búsqueda (018 CA-13, CA-14)', () => {
       const ids = await allPages(clientB, 'informe');
 
       expect(ids).toHaveLength(new Set(ids).size);
-      expect([...ids].sort()).toEqual([...nodesB.ids, fileOfBInForeignFolder].sort());
+      expect([...ids].sort()).toEqual([...nodesB.ids].sort());
     });
 
     it('CA-13: con un cursor emitido para A, B sigue viendo solo lo suyo', async () => {
@@ -198,7 +193,7 @@ describe('aislamiento de la búsqueda (018 CA-13, CA-14)', () => {
 
       const ids = await allPages(clientB, 'informe', pageA.nextCursor);
 
-      for (const id of ids) expect([...nodesB.ids, fileOfBInForeignFolder]).toContain(id);
+      for (const id of ids) expect(nodesB.ids).toContain(id);
     });
   });
 
