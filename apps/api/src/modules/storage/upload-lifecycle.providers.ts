@@ -4,6 +4,8 @@ import { EventEmitterDomainEventPublisher, I_DOMAIN_EVENT_PUBLISHER } from '../.
 
 import { FileVersionService } from './application/file-version.service';
 import { IndexableFileGateway } from './application/indexable-file.gateway';
+import { OptimizableFileGateway } from './application/optimizable-file.gateway';
+import { OptimizedVersionRegistrar } from './application/optimized-version.registrar';
 import { I_CLIENT_ACCOUNT_SCANNER } from './application/ports/i-client-account.scanner.port';
 import { I_FILE_TYPE_DETECTOR } from './application/ports/i-file-type-detector.port';
 import { I_NODE_REPOSITORY } from './application/ports/i-node.repository.port';
@@ -32,23 +34,30 @@ import { TypeOrmVersionRepository } from './infrastructure/persistence/typeorm-v
 import { TrashPurgeQueue } from './infrastructure/trash-purge.queue';
 
 /**
- * `UploadService` y lo que su constructor pide, salvo `IObjectStorage`, `UPLOAD_CONFIG` e `I_PLAN_LIMITS_PROVIDER`:
- * los comparten `StorageModule` (api) y `StorageWorkerModule` (worker), y cada uno enlaza aquellos tres a su manera.
- * Desde 014 incluye el registro y la poda de versiones (`FileVersionService`, `VersionPruner`), que el reemplazo de
- * `UploadService` usa en ambos procesos, y desde 019 el publicador con que `FileVersionService` anuncia cada versión
- * vigente (RN-11): `storage` es su productor y lo registra (ADR-0019); la raíz de cada proceso carga
- * `EventEmitterModule.forRoot()`.
+ * La única escritura de versiones (014, 014b): `FileVersionService` registra y `VersionPruner` poda, con sus repositorios,
+ * el detector de tipo real y, desde 019, el publicador con que se anuncia cada versión vigente (RN-11, ADR-0019; la raíz
+ * de cada proceso carga `EventEmitterModule.forRoot()`). Piden además `IObjectStorage` e `I_PLAN_LIMITS_PROVIDER`, que
+ * enlaza cada proceso. Es todo lo que el registro de una optimización necesita de `storage` (021, ADR-0038).
  */
-export const UPLOAD_LIFECYCLE_PROVIDERS: readonly Provider[] = [
+export const FILE_VERSION_PROVIDERS: readonly Provider[] = [
   { provide: I_DOMAIN_EVENT_PUBLISHER, useClass: EventEmitterDomainEventPublisher },
   { provide: I_FILE_TYPE_DETECTOR, useClass: MagicBytesDetector },
   { provide: I_NODE_REPOSITORY, useClass: TypeOrmNodeRepository },
-  { provide: I_UPLOAD_SESSION_REPOSITORY, useClass: TypeOrmUploadSessionRepository },
   { provide: I_QUOTA_REPOSITORY, useClass: TypeOrmQuotaRepository },
   { provide: I_VERSION_REPOSITORY, useClass: TypeOrmVersionRepository },
-  QuotaService,
   VersionPruner,
   FileVersionService,
+];
+
+/**
+ * `UploadService` y lo que su constructor pide, salvo `IObjectStorage`, `UPLOAD_CONFIG` e `I_PLAN_LIMITS_PROVIDER`:
+ * los comparten `StorageModule` (api) y `StorageWorkerModule` (worker), y cada uno enlaza aquellos tres a su manera.
+ * Incluye la escritura de versiones (`FILE_VERSION_PROVIDERS`), que el reemplazo de `UploadService` usa en ambos procesos.
+ */
+export const UPLOAD_LIFECYCLE_PROVIDERS: readonly Provider[] = [
+  ...FILE_VERSION_PROVIDERS,
+  { provide: I_UPLOAD_SESSION_REPOSITORY, useClass: TypeOrmUploadSessionRepository },
+  QuotaService,
   UploadRegistrar,
   UploadService,
 ];
@@ -83,4 +92,14 @@ export const SPACE_PROVIDERS: readonly Provider[] = [
 export const INDEXABLE_FILE_PROVIDERS: readonly Provider[] = [
   { provide: I_CLIENT_ACCOUNT_SCANNER, useClass: SqlClientAccountScanner },
   IndexableFileGateway,
+];
+
+/**
+ * `OptimizableFileGateway` y su registrador (plan 021 §2, PD-130), exportados por `StorageModule` (estimar y ejecutar en
+ * el `api`) y por `StorageFacadesWorkerModule` (leer y registrar en el `worker-optimizer`, ADR-0038). Piden
+ * `I_OBJECT_STORAGE`, `I_PLAN_LIMITS_PROVIDER` (enlazado en la raíz) y `FILE_VERSION_PROVIDERS`.
+ */
+export const OPTIMIZABLE_FILE_PROVIDERS: readonly Provider[] = [
+  OptimizedVersionRegistrar,
+  OptimizableFileGateway,
 ];

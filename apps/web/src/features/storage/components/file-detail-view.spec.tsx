@@ -17,6 +17,7 @@ import { sessionFixture } from '../../identity/session/test-session';
 import { AgentProvider, useAgent } from '../../intelligence';
 import { agentStatus } from '../../intelligence/test-agent';
 import { fakeIndexingApi } from '../../intelligence/test-indexing';
+import { fakeOptimizerApi } from '../../optimizer/test-optimization';
 import type { StorageApi } from '../api';
 import { StorageRequestError } from '../storage-request-error';
 import { GB, spaceSummaryWith } from '../test-space-summary';
@@ -94,7 +95,12 @@ async function renderView(api: StorageApi, openUrl = jest.fn()): Promise<void> {
     <SessionProvider apiPublicUrl="http://localhost/api/v1">
       <UploadsProvider api={api}>
         <UploadsSpaceProvider>
-          <FileDetailView fileId={FILE_ID} indexingApi={fakeIndexingApi()} openUrl={openUrl} />
+          <FileDetailView
+            fileId={FILE_ID}
+            indexingApi={fakeIndexingApi()}
+            optimizerApi={fakeOptimizerApi()}
+            openUrl={openUrl}
+          />
         </UploadsSpaceProvider>
       </UploadsProvider>
     </SessionProvider>,
@@ -420,6 +426,7 @@ async function renderWithAgent(api: StorageApi, citedLocation?: string): Promise
             <FileDetailView
               fileId={FILE_ID}
               indexingApi={fakeIndexingApi()}
+              optimizerApi={fakeOptimizerApi()}
               citedLocation={citedLocation}
             />
             <AgentProbe />

@@ -81,13 +81,27 @@ describe('checkEnvExample (CA-19)', () => {
     expect(result).toEqual({ ok: true, problems: [] });
   });
 
-  it('CA-19: el `.env.example` del repositorio cubre los esquemas reales de api, worker y web', () => {
+  it('CA-19: el `.env.example` cubre api, worker, worker-optimizer, migraciones y web', () => {
     const result = checkEnvExample({
       exampleKeys: parseEnvExample(readFileSync(join(ROOT, '.env.example'), 'utf8')),
       ...collectSchemaKeys(),
     });
 
     expect(result).toEqual({ ok: true, problems: [] });
+  });
+
+  it('CA-19: la ausencia del puerto especializado se atribuye solo a worker-optimizer', () => {
+    const real = collectSchemaKeys();
+    const exampleKeys = new Set(
+      [...parseEnvExample(readFileSync(join(ROOT, '.env.example'), 'utf8'))].filter(
+        (key) => key !== 'WORKER_OPTIMIZER_PORT',
+      ),
+    );
+
+    expect(checkEnvExample({ exampleKeys, ...real })).toEqual({
+      ok: false,
+      problems: ['`WORKER_OPTIMIZER_PORT` (worker-optimizer) falta en .env.example'],
+    });
   });
 
   it('CA-13: el grupo `migrations` exige `DATABASE_MIGRATION_URL` en `.env.example` (003 plan §6.10)', () => {

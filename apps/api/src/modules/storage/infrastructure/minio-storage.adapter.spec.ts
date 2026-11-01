@@ -13,7 +13,11 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3';
 
-import { buildMinioStorageClients, MinioStorageAdapter } from './minio-storage.adapter';
+import {
+  buildMinioStorageClients,
+  MinioStorageAdapter,
+  STREAM_UPLOAD_SLICE_BYTES,
+} from './minio-storage.adapter';
 import type { MinioStorageClients } from './minio-storage.adapter';
 
 const BUCKET = 'nimbo-test';
@@ -303,16 +307,33 @@ describe('MinioStorageAdapter (operaciones, cliente falso)', () => {
 
   it('016 CA-9: `putObjectStream` sube el flujo a la clave de la versión con su tamaño', async () => {
     const { adapter, calls } = buildAdapter({ PutObjectCommand: () => ({}) });
-    const body = Readable.from([Buffer.from('docx')]);
 
-    await adapter.putObjectStream(VERSION_KEY, body, 4n);
+    await adapter.putObjectStream(VERSION_KEY, Readable.from([Buffer.from('docx')]), 4n);
 
     expect(calls).toEqual([
       {
         command: 'PutObjectCommand',
-        input: { Bucket: BUCKET, Key: VERSION_KEY, Body: body, ContentLength: 4 },
+        input: { Bucket: BUCKET, Key: VERSION_KEY, Body: expect.any(Readable), ContentLength: 4 },
       },
     ]);
+    const sent = calls[0]?.input.Body as Readable;
+    expect(Buffer.concat(await sent.toArray())).toEqual(Buffer.from('docx'));
+  });
+
+  it('021 T-08: `putObjectStream` re-entrega un trozo grande en vistas de 1 MiB, con los mismos bytes', async () => {
+    const { adapter, calls } = buildAdapter({ PutObjectCommand: () => ({}) });
+    const content = Buffer.alloc(STREAM_UPLOAD_SLICE_BYTES * 2 + 5, 7);
+
+    await adapter.putObjectStream(VERSION_KEY, Readable.from([content]), BigInt(content.length));
+
+    const chunks = (await (calls[0]?.input.Body as Readable).toArray()) as Buffer[];
+    expect(chunks.map((chunk) => chunk.length)).toEqual([
+      STREAM_UPLOAD_SLICE_BYTES,
+      STREAM_UPLOAD_SLICE_BYTES,
+      5,
+    ]);
+    expect(Buffer.concat(chunks).equals(content)).toBe(true);
+    expect(calls[0]?.input.ContentLength).toBe(content.length);
   });
 
   it.each([

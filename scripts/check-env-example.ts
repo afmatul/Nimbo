@@ -1,4 +1,4 @@
-// `pnpm env:check` (CA-19): toda variable de los esquemas de `api`, `worker`, migraciones y `web` aparece en
+// `pnpm env:check` (CA-19): toda variable de los esquemas de `api`, `worker`, `worker-optimizer`, migraciones y `web` aparece en
 // `.env.example` y ningún secreto usa el prefijo `NEXT_PUBLIC_` (CA-29). Falla con `1` y nombra cada problema.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -9,6 +9,7 @@ import {
   migrationEnvSchema,
   SECRET_KEYS,
   workerEnvObjectSchema,
+  workerOptimizerEnvSchema,
 } from '../apps/api/src/shared/infrastructure/config/env.schema';
 import { webEnvObjectSchema } from '../apps/web/src/env';
 
@@ -60,6 +61,7 @@ export const collectSchemaKeys = (): SchemaKeys => ({
   schemas: {
     api: Object.keys(apiEnvObjectSchema.shape),
     worker: Object.keys(workerEnvObjectSchema.shape),
+    'worker-optimizer': Object.keys(workerOptimizerEnvSchema.shape),
     migrations: Object.keys(migrationEnvSchema.shape),
     web: Object.keys(webEnvObjectSchema.shape),
   },
@@ -74,7 +76,7 @@ const main = (): void => {
   });
   if (result.ok) {
     process.stdout.write(
-      'env:check: .env.example cubre los esquemas de api, worker, migraciones y web\n',
+      'env:check: .env.example cubre los esquemas de api, worker, worker-optimizer, migraciones y web\n',
     );
     return;
   }

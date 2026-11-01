@@ -1,8 +1,8 @@
 import { formatBytes, type FileVersionOrigin, type FileVersionSummary } from '@nimbo/contracts';
-import { Check, Pencil, Sparkles, Undo2, Upload, UserRound } from 'lucide-react';
+import { Archive, Check, Pencil, Sparkles, Undo2, Upload, UserRound } from 'lucide-react';
 import * as React from 'react';
 
-import { dateTimeLabel } from '../../lib/format-date';
+import { dateTimeLabel, dayLabel } from '../../lib/format-date';
 import { cn } from '../../lib/utils';
 import { badgeVariants } from '../ui/badge';
 
@@ -144,6 +144,20 @@ function OriginText({ version }: { readonly version: FileVersionSummary }): Reac
   );
 }
 
+function KeptOriginal({
+  keptUntil,
+}: {
+  readonly keptUntil: string | null;
+}): React.JSX.Element | null {
+  if (keptUntil === null) return null;
+  return (
+    <p className="flex items-start gap-1.5 text-secondary-foreground xl:basis-full">
+      <Archive className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
+      <span>{`Original conservado hasta ${dayLabel(keptUntil)} · no ocupa tu espacio`}</span>
+    </p>
+  );
+}
+
 interface VersionItemProps {
   readonly version: FileVersionSummary;
   /** Número de la siguiente versión de la lista (la anterior retenida), para el cambio de tamaño. */
@@ -163,7 +177,7 @@ function VersionItem({
   return (
     <li
       className={cn(
-        'flex flex-col gap-1.5 border-t border-border px-4 py-4 text-sm sm:px-5 xl:flex-row xl:items-center xl:gap-4',
+        'flex flex-col gap-1.5 border-t border-border px-4 py-4 text-sm sm:px-5 xl:flex-row xl:flex-wrap xl:items-center xl:gap-4',
         isNew && 'border-l-[3px] border-l-brand bg-brand/12',
       )}
     >
@@ -196,6 +210,7 @@ function VersionItem({
         </span>
       </p>
       <div className={cn('mt-2 flex w-full gap-2 xl:mt-0', COLUMNS.actions)}>{actions}</div>
+      <KeptOriginal keptUntil={version.keptUntil} />
     </li>
   );
 }

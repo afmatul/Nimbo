@@ -8,7 +8,7 @@ const API_ROOT = resolve(__dirname, '../../..');
 const COMPILED_API_DIR = resolve(API_ROOT, 'dist-int');
 
 /** Puntos de entrada que las suites arrancan como proceso real. */
-export type ApiEntry = 'main' | 'worker.main';
+export type ApiEntry = 'main' | 'worker.main' | 'worker-optimizer.main';
 
 /**
  * Compila `api` con `tsc` (una vez por corrida, desde `globalSetup`). Las suites que arrancan `api` o `worker` como
