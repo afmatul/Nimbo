@@ -6,7 +6,7 @@
 > Los contratos y rutas de la 012 llegan por su T-01; hasta que la API esté, se prueba con el doble de `StorageHttp`.
 
 - [x] **T-01** Cliente `createSharingApi` (cinco llamadas) y catálogo `share-messages.ts` con acción por `code` — CA: CA-3, CA-11 — Prueba: unitarias `sharing-api.spec.ts` y `share-messages.spec.ts` (correo solo en el cuerpo; cada `code` con texto y acción) — Depende: 012 T-01
-- [ ] **T-02** `useAccessList` y `AccessList`: cargando, vacía, con personas, heredada, error de carga; cambiar nivel (solo bajar en solo lectura) y «Quitar acceso» con confirmación — CA: CA-1, CA-4, CA-5 — Prueba: componente `access-list.spec.tsx` — Depende: T-01
+- [x] **T-02** `useAccessList` y `AccessList`: cargando, vacía, con personas, heredada, error de carga; cambiar nivel (solo bajar en solo lectura) y «Quitar acceso» con confirmación — CA: CA-1, CA-4, CA-5 — Prueba: componente `access-list.spec.tsx` — Depende: T-01
 - [ ] **T-03** `ShareDialog` con `ShareForm`: correo y nivel, progreso, éxito sin recargar y cada error conservando lo escrito — CA: CA-2, CA-3 — Prueba: componente `share-dialog.spec.tsx` (feliz, `RECIPIENT_NOT_FOUND`, `429`) — Depende: T-02
 - [ ] **T-04** `storage` web: `accessLevel` oculta escrituras y subida sin `OWNER`, y «Compartir» en menús de fila y ficha abre el diálogo — CA: CA-6, CA-1 — Prueba: componente (menús de archivo, carpeta y ficha como propietario, Editor y Lector; las suites de `storage` siguen en verde) — Depende: T-03, 012 T-04
 - [ ] **T-05** `useReceivedShares` y `ReceivedSharesView`: cargando, vacía, lista con enlaces a carpeta o ficha y error de carga — CA: CA-8, CA-9, CA-11 — Prueba: componente `received-shares-view.spec.tsx` — Depende: T-01, P-3 resuelta
