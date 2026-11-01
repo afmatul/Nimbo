@@ -27,7 +27,7 @@
 | CA-17, 18 | `estimate.int-spec.ts`; `subscription-expiry.int-spec.ts`; `optimization.service.spec.ts` | ✅ |
 | CA-19, 20 | `test/isolation/optimizer.iso-spec.ts`; `optimizer-routes.contract.spec.ts` | ✅ (no reproducida aquí) |
 | CA-21 | `test/int/optimizer/logs-and-audit.int-spec.ts`; `optimizer-audit.contract.spec.ts` | ✅ (int no reproducida) |
-| CA-22 | `optimization-card.spec.tsx` › `CA-22: RTL + axe a 360/1440 px` | ⚠️ ver I-1 |
+| CA-22 | `optimization-card.spec.tsx` › `CA-22 (axe estructural, viewport simulado …)` | ✅ (axe estructural; ver I-1) |
 
 ## Seguridad
 - Datos de cliente: sí. Aislamiento: `optimizer.iso-spec.ts` (B→A `404` idéntico, internos `403`, sin token `401`); no reproducida aquí. `actor` en `OptimizationService` y en el `Runner` (`createActor(ownerId, CLIENT)`); archivo vía `OptimizableFileGateway` con `findAccessibleById` dentro de `withActor`; RLS en `optimizacion` solo para el dueño (`nimbo_actor_role()='CLIENT'` + `propietario_id = nimbo_actor_id()`), `FORCE` y sin política para internos: ✅. `:fileId` no UUID → mismo `404` (sin oráculo): ✅.
@@ -41,7 +41,7 @@
 - Ninguno.
 
 ## Importantes y sugerencias
-- **[I-1]** `optimization-card.spec.tsx:320` — el «axe a 360/1440 px» solo cambia `window.innerWidth` en jsdom: no hay layout ni cálculo de contraste, así que la evidencia responsiva real de CA-22 son las capturas/axe del mockup (PD-156), no la prueba. Renombrar el `describe` («axe estructural») y dejar la comprobación visual para T-09/`023`, o declarar la limitación en el plan.
+- **[I-1]** ✅ corregido (describe renombrado y limitación declarada en el plan §tests) — `optimization-card.spec.tsx:320` — el «axe a 360/1440 px» solo cambia `window.innerWidth` en jsdom: no hay layout ni cálculo de contraste, así que la evidencia responsiva real de CA-22 son las capturas/axe del mockup (PD-156), no la prueba. Renombrar el `describe` («axe estructural») y dejar la comprobación visual para T-09/`023`, o declarar la limitación en el plan.
 - **[I-2]** T-09 (humana, descenso visual del medidor) sigue `[ ]`; tras la regresión del 2026-10-29 falta repetir el recorrido. Adrián autorizó revisar con ella abierta; la spec no puede pasar a Hecha sin acreditarla (nota en el PR).
 - **[I-3]** `optimization.service.ts:63` (11 dependencias), `optimization-runner.ts:60` (9) y `optimized-version.registrar.ts` (10): superan el máximo de 3 parámetros (Art. VII.2) aunque es inyección y sigue el patrón de `EditedVersionRegistrar`. `OptimizationService` mezcla tasa, caducidad con auditoría/bitácora y flujo; extraer `latestFresh`/`expireLatest` a un colaborador bajaría la razón de cambio (SOLID, Art. IV). No bloquea.
 - **[S-1]** `optimization-card.tsx` `ConservationNote`: dice «se conserva N días»; la spec §6 pide «hasta el {fecha}» (el diálogo sí lo hace). Unificar con `dayLabel`.

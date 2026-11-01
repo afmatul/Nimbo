@@ -317,7 +317,10 @@ describe('OptimizationCard: ocho estados visuales (021 §6)', () => {
     expect(screen.queryByText(COPY.unavailable)).toBeNull();
   });
 
-  describe.each([360, 1440])('CA-22: RTL + axe a %i px', (width) => {
+  // axe estructural (roles, nombres, ARIA): jsdom no calcula layout ni contraste, así que
+  // `innerWidth` no prueba el diseño responsivo. La evidencia visual de CA-22 a 360 y 1440 px
+  // son las capturas y el axe del mockup (PD-156) y el recorrido humano T-09.
+  describe.each([360, 1440])('CA-22 (axe estructural, viewport simulado %i px)', (width) => {
     beforeEach(() =>
       Object.defineProperty(window, 'innerWidth', { configurable: true, value: width }),
     );

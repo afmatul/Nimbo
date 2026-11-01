@@ -210,7 +210,7 @@ spike (WebP animado, y GIF estático que `sharp` no recomprime sin pérdida) es 
 | Migración y `down` | int | `test/int/optimizer/migrations.int-spec.ts` |
 | CA-19, CA-20 | iso (bloqueante) | `test/isolation/optimizer.iso-spec.ts` y `test/support/route-declarations.ts` |
 | Contrato | unit | `packages/contracts/src/optimizer/schemas.spec.ts` |
-| CA-6 (consulta, parada, pausa, relectura), CA-13, CA-15, CA-22 | web (RTL + axe) | `features/optimizer/**/*.spec.tsx`, `components/nimbo/version-timeline.spec.tsx` |
+| CA-6 (consulta, parada, pausa, relectura), CA-13, CA-15, CA-22 | web (RTL + axe estructural; layout y contraste a 360/1440 px: capturas y axe del mockup, PD-156, y T-09) | `features/optimizer/**/*.spec.tsx`, `components/nimbo/version-timeline.spec.tsx` |
 
 *Fixtures* versionados y pequeños en `apps/api/test/fixtures/images/`: PNG con alfa, PNG animado, JPEG con orientación EXIF 6 y JPEG
 con perfil ICC no sRGB, y un GIF y un WebP (solo para comprobar que se rechazan).
