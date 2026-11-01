@@ -6,16 +6,23 @@ import Link from 'next/link';
 import * as React from 'react';
 
 import { AppLayout, DEFAULT_NAV_ITEMS } from '../../../components/nimbo/app-layout';
+import { ReadOnlyBanner } from '../../../components/nimbo/read-only-banner';
 import { StateView } from '../../../components/nimbo/state-view';
 import { buttonVariants } from '../../../components/ui/button';
+import { RENEW_PATH } from '../../billing/routes';
+import { DownloadNoticeBanner, openInBrowser } from '../../storage/components/file-row-menu';
 import { SidebarQuota } from '../../storage/components/sidebar-quota';
-import { useSpace } from '../../storage/components/space-provider';
+import { useReadOnlyAccount, useSpace } from '../../storage/components/space-provider';
+import { useUploads } from '../../storage/hooks/use-upload-manager';
 import { MY_FILES_PATH } from '../../storage/routes';
 import { useReceivedShares, type ReceivedListing } from '../hooks/use-received-shares';
 import { SHARED_WITH_ME_LABEL, SHARED_WITH_ME_PATH } from '../routes';
 import type { SharingApi } from '../sharing-api';
 
+import { LeaveShareDialog } from './leave-share-dialog';
+import { ReceivedShareMenu } from './received-share-menu';
 import { ReceivedShareRow } from './received-share-row';
+import { useReceivedActions } from './use-received-actions';
 
 const RECEIVED_NAV_ITEMS = DEFAULT_NAV_ITEMS.map((item) => ({
   ...item,
@@ -131,30 +138,92 @@ function ReceivedBody({
   );
 }
 
+/** Título (recibe el foco tras salir) y cuántos elementos hay. */
+function ReceivedHeader({
+  titleRef,
+  listing,
+}: {
+  readonly titleRef: React.RefObject<HTMLHeadingElement | null>;
+  readonly listing: ReceivedListing;
+}): React.JSX.Element {
+  return (
+    <header className="space-y-1">
+      <h1
+        ref={titleRef}
+        tabIndex={-1}
+        className="text-2xl font-semibold text-foreground focus-visible:outline-none"
+      >
+        {SHARED_WITH_ME_LABEL}
+      </h1>
+      {listing.status === 'ready' && listing.entries.length > 0 ? (
+        <p className="text-sm tabular-nums text-secondary-foreground">
+          {countLabel(listing.entries.length)}
+        </p>
+      ) : null}
+    </header>
+  );
+}
+
+/** La cuenta del destinatario en solo lectura puede ver, descargar y salir (CA-10; mockup `solo-lectura`). */
+function ReceivedReadOnlyNotice(): React.JSX.Element | null {
+  const { readOnly } = useReadOnlyAccount();
+  if (!readOnly) return null;
+  return (
+    <ReadOnlyBanner
+      title="Tu cuenta está en solo lectura."
+      description="Puedes ver y descargar lo que te compartieron, y salir de ello. Para editar o subir archivos, renueva tu plan."
+      renewHref={RENEW_PATH}
+    />
+  );
+}
+
 export interface ReceivedSharesViewProps {
   readonly api: SharingApi;
+  /** Abre la URL firmada; por omisión, en la pestaña (005 CA-13). */
+  readonly openUrl?: (url: string) => void;
 }
 
 /**
  * «Compartidos conmigo» (spec 012b CA-8 a CA-11; mockup `sharing/compartidos-conmigo`): lo que me compartieron con
- * acceso directo, más reciente primero y sin paginar; cada elemento abre su carpeta o su ficha.
+ * acceso directo, más reciente primero y sin paginar; cada elemento abre su carpeta o su ficha, se descarga si es un
+ * archivo y se puede «Salir» de él.
  */
-export function ReceivedSharesView({ api }: ReceivedSharesViewProps): React.JSX.Element {
+export function ReceivedSharesView({
+  api,
+  openUrl = openInBrowser,
+}: ReceivedSharesViewProps): React.JSX.Element {
   const space = useSpace();
-  const { listing, reload } = useReceivedShares(api);
+  const received = useReceivedShares(api);
+  const { listing } = received;
+  const requestUrl = useUploads().api.downloadUrl;
+  const titleRef = React.useRef<HTMLHeadingElement>(null);
+  const focusTitle = (): void => titleRef.current?.focus();
+  const actions = useReceivedActions({ received, requestUrl, openUrl, focusTitle });
   return (
     <AppLayout navItems={RECEIVED_NAV_ITEMS} quotaCard={<SidebarQuota state={space.state} />}>
       <div className="mx-auto w-full max-w-5xl space-y-5">
-        <header className="space-y-1">
-          <h1 className="text-2xl font-semibold text-foreground">{SHARED_WITH_ME_LABEL}</h1>
-          {listing.status === 'ready' && listing.entries.length > 0 ? (
-            <p className="text-sm tabular-nums text-secondary-foreground">
-              {countLabel(listing.entries.length)}
-            </p>
-          ) : null}
-        </header>
-        <ReceivedBody listing={listing} onRetry={reload} renderActions={() => null} />
+        <ReceivedReadOnlyNotice />
+        <ReceivedHeader titleRef={titleRef} listing={listing} />
+        {actions.notice ? (
+          <DownloadNoticeBanner notice={actions.notice} onDismiss={() => actions.setNotice(null)} />
+        ) : null}
+        <ReceivedBody
+          listing={listing}
+          onRetry={received.reload}
+          renderActions={(share) => (
+            <ReceivedShareMenu
+              share={share}
+              onDownload={() => void actions.download(share)}
+              onLeave={() => actions.setLeaving(share)}
+            />
+          )}
+        />
       </div>
+      <LeaveShareDialog
+        target={actions.leaving}
+        onConfirm={actions.confirmLeave}
+        onClose={() => actions.setLeaving(null)}
+      />
     </AppLayout>
   );
 }

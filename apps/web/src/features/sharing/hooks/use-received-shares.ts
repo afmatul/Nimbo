@@ -19,6 +19,8 @@ export type ReceivedListing =
 export interface ReceivedSharesState {
   readonly listing: ReceivedListing;
   readonly reload: () => void;
+  /** «Salir» (012 CA-23): rechaza con el error de la API; si sale bien, el elemento deja la lista sin releerla. */
+  readonly leave: (shareId: string) => Promise<void>;
 }
 
 const LOADING: ReceivedListing = { status: 'loading' };
@@ -54,5 +56,17 @@ export function useReceivedShares(
     setAttempt((previous) => previous + 1);
   }, []);
 
-  return { listing, reload };
+  const leave = React.useCallback(
+    async (shareId: string) => {
+      await api.leave(shareId);
+      setListing((previous) =>
+        previous.status === 'ready'
+          ? { ...previous, entries: previous.entries.filter((e) => e.shareId !== shareId) }
+          : previous,
+      );
+    },
+    [api],
+  );
+
+  return { listing, reload, leave };
 }
