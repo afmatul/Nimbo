@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Aceptado (2026-10-14, Adrián, revisión de la 009); propuesto el 2026-09-28. **Enmienda ADR-0005** (barrera 2: tablas con RLS y trabajos de mantenimiento) |
+| Estado | Aceptado (2026-10-14, Adrián, revisión de la 009); propuesto el 2026-09-28. **Enmienda ADR-0005** (barrera 2: tablas con RLS y trabajos de mantenimiento). **Ampliado por ADR-0039** (visitante de un enlace público, spec 013) |
 | Fecha | 2026-09-28 |
 | Decisores | Adrián (architect), equipo Nimbo. Opción B decidida por el usuario el 2026-09-28 |
 | Specs relacionadas | 005 (D-6, CA-9, CA-16), 006 (purga de la papelera), 007 (conciliación de `espacio_usado`), 009 (lectura de suscripciones y facturas pendientes); DF-52, DF-38; PD-19 |

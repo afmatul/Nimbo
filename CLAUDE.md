@@ -106,7 +106,7 @@ pnpm seed                                   # corpus sintético (marcador hasta 
   y ≤ 3 parámetros, cobertura de lógica de negocio ≥ 60 %. SOLID, YAGNI (regla de interfaces, Art. V.2) y DRY (regla de tres, Art. VI.2) se aplican en planes, código y revisión.
 
 - Ningún rol interno (Administrador, Soporte, Operador) accede a **contenido** ni vistas previas de archivos. No existe la suplantación.
-- Todo servicio que toca datos de un usuario recibe `actor: Actor`, y la consulta filtra con `accessibleNodes(actor)`. No se filtra después de consultar
+- Todo servicio que toca datos de un usuario recibe `actor: Actor` (única excepción de servicio: el visitante de un enlace público, ADR-0039), y la consulta filtra con `accessibleNodes(actor)`. No se filtra después de consultar
   (única excepción: `architecture.md` §6, metadatos propios de la cuenta que no devuelven nodos).
 - Las bitácoras nunca contienen contenido de archivos, nombres de archivo, contraseñas, tokens ni claves de enlaces.
 - La clave del LLM vive en variables de entorno del backend. Nunca llega al navegador.
