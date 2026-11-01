@@ -42,6 +42,7 @@ Son la base para defender la arquitectura en la exposición final (enunciado §6
 | 0036 | [`intelligence` lee `archivo` y `carpeta` por SQL de solo lectura para recuperar con el filtro en la consulta](0036-intelligence-lee-archivo-y-carpeta-por-sql-de-solo-lectura.md) (tercera excepción acotada, DF-83; spec 020) | Aceptado |
 | 0037 | [Las imágenes se recomprimen con `sharp` (libvips) dentro del `worker`](0037-recompresion-de-imagenes-con-sharp.md) (spec 021; enmendado por ADR-0038) | Aceptado |
 | 0038 | [El optimizador corre en un proceso `worker-optimizer` propio, sobre una imagen glibc](0038-optimizador-en-worker-dedicado-glibc.md) (spec 021 T-08/T-10; **enmienda ADR-0001 y ADR-0037**; cierra PD-128) | Aceptado |
+| 0039 | [El visitante de un enlace público llega a su archivo por una función `SECURITY DEFINER` de identificadores y actúa como el propietario](0039-visitante-de-enlace-publico-sin-actor.md) (spec 013; amplía ADR-0021, excepción nombrada a «el servicio recibe `actor`»; DF-09, DF-86) | Aceptado |
 
 Estados: `Pendiente` (sin redactar) · `Propuesto` (redactado, falta acuerdo del equipo) · `Aceptado` · `Reemplazado por`.
 Los ADR 0001, 0002, 0008, 0009, 0014 y 0015 se aceptaron el 26/09/2026 (Adrián, parte de ADR de la T-27 de la spec 000).
@@ -61,6 +62,8 @@ Los ADR 0004 y 0029 los redactó el `architect` con el plan de la spec 016 (2026
 ADR-0034 (2026-10-23) enmienda la secuencia de ADR-0023: un solo pase al crear una spec que todavía no tiene carpeta. No reescribe las que ya existen.
 ADR-0035 (2026-10-26) documenta las escrituras internas acotadas de la 011b; enmienda ADR-0005 y ADR-0021 y delimita ADR-0032 regla 3. Adrián lo aceptó el 2026-10-26 al aprobar el plan (PR #74).
 
+ADR-0039 (2026-10-30) lo redactó el `architect` con el plan de la spec 013 como `Propuesto`; Adrián lo aceptó al aprobar el plan (2026-10-31, PR #87), con el acuerdo de los cuatro integrantes. Los números 0037 y 0038 están tomados en la rama `spec/021-optimizador`.
+
 Los ADR 0003, 0007 y 0033 los redactó el `architect` con el plan de la spec 019 (2026-10-21) como `Propuesto`; Adrián los acepta al aprobar el plan.
 
 ADR-0037 (dependencia `sharp`; numerado 0035 en la rama de la 021, renumerado 0036 al integrar la 011b, que ya usaba 0035, y 0037 al integrar la 020, que ya usaba 0036) lo redactó Abel con el plan de la spec 021 (2026-10-25) como `Propuesto`, con autorización de Adrián para prepararlo; Adrián lo aceptó al aprobar el plan (2026-10-26).
@@ -69,6 +72,6 @@ ADR-0038 (2026-10-27) lo redactó Abel con la evidencia de la T-08 de 021 y dos 
 
 El 2026-10-28, después de `7f9285ff`, Matul/Adrián aceptó las dos decisiones pendientes de 021: runtime concreto
 Trixie + sharp 0.35.5/libvips 8.18.7 (Ghostscript de Trixie y arenas 2) y entorno físico mínimo del optimizador.
-La segunda queda implementada con 17 claves explícitas y PD-158 cerrado; no cambia CA-19 de 000.
+La segunda queda implementada con 17 claves explícitas y PD-159 cerrado; no cambia CA-19 de 000.
 
 Usa `/adr <decisión>` para redactar uno.

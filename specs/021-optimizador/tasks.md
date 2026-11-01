@@ -23,5 +23,5 @@
 - ADR-0037 está `Aceptado` (2026-10-26): T-03 ya puede agregar `sharp`; T-01 y T-02 no dependen de él.
 - El spike de ADR-0037 no es una tarea: corrió fuera del repo y su resultado está en plan §6 B y en el ADR. Los *fixtures*
   del repo (plan §7) se crean en T-03 y T-04.
-- El mockup de la ficha (14 estados de 021, 28 capturas y axe sin violaciones) ya está completo (PD-155); la UI de T-07 sigue 8 de ellos y no implementa el resto.
+- El mockup de la ficha (14 estados de 021, 28 capturas y axe sin violaciones) ya está completo (PD-156); la UI de T-07 sigue 8 de ellos y no implementa el resto.
 - Regresión de T-09 (2026-10-29): corregida la vigencia del éxito de optimización tras restaurar o reemplazar (T-02/T-04/T-07, RN-9); pruebas focalizadas de V1→V2→V3, nueva estimación, historial, descargas y cuota. T-09 no se marca: falta repetir el recorrido humano con el arreglo.

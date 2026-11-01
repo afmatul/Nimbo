@@ -21,7 +21,7 @@ import { WorkerDrainModule } from './worker-drain.module';
 /** Entorno validado del `worker` general (incluye `SMTP_*` y `MAIL_FROM`, que lee `NotificationsWorkerModule`). */
 export type WorkerEnv = z.infer<typeof workerEnvSchema>;
 
-/** Entorno validado del `worker-optimizer` (PD-158): base común, MinIO, optimizador y su puerto. */
+/** Entorno validado del `worker-optimizer` (PD-159): base común, MinIO, optimizador y su puerto. */
 export type WorkerOptimizerEnv = z.infer<typeof workerOptimizerEnvSchema>;
 
 /** Lo único que la base común lee del entorno: el contrato común y MinIO. Lo cumplen los dos entornos. */

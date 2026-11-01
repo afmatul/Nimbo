@@ -124,11 +124,11 @@ Ghostscript provisto por Trixie y `MALLOC_ARENA_MAX=2`. Antes de esa respuesta l
   `OPTIMIZER_TIMEOUT_MS` + E/S).
 - **Trabajo atascado:** si el proceso muere con un trabajo activo más de `maxStalledCount` veces, BullMQ lo falla con
   `UnrecoverableError` aunque queden intentos; `OptimizationProcessor` lo trata como terminal y lo deja `fallida`.
-- **Entorno propio (PD-158, partes 1 a 3):** `worker-optimizer` valida `workerOptimizerEnvSchema` (base común, MinIO,
+- **Entorno propio (PD-159, partes 1 a 3):** `worker-optimizer` valida `workerOptimizerEnvSchema` (base común, MinIO,
   tiempo límite, píxeles, umbrales, calidad JPEG y su puerto): 17 variables consumidas. El general no valida variables del
   optimizador. `OPTIMIZER_MAX_ATTEMPTS` pertenece solo al `api`, que lo guarda al encolar; el consumidor usa `job.opts.attempts`.
   Las partes 1 a 3 precedieron a la aprobación de la inyección física mínima; su implementación posterior cierra
-  la parte 4 de PD-158 como se registra abajo.
+  la parte 4 de PD-159 como se registra abajo.
 - **`storage`:** `StorageFacadesWorkerModule` registra solo MinIO, la escritura de versiones (`FILE_VERSION_PROVIDERS`) y
   la fachada; el ciclo de carga queda en `StorageWorkerModule`.
 - **Imagen:** el build comprueba en la etapa final `sharp`/libvips, Ghostscript, glibc y `MALLOC_ARENA_MAX`.
@@ -142,5 +142,5 @@ Ghostscript provisto por Trixie y `MALLOC_ARENA_MAX=2`. Antes de esa respuesta l
   la variable auxiliar no se entrega al proceso. Redis y MinIO usan `redis:6379` y `minio:9000`, con credenciales S3 de aplicación.
   No se inyectan credenciales de migración, root, SMTP, Gemini, JWT ni ONLYOFFICE.
 - **No hay enmienda ni excepción a CA-19 de 000:** `.env.example` es el catálogo completo del sistema; cada proceso
-  recibe su mínimo necesario. PD-158 queda cerrado. El enlace amplio de billing es una deuda independiente (PD-162).
+  recibe su mínimo necesario. PD-159 queda cerrado. El enlace amplio de billing es una deuda independiente (PD-163).
 - T-09 sigue siendo el recorrido humano pendiente de Abel; `/review 021` se realiza después de ese recorrido y estos ajustes.

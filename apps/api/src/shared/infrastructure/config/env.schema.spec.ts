@@ -477,7 +477,7 @@ describe('optimizador de imágenes (021 plan §6)', () => {
 });
 
 describe('worker del optimizador (ADR-0038)', () => {
-  /** Lo único que lee su composición (PD-158): la base común, MinIO, el optimizador y su puerto de salud. */
+  /** Lo único que lee su composición (PD-159): la base común, MinIO, el optimizador y su puerto de salud. */
   const OPTIMIZER_ENV = {
     NODE_ENV: 'production',
     APP_ENV: 'staging',
@@ -489,7 +489,7 @@ describe('worker del optimizador (ADR-0038)', () => {
     MINIO_SECRET_KEY: 'nimbo-secret',
   };
 
-  it('PD-158: el esquema propio declara solo la base común, MinIO, el optimizador y su puerto', () => {
+  it('PD-159: el esquema propio declara solo la base común, MinIO, el optimizador y su puerto', () => {
     expect(Object.keys(workerOptimizerEnvSchema.shape).sort()).toEqual(
       [
         'NODE_ENV',
@@ -513,7 +513,7 @@ describe('worker del optimizador (ADR-0038)', () => {
     );
   });
 
-  it('PD-158: arranca en staging sin SMTP, `MAIL_FROM` ni Gemini (un correo mal configurado no lo tumba)', () => {
+  it('PD-159: arranca en staging sin SMTP, `MAIL_FROM` ni Gemini (un correo mal configurado no lo tumba)', () => {
     const result = loadEnv(workerOptimizerEnvSchema, {
       ...OPTIMIZER_ENV,
       SMTP_TLS: 'invalido',
@@ -535,7 +535,7 @@ describe('worker del optimizador (ADR-0038)', () => {
     'OPTIMIZER_MIN_SAVED_BYTES',
     'OPTIMIZER_JPEG_QUALITY',
     'WORKER_OPTIMIZER_PORT',
-  ])('PD-158: `%s=0` sí impide validar el optimizador', (key) => {
+  ])('PD-159: `%s=0` sí impide validar el optimizador', (key) => {
     const result = loadEnv(workerOptimizerEnvSchema, {
       ...OPTIMIZER_ENV,
       [key]: '0',

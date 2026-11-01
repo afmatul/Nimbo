@@ -120,7 +120,7 @@ services:
   worker-optimizer:
     image: ${WORKER_IMAGE:-ghcr.io/afmatul/nimbo-worker}:${IMAGE_TAG:-latest}
     command: ['node', 'dist/worker-optimizer.main.js']
-    # Catálogo completo en `.env.example`; inyección solo del schema de este proceso (PD-158).
+    # Catálogo completo en `.env.example`; inyección solo del schema de este proceso (PD-159).
     # La contraseña de aplicación se interpola en la URL, no se inyecta como variable auxiliar ni se usa el rol dueño.
     environment:
       NODE_ENV: ${NODE_ENV}

@@ -4,7 +4,7 @@ import { WORKER_OPTIMIZER_QUEUES, WorkerOptimizerModule } from './worker-optimiz
 
 /**
  * Arranque del `worker-optimizer` (ADR-0038): misma imagen que el `worker` general, otro comando; escucha su salud
- * interna en `WORKER_OPTIMIZER_PORT` y valida solo su propio entorno (PD-158).
+ * interna en `WORKER_OPTIMIZER_PORT` y valida solo su propio entorno (PD-159).
  */
 void startWorker({
   name: 'worker-optimizer',

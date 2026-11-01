@@ -17,7 +17,7 @@ import type { WorkerBaseEnv } from './worker-base';
 type WorkerName = 'worker' | 'worker-optimizer';
 
 /**
- * Lo que distingue a un proceso `worker` de otro (ADR-0038): su nombre, el esquema de su entorno (PD-158: cada uno
+ * Lo que distingue a un proceso `worker` de otro (ADR-0038): su nombre, el esquema de su entorno (PD-159: cada uno
  * valida solo lo que lee), su raíz, su puerto interno y sus colas.
  */
 export interface WorkerProcess<TEnv extends WorkerBaseEnv> {

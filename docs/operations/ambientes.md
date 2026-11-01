@@ -89,12 +89,12 @@ Secreto = nunca en el repositorio, vacío en `.env.example` de staging, redactad
 Cada raíz publica en `ENV` el objeto que validó con su schema; `SharedModule` consume solo la base común y
 `MinioConfigModule` las cinco claves de MinIO. Ambos workers necesitan MinIO; el general no valida ninguna clave `OPTIMIZER_*`.
 
-### Entorno del optimizador: catálogo, inyección, schema y consumo (PD-158)
+### Entorno del optimizador: catálogo, inyección, schema y consumo (PD-159)
 
 - **A. Catálogo:** `.env.example` reúne las variables de todos los procesos; CA-19 de 000 exige completitud del catálogo,
   no entregar todas las claves a cada proceso. No hay enmienda ni excepción de CA.
 - **B. Inyección física mínima implementada y aprobada:** Matul/Adrián aprobó la parte 4 el 2026-10-28 después de `7f9285ff`.
-  `worker-optimizer` declara solo `environment`, sin `env_file`; recibe las 17 claves del schema. PD-158 está cerrado.
+  `worker-optimizer` declara solo `environment`, sin `env_file`; recibe las 17 claves del schema. PD-159 está cerrado.
   Los `ENV` de imagen (p. ej. `MALLOC_ARENA_MAX` y `GHOSTSCRIPT_BIN`) y las variables del sistema no son claves del servicio.
 - **C. Schema mínimo implementado:** `workerOptimizerEnvSchema` declara exactamente las 17 claves de la tabla siguiente.
 - **D. Consumo real:** `workerBaseImports` compone la base común y MinIO; `OptimizerWorkerModule` transforma solo
@@ -182,7 +182,7 @@ PDF falla y se reintenta; el resto de los tipos y del sistema siguen igual.
 - **Pruebas**: `test/int/intelligence/pdf-extraction.int-spec.ts` usa `GHOSTSCRIPT_BIN` del entorno de la terminal (las
   pruebas no leen `.env`; si falta, prueba `gs` o, en Windows, `gswin64c`). En CI es obligatoria; en una máquina sin
   Ghostscript se omite y lo dice el resumen de Jest.
-- **Imagen del `worker`**: existe desde 021 T-10 (PD-128 cerrado); CI todavía no la construye (PD-160).
+- **Imagen del `worker`**: existe desde 021 T-10 (PD-128 cerrado); CI todavía no la construye (PD-161).
 
 ## 4. Arranque y salud
 
@@ -252,7 +252,7 @@ que consulta `http://127.0.0.1:${WORKER_PORT}/health/ready` y sale con `1` si no
 `WORKER_OPTIMIZER_PORT` (3003), tampoco publicado. Compose sobrescribe su `healthcheck` con
 `node dist/healthcheck.js WORKER_OPTIMIZER_PORT` (el argumento es el nombre de la variable que lleva el puerto). En
 local, `pnpm dev` arranca los dos procesos (`apps/worker`: `dev:worker` y `dev:worker-optimizer` de `api`).
-`worker-optimizer` valida solo su entorno (`workerOptimizerEnvSchema`, PD-158): un SMTP o un Gemini mal configurados no
+`worker-optimizer` valida solo su entorno (`workerOptimizerEnvSchema`, PD-159): un SMTP o un Gemini mal configurados no
 le impiden arrancar.
 
 Cierre: los dos procesos atienden SIGTERM; `WorkerDrainModule` cierra cada `Worker` de BullMQ esperando su trabajo activo

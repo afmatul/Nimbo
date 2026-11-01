@@ -161,7 +161,7 @@ Resultados del registrador (§2): `registered` y `duplicate` → `completada`; `
 
 ## 6. Configuración y valores
 
-Schemas por consumidor en `env.schema.ts`: ningún `OPTIMIZER_*` en el general; intentos solo en API y tiempo límite compartido con el especializado. Compose inyecta las 17 claves del schema por `environment` explícito (PD-158 cerrado); catálogo completo en `.env.example`, sin enmienda de CA-19. La prueba `optimizer-compose.spec.ts` contrasta ambos.
+Schemas por consumidor en `env.schema.ts`: ningún `OPTIMIZER_*` en el general; intentos solo en API y tiempo límite compartido con el especializado. Compose inyecta las 17 claves del schema por `environment` explícito (PD-159 cerrado); catálogo completo en `.env.example`, sin enmienda de CA-19. La prueba `optimizer-compose.spec.ts` contrasta ambos.
 Adrián pidió valores **medidos y justificados**: A es política; B sale del spike de ADR-0037 (2026-10-25). Matul/Adrián aceptó el runtime Trixie/sharp 0.35.5/libvips 8.18.7 el 2026-10-28, después de `7f9285ff`; C + glibc fue aceptada el 2026-10-27. Ghostscript es para 019/futuro 021b, no para JPEG/PNG.
 
 **A. Política (propuesta inicial justificada; no dependen de una medición, se confirman al aprobar el plan)**
@@ -234,7 +234,7 @@ usan `sharp` se escriben después de que ADR-0037 se acepte (el spike de §6 us�
   `trabajo`). `design-model.md` M7 y `architecture.md` §3, §7.6 (solo imágenes) y §8 (cola `optimization`) se
   actualizan en el PR. DF-22 sigue abierto para 022b.
 - **Pendientes:** PD-130 y PD-121 se cierran con esta spec; PD-124 sigue abierto (lo cierra quien integre 017); la parte de
-  PD-155 de la 021 está hecha (28 capturas, axe sin violaciones). DF-80 y 019 §7.7 pasan a 021b.
+  PD-156 de la 021 está hecha (28 capturas, axe sin violaciones). DF-80 y 019 §7.7 pasan a 021b.
 - **ADR requeridos:** ADR-0037 (`sharp`), `Aceptado` con este plan (2026-10-26); ADR-0038 (T-10), `Aceptado` el 2026-10-27.
 
 ## 9. Aprobación

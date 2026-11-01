@@ -572,7 +572,7 @@ const refineWorkerEnv = (
 export const workerEnvSchema = workerEnvObjectSchema.superRefine(refineWorkerEnv);
 
 /**
- * Entorno del proceso `worker-optimizer` (ADR-0038, PD-158): solo lo que su composición lee. La base común (registro,
+ * Entorno del proceso `worker-optimizer` (ADR-0038, PD-159): solo lo que su composición lee. La base común (registro,
  * base de datos, Redis), MinIO, el optimizador y su puerto de salud; sin SMTP, Gemini, indexación ni configuración de
  * mantenimiento de storage/billing. Sus variables ajenas no le impiden arrancar. Sin reglas entre variables.
  */
