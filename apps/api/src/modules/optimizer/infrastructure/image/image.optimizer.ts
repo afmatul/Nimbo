@@ -30,8 +30,9 @@ const PNG_CHUNK_OVERHEAD = 12;
 const MS_PER_SECOND = 1000;
 
 /** `sharp` mide el tiempo límite en segundos enteros: se redondea hacia arriba. */
-export const sharpTimeoutSeconds = ({ timeoutMs }: Pick<ImageOptimizerConfig, 'timeoutMs'>): number =>
-  Math.ceil(timeoutMs / MS_PER_SECOND);
+export const sharpTimeoutSeconds = ({
+  timeoutMs,
+}: Pick<ImageOptimizerConfig, 'timeoutMs'>): number => Math.ceil(timeoutMs / MS_PER_SECOND);
 
 type SupportedMetadata = Metadata & {
   readonly format: ImageFormat;
