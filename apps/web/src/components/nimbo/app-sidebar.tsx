@@ -101,7 +101,7 @@ function NavEntry({ item, styles, trashCount }: NavEntryProps): React.JSX.Elemen
   const { onSelect } = item;
   if (onSelect === undefined) {
     return (
-      <a href={item.href} className={className}>
+      <a href={item.href} className={className} aria-current={item.active ? 'page' : undefined}>
         {content}
       </a>
     );

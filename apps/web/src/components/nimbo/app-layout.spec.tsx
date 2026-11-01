@@ -6,7 +6,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import { AgentEntryProvider } from './agent-entry';
-import { AppLayout } from './app-layout';
+import { AppLayout, DEFAULT_NAV_ITEMS } from './app-layout';
 import { HeaderAccountProvider } from './header-account';
 import { useSidebarSlot } from './sidebar-slot';
 
@@ -212,6 +212,39 @@ describe('AppLayout component (CA-5)', () => {
     expect(markup).toMatch(/<a[^>]*href="\/espacio"[^>]*>(?:(?!<\/a>).)*Espacio/);
     expect(markup).not.toContain('#planes');
     expect(markup).not.toContain('Planes y Cuota');
+  });
+
+  it('012b CA-8: «Compartidos» enlaza a /compartidos en la barra y en el menú móvil', () => {
+    const doc = parse(
+      <AppLayout initialMobileMenuOpen>
+        <div>Contenido</div>
+      </AppLayout>,
+    );
+
+    for (const name of ['Navegación principal', 'Navegación móvil']) {
+      const shared = [...doc.querySelectorAll(`nav[aria-label="${name}"] a`)].find(
+        (link) => link.textContent === 'Compartidos',
+      );
+      expect(shared?.getAttribute('href')).toBe('/compartidos');
+    }
+    expect(doc.body.innerHTML).not.toContain('#compartidos');
+  });
+
+  it('012b CA-8: el ítem activo se marca como la página actual', () => {
+    const items = DEFAULT_NAV_ITEMS.map((item) => ({
+      ...item,
+      active: item.href === '/compartidos',
+    }));
+    const doc = parse(
+      <AppLayout navItems={items}>
+        <div>Contenido</div>
+      </AppLayout>,
+    );
+
+    const current = [...doc.querySelectorAll('nav[aria-label="Navegación principal"] a')].filter(
+      (link) => link.getAttribute('aria-current') === 'page',
+    );
+    expect(current.map((link) => link.textContent)).toEqual(['Compartidos']);
   });
 
   it('006: la Papelera enlaza a /papelera', () => {
