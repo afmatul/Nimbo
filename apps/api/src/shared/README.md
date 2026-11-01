@@ -172,6 +172,13 @@ shared/
 Otros módulos y `apps/worker` importan **solo** desde `shared/index.ts` (Art. VIII.3; lint de fronteras, CA-5).
 `shared` no importa de ningún módulo.
 
+Excepción de las capas `domain`: las de los módulos (por ejemplo `identity/domain`) importan los tipos puros de
+`shared/domain/*` por ruta directa (`PasswordHash`, `Actor`, errores), para que el dominio no arrastre el `index.ts`
+con Nest. Las capas `application` e `infrastructure` sí usan `shared/index.ts`.
+
+`PasswordHash.reveal()` queda al alcance de cualquier módulo porque el VO es público. Por convención solo lo llaman
+`IPasswordHasher` y los repositorios que persisten el hash; ningún servicio, controlador ni bitácora debe llamarlo.
+
 ### Qué entra en `shared` (copia de la regla 8 de `architecture.md` §3)
 
 > **Qué entra en `shared`** (plan 000 R-11, precisada por el plan 013 D-2): lo que usan ≥ 3 módulos, lo que el

@@ -17,9 +17,9 @@ export {
 export type { ErrorDetails, FieldIssue } from './domain/errors';
 export { errorName } from './domain/error-name';
 export { FixedClock } from './domain/fixed.clock';
-export { PasswordHash } from './domain/password-hash.vo';
 export { I_CLOCK } from './domain/i-clock.port';
 export type { IClock } from './domain/i-clock.port';
+export { PasswordHash } from './domain/password-hash.vo';
 export { ALL_ROLES, Role } from './domain/role.enum';
 export {
   ACCESS_TOKEN_STRATEGY,
