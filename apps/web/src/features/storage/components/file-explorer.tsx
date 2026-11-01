@@ -1,17 +1,18 @@
 'use client';
 
-import type { FolderRef, NodeSummary } from '@nimbo/contracts';
+import type { FolderRef, NodeAccessLevel, NodeSummary } from '@nimbo/contracts';
 import { FolderPlus, Upload } from 'lucide-react';
 import * as React from 'react';
 
 import { StateView } from '../../../components/nimbo/state-view';
 import { Button } from '../../../components/ui/button';
 import type { ListControls } from '../hooks/use-folder-contents';
+import { isOwner } from '../node-access';
 import { MY_FILES_LABEL } from '../routes';
 
 import { AskAgentButton } from './ask-agent-button';
 import { ExplorerErrorState } from './explorer-error-state';
-import { FolderBackLink } from './folder-breadcrumbs';
+import { FolderBackLink, SHARED_ROOT_CRUMB } from './folder-breadcrumbs';
 import { LoadMore } from './load-more';
 import { NodeSortMenu } from './node-sort-menu';
 import { NodeTable, type FolderDisclosure, type NodeTableProps } from './node-table';
@@ -22,6 +23,8 @@ export type FileExplorerStatus = 'loading' | 'ready' | 'error';
 
 export interface FileExplorerProps {
   readonly status: FileExplorerStatus;
+  /** Nivel sobre la ubicación (012 CA-13): sin `OWNER` no hay subir, «Nueva carpeta» ni arrastre (012b CA-6). */
+  readonly accessLevel: NodeAccessLevel;
   /** Carpeta abierta; `null` es la raíz («Mis archivos»). */
   readonly folderId: string | null;
   /** Migas de `GET /folders/contents` (la última es la carpeta abierta); vacías mientras no llegan. */
@@ -114,76 +117,121 @@ function ExplorerActions({
   );
 }
 
-/**
- * «Mis archivos» o una carpeta: encabezado con «Nueva carpeta» y «Subir archivos», zona de arrastre que sube a la
- * ubicación abierta (CA-6) y los estados de la spec 006 §6.
- */
-export function FileExplorer({
-  status,
-  folderId,
-  breadcrumbs,
-  nodes,
-  maxFileLabel,
-  onFiles,
-  onRetry,
-  onNewFolder,
-  fileInputRef,
-  renderRowActions,
-  disclosure,
-  notice,
-  controls,
-}: FileExplorerProps): React.JSX.Element {
-  const uploads = useReadOnlyUploads(onFiles, folderId);
-  const ownInputRef = React.useRef<HTMLInputElement>(null);
-  const inputRef = fileInputRef ?? ownInputRef;
-  const openPicker = (): void => inputRef.current?.click();
+/** «Mis archivos» o una carpeta, propia o compartida conmigo (012b CA-6, CA-9). */
+export function FileExplorer(props: FileExplorerProps): React.JSX.Element {
+  const { folderId, breadcrumbs } = props;
+  const owner = isOwner(props.accessLevel);
   const place = placeOf(folderId, breadcrumbs);
-  const placeName = placeNameOf(folderId, breadcrumbs);
-
   return (
     <section className="flex flex-col gap-4" aria-labelledby="explorador-titulo">
       {place.isRoot || breadcrumbs.length === 0 ? null : (
-        <FolderBackLink breadcrumbs={breadcrumbs} />
+        <FolderBackLink breadcrumbs={breadcrumbs} {...(owner ? {} : { root: SHARED_ROOT_CRUMB })} />
       )}
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <ExplorerTitle place={place} loading={status === 'loading'} />
-        <div className="flex w-full flex-wrap gap-2 sm:w-auto">
-          <AskAboutFolder folderId={folderId} place={place} />
-          <ExplorerActions
-            onNewFolder={onNewFolder}
-            onUpload={openPicker}
-            disabled={uploads.readOnly}
-          />
-        </div>
-      </header>
-      <ReadOnlyUploadFeedback readOnly={uploads.readOnly} blockedDrop={uploads.blockedDrop} />
+      {owner ? (
+        <OwnExplorer {...props} place={place} />
+      ) : (
+        <SharedExplorer {...props} place={place} />
+      )}
+    </section>
+  );
+}
 
+type PlacedExplorerProps = FileExplorerProps & { readonly place: Place };
+
+/**
+ * Lo propio: encabezado con «Nueva carpeta» y «Subir archivos», zona de arrastre que sube a la ubicación abierta (CA-6)
+ * y los estados de la spec 006 §6.
+ */
+function OwnExplorer(props: PlacedExplorerProps): React.JSX.Element {
+  const { folderId, breadcrumbs, place, maxFileLabel, fileInputRef } = props;
+  const uploads = useReadOnlyUploads(props.onFiles, folderId);
+  const ownInputRef = React.useRef<HTMLInputElement>(null);
+  const inputRef = fileInputRef ?? ownInputRef;
+  const openPicker = (): void => inputRef.current?.click();
+  const placeName = placeNameOf(folderId, breadcrumbs);
+  return (
+    <>
+      <ExplorerHeader {...props}>
+        <ExplorerActions
+          onNewFolder={props.onNewFolder}
+          onUpload={openPicker}
+          disabled={uploads.readOnly}
+        />
+      </ExplorerHeader>
+      <ReadOnlyUploadFeedback readOnly={uploads.readOnly} blockedDrop={uploads.blockedDrop} />
       <UploadDropzone
         destinationName={placeName}
         maxFileLabel={maxFileLabel}
         onFiles={uploads.onFiles}
         inputRef={inputRef}
       >
-        {notice ? (
-          <div data-testid="explorer-notice" className="mb-4">
-            {notice}
-          </div>
-        ) : null}
-        <ExplorerBody
-          status={status}
-          isRoot={place.isRoot}
-          placeName={placeName}
-          nodes={nodes}
-          maxFileLabel={maxFileLabel}
-          onRetry={onRetry}
+        <ExplorerContent
+          {...props}
+          place={place}
           onUpload={openPicker}
-          renderRowActions={renderRowActions}
-          disclosure={disclosure}
-          controls={controls}
           readOnly={uploads.readOnly}
         />
       </UploadDropzone>
-    </section>
+    </>
+  );
+}
+
+/** Lo compartido conmigo como Editor o Lector: sin subir, crear ni arrastrar (012b CA-6); la API vuelve a decidir. */
+function SharedExplorer(props: PlacedExplorerProps): React.JSX.Element {
+  return (
+    <>
+      <ExplorerHeader {...props} />
+      <div>
+        <ExplorerContent {...props} onUpload={() => undefined} readOnly />
+      </div>
+    </>
+  );
+}
+
+function ExplorerHeader({
+  folderId,
+  place,
+  status,
+  children,
+}: PlacedExplorerProps & { readonly children?: React.ReactNode }): React.JSX.Element {
+  return (
+    <header className="flex flex-wrap items-center justify-between gap-3">
+      <ExplorerTitle place={place} loading={status === 'loading'} />
+      <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+        <AskAboutFolder folderId={folderId} place={place} />
+        {children}
+      </div>
+    </header>
+  );
+}
+
+/** El aviso de arriba y la lista o su estado. */
+function ExplorerContent(
+  props: PlacedExplorerProps & { readonly onUpload: () => void; readonly readOnly: boolean },
+): React.JSX.Element {
+  const { notice, place } = props;
+  return (
+    <>
+      {notice ? (
+        <div data-testid="explorer-notice" className="mb-4">
+          {notice}
+        </div>
+      ) : null}
+      <ExplorerBody
+        status={props.status}
+        isRoot={place.isRoot}
+        placeName={placeNameOf(props.folderId, props.breadcrumbs)}
+        nodes={props.nodes}
+        maxFileLabel={props.maxFileLabel}
+        onRetry={props.onRetry}
+        onUpload={props.onUpload}
+        renderRowActions={props.renderRowActions}
+        disclosure={props.disclosure}
+        controls={props.controls}
+        readOnly={props.readOnly}
+        shared={!isOwner(props.accessLevel)}
+      />
+    </>
   );
 }
 
@@ -238,6 +286,8 @@ interface ExplorerBodyProps {
   readonly controls: ListControls | undefined;
   /** Spec 010 CA-14: la cuenta está en solo lectura. */
   readonly readOnly: boolean;
+  /** Carpeta compartida conmigo: el vacío no invita a subir (012b CA-6). */
+  readonly shared: boolean;
 }
 
 function ExplorerBody(props: ExplorerBodyProps): React.JSX.Element {
@@ -309,25 +359,34 @@ const EMPTY_TEXTS = {
 /** Spec 010 CA-14: en solo lectura el vacío no invita a subir ni ofrece el botón (la carga está bloqueada). */
 const READ_ONLY_EMPTY_TEXT = 'Cuando renueves tu plan podrás subir documentos aquí.';
 
+/** 012b CA-6: una carpeta compartida conmigo vacía; solo su propietario sube. */
+const SHARED_EMPTY_TEXT = 'Cuando quien la compartió agregue archivos, aparecerán aquí.';
+
 /** Spec 010 CA-14: el vacío en solo lectura, sin el botón ni la invitación a subir. */
-function ReadOnlyEmpty({ title }: { readonly title: string }): React.JSX.Element {
-  return (
-    <StateView type="empty" headingLevel="h2" title={title} description={READ_ONLY_EMPTY_TEXT} />
-  );
+function ReadOnlyEmpty({
+  title,
+  description,
+}: {
+  readonly title: string;
+  readonly description: string;
+}): React.JSX.Element {
+  return <StateView type="empty" headingLevel="h2" title={title} description={description} />;
 }
 
 function EmptyExplorer({
   isRoot,
   maxFileLabel,
   readOnly,
+  shared,
   onUpload,
 }: Pick<
   ExplorerBodyProps,
-  'isRoot' | 'maxFileLabel' | 'readOnly' | 'onUpload'
+  'isRoot' | 'maxFileLabel' | 'readOnly' | 'shared' | 'onUpload'
 >): React.JSX.Element {
   const canDrag = useCanDragFiles();
   const texts = isRoot ? EMPTY_TEXTS.root : EMPTY_TEXTS.folder;
-  if (readOnly) return <ReadOnlyEmpty title={texts.title} />;
+  if (shared) return <ReadOnlyEmpty title={texts.title} description={SHARED_EMPTY_TEXT} />;
+  if (readOnly) return <ReadOnlyEmpty title={texts.title} description={READ_ONLY_EMPTY_TEXT} />;
   const invitation = canDrag ? texts.withDrag : texts.withoutDrag;
   const limit =
     maxFileLabel === undefined ? '' : ` Tu plan permite hasta ${maxFileLabel} por archivo.`;

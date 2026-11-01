@@ -5,7 +5,17 @@ import {
   type FileVersionSummary,
   type IndexingStatusResponse,
 } from '@nimbo/contracts';
-import { ChevronLeft, Download, FileX, Folder, History, Info, MapPin, Undo2 } from 'lucide-react';
+import {
+  ChevronLeft,
+  Download,
+  FileX,
+  Folder,
+  History,
+  Info,
+  MapPin,
+  Share2,
+  Undo2,
+} from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
 
@@ -28,8 +38,10 @@ import type { IndexingApi } from '../../intelligence/indexing-api';
 import { indexedNotice, indexingDetailOf } from '../../intelligence/indexing-messages';
 import { OptimizationCard } from '../../optimizer/components/optimization-card';
 import type { OptimizerApi } from '../../optimizer/optimizer-api';
+import { ShareDialog, type ShareTarget, type SharingApi } from '../../sharing';
 import { FILE_KIND_LABELS } from '../file-kind-label';
 import { useFileVersions, type VersionsListing } from '../hooks/use-file-versions';
+import { useSharedFile } from '../hooks/use-shared-file';
 import { useTrashCount } from '../hooks/use-trash-count';
 import { useUploads } from '../hooks/use-upload-manager';
 import { useVersionActions, type VersionActions } from '../hooks/use-version-actions';
@@ -42,6 +54,7 @@ import { CHIP_TYPE_BY_KIND } from './node-rows';
 import { useQuickAccessSidebar } from './quick-access-sidebar';
 import { ReadOnlyActionsHint, ReadOnlyNotice } from './read-only-notice';
 import { RestoreVersionDialog, type RestoreTarget } from './restore-version-dialog';
+import { SharedFileDetail } from './shared-file-detail';
 import { SidebarQuota } from './sidebar-quota';
 import { useSpace, useReadOnlyAccount } from './space-provider';
 
@@ -58,6 +71,8 @@ export interface FileDetailViewProps {
   /** Estado de indexación del archivo (019). */
   readonly indexingApi: IndexingApi;
   readonly optimizerApi: OptimizerApi;
+  /** «Compartir» del propietario (012b CA-1). */
+  readonly sharingApi: SharingApi;
   /** Abre la URL firmada; por omisión, en la pestaña (005 CA-13). */
   readonly openUrl?: (url: string) => void;
   /** Etiqueta de la cita que trajo hasta aquí (`?ubicacion=`, 020b CA-11); se pinta como texto, nunca se registra. */
@@ -96,32 +111,26 @@ function useFileIndexing(
   return useIndexingStatus(api, fileId, onIndexed);
 }
 
+/** Mientras se confirma si el archivo está compartido conmigo, la ficha sigue «cargando» (no «no encontrado»). */
+const LOADING_LISTING: VersionsListing = { status: 'loading' };
+
 /**
  * Ficha de un archivo con su historial de versiones (spec 014, mockup `storage/ficha-archivo`, D-10): descargar cualquier
- * versión, restaurar las anteriores con confirmación y los detalles de espacio, con el estado de indexación (019). Sin
- * panel lateral; se llega desde «Ver historial» del menú ⋮.
+ * versión, restaurar las anteriores con confirmación y los detalles de espacio, con el estado de indexación (019) y
+ * «Compartir» (012b). Si el archivo está compartido conmigo, la ficha sin historial (012b CA-9). Sin panel lateral; se
+ * llega desde «Ver historial» del menú ⋮ o desde «Compartidos conmigo».
  */
-export function FileDetailView({
-  fileId,
-  indexingApi,
-  optimizerApi,
-  openUrl = openInBrowser,
-  citedLocation,
-}: FileDetailViewProps): React.JSX.Element {
+export function FileDetailView(props: FileDetailViewProps): React.JSX.Element {
+  const { fileId, openUrl = openInBrowser } = props;
   const { api } = useUploads();
   const space = useSpace();
   const [sidebarNotice, setSidebarNotice] = React.useState<DownloadNotice | null>(null);
   const sidebar = useQuickAccessSidebar({ api, openedFolderId: null, onNotice: setSidebarNotice });
   const trash = useTrashCount(api);
   const history = useFileVersions(api, fileId);
-  const indexing = useFileIndexing(indexingApi, fileId, history.listing);
-  const actions = useVersionActions({
-    api,
-    fileId,
-    reload: history.reload,
-    onSpaceChanged: space.refresh,
-    openUrl,
-  });
+  const shared = useSharedFile(api, fileId, history.listing);
+  const [sharing, setSharing] = React.useState<ShareTarget | null>(null);
+  const listing = shared.status === 'loading' ? LOADING_LISTING : history.listing;
   return (
     <AppLayout
       sidebarSection={sidebar.sidebarSection}
@@ -129,34 +138,72 @@ export function FileDetailView({
       quotaCard={<SidebarQuota state={space.state} />}
     >
       <ReadOnlyNotice />
+      {shared.status === 'shared' ? (
+        <SharedFileDetail detail={shared.detail} api={api} openUrl={openUrl} />
+      ) : (
+        <OwnFileDetail
+          {...props}
+          history={{ listing, reload: history.reload }}
+          sidebarNotice={{ notice: sidebarNotice, dismiss: () => setSidebarNotice(null) }}
+          onShare={setSharing}
+        />
+      )}
+      <ShareDialog api={props.sharingApi} target={sharing} onClose={() => setSharing(null)} />
+    </AppLayout>
+  );
+}
+
+interface OwnFileDetailProps extends FileDetailViewProps {
+  readonly history: ReturnType<typeof useFileVersions>;
+  readonly sidebarNotice: { readonly notice: DownloadNotice | null; readonly dismiss: () => void };
+  readonly onShare: (target: ShareTarget) => void;
+}
+
+/** La ficha del propietario: historial, indexación, optimización y detalles (014, 019, 021). */
+function OwnFileDetail(props: OwnFileDetailProps): React.JSX.Element {
+  const { fileId, history, openUrl = openInBrowser } = props;
+  const { api } = useUploads();
+  const space = useSpace();
+  const indexing = useFileIndexing(props.indexingApi, fileId, history.listing);
+  const actions = useVersionActions({
+    api,
+    fileId,
+    reload: history.reload,
+    onSpaceChanged: space.refresh,
+    openUrl,
+  });
+  const { listing } = history;
+  return (
+    <>
       <ReadOnlyActionsHint />
       <FileDetailContent
         fileId={fileId}
-        citedLocation={citedLocation}
-        listing={history.listing}
+        citedLocation={props.citedLocation}
+        listing={listing}
         actions={actions}
         indexing={indexing}
         optimization={
           <FileOptimization
-            api={optimizerApi}
+            api={props.optimizerApi}
             fileId={fileId}
-            listing={history.listing}
+            listing={listing}
             onCompleted={() => {
               history.reload();
               space.refresh();
             }}
           />
         }
-        sidebarNotice={sidebarNotice}
-        onDismissSidebarNotice={() => setSidebarNotice(null)}
+        sidebarNotice={props.sidebarNotice.notice}
+        onDismissSidebarNotice={props.sidebarNotice.dismiss}
         onRetry={history.reload}
+        onShare={(name) => props.onShare({ nodeType: 'file', nodeId: fileId, name })}
       />
       <RestoreVersionDialog
         target={actions.restoreTarget}
         onConfirm={actions.confirmRestore}
         onClose={actions.closeRestore}
       />
-    </AppLayout>
+    </>
   );
 }
 
@@ -170,6 +217,8 @@ interface FileDetailContentProps {
   readonly sidebarNotice: DownloadNotice | null;
   readonly onDismissSidebarNotice: () => void;
   readonly onRetry: () => void;
+  /** «Compartir» con el nombre del archivo (012b CA-1). */
+  readonly onShare: (name: string) => void;
 }
 
 function FileDetailContent(props: FileDetailContentProps): React.JSX.Element {
@@ -193,6 +242,7 @@ function FileDetailContent(props: FileDetailContentProps): React.JSX.Element {
               actions={actions}
               indexing={indexing.status}
               fileId={props.fileId}
+              onShare={props.onShare}
             />
             {ready ? <CitedLocation label={props.citedLocation} /> : null}
             <IndexingBanner status={indexing.status} retry={indexing.retry} />
@@ -251,19 +301,21 @@ function BackLink({ folderId }: { readonly folderId: string | null }): React.JSX
 }
 
 /**
- * Tipo, nombre (CA-20), versión actual, estado de indexación (019), «Preguntar sobre esto» (020b CA-15) y «Descargar»
- * de la versión actual.
+ * Tipo, nombre (CA-20), versión actual, estado de indexación (019), «Preguntar sobre esto» (020b CA-15), «Compartir»
+ * (012b CA-1) y «Descargar» de la versión actual.
  */
 function FileHeader({
   ready,
   actions,
   indexing,
   fileId,
+  onShare,
 }: {
   readonly ready: ReadyListing | null;
   readonly actions: VersionActions;
   readonly indexing: IndexingStatusResponse | null;
   readonly fileId: string;
+  readonly onShare: (name: string) => void;
 }): React.JSX.Element {
   const current = ready ? currentOf(ready) : undefined;
   return (
@@ -279,7 +331,18 @@ function FileHeader({
       </div>
       <div className="flex flex-col gap-2 sm:flex-row">
         {ready ? (
-          <AskAgentButton scope={{ type: 'file', id: fileId, name: ready.file.name }} />
+          <>
+            <AskAgentButton scope={{ type: 'file', id: fileId, name: ready.file.name }} />
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={() => onShare(ready.file.name)}
+            >
+              <Share2 className="h-4 w-4" aria-hidden="true" />
+              Compartir
+            </Button>
+          </>
         ) : null}
         {current ? (
           <Button
