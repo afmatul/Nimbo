@@ -142,7 +142,7 @@ const setup = (options: SetupOptions = {}) => {
     rateLimiter,
     audit,
     new FixedClock(NOW),
-    { shareAttemptsPerMinute: RATE_LIMIT_PER_MINUTE },
+    { shareAttemptsPerMinute: RATE_LIMIT_PER_MINUTE, webPublicUrl: 'https://nimbo.test' },
     logger,
   );
   return { service, journal, recorded, shares, rateLimiter, permissions, logger };

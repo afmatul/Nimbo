@@ -32,6 +32,9 @@ export type { IndexableFile } from './application/indexable-file.gateway';
 export type { FileVersionRef, IdPage } from './application/ports/i-node.repository.port';
 // 012 (PD-121): `sharing` rechaza compartir desde una cuenta en solo lectura con la misma regla que `storage`.
 export { WritableAccountPolicy } from './application/writable-account.policy';
+// 013 (plan §2): la fachada con que `sharing` resuelve el archivo propio y vivo de un enlace público.
+export { LinkedFileGateway } from './application/linked-file.gateway';
+export type { LinkedFile } from './application/linked-file.gateway';
 // 011b (plan §2, ADR-0035): la fachada con que Soporte lista y restaura la papelera de un cliente desde `backoffice`,
 // con vistas de lectura (las de 006 en contracts), no entidades de `storage` (M-2 del PR #85).
 export { SupportTrashService } from './application/support-trash.service';

@@ -27,6 +27,20 @@
   (migración `20261101100300`) solo admite ese evento mientras exista la compartición del actor como destinatario.
 - Bitácoras: `sharing.granted`, `sharing.level_changed`, `sharing.revoked`, `sharing.rate_limited`, solo con ids y nivel.
 
+## Enlaces públicos (013, en curso)
+
+| Ruta                        | Caso de uso                    | Notas                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| --------------------------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /api/v1/public-links` | `PublicLinkService.createLink` | `201 { link, url }`; la URL (`{WEB_PUBLIC_URL}/enlace#<token>`) solo se entrega aquí (CA-1). Orden: límite (`sharing:link:<propietario>`, `SHARING_RATE_LIMIT_PER_MINUTE`, CA-6) → `PermissionResolver.can(CREATE_PUBLIC_LINK)` y `LinkedFileGateway.findOwnedFile` de `storage` (carpeta, ajeno, inexistente, papelera, Editor o Lector: el 404 de lo inexistente, CA-3) → solo lectura (`WritableAccountPolicy`, CA-5) → hash Argon2id de la contraseña con `IPasswordHasher` de `shared`, fuera de la transacción → `replace` con `public_link.revoked` (`reason: replaced`, si había) y `public_link.created` (`expiresInDays`, `protection`) en la misma transacción (CA-4, CA-15) |
+
+- `@Roles(Role.CLIENT)` y `Cache-Control: no-store` (la respuesta lleva el token).
+- Persistencia: `TypeOrmPublicLinkRepository` (`IPublicLinkRepository`) sobre `enlace_publico` con `requireActorScope`.
+  `replace` serializa por archivo con `pg_advisory_xact_lock` (dos `POST` simultáneos no chocan con el índice único
+  parcial), revoca el enlace sin revocar (vigente o vencido) e inserta con `INSERT … SELECT` sobre `ownedNodes(actor)`;
+  `null` si el archivo dejó de ser propio y vivo (el servicio responde 404 y la transacción revierte).
+- Bitácoras: `public_link.created` y `public_link.revoked`, solo con `linkId` y `fileId`; nunca token, contraseña, IP ni
+  nombre de archivo (CA-15).
+
 ## Capas (`docs/sdd/architecture.md` §4)
 
 ```

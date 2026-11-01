@@ -61,6 +61,13 @@ export enum AuditAction {
   SHARE_GRANTED = 'share.granted',
   SHARE_LEVEL_CHANGED = 'share.level_changed',
   SHARE_REVOKED = 'share.revoked',
+  /**
+   * Enlaces públicos (013 CA-15, plan §5): en la actividad del propietario, el archivo como recurso; al generar,
+   * `attributes { expiresInDays, protection }`, y al revocar o reemplazar, `{ reason }`. Nunca token, contraseña, IP,
+   * nombre de archivo ni correo.
+   */
+  PUBLIC_LINK_CREATED = 'public_link.created',
+  PUBLIC_LINK_REVOKED = 'public_link.revoked',
 }
 
 const AUDIT_ACTIONS: ReadonlySet<string> = new Set(Object.values(AuditAction));

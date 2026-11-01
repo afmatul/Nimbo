@@ -33,9 +33,16 @@ export interface SharesClient {
   leave(shareId: string): Promise<Response>;
 }
 
+/** Las rutas del propietario de `/public-links` (013) con el token de un cliente (o sin `Authorization`). */
+export interface PublicLinksClient {
+  /** `POST /public-links` (CA-1). */
+  create(body: Record<string, unknown>): Promise<Response>;
+}
+
 export interface SharingHttpApp {
   readonly storage: StorageHttpApp;
   sharesOf(client: StorageClient): SharesClient;
+  publicLinksOf(client: StorageClient): PublicLinksClient;
   /** Correo de una cuenta, leído como el dueño (las *fixtures* lo derivan del id). */
   emailOf(userId: string): Promise<string>;
   /** Cambia el nombre de una cuenta (las *fixtures* las crean todas con el mismo), para distinguir a las personas. */
@@ -55,7 +62,7 @@ export interface AuditEventRow {
 }
 
 /**
- * App HTTP de `sharing` para las suites de 012: la de `storage` (Postgres como `nimbo_app`, Redis real para la tasa,
+ * App HTTP de `sharing` para las suites de 012 y 013: la de `storage` (Postgres como `nimbo_app`, Redis real para la tasa,
  * doble de límites del plan para la solo lectura) con `SharingModule.forRoot(env, storage)` sobre **la misma**
  * instancia de `StorageModule` y el directorio real de destinatarios.
  */
@@ -68,10 +75,12 @@ export const createSharingHttpApp = async (
     withStorage: (storageModule, env) => [SharingModule.forRoot(env, storageModule)],
   });
   const http = () => request(storage.testApp.app.getHttpServer());
-  const sharesOf = (client: StorageClient): SharesClient => {
+  const authOf = (client: StorageClient): Record<string, string> => {
     const token = storage.tokenOf(client.id);
-    const auth: Record<string, string> =
-      token === undefined ? {} : { Authorization: `Bearer ${token}` };
+    return token === undefined ? {} : { Authorization: `Bearer ${token}` };
+  };
+  const sharesOf = (client: StorageClient): SharesClient => {
+    const auth = authOf(client);
     return {
       share: (body) => http().post(`${API_PREFIX}/shares`).set(auth).send(body),
       accessList: (query) => http().get(`${API_PREFIX}/shares`).query(query).set(auth),
@@ -80,9 +89,14 @@ export const createSharingHttpApp = async (
       leave: (shareId) => http().delete(`${API_PREFIX}/shares/received/${shareId}`).set(auth),
     };
   };
+  const publicLinksOf = (client: StorageClient): PublicLinksClient => {
+    const auth = authOf(client);
+    return { create: (body) => http().post(`${API_PREFIX}/public-links`).set(auth).send(body) };
+  };
   return {
     storage,
     sharesOf,
+    publicLinksOf,
     emailOf: async (userId) => {
       const rows = (await storage.owner.query('SELECT correo FROM usuario WHERE id = $1', [
         userId,

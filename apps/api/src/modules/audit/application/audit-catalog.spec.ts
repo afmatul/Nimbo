@@ -82,6 +82,8 @@ const REAL_ATTRIBUTES: Readonly<Record<AuditAction, Record<string, string | numb
   [AuditAction.SHARE_GRANTED]: { nodeType: 'folder', level: 'EDITOR' },
   [AuditAction.SHARE_LEVEL_CHANGED]: { nodeType: 'file', level: 'VIEWER' },
   [AuditAction.SHARE_REVOKED]: { nodeType: 'file', level: 'EDITOR' },
+  [AuditAction.PUBLIC_LINK_CREATED]: { expiresInDays: 7, protection: 'password' },
+  [AuditAction.PUBLIC_LINK_REVOKED]: { reason: 'replaced' },
 };
 
 describe('AUDIT_CATALOG', () => {
@@ -201,6 +203,33 @@ describe('AUDIT_CATALOG', () => {
     },
   );
 
+  it('013 CA-15: un enlace público guarda vencimiento, protección y motivo; descarta token, contraseña, IP y nombre', () => {
+    const raw = {
+      expiresInDays: 30,
+      protection: 'clave',
+      reason: 'expired',
+      token: 'q3Zx',
+      password: 'secreta-123',
+      ip: '203.0.113.7',
+      fileName: 'informe.pdf',
+    };
+
+    const created = sanitizeAttributes(
+      AUDIT_CATALOG[AuditAction.PUBLIC_LINK_CREATED].attributes,
+      raw,
+    );
+    const revoked = sanitizeAttributes(
+      AUDIT_CATALOG[AuditAction.PUBLIC_LINK_REVOKED].attributes,
+      raw,
+    );
+
+    expect(created.attributes).toEqual({ expiresInDays: 30 });
+    expect(revoked.attributes).toEqual({});
+    expect(created.rejections.map((rejection) => rejection.key).sort()).toEqual(
+      ['fileName', 'ip', 'password', 'protection', 'reason', 'token'].sort(),
+    );
+  });
+
   it('011b RN-4: solo `node.restored` admite el motivo escrito de Soporte (`note`)', () => {
     const withNote = Object.values(AuditAction).filter((action) =>
       Object.hasOwn(AUDIT_CATALOG[action].attributes, 'note'),
@@ -239,6 +268,8 @@ describe('resourceTypeOf', () => {
     [AuditAction.SHARE_GRANTED, { nodeType: 'folder' }, 'folder'],
     [AuditAction.SHARE_LEVEL_CHANGED, { nodeType: 'file' }, 'file'],
     [AuditAction.SHARE_REVOKED, { nodeType: 'folder' }, 'folder'],
+    [AuditAction.PUBLIC_LINK_CREATED, {}, 'file'],
+    [AuditAction.PUBLIC_LINK_REVOKED, {}, 'file'],
   ] as const)('D-3: `%s` con %p es de tipo %p', (action, attributes, expected) => {
     expect(resourceTypeOf(action, attributes)).toBe(expected);
   });
