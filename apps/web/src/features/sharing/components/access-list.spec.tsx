@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import { SHARING_ERROR_CODES } from '@nimbo/contracts';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import * as React from 'react';
 
@@ -11,7 +11,14 @@ import { StorageRequestError } from '../../storage/storage-request-error';
 import { GB, spaceSummaryWith } from '../../storage/test-space-summary';
 import { useAccessList } from '../hooks/use-access-list';
 import type { SharingApi } from '../sharing-api';
-import { directEntry, fakeSharingApi, INHERITED_ENTRY, NODE_ID, SHARE_ID } from '../test-sharing';
+import {
+  directEntry,
+  fakeSharingApi,
+  INHERITED_ENTRY,
+  NODE_ID,
+  OTHER_SHARE_ID,
+  SHARE_ID,
+} from '../test-sharing';
 
 import { AccessList } from './access-list';
 
@@ -44,10 +51,11 @@ function personRow(name: string): HTMLElement {
 }
 
 describe('AccessList: quién tiene acceso (spec 012b CA-1, CA-4, CA-5)', () => {
-  it('CA-1: mientras carga lo anuncia', () => {
+  it('CA-1: mientras carga lo anuncia', async () => {
     renderList(fakeSharingApi());
 
     expect(screen.getByRole('status').textContent).toContain('Cargando quién tiene acceso…');
+    await act(async () => undefined);
   });
 
   it('CA-1: sin nadie, dice que todavía no se compartió', async () => {
@@ -117,6 +125,7 @@ describe('AccessList: quién tiene acceso (spec 012b CA-1, CA-4, CA-5)', () => {
 
   it('CA-4: en solo lectura solo se ofrece bajar a Lector', async () => {
     const lector = directEntry({
+      shareId: OTHER_SHARE_ID,
       level: 'VIEWER',
       grantee: { ...directEntry().grantee, id: INHERITED_ENTRY.grantee.id, displayName: 'Ana' },
     });

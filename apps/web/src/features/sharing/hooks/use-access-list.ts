@@ -20,8 +20,8 @@ export interface ShareInput {
 export interface AccessListState {
   readonly listing: AccessListing;
   readonly reload: () => void;
-  /** Rechaza con el error de la API; si sale bien, relee la lista (sin recargar la página). */
-  readonly share: (input: ShareInput) => Promise<void>;
+  /** Rechaza con el error de la API; si sale bien, relee la lista (sin recargar la página) y devuelve el acceso. */
+  readonly share: (input: ShareInput) => Promise<AccessEntry>;
   readonly revoke: (shareId: string) => Promise<void>;
 }
 
@@ -66,8 +66,9 @@ export function useAccessList(api: SharingApi, node: ShareNodeRef): AccessListSt
 
   const share = React.useCallback(
     async ({ email, level }: ShareInput) => {
-      await api.share({ nodeType, nodeId, email, level });
+      const entry = await api.share({ nodeType, nodeId, email, level });
       reload();
+      return entry;
     },
     [api, nodeType, nodeId, reload],
   );
