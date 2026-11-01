@@ -6,7 +6,7 @@
 
 - [ ] **T-01** (PR previo) Hasher y bloqueo de `identity` a `shared` sin cambiar comportamiento, con README de ambos (plan §2, D-2) — CA: RN-8 — Prueba: suites movidas y de `identity` en verde
 - [x] **T-02** Contratos `.strict()`, `AUDIT_TRIGGERS` con `public_link` y migración (plan §3, §4) — CA: CA-2, CA-17 — Prueba: esquemas, permisos, `up → down → up`
-- [ ] **T-03** Dominio `PublicLink`, `LinkToken`, `limitNetworkOf` y errores `SHARING_LINK_*` — CA: CA-2, CA-4, CA-7, RN-7 — Prueba: unitarias de dominio — Depende: T-02
+- [x] **T-03** Dominio `PublicLink`, `LinkToken`, `limitNetworkOf` y errores `SHARING_LINK_*` — CA: CA-2, CA-4, CA-7, RN-7 — Prueba: unitarias de dominio — Depende: T-02
 - [ ] **T-04** `POST /public-links` con reemplazo serializado y su auditoría — CA: CA-1, CA-3 a CA-6, CA-15, CA-16 — Prueba: int, un caso por CA de error (plan §6) — Depende: T-01, T-03
 - [ ] **T-05** `GET` y `DELETE /public-links` (revocar en solo lectura y con el archivo en la papelera) — CA: CA-7, CA-8, CA-15 — Prueba: int en `public-links.int-spec.ts` — Depende: T-04
 - [ ] **T-06** `POST /public-links/open`: resolver, actor derivado, límite por red — CA: CA-9, CA-11, CA-14, CA-16 — Prueba: unit del orden e int de los motivos de CA-11 — Depende: T-05
