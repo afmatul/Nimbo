@@ -4,7 +4,10 @@ import type { Actor } from '../../../src/shared';
 import { createActor, Role } from '../../../src/shared';
 import { TransactionContext } from '../../../src/shared/infrastructure/persistence/transaction-context';
 import { TypeOrmTransactionRunner } from '../../../src/shared/infrastructure/persistence/typeorm-transaction-runner';
-import { startRestrictedOwnerDatabase } from '../../isolation/setup/nosuperuser-postgres';
+import {
+  RESTRICTED_OWNER_ROLE,
+  startRestrictedOwnerDatabase,
+} from '../../isolation/setup/nosuperuser-postgres';
 import type { RestrictedOwnerDatabase } from '../../isolation/setup/nosuperuser-postgres';
 import { connectAsOwner, connectTo } from '../../support/database-urls';
 import { revertFrom } from '../billing/billing-test-db';
@@ -15,14 +18,54 @@ import {
   insertFolder,
 } from '../storage/storage-test-db';
 
-import { insertShare } from './sharing-test-db';
-import type { ShareRow } from './sharing-test-db';
+import { insertPublicLink, insertShare, randomTokenHash } from './sharing-test-db';
+import type { PublicLinkRow, ShareRow } from './sharing-test-db';
 
 const MIGRATION = 'CrearComparticion20261101100000';
 const POLICIES_MIGRATION = 'PoliticasRlsNodosCompartidos20261101100100';
 const EDITING_POLICIES_MIGRATION = 'PoliticasRlsEdicionYAgenteCompartidos20261101100200';
 const LEAVE_AUDIT_MIGRATION = 'AuditoriaAlSalirDeComparticion20261101100300';
 const SAME_OWNER_FOLDER_MIGRATION = 'CarpetaDelMismoPropietario20261101100400';
+const PUBLIC_LINK_MIGRATION = 'CrearEnlacePublico20261102100000';
+const PUBLIC_LINK_FUNCTION = 'enlace_por_token(character)';
+
+/** Lo que crea la migración de 013: tabla, índices, restricciones, políticas (con sus roles), RLS y función. */
+const PUBLIC_LINK_SCHEMA_SQL = `SELECT
+  to_regclass('public.enlace_publico')::text AS tabla,
+  (SELECT json_agg(i.indexname ORDER BY i.indexname) FROM pg_indexes i WHERE i.tablename = 'enlace_publico') AS indices,
+  (SELECT json_agg(c.conname ORDER BY c.conname) FROM pg_constraint c
+    WHERE c.conrelid = to_regclass('public.enlace_publico') AND c.contype = 'c') AS checks,
+  (SELECT json_agg(json_build_array(p.policyname, p.cmd, p.roles::text) ORDER BY p.policyname)
+     FROM pg_policies p WHERE p.tablename = 'enlace_publico') AS politicas,
+  (SELECT json_build_array(relrowsecurity, relforcerowsecurity) FROM pg_class
+    WHERE oid = to_regclass('public.enlace_publico')) AS rls,
+  to_regprocedure('public.${PUBLIC_LINK_FUNCTION}')::text AS funcion`;
+
+interface PublicLinkSchema {
+  readonly tabla: string | null;
+  readonly indices: string[] | null;
+  readonly checks: string[] | null;
+  readonly politicas: [string, string, string][] | null;
+  readonly rls: [boolean, boolean] | null;
+  readonly funcion: string | null;
+}
+
+/** Atributos de `enlace_por_token()` en `pg_proc` y quién puede ejecutarla. */
+const PUBLIC_LINK_FUNCTION_SQL = `SELECT p.prosecdef AS definer, p.provolatile AS volatilidad,
+        p.proconfig AS config, pg_get_userbyid(p.proowner) AS dueno,
+        pg_get_function_result(p.oid) AS resultado,
+        has_function_privilege('nimbo_app', p.oid, 'EXECUTE') AS app,
+        EXISTS (SELECT 1 FROM aclexplode(p.proacl) a WHERE a.grantee = 0) AS publico
+   FROM pg_proc p WHERE p.oid = '${PUBLIC_LINK_FUNCTION}'::regprocedure`;
+
+interface LinkIds {
+  readonly enlace_id: string;
+  readonly archivo_id: string;
+  readonly propietario_id: string;
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const daysFromNow = (days: number): Date => new Date(Date.now() + days * DAY_MS);
 
 /** Políticas de `nimbo_app` que toca la migración B de 012, con su condición tal como la guarda Postgres. */
 const RECIPIENT_POLICIES_SQL = `SELECT p.tablename, p.policyname, p.cmd, p.qual
@@ -102,12 +145,14 @@ const byNode = (rows: readonly SharedNodeRow[]): SharedNodeRow[] =>
   [...rows].sort((a, b) => a.nodo_id.localeCompare(b.nodo_id));
 
 /**
- * Migración A de 012 (plan §3). El ciclo `up → down → up` y `nodos_compartidos()` corren con un dueño **sin**
- * `SUPERUSER` (ADR-0021): la función es `SECURITY DEFINER` y, con `FORCE` RLS, solo ve lo que le dejan las políticas
- * `*_nodos_compartidos` (`TO CURRENT_USER`); con un superusuario la prueba pasaría en vacío. Las *fixtures* de nodos y
- * comparticiones se insertan como `nimbo_app` dentro de `withActor` (el dueño no tiene política de `INSERT`).
+ * Migraciones de 012 y la de 013 (plan §3 de cada una). Los ciclos `up → down → up`, `nodos_compartidos()` y
+ * `enlace_por_token()` corren con un dueño **sin** `SUPERUSER` (ADR-0021, ADR-0039): las funciones son
+ * `SECURITY DEFINER` y, con `FORCE` RLS, solo ven lo que les dejan las políticas `*_nodos_compartidos` y
+ * `enlace_publico_por_token` (`TO CURRENT_USER`); con un superusuario la prueba pasaría en vacío. Las *fixtures* de
+ * nodos, comparticiones y enlaces se insertan como `nimbo_app` dentro de `withActor` (el dueño no tiene política de
+ * `INSERT`).
  */
-describe('migración crear-comparticion con dueño NOSUPERUSER (plan 012 §3)', () => {
+describe('migraciones de `sharing` con dueño NOSUPERUSER (planes 012 §3 y 013 §3)', () => {
   let database: RestrictedOwnerDatabase;
   let owner: DataSource;
   let app: DataSource;
@@ -240,6 +285,7 @@ describe('migración crear-comparticion con dueño NOSUPERUSER (plan 012 §3)', 
       EDITING_POLICIES_MIGRATION,
       LEAVE_AUDIT_MIGRATION,
       SAME_OWNER_FOLDER_MIGRATION,
+      PUBLIC_LINK_MIGRATION,
     ]);
     expect(names(before)).toEqual(
       expect.arrayContaining([
@@ -285,6 +331,7 @@ describe('migración crear-comparticion con dueño NOSUPERUSER (plan 012 §3)', 
       EDITING_POLICIES_MIGRATION,
       LEAVE_AUDIT_MIGRATION,
       SAME_OWNER_FOLDER_MIGRATION,
+      PUBLIC_LINK_MIGRATION,
     ]);
     expect(created(before)).toEqual(EDITING_POLICIES);
     expect(restrictive(before)).toEqual(RESTRICTIVE_SESSION_POLICIES);
@@ -306,7 +353,7 @@ describe('migración crear-comparticion con dueño NOSUPERUSER (plan 012 §3)', 
     const afterDown = await constraintsOf();
     await owner.runMigrations({ transaction: 'each' });
 
-    expect(reverted).toEqual([SAME_OWNER_FOLDER_MIGRATION]);
+    expect(reverted).toEqual([SAME_OWNER_FOLDER_MIGRATION, PUBLIC_LINK_MIGRATION]);
     expect(before).toEqual([
       'fk_archivo_carpeta_propietario: FOREIGN KEY (carpeta_id, propietario_id) REFERENCES carpeta(id, propietario_id) ON DELETE SET NULL (carpeta_id)',
       'fk_archivo_eliminado_con_propietario: FOREIGN KEY (eliminado_con_carpeta_id, propietario_id) REFERENCES carpeta(id, propietario_id)',
@@ -321,6 +368,56 @@ describe('migración crear-comparticion con dueño NOSUPERUSER (plan 012 §3)', 
       'carpeta_eliminado_con_carpeta_id_fkey: FOREIGN KEY (eliminado_con_carpeta_id) REFERENCES carpeta(id)',
     ]);
     expect(await constraintsOf()).toEqual(before);
+  });
+
+  it('RNF-10 (013): up → down → up: el `down` borra función, políticas y tabla, y el `up` vuelve al mismo esquema', async () => {
+    const schemaOf = async (): Promise<PublicLinkSchema> =>
+      ((await owner.query(PUBLIC_LINK_SCHEMA_SQL)) as PublicLinkSchema[])[0] as PublicLinkSchema;
+    const before = await schemaOf();
+
+    const reverted = await revertFrom(owner, PUBLIC_LINK_MIGRATION);
+    const afterDown = await schemaOf();
+    await owner.runMigrations({ transaction: 'each' });
+
+    expect(reverted).toEqual([PUBLIC_LINK_MIGRATION]);
+    expect(before).toEqual({
+      tabla: 'enlace_publico',
+      indices: [
+        'enlace_publico_pkey',
+        'uq_enlace_publico_archivo_activo',
+        'uq_enlace_publico_token_hash',
+      ],
+      checks: ['ck_enlace_publico_token_hash', 'ck_enlace_publico_vencimiento'],
+      politicas: [
+        ['enlace_publico_por_token', 'SELECT', `{${RESTRICTED_OWNER_ROLE}}`],
+        ['enlace_publico_propietario', 'ALL', '{nimbo_app}'],
+      ],
+      rls: [true, true],
+      funcion: PUBLIC_LINK_FUNCTION,
+    });
+    expect(afterDown).toEqual({
+      tabla: null,
+      indices: null,
+      checks: null,
+      politicas: null,
+      rls: null,
+      funcion: null,
+    });
+    expect(await schemaOf()).toEqual(before);
+  });
+
+  it('CA-17 (013, ADR-0039): `enlace_por_token()` es del dueño, `SECURITY DEFINER`, `STABLE`, con `search_path` cerrado y tres ids; solo `nimbo_app` la ejecuta', async () => {
+    const [fn] = (await owner.query(PUBLIC_LINK_FUNCTION_SQL)) as Record<string, unknown>[];
+
+    expect(fn).toEqual({
+      definer: true,
+      volatilidad: 's',
+      config: ['search_path=pg_catalog, pg_temp'],
+      dueno: RESTRICTED_OWNER_ROLE,
+      resultado: 'TABLE(enlace_id uuid, archivo_id uuid, propietario_id uuid)',
+      app: true,
+      publico: false,
+    });
   });
 
   it('RNF-05: `nodos_compartidos()` no la ejecuta `PUBLIC` y sí `nimbo_app`', async () => {
@@ -428,6 +525,107 @@ describe('migración crear-comparticion con dueño NOSUPERUSER (plan 012 §3)', 
       expect((deleted as [unknown[], number])[1]).toBe(0);
     });
   });
+
+  describe('`enlace_publico` y `enlace_por_token()` con enlaces de Ana (plan 013 §3, ADR-0039)', () => {
+    const files = { linked: '', other: '', spare: '', trashed: '' };
+    let active = { id: '', tokenHash: '' };
+
+    const linkAsAna = (link: Omit<PublicLinkRow, 'ownerId'>) =>
+      asActor(ana, (manager) => insertPublicLink(manager, { ownerId: ana.id, ...link }));
+
+    const resolve = async (tokenHash: string): Promise<LinkIds[]> =>
+      (await app.query('SELECT * FROM enlace_por_token($1)', [tokenHash])) as LinkIds[];
+
+    const linkIdsSeenBy = (actor: Actor): Promise<string[]> =>
+      asActor(actor, async (manager) =>
+        ((await manager.query('SELECT id FROM enlace_publico')) as { id: string }[]).map(
+          (row) => row.id,
+        ),
+      );
+
+    const changedRows = async (actor: Actor, sql: string, params: unknown[]): Promise<number> =>
+      ((await asActor(actor, (manager) => manager.query(sql, params))) as [unknown[], number])[1];
+
+    const revoke = (actor: Actor, linkId: string): Promise<number> =>
+      changedRows(actor, 'UPDATE enlace_publico SET revocado_en = now() WHERE id = $1', [linkId]);
+
+    beforeAll(async () => {
+      const newFile = async (options: { deletedAt?: Date } = {}): Promise<string> =>
+        (await asActor(ana, (manager) => insertFileWithVersion(manager, ana.id, options))).fileId;
+      files.linked = await newFile();
+      files.other = await newFile();
+      files.spare = await newFile();
+      files.trashed = await newFile({ deletedAt: new Date() });
+      active = await linkAsAna({ fileId: files.linked });
+    });
+
+    it('CA-17: sin actor `nimbo_app` no ve filas; la función da los tres ids solo para su hash', async () => {
+      expect(await app.query('SELECT id FROM enlace_publico')).toEqual([]);
+      expect(await resolve(active.tokenHash)).toEqual([
+        { enlace_id: active.id, archivo_id: files.linked, propietario_id: ana.id },
+      ]);
+      expect(await resolve(randomTokenHash())).toEqual([]);
+    });
+
+    it('CA-11: la función no da un enlace revocado ni uno vencido', async () => {
+      const revoked = await linkAsAna({ fileId: files.other });
+      await revoke(ana, revoked.id);
+      const expired = await linkAsAna({
+        fileId: files.other,
+        createdAt: daysFromNow(-8),
+        expiresAt: daysFromNow(-1),
+      });
+
+      expect(await resolve(revoked.tokenHash)).toEqual([]);
+      expect(await resolve(expired.tokenHash)).toEqual([]);
+    });
+
+    it('CA-17: Ana ve sus enlaces; Bruno, Carla y un rol interno, ninguno', async () => {
+      expect(await linkIdsSeenBy(ana)).toContain(active.id);
+      expect(await linkIdsSeenBy(bruno)).toEqual([]);
+      expect(await linkIdsSeenBy(carla)).toEqual([]);
+      expect(await linkIdsSeenBy(admin)).toEqual([]);
+    });
+
+    it('CA-17: Bruno no revoca el enlace de Ana y el enlace sigue sirviendo', async () => {
+      expect(await revoke(bruno, active.id)).toBe(0);
+      expect(await resolve(active.tokenHash)).toHaveLength(1);
+    });
+
+    it('CA-17: nadie crea un enlace a un archivo ajeno ni a nombre de otro (WITH CHECK)', async () => {
+      const asBruno = (ownerId: string) =>
+        asActor(bruno, (manager) => insertPublicLink(manager, { ownerId, fileId: files.spare }));
+
+      await expect(asBruno(bruno.id)).rejects.toThrow(/row-level security/);
+      await expect(asBruno(ana.id)).rejects.toThrow(/row-level security/);
+    });
+
+    it('RN-3: un archivo tiene a lo sumo un enlace sin revocar', async () => {
+      await expect(linkAsAna({ fileId: files.linked })).rejects.toThrow(
+        /uq_enlace_publico_archivo_activo/,
+      );
+    });
+
+    it('CA-17: `nimbo_app` no borra enlaces ni cambia otra columna que `revocado_en`', async () => {
+      await expect(
+        changedRows(ana, 'DELETE FROM enlace_publico WHERE id = $1', [active.id]),
+      ).rejects.toThrow(/permission denied/);
+      await expect(
+        changedRows(
+          ana,
+          "UPDATE enlace_publico SET vence_en = now() + interval '30 days' WHERE id = $1",
+          [active.id],
+        ),
+      ).rejects.toThrow(/permission denied/);
+    });
+
+    it('CA-8: Ana revoca el enlace de un archivo suyo en la papelera', async () => {
+      const link = await linkAsAna({ fileId: files.trashed });
+
+      expect(await revoke(ana, link.id)).toBe(1);
+      expect(await resolve(link.tokenHash)).toEqual([]);
+    });
+  });
 });
 
 /** Variante inválida de una fila de `comparticion`: nivel, consigo mismo o con los dos nodos. */
@@ -493,6 +691,90 @@ describe('restricciones de `comparticion` (plan 012 §3)', () => {
       await runner.query('DELETE FROM archivo WHERE id = $1', [fileId]);
       const [row] = (await runner.query(
         'SELECT count(*)::int AS n FROM comparticion WHERE archivo_id = $1',
+        [fileId],
+      )) as { n: number }[];
+      return row?.n;
+    });
+
+    expect(left).toBe(0);
+  });
+});
+
+/** Restricciones de `enlace_publico` sobre la base del arnés, en una transacción que se revierte (plan 013 §3). */
+describe('restricciones de `enlace_publico` (plan 013 §3)', () => {
+  let harnessOwner: DataSource;
+
+  beforeAll(async () => {
+    harnessOwner = await connectAsOwner();
+  });
+
+  afterAll(async () => {
+    await harnessOwner.destroy();
+  });
+
+  /** Inserta un archivo de una cuenta nueva y un enlace a él con `link`; devuelve lo que la prueba necesita. */
+  const linkWith = async (
+    runner: QueryRunner,
+    link: Omit<PublicLinkRow, 'ownerId' | 'fileId'> = {},
+  ): Promise<{ fileId: string; ownerId: string; tokenHash: string }> => {
+    const ownerId = await insertAccount(runner);
+    const { fileId } = await insertFileWithVersion(runner, ownerId);
+    const { tokenHash } = await insertPublicLink(runner, { ownerId, fileId, ...link });
+    return { fileId, ownerId, tokenHash };
+  };
+
+  it.each([
+    ['en mayúsculas', 'A'.repeat(64)],
+    ['de 63 caracteres', 'a'.repeat(63)],
+    ['que no es hexadecimal', 'g'.repeat(64)],
+  ])('DF-09: rechaza un `token_hash` %s', async (_case, tokenHash) => {
+    await expect(
+      inRolledBackTransaction(harnessOwner, (runner) => linkWith(runner, { tokenHash })),
+    ).rejects.toThrow(/ck_enlace_publico_token_hash/);
+  });
+
+  it('RN-2: rechaza un vencimiento que no es posterior a la creación', async () => {
+    const createdAt = new Date();
+
+    await expect(
+      inRolledBackTransaction(harnessOwner, (runner) =>
+        linkWith(runner, { createdAt, expiresAt: createdAt }),
+      ),
+    ).rejects.toThrow(/ck_enlace_publico_vencimiento/);
+  });
+
+  it('DF-09: dos enlaces nunca comparten `token_hash`', async () => {
+    await expect(
+      inRolledBackTransaction(harnessOwner, async (runner) => {
+        const { tokenHash } = await linkWith(runner);
+        await linkWith(runner, { tokenHash });
+      }),
+    ).rejects.toThrow(/uq_enlace_publico_token_hash/);
+  });
+
+  it('RN-3: revocado el anterior, el archivo admite un enlace nuevo', async () => {
+    const active = await inRolledBackTransaction(harnessOwner, async (runner) => {
+      const { fileId, ownerId } = await linkWith(runner);
+      await runner.query('UPDATE enlace_publico SET revocado_en = now() WHERE archivo_id = $1', [
+        fileId,
+      ]);
+      await insertPublicLink(runner, { ownerId, fileId });
+      const [row] = (await runner.query(
+        'SELECT count(*)::int AS n FROM enlace_publico WHERE archivo_id = $1 AND revocado_en IS NULL',
+        [fileId],
+      )) as { n: number }[];
+      return row?.n;
+    });
+
+    expect(active).toBe(1);
+  });
+
+  it('CA-11, RN-5: borrar el archivo definitivamente borra sus enlaces', async () => {
+    const left = await inRolledBackTransaction(harnessOwner, async (runner) => {
+      const { fileId } = await linkWith(runner);
+      await runner.query('DELETE FROM archivo WHERE id = $1', [fileId]);
+      const [row] = (await runner.query(
+        'SELECT count(*)::int AS n FROM enlace_publico WHERE archivo_id = $1',
         [fileId],
       )) as { n: number }[];
       return row?.n;
