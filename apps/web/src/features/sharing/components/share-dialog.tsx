@@ -17,6 +17,7 @@ import type { ShareNodeRef, SharingApi } from '../sharing-api';
 
 import { AccessList } from './access-list';
 import { ShareForm } from './share-form';
+import { useReturnFocus } from './use-return-focus';
 
 /** Lo que se comparte: el nodo y su nombre visible. */
 export interface ShareTarget extends ShareNodeRef {
@@ -38,8 +39,9 @@ function ShareDialogBody({
   readonly target: ShareTarget;
 }): React.JSX.Element {
   const access = useAccessList(api, target);
+  const returnFocus = useReturnFocus();
   return (
-    <DialogContent className="max-h-dvh overflow-y-auto rounded-xl">
+    <DialogContent className="max-h-dvh overflow-y-auto rounded-xl" {...returnFocus}>
       <DialogHeader className="pr-10">
         <DialogTitle className="break-words">{`Compartir «${target.name}»`}</DialogTitle>
         <DialogDescription>
@@ -66,13 +68,13 @@ function ShareDialogBody({
 /**
  * Diálogo «Compartir» (spec 012b CA-1 a CA-5; mockup `sharing/compartir`, sin la sección «Enlace público» hasta la 013,
  * S-2): formulario y «Personas con acceso». Se monta al abrir y se desmonta al cerrar: el correo escrito se descarta.
- * Radix pone el foco en el correo (el primer campo), lo atrapa y lo devuelve al disparador.
+ * Radix pone el foco en el correo (el primer campo) y lo atrapa; al cerrar vuelve a quien lo abrió (el ⋮ de la fila o
+ * «Compartir» de la ficha), que no es un `DialogTrigger`.
  */
-export function ShareDialog({ api, target, onClose }: ShareDialogProps): React.JSX.Element | null {
-  if (target === null) return null;
+export function ShareDialog({ api, target, onClose }: ShareDialogProps): React.JSX.Element {
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <ShareDialogBody api={api} target={target} />
+    <Dialog open={target !== null} onOpenChange={(open) => !open && onClose()}>
+      {target === null ? null : <ShareDialogBody api={api} target={target} />}
     </Dialog>
   );
 }

@@ -18,6 +18,8 @@ import { Button } from '../../../components/ui/button';
 import { usePendingConfirm, type PendingConfirm } from '../../storage/hooks/use-pending-confirm';
 import { shareMessageOf } from '../share-messages';
 
+import { useReturnFocus } from './use-return-focus';
+
 export interface LeaveShareDialogProps {
   /** `null` = cerrado. */
   readonly target: ReceivedShare | null;
@@ -61,10 +63,11 @@ export function LeaveShareDialog({
 }: LeaveShareDialogProps): React.JSX.Element | null {
   const name = target?.name ?? '';
   const pending = usePendingConfirm(onConfirm, onClose, (error) => leaveFailureOf(name, error));
+  const returnFocus = useReturnFocus();
   if (target === null) return null;
   return (
     <AlertDialog open onOpenChange={(open) => !open && !pending.pending && pending.close()}>
-      <AlertDialogContent>
+      <AlertDialogContent {...returnFocus}>
         <AlertDialogHeader>
           <AlertDialogTitle className="break-words">{`¿Salir de «${name}»?`}</AlertDialogTitle>
           <AlertDialogDescription>

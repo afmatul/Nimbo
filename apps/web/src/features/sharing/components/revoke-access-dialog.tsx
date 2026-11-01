@@ -19,6 +19,7 @@ import { shareMessageOf, type ShareMessage } from '../share-messages';
 
 import type { DirectAccess } from './access-row';
 import { ShareErrorAlert } from './share-error-alert';
+import { useReturnFocus } from './use-return-focus';
 
 export interface RevokeAccessDialogProps {
   /** `null` = cerrado. */
@@ -60,6 +61,7 @@ function ConfirmRevokeButton({
 export function RevokeAccessDialog(props: RevokeAccessDialogProps): React.JSX.Element | null {
   const { target, nodeName } = props;
   const pending = usePendingConfirm<ShareMessage>(props.onConfirm, props.onClose, shareMessageOf);
+  const returnFocus = useReturnFocus();
   if (target === null) return null;
   const name = target.grantee.displayName;
   const refresh = (): void => {
@@ -68,7 +70,7 @@ export function RevokeAccessDialog(props: RevokeAccessDialogProps): React.JSX.El
   };
   return (
     <AlertDialog open onOpenChange={(open) => !open && !pending.pending && pending.close()}>
-      <AlertDialogContent>
+      <AlertDialogContent {...returnFocus}>
         <AlertDialogHeader>
           <AlertDialogTitle className="break-words">{`¿Quitar el acceso de ${name}?`}</AlertDialogTitle>
           <AlertDialogDescription className="break-words">
