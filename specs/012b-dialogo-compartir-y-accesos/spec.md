@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | En curso (2026-11-01; plan y mockup aprobados por Adrián, 2026-10-30) |
+| Estado | En revisión (2026-11-02; plan y mockup aprobados por Adrián, 2026-10-30) |
 | Dueño | Fátima |
 | Fase | 2 |
 | Requisitos | RF-16, RF-18; RNF-13, RNF-14 |
