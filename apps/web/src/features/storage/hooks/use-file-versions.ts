@@ -21,6 +21,9 @@ export type VersionsListing =
       readonly loadedAt: number;
     };
 
+/** El historial ya cargado: lo que pintan la cabecera, la lista y los detalles de la ficha. */
+export type ReadyVersionsListing = Extract<VersionsListing, { status: 'ready' }>;
+
 const LOADING: VersionsListing = { status: 'loading' };
 const ERROR: VersionsListing = { status: 'error' };
 const NOT_FOUND: VersionsListing = { status: 'not_found' };
