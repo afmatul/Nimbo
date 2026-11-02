@@ -127,6 +127,9 @@ async function chooseFiles(files: readonly File[]): Promise<void> {
 
 describe('página de una carpeta (/archivos/carpeta/[folderId])', () => {
   beforeEach(() => {
+    process.env['APP_ENV'] = 'test';
+    process.env['API_INTERNAL_URL'] = 'http://localhost:3000';
+    process.env['API_PUBLIC_URL'] = 'http://localhost/api/v1';
     global.fetch = jest.fn(() => never<Response>());
   });
 

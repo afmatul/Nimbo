@@ -17,12 +17,12 @@ export type { NavItem };
 
 /**
  * «Espacio» reemplaza a «Planes y Cuota» hasta 009 (007 D-18, PD-92); «Buscar» es la entrada de la búsqueda (018
- * CA-12). «Agente Nimbo» no está aquí: lo suma el layout solo con la entrada del agente (020b D-4, CA-18).
+ * CA-12) y «Compartidos», la de «Compartidos conmigo» (012b CA-8). «Agente Nimbo» no está aquí: lo suma el layout solo con la entrada del agente (020b D-4, CA-18).
  */
 export const DEFAULT_NAV_ITEMS: readonly NavItem[] = [
   { label: 'Mis Archivos', icon: Folder, href: '/archivos', active: true },
   { label: 'Buscar', icon: Search, href: '/buscar' },
-  { label: 'Compartidos', icon: Share2, href: '#compartidos' },
+  { label: 'Compartidos', icon: Share2, href: '/compartidos' },
   { label: 'Papelera', icon: Trash2, href: TRASH_HREF },
   { label: 'Espacio', icon: HardDrive, href: '/espacio' },
 ];

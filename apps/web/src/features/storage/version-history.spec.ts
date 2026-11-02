@@ -1,7 +1,12 @@
 import type { FileVersionSummary } from '@nimbo/contracts';
 
 import { versionFixture } from './test-versions';
-import { historySummary, totalVersionBytes, versionToPrune } from './version-history';
+import {
+  currentVersionOf,
+  historySummary,
+  totalVersionBytes,
+  versionToPrune,
+} from './version-history';
 
 function version(number: number, sizeBytes = 1_000): FileVersionSummary {
   return versionFixture({ number, sizeBytes, isCurrent: number === 5 });
@@ -33,5 +38,10 @@ describe('historial de versiones (014)', () => {
       '3 versiones · tu plan Personal conserva 3, contando la actual',
     );
     expect(historySummary(1, 30, null)).toBe('1 versión · tu plan conserva 30, contando la actual');
+  });
+
+  it('CA-20: la versión actual es la marcada, no la primera de la lista', () => {
+    expect(currentVersionOf([version(4), version(5), version(3)])?.number).toBe(5);
+    expect(currentVersionOf([version(4)])).toBeUndefined();
   });
 });
