@@ -1,7 +1,11 @@
 /**
  * @jest-environment jsdom
  */
-import { SHARING_ERROR_CODES, type DownloadUrlResponse } from '@nimbo/contracts';
+import {
+  SHARED_ERROR_CODES,
+  SHARING_ERROR_CODES,
+  type DownloadUrlResponse,
+} from '@nimbo/contracts';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
@@ -67,6 +71,13 @@ function rowOf(name: string): HTMLElement {
   const row = screen.getByRole('link', { name }).closest('tr');
   if (!row) throw new Error(`Sin la fila de ${name}`);
   return row;
+}
+
+/** Tras un «Salir» fallido la lista sigue con sus dos elementos: nada se quita a medias. */
+function expectBothRows(): void {
+  expect(screen.getByText('2 elementos')).toBeTruthy();
+  expect(rowOf(DOCX)).toBeTruthy();
+  expect(rowOf('Contratos 2026')).toBeTruthy();
 }
 
 describe('ReceivedSharesView: «Compartidos conmigo» (spec 012b CA-8, CA-9, CA-11)', () => {
@@ -240,6 +251,49 @@ describe('ReceivedSharesView: «Salir» (spec 012b CA-9, CA-10, CA-11)', () => {
 
     await waitFor(() => expect(screen.queryByRole('link', { name: DOCX })).toBeNull());
     expect(leave).toHaveBeenCalledTimes(2);
+  });
+
+  it('CA-11: con error de red, el motivo y «Reintentar» en el diálogo; la lista queda entera', async () => {
+    await renderReceived(
+      withTwo({ leave: jest.fn(() => Promise.reject(new TypeError('Failed to fetch'))) }),
+    );
+
+    await chooseAction(DOCX, 'Salir');
+    const dialog = screen.getByRole('alertdialog');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Salir' }));
+
+    expect((await within(dialog).findByRole('alert')).textContent).toBe(
+      `No pudimos salir de «${DOCX}». Revisa tu conexión e inténtalo de nuevo; seguirás viéndolo hasta entonces.`,
+    );
+    expect(within(dialog).getByRole('button', { name: 'Reintentar' })).toBeTruthy();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
+
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expectBothRows();
+  });
+
+  it('CA-11: con 429, el mensaje de espera del catálogo por `code`; la lista queda entera', async () => {
+    const leave = jest.fn(() =>
+      Promise.reject(
+        new StorageRequestError(429, SHARED_ERROR_CODES.TOO_MANY_REQUESTS, {
+          retryAfterSeconds: 120,
+        }),
+      ),
+    );
+    await renderReceived(withTwo({ leave }));
+
+    await chooseAction(DOCX, 'Salir');
+    const dialog = screen.getByRole('alertdialog');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Salir' }));
+
+    expect((await within(dialog).findByRole('alert')).textContent).toBe(
+      'Hiciste demasiados intentos. Espera 2 minutos e inténtalo de nuevo.',
+    );
+    expect(screen.queryByText('Ese acceso ya no existe.')).toBeNull();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
+
+    expectBothRows();
+    expect(leave).toHaveBeenCalledTimes(1);
   });
 
   it('CA-10: en solo lectura avisa y «Salir» sigue disponible', async () => {
