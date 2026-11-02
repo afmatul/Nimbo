@@ -7,7 +7,7 @@
 | Fecha | 2026-11-02 |
 | Rango revisado | `main...feat/012b-compartir-web` (12 commits, 70 archivos, +3840/−155; casi todo `apps/web`) |
 | CI | No consultado. Resultados locales abajo. |
-| Veredicto | ✅ Aprobar. Sin bloqueantes; 2 importantes y 3 sugerencias. |
+| Veredicto | ✅ Aprobar. Sin bloqueantes; importantes y sugerencias resueltos el 2026-11-02, salvo S-2 (PD-164). |
 
 ## Verificación local
 - `pnpm lint` (raíz) sale en rojo con 3167 errores, todos en `apps/api/dist-worker-optimizer/*.js`: artefacto de build ignorado por git (`git check-ignore`), fuera del diff. `eslint apps/web/src/features/sharing apps/web/src/features/storage` sale limpio.
@@ -53,13 +53,13 @@
 Ninguno.
 
 ## Importantes y sugerencias
-- **[I-1]** Funciones > 30 líneas (Art. VII), todas JSX o hooks: `OwnFileDetail` (45), `FileDetailContent` (35), `FileDetailView` (31) en `file-detail-view.tsx`; `OwnExplorer` (32); `MyFiles` (34); `ShareForm` (37); `useReceivedShares` (40). Extraer subcomponentes o hooks antes del cierre de la fase.
-- **[I-2]** `file-detail-view.tsx` (648) mezcla ficha propia, indexación y compartida. Antes de que la 013 sume el enlace público, mover `OwnFileDetail` a su archivo.
-- **[S-1]** Confirmar que `sharing/a11y.spec.tsx` cubre 360 y 1440 px, y nombrar el CA en cada `it`.
-- **[S-2]** `received-file-type.ts` duplica el mapa de `file-kind.ts` de la API: es PD-164.
-- **[S-3]** Caso de «Salir» con error de red o 429 (CA-11).
+- **[I-1] RESUELTO** Funciones > 30 líneas (Art. VII), todas JSX o hooks: `OwnFileDetail` (45), `FileDetailContent` (35), `FileDetailView` (31) en `file-detail-view.tsx`; `OwnExplorer` (32); `MyFiles` (34); `ShareForm` (37); `useReceivedShares` (40). Extraer subcomponentes o hooks antes del cierre de la fase.
+- **[I-2] RESUELTO** (`file-detail-view.tsx` 648→90; ficha propia en `own-file-detail.tsx`). `file-detail-view.tsx` (648) mezcla ficha propia, indexación y compartida. Antes de que la 013 sume el enlace público, mover `OwnFileDetail` a su archivo.
+- **[S-1] RESUELTO** Confirmar que `sharing/a11y.spec.tsx` cubre 360 y 1440 px, y nombrar el CA en cada `it`.
+- **[S-2] DIFERIDO** `received-file-type.ts` duplica el mapa de `file-kind.ts` de la API: es PD-164.
+- **[S-3] RESUELTO** Caso de «Salir» con error de red o 429 (CA-11).
 
 ## DF y pendientes
-- **DF**: ninguno declarado. Registrar en `design-findings.md` o en las decisiones del plan: la ficha compartida depende de un `404` de `/versions`, y «Fijar» se ocultó sin respaldo en una spec.
+- **DF**: DF-89 registrado. Era: registrar en `design-findings.md` o en las decisiones del plan: la ficha compartida depende de un `404` de `/versions`, y «Fijar» se ocultó sin respaldo en una spec.
 - **Pendientes**: PD-164 ya está en `docs/sdd/pendientes.md` (sumar `kind` a `receivedShareSchema` y borrar el mapa). P-2 abierta, no bloquea.
-- **Documentación**: la cabecera de `plan.md` dice «Propuesto» y su §8 «Aprobado»; alinearla.
+- **Documentación**: la cabecera de `plan.md` dice «Propuesto» y su §8 «Aprobado»; alineada (Aprobado).
