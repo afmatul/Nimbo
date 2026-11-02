@@ -90,6 +90,25 @@ function EmailField({ inputRef, value, invalid, onChange }: EmailFieldProps): Re
   );
 }
 
+interface ShareFeedbackProps {
+  readonly form: ReturnType<typeof useShareForm>;
+}
+
+/** El error con su acción (CA-3) o el éxito anunciado (CA-2). */
+function ShareFeedback({ form }: ShareFeedbackProps): React.JSX.Element {
+  return (
+    <>
+      {form.failure ? (
+        <ShareErrorAlert
+          message={form.failure}
+          handlers={{ retry: form.submitNow, fix_email: form.fixEmail }}
+        />
+      ) : null}
+      {form.success ? <Alert variant="success">{form.success}</Alert> : null}
+    </>
+  );
+}
+
 /**
  * Formulario «Compartir» (spec 012b CA-2, CA-3): correo y nivel (Lector o Editor), «Compartiendo…» pasados 2 s, el
  * éxito anunciado y, ante un error, el mensaje con su acción conservando lo escrito.
@@ -97,15 +116,12 @@ function EmailField({ inputRef, value, invalid, onChange }: EmailFieldProps): Re
 export function ShareForm(props: ShareFormProps): React.JSX.Element {
   const emailRef = React.useRef<HTMLInputElement>(null);
   const form = useShareForm(props, emailRef);
+  const onSubmit = (event: React.FormEvent): void => {
+    event.preventDefault();
+    form.submitNow();
+  };
   return (
-    <form
-      noValidate
-      className="space-y-3"
-      onSubmit={(event) => {
-        event.preventDefault();
-        form.submitNow();
-      }}
-    >
+    <form noValidate className="space-y-3" onSubmit={onSubmit}>
       <EmailField
         inputRef={emailRef}
         value={form.email}
@@ -119,13 +135,7 @@ export function ShareForm(props: ShareFormProps): React.JSX.Element {
         value={form.level}
         onValueChange={(value) => form.setLevel(value as ShareLevel)}
       />
-      {form.failure ? (
-        <ShareErrorAlert
-          message={form.failure}
-          handlers={{ retry: form.submitNow, fix_email: form.fixEmail }}
-        />
-      ) : null}
-      {form.success ? <Alert variant="success">{form.success}</Alert> : null}
+      <ShareFeedback form={form} />
       <Button type="submit" className="w-full sm:w-auto" loading={form.pending.pending}>
         {form.pending.slow ? 'Compartiendo…' : 'Compartir'}
       </Button>

@@ -23,7 +23,31 @@ export interface ReceivedSharesState {
   readonly leave: (shareId: string) => Promise<void>;
 }
 
+type SetListing = React.Dispatch<React.SetStateAction<ReceivedListing>>;
+
 const LOADING: ReceivedListing = { status: 'loading' };
+
+/** Pide la lista y la deja en `setListing`; la función devuelta descarta la respuesta si llega tarde. */
+function requestReceived(api: SharingApi, now: () => number, setListing: SetListing): () => void {
+  let current = true;
+  api.listReceived().then(
+    ({ entries }) => {
+      if (current) setListing({ status: 'ready', entries, loadedAt: now() });
+    },
+    () => {
+      if (current) setListing({ status: 'error' });
+    },
+  );
+  return () => {
+    current = false;
+  };
+}
+
+/** La lista sin el elemento del que se salió; fuera de «lista» no hay nada que quitar. */
+function withoutShare(listing: ReceivedListing, shareId: string): ReceivedListing {
+  if (listing.status !== 'ready') return listing;
+  return { ...listing, entries: listing.entries.filter((entry) => entry.shareId !== shareId) };
+}
 
 /**
  * `GET /shares/received` (spec 012b CA-8, CA-11). `reload` conserva la lista visible hasta la respuesta; desde el error
@@ -36,20 +60,7 @@ export function useReceivedShares(
   const [listing, setListing] = React.useState<ReceivedListing>(LOADING);
   const [attempt, setAttempt] = React.useState(0);
 
-  React.useEffect(() => {
-    let current = true;
-    api.listReceived().then(
-      ({ entries }) => {
-        if (current) setListing({ status: 'ready', entries, loadedAt: now() });
-      },
-      () => {
-        if (current) setListing({ status: 'error' });
-      },
-    );
-    return () => {
-      current = false;
-    };
-  }, [api, attempt, now]);
+  React.useEffect(() => requestReceived(api, now, setListing), [api, attempt, now]);
 
   const reload = React.useCallback(() => {
     setListing((previous) => (previous.status === 'error' ? LOADING : previous));
@@ -59,11 +70,7 @@ export function useReceivedShares(
   const leave = React.useCallback(
     async (shareId: string) => {
       await api.leave(shareId);
-      setListing((previous) =>
-        previous.status === 'ready'
-          ? { ...previous, entries: previous.entries.filter((e) => e.shareId !== shareId) }
-          : previous,
-      );
+      setListing((previous) => withoutShare(previous, shareId));
     },
     [api],
   );
