@@ -86,15 +86,13 @@ function explorerNotices(
 }
 
 /** El explorador de la ubicación abierta con sus avisos, cargas, desglose, orden y «Cargar más». */
-function MyFilesExplorer({
-  state,
-  status,
-  share,
-}: {
+interface MyFilesExplorerProps {
   readonly state: MyFilesState;
   readonly status: FileExplorerStatus;
   readonly share: RowShare;
-}): React.JSX.Element {
+}
+
+function MyFilesExplorer({ state, status, share }: MyFilesExplorerProps): React.JSX.Element {
   const { contents, notices, uploads, folderId } = state;
   return (
     <FileExplorer
@@ -120,6 +118,13 @@ function MyFilesExplorer({
   );
 }
 
+/** Migas en la barra superior cuando la ubicación ya cargó; lo compartido conmigo arranca en «Compartidos» (012b CA-9). */
+function topBarOf(state: MyFilesState, level: NodeAccessLevel): React.ReactNode {
+  if (state.contents.listing.status !== 'ready') return null;
+  const root = isOwner(level) ? {} : { root: SHARED_ROOT_CRUMB };
+  return <FolderBreadcrumbs breadcrumbs={state.view.breadcrumbs} {...root} />;
+}
+
 export interface MyFilesProps {
   /** Carpeta de la URL (`/archivos/carpeta/[folderId]`); `null` es la raíz (`/archivos`). */
   readonly folderId: string | null;
@@ -139,14 +144,7 @@ export function MyFiles({ folderId, sharingApi }: MyFilesProps): React.JSX.Eleme
   const share: RowShare = { level: accessLevelOf(listing), open: setSharing };
   return (
     <AppLayout
-      topBar={
-        listing.status === 'ready' ? (
-          <FolderBreadcrumbs
-            breadcrumbs={state.view.breadcrumbs}
-            {...(isOwner(share.level) ? {} : { root: SHARED_ROOT_CRUMB })}
-          />
-        ) : null
-      }
+      topBar={topBarOf(state, share.level)}
       sidebarSection={state.sidebar.sidebarSection}
       trashCount={state.sidebar.trashCount}
       quotaCard={<SidebarQuota state={state.sidebar.space} />}

@@ -143,37 +143,38 @@ type PlacedExplorerProps = FileExplorerProps & { readonly place: Place };
  * y los estados de la spec 006 §6.
  */
 function OwnExplorer(props: PlacedExplorerProps): React.JSX.Element {
-  const { folderId, breadcrumbs, place, maxFileLabel, fileInputRef } = props;
-  const uploads = useReadOnlyUploads(props.onFiles, folderId);
-  const ownInputRef = React.useRef<HTMLInputElement>(null);
-  const inputRef = fileInputRef ?? ownInputRef;
-  const openPicker = (): void => inputRef.current?.click();
-  const placeName = placeNameOf(folderId, breadcrumbs);
+  const uploads = useReadOnlyUploads(props.onFiles, props.folderId);
+  const picker = useFilePicker(props.fileInputRef);
   return (
     <>
       <ExplorerHeader {...props}>
         <ExplorerActions
           onNewFolder={props.onNewFolder}
-          onUpload={openPicker}
+          onUpload={picker.open}
           disabled={uploads.readOnly}
         />
       </ExplorerHeader>
       <ReadOnlyUploadFeedback readOnly={uploads.readOnly} blockedDrop={uploads.blockedDrop} />
       <UploadDropzone
-        destinationName={placeName}
-        maxFileLabel={maxFileLabel}
+        destinationName={placeNameOf(props.folderId, props.breadcrumbs)}
+        maxFileLabel={props.maxFileLabel}
         onFiles={uploads.onFiles}
-        inputRef={inputRef}
+        inputRef={picker.inputRef}
       >
-        <ExplorerContent
-          {...props}
-          place={place}
-          onUpload={openPicker}
-          readOnly={uploads.readOnly}
-        />
+        <ExplorerContent {...props} onUpload={picker.open} readOnly={uploads.readOnly} />
       </UploadDropzone>
     </>
   );
+}
+
+/** El selector de archivos de la vista (o el que pasa la página) y cómo abrirlo. */
+function useFilePicker(external: FileExplorerProps['fileInputRef']): {
+  readonly inputRef: React.RefObject<HTMLInputElement | null>;
+  readonly open: () => void;
+} {
+  const ownInputRef = React.useRef<HTMLInputElement>(null);
+  const inputRef = external ?? ownInputRef;
+  return { inputRef, open: () => inputRef.current?.click() };
 }
 
 /** Lo compartido conmigo como Editor o Lector: sin subir, crear ni arrastrar (012b CA-6); la API vuelve a decidir. */
@@ -310,13 +311,12 @@ function ExplorerBody(props: ExplorerBodyProps): React.JSX.Element {
  * «Ordenar» encima y «Cargar más» debajo (007). Mientras llega otro orden la lista visible se conserva con
  * `aria-busy` y la tabla marca el orden de lo que muestra, no el pedido (CA-12).
  */
-function ControlledList({
-  table,
-  controls,
-}: {
+interface ControlledListProps {
   readonly table: Omit<NodeTableProps, 'sorting'>;
   readonly controls: ListControls;
-}): React.JSX.Element {
+}
+
+function ControlledList({ table, controls }: ControlledListProps): React.JSX.Element {
   return (
     <div className="flex flex-col gap-3">
       <NodeSortMenu
